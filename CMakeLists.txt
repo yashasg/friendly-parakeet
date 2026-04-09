@@ -1,9 +1,27 @@
 cmake_minimum_required(VERSION 3.20)
-project(shapeshifter LANGUAGES CXX)
+project(shapeshifter VERSION 0.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# ── Version (major.minor.githash) ────────────────────────────
+execute_process(
+    COMMAND git rev-parse --short HEAD
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    OUTPUT_VARIABLE GIT_COMMIT_HASH
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET
+)
+if(NOT GIT_COMMIT_HASH)
+    set(GIT_COMMIT_HASH "unknown")
+endif()
+
+configure_file(
+    ${CMAKE_SOURCE_DIR}/app/version.h.in
+    ${CMAKE_BINARY_DIR}/generated/version.h
+    @ONLY
+)
 
 # ── Dependencies ─────────────────────────────────────────────
 include(FetchContent)
@@ -39,6 +57,7 @@ list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "render_system\\.cpp$")
 add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES})
 target_include_directories(shapeshifter_lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/app
+    ${CMAKE_BINARY_DIR}/generated
 )
 target_link_libraries(shapeshifter_lib PUBLIC
     EnTT::EnTT

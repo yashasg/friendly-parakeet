@@ -1,6 +1,7 @@
 #include <SDL.h>
 #include <entt/entt.hpp>
 
+#include "version.h"
 #include "constants.h"
 #include "components/transform.h"
 #include "components/player.h"
@@ -25,8 +26,11 @@ int main(int /*argc*/, char* /*argv*/[]) {
         return 1;
     }
 
+    SDL_Log("SHAPESHIFTER v%s", SHAPESHIFTER_VERSION);
+
+    std::string window_title = std::string("SHAPESHIFTER v") + SHAPESHIFTER_VERSION;
     SDL_Window* window = SDL_CreateWindow(
-        "SHAPESHIFTER",
+        window_title.c_str(),
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
         constants::SCREEN_W / 2, constants::SCREEN_H / 2,
         SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE
