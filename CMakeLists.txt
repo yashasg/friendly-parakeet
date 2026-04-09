@@ -27,8 +27,10 @@ configure_file(
 )
 
 # ── Dependencies ─────────────────────────────────────────────
-# vcpkg is required. Pass -DCMAKE_TOOLCHAIN_FILE or set VCPKG_ROOT.
-# Use build.sh / the CI workflows which enforce this automatically.
+# On Linux:   libsdl2-dev and catch2 are expected as system packages (apt).
+#             vcpkg only provides EnTT (header-only, fast).
+# On Windows: all three come from vcpkg (x64-windows-static-md triplet).
+# Pass -DCMAKE_TOOLCHAIN_FILE or set VCPKG_ROOT so vcpkg is used for EnTT.
 
 find_package(EnTT CONFIG REQUIRED)
 find_package(SDL2 CONFIG REQUIRED)
