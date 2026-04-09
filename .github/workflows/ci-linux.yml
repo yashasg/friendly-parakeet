@@ -33,6 +33,14 @@ jobs:
           cmake: true
           vcpkg: true
 
+      - name: Cache CMake build directory
+        uses: actions/cache@v4
+        with:
+          path: build
+          key: cmake-linux-clang-${{ hashFiles('CMakeLists.txt', 'vcpkg.json') }}
+          restore-keys: |
+            cmake-linux-clang-
+
       - name: Install SDL2 system dependencies
         run: |
           sudo apt-get update -qq
@@ -49,7 +57,7 @@ jobs:
       - name: Run tests
         if: always()
         id: run-tests
-        run: ./build/shapeshifter_tests
+        run: ./build/shapeshifter_tests --benchmark-samples 1
 
       - name: Upload artifact
         if: success()
@@ -71,5 +79,11 @@ jobs:
         with:
           report-path: 'ctrf-report.json'
           pull-request-report: true
+          summary-delta-report: true
+          insights-report: true
+          flaky-rate-report: true
+          fail-rate-report: true
+          slowest-report: true
+          upload-artifact: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

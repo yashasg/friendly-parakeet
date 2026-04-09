@@ -33,6 +33,14 @@ jobs:
           cmake: true
           vcpkg: true
 
+      - name: Cache CMake build directory
+        uses: actions/cache@v4
+        with:
+          path: build
+          key: cmake-windows-clangcl-${{ hashFiles('CMakeLists.txt', 'vcpkg.json') }}
+          restore-keys: |
+            cmake-windows-clangcl-
+
       - name: Build
         run: ./build.sh
         shell: bash
@@ -40,7 +48,7 @@ jobs:
       - name: Run tests
         if: always()
         id: run-tests
-        run: ./build/Release/shapeshifter_tests.exe
+        run: ./build/Release/shapeshifter_tests.exe --benchmark-samples 1
         shell: bash
 
       - name: Upload artifact
@@ -63,5 +71,11 @@ jobs:
         with:
           report-path: 'ctrf-report.json'
           pull-request-report: true
+          summary-delta-report: true
+          insights-report: true
+          flaky-rate-report: true
+          fail-rate-report: true
+          slowest-report: true
+          upload-artifact: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
