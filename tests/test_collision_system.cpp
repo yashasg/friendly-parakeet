@@ -9,7 +9,7 @@ TEST_CASE("collision: shape gate cleared with matching shape", "[collision]") {
 
     collision_system(reg, 0.016f);
 
-    CHECK(reg.get<Obstacle>(obs).scored == true);
+    CHECK(reg.all_of<ScoredTag>(obs));
     CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
 }
 
@@ -34,7 +34,7 @@ TEST_CASE("collision: lane block cleared when player in unblocked lane", "[colli
 
     collision_system(reg, 0.016f);
 
-    CHECK(reg.get<Obstacle>(obs).scored == true);
+    CHECK(reg.all_of<ScoredTag>(obs));
 }
 
 TEST_CASE("collision: lane block kills when player in blocked lane", "[collision]") {
@@ -56,7 +56,7 @@ TEST_CASE("collision: low bar cleared when jumping", "[collision]") {
 
     collision_system(reg, 0.016f);
 
-    CHECK(reg.get<Obstacle>(obs).scored == true);
+    CHECK(reg.all_of<ScoredTag>(obs));
 }
 
 TEST_CASE("collision: low bar kills when grounded", "[collision]") {
@@ -77,7 +77,7 @@ TEST_CASE("collision: high bar cleared when sliding", "[collision]") {
 
     collision_system(reg, 0.016f);
 
-    CHECK(reg.get<Obstacle>(obs).scored == true);
+    CHECK(reg.all_of<ScoredTag>(obs));
 }
 
 TEST_CASE("collision: high bar kills when grounded", "[collision]") {
@@ -105,7 +105,7 @@ TEST_CASE("collision: already scored obstacles are skipped", "[collision]") {
     auto reg = make_registry();
     make_player(reg);
     auto obs = make_shape_gate(reg, Shape::Triangle, constants::PLAYER_Y);
-    reg.get<Obstacle>(obs).scored = true;
+    reg.emplace<ScoredTag>(obs);
 
     collision_system(reg, 0.016f);
 
@@ -121,7 +121,7 @@ TEST_CASE("collision: combo gate requires shape AND lane", "[collision]") {
     reg.emplace<ObstacleTag>(obs);
     reg.emplace<Position>(obs, constants::LANE_X[1], constants::PLAYER_Y);
     reg.emplace<Velocity>(obs, 0.0f, config.scroll_speed);
-    reg.emplace<Obstacle>(obs, ObstacleKind::ComboGate, int16_t{200}, false);
+    reg.emplace<Obstacle>(obs, ObstacleKind::ComboGate, int16_t{200});
     reg.emplace<RequiredShape>(obs, Shape::Circle);
     // Block lanes 0 and 2, leave lane 1 open
     reg.emplace<BlockedLanes>(obs, uint8_t{0b101});
@@ -131,7 +131,7 @@ TEST_CASE("collision: combo gate requires shape AND lane", "[collision]") {
 
     collision_system(reg, 0.016f);
 
-    CHECK(reg.get<Obstacle>(obs).scored == true);
+    CHECK(reg.all_of<ScoredTag>(obs));
 }
 
 TEST_CASE("collision: combo gate fails with wrong shape", "[collision]") {
@@ -142,7 +142,7 @@ TEST_CASE("collision: combo gate fails with wrong shape", "[collision]") {
     reg.emplace<ObstacleTag>(obs);
     reg.emplace<Position>(obs, constants::LANE_X[1], constants::PLAYER_Y);
     reg.emplace<Velocity>(obs, 0.0f, config.scroll_speed);
-    reg.emplace<Obstacle>(obs, ObstacleKind::ComboGate, int16_t{200}, false);
+    reg.emplace<Obstacle>(obs, ObstacleKind::ComboGate, int16_t{200});
     reg.emplace<RequiredShape>(obs, Shape::Triangle);  // wrong shape
     reg.emplace<BlockedLanes>(obs, uint8_t{0b101});    // lane 1 open
     reg.emplace<DrawSize>(obs, 720.0f, 80.0f);

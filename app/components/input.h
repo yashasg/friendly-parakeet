@@ -4,20 +4,21 @@
 #include <cstdint>
 
 struct InputState {
-    bool  touch_down = false;
-    bool  touch_up   = false;
-    bool  touching   = false;
+    bool  touch_down     = false;
+    bool  touch_up       = false;
+    bool  touching       = false;
+    bool  quit_requested = false;
 
     float start_x = 0.0f, start_y = 0.0f;
     float curr_x  = 0.0f, curr_y  = 0.0f;
     float end_x   = 0.0f, end_y   = 0.0f;
     float duration = 0.0f;
-
-    void clear_events() {
-        touch_down = false;
-        touch_up   = false;
-    }
 };
+
+inline void clear_input_events(InputState& input) {
+    input.touch_down = false;
+    input.touch_up   = false;
+}
 
 enum class Gesture : uint8_t {
     None       = 0,

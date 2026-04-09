@@ -9,7 +9,7 @@ TEST_CASE("burnout: no threat when no obstacles", "[burnout]") {
     burnout_system(reg, 0.016f);
 
     auto& bs = reg.ctx().get<BurnoutState>();
-    CHECK_FALSE(bs.has_threat);
+    CHECK((bs.nearest_threat == entt::null));
     CHECK(bs.zone == BurnoutZone::None);
     CHECK(bs.meter == 0.0f);
 }
@@ -20,7 +20,7 @@ TEST_CASE("burnout: no threat when no player", "[burnout]") {
 
     burnout_system(reg, 0.016f);
 
-    CHECK_FALSE(reg.ctx().get<BurnoutState>().has_threat);
+    CHECK((reg.ctx().get<BurnoutState>().nearest_threat == entt::null));
 }
 
 TEST_CASE("burnout: safe zone for distant obstacle", "[burnout]") {
@@ -32,7 +32,7 @@ TEST_CASE("burnout: safe zone for distant obstacle", "[burnout]") {
     burnout_system(reg, 0.016f);
 
     auto& bs = reg.ctx().get<BurnoutState>();
-    CHECK(bs.has_threat);
+    CHECK((bs.nearest_threat != entt::null));
     CHECK(bs.zone == BurnoutZone::Safe);
     CHECK(bs.meter > 0.0f);
     CHECK(bs.meter <= 0.4f);
@@ -79,11 +79,11 @@ TEST_CASE("burnout: scored obstacles are ignored", "[burnout]") {
     auto reg = make_registry();
     make_player(reg);
     auto obs = make_shape_gate(reg, Shape::Triangle, constants::PLAYER_Y - 300.0f);
-    reg.get<Obstacle>(obs).scored = true;
+    reg.emplace<ScoredTag>(obs);
 
     burnout_system(reg, 0.016f);
 
-    CHECK_FALSE(reg.ctx().get<BurnoutState>().has_threat);
+    CHECK((reg.ctx().get<BurnoutState>().nearest_threat == entt::null));
 }
 
 TEST_CASE("burnout: nearest obstacle is tracked", "[burnout]") {
@@ -116,5 +116,5 @@ TEST_CASE("burnout: obstacle below player is ignored", "[burnout]") {
 
     burnout_system(reg, 0.016f);
 
-    CHECK_FALSE(reg.ctx().get<BurnoutState>().has_threat);
+    CHECK((reg.ctx().get<BurnoutState>().nearest_threat == entt::null));
 }

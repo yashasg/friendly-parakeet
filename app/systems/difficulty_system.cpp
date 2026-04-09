@@ -1,9 +1,12 @@
 #include "all_systems.h"
 #include "../components/difficulty.h"
+#include "../components/game_state.h"
 #include "../constants.h"
 #include <algorithm>
 
 void difficulty_system(entt::registry& reg, float dt) {
+    if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
+
     auto& config = reg.ctx().get<DifficultyConfig>();
     config.elapsed += dt;
 

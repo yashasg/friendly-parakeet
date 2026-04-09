@@ -9,6 +9,8 @@
 #include <cmath>
 
 void collision_system(entt::registry& reg, float /*dt*/) {
+    if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
+
     // Find player
     auto player_view = reg.view<PlayerTag, Position, PlayerShape, Lane, VerticalState>();
     if (player_view.size_hint() == 0) return;
@@ -19,10 +21,8 @@ void collision_system(entt::registry& reg, float /*dt*/) {
 
     constexpr float COLLISION_MARGIN = 40.0f;
 
-    auto obs_view = reg.view<ObstacleTag, Position, Obstacle>();
+    auto obs_view = reg.view<ObstacleTag, Position, Obstacle>(entt::exclude<ScoredTag>);
     for (auto [entity, obs_pos, obs] : obs_view.each()) {
-        if (obs.scored) continue;
-
         float dist = std::abs(p_pos.y - obs_pos.y + p_vstate.y_offset);
         if (dist > COLLISION_MARGIN) continue;
 
@@ -81,7 +81,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
         }
 
         if (cleared) {
-            obs.scored = true;
+            reg.emplace<ScoredTag>(entity);
         } else {
             // Collision → game over
             auto& gs = reg.ctx().get<GameState>();

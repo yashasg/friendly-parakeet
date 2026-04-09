@@ -1,5 +1,6 @@
 #include "all_systems.h"
 #include "../components/burnout.h"
+#include "../components/game_state.h"
 #include "../components/obstacle.h"
 #include "../components/obstacle_data.h"
 #include "../components/player.h"
@@ -11,13 +12,15 @@
 #include <limits>
 
 void burnout_system(entt::registry& reg, float /*dt*/) {
+    if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
+
     auto& burnout = reg.ctx().get<BurnoutState>();
     auto& config  = reg.ctx().get<DifficultyConfig>();
 
     // Find player
     auto player_view = reg.view<PlayerTag, Position, PlayerShape, Lane>();
     if (player_view.size_hint() == 0) {
-        burnout.has_threat = false;
+        burnout.nearest_threat = entt::null;
         return;
     }
 
@@ -27,24 +30,20 @@ void burnout_system(entt::registry& reg, float /*dt*/) {
     // Find nearest un-scored obstacle above player
     float nearest_dist = std::numeric_limits<float>::max();
     entt::entity nearest = entt::null;
-    bool found = false;
 
-    auto obs_view = reg.view<ObstacleTag, Position, Obstacle>();
+    auto obs_view = reg.view<ObstacleTag, Position, Obstacle>(entt::exclude<ScoredTag>);
     for (auto [entity, obs_pos, obs] : obs_view.each()) {
-        if (obs.scored) continue;
         float dist = p_pos.y - obs_pos.y;
         if (dist > 0.0f && dist < nearest_dist) {
             nearest_dist = dist;
             nearest = entity;
-            found = true;
         }
     }
 
-    burnout.has_threat      = found;
     burnout.nearest_threat  = nearest;
     burnout.threat_distance = nearest_dist;
 
-    if (!found) {
+    if (nearest == entt::null) {
         burnout.meter = 0.0f;
         burnout.zone  = BurnoutZone::None;
         return;
@@ -80,8 +79,8 @@ void burnout_system(entt::registry& reg, float /*dt*/) {
     // Push zone change SFX
     if (burnout.zone != prev_zone) {
         auto& audio = reg.ctx().get<AudioQueue>();
-        if (burnout.zone == BurnoutZone::Risky)  audio.push(SFX::ZoneRisky);
-        if (burnout.zone == BurnoutZone::Danger) audio.push(SFX::ZoneDanger);
-        if (burnout.zone == BurnoutZone::Dead)   audio.push(SFX::ZoneDead);
+        if (burnout.zone == BurnoutZone::Risky)  audio_push(audio, SFX::ZoneRisky);
+        if (burnout.zone == BurnoutZone::Danger) audio_push(audio, SFX::ZoneDanger);
+        if (burnout.zone == BurnoutZone::Dead)   audio_push(audio, SFX::ZoneDead);
     }
 }

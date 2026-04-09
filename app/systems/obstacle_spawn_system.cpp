@@ -1,4 +1,5 @@
 #include "all_systems.h"
+#include "../components/game_state.h"
 #include "../components/obstacle.h"
 #include "../components/obstacle_data.h"
 #include "../components/transform.h"
@@ -9,6 +10,8 @@
 #include <cstdlib>
 
 void obstacle_spawn_system(entt::registry& reg, float dt) {
+    if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
+
     auto& config = reg.ctx().get<DifficultyConfig>();
     config.spawn_timer -= dt;
     if (config.spawn_timer > 0.0f) return;
@@ -38,7 +41,7 @@ void obstacle_spawn_system(entt::registry& reg, float dt) {
         case ObstacleKind::ShapeGate: {
             auto shape = static_cast<Shape>(std::rand() % 3);
             reg.emplace<Position>(obstacle, constants::LANE_X[1], constants::SPAWN_Y);
-            reg.emplace<Obstacle>(obstacle, kind, int16_t{constants::PTS_SHAPE_GATE}, false);
+            reg.emplace<Obstacle>(obstacle, kind, int16_t{constants::PTS_SHAPE_GATE});
             reg.emplace<RequiredShape>(obstacle, shape);
             reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W), 80.0f);
 
@@ -55,7 +58,7 @@ void obstacle_spawn_system(entt::registry& reg, float dt) {
             // Block one lane
             uint8_t mask = uint8_t(1 << lane);
             reg.emplace<Position>(obstacle, constants::LANE_X[lane], constants::SPAWN_Y);
-            reg.emplace<Obstacle>(obstacle, kind, int16_t{constants::PTS_LANE_BLOCK}, false);
+            reg.emplace<Obstacle>(obstacle, kind, int16_t{constants::PTS_LANE_BLOCK});
             reg.emplace<BlockedLanes>(obstacle, mask);
             reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W / 3), 80.0f);
             reg.emplace<Color>(obstacle, uint8_t{255}, uint8_t{60}, uint8_t{60}, uint8_t{255});
@@ -63,7 +66,7 @@ void obstacle_spawn_system(entt::registry& reg, float dt) {
         }
         case ObstacleKind::LowBar: {
             reg.emplace<Position>(obstacle, constants::LANE_X[1], constants::SPAWN_Y);
-            reg.emplace<Obstacle>(obstacle, kind, int16_t{constants::PTS_LOW_BAR}, false);
+            reg.emplace<Obstacle>(obstacle, kind, int16_t{constants::PTS_LOW_BAR});
             reg.emplace<RequiredVAction>(obstacle, VMode::Jumping);
             reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W), 40.0f);
             reg.emplace<Color>(obstacle, uint8_t{255}, uint8_t{180}, uint8_t{0}, uint8_t{255});
@@ -71,7 +74,7 @@ void obstacle_spawn_system(entt::registry& reg, float dt) {
         }
         case ObstacleKind::HighBar: {
             reg.emplace<Position>(obstacle, constants::LANE_X[1], constants::SPAWN_Y);
-            reg.emplace<Obstacle>(obstacle, kind, int16_t{constants::PTS_HIGH_BAR}, false);
+            reg.emplace<Obstacle>(obstacle, kind, int16_t{constants::PTS_HIGH_BAR});
             reg.emplace<RequiredVAction>(obstacle, VMode::Sliding);
             reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W), 40.0f);
             reg.emplace<Color>(obstacle, uint8_t{180}, uint8_t{0}, uint8_t{255}, uint8_t{255});
@@ -80,20 +83,18 @@ void obstacle_spawn_system(entt::registry& reg, float dt) {
         case ObstacleKind::ComboGate: {
             auto shape = static_cast<Shape>(std::rand() % 3);
             uint8_t mask = uint8_t(1 << lane) | uint8_t(1 << ((lane + 1) % 3));
-            int open_lane = (lane + 2) % 3;
             reg.emplace<Position>(obstacle, constants::LANE_X[1], constants::SPAWN_Y);
-            reg.emplace<Obstacle>(obstacle, kind, int16_t{constants::PTS_COMBO_GATE}, false);
+            reg.emplace<Obstacle>(obstacle, kind, int16_t{constants::PTS_COMBO_GATE});
             reg.emplace<RequiredShape>(obstacle, shape);
             reg.emplace<BlockedLanes>(obstacle, mask);
             reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W), 80.0f);
             reg.emplace<Color>(obstacle, uint8_t{200}, uint8_t{100}, uint8_t{255}, uint8_t{255});
-            (void)open_lane;
             break;
         }
         case ObstacleKind::SplitPath: {
             auto shape = static_cast<Shape>(std::rand() % 3);
             reg.emplace<Position>(obstacle, constants::LANE_X[1], constants::SPAWN_Y);
-            reg.emplace<Obstacle>(obstacle, kind, int16_t{constants::PTS_SPLIT_PATH}, false);
+            reg.emplace<Obstacle>(obstacle, kind, int16_t{constants::PTS_SPLIT_PATH});
             reg.emplace<RequiredShape>(obstacle, shape);
             reg.emplace<RequiredLane>(obstacle, int8_t(lane));
             reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W), 80.0f);

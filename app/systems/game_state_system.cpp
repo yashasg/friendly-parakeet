@@ -50,7 +50,7 @@ static void enter_game_over(entt::registry& reg) {
     if (score.score > score.high_score) {
         score.high_score = score.score;
     }
-    reg.ctx().get<AudioQueue>().push(SFX::Crash);
+    audio_push(reg.ctx().get<AudioQueue>(), SFX::Crash);
 
     auto& gs = reg.ctx().get<GameState>();
     gs.previous_phase = gs.phase;

@@ -57,7 +57,7 @@ static void spawn_obstacles(entt::registry& reg, int count) {
         reg.emplace<Position>(obs, constants::LANE_X[i % 3], y);
         reg.emplace<Velocity>(obs, 0.0f, config.scroll_speed);
         auto shape = static_cast<Shape>(i % 3);
-        reg.emplace<Obstacle>(obs, ObstacleKind::ShapeGate, int16_t{200}, false);
+        reg.emplace<Obstacle>(obs, ObstacleKind::ShapeGate, int16_t{200});
         reg.emplace<RequiredShape>(obs, shape);
         reg.emplace<DrawSize>(obs, float(constants::SCREEN_W), 80.0f);
         reg.emplace<DrawLayer>(obs, Layer::Game);
@@ -129,10 +129,10 @@ TEST_CASE("Bench: collision_system", "[bench]") {
         reg.emplace<ObstacleTag>(obs);
         reg.emplace<Position>(obs, constants::LANE_X[1], constants::PLAYER_Y);
         reg.emplace<Velocity>(obs, 0.0f, 400.0f);
-        reg.emplace<Obstacle>(obs, ObstacleKind::ShapeGate, int16_t{200}, false);
+        reg.emplace<Obstacle>(obs, ObstacleKind::ShapeGate, int16_t{200});
         reg.emplace<RequiredShape>(obs, Shape::Circle);
         meter.measure([&] {
-            reg.get<Obstacle>(obs).scored = false;
+            if (reg.all_of<ScoredTag>(obs)) reg.remove<ScoredTag>(obs);
             reg.ctx().get<GameState>().transition_pending = false;
             collision_system(reg, DT);
         });
@@ -170,7 +170,8 @@ TEST_CASE("Bench: scoring_system", "[bench]") {
             reg.emplace<ObstacleTag>(obs);
             reg.emplace<Position>(obs, constants::LANE_X[1], constants::PLAYER_Y);
             reg.emplace<Velocity>(obs, 0.0f, 400.0f);
-            reg.emplace<Obstacle>(obs, ObstacleKind::ShapeGate, int16_t{200}, true);
+            reg.emplace<Obstacle>(obs, ObstacleKind::ShapeGate, int16_t{200});
+            reg.emplace<ScoredTag>(obs);
             reg.emplace<DrawLayer>(obs, Layer::Game);
             reg.emplace<Color>(obs, uint8_t{255}, uint8_t{255}, uint8_t{255}, uint8_t{255});
         }

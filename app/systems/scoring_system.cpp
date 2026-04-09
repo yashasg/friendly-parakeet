@@ -1,4 +1,5 @@
 #include "all_systems.h"
+#include "../components/game_state.h"
 #include "../components/scoring.h"
 #include "../components/burnout.h"
 #include "../components/obstacle.h"
@@ -31,6 +32,8 @@ static uint8_t tier_for_multiplier(float mult) {
 }
 
 void scoring_system(entt::registry& reg, float dt) {
+    if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
+
     auto& score   = reg.ctx().get<ScoreState>();
     auto& burnout = reg.ctx().get<BurnoutState>();
     auto& config  = reg.ctx().get<DifficultyConfig>();
@@ -46,10 +49,8 @@ void scoring_system(entt::registry& reg, float dt) {
     }
 
     // Process scored obstacles
-    auto view = reg.view<ObstacleTag, Obstacle, Position>();
+    auto view = reg.view<ObstacleTag, ScoredTag, Obstacle, Position>();
     for (auto [entity, obs, pos] : view.each()) {
-        if (!obs.scored) continue;
-
         float mult = multiplier_for_zone(burnout.zone);
         int points = static_cast<int>(std::floor(obs.base_points * mult));
 
@@ -73,12 +74,11 @@ void scoring_system(entt::registry& reg, float dt) {
         reg.emplace<Color>(popup, uint8_t{255}, uint8_t{255}, uint8_t{50}, uint8_t{255});
         reg.emplace<DrawLayer>(popup, Layer::Effects);
 
-        reg.ctx().get<AudioQueue>().push(SFX::BurnoutBank);
+        audio_push(reg.ctx().get<AudioQueue>(), SFX::BurnoutBank);
 
-        // Mark as fully processed by removing Obstacle component
-        obs.base_points = 0; // prevent double-scoring
-        obs.scored = false;  // reset flag so we don't re-enter
-        // The obstacle entity remains for scrolling/render but won't collide again
+        // Remove Obstacle so it won't be processed again; entity remains for scroll/cleanup
+        reg.remove<Obstacle>(entity);
+        reg.remove<ScoredTag>(entity);
     }
 
     // Smooth score display

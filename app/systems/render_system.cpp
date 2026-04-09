@@ -117,7 +117,6 @@ void render_system(entt::registry& reg, SDL_Renderer* renderer, float /*alpha*/)
     {
         auto view = reg.view<ObstacleTag, Position, Obstacle, Color, DrawSize>();
         for (auto [entity, pos, obs, col, dsz] : view.each()) {
-            if (obs.base_points == 0) continue; // already scored and processed
 
             SDL_SetRenderDrawColor(renderer, col.r, col.g, col.b, col.a);
 
@@ -396,5 +395,5 @@ void audio_system(entt::registry& reg) {
     auto& audio = reg.ctx().get<AudioQueue>();
     // In a full implementation, iterate audio.queue[0..count-1]
     // and call Mix_PlayChannel for each SFX
-    audio.clear();
+    audio_clear(audio);
 }

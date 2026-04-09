@@ -16,5 +16,4 @@ struct BurnoutState {
     BurnoutZone  zone            = BurnoutZone::None;
     float        threat_distance = 0.0f;
     entt::entity nearest_threat  = entt::null;
-    bool         has_threat      = false;
 };

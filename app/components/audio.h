@@ -20,12 +20,12 @@ struct AudioQueue {
     static constexpr int MAX_QUEUED = 16;
     SFX queue[MAX_QUEUED] = {};
     int count = 0;
-
-    void push(SFX sfx) {
-        if (count < MAX_QUEUED) {
-            queue[count++] = sfx;
-        }
-    }
-
-    void clear() { count = 0; }
 };
+
+inline void audio_push(AudioQueue& q, SFX sfx) {
+    if (q.count < AudioQueue::MAX_QUEUED) {
+        q.queue[q.count++] = sfx;
+    }
+}
+
+inline void audio_clear(AudioQueue& q) { q.count = 0; }

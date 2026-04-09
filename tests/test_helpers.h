@@ -54,7 +54,7 @@ inline entt::entity make_shape_gate(entt::registry& reg, Shape shape, float y) {
     reg.emplace<ObstacleTag>(obs);
     reg.emplace<Position>(obs, constants::LANE_X[1], y);
     reg.emplace<Velocity>(obs, 0.0f, config.scroll_speed);
-    reg.emplace<Obstacle>(obs, ObstacleKind::ShapeGate, int16_t{constants::PTS_SHAPE_GATE}, false);
+    reg.emplace<Obstacle>(obs, ObstacleKind::ShapeGate, int16_t{constants::PTS_SHAPE_GATE});
     reg.emplace<RequiredShape>(obs, shape);
     reg.emplace<DrawSize>(obs, float(constants::SCREEN_W), 80.0f);
     reg.emplace<DrawLayer>(obs, Layer::Game);
@@ -69,7 +69,7 @@ inline entt::entity make_lane_block(entt::registry& reg, uint8_t mask, float y) 
     reg.emplace<ObstacleTag>(obs);
     reg.emplace<Position>(obs, constants::LANE_X[1], y);
     reg.emplace<Velocity>(obs, 0.0f, config.scroll_speed);
-    reg.emplace<Obstacle>(obs, ObstacleKind::LaneBlock, int16_t{constants::PTS_LANE_BLOCK}, false);
+    reg.emplace<Obstacle>(obs, ObstacleKind::LaneBlock, int16_t{constants::PTS_LANE_BLOCK});
     reg.emplace<BlockedLanes>(obs, mask);
     reg.emplace<DrawSize>(obs, float(constants::SCREEN_W / 3), 80.0f);
     reg.emplace<DrawLayer>(obs, Layer::Game);
@@ -85,7 +85,7 @@ inline entt::entity make_vertical_bar(entt::registry& reg, ObstacleKind kind, fl
     reg.emplace<Position>(obs, constants::LANE_X[1], y);
     reg.emplace<Velocity>(obs, 0.0f, config.scroll_speed);
     int16_t pts = (kind == ObstacleKind::LowBar) ? constants::PTS_LOW_BAR : constants::PTS_HIGH_BAR;
-    reg.emplace<Obstacle>(obs, kind, pts, false);
+    reg.emplace<Obstacle>(obs, kind, pts);
     VMode action = (kind == ObstacleKind::LowBar) ? VMode::Jumping : VMode::Sliding;
     reg.emplace<RequiredVAction>(obs, action);
     reg.emplace<DrawSize>(obs, float(constants::SCREEN_W), 40.0f);

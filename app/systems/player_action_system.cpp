@@ -1,10 +1,13 @@
 #include "all_systems.h"
+#include "../components/game_state.h"
 #include "../components/player.h"
 #include "../components/input.h"
 #include "../components/audio.h"
 #include "../constants.h"
 
 void player_action_system(entt::registry& reg, float /*dt*/) {
+    if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
+
     auto& gesture = reg.ctx().get<GestureResult>();
     auto& btn_evt = reg.ctx().get<ShapeButtonEvent>();
 
@@ -16,7 +19,7 @@ void player_action_system(entt::registry& reg, float /*dt*/) {
             pshape.previous = pshape.current;
             pshape.current  = btn_evt.shape;
             pshape.morph_t  = 0.0f;
-            reg.ctx().get<AudioQueue>().push(SFX::ShapeShift);
+            audio_push(reg.ctx().get<AudioQueue>(), SFX::ShapeShift);
         }
 
         // Lane change from swipe

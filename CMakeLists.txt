@@ -77,6 +77,7 @@ endif()
 file(GLOB SYSTEM_SOURCES app/systems/*.cpp)
 # Exclude render_system.cpp from the library (requires SDL renderer)
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "render_system\\.cpp$")
+list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "input_system\\.cpp$")
 
 add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES})
 target_include_directories(shapeshifter_lib PUBLIC
@@ -89,7 +90,7 @@ target_link_libraries(shapeshifter_lib PUBLIC
 )
 
 # ── Main executable ──────────────────────────────────────────
-add_executable(shapeshifter app/main.cpp app/systems/render_system.cpp)
+add_executable(shapeshifter app/main.cpp app/systems/render_system.cpp app/systems/input_system.cpp)
 target_include_directories(shapeshifter PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/app
 )

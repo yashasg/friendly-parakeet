@@ -16,5 +16,7 @@ enum class ObstacleKind : uint8_t {
 struct Obstacle {
     ObstacleKind kind       = ObstacleKind::ShapeGate;
     int16_t      base_points = 200;
-    bool         scored      = false;
 };
+
+// Existential tag: presence means the obstacle has been cleared and awaits scoring.
+struct ScoredTag {};

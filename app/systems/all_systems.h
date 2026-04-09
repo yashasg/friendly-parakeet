@@ -2,7 +2,10 @@
 
 #include <entt/entt.hpp>
 
-// Phase 1: Input
+// Phase 0: Raw input (polls SDL events)
+void input_system(entt::registry& reg, float raw_dt);
+
+// Phase 1: Input classification
 void gesture_system(entt::registry& reg, float dt);
 
 // Phase 2: Game State

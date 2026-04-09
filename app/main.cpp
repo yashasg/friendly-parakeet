@@ -3,18 +3,11 @@
 
 #include "version.h"
 #include "constants.h"
-#include "components/transform.h"
-#include "components/player.h"
-#include "components/obstacle.h"
-#include "components/obstacle_data.h"
 #include "components/input.h"
 #include "components/game_state.h"
 #include "components/scoring.h"
 #include "components/burnout.h"
 #include "components/difficulty.h"
-#include "components/rendering.h"
-#include "components/lifetime.h"
-#include "components/particle.h"
 #include "components/audio.h"
 #include "systems/all_systems.h"
 
@@ -80,10 +73,8 @@ int main(int /*argc*/, char* /*argv*/[]) {
     Uint64 prev_counter = SDL_GetPerformanceCounter();
     Uint64 freq = SDL_GetPerformanceFrequency();
 
-    bool running = true;
-
     // ── MAIN LOOP ────────────────────────────────────────────
-    while (running) {
+    while (true) {
 
         // Delta time
         Uint64 now = SDL_GetPerformanceCounter();
@@ -95,103 +86,25 @@ int main(int /*argc*/, char* /*argv*/[]) {
             accumulator = MAX_ACCUM;
         }
 
-        // Event pump
-        auto& input = reg.ctx().get<InputState>();
-        input.clear_events();
+        // Phase 0: Input (polls SDL events, updates InputState)
+        input_system(reg, raw_dt);
+        if (reg.ctx().get<InputState>().quit_requested) break;
 
-        SDL_Event event;
-        while (SDL_PollEvent(&event)) {
-            switch (event.type) {
-                case SDL_QUIT:
-                    running = false;
-                    break;
-
-                // Mouse events (desktop testing — mapped to touch)
-                case SDL_MOUSEBUTTONDOWN:
-                    input.touch_down = true;
-                    input.touching   = true;
-                    input.start_x    = static_cast<float>(event.button.x);
-                    input.start_y    = static_cast<float>(event.button.y);
-                    input.curr_x     = input.start_x;
-                    input.curr_y     = input.start_y;
-                    input.duration   = 0.0f;
-                    break;
-                case SDL_MOUSEBUTTONUP:
-                    input.touch_up  = true;
-                    input.touching  = false;
-                    input.end_x     = static_cast<float>(event.button.x);
-                    input.end_y     = static_cast<float>(event.button.y);
-                    break;
-                case SDL_MOUSEMOTION:
-                    if (input.touching) {
-                        input.curr_x = static_cast<float>(event.motion.x);
-                        input.curr_y = static_cast<float>(event.motion.y);
-                    }
-                    break;
-
-                // Touch events (mobile)
-                case SDL_FINGERDOWN:
-                    input.touch_down = true;
-                    input.touching   = true;
-                    input.start_x    = event.tfinger.x * constants::SCREEN_W;
-                    input.start_y    = event.tfinger.y * constants::SCREEN_H;
-                    input.curr_x     = input.start_x;
-                    input.curr_y     = input.start_y;
-                    input.duration   = 0.0f;
-                    break;
-                case SDL_FINGERUP:
-                    input.touch_up  = true;
-                    input.touching  = false;
-                    input.end_x     = event.tfinger.x * constants::SCREEN_W;
-                    input.end_y     = event.tfinger.y * constants::SCREEN_H;
-                    break;
-                case SDL_FINGERMOTION:
-                    input.curr_x    = event.tfinger.x * constants::SCREEN_W;
-                    input.curr_y    = event.tfinger.y * constants::SCREEN_H;
-                    break;
-
-                case SDL_APP_WILLENTERBACKGROUND:
-                    if (reg.ctx().get<GameState>().phase == GamePhase::Playing) {
-                        auto& gs = reg.ctx().get<GameState>();
-                        gs.transition_pending = true;
-                        gs.next_phase = GamePhase::Paused;
-                    }
-                    break;
-            }
-        }
-        if (input.touching) {
-            input.duration += raw_dt;
-        }
-
-        // Fixed timestep loop
+        // Fixed timestep loop — all systems self-guard on GamePhase
         while (accumulator >= FIXED_DT) {
-            // Phase 1: Input classification
             gesture_system(reg, FIXED_DT);
-
-            // Phase 2: Game state
             game_state_system(reg, FIXED_DT);
-
-            auto phase = reg.ctx().get<GameState>().phase;
-
-            if (phase == GamePhase::Playing) {
-                // Phase 3: Player
-                player_action_system(reg, FIXED_DT);
-                player_movement_system(reg, FIXED_DT);
-
-                // Phase 4: World
-                difficulty_system(reg, FIXED_DT);
-                obstacle_spawn_system(reg, FIXED_DT);
-                scroll_system(reg, FIXED_DT);
-                burnout_system(reg, FIXED_DT);
-                collision_system(reg, FIXED_DT);
-                scoring_system(reg, FIXED_DT);
-            }
-
-            // Phase 5: Cleanup
+            player_action_system(reg, FIXED_DT);
+            player_movement_system(reg, FIXED_DT);
+            difficulty_system(reg, FIXED_DT);
+            obstacle_spawn_system(reg, FIXED_DT);
+            scroll_system(reg, FIXED_DT);
+            burnout_system(reg, FIXED_DT);
+            collision_system(reg, FIXED_DT);
+            scoring_system(reg, FIXED_DT);
             lifetime_system(reg, FIXED_DT);
             particle_system(reg, FIXED_DT);
             cleanup_system(reg, FIXED_DT);
-
             accumulator -= FIXED_DT;
         }
 

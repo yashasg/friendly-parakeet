@@ -1,10 +1,13 @@
 #include "all_systems.h"
+#include "../components/game_state.h"
 #include "../components/player.h"
 #include "../components/transform.h"
 #include "../constants.h"
 #include <cmath>
 
 void player_movement_system(entt::registry& reg, float dt) {
+    if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
+
     auto view = reg.view<PlayerTag, Position, PlayerShape, Lane, VerticalState>();
     for (auto [entity, pos, pshape, lane, vstate] : view.each()) {
 

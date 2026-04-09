@@ -34,7 +34,7 @@ TEST_CASE("components: InputState clear_events resets flags", "[components]") {
     InputState is{};
     is.touch_down = true;
     is.touch_up = true;
-    is.clear_events();
+    clear_input_events(is);
     CHECK_FALSE(is.touch_down);
     CHECK_FALSE(is.touch_up);
 }
@@ -42,19 +42,19 @@ TEST_CASE("components: InputState clear_events resets flags", "[components]") {
 TEST_CASE("components: AudioQueue push and clear", "[components]") {
     AudioQueue q{};
     CHECK(q.count == 0);
-    q.push(SFX::ShapeShift);
-    q.push(SFX::Crash);
+    audio_push(q, SFX::ShapeShift);
+    audio_push(q, SFX::Crash);
     CHECK(q.count == 2);
     CHECK(q.queue[0] == SFX::ShapeShift);
     CHECK(q.queue[1] == SFX::Crash);
-    q.clear();
+    audio_clear(q);
     CHECK(q.count == 0);
 }
 
 TEST_CASE("components: AudioQueue overflow protection", "[components]") {
     AudioQueue q{};
     for (int i = 0; i < AudioQueue::MAX_QUEUED + 5; ++i) {
-        q.push(SFX::UITap);
+        audio_push(q, SFX::UITap);
     }
     CHECK(q.count == AudioQueue::MAX_QUEUED);
 }
@@ -70,7 +70,7 @@ TEST_CASE("components: BurnoutState defaults to no threat", "[components]") {
     BurnoutState bs{};
     CHECK(bs.meter == 0.0f);
     CHECK(bs.zone == BurnoutZone::None);
-    CHECK_FALSE(bs.has_threat);
+    CHECK((bs.nearest_threat == entt::null));
 }
 
 TEST_CASE("components: DifficultyConfig defaults", "[components]") {
