@@ -153,3 +153,92 @@ TEST_CASE("collision: combo gate fails with wrong shape", "[collision]") {
 
     CHECK(reg.ctx().get<GameState>().transition_pending);
 }
+
+TEST_CASE("collision: combo gate fails when lane is blocked", "[collision]") {
+    auto reg = make_registry();
+    make_player(reg);
+    // Player is Circle in lane 1, shape matches but lane is blocked
+    make_combo_gate(reg, Shape::Circle, 0b010, constants::PLAYER_Y);
+
+    collision_system(reg, 0.016f);
+
+    CHECK(reg.ctx().get<GameState>().transition_pending);
+    CHECK(reg.ctx().get<GameState>().next_phase == GamePhase::GameOver);
+}
+
+TEST_CASE("collision: split path cleared with matching shape and lane", "[collision]") {
+    auto reg = make_registry();
+    make_player(reg);
+    // Player is Circle in lane 1
+    auto obs = make_split_path(reg, Shape::Circle, 1, constants::PLAYER_Y);
+
+    collision_system(reg, 0.016f);
+
+    CHECK(reg.all_of<ScoredTag>(obs));
+    CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
+}
+
+TEST_CASE("collision: split path fails with wrong shape", "[collision]") {
+    auto reg = make_registry();
+    make_player(reg);
+    // Player is Circle, requires Triangle
+    make_split_path(reg, Shape::Triangle, 1, constants::PLAYER_Y);
+
+    collision_system(reg, 0.016f);
+
+    CHECK(reg.ctx().get<GameState>().transition_pending);
+}
+
+TEST_CASE("collision: split path fails with wrong lane", "[collision]") {
+    auto reg = make_registry();
+    make_player(reg);
+    // Player is Circle in lane 1, requires lane 0
+    make_split_path(reg, Shape::Circle, 0, constants::PLAYER_Y);
+
+    collision_system(reg, 0.016f);
+
+    CHECK(reg.ctx().get<GameState>().transition_pending);
+}
+
+TEST_CASE("collision: no player means no collision processing", "[collision]") {
+    auto reg = make_registry();
+    // No player, just an obstacle at collision range
+    make_shape_gate(reg, Shape::Triangle, constants::PLAYER_Y);
+
+    collision_system(reg, 0.016f);
+
+    CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
+}
+
+TEST_CASE("collision: not in Playing phase skips processing", "[collision]") {
+    auto reg = make_registry();
+    reg.ctx().get<GameState>().phase = GamePhase::GameOver;
+    make_player(reg);
+    make_shape_gate(reg, Shape::Triangle, constants::PLAYER_Y);
+
+    collision_system(reg, 0.016f);
+
+    CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
+}
+
+TEST_CASE("collision: low bar killed when sliding", "[collision]") {
+    auto reg = make_registry();
+    auto p = make_player(reg);
+    reg.get<VerticalState>(p).mode = VMode::Sliding;
+    make_vertical_bar(reg, ObstacleKind::LowBar, constants::PLAYER_Y);
+
+    collision_system(reg, 0.016f);
+
+    CHECK(reg.ctx().get<GameState>().transition_pending);
+}
+
+TEST_CASE("collision: high bar killed when jumping", "[collision]") {
+    auto reg = make_registry();
+    auto p = make_player(reg);
+    reg.get<VerticalState>(p).mode = VMode::Jumping;
+    make_vertical_bar(reg, ObstacleKind::HighBar, constants::PLAYER_Y);
+
+    collision_system(reg, 0.016f);
+
+    CHECK(reg.ctx().get<GameState>().transition_pending);
+}

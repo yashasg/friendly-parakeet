@@ -171,6 +171,66 @@ TEST_CASE("gesture_system: tap outside buttons in button zone", "[gesture]") {
     CHECK_FALSE(reg.ctx().get<ShapeButtonEvent>().pressed);
 }
 
+TEST_CASE("gesture_system: swipe sets magnitude and hit coordinates", "[gesture]") {
+    auto reg = make_registry();
+    auto& input = reg.ctx().get<InputState>();
+    input.touch_up = true;
+    input.start_x = 200.0f;
+    input.start_y = 300.0f;
+    input.end_x   = 400.0f;  // dx = 200
+    input.end_y   = 300.0f;
+    input.duration = 0.1f;
+
+    gesture_system(reg, 0.016f);
+
+    auto& g = reg.ctx().get<GestureResult>();
+    CHECK(g.gesture == Gesture::SwipeRight);
+    CHECK(g.hit_x == 200.0f);  // start coords
+    CHECK(g.hit_y == 300.0f);
+    CHECK(g.magnitude > 0.0f);
+}
+
+TEST_CASE("gesture_system: diagonal swipe classified by dominant axis", "[gesture]") {
+    auto reg = make_registry();
+    auto& input = reg.ctx().get<InputState>();
+    input.touch_up = true;
+    input.start_x = 200.0f;
+    input.start_y = 200.0f;
+    // More horizontal than vertical
+    input.end_x   = 400.0f;  // dx = 200
+    input.end_y   = 250.0f;  // dy = 50
+    input.duration = 0.1f;
+
+    gesture_system(reg, 0.016f);
+
+    CHECK(reg.ctx().get<GestureResult>().gesture == Gesture::SwipeRight);
+}
+
+TEST_CASE("gesture_system: button tap on third button (Triangle)", "[gesture]") {
+    auto reg = make_registry();
+    auto& input = reg.ctx().get<InputState>();
+    float zone_y = constants::SCREEN_H * constants::SWIPE_ZONE_SPLIT;
+
+    float btn_area_x_start = (constants::SCREEN_W
+        - 3 * constants::BUTTON_W
+        - 2 * constants::BUTTON_SPACING) / 2.0f;
+    float btn3_center = btn_area_x_start
+        + 2.0f * (constants::BUTTON_W + constants::BUTTON_SPACING)
+        + constants::BUTTON_W / 2.0f;
+
+    input.touch_up = true;
+    input.start_y  = zone_y + 10.0f;
+    input.end_x    = btn3_center;
+    input.end_y    = zone_y + 10.0f;
+    input.duration = 0.05f;
+
+    gesture_system(reg, 0.016f);
+
+    auto& btn = reg.ctx().get<ShapeButtonEvent>();
+    CHECK(btn.pressed);
+    CHECK(btn.shape == Shape::Triangle);
+}
+
 #ifdef PLATFORM_DESKTOP
 // ── Desktop input tests ───────────────────────────────────────────────
 // Left-click on shape buttons must continue to work on desktop
