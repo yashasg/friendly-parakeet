@@ -76,6 +76,33 @@ if(NOT TARGET SDL2::SDL2main)
     add_library(SDL2::SDL2main ALIAS sdl2main_stub)
 endif()
 
+# ── Warnings-as-errors (project targets only) ────────────────
+# Applied via an INTERFACE target so it never leaks into third-party code.
+# FetchContent dependency includes are marked SYSTEM afterwards so that
+# headers we don't own can never produce errors under -Werror / /WX.
+add_library(shapeshifter_warnings INTERFACE)
+target_compile_options(shapeshifter_warnings INTERFACE
+    $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wall -Wextra -Werror>
+    $<$<CXX_COMPILER_ID:MSVC>:/W4 /WX>
+)
+
+# Mark third-party include directories as SYSTEM so warnings from their
+# headers are suppressed and cannot be promoted to errors by -Werror / /WX.
+foreach(_dep EnTT::EnTT SDL2::SDL2-static Catch2::Catch2 Catch2::Catch2WithMain)
+    if(TARGET ${_dep})
+        # Resolve alias targets — set_target_properties doesn't work on aliases
+        get_target_property(_real ${_dep} ALIASED_TARGET)
+        if(NOT _real)
+            set(_real ${_dep})
+        endif()
+        get_target_property(_inc ${_real} INTERFACE_INCLUDE_DIRECTORIES)
+        if(_inc)
+            set_target_properties(${_real} PROPERTIES
+                INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${_inc}")
+        endif()
+    endif()
+endforeach()
+
 # ── Game library (shared between exe and tests) ──────────────
 file(GLOB SYSTEM_SOURCES app/systems/*.cpp)
 # Exclude render_system.cpp from the library (requires SDL renderer)
@@ -91,6 +118,7 @@ target_link_libraries(shapeshifter_lib PUBLIC
     EnTT::EnTT
     SDL2::SDL2-static
 )
+target_link_libraries(shapeshifter_lib PRIVATE shapeshifter_warnings)
 
 # ── Main executable ──────────────────────────────────────────
 add_executable(shapeshifter app/main.cpp app/systems/render_system.cpp app/systems/input_system.cpp)
@@ -100,6 +128,7 @@ target_include_directories(shapeshifter PRIVATE
 target_link_libraries(shapeshifter PRIVATE
     shapeshifter_lib
     SDL2::SDL2main
+    shapeshifter_warnings
 )
 
 # ── Tests + Benchmarks ───────────────────────────────────────
@@ -113,6 +142,7 @@ target_include_directories(shapeshifter_tests PRIVATE
 target_link_libraries(shapeshifter_tests PRIVATE
     shapeshifter_lib
     Catch2::Catch2WithMain
+    shapeshifter_warnings
 )
 
 include(CTest)
