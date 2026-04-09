@@ -27,6 +27,15 @@ if [[ -n "${CXX:-}" ]]; then
     CMAKE_ARGS+=("-DCMAKE_CXX_COMPILER=${CXX}")
 fi
 
+# Forward vcpkg triplet to CMake so the toolchain uses the correct static/dynamic
+# variant.  VCPKG_DEFAULT_TRIPLET is read by the vcpkg CLI but NOT by the vcpkg
+# CMake toolchain file, which requires the CMake variable VCPKG_TARGET_TRIPLET.
+# Without this, vcpkg auto-detects "x64-windows" (dynamic DLL) on Windows even
+# when the CI workflow sets VCPKG_DEFAULT_TRIPLET=x64-windows-static-md.
+if [[ -n "${VCPKG_DEFAULT_TRIPLET:-}" ]]; then
+    CMAKE_ARGS+=("-DVCPKG_TARGET_TRIPLET=${VCPKG_DEFAULT_TRIPLET}")
+fi
+
 # On Windows (MSYS/MinGW shell used by GitHub Actions), use the Ninja
 # generator so that Clang (installed by setup-cpp) is used directly
 # instead of the default Visual Studio generator with MSVC.
