@@ -19,19 +19,20 @@ CMAKE_ARGS=(
     "-DCMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
 )
 
-# Honour CC/CXX env vars when set (Linux/macOS).
-# On Windows (MSYS/MinGW shell used by GitHub Actions) skip the override
-# so CMake uses the default Visual Studio generator with MSVC.
+# Honour CC/CXX env vars when set on all platforms.
+if [[ -n "${CC:-}" ]]; then
+    CMAKE_ARGS+=("-DCMAKE_C_COMPILER=${CC}")
+fi
+if [[ -n "${CXX:-}" ]]; then
+    CMAKE_ARGS+=("-DCMAKE_CXX_COMPILER=${CXX}")
+fi
+
+# On Windows (MSYS/MinGW shell used by GitHub Actions), use the Ninja
+# generator so that Clang (installed by setup-cpp) is used directly
+# instead of the default Visual Studio generator with MSVC.
 case "$(uname -s)" in
     MINGW*|CYGWIN*|MSYS*)
-        ;;
-    *)
-        if [[ -n "${CC:-}" ]]; then
-            CMAKE_ARGS+=("-DCMAKE_C_COMPILER=${CC}")
-        fi
-        if [[ -n "${CXX:-}" ]]; then
-            CMAKE_ARGS+=("-DCMAKE_CXX_COMPILER=${CXX}")
-        fi
+        CMAKE_ARGS+=("-G" "Ninja")
         ;;
 esac
 

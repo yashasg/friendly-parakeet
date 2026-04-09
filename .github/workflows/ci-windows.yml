@@ -32,6 +32,7 @@ jobs:
           compiler: llvm
           cmake: true
           vcpkg: true
+          ninja: true
 
       - name: Export VCPKG_ROOT
         run: echo "VCPKG_ROOT=$HOME/vcpkg" >> "$GITHUB_ENV"
@@ -41,9 +42,9 @@ jobs:
         uses: actions/cache@v5
         with:
           path: build
-          key: cmake-windows-msvc-${{ hashFiles('CMakeLists.txt', 'vcpkg.json') }}
+          key: cmake-windows-clang-${{ hashFiles('CMakeLists.txt', 'vcpkg.json') }}
           restore-keys: |
-            cmake-windows-msvc-
+            cmake-windows-clang-
 
       - name: Build
         run: ./build.sh
@@ -52,7 +53,7 @@ jobs:
       - name: Run tests
         if: always()
         id: run-tests
-        run: ./build/Release/shapeshifter_tests.exe --benchmark-samples 1
+        run: ./build/shapeshifter_tests.exe --benchmark-samples 1
         shell: bash
 
       - name: Upload artifact
@@ -60,7 +61,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: shapeshifter-windows
-          path: build/Release/shapeshifter.exe
+          path: build/shapeshifter.exe
 
       - name: Upload CTRF report
         if: always() && steps.run-tests.outcome != 'skipped'
