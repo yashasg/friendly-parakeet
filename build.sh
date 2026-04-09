@@ -19,13 +19,11 @@ CMAKE_ARGS=(
     "-DCMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
 )
 
-# On Windows (MSYS/MinGW shell used by GitHub Actions), use the
-# Visual Studio 17 2022 generator with the ClangCL toolset so that
-# VS2022's built-in Clang-CL compiler is used instead of MSVC.
-# On all other platforms, honour CC/CXX env vars when set.
+# Honour CC/CXX env vars when set (Linux/macOS).
+# On Windows (MSYS/MinGW shell used by GitHub Actions) skip the override
+# so CMake uses the default Visual Studio generator with MSVC.
 case "$(uname -s)" in
     MINGW*|CYGWIN*|MSYS*)
-        CMAKE_ARGS+=("-G" "Visual Studio 17 2022" "-T" "ClangCL")
         ;;
     *)
         if [[ -n "${CC:-}" ]]; then

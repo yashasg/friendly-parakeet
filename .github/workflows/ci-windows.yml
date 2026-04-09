@@ -41,9 +41,9 @@ jobs:
         uses: actions/cache@v5
         with:
           path: build
-          key: cmake-windows-clangcl-${{ hashFiles('CMakeLists.txt', 'vcpkg.json') }}
+          key: cmake-windows-msvc-${{ hashFiles('CMakeLists.txt', 'vcpkg.json') }}
           restore-keys: |
-            cmake-windows-clangcl-
+            cmake-windows-msvc-
 
       - name: Build
         run: ./build.sh
