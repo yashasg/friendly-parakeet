@@ -96,7 +96,7 @@ TEST_CASE("ecs: make_registry creates all singletons", "[ecs]") {
     static_cast<void>(reg.ctx().get<BurnoutState>());
     static_cast<void>(reg.ctx().get<DifficultyConfig>());
     static_cast<void>(reg.ctx().get<AudioQueue>());
-    CHECK(true);  // if we got here, all singletons exist
+    SUCCEED("all required singletons exist in registry context");
 }
 
 TEST_CASE("ecs: make_player creates proper entity", "[ecs]") {
