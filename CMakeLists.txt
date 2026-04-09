@@ -1,7 +1,9 @@
 cmake_minimum_required(VERSION 3.20)
 project(shapeshifter VERSION 0.1 LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 17)
+# C++20 required: designated initializers are used throughout the codebase
+# (MSVC rejects them in C++17 mode with error C7555)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 

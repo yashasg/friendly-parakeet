@@ -88,14 +88,14 @@ TEST_CASE("components: GameState defaults to title", "[components]") {
 TEST_CASE("ecs: make_registry creates all singletons", "[ecs]") {
     auto reg = make_registry();
     // These should not throw
-    reg.ctx().get<InputState>();
-    reg.ctx().get<GestureResult>();
-    reg.ctx().get<ShapeButtonEvent>();
-    reg.ctx().get<GameState>();
-    reg.ctx().get<ScoreState>();
-    reg.ctx().get<BurnoutState>();
-    reg.ctx().get<DifficultyConfig>();
-    reg.ctx().get<AudioQueue>();
+    (void)reg.ctx().get<InputState>();
+    (void)reg.ctx().get<GestureResult>();
+    (void)reg.ctx().get<ShapeButtonEvent>();
+    (void)reg.ctx().get<GameState>();
+    (void)reg.ctx().get<ScoreState>();
+    (void)reg.ctx().get<BurnoutState>();
+    (void)reg.ctx().get<DifficultyConfig>();
+    (void)reg.ctx().get<AudioQueue>();
     CHECK(true);  // if we got here, all singletons exist
 }
 
