@@ -2,7 +2,7 @@
 
 An endless runner where you shift between geometric shapes to pass through obstacles. The core twist: a **Burnout scoring system** rewards waiting until the last possible moment — the longer you delay, the higher your multiplier, but wait too long and you crash.
 
-Built with **C++17**, **SDL2**, and **EnTT** using a strict Data-Oriented Design architecture.
+Built with **C++20**, **SDL2**, and **EnTT** using a strict Data-Oriented Design architecture.
 
 ## Gameplay
 
@@ -16,7 +16,7 @@ Built with **C++17**, **SDL2**, and **EnTT** using a strict Data-Oriented Design
 
 ### Prerequisites
 
-- C++17 compiler (Clang or GCC)
+- C++20 compiler (Clang, GCC, or MSVC)
 - CMake 3.20+
 - SDL2 development libraries
 
