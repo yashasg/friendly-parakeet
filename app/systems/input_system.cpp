@@ -59,6 +59,27 @@ void input_system(entt::registry& reg, float raw_dt) {
                 input.curr_y    = event.tfinger.y * constants::SCREEN_H;
                 break;
 
+#ifdef PLATFORM_DESKTOP
+            // Keyboard events — desktop only.
+            // event.key.repeat != 0 means the OS key-repeat is firing;
+            // we only want the initial press so each key fires exactly once,
+            // matching the one-gesture-per-swipe model.
+            case SDL_KEYDOWN:
+                if (event.key.repeat == 0) {
+                    switch (event.key.keysym.sym) {
+                        case SDLK_w: input.key_w = true; break;
+                        case SDLK_a: input.key_a = true; break;
+                        case SDLK_s: input.key_s = true; break;
+                        case SDLK_d: input.key_d = true; break;
+                        case SDLK_1: input.key_1 = true; break;
+                        case SDLK_2: input.key_2 = true; break;
+                        case SDLK_3: input.key_3 = true; break;
+                        default: break;
+                    }
+                }
+                break;
+#endif
+
             case SDL_APP_WILLENTERBACKGROUND:
                 if (reg.ctx().get<GameState>().phase == GamePhase::Playing) {
                     auto& gs = reg.ctx().get<GameState>();
