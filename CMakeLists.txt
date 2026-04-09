@@ -74,26 +74,15 @@ target_link_libraries(shapeshifter PRIVATE
     SDL2::SDL2main
 )
 
-# ── Tests ────────────────────────────────────────────────────
+# ── Tests + Benchmarks ───────────────────────────────────────
 enable_testing()
 
-file(GLOB TEST_SOURCES tests/*.cpp)
+file(GLOB TEST_SOURCES tests/*.cpp benchmarks/*.cpp)
 add_executable(shapeshifter_tests ${TEST_SOURCES})
 target_include_directories(shapeshifter_tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/app
 )
 target_link_libraries(shapeshifter_tests PRIVATE
-    shapeshifter_lib
-    Catch2::Catch2WithMain
-)
-
-# ── Benchmarks ───────────────────────────────────────────────
-file(GLOB BENCH_SOURCES benchmarks/*.cpp)
-add_executable(shapeshifter_bench ${BENCH_SOURCES})
-target_include_directories(shapeshifter_bench PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/app
-)
-target_link_libraries(shapeshifter_bench PRIVATE
     shapeshifter_lib
     Catch2::Catch2WithMain
 )
