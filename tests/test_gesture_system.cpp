@@ -170,3 +170,125 @@ TEST_CASE("gesture_system: tap outside buttons in button zone", "[gesture]") {
 
     CHECK_FALSE(reg.ctx().get<ShapeButtonEvent>().pressed);
 }
+
+#ifdef PLATFORM_DESKTOP
+// ── Keyboard gesture tests (desktop only) ────────────────────────────
+
+TEST_CASE("gesture_system: W key fires SwipeUp", "[gesture][desktop]") {
+    auto reg = make_registry();
+    auto& input = reg.ctx().get<InputState>();
+    input.key_w = true;
+
+    gesture_system(reg, 0.016f);
+
+    CHECK(reg.ctx().get<GestureResult>().gesture == Gesture::SwipeUp);
+    CHECK_FALSE(reg.ctx().get<ShapeButtonEvent>().pressed);
+}
+
+TEST_CASE("gesture_system: S key fires SwipeDown", "[gesture][desktop]") {
+    auto reg = make_registry();
+    reg.ctx().get<InputState>().key_s = true;
+
+    gesture_system(reg, 0.016f);
+
+    CHECK(reg.ctx().get<GestureResult>().gesture == Gesture::SwipeDown);
+}
+
+TEST_CASE("gesture_system: A key fires SwipeLeft", "[gesture][desktop]") {
+    auto reg = make_registry();
+    reg.ctx().get<InputState>().key_a = true;
+
+    gesture_system(reg, 0.016f);
+
+    CHECK(reg.ctx().get<GestureResult>().gesture == Gesture::SwipeLeft);
+}
+
+TEST_CASE("gesture_system: D key fires SwipeRight", "[gesture][desktop]") {
+    auto reg = make_registry();
+    reg.ctx().get<InputState>().key_d = true;
+
+    gesture_system(reg, 0.016f);
+
+    CHECK(reg.ctx().get<GestureResult>().gesture == Gesture::SwipeRight);
+}
+
+TEST_CASE("gesture_system: key_1 selects Circle shape", "[gesture][desktop]") {
+    auto reg = make_registry();
+    reg.ctx().get<InputState>().key_1 = true;
+
+    gesture_system(reg, 0.016f);
+
+    auto& btn = reg.ctx().get<ShapeButtonEvent>();
+    CHECK(btn.pressed);
+    CHECK(btn.shape == Shape::Circle);
+    CHECK(reg.ctx().get<GestureResult>().gesture == Gesture::None);
+}
+
+TEST_CASE("gesture_system: key_2 selects Triangle shape", "[gesture][desktop]") {
+    auto reg = make_registry();
+    reg.ctx().get<InputState>().key_2 = true;
+
+    gesture_system(reg, 0.016f);
+
+    auto& btn = reg.ctx().get<ShapeButtonEvent>();
+    CHECK(btn.pressed);
+    CHECK(btn.shape == Shape::Triangle);
+}
+
+TEST_CASE("gesture_system: key_3 selects Square shape", "[gesture][desktop]") {
+    auto reg = make_registry();
+    reg.ctx().get<InputState>().key_3 = true;
+
+    gesture_system(reg, 0.016f);
+
+    auto& btn = reg.ctx().get<ShapeButtonEvent>();
+    CHECK(btn.pressed);
+    CHECK(btn.shape == Shape::Square);
+}
+
+TEST_CASE("gesture_system: keyboard key produces no magnitude or hit coords", "[gesture][desktop]") {
+    auto reg = make_registry();
+    reg.ctx().get<InputState>().key_w = true;
+
+    gesture_system(reg, 0.016f);
+
+    auto& g = reg.ctx().get<GestureResult>();
+    CHECK(g.gesture == Gesture::SwipeUp);
+    CHECK(g.magnitude == 0.0f);
+    CHECK(g.hit_x == 0.0f);
+    CHECK(g.hit_y == 0.0f);
+}
+
+TEST_CASE("gesture_system: keyboard takes priority over simultaneous touch", "[gesture][desktop]") {
+    auto reg = make_registry();
+    auto& input = reg.ctx().get<InputState>();
+    // Valid right-swipe touch gesture
+    input.touch_up = true;
+    input.start_x  = 100.0f;
+    input.start_y  = 400.0f;
+    input.end_x    = 300.0f;
+    input.end_y    = 400.0f;
+    input.duration = 0.1f;
+    // Simultaneously W was pressed
+    input.key_w    = true;
+
+    gesture_system(reg, 0.016f);
+
+    // Keyboard wins
+    CHECK(reg.ctx().get<GestureResult>().gesture == Gesture::SwipeUp);
+}
+
+TEST_CASE("gesture_system: key flags cleared between frames do not re-fire", "[gesture][desktop]") {
+    auto reg = make_registry();
+    auto& input = reg.ctx().get<InputState>();
+    input.key_d = true;
+
+    gesture_system(reg, 0.016f);
+    CHECK(reg.ctx().get<GestureResult>().gesture == Gesture::SwipeRight);
+
+    // Next frame: clear events (simulates start of input_system tick)
+    clear_input_events(input);
+    gesture_system(reg, 0.016f);
+    CHECK(reg.ctx().get<GestureResult>().gesture == Gesture::None);
+}
+#endif // PLATFORM_DESKTOP

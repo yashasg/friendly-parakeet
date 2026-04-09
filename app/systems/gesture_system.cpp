@@ -11,6 +11,21 @@ void gesture_system(entt::registry& reg, float /*dt*/) {
     gesture.gesture = Gesture::None;
     btn_evt.pressed = false;
 
+#ifdef PLATFORM_DESKTOP
+    // ── Keyboard input path (desktop only) ───────────────────────
+    // Translate one-frame key pulses into the same GestureResult /
+    // ShapeButtonEvent outputs that the touch path produces.
+    // Checked first: if any key fired this frame we return early,
+    // preventing a simultaneous stray mouse event from double-firing.
+    if (input.key_w) { gesture.gesture = Gesture::SwipeUp;    return; }
+    if (input.key_s) { gesture.gesture = Gesture::SwipeDown;  return; }
+    if (input.key_a) { gesture.gesture = Gesture::SwipeLeft;  return; }
+    if (input.key_d) { gesture.gesture = Gesture::SwipeRight; return; }
+    if (input.key_1) { btn_evt.pressed = true; btn_evt.shape = Shape::Circle;   return; }
+    if (input.key_2) { btn_evt.pressed = true; btn_evt.shape = Shape::Triangle; return; }
+    if (input.key_3) { btn_evt.pressed = true; btn_evt.shape = Shape::Square;   return; }
+#endif
+
     if (!input.touch_up) return;
 
     float zone_y = constants::SCREEN_H * constants::SWIPE_ZONE_SPLIT;
