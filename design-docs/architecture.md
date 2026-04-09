@@ -1,5 +1,5 @@
 # SHAPESHIFTER — Technical Architecture Document
-## Data-Oriented Design · C++17 · SDL2 · EnTT v3.16.0
+## Data-Oriented Design · C++20 · SDL2 · EnTT v3.16.0
 
 > **Guiding principle**: Data lives in flat structs. Logic lives in free functions.
 > The `entt::registry` is the single source of truth. No globals. No virtuals.
