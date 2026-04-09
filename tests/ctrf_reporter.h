@@ -84,15 +84,15 @@ public:
             auto const& result = stats.assertionResult;
             std::string msg;
             if (result.hasExpression()) {
-                msg += std::string(result.getExpression());
+                msg += result.getExpression();
             }
             if (result.hasExpandedExpression()) {
                 msg += " expanded to: ";
-                msg += std::string(result.getExpandedExpression());
+                msg += result.getExpandedExpression();
             }
             auto const& src = result.getSourceInfo();
             msg += " at ";
-            msg += std::string(src.file);
+            msg += src.file;
             msg += ":";
             msg += std::to_string(src.line);
 

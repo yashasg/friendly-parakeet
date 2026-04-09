@@ -3,7 +3,7 @@
 
 TEST_CASE("collision: shape gate cleared with matching shape", "[collision]") {
     auto reg = make_registry();
-    auto p = make_player(reg);
+    make_player(reg);
     // Player is Circle by default
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
 
@@ -28,7 +28,7 @@ TEST_CASE("collision: shape gate kills with wrong shape", "[collision]") {
 
 TEST_CASE("collision: lane block cleared when player in unblocked lane", "[collision]") {
     auto reg = make_registry();
-    auto p = make_player(reg);
+    make_player(reg);
     // Player in lane 1 (center), block lane 0
     auto obs = make_lane_block(reg, 0b001, constants::PLAYER_Y);
 
@@ -114,7 +114,7 @@ TEST_CASE("collision: already scored obstacles are skipped", "[collision]") {
 
 TEST_CASE("collision: combo gate requires shape AND lane", "[collision]") {
     auto reg = make_registry();
-    auto p = make_player(reg);
+    make_player(reg);
     // Player is Circle in lane 1
     auto& config = reg.ctx().get<DifficultyConfig>();
     auto obs = reg.create();
@@ -136,7 +136,7 @@ TEST_CASE("collision: combo gate requires shape AND lane", "[collision]") {
 
 TEST_CASE("collision: combo gate fails with wrong shape", "[collision]") {
     auto reg = make_registry();
-    auto p = make_player(reg);
+    make_player(reg);
     auto& config = reg.ctx().get<DifficultyConfig>();
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);

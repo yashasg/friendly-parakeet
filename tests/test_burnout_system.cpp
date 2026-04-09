@@ -89,7 +89,7 @@ TEST_CASE("burnout: scored obstacles are ignored", "[burnout]") {
 TEST_CASE("burnout: nearest obstacle is tracked", "[burnout]") {
     auto reg = make_registry();
     make_player(reg);
-    auto far  = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y - 600.0f);
+    make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y - 600.0f);
     auto near = make_shape_gate(reg, Shape::Triangle, constants::PLAYER_Y - 300.0f);
 
     burnout_system(reg, 0.016f);

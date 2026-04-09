@@ -59,9 +59,8 @@ static void enter_game_over(entt::registry& reg) {
 }
 
 void game_state_system(entt::registry& reg, float dt) {
-    auto& gs      = reg.ctx().get<GameState>();
-    auto& gesture = reg.ctx().get<GestureResult>();
-    auto& input   = reg.ctx().get<InputState>();
+    auto& gs    = reg.ctx().get<GameState>();
+    auto& input = reg.ctx().get<InputState>();
 
     gs.phase_timer += dt;
 

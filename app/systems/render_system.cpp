@@ -44,8 +44,8 @@ static void draw_shape(SDL_Renderer* r, Shape shape, float cx, float cy, float s
             constexpr int SEGS = 12;
             float radius = size / 2.0f;
             for (int i = 0; i < SEGS; ++i) {
-                float a1 = (float)i / SEGS * 2.0f * 3.14159f;
-                float a2 = (float)(i + 1) / SEGS * 2.0f * 3.14159f;
+                float a1 = static_cast<float>(i) / SEGS * 2.0f * 3.14159f;
+                float a2 = static_cast<float>(i + 1) / SEGS * 2.0f * 3.14159f;
                 SDL_RenderDrawLineF(r,
                     cx + std::cos(a1) * radius, cy + std::sin(a1) * radius,
                     cx + std::cos(a2) * radius, cy + std::sin(a2) * radius);
