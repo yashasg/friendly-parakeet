@@ -41,7 +41,7 @@ if(NOT EnTT_FOUND OR NOT SDL2_FOUND OR NOT Catch2_FOUND)
     if(NOT EnTT_FOUND)
         FetchContent_Declare(EnTT
             GIT_REPOSITORY https://github.com/skypjack/entt.git
-            GIT_TAG        v3.14.0
+            GIT_TAG        v3.16.0
         )
         FetchContent_MakeAvailable(EnTT)
     endif()
