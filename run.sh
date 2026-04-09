@@ -3,8 +3,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")"
 
-cmake -B build -S .
-cmake --build build
+./build.sh
 
 if [[ "${1:-}" == "test" ]]; then
     shift

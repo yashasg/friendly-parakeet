@@ -39,32 +39,35 @@ jobs:
           vcpkg: true
 
       - name: Build
-        shell: pwsh
-        run: |
-          cmake -B build -S . `
-            -DCMAKE_BUILD_TYPE=Release `
-            "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
-          cmake --build build --config Release
+        run: ./build.sh
+        shell: bash
 
       - name: Run tests
         if: always()
         id: run-tests
-        shell: pwsh
-        run: ctest --test-dir build --output-on-failure --output-junit test-results.xml -C Release
+        run: ./build/shapeshifter_tests
+        shell: bash
 
       - name: Upload artifact
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: shapeshifter-windows
-          path: build/Release/shapeshifter.exe
+          path: build/shapeshifter.exe
+
+      - name: Upload CTRF report
+        if: always() && steps.run-tests.outcome != 'skipped'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ctrf-report-windows
+          path: ctrf-report.json
 
       - name: Convert test results to CTRF
         if: always() && steps.run-tests.outcome != 'skipped'
-        shell: pwsh
+        shell: bash
         run: |
-          New-Item -ItemType Directory -Force -Path ctrf | Out-Null
-          npx junit-to-ctrf build/test-results.xml -o ctrf/results.json
+          mkdir -p ctrf
+          npx junit-to-ctrf ctrf-report.json -o ctrf/results.json
 
       - name: Report test results
         if: always() && steps.run-tests.outcome != 'skipped'

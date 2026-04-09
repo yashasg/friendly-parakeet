@@ -48,15 +48,13 @@ jobs:
 
       - name: Build
         run: |
-          cmake -B build -S . \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_TOOLCHAIN_FILE="${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
-          cmake --build build -j $(nproc)
+          chmod +x build.sh
+          ./build.sh
 
       - name: Run tests
         if: always()
         id: run-tests
-        run: ctest --test-dir build --output-on-failure --output-junit test-results.xml
+        run: ./build/shapeshifter_tests
 
       - name: Upload artifact
         if: success()
@@ -65,11 +63,18 @@ jobs:
           name: shapeshifter-linux
           path: build/shapeshifter
 
+      - name: Upload CTRF report
+        if: always() && steps.run-tests.outcome != 'skipped'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ctrf-report-linux
+          path: ctrf-report.json
+
       - name: Convert test results to CTRF
         if: always() && steps.run-tests.outcome != 'skipped'
         run: |
           mkdir -p ctrf
-          npx junit-to-ctrf build/test-results.xml -o ctrf/results.json
+          npx junit-to-ctrf ctrf-report.json -o ctrf/results.json
 
       - name: Report test results
         if: always() && steps.run-tests.outcome != 'skipped'
