@@ -24,30 +24,54 @@ configure_file(
 )
 
 # ── Dependencies ─────────────────────────────────────────────
-include(FetchContent)
+# Prefer vcpkg-provided packages (via CMAKE_TOOLCHAIN_FILE).
+# Fall back to FetchContent for local builds without vcpkg.
 
-FetchContent_Declare(
-    EnTT
-    GIT_REPOSITORY https://github.com/skypjack/entt.git
-    GIT_TAG        v3.14.0
-)
+find_package(EnTT CONFIG QUIET)
+find_package(SDL2 CONFIG QUIET)
+find_package(Catch2 3 CONFIG QUIET)
 
-FetchContent_Declare(
-    SDL2
-    GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
-    GIT_TAG        release-2.30.12
-)
-set(SDL_SHARED OFF CACHE BOOL "" FORCE)
-set(SDL_STATIC ON CACHE BOOL "" FORCE)
-set(SDL_TEST OFF CACHE BOOL "" FORCE)
+if(NOT EnTT_FOUND OR NOT SDL2_FOUND OR NOT Catch2_FOUND)
+    message(STATUS "vcpkg packages not found — falling back to FetchContent")
+    include(FetchContent)
 
-FetchContent_Declare(
-    Catch2
-    GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-    GIT_TAG        v3.7.1
-)
+    if(NOT EnTT_FOUND)
+        FetchContent_Declare(EnTT
+            GIT_REPOSITORY https://github.com/skypjack/entt.git
+            GIT_TAG        v3.14.0
+        )
+        FetchContent_MakeAvailable(EnTT)
+    endif()
 
-FetchContent_MakeAvailable(EnTT SDL2 Catch2)
+    if(NOT SDL2_FOUND)
+        FetchContent_Declare(SDL2
+            GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
+            GIT_TAG        release-2.30.12
+        )
+        set(SDL_SHARED OFF CACHE BOOL "" FORCE)
+        set(SDL_STATIC ON CACHE BOOL "" FORCE)
+        set(SDL_TEST OFF CACHE BOOL "" FORCE)
+        FetchContent_MakeAvailable(SDL2)
+    endif()
+
+    if(NOT Catch2_FOUND)
+        FetchContent_Declare(Catch2
+            GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+            GIT_TAG        v3.7.1
+        )
+        FetchContent_MakeAvailable(Catch2)
+    endif()
+endif()
+
+# Normalize SDL2 target names (vcpkg uses SDL2::SDL2, FetchContent uses SDL2::SDL2-static)
+if(TARGET SDL2::SDL2 AND NOT TARGET SDL2::SDL2-static)
+    add_library(SDL2::SDL2-static ALIAS SDL2::SDL2)
+endif()
+if(NOT TARGET SDL2::SDL2main)
+    # vcpkg may provide SDL2::SDL2main or not — create a dummy if missing
+    add_library(sdl2main_stub INTERFACE)
+    add_library(SDL2::SDL2main ALIAS sdl2main_stub)
+endif()
 
 # ── Game library (shared between exe and tests) ──────────────
 file(GLOB SYSTEM_SOURCES app/systems/*.cpp)

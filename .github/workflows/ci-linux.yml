@@ -27,6 +27,7 @@ jobs:
         with:
           compiler: llvm
           cmake: true
+          vcpkg: true
 
       - name: Install SDL2 build dependencies
         run: |
@@ -36,9 +37,14 @@ jobs:
             libxext-dev libxfixes-dev libgl1-mesa-dev libglu1-mesa-dev \
             libasound2-dev libpulse-dev libdbus-1-dev libudev-dev
 
+      - name: Restore vcpkg packages
+        run: vcpkg install --triplet x64-linux
+
       - name: Build
         run: |
-          cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
+          cmake -B build -S . \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake
           cmake --build build
 
       - name: Run tests
@@ -52,13 +58,6 @@ jobs:
         with:
           name: shapeshifter-linux
           path: build/shapeshifter
-
-      - name: Upload CTRF report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ctrf-report-linux
-          path: build/ctrf-report.json
 
       - name: Convert test results to CTRF
         if: always()

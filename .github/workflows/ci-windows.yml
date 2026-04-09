@@ -14,9 +14,6 @@ jobs:
       contents: read
       checks: write
       pull-requests: write
-    defaults:
-      run:
-        shell: msys2 {0}
     steps:
       - uses: actions/checkout@v6
 
@@ -25,42 +22,36 @@ jobs:
         with:
           node-version: '20'
 
-      - uses: msys2/setup-msys2@v2
+      - name: Setup C++ toolchain
+        uses: aminya/setup-cpp@v1
         with:
-          msystem: MINGW64
-          update: false
-          cache: true
-          install: >-
-            mingw-w64-x86_64-clang
-            mingw-w64-x86_64-lld
-            mingw-w64-x86_64-cmake
+          compiler: llvm
+          cmake: true
+          vcpkg: true
 
-      - name: Restore NuGet packages
-        shell: pwsh
-        run: |
-          nuget restore packages.config -PackagesDirectory packages
+      - name: Restore vcpkg packages
+        run: vcpkg install --triplet x64-windows
 
       - name: Build
         run: |
-          cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
-          cmake --build build
+          cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+          cmake --build build --config Release
 
       - name: Run tests
         id: run-tests
         run: |
           cd build
-          ctest --output-on-failure --output-junit test-results.xml
+          ctest --output-on-failure --output-junit test-results.xml -C Release
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: shapeshifter-windows
-          path: build/shapeshifter.exe
+          path: build/Release/shapeshifter.exe
 
       - name: Convert test results to CTRF
         if: always()
         run: npx junit-to-ctrf build/test-results.xml -o ctrf/results.json
-        shell: cmd
 
       - name: Report test results
         if: always()

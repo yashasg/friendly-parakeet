@@ -1,0 +1,11 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "shapeshifter",
+  "version": "0.1.0",
+  "description": "Endless runner with shape-shifting and burnout scoring",
+  "dependencies": [
+    "sdl2",
+    "entt",
+    "catch2"
+  ]
+}
