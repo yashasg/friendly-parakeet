@@ -40,7 +40,7 @@ jobs:
       - name: Run tests
         if: always()
         id: run-tests
-        run: ./build/shapeshifter_tests
+        run: ./build/shapeshifter_tests.exe
         shell: bash
 
       - name: Upload artifact
