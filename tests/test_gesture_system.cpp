@@ -172,6 +172,59 @@ TEST_CASE("gesture_system: tap outside buttons in button zone", "[gesture]") {
 }
 
 #ifdef PLATFORM_DESKTOP
+// ── Desktop input tests ───────────────────────────────────────────────
+// Left-click on shape buttons must continue to work on desktop
+// (mouse events are mapped to touch, keyboard block is a no-op when no key is held).
+
+TEST_CASE("gesture_system: left-click on Circle button works on desktop", "[gesture][desktop]") {
+    auto reg = make_registry();
+    auto& input = reg.ctx().get<InputState>();
+    float zone_y = constants::SCREEN_H * constants::SWIPE_ZONE_SPLIT;
+    float btn_area_x_start = (constants::SCREEN_W
+        - 3 * constants::BUTTON_W
+        - 2 * constants::BUTTON_SPACING) / 2.0f;
+    float btn0_center = btn_area_x_start + constants::BUTTON_W / 2.0f;
+
+    // Simulate SDL_MOUSEBUTTONUP mapped to touch_up (no key pressed)
+    input.touch_up = true;
+    input.start_y  = zone_y + 10.0f;
+    input.end_x    = btn0_center;
+    input.end_y    = zone_y + 10.0f;
+    input.duration = 0.05f;
+
+    gesture_system(reg, 0.016f);
+
+    auto& btn = reg.ctx().get<ShapeButtonEvent>();
+    CHECK(btn.pressed);
+    CHECK(btn.shape == Shape::Circle);
+    CHECK(reg.ctx().get<GestureResult>().gesture == Gesture::None);
+}
+
+TEST_CASE("gesture_system: left-click on Triangle button works on desktop", "[gesture][desktop]") {
+    auto reg = make_registry();
+    auto& input = reg.ctx().get<InputState>();
+    float zone_y = constants::SCREEN_H * constants::SWIPE_ZONE_SPLIT;
+    float btn_area_x_start = (constants::SCREEN_W
+        - 3 * constants::BUTTON_W
+        - 2 * constants::BUTTON_SPACING) / 2.0f;
+    // Triangle is the third button (index 2) — Shape::Triangle == 2
+    float btn2_center = btn_area_x_start
+        + 2.0f * (constants::BUTTON_W + constants::BUTTON_SPACING)
+        + constants::BUTTON_W / 2.0f;
+
+    input.touch_up = true;
+    input.start_y  = zone_y + 10.0f;
+    input.end_x    = btn2_center;
+    input.end_y    = zone_y + 10.0f;
+    input.duration = 0.05f;
+
+    gesture_system(reg, 0.016f);
+
+    auto& btn = reg.ctx().get<ShapeButtonEvent>();
+    CHECK(btn.pressed);
+    CHECK(btn.shape == Shape::Triangle);
+}
+
 // ── Keyboard gesture tests (desktop only) ────────────────────────────
 
 TEST_CASE("gesture_system: W key fires SwipeUp", "[gesture][desktop]") {
