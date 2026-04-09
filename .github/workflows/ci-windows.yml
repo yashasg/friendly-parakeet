@@ -40,7 +40,7 @@ jobs:
       - name: Run tests
         if: always()
         id: run-tests
-        run: ./build/shapeshifter_tests.exe
+        run: ./build/Release/shapeshifter_tests.exe
         shell: bash
 
       - name: Upload artifact
@@ -48,7 +48,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: shapeshifter-windows
-          path: build/shapeshifter.exe
+          path: build/Release/shapeshifter.exe
 
       - name: Upload CTRF report
         if: always() && steps.run-tests.outcome != 'skipped'
