@@ -7,6 +7,10 @@
 // ── TextAlign ────────────────────────────────────────────────
 enum class TextAlign : uint8_t { Left, Center, Right };
 
+// ── FontSize ─────────────────────────────────────────────────
+// Named constants for the pre-loaded font sizes.
+enum class FontSize : int { Small = 0, Medium = 1, Large = 2 };
+
 // ── TextContext ──────────────────────────────────────────────
 // Plain data struct stored in the ECS registry context.
 // Holds pre-loaded TTF_Font pointers at different point sizes.
@@ -27,13 +31,13 @@ bool text_init(TextContext& ctx, const char* font_path);
 void text_shutdown(TextContext& ctx);
 
 // Render a null-terminated string.
-// font_size selects which pre-loaded font to use: 0=small, 1=medium, 2=large.
+// font_size selects which pre-loaded font to use.
 // (x, y) is the anchor point; alignment adjusts horizontally.
 void text_draw(const TextContext& ctx,
                SDL_Renderer* renderer,
                const char* text,
                float x, float y,
-               int font_size,
+               FontSize font_size,
                uint8_t r, uint8_t g, uint8_t b, uint8_t a,
                TextAlign align = TextAlign::Left);
 
@@ -42,9 +46,9 @@ void text_draw_number(const TextContext& ctx,
                       SDL_Renderer* renderer,
                       int number,
                       float x, float y,
-                      int font_size,
+                      FontSize font_size,
                       uint8_t r, uint8_t g, uint8_t b, uint8_t a,
                       TextAlign align = TextAlign::Center);
 
 // Query the pixel width of a string at the given font size.
-int text_width(const TextContext& ctx, const char* text, int font_size);
+int text_width(const TextContext& ctx, const char* text, FontSize font_size);

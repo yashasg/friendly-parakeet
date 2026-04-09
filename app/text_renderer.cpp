@@ -4,12 +4,12 @@
 #include <cstdio>
 
 // ── Helper: pick font by size index ─────────────────────────
-static TTF_Font* pick_font(const TextContext& ctx, int font_size) {
+static TTF_Font* pick_font(const TextContext& ctx, FontSize font_size) {
     switch (font_size) {
-        case 0:  return ctx.font_small;
-        case 1:  return ctx.font_medium;
-        case 2:  return ctx.font_large;
-        default: return ctx.font_medium;
+        case FontSize::Small:  return ctx.font_small;
+        case FontSize::Medium: return ctx.font_medium;
+        case FontSize::Large:  return ctx.font_large;
+        default:               return ctx.font_medium;
     }
 }
 
@@ -51,7 +51,7 @@ void text_draw(const TextContext& ctx,
                SDL_Renderer* renderer,
                const char* text,
                float x, float y,
-               int font_size,
+               FontSize font_size,
                uint8_t r, uint8_t g, uint8_t b, uint8_t a,
                TextAlign align) {
     if (!text || !text[0]) return;
@@ -94,7 +94,7 @@ void text_draw_number(const TextContext& ctx,
                       SDL_Renderer* renderer,
                       int number,
                       float x, float y,
-                      int font_size,
+                      FontSize font_size,
                       uint8_t r, uint8_t g, uint8_t b, uint8_t a,
                       TextAlign align) {
     char buf[16];
@@ -103,7 +103,7 @@ void text_draw_number(const TextContext& ctx,
 }
 
 // ── text_width ──────────────────────────────────────────────
-int text_width(const TextContext& ctx, const char* text, int font_size) {
+int text_width(const TextContext& ctx, const char* text, FontSize font_size) {
     TTF_Font* font = pick_font(ctx, font_size);
     if (!font || !text) return 0;
     int w = 0, h = 0;

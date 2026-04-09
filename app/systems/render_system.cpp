@@ -84,14 +84,14 @@ void render_system(entt::registry& reg, SDL_Renderer* renderer, float /*alpha*/)
 
         // Title text
         text_draw(text_ctx, renderer, "SHAPESHIFTER",
-            360, 500, 2, 80, 180, 255, 255,
+            360, 500, FontSize::Large, 80, 180, 255, 255,
             TextAlign::Center);
 
         // "TAP TO START" indicator — pulsing text
         float pulse = (std::sin(gs.phase_timer * 3.0f) + 1.0f) / 2.0f;
         uint8_t alpha = static_cast<uint8_t>(100 + pulse * 155);
         text_draw(text_ctx, renderer, "TAP TO START",
-            360, 600, 1, 200, 200, 200, alpha,
+            360, 600, FontSize::Medium, 200, 200, 200, alpha,
             TextAlign::Center);
 
         SDL_RenderPresent(renderer);
@@ -207,8 +207,8 @@ void render_system(entt::registry& reg, SDL_Renderer* renderer, float /*alpha*/)
             float alpha_ratio = life.remaining / life.max_time;
             auto popup_alpha = static_cast<uint8_t>(alpha_ratio * 255);
             float popup_scale = 1.5f + popup.tier * 0.5f;
-            // Score popups use small font (0) for normal, medium (1) for big combos
-            int popup_font = (popup_scale > 2.5f) ? 1 : 0;
+            // Score popups use small font for normal, medium for big combos
+            FontSize popup_font = (popup_scale > 2.5f) ? FontSize::Medium : FontSize::Small;
             text_draw_number(text_ctx, renderer, popup.value,
                 pos.x, pos.y, popup_font,
                 col.r, col.g, col.b, popup_alpha);
@@ -240,11 +240,11 @@ void render_system(entt::registry& reg, SDL_Renderer* renderer, float /*alpha*/)
 
         // Score
         text_draw_number(text_ctx, renderer, score.displayed_score,
-            120, 20, 1, 255, 255, 255, 255);
+            120, 20, FontSize::Medium, 255, 255, 255, 255);
 
         // High score
         text_draw_number(text_ctx, renderer, score.high_score,
-            120, 50, 0, 150, 150, 150, 180);
+            120, 50, FontSize::Small, 150, 150, 150, 180);
 
         // Speed bar
         float speed_ratio = (config.speed_multiplier - 1.0f) / 2.0f;
@@ -345,22 +345,22 @@ void render_system(entt::registry& reg, SDL_Renderer* renderer, float /*alpha*/)
 
         // "GAME OVER" heading
         text_draw(text_ctx, renderer, "GAME OVER",
-            360, 440, 2, 255, 80, 80, 255,
+            360, 440, FontSize::Large, 255, 80, 80, 255,
             TextAlign::Center);
 
         // Score display
         text_draw_number(text_ctx, renderer, score.score,
-            360, 510, 1, 255, 255, 255, 255);
+            360, 510, FontSize::Medium, 255, 255, 255, 255);
 
         // High score
         text_draw_number(text_ctx, renderer, score.high_score,
-            360, 560, 0, 200, 200, 100, 255);
+            360, 560, FontSize::Small, 200, 200, 100, 255);
 
         // "TAP TO RETRY" indicator — pulsing text
         float pulse = (std::sin(gs.phase_timer * 3.0f) + 1.0f) / 2.0f;
         auto retry_alpha = static_cast<uint8_t>(80 + pulse * 175);
         text_draw(text_ctx, renderer, "TAP TO RETRY",
-            360, 650, 1, 200, 200, 200, retry_alpha,
+            360, 650, FontSize::Medium, 200, 200, 200, retry_alpha,
             TextAlign::Center);
     }
 
@@ -373,7 +373,7 @@ void render_system(entt::registry& reg, SDL_Renderer* renderer, float /*alpha*/)
         SDL_RenderFillRectF(renderer, &overlay);
 
         text_draw(text_ctx, renderer, "PAUSED",
-            360, 580, 2, 255, 255, 255, 255,
+            360, 580, FontSize::Large, 255, 255, 255, 255,
             TextAlign::Center);
     }
 
