@@ -9,7 +9,7 @@ on:
 jobs:
   build:
     name: Build (Linux)
-    runs-on: ubuntu-latest
+    runs-on: Linux
     permissions:
       contents: read
       checks: write
