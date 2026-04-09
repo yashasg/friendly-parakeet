@@ -16,6 +16,10 @@ jobs:
       pull-requests: write
     env:
       VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+      # Build SDL2 (and other vcpkg deps) as static libs with dynamic CRT so
+      # the shipped .exe has no SDL2.dll dependency.
+      VCPKG_DEFAULT_TRIPLET: x64-windows-static-md
+      VCPKG_DEFAULT_HOST_TRIPLET: x64-windows-static-md
     steps:
       - uses: actions/checkout@v6
 
@@ -42,9 +46,9 @@ jobs:
         uses: actions/cache@v5
         with:
           path: build
-          key: cmake-windows-clang-${{ hashFiles('CMakeLists.txt', 'vcpkg.json') }}
+          key: cmake-windows-clang-static-md-${{ hashFiles('CMakeLists.txt', 'vcpkg.json') }}
           restore-keys: |
-            cmake-windows-clang-
+            cmake-windows-clang-static-md-
 
       - name: Build
         run: ./build.sh
