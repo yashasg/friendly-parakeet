@@ -4,7 +4,8 @@
   "version": "0.1.0",
   "description": "Endless runner with shape-shifting and burnout scoring",
   "dependencies": [
-    { "name": "sdl2",   "platform": "!linux" },
+    { "name": "sdl2",       "platform": "!linux" },
+    { "name": "sdl2-ttf",   "platform": "!linux" },
     "entt",
     { "name": "catch2", "platform": "!linux" }
   ]

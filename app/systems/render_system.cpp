@@ -12,7 +12,7 @@
 #include "../components/particle.h"
 #include "../components/audio.h"
 #include "../constants.h"
-#include "../bitmap_font.h"
+#include "../text_renderer.h"
 #include <SDL.h>
 #include <cmath>
 
@@ -59,6 +59,7 @@ static void draw_shape(SDL_Renderer* r, Shape shape, float cx, float cy, float s
 
 void render_system(entt::registry& reg, SDL_Renderer* renderer, float /*alpha*/) {
     auto& gs = reg.ctx().get<GameState>();
+    auto& text_ctx = reg.ctx().get<TextContext>();
 
     // Clear
     SDL_SetRenderDrawColor(renderer, 15, 15, 25, 255);
@@ -82,16 +83,16 @@ void render_system(entt::registry& reg, SDL_Renderer* renderer, float /*alpha*/)
         draw_shape(renderer, Shape::Triangle, 440, 400, 80);
 
         // Title text
-        bitmap_font::draw_text(renderer, "SHAPESHIFTER",
-            360, 500, 3.0f, 80, 180, 255, 255,
-            bitmap_font::TextAlign::Center);
+        text_draw(text_ctx, renderer, "SHAPESHIFTER",
+            360, 500, 2, 80, 180, 255, 255,
+            TextAlign::Center);
 
         // "TAP TO START" indicator — pulsing text
         float pulse = (std::sin(gs.phase_timer * 3.0f) + 1.0f) / 2.0f;
         uint8_t alpha = static_cast<uint8_t>(100 + pulse * 155);
-        bitmap_font::draw_text(renderer, "TAP TO START",
-            360, 600, 2.5f, 200, 200, 200, alpha,
-            bitmap_font::TextAlign::Center);
+        text_draw(text_ctx, renderer, "TAP TO START",
+            360, 600, 1, 200, 200, 200, alpha,
+            TextAlign::Center);
 
         SDL_RenderPresent(renderer);
         return;
@@ -206,8 +207,10 @@ void render_system(entt::registry& reg, SDL_Renderer* renderer, float /*alpha*/)
             float alpha_ratio = life.remaining / life.max_time;
             auto popup_alpha = static_cast<uint8_t>(alpha_ratio * 255);
             float popup_scale = 1.5f + popup.tier * 0.5f;
-            bitmap_font::draw_number(renderer, popup.value,
-                pos.x, pos.y, popup_scale,
+            // Score popups use small font (0) for normal, medium (1) for big combos
+            int popup_font = (popup_scale > 2.5f) ? 1 : 0;
+            text_draw_number(text_ctx, renderer, popup.value,
+                pos.x, pos.y, popup_font,
                 col.r, col.g, col.b, popup_alpha);
         }
     }
@@ -236,12 +239,12 @@ void render_system(entt::registry& reg, SDL_Renderer* renderer, float /*alpha*/)
         auto& config  = reg.ctx().get<DifficultyConfig>();
 
         // Score
-        bitmap_font::draw_number(renderer, score.displayed_score,
-            120, 20, 2.5f, 255, 255, 255, 255);
+        text_draw_number(text_ctx, renderer, score.displayed_score,
+            120, 20, 1, 255, 255, 255, 255);
 
         // High score
-        bitmap_font::draw_number(renderer, score.high_score,
-            120, 50, 1.5f, 150, 150, 150, 180);
+        text_draw_number(text_ctx, renderer, score.high_score,
+            120, 50, 0, 150, 150, 150, 180);
 
         // Speed bar
         float speed_ratio = (config.speed_multiplier - 1.0f) / 2.0f;
@@ -341,24 +344,24 @@ void render_system(entt::registry& reg, SDL_Renderer* renderer, float /*alpha*/)
         SDL_RenderFillRectF(renderer, &overlay);
 
         // "GAME OVER" heading
-        bitmap_font::draw_text(renderer, "GAME OVER",
-            360, 440, 4.0f, 255, 80, 80, 255,
-            bitmap_font::TextAlign::Center);
+        text_draw(text_ctx, renderer, "GAME OVER",
+            360, 440, 2, 255, 80, 80, 255,
+            TextAlign::Center);
 
         // Score display
-        bitmap_font::draw_number(renderer, score.score,
-            360, 510, 3.0f, 255, 255, 255, 255);
+        text_draw_number(text_ctx, renderer, score.score,
+            360, 510, 1, 255, 255, 255, 255);
 
         // High score
-        bitmap_font::draw_number(renderer, score.high_score,
-            360, 560, 2.0f, 200, 200, 100, 255);
+        text_draw_number(text_ctx, renderer, score.high_score,
+            360, 560, 0, 200, 200, 100, 255);
 
         // "TAP TO RETRY" indicator — pulsing text
         float pulse = (std::sin(gs.phase_timer * 3.0f) + 1.0f) / 2.0f;
         auto retry_alpha = static_cast<uint8_t>(80 + pulse * 175);
-        bitmap_font::draw_text(renderer, "TAP TO RETRY",
-            360, 650, 2.5f, 200, 200, 200, retry_alpha,
-            bitmap_font::TextAlign::Center);
+        text_draw(text_ctx, renderer, "TAP TO RETRY",
+            360, 650, 1, 200, 200, 200, retry_alpha,
+            TextAlign::Center);
     }
 
     // ── Pause overlay ───────────────────────────────────────
@@ -369,9 +372,9 @@ void render_system(entt::registry& reg, SDL_Renderer* renderer, float /*alpha*/)
             float(constants::SCREEN_W), float(constants::SCREEN_H) };
         SDL_RenderFillRectF(renderer, &overlay);
 
-        bitmap_font::draw_text(renderer, "PAUSED",
-            360, 580, 4.0f, 255, 255, 255, 255,
-            bitmap_font::TextAlign::Center);
+        text_draw(text_ctx, renderer, "PAUSED",
+            360, 580, 2, 255, 255, 255, 255,
+            TextAlign::Center);
     }
 
     SDL_RenderPresent(renderer);

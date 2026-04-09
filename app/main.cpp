@@ -10,6 +10,9 @@
 #include "components/difficulty.h"
 #include "components/audio.h"
 #include "systems/all_systems.h"
+#include "text_renderer.h"
+
+#include <string>
 
 int main(int /*argc*/, char* /*argv*/[]) {
 
@@ -49,6 +52,36 @@ int main(int /*argc*/, char* /*argv*/[]) {
 
     // ── ENTT REGISTRY ────────────────────────────────────────
     entt::registry reg;
+
+    // ── TEXT RENDERING (SDL2_ttf) ────────────────────────────
+    {
+        auto& text_ctx = reg.ctx().emplace<TextContext>();
+
+        // Try font paths: next to executable, CWD assets, then system fonts
+        std::string base_path;
+        char* sdl_base = SDL_GetBasePath();
+        if (sdl_base) { base_path = sdl_base; SDL_free(sdl_base); }
+
+        std::string exe_font = base_path + "assets/fonts/LiberationMono-Regular.ttf";
+        const char* font_paths[] = {
+            exe_font.c_str(),
+            "assets/fonts/LiberationMono-Regular.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
+        };
+
+        bool font_loaded = false;
+        for (const char* path : font_paths) {
+            if (text_init(text_ctx, path)) {
+                SDL_Log("Loaded font: %s", path);
+                font_loaded = true;
+                break;
+            }
+        }
+        if (!font_loaded) {
+            SDL_Log("ERROR: Could not load any TTF font");
+        }
+    }
 
     reg.ctx().emplace<InputState>();
     reg.ctx().emplace<GestureResult>();
@@ -117,6 +150,7 @@ int main(int /*argc*/, char* /*argv*/[]) {
     }
 
     // ── SHUTDOWN ─────────────────────────────────────────────
+    text_shutdown(reg.ctx().get<TextContext>());
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
