@@ -16,11 +16,22 @@ Built with **C++20**, **SDL2**, and **EnTT** using a strict Data-Oriented Design
 
 ### Prerequisites
 
-- C++20 compiler (Clang, GCC, or MSVC)
+- C++20 compiler (Clang on Linux/macOS; ClangCL via VS2022 on Windows)
 - CMake 3.20+
-- SDL2 development libraries
+- [vcpkg](https://vcpkg.io) — **required** for all builds
 
-Dependencies (EnTT, SDL2, Catch2) are resolved automatically via [vcpkg](https://vcpkg.io) or CMake FetchContent fallback.
+Dependencies (EnTT, SDL2, Catch2) are resolved exclusively through vcpkg.
+
+### Setup
+
+```bash
+# Install vcpkg (once)
+git clone https://github.com/microsoft/vcpkg.git ~/vcpkg
+~/vcpkg/bootstrap-vcpkg.sh          # Linux/macOS
+# ~/vcpkg/bootstrap-vcpkg.bat       # Windows
+
+export VCPKG_ROOT=~/vcpkg
+```
 
 ### Build
 
@@ -36,15 +47,6 @@ Dependencies (EnTT, SDL2, Catch2) are resolved automatically via [vcpkg](https:/
 ./run.sh test        # Build and run tests
 ./run.sh bench       # Build and run benchmarks
 ```
-
-### With vcpkg (optional)
-
-```bash
-export VCPKG_ROOT=/path/to/vcpkg
-./build.sh
-```
-
-If `VCPKG_ROOT` is set, the build uses vcpkg packages. Otherwise it falls back to FetchContent and builds dependencies from source.
 
 ## Architecture
 

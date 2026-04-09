@@ -33,13 +33,24 @@ jobs:
           cmake: true
           vcpkg: true
 
-      - name: Install SDL2 system dependencies
+      - name: Export VCPKG_ROOT
+        run: echo "VCPKG_ROOT=$HOME/vcpkg" >> "$GITHUB_ENV"
+        shell: bash
+
+      - name: Cache CMake build directory
+        uses: actions/cache@v5
+        with:
+          path: build
+          key: cmake-linux-clang-${{ hashFiles('CMakeLists.txt', 'vcpkg.json') }}
+          restore-keys: |
+            cmake-linux-clang-
+
+      - name: Install system dependencies
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
-            libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev \
-            libxext-dev libxfixes-dev libgl1-mesa-dev libglu1-mesa-dev \
-            libasound2-dev libpulse-dev libdbus-1-dev libudev-dev
+            libsdl2-dev \
+            catch2
 
       - name: Build
         run: |
@@ -49,7 +60,7 @@ jobs:
       - name: Run tests
         if: always()
         id: run-tests
-        run: ./build/shapeshifter_tests
+        run: ./build/shapeshifter_tests --benchmark-samples 1
 
       - name: Upload artifact
         if: success()
@@ -71,5 +82,11 @@ jobs:
         with:
           report-path: 'ctrf-report.json'
           pull-request-report: true
+          summary-delta-report: true
+          insights-report: true
+          flaky-rate-report: true
+          fail-rate-report: true
+          slowest-report: true
+          upload-artifact: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

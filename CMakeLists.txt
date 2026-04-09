@@ -27,46 +27,16 @@ configure_file(
 )
 
 # ── Dependencies ─────────────────────────────────────────────
-# Prefer vcpkg-provided packages (via CMAKE_TOOLCHAIN_FILE).
-# Fall back to FetchContent for local builds without vcpkg.
+# On Linux:   libsdl2-dev and catch2 are expected as system packages (apt).
+#             vcpkg only provides EnTT (header-only, fast).
+# On Windows: all three come from vcpkg (x64-windows-static-md triplet).
+# Pass -DCMAKE_TOOLCHAIN_FILE or set VCPKG_ROOT so vcpkg is used for EnTT.
 
-find_package(EnTT CONFIG QUIET)
-find_package(SDL2 CONFIG QUIET)
-find_package(Catch2 3 CONFIG QUIET)
+find_package(EnTT CONFIG REQUIRED)
+find_package(SDL2 CONFIG REQUIRED)
+find_package(Catch2 3 CONFIG REQUIRED)
 
-if(NOT EnTT_FOUND OR NOT SDL2_FOUND OR NOT Catch2_FOUND)
-    message(STATUS "vcpkg packages not found — falling back to FetchContent")
-    include(FetchContent)
-
-    if(NOT EnTT_FOUND)
-        FetchContent_Declare(EnTT
-            GIT_REPOSITORY https://github.com/skypjack/entt.git
-            GIT_TAG        v3.16.0
-        )
-        FetchContent_MakeAvailable(EnTT)
-    endif()
-
-    if(NOT SDL2_FOUND)
-        FetchContent_Declare(SDL2
-            GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
-            GIT_TAG        release-2.30.12
-        )
-        set(SDL_SHARED OFF CACHE BOOL "" FORCE)
-        set(SDL_STATIC ON CACHE BOOL "" FORCE)
-        set(SDL_TEST OFF CACHE BOOL "" FORCE)
-        FetchContent_MakeAvailable(SDL2)
-    endif()
-
-    if(NOT Catch2_FOUND)
-        FetchContent_Declare(Catch2
-            GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-            GIT_TAG        v3.7.1
-        )
-        FetchContent_MakeAvailable(Catch2)
-    endif()
-endif()
-
-# Normalize SDL2 target names (vcpkg uses SDL2::SDL2, FetchContent uses SDL2::SDL2-static)
+# Normalize SDL2 target names (vcpkg may expose SDL2::SDL2 without SDL2::SDL2-static)
 if(TARGET SDL2::SDL2 AND NOT TARGET SDL2::SDL2-static)
     add_library(SDL2::SDL2-static ALIAS SDL2::SDL2)
 endif()
@@ -78,8 +48,8 @@ endif()
 
 # ── Warnings-as-errors (project targets only) ────────────────
 # Applied via an INTERFACE target so it never leaks into third-party code.
-# FetchContent dependency includes are marked SYSTEM afterwards so that
-# headers we don't own can never produce errors under -Werror / /WX.
+# Third-party include directories are marked SYSTEM so that headers we don't
+# own can never produce errors under -Werror / /WX.
 add_library(shapeshifter_warnings INTERFACE)
 target_compile_options(shapeshifter_warnings INTERFACE
     $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wall -Wextra -Werror>
