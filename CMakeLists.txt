@@ -87,6 +87,17 @@ target_link_libraries(shapeshifter_tests PRIVATE
     Catch2::Catch2WithMain
 )
 
+# ── Benchmarks ───────────────────────────────────────────────
+file(GLOB BENCH_SOURCES benchmarks/*.cpp)
+add_executable(shapeshifter_bench ${BENCH_SOURCES})
+target_include_directories(shapeshifter_bench PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/app
+)
+target_link_libraries(shapeshifter_bench PRIVATE
+    shapeshifter_lib
+    Catch2::Catch2WithMain
+)
+
 include(CTest)
 include(Catch)
 catch_discover_tests(shapeshifter_tests)
