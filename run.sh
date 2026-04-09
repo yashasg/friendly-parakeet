@@ -6,4 +6,8 @@ cd "$(dirname "$0")"
 cmake -B build -S .
 cmake --build build
 
-./build/shapeshifter
+if [[ "${1:-}" == "test" ]]; then
+    ./build/shapeshifter_tests "$@"
+else
+    ./build/shapeshifter
+fi

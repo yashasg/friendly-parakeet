@@ -23,6 +23,13 @@ A bullet hell game built in C++ using SDL2 for rendering and EnTT (v3.16.0) for 
 cmake -B build -S .
 cmake --build build
 ./build/shapeshifter
+
+# Run tests
+./build/shapeshifter_tests
+
+# Or via run script
+./run.sh           # build + run game
+./run.sh test      # build + run tests
 ```
 
 ## Architecture

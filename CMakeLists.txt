@@ -23,21 +23,51 @@ set(SDL_SHARED OFF CACHE BOOL "" FORCE)
 set(SDL_STATIC ON CACHE BOOL "" FORCE)
 set(SDL_TEST OFF CACHE BOOL "" FORCE)
 
-FetchContent_MakeAvailable(EnTT SDL2)
-
-# ── Sources ──────────────────────────────────────────────────
-file(GLOB_RECURSE SOURCES
-    app/*.cpp
+FetchContent_Declare(
+    Catch2
+    GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+    GIT_TAG        v3.7.1
 )
 
-add_executable(${PROJECT_NAME} ${SOURCES})
+FetchContent_MakeAvailable(EnTT SDL2 Catch2)
 
-target_include_directories(${PROJECT_NAME} PRIVATE
+# ── Game library (shared between exe and tests) ──────────────
+file(GLOB SYSTEM_SOURCES app/systems/*.cpp)
+# Exclude render_system.cpp from the library (requires SDL renderer)
+list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "render_system\\.cpp$")
+
+add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES})
+target_include_directories(shapeshifter_lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/app
 )
-
-target_link_libraries(${PROJECT_NAME} PRIVATE
+target_link_libraries(shapeshifter_lib PUBLIC
     EnTT::EnTT
     SDL2::SDL2-static
+)
+
+# ── Main executable ──────────────────────────────────────────
+add_executable(shapeshifter app/main.cpp app/systems/render_system.cpp)
+target_include_directories(shapeshifter PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/app
+)
+target_link_libraries(shapeshifter PRIVATE
+    shapeshifter_lib
     SDL2::SDL2main
 )
+
+# ── Tests ────────────────────────────────────────────────────
+enable_testing()
+
+file(GLOB TEST_SOURCES tests/*.cpp)
+add_executable(shapeshifter_tests ${TEST_SOURCES})
+target_include_directories(shapeshifter_tests PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/app
+)
+target_link_libraries(shapeshifter_tests PRIVATE
+    shapeshifter_lib
+    Catch2::Catch2WithMain
+)
+
+include(CTest)
+include(Catch)
+catch_discover_tests(shapeshifter_tests)
