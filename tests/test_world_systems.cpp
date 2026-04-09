@@ -220,3 +220,264 @@ TEST_CASE("game_state: phase timer increments", "[gamestate]") {
 
     CHECK(reg.ctx().get<GameState>().phase_timer == 0.5f);
 }
+
+// ── game_state: transition execution ─────────────────────────
+
+TEST_CASE("game_state: enter_playing clears entities and creates player", "[gamestate]") {
+    auto reg = make_registry();
+    // Create some entities that should be cleared
+    auto junk = reg.create();
+    reg.emplace<ObstacleTag>(junk);
+    reg.emplace<Position>(junk, 0.0f, 0.0f);
+
+    auto& gs = reg.ctx().get<GameState>();
+    gs.transition_pending = true;
+    gs.next_phase = GamePhase::Playing;
+
+    game_state_system(reg, 0.016f);
+
+    // Original entity should be gone (registry cleared)
+    CHECK_FALSE(reg.valid(junk));
+
+    // A new player should exist
+    auto player_view = reg.view<PlayerTag>();
+    int player_count = 0;
+    for (auto e : player_view) { ++player_count; (void)e; }
+    CHECK(player_count == 1);
+
+    // Phase should be Playing
+    CHECK(gs.phase == GamePhase::Playing);
+}
+
+TEST_CASE("game_state: enter_game_over updates high score", "[gamestate]") {
+    auto reg = make_registry();
+    auto& score = reg.ctx().get<ScoreState>();
+    score.score = 5000;
+    score.high_score = 3000;
+
+    auto& gs = reg.ctx().get<GameState>();
+    gs.transition_pending = true;
+    gs.next_phase = GamePhase::GameOver;
+
+    game_state_system(reg, 0.016f);
+
+    CHECK(score.high_score == 5000);
+    CHECK(gs.phase == GamePhase::GameOver);
+}
+
+TEST_CASE("game_state: enter_game_over pushes Crash SFX", "[gamestate]") {
+    auto reg = make_registry();
+    auto& gs = reg.ctx().get<GameState>();
+    gs.transition_pending = true;
+    gs.next_phase = GamePhase::GameOver;
+
+    game_state_system(reg, 0.016f);
+
+    auto& audio = reg.ctx().get<AudioQueue>();
+    CHECK(audio.count > 0);
+    CHECK(audio.queue[0] == SFX::Crash);
+}
+
+TEST_CASE("game_state: enter_game_over preserves high score if lower", "[gamestate]") {
+    auto reg = make_registry();
+    auto& score = reg.ctx().get<ScoreState>();
+    score.score = 1000;
+    score.high_score = 5000;
+
+    auto& gs = reg.ctx().get<GameState>();
+    gs.transition_pending = true;
+    gs.next_phase = GamePhase::GameOver;
+
+    game_state_system(reg, 0.016f);
+
+    CHECK(score.high_score == 5000);
+}
+
+TEST_CASE("game_state: paused to playing on touch", "[gamestate]") {
+    auto reg = make_registry();
+    auto& gs = reg.ctx().get<GameState>();
+    gs.phase = GamePhase::Paused;
+    reg.ctx().get<InputState>().touch_up = true;
+
+    game_state_system(reg, 0.016f);
+
+    CHECK(gs.phase == GamePhase::Playing);
+    CHECK(gs.phase_timer == 0.0f);
+}
+
+TEST_CASE("game_state: title stays title without touch", "[gamestate]") {
+    auto reg = make_registry();
+    auto& gs = reg.ctx().get<GameState>();
+    gs.phase = GamePhase::Title;
+    reg.ctx().get<InputState>().touch_up = false;
+
+    game_state_system(reg, 0.5f);
+
+    CHECK(gs.phase == GamePhase::Title);
+    CHECK_FALSE(gs.transition_pending);
+}
+
+TEST_CASE("game_state: transition to Paused sets phase", "[gamestate]") {
+    auto reg = make_registry();
+    auto& gs = reg.ctx().get<GameState>();
+    gs.phase = GamePhase::Playing;
+    gs.transition_pending = true;
+    gs.next_phase = GamePhase::Paused;
+
+    game_state_system(reg, 0.016f);
+
+    CHECK(gs.phase == GamePhase::Paused);
+    CHECK(gs.phase_timer == 0.0f);
+    CHECK_FALSE(gs.transition_pending);
+}
+
+TEST_CASE("game_state: enter_playing resets difficulty config", "[gamestate]") {
+    auto reg = make_registry();
+    // Modify difficulty to simulate mid-game state
+    auto& config = reg.ctx().get<DifficultyConfig>();
+    config.elapsed = 100.0f;
+    config.speed_multiplier = 2.5f;
+
+    auto& gs = reg.ctx().get<GameState>();
+    gs.transition_pending = true;
+    gs.next_phase = GamePhase::Playing;
+
+    game_state_system(reg, 0.016f);
+
+    auto& new_config = reg.ctx().get<DifficultyConfig>();
+    CHECK(new_config.elapsed == 0.0f);
+    CHECK(new_config.speed_multiplier == 1.0f);
+    CHECK(new_config.spawn_interval == constants::INITIAL_SPAWN_INT);
+}
+
+TEST_CASE("game_state: enter_playing resets score", "[gamestate]") {
+    auto reg = make_registry();
+    reg.ctx().get<ScoreState>().score = 9999;
+
+    auto& gs = reg.ctx().get<GameState>();
+    gs.transition_pending = true;
+    gs.next_phase = GamePhase::Playing;
+
+    game_state_system(reg, 0.016f);
+
+    CHECK(reg.ctx().get<ScoreState>().score == 0);
+}
+
+// ── scroll_system: phase guard ──────────────────────────────
+
+TEST_CASE("scroll: no movement when not in Playing phase", "[scroll]") {
+    auto reg = make_registry();
+    reg.ctx().get<GameState>().phase = GamePhase::Title;
+    auto e = reg.create();
+    reg.emplace<Position>(e, 100.0f, 200.0f);
+    reg.emplace<Velocity>(e, 10.0f, 20.0f);
+
+    scroll_system(reg, 1.0f);
+
+    CHECK(reg.get<Position>(e).x == 100.0f);
+    CHECK(reg.get<Position>(e).y == 200.0f);
+}
+
+// ── cleanup: edge cases ─────────────────────────────────────
+
+TEST_CASE("cleanup: obstacle at exactly DESTROY_Y is kept", "[cleanup]") {
+    auto reg = make_registry();
+    auto obs = reg.create();
+    reg.emplace<ObstacleTag>(obs);
+    reg.emplace<Position>(obs, 0.0f, constants::DESTROY_Y);
+
+    cleanup_system(reg, 0.016f);
+
+    CHECK(reg.valid(obs));
+}
+
+// ── obstacle_spawn: phase guard ─────────────────────────────
+
+TEST_CASE("spawn: no spawn when not in Playing phase", "[spawn]") {
+    auto reg = make_registry();
+    reg.ctx().get<GameState>().phase = GamePhase::Title;
+    auto& config = reg.ctx().get<DifficultyConfig>();
+    config.spawn_timer = 0.0f;
+
+    obstacle_spawn_system(reg, 0.016f);
+
+    int count = 0;
+    for (auto e : reg.view<ObstacleTag>()) { ++count; (void)e; }
+    CHECK(count == 0);
+}
+
+TEST_CASE("spawn: timer resets to spawn_interval after spawning", "[spawn]") {
+    auto reg = make_registry();
+    auto& config = reg.ctx().get<DifficultyConfig>();
+    config.spawn_timer = 0.0f;
+    config.spawn_interval = 1.5f;
+
+    obstacle_spawn_system(reg, 0.016f);
+
+    // Timer should be close to spawn_interval (minus the dt that triggered the spawn)
+    CHECK(config.spawn_timer > 0.0f);
+}
+
+TEST_CASE("spawn: spawned obstacles have velocity", "[spawn]") {
+    auto reg = make_registry();
+    auto& config = reg.ctx().get<DifficultyConfig>();
+    config.spawn_timer = 0.0f;
+
+    obstacle_spawn_system(reg, 0.016f);
+
+    auto view = reg.view<ObstacleTag, Velocity>();
+    for (auto [e, vel] : view.each()) {
+        CHECK(vel.dy == config.scroll_speed);
+    }
+}
+
+TEST_CASE("spawn: spawned obstacles have DrawLayer", "[spawn]") {
+    auto reg = make_registry();
+    auto& config = reg.ctx().get<DifficultyConfig>();
+    config.spawn_timer = 0.0f;
+
+    obstacle_spawn_system(reg, 0.016f);
+
+    auto view = reg.view<ObstacleTag, DrawLayer>();
+    int count = 0;
+    for (auto e : view) { ++count; (void)e; }
+    CHECK(count == 1);
+}
+
+TEST_CASE("spawn: LaneBlock available after 30s", "[spawn]") {
+    auto reg = make_registry();
+    auto& config = reg.ctx().get<DifficultyConfig>();
+    config.elapsed = 35.0f;
+
+    bool found_lane_block = false;
+    for (int i = 0; i < 100; ++i) {
+        config.spawn_timer = 0.0f;
+        obstacle_spawn_system(reg, 0.016f);
+    }
+
+    auto view = reg.view<ObstacleTag, Obstacle>();
+    for (auto [e, obs] : view.each()) {
+        if (obs.kind == ObstacleKind::LaneBlock) found_lane_block = true;
+    }
+    CHECK(found_lane_block);
+}
+
+TEST_CASE("spawn: all kinds available after 120s", "[spawn]") {
+    auto reg = make_registry();
+    auto& config = reg.ctx().get<DifficultyConfig>();
+    config.elapsed = 125.0f;
+
+    bool found[6] = {};
+    for (int i = 0; i < 500; ++i) {
+        config.spawn_timer = 0.0f;
+        obstacle_spawn_system(reg, 0.016f);
+    }
+
+    auto view = reg.view<ObstacleTag, Obstacle>();
+    for (auto [e, obs] : view.each()) {
+        found[static_cast<int>(obs.kind)] = true;
+    }
+    for (int i = 0; i < 6; ++i) {
+        CHECK(found[i]);
+    }
+}

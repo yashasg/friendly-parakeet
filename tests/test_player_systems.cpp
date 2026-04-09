@@ -228,3 +228,125 @@ TEST_CASE("player_movement: slide returns to grounded", "[player]") {
 
     CHECK(reg.get<VerticalState>(p).mode == VMode::Grounded);
 }
+
+TEST_CASE("player_action: not in Playing phase skips processing", "[player]") {
+    auto reg = make_registry();
+    reg.ctx().get<GameState>().phase = GamePhase::Title;
+    make_player(reg);
+
+    auto& gesture = reg.ctx().get<GestureResult>();
+    gesture.gesture = Gesture::SwipeUp;
+
+    player_action_system(reg, 0.016f);
+
+    auto view = reg.view<PlayerTag, VerticalState>();
+    for (auto [e, vs] : view.each()) {
+        CHECK(vs.mode == VMode::Grounded);
+    }
+}
+
+TEST_CASE("player_movement: not in Playing phase skips processing", "[player]") {
+    auto reg = make_registry();
+    reg.ctx().get<GameState>().phase = GamePhase::Paused;
+    auto p = make_player(reg);
+    reg.get<PlayerShape>(p).morph_t = 0.0f;
+
+    player_movement_system(reg, 0.016f);
+
+    CHECK(reg.get<PlayerShape>(p).morph_t == 0.0f);
+}
+
+TEST_CASE("player_action: cannot slide while already sliding", "[player]") {
+    auto reg = make_registry();
+    auto p = make_player(reg);
+    reg.get<VerticalState>(p).mode  = VMode::Sliding;
+    reg.get<VerticalState>(p).timer = 0.3f;
+
+    auto& gesture = reg.ctx().get<GestureResult>();
+    gesture.gesture = Gesture::SwipeDown;
+
+    player_action_system(reg, 0.016f);
+
+    // Timer should not reset
+    CHECK(reg.get<VerticalState>(p).timer == 0.3f);
+}
+
+TEST_CASE("player_action: cannot slide while jumping", "[player]") {
+    auto reg = make_registry();
+    auto p = make_player(reg);
+    reg.get<VerticalState>(p).mode  = VMode::Jumping;
+    reg.get<VerticalState>(p).timer = 0.2f;
+
+    auto& gesture = reg.ctx().get<GestureResult>();
+    gesture.gesture = Gesture::SwipeDown;
+
+    player_action_system(reg, 0.016f);
+
+    CHECK(reg.get<VerticalState>(p).mode == VMode::Jumping);
+    CHECK(reg.get<VerticalState>(p).timer == 0.2f);
+}
+
+TEST_CASE("player_action: cannot jump while sliding", "[player]") {
+    auto reg = make_registry();
+    auto p = make_player(reg);
+    reg.get<VerticalState>(p).mode  = VMode::Sliding;
+    reg.get<VerticalState>(p).timer = 0.3f;
+
+    auto& gesture = reg.ctx().get<GestureResult>();
+    gesture.gesture = Gesture::SwipeUp;
+
+    player_action_system(reg, 0.016f);
+
+    CHECK(reg.get<VerticalState>(p).mode == VMode::Sliding);
+    CHECK(reg.get<VerticalState>(p).timer == 0.3f);
+}
+
+TEST_CASE("player_movement: morph_t clamps at 1.0", "[player]") {
+    auto reg = make_registry();
+    auto p = make_player(reg);
+    reg.get<PlayerShape>(p).morph_t = 0.95f;
+
+    // Large dt to overshoot
+    player_movement_system(reg, 1.0f);
+
+    CHECK(reg.get<PlayerShape>(p).morph_t == 1.0f);
+}
+
+TEST_CASE("player_movement: slide keeps y_offset at 0", "[player]") {
+    auto reg = make_registry();
+    auto p = make_player(reg);
+    reg.get<VerticalState>(p).mode  = VMode::Sliding;
+    reg.get<VerticalState>(p).timer = constants::SLIDE_DURATION;
+
+    player_movement_system(reg, 0.1f);
+
+    CHECK(reg.get<VerticalState>(p).y_offset == 0.0f);
+}
+
+TEST_CASE("player_movement: grounded state has no timer change", "[player]") {
+    auto reg = make_registry();
+    auto p = make_player(reg);
+    // Default is Grounded
+    CHECK(reg.get<VerticalState>(p).mode == VMode::Grounded);
+
+    player_movement_system(reg, 0.016f);
+
+    CHECK(reg.get<VerticalState>(p).timer == 0.0f);
+    CHECK(reg.get<VerticalState>(p).y_offset == 0.0f);
+}
+
+TEST_CASE("player_movement: jump arc peaks at half duration", "[player]") {
+    auto reg = make_registry();
+    auto p = make_player(reg);
+    reg.get<VerticalState>(p).mode  = VMode::Jumping;
+    reg.get<VerticalState>(p).timer = constants::JUMP_DURATION;
+
+    // Advance exactly to the peak (half duration)
+    float half = constants::JUMP_DURATION / 2.0f;
+    player_movement_system(reg, half);
+
+    // At peak, y_offset should be at max negative (JUMP_HEIGHT)
+    float y_off = reg.get<VerticalState>(p).y_offset;
+    CHECK(y_off < 0.0f);
+    CHECK_THAT(y_off, Catch::Matchers::WithinAbs(-constants::JUMP_HEIGHT, 1.0f));
+}

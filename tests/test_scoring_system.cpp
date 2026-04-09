@@ -113,3 +113,109 @@ TEST_CASE("scoring: displayed_score rolls up toward score", "[scoring]") {
     CHECK(score.displayed_score > 0);
     CHECK(score.displayed_score <= score.score);
 }
+
+TEST_CASE("scoring: not in Playing phase skips processing", "[scoring]") {
+    auto reg = make_registry();
+    reg.ctx().get<GameState>().phase = GamePhase::GameOver;
+
+    scoring_system(reg, 1.0f);
+
+    CHECK(reg.ctx().get<ScoreState>().score == 0);
+}
+
+TEST_CASE("scoring: clutch/dead zone multiplier applies 5x", "[scoring]") {
+    auto reg = make_registry();
+    auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
+    reg.emplace<ScoredTag>(obs);
+    reg.ctx().get<BurnoutState>().zone = BurnoutZone::Dead;
+
+    scoring_system(reg, 0.016f);
+
+    auto& score = reg.ctx().get<ScoreState>();
+    // Base 200 * 5.0 = 1000, plus distance bonus
+    CHECK(score.score >= 1000);
+}
+
+TEST_CASE("scoring: chain bonus 5+ gives extended bonus", "[scoring]") {
+    auto reg = make_registry();
+    reg.ctx().get<BurnoutState>().zone = BurnoutZone::Safe;
+
+    // Score 5 obstacles in a row (chain_count 1..5)
+    for (int i = 0; i < 5; ++i) {
+        auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y + float(i));
+        reg.emplace<ScoredTag>(obs);
+        scoring_system(reg, 0.016f);
+    }
+
+    auto& score = reg.ctx().get<ScoreState>();
+    CHECK(score.chain_count == 5);
+    // 5th obstacle: base + CHAIN_BONUS[4] + (5-4)*100 = 200 + 200 + 100 = 500
+    // Total for 5 obstacles should be significantly more than 5*200
+    CHECK(score.score > 5 * constants::PTS_SHAPE_GATE);
+}
+
+TEST_CASE("scoring: obstacle entity cleaned up after scoring", "[scoring]") {
+    auto reg = make_registry();
+    auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
+    reg.emplace<ScoredTag>(obs);
+    reg.ctx().get<BurnoutState>().zone = BurnoutZone::Safe;
+
+    scoring_system(reg, 0.016f);
+
+    // Obstacle and ScoredTag components should be removed
+    CHECK_FALSE(reg.all_of<Obstacle>(obs));
+    CHECK_FALSE(reg.all_of<ScoredTag>(obs));
+    // Entity itself still exists (for scroll/cleanup)
+    CHECK(reg.valid(obs));
+}
+
+TEST_CASE("scoring: score popup has correct tier for multiplier", "[scoring]") {
+    auto reg = make_registry();
+    auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
+    reg.emplace<ScoredTag>(obs);
+    reg.ctx().get<BurnoutState>().zone = BurnoutZone::Danger;  // 3.0x mult
+
+    scoring_system(reg, 0.016f);
+
+    auto popup_view = reg.view<ScorePopup>();
+    for (auto [e, popup] : popup_view.each()) {
+        CHECK(popup.tier == 3);  // tier_for_multiplier(3.0) = 3
+    }
+}
+
+TEST_CASE("scoring: displayed_score does not overshoot score", "[scoring]") {
+    auto reg = make_registry();
+    auto& score = reg.ctx().get<ScoreState>();
+    score.score = 100;
+    score.displayed_score = 99;
+
+    // Very large dt that would normally overshoot
+    scoring_system(reg, 10.0f);
+
+    // displayed_score should not exceed score (capped)
+    // Note: score increases by dt * PTS_PER_SECOND too
+    CHECK(score.displayed_score <= score.score);
+}
+
+TEST_CASE("scoring: risky multiplier applies 1.5x", "[scoring]") {
+    auto reg = make_registry();
+    auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
+    reg.emplace<ScoredTag>(obs);
+    reg.ctx().get<BurnoutState>().zone = BurnoutZone::Risky;
+
+    scoring_system(reg, 0.016f);
+
+    auto& score = reg.ctx().get<ScoreState>();
+    // Base 200 * 1.5 = 300, plus distance bonus
+    CHECK(score.score >= 300);
+}
+
+TEST_CASE("scoring: distance_traveled accumulates from scroll speed", "[scoring]") {
+    auto reg = make_registry();
+    auto& config = reg.ctx().get<DifficultyConfig>();
+    config.scroll_speed = 400.0f;
+
+    scoring_system(reg, 1.0f);
+
+    CHECK(reg.ctx().get<ScoreState>().distance_traveled == 400.0f);
+}

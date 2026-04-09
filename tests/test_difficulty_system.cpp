@@ -73,3 +73,24 @@ TEST_CASE("difficulty: elapsed time accumulates", "[difficulty]") {
 
     CHECK(reg.ctx().get<DifficultyConfig>().elapsed == 3.0f);
 }
+
+TEST_CASE("difficulty: not in Playing phase skips processing", "[difficulty]") {
+    auto reg = make_registry();
+    reg.ctx().get<GameState>().phase = GamePhase::Title;
+
+    difficulty_system(reg, 10.0f);
+
+    auto& config = reg.ctx().get<DifficultyConfig>();
+    CHECK(config.elapsed == 0.0f);
+    CHECK(config.speed_multiplier == 1.0f);
+}
+
+TEST_CASE("difficulty: scroll_speed is BASE_SCROLL_SPEED * multiplier", "[difficulty]") {
+    auto reg = make_registry();
+
+    difficulty_system(reg, 10.0f);
+
+    auto& config = reg.ctx().get<DifficultyConfig>();
+    float expected = constants::BASE_SCROLL_SPEED * config.speed_multiplier;
+    CHECK(config.scroll_speed == expected);
+}

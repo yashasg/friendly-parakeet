@@ -93,3 +93,35 @@ inline entt::entity make_vertical_bar(entt::registry& reg, ObstacleKind kind, fl
     reg.emplace<Color>(obs, uint8_t{255}, uint8_t{180}, uint8_t{0}, uint8_t{255});
     return obs;
 }
+
+// Creates a combo gate requiring shape AND lane not blocked
+inline entt::entity make_combo_gate(entt::registry& reg, Shape shape, uint8_t blocked_mask, float y) {
+    auto& config = reg.ctx().get<DifficultyConfig>();
+    auto obs = reg.create();
+    reg.emplace<ObstacleTag>(obs);
+    reg.emplace<Position>(obs, constants::LANE_X[1], y);
+    reg.emplace<Velocity>(obs, 0.0f, config.scroll_speed);
+    reg.emplace<Obstacle>(obs, ObstacleKind::ComboGate, int16_t{constants::PTS_COMBO_GATE});
+    reg.emplace<RequiredShape>(obs, shape);
+    reg.emplace<BlockedLanes>(obs, blocked_mask);
+    reg.emplace<DrawSize>(obs, float(constants::SCREEN_W), 80.0f);
+    reg.emplace<DrawLayer>(obs, Layer::Game);
+    reg.emplace<Color>(obs, uint8_t{200}, uint8_t{100}, uint8_t{255}, uint8_t{255});
+    return obs;
+}
+
+// Creates a split path requiring shape AND specific lane
+inline entt::entity make_split_path(entt::registry& reg, Shape shape, int8_t lane, float y) {
+    auto& config = reg.ctx().get<DifficultyConfig>();
+    auto obs = reg.create();
+    reg.emplace<ObstacleTag>(obs);
+    reg.emplace<Position>(obs, constants::LANE_X[1], y);
+    reg.emplace<Velocity>(obs, 0.0f, config.scroll_speed);
+    reg.emplace<Obstacle>(obs, ObstacleKind::SplitPath, int16_t{constants::PTS_SPLIT_PATH});
+    reg.emplace<RequiredShape>(obs, shape);
+    reg.emplace<RequiredLane>(obs, lane);
+    reg.emplace<DrawSize>(obs, float(constants::SCREEN_W), 80.0f);
+    reg.emplace<DrawLayer>(obs, Layer::Game);
+    reg.emplace<Color>(obs, uint8_t{255}, uint8_t{215}, uint8_t{0}, uint8_t{255});
+    return obs;
+}
