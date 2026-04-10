@@ -28,30 +28,17 @@ configure_file(
 
 # ── Dependencies ─────────────────────────────────────────────
 # EnTT: header-only ECS framework (vcpkg on all platforms).
-# raylib: rendering, windowing, input, audio (vcpkg on native platforms).
+# raylib: rendering, windowing, input, audio (vcpkg on all platforms, including
+#         wasm32-emscripten via the vcpkg-overlay portfile).
 # Catch2: test framework (vcpkg on Windows/macOS, system package on Linux).
 # nlohmann-json: JSON parsing for beat map loading (vcpkg on all platforms).
 
 find_package(EnTT CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
+find_package(raylib CONFIG REQUIRED)
 
 if(NOT EMSCRIPTEN)
-    # Native builds: raylib and Catch2 from vcpkg
-    find_package(raylib CONFIG REQUIRED)
     find_package(Catch2 3 CONFIG REQUIRED)
-else()
-    # Emscripten: build raylib from source (no vcpkg triplet available).
-    # Mirrors raylib's own build_webassembly.yml.
-    include(FetchContent)
-    FetchContent_Declare(raylib
-        GIT_REPOSITORY https://github.com/raysan5/raylib.git
-        GIT_TAG        5.5
-        GIT_SHALLOW    ON
-    )
-    set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-    set(CUSTOMIZE_BUILD ON CACHE BOOL "" FORCE)
-    set(PLATFORM Web CACHE STRING "" FORCE)
-    FetchContent_MakeAvailable(raylib)
 endif()
 
 # ── Warnings-as-errors (project targets only) ────────────────
