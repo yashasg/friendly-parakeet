@@ -2,13 +2,13 @@
 
 ## Project Overview
 
-A bullet hell game built in C++ using SDL2 for rendering and EnTT (v3.16.0) for Entity Component System architecture.
+A bullet hell game built in C++ using raylib for rendering and EnTT (v3.16.0) for Entity Component System architecture.
 
 ## Tech Stack
 
 - **Language:** C++17 (or later)
 - **Build system:** CMake
-- **Rendering:** SDL2
+- **Rendering:** raylib
 - **ECS framework:** [EnTT](https://github.com/skypjack/entt) v3.16.0
 - **Design docs:** `design-docs/` — check here before implementing any feature:
   - `game.md` — GDD: shapes, controls, burnout scoring, obstacles, difficulty
@@ -62,5 +62,5 @@ A clangd LSP server is configured in `.github/lsp.json` for C/C++ code intellige
 
 - Game source code goes in `app/`
 - All game state lives in the `entt::registry` — avoid global mutable state
-- Use SDL2 directly for input, windowing, and rendering (no wrapper libraries)
+- Use raylib directly for input, windowing, and rendering (no wrapper libraries)
 - Bullet patterns should be data-driven where possible (define patterns as data, not hardcoded logic)

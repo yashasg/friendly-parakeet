@@ -1987,7 +1987,7 @@ Every player action triggers a multi-sensory response.
 
   NOTE: All haptics are opt-out (on by default).
   Players with haptics OFF get 0ms vibration (no fallback).
-  SDL2 haptic: SDL_HapticRumblePlay() for simple patterns.
+  raylib haptic: platform-specific vibration for simple patterns.
 ```
 
 ---

@@ -1109,7 +1109,7 @@
 ```
   RHYTHM ENGINE
   ─────────────
-  [ ] Song audio plays via SDL_mixer (or equivalent)
+  [ ] Song audio plays via raylib audio (or equivalent)
   [ ] SongState.song_time advances in sync with audio
   [ ] SongState.current_beat increments on each beat boundary
   [ ] Song ends when song_time >= duration_sec → results screen

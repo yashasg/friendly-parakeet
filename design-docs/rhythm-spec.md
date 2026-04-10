@@ -523,7 +523,7 @@ struct DifficultyConfig {
            ↓
   ┌─ AUDIO ────────────────────────────────────────────────────┐
   │ audio_system                                     [MOD]     │
-  │   → plays song audio (SDL_mixer)                           │
+  │   → plays song audio (raylib audio)                          │
   │   → syncs song_time with audio playback position           │
   │   → plays SFX on grade events                              │
   └────────────────────────────────────────────────────────────┘
@@ -780,7 +780,7 @@ void hp_system(entt::registry& reg, float dt);
   │  as the source of truth. Game timer is slaved to audio.            │
   │                                                                     │
   │  Every frame:                                                       │
-  │    song_time = SDL_mixer_get_position()  // or equivalent          │
+  │    song_time = GetMusicTimePlayed()  // or equivalent             │
   │                                                                     │
   │  If audio position is unavailable (some backends don't support     │
   │  querying position), fall back to:                                 │
@@ -843,7 +843,7 @@ void hp_system(entt::registry& reg, float dt);
   PHASE 5 — AUDIO INTEGRATION
   ══════════════════════════════════════════════
   ┌────────────────────────────────────────────┐
-  │ • SDL_mixer song playback                  │
+  │ • raylib audio song playback               │
   │ • Audio position → song_time sync          │
   │ • Hex beat-pulse VFX synced to BPM         │
   │ • Grade-specific SFX (PERFECT chime, etc.) │

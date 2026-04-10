@@ -2,7 +2,7 @@
 
 #include <entt/entt.hpp>
 
-// Phase 0: Raw input (polls SDL events)
+// Phase 0: Raw input (polls raylib input)
 void input_system(entt::registry& reg, float raw_dt);
 
 // Phase 1: Input classification

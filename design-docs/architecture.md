@@ -1,5 +1,5 @@
 # SHAPESHIFTER — Technical Architecture Document
-## Data-Oriented Design · C++20 · SDL2 · EnTT v3.16.0
+## Data-Oriented Design · C++20 · raylib · EnTT v3.16.0
 
 > **Guiding principle**: Data lives in flat structs. Logic lives in free functions.
 > The `entt::registry` is the single source of truth. No globals. No virtuals.
@@ -22,7 +22,7 @@
 ## 1. Coordinate System & Constants
 
 ```
-Portrait mode. Logical resolution scales to device via SDL_RenderSetLogicalSize.
+Portrait mode. Logical resolution scales to device via raylib virtual resolution.
 
     ┌─────────────────────────────┐
     │ (0,0)              (720,0)  │
@@ -300,7 +300,7 @@ struct BurnoutState {
 ```cpp
 // components/input.h
 
-/// Raw touch state — populated by input_system from SDL_Event. Singleton.
+/// Raw touch state — populated by input_system from raylib input. Singleton.
 struct InputState {
     // Current frame touch data
     bool     touch_down;       // just pressed this frame
@@ -525,7 +525,7 @@ the same frame (unidirectional data flow).
  │
  │  ┌─ PHASE 1: INPUT CAPTURE ──────────────────────────────┐
  │  │                                                        │
- │  │  1. input_system          Read SDL_PollEvent queue.    │
+ │  │  1. input_system          Read raylib input queue.  │
  │  │                           Populate InputState +        │
  │  │                           ShapeButtonEvent singletons. │
  │  │                                                        │
@@ -620,7 +620,7 @@ the same frame (unidirectional data flow).
  │
  │  ┌─ PHASE 6: RENDER (always runs) ──────────────────────┐
  │  │                                                        │
- │  │ 15. render_system         SDL_RenderClear.             │
+ │  │ 15. render_system         BeginDrawing/ClearBackground.│
  │  │                           Draw background.             │
  │  │                           Draw obstacles (Layer::Game).│
  │  │                           Draw player (Layer::Game).   │
@@ -629,7 +629,7 @@ the same frame (unidirectional data flow).
  │  │                           Draw HUD (Layer::HUD):       │
  │  │                             score, speed, burnout bar, │
  │  │                             shape buttons.             │
- │  │                           SDL_RenderPresent.           │
+ │  │                           EndDrawing.                  │
  │  │                                                        │
  │  │ 16. audio_system          Play all SFX in AudioQueue.  │
  │  │                           Clear queue.                 │
@@ -956,26 +956,17 @@ Cap accumulator to prevent spiral of death after app-resume pauses.
 ```cpp
 // main.cpp — complete main loop pseudocode
 
-#include <SDL.h>
+#include <raylib.h>
 #include <entt/entt.hpp>
 #include "constants.h"
 #include "systems/all_systems.h"
 
 int main(int argc, char* argv[]) {
 
-    // ── SDL INIT ──────────────────────────────────────────────
-    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_EVENTS);
-    SDL_Window* window = SDL_CreateWindow(
-        "SHAPESHIFTER",
-        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-        constants::SCREEN_W, constants::SCREEN_H,
-        SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI
-    );
-    SDL_Renderer* renderer = SDL_CreateRenderer(
-        window, -1,
-        SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC
-    );
-    SDL_RenderSetLogicalSize(renderer, constants::SCREEN_W, constants::SCREEN_H);
+    // ── RAYLIB INIT ──────────────────────────────────────────────
+    InitWindow(constants::SCREEN_W, constants::SCREEN_H, "SHAPESHIFTER");
+    SetTargetFPS(60);
+    InitAudioDevice();
 
     // ── ENTT REGISTRY ─────────────────────────────────────────
     entt::registry reg;
@@ -1001,70 +992,27 @@ int main(int argc, char* argv[]) {
     constexpr float FIXED_DT     = 1.0f / 60.0f;   // 16.67ms
     constexpr float MAX_ACCUM    = 0.1f;            // cap = 6 frames
     float           accumulator  = 0.0f;
-    Uint64          prev_counter = SDL_GetPerformanceCounter();
-    Uint64          freq         = SDL_GetPerformanceFrequency();
-
-    bool running = true;
+    double          prev_time    = GetTime();
 
     // ── MAIN LOOP ─────────────────────────────────────────────
-    while (running) {
+    while (!WindowShouldClose()) {
 
         // ── DELTA TIME ────────────────────────────────────────
-        Uint64 now = SDL_GetPerformanceCounter();
-        float raw_dt = static_cast<float>(now - prev_counter)
-                     / static_cast<float>(freq);
-        prev_counter = now;
+        double now = GetTime();
+        float raw_dt = static_cast<float>(now - prev_time);
+        prev_time = now;
         accumulator += raw_dt;
         if (accumulator > MAX_ACCUM) {
             accumulator = MAX_ACCUM;   // prevent spiral of death
         }
 
-        // ── EVENT PUMP (once per frame, outside fixed loop) ──
-        auto& input = reg.ctx().get<InputState>();
-        input.clear_events();
-
-        SDL_Event event;
-        while (SDL_PollEvent(&event)) {
-            switch (event.type) {
-                case SDL_QUIT:
-                    running = false;
-                    break;
-                case SDL_FINGERDOWN:
-                    input.touch_down = true;
-                    input.touching   = true;
-                    input.start_x    = event.tfinger.x * constants::SCREEN_W;
-                    input.start_y    = event.tfinger.y * constants::SCREEN_H;
-                    input.curr_x     = input.start_x;
-                    input.curr_y     = input.start_y;
-                    input.duration   = 0.0f;
-                    break;
-                case SDL_FINGERUP:
-                    input.touch_up  = true;
-                    input.touching  = false;
-                    input.end_x     = event.tfinger.x * constants::SCREEN_W;
-                    input.end_y     = event.tfinger.y * constants::SCREEN_H;
-                    break;
-                case SDL_FINGERMOTION:
-                    input.curr_x    = event.tfinger.x * constants::SCREEN_W;
-                    input.curr_y    = event.tfinger.y * constants::SCREEN_H;
-                    break;
-                case SDL_APP_WILLENTERBACKGROUND:
-                    // Auto-pause on app background
-                    if (reg.ctx().get<GameState>().phase == GamePhase::Playing) {
-                        enter_paused(reg);
-                    }
-                    break;
-            }
-        }
-        if (input.touching) {
-            input.duration += raw_dt;
-        }
+        // ── INPUT (once per frame, outside fixed loop) ──
+        input_system(reg, raw_dt);
 
         // ── FIXED TIMESTEP LOOP ──────────────────────────────
         while (accumulator >= FIXED_DT) {
 
             //  Phase 1: Input Classification
-            //  (input_system already handled above via SDL_PollEvent)
             gesture_system(reg, FIXED_DT);
 
             //  Phase 2: Game State Gate
@@ -1096,16 +1044,15 @@ int main(int argc, char* argv[]) {
 
         // ── RENDER (once per frame, variable rate) ────────────
         float alpha = accumulator / FIXED_DT;   // interpolation factor
-        render_system(reg, renderer, alpha);
+        render_system(reg, alpha);
 
         // ── AUDIO (once per frame, after render) ──────────────
         audio_system(reg);
     }
 
     // ── SHUTDOWN ──────────────────────────────────────────────
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
-    SDL_Quit();
+    CloseAudioDevice();
+    CloseWindow();
     return 0;
 }
 ```
@@ -1116,7 +1063,7 @@ int main(int argc, char* argv[]) {
 ┌────────────────────────────────┬──────────┬──────────┐
 │ Operation                      │ Timestep │ Why?     │
 ├────────────────────────────────┼──────────┼──────────┤
-│ SDL_PollEvent                  │ Variable │ OS events│
+│ raylib input polling            │ Variable │ OS events│
 │ gesture_system                 │ Fixed    │ Timing   │
 │ game_state_system              │ Fixed    │ Logic    │
 │ player_action_system           │ Fixed    │ Logic    │
@@ -1227,11 +1174,11 @@ int main(int argc, char* argv[]) {
 ### 7.2 Critical Path: Touch → Gesture → Player Action
 
 ```
-    SDL EVENT QUEUE                 SINGLETONS                    PLAYER ENTITY
+    RAYLIB INPUT                        SINGLETONS                    PLAYER ENTITY
     ┌─────────────┐
-    │ SDL_FINGER   │
+    │ Touch        │
     │   DOWN       │
-    │  x=0.52      │    input_system (in SDL_PollEvent loop):
+    │  x=0.52      │    input_system (reads raylib input):
     │  y=0.91      │    convert normalized → logical coords
     │              │    x = 0.52 × 720 = 374
     └──────┬──────┘    y = 0.91 × 1280 = 1165
@@ -1254,7 +1201,7 @@ int main(int argc, char* argv[]) {
            │                              │
            │                              │
     ┌──────┴──────┐                       │
-    │ SDL_FINGER   │                       │
+    │ Touch        │                       │
     │   DOWN       │                       │
     │  x=0.20      │    input_system:      │
     │  y=0.40      │    y=512, < 1020      │
@@ -1263,7 +1210,7 @@ int main(int argc, char* argv[]) {
            │                              │
            ▼                              │
     ┌─────────────┐                       │
-    │ SDL_FINGER   │                       │
+    │ Touch        │                       │
     │   MOTION     │                       │
     │  x=0.05      │                       │
     │  y=0.42      │                       │
@@ -1271,7 +1218,7 @@ int main(int argc, char* argv[]) {
            │                              │
            ▼                              │
     ┌─────────────┐                       │
-    │ SDL_FINGER   │                       │
+    │ Touch        │                       │
     │   UP         │                       │
     │  x=0.03      │                       │
     │  y=0.43      │                       │
@@ -1513,8 +1460,8 @@ void scroll_system(entt::registry& reg, float dt) {
 │ lifetime_system       │ < 0.05 ms     │ ~55 entities              │
 │ particle_system       │ < 0.10 ms     │ ~50 particles             │
 │ cleanup_system        │ < 0.05 ms     │ scan + destroy            │
-│ render_system         │ < 1.50 ms     │ SDL draw calls (GPU-bound)│
-│ audio_system          │ < 0.05 ms     │ 0-3 Mix_PlayChannel calls │
+│ render_system         │ < 1.50 ms     │ raylib draw calls (GPU)   │
+│ audio_system          │ < 0.05 ms     │ 0-3 PlaySound calls       │
 ├───────────────────────┼───────────────┼───────────────────────────┤
 │ TOTAL                 │ < 2.2 ms      │ Well within 16.67ms budget│
 └───────────────────────┴───────────────┴───────────────────────────┘
@@ -1607,15 +1554,14 @@ collision window — but that day will not come for an endless runner.
 The render system draws in layer order to avoid sorting:
 
 ```cpp
-void render_system(entt::registry& reg, SDL_Renderer* renderer, float alpha) {
-    SDL_SetRenderDrawColor(renderer, 18, 18, 24, 255);
-    SDL_RenderClear(renderer);
+void render_system(entt::registry& reg, float alpha) {
+    ClearBackground({18, 18, 24, 255});
 
     auto phase = reg.ctx().get<GameState>().phase;
 
     // ── Layer 0: Background ───────────────────────────
-    draw_background(renderer);
-    draw_lane_lines(renderer);
+    draw_background();
+    draw_lane_lines();
 
     // ── Layer 1: Game entities ────────────────────────
     if (phase == GamePhase::Playing || phase == GamePhase::Paused
@@ -1625,7 +1571,7 @@ void render_system(entt::registry& reg, SDL_Renderer* renderer, float alpha) {
         {
             auto view = reg.view<ObstacleTag, Position, Obstacle, Color, DrawSize>();
             for (auto [e, pos, obs, col, sz] : view.each()) {
-                draw_obstacle(renderer, pos, obs, col, sz, reg, e);
+                draw_obstacle(pos, obs, col, sz, reg, e);
             }
         }
 
@@ -1637,7 +1583,7 @@ void render_system(entt::registry& reg, SDL_Renderer* renderer, float alpha) {
                 // Interpolate position for smooth sub-frame rendering
                 float render_x = pos.x;  // lane lerp already applied
                 float render_y = pos.y + vs.y_offset;
-                draw_player_shape(renderer, render_x, render_y,
+                draw_player_shape(render_x, render_y,
                                   shape, col, sz);
             }
         }
@@ -1651,7 +1597,7 @@ void render_system(entt::registry& reg, SDL_Renderer* renderer, float alpha) {
             float t = life.remaining / life.max_time;
             uint8_t a = static_cast<uint8_t>(col.a * t);
             float size = pd.size * t;
-            draw_particle(renderer, pos.x, pos.y, size, {col.r, col.g, col.b, a});
+            draw_particle(pos.x, pos.y, size, {col.r, col.g, col.b, a});
         }
     }
 
@@ -1660,7 +1606,7 @@ void render_system(entt::registry& reg, SDL_Renderer* renderer, float alpha) {
         auto view = reg.view<ScorePopup, Position, Lifetime>();
         for (auto [e, popup, pos, life] : view.each()) {
             float t = life.remaining / life.max_time;
-            draw_score_popup(renderer, pos.x, pos.y, popup.value, popup.tier, t);
+            draw_score_popup(pos.x, pos.y, popup.value, popup.tier, t);
         }
     }
 
@@ -1668,22 +1614,22 @@ void render_system(entt::registry& reg, SDL_Renderer* renderer, float alpha) {
     if (phase == GamePhase::Playing || phase == GamePhase::Paused) {
         auto& score  = reg.ctx().get<ScoreState>();
         auto& burnout = reg.ctx().get<BurnoutState>();
-        draw_hud_score(renderer, score);
-        draw_burnout_meter(renderer, burnout);
-        draw_shape_buttons(renderer, reg);
+        draw_hud_score(score);
+        draw_burnout_meter(burnout);
+        draw_shape_buttons(reg);
     }
 
     // ── Overlays ──────────────────────────────────────
     if (phase == GamePhase::Title) {
-        draw_title_screen(renderer, reg);
+        draw_title_screen(reg);
     } else if (phase == GamePhase::Paused) {
-        draw_pause_overlay(renderer);
+        draw_pause_overlay();
     } else if (phase == GamePhase::GameOver) {
         auto& gs = reg.ctx().get<GameState>();
-        draw_game_over(renderer, reg, gs.phase_timer);
+        draw_game_over(reg, gs.phase_timer);
     }
 
-    SDL_RenderPresent(renderer);
+    EndDrawing();
 }
 ```
 
@@ -1712,7 +1658,7 @@ app/
 │
 ├── systems/                     ← all system free functions
 │   ├── all_systems.h            ← convenience #include for all systems
-│   ├── input_system.cpp         ← SDL event → InputState
+│   ├── input_system.cpp         ← raylib input → InputState
 │   ├── gesture_system.cpp       ← InputState → GestureResult + ShapeButtonEvent
 │   ├── game_state_system.cpp    ← phase transitions
 │   ├── player_action_system.cpp ← gesture → player component writes
@@ -1726,8 +1672,8 @@ app/
 │   ├── lifetime_system.cpp      ← countdown, destroy
 │   ├── particle_system.cpp      ← advance, spawn, cull
 │   ├── cleanup_system.cpp       ← off-screen entity removal
-│   ├── render_system.cpp        ← SDL draw calls
-│   └── audio_system.cpp         ← AudioQueue → Mix_PlayChannel
+│   ├── render_system.cpp        ← raylib draw calls
+│   └── audio_system.cpp         ← AudioQueue → PlaySound
 │
 └── util/
     ├── math_util.h              ← remap(), lerp(), clamp()

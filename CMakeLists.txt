@@ -73,7 +73,7 @@ endforeach()
 
 # ── Game library (shared between exe and tests) ──────────────
 file(GLOB SYSTEM_SOURCES app/systems/*.cpp)
-# Exclude render_system.cpp from the library (requires SDL renderer)
+# Exclude render_system.cpp from the library (requires raylib renderer)
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "render_system\\.cpp$")
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "input_system\\.cpp$")
 
@@ -91,8 +91,8 @@ target_link_libraries(shapeshifter_lib PRIVATE shapeshifter_warnings)
 # ── Platform capability flags ────────────────────────────────
 # PLATFORM_DESKTOP is set for Windows / macOS / Linux builds.
 # Mobile (Android / iOS) gets no keyboard handling compiled in.
-# We use CMAKE_SYSTEM_NAME rather than SDL platform macros so that
-# app/components/input.h stays portable (no SDL.h dependency in headers).
+# We use CMAKE_SYSTEM_NAME rather than raylib platform macros so that
+# app/components/input.h stays portable (no raylib.h dependency in headers).
 if(CMAKE_SYSTEM_NAME MATCHES "Windows|Darwin|Linux")
     target_compile_definitions(shapeshifter_lib PUBLIC PLATFORM_DESKTOP)
 endif()

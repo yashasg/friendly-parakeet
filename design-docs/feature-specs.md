@@ -85,7 +85,7 @@ inputs resolve deterministically.
 - [ ] Buffered inputs are consumed in order: **shape change first, then movement**, so combo obstacles work.
 - [ ] If two swipes or two taps arrive in the buffer, only the **latest** of each type is kept.
 - [ ] Multi-touch: at most **2 simultaneous touches** are tracked (one per zone). Third+ fingers are ignored.
-- [ ] On SDL2 `SDL_FINGERDOWN/MOTION/UP` events, finger positions are normalised from `[0,1]` to screen-pixel coords before processing.
+- [ ] On raylib touch events, finger positions are converted from screen coords to logical coords before processing.
 
 ## Technical Requirements
 
@@ -100,7 +100,7 @@ enum class InputZone : uint8_t {
 
 // ── Raw touch event snapshot, one per active finger ──
 struct TouchEvent {
-    uint64_t finger_id;          // SDL finger ID
+    uint64_t finger_id;          // touch finger ID
     InputZone zone;              // resolved zone at touch-down
     float start_x, start_y;     // normalised → pixel, at touch-down
     float current_x, current_y; // latest position
@@ -157,7 +157,7 @@ struct InputState {
 ### Systems (function signatures)
 
 ```cpp
-// Reads SDL_Event queue, populates / updates InputState::touches[].
+// Reads raylib input, populates / updates InputState::touches[].
 // Classifies each touch into Swipe or Button zone.
 // Called first in the input phase.
 void input_detection_system(entt::registry& reg, float dt);
@@ -172,7 +172,7 @@ void gesture_recognition_system(entt::registry& reg, float dt);
 ### Input → Output Flow
 
 ```
-  SDL_FINGERDOWN/MOTION/UP
+  raylib touch events (GetTouchPointCount, GetTouchPosition)
          │
          ▼
   ┌──────────────────────┐
@@ -193,7 +193,7 @@ void gesture_recognition_system(entt::registry& reg, float dt);
 
 ### Dependencies
 
-- **SDL2** — `SDL_Event`, `SDL_FINGERDOWN`, `SDL_FINGERMOTION`, `SDL_FINGERUP`
+- **raylib** — touch input via `GetTouchPointCount()`, `GetTouchPosition()`, mouse via `IsMouseButtonPressed/Released()`
 - **No dependency on other feature specs** — Input is the lowest-level system.
 
 ### Edge Cases
@@ -736,7 +736,7 @@ void obstacle_cleanup_system(entt::registry& reg, float dt);
   │                     FRAME TICK (dt)                         │
   │                                                             │
   │  PHASE 1 — INPUT                                           │
-  │    1. input_detection_system       (SDL events → touches)  │
+  │    1. input_detection_system       (raylib input → touches)  │
   │    2. gesture_recognition_system   (touches → actions)     │
   │                                                             │
   │  PHASE 2 — DIFFICULTY & SPAWNING                           │

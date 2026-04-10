@@ -240,7 +240,7 @@ TEST_CASE("gesture_system: left-click on Circle button works on desktop", "[gest
         - 2 * constants::BUTTON_SPACING) / 2.0f;
     float btn0_center = btn_area_x_start + constants::BUTTON_W / 2.0f;
 
-    // Simulate SDL_MOUSEBUTTONUP mapped to touch_up (no key pressed)
+    // Simulate mouse button release mapped to touch_up (no key pressed)
     input.touch_up = true;
     input.start_y  = constants::BUTTON_Y + constants::BUTTON_H / 2.0f;
     input.end_x    = btn0_center;
