@@ -1,4 +1,4 @@
-name: CI (Windows)
+name: CI (macOS)
 
 on:
   push:
@@ -8,18 +8,14 @@ on:
 
 jobs:
   build:
-    name: Build (Windows)
-    runs-on: windows-latest
+    name: Build (macOS)
+    runs-on: macos-latest
     permissions:
       contents: read
       checks: write
       pull-requests: write
     env:
       VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
-      # Build vcpkg deps as static libs with dynamic CRT so the shipped
-      # .exe has no external DLL dependencies.
-      VCPKG_DEFAULT_TRIPLET: x64-windows-static-md
-      VCPKG_DEFAULT_HOST_TRIPLET: x64-windows-static-md
     steps:
       - uses: actions/checkout@v6
 
@@ -36,7 +32,6 @@ jobs:
           compiler: llvm
           cmake: true
           vcpkg: true
-          ninja: true
 
       - name: Export VCPKG_ROOT
         run: echo "VCPKG_ROOT=$HOME/vcpkg" >> "$GITHUB_ENV"
@@ -46,32 +41,32 @@ jobs:
         uses: actions/cache@v5
         with:
           path: build
-          key: cmake-windows-clang-static-md-${{ hashFiles('CMakeLists.txt', 'vcpkg.json') }}
+          key: cmake-macos-clang-${{ hashFiles('CMakeLists.txt', 'vcpkg.json') }}
           restore-keys: |
-            cmake-windows-clang-static-md-
+            cmake-macos-clang-
 
       - name: Build
-        run: ./build.sh
-        shell: bash
+        run: |
+          chmod +x build.sh
+          ./build.sh
 
       - name: Run tests
         if: always()
         id: run-tests
-        run: ./build/shapeshifter_tests.exe --benchmark-samples 1
-        shell: bash
+        run: ./build/shapeshifter_tests --benchmark-samples 1
 
       - name: Upload artifact
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: shapeshifter-windows
-          path: build/shapeshifter.exe
+          name: shapeshifter-macos
+          path: build/shapeshifter
 
       - name: Upload CTRF report
         if: always() && steps.run-tests.outcome != 'skipped'
         uses: actions/upload-artifact@v4
         with:
-          name: ctrf-report-windows
+          name: ctrf-report-macos
           path: ctrf-report.json
 
       - name: Report test results

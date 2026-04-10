@@ -32,8 +32,25 @@ configure_file(
 # Catch2: test framework (vcpkg on Windows/macOS, system package on Linux).
 
 find_package(EnTT CONFIG REQUIRED)
-find_package(raylib CONFIG REQUIRED)
-find_package(Catch2 3 CONFIG REQUIRED)
+
+if(NOT EMSCRIPTEN)
+    # Native builds: raylib and Catch2 from vcpkg
+    find_package(raylib CONFIG REQUIRED)
+    find_package(Catch2 3 CONFIG REQUIRED)
+else()
+    # Emscripten: build raylib from source (no vcpkg triplet available).
+    # Mirrors raylib's own build_webassembly.yml.
+    include(FetchContent)
+    FetchContent_Declare(raylib
+        GIT_REPOSITORY https://github.com/raysan5/raylib.git
+        GIT_TAG        5.5
+        GIT_SHALLOW    ON
+    )
+    set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+    set(CUSTOMIZE_BUILD ON CACHE BOOL "" FORCE)
+    set(PLATFORM Web CACHE STRING "" FORCE)
+    FetchContent_MakeAvailable(raylib)
+endif()
 
 # ── Warnings-as-errors (project targets only) ────────────────
 # Applied via an INTERFACE target so it never leaks into third-party code.
@@ -47,7 +64,11 @@ target_compile_options(shapeshifter_warnings INTERFACE
 
 # Mark third-party include directories as SYSTEM so warnings from their
 # headers are suppressed and cannot be promoted to errors by -Werror / /WX.
-foreach(_dep EnTT::EnTT raylib Catch2::Catch2 Catch2::Catch2WithMain)
+set(_system_deps EnTT::EnTT raylib)
+if(NOT EMSCRIPTEN)
+    list(APPEND _system_deps Catch2::Catch2 Catch2::Catch2WithMain)
+endif()
+foreach(_dep ${_system_deps})
     if(TARGET ${_dep})
         # Resolve alias targets — set_target_properties doesn't work on aliases
         get_target_property(_real ${_dep} ALIASED_TARGET)
@@ -115,8 +136,50 @@ if(APPLE)
     )
 elseif(WIN32)
     target_link_libraries(shapeshifter PRIVATE opengl32 gdi32 winmm)
-elseif(UNIX)
+elseif(UNIX AND NOT EMSCRIPTEN)
     target_link_libraries(shapeshifter PRIVATE GL X11 Xrandr m pthread dl)
+endif()
+
+# ── Emscripten linker flags ──────────────────────────────────
+if(EMSCRIPTEN)
+    target_compile_definitions(shapeshifter PRIVATE PLATFORM_WEB)
+
+    # Generate a minimal HTML shell at configure time — no static file to maintain.
+    set(_shell_html "${CMAKE_BINARY_DIR}/shell.html")
+    file(WRITE "${_shell_html}" [=[<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <title>SHAPESHIFTER</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{background:#0f0f19;display:flex;justify-content:center;align-items:center;height:100vh;overflow:hidden;font-family:monospace;color:#ccc}
+    #canvas{display:block;border:1px solid #333}
+    #status{position:absolute;bottom:16px;text-align:center;width:100%;font-size:14px}
+  </style>
+</head>
+<body>
+  <canvas id="canvas" oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
+  <div id="status">Loading…</div>
+  <script>
+    var Module={
+      canvas:document.getElementById('canvas'),
+      setStatus:function(t){document.getElementById('status').innerText=t},
+      monitorRunDependencies:function(left){if(left===0)document.getElementById('status').style.display='none'}
+    };
+  </script>
+  {{{ SCRIPT }}}
+</body>
+</html>]=])
+
+    target_link_options(shapeshifter PRIVATE
+        -sUSE_GLFW=3
+        -sALLOW_MEMORY_GROWTH=1
+        --shell-file ${_shell_html}
+        --preload-file ${CMAKE_SOURCE_DIR}/assets@/assets
+    )
+    set_target_properties(shapeshifter PROPERTIES SUFFIX ".html")
 endif()
 
 # Copy font assets next to the executable so text_init() can find them
@@ -132,20 +195,22 @@ if(FONT_FILES)
     )
 endif()
 
-# ── Tests + Benchmarks ───────────────────────────────────────
-enable_testing()
+# ── Tests + Benchmarks (native only) ─────────────────────────
+if(NOT EMSCRIPTEN)
+    enable_testing()
 
-file(GLOB TEST_SOURCES tests/*.cpp benchmarks/*.cpp)
-add_executable(shapeshifter_tests ${TEST_SOURCES})
-target_include_directories(shapeshifter_tests PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/app
-)
-target_link_libraries(shapeshifter_tests PRIVATE
-    shapeshifter_lib
-    Catch2::Catch2WithMain
-    shapeshifter_warnings
-)
+    file(GLOB TEST_SOURCES tests/*.cpp benchmarks/*.cpp)
+    add_executable(shapeshifter_tests ${TEST_SOURCES})
+    target_include_directories(shapeshifter_tests PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/app
+    )
+    target_link_libraries(shapeshifter_tests PRIVATE
+        shapeshifter_lib
+        Catch2::Catch2WithMain
+        shapeshifter_warnings
+    )
 
-include(CTest)
-include(Catch)
-catch_discover_tests(shapeshifter_tests)
+    include(CTest)
+    include(Catch)
+    catch_discover_tests(shapeshifter_tests)
+endif()
