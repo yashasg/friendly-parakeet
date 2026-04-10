@@ -44,22 +44,23 @@ endif()
 # ── Warnings-as-errors (project targets only) ────────────────
 # Applied via an INTERFACE target so it never leaks into third-party code.
 # Third-party include directories are marked SYSTEM so that headers we don't
-# own can never produce errors under -Werror / /WX.
+# own can never produce errors under -Werror.
 add_library(shapeshifter_warnings INTERFACE)
 target_compile_options(shapeshifter_warnings INTERFACE
     $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wall -Wextra -Werror>
-    $<$<CXX_COMPILER_ID:MSVC>:/W4 /WX>
 )
 
-# Suppress MSVC CRT "insecure" deprecations (localtime, fopen, etc.) when
-# Clang targets the MSVC ABI on Windows.  This keeps source code portable
-# (no #ifdef _WIN32 guards needed for standard C functions).
+# On Windows, Clang links against the MSVC C Runtime (CRT).  The CRT headers
+# mark standard C functions (localtime, fopen, sprintf, …) as deprecated in
+# favour of Microsoft-specific _s variants.  Under -Werror these deprecation
+# attributes turn into build failures, so we define _CRT_SECURE_NO_WARNINGS
+# to keep standard, portable C code compiling cleanly.
 if(WIN32)
     target_compile_definitions(shapeshifter_warnings INTERFACE _CRT_SECURE_NO_WARNINGS)
 endif()
 
 # Mark third-party include directories as SYSTEM so warnings from their
-# headers are suppressed and cannot be promoted to errors by -Werror / /WX.
+# headers are suppressed and cannot be promoted to errors by -Werror.
 set(_system_deps EnTT::EnTT raylib nlohmann_json::nlohmann_json)
 if(NOT EMSCRIPTEN)
     list(APPEND _system_deps Catch2::Catch2 Catch2::Catch2WithMain)
