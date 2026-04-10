@@ -1,8 +1,8 @@
 {
   "lspServers": {
     "clangd": {
-      "command": "/Users/yashasgujjar/Library/Application Support/Code/User/globalStorage/llvm-vs-code-extensions.vscode-clangd/install/22.1.0/clangd_22.1.0/bin/clangd",
-      "args": ["--compile-commands-dir=/Users/yashasgujjar/dev/bullethell/build"],
+      "command": "clangd-20",
+      "args": ["--compile-commands-dir=build", "--background-index", "--clang-tidy", "--header-insertion=never"],
       "fileExtensions": {
         ".cpp": "cpp",
         ".hpp": "cpp",
