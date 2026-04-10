@@ -57,7 +57,7 @@ jobs:
       - name: Run tests
         if: always()
         id: run-tests
-        run: ./build/shapeshifter_tests.exe --benchmark-samples 1
+        run: ./build/shapeshifter_tests.exe "~[bench]"
         shell: bash
 
       - name: Upload artifact
