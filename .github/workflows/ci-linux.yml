@@ -15,7 +15,7 @@ jobs:
       checks: write
       pull-requests: write
     env:
-      VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+      VCPKG_BINARY_SOURCES: "clear;default,readwrite"
     steps:
       - uses: actions/checkout@v6
 

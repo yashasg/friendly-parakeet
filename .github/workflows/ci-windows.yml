@@ -15,7 +15,7 @@ jobs:
       checks: write
       pull-requests: write
     env:
-      VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+      VCPKG_BINARY_SOURCES: "clear;default,readwrite"
       # Build vcpkg deps as static libs with dynamic CRT so the shipped
       # .exe has no external DLL dependencies.
       VCPKG_DEFAULT_TRIPLET: x64-windows-static-md
