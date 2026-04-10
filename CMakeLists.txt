@@ -50,15 +50,6 @@ target_compile_options(shapeshifter_warnings INTERFACE
     $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wall -Wextra -Werror>
 )
 
-# On Windows, Clang links against the MSVC C Runtime (CRT).  The CRT headers
-# mark standard C functions (localtime, fopen, sprintf, …) as deprecated in
-# favour of Microsoft-specific _s variants.  Under -Werror these deprecation
-# attributes turn into build failures, so we define _CRT_SECURE_NO_WARNINGS
-# to keep standard, portable C code compiling cleanly.
-if(WIN32)
-    target_compile_definitions(shapeshifter_warnings INTERFACE _CRT_SECURE_NO_WARNINGS)
-endif()
-
 # Mark third-party include directories as SYSTEM so warnings from their
 # headers are suppressed and cannot be promoted to errors by -Werror.
 set(_system_deps EnTT::EnTT raylib nlohmann_json::nlohmann_json)
