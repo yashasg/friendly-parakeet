@@ -264,17 +264,16 @@ async function callLLM(sys, user, maxTok) {
   messages.push({ role: 'user', content: user });
 
   var body = {
-    model: 'claude-opus-4.6',
+    model: 'gpt-4o',
     max_tokens: maxTok,
     messages: messages
   };
 
-  var r = await fetch('https://api.githubcopilot.com/chat/completions', {
+  var r = await fetch('https://models.inference.ai.azure.com/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + token,
-      'Copilot-Integration-Id': 'vscode-chat'
+      'Authorization': 'Bearer ' + token
     },
     body: JSON.stringify(body)
   });
