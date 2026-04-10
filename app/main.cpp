@@ -11,6 +11,7 @@
 #include "components/audio.h"
 #include "systems/all_systems.h"
 #include "text_renderer.h"
+#include "file_logger.h"
 
 #include <string>
 #include <cstdio>
@@ -70,6 +71,9 @@ static void update_draw_frame() {
 
 int main(int /*argc*/, char* /*argv*/[]) {
 
+    // ── FILE LOGGING (must be before InitWindow) ──────────────
+    file_logger_init("shapeshifter.log");
+
     // ── RAYLIB INIT ──────────────────────────────────────────
     std::string window_title = std::string("SHAPESHIFTER v") + SHAPESHIFTER_VERSION;
     InitWindow(
@@ -126,14 +130,12 @@ int main(int /*argc*/, char* /*argv*/[]) {
     reg.ctx().emplace<DifficultyConfig>();
     reg.ctx().emplace<AudioQueue>();
 
-    // ── TIMING ───────────────────────────────────────────────
-    float accumulator = 0.0f;
-
     // ── MAIN LOOP ────────────────────────────────────────────
 #ifdef __EMSCRIPTEN__
     g_loop = { &reg, 0.0f };
     emscripten_set_main_loop(update_draw_frame, 0, 1);
 #else
+    float accumulator = 0.0f;
     while (!WindowShouldClose()) {
 
         // Delta time
@@ -179,5 +181,6 @@ int main(int /*argc*/, char* /*argv*/[]) {
     // ── SHUTDOWN ─────────────────────────────────────────────
     text_shutdown(reg.ctx().get<TextContext>());
     CloseWindow();
+    file_logger_shutdown();
     return 0;
 }

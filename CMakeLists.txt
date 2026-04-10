@@ -114,6 +114,7 @@ add_executable(shapeshifter
     app/systems/render_system.cpp
     app/systems/input_system.cpp
     app/text_renderer.cpp
+    app/file_logger.cpp
 )
 target_include_directories(shapeshifter PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/app
@@ -200,15 +201,32 @@ if(NOT EMSCRIPTEN)
     enable_testing()
 
     file(GLOB TEST_SOURCES tests/*.cpp benchmarks/*.cpp)
-    add_executable(shapeshifter_tests ${TEST_SOURCES})
+    add_executable(shapeshifter_tests
+        ${TEST_SOURCES}
+        app/file_logger.cpp
+    )
     target_include_directories(shapeshifter_tests PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/app
     )
     target_link_libraries(shapeshifter_tests PRIVATE
         shapeshifter_lib
+        raylib
         Catch2::Catch2WithMain
         shapeshifter_warnings
     )
+    if(APPLE)
+        target_link_libraries(shapeshifter_tests PRIVATE
+            "-framework Cocoa"
+            "-framework OpenGL"
+            "-framework IOKit"
+            "-framework CoreFoundation"
+            "-framework CoreVideo"
+        )
+    elseif(WIN32)
+        target_link_libraries(shapeshifter_tests PRIVATE opengl32 gdi32 winmm)
+    elseif(UNIX)
+        target_link_libraries(shapeshifter_tests PRIVATE GL X11 Xrandr m pthread dl)
+    endif()
 
     include(CTest)
     include(Catch)
