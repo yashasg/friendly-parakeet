@@ -54,7 +54,7 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release \
             "-DCMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" \
             "-DVCPKG_OVERLAY_PORTS=$(pwd)/vcpkg-overlay" \
-            -DVCPKG_CHAINLOAD_TOOLCHAIN_FILE="$(which emcc | xargs dirname)/../upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
+            "-DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=${EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
           cmake --build build-web
 
       - name: Upload artifact
