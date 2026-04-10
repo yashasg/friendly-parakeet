@@ -50,6 +50,9 @@ jobs:
           chmod +x build.sh
           ./build.sh
 
+      - name: Ad-hoc code sign
+        run: codesign --force --sign - build/shapeshifter
+
       - name: Run tests
         if: always()
         id: run-tests
