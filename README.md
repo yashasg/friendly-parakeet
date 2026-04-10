@@ -2,7 +2,7 @@
 
 An endless runner where you shift between geometric shapes to pass through obstacles. The core twist: a **Burnout scoring system** rewards waiting until the last possible moment — the longer you delay, the higher your multiplier, but wait too long and you crash.
 
-Built with **C++20**, **SDL2**, and **EnTT** using a strict Data-Oriented Design architecture.
+Built with **C++20**, **raylib**, and **EnTT** using a strict Data-Oriented Design architecture.
 
 ## Gameplay
 
@@ -20,7 +20,7 @@ Built with **C++20**, **SDL2**, and **EnTT** using a strict Data-Oriented Design
 - CMake 3.20+
 - [vcpkg](https://vcpkg.io) — **required** for all builds
 
-Dependencies (EnTT, SDL2, Catch2) are resolved exclusively through vcpkg.
+Dependencies (EnTT, raylib, Catch2) are resolved through vcpkg.
 
 ### Setup
 
@@ -63,8 +63,8 @@ The codebase follows **Data-Oriented Design** principles from Richard Fabian's *
 Each frame runs a fixed-timestep loop executing systems in order:
 
 ```
-input_system          → polls SDL events into InputState
-gesture_system        → classifies touch input into gestures
+input_system          → polls raylib input into InputState
+gesture_system        → classifies touch/mouse input into gestures
 game_state_system     → manages phase transitions (Title/Playing/Paused/GameOver)
 player_action_system  → applies shape changes, lane switches, jumps, slides
 player_movement_system → interpolates positions and animations
@@ -72,12 +72,12 @@ difficulty_system     → ramps speed, spawn rate, burnout window
 obstacle_spawn_system → creates obstacle entities
 scroll_system         → moves entities by velocity
 burnout_system        → tracks nearest threat, calculates burnout zone
-collision_system      → checks obstacle clearance or crash
+collision_system      → checks obstacle clearance via per-archetype views
 scoring_system        → awards points with burnout multiplier
 lifetime_system       → destroys expired entities
-particle_system       → updates particle size and gravity
+particle_system       → applies gravity to particles
 cleanup_system        → destroys off-screen obstacles
-render_system         → draws everything via SDL2
+render_system         → draws everything via raylib
 audio_system          → plays queued SFX (stub)
 ```
 
@@ -85,19 +85,19 @@ audio_system          → plays queued SFX (stub)
 
 ```
 app/
-├── main.cpp              # SDL init + game loop (calls systems)
+├── main.cpp              # raylib init + game loop (calls systems)
 ├── constants.h           # All tuning values
 ├── components/           # 13 POD component structs
 │   ├── transform.h       #   Position, Velocity
 │   ├── player.h          #   PlayerTag, PlayerShape, Lane, VerticalState
 │   ├── obstacle.h        #   ObstacleTag, Obstacle, ScoredTag
 │   ├── obstacle_data.h   #   RequiredShape, BlockedLanes, RequiredLane, RequiredVAction
-│   ├── input.h           #   InputState, GestureResult, ShapeButtonEvent
+│   ├── input.h           #   InputState, SwipeGesture, GestureResult, ShapeButtonEvent
 │   ├── game_state.h      #   GameState, GamePhase
 │   ├── scoring.h         #   ScoreState, ScorePopup
 │   ├── burnout.h         #   BurnoutState, BurnoutZone
 │   ├── difficulty.h      #   DifficultyConfig
-│   ├── rendering.h       #   Color, DrawSize, DrawLayer
+│   ├── rendering.h       #   DrawColor, DrawSize, DrawLayer
 │   ├── lifetime.h        #   Lifetime
 │   ├── particle.h        #   ParticleTag, ParticleData
 │   └── audio.h           #   AudioQueue, SFX
@@ -130,7 +130,7 @@ Micro-benchmarks measure per-system and full-frame performance:
 
 | Library | Version | Purpose |
 |---------|---------|---------|
-| [SDL2](https://www.libsdl.org/) | 2.30+ | Windowing, rendering, input |
+| [raylib](https://www.raylib.com/) | 5.5+ | Windowing, rendering, input |
 | [EnTT](https://github.com/skypjack/entt) | 3.14+ | Entity Component System |
 | [Catch2](https://github.com/catchorg/Catch2) | 3.7+ | Testing and benchmarks |
 
