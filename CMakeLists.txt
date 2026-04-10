@@ -51,6 +51,13 @@ target_compile_options(shapeshifter_warnings INTERFACE
     $<$<CXX_COMPILER_ID:MSVC>:/W4 /WX>
 )
 
+# Suppress MSVC CRT "insecure" deprecations (localtime, fopen, etc.) when
+# Clang targets the MSVC ABI on Windows.  This keeps source code portable
+# (no #ifdef _WIN32 guards needed for standard C functions).
+if(WIN32)
+    target_compile_definitions(shapeshifter_warnings INTERFACE _CRT_SECURE_NO_WARNINGS)
+endif()
+
 # Mark third-party include directories as SYSTEM so warnings from their
 # headers are suppressed and cannot be promoted to errors by -Werror / /WX.
 set(_system_deps EnTT::EnTT raylib nlohmann_json::nlohmann_json)
