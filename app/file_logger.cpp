@@ -4,6 +4,17 @@
 #include <cstdarg>
 #include <ctime>
 
+// Portable safe localtime — avoids MSVC's -Wdeprecated-declarations for std::localtime.
+static std::tm safe_localtime(std::time_t t) {
+    std::tm result{};
+#ifdef _WIN32
+    localtime_s(&result, &t);
+#else
+    localtime_r(&t, &result);
+#endif
+    return result;
+}
+
 static FILE* s_log_file = nullptr;
 
 static const char* log_level_str(int level) {
@@ -23,9 +34,9 @@ static void file_log_callback(int level, const char* text, va_list args) {
 
     // Timestamp
     std::time_t now = std::time(nullptr);
-    std::tm* tm = std::localtime(&now);
+    std::tm tm = safe_localtime(now);
     char ts[32];
-    std::strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S", tm);
+    std::strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S", &tm);
 
     const char* tag = log_level_str(level);
 
@@ -47,13 +58,17 @@ static void file_log_callback(int level, const char* text, va_list args) {
 }
 
 void file_logger_init(const char* log_path) {
+#ifdef _WIN32
+    fopen_s(&s_log_file, log_path, "a");
+#else
     s_log_file = std::fopen(log_path, "a");
+#endif
     if (s_log_file) {
         // Session separator
         std::time_t now = std::time(nullptr);
-        std::tm* tm = std::localtime(&now);
+        std::tm tm = safe_localtime(now);
         char ts[32];
-        std::strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S", tm);
+        std::strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S", &tm);
         std::fprintf(s_log_file, "\n══════ Session started %s ══════\n", ts);
         std::fflush(s_log_file);
     }
