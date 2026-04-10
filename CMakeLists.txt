@@ -36,6 +36,33 @@ find_package(EnTT CONFIG REQUIRED)
 find_package(SDL2 CONFIG REQUIRED)
 find_package(Catch2 3 CONFIG REQUIRED)
 
+# SDL2_ttf — required for text rendering.
+# System package on Linux (libsdl2-ttf-dev), vcpkg on Windows.
+find_package(PkgConfig QUIET)
+if(PkgConfig_FOUND)
+    pkg_check_modules(SDL2_TTF IMPORTED_TARGET SDL2_ttf)
+endif()
+if(NOT SDL2_TTF_FOUND)
+    find_package(SDL2_ttf CONFIG QUIET)
+endif()
+# Create a unified target alias if found via pkg-config
+if(SDL2_TTF_FOUND AND NOT TARGET SDL2_ttf::SDL2_ttf)
+    if(TARGET PkgConfig::SDL2_TTF)
+        add_library(SDL2_ttf::SDL2_ttf ALIAS PkgConfig::SDL2_TTF)
+    endif()
+endif()
+# vcpkg static triplets create SDL2_ttf::SDL2_ttf-static instead of
+# SDL2_ttf::SDL2_ttf.  Alias the static target so downstream code can
+# always link against SDL2_ttf::SDL2_ttf.
+if(TARGET SDL2_ttf::SDL2_ttf-static AND NOT TARGET SDL2_ttf::SDL2_ttf)
+    add_library(SDL2_ttf::SDL2_ttf ALIAS SDL2_ttf::SDL2_ttf-static)
+endif()
+# find_package sets SDL2_ttf_FOUND (mixed-case); pkg_check_modules sets
+# SDL2_TTF_FOUND (upper-case).  Accept either.
+if(NOT SDL2_TTF_FOUND AND NOT SDL2_ttf_FOUND AND NOT TARGET SDL2_ttf::SDL2_ttf)
+    message(FATAL_ERROR "SDL2_ttf is required. Install libsdl2-ttf-dev (apt) or add sdl2-ttf via vcpkg.")
+endif()
+
 # Normalize SDL2 target names (vcpkg may expose SDL2::SDL2 without SDL2::SDL2-static)
 if(TARGET SDL2::SDL2 AND NOT TARGET SDL2::SDL2-static)
     add_library(SDL2::SDL2-static ALIAS SDL2::SDL2)
@@ -58,7 +85,7 @@ target_compile_options(shapeshifter_warnings INTERFACE
 
 # Mark third-party include directories as SYSTEM so warnings from their
 # headers are suppressed and cannot be promoted to errors by -Werror / /WX.
-foreach(_dep EnTT::EnTT SDL2::SDL2-static Catch2::Catch2 Catch2::Catch2WithMain)
+foreach(_dep EnTT::EnTT SDL2::SDL2-static Catch2::Catch2 Catch2::Catch2WithMain SDL2_ttf::SDL2_ttf SDL2_ttf::SDL2_ttf-static PkgConfig::SDL2_TTF)
     if(TARGET ${_dep})
         # Resolve alias targets — set_target_properties doesn't work on aliases
         get_target_property(_real ${_dep} ALIASED_TARGET)
@@ -100,7 +127,12 @@ if(CMAKE_SYSTEM_NAME MATCHES "Windows|Darwin|Linux")
 endif()
 
 # ── Main executable ──────────────────────────────────────────
-add_executable(shapeshifter app/main.cpp app/systems/render_system.cpp app/systems/input_system.cpp)
+add_executable(shapeshifter
+    app/main.cpp
+    app/systems/render_system.cpp
+    app/systems/input_system.cpp
+    app/text_renderer.cpp
+)
 target_include_directories(shapeshifter PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/app
 )
@@ -109,6 +141,20 @@ target_link_libraries(shapeshifter PRIVATE
     SDL2::SDL2main
     shapeshifter_warnings
 )
+target_link_libraries(shapeshifter PRIVATE SDL2_ttf::SDL2_ttf)
+
+# Copy font assets next to the executable so text_init() can find them
+file(GLOB FONT_FILES ${CMAKE_SOURCE_DIR}/assets/fonts/*.ttf)
+if(FONT_FILES)
+    add_custom_command(TARGET shapeshifter POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+            "$<TARGET_FILE_DIR:shapeshifter>/assets/fonts"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${FONT_FILES}
+            "$<TARGET_FILE_DIR:shapeshifter>/assets/fonts/"
+        COMMENT "Copying font assets"
+    )
+endif()
 
 # ── Tests + Benchmarks ───────────────────────────────────────
 enable_testing()

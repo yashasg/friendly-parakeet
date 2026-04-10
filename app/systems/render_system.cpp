@@ -12,30 +12,9 @@
 #include "../components/particle.h"
 #include "../components/audio.h"
 #include "../constants.h"
+#include "../text_renderer.h"
 #include <SDL.h>
 #include <cmath>
-#include <cstdio>
-#include <cstring>
-
-// Simple number rendering using SDL rects (no font dependency)
-static void draw_number(SDL_Renderer* r, int number, float x, float y, float char_w, float char_h) {
-    char buf[16];
-    std::snprintf(buf, sizeof(buf), "%d", number);
-    int len = static_cast<int>(std::strlen(buf));
-    float total_w = len * (char_w + 2.0f);
-    float start_x = x - total_w / 2.0f;
-
-    for (int i = 0; i < len; ++i) {
-        // Draw a simple filled rect per digit (placeholder for real font)
-        SDL_FRect dr = {
-            start_x + i * (char_w + 2.0f),
-            y,
-            char_w,
-            char_h
-        };
-        SDL_RenderFillRectF(r, &dr);
-    }
-}
 
 static void draw_shape(SDL_Renderer* r, Shape shape, float cx, float cy, float size) {
     switch (shape) {
@@ -80,6 +59,7 @@ static void draw_shape(SDL_Renderer* r, Shape shape, float cx, float cy, float s
 
 void render_system(entt::registry& reg, SDL_Renderer* renderer, float /*alpha*/) {
     auto& gs = reg.ctx().get<GameState>();
+    auto& text_ctx = reg.ctx().get<TextContext>();
 
     // Clear
     SDL_SetRenderDrawColor(renderer, 15, 15, 25, 255);
@@ -102,12 +82,17 @@ void render_system(entt::registry& reg, SDL_Renderer* renderer, float /*alpha*/)
         SDL_SetRenderDrawColor(renderer, 100, 255, 100, 255);
         draw_shape(renderer, Shape::Triangle, 440, 400, 80);
 
-        // "TAP TO START" indicator — pulsing rect
+        // Title text
+        text_draw(text_ctx, renderer, "SHAPESHIFTER",
+            360, 500, FontSize::Large, 80, 180, 255, 255,
+            TextAlign::Center);
+
+        // "TAP TO START" indicator — pulsing text
         float pulse = (std::sin(gs.phase_timer * 3.0f) + 1.0f) / 2.0f;
         uint8_t alpha = static_cast<uint8_t>(100 + pulse * 155);
-        SDL_SetRenderDrawColor(renderer, 200, 200, 200, alpha);
-        SDL_FRect tap_rect = { 260, 600, 200, 40 };
-        SDL_RenderFillRectF(renderer, &tap_rect);
+        text_draw(text_ctx, renderer, "TAP TO START",
+            360, 600, FontSize::Medium, 200, 200, 200, alpha,
+            TextAlign::Center);
 
         SDL_RenderPresent(renderer);
         return;
@@ -220,10 +205,13 @@ void render_system(entt::registry& reg, SDL_Renderer* renderer, float /*alpha*/)
         auto view = reg.view<ScorePopup, Position, Color, Lifetime>();
         for (auto [entity, popup, pos, col, life] : view.each()) {
             float alpha_ratio = life.remaining / life.max_time;
-            SDL_SetRenderDrawColor(renderer, col.r, col.g, col.b,
-                static_cast<uint8_t>(alpha_ratio * 255));
-            float scale = 1.0f + popup.tier * 0.3f;
-            draw_number(renderer, popup.value, pos.x, pos.y, 8 * scale, 14 * scale);
+            auto popup_alpha = static_cast<uint8_t>(alpha_ratio * 255);
+            float popup_scale = 1.5f + popup.tier * 0.5f;
+            // Score popups use small font for normal, medium for big combos
+            FontSize popup_font = (popup_scale > 2.5f) ? FontSize::Medium : FontSize::Small;
+            text_draw_number(text_ctx, renderer, popup.value,
+                pos.x, pos.y, popup_font,
+                col.r, col.g, col.b, popup_alpha);
         }
     }
 
@@ -251,12 +239,12 @@ void render_system(entt::registry& reg, SDL_Renderer* renderer, float /*alpha*/)
         auto& config  = reg.ctx().get<DifficultyConfig>();
 
         // Score
-        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-        draw_number(renderer, score.displayed_score, 120, 20, 10, 18);
+        text_draw_number(text_ctx, renderer, score.displayed_score,
+            120, 20, FontSize::Medium, 255, 255, 255, 255);
 
         // High score
-        SDL_SetRenderDrawColor(renderer, 150, 150, 150, 180);
-        draw_number(renderer, score.high_score, 120, 50, 7, 12);
+        text_draw_number(text_ctx, renderer, score.high_score,
+            120, 50, FontSize::Small, 150, 150, 150, 180);
 
         // Speed bar
         float speed_ratio = (config.speed_multiplier - 1.0f) / 2.0f;
@@ -355,20 +343,25 @@ void render_system(entt::registry& reg, SDL_Renderer* renderer, float /*alpha*/)
             float(constants::SCREEN_W), float(constants::SCREEN_H) };
         SDL_RenderFillRectF(renderer, &overlay);
 
+        // "GAME OVER" heading
+        text_draw(text_ctx, renderer, "GAME OVER",
+            360, 440, FontSize::Large, 255, 80, 80, 255,
+            TextAlign::Center);
+
         // Score display
-        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-        draw_number(renderer, score.score, 360, 500, 14, 24);
+        text_draw_number(text_ctx, renderer, score.score,
+            360, 510, FontSize::Medium, 255, 255, 255, 255);
 
         // High score
-        SDL_SetRenderDrawColor(renderer, 200, 200, 100, 255);
-        draw_number(renderer, score.high_score, 360, 560, 10, 16);
+        text_draw_number(text_ctx, renderer, score.high_score,
+            360, 560, FontSize::Small, 200, 200, 100, 255);
 
-        // "TAP TO RETRY" indicator
+        // "TAP TO RETRY" indicator — pulsing text
         float pulse = (std::sin(gs.phase_timer * 3.0f) + 1.0f) / 2.0f;
-        SDL_SetRenderDrawColor(renderer, 200, 200, 200,
-            static_cast<uint8_t>(80 + pulse * 175));
-        SDL_FRect retry = { 260, 650, 200, 40 };
-        SDL_RenderFillRectF(renderer, &retry);
+        auto retry_alpha = static_cast<uint8_t>(80 + pulse * 175);
+        text_draw(text_ctx, renderer, "TAP TO RETRY",
+            360, 650, FontSize::Medium, 200, 200, 200, retry_alpha,
+            TextAlign::Center);
     }
 
     // ── Pause overlay ───────────────────────────────────────
@@ -379,12 +372,9 @@ void render_system(entt::registry& reg, SDL_Renderer* renderer, float /*alpha*/)
             float(constants::SCREEN_W), float(constants::SCREEN_H) };
         SDL_RenderFillRectF(renderer, &overlay);
 
-        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-        // Pause bars
-        SDL_FRect bar1 = { 330, 580, 20, 60 };
-        SDL_FRect bar2 = { 370, 580, 20, 60 };
-        SDL_RenderFillRectF(renderer, &bar1);
-        SDL_RenderFillRectF(renderer, &bar2);
+        text_draw(text_ctx, renderer, "PAUSED",
+            360, 580, FontSize::Large, 255, 255, 255, 255,
+            TextAlign::Center);
     }
 
     SDL_RenderPresent(renderer);
