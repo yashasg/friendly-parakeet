@@ -2,7 +2,7 @@
   "name": "raylib",
   "version": "5.5",
   "port-version": 100,
-  "description": "A simple and easy-to-use library to enjoy videogames programming (RGFW backend)",
+  "description": "A simple and easy-to-use library to enjoy videogames programming",
   "homepage": "https://github.com/raysan5/raylib",
   "license": "Zlib",
   "supports": "!arm32 & !uwp",

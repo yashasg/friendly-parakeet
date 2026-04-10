@@ -14,6 +14,7 @@
 #include "components/lifetime.h"
 #include "components/particle.h"
 #include "components/audio.h"
+#include "components/rhythm.h"
 #include "constants.h"
 #include "systems/all_systems.h"
 
@@ -33,7 +34,23 @@ inline entt::registry make_registry() {
     return reg;
 }
 
-// Creates a player entity in lane 1 (center) with default shape (Circle)
+// Sets up a registry with rhythm singletons included
+inline entt::registry make_rhythm_registry() {
+    entt::registry reg = make_registry();
+    auto& song = reg.ctx().emplace<SongState>();
+    song.bpm = 120.0f;
+    song.offset = 0.0f;
+    song.lead_beats = 4;
+    song.duration_sec = 60.0f;
+    song.playing = true;
+    song_state_compute_derived(song);
+    reg.ctx().emplace<BeatMap>();
+    reg.ctx().emplace<HPState>(HPState{5, 5});
+    reg.ctx().emplace<SongResults>();
+    return reg;
+}
+
+// Creates a player entity in lane 1 (center) with default shape (Hexagon in rhythm mode)
 inline entt::entity make_player(entt::registry& reg) {
     auto player = reg.create();
     reg.emplace<PlayerTag>(player);
@@ -44,6 +61,17 @@ inline entt::entity make_player(entt::registry& reg) {
     reg.emplace<DrawColor>(player, uint8_t{80}, uint8_t{180}, uint8_t{255}, uint8_t{255});
     reg.emplace<DrawSize>(player, constants::PLAYER_SIZE, constants::PLAYER_SIZE);
     reg.emplace<DrawLayer>(player, Layer::Game);
+    return player;
+}
+
+// Creates a player entity for rhythm mode (starts as Hexagon)
+inline entt::entity make_rhythm_player(entt::registry& reg) {
+    auto player = make_player(reg);
+    auto& ps = reg.get<PlayerShape>(player);
+    ps.current = Shape::Hexagon;
+    ps.previous = Shape::Hexagon;
+    ps.target_shape = Shape::Hexagon;
+    ps.phase_raw = 0; // WindowPhase::Idle
     return player;
 }
 

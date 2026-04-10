@@ -6,6 +6,7 @@
   "dependencies": [
     "entt",
     "raylib",
+    "nlohmann-json",
     { "name": "catch2", "platform": "!linux" }
   ]
 }

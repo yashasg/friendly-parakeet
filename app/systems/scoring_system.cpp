@@ -8,6 +8,7 @@
 #include "../components/lifetime.h"
 #include "../components/audio.h"
 #include "../components/difficulty.h"
+#include "../components/rhythm.h"
 #include "../constants.h"
 #include <cmath>
 
@@ -51,8 +52,16 @@ void scoring_system(entt::registry& reg, float dt) {
     // Process scored obstacles
     auto view = reg.view<ObstacleTag, ScoredTag, Obstacle, Position>();
     for (auto [entity, obs, pos] : view.each()) {
-        float mult = multiplier_for_zone(burnout.zone);
-        int points = static_cast<int>(std::floor(obs.base_points * mult));
+        float burnout_mult = multiplier_for_zone(burnout.zone);
+
+        // Check for timing grade (rhythm mode)
+        float timing_mult = 1.0f;
+        auto* timing = reg.try_get<TimingGrade>(entity);
+        if (timing) {
+            timing_mult = timing_multiplier(timing->tier);
+        }
+
+        int points = static_cast<int>(std::floor(obs.base_points * timing_mult * burnout_mult));
 
         // Chain bonus
         score.chain_count++;
@@ -63,6 +72,17 @@ void scoring_system(entt::registry& reg, float dt) {
             points += constants::CHAIN_BONUS[4] + (score.chain_count - 4) * 100;
         }
 
+        // Update max chain in results
+        auto* results = reg.ctx().find<SongResults>();
+        if (results) {
+            if (score.chain_count > results->max_chain) {
+                results->max_chain = score.chain_count;
+            }
+            if (burnout_mult > results->best_burnout) {
+                results->best_burnout = burnout_mult;
+            }
+        }
+
         score.score += points;
 
         // Spawn score popup
@@ -70,15 +90,15 @@ void scoring_system(entt::registry& reg, float dt) {
         reg.emplace<Position>(popup, pos.x, pos.y - 40.0f);
         reg.emplace<Velocity>(popup, 0.0f, -80.0f);
         reg.emplace<Lifetime>(popup, constants::POPUP_DURATION, constants::POPUP_DURATION);
-        reg.emplace<ScorePopup>(popup, points, tier_for_multiplier(mult));
+        reg.emplace<ScorePopup>(popup, points, tier_for_multiplier(burnout_mult));
         reg.emplace<DrawColor>(popup, uint8_t{255}, uint8_t{255}, uint8_t{50}, uint8_t{255});
         reg.emplace<DrawLayer>(popup, Layer::Effects);
 
         audio_push(reg.ctx().get<AudioQueue>(), SFX::BurnoutBank);
 
-        // Remove Obstacle so it won't be processed again; entity remains for scroll/cleanup
         reg.remove<Obstacle>(entity);
         reg.remove<ScoredTag>(entity);
+        if (timing) reg.remove<TimingGrade>(entity);
     }
 
     // Smooth score display

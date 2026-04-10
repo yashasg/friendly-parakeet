@@ -28,28 +28,17 @@ configure_file(
 
 # ── Dependencies ─────────────────────────────────────────────
 # EnTT: header-only ECS framework (vcpkg on all platforms).
-# raylib: rendering, windowing, input, audio (vcpkg on native platforms).
+# raylib: rendering, windowing, input, audio (vcpkg on all platforms, including
+#         wasm32-emscripten via the vcpkg-overlay portfile).
 # Catch2: test framework (vcpkg on Windows/macOS, system package on Linux).
+# nlohmann-json: JSON parsing for beat map loading (vcpkg on all platforms).
 
 find_package(EnTT CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
+find_package(raylib CONFIG REQUIRED)
 
 if(NOT EMSCRIPTEN)
-    # Native builds: raylib and Catch2 from vcpkg
-    find_package(raylib CONFIG REQUIRED)
     find_package(Catch2 3 CONFIG REQUIRED)
-else()
-    # Emscripten: build raylib from source (no vcpkg triplet available).
-    # Mirrors raylib's own build_webassembly.yml.
-    include(FetchContent)
-    FetchContent_Declare(raylib
-        GIT_REPOSITORY https://github.com/raysan5/raylib.git
-        GIT_TAG        5.5
-        GIT_SHALLOW    ON
-    )
-    set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-    set(CUSTOMIZE_BUILD ON CACHE BOOL "" FORCE)
-    set(PLATFORM Web CACHE STRING "" FORCE)
-    FetchContent_MakeAvailable(raylib)
 endif()
 
 # ── Warnings-as-errors (project targets only) ────────────────
@@ -62,9 +51,16 @@ target_compile_options(shapeshifter_warnings INTERFACE
     $<$<CXX_COMPILER_ID:MSVC>:/W4 /WX>
 )
 
+# Suppress MSVC CRT "insecure" deprecations (localtime, fopen, etc.) when
+# Clang targets the MSVC ABI on Windows.  This keeps source code portable
+# (no #ifdef _WIN32 guards needed for standard C functions).
+if(WIN32)
+    target_compile_definitions(shapeshifter_warnings INTERFACE _CRT_SECURE_NO_WARNINGS)
+endif()
+
 # Mark third-party include directories as SYSTEM so warnings from their
 # headers are suppressed and cannot be promoted to errors by -Werror / /WX.
-set(_system_deps EnTT::EnTT raylib)
+set(_system_deps EnTT::EnTT raylib nlohmann_json::nlohmann_json)
 if(NOT EMSCRIPTEN)
     list(APPEND _system_deps Catch2::Catch2 Catch2::Catch2WithMain)
 endif()
@@ -89,13 +85,14 @@ file(GLOB SYSTEM_SOURCES app/systems/*.cpp)
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "render_system\\.cpp$")
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "input_system\\.cpp$")
 
-add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES})
+add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES} app/beat_map_loader.cpp)
 target_include_directories(shapeshifter_lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/app
     ${CMAKE_BINARY_DIR}/generated
 )
 target_link_libraries(shapeshifter_lib PUBLIC
     EnTT::EnTT
+    nlohmann_json::nlohmann_json
 )
 target_link_libraries(shapeshifter_lib PRIVATE shapeshifter_warnings)
 

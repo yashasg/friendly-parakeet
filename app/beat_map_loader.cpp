@@ -1,0 +1,185 @@
+#include "beat_map_loader.h"
+#include <nlohmann/json.hpp>
+#include <fstream>
+#include <cmath>
+#include <algorithm>
+
+using json = nlohmann::json;
+
+static ObstacleKind parse_kind(const std::string& s) {
+    if (s == "shape_gate")  return ObstacleKind::ShapeGate;
+    if (s == "lane_block")  return ObstacleKind::LaneBlock;
+    if (s == "low_bar")     return ObstacleKind::LowBar;
+    if (s == "high_bar")    return ObstacleKind::HighBar;
+    if (s == "combo_gate")  return ObstacleKind::ComboGate;
+    if (s == "split_path")  return ObstacleKind::SplitPath;
+    return ObstacleKind::ShapeGate;
+}
+
+static Shape parse_shape(const std::string& s) {
+    if (s == "circle")   return Shape::Circle;
+    if (s == "square")   return Shape::Square;
+    if (s == "triangle") return Shape::Triangle;
+    return Shape::Circle;
+}
+
+bool parse_beat_map(const std::string& json_str, BeatMap& out, std::vector<BeatMapError>& errors) {
+    json j;
+    try {
+        j = json::parse(json_str);
+    } catch (const json::parse_error& e) {
+        errors.push_back({-1, std::string("JSON parse error: ") + e.what()});
+        return false;
+    }
+
+    out.song_id    = j.value("song_id", "");
+    out.title      = j.value("title", "");
+    out.bpm        = j.value("bpm", 120.0f);
+    out.offset     = j.value("offset", 0.0f);
+    out.lead_beats = j.value("lead_beats", 4);
+    out.duration   = j.value("duration_sec", 180.0f);
+    out.difficulty = j.value("difficulty", "medium");
+    out.song_path  = j.value("song_path", "");
+
+    // Parse beats
+    if (j.contains("beats") && j["beats"].is_array()) {
+        for (const auto& b : j["beats"]) {
+            BeatEntry entry;
+            entry.beat_index = b.value("beat", 0);
+
+            std::string kind_str = b.value("kind", "shape_gate");
+            entry.kind = parse_kind(kind_str);
+
+            if (b.contains("shape")) {
+                entry.shape = parse_shape(b["shape"].get<std::string>());
+            }
+
+            entry.lane = static_cast<int8_t>(b.value("lane", 1));
+
+            if (b.contains("blocked") && b["blocked"].is_array()) {
+                entry.blocked_mask = 0;
+                for (const auto& lane_idx : b["blocked"]) {
+                    int l = lane_idx.get<int>();
+                    if (l >= 0 && l < 3) {
+                        entry.blocked_mask |= static_cast<uint8_t>(1 << l);
+                    }
+                }
+            }
+
+            out.beats.push_back(entry);
+        }
+    }
+
+    // Sort beats by beat_index
+    std::sort(out.beats.begin(), out.beats.end(),
+              [](const BeatEntry& a, const BeatEntry& b) {
+                  return a.beat_index < b.beat_index;
+              });
+
+    return true;
+}
+
+bool load_beat_map(const std::string& json_path, BeatMap& out, std::vector<BeatMapError>& errors) {
+    std::ifstream file(json_path);
+    if (!file.is_open()) {
+        errors.push_back({-1, "Could not open file: " + json_path});
+        return false;
+    }
+    std::string content((std::istreambuf_iterator<char>(file)),
+                         std::istreambuf_iterator<char>());
+    return parse_beat_map(content, out, errors);
+}
+
+bool validate_beat_map(const BeatMap& map, std::vector<BeatMapError>& errors) {
+    bool valid = true;
+
+    // Rule 7: BPM in range [60, 300]
+    if (map.bpm < 60.0f || map.bpm > 300.0f) {
+        errors.push_back({-1, "BPM must be in range [60, 300], got " + std::to_string(map.bpm)});
+        valid = false;
+    }
+
+    // Rule 8: offset in range [0.0, 5.0]
+    if (map.offset < 0.0f || map.offset > 5.0f) {
+        errors.push_back({-1, "Offset must be in range [0.0, 5.0], got " + std::to_string(map.offset)});
+        valid = false;
+    }
+
+    // Rule 9: lead_beats in range [2, 8]
+    if (map.lead_beats < 2 || map.lead_beats > 8) {
+        errors.push_back({-1, "lead_beats must be in range [2, 8], got " + std::to_string(map.lead_beats)});
+        valid = false;
+    }
+
+    // Rule 10: at least 1 beat entry
+    if (map.beats.empty()) {
+        errors.push_back({-1, "Beat map must have at least 1 beat entry"});
+        valid = false;
+    }
+
+    float beat_period = 60.0f / map.bpm;
+    int max_beat = static_cast<int>(std::floor(map.duration / beat_period));
+
+    int prev_beat = -1;
+    int prev_shape_beat = -1;
+    Shape prev_shape = Shape::Circle;
+    bool prev_had_shape = false;
+
+    for (size_t i = 0; i < map.beats.size(); ++i) {
+        const auto& entry = map.beats[i];
+
+        // Rule 1: beat indices monotonically increasing
+        if (entry.beat_index <= prev_beat && prev_beat >= 0) {
+            errors.push_back({entry.beat_index, "Beat indices must be monotonically increasing"});
+            valid = false;
+        }
+        prev_beat = entry.beat_index;
+
+        // Rule 2: no beat index beyond song duration
+        if (entry.beat_index > max_beat) {
+            errors.push_back({entry.beat_index, "Beat index exceeds song duration"});
+            valid = false;
+        }
+
+        // Rule 5: shape_gate / split_path must have lane 0-2
+        if (entry.kind == ObstacleKind::ShapeGate || entry.kind == ObstacleKind::SplitPath) {
+            if (entry.lane < 0 || entry.lane > 2) {
+                errors.push_back({entry.beat_index, "Lane must be 0-2"});
+                valid = false;
+            }
+        }
+
+        // Rule 6: different-shape gates must be >= 3 beats apart
+        bool has_shape = (entry.kind == ObstacleKind::ShapeGate ||
+                          entry.kind == ObstacleKind::ComboGate ||
+                          entry.kind == ObstacleKind::SplitPath);
+        if (has_shape && prev_had_shape) {
+            if (entry.shape != prev_shape &&
+                (entry.beat_index - prev_shape_beat) < 3) {
+                errors.push_back({entry.beat_index,
+                    "Different-shape gates must be >= 3 beats apart"});
+                valid = false;
+            }
+        }
+        if (has_shape) {
+            prev_shape_beat = entry.beat_index;
+            prev_shape = entry.shape;
+            prev_had_shape = true;
+        }
+    }
+
+    return valid;
+}
+
+void init_song_state(SongState& state, const BeatMap& map) {
+    state.bpm          = map.bpm;
+    state.offset       = map.offset;
+    state.lead_beats   = map.lead_beats;
+    state.duration_sec = map.duration;
+    state.song_time    = 0.0f;
+    state.current_beat = -1;
+    state.playing      = false;
+    state.finished     = false;
+    state.next_spawn_idx = 0;
+    song_state_compute_derived(state);
+}
