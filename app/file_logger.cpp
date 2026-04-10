@@ -6,6 +6,32 @@
 
 static FILE* s_log_file = nullptr;
 
+// ── Portable wrappers for deprecated-on-Windows CRT functions ────────
+// On Windows the CRT marks localtime() and fopen() as deprecated because
+// they are not thread-safe or lack buffer-size checks.  The _s variants
+// exist only on Windows, while POSIX provides localtime_r.  These thin
+// wrappers keep the rest of the file free of #ifdef clutter.
+
+static std::tm safe_localtime(const std::time_t* t) {
+    std::tm result{};
+#ifdef _WIN32
+    localtime_s(&result, t);
+#else
+    localtime_r(t, &result);
+#endif
+    return result;
+}
+
+static FILE* safe_fopen(const char* path, const char* mode) {
+#ifdef _WIN32
+    FILE* fp = nullptr;
+    fopen_s(&fp, path, mode);
+    return fp;
+#else
+    return std::fopen(path, mode);
+#endif
+}
+
 static const char* log_level_str(int level) {
     switch (level) {
         case LOG_TRACE:   return "TRACE";
@@ -23,9 +49,9 @@ static void file_log_callback(int level, const char* text, va_list args) {
 
     // Timestamp
     std::time_t now = std::time(nullptr);
-    std::tm* tm = std::localtime(&now);
+    std::tm tm = safe_localtime(&now);
     char ts[32];
-    std::strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S", tm);
+    std::strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S", &tm);
 
     const char* tag = log_level_str(level);
 
@@ -47,13 +73,13 @@ static void file_log_callback(int level, const char* text, va_list args) {
 }
 
 void file_logger_init(const char* log_path) {
-    s_log_file = std::fopen(log_path, "a");
+    s_log_file = safe_fopen(log_path, "a");
     if (s_log_file) {
         // Session separator
         std::time_t now = std::time(nullptr);
-        std::tm* tm = std::localtime(&now);
+        std::tm tm = safe_localtime(&now);
         char ts[32];
-        std::strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S", tm);
+        std::strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S", &tm);
         std::fprintf(s_log_file, "\n══════ Session started %s ══════\n", ts);
         std::fflush(s_log_file);
     }
