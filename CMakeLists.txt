@@ -51,7 +51,15 @@ if(SDL2_TTF_FOUND AND NOT TARGET SDL2_ttf::SDL2_ttf)
         add_library(SDL2_ttf::SDL2_ttf ALIAS PkgConfig::SDL2_TTF)
     endif()
 endif()
-if(NOT SDL2_TTF_FOUND AND NOT TARGET SDL2_ttf::SDL2_ttf)
+# vcpkg static triplets create SDL2_ttf::SDL2_ttf-static instead of
+# SDL2_ttf::SDL2_ttf.  Alias the static target so downstream code can
+# always link against SDL2_ttf::SDL2_ttf.
+if(TARGET SDL2_ttf::SDL2_ttf-static AND NOT TARGET SDL2_ttf::SDL2_ttf)
+    add_library(SDL2_ttf::SDL2_ttf ALIAS SDL2_ttf::SDL2_ttf-static)
+endif()
+# find_package sets SDL2_ttf_FOUND (mixed-case); pkg_check_modules sets
+# SDL2_TTF_FOUND (upper-case).  Accept either.
+if(NOT SDL2_TTF_FOUND AND NOT SDL2_ttf_FOUND AND NOT TARGET SDL2_ttf::SDL2_ttf)
     message(FATAL_ERROR "SDL2_ttf is required. Install libsdl2-ttf-dev (apt) or add sdl2-ttf via vcpkg.")
 endif()
 
@@ -77,7 +85,7 @@ target_compile_options(shapeshifter_warnings INTERFACE
 
 # Mark third-party include directories as SYSTEM so warnings from their
 # headers are suppressed and cannot be promoted to errors by -Werror / /WX.
-foreach(_dep EnTT::EnTT SDL2::SDL2-static Catch2::Catch2 Catch2::Catch2WithMain SDL2_ttf::SDL2_ttf PkgConfig::SDL2_TTF)
+foreach(_dep EnTT::EnTT SDL2::SDL2-static Catch2::Catch2 Catch2::Catch2WithMain SDL2_ttf::SDL2_ttf SDL2_ttf::SDL2_ttf-static PkgConfig::SDL2_TTF)
     if(TARGET ${_dep})
         # Resolve alias targets — set_target_properties doesn't work on aliases
         get_target_property(_real ${_dep} ALIASED_TARGET)
@@ -133,11 +141,7 @@ target_link_libraries(shapeshifter PRIVATE
     SDL2::SDL2main
     shapeshifter_warnings
 )
-if(TARGET SDL2_ttf::SDL2_ttf)
-    target_link_libraries(shapeshifter PRIVATE SDL2_ttf::SDL2_ttf)
-else()
-    target_link_libraries(shapeshifter PRIVATE PkgConfig::SDL2_TTF)
-endif()
+target_link_libraries(shapeshifter PRIVATE SDL2_ttf::SDL2_ttf)
 
 # Copy font assets next to the executable so text_init() can find them
 file(GLOB FONT_FILES ${CMAKE_SOURCE_DIR}/assets/fonts/*.ttf)
