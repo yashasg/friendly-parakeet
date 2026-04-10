@@ -109,7 +109,6 @@ TEST_CASE("gesture_system: swipe too slow is ignored", "[gesture]") {
 TEST_CASE("gesture_system: button tap in button zone", "[gesture]") {
     auto reg = make_registry();
     auto& input = reg.ctx().get<InputState>();
-    float zone_y = constants::SCREEN_H * constants::SWIPE_ZONE_SPLIT;
 
     // Tap in the button zone on the second button (Square)
     float btn_area_x_start = (constants::SCREEN_W
@@ -120,9 +119,9 @@ TEST_CASE("gesture_system: button tap in button zone", "[gesture]") {
         + constants::BUTTON_W / 2.0f;
 
     input.touch_up = true;
-    input.start_y  = zone_y + 10.0f;  // in button zone
+    input.start_y  = constants::BUTTON_Y + constants::BUTTON_H / 2.0f;  // in button zone
     input.end_x    = btn2_center;
-    input.end_y    = zone_y + 10.0f;
+    input.end_y    = constants::BUTTON_Y + constants::BUTTON_H / 2.0f;
     input.duration = 0.05f;
 
     gesture_system(reg, 0.016f);
@@ -136,7 +135,6 @@ TEST_CASE("gesture_system: button tap in button zone", "[gesture]") {
 TEST_CASE("gesture_system: button tap on first button (Circle)", "[gesture]") {
     auto reg = make_registry();
     auto& input = reg.ctx().get<InputState>();
-    float zone_y = constants::SCREEN_H * constants::SWIPE_ZONE_SPLIT;
 
     float btn_area_x_start = (constants::SCREEN_W
         - 3 * constants::BUTTON_W
@@ -144,9 +142,9 @@ TEST_CASE("gesture_system: button tap on first button (Circle)", "[gesture]") {
     float btn1_center = btn_area_x_start + constants::BUTTON_W / 2.0f;
 
     input.touch_up = true;
-    input.start_y  = zone_y + 10.0f;
+    input.start_y  = constants::BUTTON_Y + constants::BUTTON_H / 2.0f;
     input.end_x    = btn1_center;
-    input.end_y    = zone_y + 10.0f;
+    input.end_y    = constants::BUTTON_Y + constants::BUTTON_H / 2.0f;
     input.duration = 0.05f;
 
     gesture_system(reg, 0.016f);
@@ -159,12 +157,11 @@ TEST_CASE("gesture_system: button tap on first button (Circle)", "[gesture]") {
 TEST_CASE("gesture_system: tap outside buttons in button zone", "[gesture]") {
     auto reg = make_registry();
     auto& input = reg.ctx().get<InputState>();
-    float zone_y = constants::SCREEN_H * constants::SWIPE_ZONE_SPLIT;
 
     input.touch_up = true;
-    input.start_y  = zone_y + 10.0f;
+    input.start_y  = constants::BUTTON_Y + constants::BUTTON_H / 2.0f;
     input.end_x    = 5.0f;  // far left, not on any button
-    input.end_y    = zone_y + 10.0f;
+    input.end_y    = constants::BUTTON_Y + constants::BUTTON_H / 2.0f;
 
     gesture_system(reg, 0.016f);
 
@@ -209,7 +206,6 @@ TEST_CASE("gesture_system: diagonal swipe classified by dominant axis", "[gestur
 TEST_CASE("gesture_system: button tap on third button (Triangle)", "[gesture]") {
     auto reg = make_registry();
     auto& input = reg.ctx().get<InputState>();
-    float zone_y = constants::SCREEN_H * constants::SWIPE_ZONE_SPLIT;
 
     float btn_area_x_start = (constants::SCREEN_W
         - 3 * constants::BUTTON_W
@@ -219,9 +215,9 @@ TEST_CASE("gesture_system: button tap on third button (Triangle)", "[gesture]") 
         + constants::BUTTON_W / 2.0f;
 
     input.touch_up = true;
-    input.start_y  = zone_y + 10.0f;
+    input.start_y  = constants::BUTTON_Y + constants::BUTTON_H / 2.0f;
     input.end_x    = btn3_center;
-    input.end_y    = zone_y + 10.0f;
+    input.end_y    = constants::BUTTON_Y + constants::BUTTON_H / 2.0f;
     input.duration = 0.05f;
 
     gesture_system(reg, 0.016f);
@@ -239,7 +235,6 @@ TEST_CASE("gesture_system: button tap on third button (Triangle)", "[gesture]") 
 TEST_CASE("gesture_system: left-click on Circle button works on desktop", "[gesture][desktop]") {
     auto reg = make_registry();
     auto& input = reg.ctx().get<InputState>();
-    float zone_y = constants::SCREEN_H * constants::SWIPE_ZONE_SPLIT;
     float btn_area_x_start = (constants::SCREEN_W
         - 3 * constants::BUTTON_W
         - 2 * constants::BUTTON_SPACING) / 2.0f;
@@ -247,9 +242,9 @@ TEST_CASE("gesture_system: left-click on Circle button works on desktop", "[gest
 
     // Simulate SDL_MOUSEBUTTONUP mapped to touch_up (no key pressed)
     input.touch_up = true;
-    input.start_y  = zone_y + 10.0f;
+    input.start_y  = constants::BUTTON_Y + constants::BUTTON_H / 2.0f;
     input.end_x    = btn0_center;
-    input.end_y    = zone_y + 10.0f;
+    input.end_y    = constants::BUTTON_Y + constants::BUTTON_H / 2.0f;
     input.duration = 0.05f;
 
     gesture_system(reg, 0.016f);
@@ -263,7 +258,6 @@ TEST_CASE("gesture_system: left-click on Circle button works on desktop", "[gest
 TEST_CASE("gesture_system: left-click on Triangle button works on desktop", "[gesture][desktop]") {
     auto reg = make_registry();
     auto& input = reg.ctx().get<InputState>();
-    float zone_y = constants::SCREEN_H * constants::SWIPE_ZONE_SPLIT;
     float btn_area_x_start = (constants::SCREEN_W
         - 3 * constants::BUTTON_W
         - 2 * constants::BUTTON_SPACING) / 2.0f;
@@ -273,9 +267,9 @@ TEST_CASE("gesture_system: left-click on Triangle button works on desktop", "[ge
         + constants::BUTTON_W / 2.0f;
 
     input.touch_up = true;
-    input.start_y  = zone_y + 10.0f;
+    input.start_y  = constants::BUTTON_Y + constants::BUTTON_H / 2.0f;
     input.end_x    = btn2_center;
-    input.end_y    = zone_y + 10.0f;
+    input.end_y    = constants::BUTTON_Y + constants::BUTTON_H / 2.0f;
     input.duration = 0.05f;
 
     gesture_system(reg, 0.016f);

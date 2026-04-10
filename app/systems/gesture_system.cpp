@@ -35,11 +35,17 @@ void gesture_system(entt::registry& reg, float /*dt*/) {
         float btn_area_x_start = (constants::SCREEN_W
             - 3 * constants::BUTTON_W
             - 2 * constants::BUTTON_SPACING) / 2.0f;
+        float btn_cy = constants::BUTTON_Y + constants::BUTTON_H / 2.0f;
+        float btn_radius = constants::BUTTON_W / 2.8f;
+        float hit_radius = btn_radius * 1.4f;  // generous touch area
 
         for (int i = 0; i < 3; ++i) {
-            float bx = btn_area_x_start
-                + static_cast<float>(i) * (constants::BUTTON_W + constants::BUTTON_SPACING);
-            if (input.end_x >= bx && input.end_x <= bx + constants::BUTTON_W) {
+            float btn_cx = btn_area_x_start
+                + static_cast<float>(i) * (constants::BUTTON_W + constants::BUTTON_SPACING)
+                + constants::BUTTON_W / 2.0f;
+            float dx = input.end_x - btn_cx;
+            float dy = input.end_y - btn_cy;
+            if (dx * dx + dy * dy <= hit_radius * hit_radius) {
                 btn_evt.pressed = true;
                 btn_evt.shape = static_cast<Shape>(i);
                 return;

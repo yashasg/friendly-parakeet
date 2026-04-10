@@ -6,6 +6,7 @@
 #include "../components/rendering.h"
 #include "../components/scoring.h"
 #include "../components/burnout.h"
+#include "../components/rhythm.h"
 #include "../components/lifetime.h"
 #include "../components/game_state.h"
 #include "../components/difficulty.h"
@@ -218,7 +219,6 @@ void render_system(entt::registry& reg, float /*alpha*/) {
     // ── Draw HUD ────────────────────────────────────────────
     if (gs.phase == GamePhase::Playing || gs.phase == GamePhase::Paused) {
         auto& score   = reg.ctx().get<ScoreState>();
-        auto& burnout = reg.ctx().get<BurnoutState>();
         auto& config  = reg.ctx().get<DifficultyConfig>();
 
         // Score
@@ -229,67 +229,87 @@ void render_system(entt::registry& reg, float /*alpha*/) {
         text_draw_number(text_ctx, score.high_score,
             120, 50, FontSize::Small, 150, 150, 150, 180);
 
-        // Speed bar
-        float speed_ratio = (config.speed_multiplier - 1.0f) / 2.0f;
-        DrawRectangleRec({20, 80, 680, 8}, {50, 50, 80, 200});
-        DrawRectangleRec({20, 80, 680 * speed_ratio, 8}, {100, 200, 255, 255});
-
-        // Burnout meter
-        DrawRectangleRec({60, constants::BURNOUT_BAR_Y, 600, constants::BURNOUT_BAR_H},
-                         {30, 30, 50, 200});
-
-        // Burnout fill color by zone
-        Color bo_color;
-        switch (burnout.zone) {
-            case BurnoutZone::None:
-            case BurnoutZone::Safe:
-                bo_color = {80, 200, 80, 255};
-                break;
-            case BurnoutZone::Risky:
-                bo_color = {255, 200, 50, 255};
-                break;
-            case BurnoutZone::Danger:
-                bo_color = {255, 80, 30, 255};
-                break;
-            case BurnoutZone::Dead:
-                bo_color = {255, 0, 0, 255};
-                break;
-        }
-        DrawRectangleRec({60, constants::BURNOUT_BAR_Y,
-            600 * burnout.meter, constants::BURNOUT_BAR_H}, bo_color);
-
-        // Shape buttons
+        // Shape buttons (circular with proximity ring)
+        float btn_radius = constants::BUTTON_W / 2.8f;  // ~50px radius
         float btn_area_x = (constants::SCREEN_W
             - 3 * constants::BUTTON_W
             - 2 * constants::BUTTON_SPACING) / 2.0f;
+        float btn_cy = constants::BUTTON_Y + constants::BUTTON_H / 2.0f;
 
-        Shape active_shape = Shape::Circle;
+        Shape active_shape = Shape::Hexagon;
         auto pview = reg.view<PlayerTag, PlayerShape>();
         for (auto [e, ps] : pview.each()) {
             active_shape = ps.current;
         }
 
+        // Find nearest obstacle per shape (for proximity rings)
+        float nearest_dist[3] = {-1.0f, -1.0f, -1.0f};  // Circle, Square, Triangle
+        {
+            auto obs_view = reg.view<ObstacleTag, Position, RequiredShape>(entt::exclude<ScoredTag>);
+            for (auto [e, opos, req] : obs_view.each()) {
+                int si = static_cast<int>(req.shape);
+                if (si < 0 || si > 2) continue;
+                float d = constants::PLAYER_Y - opos.y;
+                if (d > 0.0f && (nearest_dist[si] < 0.0f || d < nearest_dist[si])) {
+                    nearest_dist[si] = d;
+                }
+            }
+        }
+
+        // Compute "perfect press" distance: obstacle is this far away when
+        // the player should press so the window peaks at arrival
+        auto* song_hud = reg.ctx().find<SongState>();
+        float perfect_dist = 0.0f;
+        if (song_hud) {
+            perfect_dist = song_hud->scroll_speed *
+                (song_hud->morph_duration + song_hud->half_window);
+        } else {
+            perfect_dist = config.scroll_speed * 0.5f;
+        }
+        float ring_appear_dist = 700.0f;  // ring starts appearing at this distance
+        float max_ring_radius = btn_radius * 3.0f;
+
         for (int i = 0; i < 3; ++i) {
-            float bx = btn_area_x
-                + static_cast<float>(i) * (constants::BUTTON_W + constants::BUTTON_SPACING);
+            float btn_cx = btn_area_x
+                + static_cast<float>(i) * (constants::BUTTON_W + constants::BUTTON_SPACING)
+                + constants::BUTTON_W / 2.0f;
             bool is_active = (static_cast<int>(active_shape) == i);
 
-            // Button background
+            // Button circle background
             Color btn_bg = is_active ? Color{60, 60, 100, 255} : Color{30, 30, 50, 200};
-            Rectangle btn = {bx, constants::BUTTON_Y, constants::BUTTON_W, constants::BUTTON_H};
-            DrawRectangleRec(btn, btn_bg);
+            DrawCircleV({btn_cx, btn_cy}, btn_radius, btn_bg);
 
             // Button border
             Color btn_border = is_active ? Color{120, 180, 255, 255} : Color{60, 60, 80, 255};
-            DrawRectangleLinesEx(btn, 1.0f, btn_border);
+            DrawCircleLinesV({btn_cx, btn_cy}, btn_radius, btn_border);
 
             // Shape icon in button
             auto shape = static_cast<Shape>(i);
             Color icon_color = is_active ? Color{200, 230, 255, 255} : Color{100, 100, 120, 200};
-            draw_shape(shape,
-                bx + constants::BUTTON_W / 2,
-                constants::BUTTON_Y + constants::BUTTON_H / 2,
-                40, icon_color);
+            draw_shape(shape, btn_cx, btn_cy, btn_radius * 1.2f, icon_color);
+
+            // Proximity ring: shrinks as the matching obstacle approaches
+            if (nearest_dist[i] > 0.0f && nearest_dist[i] < ring_appear_dist) {
+                float ratio = (nearest_dist[i] - perfect_dist)
+                            / (ring_appear_dist - perfect_dist);
+                if (ratio < 0.0f) ratio = 0.0f;
+                if (ratio > 1.0f) ratio = 1.0f;
+                float ring_r = btn_radius + (max_ring_radius - btn_radius) * ratio;
+
+                // Color: white when far, green near perfect, red if past
+                uint8_t r_col, g_col, b_col;
+                if (nearest_dist[i] <= perfect_dist) {
+                    r_col = 100; g_col = 255; b_col = 100;  // green = press now!
+                } else if (ratio < 0.3f) {
+                    r_col = 180; g_col = 255; b_col = 100;  // yellow-green = almost
+                } else {
+                    r_col = 120; g_col = 120; b_col = 180;  // blue-grey = approaching
+                }
+                uint8_t ring_alpha = static_cast<uint8_t>(200 * (1.0f - ratio * 0.5f));
+                DrawCircleLinesV({btn_cx, btn_cy}, ring_r, {r_col, g_col, b_col, ring_alpha});
+                // Draw a thicker ring with a second offset circle
+                DrawCircleLinesV({btn_cx, btn_cy}, ring_r - 1.0f, {r_col, g_col, b_col, static_cast<uint8_t>(ring_alpha / 2)});
+            }
         }
 
         // Divider line between game and button zone
