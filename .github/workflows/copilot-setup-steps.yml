@@ -1,0 +1,57 @@
+name: "Copilot Setup Steps"
+
+on:
+    workflow_dispatch:
+    push:
+        paths:
+            - .github/workflows/copilot-setup-steps.yml
+    pull_request:
+        paths:
+            - .github/workflows/copilot-setup-steps.yml
+
+jobs:
+    # The job MUST be called `copilot-setup-steps` or it will not be picked up by Copilot.
+    copilot-setup-steps:
+        runs-on: ubuntu-latest
+
+        permissions:
+            contents: read
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v6
+
+            - name: Export GitHub Actions cache variables
+              uses: actions/github-script@v8
+              with:
+                  script: |
+                      core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+                      core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+            - name: Setup C++ toolchain
+              uses: aminya/setup-cpp@v1
+              with:
+                  compiler: llvm-20
+                  cmake: true
+                  vcpkg: true
+
+            - name: Export VCPKG_ROOT
+              run: echo "VCPKG_ROOT=$HOME/vcpkg" >> "$GITHUB_ENV"
+
+            - name: Install system dependencies
+              run: |
+                  sudo apt-get update -qq
+                  sudo apt-get install -y --no-install-recommends \
+                    libgl1-mesa-dev \
+                    libx11-dev \
+                    libxrandr-dev \
+                    libxinerama-dev \
+                    libxcursor-dev \
+                    libxi-dev \
+                    libpulse-dev \
+                    catch2
+
+            - name: Build project
+              run: |
+                  chmod +x build.sh
+                  ./build.sh
