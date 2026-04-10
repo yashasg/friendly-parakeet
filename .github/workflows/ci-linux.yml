@@ -83,6 +83,7 @@ jobs:
         uses: ctrf-io/github-test-reporter@v1
         with:
           report-path: 'ctrf-report.json'
+          title: 'Test Results (Linux)'
           pull-request-report: true
           summary-delta-report: true
           insights-report: true
