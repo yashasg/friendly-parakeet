@@ -163,7 +163,8 @@ void render_system(entt::registry& reg, float /*alpha*/) {
     {
         auto view = reg.view<ParticleTag, Position, ParticleData, DrawColor, Lifetime>();
         for (auto [entity, pos, pdata, col, life] : view.each()) {
-            float draw_size = pdata.size * (life.remaining / life.max_time);
+            float ratio = (life.max_time > 0.0f) ? (life.remaining / life.max_time) : 1.0f;
+            float draw_size = pdata.size * ratio;
             float half = draw_size / 2.0f;
             DrawRectangleRec({pos.x - half, pos.y - half, draw_size, draw_size},
                              {col.r, col.g, col.b, col.a});

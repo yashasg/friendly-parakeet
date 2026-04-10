@@ -43,12 +43,10 @@ bool text_init(TextContext& ctx, const char* font_path) {
 
 // ── text_shutdown ───────────────────────────────────────────
 void text_shutdown(TextContext& ctx) {
-    if (ctx.loaded) {
-        UnloadFont(ctx.font_large);
-        UnloadFont(ctx.font_medium);
-        UnloadFont(ctx.font_small);
-        ctx.loaded = false;
-    }
+    if (ctx.font_large.baseSize > 0)  UnloadFont(ctx.font_large);
+    if (ctx.font_medium.baseSize > 0) UnloadFont(ctx.font_medium);
+    if (ctx.font_small.baseSize > 0)  UnloadFont(ctx.font_small);
+    ctx.loaded = false;
 }
 
 // ── text_draw ───────────────────────────────────────────────

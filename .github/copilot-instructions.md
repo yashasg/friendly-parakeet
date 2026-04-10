@@ -54,6 +54,10 @@ void update_movement(entt::registry& registry, float dt) {
 }
 ```
 
+## LSP / Code Intelligence
+
+A clangd LSP server is configured in `.github/lsp.json` for C/C++ code intelligence (go-to-definition, references, diagnostics, etc.). The main agent should use clangd for accurate code navigation and pass gathered context to sub-agents, since sub-agents do not have direct LSP access.
+
 ## Conventions
 
 - Game source code goes in `app/`
