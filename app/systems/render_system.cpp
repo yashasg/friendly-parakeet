@@ -266,7 +266,8 @@ void render_system(entt::registry& reg, float /*alpha*/) {
         } else {
             perfect_dist = config.scroll_speed * 0.5f;
         }
-        float ring_appear_dist = 700.0f;  // ring starts appearing at this distance
+        // Ring appears when obstacle spawns, shrinks to button radius at perfect-press distance
+        float ring_appear_dist = constants::APPROACH_DIST;  // full spawn-to-player distance
         float max_ring_radius = btn_radius * 3.0f;
 
         for (int i = 0; i < 3; ++i) {
