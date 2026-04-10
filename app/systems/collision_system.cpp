@@ -25,7 +25,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
     auto* song    = reg.ctx().find<SongState>();
     auto* hp      = reg.ctx().find<HPState>();
     auto* results = reg.ctx().find<SongResults>();
-    bool rhythm_mode = song && song->playing;
+    bool rhythm_mode = (song != nullptr);
 
     auto resolve = [&](entt::entity entity, const Position& obs_pos, bool cleared) {
         if (game_over) return;

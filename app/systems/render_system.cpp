@@ -38,7 +38,6 @@ static void draw_shape(Shape shape, float cx, float cy, float size, Color color)
         }
         case Shape::Hexagon: {
             // Pointy-top hexagon: first vertex at -90° (straight up)
-            // Slightly larger radius so vertices are visually distinct
             float radius = size * 0.6f;
             constexpr float ANGLE_OFFSET = -90.0f * DEG2RAD;
             for (int i = 0; i < 6; ++i) {
@@ -46,7 +45,8 @@ static void draw_shape(Shape shape, float cx, float cy, float size, Color color)
                 float a2 = ANGLE_OFFSET + (float)(i + 1) * 60.0f * DEG2RAD;
                 Vector2 v1h = {cx + radius * cosf(a1), cy + radius * sinf(a1)};
                 Vector2 v2h = {cx + radius * cosf(a2), cy + radius * sinf(a2)};
-                DrawTriangle({cx, cy}, v1h, v2h, color);
+                // v2h before v1h for counter-clockwise winding (raylib requirement)
+                DrawTriangle({cx, cy}, v2h, v1h, color);
             }
             break;
         }

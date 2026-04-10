@@ -13,7 +13,7 @@ void player_action_system(entt::registry& reg, float /*dt*/) {
     auto& btn_evt = reg.ctx().get<ShapeButtonEvent>();
 
     auto* song = reg.ctx().find<SongState>();
-    bool rhythm_mode = song && song->playing;
+    bool rhythm_mode = (song != nullptr);
 
     auto view = reg.view<PlayerTag, PlayerShape, Lane, VerticalState>();
     for (auto [entity, pshape, lane, vstate] : view.each()) {
