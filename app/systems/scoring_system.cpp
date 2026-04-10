@@ -71,7 +71,7 @@ void scoring_system(entt::registry& reg, float dt) {
         reg.emplace<Velocity>(popup, 0.0f, -80.0f);
         reg.emplace<Lifetime>(popup, constants::POPUP_DURATION, constants::POPUP_DURATION);
         reg.emplace<ScorePopup>(popup, points, tier_for_multiplier(mult));
-        reg.emplace<Color>(popup, uint8_t{255}, uint8_t{255}, uint8_t{50}, uint8_t{255});
+        reg.emplace<DrawColor>(popup, uint8_t{255}, uint8_t{255}, uint8_t{50}, uint8_t{255});
         reg.emplace<DrawLayer>(popup, Layer::Effects);
 
         audio_push(reg.ctx().get<AudioQueue>(), SFX::BurnoutBank);

@@ -41,7 +41,7 @@ inline entt::entity make_player(entt::registry& reg) {
     reg.emplace<PlayerShape>(player);
     reg.emplace<Lane>(player);
     reg.emplace<VerticalState>(player);
-    reg.emplace<Color>(player, uint8_t{80}, uint8_t{180}, uint8_t{255}, uint8_t{255});
+    reg.emplace<DrawColor>(player, uint8_t{80}, uint8_t{180}, uint8_t{255}, uint8_t{255});
     reg.emplace<DrawSize>(player, constants::PLAYER_SIZE, constants::PLAYER_SIZE);
     reg.emplace<DrawLayer>(player, Layer::Game);
     return player;
@@ -58,7 +58,7 @@ inline entt::entity make_shape_gate(entt::registry& reg, Shape shape, float y) {
     reg.emplace<RequiredShape>(obs, shape);
     reg.emplace<DrawSize>(obs, float(constants::SCREEN_W), 80.0f);
     reg.emplace<DrawLayer>(obs, Layer::Game);
-    reg.emplace<Color>(obs, uint8_t{255}, uint8_t{255}, uint8_t{255}, uint8_t{255});
+    reg.emplace<DrawColor>(obs, uint8_t{255}, uint8_t{255}, uint8_t{255}, uint8_t{255});
     return obs;
 }
 
@@ -73,7 +73,7 @@ inline entt::entity make_lane_block(entt::registry& reg, uint8_t mask, float y) 
     reg.emplace<BlockedLanes>(obs, mask);
     reg.emplace<DrawSize>(obs, float(constants::SCREEN_W / 3), 80.0f);
     reg.emplace<DrawLayer>(obs, Layer::Game);
-    reg.emplace<Color>(obs, uint8_t{255}, uint8_t{60}, uint8_t{60}, uint8_t{255});
+    reg.emplace<DrawColor>(obs, uint8_t{255}, uint8_t{60}, uint8_t{60}, uint8_t{255});
     return obs;
 }
 
@@ -90,7 +90,7 @@ inline entt::entity make_vertical_bar(entt::registry& reg, ObstacleKind kind, fl
     reg.emplace<RequiredVAction>(obs, action);
     reg.emplace<DrawSize>(obs, float(constants::SCREEN_W), 40.0f);
     reg.emplace<DrawLayer>(obs, Layer::Game);
-    reg.emplace<Color>(obs, uint8_t{255}, uint8_t{180}, uint8_t{0}, uint8_t{255});
+    reg.emplace<DrawColor>(obs, uint8_t{255}, uint8_t{180}, uint8_t{0}, uint8_t{255});
     return obs;
 }
 
@@ -106,7 +106,7 @@ inline entt::entity make_combo_gate(entt::registry& reg, Shape shape, uint8_t bl
     reg.emplace<BlockedLanes>(obs, blocked_mask);
     reg.emplace<DrawSize>(obs, float(constants::SCREEN_W), 80.0f);
     reg.emplace<DrawLayer>(obs, Layer::Game);
-    reg.emplace<Color>(obs, uint8_t{200}, uint8_t{100}, uint8_t{255}, uint8_t{255});
+    reg.emplace<DrawColor>(obs, uint8_t{200}, uint8_t{100}, uint8_t{255}, uint8_t{255});
     return obs;
 }
 
@@ -122,6 +122,6 @@ inline entt::entity make_split_path(entt::registry& reg, Shape shape, int8_t lan
     reg.emplace<RequiredLane>(obs, lane);
     reg.emplace<DrawSize>(obs, float(constants::SCREEN_W), 80.0f);
     reg.emplace<DrawLayer>(obs, Layer::Game);
-    reg.emplace<Color>(obs, uint8_t{255}, uint8_t{215}, uint8_t{0}, uint8_t{255});
+    reg.emplace<DrawColor>(obs, uint8_t{255}, uint8_t{215}, uint8_t{0}, uint8_t{255});
     return obs;
 }

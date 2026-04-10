@@ -48,7 +48,7 @@ TEST_CASE("player_action: swipe left changes lane", "[player]") {
     make_player(reg);
 
     auto& gesture = reg.ctx().get<GestureResult>();
-    gesture.gesture = Gesture::SwipeLeft;
+    gesture.gesture = SwipeGesture::SwipeLeft;
 
     player_action_system(reg, 0.016f);
 
@@ -64,7 +64,7 @@ TEST_CASE("player_action: swipe right changes lane", "[player]") {
     make_player(reg);
 
     auto& gesture = reg.ctx().get<GestureResult>();
-    gesture.gesture = Gesture::SwipeRight;
+    gesture.gesture = SwipeGesture::SwipeRight;
 
     player_action_system(reg, 0.016f);
 
@@ -80,7 +80,7 @@ TEST_CASE("player_action: swipe left at lane 0 is clamped", "[player]") {
     reg.get<Lane>(p).current = 0;
 
     auto& gesture = reg.ctx().get<GestureResult>();
-    gesture.gesture = Gesture::SwipeLeft;
+    gesture.gesture = SwipeGesture::SwipeLeft;
 
     player_action_system(reg, 0.016f);
 
@@ -93,7 +93,7 @@ TEST_CASE("player_action: swipe right at lane 2 is clamped", "[player]") {
     reg.get<Lane>(p).current = 2;
 
     auto& gesture = reg.ctx().get<GestureResult>();
-    gesture.gesture = Gesture::SwipeRight;
+    gesture.gesture = SwipeGesture::SwipeRight;
 
     player_action_system(reg, 0.016f);
 
@@ -105,7 +105,7 @@ TEST_CASE("player_action: swipe up initiates jump", "[player]") {
     make_player(reg);
 
     auto& gesture = reg.ctx().get<GestureResult>();
-    gesture.gesture = Gesture::SwipeUp;
+    gesture.gesture = SwipeGesture::SwipeUp;
 
     player_action_system(reg, 0.016f);
 
@@ -121,7 +121,7 @@ TEST_CASE("player_action: swipe down initiates slide", "[player]") {
     make_player(reg);
 
     auto& gesture = reg.ctx().get<GestureResult>();
-    gesture.gesture = Gesture::SwipeDown;
+    gesture.gesture = SwipeGesture::SwipeDown;
 
     player_action_system(reg, 0.016f);
 
@@ -139,7 +139,7 @@ TEST_CASE("player_action: cannot jump while already jumping", "[player]") {
     reg.get<VerticalState>(p).timer = 0.2f;
 
     auto& gesture = reg.ctx().get<GestureResult>();
-    gesture.gesture = Gesture::SwipeUp;
+    gesture.gesture = SwipeGesture::SwipeUp;
 
     player_action_system(reg, 0.016f);
 
@@ -235,7 +235,7 @@ TEST_CASE("player_action: not in Playing phase skips processing", "[player]") {
     make_player(reg);
 
     auto& gesture = reg.ctx().get<GestureResult>();
-    gesture.gesture = Gesture::SwipeUp;
+    gesture.gesture = SwipeGesture::SwipeUp;
 
     player_action_system(reg, 0.016f);
 
@@ -263,7 +263,7 @@ TEST_CASE("player_action: cannot slide while already sliding", "[player]") {
     reg.get<VerticalState>(p).timer = 0.3f;
 
     auto& gesture = reg.ctx().get<GestureResult>();
-    gesture.gesture = Gesture::SwipeDown;
+    gesture.gesture = SwipeGesture::SwipeDown;
 
     player_action_system(reg, 0.016f);
 
@@ -278,7 +278,7 @@ TEST_CASE("player_action: cannot slide while jumping", "[player]") {
     reg.get<VerticalState>(p).timer = 0.2f;
 
     auto& gesture = reg.ctx().get<GestureResult>();
-    gesture.gesture = Gesture::SwipeDown;
+    gesture.gesture = SwipeGesture::SwipeDown;
 
     player_action_system(reg, 0.016f);
 
@@ -293,7 +293,7 @@ TEST_CASE("player_action: cannot jump while sliding", "[player]") {
     reg.get<VerticalState>(p).timer = 0.3f;
 
     auto& gesture = reg.ctx().get<GestureResult>();
-    gesture.gesture = Gesture::SwipeUp;
+    gesture.gesture = SwipeGesture::SwipeUp;
 
     player_action_system(reg, 0.016f);
 

@@ -1,4 +1,4 @@
-#include <SDL.h>
+#include <raylib.h>
 #include <entt/entt.hpp>
 
 #include "version.h"
@@ -13,56 +13,30 @@
 #include "text_renderer.h"
 
 #include <string>
+#include <cstdio>
 
 int main(int /*argc*/, char* /*argv*/[]) {
 
-    // ── SDL INIT ─────────────────────────────────────────────
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) != 0) {
-        SDL_Log("SDL_Init failed: %s", SDL_GetError());
-        return 1;
-    }
-
-    SDL_Log("SHAPESHIFTER v%s", SHAPESHIFTER_VERSION);
-
+    // ── RAYLIB INIT ──────────────────────────────────────────
     std::string window_title = std::string("SHAPESHIFTER v") + SHAPESHIFTER_VERSION;
-    SDL_Window* window = SDL_CreateWindow(
-        window_title.c_str(),
-        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-        constants::SCREEN_W / 2, constants::SCREEN_H / 2,
-        SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE
+    InitWindow(
+        constants::SCREEN_W, constants::SCREEN_H,
+        window_title.c_str()
     );
-    if (!window) {
-        SDL_Log("SDL_CreateWindow failed: %s", SDL_GetError());
-        SDL_Quit();
-        return 1;
-    }
+    SetTargetFPS(60);
 
-    SDL_Renderer* renderer = SDL_CreateRenderer(
-        window, -1,
-        SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC
-    );
-    if (!renderer) {
-        SDL_Log("SDL_CreateRenderer failed: %s", SDL_GetError());
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-        return 1;
-    }
-    SDL_RenderSetLogicalSize(renderer, constants::SCREEN_W, constants::SCREEN_H);
-    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+    TraceLog(LOG_INFO, "SHAPESHIFTER v%s", SHAPESHIFTER_VERSION);
 
     // ── ENTT REGISTRY ────────────────────────────────────────
     entt::registry reg;
 
-    // ── TEXT RENDERING (SDL2_ttf) ────────────────────────────
+    // ── TEXT RENDERING (raylib fonts) ────────────────────────
     {
         auto& text_ctx = reg.ctx().emplace<TextContext>();
 
         // Try font paths: next to executable, CWD assets, then system fonts
-        std::string base_path;
-        char* sdl_base = SDL_GetBasePath();
-        if (sdl_base) { base_path = sdl_base; SDL_free(sdl_base); }
-
-        std::string exe_font = base_path + "assets/fonts/LiberationMono-Regular.ttf";
+        std::string exe_font = std::string(GetApplicationDirectory())
+                             + "assets/fonts/LiberationMono-Regular.ttf";
         const char* font_paths[] = {
             exe_font.c_str(),
             "assets/fonts/LiberationMono-Regular.ttf",
@@ -73,13 +47,13 @@ int main(int /*argc*/, char* /*argv*/[]) {
         bool font_loaded = false;
         for (const char* path : font_paths) {
             if (text_init(text_ctx, path)) {
-                SDL_Log("Loaded font: %s", path);
+                TraceLog(LOG_INFO, "Loaded font: %s", path);
                 font_loaded = true;
                 break;
             }
         }
         if (!font_loaded) {
-            SDL_Log("ERROR: Could not load any TTF font");
+            TraceLog(LOG_ERROR, "Could not load any TTF font");
         }
     }
 
@@ -103,23 +77,18 @@ int main(int /*argc*/, char* /*argv*/[]) {
     constexpr float FIXED_DT  = 1.0f / 60.0f;
     constexpr float MAX_ACCUM = 0.1f;
     float accumulator = 0.0f;
-    Uint64 prev_counter = SDL_GetPerformanceCounter();
-    Uint64 freq = SDL_GetPerformanceFrequency();
 
     // ── MAIN LOOP ────────────────────────────────────────────
-    while (true) {
+    while (!WindowShouldClose()) {
 
         // Delta time
-        Uint64 now = SDL_GetPerformanceCounter();
-        float raw_dt = static_cast<float>(now - prev_counter)
-                     / static_cast<float>(freq);
-        prev_counter = now;
+        float raw_dt = GetFrameTime();
         accumulator += raw_dt;
         if (accumulator > MAX_ACCUM) {
             accumulator = MAX_ACCUM;
         }
 
-        // Phase 0: Input (polls SDL events, updates InputState)
+        // Phase 0: Input (polls raylib input state)
         input_system(reg, raw_dt);
         if (reg.ctx().get<InputState>().quit_requested) break;
 
@@ -143,7 +112,9 @@ int main(int /*argc*/, char* /*argv*/[]) {
 
         // Render
         float alpha = accumulator / FIXED_DT;
-        render_system(reg, renderer, alpha);
+        BeginDrawing();
+            render_system(reg, alpha);
+        EndDrawing();
 
         // Audio
         audio_system(reg);
@@ -151,8 +122,6 @@ int main(int /*argc*/, char* /*argv*/[]) {
 
     // ── SHUTDOWN ─────────────────────────────────────────────
     text_shutdown(reg.ctx().get<TextContext>());
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
-    SDL_Quit();
+    CloseWindow();
     return 0;
 }

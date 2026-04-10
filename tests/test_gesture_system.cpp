@@ -10,7 +10,7 @@ TEST_CASE("gesture_system: no gesture when no touch_up", "[gesture]") {
     gesture_system(reg, 0.016f);
 
     auto& gesture = reg.ctx().get<GestureResult>();
-    CHECK(gesture.gesture == Gesture::None);
+    CHECK(gesture.gesture == SwipeGesture::None);
     CHECK_FALSE(reg.ctx().get<ShapeButtonEvent>().pressed);
 }
 
@@ -27,7 +27,7 @@ TEST_CASE("gesture_system: swipe right detected", "[gesture]") {
     gesture_system(reg, 0.016f);
 
     auto& gesture = reg.ctx().get<GestureResult>();
-    CHECK(gesture.gesture == Gesture::SwipeRight);
+    CHECK(gesture.gesture == SwipeGesture::SwipeRight);
     CHECK(gesture.magnitude > constants::MIN_SWIPE_DIST);
 }
 
@@ -43,7 +43,7 @@ TEST_CASE("gesture_system: swipe left detected", "[gesture]") {
 
     gesture_system(reg, 0.016f);
 
-    CHECK(reg.ctx().get<GestureResult>().gesture == Gesture::SwipeLeft);
+    CHECK(reg.ctx().get<GestureResult>().gesture == SwipeGesture::SwipeLeft);
 }
 
 TEST_CASE("gesture_system: swipe up detected", "[gesture]") {
@@ -58,7 +58,7 @@ TEST_CASE("gesture_system: swipe up detected", "[gesture]") {
 
     gesture_system(reg, 0.016f);
 
-    CHECK(reg.ctx().get<GestureResult>().gesture == Gesture::SwipeUp);
+    CHECK(reg.ctx().get<GestureResult>().gesture == SwipeGesture::SwipeUp);
 }
 
 TEST_CASE("gesture_system: swipe down detected", "[gesture]") {
@@ -73,7 +73,7 @@ TEST_CASE("gesture_system: swipe down detected", "[gesture]") {
 
     gesture_system(reg, 0.016f);
 
-    CHECK(reg.ctx().get<GestureResult>().gesture == Gesture::SwipeDown);
+    CHECK(reg.ctx().get<GestureResult>().gesture == SwipeGesture::SwipeDown);
 }
 
 TEST_CASE("gesture_system: swipe too short is ignored", "[gesture]") {
@@ -88,7 +88,7 @@ TEST_CASE("gesture_system: swipe too short is ignored", "[gesture]") {
 
     gesture_system(reg, 0.016f);
 
-    CHECK(reg.ctx().get<GestureResult>().gesture == Gesture::None);
+    CHECK(reg.ctx().get<GestureResult>().gesture == SwipeGesture::None);
 }
 
 TEST_CASE("gesture_system: swipe too slow is ignored", "[gesture]") {
@@ -103,7 +103,7 @@ TEST_CASE("gesture_system: swipe too slow is ignored", "[gesture]") {
 
     gesture_system(reg, 0.016f);
 
-    CHECK(reg.ctx().get<GestureResult>().gesture == Gesture::None);
+    CHECK(reg.ctx().get<GestureResult>().gesture == SwipeGesture::None);
 }
 
 TEST_CASE("gesture_system: button tap in button zone", "[gesture]") {
@@ -130,7 +130,7 @@ TEST_CASE("gesture_system: button tap in button zone", "[gesture]") {
     auto& btn = reg.ctx().get<ShapeButtonEvent>();
     CHECK(btn.pressed);
     CHECK(btn.shape == Shape::Square);
-    CHECK(reg.ctx().get<GestureResult>().gesture == Gesture::None);
+    CHECK(reg.ctx().get<GestureResult>().gesture == SwipeGesture::None);
 }
 
 TEST_CASE("gesture_system: button tap on first button (Circle)", "[gesture]") {
@@ -184,7 +184,7 @@ TEST_CASE("gesture_system: swipe sets magnitude and hit coordinates", "[gesture]
     gesture_system(reg, 0.016f);
 
     auto& g = reg.ctx().get<GestureResult>();
-    CHECK(g.gesture == Gesture::SwipeRight);
+    CHECK(g.gesture == SwipeGesture::SwipeRight);
     CHECK(g.hit_x == 200.0f);  // start coords
     CHECK(g.hit_y == 300.0f);
     CHECK(g.magnitude > 0.0f);
@@ -203,7 +203,7 @@ TEST_CASE("gesture_system: diagonal swipe classified by dominant axis", "[gestur
 
     gesture_system(reg, 0.016f);
 
-    CHECK(reg.ctx().get<GestureResult>().gesture == Gesture::SwipeRight);
+    CHECK(reg.ctx().get<GestureResult>().gesture == SwipeGesture::SwipeRight);
 }
 
 TEST_CASE("gesture_system: button tap on third button (Triangle)", "[gesture]") {
@@ -257,7 +257,7 @@ TEST_CASE("gesture_system: left-click on Circle button works on desktop", "[gest
     auto& btn = reg.ctx().get<ShapeButtonEvent>();
     CHECK(btn.pressed);
     CHECK(btn.shape == Shape::Circle);
-    CHECK(reg.ctx().get<GestureResult>().gesture == Gesture::None);
+    CHECK(reg.ctx().get<GestureResult>().gesture == SwipeGesture::None);
 }
 
 TEST_CASE("gesture_system: left-click on Triangle button works on desktop", "[gesture][desktop]") {
@@ -294,7 +294,7 @@ TEST_CASE("gesture_system: W key fires SwipeUp", "[gesture][desktop]") {
 
     gesture_system(reg, 0.016f);
 
-    CHECK(reg.ctx().get<GestureResult>().gesture == Gesture::SwipeUp);
+    CHECK(reg.ctx().get<GestureResult>().gesture == SwipeGesture::SwipeUp);
     CHECK_FALSE(reg.ctx().get<ShapeButtonEvent>().pressed);
 }
 
@@ -304,7 +304,7 @@ TEST_CASE("gesture_system: S key fires SwipeDown", "[gesture][desktop]") {
 
     gesture_system(reg, 0.016f);
 
-    CHECK(reg.ctx().get<GestureResult>().gesture == Gesture::SwipeDown);
+    CHECK(reg.ctx().get<GestureResult>().gesture == SwipeGesture::SwipeDown);
 }
 
 TEST_CASE("gesture_system: A key fires SwipeLeft", "[gesture][desktop]") {
@@ -313,7 +313,7 @@ TEST_CASE("gesture_system: A key fires SwipeLeft", "[gesture][desktop]") {
 
     gesture_system(reg, 0.016f);
 
-    CHECK(reg.ctx().get<GestureResult>().gesture == Gesture::SwipeLeft);
+    CHECK(reg.ctx().get<GestureResult>().gesture == SwipeGesture::SwipeLeft);
 }
 
 TEST_CASE("gesture_system: D key fires SwipeRight", "[gesture][desktop]") {
@@ -322,7 +322,7 @@ TEST_CASE("gesture_system: D key fires SwipeRight", "[gesture][desktop]") {
 
     gesture_system(reg, 0.016f);
 
-    CHECK(reg.ctx().get<GestureResult>().gesture == Gesture::SwipeRight);
+    CHECK(reg.ctx().get<GestureResult>().gesture == SwipeGesture::SwipeRight);
 }
 
 TEST_CASE("gesture_system: key_1 selects Circle shape", "[gesture][desktop]") {
@@ -334,7 +334,7 @@ TEST_CASE("gesture_system: key_1 selects Circle shape", "[gesture][desktop]") {
     auto& btn = reg.ctx().get<ShapeButtonEvent>();
     CHECK(btn.pressed);
     CHECK(btn.shape == Shape::Circle);
-    CHECK(reg.ctx().get<GestureResult>().gesture == Gesture::None);
+    CHECK(reg.ctx().get<GestureResult>().gesture == SwipeGesture::None);
 }
 
 TEST_CASE("gesture_system: key_2 selects Triangle shape", "[gesture][desktop]") {
@@ -366,7 +366,7 @@ TEST_CASE("gesture_system: keyboard key produces no magnitude or hit coords", "[
     gesture_system(reg, 0.016f);
 
     auto& g = reg.ctx().get<GestureResult>();
-    CHECK(g.gesture == Gesture::SwipeUp);
+    CHECK(g.gesture == SwipeGesture::SwipeUp);
     CHECK(g.magnitude == 0.0f);
     CHECK(g.hit_x == 0.0f);
     CHECK(g.hit_y == 0.0f);
@@ -388,7 +388,7 @@ TEST_CASE("gesture_system: keyboard takes priority over simultaneous touch", "[g
     gesture_system(reg, 0.016f);
 
     // Keyboard wins
-    CHECK(reg.ctx().get<GestureResult>().gesture == Gesture::SwipeUp);
+    CHECK(reg.ctx().get<GestureResult>().gesture == SwipeGesture::SwipeUp);
 }
 
 TEST_CASE("gesture_system: key flags cleared between frames do not re-fire", "[gesture][desktop]") {
@@ -397,11 +397,11 @@ TEST_CASE("gesture_system: key flags cleared between frames do not re-fire", "[g
     input.key_d = true;
 
     gesture_system(reg, 0.016f);
-    CHECK(reg.ctx().get<GestureResult>().gesture == Gesture::SwipeRight);
+    CHECK(reg.ctx().get<GestureResult>().gesture == SwipeGesture::SwipeRight);
 
     // Next frame: clear events (simulates start of input_system tick)
     clear_input_events(input);
     gesture_system(reg, 0.016f);
-    CHECK(reg.ctx().get<GestureResult>().gesture == Gesture::None);
+    CHECK(reg.ctx().get<GestureResult>().gesture == SwipeGesture::None);
 }
 #endif // PLATFORM_DESKTOP

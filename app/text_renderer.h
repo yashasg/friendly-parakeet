@@ -1,7 +1,6 @@
 #pragma once
 
-#include <SDL.h>
-#include <SDL_ttf.h>
+#include <raylib.h>
 #include <cstdint>
 
 // ── TextAlign ────────────────────────────────────────────────
@@ -13,28 +12,28 @@ enum class FontSize : int { Small = 0, Medium = 1, Large = 2 };
 
 // ── TextContext ──────────────────────────────────────────────
 // Plain data struct stored in the ECS registry context.
-// Holds pre-loaded TTF_Font pointers at different point sizes.
+// Holds pre-loaded raylib Font objects at different point sizes.
 // No logic, no methods beyond default construction.
 struct TextContext {
-    TTF_Font* font_small  = nullptr;  // ~16pt  — labels, small HUD text
-    TTF_Font* font_medium = nullptr;  // ~28pt  — HUD scores
-    TTF_Font* font_large  = nullptr;  // ~48pt  — titles, GAME OVER
+    Font font_small{};    // ~16pt  — labels, small HUD text
+    Font font_medium{};   // ~28pt  — HUD scores
+    Font font_large{};    // ~48pt  — titles, GAME OVER
+    bool loaded = false;  // true once fonts are successfully loaded
 };
 
 // ── Free functions ───────────────────────────────────────────
 
-// Initialize SDL_ttf and load fonts at 3 sizes from the given path.
-// Returns true on success.  On failure, TextContext fonts remain nullptr.
+// Load fonts at 3 sizes from the given path.
+// Returns true on success.  On failure, TextContext fonts remain invalid.
 bool text_init(TextContext& ctx, const char* font_path);
 
-// Close fonts and shut down SDL_ttf.
+// Unload fonts.
 void text_shutdown(TextContext& ctx);
 
 // Render a null-terminated string.
 // font_size selects which pre-loaded font to use.
 // (x, y) is the anchor point; alignment adjusts horizontally.
 void text_draw(const TextContext& ctx,
-               SDL_Renderer* renderer,
                const char* text,
                float x, float y,
                FontSize font_size,
@@ -43,7 +42,6 @@ void text_draw(const TextContext& ctx,
 
 // Convenience: format an integer and render it.
 void text_draw_number(const TextContext& ctx,
-                      SDL_Renderer* renderer,
                       int number,
                       float x, float y,
                       FontSize font_size,

@@ -42,7 +42,7 @@ static entt::entity make_bench_player(entt::registry& reg) {
     reg.emplace<PlayerShape>(p);
     reg.emplace<Lane>(p);
     reg.emplace<VerticalState>(p);
-    reg.emplace<Color>(p, uint8_t{80}, uint8_t{180}, uint8_t{255}, uint8_t{255});
+    reg.emplace<DrawColor>(p, uint8_t{80}, uint8_t{180}, uint8_t{255}, uint8_t{255});
     reg.emplace<DrawSize>(p, constants::PLAYER_SIZE, constants::PLAYER_SIZE);
     reg.emplace<DrawLayer>(p, Layer::Game);
     return p;
@@ -61,7 +61,7 @@ static void spawn_obstacles(entt::registry& reg, int count) {
         reg.emplace<RequiredShape>(obs, shape);
         reg.emplace<DrawSize>(obs, float(constants::SCREEN_W), 80.0f);
         reg.emplace<DrawLayer>(obs, Layer::Game);
-        reg.emplace<Color>(obs, uint8_t{255}, uint8_t{255}, uint8_t{255}, uint8_t{255});
+        reg.emplace<DrawColor>(obs, uint8_t{255}, uint8_t{255}, uint8_t{255}, uint8_t{255});
     }
 }
 
@@ -72,8 +72,8 @@ static void spawn_particles(entt::registry& reg, int count) {
         reg.emplace<Position>(p, 360.0f, 500.0f);
         reg.emplace<Velocity>(p, static_cast<float>(i % 50 - 25), -100.0f);
         reg.emplace<Lifetime>(p, 0.6f, 0.6f);
-        reg.emplace<ParticleData>(p, 4.0f, 4.0f);
-        reg.emplace<Color>(p, uint8_t{255}, uint8_t{100}, uint8_t{50}, uint8_t{255});
+        reg.emplace<ParticleData>(p, 4.0f);
+        reg.emplace<DrawColor>(p, uint8_t{255}, uint8_t{100}, uint8_t{50}, uint8_t{255});
         reg.emplace<DrawLayer>(p, Layer::Effects);
     }
 }
@@ -173,7 +173,7 @@ TEST_CASE("Bench: scoring_system", "[bench]") {
             reg.emplace<Obstacle>(obs, ObstacleKind::ShapeGate, int16_t{200});
             reg.emplace<ScoredTag>(obs);
             reg.emplace<DrawLayer>(obs, Layer::Game);
-            reg.emplace<Color>(obs, uint8_t{255}, uint8_t{255}, uint8_t{255}, uint8_t{255});
+            reg.emplace<DrawColor>(obs, uint8_t{255}, uint8_t{255}, uint8_t{255}, uint8_t{255});
         }
         meter.measure([&] { scoring_system(reg, DT); });
     };
@@ -199,7 +199,7 @@ TEST_CASE("Bench: player_action + movement", "[bench]") {
         btn.pressed = true;
         btn.shape = Shape::Triangle;
         auto& gesture = reg.ctx().get<GestureResult>();
-        gesture.gesture = Gesture::SwipeRight;
+        gesture.gesture = SwipeGesture::SwipeRight;
         meter.measure([&] {
             player_action_system(reg, DT);
             player_movement_system(reg, DT);

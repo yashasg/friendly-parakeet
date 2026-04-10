@@ -2,7 +2,7 @@
 set -euo pipefail
 
 cd "$(dirname "$0")"
-
+export VCPKG_ROOT="$HOME/vcpkg"
 ./build.sh
 
 if [[ "${1:-}" == "test" ]]; then

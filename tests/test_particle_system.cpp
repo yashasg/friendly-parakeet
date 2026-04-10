@@ -7,7 +7,7 @@ static entt::entity make_particle(entt::registry& reg, float size, float life_re
                                   float vx = 0.0f, float vy = 0.0f) {
     auto e = reg.create();
     reg.emplace<ParticleTag>(e);
-    reg.emplace<ParticleData>(e, size, size);  // size, start_size
+    reg.emplace<ParticleData>(e, size);
     reg.emplace<Lifetime>(e, life_remaining, life_max);
     reg.emplace<Velocity>(e, vx, vy);
     reg.emplace<Position>(e, 100.0f, 200.0f);
@@ -20,11 +20,12 @@ TEST_CASE("particle: shrinks proportional to remaining lifetime", "[particle]") 
     auto reg = make_registry();
     auto e = make_particle(reg, 10.0f, 0.5f, 1.0f);
 
+    // Size is now immutable; shrinking is computed at render time.
+    // Verify the particle data is unchanged after a system tick.
     particle_system(reg, 0.016f);
 
     auto& pd = reg.get<ParticleData>(e);
-    // remaining/max_time = 0.5/1.0 = 0.5, so size = 10 * 0.5 = 5.0
-    CHECK_THAT(pd.size, Catch::Matchers::WithinAbs(5.0f, 0.01f));
+    CHECK_THAT(pd.size, Catch::Matchers::WithinAbs(10.0f, 0.01f));
 }
 
 TEST_CASE("particle: full lifetime means full size", "[particle]") {
@@ -37,25 +38,25 @@ TEST_CASE("particle: full lifetime means full size", "[particle]") {
     CHECK_THAT(pd.size, Catch::Matchers::WithinAbs(8.0f, 0.01f));
 }
 
-TEST_CASE("particle: nearly expired lifetime shrinks to near zero", "[particle]") {
+TEST_CASE("particle: size is immutable across ticks", "[particle]") {
     auto reg = make_registry();
     auto e = make_particle(reg, 10.0f, 0.01f, 1.0f);
 
     particle_system(reg, 0.016f);
 
     auto& pd = reg.get<ParticleData>(e);
-    CHECK(pd.size < 0.2f);
+    CHECK_THAT(pd.size, Catch::Matchers::WithinAbs(10.0f, 0.01f));
 }
 
-TEST_CASE("particle: multiple particles shrink independently", "[particle]") {
+TEST_CASE("particle: multiple particles retain original size", "[particle]") {
     auto reg = make_registry();
     auto e1 = make_particle(reg, 10.0f, 0.5f, 1.0f);
     auto e2 = make_particle(reg, 20.0f, 0.25f, 1.0f);
 
     particle_system(reg, 0.016f);
 
-    CHECK_THAT(reg.get<ParticleData>(e1).size, Catch::Matchers::WithinAbs(5.0f, 0.01f));
-    CHECK_THAT(reg.get<ParticleData>(e2).size, Catch::Matchers::WithinAbs(5.0f, 0.01f));
+    CHECK_THAT(reg.get<ParticleData>(e1).size, Catch::Matchers::WithinAbs(10.0f, 0.01f));
+    CHECK_THAT(reg.get<ParticleData>(e2).size, Catch::Matchers::WithinAbs(20.0f, 0.01f));
 }
 
 // ── particle_system: gravity ────────────────────────────────

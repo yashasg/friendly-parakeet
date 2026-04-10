@@ -8,7 +8,7 @@ void gesture_system(entt::registry& reg, float /*dt*/) {
     auto& gesture = reg.ctx().get<GestureResult>();
     auto& btn_evt = reg.ctx().get<ShapeButtonEvent>();
 
-    gesture.gesture = Gesture::None;
+    gesture.gesture = SwipeGesture::None;
     btn_evt.pressed = false;
 
 #ifdef PLATFORM_DESKTOP
@@ -17,10 +17,10 @@ void gesture_system(entt::registry& reg, float /*dt*/) {
     // ShapeButtonEvent outputs that the touch path produces.
     // Checked first: if any key fired this frame we return early,
     // preventing a simultaneous stray mouse event from double-firing.
-    if (input.key_w) { gesture.gesture = Gesture::SwipeUp;    return; }
-    if (input.key_s) { gesture.gesture = Gesture::SwipeDown;  return; }
-    if (input.key_a) { gesture.gesture = Gesture::SwipeLeft;  return; }
-    if (input.key_d) { gesture.gesture = Gesture::SwipeRight; return; }
+    if (input.key_w) { gesture.gesture = SwipeGesture::SwipeUp;    return; }
+    if (input.key_s) { gesture.gesture = SwipeGesture::SwipeDown;  return; }
+    if (input.key_a) { gesture.gesture = SwipeGesture::SwipeLeft;  return; }
+    if (input.key_d) { gesture.gesture = SwipeGesture::SwipeRight; return; }
     if (input.key_1) { btn_evt.pressed = true; btn_evt.shape = Shape::Circle;   return; }
     if (input.key_2) { btn_evt.pressed = true; btn_evt.shape = Shape::Triangle; return; }
     if (input.key_3) { btn_evt.pressed = true; btn_evt.shape = Shape::Square;   return; }
@@ -62,8 +62,8 @@ void gesture_system(entt::registry& reg, float /*dt*/) {
     gesture.magnitude = dist;
 
     if (std::abs(dx) > std::abs(dy)) {
-        gesture.gesture = (dx > 0) ? Gesture::SwipeRight : Gesture::SwipeLeft;
+        gesture.gesture = (dx > 0) ? SwipeGesture::SwipeRight : SwipeGesture::SwipeLeft;
     } else {
-        gesture.gesture = (dy > 0) ? Gesture::SwipeDown : Gesture::SwipeUp;
+        gesture.gesture = (dy > 0) ? SwipeGesture::SwipeDown : SwipeGesture::SwipeUp;
     }
 }
