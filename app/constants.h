@@ -49,11 +49,39 @@ constexpr int   PTS_PER_SECOND    = 10;
 constexpr int   CHAIN_BONUS[5]    = { 0, 0, 50, 100, 200 };
 
 // ── Difficulty Timeline ───────────────────────────
+// Retained for legacy random-spawn mode
 constexpr float SPEED_RAMP_RATE   = 0.011f;
 constexpr float SPAWN_RAMP_RATE   = 0.003f;
 constexpr float BURNOUT_SHRINK    = 0.002f;
 constexpr float INITIAL_SPAWN_INT = 1.8f;
 constexpr float MIN_SPAWN_INT     = 0.5f;
+
+// ── Rhythm Constants ──────────────────────────────
+constexpr float APPROACH_DIST      = 1040.0f;  // |PLAYER_Y - SPAWN_Y|
+constexpr float BASE_WINDOW_BEATS  = 1.6f;
+constexpr float MIN_WINDOW         = 0.36f;
+constexpr float BASE_MORPH_BEATS   = 0.2f;
+constexpr float MIN_MORPH          = 0.06f;
+constexpr float COOLDOWN_DURATION  = 0.05f;
+
+// ── Timing Grade Thresholds ──────────────────────
+constexpr float TIMING_PERFECT_PCT = 0.25f;
+constexpr float TIMING_GOOD_PCT    = 0.50f;
+constexpr float TIMING_OK_PCT      = 0.75f;
+
+// ── Window Scaling by Grade ───────────────────────
+// Base window is calibrated for OK. Better grades
+// scale down remaining active time so the player
+// recovers to Hexagon faster.
+constexpr float WINDOW_SCALE_BAD     = 1.00f;
+constexpr float WINDOW_SCALE_OK      = 1.00f;
+constexpr float WINDOW_SCALE_GOOD    = 0.75f;
+constexpr float WINDOW_SCALE_PERFECT = 0.50f;
+
+// ── HP System ─────────────────────────────────────
+constexpr int   MAX_HP                  = 5;
+constexpr int   HP_DRAIN_ON_MISS        = 1;
+constexpr int   HP_RECOVER_ON_PERFECT   = 1;
 
 // ── Rendering ─────────────────────────────────────
 constexpr float POPUP_DURATION    = 1.2f;
