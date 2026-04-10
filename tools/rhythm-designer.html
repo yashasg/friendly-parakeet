@@ -99,8 +99,8 @@ input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14p
 <header>
   <div class="logo">RHYTHMIQ <span>/ 3-Lane Runner Designer</span></div>
   <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
-    <label style="margin:0;font-size:10px">API KEY</label>
-    <input id="api-key" type="password" placeholder="sk-ant-..." style="width:220px;font-size:11px;padding:5px 8px">
+    <label style="margin:0;font-size:10px">GITHUB TOKEN</label>
+    <input id="api-key" type="password" placeholder="ghp_... or gho_..." style="width:220px;font-size:11px;padding:5px 8px">
   </div>
   <div class="dbg-toggle" onclick="toggleDebug()">debug</div>
 </header>
@@ -254,31 +254,42 @@ function extractJSON(raw, wantArray) {
   }
 }
 
-async function callClaude(sys, user, maxTok) {
+async function callLLM(sys, user, maxTok) {
   dbg('call maxTok=' + maxTok + ' userLen=' + user.length);
+  var token = document.getElementById('api-key').value.trim();
+  if (!token) throw new Error('Enter a GitHub token (ghp_... or gho_...) in the header bar.');
+
+  var messages = [];
+  if (sys) messages.push({ role: 'system', content: sys });
+  messages.push({ role: 'user', content: user });
+
   var body = {
-    model: 'claude-sonnet-4-20250514',
+    model: 'gpt-4o',
     max_tokens: maxTok,
-    messages: [{ role: 'user', content: user }]
+    messages: messages
   };
-  if (sys) body.system = sys;
-  var apiKey = document.getElementById('api-key').value.trim();
-  if (!apiKey) throw new Error('Enter an Anthropic API key in the header bar.');
-  var r = await fetch('https://api.anthropic.com/v1/messages', {
+
+  var r = await fetch('https://api.githubcopilot.com/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true'
+      'Authorization': 'Bearer ' + token,
+      'Copilot-Integration-Id': 'vscode-chat'
     },
     body: JSON.stringify(body)
   });
+  if (!r.ok) {
+    var err = await r.text();
+    throw new Error('API ' + r.status + ': ' + err);
+  }
   var d = await r.json();
-  if (d.error) throw new Error('API: ' + d.error.message);
-  var text = d.content.map(function(b){ return b.text||''; }).join('');
-  dbg('response len=' + text.length + ' stop=' + d.stop_reason);
-  if (d.stop_reason === 'max_tokens') throw new Error('Response truncated (max_tokens hit at ' + maxTok + '). Try again.');
+  if (d.error) throw new Error('API: ' + (d.error.message || JSON.stringify(d.error)));
+  var text = (d.choices && d.choices[0] && d.choices[0].message)
+    ? d.choices[0].message.content || ''
+    : '';
+  dbg('response len=' + text.length + ' finish=' + (d.choices && d.choices[0] && d.choices[0].finish_reason));
+  if (d.choices && d.choices[0] && d.choices[0].finish_reason === 'length')
+    throw new Error('Response truncated (max_tokens hit at ' + maxTok + '). Try again.');
   return text;
 }
 
@@ -373,7 +384,7 @@ async function extractAudio(ytUrl) {
 '"structure":[{"section":"intro|verse|chorus|bridge|drop|outro","start":<n>,"end":<n>,"intensity":"low|medium|high"}]}\n\n' +
 'Rules: beats at exact BPM interval, all values<=duration, structure contiguous from 0 to duration.';
 
-  var text = await callClaude(null, user, 16000);
+  var text = await callLLM(null, user, 16000);
   var parsed = extractJSON(text, false);
   if (!Array.isArray(parsed.beats)) throw new Error('beats missing');
   return parsed;
@@ -419,7 +430,7 @@ async function designDifficulty(audio, title, diff) {
 'kind=shape_gate needs shape+lane. kind=lane_block needs blocked (array of blocked lane indices). kind=low_bar/high_bar need no extra fields.\n' +
 'Different shapes must be >=3 beats apart. Sorted by beat ascending. Output the array now:';
 
-  var text = await callClaude(null, user, 16000);
+  var text = await callLLM(null, user, 16000);
   var arr = extractJSON(text, true);
   if (!Array.isArray(arr)) throw new Error(diff + ': not an array');
   arr.sort(function(a,b){ return a.t - b.t; });
