@@ -8,12 +8,8 @@ on:
 
 jobs:
   build:
-    name: Build (Windows, ${{ matrix.compiler }})
+    name: Build (Windows)
     runs-on: windows-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        compiler: [llvm, msvc]
     permissions:
       contents: read
       checks: write
@@ -37,7 +33,7 @@ jobs:
       - name: Setup C++ toolchain
         uses: aminya/setup-cpp@v1
         with:
-          compiler: ${{ matrix.compiler }}
+          compiler: llvm-20
           cmake: true
           vcpkg: true
           ninja: true
@@ -50,9 +46,9 @@ jobs:
         uses: actions/cache@v5
         with:
           path: build
-          key: cmake-windows-${{ matrix.compiler }}-static-md-${{ hashFiles('CMakeLists.txt', 'vcpkg.json') }}
+          key: cmake-windows-clang-static-md-${{ hashFiles('CMakeLists.txt', 'vcpkg.json') }}
           restore-keys: |
-            cmake-windows-${{ matrix.compiler }}-static-md-
+            cmake-windows-clang-static-md-
 
       - name: Build
         run: ./build.sh
@@ -68,14 +64,14 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v5
         with:
-          name: shapeshifter-windows-${{ matrix.compiler }}
+          name: shapeshifter-windows
           path: build/shapeshifter.exe
 
       - name: Upload CTRF report
         if: always() && steps.run-tests.outcome != 'skipped'
         uses: actions/upload-artifact@v5
         with:
-          name: ctrf-report-windows-${{ matrix.compiler }}
+          name: ctrf-report-windows
           path: ctrf-report.json
 
       - name: Report test results
@@ -83,7 +79,7 @@ jobs:
         uses: ctrf-io/github-test-reporter@v1
         with:
           report-path: 'ctrf-report.json'
-          title: 'Test Results (Windows, ${{ matrix.compiler }})'
+          title: 'Test Results (Windows)'
           pull-request-report: true
           summary-delta-report: true
           insights-report: true
