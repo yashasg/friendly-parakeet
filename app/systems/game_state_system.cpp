@@ -49,10 +49,12 @@ static void enter_playing(entt::registry& reg) {
 
     // Reset rhythm singletons for new play session
     auto* song = reg.ctx().find<SongState>();
+    auto* beatmap = reg.ctx().find<BeatMap>();
+    bool has_chart = beatmap && !beatmap->beats.empty();
     if (song) {
         song->song_time      = 0.0f;
         song->current_beat   = -1;
-        song->playing        = true;
+        song->playing        = has_chart;  // only activate rhythm mode with a loaded chart
         song->finished       = false;
         song->next_spawn_idx = 0;
     }
