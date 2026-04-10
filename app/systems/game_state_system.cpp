@@ -9,6 +9,7 @@
 #include "../components/burnout.h"
 #include "../components/difficulty.h"
 #include "../components/audio.h"
+#include "../components/rhythm.h"
 #include "../constants.h"
 
 static void enter_playing(entt::registry& reg) {
@@ -28,16 +29,37 @@ static void enter_playing(entt::registry& reg) {
     reg.ctx().insert_or_assign(BurnoutState{});
     reg.ctx().insert_or_assign(AudioQueue{});
 
-    // Create player
+    // Create player (starts as Hexagon in rhythm mode)
     auto player = reg.create();
     reg.emplace<PlayerTag>(player);
     reg.emplace<Position>(player, constants::LANE_X[1], constants::PLAYER_Y);
-    reg.emplace<PlayerShape>(player);
+    {
+        PlayerShape ps;
+        ps.current      = Shape::Hexagon;
+        ps.previous     = Shape::Hexagon;
+        ps.target_shape = Shape::Hexagon;
+        ps.phase_raw    = static_cast<uint8_t>(WindowPhase::Idle);
+        reg.emplace<PlayerShape>(player, ps);
+    }
     reg.emplace<Lane>(player);
     reg.emplace<VerticalState>(player);
     reg.emplace<DrawColor>(player, uint8_t{80}, uint8_t{180}, uint8_t{255}, uint8_t{255});
     reg.emplace<DrawSize>(player, constants::PLAYER_SIZE, constants::PLAYER_SIZE);
     reg.emplace<DrawLayer>(player, Layer::Game);
+
+    // Reset rhythm singletons for new play session
+    auto* song = reg.ctx().find<SongState>();
+    if (song) {
+        song->song_time      = 0.0f;
+        song->current_beat   = -1;
+        song->playing        = true;
+        song->finished       = false;
+        song->next_spawn_idx = 0;
+    }
+    auto* hp = reg.ctx().find<HPState>();
+    if (hp) { hp->current = hp->max_hp; }
+    auto* results = reg.ctx().find<SongResults>();
+    if (results) { *results = SongResults{}; }
 
     auto& gs = reg.ctx().get<GameState>();
     gs.previous_phase = gs.phase;

@@ -9,24 +9,25 @@
 #include "components/burnout.h"
 #include "components/difficulty.h"
 #include "components/audio.h"
+#include "components/rhythm.h"
 #include "systems/all_systems.h"
 #include "text_renderer.h"
-#include "file_logger.h"
 
 #include <string>
 #include <cstdio>
+#include <algorithm>
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
 #endif
 
-// ── Emscripten main-loop state ───────────────────────────────
-// The browser event loop is non-blocking, so we extract the loop body
-// into a free function and hand it to emscripten_set_main_loop.
 static constexpr float FIXED_DT  = 1.0f / 60.0f;
 static constexpr float MAX_ACCUM = 0.1f;
 
 #ifdef __EMSCRIPTEN__
+// ── Emscripten main-loop state ───────────────────────────────
+// The browser event loop is non-blocking, so we extract the loop body
+// into a free function and hand it to emscripten_set_main_loop.
 struct LoopState {
     entt::registry* reg;
     float accumulator;
@@ -46,7 +47,10 @@ static void update_draw_frame() {
     while (g_loop.accumulator >= FIXED_DT) {
         gesture_system(reg, FIXED_DT);
         game_state_system(reg, FIXED_DT);
+        song_playback_system(reg, FIXED_DT);
+        beat_scheduler_system(reg, FIXED_DT);
         player_action_system(reg, FIXED_DT);
+        shape_window_system(reg, FIXED_DT);
         player_movement_system(reg, FIXED_DT);
         difficulty_system(reg, FIXED_DT);
         obstacle_spawn_system(reg, FIXED_DT);
@@ -54,6 +58,7 @@ static void update_draw_frame() {
         burnout_system(reg, FIXED_DT);
         collision_system(reg, FIXED_DT);
         scoring_system(reg, FIXED_DT);
+        hp_system(reg, FIXED_DT);
         lifetime_system(reg, FIXED_DT);
         particle_system(reg, FIXED_DT);
         cleanup_system(reg, FIXED_DT);
@@ -71,15 +76,10 @@ static void update_draw_frame() {
 
 int main(int /*argc*/, char* /*argv*/[]) {
 
-    // ── FILE LOGGING (must be before InitWindow) ──────────────
-    file_logger_init("shapeshifter.log");
-
     // ── RAYLIB INIT ──────────────────────────────────────────
     std::string window_title = std::string("SHAPESHIFTER v") + SHAPESHIFTER_VERSION;
-    InitWindow(
-        constants::SCREEN_W, constants::SCREEN_H,
-        window_title.c_str()
-    );
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE);
+    InitWindow(constants::SCREEN_W, constants::SCREEN_H, window_title.c_str());
     SetTargetFPS(60);
 
     TraceLog(LOG_INFO, "SHAPESHIFTER v%s", SHAPESHIFTER_VERSION);
@@ -130,6 +130,23 @@ int main(int /*argc*/, char* /*argv*/[]) {
     reg.ctx().emplace<DifficultyConfig>();
     reg.ctx().emplace<AudioQueue>();
 
+    // Rhythm singletons (active even without a beat map loaded)
+    auto& song_state = reg.ctx().emplace<SongState>();
+    song_state.bpm = 120.0f;
+    song_state.playing = true;
+    song_state_compute_derived(song_state);
+    reg.ctx().emplace<BeatMap>();
+    reg.ctx().emplace<HPState>();
+    reg.ctx().emplace<SongResults>();
+
+    // ── Virtual-resolution render target ─────────────────────
+    // The game logic and rendering all target 720×1280.  We draw into
+    // this texture every frame and then blit it, letter-boxed, to the
+    // actual window — which may be a different (smaller) size.
+    RenderTexture2D target = LoadRenderTexture(
+        constants::SCREEN_W, constants::SCREEN_H);
+    SetTextureFilter(target.texture, TEXTURE_FILTER_BILINEAR);
+
     // ── MAIN LOOP ────────────────────────────────────────────
 #ifdef __EMSCRIPTEN__
     g_loop = { &reg, 0.0f };
@@ -153,7 +170,10 @@ int main(int /*argc*/, char* /*argv*/[]) {
         while (accumulator >= FIXED_DT) {
             gesture_system(reg, FIXED_DT);
             game_state_system(reg, FIXED_DT);
+            song_playback_system(reg, FIXED_DT);
+            beat_scheduler_system(reg, FIXED_DT);
             player_action_system(reg, FIXED_DT);
+            shape_window_system(reg, FIXED_DT);
             player_movement_system(reg, FIXED_DT);
             difficulty_system(reg, FIXED_DT);
             obstacle_spawn_system(reg, FIXED_DT);
@@ -161,16 +181,38 @@ int main(int /*argc*/, char* /*argv*/[]) {
             burnout_system(reg, FIXED_DT);
             collision_system(reg, FIXED_DT);
             scoring_system(reg, FIXED_DT);
+            hp_system(reg, FIXED_DT);
             lifetime_system(reg, FIXED_DT);
             particle_system(reg, FIXED_DT);
             cleanup_system(reg, FIXED_DT);
             accumulator -= FIXED_DT;
         }
 
-        // Render
+        // Render to virtual-resolution texture
         float alpha = accumulator / FIXED_DT;
-        BeginDrawing();
+        BeginTextureMode(target);
             render_system(reg, alpha);
+        EndTextureMode();
+
+        // Blit virtual framebuffer to window (letter-boxed)
+        float win_w = static_cast<float>(GetScreenWidth());
+        float win_h = static_cast<float>(GetScreenHeight());
+        float scale_fit = std::min(
+            win_w / static_cast<float>(constants::SCREEN_W),
+            win_h / static_cast<float>(constants::SCREEN_H));
+        float dst_w = constants::SCREEN_W * scale_fit;
+        float dst_h = constants::SCREEN_H * scale_fit;
+        float offset_x = (win_w - dst_w) * 0.5f;
+        float offset_y = (win_h - dst_h) * 0.5f;
+
+        BeginDrawing();
+            ClearBackground(BLACK);
+            // Source rect: full texture, flipped vertically (OpenGL convention)
+            Rectangle src = { 0, 0,
+                static_cast<float>(constants::SCREEN_W),
+                -static_cast<float>(constants::SCREEN_H) };
+            Rectangle dst = { offset_x, offset_y, dst_w, dst_h };
+            DrawTexturePro(target.texture, src, dst, {0, 0}, 0.0f, WHITE);
         EndDrawing();
 
         // Audio
@@ -179,8 +221,8 @@ int main(int /*argc*/, char* /*argv*/[]) {
 #endif
 
     // ── SHUTDOWN ─────────────────────────────────────────────
+    UnloadRenderTexture(target);
     text_shutdown(reg.ctx().get<TextContext>());
     CloseWindow();
-    file_logger_shutdown();
     return 0;
 }
