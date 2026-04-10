@@ -30,8 +30,10 @@ configure_file(
 # EnTT: header-only ECS framework (vcpkg on all platforms).
 # raylib: rendering, windowing, input, audio (vcpkg on native platforms).
 # Catch2: test framework (vcpkg on Windows/macOS, system package on Linux).
+# nlohmann-json: JSON parsing for beat map loading (vcpkg on all platforms).
 
 find_package(EnTT CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
 
 if(NOT EMSCRIPTEN)
     # Native builds: raylib and Catch2 from vcpkg
@@ -64,7 +66,7 @@ target_compile_options(shapeshifter_warnings INTERFACE
 
 # Mark third-party include directories as SYSTEM so warnings from their
 # headers are suppressed and cannot be promoted to errors by -Werror / /WX.
-set(_system_deps EnTT::EnTT raylib)
+set(_system_deps EnTT::EnTT raylib nlohmann_json::nlohmann_json)
 if(NOT EMSCRIPTEN)
     list(APPEND _system_deps Catch2::Catch2 Catch2::Catch2WithMain)
 endif()
@@ -89,13 +91,14 @@ file(GLOB SYSTEM_SOURCES app/systems/*.cpp)
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "render_system\\.cpp$")
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "input_system\\.cpp$")
 
-add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES})
+add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES} app/beat_map_loader.cpp)
 target_include_directories(shapeshifter_lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/app
     ${CMAKE_BINARY_DIR}/generated
 )
 target_link_libraries(shapeshifter_lib PUBLIC
     EnTT::EnTT
+    nlohmann_json::nlohmann_json
 )
 target_link_libraries(shapeshifter_lib PRIVATE shapeshifter_warnings)
 

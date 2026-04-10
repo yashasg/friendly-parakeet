@@ -6,11 +6,16 @@
 #include "../components/rendering.h"
 #include "../components/difficulty.h"
 #include "../components/player.h"
+#include "../components/rhythm.h"
 #include "../constants.h"
 #include <cstdlib>
 
 void obstacle_spawn_system(entt::registry& reg, float dt) {
     if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
+
+    // Bypass random spawning when a charted song is playing
+    auto* song = reg.ctx().find<SongState>();
+    if (song && song->playing) return;
 
     auto& config = reg.ctx().get<DifficultyConfig>();
     config.spawn_timer -= dt;
