@@ -23,7 +23,6 @@ void collision_system(entt::registry& reg, float /*dt*/) {
     bool game_over = false;
 
     auto* song    = reg.ctx().find<SongState>();
-    auto* hp      = reg.ctx().find<HPState>();
     auto* results = reg.ctx().find<SongResults>();
     bool rhythm_mode = (song != nullptr);
 
@@ -51,12 +50,6 @@ void collision_system(entt::registry& reg, float /*dt*/) {
                         }
                     }
 
-                    // HP recovery on perfect
-                    if (tier == TimingTier::Perfect && hp) {
-                        hp->current += constants::HP_RECOVER_ON_PERFECT;
-                        if (hp->current > hp->max_hp) hp->current = hp->max_hp;
-                    }
-
                     // Window scaling: shorten remaining active time for GOOD/PERFECT
                     if (!p_shape.graded) {
                         float scale = window_scale_for_tier(tier);
@@ -73,18 +66,13 @@ void collision_system(entt::registry& reg, float /*dt*/) {
             }
             reg.emplace<ScoredTag>(entity);
         } else {
-            // MISS
-            if (rhythm_mode && hp) {
-                hp->current -= constants::HP_DRAIN_ON_MISS;
-                if (results) results->miss_count++;
-                // Don't instant game-over; hp_system handles it
-            } else {
-                auto& gs = reg.ctx().get<GameState>();
-                gs.transition_pending = true;
-                gs.next_phase = GamePhase::GameOver;
-                game_over = true;
-            }
-            reg.emplace<ScoredTag>(entity);  // mark processed so we don't re-trigger
+            // MISS — instant game over
+            if (results) results->miss_count++;
+            auto& gs = reg.ctx().get<GameState>();
+            gs.transition_pending = true;
+            gs.next_phase = GamePhase::GameOver;
+            game_over = true;
+            reg.emplace<ScoredTag>(entity);
         }
     };
 

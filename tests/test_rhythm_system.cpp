@@ -465,25 +465,26 @@ TEST_CASE("player_action: legacy mode instant shape change", "[rhythm][action]")
 
 // Collision System with Timing Grades
 
-TEST_CASE("collision: hexagon fails shape gates in rhythm mode", "[rhythm][collision]") {
-    auto reg = make_rhythm_registry();
-    make_rhythm_player(reg);
-    make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
-    collision_system(reg, 0.016f);
-    auto& hp = reg.ctx().get<HPState>();
-    CHECK(hp.current < 5);
-    auto& results = reg.ctx().get<SongResults>();
-    CHECK(results.miss_count == 1);
-}
-
-TEST_CASE("collision: rhythm MISS drains HP not game over", "[rhythm][collision]") {
+TEST_CASE("collision: hexagon fails shape gates — game over", "[rhythm][collision]") {
     auto reg = make_rhythm_registry();
     make_rhythm_player(reg);
     make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     collision_system(reg, 0.016f);
     auto& gs = reg.ctx().get<GameState>();
-    CHECK_FALSE(gs.transition_pending);
-    CHECK(reg.ctx().get<HPState>().current == 4);
+    CHECK(gs.transition_pending);
+    CHECK(gs.next_phase == GamePhase::GameOver);
+    auto& results = reg.ctx().get<SongResults>();
+    CHECK(results.miss_count == 1);
+}
+
+TEST_CASE("collision: MISS is instant game over", "[rhythm][collision]") {
+    auto reg = make_rhythm_registry();
+    make_rhythm_player(reg);
+    make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
+    collision_system(reg, 0.016f);
+    auto& gs = reg.ctx().get<GameState>();
+    CHECK(gs.transition_pending);
+    CHECK(gs.next_phase == GamePhase::GameOver);
 }
 
 TEST_CASE("collision: timing grade PERFECT at peak", "[rhythm][collision]") {
@@ -543,34 +544,18 @@ TEST_CASE("collision: timing grade BAD at 80pct", "[rhythm][collision]") {
     CHECK(reg.get<TimingGrade>(obs).tier == TimingTier::Bad);
 }
 
-TEST_CASE("collision: HP recovery on PERFECT", "[rhythm][collision]") {
+TEST_CASE("collision: PERFECT clears obstacle without game over", "[rhythm][collision]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
     auto& ps = reg.get<PlayerShape>(player);
     auto& song = reg.ctx().get<SongState>();
-    auto& hp = reg.ctx().get<HPState>();
-    hp.current = 3;
     ps.current = Shape::Circle;
     ps.phase_raw = static_cast<uint8_t>(WindowPhase::Active);
     song.song_time = 5.0f; ps.peak_time = 5.0f;
-    make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
+    auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     collision_system(reg, 0.016f);
-    CHECK(hp.current == 4);
-}
-
-TEST_CASE("collision: HP capped at max", "[rhythm][collision]") {
-    auto reg = make_rhythm_registry();
-    auto player = make_rhythm_player(reg);
-    auto& ps = reg.get<PlayerShape>(player);
-    auto& song = reg.ctx().get<SongState>();
-    auto& hp = reg.ctx().get<HPState>();
-    hp.current = 5;
-    ps.current = Shape::Circle;
-    ps.phase_raw = static_cast<uint8_t>(WindowPhase::Active);
-    song.song_time = 5.0f; ps.peak_time = 5.0f;
-    make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
-    collision_system(reg, 0.016f);
-    CHECK(hp.current == 5);
+    CHECK(reg.all_of<ScoredTag>(obs));
+    CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
 }
 
 TEST_CASE("collision: SongResults updated", "[rhythm][collision]") {
