@@ -84,6 +84,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
                 gs.next_phase = GamePhase::GameOver;
                 game_over = true;
             }
+            reg.emplace<ScoredTag>(entity);  // mark processed so we don't re-trigger
         }
     };
 
