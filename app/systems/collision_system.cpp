@@ -20,74 +20,59 @@ void collision_system(entt::registry& reg, float /*dt*/) {
         player_view.get<Position, PlayerShape, Lane, VerticalState>(*player_it);
 
     constexpr float COLLISION_MARGIN = 40.0f;
+    bool game_over = false;
 
-    auto obs_view = reg.view<ObstacleTag, Position, Obstacle>(entt::exclude<ScoredTag>);
-    for (auto [entity, obs_pos, obs] : obs_view.each()) {
+    // Resolve proximity, mark scored or trigger game over.
+    auto resolve = [&](entt::entity entity, const Position& obs_pos, bool cleared) {
+        if (game_over) return;
         float dist = std::abs(p_pos.y - obs_pos.y + p_vstate.y_offset);
-        if (dist > COLLISION_MARGIN) continue;
-
-        bool cleared = false;
-
-        switch (obs.kind) {
-            case ObstacleKind::ShapeGate: {
-                auto* req = reg.try_get<RequiredShape>(entity);
-                if (req && p_shape.current == req->shape) {
-                    cleared = true;
-                }
-                break;
-            }
-            case ObstacleKind::LaneBlock: {
-                auto* blocked = reg.try_get<BlockedLanes>(entity);
-                if (blocked) {
-                    bool lane_blocked = (blocked->mask >> p_lane.current) & 1;
-                    if (!lane_blocked) {
-                        cleared = true;
-                    }
-                }
-                break;
-            }
-            case ObstacleKind::LowBar: {
-                if (p_vstate.mode == VMode::Jumping) {
-                    cleared = true;
-                }
-                break;
-            }
-            case ObstacleKind::HighBar: {
-                if (p_vstate.mode == VMode::Sliding) {
-                    cleared = true;
-                }
-                break;
-            }
-            case ObstacleKind::ComboGate: {
-                auto* req = reg.try_get<RequiredShape>(entity);
-                auto* blocked = reg.try_get<BlockedLanes>(entity);
-                bool shape_ok = req && (p_shape.current == req->shape);
-                bool lane_ok = blocked && !((blocked->mask >> p_lane.current) & 1);
-                if (shape_ok && lane_ok) {
-                    cleared = true;
-                }
-                break;
-            }
-            case ObstacleKind::SplitPath: {
-                auto* req = reg.try_get<RequiredShape>(entity);
-                auto* rlane = reg.try_get<RequiredLane>(entity);
-                bool shape_ok = req && (p_shape.current == req->shape);
-                bool lane_ok = rlane && (p_lane.current == rlane->lane);
-                if (shape_ok && lane_ok) {
-                    cleared = true;
-                }
-                break;
-            }
-        }
-
+        if (dist > COLLISION_MARGIN) return;
         if (cleared) {
             reg.emplace<ScoredTag>(entity);
         } else {
-            // Collision → game over
             auto& gs = reg.ctx().get<GameState>();
             gs.transition_pending = true;
             gs.next_phase = GamePhase::GameOver;
-            return;
+            game_over = true;
         }
+    };
+
+    // ShapeGate: RequiredShape only (no BlockedLanes, no RequiredLane, no RequiredVAction)
+    for (auto [e, pos, req] :
+         reg.view<ObstacleTag, Position, RequiredShape>(
+             entt::exclude<ScoredTag, BlockedLanes, RequiredLane, RequiredVAction>).each()) {
+        resolve(e, pos, p_shape.current == req.shape);
+    }
+
+    // LaneBlock: BlockedLanes only (no RequiredShape)
+    for (auto [e, pos, blocked] :
+         reg.view<ObstacleTag, Position, BlockedLanes>(
+             entt::exclude<ScoredTag, RequiredShape>).each()) {
+        resolve(e, pos, !((blocked.mask >> p_lane.current) & 1));
+    }
+
+    // LowBar / HighBar: RequiredVAction
+    for (auto [e, pos, req_v] :
+         reg.view<ObstacleTag, Position, RequiredVAction>(
+             entt::exclude<ScoredTag>).each()) {
+        resolve(e, pos, p_vstate.mode == req_v.action);
+    }
+
+    // ComboGate: RequiredShape + BlockedLanes (no RequiredLane)
+    for (auto [e, pos, req, blocked] :
+         reg.view<ObstacleTag, Position, RequiredShape, BlockedLanes>(
+             entt::exclude<ScoredTag, RequiredLane>).each()) {
+        bool shape_ok = (p_shape.current == req.shape);
+        bool lane_ok  = !((blocked.mask >> p_lane.current) & 1);
+        resolve(e, pos, shape_ok && lane_ok);
+    }
+
+    // SplitPath: RequiredShape + RequiredLane
+    for (auto [e, pos, req, rlane] :
+         reg.view<ObstacleTag, Position, RequiredShape, RequiredLane>(
+             entt::exclude<ScoredTag>).each()) {
+        bool shape_ok = (p_shape.current == req.shape);
+        bool lane_ok  = (p_lane.current == rlane.lane);
+        resolve(e, pos, shape_ok && lane_ok);
     }
 }

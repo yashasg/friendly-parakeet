@@ -27,50 +27,29 @@ configure_file(
 )
 
 # ── Dependencies ─────────────────────────────────────────────
-# On Linux:   libsdl2-dev and catch2 are expected as system packages (apt).
-#             vcpkg only provides EnTT (header-only, fast).
-# On Windows: all three come from vcpkg (x64-windows-static-md triplet).
-# Pass -DCMAKE_TOOLCHAIN_FILE or set VCPKG_ROOT so vcpkg is used for EnTT.
+# EnTT: header-only ECS framework (vcpkg on all platforms).
+# raylib: rendering, windowing, input, audio (vcpkg on native platforms).
+# Catch2: test framework (vcpkg on Windows/macOS, system package on Linux).
 
 find_package(EnTT CONFIG REQUIRED)
-find_package(SDL2 CONFIG REQUIRED)
-find_package(Catch2 3 CONFIG REQUIRED)
 
-# SDL2_ttf — required for text rendering.
-# System package on Linux (libsdl2-ttf-dev), vcpkg on Windows.
-find_package(PkgConfig QUIET)
-if(PkgConfig_FOUND)
-    pkg_check_modules(SDL2_TTF IMPORTED_TARGET SDL2_ttf)
-endif()
-if(NOT SDL2_TTF_FOUND)
-    find_package(SDL2_ttf CONFIG QUIET)
-endif()
-# Create a unified target alias if found via pkg-config
-if(SDL2_TTF_FOUND AND NOT TARGET SDL2_ttf::SDL2_ttf)
-    if(TARGET PkgConfig::SDL2_TTF)
-        add_library(SDL2_ttf::SDL2_ttf ALIAS PkgConfig::SDL2_TTF)
-    endif()
-endif()
-# vcpkg static triplets create SDL2_ttf::SDL2_ttf-static instead of
-# SDL2_ttf::SDL2_ttf.  Alias the static target so downstream code can
-# always link against SDL2_ttf::SDL2_ttf.
-if(TARGET SDL2_ttf::SDL2_ttf-static AND NOT TARGET SDL2_ttf::SDL2_ttf)
-    add_library(SDL2_ttf::SDL2_ttf ALIAS SDL2_ttf::SDL2_ttf-static)
-endif()
-# find_package sets SDL2_ttf_FOUND (mixed-case); pkg_check_modules sets
-# SDL2_TTF_FOUND (upper-case).  Accept either.
-if(NOT SDL2_TTF_FOUND AND NOT SDL2_ttf_FOUND AND NOT TARGET SDL2_ttf::SDL2_ttf)
-    message(FATAL_ERROR "SDL2_ttf is required. Install libsdl2-ttf-dev (apt) or add sdl2-ttf via vcpkg.")
-endif()
-
-# Normalize SDL2 target names (vcpkg may expose SDL2::SDL2 without SDL2::SDL2-static)
-if(TARGET SDL2::SDL2 AND NOT TARGET SDL2::SDL2-static)
-    add_library(SDL2::SDL2-static ALIAS SDL2::SDL2)
-endif()
-if(NOT TARGET SDL2::SDL2main)
-    # vcpkg may provide SDL2::SDL2main or not — create a dummy if missing
-    add_library(sdl2main_stub INTERFACE)
-    add_library(SDL2::SDL2main ALIAS sdl2main_stub)
+if(NOT EMSCRIPTEN)
+    # Native builds: raylib and Catch2 from vcpkg
+    find_package(raylib CONFIG REQUIRED)
+    find_package(Catch2 3 CONFIG REQUIRED)
+else()
+    # Emscripten: build raylib from source (no vcpkg triplet available).
+    # Mirrors raylib's own build_webassembly.yml.
+    include(FetchContent)
+    FetchContent_Declare(raylib
+        GIT_REPOSITORY https://github.com/raysan5/raylib.git
+        GIT_TAG        5.5
+        GIT_SHALLOW    ON
+    )
+    set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+    set(CUSTOMIZE_BUILD ON CACHE BOOL "" FORCE)
+    set(PLATFORM Web CACHE STRING "" FORCE)
+    FetchContent_MakeAvailable(raylib)
 endif()
 
 # ── Warnings-as-errors (project targets only) ────────────────
@@ -85,7 +64,11 @@ target_compile_options(shapeshifter_warnings INTERFACE
 
 # Mark third-party include directories as SYSTEM so warnings from their
 # headers are suppressed and cannot be promoted to errors by -Werror / /WX.
-foreach(_dep EnTT::EnTT SDL2::SDL2-static Catch2::Catch2 Catch2::Catch2WithMain SDL2_ttf::SDL2_ttf SDL2_ttf::SDL2_ttf-static PkgConfig::SDL2_TTF)
+set(_system_deps EnTT::EnTT raylib)
+if(NOT EMSCRIPTEN)
+    list(APPEND _system_deps Catch2::Catch2 Catch2::Catch2WithMain)
+endif()
+foreach(_dep ${_system_deps})
     if(TARGET ${_dep})
         # Resolve alias targets — set_target_properties doesn't work on aliases
         get_target_property(_real ${_dep} ALIASED_TARGET)
@@ -113,7 +96,6 @@ target_include_directories(shapeshifter_lib PUBLIC
 )
 target_link_libraries(shapeshifter_lib PUBLIC
     EnTT::EnTT
-    SDL2::SDL2-static
 )
 target_link_libraries(shapeshifter_lib PRIVATE shapeshifter_warnings)
 
@@ -132,16 +114,74 @@ add_executable(shapeshifter
     app/systems/render_system.cpp
     app/systems/input_system.cpp
     app/text_renderer.cpp
+    app/file_logger.cpp
 )
 target_include_directories(shapeshifter PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/app
 )
 target_link_libraries(shapeshifter PRIVATE
     shapeshifter_lib
-    SDL2::SDL2main
+    raylib
     shapeshifter_warnings
 )
-target_link_libraries(shapeshifter PRIVATE SDL2_ttf::SDL2_ttf)
+
+# ── Platform link dependencies for raylib (RGFW backend) ─────
+# RGFW uses native platform APIs directly — no GLFW.
+if(APPLE)
+    target_link_libraries(shapeshifter PRIVATE
+        "-framework Cocoa"
+        "-framework OpenGL"
+        "-framework IOKit"
+        "-framework CoreFoundation"
+        "-framework CoreVideo"
+    )
+elseif(WIN32)
+    target_link_libraries(shapeshifter PRIVATE opengl32 gdi32 winmm)
+elseif(UNIX AND NOT EMSCRIPTEN)
+    target_link_libraries(shapeshifter PRIVATE GL X11 Xrandr m pthread dl)
+endif()
+
+# ── Emscripten linker flags ──────────────────────────────────
+if(EMSCRIPTEN)
+    target_compile_definitions(shapeshifter PRIVATE PLATFORM_WEB)
+
+    # Generate a minimal HTML shell at configure time — no static file to maintain.
+    set(_shell_html "${CMAKE_BINARY_DIR}/shell.html")
+    file(WRITE "${_shell_html}" [=[<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <title>SHAPESHIFTER</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{background:#0f0f19;display:flex;justify-content:center;align-items:center;height:100vh;overflow:hidden;font-family:monospace;color:#ccc}
+    #canvas{display:block;border:1px solid #333}
+    #status{position:absolute;bottom:16px;text-align:center;width:100%;font-size:14px}
+  </style>
+</head>
+<body>
+  <canvas id="canvas" oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
+  <div id="status">Loading…</div>
+  <script>
+    var Module={
+      canvas:document.getElementById('canvas'),
+      setStatus:function(t){document.getElementById('status').innerText=t},
+      monitorRunDependencies:function(left){if(left===0)document.getElementById('status').style.display='none'}
+    };
+  </script>
+  {{{ SCRIPT }}}
+</body>
+</html>]=])
+
+    target_link_options(shapeshifter PRIVATE
+        -sUSE_GLFW=3
+        -sALLOW_MEMORY_GROWTH=1
+        --shell-file ${_shell_html}
+        --preload-file ${CMAKE_SOURCE_DIR}/assets@/assets
+    )
+    set_target_properties(shapeshifter PROPERTIES SUFFIX ".html")
+endif()
 
 # Copy font assets next to the executable so text_init() can find them
 file(GLOB FONT_FILES ${CMAKE_SOURCE_DIR}/assets/fonts/*.ttf)
@@ -156,20 +196,39 @@ if(FONT_FILES)
     )
 endif()
 
-# ── Tests + Benchmarks ───────────────────────────────────────
-enable_testing()
+# ── Tests + Benchmarks (native only) ─────────────────────────
+if(NOT EMSCRIPTEN)
+    enable_testing()
 
-file(GLOB TEST_SOURCES tests/*.cpp benchmarks/*.cpp)
-add_executable(shapeshifter_tests ${TEST_SOURCES})
-target_include_directories(shapeshifter_tests PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/app
-)
-target_link_libraries(shapeshifter_tests PRIVATE
-    shapeshifter_lib
-    Catch2::Catch2WithMain
-    shapeshifter_warnings
-)
+    file(GLOB TEST_SOURCES tests/*.cpp benchmarks/*.cpp)
+    add_executable(shapeshifter_tests
+        ${TEST_SOURCES}
+        app/file_logger.cpp
+    )
+    target_include_directories(shapeshifter_tests PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/app
+    )
+    target_link_libraries(shapeshifter_tests PRIVATE
+        shapeshifter_lib
+        raylib
+        Catch2::Catch2WithMain
+        shapeshifter_warnings
+    )
+    if(APPLE)
+        target_link_libraries(shapeshifter_tests PRIVATE
+            "-framework Cocoa"
+            "-framework OpenGL"
+            "-framework IOKit"
+            "-framework CoreFoundation"
+            "-framework CoreVideo"
+        )
+    elseif(WIN32)
+        target_link_libraries(shapeshifter_tests PRIVATE opengl32 gdi32 winmm)
+    elseif(UNIX)
+        target_link_libraries(shapeshifter_tests PRIVATE GL X11 Xrandr m pthread dl)
+    endif()
 
-include(CTest)
-include(Catch)
-catch_discover_tests(shapeshifter_tests)
+    include(CTest)
+    include(Catch)
+    catch_discover_tests(shapeshifter_tests)
+endif()

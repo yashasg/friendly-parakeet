@@ -1,10 +1,9 @@
 #include "text_renderer.h"
-#include <SDL.h>
-#include <SDL_ttf.h>
+#include <raylib.h>
 #include <cstdio>
 
 // ── Helper: pick font by size index ─────────────────────────
-static TTF_Font* pick_font(const TextContext& ctx, FontSize font_size) {
+static const Font& pick_font(const TextContext& ctx, FontSize font_size) {
     switch (font_size) {
         case FontSize::Small:  return ctx.font_small;
         case FontSize::Medium: return ctx.font_medium;
@@ -15,83 +14,69 @@ static TTF_Font* pick_font(const TextContext& ctx, FontSize font_size) {
 
 // ── text_init ───────────────────────────────────────────────
 bool text_init(TextContext& ctx, const char* font_path) {
-    if (TTF_Init() != 0) {
-        SDL_Log("TTF_Init failed: %s", TTF_GetError());
+    if (!FileExists(font_path)) {
+        TraceLog(LOG_WARNING, "Font file not found: %s", font_path);
         return false;
     }
 
-    ctx.font_small  = TTF_OpenFont(font_path, 16);
-    ctx.font_medium = TTF_OpenFont(font_path, 28);
-    ctx.font_large  = TTF_OpenFont(font_path, 48);
+    ctx.font_small  = LoadFontEx(font_path, 16, nullptr, 0);
+    ctx.font_medium = LoadFontEx(font_path, 28, nullptr, 0);
+    ctx.font_large  = LoadFontEx(font_path, 48, nullptr, 0);
 
-    if (!ctx.font_small || !ctx.font_medium || !ctx.font_large) {
-        SDL_Log("Failed to load font '%s': %s", font_path, TTF_GetError());
+    // Check if any font failed to load (baseSize will be 0)
+    if (ctx.font_small.baseSize == 0 ||
+        ctx.font_medium.baseSize == 0 ||
+        ctx.font_large.baseSize == 0) {
+        TraceLog(LOG_WARNING, "Failed to load font: %s", font_path);
         text_shutdown(ctx);
         return false;
     }
 
-    // Use LCD hinting for cleaner rendering at small sizes
-    TTF_SetFontHinting(ctx.font_small,  TTF_HINTING_LIGHT);
-    TTF_SetFontHinting(ctx.font_medium, TTF_HINTING_LIGHT);
-    TTF_SetFontHinting(ctx.font_large,  TTF_HINTING_LIGHT);
+    // Enable bilinear filtering for smoother text at non-native sizes
+    SetTextureFilter(ctx.font_small.texture,  TEXTURE_FILTER_BILINEAR);
+    SetTextureFilter(ctx.font_medium.texture, TEXTURE_FILTER_BILINEAR);
+    SetTextureFilter(ctx.font_large.texture,  TEXTURE_FILTER_BILINEAR);
 
+    ctx.loaded = true;
     return true;
 }
 
 // ── text_shutdown ───────────────────────────────────────────
 void text_shutdown(TextContext& ctx) {
-    if (ctx.font_large)  { TTF_CloseFont(ctx.font_large);  ctx.font_large  = nullptr; }
-    if (ctx.font_medium) { TTF_CloseFont(ctx.font_medium); ctx.font_medium = nullptr; }
-    if (ctx.font_small)  { TTF_CloseFont(ctx.font_small);  ctx.font_small  = nullptr; }
-    TTF_Quit();
+    if (ctx.font_large.baseSize > 0)  UnloadFont(ctx.font_large);
+    if (ctx.font_medium.baseSize > 0) UnloadFont(ctx.font_medium);
+    if (ctx.font_small.baseSize > 0)  UnloadFont(ctx.font_small);
+    ctx.loaded = false;
 }
 
 // ── text_draw ───────────────────────────────────────────────
 void text_draw(const TextContext& ctx,
-               SDL_Renderer* renderer,
                const char* text,
                float x, float y,
                FontSize font_size,
                uint8_t r, uint8_t g, uint8_t b, uint8_t a,
                TextAlign align) {
-    if (!text || !text[0]) return;
+    if (!text || !text[0] || !ctx.loaded) return;
 
-    TTF_Font* font = pick_font(ctx, font_size);
-    if (!font) return;
+    const Font& font = pick_font(ctx, font_size);
+    float fontSize = static_cast<float>(font.baseSize);
+    float spacing = 1.0f;
 
-    SDL_Color color = { r, g, b, a };
-    SDL_Surface* surface = TTF_RenderUTF8_Blended(font, text, color);
-    if (!surface) return;
-
-    SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
-    if (!texture) {
-        SDL_FreeSurface(surface);
-        return;
-    }
-
-    // Enable alpha blending on the texture
-    SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
-
-    float w = static_cast<float>(surface->w);
-    float h = static_cast<float>(surface->h);
+    Vector2 size = MeasureTextEx(font, text, fontSize, spacing);
 
     float draw_x = x;
     switch (align) {
-        case TextAlign::Left:                         break;
-        case TextAlign::Center: draw_x = x - w / 2;  break;
-        case TextAlign::Right:  draw_x = x - w;      break;
+        case TextAlign::Left:                            break;
+        case TextAlign::Center: draw_x = x - size.x / 2; break;
+        case TextAlign::Right:  draw_x = x - size.x;      break;
     }
 
-    SDL_FRect dst = { draw_x, y, w, h };
-    SDL_RenderCopyF(renderer, texture, nullptr, &dst);
-
-    SDL_DestroyTexture(texture);
-    SDL_FreeSurface(surface);
+    DrawTextEx(font, text, {draw_x, y}, fontSize, spacing,
+               {r, g, b, a});
 }
 
 // ── text_draw_number ────────────────────────────────────────
 void text_draw_number(const TextContext& ctx,
-                      SDL_Renderer* renderer,
                       int number,
                       float x, float y,
                       FontSize font_size,
@@ -99,14 +84,14 @@ void text_draw_number(const TextContext& ctx,
                       TextAlign align) {
     char buf[16];
     std::snprintf(buf, sizeof(buf), "%d", number);
-    text_draw(ctx, renderer, buf, x, y, font_size, r, g, b, a, align);
+    text_draw(ctx, buf, x, y, font_size, r, g, b, a, align);
 }
 
 // ── text_width ──────────────────────────────────────────────
 int text_width(const TextContext& ctx, const char* text, FontSize font_size) {
-    TTF_Font* font = pick_font(ctx, font_size);
-    if (!font || !text) return 0;
-    int w = 0, h = 0;
-    TTF_SizeUTF8(font, text, &w, &h);
-    return w;
+    if (!text || !ctx.loaded) return 0;
+    const Font& font = pick_font(ctx, font_size);
+    float fontSize = static_cast<float>(font.baseSize);
+    Vector2 size = MeasureTextEx(font, text, fontSize, 1.0f);
+    return static_cast<int>(size.x);
 }

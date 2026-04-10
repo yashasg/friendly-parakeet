@@ -1,0 +1,69 @@
+name: CI (Web)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    name: Build (WebAssembly)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      VCPKG_BINARY_SOURCES: "clear;default,readwrite"
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Export GitHub Actions cache variables
+        uses: actions/github-script@v8
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - name: Setup Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: 5.0.3
+          actions-cache-folder: emsdk-cache
+
+      - name: Setup C++ toolchain
+        uses: aminya/setup-cpp@v1
+        with:
+          cmake: true
+          vcpkg: true
+
+      - name: Export VCPKG_ROOT
+        run: echo "VCPKG_ROOT=$HOME/vcpkg" >> "$GITHUB_ENV"
+        shell: bash
+
+      - name: Cache build directory
+        uses: actions/cache@v5
+        with:
+          path: build-web
+          key: cmake-web-emscripten-${{ hashFiles('CMakeLists.txt', 'vcpkg.json') }}
+          restore-keys: |
+            cmake-web-emscripten-
+
+      - name: Build (Emscripten)
+        run: |
+          emcmake cmake -B build-web -S . \
+            -DCMAKE_BUILD_TYPE=Release \
+            "-DCMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" \
+            "-DVCPKG_OVERLAY_PORTS=$(pwd)/vcpkg-overlay" \
+            "-DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=${EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
+          cmake --build build-web
+
+      - name: Upload artifact
+        if: success()
+        uses: actions/upload-artifact@v5
+        with:
+          name: shapeshifter-web
+          path: |
+            build-web/shapeshifter.html
+            build-web/shapeshifter.js
+            build-web/shapeshifter.wasm
+            build-web/shapeshifter.data

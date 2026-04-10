@@ -45,13 +45,13 @@ void obstacle_spawn_system(entt::registry& reg, float dt) {
             reg.emplace<RequiredShape>(obstacle, shape);
             reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W), 80.0f);
 
-            // Color based on required shape
+            // DrawColor based on required shape
             if (shape == Shape::Circle)
-                reg.emplace<Color>(obstacle, uint8_t{80}, uint8_t{200}, uint8_t{255}, uint8_t{255});
+                reg.emplace<DrawColor>(obstacle, uint8_t{80}, uint8_t{200}, uint8_t{255}, uint8_t{255});
             else if (shape == Shape::Square)
-                reg.emplace<Color>(obstacle, uint8_t{255}, uint8_t{100}, uint8_t{100}, uint8_t{255});
+                reg.emplace<DrawColor>(obstacle, uint8_t{255}, uint8_t{100}, uint8_t{100}, uint8_t{255});
             else
-                reg.emplace<Color>(obstacle, uint8_t{100}, uint8_t{255}, uint8_t{100}, uint8_t{255});
+                reg.emplace<DrawColor>(obstacle, uint8_t{100}, uint8_t{255}, uint8_t{100}, uint8_t{255});
             break;
         }
         case ObstacleKind::LaneBlock: {
@@ -61,7 +61,7 @@ void obstacle_spawn_system(entt::registry& reg, float dt) {
             reg.emplace<Obstacle>(obstacle, kind, int16_t{constants::PTS_LANE_BLOCK});
             reg.emplace<BlockedLanes>(obstacle, mask);
             reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W / 3), 80.0f);
-            reg.emplace<Color>(obstacle, uint8_t{255}, uint8_t{60}, uint8_t{60}, uint8_t{255});
+            reg.emplace<DrawColor>(obstacle, uint8_t{255}, uint8_t{60}, uint8_t{60}, uint8_t{255});
             break;
         }
         case ObstacleKind::LowBar: {
@@ -69,7 +69,7 @@ void obstacle_spawn_system(entt::registry& reg, float dt) {
             reg.emplace<Obstacle>(obstacle, kind, int16_t{constants::PTS_LOW_BAR});
             reg.emplace<RequiredVAction>(obstacle, VMode::Jumping);
             reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W), 40.0f);
-            reg.emplace<Color>(obstacle, uint8_t{255}, uint8_t{180}, uint8_t{0}, uint8_t{255});
+            reg.emplace<DrawColor>(obstacle, uint8_t{255}, uint8_t{180}, uint8_t{0}, uint8_t{255});
             break;
         }
         case ObstacleKind::HighBar: {
@@ -77,7 +77,7 @@ void obstacle_spawn_system(entt::registry& reg, float dt) {
             reg.emplace<Obstacle>(obstacle, kind, int16_t{constants::PTS_HIGH_BAR});
             reg.emplace<RequiredVAction>(obstacle, VMode::Sliding);
             reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W), 40.0f);
-            reg.emplace<Color>(obstacle, uint8_t{180}, uint8_t{0}, uint8_t{255}, uint8_t{255});
+            reg.emplace<DrawColor>(obstacle, uint8_t{180}, uint8_t{0}, uint8_t{255}, uint8_t{255});
             break;
         }
         case ObstacleKind::ComboGate: {
@@ -88,7 +88,7 @@ void obstacle_spawn_system(entt::registry& reg, float dt) {
             reg.emplace<RequiredShape>(obstacle, shape);
             reg.emplace<BlockedLanes>(obstacle, mask);
             reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W), 80.0f);
-            reg.emplace<Color>(obstacle, uint8_t{200}, uint8_t{100}, uint8_t{255}, uint8_t{255});
+            reg.emplace<DrawColor>(obstacle, uint8_t{200}, uint8_t{100}, uint8_t{255}, uint8_t{255});
             break;
         }
         case ObstacleKind::SplitPath: {
@@ -98,7 +98,7 @@ void obstacle_spawn_system(entt::registry& reg, float dt) {
             reg.emplace<RequiredShape>(obstacle, shape);
             reg.emplace<RequiredLane>(obstacle, int8_t(lane));
             reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W), 80.0f);
-            reg.emplace<Color>(obstacle, uint8_t{255}, uint8_t{215}, uint8_t{0}, uint8_t{255});
+            reg.emplace<DrawColor>(obstacle, uint8_t{255}, uint8_t{215}, uint8_t{0}, uint8_t{255});
             break;
         }
     }

@@ -3,6 +3,10 @@
 #include "player.h"
 #include <cstdint>
 
+// Tracks which input device initiated the current gesture so that
+// mouse and touch events don't interfere on hybrid devices.
+enum class InputSource : uint8_t { None, Mouse, Touch };
+
 struct InputState {
     // ── Touch / pointer (all platforms) ──────────────────────
     bool  touch_down     = false;
@@ -15,9 +19,12 @@ struct InputState {
     float end_x    = 0.0f, end_y   = 0.0f;
     float duration = 0.0f;
 
+    InputSource active_source = InputSource::None;
+    bool was_focused = true;  // edge detection for focus-loss auto-pause
+
 #ifdef PLATFORM_DESKTOP
     // ── Keyboard — one-frame pulse flags (desktop only) ──────
-    // Set to true on initial SDL_KEYDOWN (repeat == 0),
+    // Set to true by IsKeyPressed() in input_system,
     // cleared by clear_input_events() at the start of each frame.
     bool key_w = false;   // jump
     bool key_a = false;   // strafe left
@@ -43,7 +50,7 @@ inline void clear_input_events(InputState& input) {
 #endif
 }
 
-enum class Gesture : uint8_t {
+enum class SwipeGesture : uint8_t {
     None       = 0,
     Tap        = 1,
     SwipeLeft  = 2,
@@ -53,7 +60,7 @@ enum class Gesture : uint8_t {
 };
 
 struct GestureResult {
-    Gesture gesture   = Gesture::None;
+    SwipeGesture gesture   = SwipeGesture::None;
     float   magnitude = 0.0f;
     float   hit_x     = 0.0f;
     float   hit_y     = 0.0f;

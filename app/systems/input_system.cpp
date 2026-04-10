@@ -2,93 +2,88 @@
 #include "../components/input.h"
 #include "../components/game_state.h"
 #include "../constants.h"
-#include <SDL.h>
+#include <raylib.h>
 
 void input_system(entt::registry& reg, float raw_dt) {
     auto& input = reg.ctx().get<InputState>();
     clear_input_events(input);
 
-    SDL_Event event;
-    while (SDL_PollEvent(&event)) {
-        switch (event.type) {
-            case SDL_QUIT:
-                input.quit_requested = true;
-                break;
-
-            // Mouse events (desktop testing — mapped to touch)
-            case SDL_MOUSEBUTTONDOWN:
-                input.touch_down = true;
-                input.touching   = true;
-                input.start_x    = static_cast<float>(event.button.x);
-                input.start_y    = static_cast<float>(event.button.y);
-                input.curr_x     = input.start_x;
-                input.curr_y     = input.start_y;
-                input.duration   = 0.0f;
-                break;
-            case SDL_MOUSEBUTTONUP:
-                input.touch_up  = true;
-                input.touching  = false;
-                input.end_x     = static_cast<float>(event.button.x);
-                input.end_y     = static_cast<float>(event.button.y);
-                break;
-            case SDL_MOUSEMOTION:
-                if (input.touching) {
-                    input.curr_x = static_cast<float>(event.motion.x);
-                    input.curr_y = static_cast<float>(event.motion.y);
-                }
-                break;
-
-            // Touch events (mobile)
-            case SDL_FINGERDOWN:
-                input.touch_down = true;
-                input.touching   = true;
-                input.start_x    = event.tfinger.x * constants::SCREEN_W;
-                input.start_y    = event.tfinger.y * constants::SCREEN_H;
-                input.curr_x     = input.start_x;
-                input.curr_y     = input.start_y;
-                input.duration   = 0.0f;
-                break;
-            case SDL_FINGERUP:
-                input.touch_up  = true;
-                input.touching  = false;
-                input.end_x     = event.tfinger.x * constants::SCREEN_W;
-                input.end_y     = event.tfinger.y * constants::SCREEN_H;
-                break;
-            case SDL_FINGERMOTION:
-                input.curr_x    = event.tfinger.x * constants::SCREEN_W;
-                input.curr_y    = event.tfinger.y * constants::SCREEN_H;
-                break;
-
-#ifdef PLATFORM_DESKTOP
-            // Keyboard events — desktop only.
-            // event.key.repeat != 0 means the OS key-repeat is firing;
-            // we only want the initial press so each key fires exactly once,
-            // matching the one-gesture-per-swipe model.
-            case SDL_KEYDOWN:
-                if (event.key.repeat == 0) {
-                    switch (event.key.keysym.sym) {
-                        case SDLK_w: input.key_w = true; break;
-                        case SDLK_a: input.key_a = true; break;
-                        case SDLK_s: input.key_s = true; break;
-                        case SDLK_d: input.key_d = true; break;
-                        case SDLK_1: input.key_1 = true; break;
-                        case SDLK_2: input.key_2 = true; break;
-                        case SDLK_3: input.key_3 = true; break;
-                        default: break;
-                    }
-                }
-                break;
-#endif
-
-            case SDL_APP_WILLENTERBACKGROUND:
-                if (reg.ctx().get<GameState>().phase == GamePhase::Playing) {
-                    auto& gs = reg.ctx().get<GameState>();
-                    gs.transition_pending = true;
-                    gs.next_phase = GamePhase::Paused;
-                }
-                break;
+    // ── Mouse (desktop) — only when no touch gesture is active ─
+    if (input.active_source != InputSource::Touch) {
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+            input.touch_down = true;
+            input.touching   = true;
+            input.active_source = InputSource::Mouse;
+            Vector2 pos = GetMousePosition();
+            input.start_x = input.curr_x = pos.x;
+            input.start_y = input.curr_y = pos.y;
+            input.duration = 0.0f;
+        }
+        if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
+            input.active_source == InputSource::Mouse) {
+            input.touch_up  = true;
+            input.touching  = false;
+            input.active_source = InputSource::None;
+            Vector2 pos = GetMousePosition();
+            input.end_x = pos.x;
+            input.end_y = pos.y;
+        }
+        if (IsMouseButtonDown(MOUSE_BUTTON_LEFT) && input.touching &&
+            input.active_source == InputSource::Mouse) {
+            Vector2 pos = GetMousePosition();
+            input.curr_x = pos.x;
+            input.curr_y = pos.y;
         }
     }
+
+    // ── Touch (mobile / web) — only when no mouse gesture is active ─
+    if (input.active_source != InputSource::Mouse) {
+        if (GetTouchPointCount() > 0) {
+            Vector2 tp = GetTouchPosition(0);
+            if (!input.touching) {
+                input.touch_down = true;
+                input.touching   = true;
+                input.active_source = InputSource::Touch;
+                input.start_x = input.curr_x = tp.x;
+                input.start_y = input.curr_y = tp.y;
+                input.duration = 0.0f;
+            } else if (input.active_source == InputSource::Touch) {
+                input.curr_x = tp.x;
+                input.curr_y = tp.y;
+            }
+        } else if (input.touching && input.active_source == InputSource::Touch) {
+            input.touch_up  = true;
+            input.touching  = false;
+            input.active_source = InputSource::None;
+            input.end_x = input.curr_x;
+            input.end_y = input.curr_y;
+        }
+    }
+
+#ifdef PLATFORM_DESKTOP
+    // ── Keyboard — IsKeyPressed fires once per press (no repeat) ──
+    if (IsKeyPressed(KEY_W)) input.key_w = true;
+    if (IsKeyPressed(KEY_A)) input.key_a = true;
+    if (IsKeyPressed(KEY_S)) input.key_s = true;
+    if (IsKeyPressed(KEY_D)) input.key_d = true;
+    if (IsKeyPressed(KEY_ONE))   input.key_1 = true;
+    if (IsKeyPressed(KEY_TWO))   input.key_2 = true;
+    if (IsKeyPressed(KEY_THREE)) input.key_3 = true;
+#endif
+
+    // ── Background / suspend (edge-triggered) ─────────────
+    // Pause only on the frame focus is *lost*, not every frame while unfocused.
+    {
+        bool focused = IsWindowFocused();
+        if (input.was_focused && !focused &&
+            reg.ctx().get<GameState>().phase == GamePhase::Playing) {
+            auto& gs = reg.ctx().get<GameState>();
+            gs.transition_pending = true;
+            gs.next_phase = GamePhase::Paused;
+        }
+        input.was_focused = focused;
+    }
+
     if (input.touching) {
         input.duration += raw_dt;
     }

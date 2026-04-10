@@ -28,9 +28,8 @@ void lifetime_system(entt::registry& reg, float dt);
 void particle_system(entt::registry& reg, float dt);
 void cleanup_system(entt::registry& reg, float dt);
 
-// Phase 6: Render (takes renderer + interpolation alpha)
-struct SDL_Renderer;
-void render_system(entt::registry& reg, SDL_Renderer* renderer, float alpha);
+// Phase 6: Render (interpolation alpha only — no renderer handle)
+void render_system(entt::registry& reg, float alpha);
 
 // Audio (no dt needed)
 void audio_system(entt::registry& reg);

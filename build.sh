@@ -2,6 +2,7 @@
 set -euo pipefail
 
 cd "$(dirname "$0")"
+SCRIPT_DIR="$(pwd)"
 
 BUILD_TYPE="${1:-Release}"
 
@@ -17,6 +18,7 @@ CMAKE_ARGS=(
     -S .
     -DCMAKE_BUILD_TYPE="$BUILD_TYPE"
     "-DCMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+    "-DVCPKG_OVERLAY_PORTS=${SCRIPT_DIR}/vcpkg-overlay"
 )
 
 # Honour CC/CXX env vars when set on all platforms.

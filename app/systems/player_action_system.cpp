@@ -23,22 +23,22 @@ void player_action_system(entt::registry& reg, float /*dt*/) {
         }
 
         // Lane change from swipe
-        if (gesture.gesture == Gesture::SwipeLeft && lane.current > 0) {
+        if (gesture.gesture == SwipeGesture::SwipeLeft && lane.current > 0) {
             lane.target = lane.current - 1;
             lane.lerp_t = 0.0f;
         }
-        if (gesture.gesture == Gesture::SwipeRight && lane.current < constants::LANE_COUNT - 1) {
+        if (gesture.gesture == SwipeGesture::SwipeRight && lane.current < constants::LANE_COUNT - 1) {
             lane.target = lane.current + 1;
             lane.lerp_t = 0.0f;
         }
 
         // Jump / slide
         if (vstate.mode == VMode::Grounded) {
-            if (gesture.gesture == Gesture::SwipeUp) {
+            if (gesture.gesture == SwipeGesture::SwipeUp) {
                 vstate.mode  = VMode::Jumping;
                 vstate.timer = constants::JUMP_DURATION;
             }
-            if (gesture.gesture == Gesture::SwipeDown) {
+            if (gesture.gesture == SwipeGesture::SwipeDown) {
                 vstate.mode  = VMode::Sliding;
                 vstate.timer = constants::SLIDE_DURATION;
             }

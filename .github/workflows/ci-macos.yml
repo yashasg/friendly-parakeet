@@ -1,4 +1,4 @@
-name: CI (Linux)
+name: CI (macOS)
 
 on:
   push:
@@ -8,8 +8,8 @@ on:
 
 jobs:
   build:
-    name: Build (Linux)
-    runs-on: ubuntu-latest
+    name: Build (macOS)
+    runs-on: macos-latest
     permissions:
       contents: read
       checks: write
@@ -41,23 +41,17 @@ jobs:
         uses: actions/cache@v5
         with:
           path: build
-          key: cmake-linux-clang-${{ hashFiles('CMakeLists.txt', 'vcpkg.json') }}
+          key: cmake-macos-clang-${{ hashFiles('CMakeLists.txt', 'vcpkg.json') }}
           restore-keys: |
-            cmake-linux-clang-
-
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends \
-            libgl1-mesa-dev \
-            libx11-dev \
-            libxrandr-dev \
-            catch2
+            cmake-macos-clang-
 
       - name: Build
         run: |
           chmod +x build.sh
           ./build.sh
+
+      - name: Ad-hoc code sign
+        run: codesign --force --sign - build/shapeshifter
 
       - name: Run tests
         if: always()
@@ -68,14 +62,14 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v5
         with:
-          name: shapeshifter-linux
+          name: shapeshifter-macos
           path: build/shapeshifter
 
       - name: Upload CTRF report
         if: always() && steps.run-tests.outcome != 'skipped'
         uses: actions/upload-artifact@v5
         with:
-          name: ctrf-report-linux
+          name: ctrf-report-macos
           path: ctrf-report.json
 
       - name: Report test results
@@ -83,7 +77,7 @@ jobs:
         uses: ctrf-io/github-test-reporter@v1
         with:
           report-path: 'ctrf-report.json'
-          title: 'Test Results (Linux)'
+          title: 'Test Results (macOS)'
           pull-request-report: true
           summary-delta-report: true
           insights-report: true

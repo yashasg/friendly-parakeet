@@ -35,7 +35,7 @@ static void enter_playing(entt::registry& reg) {
     reg.emplace<PlayerShape>(player);
     reg.emplace<Lane>(player);
     reg.emplace<VerticalState>(player);
-    reg.emplace<Color>(player, uint8_t{80}, uint8_t{180}, uint8_t{255}, uint8_t{255});
+    reg.emplace<DrawColor>(player, uint8_t{80}, uint8_t{180}, uint8_t{255}, uint8_t{255});
     reg.emplace<DrawSize>(player, constants::PLAYER_SIZE, constants::PLAYER_SIZE);
     reg.emplace<DrawLayer>(player, Layer::Game);
 
