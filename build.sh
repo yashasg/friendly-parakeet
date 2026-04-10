@@ -39,8 +39,8 @@ if [[ -n "${VCPKG_DEFAULT_TRIPLET:-}" ]]; then
 fi
 
 # On Windows (MSYS/MinGW shell used by GitHub Actions), use the Ninja
-# generator so that Clang (installed by setup-cpp) is used directly
-# instead of the default Visual Studio generator with MSVC.
+# generator so that the compiler installed by setup-cpp (Clang or MSVC)
+# is used directly instead of the default Visual Studio generator.
 case "$(uname -s)" in
     MINGW*|CYGWIN*|MSYS*)
         CMAKE_ARGS+=("-G" "Ninja")
