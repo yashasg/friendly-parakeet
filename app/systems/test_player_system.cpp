@@ -279,28 +279,22 @@ void test_player_system(entt::registry& reg, float dt) {
     // is still approaching or passing through. A human player would see
     // "there's something coming first" and wait for it to resolve.
     // Shape presses are fine — they're how you clear shape gates.
+    // Zone blocking and shape-pending guards are computed per-action below
+    // to avoid self-blocking (an obstacle can't block its own dodge).
     constexpr float COLLISION_MARGIN = 40.0f;
-    bool obstacle_in_zone = false;
-    {
-        auto zone_view = reg.view<ObstacleTag, Position>(entt::exclude<ScoredTag>);
-        for (auto [ze, zpos] : zone_view.each()) {
-            float dist = p_pos.y - zpos.y + p_vstate.y_offset;
-            if (dist >= -COLLISION_MARGIN && dist <= COLLISION_MARGIN * 3.0f) {
-                obstacle_in_zone = true;
-                break;
-            }
-        }
-    }
 
-    // Also block lane changes if a closer shape press hasn't resolved yet.
-    // Moving lanes while waiting for a shape gate collision would put the
-    // player in the wrong lane when that collision resolves.
-    bool pending_shape_ahead = false;
+    // Track which obstacle has a pending shape press (pressed but not yet scored).
+    // Lane changes for OTHER obstacles should wait, but lane changes for the
+    // SAME obstacle are fine — they're part of clearing it.
+    entt::entity pending_shape_obstacle = entt::null;
     for (int i = 0; i < state->action_count; ++i) {
         auto& a = state->actions[i];
-        if (a.needs_shape() || (a.target_shape != Shape::Hexagon && a.shape_done()
-            && reg.valid(a.obstacle) && !reg.all_of<ScoredTag>(a.obstacle))) {
-            pending_shape_ahead = true;
+        // Shape press fired but obstacle hasn't been scored yet.
+        // scoring_system removes Obstacle component after processing.
+        if (a.target_shape != Shape::Hexagon && a.shape_done()
+            && reg.valid(a.obstacle) && reg.all_of<Obstacle>(a.obstacle)
+            && !reg.all_of<ScoredTag>(a.obstacle)) {
+            pending_shape_obstacle = a.obstacle;
             break;
         }
     }
@@ -349,8 +343,24 @@ void test_player_system(entt::registry& reg, float dt) {
         // Priority 2: Lane change
         // Wait for any obstacle to fully pass through collision zone before moving.
         // A human would see the obstacle passing and wait for it to clear.
+        // Block lane change if a DIFFERENT obstacle's shape press is unresolved,
+        // or if a DIFFERENT obstacle is in the collision zone.
+        bool blocked_by_shape = (pending_shape_obstacle != entt::null
+                                 && pending_shape_obstacle != action.obstacle);
+        bool zone_blocked = false;
+        {
+            auto zone_view = reg.view<ObstacleTag, Position>(entt::exclude<ScoredTag>);
+            for (auto [ze, zpos] : zone_view.each()) {
+                if (ze == action.obstacle) continue; // don't self-block
+                float zdist = p_pos.y - zpos.y + p_vstate.y_offset;
+                if (zdist >= -COLLISION_MARGIN && zdist <= COLLISION_MARGIN * 3.0f) {
+                    zone_blocked = true;
+                    break;
+                }
+            }
+        }
         if (action.needs_lane() && p_lane.target < 0 && state->swipe_cooldown_timer <= 0.0f
-            && !obstacle_in_zone && !pending_shape_ahead) {            if (action.target_lane < p_lane.current) {
+            && !zone_blocked && !blocked_by_shape) {            if (action.target_lane < p_lane.current) {
                 input.key_a = true;
                 if (log) {
                     session_log_write(*log, song_time, "PLAYER",
@@ -375,9 +385,23 @@ void test_player_system(entt::registry& reg, float dt) {
             continue;
         }
 
-        // Priority 3: Vertical action (wait for collision zone to clear)
+        // Priority 3: Vertical action (wait for other obstacles to clear zone)
+        bool vert_blocked_by_shape = (pending_shape_obstacle != entt::null
+                                      && pending_shape_obstacle != action.obstacle);
+        bool vert_zone_blocked = false;
+        {
+            auto zone_view = reg.view<ObstacleTag, Position>(entt::exclude<ScoredTag>);
+            for (auto [ze, zpos] : zone_view.each()) {
+                if (ze == action.obstacle) continue;
+                float zdist = p_pos.y - zpos.y + p_vstate.y_offset;
+                if (zdist >= -COLLISION_MARGIN && zdist <= COLLISION_MARGIN * 3.0f) {
+                    vert_zone_blocked = true;
+                    break;
+                }
+            }
+        }
         if (action.needs_vertical() && p_vstate.mode == VMode::Grounded
-            && !obstacle_in_zone && !pending_shape_ahead) {
+            && !vert_zone_blocked && !vert_blocked_by_shape) {
             if (action.target_vertical == VMode::Jumping) {
                 input.key_w = true;
                 if (log) {
@@ -403,8 +427,10 @@ void test_player_system(entt::registry& reg, float dt) {
     for (int i = state->action_count - 1; i >= 0; --i) {
         auto& action = state->actions[i];
         bool done = action.all_done();
+        // Entity no longer an active obstacle (scored + processed by scoring_system,
+        // or destroyed by cleanup_system)
         bool expired = !reg.valid(action.obstacle) ||
-                       reg.all_of<ScoredTag>(action.obstacle);
+                       !reg.all_of<Obstacle>(action.obstacle);
         if (done || expired) {
             state->remove_action(i);
         }
