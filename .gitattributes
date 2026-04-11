@@ -1,0 +1,2 @@
+content/audio/*.wav filter=lfs diff=lfs merge=lfs -text
+content/beatmaps/*.json filter=lfs diff=lfs merge=lfs -text
