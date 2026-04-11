@@ -10,11 +10,17 @@
 #include "components/difficulty.h"
 #include "components/audio.h"
 #include "components/rhythm.h"
+#include "components/music.h"
+#include "components/test_player.h"
 #include "systems/all_systems.h"
+#include "beat_map_loader.h"
 #include "text_renderer.h"
+#include "session_logger.h"
 
 #include <string>
 #include <cstdio>
+#include <cstring>
+#include <ctime>
 #include <algorithm>
 
 #ifdef __EMSCRIPTEN__
@@ -43,6 +49,7 @@ static void update_draw_frame() {
     }
 
     input_system(reg, raw_dt);
+    test_player_system(reg, raw_dt);
 
     while (g_loop.accumulator >= FIXED_DT) {
         gesture_system(reg, FIXED_DT);
@@ -55,6 +62,7 @@ static void update_draw_frame() {
         difficulty_system(reg, FIXED_DT);
         obstacle_spawn_system(reg, FIXED_DT);
         scroll_system(reg, FIXED_DT);
+        ring_zone_log_system(reg, FIXED_DT);
         burnout_system(reg, FIXED_DT);
         collision_system(reg, FIXED_DT);
         scoring_system(reg, FIXED_DT);
@@ -74,13 +82,31 @@ static void update_draw_frame() {
 }
 #endif
 
-int main(int /*argc*/, char* /*argv*/[]) {
+int main(int argc, char* argv[]) {
+
+    // ── Parse CLI args ───────────────────────────────────────
+    TestPlayerSkill test_skill = TestPlayerSkill::Pro;
+    bool test_player_mode = false;
+    for (int i = 1; i < argc; ++i) {
+        if (std::strcmp(argv[i], "--test-player") == 0 && i + 1 < argc) {
+            test_player_mode = true;
+            ++i;
+            if (std::strcmp(argv[i], "pro") == 0)       test_skill = TestPlayerSkill::Pro;
+            else if (std::strcmp(argv[i], "good") == 0)  test_skill = TestPlayerSkill::Good;
+            else if (std::strcmp(argv[i], "bad") == 0)   test_skill = TestPlayerSkill::Bad;
+            else {
+                std::fprintf(stderr, "Unknown skill: %s (use pro|good|bad)\n", argv[i]);
+                return 1;
+            }
+        }
+    }
 
     // ── RAYLIB INIT ──────────────────────────────────────────
     std::string window_title = std::string("SHAPESHIFTER v") + SHAPESHIFTER_VERSION;
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     InitWindow(constants::SCREEN_W, constants::SCREEN_H, window_title.c_str());
     SetTargetFPS(60);
+    InitAudioDevice();
 
     TraceLog(LOG_INFO, "SHAPESHIFTER v%s", SHAPESHIFTER_VERSION);
 
@@ -131,13 +157,128 @@ int main(int /*argc*/, char* /*argv*/[]) {
     reg.ctx().emplace<AudioQueue>();
 
     // Rhythm singletons (active even without a beat map loaded)
-    auto& song_state = reg.ctx().emplace<SongState>();
-    song_state.bpm = 120.0f;
-    song_state.playing = true;
-    song_state_compute_derived(song_state);
-    reg.ctx().emplace<BeatMap>();
     reg.ctx().emplace<HPState>();
     reg.ctx().emplace<SongResults>();
+
+    // ── Load beatmap from disk ────────────────────────────────
+    {
+        auto& beatmap = reg.ctx().emplace<BeatMap>();
+        std::vector<BeatMapError> load_errors;
+
+        std::string exe_beatmap = std::string(GetApplicationDirectory())
+                                + "content/beatmaps/1_stomper_beatmap.json";
+        const char* beatmap_paths[] = {
+            exe_beatmap.c_str(),
+            "content/beatmaps/1_stomper_beatmap.json",
+        };
+
+        bool loaded = false;
+        for (const char* path : beatmap_paths) {
+            load_errors.clear();
+            if (load_beat_map(path, beatmap, load_errors, "medium")) {
+                TraceLog(LOG_INFO, "Loaded beatmap: %s (%zu beats, difficulty=%s)",
+                         path, beatmap.beats.size(), beatmap.difficulty.c_str());
+                loaded = true;
+                break;
+            }
+        }
+
+        if (!loaded) {
+            TraceLog(LOG_WARNING, "No beatmap loaded — running in freeplay mode");
+            for (const auto& err : load_errors) {
+                TraceLog(LOG_WARNING, "  beatmap error: %s", err.message.c_str());
+            }
+        }
+
+        if (loaded) {
+            std::vector<BeatMapError> val_errors;
+            if (!validate_beat_map(beatmap, val_errors)) {
+                TraceLog(LOG_WARNING, "Beatmap validation warnings:");
+                for (const auto& err : val_errors) {
+                    TraceLog(LOG_WARNING, "  beat %d: %s", err.beat_index, err.message.c_str());
+                }
+            }
+        }
+
+        auto& song = reg.ctx().emplace<SongState>();
+        if (!beatmap.beats.empty()) {
+            init_song_state(song, beatmap);
+        } else {
+            song.bpm = 120.0f;
+            song_state_compute_derived(song);
+        }
+    }
+
+    // ── Load music stream ─────────────────────────────────────
+    {
+        auto& music = reg.ctx().emplace<MusicContext>();
+        auto* beatmap = reg.ctx().find<BeatMap>();
+
+        if (beatmap && !beatmap->song_path.empty()) {
+            std::string exe_audio = std::string(GetApplicationDirectory())
+                                  + beatmap->song_path;
+            const char* audio_paths[] = {
+                exe_audio.c_str(),
+                beatmap->song_path.c_str(),
+            };
+
+            for (const char* path : audio_paths) {
+                Music stream = LoadMusicStream(path);
+                if (stream.frameCount > 0) {
+                    music.stream  = stream;
+                    music.loaded  = true;
+                    music.started = false;
+                    SetMusicVolume(music.stream, music.volume);
+                    TraceLog(LOG_INFO, "Loaded music: %s (%u frames)",
+                             path, stream.frameCount);
+                    break;
+                }
+            }
+
+            if (!music.loaded) {
+                TraceLog(LOG_WARNING, "Could not load music: %s",
+                         beatmap->song_path.c_str());
+            }
+        }
+    }
+
+    // ── Test Player Setup ──────────────────────────────────────
+    if (test_player_mode) {
+        auto& tp_state = reg.ctx().emplace<TestPlayerState>();
+        tp_state.skill  = test_skill;
+        tp_state.active = true;
+        tp_state.rng.seed(static_cast<unsigned>(std::time(nullptr)));
+
+        const char* skill_names[] = { "pro", "good", "bad" };
+        TraceLog(LOG_INFO, "TEST PLAYER: skill=%s vision=%.0f react=%.3f-%.3f",
+                 skill_names[static_cast<int>(test_skill)],
+                 tp_state.config().vision_range,
+                 tp_state.config().reaction_min,
+                 tp_state.config().reaction_max);
+
+        // Session logger
+        auto& slog = reg.ctx().emplace<SessionLog>();
+        std::time_t now = std::time(nullptr);
+        std::tm tm{};
+#ifdef _WIN32
+        localtime_s(&tm, &now);
+#else
+        localtime_r(&now, &tm);
+#endif
+        char log_filename[256];
+        std::snprintf(log_filename, sizeof(log_filename),
+            "%ssession_%s_%04d%02d%02d_%02d%02d%02d.log",
+            GetApplicationDirectory(),
+            skill_names[static_cast<int>(test_skill)],
+            tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+            tm.tm_hour, tm.tm_min, tm.tm_sec);
+        session_log_open(slog, log_filename);
+        TraceLog(LOG_INFO, "SESSION LOG: %s", log_filename);
+
+        // Register EnTT signals for game-side logging
+        reg.on_construct<ObstacleTag>().connect<&session_log_on_obstacle_spawn>();
+        reg.on_construct<ScoredTag>().connect<&session_log_on_scored>();
+    }
 
     // ── Virtual-resolution render target ─────────────────────
     // The game logic and rendering all target 720×1280.  We draw into
@@ -166,6 +307,9 @@ int main(int /*argc*/, char* /*argv*/[]) {
         input_system(reg, raw_dt);
         if (reg.ctx().get<InputState>().quit_requested) break;
 
+        // Phase 0.5: Test player AI (injects into InputState)
+        test_player_system(reg, raw_dt);
+
         // Fixed timestep loop — all systems self-guard on GamePhase
         while (accumulator >= FIXED_DT) {
             gesture_system(reg, FIXED_DT);
@@ -178,6 +322,7 @@ int main(int /*argc*/, char* /*argv*/[]) {
             difficulty_system(reg, FIXED_DT);
             obstacle_spawn_system(reg, FIXED_DT);
             scroll_system(reg, FIXED_DT);
+            ring_zone_log_system(reg, FIXED_DT);
             burnout_system(reg, FIXED_DT);
             collision_system(reg, FIXED_DT);
             scoring_system(reg, FIXED_DT);
@@ -221,6 +366,19 @@ int main(int /*argc*/, char* /*argv*/[]) {
 #endif
 
     // ── SHUTDOWN ─────────────────────────────────────────────
+    {
+        auto* slog = reg.ctx().find<SessionLog>();
+        if (slog) session_log_close(*slog);
+    }
+    {
+        auto* music = reg.ctx().find<MusicContext>();
+        if (music && music->loaded) {
+            StopMusicStream(music->stream);
+            UnloadMusicStream(music->stream);
+            music->loaded = false;
+        }
+    }
+    CloseAudioDevice();
     UnloadRenderTexture(target);
     text_shutdown(reg.ctx().get<TextContext>());
     CloseWindow();

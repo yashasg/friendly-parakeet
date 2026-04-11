@@ -85,13 +85,26 @@ void scoring_system(entt::registry& reg, float dt) {
 
         score.score += points;
 
-        // Spawn score popup
+        // Spawn timing/score popup
         auto popup = reg.create();
         reg.emplace<Position>(popup, pos.x, pos.y - 40.0f);
         reg.emplace<Velocity>(popup, 0.0f, -80.0f);
         reg.emplace<Lifetime>(popup, constants::POPUP_DURATION, constants::POPUP_DURATION);
-        reg.emplace<ScorePopup>(popup, points, tier_for_multiplier(burnout_mult));
-        reg.emplace<DrawColor>(popup, uint8_t{255}, uint8_t{255}, uint8_t{50}, uint8_t{255});
+
+        uint8_t tt = timing ? static_cast<uint8_t>(timing->tier) : uint8_t{255};
+        reg.emplace<ScorePopup>(popup, points, tier_for_multiplier(burnout_mult), tt);
+
+        // Color by timing grade
+        uint8_t pr = 255, pg = 255, pb = 50;
+        if (timing) {
+            switch (timing->tier) {
+                case TimingTier::Perfect: pr = 100; pg = 255; pb = 100; break; // green
+                case TimingTier::Good:    pr = 180; pg = 255; pb = 100; break; // yellow-green
+                case TimingTier::Ok:      pr = 255; pg = 255; pb = 100; break; // yellow
+                case TimingTier::Bad:     pr = 255; pg = 150; pb = 100; break; // orange
+            }
+        }
+        reg.emplace<DrawColor>(popup, pr, pg, pb, uint8_t{255});
         reg.emplace<DrawLayer>(popup, Layer::Effects);
 
         audio_push(reg.ctx().get<AudioQueue>(), SFX::BurnoutBank);

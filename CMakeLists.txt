@@ -76,8 +76,9 @@ file(GLOB SYSTEM_SOURCES app/systems/*.cpp)
 # Exclude render_system.cpp from the library (requires raylib renderer)
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "render_system\\.cpp$")
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "input_system\\.cpp$")
+list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "song_playback_system\\.cpp$")
 
-add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES} app/beat_map_loader.cpp)
+add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES} app/beat_map_loader.cpp app/session_logger.cpp)
 target_include_directories(shapeshifter_lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/app
     ${CMAKE_BINARY_DIR}/generated
@@ -102,6 +103,7 @@ add_executable(shapeshifter
     app/main.cpp
     app/systems/render_system.cpp
     app/systems/input_system.cpp
+    app/systems/song_playback_system.cpp
     app/text_renderer.cpp
     app/file_logger.cpp
 )
@@ -167,7 +169,12 @@ if(EMSCRIPTEN)
         -sUSE_GLFW=3
         -sALLOW_MEMORY_GROWTH=1
         --shell-file ${_shell_html}
-        --preload-file ${CMAKE_SOURCE_DIR}/assets@/assets
+    )
+    # Use LINK_FLAGS (raw string) for the two --preload-file entries so that
+    # CMake does not deduplicate the identical flag prefixes, which would strip
+    # the second entry and leave its value as an orphaned positional argument.
+    set_property(TARGET shapeshifter APPEND_STRING PROPERTY LINK_FLAGS
+        " --preload-file ${CMAKE_SOURCE_DIR}/assets@/assets --preload-file ${CMAKE_SOURCE_DIR}/content@/content"
     )
     set_target_properties(shapeshifter PROPERTIES SUFFIX ".html")
 endif()
@@ -185,6 +192,32 @@ if(FONT_FILES)
     )
 endif()
 
+# Copy beatmap JSON files next to the executable
+file(GLOB BEATMAP_FILES ${CMAKE_SOURCE_DIR}/content/beatmaps/*.json)
+if(BEATMAP_FILES)
+    add_custom_command(TARGET shapeshifter POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+            "$<TARGET_FILE_DIR:shapeshifter>/content/beatmaps"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${BEATMAP_FILES}
+            "$<TARGET_FILE_DIR:shapeshifter>/content/beatmaps/"
+        COMMENT "Copying beatmap assets"
+    )
+endif()
+
+# Copy audio files next to the executable
+file(GLOB AUDIO_FILES ${CMAKE_SOURCE_DIR}/content/audio/*.wav)
+if(AUDIO_FILES)
+    add_custom_command(TARGET shapeshifter POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+            "$<TARGET_FILE_DIR:shapeshifter>/content/audio"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${AUDIO_FILES}
+            "$<TARGET_FILE_DIR:shapeshifter>/content/audio/"
+        COMMENT "Copying audio assets"
+    )
+endif()
+
 # ── Tests + Benchmarks (native only) ─────────────────────────
 if(NOT EMSCRIPTEN)
     enable_testing()
@@ -193,6 +226,7 @@ if(NOT EMSCRIPTEN)
     add_executable(shapeshifter_tests
         ${TEST_SOURCES}
         app/file_logger.cpp
+        app/systems/song_playback_system.cpp
     )
     target_include_directories(shapeshifter_tests PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/app

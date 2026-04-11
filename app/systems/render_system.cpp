@@ -186,17 +186,34 @@ void render_system(entt::registry& reg, float /*alpha*/) {
         }
     }
 
-    // ── Draw score popups ───────────────────────────────────
+    // ── Draw timing grade popups ───────────────────────────
     {
         auto view = reg.view<ScorePopup, Position, DrawColor, Lifetime>();
         for (auto [entity, popup, pos, col, life] : view.each()) {
             float alpha_ratio = life.remaining / life.max_time;
             auto popup_alpha = static_cast<uint8_t>(alpha_ratio * 255);
-            float popup_scale = 1.5f + popup.tier * 0.5f;
-            FontSize popup_font = (popup_scale > 2.5f) ? FontSize::Medium : FontSize::Small;
-            text_draw_number(text_ctx, popup.value,
-                pos.x, pos.y, popup_font,
-                col.r, col.g, col.b, popup_alpha);
+
+            if (popup.timing_tier <= 3) {
+                // Show timing grade text: PERFECT / GOOD / OK / BAD
+                const char* grade_text = "BAD";
+                FontSize grade_font = FontSize::Small;
+                switch (popup.timing_tier) {
+                    case 3: grade_text = "PERFECT"; grade_font = FontSize::Medium; break;
+                    case 2: grade_text = "GOOD";    grade_font = FontSize::Small;  break;
+                    case 1: grade_text = "OK";      grade_font = FontSize::Small;  break;
+                    case 0: grade_text = "BAD";     grade_font = FontSize::Small;  break;
+                }
+                text_draw(text_ctx, grade_text,
+                    pos.x, pos.y, grade_font,
+                    col.r, col.g, col.b, popup_alpha,
+                    TextAlign::Center);
+            } else {
+                // Non-timed obstacle: show score number
+                FontSize popup_font = FontSize::Small;
+                text_draw_number(text_ctx, popup.value,
+                    pos.x, pos.y, popup_font,
+                    col.r, col.g, col.b, popup_alpha);
+            }
         }
     }
 
@@ -348,6 +365,61 @@ void render_system(entt::registry& reg, float /*alpha*/) {
             TextAlign::Center);
     }
 
+    // ── Song Complete overlay ─────────────────────────────────
+    if (gs.phase == GamePhase::SongComplete) {
+        auto& score = reg.ctx().get<ScoreState>();
+
+        // Dim overlay
+        DrawRectangleRec({0, 0, float(constants::SCREEN_W), float(constants::SCREEN_H)},
+                         {0, 0, 0, 180});
+
+        // "SONG COMPLETE" heading
+        text_draw(text_ctx, "SONG COMPLETE",
+            360, 340, FontSize::Large, 100, 255, 100, 255,
+            TextAlign::Center);
+
+        // Final score
+        text_draw(text_ctx, "SCORE",
+            360, 420, FontSize::Small, 180, 180, 180, 255,
+            TextAlign::Center);
+        text_draw_number(text_ctx, score.score,
+            360, 455, FontSize::Medium, 255, 255, 255, 255);
+
+        // High score
+        text_draw(text_ctx, "HIGH SCORE",
+            360, 510, FontSize::Small, 180, 180, 180, 255,
+            TextAlign::Center);
+        text_draw_number(text_ctx, score.high_score,
+            360, 545, FontSize::Medium, 255, 215, 0, 255);
+
+        // Timing breakdown
+        auto* results = reg.ctx().find<SongResults>();
+        if (results) {
+            int y = 600;
+            text_draw(text_ctx, "PERFECT", 240, y, FontSize::Small, 100, 255, 100, 255, TextAlign::Left);
+            text_draw_number(text_ctx, results->perfect_count, 500, y, FontSize::Small, 255, 255, 255, 255);
+            y += 30;
+            text_draw(text_ctx, "GOOD", 240, y, FontSize::Small, 180, 255, 100, 255, TextAlign::Left);
+            text_draw_number(text_ctx, results->good_count, 500, y, FontSize::Small, 255, 255, 255, 255);
+            y += 30;
+            text_draw(text_ctx, "OK", 240, y, FontSize::Small, 255, 255, 100, 255, TextAlign::Left);
+            text_draw_number(text_ctx, results->ok_count, 500, y, FontSize::Small, 255, 255, 255, 255);
+            y += 30;
+            text_draw(text_ctx, "BAD", 240, y, FontSize::Small, 255, 150, 100, 255, TextAlign::Left);
+            text_draw_number(text_ctx, results->bad_count, 500, y, FontSize::Small, 255, 255, 255, 255);
+            y += 30;
+            text_draw(text_ctx, "MISS", 240, y, FontSize::Small, 255, 80, 80, 255, TextAlign::Left);
+            text_draw_number(text_ctx, results->miss_count, 500, y, FontSize::Small, 255, 255, 255, 255);
+        }
+
+        // "TAP TO REPLAY" indicator — pulsing text
+        float pulse = (std::sin(gs.phase_timer * 3.0f) + 1.0f) / 2.0f;
+        auto replay_alpha = static_cast<uint8_t>(80 + pulse * 175);
+        text_draw(text_ctx, "TAP TO REPLAY",
+            360, 800, FontSize::Medium, 200, 200, 200, replay_alpha,
+            TextAlign::Center);
+    }
+
     // ── Pause overlay ───────────────────────────────────────
     if (gs.phase == GamePhase::Paused) {
         DrawRectangleRec({0, 0, float(constants::SCREEN_W), float(constants::SCREEN_H)},
@@ -357,12 +429,4 @@ void render_system(entt::registry& reg, float /*alpha*/) {
             360, 580, FontSize::Large, 255, 255, 255, 255,
             TextAlign::Center);
     }
-}
-
-// Audio system stub — SFX playback requires sound loading
-void audio_system(entt::registry& reg) {
-    auto& audio = reg.ctx().get<AudioQueue>();
-    // In a full implementation, iterate audio.queue[0..count-1]
-    // and call PlaySound for each SFX
-    audio_clear(audio);
 }

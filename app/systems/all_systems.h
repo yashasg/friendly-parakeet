@@ -5,6 +5,9 @@
 // Phase 0: Raw input (polls raylib input)
 void input_system(entt::registry& reg, float raw_dt);
 
+// Phase 0.5: Test player AI (injects into InputState key flags)
+void test_player_system(entt::registry& reg, float dt);
+
 // Phase 1: Input classification
 void gesture_system(entt::registry& reg, float dt);
 
@@ -24,6 +27,7 @@ void player_movement_system(entt::registry& reg, float dt);
 void difficulty_system(entt::registry& reg, float dt);
 void obstacle_spawn_system(entt::registry& reg, float dt);
 void scroll_system(entt::registry& reg, float dt);
+void ring_zone_log_system(entt::registry& reg, float dt);
 void burnout_system(entt::registry& reg, float dt);
 void collision_system(entt::registry& reg, float dt);
 void scoring_system(entt::registry& reg, float dt);

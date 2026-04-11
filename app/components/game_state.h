@@ -3,10 +3,11 @@
 #include <cstdint>
 
 enum class GamePhase : uint8_t {
-    Title    = 0,
-    Playing  = 1,
-    Paused   = 2,
-    GameOver = 3
+    Title        = 0,
+    Playing      = 1,
+    Paused       = 2,
+    GameOver     = 3,
+    SongComplete = 4
 };
 
 struct GameState {

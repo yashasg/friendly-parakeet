@@ -256,7 +256,9 @@ TEST_CASE("beat_scheduler: spawns obstacle at spawn_time", "[rhythm][scheduler]"
     auto& song = reg.ctx().get<SongState>();
     auto& map = reg.ctx().get<BeatMap>();
     map.beats.push_back({4, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
-    song.playing = true; song.song_time = 0.0f;
+    song.playing = true;
+    // Advance past spawn_time (margin_offset ≈ 0.077s at 120 BPM)
+    song.song_time = 0.1f;
     beat_scheduler_system(reg, 0.016f);
     CHECK(reg.view<ObstacleTag>().size() == 1);
 }
@@ -303,7 +305,7 @@ TEST_CASE("beat_scheduler: scroll speed matches song state", "[rhythm][scheduler
     auto& song = reg.ctx().get<SongState>();
     auto& map = reg.ctx().get<BeatMap>();
     map.beats.push_back({4, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
-    song.playing = true; song.song_time = 0.0f;
+    song.playing = true; song.song_time = 0.1f;
     beat_scheduler_system(reg, 0.016f);
     auto obs_view = reg.view<ObstacleTag, Velocity>();
     REQUIRE(std::distance(obs_view.begin(), obs_view.end()) == 1);
@@ -318,7 +320,7 @@ TEST_CASE("beat_scheduler: spawns lane_block with blocked mask", "[rhythm][sched
     auto& map = reg.ctx().get<BeatMap>();
     BeatEntry entry; entry.beat_index = 4; entry.kind = ObstacleKind::LaneBlock; entry.blocked_mask = 0b101;
     map.beats.push_back(entry);
-    song.playing = true; song.song_time = 0.0f;
+    song.playing = true; song.song_time = 0.1f;
     beat_scheduler_system(reg, 0.016f);
     auto view = reg.view<ObstacleTag, BlockedLanes>();
     REQUIRE(std::distance(view.begin(), view.end()) == 1);
@@ -656,10 +658,10 @@ TEST_CASE("timing: timing_multiplier values", "[rhythm][timing]") {
 }
 
 TEST_CASE("timing: window_scale_for_tier values", "[rhythm][timing]") {
-    CHECK(window_scale_for_tier(TimingTier::Perfect) == 0.50f);
-    CHECK(window_scale_for_tier(TimingTier::Good) == 0.75f);
-    CHECK(window_scale_for_tier(TimingTier::Ok) == 1.00f);
-    CHECK(window_scale_for_tier(TimingTier::Bad) == 1.00f);
+    CHECK(window_scale_for_tier(TimingTier::Perfect) == 1.50f);
+    CHECK(window_scale_for_tier(TimingTier::Good) == 1.00f);
+    CHECK(window_scale_for_tier(TimingTier::Ok) == 0.75f);
+    CHECK(window_scale_for_tier(TimingTier::Bad) == 0.50f);
 }
 
 // Window Scaling
@@ -682,14 +684,12 @@ TEST_CASE("window_scaling: PERFECT grade shortens remaining window", "[rhythm][w
     collision_system(reg, 0.016f);
 
     CHECK(ps.graded);
-    CHECK(ps.window_scale == 0.50f);
-    // Timer should have jumped forward: remaining * (1 - 0.5) was added
-    float remaining = song.window_duration - timer_before;
-    float expected_jump = remaining * 0.5f;
-    CHECK_THAT(ps.window_timer, WithinAbs(timer_before + expected_jump, 0.001f));
+    CHECK(ps.window_scale == 1.50f);
+    // Perfect: scale > 1.0 means window extends. Timer not advanced.
+    CHECK_THAT(ps.window_timer, WithinAbs(timer_before, 0.001f));
 }
 
-TEST_CASE("window_scaling: GOOD grade shortens remaining window", "[rhythm][window_scaling]") {
+TEST_CASE("window_scaling: GOOD grade keeps normal window", "[rhythm][window_scaling]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
     auto& ps = reg.get<PlayerShape>(player);
@@ -706,13 +706,12 @@ TEST_CASE("window_scaling: GOOD grade shortens remaining window", "[rhythm][wind
     collision_system(reg, 0.016f);
 
     CHECK(ps.graded);
-    CHECK(ps.window_scale == 0.75f);
-    float remaining = song.window_duration - timer_before;
-    float expected_jump = remaining * 0.25f;
-    CHECK_THAT(ps.window_timer, WithinAbs(timer_before + expected_jump, 0.001f));
+    CHECK(ps.window_scale == 1.00f);
+    // Good: scale=1.0, no timer change
+    CHECK_THAT(ps.window_timer, WithinAbs(timer_before, 0.001f));
 }
 
-TEST_CASE("window_scaling: OK grade does not shorten window", "[rhythm][window_scaling]") {
+TEST_CASE("window_scaling: OK grade shortens window", "[rhythm][window_scaling]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
     auto& ps = reg.get<PlayerShape>(player);
@@ -729,11 +728,14 @@ TEST_CASE("window_scaling: OK grade does not shorten window", "[rhythm][window_s
     collision_system(reg, 0.016f);
 
     CHECK(ps.graded);
-    CHECK(ps.window_scale == 1.00f);
-    CHECK_THAT(ps.window_timer, WithinAbs(timer_before, 0.001f));
+    CHECK(ps.window_scale == 0.75f);
+    // Ok: scale=0.75, timer advanced by remaining * 0.25
+    float remaining = song.window_duration - timer_before;
+    float expected_jump = remaining * 0.25f;
+    CHECK_THAT(ps.window_timer, WithinAbs(timer_before + expected_jump, 0.001f));
 }
 
-TEST_CASE("window_scaling: BAD grade does not shorten window", "[rhythm][window_scaling]") {
+TEST_CASE("window_scaling: BAD grade shortens window aggressively", "[rhythm][window_scaling]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
     auto& ps = reg.get<PlayerShape>(player);
@@ -750,8 +752,11 @@ TEST_CASE("window_scaling: BAD grade does not shorten window", "[rhythm][window_
     collision_system(reg, 0.016f);
 
     CHECK(ps.graded);
-    CHECK(ps.window_scale == 1.00f);
-    CHECK_THAT(ps.window_timer, WithinAbs(timer_before, 0.001f));
+    CHECK(ps.window_scale == 0.50f);
+    // Bad: scale=0.50, timer advanced by remaining * 0.50
+    float remaining = song.window_duration - timer_before;
+    float expected_jump = remaining * 0.50f;
+    CHECK_THAT(ps.window_timer, WithinAbs(timer_before + expected_jump, 0.001f));
 }
 
 TEST_CASE("window_scaling: second obstacle does not re-scale", "[rhythm][window_scaling]") {
@@ -806,22 +811,24 @@ TEST_CASE("integration: obstacle arrives on-beat within 1 frame", "[rhythm][inte
     auto& song = reg.ctx().get<SongState>();
     auto& map = reg.ctx().get<BeatMap>();
     map.beats.push_back({4, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
-    song.playing = true; song.song_time = 0.0f;
+    song.playing = true; song.song_time = 0.1f;
     constexpr float dt = 1.0f / 60.0f;
-    float elapsed = 0.0f;
     bool obstacle_at_player = false;
-    while (elapsed < 5.0f) {
+    int frames = 0;
+    while (frames < 300) {
         song_playback_system(reg, dt);
         beat_scheduler_system(reg, dt);
         scroll_system(reg, dt);
-        elapsed += dt;
+        frames++;
         auto view = reg.view<ObstacleTag, Position>();
         for (auto [e, pos] : view.each()) {
-            // Check arrival at PLAYER_Y (where the beat mathematically lands)
             if (pos.y >= constants::PLAYER_Y) {
                 obstacle_at_player = true;
                 float beat_time = song.offset + 4 * song.beat_period;
-                CHECK_THAT(elapsed, WithinAbs(beat_time, dt + 0.001f));
+                float margin_offset = 40.0f / song.scroll_speed;
+                // Collision resolves at PLAYER_Y - 40px, which should be at beat_time.
+                // Obstacle reaches PLAYER_Y at beat_time + margin_offset.
+                CHECK_THAT(song.song_time, WithinAbs(beat_time + margin_offset, dt + 0.001f));
                 break;
             }
         }

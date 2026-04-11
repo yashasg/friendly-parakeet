@@ -1,6 +1,7 @@
 #include "all_systems.h"
 #include "../components/game_state.h"
 #include "../components/player.h"
+#include "../components/rendering.h"
 #include "../components/input.h"
 #include "../components/audio.h"
 #include "../components/rhythm.h"
@@ -46,14 +47,24 @@ void player_action_system(entt::registry& reg, float /*dt*/) {
                     pshape.window_scale = 1.0f;
                     pshape.graded = false;
                     audio_push(reg.ctx().get<AudioQueue>(), SFX::ShapeShift);
+                } else if (phase == WindowPhase::Active && btn_evt.shape == pshape.current) {
+                    // Same shape re-pressed: extend the window for the next obstacle.
+                    // Reset timer and peak so the window covers the new collision.
+                    pshape.window_timer = 0.0f;
+                    pshape.window_start = song->song_time;
+                    pshape.peak_time = song->song_time + song->half_window;
+                    pshape.window_scale = 1.0f;
+                    pshape.graded = false;
                 }
-                // Same shape during Active → ignore (spam protection)
             } else {
                 // Legacy mode: instant shape change
                 if (btn_evt.shape != pshape.current) {
                     pshape.previous = pshape.current;
                     pshape.current  = btn_evt.shape;
                     pshape.morph_t  = 0.0f;
+                    auto si = static_cast<int>(btn_evt.shape);
+                    auto& sc = constants::SHAPE_COLORS[si];
+                    reg.replace<DrawColor>(entity, sc.r, sc.g, sc.b, sc.a);
                     audio_push(reg.ctx().get<AudioQueue>(), SFX::ShapeShift);
                 }
             }

@@ -49,14 +49,13 @@ static void enter_playing(entt::registry& reg) {
 
     // Reset rhythm singletons for new play session
     auto* song = reg.ctx().find<SongState>();
-    auto* beatmap = reg.ctx().find<BeatMap>();
-    bool has_chart = beatmap && !beatmap->beats.empty();
     if (song) {
         song->song_time      = 0.0f;
         song->current_beat   = -1;
-        song->playing        = has_chart;  // only activate rhythm mode with a loaded chart
+        song->playing        = true;  // clock always runs; beat_scheduler guards on map.beats
         song->finished       = false;
         song->next_spawn_idx = 0;
+        song->restart_music  = true;  // signal song_playback_system to restart audio
     }
     auto* hp = reg.ctx().find<HPState>();
     if (hp) { hp->current = hp->max_hp; }
@@ -82,6 +81,18 @@ static void enter_game_over(entt::registry& reg) {
     gs.phase_timer = 0.0f;
 }
 
+static void enter_song_complete(entt::registry& reg) {
+    auto& score = reg.ctx().get<ScoreState>();
+    if (score.score > score.high_score) {
+        score.high_score = score.score;
+    }
+
+    auto& gs = reg.ctx().get<GameState>();
+    gs.previous_phase = gs.phase;
+    gs.phase = GamePhase::SongComplete;
+    gs.phase_timer = 0.0f;
+}
+
 void game_state_system(entt::registry& reg, float dt) {
     auto& gs    = reg.ctx().get<GameState>();
     auto& input = reg.ctx().get<InputState>();
@@ -91,8 +102,9 @@ void game_state_system(entt::registry& reg, float dt) {
     if (gs.transition_pending) {
         gs.transition_pending = false;
         switch (gs.next_phase) {
-            case GamePhase::Playing:  enter_playing(reg);  break;
-            case GamePhase::GameOver: enter_game_over(reg); break;
+            case GamePhase::Playing:      enter_playing(reg);       break;
+            case GamePhase::GameOver:     enter_game_over(reg);     break;
+            case GamePhase::SongComplete: enter_song_complete(reg); break;
             case GamePhase::Paused:
                 gs.previous_phase = gs.phase;
                 gs.phase = GamePhase::Paused;
@@ -124,5 +136,24 @@ void game_state_system(entt::registry& reg, float dt) {
         gs.previous_phase = gs.phase;
         gs.phase = GamePhase::Playing;
         gs.phase_timer = 0.0f;
+    }
+
+    // Playing → SongComplete when song finishes (all obstacles cleared)
+    if (gs.phase == GamePhase::Playing) {
+        auto* song = reg.ctx().find<SongState>();
+        if (song && song->finished) {
+            // Wait until all remaining obstacles have scrolled past
+            auto obs_count = reg.view<ObstacleTag>(entt::exclude<ScoredTag>).size_hint();
+            if (obs_count == 0) {
+                gs.transition_pending = true;
+                gs.next_phase = GamePhase::SongComplete;
+            }
+        }
+    }
+
+    // SongComplete → replay on any touch (after brief delay)
+    if (gs.phase == GamePhase::SongComplete && input.touch_up && gs.phase_timer > 0.5f) {
+        gs.transition_pending = true;
+        gs.next_phase = GamePhase::Playing;
     }
 }

@@ -60,9 +60,10 @@ TEST_CASE("player_action: rhythm mode ignores same shape during Active (spam pro
 
     player_action_system(reg, 0.016f);
 
-    // Should stay Active, no change
+    // Same shape re-press: window timer resets for next obstacle
     CHECK(ps.phase_raw == static_cast<uint8_t>(WindowPhase::Active));
-    CHECK(ps.window_timer == 0.1f);
+    CHECK(ps.window_timer == 0.0f);
+    CHECK_FALSE(ps.graded);
 }
 
 TEST_CASE("player_action: rhythm mode interrupts Active with different shape", "[player_rhythm]") {

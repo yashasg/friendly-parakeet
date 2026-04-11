@@ -70,13 +70,12 @@ constexpr float TIMING_GOOD_PCT    = 0.50f;
 constexpr float TIMING_OK_PCT      = 0.75f;
 
 // ── Window Scaling by Grade ───────────────────────
-// Base window is calibrated for OK. Better grades
-// scale down remaining active time so the player
-// recovers to Hexagon faster.
-constexpr float WINDOW_SCALE_BAD     = 1.00f;
-constexpr float WINDOW_SCALE_OK      = 1.00f;
-constexpr float WINDOW_SCALE_GOOD    = 0.75f;
-constexpr float WINDOW_SCALE_PERFECT = 0.50f;
+// Perfect holds shape longer (extends window).
+// Bad/Ok shorten window (snap back to Hexagon faster).
+constexpr float WINDOW_SCALE_BAD     = 0.50f;
+constexpr float WINDOW_SCALE_OK      = 0.75f;
+constexpr float WINDOW_SCALE_GOOD    = 1.00f;
+constexpr float WINDOW_SCALE_PERFECT = 1.50f;
 
 // ── HP System ─────────────────────────────────────
 constexpr int   MAX_HP                  = 5;
@@ -101,5 +100,16 @@ constexpr float BUTTON_Y          = 1140.0f;
 constexpr float BUTTON_W          = 140.0f;
 constexpr float BUTTON_H          = 100.0f;
 constexpr float BUTTON_SPACING    = 60.0f;
+
+// ── Shape Colors ──────────────────────────────────
+// Used for both obstacles and player character.
+// Index by static_cast<int>(Shape).
+struct ShapeColor { uint8_t r, g, b, a; };
+constexpr ShapeColor SHAPE_COLORS[] = {
+    {  80, 200, 255, 255 },   // Circle   — cyan/blue
+    { 255, 100, 100, 255 },   // Square   — red
+    { 100, 255, 100, 255 },   // Triangle — green
+    {  80, 180, 255, 255 },   // Hexagon  — neutral blue
+};
 
 } // namespace constants

@@ -18,9 +18,26 @@ void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
         const auto& entry = map->beats[song->next_spawn_idx];
 
         float beat_time  = song->offset + entry.beat_index * song->beat_period;
-        float spawn_time = beat_time - song->lead_time;
+        // Compensate for collision margin: collision resolves COLLISION_MARGIN px
+        // before the obstacle reaches PLAYER_Y, so spawn slightly later.
+        constexpr float COLLISION_MARGIN = 40.0f;
+        float margin_offset = COLLISION_MARGIN / song->scroll_speed;
+        float spawn_time = beat_time - song->lead_time + margin_offset;
 
         if (song->song_time < spawn_time) break;
+
+        // Compensate for late spawn: if song_time overshot spawn_time,
+        // place the obstacle below SPAWN_Y by the overshoot distance
+        // so it arrives at the player at exactly beat_time.
+        // Clamp the spawn position so a large overshoot cannot place the
+        // obstacle at or below the collision window, where it may never be
+        // scored before scrolling off-screen.
+        float overshoot = song->song_time - spawn_time;
+        float start_y = constants::SPAWN_Y + overshoot * song->scroll_speed;
+        float max_start_y = constants::PLAYER_Y - COLLISION_MARGIN;
+        if (start_y > max_start_y) {
+            start_y = max_start_y;
+        }
 
         auto obstacle = reg.create();
         reg.emplace<ObstacleTag>(obstacle);
@@ -30,7 +47,7 @@ void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
 
         switch (entry.kind) {
             case ObstacleKind::ShapeGate: {
-                reg.emplace<Position>(obstacle, constants::LANE_X[entry.lane], constants::SPAWN_Y);
+                reg.emplace<Position>(obstacle, constants::LANE_X[entry.lane], start_y);
                 reg.emplace<Obstacle>(obstacle, ObstacleKind::ShapeGate, int16_t{constants::PTS_SHAPE_GATE});
                 reg.emplace<RequiredShape>(obstacle, entry.shape);
                 reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W), 80.0f);
@@ -47,7 +64,7 @@ void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
                 for (int l = 0; l < 3; ++l) {
                     if ((entry.blocked_mask >> l) & 1) { display_lane = l; break; }
                 }
-                reg.emplace<Position>(obstacle, constants::LANE_X[display_lane], constants::SPAWN_Y);
+                reg.emplace<Position>(obstacle, constants::LANE_X[display_lane], start_y);
                 reg.emplace<Obstacle>(obstacle, ObstacleKind::LaneBlock, int16_t{constants::PTS_LANE_BLOCK});
                 reg.emplace<BlockedLanes>(obstacle, entry.blocked_mask);
                 reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W / 3), 80.0f);
@@ -55,7 +72,7 @@ void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
                 break;
             }
             case ObstacleKind::LowBar: {
-                reg.emplace<Position>(obstacle, constants::LANE_X[1], constants::SPAWN_Y);
+                reg.emplace<Position>(obstacle, constants::LANE_X[1], start_y);
                 reg.emplace<Obstacle>(obstacle, ObstacleKind::LowBar, int16_t{constants::PTS_LOW_BAR});
                 reg.emplace<RequiredVAction>(obstacle, VMode::Jumping);
                 reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W), 40.0f);
@@ -63,7 +80,7 @@ void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
                 break;
             }
             case ObstacleKind::HighBar: {
-                reg.emplace<Position>(obstacle, constants::LANE_X[1], constants::SPAWN_Y);
+                reg.emplace<Position>(obstacle, constants::LANE_X[1], start_y);
                 reg.emplace<Obstacle>(obstacle, ObstacleKind::HighBar, int16_t{constants::PTS_HIGH_BAR});
                 reg.emplace<RequiredVAction>(obstacle, VMode::Sliding);
                 reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W), 40.0f);
@@ -71,7 +88,7 @@ void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
                 break;
             }
             case ObstacleKind::ComboGate: {
-                reg.emplace<Position>(obstacle, constants::LANE_X[1], constants::SPAWN_Y);
+                reg.emplace<Position>(obstacle, constants::LANE_X[1], start_y);
                 reg.emplace<Obstacle>(obstacle, ObstacleKind::ComboGate, int16_t{constants::PTS_COMBO_GATE});
                 reg.emplace<RequiredShape>(obstacle, entry.shape);
                 reg.emplace<BlockedLanes>(obstacle, entry.blocked_mask);
@@ -80,7 +97,7 @@ void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
                 break;
             }
             case ObstacleKind::SplitPath: {
-                reg.emplace<Position>(obstacle, constants::LANE_X[1], constants::SPAWN_Y);
+                reg.emplace<Position>(obstacle, constants::LANE_X[1], start_y);
                 reg.emplace<Obstacle>(obstacle, ObstacleKind::SplitPath, int16_t{constants::PTS_SPLIT_PATH});
                 reg.emplace<RequiredShape>(obstacle, entry.shape);
                 reg.emplace<RequiredLane>(obstacle, entry.lane);

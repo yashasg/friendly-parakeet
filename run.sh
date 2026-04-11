@@ -12,5 +12,5 @@ elif [[ "${1:-}" == "bench" ]]; then
     shift
     ./build/shapeshifter_tests "[bench]" "$@"
 else
-    ./build/shapeshifter
+    ./build/shapeshifter "$@"
 fi

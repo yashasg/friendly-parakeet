@@ -253,7 +253,7 @@ TEST_CASE("beat_scheduler: all spawned obstacles have BeatInfo", "[beat_schedule
     CHECK(count == 1);
 }
 
-TEST_CASE("beat_scheduler: obstacles spawn at SPAWN_Y", "[beat_scheduler]") {
+TEST_CASE("beat_scheduler: obstacles spawn with overshoot compensation", "[beat_scheduler]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
     auto& map = reg.ctx().get<BeatMap>();
@@ -264,9 +264,11 @@ TEST_CASE("beat_scheduler: obstacles spawn at SPAWN_Y", "[beat_scheduler]") {
 
     beat_scheduler_system(reg, 0.016f);
 
+    // Obstacle should spawn below SPAWN_Y to compensate for late spawn.
+    // start_y = SPAWN_Y + overshoot * scroll_speed
     auto view = reg.view<ObstacleTag, Position>();
     for (auto [e, pos] : view.each()) {
-        CHECK(pos.y == constants::SPAWN_Y);
+        CHECK(pos.y > constants::SPAWN_Y);
     }
 }
 
