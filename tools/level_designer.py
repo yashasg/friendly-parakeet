@@ -356,6 +356,32 @@ def prevent_two_lane_jumps(obstacles):
     return obstacles
 
 
+def enforce_lane_change_gap(obstacles):
+    """Any lane change requires ≥1 beat gap. Remove obstacles that violate."""
+    if not obstacles:
+        return obstacles
+    # Track the player's lane through all obstacle types
+    result = [obstacles[0]]
+    prev_lane = obstacles[0].get("lane", 1) if obstacles[0]["kind"] == "shape_gate" else 1
+    for obs in obstacles[1:]:
+        if obs["kind"] == "shape_gate":
+            obs_lane = obs.get("lane", 1)
+            if obs_lane != prev_lane:
+                gap = obs["beat"] - result[-1]["beat"]
+                if gap < 2:
+                    continue  # skip — lane change on consecutive beat
+            prev_lane = obs_lane
+        elif obs["kind"] == "lane_block":
+            # Lane blocks change the player's lane — track it
+            blocked = obs.get("blocked", [])
+            for lane in [0, 1, 2]:
+                if lane not in blocked:
+                    prev_lane = lane
+                    break
+        result.append(obs)
+    return result
+
+
 def prevent_triple_shapes(obstacles):
     """No 3+ same shape in a row."""
     for i in range(2, len(obstacles)):
@@ -420,6 +446,7 @@ def design_level(analysis, difficulty):
     all_obstacles = enforce_transition_beats(all_obstacles)
     all_obstacles = prevent_two_lane_jumps(all_obstacles)
     all_obstacles = prevent_triple_shapes(all_obstacles)
+    all_obstacles = enforce_lane_change_gap(all_obstacles)
 
     return all_obstacles
 
