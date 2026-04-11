@@ -7,6 +7,7 @@
 #include "../components/obstacle.h"
 #include "../components/obstacle_data.h"
 #include "../components/rhythm.h"
+#include "../components/scoring.h"
 #include "../session_logger.h"
 #include "../constants.h"
 
@@ -89,6 +90,20 @@ static TestPlayerAction determine_action(
     auto* req_shape = reg.try_get<RequiredShape>(entity);
     if (req_shape) {
         action.target_shape = req_shape->shape;
+
+        // ShapeGate: player must also be in the lane where the shape hole is.
+        // The hole is at obs_pos.x — find which lane that corresponds to.
+        auto* obs_pos = reg.try_get<Position>(entity);
+        if (obs_pos && !reg.all_of<BlockedLanes>(entity) && !reg.all_of<RequiredLane>(entity)) {
+            for (int i = 0; i < constants::LANE_COUNT; ++i) {
+                if (std::abs(obs_pos->x - constants::LANE_X[i]) < constants::PLAYER_SIZE) {
+                    if (i != player_lane) {
+                        action.target_lane = static_cast<int8_t>(i);
+                    }
+                    break;
+                }
+            }
+        }
     }
 
     // Lane requirement (BlockedLanes — find unblocked)
@@ -132,13 +147,30 @@ void test_player_system(entt::registry& reg, float dt) {
     if (log) log->frame = state->frame_count;
 
     // ── AUTO-START ───────────────────────────────────────────
-    if (gs.phase == GamePhase::Title || gs.phase == GamePhase::GameOver) {
+    if (gs.phase == GamePhase::Title || gs.phase == GamePhase::GameOver ||
+        gs.phase == GamePhase::SongComplete) {
         if (gs.phase_timer > 0.5f) {
             input.touch_up = true;
             if (log) {
-                const char* phase_name = (gs.phase == GamePhase::Title) ? "Title" : "GameOver";
+                const char* phase_name =
+                    (gs.phase == GamePhase::Title) ? "Title" :
+                    (gs.phase == GamePhase::SongComplete) ? "SongComplete" : "GameOver";
                 session_log_write(*log, song_time, "PLAYER",
                     "AUTO_START phase=%s", phase_name);
+
+                // Log song results before replaying
+                if (gs.phase == GamePhase::SongComplete) {
+                    auto* results = reg.ctx().find<SongResults>();
+                    auto* score = reg.ctx().find<ScoreState>();
+                    if (results && score) {
+                        session_log_write(*log, song_time, "GAME",
+                            "SONG_END result=CLEAR score=%d perfect=%d good=%d ok=%d bad=%d miss=%d",
+                            score->score,
+                            results->perfect_count, results->good_count,
+                            results->ok_count, results->bad_count,
+                            results->miss_count);
+                    }
+                }
             }
         }
         return;

@@ -76,12 +76,14 @@ void collision_system(entt::registry& reg, float /*dt*/) {
         }
     };
 
-    // ShapeGate: Hexagon always fails
+    // ShapeGate: must match shape AND be in the correct lane (where the hole is)
     for (auto [e, pos, req] :
          reg.view<ObstacleTag, Position, RequiredShape>(
              entt::exclude<ScoredTag, BlockedLanes, RequiredLane, RequiredVAction>).each()) {
         bool shape_match = (p_shape.current == req.shape) && (p_shape.current != Shape::Hexagon);
-        resolve(e, pos, shape_match);
+        // The shape hole is at pos.x — player must be in the same lane
+        bool lane_match = (std::abs(p_pos.x - pos.x) < constants::PLAYER_SIZE);
+        resolve(e, pos, shape_match && lane_match);
     }
 
     // LaneBlock

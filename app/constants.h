@@ -102,4 +102,15 @@ constexpr float BUTTON_W          = 140.0f;
 constexpr float BUTTON_H          = 100.0f;
 constexpr float BUTTON_SPACING    = 60.0f;
 
+// ── Shape Colors ──────────────────────────────────
+// Used for both obstacles and player character.
+// Index by static_cast<int>(Shape).
+struct ShapeColor { uint8_t r, g, b, a; };
+constexpr ShapeColor SHAPE_COLORS[] = {
+    {  80, 200, 255, 255 },   // Circle   — cyan/blue
+    { 255, 100, 100, 255 },   // Square   — red
+    { 100, 255, 100, 255 },   // Triangle — green
+    {  80, 180, 255, 255 },   // Hexagon  — neutral blue
+};
+
 } // namespace constants

@@ -1,6 +1,7 @@
 #include "all_systems.h"
 #include "../components/game_state.h"
 #include "../components/player.h"
+#include "../components/rendering.h"
 #include "../components/input.h"
 #include "../components/audio.h"
 #include "../components/rhythm.h"
@@ -54,6 +55,9 @@ void player_action_system(entt::registry& reg, float /*dt*/) {
                     pshape.previous = pshape.current;
                     pshape.current  = btn_evt.shape;
                     pshape.morph_t  = 0.0f;
+                    auto si = static_cast<int>(btn_evt.shape);
+                    auto& sc = constants::SHAPE_COLORS[si];
+                    reg.replace<DrawColor>(entity, sc.r, sc.g, sc.b, sc.a);
                     audio_push(reg.ctx().get<AudioQueue>(), SFX::ShapeShift);
                 }
             }

@@ -348,6 +348,61 @@ void render_system(entt::registry& reg, float /*alpha*/) {
             TextAlign::Center);
     }
 
+    // ── Song Complete overlay ─────────────────────────────────
+    if (gs.phase == GamePhase::SongComplete) {
+        auto& score = reg.ctx().get<ScoreState>();
+
+        // Dim overlay
+        DrawRectangleRec({0, 0, float(constants::SCREEN_W), float(constants::SCREEN_H)},
+                         {0, 0, 0, 180});
+
+        // "SONG COMPLETE" heading
+        text_draw(text_ctx, "SONG COMPLETE",
+            360, 340, FontSize::Large, 100, 255, 100, 255,
+            TextAlign::Center);
+
+        // Final score
+        text_draw(text_ctx, "SCORE",
+            360, 420, FontSize::Small, 180, 180, 180, 255,
+            TextAlign::Center);
+        text_draw_number(text_ctx, score.score,
+            360, 455, FontSize::Medium, 255, 255, 255, 255);
+
+        // High score
+        text_draw(text_ctx, "HIGH SCORE",
+            360, 510, FontSize::Small, 180, 180, 180, 255,
+            TextAlign::Center);
+        text_draw_number(text_ctx, score.high_score,
+            360, 545, FontSize::Medium, 255, 215, 0, 255);
+
+        // Timing breakdown
+        auto* results = reg.ctx().find<SongResults>();
+        if (results) {
+            int y = 600;
+            text_draw(text_ctx, "PERFECT", 240, y, FontSize::Small, 100, 255, 100, 255, TextAlign::Left);
+            text_draw_number(text_ctx, results->perfect_count, 500, y, FontSize::Small, 255, 255, 255, 255);
+            y += 30;
+            text_draw(text_ctx, "GOOD", 240, y, FontSize::Small, 180, 255, 100, 255, TextAlign::Left);
+            text_draw_number(text_ctx, results->good_count, 500, y, FontSize::Small, 255, 255, 255, 255);
+            y += 30;
+            text_draw(text_ctx, "OK", 240, y, FontSize::Small, 255, 255, 100, 255, TextAlign::Left);
+            text_draw_number(text_ctx, results->ok_count, 500, y, FontSize::Small, 255, 255, 255, 255);
+            y += 30;
+            text_draw(text_ctx, "BAD", 240, y, FontSize::Small, 255, 150, 100, 255, TextAlign::Left);
+            text_draw_number(text_ctx, results->bad_count, 500, y, FontSize::Small, 255, 255, 255, 255);
+            y += 30;
+            text_draw(text_ctx, "MISS", 240, y, FontSize::Small, 255, 80, 80, 255, TextAlign::Left);
+            text_draw_number(text_ctx, results->miss_count, 500, y, FontSize::Small, 255, 255, 255, 255);
+        }
+
+        // "TAP TO REPLAY" indicator — pulsing text
+        float pulse = (std::sin(gs.phase_timer * 3.0f) + 1.0f) / 2.0f;
+        auto replay_alpha = static_cast<uint8_t>(80 + pulse * 175);
+        text_draw(text_ctx, "TAP TO REPLAY",
+            360, 800, FontSize::Medium, 200, 200, 200, replay_alpha,
+            TextAlign::Center);
+    }
+
     // ── Pause overlay ───────────────────────────────────────
     if (gs.phase == GamePhase::Paused) {
         DrawRectangleRec({0, 0, float(constants::SCREEN_W), float(constants::SCREEN_H)},

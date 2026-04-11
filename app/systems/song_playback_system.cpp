@@ -37,7 +37,8 @@ void song_playback_system(entt::registry& reg, float dt) {
             }
         } else if (gs.phase == GamePhase::Paused && music->started) {
             PauseMusicStream(music->stream);
-        } else if (gs.phase == GamePhase::GameOver && music->started) {
+        } else if ((gs.phase == GamePhase::GameOver || gs.phase == GamePhase::SongComplete)
+                   && music->started) {
             StopMusicStream(music->stream);
             music->started = false;
         }

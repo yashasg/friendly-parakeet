@@ -1,8 +1,15 @@
 #include "all_systems.h"
 #include "../components/game_state.h"
 #include "../components/player.h"
+#include "../components/rendering.h"
 #include "../components/rhythm.h"
 #include "../constants.h"
+
+static void apply_shape_color(entt::registry& reg, entt::entity entity, Shape shape) {
+    auto si = static_cast<int>(shape);
+    auto& sc = constants::SHAPE_COLORS[si];
+    reg.replace<DrawColor>(entity, sc.r, sc.g, sc.b, sc.a);
+}
 
 void shape_window_system(entt::registry& reg, float dt) {
     if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
@@ -10,8 +17,8 @@ void shape_window_system(entt::registry& reg, float dt) {
     auto* song = reg.ctx().find<SongState>();
     if (!song) return;
 
-    auto view = reg.view<PlayerTag, PlayerShape>();
-    for (auto [entity, pshape] : view.each()) {
+    auto view = reg.view<PlayerTag, PlayerShape, DrawColor>();
+    for (auto [entity, pshape, col] : view.each()) {
         auto phase = static_cast<WindowPhase>(pshape.phase_raw);
 
         switch (phase) {
@@ -26,6 +33,7 @@ void shape_window_system(entt::registry& reg, float dt) {
                     pshape.phase_raw = static_cast<uint8_t>(WindowPhase::Active);
                     pshape.window_timer = 0.0f;
                     pshape.current = pshape.target_shape;
+                    apply_shape_color(reg, entity, pshape.current);
                 }
                 break;
 
@@ -49,6 +57,7 @@ void shape_window_system(entt::registry& reg, float dt) {
                     pshape.target_shape = Shape::Hexagon;
                     pshape.phase_raw = static_cast<uint8_t>(WindowPhase::Idle);
                     pshape.window_timer = 0.0f;
+                    apply_shape_color(reg, entity, Shape::Hexagon);
                 }
                 break;
         }
