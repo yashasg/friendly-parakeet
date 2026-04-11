@@ -86,7 +86,8 @@ def pick_shape(passes, beat_idx):
 
 def flux_threshold(stats, pct):
     """Interpolate flux threshold from percentile."""
-    if not stats or "min" not in stats:
+    required = {"min", "p25", "p50", "p75", "p90", "max"}
+    if not stats or not required.issubset(stats):
         return 0.0  # no flux data: keep all events
     pts = [(0,stats["min"]),(25,stats["p25"]),(50,stats["p50"]),
            (75,stats["p75"]),(90,stats["p90"]),(100,stats["max"])]
