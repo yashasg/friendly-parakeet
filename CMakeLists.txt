@@ -78,7 +78,7 @@ list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "render_system\\.cpp$")
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "input_system\\.cpp$")
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "song_playback_system\\.cpp$")
 
-add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES} app/beat_map_loader.cpp)
+add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES} app/beat_map_loader.cpp app/session_logger.cpp)
 target_include_directories(shapeshifter_lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/app
     ${CMAKE_BINARY_DIR}/generated

@@ -1,0 +1,312 @@
+#include "all_systems.h"
+#include "../components/test_player.h"
+#include "../components/game_state.h"
+#include "../components/input.h"
+#include "../components/player.h"
+#include "../components/transform.h"
+#include "../components/obstacle.h"
+#include "../components/obstacle_data.h"
+#include "../components/rhythm.h"
+#include "../session_logger.h"
+#include "../constants.h"
+
+#include <cmath>
+#include <random>
+
+#ifdef PLATFORM_DESKTOP
+
+// ── Helpers ──────────────────────────────────────────────────
+
+static const char* shape_key_name(Shape s) {
+    switch (s) {
+        case Shape::Circle:   return "key_1(Circle)";
+        case Shape::Square:   return "key_3(Square)";
+        case Shape::Triangle: return "key_2(Triangle)";
+        default:              return "key_?(?)";
+    }
+}
+
+static const char* obstacle_kind_str(ObstacleKind k) {
+    switch (k) {
+        case ObstacleKind::ShapeGate: return "ShapeGate";
+        case ObstacleKind::LaneBlock: return "LaneBlock";
+        case ObstacleKind::LowBar:    return "LowBar";
+        case ObstacleKind::HighBar:   return "HighBar";
+        case ObstacleKind::ComboGate: return "ComboGate";
+        case ObstacleKind::SplitPath: return "SplitPath";
+    }
+    return "???";
+}
+
+static const char* shape_str(Shape s) {
+    switch (s) {
+        case Shape::Circle:   return "Circle";
+        case Shape::Square:   return "Square";
+        case Shape::Triangle: return "Triangle";
+        case Shape::Hexagon:  return "Hexagon";
+    }
+    return "???";
+}
+
+// Find nearest unblocked lane to current position.
+static int8_t nearest_unblocked_lane(uint8_t blocked_mask, int8_t current) {
+    // Try current lane first
+    if (!((blocked_mask >> current) & 1)) return current;
+
+    // Expand outward from current
+    for (int dist = 1; dist < constants::LANE_COUNT; ++dist) {
+        int8_t left  = current - static_cast<int8_t>(dist);
+        int8_t right = current + static_cast<int8_t>(dist);
+        if (left >= 0 && !((blocked_mask >> left) & 1))  return left;
+        if (right < constants::LANE_COUNT && !((blocked_mask >> right) & 1)) return right;
+    }
+    return current; // all blocked — shouldn't happen in valid beatmaps
+}
+
+// Determine the required action for an obstacle.
+static TestPlayerAction determine_action(
+    entt::registry& reg, entt::entity entity,
+    int8_t player_lane, const SongState& song)
+{
+    TestPlayerAction action;
+    action.obstacle = entity;
+
+    // Get arrival time from BeatInfo
+    auto* beat = reg.try_get<BeatInfo>(entity);
+    if (beat) {
+        action.arrival_time = beat->arrival_time;
+    } else {
+        // Estimate from position + velocity
+        auto* pos = reg.try_get<Position>(entity);
+        auto* vel = reg.try_get<Velocity>(entity);
+        if (pos && vel && vel->dy > 0.0f) {
+            action.arrival_time = song.song_time +
+                (constants::PLAYER_Y - pos->y) / vel->dy;
+        }
+    }
+
+    // Shape requirement
+    auto* req_shape = reg.try_get<RequiredShape>(entity);
+    if (req_shape) {
+        action.target_shape = req_shape->shape;
+    }
+
+    // Lane requirement (BlockedLanes — find unblocked)
+    auto* blocked = reg.try_get<BlockedLanes>(entity);
+    if (blocked) {
+        int8_t safe = nearest_unblocked_lane(blocked->mask, player_lane);
+        if (safe != player_lane) {
+            action.target_lane = safe;
+        }
+    }
+
+    // Lane requirement (RequiredLane — exact lane)
+    auto* req_lane = reg.try_get<RequiredLane>(entity);
+    if (req_lane && req_lane->lane != player_lane) {
+        action.target_lane = req_lane->lane;
+    }
+
+    // Vertical requirement
+    auto* req_v = reg.try_get<RequiredVAction>(entity);
+    if (req_v) {
+        action.target_vertical = req_v->action;
+    }
+
+    return action;
+}
+
+// ── System ───────────────────────────────────────────────────
+
+void test_player_system(entt::registry& reg, float dt) {
+    auto* state = reg.ctx().find<TestPlayerState>();
+    if (!state || !state->active) return;
+
+    state->frame_count++;
+
+    auto& input = reg.ctx().get<InputState>();
+    auto& gs    = reg.ctx().get<GameState>();
+    auto* log   = reg.ctx().find<SessionLog>();
+    auto* song  = reg.ctx().find<SongState>();
+    float song_time = song ? song->song_time : 0.0f;
+
+    if (log) log->frame = state->frame_count;
+
+    // ── AUTO-START ───────────────────────────────────────────
+    if (gs.phase == GamePhase::Title || gs.phase == GamePhase::GameOver) {
+        if (gs.phase_timer > 0.5f) {
+            input.touch_up = true;
+            if (log) {
+                const char* phase_name = (gs.phase == GamePhase::Title) ? "Title" : "GameOver";
+                session_log_write(*log, song_time, "PLAYER",
+                    "AUTO_START phase=%s", phase_name);
+            }
+        }
+        return;
+    }
+
+    if (gs.phase == GamePhase::Paused) {
+        input.touch_up = true;
+        return;
+    }
+
+    if (gs.phase != GamePhase::Playing) return;
+    if (!song) return;
+
+    const auto& cfg = state->config();
+
+    // ── Find player ──────────────────────────────────────────
+    auto player_view = reg.view<PlayerTag, Position, PlayerShape, Lane, VerticalState>();
+    if (player_view.size_hint() == 0) return;
+
+    auto player_entity = *player_view.begin();
+    auto [p_pos, p_shape, p_lane, p_vstate] =
+        player_view.get<Position, PlayerShape, Lane, VerticalState>(player_entity);
+
+    // ── PERCEIVE: scan obstacles in vision range ─────────────
+    auto obs_view = reg.view<ObstacleTag, Position, Obstacle>(entt::exclude<ScoredTag>);
+    for (auto [entity, obs_pos, obs] : obs_view.each()) {
+        float dist = p_pos.y - obs_pos.y;
+        if (dist <= 0.0f || dist > cfg.vision_range) continue;
+        if (state->is_planned(entity)) continue;
+
+        TestPlayerAction action = determine_action(reg, entity, p_lane.current, *song);
+
+        // Roll reaction timer
+        std::uniform_real_distribution<float> reaction_dist(cfg.reaction_min, cfg.reaction_max);
+        float reaction = reaction_dist(state->rng);
+
+        // Pro player: aim for Perfect timing on shape changes
+        if (cfg.aim_perfect && action.target_shape != Shape::Hexagon) {
+            float ideal_press = action.arrival_time - song->morph_duration - song->half_window;
+            float time_until_ideal = ideal_press - song->song_time;
+            if (time_until_ideal > cfg.reaction_min) {
+                action.timer = time_until_ideal;
+                if (log) {
+                    session_log_write(*log, song_time, "PLAYER",
+                        "WAIT delaying %.3fs (aiming for Perfect)", time_until_ideal);
+                }
+            } else {
+                action.timer = reaction;
+            }
+        } else {
+            action.timer = reaction;
+        }
+
+        state->push_action(action);
+        state->mark_planned(entity);
+
+        if (log) {
+            session_log_write(*log, song_time, "PLAYER",
+                "PERCEIVE obstacle=%u kind=%s shape=%s lane=%d dist=%.0fpx",
+                static_cast<unsigned>(entt::to_integral(entity)),
+                obstacle_kind_str(obs.kind),
+                shape_str(action.target_shape),
+                action.target_lane, dist);
+
+            session_log_write(*log, song_time, "PLAYER",
+                "PLAN action=%s%s%s react=%.3fs arrival=%.3fs",
+                action.target_shape != Shape::Hexagon ? shape_str(action.target_shape) : "",
+                action.target_lane >= 0 ? "+lane" : "",
+                action.target_vertical != VMode::Grounded ?
+                    (action.target_vertical == VMode::Jumping ? "+jump" : "+slide") : "",
+                action.timer, action.arrival_time);
+        }
+    }
+
+    // ── TICK timers ──────────────────────────────────────────
+    for (int i = 0; i < state->action_count; ++i) {
+        state->actions[i].timer -= dt;
+    }
+
+    // ── EXECUTE ready actions ────────────────────────────────
+    // Only ONE key injection per frame.
+    bool key_injected = false;
+
+    for (int i = 0; i < state->action_count && !key_injected; ++i) {
+        auto& action = state->actions[i];
+        if (action.timer > 0.0f) continue;
+
+        // Priority 1: Shape change
+        if (action.needs_shape()) {
+            switch (action.target_shape) {
+                case Shape::Circle:   input.key_1 = true; break;
+                case Shape::Triangle: input.key_2 = true; break;
+                case Shape::Square:   input.key_3 = true; break;
+                default: break;
+            }
+            action.mark_shape_done();
+            key_injected = true;
+
+            if (log) {
+                session_log_write(*log, song_time, "PLAYER",
+                    "EXECUTE %s for obstacle=%u",
+                    shape_key_name(action.target_shape),
+                    static_cast<unsigned>(entt::to_integral(action.obstacle)));
+            }
+            continue;
+        }
+
+        // Priority 2: Lane change (only if no transition in progress)
+        if (action.needs_lane() && p_lane.target < 0) {
+            if (action.target_lane < p_lane.current) {
+                input.key_a = true;
+                if (log) {
+                    session_log_write(*log, song_time, "PLAYER",
+                        "EXECUTE key_a(SwipeLeft) for obstacle=%u",
+                        static_cast<unsigned>(entt::to_integral(action.obstacle)));
+                }
+            } else if (action.target_lane > p_lane.current) {
+                input.key_d = true;
+                if (log) {
+                    session_log_write(*log, song_time, "PLAYER",
+                        "EXECUTE key_d(SwipeRight) for obstacle=%u",
+                        static_cast<unsigned>(entt::to_integral(action.obstacle)));
+                }
+            }
+            // Check if we've reached the target
+            if (p_lane.current == action.target_lane) {
+                action.mark_lane_done();
+            }
+            key_injected = true;
+            continue;
+        }
+
+        // Priority 3: Vertical action
+        if (action.needs_vertical() && p_vstate.mode == VMode::Grounded) {
+            if (action.target_vertical == VMode::Jumping) {
+                input.key_w = true;
+                if (log) {
+                    session_log_write(*log, song_time, "PLAYER",
+                        "EXECUTE key_w(Jump) for obstacle=%u",
+                        static_cast<unsigned>(entt::to_integral(action.obstacle)));
+                }
+            } else if (action.target_vertical == VMode::Sliding) {
+                input.key_s = true;
+                if (log) {
+                    session_log_write(*log, song_time, "PLAYER",
+                        "EXECUTE key_s(Slide) for obstacle=%u",
+                        static_cast<unsigned>(entt::to_integral(action.obstacle)));
+                }
+            }
+            action.mark_vertical_done();
+            key_injected = true;
+            continue;
+        }
+    }
+
+    // ── CLEANUP completed actions ────────────────────────────
+    for (int i = state->action_count - 1; i >= 0; --i) {
+        auto& action = state->actions[i];
+        bool done = action.all_done();
+        bool expired = !reg.valid(action.obstacle) ||
+                       reg.all_of<ScoredTag>(action.obstacle);
+        if (done || expired) {
+            state->remove_action(i);
+        }
+    }
+}
+
+#else
+// Non-desktop stub — test player requires keyboard input flags
+void test_player_system(entt::registry&, float) {}
+#endif
