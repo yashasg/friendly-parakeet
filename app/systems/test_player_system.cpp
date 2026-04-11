@@ -137,6 +137,7 @@ void test_player_system(entt::registry& reg, float dt) {
     if (!state || !state->active) return;
 
     state->frame_count++;
+    state->clean_planned(reg);
 
     auto& input = reg.ctx().get<InputState>();
     auto& gs    = reg.ctx().get<GameState>();

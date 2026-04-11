@@ -72,7 +72,7 @@ struct TestPlayerState {
     TestPlayerAction actions[MAX_ACTIONS] = {};
     int              action_count = 0;
 
-    static constexpr int MAX_PLANNED = 64;
+    static constexpr int MAX_PLANNED = 256;
     entt::entity     planned[MAX_PLANNED] = {};
     int              planned_count = 0;
 
@@ -91,6 +91,17 @@ struct TestPlayerState {
         if (planned_count < MAX_PLANNED) {
             planned[planned_count++] = e;
         }
+    }
+
+    // Remove stale entries (destroyed/scored entities)
+    void clean_planned(entt::registry& reg) {
+        int write = 0;
+        for (int i = 0; i < planned_count; ++i) {
+            if (reg.valid(planned[i])) {
+                planned[write++] = planned[i];
+            }
+        }
+        planned_count = write;
     }
 
     void push_action(const TestPlayerAction& a) {
