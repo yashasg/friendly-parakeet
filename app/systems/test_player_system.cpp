@@ -248,9 +248,13 @@ void test_player_system(entt::registry& reg, float dt) {
         state->mark_planned(entity);
 
         if (log) {
+            auto* beat_info = reg.try_get<BeatInfo>(entity);
+            int beat_num = beat_info ? beat_info->beat_index : -1;
+
             session_log_write(*log, song_time, "PLAYER",
-                "PERCEIVE obstacle=%u kind=%s shape=%s lane=%d dist=%.0fpx",
+                "PERCEIVE obstacle=%u beat=%d kind=%s shape=%s lane=%d dist=%.0fpx",
                 static_cast<unsigned>(entt::to_integral(entity)),
+                beat_num,
                 obstacle_kind_str(obs.kind),
                 shape_str(action.target_shape),
                 action.target_lane, dist);
@@ -320,6 +324,13 @@ void test_player_system(entt::registry& reg, float dt) {
         auto& action = state->actions[exec_order[ei]];
         if (action.timer > 0.0f) continue;
 
+        // Get beat number for logging
+        int act_beat = -1;
+        if (reg.valid(action.obstacle)) {
+            auto* bi = reg.try_get<BeatInfo>(action.obstacle);
+            if (bi) act_beat = bi->beat_index;
+        }
+
         // Priority 1: Shape change
         if (action.needs_shape()) {
             switch (action.target_shape) {
@@ -333,9 +344,10 @@ void test_player_system(entt::registry& reg, float dt) {
 
             if (log) {
                 session_log_write(*log, song_time, "PLAYER",
-                    "EXECUTE %s for obstacle=%u",
+                    "EXECUTE %s for obstacle=%u beat=%d",
                     shape_key_name(action.target_shape),
-                    static_cast<unsigned>(entt::to_integral(action.obstacle)));
+                    static_cast<unsigned>(entt::to_integral(action.obstacle)),
+                    act_beat);
             }
             continue;
         }
@@ -402,15 +414,15 @@ void test_player_system(entt::registry& reg, float dt) {
                 input.key_a = true;
                 if (log) {
                     session_log_write(*log, song_time, "PLAYER",
-                        "EXECUTE key_a(SwipeLeft) for obstacle=%u",
-                        static_cast<unsigned>(entt::to_integral(action.obstacle)));
+                        "EXECUTE key_a(SwipeLeft) for obstacle=%u beat=%d",
+                        static_cast<unsigned>(entt::to_integral(action.obstacle)), act_beat);
                 }
             } else if (action.target_lane > p_lane.current) {
                 input.key_d = true;
                 if (log) {
                     session_log_write(*log, song_time, "PLAYER",
-                        "EXECUTE key_d(SwipeRight) for obstacle=%u",
-                        static_cast<unsigned>(entt::to_integral(action.obstacle)));
+                        "EXECUTE key_d(SwipeRight) for obstacle=%u beat=%d",
+                        static_cast<unsigned>(entt::to_integral(action.obstacle)), act_beat);
                 }
             }
             // Start cooldown so multi-lane moves have realistic delay
@@ -444,15 +456,15 @@ void test_player_system(entt::registry& reg, float dt) {
                 input.key_w = true;
                 if (log) {
                     session_log_write(*log, song_time, "PLAYER",
-                        "EXECUTE key_w(Jump) for obstacle=%u",
-                        static_cast<unsigned>(entt::to_integral(action.obstacle)));
+                        "EXECUTE key_w(Jump) for obstacle=%u beat=%d",
+                        static_cast<unsigned>(entt::to_integral(action.obstacle)), act_beat);
                 }
             } else if (action.target_vertical == VMode::Sliding) {
                 input.key_s = true;
                 if (log) {
                     session_log_write(*log, song_time, "PLAYER",
-                        "EXECUTE key_s(Slide) for obstacle=%u",
-                        static_cast<unsigned>(entt::to_integral(action.obstacle)));
+                        "EXECUTE key_s(Slide) for obstacle=%u beat=%d",
+                        static_cast<unsigned>(entt::to_integral(action.obstacle)), act_beat);
                 }
             }
             action.mark_vertical_done();

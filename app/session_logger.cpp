@@ -152,22 +152,24 @@ void session_log_on_scored(entt::registry& reg, entt::entity entity) {
                    gs->next_phase == GamePhase::GameOver;
 
     auto* grade = reg.try_get<TimingGrade>(entity);
+    auto* beat = reg.try_get<BeatInfo>(entity);
+    int beat_num = beat ? beat->beat_index : -1;
 
     if (is_miss) {
         session_log_write(*log, t, "GAME",
-            "COLLISION obstacle=%u kind=%s result=MISS",
+            "COLLISION obstacle=%u beat=%d kind=%s result=MISS",
             static_cast<unsigned>(entt::to_integral(entity)),
-            obstacle_kind_name(obs->kind));
+            beat_num, obstacle_kind_name(obs->kind));
     } else if (grade) {
         session_log_write(*log, t, "GAME",
-            "COLLISION obstacle=%u kind=%s result=CLEAR timing=%s(%.2f)",
+            "COLLISION obstacle=%u beat=%d kind=%s result=CLEAR timing=%s(%.2f)",
             static_cast<unsigned>(entt::to_integral(entity)),
-            obstacle_kind_name(obs->kind),
+            beat_num, obstacle_kind_name(obs->kind),
             timing_tier_name(grade->tier), grade->precision);
     } else {
         session_log_write(*log, t, "GAME",
-            "COLLISION obstacle=%u kind=%s result=CLEAR",
+            "COLLISION obstacle=%u beat=%d kind=%s result=CLEAR",
             static_cast<unsigned>(entt::to_integral(entity)),
-            obstacle_kind_name(obs->kind));
+            beat_num, obstacle_kind_name(obs->kind));
     }
 }
