@@ -186,17 +186,34 @@ void render_system(entt::registry& reg, float /*alpha*/) {
         }
     }
 
-    // ── Draw score popups ───────────────────────────────────
+    // ── Draw timing grade popups ───────────────────────────
     {
         auto view = reg.view<ScorePopup, Position, DrawColor, Lifetime>();
         for (auto [entity, popup, pos, col, life] : view.each()) {
             float alpha_ratio = life.remaining / life.max_time;
             auto popup_alpha = static_cast<uint8_t>(alpha_ratio * 255);
-            float popup_scale = 1.5f + popup.tier * 0.5f;
-            FontSize popup_font = (popup_scale > 2.5f) ? FontSize::Medium : FontSize::Small;
-            text_draw_number(text_ctx, popup.value,
-                pos.x, pos.y, popup_font,
-                col.r, col.g, col.b, popup_alpha);
+
+            if (popup.timing_tier <= 3) {
+                // Show timing grade text: PERFECT / GOOD / OK / BAD
+                const char* grade_text = "BAD";
+                FontSize grade_font = FontSize::Small;
+                switch (popup.timing_tier) {
+                    case 3: grade_text = "PERFECT"; grade_font = FontSize::Medium; break;
+                    case 2: grade_text = "GOOD";    grade_font = FontSize::Small;  break;
+                    case 1: grade_text = "OK";      grade_font = FontSize::Small;  break;
+                    case 0: grade_text = "BAD";     grade_font = FontSize::Small;  break;
+                }
+                text_draw(text_ctx, grade_text,
+                    pos.x, pos.y, grade_font,
+                    col.r, col.g, col.b, popup_alpha,
+                    TextAlign::Center);
+            } else {
+                // Non-timed obstacle: show score number
+                FontSize popup_font = FontSize::Small;
+                text_draw_number(text_ctx, popup.value,
+                    pos.x, pos.y, popup_font,
+                    col.r, col.g, col.b, popup_alpha);
+            }
         }
     }
 
