@@ -359,8 +359,46 @@ void test_player_system(entt::registry& reg, float dt) {
                 }
             }
         }
+
+        // Would moving to target_lane cause a MISS on any CLOSER unresolved
+        // obstacle? A human player would see "something is in the way" and
+        // wait. Don't move for a far obstacle if it breaks a closer one.
+        bool move_would_fail_closer = false;
+        if (action.needs_lane()) {
+            int8_t next_lane = p_lane.current;
+            if (action.target_lane < next_lane) next_lane--;
+            else if (action.target_lane > next_lane) next_lane++;
+
+            auto closer_view = reg.view<ObstacleTag, Position>(entt::exclude<ScoredTag>);
+            for (auto [oe, opos] : closer_view.each()) {
+                if (oe == action.obstacle) continue;
+                float odist = p_pos.y - opos.y + p_vstate.y_offset;
+                if (odist <= 0.0f) continue;
+
+                auto* obeat = reg.try_get<BeatInfo>(oe);
+                float o_arrival = obeat ? obeat->arrival_time
+                    : (song_time + odist / song->scroll_speed);
+                if (o_arrival >= action.arrival_time) continue; // farther, don't care
+
+                // Closer obstacle — check if proposed lane is safe for it
+                auto* oblocked = reg.try_get<BlockedLanes>(oe);
+                if (oblocked && ((oblocked->mask >> next_lane) & 1)) {
+                    move_would_fail_closer = true;
+                    break;
+                }
+                auto* oshape = reg.try_get<RequiredShape>(oe);
+                if (oshape) {
+                    float lane_x = constants::LANE_X[next_lane];
+                    if (std::abs(opos.x - lane_x) >= constants::PLAYER_SIZE) {
+                        move_would_fail_closer = true;
+                        break;
+                    }
+                }
+            }
+        }
+
         if (action.needs_lane() && p_lane.target < 0 && state->swipe_cooldown_timer <= 0.0f
-            && !zone_blocked && !blocked_by_shape) {            if (action.target_lane < p_lane.current) {
+            && !zone_blocked && !blocked_by_shape && !move_would_fail_closer) {            if (action.target_lane < p_lane.current) {
                 input.key_a = true;
                 if (log) {
                     session_log_write(*log, song_time, "PLAYER",
