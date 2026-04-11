@@ -327,22 +327,62 @@ def clean_triple_shapes(obstacles):
     return obstacles
 
 
-def clean_max_gap(obstacles, max_gap):
-    """RULE: No gap > max_gap beats between consecutive same-family obstacles.
-    Remove is not applicable here — instead just report. The generator should
-    have placed enough obstacles. If gaps exist, they're at section boundaries
-    and are acceptable."""
-    # This is a diagnostic, not a cleaner. The generator handles density.
-    return obstacles
+def get_section_boundary_beats(analysis):
+    """Map structure section boundaries to beat indices.
+    The breathing room happens AT section transitions — the analysis
+    already detected these from MFCC timbral changes."""
+    beats = analysis.get("beats", [])
+    structure = analysis.get("structure", [])
+    if not beats or not structure:
+        return []
+
+    boundaries = []
+    for i in range(1, len(structure)):
+        boundary_time = structure[i]["start"]
+        # Find the beat nearest to this boundary
+        best_idx = 0
+        best_dist = abs(beats[0] - boundary_time)
+        for j, bt in enumerate(beats):
+            d = abs(bt - boundary_time)
+            if d < best_dist:
+                best_dist = d
+                best_idx = j
+        boundaries.append(best_idx)
+
+    return boundaries
 
 
-def clean_level(obstacles):
-    """Run all cleaners in order. Order matters:
-    1. Two-lane jumps first (removes the most egregious)
-    2. Lane change gap (depends on accurate lane tracking)
-    3. Type transition (independent of lane)
-    4. Triple shapes (swaps, doesn't remove — safe to run last)
+def clean_breathing_room(obstacles, boundary_beats, difficulty):
+    """RULE: No obstacles at section boundaries — the music breathes there.
+
+    Breathing room per difficulty:
+      hard:   2 beats around boundary (1 before, 1 after)
+      medium: 2 beats around boundary (1 before, 1 after)
+      easy:   3 beats around boundary (1 before, boundary, 1 after)
     """
+    if not boundary_beats or not obstacles:
+        return obstacles
+
+    protected = set()
+    for bb in boundary_beats:
+        if difficulty == "easy":
+            protected.update([bb - 1, bb, bb + 1])
+        else:
+            protected.update([bb, bb + 1])
+
+    return [obs for obs in obstacles if obs["beat"] not in protected]
+
+
+def clean_level(obstacles, difficulty="medium", boundary_beats=None):
+    """Run all cleaners in order. Order matters:
+    1. Breathing room (remove obstacles at section boundaries)
+    2. Two-lane jumps (removes the most egregious)
+    3. Lane change gap (depends on accurate lane tracking)
+    4. Type transition (independent of lane)
+    5. Triple shapes (swaps, doesn't remove — safe to run last)
+    """
+    if boundary_beats:
+        obstacles = clean_breathing_room(obstacles, boundary_beats, difficulty)
     obstacles = clean_two_lane_jumps(obstacles)
     obstacles = clean_lane_change_gap(obstacles)
     obstacles = clean_type_transition(obstacles)
@@ -357,7 +397,8 @@ def clean_level(obstacles):
 def design_level(analysis, difficulty):
     """Full pipeline: generate fun obstacles, then clean rule violations."""
     raw = generate_level(analysis, difficulty)
-    clean = clean_level(raw)
+    boundary_beats = get_section_boundary_beats(analysis)
+    clean = clean_level(raw, difficulty, boundary_beats)
     return clean
 
 
