@@ -64,6 +64,10 @@ struct TestPlayerState {
     bool            active  = false;
     uint32_t        frame_count = 0;
 
+    // Delay between consecutive lane swipes (simulates human re-swipe time)
+    static constexpr float SWIPE_COOLDOWN = 0.125f;  // 125ms (midpoint of 100-150ms)
+    float swipe_cooldown_timer = 0.0f;
+
     static constexpr int MAX_ACTIONS = 16;
     TestPlayerAction actions[MAX_ACTIONS] = {};
     int              action_count = 0;

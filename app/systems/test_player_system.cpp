@@ -266,6 +266,9 @@ void test_player_system(entt::registry& reg, float dt) {
     for (int i = 0; i < state->action_count; ++i) {
         state->actions[i].timer -= dt;
     }
+    if (state->swipe_cooldown_timer > 0.0f) {
+        state->swipe_cooldown_timer -= dt;
+    }
 
     // ── EXECUTE ready actions ────────────────────────────────
     // Only ONE key injection per frame.
@@ -295,8 +298,8 @@ void test_player_system(entt::registry& reg, float dt) {
             continue;
         }
 
-        // Priority 2: Lane change (only if no transition in progress)
-        if (action.needs_lane() && p_lane.target < 0) {
+        // Priority 2: Lane change (only if no transition in progress and cooldown elapsed)
+        if (action.needs_lane() && p_lane.target < 0 && state->swipe_cooldown_timer <= 0.0f) {
             if (action.target_lane < p_lane.current) {
                 input.key_a = true;
                 if (log) {
@@ -312,6 +315,8 @@ void test_player_system(entt::registry& reg, float dt) {
                         static_cast<unsigned>(entt::to_integral(action.obstacle)));
                 }
             }
+            // Start cooldown so multi-lane moves have realistic delay
+            state->swipe_cooldown_timer = TestPlayerState::SWIPE_COOLDOWN;
             // Check if we've reached the target
             if (p_lane.current == action.target_lane) {
                 action.mark_lane_done();
