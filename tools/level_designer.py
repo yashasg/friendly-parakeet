@@ -273,14 +273,8 @@ def build_section_combos(beat_indices: list[int], section: dict,
 
         cursor += combo_len
 
-        # Skip rest beats after combo (but respect max_gap)
-        max_gap = params["max_gap"]
-        if rest > 0 and cursor < len(selected_beats):
-            last_combo_beat = combo_beats[-1]
-            while cursor < len(selected_beats) and selected_beats[cursor] - last_combo_beat < rest + 1:
-                cursor += 1
-
-        # Alternate combo type
+        # Determine next combo type
+        prev_combo_type = combo_type
         if combo_type == "shape":
             combo_type = "lane"
         elif combo_type == "lane":
@@ -290,6 +284,19 @@ def build_section_combos(beat_indices: list[int], section: dict,
                 combo_type = "shape"
         else:
             combo_type = "shape"
+
+        # Skip rest beats after combo (but respect max_gap).
+        # When switching combo types (shape↔lane, shape↔bar, etc.),
+        # always skip at least 1 transition beat so the player has
+        # time to shift mental mode.
+        max_gap = params["max_gap"]
+        type_changed = (combo_type != prev_combo_type)
+        min_rest = max(rest, 1) if type_changed else rest
+
+        if min_rest > 0 and cursor < len(selected_beats):
+            last_combo_beat = combo_beats[-1]
+            while cursor < len(selected_beats) and selected_beats[cursor] - last_combo_beat < min_rest + 1:
+                cursor += 1
 
     # ── Fill gaps that exceed max_gap ──────────────────────────
     # Scan for any stretch > max_gap beats without an obstacle.
@@ -313,19 +320,28 @@ def build_section_combos(beat_indices: list[int], section: dict,
                     "lane": current_lane,
                 })
 
-        # Check gaps between consecutive obstacles
+        # Check gaps between consecutive obstacles.
+        # Don't fill gaps at combo-type transitions (shape↔lane) —
+        # those are intentional breathing room for the player.
         i = 0
         while i < len(filled) - 1:
             gap = filled[i + 1]["beat"] - filled[i]["beat"]
-            if gap > max_gap:
+            same_type = (filled[i]["kind"] == filled[i + 1]["kind"])
+            if gap > max_gap and same_type:
                 fill_beat = filled[i]["beat"] + max_gap
-                shapes_list = ["circle", "square", "triangle"]
-                filler = {
-                    "beat": fill_beat,
-                    "kind": "shape_gate",
-                    "shape": shapes_list[fill_beat % len(shapes_list)],
-                    "lane": current_lane,
-                }
+                # Match the type of surrounding obstacles
+                if filled[i]["kind"] == "lane_block":
+                    free = current_lane
+                    blocked = [l for l in [0, 1, 2] if l != free]
+                    filler = {"beat": fill_beat, "kind": "lane_block", "blocked": blocked}
+                else:
+                    shapes_list = ["circle", "square", "triangle"]
+                    filler = {
+                        "beat": fill_beat,
+                        "kind": "shape_gate",
+                        "shape": shapes_list[fill_beat % len(shapes_list)],
+                        "lane": current_lane,
+                    }
                 filled.insert(i + 1, filler)
             i += 1
 
@@ -445,26 +461,45 @@ def design_level(analysis: dict, difficulty: str) -> list[dict]:
             seen.add(obs["beat"])
             deduped.append(obs)
 
-    # Global max-gap enforcement across section boundaries
-    # Use the strictest max_gap for the difficulty (high intensity value)
+    # Global max-gap enforcement across section boundaries.
+    # Don't fill gaps at combo-type transitions (intentional breathing room).
     global_max_gap = INTENSITY_PARAMS[difficulty]["low"]["max_gap"]
     shapes = ["circle", "square", "triangle"]
     fill_lane = 1
     i = 0
     while i < len(deduped) - 1:
         gap = deduped[i + 1]["beat"] - deduped[i]["beat"]
-        if gap > global_max_gap:
+        same_type = (deduped[i]["kind"] == deduped[i + 1]["kind"])
+        if gap > global_max_gap and same_type:
             fill_beat = deduped[i]["beat"] + global_max_gap
             if deduped[i]["kind"] == "shape_gate":
                 fill_lane = deduped[i].get("lane", 1)
             filler = {
                 "beat": fill_beat,
-                "kind": "shape_gate",
-                "shape": shapes[fill_beat % len(shapes)],
-                "lane": fill_lane,
+                "kind": deduped[i]["kind"],  # match surrounding type
             }
+            if filler["kind"] == "shape_gate":
+                filler["shape"] = shapes[fill_beat % len(shapes)]
+                filler["lane"] = fill_lane
+            else:
+                filler["blocked"] = [l for l in [0, 1, 2] if l != fill_lane]
             deduped.insert(i + 1, filler)
         i += 1
+
+    # Enforce transition beat: remove obstacles that create type transitions
+    # with gap < 2. Group types: shape_gate vs movement (lane_block/low_bar/high_bar).
+    def action_family(kind):
+        return "shape" if kind == "shape_gate" else "movement"
+
+    cleaned = [deduped[0]] if deduped else []
+    for j in range(1, len(deduped)):
+        prev_fam = action_family(cleaned[-1]["kind"])
+        curr_fam = action_family(deduped[j]["kind"])
+        gap = deduped[j]["beat"] - cleaned[-1]["beat"]
+        if prev_fam != curr_fam and gap < 2:
+            continue  # skip — too tight a transition
+        cleaned.append(deduped[j])
+    deduped = cleaned
 
     # Apply variety rules
     deduped = apply_variety(deduped)
