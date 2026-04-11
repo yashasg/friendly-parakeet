@@ -285,12 +285,23 @@ void test_player_system(entt::registry& reg, float dt) {
         auto zone_view = reg.view<ObstacleTag, Position>(entt::exclude<ScoredTag>);
         for (auto [ze, zpos] : zone_view.each()) {
             float dist = p_pos.y - zpos.y + p_vstate.y_offset;
-            // Obstacle is "in the way" if it's within approach distance
-            // (above player but close) or inside collision zone
             if (dist >= -COLLISION_MARGIN && dist <= COLLISION_MARGIN * 3.0f) {
                 obstacle_in_zone = true;
                 break;
             }
+        }
+    }
+
+    // Also block lane changes if a closer shape press hasn't resolved yet.
+    // Moving lanes while waiting for a shape gate collision would put the
+    // player in the wrong lane when that collision resolves.
+    bool pending_shape_ahead = false;
+    for (int i = 0; i < state->action_count; ++i) {
+        auto& a = state->actions[i];
+        if (a.needs_shape() || (a.target_shape != Shape::Hexagon && a.shape_done()
+            && reg.valid(a.obstacle) && !reg.all_of<ScoredTag>(a.obstacle))) {
+            pending_shape_ahead = true;
+            break;
         }
     }
 
@@ -339,8 +350,7 @@ void test_player_system(entt::registry& reg, float dt) {
         // Wait for any obstacle to fully pass through collision zone before moving.
         // A human would see the obstacle passing and wait for it to clear.
         if (action.needs_lane() && p_lane.target < 0 && state->swipe_cooldown_timer <= 0.0f
-            && !obstacle_in_zone) {
-            if (action.target_lane < p_lane.current) {
+            && !obstacle_in_zone && !pending_shape_ahead) {            if (action.target_lane < p_lane.current) {
                 input.key_a = true;
                 if (log) {
                     session_log_write(*log, song_time, "PLAYER",
@@ -366,7 +376,8 @@ void test_player_system(entt::registry& reg, float dt) {
         }
 
         // Priority 3: Vertical action (wait for collision zone to clear)
-        if (action.needs_vertical() && p_vstate.mode == VMode::Grounded && !obstacle_in_zone) {
+        if (action.needs_vertical() && p_vstate.mode == VMode::Grounded
+            && !obstacle_in_zone && !pending_shape_ahead) {
             if (action.target_vertical == VMode::Jumping) {
                 input.key_w = true;
                 if (log) {
