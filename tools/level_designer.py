@@ -227,8 +227,15 @@ def build_section_combos(beat_indices: list[int], section: dict,
 
         elif combo_type == "lane" and "lane_block" in allowed_kinds:
             # ── LANE COMBO: dodge lane_blocks ─────────────────────
-            lane_seq = _make_lane_sequence(current_lane, len(combo_beats))
-            for k, bi in enumerate(combo_beats):
+            # Lane changes need minimum gap=2 between beats (0.82s)
+            # to give the player time to swipe + transition.
+            # Filter combo_beats to enforce min gap=2.
+            spaced_beats = [combo_beats[0]]
+            for bi in combo_beats[1:]:
+                if bi - spaced_beats[-1] >= 2:
+                    spaced_beats.append(bi)
+            lane_seq = _make_lane_sequence(current_lane, len(spaced_beats))
+            for k, bi in enumerate(spaced_beats):
                 free_lane = lane_seq[k]
                 blocked = [l for l in [0, 1, 2] if l != free_lane]
                 obstacles.append({

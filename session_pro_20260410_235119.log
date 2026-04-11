@@ -1,0 +1,76 @@
+══════ Test Session started 2026-04-10 23:51 ══════
+
+[F:0025 T:00.000] [PLAYER] AUTO_START phase=Title
+[F:0026 T:00.000] [PLAYER] AUTO_START phase=Title
+[F:0126 T:01.700] [GAME  ] BEAT 0
+[F:0149 T:02.070] [PLAYER] WAIT delaying 0.855s (aiming for Perfect)
+[F:0149 T:02.070] [PLAYER] PERCEIVE obstacle=1 kind=ShapeGate shape=Triangle lane=2 dist=797px
+[F:0149 T:02.070] [PLAYER] PLAN action=Triangle+lane react=0.855s arrival=3.335s
+[F:0150 T:02.110] [GAME  ] BEAT 1
+[F:0171 T:02.460] [PLAYER] WAIT delaying 0.875s (aiming for Perfect)
+[F:0171 T:02.460] [PLAYER] PERCEIVE obstacle=2 kind=ShapeGate shape=Circle lane=-1 dist=797px
+[F:0171 T:02.460] [PLAYER] PLAN action=Circle react=0.875s arrival=3.745s
+[F:0174 T:02.530] [GAME  ] BEAT 2
+[F:0197 T:02.910] [PLAYER] WAIT delaying 0.835s (aiming for Perfect)
+[F:0197 T:02.910] [PLAYER] PERCEIVE obstacle=3 kind=ShapeGate shape=Square lane=-1 dist=797px
+[F:0197 T:02.910] [PLAYER] PLAN action=Square react=0.835s arrival=4.156s
+[F:0198 T:02.920] [PLAYER] EXECUTE key_2(Triangle) for obstacle=1
+[F:0198 T:02.940] [GAME  ] BEAT 3
+[F:0199 T:02.940] [PLAYER] EXECUTE key_d(SwipeRight) for obstacle=1
+[F:0217 T:03.260] [GAME  ] COLLISION obstacle=1 kind=ShapeGate result=CLEAR timing=Good(0.72)
+[F:0222 T:03.330] [PLAYER] EXECUTE key_1(Circle) for obstacle=2
+[F:0222 T:03.350] [GAME  ] BEAT 4
+[F:0241 T:03.670] [GAME  ] COLLISION obstacle=2 kind=ShapeGate result=CLEAR timing=Good(0.72)
+[F:0246 T:03.740] [PLAYER] EXECUTE key_3(Square) for obstacle=3
+[F:0246 T:03.750] [GAME  ] BEAT 5
+[F:0266 T:04.090] [GAME  ] COLLISION obstacle=3 kind=ShapeGate result=CLEAR timing=Perfect(0.79)
+[F:0270 T:04.160] [GAME  ] BEAT 6
+[F:0294 T:04.570] [GAME  ] BEAT 7
+[F:0319 T:04.990] [GAME  ] BEAT 8
+[F:0341 T:05.350] [PLAYER] PERCEIVE obstacle=1048579 kind=LaneBlock shape=Hexagon lane=-1 dist=797px
+[F:0341 T:05.350] [PLAYER] PLAN action= react=0.313s arrival=6.617s
+[F:0343 T:05.400] [GAME  ] BEAT 9
+[F:0366 T:05.770] [PLAYER] PERCEIVE obstacle=2097153 kind=LaneBlock shape=Hexagon lane=1 dist=797px
+[F:0366 T:05.770] [PLAYER] PLAN action=+lane react=0.441s arrival=7.028s
+[F:0367 T:05.810] [GAME  ] BEAT 10
+[F:0391 T:06.210] [GAME  ] BEAT 11
+[F:0392 T:06.210] [PLAYER] EXECUTE key_a(SwipeLeft) for obstacle=2097153
+[F:0411 T:06.550] [GAME  ] COLLISION obstacle=1048579 kind=LaneBlock result=MISS
+[F:0442 T:06.550] [PLAYER] AUTO_START phase=GameOver
+[F:0443 T:06.550] [PLAYER] AUTO_START phase=GameOver
+[F:0544 T:01.700] [GAME  ] BEAT 0
+[F:0566 T:02.060] [PLAYER] WAIT delaying 0.865s (aiming for Perfect)
+[F:0566 T:02.060] [PLAYER] PERCEIVE obstacle=2097155 kind=ShapeGate shape=Triangle lane=2 dist=797px
+[F:0566 T:02.060] [PLAYER] PLAN action=Triangle+lane react=0.865s arrival=3.335s
+[F:0568 T:02.110] [GAME  ] BEAT 1
+[F:0591 T:02.480] [PLAYER] WAIT delaying 0.855s (aiming for Perfect)
+[F:0591 T:02.480] [PLAYER] PERCEIVE obstacle=3145729 kind=ShapeGate shape=Circle lane=-1 dist=797px
+[F:0591 T:02.480] [PLAYER] PLAN action=Circle react=0.855s arrival=3.745s
+[F:0593 T:02.530] [GAME  ] BEAT 2
+[F:0615 T:02.880] [PLAYER] WAIT delaying 0.865s (aiming for Perfect)
+[F:0615 T:02.880] [PLAYER] PERCEIVE obstacle=2097157 kind=ShapeGate shape=Square lane=-1 dist=797px
+[F:0615 T:02.880] [PLAYER] PLAN action=Square react=0.865s arrival=4.156s
+[F:0617 T:02.920] [PLAYER] EXECUTE key_2(Triangle) for obstacle=2097155
+[F:0617 T:02.940] [GAME  ] BEAT 3
+[F:0618 T:02.940] [PLAYER] EXECUTE key_d(SwipeRight) for obstacle=2097155
+[F:0636 T:03.260] [GAME  ] COLLISION obstacle=2097155 kind=ShapeGate result=CLEAR timing=Good(0.72)
+[F:0641 T:03.320] [PLAYER] EXECUTE key_1(Circle) for obstacle=3145729
+[F:0641 T:03.340] [GAME  ] BEAT 4
+[F:0661 T:03.680] [GAME  ] COLLISION obstacle=3145729 kind=ShapeGate result=CLEAR timing=Perfect(0.79)
+[F:0665 T:03.750] [GAME  ] BEAT 5
+[F:0666 T:03.750] [PLAYER] EXECUTE key_3(Square) for obstacle=2097157
+[F:0685 T:04.090] [GAME  ] COLLISION obstacle=2097157 kind=ShapeGate result=CLEAR timing=Good(0.72)
+[F:0689 T:04.160] [GAME  ] BEAT 6
+[F:0714 T:04.580] [GAME  ] BEAT 7
+[F:0738 T:04.990] [GAME  ] BEAT 8
+[F:0761 T:05.360] [PLAYER] PERCEIVE obstacle=3145733 kind=LaneBlock shape=Hexagon lane=-1 dist=797px
+[F:0761 T:05.360] [PLAYER] PLAN action= react=0.365s arrival=6.617s
+[F:0762 T:05.390] [GAME  ] BEAT 9
+[F:0784 T:05.750] [PLAYER] PERCEIVE obstacle=4194307 kind=LaneBlock shape=Hexagon lane=1 dist=797px
+[F:0784 T:05.750] [PLAYER] PLAN action=+lane react=0.306s arrival=7.028s
+[F:0786 T:05.800] [GAME  ] BEAT 10
+[F:0801 T:06.040] [PLAYER] EXECUTE key_a(SwipeLeft) for obstacle=4194307
+[F:0810 T:06.210] [GAME  ] BEAT 11
+[F:0831 T:06.560] [GAME  ] COLLISION obstacle=3145733 kind=LaneBlock result=MISS
+[F:0862 T:06.560] [PLAYER] AUTO_START phase=GameOver
+[F:0863 T:06.560] [PLAYER] AUTO_START phase=GameOver
