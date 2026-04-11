@@ -265,9 +265,10 @@ int main(int argc, char* argv[]) {
 #else
         localtime_r(&now, &tm);
 #endif
-        char log_filename[128];
+        char log_filename[256];
         std::snprintf(log_filename, sizeof(log_filename),
-            "session_%s_%04d%02d%02d_%02d%02d%02d.log",
+            "%ssession_%s_%04d%02d%02d_%02d%02d%02d.log",
+            GetApplicationDirectory(),
             skill_names[static_cast<int>(test_skill)],
             tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
             tm.tm_hour, tm.tm_min, tm.tm_sec);

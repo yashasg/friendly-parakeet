@@ -5,3 +5,4 @@ vcpkg_installed/
 compile_commands.json
 ctrf-report.json
 shapeshifter*.log
+session_*.log
