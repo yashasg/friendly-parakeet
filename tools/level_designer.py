@@ -48,22 +48,23 @@ SHAPE_TO_LANE = {
 # Intensity-driven combo parameters per difficulty
 # combo_len: (min, max) beats in a combo
 # rest_beats: beats of silence between combos
+# max_gap: maximum beats without any obstacle (keeps player engaged)
 # beat_usage: fraction of available beats that get obstacles (0.0-1.0)
 INTENSITY_PARAMS = {
     "easy": {
-        "low":    {"combo_len": (1, 2), "rest_beats": 4, "beat_usage": 0.20},
-        "medium": {"combo_len": (2, 3), "rest_beats": 3, "beat_usage": 0.35},
-        "high":   {"combo_len": (2, 3), "rest_beats": 2, "beat_usage": 0.50},
+        "low":    {"combo_len": (1, 2), "rest_beats": 3, "max_gap": 3, "beat_usage": 0.30},
+        "medium": {"combo_len": (2, 3), "rest_beats": 2, "max_gap": 2, "beat_usage": 0.45},
+        "high":   {"combo_len": (2, 3), "rest_beats": 1, "max_gap": 2, "beat_usage": 0.60},
     },
     "medium": {
-        "low":    {"combo_len": (2, 3), "rest_beats": 3, "beat_usage": 0.30},
-        "medium": {"combo_len": (2, 3), "rest_beats": 1, "beat_usage": 0.55},
-        "high":   {"combo_len": (3, 4), "rest_beats": 1, "beat_usage": 0.75},
+        "low":    {"combo_len": (2, 3), "rest_beats": 2, "max_gap": 3, "beat_usage": 0.40},
+        "medium": {"combo_len": (2, 3), "rest_beats": 1, "max_gap": 2, "beat_usage": 0.60},
+        "high":   {"combo_len": (3, 4), "rest_beats": 1, "max_gap": 1, "beat_usage": 0.80},
     },
     "hard": {
-        "low":    {"combo_len": (2, 3), "rest_beats": 2, "beat_usage": 0.50},
-        "medium": {"combo_len": (3, 4), "rest_beats": 1, "beat_usage": 0.80},
-        "high":   {"combo_len": (4, 6), "rest_beats": 0, "beat_usage": 1.00},
+        "low":    {"combo_len": (2, 3), "rest_beats": 1, "max_gap": 2, "beat_usage": 0.60},
+        "medium": {"combo_len": (3, 4), "rest_beats": 1, "max_gap": 1, "beat_usage": 0.85},
+        "high":   {"combo_len": (4, 6), "rest_beats": 0, "max_gap": 1, "beat_usage": 1.00},
     },
 }
 
@@ -272,9 +273,9 @@ def build_section_combos(beat_indices: list[int], section: dict,
 
         cursor += combo_len
 
-        # Skip rest beats after combo
+        # Skip rest beats after combo (but respect max_gap)
+        max_gap = params["max_gap"]
         if rest > 0 and cursor < len(selected_beats):
-            # Find the next beat that's at least 'rest' beats after the last combo beat
             last_combo_beat = combo_beats[-1]
             while cursor < len(selected_beats) and selected_beats[cursor] - last_combo_beat < rest + 1:
                 cursor += 1
@@ -283,13 +284,52 @@ def build_section_combos(beat_indices: list[int], section: dict,
         if combo_type == "shape":
             combo_type = "lane"
         elif combo_type == "lane":
-            # In high intensity, add bar combos occasionally
             if intensity == "high" and ("low_bar" in allowed_kinds or "high_bar" in allowed_kinds):
                 combo_type = "bar"
             else:
                 combo_type = "shape"
         else:
             combo_type = "shape"
+
+    # ── Fill gaps that exceed max_gap ──────────────────────────
+    # Scan for any stretch > max_gap beats without an obstacle.
+    # Fill with shape_gate at the current lane to keep player engaged.
+    max_gap = params["max_gap"]
+    if obstacles and selected_beats:
+        filled = list(obstacles)
+        filled.sort(key=lambda o: o["beat"])
+
+        # Check gap from section start to first obstacle
+        first_obs_beat = filled[0]["beat"]
+        gap_start = selected_beats[0]
+        if first_obs_beat - gap_start > max_gap:
+            fill_beat = gap_start + max_gap
+            if fill_beat < first_obs_beat:
+                shapes_list = ["circle", "square", "triangle"]
+                filled.insert(0, {
+                    "beat": fill_beat,
+                    "kind": "shape_gate",
+                    "shape": shapes_list[fill_beat % len(shapes_list)],
+                    "lane": current_lane,
+                })
+
+        # Check gaps between consecutive obstacles
+        i = 0
+        while i < len(filled) - 1:
+            gap = filled[i + 1]["beat"] - filled[i]["beat"]
+            if gap > max_gap:
+                fill_beat = filled[i]["beat"] + max_gap
+                shapes_list = ["circle", "square", "triangle"]
+                filler = {
+                    "beat": fill_beat,
+                    "kind": "shape_gate",
+                    "shape": shapes_list[fill_beat % len(shapes_list)],
+                    "lane": current_lane,
+                }
+                filled.insert(i + 1, filler)
+            i += 1
+
+        obstacles = filled
 
     return obstacles, current_lane
 
@@ -404,6 +444,27 @@ def design_level(analysis: dict, difficulty: str) -> list[dict]:
         if obs["beat"] not in seen:
             seen.add(obs["beat"])
             deduped.append(obs)
+
+    # Global max-gap enforcement across section boundaries
+    # Use the strictest max_gap for the difficulty (high intensity value)
+    global_max_gap = INTENSITY_PARAMS[difficulty]["low"]["max_gap"]
+    shapes = ["circle", "square", "triangle"]
+    fill_lane = 1
+    i = 0
+    while i < len(deduped) - 1:
+        gap = deduped[i + 1]["beat"] - deduped[i]["beat"]
+        if gap > global_max_gap:
+            fill_beat = deduped[i]["beat"] + global_max_gap
+            if deduped[i]["kind"] == "shape_gate":
+                fill_lane = deduped[i].get("lane", 1)
+            filler = {
+                "beat": fill_beat,
+                "kind": "shape_gate",
+                "shape": shapes[fill_beat % len(shapes)],
+                "lane": fill_lane,
+            }
+            deduped.insert(i + 1, filler)
+        i += 1
 
     # Apply variety rules
     deduped = apply_variety(deduped)
