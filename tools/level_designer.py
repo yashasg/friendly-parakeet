@@ -1,19 +1,24 @@
 """
-level_designer.py
-=================
-Takes audio analysis JSON (from rhythm_pipeline.py) and produces a beatmap
-JSON that the game engine can load.
+level_designer.py — Combo-based beatmap generator for SHAPESHIFTER.
 
-Design philosophy: COMBO SEQUENCES
-  - Obstacles are grouped into combos by action type
-  - SHAPE COMBO: stay in one lane, change shapes on every beat
-  - LANE COMBO: dodge lane_blocks on every beat
-  - BAR COMBO: jump/slide (high intensity only)
-  - Never interleave shape changes with lane changes on adjacent beats
-  - Intensity from song structure drives density and combo length:
-    LOW:    few beats mapped, short combos (2-3), long rests
-    MEDIUM: more beats, medium combos (2-3), short rests
-    HIGH:   all beats mapped, long combos (3-5), no rests
+Pipeline:
+  1. Load analysis JSON (from rhythm_pipeline.py)
+  2. Filter events by flux threshold (difficulty-dependent)
+  3. Snap events to beat grid
+  4. Walk song structure section-by-section
+  5. For each section, build combo sequences:
+     SHAPE COMBO → [transition beat] → LANE COMBO → [transition beat] → ...
+  6. Fill long gaps to keep player engaged
+  7. Enforce transition beats between combo types
+  8. Apply anti-repetition rules
+
+Design rules:
+  - Obstacles grouped into combos (shape / lane / bar)
+  - Never interleave shape presses with lane changes on adjacent beats
+  - Always skip ≥1 beat when switching combo types
+  - Lane combos spaced ≥2 beats apart (human swipe timing)
+  - No 2-lane jumps (lane 0↔2)
+  - Intensity drives density: low=sparse, medium=moderate, high=dense
 
 Usage:
     python level_designer.py analysis.json
@@ -27,29 +32,19 @@ import sys
 from pathlib import Path
 
 
-# ---------------------------------------------------------------------------
-# DESIGN CONSTANTS
-# ---------------------------------------------------------------------------
+# ═══════════════════════════════════════════════════════════════
+# CONSTANTS
+# ═══════════════════════════════════════════════════════════════
 
+# Frequency band → shape → lane
 PASS_TO_SHAPE = {
-    "kick":   "circle",
-    "snare":  "square",
-    "melody": "square",
-    "hihat":  "triangle",
-    "flux":   "square",
+    "kick": "circle", "snare": "square", "melody": "square",
+    "hihat": "triangle", "flux": "square",
 }
+SHAPE_TO_LANE = {"circle": 0, "square": 1, "triangle": 2}
+ALL_SHAPES = ["circle", "square", "triangle"]
 
-SHAPE_TO_LANE = {
-    "circle":   0,
-    "square":   1,
-    "triangle": 2,
-}
-
-# Intensity-driven combo parameters per difficulty
-# combo_len: (min, max) beats in a combo
-# rest_beats: beats of silence between combos
-# max_gap: maximum beats without any obstacle (keeps player engaged)
-# beat_usage: fraction of available beats that get obstacles (0.0-1.0)
+# Per-difficulty, per-intensity combo parameters
 INTENSITY_PARAMS = {
     "easy": {
         "low":    {"combo_len": (1, 2), "rest_beats": 3, "max_gap": 3, "beat_usage": 0.30},
@@ -69,457 +64,378 @@ INTENSITY_PARAMS = {
 }
 
 DIFFICULTY_CONFIG = {
-    "easy": {
-        "intro_rest_beats": 8,
-        "allowed_kinds": ["shape_gate"],
-        "flux_percentile": 80,
-    },
-    "medium": {
-        "intro_rest_beats": 4,
-        "allowed_kinds": ["shape_gate", "lane_block"],
-        "flux_percentile": 55,
-    },
-    "hard": {
-        "intro_rest_beats": 2,
-        "allowed_kinds": ["shape_gate", "lane_block", "low_bar", "high_bar"],
-        "flux_percentile": 30,
-    },
+    "easy":   {"intro_rest_beats": 8, "allowed_kinds": ["shape_gate"],                                "flux_percentile": 80},
+    "medium": {"intro_rest_beats": 4, "allowed_kinds": ["shape_gate", "lane_block"],                   "flux_percentile": 55},
+    "hard":   {"intro_rest_beats": 2, "allowed_kinds": ["shape_gate", "lane_block", "low_bar", "high_bar"], "flux_percentile": 30},
 }
 
 
-# ---------------------------------------------------------------------------
-# BEAT GRID SNAPPING
-# ---------------------------------------------------------------------------
+# ═══════════════════════════════════════════════════════════════
+# HELPERS
+# ═══════════════════════════════════════════════════════════════
 
-def snap_events_to_beats(events: list[dict], beats: list[float],
-                         tolerance: float = 0.08) -> list[dict]:
-    snapped = []
-    beat_set = set()
+def snap_events_to_beats(events, beats, tolerance=0.08):
+    """Snap each event to the nearest beat within tolerance. One event per beat."""
+    snapped, used = [], set()
     for ev in events:
-        t = ev["t"]
-        best_idx = None
-        best_dist = tolerance + 1
-        lo, hi = 0, len(beats) - 1
+        lo, hi, best_idx, best_dist = 0, len(beats) - 1, None, tolerance + 1
         while lo <= hi:
             mid = (lo + hi) // 2
-            dist = abs(beats[mid] - t)
+            dist = abs(beats[mid] - ev["t"])
             if dist < best_dist:
-                best_dist = dist
-                best_idx = mid
-            if beats[mid] < t:
-                lo = mid + 1
-            else:
-                hi = mid - 1
-        if best_idx is not None and best_dist <= tolerance:
-            if best_idx not in beat_set:
-                beat_set.add(best_idx)
-                snapped.append({**ev, "beat_idx": best_idx, "beat_time": beats[best_idx]})
+                best_dist, best_idx = dist, mid
+            if beats[mid] < ev["t"]: lo = mid + 1
+            else: hi = mid - 1
+        if best_idx is not None and best_dist <= tolerance and best_idx not in used:
+            used.add(best_idx)
+            snapped.append({**ev, "beat_idx": best_idx, "beat_time": beats[best_idx]})
     snapped.sort(key=lambda e: e["beat_idx"])
     return snapped
 
 
-# ---------------------------------------------------------------------------
-# SHAPE / LANE HELPERS
-# ---------------------------------------------------------------------------
-
-def pick_shape(passes: list[str], beat_idx: int) -> str:
-    candidates = []
-    for p in passes:
-        if p in PASS_TO_SHAPE:
-            candidates.append(PASS_TO_SHAPE[p])
+def pick_shape(passes, beat_idx):
+    """Pick shape from onset passes using frequency band mapping."""
+    candidates = [PASS_TO_SHAPE[p] for p in passes if p in PASS_TO_SHAPE]
     if not candidates:
         candidates = ["circle"]
     unique = list(dict.fromkeys(candidates))
     return unique[beat_idx % len(unique)]
 
 
-def get_section_at(t: float, structure: list[dict]) -> dict:
+def get_section_at(t, structure):
+    """Find which song section a timestamp falls in."""
     for sec in structure:
         if sec["start"] <= t < sec["end"]:
             return sec
     return structure[-1] if structure else {"section": "verse", "intensity": "medium"}
 
 
-# ---------------------------------------------------------------------------
-# COMBO SEQUENCE BUILDER
-#
-# The core algorithm:
-# 1. Walk through the song section by section
-# 2. For each section, determine combo parameters from intensity
-# 3. Alternate: SHAPE COMBO → rest → LANE COMBO → rest → SHAPE COMBO → ...
-# 4. Within each combo, place obstacles on consecutive beats
-# 5. Between combos, leave rest beats (breathing room)
-# ---------------------------------------------------------------------------
+def make_lane_sequence(start_lane, count):
+    """Adjacent-only lane sequence. Bounces off edges 0↔2."""
+    lanes, direction = [start_lane], 1
+    for _ in range(count - 1):
+        nxt = lanes[-1] + direction
+        if nxt < 0 or nxt > 2:
+            direction = -direction
+            nxt = lanes[-1] + direction
+        lanes.append(nxt)
+    return lanes
 
-def build_section_combos(beat_indices: list[int], section: dict,
-                         difficulty: str, allowed_kinds: list[str],
-                         event_map: dict, current_lane: int) -> tuple[list[dict], int]:
-    """
-    Build combo sequences for one song section.
-    Returns (obstacles, updated_lane).
-    """
-    intensity = section.get("intensity", "medium")
-    params = INTENSITY_PARAMS[difficulty][intensity]
-    combo_min, combo_max = params["combo_len"]
-    rest = params["rest_beats"]
-    usage = params["beat_usage"]
 
-    if not beat_indices:
-        return [], current_lane
+def interpolate_flux_threshold(stats, percentile):
+    """Interpolate flux threshold from percentile breakpoints."""
+    points = [(0, stats["min"]), (25, stats["p25"]), (50, stats["p50"]),
+              (75, stats["p75"]), (90, stats["p90"]), (100, stats["max"])]
+    for i in range(len(points) - 1):
+        p_lo, v_lo = points[i]
+        p_hi, v_hi = points[i + 1]
+        if p_lo <= percentile <= p_hi:
+            frac = (percentile - p_lo) / (p_hi - p_lo) if p_hi > p_lo else 0
+            return v_lo + frac * (v_hi - v_lo)
+    return stats["p50"]
 
-    # Select which beats to use based on usage fraction
-    # Prefer beats that have strong events (in event_map)
-    total_available = len(beat_indices)
-    target_count = max(1, int(total_available * usage))
 
-    # Prioritize beats with events, then fill evenly
-    with_events = [bi for bi in beat_indices if bi in event_map]
-    without_events = [bi for bi in beat_indices if bi not in event_map]
-    selected_beats = with_events[:target_count]
-    if len(selected_beats) < target_count:
-        selected_beats += without_events[:target_count - len(selected_beats)]
-    selected_beats.sort()
+def action_family(kind):
+    """Group obstacle types: 'shape' (buttons) vs 'movement' (dodging)."""
+    return "shape" if kind == "shape_gate" else "movement"
 
-    if not selected_beats:
-        return [], current_lane
 
-    obstacles = []
-    shapes = ["circle", "square", "triangle"]
-    combo_type = "shape"  # alternate: shape → lane → shape → ...
-    cursor = 0
+# ═══════════════════════════════════════════════════════════════
+# COMBO BUILDERS — one function per combo type
+# ═══════════════════════════════════════════════════════════════
 
-    while cursor < len(selected_beats):
-        # Determine combo length for this combo
-        remaining = len(selected_beats) - cursor
-        combo_len = min(combo_max, remaining)
-        combo_len = max(combo_min, combo_len)
-        combo_len = min(combo_len, remaining)
+def build_shape_combo(combo_beats, event_map, current_lane):
+    """Stay in one lane, change shapes each beat."""
+    # Pick combo lane from first event's natural shape (adjacent only)
+    ev0 = event_map.get(combo_beats[0])
+    if ev0:
+        natural = SHAPE_TO_LANE[pick_shape(ev0.get("passes", ["kick"]), combo_beats[0])]
+        if abs(natural - current_lane) <= 1:
+            current_lane = natural
+    combo_lane = current_lane
 
-        combo_beats = selected_beats[cursor:cursor + combo_len]
-
-        if combo_type == "shape":
-            # ── SHAPE COMBO: stay in one lane, change shapes ──────
-            ev0 = event_map.get(combo_beats[0])
-            if ev0:
-                natural_shape = pick_shape(ev0.get("passes", ["kick"]), combo_beats[0])
-                natural_lane = SHAPE_TO_LANE[natural_shape]
-                if abs(natural_lane - current_lane) <= 1:
-                    current_lane = natural_lane
-            combo_lane = current_lane
-
-            last_shape = None
-            for bi in combo_beats:
-                ev = event_map.get(bi)
-                if ev:
-                    shape = pick_shape(ev.get("passes", ["kick"]), bi)
-                else:
-                    shape = shapes[bi % len(shapes)]
-                # Prevent same shape twice in a row
-                if shape == last_shape:
-                    others = [s for s in shapes if s != shape]
-                    shape = others[bi % len(others)]
-                obstacles.append({
-                    "beat": bi,
-                    "kind": "shape_gate",
-                    "shape": shape,
-                    "lane": combo_lane,
-                })
-                last_shape = shape
-
-        elif combo_type == "lane" and "lane_block" in allowed_kinds:
-            # ── LANE COMBO: dodge lane_blocks ─────────────────────
-            # Lane changes need minimum gap=2 between beats (0.82s)
-            # to give the player time to swipe + transition.
-            # Filter combo_beats to enforce min gap=2.
-            spaced_beats = [combo_beats[0]]
-            for bi in combo_beats[1:]:
-                if bi - spaced_beats[-1] >= 2:
-                    spaced_beats.append(bi)
-            lane_seq = _make_lane_sequence(current_lane, len(spaced_beats))
-            for k, bi in enumerate(spaced_beats):
-                free_lane = lane_seq[k]
-                blocked = [l for l in [0, 1, 2] if l != free_lane]
-                obstacles.append({
-                    "beat": bi,
-                    "kind": "lane_block",
-                    "blocked": blocked,
-                })
-                current_lane = free_lane
-
-        elif combo_type == "bar" and ("low_bar" in allowed_kinds or "high_bar" in allowed_kinds):
-            # ── BAR COMBO: jump/slide ─────────────────────────────
-            for bi in combo_beats:
-                kind = "low_bar" if bi % 2 == 0 else "high_bar"
-                if kind not in allowed_kinds:
-                    kind = "low_bar" if "low_bar" in allowed_kinds else "high_bar"
-                obstacles.append({"beat": bi, "kind": kind})
-
-        else:
-            # Fallback: shape combo if lane/bar not allowed
-            combo_lane = current_lane
-            last_shape = None
-            for bi in combo_beats:
-                shape = shapes[bi % len(shapes)]
-                if shape == last_shape:
-                    others = [s for s in shapes if s != shape]
-                    shape = others[bi % len(others)]
-                obstacles.append({
-                    "beat": bi,
-                    "kind": "shape_gate",
-                    "shape": shape,
-                    "lane": combo_lane,
-                })
-                last_shape = shape
-
-        cursor += combo_len
-
-        # Determine next combo type
-        prev_combo_type = combo_type
-        if combo_type == "shape":
-            combo_type = "lane"
-        elif combo_type == "lane":
-            if intensity == "high" and ("low_bar" in allowed_kinds or "high_bar" in allowed_kinds):
-                combo_type = "bar"
-            else:
-                combo_type = "shape"
-        else:
-            combo_type = "shape"
-
-        # Skip rest beats after combo (but respect max_gap).
-        # When switching combo types (shape↔lane, shape↔bar, etc.),
-        # always skip at least 1 transition beat so the player has
-        # time to shift mental mode.
-        max_gap = params["max_gap"]
-        type_changed = (combo_type != prev_combo_type)
-        min_rest = max(rest, 1) if type_changed else rest
-
-        if min_rest > 0 and cursor < len(selected_beats):
-            last_combo_beat = combo_beats[-1]
-            while cursor < len(selected_beats) and selected_beats[cursor] - last_combo_beat < min_rest + 1:
-                cursor += 1
-
-    # ── Fill gaps that exceed max_gap ──────────────────────────
-    # Scan for any stretch > max_gap beats without an obstacle.
-    # Fill with shape_gate at the current lane to keep player engaged.
-    max_gap = params["max_gap"]
-    if obstacles and selected_beats:
-        filled = list(obstacles)
-        filled.sort(key=lambda o: o["beat"])
-
-        # Check gap from section start to first obstacle
-        first_obs_beat = filled[0]["beat"]
-        gap_start = selected_beats[0]
-        if first_obs_beat - gap_start > max_gap:
-            fill_beat = gap_start + max_gap
-            if fill_beat < first_obs_beat:
-                shapes_list = ["circle", "square", "triangle"]
-                filled.insert(0, {
-                    "beat": fill_beat,
-                    "kind": "shape_gate",
-                    "shape": shapes_list[fill_beat % len(shapes_list)],
-                    "lane": current_lane,
-                })
-
-        # Check gaps between consecutive obstacles.
-        # Don't fill gaps at combo-type transitions (shape↔lane) —
-        # those are intentional breathing room for the player.
-        i = 0
-        while i < len(filled) - 1:
-            gap = filled[i + 1]["beat"] - filled[i]["beat"]
-            same_type = (filled[i]["kind"] == filled[i + 1]["kind"])
-            if gap > max_gap and same_type:
-                fill_beat = filled[i]["beat"] + max_gap
-                # Match the type of surrounding obstacles
-                if filled[i]["kind"] == "lane_block":
-                    free = current_lane
-                    blocked = [l for l in [0, 1, 2] if l != free]
-                    filler = {"beat": fill_beat, "kind": "lane_block", "blocked": blocked}
-                else:
-                    shapes_list = ["circle", "square", "triangle"]
-                    filler = {
-                        "beat": fill_beat,
-                        "kind": "shape_gate",
-                        "shape": shapes_list[fill_beat % len(shapes_list)],
-                        "lane": current_lane,
-                    }
-                filled.insert(i + 1, filler)
-            i += 1
-
-        obstacles = filled
+    obstacles, last_shape = [], None
+    for bi in combo_beats:
+        ev = event_map.get(bi)
+        shape = pick_shape(ev.get("passes", ["kick"]), bi) if ev else ALL_SHAPES[bi % 3]
+        if shape == last_shape:
+            shape = [s for s in ALL_SHAPES if s != shape][bi % 2]
+        obstacles.append({"beat": bi, "kind": "shape_gate", "shape": shape, "lane": combo_lane})
+        last_shape = shape
 
     return obstacles, current_lane
 
 
-def _make_lane_sequence(start_lane: int, count: int) -> list[int]:
-    """Adjacent-only lane sequence. Bounces off edges."""
-    lanes = [start_lane]
-    direction = 1
-    for _ in range(count - 1):
-        next_lane = lanes[-1] + direction
-        if next_lane < 0 or next_lane > 2:
-            direction = -direction
-            next_lane = lanes[-1] + direction
-        lanes.append(next_lane)
-    return lanes
+def build_lane_combo(combo_beats, current_lane):
+    """Dodge lane_blocks. Min gap=2 between beats for swipe timing."""
+    spaced = [combo_beats[0]]
+    for bi in combo_beats[1:]:
+        if bi - spaced[-1] >= 2:
+            spaced.append(bi)
+
+    lane_seq = make_lane_sequence(current_lane, len(spaced))
+    obstacles = []
+    for k, bi in enumerate(spaced):
+        free = lane_seq[k]
+        obstacles.append({"beat": bi, "kind": "lane_block", "blocked": [l for l in [0,1,2] if l != free]})
+        current_lane = free
+
+    return obstacles, current_lane
 
 
-# ---------------------------------------------------------------------------
-# ANTI-REPETITION
-# ---------------------------------------------------------------------------
+def build_bar_combo(combo_beats, allowed_kinds):
+    """Jump/slide sequence for high-intensity sections."""
+    obstacles = []
+    for bi in combo_beats:
+        kind = "low_bar" if bi % 2 == 0 else "high_bar"
+        if kind not in allowed_kinds:
+            kind = "low_bar" if "low_bar" in allowed_kinds else "high_bar"
+        obstacles.append({"beat": bi, "kind": kind})
+    return obstacles
 
-def apply_variety(obstacles: list[dict]) -> list[dict]:
-    shapes = ["circle", "square", "triangle"]
 
-    # Prevent 2-lane jumps
+# ═══════════════════════════════════════════════════════════════
+# SECTION COMBO SEQUENCER
+# ═══════════════════════════════════════════════════════════════
+
+def pick_next_combo_type(current, intensity, allowed_kinds):
+    """Rotate combo types: shape → lane → bar → shape..."""
+    if current == "shape":
+        return "lane"
+    elif current == "lane":
+        if intensity == "high" and ("low_bar" in allowed_kinds or "high_bar" in allowed_kinds):
+            return "bar"
+        return "shape"
+    return "shape"
+
+
+def select_beats_for_section(beat_indices, usage, event_map):
+    """Pick which beats to use based on usage fraction. Prefer beats with events."""
+    target = max(1, int(len(beat_indices) * usage))
+    with_events = [bi for bi in beat_indices if bi in event_map]
+    without = [bi for bi in beat_indices if bi not in event_map]
+    selected = (with_events + without)[:target]
+    selected.sort()
+    return selected
+
+
+def build_section_combos(beat_indices, section, difficulty, allowed_kinds,
+                         event_map, current_lane):
+    """Build combo sequences for one song section. Returns (obstacles, lane)."""
+    intensity = section.get("intensity", "medium")
+    params = INTENSITY_PARAMS[difficulty][intensity]
+    combo_min, combo_max = params["combo_len"]
+    rest = params["rest_beats"]
+
+    selected = select_beats_for_section(beat_indices, params["beat_usage"], event_map)
+    if not selected:
+        return [], current_lane
+
+    obstacles = []
+    combo_type = "shape"
+    cursor = 0
+
+    while cursor < len(selected):
+        # Slice out beats for this combo
+        combo_len = min(combo_max, len(selected) - cursor)
+        combo_len = max(combo_min, combo_len)
+        combo_beats = selected[cursor:cursor + combo_len]
+
+        # Build the combo
+        if combo_type == "shape":
+            obs, current_lane = build_shape_combo(combo_beats, event_map, current_lane)
+            obstacles.extend(obs)
+        elif combo_type == "lane" and "lane_block" in allowed_kinds:
+            obs, current_lane = build_lane_combo(combo_beats, current_lane)
+            obstacles.extend(obs)
+        elif combo_type == "bar" and ("low_bar" in allowed_kinds or "high_bar" in allowed_kinds):
+            obstacles.extend(build_bar_combo(combo_beats, allowed_kinds))
+        else:
+            # Fallback to shape
+            obs, current_lane = build_shape_combo(combo_beats, event_map, current_lane)
+            obstacles.extend(obs)
+
+        cursor += combo_len
+
+        # Advance combo type and apply rest
+        prev_type = combo_type
+        combo_type = pick_next_combo_type(combo_type, intensity, allowed_kinds)
+        type_changed = (combo_type != prev_type)
+        min_rest = max(rest, 1) if type_changed else rest
+
+        if min_rest > 0 and cursor < len(selected):
+            last_beat = combo_beats[-1]
+            while cursor < len(selected) and selected[cursor] - last_beat < min_rest + 1:
+                cursor += 1
+
+    # Fill long same-type gaps within this section
+    obstacles = fill_gaps_within_section(obstacles, selected, params["max_gap"], current_lane)
+    return obstacles, current_lane
+
+
+# ═══════════════════════════════════════════════════════════════
+# GAP FILLING — keep player engaged, but respect transitions
+# ═══════════════════════════════════════════════════════════════
+
+def fill_gaps_within_section(obstacles, available_beats, max_gap, current_lane):
+    """Fill gaps that exceed max_gap, but only between same-type obstacles."""
+    if not obstacles or not available_beats:
+        return obstacles
+
+    filled = sorted(obstacles, key=lambda o: o["beat"])
+
+    # Fill gap from section start to first obstacle
+    if filled[0]["beat"] - available_beats[0] > max_gap:
+        fill_beat = available_beats[0] + max_gap
+        if fill_beat < filled[0]["beat"]:
+            filled.insert(0, _make_filler("shape_gate", fill_beat, current_lane))
+
+    # Fill gaps between consecutive same-type obstacles
+    i = 0
+    while i < len(filled) - 1:
+        gap = filled[i + 1]["beat"] - filled[i]["beat"]
+        if gap > max_gap and filled[i]["kind"] == filled[i + 1]["kind"]:
+            fill_beat = filled[i]["beat"] + max_gap
+            filled.insert(i + 1, _make_filler(filled[i]["kind"], fill_beat, current_lane))
+        i += 1
+
+    return filled
+
+
+def fill_gaps_globally(obstacles, max_gap):
+    """Fill gaps across section boundaries (same-type only)."""
+    i = 0
+    fill_lane = 1
+    while i < len(obstacles) - 1:
+        gap = obstacles[i + 1]["beat"] - obstacles[i]["beat"]
+        if obstacles[i]["kind"] == "shape_gate":
+            fill_lane = obstacles[i].get("lane", 1)
+        if gap > max_gap and obstacles[i]["kind"] == obstacles[i + 1]["kind"]:
+            fill_beat = obstacles[i]["beat"] + max_gap
+            obstacles.insert(i + 1, _make_filler(obstacles[i]["kind"], fill_beat, fill_lane))
+        i += 1
+    return obstacles
+
+
+def _make_filler(kind, beat, lane):
+    """Create a filler obstacle matching the given type."""
+    if kind == "lane_block":
+        return {"beat": beat, "kind": "lane_block", "blocked": [l for l in [0,1,2] if l != lane]}
+    return {"beat": beat, "kind": "shape_gate", "shape": ALL_SHAPES[beat % 3], "lane": lane}
+
+
+# ═══════════════════════════════════════════════════════════════
+# POST-PROCESSING — enforce rules after all obstacles placed
+# ═══════════════════════════════════════════════════════════════
+
+def enforce_transition_beats(obstacles):
+    """Remove obstacles that create shape↔movement transitions with gap < 2."""
+    if not obstacles:
+        return obstacles
+    cleaned = [obstacles[0]]
+    for obs in obstacles[1:]:
+        prev_fam = action_family(cleaned[-1]["kind"])
+        curr_fam = action_family(obs["kind"])
+        gap = obs["beat"] - cleaned[-1]["beat"]
+        if prev_fam != curr_fam and gap < 2:
+            continue
+        cleaned.append(obs)
+    return cleaned
+
+
+def prevent_two_lane_jumps(obstacles):
+    """Force lane 0↔2 transitions through center lane."""
     prev_lane = 1
     for obs in obstacles:
         if obs["kind"] != "shape_gate":
             continue
-        lane = obs.get("lane", 1)
-        if abs(lane - prev_lane) == 2:
+        if abs(obs.get("lane", 1) - prev_lane) == 2:
             obs["lane"] = 1
             obs["shape"] = "square"
         prev_lane = obs.get("lane", prev_lane)
-
-    # Prevent 3+ same shape in a row
-    for i in range(len(obstacles)):
-        obs = obstacles[i]
-        if obs["kind"] != "shape_gate":
-            continue
-        if i >= 2:
-            prev_shapes = [obstacles[j].get("shape") for j in range(i-2, i)
-                           if obstacles[j]["kind"] == "shape_gate"]
-            if len(prev_shapes) == 2 and all(s == obs["shape"] for s in prev_shapes):
-                others = [s for s in shapes if s != obs["shape"]]
-                obs["shape"] = others[i % len(others)]
-                obs["lane"] = SHAPE_TO_LANE[obs["shape"]]
-
     return obstacles
 
 
-# ---------------------------------------------------------------------------
-# MAIN LEVEL DESIGN PIPELINE
-# ---------------------------------------------------------------------------
+def prevent_triple_shapes(obstacles):
+    """No 3+ same shape in a row."""
+    for i in range(2, len(obstacles)):
+        if obstacles[i]["kind"] != "shape_gate":
+            continue
+        prev = [obstacles[j].get("shape") for j in range(i-2, i)
+                if obstacles[j]["kind"] == "shape_gate"]
+        if len(prev) == 2 and all(s == obstacles[i]["shape"] for s in prev):
+            others = [s for s in ALL_SHAPES if s != obstacles[i]["shape"]]
+            obstacles[i]["shape"] = others[i % len(others)]
+            obstacles[i]["lane"] = SHAPE_TO_LANE[obstacles[i]["shape"]]
+    return obstacles
 
-def design_level(analysis: dict, difficulty: str) -> list[dict]:
+
+def deduplicate(obstacles):
+    """Sort by beat and remove duplicates."""
+    obstacles.sort(key=lambda o: o["beat"])
+    seen, result = set(), []
+    for obs in obstacles:
+        if obs["beat"] not in seen:
+            seen.add(obs["beat"])
+            result.append(obs)
+    return result
+
+
+# ═══════════════════════════════════════════════════════════════
+# MAIN PIPELINE
+# ═══════════════════════════════════════════════════════════════
+
+def design_level(analysis, difficulty):
+    """Full pipeline: analysis → obstacle list for one difficulty."""
     cfg = DIFFICULTY_CONFIG[difficulty]
     beats = analysis["beats"]
     events = analysis["events"]
     structure = analysis["structure"]
 
-    # Filter events by flux threshold
-    pct = cfg["flux_percentile"]
-    stats = analysis["flux_stats"]
-    breakpoints = [(0, stats["min"]), (25, stats["p25"]), (50, stats["p50"]),
-                   (75, stats["p75"]), (90, stats["p90"]), (100, stats["max"])]
-    flux_threshold = stats["p50"]
-    for i in range(len(breakpoints) - 1):
-        p_lo, v_lo = breakpoints[i]
-        p_hi, v_hi = breakpoints[i + 1]
-        if p_lo <= pct <= p_hi:
-            frac = (pct - p_lo) / (p_hi - p_lo) if p_hi > p_lo else 0
-            flux_threshold = v_lo + frac * (v_hi - v_lo)
-            break
+    # Step 1: Filter events by flux strength
+    threshold = interpolate_flux_threshold(analysis["flux_stats"], cfg["flux_percentile"])
+    strong = [e for e in events if e["flux"] >= threshold]
 
-    strong_events = [e for e in events if e["flux"] >= flux_threshold]
-
-    # Snap to beat grid
-    on_beat = snap_events_to_beats(strong_events, beats, tolerance=0.08)
-    all_on_beat = snap_events_to_beats(events, beats, tolerance=0.08)
+    # Step 2: Snap to beat grid
+    all_on_beat = snap_events_to_beats(events, beats)
     event_map = {ev["beat_idx"]: ev for ev in all_on_beat}
 
-    # Build beat index range for each section
+    # Step 3: Walk sections, build combos
     intro_end = cfg["intro_rest_beats"]
     all_obstacles = []
-    current_lane = 1  # start center
+    current_lane = 1
 
     for section in structure:
-        sec_start = section["start"]
-        sec_end = section["end"]
+        section_beats = [i for i, bt in enumerate(beats)
+                         if section["start"] <= bt < section["end"] and i >= intro_end]
+        if section_beats:
+            obs, current_lane = build_section_combos(
+                section_beats, section, difficulty,
+                cfg["allowed_kinds"], event_map, current_lane)
+            all_obstacles.extend(obs)
 
-        # Find beats within this section
-        section_beats = []
-        for i, bt in enumerate(beats):
-            if bt >= sec_start and bt < sec_end and i >= intro_end:
-                section_beats.append(i)
+    # Step 4: Post-processing pipeline
+    all_obstacles = deduplicate(all_obstacles)
+    all_obstacles = fill_gaps_globally(all_obstacles, INTENSITY_PARAMS[difficulty]["low"]["max_gap"])
+    all_obstacles = enforce_transition_beats(all_obstacles)
+    all_obstacles = prevent_two_lane_jumps(all_obstacles)
+    all_obstacles = prevent_triple_shapes(all_obstacles)
 
-        if not section_beats:
-            continue
-
-        # Build combos for this section
-        obs, current_lane = build_section_combos(
-            section_beats, section, difficulty,
-            cfg["allowed_kinds"], event_map, current_lane)
-        all_obstacles.extend(obs)
-
-    # Sort and deduplicate
-    all_obstacles.sort(key=lambda o: o["beat"])
-    seen = set()
-    deduped = []
-    for obs in all_obstacles:
-        if obs["beat"] not in seen:
-            seen.add(obs["beat"])
-            deduped.append(obs)
-
-    # Global max-gap enforcement across section boundaries.
-    # Don't fill gaps at combo-type transitions (intentional breathing room).
-    global_max_gap = INTENSITY_PARAMS[difficulty]["low"]["max_gap"]
-    shapes = ["circle", "square", "triangle"]
-    fill_lane = 1
-    i = 0
-    while i < len(deduped) - 1:
-        gap = deduped[i + 1]["beat"] - deduped[i]["beat"]
-        same_type = (deduped[i]["kind"] == deduped[i + 1]["kind"])
-        if gap > global_max_gap and same_type:
-            fill_beat = deduped[i]["beat"] + global_max_gap
-            if deduped[i]["kind"] == "shape_gate":
-                fill_lane = deduped[i].get("lane", 1)
-            filler = {
-                "beat": fill_beat,
-                "kind": deduped[i]["kind"],  # match surrounding type
-            }
-            if filler["kind"] == "shape_gate":
-                filler["shape"] = shapes[fill_beat % len(shapes)]
-                filler["lane"] = fill_lane
-            else:
-                filler["blocked"] = [l for l in [0, 1, 2] if l != fill_lane]
-            deduped.insert(i + 1, filler)
-        i += 1
-
-    # Enforce transition beat: remove obstacles that create type transitions
-    # with gap < 2. Group types: shape_gate vs movement (lane_block/low_bar/high_bar).
-    def action_family(kind):
-        return "shape" if kind == "shape_gate" else "movement"
-
-    cleaned = [deduped[0]] if deduped else []
-    for j in range(1, len(deduped)):
-        prev_fam = action_family(cleaned[-1]["kind"])
-        curr_fam = action_family(deduped[j]["kind"])
-        gap = deduped[j]["beat"] - cleaned[-1]["beat"]
-        if prev_fam != curr_fam and gap < 2:
-            continue  # skip — too tight a transition
-        cleaned.append(deduped[j])
-    deduped = cleaned
-
-    # Apply variety rules
-    deduped = apply_variety(deduped)
-    return deduped
+    return all_obstacles
 
 
-def build_beatmap(analysis: dict, difficulties: list[str]) -> dict:
+def build_beatmap(analysis, difficulties):
+    """Build the full beatmap JSON from analysis + designed levels."""
     beats = analysis["beats"]
-    offset = beats[0] if beats else 0.0
-
     diff_data = {}
     for diff in difficulties:
-        obstacles = design_level(analysis, diff)
-        diff_data[diff] = {"beats": obstacles, "count": len(obstacles)}
-
+        obs = design_level(analysis, diff)
+        diff_data[diff] = {"beats": obs, "count": len(obs)}
     return {
         "song_id": analysis["title"],
         "title": analysis["title"],
         "bpm": analysis["bpm"],
-        "offset": round(offset, 3),
+        "offset": round(beats[0], 3) if beats else 0.0,
         "lead_beats": 4,
         "duration_sec": analysis["duration"],
         "difficulties": diff_data,
@@ -527,37 +443,29 @@ def build_beatmap(analysis: dict, difficulties: list[str]) -> dict:
     }
 
 
-# ---------------------------------------------------------------------------
+# ═══════════════════════════════════════════════════════════════
 # CLI
-# ---------------------------------------------------------------------------
+# ═══════════════════════════════════════════════════════════════
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Level designer — converts audio analysis into a playable beatmap"
-    )
+    parser = argparse.ArgumentParser(description="Combo-based beatmap generator")
     parser.add_argument("input", help="Path to analysis JSON (from rhythm_pipeline.py)")
-    parser.add_argument("--output", "-o", default=None,
-                        help="Output beatmap JSON path (default: <song_id>_beatmap.json)")
-    parser.add_argument("--difficulty", "-d", choices=["easy", "medium", "hard", "all"],
-                        default="all", help="Which difficulty to generate (default: all)")
+    parser.add_argument("--output", "-o", default=None)
+    parser.add_argument("--difficulty", "-d", choices=["easy", "medium", "hard", "all"], default="all")
     args = parser.parse_args()
 
     if not Path(args.input).exists():
-        print(f"Error: file not found: {args.input}", file=sys.stderr)
+        print(f"Error: {args.input} not found", file=sys.stderr)
         sys.exit(1)
 
     with open(args.input) as f:
         analysis = json.load(f)
 
-    print("=" * 60)
-    print("  LEVEL DESIGNER (combo-based)")
-    print(f"  Song: {analysis['title']}  BPM: {analysis['bpm']}")
-    print("=" * 60)
+    diffs = ["easy", "medium", "hard"] if args.difficulty == "all" else [args.difficulty]
 
-    if args.difficulty == "all":
-        diffs = ["easy", "medium", "hard"]
-    else:
-        diffs = [args.difficulty]
+    print("=" * 60)
+    print(f"  LEVEL DESIGNER | {analysis['title']} | BPM {analysis['bpm']}")
+    print("=" * 60)
 
     beatmap = build_beatmap(analysis, diffs)
 
