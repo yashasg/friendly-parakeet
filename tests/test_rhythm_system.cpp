@@ -813,20 +813,22 @@ TEST_CASE("integration: obstacle arrives on-beat within 1 frame", "[rhythm][inte
     map.beats.push_back({4, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
     song.playing = true; song.song_time = 0.1f;
     constexpr float dt = 1.0f / 60.0f;
-    float elapsed = 0.0f;
     bool obstacle_at_player = false;
-    while (elapsed < 5.0f) {
+    int frames = 0;
+    while (frames < 300) {
         song_playback_system(reg, dt);
         beat_scheduler_system(reg, dt);
         scroll_system(reg, dt);
-        elapsed += dt;
+        frames++;
         auto view = reg.view<ObstacleTag, Position>();
         for (auto [e, pos] : view.each()) {
-            // Check arrival at PLAYER_Y (where the beat mathematically lands)
             if (pos.y >= constants::PLAYER_Y) {
                 obstacle_at_player = true;
                 float beat_time = song.offset + 4 * song.beat_period;
-                CHECK_THAT(elapsed, WithinAbs(beat_time, dt + 0.001f));
+                float margin_offset = 40.0f / song.scroll_speed;
+                // Collision resolves at PLAYER_Y - 40px, which should be at beat_time.
+                // Obstacle reaches PLAYER_Y at beat_time + margin_offset.
+                CHECK_THAT(song.song_time, WithinAbs(beat_time + margin_offset, dt + 0.001f));
                 break;
             }
         }
