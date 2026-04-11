@@ -169,8 +169,12 @@ if(EMSCRIPTEN)
         -sUSE_GLFW=3
         -sALLOW_MEMORY_GROWTH=1
         --shell-file ${_shell_html}
-        SHELL:--preload-file ${CMAKE_SOURCE_DIR}/assets@/assets
-        SHELL:--preload-file ${CMAKE_SOURCE_DIR}/content@/content
+    )
+    # Use LINK_FLAGS (raw string) for the two --preload-file entries so that
+    # CMake does not deduplicate the identical flag prefixes, which would strip
+    # the second entry and leave its value as an orphaned positional argument.
+    set_property(TARGET shapeshifter APPEND_STRING PROPERTY LINK_FLAGS
+        " --preload-file ${CMAKE_SOURCE_DIR}/assets@/assets --preload-file ${CMAKE_SOURCE_DIR}/content@/content"
     )
     set_target_properties(shapeshifter PROPERTIES SUFFIX ".html")
 endif()
