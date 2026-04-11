@@ -41,10 +41,11 @@ import numpy as np
 # ---------------------------------------------------------------------------
 
 ONSET_PASSES = [
-    {"name": "kick",   "method": "hfc",     "zone": "bass"},
-    {"name": "snare",  "method": "complex",  "zone": None},
-    {"name": "melody", "method": "phase",    "zone": "low_mid"},
-    {"name": "hihat",  "method": "mkl",      "zone": "high_mid"},
+    {"name": "kick",   "method": "hfc",      "zone": "bass"},
+    {"name": "snare",  "method": "complex",   "zone": None},
+    {"name": "melody", "method": "phase",     "zone": "low_mid"},
+    {"name": "hihat",  "method": "mkl",       "zone": "high_mid"},
+    {"name": "flux",   "method": "specflux",  "zone": None},
 ]
 
 # mel band indices (out of 40) that correspond to each frequency zone
@@ -159,6 +160,28 @@ def get_melbands(filepath: str) -> tuple[np.ndarray, np.ndarray]:
     return np.array(timestamps), np.array(energies)
 
 
+def get_mfcc(filepath: str) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Get MFCC features via aubio mfcc.
+    Returns (timestamps, coefficients) where coefficients is shape (n_frames, 13).
+    """
+    out = run_aubio("mfcc", filepath)
+    timestamps = []
+    coefficients = []
+    for line in out.strip().splitlines():
+        parts = line.strip().split("\t")
+        if len(parts) < 2:
+            continue
+        try:
+            t = float(parts[0])
+            coeffs = [float(v) for v in parts[1].split()]
+            timestamps.append(t)
+            coefficients.append(coeffs)
+        except ValueError:
+            continue
+    return np.array(timestamps), np.array(coefficients)
+
+
 # ---------------------------------------------------------------------------
 # STEP 1 - EXTRACT ALL FEATURES
 # ---------------------------------------------------------------------------
@@ -182,6 +205,10 @@ def extract_features(filepath: str, onset_threshold: float) -> dict:
     mel_times, mel_energies = get_melbands(filepath)
     print(f"    mel frames: {len(mel_times)}  bands: {mel_energies.shape[1] if len(mel_energies) else 0}")
 
+    print("    MFCC coefficients...")
+    mfcc_times, mfcc_coeffs = get_mfcc(filepath)
+    print(f"    mfcc frames: {len(mfcc_times)}  coeffs: {mfcc_coeffs.shape[1] if len(mfcc_coeffs) else 0}")
+
     print("    quiet regions...")
     quiet = get_quiet_regions(filepath)
 
@@ -195,6 +222,8 @@ def extract_features(filepath: str, onset_threshold: float) -> dict:
         "onsets":       onsets,
         "mel_times":    mel_times,
         "mel_energies": mel_energies,
+        "mfcc_times":   mfcc_times,
+        "mfcc_coeffs":  mfcc_coeffs,
         "quiet":        quiet,
         "duration":     duration,
     }
@@ -335,58 +364,186 @@ def classify_intensity(events: list[dict], quiet_regions: list[dict]) -> list[di
 
 def build_structure(features: dict) -> list[dict]:
     """
-    Use aubio quiet output to segment the song into sections.
-    Maps quiet -> intro/outro/bridge, loud -> verse/chorus/drop based on position.
+    Detect song sections using MFCC self-similarity analysis.
+
+    Computes a timbral novelty curve from MFCC cosine distance between
+    consecutive windows. Peaks in the novelty curve mark section boundaries.
+    Falls back to aubio quiet output if MFCC data is unavailable.
+
+    Sections are labeled by position and energy:
+      intro → verse → pre-chorus → chorus → bridge → drop → outro
     """
     duration = features["duration"]
-    quiet    = features["quiet"]
+    mfcc_times = features.get("mfcc_times", np.array([]))
+    mfcc_coeffs = features.get("mfcc_coeffs", np.array([]))
+    mel_times = features["mel_times"]
+    mel_energies = features["mel_energies"]
+
+    if len(mfcc_times) < 100:
+        # Fallback: simple quiet-based segmentation
+        return _build_structure_from_quiet(features)
+
+    # ── Downsample MFCC to ~1 frame per beat ─────────────────
+    bpm = features["bpm"]
+    frame_rate = 1.0 / (mfcc_times[1] - mfcc_times[0]) if len(mfcc_times) > 1 else 172.0
+    beat_period = 60.0 / bpm
+    hop = max(1, int(beat_period * frame_rate))
+
+    t_ds = mfcc_times[::hop]
+    m_ds = mfcc_coeffs[::hop]
+
+    # ── Compute novelty curve (cosine distance between windows) ──
+    win = 4  # 4-beat window for smoothing
+    novelty = []
+    for i in range(win, len(m_ds) - win):
+        before = m_ds[i - win:i].mean(axis=0)
+        after = m_ds[i:i + win].mean(axis=0)
+        norm_b = np.linalg.norm(before)
+        norm_a = np.linalg.norm(after)
+        if norm_b < 1e-10 or norm_a < 1e-10:
+            dist = 0.0
+        else:
+            dist = 1.0 - np.dot(before, after) / (norm_b * norm_a)
+        novelty.append((float(t_ds[i]), float(dist)))
+
+    if not novelty:
+        return _build_structure_from_quiet(features)
+
+    # ── Find peaks (section boundaries) ──────────────────────
+    nov_vals = np.array([n[1] for n in novelty])
+    threshold = float(np.percentile(nov_vals, 85))
+    min_section_len = 5.0  # minimum 5s between boundaries
+
+    boundaries = [0.0]
+    for i, (t, n) in enumerate(novelty):
+        if n > threshold:
+            is_peak = True
+            if i > 0 and novelty[i - 1][1] > n:
+                is_peak = False
+            if i < len(novelty) - 1 and novelty[i + 1][1] > n:
+                is_peak = False
+            if is_peak and (t - boundaries[-1]) >= min_section_len:
+                boundaries.append(t)
+    boundaries.append(duration)
+
+    # ── Label sections by position + energy ──────────────────
+    # Compute average mel energy per section for intensity classification
+    structure = []
+    section_labels = _label_sections(boundaries, duration, mel_times, mel_energies)
+
+    for i in range(len(boundaries) - 1):
+        start = boundaries[i]
+        end = boundaries[i + 1]
+        label, intensity = section_labels[i]
+        structure.append({
+            "section": label,
+            "start": round(start, 2),
+            "end": round(end, 2),
+            "intensity": intensity,
+        })
+
+    return structure
+
+
+def _label_sections(boundaries: list[float], duration: float,
+                    mel_times: np.ndarray, mel_energies: np.ndarray) -> list[tuple[str, str]]:
+    """
+    Label each section based on position in song and energy level.
+    Returns list of (section_name, intensity) tuples.
+    """
+    n = len(boundaries) - 1
+    if n == 0:
+        return [("verse", "medium")]
+
+    # Compute average energy per section
+    energies = []
+    for i in range(n):
+        start = boundaries[i]
+        end = boundaries[i + 1]
+        mask = (mel_times >= start) & (mel_times < end)
+        if np.any(mask):
+            avg = float(np.mean(mel_energies[mask]))
+        else:
+            avg = 0.0
+        energies.append(avg)
+
+    if not energies or max(energies) == 0:
+        return [("verse", "medium")] * n
+
+    # Normalize energies to 0-1
+    e_arr = np.array(energies)
+    e_norm = (e_arr - e_arr.min()) / (e_arr.max() - e_arr.min() + 1e-10)
+
+    labels = []
+    for i in range(n):
+        pos = boundaries[i] / duration  # 0.0 to 1.0
+        energy = e_norm[i]
+
+        # Intensity from energy
+        if energy < 0.3:
+            intensity = "low"
+        elif energy < 0.7:
+            intensity = "medium"
+        else:
+            intensity = "high"
+
+        # Section label from position + energy
+        if pos < 0.08:
+            section = "intro"
+        elif pos > 0.90:
+            section = "outro"
+        elif energy >= 0.7:
+            # High energy: chorus or drop
+            if boundaries[i + 1] - boundaries[i] < 15:
+                section = "drop"
+            else:
+                section = "chorus"
+        elif energy < 0.3:
+            section = "bridge"
+        else:
+            # Medium energy: verse or pre-chorus
+            # Pre-chorus if next section is high energy
+            if i + 1 < n and e_norm[i + 1] >= 0.7:
+                section = "pre-chorus"
+            else:
+                section = "verse"
+
+        labels.append((section, intensity))
+
+    return labels
+
+
+def _build_structure_from_quiet(features: dict) -> list[dict]:
+    """Fallback: original quiet-based segmentation."""
+    duration = features["duration"]
+    quiet = features["quiet"]
 
     if not quiet:
         return [{"section": "verse", "start": 0.0, "end": round(duration, 2), "intensity": "medium"}]
 
-    # build contiguous segments
     segments = []
-    state    = "NOISY"
-    last_t   = 0.0
-
+    state = "NOISY"
+    last_t = 0.0
     for r in quiet:
         if r["type"] != state:
             segments.append({"state": state, "start": last_t, "end": r["t"]})
             last_t = r["t"]
-            state  = r["type"]
+            state = r["type"]
     segments.append({"state": state, "start": last_t, "end": duration})
 
-    # label segments
-    n = len(segments)
     structure = []
-    for i, seg in enumerate(segments):
-        dur_s = seg["end"] - seg["start"]
-        pos   = seg["start"] / duration  # relative position in song
-
+    for seg in segments:
+        pos = seg["start"] / duration
         if seg["state"] == "QUIET":
-            if pos < 0.15:
-                section = "intro"
-            elif pos > 0.85:
-                section = "outro"
-            else:
-                section = "bridge"
+            section = "intro" if pos < 0.15 else ("outro" if pos > 0.85 else "bridge")
             intensity = "low"
         else:
-            # loud section - call it drop if flux is high and mid-song
-            if 0.3 < pos < 0.8 and dur_s < 20:
-                section = "drop"
-                intensity = "high"
-            elif pos < 0.3:
-                section = "verse"
-                intensity = "medium"
-            else:
-                section = "chorus"
-                intensity = "high"
-
+            section = "verse" if pos < 0.3 else "chorus"
+            intensity = "medium" if pos < 0.3 else "high"
         structure.append({
-            "section":   section,
-            "start":     round(seg["start"], 2),
-            "end":       round(seg["end"], 2),
+            "section": section,
+            "start": round(seg["start"], 2),
+            "end": round(seg["end"], 2),
             "intensity": intensity,
         })
 
