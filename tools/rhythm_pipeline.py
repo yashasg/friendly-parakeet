@@ -646,6 +646,11 @@ def main():
         print(f"Error: file not found: {filepath}", file=sys.stderr)
         sys.exit(1)
 
+    if not (0.01 <= args.onset_threshold <= 1.0):
+        print(f"Error: onset-threshold must be between 0.01 and 1.0, got {args.onset_threshold}",
+              file=sys.stderr)
+        sys.exit(1)
+
     print("=" * 60)
     print("  RHYTHM PIPELINE — Audio Analysis")
     print("  mel spectrogram -> onset detection -> flux -> intensity")

@@ -62,6 +62,8 @@ void shape_window_system(entt::registry& reg, float dt) {
                     pshape.target_shape = Shape::Hexagon;
                     pshape.phase_raw = static_cast<uint8_t>(WindowPhase::Idle);
                     pshape.window_timer = 0.0f;
+                    pshape.window_scale = 1.0f;
+                    pshape.graded = false;
                     apply_shape_color(reg, entity, Shape::Hexagon);
                 }
                 break;
