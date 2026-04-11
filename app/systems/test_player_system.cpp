@@ -152,6 +152,13 @@ void test_player_system(entt::registry& reg, float dt) {
     if (gs.phase != GamePhase::Playing) return;
     if (!song) return;
 
+    // Reset stale state when a new play session starts (after enter_playing
+    // calls reg.clear(), all old entity IDs are invalid).
+    if (song->song_time < 0.01f && state->action_count > 0) {
+        state->action_count = 0;
+        state->planned_count = 0;
+    }
+
     const auto& cfg = state->config();
 
     // ── Find player ──────────────────────────────────────────
