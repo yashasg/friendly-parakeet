@@ -18,6 +18,8 @@ jobs:
       VCPKG_BINARY_SOURCES: "clear;default,readwrite"
     steps:
       - uses: actions/checkout@v6
+        with:
+          lfs: true
 
       - name: Export GitHub Actions cache variables
         uses: actions/github-script@v8
