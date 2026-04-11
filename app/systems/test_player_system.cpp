@@ -275,15 +275,19 @@ void test_player_system(entt::registry& reg, float dt) {
 
     // ── EXECUTE ready actions ────────────────────────────────
     // Only ONE key injection per frame.
-    // Don't change lane or shape while any obstacle is passing through
-    // the collision zone — a human would visually wait for it to pass.
+    // Don't execute lane/vertical changes while a CLOSER unscored obstacle
+    // is still approaching or passing through. A human player would see
+    // "there's something coming first" and wait for it to resolve.
+    // Shape presses are fine — they're how you clear shape gates.
     constexpr float COLLISION_MARGIN = 40.0f;
     bool obstacle_in_zone = false;
     {
         auto zone_view = reg.view<ObstacleTag, Position>(entt::exclude<ScoredTag>);
         for (auto [ze, zpos] : zone_view.each()) {
-            float dist = std::abs(p_pos.y - zpos.y + p_vstate.y_offset);
-            if (dist <= COLLISION_MARGIN) {
+            float dist = p_pos.y - zpos.y + p_vstate.y_offset;
+            // Obstacle is "in the way" if it's within approach distance
+            // (above player but close) or inside collision zone
+            if (dist >= -COLLISION_MARGIN && dist <= COLLISION_MARGIN * 3.0f) {
                 obstacle_in_zone = true;
                 break;
             }
@@ -292,8 +296,23 @@ void test_player_system(entt::registry& reg, float dt) {
 
     bool key_injected = false;
 
-    for (int i = 0; i < state->action_count && !key_injected; ++i) {
-        auto& action = state->actions[i];
+    // Process actions in arrival order (closest obstacle first)
+    // so we don't skip a nearer obstacle to act on a farther one.
+    int exec_order[TestPlayerState::MAX_ACTIONS];
+    for (int i = 0; i < state->action_count; ++i) exec_order[i] = i;
+    for (int i = 0; i < state->action_count - 1; ++i) {
+        for (int j = i + 1; j < state->action_count; ++j) {
+            if (state->actions[exec_order[j]].arrival_time <
+                state->actions[exec_order[i]].arrival_time) {
+                int tmp = exec_order[i];
+                exec_order[i] = exec_order[j];
+                exec_order[j] = tmp;
+            }
+        }
+    }
+
+    for (int ei = 0; ei < state->action_count && !key_injected; ++ei) {
+        auto& action = state->actions[exec_order[ei]];
         if (action.timer > 0.0f) continue;
 
         // Priority 1: Shape change
