@@ -1,0 +1,22 @@
+══════ Test Session started 2026-04-10 22:44 ══════
+
+[F:0025 T:00.000] [PLAYER] AUTO_START phase=Title
+[F:0026 T:00.000] [PLAYER] AUTO_START phase=Title
+[F:0127 T:01.710] [GAME  ] BEAT 0
+[F:0151 T:02.110] [GAME  ] BEAT 1
+[F:0175 T:02.520] [GAME  ] BEAT 2
+[F:0199 T:02.930] [GAME  ] BEAT 3
+[F:0211 T:03.110] [PLAYER] PERCEIVE obstacle=1 kind=ShapeGate shape=Square lane=-1 dist=396px
+[F:0211 T:03.110] [PLAYER] PLAN action=Square react=0.892s arrival=3.745s
+[F:0224 T:03.350] [GAME  ] BEAT 4
+[F:0243 T:03.670] [GAME  ] COLLISION obstacle=1 kind=ShapeGate result=MISS
+[F:0275 T:03.670] [PLAYER] AUTO_START phase=GameOver
+[F:0276 T:03.670] [PLAYER] AUTO_START phase=GameOver
+[F:0378 T:01.710] [GAME  ] BEAT 0
+[F:0402 T:02.120] [GAME  ] BEAT 1
+[F:0426 T:02.530] [GAME  ] BEAT 2
+[F:0450 T:02.930] [GAME  ] BEAT 3
+[F:0462 T:03.120] [PLAYER] PERCEIVE obstacle=1048577 kind=ShapeGate shape=Square lane=-1 dist=396px
+[F:0462 T:03.120] [PLAYER] PLAN action=Square react=1.056s arrival=3.745s
+[F:0474 T:03.340] [GAME  ] BEAT 4
+[F:0495 T:03.700] [GAME  ] COLLISION obstacle=1048577 kind=ShapeGate result=MISS

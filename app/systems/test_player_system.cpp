@@ -202,13 +202,23 @@ void test_player_system(entt::registry& reg, float dt) {
         player_view.get<Position, PlayerShape, Lane, VerticalState>(player_entity);
 
     // ── PERCEIVE: scan obstacles in vision range ─────────────
+    // Compute the "effective lane" — where the player will be after
+    // all pending lane changes in the action queue execute.
+    int8_t effective_lane = p_lane.current;
+    if (p_lane.target >= 0) effective_lane = p_lane.target;
+    for (int i = 0; i < state->action_count; ++i) {
+        if (state->actions[i].target_lane >= 0 && !state->actions[i].lane_done()) {
+            effective_lane = state->actions[i].target_lane;
+        }
+    }
+
     auto obs_view = reg.view<ObstacleTag, Position, Obstacle>(entt::exclude<ScoredTag>);
     for (auto [entity, obs_pos, obs] : obs_view.each()) {
         float dist = p_pos.y - obs_pos.y;
         if (dist <= 0.0f || dist > cfg.vision_range) continue;
         if (state->is_planned(entity)) continue;
 
-        TestPlayerAction action = determine_action(reg, entity, p_lane.current, *song);
+        TestPlayerAction action = determine_action(reg, entity, effective_lane, *song);
 
         // Roll reaction timer
         std::uniform_real_distribution<float> reaction_dist(cfg.reaction_min, cfg.reaction_max);
