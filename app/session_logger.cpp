@@ -118,9 +118,11 @@ void session_log_on_obstacle_spawn(entt::registry& reg, entt::entity entity) {
     auto* rlane = reg.try_get<RequiredLane>(entity);
     if (rlane) lane = rlane->lane;
 
+    float arrival = beat ? beat->arrival_time : 0.0f;
+
     session_log_write(*log, t, "GAME",
-        "OBSTACLE_SPAWN beat=%d kind=%s shape=%s lane=%d",
-        beat_idx, obstacle_kind_name(obs->kind),
+        "OBSTACLE_SPAWN beat=%d arrival=%.3f kind=%s shape=%s lane=%d",
+        beat_idx, arrival, obstacle_kind_name(obs->kind),
         req ? shape_name(req->shape) : "-", lane);
 
     // Emplace RingZoneTracker only on obstacles that have a ring visual
@@ -154,22 +156,24 @@ void session_log_on_scored(entt::registry& reg, entt::entity entity) {
     auto* grade = reg.try_get<TimingGrade>(entity);
     auto* beat = reg.try_get<BeatInfo>(entity);
     int beat_num = beat ? beat->beat_index : -1;
+    float expected_t = beat ? beat->arrival_time : 0.0f;
+    float drift = beat ? (t - beat->arrival_time) : 0.0f;
 
     if (is_miss) {
         session_log_write(*log, t, "GAME",
-            "COLLISION obstacle=%u beat=%d kind=%s result=MISS",
+            "COLLISION obstacle=%u beat=%d expected=%.3f drift=%+.3fs kind=%s result=MISS",
             static_cast<unsigned>(entt::to_integral(entity)),
-            beat_num, obstacle_kind_name(obs->kind));
+            beat_num, expected_t, drift, obstacle_kind_name(obs->kind));
     } else if (grade) {
         session_log_write(*log, t, "GAME",
-            "COLLISION obstacle=%u beat=%d kind=%s result=CLEAR timing=%s(%.2f)",
+            "COLLISION obstacle=%u beat=%d expected=%.3f drift=%+.3fs kind=%s result=CLEAR timing=%s(%.2f)",
             static_cast<unsigned>(entt::to_integral(entity)),
-            beat_num, obstacle_kind_name(obs->kind),
+            beat_num, expected_t, drift, obstacle_kind_name(obs->kind),
             timing_tier_name(grade->tier), grade->precision);
     } else {
         session_log_write(*log, t, "GAME",
-            "COLLISION obstacle=%u beat=%d kind=%s result=CLEAR",
+            "COLLISION obstacle=%u beat=%d expected=%.3f drift=%+.3fs kind=%s result=CLEAR",
             static_cast<unsigned>(entt::to_integral(entity)),
-            beat_num, obstacle_kind_name(obs->kind));
+            beat_num, expected_t, drift, obstacle_kind_name(obs->kind));
     }
 }

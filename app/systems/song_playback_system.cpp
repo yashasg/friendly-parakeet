@@ -65,8 +65,9 @@ void song_playback_system(entt::registry& reg, float dt) {
 
             auto* log = reg.ctx().find<SessionLog>();
             if (log && log->file) {
+                float expected = song->offset + beat * song->beat_period;
                 session_log_write(*log, song->song_time, "GAME",
-                    "BEAT %d", beat);
+                    "BEAT %d expected=%.3f", beat, expected);
             }
         }
     }
