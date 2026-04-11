@@ -40,9 +40,12 @@ void shape_window_system(entt::registry& reg, float dt) {
             case WindowPhase::Active:
                 pshape.window_timer += dt;
                 // window_scale > 1.0 extends the active phase (Perfect holds shape longer)
-                // window_scale < 1.0 was already applied by advancing timer in collision
+                // window_scale < 1.0 was already applied by advancing timer in collision_system;
+                // only apply the scale here for extension (> 1.0) to avoid double-shortening.
                 {
-                    float effective_duration = song->window_duration * pshape.window_scale;
+                    float effective_duration = (pshape.window_scale > 1.0f)
+                        ? song->window_duration * pshape.window_scale
+                        : song->window_duration;
                     if (pshape.window_timer >= effective_duration) {
                         pshape.phase_raw = static_cast<uint8_t>(WindowPhase::MorphOut);
                         pshape.window_timer = 0.0f;

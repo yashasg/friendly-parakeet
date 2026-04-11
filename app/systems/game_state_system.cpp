@@ -49,12 +49,10 @@ static void enter_playing(entt::registry& reg) {
 
     // Reset rhythm singletons for new play session
     auto* song = reg.ctx().find<SongState>();
-    auto* beatmap = reg.ctx().find<BeatMap>();
-    bool has_chart = beatmap && !beatmap->beats.empty();
     if (song) {
         song->song_time      = 0.0f;
         song->current_beat   = -1;
-        song->playing        = has_chart;
+        song->playing        = true;  // clock always runs; beat_scheduler guards on map.beats
         song->finished       = false;
         song->next_spawn_idx = 0;
         song->restart_music  = true;  // signal song_playback_system to restart audio

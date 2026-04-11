@@ -86,6 +86,8 @@ def pick_shape(passes, beat_idx):
 
 def flux_threshold(stats, pct):
     """Interpolate flux threshold from percentile."""
+    if not stats or "min" not in stats:
+        return 0.0  # no flux data: keep all events
     pts = [(0,stats["min"]),(25,stats["p25"]),(50,stats["p50"]),
            (75,stats["p75"]),(90,stats["p90"]),(100,stats["max"])]
     for i in range(len(pts)-1):
@@ -225,7 +227,7 @@ def generate_level(analysis, difficulty):
 
     thresh = flux_threshold(analysis["flux_stats"], cfg["flux_pct"])
     all_on_beat = snap_events_to_beats(events, beats)
-    event_map = {ev["beat_idx"]: ev for ev in all_on_beat}
+    event_map = {ev["beat_idx"]: ev for ev in all_on_beat if ev.get("flux", 0.0) >= thresh}
 
     all_obs = []
     lane = 1
@@ -253,10 +255,12 @@ def generate_level(analysis, difficulty):
 #
 # Each function takes an obstacle list and returns a cleaned one.
 # Rules:
-#   - Only REMOVE obstacles (never insert)
+#   - Only REMOVE or MUTATE obstacles (never insert)
 #   - Each function handles exactly ONE rule
 #   - Functions are independent and can run in any order
 #   - Running a cleaner twice is idempotent
+# Note: clean_triple_shapes mutates shape fields to preserve density
+#       rather than removing obstacles.
 # ═══════════════════════════════════════════════════════════════
 
 def clean_lane_change_gap(obstacles):

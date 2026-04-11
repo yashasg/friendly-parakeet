@@ -411,7 +411,8 @@ void test_player_system(entt::registry& reg, float dt) {
         }
 
         if (action.needs_lane() && p_lane.target < 0 && state->swipe_cooldown_timer <= 0.0f
-            && !zone_blocked && !blocked_by_shape && !move_would_fail_closer) {            if (action.target_lane < p_lane.current) {
+            && !zone_blocked && !blocked_by_shape && !move_would_fail_closer) {
+            if (action.target_lane < p_lane.current) {
                 input.key_a = true;
                 if (log) {
                     session_log_write(*log, song_time, "PLAYER",

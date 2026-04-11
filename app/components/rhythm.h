@@ -131,9 +131,10 @@ inline void song_state_compute_derived(SongState& s) {
 }
 
 // ── Helper: window scale factor from tier ────────────
-// Perfect: hold shape until obstacle passes (no early morph-out)
-// Good:    slight shortening
-// Ok/Bad:  full window duration
+// Perfect: extend the active phase (hold shape longer)
+// Good:    normal duration
+// Ok:      shorten to 0.75× (timer advanced in collision_system)
+// Bad:     shorten to 0.50× (timer advanced in collision_system)
 inline float window_scale_for_tier(TimingTier tier) {
     switch (tier) {
         case TimingTier::Perfect: return 1.50f;  // extend — hold shape longer

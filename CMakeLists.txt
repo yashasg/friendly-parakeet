@@ -169,8 +169,8 @@ if(EMSCRIPTEN)
         -sUSE_GLFW=3
         -sALLOW_MEMORY_GROWTH=1
         --shell-file ${_shell_html}
-        --preload-file ${CMAKE_SOURCE_DIR}/assets@/assets
-        --preload-file ${CMAKE_SOURCE_DIR}/content@/content
+        SHELL:--preload-file ${CMAKE_SOURCE_DIR}/assets@/assets
+        SHELL:--preload-file ${CMAKE_SOURCE_DIR}/content@/content
     )
     set_target_properties(shapeshifter PROPERTIES SUFFIX ".html")
 endif()

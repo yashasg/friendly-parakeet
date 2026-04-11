@@ -35,6 +35,7 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
     }
 
     // ── Metadata ─────────────────────────────────────────────
+    out.beats.clear();  // reset before every parse to prevent stale entries on reuse
     out.song_id    = j.value("song_id", "");
     out.title      = j.value("title", "");
     out.bpm        = j.value("bpm", 120.0f);

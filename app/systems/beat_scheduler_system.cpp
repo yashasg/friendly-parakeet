@@ -29,8 +29,15 @@ void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
         // Compensate for late spawn: if song_time overshot spawn_time,
         // place the obstacle below SPAWN_Y by the overshoot distance
         // so it arrives at the player at exactly beat_time.
+        // Clamp the spawn position so a large overshoot cannot place the
+        // obstacle at or below the collision window, where it may never be
+        // scored before scrolling off-screen.
         float overshoot = song->song_time - spawn_time;
         float start_y = constants::SPAWN_Y + overshoot * song->scroll_speed;
+        float max_start_y = constants::PLAYER_Y - COLLISION_MARGIN;
+        if (start_y > max_start_y) {
+            start_y = max_start_y;
+        }
 
         auto obstacle = reg.create();
         reg.emplace<ObstacleTag>(obstacle);
