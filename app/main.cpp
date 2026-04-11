@@ -10,7 +10,9 @@
 #include "components/difficulty.h"
 #include "components/audio.h"
 #include "components/rhythm.h"
+#include "components/music.h"
 #include "systems/all_systems.h"
+#include "beat_map_loader.h"
 #include "text_renderer.h"
 
 #include <string>
@@ -81,6 +83,7 @@ int main(int /*argc*/, char* /*argv*/[]) {
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     InitWindow(constants::SCREEN_W, constants::SCREEN_H, window_title.c_str());
     SetTargetFPS(60);
+    InitAudioDevice();
 
     TraceLog(LOG_INFO, "SHAPESHIFTER v%s", SHAPESHIFTER_VERSION);
 
@@ -131,13 +134,90 @@ int main(int /*argc*/, char* /*argv*/[]) {
     reg.ctx().emplace<AudioQueue>();
 
     // Rhythm singletons (active even without a beat map loaded)
-    auto& song_state = reg.ctx().emplace<SongState>();
-    song_state.bpm = 120.0f;
-    song_state.playing = true;
-    song_state_compute_derived(song_state);
-    reg.ctx().emplace<BeatMap>();
     reg.ctx().emplace<HPState>();
     reg.ctx().emplace<SongResults>();
+
+    // ── Load beatmap from disk ────────────────────────────────
+    {
+        auto& beatmap = reg.ctx().emplace<BeatMap>();
+        std::vector<BeatMapError> load_errors;
+
+        std::string exe_beatmap = std::string(GetApplicationDirectory())
+                                + "content/beatmaps/1_stomper_beatmap.json";
+        const char* beatmap_paths[] = {
+            exe_beatmap.c_str(),
+            "content/beatmaps/1_stomper_beatmap.json",
+        };
+
+        bool loaded = false;
+        for (const char* path : beatmap_paths) {
+            load_errors.clear();
+            if (load_beat_map(path, beatmap, load_errors, "medium")) {
+                TraceLog(LOG_INFO, "Loaded beatmap: %s (%zu beats, difficulty=%s)",
+                         path, beatmap.beats.size(), beatmap.difficulty.c_str());
+                loaded = true;
+                break;
+            }
+        }
+
+        if (!loaded) {
+            TraceLog(LOG_WARNING, "No beatmap loaded — running in freeplay mode");
+            for (const auto& err : load_errors) {
+                TraceLog(LOG_WARNING, "  beatmap error: %s", err.message.c_str());
+            }
+        }
+
+        if (loaded) {
+            std::vector<BeatMapError> val_errors;
+            if (!validate_beat_map(beatmap, val_errors)) {
+                TraceLog(LOG_WARNING, "Beatmap validation warnings:");
+                for (const auto& err : val_errors) {
+                    TraceLog(LOG_WARNING, "  beat %d: %s", err.beat_index, err.message.c_str());
+                }
+            }
+        }
+
+        auto& song = reg.ctx().emplace<SongState>();
+        if (!beatmap.beats.empty()) {
+            init_song_state(song, beatmap);
+        } else {
+            song.bpm = 120.0f;
+            song_state_compute_derived(song);
+        }
+    }
+
+    // ── Load music stream ─────────────────────────────────────
+    {
+        auto& music = reg.ctx().emplace<MusicContext>();
+        auto* beatmap = reg.ctx().find<BeatMap>();
+
+        if (beatmap && !beatmap->song_path.empty()) {
+            std::string exe_audio = std::string(GetApplicationDirectory())
+                                  + beatmap->song_path;
+            const char* audio_paths[] = {
+                exe_audio.c_str(),
+                beatmap->song_path.c_str(),
+            };
+
+            for (const char* path : audio_paths) {
+                Music stream = LoadMusicStream(path);
+                if (stream.frameCount > 0) {
+                    music.stream  = stream;
+                    music.loaded  = true;
+                    music.started = false;
+                    SetMusicVolume(music.stream, music.volume);
+                    TraceLog(LOG_INFO, "Loaded music: %s (%u frames)",
+                             path, stream.frameCount);
+                    break;
+                }
+            }
+
+            if (!music.loaded) {
+                TraceLog(LOG_WARNING, "Could not load music: %s",
+                         beatmap->song_path.c_str());
+            }
+        }
+    }
 
     // ── Virtual-resolution render target ─────────────────────
     // The game logic and rendering all target 720×1280.  We draw into
@@ -221,6 +301,15 @@ int main(int /*argc*/, char* /*argv*/[]) {
 #endif
 
     // ── SHUTDOWN ─────────────────────────────────────────────
+    {
+        auto* music = reg.ctx().find<MusicContext>();
+        if (music && music->loaded) {
+            StopMusicStream(music->stream);
+            UnloadMusicStream(music->stream);
+            music->loaded = false;
+        }
+    }
+    CloseAudioDevice();
     UnloadRenderTexture(target);
     text_shutdown(reg.ctx().get<TextContext>());
     CloseWindow();

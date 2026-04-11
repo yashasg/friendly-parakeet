@@ -79,6 +79,7 @@ struct SongState {
     int    current_beat  = -1;
     bool   playing       = false;
     bool   finished      = false;
+    bool   restart_music = false;  // signal: enter_playing() → song_playback_system
 
     // Beat schedule cursor
     size_t next_spawn_idx = 0;

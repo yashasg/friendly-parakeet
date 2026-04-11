@@ -54,9 +54,10 @@ static void enter_playing(entt::registry& reg) {
     if (song) {
         song->song_time      = 0.0f;
         song->current_beat   = -1;
-        song->playing        = has_chart;  // only activate rhythm mode with a loaded chart
+        song->playing        = has_chart;
         song->finished       = false;
         song->next_spawn_idx = 0;
+        song->restart_music  = true;  // signal song_playback_system to restart audio
     }
     auto* hp = reg.ctx().find<HPState>();
     if (hp) { hp->current = hp->max_hp; }

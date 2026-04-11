@@ -23,7 +23,9 @@ static Shape parse_shape(const std::string& s) {
     return Shape::Circle;
 }
 
-bool parse_beat_map(const std::string& json_str, BeatMap& out, std::vector<BeatMapError>& errors) {
+bool parse_beat_map(const std::string& json_str, BeatMap& out,
+                    std::vector<BeatMapError>& errors,
+                    const std::string& difficulty) {
     json j;
     try {
         j = json::parse(json_str);
@@ -32,45 +34,84 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out, std::vector<BeatM
         return false;
     }
 
+    // ── Metadata ─────────────────────────────────────────────
     out.song_id    = j.value("song_id", "");
     out.title      = j.value("title", "");
     out.bpm        = j.value("bpm", 120.0f);
     out.offset     = j.value("offset", 0.0f);
     out.lead_beats = j.value("lead_beats", 4);
     out.duration   = j.value("duration_sec", 180.0f);
-    out.difficulty = j.value("difficulty", "medium");
-    out.song_path  = j.value("song_path", "");
+    out.difficulty = difficulty;
 
-    // Parse beats
-    if (j.contains("beats") && j["beats"].is_array()) {
-        for (const auto& b : j["beats"]) {
-            BeatEntry entry;
-            entry.beat_index = b.value("beat", 0);
+    // ── song_path: explicit field, or derive from song_id ────
+    if (j.contains("song_path") && j["song_path"].is_string()) {
+        out.song_path = j["song_path"].get<std::string>();
+    } else if (!out.song_id.empty()) {
+        out.song_path = "content/audio/" + out.song_id + ".wav";
+    }
 
-            std::string kind_str = b.value("kind", "shape_gate");
-            entry.kind = parse_kind(kind_str);
+    // ── Beats: nested difficulties (preferred) or flat array ─
+    const json* beats_array = nullptr;
 
-            if (b.contains("shape")) {
-                entry.shape = parse_shape(b["shape"].get<std::string>());
-            }
-
-            entry.lane = static_cast<int8_t>(b.value("lane", 1));
-
-            if (b.contains("blocked") && b["blocked"].is_array()) {
-                entry.blocked_mask = 0;
-                for (const auto& lane_idx : b["blocked"]) {
-                    int l = lane_idx.get<int>();
-                    if (l >= 0 && l < 3) {
-                        entry.blocked_mask |= static_cast<uint8_t>(1 << l);
-                    }
+    if (j.contains("difficulties") && j["difficulties"].is_object()) {
+        const auto& diffs = j["difficulties"];
+        if (diffs.contains(difficulty) && diffs[difficulty].contains("beats")
+            && diffs[difficulty]["beats"].is_array()) {
+            beats_array = &diffs[difficulty]["beats"];
+        } else {
+            // Requested difficulty not found — try fallback order
+            const char* fallbacks[] = {"medium", "easy", "hard"};
+            for (const char* fb : fallbacks) {
+                if (diffs.contains(fb) && diffs[fb].contains("beats")
+                    && diffs[fb]["beats"].is_array()) {
+                    beats_array = &diffs[fb]["beats"];
+                    out.difficulty = fb;
+                    errors.push_back({-1, std::string("Difficulty '") + difficulty
+                        + "' not found, falling back to '" + fb + "'"});
+                    break;
                 }
             }
-
-            out.beats.push_back(entry);
         }
     }
 
-    // Sort beats by beat_index
+    // Backward compat: flat top-level beats array
+    if (!beats_array && j.contains("beats") && j["beats"].is_array()) {
+        beats_array = &j["beats"];
+    }
+
+    if (!beats_array) {
+        errors.push_back({-1, "No beats found in beatmap"});
+        return false;
+    }
+
+    // ── Parse individual beat entries ────────────────────────
+    for (const auto& b : *beats_array) {
+        BeatEntry entry;
+        entry.beat_index = b.value("beat", 0);
+
+        std::string kind_str = b.value("kind", "shape_gate");
+        entry.kind = parse_kind(kind_str);
+
+        if (b.contains("shape")) {
+            entry.shape = parse_shape(b["shape"].get<std::string>());
+        }
+
+        entry.lane = static_cast<int8_t>(b.value("lane", 1));
+
+        if (b.contains("blocked") && b["blocked"].is_array()) {
+            entry.blocked_mask = 0;
+            for (const auto& lane_idx : b["blocked"]) {
+                int l = lane_idx.get<int>();
+                if (l >= 0 && l < 3) {
+                    entry.blocked_mask |= static_cast<uint8_t>(1 << l);
+                }
+            }
+        }
+
+        out.beats.push_back(entry);
+    }
+
+    // Sort beats by beat_index (chart may not be pre-sorted)
     std::sort(out.beats.begin(), out.beats.end(),
               [](const BeatEntry& a, const BeatEntry& b) {
                   return a.beat_index < b.beat_index;
@@ -79,7 +120,9 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out, std::vector<BeatM
     return true;
 }
 
-bool load_beat_map(const std::string& json_path, BeatMap& out, std::vector<BeatMapError>& errors) {
+bool load_beat_map(const std::string& json_path, BeatMap& out,
+                   std::vector<BeatMapError>& errors,
+                   const std::string& difficulty) {
     std::ifstream file(json_path);
     if (!file.is_open()) {
         errors.push_back({-1, "Could not open file: " + json_path});
@@ -87,7 +130,7 @@ bool load_beat_map(const std::string& json_path, BeatMap& out, std::vector<BeatM
     }
     std::string content((std::istreambuf_iterator<char>(file)),
                          std::istreambuf_iterator<char>());
-    return parse_beat_map(content, out, errors);
+    return parse_beat_map(content, out, errors, difficulty);
 }
 
 bool validate_beat_map(const BeatMap& map, std::vector<BeatMapError>& errors) {

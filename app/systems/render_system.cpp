@@ -358,11 +358,3 @@ void render_system(entt::registry& reg, float /*alpha*/) {
             TextAlign::Center);
     }
 }
-
-// Audio system stub — SFX playback requires sound loading
-void audio_system(entt::registry& reg) {
-    auto& audio = reg.ctx().get<AudioQueue>();
-    // In a full implementation, iterate audio.queue[0..count-1]
-    // and call PlaySound for each SFX
-    audio_clear(audio);
-}
