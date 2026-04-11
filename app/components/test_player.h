@@ -12,7 +12,7 @@ struct SkillConfig {
     float vision_range;   // px from PLAYER_Y upward
     float reaction_min;   // seconds
     float reaction_max;   // seconds
-    bool  aim_perfect;    // true = delay to hit Perfect window
+    bool  aim_perfect;    // true = delay shape presses to hit Perfect window
 };
 
 inline constexpr SkillConfig SKILL_TABLE[] = {

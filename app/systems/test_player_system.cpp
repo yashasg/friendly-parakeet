@@ -224,15 +224,20 @@ void test_player_system(entt::registry& reg, float dt) {
         std::uniform_real_distribution<float> reaction_dist(cfg.reaction_min, cfg.reaction_max);
         float reaction = reaction_dist(state->rng);
 
-        // Pro player: aim for Perfect timing on shape changes
-        if (cfg.aim_perfect && action.target_shape != Shape::Hexagon) {
+        // Pro player aims for Perfect timing on SHAPE PRESSES only.
+        // Lane dodges and vertical actions react ASAP — no delay.
+        bool is_shape_action = (action.target_shape != Shape::Hexagon);
+        bool is_pure_shape = is_shape_action && action.target_lane < 0
+                             && action.target_vertical == VMode::Grounded;
+
+        if (cfg.aim_perfect && is_pure_shape) {
             float ideal_press = action.arrival_time - song->morph_duration - song->half_window;
             float time_until_ideal = ideal_press - song->song_time;
             if (time_until_ideal > cfg.reaction_min) {
                 action.timer = time_until_ideal;
                 if (log) {
                     session_log_write(*log, song_time, "PLAYER",
-                        "WAIT delaying %.3fs (aiming for Perfect)", time_until_ideal);
+                        "WAIT delaying %.3fs (aiming for Perfect shape press)", time_until_ideal);
                 }
             } else {
                 action.timer = reaction;
@@ -272,6 +277,21 @@ void test_player_system(entt::registry& reg, float dt) {
 
     // ── EXECUTE ready actions ────────────────────────────────
     // Only ONE key injection per frame.
+    // Don't change lane or shape while any obstacle is passing through
+    // the collision zone — a human would visually wait for it to pass.
+    constexpr float COLLISION_MARGIN = 40.0f;
+    bool obstacle_in_zone = false;
+    {
+        auto zone_view = reg.view<ObstacleTag, Position>(entt::exclude<ScoredTag>);
+        for (auto [ze, zpos] : zone_view.each()) {
+            float dist = std::abs(p_pos.y - zpos.y + p_vstate.y_offset);
+            if (dist <= COLLISION_MARGIN) {
+                obstacle_in_zone = true;
+                break;
+            }
+        }
+    }
+
     bool key_injected = false;
 
     for (int i = 0; i < state->action_count && !key_injected; ++i) {
@@ -298,8 +318,11 @@ void test_player_system(entt::registry& reg, float dt) {
             continue;
         }
 
-        // Priority 2: Lane change (only if no transition in progress and cooldown elapsed)
-        if (action.needs_lane() && p_lane.target < 0 && state->swipe_cooldown_timer <= 0.0f) {
+        // Priority 2: Lane change
+        // Wait for any obstacle to fully pass through collision zone before moving.
+        // A human would see the obstacle passing and wait for it to clear.
+        if (action.needs_lane() && p_lane.target < 0 && state->swipe_cooldown_timer <= 0.0f
+            && !obstacle_in_zone) {
             if (action.target_lane < p_lane.current) {
                 input.key_a = true;
                 if (log) {
@@ -325,8 +348,8 @@ void test_player_system(entt::registry& reg, float dt) {
             continue;
         }
 
-        // Priority 3: Vertical action
-        if (action.needs_vertical() && p_vstate.mode == VMode::Grounded) {
+        // Priority 3: Vertical action (wait for collision zone to clear)
+        if (action.needs_vertical() && p_vstate.mode == VMode::Grounded && !obstacle_in_zone) {
             if (action.target_vertical == VMode::Jumping) {
                 input.key_w = true;
                 if (log) {
