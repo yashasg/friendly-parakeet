@@ -39,11 +39,16 @@ void shape_window_system(entt::registry& reg, float dt) {
 
             case WindowPhase::Active:
                 pshape.window_timer += dt;
-                if (pshape.window_timer >= song->window_duration) {
-                    pshape.phase_raw = static_cast<uint8_t>(WindowPhase::MorphOut);
-                    pshape.window_timer = 0.0f;
-                    pshape.previous = pshape.current;
-                    pshape.morph_t = 0.0f;
+                // window_scale > 1.0 extends the active phase (Perfect holds shape longer)
+                // window_scale < 1.0 was already applied by advancing timer in collision
+                {
+                    float effective_duration = song->window_duration * pshape.window_scale;
+                    if (pshape.window_timer >= effective_duration) {
+                        pshape.phase_raw = static_cast<uint8_t>(WindowPhase::MorphOut);
+                        pshape.window_timer = 0.0f;
+                        pshape.previous = pshape.current;
+                        pshape.morph_t = 0.0f;
+                    }
                 }
                 break;
 

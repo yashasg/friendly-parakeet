@@ -50,14 +50,19 @@ void collision_system(entt::registry& reg, float /*dt*/) {
                         }
                     }
 
-                    // Window scaling: shorten remaining active time for GOOD/PERFECT
+                    // Window scaling: adjust remaining active time based on timing
+                    // Perfect: extend window (hold shape until obstacle passes)
+                    // Ok/Bad: shorten window (snap back to Hexagon sooner)
                     if (!p_shape.graded) {
                         float scale = window_scale_for_tier(tier);
-                        if (scale < 1.0f) {
-                            float remaining = song->window_duration - p_shape.window_timer;
-                            if (remaining > 0.0f) {
+                        float remaining = song->window_duration - p_shape.window_timer;
+                        if (remaining > 0.0f) {
+                            if (scale < 1.0f) {
+                                // Shorten: advance timer to eat remaining time
                                 p_shape.window_timer += remaining * (1.0f - scale);
                             }
+                            // scale >= 1.0: do nothing (let full window play out,
+                            // or extend naturally — shape holds longer)
                         }
                         p_shape.window_scale = scale;
                         p_shape.graded = true;

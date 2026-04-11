@@ -70,13 +70,12 @@ constexpr float TIMING_GOOD_PCT    = 0.50f;
 constexpr float TIMING_OK_PCT      = 0.75f;
 
 // ── Window Scaling by Grade ───────────────────────
-// Base window is calibrated for OK. Better grades
-// scale down remaining active time so the player
-// recovers to Hexagon faster.
-constexpr float WINDOW_SCALE_BAD     = 1.00f;
-constexpr float WINDOW_SCALE_OK      = 1.00f;
-constexpr float WINDOW_SCALE_GOOD    = 0.75f;
-constexpr float WINDOW_SCALE_PERFECT = 0.50f;
+// Perfect holds shape longer (extends window).
+// Bad/Ok shorten window (snap back to Hexagon faster).
+constexpr float WINDOW_SCALE_BAD     = 0.50f;
+constexpr float WINDOW_SCALE_OK      = 0.75f;
+constexpr float WINDOW_SCALE_GOOD    = 1.00f;
+constexpr float WINDOW_SCALE_PERFECT = 1.50f;
 
 // ── HP System ─────────────────────────────────────
 constexpr int   MAX_HP                  = 5;

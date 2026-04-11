@@ -116,7 +116,13 @@ inline void song_state_compute_derived(SongState& s) {
     constexpr float BASE_MORPH_BEATS  = 0.2f;
     constexpr float MIN_MORPH         = 0.06f;
 
-    s.window_duration = BASE_WINDOW_BEATS * s.beat_period;
+    // Window duration scales with BPM: shorter for faster songs
+    // At 120 BPM: 1.6 × 0.5 = 0.80s (forgiving)
+    // At 146 BPM: 1.6 × 0.41 = 0.66s (moderate)
+    // At 180 BPM: 1.6 × 0.33 = 0.53s (tight)
+    // Additional BPM scaling: shrink faster for high BPM
+    float bpm_scale = (s.bpm > 130.0f) ? (130.0f / s.bpm) : 1.0f;
+    s.window_duration = BASE_WINDOW_BEATS * s.beat_period * bpm_scale;
     if (s.window_duration < MIN_WINDOW) s.window_duration = MIN_WINDOW;
     s.half_window     = s.window_duration / 2.0f;
 
@@ -125,12 +131,15 @@ inline void song_state_compute_derived(SongState& s) {
 }
 
 // ── Helper: window scale factor from tier ────────────
+// Perfect: hold shape until obstacle passes (no early morph-out)
+// Good:    slight shortening
+// Ok/Bad:  full window duration
 inline float window_scale_for_tier(TimingTier tier) {
     switch (tier) {
-        case TimingTier::Perfect: return 0.50f;
-        case TimingTier::Good:    return 0.75f;
-        case TimingTier::Ok:      return 1.00f;
-        case TimingTier::Bad:     return 1.00f;
+        case TimingTier::Perfect: return 1.50f;  // extend — hold shape longer
+        case TimingTier::Good:    return 1.00f;  // normal duration
+        case TimingTier::Ok:      return 0.75f;  // shorten — snap back sooner
+        case TimingTier::Bad:     return 0.50f;  // shorten aggressively
     }
     return 1.00f;
 }
