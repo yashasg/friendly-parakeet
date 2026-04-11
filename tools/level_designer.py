@@ -141,53 +141,196 @@ def pick_shape(passes: list[str], beat_idx: int) -> str:
 
 
 # ---------------------------------------------------------------------------
-# OBSTACLE KIND ASSIGNMENT
+# COMBO PATTERN SYSTEM
+#
+# Instead of assigning obstacles one-by-one (chaotic), group them into
+# musical phrases ("combos") where the player does ONE type of action:
+#
+#   SHAPE COMBO:  Stay in one lane, change shapes on every beat
+#   LANE COMBO:   Keep shape irrelevant, dodge lane_blocks on every beat
+#   BAR COMBO:    Jump/slide sequence
+#   REST:         Breathing room between combos
+#
+# This prevents impossible patterns like "be in lane 2 then leave lane 2"
+# on consecutive beats. Within a combo, the action type is consistent.
 # ---------------------------------------------------------------------------
 
-def pick_kind(event: dict, allowed_kinds: list[str],
-              prev_kinds: list[str], beat_idx: int,
-              section: dict) -> dict:
+def build_combos(selected_events: list[dict], cfg: dict,
+                 structure: list[dict], allowed_kinds: list[str]) -> list[dict]:
     """
-    Decide what kind of obstacle this beat should be.
-    Returns {"kind": ..., "shape": ..., "lane": ..., "blocked": ...}
+    Group selected beat events into combos and assign obstacle kinds.
+    Returns a flat list of obstacle dicts.
     """
-    shape = pick_shape(event["passes"], beat_idx)
-    lane = SHAPE_TO_LANE[shape]
+    shapes = ["circle", "square", "triangle"]
+    obstacles = []
 
-    # default: shape_gate (most common, core mechanic)
-    result = {
-        "kind": "shape_gate",
-        "shape": shape,
-        "lane": lane,
-    }
+    i = 0
+    current_lane = 1  # player starts center
+    combo_id = 0
 
-    # lane_block: triggered by hihat presence in the event
-    # target ~15-20% of obstacles for variety
-    if "lane_block" in allowed_kinds:
-        has_hihat = "hihat" in event["passes"]
-        no_kick = "kick" not in event["passes"]
-        recent_lane_blocks = sum(1 for k in prev_kinds[-4:] if k == "lane_block")
+    while i < len(selected_events):
+        ev = selected_events[i]
+        section = get_section_at(ev["beat_time"], structure)
 
-        if has_hihat and no_kick and recent_lane_blocks == 0:
-            free_lane = lane
-            blocked = [l for l in [0, 1, 2] if l != free_lane]
-            result = {
-                "kind": "lane_block",
-                "blocked": blocked,
-            }
+        # Decide combo type based on section intensity and allowed kinds
+        combo_type = _pick_combo_type(
+            ev, section, allowed_kinds, combo_id, current_lane)
 
-    # low_bar / high_bar: in chorus/drop sections for physicality
-    is_intense = section.get("section") in ("chorus", "drop")
-    if is_intense:
-        recent_bars = sum(1 for k in prev_kinds[-6:]
-                          if k in ("low_bar", "high_bar"))
-        if recent_bars == 0 and len(prev_kinds) >= 4:
-            if "low_bar" in allowed_kinds and beat_idx % 8 < 4:
-                result = {"kind": "low_bar"}
-            elif "high_bar" in allowed_kinds and beat_idx % 8 >= 4:
-                result = {"kind": "high_bar"}
+        if combo_type == "shape":
+            # ── SHAPE COMBO: stay in one lane, change shapes ──────
+            # Pick a lane (prefer current to avoid movement)
+            combo_lane = current_lane
+            # If the event's natural shape maps to a different lane,
+            # move there first (this becomes the combo's lane)
+            natural_shape = pick_shape(ev.get("passes", ["kick"]), ev["beat_idx"])
+            natural_lane = SHAPE_TO_LANE[natural_shape]
+            if abs(natural_lane - current_lane) <= 1:
+                combo_lane = natural_lane  # adjacent, safe to move
 
-    return result
+            # Collect consecutive beats for this combo (max 4, or until gap > 2)
+            combo_events = [ev]
+            j = i + 1
+            max_combo = 4 if section.get("intensity") == "high" else 3
+            while j < len(selected_events) and len(combo_events) < max_combo:
+                next_ev = selected_events[j]
+                gap = next_ev["beat_idx"] - combo_events[-1]["beat_idx"]
+                if gap > 2:
+                    break
+                combo_events.append(next_ev)
+                j += 1
+
+            # Assign shapes — rotate through shapes, never 3 in a row
+            last_shape = None
+            shape_idx = 0
+            for ce in combo_events:
+                shape = pick_shape(ce.get("passes", ["kick"]), ce["beat_idx"])
+                # If same as last, rotate to next
+                if shape == last_shape:
+                    shape_idx = (shape_idx + 1) % len(shapes)
+                    shape = shapes[shape_idx]
+                obstacles.append({
+                    "beat": ce["beat_idx"],
+                    "kind": "shape_gate",
+                    "shape": shape,
+                    "lane": combo_lane,
+                })
+                last_shape = shape
+                shape_idx = shapes.index(shape)
+
+            current_lane = combo_lane
+            i = j
+
+        elif combo_type == "lane":
+            # ── LANE COMBO: change lanes on consecutive beats ─────
+            combo_events = [ev]
+            j = i + 1
+            max_combo = 3
+            while j < len(selected_events) and len(combo_events) < max_combo:
+                next_ev = selected_events[j]
+                gap = next_ev["beat_idx"] - combo_events[-1]["beat_idx"]
+                if gap > 2:
+                    break
+                combo_events.append(next_ev)
+                j += 1
+
+            # Alternate between lanes (only adjacent moves)
+            lane_sequence = _make_lane_sequence(current_lane, len(combo_events))
+            for k, ce in enumerate(combo_events):
+                free_lane = lane_sequence[k]
+                blocked = [l for l in [0, 1, 2] if l != free_lane]
+                obstacles.append({
+                    "beat": ce["beat_idx"],
+                    "kind": "lane_block",
+                    "blocked": blocked,
+                })
+                current_lane = free_lane
+
+            i = j
+
+        elif combo_type == "bar":
+            # ── BAR COMBO: jump/slide ─────────────────────────────
+            obstacles.append({
+                "beat": ev["beat_idx"],
+                "kind": "low_bar" if ev["beat_idx"] % 2 == 0 else "high_bar",
+            })
+            i += 1
+
+        else:
+            # ── SINGLE: standalone obstacle ───────────────────────
+            shape = pick_shape(ev.get("passes", ["kick"]), ev["beat_idx"])
+            lane = SHAPE_TO_LANE[shape]
+            # Avoid 2-lane jumps
+            if abs(lane - current_lane) > 1:
+                lane = 1  # step through center
+                shape = "square"
+            obstacles.append({
+                "beat": ev["beat_idx"],
+                "kind": "shape_gate",
+                "shape": shape,
+                "lane": lane,
+            })
+            current_lane = lane
+            i += 1
+
+        combo_id += 1
+
+    return obstacles
+
+
+def _pick_combo_type(event: dict, section: dict, allowed_kinds: list[str],
+                     combo_id: int, current_lane: int) -> str:
+    """Decide what type of combo to start based on musical context."""
+    intensity = section.get("intensity", "medium")
+    sec_name = section.get("section", "verse")
+
+    # Intro/outro: always shape combos (simple)
+    if sec_name in ("intro", "outro"):
+        return "shape"
+
+    # Bridge: mix of lane combos and bars
+    if sec_name == "bridge":
+        if "lane_block" in allowed_kinds and combo_id % 3 == 1:
+            return "lane"
+        if ("low_bar" in allowed_kinds or "high_bar" in allowed_kinds) and combo_id % 3 == 2:
+            return "bar"
+        return "shape"
+
+    # Verse: mostly shape combos, occasional lane combo
+    if sec_name in ("verse", "pre-chorus"):
+        if "lane_block" in allowed_kinds and combo_id % 4 == 2:
+            return "lane"
+        return "shape"
+
+    # Chorus/drop: high variety — rotate through combo types
+    if sec_name in ("chorus", "drop"):
+        cycle = combo_id % 5
+        if cycle < 2:
+            return "shape"
+        elif cycle == 2 and "lane_block" in allowed_kinds:
+            return "lane"
+        elif cycle == 3:
+            return "shape"
+        elif cycle == 4 and ("low_bar" in allowed_kinds or "high_bar" in allowed_kinds):
+            return "bar"
+        return "shape"
+
+    return "shape"
+
+
+def _make_lane_sequence(start_lane: int, count: int) -> list[int]:
+    """
+    Generate a sequence of lanes for a lane combo.
+    Only adjacent moves (no 0↔2 jumps). Bounces off edges.
+    """
+    lanes = [start_lane]
+    direction = 1  # start moving right
+    for _ in range(count - 1):
+        next_lane = lanes[-1] + direction
+        if next_lane < 0 or next_lane > 2:
+            direction = -direction
+            next_lane = lanes[-1] + direction
+        lanes.append(next_lane)
+    return lanes
 
 
 # ---------------------------------------------------------------------------
@@ -350,20 +493,10 @@ def design_level(analysis: dict, difficulty: str) -> list[dict]:
             deduped.append(ev)
     selected = deduped
 
-    # 4. Assign obstacle kinds
-    obstacles = []
-    prev_kinds = []
-    for ev in selected:
-        section = get_section_at(ev["beat_time"], structure)
-        obs_info = pick_kind(ev, cfg["kinds"], prev_kinds, ev["beat_idx"], section)
-        obs = {
-            "beat": ev["beat_idx"],
-            **obs_info,
-        }
-        obstacles.append(obs)
-        prev_kinds.append(obs["kind"])
+    # 4. Assign obstacle kinds using combo system
+    obstacles = build_combos(selected, cfg, structure, cfg["kinds"])
 
-    # 5. Apply variety rules
+    # 5. Apply variety rules (anti-repetition pass)
     obstacles = apply_variety(obstacles)
 
     return obstacles
