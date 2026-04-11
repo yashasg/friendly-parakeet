@@ -2,6 +2,7 @@
 #include "../components/game_state.h"
 #include "../components/rhythm.h"
 #include "../components/music.h"
+#include "../session_logger.h"
 #include <raylib.h>
 
 void song_playback_system(entt::registry& reg, float dt) {
@@ -61,6 +62,12 @@ void song_playback_system(entt::registry& reg, float dt) {
         int beat = static_cast<int>((song->song_time - song->offset) / song->beat_period);
         if (beat > song->current_beat) {
             song->current_beat = beat;
+
+            auto* log = reg.ctx().find<SessionLog>();
+            if (log && log->file) {
+                session_log_write(*log, song->song_time, "GAME",
+                    "BEAT %d", beat);
+            }
         }
     }
 
