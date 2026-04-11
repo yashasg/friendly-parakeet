@@ -162,11 +162,11 @@ def pick_kind(event: dict, allowed_kinds: list[str],
     }
 
     # lane_block: triggered by hihat presence in the event
-    # limit to ~1 in 5 obstacles to keep shape_gate as the core
+    # target ~15-20% of obstacles for variety
     if "lane_block" in allowed_kinds:
         has_hihat = "hihat" in event["passes"]
         no_kick = "kick" not in event["passes"]
-        recent_lane_blocks = sum(1 for k in prev_kinds[-5:] if k == "lane_block")
+        recent_lane_blocks = sum(1 for k in prev_kinds[-4:] if k == "lane_block")
 
         if has_hihat and no_kick and recent_lane_blocks == 0:
             free_lane = lane
@@ -176,15 +176,15 @@ def pick_kind(event: dict, allowed_kinds: list[str],
                 "blocked": blocked,
             }
 
-    # low_bar / high_bar: sparingly in chorus/drop sections
+    # low_bar / high_bar: in chorus/drop sections for physicality
     is_intense = section.get("section") in ("chorus", "drop")
     if is_intense:
-        recent_bars = sum(1 for k in prev_kinds[-10:]
+        recent_bars = sum(1 for k in prev_kinds[-6:]
                           if k in ("low_bar", "high_bar"))
-        if recent_bars == 0 and len(prev_kinds) >= 6:
-            if "low_bar" in allowed_kinds and beat_idx % 16 < 8:
+        if recent_bars == 0 and len(prev_kinds) >= 4:
+            if "low_bar" in allowed_kinds and beat_idx % 8 < 4:
                 result = {"kind": "low_bar"}
-            elif "high_bar" in allowed_kinds and beat_idx % 16 >= 8:
+            elif "high_bar" in allowed_kinds and beat_idx % 8 >= 4:
                 result = {"kind": "high_bar"}
 
     return result
@@ -199,20 +199,34 @@ def apply_variety(obstacles: list[dict]) -> list[dict]:
     Post-process to prevent boring patterns:
     - No more than 3 identical shapes in a row
     - No more than 3 same-lane shape_gates in a row
+    - No 2-lane jumps (0↔2): force through center lane by inserting step
     """
     shapes = ["circle", "square", "triangle"]
 
+    # Pass 1: prevent 2-lane jumps (0↔2 → step through lane 1)
+    prev_lane = 1  # player starts center
+    for obs in obstacles:
+        if obs["kind"] != "shape_gate":
+            continue
+        lane = obs.get("lane", 1)
+        if abs(lane - prev_lane) == 2:
+            # Force to adjacent lane (step toward target through center)
+            mid_lane = 1  # center is always between 0 and 2
+            obs["lane"] = mid_lane
+            # Pick a shape that maps to the center lane
+            obs["shape"] = "square"
+        prev_lane = obs.get("lane", prev_lane)
+
+    # Pass 2: prevent 3+ same shape in a row
     for i in range(len(obstacles)):
         obs = obstacles[i]
         if obs["kind"] != "shape_gate":
             continue
 
-        # check for 3+ same shape in a row
         if i >= 2:
             prev_shapes = [obstacles[j].get("shape") for j in range(i-2, i)
                            if obstacles[j]["kind"] == "shape_gate"]
             if len(prev_shapes) == 2 and all(s == obs["shape"] for s in prev_shapes):
-                # pick a different shape
                 others = [s for s in shapes if s != obs["shape"]]
                 obs["shape"] = others[i % len(others)]
                 obs["lane"] = SHAPE_TO_LANE[obs["shape"]]
