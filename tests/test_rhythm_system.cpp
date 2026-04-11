@@ -256,7 +256,9 @@ TEST_CASE("beat_scheduler: spawns obstacle at spawn_time", "[rhythm][scheduler]"
     auto& song = reg.ctx().get<SongState>();
     auto& map = reg.ctx().get<BeatMap>();
     map.beats.push_back({4, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
-    song.playing = true; song.song_time = 0.0f;
+    song.playing = true;
+    // Advance past spawn_time (margin_offset ≈ 0.077s at 120 BPM)
+    song.song_time = 0.1f;
     beat_scheduler_system(reg, 0.016f);
     CHECK(reg.view<ObstacleTag>().size() == 1);
 }
@@ -303,7 +305,7 @@ TEST_CASE("beat_scheduler: scroll speed matches song state", "[rhythm][scheduler
     auto& song = reg.ctx().get<SongState>();
     auto& map = reg.ctx().get<BeatMap>();
     map.beats.push_back({4, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
-    song.playing = true; song.song_time = 0.0f;
+    song.playing = true; song.song_time = 0.1f;
     beat_scheduler_system(reg, 0.016f);
     auto obs_view = reg.view<ObstacleTag, Velocity>();
     REQUIRE(std::distance(obs_view.begin(), obs_view.end()) == 1);
@@ -318,7 +320,7 @@ TEST_CASE("beat_scheduler: spawns lane_block with blocked mask", "[rhythm][sched
     auto& map = reg.ctx().get<BeatMap>();
     BeatEntry entry; entry.beat_index = 4; entry.kind = ObstacleKind::LaneBlock; entry.blocked_mask = 0b101;
     map.beats.push_back(entry);
-    song.playing = true; song.song_time = 0.0f;
+    song.playing = true; song.song_time = 0.1f;
     beat_scheduler_system(reg, 0.016f);
     auto view = reg.view<ObstacleTag, BlockedLanes>();
     REQUIRE(std::distance(view.begin(), view.end()) == 1);
@@ -809,7 +811,7 @@ TEST_CASE("integration: obstacle arrives on-beat within 1 frame", "[rhythm][inte
     auto& song = reg.ctx().get<SongState>();
     auto& map = reg.ctx().get<BeatMap>();
     map.beats.push_back({4, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
-    song.playing = true; song.song_time = 0.0f;
+    song.playing = true; song.song_time = 0.1f;
     constexpr float dt = 1.0f / 60.0f;
     float elapsed = 0.0f;
     bool obstacle_at_player = false;

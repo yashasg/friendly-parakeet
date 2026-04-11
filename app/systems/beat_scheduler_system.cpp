@@ -18,7 +18,11 @@ void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
         const auto& entry = map->beats[song->next_spawn_idx];
 
         float beat_time  = song->offset + entry.beat_index * song->beat_period;
-        float spawn_time = beat_time - song->lead_time;
+        // Compensate for collision margin: collision resolves COLLISION_MARGIN px
+        // before the obstacle reaches PLAYER_Y, so spawn slightly later.
+        constexpr float COLLISION_MARGIN = 40.0f;
+        float margin_offset = COLLISION_MARGIN / song->scroll_speed;
+        float spawn_time = beat_time - song->lead_time + margin_offset;
 
         if (song->song_time < spawn_time) break;
 
