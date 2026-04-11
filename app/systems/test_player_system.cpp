@@ -224,13 +224,11 @@ void test_player_system(entt::registry& reg, float dt) {
         std::uniform_real_distribution<float> reaction_dist(cfg.reaction_min, cfg.reaction_max);
         float reaction = reaction_dist(state->rng);
 
-        // Pro player aims for Perfect timing on SHAPE PRESSES only.
-        // Lane dodges and vertical actions react ASAP — no delay.
-        bool is_shape_action = (action.target_shape != Shape::Hexagon);
-        bool is_pure_shape = is_shape_action && action.target_lane < 0
-                             && action.target_vertical == VMode::Grounded;
+        // Pro player aims for Perfect timing on SHAPE PRESSES.
+        // Lane dodges and vertical-only actions react ASAP — no delay.
+        bool has_shape = (action.target_shape != Shape::Hexagon);
 
-        if (cfg.aim_perfect && is_pure_shape) {
+        if (cfg.aim_perfect && has_shape) {
             float ideal_press = action.arrival_time - song->morph_duration - song->half_window;
             float time_until_ideal = ideal_press - song->song_time;
             if (time_until_ideal > cfg.reaction_min) {
