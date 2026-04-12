@@ -204,7 +204,7 @@ TEST_CASE("player_action: swipe left works in rhythm mode", "[player_rhythm]") {
     CHECK(reg.get<Lane>(player).target == 0);
 }
 
-TEST_CASE("player_action: jump works in rhythm mode", "[player_rhythm]") {
+TEST_CASE("player_action: jump disabled in rhythm mode", "[player_rhythm]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
 
@@ -213,5 +213,5 @@ TEST_CASE("player_action: jump works in rhythm mode", "[player_rhythm]") {
 
     player_action_system(reg, 0.016f);
 
-    CHECK(reg.get<VerticalState>(player).mode == VMode::Jumping);
+    CHECK(reg.get<VerticalState>(player).mode == VMode::Grounded);
 }

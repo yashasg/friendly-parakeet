@@ -150,16 +150,8 @@ if(EMSCRIPTEN)
     *{margin:0;padding:0;box-sizing:border-box}
     html,body{height:100%;overflow:hidden;touch-action:none}
     body{background:#0f0f19;display:flex;justify-content:center;align-items:center;font-family:monospace;color:#ccc}
-    #canvas{display:block}
+    #canvas{display:block;max-width:100vw;max-height:100vh;object-fit:contain}
     #status{position:absolute;bottom:16px;text-align:center;width:100%;font-size:14px}
-    /* Mobile: fill the entire screen */
-    @media (hover:none) and (pointer:coarse){
-      #canvas{width:100vw;height:100vh;object-fit:contain}
-    }
-    /* Desktop: scale to viewport height, fixed width from aspect ratio */
-    @media (hover:hover) and (pointer:fine){
-      #canvas{height:100vh;width:auto;aspect-ratio:9/16}
-    }
   </style>
 </head>
 <body>

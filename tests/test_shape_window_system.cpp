@@ -10,6 +10,7 @@ TEST_CASE("shape_window: Idle phase does nothing", "[shape_window]") {
     auto& sw = reg.get<ShapeWindow>(player);
     CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::Idle));
 
+    reg.ctx().get<SongState>().song_time += 0.1f;
     shape_window_system(reg, 0.1f);
 
     CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::Idle));
@@ -26,8 +27,10 @@ TEST_CASE("shape_window: MorphIn increments timer", "[shape_window]") {
     sw.phase_raw = static_cast<uint8_t>(WindowPhase::MorphIn);
     sw.target_shape = Shape::Circle;
     sw.window_timer = 0.0f;
+    sw.window_start = reg.ctx().get<SongState>().song_time;
     ps.morph_t = 0.0f;
 
+    reg.ctx().get<SongState>().song_time += 0.02f;
     shape_window_system(reg, 0.02f);
 
     CHECK(sw.window_timer > 0.0f);
@@ -45,9 +48,11 @@ TEST_CASE("shape_window: MorphIn completes and transitions to Active", "[shape_w
     sw.target_shape = Shape::Triangle;
     ps.previous = Shape::Hexagon;
     sw.window_timer = 0.0f;
+    sw.window_start = reg.ctx().get<SongState>().song_time;
     ps.morph_t = 0.0f;
 
     // Advance past morph duration
+    reg.ctx().get<SongState>().song_time += song.morph_duration + 0.01f;
     shape_window_system(reg, song.morph_duration + 0.01f);
 
     CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::Active));
@@ -66,9 +71,11 @@ TEST_CASE("shape_window: MorphIn morph_t proportional to timer", "[shape_window]
     sw.phase_raw = static_cast<uint8_t>(WindowPhase::MorphIn);
     sw.target_shape = Shape::Square;
     sw.window_timer = 0.0f;
+    sw.window_start = reg.ctx().get<SongState>().song_time;
     ps.morph_t = 0.0f;
 
     float half_morph = song.morph_duration / 2.0f;
+    reg.ctx().get<SongState>().song_time += half_morph;
     shape_window_system(reg, half_morph);
 
     CHECK_THAT(ps.morph_t, Catch::Matchers::WithinAbs(0.5f, 0.05f));
@@ -85,7 +92,9 @@ TEST_CASE("shape_window: Active increments timer", "[shape_window]") {
     sw.phase_raw = static_cast<uint8_t>(WindowPhase::Active);
     ps.current = Shape::Circle;
     sw.window_timer = 0.0f;
+    sw.window_start = reg.ctx().get<SongState>().song_time;
 
+    reg.ctx().get<SongState>().song_time += 0.1f;
     shape_window_system(reg, 0.1f);
 
     CHECK(sw.window_timer > 0.0f);
@@ -102,8 +111,10 @@ TEST_CASE("shape_window: Active transitions to MorphOut when window expires", "[
     sw.phase_raw = static_cast<uint8_t>(WindowPhase::Active);
     ps.current = Shape::Square;
     sw.window_timer = 0.0f;
+    sw.window_start = reg.ctx().get<SongState>().song_time;
 
     // Advance past window_duration
+    reg.ctx().get<SongState>().song_time += song.window_duration + 0.01f;
     shape_window_system(reg, song.window_duration + 0.01f);
 
     CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::MorphOut));
@@ -122,8 +133,10 @@ TEST_CASE("shape_window: MorphOut increments timer and morph_t", "[shape_window]
     sw.phase_raw = static_cast<uint8_t>(WindowPhase::MorphOut);
     ps.previous = Shape::Circle;
     sw.window_timer = 0.0f;
+    sw.window_start = reg.ctx().get<SongState>().song_time;
     ps.morph_t = 0.0f;
 
+    reg.ctx().get<SongState>().song_time += 0.02f;
     shape_window_system(reg, 0.02f);
 
     CHECK(sw.window_timer > 0.0f);
@@ -142,9 +155,11 @@ TEST_CASE("shape_window: MorphOut completes and returns to Idle/Hexagon", "[shap
     ps.current = Shape::Triangle;
     sw.target_shape = Shape::Triangle;
     sw.window_timer = 0.0f;
+    sw.window_start = reg.ctx().get<SongState>().song_time;
     ps.morph_t = 0.0f;
 
     // Advance past morph duration
+    reg.ctx().get<SongState>().song_time += song.morph_duration + 0.01f;
     shape_window_system(reg, song.morph_duration + 0.01f);
 
     CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::Idle));
@@ -169,18 +184,22 @@ TEST_CASE("shape_window: full cycle MorphIn -> Active -> MorphOut -> Idle", "[sh
     sw.target_shape = Shape::Circle;
     ps.previous = Shape::Hexagon;
     sw.window_timer = 0.0f;
+    sw.window_start = reg.ctx().get<SongState>().song_time;
     ps.morph_t = 0.0f;
 
     // Complete MorphIn
+    reg.ctx().get<SongState>().song_time += song.morph_duration + 0.01f;
     shape_window_system(reg, song.morph_duration + 0.01f);
     CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::Active));
     CHECK(ps.current == Shape::Circle);
 
     // Complete Active
+    reg.ctx().get<SongState>().song_time += song.window_duration + 0.01f;
     shape_window_system(reg, song.window_duration + 0.01f);
     CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::MorphOut));
 
     // Complete MorphOut
+    reg.ctx().get<SongState>().song_time += song.morph_duration + 0.01f;
     shape_window_system(reg, song.morph_duration + 0.01f);
     CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::Idle));
     CHECK(ps.current == Shape::Hexagon);
@@ -195,7 +214,9 @@ TEST_CASE("shape_window: no processing when not Playing", "[shape_window]") {
     auto& sw = reg.get<ShapeWindow>(player);
     sw.phase_raw = static_cast<uint8_t>(WindowPhase::MorphIn);
     sw.window_timer = 0.0f;
+    sw.window_start = reg.ctx().get<SongState>().song_time;
 
+    reg.ctx().get<SongState>().song_time += 0.1f;
     shape_window_system(reg, 0.1f);
 
     CHECK(sw.window_timer == 0.0f);
@@ -218,6 +239,7 @@ TEST_CASE("shape_window: no processing when SongState absent", "[shape_window]")
 TEST_CASE("shape_window: no crash without player entity", "[shape_window]") {
     auto reg = make_rhythm_registry();
     // No player created
+    reg.ctx().get<SongState>().song_time += 0.1f;
     shape_window_system(reg, 0.1f);
     SUCCEED("No crash with empty player view");
 }
@@ -232,8 +254,10 @@ TEST_CASE("shape_window: Active stays Active if time not yet expired", "[shape_w
     sw.phase_raw = static_cast<uint8_t>(WindowPhase::Active);
     ps.current = Shape::Square;
     sw.window_timer = 0.0f;
+    sw.window_start = reg.ctx().get<SongState>().song_time;
 
     float half_window = song.window_duration / 2.0f;
+    reg.ctx().get<SongState>().song_time += half_window;
     shape_window_system(reg, half_window);
 
     CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::Active));

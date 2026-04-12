@@ -72,16 +72,6 @@ void player_action_system(entt::registry& reg, float /*dt*/) {
             lane.lerp_t = 0.0f;
         }
 
-        // Jump / slide
-        if (vstate.mode == VMode::Grounded) {
-            if (gesture.gesture == SwipeGesture::SwipeUp) {
-                vstate.mode  = VMode::Jumping;
-                vstate.timer = constants::JUMP_DURATION;
-            }
-            if (gesture.gesture == SwipeGesture::SwipeDown) {
-                vstate.mode  = VMode::Sliding;
-                vstate.timer = constants::SLIDE_DURATION;
-            }
-        }
+        // Jump / slide disabled — game is shape + lane only
     }
 }

@@ -18,16 +18,20 @@ static entt::entity make_shape_gate_at_lane(entt::registry& reg, Shape shape, in
     auto obs = make_shape_gate(reg, shape, y);
     reg.get<Position>(obs).x = constants::LANE_X[lane];
     auto& song = reg.ctx().get<SongState>();
-    float arrival = song.song_time + (constants::PLAYER_Y - y) / song.scroll_speed;
-    reg.emplace<BeatInfo>(obs, 0, arrival, song.song_time);
+    // Compute spawn_time so that the song-time-derived scroll formula
+    // places the obstacle at the requested y right now.
+    float spawn_time = song.song_time - (y - constants::SPAWN_Y) / song.scroll_speed;
+    float arrival = spawn_time + (constants::PLAYER_Y - constants::SPAWN_Y) / song.scroll_speed;
+    reg.emplace<BeatInfo>(obs, 0, arrival, spawn_time);
     return obs;
 }
 
 static entt::entity make_lane_block_at(entt::registry& reg, uint8_t blocked_mask, float y) {
     auto obs = make_lane_block(reg, blocked_mask, y);
     auto& song = reg.ctx().get<SongState>();
-    float arrival = song.song_time + (constants::PLAYER_Y - y) / song.scroll_speed;
-    reg.emplace<BeatInfo>(obs, 0, arrival, song.song_time);
+    float spawn_time = song.song_time - (y - constants::SPAWN_Y) / song.scroll_speed;
+    float arrival = spawn_time + (constants::PLAYER_Y - constants::SPAWN_Y) / song.scroll_speed;
+    reg.emplace<BeatInfo>(obs, 0, arrival, spawn_time);
     return obs;
 }
 

@@ -78,6 +78,7 @@ static void update_screen_transform(entt::registry& reg) {
 struct LoopState {
     entt::registry* reg;
     float accumulator;
+    RenderTexture2D target;
 };
 static LoopState g_loop;
 
@@ -98,9 +99,23 @@ static void update_draw_frame() {
         g_loop.accumulator -= FIXED_DT;
     }
 
+    // Render to virtual-resolution texture, then blit letterboxed
     float alpha = g_loop.accumulator / FIXED_DT;
-    BeginDrawing();
+    BeginTextureMode(g_loop.target);
         render_system(reg, alpha);
+    EndTextureMode();
+
+    const auto& st = reg.ctx().get<ScreenTransform>();
+    float dst_w = constants::SCREEN_W * st.scale;
+    float dst_h = constants::SCREEN_H * st.scale;
+
+    BeginDrawing();
+        ClearBackground(BLACK);
+        Rectangle src = { 0, 0,
+            static_cast<float>(constants::SCREEN_W),
+            -static_cast<float>(constants::SCREEN_H) };
+        Rectangle dst = { st.offset_x, st.offset_y, dst_w, dst_h };
+        DrawTexturePro(g_loop.target.texture, src, dst, {0, 0}, 0.0f, WHITE);
     EndDrawing();
 
     audio_system(reg);
@@ -112,6 +127,7 @@ int main(int argc, char* argv[]) {
     // ── Parse CLI args ───────────────────────────────────────
     TestPlayerSkill test_skill = TestPlayerSkill::Pro;
     bool test_player_mode = false;
+    const char* difficulty = "medium";
     for (int i = 1; i < argc; ++i) {
         if (std::strcmp(argv[i], "--test-player") == 0 && i + 1 < argc) {
             test_player_mode = true;
@@ -121,6 +137,17 @@ int main(int argc, char* argv[]) {
             else if (std::strcmp(argv[i], "bad") == 0)   test_skill = TestPlayerSkill::Bad;
             else {
                 std::fprintf(stderr, "Unknown skill: %s (use pro|good|bad)\n", argv[i]);
+                return 1;
+            }
+        }
+        if (std::strcmp(argv[i], "--difficulty") == 0 && i + 1 < argc) {
+            ++i;
+            if (std::strcmp(argv[i], "easy") == 0 ||
+                std::strcmp(argv[i], "medium") == 0 ||
+                std::strcmp(argv[i], "hard") == 0) {
+                difficulty = argv[i];
+            } else {
+                std::fprintf(stderr, "Unknown difficulty: %s (use easy|medium|hard)\n", argv[i]);
                 return 1;
             }
         }
@@ -211,7 +238,7 @@ int main(int argc, char* argv[]) {
         bool loaded = false;
         for (const char* path : beatmap_paths) {
             load_errors.clear();
-            if (load_beat_map(path, beatmap, load_errors, "medium")) {
+            if (load_beat_map(path, beatmap, load_errors, difficulty)) {
                 TraceLog(LOG_INFO, "Loaded beatmap: %s (%zu beats, difficulty=%s)",
                          path, beatmap.beats.size(), beatmap.difficulty.c_str());
                 loaded = true;
@@ -321,7 +348,7 @@ int main(int argc, char* argv[]) {
 
     // ── MAIN LOOP ────────────────────────────────────────────
 #ifdef __EMSCRIPTEN__
-    g_loop = { &reg, 0.0f };
+    g_loop = { &reg, 0.0f, target };
     emscripten_set_main_loop(update_draw_frame, 0, 1);
 #else
     float accumulator = 0.0f;

@@ -55,7 +55,12 @@ void collision_system(entt::registry& reg, float /*dt*/) {
                         float remaining = song->window_duration - p_window.window_timer;
                         if (remaining > 0.0f) {
                             if (scale < 1.0f) {
-                                p_window.window_timer += remaining * (1.0f - scale);
+                                // Adjust window_start backward so the song-time-derived
+                                // elapsed time is naturally larger on subsequent ticks,
+                                // causing the Active phase to expire earlier.  Mutating
+                                // window_timer directly would be overwritten by
+                                // shape_window_system on the next frame.
+                                p_window.window_start -= remaining * (1.0f - scale);
                             }
                         }
                         p_window.window_scale = scale;
