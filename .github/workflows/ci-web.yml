@@ -38,15 +38,11 @@ jobs:
           version: 5.0.3
           actions-cache-folder: emsdk-cache
 
-      - name: Setup C++ toolchain
-        uses: aminya/setup-cpp@v1
-        with:
-          cmake: true
-          vcpkg: true
-
-      - name: Export VCPKG_ROOT
-        run: echo "VCPKG_ROOT=$HOME/vcpkg" >> "$GITHUB_ENV"
-        shell: bash
+      - name: Setup vcpkg
+        run: |
+          git clone --depth 1 https://github.com/microsoft/vcpkg.git "$HOME/vcpkg"
+          "$HOME/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
+          echo "VCPKG_ROOT=$HOME/vcpkg" >> "$GITHUB_ENV"
 
       - name: Cache build directory
         uses: actions/cache@v5

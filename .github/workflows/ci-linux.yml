@@ -22,6 +22,8 @@ jobs:
       pull-requests: write
     env:
       VCPKG_BINARY_SOURCES: "clear;default,readwrite"
+      CC: clang-20
+      CXX: clang++-20
     steps:
       - uses: actions/checkout@v6
         with:
@@ -34,28 +36,30 @@ jobs:
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
             core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
-      - name: Setup C++ toolchain
-        uses: aminya/setup-cpp@v1
-        with:
-          compiler: llvm-20
-          cmake: true
-          vcpkg: true
+      - name: Install Clang 20
+        run: |
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+          echo "deb http://apt.llvm.org/$(lsb_release -cs)/ llvm-toolchain-$(lsb_release -cs)-20 main" \
+            | sudo tee /etc/apt/sources.list.d/llvm-20.list
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends clang-20
 
-      - name: Export VCPKG_ROOT
-        run: echo "VCPKG_ROOT=$HOME/vcpkg" >> "$GITHUB_ENV"
-        shell: bash
+      - name: Setup vcpkg
+        run: |
+          git clone --depth 1 https://github.com/microsoft/vcpkg.git "$HOME/vcpkg"
+          "$HOME/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
+          echo "VCPKG_ROOT=$HOME/vcpkg" >> "$GITHUB_ENV"
 
       - name: Cache CMake build directory
         uses: actions/cache@v5
         with:
           path: build
-          key: cmake-linux-clang-${{ hashFiles('CMakeLists.txt', 'vcpkg.json') }}
+          key: cmake-linux-clang20-${{ hashFiles('CMakeLists.txt', 'vcpkg.json') }}
           restore-keys: |
-            cmake-linux-clang-
+            cmake-linux-clang20-
 
       - name: Install system dependencies
         run: |
-          sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
             libgl1-mesa-dev \
             libx11-dev \

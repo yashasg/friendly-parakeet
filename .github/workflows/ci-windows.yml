@@ -22,8 +22,6 @@ jobs:
       pull-requests: write
     env:
       VCPKG_BINARY_SOURCES: "clear;default,readwrite"
-      # Build vcpkg deps as static libs with dynamic CRT so the shipped
-      # .exe has no external DLL dependencies.
       VCPKG_DEFAULT_TRIPLET: x64-windows-static-md
       VCPKG_DEFAULT_HOST_TRIPLET: x64-windows-static-md
     steps:
@@ -38,25 +36,35 @@ jobs:
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
             core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
-      - name: Setup C++ toolchain
-        uses: aminya/setup-cpp@v1
+      - name: Install LLVM 20
+        uses: KyleMayes/install-llvm-action@v2
         with:
-          compiler: llvm-20
-          cmake: true
-          vcpkg: true
-          ninja: true
+          version: "20"
+          env: true
 
-      - name: Export VCPKG_ROOT
-        run: echo "VCPKG_ROOT=$HOME/vcpkg" >> "$GITHUB_ENV"
+      - name: Set Clang as compiler
         shell: bash
+        run: |
+          echo "CC=clang" >> "$GITHUB_ENV"
+          echo "CXX=clang++" >> "$GITHUB_ENV"
+
+      - name: Setup vcpkg
+        shell: bash
+        run: |
+          git clone --depth 1 https://github.com/microsoft/vcpkg.git "$HOME/vcpkg"
+          "$HOME/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
+          echo "VCPKG_ROOT=$HOME/vcpkg" >> "$GITHUB_ENV"
+
+      - name: Install Ninja
+        run: choco install ninja -y --no-progress
 
       - name: Cache CMake build directory
         uses: actions/cache@v5
         with:
           path: build
-          key: cmake-windows-clang-static-md-${{ hashFiles('CMakeLists.txt', 'vcpkg.json') }}
+          key: cmake-windows-clang20-static-md-${{ hashFiles('CMakeLists.txt', 'vcpkg.json') }}
           restore-keys: |
-            cmake-windows-clang-static-md-
+            cmake-windows-clang20-static-md-
 
       - name: Build
         run: ./build.sh
