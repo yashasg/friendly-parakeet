@@ -22,6 +22,7 @@ jobs:
       pull-requests: write
     env:
       VCPKG_BINARY_SOURCES: "clear;default,readwrite"
+      VCPKG_FORCE_SYSTEM_BINARIES: "1"
       CC: clang-20
       CXX: clang++-20
     steps:
@@ -111,6 +112,7 @@ jobs:
       contents: read
     env:
       VCPKG_BINARY_SOURCES: "clear;default,readwrite"
+      VCPKG_FORCE_SYSTEM_BINARIES: "1"
     steps:
       - uses: actions/checkout@v6
         with:
