@@ -100,7 +100,7 @@ TEST_CASE("player_action: swipe right at lane 2 is clamped", "[player]") {
     CHECK(reg.get<Lane>(p).target == -1);
 }
 
-TEST_CASE("player_action: swipe up initiates jump", "[player]") {
+TEST_CASE("player_action: swipe up does not jump (disabled)", "[player]") {
     auto reg = make_registry();
     make_player(reg);
 
@@ -111,12 +111,11 @@ TEST_CASE("player_action: swipe up initiates jump", "[player]") {
 
     auto view = reg.view<PlayerTag, VerticalState>();
     for (auto [e, vs] : view.each()) {
-        CHECK(vs.mode == VMode::Jumping);
-        CHECK(vs.timer == constants::JUMP_DURATION);
+        CHECK(vs.mode == VMode::Grounded);
     }
 }
 
-TEST_CASE("player_action: swipe down initiates slide", "[player]") {
+TEST_CASE("player_action: swipe down does not slide (disabled)", "[player]") {
     auto reg = make_registry();
     make_player(reg);
 
@@ -127,8 +126,7 @@ TEST_CASE("player_action: swipe down initiates slide", "[player]") {
 
     auto view = reg.view<PlayerTag, VerticalState>();
     for (auto [e, vs] : view.each()) {
-        CHECK(vs.mode == VMode::Sliding);
-        CHECK(vs.timer == constants::SLIDE_DURATION);
+        CHECK(vs.mode == VMode::Grounded);
     }
 }
 

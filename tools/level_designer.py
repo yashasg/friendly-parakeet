@@ -54,8 +54,8 @@ SECTION_ROLE = {
     "intro":      {"density": 0.20, "types": ["shape_gate"], "consistent": True},
     "verse":      {"density": 0.50, "types": ["shape_gate", "lane_block"], "consistent": False},
     "pre-chorus": {"density": 0.60, "types": ["shape_gate", "lane_block"], "consistent": False},
-    "drop":       {"density": 0.80, "types": ["shape_gate", "lane_block", "low_bar", "high_bar"], "consistent": True},
-    "bridge":     {"density": 0.25, "types": ["shape_gate", "low_bar", "high_bar"], "consistent": False},
+    "drop":       {"density": 0.80, "types": ["shape_gate", "lane_block"], "consistent": True},
+    "bridge":     {"density": 0.25, "types": ["shape_gate"], "consistent": False},
 }
 
 DIFFICULTY_SCALE = {"easy": 0.50, "medium": 0.75, "hard": 1.00}
@@ -63,7 +63,7 @@ DIFFICULTY_INTRO_REST = {"easy": 8, "medium": 4, "hard": 2}
 DIFFICULTY_KINDS = {
     "easy":   {"shape_gate"},
     "medium": {"shape_gate", "lane_block"},
-    "hard":   {"shape_gate", "lane_block", "low_bar", "high_bar"},
+    "hard":   {"shape_gate", "lane_block"},
 }
 
 
