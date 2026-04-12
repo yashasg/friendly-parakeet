@@ -22,8 +22,8 @@ struct InputState {
     InputSource active_source = InputSource::None;
     bool was_focused = true;  // edge detection for focus-loss auto-pause
 
-#ifdef PLATFORM_DESKTOP
-    // ── Keyboard — one-frame pulse flags (desktop only) ──────
+#if defined(PLATFORM_DESKTOP) || defined(PLATFORM_WEB)
+    // ── Keyboard — one-frame pulse flags (desktop / web) ─────
     // Set to true by IsKeyPressed() in input_system,
     // cleared by clear_input_events() at the start of each frame.
     bool key_w = false;   // jump
@@ -39,7 +39,7 @@ struct InputState {
 inline void clear_input_events(InputState& input) {
     input.touch_down = false;
     input.touch_up   = false;
-#ifdef PLATFORM_DESKTOP
+#if defined(PLATFORM_DESKTOP) || defined(PLATFORM_WEB)
     input.key_w = false;
     input.key_a = false;
     input.key_s = false;

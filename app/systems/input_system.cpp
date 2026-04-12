@@ -68,7 +68,7 @@ void input_system(entt::registry& reg, float raw_dt) {
         }
     }
 
-#ifdef PLATFORM_DESKTOP
+#if defined(PLATFORM_DESKTOP) || defined(PLATFORM_WEB)
     // ── Keyboard — IsKeyPressed fires once per press (no repeat) ──
     if (IsKeyPressed(KEY_W)) input.key_w = true;
     if (IsKeyPressed(KEY_A)) input.key_a = true;

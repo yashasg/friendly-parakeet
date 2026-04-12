@@ -11,8 +11,8 @@ void gesture_system(entt::registry& reg, float /*dt*/) {
     gesture.gesture = SwipeGesture::None;
     btn_evt.pressed = false;
 
-#ifdef PLATFORM_DESKTOP
-    // ── Keyboard input path (desktop only) ───────────────────────
+#if defined(PLATFORM_DESKTOP) || defined(PLATFORM_WEB)
+    // ── Keyboard input path (desktop / web) ──────────────────────
     // Translate one-frame key pulses into the same GestureResult /
     // ShapeButtonEvent outputs that the touch path produces.
     // Checked first: if any key fired this frame we return early,
