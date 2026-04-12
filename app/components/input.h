@@ -1,6 +1,7 @@
 #pragma once
 
 #include "player.h"
+#include "../platform.h"
 #include <cstdint>
 
 // Tracks which input device initiated the current gesture so that
@@ -22,8 +23,8 @@ struct InputState {
     InputSource active_source = InputSource::None;
     bool was_focused = true;  // edge detection for focus-loss auto-pause
 
-#if defined(PLATFORM_DESKTOP) || defined(PLATFORM_WEB)
-    // ── Keyboard — one-frame pulse flags (desktop / web) ─────
+#ifdef PLATFORM_HAS_KEYBOARD
+    // ── Keyboard — one-frame pulse flags ─────────────────────
     // Set to true by IsKeyPressed() in input_system,
     // cleared by clear_input_events() at the start of each frame.
     bool key_w = false;   // jump
@@ -39,7 +40,7 @@ struct InputState {
 inline void clear_input_events(InputState& input) {
     input.touch_down = false;
     input.touch_up   = false;
-#if defined(PLATFORM_DESKTOP) || defined(PLATFORM_WEB)
+#ifdef PLATFORM_HAS_KEYBOARD
     input.key_w = false;
     input.key_a = false;
     input.key_s = false;
@@ -52,11 +53,10 @@ inline void clear_input_events(InputState& input) {
 
 enum class SwipeGesture : uint8_t {
     None       = 0,
-    Tap        = 1,
-    SwipeLeft  = 2,
-    SwipeRight = 3,
-    SwipeUp    = 4,
-    SwipeDown  = 5
+    SwipeLeft  = 1,
+    SwipeRight = 2,
+    SwipeUp    = 3,
+    SwipeDown  = 4
 };
 
 struct GestureResult {

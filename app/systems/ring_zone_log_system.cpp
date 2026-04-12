@@ -6,19 +6,10 @@
 #include "../components/rhythm.h"
 #include "../components/game_state.h"
 #include "../session_logger.h"
+#include "../enum_names.h"
 #include "../constants.h"
 
 #include <cmath>
-
-static const char* shape_name_rz(Shape s) {
-    switch (s) {
-        case Shape::Circle:   return "Circle";
-        case Shape::Square:   return "Square";
-        case Shape::Triangle: return "Triangle";
-        case Shape::Hexagon:  return "Hexagon";
-    }
-    return "???";
-}
 
 // Zone encoding: 1=Bad, 2=Ok, 3=Good, 4=Perfect
 // Returns 0 if outside all zones (ring visible but no timing zone yet).
@@ -98,7 +89,7 @@ void ring_zone_log_system(entt::registry& reg, float /*dt*/) {
                 "RING_ZONE obstacle=%u zone=%s shape=%s dist=%.0fpx",
                 static_cast<unsigned>(entt::to_integral(entity)),
                 zone_label(zone, tracker.past_center),
-                shape_name_rz(req.shape), dist);
+                shape_name(req.shape), dist);
         }
         tracker.last_zone = zone;
     }

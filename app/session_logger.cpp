@@ -6,65 +6,21 @@
 #include "components/transform.h"
 #include "components/scoring.h"
 #include "components/game_state.h"
+#include "enum_names.h"
+#include "platform_utils.h"
 #include "constants.h"
 
 #include <cstdarg>
-#include <ctime>
 #include <cmath>
-
-// ── Helpers ──────────────────────────────────────────────────
-
-static const char* obstacle_kind_name(ObstacleKind k) {
-    switch (k) {
-        case ObstacleKind::ShapeGate: return "ShapeGate";
-        case ObstacleKind::LaneBlock: return "LaneBlock";
-        case ObstacleKind::LowBar:    return "LowBar";
-        case ObstacleKind::HighBar:   return "HighBar";
-        case ObstacleKind::ComboGate: return "ComboGate";
-        case ObstacleKind::SplitPath: return "SplitPath";
-    }
-    return "???";
-}
-
-static const char* shape_name(Shape s) {
-    switch (s) {
-        case Shape::Circle:   return "Circle";
-        case Shape::Square:   return "Square";
-        case Shape::Triangle: return "Triangle";
-        case Shape::Hexagon:  return "Hexagon";
-    }
-    return "???";
-}
-
-static const char* timing_tier_name(TimingTier t) {
-    switch (t) {
-        case TimingTier::Bad:     return "Bad";
-        case TimingTier::Ok:      return "Ok";
-        case TimingTier::Good:    return "Good";
-        case TimingTier::Perfect: return "Perfect";
-    }
-    return "???";
-}
 
 // ── Core log function ────────────────────────────────────────
 
 void session_log_open(SessionLog& log, const char* path) {
     if (log.file) std::fclose(log.file);
-#ifdef _WIN32
-    FILE* fp = nullptr;
-    fopen_s(&fp, path, "w");
-    log.file = fp;
-#else
-    log.file = std::fopen(path, "w");
-#endif
+    log.file = safe_fopen(path, "w");
     if (log.file) {
         std::time_t now = std::time(nullptr);
-        std::tm tm{};
-#ifdef _WIN32
-        localtime_s(&tm, &now);
-#else
-        localtime_r(&now, &tm);
-#endif
+        std::tm tm = safe_localtime(&now);
         char ts[32];
         std::strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M", &tm);
         std::fprintf(log.file, "══════ Test Session started %s ══════\n\n", ts);
