@@ -60,7 +60,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: build
-          key: cmake-linux-clang20-${{ hashFiles('CMakeLists.txt', 'vcpkg.json') }}
+          key: cmake-linux-clang20-v2-${{ hashFiles('CMakeLists.txt', 'vcpkg.json') }}
           restore-keys: |
             cmake-linux-clang20-
 
@@ -136,7 +136,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: build-web
-          key: cmake-web-emscripten-${{ hashFiles('CMakeLists.txt', 'vcpkg.json') }}
+          key: cmake-web-emscripten-v2-${{ hashFiles('CMakeLists.txt', 'vcpkg.json') }}
           restore-keys: |
             cmake-web-emscripten-
 
