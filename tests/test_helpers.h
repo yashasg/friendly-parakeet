@@ -56,6 +56,7 @@ inline entt::entity make_player(entt::registry& reg) {
     reg.emplace<PlayerTag>(player);
     reg.emplace<Position>(player, constants::LANE_X[1], constants::PLAYER_Y);
     reg.emplace<PlayerShape>(player);
+    reg.emplace<ShapeWindow>(player);
     reg.emplace<Lane>(player);
     reg.emplace<VerticalState>(player);
     reg.emplace<DrawColor>(player, uint8_t{80}, uint8_t{180}, uint8_t{255}, uint8_t{255});
@@ -70,8 +71,9 @@ inline entt::entity make_rhythm_player(entt::registry& reg) {
     auto& ps = reg.get<PlayerShape>(player);
     ps.current = Shape::Hexagon;
     ps.previous = Shape::Hexagon;
-    ps.target_shape = Shape::Hexagon;
-    ps.phase_raw = 0; // WindowPhase::Idle
+    auto& sw = reg.get<ShapeWindow>(player);
+    sw.target_shape = Shape::Hexagon;
+    sw.phase_raw = 0; // WindowPhase::Idle
     return player;
 }
 

@@ -8,6 +8,7 @@ TEST_CASE("player_action: rhythm mode starts window on button press from Idle", 
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
     auto& ps = reg.get<PlayerShape>(player);
+    auto& sw = reg.get<ShapeWindow>(player);
     auto& song = reg.ctx().get<SongState>();
     song.song_time = 5.0f;
 
@@ -17,13 +18,13 @@ TEST_CASE("player_action: rhythm mode starts window on button press from Idle", 
 
     player_action_system(reg, 0.016f);
 
-    CHECK(ps.target_shape == Shape::Circle);
-    CHECK(ps.phase_raw == static_cast<uint8_t>(WindowPhase::MorphIn));
-    CHECK(ps.window_timer == 0.0f);
+    CHECK(sw.target_shape == Shape::Circle);
+    CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::MorphIn));
+    CHECK(sw.window_timer == 0.0f);
     CHECK(ps.morph_t == 0.0f);
-    CHECK(ps.window_start == 5.0f);
-    CHECK(ps.graded == false);
-    CHECK(ps.window_scale == 1.0f);
+    CHECK(sw.window_start == 5.0f);
+    CHECK(sw.graded == false);
+    CHECK(sw.window_scale == 1.0f);
 
     // SFX should be pushed
     CHECK(reg.ctx().get<AudioQueue>().count > 0);
@@ -41,18 +42,19 @@ TEST_CASE("player_action: rhythm mode calculates peak_time correctly", "[player_
 
     player_action_system(reg, 0.016f);
 
-    auto& ps = reg.get<PlayerShape>(player);
+    auto& sw = reg.get<ShapeWindow>(player);
     float expected_peak = 10.0f + song.morph_duration + song.half_window;
-    CHECK_THAT(ps.peak_time, Catch::Matchers::WithinAbs(expected_peak, 0.001f));
+    CHECK_THAT(sw.peak_time, Catch::Matchers::WithinAbs(expected_peak, 0.001f));
 }
 
 TEST_CASE("player_action: rhythm mode ignores same shape during Active (spam protection)", "[player_rhythm]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
     auto& ps = reg.get<PlayerShape>(player);
-    ps.phase_raw = static_cast<uint8_t>(WindowPhase::Active);
+    auto& sw = reg.get<ShapeWindow>(player);
+    sw.phase_raw = static_cast<uint8_t>(WindowPhase::Active);
     ps.current = Shape::Square;
-    ps.window_timer = 0.1f;
+    sw.window_timer = 0.1f;
 
     auto& btn = reg.ctx().get<ShapeButtonEvent>();
     btn.pressed = true;
@@ -61,20 +63,21 @@ TEST_CASE("player_action: rhythm mode ignores same shape during Active (spam pro
     player_action_system(reg, 0.016f);
 
     // Same shape re-press: window timer resets for next obstacle
-    CHECK(ps.phase_raw == static_cast<uint8_t>(WindowPhase::Active));
-    CHECK(ps.window_timer == 0.0f);
-    CHECK_FALSE(ps.graded);
+    CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::Active));
+    CHECK(sw.window_timer == 0.0f);
+    CHECK_FALSE(sw.graded);
 }
 
 TEST_CASE("player_action: rhythm mode interrupts Active with different shape", "[player_rhythm]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
     auto& ps = reg.get<PlayerShape>(player);
+    auto& sw = reg.get<ShapeWindow>(player);
     auto& song = reg.ctx().get<SongState>();
     song.song_time = 8.0f;
-    ps.phase_raw = static_cast<uint8_t>(WindowPhase::Active);
+    sw.phase_raw = static_cast<uint8_t>(WindowPhase::Active);
     ps.current = Shape::Square;
-    ps.window_timer = 0.3f;
+    sw.window_timer = 0.3f;
 
     auto& btn = reg.ctx().get<ShapeButtonEvent>();
     btn.pressed = true;
@@ -82,18 +85,18 @@ TEST_CASE("player_action: rhythm mode interrupts Active with different shape", "
 
     player_action_system(reg, 0.016f);
 
-    CHECK(ps.target_shape == Shape::Triangle);
-    CHECK(ps.phase_raw == static_cast<uint8_t>(WindowPhase::MorphIn));
-    CHECK(ps.window_timer == 0.0f);
+    CHECK(sw.target_shape == Shape::Triangle);
+    CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::MorphIn));
+    CHECK(sw.window_timer == 0.0f);
     CHECK(ps.morph_t == 0.0f);
-    CHECK(ps.window_start == 8.0f);
-    CHECK(ps.graded == false);
+    CHECK(sw.window_start == 8.0f);
+    CHECK(sw.graded == false);
 }
 
 TEST_CASE("player_action: rhythm mode ignores Hexagon button press", "[player_rhythm]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
-    auto& ps = reg.get<PlayerShape>(player);
+    auto& sw = reg.get<ShapeWindow>(player);
 
     auto& btn = reg.ctx().get<ShapeButtonEvent>();
     btn.pressed = true;
@@ -101,29 +104,29 @@ TEST_CASE("player_action: rhythm mode ignores Hexagon button press", "[player_rh
 
     player_action_system(reg, 0.016f);
 
-    CHECK(ps.phase_raw == static_cast<uint8_t>(WindowPhase::Idle));
+    CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::Idle));
 }
 
 TEST_CASE("player_action: rhythm mode no action when button not pressed", "[player_rhythm]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
-    auto& ps = reg.get<PlayerShape>(player);
+    auto& sw = reg.get<ShapeWindow>(player);
 
     auto& btn = reg.ctx().get<ShapeButtonEvent>();
     btn.pressed = false;
 
     player_action_system(reg, 0.016f);
 
-    CHECK(ps.phase_raw == static_cast<uint8_t>(WindowPhase::Idle));
+    CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::Idle));
 }
 
 TEST_CASE("player_action: rhythm mode does not interrupt MorphIn phase", "[player_rhythm]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
-    auto& ps = reg.get<PlayerShape>(player);
-    ps.phase_raw = static_cast<uint8_t>(WindowPhase::MorphIn);
-    ps.target_shape = Shape::Circle;
-    ps.window_timer = 0.05f;
+    auto& sw = reg.get<ShapeWindow>(player);
+    sw.phase_raw = static_cast<uint8_t>(WindowPhase::MorphIn);
+    sw.target_shape = Shape::Circle;
+    sw.window_timer = 0.05f;
 
     auto& btn = reg.ctx().get<ShapeButtonEvent>();
     btn.pressed = true;
@@ -132,16 +135,16 @@ TEST_CASE("player_action: rhythm mode does not interrupt MorphIn phase", "[playe
     player_action_system(reg, 0.016f);
 
     // MorphIn should not be interrupted (only Active can be interrupted)
-    CHECK(ps.phase_raw == static_cast<uint8_t>(WindowPhase::MorphIn));
-    CHECK(ps.target_shape == Shape::Circle);
+    CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::MorphIn));
+    CHECK(sw.target_shape == Shape::Circle);
 }
 
 TEST_CASE("player_action: rhythm mode does not interrupt MorphOut phase", "[player_rhythm]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
-    auto& ps = reg.get<PlayerShape>(player);
-    ps.phase_raw = static_cast<uint8_t>(WindowPhase::MorphOut);
-    ps.window_timer = 0.02f;
+    auto& sw = reg.get<ShapeWindow>(player);
+    sw.phase_raw = static_cast<uint8_t>(WindowPhase::MorphOut);
+    sw.window_timer = 0.02f;
 
     auto& btn = reg.ctx().get<ShapeButtonEvent>();
     btn.pressed = true;
@@ -150,7 +153,7 @@ TEST_CASE("player_action: rhythm mode does not interrupt MorphOut phase", "[play
     player_action_system(reg, 0.016f);
 
     // MorphOut should not be interrupted
-    CHECK(ps.phase_raw == static_cast<uint8_t>(WindowPhase::MorphOut));
+    CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::MorphOut));
 }
 
 // ── player_action: legacy mode (no SongState) ────────────────

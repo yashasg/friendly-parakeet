@@ -17,37 +17,36 @@ void player_action_system(entt::registry& reg, float /*dt*/) {
     bool rhythm_mode = (song != nullptr);
 
     // Start (or restart) a shape window from the current song time.
-    auto begin_shape_window = [&](PlayerShape& ps, Shape shape) {
-        ps.target_shape = shape;
+    auto begin_shape_window = [&](PlayerShape& ps, ShapeWindow& sw, Shape shape) {
+        sw.target_shape = shape;
         ps.previous = ps.current;
-        ps.phase_raw = static_cast<uint8_t>(WindowPhase::MorphIn);
-        ps.window_timer = 0.0f;
-        ps.window_start = song->song_time;
-        ps.peak_time = song->song_time + song->morph_duration + song->half_window;
+        sw.phase_raw = static_cast<uint8_t>(WindowPhase::MorphIn);
+        sw.window_timer = 0.0f;
+        sw.window_start = song->song_time;
+        sw.peak_time = song->song_time + song->morph_duration + song->half_window;
         ps.morph_t = 0.0f;
-        ps.window_scale = 1.0f;
-        ps.graded = false;
+        sw.window_scale = 1.0f;
+        sw.graded = false;
         audio_push(reg.ctx().get<AudioQueue>(), SFX::ShapeShift);
     };
 
-    auto view = reg.view<PlayerTag, PlayerShape, Lane, VerticalState>();
-    for (auto [entity, pshape, lane, vstate] : view.each()) {
+    auto view = reg.view<PlayerTag, PlayerShape, ShapeWindow, Lane, VerticalState>();
+    for (auto [entity, pshape, swindow, lane, vstate] : view.each()) {
 
         if (btn_evt.pressed && btn_evt.shape != Shape::Hexagon) {
             if (rhythm_mode) {
-                auto phase = static_cast<WindowPhase>(pshape.phase_raw);
+                auto phase = static_cast<WindowPhase>(swindow.phase_raw);
 
                 if (phase == WindowPhase::Idle) {
-                    begin_shape_window(pshape, btn_evt.shape);
+                    begin_shape_window(pshape, swindow, btn_evt.shape);
                 } else if (phase == WindowPhase::Active && btn_evt.shape != pshape.current) {
-                    begin_shape_window(pshape, btn_evt.shape);
+                    begin_shape_window(pshape, swindow, btn_evt.shape);
                 } else if (phase == WindowPhase::Active && btn_evt.shape == pshape.current) {
-                    // Same shape re-pressed: extend the window for the next obstacle.
-                    pshape.window_timer = 0.0f;
-                    pshape.window_start = song->song_time;
-                    pshape.peak_time = song->song_time + song->half_window;
-                    pshape.window_scale = 1.0f;
-                    pshape.graded = false;
+                    swindow.window_timer = 0.0f;
+                    swindow.window_start = song->song_time;
+                    swindow.peak_time = song->song_time + song->half_window;
+                    swindow.window_scale = 1.0f;
+                    swindow.graded = false;
                 }
             } else {
                 // Legacy mode: instant shape change

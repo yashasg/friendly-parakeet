@@ -12,12 +12,12 @@
 void collision_system(entt::registry& reg, float /*dt*/) {
     if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
 
-    auto player_view = reg.view<PlayerTag, Position, PlayerShape, Lane, VerticalState>();
+    auto player_view = reg.view<PlayerTag, Position, PlayerShape, ShapeWindow, Lane, VerticalState>();
     if (player_view.size_hint() == 0) return;
 
     auto player_it = player_view.begin();
-    auto [p_pos, p_shape, p_lane, p_vstate] =
-        player_view.get<Position, PlayerShape, Lane, VerticalState>(*player_it);
+    auto [p_pos, p_shape, p_window, p_lane, p_vstate] =
+        player_view.get<Position, PlayerShape, ShapeWindow, Lane, VerticalState>(*player_it);
 
     constexpr float COLLISION_MARGIN = 40.0f;
     bool game_over = false;
@@ -34,9 +34,9 @@ void collision_system(entt::registry& reg, float /*dt*/) {
         if (cleared) {
             // In rhythm mode, compute timing grade
             if (rhythm_mode) {
-                auto window_phase = static_cast<WindowPhase>(p_shape.phase_raw);
+                auto window_phase = static_cast<WindowPhase>(p_window.phase_raw);
                 if (window_phase == WindowPhase::Active && song->half_window > 0.0f) {
-                    float pct_from_peak = std::abs(song->song_time - p_shape.peak_time) / song->half_window;
+                    float pct_from_peak = std::abs(song->song_time - p_window.peak_time) / song->half_window;
                     if (pct_from_peak > 1.0f) pct_from_peak = 1.0f;
                     TimingTier tier = compute_timing_tier(pct_from_peak);
                     reg.emplace<TimingGrade>(entity, tier, 1.0f - pct_from_peak);
@@ -50,22 +50,16 @@ void collision_system(entt::registry& reg, float /*dt*/) {
                         }
                     }
 
-                    // Window scaling: adjust remaining active time based on timing
-                    // Perfect: extend window (hold shape until obstacle passes)
-                    // Ok/Bad: shorten window (snap back to Hexagon sooner)
-                    if (!p_shape.graded) {
+                    if (!p_window.graded) {
                         float scale = window_scale_for_tier(tier);
-                        float remaining = song->window_duration - p_shape.window_timer;
+                        float remaining = song->window_duration - p_window.window_timer;
                         if (remaining > 0.0f) {
                             if (scale < 1.0f) {
-                                // Shorten: advance timer to eat remaining time
-                                p_shape.window_timer += remaining * (1.0f - scale);
+                                p_window.window_timer += remaining * (1.0f - scale);
                             }
-                            // scale >= 1.0: do nothing (let full window play out,
-                            // or extend naturally — shape holds longer)
                         }
-                        p_shape.window_scale = scale;
-                        p_shape.graded = true;
+                        p_window.window_scale = scale;
+                        p_window.graded = true;
                     }
                 }
             }

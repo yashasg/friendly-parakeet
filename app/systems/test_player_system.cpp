@@ -175,12 +175,12 @@ void test_player_system(entt::registry& reg, float dt) {
     const auto& cfg = state->config();
 
     // ── Find player ──────────────────────────────────────────
-    auto player_view = reg.view<PlayerTag, Position, PlayerShape, Lane, VerticalState>();
+    auto player_view = reg.view<PlayerTag, Position, PlayerShape, ShapeWindow, Lane, VerticalState>();
     if (player_view.size_hint() == 0) return;
 
     auto player_entity = *player_view.begin();
-    auto [p_pos, p_shape, p_lane, p_vstate] =
-        player_view.get<Position, PlayerShape, Lane, VerticalState>(player_entity);
+    auto [p_pos, p_shape, p_window, p_lane, p_vstate] =
+        player_view.get<Position, PlayerShape, ShapeWindow, Lane, VerticalState>(player_entity);
 
     // ── PERCEIVE: scan obstacles in vision range ─────────────
     // Compute the "effective lane" — where the player will be after

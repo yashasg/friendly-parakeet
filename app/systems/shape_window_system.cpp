@@ -17,38 +17,35 @@ void shape_window_system(entt::registry& reg, float dt) {
     auto* song = reg.ctx().find<SongState>();
     if (!song) return;
 
-    auto view = reg.view<PlayerTag, PlayerShape, DrawColor>();
-    for (auto [entity, pshape, col] : view.each()) {
-        auto phase = static_cast<WindowPhase>(pshape.phase_raw);
+    auto view = reg.view<PlayerTag, PlayerShape, ShapeWindow, DrawColor>();
+    for (auto [entity, pshape, swindow, col] : view.each()) {
+        auto phase = static_cast<WindowPhase>(swindow.phase_raw);
 
         switch (phase) {
             case WindowPhase::Idle:
                 break;
 
             case WindowPhase::MorphIn:
-                pshape.window_timer += dt;
-                pshape.morph_t = pshape.window_timer / song->morph_duration;
+                swindow.window_timer += dt;
+                pshape.morph_t = swindow.window_timer / song->morph_duration;
                 if (pshape.morph_t >= 1.0f) {
                     pshape.morph_t = 1.0f;
-                    pshape.phase_raw = static_cast<uint8_t>(WindowPhase::Active);
-                    pshape.window_timer = 0.0f;
-                    pshape.current = pshape.target_shape;
+                    swindow.phase_raw = static_cast<uint8_t>(WindowPhase::Active);
+                    swindow.window_timer = 0.0f;
+                    pshape.current = swindow.target_shape;
                     apply_shape_color(reg, entity, pshape.current);
                 }
                 break;
 
             case WindowPhase::Active:
-                pshape.window_timer += dt;
-                // window_scale > 1.0 extends the active phase (Perfect holds shape longer)
-                // window_scale < 1.0 was already applied by advancing timer in collision_system;
-                // only apply the scale here for extension (> 1.0) to avoid double-shortening.
+                swindow.window_timer += dt;
                 {
-                    float effective_duration = (pshape.window_scale > 1.0f)
-                        ? song->window_duration * pshape.window_scale
+                    float effective_duration = (swindow.window_scale > 1.0f)
+                        ? song->window_duration * swindow.window_scale
                         : song->window_duration;
-                    if (pshape.window_timer >= effective_duration) {
-                        pshape.phase_raw = static_cast<uint8_t>(WindowPhase::MorphOut);
-                        pshape.window_timer = 0.0f;
+                    if (swindow.window_timer >= effective_duration) {
+                        swindow.phase_raw = static_cast<uint8_t>(WindowPhase::MorphOut);
+                        swindow.window_timer = 0.0f;
                         pshape.previous = pshape.current;
                         pshape.morph_t = 0.0f;
                     }
@@ -56,17 +53,17 @@ void shape_window_system(entt::registry& reg, float dt) {
                 break;
 
             case WindowPhase::MorphOut:
-                pshape.window_timer += dt;
-                pshape.morph_t = pshape.window_timer / song->morph_duration;
+                swindow.window_timer += dt;
+                pshape.morph_t = swindow.window_timer / song->morph_duration;
                 if (pshape.morph_t >= 1.0f) {
                     pshape.morph_t = 1.0f;
                     pshape.current = Shape::Hexagon;
                     pshape.previous = Shape::Hexagon;
-                    pshape.target_shape = Shape::Hexagon;
-                    pshape.phase_raw = static_cast<uint8_t>(WindowPhase::Idle);
-                    pshape.window_timer = 0.0f;
-                    pshape.window_scale = 1.0f;
-                    pshape.graded = false;
+                    swindow.target_shape = Shape::Hexagon;
+                    swindow.phase_raw = static_cast<uint8_t>(WindowPhase::Idle);
+                    swindow.window_timer = 0.0f;
+                    swindow.window_scale = 1.0f;
+                    swindow.graded = false;
                     apply_shape_color(reg, entity, Shape::Hexagon);
                 }
                 break;

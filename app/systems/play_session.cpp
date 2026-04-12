@@ -32,11 +32,15 @@ void setup_play_session(entt::registry& reg) {
     reg.emplace<Position>(player, constants::LANE_X[1], constants::PLAYER_Y);
     {
         PlayerShape ps;
-        ps.current      = Shape::Hexagon;
-        ps.previous     = Shape::Hexagon;
-        ps.target_shape = Shape::Hexagon;
-        ps.phase_raw    = static_cast<uint8_t>(WindowPhase::Idle);
+        ps.current  = Shape::Hexagon;
+        ps.previous = Shape::Hexagon;
         reg.emplace<PlayerShape>(player, ps);
+    }
+    {
+        ShapeWindow sw;
+        sw.target_shape = Shape::Hexagon;
+        sw.phase_raw    = static_cast<uint8_t>(WindowPhase::Idle);
+        reg.emplace<ShapeWindow>(player, sw);
     }
     reg.emplace<Lane>(player);
     reg.emplace<VerticalState>(player);
