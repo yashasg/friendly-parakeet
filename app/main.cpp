@@ -11,6 +11,7 @@
 #include "components/audio.h"
 #include "components/rhythm.h"
 #include "components/music.h"
+#include "components/rendering.h"
 #include "components/test_player.h"
 #include "systems/all_systems.h"
 #include "beat_map_loader.h"
@@ -30,6 +31,22 @@
 static constexpr float FIXED_DT  = 1.0f / 60.0f;
 static constexpr float MAX_ACCUM = 0.1f;
 
+// Recomputes the letterbox transform and stores it in the registry context so
+// input_system can normalise raw window coordinates to virtual world space.
+static void update_screen_transform(entt::registry& reg) {
+    float win_w = static_cast<float>(GetScreenWidth());
+    float win_h = static_cast<float>(GetScreenHeight());
+    float scale = std::min(
+        win_w / static_cast<float>(constants::SCREEN_W),
+        win_h / static_cast<float>(constants::SCREEN_H));
+    float dst_w = constants::SCREEN_W * scale;
+    float dst_h = constants::SCREEN_H * scale;
+    auto& st     = reg.ctx().get<ScreenTransform>();
+    st.offset_x  = (win_w - dst_w) * 0.5f;
+    st.offset_y  = (win_h - dst_h) * 0.5f;
+    st.scale     = scale;
+}
+
 #ifdef __EMSCRIPTEN__
 // ── Emscripten main-loop state ───────────────────────────────
 // The browser event loop is non-blocking, so we extract the loop body
@@ -48,6 +65,7 @@ static void update_draw_frame() {
         g_loop.accumulator = MAX_ACCUM;
     }
 
+    update_screen_transform(reg);
     input_system(reg, raw_dt);
     test_player_system(reg, raw_dt);
 
@@ -159,6 +177,17 @@ int main(int argc, char* argv[]) {
     // Rhythm singletons (active even without a beat map loaded)
     reg.ctx().emplace<HPState>();
     reg.ctx().emplace<SongResults>();
+
+    // ── 2-D world camera (identity; allows zoom/shake without touching game logic) ─
+    // target=(0,0), offset=(0,0): world-space origin maps 1:1 to the virtual
+    // 720×1280 render-texture.  Systems update these fields for camera effects.
+    reg.ctx().emplace<Camera2D>(Camera2D{
+        {0.0f, 0.0f},   // offset:   screen point that maps to target
+        {0.0f, 0.0f},   // target:   world-space origin (0,0)
+        0.0f,           // rotation: degrees
+        1.0f            // zoom:     1.0 = no scale
+    });
+    reg.ctx().emplace<ScreenTransform>();  // updated each frame before input_system
 
     // ── Load beatmap from disk ────────────────────────────────
     {
@@ -303,7 +332,8 @@ int main(int argc, char* argv[]) {
             accumulator = MAX_ACCUM;
         }
 
-        // Phase 0: Input (polls raylib input state)
+        // Phase 0: Resolve letterbox scale for this frame, then poll input
+        update_screen_transform(reg);
         input_system(reg, raw_dt);
         if (reg.ctx().get<InputState>().quit_requested) break;
 

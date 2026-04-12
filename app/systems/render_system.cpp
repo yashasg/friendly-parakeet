@@ -57,9 +57,18 @@ static void draw_shape(Shape shape, float cx, float cy, float size, Color color)
 void render_system(entt::registry& reg, float /*alpha*/) {
     auto& gs = reg.ctx().get<GameState>();
     auto& text_ctx = reg.ctx().get<TextContext>();
+    auto& camera = reg.ctx().get<Camera2D>();
 
     // Clear
     ClearBackground({15, 15, 25, 255});
+
+    // ── WORLD SPACE (Camera2D) ───────────────────────────────
+    // A single BeginMode2D/EndMode2D pair wraps ALL world-space draws.
+    // Camera is currently an identity transform (zoom=1, target/offset={0,0}),
+    // so world coords map 1:1 to the 720×1280 render-texture.  Future camera
+    // effects (shake, zoom) only need to modify `camera`; no game-logic
+    // positions need to change.
+    BeginMode2D(camera);
 
     // ── Draw lane lines ─────────────────────────────────────
     Color lane_color = {40, 40, 60, 255};
@@ -70,30 +79,16 @@ void render_system(entt::registry& reg, float /*alpha*/) {
     }
 
     if (gs.phase == GamePhase::Title) {
-        // Title screen
+        // Title-screen world shapes (geometric objects in world space)
         Color title_shape_color = {80, 180, 255, 255};
         draw_shape(Shape::Circle,   280, 400, 80, title_shape_color);
         draw_shape(Shape::Square,   360, 400, 80, title_shape_color);
         Color green_color = {100, 255, 100, 255};
         draw_shape(Shape::Triangle, 440, 400, 80, green_color);
-
-        // Title text
-        text_draw(text_ctx, "SHAPESHIFTER",
-            360, 500, FontSize::Large, 80, 180, 255, 255,
-            TextAlign::Center);
-
-        // "TAP TO START" indicator — pulsing text
-        float pulse = (std::sin(gs.phase_timer * 3.0f) + 1.0f) / 2.0f;
-        uint8_t alpha = static_cast<uint8_t>(100 + pulse * 155);
-        text_draw(text_ctx, "TAP TO START",
-            360, 600, FontSize::Medium, 200, 200, 200, alpha,
-            TextAlign::Center);
-
-        return;
     }
 
     // ── Draw obstacles ──────────────────────────────────────
-    {
+    if (gs.phase != GamePhase::Title) {
         auto view = reg.view<ObstacleTag, Position, Obstacle, DrawColor, DrawSize>();
         for (auto [entity, pos, obs, col, dsz] : view.each()) {
 
@@ -231,6 +226,24 @@ void render_system(entt::registry& reg, float /*alpha*/) {
             Color pc = {col.r, col.g, col.b, col.a};
             draw_shape(pshape.current, pos.x, draw_y, size, pc);
         }
+    }
+
+    EndMode2D();
+    // ── SCREEN SPACE (HUD + overlays, unaffected by camera) ─────────────────
+
+    if (gs.phase == GamePhase::Title) {
+        // Title text drawn in screen (render-texture) space, unaffected by camera
+        text_draw(text_ctx, "SHAPESHIFTER",
+            360, 500, FontSize::Large, 80, 180, 255, 255,
+            TextAlign::Center);
+
+        // "TAP TO START" indicator — pulsing text
+        float pulse = (std::sin(gs.phase_timer * 3.0f) + 1.0f) / 2.0f;
+        uint8_t alpha = static_cast<uint8_t>(100 + pulse * 155);
+        text_draw(text_ctx, "TAP TO START",
+            360, 600, FontSize::Medium, 200, 200, 200, alpha,
+            TextAlign::Center);
+        return;
     }
 
     // ── Draw HUD ────────────────────────────────────────────
