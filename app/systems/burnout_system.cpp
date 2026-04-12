@@ -18,14 +18,14 @@ void burnout_system(entt::registry& reg, float /*dt*/) {
     auto& config  = reg.ctx().get<DifficultyConfig>();
 
     // Find player
-    auto player_view = reg.view<PlayerTag, Position, PlayerShape, Lane>();
+    auto player_view = reg.view<PlayerTag, Position, Lane>();
     if (player_view.size_hint() == 0) {
         burnout.nearest_threat = entt::null;
         return;
     }
 
     auto player_it = player_view.begin();
-    auto [p_pos, p_shape, p_lane] = player_view.get<Position, PlayerShape, Lane>(*player_it);
+    auto [p_pos, p_lane] = player_view.get<Position, Lane>(*player_it);
 
     // Find nearest un-scored obstacle above player
     float nearest_dist = std::numeric_limits<float>::max();

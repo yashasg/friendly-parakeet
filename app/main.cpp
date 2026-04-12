@@ -3,6 +3,7 @@
 
 #include "version.h"
 #include "constants.h"
+#include "platform_utils.h"
 #include "components/input.h"
 #include "components/game_state.h"
 #include "components/scoring.h"
@@ -30,6 +31,29 @@
 
 static constexpr float FIXED_DT  = 1.0f / 60.0f;
 static constexpr float MAX_ACCUM = 0.1f;
+
+// Runs all fixed-timestep systems once. Called from both the native
+// and Emscripten main loops so the system list is defined in one place.
+static void tick_fixed_systems(entt::registry& reg, float dt) {
+    gesture_system(reg, dt);
+    game_state_system(reg, dt);
+    song_playback_system(reg, dt);
+    beat_scheduler_system(reg, dt);
+    player_action_system(reg, dt);
+    shape_window_system(reg, dt);
+    player_movement_system(reg, dt);
+    difficulty_system(reg, dt);
+    obstacle_spawn_system(reg, dt);
+    scroll_system(reg, dt);
+    ring_zone_log_system(reg, dt);
+    burnout_system(reg, dt);
+    collision_system(reg, dt);
+    scoring_system(reg, dt);
+    hp_system(reg, dt);
+    lifetime_system(reg, dt);
+    particle_system(reg, dt);
+    cleanup_system(reg, dt);
+}
 
 // Recomputes the letterbox transform and stores it in the registry context so
 // input_system can normalise raw window coordinates to virtual world space.
@@ -70,24 +94,7 @@ static void update_draw_frame() {
     test_player_system(reg, raw_dt);
 
     while (g_loop.accumulator >= FIXED_DT) {
-        gesture_system(reg, FIXED_DT);
-        game_state_system(reg, FIXED_DT);
-        song_playback_system(reg, FIXED_DT);
-        beat_scheduler_system(reg, FIXED_DT);
-        player_action_system(reg, FIXED_DT);
-        shape_window_system(reg, FIXED_DT);
-        player_movement_system(reg, FIXED_DT);
-        difficulty_system(reg, FIXED_DT);
-        obstacle_spawn_system(reg, FIXED_DT);
-        scroll_system(reg, FIXED_DT);
-        ring_zone_log_system(reg, FIXED_DT);
-        burnout_system(reg, FIXED_DT);
-        collision_system(reg, FIXED_DT);
-        scoring_system(reg, FIXED_DT);
-        hp_system(reg, FIXED_DT);
-        lifetime_system(reg, FIXED_DT);
-        particle_system(reg, FIXED_DT);
-        cleanup_system(reg, FIXED_DT);
+        tick_fixed_systems(reg, FIXED_DT);
         g_loop.accumulator -= FIXED_DT;
     }
 
@@ -288,12 +295,7 @@ int main(int argc, char* argv[]) {
         // Session logger
         auto& slog = reg.ctx().emplace<SessionLog>();
         std::time_t now = std::time(nullptr);
-        std::tm tm{};
-#ifdef _WIN32
-        localtime_s(&tm, &now);
-#else
-        localtime_r(&now, &tm);
-#endif
+        std::tm tm = safe_localtime(&now);
         char log_filename[256];
         std::snprintf(log_filename, sizeof(log_filename),
             "%ssession_%s_%04d%02d%02d_%02d%02d%02d.log",
@@ -342,24 +344,7 @@ int main(int argc, char* argv[]) {
 
         // Fixed timestep loop — all systems self-guard on GamePhase
         while (accumulator >= FIXED_DT) {
-            gesture_system(reg, FIXED_DT);
-            game_state_system(reg, FIXED_DT);
-            song_playback_system(reg, FIXED_DT);
-            beat_scheduler_system(reg, FIXED_DT);
-            player_action_system(reg, FIXED_DT);
-            shape_window_system(reg, FIXED_DT);
-            player_movement_system(reg, FIXED_DT);
-            difficulty_system(reg, FIXED_DT);
-            obstacle_spawn_system(reg, FIXED_DT);
-            scroll_system(reg, FIXED_DT);
-            ring_zone_log_system(reg, FIXED_DT);
-            burnout_system(reg, FIXED_DT);
-            collision_system(reg, FIXED_DT);
-            scoring_system(reg, FIXED_DT);
-            hp_system(reg, FIXED_DT);
-            lifetime_system(reg, FIXED_DT);
-            particle_system(reg, FIXED_DT);
-            cleanup_system(reg, FIXED_DT);
+            tick_fixed_systems(reg, FIXED_DT);
             accumulator -= FIXED_DT;
         }
 

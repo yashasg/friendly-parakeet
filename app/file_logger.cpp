@@ -1,36 +1,11 @@
 #include "file_logger.h"
+#include "platform_utils.h"
 #include <raylib.h>
 #include <cstdio>
 #include <cstdarg>
 #include <ctime>
 
 static FILE* s_log_file = nullptr;
-
-// ── Portable wrappers for deprecated-on-Windows CRT functions ────────
-// On Windows the CRT marks localtime() and fopen() as deprecated because
-// they are not thread-safe or lack buffer-size checks.  The _s variants
-// exist only on Windows, while POSIX provides localtime_r.  These thin
-// wrappers keep the rest of the file free of #ifdef clutter.
-
-static std::tm safe_localtime(const std::time_t* t) {
-    std::tm result{};
-#ifdef _WIN32
-    localtime_s(&result, t);
-#else
-    localtime_r(t, &result);
-#endif
-    return result;
-}
-
-static FILE* safe_fopen(const char* path, const char* mode) {
-#ifdef _WIN32
-    FILE* fp = nullptr;
-    fopen_s(&fp, path, mode);
-    return fp;
-#else
-    return std::fopen(path, mode);
-#endif
-}
 
 static const char* log_level_str(int level) {
     switch (level) {

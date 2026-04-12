@@ -3,6 +3,7 @@
 #include "../components/rendering.h"
 #include "../components/game_state.h"
 #include "../constants.h"
+#include "../platform.h"
 #include <raylib.h>
 
 void input_system(entt::registry& reg, float raw_dt) {
@@ -68,7 +69,7 @@ void input_system(entt::registry& reg, float raw_dt) {
         }
     }
 
-#ifdef PLATFORM_DESKTOP
+#ifdef PLATFORM_HAS_KEYBOARD
     // ── Keyboard — IsKeyPressed fires once per press (no repeat) ──
     if (IsKeyPressed(KEY_W)) input.key_w = true;
     if (IsKeyPressed(KEY_A)) input.key_a = true;

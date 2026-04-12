@@ -54,6 +54,212 @@ static void draw_shape(Shape shape, float cx, float cy, float size, Color color)
     }
 }
 
+// ── Scene / overlay draw helpers ─────────────────────────────
+// Each function draws one viewport-space scene or overlay.
+// They read singletons from the registry but don't modify game state.
+
+static void draw_title_scene(const TextContext& text_ctx, const GameState& gs) {
+    const float shapes_y  = constants::SCENE_TITLE_SHAPES_Y_N    * constants::SCREEN_H;
+    const float shape_sz  = constants::SCENE_TITLE_SHAPES_SIZE_N  * constants::SCREEN_W;
+    const float shape_off = constants::SCENE_TITLE_SHAPES_OFFSET_N * constants::SCREEN_W;
+    const float cx        = constants::VIEWPORT_CX_N * constants::SCREEN_W;
+
+    Color title_shape_color = {80, 180, 255, 255};
+    draw_shape(Shape::Circle, cx - shape_off, shapes_y, shape_sz, title_shape_color);
+    draw_shape(Shape::Square, cx,             shapes_y, shape_sz, title_shape_color);
+    Color green_color = {100, 255, 100, 255};
+    draw_shape(Shape::Triangle, cx + shape_off, shapes_y, shape_sz, green_color);
+
+    text_draw(text_ctx, "SHAPESHIFTER",
+        cx, constants::SCENE_TITLE_TEXT_Y_N * constants::SCREEN_H,
+        FontSize::Large, 80, 180, 255, 255, TextAlign::Center);
+
+    float pulse = (std::sin(gs.phase_timer * 3.0f) + 1.0f) / 2.0f;
+    auto alpha = static_cast<uint8_t>(100 + pulse * 155);
+    text_draw(text_ctx, "TAP TO START",
+        cx, constants::SCENE_TITLE_PROMPT_Y_N * constants::SCREEN_H,
+        FontSize::Medium, 200, 200, 200, alpha, TextAlign::Center);
+}
+
+static void draw_hud(entt::registry& reg, const TextContext& text_ctx) {
+    auto& score  = reg.ctx().get<ScoreState>();
+    auto& config = reg.ctx().get<DifficultyConfig>();
+
+    text_draw_number(text_ctx, score.displayed_score,
+        constants::HUD_SCORE_X_N * constants::SCREEN_W,
+        constants::HUD_SCORE_Y_N * constants::SCREEN_H,
+        FontSize::Medium, 255, 255, 255, 255);
+
+    text_draw_number(text_ctx, score.high_score,
+        constants::HUD_SCORE_X_N   * constants::SCREEN_W,
+        constants::HUD_HISCORE_Y_N * constants::SCREEN_H,
+        FontSize::Small, 150, 150, 150, 180);
+
+    const float btn_w       = constants::BUTTON_W_N       * constants::SCREEN_W;
+    const float btn_h       = constants::BUTTON_H_N       * constants::SCREEN_H;
+    const float btn_spacing = constants::BUTTON_SPACING_N  * constants::SCREEN_W;
+    const float btn_y       = constants::BUTTON_Y_N        * constants::SCREEN_H;
+    float btn_radius = btn_w / 2.8f;
+    float btn_area_x = (constants::SCREEN_W - 3.0f * btn_w - 2.0f * btn_spacing) / 2.0f;
+    float btn_cy     = btn_y + btn_h / 2.0f;
+
+    Shape active_shape = Shape::Hexagon;
+    for (auto [e, ps] : reg.view<PlayerTag, PlayerShape>().each()) {
+        active_shape = ps.current;
+    }
+
+    float nearest_dist[3] = {-1.0f, -1.0f, -1.0f};
+    for (auto [e, opos, req] :
+         reg.view<ObstacleTag, Position, RequiredShape>(entt::exclude<ScoredTag>).each()) {
+        int si = static_cast<int>(req.shape);
+        if (si < 0 || si > 2) continue;
+        float d = constants::PLAYER_Y - opos.y;
+        if (d > 0.0f && (nearest_dist[si] < 0.0f || d < nearest_dist[si])) {
+            nearest_dist[si] = d;
+        }
+    }
+
+    auto* song_hud = reg.ctx().find<SongState>();
+    float perfect_dist = song_hud
+        ? song_hud->scroll_speed * (song_hud->morph_duration + song_hud->half_window)
+        : config.scroll_speed * 0.5f;
+    float ring_appear_dist = constants::APPROACH_DIST;
+    float max_ring_radius  = btn_radius * 2.0f;
+
+    for (int i = 0; i < 3; ++i) {
+        float btn_cx = btn_area_x
+            + static_cast<float>(i) * (btn_w + btn_spacing) + btn_w / 2.0f;
+        bool is_active = (static_cast<int>(active_shape) == i);
+
+        Color btn_bg = is_active ? Color{60, 60, 100, 255} : Color{30, 30, 50, 200};
+        DrawCircleV({btn_cx, btn_cy}, btn_radius, btn_bg);
+
+        Color btn_border = is_active ? Color{120, 180, 255, 255} : Color{60, 60, 80, 255};
+        DrawCircleLinesV({btn_cx, btn_cy}, btn_radius, btn_border);
+
+        auto shape = static_cast<Shape>(i);
+        Color icon_color = is_active ? Color{200, 230, 255, 255} : Color{100, 100, 120, 200};
+        draw_shape(shape, btn_cx, btn_cy, btn_radius * 1.2f, icon_color);
+
+        if (nearest_dist[i] > 0.0f && nearest_dist[i] < ring_appear_dist) {
+            float ratio = (nearest_dist[i] - perfect_dist)
+                        / (ring_appear_dist - perfect_dist);
+            if (ratio < 0.0f) ratio = 0.0f;
+            if (ratio > 1.0f) ratio = 1.0f;
+            float ring_r = btn_radius + (max_ring_radius - btn_radius) * ratio;
+
+            uint8_t r_col, g_col, b_col;
+            if (nearest_dist[i] <= perfect_dist) {
+                r_col = 100; g_col = 255; b_col = 100;
+            } else if (ratio < 0.3f) {
+                r_col = 180; g_col = 255; b_col = 100;
+            } else {
+                r_col = 120; g_col = 120; b_col = 180;
+            }
+            uint8_t ring_alpha = static_cast<uint8_t>(200 * (1.0f - ratio * 0.5f));
+            DrawCircleLinesV({btn_cx, btn_cy}, ring_r, {r_col, g_col, b_col, ring_alpha});
+            DrawCircleLinesV({btn_cx, btn_cy}, ring_r - 1.0f,
+                {r_col, g_col, b_col, static_cast<uint8_t>(ring_alpha / 2)});
+        }
+    }
+
+    float divider_y = constants::SWIPE_ZONE_SPLIT * constants::SCREEN_H;
+    DrawLineV({0, divider_y}, {static_cast<float>(constants::SCREEN_W), divider_y},
+              {40, 40, 60, 200});
+}
+
+static void draw_game_over_overlay(entt::registry& reg, const TextContext& text_ctx,
+                                   const GameState& gs) {
+    auto& score = reg.ctx().get<ScoreState>();
+    const float cx = constants::VIEWPORT_CX_N * constants::SCREEN_W;
+
+    DrawRectangleRec({0, 0, float(constants::SCREEN_W), float(constants::SCREEN_H)},
+                     {0, 0, 0, 180});
+
+    text_draw(text_ctx, "GAME OVER",
+        cx, constants::SCENE_GO_TITLE_Y_N * constants::SCREEN_H,
+        FontSize::Large, 255, 80, 80, 255, TextAlign::Center);
+
+    text_draw_number(text_ctx, score.score,
+        cx, constants::SCENE_GO_SCORE_Y_N * constants::SCREEN_H,
+        FontSize::Medium, 255, 255, 255, 255);
+
+    text_draw_number(text_ctx, score.high_score,
+        cx, constants::SCENE_GO_HISCORE_Y_N * constants::SCREEN_H,
+        FontSize::Small, 200, 200, 100, 255);
+
+    float pulse = (std::sin(gs.phase_timer * 3.0f) + 1.0f) / 2.0f;
+    auto retry_alpha = static_cast<uint8_t>(80 + pulse * 175);
+    text_draw(text_ctx, "TAP TO RETRY",
+        cx, constants::SCENE_GO_PROMPT_Y_N * constants::SCREEN_H,
+        FontSize::Medium, 200, 200, 200, retry_alpha, TextAlign::Center);
+}
+
+static void draw_song_complete_overlay(entt::registry& reg, const TextContext& text_ctx,
+                                       const GameState& gs) {
+    auto& score = reg.ctx().get<ScoreState>();
+    const float cx = constants::VIEWPORT_CX_N  * constants::SCREEN_W;
+    const float lx = constants::SCENE_SC_STATS_LX_N * constants::SCREEN_W;
+    const float rx = constants::SCENE_SC_STATS_RX_N * constants::SCREEN_W;
+
+    DrawRectangleRec({0, 0, float(constants::SCREEN_W), float(constants::SCREEN_H)},
+                     {0, 0, 0, 180});
+
+    text_draw(text_ctx, "SONG COMPLETE",
+        cx, constants::SCENE_SC_TITLE_Y_N * constants::SCREEN_H,
+        FontSize::Large, 100, 255, 100, 255, TextAlign::Center);
+
+    text_draw(text_ctx, "SCORE",
+        cx, constants::SCENE_SC_SLABEL_Y_N * constants::SCREEN_H,
+        FontSize::Small, 180, 180, 180, 255, TextAlign::Center);
+    text_draw_number(text_ctx, score.score,
+        cx, constants::SCENE_SC_SCORE_Y_N * constants::SCREEN_H,
+        FontSize::Medium, 255, 255, 255, 255);
+
+    text_draw(text_ctx, "HIGH SCORE",
+        cx, constants::SCENE_SC_HSLABEL_Y_N * constants::SCREEN_H,
+        FontSize::Small, 180, 180, 180, 255, TextAlign::Center);
+    text_draw_number(text_ctx, score.high_score,
+        cx, constants::SCENE_SC_HISCORE_Y_N * constants::SCREEN_H,
+        FontSize::Medium, 255, 215, 0, 255);
+
+    auto* results = reg.ctx().find<SongResults>();
+    if (results) {
+        float y = constants::SCENE_SC_TIMING_Y_N * constants::SCREEN_H;
+        const float dy = constants::SCENE_SC_TIMING_DY_N * constants::SCREEN_H;
+        text_draw(text_ctx, "PERFECT", lx, y, FontSize::Small, 100, 255, 100, 255, TextAlign::Left);
+        text_draw_number(text_ctx, results->perfect_count, rx, y, FontSize::Small, 255, 255, 255, 255);
+        y += dy;
+        text_draw(text_ctx, "GOOD", lx, y, FontSize::Small, 180, 255, 100, 255, TextAlign::Left);
+        text_draw_number(text_ctx, results->good_count, rx, y, FontSize::Small, 255, 255, 255, 255);
+        y += dy;
+        text_draw(text_ctx, "OK", lx, y, FontSize::Small, 255, 255, 100, 255, TextAlign::Left);
+        text_draw_number(text_ctx, results->ok_count, rx, y, FontSize::Small, 255, 255, 255, 255);
+        y += dy;
+        text_draw(text_ctx, "BAD", lx, y, FontSize::Small, 255, 150, 100, 255, TextAlign::Left);
+        text_draw_number(text_ctx, results->bad_count, rx, y, FontSize::Small, 255, 255, 255, 255);
+        y += dy;
+        text_draw(text_ctx, "MISS", lx, y, FontSize::Small, 255, 80, 80, 255, TextAlign::Left);
+        text_draw_number(text_ctx, results->miss_count, rx, y, FontSize::Small, 255, 255, 255, 255);
+    }
+
+    float pulse = (std::sin(gs.phase_timer * 3.0f) + 1.0f) / 2.0f;
+    auto replay_alpha = static_cast<uint8_t>(80 + pulse * 175);
+    text_draw(text_ctx, "TAP TO REPLAY",
+        cx, constants::SCENE_SC_PROMPT_Y_N * constants::SCREEN_H,
+        FontSize::Medium, 200, 200, 200, replay_alpha, TextAlign::Center);
+}
+
+static void draw_pause_overlay(const TextContext& text_ctx) {
+    DrawRectangleRec({0, 0, float(constants::SCREEN_W), float(constants::SCREEN_H)},
+                     {0, 0, 0, 160});
+
+    text_draw(text_ctx, "PAUSED",
+        constants::VIEWPORT_CX_N * constants::SCREEN_W,
+        constants::SCENE_PAUSE_Y_N * constants::SCREEN_H,
+        FontSize::Large, 255, 255, 255, 255, TextAlign::Center);
+}
+
 void render_system(entt::registry& reg, float /*alpha*/) {
     auto& gs = reg.ctx().get<GameState>();
     auto& text_ctx = reg.ctx().get<TextContext>();
@@ -220,237 +426,26 @@ void render_system(entt::registry& reg, float /*alpha*/) {
     }
 
     EndMode2D();
-    // ── VIEWPORT SPACE (HUD + overlays; all positions in NDC × SCREEN_W/H) ─────
+    // ── VIEWPORT SPACE (HUD + overlays) ─────────────────────
 
     if (gs.phase == GamePhase::Title) {
-        // ── Title scene ──────────────────────────────────────────────────────
-        // Decorative shapes
-        const float shapes_y  = constants::SCENE_TITLE_SHAPES_Y_N    * constants::SCREEN_H;
-        const float shape_sz  = constants::SCENE_TITLE_SHAPES_SIZE_N  * constants::SCREEN_W;
-        const float shape_off = constants::SCENE_TITLE_SHAPES_OFFSET_N * constants::SCREEN_W;
-        const float cx        = constants::VIEWPORT_CX_N * constants::SCREEN_W;
-        Color title_shape_color = {80, 180, 255, 255};
-        draw_shape(Shape::Circle,   cx - shape_off, shapes_y, shape_sz, title_shape_color);
-        draw_shape(Shape::Square,   cx,             shapes_y, shape_sz, title_shape_color);
-        Color green_color = {100, 255, 100, 255};
-        draw_shape(Shape::Triangle, cx + shape_off, shapes_y, shape_sz, green_color);
-
-        // Title text
-        text_draw(text_ctx, "SHAPESHIFTER",
-            constants::VIEWPORT_CX_N      * constants::SCREEN_W,
-            constants::SCENE_TITLE_TEXT_Y_N * constants::SCREEN_H,
-            FontSize::Large, 80, 180, 255, 255,
-            TextAlign::Center);
-
-        // "TAP TO START" — pulsing prompt
-        float pulse = (std::sin(gs.phase_timer * 3.0f) + 1.0f) / 2.0f;
-        uint8_t alpha = static_cast<uint8_t>(100 + pulse * 155);
-        text_draw(text_ctx, "TAP TO START",
-            constants::VIEWPORT_CX_N        * constants::SCREEN_W,
-            constants::SCENE_TITLE_PROMPT_Y_N * constants::SCREEN_H,
-            FontSize::Medium, 200, 200, 200, alpha,
-            TextAlign::Center);
+        draw_title_scene(text_ctx, gs);
         return;
     }
 
-    // ── Draw HUD ────────────────────────────────────────────
     if (gs.phase == GamePhase::Playing || gs.phase == GamePhase::Paused) {
-        auto& score   = reg.ctx().get<ScoreState>();
-        auto& config  = reg.ctx().get<DifficultyConfig>();
-
-        // Score — top-left in NDC
-        text_draw_number(text_ctx, score.displayed_score,
-            constants::HUD_SCORE_X_N * constants::SCREEN_W,
-            constants::HUD_SCORE_Y_N * constants::SCREEN_H,
-            FontSize::Medium, 255, 255, 255, 255);
-
-        // High score
-        text_draw_number(text_ctx, score.high_score,
-            constants::HUD_SCORE_X_N   * constants::SCREEN_W,
-            constants::HUD_HISCORE_Y_N * constants::SCREEN_H,
-            FontSize::Small, 150, 150, 150, 180);
-
-        // Shape buttons (circular) — derived from NDC constants
-        const float btn_w       = constants::BUTTON_W_N       * constants::SCREEN_W;
-        const float btn_h       = constants::BUTTON_H_N       * constants::SCREEN_H;
-        const float btn_spacing = constants::BUTTON_SPACING_N  * constants::SCREEN_W;
-        const float btn_y       = constants::BUTTON_Y_N        * constants::SCREEN_H;
-        float btn_radius  = btn_w / 2.8f;  // ~50px radius
-        float btn_area_x  = (constants::SCREEN_W - 3.0f * btn_w - 2.0f * btn_spacing) / 2.0f;
-        float btn_cy      = btn_y + btn_h / 2.0f;
-
-        Shape active_shape = Shape::Hexagon;
-        auto pview = reg.view<PlayerTag, PlayerShape>();
-        for (auto [e, ps] : pview.each()) {
-            active_shape = ps.current;
-        }
-
-        // Find nearest obstacle per shape (for proximity rings)
-        float nearest_dist[3] = {-1.0f, -1.0f, -1.0f};  // Circle, Square, Triangle
-        {
-            auto obs_view = reg.view<ObstacleTag, Position, RequiredShape>(entt::exclude<ScoredTag>);
-            for (auto [e, opos, req] : obs_view.each()) {
-                int si = static_cast<int>(req.shape);
-                if (si < 0 || si > 2) continue;
-                float d = constants::PLAYER_Y - opos.y;
-                if (d > 0.0f && (nearest_dist[si] < 0.0f || d < nearest_dist[si])) {
-                    nearest_dist[si] = d;
-                }
-            }
-        }
-
-        // Compute "perfect press" distance
-        auto* song_hud = reg.ctx().find<SongState>();
-        float perfect_dist = 0.0f;
-        if (song_hud) {
-            perfect_dist = song_hud->scroll_speed *
-                (song_hud->morph_duration + song_hud->half_window);
-        } else {
-            perfect_dist = config.scroll_speed * 0.5f;
-        }
-        float ring_appear_dist = constants::APPROACH_DIST;
-        float max_ring_radius = btn_radius * 2.0f;
-
-        for (int i = 0; i < 3; ++i) {
-            float btn_cx = btn_area_x
-                + static_cast<float>(i) * (btn_w + btn_spacing)
-                + btn_w / 2.0f;
-            bool is_active = (static_cast<int>(active_shape) == i);
-
-            Color btn_bg = is_active ? Color{60, 60, 100, 255} : Color{30, 30, 50, 200};
-            DrawCircleV({btn_cx, btn_cy}, btn_radius, btn_bg);
-
-            Color btn_border = is_active ? Color{120, 180, 255, 255} : Color{60, 60, 80, 255};
-            DrawCircleLinesV({btn_cx, btn_cy}, btn_radius, btn_border);
-
-            auto shape = static_cast<Shape>(i);
-            Color icon_color = is_active ? Color{200, 230, 255, 255} : Color{100, 100, 120, 200};
-            draw_shape(shape, btn_cx, btn_cy, btn_radius * 1.2f, icon_color);
-
-            if (nearest_dist[i] > 0.0f && nearest_dist[i] < ring_appear_dist) {
-                float ratio = (nearest_dist[i] - perfect_dist)
-                            / (ring_appear_dist - perfect_dist);
-                if (ratio < 0.0f) ratio = 0.0f;
-                if (ratio > 1.0f) ratio = 1.0f;
-                float ring_r = btn_radius + (max_ring_radius - btn_radius) * ratio;
-
-                uint8_t r_col, g_col, b_col;
-                if (nearest_dist[i] <= perfect_dist) {
-                    r_col = 100; g_col = 255; b_col = 100;
-                } else if (ratio < 0.3f) {
-                    r_col = 180; g_col = 255; b_col = 100;
-                } else {
-                    r_col = 120; g_col = 120; b_col = 180;
-                }
-                uint8_t ring_alpha = static_cast<uint8_t>(200 * (1.0f - ratio * 0.5f));
-                DrawCircleLinesV({btn_cx, btn_cy}, ring_r, {r_col, g_col, b_col, ring_alpha});
-                DrawCircleLinesV({btn_cx, btn_cy}, ring_r - 1.0f, {r_col, g_col, b_col, static_cast<uint8_t>(ring_alpha / 2)});
-            }
-        }
-
-        // Divider line between game and button zone (SWIPE_ZONE_SPLIT is already NDC)
-        float divider_y = constants::SWIPE_ZONE_SPLIT * constants::SCREEN_H;
-        DrawLineV({0, divider_y}, {static_cast<float>(constants::SCREEN_W), divider_y},
-                  {40, 40, 60, 200});
+        draw_hud(reg, text_ctx);
     }
 
-    // ── Game Over overlay ───────────────────────────────────
     if (gs.phase == GamePhase::GameOver) {
-        auto& score = reg.ctx().get<ScoreState>();
-        const float cx = constants::VIEWPORT_CX_N * constants::SCREEN_W;
-
-        DrawRectangleRec({0, 0, float(constants::SCREEN_W), float(constants::SCREEN_H)},
-                         {0, 0, 0, 180});
-
-        text_draw(text_ctx, "GAME OVER",
-            cx, constants::SCENE_GO_TITLE_Y_N * constants::SCREEN_H,
-            FontSize::Large, 255, 80, 80, 255,
-            TextAlign::Center);
-
-        text_draw_number(text_ctx, score.score,
-            cx, constants::SCENE_GO_SCORE_Y_N * constants::SCREEN_H,
-            FontSize::Medium, 255, 255, 255, 255);
-
-        text_draw_number(text_ctx, score.high_score,
-            cx, constants::SCENE_GO_HISCORE_Y_N * constants::SCREEN_H,
-            FontSize::Small, 200, 200, 100, 255);
-
-        float pulse = (std::sin(gs.phase_timer * 3.0f) + 1.0f) / 2.0f;
-        auto retry_alpha = static_cast<uint8_t>(80 + pulse * 175);
-        text_draw(text_ctx, "TAP TO RETRY",
-            cx, constants::SCENE_GO_PROMPT_Y_N * constants::SCREEN_H,
-            FontSize::Medium, 200, 200, 200, retry_alpha,
-            TextAlign::Center);
+        draw_game_over_overlay(reg, text_ctx, gs);
     }
 
-    // ── Song Complete overlay ─────────────────────────────────
     if (gs.phase == GamePhase::SongComplete) {
-        auto& score = reg.ctx().get<ScoreState>();
-        const float cx = constants::VIEWPORT_CX_N  * constants::SCREEN_W;
-        const float lx = constants::SCENE_SC_STATS_LX_N * constants::SCREEN_W;
-        const float rx = constants::SCENE_SC_STATS_RX_N * constants::SCREEN_W;
-
-        DrawRectangleRec({0, 0, float(constants::SCREEN_W), float(constants::SCREEN_H)},
-                         {0, 0, 0, 180});
-
-        text_draw(text_ctx, "SONG COMPLETE",
-            cx, constants::SCENE_SC_TITLE_Y_N * constants::SCREEN_H,
-            FontSize::Large, 100, 255, 100, 255,
-            TextAlign::Center);
-
-        text_draw(text_ctx, "SCORE",
-            cx, constants::SCENE_SC_SLABEL_Y_N * constants::SCREEN_H,
-            FontSize::Small, 180, 180, 180, 255,
-            TextAlign::Center);
-        text_draw_number(text_ctx, score.score,
-            cx, constants::SCENE_SC_SCORE_Y_N * constants::SCREEN_H,
-            FontSize::Medium, 255, 255, 255, 255);
-
-        text_draw(text_ctx, "HIGH SCORE",
-            cx, constants::SCENE_SC_HSLABEL_Y_N * constants::SCREEN_H,
-            FontSize::Small, 180, 180, 180, 255,
-            TextAlign::Center);
-        text_draw_number(text_ctx, score.high_score,
-            cx, constants::SCENE_SC_HISCORE_Y_N * constants::SCREEN_H,
-            FontSize::Medium, 255, 215, 0, 255);
-
-        auto* results = reg.ctx().find<SongResults>();
-        if (results) {
-            float y  = constants::SCENE_SC_TIMING_Y_N  * constants::SCREEN_H;
-            const float dy = constants::SCENE_SC_TIMING_DY_N * constants::SCREEN_H;
-            text_draw(text_ctx, "PERFECT", lx, y, FontSize::Small, 100, 255, 100, 255, TextAlign::Left);
-            text_draw_number(text_ctx, results->perfect_count, rx, y, FontSize::Small, 255, 255, 255, 255);
-            y += dy;
-            text_draw(text_ctx, "GOOD", lx, y, FontSize::Small, 180, 255, 100, 255, TextAlign::Left);
-            text_draw_number(text_ctx, results->good_count, rx, y, FontSize::Small, 255, 255, 255, 255);
-            y += dy;
-            text_draw(text_ctx, "OK", lx, y, FontSize::Small, 255, 255, 100, 255, TextAlign::Left);
-            text_draw_number(text_ctx, results->ok_count, rx, y, FontSize::Small, 255, 255, 255, 255);
-            y += dy;
-            text_draw(text_ctx, "BAD", lx, y, FontSize::Small, 255, 150, 100, 255, TextAlign::Left);
-            text_draw_number(text_ctx, results->bad_count, rx, y, FontSize::Small, 255, 255, 255, 255);
-            y += dy;
-            text_draw(text_ctx, "MISS", lx, y, FontSize::Small, 255, 80, 80, 255, TextAlign::Left);
-            text_draw_number(text_ctx, results->miss_count, rx, y, FontSize::Small, 255, 255, 255, 255);
-        }
-
-        float pulse = (std::sin(gs.phase_timer * 3.0f) + 1.0f) / 2.0f;
-        auto replay_alpha = static_cast<uint8_t>(80 + pulse * 175);
-        text_draw(text_ctx, "TAP TO REPLAY",
-            cx, constants::SCENE_SC_PROMPT_Y_N * constants::SCREEN_H,
-            FontSize::Medium, 200, 200, 200, replay_alpha,
-            TextAlign::Center);
+        draw_song_complete_overlay(reg, text_ctx, gs);
     }
 
-    // ── Pause overlay ───────────────────────────────────────
     if (gs.phase == GamePhase::Paused) {
-        DrawRectangleRec({0, 0, float(constants::SCREEN_W), float(constants::SCREEN_H)},
-                         {0, 0, 0, 160});
-
-        text_draw(text_ctx, "PAUSED",
-            constants::VIEWPORT_CX_N * constants::SCREEN_W,
-            constants::SCENE_PAUSE_Y_N * constants::SCREEN_H,
-            FontSize::Large, 255, 255, 255, 255,
-            TextAlign::Center);
+        draw_pause_overlay(text_ctx);
     }
 }

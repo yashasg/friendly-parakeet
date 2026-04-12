@@ -1,6 +1,7 @@
 #include "all_systems.h"
 #include "../components/input.h"
 #include "../constants.h"
+#include "../platform.h"
 #include <cmath>
 
 void gesture_system(entt::registry& reg, float /*dt*/) {
@@ -11,8 +12,8 @@ void gesture_system(entt::registry& reg, float /*dt*/) {
     gesture.gesture = SwipeGesture::None;
     btn_evt.pressed = false;
 
-#ifdef PLATFORM_DESKTOP
-    // ── Keyboard input path (desktop only) ───────────────────────
+#ifdef PLATFORM_HAS_KEYBOARD
+    // ── Keyboard input path ─────────────────────────────────────
     // Translate one-frame key pulses into the same GestureResult /
     // ShapeButtonEvent outputs that the touch path produces.
     // Checked first: if any key fired this frame we return early,

@@ -9,12 +9,14 @@
 #include "../components/rhythm.h"
 #include "../components/scoring.h"
 #include "../session_logger.h"
+#include "../enum_names.h"
+#include "../platform.h"
 #include "../constants.h"
 
 #include <cmath>
 #include <random>
 
-#ifdef PLATFORM_DESKTOP
+#ifdef PLATFORM_HAS_KEYBOARD
 
 // ── Helpers ──────────────────────────────────────────────────
 
@@ -25,28 +27,6 @@ static const char* shape_key_name(Shape s) {
         case Shape::Triangle: return "key_2(Triangle)";
         default:              return "key_?(?)";
     }
-}
-
-static const char* obstacle_kind_str(ObstacleKind k) {
-    switch (k) {
-        case ObstacleKind::ShapeGate: return "ShapeGate";
-        case ObstacleKind::LaneBlock: return "LaneBlock";
-        case ObstacleKind::LowBar:    return "LowBar";
-        case ObstacleKind::HighBar:   return "HighBar";
-        case ObstacleKind::ComboGate: return "ComboGate";
-        case ObstacleKind::SplitPath: return "SplitPath";
-    }
-    return "???";
-}
-
-static const char* shape_str(Shape s) {
-    switch (s) {
-        case Shape::Circle:   return "Circle";
-        case Shape::Square:   return "Square";
-        case Shape::Triangle: return "Triangle";
-        case Shape::Hexagon:  return "Hexagon";
-    }
-    return "???";
 }
 
 // Find nearest unblocked lane to current position.
@@ -195,12 +175,12 @@ void test_player_system(entt::registry& reg, float dt) {
     const auto& cfg = state->config();
 
     // ── Find player ──────────────────────────────────────────
-    auto player_view = reg.view<PlayerTag, Position, PlayerShape, Lane, VerticalState>();
+    auto player_view = reg.view<PlayerTag, Position, PlayerShape, ShapeWindow, Lane, VerticalState>();
     if (player_view.size_hint() == 0) return;
 
     auto player_entity = *player_view.begin();
-    auto [p_pos, p_shape, p_lane, p_vstate] =
-        player_view.get<Position, PlayerShape, Lane, VerticalState>(player_entity);
+    auto [p_pos, p_shape, p_window, p_lane, p_vstate] =
+        player_view.get<Position, PlayerShape, ShapeWindow, Lane, VerticalState>(player_entity);
 
     // ── PERCEIVE: scan obstacles in vision range ─────────────
     // Compute the "effective lane" — where the player will be after
@@ -256,13 +236,13 @@ void test_player_system(entt::registry& reg, float dt) {
                 "PERCEIVE obstacle=%u beat=%d kind=%s shape=%s lane=%d dist=%.0fpx",
                 static_cast<unsigned>(entt::to_integral(entity)),
                 beat_num,
-                obstacle_kind_str(obs.kind),
-                shape_str(action.target_shape),
+                obstacle_kind_name(obs.kind),
+                shape_name(action.target_shape),
                 action.target_lane, dist);
 
             session_log_write(*log, song_time, "PLAYER",
                 "PLAN action=%s%s%s react=%.3fs arrival=%.3fs",
-                action.target_shape != Shape::Hexagon ? shape_str(action.target_shape) : "",
+                action.target_shape != Shape::Hexagon ? shape_name(action.target_shape) : "",
                 action.target_lane >= 0 ? "+lane" : "",
                 action.target_vertical != VMode::Grounded ?
                     (action.target_vertical == VMode::Jumping ? "+jump" : "+slide") : "",
@@ -490,6 +470,6 @@ void test_player_system(entt::registry& reg, float dt) {
 }
 
 #else
-// Non-desktop stub — test player requires keyboard input flags
+// Non-keyboard stub — test player requires keyboard input flags
 void test_player_system(entt::registry&, float) {}
 #endif

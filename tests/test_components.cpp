@@ -106,6 +106,7 @@ TEST_CASE("ecs: make_player creates proper entity", "[ecs]") {
     CHECK(reg.all_of<PlayerTag>(p));
     CHECK(reg.all_of<Position>(p));
     CHECK(reg.all_of<PlayerShape>(p));
+    CHECK(reg.all_of<ShapeWindow>(p));
     CHECK(reg.all_of<Lane>(p));
     CHECK(reg.all_of<VerticalState>(p));
     CHECK(reg.all_of<DrawColor>(p));

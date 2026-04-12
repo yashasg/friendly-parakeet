@@ -96,6 +96,8 @@ target_link_libraries(shapeshifter_lib PRIVATE shapeshifter_warnings)
 # app/components/input.h stays portable (no raylib.h dependency in headers).
 if(CMAKE_SYSTEM_NAME MATCHES "Windows|Darwin|Linux")
     target_compile_definitions(shapeshifter_lib PUBLIC PLATFORM_DESKTOP)
+elseif(EMSCRIPTEN)
+    target_compile_definitions(shapeshifter_lib PUBLIC PLATFORM_WEB)
 endif()
 
 # ── Main executable ──────────────────────────────────────────
@@ -146,20 +148,32 @@ if(EMSCRIPTEN)
   <title>SHAPESHIFTER</title>
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
-    body{background:#0f0f19;display:flex;justify-content:center;align-items:center;height:100vh;overflow:hidden;font-family:monospace;color:#ccc}
-    #canvas{display:block;border:1px solid #333}
+    html,body{height:100%;overflow:hidden;touch-action:none}
+    body{background:#0f0f19;display:flex;justify-content:center;align-items:center;font-family:monospace;color:#ccc}
+    #canvas{display:block}
     #status{position:absolute;bottom:16px;text-align:center;width:100%;font-size:14px}
+    /* Mobile: fill the entire screen */
+    @media (hover:none) and (pointer:coarse){
+      #canvas{width:100vw;height:100vh;object-fit:contain}
+    }
+    /* Desktop: scale to viewport height, fixed width from aspect ratio */
+    @media (hover:hover) and (pointer:fine){
+      #canvas{height:100vh;width:auto;aspect-ratio:9/16}
+    }
   </style>
 </head>
 <body>
-  <canvas id="canvas" oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
+  <canvas id="canvas" oncontextmenu="event.preventDefault()" tabindex="0"></canvas>
   <div id="status">Loading…</div>
   <script>
+    var c=document.getElementById('canvas');
     var Module={
-      canvas:document.getElementById('canvas'),
+      canvas:c,
       setStatus:function(t){document.getElementById('status').innerText=t},
-      monitorRunDependencies:function(left){if(left===0)document.getElementById('status').style.display='none'}
+      monitorRunDependencies:function(left){if(left===0){document.getElementById('status').style.display='none';c.focus()}}
     };
+    c.addEventListener('click',function(){c.focus()});
+    document.addEventListener('touchmove',function(e){e.preventDefault()},{passive:false});
   </script>
   {{{ SCRIPT }}}
 </body>
@@ -176,7 +190,10 @@ if(EMSCRIPTEN)
     set_property(TARGET shapeshifter APPEND_STRING PROPERTY LINK_FLAGS
         " --preload-file ${CMAKE_SOURCE_DIR}/assets@/assets --preload-file ${CMAKE_SOURCE_DIR}/content@/content"
     )
-    set_target_properties(shapeshifter PROPERTIES SUFFIX ".html")
+    set_target_properties(shapeshifter PROPERTIES
+        OUTPUT_NAME "index"
+        SUFFIX ".html"
+    )
 endif()
 
 # Copy font assets next to the executable so text_init() can find them

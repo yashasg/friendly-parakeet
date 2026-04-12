@@ -1,6 +1,7 @@
 #pragma once
 
-#include "components/rhythm.h"
+#include "components/beat_map.h"
+#include "components/song_state.h"
 #include <string>
 #include <vector>
 
