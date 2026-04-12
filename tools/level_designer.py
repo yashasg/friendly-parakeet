@@ -464,9 +464,9 @@ def clean_two_lane_jumps(obstacles):
 
 def clean_minimum_gap(obstacles, difficulty):
     """RULE: Minimum beat gap between any two obstacles.
-    Same-lane or adjacent-lane needs ≥2 beats; cross-lane needs ≥3.
-    At 120 BPM gap=1 is only ~0.5s — too tight even for pro players."""
-    MIN_GAP = {"easy": 2, "medium": 2, "hard": 2}
+    Easy keeps gap≥2 for accessibility. Medium/hard allow gap=1
+    since collision timing uses BeatInfo.arrival_time (BPM-independent)."""
+    MIN_GAP = {"easy": 2, "medium": 1, "hard": 1}
     min_gap = MIN_GAP.get(difficulty, 2)
     if not obstacles or min_gap <= 1:
         return obstacles
