@@ -13,7 +13,7 @@ on:
       - "*.log"
 
 jobs:
-  build:
+  build-native:
     name: Build (Linux)
     runs-on: ubuntu-latest
     permissions:
@@ -36,13 +36,22 @@ jobs:
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
             core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
-      - name: Install Clang 20
+      - name: Install Clang 20 + system dependencies
         run: |
           wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
           echo "deb http://apt.llvm.org/$(lsb_release -cs)/ llvm-toolchain-$(lsb_release -cs)-20 main" \
             | sudo tee /etc/apt/sources.list.d/llvm-20.list
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends clang-20
+          sudo apt-get install -y --no-install-recommends \
+            clang-20 \
+            libgl1-mesa-dev \
+            libx11-dev \
+            libxrandr-dev \
+            libxinerama-dev \
+            libxcursor-dev \
+            libxi-dev \
+            libpulse-dev \
+            catch2
 
       - name: Setup vcpkg
         run: |
@@ -57,18 +66,6 @@ jobs:
           key: cmake-linux-clang20-${{ hashFiles('CMakeLists.txt', 'vcpkg.json') }}
           restore-keys: |
             cmake-linux-clang20-
-
-      - name: Install system dependencies
-        run: |
-          sudo apt-get install -y --no-install-recommends \
-            libgl1-mesa-dev \
-            libx11-dev \
-            libxrandr-dev \
-            libxinerama-dev \
-            libxcursor-dev \
-            libxi-dev \
-            libpulse-dev \
-            catch2
 
       - name: Build
         run: |
@@ -109,3 +106,89 @@ jobs:
           upload-artifact: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-web:
+    name: Build (WebAssembly)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      VCPKG_BINARY_SOURCES: "clear;default,readwrite"
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          lfs: true
+
+      - name: Export GitHub Actions cache variables
+        uses: actions/github-script@v8
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - name: Setup Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: 5.0.3
+          actions-cache-folder: emsdk-cache
+
+      - name: Setup vcpkg
+        run: |
+          git clone --depth 1 https://github.com/microsoft/vcpkg.git "$HOME/vcpkg"
+          "$HOME/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
+          echo "VCPKG_ROOT=$HOME/vcpkg" >> "$GITHUB_ENV"
+
+      - name: Cache build directory
+        uses: actions/cache@v5
+        with:
+          path: build-web
+          key: cmake-web-emscripten-${{ hashFiles('CMakeLists.txt', 'vcpkg.json') }}
+          restore-keys: |
+            cmake-web-emscripten-
+
+      - name: Build (Emscripten)
+        run: |
+          emcmake cmake -B build-web -S . \
+            -DCMAKE_BUILD_TYPE=Release \
+            "-DCMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" \
+            "-DVCPKG_OVERLAY_PORTS=$(pwd)/vcpkg-overlay" \
+            "-DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=${EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
+          cmake --build build-web
+
+      - name: Upload artifact
+        if: success()
+        uses: actions/upload-artifact@v5
+        with:
+          name: shapeshifter-web
+          path: |
+            build-web/index.html
+            build-web/index.js
+            build-web/index.wasm
+            build-web/index.data
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build-web
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: shapeshifter-web
+          path: site
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
