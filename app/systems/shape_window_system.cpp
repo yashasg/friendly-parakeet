@@ -11,7 +11,7 @@ static void apply_shape_color(entt::registry& reg, entt::entity entity, Shape sh
     reg.replace<DrawColor>(entity, sc.r, sc.g, sc.b, sc.a);
 }
 
-void shape_window_system(entt::registry& reg, float dt) {
+void shape_window_system(entt::registry& reg, float /*dt*/) {
     if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
 
     auto* song = reg.ctx().find<SongState>();
@@ -21,40 +21,50 @@ void shape_window_system(entt::registry& reg, float dt) {
     for (auto [entity, pshape, swindow, col] : view.each()) {
         auto phase = static_cast<WindowPhase>(swindow.phase_raw);
 
+        // Derive window_timer from song_time instead of accumulating dt.
+        // This keeps shape windows frame-rate independent and perfectly
+        // synced to the audio clock, per the "only use song position" rule.
+        float elapsed = song->song_time - swindow.window_start;
+
         switch (phase) {
             case WindowPhase::Idle:
                 break;
 
-            case WindowPhase::MorphIn:
-                swindow.window_timer += dt;
-                pshape.morph_t = swindow.window_timer / song->morph_duration;
+            case WindowPhase::MorphIn: {
+                swindow.window_timer = elapsed;
+                pshape.morph_t = elapsed / song->morph_duration;
                 if (pshape.morph_t >= 1.0f) {
                     pshape.morph_t = 1.0f;
                     swindow.phase_raw = static_cast<uint8_t>(WindowPhase::Active);
+                    // Record the exact song_time when Active began for the next phase
+                    swindow.window_start = swindow.window_start + song->morph_duration;
                     swindow.window_timer = 0.0f;
                     pshape.current = swindow.target_shape;
                     apply_shape_color(reg, entity, pshape.current);
                 }
                 break;
+            }
 
-            case WindowPhase::Active:
-                swindow.window_timer += dt;
-                {
-                    float effective_duration = (swindow.window_scale > 1.0f)
-                        ? song->window_duration * swindow.window_scale
-                        : song->window_duration;
-                    if (swindow.window_timer >= effective_duration) {
-                        swindow.phase_raw = static_cast<uint8_t>(WindowPhase::MorphOut);
-                        swindow.window_timer = 0.0f;
-                        pshape.previous = pshape.current;
-                        pshape.morph_t = 0.0f;
-                    }
+            case WindowPhase::Active: {
+                float active_elapsed = song->song_time - swindow.window_start;
+                swindow.window_timer = active_elapsed;
+                float effective_duration = (swindow.window_scale > 1.0f)
+                    ? song->window_duration * swindow.window_scale
+                    : song->window_duration;
+                if (active_elapsed >= effective_duration) {
+                    swindow.phase_raw = static_cast<uint8_t>(WindowPhase::MorphOut);
+                    swindow.window_start = swindow.window_start + effective_duration;
+                    swindow.window_timer = 0.0f;
+                    pshape.previous = pshape.current;
+                    pshape.morph_t = 0.0f;
                 }
                 break;
+            }
 
-            case WindowPhase::MorphOut:
-                swindow.window_timer += dt;
-                pshape.morph_t = swindow.window_timer / song->morph_duration;
+            case WindowPhase::MorphOut: {
+                float morph_elapsed = song->song_time - swindow.window_start;
+                swindow.window_timer = morph_elapsed;
+                pshape.morph_t = morph_elapsed / song->morph_duration;
                 if (pshape.morph_t >= 1.0f) {
                     pshape.morph_t = 1.0f;
                     pshape.current = Shape::Hexagon;
@@ -67,6 +77,7 @@ void shape_window_system(entt::registry& reg, float dt) {
                     apply_shape_color(reg, entity, Shape::Hexagon);
                 }
                 break;
+            }
         }
     }
 }

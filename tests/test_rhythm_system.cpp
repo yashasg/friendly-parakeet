@@ -332,6 +332,7 @@ TEST_CASE("beat_scheduler: spawns lane_block with blocked mask", "[rhythm][sched
 TEST_CASE("shape_window: idle does nothing", "[rhythm][window]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
+    reg.ctx().get<SongState>().song_time += 0.016f;
     shape_window_system(reg, 0.016f);
     auto& ps = reg.get<PlayerShape>(player);
     auto& sw = reg.get<ShapeWindow>(player);
@@ -348,6 +349,8 @@ TEST_CASE("shape_window: morph_in transitions to active", "[rhythm][window]") {
     sw.phase_raw = static_cast<uint8_t>(WindowPhase::MorphIn);
     sw.target_shape = Shape::Triangle;
     sw.window_timer = 0.0f; ps.morph_t = 0.0f;
+    sw.window_start = reg.ctx().get<SongState>().song_time;
+    reg.ctx().get<SongState>().song_time += song.morph_duration + 0.01f;
     shape_window_system(reg, song.morph_duration + 0.01f);
     CHECK(ps.current == Shape::Triangle);
     CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::Active));
@@ -361,6 +364,8 @@ TEST_CASE("shape_window: active transitions to morph_out", "[rhythm][window]") {
     auto& song = reg.ctx().get<SongState>();
     sw.phase_raw = static_cast<uint8_t>(WindowPhase::Active);
     ps.current = Shape::Triangle; sw.window_timer = 0.0f;
+    sw.window_start = reg.ctx().get<SongState>().song_time;
+    reg.ctx().get<SongState>().song_time += song.window_duration + 0.01f;
     shape_window_system(reg, song.window_duration + 0.01f);
     CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::MorphOut));
 }
@@ -373,6 +378,8 @@ TEST_CASE("shape_window: morph_out reverts to hexagon", "[rhythm][window]") {
     auto& song = reg.ctx().get<SongState>();
     sw.phase_raw = static_cast<uint8_t>(WindowPhase::MorphOut);
     ps.current = Shape::Triangle; sw.window_timer = 0.0f;
+    sw.window_start = reg.ctx().get<SongState>().song_time;
+    reg.ctx().get<SongState>().song_time += song.morph_duration + 0.01f;
     shape_window_system(reg, song.morph_duration + 0.01f);
     CHECK(ps.current == Shape::Hexagon);
     CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::Idle));
@@ -387,13 +394,13 @@ TEST_CASE("shape_window: full lifecycle", "[rhythm][window]") {
     sw.phase_raw = static_cast<uint8_t>(WindowPhase::MorphIn);
     sw.target_shape = Shape::Square;
     float morph_dt = song.morph_duration / 5.0f;
-    for (int i = 0; i < 6; ++i) shape_window_system(reg, morph_dt);
+    for (int i = 0; i < 6; ++i) { reg.ctx().get<SongState>().song_time += morph_dt; shape_window_system(reg, morph_dt); }
     CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::Active));
     CHECK(ps.current == Shape::Square);
     float active_dt = song.window_duration / 10.0f;
-    for (int i = 0; i < 11; ++i) shape_window_system(reg, active_dt);
+    for (int i = 0; i < 11; ++i) { reg.ctx().get<SongState>().song_time += active_dt; shape_window_system(reg, active_dt); }
     CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::MorphOut));
-    for (int i = 0; i < 6; ++i) shape_window_system(reg, morph_dt);
+    for (int i = 0; i < 6; ++i) { reg.ctx().get<SongState>().song_time += morph_dt; shape_window_system(reg, morph_dt); }
     CHECK(ps.current == Shape::Hexagon);
     CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::Idle));
 }
@@ -835,7 +842,8 @@ TEST_CASE("integration: obstacle arrives on-beat within 1 frame", "[rhythm][inte
     bool obstacle_at_player = false;
     int frames = 0;
     while (frames < 300) {
-        song_playback_system(reg, dt);
+        // Advance song_time once per frame (no music loaded → manual advance)
+        song.song_time += dt;
         beat_scheduler_system(reg, dt);
         scroll_system(reg, dt);
         frames++;
@@ -845,8 +853,6 @@ TEST_CASE("integration: obstacle arrives on-beat within 1 frame", "[rhythm][inte
                 obstacle_at_player = true;
                 float beat_time = song.offset + 4 * song.beat_period;
                 float margin_offset = 40.0f / song.scroll_speed;
-                // Collision resolves at PLAYER_Y - 40px, which should be at beat_time.
-                // Obstacle reaches PLAYER_Y at beat_time + margin_offset.
                 CHECK_THAT(song.song_time, WithinAbs(beat_time + margin_offset, dt + 0.001f));
                 break;
             }
