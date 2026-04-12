@@ -38,10 +38,6 @@ from collections import Counter
 # CONSTANTS
 # ═══════════════════════════════════════════════════════════════
 
-PASS_TO_SHAPE = {
-    "kick": "circle", "snare": "square", "melody": "square",
-    "hihat": "triangle", "flux": "square",
-}
 SHAPE_TO_LANE = {"circle": 0, "square": 1, "triangle": 2}
 LANE_TO_SHAPE = {0: "circle", 1: "square", 2: "triangle"}
 ALL_SHAPES = ["circle", "square", "triangle"]
@@ -64,6 +60,18 @@ DIFFICULTY_KINDS = {
     "easy":   {"shape_gate"},
     "medium": {"shape_gate", "lane_block"},
     "hard":   {"shape_gate", "lane_block"},
+}
+
+# Shape palette per section: controls how many shapes are in play.
+# Intro/bridge = 1 shape (center lane, player learns/rests).
+# Verse = 2 shapes (alternating, player grooves).
+# Pre-chorus/drop = all 3 (full variety, player is warmed up).
+SECTION_SHAPE_PALETTE = {
+    "intro":      [1],
+    "verse":      [0, 1],
+    "pre-chorus": [0, 1, 2],
+    "drop":       [0, 1, 2],
+    "bridge":     [1],
 }
 
 
@@ -113,15 +121,6 @@ def lane_of(obs, fallback=1):
             if l not in blocked:
                 return l
     return fallback
-
-
-def dominant_pass(passes):
-    """Return the single most 'specific' pass (kick > snare > hihat > melody > flux)."""
-    priority = ["kick", "hihat", "snare", "melody", "flux"]
-    for p in priority:
-        if p in passes:
-            return p
-    return "flux"
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -260,20 +259,45 @@ def assign_obstacle(beat_idx, event, gap_to_prev, section_name, difficulty,
     obs = {"beat": beat_idx, "kind": natural_kind}
 
     if natural_kind == "shape_gate":
-        # Pick shape from dominant pass
-        dom = dominant_pass(passes)
-        shape = PASS_TO_SHAPE.get(dom, "square")
+        # Flow-based shape picker:
+        # 1. Section palette limits which shapes are available
+        # 2. Short gaps → stay on same shape (groove / "L1 kick" principle)
+        # 3. Longer gaps → alternate shape (variety)
+        # 4. Anti-triple built in (never 3 of same shape in a row)
+        palette = SECTION_SHAPE_PALETTE.get(section_name, [0, 1, 2])
 
-        # Anti-triple: if last 2 shapes were the same, pick different
-        if len(prev_shapes) >= 2 and prev_shapes[-1] == prev_shapes[-2] == shape:
-            others = [s for s in ALL_SHAPES if s != shape]
-            shape = others[beat_idx % len(others)]
+        if len(palette) == 1:
+            # Single-shape section (intro/bridge): always center
+            lane = palette[0]
+            shape = LANE_TO_SHAPE[lane]
+        elif gap_to_prev is not None and gap_to_prev <= 2 and prev_shapes:
+            # Short gap: stay on same shape for groove
+            shape = prev_shapes[-1]
+            lane = SHAPE_TO_LANE[shape]
+            # But check anti-triple
+            if (lane not in palette or
+                    (len(prev_shapes) >= 2 and prev_shapes[-1] == prev_shapes[-2] == shape)):
+                idx = palette.index(lane) if lane in palette else 0
+                lane = palette[(idx + 1) % len(palette)]
+                shape = LANE_TO_SHAPE[lane]
+        elif prev_shapes:
+            # Longer gap: pick a different shape
+            prev_lane_s = SHAPE_TO_LANE[prev_shapes[-1]]
+            candidates = [l for l in palette if l != prev_lane_s]
+            if candidates:
+                adjacent = [l for l in candidates if abs(l - prev_lane) <= 1]
+                pool = adjacent if adjacent else candidates
+                lane = pool[beat_idx % len(pool)]
+            else:
+                lane = palette[beat_idx % len(palette)]
+            shape = LANE_TO_SHAPE[lane]
+        else:
+            # First note: start center if available
+            lane = 1 if 1 in palette else palette[0]
+            shape = LANE_TO_SHAPE[lane]
 
-        lane = SHAPE_TO_LANE[shape]
-
-        # Keep lane adjacent to previous (no 2-lane jumps at generation time)
+        # Keep lane adjacent to previous (no 2-lane jumps)
         if abs(lane - prev_lane) > 1:
-            # Snap to adjacent lane, pick matching shape
             if lane > prev_lane:
                 lane = prev_lane + 1
             else:
