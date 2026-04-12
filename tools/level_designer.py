@@ -47,14 +47,14 @@ ALL_SHAPES = ["circle", "square", "triangle"]
 # Bridge = sparse, breathing room.
 # Final section = hardest patterns (the "final fortress").
 SECTION_ROLE = {
-    "intro":      {"density": 0.20, "types": ["shape_gate"], "consistent": True},
-    "verse":      {"density": 0.50, "types": ["shape_gate", "lane_block"], "consistent": False},
-    "pre-chorus": {"density": 0.60, "types": ["shape_gate", "lane_block"], "consistent": False},
-    "drop":       {"density": 0.80, "types": ["shape_gate", "lane_block"], "consistent": True},
-    "bridge":     {"density": 0.25, "types": ["shape_gate"], "consistent": False},
+    "intro":      {"density": 0.30, "types": ["shape_gate"], "consistent": True},
+    "verse":      {"density": 0.65, "types": ["shape_gate", "lane_block"], "consistent": False},
+    "pre-chorus": {"density": 0.80, "types": ["shape_gate", "lane_block"], "consistent": False},
+    "drop":       {"density": 0.90, "types": ["shape_gate", "lane_block"], "consistent": True},
+    "bridge":     {"density": 0.35, "types": ["shape_gate"], "consistent": False},
 }
 
-DIFFICULTY_SCALE = {"easy": 0.50, "medium": 0.75, "hard": 1.00}
+DIFFICULTY_SCALE = {"easy": 0.55, "medium": 0.80, "hard": 1.00}
 DIFFICULTY_INTRO_REST = {"easy": 8, "medium": 4, "hard": 2}
 DIFFICULTY_KINDS = {
     "easy":   {"shape_gate"},
@@ -141,13 +141,14 @@ def select_beats(analysis, difficulty):
     intro_rest = DIFFICULTY_INTRO_REST[difficulty]
 
     # Flux filter: harder = lower threshold = more events kept
-    flux_pcts = {"easy": 75, "medium": 50, "hard": 25}
+    flux_pcts = {"easy": 70, "medium": 40, "hard": 15}
     thresh = flux_threshold(analysis.get("flux_stats", {}), flux_pcts[difficulty])
     all_on_beat = snap_events_to_beats(events, beats)
     event_map = {ev["beat_idx"]: ev for ev in all_on_beat if ev.get("flux", 0.0) >= thresh}
 
     # Track patterns by section type for reuse
-    section_patterns = {}  # "verse" -> list of relative beat offsets from section start
+    section_patterns = {}      # "verse" -> list of relative beat offsets
+    section_pattern_lens = {}  # "verse" -> original section length in beats
 
     selected = {}  # beat_idx -> event data (or None for imaginary beats)
 
@@ -170,18 +171,25 @@ def select_beats(analysis, difficulty):
         target_count = max(1, int(len(sec_beats) * density))
 
         if sec_name in section_patterns:
-            # REUSE pattern from first occurrence of this section type
+            # REUSE pattern from first occurrence of this section type.
+            # If this section is much longer than the original, tile the
+            # pattern instead of stretching it (prevents huge gaps).
             pattern = section_patterns[sec_name]
             sec_base = sec_beats[0]
             sec_len = sec_beats[-1] - sec_beats[0] + 1
+            orig_len = section_pattern_lens.get(sec_name, sec_len)
 
-            for rel_offset in pattern:
-                bi = sec_base + int(rel_offset * sec_len)
-                # Snap to nearest actual beat in section
-                closest = min(sec_beats, key=lambda b: abs(b - bi))
-                if closest not in selected:
-                    ev = event_map.get(closest)
-                    selected[closest] = ev
+            # How many tiles fit?
+            tiles = max(1, round(sec_len / orig_len))
+
+            for tile in range(tiles):
+                tile_base = sec_base + int(tile * sec_len / tiles)
+                tile_len = sec_len / tiles
+                for rel_offset in pattern:
+                    bi = tile_base + int(rel_offset * tile_len)
+                    closest = min(sec_beats, key=lambda b: abs(b - bi))
+                    if closest not in selected:
+                        selected[closest] = event_map.get(closest)
         else:
             # FIRST occurrence: select beats based on events, save pattern
             # Prefer beats with events; fill with evenly-spaced beats if needed
@@ -200,6 +208,7 @@ def select_beats(analysis, difficulty):
             sec_base = sec_beats[0]
             sec_len = max(1, sec_beats[-1] - sec_beats[0])
             section_patterns[sec_name] = [(b - sec_base) / sec_len for b in chosen]
+            section_pattern_lens[sec_name] = sec_len
 
             for bi in chosen:
                 selected[bi] = event_map.get(bi)
