@@ -127,6 +127,7 @@ int main(int argc, char* argv[]) {
     // ── Parse CLI args ───────────────────────────────────────
     TestPlayerSkill test_skill = TestPlayerSkill::Pro;
     bool test_player_mode = false;
+    const char* difficulty = "medium";
     for (int i = 1; i < argc; ++i) {
         if (std::strcmp(argv[i], "--test-player") == 0 && i + 1 < argc) {
             test_player_mode = true;
@@ -136,6 +137,17 @@ int main(int argc, char* argv[]) {
             else if (std::strcmp(argv[i], "bad") == 0)   test_skill = TestPlayerSkill::Bad;
             else {
                 std::fprintf(stderr, "Unknown skill: %s (use pro|good|bad)\n", argv[i]);
+                return 1;
+            }
+        }
+        if (std::strcmp(argv[i], "--difficulty") == 0 && i + 1 < argc) {
+            ++i;
+            if (std::strcmp(argv[i], "easy") == 0 ||
+                std::strcmp(argv[i], "medium") == 0 ||
+                std::strcmp(argv[i], "hard") == 0) {
+                difficulty = argv[i];
+            } else {
+                std::fprintf(stderr, "Unknown difficulty: %s (use easy|medium|hard)\n", argv[i]);
                 return 1;
             }
         }
@@ -226,7 +238,7 @@ int main(int argc, char* argv[]) {
         bool loaded = false;
         for (const char* path : beatmap_paths) {
             load_errors.clear();
-            if (load_beat_map(path, beatmap, load_errors, "medium")) {
+            if (load_beat_map(path, beatmap, load_errors, difficulty)) {
                 TraceLog(LOG_INFO, "Loaded beatmap: %s (%zu beats, difficulty=%s)",
                          path, beatmap.beats.size(), beatmap.difficulty.c_str());
                 loaded = true;
