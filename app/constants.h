@@ -93,13 +93,64 @@ constexpr float MIN_SWIPE_DIST    = 50.0f;
 constexpr float MAX_SWIPE_TIME    = 0.3f;
 constexpr float BUTTON_DEBOUNCE   = 0.1f;
 
-// ── UI Layout ─────────────────────────────────────
+// ── UI Layout (pixel-space; used by gesture_system and tests) ─────────────
 constexpr float BURNOUT_BAR_Y     = 1020.0f;
 constexpr float BURNOUT_BAR_H     = 20.0f;
 constexpr float BUTTON_Y          = 1140.0f;
 constexpr float BUTTON_W          = 140.0f;
 constexpr float BUTTON_H          = 100.0f;
 constexpr float BUTTON_SPACING    = 60.0f;
+
+// ── Normalised Viewport Layout (0.0–1.0 × SCREEN_W or SCREEN_H) ──────────
+// HUD, scenes, and overlays are positioned in this space.  At draw time
+// multiply by SCREEN_W (x) or SCREEN_H (y) to obtain virtual pixel coords.
+// Using NDC here means the layout is readable and resolution-independent.
+
+// Viewport horizontal centre (shared by most overlay text)
+constexpr float VIEWPORT_CX_N         = 0.5f;
+
+// HUD – score / status display
+constexpr float HUD_SCORE_X_N         =  120.0f / SCREEN_W;  // ≈ 0.167
+constexpr float HUD_SCORE_Y_N         =   20.0f / SCREEN_H;  // ≈ 0.016
+constexpr float HUD_HISCORE_Y_N       =   50.0f / SCREEN_H;  // ≈ 0.039
+
+// HUD – shape button row (NDC companions to the pixel constants above)
+constexpr float BUTTON_Y_N            = BUTTON_Y       / SCREEN_H;  // ≈ 0.891
+constexpr float BUTTON_W_N            = BUTTON_W       / SCREEN_W;  // ≈ 0.194
+constexpr float BUTTON_H_N            = BUTTON_H       / SCREEN_H;  // ≈ 0.078
+constexpr float BUTTON_SPACING_N      = BUTTON_SPACING / SCREEN_W;  // ≈ 0.083
+
+// HUD – burnout bar (NDC companions to the pixel constants above)
+constexpr float BURNOUT_BAR_Y_N       = BURNOUT_BAR_Y / SCREEN_H;   // ≈ 0.797
+constexpr float BURNOUT_BAR_H_N       = BURNOUT_BAR_H / SCREEN_H;   // ≈ 0.016
+
+// Scene – Title (shapes + text)
+constexpr float SCENE_TITLE_SHAPES_Y_N       =  400.0f / SCREEN_H;  // ≈ 0.313
+constexpr float SCENE_TITLE_SHAPES_SIZE_N    =   80.0f / SCREEN_W;  // ≈ 0.111
+constexpr float SCENE_TITLE_SHAPES_OFFSET_N  =   80.0f / SCREEN_W;  // ≈ 0.111 (centre-to-centre)
+constexpr float SCENE_TITLE_TEXT_Y_N         =  500.0f / SCREEN_H;  // ≈ 0.391
+constexpr float SCENE_TITLE_PROMPT_Y_N       =  600.0f / SCREEN_H;  // ≈ 0.469
+
+// Scene – Game Over overlay
+constexpr float SCENE_GO_TITLE_Y_N    =  440.0f / SCREEN_H;  // ≈ 0.344
+constexpr float SCENE_GO_SCORE_Y_N    =  510.0f / SCREEN_H;  // ≈ 0.398
+constexpr float SCENE_GO_HISCORE_Y_N  =  560.0f / SCREEN_H;  // ≈ 0.438
+constexpr float SCENE_GO_PROMPT_Y_N   =  650.0f / SCREEN_H;  // ≈ 0.508
+
+// Scene – Song Complete overlay
+constexpr float SCENE_SC_TITLE_Y_N    =  340.0f / SCREEN_H;  // ≈ 0.266
+constexpr float SCENE_SC_SLABEL_Y_N   =  420.0f / SCREEN_H;  // ≈ 0.328
+constexpr float SCENE_SC_SCORE_Y_N    =  455.0f / SCREEN_H;  // ≈ 0.355
+constexpr float SCENE_SC_HSLABEL_Y_N  =  510.0f / SCREEN_H;  // ≈ 0.398
+constexpr float SCENE_SC_HISCORE_Y_N  =  545.0f / SCREEN_H;  // ≈ 0.426
+constexpr float SCENE_SC_TIMING_Y_N   =  600.0f / SCREEN_H;  // ≈ 0.469
+constexpr float SCENE_SC_TIMING_DY_N  =   30.0f / SCREEN_H;  // ≈ 0.023 (line spacing)
+constexpr float SCENE_SC_STATS_LX_N   =  240.0f / SCREEN_W;  // ≈ 0.333
+constexpr float SCENE_SC_STATS_RX_N   =  500.0f / SCREEN_W;  // ≈ 0.694
+constexpr float SCENE_SC_PROMPT_Y_N   =  800.0f / SCREEN_H;  // ≈ 0.625
+
+// Scene – Paused overlay
+constexpr float SCENE_PAUSE_Y_N       =  580.0f / SCREEN_H;  // ≈ 0.453
 
 // ── Shape Colors ──────────────────────────────────
 // Used for both obstacles and player character.
