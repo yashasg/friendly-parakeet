@@ -45,7 +45,12 @@ jobs:
           echo "CXX=${LLVM_PREFIX}/bin/clang++" >> "$GITHUB_ENV"
 
       - name: Setup vcpkg
-        run: echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> "$GITHUB_ENV"
+        run: |
+          if [ -z "${VCPKG_INSTALLATION_ROOT:-}" ]; then
+            echo "::error::VCPKG_INSTALLATION_ROOT is unset or empty on this runner; cannot set VCPKG_ROOT."
+            exit 1
+          fi
+          echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> "$GITHUB_ENV"
 
       - name: Cache CMake build directory
         uses: actions/cache@v5

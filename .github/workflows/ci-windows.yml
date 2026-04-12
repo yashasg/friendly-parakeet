@@ -41,10 +41,26 @@ jobs:
 
       - name: Setup vcpkg
         shell: bash
-        run: echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> "$GITHUB_ENV"
+        run: |
+          if [ -z "${VCPKG_INSTALLATION_ROOT:-}" ]; then
+            echo "::error::VCPKG_INSTALLATION_ROOT is not set on this runner. Cannot configure VCPKG_ROOT for the Windows build."
+            exit 1
+          fi
+          echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> "$GITHUB_ENV"
 
       - name: Install Ninja
         run: choco install ninja -y --no-progress
+
+      - name: Install LLVM 20
+        shell: powershell
+        run: |
+          choco install llvm -y --no-progress
+          $clangVer = (clang --version) -join " "
+          Write-Host "Clang: $clangVer"
+          if ($clangVer -notmatch "clang version 20\.") {
+            Write-Error "Expected Clang 20.x but got: $clangVer"
+            exit 1
+          }
 
       - name: Cache CMake build directory
         uses: actions/cache@v5

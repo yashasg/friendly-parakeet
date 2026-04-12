@@ -47,11 +47,11 @@ case "$(uname -s)" in
         ;;
 esac
 
-# Skip configure if the build directory is already valid (cache hit).
-# Also skip vcpkg manifest install if packages are already present —
-# vcpkg re-runs install on every configure/build, rebuilding packages
-# if the runner's vcpkg version changed.
-if [[ -d build/vcpkg_installed ]] && [[ -f build/CMakeCache.txt ]]; then
+# Always run CMake configure, but in CI skip vcpkg manifest install when
+# packages are already restored from cache — vcpkg re-runs install on every
+# configure, rebuilding packages if the runner's vcpkg version changed.
+# Gated to CI only to avoid silently using stale packages in local builds.
+if [[ "${CI:-}" == "true" ]] && [[ -d build/vcpkg_installed ]] && [[ -f build/CMakeCache.txt ]]; then
     # Packages already installed from cache — tell vcpkg not to re-install.
     # This prevents vcpkg from rebuilding all deps when the runner's
     # pre-installed vcpkg version differs from what built the cache.

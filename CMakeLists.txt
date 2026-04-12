@@ -7,7 +7,8 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-set(CMAKE_UNITY_BUILD ON)
+option(SHAPESHIFTER_UNITY_BUILD "Enable unity builds for faster compilation" OFF)
+set(CMAKE_UNITY_BUILD ${SHAPESHIFTER_UNITY_BUILD})
 
 # ── Version (major.minor.githash) ────────────────────────────
 execute_process(

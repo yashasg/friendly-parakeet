@@ -39,9 +39,12 @@ jobs:
 
       - name: Install Clang 20 + system dependencies
         run: |
-          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-          echo "deb http://apt.llvm.org/$(lsb_release -cs)/ llvm-toolchain-$(lsb_release -cs)-20 main" \
-            | sudo tee /etc/apt/sources.list.d/llvm-20.list
+          sudo mkdir -p /etc/apt/keyrings
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
+            | gpg --dearmor \
+            | sudo tee /etc/apt/keyrings/llvm-archive-keyring.gpg > /dev/null
+          echo "deb [signed-by=/etc/apt/keyrings/llvm-archive-keyring.gpg] https://apt.llvm.org/$(lsb_release -cs)/ llvm-toolchain-$(lsb_release -cs)-20 main" \
+            | sudo tee /etc/apt/sources.list.d/llvm-20.list > /dev/null
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
             clang-20 \
@@ -55,7 +58,12 @@ jobs:
             catch2
 
       - name: Setup vcpkg
-        run: echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> "$GITHUB_ENV"
+        run: |
+          if [ -z "${VCPKG_INSTALLATION_ROOT:-}" ]; then
+            echo "::error title=Missing vcpkg installation::VCPKG_INSTALLATION_ROOT is not set on this runner, so VCPKG_ROOT cannot be exported."
+            exit 1
+          fi
+          echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> "$GITHUB_ENV"
 
       - name: Cache CMake build directory
         uses: actions/cache@v5
@@ -132,7 +140,12 @@ jobs:
           actions-cache-folder: emsdk-cache
 
       - name: Setup vcpkg
-        run: echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> "$GITHUB_ENV"
+        run: |
+          if [ -z "${VCPKG_INSTALLATION_ROOT:-}" ]; then
+            echo "::error title=Missing vcpkg installation::VCPKG_INSTALLATION_ROOT is not set on this runner, so VCPKG_ROOT cannot be exported."
+            exit 1
+          fi
+          echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> "$GITHUB_ENV"
 
       - name: Cache build directory
         uses: actions/cache@v5
