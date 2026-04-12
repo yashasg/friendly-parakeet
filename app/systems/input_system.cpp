@@ -1,12 +1,20 @@
 #include "all_systems.h"
 #include "../components/input.h"
+#include "../components/rendering.h"
 #include "../components/game_state.h"
 #include "../constants.h"
 #include <raylib.h>
 
 void input_system(entt::registry& reg, float raw_dt) {
     auto& input = reg.ctx().get<InputState>();
+    auto& st    = reg.ctx().get<ScreenTransform>();
     clear_input_events(input);
+
+    // Convert a raw window pixel coordinate to virtual world space.
+    // At the initial 720×1280 window (scale=1, offset=0) this is a no-op;
+    // when the window is resized the letterbox offsets and scale are applied.
+    auto to_vx = [&](float wx) { return (wx - st.offset_x) / st.scale; };
+    auto to_vy = [&](float wy) { return (wy - st.offset_y) / st.scale; };
 
     // ── Mouse (desktop) — only when no touch gesture is active ─
     if (input.active_source != InputSource::Touch) {
@@ -15,8 +23,8 @@ void input_system(entt::registry& reg, float raw_dt) {
             input.touching   = true;
             input.active_source = InputSource::Mouse;
             Vector2 pos = GetMousePosition();
-            input.start_x = input.curr_x = pos.x;
-            input.start_y = input.curr_y = pos.y;
+            input.start_x = input.curr_x = to_vx(pos.x);
+            input.start_y = input.curr_y = to_vy(pos.y);
             input.duration = 0.0f;
         }
         if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
@@ -25,14 +33,14 @@ void input_system(entt::registry& reg, float raw_dt) {
             input.touching  = false;
             input.active_source = InputSource::None;
             Vector2 pos = GetMousePosition();
-            input.end_x = pos.x;
-            input.end_y = pos.y;
+            input.end_x = to_vx(pos.x);
+            input.end_y = to_vy(pos.y);
         }
         if (IsMouseButtonDown(MOUSE_BUTTON_LEFT) && input.touching &&
             input.active_source == InputSource::Mouse) {
             Vector2 pos = GetMousePosition();
-            input.curr_x = pos.x;
-            input.curr_y = pos.y;
+            input.curr_x = to_vx(pos.x);
+            input.curr_y = to_vy(pos.y);
         }
     }
 
@@ -44,12 +52,12 @@ void input_system(entt::registry& reg, float raw_dt) {
                 input.touch_down = true;
                 input.touching   = true;
                 input.active_source = InputSource::Touch;
-                input.start_x = input.curr_x = tp.x;
-                input.start_y = input.curr_y = tp.y;
+                input.start_x = input.curr_x = to_vx(tp.x);
+                input.start_y = input.curr_y = to_vy(tp.y);
                 input.duration = 0.0f;
             } else if (input.active_source == InputSource::Touch) {
-                input.curr_x = tp.x;
-                input.curr_y = tp.y;
+                input.curr_x = to_vx(tp.x);
+                input.curr_y = to_vy(tp.y);
             }
         } else if (input.touching && input.active_source == InputSource::Touch) {
             input.touch_up  = true;

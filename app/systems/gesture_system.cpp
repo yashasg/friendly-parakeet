@@ -32,17 +32,19 @@ void gesture_system(entt::registry& reg, float /*dt*/) {
 
     // Button zone: tap detected in bottom 20%
     if (input.start_y >= zone_y) {
-        float btn_area_x_start = (constants::SCREEN_W
-            - 3 * constants::BUTTON_W
-            - 2 * constants::BUTTON_SPACING) / 2.0f;
-        float btn_cy = constants::BUTTON_Y + constants::BUTTON_H / 2.0f;
-        float btn_radius = constants::BUTTON_W / 2.8f;
-        float hit_radius = btn_radius * 1.4f;  // generous touch area
+        const float btn_w       = constants::BUTTON_W_N      * constants::SCREEN_W;
+        const float btn_h       = constants::BUTTON_H_N      * constants::SCREEN_H;
+        const float btn_spacing = constants::BUTTON_SPACING_N * constants::SCREEN_W;
+        const float btn_y       = constants::BUTTON_Y_N       * constants::SCREEN_H;
+        float btn_area_x_start  = (constants::SCREEN_W - 3.0f * btn_w - 2.0f * btn_spacing) / 2.0f;
+        float btn_cy            = btn_y + btn_h / 2.0f;
+        float btn_radius        = btn_w / 2.8f;
+        float hit_radius        = btn_radius * 1.4f;  // generous touch area
 
         for (int i = 0; i < 3; ++i) {
             float btn_cx = btn_area_x_start
-                + static_cast<float>(i) * (constants::BUTTON_W + constants::BUTTON_SPACING)
-                + constants::BUTTON_W / 2.0f;
+                + static_cast<float>(i) * (btn_w + btn_spacing)
+                + btn_w / 2.0f;
             float dx = input.end_x - btn_cx;
             float dy = input.end_y - btn_cy;
             if (dx * dx + dy * dy <= hit_radius * hit_radius) {

@@ -52,6 +52,14 @@ jobs:
                     libpulse-dev \
                     catch2
 
+            - name: Cache CMake build directory
+              uses: actions/cache@v5
+              with:
+                  path: build
+                  key: cmake-linux-clang-${{ hashFiles('CMakeLists.txt', 'vcpkg.json') }}
+                  restore-keys: |
+                      cmake-linux-clang-
+
             - name: Build project
               run: |
                   chmod +x build.sh
