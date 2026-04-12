@@ -370,15 +370,11 @@ int main(int argc, char* argv[]) {
         EndTextureMode();
 
         // Blit virtual framebuffer to window (letter-boxed)
-        float win_w = static_cast<float>(GetScreenWidth());
-        float win_h = static_cast<float>(GetScreenHeight());
-        float scale_fit = std::min(
-            win_w / static_cast<float>(constants::SCREEN_W),
-            win_h / static_cast<float>(constants::SCREEN_H));
-        float dst_w = constants::SCREEN_W * scale_fit;
-        float dst_h = constants::SCREEN_H * scale_fit;
-        float offset_x = (win_w - dst_w) * 0.5f;
-        float offset_y = (win_h - dst_h) * 0.5f;
+        // Reuse the ScreenTransform already computed this frame — avoids two
+        // code paths diverging if the scale/offset formula ever changes.
+        const auto& st = reg.ctx().get<ScreenTransform>();
+        float dst_w  = constants::SCREEN_W * st.scale;
+        float dst_h  = constants::SCREEN_H * st.scale;
 
         BeginDrawing();
             ClearBackground(BLACK);
@@ -386,7 +382,7 @@ int main(int argc, char* argv[]) {
             Rectangle src = { 0, 0,
                 static_cast<float>(constants::SCREEN_W),
                 -static_cast<float>(constants::SCREEN_H) };
-            Rectangle dst = { offset_x, offset_y, dst_w, dst_h };
+            Rectangle dst = { st.offset_x, st.offset_y, dst_w, dst_h };
             DrawTexturePro(target.texture, src, dst, {0, 0}, 0.0f, WHITE);
         EndDrawing();
 

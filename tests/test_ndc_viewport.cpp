@@ -13,31 +13,36 @@ TEST_CASE("ndc: VIEWPORT_CX_N is 0.5", "[ndc]") {
 }
 
 TEST_CASE("ndc: all NDC constants are in range [0, 1]", "[ndc]") {
-    CHECK(constants::VIEWPORT_CX_N         >= 0.0f); CHECK(constants::VIEWPORT_CX_N         <= 1.0f);
-    CHECK(constants::HUD_SCORE_X_N         >= 0.0f); CHECK(constants::HUD_SCORE_X_N         <= 1.0f);
-    CHECK(constants::HUD_SCORE_Y_N         >= 0.0f); CHECK(constants::HUD_SCORE_Y_N         <= 1.0f);
-    CHECK(constants::HUD_HISCORE_Y_N       >= 0.0f); CHECK(constants::HUD_HISCORE_Y_N       <= 1.0f);
-    CHECK(constants::BUTTON_Y_N            >= 0.0f); CHECK(constants::BUTTON_Y_N            <= 1.0f);
-    CHECK(constants::BUTTON_W_N            >= 0.0f); CHECK(constants::BUTTON_W_N            <= 1.0f);
-    CHECK(constants::BUTTON_H_N            >= 0.0f); CHECK(constants::BUTTON_H_N            <= 1.0f);
-    CHECK(constants::BUTTON_SPACING_N      >= 0.0f); CHECK(constants::BUTTON_SPACING_N      <= 1.0f);
-    CHECK(constants::BURNOUT_BAR_Y_N       >= 0.0f); CHECK(constants::BURNOUT_BAR_Y_N       <= 1.0f);
-    CHECK(constants::BURNOUT_BAR_H_N       >= 0.0f); CHECK(constants::BURNOUT_BAR_H_N       <= 1.0f);
-    CHECK(constants::SCENE_TITLE_SHAPES_Y_N    >= 0.0f); CHECK(constants::SCENE_TITLE_SHAPES_Y_N    <= 1.0f);
-    CHECK(constants::SCENE_TITLE_SHAPES_SIZE_N >= 0.0f); CHECK(constants::SCENE_TITLE_SHAPES_SIZE_N <= 1.0f);
-    CHECK(constants::SCENE_TITLE_TEXT_Y_N      >= 0.0f); CHECK(constants::SCENE_TITLE_TEXT_Y_N      <= 1.0f);
-    CHECK(constants::SCENE_TITLE_PROMPT_Y_N    >= 0.0f); CHECK(constants::SCENE_TITLE_PROMPT_Y_N    <= 1.0f);
-    CHECK(constants::SCENE_GO_TITLE_Y_N    >= 0.0f); CHECK(constants::SCENE_GO_TITLE_Y_N    <= 1.0f);
-    CHECK(constants::SCENE_GO_SCORE_Y_N    >= 0.0f); CHECK(constants::SCENE_GO_SCORE_Y_N    <= 1.0f);
-    CHECK(constants::SCENE_GO_HISCORE_Y_N  >= 0.0f); CHECK(constants::SCENE_GO_HISCORE_Y_N  <= 1.0f);
-    CHECK(constants::SCENE_GO_PROMPT_Y_N   >= 0.0f); CHECK(constants::SCENE_GO_PROMPT_Y_N   <= 1.0f);
-    CHECK(constants::SCENE_SC_TITLE_Y_N    >= 0.0f); CHECK(constants::SCENE_SC_TITLE_Y_N    <= 1.0f);
-    CHECK(constants::SCENE_SC_SCORE_Y_N    >= 0.0f); CHECK(constants::SCENE_SC_SCORE_Y_N    <= 1.0f);
-    CHECK(constants::SCENE_SC_HISCORE_Y_N  >= 0.0f); CHECK(constants::SCENE_SC_HISCORE_Y_N  <= 1.0f);
-    CHECK(constants::SCENE_SC_PROMPT_Y_N   >= 0.0f); CHECK(constants::SCENE_SC_PROMPT_Y_N   <= 1.0f);
-    CHECK(constants::SCENE_PAUSE_Y_N       >= 0.0f); CHECK(constants::SCENE_PAUSE_Y_N       <= 1.0f);
-    CHECK(constants::SCENE_SC_STATS_LX_N   >= 0.0f); CHECK(constants::SCENE_SC_STATS_LX_N   <= 1.0f);
-    CHECK(constants::SCENE_SC_STATS_RX_N   >= 0.0f); CHECK(constants::SCENE_SC_STATS_RX_N   <= 1.0f);
+    CHECK(constants::VIEWPORT_CX_N               >= 0.0f); CHECK(constants::VIEWPORT_CX_N               <= 1.0f);
+    CHECK(constants::HUD_SCORE_X_N               >= 0.0f); CHECK(constants::HUD_SCORE_X_N               <= 1.0f);
+    CHECK(constants::HUD_SCORE_Y_N               >= 0.0f); CHECK(constants::HUD_SCORE_Y_N               <= 1.0f);
+    CHECK(constants::HUD_HISCORE_Y_N             >= 0.0f); CHECK(constants::HUD_HISCORE_Y_N             <= 1.0f);
+    CHECK(constants::BUTTON_Y_N                  >= 0.0f); CHECK(constants::BUTTON_Y_N                  <= 1.0f);
+    CHECK(constants::BUTTON_W_N                  >= 0.0f); CHECK(constants::BUTTON_W_N                  <= 1.0f);
+    CHECK(constants::BUTTON_H_N                  >= 0.0f); CHECK(constants::BUTTON_H_N                  <= 1.0f);
+    CHECK(constants::BUTTON_SPACING_N            >= 0.0f); CHECK(constants::BUTTON_SPACING_N            <= 1.0f);
+    CHECK(constants::BURNOUT_BAR_Y_N             >= 0.0f); CHECK(constants::BURNOUT_BAR_Y_N             <= 1.0f);
+    CHECK(constants::BURNOUT_BAR_H_N             >= 0.0f); CHECK(constants::BURNOUT_BAR_H_N             <= 1.0f);
+    CHECK(constants::SCENE_TITLE_SHAPES_Y_N      >= 0.0f); CHECK(constants::SCENE_TITLE_SHAPES_Y_N      <= 1.0f);
+    CHECK(constants::SCENE_TITLE_SHAPES_OFFSET_N >= 0.0f); CHECK(constants::SCENE_TITLE_SHAPES_OFFSET_N <= 1.0f);
+    CHECK(constants::SCENE_TITLE_SHAPES_SIZE_N   >= 0.0f); CHECK(constants::SCENE_TITLE_SHAPES_SIZE_N   <= 1.0f);
+    CHECK(constants::SCENE_TITLE_TEXT_Y_N        >= 0.0f); CHECK(constants::SCENE_TITLE_TEXT_Y_N        <= 1.0f);
+    CHECK(constants::SCENE_TITLE_PROMPT_Y_N      >= 0.0f); CHECK(constants::SCENE_TITLE_PROMPT_Y_N      <= 1.0f);
+    CHECK(constants::SCENE_GO_TITLE_Y_N          >= 0.0f); CHECK(constants::SCENE_GO_TITLE_Y_N          <= 1.0f);
+    CHECK(constants::SCENE_GO_SCORE_Y_N          >= 0.0f); CHECK(constants::SCENE_GO_SCORE_Y_N          <= 1.0f);
+    CHECK(constants::SCENE_GO_HISCORE_Y_N        >= 0.0f); CHECK(constants::SCENE_GO_HISCORE_Y_N        <= 1.0f);
+    CHECK(constants::SCENE_GO_PROMPT_Y_N         >= 0.0f); CHECK(constants::SCENE_GO_PROMPT_Y_N         <= 1.0f);
+    CHECK(constants::SCENE_SC_TITLE_Y_N          >= 0.0f); CHECK(constants::SCENE_SC_TITLE_Y_N          <= 1.0f);
+    CHECK(constants::SCENE_SC_SLABEL_Y_N         >= 0.0f); CHECK(constants::SCENE_SC_SLABEL_Y_N         <= 1.0f);
+    CHECK(constants::SCENE_SC_SCORE_Y_N          >= 0.0f); CHECK(constants::SCENE_SC_SCORE_Y_N          <= 1.0f);
+    CHECK(constants::SCENE_SC_HSLABEL_Y_N        >= 0.0f); CHECK(constants::SCENE_SC_HSLABEL_Y_N        <= 1.0f);
+    CHECK(constants::SCENE_SC_HISCORE_Y_N        >= 0.0f); CHECK(constants::SCENE_SC_HISCORE_Y_N        <= 1.0f);
+    CHECK(constants::SCENE_SC_TIMING_Y_N         >= 0.0f); CHECK(constants::SCENE_SC_TIMING_Y_N         <= 1.0f);
+    CHECK(constants::SCENE_SC_TIMING_DY_N        >= 0.0f); CHECK(constants::SCENE_SC_TIMING_DY_N        <= 1.0f);
+    CHECK(constants::SCENE_SC_STATS_LX_N         >= 0.0f); CHECK(constants::SCENE_SC_STATS_LX_N         <= 1.0f);
+    CHECK(constants::SCENE_SC_STATS_RX_N         >= 0.0f); CHECK(constants::SCENE_SC_STATS_RX_N         <= 1.0f);
+    CHECK(constants::SCENE_SC_PROMPT_Y_N         >= 0.0f); CHECK(constants::SCENE_SC_PROMPT_Y_N         <= 1.0f);
+    CHECK(constants::SCENE_PAUSE_Y_N             >= 0.0f); CHECK(constants::SCENE_PAUSE_Y_N             <= 1.0f);
 }
 
 TEST_CASE("ndc: scene overlay positions are vertically ordered", "[ndc]") {
@@ -274,19 +279,21 @@ TEST_CASE("ndc: tap at zone boundary (exactly zone_y) enters button zone", "[ndc
     CHECK(reg.ctx().get<GestureResult>().gesture == SwipeGesture::None);
 }
 
-TEST_CASE("ndc: tap just above zone boundary is classified as swipe zone", "[ndc][gesture]") {
-    // 1 pixel above zone_y → swipe zone; a short tap produces no swipe (too short).
+TEST_CASE("ndc: swipe just above zone boundary is classified as swipe zone", "[ndc][gesture]") {
+    // 1 pixel above zone_y → swipe zone; use a clear horizontal swipe so the
+    // result is unique to swipe-zone handling (not just a missed button tap).
     auto reg = make_registry();
     auto& input = reg.ctx().get<InputState>();
     float zone_y = static_cast<float>(constants::SCREEN_H) * constants::SWIPE_ZONE_SPLIT;
     input.touch_up = true;
-    input.start_y  = zone_y - 1.0f;       // just above → swipe zone
-    input.end_x    = ndc_btn_cx(0);        // tiny horizontal movement
+    input.start_x  = 0.0f;
+    input.start_y  = zone_y - 1.0f;                             // just above → swipe zone
+    input.end_x    = static_cast<float>(constants::SCREEN_W);   // full-width swipe right
     input.end_y    = zone_y - 1.0f;
     input.duration = 0.05f;
 
     gesture_system(reg, 0.016f);
 
-    // No button press (swipe zone, not button zone)
+    CHECK(reg.ctx().get<GestureResult>().gesture == SwipeGesture::SwipeRight);
     CHECK_FALSE(reg.ctx().get<ShapeButtonEvent>().pressed);
 }

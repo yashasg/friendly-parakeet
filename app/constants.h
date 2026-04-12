@@ -93,7 +93,7 @@ constexpr float MIN_SWIPE_DIST    = 50.0f;
 constexpr float MAX_SWIPE_TIME    = 0.3f;
 constexpr float BUTTON_DEBOUNCE   = 0.1f;
 
-// ── UI Layout (pixel-space; used by gesture_system and tests) ─────────────
+// ── UI Layout (pixel-space; retained to derive the NDC constants below and for tests) ────
 constexpr float BURNOUT_BAR_Y     = 1020.0f;
 constexpr float BURNOUT_BAR_H     = 20.0f;
 constexpr float BUTTON_Y          = 1140.0f;
