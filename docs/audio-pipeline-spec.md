@@ -8,7 +8,7 @@ DISK                      PARSE                         SINGLETONS (reg.ctx())  
 ─────────────────────     ───────────────               ──────────────────────                     ───────────────────
 
 content/beatmaps/         parse_beat_map()              ┌──────────┐
-  1_stomper_beatmap.json ──────────────────────────────▶│ BeatMap  │─────────────────────────────▶ beat_scheduler_system
+  2_drama_beatmap.json ────────────────────────────────▶│ BeatMap  │─────────────────────────────▶ beat_scheduler_system
                           reads difficulties[medium]     │ .beats[] │                               reads beats[next_spawn_idx]
                           derives song_path              │ .song_path                               creates obstacle entities
                                                          └────┬─────┘
@@ -23,7 +23,7 @@ content/beatmaps/         parse_beat_map()              ┌───────
                                                          └──────────┘
 
 content/audio/            LoadMusicStream()              ┌──────────────┐
-  1_stomper.wav ──────────────────────────────────────▶  │ MusicContext  │◀───────────────────────  song_playback_system
+  2_drama.wav ────────────────────────────────────────▶  │ MusicContext  │◀───────────────────────  song_playback_system
                                                          │ .stream      │  UpdateMusicStream()
                                                          │ .loaded      │  GetMusicTimePlayed()
                                                          │ .started     │  PlayMusicStream()
@@ -119,7 +119,7 @@ None — first change to apply.
 ### Verification
 ```bash
 cmake --build build && ls build/content/beatmaps/ build/content/audio/
-# Expected: 1_stomper_beatmap.json and 1_stomper.wav present
+# Expected: 2_drama_beatmap.json and 2_drama.wav present
 ```
 
 ---
@@ -272,10 +272,10 @@ Existing unit tests (if any for beat_map_loader) should still pass with flat-arr
 // In a test:
 BeatMap map;
 std::vector<BeatMapError> errs;
-bool ok = load_beat_map("content/beatmaps/1_stomper_beatmap.json", map, errs, "easy");
+bool ok = load_beat_map("content/beatmaps/2_drama_beatmap.json", map, errs, "easy");
 assert(ok);
-assert(map.beats.size() == 73);  // easy difficulty has 73 beats
-assert(map.song_path == "content/audio/1_stomper.wav");
+assert(map.beats.size() == 80);  // easy difficulty has 80 beats
+assert(map.song_path == "content/audio/2_drama.wav");
 assert(map.difficulty == "easy");
 ```
 
@@ -427,10 +427,10 @@ Replace with:
 
         // Try path relative to executable first, then CWD
         std::string exe_beatmap = std::string(GetApplicationDirectory())
-                                + "content/beatmaps/1_stomper_beatmap.json";
+                                + "content/beatmaps/2_drama_beatmap.json";
         const char* beatmap_paths[] = {
             exe_beatmap.c_str(),
-            "content/beatmaps/1_stomper_beatmap.json",
+            "content/beatmaps/2_drama_beatmap.json",
         };
 
         bool loaded = false;
@@ -554,8 +554,8 @@ For Emscripten shutdown: `emscripten_set_main_loop` with arg `1` means it never 
 ```
 # Build and run. Check log output:
 # Expected:
-#   Loaded beatmap: .../content/beatmaps/1_stomper_beatmap.json (149 beats, difficulty=medium)
-#   Loaded music: .../content/audio/1_stomper.wav (8799270 frames)
+#   Loaded beatmap: .../content/beatmaps/2_drama_beatmap.json (125 beats, difficulty=medium)
+#   Loaded music: .../content/audio/2_drama.wav
 #   Audio device initialized: 44100 Hz
 ```
 

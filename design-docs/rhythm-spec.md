@@ -137,6 +137,7 @@ constexpr int   CHAIN_BONUS      = 10;     // multiplied by chain length
   │  Velocity           8B ← dx, dy                             │
   │  ObstacleTag        0B ← marker                             │
   │  RequiredShape      4B ← shape + lane                       │
+  │  BeatInfo          12B ← beat_index, arrival_time, spawn    │
   │  TimingGrade        5B ← scoring (existential)              │
   │  ScoredTag          0B ← scored marker (prevents re-fire)   │
   └──────────────────────────────────────────────────────────────┘
@@ -193,6 +194,21 @@ struct PlayerShape {
     bool         graded        = false;    // window already graded this cycle
 };
 ```
+
+## BeatInfo (per obstacle entity)
+
+```cpp
+struct BeatInfo {
+    int   beat_index   = 0;       // index into BeatMap::beats
+    float arrival_time = 0.0f;    // absolute song_time when obstacle should be hit
+    float spawn_time   = 0.0f;    // song_time when the obstacle was spawned
+};
+```
+
+`arrival_time` is the authoritative reference for collision timing grades.
+The collision system uses it (when present) instead of `ShapeWindow.peak_time`,
+so that timing evaluation is anchored to the chart's beat rather than the
+player's shape-window lifecycle.
 
 ## SongResults (singleton)
 
@@ -256,7 +272,8 @@ struct SongResults {
   ┌─ COLLISION ────────────────────────────────────────────────┐
   │ collision_system                               [MOD]       │
   │   → checks shape match at obstacle arrival                 │
-  │   → computes TimingGrade from peak_time vs collision time  │
+  │   → computes TimingGrade from BeatInfo.arrival_time        │
+  │     (falls back to ShapeWindow.peak_time if no BeatInfo)   │
   │   → on HIT: applies window_scale shortening if !graded     │
   │   → on MISS: instant game over (no HP drain)               │
   │   → emplaces ScoredTag on both HIT and MISS paths          │
@@ -310,7 +327,17 @@ void shape_window_system(entt::registry& reg, float dt);
   │  CASE: Player shape matches obstacle shape at arrival               │
   ├─────────────────────────────────────────────────────────────────────┤
   │                                                                     │
-  │  TimingGrade = grade_from_peak_time(peak_time, song_time, window)  │
+  │  // Use the obstacle's beat arrival_time for timing,                │
+  │  // falling back to ShapeWindow.peak_time when BeatInfo absent.     │
+  │  auto* beat_info = reg.try_get<BeatInfo>(entity);                   │
+  │  float ref = beat_info ? beat_info->arrival_time                    │
+  │                        : p_window.peak_time;                        │
+  │  float pct = abs(song_time - ref) / half_window;                    │
+  │  TimingGrade = compute_timing_tier(pct);                            │
+  │                                                                     │
+  │  This decouples timing evaluation from the shape window's           │
+  │  peak_time, preventing cascading Bad→window-shrink→MISS             │
+  │  failures at lower BPMs where beat spacing is wider.                │
   │                                                                     │
   │  PERFECT  → pts=300, window_scale=0.50 (remaining window halved)   │
   │  GOOD     → pts=200, window_scale=0.75                             │

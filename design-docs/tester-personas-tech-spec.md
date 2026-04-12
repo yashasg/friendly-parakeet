@@ -528,7 +528,7 @@ a separate system to do the emplacement.
 ## Example Session
 
 ```
-══════ Test Session: PRO | beatmap: 1_stomper | 2026-04-11 05:06 ══════
+══════ Test Session: PRO | beatmap: 2_drama | 2026-04-11 05:06 ══════
 
 [F:0001 T:0.000] [GAME  ] SONG_START bpm=120 beats=48 difficulty=medium
 [F:0060 T:1.000] [GAME  ] OBSTACLE_SPAWN beat=4 kind=ShapeGate shape=Circle lane=1

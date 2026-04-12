@@ -47,7 +47,7 @@
 ## 1.1 Beatmap JSON (authored file)
 
 ```
-  content/beatmaps/1_stomper_beatmap.json
+  content/beatmaps/2_drama_beatmap.json
   ~3KB, loaded once at game start, never re-read.
 ```
 
@@ -55,10 +55,10 @@
 
 ```json
 {
-  "song_id":      "1_stomper",
-  "title":        "1_stomper",
-  "bpm":          146.24,
-  "offset":       1.694,
+  "song_id":      "2_drama",
+  "title":        "2_drama",
+  "bpm":          119.64,
+  "offset":       1.813,
   "lead_beats":   4,
   "duration_sec": 199.35,
   "difficulties": {
@@ -94,8 +94,8 @@
 ## 1.2 Audio WAV
 
 ```
-  content/audio/1_stomper.wav
-  ~33.6 MB, 16-bit stereo, 44100 Hz, 199.35 seconds.
+  content/audio/2_drama.wav
+  ~41 MB, 16-bit stereo, 44100 Hz, 241.13 seconds.
   Streamed at runtime via raylib LoadMusicStream.
 ```
 
@@ -641,5 +641,5 @@ Ordered by dependency chain. Steps marked ✅ are already on `main`.
 
 ---
 
-*Generated from: `content/beatmaps/1_stomper_analysis.json` → `tools/level_designer.py` → `content/beatmaps/1_stomper_beatmap.json`*
-*Audio source: `content/audio/1_stomper.wav` (33.6 MB, 199.35s, 146.24 BPM)*
+*Generated from: `content/beatmaps/2_drama_analysis.json` → `tools/level_designer.py` → `content/beatmaps/2_drama_beatmap.json`*
+*Audio source: `content/audio/2_drama.wav` (41 MB, 241.13s, 119.64 BPM)*

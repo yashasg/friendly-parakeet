@@ -262,12 +262,15 @@ TEST_CASE("collision: BAD timing adjusts window_start, not window_timer", "[coll
     sw.window_timer = 0.0f;
     sw.window_start = song.song_time;
 
-    // Set peak_time far in the past so pct_from_peak > 0.75 → BAD (scale = 0.5)
-    sw.peak_time = song.song_time - song.half_window * 2.0f;
+    // peak_time doesn't affect grading anymore — timing is based on
+    // BeatInfo.arrival_time.  Set arrival_time far from song_time so
+    // pct_from_peak > 0.75 → BAD (scale = 0.5).
+    sw.peak_time = song.song_time;
+    float bad_arrival = song.song_time - song.half_window * 2.0f;
 
     // Spawn an obstacle at the player's position
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
-    reg.emplace<BeatInfo>(obs, 0, song.song_time, song.song_time - song.lead_time);
+    reg.emplace<BeatInfo>(obs, 0, bad_arrival, bad_arrival - song.lead_time);
 
     float original_window_start = sw.window_start;
     collision_system(reg, 0.016f);
