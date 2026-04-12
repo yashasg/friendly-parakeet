@@ -1,139 +1,143 @@
 # SHAPESHIFTER
 
-An endless runner where you shift between geometric shapes to pass through obstacles. The core twist: a **Burnout scoring system** rewards waiting until the last possible moment — the longer you delay, the higher your multiplier, but wait too long and you crash.
+A rhythm game where obstacles ARE the beats. Match shapes and dodge lane blocks in time with the music — the closer to the beat, the higher your score.
 
-Built with **C++20**, **raylib**, and **EnTT** using a strict Data-Oriented Design architecture.
+Built with **C++20**, **raylib**, and **EnTT** using Data-Oriented Design.
+
+**[Play in browser](https://yashasg.github.io/friendly-parakeet/)** (WebAssembly)
 
 ## Gameplay
 
-- **3 shapes** — Circle, Square, Triangle. Tap to shift instantly.
-- **3 lanes** — Swipe left/right to strafe. Swipe up to jump, down to slide.
-- **6 obstacle types** — Shape gates, lane blocks, low/high bars, combo gates, split paths.
-- **Burnout meter** — Acts early = safe but low score. Waits until danger zone = up to ×5 multiplier.
-- **Difficulty ramp** — Speed increases from ×1.0 to ×3.0 over 3 minutes. Obstacles get denser and more complex.
+- **3 shapes** — Circle, Square, Triangle. Press shape buttons on the beat.
+- **3 lanes** — Swipe or press A/D to dodge lane blocks.
+- **Timing grades** — Perfect > Good > Ok > Bad. Closer to the beat = higher score.
+- **Rhythm windows** — Shape changes are temporary; match the shape before the window closes.
+- **Song-driven levels** — Obstacles are generated from audio analysis of the music.
 
 ## Building
 
 ### Prerequisites
 
-- C++20 compiler (Clang on Linux/macOS; ClangCL via VS2022 on Windows)
+- C++20 compiler (Clang 20 recommended)
 - CMake 3.20+
-- [vcpkg](https://vcpkg.io) — **required** for all builds
+- [vcpkg](https://vcpkg.io)
 
-Dependencies (EnTT, raylib, Catch2) are resolved through vcpkg.
-
-### Setup
+### Quick Start
 
 ```bash
-# Install vcpkg (once)
-git clone https://github.com/microsoft/vcpkg.git ~/vcpkg
-~/vcpkg/bootstrap-vcpkg.sh          # Linux/macOS
-# ~/vcpkg/bootstrap-vcpkg.bat       # Windows
+export VCPKG_ROOT=/path/to/vcpkg
 
-export VCPKG_ROOT=~/vcpkg
-```
-
-### Build
-
-```bash
 ./build.sh           # Release build
-./build.sh Debug     # Debug build
+./run.sh             # Build + run game
+./run.sh test        # Build + run tests
 ```
 
-### Run
+### Difficulty Selection
 
 ```bash
-./run.sh             # Build and run the game
-./run.sh test        # Build and run tests
-./run.sh bench       # Build and run benchmarks
+./build/shapeshifter --difficulty easy
+./build/shapeshifter --difficulty medium   # default
+./build/shapeshifter --difficulty hard
 ```
+
+### Test Player (AI)
+
+```bash
+./build/shapeshifter --test-player pro     # clears with high score
+./build/shapeshifter --test-player good    # clears easy/medium
+./build/shapeshifter --test-player bad     # struggles on medium+
+```
+
+## Controls
+
+| Action | Keyboard | Touch |
+|--------|----------|-------|
+| Shape: Circle | 1 | Tap left button |
+| Shape: Triangle | 2 | Tap center button |
+| Shape: Square | 3 | Tap right button |
+| Move left | A | Swipe left |
+| Move right | D | Swipe right |
 
 ## Architecture
 
-The codebase follows **Data-Oriented Design** principles from Richard Fabian's *Data-Oriented Design* book:
+**Data-Oriented Design** with EnTT ECS — components are plain structs, systems are free functions.
 
-- **Components** are plain POD structs with no methods, no inheritance, no virtuals
-- **Systems** are free functions: `void system_name(entt::registry& reg, float dt)`
-- **No entity base class** — entities are implicit IDs linking rows across component tables
-- **Existential processing** — component presence/absence replaces boolean flags
-- **All state** lives in the `entt::registry` (entity components + `ctx()` singletons)
-
-### System Pipeline
-
-Each frame runs a fixed-timestep loop executing systems in order:
+### System Pipeline (per frame)
 
 ```
-input_system          → polls raylib input into InputState
-gesture_system        → classifies touch/mouse input into gestures
-game_state_system     → manages phase transitions (Title/Playing/Paused/GameOver)
-player_action_system  → applies shape changes, lane switches, jumps, slides
-player_movement_system → interpolates positions and animations
-difficulty_system     → ramps speed, spawn rate, burnout window
-obstacle_spawn_system → creates obstacle entities
-scroll_system         → moves entities by velocity
-burnout_system        → tracks nearest threat, calculates burnout zone
-collision_system      → checks obstacle clearance via per-archetype views
-scoring_system        → awards points with burnout multiplier
-lifetime_system       → destroys expired entities
-particle_system       → applies gravity to particles
-cleanup_system        → destroys off-screen obstacles
-render_system         → draws everything via raylib
-audio_system          → plays queued SFX (stub)
+input -> gesture -> game_state -> song_playback -> beat_scheduler ->
+player_action -> shape_window -> player_movement -> difficulty ->
+obstacle_spawn -> scroll -> burnout -> collision -> scoring ->
+hp -> lifetime -> particle -> cleanup -> render -> audio
 ```
+
+### Key Design Decisions
+
+- **Rhythm positions derived from song_time**, not accumulated dt — prevents beat drift
+- **Shape windows** are song-time-anchored with phase transitions (MorphIn -> Active -> MorphOut -> Idle)
+- **Single-pass collision** dispatches by obstacle kind via switch, not multiple EnTT views
+- **Section pattern reuse** — verse 1 and verse 2 share the same obstacle pattern
 
 ### Project Layout
 
 ```
 app/
-├── main.cpp              # raylib init + game loop (calls systems)
-├── constants.h           # All tuning values
-├── components/           # 13 POD component structs
-│   ├── transform.h       #   Position, Velocity
-│   ├── player.h          #   PlayerTag, PlayerShape, Lane, VerticalState
-│   ├── obstacle.h        #   ObstacleTag, Obstacle, ScoredTag
-│   ├── obstacle_data.h   #   RequiredShape, BlockedLanes, RequiredLane, RequiredVAction
-│   ├── input.h           #   InputState, SwipeGesture, GestureResult, ShapeButtonEvent
-│   ├── game_state.h      #   GameState, GamePhase
-│   ├── scoring.h         #   ScoreState, ScorePopup
-│   ├── burnout.h         #   BurnoutState, BurnoutZone
-│   ├── difficulty.h      #   DifficultyConfig
-│   ├── rendering.h       #   DrawColor, DrawSize, DrawLayer
-│   ├── lifetime.h        #   Lifetime
-│   ├── particle.h        #   ParticleTag, ParticleData
-│   └── audio.h           #   AudioQueue, SFX
-└── systems/              # 15 system free functions
-    └── all_systems.h     #   declarations + pipeline order
-tests/                    # Catch2 unit tests (8 test files)
-benchmarks/               # Catch2 micro-benchmarks
+  main.cpp                # raylib init, game loop, Emscripten support
+  constants.h             # All tuning values
+  platform.h              # PLATFORM_HAS_KEYBOARD macro
+  platform_utils.h        # Portable localtime/fopen wrappers
+  enum_names.h            # shape_name(), obstacle_kind_name()
+  components/             # 19 POD component structs
+    player.h              #   PlayerShape, ShapeWindow, Lane
+    rhythm.h              #   TimingGrade, BeatInfo, WindowPhase
+    beat_map.h            #   BeatEntry, BeatMap (loaded data)
+    song_state.h          #   SongState, HPState, SongResults
+  systems/                # 23 system functions
+    all_systems.h         #   declarations + pipeline order
+    play_session.cpp      #   entity setup on game start
+tools/
+  rhythm_pipeline.py      # Audio analysis (aubio -> analysis JSON)
+  level_designer.py       # Beatmap generation (analysis -> beatmap JSON)
+content/
+  audio/                  # Source audio files (.wav)
+  beatmaps/               # Analysis + beatmap JSON files
+tests/                    # 386 Catch2 tests across 19 files
 design-docs/              # Game design + architecture docs
 ```
 
-## Testing
+## Beatmap Pipeline
 
-Tests use [Catch2](https://github.com/catchorg/Catch2) v3 and cover all gameplay systems:
-
-```bash
-./run.sh test                              # Run all tests
-./build/shapeshifter_tests "[collision]"    # Run specific tag
-./build/shapeshifter_tests --list-tests    # List all test cases
-```
-
-## Benchmarks
-
-Micro-benchmarks measure per-system and full-frame performance:
+Levels are generated from audio analysis:
 
 ```bash
-./run.sh bench
+# 1. Analyze audio
+python3 tools/rhythm_pipeline.py content/audio/song.wav \
+    --output content/beatmaps/song_analysis.json
+
+# 2. Generate beatmap (easy/medium/hard)
+python3 tools/level_designer.py content/beatmaps/song_analysis.json \
+    --output content/beatmaps/song_beatmap.json
 ```
+
+The level designer uses song structure (intro/verse/chorus/bridge) to control density and obstacle variety. Shapes are assigned for flow — short gaps repeat shapes, long gaps alternate.
 
 ## Dependencies
 
 | Library | Version | Purpose |
 |---------|---------|---------|
-| [raylib](https://www.raylib.com/) | 5.5+ | Windowing, rendering, input |
-| [EnTT](https://github.com/skypjack/entt) | 3.14+ | Entity Component System |
-| [Catch2](https://github.com/catchorg/Catch2) | 3.7+ | Testing and benchmarks |
+| [raylib](https://www.raylib.com/) | 5.5 | Rendering, input, audio |
+| [EnTT](https://github.com/skypjack/entt) | 3.16.0 | Entity Component System |
+| [nlohmann-json](https://github.com/nlohmann/json) | 3.12+ | Beatmap JSON parsing |
+| [Catch2](https://github.com/catchorg/Catch2) | 3.13+ | Testing framework |
 
-## License
+## CI/CD
 
-See repository for license details.
+Builds on every push to main across 3 platforms:
+
+| Platform | Compiler | Notes |
+|----------|----------|-------|
+| Linux | Clang 20 | Native + WebAssembly |
+| macOS | Clang 20 (Homebrew LLVM) | Native |
+| Windows | Clang 20 (pre-installed) | Native |
+
+WebAssembly builds auto-deploy to GitHub Pages on merge to main.
