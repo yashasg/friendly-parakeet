@@ -346,3 +346,41 @@ TEST_CASE("beat_scheduler: ShapeGate Triangle has green color", "[beat_scheduler
         CHECK(dc.b == 100);
     }
 }
+
+TEST_CASE("beat_scheduler: clamped late-spawn stores adjusted spawn_time in BeatInfo", "[beat_scheduler]") {
+    // When song_time overshoots spawn_time by so much that start_y would exceed
+    // max_start_y (PLAYER_Y - COLLISION_MARGIN), the position is clamped.
+    // The effective spawn_time stored in BeatInfo must be adjusted so that
+    // scroll_system (pos.y = SPAWN_Y + (song_time - spawn_time) * scroll_speed)
+    // reproduces the clamped start_y on the same frame, preventing it from
+    // snapping past the clamp on the very first tick.
+    auto reg = make_rhythm_registry();
+    auto& song = reg.ctx().get<SongState>();
+    auto& map = reg.ctx().get<BeatMap>();
+
+    // Use beat 0 whose spawn_time is deeply in the past
+    map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
+    // Set song_time so the overshoot pushes start_y well past PLAYER_Y
+    song.song_time = 100.0f;
+    song.next_spawn_idx = 0;
+
+    beat_scheduler_system(reg, 0.016f);
+
+    constexpr float COLLISION_MARGIN = 40.0f;
+    float max_start_y = constants::PLAYER_Y - COLLISION_MARGIN;
+
+    // Position must be clamped
+    auto pview = reg.view<ObstacleTag, Position>();
+    for (auto [e, pos] : pview.each()) {
+        CHECK_THAT(pos.y, Catch::Matchers::WithinAbs(max_start_y, 0.01f));
+    }
+
+    // BeatInfo.spawn_time must reflect the adjusted value so scroll_system
+    // reproduces max_start_y at song_time
+    auto bview = reg.view<ObstacleTag, BeatInfo>();
+    for (auto [e, bi] : bview.each()) {
+        float recomputed_y = constants::SPAWN_Y
+            + (song.song_time - bi.spawn_time) * song.scroll_speed;
+        CHECK_THAT(recomputed_y, Catch::Matchers::WithinAbs(max_start_y, 0.01f));
+    }
+}

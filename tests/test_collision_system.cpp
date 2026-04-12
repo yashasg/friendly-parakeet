@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
 
 TEST_CASE("collision: shape gate cleared with matching shape", "[collision]") {
@@ -241,4 +242,70 @@ TEST_CASE("collision: high bar killed when jumping", "[collision]") {
     collision_system(reg, 0.016f);
 
     CHECK(reg.ctx().get<GameState>().transition_pending);
+}
+
+TEST_CASE("collision: BAD timing adjusts window_start, not window_timer", "[collision][rhythm]") {
+    // Verify that for a BAD hit (scale < 1), collision_system adjusts window_start
+    // backward instead of advancing window_timer.  shape_window_system derives
+    // window_timer from song_time - window_start each frame, so only window_start
+    // changes survive across ticks.
+    auto reg = make_rhythm_registry();
+    auto player = make_rhythm_player(reg);
+    auto& ps = reg.get<PlayerShape>(player);
+    auto& sw = reg.get<ShapeWindow>(player);
+    auto& song = reg.ctx().get<SongState>();
+
+    // Put player in Active phase
+    ps.current = Shape::Circle;
+    sw.phase_raw = static_cast<uint8_t>(WindowPhase::Active);
+    sw.graded = false;
+    sw.window_timer = 0.0f;
+    sw.window_start = song.song_time;
+
+    // Set peak_time far in the past so pct_from_peak > 0.75 → BAD (scale = 0.5)
+    sw.peak_time = song.song_time - song.half_window * 2.0f;
+
+    // Spawn an obstacle at the player's position
+    auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
+    reg.emplace<BeatInfo>(obs, 0, song.song_time, song.song_time - song.lead_time);
+
+    float original_window_start = sw.window_start;
+    collision_system(reg, 0.016f);
+
+    // window_start must have moved backward (earlier) to shorten the window
+    CHECK(sw.window_start < original_window_start);
+    // window_timer should remain unchanged by collision_system
+    CHECK(sw.window_timer == 0.0f);
+    // graded flag must be set
+    CHECK(sw.graded);
+}
+
+TEST_CASE("collision: Perfect timing extends window via window_scale only", "[collision][rhythm]") {
+    // For a Perfect hit (scale > 1), only window_scale is updated; window_start
+    // must not be changed (no shortening needed).
+    auto reg = make_rhythm_registry();
+    auto player = make_rhythm_player(reg);
+    auto& ps = reg.get<PlayerShape>(player);
+    auto& sw = reg.get<ShapeWindow>(player);
+    auto& song = reg.ctx().get<SongState>();
+
+    ps.current = Shape::Circle;
+    sw.phase_raw = static_cast<uint8_t>(WindowPhase::Active);
+    sw.graded = false;
+    sw.window_timer = 0.0f;
+    sw.window_start = song.song_time;
+
+    // Set peak_time to right now so the hit is perfect (pct_from_peak = 0)
+    sw.peak_time = song.song_time;
+
+    auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
+    reg.emplace<BeatInfo>(obs, 0, song.song_time, song.song_time - song.lead_time);
+
+    float original_window_start = sw.window_start;
+    collision_system(reg, 0.016f);
+
+    // window_start must NOT be adjusted for Perfect (scale >= 1)
+    CHECK_THAT(sw.window_start, Catch::Matchers::WithinAbs(original_window_start, 0.0001f));
+    CHECK(sw.window_scale > 1.0f);
+    CHECK(sw.graded);
 }

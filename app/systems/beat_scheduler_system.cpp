@@ -35,15 +35,22 @@ void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
         float overshoot = song->song_time - spawn_time;
         float start_y = constants::SPAWN_Y + overshoot * song->scroll_speed;
         float max_start_y = constants::PLAYER_Y - COLLISION_MARGIN;
+        float effective_spawn_time = spawn_time;
         if (start_y > max_start_y) {
             start_y = max_start_y;
+            // Store an adjusted spawn_time so scroll_system reproduces
+            // the clamped initial position via its song-time formula
+            // (pos.y = SPAWN_Y + (song_time - spawn_time) * scroll_speed),
+            // instead of snapping past the clamp on the first frame.
+            effective_spawn_time = song->song_time
+                - (max_start_y - constants::SPAWN_Y) / song->scroll_speed;
         }
 
         auto obstacle = reg.create();
         reg.emplace<ObstacleTag>(obstacle);
         reg.emplace<Velocity>(obstacle, 0.0f, song->scroll_speed);
         reg.emplace<DrawLayer>(obstacle, Layer::Game);
-        reg.emplace<BeatInfo>(obstacle, entry.beat_index, beat_time, spawn_time);
+        reg.emplace<BeatInfo>(obstacle, entry.beat_index, beat_time, effective_spawn_time);
 
         switch (entry.kind) {
             case ObstacleKind::ShapeGate: {

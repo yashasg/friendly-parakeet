@@ -743,20 +743,24 @@ TEST_CASE("window_scaling: OK grade shortens window", "[rhythm][window_scaling]"
 
     ps.current = Shape::Circle;
     sw.phase_raw = static_cast<uint8_t>(WindowPhase::Active);
-    sw.window_timer = song.window_duration * 0.3f;
     song.song_time = 5.0f;
+    sw.window_timer = song.window_duration * 0.3f;
+    // Keep window_start consistent with song_time and window_timer
+    sw.window_start = song.song_time - sw.window_timer;
     sw.peak_time = 5.0f + song.half_window * 0.6f; // OK timing
 
-    float timer_before = sw.window_timer;
+    float start_before = sw.window_start;
     make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     collision_system(reg, 0.016f);
 
     CHECK(sw.graded);
     CHECK(sw.window_scale == 0.75f);
-    // Ok: scale=0.75, timer advanced by remaining * 0.25
-    float remaining = song.window_duration - timer_before;
-    float expected_jump = remaining * 0.25f;
-    CHECK_THAT(sw.window_timer, WithinAbs(timer_before + expected_jump, 0.001f));
+    // Ok: scale=0.75 → window_start moved backward by remaining * (1-0.75)
+    float remaining = song.window_duration - sw.window_timer;
+    float expected_shift = remaining * 0.25f;
+    CHECK_THAT(sw.window_start, WithinAbs(start_before - expected_shift, 0.001f));
+    // window_timer must NOT be changed by collision_system
+    CHECK_THAT(sw.window_timer, WithinAbs(song.window_duration * 0.3f, 0.001f));
 }
 
 TEST_CASE("window_scaling: BAD grade shortens window aggressively", "[rhythm][window_scaling]") {
@@ -768,20 +772,24 @@ TEST_CASE("window_scaling: BAD grade shortens window aggressively", "[rhythm][wi
 
     ps.current = Shape::Circle;
     sw.phase_raw = static_cast<uint8_t>(WindowPhase::Active);
-    sw.window_timer = song.window_duration * 0.2f;
     song.song_time = 5.0f;
+    sw.window_timer = song.window_duration * 0.2f;
+    // Keep window_start consistent with song_time and window_timer
+    sw.window_start = song.song_time - sw.window_timer;
     sw.peak_time = 5.0f + song.half_window * 0.8f; // BAD timing
 
-    float timer_before = sw.window_timer;
+    float start_before = sw.window_start;
     make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     collision_system(reg, 0.016f);
 
     CHECK(sw.graded);
     CHECK(sw.window_scale == 0.50f);
-    // Bad: scale=0.50, timer advanced by remaining * 0.50
-    float remaining = song.window_duration - timer_before;
-    float expected_jump = remaining * 0.50f;
-    CHECK_THAT(sw.window_timer, WithinAbs(timer_before + expected_jump, 0.001f));
+    // Bad: scale=0.50 → window_start moved backward by remaining * (1-0.50)
+    float remaining = song.window_duration - sw.window_timer;
+    float expected_shift = remaining * 0.50f;
+    CHECK_THAT(sw.window_start, WithinAbs(start_before - expected_shift, 0.001f));
+    // window_timer must NOT be changed by collision_system
+    CHECK_THAT(sw.window_timer, WithinAbs(song.window_duration * 0.2f, 0.001f));
 }
 
 TEST_CASE("window_scaling: second obstacle does not re-scale", "[rhythm][window_scaling]") {
