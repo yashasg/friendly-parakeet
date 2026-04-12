@@ -141,7 +141,7 @@ def select_beats(analysis, difficulty):
     intro_rest = DIFFICULTY_INTRO_REST[difficulty]
 
     # Flux filter: harder = lower threshold = more events kept
-    flux_pcts = {"easy": 70, "medium": 40, "hard": 5}
+    flux_pcts = {"easy": 50, "medium": 25, "hard": 5}
     thresh = flux_threshold(analysis.get("flux_stats", {}), flux_pcts[difficulty])
     all_on_beat = snap_events_to_beats(events, beats)
     event_map = {ev["beat_idx"]: ev for ev in all_on_beat if ev.get("flux", 0.0) >= thresh}

@@ -5,6 +5,12 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+    paths-ignore:
+      - "content/**"
+      - "tools/**"
+      - "design-docs/**"
+      - "*.md"
+      - "*.log"
 
 jobs:
   build:
