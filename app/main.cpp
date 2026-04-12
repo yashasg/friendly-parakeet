@@ -229,10 +229,10 @@ int main(int argc, char* argv[]) {
         std::vector<BeatMapError> load_errors;
 
         std::string exe_beatmap = std::string(GetApplicationDirectory())
-                                + "content/beatmaps/1_stomper_beatmap.json";
+                                + "content/beatmaps/2_drama_beatmap.json";
         const char* beatmap_paths[] = {
             exe_beatmap.c_str(),
-            "content/beatmaps/1_stomper_beatmap.json",
+            "content/beatmaps/2_drama_beatmap.json",
         };
 
         bool loaded = false;
