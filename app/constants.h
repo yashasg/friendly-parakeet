@@ -154,9 +154,9 @@ constexpr float SCENE_PAUSE_Y_N       =  580.0f / SCREEN_H;  // ≈ 0.453
 
 // ── Lane Floor ──────────────────────────────────
 constexpr float FLOOR_SHAPE_SIZE     = 36.0f;
-constexpr float FLOOR_SHAPE_SPACING  = 80.0f;
+constexpr float FLOOR_SHAPE_SPACING  = 50.0f;
 constexpr float FLOOR_Y_START        = 12.0f;
-constexpr int   FLOOR_SHAPE_COUNT    = 13;
+constexpr int   FLOOR_SHAPE_COUNT    = 21;
 constexpr float FLOOR_OUTLINE_THICK  = 2.0f;
 constexpr float FLOOR_ALPHA_REST     = 30.0f;
 constexpr float FLOOR_ALPHA_PEAK     = 100.0f;

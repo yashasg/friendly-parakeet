@@ -309,6 +309,12 @@ void render_system(entt::registry& reg, float /*alpha*/) {
             Color c  = LANE_SHAPE_COLORS[lane];
             c.a      = static_cast<unsigned char>(alpha);
 
+            // Draw connecting vertical line through the full column
+            float line_top = constants::FLOOR_Y_START;
+            float line_bot = constants::FLOOR_Y_START
+                + static_cast<float>(constants::FLOOR_SHAPE_COUNT - 1) * constants::FLOOR_SHAPE_SPACING;
+            DrawLineEx({cx, line_top}, {cx, line_bot}, constants::FLOOR_OUTLINE_THICK, c);
+
             for (int j = 0; j < constants::FLOOR_SHAPE_COUNT; ++j) {
                 float cy = constants::FLOOR_Y_START + static_cast<float>(j) * constants::FLOOR_SHAPE_SPACING;
 
