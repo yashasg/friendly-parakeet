@@ -61,7 +61,7 @@ jobs:
           path: build
           key: cmake-windows-clang20-v2-${{ hashFiles('CMakeLists.txt', 'vcpkg.json') }}
           restore-keys: |
-            cmake-windows-clang20-static-md-
+            cmake-windows-clang20-v2-
 
       - name: Build
         run: ./build.sh

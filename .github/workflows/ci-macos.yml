@@ -52,7 +52,7 @@ jobs:
           path: build
           key: cmake-macos-clang20-v2-${{ hashFiles('CMakeLists.txt', 'vcpkg.json') }}
           restore-keys: |
-            cmake-macos-clang20-
+            cmake-macos-clang20-v2-
 
       - name: Build
         run: |
