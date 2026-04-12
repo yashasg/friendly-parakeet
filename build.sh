@@ -47,5 +47,17 @@ case "$(uname -s)" in
         ;;
 esac
 
+# Always run CMake configure, but in CI skip vcpkg manifest install when
+# packages are already restored from cache — vcpkg re-runs install on every
+# configure, rebuilding packages if the runner's vcpkg version changed.
+# Gated to CI only to avoid silently using stale packages in local builds.
+if [[ "${CI:-}" == "true" ]] && [[ -d build/vcpkg_installed ]] && [[ -f build/CMakeCache.txt ]]; then
+    # Packages already installed from cache — tell vcpkg not to re-install.
+    # This prevents vcpkg from rebuilding all deps when the runner's
+    # pre-installed vcpkg version differs from what built the cache.
+    CMAKE_ARGS+=("-DVCPKG_MANIFEST_INSTALL=OFF")
+    echo "vcpkg packages found in cache, skipping vcpkg install."
+fi
+
 cmake "${CMAKE_ARGS[@]}"
 cmake --build build --config "$BUILD_TYPE" -j "$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)"

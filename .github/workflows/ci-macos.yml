@@ -22,6 +22,7 @@ jobs:
       pull-requests: write
     env:
       VCPKG_BINARY_SOURCES: "clear;default,readwrite"
+      VCPKG_FORCE_SYSTEM_BINARIES: "1"
     steps:
       - uses: actions/checkout@v6
         with:
@@ -34,24 +35,30 @@ jobs:
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
             core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
-      - name: Setup C++ toolchain
-        uses: aminya/setup-cpp@v1
-        with:
-          compiler: llvm-20
-          cmake: true
-          vcpkg: true
+      - name: Install LLVM 20
+        run: brew install llvm@20
 
-      - name: Export VCPKG_ROOT
-        run: echo "VCPKG_ROOT=$HOME/vcpkg" >> "$GITHUB_ENV"
-        shell: bash
+      - name: Set Clang 20 as compiler
+        run: |
+          LLVM_PREFIX="$(brew --prefix llvm@20)"
+          echo "CC=${LLVM_PREFIX}/bin/clang" >> "$GITHUB_ENV"
+          echo "CXX=${LLVM_PREFIX}/bin/clang++" >> "$GITHUB_ENV"
+
+      - name: Setup vcpkg
+        run: |
+          if [ -z "${VCPKG_INSTALLATION_ROOT:-}" ]; then
+            echo "::error::VCPKG_INSTALLATION_ROOT is unset or empty on this runner; cannot set VCPKG_ROOT."
+            exit 1
+          fi
+          echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> "$GITHUB_ENV"
 
       - name: Cache CMake build directory
         uses: actions/cache@v5
         with:
           path: build
-          key: cmake-macos-clang-${{ hashFiles('CMakeLists.txt', 'vcpkg.json') }}
+          key: cmake-macos-clang20-v2-${{ hashFiles('CMakeLists.txt', 'vcpkg.json') }}
           restore-keys: |
-            cmake-macos-clang-
+            cmake-macos-clang20-v2-
 
       - name: Build
         run: |
