@@ -12,8 +12,8 @@ The current build produces loose files next to the executable:
 build/
   shapeshifter
   content/
-    beatmaps/1_stomper_beatmap.json
-    audio/1_stomper.wav
+    beatmaps/2_drama_beatmap.json
+    audio/2_drama.wav
   assets/
     fonts/LiberationMono-Regular.ttf
 ```
@@ -57,7 +57,7 @@ Offset      Size    Field
 TOC Entry (120 bytes each):
   Offset  Size  Field
   0       64    logical_path: null-terminated UTF-8
-                e.g. "content/audio/1_stomper.wav"
+                e.g. "content/audio/2_drama.wav"
   64      8     offset: uint64_le  (byte offset from start of DATA blob)
   72      8     size:   uint64_le  (uncompressed size in bytes)
   80      32    sha256: SHA-256 of entry data
@@ -146,7 +146,7 @@ Standalone CMake target in tools/pak_tool/. Not linked into the game.
 pak_tool pack    --input content/ --output content.pak [--sign-key key.bin]
 pak_tool verify  --input content.pak --pub-key pubkey.bin
 pak_tool list    --input content.pak
-pak_tool extract --input content.pak --entry content/audio/1_stomper.wav
+pak_tool extract --input content.pak --entry content/audio/2_drama.wav
 pak_tool keygen  --out-private pak_private.bin --out-public pak_public.bin
 ```
 
