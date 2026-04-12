@@ -152,6 +152,18 @@ constexpr float SCENE_SC_PROMPT_Y_N   =  800.0f / SCREEN_H;  // ≈ 0.625
 // Scene – Paused overlay
 constexpr float SCENE_PAUSE_Y_N       =  580.0f / SCREEN_H;  // ≈ 0.453
 
+// ── Lane Floor ──────────────────────────────────
+constexpr float FLOOR_SHAPE_SIZE     = 36.0f;
+constexpr float FLOOR_SHAPE_SPACING  = 80.0f;
+constexpr float FLOOR_Y_START        = 12.0f;
+constexpr int   FLOOR_SHAPE_COUNT    = 13;
+constexpr float FLOOR_OUTLINE_THICK  = 2.0f;
+constexpr float FLOOR_ALPHA_REST     = 30.0f;
+constexpr float FLOOR_ALPHA_PEAK     = 100.0f;
+constexpr float FLOOR_SCALE_REST     = 1.0f;
+constexpr float FLOOR_SCALE_PEAK     = 1.3f;
+constexpr float FLOOR_PULSE_DECAY    = 0.15f;   // seconds
+
 // ── Shape Colors ──────────────────────────────────
 // Used for both obstacles and player character.
 // Index by static_cast<int>(Shape).

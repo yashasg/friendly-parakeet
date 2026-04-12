@@ -12,9 +12,11 @@
 #include "../components/difficulty.h"
 #include "../components/particle.h"
 #include "../components/audio.h"
+#include "../components/song_state.h"
 #include "../constants.h"
 #include "../text_renderer.h"
 #include <raylib.h>
+#include <algorithm>
 #include <cmath>
 
 static void draw_shape(Shape shape, float cx, float cy, float size, Color color) {
@@ -276,12 +278,58 @@ void render_system(entt::registry& reg, float /*alpha*/) {
     // positions need to change.
     BeginMode2D(camera);
 
-    // ── Draw lane lines ─────────────────────────────────────
-    Color lane_color = {40, 40, 60, 255};
-    for (int i = 0; i < constants::LANE_COUNT; ++i) {
-        float lx = constants::LANE_X[i];
-        DrawLineV({lx, 0}, {lx, constants::SCREEN_H * constants::SWIPE_ZONE_SPLIT},
-                  lane_color);
+    // ── Draw lane floors (shaped columns that pulse on beat) ─
+    {
+        auto* song = reg.ctx().find<SongState>();
+        float pulse = 0.0f;
+        if (song && song->playing && song->beat_period > 0.0f && song->current_beat >= 0) {
+            float time_since_beat = song->song_time
+                - (song->offset + static_cast<float>(song->current_beat) * song->beat_period);
+            float pulse_t = std::clamp(time_since_beat / constants::FLOOR_PULSE_DECAY, 0.0f, 1.0f);
+            float ease = 1.0f - (1.0f - pulse_t) * (1.0f - pulse_t);
+            pulse = 1.0f - ease;
+        }
+
+        float alpha = constants::FLOOR_ALPHA_REST
+            + (constants::FLOOR_ALPHA_PEAK - constants::FLOOR_ALPHA_REST) * pulse;
+        float scale = constants::FLOOR_SCALE_REST
+            + (constants::FLOOR_SCALE_PEAK - constants::FLOOR_SCALE_REST) * pulse;
+        float size  = constants::FLOOR_SHAPE_SIZE * scale;
+        float half  = size / 2.0f;
+        float thick = constants::FLOOR_OUTLINE_THICK;
+
+        static const Color LANE_SHAPE_COLORS[3] = {
+            {80,  200, 255, 255},
+            {255, 100, 100, 255},
+            {100, 255, 100, 255},
+        };
+
+        for (int lane = 0; lane < constants::LANE_COUNT; ++lane) {
+            float cx = constants::LANE_X[lane];
+            Color c  = LANE_SHAPE_COLORS[lane];
+            c.a      = static_cast<unsigned char>(alpha);
+
+            for (int j = 0; j < constants::FLOOR_SHAPE_COUNT; ++j) {
+                float cy = constants::FLOOR_Y_START + static_cast<float>(j) * constants::FLOOR_SHAPE_SPACING;
+
+                switch (lane) {
+                    case 0:
+                        DrawRing({cx, cy}, half - thick, half, 0, 360, 36, c);
+                        break;
+                    case 1:
+                        DrawRectangleLinesEx({cx - half, cy - half, size, size}, thick, c);
+                        break;
+                    case 2: {
+                        Vector2 v1 = {cx,        cy - half};
+                        Vector2 v2 = {cx - half, cy + half};
+                        Vector2 v3 = {cx + half, cy + half};
+                        DrawTriangleLines(v1, v3, v2, c);
+                        break;
+                    }
+                    default: break;
+                }
+            }
+        }
     }
 
     // ── Draw obstacles ──────────────────────────────────────

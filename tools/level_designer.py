@@ -462,6 +462,23 @@ def clean_two_lane_jumps(obstacles):
     return result
 
 
+def clean_minimum_gap(obstacles, difficulty):
+    """RULE: Minimum beat gap between any two obstacles.
+    Same-lane or adjacent-lane needs ≥2 beats; cross-lane needs ≥3.
+    At 120 BPM gap=1 is only ~0.5s — too tight even for pro players."""
+    MIN_GAP = {"easy": 2, "medium": 2, "hard": 2}
+    min_gap = MIN_GAP.get(difficulty, 2)
+    if not obstacles or min_gap <= 1:
+        return obstacles
+    result = [obstacles[0]]
+    for obs in obstacles[1:]:
+        gap = obs["beat"] - result[-1]["beat"]
+        if gap < min_gap:
+            continue
+        result.append(obs)
+    return result
+
+
 def clean_breathing_room(obstacles, boundary_beats, difficulty):
     """RULE: No obstacles at section boundaries."""
     if not boundary_beats or not obstacles:
@@ -533,6 +550,7 @@ def clean_level(obstacles, difficulty, boundary_beats):
     4. Type transition (action family switches)
     5. Gap monotony (variety enforcement)
     """
+    obstacles = clean_minimum_gap(obstacles, difficulty)
     obstacles = clean_breathing_room(obstacles, boundary_beats, difficulty)
     obstacles = clean_two_lane_jumps(obstacles)
     obstacles = clean_lane_change_gap(obstacles)
