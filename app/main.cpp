@@ -78,6 +78,7 @@ static void update_screen_transform(entt::registry& reg) {
 struct LoopState {
     entt::registry* reg;
     float accumulator;
+    RenderTexture2D target;
 };
 static LoopState g_loop;
 
@@ -98,9 +99,23 @@ static void update_draw_frame() {
         g_loop.accumulator -= FIXED_DT;
     }
 
+    // Render to virtual-resolution texture, then blit letterboxed
     float alpha = g_loop.accumulator / FIXED_DT;
-    BeginDrawing();
+    BeginTextureMode(g_loop.target);
         render_system(reg, alpha);
+    EndTextureMode();
+
+    const auto& st = reg.ctx().get<ScreenTransform>();
+    float dst_w = constants::SCREEN_W * st.scale;
+    float dst_h = constants::SCREEN_H * st.scale;
+
+    BeginDrawing();
+        ClearBackground(BLACK);
+        Rectangle src = { 0, 0,
+            static_cast<float>(constants::SCREEN_W),
+            -static_cast<float>(constants::SCREEN_H) };
+        Rectangle dst = { st.offset_x, st.offset_y, dst_w, dst_h };
+        DrawTexturePro(g_loop.target.texture, src, dst, {0, 0}, 0.0f, WHITE);
     EndDrawing();
 
     audio_system(reg);
@@ -321,7 +336,7 @@ int main(int argc, char* argv[]) {
 
     // ── MAIN LOOP ────────────────────────────────────────────
 #ifdef __EMSCRIPTEN__
-    g_loop = { &reg, 0.0f };
+    g_loop = { &reg, 0.0f, target };
     emscripten_set_main_loop(update_draw_frame, 0, 1);
 #else
     float accumulator = 0.0f;
