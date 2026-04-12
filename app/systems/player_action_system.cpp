@@ -16,6 +16,20 @@ void player_action_system(entt::registry& reg, float /*dt*/) {
     auto* song = reg.ctx().find<SongState>();
     bool rhythm_mode = (song != nullptr);
 
+    // Start (or restart) a shape window from the current song time.
+    auto begin_shape_window = [&](PlayerShape& ps, Shape shape) {
+        ps.target_shape = shape;
+        ps.previous = ps.current;
+        ps.phase_raw = static_cast<uint8_t>(WindowPhase::MorphIn);
+        ps.window_timer = 0.0f;
+        ps.window_start = song->song_time;
+        ps.peak_time = song->song_time + song->morph_duration + song->half_window;
+        ps.morph_t = 0.0f;
+        ps.window_scale = 1.0f;
+        ps.graded = false;
+        audio_push(reg.ctx().get<AudioQueue>(), SFX::ShapeShift);
+    };
+
     auto view = reg.view<PlayerTag, PlayerShape, Lane, VerticalState>();
     for (auto [entity, pshape, lane, vstate] : view.each()) {
 
@@ -24,32 +38,11 @@ void player_action_system(entt::registry& reg, float /*dt*/) {
                 auto phase = static_cast<WindowPhase>(pshape.phase_raw);
 
                 if (phase == WindowPhase::Idle) {
-                    // Start a new shape window
-                    pshape.target_shape = btn_evt.shape;
-                    pshape.previous = pshape.current;
-                    pshape.phase_raw = static_cast<uint8_t>(WindowPhase::MorphIn);
-                    pshape.window_timer = 0.0f;
-                    pshape.window_start = song->song_time;
-                    pshape.peak_time = song->song_time + song->morph_duration + song->half_window;
-                    pshape.morph_t = 0.0f;
-                    pshape.window_scale = 1.0f;
-                    pshape.graded = false;
-                    audio_push(reg.ctx().get<AudioQueue>(), SFX::ShapeShift);
+                    begin_shape_window(pshape, btn_evt.shape);
                 } else if (phase == WindowPhase::Active && btn_evt.shape != pshape.current) {
-                    // Different shape mid-window: interrupt and restart
-                    pshape.target_shape = btn_evt.shape;
-                    pshape.previous = pshape.current;
-                    pshape.phase_raw = static_cast<uint8_t>(WindowPhase::MorphIn);
-                    pshape.window_timer = 0.0f;
-                    pshape.window_start = song->song_time;
-                    pshape.peak_time = song->song_time + song->morph_duration + song->half_window;
-                    pshape.morph_t = 0.0f;
-                    pshape.window_scale = 1.0f;
-                    pshape.graded = false;
-                    audio_push(reg.ctx().get<AudioQueue>(), SFX::ShapeShift);
+                    begin_shape_window(pshape, btn_evt.shape);
                 } else if (phase == WindowPhase::Active && btn_evt.shape == pshape.current) {
                     // Same shape re-pressed: extend the window for the next obstacle.
-                    // Reset timer and peak so the window covers the new collision.
                     pshape.window_timer = 0.0f;
                     pshape.window_start = song->song_time;
                     pshape.peak_time = song->song_time + song->half_window;
