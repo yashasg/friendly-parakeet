@@ -54,7 +54,7 @@ SECTION_ROLE = {
     "bridge":     {"density": 0.35, "types": ["shape_gate"], "consistent": False},
 }
 
-DIFFICULTY_SCALE = {"easy": 0.55, "medium": 0.80, "hard": 1.00}
+DIFFICULTY_SCALE = {"easy": 0.55, "medium": 0.80, "hard": 1.20}
 DIFFICULTY_INTRO_REST = {"easy": 8, "medium": 4, "hard": 2}
 DIFFICULTY_KINDS = {
     "easy":   {"shape_gate"},
@@ -141,7 +141,7 @@ def select_beats(analysis, difficulty):
     intro_rest = DIFFICULTY_INTRO_REST[difficulty]
 
     # Flux filter: harder = lower threshold = more events kept
-    flux_pcts = {"easy": 70, "medium": 40, "hard": 15}
+    flux_pcts = {"easy": 70, "medium": 40, "hard": 5}
     thresh = flux_threshold(analysis.get("flux_stats", {}), flux_pcts[difficulty])
     all_on_beat = snap_events_to_beats(events, beats)
     event_map = {ev["beat_idx"]: ev for ev in all_on_beat if ev.get("flux", 0.0) >= thresh}
