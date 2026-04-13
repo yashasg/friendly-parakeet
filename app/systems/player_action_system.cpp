@@ -14,7 +14,7 @@ void player_action_system(entt::registry& reg, float /*dt*/) {
     auto& btn_evt = reg.ctx().get<ShapeButtonEvent>();
 
     auto* song = reg.ctx().find<SongState>();
-    bool rhythm_mode = (song != nullptr);
+    bool rhythm_mode = (song != nullptr && song->playing);
 
     // Start (or restart) a shape window from the current song time.
     auto begin_shape_window = [&](PlayerShape& ps, ShapeWindow& sw, Shape shape) {

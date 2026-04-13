@@ -31,22 +31,26 @@ inline entt::registry make_registry() {
     reg.ctx().emplace<BurnoutState>();
     reg.ctx().emplace<DifficultyConfig>();
     reg.ctx().emplace<AudioQueue>();
+    reg.ctx().emplace<LevelSelectState>();
+    reg.ctx().emplace<BeatMap>();
+    reg.ctx().emplace<SongState>();
+    reg.ctx().emplace<HPState>();
+    reg.ctx().emplace<SongResults>();
     return reg;
 }
 
 // Sets up a registry with rhythm singletons included
 inline entt::registry make_rhythm_registry() {
     entt::registry reg = make_registry();
-    auto& song = reg.ctx().emplace<SongState>();
+    auto& song = reg.ctx().get<SongState>();
     song.bpm = 120.0f;
     song.offset = 0.0f;
     song.lead_beats = 4;
     song.duration_sec = 60.0f;
     song.playing = true;
     song_state_compute_derived(song);
-    reg.ctx().emplace<BeatMap>();
-    reg.ctx().emplace<HPState>(HPState{5, 5});
-    reg.ctx().emplace<SongResults>();
+    reg.ctx().get<HPState>() = HPState{5, 5};
+    reg.ctx().get<SongResults>() = SongResults{};
     return reg;
 }
 

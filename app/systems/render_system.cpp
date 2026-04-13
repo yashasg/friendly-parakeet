@@ -18,6 +18,7 @@
 #include <raylib.h>
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 
 static void draw_shape(Shape shape, float cx, float cy, float size, Color color) {
     switch (shape) {
@@ -81,6 +82,77 @@ static void draw_title_scene(const TextContext& text_ctx, const GameState& gs) {
     text_draw(text_ctx, "TAP TO START",
         cx, constants::SCENE_TITLE_PROMPT_Y_N * constants::SCREEN_H,
         FontSize::Medium, 200, 200, 200, alpha, TextAlign::Center);
+}
+
+static void draw_level_select_scene(const TextContext& text_ctx,
+                                    const LevelSelectState& lss,
+                                    const GameState& gs) {
+    const float cx = constants::VIEWPORT_CX_N * constants::SCREEN_W;
+
+    text_draw(text_ctx, "SELECT LEVEL",
+        cx, 80.0f, FontSize::Large, 80, 180, 255, 255, TextAlign::Center);
+
+    constexpr float CARD_START_Y = 200.0f;
+    constexpr float CARD_HEIGHT  = 200.0f;
+    constexpr float CARD_GAP     = 40.0f;
+    constexpr float CARD_X       = 60.0f;
+    constexpr float CARD_W       = 600.0f;
+    constexpr float DIFF_BTN_W   = 160.0f;
+    constexpr float DIFF_BTN_H   = 50.0f;
+    constexpr float DIFF_BTN_Y_OFF = 120.0f;
+    constexpr float DIFF_BTN_X0  = 100.0f;
+    constexpr float DIFF_BTN_GAP = 20.0f;
+
+    for (int i = 0; i < LevelSelectState::LEVEL_COUNT; ++i) {
+        float cy = CARD_START_Y + static_cast<float>(i) * (CARD_HEIGHT + CARD_GAP);
+        bool selected = (i == lss.selected_level);
+
+        // Card background
+        Color card_bg = selected ? Color{40, 50, 80, 255} : Color{25, 25, 40, 255};
+        Color border  = selected ? Color{80, 180, 255, 255} : Color{50, 50, 70, 255};
+        DrawRectangleRounded({CARD_X, cy, CARD_W, CARD_HEIGHT}, 0.1f, 8, card_bg);
+        DrawRectangleRoundedLinesEx({CARD_X, cy, CARD_W, CARD_HEIGHT}, 0.1f, 8, 2.0f, border);
+
+        // Song title
+        uint8_t title_a = selected ? 255 : 150;
+        text_draw(text_ctx, LevelSelectState::LEVELS[i].title,
+            CARD_X + 30.0f, cy + 25.0f, FontSize::Medium,
+            255, 255, 255, title_a, TextAlign::Left);
+
+        // Track number
+        char track_num[4];
+        std::snprintf(track_num, sizeof(track_num), "%d", i + 1);
+        text_draw(text_ctx, track_num,
+            CARD_X + CARD_W - 40.0f, cy + 25.0f, FontSize::Medium,
+            80, 180, 255, 100, TextAlign::Right);
+
+        // Difficulty buttons (only for selected card)
+        if (selected) {
+            float diff_y = cy + DIFF_BTN_Y_OFF;
+            for (int d = 0; d < 3; ++d) {
+                float bx = DIFF_BTN_X0 + static_cast<float>(d) * (DIFF_BTN_W + DIFF_BTN_GAP);
+                bool active = (d == lss.selected_difficulty);
+
+                Color btn_bg = active ? Color{80, 180, 255, 255} : Color{35, 35, 55, 255};
+                Color btn_border = active ? Color{120, 220, 255, 255} : Color{60, 60, 80, 255};
+                uint8_t text_r = active ? 0 : 180;
+                uint8_t text_g = active ? 0 : 180;
+                uint8_t text_b = active ? 0 : 180;
+
+                DrawRectangleRounded({bx, diff_y, DIFF_BTN_W, DIFF_BTN_H}, 0.2f, 6, btn_bg);
+                DrawRectangleRoundedLinesEx({bx, diff_y, DIFF_BTN_W, DIFF_BTN_H}, 0.2f, 6, 1.5f, btn_border);
+                text_draw(text_ctx, LevelSelectState::DIFFICULTY_NAMES[d],
+                    bx + DIFF_BTN_W / 2.0f, diff_y + 10.0f, FontSize::Small,
+                    text_r, text_g, text_b, 255, TextAlign::Center);
+            }
+        }
+    }
+
+    // "TAP SONG TO PLAY" prompt
+    float pulse = (std::sin(gs.phase_timer * 3.0f) + 1.0f) / 2.0f;
+    auto alpha = static_cast<uint8_t>(100 + pulse * 155);
+    text_draw(text_ctx, "TAP SONG TO PLAY",
+        cx, 1100.0f, FontSize::Medium, 200, 200, 200, alpha, TextAlign::Center);
 }
 
 static void draw_hud(entt::registry& reg, const TextContext& text_ctx) {
@@ -485,6 +557,12 @@ void render_system(entt::registry& reg, float /*alpha*/) {
 
     if (gs.phase == GamePhase::Title) {
         draw_title_scene(text_ctx, gs);
+        return;
+    }
+
+    if (gs.phase == GamePhase::LevelSelect) {
+        auto& lss = reg.ctx().get<LevelSelectState>();
+        draw_level_select_scene(text_ctx, lss, gs);
         return;
     }
 

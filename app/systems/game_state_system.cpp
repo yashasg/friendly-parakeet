@@ -54,20 +54,39 @@ void game_state_system(entt::registry& reg, float dt) {
                 gs.phase = GamePhase::Title;
                 gs.phase_timer = 0.0f;
                 break;
+            case GamePhase::LevelSelect:
+                gs.previous_phase = gs.phase;
+                gs.phase = GamePhase::LevelSelect;
+                gs.phase_timer = 0.0f;
+                {
+                    auto& lss = reg.ctx().get<LevelSelectState>();
+                    lss.confirmed = false;
+                }
+                break;
         }
         return;
     }
 
-    // Title → Playing on any touch
+    // Title → LevelSelect on any touch
     if (gs.phase == GamePhase::Title && input.touch_up) {
         gs.transition_pending = true;
-        gs.next_phase = GamePhase::Playing;
+        gs.next_phase = GamePhase::LevelSelect;
     }
 
-    // GameOver → Playing on any touch (after brief delay)
+    // LevelSelect input handling
+    if (gs.phase == GamePhase::LevelSelect && input.touch_up && gs.phase_timer > 0.2f) {
+        auto& lss = reg.ctx().get<LevelSelectState>();
+        if (lss.confirmed) {
+            lss.confirmed = false;
+            gs.transition_pending = true;
+            gs.next_phase = GamePhase::Playing;
+        }
+    }
+
+    // GameOver → LevelSelect on any touch (after brief delay)
     if (gs.phase == GamePhase::GameOver && input.touch_up && gs.phase_timer > 0.4f) {
         gs.transition_pending = true;
-        gs.next_phase = GamePhase::Playing;
+        gs.next_phase = GamePhase::LevelSelect;
     }
 
     // Paused → resume on touch
@@ -90,9 +109,9 @@ void game_state_system(entt::registry& reg, float dt) {
         }
     }
 
-    // SongComplete → replay on any touch (after brief delay)
+    // SongComplete → LevelSelect on any touch (after brief delay)
     if (gs.phase == GamePhase::SongComplete && input.touch_up && gs.phase_timer > 0.5f) {
         gs.transition_pending = true;
-        gs.next_phase = GamePhase::Playing;
+        gs.next_phase = GamePhase::LevelSelect;
     }
 }

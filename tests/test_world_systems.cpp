@@ -175,7 +175,7 @@ TEST_CASE("spawn: obstacles have position at SPAWN_Y", "[spawn]") {
 
 // ── game_state_system ────────────────────────────────────────
 
-TEST_CASE("game_state: title to playing on touch", "[gamestate]") {
+TEST_CASE("game_state: title to level select on touch", "[gamestate]") {
     auto reg = make_registry();
     reg.ctx().get<GameState>().phase = GamePhase::Title;
     reg.ctx().get<InputState>().touch_up = true;
@@ -184,7 +184,7 @@ TEST_CASE("game_state: title to playing on touch", "[gamestate]") {
 
     auto& gs = reg.ctx().get<GameState>();
     CHECK(gs.transition_pending);
-    CHECK(gs.next_phase == GamePhase::Playing);
+    CHECK(gs.next_phase == GamePhase::LevelSelect);
 }
 
 TEST_CASE("game_state: game over retry after delay", "[gamestate]") {
@@ -197,7 +197,7 @@ TEST_CASE("game_state: game over retry after delay", "[gamestate]") {
     game_state_system(reg, 0.016f);
 
     CHECK(gs.transition_pending);
-    CHECK(gs.next_phase == GamePhase::Playing);
+    CHECK(gs.next_phase == GamePhase::LevelSelect);
 }
 
 TEST_CASE("game_state: game over ignores touch during delay", "[gamestate]") {

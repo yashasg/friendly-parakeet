@@ -13,6 +13,7 @@ void gesture_system(entt::registry& reg, float dt);
 
 // Phase 2: Game State
 void game_state_system(entt::registry& reg, float dt);
+void level_select_system(entt::registry& reg, float dt);
 
 // Phase 3: Rhythm Engine
 void song_playback_system(entt::registry& reg, float dt);

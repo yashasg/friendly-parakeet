@@ -37,6 +37,7 @@ static constexpr float MAX_ACCUM = 0.1f;
 static void tick_fixed_systems(entt::registry& reg, float dt) {
     gesture_system(reg, dt);
     game_state_system(reg, dt);
+    level_select_system(reg, dt);
     song_playback_system(reg, dt);
     beat_scheduler_system(reg, dt);
     player_action_system(reg, dt);
@@ -207,6 +208,7 @@ int main(int argc, char* argv[]) {
     reg.ctx().emplace<BurnoutState>();
     reg.ctx().emplace<DifficultyConfig>();
     reg.ctx().emplace<AudioQueue>();
+    reg.ctx().emplace<LevelSelectState>();
 
     // Rhythm singletons (active even without a beat map loaded)
     reg.ctx().emplace<HPState>();
@@ -223,90 +225,25 @@ int main(int argc, char* argv[]) {
     });
     reg.ctx().emplace<ScreenTransform>();  // updated each frame before input_system
 
-    // ── Load beatmap from disk ────────────────────────────────
-    {
-        auto& beatmap = reg.ctx().emplace<BeatMap>();
-        std::vector<BeatMapError> load_errors;
+    // ── Beatmap + song singletons (populated by play_session on level start) ─
+    reg.ctx().emplace<BeatMap>();
+    reg.ctx().emplace<SongState>();
 
-        std::string exe_beatmap = std::string(GetApplicationDirectory())
-                                + "content/beatmaps/2_drama_beatmap.json";
-        const char* beatmap_paths[] = {
-            exe_beatmap.c_str(),
-            "content/beatmaps/2_drama_beatmap.json",
-        };
+    // ── Music context (stream loaded per-level in play_session) ─
+    reg.ctx().emplace<MusicContext>();
 
-        bool loaded = false;
-        for (const char* path : beatmap_paths) {
-            load_errors.clear();
-            if (load_beat_map(path, beatmap, load_errors, difficulty)) {
-                TraceLog(LOG_INFO, "Loaded beatmap: %s (%zu beats, difficulty=%s)",
-                         path, beatmap.beats.size(), beatmap.difficulty.c_str());
-                loaded = true;
+    // ── Test Player Setup ──────────────────────────────────────
+    if (test_player_mode) {
+        // Auto-select level 1 (2_drama) at chosen difficulty for test player
+        auto& lss = reg.ctx().get<LevelSelectState>();
+        lss.selected_level = 1;
+        for (int d = 0; d < 3; ++d) {
+            if (std::strcmp(LevelSelectState::DIFFICULTY_KEYS[d], difficulty) == 0) {
+                lss.selected_difficulty = d;
                 break;
             }
         }
 
-        if (!loaded) {
-            TraceLog(LOG_WARNING, "No beatmap loaded — running in freeplay mode");
-            for (const auto& err : load_errors) {
-                TraceLog(LOG_WARNING, "  beatmap error: %s", err.message.c_str());
-            }
-        }
-
-        if (loaded) {
-            std::vector<BeatMapError> val_errors;
-            if (!validate_beat_map(beatmap, val_errors)) {
-                TraceLog(LOG_WARNING, "Beatmap validation warnings:");
-                for (const auto& err : val_errors) {
-                    TraceLog(LOG_WARNING, "  beat %d: %s", err.beat_index, err.message.c_str());
-                }
-            }
-        }
-
-        auto& song = reg.ctx().emplace<SongState>();
-        if (!beatmap.beats.empty()) {
-            init_song_state(song, beatmap);
-        } else {
-            song.bpm = 120.0f;
-            song_state_compute_derived(song);
-        }
-    }
-
-    // ── Load music stream ─────────────────────────────────────
-    {
-        auto& music = reg.ctx().emplace<MusicContext>();
-        auto* beatmap = reg.ctx().find<BeatMap>();
-
-        if (beatmap && !beatmap->song_path.empty()) {
-            std::string exe_audio = std::string(GetApplicationDirectory())
-                                  + beatmap->song_path;
-            const char* audio_paths[] = {
-                exe_audio.c_str(),
-                beatmap->song_path.c_str(),
-            };
-
-            for (const char* path : audio_paths) {
-                Music stream = LoadMusicStream(path);
-                if (stream.frameCount > 0) {
-                    music.stream  = stream;
-                    music.loaded  = true;
-                    music.started = false;
-                    SetMusicVolume(music.stream, music.volume);
-                    TraceLog(LOG_INFO, "Loaded music: %s (%u frames)",
-                             path, stream.frameCount);
-                    break;
-                }
-            }
-
-            if (!music.loaded) {
-                TraceLog(LOG_WARNING, "Could not load music: %s",
-                         beatmap->song_path.c_str());
-            }
-        }
-    }
-
-    // ── Test Player Setup ──────────────────────────────────────
-    if (test_player_mode) {
         auto& tp_state = reg.ctx().emplace<TestPlayerState>();
         tp_state.skill  = test_skill;
         tp_state.active = true;
