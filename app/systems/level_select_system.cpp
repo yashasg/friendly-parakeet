@@ -32,10 +32,11 @@ void level_select_system(entt::registry& reg, float /*dt*/) {
     float tx = input.end_x;
     float ty = input.end_y;
 
-    // Check START button
+    // Check START button (with generous hit padding)
     float start_x = (constants::SCREEN_W - START_BTN_W) / 2.0f;
-    if (tx >= start_x && tx <= start_x + START_BTN_W &&
-        ty >= START_BTN_Y && ty <= START_BTN_Y + START_BTN_H) {
+    constexpr float PAD = 15.0f;
+    if (tx >= start_x - PAD && tx <= start_x + START_BTN_W + PAD &&
+        ty >= START_BTN_Y - PAD && ty <= START_BTN_Y + START_BTN_H + PAD) {
         lss.confirmed = true;
         return;
     }
@@ -45,7 +46,8 @@ void level_select_system(entt::registry& reg, float /*dt*/) {
     float diff_y = card_y + DIFF_BTN_Y_OFF;
     for (int d = 0; d < 3; ++d) {
         float bx = DIFF_BTN_X0 + static_cast<float>(d) * (DIFF_BTN_W + DIFF_BTN_GAP);
-        if (tx >= bx && tx <= bx + DIFF_BTN_W && ty >= diff_y && ty <= diff_y + DIFF_BTN_H) {
+        if (tx >= bx - PAD && tx <= bx + DIFF_BTN_W + PAD &&
+            ty >= diff_y - PAD && ty <= diff_y + DIFF_BTN_H + PAD) {
             lss.selected_difficulty = d;
             return;
         }

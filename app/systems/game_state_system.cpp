@@ -104,13 +104,14 @@ void game_state_system(entt::registry& reg, float dt) {
         constexpr float BTN_W = 280.0f;
         constexpr float BTN_H = 55.0f;
         constexpr float BTN_GAP = 20.0f;
+        constexpr float BTN_PAD = 15.0f;
         float btn_x = (constants::SCREEN_W - BTN_W) / 2.0f;
         float btn_y1 = 900.0f;
         float btn_y2 = btn_y1 + BTN_H + BTN_GAP;
-        if (tx >= btn_x && tx <= btn_x + BTN_W) {
-            if (ty >= btn_y1 && ty <= btn_y1 + BTN_H)
+        if (tx >= btn_x - BTN_PAD && tx <= btn_x + BTN_W + BTN_PAD) {
+            if (ty >= btn_y1 - BTN_PAD && ty <= btn_y1 + BTN_H + BTN_PAD)
                 gs.end_choice = EndScreenChoice::LevelSelect;
-            else if (ty >= btn_y2 && ty <= btn_y2 + BTN_H)
+            else if (ty >= btn_y2 - BTN_PAD && ty <= btn_y2 + BTN_H + BTN_PAD)
                 gs.end_choice = EndScreenChoice::MainMenu;
         }
     }
