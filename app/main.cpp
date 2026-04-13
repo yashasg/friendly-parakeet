@@ -59,8 +59,11 @@ static void tick_fixed_systems(entt::registry& reg, float dt) {
 // Recomputes the letterbox transform and stores it in the registry context so
 // input_system can normalise raw window coordinates to virtual world space.
 static void update_screen_transform(entt::registry& reg) {
-    float win_w = static_cast<float>(GetScreenWidth());
-    float win_h = static_cast<float>(GetScreenHeight());
+    // Use GetRenderWidth/Height which accounts for HiDPI (devicePixelRatio).
+    // Mouse and touch coordinates from raylib are in render-pixel space,
+    // so the transform must use the same coordinate system.
+    float win_w = static_cast<float>(GetRenderWidth());
+    float win_h = static_cast<float>(GetRenderHeight());
     float scale = std::min(
         win_w / static_cast<float>(constants::SCREEN_W),
         win_h / static_cast<float>(constants::SCREEN_H));
