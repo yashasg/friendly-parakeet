@@ -82,6 +82,16 @@ static void draw_title_scene(const TextContext& text_ctx, const GameState& gs) {
     text_draw(text_ctx, "TAP TO START",
         cx, constants::SCENE_TITLE_PROMPT_Y_N * constants::SCREEN_H,
         FontSize::Medium, 200, 200, 200, alpha, TextAlign::Center);
+
+    #ifndef PLATFORM_WEB
+    constexpr float EXIT_W = 200.0f;
+    constexpr float EXIT_H = 50.0f;
+    constexpr float EXIT_Y = 1050.0f;
+    float exit_x = (constants::SCREEN_W - EXIT_W) / 2.0f;
+    DrawRectangleRounded({exit_x, EXIT_Y, EXIT_W, EXIT_H}, 0.2f, 6, Color{40, 30, 30, 255});
+    DrawRectangleRoundedLinesEx({exit_x, EXIT_Y, EXIT_W, EXIT_H}, 0.2f, 6, 1.5f, Color{100, 60, 60, 255});
+    text_draw(text_ctx, "EXIT", cx, EXIT_Y + 12.0f, FontSize::Small, 180, 100, 100, 255, TextAlign::Center);
+    #endif
 }
 
 static void draw_level_select_scene(const TextContext& text_ctx,
@@ -148,11 +158,20 @@ static void draw_level_select_scene(const TextContext& text_ctx,
         }
     }
 
-    // "TAP SONG TO PLAY" prompt
+    // START button
+    constexpr float START_BTN_W = 300.0f;
+    constexpr float START_BTN_H = 60.0f;
+    constexpr float START_BTN_Y = 1050.0f;
+    float start_x = (constants::SCREEN_W - START_BTN_W) / 2.0f;
+    Color start_bg = {30, 120, 60, 255};
+    Color start_border = {60, 200, 100, 255};
+    DrawRectangleRounded({start_x, START_BTN_Y, START_BTN_W, START_BTN_H}, 0.2f, 6, start_bg);
+    DrawRectangleRoundedLinesEx({start_x, START_BTN_Y, START_BTN_W, START_BTN_H}, 0.2f, 6, 2.0f, start_border);
     float pulse = (std::sin(gs.phase_timer * 3.0f) + 1.0f) / 2.0f;
-    auto alpha = static_cast<uint8_t>(100 + pulse * 155);
-    text_draw(text_ctx, "TAP SONG TO PLAY",
-        cx, 1100.0f, FontSize::Medium, 200, 200, 200, alpha, TextAlign::Center);
+    auto start_alpha = static_cast<uint8_t>(180 + pulse * 75);
+    text_draw(text_ctx, "START",
+        cx, START_BTN_Y + 14.0f, FontSize::Medium,
+        200, 255, 200, start_alpha, TextAlign::Center);
 }
 
 static void draw_hud(entt::registry& reg, const TextContext& text_ctx) {
@@ -242,8 +261,26 @@ static void draw_hud(entt::registry& reg, const TextContext& text_ctx) {
               {40, 40, 60, 200});
 }
 
+static void draw_end_screen_buttons(const TextContext& text_ctx) {
+    const float cx = constants::VIEWPORT_CX_N * constants::SCREEN_W;
+    constexpr float BTN_W = 280.0f;
+    constexpr float BTN_H = 55.0f;
+    constexpr float BTN_GAP = 20.0f;
+    float btn_x = (constants::SCREEN_W - BTN_W) / 2.0f;
+    float y1 = 900.0f;
+    float y2 = y1 + BTN_H + BTN_GAP;
+
+    DrawRectangleRounded({btn_x, y1, BTN_W, BTN_H}, 0.2f, 6, Color{30, 50, 80, 255});
+    DrawRectangleRoundedLinesEx({btn_x, y1, BTN_W, BTN_H}, 0.2f, 6, 1.5f, Color{80, 180, 255, 255});
+    text_draw(text_ctx, "LEVEL SELECT", cx, y1 + 14.0f, FontSize::Small, 180, 220, 255, 255, TextAlign::Center);
+
+    DrawRectangleRounded({btn_x, y2, BTN_W, BTN_H}, 0.2f, 6, Color{35, 35, 45, 255});
+    DrawRectangleRoundedLinesEx({btn_x, y2, BTN_W, BTN_H}, 0.2f, 6, 1.5f, Color{80, 80, 100, 255});
+    text_draw(text_ctx, "MAIN MENU", cx, y2 + 14.0f, FontSize::Small, 150, 150, 170, 255, TextAlign::Center);
+}
+
 static void draw_game_over_overlay(entt::registry& reg, const TextContext& text_ctx,
-                                   const GameState& gs) {
+                                   const GameState& /*gs*/) {
     auto& score = reg.ctx().get<ScoreState>();
     const float cx = constants::VIEWPORT_CX_N * constants::SCREEN_W;
 
@@ -262,15 +299,11 @@ static void draw_game_over_overlay(entt::registry& reg, const TextContext& text_
         cx, constants::SCENE_GO_HISCORE_Y_N * constants::SCREEN_H,
         FontSize::Small, 200, 200, 100, 255);
 
-    float pulse = (std::sin(gs.phase_timer * 3.0f) + 1.0f) / 2.0f;
-    auto retry_alpha = static_cast<uint8_t>(80 + pulse * 175);
-    text_draw(text_ctx, "TAP TO RETRY",
-        cx, constants::SCENE_GO_PROMPT_Y_N * constants::SCREEN_H,
-        FontSize::Medium, 200, 200, 200, retry_alpha, TextAlign::Center);
+    draw_end_screen_buttons(text_ctx);
 }
 
 static void draw_song_complete_overlay(entt::registry& reg, const TextContext& text_ctx,
-                                       const GameState& gs) {
+                                       const GameState& /*gs*/) {
     auto& score = reg.ctx().get<ScoreState>();
     const float cx = constants::VIEWPORT_CX_N  * constants::SCREEN_W;
     const float lx = constants::SCENE_SC_STATS_LX_N * constants::SCREEN_W;
@@ -317,11 +350,7 @@ static void draw_song_complete_overlay(entt::registry& reg, const TextContext& t
         text_draw_number(text_ctx, results->miss_count, rx, y, FontSize::Small, 255, 255, 255, 255);
     }
 
-    float pulse = (std::sin(gs.phase_timer * 3.0f) + 1.0f) / 2.0f;
-    auto replay_alpha = static_cast<uint8_t>(80 + pulse * 175);
-    text_draw(text_ctx, "TAP TO REPLAY",
-        cx, constants::SCENE_SC_PROMPT_Y_N * constants::SCREEN_H,
-        FontSize::Medium, 200, 200, 200, replay_alpha, TextAlign::Center);
+    draw_end_screen_buttons(text_ctx);
 }
 
 static void draw_pause_overlay(const TextContext& text_ctx) {

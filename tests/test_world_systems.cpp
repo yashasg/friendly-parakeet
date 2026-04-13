@@ -187,15 +187,19 @@ TEST_CASE("game_state: title to level select on touch", "[gamestate]") {
     CHECK(gs.next_phase == GamePhase::LevelSelect);
 }
 
-TEST_CASE("game_state: game over retry after delay", "[gamestate]") {
+TEST_CASE("game_state: game over button choice after delay", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
     gs.phase = GamePhase::GameOver;
-    gs.phase_timer = 0.5f;  // past 0.4s delay
-    reg.ctx().get<InputState>().touch_up = true;
+    gs.phase_timer = 0.5f;
+    auto& input = reg.ctx().get<InputState>();
+    input.touch_up = true;
+    input.end_x = constants::SCREEN_W / 2.0f;
+    input.end_y = 920.0f;
 
     game_state_system(reg, 0.016f);
 
+    // Button tap sets choice AND transitions in same frame
     CHECK(gs.transition_pending);
     CHECK(gs.next_phase == GamePhase::LevelSelect);
 }

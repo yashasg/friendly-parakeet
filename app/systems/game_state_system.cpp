@@ -67,10 +67,23 @@ void game_state_system(entt::registry& reg, float dt) {
         return;
     }
 
-    // Title → LevelSelect on any touch
+    // Title → LevelSelect on any touch (except exit button)
     if (gs.phase == GamePhase::Title && input.touch_up) {
-        gs.transition_pending = true;
-        gs.next_phase = GamePhase::LevelSelect;
+        float tx = input.end_x;
+        float ty = input.end_y;
+        // Exit button at bottom
+        constexpr float EXIT_W = 200.0f;
+        constexpr float EXIT_H = 50.0f;
+        constexpr float EXIT_Y = 1050.0f;
+        float exit_x = (constants::SCREEN_W - EXIT_W) / 2.0f;
+        if (tx >= exit_x && tx <= exit_x + EXIT_W && ty >= EXIT_Y && ty <= EXIT_Y + EXIT_H) {
+            #ifndef PLATFORM_WEB
+            input.quit_requested = true;
+            #endif
+        } else {
+            gs.transition_pending = true;
+            gs.next_phase = GamePhase::LevelSelect;
+        }
     }
 
     // LevelSelect input handling
@@ -83,10 +96,30 @@ void game_state_system(entt::registry& reg, float dt) {
         }
     }
 
-    // GameOver → LevelSelect on any touch (after brief delay)
-    if (gs.phase == GamePhase::GameOver && input.touch_up && gs.phase_timer > 0.4f) {
+    // End screen button detection (shared by GameOver and SongComplete)
+    if ((gs.phase == GamePhase::GameOver || gs.phase == GamePhase::SongComplete)
+        && input.touch_up && gs.phase_timer > 0.4f) {
+        float tx = input.end_x;
+        float ty = input.end_y;
+        constexpr float BTN_W = 280.0f;
+        constexpr float BTN_H = 55.0f;
+        constexpr float BTN_GAP = 20.0f;
+        float btn_x = (constants::SCREEN_W - BTN_W) / 2.0f;
+        float btn_y1 = 900.0f;
+        float btn_y2 = btn_y1 + BTN_H + BTN_GAP;
+        if (tx >= btn_x && tx <= btn_x + BTN_W) {
+            if (ty >= btn_y1 && ty <= btn_y1 + BTN_H)
+                gs.end_choice = EndScreenChoice::LevelSelect;
+            else if (ty >= btn_y2 && ty <= btn_y2 + BTN_H)
+                gs.end_choice = EndScreenChoice::MainMenu;
+        }
+    }
+
+    // GameOver → button choice (after brief delay)
+    if (gs.phase == GamePhase::GameOver && gs.phase_timer > 0.4f && gs.end_choice != EndScreenChoice::None) {
         gs.transition_pending = true;
-        gs.next_phase = GamePhase::LevelSelect;
+        gs.next_phase = (gs.end_choice == EndScreenChoice::LevelSelect) ? GamePhase::LevelSelect : GamePhase::Title;
+        gs.end_choice = EndScreenChoice::None;
     }
 
     // Paused → resume on touch
@@ -109,9 +142,10 @@ void game_state_system(entt::registry& reg, float dt) {
         }
     }
 
-    // SongComplete → LevelSelect on any touch (after brief delay)
-    if (gs.phase == GamePhase::SongComplete && input.touch_up && gs.phase_timer > 0.5f) {
+    // SongComplete → button choice (after brief delay)
+    if (gs.phase == GamePhase::SongComplete && gs.phase_timer > 0.5f && gs.end_choice != EndScreenChoice::None) {
         gs.transition_pending = true;
-        gs.next_phase = GamePhase::LevelSelect;
+        gs.next_phase = (gs.end_choice == EndScreenChoice::LevelSelect) ? GamePhase::LevelSelect : GamePhase::Title;
+        gs.end_choice = EndScreenChoice::None;
     }
 }

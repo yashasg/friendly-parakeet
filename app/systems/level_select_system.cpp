@@ -3,7 +3,7 @@
 #include "../components/input.h"
 #include "../constants.h"
 
-// Layout constants for level select UI
+// Layout constants (shared with render_system)
 static constexpr float CARD_START_Y = 200.0f;
 static constexpr float CARD_HEIGHT  = 200.0f;
 static constexpr float CARD_GAP     = 40.0f;
@@ -16,6 +16,10 @@ static constexpr float DIFF_BTN_Y_OFF = 120.0f;
 static constexpr float DIFF_BTN_X0  = 100.0f;
 static constexpr float DIFF_BTN_GAP = 20.0f;
 
+static constexpr float START_BTN_W  = 300.0f;
+static constexpr float START_BTN_H  = 60.0f;
+static constexpr float START_BTN_Y  = 1050.0f;
+
 void level_select_system(entt::registry& reg, float /*dt*/) {
     auto& gs = reg.ctx().get<GameState>();
     if (gs.phase != GamePhase::LevelSelect) return;
@@ -27,6 +31,14 @@ void level_select_system(entt::registry& reg, float /*dt*/) {
 
     float tx = input.end_x;
     float ty = input.end_y;
+
+    // Check START button
+    float start_x = (constants::SCREEN_W - START_BTN_W) / 2.0f;
+    if (tx >= start_x && tx <= start_x + START_BTN_W &&
+        ty >= START_BTN_Y && ty <= START_BTN_Y + START_BTN_H) {
+        lss.confirmed = true;
+        return;
+    }
 
     // Check difficulty button taps for the selected level
     float card_y = CARD_START_Y + static_cast<float>(lss.selected_level) * (CARD_HEIGHT + CARD_GAP);
@@ -43,12 +55,7 @@ void level_select_system(entt::registry& reg, float /*dt*/) {
     for (int i = 0; i < LevelSelectState::LEVEL_COUNT; ++i) {
         float cy = CARD_START_Y + static_cast<float>(i) * (CARD_HEIGHT + CARD_GAP);
         if (tx >= CARD_X && tx <= CARD_X + CARD_W && ty >= cy && ty <= cy + CARD_HEIGHT) {
-            if (lss.selected_level == i) {
-                // Already selected — confirm and play
-                lss.confirmed = true;
-            } else {
-                lss.selected_level = i;
-            }
+            lss.selected_level = i;
             return;
         }
     }
