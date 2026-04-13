@@ -195,7 +195,7 @@ TEST_CASE("game_state: game over button choice after delay", "[gamestate]") {
     auto& input = reg.ctx().get<InputState>();
     input.touch_up = true;
     input.end_x = constants::SCREEN_W / 2.0f;
-    input.end_y = 920.0f;
+    input.end_y = 940.0f;  // within "LEVEL SELECT" button (y=935..985)
 
     game_state_system(reg, 0.016f);
 

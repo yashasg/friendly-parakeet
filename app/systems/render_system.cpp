@@ -264,19 +264,24 @@ static void draw_hud(entt::registry& reg, const TextContext& text_ctx) {
 static void draw_end_screen_buttons(const TextContext& text_ctx) {
     const float cx = constants::VIEWPORT_CX_N * constants::SCREEN_W;
     constexpr float BTN_W = 280.0f;
-    constexpr float BTN_H = 55.0f;
-    constexpr float BTN_GAP = 20.0f;
+    constexpr float BTN_H = 50.0f;
+    constexpr float BTN_GAP = 15.0f;
     float btn_x = (constants::SCREEN_W - BTN_W) / 2.0f;
-    float y1 = 900.0f;
+    float y1 = 870.0f;
     float y2 = y1 + BTN_H + BTN_GAP;
+    float y3 = y2 + BTN_H + BTN_GAP;
 
-    DrawRectangleRounded({btn_x, y1, BTN_W, BTN_H}, 0.2f, 4, Color{30, 50, 80, 255});
-    DrawRectangleRoundedLinesEx({btn_x, y1, BTN_W, BTN_H}, 0.2f, 4, 1.5f, Color{80, 180, 255, 255});
-    text_draw(text_ctx, "LEVEL SELECT", cx, y1 + 14.0f, FontSize::Small, 180, 220, 255, 255, TextAlign::Center);
+    DrawRectangleRounded({btn_x, y1, BTN_W, BTN_H}, 0.2f, 4, Color{30, 80, 50, 255});
+    DrawRectangleRoundedLinesEx({btn_x, y1, BTN_W, BTN_H}, 0.2f, 4, 1.5f, Color{60, 200, 100, 255});
+    text_draw(text_ctx, "RESTART", cx, y1 + 12.0f, FontSize::Small, 200, 255, 200, 255, TextAlign::Center);
 
-    DrawRectangleRounded({btn_x, y2, BTN_W, BTN_H}, 0.2f, 4, Color{35, 35, 45, 255});
-    DrawRectangleRoundedLinesEx({btn_x, y2, BTN_W, BTN_H}, 0.2f, 4, 1.5f, Color{80, 80, 100, 255});
-    text_draw(text_ctx, "MAIN MENU", cx, y2 + 14.0f, FontSize::Small, 150, 150, 170, 255, TextAlign::Center);
+    DrawRectangleRounded({btn_x, y2, BTN_W, BTN_H}, 0.2f, 4, Color{30, 50, 80, 255});
+    DrawRectangleRoundedLinesEx({btn_x, y2, BTN_W, BTN_H}, 0.2f, 4, 1.5f, Color{80, 180, 255, 255});
+    text_draw(text_ctx, "LEVEL SELECT", cx, y2 + 12.0f, FontSize::Small, 180, 220, 255, 255, TextAlign::Center);
+
+    DrawRectangleRounded({btn_x, y3, BTN_W, BTN_H}, 0.2f, 4, Color{35, 35, 45, 255});
+    DrawRectangleRoundedLinesEx({btn_x, y3, BTN_W, BTN_H}, 0.2f, 4, 1.5f, Color{80, 80, 100, 255});
+    text_draw(text_ctx, "MAIN MENU", cx, y3 + 12.0f, FontSize::Small, 150, 150, 170, 255, TextAlign::Center);
 }
 
 static void draw_game_over_overlay(entt::registry& reg, const TextContext& text_ctx,
