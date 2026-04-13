@@ -23,6 +23,6 @@ self.addEventListener('fetch', e => {
           return resp;
         });
       })
-    )
+    ).catch(() => new Response('Offline', { status: 503 }))
   );
 });
