@@ -104,11 +104,8 @@ jobs:
           report-path: 'ctrf-report.json'
           title: 'Test Results (Linux)'
           pull-request-report: true
-          summary-delta-report: true
-          insights-report: true
-          flaky-rate-report: true
-          fail-rate-report: true
-          slowest-report: true
+          update-comment: true
+          comment-tag: ctrf-linux
           upload-artifact: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
