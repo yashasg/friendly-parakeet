@@ -72,12 +72,19 @@ void input_system(entt::registry& reg, float raw_dt) {
 #ifdef PLATFORM_HAS_KEYBOARD
     // ── Keyboard — IsKeyPressed fires once per press (no repeat) ──
     if (IsKeyPressed(KEY_W)) input.key_w = true;
-    if (IsKeyPressed(KEY_A)) input.key_a = true;
     if (IsKeyPressed(KEY_S)) input.key_s = true;
+    if (IsKeyPressed(KEY_A)) input.key_a = true;
     if (IsKeyPressed(KEY_D)) input.key_d = true;
+    if (IsKeyPressed(KEY_UP))    input.key_w = true;
+    if (IsKeyPressed(KEY_DOWN))  input.key_s = true;
+    if (IsKeyPressed(KEY_LEFT))  input.key_a = true;
+    if (IsKeyPressed(KEY_RIGHT)) input.key_d = true;
     if (IsKeyPressed(KEY_ONE))   input.key_1 = true;
     if (IsKeyPressed(KEY_TWO))   input.key_2 = true;
     if (IsKeyPressed(KEY_THREE)) input.key_3 = true;
+    if (IsKeyPressed(KEY_Z))     input.key_1 = true;
+    if (IsKeyPressed(KEY_X))     input.key_2 = true;
+    if (IsKeyPressed(KEY_C))     input.key_3 = true;
 #endif
 
     // ── Background / suspend (edge-triggered) ─────────────

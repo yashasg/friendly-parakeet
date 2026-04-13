@@ -23,8 +23,8 @@
 static const char* shape_key_name(Shape s) {
     switch (s) {
         case Shape::Circle:   return "key_1(Circle)";
-        case Shape::Square:   return "key_3(Square)";
-        case Shape::Triangle: return "key_2(Triangle)";
+        case Shape::Square:   return "key_2(Square)";
+        case Shape::Triangle: return "key_3(Triangle)";
         default:              return "key_?(?)";
     }
 }
@@ -316,8 +316,8 @@ void test_player_system(entt::registry& reg, float dt) {
         if (action.needs_shape()) {
             switch (action.target_shape) {
                 case Shape::Circle:   input.key_1 = true; break;
-                case Shape::Triangle: input.key_2 = true; break;
-                case Shape::Square:   input.key_3 = true; break;
+                case Shape::Square:   input.key_2 = true; break;
+                case Shape::Triangle: input.key_3 = true; break;
                 default: break;
             }
             action.mark_shape_done();
