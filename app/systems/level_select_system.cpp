@@ -39,11 +39,11 @@ void level_select_system(entt::registry& reg, float /*dt*/) {
         return;
     }
     if (input.key_a) {
-        lss.selected_difficulty = (lss.selected_difficulty - 1 + 3) % 3;
+        lss.selected_difficulty = (lss.selected_difficulty - 1 + LevelSelectState::DIFFICULTY_COUNT) % LevelSelectState::DIFFICULTY_COUNT;
         return;
     }
     if (input.key_d) {
-        lss.selected_difficulty = (lss.selected_difficulty + 1) % 3;
+        lss.selected_difficulty = (lss.selected_difficulty + 1) % LevelSelectState::DIFFICULTY_COUNT;
         return;
     }
     if (input.key_enter) {
@@ -69,7 +69,7 @@ void level_select_system(entt::registry& reg, float /*dt*/) {
     // Check difficulty button taps for the selected level
     float card_y = CARD_START_Y + static_cast<float>(lss.selected_level) * (CARD_HEIGHT + CARD_GAP);
     float diff_y = card_y + DIFF_BTN_Y_OFF;
-    for (int d = 0; d < 3; ++d) {
+    for (int d = 0; d < LevelSelectState::DIFFICULTY_COUNT; ++d) {
         float bx = DIFF_BTN_X0 + static_cast<float>(d) * (DIFF_BTN_W + DIFF_BTN_GAP);
         if (tx >= bx - PAD && tx <= bx + DIFF_BTN_W + PAD &&
             ty >= diff_y - PAD && ty <= diff_y + DIFF_BTN_H + PAD) {
