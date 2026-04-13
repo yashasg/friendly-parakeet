@@ -171,6 +171,7 @@ jobs:
             build-web/index.js
             build-web/index.wasm
             build-web/index.data
+            build-web/sw.js
 
   deploy:
     name: Deploy to GitHub Pages

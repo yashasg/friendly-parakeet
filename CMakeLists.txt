@@ -151,23 +151,47 @@ if(EMSCRIPTEN)
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
     html,body{height:100%;overflow:hidden;touch-action:none}
-    body{background:#0f0f19;display:flex;justify-content:center;align-items:center;font-family:monospace;color:#ccc}
-    #canvas{display:block;max-width:100vw;max-height:100vh;object-fit:contain}
-    #status{position:absolute;bottom:16px;text-align:center;width:100%;font-size:14px}
+    body{background:#0f0f19;display:flex;flex-direction:column;justify-content:center;align-items:center;font-family:monospace;color:#ccc}
+    #canvas{display:none;max-width:100vw;max-height:100vh;object-fit:contain}
+    #loader{text-align:center}
+    #loader h1{color:#50b4ff;font-size:28px;margin-bottom:24px;letter-spacing:4px}
+    #bar-bg{width:300px;height:8px;background:#1a1a2e;border-radius:4px;overflow:hidden;margin:0 auto 12px}
+    #bar-fg{width:0%;height:100%;background:linear-gradient(90deg,#50b4ff,#64ff64);border-radius:4px;transition:width .2s}
+    #pct{font-size:14px;color:#888}
   </style>
 </head>
 <body>
+  <div id="loader">
+    <h1>SHAPESHIFTER</h1>
+    <div id="bar-bg"><div id="bar-fg"></div></div>
+    <div id="pct">Downloading 0%</div>
+  </div>
   <canvas id="canvas" oncontextmenu="event.preventDefault()" tabindex="0"></canvas>
-  <div id="status">Loading…</div>
   <script>
     var c=document.getElementById('canvas');
+    var bar=document.getElementById('bar-fg');
+    var pct=document.getElementById('pct');
+    var loader=document.getElementById('loader');
     var Module={
       canvas:c,
-      setStatus:function(t){document.getElementById('status').innerText=t},
-      monitorRunDependencies:function(left){if(left===0){document.getElementById('status').style.display='none';c.focus()}}
+      setStatus:function(t){
+        if(!t){loader.style.display='none';c.style.display='block';c.focus();return}
+        var m=t.match(/(\d+(?:\.\d+)?)\/(\d+)/);
+        if(m){
+          var p=Math.round(parseInt(m[1])/parseInt(m[2])*100);
+          bar.style.width=p+'%';
+          var mb=(parseInt(m[1])/1048576).toFixed(1);
+          var total=(parseInt(m[2])/1048576).toFixed(0);
+          pct.innerText='Downloading '+p+'% ('+mb+'/'+total+' MB)';
+        }else{pct.innerText=t}
+      },
+      monitorRunDependencies:function(left){
+        if(left===0){loader.style.display='none';c.style.display='block';c.focus()}
+      }
     };
     c.addEventListener('click',function(){c.focus()});
     document.addEventListener('touchmove',function(e){e.preventDefault()},{passive:false});
+    if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(function(){})}
   </script>
   {{{ SCRIPT }}}
 </body>
@@ -187,6 +211,12 @@ if(EMSCRIPTEN)
     set_target_properties(shapeshifter PROPERTIES
         OUTPUT_NAME "index"
         SUFFIX ".html"
+    )
+    add_custom_command(TARGET shapeshifter POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${CMAKE_SOURCE_DIR}/app/sw.js
+            $<TARGET_FILE_DIR:shapeshifter>/sw.js
+        COMMENT "Copying service worker"
     )
 endif()
 
