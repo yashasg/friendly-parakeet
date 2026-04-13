@@ -31,13 +31,14 @@ struct LevelInfo {
 
 struct LevelSelectState {
     static constexpr int LEVEL_COUNT = 3;
+    static constexpr int DIFFICULTY_COUNT = 3;
     static constexpr LevelInfo LEVELS[LEVEL_COUNT] = {
         {"STOMPER",            "content/beatmaps/1_stomper_beatmap.json"},
         {"DRAMA",              "content/beatmaps/2_drama_beatmap.json"},
         {"MENTAL CORRUPTION",  "content/beatmaps/3_mental_corruption_beatmap.json"},
     };
-    static constexpr const char* DIFFICULTY_NAMES[3] = {"EASY", "MEDIUM", "HARD"};
-    static constexpr const char* DIFFICULTY_KEYS[3]  = {"easy", "medium", "hard"};
+    static constexpr const char* DIFFICULTY_NAMES[DIFFICULTY_COUNT] = {"EASY", "MEDIUM", "HARD"};
+    static constexpr const char* DIFFICULTY_KEYS[DIFFICULTY_COUNT]  = {"easy", "medium", "hard"};
 
     int selected_level      = 0;
     int selected_difficulty  = 1;  // default medium
