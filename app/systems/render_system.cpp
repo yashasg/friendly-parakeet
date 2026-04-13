@@ -88,8 +88,8 @@ static void draw_title_scene(const TextContext& text_ctx, const GameState& gs) {
     constexpr float EXIT_H = 50.0f;
     constexpr float EXIT_Y = 1050.0f;
     float exit_x = (constants::SCREEN_W - EXIT_W) / 2.0f;
-    DrawRectangleRounded({exit_x, EXIT_Y, EXIT_W, EXIT_H}, 0.2f, 6, Color{40, 30, 30, 255});
-    DrawRectangleRoundedLinesEx({exit_x, EXIT_Y, EXIT_W, EXIT_H}, 0.2f, 6, 1.5f, Color{100, 60, 60, 255});
+    DrawRectangleRounded({exit_x, EXIT_Y, EXIT_W, EXIT_H}, 0.2f, 4, Color{40, 30, 30, 255});
+    DrawRectangleRoundedLinesEx({exit_x, EXIT_Y, EXIT_W, EXIT_H}, 0.2f, 4, 1.5f, Color{100, 60, 60, 255});
     text_draw(text_ctx, "EXIT", cx, EXIT_Y + 12.0f, FontSize::Small, 180, 100, 100, 255, TextAlign::Center);
     #endif
 }
@@ -120,8 +120,8 @@ static void draw_level_select_scene(const TextContext& text_ctx,
         // Card background
         Color card_bg = selected ? Color{40, 50, 80, 255} : Color{25, 25, 40, 255};
         Color border  = selected ? Color{80, 180, 255, 255} : Color{50, 50, 70, 255};
-        DrawRectangleRounded({CARD_X, cy, CARD_W, CARD_HEIGHT}, 0.1f, 8, card_bg);
-        DrawRectangleRoundedLinesEx({CARD_X, cy, CARD_W, CARD_HEIGHT}, 0.1f, 8, 2.0f, border);
+        DrawRectangleRounded({CARD_X, cy, CARD_W, CARD_HEIGHT}, 0.1f, 4, card_bg);
+        DrawRectangleRoundedLinesEx({CARD_X, cy, CARD_W, CARD_HEIGHT}, 0.1f, 4, 2.0f, border);
 
         // Song title
         uint8_t title_a = selected ? 255 : 150;
@@ -149,8 +149,8 @@ static void draw_level_select_scene(const TextContext& text_ctx,
                 uint8_t text_g = active ? 0 : 180;
                 uint8_t text_b = active ? 0 : 180;
 
-                DrawRectangleRounded({bx, diff_y, DIFF_BTN_W, DIFF_BTN_H}, 0.2f, 6, btn_bg);
-                DrawRectangleRoundedLinesEx({bx, diff_y, DIFF_BTN_W, DIFF_BTN_H}, 0.2f, 6, 1.5f, btn_border);
+                DrawRectangleRounded({bx, diff_y, DIFF_BTN_W, DIFF_BTN_H}, 0.2f, 4, btn_bg);
+                DrawRectangleRoundedLinesEx({bx, diff_y, DIFF_BTN_W, DIFF_BTN_H}, 0.2f, 4, 1.5f, btn_border);
                 text_draw(text_ctx, LevelSelectState::DIFFICULTY_NAMES[d],
                     bx + DIFF_BTN_W / 2.0f, diff_y + 10.0f, FontSize::Small,
                     text_r, text_g, text_b, 255, TextAlign::Center);
@@ -165,8 +165,8 @@ static void draw_level_select_scene(const TextContext& text_ctx,
     float start_x = (constants::SCREEN_W - START_BTN_W) / 2.0f;
     Color start_bg = {30, 120, 60, 255};
     Color start_border = {60, 200, 100, 255};
-    DrawRectangleRounded({start_x, START_BTN_Y, START_BTN_W, START_BTN_H}, 0.2f, 6, start_bg);
-    DrawRectangleRoundedLinesEx({start_x, START_BTN_Y, START_BTN_W, START_BTN_H}, 0.2f, 6, 2.0f, start_border);
+    DrawRectangleRounded({start_x, START_BTN_Y, START_BTN_W, START_BTN_H}, 0.2f, 4, start_bg);
+    DrawRectangleRoundedLinesEx({start_x, START_BTN_Y, START_BTN_W, START_BTN_H}, 0.2f, 4, 2.0f, start_border);
     float pulse = (std::sin(gs.phase_timer * 3.0f) + 1.0f) / 2.0f;
     auto start_alpha = static_cast<uint8_t>(180 + pulse * 75);
     text_draw(text_ctx, "START",
@@ -270,12 +270,12 @@ static void draw_end_screen_buttons(const TextContext& text_ctx) {
     float y1 = 900.0f;
     float y2 = y1 + BTN_H + BTN_GAP;
 
-    DrawRectangleRounded({btn_x, y1, BTN_W, BTN_H}, 0.2f, 6, Color{30, 50, 80, 255});
-    DrawRectangleRoundedLinesEx({btn_x, y1, BTN_W, BTN_H}, 0.2f, 6, 1.5f, Color{80, 180, 255, 255});
+    DrawRectangleRounded({btn_x, y1, BTN_W, BTN_H}, 0.2f, 4, Color{30, 50, 80, 255});
+    DrawRectangleRoundedLinesEx({btn_x, y1, BTN_W, BTN_H}, 0.2f, 4, 1.5f, Color{80, 180, 255, 255});
     text_draw(text_ctx, "LEVEL SELECT", cx, y1 + 14.0f, FontSize::Small, 180, 220, 255, 255, TextAlign::Center);
 
-    DrawRectangleRounded({btn_x, y2, BTN_W, BTN_H}, 0.2f, 6, Color{35, 35, 45, 255});
-    DrawRectangleRoundedLinesEx({btn_x, y2, BTN_W, BTN_H}, 0.2f, 6, 1.5f, Color{80, 80, 100, 255});
+    DrawRectangleRounded({btn_x, y2, BTN_W, BTN_H}, 0.2f, 4, Color{35, 35, 45, 255});
+    DrawRectangleRoundedLinesEx({btn_x, y2, BTN_W, BTN_H}, 0.2f, 4, 1.5f, Color{80, 80, 100, 255});
     text_draw(text_ctx, "MAIN MENU", cx, y2 + 14.0f, FontSize::Small, 150, 150, 170, 255, TextAlign::Center);
 }
 
@@ -422,7 +422,7 @@ void render_system(entt::registry& reg, float /*alpha*/) {
 
                 switch (lane) {
                     case 0:
-                        DrawRing({cx, cy}, half - thick, half, 0, 360, 36, c);
+                        DrawRing({cx, cy}, half - thick, half, 0, 360, 12, c);
                         break;
                     case 1:
                         DrawRectangleLinesEx({cx - half, cy - half, size, size}, thick, c);
