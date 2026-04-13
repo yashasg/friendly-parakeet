@@ -6,6 +6,7 @@
 #include "../components/audio.h"
 #include "../components/rhythm.h"
 #include "../constants.h"
+#include "../platform.h"
 
 static void enter_game_over(entt::registry& reg) {
     auto& score = reg.ctx().get<ScoreState>();
@@ -67,7 +68,13 @@ void game_state_system(entt::registry& reg, float dt) {
         return;
     }
 
-    // Title → LevelSelect on any touch (except exit button)
+    // Title → LevelSelect on any touch (except exit button) or Enter/Space
+#ifdef PLATFORM_HAS_KEYBOARD
+    if (gs.phase == GamePhase::Title && input.key_enter) {
+        gs.transition_pending = true;
+        gs.next_phase = GamePhase::LevelSelect;
+    }
+#endif
     if (gs.phase == GamePhase::Title && input.touch_up) {
         float tx = input.end_x;
         float ty = input.end_y;
@@ -131,8 +138,12 @@ void game_state_system(entt::registry& reg, float dt) {
         gs.end_choice = EndScreenChoice::None;
     }
 
-    // Paused → resume on touch
-    if (gs.phase == GamePhase::Paused && input.touch_up) {
+    // Paused → resume on touch or Enter
+    bool pause_resume = input.touch_up;
+#ifdef PLATFORM_HAS_KEYBOARD
+    pause_resume = pause_resume || input.key_enter;
+#endif
+    if (gs.phase == GamePhase::Paused && pause_resume) {
         gs.previous_phase = gs.phase;
         gs.phase = GamePhase::Playing;
         gs.phase_timer = 0.0f;

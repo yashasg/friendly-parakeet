@@ -34,6 +34,7 @@ struct InputState {
     bool key_1 = false;   // shape: Circle
     bool key_2 = false;   // shape: Triangle
     bool key_3 = false;   // shape: Square
+    bool key_enter = false; // confirm / start
 #endif
 };
 
@@ -48,6 +49,7 @@ inline void clear_input_events(InputState& input) {
     input.key_1 = false;
     input.key_2 = false;
     input.key_3 = false;
+    input.key_enter = false;
 #endif
 }
 

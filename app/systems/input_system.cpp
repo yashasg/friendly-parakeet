@@ -85,6 +85,7 @@ void input_system(entt::registry& reg, float raw_dt) {
     if (IsKeyPressed(KEY_Z))     input.key_1 = true;
     if (IsKeyPressed(KEY_X))     input.key_2 = true;
     if (IsKeyPressed(KEY_C))     input.key_3 = true;
+    if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) input.key_enter = true;
 #endif
 
     // ── Background / suspend (edge-triggered) ─────────────

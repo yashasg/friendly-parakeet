@@ -2,6 +2,7 @@
 #include "../components/game_state.h"
 #include "../components/input.h"
 #include "../constants.h"
+#include "../platform.h"
 
 // Layout constants (shared with render_system)
 static constexpr float CARD_START_Y = 200.0f;
@@ -26,6 +27,30 @@ void level_select_system(entt::registry& reg, float /*dt*/) {
 
     auto& input = reg.ctx().get<InputState>();
     auto& lss   = reg.ctx().get<LevelSelectState>();
+
+#ifdef PLATFORM_HAS_KEYBOARD
+    // ── Keyboard navigation for level select ────────────────
+    if (input.key_w) {
+        lss.selected_level = (lss.selected_level - 1 + LevelSelectState::LEVEL_COUNT) % LevelSelectState::LEVEL_COUNT;
+        return;
+    }
+    if (input.key_s) {
+        lss.selected_level = (lss.selected_level + 1) % LevelSelectState::LEVEL_COUNT;
+        return;
+    }
+    if (input.key_a) {
+        lss.selected_difficulty = (lss.selected_difficulty - 1 + 3) % 3;
+        return;
+    }
+    if (input.key_d) {
+        lss.selected_difficulty = (lss.selected_difficulty + 1) % 3;
+        return;
+    }
+    if (input.key_enter) {
+        lss.confirmed = true;
+        return;
+    }
+#endif
 
     if (!input.touch_up) return;
 
