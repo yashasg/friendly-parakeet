@@ -104,7 +104,7 @@ void game_state_system(entt::registry& reg, float dt) {
         constexpr float BTN_W = 280.0f;
         constexpr float BTN_H = 55.0f;
         constexpr float BTN_GAP = 20.0f;
-        constexpr float BTN_PAD = 15.0f;
+        constexpr float BTN_PAD = 25.0f;
         float btn_x = (constants::SCREEN_W - BTN_W) / 2.0f;
         float btn_y1 = 900.0f;
         float btn_y2 = btn_y1 + BTN_H + BTN_GAP;

@@ -34,7 +34,7 @@ void level_select_system(entt::registry& reg, float /*dt*/) {
 
     // Check START button (with generous hit padding)
     float start_x = (constants::SCREEN_W - START_BTN_W) / 2.0f;
-    constexpr float PAD = 15.0f;
+    constexpr float PAD = 25.0f;
     if (tx >= start_x - PAD && tx <= start_x + START_BTN_W + PAD &&
         ty >= START_BTN_Y - PAD && ty <= START_BTN_Y + START_BTN_H + PAD) {
         lss.confirmed = true;
