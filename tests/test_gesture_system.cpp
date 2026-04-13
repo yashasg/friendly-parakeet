@@ -331,7 +331,7 @@ TEST_CASE("gesture_system: key_1 selects Circle shape", "[gesture][desktop]") {
     CHECK(reg.ctx().get<GestureResult>().gesture == SwipeGesture::None);
 }
 
-TEST_CASE("gesture_system: key_2 selects Triangle shape", "[gesture][desktop]") {
+TEST_CASE("gesture_system: key_2 selects Square shape", "[gesture][desktop]") {
     auto reg = make_registry();
     reg.ctx().get<InputState>().key_2 = true;
 
@@ -339,10 +339,10 @@ TEST_CASE("gesture_system: key_2 selects Triangle shape", "[gesture][desktop]") 
 
     auto& btn = reg.ctx().get<ShapeButtonEvent>();
     CHECK(btn.pressed);
-    CHECK(btn.shape == Shape::Triangle);
+    CHECK(btn.shape == Shape::Square);
 }
 
-TEST_CASE("gesture_system: key_3 selects Square shape", "[gesture][desktop]") {
+TEST_CASE("gesture_system: key_3 selects Triangle shape", "[gesture][desktop]") {
     auto reg = make_registry();
     reg.ctx().get<InputState>().key_3 = true;
 
@@ -350,7 +350,7 @@ TEST_CASE("gesture_system: key_3 selects Square shape", "[gesture][desktop]") {
 
     auto& btn = reg.ctx().get<ShapeButtonEvent>();
     CHECK(btn.pressed);
-    CHECK(btn.shape == Shape::Square);
+    CHECK(btn.shape == Shape::Triangle);
 }
 
 TEST_CASE("gesture_system: keyboard key produces no magnitude or hit coords", "[gesture][desktop]") {

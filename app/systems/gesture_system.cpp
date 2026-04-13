@@ -23,8 +23,8 @@ void gesture_system(entt::registry& reg, float /*dt*/) {
     if (input.key_a) { gesture.gesture = SwipeGesture::SwipeLeft;  return; }
     if (input.key_d) { gesture.gesture = SwipeGesture::SwipeRight; return; }
     if (input.key_1) { btn_evt.pressed = true; btn_evt.shape = Shape::Circle;   return; }
-    if (input.key_2) { btn_evt.pressed = true; btn_evt.shape = Shape::Triangle; return; }
-    if (input.key_3) { btn_evt.pressed = true; btn_evt.shape = Shape::Square;   return; }
+    if (input.key_2) { btn_evt.pressed = true; btn_evt.shape = Shape::Square;   return; }
+    if (input.key_3) { btn_evt.pressed = true; btn_evt.shape = Shape::Triangle; return; }
 #endif
 
     if (!input.touch_up) return;

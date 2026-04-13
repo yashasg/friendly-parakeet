@@ -54,20 +54,81 @@ void game_state_system(entt::registry& reg, float dt) {
                 gs.phase = GamePhase::Title;
                 gs.phase_timer = 0.0f;
                 break;
+            case GamePhase::LevelSelect:
+                gs.previous_phase = gs.phase;
+                gs.phase = GamePhase::LevelSelect;
+                gs.phase_timer = 0.0f;
+                {
+                    auto& lss = reg.ctx().get<LevelSelectState>();
+                    lss.confirmed = false;
+                }
+                break;
         }
         return;
     }
 
-    // Title → Playing on any touch
+    // Title → LevelSelect on any touch (except exit button)
     if (gs.phase == GamePhase::Title && input.touch_up) {
-        gs.transition_pending = true;
-        gs.next_phase = GamePhase::Playing;
+        float tx = input.end_x;
+        float ty = input.end_y;
+        // Exit button at bottom
+        constexpr float EXIT_W = 200.0f;
+        constexpr float EXIT_H = 50.0f;
+        constexpr float EXIT_Y = 1050.0f;
+        float exit_x = (constants::SCREEN_W - EXIT_W) / 2.0f;
+        if (tx >= exit_x && tx <= exit_x + EXIT_W && ty >= EXIT_Y && ty <= EXIT_Y + EXIT_H) {
+            #ifndef PLATFORM_WEB
+            input.quit_requested = true;
+            #endif
+        } else {
+            gs.transition_pending = true;
+            gs.next_phase = GamePhase::LevelSelect;
+        }
     }
 
-    // GameOver → Playing on any touch (after brief delay)
-    if (gs.phase == GamePhase::GameOver && input.touch_up && gs.phase_timer > 0.4f) {
+    // LevelSelect input handling
+    if (gs.phase == GamePhase::LevelSelect && gs.phase_timer > 0.2f) {
+        auto& lss = reg.ctx().get<LevelSelectState>();
+        if (lss.confirmed) {
+            lss.confirmed = false;
+            gs.transition_pending = true;
+            gs.next_phase = GamePhase::Playing;
+        }
+    }
+
+    // End screen button detection (shared by GameOver and SongComplete)
+    if ((gs.phase == GamePhase::GameOver || gs.phase == GamePhase::SongComplete)
+        && input.touch_up && gs.phase_timer > 0.4f) {
+        float tx = input.end_x;
+        float ty = input.end_y;
+        constexpr float BTN_W = 280.0f;
+        constexpr float BTN_H = 50.0f;
+        constexpr float BTN_GAP = 15.0f;
+        constexpr float BTN_PAD = 10.0f;
+        float btn_x = (constants::SCREEN_W - BTN_W) / 2.0f;
+        float btn_y1 = 870.0f;
+        float btn_y2 = btn_y1 + BTN_H + BTN_GAP;
+        float btn_y3 = btn_y2 + BTN_H + BTN_GAP;
+        if (tx >= btn_x - BTN_PAD && tx <= btn_x + BTN_W + BTN_PAD) {
+            if (ty >= btn_y1 - BTN_PAD && ty <= btn_y1 + BTN_H + BTN_PAD)
+                gs.end_choice = EndScreenChoice::Restart;
+            else if (ty >= btn_y2 - BTN_PAD && ty <= btn_y2 + BTN_H + BTN_PAD)
+                gs.end_choice = EndScreenChoice::LevelSelect;
+            else if (ty >= btn_y3 - BTN_PAD && ty <= btn_y3 + BTN_H + BTN_PAD)
+                gs.end_choice = EndScreenChoice::MainMenu;
+        }
+    }
+
+    // GameOver → button choice (after brief delay)
+    if (gs.phase == GamePhase::GameOver && gs.phase_timer > 0.4f && gs.end_choice != EndScreenChoice::None) {
         gs.transition_pending = true;
-        gs.next_phase = GamePhase::Playing;
+        if (gs.end_choice == EndScreenChoice::Restart)
+            gs.next_phase = GamePhase::Playing;
+        else if (gs.end_choice == EndScreenChoice::LevelSelect)
+            gs.next_phase = GamePhase::LevelSelect;
+        else
+            gs.next_phase = GamePhase::Title;
+        gs.end_choice = EndScreenChoice::None;
     }
 
     // Paused → resume on touch
@@ -90,9 +151,15 @@ void game_state_system(entt::registry& reg, float dt) {
         }
     }
 
-    // SongComplete → replay on any touch (after brief delay)
-    if (gs.phase == GamePhase::SongComplete && input.touch_up && gs.phase_timer > 0.5f) {
+    // SongComplete → button choice (after brief delay)
+    if (gs.phase == GamePhase::SongComplete && gs.phase_timer > 0.5f && gs.end_choice != EndScreenChoice::None) {
         gs.transition_pending = true;
-        gs.next_phase = GamePhase::Playing;
+        if (gs.end_choice == EndScreenChoice::Restart)
+            gs.next_phase = GamePhase::Playing;
+        else if (gs.end_choice == EndScreenChoice::LevelSelect)
+            gs.next_phase = GamePhase::LevelSelect;
+        else
+            gs.next_phase = GamePhase::Title;
+        gs.end_choice = EndScreenChoice::None;
     }
 }
