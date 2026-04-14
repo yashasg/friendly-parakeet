@@ -1,6 +1,6 @@
 {
   "title": "1_stomper",
-  "source": "1_stomper.wav",
+  "source": "1_stomper.flac",
   "bpm": 159.01,
   "duration": 200.24,
   "onset_threshold": 0.3,

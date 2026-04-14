@@ -60,7 +60,7 @@ You have two Python tools in `tools/`:
 Extracts musical features from audio using aubio. Outputs analysis JSON.
 
 ```bash
-python3 tools/rhythm_pipeline.py content/audio/song.wav \
+python3 tools/rhythm_pipeline.py content/audio/song.flac \
     --output content/beatmaps/song_analysis.json \
     --onset-threshold 0.3
 ```
@@ -103,14 +103,14 @@ What it does:
 Available commands you can run directly:
 
 ```bash
-aubio tempo song.wav           # BPM
-aubio beat song.wav            # beat timestamps
-aubio onset song.wav -m hfc    # onset detection (methods: hfc, complex, phase, mkl, specflux)
-aubio melbands song.wav        # mel band energies (40 bands per frame)
-aubio mfcc song.wav            # MFCC coefficients (13 per frame)
-aubio quiet song.wav           # quiet/loud region timestamps
-aubio pitch song.wav -m yinfft # fundamental frequency tracking
-aubio notes song.wav           # MIDI-like note events
+aubio tempo song.flac           # BPM
+aubio beat song.flac            # beat timestamps
+aubio onset song.flac -m hfc    # onset detection (methods: hfc, complex, phase, mkl, specflux)
+aubio melbands song.flac        # mel band energies (40 bands per frame)
+aubio mfcc song.flac            # MFCC coefficients (13 per frame)
+aubio quiet song.flac           # quiet/loud region timestamps
+aubio pitch song.flac -m yinfft # fundamental frequency tracking
+aubio notes song.flac           # MIDI-like note events
 ```
 
 **Onset methods ranked by beat alignment:**
@@ -242,7 +242,7 @@ the analysis JSON before running level_designer.py.
 
 ```bash
 # 1. Analyze
-python3 tools/rhythm_pipeline.py content/audio/song.wav \
+python3 tools/rhythm_pipeline.py content/audio/song.flac \
     --output content/beatmaps/song_analysis.json
 
 # 2. Review structure — verify sections make musical sense
@@ -267,7 +267,7 @@ yt-dlp -x --audio-format wav --audio-quality 0 \
     -o "/tmp/beatmap-work/song.%(ext)s" "<URL>"
 
 # Then copy to content/audio/ and follow workflow A
-cp /tmp/beatmap-work/song.wav content/audio/song_name.wav
+cp /tmp/beatmap-work/song.flac content/audio/song_name.flac
 ```
 
 ### C. Tweaking an Existing Beatmap
@@ -325,7 +325,7 @@ Before delivering a beatmap, verify:
 ## File Locations
 
 ```
-  content/audio/           ← source audio files (.wav)
+  content/audio/           ← source audio files (.flac)
   content/beatmaps/        ← analysis JSON + beatmap JSON
   tools/rhythm_pipeline.py ← audio analysis tool
   tools/level_designer.py  ← beatmap generation tool

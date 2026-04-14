@@ -99,7 +99,7 @@ tools/
   rhythm_pipeline.py      # Audio analysis (aubio -> analysis JSON)
   level_designer.py       # Beatmap generation (analysis -> beatmap JSON)
 content/
-  audio/                  # Source audio files (.wav)
+  audio/                  # Source audio files (.flac)
   beatmaps/               # Analysis + beatmap JSON files
 tests/                    # 386 Catch2 tests across 19 files
 design-docs/              # Game design + architecture docs
@@ -111,7 +111,7 @@ Levels are generated from audio analysis:
 
 ```bash
 # 1. Analyze audio
-python3 tools/rhythm_pipeline.py content/audio/song.wav \
+python3 tools/rhythm_pipeline.py content/audio/song.flac \
     --output content/beatmaps/song_analysis.json
 
 # 2. Generate beatmap (easy/medium/hard)
