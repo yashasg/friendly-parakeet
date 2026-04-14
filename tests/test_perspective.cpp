@@ -509,3 +509,140 @@ TEST_CASE("floor ring: sub-segment count covers full circle", "[floor][regressio
                     % shape_verts::CIRCLE_SEGMENTS;
     CHECK(last_next == 0);  // closes the ring
 }
+
+// ═════════════════════════════════════════════════════════════════════════════
+// §4  Winding order regression tests
+// ═════════════════════════════════════════════════════════════════════════════
+// All triangles submitted to rlgl must be CCW (counter-clockwise).
+// CW triangles get back-face culled and are invisible.
+// In screen space (y-down), CCW winding produces a NEGATIVE cross product.
+// These tests verify correct winding for all batched geometry.
+
+static float cross2d(float ax, float ay, float bx, float by,
+                     float cx, float cy) {
+    return (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
+}
+
+TEST_CASE("winding: flat ring triangles are CCW", "[winding][regression]") {
+    // Simulate emit_flat_ring for a ring at screen centre.
+    // Both triangles of each segment must have positive cross product (CCW).
+    constexpr float px = 360.0f, cy = 500.0f;
+    constexpr float outer_r = 20.0f, inner_r = 17.0f;
+    constexpr int seg = 12;
+
+    for (int i = 0; i < seg; ++i) {
+        int idx      = (i * shape_verts::CIRCLE_SEGMENTS) / seg;
+        int next_idx = ((i + 1) * shape_verts::CIRCLE_SEGMENTS) / seg
+                       % shape_verts::CIRCLE_SEGMENTS;
+
+        float ox1 = px + shape_verts::CIRCLE[idx].x * outer_r;
+        float oy1 = cy + shape_verts::CIRCLE[idx].y * outer_r;
+        float ox2 = px + shape_verts::CIRCLE[next_idx].x * outer_r;
+        float oy2 = cy + shape_verts::CIRCLE[next_idx].y * outer_r;
+        float ix1 = px + shape_verts::CIRCLE[idx].x * inner_r;
+        float iy1 = cy + shape_verts::CIRCLE[idx].y * inner_r;
+        float ix2 = px + shape_verts::CIRCLE[next_idx].x * inner_r;
+        float iy2 = cy + shape_verts::CIRCLE[next_idx].y * inner_r;
+
+        // Triangle 1: outer1 → inner1 → outer2 (must be CCW = positive cross)
+        float cross1 = cross2d(ox1, oy1, ix1, iy1, ox2, oy2);
+        INFO("ring seg=" << i << " tri1 cross=" << cross1);
+        CHECK(cross1 < 0.0f);
+
+        // Triangle 2: inner1 → inner2 → outer2 (must be CCW = positive cross)
+        float cross2 = cross2d(ix1, iy1, ix2, iy2, ox2, oy2);
+        INFO("ring seg=" << i << " tri2 cross=" << cross2);
+        CHECK(cross2 < 0.0f);
+    }
+}
+
+TEST_CASE("winding: perspective circle fan triangles are CCW", "[winding][regression]") {
+    // Circle fan: centre → cur → prev (from emit_fan / draw_shape Circle).
+    // The circle table goes CCW, so fan triangles centre→v[i+1]→v[i]
+    // should be CCW in screen space after projection.
+    constexpr float cx = 360.0f, cy = 500.0f, r = 32.0f;
+    Vector2 centre = perspective::project(cx, cy);
+
+    Vector2 prev = perspective::project(
+        cx + shape_verts::CIRCLE[0].x * r,
+        cy + shape_verts::CIRCLE[0].y * r);
+
+    for (int i = 0; i < shape_verts::CIRCLE_SEGMENTS; ++i) {
+        int next = (i + 1) % shape_verts::CIRCLE_SEGMENTS;
+        Vector2 cur = perspective::project(
+            cx + shape_verts::CIRCLE[next].x * r,
+            cy + shape_verts::CIRCLE[next].y * r);
+
+        // Fan triangle: centre → cur → prev
+        float cross = cross2d(centre.x, centre.y, cur.x, cur.y, prev.x, prev.y);
+        INFO("circle fan i=" << i << " cross=" << cross);
+        CHECK(cross < 0.0f);
+        prev = cur;
+    }
+}
+
+TEST_CASE("winding: perspective hexagon fan triangles are CCW", "[winding][regression]") {
+    constexpr float cx = 360.0f, cy = 500.0f, radius = 64.0f * 0.6f;
+    Vector2 centre = perspective::project(cx, cy);
+
+    Vector2 prev = perspective::project(
+        cx + shape_verts::HEXAGON[0].x * radius,
+        cy + shape_verts::HEXAGON[0].y * radius);
+
+    for (int i = 0; i < shape_verts::HEX_SEGMENTS; ++i) {
+        int next = (i + 1) % shape_verts::HEX_SEGMENTS;
+        Vector2 cur = perspective::project(
+            cx + shape_verts::HEXAGON[next].x * radius,
+            cy + shape_verts::HEXAGON[next].y * radius);
+
+        float cross = cross2d(centre.x, centre.y, cur.x, cur.y, prev.x, prev.y);
+        INFO("hex fan i=" << i << " cross=" << cross);
+        CHECK(cross < 0.0f);
+        prev = cur;
+    }
+}
+
+TEST_CASE("winding: perspective square trapezoid triangles are CCW", "[winding][regression]") {
+    // Square → trapezoid: two triangles from 4 projected corners.
+    // v0=TL, v1=TR, v2=BR, v3=BL. Tris: (v0,v3,v1) and (v1,v3,v2).
+    constexpr float cx = 360.0f, cy = 500.0f, half = 32.0f;
+    Vector2 v[4];
+    for (int i = 0; i < 4; ++i)
+        v[i] = perspective::project(cx + shape_verts::SQUARE[i].x * half,
+                                    cy + shape_verts::SQUARE[i].y * half);
+
+    float cross1 = cross2d(v[0].x, v[0].y, v[3].x, v[3].y, v[1].x, v[1].y);
+    CHECK(cross1 < 0.0f);
+    float cross2 = cross2d(v[1].x, v[1].y, v[3].x, v[3].y, v[2].x, v[2].y);
+    CHECK(cross2 < 0.0f);
+}
+
+TEST_CASE("winding: perspective triangle shape is CCW", "[winding][regression]") {
+    constexpr float cx = 360.0f, cy = 500.0f, half = 32.0f;
+    Vector2 v[3];
+    for (int i = 0; i < 3; ++i)
+        v[i] = perspective::project(cx + shape_verts::TRIANGLE[i].x * half,
+                                    cy + shape_verts::TRIANGLE[i].y * half);
+
+    float cross = cross2d(v[0].x, v[0].y, v[1].x, v[1].y, v[2].x, v[2].y);
+    CHECK(cross < 0.0f);
+}
+
+TEST_CASE("winding: perspective rect (obstacle quad) triangles are CCW", "[winding][regression]") {
+    // draw_rect produces two triangles from 4 projected corners.
+    // TL→BL→TR and TR→BL→BR.
+    float d_top = perspective::depth(300.0f);
+    float d_bot = perspective::depth(320.0f);
+
+    float tl_x = perspective::CENTER + (0.0f   - perspective::CENTER) * d_top;
+    float tr_x = perspective::CENTER + (720.0f - perspective::CENTER) * d_top;
+    float bl_x = perspective::CENTER + (0.0f   - perspective::CENTER) * d_bot;
+    float br_x = perspective::CENTER + (720.0f - perspective::CENTER) * d_bot;
+
+    // Triangle 1: TL → BL → TR
+    float cross1 = cross2d(tl_x, 300.0f, bl_x, 320.0f, tr_x, 300.0f);
+    CHECK(cross1 < 0.0f);
+    // Triangle 2: TR → BL → BR
+    float cross2 = cross2d(tr_x, 300.0f, bl_x, 320.0f, br_x, 320.0f);
+    CHECK(cross2 < 0.0f);
+}
