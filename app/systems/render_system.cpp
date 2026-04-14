@@ -385,23 +385,8 @@ void render_system(entt::registry& reg, float /*alpha*/) {
     // positions need to change.
     BeginMode2D(camera);
 
-    // ── Draw perspective corridor edges ──────────────────────
-    // Subtle converging lines along the left and right edges of the
-    // playfield to frame the perspective and prevent the narrowing
-    // lanes from looking like they're being clipped.
-    {
-        Color edge_color = {40, 40, 60, 120};
-        // Left edge: x=0 from bottom to top
-        perspective::draw_line(0.0f, 0.0f, 0.0f, static_cast<float>(constants::SCREEN_H),
-                               1.5f, edge_color);
-        // Right edge: x=SCREEN_W from bottom to top
-        perspective::draw_line(static_cast<float>(constants::SCREEN_W), 0.0f,
-                               static_cast<float>(constants::SCREEN_W),
-                               static_cast<float>(constants::SCREEN_H),
-                               1.5f, edge_color);
-    }
-
-    // ── Draw lane floors (shaped columns that pulse on beat) ─
+    // ── Compute floor pulse params (shared across GPU batches) ─
+    perspective::FloorParams floor_params{};
     {
         auto* song = reg.ctx().find<SongState>();
         float pulse = 0.0f;
@@ -412,120 +397,23 @@ void render_system(entt::registry& reg, float /*alpha*/) {
             float ease = 1.0f - (1.0f - pulse_t) * (1.0f - pulse_t);
             pulse = 1.0f - ease;
         }
-
-        float alpha = constants::FLOOR_ALPHA_REST
+        float alpha_f = constants::FLOOR_ALPHA_REST
             + (constants::FLOOR_ALPHA_PEAK - constants::FLOOR_ALPHA_REST) * pulse;
         float scale = constants::FLOOR_SCALE_REST
             + (constants::FLOOR_SCALE_PEAK - constants::FLOOR_SCALE_REST) * pulse;
-        float size  = constants::FLOOR_SHAPE_SIZE * scale;
-        float half  = size / 2.0f;
-        float thick = constants::FLOOR_OUTLINE_THICK;
-
-        static const Color LANE_SHAPE_COLORS[3] = {
-            {80,  200, 255, 255},
-            {255, 100, 100, 255},
-            {100, 255, 100, 255},
-        };
-
-        for (int lane = 0; lane < constants::LANE_COUNT; ++lane) {
-            float cx = constants::LANE_X[lane];
-            Color c  = LANE_SHAPE_COLORS[lane];
-            c.a      = static_cast<unsigned char>(alpha);
-
-            for (int j = 0; j < constants::FLOOR_SHAPE_COUNT; ++j) {
-                float cy = constants::FLOOR_Y_START + static_cast<float>(j) * constants::FLOOR_SHAPE_SPACING;
-
-                // Project centre and scale size by depth.
-                // Shapes drawn FLAT to avoid double-perspective.
-                float d = perspective::depth(cy);
-                float px = perspective::project_x(cx, cy);
-                float p_half  = half * d;
-                float p_thick = thick * d;
-                float p_size  = size * d;
-
-                // Connecting lines stay perspective-projected (they define lane convergence)
-                if (j < constants::FLOOR_SHAPE_COUNT - 1) {
-                    float next_cy     = cy + constants::FLOOR_SHAPE_SPACING;
-                    float next_d      = perspective::depth(next_cy);
-                    float next_p_half = half * next_d;
-                    float next_p_thick = thick * next_d;
-                    float connector_thick = std::min(p_thick, next_p_thick);
-                    perspective::draw_line(cx, cy + p_half, cx, next_cy - next_p_half,
-                               connector_thick, c);
-                }
-
-                // Draw flat shapes at projected position with depth-scaled size
-                switch (lane) {
-                    case 0:
-                        DrawRing({px, cy}, p_half - p_thick, p_half, 0, 360, 12, c);
-                        break;
-                    case 1:
-                        DrawRectangleLinesEx({px - p_half, cy - p_half, p_size, p_size}, p_thick, c);
-                        break;
-                    case 2: {
-                        Vector2 v1 = {px,          cy - p_half};
-                        Vector2 v2 = {px - p_half, cy + p_half};
-                        Vector2 v3 = {px + p_half, cy + p_half};
-                        DrawTriangleLines(v1, v3, v2, c);
-                        break;
-                    }
-                    default: break;
-                }
-            }
-        }
+        floor_params.size  = constants::FLOOR_SHAPE_SIZE * scale;
+        floor_params.half  = floor_params.size / 2.0f;
+        floor_params.thick = constants::FLOOR_OUTLINE_THICK;
+        floor_params.alpha = static_cast<uint8_t>(alpha_f);
     }
 
-    // ── Batch-draw all obstacle rects + particle rects ─────
-    // Single rlgl RL_QUADS batch: queries ObstacleTag and ParticleTag
-    // entities from the registry, projects their rect vertices, and
-    // submits everything in one draw call.
+    // ── 3 GPU batches sorted by primitive type ───────────────
+    // Minimizes GPU state changes: one rlBegin/rlEnd per primitive.
+    perspective::flush_world_lines(reg, floor_params);   // Pass 1: RL_LINES
     if (gs.phase != GamePhase::Title) {
-        perspective::flush_world_rects(reg);
+        perspective::flush_world_rects(reg);              // Pass 2: RL_QUADS
     }
-
-    // ── Draw obstacle ghost shapes (layered on top of rects) ─
-    if (gs.phase != GamePhase::Title) {
-        auto view = reg.view<ObstacleTag, Position, Obstacle, DrawColor, DrawSize>();
-        for (auto [entity, pos, obs, col, dsz] : view.each()) {
-            switch (obs.kind) {
-                case ObstacleKind::ShapeGate: {
-                    auto* req = reg.try_get<RequiredShape>(entity);
-                    if (req) {
-                        Color ghost = {col.r, col.g, col.b, 120};
-                        perspective::draw_shape(req->shape, pos.x, pos.y + dsz.h / 2, 40, ghost);
-                    }
-                    break;
-                }
-                case ObstacleKind::ComboGate: {
-                    auto* req = reg.try_get<RequiredShape>(entity);
-                    if (req) {
-                        Color white_ghost = {255, 255, 255, 180};
-                        auto* blocked = reg.try_get<BlockedLanes>(entity);
-                        int open = 1;
-                        if (blocked) {
-                            for (int i = 0; i < 3; ++i) {
-                                if (!((blocked->mask >> i) & 1)) { open = i; break; }
-                            }
-                        }
-                        perspective::draw_shape(req->shape,
-                            constants::LANE_X[open], pos.y + dsz.h / 2, 30, white_ghost);
-                    }
-                    break;
-                }
-                case ObstacleKind::SplitPath: {
-                    auto* req = reg.try_get<RequiredShape>(entity);
-                    auto* rlane = reg.try_get<RequiredLane>(entity);
-                    if (req && rlane) {
-                        Color white_ghost = {255, 255, 255, 180};
-                        perspective::draw_shape(req->shape,
-                            constants::LANE_X[rlane->lane], pos.y + dsz.h / 2, 30, white_ghost);
-                    }
-                    break;
-                }
-                default: break;
-            }
-        }
-    }
+    perspective::flush_world_tris(reg, floor_params);    // Pass 3: RL_TRIANGLES
 
     // ── Draw timing grade popups ───────────────────────────
     {
