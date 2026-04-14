@@ -156,6 +156,7 @@ jobs:
         run: |
           emcmake cmake -B build-web -S . \
             -DCMAKE_BUILD_TYPE=Release \
+            -Wno-dev \
             "-DCMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" \
             "-DVCPKG_OVERLAY_PORTS=$(pwd)/vcpkg-overlay" \
             "-DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=${EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
