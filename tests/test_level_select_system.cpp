@@ -4,7 +4,9 @@
 // ── Helper: set up registry in LevelSelect phase ─────────────────────
 static entt::registry make_level_select_registry() {
     auto reg = make_registry();
-    reg.ctx().get<GameState>().phase = GamePhase::LevelSelect;
+    auto& gs = reg.ctx().get<GameState>();
+    gs.phase = GamePhase::LevelSelect;
+    gs.phase_timer = 1.0f;  // past the transition debounce guard
     return reg;
 }
 
@@ -294,3 +296,96 @@ TEST_CASE("level_select — key D wraps difficulty 2 → 0", "[level_select][key
 }
 
 #endif // PLATFORM_HAS_KEYBOARD
+
+TEST_CASE("level_select — desktop mouse click full pipeline", "[level_select][desktop]") {
+    auto reg = make_registry();
+    auto& gs = reg.ctx().get<GameState>();
+    gs.phase = GamePhase::LevelSelect;
+    gs.phase_timer = 1.0f; // past the 0.2s guard
+    auto& lss = reg.ctx().get<LevelSelectState>();
+    lss.selected_level = 0;
+    lss.confirmed = false;
+
+    auto& input = reg.ctx().get<InputState>();
+
+    // Simulate mouse click on card 2 (y=680..880, center at 780)
+    input.touch_up = true;
+    input.end_x = 360.0f;
+    input.end_y = 780.0f;
+    input.start_x = 360.0f;
+    input.start_y = 780.0f;
+    input.duration = 0.05f;
+
+    // Run systems in exact execution order
+    gesture_system(reg, 0.016f);
+    game_state_system(reg, 0.016f);
+    level_select_system(reg, 0.016f);
+
+    // Card 2 should be selected
+    REQUIRE(lss.selected_level == 2);
+}
+
+TEST_CASE("level_select — mouse click on START triggers confirmed", "[level_select][desktop]") {
+    auto reg = make_registry();
+    auto& gs = reg.ctx().get<GameState>();
+    gs.phase = GamePhase::LevelSelect;
+    gs.phase_timer = 1.0f;
+    auto& lss = reg.ctx().get<LevelSelectState>();
+    lss.confirmed = false;
+
+    auto& input = reg.ctx().get<InputState>();
+    input.touch_up = true;
+    input.end_x = 360.0f;
+    input.end_y = 1080.0f;  // START button area
+    input.start_x = 360.0f;
+    input.start_y = 1080.0f;
+    input.duration = 0.05f;
+
+    gesture_system(reg, 0.016f);
+    game_state_system(reg, 0.016f);
+    level_select_system(reg, 0.016f);
+
+    REQUIRE(lss.confirmed == true);
+}
+
+TEST_CASE("level_select — title click should NOT leak into level select", "[level_select][regression]") {
+    auto reg = make_registry();
+    auto& gs = reg.ctx().get<GameState>();
+    gs.phase = GamePhase::Title;
+    gs.phase_timer = 1.0f;
+    auto& lss = reg.ctx().get<LevelSelectState>();
+    lss.selected_level = 0;
+    lss.confirmed = false;
+
+    auto& input = reg.ctx().get<InputState>();
+
+    // User taps "TAP TO START" in title screen (centre, y=600)
+    input.touch_up = true;
+    input.end_x = 360.0f;
+    input.end_y = 600.0f;
+    input.start_x = 360.0f;
+    input.start_y = 600.0f;
+    input.duration = 0.05f;
+
+    // Tick 1: Title → sets transition_pending
+    gesture_system(reg, 0.016f);
+    game_state_system(reg, 0.016f);
+    level_select_system(reg, 0.016f);
+
+    // touch_up still true (clear_input_events only runs in input_system,
+    // not between fixed ticks).
+
+    // Tick 2: transition fires → phase = LevelSelect.
+    // level_select_system runs with the SAME touch_up from the title click.
+    // y=600 hits card 1 (y=440..640) — this is the bug.
+    gesture_system(reg, 0.016f);
+    game_state_system(reg, 0.016f);
+    level_select_system(reg, 0.016f);
+
+    REQUIRE(gs.phase == GamePhase::LevelSelect);
+
+    // BUG: title click leaks into level select on the transition tick.
+    // selected_level should remain 0 (default), not change to 1.
+    CHECK(lss.selected_level == 0);
+    CHECK(lss.confirmed == false);
+}

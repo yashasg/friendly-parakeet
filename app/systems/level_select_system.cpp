@@ -52,6 +52,10 @@ void level_select_system(entt::registry& reg, float /*dt*/) {
     }
 #endif
 
+    // Ignore touch/click on the transition frame — prevents the
+    // title-screen tap from leaking into level select card/button hits.
+    if (gs.phase_timer < 0.05f) return;
+
     if (!input.touch_up) return;
 
     float tx = input.end_x;
