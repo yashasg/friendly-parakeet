@@ -42,7 +42,7 @@ yt-dlp -x --audio-format wav --audio-quality 0 -o "/tmp/beatmap-work/song.%(ext)
 
 ### Run aubio commands
 ```bash
-WAV=/tmp/beatmap-work/song.wav
+WAV=/tmp/beatmap-work/song.flac
 
 # 1. Fixed BPM
 aubio tempo "$WAV"
