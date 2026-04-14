@@ -201,6 +201,7 @@ if(EMSCRIPTEN)
     target_link_options(shapeshifter PRIVATE
         -sUSE_GLFW=3
         -sALLOW_MEMORY_GROWTH=1
+        -sDYNAMIC_EXECUTION=0
         --shell-file ${_shell_html}
     )
     # Use LINK_FLAGS (raw string) for the two --preload-file entries so that
