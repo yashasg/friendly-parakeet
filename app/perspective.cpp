@@ -87,20 +87,24 @@ void draw_line(float x1, float y1, float x2, float y2, float thick, Color c) {
 
 // ── Projected ring (annulus) ─────────────────────────────────────────────────
 void draw_ring(float cx, float cy, float inner_r, float outer_r, int segments, Color c) {
-    int seg = (segments > 0 && segments < shape_verts::CIRCLE_SEGMENTS)
+    int seg = (segments > 0 && segments <= shape_verts::CIRCLE_SEGMENTS)
               ? segments : shape_verts::CIRCLE_SEGMENTS;
 
     for (int i = 0; i < seg; ++i) {
-        int next = (i + 1) % seg;
+        // Map evenly across the full 0..CIRCLE_SEGMENTS table so the ring
+        // always closes correctly, regardless of the requested segment count.
+        int idx      = (i       * shape_verts::CIRCLE_SEGMENTS) / seg;
+        int next_idx = ((i + 1) * shape_verts::CIRCLE_SEGMENTS) / seg
+                       % shape_verts::CIRCLE_SEGMENTS;
 
-        Vector2 outer1 = project(cx + shape_verts::CIRCLE[i].x    * outer_r,
-                                 cy + shape_verts::CIRCLE[i].y    * outer_r);
-        Vector2 outer2 = project(cx + shape_verts::CIRCLE[next].x * outer_r,
-                                 cy + shape_verts::CIRCLE[next].y * outer_r);
-        Vector2 inner1 = project(cx + shape_verts::CIRCLE[i].x    * inner_r,
-                                 cy + shape_verts::CIRCLE[i].y    * inner_r);
-        Vector2 inner2 = project(cx + shape_verts::CIRCLE[next].x * inner_r,
-                                 cy + shape_verts::CIRCLE[next].y * inner_r);
+        Vector2 outer1 = project(cx + shape_verts::CIRCLE[idx].x      * outer_r,
+                                 cy + shape_verts::CIRCLE[idx].y      * outer_r);
+        Vector2 outer2 = project(cx + shape_verts::CIRCLE[next_idx].x * outer_r,
+                                 cy + shape_verts::CIRCLE[next_idx].y * outer_r);
+        Vector2 inner1 = project(cx + shape_verts::CIRCLE[idx].x      * inner_r,
+                                 cy + shape_verts::CIRCLE[idx].y      * inner_r);
+        Vector2 inner2 = project(cx + shape_verts::CIRCLE[next_idx].x * inner_r,
+                                 cy + shape_verts::CIRCLE[next_idx].y * inner_r);
 
         // Two CCW triangles per segment forming the ring quad
         DrawTriangle(outer1, outer2, inner1, c);

@@ -23,7 +23,7 @@ inward, circles compress at the top.
 The three lanes converge toward a vanishing point above the screen:
 
 ```
-              * VP (y = -640, above screen)
+              * VP (y = -1060, above screen)
              ╱|╲
             ╱ | ╲
            ╱  |  ╲
@@ -78,7 +78,7 @@ this.  Not centres.  Not bounding boxes.  Individual vertices.
 ```
 Parameters (constants.h):
   CENTER_X  = SCREEN_W / 2.0    = 360.0
-  VP_Y      = -640.0            // vanishing point, above the screen
+  VP_Y      = -1060.0           // vanishing point, above the screen (~17° convergence)
   BOTTOM_Y  = SCREEN_H          = 1280.0
 ```
 
@@ -87,16 +87,16 @@ Parameters (constants.h):
 ```
   y       depth    scale    Lane0(180)→x'   Lane1(360)→x'   Lane2(540)→x'
   ────    ─────    ─────    ──────────────   ──────────────   ──────────────
-  -640    0.000    0.000      360 (VP)         360              360
-     0    0.333    0.333      300              360              420
-   640    0.667    0.667      240              360              480
+ -1060    0.000    0.000      360 (VP)         360              360
+     0    0.453    0.453      279              360              441
+   640    0.726    0.726      229              360              491
   1280    1.000    1.000      180              360              540
 ```
 
 ```
-     300  360  420       ← y=0   (top, scale=0.33)
+     279  360  441       ← y=0   (top, scale=0.45)
       :   :    :
-    240   360   480      ← y=640 (mid, scale=0.67)
+    229   360   491      ← y=640 (mid, scale=0.73)
       :   :      :
    180    360    540     ← y=1280 (bottom, scale=1.0)
 ```
@@ -463,10 +463,11 @@ Full implementation shown in the "Draw-time hot path" section above.
 
 ```cpp
 // ── Perspective / Isometric Effect ───────────────
-constexpr float VANISHING_POINT_Y  = -640.0f;   // above screen
+constexpr float PERSPECTIVE_ANGLE_DEG = 17.0f;    // full convergence angle
+// VP_Y is derived at compile time from PERSPECTIVE_ANGLE_DEG (~17° → -1060)
 // depth(y) = (y - VP_Y) / (SCREEN_H - VP_Y)
-// At y=0:    depth = 640/1920 ≈ 0.33  (top 1/3 scale)
-// At y=1280: depth = 1920/1920 = 1.0  (full scale)
+// At y=0:    depth ≈ 0.453  (top ~45% scale)
+// At y=1280: depth = 1.0    (full scale)
 ```
 
 ---

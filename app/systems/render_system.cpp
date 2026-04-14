@@ -445,9 +445,13 @@ void render_system(entt::registry& reg, float /*alpha*/) {
 
                 // Connecting lines stay perspective-projected (they define lane convergence)
                 if (j < constants::FLOOR_SHAPE_COUNT - 1) {
-                    float next_cy = cy + constants::FLOOR_SHAPE_SPACING;
-                    perspective::draw_line(cx, cy + half, cx, next_cy - half,
-                               constants::FLOOR_OUTLINE_THICK, c);
+                    float next_cy     = cy + constants::FLOOR_SHAPE_SPACING;
+                    float next_d      = perspective::depth(next_cy);
+                    float next_p_half = half * next_d;
+                    float next_p_thick = thick * next_d;
+                    float connector_thick = std::min(p_thick, next_p_thick);
+                    perspective::draw_line(cx, cy + p_half, cx, next_cy - next_p_half,
+                               connector_thick, c);
                 }
 
                 // Draw flat shapes at projected position with depth-scaled size

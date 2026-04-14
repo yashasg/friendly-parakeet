@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/benchmark/catch_benchmark.hpp>
+#include <catch2/benchmark/catch_optimizer.hpp>
 
 #include "perspective.h"
 #include "shape_vertices.h"
@@ -9,16 +10,10 @@
 // Measures the hot-path costs introduced by the isometric perspective
 // system: vertex projection, shape drawing, and floor initialization.
 
-// Prevent the compiler from optimising away benchmark results
-template<typename T>
-static void do_not_optimize(T const& val) {
-    asm volatile("" : : "r,m"(val) : "memory");
-}
-
 TEST_CASE("Bench: perspective::project single vertex", "[bench][perspective]") {
     BENCHMARK("project(180, 640)") {
         auto v = perspective::project(180.0f, 640.0f);
-        do_not_optimize(v);
+        Catch::Benchmark::deoptimize_value(v);
         return v;
     };
 }
@@ -26,7 +21,7 @@ TEST_CASE("Bench: perspective::project single vertex", "[bench][perspective]") {
 TEST_CASE("Bench: perspective::project_x single vertex", "[bench][perspective]") {
     BENCHMARK("project_x(180, 640)") {
         float x = perspective::project_x(180.0f, 640.0f);
-        do_not_optimize(x);
+        Catch::Benchmark::deoptimize_value(x);
         return x;
     };
 }
@@ -43,7 +38,7 @@ TEST_CASE("Bench: project all 3 lanes at N depths", "[bench][perspective]") {
                     sum += perspective::project_x(cx, cy);
                 }
             }
-            do_not_optimize(sum);
+            Catch::Benchmark::deoptimize_value(sum);
             return sum;
         });
     };
@@ -67,7 +62,7 @@ TEST_CASE("Bench: perspective shape vertex projection — Circle", "[bench][pers
                     cy + shape_verts::CIRCLE[next].y * r);
                 sum += v1.x + v2.x;
             }
-            do_not_optimize(sum);
+            Catch::Benchmark::deoptimize_value(sum);
             return sum;
         });
     };
@@ -85,7 +80,7 @@ TEST_CASE("Bench: perspective shape vertex projection — Square", "[bench][pers
                     cy + shape_verts::SQUARE[i].y * half);
                 sum += v.x;
             }
-            do_not_optimize(sum);
+            Catch::Benchmark::deoptimize_value(sum);
             return sum;
         });
     };
@@ -103,7 +98,7 @@ TEST_CASE("Bench: perspective shape vertex projection — Triangle", "[bench][pe
                     cy + shape_verts::TRIANGLE[i].y * half);
                 sum += v.x;
             }
-            do_not_optimize(sum);
+            Catch::Benchmark::deoptimize_value(sum);
             return sum;
         });
     };
@@ -127,7 +122,7 @@ TEST_CASE("Bench: perspective shape vertex projection — Hexagon", "[bench][per
                     cy + shape_verts::HEXAGON[next].y * radius);
                 sum += v1.x + v2.x;
             }
-            do_not_optimize(sum);
+            Catch::Benchmark::deoptimize_value(sum);
             return sum;
         });
     };
@@ -141,7 +136,7 @@ TEST_CASE("Bench: perspective rect projection (obstacle trapezoid)", "[bench][pe
             Vector2 bl = perspective::project(0.0f, 320.0f);
             Vector2 br = perspective::project(720.0f, 320.0f);
             float sum = tl.x + tr.x + bl.x + br.x;
-            do_not_optimize(sum);
+            Catch::Benchmark::deoptimize_value(sum);
             return sum;
         });
     };
@@ -153,7 +148,7 @@ TEST_CASE("Bench: perspective line projection", "[bench][perspective]") {
             Vector2 a = perspective::project(180.0f, 100.0f);
             Vector2 b = perspective::project(180.0f, 150.0f);
             float sum = a.x + b.x;
-            do_not_optimize(sum);
+            Catch::Benchmark::deoptimize_value(sum);
             return sum;
         });
     };
@@ -183,7 +178,7 @@ TEST_CASE("Bench: floor shape initialisation (flat draw at projected pos)", "[be
                     sum += pc.x + pc.y + p_half;
                 }
             }
-            do_not_optimize(sum);
+            Catch::Benchmark::deoptimize_value(sum);
             return sum;
         });
     };
@@ -214,7 +209,7 @@ TEST_CASE("Bench: typical obstacle batch projection", "[bench][perspective]") {
                     sum += perspective::project_x(cx + half, cy + half);
                 }
             }
-            do_not_optimize(sum);
+            Catch::Benchmark::deoptimize_value(sum);
             return sum;
         });
     };
@@ -230,7 +225,7 @@ TEST_CASE("Bench: vertex table lookup vs trig (comparison)", "[bench][perspectiv
                 float wy = 640.0f + shape_verts::CIRCLE[i].y * r;
                 sum += perspective::project_x(wx, wy);
             }
-            do_not_optimize(sum);
+            Catch::Benchmark::deoptimize_value(sum);
             return sum;
         });
     };
@@ -245,7 +240,7 @@ TEST_CASE("Bench: vertex table lookup vs trig (comparison)", "[bench][perspectiv
                 float wy = 640.0f + sinf(angle) * r;
                 sum += perspective::project_x(wx, wy);
             }
-            do_not_optimize(sum);
+            Catch::Benchmark::deoptimize_value(sum);
             return sum;
         });
     };
