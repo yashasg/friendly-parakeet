@@ -105,6 +105,7 @@ endif()
 # ── Main executable ──────────────────────────────────────────
 add_executable(shapeshifter
     app/main.cpp
+    app/perspective.cpp
     app/systems/render_system.cpp
     app/systems/input_system.cpp
     app/systems/song_playback_system.cpp

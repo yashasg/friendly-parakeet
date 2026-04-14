@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 
 namespace constants {
 
@@ -174,5 +175,8 @@ constexpr ShapeColor SHAPE_COLORS[] = {
     { 100, 255, 100, 255 },   // Triangle — green
     {  80, 180, 255, 255 },   // Hexagon  — neutral blue
 };
+
+// ── Perspective / Isometric Effect ───────────────
+constexpr float VANISHING_POINT_Y  = -640.0f;
 
 } // namespace constants
