@@ -152,7 +152,7 @@ if(EMSCRIPTEN)
     *{margin:0;padding:0;box-sizing:border-box}
     html,body{height:100%;overflow:hidden;touch-action:none}
     body{background:#0f0f19;display:flex;flex-direction:column;justify-content:center;align-items:center;font-family:monospace;color:#ccc;position:relative}
-    #canvas{display:block;width:100%;height:100%}
+    #canvas{display:block;width:100%;height:100%;touch-action:none}
     #loader{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;z-index:10}
     #loader h1{color:#50b4ff;font-size:28px;margin-bottom:24px;letter-spacing:4px}
     #bar-bg{width:300px;height:8px;background:#1a1a2e;border-radius:4px;overflow:hidden;margin:0 auto 12px}
@@ -191,6 +191,8 @@ if(EMSCRIPTEN)
       }
     };
     c.addEventListener('click',function(){c.focus()});
+    c.addEventListener('touchstart',function(e){e.preventDefault();c.focus();},{passive:false});
+    c.addEventListener('touchend',function(e){e.preventDefault();},{passive:false});
     document.addEventListener('touchmove',function(e){e.preventDefault()},{passive:false});
     if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(function(){})}
   </script>
