@@ -40,7 +40,7 @@ const snapshot = {
         deps.map((d) => [
           d.name,
           {
-            package_url: `pkg:vcpkg/${d.name}`,
+            package_url: `pkg:generic/${d.name}?repository_url=https://github.com/microsoft/vcpkg`,
             relationship: "direct",
             scope: d.name === "catch2" ? "development" : "runtime",
           },
