@@ -435,19 +435,13 @@ void render_system(entt::registry& reg, float /*alpha*/) {
             for (int j = 0; j < constants::FLOOR_SHAPE_COUNT; ++j) {
                 float cy = constants::FLOOR_Y_START + static_cast<float>(j) * constants::FLOOR_SHAPE_SPACING;
 
-                // Project centre position and scale size by depth.
-                // The shape itself is drawn FLAT at the projected position
-                // to avoid double-perspective (lane convergence already
-                // provides the perspective; distorting the shape too is 2×).
-                Vector2 pc = perspective::project(cx, cy);
-                constexpr float vp_y   = constants::VANISHING_POINT_Y;
-                constexpr float range  = static_cast<float>(constants::SCREEN_H) - vp_y;
-                float depth = (cy - vp_y) / range;
-                if (depth < 0.01f) depth = 0.01f;
-                if (depth > 1.5f)  depth = 1.5f;
-                float p_half  = half * depth;
-                float p_thick = thick * depth;
-                float p_size  = size * depth;
+                // Project centre and scale size by depth.
+                // Shapes drawn FLAT to avoid double-perspective.
+                float d = perspective::depth(cy);
+                float px = perspective::project_x(cx, cy);
+                float p_half  = half * d;
+                float p_thick = thick * d;
+                float p_size  = size * d;
 
                 // Connecting lines stay perspective-projected (they define lane convergence)
                 if (j < constants::FLOOR_SHAPE_COUNT - 1) {
@@ -459,15 +453,15 @@ void render_system(entt::registry& reg, float /*alpha*/) {
                 // Draw flat shapes at projected position with depth-scaled size
                 switch (lane) {
                     case 0:
-                        DrawRing({pc.x, pc.y}, p_half - p_thick, p_half, 0, 360, 12, c);
+                        DrawRing({px, cy}, p_half - p_thick, p_half, 0, 360, 12, c);
                         break;
                     case 1:
-                        DrawRectangleLinesEx({pc.x - p_half, pc.y - p_half, p_size, p_size}, p_thick, c);
+                        DrawRectangleLinesEx({px - p_half, cy - p_half, p_size, p_size}, p_thick, c);
                         break;
                     case 2: {
-                        Vector2 v1 = {pc.x,          pc.y - p_half};
-                        Vector2 v2 = {pc.x - p_half, pc.y + p_half};
-                        Vector2 v3 = {pc.x + p_half, pc.y + p_half};
+                        Vector2 v1 = {px,          cy - p_half};
+                        Vector2 v2 = {px - p_half, cy + p_half};
+                        Vector2 v3 = {px + p_half, cy + p_half};
                         DrawTriangleLines(v1, v3, v2, c);
                         break;
                     }
