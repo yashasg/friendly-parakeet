@@ -370,8 +370,8 @@ void flush_world_tris(entt::registry& reg, const FloorParams& fp) {
             float ix2 = px + shape_verts::CIRCLE[next_idx].x * inner_r;
             float iy2 = cy + shape_verts::CIRCLE[next_idx].y * inner_r;
             rlColor4ub(r, g, b, a);
-            rlVertex2f(ox1, oy1); rlVertex2f(ox2, oy2); rlVertex2f(ix1, iy1);
-            rlVertex2f(ix1, iy1); rlVertex2f(ox2, oy2); rlVertex2f(ix2, iy2);
+            rlVertex2f(ox1, oy1); rlVertex2f(ix1, iy1); rlVertex2f(ox2, oy2);
+            rlVertex2f(ix1, iy1); rlVertex2f(ix2, iy2); rlVertex2f(ox2, oy2);
         }
     };
 
