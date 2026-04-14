@@ -272,6 +272,7 @@ if(NOT EMSCRIPTEN)
     add_executable(shapeshifter_tests
         ${TEST_SOURCES}
         app/file_logger.cpp
+        app/perspective.cpp
         app/systems/song_playback_system.cpp
     )
     target_include_directories(shapeshifter_tests PRIVATE

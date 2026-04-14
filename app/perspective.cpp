@@ -87,13 +87,11 @@ void draw_line(float x1, float y1, float x2, float y2, float thick, Color c) {
 
 // ── Projected ring (annulus) ─────────────────────────────────────────────────
 void draw_ring(float cx, float cy, float inner_r, float outer_r, int segments, Color c) {
-    // Use the full 24-segment circle table regardless of 'segments' param;
-    // caller can pass fewer if desired, but we cap to the table size.
     int seg = (segments > 0 && segments < shape_verts::CIRCLE_SEGMENTS)
               ? segments : shape_verts::CIRCLE_SEGMENTS;
 
     for (int i = 0; i < seg; ++i) {
-        int next = (i + 1) % shape_verts::CIRCLE_SEGMENTS;
+        int next = (i + 1) % seg;
 
         Vector2 outer1 = project(cx + shape_verts::CIRCLE[i].x    * outer_r,
                                  cy + shape_verts::CIRCLE[i].y    * outer_r);
