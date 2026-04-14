@@ -177,6 +177,12 @@ constexpr ShapeColor SHAPE_COLORS[] = {
 };
 
 // ── Perspective / Isometric Effect ───────────────
-constexpr float VANISHING_POINT_Y  = -640.0f;
+// Controls how aggressively lanes converge toward the top.
+// Convergence angle θ = 2·atan(360 / (SCREEN_H - VP_Y))
+//   VP_Y = -761  → θ ≈ 20°  (top ≈ 37% width)
+//   VP_Y = -1060 → θ ≈ 17°  (top ≈ 45% width)
+//   VP_Y = -1455 → θ ≈ 15°  (top ≈ 54% width)
+//   VP_Y = -5120 → θ ≈  6°  (top ≈ 80% width, very subtle)
+constexpr float VANISHING_POINT_Y  = -1060.0f;
 
 } // namespace constants
