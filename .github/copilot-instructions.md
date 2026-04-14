@@ -64,3 +64,17 @@ A clangd LSP server is configured in `.github/lsp.json` for C/C++ code intellige
 - All game state lives in the `entt::registry` — avoid global mutable state
 - Use raylib directly for input, windowing, and rendering (no wrapper libraries)
 - Bullet patterns should be data-driven where possible (define patterns as data, not hardcoded logic)
+
+## Zero Warnings Policy
+
+This is a **no-warning shop**. All builds must compile with zero warnings:
+
+- **Clang (native):** `-Wall -Wextra -Werror` — any warning is a build failure
+- **MSVC (Windows):** `/W4 /WX` — same policy
+- **Emscripten (WASM):** same Clang flags apply
+- **CMake:** `-Wno-dev` for configure step (suppresses third-party vcpkg warnings we don't control)
+
+Before submitting code, verify it compiles warning-free on all platforms. Common pitfalls:
+- Unused variables (especially behind `#ifdef` platform guards)
+- Implicit conversions between signed/unsigned or float/double
+- Missing switch cases on enums
