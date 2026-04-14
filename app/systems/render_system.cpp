@@ -15,12 +15,13 @@
 #include "../components/song_state.h"
 #include "../constants.h"
 #include "../text_renderer.h"
+#include "../perspective.h"
 #include <raylib.h>
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
 
-static void draw_shape(Shape shape, float cx, float cy, float size, Color color) {
+static void draw_shape_flat(Shape shape, float cx, float cy, float size, Color color) {
     switch (shape) {
         case Shape::Circle: {
             float radius = size / 2.0f;
@@ -68,10 +69,10 @@ static void draw_title_scene(const TextContext& text_ctx, const GameState& gs) {
     const float cx        = constants::VIEWPORT_CX_N * constants::SCREEN_W;
 
     Color title_shape_color = {80, 180, 255, 255};
-    draw_shape(Shape::Circle, cx - shape_off, shapes_y, shape_sz, title_shape_color);
-    draw_shape(Shape::Square, cx,             shapes_y, shape_sz, title_shape_color);
+    draw_shape_flat(Shape::Circle, cx - shape_off, shapes_y, shape_sz, title_shape_color);
+    draw_shape_flat(Shape::Square, cx,             shapes_y, shape_sz, title_shape_color);
     Color green_color = {100, 255, 100, 255};
-    draw_shape(Shape::Triangle, cx + shape_off, shapes_y, shape_sz, green_color);
+    draw_shape_flat(Shape::Triangle, cx + shape_off, shapes_y, shape_sz, green_color);
 
     text_draw(text_ctx, "SHAPESHIFTER",
         cx, constants::SCENE_TITLE_TEXT_Y_N * constants::SCREEN_H,
@@ -232,7 +233,7 @@ static void draw_hud(entt::registry& reg, const TextContext& text_ctx) {
 
         auto shape = static_cast<Shape>(i);
         Color icon_color = is_active ? Color{200, 230, 255, 255} : Color{100, 100, 120, 200};
-        draw_shape(shape, btn_cx, btn_cy, btn_radius * 1.2f, icon_color);
+        draw_shape_flat(shape, btn_cx, btn_cy, btn_radius * 1.2f, icon_color);
 
         if (nearest_dist[i] > 0.0f && nearest_dist[i] < ring_appear_dist) {
             float ratio = (nearest_dist[i] - perfect_dist)
@@ -384,7 +385,8 @@ void render_system(entt::registry& reg, float /*alpha*/) {
     // positions need to change.
     BeginMode2D(camera);
 
-    // ── Draw lane floors (shaped columns that pulse on beat) ─
+    // ── Compute floor pulse params (shared across GPU batches) ─
+    perspective::FloorParams floor_params{};
     {
         auto* song = reg.ctx().find<SongState>();
         float pulse = 0.0f;
@@ -395,148 +397,23 @@ void render_system(entt::registry& reg, float /*alpha*/) {
             float ease = 1.0f - (1.0f - pulse_t) * (1.0f - pulse_t);
             pulse = 1.0f - ease;
         }
-
-        float alpha = constants::FLOOR_ALPHA_REST
+        float alpha_f = constants::FLOOR_ALPHA_REST
             + (constants::FLOOR_ALPHA_PEAK - constants::FLOOR_ALPHA_REST) * pulse;
         float scale = constants::FLOOR_SCALE_REST
             + (constants::FLOOR_SCALE_PEAK - constants::FLOOR_SCALE_REST) * pulse;
-        float size  = constants::FLOOR_SHAPE_SIZE * scale;
-        float half  = size / 2.0f;
-        float thick = constants::FLOOR_OUTLINE_THICK;
-
-        static const Color LANE_SHAPE_COLORS[3] = {
-            {80,  200, 255, 255},
-            {255, 100, 100, 255},
-            {100, 255, 100, 255},
-        };
-
-        for (int lane = 0; lane < constants::LANE_COUNT; ++lane) {
-            float cx = constants::LANE_X[lane];
-            Color c  = LANE_SHAPE_COLORS[lane];
-            c.a      = static_cast<unsigned char>(alpha);
-
-            for (int j = 0; j < constants::FLOOR_SHAPE_COUNT; ++j) {
-                float cy = constants::FLOOR_Y_START + static_cast<float>(j) * constants::FLOOR_SHAPE_SPACING;
-
-                // Draw connecting segment from this shape's bottom edge to next shape's top edge
-                if (j < constants::FLOOR_SHAPE_COUNT - 1) {
-                    float next_cy = cy + constants::FLOOR_SHAPE_SPACING;
-                    DrawLineEx({cx, cy + half}, {cx, next_cy - half},
-                               constants::FLOOR_OUTLINE_THICK, c);
-                }
-
-                switch (lane) {
-                    case 0:
-                        DrawRing({cx, cy}, half - thick, half, 0, 360, 12, c);
-                        break;
-                    case 1:
-                        DrawRectangleLinesEx({cx - half, cy - half, size, size}, thick, c);
-                        break;
-                    case 2: {
-                        Vector2 v1 = {cx,        cy - half};
-                        Vector2 v2 = {cx - half, cy + half};
-                        Vector2 v3 = {cx + half, cy + half};
-                        DrawTriangleLines(v1, v3, v2, c);
-                        break;
-                    }
-                    default: break;
-                }
-            }
-        }
+        floor_params.size  = constants::FLOOR_SHAPE_SIZE * scale;
+        floor_params.half  = floor_params.size / 2.0f;
+        floor_params.thick = constants::FLOOR_OUTLINE_THICK;
+        floor_params.alpha = static_cast<uint8_t>(alpha_f);
     }
 
-    // ── Draw obstacles ──────────────────────────────────────
+    // ── 4 GPU batches sorted by layer then primitive type ───
+    // Background (floor) renders first, gameplay on top.
+    perspective::flush_floor_lines(reg, floor_params);   // Pass 1: floor lines
+    perspective::flush_floor_rings(floor_params);         // Pass 2: floor circles
     if (gs.phase != GamePhase::Title) {
-        auto view = reg.view<ObstacleTag, Position, Obstacle, DrawColor, DrawSize>();
-        for (auto [entity, pos, obs, col, dsz] : view.each()) {
-
-            Color c = {col.r, col.g, col.b, col.a};
-
-            switch (obs.kind) {
-                case ObstacleKind::ShapeGate: {
-                    // Full-width gate with shape hole
-                    DrawRectangleRec({0, pos.y, pos.x - 50, dsz.h}, c);
-                    DrawRectangleRec({pos.x + 50, pos.y,
-                        constants::SCREEN_W - pos.x - 50, dsz.h}, c);
-                    // Draw shape indicator in the gap
-                    auto* req = reg.try_get<RequiredShape>(entity);
-                    if (req) {
-                        Color ghost = {col.r, col.g, col.b, 120};
-                        draw_shape(req->shape, pos.x, pos.y + dsz.h / 2, 40, ghost);
-                    }
-                    break;
-                }
-                case ObstacleKind::LaneBlock: {
-                    auto* blocked = reg.try_get<BlockedLanes>(entity);
-                    if (blocked) {
-                        for (int i = 0; i < 3; ++i) {
-                            if ((blocked->mask >> i) & 1) {
-                                float lx = constants::LANE_X[i] - dsz.w / 2;
-                                DrawRectangleRec({lx, pos.y, dsz.w, dsz.h}, c);
-                            }
-                        }
-                    }
-                    break;
-                }
-                case ObstacleKind::LowBar:
-                case ObstacleKind::HighBar: {
-                    DrawRectangleRec({0, pos.y, float(constants::SCREEN_W), dsz.h}, c);
-                    break;
-                }
-                case ObstacleKind::ComboGate: {
-                    auto* blocked = reg.try_get<BlockedLanes>(entity);
-                    if (blocked) {
-                        for (int i = 0; i < 3; ++i) {
-                            if ((blocked->mask >> i) & 1) {
-                                float lx = constants::LANE_X[i] - 120;
-                                DrawRectangleRec({lx, pos.y, 240.0f, dsz.h}, c);
-                            }
-                        }
-                    }
-                    auto* req = reg.try_get<RequiredShape>(entity);
-                    if (req) {
-                        Color white_ghost = {255, 255, 255, 180};
-                        int open = 1;
-                        if (blocked) {
-                            for (int i = 0; i < 3; ++i) {
-                                if (!((blocked->mask >> i) & 1)) { open = i; break; }
-                            }
-                        }
-                        draw_shape(req->shape,
-                            constants::LANE_X[open], pos.y + dsz.h / 2, 30, white_ghost);
-                    }
-                    break;
-                }
-                case ObstacleKind::SplitPath: {
-                    auto* rlane = reg.try_get<RequiredLane>(entity);
-                    for (int i = 0; i < 3; ++i) {
-                        if (!rlane || i != rlane->lane) {
-                            float lx = constants::LANE_X[i] - 120;
-                            DrawRectangleRec({lx, pos.y, 240.0f, dsz.h}, c);
-                        }
-                    }
-                    auto* req = reg.try_get<RequiredShape>(entity);
-                    if (req && rlane) {
-                        Color white_ghost = {255, 255, 255, 180};
-                        draw_shape(req->shape,
-                            constants::LANE_X[rlane->lane], pos.y + dsz.h / 2, 30, white_ghost);
-                    }
-                    break;
-                }
-            }
-        }
-    }
-
-    // ── Draw particles ──────────────────────────────────────
-    {
-        auto view = reg.view<ParticleTag, Position, ParticleData, DrawColor, Lifetime>();
-        for (auto [entity, pos, pdata, col, life] : view.each()) {
-            float ratio = (life.max_time > 0.0f) ? (life.remaining / life.max_time) : 1.0f;
-            float draw_size = pdata.size * ratio;
-            float half = draw_size / 2.0f;
-            DrawRectangleRec({pos.x - half, pos.y - half, draw_size, draw_size},
-                             {col.r, col.g, col.b, col.a});
-        }
+        perspective::flush_world_rects(reg);              // Pass 3: obstacle + particle rects
+        perspective::flush_gameplay_tris(reg);            // Pass 4: ghost shapes + player
     }
 
     // ── Draw timing grade popups ───────────────────────────
@@ -556,15 +433,17 @@ void render_system(entt::registry& reg, float /*alpha*/) {
                     case 1: grade_text = "OK";      grade_font = FontSize::Small;  break;
                     case 0: grade_text = "BAD";     grade_font = FontSize::Small;  break;
                 }
+                Vector2 pp = perspective::project(pos.x, pos.y);
                 text_draw(text_ctx, grade_text,
-                    pos.x, pos.y, grade_font,
+                    pp.x, pp.y, grade_font,
                     col.r, col.g, col.b, popup_alpha,
                     TextAlign::Center);
             } else {
                 // Non-timed obstacle: show score number
                 FontSize popup_font = FontSize::Small;
+                Vector2 pp = perspective::project(pos.x, pos.y);
                 text_draw_number(text_ctx, popup.value,
-                    pos.x, pos.y, popup_font,
+                    pp.x, pp.y, popup_font,
                     col.r, col.g, col.b, popup_alpha);
             }
         }
@@ -582,7 +461,7 @@ void render_system(entt::registry& reg, float /*alpha*/) {
             }
 
             Color pc = {col.r, col.g, col.b, col.a};
-            draw_shape(pshape.current, pos.x, draw_y, size, pc);
+            perspective::draw_shape(pshape.current, pos.x, draw_y, size, pc);
         }
     }
 

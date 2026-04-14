@@ -105,6 +105,7 @@ endif()
 # ── Main executable ──────────────────────────────────────────
 add_executable(shapeshifter
     app/main.cpp
+    app/perspective.cpp
     app/systems/render_system.cpp
     app/systems/input_system.cpp
     app/systems/song_playback_system.cpp
@@ -271,6 +272,7 @@ if(NOT EMSCRIPTEN)
     add_executable(shapeshifter_tests
         ${TEST_SOURCES}
         app/file_logger.cpp
+        app/perspective.cpp
         app/systems/song_playback_system.cpp
     )
     target_include_directories(shapeshifter_tests PRIVATE
