@@ -36,12 +36,13 @@ void draw_rect_lines(float x, float y, float w, float h, float thick, Color c);
 void draw_tri_lines(Vector2 v1, Vector2 v2, Vector2 v3, Color c);
 
 // ── GPU-batched render passes ────────────────────────────────────────────────
-// Three ordered passes, each a single rlgl begin/end.  Sorted by primitive
-// type (lines → quads → triangles) to minimize GPU state changes.
+// Four ordered passes.  Sorted by LAYER first (background before gameplay),
+// then by primitive type within each layer.
 //
-//   Pass 1: RL_LINES      — corridor edges, floor connectors, floor outlines
-//   Pass 2: RL_QUADS      — obstacle rects, particle rects
-//   Pass 3: RL_TRIANGLES  — floor rings, ghost shapes, player shape
+//   Pass 1: RL_LINES      — floor connectors + outlines + corridor edges
+//   Pass 2: RL_TRIANGLES  — floor rings (lane 0 circles)
+//   Pass 3: RL_QUADS      — obstacle rects + particle rects
+//   Pass 4: RL_TRIANGLES  — ghost shapes + player shape
 
 // Floor geometry params (computed per-frame from SongState pulse).
 struct FloorParams {
@@ -51,8 +52,9 @@ struct FloorParams {
     uint8_t alpha;
 };
 
-void flush_world_lines(entt::registry& reg, const FloorParams& fp);
+void flush_floor_lines(entt::registry& reg, const FloorParams& fp);
+void flush_floor_rings(const FloorParams& fp);
 void flush_world_rects(entt::registry& reg);
-void flush_world_tris(entt::registry& reg, const FloorParams& fp);
+void flush_gameplay_tris(entt::registry& reg);
 
 } // namespace perspective

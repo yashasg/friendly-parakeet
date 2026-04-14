@@ -251,9 +251,9 @@ void flush_world_rects(entt::registry& reg) {
     rlEnd();
 }
 
-// ── Pass 1: All world-space lines in one RL_LINES batch ─────────────────────
-void flush_world_lines(entt::registry& reg, const FloorParams& fp) {
-    (void)reg; // registry available for future line-emitting entities
+// ── Pass 1: Floor lines (background layer) ──────────────────────────────────
+void flush_floor_lines(entt::registry& reg, const FloorParams& fp) {
+    (void)reg;
 
     static const Color LANE_COLORS[3] = {
         {80, 200, 255, 255}, {255, 100, 100, 255}, {100, 255, 100, 255},
@@ -261,7 +261,7 @@ void flush_world_lines(entt::registry& reg, const FloorParams& fp) {
 
     rlBegin(RL_LINES);
 
-    // ── Corridor edges ──────────────────────────────────────
+    // Corridor edges
     {
         constexpr float sw = static_cast<float>(constants::SCREEN_W);
         constexpr float sh = static_cast<float>(constants::SCREEN_H);
@@ -274,7 +274,7 @@ void flush_world_lines(entt::registry& reg, const FloorParams& fp) {
         rlVertex2f(rt.x, rt.y); rlVertex2f(rb.x, rb.y);
     }
 
-    // ── Floor connectors + outlines (lanes 1,2 only — lane 0 is rings) ──
+    // Floor connectors + outlines
     for (int lane = 0; lane < constants::LANE_COUNT; ++lane) {
         float cx = constants::LANE_X[lane];
         Color c = LANE_COLORS[lane];
@@ -287,30 +287,26 @@ void flush_world_lines(entt::registry& reg, const FloorParams& fp) {
             float px    = project_x(cx, cy);
             float p_half = fp.half * d;
 
-            // Connector to next shape (use depth-scaled half for both endpoints)
             if (j < constants::FLOOR_SHAPE_COUNT - 1) {
                 float next_cy = cy + constants::FLOOR_SHAPE_SPACING;
                 float next_d  = depth(next_cy);
                 float next_p_half = fp.half * next_d;
-                // Start from bottom edge of current shape, end at top edge of next
                 Vector2 a = project(cx, cy + p_half);
                 Vector2 b = project(cx, next_cy - next_p_half);
                 rlColor4ub(c.r, c.g, c.b, c.a);
                 rlVertex2f(a.x, a.y); rlVertex2f(b.x, b.y);
             }
 
-            // Lane 1 (square outline): 4 lines
             if (lane == 1) {
                 float l = px - p_half, r = px + p_half;
-                float t = cy - p_half, b = cy + p_half;
+                float t = cy - p_half, bt = cy + p_half;
                 rlColor4ub(c.r, c.g, c.b, c.a);
                 rlVertex2f(l, t); rlVertex2f(r, t);
-                rlVertex2f(r, t); rlVertex2f(r, b);
-                rlVertex2f(r, b); rlVertex2f(l, b);
-                rlVertex2f(l, b); rlVertex2f(l, t);
+                rlVertex2f(r, t); rlVertex2f(r, bt);
+                rlVertex2f(r, bt); rlVertex2f(l, bt);
+                rlVertex2f(l, bt); rlVertex2f(l, t);
             }
 
-            // Lane 2 (triangle outline): 3 lines
             if (lane == 2) {
                 float apex_x = px, apex_y = cy - p_half;
                 float bl_x = px - p_half, bl_y = cy + p_half;
@@ -326,13 +322,46 @@ void flush_world_lines(entt::registry& reg, const FloorParams& fp) {
     rlEnd();
 }
 
-// ── Pass 3: All world-space triangles in one RL_TRIANGLES batch ─────────────
-// Floor rings (lane 0), ghost shapes (obstacle indicators), and player shape.
-void flush_world_tris(entt::registry& reg, const FloorParams& fp) {
+// ── Pass 2: Floor rings (background layer) ──────────────────────────────────
+void flush_floor_rings(const FloorParams& fp) {
     static const Color LANE0_COLOR = {80, 200, 255, 255};
+    Color c = LANE0_COLOR;
+    c.a = fp.alpha;
 
     rlBegin(RL_TRIANGLES);
+    for (int j = 0; j < constants::FLOOR_SHAPE_COUNT; ++j) {
+        float cy = constants::FLOOR_Y_START
+            + static_cast<float>(j) * constants::FLOOR_SHAPE_SPACING;
+        float d = depth(cy);
+        float px = project_x(constants::LANE_X[0], cy);
+        float p_half  = fp.half * d;
+        float p_thick = fp.thick * d;
+        float inner_r = p_half - p_thick;
+        float outer_r = p_half;
 
+        int seg = 12;
+        for (int i = 0; i < seg; ++i) {
+            int idx      = (i * shape_verts::CIRCLE_SEGMENTS) / seg;
+            int next_idx = ((i + 1) * shape_verts::CIRCLE_SEGMENTS) / seg
+                           % shape_verts::CIRCLE_SEGMENTS;
+            float ox1 = px + shape_verts::CIRCLE[idx].x * outer_r;
+            float oy1 = cy + shape_verts::CIRCLE[idx].y * outer_r;
+            float ox2 = px + shape_verts::CIRCLE[next_idx].x * outer_r;
+            float oy2 = cy + shape_verts::CIRCLE[next_idx].y * outer_r;
+            float ix1 = px + shape_verts::CIRCLE[idx].x * inner_r;
+            float iy1 = cy + shape_verts::CIRCLE[idx].y * inner_r;
+            float ix2 = px + shape_verts::CIRCLE[next_idx].x * inner_r;
+            float iy2 = cy + shape_verts::CIRCLE[next_idx].y * inner_r;
+            rlColor4ub(c.r, c.g, c.b, c.a);
+            rlVertex2f(ox1, oy1); rlVertex2f(ix1, iy1); rlVertex2f(ox2, oy2);
+            rlVertex2f(ix1, iy1); rlVertex2f(ix2, iy2); rlVertex2f(ox2, oy2);
+        }
+    }
+    rlEnd();
+}
+
+// ── Pass 4: Gameplay triangles (ghost shapes + player) ──────────────────────
+void flush_gameplay_tris(entt::registry& reg) {
     // Helper: emit a fan shape from cached vertex table (perspective-projected)
     auto emit_fan = [](const shape_verts::V2* table, int count, float radius,
                        float cx, float cy, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
@@ -350,32 +379,6 @@ void flush_world_tris(entt::registry& reg, const FloorParams& fp) {
         }
     };
 
-    // Helper: emit a flat ring (not perspective-projected — avoids double-perspective)
-    auto emit_flat_ring = [](float px, float cy, float inner_r, float outer_r,
-                             int segs, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-        // Map segs evenly across the full 24-vertex circle table
-        // so the ring always closes (same fix as draw_ring).
-        int seg = (segs > 0 && segs <= shape_verts::CIRCLE_SEGMENTS)
-                  ? segs : shape_verts::CIRCLE_SEGMENTS;
-        for (int i = 0; i < seg; ++i) {
-            int idx      = (i       * shape_verts::CIRCLE_SEGMENTS) / seg;
-            int next_idx = ((i + 1) * shape_verts::CIRCLE_SEGMENTS) / seg
-                           % shape_verts::CIRCLE_SEGMENTS;
-            float ox1 = px + shape_verts::CIRCLE[idx].x * outer_r;
-            float oy1 = cy + shape_verts::CIRCLE[idx].y * outer_r;
-            float ox2 = px + shape_verts::CIRCLE[next_idx].x * outer_r;
-            float oy2 = cy + shape_verts::CIRCLE[next_idx].y * outer_r;
-            float ix1 = px + shape_verts::CIRCLE[idx].x * inner_r;
-            float iy1 = cy + shape_verts::CIRCLE[idx].y * inner_r;
-            float ix2 = px + shape_verts::CIRCLE[next_idx].x * inner_r;
-            float iy2 = cy + shape_verts::CIRCLE[next_idx].y * inner_r;
-            rlColor4ub(r, g, b, a);
-            rlVertex2f(ox1, oy1); rlVertex2f(ix1, iy1); rlVertex2f(ox2, oy2);
-            rlVertex2f(ix1, iy1); rlVertex2f(ix2, iy2); rlVertex2f(ox2, oy2);
-        }
-    };
-
-    // Helper: emit a perspective shape
     auto emit_shape = [&emit_fan](Shape shape, float cx, float cy, float sz,
                                    uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
         switch (shape) {
@@ -411,23 +414,9 @@ void flush_world_tris(entt::registry& reg, const FloorParams& fp) {
         }
     };
 
-    // ── Floor rings (lane 0 only) ────────────────────────────
-    {
-        Color c = LANE0_COLOR;
-        c.a = fp.alpha;
-        for (int j = 0; j < constants::FLOOR_SHAPE_COUNT; ++j) {
-            float cy = constants::FLOOR_Y_START
-                + static_cast<float>(j) * constants::FLOOR_SHAPE_SPACING;
-            float d = depth(cy);
-            float px = project_x(constants::LANE_X[0], cy);
-            float p_half  = fp.half * d;
-            float p_thick = fp.thick * d;
-            emit_flat_ring(px, cy, p_half - p_thick, p_half, 12,
-                           c.r, c.g, c.b, c.a);
-        }
-    }
+    rlBegin(RL_TRIANGLES);
 
-    // ── Ghost shapes (obstacle indicators) ───────────────────
+    // Ghost shapes (obstacle indicators)
     {
         auto view = reg.view<ObstacleTag, Position, Obstacle, DrawColor, DrawSize>();
         for (auto [entity, pos, obs, col, dsz] : view.each()) {
@@ -465,7 +454,7 @@ void flush_world_tris(entt::registry& reg, const FloorParams& fp) {
         }
     }
 
-    // ── Player shape ─────────────────────────────────────────
+    // Player shape
     {
         auto view = reg.view<PlayerTag, Position, PlayerShape, VerticalState, DrawColor>();
         for (auto [entity, pos, pshape, vstate, col] : view.each()) {

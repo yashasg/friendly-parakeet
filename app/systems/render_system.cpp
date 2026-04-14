@@ -407,13 +407,14 @@ void render_system(entt::registry& reg, float /*alpha*/) {
         floor_params.alpha = static_cast<uint8_t>(alpha_f);
     }
 
-    // ── 3 GPU batches sorted by primitive type ───────────────
-    // Minimizes GPU state changes: one rlBegin/rlEnd per primitive.
-    perspective::flush_world_lines(reg, floor_params);   // Pass 1: RL_LINES
+    // ── 4 GPU batches sorted by layer then primitive type ───
+    // Background (floor) renders first, gameplay on top.
+    perspective::flush_floor_lines(reg, floor_params);   // Pass 1: floor lines
+    perspective::flush_floor_rings(floor_params);         // Pass 2: floor circles
     if (gs.phase != GamePhase::Title) {
-        perspective::flush_world_rects(reg);              // Pass 2: RL_QUADS
+        perspective::flush_world_rects(reg);              // Pass 3: obstacle + particle rects
+        perspective::flush_gameplay_tris(reg);            // Pass 4: ghost shapes + player
     }
-    perspective::flush_world_tris(reg, floor_params);    // Pass 3: RL_TRIANGLES
 
     // ── Draw timing grade popups ───────────────────────────
     {
