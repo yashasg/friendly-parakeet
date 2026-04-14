@@ -5,17 +5,22 @@
 namespace perspective {
 
 // ── Filled rectangle (axis-aligned in world → trapezoid after projection) ────
+// Depth only depends on y, and a rect has only 2 y-values (top/bottom).
+// Compute depth once per scanline instead of once per corner.
 void draw_rect(float x, float y, float w, float h, Color c) {
-    // Four corners at their own y-values
-    float top_y = y;
-    float bot_y = y + h;
+    float d_top = depth(y);
+    float d_bot = depth(y + h);
 
-    Vector2 tl = project(x,     top_y);
-    Vector2 tr = project(x + w, top_y);
-    Vector2 br = project(x + w, bot_y);
-    Vector2 bl = project(x,     bot_y);
+    float tl_x = CENTER + (x     - CENTER) * d_top;
+    float tr_x = CENTER + (x + w - CENTER) * d_top;
+    float bl_x = CENTER + (x     - CENTER) * d_bot;
+    float br_x = CENTER + (x + w - CENTER) * d_bot;
 
-    // Two triangles — CCW winding for raylib
+    Vector2 tl = {tl_x, y};
+    Vector2 tr = {tr_x, y};
+    Vector2 bl = {bl_x, y + h};
+    Vector2 br = {br_x, y + h};
+
     DrawTriangle(tl, bl, tr, c);
     DrawTriangle(tr, bl, br, c);
 }
@@ -26,15 +31,15 @@ void draw_shape(Shape shape, float cx, float cy, float size, Color c) {
         case Shape::Circle: {
             float r = size / 2.0f;
             Vector2 centre = project(cx, cy);
+            // Pre-project first vertex; reuse as prev in the loop
+            Vector2 prev = project(cx + shape_verts::CIRCLE[0].x * r,
+                                   cy + shape_verts::CIRCLE[0].y * r);
             for (int i = 0; i < shape_verts::CIRCLE_SEGMENTS; ++i) {
                 int next = (i + 1) % shape_verts::CIRCLE_SEGMENTS;
-                Vector2 v1 = project(cx + shape_verts::CIRCLE[i].x    * r,
-                                     cy + shape_verts::CIRCLE[i].y    * r);
-                Vector2 v2 = project(cx + shape_verts::CIRCLE[next].x * r,
-                                     cy + shape_verts::CIRCLE[next].y * r);
-                // CCW: centre, v2, v1  (vertices go CCW in the table,
-                // so fan triangle centre→v2→v1 keeps CCW screen winding)
-                DrawTriangle(centre, v2, v1, c);
+                Vector2 cur = project(cx + shape_verts::CIRCLE[next].x * r,
+                                      cy + shape_verts::CIRCLE[next].y * r);
+                DrawTriangle(centre, cur, prev, c);
+                prev = cur;
             }
             break;
         }
@@ -62,16 +67,16 @@ void draw_shape(Shape shape, float cx, float cy, float size, Color c) {
             break;
         }
         case Shape::Hexagon: {
-            float radius = size * 0.6f;  // matches existing render_system scale
+            float radius = size * 0.6f;
             Vector2 centre = project(cx, cy);
+            Vector2 prev = project(cx + shape_verts::HEXAGON[0].x * radius,
+                                   cy + shape_verts::HEXAGON[0].y * radius);
             for (int i = 0; i < shape_verts::HEX_SEGMENTS; ++i) {
                 int next = (i + 1) % shape_verts::HEX_SEGMENTS;
-                Vector2 v1 = project(cx + shape_verts::HEXAGON[i].x    * radius,
-                                     cy + shape_verts::HEXAGON[i].y    * radius);
-                Vector2 v2 = project(cx + shape_verts::HEXAGON[next].x * radius,
-                                     cy + shape_verts::HEXAGON[next].y * radius);
-                // CCW fan: centre→v2→v1
-                DrawTriangle(centre, v2, v1, c);
+                Vector2 cur = project(cx + shape_verts::HEXAGON[next].x * radius,
+                                      cy + shape_verts::HEXAGON[next].y * radius);
+                DrawTriangle(centre, cur, prev, c);
+                prev = cur;
             }
             break;
         }
@@ -106,7 +111,6 @@ void draw_ring(float cx, float cy, float inner_r, float outer_r, int segments, C
         Vector2 inner2 = project(cx + shape_verts::CIRCLE[next_idx].x * inner_r,
                                  cy + shape_verts::CIRCLE[next_idx].y * inner_r);
 
-        // Two CCW triangles per segment forming the ring quad
         DrawTriangle(outer1, outer2, inner1, c);
         DrawTriangle(inner1, outer2, inner2, c);
     }
@@ -114,13 +118,13 @@ void draw_ring(float cx, float cy, float inner_r, float outer_r, int segments, C
 
 // ── Projected rectangle outline ──────────────────────────────────────────────
 void draw_rect_lines(float x, float y, float w, float h, float thick, Color c) {
-    float top_y = y;
-    float bot_y = y + h;
+    float d_top = depth(y);
+    float d_bot = depth(y + h);
 
-    Vector2 tl = project(x,     top_y);
-    Vector2 tr = project(x + w, top_y);
-    Vector2 br = project(x + w, bot_y);
-    Vector2 bl = project(x,     bot_y);
+    Vector2 tl = {CENTER + (x     - CENTER) * d_top, y};
+    Vector2 tr = {CENTER + (x + w - CENTER) * d_top, y};
+    Vector2 br = {CENTER + (x + w - CENTER) * d_bot, y + h};
+    Vector2 bl = {CENTER + (x     - CENTER) * d_bot, y + h};
 
     DrawLineEx(tl, tr, thick, c);
     DrawLineEx(tr, br, thick, c);
