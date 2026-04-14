@@ -1,5 +1,10 @@
 # SHAPESHIFTER
 
+![CI (macOS)](https://github.com/yashasg/friendly-parakeet/actions/workflows/ci-macos.yml/badge.svg)
+![CI (Linux)](https://github.com/yashasg/friendly-parakeet/actions/workflows/ci-linux.yml/badge.svg)
+![CI (Windows)](https://github.com/yashasg/friendly-parakeet/actions/workflows/ci-windows.yml/badge.svg)
+![CI (WebAssembly)](https://github.com/yashasg/friendly-parakeet/actions/workflows/ci-wasm.yml/badge.svg)
+
 A rhythm game where obstacles ARE the beats. Match shapes and dodge lane blocks in time with the music — the closer to the beat, the higher your score.
 
 Built with **C++20**, **raylib**, and **EnTT** using Data-Oriented Design.

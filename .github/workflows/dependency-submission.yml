@@ -1,0 +1,37 @@
+name: Dependency Submission
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  submit:
+    name: Submit Dependencies (${{ matrix.os }})
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Generate dependency snapshot
+        run: node .github/scripts/vcpkg-dependency-snapshot.js
+
+      - name: Submit dependency snapshot
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require('fs');
+            const snapshot = JSON.parse(fs.readFileSync('dependency-snapshot.json', 'utf8'));
+            await github.request('POST /repos/{owner}/{repo}/dependency-graph/snapshots', {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ...snapshot
+            });
+            console.log('Dependency snapshot submitted successfully');
+
