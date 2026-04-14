@@ -287,11 +287,14 @@ void flush_world_lines(entt::registry& reg, const FloorParams& fp) {
             float px    = project_x(cx, cy);
             float p_half = fp.half * d;
 
-            // Connector to next shape
+            // Connector to next shape (use depth-scaled half for both endpoints)
             if (j < constants::FLOOR_SHAPE_COUNT - 1) {
                 float next_cy = cy + constants::FLOOR_SHAPE_SPACING;
-                Vector2 a = project(cx, cy + fp.half);
-                Vector2 b = project(cx, next_cy - fp.half);
+                float next_d  = depth(next_cy);
+                float next_p_half = fp.half * next_d;
+                // Start from bottom edge of current shape, end at top edge of next
+                Vector2 a = project(cx, cy + p_half);
+                Vector2 b = project(cx, next_cy - next_p_half);
                 rlColor4ub(c.r, c.g, c.b, c.a);
                 rlVertex2f(a.x, a.y); rlVertex2f(b.x, b.y);
             }

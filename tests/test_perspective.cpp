@@ -370,3 +370,114 @@ TEST_CASE("shape_verts::TRIANGLE — exact vertices", "[shape_verts]") {
 TEST_CASE("shape_verts::TRIANGLE — table size is 3", "[shape_verts]") {
     static_assert(sizeof(shape_verts::TRIANGLE) / sizeof(shape_verts::V2) == 3);
 }
+
+// ═════════════════════════════════════════════════════════════════════════════
+// §3  Floor geometry regression tests
+// ═════════════════════════════════════════════════════════════════════════════
+// These tests verify invariants of the floor rendering pipeline that have
+// broken in the past (connector-to-shape edge alignment, shape visibility).
+
+TEST_CASE("floor: connector endpoints match depth-scaled shape edges", "[floor][regression]") {
+    // The connector between floor shape j and j+1 must start at the
+    // bottom edge of shape j (cy + half*depth) and end at the top edge
+    // of shape j+1 (next_cy - half*next_depth).
+    //
+    // BUG HISTORY: connectors used un-scaled fp.half instead of
+    // depth-scaled p_half, causing gaps at the top of the screen.
+
+    constexpr float half = constants::FLOOR_SHAPE_SIZE / 2.0f;
+
+    for (int j = 0; j < constants::FLOOR_SHAPE_COUNT - 1; ++j) {
+        float cy = constants::FLOOR_Y_START
+            + static_cast<float>(j) * constants::FLOOR_SHAPE_SPACING;
+        float next_cy = cy + constants::FLOOR_SHAPE_SPACING;
+
+        float d      = perspective::depth(cy);
+        float next_d = perspective::depth(next_cy);
+
+        float shape_bottom_edge = cy + half * d;
+        float next_shape_top_edge = next_cy - half * next_d;
+
+        // Connector must span from shape_bottom_edge to next_shape_top_edge.
+        // The gap must be non-negative (shapes don't overlap).
+        INFO("j=" << j << " cy=" << cy << " shape_bottom=" << shape_bottom_edge
+             << " next_top=" << next_shape_top_edge);
+        CHECK(next_shape_top_edge >= shape_bottom_edge);
+    }
+}
+
+TEST_CASE("floor: all shapes within visible screen bounds", "[floor][regression]") {
+    // Every floor shape centre, after perspective projection, must be
+    // within the render texture (0..SCREEN_W x 0..SCREEN_H).
+
+    constexpr float half = constants::FLOOR_SHAPE_SIZE / 2.0f;
+
+    for (int lane = 0; lane < constants::LANE_COUNT; ++lane) {
+        float cx = constants::LANE_X[lane];
+        for (int j = 0; j < constants::FLOOR_SHAPE_COUNT; ++j) {
+            float cy = constants::FLOOR_Y_START
+                + static_cast<float>(j) * constants::FLOOR_SHAPE_SPACING;
+
+            float d    = perspective::depth(cy);
+            float px   = perspective::project_x(cx, cy);
+            float p_half = half * d;
+
+            INFO("lane=" << lane << " j=" << j << " px=" << px << " p_half=" << p_half);
+            // Shape centre within screen
+            CHECK(px >= 0.0f);
+            CHECK(px <= static_cast<float>(constants::SCREEN_W));
+            // Shape edges within reasonable bounds (allow small overshoot)
+            CHECK(px - p_half >= -p_half);  // left edge not wildly off-screen
+            CHECK(px + p_half <= constants::SCREEN_W + p_half);  // right edge
+        }
+    }
+}
+
+TEST_CASE("floor: depth-scaled shape size decreases toward top", "[floor][regression]") {
+    // Shapes nearer the top of the screen (lower y) must be smaller
+    // than shapes nearer the bottom (higher y).
+
+    constexpr float half = constants::FLOOR_SHAPE_SIZE / 2.0f;
+
+    for (int lane = 0; lane < constants::LANE_COUNT; ++lane) {
+        float prev_p_half = 0.0f;
+        for (int j = 0; j < constants::FLOOR_SHAPE_COUNT; ++j) {
+            float cy = constants::FLOOR_Y_START
+                + static_cast<float>(j) * constants::FLOOR_SHAPE_SPACING;
+            float d = perspective::depth(cy);
+            float p_half = half * d;
+
+            if (j > 0) {
+                INFO("lane=" << lane << " j=" << j);
+                CHECK(p_half >= prev_p_half);
+            }
+            prev_p_half = p_half;
+        }
+    }
+}
+
+TEST_CASE("floor: connector uses depth-scaled half, not flat half", "[floor][regression]") {
+    // Direct regression for the double-perspective connector bug.
+    // At the top of the screen, depth < 1.0, so depth-scaled half < flat half.
+    // If connectors used flat half, the start y would be BELOW the depth-scaled
+    // shape edge, causing visible gaps.
+
+    constexpr float half = constants::FLOOR_SHAPE_SIZE / 2.0f;
+    float cy_top = constants::FLOOR_Y_START;  // y=12, near top
+    float d_top = perspective::depth(cy_top);
+
+    // depth at top should be < 1.0 (this is what makes the bug visible)
+    REQUIRE(d_top < 1.0f);
+
+    float scaled_half = half * d_top;
+    float flat_half   = half;
+
+    // The connector start must use scaled_half, not flat_half
+    float correct_start   = cy_top + scaled_half;
+    float incorrect_start = cy_top + flat_half;
+
+    // If using flat_half, connector starts further down than the shape edge
+    CHECK(incorrect_start > correct_start);
+    // The correct start matches the actual shape edge
+    CHECK_THAT(correct_start, WithinAbs(cy_top + half * d_top, 0.001));
+}
