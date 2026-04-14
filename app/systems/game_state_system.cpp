@@ -34,7 +34,6 @@ static void enter_song_complete(entt::registry& reg) {
 
 void game_state_system(entt::registry& reg, float dt) {
     auto& gs    = reg.ctx().get<GameState>();
-    auto& input = reg.ctx().get<InputState>();
     auto& aq    = reg.ctx().get<ActionQueue>();
 
     gs.phase_timer += dt;
@@ -83,7 +82,7 @@ void game_state_system(entt::registry& reg, float dt) {
                 float exit_x = (constants::SCREEN_W - EXIT_W) / 2.0f;
                 if (tx >= exit_x && tx <= exit_x + EXIT_W && ty >= EXIT_Y && ty <= EXIT_Y + EXIT_H) {
                     #ifndef PLATFORM_WEB
-                    input.quit_requested = true;
+                    reg.ctx().get<InputState>().quit_requested = true;
                     #endif
                 } else {
                     gs.transition_pending = true;
