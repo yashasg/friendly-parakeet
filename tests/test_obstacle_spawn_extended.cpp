@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include "test_helpers.h"
+#include <cstdlib>
 
 // ── obstacle_spawn_system: rhythm mode bypass ────────────────
 
@@ -31,6 +32,7 @@ TEST_CASE("spawn: rhythm mode bypass even with expired timer", "[spawn][rhythm]"
 // ── obstacle_spawn_system: component validation ──────────────
 
 TEST_CASE("spawn: ShapeGate has RequiredShape component", "[spawn]") {
+    std::srand(42);
     auto reg = make_registry();
     auto& config = reg.ctx().get<DifficultyConfig>();
     config.elapsed = 0.0f;  // Only ShapeGate at t=0
@@ -50,6 +52,7 @@ TEST_CASE("spawn: ShapeGate has RequiredShape component", "[spawn]") {
 }
 
 TEST_CASE("spawn: ShapeGate has DrawColor component", "[spawn]") {
+    std::srand(42);
     auto reg = make_registry();
     auto& config = reg.ctx().get<DifficultyConfig>();
     config.elapsed = 0.0f;
@@ -64,16 +67,17 @@ TEST_CASE("spawn: ShapeGate has DrawColor component", "[spawn]") {
 }
 
 TEST_CASE("spawn: LaneBlock has BlockedLanes component", "[spawn]") {
+    std::srand(100);
     auto reg = make_registry();
     auto& config = reg.ctx().get<DifficultyConfig>();
     config.elapsed = 35.0f;  // LaneBlock available
 
-    bool found = false;
     for (int i = 0; i < 200; ++i) {
         config.spawn_timer = 0.0f;
         obstacle_spawn_system(reg, 0.016f);
     }
 
+    bool found = false;
     auto view = reg.view<ObstacleTag, Obstacle, BlockedLanes>();
     for (auto [e, obs, blocked] : view.each()) {
         if (obs.kind == ObstacleKind::LaneBlock) {
@@ -85,16 +89,17 @@ TEST_CASE("spawn: LaneBlock has BlockedLanes component", "[spawn]") {
 }
 
 TEST_CASE("spawn: LowBar has RequiredVAction component", "[spawn]") {
+    std::srand(200);
     auto reg = make_registry();
     auto& config = reg.ctx().get<DifficultyConfig>();
     config.elapsed = 50.0f;  // LowBar available
 
-    bool found = false;
     for (int i = 0; i < 300; ++i) {
         config.spawn_timer = 0.0f;
         obstacle_spawn_system(reg, 0.016f);
     }
 
+    bool found = false;
     auto view = reg.view<ObstacleTag, Obstacle, RequiredVAction>();
     for (auto [e, obs, vact] : view.each()) {
         if (obs.kind == ObstacleKind::LowBar) {
@@ -106,16 +111,17 @@ TEST_CASE("spawn: LowBar has RequiredVAction component", "[spawn]") {
 }
 
 TEST_CASE("spawn: HighBar has RequiredVAction for Sliding", "[spawn]") {
+    std::srand(300);
     auto reg = make_registry();
     auto& config = reg.ctx().get<DifficultyConfig>();
     config.elapsed = 65.0f;  // HighBar available
 
-    bool found = false;
     for (int i = 0; i < 400; ++i) {
         config.spawn_timer = 0.0f;
         obstacle_spawn_system(reg, 0.016f);
     }
 
+    bool found = false;
     auto view = reg.view<ObstacleTag, Obstacle, RequiredVAction>();
     for (auto [e, obs, vact] : view.each()) {
         if (obs.kind == ObstacleKind::HighBar) {
@@ -127,16 +133,17 @@ TEST_CASE("spawn: HighBar has RequiredVAction for Sliding", "[spawn]") {
 }
 
 TEST_CASE("spawn: ComboGate has both RequiredShape and BlockedLanes", "[spawn]") {
+    std::srand(400);
     auto reg = make_registry();
     auto& config = reg.ctx().get<DifficultyConfig>();
     config.elapsed = 95.0f;  // ComboGate available
 
-    bool found = false;
     for (int i = 0; i < 500; ++i) {
         config.spawn_timer = 0.0f;
         obstacle_spawn_system(reg, 0.016f);
     }
 
+    bool found = false;
     auto view = reg.view<ObstacleTag, Obstacle, RequiredShape, BlockedLanes>();
     for (auto [e, obs, req, blocked] : view.each()) {
         if (obs.kind == ObstacleKind::ComboGate) {
@@ -147,16 +154,17 @@ TEST_CASE("spawn: ComboGate has both RequiredShape and BlockedLanes", "[spawn]")
 }
 
 TEST_CASE("spawn: SplitPath has RequiredShape and RequiredLane", "[spawn]") {
+    std::srand(500);
     auto reg = make_registry();
     auto& config = reg.ctx().get<DifficultyConfig>();
     config.elapsed = 125.0f;  // SplitPath available
 
-    bool found = false;
     for (int i = 0; i < 600; ++i) {
         config.spawn_timer = 0.0f;
         obstacle_spawn_system(reg, 0.016f);
     }
 
+    bool found = false;
     auto view = reg.view<ObstacleTag, Obstacle, RequiredShape, RequiredLane>();
     for (auto [e, obs, req, rlane] : view.each()) {
         if (obs.kind == ObstacleKind::SplitPath) {
@@ -167,4 +175,3 @@ TEST_CASE("spawn: SplitPath has RequiredShape and RequiredLane", "[spawn]") {
     }
     CHECK(found);
 }
-

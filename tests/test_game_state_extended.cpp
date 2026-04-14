@@ -45,11 +45,7 @@ TEST_CASE("game_state: song complete ignores scored obstacles", "[gamestate]") {
     song.finished = true;
     song.playing = false;
 
-    // Scored obstacle: size_hint() may still count it (upper bound).
-    // The system uses size_hint() which is an approximation in EnTT,
-    // so a scored obstacle MAY prevent the transition depending on
-    // EnTT's internal bookkeeping. This test verifies that the system
-    // does NOT transition when size_hint > 0 (which includes scored entities).
+    // Only a scored obstacle remains → should transition to SongComplete
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
     reg.emplace<ScoredTag>(obs);
@@ -57,12 +53,8 @@ TEST_CASE("game_state: song complete ignores scored obstacles", "[gamestate]") {
 
     game_state_system(reg, 0.016f);
 
-    // size_hint() is an upper bound and may or may not exclude ScoredTag,
-    // so the transition may or may not happen. We just verify no crash.
-    // The actual behavior is: if no obstacles remain unscored, transition occurs.
-    // size_hint() is approximate, so this test validates the guard logic works.
-    (void)gs.transition_pending;
-    SUCCEED("game_state handled scored-only obstacles without crash");
+    CHECK(gs.transition_pending);
+    CHECK(gs.next_phase == GamePhase::SongComplete);
 }
 
 TEST_CASE("game_state: enter_song_complete updates high score", "[gamestate]") {

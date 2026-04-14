@@ -166,8 +166,8 @@ void game_state_system(entt::registry& reg, float dt) {
         auto* song = reg.ctx().find<SongState>();
         if (song && song->finished) {
             // Wait until all remaining obstacles have scrolled past
-            auto obs_count = reg.view<ObstacleTag>(entt::exclude<ScoredTag>).size_hint();
-            if (obs_count == 0) {
+            auto unscored = reg.view<ObstacleTag>(entt::exclude<ScoredTag>);
+            if (unscored.begin() == unscored.end()) {
                 gs.transition_pending = true;
                 gs.next_phase = GamePhase::SongComplete;
             }
