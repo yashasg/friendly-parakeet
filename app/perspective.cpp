@@ -353,16 +353,22 @@ void flush_world_tris(entt::registry& reg, const FloorParams& fp) {
     // Helper: emit a flat ring (not perspective-projected — avoids double-perspective)
     auto emit_flat_ring = [](float px, float cy, float inner_r, float outer_r,
                              int segs, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-        for (int i = 0; i < segs; ++i) {
-            int next = (i + 1) % shape_verts::CIRCLE_SEGMENTS;
-            float ox1 = px + shape_verts::CIRCLE[i].x * outer_r;
-            float oy1 = cy + shape_verts::CIRCLE[i].y * outer_r;
-            float ox2 = px + shape_verts::CIRCLE[next].x * outer_r;
-            float oy2 = cy + shape_verts::CIRCLE[next].y * outer_r;
-            float ix1 = px + shape_verts::CIRCLE[i].x * inner_r;
-            float iy1 = cy + shape_verts::CIRCLE[i].y * inner_r;
-            float ix2 = px + shape_verts::CIRCLE[next].x * inner_r;
-            float iy2 = cy + shape_verts::CIRCLE[next].y * inner_r;
+        // Map segs evenly across the full 24-vertex circle table
+        // so the ring always closes (same fix as draw_ring).
+        int seg = (segs > 0 && segs <= shape_verts::CIRCLE_SEGMENTS)
+                  ? segs : shape_verts::CIRCLE_SEGMENTS;
+        for (int i = 0; i < seg; ++i) {
+            int idx      = (i       * shape_verts::CIRCLE_SEGMENTS) / seg;
+            int next_idx = ((i + 1) * shape_verts::CIRCLE_SEGMENTS) / seg
+                           % shape_verts::CIRCLE_SEGMENTS;
+            float ox1 = px + shape_verts::CIRCLE[idx].x * outer_r;
+            float oy1 = cy + shape_verts::CIRCLE[idx].y * outer_r;
+            float ox2 = px + shape_verts::CIRCLE[next_idx].x * outer_r;
+            float oy2 = cy + shape_verts::CIRCLE[next_idx].y * outer_r;
+            float ix1 = px + shape_verts::CIRCLE[idx].x * inner_r;
+            float iy1 = cy + shape_verts::CIRCLE[idx].y * inner_r;
+            float ix2 = px + shape_verts::CIRCLE[next_idx].x * inner_r;
+            float iy2 = cy + shape_verts::CIRCLE[next_idx].y * inner_r;
             rlColor4ub(r, g, b, a);
             rlVertex2f(ox1, oy1); rlVertex2f(ox2, oy2); rlVertex2f(ix1, iy1);
             rlVertex2f(ix1, iy1); rlVertex2f(ox2, oy2); rlVertex2f(ix2, iy2);

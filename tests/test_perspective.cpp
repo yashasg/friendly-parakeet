@@ -481,3 +481,31 @@ TEST_CASE("floor: connector uses depth-scaled half, not flat half", "[floor][reg
     // The correct start matches the actual shape edge
     CHECK_THAT(correct_start, WithinAbs(cy_top + half * d_top, 0.001));
 }
+
+TEST_CASE("floor ring: sub-segment count covers full circle", "[floor][regression]") {
+    // BUG: When drawing a ring with segs < CIRCLE_SEGMENTS (e.g. 12 of 24),
+    // the old code iterated i=0..11 with next=(i+1)%24, only covering
+    // vertices 0-12 (top half). The bottom half was never drawn.
+    //
+    // Fix: map segment indices evenly across the full table:
+    //   idx = (i * CIRCLE_SEGMENTS) / seg
+    //
+    // Verify: for seg=12, the indices should span the full 0..23 range
+    // (every other vertex), not just 0..12.
+
+    constexpr int seg = 12;
+    int min_idx = 999, max_idx = -1;
+    for (int i = 0; i < seg; ++i) {
+        int idx = (i * shape_verts::CIRCLE_SEGMENTS) / seg;
+        if (idx < min_idx) min_idx = idx;
+        if (idx > max_idx) max_idx = idx;
+    }
+    // With even mapping, indices should cover 0, 2, 4, ..., 22
+    CHECK(min_idx == 0);
+    CHECK(max_idx == 22);  // last index before wrapping
+
+    // Also verify the "next" index wraps to 0
+    int last_next = ((seg) * shape_verts::CIRCLE_SEGMENTS) / seg
+                    % shape_verts::CIRCLE_SEGMENTS;
+    CHECK(last_next == 0);  // closes the ring
+}
