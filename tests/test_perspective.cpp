@@ -513,19 +513,26 @@ TEST_CASE("floor ring: sub-segment count covers full circle", "[floor][regressio
 // ═════════════════════════════════════════════════════════════════════════════
 // §4  Winding order regression tests
 // ═════════════════════════════════════════════════════════════════════════════
-// All triangles submitted to rlgl must be CCW (counter-clockwise).
-// CW triangles get back-face culled and are invisible.
-// In screen space (y-down), CCW winding produces a NEGATIVE cross product.
-// These tests verify correct winding for all batched geometry.
+// raylib calls glFrontFace(GL_CCW) — front-facing triangles must have
+// counter-clockwise vertex order.  In screen-space (y-axis points down),
+// the 2D cross product of a CCW triangle is NEGATIVE.
+//
+// GL_CCW = 0x0901 per the OpenGL spec.  We check the cross product sign
+// rather than the constant so the test works without GL headers.
+
+// Expected sign of cross(AB, AC) for a front-facing (CCW) triangle in
+// screen-space where y increases downward.
+constexpr float CCW_SIGN = -1.0f;   // GL_CCW + y-down → negative cross
 
 static float cross2d(float ax, float ay, float bx, float by,
                      float cx, float cy) {
     return (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
 }
 
+static bool is_ccw(float cross) { return cross * CCW_SIGN > 0.0f; }
+
 TEST_CASE("winding: flat ring triangles are CCW", "[winding][regression]") {
     // Simulate emit_flat_ring for a ring at screen centre.
-    // Both triangles of each segment must have positive cross product (CCW).
     constexpr float px = 360.0f, cy = 500.0f;
     constexpr float outer_r = 20.0f, inner_r = 17.0f;
     constexpr int seg = 12;
@@ -547,12 +554,12 @@ TEST_CASE("winding: flat ring triangles are CCW", "[winding][regression]") {
         // Triangle 1: outer1 → inner1 → outer2 (must be CCW = positive cross)
         float cross1 = cross2d(ox1, oy1, ix1, iy1, ox2, oy2);
         INFO("ring seg=" << i << " tri1 cross=" << cross1);
-        CHECK(cross1 < 0.0f);
+        CHECK(is_ccw(cross1));
 
         // Triangle 2: inner1 → inner2 → outer2 (must be CCW = positive cross)
         float cross2 = cross2d(ix1, iy1, ix2, iy2, ox2, oy2);
         INFO("ring seg=" << i << " tri2 cross=" << cross2);
-        CHECK(cross2 < 0.0f);
+        CHECK(is_ccw(cross2));
     }
 }
 
@@ -576,7 +583,7 @@ TEST_CASE("winding: perspective circle fan triangles are CCW", "[winding][regres
         // Fan triangle: centre → cur → prev
         float cross = cross2d(centre.x, centre.y, cur.x, cur.y, prev.x, prev.y);
         INFO("circle fan i=" << i << " cross=" << cross);
-        CHECK(cross < 0.0f);
+        CHECK(is_ccw(cross));
         prev = cur;
     }
 }
@@ -597,7 +604,7 @@ TEST_CASE("winding: perspective hexagon fan triangles are CCW", "[winding][regre
 
         float cross = cross2d(centre.x, centre.y, cur.x, cur.y, prev.x, prev.y);
         INFO("hex fan i=" << i << " cross=" << cross);
-        CHECK(cross < 0.0f);
+        CHECK(is_ccw(cross));
         prev = cur;
     }
 }
@@ -612,9 +619,9 @@ TEST_CASE("winding: perspective square trapezoid triangles are CCW", "[winding][
                                     cy + shape_verts::SQUARE[i].y * half);
 
     float cross1 = cross2d(v[0].x, v[0].y, v[3].x, v[3].y, v[1].x, v[1].y);
-    CHECK(cross1 < 0.0f);
+    CHECK(is_ccw(cross1));
     float cross2 = cross2d(v[1].x, v[1].y, v[3].x, v[3].y, v[2].x, v[2].y);
-    CHECK(cross2 < 0.0f);
+    CHECK(is_ccw(cross2));
 }
 
 TEST_CASE("winding: perspective triangle shape is CCW", "[winding][regression]") {
@@ -625,7 +632,7 @@ TEST_CASE("winding: perspective triangle shape is CCW", "[winding][regression]")
                                     cy + shape_verts::TRIANGLE[i].y * half);
 
     float cross = cross2d(v[0].x, v[0].y, v[1].x, v[1].y, v[2].x, v[2].y);
-    CHECK(cross < 0.0f);
+    CHECK(is_ccw(cross));
 }
 
 TEST_CASE("winding: perspective rect (obstacle quad) triangles are CCW", "[winding][regression]") {
@@ -641,8 +648,8 @@ TEST_CASE("winding: perspective rect (obstacle quad) triangles are CCW", "[windi
 
     // Triangle 1: TL → BL → TR
     float cross1 = cross2d(tl_x, 300.0f, bl_x, 320.0f, tr_x, 300.0f);
-    CHECK(cross1 < 0.0f);
+    CHECK(is_ccw(cross1));
     // Triangle 2: TR → BL → BR
     float cross2 = cross2d(tr_x, 300.0f, bl_x, 320.0f, br_x, 320.0f);
-    CHECK(cross2 < 0.0f);
+    CHECK(is_ccw(cross2));
 }
