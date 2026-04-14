@@ -475,20 +475,20 @@ void render_system(entt::registry& reg, float /*alpha*/) {
         }
     }
 
-    // ── Draw obstacles ──────────────────────────────────────
+    // ── Batch-draw all obstacle rects + particle rects ─────
+    // Single rlgl RL_QUADS batch: queries ObstacleTag and ParticleTag
+    // entities from the registry, projects their rect vertices, and
+    // submits everything in one draw call.
+    if (gs.phase != GamePhase::Title) {
+        perspective::flush_world_rects(reg);
+    }
+
+    // ── Draw obstacle ghost shapes (layered on top of rects) ─
     if (gs.phase != GamePhase::Title) {
         auto view = reg.view<ObstacleTag, Position, Obstacle, DrawColor, DrawSize>();
         for (auto [entity, pos, obs, col, dsz] : view.each()) {
-
-            Color c = {col.r, col.g, col.b, col.a};
-
             switch (obs.kind) {
                 case ObstacleKind::ShapeGate: {
-                    // Full-width gate with shape hole
-                    perspective::draw_rect(0, pos.y, pos.x - 50, dsz.h, c);
-                    perspective::draw_rect(pos.x + 50, pos.y,
-                        constants::SCREEN_W - pos.x - 50, dsz.h, c);
-                    // Draw shape indicator in the gap
                     auto* req = reg.try_get<RequiredShape>(entity);
                     if (req) {
                         Color ghost = {col.r, col.g, col.b, 120};
@@ -496,36 +496,11 @@ void render_system(entt::registry& reg, float /*alpha*/) {
                     }
                     break;
                 }
-                case ObstacleKind::LaneBlock: {
-                    auto* blocked = reg.try_get<BlockedLanes>(entity);
-                    if (blocked) {
-                        for (int i = 0; i < 3; ++i) {
-                            if ((blocked->mask >> i) & 1) {
-                                float lx = constants::LANE_X[i] - dsz.w / 2;
-                                perspective::draw_rect(lx, pos.y, dsz.w, dsz.h, c);
-                            }
-                        }
-                    }
-                    break;
-                }
-                case ObstacleKind::LowBar:
-                case ObstacleKind::HighBar: {
-                    perspective::draw_rect(0, pos.y, static_cast<float>(constants::SCREEN_W), dsz.h, c);
-                    break;
-                }
                 case ObstacleKind::ComboGate: {
-                    auto* blocked = reg.try_get<BlockedLanes>(entity);
-                    if (blocked) {
-                        for (int i = 0; i < 3; ++i) {
-                            if ((blocked->mask >> i) & 1) {
-                                float lx = constants::LANE_X[i] - 120;
-                                perspective::draw_rect(lx, pos.y, 240.0f, dsz.h, c);
-                            }
-                        }
-                    }
                     auto* req = reg.try_get<RequiredShape>(entity);
                     if (req) {
                         Color white_ghost = {255, 255, 255, 180};
+                        auto* blocked = reg.try_get<BlockedLanes>(entity);
                         int open = 1;
                         if (blocked) {
                             for (int i = 0; i < 3; ++i) {
@@ -538,14 +513,8 @@ void render_system(entt::registry& reg, float /*alpha*/) {
                     break;
                 }
                 case ObstacleKind::SplitPath: {
-                    auto* rlane = reg.try_get<RequiredLane>(entity);
-                    for (int i = 0; i < 3; ++i) {
-                        if (!rlane || i != rlane->lane) {
-                            float lx = constants::LANE_X[i] - 120;
-                            perspective::draw_rect(lx, pos.y, 240.0f, dsz.h, c);
-                        }
-                    }
                     auto* req = reg.try_get<RequiredShape>(entity);
+                    auto* rlane = reg.try_get<RequiredLane>(entity);
                     if (req && rlane) {
                         Color white_ghost = {255, 255, 255, 180};
                         perspective::draw_shape(req->shape,
@@ -553,19 +522,8 @@ void render_system(entt::registry& reg, float /*alpha*/) {
                     }
                     break;
                 }
+                default: break;
             }
-        }
-    }
-
-    // ── Draw particles ──────────────────────────────────────
-    {
-        auto view = reg.view<ParticleTag, Position, ParticleData, DrawColor, Lifetime>();
-        for (auto [entity, pos, pdata, col, life] : view.each()) {
-            float ratio = (life.max_time > 0.0f) ? (life.remaining / life.max_time) : 1.0f;
-            float draw_size = pdata.size * ratio;
-            float half = draw_size / 2.0f;
-            perspective::draw_rect(pos.x - half, pos.y - half, draw_size, draw_size,
-                             {col.r, col.g, col.b, col.a});
         }
     }
 

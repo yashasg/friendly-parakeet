@@ -1,6 +1,13 @@
 #include "perspective.h"
 #include "shape_vertices.h"
+#include "components/transform.h"
+#include "components/obstacle.h"
+#include "components/obstacle_data.h"
+#include "components/rendering.h"
+#include "components/particle.h"
+#include "components/lifetime.h"
 #include <raylib.h>
+#include <rlgl.h>
 
 namespace perspective {
 
@@ -141,6 +148,105 @@ void draw_tri_lines(Vector2 v1, Vector2 v2, Vector2 v3, Color c) {
     DrawLineV(p1, p2, c);
     DrawLineV(p2, p3, c);
     DrawLineV(p3, p1, c);
+}
+
+// ── Batched rect flush from ECS ──────────────────────────────────────────────
+// Queries registry for ObstacleTag and ParticleTag entities, projects their
+// rect geometry, and submits everything in a single RL_QUADS batch.
+void flush_world_rects(entt::registry& reg) {
+    rlBegin(RL_QUADS);
+
+    // Helper: emit one projected quad
+    auto emit_quad = [](float x, float y, float w, float h,
+                        uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+        float d_top = depth(y);
+        float d_bot = depth(y + h);
+        float tl_x = CENTER + (x     - CENTER) * d_top;
+        float tr_x = CENTER + (x + w - CENTER) * d_top;
+        float bl_x = CENTER + (x     - CENTER) * d_bot;
+        float br_x = CENTER + (x + w - CENTER) * d_bot;
+
+        rlColor4ub(r, g, b, a);
+        rlVertex2f(tl_x, y);
+        rlVertex2f(bl_x, y + h);
+        rlVertex2f(br_x, y + h);
+        rlVertex2f(tr_x, y);
+    };
+
+    // ── Obstacles: iterate by ObstacleTag ────────────────────
+    {
+        auto view = reg.view<ObstacleTag, Position, Obstacle, DrawColor, DrawSize>();
+        for (auto [entity, pos, obs, col, dsz] : view.each()) {
+            switch (obs.kind) {
+                case ObstacleKind::ShapeGate:
+                    emit_quad(0, pos.y, pos.x - 50, dsz.h, col.r, col.g, col.b, col.a);
+                    emit_quad(pos.x + 50, pos.y,
+                              constants::SCREEN_W - pos.x - 50, dsz.h,
+                              col.r, col.g, col.b, col.a);
+                    break;
+
+                case ObstacleKind::LaneBlock: {
+                    auto* blocked = reg.try_get<BlockedLanes>(entity);
+                    if (blocked) {
+                        for (int i = 0; i < 3; ++i) {
+                            if ((blocked->mask >> i) & 1) {
+                                float lx = constants::LANE_X[i] - dsz.w / 2;
+                                emit_quad(lx, pos.y, dsz.w, dsz.h,
+                                          col.r, col.g, col.b, col.a);
+                            }
+                        }
+                    }
+                    break;
+                }
+
+                case ObstacleKind::LowBar:
+                case ObstacleKind::HighBar:
+                    emit_quad(0, pos.y, static_cast<float>(constants::SCREEN_W),
+                              dsz.h, col.r, col.g, col.b, col.a);
+                    break;
+
+                case ObstacleKind::ComboGate: {
+                    auto* blocked = reg.try_get<BlockedLanes>(entity);
+                    if (blocked) {
+                        for (int i = 0; i < 3; ++i) {
+                            if ((blocked->mask >> i) & 1) {
+                                float lx = constants::LANE_X[i] - 120;
+                                emit_quad(lx, pos.y, 240.0f, dsz.h,
+                                          col.r, col.g, col.b, col.a);
+                            }
+                        }
+                    }
+                    break;
+                }
+
+                case ObstacleKind::SplitPath: {
+                    auto* rlane = reg.try_get<RequiredLane>(entity);
+                    for (int i = 0; i < 3; ++i) {
+                        if (!rlane || i != rlane->lane) {
+                            float lx = constants::LANE_X[i] - 120;
+                            emit_quad(lx, pos.y, 240.0f, dsz.h,
+                                      col.r, col.g, col.b, col.a);
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    // ── Particles: iterate by ParticleTag ────────────────────
+    {
+        auto view = reg.view<ParticleTag, Position, ParticleData, DrawColor, Lifetime>();
+        for (auto [entity, pos, pdata, col, life] : view.each()) {
+            float ratio = (life.max_time > 0.0f) ? (life.remaining / life.max_time) : 1.0f;
+            float sz = pdata.size * ratio;
+            float half = sz / 2.0f;
+            emit_quad(pos.x - half, pos.y - half, sz, sz,
+                      col.r, col.g, col.b, col.a);
+        }
+    }
+
+    rlEnd();
 }
 
 } // namespace perspective
