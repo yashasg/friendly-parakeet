@@ -252,7 +252,7 @@ if(BEATMAP_FILES)
 endif()
 
 # Copy audio files next to the executable
-file(GLOB AUDIO_FILES ${CMAKE_SOURCE_DIR}/content/audio/*.wav)
+file(GLOB AUDIO_FILES ${CMAKE_SOURCE_DIR}/content/audio/*.flac)
 if(AUDIO_FILES)
     add_custom_command(TARGET shapeshifter POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory

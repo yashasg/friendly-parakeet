@@ -23,7 +23,7 @@ content/beatmaps/         parse_beat_map()              ┌───────
                                                          └──────────┘
 
 content/audio/            LoadMusicStream()              ┌──────────────┐
-  2_drama.wav ────────────────────────────────────────▶  │ MusicContext  │◀───────────────────────  song_playback_system
+  2_drama.flac ───────────────────────────────────────▶  │ MusicContext  │◀───────────────────────  song_playback_system
                                                          │ .stream      │  UpdateMusicStream()
                                                          │ .loaded      │  GetMusicTimePlayed()
                                                          │ .started     │  PlayMusicStream()
@@ -65,7 +65,7 @@ FALLBACK (no MusicContext): song_time += dt  (silent / test mode)
 ### Data
 No struct changes. Adds file copy targets for:
 - `content/beatmaps/*.json` — beatmap chart files (~30KB each)
-- `content/audio/*.wav` — PCM audio files (~34MB each)
+- `content/audio/*.flac` — FLAC audio files (~30MB each)
 
 ### File
 **`CMakeLists.txt`** — insert after line 186 (the existing font copy `endif()`), before the `# ── Tests` comment on line 188.
@@ -87,7 +87,7 @@ if(BEATMAP_FILES)
 endif()
 
 # Copy audio files next to the executable
-file(GLOB AUDIO_FILES ${CMAKE_SOURCE_DIR}/content/audio/*.wav)
+file(GLOB AUDIO_FILES ${CMAKE_SOURCE_DIR}/content/audio/*.flac)
 if(AUDIO_FILES)
     add_custom_command(TARGET shapeshifter POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory
@@ -119,7 +119,7 @@ None — first change to apply.
 ### Verification
 ```bash
 cmake --build build && ls build/content/beatmaps/ build/content/audio/
-# Expected: 2_drama_beatmap.json and 2_drama.wav present
+# Expected: 2_drama_beatmap.json and 2_drama.flac present
 ```
 
 ---
@@ -172,7 +172,7 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
     if (j.contains("song_path") && j["song_path"].is_string()) {
         out.song_path = j["song_path"].get<std::string>();
     } else if (!out.song_id.empty()) {
-        out.song_path = "content/audio/" + out.song_id + ".wav";
+        out.song_path = "content/audio/" + out.song_id + ".flac";
     }
 
     // ── Beats: nested difficulties (preferred) or flat array ─
@@ -275,7 +275,7 @@ std::vector<BeatMapError> errs;
 bool ok = load_beat_map("content/beatmaps/2_drama_beatmap.json", map, errs, "easy");
 assert(ok);
 assert(map.beats.size() == 80);  // easy difficulty has 80 beats
-assert(map.song_path == "content/audio/2_drama.wav");
+assert(map.song_path == "content/audio/2_drama.flac");
 assert(map.difficulty == "easy");
 ```
 
@@ -555,7 +555,7 @@ For Emscripten shutdown: `emscripten_set_main_loop` with arg `1` means it never 
 # Build and run. Check log output:
 # Expected:
 #   Loaded beatmap: .../content/beatmaps/2_drama_beatmap.json (125 beats, difficulty=medium)
-#   Loaded music: .../content/audio/2_drama.wav
+#   Loaded music: .../content/audio/2_drama.flac
 #   Audio device initialized: 44100 Hz
 ```
 

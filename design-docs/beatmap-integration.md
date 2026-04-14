@@ -5,7 +5,7 @@
 >
 > **Inputs consumed:**
 > - `content/beatmaps/<song_id>_beatmap.json` — authored obstacle timeline
-> - `content/audio/<song_id>.wav` — song audio file
+> - `content/audio/<song_id>.flac` — song audio file
 >
 > **Scope:** Load a beatmap JSON + WAV into the running game, replace random spawning with beat-driven spawning, and synchronise audio playback to `song_time`. This spec covers the data layouts, system transforms, build pipeline changes, and audio integration via raylib.
 
@@ -94,7 +94,7 @@
 ## 1.2 Audio WAV
 
 ```
-  content/audio/2_drama.wav
+  content/audio/2_drama.flac
   ~41 MB, 16-bit stereo, 44100 Hz, 241.13 seconds.
   Streamed at runtime via raylib LoadMusicStream.
 ```
@@ -386,7 +386,7 @@ Mirror the existing font copying pattern:
 ```cmake
 # ── Copy beatmap JSON + audio assets ─────────────────────────
 file(GLOB BEATMAP_FILES ${CMAKE_SOURCE_DIR}/content/beatmaps/*.json)
-file(GLOB AUDIO_FILES   ${CMAKE_SOURCE_DIR}/content/audio/*.wav)
+file(GLOB AUDIO_FILES   ${CMAKE_SOURCE_DIR}/content/audio/*.flac)
 
 if(BEATMAP_FILES)
     add_custom_command(TARGET shapeshifter POST_BUILD
@@ -541,7 +541,7 @@ Ordered by dependency chain. Steps marked ✅ are already on `main`.
 
   STEP 5 — Content Asset Copying                    ★ TODO
   ────────────────────────────────
-  • Add content/beatmaps/*.json + content/audio/*.wav copy rules
+  • Add content/beatmaps/*.json + content/audio/*.flac copy rules
   • Mirror existing font copy pattern in CMakeLists.txt
   • Verify: beatmap + WAV appear next to executable after build
 
@@ -642,4 +642,4 @@ Ordered by dependency chain. Steps marked ✅ are already on `main`.
 ---
 
 *Generated from: `content/beatmaps/2_drama_analysis.json` → `tools/level_designer.py` → `content/beatmaps/2_drama_beatmap.json`*
-*Audio source: `content/audio/2_drama.wav` (41 MB, 241.13s, 119.64 BPM)*
+*Audio source: `content/audio/2_drama.flac` (33 MB, 241.13s, 119.64 BPM)*

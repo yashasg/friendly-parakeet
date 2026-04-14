@@ -48,7 +48,7 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
     if (j.contains("song_path") && j["song_path"].is_string()) {
         out.song_path = j["song_path"].get<std::string>();
     } else if (!out.song_id.empty()) {
-        out.song_path = "content/audio/" + out.song_id + ".wav";
+        out.song_path = "content/audio/" + out.song_id + ".flac";
     }
 
     // ── Beats: nested difficulties (preferred) or flat array ─
