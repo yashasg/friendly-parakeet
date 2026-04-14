@@ -385,6 +385,22 @@ void render_system(entt::registry& reg, float /*alpha*/) {
     // positions need to change.
     BeginMode2D(camera);
 
+    // ── Draw perspective corridor edges ──────────────────────
+    // Subtle converging lines along the left and right edges of the
+    // playfield to frame the perspective and prevent the narrowing
+    // lanes from looking like they're being clipped.
+    {
+        Color edge_color = {40, 40, 60, 120};
+        // Left edge: x=0 from bottom to top
+        perspective::draw_line(0.0f, 0.0f, 0.0f, static_cast<float>(constants::SCREEN_H),
+                               1.5f, edge_color);
+        // Right edge: x=SCREEN_W from bottom to top
+        perspective::draw_line(static_cast<float>(constants::SCREEN_W), 0.0f,
+                               static_cast<float>(constants::SCREEN_W),
+                               static_cast<float>(constants::SCREEN_H),
+                               1.5f, edge_color);
+    }
+
     // ── Draw lane floors (shaped columns that pulse on beat) ─
     {
         auto* song = reg.ctx().find<SongState>();
