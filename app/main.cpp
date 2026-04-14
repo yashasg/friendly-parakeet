@@ -27,6 +27,8 @@
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
+#include <emscripten/html5.h>
+#include <rlgl.h>
 #endif
 
 static constexpr float FIXED_DT  = 1.0f / 60.0f;
@@ -59,8 +61,28 @@ static void tick_fixed_systems(entt::registry& reg, float dt) {
 // Recomputes the letterbox transform and stores it in the registry context so
 // input_system can normalise raw window coordinates to virtual world space.
 static void update_screen_transform(entt::registry& reg) {
-    float win_w = static_cast<float>(GetScreenWidth());
-    float win_h = static_cast<float>(GetScreenHeight());
+    float win_w, win_h;
+#ifdef __EMSCRIPTEN__
+    // On web, the canvas CSS display size may differ from the drawing buffer.
+    // Read the CSS size directly and resize the buffer to match, so that
+    // mouse/touch coordinates (which are in CSS pixels) align with the
+    // framebuffer pixels — eliminating any hidden CSS scaling layer.
+    double css_w = 0.0, css_h = 0.0;
+    emscripten_get_element_css_size("#canvas", &css_w, &css_h);
+    win_w = static_cast<float>(std::max(1.0, css_w));
+    win_h = static_cast<float>(std::max(1.0, css_h));
+
+    int cur_buf_w = 0, cur_buf_h = 0;
+    emscripten_get_canvas_element_size("#canvas", &cur_buf_w, &cur_buf_h);
+    int target_w = static_cast<int>(win_w);
+    int target_h = static_cast<int>(win_h);
+    if (cur_buf_w != target_w || cur_buf_h != target_h) {
+        emscripten_set_canvas_element_size("#canvas", target_w, target_h);
+    }
+#else
+    win_w = static_cast<float>(GetScreenWidth());
+    win_h = static_cast<float>(GetScreenHeight());
+#endif
     float scale = std::min(
         win_w / static_cast<float>(constants::SCREEN_W),
         win_h / static_cast<float>(constants::SCREEN_H));
@@ -111,6 +133,20 @@ static void update_draw_frame() {
     float dst_h = constants::SCREEN_H * st.scale;
 
     BeginDrawing();
+        // After canvas buffer resize, raylib's viewport may not yet reflect the
+        // new dimensions.  Explicitly set viewport + ortho to match the buffer
+        // so that ClearBackground and DrawTexturePro use the correct space.
+        {
+            int buf_w = 0, buf_h = 0;
+            emscripten_get_canvas_element_size("#canvas", &buf_w, &buf_h);
+            rlViewport(0, 0, buf_w, buf_h);
+            rlMatrixMode(RL_PROJECTION);
+            rlLoadIdentity();
+            rlOrtho(0.0, static_cast<double>(buf_w),
+                    static_cast<double>(buf_h), 0.0, 0.0, 1.0);
+            rlMatrixMode(RL_MODELVIEW);
+            rlLoadIdentity();
+        }
         ClearBackground(BLACK);
         Rectangle src = { 0, 0,
             static_cast<float>(constants::SCREEN_W),
