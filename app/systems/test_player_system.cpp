@@ -16,8 +16,6 @@
 #include <cmath>
 #include <random>
 
-#ifdef PLATFORM_HAS_KEYBOARD
-
 // ── Helpers ──────────────────────────────────────────────────
 
 static const char* shape_key_name(Shape s) {
@@ -119,8 +117,8 @@ void test_player_system(entt::registry& reg, float dt) {
     state->frame_count++;
     state->clean_planned(reg);
 
-    auto& input = reg.ctx().get<InputState>();
     auto& gs    = reg.ctx().get<GameState>();
+    auto& aq    = reg.ctx().get<ActionQueue>();
     auto* log   = reg.ctx().find<SessionLog>();
     auto* song  = reg.ctx().find<SongState>();
     float song_time = song ? song->song_time : 0.0f;
@@ -131,7 +129,7 @@ void test_player_system(entt::registry& reg, float dt) {
     if (gs.phase == GamePhase::Title || gs.phase == GamePhase::GameOver ||
         gs.phase == GamePhase::SongComplete) {
         if (gs.phase_timer > 0.5f) {
-            input.touch_up = true;
+            aq.tap(Button::Confirm);
             if (log) {
                 const char* phase_name =
                     (gs.phase == GamePhase::Title) ? "Title" :
@@ -158,7 +156,7 @@ void test_player_system(entt::registry& reg, float dt) {
     }
 
     if (gs.phase == GamePhase::Paused) {
-        input.touch_up = true;
+        aq.tap(Button::Confirm);
         return;
     }
 
@@ -315,9 +313,9 @@ void test_player_system(entt::registry& reg, float dt) {
         // Priority 1: Shape change
         if (action.needs_shape()) {
             switch (action.target_shape) {
-                case Shape::Circle:   input.key_1 = true; break;
-                case Shape::Square:   input.key_2 = true; break;
-                case Shape::Triangle: input.key_3 = true; break;
+                case Shape::Circle:   aq.tap(Button::ShapeCircle); break;
+                case Shape::Square:   aq.tap(Button::ShapeSquare); break;
+                case Shape::Triangle: aq.tap(Button::ShapeTri); break;
                 default: break;
             }
             action.mark_shape_done();
@@ -393,17 +391,17 @@ void test_player_system(entt::registry& reg, float dt) {
         if (action.needs_lane() && p_lane.target < 0 && state->swipe_cooldown_timer <= 0.0f
             && !zone_blocked && !blocked_by_shape && !move_would_fail_closer) {
             if (action.target_lane < p_lane.current) {
-                input.key_a = true;
+                aq.go(Direction::Left);
                 if (log) {
                     session_log_write(*log, song_time, "PLAYER",
-                        "EXECUTE key_a(SwipeLeft) for obstacle=%u beat=%d",
+                        "EXECUTE Go(Left) for obstacle=%u beat=%d",
                         static_cast<unsigned>(entt::to_integral(action.obstacle)), act_beat);
                 }
             } else if (action.target_lane > p_lane.current) {
-                input.key_d = true;
+                aq.go(Direction::Right);
                 if (log) {
                     session_log_write(*log, song_time, "PLAYER",
-                        "EXECUTE key_d(SwipeRight) for obstacle=%u beat=%d",
+                        "EXECUTE Go(Right) for obstacle=%u beat=%d",
                         static_cast<unsigned>(entt::to_integral(action.obstacle)), act_beat);
                 }
             }
@@ -435,17 +433,17 @@ void test_player_system(entt::registry& reg, float dt) {
         if (action.needs_vertical() && p_vstate.mode == VMode::Grounded
             && !vert_zone_blocked && !vert_blocked_by_shape) {
             if (action.target_vertical == VMode::Jumping) {
-                input.key_w = true;
+                aq.go(Direction::Up);
                 if (log) {
                     session_log_write(*log, song_time, "PLAYER",
-                        "EXECUTE key_w(Jump) for obstacle=%u beat=%d",
+                        "EXECUTE Go(Up) for obstacle=%u beat=%d",
                         static_cast<unsigned>(entt::to_integral(action.obstacle)), act_beat);
                 }
             } else if (action.target_vertical == VMode::Sliding) {
-                input.key_s = true;
+                aq.go(Direction::Down);
                 if (log) {
                     session_log_write(*log, song_time, "PLAYER",
-                        "EXECUTE key_s(Slide) for obstacle=%u beat=%d",
+                        "EXECUTE Go(Down) for obstacle=%u beat=%d",
                         static_cast<unsigned>(entt::to_integral(action.obstacle)), act_beat);
                 }
             }
@@ -468,8 +466,3 @@ void test_player_system(entt::registry& reg, float dt) {
         }
     }
 }
-
-#else
-// Non-keyboard stub — test player requires keyboard input flags
-void test_player_system(entt::registry&, float) {}
-#endif

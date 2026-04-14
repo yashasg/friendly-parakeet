@@ -178,7 +178,8 @@ TEST_CASE("spawn: obstacles have position at SPAWN_Y", "[spawn]") {
 TEST_CASE("game_state: title to level select on touch", "[gamestate]") {
     auto reg = make_registry();
     reg.ctx().get<GameState>().phase = GamePhase::Title;
-    reg.ctx().get<InputState>().touch_up = true;
+    auto& aq = reg.ctx().get<ActionQueue>();
+    aq.tap(Button::Confirm);
 
     game_state_system(reg, 0.016f);
 
@@ -192,10 +193,8 @@ TEST_CASE("game_state: game over button choice after delay", "[gamestate]") {
     auto& gs = reg.ctx().get<GameState>();
     gs.phase = GamePhase::GameOver;
     gs.phase_timer = 0.5f;
-    auto& input = reg.ctx().get<InputState>();
-    input.touch_up = true;
-    input.end_x = constants::SCREEN_W / 2.0f;
-    input.end_y = 940.0f;  // within "LEVEL SELECT" button (y=935..985)
+    auto& aq = reg.ctx().get<ActionQueue>();
+    aq.tap(Button::Position, constants::SCREEN_W / 2.0f, 940.0f);
 
     game_state_system(reg, 0.016f);
 
@@ -209,7 +208,8 @@ TEST_CASE("game_state: game over ignores touch during delay", "[gamestate]") {
     auto& gs = reg.ctx().get<GameState>();
     gs.phase = GamePhase::GameOver;
     gs.phase_timer = 0.2f;  // within 0.4s delay
-    reg.ctx().get<InputState>().touch_up = true;
+    auto& aq = reg.ctx().get<ActionQueue>();
+    aq.tap(Button::Confirm);
 
     game_state_system(reg, 0.016f);
 
@@ -301,7 +301,8 @@ TEST_CASE("game_state: paused to playing on touch", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
     gs.phase = GamePhase::Paused;
-    reg.ctx().get<InputState>().touch_up = true;
+    auto& aq = reg.ctx().get<ActionQueue>();
+    aq.tap(Button::Confirm);
 
     game_state_system(reg, 0.016f);
 
@@ -313,7 +314,7 @@ TEST_CASE("game_state: title stays title without touch", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
     gs.phase = GamePhase::Title;
-    reg.ctx().get<InputState>().touch_up = false;
+    // Empty ActionQueue — no actions
 
     game_state_system(reg, 0.5f);
 

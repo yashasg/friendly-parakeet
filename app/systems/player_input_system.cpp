@@ -7,16 +7,14 @@
 #include "../components/rhythm.h"
 #include "../constants.h"
 
-void player_action_system(entt::registry& reg, float /*dt*/) {
+void player_input_system(entt::registry& reg, float /*dt*/) {
     if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
 
-    auto& gesture = reg.ctx().get<GestureResult>();
-    auto& btn_evt = reg.ctx().get<ShapeButtonEvent>();
+    auto& aq = reg.ctx().get<ActionQueue>();
 
     auto* song = reg.ctx().find<SongState>();
     bool rhythm_mode = (song != nullptr && song->playing);
 
-    // Start (or restart) a shape window from the current song time.
     auto begin_shape_window = [&](PlayerShape& ps, ShapeWindow& sw, Shape shape) {
         sw.target_shape = shape;
         ps.previous = ps.current;
@@ -33,15 +31,24 @@ void player_action_system(entt::registry& reg, float /*dt*/) {
     auto view = reg.view<PlayerTag, PlayerShape, ShapeWindow, Lane, VerticalState>();
     for (auto [entity, pshape, swindow, lane, vstate] : view.each()) {
 
-        if (btn_evt.pressed && btn_evt.shape != Shape::Hexagon) {
+        // Shape changes from Tap actions
+        for (int i = 0; i < aq.count; ++i) {
+            auto& a = aq.actions[i];
+            if (a.verb != ActionVerb::Tap) continue;
+            if (a.button != Button::ShapeCircle &&
+                a.button != Button::ShapeSquare &&
+                a.button != Button::ShapeTri) continue;
+
+            auto pressed_shape = static_cast<Shape>(static_cast<uint8_t>(a.button));
+
             if (rhythm_mode) {
                 auto phase = static_cast<WindowPhase>(swindow.phase_raw);
 
                 if (phase == WindowPhase::Idle) {
-                    begin_shape_window(pshape, swindow, btn_evt.shape);
-                } else if (phase == WindowPhase::Active && btn_evt.shape != pshape.current) {
-                    begin_shape_window(pshape, swindow, btn_evt.shape);
-                } else if (phase == WindowPhase::Active && btn_evt.shape == pshape.current) {
+                    begin_shape_window(pshape, swindow, pressed_shape);
+                } else if (phase == WindowPhase::Active && pressed_shape != pshape.current) {
+                    begin_shape_window(pshape, swindow, pressed_shape);
+                } else if (phase == WindowPhase::Active && pressed_shape == pshape.current) {
                     swindow.window_timer = 0.0f;
                     swindow.window_start = song->song_time;
                     swindow.peak_time = song->song_time + song->half_window;
@@ -49,12 +56,11 @@ void player_action_system(entt::registry& reg, float /*dt*/) {
                     swindow.graded = false;
                 }
             } else {
-                // Legacy mode: instant shape change
-                if (btn_evt.shape != pshape.current) {
+                if (pressed_shape != pshape.current) {
                     pshape.previous = pshape.current;
-                    pshape.current  = btn_evt.shape;
+                    pshape.current  = pressed_shape;
                     pshape.morph_t  = 0.0f;
-                    auto si = static_cast<int>(btn_evt.shape);
+                    auto si = static_cast<int>(pressed_shape);
                     auto& sc = constants::SHAPE_COLORS[si];
                     reg.replace<DrawColor>(entity, sc.r, sc.g, sc.b, sc.a);
                     audio_push(reg.ctx().get<AudioQueue>(), SFX::ShapeShift);
@@ -62,16 +68,18 @@ void player_action_system(entt::registry& reg, float /*dt*/) {
             }
         }
 
-        // Lane change from swipe
-        if (gesture.gesture == SwipeGesture::SwipeLeft && lane.current > 0) {
-            lane.target = lane.current - 1;
-            lane.lerp_t = 0.0f;
+        // Lane change from Go actions
+        for (int i = 0; i < aq.count; ++i) {
+            auto& a = aq.actions[i];
+            if (a.verb != ActionVerb::Go) continue;
+            if (a.dir == Direction::Left && lane.current > 0) {
+                lane.target = lane.current - 1;
+                lane.lerp_t = 0.0f;
+            }
+            if (a.dir == Direction::Right && lane.current < constants::LANE_COUNT - 1) {
+                lane.target = lane.current + 1;
+                lane.lerp_t = 0.0f;
+            }
         }
-        if (gesture.gesture == SwipeGesture::SwipeRight && lane.current < constants::LANE_COUNT - 1) {
-            lane.target = lane.current + 1;
-            lane.lerp_t = 0.0f;
-        }
-
-        // Jump / slide disabled — game is shape + lane only
     }
 }

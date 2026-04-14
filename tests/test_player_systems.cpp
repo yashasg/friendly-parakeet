@@ -2,17 +2,16 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
 
-// ── player_action_system ─────────────────────────────────────
+// ── player_input_system ─────────────────────────────────────
 
 TEST_CASE("player_action: shape change on button press", "[player]") {
     auto reg = make_registry();
     make_player(reg);
 
-    auto& btn = reg.ctx().get<ShapeButtonEvent>();
-    btn.pressed = true;
-    btn.shape   = Shape::Triangle;
+    auto& aq = reg.ctx().get<ActionQueue>();
+    aq.tap(Button::ShapeTri);
 
-    player_action_system(reg, 0.016f);
+    player_input_system(reg, 0.016f);
 
     auto view = reg.view<PlayerTag, PlayerShape>();
     for (auto [e, ps] : view.each()) {
@@ -29,11 +28,10 @@ TEST_CASE("player_action: no shape change when same shape pressed", "[player]") 
     make_player(reg);
 
     // Player starts as Circle, press Circle
-    auto& btn = reg.ctx().get<ShapeButtonEvent>();
-    btn.pressed = true;
-    btn.shape   = Shape::Circle;
+    auto& aq = reg.ctx().get<ActionQueue>();
+    aq.tap(Button::ShapeCircle);
 
-    player_action_system(reg, 0.016f);
+    player_input_system(reg, 0.016f);
 
     auto view = reg.view<PlayerTag, PlayerShape>();
     for (auto [e, ps] : view.each()) {
@@ -47,10 +45,10 @@ TEST_CASE("player_action: swipe left changes lane", "[player]") {
     auto reg = make_registry();
     make_player(reg);
 
-    auto& gesture = reg.ctx().get<GestureResult>();
-    gesture.gesture = SwipeGesture::SwipeLeft;
+    auto& aq = reg.ctx().get<ActionQueue>();
+    aq.go(Direction::Left);
 
-    player_action_system(reg, 0.016f);
+    player_input_system(reg, 0.016f);
 
     auto view = reg.view<PlayerTag, Lane>();
     for (auto [e, lane] : view.each()) {
@@ -63,10 +61,10 @@ TEST_CASE("player_action: swipe right changes lane", "[player]") {
     auto reg = make_registry();
     make_player(reg);
 
-    auto& gesture = reg.ctx().get<GestureResult>();
-    gesture.gesture = SwipeGesture::SwipeRight;
+    auto& aq = reg.ctx().get<ActionQueue>();
+    aq.go(Direction::Right);
 
-    player_action_system(reg, 0.016f);
+    player_input_system(reg, 0.016f);
 
     auto view = reg.view<PlayerTag, Lane>();
     for (auto [e, lane] : view.each()) {
@@ -79,10 +77,10 @@ TEST_CASE("player_action: swipe left at lane 0 is clamped", "[player]") {
     auto p = make_player(reg);
     reg.get<Lane>(p).current = 0;
 
-    auto& gesture = reg.ctx().get<GestureResult>();
-    gesture.gesture = SwipeGesture::SwipeLeft;
+    auto& aq = reg.ctx().get<ActionQueue>();
+    aq.go(Direction::Left);
 
-    player_action_system(reg, 0.016f);
+    player_input_system(reg, 0.016f);
 
     CHECK(reg.get<Lane>(p).target == -1);  // no transition started
 }
@@ -92,10 +90,10 @@ TEST_CASE("player_action: swipe right at lane 2 is clamped", "[player]") {
     auto p = make_player(reg);
     reg.get<Lane>(p).current = 2;
 
-    auto& gesture = reg.ctx().get<GestureResult>();
-    gesture.gesture = SwipeGesture::SwipeRight;
+    auto& aq = reg.ctx().get<ActionQueue>();
+    aq.go(Direction::Right);
 
-    player_action_system(reg, 0.016f);
+    player_input_system(reg, 0.016f);
 
     CHECK(reg.get<Lane>(p).target == -1);
 }
@@ -104,10 +102,10 @@ TEST_CASE("player_action: swipe up does not jump (disabled)", "[player]") {
     auto reg = make_registry();
     make_player(reg);
 
-    auto& gesture = reg.ctx().get<GestureResult>();
-    gesture.gesture = SwipeGesture::SwipeUp;
+    auto& aq = reg.ctx().get<ActionQueue>();
+    aq.go(Direction::Up);
 
-    player_action_system(reg, 0.016f);
+    player_input_system(reg, 0.016f);
 
     auto view = reg.view<PlayerTag, VerticalState>();
     for (auto [e, vs] : view.each()) {
@@ -119,10 +117,10 @@ TEST_CASE("player_action: swipe down does not slide (disabled)", "[player]") {
     auto reg = make_registry();
     make_player(reg);
 
-    auto& gesture = reg.ctx().get<GestureResult>();
-    gesture.gesture = SwipeGesture::SwipeDown;
+    auto& aq = reg.ctx().get<ActionQueue>();
+    aq.go(Direction::Down);
 
-    player_action_system(reg, 0.016f);
+    player_input_system(reg, 0.016f);
 
     auto view = reg.view<PlayerTag, VerticalState>();
     for (auto [e, vs] : view.each()) {
@@ -136,10 +134,10 @@ TEST_CASE("player_action: cannot jump while already jumping", "[player]") {
     reg.get<VerticalState>(p).mode  = VMode::Jumping;
     reg.get<VerticalState>(p).timer = 0.2f;
 
-    auto& gesture = reg.ctx().get<GestureResult>();
-    gesture.gesture = SwipeGesture::SwipeUp;
+    auto& aq = reg.ctx().get<ActionQueue>();
+    aq.go(Direction::Up);
 
-    player_action_system(reg, 0.016f);
+    player_input_system(reg, 0.016f);
 
     // Timer should not reset
     CHECK(reg.get<VerticalState>(p).timer == 0.2f);
@@ -232,10 +230,10 @@ TEST_CASE("player_action: not in Playing phase skips processing", "[player]") {
     reg.ctx().get<GameState>().phase = GamePhase::Title;
     make_player(reg);
 
-    auto& gesture = reg.ctx().get<GestureResult>();
-    gesture.gesture = SwipeGesture::SwipeUp;
+    auto& aq = reg.ctx().get<ActionQueue>();
+    aq.go(Direction::Up);
 
-    player_action_system(reg, 0.016f);
+    player_input_system(reg, 0.016f);
 
     auto view = reg.view<PlayerTag, VerticalState>();
     for (auto [e, vs] : view.each()) {
@@ -260,10 +258,10 @@ TEST_CASE("player_action: cannot slide while already sliding", "[player]") {
     reg.get<VerticalState>(p).mode  = VMode::Sliding;
     reg.get<VerticalState>(p).timer = 0.3f;
 
-    auto& gesture = reg.ctx().get<GestureResult>();
-    gesture.gesture = SwipeGesture::SwipeDown;
+    auto& aq = reg.ctx().get<ActionQueue>();
+    aq.go(Direction::Down);
 
-    player_action_system(reg, 0.016f);
+    player_input_system(reg, 0.016f);
 
     // Timer should not reset
     CHECK(reg.get<VerticalState>(p).timer == 0.3f);
@@ -275,10 +273,10 @@ TEST_CASE("player_action: cannot slide while jumping", "[player]") {
     reg.get<VerticalState>(p).mode  = VMode::Jumping;
     reg.get<VerticalState>(p).timer = 0.2f;
 
-    auto& gesture = reg.ctx().get<GestureResult>();
-    gesture.gesture = SwipeGesture::SwipeDown;
+    auto& aq = reg.ctx().get<ActionQueue>();
+    aq.go(Direction::Down);
 
-    player_action_system(reg, 0.016f);
+    player_input_system(reg, 0.016f);
 
     CHECK(reg.get<VerticalState>(p).mode == VMode::Jumping);
     CHECK(reg.get<VerticalState>(p).timer == 0.2f);
@@ -290,10 +288,10 @@ TEST_CASE("player_action: cannot jump while sliding", "[player]") {
     reg.get<VerticalState>(p).mode  = VMode::Sliding;
     reg.get<VerticalState>(p).timer = 0.3f;
 
-    auto& gesture = reg.ctx().get<GestureResult>();
-    gesture.gesture = SwipeGesture::SwipeUp;
+    auto& aq = reg.ctx().get<ActionQueue>();
+    aq.go(Direction::Up);
 
-    player_action_system(reg, 0.016f);
+    player_input_system(reg, 0.016f);
 
     CHECK(reg.get<VerticalState>(p).mode == VMode::Sliding);
     CHECK(reg.get<VerticalState>(p).timer == 0.3f);

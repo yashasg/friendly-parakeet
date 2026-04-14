@@ -18,8 +18,6 @@ static entt::entity make_shape_gate_at_lane(entt::registry& reg, Shape shape, in
     auto obs = make_shape_gate(reg, shape, y);
     reg.get<Position>(obs).x = constants::LANE_X[lane];
     auto& song = reg.ctx().get<SongState>();
-    // Compute spawn_time so that the song-time-derived scroll formula
-    // places the obstacle at the requested y right now.
     float spawn_time = song.song_time - (y - constants::SPAWN_Y) / song.scroll_speed;
     float arrival = spawn_time + (constants::PLAYER_Y - constants::SPAWN_Y) / song.scroll_speed;
     reg.emplace<BeatInfo>(obs, 0, arrival, spawn_time);
@@ -41,16 +39,15 @@ static void tick_systems(entt::registry& reg, int frames, float dt = 1.0f / 60.0
         if (song && song->playing) song->song_time += dt;
 
         test_player_system(reg, dt);
-        gesture_system(reg, dt);
-        player_action_system(reg, dt);
+        player_input_system(reg, dt);
         shape_window_system(reg, dt);
         player_movement_system(reg, dt);
         scroll_system(reg, dt);
         collision_system(reg, dt);
         scoring_system(reg, dt);
         cleanup_system(reg, dt);
-        auto& input = reg.ctx().get<InputState>();
-        clear_input_events(input);
+        auto& aq = reg.ctx().get<ActionQueue>();
+        aq.clear();
 
         // Stop early if game over
         if (reg.ctx().get<GameState>().transition_pending) break;
@@ -107,8 +104,6 @@ TEST_CASE("test_player: shape+lane action is not blocked by own shape press", "[
 TEST_CASE("test_player: shape gate then lane block sequential", "[test_player]") {
     auto reg = make_test_player_registry();
     make_rhythm_player(reg);
-    // Space obstacles far enough apart that shape gate resolves well before
-    // lane block arrives. At scroll=520px/s, 400px gap ≈ 0.77s.
     make_shape_gate_at_lane(reg, Shape::Square, 1, constants::PLAYER_Y - 300.0f);
     make_lane_block_at(reg, 0b010, constants::PLAYER_Y - 900.0f);
     tick_systems(reg, 600);
@@ -120,7 +115,6 @@ TEST_CASE("test_player: shape gate then lane block sequential", "[test_player]")
 TEST_CASE("test_player: lane dodge waits for earlier shape gate", "[test_player]") {
     auto reg = make_test_player_registry();
     make_rhythm_player(reg);
-    // Gate at 300px above player, block at 1000px above (huge gap)
     make_shape_gate_at_lane(reg, Shape::Square, 1, constants::PLAYER_Y - 300.0f);
     make_lane_block_at(reg, 0b010, constants::PLAYER_Y - 1000.0f);
     tick_systems(reg, 800);
@@ -147,7 +141,15 @@ TEST_CASE("test_player: auto-starts from title screen", "[test_player]") {
     gs.phase = GamePhase::Title;
     gs.phase_timer = 1.0f;
     test_player_system(reg, 0.016f);
-    CHECK(reg.ctx().get<InputState>().touch_up);
+    auto& aq = reg.ctx().get<ActionQueue>();
+    bool has_confirm = false;
+    for (int i = 0; i < aq.count; ++i) {
+        if (aq.actions[i].verb == ActionVerb::Tap && aq.actions[i].button == Button::Confirm) {
+            has_confirm = true;
+            break;
+        }
+    }
+    CHECK(has_confirm);
 }
 
 // ── SWIPE COOLDOWN ───────────────────────────────────────────
@@ -167,10 +169,13 @@ TEST_CASE("test_player: swipe cooldown blocks immediate second swipe", "[test_pl
     tp.push_action(action);
     tp.mark_planned(obs);
 
-    auto& input = reg.ctx().get<InputState>();
+    auto& aq = reg.ctx().get<ActionQueue>();
     test_player_system(reg, 0.016f);
-    CHECK_FALSE(input.key_a);
-    CHECK_FALSE(input.key_d);
+    bool has_go = false;
+    for (int i = 0; i < aq.count; ++i) {
+        if (aq.actions[i].verb == ActionVerb::Go) { has_go = true; break; }
+    }
+    CHECK_FALSE(has_go);
 }
 
 // ── PRIORITY: don't move for far obstacle if it fails a closer one ──
@@ -179,16 +184,11 @@ TEST_CASE("test_player: won't move for far obstacle if closer one blocks that la
     auto reg = make_test_player_registry();
     make_rhythm_player(reg);
 
-    // Player in lane 1 (center).
-    // Closer lane_block: blocks lanes 0,2 — lane 1 is safe (no action needed).
-    // Farther lane_block: blocks lanes 1,2 — must go to lane 0.
-    // Moving to lane 0 would fail the closer block (lane 0 is blocked there).
-    // Player must WAIT for the closer block to pass before moving.
-    float close_y = constants::PLAYER_Y - 300.0f;  // arrives first
-    float far_y   = constants::PLAYER_Y - 900.0f;  // arrives second
+    float close_y = constants::PLAYER_Y - 300.0f;
+    float far_y   = constants::PLAYER_Y - 900.0f;
 
-    make_lane_block_at(reg, 0b101, close_y);  // blocks 0,2 → lane 1 safe
-    make_lane_block_at(reg, 0b110, far_y);    // blocks 1,2 → must go to lane 0
+    make_lane_block_at(reg, 0b101, close_y);
+    make_lane_block_at(reg, 0b110, far_y);
 
     tick_systems(reg, 800);
     CHECK(survived(reg));
@@ -198,11 +198,6 @@ TEST_CASE("test_player: sequential lane blocks with conflicting safe lanes", "[t
     auto reg = make_test_player_registry();
     make_rhythm_player(reg);
 
-    // Three lane_blocks in sequence. Player starts lane 1.
-    // #1 blocks 0,2 → stay lane 1
-    // #2 blocks 0,1 → go to lane 2
-    // #3 blocks 1,2 → go to lane 0
-    // Player must handle each in order without failing earlier ones.
     make_lane_block_at(reg, 0b101, constants::PLAYER_Y - 300.0f);
     make_lane_block_at(reg, 0b011, constants::PLAYER_Y - 700.0f);
     make_lane_block_at(reg, 0b110, constants::PLAYER_Y - 1100.0f);
@@ -215,8 +210,6 @@ TEST_CASE("test_player: shape gate then lane block requiring opposite direction"
     auto reg = make_test_player_registry();
     make_rhythm_player(reg);
 
-    // Shape gate at lane 1 (player already there), then lane block that
-    // blocks lane 1 → must move. But only AFTER shape gate resolves.
     make_shape_gate_at_lane(reg, Shape::Square, 1, constants::PLAYER_Y - 300.0f);
     make_lane_block_at(reg, 0b010, constants::PLAYER_Y - 900.0f);
 

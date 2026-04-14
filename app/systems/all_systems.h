@@ -8,9 +8,6 @@ void input_system(entt::registry& reg, float raw_dt);
 // Phase 0.5: Test player AI (injects into InputState key flags)
 void test_player_system(entt::registry& reg, float dt);
 
-// Phase 1: Input classification
-void gesture_system(entt::registry& reg, float dt);
-
 // Phase 2: Game State
 void game_state_system(entt::registry& reg, float dt);
 void level_select_system(entt::registry& reg, float dt);
@@ -20,7 +17,7 @@ void song_playback_system(entt::registry& reg, float dt);
 void beat_scheduler_system(entt::registry& reg, float dt);
 
 // Phase 4: Player
-void player_action_system(entt::registry& reg, float dt);
+void player_input_system(entt::registry& reg, float dt);
 void shape_window_system(entt::registry& reg, float dt);
 void player_movement_system(entt::registry& reg, float dt);
 

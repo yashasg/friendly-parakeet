@@ -89,8 +89,7 @@ TEST_CASE("ecs: make_registry creates all singletons", "[ecs]") {
     auto reg = make_registry();
     // These should not throw
     static_cast<void>(reg.ctx().get<InputState>());
-    static_cast<void>(reg.ctx().get<GestureResult>());
-    static_cast<void>(reg.ctx().get<ShapeButtonEvent>());
+    static_cast<void>(reg.ctx().get<ActionQueue>());
     static_cast<void>(reg.ctx().get<GameState>());
     static_cast<void>(reg.ctx().get<ScoreState>());
     static_cast<void>(reg.ctx().get<BurnoutState>());
@@ -120,12 +119,9 @@ TEST_CASE("components: Velocity default is zero", "[components]") {
     CHECK(v.dy == 0.0f);
 }
 
-TEST_CASE("components: GestureResult default is None", "[components]") {
-    GestureResult g{};
-    CHECK(g.gesture == SwipeGesture::None);
-    CHECK(g.magnitude == 0.0f);
-    CHECK(g.hit_x == 0.0f);
-    CHECK(g.hit_y == 0.0f);
+TEST_CASE("components: ActionQueue default is empty", "[components]") {
+    ActionQueue aq{};
+    CHECK(aq.count == 0);
 }
 
 TEST_CASE("components: Lifetime defaults", "[components]") {
@@ -159,9 +155,12 @@ TEST_CASE("components: ParticleData construction", "[components]") {
     CHECK(pd.size == 10.0f);
 }
 
-TEST_CASE("components: ShapeButtonEvent defaults to not pressed", "[components]") {
-    ShapeButtonEvent sbe{};
-    CHECK_FALSE(sbe.pressed);
+TEST_CASE("components: PlayerAction construction", "[components]") {
+    ActionQueue aq{};
+    aq.tap(Button::ShapeCircle);
+    CHECK(aq.count == 1);
+    CHECK(aq.actions[0].verb == ActionVerb::Tap);
+    CHECK(aq.actions[0].button == Button::ShapeCircle);
 }
 
 TEST_CASE("ecs: make_combo_gate creates proper entity", "[ecs]") {

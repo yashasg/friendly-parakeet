@@ -23,8 +23,7 @@
 static entt::registry make_bench_registry() {
     entt::registry reg;
     reg.ctx().emplace<InputState>();
-    reg.ctx().emplace<GestureResult>();
-    reg.ctx().emplace<ShapeButtonEvent>();
+    reg.ctx().emplace<ActionQueue>();
     reg.ctx().emplace<GameState>(GameState{
         GamePhase::Playing, GamePhase::Playing, 0.0f, false, GamePhase::Playing, 0.0f
     });
@@ -179,29 +178,15 @@ TEST_CASE("Bench: scoring_system", "[bench]") {
     };
 }
 
-TEST_CASE("Bench: gesture_system", "[bench]") {
-    BENCHMARK_ADVANCED("swipe classification")(Catch::Benchmark::Chronometer meter) {
-        auto reg = make_bench_registry();
-        auto& input = reg.ctx().get<InputState>();
-        input.touch_up = true;
-        input.start_x = 100.0f; input.start_y = 400.0f;
-        input.end_x = 300.0f;   input.end_y = 400.0f;
-        input.duration = 0.1f;
-        meter.measure([&] { gesture_system(reg, DT); });
-    };
-}
-
-TEST_CASE("Bench: player_action + movement", "[bench]") {
+TEST_CASE("Bench: player_input + movement", "[bench]") {
     BENCHMARK_ADVANCED("shape change + lane switch")(Catch::Benchmark::Chronometer meter) {
         auto reg = make_bench_registry();
         make_bench_player(reg);
-        auto& btn = reg.ctx().get<ShapeButtonEvent>();
-        btn.pressed = true;
-        btn.shape = Shape::Triangle;
-        auto& gesture = reg.ctx().get<GestureResult>();
-        gesture.gesture = SwipeGesture::SwipeRight;
+        auto& aq = reg.ctx().get<ActionQueue>();
+        aq.tap(Button::ShapeTri);
+        aq.go(Direction::Right);
         meter.measure([&] {
-            player_action_system(reg, DT);
+            player_input_system(reg, DT);
             player_movement_system(reg, DT);
         });
     };
@@ -238,9 +223,8 @@ TEST_CASE("Bench: full frame (typical)", "[bench]") {
         spawn_obstacles(reg, 6);
         spawn_particles(reg, 20);
         meter.measure([&] {
-            gesture_system(reg, DT);
             game_state_system(reg, DT);
-            player_action_system(reg, DT);
+            player_input_system(reg, DT);
             player_movement_system(reg, DT);
             difficulty_system(reg, DT);
             scroll_system(reg, DT);
@@ -261,9 +245,8 @@ TEST_CASE("Bench: full frame (stress)", "[bench]") {
         spawn_obstacles(reg, 50);
         spawn_particles(reg, 50);
         meter.measure([&] {
-            gesture_system(reg, DT);
             game_state_system(reg, DT);
-            player_action_system(reg, DT);
+            player_input_system(reg, DT);
             player_movement_system(reg, DT);
             difficulty_system(reg, DT);
             scroll_system(reg, DT);

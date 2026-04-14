@@ -4,12 +4,13 @@
 #include "../platform.h"
 #include <cstdint>
 
-// Tracks which input device initiated the current gesture so that
-// mouse and touch events don't interfere on hybrid devices.
+// ── Raw input state (internal to input_system) ──────────────────────────────
+// Tracks touch/mouse hardware state. Downstream systems should read
+// ActionQueue, not this struct — except for quit_requested.
+
 enum class InputSource : uint8_t { None, Mouse, Touch };
 
 struct InputState {
-    // ── Touch / pointer (all platforms) ──────────────────────
     bool  touch_down     = false;
     bool  touch_up       = false;
     bool  touching       = false;
@@ -21,54 +22,62 @@ struct InputState {
     float duration = 0.0f;
 
     InputSource active_source = InputSource::None;
-    bool was_focused = true;  // edge detection for focus-loss auto-pause
-
-#ifdef PLATFORM_HAS_KEYBOARD
-    // ── Keyboard — one-frame pulse flags ─────────────────────
-    // Set to true by IsKeyPressed() in input_system,
-    // cleared by clear_input_events() at the start of each frame.
-    bool key_w = false;   // jump
-    bool key_a = false;   // strafe left
-    bool key_s = false;   // slide / crouch
-    bool key_d = false;   // strafe right
-    bool key_1 = false;   // shape: Circle
-    bool key_2 = false;   // shape: Triangle
-    bool key_3 = false;   // shape: Square
-    bool key_enter = false; // confirm / start
-#endif
+    bool was_focused = true;
 };
 
 inline void clear_input_events(InputState& input) {
     input.touch_down = false;
     input.touch_up   = false;
-#ifdef PLATFORM_HAS_KEYBOARD
-    input.key_w = false;
-    input.key_a = false;
-    input.key_s = false;
-    input.key_d = false;
-    input.key_1 = false;
-    input.key_2 = false;
-    input.key_3 = false;
-    input.key_enter = false;
-#endif
 }
 
-enum class SwipeGesture : uint8_t {
-    None       = 0,
-    SwipeLeft  = 1,
-    SwipeRight = 2,
-    SwipeUp    = 3,
-    SwipeDown  = 4
+// ── Player Actions ──────────────────────────────────────────────────────────
+// All input (keyboard, mouse, touch, swipe) maps to one of two verbs:
+//   Go(Direction)  — directional intent (lane change, menu navigate)
+//   Tap(Button)    — selection intent (shape morph, confirm, positional UI)
+//
+// The input system is the sole producer. All other systems are consumers.
+
+enum class Direction : uint8_t { Left, Right, Up, Down };
+
+enum class Button : uint8_t {
+    ShapeCircle  = 0,
+    ShapeSquare  = 1,
+    ShapeTri     = 2,
+    Confirm      = 3,
+    Position     = 4,   // carries x,y coordinates
 };
 
-struct GestureResult {
-    SwipeGesture gesture   = SwipeGesture::None;
-    float   magnitude = 0.0f;
-    float   hit_x     = 0.0f;
-    float   hit_y     = 0.0f;
+enum class ActionVerb : uint8_t { Go, Tap };
+
+struct PlayerAction {
+    ActionVerb verb = ActionVerb::Go;
+    union {
+        Direction dir;
+        Button    button;
+    };
+    float x = 0.0f, y = 0.0f;
 };
 
-struct ShapeButtonEvent {
-    bool  pressed = false;
-    Shape shape   = Shape::Circle;
+struct ActionQueue {
+    static constexpr int MAX = 8;
+    PlayerAction actions[MAX] = {};
+    int count = 0;
+
+    void go(Direction d) {
+        if (count < MAX) {
+            auto& a = actions[count++];
+            a.verb = ActionVerb::Go;
+            a.dir = d;
+            a.x = 0.0f; a.y = 0.0f;
+        }
+    }
+    void tap(Button b, float px = 0.0f, float py = 0.0f) {
+        if (count < MAX) {
+            auto& a = actions[count++];
+            a.verb = ActionVerb::Tap;
+            a.button = b;
+            a.x = px; a.y = py;
+        }
+    }
+    void clear() { count = 0; }
 };
