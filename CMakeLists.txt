@@ -77,7 +77,7 @@ endforeach()
 file(GLOB SYSTEM_SOURCES app/systems/*.cpp)
 # Exclude render_system.cpp from the library (requires raylib renderer)
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "render_system\\.cpp$")
-list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "input_system\\.cpp$")
+list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "/input_system\\.cpp$")
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "song_playback_system\\.cpp$")
 
 add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES} app/beat_map_loader.cpp app/session_logger.cpp)

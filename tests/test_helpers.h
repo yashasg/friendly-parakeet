@@ -22,8 +22,7 @@
 inline entt::registry make_registry() {
     entt::registry reg;
     reg.ctx().emplace<InputState>();
-    reg.ctx().emplace<GestureResult>();
-    reg.ctx().emplace<ShapeButtonEvent>();
+    reg.ctx().emplace<ActionQueue>();
     reg.ctx().emplace<GameState>(GameState{
         GamePhase::Playing, GamePhase::Playing, 0.0f, false, GamePhase::Playing, 0.0f
     });

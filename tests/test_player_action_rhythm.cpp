@@ -2,7 +2,7 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
 
-// ── player_action: rhythm mode ───────────────────────────────
+// ── player_input_system: rhythm mode ───────────────────────────────
 
 TEST_CASE("player_action: rhythm mode starts window on button press from Idle", "[player_rhythm]") {
     auto reg = make_rhythm_registry();
@@ -12,11 +12,10 @@ TEST_CASE("player_action: rhythm mode starts window on button press from Idle", 
     auto& song = reg.ctx().get<SongState>();
     song.song_time = 5.0f;
 
-    auto& btn = reg.ctx().get<ShapeButtonEvent>();
-    btn.pressed = true;
-    btn.shape = Shape::Circle;
+    auto& aq = reg.ctx().get<ActionQueue>();
+    aq.tap(Button::ShapeCircle);
 
-    player_action_system(reg, 0.016f);
+    player_input_system(reg, 0.016f);
 
     CHECK(sw.target_shape == Shape::Circle);
     CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::MorphIn));
@@ -36,11 +35,10 @@ TEST_CASE("player_action: rhythm mode calculates peak_time correctly", "[player_
     auto& song = reg.ctx().get<SongState>();
     song.song_time = 10.0f;
 
-    auto& btn = reg.ctx().get<ShapeButtonEvent>();
-    btn.pressed = true;
-    btn.shape = Shape::Triangle;
+    auto& aq = reg.ctx().get<ActionQueue>();
+    aq.tap(Button::ShapeTri);
 
-    player_action_system(reg, 0.016f);
+    player_input_system(reg, 0.016f);
 
     auto& sw = reg.get<ShapeWindow>(player);
     float expected_peak = 10.0f + song.morph_duration + song.half_window;
@@ -56,11 +54,10 @@ TEST_CASE("player_action: rhythm mode ignores same shape during Active (spam pro
     ps.current = Shape::Square;
     sw.window_timer = 0.1f;
 
-    auto& btn = reg.ctx().get<ShapeButtonEvent>();
-    btn.pressed = true;
-    btn.shape = Shape::Square;  // Same shape as current
+    auto& aq = reg.ctx().get<ActionQueue>();
+    aq.tap(Button::ShapeSquare);
 
-    player_action_system(reg, 0.016f);
+    player_input_system(reg, 0.016f);
 
     // Same shape re-press: window timer resets for next obstacle
     CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::Active));
@@ -79,11 +76,10 @@ TEST_CASE("player_action: rhythm mode interrupts Active with different shape", "
     ps.current = Shape::Square;
     sw.window_timer = 0.3f;
 
-    auto& btn = reg.ctx().get<ShapeButtonEvent>();
-    btn.pressed = true;
-    btn.shape = Shape::Triangle;  // Different from current
+    auto& aq = reg.ctx().get<ActionQueue>();
+    aq.tap(Button::ShapeTri);
 
-    player_action_system(reg, 0.016f);
+    player_input_system(reg, 0.016f);
 
     CHECK(sw.target_shape == Shape::Triangle);
     CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::MorphIn));
@@ -93,29 +89,13 @@ TEST_CASE("player_action: rhythm mode interrupts Active with different shape", "
     CHECK(sw.graded == false);
 }
 
-TEST_CASE("player_action: rhythm mode ignores Hexagon button press", "[player_rhythm]") {
+TEST_CASE("player_action: rhythm mode no action when no tap in queue", "[player_rhythm]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
     auto& sw = reg.get<ShapeWindow>(player);
 
-    auto& btn = reg.ctx().get<ShapeButtonEvent>();
-    btn.pressed = true;
-    btn.shape = Shape::Hexagon;
-
-    player_action_system(reg, 0.016f);
-
-    CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::Idle));
-}
-
-TEST_CASE("player_action: rhythm mode no action when button not pressed", "[player_rhythm]") {
-    auto reg = make_rhythm_registry();
-    auto player = make_rhythm_player(reg);
-    auto& sw = reg.get<ShapeWindow>(player);
-
-    auto& btn = reg.ctx().get<ShapeButtonEvent>();
-    btn.pressed = false;
-
-    player_action_system(reg, 0.016f);
+    // Empty ActionQueue
+    player_input_system(reg, 0.016f);
 
     CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::Idle));
 }
@@ -128,11 +108,10 @@ TEST_CASE("player_action: rhythm mode does not interrupt MorphIn phase", "[playe
     sw.target_shape = Shape::Circle;
     sw.window_timer = 0.05f;
 
-    auto& btn = reg.ctx().get<ShapeButtonEvent>();
-    btn.pressed = true;
-    btn.shape = Shape::Square;
+    auto& aq = reg.ctx().get<ActionQueue>();
+    aq.tap(Button::ShapeSquare);
 
-    player_action_system(reg, 0.016f);
+    player_input_system(reg, 0.016f);
 
     // MorphIn should not be interrupted (only Active can be interrupted)
     CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::MorphIn));
@@ -146,27 +125,25 @@ TEST_CASE("player_action: rhythm mode does not interrupt MorphOut phase", "[play
     sw.phase_raw = static_cast<uint8_t>(WindowPhase::MorphOut);
     sw.window_timer = 0.02f;
 
-    auto& btn = reg.ctx().get<ShapeButtonEvent>();
-    btn.pressed = true;
-    btn.shape = Shape::Triangle;
+    auto& aq = reg.ctx().get<ActionQueue>();
+    aq.tap(Button::ShapeTri);
 
-    player_action_system(reg, 0.016f);
+    player_input_system(reg, 0.016f);
 
     // MorphOut should not be interrupted
     CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::MorphOut));
 }
 
-// ── player_action: legacy mode (no SongState) ────────────────
+// ── player_input_system: legacy mode (no SongState) ────────────────
 
 TEST_CASE("player_action: legacy mode instant shape change", "[player_legacy]") {
     auto reg = make_registry();
     auto player = make_player(reg);
 
-    auto& btn = reg.ctx().get<ShapeButtonEvent>();
-    btn.pressed = true;
-    btn.shape = Shape::Triangle;
+    auto& aq = reg.ctx().get<ActionQueue>();
+    aq.tap(Button::ShapeTri);
 
-    player_action_system(reg, 0.016f);
+    player_input_system(reg, 0.016f);
 
     auto& ps = reg.get<PlayerShape>(player);
     CHECK(ps.current == Shape::Triangle);
@@ -179,27 +156,26 @@ TEST_CASE("player_action: legacy mode no change for same shape", "[player_legacy
     auto reg = make_registry();
     auto player = make_player(reg);
 
-    auto& btn = reg.ctx().get<ShapeButtonEvent>();
-    btn.pressed = true;
-    btn.shape = Shape::Circle;  // same as default
+    auto& aq = reg.ctx().get<ActionQueue>();
+    aq.tap(Button::ShapeCircle);
 
-    player_action_system(reg, 0.016f);
+    player_input_system(reg, 0.016f);
 
     auto& ps = reg.get<PlayerShape>(player);
     CHECK(ps.current == Shape::Circle);
     CHECK(reg.ctx().get<AudioQueue>().count == 0);
 }
 
-// ── player_action: swipe actions still work in rhythm mode ───
+// ── player_input_system: swipe actions still work in rhythm mode ───
 
 TEST_CASE("player_action: swipe left works in rhythm mode", "[player_rhythm]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
 
-    auto& gesture = reg.ctx().get<GestureResult>();
-    gesture.gesture = SwipeGesture::SwipeLeft;
+    auto& aq = reg.ctx().get<ActionQueue>();
+    aq.go(Direction::Left);
 
-    player_action_system(reg, 0.016f);
+    player_input_system(reg, 0.016f);
 
     CHECK(reg.get<Lane>(player).target == 0);
 }
@@ -208,10 +184,10 @@ TEST_CASE("player_action: jump disabled in rhythm mode", "[player_rhythm]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
 
-    auto& gesture = reg.ctx().get<GestureResult>();
-    gesture.gesture = SwipeGesture::SwipeUp;
+    auto& aq = reg.ctx().get<ActionQueue>();
+    aq.go(Direction::Up);
 
-    player_action_system(reg, 0.016f);
+    player_input_system(reg, 0.016f);
 
     CHECK(reg.get<VerticalState>(player).mode == VMode::Grounded);
 }

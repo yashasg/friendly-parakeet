@@ -6,7 +6,6 @@
 #include "../components/audio.h"
 #include "../components/rhythm.h"
 #include "../constants.h"
-#include "../platform.h"
 
 static void enter_game_over(entt::registry& reg) {
     auto& score = reg.ctx().get<ScoreState>();
@@ -36,6 +35,7 @@ static void enter_song_complete(entt::registry& reg) {
 void game_state_system(entt::registry& reg, float dt) {
     auto& gs    = reg.ctx().get<GameState>();
     auto& input = reg.ctx().get<InputState>();
+    auto& aq    = reg.ctx().get<ActionQueue>();
 
     gs.phase_timer += dt;
 
@@ -68,28 +68,32 @@ void game_state_system(entt::registry& reg, float dt) {
         return;
     }
 
-    // Title → LevelSelect on any touch (except exit button) or Enter/Space
-#ifdef PLATFORM_HAS_KEYBOARD
-    if (gs.phase == GamePhase::Title && input.key_enter) {
-        gs.transition_pending = true;
-        gs.next_phase = GamePhase::LevelSelect;
-    }
-#endif
-    if (gs.phase == GamePhase::Title && input.touch_up) {
-        float tx = input.end_x;
-        float ty = input.end_y;
-        // Exit button at bottom
-        constexpr float EXIT_W = 200.0f;
-        constexpr float EXIT_H = 50.0f;
-        constexpr float EXIT_Y = 1050.0f;
-        float exit_x = (constants::SCREEN_W - EXIT_W) / 2.0f;
-        if (tx >= exit_x && tx <= exit_x + EXIT_W && ty >= EXIT_Y && ty <= EXIT_Y + EXIT_H) {
-            #ifndef PLATFORM_WEB
-            input.quit_requested = true;
-            #endif
-        } else {
-            gs.transition_pending = true;
-            gs.next_phase = GamePhase::LevelSelect;
+    // Title → LevelSelect on any tap
+    if (gs.phase == GamePhase::Title) {
+        for (int i = 0; i < aq.count; ++i) {
+            auto& a = aq.actions[i];
+            if (a.verb != ActionVerb::Tap) continue;
+
+            if (a.button == Button::Position) {
+                float tx = a.x;
+                float ty = a.y;
+                constexpr float EXIT_W = 200.0f;
+                constexpr float EXIT_H = 50.0f;
+                constexpr float EXIT_Y = 1050.0f;
+                float exit_x = (constants::SCREEN_W - EXIT_W) / 2.0f;
+                if (tx >= exit_x && tx <= exit_x + EXIT_W && ty >= EXIT_Y && ty <= EXIT_Y + EXIT_H) {
+                    #ifndef PLATFORM_WEB
+                    input.quit_requested = true;
+                    #endif
+                } else {
+                    gs.transition_pending = true;
+                    gs.next_phase = GamePhase::LevelSelect;
+                }
+            } else if (a.button == Button::Confirm) {
+                gs.transition_pending = true;
+                gs.next_phase = GamePhase::LevelSelect;
+            }
+            break;
         }
     }
 
@@ -105,24 +109,33 @@ void game_state_system(entt::registry& reg, float dt) {
 
     // End screen button detection (shared by GameOver and SongComplete)
     if ((gs.phase == GamePhase::GameOver || gs.phase == GamePhase::SongComplete)
-        && input.touch_up && gs.phase_timer > 0.4f) {
-        float tx = input.end_x;
-        float ty = input.end_y;
-        constexpr float BTN_W = 280.0f;
-        constexpr float BTN_H = 50.0f;
-        constexpr float BTN_GAP = 15.0f;
-        constexpr float BTN_PAD = 10.0f;
-        float btn_x = (constants::SCREEN_W - BTN_W) / 2.0f;
-        float btn_y1 = 870.0f;
-        float btn_y2 = btn_y1 + BTN_H + BTN_GAP;
-        float btn_y3 = btn_y2 + BTN_H + BTN_GAP;
-        if (tx >= btn_x - BTN_PAD && tx <= btn_x + BTN_W + BTN_PAD) {
-            if (ty >= btn_y1 - BTN_PAD && ty <= btn_y1 + BTN_H + BTN_PAD)
+        && gs.phase_timer > 0.4f) {
+        for (int i = 0; i < aq.count; ++i) {
+            auto& a = aq.actions[i];
+            if (a.verb != ActionVerb::Tap) continue;
+            if (a.button == Button::Position) {
+                float tx = a.x;
+                float ty = a.y;
+                constexpr float BTN_W = 280.0f;
+                constexpr float BTN_H = 50.0f;
+                constexpr float BTN_GAP = 15.0f;
+                constexpr float BTN_PAD = 10.0f;
+                float btn_x = (constants::SCREEN_W - BTN_W) / 2.0f;
+                float btn_y1 = 870.0f;
+                float btn_y2 = btn_y1 + BTN_H + BTN_GAP;
+                float btn_y3 = btn_y2 + BTN_H + BTN_GAP;
+                if (tx >= btn_x - BTN_PAD && tx <= btn_x + BTN_W + BTN_PAD) {
+                    if (ty >= btn_y1 - BTN_PAD && ty <= btn_y1 + BTN_H + BTN_PAD)
+                        gs.end_choice = EndScreenChoice::Restart;
+                    else if (ty >= btn_y2 - BTN_PAD && ty <= btn_y2 + BTN_H + BTN_PAD)
+                        gs.end_choice = EndScreenChoice::LevelSelect;
+                    else if (ty >= btn_y3 - BTN_PAD && ty <= btn_y3 + BTN_H + BTN_PAD)
+                        gs.end_choice = EndScreenChoice::MainMenu;
+                }
+            } else if (a.button == Button::Confirm) {
                 gs.end_choice = EndScreenChoice::Restart;
-            else if (ty >= btn_y2 - BTN_PAD && ty <= btn_y2 + BTN_H + BTN_PAD)
-                gs.end_choice = EndScreenChoice::LevelSelect;
-            else if (ty >= btn_y3 - BTN_PAD && ty <= btn_y3 + BTN_H + BTN_PAD)
-                gs.end_choice = EndScreenChoice::MainMenu;
+            }
+            break;
         }
     }
 
@@ -138,11 +151,11 @@ void game_state_system(entt::registry& reg, float dt) {
         gs.end_choice = EndScreenChoice::None;
     }
 
-    // Paused → resume on touch or Enter
-    bool pause_resume = input.touch_up;
-#ifdef PLATFORM_HAS_KEYBOARD
-    pause_resume = pause_resume || input.key_enter;
-#endif
+    // Paused → resume on any Tap action
+    bool pause_resume = false;
+    for (int i = 0; i < aq.count; ++i) {
+        if (aq.actions[i].verb == ActionVerb::Tap) { pause_resume = true; break; }
+    }
     if (gs.phase == GamePhase::Paused && pause_resume) {
         gs.previous_phase = gs.phase;
         gs.phase = GamePhase::Playing;

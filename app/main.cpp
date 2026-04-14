@@ -37,12 +37,11 @@ static constexpr float MAX_ACCUM = 0.1f;
 // Runs all fixed-timestep systems once. Called from both the native
 // and Emscripten main loops so the system list is defined in one place.
 static void tick_fixed_systems(entt::registry& reg, float dt) {
-    gesture_system(reg, dt);
     game_state_system(reg, dt);
     level_select_system(reg, dt);
     song_playback_system(reg, dt);
     beat_scheduler_system(reg, dt);
-    player_action_system(reg, dt);
+    player_input_system(reg, dt);
     shape_window_system(reg, dt);
     player_movement_system(reg, dt);
     difficulty_system(reg, dt);
@@ -230,8 +229,7 @@ int main(int argc, char* argv[]) {
     }
 
     reg.ctx().emplace<InputState>();
-    reg.ctx().emplace<GestureResult>();
-    reg.ctx().emplace<ShapeButtonEvent>();
+    reg.ctx().emplace<ActionQueue>();
     reg.ctx().emplace<GameState>(GameState{
         .phase          = GamePhase::Title,
         .previous_phase = GamePhase::Title,
