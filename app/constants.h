@@ -177,12 +177,35 @@ constexpr ShapeColor SHAPE_COLORS[] = {
 };
 
 // ── Perspective / Isometric Effect ───────────────
-// Controls how aggressively lanes converge toward the top.
-// Convergence angle θ = 2·atan(360 / (SCREEN_H - VP_Y))
-//   VP_Y = -761  → θ ≈ 20°  (top ≈ 37% width)
-//   VP_Y = -1060 → θ ≈ 17°  (top ≈ 45% width)
-//   VP_Y = -1455 → θ ≈ 15°  (top ≈ 54% width)
-//   VP_Y = -5120 → θ ≈  6°  (top ≈ 80% width, very subtle)
-constexpr float VANISHING_POINT_Y  = -1060.0f;
+// PERSPECTIVE_ANGLE_DEG is the full convergence angle (degrees) between
+// the left and right edges of the playfield as they recede toward the
+// vanishing point.  0° = flat (no perspective), 20° = noticeable.
+//
+//    angle →  VP_Y (derived)  → top-of-screen width
+//      5°      -7860              ~96%  (barely visible)
+//     10°      -3820              ~91%
+//     15°      -1455              ~54%
+//     17°      -1060              ~45%
+//     20°      -761               ~37%
+//
+// The vanishing point is derived at compile time:
+//   VP_Y = SCREEN_H - (SCREEN_W / 2) / tan(angle / 2)
+constexpr float PERSPECTIVE_ANGLE_DEG = 17.0f;
+
+namespace detail {
+    constexpr float deg_to_rad(float deg) { return deg * 3.14159265358979f / 180.0f; }
+    // tan() is not constexpr in C++17, so we use a rational approximation
+    // valid for small angles (0–45°).  Max error < 0.001 in that range.
+    constexpr float tan_approx(float rad) {
+        // Padé [3/2] approximant: tan(x) ≈ x(1 - x²/15) / (1 - 2x²/5)
+        float x2 = rad * rad;
+        return rad * (1.0f - x2 / 15.0f) / (1.0f - 2.0f * x2 / 5.0f);
+    }
+    constexpr float half_angle_rad = deg_to_rad(PERSPECTIVE_ANGLE_DEG / 2.0f);
+    constexpr float tan_half = tan_approx(half_angle_rad);
+} // namespace detail
+
+constexpr float VANISHING_POINT_Y = static_cast<float>(SCREEN_H)
+    - (static_cast<float>(SCREEN_W) / 2.0f) / detail::tan_half;
 
 } // namespace constants

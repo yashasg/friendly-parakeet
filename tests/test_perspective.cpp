@@ -100,52 +100,51 @@ TEST_CASE("perspective::project — lateral ordering with three lanes", "[perspe
 }
 
 // ── Known values at key y positions ─────────────────────────────────────────
-// Manual depth calculations (VP_Y = VANISHING_POINT_Y, range = SCREEN_H − VP_Y):
-//   depth = (y − VP_Y) / range
-//   project_x(x, y) = 360 + (x − 360) * clamp(depth, 0.01, 1.5)
+// Known-value tests compute expected results from the actual constants so
+// they stay correct regardless of PERSPECTIVE_ANGLE_DEG / VP_Y tuning.
+
+static float expected_px(float x, float y) {
+    constexpr float center = constants::SCREEN_W / 2.0f;
+    constexpr float vp_y   = constants::VANISHING_POINT_Y;
+    constexpr float range  = static_cast<float>(constants::SCREEN_H) - vp_y;
+    float depth = (y - vp_y) / range;
+    if (depth < 0.01f) depth = 0.01f;
+    if (depth > 1.5f)  depth = 1.5f;
+    return center + (x - center) * depth;
+}
 
 TEST_CASE("perspective::project — known value at vanishing point", "[perspective]") {
-    // VP_Y = −1060; depth = (−1060 + 1060) / 2340 = 0 → clamped to 0.01
-    // project(0, VP_Y) = 360 + (0−360)*0.01 = 356.4
     constexpr float vp_y = constants::VANISHING_POINT_Y;
     Vector2 p = perspective::project(0.0f, vp_y);
+    // At VP, depth clamps to 0.01: project(0) = 360 + (0-360)*0.01 = 356.4
     CHECK_THAT(p.x, WithinAbs(356.4, 0.01));
     CHECK_THAT(p.y, WithinAbs(vp_y, 0.01));
 }
 
 TEST_CASE("perspective::project — known value at spawn y=-120", "[perspective]") {
-    // depth = (−120 + 1060) / 2340 = 940/2340 ≈ 0.4017
-    // Lane0 (x=180): 360 + (180−360)*0.4017 ≈ 287.69
     float px = perspective::project_x(180.0f, constants::SPAWN_Y);
-    CHECK_THAT(px, WithinAbs(287.69, 0.02));
+    CHECK_THAT(px, WithinAbs(expected_px(180.0f, constants::SPAWN_Y), 0.02));
 }
 
 TEST_CASE("perspective::project — known value at top of screen y=0", "[perspective]") {
-    // depth = (0 + 1060) / 2340 = 1060/2340 ≈ 0.4530
-    // Lane0: 360 + (180−360)*0.4530 ≈ 278.46
     float px = perspective::project_x(180.0f, 0.0f);
-    CHECK_THAT(px, WithinAbs(278.46, 0.01));
+    CHECK_THAT(px, WithinAbs(expected_px(180.0f, 0.0f), 0.01));
 }
 
 TEST_CASE("perspective::project — known value at mid-screen y=640", "[perspective]") {
-    // depth = (640 + 1060) / 2340 = 1700/2340 ≈ 0.7265
-    // Lane0: 360 + (180−360)*0.7265 ≈ 229.23
     float px = perspective::project_x(180.0f, 640.0f);
-    CHECK_THAT(px, WithinAbs(229.23, 0.01));
+    CHECK_THAT(px, WithinAbs(expected_px(180.0f, 640.0f), 0.01));
 }
 
 TEST_CASE("perspective::project — known value at player y=920", "[perspective]") {
-    // depth = (920 + 1060) / 2340 = 1980/2340 ≈ 0.8462
-    // Lane0: 360 + (180−360)*0.8462 ≈ 207.69
     float px = perspective::project_x(180.0f, constants::PLAYER_Y);
-    CHECK_THAT(px, WithinAbs(207.69, 0.01));
+    CHECK_THAT(px, WithinAbs(expected_px(180.0f, constants::PLAYER_Y), 0.01));
 }
 
 TEST_CASE("perspective::project — known value at bottom y=1280", "[perspective]") {
-    // depth = (1280 − VP_Y) / range = 2340/2340 = 1.0
-    // Lane0: 360 + (180−360)*1.0 = 180 (identity — no perspective shift)
+    // depth = 1.0 at bottom → Lane0: 360 + (180−360)*1.0 = 180 (identity)
     float px = perspective::project_x(180.0f, 1280.0f);
-    CHECK_THAT(px, WithinAbs(180.0, 0.01));
+    CHECK_THAT(px, WithinAbs(expected_px(180.0f, 1280.0f), 0.01));
 }
 
 // ── Clamping behaviour ──────────────────────────────────────────────────────
