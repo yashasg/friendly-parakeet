@@ -9,7 +9,7 @@ import * as editor from './editor.js';
 import * as contextMenu from './context-menu.js';
 import * as panels from './panels.js';
 import { validate, exportBeatmap, downloadFile } from './io.js';
-import { loadSharedConstants } from './constants.js';
+import { loadSharedConstants, SHAPE_GLYPHS, KIND_LABELS, KINDS_WITH_SHAPE } from './constants.js';
 
 // ── Load shared constants, then boot ────────────────────────────────
 loadSharedConstants().then(boot).catch(() => boot());
@@ -42,6 +42,36 @@ catch (e) { console.error('[main] editor.init failed:', e); }
 
 try { panels.init(audio); }
 catch (e) { console.error('[main] panels.init failed:', e); }
+
+// ── Settings Modal ──────────────────────────────────────────────────
+
+const settingsModal = document.getElementById('settings-modal');
+const btnSettings = document.getElementById('btn-settings');
+const btnSettingsClose = document.getElementById('btn-settings-close');
+
+btnSettings.addEventListener('click', () => settingsModal.classList.add('visible'));
+btnSettingsClose.addEventListener('click', () => settingsModal.classList.remove('visible'));
+settingsModal.addEventListener('click', (e) => {
+    if (e.target === settingsModal) settingsModal.classList.remove('visible');
+});
+
+// ── Tool Display ────────────────────────────────────────────────────
+
+const toolDisplay = document.getElementById('tool-display');
+
+function updateToolDisplay() {
+    const { kind, shape } = state.tool;
+    const label = KIND_LABELS[kind] || kind;
+    if (KINDS_WITH_SHAPE.includes(kind)) {
+        const glyph = SHAPE_GLYPHS[shape] || '●';
+        toolDisplay.textContent = `${glyph} ${label}`;
+    } else {
+        toolDisplay.textContent = label;
+    }
+}
+
+on('tool-changed', updateToolDisplay);
+updateToolDisplay();
 
 // ── Horizontal Scrollbar ────────────────────────────────────────────
 

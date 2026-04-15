@@ -73,7 +73,7 @@ html, body {
     margin-right: 4px;
 }
 
-/* ── Main Content (sidebar + canvas) ───────────────── */
+/* ── Main Content ──────────────────────────────────── */
 
 #main {
     display: flex;
@@ -81,17 +81,10 @@ html, body {
     overflow: hidden;
 }
 
-/* ── Left Sidebar ──────────────────────────────────── */
+/* ── Sidebar (hidden — palette lives in context menu now) ── */
 
 #sidebar {
-    width: 260px;
-    min-width: 200px;
-    background: var(--panel-bg);
-    border-right: 1px solid var(--panel-border);
-    display: flex;
-    flex-direction: column;
-    overflow-y: auto;
-    flex-shrink: 0;
+    display: none;
 }
 
 .panel {
@@ -176,14 +169,12 @@ html, body {
     margin-bottom: 2px;
 }
 
-/* ── Difficulty Tabs ───────────────────────────────── */
+/* ── Difficulty Tabs (inline in toolbar) ────────────── */
 
 #difficulty-tabs {
     display: flex;
     gap: 0;
-    background: var(--panel-bg);
-    border-bottom: 1px solid var(--panel-border);
-    flex-shrink: 0;
+    align-items: center;
 }
 
 .diff-tab {
@@ -453,4 +444,48 @@ html, body {
     border: 2px dashed var(--accent);
     padding: 40px 60px;
     border-radius: 12px;
+}
+
+/* ── Tool Badge (shows current tool in toolbar) ────── */
+
+.tool-badge {
+    font-size: 12px;
+    padding: 3px 8px;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: 3px;
+    color: var(--text);
+}
+
+/* ── Settings Modal ────────────────────────────────── */
+
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1500;
+}
+
+.modal-overlay.visible {
+    display: flex;
+}
+
+.modal {
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    min-width: 320px;
+    max-width: 400px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
 }
