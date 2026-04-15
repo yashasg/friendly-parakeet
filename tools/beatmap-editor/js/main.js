@@ -145,15 +145,6 @@ on('export-requested', () => {
     downloadFile(filename, json);
 });
 
-// ── Validation Caching ──────────────────────────────────────────────
-
-let cachedErrors = [];
-let validationDirty = true;
-
-on('beats-changed', () => { validationDirty = true; });
-on('metadata-changed', () => { validationDirty = true; });
-on('difficulty-changed', () => { validationDirty = true; });
-
 // ── Time Formatting ─────────────────────────────────────────────────
 
 function formatTime(seconds) {
@@ -198,12 +189,6 @@ function frame() {
     syncScrollbar();
     updateScrollbarSize();
 
-    // Recompute validation only when state changed
-    if (validationDirty) {
-        cachedErrors = validate(state);
-        validationDirty = false;
-    }
-
     // Waveform data (sized to logical canvas width)
     const dpr = window.devicePixelRatio || 1;
     const logicalWidth = canvas.width / dpr;
@@ -212,7 +197,7 @@ function frame() {
         : null;
 
     // Render
-    timeline.render(state, waveformData, cachedErrors);
+    timeline.render(state, waveformData, []);
 
     requestAnimationFrame(frame);
 }

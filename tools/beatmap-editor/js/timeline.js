@@ -144,13 +144,11 @@ export function render(state, waveformData, validationErrors) {
     // 10. Selection highlights
     renderSelectionHighlights(ctx, state);
 
-    // 11. Validation error markers
-    if (validationErrors && validationErrors.length > 0) {
-        renderValidationErrors(ctx, state, validationErrors);
-    }
-
-    // 12. Playhead
+    // 11. Playhead
     renderPlayhead(ctx, state, h);
+
+    // 12. Legend
+    renderLegend(ctx, w, h);
 }
 
 // ─── Render Helpers ───────────────────────────────────────────────
@@ -303,27 +301,6 @@ function renderSelectionHighlights(ctx, state) {
     }
 }
 
-function renderValidationErrors(ctx, state, errors) {
-    const beats = state.beats;
-    if (!beats) return;
-
-    for (const err of errors) {
-        if (err.beatIndex == null || err.beatIndex < 0) continue;
-        // Find obstacle at this beat
-        for (let i = 0; i < beats.length; i++) {
-            if (beats[i].beat === err.beatIndex) {
-                const entry = beats[i];
-                const x = beatToX(entry.beat, state) - state.zoom / 2;
-                const y = HEADER_HEIGHT + entry.lane * LANE_HEIGHT;
-
-                ctx.strokeStyle = err.severity === 'warning' ? COLORS.validationWarning : COLORS.validationError;
-                ctx.lineWidth = 2;
-                ctx.strokeRect(x + 1, y + 1, state.zoom - 2, LANE_HEIGHT - 2);
-            }
-        }
-    }
-}
-
 function renderPlayhead(ctx, state, h) {
     if (state.playheadTime == null) return;
     const x = timeToX(state.playheadTime, state);
@@ -359,6 +336,56 @@ function renderWaveform(ctx, state, waveformData, w) {
         const peak = waveformData[i];
         const barH = peak * (height / 2);
         ctx.fillRect(x, midY - barH, Math.max(1, state.zoom / sampleCount * totalBeats), barH * 2);
+    }
+
+    ctx.restore();
+}
+
+function renderLegend(ctx, w, h) {
+    const items = [
+        { glyph: SHAPE_GLYPHS.circle,   color: COLORS.shape.circle,   label: 'Circle' },
+        { glyph: SHAPE_GLYPHS.square,   color: COLORS.shape.square,   label: 'Square' },
+        { glyph: SHAPE_GLYPHS.triangle, color: COLORS.shape.triangle, label: 'Triangle' },
+        { glyph: GLYPHS.lane_block,     color: COLORS.kind.lane_block, label: 'LaneBlock' },
+        { glyph: GLYPHS.low_bar,        color: COLORS.kind.low_bar,    label: 'LowBar' },
+        { glyph: GLYPHS.high_bar,       color: COLORS.kind.high_bar,   label: 'HighBar' },
+        { glyph: GLYPHS.combo_gate,     color: COLORS.kind.combo_gate, label: 'ComboGate' },
+        { glyph: GLYPHS.split_path,     color: COLORS.kind.split_path, label: 'SplitPath' },
+    ];
+
+    const lineH = 16;
+    const pad = 8;
+    const legendH = items.length * lineH + pad * 2;
+    const legendW = 110;
+    const x = w - legendW - 10;
+    const y = h - legendH - 10;
+
+    // Background
+    ctx.save();
+    ctx.globalAlpha = 0.85;
+    ctx.fillStyle = COLORS.panelBg;
+    ctx.fillRect(x, y, legendW, legendH);
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = COLORS.panelBorder;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x, y, legendW, legendH);
+
+    ctx.font = '12px sans-serif';
+    ctx.textBaseline = 'middle';
+
+    for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        const iy = y + pad + i * lineH + lineH / 2;
+
+        // Glyph
+        ctx.textAlign = 'center';
+        ctx.fillStyle = item.color;
+        ctx.fillText(item.glyph, x + 16, iy);
+
+        // Label
+        ctx.textAlign = 'left';
+        ctx.fillStyle = COLORS.text;
+        ctx.fillText(item.label, x + 30, iy);
     }
 
     ctx.restore();
