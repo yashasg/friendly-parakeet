@@ -266,13 +266,12 @@ function renderObstacles(ctx, state, firstBeat, lastBeat) {
         const y = HEADER_HEIGHT + entry.lane * LANE_HEIGHT + LANE_HEIGHT / 2;
 
         if (entry.kind === 'lane_push_left' || entry.kind === 'lane_push_right') {
-            // In the editor, lanes stack vertically: L0=top, L2=bottom
-            // "push left" = push toward L0 = upward arrow
-            // "push right" = push toward L2 = downward arrow
-            const label = entry.kind === 'lane_push_left' ? '▲▲▲' : '▼▼▼';
-            ctx.font = 'bold 14px sans-serif';
+            const arrow = entry.kind === 'lane_push_left' ? '▲' : '▼';
+            ctx.font = 'bold 12px sans-serif';
             ctx.fillStyle = (COLORS.kind[entry.kind]) || COLORS.text;
-            ctx.fillText(label, x, y);
+            ctx.fillText(arrow, x, y - 10);
+            ctx.fillText(arrow, x, y);
+            ctx.fillText(arrow, x, y + 10);
             ctx.font = '20px sans-serif';
         } else if (KINDS_WITH_SHAPE.includes(entry.kind)) {
             const glyph = SHAPE_GLYPHS[entry.shape] || '?';
@@ -353,8 +352,8 @@ function renderLegend(ctx, w, h) {
         { glyph: SHAPE_GLYPHS.circle,      color: COLORS.shape.circle,          label: 'Circle' },
         { glyph: SHAPE_GLYPHS.square,      color: COLORS.shape.square,          label: 'Square' },
         { glyph: SHAPE_GLYPHS.triangle,    color: COLORS.shape.triangle,        label: 'Triangle' },
-        { glyph: '▲▲▲',                color: COLORS.kind.lane_push_left,   label: 'Push Left' },
-        { glyph: '▼▼▼',                color: COLORS.kind.lane_push_right,  label: 'Push Right' },
+        { glyph: '▲',                  color: COLORS.kind.lane_push_left,   label: 'Push Left' },
+        { glyph: '▼',                  color: COLORS.kind.lane_push_right,  label: 'Push Right' },
     ];
 
     const lineH = 16;
