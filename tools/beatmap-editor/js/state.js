@@ -113,7 +113,7 @@ export function updateBeat(index, fields) {
     const updated = { ...beats[index], ...fields };
     beats.splice(index, 1);
     let newIndex = 0;
-    while (newIndex < beats.length && beats[newIndex].beat <= updated.beat) newIndex++;
+    while (newIndex < beats.length && beats[newIndex].beat < updated.beat) newIndex++;
     beats.splice(newIndex, 0, updated);
     // Keep selected indices pointing at the moved entry.
     const selIdx = state.selectedIndices.indexOf(index);

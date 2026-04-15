@@ -136,8 +136,8 @@ void collision_system(entt::registry& reg, float /*dt*/) {
                 // Passive: only trigger within the collision window (same
                 // distance gate as resolve()).  Scores the obstacle and
                 // auto-pushes the player when in the same lane.
-                float dist = std::abs(p_pos.y - pos.y + p_vstate.y_offset);
-                if (dist > COLLISION_MARGIN) break;
+                float y_dist = std::abs(p_pos.y - pos.y + p_vstate.y_offset);
+                if (y_dist > COLLISION_MARGIN) break;
                 bool on_same_lane = (std::abs(p_pos.x - pos.x) < constants::PLAYER_SIZE);
                 if (on_same_lane && p_lane.target < 0) {
                     int8_t delta = (obs.kind == ObstacleKind::LanePushLeft) ? -1 : 1;
