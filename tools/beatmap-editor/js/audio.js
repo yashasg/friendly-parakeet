@@ -11,6 +11,7 @@ let playing = false;
 let seekOffset = 0;
 let startTime = 0;
 let playbackRate = 1.0;
+let sourceId = 0; // monotonic ID to detect stale onended callbacks
 
 // Waveform cache
 let waveformCache = null;
@@ -21,13 +22,15 @@ let metronomeEnabled = false;
 let metronomeBpm = 120;
 let metronomeOffset = 0;
 let metronomeGain = null;
-let metronomeScheduledIds = [];
 let metronomeTimerId = null;
 let lastScheduledBeat = -1;
 
 function ensureContext() {
     if (!audioCtx) {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
     }
     return audioCtx;
 }
@@ -60,33 +63,16 @@ export async function loadAudioFile(file) {
 
 function stopSource() {
     if (sourceNode) {
-        try {
-            sourceNode.onended = null;
-            sourceNode.stop();
-        } catch (_) {
-            // Already stopped
-        }
+        sourceNode.onended = null; // detach BEFORE stop to prevent stale callbacks
+        try { sourceNode.stop(); } catch (_) {}
         sourceNode.disconnect();
         sourceNode = null;
     }
+    sourceId++;
 }
 
-export function play() {
-    if (!audioBuffer) return;
-
-    const ctx = ensureContext();
-
-    // If already playing, stop and restart
-    if (playing) {
-        seekOffset = getCurrentTime();
-        stopSource();
-    }
-
-    // Clamp seek offset
-    seekOffset = Math.max(0, Math.min(seekOffset, audioBuffer.duration));
-    if (seekOffset >= audioBuffer.duration) {
-        seekOffset = 0;
-    }
+function createAndStartSource(ctx, fromOffset) {
+    stopSource();
 
     sourceNode = ctx.createBufferSource();
     sourceNode.buffer = audioBuffer;
@@ -98,19 +84,38 @@ export function play() {
     }
     sourceNode.connect(gainNode);
 
+    const myId = sourceId;
     sourceNode.onended = () => {
-        // Only mark as not playing if we haven't already manually stopped
-        if (playing && sourceNode) {
-            playing = false;
-            seekOffset = audioBuffer ? audioBuffer.duration : 0;
-            sourceNode = null;
-            stopMetronomeScheduler();
-        }
+        // Only handle if this is still the active source
+        if (myId !== sourceId) return;
+        playing = false;
+        seekOffset = audioBuffer ? audioBuffer.duration : 0;
+        sourceNode = null;
+        stopMetronomeScheduler();
     };
 
     startTime = ctx.currentTime;
-    sourceNode.start(0, seekOffset);
+    seekOffset = fromOffset;
+    sourceNode.start(0, fromOffset);
     playing = true;
+}
+
+export function play() {
+    if (!audioBuffer) return;
+    const ctx = ensureContext();
+
+    // If already playing, capture current position
+    if (playing) {
+        seekOffset = getCurrentTime();
+    }
+
+    // Clamp seek offset
+    seekOffset = Math.max(0, Math.min(seekOffset, audioBuffer.duration));
+    if (seekOffset >= audioBuffer.duration) {
+        seekOffset = 0;
+    }
+
+    createAndStartSource(ctx, seekOffset);
 
     if (metronomeEnabled) {
         startMetronomeScheduler();
@@ -135,33 +140,9 @@ export function seek(timeSeconds) {
     const clamped = Math.max(0, Math.min(timeSeconds, audioBuffer.duration));
 
     if (playing) {
-        stopSource();
-        seekOffset = clamped;
-        // Restart from new position
         const ctx = ensureContext();
-        sourceNode = ctx.createBufferSource();
-        sourceNode.buffer = audioBuffer;
-        sourceNode.playbackRate.value = playbackRate;
+        createAndStartSource(ctx, clamped);
 
-        if (!gainNode) {
-            gainNode = ctx.createGain();
-            gainNode.connect(ctx.destination);
-        }
-        sourceNode.connect(gainNode);
-
-        sourceNode.onended = () => {
-            if (playing && sourceNode) {
-                playing = false;
-                seekOffset = audioBuffer ? audioBuffer.duration : 0;
-                sourceNode = null;
-                stopMetronomeScheduler();
-            }
-        };
-
-        startTime = ctx.currentTime;
-        sourceNode.start(0, clamped);
-
-        // Restart metronome scheduling from new position
         if (metronomeEnabled) {
             stopMetronomeScheduler();
             startMetronomeScheduler();
