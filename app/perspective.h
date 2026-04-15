@@ -28,6 +28,28 @@ inline float project_x(float x, float y) {
     return CENTER + (x - CENTER) * d;
 }
 
+// Depth-scaled vertical bounds for a rectangle.
+// Height is compressed by depth at the rect's vertical centre so objects
+// appear shorter when far from the camera.
+struct ScaledRectY {
+    float top;      // depth-scaled top edge
+    float bot;      // depth-scaled bottom edge
+    float d_top;    // depth value at the scaled top edge
+    float d_bot;    // depth value at the scaled bottom edge
+};
+
+inline ScaledRectY scale_rect_y(float y, float h) {
+    float cy = y + h / 2.0f;
+    float d  = depth(cy);
+    float sh = h * d;
+    ScaledRectY r;
+    r.top   = cy - sh / 2.0f;
+    r.bot   = cy + sh / 2.0f;
+    r.d_top = depth(r.top);
+    r.d_bot = depth(r.bot);
+    return r;
+}
+
 void draw_rect(float x, float y, float w, float h, Color c);
 void draw_shape(Shape shape, float cx, float cy, float size, Color c);
 void draw_line(float x1, float y1, float x2, float y2, float thick, Color c);
