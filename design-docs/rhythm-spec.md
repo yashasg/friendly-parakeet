@@ -60,10 +60,9 @@
 ```json
 {
   "beat":    4,
-  "kind":    "shape_gate | lane_block | low_bar | high_bar",
+  "kind":    "shape_gate | lane_push_left | lane_push_right | low_bar | high_bar",
   "shape":   "circle | square | triangle",
-  "lane":    0,
-  "blocked": [0, 1]
+  "lane":    0
 }
 ```
 
@@ -73,7 +72,7 @@
 | `kind`    | all                                | Obstacle type                       |
 | `shape`   | `shape_gate`                       | Shape player must morph to          |
 | `lane`    | `shape_gate`                       | Lane the gate occupies (0=L,1=C,2=R)|
-| `blocked` | `lane_block`                       | Which lanes are blocked (≥1 free)   |
+| `lane`    | `lane_push_left`, `lane_push_right`| Lane the push occupies (0=L,1=C,2=R)|
 
 ## BPM does not change
 
@@ -101,13 +100,12 @@ constexpr float WINDOW_SCALE_GOOD    = 0.75f;  // GOOD hit    → cut by 25%
 constexpr float WINDOW_SCALE_OK      = 1.00f;  // OK hit      → no change (default)
 
 // ── Morph duration (seconds to animate shape change) ────────────────
-constexpr float MORPH_DURATION = 0.150f;
+constexpr float MORPH_DURATION = 0.12f;
 
 // ── Scoring ──────────────────────────────────────────────────────────
-constexpr int   PTS_PERFECT      = 300;
-constexpr int   PTS_GOOD         = 200;
-constexpr int   PTS_OK           = 100;
-constexpr int   CHAIN_BONUS      = 10;     // multiplied by chain length
+// Points are computed dynamically: base_points × timing_multiplier.
+// No fixed PTS_PERFECT/PTS_GOOD/PTS_OK constants.
+constexpr int   CHAIN_BONUS[5]   = { 0, 0, 50, 100, 200 }; // indexed by chain length (clamped to 4)
 ```
 
 ---
@@ -146,22 +144,24 @@ constexpr int   CHAIN_BONUS      = 10;     // multiplied by chain length
 ## BeatMap (singleton)
 
 ```cpp
-struct BeatObstacle {
-    float       beat_time;   // seconds from song start
-    ObstacleKind kind;
-    Shape        shape;
-    int          lane;
-    std::vector<int> blocked_lanes;
+struct BeatEntry {
+    int          beat_index   = 0;           // beat index (not seconds)
+    ObstacleKind kind         = ObstacleKind::ShapeGate;
+    Shape        shape        = Shape::Circle;
+    int8_t       lane         = 1;
+    uint8_t      blocked_mask = 0;
 };
 
 struct BeatMap {
     std::string              song_id;
+    std::string              title;
     std::string              song_path;
-    float                    bpm;
-    float                    offset;
-    int                      lead_beats;
-    float                    duration_sec;
-    std::vector<BeatObstacle> beats;        // sorted by beat_time
+    float                    bpm        = 120.0f;
+    float                    offset     = 0.0f;
+    int                      lead_beats = 4;
+    float                    duration   = 180.0f;
+    std::string              difficulty;
+    std::vector<BeatEntry>   beats;
 };
 ```
 

@@ -46,6 +46,7 @@ constexpr int   PTS_LOW_BAR       = 100;
 constexpr int   PTS_HIGH_BAR      = 100;
 constexpr int   PTS_COMBO_GATE    = 200;
 constexpr int   PTS_SPLIT_PATH    = 300;
+constexpr int   PTS_LANE_PUSH     = 0;  // passive — no score
 constexpr int   PTS_PER_SECOND    = 10;
 constexpr int   CHAIN_BONUS[5]    = { 0, 0, 50, 100, 200 };
 

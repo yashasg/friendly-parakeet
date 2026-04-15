@@ -141,7 +141,7 @@ The player can hear the beat coming. The timing is legible. What the player cann
   │  On the same beat, the designer chose:                         │
   │                                                                │
   │    shape_gate  →  player must morph to the right shape        │
-  │    lane_block  →  player must be in an unblocked lane         │
+  │    lane_push   →  player is auto-pushed one lane (passive)    │
   │    low_bar     →  player must duck under                      │
   │    high_bar    →  player must jump over                       │
   │                                                                │
@@ -209,7 +209,7 @@ The player can hear the beat coming. The timing is legible. What the player cann
 
   Durations:
     MORPH IN:   0.150s  (visual blend from hexagon to target)
-    ACTIVE:     (OK window × 2) × window_scale
+    ACTIVE:     (OK window × 2) × window_scale (scales UP with better timing)
     MORPH OUT:  0.150s  (visual blend back to hexagon)
 ```
 
@@ -217,15 +217,16 @@ The player can hear the beat coming. The timing is legible. What the player cann
 
 ```
   ┌──────────────────────────────────────────────────────────────┐
-  │  OK timing   = default window duration. Full active time.    │
-  │  GOOD timing = remaining active window × 0.75               │
-  │  PERFECT     = remaining active window × 0.50               │
+  │  BAD timing  = remaining active window × 0.50               │
+  │  OK timing   = remaining active window × 0.75               │
+  │  GOOD timing = remaining active window × 1.00 (full time)   │
+  │  PERFECT     = remaining active window × 1.50               │
   │                                                              │
-  │  A PERFECT press cuts the remaining wait in half.            │
-  │  The player snaps back to ⬡ Hexagon sooner.                 │
-  │  This is reward, not punishment.                             │
+  │  A PERFECT press extends the remaining window, giving the    │
+  │  player extra time in the target shape. Better timing =      │
+  │  more generous window. This is reward, not punishment.       │
   │                                                              │
-  │  "I nailed it — I'm already ready for the next one."        │
+  │  "I nailed it — I've got breathing room for the next one."  │
   └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -330,13 +331,16 @@ The player can hear the beat coming. The timing is legible. What the player cann
   │                                                             │
   │  t_peak  =  moment the obstacle centre crosses player y     │
   │                                                             │
-  │    |press - t_peak|    Grade      Points    Window Scale    │
-  │   ─────────────────   ────────   ───────   ─────────────   │
-  │       ≤ 50ms          PERFECT      300       × 0.50        │
-  │       ≤ 100ms         GOOD         200       × 0.75        │
-  │       ≤ 150ms         OK           100       × 1.00        │
-  │       > 150ms         BAD →         0        instant end   │
-  │                        MISS                                 │
+  │    pct_from_peak       Grade      Multiplier  Window Scale  │
+  │   ─────────────────   ────────   ──────────  ────────────  │
+  │       ≤ 25%           PERFECT     × 1.50      × 1.50      │
+  │       ≤ 50%           GOOD        × 1.00      × 1.00      │
+  │       ≤ 75%           OK          × 0.50      × 0.75      │
+  │       > 75%           BAD         × 0.25      × 0.50      │
+  │                                                             │
+  │  Thresholds are percentage of half-window, not fixed ms.    │
+  │  They scale dynamically with BPM.                           │
+  │  Score = base_points × timing_multiplier × burnout_mult.    │
   │                                                             │
   └─────────────────────────────────────────────────────────────┘
 ```
@@ -431,10 +435,10 @@ The player can hear the beat coming. The timing is legible. What the player cann
   │                                                                 │
   │  • Wrong shape when obstacle arrives         → MISS → END      │
   │  • ⬡ Hexagon when shape_gate arrives         → MISS → END      │
-  │  • Timing outside BAD window (> 150ms off)   → MISS → END      │
+  │  • Timing outside BAD window (> 75% off peak) → MISS → END      │
   │  • Pressing shape but in wrong lane          → MISS → END      │
   │                                                                 │
-  │  • lane_block: being in a blocked lane       → MISS → END      │
+  │  • lane_push: never causes a miss (passive, auto-fires on beat) │
   │  • low_bar / high_bar: no dodge action       → MISS → END      │
   │                                                                 │
   └─────────────────────────────────────────────────────────────────┘
@@ -465,16 +469,18 @@ The player can hear the beat coming. The timing is legible. What the player cann
   │  Lane comes from same band: low=0, mid=1, high=2.            │
   │                                                              │
   ├──────────────────────────────────────────────────────────────┤
-  │  lane_block                                                  │
+  │  lane_push_left / lane_push_right                             │
   │  ─────────────────────────────────────────────────────────   │
   │                                                              │
-  │     ████   ████                                              │
-  │     ████   ████     (lanes 0 and 2 blocked, lane 1 free)    │
-  │     ████   ████                                              │
+  │     ▲         ▼                                              │
+  │     ▲  left   ▼  right                                      │
+  │     ▲         ▼                                              │
   │                                                              │
-  │  Player must be in any unblocked lane.                       │
+  │  Passive obstacle — auto-pushes the player one lane in the   │
+  │  indicated direction on beat arrival. No player action.      │
   │  Triggered by HIGH band onsets (hi-hat, cymbal).             │
-  │  At least 1 lane is always free.                             │
+  │  Edge pushes (left on Lane 0, right on Lane 2) are no-ops.  │
+  │  Awards 0 points.  (Replaces legacy lane_block.)             │
   │                                                              │
   ├──────────────────────────────────────────────────────────────┤
   │  low_bar                                                     │
@@ -503,9 +509,9 @@ The player can hear the beat coming. The timing is legible. What the player cann
   EASY:    shape_gate only. Sparse. 2-beat minimum gap.
            Low/mid onsets only. Learning the shape mechanic.
 
-  MEDIUM:  shape_gate + lane_block introduced.
+  MEDIUM:  shape_gate + lane_push introduced.
            Density scales with song intensity section.
-           High onsets trigger lane_blocks.
+           High onsets trigger lane_pushes.
 
   HARD:    All four types active. Dense.
            DROP sections: every beat, streams of shape_gates,
@@ -581,13 +587,14 @@ The player can hear the beat coming. The timing is legible. What the player cann
 
   Shape gate   Obstacle requiring the player to match its shape in its lane.
 
-  Lane block   Obstacle blocking 1–2 lanes. Player must be in a free lane.
+  Lane push    Passive obstacle that auto-pushes the player one lane
+               in a direction on beat arrival (replaces legacy Lane Block).
 
   Proximity    Ring around a shape button that shrinks as the matching
   ring         obstacle approaches. Reaches button size at perfect timing.
 
   Window       The time interval during which a shape press is valid.
-  (active)     Default duration = OK window × 2. Scales down on PERFECT/GOOD.
+  (active)     Default duration = OK window × 2. Scales up on PERFECT/GOOD.
 
   MorphIn      Phase where player visually transitions from ⬡ to target shape.
                Duration = 0.150s. Shape is not yet active for collision.
@@ -596,13 +603,13 @@ The player can hear the beat coming. The timing is legible. What the player cann
 
   MorphOut     Phase where player transitions back to ⬡ after window closes.
 
-  window_scale Factor applied to remaining active window on early hit.
-               PERFECT=0.50, GOOD=0.75, OK=1.00.
+  window_scale Factor applied to remaining active window based on timing.
+               PERFECT=1.50, GOOD=1.00, OK=0.75, BAD=0.50.
 
   Hexagon (⬡)  Default/rest state. No obstacle ever requires it.
                Any obstacle arriving while in ⬡ = MISS = game over.
 
-  MISS         Shape mismatch, wrong lane, or late press (>BAD window).
+  MISS         Shape mismatch, wrong lane, or late press (>75% off peak).
                Always instant game over. No HP. No second chances.
 
   Onset        Moment of sudden energy increase in a frequency band.

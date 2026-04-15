@@ -25,6 +25,8 @@ inline const char* obstacle_kind_name(ObstacleKind k) {
         case ObstacleKind::HighBar:   return "HighBar";
         case ObstacleKind::ComboGate: return "ComboGate";
         case ObstacleKind::SplitPath: return "SplitPath";
+        case ObstacleKind::LanePushLeft:  return "LanePushLeft";
+        case ObstacleKind::LanePushRight: return "LanePushRight";
     }
     return "???";
 }

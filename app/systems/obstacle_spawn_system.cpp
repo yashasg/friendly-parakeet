@@ -60,13 +60,24 @@ void obstacle_spawn_system(entt::registry& reg, float dt) {
             break;
         }
         case ObstacleKind::LaneBlock: {
-            // Block one lane
-            uint8_t mask = uint8_t(1 << lane);
+            // Convert legacy LaneBlock to LanePush:
+            //   Lane 0 (left)   → push right
+            //   Lane 2 (right)  → push left
+            //   Lane 1 (center) → random
+            ObstacleKind push_kind;
+            if (lane == 0) {
+                push_kind = ObstacleKind::LanePushRight;
+            } else if (lane == 2) {
+                push_kind = ObstacleKind::LanePushLeft;
+            } else {
+                push_kind = (std::rand() % 2 == 0)
+                    ? ObstacleKind::LanePushLeft
+                    : ObstacleKind::LanePushRight;
+            }
             reg.emplace<Position>(obstacle, constants::LANE_X[lane], constants::SPAWN_Y);
-            reg.emplace<Obstacle>(obstacle, kind, int16_t{constants::PTS_LANE_BLOCK});
-            reg.emplace<BlockedLanes>(obstacle, mask);
-            reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W / 3), 80.0f);
-            reg.emplace<DrawColor>(obstacle, uint8_t{255}, uint8_t{60}, uint8_t{60}, uint8_t{255});
+            reg.emplace<Obstacle>(obstacle, push_kind, int16_t{constants::PTS_LANE_PUSH});
+            reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W / 3), 60.0f);
+            reg.emplace<DrawColor>(obstacle, uint8_t{255}, uint8_t{138}, uint8_t{101}, uint8_t{255});
             break;
         }
         case ObstacleKind::LowBar: {
@@ -104,6 +115,16 @@ void obstacle_spawn_system(entt::registry& reg, float dt) {
             reg.emplace<RequiredLane>(obstacle, int8_t(lane));
             reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W), 80.0f);
             reg.emplace<DrawColor>(obstacle, uint8_t{255}, uint8_t{215}, uint8_t{0}, uint8_t{255});
+            break;
+        }
+        case ObstacleKind::LanePushLeft:
+        case ObstacleKind::LanePushRight: {
+            // Shouldn't reach here from random spawner (converted from LaneBlock above),
+            // but handle gracefully.
+            reg.emplace<Position>(obstacle, constants::LANE_X[lane], constants::SPAWN_Y);
+            reg.emplace<Obstacle>(obstacle, kind, int16_t{constants::PTS_LANE_PUSH});
+            reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W / 3), 60.0f);
+            reg.emplace<DrawColor>(obstacle, uint8_t{255}, uint8_t{138}, uint8_t{101}, uint8_t{255});
             break;
         }
     }
