@@ -349,7 +349,6 @@ function renderLegend(ctx, w, h) {
         { glyph: GLYPHS.lane_block,     color: COLORS.kind.lane_block, label: 'LaneBlock' },
         { glyph: GLYPHS.low_bar,        color: COLORS.kind.low_bar,    label: 'LowBar' },
         { glyph: GLYPHS.high_bar,       color: COLORS.kind.high_bar,   label: 'HighBar' },
-        { glyph: GLYPHS.combo_gate,     color: COLORS.kind.combo_gate, label: 'ComboGate' },
         { glyph: GLYPHS.split_path,     color: COLORS.kind.split_path, label: 'SplitPath' },
     ];
 

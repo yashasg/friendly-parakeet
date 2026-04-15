@@ -7,7 +7,8 @@ import {
 
 import {
   OBSTACLE_KINDS, SHAPES, LANES, KINDS_WITH_SHAPE,
-  KIND_LABELS, SHAPE_LABELS, LANE_LABELS
+  KIND_LABELS, SHAPE_LABELS, LANE_LABELS,
+  EDITOR_OBSTACLE_KINDS
 } from './constants.js';
 
 let container = null;
@@ -60,7 +61,7 @@ function buildObstacleMenu(context) {
 
   // Change Kind ►
   const kindItem = createItem('Change Kind', { hasSubmenu: true });
-  const kindSubs = OBSTACLE_KINDS.map((kind) =>
+  const kindSubs = EDITOR_OBSTACLE_KINDS.map((kind) =>
     createItem(KIND_LABELS[kind], {
       checked: obstacle.kind === kind,
       onClick() {
@@ -135,7 +136,7 @@ function buildObstacleMenu(context) {
 // ── Empty-space menu ────────────────────────────────
 
 function buildEmptyMenu(context) {
-  for (const kind of OBSTACLE_KINDS) {
+  for (const kind of EDITOR_OBSTACLE_KINDS) {
     const hasShape = KINDS_WITH_SHAPE.includes(kind);
     const label = `Place ${KIND_LABELS[kind]}`;
 
