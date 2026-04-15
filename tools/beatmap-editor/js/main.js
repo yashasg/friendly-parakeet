@@ -97,6 +97,7 @@ function syncScrollbar() {
 
 on('metadata-changed', updateScrollbarSize);
 on('beats-changed', updateScrollbarSize);
+on('zoom-changed', updateScrollbarSize);
 updateScrollbarSize();
 
 // ── Transport Controls ──────────────────────────────────────────────
@@ -187,7 +188,6 @@ function frame() {
 
     // Keep scrollbar in sync with state.scrollX (changed by zoom/pan/keyboard)
     syncScrollbar();
-    updateScrollbarSize();
 
     // Waveform data (sized to logical canvas width)
     const dpr = window.devicePixelRatio || 1;

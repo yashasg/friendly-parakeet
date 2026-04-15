@@ -108,7 +108,21 @@ export function removeBeat(index) {
 export function updateBeat(index, fields) {
   const beats = getActiveBeats();
   if (index < 0 || index >= beats.length) return;
-  Object.assign(beats[index], fields);
+  if ('beat' in fields && fields.beat !== beats[index].beat) {
+    // Beat value changed — remove and reinsert to maintain sorted order.
+    const updated = { ...beats[index], ...fields };
+    beats.splice(index, 1);
+    let newIndex = 0;
+    while (newIndex < beats.length && beats[newIndex].beat <= updated.beat) newIndex++;
+    beats.splice(newIndex, 0, updated);
+    // Keep selected indices pointing at the moved entry.
+    const selIdx = state.selectedIndices.indexOf(index);
+    if (selIdx !== -1) {
+      state.selectedIndices[selIdx] = newIndex;
+    }
+  } else {
+    Object.assign(beats[index], fields);
+  }
   emit("beats-changed");
 }
 
@@ -159,9 +173,11 @@ export function undo() {
   const entry = undoStack.pop();
   redoStack.push({ description: entry.description, snapshot: takeSnapshot() });
   applySnapshot(entry.snapshot);
+  state.selectedIndices = [];
   emit("beats-changed");
   emit("metadata-changed");
   emit("difficulty-changed");
+  emit("selection-changed");
 }
 
 export function redo() {
@@ -169,9 +185,11 @@ export function redo() {
   const entry = redoStack.pop();
   undoStack.push({ description: entry.description, snapshot: takeSnapshot() });
   applySnapshot(entry.snapshot);
+  state.selectedIndices = [];
   emit("beats-changed");
   emit("metadata-changed");
   emit("difficulty-changed");
+  emit("selection-changed");
 }
 
 export function canUndo() {

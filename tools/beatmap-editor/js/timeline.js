@@ -75,19 +75,19 @@ export function hitTest(canvasX, canvasY) {
         if (lane > 2) lane = 2;
     }
 
-    // Check if an existing obstacle was clicked
+    // Check if an existing obstacle was clicked.
+    // Beat values must be unique (validation enforces monotonic beat order with
+    // no duplicates), so we search by beat only, not by beat+lane combination.
     let obstacleIndex = null;
     const beats = state.beats;
-    if (beats && lane >= 0) {
+    if (beats) {
         for (let i = 0; i < beats.length; i++) {
             const entry = beats[i];
-            if (entry.beat === beat && entry.lane === lane) {
-                // Verify click is within glyph bounding area
+            if (entry.beat === beat) {
+                // Verify click is within the glyph's horizontal bounding area
                 const cx = beatToX(entry.beat, state);
-                const cy = laneAreaTop + entry.lane * LANE_HEIGHT + LANE_HEIGHT / 2;
                 const halfCell = state.zoom / 2;
-                const halfLane = LANE_HEIGHT / 2;
-                if (Math.abs(canvasX - cx) <= halfCell && Math.abs(canvasY - cy) <= halfLane) {
+                if (Math.abs(canvasX - cx) <= halfCell) {
                     obstacleIndex = i;
                     break;
                 }
@@ -332,16 +332,21 @@ function renderWaveform(ctx, state, waveformData, w) {
     const sampleCount = waveformData.length;
     if (sampleCount === 0) { ctx.restore(); return; }
 
-    // Map waveform samples to visible pixel range
-    const totalBeats = sampleCount;
+    // Map waveform samples to beat-time space so the waveform aligns with
+    // the timeline and respects scroll/zoom.  waveformData[i] is the peak
+    // amplitude for the audio segment at time (i/sampleCount)*duration.
+    const duration = state.duration || 180;
+    const bpm = state.bpm || 120;
+    const totalBeats = duration * (bpm / 60);
+    const barWidth = Math.max(1, (totalBeats / sampleCount) * state.zoom);
     for (let i = 0; i < sampleCount; i++) {
         const beatPos = (i / sampleCount) * totalBeats;
         const x = beatToX(beatPos, state);
-        if (x < TIMELINE_PADDING_LEFT || x > w) continue;
+        if (x + barWidth < TIMELINE_PADDING_LEFT || x > w) continue;
 
         const peak = waveformData[i];
         const barH = peak * (height / 2);
-        ctx.fillRect(x, midY - barH, Math.max(1, state.zoom / sampleCount * totalBeats), barH * 2);
+        ctx.fillRect(x, midY - barH, barWidth, barH * 2);
     }
 
     ctx.restore();

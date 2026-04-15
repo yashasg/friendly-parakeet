@@ -228,7 +228,6 @@ function stopMetronomeScheduler() {
         metronomeTimerId = null;
     }
     lastScheduledBeat = -1;
-    metronomeScheduledIds = [];
 }
 
 function startMetronomeScheduler() {

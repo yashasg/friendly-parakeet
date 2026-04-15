@@ -66,7 +66,7 @@ TEST_CASE("spawn: ShapeGate has DrawColor component", "[spawn]") {
     CHECK(count == 1);
 }
 
-TEST_CASE("spawn: LaneBlock has BlockedLanes component", "[spawn]") {
+TEST_CASE("spawn: LanePushLeft or LanePushRight obstacles spawn at late game", "[spawn]") {
     std::srand(100);
     auto reg = make_registry();
     auto& config = reg.ctx().get<DifficultyConfig>();
