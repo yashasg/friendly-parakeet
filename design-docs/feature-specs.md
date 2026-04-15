@@ -530,12 +530,14 @@ struct Obstacle {
 
 // ── What kind of obstacle ──
 enum class ObstacleKind : uint8_t {
-    ShapeGate,    // requires correct shape
-    LaneBlock,    // requires lane change
-    LowBar,       // requires jump  (swipe up)
-    HighBar,      // requires slide (swipe down)
-    ComboGate,    // requires shape + swipe
-    SplitPath     // requires shape + correct lane
+    ShapeGate     = 0,   // requires correct shape
+    LowBar        = 2,   // requires jump  (swipe up)
+    HighBar       = 3,   // requires slide (swipe down)
+    ComboGate     = 4,   // requires shape + swipe
+    SplitPath     = 5,   // requires shape + correct lane
+    LanePushLeft  = 6,   // passive: auto-pushes player one lane left
+    LanePushRight = 7    // passive: auto-pushes player one lane right
+    // Note: LaneBlock (=1) removed; replaced by LanePushLeft/Right
 };
 
 struct ObstacleType {
@@ -593,7 +595,7 @@ struct DifficultyState {
   │ BKT │  TIME    │ SPEED │  UNLOCKED TYPES              │ BURNOUT    │
   ├─────┼──────────┼───────┼──────────────────────────────┼────────────┤
   │  0  │  0–30s   │ x1.0  │ ShapeGate                    │ Very wide  │
-  │  1  │ 30–60s   │ x1.3  │ + LaneBlock, LowBar          │ Wide       │
+  │  1  │ 30–60s   │ x1.3  │ + LanePush, LowBar           │ Wide       │
   │  2  │ 60–90s   │ x1.6  │ + HighBar                    │ Moderate   │
   │  3  │ 90–120s  │ x2.0  │ + ComboGate                  │ Tighter    │
   │  4  │ 120–150s │ x2.3  │ + SplitPath                  │ Tight      │
@@ -713,7 +715,7 @@ void obstacle_cleanup_system(entt::registry& reg, float dt);
   │  COMBO_MIN_GAP_BKT3         │  3        │  obstacles between   │
   │  COMBO_MIN_GAP_BKT5         │  2        │  obstacles between   │
   │  SHAPE_GATE_BASE_PTS        │  200      │                      │
-  │  LANE_BLOCK_BASE_PTS        │  100      │                      │
+  │  LANE_PUSH_BASE_PTS         │  0        │  passive, no score   │
   │  LOW_BAR_BASE_PTS           │  100      │                      │
   │  HIGH_BAR_BASE_PTS          │  100      │                      │
   │  COMBO_GATE_BASE_PTS        │  200      │                      │

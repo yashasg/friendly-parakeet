@@ -60,10 +60,9 @@
 ```json
 {
   "beat":    4,
-  "kind":    "shape_gate | lane_block | low_bar | high_bar",
+  "kind":    "shape_gate | lane_push_left | lane_push_right | low_bar | high_bar",
   "shape":   "circle | square | triangle",
-  "lane":    0,
-  "blocked": [0, 1]
+  "lane":    0
 }
 ```
 
@@ -73,7 +72,7 @@
 | `kind`    | all                                | Obstacle type                       |
 | `shape`   | `shape_gate`                       | Shape player must morph to          |
 | `lane`    | `shape_gate`                       | Lane the gate occupies (0=L,1=C,2=R)|
-| `blocked` | `lane_block`                       | Which lanes are blocked (≥1 free)   |
+| `lane`    | `lane_push_left`, `lane_push_right`| Lane the push occupies (0=L,1=C,2=R)|
 
 ## BPM does not change
 

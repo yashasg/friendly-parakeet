@@ -87,7 +87,7 @@ namespace constants {
 
     // ── Scoring ───────────────────────────────────────
     constexpr int   PTS_SHAPE_GATE    = 200;
-    constexpr int   PTS_LANE_BLOCK    = 100;
+    constexpr int   PTS_LANE_PUSH     = 0;     // passive, replaces legacy PTS_LANE_BLOCK
     constexpr int   PTS_LOW_BAR       = 100;
     constexpr int   PTS_HIGH_BAR      = 100;
     constexpr int   PTS_COMBO_GATE    = 200;
@@ -197,12 +197,14 @@ struct ObstacleTag {};
 /// What action this obstacle demands and its base score. 4 bytes.
 /// Read by collision_system, burnout_system.
 enum class ObstacleKind : uint8_t {
-    ShapeGate  = 0,   // must match shape
-    LaneBlock  = 1,   // must be in a clear lane
-    LowBar     = 2,   // must jump
-    HighBar    = 3,   // must slide
-    ComboGate  = 4,   // shape + lane
-    SplitPath  = 5    // shape + specific lane
+    ShapeGate     = 0,   // must match shape
+    LowBar        = 2,   // must jump
+    HighBar       = 3,   // must slide
+    ComboGate     = 4,   // shape + lane
+    SplitPath     = 5,   // shape + specific lane
+    LanePushLeft  = 6,   // passive: auto-pushes player one lane left
+    LanePushRight = 7    // passive: auto-pushes player one lane right
+    // Note: LaneBlock (=1) is removed; replaced by LanePushLeft/Right
 };
 
 struct Obstacle {
@@ -222,11 +224,9 @@ struct RequiredShape {
     Shape shape;
 };
 
-/// For LaneBlock: which lanes are blocked. 1 byte.
-/// Bitmask: bit 0 = lane 0, bit 1 = lane 1, bit 2 = lane 2.
-struct BlockedLanes {
-    uint8_t mask;   // e.g. 0b101 = lanes 0 and 2 blocked
-};
+/// For LanePushLeft/LanePushRight: push direction component. 1 byte.
+/// The push direction is implicit in the ObstacleKind, so this struct
+/// is no longer needed. (Legacy BlockedLanes removed with LaneBlock.)
 
 /// For SplitPath: which lane has the opening. 1 byte.
 struct RequiredLane {
@@ -842,21 +842,27 @@ Total: ~73 bytes per entity (1 entity)
 Total: ~42 bytes per entity (5–15 active)
 ```
 
-### 5.3 Lane Block Entity
+### 5.3 Lane Push Entity (replaces legacy Lane Block)
 
 ```
-┌─ Lane Block ──────────────────────────────────────────────┐
+┌─ Lane Push ───────────────────────────────────────────────┐
 │ ObstacleTag        (tag, 0 bytes)                         │
 │ Position           { x: 360.0, y: -120.0 }               │
 │ Velocity           { dx: 0.0, dy: 400.0 }                │
-│ Obstacle           { kind: LaneBlock, base_pts: 100,      │
+│ Obstacle           { kind: LanePushLeft, base_pts: 0,     │
 │                      scored: false }                       │
-│ BlockedLanes       { mask: 0b101 }                         │
 │ Color              { r: 255, g: 60, b: 60, a: 255 }      │
 │ DrawSize           { w: 720, h: 80 }                       │
 │ DrawLayer          { layer: Game }                          │
 └───────────────────────────────────────────────────────────┘
-Total: ~41 bytes per entity
+Total: ~40 bytes per entity
+
+Lane Push is passive — it auto-pushes the player one lane in the
+obstacle's direction on beat arrival. No player action required.
+- LanePushLeft:  pushes player one lane left  (no-op on Lane 0)
+- LanePushRight: pushes player one lane right (no-op on Lane 2)
+- Only affects player if they are on the SAME lane as the obstacle.
+- Awards 0 points (it's not a challenge).
 ```
 
 ### 5.4 Vertical Bar Entity (Low Bar / High Bar)
@@ -1299,8 +1305,8 @@ int main(int argc, char* argv[]) {
     │   bool threat = false;                                                                │
     │   if (obs.kind == ShapeGate && has<RequiredShape>(entity))                             │
     │       threat = (player_shape.current != get<RequiredShape>(entity).shape);             │
-    │   else if (obs.kind == LaneBlock && has<BlockedLanes>(entity))                         │
-    │       threat = (get<BlockedLanes>(entity).mask >> player_lane.current) & 1;            │
+    │   else if (obs.kind == LanePushLeft || obs.kind == LanePushRight)                       │
+    │       threat = false;   // passive — never a threat, auto-pushes player on arrival     │
     │   else if (obs.kind == LowBar)                                                        │
     │       threat = (player_vstate.mode != Jumping);                                       │
     │   // ... etc for each ObstacleKind ...                                                │
@@ -1516,10 +1522,9 @@ bool check_obstacle_cleared(entt::registry& reg, entt::entity e,
         case ObstacleKind::ShapeGate:
             return shape.current == reg.get<RequiredShape>(e).shape;
 
-        case ObstacleKind::LaneBlock: {
-            uint8_t mask = reg.get<BlockedLanes>(e).mask;
-            return !((mask >> lane.current) & 1);   // player in unblocked lane
-        }
+        case ObstacleKind::LanePushLeft:
+        case ObstacleKind::LanePushRight:
+            return true;   // passive — always "cleared", push applied automatically
 
         case ObstacleKind::LowBar:
             return vs.mode == VMode::Jumping;

@@ -141,7 +141,7 @@ The player can hear the beat coming. The timing is legible. What the player cann
   │  On the same beat, the designer chose:                         │
   │                                                                │
   │    shape_gate  →  player must morph to the right shape        │
-  │    lane_block  →  player must be in an unblocked lane         │
+  │    lane_push   →  player is auto-pushed one lane (passive)    │
   │    low_bar     →  player must duck under                      │
   │    high_bar    →  player must jump over                       │
   │                                                                │
@@ -434,7 +434,7 @@ The player can hear the beat coming. The timing is legible. What the player cann
   │  • Timing outside BAD window (> 150ms off)   → MISS → END      │
   │  • Pressing shape but in wrong lane          → MISS → END      │
   │                                                                 │
-  │  • lane_block: being in a blocked lane       → MISS → END      │
+  │  • lane_push: never causes a miss (passive, auto-fires on beat) │
   │  • low_bar / high_bar: no dodge action       → MISS → END      │
   │                                                                 │
   └─────────────────────────────────────────────────────────────────┘
@@ -465,16 +465,18 @@ The player can hear the beat coming. The timing is legible. What the player cann
   │  Lane comes from same band: low=0, mid=1, high=2.            │
   │                                                              │
   ├──────────────────────────────────────────────────────────────┤
-  │  lane_block                                                  │
+  │  lane_push_left / lane_push_right                             │
   │  ─────────────────────────────────────────────────────────   │
   │                                                              │
-  │     ████   ████                                              │
-  │     ████   ████     (lanes 0 and 2 blocked, lane 1 free)    │
-  │     ████   ████                                              │
+  │     ▲         ▼                                              │
+  │     ▲  left   ▼  right                                      │
+  │     ▲         ▼                                              │
   │                                                              │
-  │  Player must be in any unblocked lane.                       │
+  │  Passive obstacle — auto-pushes the player one lane in the   │
+  │  indicated direction on beat arrival. No player action.      │
   │  Triggered by HIGH band onsets (hi-hat, cymbal).             │
-  │  At least 1 lane is always free.                             │
+  │  Edge pushes (left on Lane 0, right on Lane 2) are no-ops.  │
+  │  Awards 0 points.  (Replaces legacy lane_block.)             │
   │                                                              │
   ├──────────────────────────────────────────────────────────────┤
   │  low_bar                                                     │
@@ -503,9 +505,9 @@ The player can hear the beat coming. The timing is legible. What the player cann
   EASY:    shape_gate only. Sparse. 2-beat minimum gap.
            Low/mid onsets only. Learning the shape mechanic.
 
-  MEDIUM:  shape_gate + lane_block introduced.
+  MEDIUM:  shape_gate + lane_push introduced.
            Density scales with song intensity section.
-           High onsets trigger lane_blocks.
+           High onsets trigger lane_pushes.
 
   HARD:    All four types active. Dense.
            DROP sections: every beat, streams of shape_gates,
@@ -581,7 +583,8 @@ The player can hear the beat coming. The timing is legible. What the player cann
 
   Shape gate   Obstacle requiring the player to match its shape in its lane.
 
-  Lane block   Obstacle blocking 1–2 lanes. Player must be in a free lane.
+  Lane push    Passive obstacle that auto-pushes the player one lane
+               in a direction on beat arrival (replaces legacy Lane Block).
 
   Proximity    Ring around a shape button that shrinks as the matching
   ring         obstacle approaches. Reaches button size at perfect timing.

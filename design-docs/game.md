@@ -82,14 +82,19 @@ The defining mechanic. Inspired by "burnout" in racing games.
 
 ## Obstacle Types
 
-| Obstacle     | Player Action Required    | Burnout? | Base Points |
-|-------------|---------------------------|----------|-------------|
-| Shape Gate   | Tap correct shape button  | YES      | 200         |
-| Lane Block   | Swipe left or right       | YES      | 100         |
-| Low Bar      | Swipe up (jump)           | YES      | 100         |
-| High Bar     | Swipe down (slide)        | YES      | 100         |
-| Combo Gate   | Shape + swipe (2 actions) | YES (×2) | 200         |
-| Split Path   | Shape + correct lane      | YES (×2) | 300         |
+| Obstacle       | Player Action Required    | Burnout? | Base Points |
+|---------------|---------------------------|----------|-------------|
+| Shape Gate     | Tap correct shape button  | YES      | 200         |
+| Lane Push Left | None (auto-pushes player) | NO       | 0           |
+| Lane Push Right| None (auto-pushes player) | NO       | 0           |
+| Low Bar        | Swipe up (jump)           | YES      | 100         |
+| High Bar       | Swipe down (slide)        | YES      | 100         |
+| Combo Gate     | Shape + swipe (2 actions) | YES (×2) | 200         |
+| Split Path     | Shape + correct lane      | YES (×2) | 300         |
+
+> **Note:** Lane Push replaces the legacy Lane Block. It is a passive obstacle that
+> auto-pushes the player one lane in the indicated direction on beat arrival.
+> Edge pushes (left on Lane 0, right on Lane 2) are no-ops.
 
 ### Combo Obstacles
 
@@ -130,7 +135,7 @@ Speed increases over time. Everything gets faster and denser.
 | Time      | Speed | New Obstacles Introduced     | Burnout Window |
 |-----------|-------|------------------------------|----------------|
 | 0–30s     | ×1.0  | Shape gates only, far apart  | Very generous  |
-| 30–60s    | ×1.3  | + Lane blocks, low bars      | Generous       |
+| 30–60s    | ×1.3  | + Lane pushes, low bars      | Generous       |
 | 60–90s    | ×1.6  | + High bars, closer spacing  | Moderate       |
 | 90–120s   | ×2.0  | + Combos, 2-obstacle chains  | Tighter        |
 | 120–150s  | ×2.3  | + Split paths, 3-chains      | Tight          |

@@ -125,7 +125,7 @@ background noise rather than the driving force.
   │ Obstacle     │ Musical Mapping                        │
   ├──────────────┼────────────────────────────────────────┤
   │ ShapeGate    │ Melodic hits (main instrument)         │
-  │ LaneBlock    │ Bass drops / percussion fills          │
+  │ LanePush     │ Bass drops / percussion fills          │
   │ LowBar/Jump  │ Cymbal crashes / high notes            │
   │ HighBar/Slide│ Bass notes / kick drum                 │
   │ ComboGate    │ Complex chord hits                     │
