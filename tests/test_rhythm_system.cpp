@@ -510,8 +510,10 @@ TEST_CASE("collision: timing grade PERFECT at peak", "[rhythm][collision]") {
     auto& song = reg.ctx().get<SongState>();
     ps.current = Shape::Circle;
     sw.phase_raw = static_cast<uint8_t>(WindowPhase::Active);
-    song.song_time = 5.0f; sw.peak_time = 5.0f; sw.press_time = 5.0f;
+    song.song_time = 5.0f; sw.peak_time = 5.0f;
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
+    // arrival_time == peak_time → pct = 0 → Perfect
+    reg.emplace<BeatInfo>(obs, 0, 5.0f, 5.0f - song.lead_time);
     collision_system(reg, 0.016f);
     REQUIRE(reg.all_of<ScoredTag>(obs));
     REQUIRE(reg.all_of<TimingGrade>(obs));
@@ -526,9 +528,10 @@ TEST_CASE("collision: timing grade GOOD at 30pct", "[rhythm][collision]") {
     auto& song = reg.ctx().get<SongState>();
     ps.current = Shape::Circle;
     sw.phase_raw = static_cast<uint8_t>(WindowPhase::Active);
-    song.song_time = 5.0f; sw.peak_time = 5.0f + song.half_window * 0.3f;
-    sw.press_time = 5.0f;
+    song.song_time = 5.0f; sw.peak_time = 5.0f;
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
+    // arrival_time offset from peak_time by 30% of half_window → Good
+    reg.emplace<BeatInfo>(obs, 0, 5.0f + song.half_window * 0.3f, 0.0f);
     collision_system(reg, 0.016f);
     REQUIRE(reg.all_of<TimingGrade>(obs));
     CHECK(reg.get<TimingGrade>(obs).tier == TimingTier::Good);
@@ -542,9 +545,10 @@ TEST_CASE("collision: timing grade OK at 60pct", "[rhythm][collision]") {
     auto& song = reg.ctx().get<SongState>();
     ps.current = Shape::Circle;
     sw.phase_raw = static_cast<uint8_t>(WindowPhase::Active);
-    song.song_time = 5.0f; sw.peak_time = 5.0f + song.half_window * 0.6f;
-    sw.press_time = 5.0f;
+    song.song_time = 5.0f; sw.peak_time = 5.0f;
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
+    // arrival_time offset from peak_time by 60% of half_window → Ok
+    reg.emplace<BeatInfo>(obs, 0, 5.0f + song.half_window * 0.6f, 0.0f);
     collision_system(reg, 0.016f);
     REQUIRE(reg.all_of<TimingGrade>(obs));
     CHECK(reg.get<TimingGrade>(obs).tier == TimingTier::Ok);
@@ -558,42 +562,45 @@ TEST_CASE("collision: timing grade BAD at 80pct", "[rhythm][collision]") {
     auto& song = reg.ctx().get<SongState>();
     ps.current = Shape::Circle;
     sw.phase_raw = static_cast<uint8_t>(WindowPhase::Active);
-    song.song_time = 5.0f; sw.peak_time = 5.0f + song.half_window * 0.8f;
-    sw.press_time = 5.0f;
+    song.song_time = 5.0f; sw.peak_time = 5.0f;
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
+    // arrival_time offset from peak_time by 80% of half_window → Bad
+    reg.emplace<BeatInfo>(obs, 0, 5.0f + song.half_window * 0.8f, 0.0f);
     collision_system(reg, 0.016f);
     REQUIRE(reg.all_of<TimingGrade>(obs));
     CHECK(reg.get<TimingGrade>(obs).tier == TimingTier::Bad);
 }
 
 TEST_CASE("collision: stale press from previous beat does not get Perfect", "[rhythm][collision]") {
-    // Regression: pressing on beat N and cruising through beat N+1 should
-    // NOT award Perfect for beat N+1.  Timing must be based on press_time,
-    // not the current song_time at collision.
+    // Regression: pressing on beat N and cruising through beat N+2 should
+    // NOT award Perfect for beat N+2.  Timing is graded as
+    // abs(peak_time - arrival_time), so a stale peak_time from an earlier
+    // press produces a large pct → Bad.
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
     auto& ps = reg.get<PlayerShape>(player);
     auto& sw = reg.get<ShapeWindow>(player);
     auto& song = reg.ctx().get<SongState>();
 
-    // Player pressed Circle on beat N (time 3.0)
+    // Player pressed Circle at song_time 2.0 (for a beat near 2.0 + morph + half_window)
+    // peak_time = 2.0 + morph_duration(0.1) + half_window(0.4) = 2.5
     ps.current = Shape::Circle;
     sw.phase_raw = static_cast<uint8_t>(WindowPhase::Active);
-    sw.press_time = 3.0f;
-    sw.window_start = 3.0f;
+    sw.peak_time = 2.0f + song.morph_duration + song.half_window;
+    sw.window_start = 2.0f;
     sw.graded = false;
 
-    // Now it's beat N+1 (time 3.5 at 120 BPM = 0.5s per beat)
+    // Now it's beat N+2 (time 3.5 at 120 BPM = 0.5s per beat)
     song.song_time = 3.5f;
 
-    // Obstacle for beat N+1 arrives at 3.5
+    // Obstacle for beat N+2 arrives at 3.5
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<BeatInfo>(obs, 7, 3.5f, 3.5f - song.lead_time);
 
     collision_system(reg, 0.016f);
 
     REQUIRE(reg.all_of<TimingGrade>(obs));
-    // press_time (3.0) is 0.5s away from arrival (3.5) — should NOT be Perfect
+    // peak_time (2.5) is 1.0s away from arrival (3.5) → pct = 1.0/0.4 = 2.5 → Bad
     CHECK(reg.get<TimingGrade>(obs).tier != TimingTier::Perfect);
 }
 
@@ -605,8 +612,9 @@ TEST_CASE("collision: PERFECT clears obstacle without game over", "[rhythm][coll
     auto& song = reg.ctx().get<SongState>();
     ps.current = Shape::Circle;
     sw.phase_raw = static_cast<uint8_t>(WindowPhase::Active);
-    song.song_time = 5.0f; sw.peak_time = 5.0f; sw.press_time = 5.0f;
+    song.song_time = 5.0f; sw.peak_time = 5.0f;
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
+    reg.emplace<BeatInfo>(obs, 0, 5.0f, 5.0f - song.lead_time);
     collision_system(reg, 0.016f);
     CHECK(reg.all_of<ScoredTag>(obs));
     CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
@@ -620,8 +628,9 @@ TEST_CASE("collision: SongResults updated", "[rhythm][collision]") {
     auto& song = reg.ctx().get<SongState>();
     ps.current = Shape::Circle;
     sw.phase_raw = static_cast<uint8_t>(WindowPhase::Active);
-    song.song_time = 5.0f; sw.peak_time = 5.0f; sw.press_time = 5.0f;
-    make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
+    song.song_time = 5.0f; sw.peak_time = 5.0f;
+    auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
+    reg.emplace<BeatInfo>(obs, 0, 5.0f, 5.0f - song.lead_time);
     collision_system(reg, 0.016f);
     CHECK(reg.ctx().get<SongResults>().perfect_count == 1);
 }
@@ -732,10 +741,10 @@ TEST_CASE("window_scaling: PERFECT grade shortens remaining window", "[rhythm][w
     sw.window_timer = song.window_duration * 0.5f; // halfway through
     song.song_time = 5.0f;
     sw.peak_time = 5.0f; // PERFECT timing
-    sw.press_time = 5.0f;
 
     float timer_before = sw.window_timer;
-    make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
+    auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
+    reg.emplace<BeatInfo>(obs, 0, 5.0f, 5.0f - song.lead_time);
     collision_system(reg, 0.016f);
 
     CHECK(sw.graded);
@@ -755,11 +764,12 @@ TEST_CASE("window_scaling: GOOD grade keeps normal window", "[rhythm][window_sca
     sw.phase_raw = static_cast<uint8_t>(WindowPhase::Active);
     sw.window_timer = song.window_duration * 0.4f;
     song.song_time = 5.0f;
-    sw.peak_time = 5.0f + song.half_window * 0.3f; // GOOD timing
-    sw.press_time = 5.0f;
+    sw.peak_time = 5.0f;
 
     float timer_before = sw.window_timer;
-    make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
+    auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
+    // arrival offset 30% from peak → Good
+    reg.emplace<BeatInfo>(obs, 0, 5.0f + song.half_window * 0.3f, 0.0f);
     collision_system(reg, 0.016f);
 
     CHECK(sw.graded);
@@ -781,11 +791,12 @@ TEST_CASE("window_scaling: OK grade shortens window", "[rhythm][window_scaling]"
     sw.window_timer = song.window_duration * 0.3f;
     // Keep window_start consistent with song_time and window_timer
     sw.window_start = song.song_time - sw.window_timer;
-    sw.peak_time = 5.0f + song.half_window * 0.6f; // OK timing
-    sw.press_time = 5.0f;
+    sw.peak_time = 5.0f;
 
     float start_before = sw.window_start;
-    make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
+    auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
+    // arrival offset 60% from peak → Ok
+    reg.emplace<BeatInfo>(obs, 0, 5.0f + song.half_window * 0.6f, 0.0f);
     collision_system(reg, 0.016f);
 
     CHECK(sw.graded);
@@ -811,11 +822,12 @@ TEST_CASE("window_scaling: BAD grade shortens window aggressively", "[rhythm][wi
     sw.window_timer = song.window_duration * 0.2f;
     // Keep window_start consistent with song_time and window_timer
     sw.window_start = song.song_time - sw.window_timer;
-    sw.peak_time = 5.0f + song.half_window * 0.8f; // BAD timing
-    sw.press_time = 5.0f;
+    sw.peak_time = 5.0f;
 
     float start_before = sw.window_start;
-    make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
+    auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
+    // arrival offset 80% from peak → Bad
+    reg.emplace<BeatInfo>(obs, 0, 5.0f + song.half_window * 0.8f, 0.0f);
     collision_system(reg, 0.016f);
 
     CHECK(sw.graded);
@@ -840,16 +852,17 @@ TEST_CASE("window_scaling: second obstacle does not re-scale", "[rhythm][window_
     sw.window_timer = song.window_duration * 0.4f;
     song.song_time = 5.0f;
     sw.peak_time = 5.0f;
-    sw.press_time = 5.0f;
 
     // First obstacle grades PERFECT, jumps timer
-    make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
+    auto obs1 = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
+    reg.emplace<BeatInfo>(obs1, 0, 5.0f, 5.0f - song.lead_time);
     collision_system(reg, 0.016f);
     float timer_after_first = sw.window_timer;
     CHECK(sw.graded);
 
     // Second obstacle should NOT jump timer again
-    make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
+    auto obs2 = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
+    reg.emplace<BeatInfo>(obs2, 1, 5.0f, 5.0f - song.lead_time);
     collision_system(reg, 0.016f);
     CHECK_THAT(sw.window_timer, WithinAbs(timer_after_first, 0.001f));
 }

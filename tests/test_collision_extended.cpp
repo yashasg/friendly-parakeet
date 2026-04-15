@@ -56,9 +56,9 @@ TEST_CASE("collision: rhythm mode assigns Perfect for on-time hit", "[collision]
     sw.phase_raw = static_cast<uint8_t>(WindowPhase::Active);
     sw.graded = false;
     sw.window_start = song.song_time;
-    sw.peak_time = song.song_time + song.half_window;
+    sw.peak_time = song.song_time;
 
-    // obstacle arrives right at song_time (perfect)
+    // obstacle arrives right at peak_time (perfect)
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<BeatInfo>(obs, 0, song.song_time, song.song_time - song.lead_time);
 
@@ -81,7 +81,7 @@ TEST_CASE("collision: rhythm mode assigns Bad for far-off hit", "[collision][rhy
     sw.window_start = song.song_time;
     sw.peak_time = song.song_time + song.half_window;
 
-    // obstacle arrival time far from current song_time
+    // obstacle arrival time far from peak_time → Bad
     float bad_arrival = song.song_time + song.half_window * 2.0f;
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<BeatInfo>(obs, 0, bad_arrival, bad_arrival - song.lead_time);

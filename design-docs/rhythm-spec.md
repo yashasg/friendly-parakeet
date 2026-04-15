@@ -329,18 +329,21 @@ void shape_window_system(entt::registry& reg, float dt);
   │                                                                     │
   │  // Use the obstacle's beat arrival_time for timing,                │
   │  // falling back to ShapeWindow.peak_time when BeatInfo absent.     │
-  │  // Compare PRESS TIME (when player tapped) vs reference,           │
-  │  // not current song_time. This ensures "perfect" means the         │
-  │  // player tapped on the beat they meet the obstacle.               │
+  │  // Compare the window's PEAK TIME (center of active window)        │
+  │  // against the reference.  peak_time is derived from the player's  │
+  │  // press time: peak = press + morph_duration + half_window.        │
+  │  // A perfectly-timed tap gives peak_time ≈ arrival_time → pct ≈ 0. │
   │  auto* beat_info = reg.try_get<BeatInfo>(entity);                   │
   │  float ref = beat_info ? beat_info->arrival_time                    │
   │                        : p_window.peak_time;                        │
-  │  float pct = abs(p_window.press_time - ref) / half_window;          │
+  │  float pct = abs(p_window.peak_time - ref) / half_window;           │
   │  TimingGrade = compute_timing_tier(pct);                            │
   │                                                                     │
-  │  press_time is recorded when the player taps a shape button.        │
-  │  This prevents a press on beat N from awarding Perfect on beat N+1  │
-  │  when the player's window is still active (cruising through).       │
+  │  The ideal press time for an obstacle is:                           │
+  │    arrival_time − morph_duration − half_window                      │
+  │  which produces peak_time = arrival_time → Perfect.                 │
+  │  A stale press from a previous beat has peak_time far from the      │
+  │  current obstacle's arrival → Bad.                                  │
   │                                                                     │
   │  PERFECT  → pts=300, window_scale=0.50 (remaining window halved)   │
   │  GOOD     → pts=200, window_scale=0.75                             │

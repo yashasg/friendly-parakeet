@@ -29,7 +29,6 @@ struct ShapeWindow {
     float   window_timer  = 0.0f;
     float   window_start  = 0.0f;
     float   peak_time     = 0.0f;
-    float   press_time    = 0.0f;    // song_time when player last pressed a shape button
     float   window_scale  = 1.0f;
     bool    graded        = false;
 };

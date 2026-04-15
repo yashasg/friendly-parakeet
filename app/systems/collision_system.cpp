@@ -36,14 +36,17 @@ void collision_system(entt::registry& reg, float /*dt*/) {
             if (rhythm_mode) {
                 auto window_phase = static_cast<WindowPhase>(p_window.phase_raw);
                 if (window_phase == WindowPhase::Active && song->half_window > 0.0f) {
-                    // Grade timing against the obstacle's expected beat time,
-                    // comparing when the player pressed vs when the obstacle
-                    // arrives.  This ensures "perfect" means the player tapped
-                    // on the beat they meet the obstacle, not an earlier beat.
+                    // Grade timing by comparing the player's predicted peak
+                    // (center of the Active window) against the obstacle's
+                    // scheduled arrival.  peak_time is set at press time as
+                    // press + morph_duration + half_window, so a perfectly-
+                    // timed tap gives peak_time ≈ arrival_time → pct ≈ 0.
+                    // A stale press from a previous beat has peak_time far
+                    // from the current obstacle's arrival → Bad.
                     auto* beat_info = reg.try_get<BeatInfo>(entity);
                     float reference_time = beat_info ? beat_info->arrival_time
                                                      : p_window.peak_time;
-                    float pct_from_peak = std::abs(p_window.press_time - reference_time) / song->half_window;
+                    float pct_from_peak = std::abs(p_window.peak_time - reference_time) / song->half_window;
                     if (pct_from_peak > 1.0f) pct_from_peak = 1.0f;
                     TimingTier tier = compute_timing_tier(pct_from_peak);
                     reg.emplace<TimingGrade>(entity, tier, 1.0f - pct_from_peak);
