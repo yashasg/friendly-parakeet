@@ -26,6 +26,8 @@ const timeDisplay  = document.getElementById('time-display');
 const beatDisplay  = document.getElementById('beat-display');
 const playbackRate = document.getElementById('playback-rate');
 const chkMetronome = document.getElementById('chk-metronome');
+const hScrollWrap  = document.getElementById('h-scroll-wrapper');
+const hScrollInner = document.getElementById('h-scroll-content');
 
 // ── Module Initialization ───────────────────────────────────────────
 
@@ -40,6 +42,32 @@ catch (e) { console.error('[main] editor.init failed:', e); }
 
 try { panels.init(audio); }
 catch (e) { console.error('[main] panels.init failed:', e); }
+
+// ── Horizontal Scrollbar ────────────────────────────────────────────
+
+let scrollbarSuppressed = false;
+
+function updateScrollbarSize() {
+    const beatPeriod = 60 / (state.bpm || 120);
+    const totalBeats = Math.ceil((state.duration || 180) / beatPeriod) + 4;
+    const totalWidth = totalBeats * state.zoom + 100;
+    hScrollInner.style.width = totalWidth + 'px';
+}
+
+hScrollWrap.addEventListener('scroll', () => {
+    if (scrollbarSuppressed) return;
+    state.scrollX = hScrollWrap.scrollLeft;
+});
+
+function syncScrollbar() {
+    scrollbarSuppressed = true;
+    hScrollWrap.scrollLeft = state.scrollX;
+    scrollbarSuppressed = false;
+}
+
+on('metadata-changed', updateScrollbarSize);
+on('beats-changed', updateScrollbarSize);
+updateScrollbarSize();
 
 // ── Transport Controls ──────────────────────────────────────────────
 
@@ -135,6 +163,10 @@ function frame() {
 
     // Provide flattened beats reference that timeline.js expects
     state.beats = getActiveBeats();
+
+    // Keep scrollbar in sync with state.scrollX (changed by zoom/pan/keyboard)
+    syncScrollbar();
+    updateScrollbarSize();
 
     // Recompute validation only when state changed
     if (validationDirty) {

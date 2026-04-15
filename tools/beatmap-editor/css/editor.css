@@ -238,6 +238,20 @@ html, body {
     cursor: crosshair;
 }
 
+#h-scroll-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    height: 14px;
+    flex-shrink: 0;
+    background: var(--bg);
+}
+
+#h-scroll-content {
+    height: 1px;
+    /* width is set dynamically by main.js based on total beats */
+}
+
 /* ── Transport / Playback Bar ──────────────────────── */
 
 #transport {
