@@ -51,7 +51,7 @@ export async function loadSharedConstants() {
 export const LANE_LABELS = ["Left", "Center", "Right"];
 
 // Obstacle kinds available in the editor UI (combo_gate excluded — not a distinct design element)
-export const EDITOR_OBSTACLE_KINDS = ["shape_gate", "lane_block", "low_bar", "high_bar", "split_path"];
+export const EDITOR_OBSTACLE_KINDS = ["shape_gate", "lane_block", "split_path"];
 
 export const KIND_LABELS = {
     shape_gate: "ShapeGate",
