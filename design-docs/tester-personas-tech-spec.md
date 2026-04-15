@@ -248,7 +248,8 @@ struct RingZoneTracker {
 ```
 
 **DoD note**: Only emplaced on shape-gated obstacles (ShapeGate, ComboGate,
-SplitPath) — not on LaneBlock/LowBar/HighBar which have no ring visual.
+SplitPath) — not on LaneBlock/LowBar/HighBar/LanePushLeft/LanePushRight which have no ring visual.
+LanePush obstacles are passive (auto-fired), so the test player does not need to react to them.
 Existential processing: if the component exists, the system processes it.
 
 ## SessionLog (context singleton)
@@ -680,7 +681,7 @@ Linear iteration over contiguous storage — hardware prefetcher friendly.
   ├─────┼────────────────────────────────────────────────────────┤
   │ 🟡5 │  Original design emplaced RingZoneTracker on ALL       │
   │     │  obstacles. Only RequiredShape obstacles have a ring    │
-  │     │  visual. LaneBlock/LowBar/HighBar would be processed   │
+  │     │  visual. LaneBlock/LowBar/HighBar/LanePush would be     │
   │     │  for nothing.                                          │
   │     │  FIX: Emplace only on obstacles with RequiredShape.    │
   │     │  ring_zone_log_system queries {Position,               │

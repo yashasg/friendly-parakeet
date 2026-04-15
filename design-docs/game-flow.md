@@ -91,15 +91,13 @@
 ### State Enumeration (for ECS implementation)
 
 ```
-  enum class GameState {
-      SPLASH,        // app loading (< 1 second, preload assets)
-      TITLE,         // main menu
-      TUTORIAL,      // guided runs 1-5
-      PLAYING,       // core gameplay
-      PAUSED,        // overlay on gameplay
-      DYING,         // crash animation (0.8s)
-      GAME_OVER,     // results screen
-      TRANSITIONING  // between any two states
+  enum class GamePhase : uint8_t {
+      Title        = 0,   // main menu
+      LevelSelect  = 1,   // song/difficulty selection
+      Playing      = 2,   // core gameplay
+      Paused       = 3,   // overlay on gameplay
+      GameOver     = 4,   // results screen
+      SongComplete = 5    // song finished successfully
   };
 ```
 
@@ -133,6 +131,16 @@ and screen width (W) for portrait mode (9:16 aspect ratio target).
   ║← 0.05W →║←── content ──→║← 0.05W →║
                (0.90W wide)
 ```
+
+---
+
+### 2a-bis. LEVEL SELECT SCREEN
+
+After tapping "start" on the title screen, the player is taken to the
+**LevelSelect** screen (`GamePhase::LevelSelect`). This screen presents
+a list of available songs and difficulty options. The layout is defined in
+`content/ui/screens/level_select.json`. Confirming a selection transitions
+to `GamePhase::Playing`.
 
 ---
 
