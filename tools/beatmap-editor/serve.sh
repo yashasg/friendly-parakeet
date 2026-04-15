@@ -7,14 +7,14 @@ DIR="$(cd "$(dirname "$0")" && pwd)"
 
 echo "🎵 SHAPESHIFTER Beatmap Editor"
 echo "   Serving from: $DIR"
-echo "   URL: http://localhost:${PORT}/index.html"
+echo "   URL: http://localhost:${PORT}/tools/beatmap-editor/index.html"
 echo ""
 echo "   Press Ctrl+C to stop."
 echo ""
 
 # Open browser after a short delay
-(sleep 1 && open "http://localhost:${PORT}/index.html" 2>/dev/null \
-         || xdg-open "http://localhost:${PORT}/index.html" 2>/dev/null) &
+(sleep 1 && open "http://localhost:${PORT}/tools/beatmap-editor/index.html" 2>/dev/null \
+         || xdg-open "http://localhost:${PORT}/tools/beatmap-editor/index.html" 2>/dev/null) &
 
 # Serve from the repo root so content/constants.json resolves
 cd "$DIR/../.." || exit 1
