@@ -266,8 +266,11 @@ function renderObstacles(ctx, state, firstBeat, lastBeat) {
         const y = HEADER_HEIGHT + entry.lane * LANE_HEIGHT + LANE_HEIGHT / 2;
 
         if (entry.kind === 'lane_push_left' || entry.kind === 'lane_push_right') {
-            const label = entry.kind === 'lane_push_left' ? '<<<' : '>>>';
-            ctx.font = 'bold 16px sans-serif';
+            // In the editor, lanes stack vertically: L0=top, L2=bottom
+            // "push left" = push toward L0 = upward arrow
+            // "push right" = push toward L2 = downward arrow
+            const label = entry.kind === 'lane_push_left' ? '▲▲▲' : '▼▼▼';
+            ctx.font = 'bold 14px sans-serif';
             ctx.fillStyle = (COLORS.kind[entry.kind]) || COLORS.text;
             ctx.fillText(label, x, y);
             ctx.font = '20px sans-serif';
@@ -350,8 +353,8 @@ function renderLegend(ctx, w, h) {
         { glyph: SHAPE_GLYPHS.circle,      color: COLORS.shape.circle,          label: 'Circle' },
         { glyph: SHAPE_GLYPHS.square,      color: COLORS.shape.square,          label: 'Square' },
         { glyph: SHAPE_GLYPHS.triangle,    color: COLORS.shape.triangle,        label: 'Triangle' },
-        { glyph: '<<<',                    color: COLORS.kind.lane_push_left,   label: 'Push Left' },
-        { glyph: '>>>',                    color: COLORS.kind.lane_push_right,  label: 'Push Right' },
+        { glyph: '▲▲▲',                color: COLORS.kind.lane_push_left,   label: 'Push Left' },
+        { glyph: '▼▼▼',                color: COLORS.kind.lane_push_right,  label: 'Push Right' },
     ];
 
     const lineH = 16;
