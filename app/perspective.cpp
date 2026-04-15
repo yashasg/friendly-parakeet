@@ -14,39 +14,48 @@
 namespace perspective {
 
 // ── Filled rectangle (axis-aligned in world → trapezoid after projection) ────
-// Depth only depends on y, and a rect has only 2 y-values (top/bottom).
-// Compute depth once per scanline instead of once per corner.
+// Height is scaled by depth at the rect's vertical centre so objects appear
+// shorter when far from the camera.
 void draw_rect(float x, float y, float w, float h, Color c) {
-    float d_top = depth(y);
-    float d_bot = depth(y + h);
+    float cy  = y + h / 2.0f;
+    float d   = depth(cy);
+    float sh  = h * d;                // perspective-scaled height
+    float top = cy - sh / 2.0f;
+    float bot = cy + sh / 2.0f;
+
+    float d_top = depth(top);
+    float d_bot = depth(bot);
 
     float tl_x = CENTER + (x     - CENTER) * d_top;
     float tr_x = CENTER + (x + w - CENTER) * d_top;
     float bl_x = CENTER + (x     - CENTER) * d_bot;
     float br_x = CENTER + (x + w - CENTER) * d_bot;
 
-    Vector2 tl = {tl_x, y};
-    Vector2 tr = {tr_x, y};
-    Vector2 bl = {bl_x, y + h};
-    Vector2 br = {br_x, y + h};
+    Vector2 tl = {tl_x, top};
+    Vector2 tr = {tr_x, top};
+    Vector2 bl = {bl_x, bot};
+    Vector2 br = {br_x, bot};
 
     DrawTriangle(tl, bl, tr, c);
     DrawTriangle(tr, bl, br, c);
 }
 
 // ── Filled shape (Circle, Square, Triangle, Hexagon) ─────────────────────────
+// Vertex Y-offsets are scaled by depth(cy) so shapes shrink uniformly as they
+// recede toward the vanishing point.
 void draw_shape(Shape shape, float cx, float cy, float size, Color c) {
+    float d_cy = depth(cy);
+
     switch (shape) {
         case Shape::Circle: {
             float r = size / 2.0f;
             Vector2 centre = project(cx, cy);
-            // Pre-project first vertex; reuse as prev in the loop
             Vector2 prev = project(cx + shape_verts::CIRCLE[0].x * r,
-                                   cy + shape_verts::CIRCLE[0].y * r);
+                                   cy + shape_verts::CIRCLE[0].y * r * d_cy);
             for (int i = 0; i < shape_verts::CIRCLE_SEGMENTS; ++i) {
                 int next = (i + 1) % shape_verts::CIRCLE_SEGMENTS;
                 Vector2 cur = project(cx + shape_verts::CIRCLE[next].x * r,
-                                      cy + shape_verts::CIRCLE[next].y * r);
+                                      cy + shape_verts::CIRCLE[next].y * r * d_cy);
                 DrawTriangle(centre, cur, prev, c);
                 prev = cur;
             }
@@ -57,9 +66,8 @@ void draw_shape(Shape shape, float cx, float cy, float size, Color c) {
             Vector2 corners[4];
             for (int i = 0; i < 4; ++i) {
                 corners[i] = project(cx + shape_verts::SQUARE[i].x * half,
-                                     cy + shape_verts::SQUARE[i].y * half);
+                                     cy + shape_verts::SQUARE[i].y * half * d_cy);
             }
-            // TL(0), TR(1), BR(2), BL(3) — two CCW triangles
             DrawTriangle(corners[0], corners[3], corners[1], c);
             DrawTriangle(corners[1], corners[3], corners[2], c);
             break;
@@ -69,9 +77,8 @@ void draw_shape(Shape shape, float cx, float cy, float size, Color c) {
             Vector2 verts[3];
             for (int i = 0; i < 3; ++i) {
                 verts[i] = project(cx + shape_verts::TRIANGLE[i].x * half,
-                                   cy + shape_verts::TRIANGLE[i].y * half);
+                                   cy + shape_verts::TRIANGLE[i].y * half * d_cy);
             }
-            // Apex(0), BaseLeft(1), BaseRight(2) — CCW
             DrawTriangle(verts[0], verts[1], verts[2], c);
             break;
         }
@@ -79,11 +86,11 @@ void draw_shape(Shape shape, float cx, float cy, float size, Color c) {
             float radius = size * 0.6f;
             Vector2 centre = project(cx, cy);
             Vector2 prev = project(cx + shape_verts::HEXAGON[0].x * radius,
-                                   cy + shape_verts::HEXAGON[0].y * radius);
+                                   cy + shape_verts::HEXAGON[0].y * radius * d_cy);
             for (int i = 0; i < shape_verts::HEX_SEGMENTS; ++i) {
                 int next = (i + 1) % shape_verts::HEX_SEGMENTS;
                 Vector2 cur = project(cx + shape_verts::HEXAGON[next].x * radius,
-                                      cy + shape_verts::HEXAGON[next].y * radius);
+                                      cy + shape_verts::HEXAGON[next].y * radius * d_cy);
                 DrawTriangle(centre, cur, prev, c);
                 prev = cur;
             }
@@ -104,6 +111,8 @@ void draw_ring(float cx, float cy, float inner_r, float outer_r, int segments, C
     int seg = (segments > 0 && segments <= shape_verts::CIRCLE_SEGMENTS)
               ? segments : shape_verts::CIRCLE_SEGMENTS;
 
+    float d_cy = depth(cy);
+
     for (int i = 0; i < seg; ++i) {
         // Map evenly across the full 0..CIRCLE_SEGMENTS table so the ring
         // always closes correctly, regardless of the requested segment count.
@@ -112,13 +121,13 @@ void draw_ring(float cx, float cy, float inner_r, float outer_r, int segments, C
                        % shape_verts::CIRCLE_SEGMENTS;
 
         Vector2 outer1 = project(cx + shape_verts::CIRCLE[idx].x      * outer_r,
-                                 cy + shape_verts::CIRCLE[idx].y      * outer_r);
+                                 cy + shape_verts::CIRCLE[idx].y      * outer_r * d_cy);
         Vector2 outer2 = project(cx + shape_verts::CIRCLE[next_idx].x * outer_r,
-                                 cy + shape_verts::CIRCLE[next_idx].y * outer_r);
+                                 cy + shape_verts::CIRCLE[next_idx].y * outer_r * d_cy);
         Vector2 inner1 = project(cx + shape_verts::CIRCLE[idx].x      * inner_r,
-                                 cy + shape_verts::CIRCLE[idx].y      * inner_r);
+                                 cy + shape_verts::CIRCLE[idx].y      * inner_r * d_cy);
         Vector2 inner2 = project(cx + shape_verts::CIRCLE[next_idx].x * inner_r,
-                                 cy + shape_verts::CIRCLE[next_idx].y * inner_r);
+                                 cy + shape_verts::CIRCLE[next_idx].y * inner_r * d_cy);
 
         DrawTriangle(outer1, outer2, inner1, c);
         DrawTriangle(inner1, outer2, inner2, c);
@@ -127,13 +136,19 @@ void draw_ring(float cx, float cy, float inner_r, float outer_r, int segments, C
 
 // ── Projected rectangle outline ──────────────────────────────────────────────
 void draw_rect_lines(float x, float y, float w, float h, float thick, Color c) {
-    float d_top = depth(y);
-    float d_bot = depth(y + h);
+    float cy  = y + h / 2.0f;
+    float d   = depth(cy);
+    float sh  = h * d;
+    float top = cy - sh / 2.0f;
+    float bot = cy + sh / 2.0f;
 
-    Vector2 tl = {CENTER + (x     - CENTER) * d_top, y};
-    Vector2 tr = {CENTER + (x + w - CENTER) * d_top, y};
-    Vector2 br = {CENTER + (x + w - CENTER) * d_bot, y + h};
-    Vector2 bl = {CENTER + (x     - CENTER) * d_bot, y + h};
+    float d_top = depth(top);
+    float d_bot = depth(bot);
+
+    Vector2 tl = {CENTER + (x     - CENTER) * d_top, top};
+    Vector2 tr = {CENTER + (x + w - CENTER) * d_top, top};
+    Vector2 br = {CENTER + (x + w - CENTER) * d_bot, bot};
+    Vector2 bl = {CENTER + (x     - CENTER) * d_bot, bot};
 
     DrawLineEx(tl, tr, thick, c);
     DrawLineEx(tr, br, thick, c);
@@ -158,21 +173,27 @@ void draw_tri_lines(Vector2 v1, Vector2 v2, Vector2 v3, Color c) {
 void flush_world_rects(entt::registry& reg) {
     rlBegin(RL_QUADS);
 
-    // Helper: emit one projected quad
+    // Helper: emit one projected quad (height scaled by depth)
     auto emit_quad = [](float x, float y, float w, float h,
                         uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-        float d_top = depth(y);
-        float d_bot = depth(y + h);
+        float cy  = y + h / 2.0f;
+        float d   = depth(cy);
+        float sh  = h * d;
+        float top = cy - sh / 2.0f;
+        float bot = cy + sh / 2.0f;
+
+        float d_top = depth(top);
+        float d_bot = depth(bot);
         float tl_x = CENTER + (x     - CENTER) * d_top;
         float tr_x = CENTER + (x + w - CENTER) * d_top;
         float bl_x = CENTER + (x     - CENTER) * d_bot;
         float br_x = CENTER + (x + w - CENTER) * d_bot;
 
         rlColor4ub(r, g, b, a);
-        rlVertex2f(tl_x, y);
-        rlVertex2f(bl_x, y + h);
-        rlVertex2f(br_x, y + h);
-        rlVertex2f(tr_x, y);
+        rlVertex2f(tl_x, top);
+        rlVertex2f(bl_x, bot);
+        rlVertex2f(br_x, bot);
+        rlVertex2f(tr_x, top);
     };
 
     // ── Obstacles: iterate by ObstacleTag ────────────────────
@@ -363,14 +384,17 @@ void flush_floor_rings(const FloorParams& fp) {
 // ── Pass 4: Gameplay triangles (ghost shapes + player) ──────────────────────
 void flush_gameplay_tris(entt::registry& reg) {
     // Helper: emit a fan shape from cached vertex table (perspective-projected)
+    // Y-offsets are scaled by depth(cy) for vertical foreshortening.
     auto emit_fan = [](const shape_verts::V2* table, int count, float radius,
                        float cx, float cy, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+        float d_cy = depth(cy);
         Vector2 centre = project(cx, cy);
-        Vector2 prev = project(cx + table[0].x * radius, cy + table[0].y * radius);
+        Vector2 prev = project(cx + table[0].x * radius,
+                               cy + table[0].y * radius * d_cy);
         for (int i = 0; i < count; ++i) {
             int next = (i + 1) % count;
             Vector2 cur = project(cx + table[next].x * radius,
-                                  cy + table[next].y * radius);
+                                  cy + table[next].y * radius * d_cy);
             rlColor4ub(r, g, b, a);
             rlVertex2f(centre.x, centre.y);
             rlVertex2f(cur.x, cur.y);
@@ -388,10 +412,11 @@ void flush_gameplay_tris(entt::registry& reg) {
                 break;
             case Shape::Square: {
                 float half = sz / 2.0f;
+                float d_cy = depth(cy);
                 Vector2 v[4];
                 for (int i = 0; i < 4; ++i)
                     v[i] = project(cx + shape_verts::SQUARE[i].x * half,
-                                   cy + shape_verts::SQUARE[i].y * half);
+                                   cy + shape_verts::SQUARE[i].y * half * d_cy);
                 rlColor4ub(r, g, b, a);
                 rlVertex2f(v[0].x, v[0].y); rlVertex2f(v[3].x, v[3].y); rlVertex2f(v[1].x, v[1].y);
                 rlVertex2f(v[1].x, v[1].y); rlVertex2f(v[3].x, v[3].y); rlVertex2f(v[2].x, v[2].y);
@@ -399,10 +424,11 @@ void flush_gameplay_tris(entt::registry& reg) {
             }
             case Shape::Triangle: {
                 float half = sz / 2.0f;
+                float d_cy = depth(cy);
                 Vector2 v[3];
                 for (int i = 0; i < 3; ++i)
                     v[i] = project(cx + shape_verts::TRIANGLE[i].x * half,
-                                   cy + shape_verts::TRIANGLE[i].y * half);
+                                   cy + shape_verts::TRIANGLE[i].y * half * d_cy);
                 rlColor4ub(r, g, b, a);
                 rlVertex2f(v[0].x, v[0].y); rlVertex2f(v[1].x, v[1].y); rlVertex2f(v[2].x, v[2].y);
                 break;

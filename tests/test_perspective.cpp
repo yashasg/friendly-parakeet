@@ -653,3 +653,118 @@ TEST_CASE("winding: perspective rect (obstacle quad) triangles are CCW", "[windi
     float cross2 = cross2d(tr_x, 300.0f, bl_x, 320.0f, br_x, 320.0f);
     CHECK(is_ccw(cross2));
 }
+
+// ═════════════════════════════════════════════════════════════════════════════
+// §5  Vertical foreshortening (depth-scaled Y) tests
+// ═════════════════════════════════════════════════════════════════════════════
+// After the perspective fix, object heights are multiplied by depth(cy).
+// Objects near the top of the screen (far away) must appear shorter than
+// objects near the bottom (close to camera).
+
+TEST_CASE("perspective: depth-scaled object size decreases toward top", "[perspective]") {
+    constexpr float size = 64.0f;
+    float d_far  = perspective::depth(100.0f);
+    float d_mid  = perspective::depth(640.0f);
+    float d_near = perspective::depth(920.0f);
+
+    float apparent_far  = size * d_far;
+    float apparent_mid  = size * d_mid;
+    float apparent_near = size * d_near;
+
+    CHECK(apparent_far  < apparent_mid);
+    CHECK(apparent_mid  < apparent_near);
+    CHECK(apparent_far  > 0.0f);
+}
+
+TEST_CASE("perspective: depth-scaled rect height is shorter far away", "[perspective]") {
+    // Simulate the height-scaling logic used by draw_rect / emit_quad.
+    constexpr float h = 40.0f;
+
+    // Far rect (y=100)
+    float cy_far = 100.0f + h / 2.0f;
+    float sh_far = h * perspective::depth(cy_far);
+
+    // Near rect (y=900)
+    float cy_near = 900.0f + h / 2.0f;
+    float sh_near = h * perspective::depth(cy_near);
+
+    CHECK(sh_far < sh_near);
+    CHECK(sh_far > 0.0f);
+    CHECK(sh_near <= h);  // depth ≤ 1.0 in the visible range
+}
+
+// ── Winding order for depth-scaled shapes ───────────────────────────────────
+// Verify that compressing Y offsets by depth preserves CCW winding.
+
+TEST_CASE("winding: depth-scaled circle fan is CCW (far y=100)", "[winding][perspective]") {
+    constexpr float cx = 360.0f, cy = 100.0f, r = 32.0f;
+    float d_cy = perspective::depth(cy);
+    Vector2 centre = perspective::project(cx, cy);
+
+    Vector2 prev = perspective::project(
+        cx + shape_verts::CIRCLE[0].x * r,
+        cy + shape_verts::CIRCLE[0].y * r * d_cy);
+
+    for (int i = 0; i < shape_verts::CIRCLE_SEGMENTS; ++i) {
+        int next = (i + 1) % shape_verts::CIRCLE_SEGMENTS;
+        Vector2 cur = perspective::project(
+            cx + shape_verts::CIRCLE[next].x * r,
+            cy + shape_verts::CIRCLE[next].y * r * d_cy);
+
+        float cross = cross2d(centre.x, centre.y, cur.x, cur.y, prev.x, prev.y);
+        INFO("depth-scaled circle fan i=" << i << " d=" << d_cy << " cross=" << cross);
+        CHECK(is_ccw(cross));
+        prev = cur;
+    }
+}
+
+TEST_CASE("winding: depth-scaled square is CCW (far y=100)", "[winding][perspective]") {
+    constexpr float cx = 360.0f, cy = 100.0f, half = 32.0f;
+    float d_cy = perspective::depth(cy);
+    Vector2 v[4];
+    for (int i = 0; i < 4; ++i)
+        v[i] = perspective::project(cx + shape_verts::SQUARE[i].x * half,
+                                    cy + shape_verts::SQUARE[i].y * half * d_cy);
+
+    float cross1 = cross2d(v[0].x, v[0].y, v[3].x, v[3].y, v[1].x, v[1].y);
+    CHECK(is_ccw(cross1));
+    float cross2 = cross2d(v[1].x, v[1].y, v[3].x, v[3].y, v[2].x, v[2].y);
+    CHECK(is_ccw(cross2));
+}
+
+TEST_CASE("winding: depth-scaled triangle shape is CCW (far y=100)", "[winding][perspective]") {
+    constexpr float cx = 360.0f, cy = 100.0f, half = 32.0f;
+    float d_cy = perspective::depth(cy);
+    Vector2 v[3];
+    for (int i = 0; i < 3; ++i)
+        v[i] = perspective::project(cx + shape_verts::TRIANGLE[i].x * half,
+                                    cy + shape_verts::TRIANGLE[i].y * half * d_cy);
+
+    float cross = cross2d(v[0].x, v[0].y, v[1].x, v[1].y, v[2].x, v[2].y);
+    CHECK(is_ccw(cross));
+}
+
+TEST_CASE("winding: depth-scaled rect is CCW (far y=100)", "[winding][perspective]") {
+    // Simulate draw_rect's height-scaling: scale h by depth, recenter.
+    constexpr float y = 100.0f, h = 40.0f;
+    float cy  = y + h / 2.0f;
+    float d   = perspective::depth(cy);
+    float sh  = h * d;
+    float top = cy - sh / 2.0f;
+    float bot = cy + sh / 2.0f;
+
+    float d_top = perspective::depth(top);
+    float d_bot = perspective::depth(bot);
+
+    float tl_x = perspective::CENTER + (0.0f   - perspective::CENTER) * d_top;
+    float tr_x = perspective::CENTER + (720.0f - perspective::CENTER) * d_top;
+    float bl_x = perspective::CENTER + (0.0f   - perspective::CENTER) * d_bot;
+    float br_x = perspective::CENTER + (720.0f - perspective::CENTER) * d_bot;
+
+    // Triangle 1: TL → BL → TR
+    float cross1 = cross2d(tl_x, top, bl_x, bot, tr_x, top);
+    CHECK(is_ccw(cross1));
+    // Triangle 2: TR → BL → BR
+    float cross2 = cross2d(tr_x, top, bl_x, bot, br_x, bot);
+    CHECK(is_ccw(cross2));
+}
