@@ -202,6 +202,14 @@ void flush_world_rects(entt::registry& reg) {
                     break;
                 }
 
+                case ObstacleKind::LanePushLeft:
+                case ObstacleKind::LanePushRight: {
+                    float lx = pos.x - dsz.w / 2;
+                    emit_quad(lx, pos.y, dsz.w, dsz.h,
+                              col.r, col.g, col.b, col.a);
+                    break;
+                }
+
                 case ObstacleKind::LowBar:
                 case ObstacleKind::HighBar:
                     emit_quad(0, pos.y, static_cast<float>(constants::SCREEN_W),

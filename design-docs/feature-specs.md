@@ -92,102 +92,70 @@ inputs resolve deterministically.
 ### ECS Components (C++ structs)
 
 ```cpp
-// ── Identifies which zone a touch belongs to ──
-enum class InputZone : uint8_t {
-    Swipe,   // top 80%
-    Button   // bottom 20%
-};
-
-// ── Raw touch event snapshot, one per active finger ──
-struct TouchEvent {
-    uint64_t finger_id;          // touch finger ID
-    InputZone zone;              // resolved zone at touch-down
-    float start_x, start_y;     // normalised → pixel, at touch-down
-    float current_x, current_y; // latest position
-    float start_time;            // seconds since app start
-    bool  active;                // false once finger lifts
-};
-
-// ── Recognised swipe gesture (written by gesture_recognition_system) ──
-enum class SwipeDirection : uint8_t {
-    Left, Right, Up, Down
-};
-
-struct SwipeGesture {
-    SwipeDirection direction;
-    float magnitude;             // distance in dp
-    float duration;              // seconds held
-    float timestamp;             // when recognised
-    bool  consumed;              // true once a gameplay system reads it
-};
-
-// ── Shape button tap (written by gesture_recognition_system) ──
-enum class ShapeID : uint8_t {
-    Circle   = 0,   // ●
-    Square   = 1,   // ■
-    Triangle = 2    // ▲
-};
-
-struct ShapeButtonTap {
-    ShapeID shape;
-    float   timestamp;
-    bool    consumed;            // true once a gameplay system reads it
+// ── Input source identification ──
+enum class InputSource : uint8_t {
+    None, Touch, Keyboard
 };
 
 // ── Per-frame input state, singleton component ──
-//    Holds the resolved buffer that gameplay systems read.
 struct InputState {
-    // Buffer: max 1 swipe + 1 tap per frame
-    bool              has_swipe;
-    SwipeGesture      buffered_swipe;
+    bool  touch_down = false;       // just pressed this frame
+    bool  touch_up   = false;       // just released this frame
+    bool  touching   = false;       // held down
+    bool  quit_requested = false;
 
-    bool              has_tap;
-    ShapeButtonTap    buffered_tap;
+    float start_x = 0, start_y = 0;     // position on touch_down
+    float curr_x  = 0, curr_y  = 0;     // latest position
+    float end_x   = 0, end_y   = 0;     // position on touch_up
+    float duration = 0;                  // seconds held
 
-    // Debounce tracking
-    float             last_tap_time;      // for 100 ms debounce
+    InputSource active_source = InputSource::None;
+    bool was_focused = true;
+};
 
-    // Active touches (max 2)
-    static constexpr int MAX_TOUCHES = 2;
-    TouchEvent        touches[MAX_TOUCHES];
-    int               active_touch_count;
+// ── Action queue: classified player intentions ──
+enum class Direction : uint8_t { Left, Right, Up, Down };
+enum class Button    : uint8_t { Circle, Square, Triangle };
+
+struct Action {
+    enum class Type : uint8_t { Go, Tap } type;
+    Direction dir;
+    Button    btn;
+};
+
+struct ActionQueue {
+    Action  actions[8];
+    uint8_t count = 0;
 };
 ```
 
 ### Systems (function signatures)
 
 ```cpp
-// Reads raylib input, populates / updates InputState::touches[].
-// Classifies each touch into Swipe or Button zone.
-// Called first in the input phase.
-void input_detection_system(entt::registry& reg, float dt);
+// Reads raylib input (touch + keyboard), populates InputState singleton
+// and classifies actions into ActionQueue.
+// Called once per frame in the input phase.
+void input_system(entt::registry& reg, float dt);
 
-// Examines completed touches (finger-up), produces SwipeGesture or
-// ShapeButtonTap, writes them into InputState buffer.
-// Applies min-distance, max-time, debounce, and dedup rules.
-// Called second in the input phase.
-void gesture_recognition_system(entt::registry& reg, float dt);
+// Automated test player: writes ActionQueue from scripted patterns.
+// Replaces human input when running in test-player mode.
+void test_player_system(entt::registry& reg, float dt);
 ```
 
 ### Input → Output Flow
 
 ```
-  raylib touch events (GetTouchPointCount, GetTouchPosition)
+  raylib touch/keyboard events
          │
          ▼
   ┌──────────────────────┐
-  │ input_detection_system│  → updates InputState::touches[]
+  │ input_system          │  → populates InputState + ActionQueue
   └──────────┬───────────┘
              │
              ▼
-  ┌──────────────────────────┐
-  │ gesture_recognition_system│  → writes InputState::buffered_swipe
-  └──────────┬───────────────┘    and/or   ::buffered_tap
-             │
-             ▼
   ┌──────────────────────┐
-  │  gameplay systems     │  → consume .has_swipe / .has_tap
-  │  (movement, shape)   │     set .consumed = true
+  │  gameplay systems     │  → consume ActionQueue actions
+  │  (player_input_sys)  │
   └──────────────────────┘
 ```
 
@@ -352,24 +320,15 @@ struct BurnoutPopup {
 ### Systems (function signatures)
 
 ```cpp
-// Finds the nearest un-cleared obstacle, computes fill & multiplier.
-// Writes BurnoutMeter singleton every frame.
+// Finds the nearest un-cleared obstacle, computes fill, zone & multiplier.
+// Writes BurnoutState singleton every frame.
 // If fill >= 0.95 and player hasn't acted, emplace GameOver tag.
-void burnout_fill_system(entt::registry& reg, float dt);
+void burnout_system(entt::registry& reg, float dt);
 
-// On player action (input consumed), reads current BurnoutMeter,
-// computes banked points, updates Score, emits BurnoutPopup.
-// Resets meter and marks obstacle as cleared.
-void score_banking_system(entt::registry& reg, float dt);
-
-// After each bank, increments ChainTracker::current_chain.
-// Computes flat chain bonus and adds to Score::total.
-// Resets chain on GameOver.
-void chain_tracking_system(entt::registry& reg, float dt);
-
-// Adds 10 * dt to Score::distance_accumulator, awards 10 pts
-// each time accumulator >= 1.0.
-void distance_score_system(entt::registry& reg, float dt);
+// On player action: reads current BurnoutState, computes banked points
+// with zone multiplier and chain bonus, updates ScoreState, emits
+// ScorePopup. Also handles distance scoring (passive pts/second).
+void scoring_system(entt::registry& reg, float dt);
 ```
 
 ### Burnout Fill Pipeline
@@ -377,36 +336,30 @@ void distance_score_system(entt::registry& reg, float dt);
 ```
   EVERY FRAME:
   ┌──────────────────────────────────────────────┐
-  │  1. burnout_fill_system                      │
-  │     ├─ find nearest obstacle with            │
-  │     │  ObstacleProximity.cleared == false     │
+  │  1. burnout_system                           │
+  │     ├─ find nearest obstacle without         │
+  │     │  ScoredTag                             │
   │     ├─ fill = 1 - (dist / detection_range)   │
   │     ├─ clamp fill to [0, 1]                  │
   │     ├─ compute zone + multiplier             │
   │     └─ if fill >= 0.95 → GameOver            │
   └──────────────┬───────────────────────────────┘
                  │
-  ON PLAYER ACTION (input consumed):
+  ON PLAYER ACTION (obstacle cleared):
   ┌──────────────┴───────────────────────────────┐
-  │  2. score_banking_system                     │
+  │  2. scoring_system                           │
   │     ├─ pts = floor(base * multiplier)        │
-  │     ├─ Score.total += pts                    │
-  │     ├─ mark obstacle cleared                 │
-  │     └─ emit BurnoutPopup                     │
-  ├──────────────────────────────────────────────┤
-  │  3. chain_tracking_system                    │
-  │     ├─ chain++ → compute chain bonus         │
-  │     └─ Score.total += chain_bonus            │
-  ├──────────────────────────────────────────────┤
-  │  4. distance_score_system                    │
-  │     └─ Score.total += 10 per elapsed second  │
+  │     ├─ chain bonus from CHAIN_BONUS[]        │
+  │     ├─ ScoreState.score += pts + chain_bonus │
+  │     ├─ emit ScorePopup                       │
+  │     └─ distance scoring: +10 per second      │
   └──────────────────────────────────────────────┘
 ```
 
 ### Dependencies
 
-- **Obstacle Spawning & Difficulty (Spec 3)** — obstacles must exist with `ObstacleProximity` components.
-- **Input System (Spec 1)** — `score_banking_system` reads `InputState` to detect player action.
+- **Obstacle Spawning & Difficulty (Spec 3)** — obstacles must exist before burnout_system can compute proximity.
+- **Input System (Spec 1)** — `scoring_system` reads ActionQueue to detect player action.
 
 ### Edge Cases
 
@@ -434,10 +387,9 @@ void distance_score_system(entt::registry& reg, float dt);
   │  MULT_RISKY_MAX           │  2.0      │  x at fill=0.70       │
   │  MULT_DANGER_MAX          │  5.0      │  x at fill=0.95       │
   │  DETECTION_RANGE_BASE     │  12.0     │  world units          │
-  │  CHAIN_BONUS_2            │  50       │  flat pts             │
-  │  CHAIN_BONUS_3            │  100      │  flat pts             │
-  │  CHAIN_BONUS_4            │  200      │  flat pts             │
-  │  CHAIN_BONUS_5_PLUS_EACH  │  100      │  flat pts per extra   │
+  │  CHAIN_BONUS[5]             │  {0,0,   │  indexed by chain     │
+  │                             │  50,100, │  count (0..4);        │
+  │                             │  200}    │  5+ uses index 4      │
   │  DISTANCE_PTS_PER_SEC     │  10       │  passive income       │
   │  COMBO_MULT_BONUS         │  2.0      │  applied after avg    │
   └──────────────────────────────────────────────────────────────┘
@@ -530,12 +482,15 @@ struct Obstacle {
 
 // ── What kind of obstacle ──
 enum class ObstacleKind : uint8_t {
-    ShapeGate,    // requires correct shape
-    LaneBlock,    // requires lane change
-    LowBar,       // requires jump  (swipe up)
-    HighBar,      // requires slide (swipe down)
-    ComboGate,    // requires shape + swipe
-    SplitPath     // requires shape + correct lane
+    ShapeGate     = 0,   // requires correct shape
+    LaneBlock     = 1,   // legacy value kept for backward compat;
+                         // spawner converts to LanePushLeft/Right at runtime
+    LowBar        = 2,   // requires jump  (swipe up)
+    HighBar       = 3,   // requires slide (swipe down)
+    ComboGate     = 4,   // requires shape + swipe
+    SplitPath     = 5,   // requires shape + correct lane
+    LanePushLeft  = 6,   // passive: auto-pushes player one lane left
+    LanePushRight = 7    // passive: auto-pushes player one lane right
 };
 
 struct ObstacleType {
@@ -593,7 +548,7 @@ struct DifficultyState {
   │ BKT │  TIME    │ SPEED │  UNLOCKED TYPES              │ BURNOUT    │
   ├─────┼──────────┼───────┼──────────────────────────────┼────────────┤
   │  0  │  0–30s   │ x1.0  │ ShapeGate                    │ Very wide  │
-  │  1  │ 30–60s   │ x1.3  │ + LaneBlock, LowBar          │ Wide       │
+  │  1  │ 30–60s   │ x1.3  │ + LanePush, LowBar           │ Wide       │
   │  2  │ 60–90s   │ x1.6  │ + HighBar                    │ Moderate   │
   │  3  │ 90–120s  │ x2.0  │ + ComboGate                  │ Tighter    │
   │  4  │ 120–150s │ x2.3  │ + SplitPath                  │ Tight      │
@@ -680,7 +635,7 @@ void obstacle_cleanup_system(entt::registry& reg, float dt);
 ### Dependencies
 
 - **Input System (Spec 1)** — `ShapeID` and `SwipeDirection` enums are defined there; re-used here.
-- **Burnout Scoring (Spec 2)** — spawned obstacles carry `ObstacleProximity`, which `burnout_fill_system` reads.
+- **Burnout Scoring (Spec 2)** — spawned obstacles are queried by `burnout_system` for proximity.
 
 ### Edge Cases
 
@@ -713,7 +668,7 @@ void obstacle_cleanup_system(entt::registry& reg, float dt);
   │  COMBO_MIN_GAP_BKT3         │  3        │  obstacles between   │
   │  COMBO_MIN_GAP_BKT5         │  2        │  obstacles between   │
   │  SHAPE_GATE_BASE_PTS        │  200      │                      │
-  │  LANE_BLOCK_BASE_PTS        │  100      │                      │
+  │  LANE_PUSH_BASE_PTS         │  0        │  passive, no score   │
   │  LOW_BAR_BASE_PTS           │  100      │                      │
   │  HIGH_BAR_BASE_PTS          │  100      │                      │
   │  COMBO_GATE_BASE_PTS        │  200      │                      │
@@ -736,22 +691,20 @@ void obstacle_cleanup_system(entt::registry& reg, float dt);
   │                     FRAME TICK (dt)                         │
   │                                                             │
   │  PHASE 1 — INPUT                                           │
-  │    1. input_detection_system       (raylib input → touches)  │
-  │    2. gesture_recognition_system   (touches → actions)     │
+  │    1. input_system                 (raylib input → state)   │
   │                                                             │
   │  PHASE 2 — DIFFICULTY & SPAWNING                           │
-  │    3. difficulty_ramp_system       (time → speed/bracket)  │
-  │    4. obstacle_spawn_system        (spawn new obstacles)   │
+  │    2. difficulty_system            (time → speed/bracket)   │
+  │    3. obstacle_spawn_system        (spawn new obstacles)    │
   │                                                             │
   │  PHASE 3 — SCORING                                         │
-  │    5. burnout_fill_system          (proximity → meter)     │
-  │    6. score_banking_system         (action → bank points)  │
-  │    7. chain_tracking_system        (streak → bonus)        │
-  │    8. distance_score_system        (time → passive pts)    │
+  │    4. burnout_system               (proximity → meter)      │
+  │    5. scoring_system               (action → bank + chain)  │
   │                                                             │
-  │  PHASE 4 — PHYSICS & CLEANUP                               │
-  │    9. (movement systems — not in these specs)              │
-  │   10. obstacle_cleanup_system      (destroy passed obs)    │
+  │  PHASE 4 — PLAYER & PHYSICS                                │
+  │    6. player_input_system          (ActionQueue → player)   │
+  │    7. (movement systems — not in these specs)              │
+  │    8. obstacle_cleanup_system      (destroy passed obs)    │
   │                                                             │
   │  PHASE 5 — RENDER                                          │
   │   11. (render systems — not in these specs)                │
@@ -761,14 +714,13 @@ void obstacle_cleanup_system(entt::registry& reg, float dt);
 ## Shared Enum/Type Dependencies
 
 ```
-  input_system.h         burnout_scoring.h       obstacle_spawning.h
+  input.h                burnout/scoring.h       obstacle_spawning.h
   ──────────────         ─────────────────       ───────────────────
-  ShapeID          ────→  (used by banking)  ────→  ObstacleType
-  SwipeDirection   ────→  (used by banking)  ────→  ObstacleType
-  InputState       ────→  score_banking_system
-                          BurnoutMeter
-                          ObstacleProximity  ←────  obstacle_spawn_system
-                          GameOver           ────→  obstacle_spawn_system
+  InputState       ────→  scoring_system
+  ActionQueue      ────→  scoring_system
+                          BurnoutState     ←────  burnout_system
+                          ScoreState       ←────  scoring_system
+                          GameOver         ────→  obstacle_spawn_system
 ```
 
 ## Component Registry Summary
@@ -778,17 +730,14 @@ void obstacle_cleanup_system(entt::registry& reg, float dt);
   │  COMPONENT              │ SCOPE    │ DEFINED IN              │
   ├─────────────────────────┼──────────┼─────────────────────────┤
   │  InputState             │ singleton│ Spec 1 — Input          │
-  │  TouchEvent             │ embedded │ Spec 1 — Input          │
-  │  SwipeGesture           │ embedded │ Spec 1 — Input          │
-  │  ShapeButtonTap         │ embedded │ Spec 1 — Input          │
-  │  BurnoutMeter           │ singleton│ Spec 2 — Burnout        │
-  │  Score                  │ singleton│ Spec 2 — Burnout        │
-  │  ChainTracker           │ singleton│ Spec 2 — Burnout        │
-  │  ObstacleProximity      │ per-ent  │ Spec 2 — Burnout        │
-  │  BurnoutPopup           │ event    │ Spec 2 — Burnout        │
+  │  ActionQueue            │ singleton│ Spec 1 — Input          │
+  │  BurnoutState           │ singleton│ Spec 2 — Burnout        │
+  │  ScoreState             │ singleton│ Spec 2 — Burnout        │
+  │  ScorePopup             │ per-ent  │ Spec 2 — Burnout        │
   │  GameOver               │ tag      │ Spec 2 — Burnout        │
   │  Obstacle               │ per-ent  │ Spec 3 — Spawning       │
   │  ObstacleType           │ per-ent  │ Spec 3 — Spawning       │
+  │  ScoredTag              │ tag      │ Spec 3 — Spawning       │
   │  Position               │ per-ent  │ Spec 3 — Spawning       │
   │  LaneSlot               │ per-ent  │ Spec 3 — Spawning       │
   │  Velocity               │ per-ent  │ Spec 3 — Spawning       │

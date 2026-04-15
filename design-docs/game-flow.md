@@ -91,15 +91,13 @@
 ### State Enumeration (for ECS implementation)
 
 ```
-  enum class GameState {
-      SPLASH,        // app loading (< 1 second, preload assets)
-      TITLE,         // main menu
-      TUTORIAL,      // guided runs 1-5
-      PLAYING,       // core gameplay
-      PAUSED,        // overlay on gameplay
-      DYING,         // crash animation (0.8s)
-      GAME_OVER,     // results screen
-      TRANSITIONING  // between any two states
+  enum class GamePhase : uint8_t {
+      Title        = 0,   // main menu
+      LevelSelect  = 1,   // song/difficulty selection
+      Playing      = 2,   // core gameplay
+      Paused       = 3,   // overlay on gameplay
+      GameOver     = 4,   // results screen
+      SongComplete = 5    // song finished successfully
   };
 ```
 
@@ -133,6 +131,16 @@ and screen width (W) for portrait mode (9:16 aspect ratio target).
   ║← 0.05W →║←── content ──→║← 0.05W →║
                (0.90W wide)
 ```
+
+---
+
+### 2a-bis. LEVEL SELECT SCREEN
+
+After tapping "start" on the title screen, the player is taken to the
+**LevelSelect** screen (`GamePhase::LevelSelect`). This screen presents
+a list of available songs and difficulty options. The layout is defined in
+`content/ui/screens/level_select.json`. Confirming a selection transitions
+to `GamePhase::Playing`.
 
 ---
 
@@ -672,24 +680,24 @@ and screen width (W) for portrait mode (9:16 aspect ratio target).
 
 ### TUTORIAL RUN 3 — "Dodge!"
 
-**Goal:** Teach lane swiping. Lane blocks appear. All 3 shape buttons now visible.
+**Goal:** Introduce lane pushes. Lane push obstacles appear. All 3 shape buttons now visible.
 
 ```
   WHAT'S DIFFERENT:
   ─────────────────
-  • Shape gates (●, ■, ▲) + LANE BLOCKS appear
+  • Shape gates (●, ■, ▲) + LANE PUSHES appear
   • All 3 shape buttons visible
-  • Swipe hint arrow appears on first lane block
+  • Brief hint explains lane push on first occurrence
   • Speed: ×0.8
   • Burnout meter still hidden
 
   WHAT PLAYER LEARNS:
   ───────────────────
-  "I can swipe to dodge obstacles in my lane"
-  "I need both shape matching AND dodging"
+  "Some obstacles push me to a different lane automatically"
+  "I need shape matching AND awareness of lane pushes"
 ```
 
-#### Run 3 — Frame 1: First lane block ever
+#### Run 3 — Frame 1: First lane push ever
 
 ```
   ╔══════════════════════════════════════╗
@@ -697,7 +705,7 @@ and screen width (W) for portrait mode (9:16 aspect ratio target).
   ║                                      ║
   ║                                      ║
   ║           ╔═══╗                      ║
-  ║           ║ X ║  ← BLOCK!           ║
+  ║           ║ ▶ ║  ← PUSH RIGHT!      ║
   ║           ╚═══╝    (in your lane)    ║
   ║  ─────────┬─────────┬─────────      ║
   ║           │    :    │                ║
@@ -707,8 +715,8 @@ and screen width (W) for portrait mode (9:16 aspect ratio target).
   ║           │  (you)  │                ║
   ║  ─────────┴─────────┴─────────      ║
   ║                                      ║
-  ║           ◄──── swipe! ────►         ║  ← animated arrow
-  ║                                      ║     slides L/R
+  ║        "You'll be pushed right!"     ║  ← hint text
+  ║                                      ║
   ║   ┌──────┐ ┌──────┐ ┌──────┐        ║
   ║   │  ●   │ │  ■   │ │  ▲   │        ║
   ║   └──────┘ └──────┘ └──────┘        ║
@@ -716,7 +724,7 @@ and screen width (W) for portrait mode (9:16 aspect ratio target).
   ╚══════════════════════════════════════╝
 ```
 
-#### Run 3 — Frame 2: Player swipes right — dodged!
+#### Run 3 — Frame 2: Lane push fires — player auto-moved!
 
 ```
   ╔══════════════════════════════════════╗
@@ -727,12 +735,12 @@ and screen width (W) for portrait mode (9:16 aspect ratio target).
   ║                                      ║
   ║  ─────────┬─────────┬─────────      ║
   ║           │  ╔═══╗  │               ║
-  ║           │  ║ X ║  │    ✨          ║
+  ║           │  ║ ▶ ║  │    ✨          ║
   ║           │  ╚═══╝  │     ●         ║
-  ║           │         │   (safe!)     ║
+  ║           │         │   (pushed!)   ║
   ║  ─────────┴─────────┴─────────      ║
   ║                                      ║
-  ║            ✓ NICE!                   ║
+  ║                                      ║
   ║                                      ║
   ║   ┌──────┐ ┌──────┐ ┌──────┐        ║
   ║   │  ●   │ │  ■   │ │  ▲   │        ║
@@ -740,7 +748,7 @@ and screen width (W) for portrait mode (9:16 aspect ratio target).
   ║                                      ║
   ╚══════════════════════════════════════╝
 
-  Run continues with mix of gates + blocks.
+  Run continues with mix of gates + pushes.
   After 8 obstacles, auto-end.
 ```
 
@@ -888,7 +896,7 @@ and screen width (W) for portrait mode (9:16 aspect ratio target).
   ╠═══════╬════════════════╬═════════════════════════╣
   ║   1   ║ Match shape    ║ ■ gates, 1 button       ║
   ║   2   ║ Switch shapes  ║ ●■ gates, 2 buttons     ║
-  ║   3   ║ Dodge + switch ║ ●■▲ gates + lane blocks ║
+  ║   3   ║ Lane pushes    ║ ●■▲ gates + lane pushes ║
   ║   4   ║ Burnout intro  ║ + burnout meter visible  ║
   ║   5+  ║ FULL GAME      ║ Everything               ║
   ╚═══════╩════════════════╩═════════════════════════╝

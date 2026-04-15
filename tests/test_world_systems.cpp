@@ -454,7 +454,7 @@ TEST_CASE("spawn: LaneBlock available after 30s", "[spawn]") {
     auto& config = reg.ctx().get<DifficultyConfig>();
     config.elapsed = 35.0f;
 
-    bool found_lane_block = false;
+    bool found_lane_push = false;
     for (int i = 0; i < 100; ++i) {
         config.spawn_timer = 0.0f;
         obstacle_spawn_system(reg, 0.016f);
@@ -462,9 +462,10 @@ TEST_CASE("spawn: LaneBlock available after 30s", "[spawn]") {
 
     auto view = reg.view<ObstacleTag, Obstacle>();
     for (auto [e, obs] : view.each()) {
-        if (obs.kind == ObstacleKind::LaneBlock) found_lane_block = true;
+        if (obs.kind == ObstacleKind::LanePushLeft || obs.kind == ObstacleKind::LanePushRight)
+            found_lane_push = true;
     }
-    CHECK(found_lane_block);
+    CHECK(found_lane_push);
 }
 
 TEST_CASE("spawn: all kinds available after 120s", "[spawn]") {
@@ -472,7 +473,7 @@ TEST_CASE("spawn: all kinds available after 120s", "[spawn]") {
     auto& config = reg.ctx().get<DifficultyConfig>();
     config.elapsed = 125.0f;
 
-    bool found[6] = {};
+    bool found[8] = {};
     for (int i = 0; i < 500; ++i) {
         config.spawn_timer = 0.0f;
         obstacle_spawn_system(reg, 0.016f);
@@ -480,9 +481,15 @@ TEST_CASE("spawn: all kinds available after 120s", "[spawn]") {
 
     auto view = reg.view<ObstacleTag, Obstacle>();
     for (auto [e, obs] : view.each()) {
-        found[static_cast<int>(obs.kind)] = true;
+        int idx = static_cast<int>(obs.kind);
+        if (idx >= 0 && idx < 8) found[idx] = true;
     }
-    for (int i = 0; i < 6; ++i) {
+    // ShapeGate(0) always present
+    CHECK(found[0]);
+    // LaneBlock(1) is now converted to LanePushLeft(6) or LanePushRight(7)
+    CHECK((found[6] || found[7]));
+    // LowBar(2), HighBar(3), ComboGate(4), SplitPath(5) still spawned by legacy system
+    for (int i = 2; i < 6; ++i) {
         CHECK(found[i]);
     }
 }

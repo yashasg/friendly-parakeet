@@ -23,8 +23,9 @@ Endless runner (like Temple Run) where the player shifts between 3 geometric sha
 | Circle   | ●      | Round holes/gates    |
 | Square   | ■      | Square holes/gates   |
 | Triangle | ▲      | Triangle holes/gates |
+| Hexagon  | ⬡      | None (default/rest)  |
 
-The player is always one of these three shapes. Tap a shape button to switch instantly.
+The player is always one of these shapes. Hexagon is the default resting shape — the player returns to it between obstacles. Hexagon does not pass through any gates; any gate arriving while in Hexagon = MISS. Tap a shape button to switch instantly.
 
 ---
 
@@ -65,7 +66,6 @@ The defining mechanic. Inspired by "burnout" in racing games.
 4. The longer they wait, the higher the multiplier:
    - Switch immediately: ×1.0 (no bonus)
    - Wait a bit: ×1.5
-   - Wait longer: ×2.0
    - Danger zone: ×3.0
    - Last possible frame: ×5.0 (MAX)
    - Too late: 💀 DEAD (game over)
@@ -82,14 +82,19 @@ The defining mechanic. Inspired by "burnout" in racing games.
 
 ## Obstacle Types
 
-| Obstacle     | Player Action Required    | Burnout? | Base Points |
-|-------------|---------------------------|----------|-------------|
-| Shape Gate   | Tap correct shape button  | YES      | 200         |
-| Lane Block   | Swipe left or right       | YES      | 100         |
-| Low Bar      | Swipe up (jump)           | YES      | 100         |
-| High Bar     | Swipe down (slide)        | YES      | 100         |
-| Combo Gate   | Shape + swipe (2 actions) | YES (×2) | 200         |
-| Split Path   | Shape + correct lane      | YES (×2) | 300         |
+| Obstacle       | Player Action Required    | Burnout? | Base Points |
+|---------------|---------------------------|----------|-------------|
+| Shape Gate     | Tap correct shape button  | YES      | 200         |
+| Lane Push Left | None (auto-pushes player) | NO       | 0           |
+| Lane Push Right| None (auto-pushes player) | NO       | 0           |
+| Low Bar        | Swipe up (jump)           | YES      | 100         |
+| High Bar       | Swipe down (slide)        | YES      | 100         |
+| Combo Gate     | Shape + swipe (2 actions) | YES (×2) | 200         |
+| Split Path     | Shape + correct lane      | YES (×2) | 300         |
+
+> **Note:** Lane Push replaces the legacy Lane Block. It is a passive obstacle that
+> auto-pushes the player one lane in the indicated direction on beat arrival.
+> Edge pushes (left on Lane 0, right on Lane 2) are no-ops.
 
 ### Combo Obstacles
 
@@ -116,22 +121,20 @@ When an obstacle requires TWO actions (e.g., switch to ● AND swipe left), both
 |-----------|--------------|----------------------------|
 | ×1.0      | (nothing)    | None                       |
 | ×1.5      | "Nice"       | Small text, subtle         |
-| ×2.0      | "GREAT!"     | Medium text, yellow        |
 | ×3.0      | "CLUTCH!"    | Large text, orange, shake  |
-| ×4.0      | "INSANE!!"   | Huge text, red, flash      |
 | ×5.0      | "LEGENDARY!" | Massive, rainbow, explosion|
 
 ---
 
 ## Difficulty Progression
 
-Speed increases over time. Everything gets faster and denser.
+Speed increases over time via a continuous ramp (`SPEED_RAMP_RATE = 0.011f`), not discrete jumps. The table below shows approximate speed at each phase. Everything gets faster and denser.
 
 | Time      | Speed | New Obstacles Introduced     | Burnout Window |
 |-----------|-------|------------------------------|----------------|
 | 0–30s     | ×1.0  | Shape gates only, far apart  | Very generous  |
-| 30–60s    | ×1.3  | + Lane blocks, low bars      | Generous       |
-| 60–90s    | ×1.6  | + High bars, closer spacing  | Moderate       |
+| 30–45s    | ×1.3  | + Lane pushes                | Generous       |
+| 45–90s    | ×1.6  | + Low bars, closer spacing   | Moderate       |
 | 90–120s   | ×2.0  | + Combos, 2-obstacle chains  | Tighter        |
 | 120–150s  | ×2.3  | + Split paths, 3-chains      | Tight          |
 | 150–180s  | ×2.6  | + Rapid sequences, all mixed | Very tight     |

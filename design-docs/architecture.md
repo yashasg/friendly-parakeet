@@ -92,6 +92,7 @@ namespace constants {
     constexpr int   PTS_HIGH_BAR      = 100;
     constexpr int   PTS_COMBO_GATE    = 200;
     constexpr int   PTS_SPLIT_PATH    = 300;
+    constexpr int   PTS_LANE_PUSH     = 0;     // passive — no score
     constexpr int   PTS_PER_SECOND    = 10;       // distance bonus
     constexpr int   CHAIN_BONUS[5]    = { 0, 0, 50, 100, 200 };
     //               chain:             0  1   2    3     4  (5+ = +100/ea)
@@ -149,7 +150,8 @@ struct Velocity {
 enum class Shape : uint8_t {
     Circle   = 0,
     Square   = 1,
-    Triangle = 2
+    Triangle = 2,
+    Hexagon  = 3
 };
 
 /// Empty tag — marks the single player entity. 0 bytes.
@@ -164,7 +166,7 @@ struct PlayerShape {
 };
 
 /// Lane occupancy and transition. 8 bytes.
-/// Hot: read by collision_system, player_action_system, render_system.
+/// Hot: read by collision_system, player_input_system, render_system.
 struct Lane {
     int8_t   current;      // 0 = left, 1 = center, 2 = right
     int8_t   target;       // where we're heading (-1 = no transition)
@@ -197,19 +199,23 @@ struct ObstacleTag {};
 /// What action this obstacle demands and its base score. 4 bytes.
 /// Read by collision_system, burnout_system.
 enum class ObstacleKind : uint8_t {
-    ShapeGate  = 0,   // must match shape
-    LaneBlock  = 1,   // must be in a clear lane
-    LowBar     = 2,   // must jump
-    HighBar    = 3,   // must slide
-    ComboGate  = 4,   // shape + lane
-    SplitPath  = 5    // shape + specific lane
+    ShapeGate     = 0,   // must match shape
+    LaneBlock     = 1,   // legacy value kept for backward compat;
+                         // spawner converts to LanePushLeft/Right at runtime
+    LowBar        = 2,   // must jump
+    HighBar       = 3,   // must slide
+    ComboGate     = 4,   // shape + lane
+    SplitPath     = 5,   // shape + specific lane
+    LanePushLeft  = 6,   // passive: auto-pushes player one lane left
+    LanePushRight = 7    // passive: auto-pushes player one lane right
 };
 
 struct Obstacle {
-    ObstacleKind kind;
-    int16_t      base_points;   // PTS_SHAPE_GATE etc.
-    bool         scored;        // true once player has banked/cleared this
+    ObstacleKind kind       = ObstacleKind::ShapeGate;
+    int16_t      base_points = 200;   // PTS_SHAPE_GATE etc.
 };
+// Existential tag: presence means the obstacle has been cleared and awaits scoring.
+struct ScoredTag {};
 ```
 
 ### 2.4 — WARM: Obstacle Specifics (read by collision + burnout, not by scroll)
@@ -222,11 +228,9 @@ struct RequiredShape {
     Shape shape;
 };
 
-/// For LaneBlock: which lanes are blocked. 1 byte.
-/// Bitmask: bit 0 = lane 0, bit 1 = lane 1, bit 2 = lane 2.
-struct BlockedLanes {
-    uint8_t mask;   // e.g. 0b101 = lanes 0 and 2 blocked
-};
+/// For LanePushLeft/LanePushRight: push direction component. 1 byte.
+/// The push direction is implicit in the ObstacleKind, so this struct
+/// is no longer needed. (Legacy BlockedLanes removed with LaneBlock.)
 
 /// For SplitPath: which lane has the opening. 1 byte.
 struct RequiredLane {
@@ -268,8 +272,9 @@ struct ScoreState {
 
 /// Score popup entity component. 8 bytes.
 struct ScorePopup {
-    int32_t  value;        // points to display
-    uint8_t  tier;         // 0=normal, 1=nice, 2=great, 3=clutch, 4=insane, 5=legendary
+    int32_t  value       = 0;    // points to display
+    uint8_t  tier        = 0;    // 0=normal, 1=nice, 2=great, 3=clutch, 4=insane, 5=legendary
+    uint8_t  timing_tier = 255;  // TimingTier value, 255 = no timing
 };
 ```
 
@@ -287,11 +292,10 @@ enum class BurnoutZone : uint8_t {
 
 /// Singleton: burnout meter state. Recalculated each frame by burnout_system.
 struct BurnoutState {
-    float        meter;              // 0.0..1.0 fill amount
-    BurnoutZone  zone;
-    float        threat_distance;    // px to nearest unmatched obstacle
-    entt::entity nearest_threat;     // entity id of the nearest unmatched obstacle
-    bool         has_threat;         // false if no obstacle threatens player
+    float        meter           = 0.0f;   // 0.0..1.0 fill amount
+    BurnoutZone  zone            = BurnoutZone::None;
+    float        threat_distance = 0.0f;   // px to nearest unmatched obstacle
+    entt::entity nearest_threat  = entt::null;  // entity id of the nearest unmatched obstacle
 };
 ```
 
@@ -319,7 +323,7 @@ struct InputState {
     }
 };
 
-/// Classified gesture — produced by gesture_system, consumed by player_action_system.
+/// Classified gesture — produced by input_system, consumed by player_input_system.
 enum class Gesture : uint8_t {
     None       = 0,
     Tap        = 1,
@@ -500,8 +504,8 @@ ParticleEmitter     16     COLD       particle_spawn
 ─────────────────────────────────────────────────────────────
 SINGLETONS (ctx)
 ─────────────────────────────────────────────────────────────
-InputState          36     per-frame  input_system (write), gesture_system (read)
-GestureResult       12     per-frame  gesture_system (write), player_action (read)
+InputState          36     per-frame  input_system (write), player_input (read)
+ActionQueue          9     per-frame  test_player_system (write), player_input (read)
 ShapeButtonEvent     2     per-frame  input_system (write), player_action (read)
 GameState           12     per-frame  game_state_system
 DifficultyConfig    24     per-frame  difficulty_system (write), spawn_system (read)
@@ -528,11 +532,6 @@ the same frame (unidirectional data flow).
  │  │  1. input_system          Read raylib input queue.  │
  │  │                           Populate InputState +        │
  │  │                           ShapeButtonEvent singletons. │
- │  │                                                        │
- │  │  2. gesture_system        Classify InputState into     │
- │  │                           GestureResult singleton.     │
- │  │                           Swipe vs tap, direction,     │
- │  │                           dead-zone filtering.         │
  │  └────────────────────────────────────────────────────────┘
  │
  │  ┌─ PHASE 2: GAME STATE GATE ────────────────────────────┐
@@ -549,8 +548,8 @@ the same frame (unidirectional data flow).
  │
  │  ┌─ PHASE 3: PLAYER UPDATE ──────────────────────────────┐
  │  │                                                        │
- │  │  4. player_action_system  Consume GestureResult +      │
- │  │                           ShapeButtonEvent. Apply:     │
+ │  │  4. player_input_system   Consume ActionQueue.         │
+ │  │                           Apply:                       │
  │  │                           • shape change → PlayerShape │
  │  │                           • lane change  → Lane        │
  │  │                           • jump/slide   → VertState   │
@@ -643,9 +642,8 @@ the same frame (unidirectional data flow).
 ```
                         Pos  Vel  PSh  Lan  VSt  Obs  RSh  BLn  RLn  RVA  Lft  Col  DSz  DLy  SPp  PDt
  input_system            ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·
- gesture_system          ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·
  game_state_system       ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·
- player_action_system    ·    ·    W    W    W    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·
+ player_input_system     ·    ·    W    W    W    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·
  player_movement_sys     W    ·    W    W    W    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·
  difficulty_system        ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·
  obstacle_spawn_sys      W    W    ·    ·    ·    W    W    W    W    W    ·    W    W    W    ·    ·
@@ -842,21 +840,27 @@ Total: ~73 bytes per entity (1 entity)
 Total: ~42 bytes per entity (5–15 active)
 ```
 
-### 5.3 Lane Block Entity
+### 5.3 Lane Push Entity (replaces legacy Lane Block)
 
 ```
-┌─ Lane Block ──────────────────────────────────────────────┐
+┌─ Lane Push ───────────────────────────────────────────────┐
 │ ObstacleTag        (tag, 0 bytes)                         │
 │ Position           { x: 360.0, y: -120.0 }               │
 │ Velocity           { dx: 0.0, dy: 400.0 }                │
-│ Obstacle           { kind: LaneBlock, base_pts: 100,      │
+│ Obstacle           { kind: LanePushLeft, base_pts: 0,     │
 │                      scored: false }                       │
-│ BlockedLanes       { mask: 0b101 }                         │
 │ Color              { r: 255, g: 60, b: 60, a: 255 }      │
 │ DrawSize           { w: 720, h: 80 }                       │
 │ DrawLayer          { layer: Game }                          │
 └───────────────────────────────────────────────────────────┘
-Total: ~41 bytes per entity
+Total: ~40 bytes per entity
+
+Lane Push is passive — it auto-pushes the player one lane in the
+obstacle's direction on beat arrival. No player action required.
+- LanePushLeft:  pushes player one lane left  (no-op on Lane 0)
+- LanePushRight: pushes player one lane right (no-op on Lane 2)
+- Only affects player if they are on the SAME lane as the obstacle.
+- Awards 0 points (it's not a challenge).
 ```
 
 ### 5.4 Vertical Bar Entity (Low Bar / High Bar)
@@ -919,7 +923,7 @@ Total: ~44 bytes per entity
 │ Position           { x: 360.0, y: 900.0 }                │
 │ Velocity           { dx: 0.0, dy: -80.0 }  (floats up)   │
 │ Lifetime           { remaining: 1.2, max_time: 1.2 }      │
-│ ScorePopup         { value: 600, tier: 3 }                │
+│ ScorePopup         { value: 600, tier: 3, timing_tier: 255 }  │
 │ Color              { r: 255, g: 200, b: 50, a: 255 }     │
 │ DrawLayer          { layer: Effects }                      │
 └───────────────────────────────────────────────────────────┘
@@ -1013,7 +1017,7 @@ int main(int argc, char* argv[]) {
         while (accumulator >= FIXED_DT) {
 
             //  Phase 1: Input Classification
-            gesture_system(reg, FIXED_DT);
+            // (gesture_system removed; input classified in input_system)
 
             //  Phase 2: Game State Gate
             game_state_system(reg, FIXED_DT);
@@ -1022,7 +1026,7 @@ int main(int argc, char* argv[]) {
 
             if (phase == GamePhase::Playing) {
                 //  Phase 3: Player
-                player_action_system(reg, FIXED_DT);
+                player_input_system(reg, FIXED_DT);
                 player_movement_system(reg, FIXED_DT);
 
                 //  Phase 4: World
@@ -1064,9 +1068,8 @@ int main(int argc, char* argv[]) {
 │ Operation                      │ Timestep │ Why?     │
 ├────────────────────────────────┼──────────┼──────────┤
 │ raylib input polling            │ Variable │ OS events│
-│ gesture_system                 │ Fixed    │ Timing   │
 │ game_state_system              │ Fixed    │ Logic    │
-│ player_action_system           │ Fixed    │ Logic    │
+│ player_input_system            │ Fixed    │ Logic    │
 │ player_movement_system         │ Fixed    │ Physics  │
 │ difficulty_system              │ Fixed    │ Logic    │
 │ obstacle_spawn_system          │ Fixed    │ Logic    │
@@ -1134,7 +1137,7 @@ int main(int argc, char* argv[]) {
            │                │                                  │
            │                ▼                                  │
            │     ┌───────────────────────┐                     │
-           │     │ player_action_system: │                     │
+           │     │ player_input_system:  │                     │
            │     │   PlayerShape.current │                     │
            │     │   = Triangle          │                     │
            │     │   morph_t = 0.0       │                     │
@@ -1145,8 +1148,7 @@ int main(int argc, char* argv[]) {
            │     ┌───────────────────────────────────┐         │
            │     │ collision_system:                  │         │
            │     │   obstacle reaches player Y        │         │
-           │     │   shape matches → Obstacle.scored  │         │
-           │     │   = true                           │         │
+           │     │   shape matches → emplace ScoredTag│         │
            │     └──────────┬────────────────────────┘         │
            │                │                                  │
            │                ▼                                  │
@@ -1226,7 +1228,7 @@ int main(int argc, char* argv[]) {
            │                              │
            ▼                              │
     ┌──────────────────────────┐          │
-    │ gesture_system:          │          │
+    │ input_system:            │          │
     │   dx = end_x - start_x  │          │
     │      = 22 - 144 = -122  │          │
     │   dy = end_y - start_y  │          │
@@ -1239,16 +1241,14 @@ int main(int argc, char* argv[]) {
                │                          │
                ▼                          │
     ┌──────────────────────────┐          │
-    │ GestureResult (ctx)      │          │
-    │   .gesture = SwipeLeft   │          │
-    │   .magnitude = 122       │          │
-    │   .hit_x = 144           │          │
-    │   .hit_y = 512           │          │
+    │ ActionQueue (ctx)        │          │
+    │   .actions[0] = Go Left │          │
+    │   .count = 1             │          │
     └──────────┬───────────────┘          │
                │                          │
                ▼                          ▼
     ┌────────────────────────────────────────────────────────┐
-    │ player_action_system:                                  │
+    │ player_input_system:                                   │
     │                                                        │
     │   // 1. Process shape button                           │
     │   if (ShapeButtonEvent.pressed) {                      │
@@ -1299,8 +1299,8 @@ int main(int argc, char* argv[]) {
     │   bool threat = false;                                                                │
     │   if (obs.kind == ShapeGate && has<RequiredShape>(entity))                             │
     │       threat = (player_shape.current != get<RequiredShape>(entity).shape);             │
-    │   else if (obs.kind == LaneBlock && has<BlockedLanes>(entity))                         │
-    │       threat = (get<BlockedLanes>(entity).mask >> player_lane.current) & 1;            │
+    │   else if (obs.kind == LanePushLeft || obs.kind == LanePushRight)                       │
+    │       threat = false;   // passive — never a threat, auto-pushes player on arrival     │
     │   else if (obs.kind == LowBar)                                                        │
     │       threat = (player_vstate.mode != Jumping);                                       │
     │   // ... etc for each ObstacleKind ...                                                │
@@ -1516,10 +1516,9 @@ bool check_obstacle_cleared(entt::registry& reg, entt::entity e,
         case ObstacleKind::ShapeGate:
             return shape.current == reg.get<RequiredShape>(e).shape;
 
-        case ObstacleKind::LaneBlock: {
-            uint8_t mask = reg.get<BlockedLanes>(e).mask;
-            return !((mask >> lane.current) & 1);   // player in unblocked lane
-        }
+        case ObstacleKind::LanePushLeft:
+        case ObstacleKind::LanePushRight:
+            return true;   // passive — always "cleared", push applied automatically
 
         case ObstacleKind::LowBar:
             return vs.mode == VMode::Jumping;
@@ -1658,10 +1657,10 @@ app/
 │
 ├── systems/                     ← all system free functions
 │   ├── all_systems.h            ← convenience #include for all systems
-│   ├── input_system.cpp         ← raylib input → InputState
-│   ├── gesture_system.cpp       ← InputState → GestureResult + ShapeButtonEvent
+│   ├── input_system.cpp         ← raylib input → InputState + ActionQueue
 │   ├── game_state_system.cpp    ← phase transitions
-│   ├── player_action_system.cpp ← gesture → player component writes
+│   ├── player_input_system.cpp  ← ActionQueue → player component writes
+│   ├── test_player_system.cpp   ← automated test player (writes ActionQueue)
 │   ├── player_movement_system.cpp ← lane lerp, jump parabola, morph advance
 │   ├── difficulty_system.cpp    ← ramp speed, spawn interval, burnout window
 │   ├── obstacle_spawn_system.cpp ← create obstacle entities
@@ -1731,7 +1730,7 @@ entt::entity spawn_shape_gate(entt::registry& reg, Shape required,
     reg.emplace<Position>(e, constants::LANE_X[lane], constants::SPAWN_Y);
     reg.emplace<Velocity>(e, 0.0f, scroll_speed);
     reg.emplace<Obstacle>(e, ObstacleKind::ShapeGate,
-                          static_cast<int16_t>(constants::PTS_SHAPE_GATE), false);
+                          static_cast<int16_t>(constants::PTS_SHAPE_GATE));
     reg.emplace<RequiredShape>(e, required);
     reg.emplace<Color>(e, shape_color(required));
     reg.emplace<DrawSize>(e, static_cast<float>(constants::SCREEN_W), 80.0f);

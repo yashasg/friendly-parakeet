@@ -5,12 +5,14 @@
 struct ObstacleTag {};
 
 enum class ObstacleKind : uint8_t {
-    ShapeGate = 0,
-    LaneBlock = 1,
-    LowBar    = 2,
-    HighBar   = 3,
-    ComboGate = 4,
-    SplitPath = 5
+    ShapeGate     = 0,
+    LaneBlock     = 1,
+    LowBar        = 2,
+    HighBar       = 3,
+    ComboGate     = 4,
+    SplitPath     = 5,
+    LanePushLeft  = 6,
+    LanePushRight = 7
 };
 
 struct Obstacle {

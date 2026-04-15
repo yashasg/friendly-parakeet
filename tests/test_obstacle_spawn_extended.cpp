@@ -66,7 +66,7 @@ TEST_CASE("spawn: ShapeGate has DrawColor component", "[spawn]") {
     CHECK(count == 1);
 }
 
-TEST_CASE("spawn: LaneBlock has BlockedLanes component", "[spawn]") {
+TEST_CASE("spawn: LanePushLeft or LanePushRight obstacles spawn at late game", "[spawn]") {
     std::srand(100);
     auto reg = make_registry();
     auto& config = reg.ctx().get<DifficultyConfig>();
@@ -78,10 +78,9 @@ TEST_CASE("spawn: LaneBlock has BlockedLanes component", "[spawn]") {
     }
 
     bool found = false;
-    auto view = reg.view<ObstacleTag, Obstacle, BlockedLanes>();
-    for (auto [e, obs, blocked] : view.each()) {
-        if (obs.kind == ObstacleKind::LaneBlock) {
-            CHECK(blocked.mask > 0);
+    auto view = reg.view<ObstacleTag, Obstacle>();
+    for (auto [e, obs] : view.each()) {
+        if (obs.kind == ObstacleKind::LanePushLeft || obs.kind == ObstacleKind::LanePushRight) {
             found = true;
         }
     }
