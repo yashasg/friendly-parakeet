@@ -1,0 +1,19 @@
+{
+  "screen": "paused",
+  "viewport": { "width": 720, "height": 1280 },
+  "overlay": {
+    "color": [0, 0, 0, 160]
+  },
+  "elements": [
+    {
+      "id": "paused_text",
+      "type": "text",
+      "text": "PAUSED",
+      "x_n": 0.5,
+      "y_n": 0.453,
+      "font_size": "large",
+      "align": "center",
+      "color": [255, 255, 255, 255]
+    }
+  ]
+}

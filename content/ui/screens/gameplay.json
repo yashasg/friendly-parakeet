@@ -1,0 +1,45 @@
+{
+  "screen": "gameplay",
+  "elements": [
+    {
+      "id": "score",
+      "type": "text_dynamic",
+      "source": "ScoreState.displayed_score",
+      "x_n": 0.167, "y_n": 0.016,
+      "font_size": "medium",
+      "color": [255, 255, 255, 255]
+    },
+    {
+      "id": "high_score",
+      "type": "text_dynamic",
+      "source": "ScoreState.high_score",
+      "x_n": 0.167, "y_n": 0.039,
+      "font_size": "small",
+      "color": [150, 150, 150, 180]
+    },
+    {
+      "id": "shape_buttons",
+      "type": "shape_button_row",
+      "y_n": 0.891,
+      "button_w_n": 0.194, "button_h_n": 0.078, "spacing_n": 0.083,
+      "active_bg": [60, 60, 100, 255],
+      "inactive_bg": [30, 30, 50, 200],
+      "active_border": [120, 180, 255, 255],
+      "inactive_border": [60, 60, 80, 255],
+      "active_icon": [200, 230, 255, 255],
+      "inactive_icon": [100, 100, 120, 200],
+      "approach_ring": {
+        "max_radius_scale": 2.0,
+        "perfect_color": [100, 255, 100],
+        "near_color": [180, 255, 100],
+        "far_color": [120, 120, 180]
+      }
+    },
+    {
+      "id": "lane_divider",
+      "type": "line",
+      "y_n": 0.875,
+      "color": [40, 40, 60, 200]
+    }
+  ]
+}

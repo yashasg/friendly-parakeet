@@ -1,0 +1,87 @@
+{
+  "viewport": { "width": 720, "height": 1280 },
+  "initial_screen": "title",
+  "screens": ["title", "level_select", "gameplay", "paused", "game_over", "song_complete"],
+  "transitions": [
+    {
+      "from": "title",
+      "to": "level_select",
+      "trigger": "tap_or_enter",
+      "description": "Any tap or ENTER key starts level selection"
+    },
+    {
+      "from": "level_select",
+      "to": "gameplay",
+      "trigger": "confirm_selection",
+      "description": "ENTER with a song+difficulty selected begins play"
+    },
+    {
+      "from": "gameplay",
+      "to": "paused",
+      "trigger": "pause",
+      "input": "escape",
+      "description": "ESC key pauses gameplay"
+    },
+    {
+      "from": "paused",
+      "to": "gameplay",
+      "trigger": "resume",
+      "input": "escape",
+      "description": "ESC key resumes gameplay"
+    },
+    {
+      "from": "gameplay",
+      "to": "game_over",
+      "trigger": "hp_zero",
+      "description": "Player HP reaches 0"
+    },
+    {
+      "from": "gameplay",
+      "to": "song_complete",
+      "trigger": "song_ended",
+      "description": "Song finishes playing and all beats processed"
+    },
+    {
+      "from": "game_over",
+      "to": "gameplay",
+      "trigger": "button_action",
+      "action": "restart",
+      "description": "RESTART button replays the same song+difficulty"
+    },
+    {
+      "from": "game_over",
+      "to": "level_select",
+      "trigger": "button_action",
+      "action": "level_select",
+      "description": "LEVEL SELECT returns to song picker"
+    },
+    {
+      "from": "game_over",
+      "to": "title",
+      "trigger": "button_action",
+      "action": "main_menu",
+      "description": "MAIN MENU returns to title screen"
+    },
+    {
+      "from": "song_complete",
+      "to": "gameplay",
+      "trigger": "button_action",
+      "action": "restart",
+      "description": "RESTART button replays the same song+difficulty"
+    },
+    {
+      "from": "song_complete",
+      "to": "level_select",
+      "trigger": "button_action",
+      "action": "level_select",
+      "description": "LEVEL SELECT returns to song picker"
+    },
+    {
+      "from": "song_complete",
+      "to": "title",
+      "trigger": "button_action",
+      "action": "main_menu",
+      "description": "MAIN MENU returns to title screen"
+    }
+  ]
+}

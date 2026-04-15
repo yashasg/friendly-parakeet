@@ -1,0 +1,55 @@
+{
+  "screen": "level_select",
+  "elements": [
+    {
+      "id": "header",
+      "type": "text",
+      "text": "SELECT LEVEL",
+      "x_n": 0.5, "y_n": 0.0625,
+      "font_size": "large",
+      "align": "center",
+      "color": [80, 180, 255, 255]
+    },
+    {
+      "id": "song_cards",
+      "type": "card_list",
+      "x_n": 0.0833, "start_y_n": 0.1562,
+      "card_w_n": 0.8333, "card_h_n": 0.1562, "card_gap_n": 0.0312,
+      "corner_radius": 0.1,
+      "selected_bg": [40, 50, 80, 255],
+      "unselected_bg": [25, 25, 40, 255],
+      "selected_border": [80, 180, 255, 255],
+      "unselected_border": [50, 50, 70, 255],
+      "title_font_size": "medium",
+      "title_offset_x_n": 0.0417, "title_offset_y_n": 0.0195
+    },
+    {
+      "id": "difficulty_buttons",
+      "type": "button_row",
+      "y_offset_n": 0.0938,
+      "x_start_n": 0.1389,
+      "button_w_n": 0.2222, "button_h_n": 0.0391, "button_gap_n": 0.0278,
+      "corner_radius": 0.2,
+      "active_bg": [80, 180, 255, 255],
+      "active_border": [120, 220, 255, 255],
+      "active_text": [0, 0, 0, 255],
+      "inactive_bg": [35, 35, 55, 255],
+      "inactive_border": [60, 60, 80, 255],
+      "inactive_text": [180, 180, 180, 255],
+      "font_size": "small"
+    },
+    {
+      "id": "start_button",
+      "type": "button",
+      "text": "START",
+      "x_n": 0.2917, "y_n": 0.8203,
+      "w_n": 0.4167, "h_n": 0.0469,
+      "corner_radius": 0.2,
+      "bg_color": [30, 120, 60, 255],
+      "border_color": [60, 200, 100, 255],
+      "text_color": [200, 255, 200, 255],
+      "font_size": "medium",
+      "animation": { "type": "pulse", "speed": 3.0, "alpha_range": [180, 255] }
+    }
+  ]
+}

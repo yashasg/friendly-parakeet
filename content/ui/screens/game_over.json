@@ -1,0 +1,63 @@
+{
+  "screen": "game_over",
+  "overlay": { "color": [0, 0, 0, 180] },
+  "elements": [
+    {
+      "id": "title",
+      "type": "text",
+      "text": "GAME OVER",
+      "x_n": 0.5, "y_n": 0.344,
+      "font_size": "large", "align": "center",
+      "color": [255, 80, 80, 255]
+    },
+    {
+      "id": "score",
+      "type": "text_dynamic",
+      "source": "ScoreState.score",
+      "x_n": 0.5, "y_n": 0.398,
+      "font_size": "medium",
+      "color": [255, 255, 255, 255]
+    },
+    {
+      "id": "high_score",
+      "type": "text_dynamic",
+      "source": "ScoreState.high_score",
+      "x_n": 0.5, "y_n": 0.438,
+      "font_size": "small",
+      "color": [200, 200, 100, 255]
+    },
+    {
+      "id": "restart_button",
+      "type": "button", "text": "RESTART", "action": "restart",
+      "x_n": 0.3056, "y_n": 0.6797,
+      "w_n": 0.3889, "h_n": 0.0391,
+      "corner_radius": 0.2,
+      "bg_color": [30, 80, 50, 255],
+      "border_color": [60, 200, 100, 255],
+      "text_color": [200, 255, 200, 255],
+      "font_size": "small"
+    },
+    {
+      "id": "level_select_button",
+      "type": "button", "text": "LEVEL SELECT", "action": "level_select",
+      "x_n": 0.3056, "y_n": 0.7305,
+      "w_n": 0.3889, "h_n": 0.0391,
+      "corner_radius": 0.2,
+      "bg_color": [30, 50, 80, 255],
+      "border_color": [80, 180, 255, 255],
+      "text_color": [180, 220, 255, 255],
+      "font_size": "small"
+    },
+    {
+      "id": "menu_button",
+      "type": "button", "text": "MAIN MENU", "action": "main_menu",
+      "x_n": 0.3056, "y_n": 0.7812,
+      "w_n": 0.3889, "h_n": 0.0391,
+      "corner_radius": 0.2,
+      "bg_color": [35, 35, 45, 255],
+      "border_color": [80, 80, 100, 255],
+      "text_color": [150, 150, 170, 255],
+      "font_size": "small"
+    }
+  ]
+}

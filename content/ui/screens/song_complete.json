@@ -1,0 +1,93 @@
+{
+  "screen": "song_complete",
+  "overlay": { "color": [0, 0, 0, 180] },
+  "elements": [
+    {
+      "id": "title",
+      "type": "text",
+      "text": "SONG COMPLETE",
+      "x_n": 0.5, "y_n": 0.266,
+      "font_size": "large", "align": "center",
+      "color": [100, 255, 100, 255]
+    },
+    {
+      "id": "score_label",
+      "type": "text",
+      "text": "SCORE",
+      "x_n": 0.5, "y_n": 0.328,
+      "font_size": "small", "align": "center",
+      "color": [180, 180, 180, 255]
+    },
+    {
+      "id": "score",
+      "type": "text_dynamic",
+      "source": "ScoreState.score",
+      "x_n": 0.5, "y_n": 0.355,
+      "font_size": "medium",
+      "color": [255, 255, 255, 255]
+    },
+    {
+      "id": "highscore_label",
+      "type": "text",
+      "text": "HIGH SCORE",
+      "x_n": 0.5, "y_n": 0.398,
+      "font_size": "small", "align": "center",
+      "color": [180, 180, 180, 255]
+    },
+    {
+      "id": "high_score",
+      "type": "text_dynamic",
+      "source": "ScoreState.high_score",
+      "x_n": 0.5, "y_n": 0.426,
+      "font_size": "medium",
+      "color": [255, 215, 0, 255]
+    },
+    {
+      "id": "timing_stats",
+      "type": "stat_table",
+      "y_n": 0.469, "row_spacing_n": 0.023,
+      "label_x_n": 0.333, "value_x_n": 0.694,
+      "font_size": "small",
+      "rows": [
+        { "label": "PERFECT", "source": "SongResults.perfect_count", "color": [100, 255, 100, 255] },
+        { "label": "GOOD",    "source": "SongResults.good_count",    "color": [180, 255, 100, 255] },
+        { "label": "OK",      "source": "SongResults.ok_count",      "color": [255, 255, 100, 255] },
+        { "label": "BAD",     "source": "SongResults.bad_count",     "color": [255, 150, 100, 255] },
+        { "label": "MISS",    "source": "SongResults.miss_count",    "color": [255, 80, 80, 255] }
+      ]
+    },
+    {
+      "id": "restart_button",
+      "type": "button", "text": "RESTART", "action": "restart",
+      "x_n": 0.3056, "y_n": 0.6797,
+      "w_n": 0.3889, "h_n": 0.0391,
+      "corner_radius": 0.2,
+      "bg_color": [30, 80, 50, 255],
+      "border_color": [60, 200, 100, 255],
+      "text_color": [200, 255, 200, 255],
+      "font_size": "small"
+    },
+    {
+      "id": "level_select_button",
+      "type": "button", "text": "LEVEL SELECT", "action": "level_select",
+      "x_n": 0.3056, "y_n": 0.7305,
+      "w_n": 0.3889, "h_n": 0.0391,
+      "corner_radius": 0.2,
+      "bg_color": [30, 50, 80, 255],
+      "border_color": [80, 180, 255, 255],
+      "text_color": [180, 220, 255, 255],
+      "font_size": "small"
+    },
+    {
+      "id": "menu_button",
+      "type": "button", "text": "MAIN MENU", "action": "main_menu",
+      "x_n": 0.3056, "y_n": 0.7812,
+      "w_n": 0.3889, "h_n": 0.0391,
+      "corner_radius": 0.2,
+      "bg_color": [35, 35, 45, 255],
+      "border_color": [80, 80, 100, 255],
+      "text_color": [150, 150, 170, 255],
+      "font_size": "small"
+    }
+  ]
+}

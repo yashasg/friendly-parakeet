@@ -18,6 +18,7 @@
 #include "beat_map_loader.h"
 #include "text_renderer.h"
 #include "session_logger.h"
+#include "ui_loader.h"
 
 #include <string>
 #include <cstdio>
@@ -192,7 +193,18 @@ int main(int argc, char* argv[]) {
     // ── RAYLIB INIT ──────────────────────────────────────────
     std::string window_title = std::string("SHAPESHIFTER v") + SHAPESHIFTER_VERSION;
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
+    // Start with a window that fits the monitor, maintaining 9:16 aspect ratio
     InitWindow(constants::SCREEN_W, constants::SCREEN_H, window_title.c_str());
+    {
+        int mon = GetCurrentMonitor();
+        int mon_h = GetMonitorHeight(mon);
+        int win_h = static_cast<int>(mon_h * 0.85f);
+        int win_w = win_h * constants::SCREEN_W / constants::SCREEN_H;
+        SetWindowSize(win_w, win_h);
+        SetWindowPosition(
+            (GetMonitorWidth(mon) - win_w) / 2,
+            (mon_h - win_h) / 2);
+    }
     SetTargetFPS(60);
     InitAudioDevice();
 
@@ -258,6 +270,9 @@ int main(int argc, char* argv[]) {
         1.0f            // zoom:     1.0 = no scale
     });
     reg.ctx().emplace<ScreenTransform>();  // updated each frame before input_system
+
+    // ── UI layouts (data-driven screens from JSON) ──────────────
+    reg.ctx().emplace<UIState>(load_ui());
 
     // ── Beatmap + song singletons (populated by play_session on level start) ─
     reg.ctx().emplace<BeatMap>();
