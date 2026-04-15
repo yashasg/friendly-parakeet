@@ -1,20 +1,54 @@
 // constants.js — Shared enums, colors, sizes for the beatmap editor
+//
+// Game-shared constants (obstacle_kinds, shapes, lanes, validation) are loaded
+// from content/constants.json at init time. Editor-only constants (colors,
+// glyphs, zoom, layout) stay here.
 
-export const OBSTACLE_KINDS = [
-    "shape_gate",
-    "lane_block",
-    "low_bar",
-    "high_bar",
-    "combo_gate",
-    "split_path",
-];
+// ── Shared constants (populated by loadSharedConstants) ──────
+export let OBSTACLE_KINDS = ["shape_gate", "lane_block", "low_bar", "high_bar", "combo_gate", "split_path"];
+export let SHAPES = ["circle", "square", "triangle"];
+export let LANES = [0, 1, 2];
+export let KINDS_WITH_SHAPE = ["shape_gate", "combo_gate", "split_path"];
+export let VALIDATION = {
+    BPM_MIN: 60,
+    BPM_MAX: 300,
+    OFFSET_MIN: 0.0,
+    OFFSET_MAX: 5.0,
+    LEAD_BEATS_MIN: 2,
+    LEAD_BEATS_MAX: 8,
+    MIN_SHAPE_CHANGE_GAP: 3,
+};
 
-export const SHAPES = ["circle", "square", "triangle"];
+// Load shared constants from content/constants.json (call once at startup).
+// Falls back to the defaults above if the fetch fails (e.g. file:// protocol).
+export async function loadSharedConstants() {
+    try {
+        const resp = await fetch('../../content/constants.json');
+        if (!resp.ok) return;
+        const data = await resp.json();
+        if (data.obstacle_kinds) OBSTACLE_KINDS = data.obstacle_kinds;
+        if (data.shapes)         SHAPES = data.shapes;
+        if (data.lanes)          LANES = data.lanes;
+        if (data.kinds_with_shape) KINDS_WITH_SHAPE = data.kinds_with_shape;
+        if (data.validation) {
+            const v = data.validation;
+            VALIDATION = {
+                BPM_MIN:              v.bpm_min             ?? VALIDATION.BPM_MIN,
+                BPM_MAX:              v.bpm_max             ?? VALIDATION.BPM_MAX,
+                OFFSET_MIN:           v.offset_min          ?? VALIDATION.OFFSET_MIN,
+                OFFSET_MAX:           v.offset_max          ?? VALIDATION.OFFSET_MAX,
+                LEAD_BEATS_MIN:       v.lead_beats_min      ?? VALIDATION.LEAD_BEATS_MIN,
+                LEAD_BEATS_MAX:       v.lead_beats_max      ?? VALIDATION.LEAD_BEATS_MAX,
+                MIN_SHAPE_CHANGE_GAP: v.min_shape_change_gap ?? VALIDATION.MIN_SHAPE_CHANGE_GAP,
+            };
+        }
+    } catch {
+        // Fetch failed (file:// or missing file) — use hardcoded defaults
+    }
+}
 
-export const LANES = [0, 1, 2];
+// ── Editor-only constants ────────────────────────────────────
 export const LANE_LABELS = ["Left", "Center", "Right"];
-
-export const KINDS_WITH_SHAPE = ["shape_gate", "combo_gate", "split_path"];
 
 export const KIND_LABELS = {
     shape_gate: "ShapeGate",
@@ -92,13 +126,3 @@ export const LANE_HEIGHT = 48;
 export const HEADER_HEIGHT = 24;
 export const WAVEFORM_HEIGHT = 60;
 export const TIMELINE_PADDING_LEFT = 40;
-
-export const VALIDATION = {
-    BPM_MIN: 60,
-    BPM_MAX: 300,
-    OFFSET_MIN: 0.0,
-    OFFSET_MAX: 5.0,
-    LEAD_BEATS_MIN: 2,
-    LEAD_BEATS_MAX: 8,
-    MIN_SHAPE_CHANGE_GAP: 3,
-};

@@ -6,6 +6,44 @@
 
 using json = nlohmann::json;
 
+// ── Shared validation constants (loaded from content/constants.json) ──
+struct ValidationConstants {
+    float bpm_min = 60.0f;
+    float bpm_max = 300.0f;
+    float offset_min = 0.0f;
+    float offset_max = 5.0f;
+    int   lead_beats_min = 2;
+    int   lead_beats_max = 8;
+    int   min_shape_change_gap = 3;
+};
+
+static ValidationConstants load_validation_constants() {
+    ValidationConstants vc;
+    std::ifstream file("content/constants.json");
+    if (!file.is_open()) return vc;
+    try {
+        json j = json::parse(file);
+        if (j.contains("validation")) {
+            const auto& v = j["validation"];
+            vc.bpm_min             = v.value("bpm_min", vc.bpm_min);
+            vc.bpm_max             = v.value("bpm_max", vc.bpm_max);
+            vc.offset_min          = v.value("offset_min", vc.offset_min);
+            vc.offset_max          = v.value("offset_max", vc.offset_max);
+            vc.lead_beats_min      = v.value("lead_beats_min", vc.lead_beats_min);
+            vc.lead_beats_max      = v.value("lead_beats_max", vc.lead_beats_max);
+            vc.min_shape_change_gap = v.value("min_shape_change_gap", vc.min_shape_change_gap);
+        }
+    } catch (...) {
+        // Fall back to defaults on parse error
+    }
+    return vc;
+}
+
+static const ValidationConstants& get_validation_constants() {
+    static ValidationConstants vc = load_validation_constants();
+    return vc;
+}
+
 static ObstacleKind parse_kind(const std::string& s) {
     if (s == "shape_gate")  return ObstacleKind::ShapeGate;
     if (s == "lane_block")  return ObstacleKind::LaneBlock;
@@ -136,22 +174,26 @@ bool load_beat_map(const std::string& json_path, BeatMap& out,
 
 bool validate_beat_map(const BeatMap& map, std::vector<BeatMapError>& errors) {
     bool valid = true;
+    const auto& vc = get_validation_constants();
 
-    // Rule 7: BPM in range [60, 300]
-    if (map.bpm < 60.0f || map.bpm > 300.0f) {
-        errors.push_back({-1, "BPM must be in range [60, 300], got " + std::to_string(map.bpm)});
+    // Rule 7: BPM in range
+    if (map.bpm < vc.bpm_min || map.bpm > vc.bpm_max) {
+        errors.push_back({-1, "BPM must be in range [" + std::to_string(static_cast<int>(vc.bpm_min))
+            + ", " + std::to_string(static_cast<int>(vc.bpm_max)) + "], got " + std::to_string(map.bpm)});
         valid = false;
     }
 
-    // Rule 8: offset in range [0.0, 5.0]
-    if (map.offset < 0.0f || map.offset > 5.0f) {
-        errors.push_back({-1, "Offset must be in range [0.0, 5.0], got " + std::to_string(map.offset)});
+    // Rule 8: offset in range
+    if (map.offset < vc.offset_min || map.offset > vc.offset_max) {
+        errors.push_back({-1, "Offset must be in range [" + std::to_string(vc.offset_min)
+            + ", " + std::to_string(vc.offset_max) + "], got " + std::to_string(map.offset)});
         valid = false;
     }
 
-    // Rule 9: lead_beats in range [2, 8]
-    if (map.lead_beats < 2 || map.lead_beats > 8) {
-        errors.push_back({-1, "lead_beats must be in range [2, 8], got " + std::to_string(map.lead_beats)});
+    // Rule 9: lead_beats in range
+    if (map.lead_beats < vc.lead_beats_min || map.lead_beats > vc.lead_beats_max) {
+        errors.push_back({-1, "lead_beats must be in range [" + std::to_string(vc.lead_beats_min)
+            + ", " + std::to_string(vc.lead_beats_max) + "], got " + std::to_string(map.lead_beats)});
         valid = false;
     }
 
@@ -193,15 +235,15 @@ bool validate_beat_map(const BeatMap& map, std::vector<BeatMapError>& errors) {
             }
         }
 
-        // Rule 6: different-shape gates must be >= 3 beats apart
+        // Rule 6: different-shape gates must be >= min_shape_change_gap beats apart
         bool has_shape = (entry.kind == ObstacleKind::ShapeGate ||
                           entry.kind == ObstacleKind::ComboGate ||
                           entry.kind == ObstacleKind::SplitPath);
         if (has_shape && prev_had_shape) {
             if (entry.shape != prev_shape &&
-                (entry.beat_index - prev_shape_beat) < 3) {
+                (entry.beat_index - prev_shape_beat) < vc.min_shape_change_gap) {
                 errors.push_back({entry.beat_index,
-                    "Different-shape gates must be >= 3 beats apart"});
+                    "Different-shape gates must be >= " + std::to_string(vc.min_shape_change_gap) + " beats apart"});
                 valid = false;
             }
         }

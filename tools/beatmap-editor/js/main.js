@@ -9,6 +9,12 @@ import * as editor from './editor.js';
 import * as contextMenu from './context-menu.js';
 import * as panels from './panels.js';
 import { validate, exportBeatmap, downloadFile } from './io.js';
+import { loadSharedConstants } from './constants.js';
+
+// ── Load shared constants, then boot ────────────────────────────────
+loadSharedConstants().then(boot).catch(() => boot());
+
+function boot() {
 
 // ── DOM Elements ────────────────────────────────────────────────────
 
@@ -150,3 +156,5 @@ function frame() {
 }
 
 requestAnimationFrame(frame);
+
+} // end boot()

@@ -286,6 +286,14 @@ if(UI_ROOT_FILES)
     )
 endif()
 
+# Copy shared constants JSON next to the executable
+add_custom_command(TARGET shapeshifter POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_SOURCE_DIR}/content/constants.json"
+        "$<TARGET_FILE_DIR:shapeshifter>/content/constants.json"
+    COMMENT "Copying shared constants"
+)
+
 # ── Tests + Benchmarks (native only) ─────────────────────────
 if(NOT EMSCRIPTEN)
     enable_testing()
