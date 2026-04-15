@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SHAPESHIFTER — Beatmap Editor</title>
+    <link rel="stylesheet" href="css/editor.css">
+</head>
+<body>
+<div id="app">
+
+    <!-- ── Top Toolbar ──────────────────────────────── -->
+    <div id="toolbar">
+        <div class="toolbar-group">
+            <button id="btn-import" class="btn btn-sm" title="Import beatmap JSON">📂 Import</button>
+            <button id="btn-export" class="btn btn-sm btn-accent" title="Export beatmap JSON (Ctrl+S)">💾 Export</button>
+        </div>
+        <div class="toolbar-separator"></div>
+        <div class="toolbar-group">
+            <button id="btn-load-audio" class="btn btn-sm" title="Load audio file">🎵 Load Audio</button>
+        </div>
+        <div class="toolbar-separator"></div>
+        <div class="toolbar-group">
+            <button id="btn-import-analysis" class="btn btn-sm" title="Import analysis JSON for structure overlay">📊 Analysis</button>
+        </div>
+        <div class="toolbar-separator"></div>
+        <div class="toolbar-group">
+            <button id="btn-undo" class="btn btn-sm" title="Undo (Ctrl+Z)">↩ Undo</button>
+            <button id="btn-redo" class="btn btn-sm" title="Redo (Ctrl+Shift+Z)">↪ Redo</button>
+        </div>
+        <div class="toolbar-separator"></div>
+        <div class="toolbar-group">
+            <span class="toolbar-label">Zoom</span>
+            <button id="btn-zoom-out" class="btn btn-sm" title="Zoom out (-)">−</button>
+            <span id="zoom-display" style="min-width: 40px; text-align: center;">100%</span>
+            <button id="btn-zoom-in" class="btn btn-sm" title="Zoom in (+)">+</button>
+        </div>
+        <div style="flex:1"></div>
+        <div class="toolbar-group">
+            <span id="beat-count-display" class="toolbar-label" style="color: var(--text);">0 beats</span>
+        </div>
+    </div>
+
+    <!-- ── Difficulty Tabs ──────────────────────────── -->
+    <div id="difficulty-tabs">
+        <button class="diff-tab active" data-diff="easy">Easy</button>
+        <button class="diff-tab" data-diff="medium">Medium</button>
+        <button class="diff-tab" data-diff="hard">Hard</button>
+        <button class="diff-tab-add" id="btn-add-difficulty" title="Add difficulty">+</button>
+    </div>
+
+    <!-- ── Main Content ─────────────────────────────── -->
+    <div id="main">
+
+        <!-- ── Left Sidebar ─────────────────────────── -->
+        <div id="sidebar">
+
+            <!-- Metadata Panel -->
+            <div class="panel" id="panel-metadata">
+                <div class="panel-title">Metadata</div>
+                <div class="form-row">
+                    <label for="meta-song-id">Song ID</label>
+                    <input type="text" id="meta-song-id" placeholder="e.g. 1_stomper">
+                </div>
+                <div class="form-row">
+                    <label for="meta-title">Title</label>
+                    <input type="text" id="meta-title" placeholder="Song title">
+                </div>
+                <div class="form-row">
+                    <label for="meta-bpm">BPM</label>
+                    <input type="number" id="meta-bpm" min="60" max="300" step="0.01" value="120">
+                </div>
+                <div class="form-row">
+                    <label for="meta-offset">Offset (s)</label>
+                    <input type="number" id="meta-offset" min="0" max="5" step="0.001" value="0">
+                </div>
+                <div class="form-row">
+                    <label for="meta-lead-beats">Lead Beats</label>
+                    <input type="number" id="meta-lead-beats" min="2" max="8" step="1" value="4">
+                </div>
+                <div class="form-row">
+                    <label for="meta-duration">Duration (s)</label>
+                    <input type="number" id="meta-duration" min="1" step="0.01" value="180">
+                </div>
+                <div class="form-row">
+                    <label for="meta-song-path">Song Path</label>
+                    <input type="text" id="meta-song-path" placeholder="content/audio/...">
+                </div>
+                <div class="form-row" style="margin-top: 8px;">
+                    <button id="btn-tap-bpm" class="btn btn-sm" style="flex:1;">🥁 Tap BPM</button>
+                    <button id="btn-set-offset" class="btn btn-sm" style="flex:1; margin-left:4px;">⏱ Set Offset</button>
+                </div>
+            </div>
+
+            <!-- Obstacle Palette -->
+            <div class="panel" id="panel-palette">
+                <div class="panel-title">Obstacle Kind</div>
+                <div class="palette-grid" id="kind-palette">
+                    <button class="palette-btn active" data-kind="shape_gate">
+                        <span class="glyph">◆</span>
+                        <span>ShapeGate</span>
+                    </button>
+                    <button class="palette-btn" data-kind="lane_block">
+                        <span class="glyph">▬</span>
+                        <span>LaneBlock</span>
+                    </button>
+                    <button class="palette-btn" data-kind="low_bar">
+                        <span class="glyph">⌐</span>
+                        <span>LowBar</span>
+                    </button>
+                    <button class="palette-btn" data-kind="high_bar">
+                        <span class="glyph">¬</span>
+                        <span>HighBar</span>
+                    </button>
+                    <button class="palette-btn" data-kind="combo_gate">
+                        <span class="glyph">◈</span>
+                        <span>ComboGate</span>
+                    </button>
+                    <button class="palette-btn" data-kind="split_path">
+                        <span class="glyph">⑂</span>
+                        <span>SplitPath</span>
+                    </button>
+                </div>
+
+                <div class="panel-title" style="margin-top: 12px;">Shape</div>
+                <div class="palette-grid" id="shape-palette">
+                    <button class="palette-btn active" data-shape="circle">
+                        <span class="glyph" style="color: #4fc3f7;">●</span>
+                        <span>Circle</span>
+                    </button>
+                    <button class="palette-btn" data-shape="square">
+                        <span class="glyph" style="color: #ff8a65;">■</span>
+                        <span>Square</span>
+                    </button>
+                    <button class="palette-btn" data-shape="triangle">
+                        <span class="glyph" style="color: #aed581;">▲</span>
+                        <span>Triangle</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Selection Info -->
+            <div class="panel" id="panel-selection" style="display:none;">
+                <div class="panel-title">Selection</div>
+                <div id="selection-info">No selection</div>
+            </div>
+
+        </div>
+
+        <!-- ── Canvas Area ──────────────────────────── -->
+        <div id="canvas-container">
+            <canvas id="timeline-canvas"></canvas>
+        </div>
+    </div>
+
+    <!-- ── Transport Bar ────────────────────────────── -->
+    <div id="transport">
+        <button id="btn-play" class="btn btn-sm" title="Play/Pause (Space)">▶ Play</button>
+        <button id="btn-stop" class="btn btn-sm" title="Stop">⏹ Stop</button>
+        <div class="toolbar-separator"></div>
+        <span class="time-display" id="time-display">0:00.000 / 0:00.000</span>
+        <div class="toolbar-separator"></div>
+        <span class="toolbar-label">Beat</span>
+        <span id="beat-display" style="min-width: 40px;">0</span>
+        <div style="flex:1"></div>
+        <span class="toolbar-label">Speed</span>
+        <select id="playback-rate" class="btn btn-sm" style="padding: 3px 6px;">
+            <option value="0.25">0.25×</option>
+            <option value="0.5">0.5×</option>
+            <option value="0.75">0.75×</option>
+            <option value="1" selected>1.0×</option>
+        </select>
+        <div class="toolbar-separator"></div>
+        <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
+            <input type="checkbox" id="chk-metronome"> <span class="toolbar-label" style="margin:0;">Metronome</span>
+        </label>
+    </div>
+
+    <!-- ── Validation Panel ─────────────────────────── -->
+    <div id="validation-panel">
+        <div class="panel-title" style="padding:0; margin-bottom:4px;">⚠ Validation</div>
+        <div id="validation-list"></div>
+    </div>
+
+</div>
+
+<!-- ── Context Menu (positioned absolutely) ─────── -->
+<div id="context-menu"></div>
+
+<!-- ── Drag & Drop Overlay ──────────────────────── -->
+<div id="drop-overlay">
+    <div class="drop-message">Drop audio or beatmap JSON here</div>
+</div>
+
+<!-- ── Hidden file inputs ───────────────────────── -->
+<input type="file" id="file-input-audio" accept=".flac,.mp3,.wav,.ogg" style="display:none">
+<input type="file" id="file-input-json" accept=".json" style="display:none">
+<input type="file" id="file-input-analysis" accept=".json" style="display:none">
+
+<!-- ── Module scripts ───────────────────────────── -->
+<script type="module" src="js/main.js"></script>
+
+</body>
+</html>

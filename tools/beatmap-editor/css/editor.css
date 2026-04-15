@@ -1,0 +1,442 @@
+/* editor.css — Beatmap Editor dark theme */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --bg: #1a1a2e;
+    --panel-bg: #16213e;
+    --panel-border: #0f3460;
+    --text: #e0e0e0;
+    --text-muted: #888;
+    --accent: #e94560;
+    --accent-hover: #ff6b81;
+    --input-bg: #0f1a30;
+    --input-border: #2a3a5a;
+    --btn-bg: #0f3460;
+    --btn-hover: #1a4a80;
+    --error: #ff4444;
+    --warning: #ffaa00;
+    --success: #4caf50;
+}
+
+html, body {
+    height: 100%;
+    overflow: hidden;
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 13px;
+    background: var(--bg);
+    color: var(--text);
+}
+
+/* ── App Layout ────────────────────────────────────── */
+
+#app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+/* ── Top Toolbar ───────────────────────────────────── */
+
+#toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: var(--panel-bg);
+    border-bottom: 1px solid var(--panel-border);
+    flex-shrink: 0;
+}
+
+#toolbar .toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+#toolbar .toolbar-separator {
+    width: 1px;
+    height: 24px;
+    background: var(--panel-border);
+    margin: 0 6px;
+}
+
+#toolbar .toolbar-label {
+    color: var(--text-muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-right: 4px;
+}
+
+/* ── Main Content (sidebar + canvas) ───────────────── */
+
+#main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* ── Left Sidebar ──────────────────────────────────── */
+
+#sidebar {
+    width: 260px;
+    min-width: 200px;
+    background: var(--panel-bg);
+    border-right: 1px solid var(--panel-border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    flex-shrink: 0;
+}
+
+.panel {
+    padding: 12px;
+    border-bottom: 1px solid var(--panel-border);
+}
+
+.panel-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--accent);
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+/* ── Metadata Form ─────────────────────────────────── */
+
+.form-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.form-row label {
+    width: 80px;
+    font-size: 12px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.form-row input {
+    flex: 1;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: 3px;
+    color: var(--text);
+    padding: 4px 6px;
+    font-size: 12px;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+.form-row input:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+/* ── Palette ───────────────────────────────────────── */
+
+.palette-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+}
+
+.palette-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 4px;
+    background: var(--input-bg);
+    border: 2px solid transparent;
+    border-radius: 4px;
+    color: var(--text);
+    cursor: pointer;
+    font-size: 11px;
+    transition: all 0.15s;
+}
+
+.palette-btn:hover {
+    background: var(--btn-bg);
+}
+
+.palette-btn.active {
+    border-color: var(--accent);
+    background: var(--btn-bg);
+}
+
+.palette-btn .glyph {
+    font-size: 18px;
+    margin-bottom: 2px;
+}
+
+/* ── Difficulty Tabs ───────────────────────────────── */
+
+#difficulty-tabs {
+    display: flex;
+    gap: 0;
+    background: var(--panel-bg);
+    border-bottom: 1px solid var(--panel-border);
+    flex-shrink: 0;
+}
+
+.diff-tab {
+    padding: 8px 16px;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.15s;
+}
+
+.diff-tab:hover {
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.diff-tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+}
+
+.diff-tab-add {
+    padding: 8px 12px;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.diff-tab-add:hover {
+    color: var(--accent);
+}
+
+/* ── Canvas Container ──────────────────────────────── */
+
+#canvas-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+}
+
+#timeline-canvas {
+    flex: 1;
+    display: block;
+    cursor: crosshair;
+}
+
+/* ── Transport / Playback Bar ──────────────────────── */
+
+#transport {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: var(--panel-bg);
+    border-top: 1px solid var(--panel-border);
+    flex-shrink: 0;
+}
+
+#transport .time-display {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 13px;
+    color: var(--text);
+    min-width: 120px;
+}
+
+/* ── Validation Panel ──────────────────────────────── */
+
+#validation-panel {
+    max-height: 150px;
+    overflow-y: auto;
+    padding: 8px 12px;
+    background: var(--panel-bg);
+    border-top: 1px solid var(--panel-border);
+    flex-shrink: 0;
+    display: none;
+}
+
+#validation-panel.has-errors {
+    display: block;
+}
+
+.validation-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 0;
+    font-size: 12px;
+}
+
+.validation-item.error {
+    color: var(--error);
+}
+
+.validation-item.warning {
+    color: var(--warning);
+}
+
+.validation-icon {
+    font-size: 10px;
+    flex-shrink: 0;
+}
+
+/* ── Buttons ───────────────────────────────────────── */
+
+.btn {
+    padding: 5px 10px;
+    background: var(--btn-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 3px;
+    color: var(--text);
+    cursor: pointer;
+    font-size: 12px;
+    transition: background 0.15s;
+    white-space: nowrap;
+}
+
+.btn:hover {
+    background: var(--btn-hover);
+}
+
+.btn-accent {
+    background: var(--accent);
+    border-color: var(--accent);
+}
+
+.btn-accent:hover {
+    background: var(--accent-hover);
+}
+
+.btn-sm {
+    padding: 3px 8px;
+    font-size: 11px;
+}
+
+/* ── Context Menu ──────────────────────────────────── */
+
+#context-menu {
+    position: fixed;
+    display: none;
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 4px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+    min-width: 180px;
+    z-index: 1000;
+    padding: 4px 0;
+}
+
+#context-menu.visible {
+    display: block;
+}
+
+.ctx-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--text);
+    position: relative;
+}
+
+.ctx-item:hover {
+    background: var(--btn-bg);
+}
+
+.ctx-item.checked::before {
+    content: "✓";
+    position: absolute;
+    left: 4px;
+    font-size: 10px;
+    color: var(--accent);
+}
+
+.ctx-item .submenu-arrow {
+    color: var(--text-muted);
+    font-size: 10px;
+    margin-left: 12px;
+}
+
+.ctx-separator {
+    height: 1px;
+    background: var(--panel-border);
+    margin: 4px 0;
+}
+
+.ctx-submenu {
+    position: absolute;
+    left: 100%;
+    top: -4px;
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 4px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+    min-width: 150px;
+    padding: 4px 0;
+    display: none;
+}
+
+.ctx-item:hover > .ctx-submenu {
+    display: block;
+}
+
+/* ── Scrollbar Styling ─────────────────────────────── */
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--panel-border);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--btn-bg);
+}
+
+/* ── Drag & Drop Overlay ──────────────────────────── */
+
+#drop-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(26, 26, 46, 0.9);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    pointer-events: none;
+}
+
+#drop-overlay.visible {
+    display: flex;
+}
+
+#drop-overlay .drop-message {
+    font-size: 20px;
+    color: var(--accent);
+    border: 2px dashed var(--accent);
+    padding: 40px 60px;
+    border-radius: 12px;
+}
