@@ -22,6 +22,7 @@ void player_input_system(entt::registry& reg, float /*dt*/) {
         sw.window_timer = 0.0f;
         sw.window_start = song->song_time;
         sw.peak_time = song->song_time + song->morph_duration + song->half_window;
+        sw.press_time = song->song_time;
         ps.morph_t = 0.0f;
         sw.window_scale = 1.0f;
         sw.graded = false;
@@ -52,6 +53,7 @@ void player_input_system(entt::registry& reg, float /*dt*/) {
                     swindow.window_timer = 0.0f;
                     swindow.window_start = song->song_time;
                     swindow.peak_time = song->song_time + song->half_window;
+                    swindow.press_time = song->song_time;
                     swindow.window_scale = 1.0f;
                     swindow.graded = false;
                 }

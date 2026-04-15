@@ -329,15 +329,18 @@ void shape_window_system(entt::registry& reg, float dt);
   │                                                                     │
   │  // Use the obstacle's beat arrival_time for timing,                │
   │  // falling back to ShapeWindow.peak_time when BeatInfo absent.     │
+  │  // Compare PRESS TIME (when player tapped) vs reference,           │
+  │  // not current song_time. This ensures "perfect" means the         │
+  │  // player tapped on the beat they meet the obstacle.               │
   │  auto* beat_info = reg.try_get<BeatInfo>(entity);                   │
   │  float ref = beat_info ? beat_info->arrival_time                    │
   │                        : p_window.peak_time;                        │
-  │  float pct = abs(song_time - ref) / half_window;                    │
+  │  float pct = abs(p_window.press_time - ref) / half_window;          │
   │  TimingGrade = compute_timing_tier(pct);                            │
   │                                                                     │
-  │  This decouples timing evaluation from the shape window's           │
-  │  peak_time, preventing cascading Bad→window-shrink→MISS             │
-  │  failures at lower BPMs where beat spacing is wider.                │
+  │  press_time is recorded when the player taps a shape button.        │
+  │  This prevents a press on beat N from awarding Perfect on beat N+1  │
+  │  when the player's window is still active (cruising through).       │
   │                                                                     │
   │  PERFECT  → pts=300, window_scale=0.50 (remaining window halved)   │
   │  GOOD     → pts=200, window_scale=0.75                             │
