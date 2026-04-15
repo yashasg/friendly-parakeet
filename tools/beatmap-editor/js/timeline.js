@@ -347,7 +347,6 @@ function renderLegend(ctx, w, h) {
         { glyph: SHAPE_GLYPHS.square,   color: COLORS.shape.square,   label: 'Square' },
         { glyph: SHAPE_GLYPHS.triangle, color: COLORS.shape.triangle, label: 'Triangle' },
         { glyph: GLYPHS.lane_block,     color: COLORS.kind.lane_block, label: 'LaneBlock' },
-        { glyph: GLYPHS.split_path,     color: COLORS.kind.split_path, label: 'SplitPath' },
     ];
 
     const lineH = 16;
