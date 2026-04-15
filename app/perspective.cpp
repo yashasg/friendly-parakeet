@@ -17,24 +17,17 @@ namespace perspective {
 // Height is scaled by depth at the rect's vertical centre so objects appear
 // shorter when far from the camera.
 void draw_rect(float x, float y, float w, float h, Color c) {
-    float cy  = y + h / 2.0f;
-    float d   = depth(cy);
-    float sh  = h * d;                // perspective-scaled height
-    float top = cy - sh / 2.0f;
-    float bot = cy + sh / 2.0f;
+    auto ry = scale_rect_y(y, h);
 
-    float d_top = depth(top);
-    float d_bot = depth(bot);
+    float tl_x = CENTER + (x     - CENTER) * ry.d_top;
+    float tr_x = CENTER + (x + w - CENTER) * ry.d_top;
+    float bl_x = CENTER + (x     - CENTER) * ry.d_bot;
+    float br_x = CENTER + (x + w - CENTER) * ry.d_bot;
 
-    float tl_x = CENTER + (x     - CENTER) * d_top;
-    float tr_x = CENTER + (x + w - CENTER) * d_top;
-    float bl_x = CENTER + (x     - CENTER) * d_bot;
-    float br_x = CENTER + (x + w - CENTER) * d_bot;
-
-    Vector2 tl = {tl_x, top};
-    Vector2 tr = {tr_x, top};
-    Vector2 bl = {bl_x, bot};
-    Vector2 br = {br_x, bot};
+    Vector2 tl = {tl_x, ry.top};
+    Vector2 tr = {tr_x, ry.top};
+    Vector2 bl = {bl_x, ry.bot};
+    Vector2 br = {br_x, ry.bot};
 
     DrawTriangle(tl, bl, tr, c);
     DrawTriangle(tr, bl, br, c);
@@ -136,19 +129,12 @@ void draw_ring(float cx, float cy, float inner_r, float outer_r, int segments, C
 
 // ── Projected rectangle outline ──────────────────────────────────────────────
 void draw_rect_lines(float x, float y, float w, float h, float thick, Color c) {
-    float cy  = y + h / 2.0f;
-    float d   = depth(cy);
-    float sh  = h * d;
-    float top = cy - sh / 2.0f;
-    float bot = cy + sh / 2.0f;
+    auto ry = scale_rect_y(y, h);
 
-    float d_top = depth(top);
-    float d_bot = depth(bot);
-
-    Vector2 tl = {CENTER + (x     - CENTER) * d_top, top};
-    Vector2 tr = {CENTER + (x + w - CENTER) * d_top, top};
-    Vector2 br = {CENTER + (x + w - CENTER) * d_bot, bot};
-    Vector2 bl = {CENTER + (x     - CENTER) * d_bot, bot};
+    Vector2 tl = {CENTER + (x     - CENTER) * ry.d_top, ry.top};
+    Vector2 tr = {CENTER + (x + w - CENTER) * ry.d_top, ry.top};
+    Vector2 br = {CENTER + (x + w - CENTER) * ry.d_bot, ry.bot};
+    Vector2 bl = {CENTER + (x     - CENTER) * ry.d_bot, ry.bot};
 
     DrawLineEx(tl, tr, thick, c);
     DrawLineEx(tr, br, thick, c);
@@ -176,24 +162,18 @@ void flush_world_rects(entt::registry& reg) {
     // Helper: emit one projected quad (height scaled by depth)
     auto emit_quad = [](float x, float y, float w, float h,
                         uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-        float cy  = y + h / 2.0f;
-        float d   = depth(cy);
-        float sh  = h * d;
-        float top = cy - sh / 2.0f;
-        float bot = cy + sh / 2.0f;
+        auto ry = scale_rect_y(y, h);
 
-        float d_top = depth(top);
-        float d_bot = depth(bot);
-        float tl_x = CENTER + (x     - CENTER) * d_top;
-        float tr_x = CENTER + (x + w - CENTER) * d_top;
-        float bl_x = CENTER + (x     - CENTER) * d_bot;
-        float br_x = CENTER + (x + w - CENTER) * d_bot;
+        float tl_x = CENTER + (x     - CENTER) * ry.d_top;
+        float tr_x = CENTER + (x + w - CENTER) * ry.d_top;
+        float bl_x = CENTER + (x     - CENTER) * ry.d_bot;
+        float br_x = CENTER + (x + w - CENTER) * ry.d_bot;
 
         rlColor4ub(r, g, b, a);
-        rlVertex2f(tl_x, top);
-        rlVertex2f(bl_x, bot);
-        rlVertex2f(br_x, bot);
-        rlVertex2f(tr_x, top);
+        rlVertex2f(tl_x, ry.top);
+        rlVertex2f(bl_x, ry.bot);
+        rlVertex2f(br_x, ry.bot);
+        rlVertex2f(tr_x, ry.top);
     };
 
     // ── Obstacles: iterate by ObstacleTag ────────────────────

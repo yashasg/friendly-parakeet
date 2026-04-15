@@ -677,16 +677,16 @@ TEST_CASE("perspective: depth-scaled object size decreases toward top", "[perspe
 }
 
 TEST_CASE("perspective: depth-scaled rect height is shorter far away", "[perspective]") {
-    // Simulate the height-scaling logic used by draw_rect / emit_quad.
+    // Use the same scale_rect_y helper that draw_rect / emit_quad use.
     constexpr float h = 40.0f;
 
     // Far rect (y=100)
-    float cy_far = 100.0f + h / 2.0f;
-    float sh_far = h * perspective::depth(cy_far);
+    auto ry_far = perspective::scale_rect_y(100.0f, h);
+    float sh_far = ry_far.bot - ry_far.top;
 
     // Near rect (y=900)
-    float cy_near = 900.0f + h / 2.0f;
-    float sh_near = h * perspective::depth(cy_near);
+    auto ry_near = perspective::scale_rect_y(900.0f, h);
+    float sh_near = ry_near.bot - ry_near.top;
 
     CHECK(sh_far < sh_near);
     CHECK(sh_far > 0.0f);
@@ -745,26 +745,19 @@ TEST_CASE("winding: depth-scaled triangle shape is CCW (far y=100)", "[winding][
 }
 
 TEST_CASE("winding: depth-scaled rect is CCW (far y=100)", "[winding][perspective]") {
-    // Simulate draw_rect's height-scaling: scale h by depth, recenter.
+    // Use the same scale_rect_y helper that draw_rect / emit_quad use.
     constexpr float y = 100.0f, h = 40.0f;
-    float cy  = y + h / 2.0f;
-    float d   = perspective::depth(cy);
-    float sh  = h * d;
-    float top = cy - sh / 2.0f;
-    float bot = cy + sh / 2.0f;
+    auto ry = perspective::scale_rect_y(y, h);
 
-    float d_top = perspective::depth(top);
-    float d_bot = perspective::depth(bot);
-
-    float tl_x = perspective::CENTER + (0.0f   - perspective::CENTER) * d_top;
-    float tr_x = perspective::CENTER + (720.0f - perspective::CENTER) * d_top;
-    float bl_x = perspective::CENTER + (0.0f   - perspective::CENTER) * d_bot;
-    float br_x = perspective::CENTER + (720.0f - perspective::CENTER) * d_bot;
+    float tl_x = perspective::CENTER + (0.0f   - perspective::CENTER) * ry.d_top;
+    float tr_x = perspective::CENTER + (720.0f - perspective::CENTER) * ry.d_top;
+    float bl_x = perspective::CENTER + (0.0f   - perspective::CENTER) * ry.d_bot;
+    float br_x = perspective::CENTER + (720.0f - perspective::CENTER) * ry.d_bot;
 
     // Triangle 1: TL → BL → TR
-    float cross1 = cross2d(tl_x, top, bl_x, bot, tr_x, top);
+    float cross1 = cross2d(tl_x, ry.top, bl_x, ry.bot, tr_x, ry.top);
     CHECK(is_ccw(cross1));
     // Triangle 2: TR → BL → BR
-    float cross2 = cross2d(tr_x, top, bl_x, bot, br_x, bot);
+    float cross2 = cross2d(tr_x, ry.top, bl_x, ry.bot, br_x, ry.bot);
     CHECK(is_ccw(cross2));
 }
