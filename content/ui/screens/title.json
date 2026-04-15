@@ -1,0 +1,61 @@
+{
+  "screen": "title",
+  "elements": [
+    {
+      "id": "shape_circle",
+      "type": "shape",
+      "shape": "circle",
+      "x_n": 0.389, "y_n": 0.313,
+      "size_n": 0.111,
+      "color": [80, 180, 255, 255]
+    },
+    {
+      "id": "shape_square",
+      "type": "shape",
+      "shape": "square",
+      "x_n": 0.5, "y_n": 0.313,
+      "size_n": 0.111,
+      "color": [80, 180, 255, 255]
+    },
+    {
+      "id": "shape_triangle",
+      "type": "shape",
+      "shape": "triangle",
+      "x_n": 0.611, "y_n": 0.313,
+      "size_n": 0.111,
+      "color": [100, 255, 100, 255]
+    },
+    {
+      "id": "title_text",
+      "type": "text",
+      "text": "SHAPESHIFTER",
+      "x_n": 0.5, "y_n": 0.391,
+      "font_size": "large",
+      "align": "center",
+      "color": [80, 180, 255, 255]
+    },
+    {
+      "id": "start_prompt",
+      "type": "text",
+      "text": "TAP TO START",
+      "x_n": 0.5, "y_n": 0.469,
+      "font_size": "medium",
+      "align": "center",
+      "color": [200, 200, 200, 255],
+      "animation": { "type": "pulse", "speed": 3.0, "alpha_range": [100, 255] }
+    },
+    {
+      "id": "exit_button",
+      "type": "button",
+      "text": "EXIT",
+      "x_n": 0.3611, "y_n": 0.8203,
+      "w_n": 0.2778, "h_n": 0.0391,
+      "corner_radius": 0.2,
+      "bg_color": [40, 30, 30, 255],
+      "border_color": [100, 60, 60, 255],
+      "text_color": [180, 100, 100, 255],
+      "font_size": "small",
+      "platform_only": "desktop"
+    }
+  ]
+}

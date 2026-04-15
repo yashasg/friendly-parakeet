@@ -16,10 +16,13 @@
 #include "../constants.h"
 #include "../text_renderer.h"
 #include "../perspective.h"
+#include "../components/ui_state.h"
+#include "../ui_loader.h"
 #include <raylib.h>
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <fstream>
 
 static void draw_shape_flat(Shape shape, float cx, float cy, float size, Color color) {
     switch (shape) {
@@ -62,317 +65,414 @@ static void draw_shape_flat(Shape shape, float cx, float cy, float size, Color c
 // Each function draws one viewport-space scene or overlay.
 // They read singletons from the registry but don't modify game state.
 
-static void draw_title_scene(const TextContext& text_ctx, const GameState& gs) {
-    const float shapes_y  = constants::SCENE_TITLE_SHAPES_Y_N    * constants::SCREEN_H;
-    const float shape_sz  = constants::SCENE_TITLE_SHAPES_SIZE_N  * constants::SCREEN_W;
-    const float shape_off = constants::SCENE_TITLE_SHAPES_OFFSET_N * constants::SCREEN_W;
-    const float cx        = constants::VIEWPORT_CX_N * constants::SCREEN_W;
+using json = nlohmann::json;
 
-    Color title_shape_color = {80, 180, 255, 255};
-    draw_shape_flat(Shape::Circle, cx - shape_off, shapes_y, shape_sz, title_shape_color);
-    draw_shape_flat(Shape::Square, cx,             shapes_y, shape_sz, title_shape_color);
-    Color green_color = {100, 255, 100, 255};
-    draw_shape_flat(Shape::Triangle, cx + shape_off, shapes_y, shape_sz, green_color);
+static Color json_color(const json& arr) {
+    uint8_t a = arr.size() > 3 ? arr[3].get<uint8_t>() : 255;
+    return {arr[0].get<uint8_t>(), arr[1].get<uint8_t>(),
+            arr[2].get<uint8_t>(), a};
+}
 
-    text_draw(text_ctx, "SHAPESHIFTER",
-        cx, constants::SCENE_TITLE_TEXT_Y_N * constants::SCREEN_H,
-        FontSize::Large, 80, 180, 255, 255, TextAlign::Center);
+static FontSize json_font(const std::string& s) {
+    if (s == "large") return FontSize::Large;
+    if (s == "small") return FontSize::Small;
+    return FontSize::Medium;
+}
 
-    float pulse = (std::sin(gs.phase_timer * 3.0f) + 1.0f) / 2.0f;
-    auto alpha = static_cast<uint8_t>(100 + pulse * 155);
-    text_draw(text_ctx, "TAP TO START",
-        cx, constants::SCENE_TITLE_PROMPT_Y_N * constants::SCREEN_H,
-        FontSize::Medium, 200, 200, 200, alpha, TextAlign::Center);
+static TextAlign json_align(const json& el) {
+    auto a = el.value("align", "left");
+    if (a == "center") return TextAlign::Center;
+    if (a == "right")  return TextAlign::Right;
+    return TextAlign::Left;
+}
 
-    #ifndef PLATFORM_WEB
-    constexpr float EXIT_W = 200.0f;
-    constexpr float EXIT_H = 50.0f;
-    constexpr float EXIT_Y = 1050.0f;
-    float exit_x = (constants::SCREEN_W - EXIT_W) / 2.0f;
-    DrawRectangleRounded({exit_x, EXIT_Y, EXIT_W, EXIT_H}, 0.2f, 4, Color{40, 30, 30, 255});
-    DrawRectangleRoundedLinesEx({exit_x, EXIT_Y, EXIT_W, EXIT_H}, 0.2f, 4, 1.5f, Color{100, 60, 60, 255});
-    text_draw(text_ctx, "EXIT", cx, EXIT_Y + 12.0f, FontSize::Small, 180, 100, 100, 255, TextAlign::Center);
-    #endif
+static Shape json_shape(const std::string& s) {
+    if (s == "square")   return Shape::Square;
+    if (s == "triangle") return Shape::Triangle;
+    return Shape::Circle;
+}
+
+static float el_x(const json& el) {
+    return el["x_n"].get<float>() * constants::SCREEN_W;
+}
+
+static float el_y(const json& el) {
+    return el["y_n"].get<float>() * constants::SCREEN_H;
+}
+
+static const json* find_el(const json& screen, const std::string& id) {
+    if (!screen.contains("elements")) return nullptr;
+    for (auto& el : screen["elements"]) {
+        if (el.value("id", "") == id) return &el;
+    }
+    return nullptr;
+}
+
+static void render_text(const json& el, const TextContext& ctx, float timer) {
+    Color c = json_color(el["color"]);
+    if (el.contains("animation")) {
+        auto& anim = el["animation"];
+        float pulse = (std::sin(timer * anim["speed"].get<float>()) + 1.0f) / 2.0f;
+        auto amin = anim["alpha_range"][0].get<uint8_t>();
+        auto amax = anim["alpha_range"][1].get<uint8_t>();
+        c.a = static_cast<uint8_t>(amin + static_cast<int>(pulse * (amax - amin)));
+    }
+    text_draw(ctx, el["text"].get<std::string>().c_str(),
+        el_x(el), el_y(el),
+        json_font(el.value("font_size", "medium")),
+        c.r, c.g, c.b, c.a, json_align(el));
+}
+
+static void render_button(const json& el, const TextContext& ctx, float timer) {
+    if (el.contains("platform_only")) {
+        auto plat = el["platform_only"].get<std::string>();
+        #ifdef PLATFORM_WEB
+        if (plat == "desktop") return;
+        #else
+        if (plat == "web") return;
+        #endif
+    }
+    float x = el["x_n"].get<float>() * constants::SCREEN_W;
+    float y = el["y_n"].get<float>() * constants::SCREEN_H;
+    float w = el["w_n"].get<float>() * constants::SCREEN_W;
+    float h = el["h_n"].get<float>() * constants::SCREEN_H;
+    float cr = el.value("corner_radius", 0.2f);
+    Color bg = json_color(el["bg_color"]);
+    Color border = json_color(el["border_color"]);
+    Color tc = json_color(el["text_color"]);
+    if (el.contains("animation")) {
+        auto& anim = el["animation"];
+        float pulse = (std::sin(timer * anim["speed"].get<float>()) + 1.0f) / 2.0f;
+        auto amin = anim["alpha_range"][0].get<uint8_t>();
+        auto amax = anim["alpha_range"][1].get<uint8_t>();
+        tc.a = static_cast<uint8_t>(amin + static_cast<int>(pulse * (amax - amin)));
+    }
+    DrawRectangleRounded({x, y, w, h}, cr, 4, bg);
+    DrawRectangleRoundedLinesEx({x, y, w, h}, cr, 4, 1.5f, border);
+    float cx = x + w / 2.0f;
+    text_draw(ctx, el["text"].get<std::string>().c_str(),
+        cx, y + 12.0f,
+        json_font(el.value("font_size", "small")),
+        tc.r, tc.g, tc.b, tc.a, TextAlign::Center);
+}
+
+static void render_shape(const json& el) {
+    draw_shape_flat(
+        json_shape(el["shape"].get<std::string>()),
+        el["x_n"].get<float>() * static_cast<float>(constants::SCREEN_W),
+        el["y_n"].get<float>() * static_cast<float>(constants::SCREEN_H),
+        el["size_n"].get<float>() * static_cast<float>(constants::SCREEN_W),
+        json_color(el["color"]));
+}
+
+static void render_elements(const json& screen, const TextContext& ctx, float timer) {
+    if (!screen.contains("elements")) return;
+    for (auto& el : screen["elements"]) {
+        auto type = el.value("type", "");
+        if (type == "text")        render_text(el, ctx, timer);
+        else if (type == "button") render_button(el, ctx, timer);
+        else if (type == "shape")  render_shape(el);
+    }
+}
+
+static const char* phase_to_screen(GamePhase phase) {
+    switch (phase) {
+        case GamePhase::Title:        return "title";
+        case GamePhase::LevelSelect:  return "level_select";
+        case GamePhase::Playing:      return "gameplay";
+        case GamePhase::Paused:       return "paused";
+        case GamePhase::GameOver:     return "game_over";
+        case GamePhase::SongComplete: return "song_complete";
+    }
+    return "title";
+}
+
+static void draw_title_scene(const TextContext& text_ctx, const GameState& gs,
+                             const json& screen) {
+    render_elements(screen, text_ctx, gs.phase_timer);
 }
 
 static void draw_level_select_scene(const TextContext& text_ctx,
                                     const LevelSelectState& lss,
-                                    const GameState& gs) {
-    const float cx = constants::VIEWPORT_CX_N * constants::SCREEN_W;
+                                    const GameState& gs,
+                                    const json& screen) {
+    // Static elements (header, start button) rendered generically
+    render_elements(screen, text_ctx, gs.phase_timer);
 
-    text_draw(text_ctx, "SELECT LEVEL",
-        cx, 80.0f, FontSize::Large, 80, 180, 255, 255, TextAlign::Center);
+    // Dynamic card list
+    auto* cards = find_el(screen, "song_cards");
+    if (cards) {
+        auto& c = *cards;
+        float card_x  = c["x_n"].get<float>() * constants::SCREEN_W;
+        float start_y = c["start_y_n"].get<float>() * constants::SCREEN_H;
+        float card_w  = c["card_w_n"].get<float>() * constants::SCREEN_W;
+        float card_h  = c["card_h_n"].get<float>() * constants::SCREEN_H;
+        float gap     = c["card_gap_n"].get<float>() * constants::SCREEN_H;
+        float cr      = c.value("corner_radius", 0.1f);
+        Color sel_bg     = json_color(c["selected_bg"]);
+        Color unsel_bg   = json_color(c["unselected_bg"]);
+        Color sel_border = json_color(c["selected_border"]);
+        Color unsel_border = json_color(c["unselected_border"]);
+        float title_ox = c["title_offset_x_n"].get<float>() * constants::SCREEN_W;
+        float title_oy = c["title_offset_y_n"].get<float>() * constants::SCREEN_H;
 
-    constexpr float CARD_START_Y = 200.0f;
-    constexpr float CARD_HEIGHT  = 200.0f;
-    constexpr float CARD_GAP     = 40.0f;
-    constexpr float CARD_X       = 60.0f;
-    constexpr float CARD_W       = 600.0f;
-    constexpr float DIFF_BTN_W   = 160.0f;
-    constexpr float DIFF_BTN_H   = 50.0f;
-    constexpr float DIFF_BTN_Y_OFF = 120.0f;
-    constexpr float DIFF_BTN_X0  = 100.0f;
-    constexpr float DIFF_BTN_GAP = 20.0f;
+        for (int i = 0; i < LevelSelectState::LEVEL_COUNT; ++i) {
+            float cy = start_y + static_cast<float>(i) * (card_h + gap);
+            bool selected = (i == lss.selected_level);
+            Color bg     = selected ? sel_bg     : unsel_bg;
+            Color border = selected ? sel_border : unsel_border;
+            DrawRectangleRounded({card_x, cy, card_w, card_h}, cr, 4, bg);
+            DrawRectangleRoundedLinesEx({card_x, cy, card_w, card_h}, cr, 4, 2.0f, border);
 
-    for (int i = 0; i < LevelSelectState::LEVEL_COUNT; ++i) {
-        float cy = CARD_START_Y + static_cast<float>(i) * (CARD_HEIGHT + CARD_GAP);
-        bool selected = (i == lss.selected_level);
+            uint8_t title_a = selected ? 255 : 150;
+            text_draw(text_ctx, LevelSelectState::LEVELS[i].title,
+                card_x + title_ox, cy + title_oy, FontSize::Medium,
+                255, 255, 255, title_a, TextAlign::Left);
 
-        // Card background
-        Color card_bg = selected ? Color{40, 50, 80, 255} : Color{25, 25, 40, 255};
-        Color border  = selected ? Color{80, 180, 255, 255} : Color{50, 50, 70, 255};
-        DrawRectangleRounded({CARD_X, cy, CARD_W, CARD_HEIGHT}, 0.1f, 4, card_bg);
-        DrawRectangleRoundedLinesEx({CARD_X, cy, CARD_W, CARD_HEIGHT}, 0.1f, 4, 2.0f, border);
+            char track_num[4];
+            std::snprintf(track_num, sizeof(track_num), "%d", i + 1);
+            text_draw(text_ctx, track_num,
+                card_x + card_w - 40.0f, cy + title_oy, FontSize::Medium,
+                80, 180, 255, 100, TextAlign::Right);
 
-        // Song title
-        uint8_t title_a = selected ? 255 : 150;
-        text_draw(text_ctx, LevelSelectState::LEVELS[i].title,
-            CARD_X + 30.0f, cy + 25.0f, FontSize::Medium,
-            255, 255, 255, title_a, TextAlign::Left);
+            if (selected) {
+                auto* diff = find_el(screen, "difficulty_buttons");
+                if (diff) {
+                    auto& d = *diff;
+                    float diff_y   = cy + d["y_offset_n"].get<float>() * constants::SCREEN_H;
+                    float dx_start = d["x_start_n"].get<float>() * constants::SCREEN_W;
+                    float btn_w    = d["button_w_n"].get<float>() * constants::SCREEN_W;
+                    float btn_h    = d["button_h_n"].get<float>() * constants::SCREEN_H;
+                    float btn_gap  = d["button_gap_n"].get<float>() * constants::SCREEN_W;
+                    float dcr      = d.value("corner_radius", 0.2f);
+                    Color a_bg     = json_color(d["active_bg"]);
+                    Color a_border = json_color(d["active_border"]);
+                    Color a_text   = json_color(d["active_text"]);
+                    Color i_bg     = json_color(d["inactive_bg"]);
+                    Color i_border = json_color(d["inactive_border"]);
+                    Color i_text   = json_color(d["inactive_text"]);
 
-        // Track number
-        char track_num[4];
-        std::snprintf(track_num, sizeof(track_num), "%d", i + 1);
-        text_draw(text_ctx, track_num,
-            CARD_X + CARD_W - 40.0f, cy + 25.0f, FontSize::Medium,
-            80, 180, 255, 100, TextAlign::Right);
-
-        // Difficulty buttons (only for selected card)
-        if (selected) {
-            float diff_y = cy + DIFF_BTN_Y_OFF;
-            for (int d = 0; d < 3; ++d) {
-                float bx = DIFF_BTN_X0 + static_cast<float>(d) * (DIFF_BTN_W + DIFF_BTN_GAP);
-                bool active = (d == lss.selected_difficulty);
-
-                Color btn_bg = active ? Color{80, 180, 255, 255} : Color{35, 35, 55, 255};
-                Color btn_border = active ? Color{120, 220, 255, 255} : Color{60, 60, 80, 255};
-                uint8_t text_r = active ? 0 : 180;
-                uint8_t text_g = active ? 0 : 180;
-                uint8_t text_b = active ? 0 : 180;
-
-                DrawRectangleRounded({bx, diff_y, DIFF_BTN_W, DIFF_BTN_H}, 0.2f, 4, btn_bg);
-                DrawRectangleRoundedLinesEx({bx, diff_y, DIFF_BTN_W, DIFF_BTN_H}, 0.2f, 4, 1.5f, btn_border);
-                text_draw(text_ctx, LevelSelectState::DIFFICULTY_NAMES[d],
-                    bx + DIFF_BTN_W / 2.0f, diff_y + 10.0f, FontSize::Small,
-                    text_r, text_g, text_b, 255, TextAlign::Center);
+                    for (int dd = 0; dd < 3; ++dd) {
+                        float bx = dx_start + static_cast<float>(dd) * (btn_w + btn_gap);
+                        bool active = (dd == lss.selected_difficulty);
+                        Color bbg = active ? a_bg : i_bg;
+                        Color bborder = active ? a_border : i_border;
+                        Color btc = active ? a_text : i_text;
+                        DrawRectangleRounded({bx, diff_y, btn_w, btn_h}, dcr, 4, bbg);
+                        DrawRectangleRoundedLinesEx({bx, diff_y, btn_w, btn_h}, dcr, 4, 1.5f, bborder);
+                        text_draw(text_ctx, LevelSelectState::DIFFICULTY_NAMES[dd],
+                            bx + btn_w / 2.0f, diff_y + 10.0f, FontSize::Small,
+                            btc.r, btc.g, btc.b, btc.a, TextAlign::Center);
+                    }
+                }
             }
         }
     }
-
-    // START button
-    constexpr float START_BTN_W = 300.0f;
-    constexpr float START_BTN_H = 60.0f;
-    constexpr float START_BTN_Y = 1050.0f;
-    float start_x = (constants::SCREEN_W - START_BTN_W) / 2.0f;
-    Color start_bg = {30, 120, 60, 255};
-    Color start_border = {60, 200, 100, 255};
-    DrawRectangleRounded({start_x, START_BTN_Y, START_BTN_W, START_BTN_H}, 0.2f, 4, start_bg);
-    DrawRectangleRoundedLinesEx({start_x, START_BTN_Y, START_BTN_W, START_BTN_H}, 0.2f, 4, 2.0f, start_border);
-    float pulse = (std::sin(gs.phase_timer * 3.0f) + 1.0f) / 2.0f;
-    auto start_alpha = static_cast<uint8_t>(180 + pulse * 75);
-    text_draw(text_ctx, "START",
-        cx, START_BTN_Y + 14.0f, FontSize::Medium,
-        200, 255, 200, start_alpha, TextAlign::Center);
 }
 
-static void draw_hud(entt::registry& reg, const TextContext& text_ctx) {
+static void draw_hud(entt::registry& reg, const TextContext& text_ctx,
+                     const json& screen) {
     auto& score  = reg.ctx().get<ScoreState>();
-    auto& config = reg.ctx().get<DifficultyConfig>();
 
-    text_draw_number(text_ctx, score.displayed_score,
-        constants::HUD_SCORE_X_N * constants::SCREEN_W,
-        constants::HUD_SCORE_Y_N * constants::SCREEN_H,
-        FontSize::Medium, 255, 255, 255, 255);
-
-    text_draw_number(text_ctx, score.high_score,
-        constants::HUD_SCORE_X_N   * constants::SCREEN_W,
-        constants::HUD_HISCORE_Y_N * constants::SCREEN_H,
-        FontSize::Small, 150, 150, 150, 180);
-
-    const float btn_w       = constants::BUTTON_W_N       * constants::SCREEN_W;
-    const float btn_h       = constants::BUTTON_H_N       * constants::SCREEN_H;
-    const float btn_spacing = constants::BUTTON_SPACING_N  * constants::SCREEN_W;
-    const float btn_y       = constants::BUTTON_Y_N        * constants::SCREEN_H;
-    float btn_radius = btn_w / 2.8f;
-    float btn_area_x = (constants::SCREEN_W - 3.0f * btn_w - 2.0f * btn_spacing) / 2.0f;
-    float btn_cy     = btn_y + btn_h / 2.0f;
-
-    Shape active_shape = Shape::Hexagon;
-    for (auto [e, ps] : reg.view<PlayerTag, PlayerShape>().each()) {
-        active_shape = ps.current;
+    // Dynamic text: score and high score
+    auto* score_el = find_el(screen, "score");
+    if (score_el) {
+        text_draw_number(text_ctx, score.displayed_score,
+            el_x(*score_el), el_y(*score_el),
+            json_font(score_el->value("font_size", "medium")),
+            255, 255, 255, 255);
+    }
+    auto* hi_el = find_el(screen, "high_score");
+    if (hi_el) {
+        Color hc = json_color((*hi_el)["color"]);
+        text_draw_number(text_ctx, score.high_score,
+            el_x(*hi_el), el_y(*hi_el),
+            json_font(hi_el->value("font_size", "small")),
+            hc.r, hc.g, hc.b, hc.a);
     }
 
-    float nearest_dist[3] = {-1.0f, -1.0f, -1.0f};
-    for (auto [e, opos, req] :
-         reg.view<ObstacleTag, Position, RequiredShape>(entt::exclude<ScoredTag>).each()) {
-        int si = static_cast<int>(req.shape);
-        if (si < 0 || si > 2) continue;
-        float d = constants::PLAYER_Y - opos.y;
-        if (d > 0.0f && (nearest_dist[si] < 0.0f || d < nearest_dist[si])) {
-            nearest_dist[si] = d;
+    // Shape buttons
+    auto* sb = find_el(screen, "shape_buttons");
+    if (sb) {
+        auto& s = *sb;
+        float btn_w       = s["button_w_n"].get<float>() * constants::SCREEN_W;
+        float btn_h       = s["button_h_n"].get<float>() * constants::SCREEN_H;
+        float btn_spacing = s["spacing_n"].get<float>()   * constants::SCREEN_W;
+        float btn_y       = s["y_n"].get<float>()         * constants::SCREEN_H;
+        float btn_radius  = btn_w / 2.8f;
+        float btn_area_x  = (constants::SCREEN_W - 3.0f * btn_w - 2.0f * btn_spacing) / 2.0f;
+        float btn_cy      = btn_y + btn_h / 2.0f;
+        Color a_bg     = json_color(s["active_bg"]);
+        Color i_bg     = json_color(s["inactive_bg"]);
+        Color a_border = json_color(s["active_border"]);
+        Color i_border = json_color(s["inactive_border"]);
+        Color a_icon   = json_color(s["active_icon"]);
+        Color i_icon   = json_color(s["inactive_icon"]);
+
+        Shape active_shape = Shape::Hexagon;
+        for (auto [e, ps] : reg.view<PlayerTag, PlayerShape>().each()) {
+            active_shape = ps.current;
         }
-    }
 
-    auto* song_hud = reg.ctx().find<SongState>();
-    float perfect_dist = song_hud
-        ? song_hud->scroll_speed * (song_hud->morph_duration + song_hud->half_window)
-        : config.scroll_speed * 0.5f;
-    float ring_appear_dist = constants::APPROACH_DIST;
-    float max_ring_radius  = btn_radius * 2.0f;
-
-    for (int i = 0; i < 3; ++i) {
-        float btn_cx = btn_area_x
-            + static_cast<float>(i) * (btn_w + btn_spacing) + btn_w / 2.0f;
-        bool is_active = (static_cast<int>(active_shape) == i);
-
-        Color btn_bg = is_active ? Color{60, 60, 100, 255} : Color{30, 30, 50, 200};
-        DrawCircleV({btn_cx, btn_cy}, btn_radius, btn_bg);
-
-        Color btn_border = is_active ? Color{120, 180, 255, 255} : Color{60, 60, 80, 255};
-        DrawCircleLinesV({btn_cx, btn_cy}, btn_radius, btn_border);
-
-        auto shape = static_cast<Shape>(i);
-        Color icon_color = is_active ? Color{200, 230, 255, 255} : Color{100, 100, 120, 200};
-        draw_shape_flat(shape, btn_cx, btn_cy, btn_radius * 1.2f, icon_color);
-
-        if (nearest_dist[i] > 0.0f && nearest_dist[i] < ring_appear_dist) {
-            float ratio = (nearest_dist[i] - perfect_dist)
-                        / (ring_appear_dist - perfect_dist);
-            if (ratio < 0.0f) ratio = 0.0f;
-            if (ratio > 1.0f) ratio = 1.0f;
-            float ring_r = btn_radius + (max_ring_radius - btn_radius) * ratio;
-
-            uint8_t r_col, g_col, b_col;
-            if (nearest_dist[i] <= perfect_dist) {
-                r_col = 100; g_col = 255; b_col = 100;
-            } else if (ratio < 0.3f) {
-                r_col = 180; g_col = 255; b_col = 100;
-            } else {
-                r_col = 120; g_col = 120; b_col = 180;
+        float nearest_dist[3] = {-1.0f, -1.0f, -1.0f};
+        auto& config = reg.ctx().get<DifficultyConfig>();
+        for (auto [e, opos, req] :
+             reg.view<ObstacleTag, Position, RequiredShape>(entt::exclude<ScoredTag>).each()) {
+            int si = static_cast<int>(req.shape);
+            if (si < 0 || si > 2) continue;
+            float d = constants::PLAYER_Y - opos.y;
+            if (d > 0.0f && (nearest_dist[si] < 0.0f || d < nearest_dist[si])) {
+                nearest_dist[si] = d;
             }
-            uint8_t ring_alpha = static_cast<uint8_t>(200 * (1.0f - ratio * 0.5f));
-            DrawCircleLinesV({btn_cx, btn_cy}, ring_r, {r_col, g_col, b_col, ring_alpha});
-            DrawCircleLinesV({btn_cx, btn_cy}, ring_r - 1.0f,
-                {r_col, g_col, b_col, static_cast<uint8_t>(ring_alpha / 2)});
+        }
+
+        auto* song_hud = reg.ctx().find<SongState>();
+        float perfect_dist = song_hud
+            ? song_hud->scroll_speed * (song_hud->morph_duration + song_hud->half_window)
+            : config.scroll_speed * 0.5f;
+        float ring_appear_dist = constants::APPROACH_DIST;
+        float max_ring_radius  = btn_radius * s["approach_ring"]["max_radius_scale"].get<float>();
+        Color ring_perfect = json_color(s["approach_ring"]["perfect_color"]);
+        Color ring_near    = json_color(s["approach_ring"]["near_color"]);
+        Color ring_far     = json_color(s["approach_ring"]["far_color"]);
+
+        for (int i = 0; i < 3; ++i) {
+            float btn_cx = btn_area_x
+                + static_cast<float>(i) * (btn_w + btn_spacing) + btn_w / 2.0f;
+            bool is_active = (static_cast<int>(active_shape) == i);
+
+            Color bg     = is_active ? a_bg     : i_bg;
+            Color border = is_active ? a_border : i_border;
+            DrawCircleV({btn_cx, btn_cy}, btn_radius, bg);
+            DrawCircleLinesV({btn_cx, btn_cy}, btn_radius, border);
+
+            auto shape = static_cast<Shape>(i);
+            Color icon = is_active ? a_icon : i_icon;
+            draw_shape_flat(shape, btn_cx, btn_cy, btn_radius * 1.2f, icon);
+
+            if (nearest_dist[i] > 0.0f && nearest_dist[i] < ring_appear_dist) {
+                float ratio = (nearest_dist[i] - perfect_dist)
+                            / (ring_appear_dist - perfect_dist);
+                if (ratio < 0.0f) ratio = 0.0f;
+                if (ratio > 1.0f) ratio = 1.0f;
+                float ring_r = btn_radius + (max_ring_radius - btn_radius) * ratio;
+
+                Color rc;
+                if (nearest_dist[i] <= perfect_dist)
+                    rc = ring_perfect;
+                else if (ratio < 0.3f)
+                    rc = ring_near;
+                else
+                    rc = ring_far;
+
+                uint8_t ring_alpha = static_cast<uint8_t>(200 * (1.0f - ratio * 0.5f));
+                DrawCircleLinesV({btn_cx, btn_cy}, ring_r, {rc.r, rc.g, rc.b, ring_alpha});
+                DrawCircleLinesV({btn_cx, btn_cy}, ring_r - 1.0f,
+                    {rc.r, rc.g, rc.b, static_cast<uint8_t>(ring_alpha / 2)});
+            }
         }
     }
 
-    float divider_y = constants::SWIPE_ZONE_SPLIT * constants::SCREEN_H;
-    DrawLineV({0, divider_y}, {static_cast<float>(constants::SCREEN_W), divider_y},
-              {40, 40, 60, 200});
+    // Lane divider
+    auto* line = find_el(screen, "lane_divider");
+    if (line) {
+        float div_y = (*line)["y_n"].get<float>() * constants::SCREEN_H;
+        Color lc = json_color((*line)["color"]);
+        DrawLineV({0, div_y}, {static_cast<float>(constants::SCREEN_W), div_y}, lc);
+    }
 }
 
-static void draw_end_screen_buttons(const TextContext& text_ctx) {
-    const float cx = constants::VIEWPORT_CX_N * constants::SCREEN_W;
-    constexpr float BTN_W = 280.0f;
-    constexpr float BTN_H = 50.0f;
-    constexpr float BTN_GAP = 15.0f;
-    float btn_x = (constants::SCREEN_W - BTN_W) / 2.0f;
-    float y1 = 870.0f;
-    float y2 = y1 + BTN_H + BTN_GAP;
-    float y3 = y2 + BTN_H + BTN_GAP;
-
-    DrawRectangleRounded({btn_x, y1, BTN_W, BTN_H}, 0.2f, 4, Color{30, 80, 50, 255});
-    DrawRectangleRoundedLinesEx({btn_x, y1, BTN_W, BTN_H}, 0.2f, 4, 1.5f, Color{60, 200, 100, 255});
-    text_draw(text_ctx, "RESTART", cx, y1 + 12.0f, FontSize::Small, 200, 255, 200, 255, TextAlign::Center);
-
-    DrawRectangleRounded({btn_x, y2, BTN_W, BTN_H}, 0.2f, 4, Color{30, 50, 80, 255});
-    DrawRectangleRoundedLinesEx({btn_x, y2, BTN_W, BTN_H}, 0.2f, 4, 1.5f, Color{80, 180, 255, 255});
-    text_draw(text_ctx, "LEVEL SELECT", cx, y2 + 12.0f, FontSize::Small, 180, 220, 255, 255, TextAlign::Center);
-
-    DrawRectangleRounded({btn_x, y3, BTN_W, BTN_H}, 0.2f, 4, Color{35, 35, 45, 255});
-    DrawRectangleRoundedLinesEx({btn_x, y3, BTN_W, BTN_H}, 0.2f, 4, 1.5f, Color{80, 80, 100, 255});
-    text_draw(text_ctx, "MAIN MENU", cx, y3 + 12.0f, FontSize::Small, 150, 150, 170, 255, TextAlign::Center);
+static void draw_overlay(const json& screen) {
+    if (screen.contains("overlay")) {
+        Color oc = json_color(screen["overlay"]["color"]);
+        DrawRectangleRec({0, 0, float(constants::SCREEN_W), float(constants::SCREEN_H)}, oc);
+    }
 }
 
 static void draw_game_over_overlay(entt::registry& reg, const TextContext& text_ctx,
-                                   const GameState& /*gs*/) {
-    auto& score = reg.ctx().get<ScoreState>();
-    const float cx = constants::VIEWPORT_CX_N * constants::SCREEN_W;
+                                   const GameState& gs, const json& screen) {
+    auto& score_state = reg.ctx().get<ScoreState>();
+    draw_overlay(screen);
+    render_elements(screen, text_ctx, gs.phase_timer);
 
-    DrawRectangleRec({0, 0, float(constants::SCREEN_W), float(constants::SCREEN_H)},
-                     {0, 0, 0, 180});
-
-    text_draw(text_ctx, "GAME OVER",
-        cx, constants::SCENE_GO_TITLE_Y_N * constants::SCREEN_H,
-        FontSize::Large, 255, 80, 80, 255, TextAlign::Center);
-
-    text_draw_number(text_ctx, score.score,
-        cx, constants::SCENE_GO_SCORE_Y_N * constants::SCREEN_H,
-        FontSize::Medium, 255, 255, 255, 255);
-
-    text_draw_number(text_ctx, score.high_score,
-        cx, constants::SCENE_GO_HISCORE_Y_N * constants::SCREEN_H,
-        FontSize::Small, 200, 200, 100, 255);
-
-    draw_end_screen_buttons(text_ctx);
+    auto* sc = find_el(screen, "score");
+    if (sc) {
+        Color c = json_color((*sc)["color"]);
+        text_draw_number(text_ctx, score_state.score,
+            el_x(*sc), el_y(*sc),
+            json_font(sc->value("font_size", "medium")),
+            c.r, c.g, c.b, c.a);
+    }
+    auto* hi = find_el(screen, "high_score");
+    if (hi) {
+        Color c = json_color((*hi)["color"]);
+        text_draw_number(text_ctx, score_state.high_score,
+            el_x(*hi), el_y(*hi),
+            json_font(hi->value("font_size", "small")),
+            c.r, c.g, c.b, c.a);
+    }
 }
 
 static void draw_song_complete_overlay(entt::registry& reg, const TextContext& text_ctx,
-                                       const GameState& /*gs*/) {
-    auto& score = reg.ctx().get<ScoreState>();
-    const float cx = constants::VIEWPORT_CX_N  * constants::SCREEN_W;
-    const float lx = constants::SCENE_SC_STATS_LX_N * constants::SCREEN_W;
-    const float rx = constants::SCENE_SC_STATS_RX_N * constants::SCREEN_W;
+                                       const GameState& gs, const json& screen) {
+    auto& score_state = reg.ctx().get<ScoreState>();
+    draw_overlay(screen);
+    render_elements(screen, text_ctx, gs.phase_timer);
 
-    DrawRectangleRec({0, 0, float(constants::SCREEN_W), float(constants::SCREEN_H)},
-                     {0, 0, 0, 180});
-
-    text_draw(text_ctx, "SONG COMPLETE",
-        cx, constants::SCENE_SC_TITLE_Y_N * constants::SCREEN_H,
-        FontSize::Large, 100, 255, 100, 255, TextAlign::Center);
-
-    text_draw(text_ctx, "SCORE",
-        cx, constants::SCENE_SC_SLABEL_Y_N * constants::SCREEN_H,
-        FontSize::Small, 180, 180, 180, 255, TextAlign::Center);
-    text_draw_number(text_ctx, score.score,
-        cx, constants::SCENE_SC_SCORE_Y_N * constants::SCREEN_H,
-        FontSize::Medium, 255, 255, 255, 255);
-
-    text_draw(text_ctx, "HIGH SCORE",
-        cx, constants::SCENE_SC_HSLABEL_Y_N * constants::SCREEN_H,
-        FontSize::Small, 180, 180, 180, 255, TextAlign::Center);
-    text_draw_number(text_ctx, score.high_score,
-        cx, constants::SCENE_SC_HISCORE_Y_N * constants::SCREEN_H,
-        FontSize::Medium, 255, 215, 0, 255);
-
-    auto* results = reg.ctx().find<SongResults>();
-    if (results) {
-        float y = constants::SCENE_SC_TIMING_Y_N * constants::SCREEN_H;
-        const float dy = constants::SCENE_SC_TIMING_DY_N * constants::SCREEN_H;
-        text_draw(text_ctx, "PERFECT", lx, y, FontSize::Small, 100, 255, 100, 255, TextAlign::Left);
-        text_draw_number(text_ctx, results->perfect_count, rx, y, FontSize::Small, 255, 255, 255, 255);
-        y += dy;
-        text_draw(text_ctx, "GOOD", lx, y, FontSize::Small, 180, 255, 100, 255, TextAlign::Left);
-        text_draw_number(text_ctx, results->good_count, rx, y, FontSize::Small, 255, 255, 255, 255);
-        y += dy;
-        text_draw(text_ctx, "OK", lx, y, FontSize::Small, 255, 255, 100, 255, TextAlign::Left);
-        text_draw_number(text_ctx, results->ok_count, rx, y, FontSize::Small, 255, 255, 255, 255);
-        y += dy;
-        text_draw(text_ctx, "BAD", lx, y, FontSize::Small, 255, 150, 100, 255, TextAlign::Left);
-        text_draw_number(text_ctx, results->bad_count, rx, y, FontSize::Small, 255, 255, 255, 255);
-        y += dy;
-        text_draw(text_ctx, "MISS", lx, y, FontSize::Small, 255, 80, 80, 255, TextAlign::Left);
-        text_draw_number(text_ctx, results->miss_count, rx, y, FontSize::Small, 255, 255, 255, 255);
+    auto* sc = find_el(screen, "score");
+    if (sc) {
+        Color c = json_color((*sc)["color"]);
+        text_draw_number(text_ctx, score_state.score,
+            el_x(*sc), el_y(*sc),
+            json_font(sc->value("font_size", "medium")),
+            c.r, c.g, c.b, c.a);
+    }
+    auto* hi = find_el(screen, "high_score");
+    if (hi) {
+        Color c = json_color((*hi)["color"]);
+        text_draw_number(text_ctx, score_state.high_score,
+            el_x(*hi), el_y(*hi),
+            json_font(hi->value("font_size", "medium")),
+            c.r, c.g, c.b, c.a);
     }
 
-    draw_end_screen_buttons(text_ctx);
+    auto* st = find_el(screen, "timing_stats");
+    auto* results = reg.ctx().find<SongResults>();
+    if (st && results) {
+        float y = (*st)["y_n"].get<float>() * constants::SCREEN_H;
+        float dy = (*st)["row_spacing_n"].get<float>() * constants::SCREEN_H;
+        float lx = (*st)["label_x_n"].get<float>() * constants::SCREEN_W;
+        float rx = (*st)["value_x_n"].get<float>() * constants::SCREEN_W;
+        auto fs = json_font(st->value("font_size", "small"));
+
+        const int counts[] = {
+            results->perfect_count, results->good_count,
+            results->ok_count, results->bad_count, results->miss_count
+        };
+        auto& rows = (*st)["rows"];
+        for (size_t i = 0; i < rows.size() && i < 5; ++i) {
+            Color rc = json_color(rows[i]["color"]);
+            text_draw(text_ctx, rows[i]["label"].get<std::string>().c_str(),
+                lx, y, fs, rc.r, rc.g, rc.b, rc.a, TextAlign::Left);
+            text_draw_number(text_ctx, counts[i], rx, y, fs, 255, 255, 255, 255);
+            y += dy;
+        }
+    }
 }
 
-static void draw_pause_overlay(const TextContext& text_ctx) {
-    DrawRectangleRec({0, 0, float(constants::SCREEN_W), float(constants::SCREEN_H)},
-                     {0, 0, 0, 160});
-
-    text_draw(text_ctx, "PAUSED",
-        constants::VIEWPORT_CX_N * constants::SCREEN_W,
-        constants::SCENE_PAUSE_Y_N * constants::SCREEN_H,
-        FontSize::Large, 255, 255, 255, 255, TextAlign::Center);
+static void draw_pause_overlay(const TextContext& text_ctx, const json& screen) {
+    draw_overlay(screen);
+    render_elements(screen, text_ctx, 0.0f);
 }
 
 void render_system(entt::registry& reg, float /*alpha*/) {
     auto& gs = reg.ctx().get<GameState>();
     auto& text_ctx = reg.ctx().get<TextContext>();
     auto& camera = reg.ctx().get<Camera2D>();
+    auto& ui = reg.ctx().get<UIState>();
+
+    // Load the right screen JSON when phase changes
+    ui.load_screen(phase_to_screen(gs.phase));
 
     // Clear
     ClearBackground({15, 15, 25, 255});
@@ -469,29 +569,40 @@ void render_system(entt::registry& reg, float /*alpha*/) {
     // ── VIEWPORT SPACE (HUD + overlays) ─────────────────────
 
     if (gs.phase == GamePhase::Title) {
-        draw_title_scene(text_ctx, gs);
+        draw_title_scene(text_ctx, gs, ui.screen);
         return;
     }
 
     if (gs.phase == GamePhase::LevelSelect) {
         auto& lss = reg.ctx().get<LevelSelectState>();
-        draw_level_select_scene(text_ctx, lss, gs);
+        draw_level_select_scene(text_ctx, lss, gs, ui.screen);
         return;
     }
 
     if (gs.phase == GamePhase::Playing || gs.phase == GamePhase::Paused) {
-        draw_hud(reg, text_ctx);
+        // HUD needs the gameplay screen, not the paused screen
+        auto gameplay = ui.screen;
+        if (gs.phase == GamePhase::Paused) {
+            // Temporarily load gameplay screen for HUD
+            std::string path = ui.base_dir + "/screens/gameplay.json";
+            std::ifstream f(path);
+            if (f.is_open()) gameplay = json::parse(f);
+        }
+        draw_hud(reg, text_ctx, gameplay);
     }
 
     if (gs.phase == GamePhase::GameOver) {
-        draw_game_over_overlay(reg, text_ctx, gs);
+        draw_game_over_overlay(reg, text_ctx, gs, ui.screen);
     }
 
     if (gs.phase == GamePhase::SongComplete) {
-        draw_song_complete_overlay(reg, text_ctx, gs);
+        draw_song_complete_overlay(reg, text_ctx, gs, ui.screen);
     }
 
     if (gs.phase == GamePhase::Paused) {
-        draw_pause_overlay(text_ctx);
+        ui.load_screen("paused");
+        draw_pause_overlay(text_ctx, ui.screen);
+        // Reset so next frame re-evaluates
+        ui.current.clear();
     }
 }

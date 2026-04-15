@@ -1,0 +1,8 @@
+{
+  "servers": {
+    "excalidraw": {
+      "command": "npx",
+      "args": ["-y", "excalidraw-mcp"]
+    }
+  }
+}

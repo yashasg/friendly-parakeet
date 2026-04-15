@@ -9,3 +9,4 @@ session_*.log
 tools/__pycache__/
 content/audio-web/
 .cache/
+excalidraw.log

@@ -10,7 +10,7 @@ constexpr int   SCREEN_H          = 1280;
 
 // ── Lanes ─────────────────────────────────────────
 constexpr int   LANE_COUNT        = 3;
-constexpr float LANE_X[3]         = { 180.0f, 360.0f, 540.0f };
+constexpr float LANE_X[3]         = { 60.0f, 360.0f, 660.0f };
 constexpr float LANE_SWITCH_SPEED = 12.0f;
 
 // ── Player ────────────────────────────────────────
@@ -190,7 +190,7 @@ constexpr ShapeColor SHAPE_COLORS[] = {
 //
 // The vanishing point is derived at compile time:
 //   VP_Y = SCREEN_H - (SCREEN_W / 2) / tan(angle / 2)
-constexpr float PERSPECTIVE_ANGLE_DEG = 17.0f;
+constexpr float PERSPECTIVE_ANGLE_DEG = 25.0f;
 
 namespace detail {
     constexpr float deg_to_rad(float deg) { return deg * 3.14159265358979f / 180.0f; }

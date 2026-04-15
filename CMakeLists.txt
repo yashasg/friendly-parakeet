@@ -80,7 +80,7 @@ list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "render_system\\.cpp$")
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "/input_system\\.cpp$")
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "song_playback_system\\.cpp$")
 
-add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES} app/beat_map_loader.cpp app/session_logger.cpp)
+add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES} app/beat_map_loader.cpp app/session_logger.cpp app/ui_loader.cpp)
 target_include_directories(shapeshifter_lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/app
     ${CMAKE_BINARY_DIR}/generated
@@ -261,6 +261,28 @@ if(AUDIO_FILES)
             ${AUDIO_FILES}
             "$<TARGET_FILE_DIR:shapeshifter>/content/audio/"
         COMMENT "Copying audio assets"
+    )
+endif()
+
+# Copy UI screen JSON files next to the executable
+file(GLOB UI_SCREEN_FILES ${CMAKE_SOURCE_DIR}/content/ui/screens/*.json)
+file(GLOB UI_ROOT_FILES ${CMAKE_SOURCE_DIR}/content/ui/*.json)
+if(UI_SCREEN_FILES)
+    add_custom_command(TARGET shapeshifter POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+            "$<TARGET_FILE_DIR:shapeshifter>/content/ui/screens"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${UI_SCREEN_FILES}
+            "$<TARGET_FILE_DIR:shapeshifter>/content/ui/screens/"
+        COMMENT "Copying UI screen assets"
+    )
+endif()
+if(UI_ROOT_FILES)
+    add_custom_command(TARGET shapeshifter POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${UI_ROOT_FILES}
+            "$<TARGET_FILE_DIR:shapeshifter>/content/ui/"
+        COMMENT "Copying UI route config"
     )
 endif()
 

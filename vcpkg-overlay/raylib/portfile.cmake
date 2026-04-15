@@ -76,6 +76,7 @@ vcpkg_cmake_configure(
         -DBUILD_EXAMPLES=OFF
         -DCMAKE_POLICY_DEFAULT_CMP0072=NEW  # Prefer GLVND
         -DCUSTOMIZE_BUILD=ON
+        -DSUPPORT_FILEFORMAT_FLAC=ON
         ${PLATFORM_OPTIONS}
         ${FEATURE_OPTIONS}
 )
