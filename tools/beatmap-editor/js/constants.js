@@ -50,12 +50,14 @@ export async function loadSharedConstants() {
 // ── Editor-only constants ────────────────────────────────────
 export const LANE_LABELS = ["Left", "Center", "Right"];
 
-// Obstacle kinds available in the editor UI (combo_gate excluded — not a distinct design element)
-export const EDITOR_OBSTACLE_KINDS = ["shape_gate", "lane_block"];
+// Obstacle kinds available in the editor UI
+export const EDITOR_OBSTACLE_KINDS = ["shape_gate", "lane_push_left", "lane_push_right"];
 
 export const KIND_LABELS = {
     shape_gate: "ShapeGate",
     lane_block: "LaneBlock",
+    lane_push_left: "Push Left",
+    lane_push_right: "Push Right",
     low_bar: "LowBar",
     high_bar: "HighBar",
     combo_gate: "ComboGate",
@@ -90,6 +92,8 @@ export const COLORS = {
     kind: {
         shape_gate: "#4fc3f7",
         lane_block: "#ff8a65",
+        lane_push_left: "#ff8a65",
+        lane_push_right: "#ff8a65",
         low_bar: "#aed581",
         high_bar: "#ce93d8",
         combo_gate: "#fff176",
@@ -106,6 +110,8 @@ export const COLORS = {
 export const GLYPHS = {
     shape_gate: "◆",
     lane_block: "▬",
+    lane_push_left: "◁◁◁",
+    lane_push_right: "▷▷▷",
     low_bar: "⌐",
     high_bar: "¬",
     combo_gate: "◈",

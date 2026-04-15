@@ -1,5 +1,5 @@
 {
-    "obstacle_kinds": ["shape_gate", "lane_block", "low_bar", "high_bar", "combo_gate", "split_path"],
+    "obstacle_kinds": ["shape_gate", "lane_block", "low_bar", "high_bar", "combo_gate", "split_path", "lane_push_left", "lane_push_right"],
     "shapes": ["circle", "square", "triangle"],
     "kinds_with_shape": ["shape_gate", "combo_gate", "split_path"],
     "lanes": [0, 1, 2],
