@@ -162,15 +162,17 @@ export function init(canvas, contextMenu, audioModule) {
 
   // ── Mouse: wheel (zoom / pan) ──
   canvas.addEventListener('wheel', (e) => {
-    if (e.shiftKey) {
-      // Pan horizontally
-      state.scrollX = Math.max(0, state.scrollX + e.deltaY);
-    } else {
-      // Zoom
-      e.preventDefault();
+    e.preventDefault();
+    if (e.ctrlKey || e.metaKey) {
+      // Ctrl+scroll = zoom
       const zoomFactor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
       state.zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, state.zoom * zoomFactor));
       emit('zoom-changed');
+    } else {
+      // Regular scroll = pan horizontally
+      // deltaX for trackpad horizontal swipe, deltaY for vertical scroll wheel
+      const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+      state.scrollX = Math.max(0, state.scrollX + delta);
     }
   }, { passive: false });
 
