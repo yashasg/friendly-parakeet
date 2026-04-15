@@ -131,6 +131,21 @@ void collision_system(entt::registry& reg, float /*dt*/) {
                 resolve(e, pos, shape_ok && lane_ok);
                 break;
             }
+            case ObstacleKind::LanePushLeft:
+            case ObstacleKind::LanePushRight: {
+                // Passive: auto-push player if on the same lane. Always "cleared".
+                bool on_same_lane = (std::abs(p_pos.x - pos.x) < constants::PLAYER_SIZE);
+                if (on_same_lane && p_lane.target < 0) {
+                    int8_t delta = (obs.kind == ObstacleKind::LanePushLeft) ? -1 : 1;
+                    int8_t dest = static_cast<int8_t>(p_lane.current + delta);
+                    if (dest >= 0 && dest < constants::LANE_COUNT) {
+                        p_lane.target = dest;
+                        p_lane.lerp_t = 0.0f;
+                    }
+                }
+                reg.emplace<ScoredTag>(e);
+                break;
+            }
         }
     }
 }

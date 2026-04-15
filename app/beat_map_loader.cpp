@@ -45,12 +45,14 @@ static const ValidationConstants& get_validation_constants() {
 }
 
 static ObstacleKind parse_kind(const std::string& s) {
-    if (s == "shape_gate")  return ObstacleKind::ShapeGate;
-    if (s == "lane_block")  return ObstacleKind::LaneBlock;
-    if (s == "low_bar")     return ObstacleKind::LowBar;
-    if (s == "high_bar")    return ObstacleKind::HighBar;
-    if (s == "combo_gate")  return ObstacleKind::ComboGate;
-    if (s == "split_path")  return ObstacleKind::SplitPath;
+    if (s == "shape_gate")       return ObstacleKind::ShapeGate;
+    if (s == "lane_block")       return ObstacleKind::LaneBlock;
+    if (s == "low_bar")          return ObstacleKind::LowBar;
+    if (s == "high_bar")         return ObstacleKind::HighBar;
+    if (s == "combo_gate")       return ObstacleKind::ComboGate;
+    if (s == "split_path")       return ObstacleKind::SplitPath;
+    if (s == "lane_push_left")   return ObstacleKind::LanePushLeft;
+    if (s == "lane_push_right")  return ObstacleKind::LanePushRight;
     return ObstacleKind::ShapeGate;
 }
 

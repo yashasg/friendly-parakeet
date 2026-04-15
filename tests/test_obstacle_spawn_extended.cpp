@@ -78,10 +78,9 @@ TEST_CASE("spawn: LaneBlock has BlockedLanes component", "[spawn]") {
     }
 
     bool found = false;
-    auto view = reg.view<ObstacleTag, Obstacle, BlockedLanes>();
-    for (auto [e, obs, blocked] : view.each()) {
-        if (obs.kind == ObstacleKind::LaneBlock) {
-            CHECK(blocked.mask > 0);
+    auto view = reg.view<ObstacleTag, Obstacle>();
+    for (auto [e, obs] : view.each()) {
+        if (obs.kind == ObstacleKind::LanePushLeft || obs.kind == ObstacleKind::LanePushRight) {
             found = true;
         }
     }

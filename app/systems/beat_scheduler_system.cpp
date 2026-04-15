@@ -112,6 +112,15 @@ void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
                 reg.emplace<DrawColor>(obstacle, uint8_t{255}, uint8_t{215}, uint8_t{0}, uint8_t{255});
                 break;
             }
+            case ObstacleKind::LanePushLeft:
+            case ObstacleKind::LanePushRight: {
+                reg.emplace<Position>(obstacle, constants::LANE_X[entry.lane], start_y);
+                reg.emplace<Obstacle>(obstacle, entry.kind, int16_t{constants::PTS_LANE_PUSH});
+                reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W / 3), 60.0f);
+                // Orange arrows
+                reg.emplace<DrawColor>(obstacle, uint8_t{255}, uint8_t{138}, uint8_t{101}, uint8_t{255});
+                break;
+            }
         }
 
         song->next_spawn_idx++;
