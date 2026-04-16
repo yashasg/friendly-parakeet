@@ -480,26 +480,30 @@ TEST_CASE("player_action: legacy mode instant shape change", "[rhythm][action]")
 
 // Collision System with Timing Grades
 
-TEST_CASE("collision: hexagon fails shape gates — game over", "[rhythm][collision]") {
+TEST_CASE("collision: hexagon fails shape gates — drains energy", "[rhythm][collision]") {
     auto reg = make_rhythm_registry();
     make_rhythm_player(reg);
     make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     collision_system(reg, 0.016f);
     auto& gs = reg.ctx().get<GameState>();
-    CHECK(gs.transition_pending);
-    CHECK(gs.next_phase == GamePhase::GameOver);
+    CHECK_FALSE(gs.transition_pending);
+    auto& energy = reg.ctx().get<EnergyState>();
+    CHECK(energy.energy < 1.0f);
+    CHECK(energy.flash_timer > 0.0f);
     auto& results = reg.ctx().get<SongResults>();
     CHECK(results.miss_count == 1);
 }
 
-TEST_CASE("collision: MISS is instant game over", "[rhythm][collision]") {
+TEST_CASE("collision: MISS drains energy", "[rhythm][collision]") {
     auto reg = make_rhythm_registry();
     make_rhythm_player(reg);
     make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     collision_system(reg, 0.016f);
     auto& gs = reg.ctx().get<GameState>();
-    CHECK(gs.transition_pending);
-    CHECK(gs.next_phase == GamePhase::GameOver);
+    CHECK_FALSE(gs.transition_pending);
+    auto& energy = reg.ctx().get<EnergyState>();
+    CHECK(energy.energy < 1.0f);
+    CHECK(energy.flash_timer > 0.0f);
 }
 
 TEST_CASE("collision: timing grade PERFECT at peak", "[rhythm][collision]") {
@@ -635,27 +639,27 @@ TEST_CASE("collision: SongResults updated", "[rhythm][collision]") {
     CHECK(reg.ctx().get<SongResults>().perfect_count == 1);
 }
 
-// HP System
+// Energy System
 
-TEST_CASE("hp_system: triggers game over at 0 HP", "[rhythm][hp]") {
+TEST_CASE("energy_system: triggers game over at 0 energy", "[rhythm][energy]") {
     auto reg = make_rhythm_registry();
-    reg.ctx().get<HPState>().current = 0;
-    hp_system(reg, 0.016f);
+    reg.ctx().get<EnergyState>().energy = 0.0f;
+    energy_system(reg, 0.016f);
     CHECK(reg.ctx().get<GameState>().transition_pending);
     CHECK(reg.ctx().get<GameState>().next_phase == GamePhase::GameOver);
 }
 
-TEST_CASE("hp_system: does nothing when HP > 0", "[rhythm][hp]") {
+TEST_CASE("energy_system: does nothing when energy is positive", "[rhythm][energy]") {
     auto reg = make_rhythm_registry();
-    reg.ctx().get<HPState>().current = 3;
-    hp_system(reg, 0.016f);
+    reg.ctx().get<EnergyState>().energy = 0.5f;
+    energy_system(reg, 0.016f);
     CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
 }
 
-TEST_CASE("hp_system: marks song finished on death", "[rhythm][hp]") {
+TEST_CASE("energy_system: marks song finished on depletion", "[rhythm][energy]") {
     auto reg = make_rhythm_registry();
-    reg.ctx().get<HPState>().current = 0;
-    hp_system(reg, 0.016f);
+    reg.ctx().get<EnergyState>().energy = 0.0f;
+    energy_system(reg, 0.016f);
     auto& song = reg.ctx().get<SongState>();
     CHECK(song.finished);
     CHECK_FALSE(song.playing);

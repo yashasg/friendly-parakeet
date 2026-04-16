@@ -33,7 +33,7 @@ inline entt::registry make_registry() {
     reg.ctx().emplace<LevelSelectState>();
     reg.ctx().emplace<BeatMap>();
     reg.ctx().emplace<SongState>();
-    reg.ctx().emplace<HPState>();
+    reg.ctx().emplace<EnergyState>();
     reg.ctx().emplace<SongResults>();
     return reg;
 }
@@ -48,7 +48,7 @@ inline entt::registry make_rhythm_registry() {
     song.duration_sec = 60.0f;
     song.playing = true;
     song_state_compute_derived(song);
-    reg.ctx().get<HPState>() = HPState{5, 5};
+    reg.ctx().get<EnergyState>() = EnergyState{};
     reg.ctx().get<SongResults>() = SongResults{};
     return reg;
 }

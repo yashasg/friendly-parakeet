@@ -20,14 +20,12 @@ void collision_system(entt::registry& reg, float /*dt*/) {
         player_view.get<Position, PlayerShape, ShapeWindow, Lane, VerticalState>(*player_it);
 
     constexpr float COLLISION_MARGIN = 40.0f;
-    bool game_over = false;
 
     auto* song    = reg.ctx().find<SongState>();
     auto* results = reg.ctx().find<SongResults>();
     bool rhythm_mode = (song != nullptr);
 
     auto resolve = [&](entt::entity entity, const Position& obs_pos, bool cleared) {
-        if (game_over) return;
         float dist = std::abs(p_pos.y - obs_pos.y + p_vstate.y_offset);
         if (dist > COLLISION_MARGIN) return;
 
@@ -80,12 +78,14 @@ void collision_system(entt::registry& reg, float /*dt*/) {
             }
             reg.emplace<ScoredTag>(entity);
         } else {
-            // MISS — instant game over
+            // MISS — drain energy
             if (results) results->miss_count++;
-            auto& gs = reg.ctx().get<GameState>();
-            gs.transition_pending = true;
-            gs.next_phase = GamePhase::GameOver;
-            game_over = true;
+            auto* energy = reg.ctx().find<EnergyState>();
+            if (energy) {
+                energy->energy -= constants::ENERGY_DRAIN_MISS;
+                if (energy->energy < 0.0f) energy->energy = 0.0f;
+                energy->flash_timer = constants::ENERGY_FLASH_DURATION;
+            }
             reg.emplace<ScoredTag>(entity);
         }
     };

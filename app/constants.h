@@ -79,10 +79,17 @@ constexpr float WINDOW_SCALE_OK      = 0.75f;
 constexpr float WINDOW_SCALE_GOOD    = 1.00f;
 constexpr float WINDOW_SCALE_PERFECT = 1.50f;
 
-// ── HP System ─────────────────────────────────────
-constexpr int   MAX_HP                  = 5;
-constexpr int   HP_DRAIN_ON_MISS        = 1;
-constexpr int   HP_RECOVER_ON_PERFECT   = 1;
+// ── Energy Bar ────────────────────────────────────
+constexpr float ENERGY_MAX              = 1.0f;
+constexpr float ENERGY_START            = 1.0f;
+constexpr float ENERGY_DRAIN_MISS       = 0.20f;
+constexpr float ENERGY_DRAIN_BAD        = 0.10f;
+constexpr float ENERGY_RECOVER_OK       = 0.02f;
+constexpr float ENERGY_RECOVER_GOOD     = 0.05f;
+constexpr float ENERGY_RECOVER_PERFECT  = 0.10f;
+constexpr float ENERGY_DISPLAY_SPEED    = 3.0f;
+constexpr float ENERGY_FLASH_DURATION   = 0.3f;
+constexpr float ENERGY_CRITICAL_THRESH  = 0.25f;
 
 // ── Rendering ─────────────────────────────────────
 constexpr float POPUP_DURATION    = 1.2f;
