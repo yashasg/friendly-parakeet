@@ -373,52 +373,91 @@ static void draw_hud(entt::registry& reg, const TextContext& text_ctx,
         }
     }
 
-    // Energy bar
+    // Energy bar — vertical on left side, with beat-reactive visualizer segments
     auto* energy = reg.ctx().find<EnergyState>();
     if (energy) {
-        constexpr float BAR_X      = 60.0f;
-        constexpr float BAR_W      = static_cast<float>(constants::SCREEN_W) - 120.0f;
-        constexpr float BAR_Y      = constants::BURNOUT_BAR_Y;
-        constexpr float BAR_H      = constants::BURNOUT_BAR_H;
-        constexpr float CORNER_R   = 4.0f;
+        constexpr float BAR_X      = 10.0f;
+        constexpr float BAR_W      = 22.0f;
+        constexpr float BAR_TOP    = 80.0f;
+        constexpr float BAR_BOT    = 1000.0f;
+        constexpr float BAR_H      = BAR_BOT - BAR_TOP;
+        constexpr int   SEG_COUNT  = 20;
+        constexpr float SEG_GAP    = 2.0f;
+        constexpr float SEG_H      = (BAR_H - (SEG_COUNT - 1) * SEG_GAP) / SEG_COUNT;
 
         float fill = energy->display;
         if (fill < 0.0f) fill = 0.0f;
         if (fill > 1.0f) fill = 1.0f;
 
-        // Background (dark)
-        DrawRectangleRounded({BAR_X, BAR_Y, BAR_W, BAR_H}, CORNER_R / BAR_H, 4, {20, 20, 30, 180});
-
-        // Filled portion — solid yellow, dims toward orange when low
-        if (fill > 0.001f) {
-            uint8_t r = 255;
-            uint8_t g = static_cast<uint8_t>(200.0f + 55.0f * fill);  // 200–255
-            uint8_t b = 30;
-
-            // Flash effect: pulse white on drain
-            uint8_t alpha = 255;
-            if (energy->flash_timer > 0.0f) {
-                float flash_t = energy->flash_timer / constants::ENERGY_FLASH_DURATION;
-                float pulse = 0.5f + 0.5f * std::sin(flash_t * 20.0f);
-                r = static_cast<uint8_t>(r + static_cast<uint8_t>((255 - r) * pulse * 0.5f));
-                g = static_cast<uint8_t>(g + static_cast<uint8_t>((255 - g) * pulse * 0.5f));
-                alpha = static_cast<uint8_t>(180 + static_cast<uint8_t>(75.0f * pulse));
-            }
-
-            // Critical pulse: slow throb when low
-            if (energy->energy < constants::ENERGY_CRITICAL_THRESH && energy->flash_timer <= 0.0f) {
-                float phase_timer = reg.ctx().get<GameState>().phase_timer;
-                float throb = 0.5f + 0.5f * std::sin(phase_timer * 6.0f);
-                r = static_cast<uint8_t>(std::min(255.0f, r + 60.0f * throb));
-                alpha = static_cast<uint8_t>(200 + static_cast<uint8_t>(55.0f * throb));
-            }
-
-            float fill_w = BAR_W * fill;
-            DrawRectangleRounded({BAR_X, BAR_Y, fill_w, BAR_H}, CORNER_R / BAR_H, 4, {r, g, b, alpha});
+        // Beat pulse: 0→1 sawtooth that peaks on each beat then decays
+        float beat_pulse = 0.0f;
+        auto* song = reg.ctx().find<SongState>();
+        if (song && song->playing && song->beat_period > 0.0f) {
+            float phase = std::fmod(song->song_time, song->beat_period) / song->beat_period;
+            beat_pulse = 1.0f - phase;                  // 1.0 at beat, decays to 0
+            beat_pulse = beat_pulse * beat_pulse;        // sharper decay curve
         }
 
-        // Border
-        DrawRectangleRoundedLinesEx({BAR_X, BAR_Y, BAR_W, BAR_H}, CORNER_R / BAR_H, 4, 1.0f, {100, 100, 120, 200});
+        // Background (dark strip)
+        DrawRectangleRec({BAR_X, BAR_TOP, BAR_W, BAR_H}, {15, 15, 25, 160});
+
+        // Draw segments bottom-to-top
+        int filled_segs = static_cast<int>(fill * SEG_COUNT + 0.5f);
+        for (int i = 0; i < SEG_COUNT; ++i) {
+            float seg_y = BAR_BOT - (i + 1) * (SEG_H + SEG_GAP) + SEG_GAP;
+            bool is_filled = (i < filled_segs);
+
+            if (is_filled) {
+                // Base yellow
+                uint8_t r = 255;
+                uint8_t g = static_cast<uint8_t>(200.0f + 55.0f * fill);
+                uint8_t b = 30;
+                uint8_t alpha = 255;
+
+                // Beat-reactive: brighten segments near the fill line
+                float seg_norm = static_cast<float>(i) / SEG_COUNT;
+                float dist_from_top = std::abs(seg_norm - fill);
+                float viz_boost = beat_pulse * std::max(0.0f, 1.0f - dist_from_top * 4.0f);
+                g = static_cast<uint8_t>(std::min(255.0f, g + 55.0f * viz_boost));
+                b = static_cast<uint8_t>(std::min(255.0f, b + 120.0f * viz_boost));
+
+                // Flash effect
+                if (energy->flash_timer > 0.0f) {
+                    float flash_t = energy->flash_timer / constants::ENERGY_FLASH_DURATION;
+                    float pulse = 0.5f + 0.5f * std::sin(flash_t * 20.0f);
+                    r = static_cast<uint8_t>(std::min(255.0f, r + (255.0f - r) * pulse * 0.5f));
+                    g = static_cast<uint8_t>(std::min(255.0f, g + (255.0f - g) * pulse * 0.5f));
+                    alpha = static_cast<uint8_t>(180.0f + 75.0f * pulse);
+                }
+
+                // Critical throb
+                if (energy->energy < constants::ENERGY_CRITICAL_THRESH && energy->flash_timer <= 0.0f) {
+                    float phase_timer = reg.ctx().get<GameState>().phase_timer;
+                    float throb = 0.5f + 0.5f * std::sin(phase_timer * 6.0f);
+                    r = static_cast<uint8_t>(std::min(255.0f, r + 60.0f * throb));
+                    alpha = static_cast<uint8_t>(200.0f + 55.0f * throb);
+                }
+
+                DrawRectangleRec({BAR_X, seg_y, BAR_W, SEG_H}, {r, g, b, alpha});
+            } else {
+                // Empty segment — still show faint beat pulse (visualizer ghost)
+                if (beat_pulse > 0.05f) {
+                    float seg_norm = static_cast<float>(i) / SEG_COUNT;
+                    float dist_from_fill = seg_norm - fill;
+                    // Only ghost a few segments above the fill line
+                    if (dist_from_fill > 0.0f && dist_from_fill < 0.2f) {
+                        float ghost = beat_pulse * (1.0f - dist_from_fill * 5.0f);
+                        uint8_t ga = static_cast<uint8_t>(ghost * 120.0f);
+                        DrawRectangleRec({BAR_X, seg_y, BAR_W, SEG_H}, {255, 230, 50, ga});
+                    }
+                }
+                // Dim empty marker
+                DrawRectangleRec({BAR_X, seg_y, BAR_W, SEG_H}, {40, 40, 55, 60});
+            }
+        }
+
+        // Thin border
+        DrawRectangleLinesEx({BAR_X, BAR_TOP, BAR_W, BAR_H}, 1.0f, {80, 80, 100, 140});
     }
 
     // Lane divider
