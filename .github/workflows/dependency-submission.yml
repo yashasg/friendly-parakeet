@@ -3,6 +3,8 @@ name: Dependency Submission
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: read
@@ -21,6 +23,10 @@ jobs:
 
       - name: Generate dependency snapshot
         run: node .github/scripts/vcpkg-dependency-snapshot.js
+        env:
+          # On pull_request, GITHUB_SHA is the merge commit — override with
+          # the actual PR head so dependency-review-action can find it.
+          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Submit dependency snapshot
         uses: actions/github-script@v8
