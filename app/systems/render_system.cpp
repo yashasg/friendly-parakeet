@@ -409,8 +409,12 @@ static void draw_hud(entt::registry& reg, const TextContext& text_ctx,
             critical_ratio = std::clamp(critical_ratio, 0.0f, 1.0f);
         }
         float pulse_time = (song && song->playing) ? song->song_time : static_cast<float>(GetTime());
-        float critical_pulse = 0.5f + 0.5f * std::sin(pulse_time * 10.0f);
-        float critical_intensity = critical_ratio * (0.35f + 0.65f * critical_pulse);
+        constexpr float CRITICAL_PULSE_FREQ       = 10.0f;
+        constexpr float CRITICAL_PULSE_BASE       = 0.35f;
+        constexpr float CRITICAL_PULSE_MODULATION = 0.65f;
+        float critical_pulse = 0.5f + 0.5f * std::sin(pulse_time * CRITICAL_PULSE_FREQ);
+        float critical_intensity = critical_ratio
+            * (CRITICAL_PULSE_BASE + CRITICAL_PULSE_MODULATION * critical_pulse);
         // Bounce adds up to ~5 extra segments worth above fill
         constexpr float BOUNCE_HEIGHT = 5.0f / SEG_COUNT;
         float visible_level = fill + bounce * BOUNCE_HEIGHT;
@@ -461,8 +465,12 @@ static void draw_hud(entt::registry& reg, const TextContext& text_ctx,
 
             if (i < filled_segs) {
                 // Solid energy segment
-                float red_boost = flash_ratio * 0.45f + critical_intensity * 0.35f;
-                float cool_dim  = critical_intensity * 0.40f;
+                constexpr float FLASH_RED_BOOST_FACTOR    = 0.45f;
+                constexpr float CRITICAL_RED_BOOST_FACTOR = 0.35f;
+                constexpr float CRITICAL_COOL_DIM_FACTOR  = 0.40f;
+                float red_boost = flash_ratio * FLASH_RED_BOOST_FACTOR
+                                + critical_intensity * CRITICAL_RED_BOOST_FACTOR;
+                float cool_dim  = critical_intensity * CRITICAL_COOL_DIM_FACTOR;
                 uint8_t rr = static_cast<uint8_t>(std::clamp(
                     static_cast<float>(cr) + red_boost * (255.0f - static_cast<float>(cr)),
                     0.0f, 255.0f));
