@@ -389,7 +389,7 @@ static void draw_hud(entt::registry& reg, const TextContext& text_ctx,
         if (fill < 0.0f) fill = 0.0f;
         if (fill > 1.0f) fill = 1.0f;
 
-        // Beat pulse: peaks at 1.0 on each beat, fast decay
+        // Beat pulse
         float beat_pulse = 0.0f;
         auto* song = reg.ctx().find<SongState>();
         float song_t = 0.0f;
@@ -397,7 +397,7 @@ static void draw_hud(entt::registry& reg, const TextContext& text_ctx,
             song_t = song->song_time;
             float phase = std::fmod(song_t, song->beat_period) / song->beat_period;
             beat_pulse = 1.0f - phase;
-            beat_pulse = beat_pulse * beat_pulse * beat_pulse;  // cubic decay
+            beat_pulse = beat_pulse * beat_pulse * beat_pulse;
         }
 
         // Background
@@ -408,22 +408,51 @@ static void draw_hud(entt::registry& reg, const TextContext& text_ctx,
             float seg_y = BAR_BOT - (i + 1) * (SEG_H + SEG_GAP) + SEG_GAP;
             bool is_filled = (i < filled_segs);
 
+            // Gradient: red → yellow → green → cyan → dark blue (bottom to top)
+            float t = static_cast<float>(i) / (SEG_COUNT - 1);
+            uint8_t base_r, base_g, base_b;
+            if (t < 0.25f) {
+                // Red → Yellow
+                float s = t / 0.25f;
+                base_r = 255;
+                base_g = static_cast<uint8_t>(s * 255.0f);
+                base_b = 0;
+            } else if (t < 0.50f) {
+                // Yellow → Green
+                float s = (t - 0.25f) / 0.25f;
+                base_r = static_cast<uint8_t>((1.0f - s) * 255.0f);
+                base_g = 255;
+                base_b = 0;
+            } else if (t < 0.75f) {
+                // Green → Cyan
+                float s = (t - 0.50f) / 0.25f;
+                base_r = 0;
+                base_g = 255;
+                base_b = static_cast<uint8_t>(s * 255.0f);
+            } else {
+                // Cyan → Dark Blue
+                float s = (t - 0.75f) / 0.25f;
+                base_r = 0;
+                base_g = static_cast<uint8_t>((1.0f - s) * 255.0f);
+                base_b = static_cast<uint8_t>(255.0f - s * 100.0f);
+            }
+
             if (is_filled) {
-                uint8_t r = 255;
-                uint8_t g = static_cast<uint8_t>(200.0f + 55.0f * fill);
-                uint8_t b = 30;
+                uint8_t r = base_r;
+                uint8_t g = base_g;
+                uint8_t b = base_b;
                 uint8_t alpha = 255;
 
-                // Per-segment ripple: stagger the pulse up the bar
-                float seg_phase = std::fmod(song_t + static_cast<float>(i) * 0.02f,
-                                            song ? song->beat_period : 0.5f);
-                float seg_pulse = 1.0f - seg_phase / (song ? song->beat_period : 0.5f);
+                // Per-segment beat ripple
+                float bp = song ? song->beat_period : 0.5f;
+                float seg_phase = std::fmod(song_t + static_cast<float>(i) * 0.02f, bp);
+                float seg_pulse = 1.0f - seg_phase / bp;
                 seg_pulse = seg_pulse * seg_pulse * seg_pulse;
 
-                // Boost brightness and widen on pulse
-                float boost = seg_pulse * 0.8f;
-                g = static_cast<uint8_t>(std::min(255.0f, g + 55.0f * boost));
-                b = static_cast<uint8_t>(std::min(255.0f, b + 180.0f * boost));
+                // Brighten and widen on pulse
+                r = static_cast<uint8_t>(std::min(255.0f, r + (255.0f - r) * seg_pulse * 0.5f));
+                g = static_cast<uint8_t>(std::min(255.0f, g + (255.0f - g) * seg_pulse * 0.5f));
+                b = static_cast<uint8_t>(std::min(255.0f, b + 100.0f * seg_pulse));
                 float extra_w = BAR_W * 0.3f * seg_pulse;
 
                 // Flash effect
@@ -447,17 +476,18 @@ static void draw_hud(entt::registry& reg, const TextContext& text_ctx,
                                   BAR_W + extra_w, SEG_H}, {r, g, b, alpha});
             } else {
                 // Ghost segments above fill: ripple on beat
-                float seg_phase = std::fmod(song_t + static_cast<float>(i) * 0.02f,
-                                            song ? song->beat_period : 0.5f);
-                float seg_pulse = 1.0f - seg_phase / (song ? song->beat_period : 0.5f);
+                float bp = song ? song->beat_period : 0.5f;
+                float seg_phase = std::fmod(song_t + static_cast<float>(i) * 0.02f, bp);
+                float seg_pulse = 1.0f - seg_phase / bp;
                 seg_pulse = seg_pulse * seg_pulse * seg_pulse;
 
                 float dist_above = static_cast<float>(i - filled_segs) / SEG_COUNT;
                 if (beat_pulse > 0.02f && dist_above < 0.15f) {
                     float ghost = seg_pulse * (1.0f - dist_above * 7.0f);
                     if (ghost > 0.0f) {
-                        uint8_t ga = static_cast<uint8_t>(std::min(255.0f, ghost * 180.0f));
-                        DrawRectangleRec({BAR_X, seg_y, BAR_W, SEG_H}, {255, 230, 50, ga});
+                        uint8_t ga = static_cast<uint8_t>(std::min(255.0f, ghost * 160.0f));
+                        DrawRectangleRec({BAR_X, seg_y, BAR_W, SEG_H},
+                                         {base_r, base_g, base_b, ga});
                     }
                 }
 
