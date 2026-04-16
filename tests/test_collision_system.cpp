@@ -18,7 +18,7 @@ TEST_CASE("collision: shape gate drains energy with wrong shape", "[collision]")
     auto reg = make_registry();
     make_player(reg);
     // Player is Circle, gate requires Triangle
-    make_shape_gate(reg, Shape::Triangle, constants::PLAYER_Y);
+    auto obs = make_shape_gate(reg, Shape::Triangle, constants::PLAYER_Y);
 
     collision_system(reg, 0.016f);
 
@@ -27,6 +27,7 @@ TEST_CASE("collision: shape gate drains energy with wrong shape", "[collision]")
     auto& energy = reg.ctx().get<EnergyState>();
     CHECK(energy.energy < 1.0f);
     CHECK(energy.flash_timer > 0.0f);
+    CHECK(reg.all_of<MissTag>(obs));
 }
 
 TEST_CASE("collision: lane block cleared when player in unblocked lane", "[collision]") {

@@ -397,6 +397,20 @@ static void draw_hud(entt::registry& reg, const TextContext& text_ctx,
             bounce = 1.0f - phase;
             bounce = bounce * bounce * bounce;  // cubic decay
         }
+
+        float flash_ratio = 0.0f;
+        if (energy->flash_timer > 0.0f && constants::ENERGY_FLASH_DURATION > 0.0f) {
+            flash_ratio = energy->flash_timer / constants::ENERGY_FLASH_DURATION;
+            flash_ratio = std::clamp(flash_ratio, 0.0f, 1.0f);
+        }
+        float critical_ratio = 0.0f;
+        if (fill < constants::ENERGY_CRITICAL_THRESH && constants::ENERGY_CRITICAL_THRESH > 0.0f) {
+            critical_ratio = (constants::ENERGY_CRITICAL_THRESH - fill) / constants::ENERGY_CRITICAL_THRESH;
+            critical_ratio = std::clamp(critical_ratio, 0.0f, 1.0f);
+        }
+        float pulse_time = (song && song->playing) ? song->song_time : static_cast<float>(GetTime());
+        float critical_pulse = 0.5f + 0.5f * std::sin(pulse_time * 10.0f);
+        float critical_intensity = critical_ratio * (0.35f + 0.65f * critical_pulse);
         // Bounce adds up to ~5 extra segments worth above fill
         constexpr float BOUNCE_HEIGHT = 5.0f / SEG_COUNT;
         float visible_level = fill + bounce * BOUNCE_HEIGHT;
@@ -447,7 +461,18 @@ static void draw_hud(entt::registry& reg, const TextContext& text_ctx,
 
             if (i < filled_segs) {
                 // Solid energy segment
-                DrawRectangleRec({BAR_X, seg_y, BAR_W, SEG_H}, {cr, cg, cb, 255});
+                float red_boost = flash_ratio * 0.45f + critical_intensity * 0.35f;
+                float cool_dim  = critical_intensity * 0.40f;
+                uint8_t rr = static_cast<uint8_t>(std::clamp(
+                    static_cast<float>(cr) + red_boost * (255.0f - static_cast<float>(cr)),
+                    0.0f, 255.0f));
+                uint8_t rg = static_cast<uint8_t>(std::clamp(
+                    static_cast<float>(cg) * (1.0f - cool_dim),
+                    0.0f, 255.0f));
+                uint8_t rb = static_cast<uint8_t>(std::clamp(
+                    static_cast<float>(cb) * (1.0f - cool_dim),
+                    0.0f, 255.0f));
+                DrawRectangleRec({BAR_X, seg_y, BAR_W, SEG_H}, {rr, rg, rb, 255});
             } else if (i < visible_segs) {
                 // Bounce segment — same gradient color, fades out toward top
                 float fade = 1.0f - static_cast<float>(i - filled_segs)
@@ -460,8 +485,20 @@ static void draw_hud(entt::registry& reg, const TextContext& text_ctx,
             }
         }
 
+        if (flash_ratio > 0.0f) {
+            uint8_t alpha = static_cast<uint8_t>(std::clamp(flash_ratio * 140.0f, 0.0f, 255.0f));
+            DrawRectangleRec({BAR_X - 1.0f, BAR_TOP - 1.0f, BAR_W + 2.0f, BAR_H + 2.0f},
+                {255, 80, 80, alpha});
+        }
+
         // Border
-        DrawRectangleLinesEx({BAR_X, BAR_TOP, BAR_W, BAR_H}, 1.0f, {80, 80, 100, 140});
+        float border_thickness = 1.0f + critical_intensity * 2.0f;
+        uint8_t border_r = static_cast<uint8_t>(80.0f + critical_intensity * 175.0f);
+        uint8_t border_g = static_cast<uint8_t>(80.0f - critical_intensity * 40.0f);
+        uint8_t border_b = static_cast<uint8_t>(100.0f - critical_intensity * 60.0f);
+        uint8_t border_a = static_cast<uint8_t>(140.0f + critical_intensity * 90.0f);
+        DrawRectangleLinesEx({BAR_X, BAR_TOP, BAR_W, BAR_H}, border_thickness,
+            {border_r, border_g, border_b, border_a});
     }
 
     // Lane divider

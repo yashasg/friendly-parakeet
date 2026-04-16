@@ -51,7 +51,18 @@ void scoring_system(entt::registry& reg, float dt) {
 
     // Process scored obstacles
     auto view = reg.view<ObstacleTag, ScoredTag, Obstacle, Position>();
+    auto* energy = reg.ctx().find<EnergyState>();
     for (auto [entity, obs, pos] : view.each()) {
+        if (reg.any_of<MissTag>(entity)) {
+            score.chain_count = 0;
+            score.chain_timer = 0.0f;
+            reg.remove<Obstacle>(entity);
+            reg.remove<ScoredTag>(entity);
+            reg.remove<MissTag>(entity);
+            if (reg.any_of<TimingGrade>(entity)) reg.remove<TimingGrade>(entity);
+            continue;
+        }
+
         float burnout_mult = multiplier_for_zone(burnout.zone);
 
         // Check for timing grade (rhythm mode)
@@ -63,7 +74,6 @@ void scoring_system(entt::registry& reg, float dt) {
 
         // Energy adjustment based on timing
         if (timing) {
-            auto* energy = reg.ctx().find<EnergyState>();
             if (energy) {
                 switch (timing->tier) {
                     case TimingTier::Perfect:

@@ -86,6 +86,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
                 if (energy->energy < 0.0f) energy->energy = 0.0f;
                 energy->flash_timer = constants::ENERGY_FLASH_DURATION;
             }
+            reg.emplace<MissTag>(entity);
             reg.emplace<ScoredTag>(entity);
         }
     };
