@@ -373,7 +373,7 @@ static void draw_hud(entt::registry& reg, const TextContext& text_ctx,
         }
     }
 
-    // Energy bar — compact vertical bar on left side, beat-reactive visualizer
+    // Energy bar — vertical gradient bar with beat-bounce visualizer
     auto* energy = reg.ctx().find<EnergyState>();
     if (energy) {
         constexpr float BAR_X      = 10.0f;
@@ -389,109 +389,58 @@ static void draw_hud(entt::registry& reg, const TextContext& text_ctx,
         if (fill < 0.0f) fill = 0.0f;
         if (fill > 1.0f) fill = 1.0f;
 
-        // Beat pulse
-        float beat_pulse = 0.0f;
+        // Beat bounce: on each beat, temporarily push the visible level up
+        float bounce = 0.0f;
         auto* song = reg.ctx().find<SongState>();
-        float song_t = 0.0f;
         if (song && song->playing && song->beat_period > 0.0f) {
-            song_t = song->song_time;
-            float phase = std::fmod(song_t, song->beat_period) / song->beat_period;
-            beat_pulse = 1.0f - phase;
-            beat_pulse = beat_pulse * beat_pulse * beat_pulse;
+            float phase = std::fmod(song->song_time, song->beat_period) / song->beat_period;
+            bounce = 1.0f - phase;
+            bounce = bounce * bounce * bounce;  // cubic decay
         }
+        // Bounce adds up to ~5 extra segments worth above fill
+        constexpr float BOUNCE_HEIGHT = 5.0f / SEG_COUNT;
+        float visible_level = fill + bounce * BOUNCE_HEIGHT;
+        if (visible_level > 1.0f) visible_level = 1.0f;
 
         // Background
         DrawRectangleRec({BAR_X, BAR_TOP, BAR_W, BAR_H}, {15, 15, 25, 180});
 
-        int filled_segs = static_cast<int>(fill * SEG_COUNT + 0.5f);
+        int filled_segs  = static_cast<int>(fill * SEG_COUNT + 0.5f);
+        int visible_segs = static_cast<int>(visible_level * SEG_COUNT + 0.5f);
+
         for (int i = 0; i < SEG_COUNT; ++i) {
             float seg_y = BAR_BOT - (i + 1) * (SEG_H + SEG_GAP) + SEG_GAP;
-            bool is_filled = (i < filled_segs);
 
             // Gradient: red → yellow → green → cyan → dark blue (bottom to top)
             float t = static_cast<float>(i) / (SEG_COUNT - 1);
-            uint8_t base_r, base_g, base_b;
+            uint8_t cr, cg, cb;
             if (t < 0.25f) {
-                // Red → Yellow
                 float s = t / 0.25f;
-                base_r = 255;
-                base_g = static_cast<uint8_t>(s * 255.0f);
-                base_b = 0;
+                cr = 255; cg = static_cast<uint8_t>(s * 255.0f); cb = 0;
             } else if (t < 0.50f) {
-                // Yellow → Green
                 float s = (t - 0.25f) / 0.25f;
-                base_r = static_cast<uint8_t>((1.0f - s) * 255.0f);
-                base_g = 255;
-                base_b = 0;
+                cr = static_cast<uint8_t>((1.0f - s) * 255.0f); cg = 255; cb = 0;
             } else if (t < 0.75f) {
-                // Green → Cyan
                 float s = (t - 0.50f) / 0.25f;
-                base_r = 0;
-                base_g = 255;
-                base_b = static_cast<uint8_t>(s * 255.0f);
+                cr = 0; cg = 255; cb = static_cast<uint8_t>(s * 255.0f);
             } else {
-                // Cyan → Dark Blue
                 float s = (t - 0.75f) / 0.25f;
-                base_r = 0;
-                base_g = static_cast<uint8_t>((1.0f - s) * 255.0f);
-                base_b = static_cast<uint8_t>(255.0f - s * 100.0f);
+                cr = 0;
+                cg = static_cast<uint8_t>((1.0f - s) * 255.0f);
+                cb = static_cast<uint8_t>(255.0f - s * 100.0f);
             }
 
-            if (is_filled) {
-                uint8_t r = base_r;
-                uint8_t g = base_g;
-                uint8_t b = base_b;
-                uint8_t alpha = 255;
-
-                // Per-segment beat ripple
-                float bp = song ? song->beat_period : 0.5f;
-                float seg_phase = std::fmod(song_t + static_cast<float>(i) * 0.02f, bp);
-                float seg_pulse = 1.0f - seg_phase / bp;
-                seg_pulse = seg_pulse * seg_pulse * seg_pulse;
-
-                // Brighten and widen on pulse
-                r = static_cast<uint8_t>(std::min(255.0f, r + (255.0f - r) * seg_pulse * 0.5f));
-                g = static_cast<uint8_t>(std::min(255.0f, g + (255.0f - g) * seg_pulse * 0.5f));
-                b = static_cast<uint8_t>(std::min(255.0f, b + 100.0f * seg_pulse));
-                float extra_w = BAR_W * 0.3f * seg_pulse;
-
-                // Flash effect
-                if (energy->flash_timer > 0.0f) {
-                    float flash_t = energy->flash_timer / constants::ENERGY_FLASH_DURATION;
-                    float fp = 0.5f + 0.5f * std::sin(flash_t * 20.0f);
-                    r = static_cast<uint8_t>(std::min(255.0f, r + (255.0f - r) * fp * 0.5f));
-                    g = static_cast<uint8_t>(std::min(255.0f, g + (255.0f - g) * fp * 0.5f));
-                    alpha = static_cast<uint8_t>(180.0f + 75.0f * fp);
-                }
-
-                // Critical throb
-                if (energy->energy < constants::ENERGY_CRITICAL_THRESH && energy->flash_timer <= 0.0f) {
-                    float pt = reg.ctx().get<GameState>().phase_timer;
-                    float throb = 0.5f + 0.5f * std::sin(pt * 6.0f);
-                    r = static_cast<uint8_t>(std::min(255.0f, r + 60.0f * throb));
-                    alpha = static_cast<uint8_t>(200.0f + 55.0f * throb);
-                }
-
-                DrawRectangleRec({BAR_X - extra_w * 0.5f, seg_y,
-                                  BAR_W + extra_w, SEG_H}, {r, g, b, alpha});
+            if (i < filled_segs) {
+                // Solid energy segment
+                DrawRectangleRec({BAR_X, seg_y, BAR_W, SEG_H}, {cr, cg, cb, 255});
+            } else if (i < visible_segs) {
+                // Bounce segment — same gradient color, fades out toward top
+                float fade = 1.0f - static_cast<float>(i - filled_segs)
+                                   / std::max(1.0f, static_cast<float>(visible_segs - filled_segs));
+                uint8_t alpha = static_cast<uint8_t>(fade * 200.0f);
+                DrawRectangleRec({BAR_X, seg_y, BAR_W, SEG_H}, {cr, cg, cb, alpha});
             } else {
-                // Ghost segments above fill: ripple on beat
-                float bp = song ? song->beat_period : 0.5f;
-                float seg_phase = std::fmod(song_t + static_cast<float>(i) * 0.02f, bp);
-                float seg_pulse = 1.0f - seg_phase / bp;
-                seg_pulse = seg_pulse * seg_pulse * seg_pulse;
-
-                float dist_above = static_cast<float>(i - filled_segs) / SEG_COUNT;
-                if (beat_pulse > 0.02f && dist_above < 0.15f) {
-                    float ghost = seg_pulse * (1.0f - dist_above * 7.0f);
-                    if (ghost > 0.0f) {
-                        uint8_t ga = static_cast<uint8_t>(std::min(255.0f, ghost * 160.0f));
-                        DrawRectangleRec({BAR_X, seg_y, BAR_W, SEG_H},
-                                         {base_r, base_g, base_b, ga});
-                    }
-                }
-
-                // Dim empty
+                // Empty
                 DrawRectangleRec({BAR_X, seg_y, BAR_W, SEG_H}, {35, 35, 50, 50});
             }
         }
