@@ -373,90 +373,100 @@ static void draw_hud(entt::registry& reg, const TextContext& text_ctx,
         }
     }
 
-    // Energy bar — vertical on left side, with beat-reactive visualizer segments
+    // Energy bar — compact vertical bar on left side, beat-reactive visualizer
     auto* energy = reg.ctx().find<EnergyState>();
     if (energy) {
         constexpr float BAR_X      = 10.0f;
-        constexpr float BAR_W      = 22.0f;
-        constexpr float BAR_TOP    = 80.0f;
+        constexpr float BAR_W      = 18.0f;
         constexpr float BAR_BOT    = 1000.0f;
-        constexpr float BAR_H      = BAR_BOT - BAR_TOP;
-        constexpr int   SEG_COUNT  = 20;
-        constexpr float SEG_GAP    = 2.0f;
+        constexpr float BAR_H      = 230.0f;
+        constexpr float BAR_TOP    = BAR_BOT - BAR_H;
+        constexpr int   SEG_COUNT  = 32;
+        constexpr float SEG_GAP    = 1.0f;
         constexpr float SEG_H      = (BAR_H - (SEG_COUNT - 1) * SEG_GAP) / SEG_COUNT;
 
         float fill = energy->display;
         if (fill < 0.0f) fill = 0.0f;
         if (fill > 1.0f) fill = 1.0f;
 
-        // Beat pulse: 0→1 sawtooth that peaks on each beat then decays
+        // Beat pulse: peaks at 1.0 on each beat, fast decay
         float beat_pulse = 0.0f;
         auto* song = reg.ctx().find<SongState>();
+        float song_t = 0.0f;
         if (song && song->playing && song->beat_period > 0.0f) {
-            float phase = std::fmod(song->song_time, song->beat_period) / song->beat_period;
-            beat_pulse = 1.0f - phase;                  // 1.0 at beat, decays to 0
-            beat_pulse = beat_pulse * beat_pulse;        // sharper decay curve
+            song_t = song->song_time;
+            float phase = std::fmod(song_t, song->beat_period) / song->beat_period;
+            beat_pulse = 1.0f - phase;
+            beat_pulse = beat_pulse * beat_pulse * beat_pulse;  // cubic decay
         }
 
-        // Background (dark strip)
-        DrawRectangleRec({BAR_X, BAR_TOP, BAR_W, BAR_H}, {15, 15, 25, 160});
+        // Background
+        DrawRectangleRec({BAR_X, BAR_TOP, BAR_W, BAR_H}, {15, 15, 25, 180});
 
-        // Draw segments bottom-to-top
         int filled_segs = static_cast<int>(fill * SEG_COUNT + 0.5f);
         for (int i = 0; i < SEG_COUNT; ++i) {
             float seg_y = BAR_BOT - (i + 1) * (SEG_H + SEG_GAP) + SEG_GAP;
             bool is_filled = (i < filled_segs);
 
             if (is_filled) {
-                // Base yellow
                 uint8_t r = 255;
                 uint8_t g = static_cast<uint8_t>(200.0f + 55.0f * fill);
                 uint8_t b = 30;
                 uint8_t alpha = 255;
 
-                // Beat-reactive: brighten segments near the fill line
-                float seg_norm = static_cast<float>(i) / SEG_COUNT;
-                float dist_from_top = std::abs(seg_norm - fill);
-                float viz_boost = beat_pulse * std::max(0.0f, 1.0f - dist_from_top * 4.0f);
-                g = static_cast<uint8_t>(std::min(255.0f, g + 55.0f * viz_boost));
-                b = static_cast<uint8_t>(std::min(255.0f, b + 120.0f * viz_boost));
+                // Per-segment ripple: stagger the pulse up the bar
+                float seg_phase = std::fmod(song_t + static_cast<float>(i) * 0.02f,
+                                            song ? song->beat_period : 0.5f);
+                float seg_pulse = 1.0f - seg_phase / (song ? song->beat_period : 0.5f);
+                seg_pulse = seg_pulse * seg_pulse * seg_pulse;
+
+                // Boost brightness and widen on pulse
+                float boost = seg_pulse * 0.8f;
+                g = static_cast<uint8_t>(std::min(255.0f, g + 55.0f * boost));
+                b = static_cast<uint8_t>(std::min(255.0f, b + 180.0f * boost));
+                float extra_w = BAR_W * 0.3f * seg_pulse;
 
                 // Flash effect
                 if (energy->flash_timer > 0.0f) {
                     float flash_t = energy->flash_timer / constants::ENERGY_FLASH_DURATION;
-                    float pulse = 0.5f + 0.5f * std::sin(flash_t * 20.0f);
-                    r = static_cast<uint8_t>(std::min(255.0f, r + (255.0f - r) * pulse * 0.5f));
-                    g = static_cast<uint8_t>(std::min(255.0f, g + (255.0f - g) * pulse * 0.5f));
-                    alpha = static_cast<uint8_t>(180.0f + 75.0f * pulse);
+                    float fp = 0.5f + 0.5f * std::sin(flash_t * 20.0f);
+                    r = static_cast<uint8_t>(std::min(255.0f, r + (255.0f - r) * fp * 0.5f));
+                    g = static_cast<uint8_t>(std::min(255.0f, g + (255.0f - g) * fp * 0.5f));
+                    alpha = static_cast<uint8_t>(180.0f + 75.0f * fp);
                 }
 
                 // Critical throb
                 if (energy->energy < constants::ENERGY_CRITICAL_THRESH && energy->flash_timer <= 0.0f) {
-                    float phase_timer = reg.ctx().get<GameState>().phase_timer;
-                    float throb = 0.5f + 0.5f * std::sin(phase_timer * 6.0f);
+                    float pt = reg.ctx().get<GameState>().phase_timer;
+                    float throb = 0.5f + 0.5f * std::sin(pt * 6.0f);
                     r = static_cast<uint8_t>(std::min(255.0f, r + 60.0f * throb));
                     alpha = static_cast<uint8_t>(200.0f + 55.0f * throb);
                 }
 
-                DrawRectangleRec({BAR_X, seg_y, BAR_W, SEG_H}, {r, g, b, alpha});
+                DrawRectangleRec({BAR_X - extra_w * 0.5f, seg_y,
+                                  BAR_W + extra_w, SEG_H}, {r, g, b, alpha});
             } else {
-                // Empty segment — still show faint beat pulse (visualizer ghost)
-                if (beat_pulse > 0.05f) {
-                    float seg_norm = static_cast<float>(i) / SEG_COUNT;
-                    float dist_from_fill = seg_norm - fill;
-                    // Only ghost a few segments above the fill line
-                    if (dist_from_fill > 0.0f && dist_from_fill < 0.2f) {
-                        float ghost = beat_pulse * (1.0f - dist_from_fill * 5.0f);
-                        uint8_t ga = static_cast<uint8_t>(ghost * 120.0f);
+                // Ghost segments above fill: ripple on beat
+                float seg_phase = std::fmod(song_t + static_cast<float>(i) * 0.02f,
+                                            song ? song->beat_period : 0.5f);
+                float seg_pulse = 1.0f - seg_phase / (song ? song->beat_period : 0.5f);
+                seg_pulse = seg_pulse * seg_pulse * seg_pulse;
+
+                float dist_above = static_cast<float>(i - filled_segs) / SEG_COUNT;
+                if (beat_pulse > 0.02f && dist_above < 0.15f) {
+                    float ghost = seg_pulse * (1.0f - dist_above * 7.0f);
+                    if (ghost > 0.0f) {
+                        uint8_t ga = static_cast<uint8_t>(std::min(255.0f, ghost * 180.0f));
                         DrawRectangleRec({BAR_X, seg_y, BAR_W, SEG_H}, {255, 230, 50, ga});
                     }
                 }
-                // Dim empty marker
-                DrawRectangleRec({BAR_X, seg_y, BAR_W, SEG_H}, {40, 40, 55, 60});
+
+                // Dim empty
+                DrawRectangleRec({BAR_X, seg_y, BAR_W, SEG_H}, {35, 35, 50, 50});
             }
         }
 
-        // Thin border
+        // Border
         DrawRectangleLinesEx({BAR_X, BAR_TOP, BAR_W, BAR_H}, 1.0f, {80, 80, 100, 140});
     }
 
