@@ -389,20 +389,11 @@ static void draw_hud(entt::registry& reg, const TextContext& text_ctx,
         // Background (dark)
         DrawRectangleRounded({BAR_X, BAR_Y, BAR_W, BAR_H}, CORNER_R / BAR_H, 4, {20, 20, 30, 180});
 
-        // Filled portion — color ramp: red → yellow → green
+        // Filled portion — solid yellow, dims toward orange when low
         if (fill > 0.001f) {
-            uint8_t r, g, b;
-            if (fill < 0.5f) {
-                float t = fill * 2.0f;
-                r = static_cast<uint8_t>(255);
-                g = static_cast<uint8_t>(t * 255.0f);
-                b = 50;
-            } else {
-                float t = (fill - 0.5f) * 2.0f;
-                r = static_cast<uint8_t>(255.0f * (1.0f - t));
-                g = 255;
-                b = 50;
-            }
+            uint8_t r = 255;
+            uint8_t g = static_cast<uint8_t>(200.0f + 55.0f * fill);  // 200–255
+            uint8_t b = 30;
 
             // Flash effect: pulse white on drain
             uint8_t alpha = 255;
