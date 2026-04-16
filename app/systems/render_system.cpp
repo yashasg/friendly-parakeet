@@ -402,6 +402,21 @@ static void draw_hud(entt::registry& reg, const TextContext& text_ctx,
         float visible_level = fill + bounce * BOUNCE_HEIGHT;
         if (visible_level > 1.0f) visible_level = 1.0f;
 
+        // Pink overflow: bounce segments above the bar when full
+        constexpr int   OVERFLOW_MAX = 5;
+        int overflow_segs = 0;
+        if (fill >= 0.99f) {
+            overflow_segs = static_cast<int>(bounce * OVERFLOW_MAX + 0.5f);
+        }
+
+        // Overflow segments (pink, drawn above the bar)
+        for (int i = 0; i < overflow_segs; ++i) {
+            float seg_y = BAR_TOP - (i + 1) * (SEG_H + SEG_GAP);
+            float fade = 1.0f - static_cast<float>(i) / OVERFLOW_MAX;
+            uint8_t alpha = static_cast<uint8_t>(fade * 220.0f);
+            DrawRectangleRec({BAR_X, seg_y, BAR_W, SEG_H}, {255, 80, 200, alpha});
+        }
+
         // Background
         DrawRectangleRec({BAR_X, BAR_TOP, BAR_W, BAR_H}, {15, 15, 25, 180});
 
