@@ -373,6 +373,63 @@ static void draw_hud(entt::registry& reg, const TextContext& text_ctx,
         }
     }
 
+    // Energy bar
+    auto* energy = reg.ctx().find<EnergyState>();
+    if (energy) {
+        constexpr float BAR_X      = 60.0f;
+        constexpr float BAR_W      = static_cast<float>(constants::SCREEN_W) - 120.0f;
+        constexpr float BAR_Y      = constants::BURNOUT_BAR_Y;
+        constexpr float BAR_H      = constants::BURNOUT_BAR_H;
+        constexpr float CORNER_R   = 4.0f;
+
+        float fill = energy->display;
+        if (fill < 0.0f) fill = 0.0f;
+        if (fill > 1.0f) fill = 1.0f;
+
+        // Background (dark)
+        DrawRectangleRounded({BAR_X, BAR_Y, BAR_W, BAR_H}, CORNER_R / BAR_H, 4, {20, 20, 30, 180});
+
+        // Filled portion — color ramp: red → yellow → green
+        if (fill > 0.001f) {
+            uint8_t r, g, b;
+            if (fill < 0.5f) {
+                float t = fill * 2.0f;
+                r = static_cast<uint8_t>(255);
+                g = static_cast<uint8_t>(t * 255.0f);
+                b = 50;
+            } else {
+                float t = (fill - 0.5f) * 2.0f;
+                r = static_cast<uint8_t>(255.0f * (1.0f - t));
+                g = 255;
+                b = 50;
+            }
+
+            // Flash effect: pulse white on drain
+            uint8_t alpha = 255;
+            if (energy->flash_timer > 0.0f) {
+                float flash_t = energy->flash_timer / constants::ENERGY_FLASH_DURATION;
+                float pulse = 0.5f + 0.5f * std::sin(flash_t * 20.0f);
+                r = static_cast<uint8_t>(r + static_cast<uint8_t>((255 - r) * pulse * 0.5f));
+                g = static_cast<uint8_t>(g + static_cast<uint8_t>((255 - g) * pulse * 0.5f));
+                alpha = static_cast<uint8_t>(180 + static_cast<uint8_t>(75.0f * pulse));
+            }
+
+            // Critical pulse: slow throb when low
+            if (energy->energy < constants::ENERGY_CRITICAL_THRESH && energy->flash_timer <= 0.0f) {
+                float phase_timer = reg.ctx().get<GameState>().phase_timer;
+                float throb = 0.5f + 0.5f * std::sin(phase_timer * 6.0f);
+                r = static_cast<uint8_t>(std::min(255.0f, r + 60.0f * throb));
+                alpha = static_cast<uint8_t>(200 + static_cast<uint8_t>(55.0f * throb));
+            }
+
+            float fill_w = BAR_W * fill;
+            DrawRectangleRounded({BAR_X, BAR_Y, fill_w, BAR_H}, CORNER_R / BAR_H, 4, {r, g, b, alpha});
+        }
+
+        // Border
+        DrawRectangleRoundedLinesEx({BAR_X, BAR_Y, BAR_W, BAR_H}, CORNER_R / BAR_H, 4, 1.0f, {100, 100, 120, 200});
+    }
+
     // Lane divider
     auto* line = find_el(screen, "lane_divider");
     if (line) {
