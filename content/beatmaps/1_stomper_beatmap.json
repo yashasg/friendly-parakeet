@@ -975,11 +975,8 @@
         },
         {
           "beat": 58,
-          "kind": "lane_block",
-          "blocked": [
-            0,
-            1
-          ]
+          "kind": "lane_push_right",
+          "lane": 1
         },
         {
           "beat": 60,
@@ -995,19 +992,13 @@
         },
         {
           "beat": 66,
-          "kind": "lane_block",
-          "blocked": [
-            0,
-            1
-          ]
+          "kind": "lane_push_right",
+          "lane": 1
         },
         {
           "beat": 71,
-          "kind": "lane_block",
-          "blocked": [
-            0,
-            2
-          ]
+          "kind": "lane_push_left",
+          "lane": 2
         },
         {
           "beat": 74,
@@ -1041,11 +1032,8 @@
         },
         {
           "beat": 86,
-          "kind": "lane_block",
-          "blocked": [
-            0,
-            2
-          ]
+          "kind": "lane_push_right",
+          "lane": 0
         },
         {
           "beat": 89,
@@ -1073,11 +1061,8 @@
         },
         {
           "beat": 99,
-          "kind": "lane_block",
-          "blocked": [
-            0,
-            1
-          ]
+          "kind": "lane_push_right",
+          "lane": 1
         },
         {
           "beat": 101,
@@ -1129,11 +1114,8 @@
         },
         {
           "beat": 122,
-          "kind": "lane_block",
-          "blocked": [
-            0,
-            1
-          ]
+          "kind": "lane_push_right",
+          "lane": 1
         },
         {
           "beat": 124,
@@ -1149,11 +1131,8 @@
         },
         {
           "beat": 130,
-          "kind": "lane_block",
-          "blocked": [
-            0,
-            1
-          ]
+          "kind": "lane_push_right",
+          "lane": 1
         },
         {
           "beat": 134,
@@ -1199,11 +1178,8 @@
         },
         {
           "beat": 153,
-          "kind": "lane_block",
-          "blocked": [
-            0,
-            2
-          ]
+          "kind": "lane_push_left",
+          "lane": 2
         },
         {
           "beat": 155,
@@ -1219,11 +1195,8 @@
         },
         {
           "beat": 161,
-          "kind": "lane_block",
-          "blocked": [
-            0,
-            1
-          ]
+          "kind": "lane_push_right",
+          "lane": 1
         },
         {
           "beat": 165,
@@ -1269,11 +1242,8 @@
         },
         {
           "beat": 183,
-          "kind": "lane_block",
-          "blocked": [
-            0,
-            2
-          ]
+          "kind": "lane_push_right",
+          "lane": 0
         },
         {
           "beat": 185,
@@ -1289,11 +1259,8 @@
         },
         {
           "beat": 191,
-          "kind": "lane_block",
-          "blocked": [
-            0,
-            2
-          ]
+          "kind": "lane_push_left",
+          "lane": 2
         },
         {
           "beat": 193,
@@ -1339,11 +1306,8 @@
         },
         {
           "beat": 214,
-          "kind": "lane_block",
-          "blocked": [
-            0,
-            2
-          ]
+          "kind": "lane_push_right",
+          "lane": 0
         },
         {
           "beat": 217,
@@ -1377,11 +1341,8 @@
         },
         {
           "beat": 229,
-          "kind": "lane_block",
-          "blocked": [
-            0,
-            2
-          ]
+          "kind": "lane_push_left",
+          "lane": 2
         },
         {
           "beat": 232,
@@ -1427,11 +1388,8 @@
         },
         {
           "beat": 248,
-          "kind": "lane_block",
-          "blocked": [
-            0,
-            2
-          ]
+          "kind": "lane_push_right",
+          "lane": 0
         },
         {
           "beat": 250,
@@ -1441,27 +1399,18 @@
         },
         {
           "beat": 252,
-          "kind": "lane_block",
-          "blocked": [
-            0,
-            2
-          ]
+          "kind": "lane_push_left",
+          "lane": 2
         },
         {
           "beat": 256,
-          "kind": "lane_block",
-          "blocked": [
-            0,
-            2
-          ]
+          "kind": "lane_push_right",
+          "lane": 0
         },
         {
           "beat": 261,
-          "kind": "lane_block",
-          "blocked": [
-            0,
-            2
-          ]
+          "kind": "lane_push_left",
+          "lane": 2
         },
         {
           "beat": 264,
@@ -1501,11 +1450,8 @@
         },
         {
           "beat": 279,
-          "kind": "lane_block",
-          "blocked": [
-            0,
-            2
-          ]
+          "kind": "lane_push_right",
+          "lane": 0
         },
         {
           "beat": 281,
@@ -1521,11 +1467,8 @@
         },
         {
           "beat": 289,
-          "kind": "lane_block",
-          "blocked": [
-            0,
-            2
-          ]
+          "kind": "lane_push_left",
+          "lane": 2
         },
         {
           "beat": 291,
@@ -1709,11 +1652,8 @@
         },
         {
           "beat": 423,
-          "kind": "lane_block",
-          "blocked": [
-            0,
-            1
-          ]
+          "kind": "lane_push_right",
+          "lane": 1
         },
         {
           "beat": 425,
@@ -1729,11 +1669,8 @@
         },
         {
           "beat": 431,
-          "kind": "lane_block",
-          "blocked": [
-            0,
-            1
-          ]
+          "kind": "lane_push_right",
+          "lane": 1
         },
         {
           "beat": 436,
@@ -1779,11 +1716,8 @@
         },
         {
           "beat": 455,
-          "kind": "lane_block",
-          "blocked": [
-            0,
-            2
-          ]
+          "kind": "lane_push_right",
+          "lane": 0
         },
         {
           "beat": 457,
@@ -1799,11 +1733,8 @@
         },
         {
           "beat": 463,
-          "kind": "lane_block",
-          "blocked": [
-            0,
-            1
-          ]
+          "kind": "lane_push_right",
+          "lane": 1
         },
         {
           "beat": 468,
@@ -2268,11 +2199,8 @@
         },
         {
           "beat": 183,
-          "kind": "lane_block",
-          "blocked": [
-            0,
-            2
-          ]
+          "kind": "lane_push_left",
+          "lane": 2
         },
         {
           "beat": 185,
@@ -2522,11 +2450,8 @@
         },
         {
           "beat": 291,
-          "kind": "lane_block",
-          "blocked": [
-            0,
-            2
-          ]
+          "kind": "lane_push_right",
+          "lane": 0
         },
         {
           "beat": 293,
@@ -2536,11 +2461,8 @@
         },
         {
           "beat": 296,
-          "kind": "lane_block",
-          "blocked": [
-            0,
-            2
-          ]
+          "kind": "lane_push_left",
+          "lane": 2
         },
         {
           "beat": 299,
@@ -2970,11 +2892,8 @@
         },
         {
           "beat": 513,
-          "kind": "lane_block",
-          "blocked": [
-            0,
-            2
-          ]
+          "kind": "lane_push_right",
+          "lane": 0
         }
       ],
       "count": 180

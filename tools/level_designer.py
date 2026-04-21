@@ -48,9 +48,9 @@ ALL_SHAPES = ["circle", "square", "triangle"]
 # Final section = hardest patterns (the "final fortress").
 SECTION_ROLE = {
     "intro":      {"density": 0.30, "types": ["shape_gate"], "consistent": True},
-    "verse":      {"density": 0.65, "types": ["shape_gate", "lane_block"], "consistent": False},
-    "pre-chorus": {"density": 0.80, "types": ["shape_gate", "lane_block"], "consistent": False},
-    "drop":       {"density": 0.90, "types": ["shape_gate", "lane_block"], "consistent": True},
+    "verse":      {"density": 0.65, "types": ["shape_gate", "lane_push"], "consistent": False},
+    "pre-chorus": {"density": 0.80, "types": ["shape_gate", "lane_push"], "consistent": False},
+    "drop":       {"density": 0.90, "types": ["shape_gate", "lane_push"], "consistent": True},
     "bridge":     {"density": 0.35, "types": ["shape_gate"], "consistent": False},
 }
 
@@ -58,8 +58,8 @@ DIFFICULTY_SCALE = {"easy": 0.55, "medium": 0.80, "hard": 1.20}
 DIFFICULTY_INTRO_REST = {"easy": 8, "medium": 4, "hard": 2}
 DIFFICULTY_KINDS = {
     "easy":   {"shape_gate"},
-    "medium": {"shape_gate", "lane_block"},
-    "hard":   {"shape_gate", "lane_block"},
+    "medium": {"shape_gate", "lane_push"},
+    "hard":   {"shape_gate", "lane_push"},
 }
 
 # Shape palette per section: controls how many shapes are in play.
@@ -115,11 +115,12 @@ def lane_of(obs, fallback=1):
     """What lane does this obstacle put the player in?"""
     if obs["kind"] == "shape_gate":
         return obs.get("lane", 1)
-    elif obs["kind"] == "lane_block":
-        blocked = obs.get("blocked", [])
-        for l in [1, 0, 2]:  # prefer center
-            if l not in blocked:
-                return l
+    elif obs["kind"] in ("lane_push_left", "lane_push_right"):
+        obs_lane = obs.get("lane", 1)
+        if obs["kind"] == "lane_push_left":
+            return max(obs_lane - 1, 0)
+        else:
+            return min(obs_lane + 1, 2)
     return fallback
 
 
@@ -227,7 +228,7 @@ def assign_obstacle(beat_idx, event, gap_to_prev, section_name, difficulty,
     Key insight from research: onset passes determine type, not rotation.
       - kick-only → high_bar (bass thump → slide down)
       - hihat-only → low_bar (percussive pop → jump up)
-      - snare-only or snare+kick → lane_block (transient → dodge)
+      - snare-only or snare+kick → lane_push (transient → dodge)
       - melody or multi-pass → shape_gate (harmonic → match shape)
 
     Gap context (from Liang et al.): short gaps favor same-type obstacles.
@@ -251,7 +252,7 @@ def assign_obstacle(beat_idx, event, gap_to_prev, section_name, difficulty,
     elif has_hihat and not has_kick and not has_snare:
         natural_kind = "low_bar"
     elif has_snare:
-        natural_kind = "lane_block"
+        natural_kind = "lane_push"
     else:
         natural_kind = "shape_gate"
 
@@ -316,8 +317,8 @@ def assign_obstacle(beat_idx, event, gap_to_prev, section_name, difficulty,
         obs["shape"] = shape
         obs["lane"] = lane
 
-    elif natural_kind == "lane_block":
-        # Block lanes that DIDN'T fire; keep player in lane that did
+    elif natural_kind == "lane_push":
+        # Push player toward a musically-appropriate lane
         target_lane = prev_lane  # default: stay put
         if has_kick:
             target_lane = 0
@@ -330,7 +331,21 @@ def assign_obstacle(beat_idx, event, gap_to_prev, section_name, difficulty,
         if abs(target_lane - prev_lane) > 1:
             target_lane = 1  # center is always safe
 
-        obs["blocked"] = [l for l in [0, 1, 2] if l != target_lane]
+        # Place push at prev_lane, pointing toward target
+        if target_lane > prev_lane:
+            obs["kind"] = "lane_push_right"
+            obs["lane"] = prev_lane
+        elif target_lane < prev_lane:
+            obs["kind"] = "lane_push_left"
+            obs["lane"] = prev_lane
+        else:
+            # Already at target; place at player's lane for variety
+            if beat_idx % 2 == 0:
+                obs["kind"] = "lane_push_right"
+                obs["lane"] = prev_lane
+            else:
+                obs["kind"] = "lane_push_left"
+                obs["lane"] = prev_lane
 
     # low_bar and high_bar need no extra fields
 
@@ -386,10 +401,13 @@ def assign_obstacles(selected_beats, event_map, analysis, difficulty):
             # Override to a non-shape type based on passes
             passes = set(event.get("passes", ["flux"])) if event else {"flux"}
             non_shape = sec_kinds - {"shape_gate"}
-            if "lane_block" in non_shape:
-                target_lane = prev_lane
-                obs = {"beat": bi, "kind": "lane_block",
-                       "blocked": [l for l in [0,1,2] if l != target_lane]}
+            if "lane_push" in non_shape:
+                if bi % 2 == 0:
+                    obs = {"beat": bi, "kind": "lane_push_right",
+                           "lane": prev_lane}
+                else:
+                    obs = {"beat": bi, "kind": "lane_push_left",
+                           "lane": prev_lane}
             elif "low_bar" in non_shape and "high_bar" in non_shape:
                 obs = {"beat": bi, "kind": "low_bar" if bi % 2 == 0 else "high_bar"}
             elif "low_bar" in non_shape:
