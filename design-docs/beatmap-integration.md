@@ -182,7 +182,7 @@ The current obstacle components already match the beatmap schema:
 
 ```
   ObstacleKind::ShapeGate      → "shape_gate"       ✓  already exists
-  ObstacleKind::LaneBlock      → "lane_block"       ✓  legacy (converted to push at runtime)
+  ObstacleKind::LaneBlock      → "lane_block"       ✓  legacy/backward-compatible support
   ObstacleKind::LowBar         → "low_bar"          ✓  already exists
   ObstacleKind::HighBar        → "high_bar"         ✓  already exists
   ObstacleKind::LanePushLeft   → "lane_push_left"   ✓  already exists
