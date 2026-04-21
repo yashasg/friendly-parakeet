@@ -373,6 +373,142 @@ static void draw_hud(entt::registry& reg, const TextContext& text_ctx,
         }
     }
 
+    // Energy bar — vertical gradient bar with beat-bounce visualizer
+    auto* energy = reg.ctx().find<EnergyState>();
+    if (energy) {
+        constexpr float BAR_X      = 10.0f;
+        constexpr float BAR_W      = 18.0f;
+        constexpr float BAR_BOT    = 1000.0f;
+        constexpr float BAR_H      = 230.0f;
+        constexpr float BAR_TOP    = BAR_BOT - BAR_H;
+        constexpr int   SEG_COUNT  = 32;
+        constexpr float SEG_GAP    = 1.0f;
+        constexpr float SEG_H      = (BAR_H - (SEG_COUNT - 1) * SEG_GAP) / SEG_COUNT;
+
+        float fill = energy->display;
+        if (fill < 0.0f) fill = 0.0f;
+        if (fill > 1.0f) fill = 1.0f;
+
+        // Beat bounce: on each beat, temporarily push the visible level up
+        float bounce = 0.0f;
+        auto* song = reg.ctx().find<SongState>();
+        if (song && song->playing && song->beat_period > 0.0f) {
+            float phase = std::fmod(song->song_time, song->beat_period) / song->beat_period;
+            bounce = 1.0f - phase;
+            bounce = bounce * bounce * bounce;  // cubic decay
+        }
+
+        float flash_ratio = 0.0f;
+        if (energy->flash_timer > 0.0f && constants::ENERGY_FLASH_DURATION > 0.0f) {
+            flash_ratio = energy->flash_timer / constants::ENERGY_FLASH_DURATION;
+            flash_ratio = std::clamp(flash_ratio, 0.0f, 1.0f);
+        }
+        float critical_ratio = 0.0f;
+        if (fill < constants::ENERGY_CRITICAL_THRESH && constants::ENERGY_CRITICAL_THRESH > 0.0f) {
+            critical_ratio = (constants::ENERGY_CRITICAL_THRESH - fill) / constants::ENERGY_CRITICAL_THRESH;
+            critical_ratio = std::clamp(critical_ratio, 0.0f, 1.0f);
+        }
+        float pulse_time = (song && song->playing) ? song->song_time : static_cast<float>(GetTime());
+        constexpr float CRITICAL_PULSE_FREQ       = 10.0f;
+        constexpr float CRITICAL_PULSE_BASE       = 0.35f;
+        constexpr float CRITICAL_PULSE_MODULATION = 0.65f;
+        float critical_pulse = 0.5f + 0.5f * std::sin(pulse_time * CRITICAL_PULSE_FREQ);
+        float critical_intensity = critical_ratio
+            * (CRITICAL_PULSE_BASE + CRITICAL_PULSE_MODULATION * critical_pulse);
+        // Bounce adds up to ~5 extra segments worth above fill
+        constexpr float BOUNCE_HEIGHT = 5.0f / SEG_COUNT;
+        float visible_level = fill + bounce * BOUNCE_HEIGHT;
+        if (visible_level > 1.0f) visible_level = 1.0f;
+
+        // Pink overflow: bounce segments above the bar when full
+        constexpr int   OVERFLOW_MAX = 5;
+        int overflow_segs = 0;
+        if (fill >= 0.99f) {
+            overflow_segs = static_cast<int>(bounce * OVERFLOW_MAX + 0.5f);
+        }
+
+        // Overflow segments (pink, drawn above the bar)
+        for (int i = 0; i < overflow_segs; ++i) {
+            float seg_y = BAR_TOP - (i + 1) * (SEG_H + SEG_GAP);
+            float fade = 1.0f - static_cast<float>(i) / OVERFLOW_MAX;
+            uint8_t alpha = static_cast<uint8_t>(fade * 220.0f);
+            DrawRectangleRec({BAR_X, seg_y, BAR_W, SEG_H}, {255, 80, 200, alpha});
+        }
+
+        // Background
+        DrawRectangleRec({BAR_X, BAR_TOP, BAR_W, BAR_H}, {15, 15, 25, 180});
+
+        int filled_segs  = static_cast<int>(fill * SEG_COUNT + 0.5f);
+        int visible_segs = static_cast<int>(visible_level * SEG_COUNT + 0.5f);
+
+        for (int i = 0; i < SEG_COUNT; ++i) {
+            float seg_y = BAR_BOT - (i + 1) * (SEG_H + SEG_GAP) + SEG_GAP;
+
+            // Gradient: red → yellow → green → cyan → dark blue (bottom to top)
+            float t = static_cast<float>(i) / (SEG_COUNT - 1);
+            uint8_t cr, cg, cb;
+            if (t < 0.25f) {
+                float s = t / 0.25f;
+                cr = 255; cg = static_cast<uint8_t>(s * 255.0f); cb = 0;
+            } else if (t < 0.50f) {
+                float s = (t - 0.25f) / 0.25f;
+                cr = static_cast<uint8_t>((1.0f - s) * 255.0f); cg = 255; cb = 0;
+            } else if (t < 0.75f) {
+                float s = (t - 0.50f) / 0.25f;
+                cr = 0; cg = 255; cb = static_cast<uint8_t>(s * 255.0f);
+            } else {
+                float s = (t - 0.75f) / 0.25f;
+                cr = 0;
+                cg = static_cast<uint8_t>((1.0f - s) * 255.0f);
+                cb = static_cast<uint8_t>(255.0f - s * 100.0f);
+            }
+
+            if (i < filled_segs) {
+                // Solid energy segment
+                constexpr float FLASH_RED_BOOST_FACTOR    = 0.45f;
+                constexpr float CRITICAL_RED_BOOST_FACTOR = 0.35f;
+                constexpr float CRITICAL_COOL_DIM_FACTOR  = 0.40f;
+                float red_boost = flash_ratio * FLASH_RED_BOOST_FACTOR
+                                + critical_intensity * CRITICAL_RED_BOOST_FACTOR;
+                float cool_dim  = critical_intensity * CRITICAL_COOL_DIM_FACTOR;
+                uint8_t rr = static_cast<uint8_t>(std::clamp(
+                    static_cast<float>(cr) + red_boost * (255.0f - static_cast<float>(cr)),
+                    0.0f, 255.0f));
+                uint8_t rg = static_cast<uint8_t>(std::clamp(
+                    static_cast<float>(cg) * (1.0f - cool_dim),
+                    0.0f, 255.0f));
+                uint8_t rb = static_cast<uint8_t>(std::clamp(
+                    static_cast<float>(cb) * (1.0f - cool_dim),
+                    0.0f, 255.0f));
+                DrawRectangleRec({BAR_X, seg_y, BAR_W, SEG_H}, {rr, rg, rb, 255});
+            } else if (i < visible_segs) {
+                // Bounce segment — same gradient color, fades out toward top
+                float fade = 1.0f - static_cast<float>(i - filled_segs)
+                                   / std::max(1.0f, static_cast<float>(visible_segs - filled_segs));
+                uint8_t alpha = static_cast<uint8_t>(fade * 200.0f);
+                DrawRectangleRec({BAR_X, seg_y, BAR_W, SEG_H}, {cr, cg, cb, alpha});
+            } else {
+                // Empty
+                DrawRectangleRec({BAR_X, seg_y, BAR_W, SEG_H}, {35, 35, 50, 50});
+            }
+        }
+
+        if (flash_ratio > 0.0f) {
+            uint8_t alpha = static_cast<uint8_t>(std::clamp(flash_ratio * 140.0f, 0.0f, 255.0f));
+            DrawRectangleRec({BAR_X - 1.0f, BAR_TOP - 1.0f, BAR_W + 2.0f, BAR_H + 2.0f},
+                {255, 80, 80, alpha});
+        }
+
+        // Border
+        float border_thickness = 1.0f + critical_intensity * 2.0f;
+        uint8_t border_r = static_cast<uint8_t>(80.0f + critical_intensity * 175.0f);
+        uint8_t border_g = static_cast<uint8_t>(80.0f - critical_intensity * 40.0f);
+        uint8_t border_b = static_cast<uint8_t>(100.0f - critical_intensity * 60.0f);
+        uint8_t border_a = static_cast<uint8_t>(140.0f + critical_intensity * 90.0f);
+        DrawRectangleLinesEx({BAR_X, BAR_TOP, BAR_W, BAR_H}, border_thickness,
+            {border_r, border_g, border_b, border_a});
+    }
+
     // Lane divider
     auto* line = find_el(screen, "lane_divider");
     if (line) {

@@ -92,9 +92,8 @@ void setup_play_session(entt::registry& reg) {
         }
     }
 
-    // Reset HP and results
-    auto& hp = reg.ctx().get<HPState>();
-    hp.current = hp.max_hp;
+    // Reset energy and results
+    reg.ctx().insert_or_assign(EnergyState{});
     reg.ctx().insert_or_assign(SongResults{});
 
     // Create player entity

@@ -11,3 +11,4 @@ content/audio-web/
 .cache/
 excalidraw.log
 tasks/
+bench_logger.log

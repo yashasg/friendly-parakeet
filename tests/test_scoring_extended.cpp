@@ -132,3 +132,24 @@ TEST_CASE("scoring: multiple obstacles scored in single frame", "[scoring]") {
     CHECK(popup_count == 2);
 }
 
+TEST_CASE("scoring: miss-tagged obstacles do not award score and reset chain", "[scoring]") {
+    auto reg = make_registry();
+    auto& score = reg.ctx().get<ScoreState>();
+    score.chain_count = 3;
+    score.chain_timer = 0.5f;
+    reg.ctx().get<BurnoutState>().zone = BurnoutZone::Safe;
+
+    auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
+    reg.emplace<ScoredTag>(obs);
+    reg.emplace<MissTag>(obs);
+
+    int score_before = score.score;
+    scoring_system(reg, 0.016f);
+
+    CHECK(score.chain_count == 0);
+    CHECK(score.chain_timer == 0.0f);
+    CHECK(score.score == score_before + static_cast<int>(0.016f * constants::PTS_PER_SECOND));
+    CHECK_FALSE(reg.all_of<Obstacle>(obs));
+    CHECK_FALSE(reg.all_of<ScoredTag>(obs));
+    CHECK_FALSE(reg.all_of<MissTag>(obs));
+}

@@ -14,17 +14,20 @@ TEST_CASE("collision: shape gate cleared with matching shape", "[collision]") {
     CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
 }
 
-TEST_CASE("collision: shape gate kills with wrong shape", "[collision]") {
+TEST_CASE("collision: shape gate drains energy with wrong shape", "[collision]") {
     auto reg = make_registry();
     make_player(reg);
     // Player is Circle, gate requires Triangle
-    make_shape_gate(reg, Shape::Triangle, constants::PLAYER_Y);
+    auto obs = make_shape_gate(reg, Shape::Triangle, constants::PLAYER_Y);
 
     collision_system(reg, 0.016f);
 
     auto& gs = reg.ctx().get<GameState>();
-    CHECK(gs.transition_pending);
-    CHECK(gs.next_phase == GamePhase::GameOver);
+    CHECK_FALSE(gs.transition_pending);
+    auto& energy = reg.ctx().get<EnergyState>();
+    CHECK(energy.energy < 1.0f);
+    CHECK(energy.flash_timer > 0.0f);
+    CHECK(reg.all_of<MissTag>(obs));
 }
 
 TEST_CASE("collision: lane block cleared when player in unblocked lane", "[collision]") {
@@ -38,7 +41,7 @@ TEST_CASE("collision: lane block cleared when player in unblocked lane", "[colli
     CHECK(reg.all_of<ScoredTag>(obs));
 }
 
-TEST_CASE("collision: lane block kills when player in blocked lane", "[collision]") {
+TEST_CASE("collision: lane block drains energy when player in blocked lane", "[collision]") {
     auto reg = make_registry();
     make_player(reg);
     // Player in lane 1 (center), block lane 1
@@ -46,7 +49,10 @@ TEST_CASE("collision: lane block kills when player in blocked lane", "[collision
 
     collision_system(reg, 0.016f);
 
-    CHECK(reg.ctx().get<GameState>().transition_pending);
+    CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
+    auto& energy = reg.ctx().get<EnergyState>();
+    CHECK(energy.energy < 1.0f);
+    CHECK(energy.flash_timer > 0.0f);
 }
 
 TEST_CASE("collision: low bar cleared when jumping", "[collision]") {
@@ -60,14 +66,17 @@ TEST_CASE("collision: low bar cleared when jumping", "[collision]") {
     CHECK(reg.all_of<ScoredTag>(obs));
 }
 
-TEST_CASE("collision: low bar kills when grounded", "[collision]") {
+TEST_CASE("collision: low bar drains energy when grounded", "[collision]") {
     auto reg = make_registry();
     make_player(reg);
     make_vertical_bar(reg, ObstacleKind::LowBar, constants::PLAYER_Y);
 
     collision_system(reg, 0.016f);
 
-    CHECK(reg.ctx().get<GameState>().transition_pending);
+    CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
+    auto& energy = reg.ctx().get<EnergyState>();
+    CHECK(energy.energy < 1.0f);
+    CHECK(energy.flash_timer > 0.0f);
 }
 
 TEST_CASE("collision: high bar cleared when sliding", "[collision]") {
@@ -81,14 +90,17 @@ TEST_CASE("collision: high bar cleared when sliding", "[collision]") {
     CHECK(reg.all_of<ScoredTag>(obs));
 }
 
-TEST_CASE("collision: high bar kills when grounded", "[collision]") {
+TEST_CASE("collision: high bar drains energy when grounded", "[collision]") {
     auto reg = make_registry();
     make_player(reg);
     make_vertical_bar(reg, ObstacleKind::HighBar, constants::PLAYER_Y);
 
     collision_system(reg, 0.016f);
 
-    CHECK(reg.ctx().get<GameState>().transition_pending);
+    CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
+    auto& energy = reg.ctx().get<EnergyState>();
+    CHECK(energy.energy < 1.0f);
+    CHECK(energy.flash_timer > 0.0f);
 }
 
 TEST_CASE("collision: obstacle too far away is ignored", "[collision]") {
@@ -152,7 +164,10 @@ TEST_CASE("collision: combo gate fails with wrong shape", "[collision]") {
 
     collision_system(reg, 0.016f);
 
-    CHECK(reg.ctx().get<GameState>().transition_pending);
+    CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
+    auto& energy = reg.ctx().get<EnergyState>();
+    CHECK(energy.energy < 1.0f);
+    CHECK(energy.flash_timer > 0.0f);
 }
 
 TEST_CASE("collision: combo gate fails when lane is blocked", "[collision]") {
@@ -163,8 +178,10 @@ TEST_CASE("collision: combo gate fails when lane is blocked", "[collision]") {
 
     collision_system(reg, 0.016f);
 
-    CHECK(reg.ctx().get<GameState>().transition_pending);
-    CHECK(reg.ctx().get<GameState>().next_phase == GamePhase::GameOver);
+    CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
+    auto& energy = reg.ctx().get<EnergyState>();
+    CHECK(energy.energy < 1.0f);
+    CHECK(energy.flash_timer > 0.0f);
 }
 
 TEST_CASE("collision: split path cleared with matching shape and lane", "[collision]") {
@@ -187,7 +204,10 @@ TEST_CASE("collision: split path fails with wrong shape", "[collision]") {
 
     collision_system(reg, 0.016f);
 
-    CHECK(reg.ctx().get<GameState>().transition_pending);
+    CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
+    auto& energy = reg.ctx().get<EnergyState>();
+    CHECK(energy.energy < 1.0f);
+    CHECK(energy.flash_timer > 0.0f);
 }
 
 TEST_CASE("collision: split path fails with wrong lane", "[collision]") {
@@ -198,7 +218,10 @@ TEST_CASE("collision: split path fails with wrong lane", "[collision]") {
 
     collision_system(reg, 0.016f);
 
-    CHECK(reg.ctx().get<GameState>().transition_pending);
+    CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
+    auto& energy = reg.ctx().get<EnergyState>();
+    CHECK(energy.energy < 1.0f);
+    CHECK(energy.flash_timer > 0.0f);
 }
 
 TEST_CASE("collision: no player means no collision processing", "[collision]") {
@@ -222,7 +245,7 @@ TEST_CASE("collision: not in Playing phase skips processing", "[collision]") {
     CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
 }
 
-TEST_CASE("collision: low bar killed when sliding", "[collision]") {
+TEST_CASE("collision: low bar drains energy when sliding", "[collision]") {
     auto reg = make_registry();
     auto p = make_player(reg);
     reg.get<VerticalState>(p).mode = VMode::Sliding;
@@ -230,10 +253,13 @@ TEST_CASE("collision: low bar killed when sliding", "[collision]") {
 
     collision_system(reg, 0.016f);
 
-    CHECK(reg.ctx().get<GameState>().transition_pending);
+    CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
+    auto& energy = reg.ctx().get<EnergyState>();
+    CHECK(energy.energy < 1.0f);
+    CHECK(energy.flash_timer > 0.0f);
 }
 
-TEST_CASE("collision: high bar killed when jumping", "[collision]") {
+TEST_CASE("collision: high bar drains energy when jumping", "[collision]") {
     auto reg = make_registry();
     auto p = make_player(reg);
     reg.get<VerticalState>(p).mode = VMode::Jumping;
@@ -241,7 +267,10 @@ TEST_CASE("collision: high bar killed when jumping", "[collision]") {
 
     collision_system(reg, 0.016f);
 
-    CHECK(reg.ctx().get<GameState>().transition_pending);
+    CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
+    auto& energy = reg.ctx().get<EnergyState>();
+    CHECK(energy.energy < 1.0f);
+    CHECK(energy.flash_timer > 0.0f);
 }
 
 TEST_CASE("collision: BAD timing adjusts window_start, not window_timer", "[collision][rhythm]") {

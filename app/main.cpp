@@ -52,7 +52,7 @@ static void tick_fixed_systems(entt::registry& reg, float dt) {
     burnout_system(reg, dt);
     collision_system(reg, dt);
     scoring_system(reg, dt);
-    hp_system(reg, dt);
+    energy_system(reg, dt);
     lifetime_system(reg, dt);
     particle_system(reg, dt);
     cleanup_system(reg, dt);
@@ -257,7 +257,7 @@ int main(int argc, char* argv[]) {
     reg.ctx().emplace<LevelSelectState>();
 
     // Rhythm singletons (active even without a beat map loaded)
-    reg.ctx().emplace<HPState>();
+    reg.ctx().emplace<EnergyState>();
     reg.ctx().emplace<SongResults>();
 
     // ── 2-D world camera (identity; allows zoom/shake without touching game logic) ─

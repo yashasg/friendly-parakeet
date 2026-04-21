@@ -2,7 +2,7 @@
 
 // rhythm.h — Per-entity rhythm components, timing enums, and helpers.
 // Loaded-once data (BeatMap) lives in beat_map.h.
-// Runtime singletons (SongState, HPState, SongResults) live in song_state.h.
+// Runtime singletons (SongState, EnergyState, SongResults) live in song_state.h.
 // This header re-exports both for backward compatibility.
 
 #include "beat_map.h"

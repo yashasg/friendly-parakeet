@@ -22,3 +22,6 @@ struct Obstacle {
 
 // Existential tag: presence means the obstacle has been cleared and awaits scoring.
 struct ScoredTag {};
+
+// Existential tag: scored obstacle was failed/missed and should not award points.
+struct MissTag {};

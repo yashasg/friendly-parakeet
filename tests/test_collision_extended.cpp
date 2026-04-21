@@ -15,8 +15,10 @@ TEST_CASE("collision: Hexagon shape never matches shape gate", "[collision]") {
     collision_system(reg, 0.016f);
 
     auto& gs = reg.ctx().get<GameState>();
-    CHECK(gs.transition_pending);
-    CHECK(gs.next_phase == GamePhase::GameOver);
+    CHECK_FALSE(gs.transition_pending);
+    auto& energy = reg.ctx().get<EnergyState>();
+    CHECK(energy.energy < 1.0f);
+    CHECK(energy.flash_timer > 0.0f);
 }
 
 TEST_CASE("collision: Hexagon fails even when matching gate shape", "[collision]") {
@@ -40,7 +42,10 @@ TEST_CASE("collision: Hexagon fails even when matching gate shape", "[collision]
 
     // Hexagon should NEVER clear shape gates
     auto& gs = reg.ctx().get<GameState>();
-    CHECK(gs.transition_pending);
+    CHECK_FALSE(gs.transition_pending);
+    auto& energy = reg.ctx().get<EnergyState>();
+    CHECK(energy.energy < 1.0f);
+    CHECK(energy.flash_timer > 0.0f);
 }
 
 // ── collision_system: rhythm mode timing grades ──────────────
@@ -158,7 +163,10 @@ TEST_CASE("collision: combo gate requires both shape AND open lane", "[collision
 
     collision_system(reg, 0.016f);
 
-    CHECK(reg.ctx().get<GameState>().transition_pending);
+    CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
+    auto& energy = reg.ctx().get<EnergyState>();
+    CHECK(energy.energy < 1.0f);
+    CHECK(energy.flash_timer > 0.0f);
 }
 
 TEST_CASE("collision: combo gate succeeds when both match", "[collision]") {
@@ -215,7 +223,10 @@ TEST_CASE("collision: low bar fails when sliding", "[collision]") {
 
     collision_system(reg, 0.016f);
 
-    CHECK(reg.ctx().get<GameState>().transition_pending);
+    CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
+    auto& energy = reg.ctx().get<EnergyState>();
+    CHECK(energy.energy < 1.0f);
+    CHECK(energy.flash_timer > 0.0f);
 }
 
 TEST_CASE("collision: high bar fails when jumping", "[collision]") {
@@ -226,6 +237,9 @@ TEST_CASE("collision: high bar fails when jumping", "[collision]") {
 
     collision_system(reg, 0.016f);
 
-    CHECK(reg.ctx().get<GameState>().transition_pending);
+    CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
+    auto& energy = reg.ctx().get<EnergyState>();
+    CHECK(energy.energy < 1.0f);
+    CHECK(energy.flash_timer > 0.0f);
 }
 

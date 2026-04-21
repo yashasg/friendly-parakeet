@@ -1,4 +1,13 @@
 cmake_minimum_required(VERSION 3.20)
+
+# Auto-detect vcpkg toolchain from VCPKG_ROOT when no toolchain is specified.
+# Referencing CMAKE_TOOLCHAIN_FILE here also prevents the CMake warning
+# "Manually-specified variables were not used" on reconfigure.
+if(DEFINED ENV{VCPKG_ROOT} AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
+    set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+        CACHE STRING "Vcpkg toolchain file")
+endif()
+
 project(shapeshifter VERSION 0.1 LANGUAGES CXX)
 
 # C++20 required: designated initializers are used throughout the codebase

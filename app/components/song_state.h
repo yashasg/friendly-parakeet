@@ -29,10 +29,11 @@ struct SongState {
     size_t next_spawn_idx = 0;
 };
 
-// ── HP State (singleton) ────────────────────────────
-struct HPState {
-    int current = 5;
-    int max_hp  = 5;
+// ── Energy State (singleton) ────────────────────────
+struct EnergyState {
+    float energy      = 1.0f;   // [0.0, 1.0] — current energy
+    float display     = 1.0f;   // smoothed for rendering (lerps toward energy)
+    float flash_timer = 0.0f;   // > 0 when bar should flash (drain event)
 };
 
 // ── Song Results (singleton, accumulates during play) ─

@@ -51,7 +51,18 @@ void scoring_system(entt::registry& reg, float dt) {
 
     // Process scored obstacles
     auto view = reg.view<ObstacleTag, ScoredTag, Obstacle, Position>();
+    auto* energy = reg.ctx().find<EnergyState>();
     for (auto [entity, obs, pos] : view.each()) {
+        if (reg.any_of<MissTag>(entity)) {
+            score.chain_count = 0;
+            score.chain_timer = 0.0f;
+            reg.remove<Obstacle>(entity);
+            reg.remove<ScoredTag>(entity);
+            reg.remove<MissTag>(entity);
+            if (reg.any_of<TimingGrade>(entity)) reg.remove<TimingGrade>(entity);
+            continue;
+        }
+
         float burnout_mult = multiplier_for_zone(burnout.zone);
 
         // Check for timing grade (rhythm mode)
@@ -59,6 +70,29 @@ void scoring_system(entt::registry& reg, float dt) {
         auto* timing = reg.try_get<TimingGrade>(entity);
         if (timing) {
             timing_mult = timing_multiplier(timing->tier);
+        }
+
+        // Energy adjustment based on timing
+        if (timing) {
+            if (energy) {
+                switch (timing->tier) {
+                    case TimingTier::Perfect:
+                        energy->energy += constants::ENERGY_RECOVER_PERFECT;
+                        break;
+                    case TimingTier::Good:
+                        energy->energy += constants::ENERGY_RECOVER_GOOD;
+                        break;
+                    case TimingTier::Ok:
+                        energy->energy += constants::ENERGY_RECOVER_OK;
+                        break;
+                    case TimingTier::Bad:
+                        energy->energy -= constants::ENERGY_DRAIN_BAD;
+                        energy->flash_timer = constants::ENERGY_FLASH_DURATION;
+                        break;
+                }
+                if (energy->energy < 0.0f) energy->energy = 0.0f;
+                if (energy->energy > constants::ENERGY_MAX) energy->energy = constants::ENERGY_MAX;
+            }
         }
 
         int points = static_cast<int>(std::floor(obs.base_points * timing_mult * burnout_mult));
