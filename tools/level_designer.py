@@ -339,8 +339,15 @@ def assign_obstacle(beat_idx, event, gap_to_prev, section_name, difficulty,
             obs["kind"] = "lane_push_left"
             obs["lane"] = prev_lane
         else:
-            # Already at target; place at player's lane for variety
-            if beat_idx % 2 == 0:
+            # Already at target; keep variety without generating
+            # out-of-bounds pushes on edge lanes.
+            if prev_lane == 0:
+                obs["kind"] = "lane_push_right"
+                obs["lane"] = prev_lane
+            elif prev_lane == 2:
+                obs["kind"] = "lane_push_left"
+                obs["lane"] = prev_lane
+            elif beat_idx % 2 == 0:
                 obs["kind"] = "lane_push_right"
                 obs["lane"] = prev_lane
             else:
