@@ -1,8 +1,6 @@
 #include "all_systems.h"
 #include "../components/particle.h"
 #include "../components/transform.h"
-#include "../components/lifetime.h"
-#include "../components/rendering.h"
 
 void particle_system(entt::registry& reg, float dt) {
     // Gravity on particles
