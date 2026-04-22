@@ -415,23 +415,12 @@ void test_player_system(entt::registry& reg, float dt) {
             continue;
         }
 
-        // Priority 3: Vertical action (wait for other obstacles to clear zone)
-        bool vert_blocked_by_shape = (pending_shape_obstacle != entt::null
-                                      && pending_shape_obstacle != action.obstacle);
-        bool vert_zone_blocked = false;
-        {
-            auto zone_view = reg.view<ObstacleTag, Position>(entt::exclude<ScoredTag>);
-            for (auto [ze, zpos] : zone_view.each()) {
-                if (ze == action.obstacle) continue;
-                float zdist = p_pos.y - zpos.y + p_vstate.y_offset;
-                if (zdist >= -COLLISION_MARGIN && zdist <= COLLISION_MARGIN * 3.0f) {
-                    vert_zone_blocked = true;
-                    break;
-                }
-            }
-        }
+        // Priority 3: Vertical action (wait for other obstacles to clear zone).
+        // Reuses zone_blocked / blocked_by_shape computed above: we only reach
+        // here when the lane branch did not fire (no mutating ops in between),
+        // so those values are still valid for the same action.
         if (action.needs_vertical() && p_vstate.mode == VMode::Grounded
-            && !vert_zone_blocked && !vert_blocked_by_shape) {
+            && !zone_blocked && !blocked_by_shape) {
             if (action.target_vertical == VMode::Jumping) {
                 aq.go(Direction::Up);
                 if (log) {
