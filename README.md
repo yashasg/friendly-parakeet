@@ -32,10 +32,19 @@ Built with **C++20**, **raylib**, and **EnTT** using Data-Oriented Design.
 ```bash
 export VCPKG_ROOT=/path/to/vcpkg
 
-./build.sh           # Release build
-./run.sh             # Build + run game
-./run.sh test        # Build + run tests
+./build.sh           # configure + build (Release by default)
+./build.sh Debug     # configure + build (Debug)
+
+./run.sh             # build + run the game
+./run.sh test        # build + run the Catch2 test suite
+./run.sh bench       # build + run benchmark cases only
 ```
+
+`build.sh` is the single source of truth for build configuration — it wires up
+the vcpkg toolchain, forwards `CC`/`CXX` and `VCPKG_DEFAULT_TRIPLET`, and picks
+the Ninja generator on Windows shells. `run.sh` just calls `build.sh` and then
+launches the game or tests. Arguments after `test` / `bench` are forwarded to
+the Catch2 binary (e.g. `./run.sh test "[scoring]"`).
 
 ### Difficulty Selection
 
@@ -45,12 +54,25 @@ export VCPKG_ROOT=/path/to/vcpkg
 ./build/shapeshifter --difficulty hard
 ```
 
-### Test Player (AI)
+### Test AI (headless play)
+
+The `--test-player` flag replaces the human input with a scripted AI player
+driven by `test_player_system`. It's used for regression testing, for
+benchmarking difficulty tuning, and for catching beatmap-level bugs that
+deterministic unit tests can't reach. Three personas are built in:
+
+| Persona | Wrapper script | Expected outcome |
+|---------|----------------|------------------|
+| `pro`   | `./run_pro.sh`  | Clears every difficulty with a high score |
+| `good`  | `./run_good.sh` | Clears easy and medium reliably |
+| `bad`   | `./run_bad.sh`  | Struggles on medium and fails hard |
+
+Equivalent long form:
 
 ```bash
-./build/shapeshifter --test-player pro     # clears with high score
-./build/shapeshifter --test-player good    # clears easy/medium
-./build/shapeshifter --test-player bad     # struggles on medium+
+./build/shapeshifter --test-player pro
+./build/shapeshifter --test-player good
+./build/shapeshifter --test-player bad
 ```
 
 ## Controls
