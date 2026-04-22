@@ -149,6 +149,11 @@ endif()
 # ── Emscripten linker flags ──────────────────────────────────
 if(EMSCRIPTEN)
     target_compile_definitions(shapeshifter PRIVATE PLATFORM_WEB)
+    configure_file(
+        ${CMAKE_SOURCE_DIR}/app/sw.js
+        ${CMAKE_BINARY_DIR}/generated/sw.js
+        @ONLY
+    )
 
     # Generate a minimal HTML shell at configure time — no static file to maintain.
     set(_shell_html "${CMAKE_BINARY_DIR}/shell.html")
@@ -200,11 +205,23 @@ if(EMSCRIPTEN)
         if(left===0){showCanvas()}
       }
     };
-    c.addEventListener('click',function(){c.focus()});
-    c.addEventListener('touchstart',function(e){e.preventDefault();c.focus();},{passive:false});
+    function tryResumeAudio(){
+      try{
+        if(Module&&typeof Module.resumeAudioContext==='function'){Module.resumeAudioContext();return;}
+        if(Module&&Module.SDL2&&Module.SDL2.audioContext&&Module.SDL2.audioContext.state==='suspended'){Module.SDL2.audioContext.resume()}
+        if(Module&&Module.AL&&Module.AL.currentCtx&&Module.AL.currentCtx.audioCtx&&Module.AL.currentCtx.audioCtx.state==='suspended'){Module.AL.currentCtx.audioCtx.resume()}
+      }catch(_){}
+    }
+    c.addEventListener('pointerdown',function(){c.focus();tryResumeAudio();});
+    c.addEventListener('click',function(){c.focus();tryResumeAudio()});
+    c.addEventListener('touchstart',function(e){e.preventDefault();c.focus();tryResumeAudio();},{passive:false});
     c.addEventListener('touchend',function(e){e.preventDefault();},{passive:false});
     document.addEventListener('touchmove',function(e){e.preventDefault()},{passive:false});
-    if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(function(){})}
+    if('serviceWorker' in navigator){
+      navigator.serviceWorker.register('sw.js',{updateViaCache:'none'})
+        .then(function(reg){reg.update().catch(function(){})})
+        .catch(function(){})
+    }
   </script>
   {{{ SCRIPT }}}
 </body>
@@ -228,7 +245,7 @@ if(EMSCRIPTEN)
     )
     add_custom_command(TARGET shapeshifter POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            ${CMAKE_SOURCE_DIR}/app/sw.js
+            ${CMAKE_BINARY_DIR}/generated/sw.js
             $<TARGET_FILE_DIR:shapeshifter>/sw.js
         COMMENT "Copying service worker"
     )
