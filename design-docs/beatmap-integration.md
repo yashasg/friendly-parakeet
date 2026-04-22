@@ -79,9 +79,6 @@
 // shape_gate — most common (~85% of obstacles)
 { "beat": 12, "kind": "shape_gate", "shape": "circle", "lane": 0 }
 
-// lane_block — blocks 2 lanes
-{ "beat": 201, "kind": "lane_block", "blocked": [0, 2] }
-
 // low_bar — jump over
 { "beat": 350, "kind": "low_bar" }
 
@@ -185,14 +182,13 @@ The current obstacle components already match the beatmap schema:
 
 ```
   ObstacleKind::ShapeGate      → "shape_gate"       ✓  already exists
-  ObstacleKind::LaneBlock      → "lane_block"       ✓  already exists
+  ObstacleKind::LaneBlock      → "lane_block"       ✓  legacy/backward-compatible support
   ObstacleKind::LowBar         → "low_bar"          ✓  already exists
   ObstacleKind::HighBar        → "high_bar"         ✓  already exists
   ObstacleKind::LanePushLeft   → "lane_push_left"   ✓  already exists
   ObstacleKind::LanePushRight  → "lane_push_right"  ✓  already exists
 
   RequiredShape { shape }    → beatmap "shape" field    ✓
-  BlockedLanes  { mask }     → beatmap "blocked" field  ✓
   RequiredVAction { action } → low_bar/high_bar         ✓
 ```
 
