@@ -57,10 +57,10 @@ void level_select_system(entt::registry& reg, float /*dt*/) {
     // Ignore touch/click on the transition frame
     if (gs.phase_timer < 0.05f) return;
 
-    // Positional taps (touch/mouse)
+    // Positional clicks/taps (touch/mouse)
     for (int i = 0; i < aq.count; ++i) {
         auto& a = aq.actions[i];
-        if (a.verb != ActionVerb::Tap || a.button != Button::Position) continue;
+        if (a.verb != ActionVerb::Click) continue;
 
         float tx = a.x;
         float ty = a.y;

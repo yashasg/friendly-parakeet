@@ -6,7 +6,7 @@ void enqueue_pointer_release_action(ActionQueue& aq, const InputState& input) {
     const float zone_y = constants::SCREEN_H * constants::SWIPE_ZONE_SPLIT;
 
     if (input.start_y >= zone_y) {
-        aq.tap(Button::Position, input.end_x, input.end_y);
+        aq.click(input.end_x, input.end_y);
         return;
     }
 
@@ -23,5 +23,5 @@ void enqueue_pointer_release_action(ActionQueue& aq, const InputState& input) {
         return;
     }
 
-    aq.tap(Button::Position, input.end_x, input.end_y);
+    aq.click(input.end_x, input.end_y);
 }

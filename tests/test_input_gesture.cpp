@@ -31,8 +31,7 @@ TEST_CASE("input_gesture: bottom-zone taps always emit position", "[input][gestu
     enqueue_pointer_release_action(aq, input);
 
     REQUIRE(aq.count == 1);
-    CHECK(aq.actions[0].verb == ActionVerb::Tap);
-    CHECK(aq.actions[0].button == Button::Position);
+    CHECK(aq.actions[0].verb == ActionVerb::Click);
     CHECK(aq.actions[0].x == input.end_x);
     CHECK(aq.actions[0].y == input.end_y);
 }
@@ -42,7 +41,7 @@ TEST_CASE("player_input: position tap on shape button still morphs player", "[pl
     make_player(reg);
 
     auto& aq = reg.ctx().get<ActionQueue>();
-    aq.tap(Button::Position, shape_button_center_x(2), shape_button_center_y());
+    aq.click(shape_button_center_x(2), shape_button_center_y());
 
     player_input_system(reg, 0.016f);
 

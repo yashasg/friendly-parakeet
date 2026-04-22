@@ -194,7 +194,7 @@ TEST_CASE("game_state: game over button choice after delay", "[gamestate]") {
     gs.phase = GamePhase::GameOver;
     gs.phase_timer = 0.5f;
     auto& aq = reg.ctx().get<ActionQueue>();
-    aq.tap(Button::Position, constants::SCREEN_W / 2.0f, 940.0f);
+    aq.click(constants::SCREEN_W / 2.0f, 940.0f);
 
     game_state_system(reg, 0.016f);
 

@@ -67,13 +67,15 @@ void game_state_system(entt::registry& reg, float dt) {
         return;
     }
 
-    // Title → LevelSelect on any tap
+    // Title → LevelSelect on click/tap
     if (gs.phase == GamePhase::Title) {
         for (int i = 0; i < aq.count; ++i) {
             auto& a = aq.actions[i];
-            if (a.verb != ActionVerb::Tap) continue;
-
-            if (a.button == Button::Position) {
+            if (a.verb != ActionVerb::Click &&
+                !(a.verb == ActionVerb::Tap && a.button == Button::Confirm)) {
+                continue;
+            }
+            if (a.verb == ActionVerb::Click) {
                 float tx = a.x;
                 float ty = a.y;
                 constexpr float EXIT_W = 200.0f;
@@ -88,7 +90,7 @@ void game_state_system(entt::registry& reg, float dt) {
                     gs.transition_pending = true;
                     gs.next_phase = GamePhase::LevelSelect;
                 }
-            } else if (a.button == Button::Confirm) {
+            } else if (a.verb == ActionVerb::Tap && a.button == Button::Confirm) {
                 gs.transition_pending = true;
                 gs.next_phase = GamePhase::LevelSelect;
             }
@@ -111,8 +113,11 @@ void game_state_system(entt::registry& reg, float dt) {
         && gs.phase_timer > 0.4f) {
         for (int i = 0; i < aq.count; ++i) {
             auto& a = aq.actions[i];
-            if (a.verb != ActionVerb::Tap) continue;
-            if (a.button == Button::Position) {
+            if (a.verb != ActionVerb::Click &&
+                !(a.verb == ActionVerb::Tap && a.button == Button::Confirm)) {
+                continue;
+            }
+            if (a.verb == ActionVerb::Click) {
                 float tx = a.x;
                 float ty = a.y;
                 constexpr float BTN_W = 280.0f;
@@ -131,7 +136,7 @@ void game_state_system(entt::registry& reg, float dt) {
                     else if (ty >= btn_y3 - BTN_PAD && ty <= btn_y3 + BTN_H + BTN_PAD)
                         gs.end_choice = EndScreenChoice::MainMenu;
                 }
-            } else if (a.button == Button::Confirm) {
+            } else if (a.verb == ActionVerb::Tap && a.button == Button::Confirm) {
                 gs.end_choice = EndScreenChoice::Restart;
             }
             break;
@@ -150,10 +155,13 @@ void game_state_system(entt::registry& reg, float dt) {
         gs.end_choice = EndScreenChoice::None;
     }
 
-    // Paused → resume on any Tap action
+    // Paused → resume on any Tap/Click action
     bool pause_resume = false;
     for (int i = 0; i < aq.count; ++i) {
-        if (aq.actions[i].verb == ActionVerb::Tap) { pause_resume = true; break; }
+        if (aq.actions[i].verb == ActionVerb::Tap || aq.actions[i].verb == ActionVerb::Click) {
+            pause_resume = true;
+            break;
+        }
     }
     if (gs.phase == GamePhase::Paused && pause_resume) {
         gs.previous_phase = gs.phase;

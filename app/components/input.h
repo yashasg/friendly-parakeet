@@ -31,9 +31,10 @@ inline void clear_input_events(InputState& input) {
 }
 
 // ── Player Actions ──────────────────────────────────────────────────────────
-// All input (keyboard, mouse, touch, swipe) maps to one of two verbs:
-//   Go(Direction)  — directional intent (lane change, menu navigate)
-//   Tap(Button)    — selection intent (shape morph, confirm, positional UI)
+// All input (keyboard, mouse, touch, swipe) maps to one of three verbs:
+//   Go(Direction)   — directional intent (lane change, menu navigate)
+//   Tap(Button)     — semantic button intent (shape morph, confirm)
+//   Click(x, y)     — positional click/tap intent for UI hit-box resolution
 //
 // The input system is the sole producer. All other systems are consumers.
 
@@ -44,10 +45,9 @@ enum class Button : uint8_t {
     ShapeSquare  = 1,
     ShapeTri     = 2,
     Confirm      = 3,
-    Position     = 4,   // carries x,y coordinates
 };
 
-enum class ActionVerb : uint8_t { Go, Tap };
+enum class ActionVerb : uint8_t { Go, Tap, Click };
 
 struct PlayerAction {
     ActionVerb verb = ActionVerb::Go;
@@ -76,6 +76,13 @@ struct ActionQueue {
             auto& a = actions[count++];
             a.verb = ActionVerb::Tap;
             a.button = b;
+            a.x = px; a.y = py;
+        }
+    }
+    void click(float px, float py) {
+        if (count < MAX) {
+            auto& a = actions[count++];
+            a.verb = ActionVerb::Click;
             a.x = px; a.y = py;
         }
     }
