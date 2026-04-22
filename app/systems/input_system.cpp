@@ -5,7 +5,7 @@
 #include "../constants.h"
 #include "../platform.h"
 #include <raylib.h>
-#include <cmath>
+#include "input_gesture.h"
 
 void input_system(entt::registry& reg, float raw_dt) {
     auto& input = reg.ctx().get<InputState>();
@@ -103,51 +103,6 @@ void input_system(entt::registry& reg, float raw_dt) {
 
     // Touch/mouse gesture → actions
     if (input.touch_up) {
-        float zone_y = constants::SCREEN_H * constants::SWIPE_ZONE_SPLIT;
-
-        if (input.start_y >= zone_y) {
-            // Button zone (bottom 20%)
-            const float btn_w       = constants::BUTTON_W_N      * constants::SCREEN_W;
-            const float btn_h       = constants::BUTTON_H_N      * constants::SCREEN_H;
-            const float btn_spacing = constants::BUTTON_SPACING_N * constants::SCREEN_W;
-            const float btn_y       = constants::BUTTON_Y_N       * constants::SCREEN_H;
-            float btn_area_x_start  = (constants::SCREEN_W - 3.0f * btn_w - 2.0f * btn_spacing) / 2.0f;
-            float btn_cy            = btn_y + btn_h / 2.0f;
-            float btn_radius        = btn_w / 2.8f;
-            float hit_radius        = btn_radius * 1.4f;
-
-            bool mapped_shape_button = false;
-            if (reg.ctx().get<GameState>().phase == GamePhase::Playing) {
-                for (int i = 0; i < 3; ++i) {
-                    float btn_cx = btn_area_x_start
-                        + static_cast<float>(i) * (btn_w + btn_spacing)
-                        + btn_w / 2.0f;
-                    float dx = input.end_x - btn_cx;
-                    float dy = input.end_y - btn_cy;
-                    if (dx * dx + dy * dy <= hit_radius * hit_radius) {
-                        aq.tap(static_cast<Button>(i));
-                        mapped_shape_button = true;
-                        break;
-                    }
-                }
-            }
-            if (!mapped_shape_button) {
-                aq.tap(Button::Position, input.end_x, input.end_y);
-            }
-        } else {
-            // Swipe zone
-            float dx = input.end_x - input.start_x;
-            float dy = input.end_y - input.start_y;
-            float dist = std::sqrt(dx * dx + dy * dy);
-            if (dist >= constants::MIN_SWIPE_DIST && input.duration <= constants::MAX_SWIPE_TIME) {
-                if (std::abs(dx) > std::abs(dy)) {
-                    aq.go(dx > 0 ? Direction::Right : Direction::Left);
-                } else {
-                    aq.go(dy > 0 ? Direction::Down : Direction::Up);
-                }
-            } else {
-                aq.tap(Button::Position, input.end_x, input.end_y);
-            }
-        }
+        enqueue_pointer_release_action(aq, input);
     }
 }
