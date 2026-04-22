@@ -1,4 +1,5 @@
-const CACHE_NAME = 'shapeshifter-v1';
+const CACHE_PREFIX = 'shapeshifter-';
+const CACHE_NAME = CACHE_PREFIX + '@GIT_COMMIT_HASH@';
 const ASSETS_TO_CACHE = ['index.js', 'index.wasm', 'index.data'];
 
 self.addEventListener('install', e => {
@@ -6,7 +7,15 @@ self.addEventListener('install', e => {
 });
 
 self.addEventListener('activate', e => {
-  e.waitUntil(clients.claim());
+  e.waitUntil(
+    caches.keys()
+      .then(keys => Promise.all(
+        keys
+          .filter(name => name.startsWith(CACHE_PREFIX) && name !== CACHE_NAME)
+          .map(name => caches.delete(name))
+      ))
+      .then(() => clients.claim())
+  );
 });
 
 self.addEventListener('fetch', e => {

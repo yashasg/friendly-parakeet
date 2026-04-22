@@ -116,16 +116,23 @@ void input_system(entt::registry& reg, float raw_dt) {
             float btn_radius        = btn_w / 2.8f;
             float hit_radius        = btn_radius * 1.4f;
 
-            for (int i = 0; i < 3; ++i) {
-                float btn_cx = btn_area_x_start
-                    + static_cast<float>(i) * (btn_w + btn_spacing)
-                    + btn_w / 2.0f;
-                float dx = input.end_x - btn_cx;
-                float dy = input.end_y - btn_cy;
-                if (dx * dx + dy * dy <= hit_radius * hit_radius) {
-                    aq.tap(static_cast<Button>(i));
-                    break;
+            bool mapped_shape_button = false;
+            if (reg.ctx().get<GameState>().phase == GamePhase::Playing) {
+                for (int i = 0; i < 3; ++i) {
+                    float btn_cx = btn_area_x_start
+                        + static_cast<float>(i) * (btn_w + btn_spacing)
+                        + btn_w / 2.0f;
+                    float dx = input.end_x - btn_cx;
+                    float dy = input.end_y - btn_cy;
+                    if (dx * dx + dy * dy <= hit_radius * hit_radius) {
+                        aq.tap(static_cast<Button>(i));
+                        mapped_shape_button = true;
+                        break;
+                    }
                 }
+            }
+            if (!mapped_shape_button) {
+                aq.tap(Button::Position, input.end_x, input.end_y);
             }
         } else {
             // Swipe zone
