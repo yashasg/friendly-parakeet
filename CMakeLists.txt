@@ -208,8 +208,8 @@ if(EMSCRIPTEN)
     function tryResumeAudio(){
       try{
         if(Module&&typeof Module.resumeAudioContext==='function'){Module.resumeAudioContext();return;}
-        if(Module&&Module.SDL2&&Module.SDL2.audioContext&&Module.SDL2.audioContext.state==='suspended'){Module.SDL2.audioContext.resume()}
-        if(Module&&Module.AL&&Module.AL.currentCtx&&Module.AL.currentCtx.audioCtx&&Module.AL.currentCtx.audioCtx.state==='suspended'){Module.AL.currentCtx.audioCtx.resume()}
+        if(Module&&Module.SDL2&&Module.SDL2.audioContext&&Module.SDL2.audioContext.state==='suspended'){Module.SDL2.audioContext.resume();return;}
+        if(Module&&Module.AL&&Module.AL.currentCtx&&Module.AL.currentCtx.audioCtx&&Module.AL.currentCtx.audioCtx.state==='suspended'){Module.AL.currentCtx.audioCtx.resume();return;}
       }catch(_){}
     }
     c.addEventListener('pointerdown',function(){c.focus();tryResumeAudio();});
