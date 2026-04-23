@@ -452,6 +452,24 @@ void flush_floor_lines(entt::registry& reg, const FloorParams& fp) {
         rlVertex3fScaled(sw,   0.0f, 0.0f);  rlVertex3fScaled(sw,   0.0f, sh);
     }
 
+    // Lane guide lines — continuous lines from bottom to top of corridor.
+    // With Camera3D perspective, these naturally converge toward the top.
+    {
+        constexpr float sh = static_cast<float>(constants::SCREEN_H);
+        constexpr float lane_half = 120.0f;  // half lane width
+        for (int lane = 0; lane < constants::LANE_COUNT; ++lane) {
+            float cx = constants::LANE_X[lane];
+            Color c = LANE_COLORS[lane];
+            // Left edge of lane
+            rlColor4ub(c.r, c.g, c.b, 50);
+            rlVertex3fScaled(cx - lane_half, 0.0f, 0.0f);
+            rlVertex3fScaled(cx - lane_half, 0.0f, sh);
+            // Right edge of lane
+            rlVertex3fScaled(cx + lane_half, 0.0f, 0.0f);
+            rlVertex3fScaled(cx + lane_half, 0.0f, sh);
+        }
+    }
+
     // Floor connectors + shape outlines
     for (int lane = 0; lane < constants::LANE_COUNT; ++lane) {
         float cx = constants::LANE_X[lane];
