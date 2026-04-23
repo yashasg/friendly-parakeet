@@ -4,6 +4,7 @@
 #include "version.h"
 #include "constants.h"
 #include "game_loop.h"
+#include "platform_display.h"
 #include "components/input.h"
 #include "components/input_events.h"
 #include "components/game_state.h"
@@ -179,7 +180,7 @@ int main(int argc, char* argv[]) {
     SetTextureFilter(target.texture, TEXTURE_FILTER_BILINEAR);
 
 #ifdef __EMSCRIPTEN__
-    game_loop_init_emscripten(reg, target);
+    platform_run_loop(reg, target);
 #else
     float accumulator = 0.0f;
     while (!WindowShouldClose()) {

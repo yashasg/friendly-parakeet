@@ -118,6 +118,7 @@ endif()
 add_executable(shapeshifter
     app/main.cpp
     app/game_loop.cpp
+    app/platform_display.cpp
     app/systems/camera_system.cpp
     app/systems/shape_mesh_builder.cpp
     app/systems/render_system.cpp
