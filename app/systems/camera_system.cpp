@@ -3,6 +3,7 @@
 #include <raylib.h>
 #include <rlgl.h>
 #include <cstdlib>
+#include <cstring>
 
 namespace camera {
 
@@ -11,23 +12,19 @@ static Mesh upload_shape_mesh(const ShapeMeshData& data) {
     Mesh mesh = {};
     mesh.vertexCount   = vc;
     mesh.triangleCount = data.tri_count;
-    mesh.vertices  = static_cast<float*>(RL_CALLOC(static_cast<unsigned int>(vc * 3), sizeof(float)));
-    mesh.normals   = static_cast<float*>(RL_CALLOC(static_cast<unsigned int>(vc * 3), sizeof(float)));
-    mesh.texcoords = static_cast<float*>(RL_CALLOC(static_cast<unsigned int>(vc * 2), sizeof(float)));
-    mesh.colors    = static_cast<unsigned char*>(RL_CALLOC(static_cast<unsigned int>(vc * 4), sizeof(unsigned char)));
 
-    for (int i = 0; i < vc; ++i) {
-        mesh.vertices[i*3+0] = data.positions[i].x;
-        mesh.vertices[i*3+1] = data.positions[i].y;
-        mesh.vertices[i*3+2] = data.positions[i].z;
-        mesh.normals[i*3+0]  = data.normals[i].x;
-        mesh.normals[i*3+1]  = data.normals[i].y;
-        mesh.normals[i*3+2]  = data.normals[i].z;
-        mesh.colors[i*4+0]   = data.colors[i].r;
-        mesh.colors[i*4+1]   = data.colors[i].g;
-        mesh.colors[i*4+2]   = data.colors[i].b;
-        mesh.colors[i*4+3]   = data.colors[i].a;
-    }
+    // ShapeMeshData arrays are laid out identically to raylib's flat arrays:
+    //   Vertex3{x,y,z}      = 3 contiguous floats  = mesh.vertices layout
+    //   VertexColor{r,g,b,a} = 4 contiguous bytes   = mesh.colors layout
+    auto vb = static_cast<unsigned int>(vc);
+    mesh.vertices  = static_cast<float*>(RL_CALLOC(vb * 3, sizeof(float)));
+    mesh.normals   = static_cast<float*>(RL_CALLOC(vb * 3, sizeof(float)));
+    mesh.texcoords = static_cast<float*>(RL_CALLOC(vb * 2, sizeof(float)));
+    mesh.colors    = static_cast<unsigned char*>(RL_CALLOC(vb * 4, sizeof(unsigned char)));
+
+    memcpy(mesh.vertices, data.positions, static_cast<size_t>(vc) * 3 * sizeof(float));
+    memcpy(mesh.normals,  data.normals,   static_cast<size_t>(vc) * 3 * sizeof(float));
+    memcpy(mesh.colors,   data.colors,    static_cast<size_t>(vc) * 4);
 
     UploadMesh(&mesh, false);
     return mesh;
