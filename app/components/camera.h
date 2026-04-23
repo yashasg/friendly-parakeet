@@ -2,14 +2,8 @@
 #include <cstdint>
 
 // ── Camera configuration ────────────────────────────────────────────────────
-// Game logic uses game-pixel coordinates (720×1280).
-// The camera system converts to world coordinates using to_world().
-// This conversion happens once per entity in camera_system — the render
-// system works entirely in world space.
-
-constexpr float WORLD_SCALE = 10.0f;
-constexpr float INV_WORLD_SCALE = 1.0f / WORLD_SCALE;
-constexpr float to_world(float game_coord) { return game_coord * INV_WORLD_SCALE; }
+// World coordinates = game-pixel coordinates (1:1). No conversion needed.
+// Camera3D near/far planes are sized for pixel-scale distances.
 
 // Per-frame render parameters computed from SongState beat pulse.
 struct FloorParams {

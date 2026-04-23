@@ -28,9 +28,7 @@
 #include <cstdio>
 #include <fstream>
 
-// Game-pixel → world-unit conversion is handled by to_world() from camera.h.
-// Immediate-mode geometry uses rlScalef(INV_WORLD_SCALE) on the matrix stack.
-// DrawMesh shapes encode the conversion in their transform matrix.
+// World coordinates = game-pixel coordinates (1:1 scale).
 
 static void draw_shape_flat(Shape shape, float cx, float cy, float size, Color color) {
     switch (shape) {
@@ -735,10 +733,10 @@ static void draw_world_rects(entt::registry& reg) {
 
     auto draw_slab = [&](float x, float z, float w, float d, float h, Color tint) {
         Matrix mat = {
-            to_world(w), 0, 0, 0,
-            0, to_world(h), 0, 0,
-            0, 0, to_world(d), 0,
-            to_world(x), 0, to_world(z), 1,
+            w, 0, 0, 0,
+            0, h, 0, 0,
+            0, 0, d, 0,
+            x, 0, z, 1,
         };
         sm->material.maps[MATERIAL_MAP_DIFFUSE].color = tint;
         DrawMesh(sm->slab, sm->material, mat);
@@ -807,10 +805,10 @@ static void draw_gameplay_shapes(entt::registry& reg) {
                           float sz, Color tint) {
         int idx = static_cast<int>(shape);
         const auto& desc = SHAPE_TABLE[idx];
-        float s = to_world(sz * desc.radius_scale);
+        float s = sz * desc.radius_scale;
         Matrix mat = {
             s, 0, 0, 0,  0, s, 0, 0,  0, 0, s, 0,
-            to_world(cx), to_world(y_3d), to_world(cz), 1.0f,
+            cx, y_3d, cz, 1.0f,
         };
         sm->material.maps[MATERIAL_MAP_DIFFUSE].color = tint;
         DrawMesh(sm->shapes[idx], sm->material, mat);
@@ -886,8 +884,8 @@ void render_system(entt::registry& reg, float /*alpha*/) {
         rlDrawRenderBatchActive();
         rlMatrixMode(RL_PROJECTION);
         rlLoadIdentity();
-        double near_plane = 1.0;
-        double far_plane  = 2000.0;
+        double near_plane = 10.0;
+        double far_plane  = 20000.0;
         double top   = near_plane * tan(static_cast<double>(camera.fovy) * 0.5 * DEG2RAD);
         double right = top * (static_cast<double>(constants::SCREEN_W)
                             / static_cast<double>(constants::SCREEN_H));
@@ -918,13 +916,8 @@ void render_system(entt::registry& reg, float /*alpha*/) {
     }
 
     // ── Render passes ──────────────────────────────────────────
-    // Floor (immediate mode) needs rlScalef for game→world conversion.
-    // Obstacles, particles, shapes use DrawMesh with per-entity matrices.
-    rlPushMatrix();
-    rlScalef(INV_WORLD_SCALE, INV_WORLD_SCALE, INV_WORLD_SCALE);
     draw_floor_lines(reg, floor_params);
     draw_floor_rings(floor_params);
-    rlPopMatrix();
 
     if (gs.phase != GamePhase::Title) {
         rlDrawRenderBatchActive();
@@ -945,7 +938,7 @@ void render_system(entt::registry& reg, float /*alpha*/) {
             auto popup_alpha = static_cast<uint8_t>(alpha_ratio * 255);
 
             // Map game position to 3D world, then project to screen coords
-            Vector3 world_pos = {to_world(pos.x), to_world(5.0f), to_world(pos.y)};
+            Vector3 world_pos = {pos.x, 5.0f, pos.y};
             Vector2 sp = GetWorldToScreenEx(world_pos, camera,
                              constants::SCREEN_W, constants::SCREEN_H);
 
