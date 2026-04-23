@@ -3,6 +3,7 @@
 #include "player.h"
 #include "../platform.h"
 #include <cstdint>
+#include <optional>
 
 // ── Raw input state (internal to input_system) ──────────────────────────────
 // Tracks touch/mouse hardware state. Downstream systems should read
@@ -48,6 +49,30 @@ enum class Button : uint8_t {
 };
 
 enum class ActionVerb : uint8_t { Go, Tap, Click };
+
+// Maps a tap-button to the corresponding player Shape when the button
+// represents a shape morph (ShapeCircle/Square/Tri). Returns std::nullopt for
+// non-shape buttons (e.g. Confirm).
+[[nodiscard]] inline std::optional<Shape> shape_from_button(Button b) {
+    switch (b) {
+        case Button::ShapeCircle: return Shape::Circle;
+        case Button::ShapeSquare: return Shape::Square;
+        case Button::ShapeTri:    return Shape::Triangle;
+        default:                  return std::nullopt;
+    }
+}
+
+// Inverse of shape_from_button: returns the tap-button that morphs the
+// player into the given shape. Returns std::nullopt for shapes that have
+// no dedicated button (e.g. Shape::Hexagon is the neutral/idle state).
+[[nodiscard]] inline std::optional<Button> button_from_shape(Shape s) {
+    switch (s) {
+        case Shape::Circle:   return Button::ShapeCircle;
+        case Shape::Square:   return Button::ShapeSquare;
+        case Shape::Triangle: return Button::ShapeTri;
+        default:              return std::nullopt;
+    }
+}
 
 struct PlayerAction {
     ActionVerb verb = ActionVerb::Go;

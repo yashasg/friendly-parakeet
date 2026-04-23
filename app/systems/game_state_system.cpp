@@ -6,6 +6,9 @@
 #include "../components/audio.h"
 #include "../components/rhythm.h"
 #include "../constants.h"
+#include "ui_hit.h"
+
+#include <iterator>
 
 static void enter_game_over(entt::registry& reg) {
     auto& score = reg.ctx().get<ScoreState>();
@@ -71,18 +74,12 @@ void game_state_system(entt::registry& reg, float dt) {
     if (gs.phase == GamePhase::Title) {
         for (int i = 0; i < aq.count; ++i) {
             auto& a = aq.actions[i];
-            if (a.verb != ActionVerb::Click &&
-                !(a.verb == ActionVerb::Tap && a.button == Button::Confirm)) {
-                continue;
-            }
             if (a.verb == ActionVerb::Click) {
-                float tx = a.x;
-                float ty = a.y;
                 constexpr float EXIT_W = 200.0f;
                 constexpr float EXIT_H = 50.0f;
                 constexpr float EXIT_Y = 1050.0f;
-                float exit_x = (constants::SCREEN_W - EXIT_W) / 2.0f;
-                if (tx >= exit_x && tx <= exit_x + EXIT_W && ty >= EXIT_Y && ty <= EXIT_Y + EXIT_H) {
+                const float exit_x = (constants::SCREEN_W - EXIT_W) / 2.0f;
+                if (point_in_padded_rect(a.x, a.y, exit_x, EXIT_Y, EXIT_W, EXIT_H)) {
                     #ifndef PLATFORM_WEB
                     reg.ctx().get<InputState>().quit_requested = true;
                     #endif
@@ -90,11 +87,12 @@ void game_state_system(entt::registry& reg, float dt) {
                     gs.transition_pending = true;
                     gs.next_phase = GamePhase::LevelSelect;
                 }
+                break;
             } else if (a.verb == ActionVerb::Tap && a.button == Button::Confirm) {
                 gs.transition_pending = true;
                 gs.next_phase = GamePhase::LevelSelect;
+                break;
             }
-            break;
         }
     }
 
@@ -108,38 +106,38 @@ void game_state_system(entt::registry& reg, float dt) {
         }
     }
 
-    // End screen button detection (shared by GameOver and SongComplete)
+    // End screen button detection (shared by GameOver and SongComplete).
+    // Three stacked buttons: Restart → LevelSelect → MainMenu.
     if ((gs.phase == GamePhase::GameOver || gs.phase == GamePhase::SongComplete)
         && gs.phase_timer > 0.4f) {
+        constexpr float BTN_W   = 280.0f;
+        constexpr float BTN_H   = 50.0f;
+        constexpr float BTN_GAP = 15.0f;
+        constexpr float BTN_PAD = 10.0f;
+        constexpr float BTN_Y0  = 870.0f;
+        constexpr EndScreenChoice CHOICES[] = {
+            EndScreenChoice::Restart,
+            EndScreenChoice::LevelSelect,
+            EndScreenChoice::MainMenu,
+        };
+        constexpr int N_CHOICES = static_cast<int>(std::size(CHOICES));
+
         for (int i = 0; i < aq.count; ++i) {
             auto& a = aq.actions[i];
-            if (a.verb != ActionVerb::Click &&
-                !(a.verb == ActionVerb::Tap && a.button == Button::Confirm)) {
-                continue;
-            }
             if (a.verb == ActionVerb::Click) {
-                float tx = a.x;
-                float ty = a.y;
-                constexpr float BTN_W = 280.0f;
-                constexpr float BTN_H = 50.0f;
-                constexpr float BTN_GAP = 15.0f;
-                constexpr float BTN_PAD = 10.0f;
-                float btn_x = (constants::SCREEN_W - BTN_W) / 2.0f;
-                float btn_y1 = 870.0f;
-                float btn_y2 = btn_y1 + BTN_H + BTN_GAP;
-                float btn_y3 = btn_y2 + BTN_H + BTN_GAP;
-                if (tx >= btn_x - BTN_PAD && tx <= btn_x + BTN_W + BTN_PAD) {
-                    if (ty >= btn_y1 - BTN_PAD && ty <= btn_y1 + BTN_H + BTN_PAD)
-                        gs.end_choice = EndScreenChoice::Restart;
-                    else if (ty >= btn_y2 - BTN_PAD && ty <= btn_y2 + BTN_H + BTN_PAD)
-                        gs.end_choice = EndScreenChoice::LevelSelect;
-                    else if (ty >= btn_y3 - BTN_PAD && ty <= btn_y3 + BTN_H + BTN_PAD)
-                        gs.end_choice = EndScreenChoice::MainMenu;
+                const float btn_x = (constants::SCREEN_W - BTN_W) / 2.0f;
+                for (int b = 0; b < N_CHOICES; ++b) {
+                    const float by = BTN_Y0 + static_cast<float>(b) * (BTN_H + BTN_GAP);
+                    if (point_in_padded_rect(a.x, a.y, btn_x, by, BTN_W, BTN_H, BTN_PAD)) {
+                        gs.end_choice = CHOICES[b];
+                        break;
+                    }
                 }
+                break;
             } else if (a.verb == ActionVerb::Tap && a.button == Button::Confirm) {
                 gs.end_choice = EndScreenChoice::Restart;
+                break;
             }
-            break;
         }
     }
 

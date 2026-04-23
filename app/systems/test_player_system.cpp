@@ -13,6 +13,7 @@
 #include "../platform.h"
 #include "../constants.h"
 
+#include <algorithm>
 #include <cmath>
 #include <random>
 
@@ -288,16 +289,10 @@ void test_player_system(entt::registry& reg, float dt) {
     // so we don't skip a nearer obstacle to act on a farther one.
     int exec_order[TestPlayerState::MAX_ACTIONS];
     for (int i = 0; i < state->action_count; ++i) exec_order[i] = i;
-    for (int i = 0; i < state->action_count - 1; ++i) {
-        for (int j = i + 1; j < state->action_count; ++j) {
-            if (state->actions[exec_order[j]].arrival_time <
-                state->actions[exec_order[i]].arrival_time) {
-                int tmp = exec_order[i];
-                exec_order[i] = exec_order[j];
-                exec_order[j] = tmp;
-            }
-        }
-    }
+    std::sort(exec_order, exec_order + state->action_count,
+        [&](int a, int b) {
+            return state->actions[a].arrival_time < state->actions[b].arrival_time;
+        });
 
     for (int ei = 0; ei < state->action_count && !key_injected; ++ei) {
         auto& action = state->actions[exec_order[ei]];
@@ -312,11 +307,8 @@ void test_player_system(entt::registry& reg, float dt) {
 
         // Priority 1: Shape change
         if (action.needs_shape()) {
-            switch (action.target_shape) {
-                case Shape::Circle:   aq.tap(Button::ShapeCircle); break;
-                case Shape::Square:   aq.tap(Button::ShapeSquare); break;
-                case Shape::Triangle: aq.tap(Button::ShapeTri); break;
-                default: break;
+            if (auto btn = button_from_shape(action.target_shape)) {
+                aq.tap(*btn);
             }
             action.mark_shape_done();
             key_injected = true;

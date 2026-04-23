@@ -36,11 +36,8 @@ void player_input_system(entt::registry& reg, float /*dt*/) {
         for (int i = 0; i < aq.count; ++i) {
             auto& a = aq.actions[i];
             std::optional<Shape> pressed_shape;
-            if (a.verb == ActionVerb::Tap &&
-                (a.button == Button::ShapeCircle ||
-                 a.button == Button::ShapeSquare ||
-                 a.button == Button::ShapeTri)) {
-                pressed_shape = static_cast<Shape>(static_cast<uint8_t>(a.button));
+            if (a.verb == ActionVerb::Tap) {
+                pressed_shape = shape_from_button(a.button);
             } else if (a.verb == ActionVerb::Click) {
                 pressed_shape = shape_button_hit_test(a.x, a.y);
             }
