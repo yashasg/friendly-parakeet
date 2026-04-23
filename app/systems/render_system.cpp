@@ -22,7 +22,6 @@
 #include "../components/ui_state.h"
 #include "ui_loader.h"
 #include <raylib.h>
-#include <raymath.h>
 #include <rlgl.h>
 #include <algorithm>
 #include <cmath>
@@ -844,9 +843,15 @@ static void draw_gameplay_shapes(entt::registry& reg) {
                     float sz, Color tint) {
         int idx = static_cast<int>(shape);
         const auto& desc = SHAPE_TABLE[idx];
-        float scale = to_world(sz * desc.radius_scale);
-        Matrix mat = MatrixMultiply(MatrixScale(scale, scale, scale),
-                                    MatrixTranslate(to_world(cx), to_world(y_3d), to_world(cz)));
+        float s = to_world(sz * desc.radius_scale);
+        // Model-to-world matrix: scale on diagonal, translation in bottom row.
+        // No rotation needed, so we construct it directly (no MatrixMultiply).
+        Matrix mat = {
+            s,    0.0f, 0.0f, 0.0f,
+            0.0f, s,    0.0f, 0.0f,
+            0.0f, 0.0f, s,    0.0f,
+            to_world(cx), to_world(y_3d), to_world(cz), 1.0f,
+        };
         sm->material.maps[MATERIAL_MAP_DIFFUSE].color = tint;
         DrawMesh(sm->meshes[idx], sm->material, mat);
     };
