@@ -41,11 +41,11 @@ constexpr V2 SQUARE[4] = {
     {-1.0f,  1.0f},  // bot-left
 };
 
-// Triangle: 3 vertices, unit half-extent
+// Triangle: 3 vertices, unit half-extent, CCW in XZ (matching OpenGL convention)
 constexpr V2 TRIANGLE[3] = {
-    { 0.0f, -1.0f},  // apex
-    {-1.0f,  1.0f},  // base-left
     { 1.0f,  1.0f},  // base-right
+    {-1.0f,  1.0f},  // base-left
+    { 0.0f, -1.0f},  // apex
 };
 
 } // namespace shape_verts

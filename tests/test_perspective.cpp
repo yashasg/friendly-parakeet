@@ -194,15 +194,15 @@ TEST_CASE("shape_verts::SQUARE — table size is 4", "[shape_verts]") {
 // ── Triangle table ──────────────────────────────────────────────────────────
 
 TEST_CASE("shape_verts::TRIANGLE — exact vertices", "[shape_verts]") {
-    // Apex, base-left, base-right
-    CHECK(shape_verts::TRIANGLE[0].x ==  0.0f);
-    CHECK(shape_verts::TRIANGLE[0].y == -1.0f);
+    // CCW order: base-right, base-left, apex
+    CHECK(shape_verts::TRIANGLE[0].x ==  1.0f);
+    CHECK(shape_verts::TRIANGLE[0].y ==  1.0f);
 
     CHECK(shape_verts::TRIANGLE[1].x == -1.0f);
     CHECK(shape_verts::TRIANGLE[1].y ==  1.0f);
 
-    CHECK(shape_verts::TRIANGLE[2].x ==  1.0f);
-    CHECK(shape_verts::TRIANGLE[2].y ==  1.0f);
+    CHECK(shape_verts::TRIANGLE[2].x ==  0.0f);
+    CHECK(shape_verts::TRIANGLE[2].y == -1.0f);
 }
 
 TEST_CASE("shape_verts::TRIANGLE — table size is 3", "[shape_verts]") {
