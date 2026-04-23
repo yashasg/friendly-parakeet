@@ -90,6 +90,7 @@ list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "/input_system\\.cpp$")
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "song_playback_system\\.cpp$")
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "text_renderer\\.cpp$")
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "camera_system\\.cpp$")
+list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "shape_mesh_builder\\.cpp$")
 
 add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES})
 target_include_directories(shapeshifter_lib PUBLIC
@@ -117,6 +118,7 @@ endif()
 add_executable(shapeshifter
     app/main.cpp
     app/systems/camera_system.cpp
+    app/systems/shape_mesh_builder.cpp
     app/systems/render_system.cpp
     app/systems/input_system.cpp
     app/systems/song_playback_system.cpp
@@ -332,6 +334,7 @@ if(NOT EMSCRIPTEN)
         ${TEST_SOURCES}
         app/util/file_logger.cpp
         app/systems/camera_system.cpp
+        app/systems/shape_mesh_builder.cpp
         app/systems/song_playback_system.cpp
     )
     target_include_directories(shapeshifter_tests PRIVATE
