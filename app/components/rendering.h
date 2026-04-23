@@ -20,10 +20,21 @@ struct DrawLayer {
 };
 
 // ── Screen Transform (letterbox scale/offset: window → virtual space) ───────
-// Computed once per frame in main.cpp before input_system runs.
-// Keeps raylib.h out of this header; input_system uses it to normalise coords.
 struct ScreenTransform {
     float offset_x = 0.0f;
     float offset_y = 0.0f;
     float scale    = 1.0f;
+};
+
+// ── Model-to-world transform ────────────────────────────────────────────────
+// Computed by camera_system each frame from Position/Size/Shape.
+// Consumed by render_system for DrawMesh calls.
+// MeshType tells the render system which GPU mesh to draw.
+enum class MeshType : uint8_t { Shape, Slab, Quad };
+
+struct ModelTransform {
+    Matrix   mat;
+    Color    tint;
+    MeshType mesh_type;
+    int      mesh_index;  // index into ShapeMeshes.shapes[] for Shape type
 };

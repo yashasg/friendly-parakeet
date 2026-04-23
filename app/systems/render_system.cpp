@@ -732,10 +732,7 @@ static void draw_world_rects(entt::registry& reg) {
     if (!sm) return;
 
     constexpr float OBSTACLE_HEIGHT = 20.0f;
-    constexpr float LOWBAR_HEIGHT   = 30.0f;
-    constexpr float HIGHBAR_HEIGHT  = 10.0f;
 
-    // Draw a slab: unit mesh scaled to (w, h, d) and positioned at (x, 0, z).
     auto draw_slab = [&](float x, float z, float w, float d, float h, Color tint) {
         Matrix mat = {
             to_world(w), 0, 0, 0,
@@ -747,68 +744,57 @@ static void draw_world_rects(entt::registry& reg) {
         DrawMesh(sm->slab, sm->material, mat);
     };
 
-    // Obstacles
+    // Multi-slab obstacles (camera_system can't store multiple transforms per entity)
     {
         auto view = reg.view<ObstacleTag, Position, Obstacle, Color, DrawSize>();
         for (auto [entity, pos, obs, col, dsz] : view.each()) {
-            Color c = col;
             switch (obs.kind) {
                 case ObstacleKind::ShapeGate:
-                    draw_slab(0, pos.y, pos.x-50, dsz.h, OBSTACLE_HEIGHT, c);
-                    draw_slab(pos.x+50, pos.y, constants::SCREEN_W-pos.x-50, dsz.h, OBSTACLE_HEIGHT, c);
+                    draw_slab(0, pos.y, pos.x-50, dsz.h, OBSTACLE_HEIGHT, col);
+                    draw_slab(pos.x+50, pos.y, constants::SCREEN_W-pos.x-50, dsz.h, OBSTACLE_HEIGHT, col);
                     break;
                 case ObstacleKind::LaneBlock: {
                     auto* blocked = reg.try_get<BlockedLanes>(entity);
                     if (blocked)
                         for (int i = 0; i < 3; ++i)
                             if ((blocked->mask >> i) & 1)
-                                draw_slab(constants::LANE_X[i]-dsz.w/2, pos.y, dsz.w, dsz.h, OBSTACLE_HEIGHT, c);
+                                draw_slab(constants::LANE_X[i]-dsz.w/2, pos.y, dsz.w, dsz.h, OBSTACLE_HEIGHT, col);
                     break;
                 }
-                case ObstacleKind::LanePushLeft:
-                case ObstacleKind::LanePushRight:
-                    draw_slab(pos.x-dsz.w/2, pos.y, dsz.w, dsz.h, OBSTACLE_HEIGHT, c);
-                    break;
-                case ObstacleKind::LowBar:
-                    draw_slab(0, pos.y, static_cast<float>(constants::SCREEN_W), dsz.h, LOWBAR_HEIGHT, c);
-                    break;
-                case ObstacleKind::HighBar:
-                    draw_slab(0, pos.y, static_cast<float>(constants::SCREEN_W), dsz.h, HIGHBAR_HEIGHT, c);
-                    break;
                 case ObstacleKind::ComboGate: {
                     auto* blocked = reg.try_get<BlockedLanes>(entity);
                     if (blocked)
                         for (int i = 0; i < 3; ++i)
                             if ((blocked->mask >> i) & 1)
-                                draw_slab(constants::LANE_X[i]-120, pos.y, 240.0f, dsz.h, OBSTACLE_HEIGHT, c);
+                                draw_slab(constants::LANE_X[i]-120, pos.y, 240.0f, dsz.h, OBSTACLE_HEIGHT, col);
                     break;
                 }
                 case ObstacleKind::SplitPath: {
                     auto* rlane = reg.try_get<RequiredLane>(entity);
                     for (int i = 0; i < 3; ++i)
                         if (!rlane || i != rlane->lane)
-                            draw_slab(constants::LANE_X[i]-120, pos.y, 240.0f, dsz.h, OBSTACLE_HEIGHT, c);
+                            draw_slab(constants::LANE_X[i]-120, pos.y, 240.0f, dsz.h, OBSTACLE_HEIGHT, col);
+                    break;
+                }
+                default: {
+                    // Single-slab obstacles: use ModelTransform from camera_system
+                    auto* mt = reg.try_get<ModelTransform>(entity);
+                    if (mt && mt->mesh_type == MeshType::Slab) {
+                        sm->material.maps[MATERIAL_MAP_DIFFUSE].color = mt->tint;
+                        DrawMesh(sm->slab, sm->material, mt->mat);
+                    }
                     break;
                 }
             }
         }
     }
 
-    // Particles
+    // Particles: use ModelTransform from camera_system
     {
-        auto view = reg.view<ParticleTag, Position, ParticleData, Color, Lifetime>();
-        for (auto [entity, pos, pdata, col, life] : view.each()) {
-            float ratio = (life.max_time > 0.0f) ? (life.remaining / life.max_time) : 1.0f;
-            float sz = pdata.size * ratio;
-            float half = sz / 2.0f;
-            Matrix mat = {
-                to_world(sz), 0, 0, 0,
-                0, 1, 0, 0,
-                0, 0, to_world(sz), 0,
-                to_world(pos.x - half), 0, to_world(pos.y - half), 1,
-            };
-            sm->material.maps[MATERIAL_MAP_DIFFUSE].color = col;
-            DrawMesh(sm->quad, sm->material, mat);
+        auto view = reg.view<ParticleTag, ModelTransform>();
+        for (auto [entity, mt] : view.each()) {
+            sm->material.maps[MATERIAL_MAP_DIFFUSE].color = mt.tint;
+            DrawMesh(sm->quad, sm->material, mt.mat);
         }
     }
 }
@@ -817,31 +803,27 @@ static void draw_gameplay_shapes(entt::registry& reg) {
     auto* sm = reg.ctx().find<camera::ShapeMeshes>();
     if (!sm) return;
 
-    auto draw = [&](Shape shape, float cx, float y_3d, float cz,
-                    float sz, Color tint) {
+    auto draw_shape = [&](Shape shape, float cx, float y_3d, float cz,
+                          float sz, Color tint) {
         int idx = static_cast<int>(shape);
         const auto& desc = SHAPE_TABLE[idx];
         float s = to_world(sz * desc.radius_scale);
-        // Model-to-world matrix: scale on diagonal, translation in bottom row.
-        // No rotation needed, so we construct it directly (no MatrixMultiply).
         Matrix mat = {
-            s,    0.0f, 0.0f, 0.0f,
-            0.0f, s,    0.0f, 0.0f,
-            0.0f, 0.0f, s,    0.0f,
+            s, 0, 0, 0,  0, s, 0, 0,  0, 0, s, 0,
             to_world(cx), to_world(y_3d), to_world(cz), 1.0f,
         };
         sm->material.maps[MATERIAL_MAP_DIFFUSE].color = tint;
         DrawMesh(sm->shapes[idx], sm->material, mat);
     };
 
-    // Ghost shapes
+    // Ghost shapes (multiple visuals per entity — can't use ModelTransform)
     {
         auto view = reg.view<ObstacleTag, Position, Obstacle, Color, DrawSize>();
         for (auto [entity, pos, obs, col, dsz] : view.each()) {
             switch (obs.kind) {
                 case ObstacleKind::ShapeGate: {
                     auto* req = reg.try_get<RequiredShape>(entity);
-                    if (req) draw(req->shape, pos.x, 0.0f, pos.y+dsz.h/2, 40, {col.r,col.g,col.b,120});
+                    if (req) draw_shape(req->shape, pos.x, 0.0f, pos.y+dsz.h/2, 40, {col.r,col.g,col.b,120});
                     break;
                 }
                 case ObstacleKind::ComboGate: {
@@ -852,7 +834,7 @@ static void draw_gameplay_shapes(entt::registry& reg) {
                         if (blocked)
                             for (int i = 0; i < 3; ++i)
                                 if (!((blocked->mask >> i) & 1)) { open = i; break; }
-                        draw(req->shape, constants::LANE_X[open], 0.0f, pos.y+dsz.h/2, 30, {255,255,255,180});
+                        draw_shape(req->shape, constants::LANE_X[open], 0.0f, pos.y+dsz.h/2, 30, {255,255,255,180});
                     }
                     break;
                 }
@@ -860,7 +842,7 @@ static void draw_gameplay_shapes(entt::registry& reg) {
                     auto* req = reg.try_get<RequiredShape>(entity);
                     auto* rlane = reg.try_get<RequiredLane>(entity);
                     if (req && rlane)
-                        draw(req->shape, constants::LANE_X[rlane->lane], 0.0f, pos.y+dsz.h/2, 30, {255,255,255,180});
+                        draw_shape(req->shape, constants::LANE_X[rlane->lane], 0.0f, pos.y+dsz.h/2, 30, {255,255,255,180});
                     break;
                 }
                 default: break;
@@ -868,14 +850,12 @@ static void draw_gameplay_shapes(entt::registry& reg) {
         }
     }
 
-    // Player shape
+    // Player: use ModelTransform from camera_system
     {
-        auto view = reg.view<PlayerTag, Position, PlayerShape, VerticalState, Color>();
-        for (auto [entity, pos, pshape, vstate, col] : view.each()) {
-            float y_3d = -vstate.y_offset;
-            float sz = constants::PLAYER_SIZE;
-            if (vstate.mode == VMode::Sliding) sz *= 0.5f;
-            draw(pshape.current, pos.x, y_3d, pos.y, sz, col);
+        auto view = reg.view<PlayerTag, ModelTransform>();
+        for (auto [entity, mt] : view.each()) {
+            sm->material.maps[MATERIAL_MAP_DIFFUSE].color = mt.tint;
+            DrawMesh(sm->shapes[mt.mesh_index], sm->material, mt.mat);
         }
     }
 }

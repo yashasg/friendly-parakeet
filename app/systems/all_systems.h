@@ -41,7 +41,10 @@ void lifetime_system(entt::registry& reg, float dt);
 void particle_system(entt::registry& reg, float dt);
 void cleanup_system(entt::registry& reg, float dt);
 
-// Phase 7: Render (interpolation alpha only — no renderer handle)
+// Phase 7: Camera (updates screen transform before rendering)
+void camera_system(entt::registry& reg, float dt);
+
+// Phase 8: Render (interpolation alpha only — no renderer handle)
 void render_system(entt::registry& reg, float alpha);
 
 // Audio (no dt needed)

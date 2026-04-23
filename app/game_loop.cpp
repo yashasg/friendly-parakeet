@@ -6,7 +6,6 @@
 #include "components/rendering.h"
 #include "systems/all_systems.h"
 #include "systems/session_logger.h"
-#include "systems/camera_system.h"
 #include "platform_display.h"
 
 #include <algorithm>
@@ -41,7 +40,7 @@ void game_loop_frame(entt::registry& reg, float& accumulator,
     accumulator += raw_dt;
     if (accumulator > MAX_ACCUM) accumulator = MAX_ACCUM;
 
-    camera::update_screen_transform(reg);
+    camera_system(reg, raw_dt);
     input_system(reg, raw_dt);
     hit_test_system(reg);
     test_player_system(reg, raw_dt);
