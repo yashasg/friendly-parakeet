@@ -668,19 +668,6 @@ void render_system(entt::registry& reg, float /*alpha*/) {
         camera::flush_gameplay_tris(reg);            // Pass 4: ghost shapes + player
     }
 
-    // ── Draw player (inside 3D) ────────────────────────────────
-    {
-        auto view = reg.view<PlayerTag, Position, PlayerShape, VerticalState, Color>();
-        for (auto [entity, pos, pshape, vstate, col] : view.each()) {
-            float y_3d = -vstate.y_offset;  // jump lifts off ground plane
-            float sz = constants::PLAYER_SIZE;
-            if (vstate.mode == VMode::Sliding) {
-                sz *= 0.5f;
-            }
-            camera::draw_shape(pshape.current, pos.x, y_3d, pos.y, sz, col);
-        }
-    }
-
     EndMode3D();
 
     // ── Draw timing grade popups (screen-space, after EndMode3D) ──

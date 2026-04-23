@@ -272,7 +272,7 @@ int main(int argc, char* argv[]) {
     // convergence — no manual trapezoid warping needed.
     {
         Camera3D cam3d = {};
-        cam3d.position   = {360.0f, 300.0f, 1148.0f};  // above + behind player
+        cam3d.position   = {360.0f, 150.0f, 1148.0f};  // behind player, low angle for 3D visibility
         cam3d.target     = {360.0f, 0.0f, 400.0f};     // looking down corridor
         cam3d.up         = {0.0f, 1.0f, 0.0f};         // Y-up
         cam3d.fovy       = 45.0f;
