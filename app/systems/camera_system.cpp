@@ -70,32 +70,38 @@ static Mesh build_prism_mesh(const ShapeDesc& desc) {
     constexpr uint8_t TOP = 255, FRONT = 166, SIDE = 128, BOT = 90;
     const auto* ring = desc.ring;
 
-    // Top cap
+    // Winding note: camera looks from +Z toward -Z, which negates the Z axis
+    // in screen projection.  All triangles are wound to be CCW in screen space
+    // (front-facing) given this camera orientation.
+
+    // Top cap (visible from above)
     for (int i = 0; i < n; ++i) {
         int nx = (i + 1) % n;
-        put(0, height, 0,               0,1,0, TOP);
-        put(ring[i].x, height, ring[i].y, 0,1,0, TOP);
+        put(0, height, 0,                0,1,0, TOP);
         put(ring[nx].x, height, ring[nx].y, 0,1,0, TOP);
+        put(ring[i].x,  height, ring[i].y,  0,1,0, TOP);
     }
-    // Bottom cap
+    // Bottom cap (faces down — culled by backface culling, which is correct)
     for (int i = 0; i < n; ++i) {
         int nx = (i + 1) % n;
         put(0, 0, 0,                     0,-1,0, BOT);
-        put(ring[nx].x, 0, ring[nx].y,  0,-1,0, BOT);
         put(ring[i].x, 0, ring[i].y,    0,-1,0, BOT);
+        put(ring[nx].x, 0, ring[nx].y,  0,-1,0, BOT);
     }
-    // Side walls
+    // Side walls (2 tris per edge, wound for outward-facing normals)
     for (int i = 0; i < n; ++i) {
         int nx = (i + 1) % n;
         float fnx = (ring[i].x + ring[nx].x) * 0.5f;
         float fnz = (ring[i].y + ring[nx].y) * 0.5f;
         uint8_t gray = (fnz < 0) ? FRONT : SIDE;
+        // Tri 1
         put(ring[i].x,  0,      ring[i].y,  fnx,0,fnz, gray);
+        put(ring[nx].x, height, ring[nx].y, fnx,0,fnz, gray);
         put(ring[i].x,  height, ring[i].y,  fnx,0,fnz, gray);
-        put(ring[nx].x, height, ring[nx].y, fnx,0,fnz, gray);
+        // Tri 2
         put(ring[i].x,  0,      ring[i].y,  fnx,0,fnz, gray);
-        put(ring[nx].x, height, ring[nx].y, fnx,0,fnz, gray);
         put(ring[nx].x, 0,      ring[nx].y, fnx,0,fnz, gray);
+        put(ring[nx].x, height, ring[nx].y, fnx,0,fnz, gray);
     }
 
     UploadMesh(&mesh, false);
