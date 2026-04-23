@@ -2,7 +2,7 @@
 #include "../components/game_state.h"
 #include "../components/rhythm.h"
 #include "../components/music.h"
-#include "../session_logger.h"
+#include "session_logger.h"
 #include <raylib.h>
 
 void song_playback_system(entt::registry& reg, float dt) {

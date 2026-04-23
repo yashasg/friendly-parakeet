@@ -6,6 +6,7 @@
 #include "components/obstacle.h"
 #include "components/obstacle_data.h"
 #include "components/input.h"
+#include "components/input_events.h"
 #include "components/game_state.h"
 #include "components/scoring.h"
 #include "components/burnout.h"
@@ -22,7 +23,7 @@
 inline entt::registry make_registry() {
     entt::registry reg;
     reg.ctx().emplace<InputState>();
-    reg.ctx().emplace<ActionQueue>();
+    reg.ctx().emplace<EventQueue>();
     reg.ctx().emplace<GameState>(GameState{
         GamePhase::Playing, GamePhase::Playing, 0.0f, false, GamePhase::Playing, 0.0f
     });
@@ -62,7 +63,7 @@ inline entt::entity make_player(entt::registry& reg) {
     reg.emplace<ShapeWindow>(player);
     reg.emplace<Lane>(player);
     reg.emplace<VerticalState>(player);
-    reg.emplace<DrawColor>(player, uint8_t{80}, uint8_t{180}, uint8_t{255}, uint8_t{255});
+    reg.emplace<Color>(player, Color{80, 180, 255, 255});
     reg.emplace<DrawSize>(player, constants::PLAYER_SIZE, constants::PLAYER_SIZE);
     reg.emplace<DrawLayer>(player, Layer::Game);
     return player;
@@ -91,7 +92,7 @@ inline entt::entity make_shape_gate(entt::registry& reg, Shape shape, float y) {
     reg.emplace<RequiredShape>(obs, shape);
     reg.emplace<DrawSize>(obs, float(constants::SCREEN_W), 80.0f);
     reg.emplace<DrawLayer>(obs, Layer::Game);
-    reg.emplace<DrawColor>(obs, uint8_t{255}, uint8_t{255}, uint8_t{255}, uint8_t{255});
+    reg.emplace<Color>(obs, Color{255, 255, 255, 255});
     return obs;
 }
 
@@ -106,7 +107,7 @@ inline entt::entity make_lane_block(entt::registry& reg, uint8_t mask, float y) 
     reg.emplace<BlockedLanes>(obs, mask);
     reg.emplace<DrawSize>(obs, float(constants::SCREEN_W / 3), 80.0f);
     reg.emplace<DrawLayer>(obs, Layer::Game);
-    reg.emplace<DrawColor>(obs, uint8_t{255}, uint8_t{60}, uint8_t{60}, uint8_t{255});
+    reg.emplace<Color>(obs, Color{255, 60, 60, 255});
     return obs;
 }
 
@@ -123,7 +124,7 @@ inline entt::entity make_vertical_bar(entt::registry& reg, ObstacleKind kind, fl
     reg.emplace<RequiredVAction>(obs, action);
     reg.emplace<DrawSize>(obs, float(constants::SCREEN_W), 40.0f);
     reg.emplace<DrawLayer>(obs, Layer::Game);
-    reg.emplace<DrawColor>(obs, uint8_t{255}, uint8_t{180}, uint8_t{0}, uint8_t{255});
+    reg.emplace<Color>(obs, Color{255, 180, 0, 255});
     return obs;
 }
 
@@ -139,7 +140,7 @@ inline entt::entity make_combo_gate(entt::registry& reg, Shape shape, uint8_t bl
     reg.emplace<BlockedLanes>(obs, blocked_mask);
     reg.emplace<DrawSize>(obs, float(constants::SCREEN_W), 80.0f);
     reg.emplace<DrawLayer>(obs, Layer::Game);
-    reg.emplace<DrawColor>(obs, uint8_t{200}, uint8_t{100}, uint8_t{255}, uint8_t{255});
+    reg.emplace<Color>(obs, Color{200, 100, 255, 255});
     return obs;
 }
 
@@ -155,6 +156,29 @@ inline entt::entity make_split_path(entt::registry& reg, Shape shape, int8_t lan
     reg.emplace<RequiredLane>(obs, lane);
     reg.emplace<DrawSize>(obs, float(constants::SCREEN_W), 80.0f);
     reg.emplace<DrawLayer>(obs, Layer::Game);
-    reg.emplace<DrawColor>(obs, uint8_t{255}, uint8_t{215}, uint8_t{0}, uint8_t{255});
+    reg.emplace<Color>(obs, Color{255, 215, 0, 255});
     return obs;
+}
+
+// ── UI Button helpers for tests ──────────────────────────────────────────────
+
+inline entt::entity make_shape_button(entt::registry& reg, Shape shape) {
+    auto btn = reg.create();
+    reg.emplace<ShapeButtonTag>(btn);
+    reg.emplace<ShapeButtonData>(btn, shape);
+    reg.emplace<Position>(btn, 0.0f, 0.0f);
+    reg.emplace<HitCircle>(btn, 50.0f);
+    reg.emplace<ActiveInPhase>(btn, phase_bit(GamePhase::Playing));
+    return btn;
+}
+
+inline entt::entity make_menu_button(entt::registry& reg, MenuActionKind kind,
+                                      GamePhase phase, uint8_t index = 0) {
+    auto btn = reg.create();
+    reg.emplace<MenuButtonTag>(btn);
+    reg.emplace<MenuAction>(btn, kind, index);
+    reg.emplace<Position>(btn, 0.0f, 0.0f);
+    reg.emplace<HitBox>(btn, 100.0f, 100.0f);
+    reg.emplace<ActiveInPhase>(btn, phase_bit(phase));
+    return btn;
 }

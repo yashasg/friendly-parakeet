@@ -36,7 +36,7 @@ TEST_CASE("collision: Hexagon fails even when matching gate shape", "[collision]
     reg.emplace<RequiredShape>(obs, Shape::Hexagon);
     reg.emplace<DrawSize>(obs, float(constants::SCREEN_W), 80.0f);
     reg.emplace<DrawLayer>(obs, Layer::Game);
-    reg.emplace<DrawColor>(obs, uint8_t{255}, uint8_t{255}, uint8_t{255}, uint8_t{255});
+    reg.emplace<Color>(obs, Color{255, 255, 255, 255});
 
     collision_system(reg, 0.016f);
 

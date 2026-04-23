@@ -20,12 +20,26 @@ enum class WindowPhase : uint8_t {
 };
 
 // ── Timing Grade (emplaced on obstacle at collision) ─
+#define TIMING_TIER_LIST(X) \
+    X(Bad)                  \
+    X(Ok)                   \
+    X(Good)                 \
+    X(Perfect)
+
 enum class TimingTier : uint8_t {
-    Bad     = 0,
-    Ok      = 1,
-    Good    = 2,
-    Perfect = 3
+    #define TIMING_TIER_ENUM(name) name,
+    TIMING_TIER_LIST(TIMING_TIER_ENUM)
+    #undef TIMING_TIER_ENUM
 };
+
+inline const char* ToString(TimingTier t) {
+    switch (t) {
+        #define TIMING_TIER_STR(name) case TimingTier::name: return #name;
+        TIMING_TIER_LIST(TIMING_TIER_STR)
+        #undef TIMING_TIER_STR
+    }
+    return "???";
+}
 
 struct TimingGrade {
     TimingTier tier      = TimingTier::Bad;

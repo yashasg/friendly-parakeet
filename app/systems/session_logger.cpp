@@ -1,37 +1,38 @@
 #include "session_logger.h"
-#include "components/obstacle.h"
-#include "components/obstacle_data.h"
-#include "components/rhythm.h"
-#include "components/ring_zone.h"
-#include "components/transform.h"
-#include "components/scoring.h"
-#include "components/game_state.h"
-#include "enum_names.h"
-#include "platform_utils.h"
-#include "constants.h"
+#include "../components/obstacle.h"
+#include "../components/obstacle_data.h"
+#include "../components/rhythm.h"
+#include "../components/ring_zone.h"
+#include "../components/transform.h"
+#include "../components/scoring.h"
+#include "../components/game_state.h"
+#include "../constants.h"
 
 #include <cstdarg>
 #include <cmath>
+#include <ctime>
 
 // ── Core log function ────────────────────────────────────────
 
 void session_log_open(SessionLog& log, const char* path) {
     if (log.file) std::fclose(log.file);
-    log.file = safe_fopen(path, "w");
+    log.file = std::fopen(path, "w");
     if (log.file) {
         std::time_t now = std::time(nullptr);
-        std::tm tm = safe_localtime(&now);
+        std::tm tm{};
+        localtime_r(&now, &tm);
         char ts[32];
         std::strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M", &tm);
         std::fprintf(log.file, "══════ Test Session started %s ══════\n\n", ts);
         std::fflush(log.file);
     }
     log.frame = 0;
+    log.buffer.reserve(4096);  // avoid early reallocs
 }
 
 void session_log_close(SessionLog& log) {
+    session_log_flush(log);  // flush any remaining buffered lines
     if (log.file) {
-        std::fflush(log.file);
         std::fclose(log.file);
         log.file = nullptr;
     }
@@ -41,15 +42,27 @@ void session_log_write(SessionLog& log, float song_time,
                        const char* tag, const char* fmt, ...) {
     if (!log.file) return;
 
-    std::fprintf(log.file, "[F:%04u T:%06.3f] [%-6s] ", log.frame, song_time, tag);
+    // Format header
+    char header[64];
+    std::snprintf(header, sizeof(header), "[F:%04u T:%06.3f] [%-6s] ",
+                  log.frame, song_time, tag);
+    log.buffer.append(header);
 
+    // Format message
     va_list args;
     va_start(args, fmt);
-    std::vfprintf(log.file, fmt, args);
+    char msg[256];
+    std::vsnprintf(msg, sizeof(msg), fmt, args);
     va_end(args);
+    log.buffer.append(msg);
+    log.buffer.push_back('\n');
+}
 
-    std::fprintf(log.file, "\n");
+void session_log_flush(SessionLog& log) {
+    if (!log.file || log.buffer.empty()) return;
+    std::fwrite(log.buffer.data(), 1, log.buffer.size(), log.file);
     std::fflush(log.file);
+    log.buffer.clear();  // capacity preserved — no realloc next frame
 }
 
 // ── EnTT signal: obstacle spawned ────────────────────────────
@@ -78,8 +91,8 @@ void session_log_on_obstacle_spawn(entt::registry& reg, entt::entity entity) {
 
     session_log_write(*log, t, "GAME",
         "OBSTACLE_SPAWN beat=%d arrival=%.3f kind=%s shape=%s lane=%d",
-        beat_idx, arrival, obstacle_kind_name(obs->kind),
-        req ? shape_name(req->shape) : "-", lane);
+        beat_idx, arrival, ToString(obs->kind),
+        req ? ToString(req->shape) : "-", lane);
 
     // Emplace RingZoneTracker only on obstacles that have a ring visual
     if (req) {
@@ -88,7 +101,7 @@ void session_log_on_obstacle_spawn(entt::registry& reg, entt::entity entity) {
         float dist = pos ? (constants::PLAYER_Y - pos->y) : constants::APPROACH_DIST;
         session_log_write(*log, t, "GAME",
             "RING_APPEAR shape=%s obstacle=%u dist=%.0fpx",
-            shape_name(req->shape),
+            ToString(req->shape),
             static_cast<unsigned>(entt::to_integral(entity)), dist);
     }
 }
@@ -119,17 +132,17 @@ void session_log_on_scored(entt::registry& reg, entt::entity entity) {
         session_log_write(*log, t, "GAME",
             "COLLISION obstacle=%u beat=%d expected=%.3f drift=%+.3fs kind=%s result=MISS",
             static_cast<unsigned>(entt::to_integral(entity)),
-            beat_num, expected_t, drift, obstacle_kind_name(obs->kind));
+            beat_num, expected_t, drift, ToString(obs->kind));
     } else if (grade) {
         session_log_write(*log, t, "GAME",
             "COLLISION obstacle=%u beat=%d expected=%.3f drift=%+.3fs kind=%s result=CLEAR timing=%s(%.2f)",
             static_cast<unsigned>(entt::to_integral(entity)),
-            beat_num, expected_t, drift, obstacle_kind_name(obs->kind),
-            timing_tier_name(grade->tier), grade->precision);
+            beat_num, expected_t, drift, ToString(obs->kind),
+            ToString(grade->tier), grade->precision);
     } else {
         session_log_write(*log, t, "GAME",
             "COLLISION obstacle=%u beat=%d expected=%.3f drift=%+.3fs kind=%s result=CLEAR",
             static_cast<unsigned>(entt::to_integral(entity)),
-            beat_num, expected_t, drift, obstacle_kind_name(obs->kind));
+            beat_num, expected_t, drift, ToString(obs->kind));
     }
 }

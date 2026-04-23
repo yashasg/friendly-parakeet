@@ -113,19 +113,41 @@ struct InputState {
     bool was_focused = true;
 };
 
-// ── Action queue: classified player intentions ──
+// ── Event types: semantic player intentions ──
 enum class Direction : uint8_t { Left, Right, Up, Down };
-enum class Button    : uint8_t { Circle, Square, Triangle };
+enum class InputType : uint8_t { Tap, Swipe };
 
-struct Action {
-    enum class Type : uint8_t { Go, Tap } type;
-    Direction dir;
-    Button    btn;
+struct InputEvent {
+    InputType type   = InputType::Tap;
+    Direction dir    = Direction::Up;   // only meaningful for Swipe
+    float     x      = 0.0f;           // virtual-space coordinates
+    float     y      = 0.0f;
 };
 
-struct ActionQueue {
-    Action  actions[8];
-    uint8_t count = 0;
+struct ButtonPressEvent {
+    entt::entity entity = entt::null;
+};
+
+struct GoEvent {
+    Direction dir = Direction::Up;
+};
+
+struct EventQueue {
+    static constexpr int MAX = 8;
+
+    InputEvent       inputs[MAX]  = {};
+    int              input_count  = 0;
+
+    ButtonPressEvent presses[MAX] = {};
+    int              press_count  = 0;
+
+    GoEvent          goes[MAX]    = {};
+    int              go_count     = 0;
+
+    void push_input(InputType t, float px, float py, Direction d = Direction::Up);
+    void push_press(entt::entity e);
+    void push_go(Direction d);
+    void clear();
 };
 ```
 
@@ -133,12 +155,16 @@ struct ActionQueue {
 
 ```cpp
 // Reads raylib input (touch + keyboard), populates InputState singleton
-// and classifies actions into ActionQueue.
+// and pushes raw InputEvents into EventQueue.
 // Called once per frame in the input phase.
-void input_system(entt::registry& reg, float dt);
+void input_system(entt::registry& reg, float raw_dt);
 
-// Automated test player: writes ActionQueue from scripted patterns.
-// Replaces human input when running in test-player mode.
+// Resolves raw InputEvents: taps → ButtonPressEvent (via HitBox/HitCircle),
+// swipes → GoEvent. Runs immediately after input_system.
+void hit_test_system(entt::registry& reg);
+
+// Automated test player: writes EventQueue (push_press, push_go) from
+// scripted patterns. Replaces human input when running in test-player mode.
 void test_player_system(entt::registry& reg, float dt);
 ```
 
@@ -149,12 +175,17 @@ void test_player_system(entt::registry& reg, float dt);
          │
          ▼
   ┌──────────────────────┐
-  │ input_system          │  → populates InputState + ActionQueue
+  │ input_system          │  → populates InputState + EventQueue (raw InputEvents)
   └──────────┬───────────┘
              │
              ▼
   ┌──────────────────────┐
-  │  gameplay systems     │  → consume ActionQueue actions
+  │ hit_test_system       │  → resolves taps → ButtonPressEvent, swipes → GoEvent
+  └──────────┬───────────┘
+             │
+             ▼
+  ┌──────────────────────┐
+  │  gameplay systems     │  → consume ButtonPressEvent + GoEvent from EventQueue
   │  (player_input_sys)  │
   └──────────────────────┘
 ```
@@ -359,7 +390,7 @@ void scoring_system(entt::registry& reg, float dt);
 ### Dependencies
 
 - **Obstacle Spawning & Difficulty (Spec 3)** — obstacles must exist before burnout_system can compute proximity.
-- **Input System (Spec 1)** — `scoring_system` reads ActionQueue to detect player action.
+- **Input System (Spec 1)** — `scoring_system` reads `ScoredTag` entities (set by `collision_system`), not the input pipeline directly.
 
 ### Edge Cases
 
@@ -702,7 +733,7 @@ void obstacle_cleanup_system(entt::registry& reg, float dt);
   │    5. scoring_system               (action → bank + chain)  │
   │                                                             │
   │  PHASE 4 — PLAYER & PHYSICS                                │
-  │    6. player_input_system          (ActionQueue → player)   │
+  │    6. player_input_system          (EventQueue → player)    │
   │    7. (movement systems — not in these specs)              │
   │    8. obstacle_cleanup_system      (destroy passed obs)    │
   │                                                             │
@@ -716,8 +747,8 @@ void obstacle_cleanup_system(entt::registry& reg, float dt);
 ```
   input.h                burnout/scoring.h       obstacle_spawning.h
   ──────────────         ─────────────────       ───────────────────
-  InputState       ────→  scoring_system
-  ActionQueue      ────→  scoring_system
+  InputState       ────→  player_input_system
+  EventQueue       ────→  player_input_system
                           BurnoutState     ←────  burnout_system
                           ScoreState       ←────  scoring_system
                           GameOver         ────→  obstacle_spawn_system
@@ -730,7 +761,7 @@ void obstacle_cleanup_system(entt::registry& reg, float dt);
   │  COMPONENT              │ SCOPE    │ DEFINED IN              │
   ├─────────────────────────┼──────────┼─────────────────────────┤
   │  InputState             │ singleton│ Spec 1 — Input          │
-  │  ActionQueue            │ singleton│ Spec 1 — Input          │
+  │  EventQueue            │ singleton│ Spec 1 — Input          │
   │  BurnoutState           │ singleton│ Spec 2 — Burnout        │
   │  ScoreState             │ singleton│ Spec 2 — Burnout        │
   │  ScorePopup             │ per-ent  │ Spec 2 — Burnout        │

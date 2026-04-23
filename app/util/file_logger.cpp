@@ -1,5 +1,4 @@
 #include "file_logger.h"
-#include "platform_utils.h"
 #include <raylib.h>
 #include <cstdio>
 #include <cstdarg>
@@ -24,7 +23,8 @@ static void file_log_callback(int level, const char* text, va_list args) {
 
     // Timestamp
     std::time_t now = std::time(nullptr);
-    std::tm tm = safe_localtime(&now);
+    std::tm tm{};
+    localtime_r(&now, &tm);
     char ts[32];
     std::strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S", &tm);
 
@@ -48,11 +48,12 @@ static void file_log_callback(int level, const char* text, va_list args) {
 }
 
 void file_logger_init(const char* log_path) {
-    s_log_file = safe_fopen(log_path, "a");
+    s_log_file = std::fopen(log_path, "a");
     if (s_log_file) {
         // Session separator
         std::time_t now = std::time(nullptr);
-        std::tm tm = safe_localtime(&now);
+        std::tm tm{};
+        localtime_r(&now, &tm);
         char ts[32];
         std::strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S", &tm);
         std::fprintf(s_log_file, "\n══════ Session started %s ══════\n", ts);

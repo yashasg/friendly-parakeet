@@ -51,7 +51,7 @@ TEST_CASE("spawn: ShapeGate has RequiredShape component", "[spawn]") {
     CHECK(count == 1);
 }
 
-TEST_CASE("spawn: ShapeGate has DrawColor component", "[spawn]") {
+TEST_CASE("spawn: ShapeGate has Color component", "[spawn]") {
     std::srand(42);
     auto reg = make_registry();
     auto& config = reg.ctx().get<DifficultyConfig>();
@@ -60,7 +60,7 @@ TEST_CASE("spawn: ShapeGate has DrawColor component", "[spawn]") {
 
     obstacle_spawn_system(reg, 0.016f);
 
-    auto view = reg.view<ObstacleTag, DrawColor>();
+    auto view = reg.view<ObstacleTag, Color>();
     int count = 0;
     for (auto e : view) { ++count; (void)e; }
     CHECK(count == 1);

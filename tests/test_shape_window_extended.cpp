@@ -164,7 +164,7 @@ TEST_CASE("shape_window: color updates on Active transition", "[shape_window][rh
     song.song_time += song.morph_duration + 0.01f;
     shape_window_system(reg, 0.016f);
 
-    auto& col = reg.get<DrawColor>(player);
+    auto& col = reg.get<Color>(player);
     // Square is { 255, 100, 100, 255 }
     CHECK(col.r == 255);
     CHECK(col.g == 100);

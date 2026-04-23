@@ -67,7 +67,7 @@ TEST_CASE("energy: negative energy also triggers game over", "[energy]") {
 TEST_CASE("energy: no action when SongState not present", "[energy]") {
     entt::registry bare_reg;
     bare_reg.ctx().emplace<InputState>();
-    bare_reg.ctx().emplace<ActionQueue>();
+    bare_reg.ctx().emplace<EventQueue>();
     bare_reg.ctx().emplace<GameState>(GameState{
         GamePhase::Playing, GamePhase::Playing, 0.0f, false, GamePhase::Playing, 0.0f
     });
@@ -94,7 +94,7 @@ TEST_CASE("energy: no action when song not playing", "[energy]") {
 TEST_CASE("energy: no action when EnergyState not present", "[energy]") {
     entt::registry bare_reg;
     bare_reg.ctx().emplace<InputState>();
-    bare_reg.ctx().emplace<ActionQueue>();
+    bare_reg.ctx().emplace<EventQueue>();
     bare_reg.ctx().emplace<GameState>(GameState{
         GamePhase::Playing, GamePhase::Playing, 0.0f, false, GamePhase::Playing, 0.0f
     });

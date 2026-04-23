@@ -5,6 +5,9 @@
 // Phase 0: Raw input (polls raylib input)
 void input_system(entt::registry& reg, float raw_dt);
 
+// Phase 0.25: Hit-test (resolves taps → button presses, swipes → go events)
+void hit_test_system(entt::registry& reg);
+
 // Phase 0.5: Test player AI (injects into InputState key flags)
 void test_player_system(entt::registry& reg, float dt);
 

@@ -1,7 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
-#include "beat_map_loader.h"
+#include "systems/beat_map_loader.h"
 
 // ── validate_beat_map: BPM rules ─────────────────────────────
 

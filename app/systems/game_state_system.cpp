@@ -1,7 +1,9 @@
 #include "all_systems.h"
 #include "play_session.h"
+#include "ui_button_spawner.h"
 #include "../components/game_state.h"
 #include "../components/input.h"
+#include "../components/input_events.h"
 #include "../components/scoring.h"
 #include "../components/audio.h"
 #include "../components/rhythm.h"
@@ -34,7 +36,7 @@ static void enter_song_complete(entt::registry& reg) {
 
 void game_state_system(entt::registry& reg, float dt) {
     auto& gs    = reg.ctx().get<GameState>();
-    auto& aq    = reg.ctx().get<ActionQueue>();
+    auto& eq    = reg.ctx().get<EventQueue>();
 
     gs.phase_timer += dt;
 
@@ -42,19 +44,30 @@ void game_state_system(entt::registry& reg, float dt) {
         gs.transition_pending = false;
         switch (gs.next_phase) {
             case GamePhase::Playing:      setup_play_session(reg);  break;
-            case GamePhase::GameOver:     enter_game_over(reg);     break;
-            case GamePhase::SongComplete: enter_song_complete(reg); break;
+            case GamePhase::GameOver:
+                enter_game_over(reg);
+                spawn_end_screen_buttons(reg);
+                break;
+            case GamePhase::SongComplete:
+                enter_song_complete(reg);
+                spawn_end_screen_buttons(reg);
+                break;
             case GamePhase::Paused:
+                spawn_pause_button(reg);
                 gs.previous_phase = gs.phase;
                 gs.phase = GamePhase::Paused;
                 gs.phase_timer = 0.0f;
                 break;
             case GamePhase::Title:
+                destroy_ui_buttons(reg);
+                spawn_title_buttons(reg);
                 gs.previous_phase = gs.phase;
                 gs.phase = GamePhase::Title;
                 gs.phase_timer = 0.0f;
                 break;
             case GamePhase::LevelSelect:
+                destroy_ui_buttons(reg);
+                spawn_level_select_buttons(reg);
                 gs.previous_phase = gs.phase;
                 gs.phase = GamePhase::LevelSelect;
                 gs.phase_timer = 0.0f;
@@ -67,28 +80,18 @@ void game_state_system(entt::registry& reg, float dt) {
         return;
     }
 
-    // Title → LevelSelect on any tap
+    // Title → LevelSelect on button press
     if (gs.phase == GamePhase::Title) {
-        for (int i = 0; i < aq.count; ++i) {
-            auto& a = aq.actions[i];
-            if (a.verb != ActionVerb::Tap) continue;
-
-            if (a.button == Button::Position) {
-                float tx = a.x;
-                float ty = a.y;
-                constexpr float EXIT_W = 200.0f;
-                constexpr float EXIT_H = 50.0f;
-                constexpr float EXIT_Y = 1050.0f;
-                float exit_x = (constants::SCREEN_W - EXIT_W) / 2.0f;
-                if (tx >= exit_x && tx <= exit_x + EXIT_W && ty >= EXIT_Y && ty <= EXIT_Y + EXIT_H) {
-                    #ifndef PLATFORM_WEB
-                    reg.ctx().get<InputState>().quit_requested = true;
-                    #endif
-                } else {
-                    gs.transition_pending = true;
-                    gs.next_phase = GamePhase::LevelSelect;
-                }
-            } else if (a.button == Button::Confirm) {
+        for (int i = 0; i < eq.press_count; ++i) {
+            auto entity = eq.presses[i].entity;
+            if (!reg.valid(entity)) continue;
+            if (!reg.all_of<MenuButtonTag, MenuAction>(entity)) continue;
+            auto& ma = reg.get<MenuAction>(entity);
+            if (ma.kind == MenuActionKind::Exit) {
+                #ifndef PLATFORM_WEB
+                reg.ctx().get<InputState>().quit_requested = true;
+                #endif
+            } else if (ma.kind == MenuActionKind::Confirm) {
                 gs.transition_pending = true;
                 gs.next_phase = GamePhase::LevelSelect;
             }
@@ -109,31 +112,17 @@ void game_state_system(entt::registry& reg, float dt) {
     // End screen button detection (shared by GameOver and SongComplete)
     if ((gs.phase == GamePhase::GameOver || gs.phase == GamePhase::SongComplete)
         && gs.phase_timer > 0.4f) {
-        for (int i = 0; i < aq.count; ++i) {
-            auto& a = aq.actions[i];
-            if (a.verb != ActionVerb::Tap) continue;
-            if (a.button == Button::Position) {
-                float tx = a.x;
-                float ty = a.y;
-                constexpr float BTN_W = 280.0f;
-                constexpr float BTN_H = 50.0f;
-                constexpr float BTN_GAP = 15.0f;
-                constexpr float BTN_PAD = 10.0f;
-                float btn_x = (constants::SCREEN_W - BTN_W) / 2.0f;
-                float btn_y1 = 870.0f;
-                float btn_y2 = btn_y1 + BTN_H + BTN_GAP;
-                float btn_y3 = btn_y2 + BTN_H + BTN_GAP;
-                if (tx >= btn_x - BTN_PAD && tx <= btn_x + BTN_W + BTN_PAD) {
-                    if (ty >= btn_y1 - BTN_PAD && ty <= btn_y1 + BTN_H + BTN_PAD)
-                        gs.end_choice = EndScreenChoice::Restart;
-                    else if (ty >= btn_y2 - BTN_PAD && ty <= btn_y2 + BTN_H + BTN_PAD)
-                        gs.end_choice = EndScreenChoice::LevelSelect;
-                    else if (ty >= btn_y3 - BTN_PAD && ty <= btn_y3 + BTN_H + BTN_PAD)
-                        gs.end_choice = EndScreenChoice::MainMenu;
-                }
-            } else if (a.button == Button::Confirm) {
+        for (int i = 0; i < eq.press_count; ++i) {
+            auto entity = eq.presses[i].entity;
+            if (!reg.valid(entity)) continue;
+            if (!reg.all_of<MenuButtonTag, MenuAction>(entity)) continue;
+            auto& ma = reg.get<MenuAction>(entity);
+            if (ma.kind == MenuActionKind::Restart)
                 gs.end_choice = EndScreenChoice::Restart;
-            }
+            else if (ma.kind == MenuActionKind::GoLevelSelect)
+                gs.end_choice = EndScreenChoice::LevelSelect;
+            else if (ma.kind == MenuActionKind::GoMainMenu)
+                gs.end_choice = EndScreenChoice::MainMenu;
             break;
         }
     }
@@ -150,12 +139,10 @@ void game_state_system(entt::registry& reg, float dt) {
         gs.end_choice = EndScreenChoice::None;
     }
 
-    // Paused → resume on any Tap action
-    bool pause_resume = false;
-    for (int i = 0; i < aq.count; ++i) {
-        if (aq.actions[i].verb == ActionVerb::Tap) { pause_resume = true; break; }
-    }
+    // Paused → resume on any press or go event
+    bool pause_resume = eq.press_count > 0 || eq.go_count > 0;
     if (gs.phase == GamePhase::Paused && pause_resume) {
+        destroy_ui_buttons(reg);
         gs.previous_phase = gs.phase;
         gs.phase = GamePhase::Playing;
         gs.phase_timer = 0.0f;

@@ -7,6 +7,7 @@
 #include "components/obstacle.h"
 #include "components/obstacle_data.h"
 #include "components/input.h"
+#include "components/input_events.h"
 #include "components/game_state.h"
 #include "components/scoring.h"
 #include "components/burnout.h"
@@ -23,7 +24,7 @@
 static entt::registry make_bench_registry() {
     entt::registry reg;
     reg.ctx().emplace<InputState>();
-    reg.ctx().emplace<ActionQueue>();
+    reg.ctx().emplace<EventQueue>();
     reg.ctx().emplace<GameState>(GameState{
         GamePhase::Playing, GamePhase::Playing, 0.0f, false, GamePhase::Playing, 0.0f
     });
@@ -41,7 +42,7 @@ static entt::entity make_bench_player(entt::registry& reg) {
     reg.emplace<PlayerShape>(p);
     reg.emplace<Lane>(p);
     reg.emplace<VerticalState>(p);
-    reg.emplace<DrawColor>(p, uint8_t{80}, uint8_t{180}, uint8_t{255}, uint8_t{255});
+    reg.emplace<Color>(p, Color{80, 180, 255, 255});
     reg.emplace<DrawSize>(p, constants::PLAYER_SIZE, constants::PLAYER_SIZE);
     reg.emplace<DrawLayer>(p, Layer::Game);
     return p;
@@ -60,7 +61,7 @@ static void spawn_obstacles(entt::registry& reg, int count) {
         reg.emplace<RequiredShape>(obs, shape);
         reg.emplace<DrawSize>(obs, float(constants::SCREEN_W), 80.0f);
         reg.emplace<DrawLayer>(obs, Layer::Game);
-        reg.emplace<DrawColor>(obs, uint8_t{255}, uint8_t{255}, uint8_t{255}, uint8_t{255});
+        reg.emplace<Color>(obs, Color{255, 255, 255, 255});
     }
 }
 
@@ -72,7 +73,7 @@ static void spawn_particles(entt::registry& reg, int count) {
         reg.emplace<Velocity>(p, static_cast<float>(i % 50 - 25), -100.0f);
         reg.emplace<Lifetime>(p, 0.6f, 0.6f);
         reg.emplace<ParticleData>(p, 4.0f);
-        reg.emplace<DrawColor>(p, uint8_t{255}, uint8_t{100}, uint8_t{50}, uint8_t{255});
+        reg.emplace<Color>(p, Color{255, 100, 50, 255});
         reg.emplace<DrawLayer>(p, Layer::Effects);
     }
 }
@@ -172,7 +173,7 @@ TEST_CASE("Bench: scoring_system", "[bench]") {
             reg.emplace<Obstacle>(obs, ObstacleKind::ShapeGate, int16_t{200});
             reg.emplace<ScoredTag>(obs);
             reg.emplace<DrawLayer>(obs, Layer::Game);
-            reg.emplace<DrawColor>(obs, uint8_t{255}, uint8_t{255}, uint8_t{255}, uint8_t{255});
+            reg.emplace<Color>(obs, Color{255, 255, 255, 255});
         }
         meter.measure([&] { scoring_system(reg, DT); });
     };
@@ -182,9 +183,18 @@ TEST_CASE("Bench: player_input + movement", "[bench]") {
     BENCHMARK_ADVANCED("shape change + lane switch")(Catch::Benchmark::Chronometer meter) {
         auto reg = make_bench_registry();
         make_bench_player(reg);
-        auto& aq = reg.ctx().get<ActionQueue>();
-        aq.tap(Button::ShapeTri);
-        aq.go(Direction::Right);
+
+        // Create a shape button entity and push events
+        auto btn = reg.create();
+        reg.emplace<ShapeButtonTag>(btn);
+        reg.emplace<ShapeButtonData>(btn, Shape::Triangle);
+        reg.emplace<Position>(btn, 0.0f, 0.0f);
+        reg.emplace<HitCircle>(btn, 50.0f);
+        reg.emplace<ActiveInPhase>(btn, phase_bit(GamePhase::Playing));
+
+        auto& eq = reg.ctx().get<EventQueue>();
+        eq.push_press(btn);
+        eq.push_go(Direction::Right);
         meter.measure([&] {
             player_input_system(reg, DT);
             player_movement_system(reg, DT);

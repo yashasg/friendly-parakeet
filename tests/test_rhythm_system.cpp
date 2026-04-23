@@ -1,7 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
-#include "beat_map_loader.h"
+#include "systems/beat_map_loader.h"
 
 using Catch::Matchers::WithinAbs;
 
@@ -410,8 +410,9 @@ TEST_CASE("shape_window: full lifecycle", "[rhythm][window]") {
 TEST_CASE("player_action: button press starts window in rhythm mode", "[rhythm][action]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
-    auto& aq = reg.ctx().get<ActionQueue>();
-    aq.tap(Button::ShapeTri);
+    auto& eq = reg.ctx().get<EventQueue>();
+    auto btn = make_shape_button(reg, Shape::Triangle);
+    eq.push_press(btn);
     player_input_system(reg, 0.016f);
     auto& sw = reg.get<ShapeWindow>(player);
     CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::MorphIn));
@@ -422,9 +423,10 @@ TEST_CASE("player_action: peak_time calculated correctly", "[rhythm][action]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
     auto& song = reg.ctx().get<SongState>();
-    auto& aq = reg.ctx().get<ActionQueue>();
+    auto& eq = reg.ctx().get<EventQueue>();
     song.song_time = 5.0f;
-    aq.tap(Button::ShapeCircle);
+    auto btn = make_shape_button(reg, Shape::Circle);
+    eq.push_press(btn);
     player_input_system(reg, 0.016f);
     auto& sw = reg.get<ShapeWindow>(player);
     float expected_peak = 5.0f + song.morph_duration + song.half_window;
@@ -436,10 +438,11 @@ TEST_CASE("player_action: same shape during active is ignored", "[rhythm][action
     auto player = make_rhythm_player(reg);
     auto& ps = reg.get<PlayerShape>(player);
     auto& sw = reg.get<ShapeWindow>(player);
-    auto& aq = reg.ctx().get<ActionQueue>();
+    auto& eq = reg.ctx().get<EventQueue>();
     sw.phase_raw = static_cast<uint8_t>(WindowPhase::Active);
     ps.current = Shape::Triangle; sw.target_shape = Shape::Triangle;
-    aq.tap(Button::ShapeTri);
+    auto btn = make_shape_button(reg, Shape::Triangle);
+    eq.push_press(btn);
     player_input_system(reg, 0.016f);
     CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::Active));
 }
@@ -449,10 +452,11 @@ TEST_CASE("player_action: different shape mid-window restarts", "[rhythm][action
     auto player = make_rhythm_player(reg);
     auto& ps = reg.get<PlayerShape>(player);
     auto& sw = reg.get<ShapeWindow>(player);
-    auto& aq = reg.ctx().get<ActionQueue>();
+    auto& eq = reg.ctx().get<EventQueue>();
     sw.phase_raw = static_cast<uint8_t>(WindowPhase::Active);
     ps.current = Shape::Triangle; sw.target_shape = Shape::Triangle;
-    aq.tap(Button::ShapeCircle);
+    auto btn = make_shape_button(reg, Shape::Circle);
+    eq.push_press(btn);
     player_input_system(reg, 0.016f);
     CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::MorphIn));
     CHECK(sw.target_shape == Shape::Circle);
@@ -469,8 +473,9 @@ TEST_CASE("player_action: no action with empty queue", "[rhythm][action]") {
 TEST_CASE("player_action: legacy mode instant shape change", "[rhythm][action]") {
     auto reg = make_registry();
     auto player = make_player(reg);
-    auto& aq = reg.ctx().get<ActionQueue>();
-    aq.tap(Button::ShapeTri);
+    auto& eq = reg.ctx().get<EventQueue>();
+    auto btn = make_shape_button(reg, Shape::Triangle);
+    eq.push_press(btn);
     player_input_system(reg, 0.016f);
     auto& ps = reg.get<PlayerShape>(player);
     auto& sw = reg.get<ShapeWindow>(player);
@@ -881,8 +886,9 @@ TEST_CASE("window_scaling: graded resets on new window", "[rhythm][window_scalin
     sw.window_scale = 0.5f;
 
     // Start a new window via player_input_system
-    auto& aq = reg.ctx().get<ActionQueue>();
-    aq.tap(Button::ShapeTri);
+    auto& eq = reg.ctx().get<EventQueue>();
+    auto btn = make_shape_button(reg, Shape::Triangle);
+    eq.push_press(btn);
     sw.phase_raw = static_cast<uint8_t>(WindowPhase::Idle);
     player_input_system(reg, 0.016f);
 

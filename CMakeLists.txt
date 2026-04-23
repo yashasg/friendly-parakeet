@@ -88,8 +88,10 @@ file(GLOB SYSTEM_SOURCES app/systems/*.cpp)
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "render_system\\.cpp$")
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "/input_system\\.cpp$")
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "song_playback_system\\.cpp$")
+list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "text_renderer\\.cpp$")
+list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "camera_system\\.cpp$")
 
-add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES} app/beat_map_loader.cpp app/session_logger.cpp app/ui_loader.cpp)
+add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES})
 target_include_directories(shapeshifter_lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/app
     ${CMAKE_BINARY_DIR}/generated
@@ -102,24 +104,24 @@ target_link_libraries(shapeshifter_lib PRIVATE shapeshifter_warnings)
 
 # ── Platform capability flags ────────────────────────────────
 # PLATFORM_DESKTOP is set for Windows / macOS / Linux builds.
+# PLATFORM_WEB is set for Emscripten builds.
+# PLATFORM_HAS_KEYBOARD is set for platforms with keyboard input.
 # Mobile (Android / iOS) gets no keyboard handling compiled in.
-# We use CMAKE_SYSTEM_NAME rather than raylib platform macros so that
-# app/components/input.h stays portable (no raylib.h dependency in headers).
 if(CMAKE_SYSTEM_NAME MATCHES "Windows|Darwin|Linux")
-    target_compile_definitions(shapeshifter_lib PUBLIC PLATFORM_DESKTOP)
+    target_compile_definitions(shapeshifter_lib PUBLIC PLATFORM_DESKTOP PLATFORM_HAS_KEYBOARD)
 elseif(EMSCRIPTEN)
-    target_compile_definitions(shapeshifter_lib PUBLIC PLATFORM_WEB)
+    target_compile_definitions(shapeshifter_lib PUBLIC PLATFORM_WEB PLATFORM_HAS_KEYBOARD)
 endif()
 
 # ── Main executable ──────────────────────────────────────────
 add_executable(shapeshifter
     app/main.cpp
-    app/perspective.cpp
+    app/systems/camera_system.cpp
     app/systems/render_system.cpp
     app/systems/input_system.cpp
     app/systems/song_playback_system.cpp
-    app/text_renderer.cpp
-    app/file_logger.cpp
+    app/systems/text_renderer.cpp
+    app/util/file_logger.cpp
 )
 target_include_directories(shapeshifter PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/app
@@ -328,8 +330,8 @@ if(NOT EMSCRIPTEN)
     file(GLOB TEST_SOURCES tests/*.cpp benchmarks/*.cpp)
     add_executable(shapeshifter_tests
         ${TEST_SOURCES}
-        app/file_logger.cpp
-        app/perspective.cpp
+        app/util/file_logger.cpp
+        app/systems/camera_system.cpp
         app/systems/song_playback_system.cpp
     )
     target_include_directories(shapeshifter_tests PRIVATE

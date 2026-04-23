@@ -14,10 +14,10 @@
 #include "../components/audio.h"
 #include "../components/song_state.h"
 #include "../constants.h"
-#include "../text_renderer.h"
-#include "../perspective.h"
+#include "text_renderer.h"
+#include "camera_system.h"
 #include "../components/ui_state.h"
-#include "../ui_loader.h"
+#include "ui_loader.h"
 #include <raylib.h>
 #include <algorithm>
 #include <cmath>
@@ -622,7 +622,7 @@ void render_system(entt::registry& reg, float /*alpha*/) {
     BeginMode2D(camera);
 
     // ── Compute floor pulse params (shared across GPU batches) ─
-    perspective::FloorParams floor_params{};
+    FloorParams floor_params{};
     {
         auto* song = reg.ctx().find<SongState>();
         float pulse = 0.0f;
@@ -645,16 +645,16 @@ void render_system(entt::registry& reg, float /*alpha*/) {
 
     // ── 4 GPU batches sorted by layer then primitive type ───
     // Background (floor) renders first, gameplay on top.
-    perspective::flush_floor_lines(reg, floor_params);   // Pass 1: floor lines
-    perspective::flush_floor_rings(floor_params);         // Pass 2: floor circles
+    camera::flush_floor_lines(reg, floor_params);   // Pass 1: floor lines
+    camera::flush_floor_rings(floor_params);         // Pass 2: floor circles
     if (gs.phase != GamePhase::Title) {
-        perspective::flush_world_rects(reg);              // Pass 3: obstacle + particle rects
-        perspective::flush_gameplay_tris(reg);            // Pass 4: ghost shapes + player
+        camera::flush_world_rects(reg);              // Pass 3: obstacle + particle rects
+        camera::flush_gameplay_tris(reg);            // Pass 4: ghost shapes + player
     }
 
     // ── Draw timing grade popups ───────────────────────────
     {
-        auto view = reg.view<ScorePopup, Position, DrawColor, Lifetime>();
+        auto view = reg.view<ScorePopup, Position, Color, Lifetime>();
         for (auto [entity, popup, pos, col, life] : view.each()) {
             float alpha_ratio = life.remaining / life.max_time;
             auto popup_alpha = static_cast<uint8_t>(alpha_ratio * 255);
@@ -669,7 +669,7 @@ void render_system(entt::registry& reg, float /*alpha*/) {
                     case 1: grade_text = "OK";      grade_font = FontSize::Small;  break;
                     case 0: grade_text = "BAD";     grade_font = FontSize::Small;  break;
                 }
-                Vector2 pp = perspective::project(pos.x, pos.y);
+                Vector2 pp = camera::project(pos.x, pos.y);
                 text_draw(text_ctx, grade_text,
                     pp.x, pp.y, grade_font,
                     col.r, col.g, col.b, popup_alpha,
@@ -677,7 +677,7 @@ void render_system(entt::registry& reg, float /*alpha*/) {
             } else {
                 // Non-timed obstacle: show score number
                 FontSize popup_font = FontSize::Small;
-                Vector2 pp = perspective::project(pos.x, pos.y);
+                Vector2 pp = camera::project(pos.x, pos.y);
                 text_draw_number(text_ctx, popup.value,
                     pp.x, pp.y, popup_font,
                     col.r, col.g, col.b, popup_alpha);
@@ -687,7 +687,7 @@ void render_system(entt::registry& reg, float /*alpha*/) {
 
     // ── Draw player ─────────────────────────────────────────
     {
-        auto view = reg.view<PlayerTag, Position, PlayerShape, VerticalState, DrawColor>();
+        auto view = reg.view<PlayerTag, Position, PlayerShape, VerticalState, Color>();
         for (auto [entity, pos, pshape, vstate, col] : view.each()) {
             float draw_y = pos.y + vstate.y_offset;
 
@@ -696,8 +696,7 @@ void render_system(entt::registry& reg, float /*alpha*/) {
                 size *= 0.5f;
             }
 
-            Color pc = {col.r, col.g, col.b, col.a};
-            perspective::draw_shape(pshape.current, pos.x, draw_y, size, pc);
+            camera::draw_shape(pshape.current, pos.x, draw_y, size, col);
         }
     }
 

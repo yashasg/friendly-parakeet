@@ -1,7 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include "test_helpers.h"
 #include "components/test_player.h"
-#include "session_logger.h"
+#include "systems/session_logger.h"
 
 #ifdef PLATFORM_DESKTOP
 
@@ -11,6 +11,10 @@ static entt::registry make_test_player_registry(TestPlayerSkill skill = TestPlay
     tp.skill = skill;
     tp.active = true;
     tp.rng.seed(42);
+    // Create shape button entities (test_player_system looks these up)
+    make_shape_button(reg, Shape::Circle);
+    make_shape_button(reg, Shape::Square);
+    make_shape_button(reg, Shape::Triangle);
     return reg;
 }
 
@@ -46,8 +50,8 @@ static void tick_systems(entt::registry& reg, int frames, float dt = 1.0f / 60.0
         collision_system(reg, dt);
         scoring_system(reg, dt);
         cleanup_system(reg, dt);
-        auto& aq = reg.ctx().get<ActionQueue>();
-        aq.clear();
+        auto& eq = reg.ctx().get<EventQueue>();
+        eq.clear();
 
         // Stop early if game over
         if (reg.ctx().get<GameState>().transition_pending) break;
@@ -140,11 +144,15 @@ TEST_CASE("test_player: auto-starts from title screen", "[test_player]") {
     auto& gs = reg.ctx().get<GameState>();
     gs.phase = GamePhase::Title;
     gs.phase_timer = 1.0f;
+
+    // Create a Confirm menu button (as title screen would have)
+    auto confirm_btn = make_menu_button(reg, MenuActionKind::Confirm, GamePhase::Title);
+
     test_player_system(reg, 0.016f);
-    auto& aq = reg.ctx().get<ActionQueue>();
+    auto& eq = reg.ctx().get<EventQueue>();
     bool has_confirm = false;
-    for (int i = 0; i < aq.count; ++i) {
-        if (aq.actions[i].verb == ActionVerb::Tap && aq.actions[i].button == Button::Confirm) {
+    for (int i = 0; i < eq.press_count; ++i) {
+        if (eq.presses[i].entity == confirm_btn) {
             has_confirm = true;
             break;
         }
@@ -169,11 +177,11 @@ TEST_CASE("test_player: swipe cooldown blocks immediate second swipe", "[test_pl
     tp.push_action(action);
     tp.mark_planned(obs);
 
-    auto& aq = reg.ctx().get<ActionQueue>();
+    auto& eq = reg.ctx().get<EventQueue>();
     test_player_system(reg, 0.016f);
     bool has_go = false;
-    for (int i = 0; i < aq.count; ++i) {
-        if (aq.actions[i].verb == ActionVerb::Go) { has_go = true; break; }
+    for (int i = 0; i < eq.go_count; ++i) {
+        has_go = true; break;
     }
     CHECK_FALSE(has_go);
 }

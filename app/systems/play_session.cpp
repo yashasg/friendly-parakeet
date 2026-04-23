@@ -9,7 +9,8 @@
 #include "../components/audio.h"
 #include "../components/rhythm.h"
 #include "../components/music.h"
-#include "../beat_map_loader.h"
+#include "beat_map_loader.h"
+#include "../components/input_events.h"
 #include "../constants.h"
 #include <raylib.h>
 
@@ -114,9 +115,32 @@ void setup_play_session(entt::registry& reg) {
     }
     reg.emplace<Lane>(player);
     reg.emplace<VerticalState>(player);
-    reg.emplace<DrawColor>(player, uint8_t{80}, uint8_t{180}, uint8_t{255}, uint8_t{255});
+    reg.emplace<Color>(player, Color{80, 180, 255, 255});
     reg.emplace<DrawSize>(player, constants::PLAYER_SIZE, constants::PLAYER_SIZE);
     reg.emplace<DrawLayer>(player, Layer::Game);
+
+    // ── Spawn shape button UI entities ──────────────────────────
+    {
+        float btn_w       = constants::BUTTON_W_N  * constants::SCREEN_W;
+        float btn_h       = constants::BUTTON_H_N  * constants::SCREEN_H;
+        float btn_spacing = constants::BUTTON_SPACING_N * constants::SCREEN_W;
+        float btn_y       = constants::BUTTON_Y_N  * constants::SCREEN_H;
+        float btn_area_x  = (constants::SCREEN_W - 3.0f * btn_w - 2.0f * btn_spacing) / 2.0f;
+        float btn_cy      = btn_y + btn_h / 2.0f;
+        float btn_radius  = btn_w / 2.8f;
+        float hit_radius  = btn_radius * 1.4f;
+
+        Shape shapes[3] = { Shape::Circle, Shape::Square, Shape::Triangle };
+        for (int i = 0; i < 3; ++i) {
+            float btn_cx = btn_area_x + static_cast<float>(i) * (btn_w + btn_spacing) + btn_w / 2.0f;
+            auto btn = reg.create();
+            reg.emplace<ShapeButtonTag>(btn);
+            reg.emplace<Position>(btn, btn_cx, btn_cy);
+            reg.emplace<HitCircle>(btn, hit_radius);
+            reg.emplace<ShapeButtonData>(btn, shapes[i]);
+            reg.emplace<ActiveInPhase>(btn, phase_bit(GamePhase::Playing));
+        }
+    }
 
     // Transition game state
     auto& gs = reg.ctx().get<GameState>();

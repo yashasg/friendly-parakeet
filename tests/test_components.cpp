@@ -89,7 +89,7 @@ TEST_CASE("ecs: make_registry creates all singletons", "[ecs]") {
     auto reg = make_registry();
     // These should not throw
     static_cast<void>(reg.ctx().get<InputState>());
-    static_cast<void>(reg.ctx().get<ActionQueue>());
+    static_cast<void>(reg.ctx().get<EventQueue>());
     static_cast<void>(reg.ctx().get<GameState>());
     static_cast<void>(reg.ctx().get<ScoreState>());
     static_cast<void>(reg.ctx().get<BurnoutState>());
@@ -108,7 +108,7 @@ TEST_CASE("ecs: make_player creates proper entity", "[ecs]") {
     CHECK(reg.all_of<ShapeWindow>(p));
     CHECK(reg.all_of<Lane>(p));
     CHECK(reg.all_of<VerticalState>(p));
-    CHECK(reg.all_of<DrawColor>(p));
+    CHECK(reg.all_of<Color>(p));
     CHECK(reg.all_of<DrawSize>(p));
     CHECK(reg.all_of<DrawLayer>(p));
 }
@@ -119,9 +119,11 @@ TEST_CASE("components: Velocity default is zero", "[components]") {
     CHECK(v.dy == 0.0f);
 }
 
-TEST_CASE("components: ActionQueue default is empty", "[components]") {
-    ActionQueue aq{};
-    CHECK(aq.count == 0);
+TEST_CASE("components: EventQueue default is empty", "[components]") {
+    EventQueue eq{};
+    CHECK(eq.input_count == 0);
+    CHECK(eq.press_count == 0);
+    CHECK(eq.go_count == 0);
 }
 
 TEST_CASE("components: Lifetime defaults", "[components]") {
@@ -130,8 +132,8 @@ TEST_CASE("components: Lifetime defaults", "[components]") {
     CHECK(lt.max_time == 0.0f);
 }
 
-TEST_CASE("components: DrawColor construction", "[components]") {
-    DrawColor c{uint8_t{255}, uint8_t{128}, uint8_t{64}, uint8_t{200}};
+TEST_CASE("components: Color construction", "[components]") {
+    Color c{255, 128, 64, 200};
     CHECK(c.r == 255);
     CHECK(c.g == 128);
     CHECK(c.b == 64);
@@ -155,12 +157,13 @@ TEST_CASE("components: ParticleData construction", "[components]") {
     CHECK(pd.size == 10.0f);
 }
 
-TEST_CASE("components: PlayerAction construction", "[components]") {
-    ActionQueue aq{};
-    aq.tap(Button::ShapeCircle);
-    CHECK(aq.count == 1);
-    CHECK(aq.actions[0].verb == ActionVerb::Tap);
-    CHECK(aq.actions[0].button == Button::ShapeCircle);
+TEST_CASE("components: EventQueue push_press stores entity", "[components]") {
+    EventQueue eq{};
+    entt::registry reg;
+    auto e = reg.create();
+    eq.push_press(e);
+    CHECK(eq.press_count == 1);
+    CHECK(eq.presses[0].entity == e);
 }
 
 TEST_CASE("ecs: make_combo_gate creates proper entity", "[ecs]") {

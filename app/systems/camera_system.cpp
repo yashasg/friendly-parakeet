@@ -1,17 +1,17 @@
-#include "perspective.h"
-#include "shape_vertices.h"
-#include "components/transform.h"
-#include "components/player.h"
-#include "components/obstacle.h"
-#include "components/obstacle_data.h"
-#include "components/rendering.h"
-#include "components/particle.h"
-#include "components/lifetime.h"
-#include "components/song_state.h"
+#include "camera_system.h"
+#include "../components/shape_vertices.h"
+#include "../components/transform.h"
+#include "../components/player.h"
+#include "../components/obstacle.h"
+#include "../components/obstacle_data.h"
+#include "../components/rendering.h"
+#include "../components/particle.h"
+#include "../components/lifetime.h"
+#include "../components/song_state.h"
 #include <raylib.h>
 #include <rlgl.h>
 
-namespace perspective {
+namespace camera {
 
 // ── Filled rectangle (axis-aligned in world → trapezoid after projection) ────
 // Height is scaled by depth at the rect's vertical centre so objects appear
@@ -178,7 +178,7 @@ void flush_world_rects(entt::registry& reg) {
 
     // ── Obstacles: iterate by ObstacleTag ────────────────────
     {
-        auto view = reg.view<ObstacleTag, Position, Obstacle, DrawColor, DrawSize>();
+        auto view = reg.view<ObstacleTag, Position, Obstacle, Color, DrawSize>();
         for (auto [entity, pos, obs, col, dsz] : view.each()) {
             switch (obs.kind) {
                 case ObstacleKind::ShapeGate:
@@ -247,7 +247,7 @@ void flush_world_rects(entt::registry& reg) {
 
     // ── Particles: iterate by ParticleTag ────────────────────
     {
-        auto view = reg.view<ParticleTag, Position, ParticleData, DrawColor, Lifetime>();
+        auto view = reg.view<ParticleTag, Position, ParticleData, Color, Lifetime>();
         for (auto [entity, pos, pdata, col, life] : view.each()) {
             float ratio = (life.max_time > 0.0f) ? (life.remaining / life.max_time) : 1.0f;
             float sz = pdata.size * ratio;
@@ -432,7 +432,7 @@ void flush_gameplay_tris(entt::registry& reg) {
 
     // Ghost shapes (obstacle indicators)
     {
-        auto view = reg.view<ObstacleTag, Position, Obstacle, DrawColor, DrawSize>();
+        auto view = reg.view<ObstacleTag, Position, Obstacle, Color, DrawSize>();
         for (auto [entity, pos, obs, col, dsz] : view.each()) {
             switch (obs.kind) {
                 case ObstacleKind::ShapeGate: {
@@ -470,7 +470,7 @@ void flush_gameplay_tris(entt::registry& reg) {
 
     // Player shape
     {
-        auto view = reg.view<PlayerTag, Position, PlayerShape, VerticalState, DrawColor>();
+        auto view = reg.view<PlayerTag, Position, PlayerShape, VerticalState, Color>();
         for (auto [entity, pos, pshape, vstate, col] : view.each()) {
             float draw_y = pos.y + vstate.y_offset;
             float sz = constants::PLAYER_SIZE;
@@ -483,4 +483,4 @@ void flush_gameplay_tris(entt::registry& reg) {
     rlEnd();
 }
 
-} // namespace perspective
+} // namespace camera

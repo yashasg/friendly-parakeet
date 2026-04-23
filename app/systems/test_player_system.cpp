@@ -2,15 +2,14 @@
 #include "../components/test_player.h"
 #include "../components/game_state.h"
 #include "../components/input.h"
+#include "../components/input_events.h"
 #include "../components/player.h"
 #include "../components/transform.h"
 #include "../components/obstacle.h"
 #include "../components/obstacle_data.h"
 #include "../components/rhythm.h"
 #include "../components/scoring.h"
-#include "../session_logger.h"
-#include "../enum_names.h"
-#include "../platform.h"
+#include "session_logger.h"
 #include "../constants.h"
 
 #include <cmath>
@@ -118,7 +117,7 @@ void test_player_system(entt::registry& reg, float dt) {
     state->clean_planned(reg);
 
     auto& gs    = reg.ctx().get<GameState>();
-    auto& aq    = reg.ctx().get<ActionQueue>();
+    auto& eq    = reg.ctx().get<EventQueue>();
     auto* log   = reg.ctx().find<SessionLog>();
     auto* song  = reg.ctx().find<SongState>();
     float song_time = song ? song->song_time : 0.0f;
@@ -129,7 +128,14 @@ void test_player_system(entt::registry& reg, float dt) {
     if (gs.phase == GamePhase::Title || gs.phase == GamePhase::GameOver ||
         gs.phase == GamePhase::SongComplete) {
         if (gs.phase_timer > 0.5f) {
-            aq.tap(Button::Confirm);
+            // Find a Confirm menu button active in this phase and press it
+            auto mv = reg.view<MenuButtonTag, MenuAction, ActiveInPhase>();
+            for (auto [e, ma, aip] : mv.each()) {
+                if (ma.kind == MenuActionKind::Confirm && phase_active(aip, gs.phase)) {
+                    eq.push_press(e);
+                    break;
+                }
+            }
             if (log) {
                 const char* phase_name =
                     (gs.phase == GamePhase::Title) ? "Title" :
@@ -156,7 +162,25 @@ void test_player_system(entt::registry& reg, float dt) {
     }
 
     if (gs.phase == GamePhase::Paused) {
-        aq.tap(Button::Confirm);
+        auto mv = reg.view<MenuButtonTag, MenuAction, ActiveInPhase>();
+        for (auto [e, ma, aip] : mv.each()) {
+            if (ma.kind == MenuActionKind::Confirm && phase_active(aip, gs.phase)) {
+                eq.push_press(e);
+                break;
+            }
+        }
+        return;
+    }
+
+    // Auto-confirm on LevelSelect (level/difficulty already set in main.cpp)
+    if (gs.phase == GamePhase::LevelSelect && gs.phase_timer > 0.2f) {
+        auto mv = reg.view<MenuButtonTag, MenuAction, ActiveInPhase>();
+        for (auto [e, ma, aip] : mv.each()) {
+            if (ma.kind == MenuActionKind::Confirm && phase_active(aip, gs.phase)) {
+                eq.push_press(e);
+                break;
+            }
+        }
         return;
     }
 
@@ -234,13 +258,13 @@ void test_player_system(entt::registry& reg, float dt) {
                 "PERCEIVE obstacle=%u beat=%d kind=%s shape=%s lane=%d dist=%.0fpx",
                 static_cast<unsigned>(entt::to_integral(entity)),
                 beat_num,
-                obstacle_kind_name(obs.kind),
-                shape_name(action.target_shape),
+                ToString(obs.kind),
+                ToString(action.target_shape),
                 action.target_lane, dist);
 
             session_log_write(*log, song_time, "PLAYER",
                 "PLAN action=%s%s%s react=%.3fs arrival=%.3fs",
-                action.target_shape != Shape::Hexagon ? shape_name(action.target_shape) : "",
+                action.target_shape != Shape::Hexagon ? ToString(action.target_shape) : "",
                 action.target_lane >= 0 ? "+lane" : "",
                 action.target_vertical != VMode::Grounded ?
                     (action.target_vertical == VMode::Jumping ? "+jump" : "+slide") : "",
@@ -312,11 +336,14 @@ void test_player_system(entt::registry& reg, float dt) {
 
         // Priority 1: Shape change
         if (action.needs_shape()) {
-            switch (action.target_shape) {
-                case Shape::Circle:   aq.tap(Button::ShapeCircle); break;
-                case Shape::Square:   aq.tap(Button::ShapeSquare); break;
-                case Shape::Triangle: aq.tap(Button::ShapeTri); break;
-                default: break;
+            {
+                auto sv = reg.view<ShapeButtonTag, ShapeButtonData>();
+                for (auto [e, sbd] : sv.each()) {
+                    if (sbd.shape == action.target_shape) {
+                        eq.push_press(e);
+                        break;
+                    }
+                }
             }
             action.mark_shape_done();
             key_injected = true;
@@ -391,14 +418,14 @@ void test_player_system(entt::registry& reg, float dt) {
         if (action.needs_lane() && p_lane.target < 0 && state->swipe_cooldown_timer <= 0.0f
             && !zone_blocked && !blocked_by_shape && !move_would_fail_closer) {
             if (action.target_lane < p_lane.current) {
-                aq.go(Direction::Left);
+                eq.push_go(Direction::Left);
                 if (log) {
                     session_log_write(*log, song_time, "PLAYER",
                         "EXECUTE Go(Left) for obstacle=%u beat=%d",
                         static_cast<unsigned>(entt::to_integral(action.obstacle)), act_beat);
                 }
             } else if (action.target_lane > p_lane.current) {
-                aq.go(Direction::Right);
+                eq.push_go(Direction::Right);
                 if (log) {
                     session_log_write(*log, song_time, "PLAYER",
                         "EXECUTE Go(Right) for obstacle=%u beat=%d",
@@ -433,14 +460,14 @@ void test_player_system(entt::registry& reg, float dt) {
         if (action.needs_vertical() && p_vstate.mode == VMode::Grounded
             && !vert_zone_blocked && !vert_blocked_by_shape) {
             if (action.target_vertical == VMode::Jumping) {
-                aq.go(Direction::Up);
+                eq.push_go(Direction::Up);
                 if (log) {
                     session_log_write(*log, song_time, "PLAYER",
                         "EXECUTE Go(Up) for obstacle=%u beat=%d",
                         static_cast<unsigned>(entt::to_integral(action.obstacle)), act_beat);
                 }
             } else if (action.target_vertical == VMode::Sliding) {
-                aq.go(Direction::Down);
+                eq.push_go(Direction::Down);
                 if (log) {
                     session_log_write(*log, song_time, "PLAYER",
                         "EXECUTE Go(Down) for obstacle=%u beat=%d",

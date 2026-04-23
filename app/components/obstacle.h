@@ -4,16 +4,30 @@
 
 struct ObstacleTag {};
 
+#define OBSTACLE_KIND_LIST(X) \
+    X(ShapeGate)              \
+    X(LaneBlock)              \
+    X(LowBar)                 \
+    X(HighBar)                \
+    X(ComboGate)              \
+    X(SplitPath)              \
+    X(LanePushLeft)           \
+    X(LanePushRight)
+
 enum class ObstacleKind : uint8_t {
-    ShapeGate     = 0,
-    LaneBlock     = 1,
-    LowBar        = 2,
-    HighBar       = 3,
-    ComboGate     = 4,
-    SplitPath     = 5,
-    LanePushLeft  = 6,
-    LanePushRight = 7
+    #define OBSTACLE_KIND_ENUM(name) name,
+    OBSTACLE_KIND_LIST(OBSTACLE_KIND_ENUM)
+    #undef OBSTACLE_KIND_ENUM
 };
+
+inline const char* ToString(ObstacleKind k) {
+    switch (k) {
+        #define OBSTACLE_KIND_STR(name) case ObstacleKind::name: return #name;
+        OBSTACLE_KIND_LIST(OBSTACLE_KIND_STR)
+        #undef OBSTACLE_KIND_STR
+    }
+    return "???";
+}
 
 struct Obstacle {
     ObstacleKind kind       = ObstacleKind::ShapeGate;

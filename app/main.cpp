@@ -3,8 +3,8 @@
 
 #include "version.h"
 #include "constants.h"
-#include "platform_utils.h"
 #include "components/input.h"
+#include "components/input_events.h"
 #include "components/game_state.h"
 #include "components/scoring.h"
 #include "components/burnout.h"
@@ -15,10 +15,11 @@
 #include "components/rendering.h"
 #include "components/test_player.h"
 #include "systems/all_systems.h"
-#include "beat_map_loader.h"
-#include "text_renderer.h"
-#include "session_logger.h"
-#include "ui_loader.h"
+#include "systems/beat_map_loader.h"
+#include "systems/text_renderer.h"
+#include "systems/session_logger.h"
+#include "systems/ui_loader.h"
+#include "systems/ui_button_spawner.h"
 
 #include <string>
 #include <cstdio>
@@ -115,6 +116,7 @@ static void update_draw_frame() {
 
     update_screen_transform(reg);
     input_system(reg, raw_dt);
+    hit_test_system(reg);
     test_player_system(reg, raw_dt);
 
     while (g_loop.accumulator >= FIXED_DT) {
@@ -156,6 +158,10 @@ static void update_draw_frame() {
     EndDrawing();
 
     audio_system(reg);
+
+    // Flush session log buffer (if active)
+    auto* session_log = reg.ctx().find<SessionLog>();
+    if (session_log) session_log_flush(*session_log);
 }
 #endif
 
@@ -241,7 +247,7 @@ int main(int argc, char* argv[]) {
     }
 
     reg.ctx().emplace<InputState>();
-    reg.ctx().emplace<ActionQueue>();
+    reg.ctx().emplace<EventQueue>();
     reg.ctx().emplace<GameState>(GameState{
         .phase          = GamePhase::Title,
         .previous_phase = GamePhase::Title,
@@ -278,6 +284,9 @@ int main(int argc, char* argv[]) {
     reg.ctx().emplace<BeatMap>();
     reg.ctx().emplace<SongState>();
 
+    // ── Spawn initial UI button entities for the Title screen ─
+    spawn_title_buttons(reg);
+
     // ── Music context (stream loaded per-level in play_session) ─
     reg.ctx().emplace<MusicContext>();
 
@@ -308,7 +317,8 @@ int main(int argc, char* argv[]) {
         // Session logger
         auto& slog = reg.ctx().emplace<SessionLog>();
         std::time_t now = std::time(nullptr);
-        std::tm tm = safe_localtime(&now);
+        std::tm tm{};
+        localtime_r(&now, &tm);
         char log_filename[256];
         std::snprintf(log_filename, sizeof(log_filename),
             "%ssession_%s_%04d%02d%02d_%02d%02d%02d.log",
@@ -350,6 +360,7 @@ int main(int argc, char* argv[]) {
         // Phase 0: Resolve letterbox scale for this frame, then poll input
         update_screen_transform(reg);
         input_system(reg, raw_dt);
+        hit_test_system(reg);
         if (reg.ctx().get<InputState>().quit_requested) break;
 
         // Phase 0.5: Test player AI (injects into InputState)
@@ -386,6 +397,10 @@ int main(int argc, char* argv[]) {
 
         // Audio
         audio_system(reg);
+
+        // Flush session log buffer (if active)
+        auto* session_log = reg.ctx().find<SessionLog>();
+        if (session_log) session_log_flush(*session_log);
     }
 #endif
 

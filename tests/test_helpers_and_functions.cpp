@@ -1,7 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
-#include "enum_names.h"
 
 // ── compute_timing_tier ──────────────────────────────────────
 
@@ -149,78 +148,81 @@ TEST_CASE("song_state_derived: BPM below 130 has no scale reduction", "[song_sta
 
 // ── enum name helpers ────────────────────────────────────────
 
-TEST_CASE("enum_names: shape_name covers all shapes", "[enum_names]") {
-    CHECK(std::string(shape_name(Shape::Circle))   == "Circle");
-    CHECK(std::string(shape_name(Shape::Square))    == "Square");
-    CHECK(std::string(shape_name(Shape::Triangle))  == "Triangle");
-    CHECK(std::string(shape_name(Shape::Hexagon))   == "Hexagon");
+TEST_CASE("ToString: Shape covers all shapes", "[ToString]") {
+    CHECK(std::string(ToString(Shape::Circle))   == "Circle");
+    CHECK(std::string(ToString(Shape::Square))    == "Square");
+    CHECK(std::string(ToString(Shape::Triangle))  == "Triangle");
+    CHECK(std::string(ToString(Shape::Hexagon))   == "Hexagon");
 }
 
-TEST_CASE("enum_names: obstacle_kind_name covers all kinds", "[enum_names]") {
-    CHECK(std::string(obstacle_kind_name(ObstacleKind::ShapeGate)) == "ShapeGate");
-    CHECK(std::string(obstacle_kind_name(ObstacleKind::LaneBlock)) == "LaneBlock");
-    CHECK(std::string(obstacle_kind_name(ObstacleKind::LowBar))    == "LowBar");
-    CHECK(std::string(obstacle_kind_name(ObstacleKind::HighBar))   == "HighBar");
-    CHECK(std::string(obstacle_kind_name(ObstacleKind::ComboGate)) == "ComboGate");
-    CHECK(std::string(obstacle_kind_name(ObstacleKind::SplitPath)) == "SplitPath");
+TEST_CASE("ToString: ObstacleKind covers all kinds", "[ToString]") {
+    CHECK(std::string(ToString(ObstacleKind::ShapeGate)) == "ShapeGate");
+    CHECK(std::string(ToString(ObstacleKind::LaneBlock)) == "LaneBlock");
+    CHECK(std::string(ToString(ObstacleKind::LowBar))    == "LowBar");
+    CHECK(std::string(ToString(ObstacleKind::HighBar))   == "HighBar");
+    CHECK(std::string(ToString(ObstacleKind::ComboGate)) == "ComboGate");
+    CHECK(std::string(ToString(ObstacleKind::SplitPath)) == "SplitPath");
 }
 
-TEST_CASE("enum_names: timing_tier_name covers all tiers", "[enum_names]") {
-    CHECK(std::string(timing_tier_name(TimingTier::Bad))     == "Bad");
-    CHECK(std::string(timing_tier_name(TimingTier::Ok))      == "Ok");
-    CHECK(std::string(timing_tier_name(TimingTier::Good))    == "Good");
-    CHECK(std::string(timing_tier_name(TimingTier::Perfect)) == "Perfect");
+TEST_CASE("ToString: TimingTier covers all tiers", "[ToString]") {
+    CHECK(std::string(ToString(TimingTier::Bad))     == "Bad");
+    CHECK(std::string(ToString(TimingTier::Ok))      == "Ok");
+    CHECK(std::string(ToString(TimingTier::Good))    == "Good");
+    CHECK(std::string(ToString(TimingTier::Perfect)) == "Perfect");
 }
 
-// ── ActionQueue ──────────────────────────────────────────────
+// ── EventQueue ──────────────────────────────────────────────
 
-TEST_CASE("action_queue: go adds direction action", "[input]") {
-    ActionQueue aq{};
-    aq.go(Direction::Left);
-    CHECK(aq.count == 1);
-    CHECK(aq.actions[0].verb == ActionVerb::Go);
-    CHECK(aq.actions[0].dir == Direction::Left);
+TEST_CASE("event_queue: push_go adds direction event", "[input]") {
+    EventQueue eq{};
+    eq.push_go(Direction::Left);
+    CHECK(eq.go_count == 1);
+    CHECK(eq.goes[0].dir == Direction::Left);
 }
 
-TEST_CASE("action_queue: tap with position stores coordinates", "[input]") {
-    ActionQueue aq{};
-    aq.tap(Button::Position, 100.0f, 200.0f);
-    CHECK(aq.count == 1);
-    CHECK(aq.actions[0].verb == ActionVerb::Tap);
-    CHECK(aq.actions[0].button == Button::Position);
-    CHECK(aq.actions[0].x == 100.0f);
-    CHECK(aq.actions[0].y == 200.0f);
+TEST_CASE("event_queue: push_input stores tap with coordinates", "[input]") {
+    EventQueue eq{};
+    eq.push_input(InputType::Tap, 100.0f, 200.0f);
+    CHECK(eq.input_count == 1);
+    CHECK(eq.inputs[0].type == InputType::Tap);
+    CHECK(eq.inputs[0].x == 100.0f);
+    CHECK(eq.inputs[0].y == 200.0f);
 }
 
-TEST_CASE("action_queue: overflow is rejected", "[input]") {
-    ActionQueue aq{};
-    for (int i = 0; i < ActionQueue::MAX + 5; ++i) {
-        aq.go(Direction::Right);
+TEST_CASE("event_queue: overflow is rejected", "[input]") {
+    EventQueue eq{};
+    for (int i = 0; i < EventQueue::MAX + 5; ++i) {
+        eq.push_go(Direction::Right);
     }
-    CHECK(aq.count == ActionQueue::MAX);
+    CHECK(eq.go_count == EventQueue::MAX);
 }
 
-TEST_CASE("action_queue: clear resets count", "[input]") {
-    ActionQueue aq{};
-    aq.go(Direction::Left);
-    aq.tap(Button::Confirm);
-    CHECK(aq.count == 2);
-    aq.clear();
-    CHECK(aq.count == 0);
+TEST_CASE("event_queue: clear resets all counts", "[input]") {
+    EventQueue eq{};
+    eq.push_go(Direction::Left);
+    eq.push_input(InputType::Tap, 0.0f, 0.0f);
+    eq.push_press(entt::null);
+    CHECK(eq.go_count == 1);
+    CHECK(eq.input_count == 1);
+    CHECK(eq.press_count == 1);
+    eq.clear();
+    CHECK(eq.go_count == 0);
+    CHECK(eq.input_count == 0);
+    CHECK(eq.press_count == 0);
 }
 
-TEST_CASE("action_queue: mixed go and tap operations", "[input]") {
-    ActionQueue aq{};
-    aq.go(Direction::Up);
-    aq.tap(Button::ShapeCircle);
-    aq.go(Direction::Down);
-    CHECK(aq.count == 3);
-    CHECK(aq.actions[0].verb == ActionVerb::Go);
-    CHECK(aq.actions[0].dir == Direction::Up);
-    CHECK(aq.actions[1].verb == ActionVerb::Tap);
-    CHECK(aq.actions[1].button == Button::ShapeCircle);
-    CHECK(aq.actions[2].verb == ActionVerb::Go);
-    CHECK(aq.actions[2].dir == Direction::Down);
+TEST_CASE("event_queue: mixed go and press operations", "[input]") {
+    EventQueue eq{};
+    eq.push_go(Direction::Up);
+    entt::registry reg;
+    auto e = reg.create();
+    eq.push_press(e);
+    eq.push_go(Direction::Down);
+    CHECK(eq.go_count == 2);
+    CHECK(eq.press_count == 1);
+    CHECK(eq.goes[0].dir == Direction::Up);
+    CHECK(eq.presses[0].entity == e);
+    CHECK(eq.goes[1].dir == Direction::Down);
 }
 
 // ── make_rhythm_registry / make_rhythm_player helpers ────────

@@ -178,8 +178,9 @@ TEST_CASE("spawn: obstacles have position at SPAWN_Y", "[spawn]") {
 TEST_CASE("game_state: title to level select on touch", "[gamestate]") {
     auto reg = make_registry();
     reg.ctx().get<GameState>().phase = GamePhase::Title;
-    auto& aq = reg.ctx().get<ActionQueue>();
-    aq.tap(Button::Confirm);
+    auto& eq = reg.ctx().get<EventQueue>();
+    auto btn = make_menu_button(reg, MenuActionKind::Confirm, GamePhase::Title);
+    eq.push_press(btn);
 
     game_state_system(reg, 0.016f);
 
@@ -193,8 +194,9 @@ TEST_CASE("game_state: game over button choice after delay", "[gamestate]") {
     auto& gs = reg.ctx().get<GameState>();
     gs.phase = GamePhase::GameOver;
     gs.phase_timer = 0.5f;
-    auto& aq = reg.ctx().get<ActionQueue>();
-    aq.tap(Button::Position, constants::SCREEN_W / 2.0f, 940.0f);
+    auto& eq = reg.ctx().get<EventQueue>();
+    auto btn = make_menu_button(reg, MenuActionKind::GoLevelSelect, GamePhase::GameOver);
+    eq.push_press(btn);
 
     game_state_system(reg, 0.016f);
 
@@ -208,8 +210,9 @@ TEST_CASE("game_state: game over ignores touch during delay", "[gamestate]") {
     auto& gs = reg.ctx().get<GameState>();
     gs.phase = GamePhase::GameOver;
     gs.phase_timer = 0.2f;  // within 0.4s delay
-    auto& aq = reg.ctx().get<ActionQueue>();
-    aq.tap(Button::Confirm);
+    auto& eq = reg.ctx().get<EventQueue>();
+    auto btn = make_menu_button(reg, MenuActionKind::Confirm, GamePhase::GameOver);
+    eq.push_press(btn);
 
     game_state_system(reg, 0.016f);
 
@@ -301,8 +304,9 @@ TEST_CASE("game_state: paused to playing on touch", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
     gs.phase = GamePhase::Paused;
-    auto& aq = reg.ctx().get<ActionQueue>();
-    aq.tap(Button::Confirm);
+    auto& eq = reg.ctx().get<EventQueue>();
+    auto btn = make_menu_button(reg, MenuActionKind::Confirm, GamePhase::Paused);
+    eq.push_press(btn);
 
     game_state_system(reg, 0.016f);
 
@@ -314,7 +318,7 @@ TEST_CASE("game_state: title stays title without touch", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
     gs.phase = GamePhase::Title;
-    // Empty ActionQueue — no actions
+    // Empty EventQueue — no actions
 
     game_state_system(reg, 0.5f);
 

@@ -1,17 +1,17 @@
 #include "all_systems.h"
 #include "../components/input.h"
+#include "../components/input_events.h"
 #include "../components/rendering.h"
 #include "../components/game_state.h"
 #include "../constants.h"
-#include "../platform.h"
 #include <raylib.h>
 #include <cmath>
 
 void input_system(entt::registry& reg, float raw_dt) {
     auto& input = reg.ctx().get<InputState>();
     auto& st    = reg.ctx().get<ScreenTransform>();
-    auto& aq    = reg.ctx().get<ActionQueue>();
-    aq.clear();
+    auto& eq    = reg.ctx().get<EventQueue>();
+    eq.clear();
     clear_input_events(input);
 
     // Convert a raw window pixel coordinate to virtual world space.
@@ -74,14 +74,39 @@ void input_system(entt::registry& reg, float raw_dt) {
 
 #ifdef PLATFORM_HAS_KEYBOARD
     // ── Keyboard — IsKeyPressed fires once per press (no repeat) ──
-    if (IsKeyPressed(KEY_W) || IsKeyPressed(KEY_UP))       aq.go(Direction::Up);
-    if (IsKeyPressed(KEY_S) || IsKeyPressed(KEY_DOWN))     aq.go(Direction::Down);
-    if (IsKeyPressed(KEY_A) || IsKeyPressed(KEY_LEFT))     aq.go(Direction::Left);
-    if (IsKeyPressed(KEY_D) || IsKeyPressed(KEY_RIGHT))    aq.go(Direction::Right);
-    if (IsKeyPressed(KEY_ONE) || IsKeyPressed(KEY_Z))      aq.tap(Button::ShapeCircle);
-    if (IsKeyPressed(KEY_TWO) || IsKeyPressed(KEY_X))      aq.tap(Button::ShapeSquare);
-    if (IsKeyPressed(KEY_THREE) || IsKeyPressed(KEY_C))    aq.tap(Button::ShapeTri);
-    if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) aq.tap(Button::Confirm);
+    if (IsKeyPressed(KEY_W) || IsKeyPressed(KEY_UP))    { eq.push_go(Direction::Up); }
+    if (IsKeyPressed(KEY_S) || IsKeyPressed(KEY_DOWN))  { eq.push_go(Direction::Down); }
+    if (IsKeyPressed(KEY_A) || IsKeyPressed(KEY_LEFT))  { eq.push_go(Direction::Left); }
+    if (IsKeyPressed(KEY_D) || IsKeyPressed(KEY_RIGHT)) { eq.push_go(Direction::Right); }
+
+    if (IsKeyPressed(KEY_ONE) || IsKeyPressed(KEY_Z)) {
+        auto sv = reg.view<ShapeButtonTag, ShapeButtonData>();
+        for (auto [e, sbd] : sv.each()) {
+            if (sbd.shape == Shape::Circle) { eq.push_press(e); break; }
+        }
+    }
+    if (IsKeyPressed(KEY_TWO) || IsKeyPressed(KEY_X)) {
+        auto sv = reg.view<ShapeButtonTag, ShapeButtonData>();
+        for (auto [e, sbd] : sv.each()) {
+            if (sbd.shape == Shape::Square) { eq.push_press(e); break; }
+        }
+    }
+    if (IsKeyPressed(KEY_THREE) || IsKeyPressed(KEY_C)) {
+        auto sv = reg.view<ShapeButtonTag, ShapeButtonData>();
+        for (auto [e, sbd] : sv.each()) {
+            if (sbd.shape == Shape::Triangle) { eq.push_press(e); break; }
+        }
+    }
+    if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
+        auto phase = reg.ctx().get<GameState>().phase;
+        auto mv = reg.view<MenuButtonTag, MenuAction, ActiveInPhase>();
+        for (auto [e, ma, aip] : mv.each()) {
+            if (ma.kind == MenuActionKind::Confirm && phase_active(aip, phase)) {
+                eq.push_press(e);
+                break;
+            }
+        }
+    }
 #endif
 
     // ── Background / suspend (edge-triggered) ─────────────
@@ -106,47 +131,23 @@ void input_system(entt::registry& reg, float raw_dt) {
         float zone_y = constants::SCREEN_H * constants::SWIPE_ZONE_SPLIT;
 
         if (input.start_y >= zone_y) {
-            // Button zone (bottom 20%)
-            const float btn_w       = constants::BUTTON_W_N      * constants::SCREEN_W;
-            const float btn_h       = constants::BUTTON_H_N      * constants::SCREEN_H;
-            const float btn_spacing = constants::BUTTON_SPACING_N * constants::SCREEN_W;
-            const float btn_y       = constants::BUTTON_Y_N       * constants::SCREEN_H;
-            float btn_area_x_start  = (constants::SCREEN_W - 3.0f * btn_w - 2.0f * btn_spacing) / 2.0f;
-            float btn_cy            = btn_y + btn_h / 2.0f;
-            float btn_radius        = btn_w / 2.8f;
-            float hit_radius        = btn_radius * 1.4f;
-
-            bool mapped_shape_button = false;
-            if (reg.ctx().get<GameState>().phase == GamePhase::Playing) {
-                for (int i = 0; i < 3; ++i) {
-                    float btn_cx = btn_area_x_start
-                        + static_cast<float>(i) * (btn_w + btn_spacing)
-                        + btn_w / 2.0f;
-                    float dx = input.end_x - btn_cx;
-                    float dy = input.end_y - btn_cy;
-                    if (dx * dx + dy * dy <= hit_radius * hit_radius) {
-                        aq.tap(static_cast<Button>(i));
-                        mapped_shape_button = true;
-                        break;
-                    }
-                }
-            }
-            if (!mapped_shape_button) {
-                aq.tap(Button::Position, input.end_x, input.end_y);
-            }
+            // Button zone (bottom 20%) — always a Tap for the hit_test_system
+            eq.push_input(InputType::Tap, input.end_x, input.end_y);
         } else {
             // Swipe zone
             float dx = input.end_x - input.start_x;
             float dy = input.end_y - input.start_y;
             float dist = std::sqrt(dx * dx + dy * dy);
             if (dist >= constants::MIN_SWIPE_DIST && input.duration <= constants::MAX_SWIPE_TIME) {
+                Direction dir;
                 if (std::abs(dx) > std::abs(dy)) {
-                    aq.go(dx > 0 ? Direction::Right : Direction::Left);
+                    dir = dx > 0 ? Direction::Right : Direction::Left;
                 } else {
-                    aq.go(dy > 0 ? Direction::Down : Direction::Up);
+                    dir = dy > 0 ? Direction::Down : Direction::Up;
                 }
+                eq.push_input(InputType::Swipe, input.end_x, input.end_y, dir);
             } else {
-                aq.tap(Button::Position, input.end_x, input.end_y);
+                eq.push_input(InputType::Tap, input.end_x, input.end_y);
             }
         }
     }

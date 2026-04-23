@@ -138,7 +138,7 @@ void scoring_system(entt::registry& reg, float dt) {
                 case TimingTier::Bad:     pr = 255; pg = 150; pb = 100; break; // orange
             }
         }
-        reg.emplace<DrawColor>(popup, pr, pg, pb, uint8_t{255});
+        reg.emplace<Color>(popup, Color{pr, pg, pb, 255});
         reg.emplace<DrawLayer>(popup, Layer::Effects);
 
         audio_push(reg.ctx().get<AudioQueue>(), SFX::BurnoutBank);

@@ -2,12 +2,26 @@
 
 #include <cstdint>
 
+#define SHAPE_LIST(X) \
+    X(Circle)         \
+    X(Square)         \
+    X(Triangle)       \
+    X(Hexagon)
+
 enum class Shape : uint8_t {
-    Circle   = 0,
-    Square   = 1,
-    Triangle = 2,
-    Hexagon  = 3
+    #define SHAPE_ENUM(name) name,
+    SHAPE_LIST(SHAPE_ENUM)
+    #undef SHAPE_ENUM
 };
+
+inline const char* ToString(Shape s) {
+    switch (s) {
+        #define SHAPE_STR(name) case Shape::name: return #name;
+        SHAPE_LIST(SHAPE_STR)
+        #undef SHAPE_STR
+    }
+    return "???";
+}
 
 struct PlayerTag {};
 

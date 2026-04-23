@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <raylib.h>
 
 namespace constants {
 
@@ -31,7 +32,6 @@ constexpr float ZONE_SAFE_MAX     = 700.0f;
 constexpr float ZONE_SAFE_MIN     = 500.0f;
 constexpr float ZONE_RISKY_MIN    = 300.0f;
 constexpr float ZONE_DANGER_MIN   = 140.0f;
-constexpr float ZONE_DEAD_MIN     = 0.0f;
 
 // ── Burnout Multipliers ───────────────────────────
 constexpr float MULT_SAFE         = 1.0f;
@@ -60,28 +60,9 @@ constexpr float MIN_SPAWN_INT     = 0.5f;
 
 // ── Rhythm Constants ──────────────────────────────
 constexpr float APPROACH_DIST      = 1040.0f;  // |PLAYER_Y - SPAWN_Y|
-constexpr float BASE_WINDOW_BEATS  = 1.6f;
-constexpr float MIN_WINDOW         = 0.36f;
-constexpr float BASE_MORPH_BEATS   = 0.2f;
-constexpr float MIN_MORPH          = 0.06f;
-constexpr float COOLDOWN_DURATION  = 0.05f;
-
-// ── Timing Grade Thresholds ──────────────────────
-constexpr float TIMING_PERFECT_PCT = 0.25f;
-constexpr float TIMING_GOOD_PCT    = 0.50f;
-constexpr float TIMING_OK_PCT      = 0.75f;
-
-// ── Window Scaling by Grade ───────────────────────
-// Perfect holds shape longer (extends window).
-// Bad/Ok shorten window (snap back to Hexagon faster).
-constexpr float WINDOW_SCALE_BAD     = 0.50f;
-constexpr float WINDOW_SCALE_OK      = 0.75f;
-constexpr float WINDOW_SCALE_GOOD    = 1.00f;
-constexpr float WINDOW_SCALE_PERFECT = 1.50f;
 
 // ── Energy Bar ────────────────────────────────────
 constexpr float ENERGY_MAX              = 1.0f;
-constexpr float ENERGY_START            = 1.0f;
 constexpr float ENERGY_DRAIN_MISS       = 0.20f;
 constexpr float ENERGY_DRAIN_BAD        = 0.10f;
 constexpr float ENERGY_RECOVER_OK       = 0.02f;
@@ -93,14 +74,11 @@ constexpr float ENERGY_CRITICAL_THRESH  = 0.25f;
 
 // ── Rendering ─────────────────────────────────────
 constexpr float POPUP_DURATION    = 1.2f;
-constexpr float PARTICLE_LIFE     = 0.6f;
-constexpr int   MAX_PARTICLES     = 50;
 
 // ── Input ─────────────────────────────────────────
 constexpr float SWIPE_ZONE_SPLIT  = 0.80f;
 constexpr float MIN_SWIPE_DIST    = 50.0f;
 constexpr float MAX_SWIPE_TIME    = 0.3f;
-constexpr float BUTTON_DEBOUNCE   = 0.1f;
 
 // ── UI Layout (pixel-space; retained to derive the NDC constants below and for tests) ────
 constexpr float BURNOUT_BAR_Y     = 1020.0f;
@@ -176,8 +154,7 @@ constexpr float FLOOR_PULSE_DECAY    = 0.15f;   // seconds
 // ── Shape Colors ──────────────────────────────────
 // Used for both obstacles and player character.
 // Index by static_cast<int>(Shape).
-struct ShapeColor { uint8_t r, g, b, a; };
-constexpr ShapeColor SHAPE_COLORS[] = {
+constexpr Color SHAPE_COLORS[] = {
     {  80, 200, 255, 255 },   // Circle   — cyan/blue
     { 255, 100, 100, 255 },   // Square   — red
     { 100, 255, 100, 255 },   // Triangle — green

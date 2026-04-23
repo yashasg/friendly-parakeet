@@ -8,7 +8,7 @@
 static void apply_shape_color(entt::registry& reg, entt::entity entity, Shape shape) {
     auto si = static_cast<int>(shape);
     auto& sc = constants::SHAPE_COLORS[si];
-    reg.replace<DrawColor>(entity, sc.r, sc.g, sc.b, sc.a);
+    reg.replace<Color>(entity, sc);
 }
 
 void shape_window_system(entt::registry& reg, float /*dt*/) {
@@ -17,7 +17,7 @@ void shape_window_system(entt::registry& reg, float /*dt*/) {
     auto* song = reg.ctx().find<SongState>();
     if (!song) return;
 
-    auto view = reg.view<PlayerTag, PlayerShape, ShapeWindow, DrawColor>();
+    auto view = reg.view<PlayerTag, PlayerShape, ShapeWindow, Color>();
     for (auto [entity, pshape, swindow, col] : view.each()) {
         auto phase = static_cast<WindowPhase>(swindow.phase_raw);
 

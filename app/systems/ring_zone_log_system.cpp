@@ -5,8 +5,7 @@
 #include "../components/transform.h"
 #include "../components/rhythm.h"
 #include "../components/game_state.h"
-#include "../session_logger.h"
-#include "../enum_names.h"
+#include "session_logger.h"
 #include "../constants.h"
 
 #include <cmath>
@@ -89,7 +88,7 @@ void ring_zone_log_system(entt::registry& reg, float /*dt*/) {
                 "RING_ZONE obstacle=%u zone=%s shape=%s dist=%.0fpx",
                 static_cast<unsigned>(entt::to_integral(entity)),
                 zone_label(zone, tracker.past_center),
-                shape_name(req.shape), dist);
+                ToString(req.shape), dist);
         }
         tracker.last_zone = zone;
     }

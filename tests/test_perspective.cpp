@@ -1,27 +1,27 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
-#include "perspective.h"
-#include "shape_vertices.h"
+#include "systems/camera_system.h"
+#include "components/shape_vertices.h"
 #include "constants.h"
 #include <cmath>
 
 using Catch::Matchers::WithinAbs;
 
 // ═════════════════════════════════════════════════════════════════════════════
-// §1  perspective::project() / perspective::project_x() — projection math
+// §1  camera::project() / camera::project_x() — projection math
 // ═════════════════════════════════════════════════════════════════════════════
 
 // ── Centre-line invariance ──────────────────────────────────────────────────
 // x = SCREEN_W / 2 = 360 must always project to x = 360 regardless of y,
 // because center + (center − center) * depth = center for any depth.
 
-TEST_CASE("perspective::project — centre-line invariance", "[perspective]") {
+TEST_CASE("camera::project — centre-line invariance", "[perspective]") {
     constexpr float center = constants::SCREEN_W / 2.0f;  // 360
     constexpr float vp_y   = constants::VANISHING_POINT_Y;
 
     for (float y : {vp_y, 0.0f, 640.0f, 1280.0f}) {
         CAPTURE(y);
-        Vector2 p = perspective::project(center, y);
+        Vector2 p = camera::project(center, y);
         CHECK_THAT(p.x, WithinAbs(center, 0.01));
     }
 }
@@ -29,7 +29,7 @@ TEST_CASE("perspective::project — centre-line invariance", "[perspective]") {
 // ── Y-preservation ──────────────────────────────────────────────────────────
 // The projected y must always equal the input y (only x is scaled by depth).
 
-TEST_CASE("perspective::project — y-preservation", "[perspective]") {
+TEST_CASE("camera::project — y-preservation", "[perspective]") {
     constexpr float vp_y = constants::VANISHING_POINT_Y;
     const float xs[] = {0.0f, 180.0f, 360.0f, 540.0f, 720.0f};
     const float ys[] = {vp_y - 200.0f, vp_y, constants::SPAWN_Y, 0.0f,
@@ -38,7 +38,7 @@ TEST_CASE("perspective::project — y-preservation", "[perspective]") {
     for (float x : xs) {
         for (float y : ys) {
             CAPTURE(x, y);
-            Vector2 p = perspective::project(x, y);
+            Vector2 p = camera::project(x, y);
             CHECK_THAT(p.y, WithinAbs(y, 0.01));
         }
     }
@@ -48,26 +48,26 @@ TEST_CASE("perspective::project — y-preservation", "[perspective]") {
 // For x ≠ 360, |project_x(x, y) − 360| must increase as y increases —
 // objects spread further from the vanishing point as they approach the camera.
 
-TEST_CASE("perspective::project — depth monotonicity (lane 0, x=180)", "[perspective]") {
+TEST_CASE("camera::project — depth monotonicity (lane 0, x=180)", "[perspective]") {
     constexpr float center = 360.0f;
     constexpr float x      = 180.0f;  // left of centre
 
     float prev_spread = 0.0f;
     for (float y : {0.0f, 640.0f, 1280.0f}) {
-        float spread = std::abs(perspective::project_x(x, y) - center);
+        float spread = std::abs(camera::project_x(x, y) - center);
         CAPTURE(y, spread);
         CHECK(spread > prev_spread);
         prev_spread = spread;
     }
 }
 
-TEST_CASE("perspective::project — depth monotonicity (lane 2, x=540)", "[perspective]") {
+TEST_CASE("camera::project — depth monotonicity (lane 2, x=540)", "[perspective]") {
     constexpr float center = 360.0f;
     constexpr float x      = 540.0f;  // right of centre
 
     float prev_spread = 0.0f;
     for (float y : {0.0f, 640.0f, 1280.0f}) {
-        float spread = std::abs(perspective::project_x(x, y) - center);
+        float spread = std::abs(camera::project_x(x, y) - center);
         CAPTURE(y, spread);
         CHECK(spread > prev_spread);
         prev_spread = spread;
@@ -77,23 +77,23 @@ TEST_CASE("perspective::project — depth monotonicity (lane 2, x=540)", "[persp
 // ── Lateral ordering preservation ───────────────────────────────────────────
 // For x1 < x2 at the same y, project_x(x1, y) < project_x(x2, y).
 
-TEST_CASE("perspective::project — lateral ordering preservation", "[perspective]") {
+TEST_CASE("camera::project — lateral ordering preservation", "[perspective]") {
     constexpr float x1 = 180.0f;
     constexpr float x2 = 540.0f;
 
     for (float y : {constants::VANISHING_POINT_Y, constants::SPAWN_Y,
                      0.0f, 640.0f, constants::PLAYER_Y, 1280.0f}) {
         CAPTURE(y);
-        CHECK(perspective::project_x(x1, y) < perspective::project_x(x2, y));
+        CHECK(camera::project_x(x1, y) < camera::project_x(x2, y));
     }
 }
 
-TEST_CASE("perspective::project — lateral ordering with three lanes", "[perspective]") {
+TEST_CASE("camera::project — lateral ordering with three lanes", "[perspective]") {
     for (float y : {0.0f, 640.0f, 1280.0f}) {
         CAPTURE(y);
-        float px0 = perspective::project_x(180.0f, y);
-        float px1 = perspective::project_x(360.0f, y);
-        float px2 = perspective::project_x(540.0f, y);
+        float px0 = camera::project_x(180.0f, y);
+        float px1 = camera::project_x(360.0f, y);
+        float px2 = camera::project_x(540.0f, y);
         CHECK(px0 < px1);
         CHECK(px1 < px2);
     }
@@ -113,84 +113,84 @@ static float expected_px(float x, float y) {
     return center + (x - center) * depth;
 }
 
-TEST_CASE("perspective::project — known value at vanishing point", "[perspective]") {
+TEST_CASE("camera::project — known value at vanishing point", "[perspective]") {
     constexpr float vp_y = constants::VANISHING_POINT_Y;
-    Vector2 p = perspective::project(0.0f, vp_y);
+    Vector2 p = camera::project(0.0f, vp_y);
     // At VP, depth clamps to 0.01: project(0) = 360 + (0-360)*0.01 = 356.4
     CHECK_THAT(p.x, WithinAbs(356.4, 0.01));
     CHECK_THAT(p.y, WithinAbs(vp_y, 0.01));
 }
 
-TEST_CASE("perspective::project — known value at spawn y=-120", "[perspective]") {
-    float px = perspective::project_x(180.0f, constants::SPAWN_Y);
+TEST_CASE("camera::project — known value at spawn y=-120", "[perspective]") {
+    float px = camera::project_x(180.0f, constants::SPAWN_Y);
     CHECK_THAT(px, WithinAbs(expected_px(180.0f, constants::SPAWN_Y), 0.02));
 }
 
-TEST_CASE("perspective::project — known value at top of screen y=0", "[perspective]") {
-    float px = perspective::project_x(180.0f, 0.0f);
+TEST_CASE("camera::project — known value at top of screen y=0", "[perspective]") {
+    float px = camera::project_x(180.0f, 0.0f);
     CHECK_THAT(px, WithinAbs(expected_px(180.0f, 0.0f), 0.01));
 }
 
-TEST_CASE("perspective::project — known value at mid-screen y=640", "[perspective]") {
-    float px = perspective::project_x(180.0f, 640.0f);
+TEST_CASE("camera::project — known value at mid-screen y=640", "[perspective]") {
+    float px = camera::project_x(180.0f, 640.0f);
     CHECK_THAT(px, WithinAbs(expected_px(180.0f, 640.0f), 0.01));
 }
 
-TEST_CASE("perspective::project — known value at player y=920", "[perspective]") {
-    float px = perspective::project_x(180.0f, constants::PLAYER_Y);
+TEST_CASE("camera::project — known value at player y=920", "[perspective]") {
+    float px = camera::project_x(180.0f, constants::PLAYER_Y);
     CHECK_THAT(px, WithinAbs(expected_px(180.0f, constants::PLAYER_Y), 0.01));
 }
 
-TEST_CASE("perspective::project — known value at bottom y=1280", "[perspective]") {
+TEST_CASE("camera::project — known value at bottom y=1280", "[perspective]") {
     // depth = 1.0 at bottom → Lane0: 360 + (180−360)*1.0 = 180 (identity)
-    float px = perspective::project_x(180.0f, 1280.0f);
+    float px = camera::project_x(180.0f, 1280.0f);
     CHECK_THAT(px, WithinAbs(expected_px(180.0f, 1280.0f), 0.01));
 }
 
 // ── Clamping behaviour ──────────────────────────────────────────────────────
 
-TEST_CASE("perspective::project — depth clamps to 0.01 above vanishing point", "[perspective]") {
+TEST_CASE("camera::project — depth clamps to 0.01 above vanishing point", "[perspective]") {
     // At y well above VP (−1060): raw depth < 0 → clamped to 0.01
     // project(0, y) = 360 + (0−360)*0.01 = 356.4
     constexpr float far_above = constants::VANISHING_POINT_Y - 500.0f;
-    Vector2 p = perspective::project(0.0f, far_above);
+    Vector2 p = camera::project(0.0f, far_above);
     CHECK_THAT(p.x, WithinAbs(356.4, 0.01));
 
     // Right edge: project(720, y) = 360 + (720−360)*0.01 = 363.6
-    Vector2 p2 = perspective::project(720.0f, far_above);
+    Vector2 p2 = camera::project(720.0f, far_above);
     CHECK_THAT(p2.x, WithinAbs(363.6, 0.01));
 }
 
-TEST_CASE("perspective::project — depth clamps to 1.5 far below screen", "[perspective]") {
+TEST_CASE("camera::project — depth clamps to 1.5 far below screen", "[perspective]") {
     // range = SCREEN_H − VP_Y = 2340
     // depth = 1.5 at y = VP_Y + 1.5*range = −1060 + 3510 = 2450
     // For y >> 2450, depth clamps to 1.5
     // project(0, 4000) = 360 + (0−360)*1.5 = −180
-    Vector2 p = perspective::project(0.0f, 4000.0f);
+    Vector2 p = camera::project(0.0f, 4000.0f);
     CHECK_THAT(p.x, WithinAbs(-180.0, 0.01));
 }
 
-TEST_CASE("perspective::project — depth clamp boundary at exactly 1.5", "[perspective]") {
+TEST_CASE("camera::project — depth clamp boundary at exactly 1.5", "[perspective]") {
     // depth = 1.5 when y = VP_Y + 1.5 * range = −1060 + 3510 = 2450
     constexpr float range = static_cast<float>(constants::SCREEN_H) - constants::VANISHING_POINT_Y;
     constexpr float y_boundary = constants::VANISHING_POINT_Y + 1.5f * range;
 
     // At boundary: project(0, 2450) = 360 + (0−360)*1.5 = −180
-    float px_at_boundary = perspective::project_x(0.0f, y_boundary);
+    float px_at_boundary = camera::project_x(0.0f, y_boundary);
     CHECK_THAT(px_at_boundary, WithinAbs(-180.0, 0.01));
 
     // Past boundary: same result (clamped)
-    float px_past = perspective::project_x(0.0f, y_boundary + 200.0f);
+    float px_past = camera::project_x(0.0f, y_boundary + 200.0f);
     CHECK_THAT(px_past, WithinAbs(-180.0, 0.01));
 }
 
 // ── Lane convergence ────────────────────────────────────────────────────────
 // All three lanes converge toward x=360 as y decreases.
 
-TEST_CASE("perspective::project — lane convergence toward vanishing point", "[perspective]") {
+TEST_CASE("camera::project — lane convergence toward vanishing point", "[perspective]") {
     auto lane_spread = [](float y) {
-        float px0 = perspective::project_x(180.0f, y);
-        float px2 = perspective::project_x(540.0f, y);
+        float px0 = camera::project_x(180.0f, y);
+        float px2 = camera::project_x(540.0f, y);
         return px2 - px0;  // total horizontal spread
     };
 
@@ -207,14 +207,14 @@ TEST_CASE("perspective::project — lane convergence toward vanishing point", "[
 // ── Symmetry ────────────────────────────────────────────────────────────────
 // project_x(360 − d, y) and project_x(360 + d, y) must be equidistant from 360.
 
-TEST_CASE("perspective::project — symmetry about centre line", "[perspective]") {
+TEST_CASE("camera::project — symmetry about centre line", "[perspective]") {
     constexpr float center = 360.0f;
 
     for (float d : {90.0f, 180.0f, 360.0f}) {
         for (float y : {0.0f, 640.0f, 920.0f, 1280.0f}) {
             CAPTURE(d, y);
-            float left  = perspective::project_x(center - d, y);
-            float right = perspective::project_x(center + d, y);
+            float left  = camera::project_x(center - d, y);
+            float right = camera::project_x(center + d, y);
 
             float dist_left  = center - left;
             float dist_right = right - center;
@@ -226,13 +226,13 @@ TEST_CASE("perspective::project — symmetry about centre line", "[perspective]"
 // ── project_x consistency ───────────────────────────────────────────────────
 // project_x(x, y) must always agree with project(x, y).x.
 
-TEST_CASE("perspective::project_x — consistent with project().x", "[perspective]") {
+TEST_CASE("camera::project_x — consistent with project().x", "[perspective]") {
     constexpr float vp_y = constants::VANISHING_POINT_Y;
     for (float x : {0.0f, 180.0f, 360.0f, 540.0f, 720.0f}) {
         for (float y : {vp_y - 200.0f, vp_y, 0.0f, 640.0f, 1280.0f, 4000.0f}) {
             CAPTURE(x, y);
-            Vector2 p  = perspective::project(x, y);
-            float   px = perspective::project_x(x, y);
+            Vector2 p  = camera::project(x, y);
+            float   px = camera::project_x(x, y);
             CHECK_THAT(px, WithinAbs(p.x, 1e-5));
         }
     }
@@ -392,8 +392,8 @@ TEST_CASE("floor: connector endpoints match depth-scaled shape edges", "[floor][
             + static_cast<float>(j) * constants::FLOOR_SHAPE_SPACING;
         float next_cy = cy + constants::FLOOR_SHAPE_SPACING;
 
-        float d      = perspective::depth(cy);
-        float next_d = perspective::depth(next_cy);
+        float d      = camera::depth(cy);
+        float next_d = camera::depth(next_cy);
 
         float shape_bottom_edge = cy + half * d;
         float next_shape_top_edge = next_cy - half * next_d;
@@ -418,8 +418,8 @@ TEST_CASE("floor: all shapes within visible screen bounds", "[floor][regression]
             float cy = constants::FLOOR_Y_START
                 + static_cast<float>(j) * constants::FLOOR_SHAPE_SPACING;
 
-            float d    = perspective::depth(cy);
-            float px   = perspective::project_x(cx, cy);
+            float d    = camera::depth(cy);
+            float px   = camera::project_x(cx, cy);
             float p_half = half * d;
 
             INFO("lane=" << lane << " j=" << j << " px=" << px << " p_half=" << p_half);
@@ -444,7 +444,7 @@ TEST_CASE("floor: depth-scaled shape size decreases toward top", "[floor][regres
         for (int j = 0; j < constants::FLOOR_SHAPE_COUNT; ++j) {
             float cy = constants::FLOOR_Y_START
                 + static_cast<float>(j) * constants::FLOOR_SHAPE_SPACING;
-            float d = perspective::depth(cy);
+            float d = camera::depth(cy);
             float p_half = half * d;
 
             if (j > 0) {
@@ -464,7 +464,7 @@ TEST_CASE("floor: connector uses depth-scaled half, not flat half", "[floor][reg
 
     constexpr float half = constants::FLOOR_SHAPE_SIZE / 2.0f;
     float cy_top = constants::FLOOR_Y_START;  // y=12, near top
-    float d_top = perspective::depth(cy_top);
+    float d_top = camera::depth(cy_top);
 
     // depth at top should be < 1.0 (this is what makes the bug visible)
     REQUIRE(d_top < 1.0f);
@@ -568,15 +568,15 @@ TEST_CASE("winding: perspective circle fan triangles are CCW", "[winding][regres
     // The circle table goes CCW, so fan triangles centre→v[i+1]→v[i]
     // should be CCW in screen space after projection.
     constexpr float cx = 360.0f, cy = 500.0f, r = 32.0f;
-    Vector2 centre = perspective::project(cx, cy);
+    Vector2 centre = camera::project(cx, cy);
 
-    Vector2 prev = perspective::project(
+    Vector2 prev = camera::project(
         cx + shape_verts::CIRCLE[0].x * r,
         cy + shape_verts::CIRCLE[0].y * r);
 
     for (int i = 0; i < shape_verts::CIRCLE_SEGMENTS; ++i) {
         int next = (i + 1) % shape_verts::CIRCLE_SEGMENTS;
-        Vector2 cur = perspective::project(
+        Vector2 cur = camera::project(
             cx + shape_verts::CIRCLE[next].x * r,
             cy + shape_verts::CIRCLE[next].y * r);
 
@@ -590,15 +590,15 @@ TEST_CASE("winding: perspective circle fan triangles are CCW", "[winding][regres
 
 TEST_CASE("winding: perspective hexagon fan triangles are CCW", "[winding][regression]") {
     constexpr float cx = 360.0f, cy = 500.0f, radius = 64.0f * 0.6f;
-    Vector2 centre = perspective::project(cx, cy);
+    Vector2 centre = camera::project(cx, cy);
 
-    Vector2 prev = perspective::project(
+    Vector2 prev = camera::project(
         cx + shape_verts::HEXAGON[0].x * radius,
         cy + shape_verts::HEXAGON[0].y * radius);
 
     for (int i = 0; i < shape_verts::HEX_SEGMENTS; ++i) {
         int next = (i + 1) % shape_verts::HEX_SEGMENTS;
-        Vector2 cur = perspective::project(
+        Vector2 cur = camera::project(
             cx + shape_verts::HEXAGON[next].x * radius,
             cy + shape_verts::HEXAGON[next].y * radius);
 
@@ -615,7 +615,7 @@ TEST_CASE("winding: perspective square trapezoid triangles are CCW", "[winding][
     constexpr float cx = 360.0f, cy = 500.0f, half = 32.0f;
     Vector2 v[4];
     for (int i = 0; i < 4; ++i)
-        v[i] = perspective::project(cx + shape_verts::SQUARE[i].x * half,
+        v[i] = camera::project(cx + shape_verts::SQUARE[i].x * half,
                                     cy + shape_verts::SQUARE[i].y * half);
 
     float cross1 = cross2d(v[0].x, v[0].y, v[3].x, v[3].y, v[1].x, v[1].y);
@@ -628,7 +628,7 @@ TEST_CASE("winding: perspective triangle shape is CCW", "[winding][regression]")
     constexpr float cx = 360.0f, cy = 500.0f, half = 32.0f;
     Vector2 v[3];
     for (int i = 0; i < 3; ++i)
-        v[i] = perspective::project(cx + shape_verts::TRIANGLE[i].x * half,
+        v[i] = camera::project(cx + shape_verts::TRIANGLE[i].x * half,
                                     cy + shape_verts::TRIANGLE[i].y * half);
 
     float cross = cross2d(v[0].x, v[0].y, v[1].x, v[1].y, v[2].x, v[2].y);
@@ -638,13 +638,13 @@ TEST_CASE("winding: perspective triangle shape is CCW", "[winding][regression]")
 TEST_CASE("winding: perspective rect (obstacle quad) triangles are CCW", "[winding][regression]") {
     // draw_rect produces two triangles from 4 projected corners.
     // TL→BL→TR and TR→BL→BR.
-    float d_top = perspective::depth(300.0f);
-    float d_bot = perspective::depth(320.0f);
+    float d_top = camera::depth(300.0f);
+    float d_bot = camera::depth(320.0f);
 
-    float tl_x = perspective::CENTER + (0.0f   - perspective::CENTER) * d_top;
-    float tr_x = perspective::CENTER + (720.0f - perspective::CENTER) * d_top;
-    float bl_x = perspective::CENTER + (0.0f   - perspective::CENTER) * d_bot;
-    float br_x = perspective::CENTER + (720.0f - perspective::CENTER) * d_bot;
+    float tl_x = camera::CENTER + (0.0f   - camera::CENTER) * d_top;
+    float tr_x = camera::CENTER + (720.0f - camera::CENTER) * d_top;
+    float bl_x = camera::CENTER + (0.0f   - camera::CENTER) * d_bot;
+    float br_x = camera::CENTER + (720.0f - camera::CENTER) * d_bot;
 
     // Triangle 1: TL → BL → TR
     float cross1 = cross2d(tl_x, 300.0f, bl_x, 320.0f, tr_x, 300.0f);
@@ -663,9 +663,9 @@ TEST_CASE("winding: perspective rect (obstacle quad) triangles are CCW", "[windi
 
 TEST_CASE("perspective: depth-scaled object size decreases toward top", "[perspective]") {
     constexpr float size = 64.0f;
-    float d_far  = perspective::depth(100.0f);
-    float d_mid  = perspective::depth(640.0f);
-    float d_near = perspective::depth(920.0f);
+    float d_far  = camera::depth(100.0f);
+    float d_mid  = camera::depth(640.0f);
+    float d_near = camera::depth(920.0f);
 
     float apparent_far  = size * d_far;
     float apparent_mid  = size * d_mid;
@@ -681,11 +681,11 @@ TEST_CASE("perspective: depth-scaled rect height is shorter far away", "[perspec
     constexpr float h = 40.0f;
 
     // Far rect (y=100)
-    auto ry_far = perspective::scale_rect_y(100.0f, h);
+    auto ry_far = camera::scale_rect_y(100.0f, h);
     float sh_far = ry_far.bot - ry_far.top;
 
     // Near rect (y=900)
-    auto ry_near = perspective::scale_rect_y(900.0f, h);
+    auto ry_near = camera::scale_rect_y(900.0f, h);
     float sh_near = ry_near.bot - ry_near.top;
 
     CHECK(sh_far < sh_near);
@@ -698,16 +698,16 @@ TEST_CASE("perspective: depth-scaled rect height is shorter far away", "[perspec
 
 TEST_CASE("winding: depth-scaled circle fan is CCW (far y=100)", "[winding][perspective]") {
     constexpr float cx = 360.0f, cy = 100.0f, r = 32.0f;
-    float d_cy = perspective::depth(cy);
-    Vector2 centre = perspective::project(cx, cy);
+    float d_cy = camera::depth(cy);
+    Vector2 centre = camera::project(cx, cy);
 
-    Vector2 prev = perspective::project(
+    Vector2 prev = camera::project(
         cx + shape_verts::CIRCLE[0].x * r,
         cy + shape_verts::CIRCLE[0].y * r * d_cy);
 
     for (int i = 0; i < shape_verts::CIRCLE_SEGMENTS; ++i) {
         int next = (i + 1) % shape_verts::CIRCLE_SEGMENTS;
-        Vector2 cur = perspective::project(
+        Vector2 cur = camera::project(
             cx + shape_verts::CIRCLE[next].x * r,
             cy + shape_verts::CIRCLE[next].y * r * d_cy);
 
@@ -720,10 +720,10 @@ TEST_CASE("winding: depth-scaled circle fan is CCW (far y=100)", "[winding][pers
 
 TEST_CASE("winding: depth-scaled square is CCW (far y=100)", "[winding][perspective]") {
     constexpr float cx = 360.0f, cy = 100.0f, half = 32.0f;
-    float d_cy = perspective::depth(cy);
+    float d_cy = camera::depth(cy);
     Vector2 v[4];
     for (int i = 0; i < 4; ++i)
-        v[i] = perspective::project(cx + shape_verts::SQUARE[i].x * half,
+        v[i] = camera::project(cx + shape_verts::SQUARE[i].x * half,
                                     cy + shape_verts::SQUARE[i].y * half * d_cy);
 
     float cross1 = cross2d(v[0].x, v[0].y, v[3].x, v[3].y, v[1].x, v[1].y);
@@ -734,10 +734,10 @@ TEST_CASE("winding: depth-scaled square is CCW (far y=100)", "[winding][perspect
 
 TEST_CASE("winding: depth-scaled triangle shape is CCW (far y=100)", "[winding][perspective]") {
     constexpr float cx = 360.0f, cy = 100.0f, half = 32.0f;
-    float d_cy = perspective::depth(cy);
+    float d_cy = camera::depth(cy);
     Vector2 v[3];
     for (int i = 0; i < 3; ++i)
-        v[i] = perspective::project(cx + shape_verts::TRIANGLE[i].x * half,
+        v[i] = camera::project(cx + shape_verts::TRIANGLE[i].x * half,
                                     cy + shape_verts::TRIANGLE[i].y * half * d_cy);
 
     float cross = cross2d(v[0].x, v[0].y, v[1].x, v[1].y, v[2].x, v[2].y);
@@ -747,12 +747,12 @@ TEST_CASE("winding: depth-scaled triangle shape is CCW (far y=100)", "[winding][
 TEST_CASE("winding: depth-scaled rect is CCW (far y=100)", "[winding][perspective]") {
     // Use the same scale_rect_y helper that draw_rect / emit_quad use.
     constexpr float y = 100.0f, h = 40.0f;
-    auto ry = perspective::scale_rect_y(y, h);
+    auto ry = camera::scale_rect_y(y, h);
 
-    float tl_x = perspective::CENTER + (0.0f   - perspective::CENTER) * ry.d_top;
-    float tr_x = perspective::CENTER + (720.0f - perspective::CENTER) * ry.d_top;
-    float bl_x = perspective::CENTER + (0.0f   - perspective::CENTER) * ry.d_bot;
-    float br_x = perspective::CENTER + (720.0f - perspective::CENTER) * ry.d_bot;
+    float tl_x = camera::CENTER + (0.0f   - camera::CENTER) * ry.d_top;
+    float tr_x = camera::CENTER + (720.0f - camera::CENTER) * ry.d_top;
+    float bl_x = camera::CENTER + (0.0f   - camera::CENTER) * ry.d_bot;
+    float br_x = camera::CENTER + (720.0f - camera::CENTER) * ry.d_bot;
 
     // Triangle 1: TL → BL → TR
     float cross1 = cross2d(tl_x, ry.top, bl_x, ry.bot, tr_x, ry.top);
