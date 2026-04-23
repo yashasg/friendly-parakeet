@@ -7,176 +7,254 @@
 #include "../components/rendering.h"
 #include "../components/particle.h"
 #include "../components/lifetime.h"
-#include "../components/song_state.h"
+#include "../constants.h"
 #include <raylib.h>
 #include <rlgl.h>
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// Camera3D world-space rendering
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// Coordinate mapping:  game Position{x, y} → 3D {x, 0, y}
+//   • x stays the same (0–720)
+//   • 3D y = 0 is the ground plane (>0 for jumping player)
+//   • 3D z = game's y coordinate (scroll direction)
+//
+// All geometry is emitted as 3D primitives using rlVertex3f.
+// Camera3D's perspective projection matrix handles foreshortening, lane
+// convergence, and depth scaling — no manual depth()/project() needed.
+// ═══════════════════════════════════════════════════════════════════════════════
+
 namespace camera {
 
-// ── Filled rectangle (axis-aligned in world → trapezoid after projection) ────
-// Height is scaled by depth at the rect's vertical centre so objects appear
-// shorter when far from the camera.
-void draw_rect(float x, float y, float w, float h, Color c) {
-    auto ry = scale_rect_y(y, h);
-
-    float tl_x = CENTER + (x     - CENTER) * ry.d_top;
-    float tr_x = CENTER + (x + w - CENTER) * ry.d_top;
-    float bl_x = CENTER + (x     - CENTER) * ry.d_bot;
-    float br_x = CENTER + (x + w - CENTER) * ry.d_bot;
-
-    Vector2 tl = {tl_x, ry.top};
-    Vector2 tr = {tr_x, ry.top};
-    Vector2 bl = {bl_x, ry.bot};
-    Vector2 br = {br_x, ry.bot};
-
-    DrawTriangle(tl, bl, tr, c);
-    DrawTriangle(tr, bl, br, c);
-}
-
-// ── Filled shape (Circle, Square, Triangle, Hexagon) ─────────────────────────
-// Vertex Y-offsets are scaled by depth(cy) so shapes shrink uniformly as they
-// recede toward the vanishing point.
-void draw_shape(Shape shape, float cx, float cy, float size, Color c) {
-    float d_cy = depth(cy);
+// ── 3D shape vertex emitter (call inside an RL_TRIANGLES block) ─────────────
+// Emits vertices for actual 3D primitives: gem, cube, pyramid, hex-prism.
+// Top faces use the primary colour; bottom and side faces use a darker shade.
+static void emit_3d_shape(Shape shape, float cx, float y_3d, float cz,
+                           float size,
+                           uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+    // Darker shade for bottom / side faces
+    uint8_t sr = static_cast<uint8_t>(r * 0.7f);
+    uint8_t sg = static_cast<uint8_t>(g * 0.7f);
+    uint8_t sb = static_cast<uint8_t>(b * 0.7f);
 
     switch (shape) {
-        case Shape::Circle: {
-            float r = size / 2.0f;
-            Vector2 centre = project(cx, cy);
-            Vector2 prev = project(cx + shape_verts::CIRCLE[0].x * r,
-                                   cy + shape_verts::CIRCLE[0].y * r * d_cy);
-            for (int i = 0; i < shape_verts::CIRCLE_SEGMENTS; ++i) {
-                int next = (i + 1) % shape_verts::CIRCLE_SEGMENTS;
-                Vector2 cur = project(cx + shape_verts::CIRCLE[next].x * r,
-                                      cy + shape_verts::CIRCLE[next].y * r * d_cy);
-                DrawTriangle(centre, cur, prev, c);
-                prev = cur;
-            }
-            break;
+
+    // ── Circle → Faceted gem (tapered decagon prism) ─────────────────────
+    case Shape::Circle: {
+        constexpr int N = 10;
+        float radius    = size / 2.0f;
+        float top_r     = radius * 0.6f;
+        float height    = size * 0.4f;
+        float top_y     = y_3d + height;
+
+        float bx[N], bz_[N];   // bottom ring
+        float tx[N], tz_[N];   // top ring (smaller)
+        for (int i = 0; i < N; ++i) {
+            int idx = (i * shape_verts::CIRCLE_SEGMENTS) / N;
+            bx[i]  = cx + shape_verts::CIRCLE[idx].x * radius;
+            bz_[i] = cz + shape_verts::CIRCLE[idx].y * radius;
+            tx[i]  = cx + shape_verts::CIRCLE[idx].x * top_r;
+            tz_[i] = cz + shape_verts::CIRCLE[idx].y * top_r;
         }
-        case Shape::Square: {
-            float half = size / 2.0f;
-            Vector2 corners[4];
-            for (int i = 0; i < 4; ++i) {
-                corners[i] = project(cx + shape_verts::SQUARE[i].x * half,
-                                     cy + shape_verts::SQUARE[i].y * half * d_cy);
-            }
-            DrawTriangle(corners[0], corners[3], corners[1], c);
-            DrawTriangle(corners[1], corners[3], corners[2], c);
-            break;
+
+        // Bottom face (fan, darker)
+        rlColor4ub(sr, sg, sb, a);
+        for (int i = 0; i < N; ++i) {
+            int n = (i + 1) % N;
+            rlVertex3f(cx,     y_3d, cz);
+            rlVertex3f(bx[n],  y_3d, bz_[n]);
+            rlVertex3f(bx[i],  y_3d, bz_[i]);
         }
-        case Shape::Triangle: {
-            float half = size / 2.0f;
-            Vector2 verts[3];
-            for (int i = 0; i < 3; ++i) {
-                verts[i] = project(cx + shape_verts::TRIANGLE[i].x * half,
-                                   cy + shape_verts::TRIANGLE[i].y * half * d_cy);
-            }
-            DrawTriangle(verts[0], verts[1], verts[2], c);
-            break;
+
+        // Top face (fan, bright)
+        rlColor4ub(r, g, b, a);
+        for (int i = 0; i < N; ++i) {
+            int n = (i + 1) % N;
+            rlVertex3f(cx,     top_y, cz);
+            rlVertex3f(tx[i],  top_y, tz_[i]);
+            rlVertex3f(tx[n],  top_y, tz_[n]);
         }
-        case Shape::Hexagon: {
-            float radius = size * 0.6f;
-            Vector2 centre = project(cx, cy);
-            Vector2 prev = project(cx + shape_verts::HEXAGON[0].x * radius,
-                                   cy + shape_verts::HEXAGON[0].y * radius * d_cy);
-            for (int i = 0; i < shape_verts::HEX_SEGMENTS; ++i) {
-                int next = (i + 1) % shape_verts::HEX_SEGMENTS;
-                Vector2 cur = project(cx + shape_verts::HEXAGON[next].x * radius,
-                                      cy + shape_verts::HEXAGON[next].y * radius * d_cy);
-                DrawTriangle(centre, cur, prev, c);
-                prev = cur;
-            }
-            break;
+
+        // Side faces (quads as 2 tris each, darker)
+        rlColor4ub(sr, sg, sb, a);
+        for (int i = 0; i < N; ++i) {
+            int n = (i + 1) % N;
+            rlVertex3f(bx[i],  y_3d,  bz_[i]);
+            rlVertex3f(bx[n],  y_3d,  bz_[n]);
+            rlVertex3f(tx[i],  top_y, tz_[i]);
+
+            rlVertex3f(bx[n],  y_3d,  bz_[n]);
+            rlVertex3f(tx[n],  top_y, tz_[n]);
+            rlVertex3f(tx[i],  top_y, tz_[i]);
         }
+        break;
     }
-}
 
-// ── Projected line ───────────────────────────────────────────────────────────
-void draw_line(float x1, float y1, float x2, float y2, float thick, Color c) {
-    Vector2 a = project(x1, y1);
-    Vector2 b = project(x2, y2);
-    DrawLineEx(a, b, thick, c);
-}
+    // ── Square → Cube ────────────────────────────────────────────────────
+    case Shape::Square: {
+        float half   = size / 2.0f;
+        float height = size * 0.4f;
+        float bot_y  = y_3d;
+        float top_y  = y_3d + height;
 
-// ── Projected ring (annulus) ─────────────────────────────────────────────────
-void draw_ring(float cx, float cy, float inner_r, float outer_r, int segments, Color c) {
-    int seg = (segments > 0 && segments <= shape_verts::CIRCLE_SEGMENTS)
-              ? segments : shape_verts::CIRCLE_SEGMENTS;
+        // SQUARE: 0=TL(-1,-1)  1=TR(1,-1)  2=BR(1,1)  3=BL(-1,1)
+        float vx[4], vz[4];
+        for (int i = 0; i < 4; ++i) {
+            vx[i] = cx + shape_verts::SQUARE[i].x * half;
+            vz[i] = cz + shape_verts::SQUARE[i].y * half;
+        }
 
-    float d_cy = depth(cy);
+        // Top face (bright)
+        rlColor4ub(r, g, b, a);
+        rlVertex3f(vx[0], top_y, vz[0]);
+        rlVertex3f(vx[1], top_y, vz[1]);
+        rlVertex3f(vx[3], top_y, vz[3]);
+        rlVertex3f(vx[1], top_y, vz[1]);
+        rlVertex3f(vx[2], top_y, vz[2]);
+        rlVertex3f(vx[3], top_y, vz[3]);
 
-    for (int i = 0; i < seg; ++i) {
-        // Map evenly across the full 0..CIRCLE_SEGMENTS table so the ring
-        // always closes correctly, regardless of the requested segment count.
-        int idx      = (i       * shape_verts::CIRCLE_SEGMENTS) / seg;
-        int next_idx = ((i + 1) * shape_verts::CIRCLE_SEGMENTS) / seg
-                       % shape_verts::CIRCLE_SEGMENTS;
+        // Bottom face (darker)
+        rlColor4ub(sr, sg, sb, a);
+        rlVertex3f(vx[0], bot_y, vz[0]);
+        rlVertex3f(vx[3], bot_y, vz[3]);
+        rlVertex3f(vx[1], bot_y, vz[1]);
+        rlVertex3f(vx[1], bot_y, vz[1]);
+        rlVertex3f(vx[3], bot_y, vz[3]);
+        rlVertex3f(vx[2], bot_y, vz[2]);
 
-        Vector2 outer1 = project(cx + shape_verts::CIRCLE[idx].x      * outer_r,
-                                 cy + shape_verts::CIRCLE[idx].y      * outer_r * d_cy);
-        Vector2 outer2 = project(cx + shape_verts::CIRCLE[next_idx].x * outer_r,
-                                 cy + shape_verts::CIRCLE[next_idx].y * outer_r * d_cy);
-        Vector2 inner1 = project(cx + shape_verts::CIRCLE[idx].x      * inner_r,
-                                 cy + shape_verts::CIRCLE[idx].y      * inner_r * d_cy);
-        Vector2 inner2 = project(cx + shape_verts::CIRCLE[next_idx].x * inner_r,
-                                 cy + shape_verts::CIRCLE[next_idx].y * inner_r * d_cy);
-
-        DrawTriangle(outer1, outer2, inner1, c);
-        DrawTriangle(inner1, outer2, inner2, c);
+        // Four side faces (darker) — front, back, left, right
+        // Front: 3→2
+        rlVertex3f(vx[3], bot_y, vz[3]);
+        rlVertex3f(vx[2], bot_y, vz[2]);
+        rlVertex3f(vx[3], top_y, vz[3]);
+        rlVertex3f(vx[2], bot_y, vz[2]);
+        rlVertex3f(vx[2], top_y, vz[2]);
+        rlVertex3f(vx[3], top_y, vz[3]);
+        // Back: 0→1
+        rlVertex3f(vx[0], bot_y, vz[0]);
+        rlVertex3f(vx[0], top_y, vz[0]);
+        rlVertex3f(vx[1], bot_y, vz[1]);
+        rlVertex3f(vx[1], bot_y, vz[1]);
+        rlVertex3f(vx[0], top_y, vz[0]);
+        rlVertex3f(vx[1], top_y, vz[1]);
+        // Left: 0→3
+        rlVertex3f(vx[0], bot_y, vz[0]);
+        rlVertex3f(vx[3], bot_y, vz[3]);
+        rlVertex3f(vx[0], top_y, vz[0]);
+        rlVertex3f(vx[3], bot_y, vz[3]);
+        rlVertex3f(vx[3], top_y, vz[3]);
+        rlVertex3f(vx[0], top_y, vz[0]);
+        // Right: 1→2
+        rlVertex3f(vx[1], bot_y, vz[1]);
+        rlVertex3f(vx[1], top_y, vz[1]);
+        rlVertex3f(vx[2], bot_y, vz[2]);
+        rlVertex3f(vx[2], bot_y, vz[2]);
+        rlVertex3f(vx[1], top_y, vz[1]);
+        rlVertex3f(vx[2], top_y, vz[2]);
+        break;
     }
+
+    // ── Triangle → Pyramid (tetrahedron) ─────────────────────────────────
+    case Shape::Triangle: {
+        float half   = size / 2.0f;
+        float apex_y = y_3d + size * 0.5f;
+
+        float vx[3], vz[3];
+        for (int i = 0; i < 3; ++i) {
+            vx[i] = cx + shape_verts::TRIANGLE[i].x * half;
+            vz[i] = cz + shape_verts::TRIANGLE[i].y * half;
+        }
+
+        // Base face (darker)
+        rlColor4ub(sr, sg, sb, a);
+        rlVertex3f(vx[0], y_3d, vz[0]);
+        rlVertex3f(vx[2], y_3d, vz[2]);
+        rlVertex3f(vx[1], y_3d, vz[1]);
+
+        // Three side faces to apex (bright)
+        rlColor4ub(r, g, b, a);
+        for (int i = 0; i < 3; ++i) {
+            int n = (i + 1) % 3;
+            rlVertex3f(vx[i], y_3d, vz[i]);
+            rlVertex3f(vx[n], y_3d, vz[n]);
+            rlVertex3f(cx,    apex_y, cz);
+        }
+        break;
+    }
+
+    // ── Hexagon → Hexagonal prism ────────────────────────────────────────
+    case Shape::Hexagon: {
+        constexpr int N = 6;
+        float radius = size * 0.6f;
+        float height = size * 0.3f;
+        float top_y  = y_3d + height;
+
+        float hx[N], hz[N];
+        for (int i = 0; i < N; ++i) {
+            hx[i] = cx + shape_verts::HEXAGON[i].x * radius;
+            hz[i] = cz + shape_verts::HEXAGON[i].y * radius;
+        }
+
+        // Bottom face (fan, darker)
+        rlColor4ub(sr, sg, sb, a);
+        for (int i = 0; i < N; ++i) {
+            int n = (i + 1) % N;
+            rlVertex3f(cx,    y_3d, cz);
+            rlVertex3f(hx[n], y_3d, hz[n]);
+            rlVertex3f(hx[i], y_3d, hz[i]);
+        }
+
+        // Top face (fan, bright)
+        rlColor4ub(r, g, b, a);
+        for (int i = 0; i < N; ++i) {
+            int n = (i + 1) % N;
+            rlVertex3f(cx,    top_y, cz);
+            rlVertex3f(hx[i], top_y, hz[i]);
+            rlVertex3f(hx[n], top_y, hz[n]);
+        }
+
+        // Side faces (quads as 2 tris, darker)
+        rlColor4ub(sr, sg, sb, a);
+        for (int i = 0; i < N; ++i) {
+            int n = (i + 1) % N;
+            rlVertex3f(hx[i], y_3d,  hz[i]);
+            rlVertex3f(hx[n], y_3d,  hz[n]);
+            rlVertex3f(hx[i], top_y, hz[i]);
+
+            rlVertex3f(hx[n], y_3d,  hz[n]);
+            rlVertex3f(hx[n], top_y, hz[n]);
+            rlVertex3f(hx[i], top_y, hz[i]);
+        }
+        break;
+    }
+
+    } // switch
 }
 
-// ── Projected rectangle outline ──────────────────────────────────────────────
-void draw_rect_lines(float x, float y, float w, float h, float thick, Color c) {
-    auto ry = scale_rect_y(y, h);
-
-    Vector2 tl = {CENTER + (x     - CENTER) * ry.d_top, ry.top};
-    Vector2 tr = {CENTER + (x + w - CENTER) * ry.d_top, ry.top};
-    Vector2 br = {CENTER + (x + w - CENTER) * ry.d_bot, ry.bot};
-    Vector2 bl = {CENTER + (x     - CENTER) * ry.d_bot, ry.bot};
-
-    DrawLineEx(tl, tr, thick, c);
-    DrawLineEx(tr, br, thick, c);
-    DrawLineEx(br, bl, thick, c);
-    DrawLineEx(bl, tl, thick, c);
+// ── Standalone shape draw (wraps its own RL_TRIANGLES batch) ─────────────────
+void draw_shape(Shape shape, float cx, float y_3d, float cz, float size, Color c) {
+    rlBegin(RL_TRIANGLES);
+    emit_3d_shape(shape, cx, y_3d, cz, size, c.r, c.g, c.b, c.a);
+    rlEnd();
 }
 
-// ── Projected triangle outline ───────────────────────────────────────────────
-void draw_tri_lines(Vector2 v1, Vector2 v2, Vector2 v3, Color c) {
-    Vector2 p1 = project(v1.x, v1.y);
-    Vector2 p2 = project(v2.x, v2.y);
-    Vector2 p3 = project(v3.x, v3.y);
-
-    DrawLineV(p1, p2, c);
-    DrawLineV(p2, p3, c);
-    DrawLineV(p3, p1, c);
-}
-
-// ── Batched rect flush from ECS ──────────────────────────────────────────────
-// Queries registry for ObstacleTag and ParticleTag entities, projects their
-// rect geometry, and submits everything in a single RL_QUADS batch.
+// ── Pass 3: World rects (obstacles + particles) ─────────────────────────────
 void flush_world_rects(entt::registry& reg) {
     rlBegin(RL_QUADS);
 
-    // Helper: emit one projected quad (height scaled by depth)
-    auto emit_quad = [](float x, float y, float w, float h,
+    // Emit an axis-aligned quad on the XZ plane at y=0.
+    // Parameters use game coordinates: x, z (= game y), w, d (= game h).
+    auto emit_quad = [](float x, float z, float w, float d,
                         uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-        auto ry = scale_rect_y(y, h);
-
-        float tl_x = CENTER + (x     - CENTER) * ry.d_top;
-        float tr_x = CENTER + (x + w - CENTER) * ry.d_top;
-        float bl_x = CENTER + (x     - CENTER) * ry.d_bot;
-        float br_x = CENTER + (x + w - CENTER) * ry.d_bot;
-
         rlColor4ub(r, g, b, a);
-        rlVertex2f(tl_x, ry.top);
-        rlVertex2f(bl_x, ry.bot);
-        rlVertex2f(br_x, ry.bot);
-        rlVertex2f(tr_x, ry.top);
+        rlVertex3f(x,     0.0f, z);
+        rlVertex3f(x,     0.0f, z + d);
+        rlVertex3f(x + w, 0.0f, z + d);
+        rlVertex3f(x + w, 0.0f, z);
     };
 
-    // ── Obstacles: iterate by ObstacleTag ────────────────────
+    // ── Obstacles ────────────────────────────────────────────
     {
         auto view = reg.view<ObstacleTag, Position, Obstacle, Color, DrawSize>();
         for (auto [entity, pos, obs, col, dsz] : view.each()) {
@@ -245,7 +323,7 @@ void flush_world_rects(entt::registry& reg) {
         }
     }
 
-    // ── Particles: iterate by ParticleTag ────────────────────
+    // ── Particles ────────────────────────────────────────────
     {
         auto view = reg.view<ParticleTag, Position, ParticleData, Color, Lifetime>();
         for (auto [entity, pos, pdata, col, life] : view.each()) {
@@ -270,60 +348,53 @@ void flush_floor_lines(entt::registry& reg, const FloorParams& fp) {
 
     rlBegin(RL_LINES);
 
-    // Corridor edges
+    // Corridor edges on XZ plane
     {
         constexpr float sw = static_cast<float>(constants::SCREEN_W);
         constexpr float sh = static_cast<float>(constants::SCREEN_H);
-        Vector2 lt = project(0.0f, 0.0f);
-        Vector2 lb = project(0.0f, sh);
-        Vector2 rt = project(sw, 0.0f);
-        Vector2 rb = project(sw, sh);
         rlColor4ub(40, 40, 60, 120);
-        rlVertex2f(lt.x, lt.y); rlVertex2f(lb.x, lb.y);
-        rlVertex2f(rt.x, rt.y); rlVertex2f(rb.x, rb.y);
+        rlVertex3f(0.0f, 0.0f, 0.0f);  rlVertex3f(0.0f, 0.0f, sh);
+        rlVertex3f(sw,   0.0f, 0.0f);  rlVertex3f(sw,   0.0f, sh);
     }
 
-    // Floor connectors + outlines
+    // Floor connectors + shape outlines
     for (int lane = 0; lane < constants::LANE_COUNT; ++lane) {
         float cx = constants::LANE_X[lane];
         Color c = LANE_COLORS[lane];
         c.a = fp.alpha;
 
         for (int j = 0; j < constants::FLOOR_SHAPE_COUNT; ++j) {
-            float cy = constants::FLOOR_Y_START
+            float cz = constants::FLOOR_Y_START
                 + static_cast<float>(j) * constants::FLOOR_SHAPE_SPACING;
-            float d     = depth(cy);
-            float px    = project_x(cx, cy);
-            float p_half = fp.half * d;
 
+            // Connector line between adjacent floor shapes
             if (j < constants::FLOOR_SHAPE_COUNT - 1) {
-                float next_cy = cy + constants::FLOOR_SHAPE_SPACING;
-                float next_d  = depth(next_cy);
-                float next_p_half = fp.half * next_d;
-                Vector2 a = project(cx, cy + p_half);
-                Vector2 b = project(cx, next_cy - next_p_half);
+                float next_cz = cz + constants::FLOOR_SHAPE_SPACING;
                 rlColor4ub(c.r, c.g, c.b, c.a);
-                rlVertex2f(a.x, a.y); rlVertex2f(b.x, b.y);
+                rlVertex3f(cx, 0.0f, cz + fp.half);
+                rlVertex3f(cx, 0.0f, next_cz - fp.half);
             }
 
+            // Lane 1: square outlines
             if (lane == 1) {
-                float l = px - p_half, r = px + p_half;
-                float t = cy - p_half, bt = cy + p_half;
+                float l = cx - fp.half, r = cx + fp.half;
+                float t = cz - fp.half, b = cz + fp.half;
                 rlColor4ub(c.r, c.g, c.b, c.a);
-                rlVertex2f(l, t); rlVertex2f(r, t);
-                rlVertex2f(r, t); rlVertex2f(r, bt);
-                rlVertex2f(r, bt); rlVertex2f(l, bt);
-                rlVertex2f(l, bt); rlVertex2f(l, t);
+                rlVertex3f(l, 0.0f, t); rlVertex3f(r, 0.0f, t);
+                rlVertex3f(r, 0.0f, t); rlVertex3f(r, 0.0f, b);
+                rlVertex3f(r, 0.0f, b); rlVertex3f(l, 0.0f, b);
+                rlVertex3f(l, 0.0f, b); rlVertex3f(l, 0.0f, t);
             }
 
+            // Lane 2: triangle outlines
             if (lane == 2) {
-                float apex_x = px, apex_y = cy - p_half;
-                float bl_x = px - p_half, bl_y = cy + p_half;
-                float br_x = px + p_half, br_y = cy + p_half;
+                float apex_x = cx, apex_z = cz - fp.half;
+                float bl_x = cx - fp.half, bl_z = cz + fp.half;
+                float br_x = cx + fp.half, br_z = cz + fp.half;
                 rlColor4ub(c.r, c.g, c.b, c.a);
-                rlVertex2f(apex_x, apex_y); rlVertex2f(br_x, br_y);
-                rlVertex2f(br_x, br_y);     rlVertex2f(bl_x, bl_y);
-                rlVertex2f(bl_x, bl_y);     rlVertex2f(apex_x, apex_y);
+                rlVertex3f(apex_x, 0.0f, apex_z); rlVertex3f(br_x, 0.0f, br_z);
+                rlVertex3f(br_x, 0.0f, br_z);     rlVertex3f(bl_x, 0.0f, bl_z);
+                rlVertex3f(bl_x, 0.0f, bl_z);     rlVertex3f(apex_x, 0.0f, apex_z);
             }
         }
     }
@@ -339,31 +410,34 @@ void flush_floor_rings(const FloorParams& fp) {
 
     rlBegin(RL_TRIANGLES);
     for (int j = 0; j < constants::FLOOR_SHAPE_COUNT; ++j) {
-        float cy = constants::FLOOR_Y_START
+        float cz = constants::FLOOR_Y_START
             + static_cast<float>(j) * constants::FLOOR_SHAPE_SPACING;
-        float d = depth(cy);
-        float px = project_x(constants::LANE_X[0], cy);
-        float p_half  = fp.half * d;
-        float p_thick = fp.thick * d;
-        float inner_r = p_half - p_thick;
-        float outer_r = p_half;
+        float cx = constants::LANE_X[0];
+        float inner_r = fp.half - fp.thick;
+        float outer_r = fp.half;
 
         int seg = 12;
         for (int i = 0; i < seg; ++i) {
             int idx      = (i * shape_verts::CIRCLE_SEGMENTS) / seg;
             int next_idx = ((i + 1) * shape_verts::CIRCLE_SEGMENTS) / seg
                            % shape_verts::CIRCLE_SEGMENTS;
-            float ox1 = px + shape_verts::CIRCLE[idx].x * outer_r;
-            float oy1 = cy + shape_verts::CIRCLE[idx].y * outer_r;
-            float ox2 = px + shape_verts::CIRCLE[next_idx].x * outer_r;
-            float oy2 = cy + shape_verts::CIRCLE[next_idx].y * outer_r;
-            float ix1 = px + shape_verts::CIRCLE[idx].x * inner_r;
-            float iy1 = cy + shape_verts::CIRCLE[idx].y * inner_r;
-            float ix2 = px + shape_verts::CIRCLE[next_idx].x * inner_r;
-            float iy2 = cy + shape_verts::CIRCLE[next_idx].y * inner_r;
+
+            float ox1 = cx + shape_verts::CIRCLE[idx].x      * outer_r;
+            float oz1 = cz + shape_verts::CIRCLE[idx].y      * outer_r;
+            float ox2 = cx + shape_verts::CIRCLE[next_idx].x * outer_r;
+            float oz2 = cz + shape_verts::CIRCLE[next_idx].y * outer_r;
+            float ix1 = cx + shape_verts::CIRCLE[idx].x      * inner_r;
+            float iz1 = cz + shape_verts::CIRCLE[idx].y      * inner_r;
+            float ix2 = cx + shape_verts::CIRCLE[next_idx].x * inner_r;
+            float iz2 = cz + shape_verts::CIRCLE[next_idx].y * inner_r;
+
             rlColor4ub(c.r, c.g, c.b, c.a);
-            rlVertex2f(ox1, oy1); rlVertex2f(ix1, iy1); rlVertex2f(ox2, oy2);
-            rlVertex2f(ix1, iy1); rlVertex2f(ix2, iy2); rlVertex2f(ox2, oy2);
+            rlVertex3f(ox1, 0.0f, oz1);
+            rlVertex3f(ix1, 0.0f, iz1);
+            rlVertex3f(ox2, 0.0f, oz2);
+            rlVertex3f(ix1, 0.0f, iz1);
+            rlVertex3f(ix2, 0.0f, iz2);
+            rlVertex3f(ox2, 0.0f, oz2);
         }
     }
     rlEnd();
@@ -371,61 +445,12 @@ void flush_floor_rings(const FloorParams& fp) {
 
 // ── Pass 4: Gameplay triangles (ghost shapes + player) ──────────────────────
 void flush_gameplay_tris(entt::registry& reg) {
-    // Helper: emit a fan shape from cached vertex table (perspective-projected)
-    // Y-offsets are scaled by depth(cy) for vertical foreshortening.
-    auto emit_fan = [](const shape_verts::V2* table, int count, float radius,
-                       float cx, float cy, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-        float d_cy = depth(cy);
-        Vector2 centre = project(cx, cy);
-        Vector2 prev = project(cx + table[0].x * radius,
-                               cy + table[0].y * radius * d_cy);
-        for (int i = 0; i < count; ++i) {
-            int next = (i + 1) % count;
-            Vector2 cur = project(cx + table[next].x * radius,
-                                  cy + table[next].y * radius * d_cy);
-            rlColor4ub(r, g, b, a);
-            rlVertex2f(centre.x, centre.y);
-            rlVertex2f(cur.x, cur.y);
-            rlVertex2f(prev.x, prev.y);
-            prev = cur;
-        }
-    };
-
-    auto emit_shape = [&emit_fan](Shape shape, float cx, float cy, float sz,
-                                   uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-        switch (shape) {
-            case Shape::Circle:
-                emit_fan(shape_verts::CIRCLE, shape_verts::CIRCLE_SEGMENTS,
-                         sz / 2.0f, cx, cy, r, g, b, a);
-                break;
-            case Shape::Square: {
-                float half = sz / 2.0f;
-                float d_cy = depth(cy);
-                Vector2 v[4];
-                for (int i = 0; i < 4; ++i)
-                    v[i] = project(cx + shape_verts::SQUARE[i].x * half,
-                                   cy + shape_verts::SQUARE[i].y * half * d_cy);
-                rlColor4ub(r, g, b, a);
-                rlVertex2f(v[0].x, v[0].y); rlVertex2f(v[3].x, v[3].y); rlVertex2f(v[1].x, v[1].y);
-                rlVertex2f(v[1].x, v[1].y); rlVertex2f(v[3].x, v[3].y); rlVertex2f(v[2].x, v[2].y);
-                break;
-            }
-            case Shape::Triangle: {
-                float half = sz / 2.0f;
-                float d_cy = depth(cy);
-                Vector2 v[3];
-                for (int i = 0; i < 3; ++i)
-                    v[i] = project(cx + shape_verts::TRIANGLE[i].x * half,
-                                   cy + shape_verts::TRIANGLE[i].y * half * d_cy);
-                rlColor4ub(r, g, b, a);
-                rlVertex2f(v[0].x, v[0].y); rlVertex2f(v[1].x, v[1].y); rlVertex2f(v[2].x, v[2].y);
-                break;
-            }
-            case Shape::Hexagon:
-                emit_fan(shape_verts::HEXAGON, shape_verts::HEX_SEGMENTS,
-                         sz * 0.6f, cx, cy, r, g, b, a);
-                break;
-        }
+    // Thin wrapper — delegates to the file-local emit_3d_shape helper.
+    // Must be called inside an active RL_TRIANGLES block (no rlBegin/rlEnd).
+    auto emit_shape = [](Shape shape, float cx, float y_3d, float cz,
+                         float sz,
+                         uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+        emit_3d_shape(shape, cx, y_3d, cz, sz, r, g, b, a);
     };
 
     rlBegin(RL_TRIANGLES);
@@ -437,7 +462,8 @@ void flush_gameplay_tris(entt::registry& reg) {
             switch (obs.kind) {
                 case ObstacleKind::ShapeGate: {
                     auto* req = reg.try_get<RequiredShape>(entity);
-                    if (req) emit_shape(req->shape, pos.x, pos.y + dsz.h / 2, 40,
+                    if (req) emit_shape(req->shape, pos.x, 0.0f,
+                                        pos.y + dsz.h / 2, 40,
                                         col.r, col.g, col.b, 120);
                     break;
                 }
@@ -451,7 +477,8 @@ void flush_gameplay_tris(entt::registry& reg) {
                                 if (!((blocked->mask >> i) & 1)) { open = i; break; }
                         }
                         emit_shape(req->shape, constants::LANE_X[open],
-                                   pos.y + dsz.h / 2, 30, 255, 255, 255, 180);
+                                   0.0f, pos.y + dsz.h / 2, 30,
+                                   255, 255, 255, 180);
                     }
                     break;
                 }
@@ -460,7 +487,8 @@ void flush_gameplay_tris(entt::registry& reg) {
                     auto* rlane = reg.try_get<RequiredLane>(entity);
                     if (req && rlane)
                         emit_shape(req->shape, constants::LANE_X[rlane->lane],
-                                   pos.y + dsz.h / 2, 30, 255, 255, 255, 180);
+                                   0.0f, pos.y + dsz.h / 2, 30,
+                                   255, 255, 255, 180);
                     break;
                 }
                 default: break;
@@ -472,10 +500,10 @@ void flush_gameplay_tris(entt::registry& reg) {
     {
         auto view = reg.view<PlayerTag, Position, PlayerShape, VerticalState, Color>();
         for (auto [entity, pos, pshape, vstate, col] : view.each()) {
-            float draw_y = pos.y + vstate.y_offset;
+            float y_3d = -vstate.y_offset;  // jump lifts off ground plane
             float sz = constants::PLAYER_SIZE;
             if (vstate.mode == VMode::Sliding) sz *= 0.5f;
-            emit_shape(pshape.current, pos.x, draw_y, sz,
+            emit_shape(pshape.current, pos.x, y_3d, pos.y, sz,
                        col.r, col.g, col.b, col.a);
         }
     }

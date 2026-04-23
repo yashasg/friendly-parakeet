@@ -10,10 +10,4 @@ struct FloorParams {
     uint8_t alpha = 0;
 };
 
-// Depth-scaled vertical bounds for a rectangle.
-struct ScaledRectY {
-    float top;
-    float bot;
-    float d_top;
-    float d_bot;
-};
+

@@ -266,15 +266,19 @@ int main(int argc, char* argv[]) {
     reg.ctx().emplace<EnergyState>();
     reg.ctx().emplace<SongResults>();
 
-    // ── 2-D world camera (identity; allows zoom/shake without touching game logic) ─
-    // target=(0,0), offset=(0,0): world-space origin maps 1:1 to the virtual
-    // 720×1280 render-texture.  Systems update these fields for camera effects.
-    reg.ctx().emplace<Camera2D>(Camera2D{
-        {0.0f, 0.0f},   // offset:   screen point that maps to target
-        {0.0f, 0.0f},   // target:   world-space origin (0,0)
-        0.0f,           // rotation: degrees
-        1.0f            // zoom:     1.0 = no scale
-    });
+    // ── 3-D perspective camera ─────────────────────────────────────────────────
+    // Maps 2D game positions (x, y) to 3D world space as (x, 0, y) on the
+    // XZ plane.  Camera3D perspective projection naturally creates lane
+    // convergence — no manual trapezoid warping needed.
+    {
+        Camera3D cam3d = {};
+        cam3d.position   = {360.0f, 300.0f, 1148.0f};  // above + behind player
+        cam3d.target     = {360.0f, 0.0f, 400.0f};     // looking down corridor
+        cam3d.up         = {0.0f, 1.0f, 0.0f};         // Y-up
+        cam3d.fovy       = 45.0f;
+        cam3d.projection = CAMERA_PERSPECTIVE;
+        reg.ctx().emplace<Camera3D>(cam3d);
+    }
     reg.ctx().emplace<ScreenTransform>();  // updated each frame before input_system
 
     // ── UI layouts (data-driven screens from JSON) ──────────────

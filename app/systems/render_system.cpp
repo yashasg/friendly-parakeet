@@ -19,6 +19,7 @@
 #include "../components/ui_state.h"
 #include "ui_loader.h"
 #include <raylib.h>
+#include <rlgl.h>
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -604,7 +605,7 @@ static void draw_pause_overlay(const TextContext& text_ctx, const json& screen) 
 void render_system(entt::registry& reg, float /*alpha*/) {
     auto& gs = reg.ctx().get<GameState>();
     auto& text_ctx = reg.ctx().get<TextContext>();
-    auto& camera = reg.ctx().get<Camera2D>();
+    auto& camera = reg.ctx().get<Camera3D>();
     auto& ui = reg.ctx().get<UIState>();
 
     // Load the right screen JSON when phase changes
@@ -613,13 +614,28 @@ void render_system(entt::registry& reg, float /*alpha*/) {
     // Clear
     ClearBackground({15, 15, 25, 255});
 
-    // ── WORLD SPACE (Camera2D) ───────────────────────────────
-    // A single BeginMode2D/EndMode2D pair wraps ALL world-space draws.
-    // Camera is currently an identity transform (zoom=1, target/offset={0,0}),
-    // so world coords map 1:1 to the 720×1280 render-texture.  Future camera
-    // effects (shake, zoom) only need to modify `camera`; no game-logic
-    // positions need to change.
-    BeginMode2D(camera);
+    // ── WORLD SPACE (Camera3D) ───────────────────────────────
+    // A single BeginMode3D/EndMode3D pair wraps ALL world-space draws.
+    // Game positions (x, y) are mapped to 3D as (x, 0, y) on the XZ plane.
+    // Camera3D perspective projection handles lane convergence and
+    // foreshortening automatically — no manual trapezoid warping needed.
+    BeginMode3D(camera);
+
+    // Override projection: the game world spans ~1500 units in Z, exceeding
+    // raylib's default RL_CULL_DISTANCE_FAR (1000).  Re-set the projection
+    // matrix with a 2000-unit far plane so distant obstacles aren't clipped.
+    {
+        rlDrawRenderBatchActive();
+        rlMatrixMode(RL_PROJECTION);
+        rlLoadIdentity();
+        double near_plane = 1.0;
+        double far_plane  = 2000.0;
+        double top   = near_plane * tan(static_cast<double>(camera.fovy) * 0.5 * DEG2RAD);
+        double right = top * (static_cast<double>(constants::SCREEN_W)
+                            / static_cast<double>(constants::SCREEN_H));
+        rlFrustum(-right, right, -top, top, near_plane, far_plane);
+        rlMatrixMode(RL_MODELVIEW);
+    }
 
     // ── Compute floor pulse params (shared across GPU batches) ─
     FloorParams floor_params{};
@@ -652,12 +668,32 @@ void render_system(entt::registry& reg, float /*alpha*/) {
         camera::flush_gameplay_tris(reg);            // Pass 4: ghost shapes + player
     }
 
-    // ── Draw timing grade popups ───────────────────────────
+    // ── Draw player (inside 3D) ────────────────────────────────
+    {
+        auto view = reg.view<PlayerTag, Position, PlayerShape, VerticalState, Color>();
+        for (auto [entity, pos, pshape, vstate, col] : view.each()) {
+            float y_3d = -vstate.y_offset;  // jump lifts off ground plane
+            float sz = constants::PLAYER_SIZE;
+            if (vstate.mode == VMode::Sliding) {
+                sz *= 0.5f;
+            }
+            camera::draw_shape(pshape.current, pos.x, y_3d, pos.y, sz, col);
+        }
+    }
+
+    EndMode3D();
+
+    // ── Draw timing grade popups (screen-space, after EndMode3D) ──
     {
         auto view = reg.view<ScorePopup, Position, Color, Lifetime>();
         for (auto [entity, popup, pos, col, life] : view.each()) {
             float alpha_ratio = life.remaining / life.max_time;
             auto popup_alpha = static_cast<uint8_t>(alpha_ratio * 255);
+
+            // Map game position to 3D world, then project to screen coords
+            Vector3 world_pos = {pos.x, 5.0f, pos.y};
+            Vector2 sp = GetWorldToScreenEx(world_pos, camera,
+                             constants::SCREEN_W, constants::SCREEN_H);
 
             if (popup.timing_tier <= 3) {
                 // Show timing grade text: PERFECT / GOOD / OK / BAD
@@ -669,38 +705,19 @@ void render_system(entt::registry& reg, float /*alpha*/) {
                     case 1: grade_text = "OK";      grade_font = FontSize::Small;  break;
                     case 0: grade_text = "BAD";     grade_font = FontSize::Small;  break;
                 }
-                Vector2 pp = camera::project(pos.x, pos.y);
                 text_draw(text_ctx, grade_text,
-                    pp.x, pp.y, grade_font,
+                    sp.x, sp.y, grade_font,
                     col.r, col.g, col.b, popup_alpha,
                     TextAlign::Center);
             } else {
                 // Non-timed obstacle: show score number
                 FontSize popup_font = FontSize::Small;
-                Vector2 pp = camera::project(pos.x, pos.y);
                 text_draw_number(text_ctx, popup.value,
-                    pp.x, pp.y, popup_font,
+                    sp.x, sp.y, popup_font,
                     col.r, col.g, col.b, popup_alpha);
             }
         }
     }
-
-    // ── Draw player ─────────────────────────────────────────
-    {
-        auto view = reg.view<PlayerTag, Position, PlayerShape, VerticalState, Color>();
-        for (auto [entity, pos, pshape, vstate, col] : view.each()) {
-            float draw_y = pos.y + vstate.y_offset;
-
-            float size = constants::PLAYER_SIZE;
-            if (vstate.mode == VMode::Sliding) {
-                size *= 0.5f;
-            }
-
-            camera::draw_shape(pshape.current, pos.x, draw_y, size, col);
-        }
-    }
-
-    EndMode2D();
     // ── VIEWPORT SPACE (HUD + overlays) ─────────────────────
 
     if (gs.phase == GamePhase::Title) {
