@@ -1,14 +1,13 @@
 #include "game_loop.h"
-#include "platform_display.h"
 #include "constants.h"
 #include "components/input.h"
-#include "components/transform.h"
-#include "components/rendering.h"
 #include "components/game_state.h"
 #include "components/session_log.h"
-#include "components/camera.h"
+#include "components/rendering.h"
 #include "systems/all_systems.h"
 #include "systems/session_logger.h"
+#include "systems/camera_system.h"
+#include "platform_display.h"
 
 #include <algorithm>
 
@@ -36,45 +35,13 @@ static void tick_fixed_systems(entt::registry& reg, float dt) {
     cleanup_system(reg, dt);
 }
 
-static void update_screen_transform(entt::registry& reg) {
-    float win_w, win_h;
-    platform_get_display_size(win_w, win_h);
-
-    float scale = std::min(
-        win_w / static_cast<float>(constants::SCREEN_W),
-        win_h / static_cast<float>(constants::SCREEN_H));
-    float dst_w = constants::SCREEN_W * scale;
-    float dst_h = constants::SCREEN_H * scale;
-    auto& st     = reg.ctx().get<ScreenTransform>();
-    st.offset_x  = (win_w - dst_w) * 0.5f;
-    st.offset_y  = (win_h - dst_h) * 0.5f;
-    st.scale     = scale;
-}
-
-static void blit_to_window(entt::registry& reg, RenderTexture2D& target) {
-    const auto& st = reg.ctx().get<ScreenTransform>();
-    float dst_w = constants::SCREEN_W * st.scale;
-    float dst_h = constants::SCREEN_H * st.scale;
-
-    Rectangle src = { 0, 0,
-        static_cast<float>(constants::SCREEN_W),
-        -static_cast<float>(constants::SCREEN_H) };
-    Rectangle dst = { st.offset_x, st.offset_y, dst_w, dst_h };
-
-    platform_pre_blit();
-    BeginDrawing();
-        ClearBackground(BLACK);
-        DrawTexturePro(target.texture, src, dst, {0, 0}, 0.0f, WHITE);
-    EndDrawing();
-}
-
 void game_loop_frame(entt::registry& reg, float& accumulator,
                      RenderTexture2D& target) {
     float raw_dt = GetFrameTime();
     accumulator += raw_dt;
     if (accumulator > MAX_ACCUM) accumulator = MAX_ACCUM;
 
-    update_screen_transform(reg);
+    camera::update_screen_transform(reg);
     input_system(reg, raw_dt);
     hit_test_system(reg);
     test_player_system(reg, raw_dt);
@@ -89,7 +56,20 @@ void game_loop_frame(entt::registry& reg, float& accumulator,
         render_system(reg, alpha);
     EndTextureMode();
 
-    blit_to_window(reg, target);
+    // Blit render target to window, letterboxed
+    const auto& st = reg.ctx().get<ScreenTransform>();
+    float dst_w = constants::SCREEN_W * st.scale;
+    float dst_h = constants::SCREEN_H * st.scale;
+    Rectangle src = { 0, 0,
+        static_cast<float>(constants::SCREEN_W),
+        -static_cast<float>(constants::SCREEN_H) };
+    Rectangle dst = { st.offset_x, st.offset_y, dst_w, dst_h };
+    platform_pre_blit();
+    BeginDrawing();
+        ClearBackground(BLACK);
+        DrawTexturePro(target.texture, src, dst, {0, 0}, 0.0f, WHITE);
+    EndDrawing();
+
     audio_system(reg);
 
     auto* session_log = reg.ctx().find<SessionLog>();

@@ -1,19 +1,23 @@
 #pragma once
 #include "../components/camera.h"
 #include "../components/shape_mesh.h"
+#include <entt/entt.hpp>
 #include <raylib.h>
 
 namespace camera {
 
-// GPU meshes — built once at startup from ShapeMeshData, drawn per frame.
+// GPU meshes — built once at startup, drawn per frame.
 struct ShapeMeshes {
-    Mesh     shapes[4];   // indexed by Shape enum (prisms)
-    Mesh     slab;        // unit slab for obstacles
-    Mesh     quad;        // unit quad for particles
-    Material material;    // shared material
+    Mesh     shapes[4];
+    Mesh     slab;
+    Mesh     quad;
+    Material material;
 };
 
 ShapeMeshes build_shape_meshes();
 void        unload_shape_meshes(ShapeMeshes& sm);
+
+// Update the letterbox ScreenTransform from current window/canvas size.
+void update_screen_transform(entt::registry& reg);
 
 } // namespace camera

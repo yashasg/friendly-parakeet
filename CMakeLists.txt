@@ -338,6 +338,7 @@ if(NOT EMSCRIPTEN)
         app/systems/camera_system.cpp
         app/systems/shape_mesh_builder.cpp
         app/systems/song_playback_system.cpp
+        app/platform_display.cpp
     )
     target_include_directories(shapeshifter_tests PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/app
