@@ -33,240 +33,136 @@ static inline void rlVertex3fScaled(float x, float y, float z) {
     rlVertex3f(x / S, y / S, z / S);
 }
 
-// ── 3D shape vertex emitter (call inside an RL_TRIANGLES block) ─────────────
-// Emits vertices for actual 3D primitives: gem, cube, pyramid, hex-prism.
-// Top faces use the primary colour; bottom and side faces use a darker shade.
-static void emit_3d_shape(Shape shape, float cx, float y_3d, float cz,
-                           float size,
-                           uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-    // Per-face shading — top-lit, like a button under overhead light:
-    //   top    = boosted (120%, clamped to 255) — brightest, catches light
-    //   front  = 65% (facing camera, in shadow)
-    //   side   = 50% (perpendicular to camera)
-    //   back/bottom = 35% (away from light and camera)
+// ── Shading helpers ──────────────────────────────────────────────────────────
+struct FaceColors {
+    uint8_t tr, tg, tb;  // top (brightest)
+    uint8_t fr, fg, fb;  // front
+    uint8_t sr, sg, sb;  // side
+    uint8_t dr, dg, db;  // dark (back/bottom)
+    uint8_t a;
+};
+
+static FaceColors make_face_colors(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
     auto boost = [](uint8_t c) -> uint8_t {
         int v = static_cast<int>(c * 1.2f);
         return static_cast<uint8_t>(v > 255 ? 255 : v);
     };
-    uint8_t tr = boost(r), tg = boost(g), tb = boost(b);  // top (brightest)
-    uint8_t fr = static_cast<uint8_t>(r * 0.65f);
-    uint8_t fg = static_cast<uint8_t>(g * 0.65f);
-    uint8_t fb = static_cast<uint8_t>(b * 0.65f);
-    uint8_t sr = static_cast<uint8_t>(r * 0.50f);
-    uint8_t sg = static_cast<uint8_t>(g * 0.50f);
-    uint8_t sb = static_cast<uint8_t>(b * 0.50f);
-    uint8_t dr = static_cast<uint8_t>(r * 0.35f);
-    uint8_t dg = static_cast<uint8_t>(g * 0.35f);
-    uint8_t db = static_cast<uint8_t>(b * 0.35f);
+    return {
+        boost(r), boost(g), boost(b),
+        static_cast<uint8_t>(r * 0.65f), static_cast<uint8_t>(g * 0.65f), static_cast<uint8_t>(b * 0.65f),
+        static_cast<uint8_t>(r * 0.50f), static_cast<uint8_t>(g * 0.50f), static_cast<uint8_t>(b * 0.50f),
+        static_cast<uint8_t>(r * 0.35f), static_cast<uint8_t>(g * 0.35f), static_cast<uint8_t>(b * 0.35f),
+        a,
+    };
+}
+
+// ── Shape caps (top/bottom faces) — call inside RL_TRIANGLES ────────────────
+static void emit_shape_caps(Shape shape, float cx, float y_3d, float cz,
+                             float size, const FaceColors& fc) {
+    float height = size * 0.3f;
+    float top_y  = y_3d + height;
 
     switch (shape) {
 
-    // ── Circle → Cylinder (extruded disc, button-like) ─────────────────
     case Shape::Circle: {
         constexpr int SLICES = 12;
         float radius = size / 2.0f;
-        float height = size * 0.3f;
-        float top_y  = y_3d + height;
-
         float rx[SLICES], rz[SLICES];
         for (int i = 0; i < SLICES; ++i) {
             float angle = static_cast<float>(i) * (2.0f * 3.14159265f / SLICES);
             rx[i] = cx + cosf(angle) * radius;
             rz[i] = cz + sinf(angle) * radius;
         }
-
-        // Top face (brightest — catches overhead light)
-        rlColor4ub(tr, tg, tb, a);
+        // Top face
+        rlColor4ub(fc.tr, fc.tg, fc.tb, fc.a);
         for (int i = 0; i < SLICES; ++i) {
             int n = (i + 1) % SLICES;
             rlVertex3fScaled(cx,    top_y, cz);
             rlVertex3fScaled(rx[i], top_y, rz[i]);
             rlVertex3fScaled(rx[n], top_y, rz[n]);
         }
-
-        // Bottom face (darkest)
-        rlColor4ub(dr, dg, db, a);
+        // Bottom face
+        rlColor4ub(fc.dr, fc.dg, fc.db, fc.a);
         for (int i = 0; i < SLICES; ++i) {
             int n = (i + 1) % SLICES;
             rlVertex3fScaled(cx,    y_3d, cz);
             rlVertex3fScaled(rx[n], y_3d, rz[n]);
             rlVertex3fScaled(rx[i], y_3d, rz[i]);
         }
-
-        // Side faces — directional shading
-        for (int i = 0; i < SLICES; ++i) {
-            int n = (i + 1) % SLICES;
-            float mid_z = (rz[i] + rz[n]) * 0.5f;
-            bool front = mid_z < cz;
-            if (front) rlColor4ub(fr, fg, fb, a);
-            else       rlColor4ub(sr, sg, sb, a);
-
-            rlVertex3fScaled(rx[i], y_3d,  rz[i]);
-            rlVertex3fScaled(rx[n], y_3d,  rz[n]);
-            rlVertex3fScaled(rx[i], top_y, rz[i]);
-
-            rlVertex3fScaled(rx[n], y_3d,  rz[n]);
-            rlVertex3fScaled(rx[n], top_y, rz[n]);
-            rlVertex3fScaled(rx[i], top_y, rz[i]);
-        }
         break;
     }
 
-    // ── Square → Squat box (button-like extruded square) ─────────────────
     case Shape::Square: {
-        float half   = size / 2.0f;
-        float height = size * 0.3f;
-        float bot_y  = y_3d;
-        float top_y  = y_3d + height;
-
-        // SQUARE: 0=TL(-1,-1)  1=TR(1,-1)  2=BR(1,1)  3=BL(-1,1)
+        float half = size / 2.0f;
         float vx[4], vz[4];
         for (int i = 0; i < 4; ++i) {
             vx[i] = cx + shape_verts::SQUARE[i].x * half;
             vz[i] = cz + shape_verts::SQUARE[i].y * half;
         }
-
-        // Top face (brightest — catches overhead light)
-        rlColor4ub(tr, tg, tb, a);
+        // Top face (2 tris)
+        rlColor4ub(fc.tr, fc.tg, fc.tb, fc.a);
         rlVertex3fScaled(vx[0], top_y, vz[0]);
         rlVertex3fScaled(vx[1], top_y, vz[1]);
         rlVertex3fScaled(vx[3], top_y, vz[3]);
         rlVertex3fScaled(vx[1], top_y, vz[1]);
         rlVertex3fScaled(vx[2], top_y, vz[2]);
         rlVertex3fScaled(vx[3], top_y, vz[3]);
-
-        // Bottom face (darkest)
-        rlColor4ub(dr, dg, db, a);
-        rlVertex3fScaled(vx[0], bot_y, vz[0]);
-        rlVertex3fScaled(vx[3], bot_y, vz[3]);
-        rlVertex3fScaled(vx[1], bot_y, vz[1]);
-        rlVertex3fScaled(vx[1], bot_y, vz[1]);
-        rlVertex3fScaled(vx[3], bot_y, vz[3]);
-        rlVertex3fScaled(vx[2], bot_y, vz[2]);
-
-        // Front face: 0→1 (low-z, faces camera)
-        rlColor4ub(fr, fg, fb, a);
-        rlVertex3fScaled(vx[0], bot_y, vz[0]);
-        rlVertex3fScaled(vx[0], top_y, vz[0]);
-        rlVertex3fScaled(vx[1], bot_y, vz[1]);
-        rlVertex3fScaled(vx[1], bot_y, vz[1]);
-        rlVertex3fScaled(vx[0], top_y, vz[0]);
-        rlVertex3fScaled(vx[1], top_y, vz[1]);
-        // Back face: 3→2
-        rlColor4ub(dr, dg, db, a);
-        rlVertex3fScaled(vx[3], bot_y, vz[3]);
-        rlVertex3fScaled(vx[2], bot_y, vz[2]);
-        rlVertex3fScaled(vx[3], top_y, vz[3]);
-        rlVertex3fScaled(vx[2], bot_y, vz[2]);
-        rlVertex3fScaled(vx[2], top_y, vz[2]);
-        rlVertex3fScaled(vx[3], top_y, vz[3]);
-        // Left side: 0→3
-        rlColor4ub(sr, sg, sb, a);
-        rlVertex3fScaled(vx[0], bot_y, vz[0]);
-        rlVertex3fScaled(vx[3], bot_y, vz[3]);
-        rlVertex3fScaled(vx[0], top_y, vz[0]);
-        rlVertex3fScaled(vx[3], bot_y, vz[3]);
-        rlVertex3fScaled(vx[3], top_y, vz[3]);
-        rlVertex3fScaled(vx[0], top_y, vz[0]);
-        // Right side: 1→2
-        rlVertex3fScaled(vx[1], bot_y, vz[1]);
-        rlVertex3fScaled(vx[1], top_y, vz[1]);
-        rlVertex3fScaled(vx[2], bot_y, vz[2]);
-        rlVertex3fScaled(vx[2], bot_y, vz[2]);
-        rlVertex3fScaled(vx[1], top_y, vz[1]);
-        rlVertex3fScaled(vx[2], top_y, vz[2]);
+        // Bottom face (2 tris)
+        rlColor4ub(fc.dr, fc.dg, fc.db, fc.a);
+        rlVertex3fScaled(vx[0], y_3d, vz[0]);
+        rlVertex3fScaled(vx[3], y_3d, vz[3]);
+        rlVertex3fScaled(vx[1], y_3d, vz[1]);
+        rlVertex3fScaled(vx[1], y_3d, vz[1]);
+        rlVertex3fScaled(vx[3], y_3d, vz[3]);
+        rlVertex3fScaled(vx[2], y_3d, vz[2]);
         break;
     }
 
-    // ── Triangle → Triangular prism (extruded triangle, button-like) ─────
     case Shape::Triangle: {
-        float half   = size / 2.0f;
-        float height = size * 0.3f;
-        float top_y  = y_3d + height;
-
+        float half = size / 2.0f;
         float vx[3], vz[3];
         for (int i = 0; i < 3; ++i) {
             vx[i] = cx + shape_verts::TRIANGLE[i].x * half;
             vz[i] = cz + shape_verts::TRIANGLE[i].y * half;
         }
-
-        // Top face (brightest — catches overhead light)
-        rlColor4ub(tr, tg, tb, a);
+        // Top face
+        rlColor4ub(fc.tr, fc.tg, fc.tb, fc.a);
         rlVertex3fScaled(vx[0], top_y, vz[0]);
         rlVertex3fScaled(vx[1], top_y, vz[1]);
         rlVertex3fScaled(vx[2], top_y, vz[2]);
-
-        // Bottom face (darkest)
-        rlColor4ub(dr, dg, db, a);
+        // Bottom face
+        rlColor4ub(fc.dr, fc.dg, fc.db, fc.a);
         rlVertex3fScaled(vx[0], y_3d, vz[0]);
         rlVertex3fScaled(vx[2], y_3d, vz[2]);
         rlVertex3fScaled(vx[1], y_3d, vz[1]);
-
-        // Three side faces — directional shading
-        for (int i = 0; i < 3; ++i) {
-            int n = (i + 1) % 3;
-            float mid_z = (vz[i] + vz[n]) * 0.5f;
-            bool front = mid_z < cz;
-            if (front) rlColor4ub(fr, fg, fb, a);
-            else       rlColor4ub(sr, sg, sb, a);
-
-            rlVertex3fScaled(vx[i], y_3d,  vz[i]);
-            rlVertex3fScaled(vx[n], y_3d,  vz[n]);
-            rlVertex3fScaled(vx[i], top_y, vz[i]);
-
-            rlVertex3fScaled(vx[n], y_3d,  vz[n]);
-            rlVertex3fScaled(vx[n], top_y, vz[n]);
-            rlVertex3fScaled(vx[i], top_y, vz[i]);
-        }
         break;
     }
 
-    // ── Hexagon → Hexagonal prism ────────────────────────────────────────
     case Shape::Hexagon: {
         constexpr int N = 6;
         float radius = size * 0.6f;
-        float height = size * 0.7f;
-        float top_y  = y_3d + height;
-
+        float hex_h  = size * 0.7f;
+        float hex_top = y_3d + hex_h;
         float hx[N], hz[N];
         for (int i = 0; i < N; ++i) {
             hx[i] = cx + shape_verts::HEXAGON[i].x * radius;
             hz[i] = cz + shape_verts::HEXAGON[i].y * radius;
         }
-
-        // Bottom face (fan, darkest)
-        rlColor4ub(dr, dg, db, a);
+        // Top face
+        rlColor4ub(fc.tr, fc.tg, fc.tb, fc.a);
+        for (int i = 0; i < N; ++i) {
+            int n = (i + 1) % N;
+            rlVertex3fScaled(cx,    hex_top, cz);
+            rlVertex3fScaled(hx[i], hex_top, hz[i]);
+            rlVertex3fScaled(hx[n], hex_top, hz[n]);
+        }
+        // Bottom face
+        rlColor4ub(fc.dr, fc.dg, fc.db, fc.a);
         for (int i = 0; i < N; ++i) {
             int n = (i + 1) % N;
             rlVertex3fScaled(cx,    y_3d, cz);
             rlVertex3fScaled(hx[n], y_3d, hz[n]);
             rlVertex3fScaled(hx[i], y_3d, hz[i]);
-        }
-
-        // Top face (fan, brightest — catches overhead light)
-        rlColor4ub(tr, tg, tb, a);
-        for (int i = 0; i < N; ++i) {
-            int n = (i + 1) % N;
-            rlVertex3fScaled(cx,    top_y, cz);
-            rlVertex3fScaled(hx[i], top_y, hz[i]);
-            rlVertex3fScaled(hx[n], top_y, hz[n]);
-        }
-
-        // Side faces — shade based on facing direction
-        for (int i = 0; i < N; ++i) {
-            int n = (i + 1) % N;
-            float mid_z = (hz[i] + hz[n]) * 0.5f;
-            bool front_facing = mid_z < cz;
-            if (front_facing) rlColor4ub(fr, fg, fb, a);
-            else              rlColor4ub(sr, sg, sb, a);
-
-            rlVertex3fScaled(hx[i], y_3d,  hz[i]);
-            rlVertex3fScaled(hx[n], y_3d,  hz[n]);
-            rlVertex3fScaled(hx[i], top_y, hz[i]);
-
-            rlVertex3fScaled(hx[n], y_3d,  hz[n]);
-            rlVertex3fScaled(hx[n], top_y, hz[n]);
-            rlVertex3fScaled(hx[i], top_y, hz[i]);
         }
         break;
     }
@@ -274,10 +170,114 @@ static void emit_3d_shape(Shape shape, float cx, float y_3d, float cz,
     } // switch
 }
 
-// ── Standalone shape draw (wraps its own RL_TRIANGLES batch) ─────────────────
+// ── Shape side walls — call inside RL_QUADS ─────────────────────────────────
+// Each side face is a 4-vertex quad; raylib handles winding internally.
+static void emit_shape_sides(Shape shape, float cx, float y_3d, float cz,
+                              float size, const FaceColors& fc) {
+    float height = size * 0.3f;
+    float top_y  = y_3d + height;
+
+    // Emit one side-wall quad between two adjacent base vertices.
+    auto emit_wall = [&](float x0, float z0, float x1, float z1,
+                         uint8_t wr, uint8_t wg, uint8_t wb) {
+        rlColor4ub(wr, wg, wb, fc.a);
+        rlVertex3fScaled(x0, y_3d,  z0);
+        rlVertex3fScaled(x0, top_y, z0);
+        rlVertex3fScaled(x1, top_y, z1);
+        rlVertex3fScaled(x1, y_3d,  z1);
+    };
+
+    auto wall_color = [&](float z0, float z1) {
+        float mid_z = (z0 + z1) * 0.5f;
+        bool front = mid_z < cz;
+        if (front) return std::make_tuple(fc.fr, fc.fg, fc.fb);
+        else       return std::make_tuple(fc.sr, fc.sg, fc.sb);
+    };
+
+    switch (shape) {
+
+    case Shape::Circle: {
+        constexpr int SLICES = 12;
+        float radius = size / 2.0f;
+        float rx[SLICES], rz[SLICES];
+        for (int i = 0; i < SLICES; ++i) {
+            float angle = static_cast<float>(i) * (2.0f * 3.14159265f / SLICES);
+            rx[i] = cx + cosf(angle) * radius;
+            rz[i] = cz + sinf(angle) * radius;
+        }
+        for (int i = 0; i < SLICES; ++i) {
+            int n = (i + 1) % SLICES;
+            auto [wr, wg, wb] = wall_color(rz[i], rz[n]);
+            emit_wall(rx[i], rz[i], rx[n], rz[n], wr, wg, wb);
+        }
+        break;
+    }
+
+    case Shape::Square: {
+        float half = size / 2.0f;
+        float vx[4], vz[4];
+        for (int i = 0; i < 4; ++i) {
+            vx[i] = cx + shape_verts::SQUARE[i].x * half;
+            vz[i] = cz + shape_verts::SQUARE[i].y * half;
+        }
+        // Front: 0→1, Right: 1→2, Back: 2→3, Left: 3→0
+        for (int i = 0; i < 4; ++i) {
+            int n = (i + 1) % 4;
+            auto [wr, wg, wb] = wall_color(vz[i], vz[n]);
+            emit_wall(vx[i], vz[i], vx[n], vz[n], wr, wg, wb);
+        }
+        break;
+    }
+
+    case Shape::Triangle: {
+        float half = size / 2.0f;
+        float vx[3], vz[3];
+        for (int i = 0; i < 3; ++i) {
+            vx[i] = cx + shape_verts::TRIANGLE[i].x * half;
+            vz[i] = cz + shape_verts::TRIANGLE[i].y * half;
+        }
+        for (int i = 0; i < 3; ++i) {
+            int n = (i + 1) % 3;
+            auto [wr, wg, wb] = wall_color(vz[i], vz[n]);
+            emit_wall(vx[i], vz[i], vx[n], vz[n], wr, wg, wb);
+        }
+        break;
+    }
+
+    case Shape::Hexagon: {
+        constexpr int N = 6;
+        float radius = size * 0.6f;
+        float hex_h  = size * 0.7f;
+        float hex_top = y_3d + hex_h;
+        float hx[N], hz[N];
+        for (int i = 0; i < N; ++i) {
+            hx[i] = cx + shape_verts::HEXAGON[i].x * radius;
+            hz[i] = cz + shape_verts::HEXAGON[i].y * radius;
+        }
+        for (int i = 0; i < N; ++i) {
+            int n = (i + 1) % N;
+            auto [wr, wg, wb] = wall_color(hz[i], hz[n]);
+            // Hex prism uses its own height
+            rlColor4ub(wr, wg, wb, fc.a);
+            rlVertex3fScaled(hx[i], y_3d,    hz[i]);
+            rlVertex3fScaled(hx[i], hex_top,  hz[i]);
+            rlVertex3fScaled(hx[n], hex_top,  hz[n]);
+            rlVertex3fScaled(hx[n], y_3d,    hz[n]);
+        }
+        break;
+    }
+
+    } // switch
+}
+
+// ── Standalone shape draw ────────────────────────────────────────────────────
 void draw_shape(Shape shape, float cx, float y_3d, float cz, float size, Color c) {
+    FaceColors fc = make_face_colors(c.r, c.g, c.b, c.a);
     rlBegin(RL_TRIANGLES);
-    emit_3d_shape(shape, cx, y_3d, cz, size, c.r, c.g, c.b, c.a);
+    emit_shape_caps(shape, cx, y_3d, cz, size, fc);
+    rlEnd();
+    rlBegin(RL_QUADS);
+    emit_shape_sides(shape, cx, y_3d, cz, size, fc);
     rlEnd();
 }
 
@@ -573,17 +573,26 @@ void flush_floor_rings(const FloorParams& fp) {
     rlEnd();
 }
 
-// ── Pass 4: Gameplay triangles (ghost shapes + player) ──────────────────────
+// ── Pass 4: Gameplay shapes (ghost shapes + player) ─────────────────────────
 void flush_gameplay_tris(entt::registry& reg) {
-    // Thin wrapper — delegates to the file-local emit_3d_shape helper.
-    // Must be called inside an active RL_TRIANGLES block (no rlBegin/rlEnd).
-    auto emit_shape = [](Shape shape, float cx, float y_3d, float cz,
-                         float sz,
-                         uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-        emit_3d_shape(shape, cx, y_3d, cz, sz, r, g, b, a);
+    // Helper to emit a shape across two batches (caps + sides).
+    // Collects shape draw calls, then emits caps in RL_TRIANGLES and
+    // sides in RL_QUADS (which handles winding correctly).
+    struct ShapeDraw {
+        Shape shape; float cx, y_3d, cz, sz;
+        uint8_t r, g, b, a;
     };
 
-    rlBegin(RL_TRIANGLES);
+    // Collect all shape draws (small fixed count: ~10-20 max)
+    static constexpr int MAX_DRAWS = 64;
+    ShapeDraw draws[MAX_DRAWS];
+    int count = 0;
+
+    auto add = [&](Shape shape, float cx, float y_3d, float cz, float sz,
+                   uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+        if (count < MAX_DRAWS)
+            draws[count++] = {shape, cx, y_3d, cz, sz, r, g, b, a};
+    };
 
     // Ghost shapes (obstacle indicators)
     {
@@ -592,9 +601,9 @@ void flush_gameplay_tris(entt::registry& reg) {
             switch (obs.kind) {
                 case ObstacleKind::ShapeGate: {
                     auto* req = reg.try_get<RequiredShape>(entity);
-                    if (req) emit_shape(req->shape, pos.x, 0.0f,
-                                        pos.y + dsz.h / 2, 40,
-                                        col.r, col.g, col.b, 120);
+                    if (req) add(req->shape, pos.x, 0.0f,
+                                pos.y + dsz.h / 2, 40,
+                                col.r, col.g, col.b, 120);
                     break;
                 }
                 case ObstacleKind::ComboGate: {
@@ -606,9 +615,9 @@ void flush_gameplay_tris(entt::registry& reg) {
                             for (int i = 0; i < 3; ++i)
                                 if (!((blocked->mask >> i) & 1)) { open = i; break; }
                         }
-                        emit_shape(req->shape, constants::LANE_X[open],
-                                   0.0f, pos.y + dsz.h / 2, 30,
-                                   255, 255, 255, 180);
+                        add(req->shape, constants::LANE_X[open],
+                            0.0f, pos.y + dsz.h / 2, 30,
+                            255, 255, 255, 180);
                     }
                     break;
                 }
@@ -616,9 +625,9 @@ void flush_gameplay_tris(entt::registry& reg) {
                     auto* req = reg.try_get<RequiredShape>(entity);
                     auto* rlane = reg.try_get<RequiredLane>(entity);
                     if (req && rlane)
-                        emit_shape(req->shape, constants::LANE_X[rlane->lane],
-                                   0.0f, pos.y + dsz.h / 2, 30,
-                                   255, 255, 255, 180);
+                        add(req->shape, constants::LANE_X[rlane->lane],
+                            0.0f, pos.y + dsz.h / 2, 30,
+                            255, 255, 255, 180);
                     break;
                 }
                 default: break;
@@ -630,14 +639,30 @@ void flush_gameplay_tris(entt::registry& reg) {
     {
         auto view = reg.view<PlayerTag, Position, PlayerShape, VerticalState, Color>();
         for (auto [entity, pos, pshape, vstate, col] : view.each()) {
-            float y_3d = -vstate.y_offset;  // jump lifts off ground plane
+            float y_3d = -vstate.y_offset;
             float sz = constants::PLAYER_SIZE;
             if (vstate.mode == VMode::Sliding) sz *= 0.5f;
-            emit_shape(pshape.current, pos.x, y_3d, pos.y, sz,
-                       col.r, col.g, col.b, col.a);
+            add(pshape.current, pos.x, y_3d, pos.y, sz,
+                col.r, col.g, col.b, col.a);
         }
     }
 
+    // Emit caps (top/bottom faces) — RL_TRIANGLES
+    rlBegin(RL_TRIANGLES);
+    for (int i = 0; i < count; ++i) {
+        auto& d = draws[i];
+        FaceColors fc = make_face_colors(d.r, d.g, d.b, d.a);
+        emit_shape_caps(d.shape, d.cx, d.y_3d, d.cz, d.sz, fc);
+    }
+    rlEnd();
+
+    // Emit side walls — RL_QUADS (handles winding correctly)
+    rlBegin(RL_QUADS);
+    for (int i = 0; i < count; ++i) {
+        auto& d = draws[i];
+        FaceColors fc = make_face_colors(d.r, d.g, d.b, d.a);
+        emit_shape_sides(d.shape, d.cx, d.y_3d, d.cz, d.sz, fc);
+    }
     rlEnd();
 }
 

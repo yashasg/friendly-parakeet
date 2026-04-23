@@ -664,19 +664,13 @@ void render_system(entt::registry& reg, float /*alpha*/) {
     camera::flush_floor_lines(reg, floor_params);   // Pass 1: floor lines
     camera::flush_floor_rings(floor_params);         // Pass 2: floor circles
     if (gs.phase != GamePhase::Title) {
-        // Flush floor geometry, then disable depth test and backface culling
-        // so gameplay shapes always draw on top of the floor.
-        // Depth test off: eliminates Z-fighting at y=0.
-        // Backface culling off: ensures all side faces of RL_TRIANGLES shapes
-        // are visible regardless of winding order (RL_QUADS handles this
-        // internally, but RL_TRIANGLES does not).
+        // Flush floor geometry, then disable depth test so gameplay shapes
+        // always draw on top of the floor — eliminates Z-fighting at y=0.
         rlDrawRenderBatchActive();
         rlDisableDepthTest();
-        rlDisableBackfaceCulling();
         camera::flush_world_rects(reg);              // Pass 3: obstacle + particle rects
         camera::flush_gameplay_tris(reg);            // Pass 4: ghost shapes + player
         rlDrawRenderBatchActive();
-        rlEnableBackfaceCulling();
         rlEnableDepthTest();
     }
 
