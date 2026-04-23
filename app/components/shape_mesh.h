@@ -43,5 +43,12 @@ constexpr uint8_t SHADE_BOT   = 90;
 // Pure function — no GPU, no raylib, fully testable.
 ShapeMeshData build_prism(const ShapeDesc& desc);
 
+// Build a unit slab (1×1×1 box) with baked directional grayscale.
+// At draw time, non-uniform scale encodes width/height/depth.
+ShapeMeshData build_unit_slab();
+
+// Build a unit quad (1×1 flat square on XZ plane at y=0).
+ShapeMeshData build_unit_quad();
+
 // Compile-time shape table indexed by Shape enum.
 extern const ShapeDesc SHAPE_TABLE[4];

@@ -36,14 +36,18 @@ static Mesh upload_shape_mesh(const ShapeMeshData& data) {
 ShapeMeshes build_shape_meshes() {
     ShapeMeshes sm = {};
     for (int i = 0; i < 4; ++i)
-        sm.meshes[i] = upload_shape_mesh(build_prism(SHAPE_TABLE[i]));
+        sm.shapes[i] = upload_shape_mesh(build_prism(SHAPE_TABLE[i]));
+    sm.slab = upload_shape_mesh(build_unit_slab());
+    sm.quad = upload_shape_mesh(build_unit_quad());
     sm.material = LoadMaterialDefault();
     return sm;
 }
 
 void unload_shape_meshes(ShapeMeshes& sm) {
     for (int i = 0; i < 4; ++i)
-        UnloadMesh(sm.meshes[i]);
+        UnloadMesh(sm.shapes[i]);
+    UnloadMesh(sm.slab);
+    UnloadMesh(sm.quad);
     UnloadMaterial(sm.material);
 }
 

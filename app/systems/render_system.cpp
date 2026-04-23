@@ -728,111 +728,89 @@ static void draw_floor_rings(const FloorParams& fp) {
 }
 
 static void draw_world_rects(entt::registry& reg) {
-    rlBegin(RL_QUADS);
+    auto* sm = reg.ctx().find<camera::ShapeMeshes>();
+    if (!sm) return;
 
     constexpr float OBSTACLE_HEIGHT = 20.0f;
     constexpr float LOWBAR_HEIGHT   = 30.0f;
     constexpr float HIGHBAR_HEIGHT  = 10.0f;
 
-    auto emit_slab = [](float x, float z, float w, float d, float h,
-                        uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-        auto boost = [](uint8_t c) -> uint8_t {
-            int v = static_cast<int>(c * 1.2f);
-            return static_cast<uint8_t>(v > 255 ? 255 : v);
+    // Draw a slab: unit mesh scaled to (w, h, d) and positioned at (x, 0, z).
+    auto draw_slab = [&](float x, float z, float w, float d, float h, Color tint) {
+        Matrix mat = {
+            to_world(w), 0, 0, 0,
+            0, to_world(h), 0, 0,
+            0, 0, to_world(d), 0,
+            to_world(x), 0, to_world(z), 1,
         };
-        uint8_t tr = boost(r), tg = boost(g), tb = boost(b);
-        uint8_t fr = static_cast<uint8_t>(r * 0.65f);
-        uint8_t fg = static_cast<uint8_t>(g * 0.65f);
-        uint8_t fb = static_cast<uint8_t>(b * 0.65f);
-        uint8_t sr = static_cast<uint8_t>(r * 0.50f);
-        uint8_t sg = static_cast<uint8_t>(g * 0.50f);
-        uint8_t sb = static_cast<uint8_t>(b * 0.50f);
-        uint8_t dr = static_cast<uint8_t>(r * 0.35f);
-        uint8_t dg = static_cast<uint8_t>(g * 0.35f);
-        uint8_t db = static_cast<uint8_t>(b * 0.35f);
-
-        rlColor4ub(tr, tg, tb, a);
-        rlVertex3f(x, h, z); rlVertex3f(x, h, z+d);
-        rlVertex3f(x+w, h, z+d); rlVertex3f(x+w, h, z);
-
-        rlColor4ub(fr, fg, fb, a);
-        rlVertex3f(x, 0, z); rlVertex3f(x, h, z);
-        rlVertex3f(x+w, h, z); rlVertex3f(x+w, 0, z);
-
-        rlColor4ub(dr, dg, db, a);
-        rlVertex3f(x, 0, z+d); rlVertex3f(x+w, 0, z+d);
-        rlVertex3f(x+w, h, z+d); rlVertex3f(x, h, z+d);
-
-        rlColor4ub(sr, sg, sb, a);
-        rlVertex3f(x, 0, z); rlVertex3f(x, 0, z+d);
-        rlVertex3f(x, h, z+d); rlVertex3f(x, h, z);
-        rlVertex3f(x+w, 0, z); rlVertex3f(x+w, h, z);
-        rlVertex3f(x+w, h, z+d); rlVertex3f(x+w, 0, z+d);
+        sm->material.maps[MATERIAL_MAP_DIFFUSE].color = tint;
+        DrawMesh(sm->slab, sm->material, mat);
     };
 
-    auto emit_quad = [](float x, float z, float w, float d,
-                        uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-        rlColor4ub(r, g, b, a);
-        rlVertex3f(x, 0, z); rlVertex3f(x, 0, z+d);
-        rlVertex3f(x+w, 0, z+d); rlVertex3f(x+w, 0, z);
-    };
-
+    // Obstacles
     {
         auto view = reg.view<ObstacleTag, Position, Obstacle, Color, DrawSize>();
         for (auto [entity, pos, obs, col, dsz] : view.each()) {
+            Color c = col;
             switch (obs.kind) {
                 case ObstacleKind::ShapeGate:
-                    emit_slab(0, pos.y, pos.x-50, dsz.h, OBSTACLE_HEIGHT, col.r, col.g, col.b, col.a);
-                    emit_slab(pos.x+50, pos.y, constants::SCREEN_W-pos.x-50, dsz.h, OBSTACLE_HEIGHT, col.r, col.g, col.b, col.a);
+                    draw_slab(0, pos.y, pos.x-50, dsz.h, OBSTACLE_HEIGHT, c);
+                    draw_slab(pos.x+50, pos.y, constants::SCREEN_W-pos.x-50, dsz.h, OBSTACLE_HEIGHT, c);
                     break;
                 case ObstacleKind::LaneBlock: {
                     auto* blocked = reg.try_get<BlockedLanes>(entity);
                     if (blocked)
                         for (int i = 0; i < 3; ++i)
                             if ((blocked->mask >> i) & 1)
-                                emit_slab(constants::LANE_X[i]-dsz.w/2, pos.y, dsz.w, dsz.h, OBSTACLE_HEIGHT, col.r, col.g, col.b, col.a);
+                                draw_slab(constants::LANE_X[i]-dsz.w/2, pos.y, dsz.w, dsz.h, OBSTACLE_HEIGHT, c);
                     break;
                 }
                 case ObstacleKind::LanePushLeft:
                 case ObstacleKind::LanePushRight:
-                    emit_slab(pos.x-dsz.w/2, pos.y, dsz.w, dsz.h, OBSTACLE_HEIGHT, col.r, col.g, col.b, col.a);
+                    draw_slab(pos.x-dsz.w/2, pos.y, dsz.w, dsz.h, OBSTACLE_HEIGHT, c);
                     break;
                 case ObstacleKind::LowBar:
-                    emit_slab(0, pos.y, static_cast<float>(constants::SCREEN_W), dsz.h, LOWBAR_HEIGHT, col.r, col.g, col.b, col.a);
+                    draw_slab(0, pos.y, static_cast<float>(constants::SCREEN_W), dsz.h, LOWBAR_HEIGHT, c);
                     break;
                 case ObstacleKind::HighBar:
-                    emit_slab(0, pos.y, static_cast<float>(constants::SCREEN_W), dsz.h, HIGHBAR_HEIGHT, col.r, col.g, col.b, col.a);
+                    draw_slab(0, pos.y, static_cast<float>(constants::SCREEN_W), dsz.h, HIGHBAR_HEIGHT, c);
                     break;
                 case ObstacleKind::ComboGate: {
                     auto* blocked = reg.try_get<BlockedLanes>(entity);
                     if (blocked)
                         for (int i = 0; i < 3; ++i)
                             if ((blocked->mask >> i) & 1)
-                                emit_slab(constants::LANE_X[i]-120, pos.y, 240.0f, dsz.h, OBSTACLE_HEIGHT, col.r, col.g, col.b, col.a);
+                                draw_slab(constants::LANE_X[i]-120, pos.y, 240.0f, dsz.h, OBSTACLE_HEIGHT, c);
                     break;
                 }
                 case ObstacleKind::SplitPath: {
                     auto* rlane = reg.try_get<RequiredLane>(entity);
                     for (int i = 0; i < 3; ++i)
                         if (!rlane || i != rlane->lane)
-                            emit_slab(constants::LANE_X[i]-120, pos.y, 240.0f, dsz.h, OBSTACLE_HEIGHT, col.r, col.g, col.b, col.a);
+                            draw_slab(constants::LANE_X[i]-120, pos.y, 240.0f, dsz.h, OBSTACLE_HEIGHT, c);
                     break;
                 }
             }
         }
     }
 
+    // Particles
     {
         auto view = reg.view<ParticleTag, Position, ParticleData, Color, Lifetime>();
         for (auto [entity, pos, pdata, col, life] : view.each()) {
             float ratio = (life.max_time > 0.0f) ? (life.remaining / life.max_time) : 1.0f;
             float sz = pdata.size * ratio;
             float half = sz / 2.0f;
-            emit_quad(pos.x-half, pos.y-half, sz, sz, col.r, col.g, col.b, col.a);
+            Matrix mat = {
+                to_world(sz), 0, 0, 0,
+                0, 1, 0, 0,
+                0, 0, to_world(sz), 0,
+                to_world(pos.x - half), 0, to_world(pos.y - half), 1,
+            };
+            sm->material.maps[MATERIAL_MAP_DIFFUSE].color = col;
+            DrawMesh(sm->quad, sm->material, mat);
         }
     }
-
-    rlEnd();
 }
 
 static void draw_gameplay_shapes(entt::registry& reg) {
@@ -853,7 +831,7 @@ static void draw_gameplay_shapes(entt::registry& reg) {
             to_world(cx), to_world(y_3d), to_world(cz), 1.0f,
         };
         sm->material.maps[MATERIAL_MAP_DIFFUSE].color = tint;
-        DrawMesh(sm->meshes[idx], sm->material, mat);
+        DrawMesh(sm->shapes[idx], sm->material, mat);
     };
 
     // Ghost shapes
@@ -959,29 +937,19 @@ void render_system(entt::registry& reg, float /*alpha*/) {
         floor_params.alpha = static_cast<uint8_t>(alpha_f);
     }
 
-    // ── 4 GPU batches sorted by layer then primitive type ───
-    // Background (floor) renders first, gameplay on top.
-    // Scale game-pixel coords → world units via model-view matrix.
-    // All rlVertex3f calls use game-pixel values directly.
+    // ── Render passes ──────────────────────────────────────────
+    // Floor (immediate mode) needs rlScalef for game→world conversion.
+    // Obstacles, particles, shapes use DrawMesh with per-entity matrices.
     rlPushMatrix();
     rlScalef(INV_WORLD_SCALE, INV_WORLD_SCALE, INV_WORLD_SCALE);
-
-    draw_floor_lines(reg, floor_params);   // Pass 1: floor lines
-    draw_floor_rings(floor_params);         // Pass 2: floor circles
-    if (gs.phase != GamePhase::Title) {
-        rlDrawRenderBatchActive();
-        rlDisableDepthTest();
-        draw_world_rects(reg);              // Pass 3: obstacle + particle rects
-        rlDrawRenderBatchActive();
-        rlEnableDepthTest();
-    }
-
+    draw_floor_lines(reg, floor_params);
+    draw_floor_rings(floor_params);
     rlPopMatrix();
 
-    // Pass 4: gameplay shapes via DrawMesh (own transform matrix, not rlgl stack)
     if (gs.phase != GamePhase::Title) {
         rlDrawRenderBatchActive();
         rlDisableDepthTest();
+        draw_world_rects(reg);
         draw_gameplay_shapes(reg);
         rlDrawRenderBatchActive();
         rlEnableDepthTest();

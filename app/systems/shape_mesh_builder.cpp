@@ -75,3 +75,57 @@ ShapeMeshData build_prism(const ShapeDesc& desc) {
     mesh.tri_count = mesh.vertex_count / 3;
     return mesh;
 }
+
+ShapeMeshData build_unit_slab() {
+    // Unit slab: x=[0,1], y=[0,1], z=[0,1]. Non-uniform scale at draw time
+    // encodes width (sx), height (sy), depth (sz) per obstacle.
+    // Winding: all faces outward-facing (CCW from outside).
+    ShapeMeshData mesh = {};
+    auto put = [&](float x, float y, float z,
+                   float nx, float ny, float nz, uint8_t gray) {
+        int vi = mesh.vertex_count++;
+        mesh.positions[vi] = {x, y, z};
+        mesh.normals[vi]   = {nx, ny, nz};
+        mesh.colors[vi]    = {gray, gray, gray, 255};
+    };
+
+    // Top face (+Y)
+    put(0,1,0, 0,1,0, SHADE_TOP); put(1,1,1, 0,1,0, SHADE_TOP); put(1,1,0, 0,1,0, SHADE_TOP);
+    put(0,1,0, 0,1,0, SHADE_TOP); put(0,1,1, 0,1,0, SHADE_TOP); put(1,1,1, 0,1,0, SHADE_TOP);
+    // Bottom face (-Y)
+    put(0,0,0, 0,-1,0, SHADE_BOT); put(1,0,0, 0,-1,0, SHADE_BOT); put(1,0,1, 0,-1,0, SHADE_BOT);
+    put(0,0,0, 0,-1,0, SHADE_BOT); put(1,0,1, 0,-1,0, SHADE_BOT); put(0,0,1, 0,-1,0, SHADE_BOT);
+    // Front face (-Z)
+    put(0,0,0, 0,0,-1, SHADE_FRONT); put(0,1,0, 0,0,-1, SHADE_FRONT); put(1,1,0, 0,0,-1, SHADE_FRONT);
+    put(0,0,0, 0,0,-1, SHADE_FRONT); put(1,1,0, 0,0,-1, SHADE_FRONT); put(1,0,0, 0,0,-1, SHADE_FRONT);
+    // Back face (+Z)
+    put(0,0,1, 0,0,1, SHADE_BOT); put(1,0,1, 0,0,1, SHADE_BOT); put(1,1,1, 0,0,1, SHADE_BOT);
+    put(0,0,1, 0,0,1, SHADE_BOT); put(1,1,1, 0,0,1, SHADE_BOT); put(0,1,1, 0,0,1, SHADE_BOT);
+    // Left face (-X)
+    put(0,0,0, -1,0,0, SHADE_SIDE); put(0,0,1, -1,0,0, SHADE_SIDE); put(0,1,1, -1,0,0, SHADE_SIDE);
+    put(0,0,0, -1,0,0, SHADE_SIDE); put(0,1,1, -1,0,0, SHADE_SIDE); put(0,1,0, -1,0,0, SHADE_SIDE);
+    // Right face (+X)
+    put(1,0,0, 1,0,0, SHADE_SIDE); put(1,1,0, 1,0,0, SHADE_SIDE); put(1,1,1, 1,0,0, SHADE_SIDE);
+    put(1,0,0, 1,0,0, SHADE_SIDE); put(1,1,1, 1,0,0, SHADE_SIDE); put(1,0,1, 1,0,0, SHADE_SIDE);
+
+    mesh.tri_count = mesh.vertex_count / 3;
+    return mesh;
+}
+
+ShapeMeshData build_unit_quad() {
+    // Unit quad: x=[0,1], z=[0,1] at y=0. For particles.
+    ShapeMeshData mesh = {};
+    auto put = [&](float x, float y, float z,
+                   float nx, float ny, float nz, uint8_t gray) {
+        int vi = mesh.vertex_count++;
+        mesh.positions[vi] = {x, y, z};
+        mesh.normals[vi]   = {nx, ny, nz};
+        mesh.colors[vi]    = {gray, gray, gray, 255};
+    };
+
+    put(0,0,0, 0,1,0, 255); put(1,0,1, 0,1,0, 255); put(1,0,0, 0,1,0, 255);
+    put(0,0,0, 0,1,0, 255); put(0,0,1, 0,1,0, 255); put(1,0,1, 0,1,0, 255);
+
+    mesh.tri_count = mesh.vertex_count / 3;
+    return mesh;
+}

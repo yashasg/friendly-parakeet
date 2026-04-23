@@ -5,10 +5,12 @@
 
 namespace camera {
 
-// GPU shape meshes — built once at startup from ShapeMeshData, drawn per frame.
+// GPU meshes — built once at startup from ShapeMeshData, drawn per frame.
 struct ShapeMeshes {
-    Mesh     meshes[4];
-    Material material;
+    Mesh     shapes[4];   // indexed by Shape enum (prisms)
+    Mesh     slab;        // unit slab for obstacles
+    Mesh     quad;        // unit quad for particles
+    Material material;    // shared material
 };
 
 ShapeMeshes build_shape_meshes();

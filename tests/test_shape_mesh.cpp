@@ -125,3 +125,23 @@ TEST_CASE("build_prism: side faces have FRONT or SIDE shade", "[shape_mesh]") {
         CHECK(valid);
     }
 }
+
+TEST_CASE("build_unit_slab: 12 triangles, 36 vertices", "[shape_mesh]") {
+    ShapeMeshData mesh = build_unit_slab();
+    CHECK(mesh.tri_count == 12);
+    CHECK(mesh.vertex_count == 36);
+}
+
+TEST_CASE("build_unit_slab: winding order", "[shape_mesh]") {
+    verify_winding(build_unit_slab());
+}
+
+TEST_CASE("build_unit_quad: 2 triangles, 6 vertices", "[shape_mesh]") {
+    ShapeMeshData mesh = build_unit_quad();
+    CHECK(mesh.tri_count == 2);
+    CHECK(mesh.vertex_count == 6);
+}
+
+TEST_CASE("build_unit_quad: winding order", "[shape_mesh]") {
+    verify_winding(build_unit_quad());
+}
