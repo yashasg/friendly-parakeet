@@ -169,20 +169,6 @@ TEST_CASE("scoring: obstacle entity cleaned up after scoring", "[scoring]") {
     CHECK(reg.valid(obs));
 }
 
-TEST_CASE("scoring: score popup has correct tier for multiplier", "[scoring]") {
-    auto reg = make_registry();
-    auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
-    reg.emplace<ScoredTag>(obs);
-    reg.ctx().get<BurnoutState>().zone = BurnoutZone::Danger;  // 3.0x mult
-
-    scoring_system(reg, 0.016f);
-
-    auto popup_view = reg.view<ScorePopup>();
-    for (auto [e, popup] : popup_view.each()) {
-        CHECK(popup.tier == 3);  // tier_for_multiplier(3.0) = 3
-    }
-}
-
 TEST_CASE("scoring: displayed_score does not overshoot score", "[scoring]") {
     auto reg = make_registry();
     auto& score = reg.ctx().get<ScoreState>();

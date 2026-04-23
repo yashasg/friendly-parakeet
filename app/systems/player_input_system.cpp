@@ -6,6 +6,7 @@
 #include "../components/audio.h"
 #include "../components/rhythm.h"
 #include "../constants.h"
+#include "shape_button_hit.h"
 
 void player_input_system(entt::registry& reg, float /*dt*/) {
     if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
@@ -34,21 +35,23 @@ void player_input_system(entt::registry& reg, float /*dt*/) {
         // Shape changes from Tap actions
         for (int i = 0; i < aq.count; ++i) {
             auto& a = aq.actions[i];
-            if (a.verb != ActionVerb::Tap) continue;
-            if (a.button != Button::ShapeCircle &&
-                a.button != Button::ShapeSquare &&
-                a.button != Button::ShapeTri) continue;
+            std::optional<Shape> pressed_shape;
+            if (a.verb == ActionVerb::Tap) {
+                pressed_shape = shape_from_button(a.button);
+            } else if (a.verb == ActionVerb::Click) {
+                pressed_shape = shape_button_hit_test(a.x, a.y);
+            }
 
-            auto pressed_shape = static_cast<Shape>(static_cast<uint8_t>(a.button));
+            if (!pressed_shape.has_value()) continue;
 
             if (rhythm_mode) {
                 auto phase = static_cast<WindowPhase>(swindow.phase_raw);
 
                 if (phase == WindowPhase::Idle) {
-                    begin_shape_window(pshape, swindow, pressed_shape);
-                } else if (phase == WindowPhase::Active && pressed_shape != pshape.current) {
-                    begin_shape_window(pshape, swindow, pressed_shape);
-                } else if (phase == WindowPhase::Active && pressed_shape == pshape.current) {
+                    begin_shape_window(pshape, swindow, *pressed_shape);
+                } else if (phase == WindowPhase::Active && *pressed_shape != pshape.current) {
+                    begin_shape_window(pshape, swindow, *pressed_shape);
+                } else if (phase == WindowPhase::Active && *pressed_shape == pshape.current) {
                     swindow.window_timer = 0.0f;
                     swindow.window_start = song->song_time;
                     swindow.peak_time = song->song_time + song->half_window;
@@ -56,11 +59,11 @@ void player_input_system(entt::registry& reg, float /*dt*/) {
                     swindow.graded = false;
                 }
             } else {
-                if (pressed_shape != pshape.current) {
+                if (*pressed_shape != pshape.current) {
                     pshape.previous = pshape.current;
-                    pshape.current  = pressed_shape;
+                    pshape.current  = *pressed_shape;
                     pshape.morph_t  = 0.0f;
-                    auto si = static_cast<int>(pressed_shape);
+                    auto si = static_cast<int>(*pressed_shape);
                     auto& sc = constants::SHAPE_COLORS[si];
                     reg.replace<DrawColor>(entity, sc.r, sc.g, sc.b, sc.a);
                     audio_push(reg.ctx().get<AudioQueue>(), SFX::ShapeShift);

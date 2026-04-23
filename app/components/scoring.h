@@ -14,6 +14,5 @@ struct ScoreState {
 
 struct ScorePopup {
     int32_t value       = 0;
-    uint8_t tier        = 0;     // burnout tier (legacy)
     uint8_t timing_tier = 255;   // TimingTier value, 255 = no timing (non-shape obstacle)
 };

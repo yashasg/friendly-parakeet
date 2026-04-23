@@ -23,7 +23,7 @@ TEST_CASE("level_select — phase guard: does nothing when not LevelSelect",
     lss.selected_level = 0;
 
     auto& aq = reg.ctx().get<ActionQueue>();
-    aq.tap(Button::Position, 360.0f, 490.0f);
+    aq.click(360.0f, 490.0f);
 
     level_select_system(reg, 0.016f);
     REQUIRE(lss.selected_level == 0);        // unchanged
@@ -57,7 +57,7 @@ TEST_CASE("level_select — touch card 0", "[level_select]") {
     lss.selected_level = 1;                  // start elsewhere
 
     auto& aq = reg.ctx().get<ActionQueue>();
-    aq.tap(Button::Position, 360.0f, 250.0f);
+    aq.click(360.0f, 250.0f);
 
     level_select_system(reg, 0.016f);
     REQUIRE(lss.selected_level == 0);
@@ -68,7 +68,7 @@ TEST_CASE("level_select — touch card 1", "[level_select]") {
     auto& lss   = reg.ctx().get<LevelSelectState>();
 
     auto& aq = reg.ctx().get<ActionQueue>();
-    aq.tap(Button::Position, 360.0f, 490.0f);
+    aq.click(360.0f, 490.0f);
 
     level_select_system(reg, 0.016f);
     REQUIRE(lss.selected_level == 1);
@@ -79,7 +79,7 @@ TEST_CASE("level_select — touch card 2", "[level_select]") {
     auto& lss   = reg.ctx().get<LevelSelectState>();
 
     auto& aq = reg.ctx().get<ActionQueue>();
-    aq.tap(Button::Position, 360.0f, 730.0f);
+    aq.click(360.0f, 730.0f);
 
     level_select_system(reg, 0.016f);
     REQUIRE(lss.selected_level == 2);
@@ -90,7 +90,7 @@ TEST_CASE("level_select — touch outside cards: no change", "[level_select]") {
     auto& lss   = reg.ctx().get<LevelSelectState>();
 
     auto& aq = reg.ctx().get<ActionQueue>();
-    aq.tap(Button::Position, 30.0f, 300.0f);
+    aq.click(30.0f, 300.0f);
 
     level_select_system(reg, 0.016f);
     CHECK(lss.selected_level == 0);          // unchanged
@@ -108,7 +108,7 @@ TEST_CASE("level_select — touch difficulty easy", "[level_select]") {
     lss.selected_level = 0;
 
     auto& aq = reg.ctx().get<ActionQueue>();
-    aq.tap(Button::Position, 180.0f, 340.0f);
+    aq.click(180.0f, 340.0f);
 
     level_select_system(reg, 0.016f);
     REQUIRE(lss.selected_difficulty == 0);
@@ -121,7 +121,7 @@ TEST_CASE("level_select — touch difficulty medium", "[level_select]") {
     lss.selected_difficulty = 0;             // start at easy
 
     auto& aq = reg.ctx().get<ActionQueue>();
-    aq.tap(Button::Position, 360.0f, 340.0f);
+    aq.click(360.0f, 340.0f);
 
     level_select_system(reg, 0.016f);
     REQUIRE(lss.selected_difficulty == 1);
@@ -133,7 +133,7 @@ TEST_CASE("level_select — touch difficulty hard", "[level_select]") {
     lss.selected_level = 0;
 
     auto& aq = reg.ctx().get<ActionQueue>();
-    aq.tap(Button::Position, 540.0f, 340.0f);
+    aq.click(540.0f, 340.0f);
 
     level_select_system(reg, 0.016f);
     REQUIRE(lss.selected_difficulty == 2);
@@ -148,7 +148,7 @@ TEST_CASE("level_select — touch START button confirms", "[level_select]") {
     auto& lss   = reg.ctx().get<LevelSelectState>();
 
     auto& aq = reg.ctx().get<ActionQueue>();
-    aq.tap(Button::Position, 360.0f, 1080.0f);
+    aq.click(360.0f, 1080.0f);
 
     level_select_system(reg, 0.016f);
     REQUIRE(lss.confirmed);
@@ -160,7 +160,7 @@ TEST_CASE("level_select — touch outside START button: no confirm",
     auto& lss   = reg.ctx().get<LevelSelectState>();
 
     auto& aq = reg.ctx().get<ActionQueue>();
-    aq.tap(Button::Position, 360.0f, 1200.0f);
+    aq.click(360.0f, 1200.0f);
 
     level_select_system(reg, 0.016f);
     REQUIRE_FALSE(lss.confirmed);
@@ -278,7 +278,7 @@ TEST_CASE("level_select — desktop mouse click full pipeline", "[level_select][
     lss.confirmed = false;
 
     auto& aq = reg.ctx().get<ActionQueue>();
-    aq.tap(Button::Position, 360.0f, 780.0f);
+    aq.click(360.0f, 780.0f);
 
     // Run systems in exact execution order
     game_state_system(reg, 0.016f);
@@ -297,7 +297,7 @@ TEST_CASE("level_select — mouse click on START triggers confirmed", "[level_se
     lss.confirmed = false;
 
     auto& aq = reg.ctx().get<ActionQueue>();
-    aq.tap(Button::Position, 360.0f, 1080.0f);
+    aq.click(360.0f, 1080.0f);
 
     game_state_system(reg, 0.016f);
     level_select_system(reg, 0.016f);
@@ -315,7 +315,7 @@ TEST_CASE("level_select — title click should NOT leak into level select", "[le
     lss.confirmed = false;
 
     auto& aq = reg.ctx().get<ActionQueue>();
-    aq.tap(Button::Position, 360.0f, 600.0f);
+    aq.click(360.0f, 600.0f);
 
     // Tick 1: Title → sets transition_pending
     game_state_system(reg, 0.016f);

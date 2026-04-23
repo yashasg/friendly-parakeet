@@ -182,12 +182,11 @@ TEST_CASE("action_queue: go adds direction action", "[input]") {
     CHECK(aq.actions[0].dir == Direction::Left);
 }
 
-TEST_CASE("action_queue: tap with position stores coordinates", "[input]") {
+TEST_CASE("action_queue: click stores coordinates", "[input]") {
     ActionQueue aq{};
-    aq.tap(Button::Position, 100.0f, 200.0f);
+    aq.click(100.0f, 200.0f);
     CHECK(aq.count == 1);
-    CHECK(aq.actions[0].verb == ActionVerb::Tap);
-    CHECK(aq.actions[0].button == Button::Position);
+    CHECK(aq.actions[0].verb == ActionVerb::Click);
     CHECK(aq.actions[0].x == 100.0f);
     CHECK(aq.actions[0].y == 200.0f);
 }
@@ -244,4 +243,3 @@ TEST_CASE("make_rhythm_player: starts as Hexagon", "[helpers]") {
     CHECK(sw.target_shape == Shape::Hexagon);
     CHECK(sw.phase_raw == 0);
 }
-

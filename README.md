@@ -32,10 +32,19 @@ Built with **C++20**, **raylib**, and **EnTT** using Data-Oriented Design.
 ```bash
 export VCPKG_ROOT=/path/to/vcpkg
 
-./build.sh           # Release build
-./run.sh             # Build + run game
-./run.sh test        # Build + run tests
+./build.sh           # configure + build (Release by default)
+./build.sh Debug     # configure + build (Debug)
+
+./run.sh             # build + run the game
+./run.sh test        # build + run the Catch2 test suite
+./run.sh bench       # build + run benchmark cases only
 ```
+
+`build.sh` is the single source of truth for build configuration — it wires up
+the vcpkg toolchain, forwards `CC`/`CXX` and `VCPKG_DEFAULT_TRIPLET`, and picks
+the Ninja generator on Windows shells. `run.sh` just calls `build.sh` and then
+launches the game or tests. Arguments after `test` / `bench` are forwarded to
+the Catch2 binary (e.g. `./run.sh test "[scoring]"`).
 
 ### Difficulty Selection
 
@@ -45,23 +54,38 @@ export VCPKG_ROOT=/path/to/vcpkg
 ./build/shapeshifter --difficulty hard
 ```
 
-### Test Player (AI)
+### Test AI (headless play)
+
+The `--test-player` flag replaces the human input with a scripted AI player
+driven by `test_player_system`. It's used for regression testing, for
+benchmarking difficulty tuning, and for catching beatmap-level bugs that
+deterministic unit tests can't reach. Three personas are built in:
+
+| Persona | Wrapper script | Expected outcome |
+|---------|----------------|------------------|
+| `pro`   | `./run_pro.sh`  | Clears every difficulty with a high score |
+| `good`  | `./run_good.sh` | Clears easy and medium reliably |
+| `bad`   | `./run_bad.sh`  | Struggles on medium and fails hard |
+
+Equivalent long form:
 
 ```bash
-./build/shapeshifter --test-player pro     # clears with high score
-./build/shapeshifter --test-player good    # clears easy/medium
-./build/shapeshifter --test-player bad     # struggles on medium+
+./build/shapeshifter --test-player pro
+./build/shapeshifter --test-player good
+./build/shapeshifter --test-player bad
 ```
 
 ## Controls
 
-| Action | Keyboard | Touch |
-|--------|----------|-------|
-| Shape: Circle | 1 | Tap left button |
-| Shape: Triangle | 2 | Tap center button |
-| Shape: Square | 3 | Tap right button |
+| Action | Keyboard | Pointer (touch / mouse) |
+|--------|----------|-------------------------|
+| Shape: Circle | 1 | Tap / click left shape button |
+| Shape: Triangle | 2 | Tap / click center shape button |
+| Shape: Square | 3 | Tap / click right shape button |
 | Move left | A | Swipe left |
 | Move right | D | Swipe right |
+
+Pointer input is normalised: every release emits a `Click(x, y)` action (or a directional `Go(...)` for swipes), and consumer systems resolve UI targets from hit boxes.
 
 ## Architecture
 
@@ -82,6 +106,7 @@ hp -> lifetime -> particle -> cleanup -> render -> audio
 - **Shape windows** are song-time-anchored with phase transitions (MorphIn -> Active -> MorphOut -> Idle)
 - **Single-pass collision** dispatches by obstacle kind via switch, not multiple EnTT views
 - **Section pattern reuse** — verse 1 and verse 2 share the same obstacle pattern
+- **Pointer input normalised to click events** — `Click(x, y)` is emitted at the input layer; consumer systems resolve UI targets via hit boxes rather than the input layer naming buttons
 
 ### Project Layout
 
@@ -92,21 +117,23 @@ app/
   platform.h              # PLATFORM_HAS_KEYBOARD macro
   platform_utils.h        # Portable localtime/fopen wrappers
   enum_names.h            # shape_name(), obstacle_kind_name()
-  components/             # 19 POD component structs
+  components/             # 20 POD component structs
     player.h              #   PlayerShape, ShapeWindow, Lane
     rhythm.h              #   TimingGrade, BeatInfo, WindowPhase
     beat_map.h            #   BeatEntry, BeatMap (loaded data)
     song_state.h          #   SongState, HPState, SongResults
-  systems/                # 23 system functions
+    input.h               #   InputState, ActionQueue, ActionVerb (Click/Tap/Go/...)
+  systems/                # 25 system functions
     all_systems.h         #   declarations + pipeline order
     play_session.cpp      #   entity setup on game start
+    shape_button_hit.*    #   shared hit-test for shape buttons
 tools/
   rhythm_pipeline.py      # Audio analysis (aubio -> analysis JSON)
   level_designer.py       # Beatmap generation (analysis -> beatmap JSON)
 content/
   audio/                  # Source audio files (.flac)
   beatmaps/               # Analysis + beatmap JSON files
-tests/                    # 386 Catch2 tests across 19 files
+tests/                    # 553 Catch2 cases across 30 files
 design-docs/              # Game design + architecture docs
 ```
 

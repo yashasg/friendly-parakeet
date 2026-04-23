@@ -13,6 +13,7 @@
 #include "../platform.h"
 #include "../constants.h"
 
+#include <algorithm>
 #include <cmath>
 #include <random>
 
@@ -288,16 +289,10 @@ void test_player_system(entt::registry& reg, float dt) {
     // so we don't skip a nearer obstacle to act on a farther one.
     int exec_order[TestPlayerState::MAX_ACTIONS];
     for (int i = 0; i < state->action_count; ++i) exec_order[i] = i;
-    for (int i = 0; i < state->action_count - 1; ++i) {
-        for (int j = i + 1; j < state->action_count; ++j) {
-            if (state->actions[exec_order[j]].arrival_time <
-                state->actions[exec_order[i]].arrival_time) {
-                int tmp = exec_order[i];
-                exec_order[i] = exec_order[j];
-                exec_order[j] = tmp;
-            }
-        }
-    }
+    std::sort(exec_order, exec_order + state->action_count,
+        [&](int a, int b) {
+            return state->actions[a].arrival_time < state->actions[b].arrival_time;
+        });
 
     for (int ei = 0; ei < state->action_count && !key_injected; ++ei) {
         auto& action = state->actions[exec_order[ei]];
@@ -312,11 +307,8 @@ void test_player_system(entt::registry& reg, float dt) {
 
         // Priority 1: Shape change
         if (action.needs_shape()) {
-            switch (action.target_shape) {
-                case Shape::Circle:   aq.tap(Button::ShapeCircle); break;
-                case Shape::Square:   aq.tap(Button::ShapeSquare); break;
-                case Shape::Triangle: aq.tap(Button::ShapeTri); break;
-                default: break;
+            if (auto btn = button_from_shape(action.target_shape)) {
+                aq.tap(*btn);
             }
             action.mark_shape_done();
             key_injected = true;
@@ -415,23 +407,12 @@ void test_player_system(entt::registry& reg, float dt) {
             continue;
         }
 
-        // Priority 3: Vertical action (wait for other obstacles to clear zone)
-        bool vert_blocked_by_shape = (pending_shape_obstacle != entt::null
-                                      && pending_shape_obstacle != action.obstacle);
-        bool vert_zone_blocked = false;
-        {
-            auto zone_view = reg.view<ObstacleTag, Position>(entt::exclude<ScoredTag>);
-            for (auto [ze, zpos] : zone_view.each()) {
-                if (ze == action.obstacle) continue;
-                float zdist = p_pos.y - zpos.y + p_vstate.y_offset;
-                if (zdist >= -COLLISION_MARGIN && zdist <= COLLISION_MARGIN * 3.0f) {
-                    vert_zone_blocked = true;
-                    break;
-                }
-            }
-        }
+        // Priority 3: Vertical action (wait for other obstacles to clear zone).
+        // Reuses zone_blocked / blocked_by_shape computed above: we only reach
+        // here when the lane branch did not fire (no mutating ops in between),
+        // so those values are still valid for the same action.
         if (action.needs_vertical() && p_vstate.mode == VMode::Grounded
-            && !vert_zone_blocked && !vert_blocked_by_shape) {
+            && !zone_blocked && !blocked_by_shape) {
             if (action.target_vertical == VMode::Jumping) {
                 aq.go(Direction::Up);
                 if (log) {

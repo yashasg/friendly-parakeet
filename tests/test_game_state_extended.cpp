@@ -230,7 +230,7 @@ TEST_CASE("game_state: title position tap triggers level_select", "[gamestate]")
     gs.phase = GamePhase::Title;
     auto& aq = reg.ctx().get<ActionQueue>();
     // Tap in the middle of the screen (not on exit button)
-    aq.tap(Button::Position, float(constants::SCREEN_W) / 2.0f, 500.0f);
+    aq.click(float(constants::SCREEN_W) / 2.0f, 500.0f);
 
     game_state_system(reg, 0.016f);
 

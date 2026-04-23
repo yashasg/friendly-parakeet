@@ -23,15 +23,6 @@ static float multiplier_for_zone(BurnoutZone zone) {
     return 1.0f;
 }
 
-static uint8_t tier_for_multiplier(float mult) {
-    if (mult >= 5.0f) return 5;
-    if (mult >= 4.0f) return 4;
-    if (mult >= 3.0f) return 3;
-    if (mult >= 2.0f) return 2;
-    if (mult >= 1.5f) return 1;
-    return 0;
-}
-
 void scoring_system(entt::registry& reg, float dt) {
     if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
 
@@ -126,7 +117,7 @@ void scoring_system(entt::registry& reg, float dt) {
         reg.emplace<Lifetime>(popup, constants::POPUP_DURATION, constants::POPUP_DURATION);
 
         uint8_t tt = timing ? static_cast<uint8_t>(timing->tier) : uint8_t{255};
-        reg.emplace<ScorePopup>(popup, points, tier_for_multiplier(burnout_mult), tt);
+        reg.emplace<ScorePopup>(popup, points, tt);
 
         // Color by timing grade
         uint8_t pr = 255, pg = 255, pb = 50;
