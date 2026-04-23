@@ -18,6 +18,7 @@
 #include "systems/beat_map_loader.h"
 #include "systems/text_renderer.h"
 #include "systems/session_logger.h"
+#include "systems/camera_system.h"
 #include "systems/ui_loader.h"
 #include "systems/ui_button_spawner.h"
 
@@ -280,6 +281,7 @@ int main(int argc, char* argv[]) {
         reg.ctx().emplace<Camera3D>(cam3d);
     }
     reg.ctx().emplace<ScreenTransform>();  // updated each frame before input_system
+    reg.ctx().emplace<camera::ShapeMeshes>(camera::build_shape_meshes());
 
     // ── UI layouts (data-driven screens from JSON) ──────────────
     reg.ctx().emplace<UIState>(load_ui());
@@ -423,6 +425,7 @@ int main(int argc, char* argv[]) {
     }
     CloseAudioDevice();
     UnloadRenderTexture(target);
+    camera::unload_shape_meshes(reg.ctx().get<camera::ShapeMeshes>());
     text_shutdown(reg.ctx().get<TextContext>());
     CloseWindow();
     return 0;

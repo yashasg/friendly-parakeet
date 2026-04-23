@@ -1,6 +1,7 @@
 #pragma once
 #include "../components/camera.h"
 #include "../components/player.h"
+#include "../components/shape_vertices.h"
 #include <entt/entt.hpp>
 #include <raylib.h>
 
@@ -8,20 +9,27 @@ namespace camera {
 
 constexpr float WORLD_SCALE = 10.0f;
 
-// ── Standalone 3D shape draw ─────────────────────────────────────────────────
-// Draws a filled shape on the XZ plane at height y_3d.
-// Wraps its own RL_TRIANGLES batch; safe to call outside a rlBegin/rlEnd pair.
+// ── Shape geometry descriptors (compile-time) ────────────────────────────────
+struct ShapeDesc {
+    const shape_verts::V2* ring;
+    int    n;
+    float  radius_scale;
+    float  height_scale;
+};
+
+// ── GPU shape meshes (built once, drawn many) ────────────────────────────────
+struct ShapeMeshes {
+    Mesh     meshes[4];    // indexed by Shape enum
+    Material material;     // shared material — diffuse color set per draw
+};
+
+ShapeMeshes build_shape_meshes();
+void        unload_shape_meshes(ShapeMeshes& sm);
+
+// ── Standalone 3D shape draw (immediate mode fallback) ───────────────────────
 void draw_shape(Shape shape, float cx, float y_3d, float cz, float size, Color c);
 
 // ── GPU-batched render passes ────────────────────────────────────────────────
-// All geometry is emitted on the XZ plane in world space.
-// Camera3D perspective projection handles foreshortening automatically.
-//
-//   Pass 1: RL_LINES      — floor connectors + outlines + corridor edges
-//   Pass 2: RL_TRIANGLES  — floor rings (lane 0 circles)
-//   Pass 3: RL_QUADS      — obstacle rects + particle rects
-//   Pass 4: RL_TRIANGLES  — ghost shapes + player shape
-
 void flush_floor_lines(entt::registry& reg, const FloorParams& fp);
 void flush_floor_rings(const FloorParams& fp);
 void flush_world_rects(entt::registry& reg);

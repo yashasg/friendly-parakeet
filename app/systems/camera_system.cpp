@@ -9,107 +9,18 @@
 #include "../components/lifetime.h"
 #include "../constants.h"
 #include <raylib.h>
+#include <raymath.h>
 #include <rlgl.h>
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Camera3D world-space rendering
-// ═══════════════════════════════════════════════════════════════════════════════
-//
-// Coordinate mapping:  game Position{x, y} → 3D {x, 0, y}
-//   • x stays the same (0–720)
-//   • 3D y = 0 is the ground plane (>0 for jumping player)
-//   • 3D z = game's y coordinate (scroll direction)
-//
-// All geometry is emitted as 3D primitives using rlVertex3f.
-// Camera3D's perspective projection matrix handles foreshortening, lane
-// convergence, and depth scaling — no manual depth()/project() needed.
-// ═══════════════════════════════════════════════════════════════════════════════
+#include <cstdlib>
 
 namespace camera {
 
-// Scale game-pixel coordinates to world coordinates for Camera3D rendering.
 static constexpr float S = camera::WORLD_SCALE;
 static inline void rlVertex3fScaled(float x, float y, float z) {
     rlVertex3f(x / S, y / S, z / S);
 }
 
-// ── Shading helpers ──────────────────────────────────────────────────────────
-struct FaceColors {
-    uint8_t tr, tg, tb;  // top (brightest)
-    uint8_t fr, fg, fb;  // front
-    uint8_t sr, sg, sb;  // side
-    uint8_t dr, dg, db;  // dark (back/bottom)
-    uint8_t a;
-};
-
-static FaceColors make_face_colors(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-    auto boost = [](uint8_t c) -> uint8_t {
-        int v = static_cast<int>(c * 1.2f);
-        return static_cast<uint8_t>(v > 255 ? 255 : v);
-    };
-    return {
-        boost(r), boost(g), boost(b),
-        static_cast<uint8_t>(r * 0.65f), static_cast<uint8_t>(g * 0.65f), static_cast<uint8_t>(b * 0.65f),
-        static_cast<uint8_t>(r * 0.50f), static_cast<uint8_t>(g * 0.50f), static_cast<uint8_t>(b * 0.50f),
-        static_cast<uint8_t>(r * 0.35f), static_cast<uint8_t>(g * 0.35f), static_cast<uint8_t>(b * 0.35f),
-        a,
-    };
-}
-
-// ── Generic extruded prism ──────────────────────────────────────────────────
-// Takes a compile-time unit ring (shape_verts::V2[]) and applies position +
-// scale at emit time.  No per-frame vertex computation — just multiply.
-//
-//   ring[]   = constexpr unit vertices (from shape_vertices.h)
-//   cx, cz   = world center
-//   radius   = scale factor applied to ring
-//   bot_y    = base height
-//   top_y    = cap height
-
-static void emit_prism_caps(const shape_verts::V2* ring, int n,
-                             float cx, float cz, float radius,
-                             float bot_y, float top_y,
-                             const FaceColors& fc) {
-    rlColor4ub(fc.tr, fc.tg, fc.tb, fc.a);
-    for (int i = 0; i < n; ++i) {
-        int next = (i + 1) % n;
-        rlVertex3fScaled(cx, top_y, cz);
-        rlVertex3fScaled(cx + ring[i].x * radius,    top_y, cz + ring[i].y * radius);
-        rlVertex3fScaled(cx + ring[next].x * radius,  top_y, cz + ring[next].y * radius);
-    }
-    rlColor4ub(fc.dr, fc.dg, fc.db, fc.a);
-    for (int i = 0; i < n; ++i) {
-        int next = (i + 1) % n;
-        rlVertex3fScaled(cx, bot_y, cz);
-        rlVertex3fScaled(cx + ring[next].x * radius,  bot_y, cz + ring[next].y * radius);
-        rlVertex3fScaled(cx + ring[i].x * radius,    bot_y, cz + ring[i].y * radius);
-    }
-}
-
-static void emit_prism_walls(const shape_verts::V2* ring, int n,
-                              float cx, float cz, float radius,
-                              float bot_y, float top_y,
-                              const FaceColors& fc) {
-    for (int i = 0; i < n; ++i) {
-        int next = (i + 1) % n;
-        float x0 = cx + ring[i].x * radius,    z0 = cz + ring[i].y * radius;
-        float x1 = cx + ring[next].x * radius,  z1 = cz + ring[next].y * radius;
-
-        bool front = (z0 + z1) * 0.5f < cz;
-        if (front) rlColor4ub(fc.fr, fc.fg, fc.fb, fc.a);
-        else       rlColor4ub(fc.sr, fc.sg, fc.sb, fc.a);
-
-        rlVertex3fScaled(x0, bot_y, z0);
-        rlVertex3fScaled(x0, top_y, z0);
-        rlVertex3fScaled(x1, top_y, z1);
-        rlVertex3fScaled(x1, bot_y, z1);
-    }
-}
-
-// ── Per-shape unit ring table ───────────────────────────────────────────────
-// Maps Shape enum → {constexpr ring pointer, vertex count, radius scale, height ratio}.
-// All data is compile-time constant.  The circle ring is a 12-point subset of
-// the 24-segment table in shape_vertices.h, precomputed below.
+// ── Compile-time shape data ─────────────────────────────────────────────────
 
 static constexpr shape_verts::V2 CIRCLE_12[12] = {
     { 1.000000f,  0.000000f}, { 0.866025f,  0.500000f},
@@ -120,32 +31,127 @@ static constexpr shape_verts::V2 CIRCLE_12[12] = {
     { 0.500000f, -0.866025f}, { 0.866025f, -0.500000f},
 };
 
-struct ShapeDesc {
-    const shape_verts::V2* ring;
-    int    n;
-    float  radius_scale;  // multiplied by size to get world radius
-    float  height_scale;  // multiplied by size to get extrusion height
-};
-
 static constexpr ShapeDesc SHAPE_TABLE[] = {
-    { CIRCLE_12,              12, 0.5f, 0.3f },  // Circle: radius = size/2
-    { shape_verts::SQUARE,     4, 0.5f, 0.3f },  // Square: half-extent = size/2
-    { shape_verts::TRIANGLE,   3, 0.5f, 0.3f },  // Triangle: half-extent = size/2
-    { shape_verts::HEXAGON,    6, 0.6f, 0.7f },  // Hexagon: radius = size*0.6
+    { CIRCLE_12,              12, 0.5f, 0.3f },
+    { shape_verts::SQUARE,     4, 0.5f, 0.3f },
+    { shape_verts::TRIANGLE,   3, 0.5f, 0.3f },
+    { shape_verts::HEXAGON,    6, 0.6f, 0.7f },
 };
 
-// ── Standalone shape draw ────────────────────────────────────────────────────
+// ── GPU mesh builder ────────────────────────────────────────────────────────
+// Builds a prism mesh from a unit ring: top/bottom caps + side walls.
+// Vertex colors are baked as grayscale directional shading (top=bright,
+// front=mid, side=dim, bottom=dark).  At render time, material.diffuse
+// tints the grayscale to the entity color — zero per-frame vertex math.
+
+static Mesh build_prism_mesh(const ShapeDesc& desc) {
+    const int n = desc.n;
+    const int tri_count = 4 * n;
+    const int vert_count = tri_count * 3;
+    float height = desc.height_scale / desc.radius_scale;
+
+    Mesh mesh = {};
+    mesh.vertexCount   = vert_count;
+    mesh.triangleCount = tri_count;
+    mesh.vertices  = static_cast<float*>(RL_CALLOC(static_cast<unsigned int>(vert_count * 3), sizeof(float)));
+    mesh.normals   = static_cast<float*>(RL_CALLOC(static_cast<unsigned int>(vert_count * 3), sizeof(float)));
+    mesh.texcoords = static_cast<float*>(RL_CALLOC(static_cast<unsigned int>(vert_count * 2), sizeof(float)));
+    mesh.colors    = static_cast<unsigned char*>(RL_CALLOC(static_cast<unsigned int>(vert_count * 4), sizeof(unsigned char)));
+
+    int vi = 0;
+    auto put = [&](float x, float y, float z, float nx, float ny, float nz, uint8_t gray) {
+        mesh.vertices[vi*3+0] = x;  mesh.vertices[vi*3+1] = y;  mesh.vertices[vi*3+2] = z;
+        mesh.normals[vi*3+0] = nx;  mesh.normals[vi*3+1] = ny;  mesh.normals[vi*3+2] = nz;
+        mesh.colors[vi*4+0] = gray; mesh.colors[vi*4+1] = gray;
+        mesh.colors[vi*4+2] = gray; mesh.colors[vi*4+3] = 255;
+        ++vi;
+    };
+
+    constexpr uint8_t TOP = 255, FRONT = 166, SIDE = 128, BOT = 90;
+    const auto* ring = desc.ring;
+
+    // Top cap
+    for (int i = 0; i < n; ++i) {
+        int nx = (i + 1) % n;
+        put(0, height, 0,               0,1,0, TOP);
+        put(ring[i].x, height, ring[i].y, 0,1,0, TOP);
+        put(ring[nx].x, height, ring[nx].y, 0,1,0, TOP);
+    }
+    // Bottom cap
+    for (int i = 0; i < n; ++i) {
+        int nx = (i + 1) % n;
+        put(0, 0, 0,                     0,-1,0, BOT);
+        put(ring[nx].x, 0, ring[nx].y,  0,-1,0, BOT);
+        put(ring[i].x, 0, ring[i].y,    0,-1,0, BOT);
+    }
+    // Side walls
+    for (int i = 0; i < n; ++i) {
+        int nx = (i + 1) % n;
+        float fnx = (ring[i].x + ring[nx].x) * 0.5f;
+        float fnz = (ring[i].y + ring[nx].y) * 0.5f;
+        uint8_t gray = (fnz < 0) ? FRONT : SIDE;
+        put(ring[i].x,  0,      ring[i].y,  fnx,0,fnz, gray);
+        put(ring[i].x,  height, ring[i].y,  fnx,0,fnz, gray);
+        put(ring[nx].x, height, ring[nx].y, fnx,0,fnz, gray);
+        put(ring[i].x,  0,      ring[i].y,  fnx,0,fnz, gray);
+        put(ring[nx].x, height, ring[nx].y, fnx,0,fnz, gray);
+        put(ring[nx].x, 0,      ring[nx].y, fnx,0,fnz, gray);
+    }
+
+    UploadMesh(&mesh, false);
+    return mesh;
+}
+
+ShapeMeshes build_shape_meshes() {
+    ShapeMeshes sm = {};
+    for (int i = 0; i < 4; ++i)
+        sm.meshes[i] = build_prism_mesh(SHAPE_TABLE[i]);
+    sm.material = LoadMaterialDefault();
+    return sm;
+}
+
+void unload_shape_meshes(ShapeMeshes& sm) {
+    for (int i = 0; i < 4; ++i)
+        UnloadMesh(sm.meshes[i]);
+    UnloadMaterial(sm.material);
+}
+
+// ── Standalone shape draw (immediate mode, used outside gameplay) ────────────
 void draw_shape(Shape shape, float cx, float y_3d, float cz, float size, Color c) {
-    FaceColors fc = make_face_colors(c.r, c.g, c.b, c.a);
     const auto& desc = SHAPE_TABLE[static_cast<int>(shape)];
     float radius = size * desc.radius_scale;
     float top_y  = y_3d + size * desc.height_scale;
+    auto boost = [](uint8_t v) -> uint8_t {
+        int r = static_cast<int>(v * 1.2f); return static_cast<uint8_t>(r > 255 ? 255 : r);
+    };
+    uint8_t tr=boost(c.r), tg=boost(c.g), tb=boost(c.b);
+    uint8_t fr=static_cast<uint8_t>(c.r*0.65f), fg=static_cast<uint8_t>(c.g*0.65f), fb=static_cast<uint8_t>(c.b*0.65f);
+    uint8_t sr=static_cast<uint8_t>(c.r*0.50f), sg=static_cast<uint8_t>(c.g*0.50f), sb=static_cast<uint8_t>(c.b*0.50f);
+    uint8_t dr=static_cast<uint8_t>(c.r*0.35f), dg=static_cast<uint8_t>(c.g*0.35f), db=static_cast<uint8_t>(c.b*0.35f);
 
     rlBegin(RL_TRIANGLES);
-    emit_prism_caps(desc.ring, desc.n, cx, cz, radius, y_3d, top_y, fc);
-    rlEnd();
-    rlBegin(RL_QUADS);
-    emit_prism_walls(desc.ring, desc.n, cx, cz, radius, y_3d, top_y, fc);
+    rlColor4ub(tr,tg,tb,c.a);
+    for (int i = 0; i < desc.n; ++i) {
+        int nx = (i+1) % desc.n;
+        rlVertex3fScaled(cx, top_y, cz);
+        rlVertex3fScaled(cx+desc.ring[i].x*radius, top_y, cz+desc.ring[i].y*radius);
+        rlVertex3fScaled(cx+desc.ring[nx].x*radius, top_y, cz+desc.ring[nx].y*radius);
+    }
+    rlColor4ub(dr,dg,db,c.a);
+    for (int i = 0; i < desc.n; ++i) {
+        int nx = (i+1) % desc.n;
+        rlVertex3fScaled(cx, y_3d, cz);
+        rlVertex3fScaled(cx+desc.ring[nx].x*radius, y_3d, cz+desc.ring[nx].y*radius);
+        rlVertex3fScaled(cx+desc.ring[i].x*radius, y_3d, cz+desc.ring[i].y*radius);
+    }
+    for (int i = 0; i < desc.n; ++i) {
+        int nx = (i+1) % desc.n;
+        float x0=cx+desc.ring[i].x*radius, z0=cz+desc.ring[i].y*radius;
+        float x1=cx+desc.ring[nx].x*radius, z1=cz+desc.ring[nx].y*radius;
+        if ((z0+z1)*0.5f < cz) rlColor4ub(fr,fg,fb,c.a); else rlColor4ub(sr,sg,sb,c.a);
+        rlVertex3fScaled(x0,y_3d,z0); rlVertex3fScaled(x1,y_3d,z1); rlVertex3fScaled(x0,top_y,z0);
+        rlVertex3fScaled(x1,y_3d,z1); rlVertex3fScaled(x1,top_y,z1); rlVertex3fScaled(x0,top_y,z0);
+    }
     rlEnd();
 }
 
@@ -441,37 +447,34 @@ void flush_floor_rings(const FloorParams& fp) {
     rlEnd();
 }
 
-// ── Pass 4: Gameplay shapes (ghost shapes + player) ─────────────────────────
+// ── Pass 4: Gameplay shapes via GPU meshes ──────────────────────────────────
+// Shape geometry lives on the GPU (built once by build_shape_meshes).
+// Per frame: compute a transform matrix + set material color → DrawMesh.
 void flush_gameplay_tris(entt::registry& reg) {
-    // Helper to emit a shape across two batches (caps + sides).
-    // Collects shape draw calls, then emits caps in RL_TRIANGLES and
-    // sides in RL_QUADS (which handles winding correctly).
-    struct ShapeDraw {
-        Shape shape; float cx, y_3d, cz, sz;
-        uint8_t r, g, b, a;
+    auto* sm = reg.ctx().find<ShapeMeshes>();
+    if (!sm) return;
+
+    auto draw = [&](Shape shape, float cx, float y_3d, float cz,
+                    float sz, Color tint) {
+        int idx = static_cast<int>(shape);
+        const auto& desc = SHAPE_TABLE[idx];
+        float scale = sz * desc.radius_scale / S;
+        Matrix mat = MatrixMultiply(MatrixScale(scale, scale, scale),
+                                    MatrixTranslate(cx / S, y_3d / S, cz / S));
+        sm->material.maps[MATERIAL_MAP_DIFFUSE].color = tint;
+        DrawMesh(sm->meshes[idx], sm->material, mat);
     };
 
-    // Collect all shape draws (small fixed count: ~10-20 max)
-    static constexpr int MAX_DRAWS = 64;
-    ShapeDraw draws[MAX_DRAWS];
-    int count = 0;
-
-    auto add = [&](Shape shape, float cx, float y_3d, float cz, float sz,
-                   uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-        if (count < MAX_DRAWS)
-            draws[count++] = {shape, cx, y_3d, cz, sz, r, g, b, a};
-    };
-
-    // Ghost shapes (obstacle indicators)
+    // Ghost shapes
     {
         auto view = reg.view<ObstacleTag, Position, Obstacle, Color, DrawSize>();
         for (auto [entity, pos, obs, col, dsz] : view.each()) {
             switch (obs.kind) {
                 case ObstacleKind::ShapeGate: {
                     auto* req = reg.try_get<RequiredShape>(entity);
-                    if (req) add(req->shape, pos.x, 0.0f,
-                                pos.y + dsz.h / 2, 40,
-                                col.r, col.g, col.b, 120);
+                    if (req) draw(req->shape, pos.x, 0.0f,
+                                  pos.y + dsz.h / 2, 40,
+                                  {col.r, col.g, col.b, 120});
                     break;
                 }
                 case ObstacleKind::ComboGate: {
@@ -479,13 +482,12 @@ void flush_gameplay_tris(entt::registry& reg) {
                     if (req) {
                         auto* blocked = reg.try_get<BlockedLanes>(entity);
                         int open = 1;
-                        if (blocked) {
+                        if (blocked)
                             for (int i = 0; i < 3; ++i)
                                 if (!((blocked->mask >> i) & 1)) { open = i; break; }
-                        }
-                        add(req->shape, constants::LANE_X[open],
-                            0.0f, pos.y + dsz.h / 2, 30,
-                            255, 255, 255, 180);
+                        draw(req->shape, constants::LANE_X[open],
+                             0.0f, pos.y + dsz.h / 2, 30,
+                             {255, 255, 255, 180});
                     }
                     break;
                 }
@@ -493,9 +495,9 @@ void flush_gameplay_tris(entt::registry& reg) {
                     auto* req = reg.try_get<RequiredShape>(entity);
                     auto* rlane = reg.try_get<RequiredLane>(entity);
                     if (req && rlane)
-                        add(req->shape, constants::LANE_X[rlane->lane],
-                            0.0f, pos.y + dsz.h / 2, 30,
-                            255, 255, 255, 180);
+                        draw(req->shape, constants::LANE_X[rlane->lane],
+                             0.0f, pos.y + dsz.h / 2, 30,
+                             {255, 255, 255, 180});
                     break;
                 }
                 default: break;
@@ -510,36 +512,9 @@ void flush_gameplay_tris(entt::registry& reg) {
             float y_3d = -vstate.y_offset;
             float sz = constants::PLAYER_SIZE;
             if (vstate.mode == VMode::Sliding) sz *= 0.5f;
-            add(pshape.current, pos.x, y_3d, pos.y, sz,
-                col.r, col.g, col.b, col.a);
+            draw(pshape.current, pos.x, y_3d, pos.y, sz, col);
         }
     }
-
-    // Emit caps (top/bottom faces) — RL_TRIANGLES
-    rlBegin(RL_TRIANGLES);
-    for (int i = 0; i < count; ++i) {
-        auto& d = draws[i];
-        const auto& desc = SHAPE_TABLE[static_cast<int>(d.shape)];
-        FaceColors fc = make_face_colors(d.r, d.g, d.b, d.a);
-        float radius = d.sz * desc.radius_scale;
-        float top_y  = d.y_3d + d.sz * desc.height_scale;
-        emit_prism_caps(desc.ring, desc.n, d.cx, d.cz, radius,
-                        d.y_3d, top_y, fc);
-    }
-    rlEnd();
-
-    // Emit side walls — RL_QUADS (handles winding correctly)
-    rlBegin(RL_QUADS);
-    for (int i = 0; i < count; ++i) {
-        auto& d = draws[i];
-        const auto& desc = SHAPE_TABLE[static_cast<int>(d.shape)];
-        FaceColors fc = make_face_colors(d.r, d.g, d.b, d.a);
-        float radius = d.sz * desc.radius_scale;
-        float top_y  = d.y_3d + d.sz * desc.height_scale;
-        emit_prism_walls(desc.ring, desc.n, d.cx, d.cz, radius,
-                         d.y_3d, top_y, fc);
-    }
-    rlEnd();
 }
 
 } // namespace camera
