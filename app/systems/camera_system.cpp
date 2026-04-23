@@ -56,228 +56,96 @@ static FaceColors make_face_colors(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
     };
 }
 
-// ── Shape caps (top/bottom faces) — call inside RL_TRIANGLES ────────────────
-static void emit_shape_caps(Shape shape, float cx, float y_3d, float cz,
-                             float size, const FaceColors& fc) {
-    float height = size * 0.3f;
-    float top_y  = y_3d + height;
+// ── Generic extruded prism ──────────────────────────────────────────────────
+// Takes a compile-time unit ring (shape_verts::V2[]) and applies position +
+// scale at emit time.  No per-frame vertex computation — just multiply.
+//
+//   ring[]   = constexpr unit vertices (from shape_vertices.h)
+//   cx, cz   = world center
+//   radius   = scale factor applied to ring
+//   bot_y    = base height
+//   top_y    = cap height
 
-    switch (shape) {
-
-    case Shape::Circle: {
-        constexpr int SLICES = 12;
-        float radius = size / 2.0f;
-        float rx[SLICES], rz[SLICES];
-        for (int i = 0; i < SLICES; ++i) {
-            float angle = static_cast<float>(i) * (2.0f * 3.14159265f / SLICES);
-            rx[i] = cx + cosf(angle) * radius;
-            rz[i] = cz + sinf(angle) * radius;
-        }
-        // Top face
-        rlColor4ub(fc.tr, fc.tg, fc.tb, fc.a);
-        for (int i = 0; i < SLICES; ++i) {
-            int n = (i + 1) % SLICES;
-            rlVertex3fScaled(cx,    top_y, cz);
-            rlVertex3fScaled(rx[i], top_y, rz[i]);
-            rlVertex3fScaled(rx[n], top_y, rz[n]);
-        }
-        // Bottom face
-        rlColor4ub(fc.dr, fc.dg, fc.db, fc.a);
-        for (int i = 0; i < SLICES; ++i) {
-            int n = (i + 1) % SLICES;
-            rlVertex3fScaled(cx,    y_3d, cz);
-            rlVertex3fScaled(rx[n], y_3d, rz[n]);
-            rlVertex3fScaled(rx[i], y_3d, rz[i]);
-        }
-        break;
+static void emit_prism_caps(const shape_verts::V2* ring, int n,
+                             float cx, float cz, float radius,
+                             float bot_y, float top_y,
+                             const FaceColors& fc) {
+    rlColor4ub(fc.tr, fc.tg, fc.tb, fc.a);
+    for (int i = 0; i < n; ++i) {
+        int next = (i + 1) % n;
+        rlVertex3fScaled(cx, top_y, cz);
+        rlVertex3fScaled(cx + ring[i].x * radius,    top_y, cz + ring[i].y * radius);
+        rlVertex3fScaled(cx + ring[next].x * radius,  top_y, cz + ring[next].y * radius);
     }
-
-    case Shape::Square: {
-        float half = size / 2.0f;
-        float vx[4], vz[4];
-        for (int i = 0; i < 4; ++i) {
-            vx[i] = cx + shape_verts::SQUARE[i].x * half;
-            vz[i] = cz + shape_verts::SQUARE[i].y * half;
-        }
-        // Top face (2 tris)
-        rlColor4ub(fc.tr, fc.tg, fc.tb, fc.a);
-        rlVertex3fScaled(vx[0], top_y, vz[0]);
-        rlVertex3fScaled(vx[1], top_y, vz[1]);
-        rlVertex3fScaled(vx[3], top_y, vz[3]);
-        rlVertex3fScaled(vx[1], top_y, vz[1]);
-        rlVertex3fScaled(vx[2], top_y, vz[2]);
-        rlVertex3fScaled(vx[3], top_y, vz[3]);
-        // Bottom face (2 tris)
-        rlColor4ub(fc.dr, fc.dg, fc.db, fc.a);
-        rlVertex3fScaled(vx[0], y_3d, vz[0]);
-        rlVertex3fScaled(vx[3], y_3d, vz[3]);
-        rlVertex3fScaled(vx[1], y_3d, vz[1]);
-        rlVertex3fScaled(vx[1], y_3d, vz[1]);
-        rlVertex3fScaled(vx[3], y_3d, vz[3]);
-        rlVertex3fScaled(vx[2], y_3d, vz[2]);
-        break;
+    rlColor4ub(fc.dr, fc.dg, fc.db, fc.a);
+    for (int i = 0; i < n; ++i) {
+        int next = (i + 1) % n;
+        rlVertex3fScaled(cx, bot_y, cz);
+        rlVertex3fScaled(cx + ring[next].x * radius,  bot_y, cz + ring[next].y * radius);
+        rlVertex3fScaled(cx + ring[i].x * radius,    bot_y, cz + ring[i].y * radius);
     }
-
-    case Shape::Triangle: {
-        float half = size / 2.0f;
-        float vx[3], vz[3];
-        for (int i = 0; i < 3; ++i) {
-            vx[i] = cx + shape_verts::TRIANGLE[i].x * half;
-            vz[i] = cz + shape_verts::TRIANGLE[i].y * half;
-        }
-        // Top face
-        rlColor4ub(fc.tr, fc.tg, fc.tb, fc.a);
-        rlVertex3fScaled(vx[0], top_y, vz[0]);
-        rlVertex3fScaled(vx[1], top_y, vz[1]);
-        rlVertex3fScaled(vx[2], top_y, vz[2]);
-        // Bottom face
-        rlColor4ub(fc.dr, fc.dg, fc.db, fc.a);
-        rlVertex3fScaled(vx[0], y_3d, vz[0]);
-        rlVertex3fScaled(vx[2], y_3d, vz[2]);
-        rlVertex3fScaled(vx[1], y_3d, vz[1]);
-        break;
-    }
-
-    case Shape::Hexagon: {
-        constexpr int N = 6;
-        float radius = size * 0.6f;
-        float hex_h  = size * 0.7f;
-        float hex_top = y_3d + hex_h;
-        float hx[N], hz[N];
-        for (int i = 0; i < N; ++i) {
-            hx[i] = cx + shape_verts::HEXAGON[i].x * radius;
-            hz[i] = cz + shape_verts::HEXAGON[i].y * radius;
-        }
-        // Top face
-        rlColor4ub(fc.tr, fc.tg, fc.tb, fc.a);
-        for (int i = 0; i < N; ++i) {
-            int n = (i + 1) % N;
-            rlVertex3fScaled(cx,    hex_top, cz);
-            rlVertex3fScaled(hx[i], hex_top, hz[i]);
-            rlVertex3fScaled(hx[n], hex_top, hz[n]);
-        }
-        // Bottom face
-        rlColor4ub(fc.dr, fc.dg, fc.db, fc.a);
-        for (int i = 0; i < N; ++i) {
-            int n = (i + 1) % N;
-            rlVertex3fScaled(cx,    y_3d, cz);
-            rlVertex3fScaled(hx[n], y_3d, hz[n]);
-            rlVertex3fScaled(hx[i], y_3d, hz[i]);
-        }
-        break;
-    }
-
-    } // switch
 }
 
-// ── Shape side walls — call inside RL_QUADS ─────────────────────────────────
-// Each side face is a 4-vertex quad; raylib handles winding internally.
-static void emit_shape_sides(Shape shape, float cx, float y_3d, float cz,
-                              float size, const FaceColors& fc) {
-    float height = size * 0.3f;
-    float top_y  = y_3d + height;
+static void emit_prism_walls(const shape_verts::V2* ring, int n,
+                              float cx, float cz, float radius,
+                              float bot_y, float top_y,
+                              const FaceColors& fc) {
+    for (int i = 0; i < n; ++i) {
+        int next = (i + 1) % n;
+        float x0 = cx + ring[i].x * radius,    z0 = cz + ring[i].y * radius;
+        float x1 = cx + ring[next].x * radius,  z1 = cz + ring[next].y * radius;
 
-    // Emit one side-wall quad between two adjacent base vertices.
-    auto emit_wall = [&](float x0, float z0, float x1, float z1,
-                         uint8_t wr, uint8_t wg, uint8_t wb) {
-        rlColor4ub(wr, wg, wb, fc.a);
-        rlVertex3fScaled(x0, y_3d,  z0);
+        bool front = (z0 + z1) * 0.5f < cz;
+        if (front) rlColor4ub(fc.fr, fc.fg, fc.fb, fc.a);
+        else       rlColor4ub(fc.sr, fc.sg, fc.sb, fc.a);
+
+        rlVertex3fScaled(x0, bot_y, z0);
         rlVertex3fScaled(x0, top_y, z0);
         rlVertex3fScaled(x1, top_y, z1);
-        rlVertex3fScaled(x1, y_3d,  z1);
-    };
-
-    auto wall_color = [&](float z0, float z1) {
-        float mid_z = (z0 + z1) * 0.5f;
-        bool front = mid_z < cz;
-        if (front) return std::make_tuple(fc.fr, fc.fg, fc.fb);
-        else       return std::make_tuple(fc.sr, fc.sg, fc.sb);
-    };
-
-    switch (shape) {
-
-    case Shape::Circle: {
-        constexpr int SLICES = 12;
-        float radius = size / 2.0f;
-        float rx[SLICES], rz[SLICES];
-        for (int i = 0; i < SLICES; ++i) {
-            float angle = static_cast<float>(i) * (2.0f * 3.14159265f / SLICES);
-            rx[i] = cx + cosf(angle) * radius;
-            rz[i] = cz + sinf(angle) * radius;
-        }
-        for (int i = 0; i < SLICES; ++i) {
-            int n = (i + 1) % SLICES;
-            auto [wr, wg, wb] = wall_color(rz[i], rz[n]);
-            emit_wall(rx[i], rz[i], rx[n], rz[n], wr, wg, wb);
-        }
-        break;
+        rlVertex3fScaled(x1, bot_y, z1);
     }
-
-    case Shape::Square: {
-        float half = size / 2.0f;
-        float vx[4], vz[4];
-        for (int i = 0; i < 4; ++i) {
-            vx[i] = cx + shape_verts::SQUARE[i].x * half;
-            vz[i] = cz + shape_verts::SQUARE[i].y * half;
-        }
-        // Front: 0→1, Right: 1→2, Back: 2→3, Left: 3→0
-        for (int i = 0; i < 4; ++i) {
-            int n = (i + 1) % 4;
-            auto [wr, wg, wb] = wall_color(vz[i], vz[n]);
-            emit_wall(vx[i], vz[i], vx[n], vz[n], wr, wg, wb);
-        }
-        break;
-    }
-
-    case Shape::Triangle: {
-        float half = size / 2.0f;
-        float vx[3], vz[3];
-        for (int i = 0; i < 3; ++i) {
-            vx[i] = cx + shape_verts::TRIANGLE[i].x * half;
-            vz[i] = cz + shape_verts::TRIANGLE[i].y * half;
-        }
-        for (int i = 0; i < 3; ++i) {
-            int n = (i + 1) % 3;
-            auto [wr, wg, wb] = wall_color(vz[i], vz[n]);
-            emit_wall(vx[i], vz[i], vx[n], vz[n], wr, wg, wb);
-        }
-        break;
-    }
-
-    case Shape::Hexagon: {
-        constexpr int N = 6;
-        float radius = size * 0.6f;
-        float hex_h  = size * 0.7f;
-        float hex_top = y_3d + hex_h;
-        float hx[N], hz[N];
-        for (int i = 0; i < N; ++i) {
-            hx[i] = cx + shape_verts::HEXAGON[i].x * radius;
-            hz[i] = cz + shape_verts::HEXAGON[i].y * radius;
-        }
-        for (int i = 0; i < N; ++i) {
-            int n = (i + 1) % N;
-            auto [wr, wg, wb] = wall_color(hz[i], hz[n]);
-            // Hex prism uses its own height
-            rlColor4ub(wr, wg, wb, fc.a);
-            rlVertex3fScaled(hx[i], y_3d,    hz[i]);
-            rlVertex3fScaled(hx[i], hex_top,  hz[i]);
-            rlVertex3fScaled(hx[n], hex_top,  hz[n]);
-            rlVertex3fScaled(hx[n], y_3d,    hz[n]);
-        }
-        break;
-    }
-
-    } // switch
 }
+
+// ── Per-shape unit ring table ───────────────────────────────────────────────
+// Maps Shape enum → {constexpr ring pointer, vertex count, radius scale, height ratio}.
+// All data is compile-time constant.  The circle ring is a 12-point subset of
+// the 24-segment table in shape_vertices.h, precomputed below.
+
+static constexpr shape_verts::V2 CIRCLE_12[12] = {
+    { 1.000000f,  0.000000f}, { 0.866025f,  0.500000f},
+    { 0.500000f,  0.866025f}, { 0.000000f,  1.000000f},
+    {-0.500000f,  0.866025f}, {-0.866025f,  0.500000f},
+    {-1.000000f,  0.000000f}, {-0.866025f, -0.500000f},
+    {-0.500000f, -0.866025f}, { 0.000000f, -1.000000f},
+    { 0.500000f, -0.866025f}, { 0.866025f, -0.500000f},
+};
+
+struct ShapeDesc {
+    const shape_verts::V2* ring;
+    int    n;
+    float  radius_scale;  // multiplied by size to get world radius
+    float  height_scale;  // multiplied by size to get extrusion height
+};
+
+static constexpr ShapeDesc SHAPE_TABLE[] = {
+    { CIRCLE_12,              12, 0.5f, 0.3f },  // Circle: radius = size/2
+    { shape_verts::SQUARE,     4, 0.5f, 0.3f },  // Square: half-extent = size/2
+    { shape_verts::TRIANGLE,   3, 0.5f, 0.3f },  // Triangle: half-extent = size/2
+    { shape_verts::HEXAGON,    6, 0.6f, 0.7f },  // Hexagon: radius = size*0.6
+};
 
 // ── Standalone shape draw ────────────────────────────────────────────────────
 void draw_shape(Shape shape, float cx, float y_3d, float cz, float size, Color c) {
     FaceColors fc = make_face_colors(c.r, c.g, c.b, c.a);
+    const auto& desc = SHAPE_TABLE[static_cast<int>(shape)];
+    float radius = size * desc.radius_scale;
+    float top_y  = y_3d + size * desc.height_scale;
+
     rlBegin(RL_TRIANGLES);
-    emit_shape_caps(shape, cx, y_3d, cz, size, fc);
+    emit_prism_caps(desc.ring, desc.n, cx, cz, radius, y_3d, top_y, fc);
     rlEnd();
     rlBegin(RL_QUADS);
-    emit_shape_sides(shape, cx, y_3d, cz, size, fc);
+    emit_prism_walls(desc.ring, desc.n, cx, cz, radius, y_3d, top_y, fc);
     rlEnd();
 }
 
@@ -651,8 +519,12 @@ void flush_gameplay_tris(entt::registry& reg) {
     rlBegin(RL_TRIANGLES);
     for (int i = 0; i < count; ++i) {
         auto& d = draws[i];
+        const auto& desc = SHAPE_TABLE[static_cast<int>(d.shape)];
         FaceColors fc = make_face_colors(d.r, d.g, d.b, d.a);
-        emit_shape_caps(d.shape, d.cx, d.y_3d, d.cz, d.sz, fc);
+        float radius = d.sz * desc.radius_scale;
+        float top_y  = d.y_3d + d.sz * desc.height_scale;
+        emit_prism_caps(desc.ring, desc.n, d.cx, d.cz, radius,
+                        d.y_3d, top_y, fc);
     }
     rlEnd();
 
@@ -660,8 +532,12 @@ void flush_gameplay_tris(entt::registry& reg) {
     rlBegin(RL_QUADS);
     for (int i = 0; i < count; ++i) {
         auto& d = draws[i];
+        const auto& desc = SHAPE_TABLE[static_cast<int>(d.shape)];
         FaceColors fc = make_face_colors(d.r, d.g, d.b, d.a);
-        emit_shape_sides(d.shape, d.cx, d.y_3d, d.cz, d.sz, fc);
+        float radius = d.sz * desc.radius_scale;
+        float top_y  = d.y_3d + d.sz * desc.height_scale;
+        emit_prism_walls(desc.ring, desc.n, d.cx, d.cz, radius,
+                         d.y_3d, top_y, fc);
     }
     rlEnd();
 }
