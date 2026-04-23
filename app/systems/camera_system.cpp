@@ -39,10 +39,20 @@ static inline void rlVertex3fScaled(float x, float y, float z) {
 static void emit_3d_shape(Shape shape, float cx, float y_3d, float cz,
                            float size,
                            uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-    // Darker shade for bottom / side faces
-    uint8_t sr = static_cast<uint8_t>(r * 0.7f);
-    uint8_t sg = static_cast<uint8_t>(g * 0.7f);
-    uint8_t sb = static_cast<uint8_t>(b * 0.7f);
+    // Per-face shading for depth cues:
+    //   top   = full colour
+    //   front = 85% (facing camera, slightly darkened)
+    //   side  = 60% (perpendicular to camera)
+    //   back/bottom = 45% (away from camera)
+    uint8_t fr = static_cast<uint8_t>(r * 0.85f);
+    uint8_t fg = static_cast<uint8_t>(g * 0.85f);
+    uint8_t fb = static_cast<uint8_t>(b * 0.85f);
+    uint8_t sr = static_cast<uint8_t>(r * 0.6f);
+    uint8_t sg = static_cast<uint8_t>(g * 0.6f);
+    uint8_t sb = static_cast<uint8_t>(b * 0.6f);
+    uint8_t dr = static_cast<uint8_t>(r * 0.45f);
+    uint8_t dg = static_cast<uint8_t>(g * 0.45f);
+    uint8_t db = static_cast<uint8_t>(b * 0.45f);
 
     switch (shape) {
 
@@ -51,7 +61,7 @@ static void emit_3d_shape(Shape shape, float cx, float y_3d, float cz,
         constexpr int N = 10;
         float radius    = size / 2.0f;
         float top_r     = radius * 0.6f;
-        float height    = size * 0.4f;
+        float height    = size * 0.8f;
         float top_y     = y_3d + height;
 
         float bx[N], bz_[N];   // bottom ring
@@ -64,8 +74,8 @@ static void emit_3d_shape(Shape shape, float cx, float y_3d, float cz,
             tz_[i] = cz + shape_verts::CIRCLE[idx].y * top_r;
         }
 
-        // Bottom face (fan, darker)
-        rlColor4ub(sr, sg, sb, a);
+        // Bottom face (darkest)
+        rlColor4ub(dr, dg, db, a);
         for (int i = 0; i < N; ++i) {
             int n = (i + 1) % N;
             rlVertex3fScaled(cx,     y_3d, cz);
@@ -73,7 +83,7 @@ static void emit_3d_shape(Shape shape, float cx, float y_3d, float cz,
             rlVertex3fScaled(bx[i],  y_3d, bz_[i]);
         }
 
-        // Top face (fan, bright)
+        // Top face (bright)
         rlColor4ub(r, g, b, a);
         for (int i = 0; i < N; ++i) {
             int n = (i + 1) % N;
@@ -82,10 +92,14 @@ static void emit_3d_shape(Shape shape, float cx, float y_3d, float cz,
             rlVertex3fScaled(tx[n],  top_y, tz_[n]);
         }
 
-        // Side faces (quads as 2 tris each, darker)
-        rlColor4ub(sr, sg, sb, a);
+        // Side faces — shade based on facing direction (z-component of normal)
         for (int i = 0; i < N; ++i) {
             int n = (i + 1) % N;
+            float mid_z = (bz_[i] + bz_[n]) * 0.5f;
+            bool front_facing = mid_z < cz;  // low-z faces camera
+            if (front_facing) rlColor4ub(fr, fg, fb, a);
+            else              rlColor4ub(sr, sg, sb, a);
+
             rlVertex3fScaled(bx[i],  y_3d,  bz_[i]);
             rlVertex3fScaled(bx[n],  y_3d,  bz_[n]);
             rlVertex3fScaled(tx[i],  top_y, tz_[i]);
@@ -100,7 +114,7 @@ static void emit_3d_shape(Shape shape, float cx, float y_3d, float cz,
     // ── Square → Cube ────────────────────────────────────────────────────
     case Shape::Square: {
         float half   = size / 2.0f;
-        float height = size * 0.4f;
+        float height = size;  // full cube: height = width
         float bot_y  = y_3d;
         float top_y  = y_3d + height;
 
@@ -120,8 +134,8 @@ static void emit_3d_shape(Shape shape, float cx, float y_3d, float cz,
         rlVertex3fScaled(vx[2], top_y, vz[2]);
         rlVertex3fScaled(vx[3], top_y, vz[3]);
 
-        // Bottom face (darker)
-        rlColor4ub(sr, sg, sb, a);
+        // Bottom face (darkest)
+        rlColor4ub(dr, dg, db, a);
         rlVertex3fScaled(vx[0], bot_y, vz[0]);
         rlVertex3fScaled(vx[3], bot_y, vz[3]);
         rlVertex3fScaled(vx[1], bot_y, vz[1]);
@@ -129,29 +143,31 @@ static void emit_3d_shape(Shape shape, float cx, float y_3d, float cz,
         rlVertex3fScaled(vx[3], bot_y, vz[3]);
         rlVertex3fScaled(vx[2], bot_y, vz[2]);
 
-        // Four side faces (darker) — front, back, left, right
-        // Front: 3→2
-        rlVertex3fScaled(vx[3], bot_y, vz[3]);
-        rlVertex3fScaled(vx[2], bot_y, vz[2]);
-        rlVertex3fScaled(vx[3], top_y, vz[3]);
-        rlVertex3fScaled(vx[2], bot_y, vz[2]);
-        rlVertex3fScaled(vx[2], top_y, vz[2]);
-        rlVertex3fScaled(vx[3], top_y, vz[3]);
-        // Back: 0→1
+        // Front face: 0→1 (low-z, faces camera — brighter)
+        rlColor4ub(fr, fg, fb, a);
         rlVertex3fScaled(vx[0], bot_y, vz[0]);
         rlVertex3fScaled(vx[0], top_y, vz[0]);
         rlVertex3fScaled(vx[1], bot_y, vz[1]);
         rlVertex3fScaled(vx[1], bot_y, vz[1]);
         rlVertex3fScaled(vx[0], top_y, vz[0]);
         rlVertex3fScaled(vx[1], top_y, vz[1]);
-        // Left: 0→3
+        // Back face: 3→2 (high-z, away from camera — darkest)
+        rlColor4ub(dr, dg, db, a);
+        rlVertex3fScaled(vx[3], bot_y, vz[3]);
+        rlVertex3fScaled(vx[2], bot_y, vz[2]);
+        rlVertex3fScaled(vx[3], top_y, vz[3]);
+        rlVertex3fScaled(vx[2], bot_y, vz[2]);
+        rlVertex3fScaled(vx[2], top_y, vz[2]);
+        rlVertex3fScaled(vx[3], top_y, vz[3]);
+        // Left side: 0→3 (side shading)
+        rlColor4ub(sr, sg, sb, a);
         rlVertex3fScaled(vx[0], bot_y, vz[0]);
         rlVertex3fScaled(vx[3], bot_y, vz[3]);
         rlVertex3fScaled(vx[0], top_y, vz[0]);
         rlVertex3fScaled(vx[3], bot_y, vz[3]);
         rlVertex3fScaled(vx[3], top_y, vz[3]);
         rlVertex3fScaled(vx[0], top_y, vz[0]);
-        // Right: 1→2
+        // Right side: 1→2 (side shading)
         rlVertex3fScaled(vx[1], bot_y, vz[1]);
         rlVertex3fScaled(vx[1], top_y, vz[1]);
         rlVertex3fScaled(vx[2], bot_y, vz[2]);
@@ -164,7 +180,7 @@ static void emit_3d_shape(Shape shape, float cx, float y_3d, float cz,
     // ── Triangle → Pyramid (tetrahedron) ─────────────────────────────────
     case Shape::Triangle: {
         float half   = size / 2.0f;
-        float apex_y = y_3d + size * 0.5f;
+        float apex_y = y_3d + size * 1.0f;  // tall pyramid
 
         float vx[3], vz[3];
         for (int i = 0; i < 3; ++i) {
@@ -172,16 +188,20 @@ static void emit_3d_shape(Shape shape, float cx, float y_3d, float cz,
             vz[i] = cz + shape_verts::TRIANGLE[i].y * half;
         }
 
-        // Base face (darker)
-        rlColor4ub(sr, sg, sb, a);
+        // Base face (darkest)
+        rlColor4ub(dr, dg, db, a);
         rlVertex3fScaled(vx[0], y_3d, vz[0]);
         rlVertex3fScaled(vx[2], y_3d, vz[2]);
         rlVertex3fScaled(vx[1], y_3d, vz[1]);
 
-        // Three side faces to apex (bright)
-        rlColor4ub(r, g, b, a);
+        // Three side faces to apex — shade based on facing direction
         for (int i = 0; i < 3; ++i) {
             int n = (i + 1) % 3;
+            float mid_z = (vz[i] + vz[n]) * 0.5f;
+            bool front_facing = mid_z < cz;
+            if (front_facing) rlColor4ub(fr, fg, fb, a);
+            else              rlColor4ub(sr, sg, sb, a);
+
             rlVertex3fScaled(vx[i], y_3d, vz[i]);
             rlVertex3fScaled(vx[n], y_3d, vz[n]);
             rlVertex3fScaled(cx,    apex_y, cz);
@@ -193,7 +213,7 @@ static void emit_3d_shape(Shape shape, float cx, float y_3d, float cz,
     case Shape::Hexagon: {
         constexpr int N = 6;
         float radius = size * 0.6f;
-        float height = size * 0.3f;
+        float height = size * 0.7f;
         float top_y  = y_3d + height;
 
         float hx[N], hz[N];
@@ -202,8 +222,8 @@ static void emit_3d_shape(Shape shape, float cx, float y_3d, float cz,
             hz[i] = cz + shape_verts::HEXAGON[i].y * radius;
         }
 
-        // Bottom face (fan, darker)
-        rlColor4ub(sr, sg, sb, a);
+        // Bottom face (fan, darkest)
+        rlColor4ub(dr, dg, db, a);
         for (int i = 0; i < N; ++i) {
             int n = (i + 1) % N;
             rlVertex3fScaled(cx,    y_3d, cz);
@@ -220,10 +240,14 @@ static void emit_3d_shape(Shape shape, float cx, float y_3d, float cz,
             rlVertex3fScaled(hx[n], top_y, hz[n]);
         }
 
-        // Side faces (quads as 2 tris, darker)
-        rlColor4ub(sr, sg, sb, a);
+        // Side faces — shade based on facing direction
         for (int i = 0; i < N; ++i) {
             int n = (i + 1) % N;
+            float mid_z = (hz[i] + hz[n]) * 0.5f;
+            bool front_facing = mid_z < cz;
+            if (front_facing) rlColor4ub(fr, fg, fb, a);
+            else              rlColor4ub(sr, sg, sb, a);
+
             rlVertex3fScaled(hx[i], y_3d,  hz[i]);
             rlVertex3fScaled(hx[n], y_3d,  hz[n]);
             rlVertex3fScaled(hx[i], top_y, hz[i]);
@@ -255,12 +279,18 @@ void flush_world_rects(entt::registry& reg) {
 
     // Emit a 3D slab (box) with top, front, back, left, and right faces.
     // Bottom at y=0, top at y=h.  Each face is a 4-vertex quad.
+    // Uses directional shading: top=bright, front=85%, sides=60%, back=45%.
     auto emit_slab = [](float x, float z, float w, float d, float h,
                         uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-        // Darker shade for side faces
-        uint8_t sr = static_cast<uint8_t>(r * 0.7f);
-        uint8_t sg = static_cast<uint8_t>(g * 0.7f);
-        uint8_t sb = static_cast<uint8_t>(b * 0.7f);
+        uint8_t fr = static_cast<uint8_t>(r * 0.85f);
+        uint8_t fg = static_cast<uint8_t>(g * 0.85f);
+        uint8_t fb = static_cast<uint8_t>(b * 0.85f);
+        uint8_t sr = static_cast<uint8_t>(r * 0.6f);
+        uint8_t sg = static_cast<uint8_t>(g * 0.6f);
+        uint8_t sb = static_cast<uint8_t>(b * 0.6f);
+        uint8_t dr = static_cast<uint8_t>(r * 0.45f);
+        uint8_t dg = static_cast<uint8_t>(g * 0.45f);
+        uint8_t db = static_cast<uint8_t>(b * 0.45f);
 
         // Top face (bright) — visible from the camera above
         rlColor4ub(r, g, b, a);
@@ -269,20 +299,22 @@ void flush_world_rects(entt::registry& reg) {
         rlVertex3fScaled(x + w, h, z + d);
         rlVertex3fScaled(x + w, h, z);
 
-        // Front face (darker) — facing the camera (low-z side)
-        rlColor4ub(sr, sg, sb, a);
+        // Front face — facing the camera (low-z side, brighter)
+        rlColor4ub(fr, fg, fb, a);
         rlVertex3fScaled(x,     0.0f, z);
         rlVertex3fScaled(x,     h,    z);
         rlVertex3fScaled(x + w, h,    z);
         rlVertex3fScaled(x + w, 0.0f, z);
 
-        // Back face (darker) — away from camera (high-z side)
+        // Back face — away from camera (high-z side, darkest)
+        rlColor4ub(dr, dg, db, a);
         rlVertex3fScaled(x,     0.0f, z + d);
         rlVertex3fScaled(x + w, 0.0f, z + d);
         rlVertex3fScaled(x + w, h,    z + d);
         rlVertex3fScaled(x,     h,    z + d);
 
-        // Left side face
+        // Left side face (side shading)
+        rlColor4ub(sr, sg, sb, a);
         rlVertex3fScaled(x, 0.0f, z);
         rlVertex3fScaled(x, 0.0f, z + d);
         rlVertex3fScaled(x, h,    z + d);
