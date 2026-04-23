@@ -27,6 +27,12 @@
 
 namespace camera {
 
+// Scale game-pixel coordinates to world coordinates for Camera3D rendering.
+static constexpr float S = camera::WORLD_SCALE;
+static inline void rlVertex3fScaled(float x, float y, float z) {
+    rlVertex3f(x / S, y / S, z / S);
+}
+
 // ── 3D shape vertex emitter (call inside an RL_TRIANGLES block) ─────────────
 // Emits vertices for actual 3D primitives: gem, cube, pyramid, hex-prism.
 // Top faces use the primary colour; bottom and side faces use a darker shade.
@@ -62,31 +68,31 @@ static void emit_3d_shape(Shape shape, float cx, float y_3d, float cz,
         rlColor4ub(sr, sg, sb, a);
         for (int i = 0; i < N; ++i) {
             int n = (i + 1) % N;
-            rlVertex3f(cx,     y_3d, cz);
-            rlVertex3f(bx[n],  y_3d, bz_[n]);
-            rlVertex3f(bx[i],  y_3d, bz_[i]);
+            rlVertex3fScaled(cx,     y_3d, cz);
+            rlVertex3fScaled(bx[n],  y_3d, bz_[n]);
+            rlVertex3fScaled(bx[i],  y_3d, bz_[i]);
         }
 
         // Top face (fan, bright)
         rlColor4ub(r, g, b, a);
         for (int i = 0; i < N; ++i) {
             int n = (i + 1) % N;
-            rlVertex3f(cx,     top_y, cz);
-            rlVertex3f(tx[i],  top_y, tz_[i]);
-            rlVertex3f(tx[n],  top_y, tz_[n]);
+            rlVertex3fScaled(cx,     top_y, cz);
+            rlVertex3fScaled(tx[i],  top_y, tz_[i]);
+            rlVertex3fScaled(tx[n],  top_y, tz_[n]);
         }
 
         // Side faces (quads as 2 tris each, darker)
         rlColor4ub(sr, sg, sb, a);
         for (int i = 0; i < N; ++i) {
             int n = (i + 1) % N;
-            rlVertex3f(bx[i],  y_3d,  bz_[i]);
-            rlVertex3f(bx[n],  y_3d,  bz_[n]);
-            rlVertex3f(tx[i],  top_y, tz_[i]);
+            rlVertex3fScaled(bx[i],  y_3d,  bz_[i]);
+            rlVertex3fScaled(bx[n],  y_3d,  bz_[n]);
+            rlVertex3fScaled(tx[i],  top_y, tz_[i]);
 
-            rlVertex3f(bx[n],  y_3d,  bz_[n]);
-            rlVertex3f(tx[n],  top_y, tz_[n]);
-            rlVertex3f(tx[i],  top_y, tz_[i]);
+            rlVertex3fScaled(bx[n],  y_3d,  bz_[n]);
+            rlVertex3fScaled(tx[n],  top_y, tz_[n]);
+            rlVertex3fScaled(tx[i],  top_y, tz_[i]);
         }
         break;
     }
@@ -107,51 +113,51 @@ static void emit_3d_shape(Shape shape, float cx, float y_3d, float cz,
 
         // Top face (bright)
         rlColor4ub(r, g, b, a);
-        rlVertex3f(vx[0], top_y, vz[0]);
-        rlVertex3f(vx[1], top_y, vz[1]);
-        rlVertex3f(vx[3], top_y, vz[3]);
-        rlVertex3f(vx[1], top_y, vz[1]);
-        rlVertex3f(vx[2], top_y, vz[2]);
-        rlVertex3f(vx[3], top_y, vz[3]);
+        rlVertex3fScaled(vx[0], top_y, vz[0]);
+        rlVertex3fScaled(vx[1], top_y, vz[1]);
+        rlVertex3fScaled(vx[3], top_y, vz[3]);
+        rlVertex3fScaled(vx[1], top_y, vz[1]);
+        rlVertex3fScaled(vx[2], top_y, vz[2]);
+        rlVertex3fScaled(vx[3], top_y, vz[3]);
 
         // Bottom face (darker)
         rlColor4ub(sr, sg, sb, a);
-        rlVertex3f(vx[0], bot_y, vz[0]);
-        rlVertex3f(vx[3], bot_y, vz[3]);
-        rlVertex3f(vx[1], bot_y, vz[1]);
-        rlVertex3f(vx[1], bot_y, vz[1]);
-        rlVertex3f(vx[3], bot_y, vz[3]);
-        rlVertex3f(vx[2], bot_y, vz[2]);
+        rlVertex3fScaled(vx[0], bot_y, vz[0]);
+        rlVertex3fScaled(vx[3], bot_y, vz[3]);
+        rlVertex3fScaled(vx[1], bot_y, vz[1]);
+        rlVertex3fScaled(vx[1], bot_y, vz[1]);
+        rlVertex3fScaled(vx[3], bot_y, vz[3]);
+        rlVertex3fScaled(vx[2], bot_y, vz[2]);
 
         // Four side faces (darker) — front, back, left, right
         // Front: 3→2
-        rlVertex3f(vx[3], bot_y, vz[3]);
-        rlVertex3f(vx[2], bot_y, vz[2]);
-        rlVertex3f(vx[3], top_y, vz[3]);
-        rlVertex3f(vx[2], bot_y, vz[2]);
-        rlVertex3f(vx[2], top_y, vz[2]);
-        rlVertex3f(vx[3], top_y, vz[3]);
+        rlVertex3fScaled(vx[3], bot_y, vz[3]);
+        rlVertex3fScaled(vx[2], bot_y, vz[2]);
+        rlVertex3fScaled(vx[3], top_y, vz[3]);
+        rlVertex3fScaled(vx[2], bot_y, vz[2]);
+        rlVertex3fScaled(vx[2], top_y, vz[2]);
+        rlVertex3fScaled(vx[3], top_y, vz[3]);
         // Back: 0→1
-        rlVertex3f(vx[0], bot_y, vz[0]);
-        rlVertex3f(vx[0], top_y, vz[0]);
-        rlVertex3f(vx[1], bot_y, vz[1]);
-        rlVertex3f(vx[1], bot_y, vz[1]);
-        rlVertex3f(vx[0], top_y, vz[0]);
-        rlVertex3f(vx[1], top_y, vz[1]);
+        rlVertex3fScaled(vx[0], bot_y, vz[0]);
+        rlVertex3fScaled(vx[0], top_y, vz[0]);
+        rlVertex3fScaled(vx[1], bot_y, vz[1]);
+        rlVertex3fScaled(vx[1], bot_y, vz[1]);
+        rlVertex3fScaled(vx[0], top_y, vz[0]);
+        rlVertex3fScaled(vx[1], top_y, vz[1]);
         // Left: 0→3
-        rlVertex3f(vx[0], bot_y, vz[0]);
-        rlVertex3f(vx[3], bot_y, vz[3]);
-        rlVertex3f(vx[0], top_y, vz[0]);
-        rlVertex3f(vx[3], bot_y, vz[3]);
-        rlVertex3f(vx[3], top_y, vz[3]);
-        rlVertex3f(vx[0], top_y, vz[0]);
+        rlVertex3fScaled(vx[0], bot_y, vz[0]);
+        rlVertex3fScaled(vx[3], bot_y, vz[3]);
+        rlVertex3fScaled(vx[0], top_y, vz[0]);
+        rlVertex3fScaled(vx[3], bot_y, vz[3]);
+        rlVertex3fScaled(vx[3], top_y, vz[3]);
+        rlVertex3fScaled(vx[0], top_y, vz[0]);
         // Right: 1→2
-        rlVertex3f(vx[1], bot_y, vz[1]);
-        rlVertex3f(vx[1], top_y, vz[1]);
-        rlVertex3f(vx[2], bot_y, vz[2]);
-        rlVertex3f(vx[2], bot_y, vz[2]);
-        rlVertex3f(vx[1], top_y, vz[1]);
-        rlVertex3f(vx[2], top_y, vz[2]);
+        rlVertex3fScaled(vx[1], bot_y, vz[1]);
+        rlVertex3fScaled(vx[1], top_y, vz[1]);
+        rlVertex3fScaled(vx[2], bot_y, vz[2]);
+        rlVertex3fScaled(vx[2], bot_y, vz[2]);
+        rlVertex3fScaled(vx[1], top_y, vz[1]);
+        rlVertex3fScaled(vx[2], top_y, vz[2]);
         break;
     }
 
@@ -168,17 +174,17 @@ static void emit_3d_shape(Shape shape, float cx, float y_3d, float cz,
 
         // Base face (darker)
         rlColor4ub(sr, sg, sb, a);
-        rlVertex3f(vx[0], y_3d, vz[0]);
-        rlVertex3f(vx[2], y_3d, vz[2]);
-        rlVertex3f(vx[1], y_3d, vz[1]);
+        rlVertex3fScaled(vx[0], y_3d, vz[0]);
+        rlVertex3fScaled(vx[2], y_3d, vz[2]);
+        rlVertex3fScaled(vx[1], y_3d, vz[1]);
 
         // Three side faces to apex (bright)
         rlColor4ub(r, g, b, a);
         for (int i = 0; i < 3; ++i) {
             int n = (i + 1) % 3;
-            rlVertex3f(vx[i], y_3d, vz[i]);
-            rlVertex3f(vx[n], y_3d, vz[n]);
-            rlVertex3f(cx,    apex_y, cz);
+            rlVertex3fScaled(vx[i], y_3d, vz[i]);
+            rlVertex3fScaled(vx[n], y_3d, vz[n]);
+            rlVertex3fScaled(cx,    apex_y, cz);
         }
         break;
     }
@@ -200,31 +206,31 @@ static void emit_3d_shape(Shape shape, float cx, float y_3d, float cz,
         rlColor4ub(sr, sg, sb, a);
         for (int i = 0; i < N; ++i) {
             int n = (i + 1) % N;
-            rlVertex3f(cx,    y_3d, cz);
-            rlVertex3f(hx[n], y_3d, hz[n]);
-            rlVertex3f(hx[i], y_3d, hz[i]);
+            rlVertex3fScaled(cx,    y_3d, cz);
+            rlVertex3fScaled(hx[n], y_3d, hz[n]);
+            rlVertex3fScaled(hx[i], y_3d, hz[i]);
         }
 
         // Top face (fan, bright)
         rlColor4ub(r, g, b, a);
         for (int i = 0; i < N; ++i) {
             int n = (i + 1) % N;
-            rlVertex3f(cx,    top_y, cz);
-            rlVertex3f(hx[i], top_y, hz[i]);
-            rlVertex3f(hx[n], top_y, hz[n]);
+            rlVertex3fScaled(cx,    top_y, cz);
+            rlVertex3fScaled(hx[i], top_y, hz[i]);
+            rlVertex3fScaled(hx[n], top_y, hz[n]);
         }
 
         // Side faces (quads as 2 tris, darker)
         rlColor4ub(sr, sg, sb, a);
         for (int i = 0; i < N; ++i) {
             int n = (i + 1) % N;
-            rlVertex3f(hx[i], y_3d,  hz[i]);
-            rlVertex3f(hx[n], y_3d,  hz[n]);
-            rlVertex3f(hx[i], top_y, hz[i]);
+            rlVertex3fScaled(hx[i], y_3d,  hz[i]);
+            rlVertex3fScaled(hx[n], y_3d,  hz[n]);
+            rlVertex3fScaled(hx[i], top_y, hz[i]);
 
-            rlVertex3f(hx[n], y_3d,  hz[n]);
-            rlVertex3f(hx[n], top_y, hz[n]);
-            rlVertex3f(hx[i], top_y, hz[i]);
+            rlVertex3fScaled(hx[n], y_3d,  hz[n]);
+            rlVertex3fScaled(hx[n], top_y, hz[n]);
+            rlVertex3fScaled(hx[i], top_y, hz[i]);
         }
         break;
     }
@@ -258,45 +264,45 @@ void flush_world_rects(entt::registry& reg) {
 
         // Top face (bright) — visible from the camera above
         rlColor4ub(r, g, b, a);
-        rlVertex3f(x,     h, z);
-        rlVertex3f(x,     h, z + d);
-        rlVertex3f(x + w, h, z + d);
-        rlVertex3f(x + w, h, z);
+        rlVertex3fScaled(x,     h, z);
+        rlVertex3fScaled(x,     h, z + d);
+        rlVertex3fScaled(x + w, h, z + d);
+        rlVertex3fScaled(x + w, h, z);
 
         // Front face (darker) — facing the camera (low-z side)
         rlColor4ub(sr, sg, sb, a);
-        rlVertex3f(x,     0.0f, z);
-        rlVertex3f(x,     h,    z);
-        rlVertex3f(x + w, h,    z);
-        rlVertex3f(x + w, 0.0f, z);
+        rlVertex3fScaled(x,     0.0f, z);
+        rlVertex3fScaled(x,     h,    z);
+        rlVertex3fScaled(x + w, h,    z);
+        rlVertex3fScaled(x + w, 0.0f, z);
 
         // Back face (darker) — away from camera (high-z side)
-        rlVertex3f(x,     0.0f, z + d);
-        rlVertex3f(x + w, 0.0f, z + d);
-        rlVertex3f(x + w, h,    z + d);
-        rlVertex3f(x,     h,    z + d);
+        rlVertex3fScaled(x,     0.0f, z + d);
+        rlVertex3fScaled(x + w, 0.0f, z + d);
+        rlVertex3fScaled(x + w, h,    z + d);
+        rlVertex3fScaled(x,     h,    z + d);
 
         // Left side face
-        rlVertex3f(x, 0.0f, z);
-        rlVertex3f(x, 0.0f, z + d);
-        rlVertex3f(x, h,    z + d);
-        rlVertex3f(x, h,    z);
+        rlVertex3fScaled(x, 0.0f, z);
+        rlVertex3fScaled(x, 0.0f, z + d);
+        rlVertex3fScaled(x, h,    z + d);
+        rlVertex3fScaled(x, h,    z);
 
         // Right side face
-        rlVertex3f(x + w, 0.0f, z);
-        rlVertex3f(x + w, h,    z);
-        rlVertex3f(x + w, h,    z + d);
-        rlVertex3f(x + w, 0.0f, z + d);
+        rlVertex3fScaled(x + w, 0.0f, z);
+        rlVertex3fScaled(x + w, h,    z);
+        rlVertex3fScaled(x + w, h,    z + d);
+        rlVertex3fScaled(x + w, 0.0f, z + d);
     };
 
     // Flat quad on XZ plane at y=0 (used for particles).
     auto emit_quad = [](float x, float z, float w, float d,
                         uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
         rlColor4ub(r, g, b, a);
-        rlVertex3f(x,     0.0f, z);
-        rlVertex3f(x,     0.0f, z + d);
-        rlVertex3f(x + w, 0.0f, z + d);
-        rlVertex3f(x + w, 0.0f, z);
+        rlVertex3fScaled(x,     0.0f, z);
+        rlVertex3fScaled(x,     0.0f, z + d);
+        rlVertex3fScaled(x + w, 0.0f, z + d);
+        rlVertex3fScaled(x + w, 0.0f, z);
     };
 
     // ── Obstacles ────────────────────────────────────────────
@@ -410,8 +416,8 @@ void flush_floor_lines(entt::registry& reg, const FloorParams& fp) {
         constexpr float sw = static_cast<float>(constants::SCREEN_W);
         constexpr float sh = static_cast<float>(constants::SCREEN_H);
         rlColor4ub(40, 40, 60, 120);
-        rlVertex3f(0.0f, 0.0f, 0.0f);  rlVertex3f(0.0f, 0.0f, sh);
-        rlVertex3f(sw,   0.0f, 0.0f);  rlVertex3f(sw,   0.0f, sh);
+        rlVertex3fScaled(0.0f, 0.0f, 0.0f);  rlVertex3fScaled(0.0f, 0.0f, sh);
+        rlVertex3fScaled(sw,   0.0f, 0.0f);  rlVertex3fScaled(sw,   0.0f, sh);
     }
 
     // Floor connectors + shape outlines
@@ -428,8 +434,8 @@ void flush_floor_lines(entt::registry& reg, const FloorParams& fp) {
             if (j < constants::FLOOR_SHAPE_COUNT - 1) {
                 float next_cz = cz + constants::FLOOR_SHAPE_SPACING;
                 rlColor4ub(c.r, c.g, c.b, c.a);
-                rlVertex3f(cx, 0.0f, cz + fp.half);
-                rlVertex3f(cx, 0.0f, next_cz - fp.half);
+                rlVertex3fScaled(cx, 0.0f, cz + fp.half);
+                rlVertex3fScaled(cx, 0.0f, next_cz - fp.half);
             }
 
             // Lane 1: square outlines
@@ -437,10 +443,10 @@ void flush_floor_lines(entt::registry& reg, const FloorParams& fp) {
                 float l = cx - fp.half, r = cx + fp.half;
                 float t = cz - fp.half, b = cz + fp.half;
                 rlColor4ub(c.r, c.g, c.b, c.a);
-                rlVertex3f(l, 0.0f, t); rlVertex3f(r, 0.0f, t);
-                rlVertex3f(r, 0.0f, t); rlVertex3f(r, 0.0f, b);
-                rlVertex3f(r, 0.0f, b); rlVertex3f(l, 0.0f, b);
-                rlVertex3f(l, 0.0f, b); rlVertex3f(l, 0.0f, t);
+                rlVertex3fScaled(l, 0.0f, t); rlVertex3fScaled(r, 0.0f, t);
+                rlVertex3fScaled(r, 0.0f, t); rlVertex3fScaled(r, 0.0f, b);
+                rlVertex3fScaled(r, 0.0f, b); rlVertex3fScaled(l, 0.0f, b);
+                rlVertex3fScaled(l, 0.0f, b); rlVertex3fScaled(l, 0.0f, t);
             }
 
             // Lane 2: triangle outlines
@@ -449,9 +455,9 @@ void flush_floor_lines(entt::registry& reg, const FloorParams& fp) {
                 float bl_x = cx - fp.half, bl_z = cz + fp.half;
                 float br_x = cx + fp.half, br_z = cz + fp.half;
                 rlColor4ub(c.r, c.g, c.b, c.a);
-                rlVertex3f(apex_x, 0.0f, apex_z); rlVertex3f(br_x, 0.0f, br_z);
-                rlVertex3f(br_x, 0.0f, br_z);     rlVertex3f(bl_x, 0.0f, bl_z);
-                rlVertex3f(bl_x, 0.0f, bl_z);     rlVertex3f(apex_x, 0.0f, apex_z);
+                rlVertex3fScaled(apex_x, 0.0f, apex_z); rlVertex3fScaled(br_x, 0.0f, br_z);
+                rlVertex3fScaled(br_x, 0.0f, br_z);     rlVertex3fScaled(bl_x, 0.0f, bl_z);
+                rlVertex3fScaled(bl_x, 0.0f, bl_z);     rlVertex3fScaled(apex_x, 0.0f, apex_z);
             }
         }
     }
@@ -489,12 +495,12 @@ void flush_floor_rings(const FloorParams& fp) {
             float iz2 = cz + shape_verts::CIRCLE[next_idx].y * inner_r;
 
             rlColor4ub(c.r, c.g, c.b, c.a);
-            rlVertex3f(ox1, 0.0f, oz1);
-            rlVertex3f(ix1, 0.0f, iz1);
-            rlVertex3f(ox2, 0.0f, oz2);
-            rlVertex3f(ix1, 0.0f, iz1);
-            rlVertex3f(ix2, 0.0f, iz2);
-            rlVertex3f(ox2, 0.0f, oz2);
+            rlVertex3fScaled(ox1, 0.0f, oz1);
+            rlVertex3fScaled(ix1, 0.0f, iz1);
+            rlVertex3fScaled(ox2, 0.0f, oz2);
+            rlVertex3fScaled(ix1, 0.0f, iz1);
+            rlVertex3fScaled(ix2, 0.0f, iz2);
+            rlVertex3fScaled(ox2, 0.0f, oz2);
         }
     }
     rlEnd();

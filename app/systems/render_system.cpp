@@ -664,8 +664,14 @@ void render_system(entt::registry& reg, float /*alpha*/) {
     camera::flush_floor_lines(reg, floor_params);   // Pass 1: floor lines
     camera::flush_floor_rings(floor_params);         // Pass 2: floor circles
     if (gs.phase != GamePhase::Title) {
+        // Flush floor geometry, then disable depth test so gameplay shapes
+        // always draw on top of the floor — eliminates Z-fighting at y=0.
+        rlDrawRenderBatchActive();
+        rlDisableDepthTest();
         camera::flush_world_rects(reg);              // Pass 3: obstacle + particle rects
         camera::flush_gameplay_tris(reg);            // Pass 4: ghost shapes + player
+        rlDrawRenderBatchActive();
+        rlEnableDepthTest();
     }
 
     EndMode3D();
@@ -678,7 +684,9 @@ void render_system(entt::registry& reg, float /*alpha*/) {
             auto popup_alpha = static_cast<uint8_t>(alpha_ratio * 255);
 
             // Map game position to 3D world, then project to screen coords
-            Vector3 world_pos = {pos.x, 5.0f, pos.y};
+            Vector3 world_pos = {pos.x / camera::WORLD_SCALE,
+                                  5.0f / camera::WORLD_SCALE,
+                                  pos.y / camera::WORLD_SCALE};
             Vector2 sp = GetWorldToScreenEx(world_pos, camera,
                              constants::SCREEN_W, constants::SCREEN_H);
 

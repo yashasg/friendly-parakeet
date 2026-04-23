@@ -6,6 +6,8 @@
 
 namespace camera {
 
+constexpr float WORLD_SCALE = 10.0f;
+
 // ── Standalone 3D shape draw ─────────────────────────────────────────────────
 // Draws a filled shape on the XZ plane at height y_3d.
 // Wraps its own RL_TRIANGLES batch; safe to call outside a rlBegin/rlEnd pair.
