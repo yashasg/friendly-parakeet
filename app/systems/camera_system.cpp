@@ -243,8 +243,53 @@ void draw_shape(Shape shape, float cx, float y_3d, float cz, float size, Color c
 void flush_world_rects(entt::registry& reg) {
     rlBegin(RL_QUADS);
 
-    // Emit an axis-aligned quad on the XZ plane at y=0.
-    // Parameters use game coordinates: x, z (= game y), w, d (= game h).
+    constexpr float OBSTACLE_HEIGHT = 20.0f;
+    constexpr float LOWBAR_HEIGHT   = 30.0f;
+    constexpr float HIGHBAR_HEIGHT  = 10.0f;
+
+    // Emit a 3D slab (box) with top, front, back, left, and right faces.
+    // Bottom at y=0, top at y=h.  Each face is a 4-vertex quad.
+    auto emit_slab = [](float x, float z, float w, float d, float h,
+                        uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+        // Darker shade for side faces
+        uint8_t sr = static_cast<uint8_t>(r * 0.7f);
+        uint8_t sg = static_cast<uint8_t>(g * 0.7f);
+        uint8_t sb = static_cast<uint8_t>(b * 0.7f);
+
+        // Top face (bright) — visible from the camera above
+        rlColor4ub(r, g, b, a);
+        rlVertex3f(x,     h, z);
+        rlVertex3f(x,     h, z + d);
+        rlVertex3f(x + w, h, z + d);
+        rlVertex3f(x + w, h, z);
+
+        // Front face (darker) — facing the camera (low-z side)
+        rlColor4ub(sr, sg, sb, a);
+        rlVertex3f(x,     0.0f, z);
+        rlVertex3f(x,     h,    z);
+        rlVertex3f(x + w, h,    z);
+        rlVertex3f(x + w, 0.0f, z);
+
+        // Back face (darker) — away from camera (high-z side)
+        rlVertex3f(x,     0.0f, z + d);
+        rlVertex3f(x + w, 0.0f, z + d);
+        rlVertex3f(x + w, h,    z + d);
+        rlVertex3f(x,     h,    z + d);
+
+        // Left side face
+        rlVertex3f(x, 0.0f, z);
+        rlVertex3f(x, 0.0f, z + d);
+        rlVertex3f(x, h,    z + d);
+        rlVertex3f(x, h,    z);
+
+        // Right side face
+        rlVertex3f(x + w, 0.0f, z);
+        rlVertex3f(x + w, h,    z);
+        rlVertex3f(x + w, h,    z + d);
+        rlVertex3f(x + w, 0.0f, z + d);
+    };
+
+    // Flat quad on XZ plane at y=0 (used for particles).
     auto emit_quad = [](float x, float z, float w, float d,
                         uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
         rlColor4ub(r, g, b, a);
@@ -260,9 +305,11 @@ void flush_world_rects(entt::registry& reg) {
         for (auto [entity, pos, obs, col, dsz] : view.each()) {
             switch (obs.kind) {
                 case ObstacleKind::ShapeGate:
-                    emit_quad(0, pos.y, pos.x - 50, dsz.h, col.r, col.g, col.b, col.a);
-                    emit_quad(pos.x + 50, pos.y,
+                    emit_slab(0, pos.y, pos.x - 50, dsz.h, OBSTACLE_HEIGHT,
+                              col.r, col.g, col.b, col.a);
+                    emit_slab(pos.x + 50, pos.y,
                               constants::SCREEN_W - pos.x - 50, dsz.h,
+                              OBSTACLE_HEIGHT,
                               col.r, col.g, col.b, col.a);
                     break;
 
@@ -272,7 +319,8 @@ void flush_world_rects(entt::registry& reg) {
                         for (int i = 0; i < 3; ++i) {
                             if ((blocked->mask >> i) & 1) {
                                 float lx = constants::LANE_X[i] - dsz.w / 2;
-                                emit_quad(lx, pos.y, dsz.w, dsz.h,
+                                emit_slab(lx, pos.y, dsz.w, dsz.h,
+                                          OBSTACLE_HEIGHT,
                                           col.r, col.g, col.b, col.a);
                             }
                         }
@@ -283,15 +331,22 @@ void flush_world_rects(entt::registry& reg) {
                 case ObstacleKind::LanePushLeft:
                 case ObstacleKind::LanePushRight: {
                     float lx = pos.x - dsz.w / 2;
-                    emit_quad(lx, pos.y, dsz.w, dsz.h,
+                    emit_slab(lx, pos.y, dsz.w, dsz.h,
+                              OBSTACLE_HEIGHT,
                               col.r, col.g, col.b, col.a);
                     break;
                 }
 
                 case ObstacleKind::LowBar:
+                    emit_slab(0, pos.y, static_cast<float>(constants::SCREEN_W),
+                              dsz.h, LOWBAR_HEIGHT,
+                              col.r, col.g, col.b, col.a);
+                    break;
+
                 case ObstacleKind::HighBar:
-                    emit_quad(0, pos.y, static_cast<float>(constants::SCREEN_W),
-                              dsz.h, col.r, col.g, col.b, col.a);
+                    emit_slab(0, pos.y, static_cast<float>(constants::SCREEN_W),
+                              dsz.h, HIGHBAR_HEIGHT,
+                              col.r, col.g, col.b, col.a);
                     break;
 
                 case ObstacleKind::ComboGate: {
@@ -300,7 +355,8 @@ void flush_world_rects(entt::registry& reg) {
                         for (int i = 0; i < 3; ++i) {
                             if ((blocked->mask >> i) & 1) {
                                 float lx = constants::LANE_X[i] - 120;
-                                emit_quad(lx, pos.y, 240.0f, dsz.h,
+                                emit_slab(lx, pos.y, 240.0f, dsz.h,
+                                          OBSTACLE_HEIGHT,
                                           col.r, col.g, col.b, col.a);
                             }
                         }
@@ -313,7 +369,8 @@ void flush_world_rects(entt::registry& reg) {
                     for (int i = 0; i < 3; ++i) {
                         if (!rlane || i != rlane->lane) {
                             float lx = constants::LANE_X[i] - 120;
-                            emit_quad(lx, pos.y, 240.0f, dsz.h,
+                            emit_slab(lx, pos.y, 240.0f, dsz.h,
+                                      OBSTACLE_HEIGHT,
                                       col.r, col.g, col.b, col.a);
                         }
                     }
