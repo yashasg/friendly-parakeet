@@ -18,9 +18,6 @@ struct ShapeMeshes {
 ShapeMeshes build_shape_meshes();
 void        unload_shape_meshes(ShapeMeshes& sm);
 
-// ── Standalone 3D shape draw (immediate mode fallback) ───────────────────────
-void draw_shape(Shape shape, float cx, float y_3d, float cz, float size, Color c);
-
 // ── GPU-batched render passes ────────────────────────────────────────────────
 void flush_floor_lines(entt::registry& reg, const FloorParams& fp);
 void flush_floor_rings(const FloorParams& fp);

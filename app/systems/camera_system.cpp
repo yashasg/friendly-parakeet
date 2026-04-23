@@ -1,6 +1,5 @@
 #include "camera_system.h"
 #include "../components/shape_mesh.h"
-#include "../components/shape_vertices.h"
 #include "../components/transform.h"
 #include "../components/player.h"
 #include "../components/obstacle.h"
@@ -12,7 +11,6 @@
 #include <raylib.h>
 #include <raymath.h>
 #include <rlgl.h>
-#include <cstring>
 
 namespace camera {
 
@@ -64,34 +62,6 @@ void unload_shape_meshes(ShapeMeshes& sm) {
     for (int i = 0; i < 4; ++i)
         UnloadMesh(sm.meshes[i]);
     UnloadMaterial(sm.material);
-}
-
-// ── Standalone shape draw (immediate mode fallback) ─────────────────────────
-// Reads from the same ShapeMeshData as the GPU path — no divergent winding.
-void draw_shape(Shape shape, float cx, float y_3d, float cz, float size, Color c) {
-    int idx = static_cast<int>(shape);
-    ShapeMeshData data = build_prism(SHAPE_TABLE[idx]);
-    float radius = size * SHAPE_TABLE[idx].radius_scale;
-
-    rlBegin(RL_TRIANGLES);
-    for (int t = 0; t < data.tri_count; ++t) {
-        int i0 = t*3, i1 = t*3+1, i2 = t*3+2;
-        auto& vc = data.colors[i0];
-        uint8_t cr = static_cast<uint8_t>(c.r * vc.r / 255);
-        uint8_t cg = static_cast<uint8_t>(c.g * vc.g / 255);
-        uint8_t cb = static_cast<uint8_t>(c.b * vc.b / 255);
-        rlColor4ub(cr, cg, cb, c.a);
-        rlVertex3fScaled(cx + data.positions[i0].x * radius,
-                         y_3d + data.positions[i0].y * radius,
-                         cz + data.positions[i0].z * radius);
-        rlVertex3fScaled(cx + data.positions[i1].x * radius,
-                         y_3d + data.positions[i1].y * radius,
-                         cz + data.positions[i1].z * radius);
-        rlVertex3fScaled(cx + data.positions[i2].x * radius,
-                         y_3d + data.positions[i2].y * radius,
-                         cz + data.positions[i2].z * radius);
-    }
-    rlEnd();
 }
 
 // ── Pass 3: World rects (obstacles + particles) ─────────────────────────────
