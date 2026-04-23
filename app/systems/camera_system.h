@@ -1,11 +1,11 @@
 #pragma once
+#include "../components/camera.h"
 #include "../components/shape_mesh.h"
 #include <raylib.h>
 
 namespace camera {
 
-constexpr float WORLD_SCALE = 10.0f;
-
+// GPU shape meshes — built once at startup from ShapeMeshData, drawn per frame.
 struct ShapeMeshes {
     Mesh     meshes[4];
     Material material;

@@ -29,11 +29,9 @@
 #include <cstdio>
 #include <fstream>
 
-// Scale game-pixel coordinates to world units via the model-view matrix.
-// All immediate-mode rlVertex3f calls use game-pixel coords directly;
-// rlScalef(1/WS) in the render pass handles the conversion.
-static constexpr float WS = camera::WORLD_SCALE;
-static constexpr float INV_WS = 1.0f / WS;
+// Game-pixel → world-unit conversion is handled by to_world() from camera.h.
+// Immediate-mode geometry uses rlScalef(INV_WORLD_SCALE) on the matrix stack.
+// DrawMesh shapes encode the conversion in their transform matrix.
 
 static void draw_shape_flat(Shape shape, float cx, float cy, float size, Color color) {
     switch (shape) {
@@ -846,9 +844,9 @@ static void draw_gameplay_shapes(entt::registry& reg) {
                     float sz, Color tint) {
         int idx = static_cast<int>(shape);
         const auto& desc = SHAPE_TABLE[idx];
-        float scale = sz * desc.radius_scale / WS;
+        float scale = to_world(sz * desc.radius_scale);
         Matrix mat = MatrixMultiply(MatrixScale(scale, scale, scale),
-                                    MatrixTranslate(cx / WS, y_3d / WS, cz / WS));
+                                    MatrixTranslate(to_world(cx), to_world(y_3d), to_world(cz)));
         sm->material.maps[MATERIAL_MAP_DIFFUSE].color = tint;
         DrawMesh(sm->meshes[idx], sm->material, mat);
     };
@@ -961,7 +959,7 @@ void render_system(entt::registry& reg, float /*alpha*/) {
     // Scale game-pixel coords → world units via model-view matrix.
     // All rlVertex3f calls use game-pixel values directly.
     rlPushMatrix();
-    rlScalef(INV_WS, INV_WS, INV_WS);
+    rlScalef(INV_WORLD_SCALE, INV_WORLD_SCALE, INV_WORLD_SCALE);
 
     draw_floor_lines(reg, floor_params);   // Pass 1: floor lines
     draw_floor_rings(floor_params);         // Pass 2: floor circles
@@ -994,9 +992,7 @@ void render_system(entt::registry& reg, float /*alpha*/) {
             auto popup_alpha = static_cast<uint8_t>(alpha_ratio * 255);
 
             // Map game position to 3D world, then project to screen coords
-            Vector3 world_pos = {pos.x / camera::WORLD_SCALE,
-                                  5.0f / camera::WORLD_SCALE,
-                                  pos.y / camera::WORLD_SCALE};
+            Vector3 world_pos = {to_world(pos.x), to_world(5.0f), to_world(pos.y)};
             Vector2 sp = GetWorldToScreenEx(world_pos, camera,
                              constants::SCREEN_W, constants::SCREEN_H);
 

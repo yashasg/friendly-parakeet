@@ -273,9 +273,9 @@ int main(int argc, char* argv[]) {
     // convergence — no manual trapezoid warping needed.
     {
         Camera3D cam3d = {};
-        cam3d.position   = {36.0f, 46.0f, 239.0f};   // scaled: game coords / WORLD_SCALE
-        cam3d.target     = {36.0f, 0.0f, 40.0f};      // looking down corridor
-        cam3d.up         = {0.0f, 1.0f, 0.0f};        // Y-up
+        cam3d.position   = {to_world(360.0f), to_world(460.0f), to_world(2390.0f)};
+        cam3d.target     = {to_world(360.0f), to_world(0.0f),   to_world(400.0f)};
+        cam3d.up         = {0.0f, 1.0f, 0.0f};
         cam3d.fovy       = 45.0f;
         cam3d.projection = CAMERA_PERSPECTIVE;
         reg.ctx().emplace<Camera3D>(cam3d);
