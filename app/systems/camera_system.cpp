@@ -39,20 +39,25 @@ static inline void rlVertex3fScaled(float x, float y, float z) {
 static void emit_3d_shape(Shape shape, float cx, float y_3d, float cz,
                            float size,
                            uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-    // Per-face shading for depth cues:
-    //   top   = full colour
-    //   front = 85% (facing camera, slightly darkened)
-    //   side  = 60% (perpendicular to camera)
-    //   back/bottom = 45% (away from camera)
-    uint8_t fr = static_cast<uint8_t>(r * 0.85f);
-    uint8_t fg = static_cast<uint8_t>(g * 0.85f);
-    uint8_t fb = static_cast<uint8_t>(b * 0.85f);
-    uint8_t sr = static_cast<uint8_t>(r * 0.6f);
-    uint8_t sg = static_cast<uint8_t>(g * 0.6f);
-    uint8_t sb = static_cast<uint8_t>(b * 0.6f);
-    uint8_t dr = static_cast<uint8_t>(r * 0.45f);
-    uint8_t dg = static_cast<uint8_t>(g * 0.45f);
-    uint8_t db = static_cast<uint8_t>(b * 0.45f);
+    // Per-face shading — top-lit, like a button under overhead light:
+    //   top    = boosted (120%, clamped to 255) — brightest, catches light
+    //   front  = 65% (facing camera, in shadow)
+    //   side   = 50% (perpendicular to camera)
+    //   back/bottom = 35% (away from light and camera)
+    auto boost = [](uint8_t c) -> uint8_t {
+        int v = static_cast<int>(c * 1.2f);
+        return static_cast<uint8_t>(v > 255 ? 255 : v);
+    };
+    uint8_t tr = boost(r), tg = boost(g), tb = boost(b);  // top (brightest)
+    uint8_t fr = static_cast<uint8_t>(r * 0.65f);
+    uint8_t fg = static_cast<uint8_t>(g * 0.65f);
+    uint8_t fb = static_cast<uint8_t>(b * 0.65f);
+    uint8_t sr = static_cast<uint8_t>(r * 0.50f);
+    uint8_t sg = static_cast<uint8_t>(g * 0.50f);
+    uint8_t sb = static_cast<uint8_t>(b * 0.50f);
+    uint8_t dr = static_cast<uint8_t>(r * 0.35f);
+    uint8_t dg = static_cast<uint8_t>(g * 0.35f);
+    uint8_t db = static_cast<uint8_t>(b * 0.35f);
 
     switch (shape) {
 
@@ -70,8 +75,8 @@ static void emit_3d_shape(Shape shape, float cx, float y_3d, float cz,
             rz[i] = cz + sinf(angle) * radius;
         }
 
-        // Top face (bright)
-        rlColor4ub(r, g, b, a);
+        // Top face (brightest — catches overhead light)
+        rlColor4ub(tr, tg, tb, a);
         for (int i = 0; i < SLICES; ++i) {
             int n = (i + 1) % SLICES;
             rlVertex3fScaled(cx,    top_y, cz);
@@ -121,8 +126,8 @@ static void emit_3d_shape(Shape shape, float cx, float y_3d, float cz,
             vz[i] = cz + shape_verts::SQUARE[i].y * half;
         }
 
-        // Top face (bright)
-        rlColor4ub(r, g, b, a);
+        // Top face (brightest — catches overhead light)
+        rlColor4ub(tr, tg, tb, a);
         rlVertex3fScaled(vx[0], top_y, vz[0]);
         rlVertex3fScaled(vx[1], top_y, vz[1]);
         rlVertex3fScaled(vx[3], top_y, vz[3]);
@@ -185,8 +190,8 @@ static void emit_3d_shape(Shape shape, float cx, float y_3d, float cz,
             vz[i] = cz + shape_verts::TRIANGLE[i].y * half;
         }
 
-        // Top face (bright)
-        rlColor4ub(r, g, b, a);
+        // Top face (brightest — catches overhead light)
+        rlColor4ub(tr, tg, tb, a);
         rlVertex3fScaled(vx[0], top_y, vz[0]);
         rlVertex3fScaled(vx[1], top_y, vz[1]);
         rlVertex3fScaled(vx[2], top_y, vz[2]);
@@ -238,8 +243,8 @@ static void emit_3d_shape(Shape shape, float cx, float y_3d, float cz,
             rlVertex3fScaled(hx[i], y_3d, hz[i]);
         }
 
-        // Top face (fan, bright)
-        rlColor4ub(r, g, b, a);
+        // Top face (fan, brightest — catches overhead light)
+        rlColor4ub(tr, tg, tb, a);
         for (int i = 0; i < N; ++i) {
             int n = (i + 1) % N;
             rlVertex3fScaled(cx,    top_y, cz);
@@ -289,18 +294,23 @@ void flush_world_rects(entt::registry& reg) {
     // Uses directional shading: top=bright, front=85%, sides=60%, back=45%.
     auto emit_slab = [](float x, float z, float w, float d, float h,
                         uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-        uint8_t fr = static_cast<uint8_t>(r * 0.85f);
-        uint8_t fg = static_cast<uint8_t>(g * 0.85f);
-        uint8_t fb = static_cast<uint8_t>(b * 0.85f);
-        uint8_t sr = static_cast<uint8_t>(r * 0.6f);
-        uint8_t sg = static_cast<uint8_t>(g * 0.6f);
-        uint8_t sb = static_cast<uint8_t>(b * 0.6f);
-        uint8_t dr = static_cast<uint8_t>(r * 0.45f);
-        uint8_t dg = static_cast<uint8_t>(g * 0.45f);
-        uint8_t db = static_cast<uint8_t>(b * 0.45f);
+        auto boost = [](uint8_t c) -> uint8_t {
+            int v = static_cast<int>(c * 1.2f);
+            return static_cast<uint8_t>(v > 255 ? 255 : v);
+        };
+        uint8_t tr = boost(r), tg = boost(g), tb = boost(b);
+        uint8_t fr = static_cast<uint8_t>(r * 0.65f);
+        uint8_t fg = static_cast<uint8_t>(g * 0.65f);
+        uint8_t fb = static_cast<uint8_t>(b * 0.65f);
+        uint8_t sr = static_cast<uint8_t>(r * 0.50f);
+        uint8_t sg = static_cast<uint8_t>(g * 0.50f);
+        uint8_t sb = static_cast<uint8_t>(b * 0.50f);
+        uint8_t dr = static_cast<uint8_t>(r * 0.35f);
+        uint8_t dg = static_cast<uint8_t>(g * 0.35f);
+        uint8_t db = static_cast<uint8_t>(b * 0.35f);
 
-        // Top face (bright) — visible from the camera above
-        rlColor4ub(r, g, b, a);
+        // Top face (brightest — overhead light)
+        rlColor4ub(tr, tg, tb, a);
         rlVertex3fScaled(x,     h, z);
         rlVertex3fScaled(x,     h, z + d);
         rlVertex3fScaled(x + w, h, z + d);
