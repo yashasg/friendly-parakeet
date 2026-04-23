@@ -56,57 +56,51 @@ static void emit_3d_shape(Shape shape, float cx, float y_3d, float cz,
 
     switch (shape) {
 
-    // ── Circle → Faceted gem (tapered decagon prism) ─────────────────────
+    // ── Circle → Low-poly sphere (8-slice, 16 triangles) ───────────────
     case Shape::Circle: {
-        constexpr int N = 10;
-        float radius    = size / 2.0f;
-        float top_r     = radius * 0.6f;
-        float height    = size * 0.8f;
-        float top_y     = y_3d + height;
+        constexpr int SLICES = 8;
+        float radius = size / 2.0f;
+        float cy_3d  = y_3d + radius;  // center of sphere lifted by radius
 
-        float bx[N], bz_[N];   // bottom ring
-        float tx[N], tz_[N];   // top ring (smaller)
-        for (int i = 0; i < N; ++i) {
-            int idx = (i * shape_verts::CIRCLE_SEGMENTS) / N;
-            bx[i]  = cx + shape_verts::CIRCLE[idx].x * radius;
-            bz_[i] = cz + shape_verts::CIRCLE[idx].y * radius;
-            tx[i]  = cx + shape_verts::CIRCLE[idx].x * top_r;
-            tz_[i] = cz + shape_verts::CIRCLE[idx].y * top_r;
+        // Precompute equator ring (XZ plane at cy_3d)
+        float ex[SLICES], ez[SLICES];
+        for (int i = 0; i < SLICES; ++i) {
+            float angle = static_cast<float>(i) * (2.0f * 3.14159265f / SLICES);
+            ex[i] = cx + cosf(angle) * radius;
+            ez[i] = cz + sinf(angle) * radius;
         }
 
-        // Bottom face (darkest)
-        rlColor4ub(dr, dg, db, a);
-        for (int i = 0; i < N; ++i) {
-            int n = (i + 1) % N;
-            rlVertex3fScaled(cx,     y_3d, cz);
-            rlVertex3fScaled(bx[n],  y_3d, bz_[n]);
-            rlVertex3fScaled(bx[i],  y_3d, bz_[i]);
+        float top_y = cy_3d + radius;   // north pole
+        float bot_y = cy_3d - radius;   // south pole
+
+        // Top cap: 8 tris from equator to north pole
+        for (int i = 0; i < SLICES; ++i) {
+            int n = (i + 1) % SLICES;
+            float mid_z = (ez[i] + ez[n]) * 0.5f;
+            bool front = mid_z < cz;
+            if (front) rlColor4ub(fr, fg, fb, a);
+            else       rlColor4ub(sr, sg, sb, a);
+
+            rlVertex3fScaled(ex[i], cy_3d, ez[i]);
+            rlVertex3fScaled(ex[n], cy_3d, ez[n]);
+            rlVertex3fScaled(cx,    top_y, cz);
         }
 
-        // Top face (bright)
+        // Top pole cap highlight
         rlColor4ub(r, g, b, a);
-        for (int i = 0; i < N; ++i) {
-            int n = (i + 1) % N;
-            rlVertex3fScaled(cx,     top_y, cz);
-            rlVertex3fScaled(tx[i],  top_y, tz_[i]);
-            rlVertex3fScaled(tx[n],  top_y, tz_[n]);
-        }
+        // (already drawn as part of the triangles above)
 
-        // Side faces — shade based on facing direction (z-component of normal)
-        for (int i = 0; i < N; ++i) {
-            int n = (i + 1) % N;
-            float mid_z = (bz_[i] + bz_[n]) * 0.5f;
-            bool front_facing = mid_z < cz;  // low-z faces camera
-            if (front_facing) rlColor4ub(fr, fg, fb, a);
-            else              rlColor4ub(sr, sg, sb, a);
+        // Bottom cap: 8 tris from equator to south pole
+        for (int i = 0; i < SLICES; ++i) {
+            int n = (i + 1) % SLICES;
+            float mid_z = (ez[i] + ez[n]) * 0.5f;
+            bool front = mid_z < cz;
+            if (front) rlColor4ub(dr, dg, db, a);
+            else       rlColor4ub(dr, dg, db, a);
 
-            rlVertex3fScaled(bx[i],  y_3d,  bz_[i]);
-            rlVertex3fScaled(bx[n],  y_3d,  bz_[n]);
-            rlVertex3fScaled(tx[i],  top_y, tz_[i]);
-
-            rlVertex3fScaled(bx[n],  y_3d,  bz_[n]);
-            rlVertex3fScaled(tx[n],  top_y, tz_[n]);
-            rlVertex3fScaled(tx[i],  top_y, tz_[i]);
+            rlVertex3fScaled(ex[i], cy_3d, ez[i]);
+            rlVertex3fScaled(cx,    bot_y, cz);
+            rlVertex3fScaled(ex[n], cy_3d, ez[n]);
         }
         break;
     }
