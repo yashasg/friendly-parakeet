@@ -1,21 +1,13 @@
 #pragma once
 #include "../components/camera.h"
 #include "../components/player.h"
-#include "../components/shape_vertices.h"
+#include "../components/shape_mesh.h"
 #include <entt/entt.hpp>
 #include <raylib.h>
 
 namespace camera {
 
 constexpr float WORLD_SCALE = 10.0f;
-
-// ── Shape geometry descriptors (compile-time) ────────────────────────────────
-struct ShapeDesc {
-    const shape_verts::V2* ring;
-    int    n;
-    float  radius_scale;
-    float  height_scale;
-};
 
 // ── GPU shape meshes (built once, drawn many) ────────────────────────────────
 struct ShapeMeshes {

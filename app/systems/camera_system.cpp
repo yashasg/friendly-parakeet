@@ -1,4 +1,5 @@
 #include "camera_system.h"
+#include "../components/shape_mesh.h"
 #include "../components/shape_vertices.h"
 #include "../components/transform.h"
 #include "../components/player.h"
@@ -11,7 +12,7 @@
 #include <raylib.h>
 #include <raymath.h>
 #include <rlgl.h>
-#include <cstdlib>
+#include <cstring>
 
 namespace camera {
 
@@ -20,88 +21,31 @@ static inline void rlVertex3fScaled(float x, float y, float z) {
     rlVertex3f(x / S, y / S, z / S);
 }
 
-// ── Compile-time shape data ─────────────────────────────────────────────────
+// ── GPU mesh upload from ShapeMeshData ──────────────────────────────────────
+// Converts the pure-data ShapeMeshData (testable, no raylib) into a raylib
+// Mesh with GPU vertex buffers.
 
-static constexpr shape_verts::V2 CIRCLE_12[12] = {
-    { 1.000000f,  0.000000f}, { 0.866025f,  0.500000f},
-    { 0.500000f,  0.866025f}, { 0.000000f,  1.000000f},
-    {-0.500000f,  0.866025f}, {-0.866025f,  0.500000f},
-    {-1.000000f,  0.000000f}, {-0.866025f, -0.500000f},
-    {-0.500000f, -0.866025f}, { 0.000000f, -1.000000f},
-    { 0.500000f, -0.866025f}, { 0.866025f, -0.500000f},
-};
-
-static constexpr ShapeDesc SHAPE_TABLE[] = {
-    { CIRCLE_12,              12, 0.5f, 0.3f },
-    { shape_verts::SQUARE,     4, 0.5f, 0.3f },
-    { shape_verts::TRIANGLE,   3, 0.5f, 0.3f },
-    { shape_verts::HEXAGON,    6, 0.6f, 0.7f },
-};
-
-// ── GPU mesh builder ────────────────────────────────────────────────────────
-// Builds a prism mesh from a unit ring: top/bottom caps + side walls.
-// Vertex colors are baked as grayscale directional shading (top=bright,
-// front=mid, side=dim, bottom=dark).  At render time, material.diffuse
-// tints the grayscale to the entity color — zero per-frame vertex math.
-
-static Mesh build_prism_mesh(const ShapeDesc& desc) {
-    const int n = desc.n;
-    const int tri_count = 4 * n;
-    const int vert_count = tri_count * 3;
-    float height = desc.height_scale / desc.radius_scale;
-
+static Mesh upload_shape_mesh(const ShapeMeshData& data) {
+    int vc = data.vertex_count;
     Mesh mesh = {};
-    mesh.vertexCount   = vert_count;
-    mesh.triangleCount = tri_count;
-    mesh.vertices  = static_cast<float*>(RL_CALLOC(static_cast<unsigned int>(vert_count * 3), sizeof(float)));
-    mesh.normals   = static_cast<float*>(RL_CALLOC(static_cast<unsigned int>(vert_count * 3), sizeof(float)));
-    mesh.texcoords = static_cast<float*>(RL_CALLOC(static_cast<unsigned int>(vert_count * 2), sizeof(float)));
-    mesh.colors    = static_cast<unsigned char*>(RL_CALLOC(static_cast<unsigned int>(vert_count * 4), sizeof(unsigned char)));
+    mesh.vertexCount   = vc;
+    mesh.triangleCount = data.tri_count;
+    mesh.vertices  = static_cast<float*>(RL_CALLOC(static_cast<unsigned int>(vc * 3), sizeof(float)));
+    mesh.normals   = static_cast<float*>(RL_CALLOC(static_cast<unsigned int>(vc * 3), sizeof(float)));
+    mesh.texcoords = static_cast<float*>(RL_CALLOC(static_cast<unsigned int>(vc * 2), sizeof(float)));
+    mesh.colors    = static_cast<unsigned char*>(RL_CALLOC(static_cast<unsigned int>(vc * 4), sizeof(unsigned char)));
 
-    int vi = 0;
-    auto put = [&](float x, float y, float z, float nx, float ny, float nz, uint8_t gray) {
-        mesh.vertices[vi*3+0] = x;  mesh.vertices[vi*3+1] = y;  mesh.vertices[vi*3+2] = z;
-        mesh.normals[vi*3+0] = nx;  mesh.normals[vi*3+1] = ny;  mesh.normals[vi*3+2] = nz;
-        mesh.colors[vi*4+0] = gray; mesh.colors[vi*4+1] = gray;
-        mesh.colors[vi*4+2] = gray; mesh.colors[vi*4+3] = 255;
-        ++vi;
-    };
-
-    constexpr uint8_t TOP = 255, FRONT = 166, SIDE = 128, BOT = 90;
-    const auto* ring = desc.ring;
-
-    // Winding note: camera looks from +Z toward -Z, which negates the Z axis
-    // in screen projection.  All triangles are wound to be CCW in screen space
-    // (front-facing) given this camera orientation.
-
-    // Top cap (visible from above)
-    for (int i = 0; i < n; ++i) {
-        int nx = (i + 1) % n;
-        put(0, height, 0,                0,1,0, TOP);
-        put(ring[nx].x, height, ring[nx].y, 0,1,0, TOP);
-        put(ring[i].x,  height, ring[i].y,  0,1,0, TOP);
-    }
-    // Bottom cap (faces down — culled by backface culling, which is correct)
-    for (int i = 0; i < n; ++i) {
-        int nx = (i + 1) % n;
-        put(0, 0, 0,                     0,-1,0, BOT);
-        put(ring[i].x, 0, ring[i].y,    0,-1,0, BOT);
-        put(ring[nx].x, 0, ring[nx].y,  0,-1,0, BOT);
-    }
-    // Side walls (2 tris per edge, wound for outward-facing normals)
-    for (int i = 0; i < n; ++i) {
-        int nx = (i + 1) % n;
-        float fnx = (ring[i].x + ring[nx].x) * 0.5f;
-        float fnz = (ring[i].y + ring[nx].y) * 0.5f;
-        uint8_t gray = (fnz < 0) ? FRONT : SIDE;
-        // Tri 1
-        put(ring[i].x,  0,      ring[i].y,  fnx,0,fnz, gray);
-        put(ring[nx].x, height, ring[nx].y, fnx,0,fnz, gray);
-        put(ring[i].x,  height, ring[i].y,  fnx,0,fnz, gray);
-        // Tri 2
-        put(ring[i].x,  0,      ring[i].y,  fnx,0,fnz, gray);
-        put(ring[nx].x, 0,      ring[nx].y, fnx,0,fnz, gray);
-        put(ring[nx].x, height, ring[nx].y, fnx,0,fnz, gray);
+    for (int i = 0; i < vc; ++i) {
+        mesh.vertices[i*3+0] = data.positions[i].x;
+        mesh.vertices[i*3+1] = data.positions[i].y;
+        mesh.vertices[i*3+2] = data.positions[i].z;
+        mesh.normals[i*3+0]  = data.normals[i].x;
+        mesh.normals[i*3+1]  = data.normals[i].y;
+        mesh.normals[i*3+2]  = data.normals[i].z;
+        mesh.colors[i*4+0]   = data.colors[i].r;
+        mesh.colors[i*4+1]   = data.colors[i].g;
+        mesh.colors[i*4+2]   = data.colors[i].b;
+        mesh.colors[i*4+3]   = data.colors[i].a;
     }
 
     UploadMesh(&mesh, false);
@@ -111,7 +55,7 @@ static Mesh build_prism_mesh(const ShapeDesc& desc) {
 ShapeMeshes build_shape_meshes() {
     ShapeMeshes sm = {};
     for (int i = 0; i < 4; ++i)
-        sm.meshes[i] = build_prism_mesh(SHAPE_TABLE[i]);
+        sm.meshes[i] = upload_shape_mesh(build_prism(SHAPE_TABLE[i]));
     sm.material = LoadMaterialDefault();
     return sm;
 }
@@ -122,41 +66,30 @@ void unload_shape_meshes(ShapeMeshes& sm) {
     UnloadMaterial(sm.material);
 }
 
-// ── Standalone shape draw (immediate mode, used outside gameplay) ────────────
+// ── Standalone shape draw (immediate mode fallback) ─────────────────────────
+// Reads from the same ShapeMeshData as the GPU path — no divergent winding.
 void draw_shape(Shape shape, float cx, float y_3d, float cz, float size, Color c) {
-    const auto& desc = SHAPE_TABLE[static_cast<int>(shape)];
-    float radius = size * desc.radius_scale;
-    float top_y  = y_3d + size * desc.height_scale;
-    auto boost = [](uint8_t v) -> uint8_t {
-        int r = static_cast<int>(v * 1.2f); return static_cast<uint8_t>(r > 255 ? 255 : r);
-    };
-    uint8_t tr=boost(c.r), tg=boost(c.g), tb=boost(c.b);
-    uint8_t fr=static_cast<uint8_t>(c.r*0.65f), fg=static_cast<uint8_t>(c.g*0.65f), fb=static_cast<uint8_t>(c.b*0.65f);
-    uint8_t sr=static_cast<uint8_t>(c.r*0.50f), sg=static_cast<uint8_t>(c.g*0.50f), sb=static_cast<uint8_t>(c.b*0.50f);
-    uint8_t dr=static_cast<uint8_t>(c.r*0.35f), dg=static_cast<uint8_t>(c.g*0.35f), db=static_cast<uint8_t>(c.b*0.35f);
+    int idx = static_cast<int>(shape);
+    ShapeMeshData data = build_prism(SHAPE_TABLE[idx]);
+    float radius = size * SHAPE_TABLE[idx].radius_scale;
 
     rlBegin(RL_TRIANGLES);
-    rlColor4ub(tr,tg,tb,c.a);
-    for (int i = 0; i < desc.n; ++i) {
-        int nx = (i+1) % desc.n;
-        rlVertex3fScaled(cx, top_y, cz);
-        rlVertex3fScaled(cx+desc.ring[i].x*radius, top_y, cz+desc.ring[i].y*radius);
-        rlVertex3fScaled(cx+desc.ring[nx].x*radius, top_y, cz+desc.ring[nx].y*radius);
-    }
-    rlColor4ub(dr,dg,db,c.a);
-    for (int i = 0; i < desc.n; ++i) {
-        int nx = (i+1) % desc.n;
-        rlVertex3fScaled(cx, y_3d, cz);
-        rlVertex3fScaled(cx+desc.ring[nx].x*radius, y_3d, cz+desc.ring[nx].y*radius);
-        rlVertex3fScaled(cx+desc.ring[i].x*radius, y_3d, cz+desc.ring[i].y*radius);
-    }
-    for (int i = 0; i < desc.n; ++i) {
-        int nx = (i+1) % desc.n;
-        float x0=cx+desc.ring[i].x*radius, z0=cz+desc.ring[i].y*radius;
-        float x1=cx+desc.ring[nx].x*radius, z1=cz+desc.ring[nx].y*radius;
-        if ((z0+z1)*0.5f < cz) rlColor4ub(fr,fg,fb,c.a); else rlColor4ub(sr,sg,sb,c.a);
-        rlVertex3fScaled(x0,y_3d,z0); rlVertex3fScaled(x1,y_3d,z1); rlVertex3fScaled(x0,top_y,z0);
-        rlVertex3fScaled(x1,y_3d,z1); rlVertex3fScaled(x1,top_y,z1); rlVertex3fScaled(x0,top_y,z0);
+    for (int t = 0; t < data.tri_count; ++t) {
+        int i0 = t*3, i1 = t*3+1, i2 = t*3+2;
+        auto& vc = data.colors[i0];
+        uint8_t cr = static_cast<uint8_t>(c.r * vc.r / 255);
+        uint8_t cg = static_cast<uint8_t>(c.g * vc.g / 255);
+        uint8_t cb = static_cast<uint8_t>(c.b * vc.b / 255);
+        rlColor4ub(cr, cg, cb, c.a);
+        rlVertex3fScaled(cx + data.positions[i0].x * radius,
+                         y_3d + data.positions[i0].y * radius,
+                         cz + data.positions[i0].z * radius);
+        rlVertex3fScaled(cx + data.positions[i1].x * radius,
+                         y_3d + data.positions[i1].y * radius,
+                         cz + data.positions[i1].z * radius);
+        rlVertex3fScaled(cx + data.positions[i2].x * radius,
+                         y_3d + data.positions[i2].y * radius,
+                         cz + data.positions[i2].z * radius);
     }
     rlEnd();
 }
