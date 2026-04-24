@@ -3,8 +3,12 @@
 #include <raylib.h>
 
 // ── Camera configuration ────────────────────────────────────────────────────
-// World coordinates = game-pixel coordinates (1:1). No conversion needed.
-// Camera3D near/far planes are sized for pixel-scale distances.
+// Game logic uses game-pixel coordinates (720×1280).
+// 3D world uses 1/10 scale: world_coord = game_coord / WORLD_SCALE.
+
+constexpr float WORLD_SCALE = 10.0f;
+constexpr float INV_WORLD_SCALE = 1.0f / WORLD_SCALE;
+constexpr float to_world(float game_coord) { return game_coord * INV_WORLD_SCALE; }
 
 // Per-frame render parameters computed from SongState beat pulse.
 struct FloorParams {

@@ -122,8 +122,8 @@ int main(int argc, char* argv[]) {
     // Camera + GPU meshes
     {
         Camera3D cam3d = {};
-        cam3d.position   = {360.0f, 460.0f, 2390.0f};
-        cam3d.target     = {360.0f, 0.0f,   400.0f};
+        cam3d.position   = {to_world(360.0f), to_world(460.0f), to_world(2390.0f)};
+        cam3d.target     = {to_world(360.0f), to_world(0.0f),   to_world(400.0f)};
         cam3d.up         = {0.0f, 1.0f, 0.0f};
         cam3d.fovy       = 45.0f;
         cam3d.projection = CAMERA_PERSPECTIVE;

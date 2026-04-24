@@ -46,20 +46,20 @@ void unload_shape_meshes(ShapeMeshes& sm) {
 
 static Matrix slab_matrix(float x, float z, float w, float h, float d) {
     return {
-        w, 0, 0, 0,
-        0, h, 0, 0,
-        0, 0, d, 0,
-        x, 0, z, 1,
+        to_world(w), 0, 0, 0,
+        0, to_world(h), 0, 0,
+        0, 0, to_world(d), 0,
+        to_world(x), 0, to_world(z), 1,
     };
 }
 
 static Matrix shape_matrix(float cx, float y_3d, float cz, float sz, float radius_scale) {
-    float s = sz * radius_scale;
+    float s = to_world(sz * radius_scale);
     return {
         s,    0.0f, 0.0f, 0.0f,
         0.0f, s,    0.0f, 0.0f,
         0.0f, 0.0f, s,    0.0f,
-        cx, y_3d, cz, 1.0f,
+        to_world(cx), to_world(y_3d), to_world(cz), 1.0f,
     };
 }
 
@@ -149,10 +149,10 @@ void camera_system(entt::registry& reg, float /*dt*/) {
             float sz = pdata.size * ratio;
             float half = sz / 2.0f;
             Matrix mat = {
-                sz, 0, 0, 0,
+                to_world(sz), 0, 0, 0,
                 0, 1, 0, 0,
-                0, 0, sz, 0,
-                pos.x - half, 0, pos.y - half, 1,
+                0, 0, to_world(sz), 0,
+                to_world(pos.x - half), 0, to_world(pos.y - half), 1,
             };
             reg.emplace_or_replace<ModelTransform>(entity,
                 ModelTransform{mat, col, MeshType::Quad, 0});
@@ -166,7 +166,7 @@ void camera_system(entt::registry& reg, float /*dt*/) {
         auto& cam = reg.ctx().get<Camera3D>();
         auto view = reg.view<ScorePopup, Position>();
         for (auto [entity, popup, pos] : view.each()) {
-            Vector3 world_pos = {pos.x, 5.0f, pos.y};
+            Vector3 world_pos = {to_world(pos.x), to_world(5.0f), to_world(pos.y)};
             Vector2 sp = GetWorldToScreenEx(world_pos, cam,
                              constants::SCREEN_W, constants::SCREEN_H);
             reg.emplace_or_replace<ScreenPosition>(entity,

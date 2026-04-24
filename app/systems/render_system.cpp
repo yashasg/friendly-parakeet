@@ -634,10 +634,10 @@ static void draw_world_rects(entt::registry& reg) {
 
     auto draw_slab = [&](float x, float z, float w, float d, float h, Color tint) {
         Matrix mat = {
-            w, 0, 0, 0,
-            0, h, 0, 0,
-            0, 0, d, 0,
-            x, 0, z, 1,
+            to_world(w), 0, 0, 0,
+            0, to_world(h), 0, 0,
+            0, 0, to_world(d), 0,
+            to_world(x), 0, to_world(z), 1,
         };
         sm->material.maps[MATERIAL_MAP_DIFFUSE].color = tint;
         DrawMesh(sm->slab, sm->material, mat);
@@ -706,10 +706,10 @@ static void draw_gameplay_shapes(entt::registry& reg) {
                           float sz, Color tint) {
         int idx = static_cast<int>(shape);
         const auto& desc = SHAPE_TABLE[idx];
-        float s = sz * desc.radius_scale;
+        float s = to_world(sz * desc.radius_scale);
         Matrix mat = {
             s, 0, 0, 0,  0, s, 0, 0,  0, 0, s, 0,
-            cx, y_3d, cz, 1.0f,
+            to_world(cx), to_world(y_3d), to_world(cz), 1.0f,
         };
         sm->material.maps[MATERIAL_MAP_DIFFUSE].color = tint;
         DrawMesh(sm->shapes[idx], sm->material, mat);
@@ -772,8 +772,8 @@ void render_world_system(entt::registry& reg, float /*alpha*/) {
         rlDrawRenderBatchActive();
         rlMatrixMode(RL_PROJECTION);
         rlLoadIdentity();
-        double near_plane = 10.0;
-        double far_plane  = 20000.0;
+        double near_plane = 1.0;
+        double far_plane  = 2000.0;
         double top   = near_plane * tan(static_cast<double>(camera.fovy) * 0.5 * DEG2RAD);
         double right = top * (static_cast<double>(constants::SCREEN_W)
                             / static_cast<double>(constants::SCREEN_H));
@@ -803,8 +803,12 @@ void render_world_system(entt::registry& reg, float /*alpha*/) {
         floor_params.alpha = static_cast<uint8_t>(alpha_f);
     }
 
+    // ── Render passes ──────────────────────────────────────────
+    rlPushMatrix();
+    rlScalef(INV_WORLD_SCALE, INV_WORLD_SCALE, INV_WORLD_SCALE);
     draw_floor_lines(reg, floor_params);
     draw_floor_rings(floor_params);
+    rlPopMatrix();
 
     if (gs.phase != GamePhase::Title) {
         rlDrawRenderBatchActive();
