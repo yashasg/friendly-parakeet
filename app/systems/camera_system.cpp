@@ -160,13 +160,14 @@ static Matrix shape_matrix(float cx, float y_3d, float cz, float sz, float radiu
     return MatrixMultiply(MatrixScale(s, s, s), MatrixTranslate(cx, y_3d, cz));
 }
 
-// Cone (triangle) needs a -90° X rotation so the apex points toward the camera
+// Cone (triangle) rotated so the base faces the camera with one vertex pointing up (△)
 static Matrix cone_matrix(float cx, float y_3d, float cz, float sz, float radius_scale) {
     float s = sz * radius_scale;
     Matrix scale = MatrixScale(s, s, s);
-    Matrix rot = MatrixRotateX(-90.0f * DEG2RAD);
+    Matrix rotX = MatrixRotateX(-90.0f * DEG2RAD);
+    Matrix rotZ = MatrixRotateZ(90.0f * DEG2RAD);
     Matrix translate = MatrixTranslate(cx, y_3d, cz);
-    return MatrixMultiply(MatrixMultiply(scale, rot), translate);
+    return MatrixMultiply(MatrixMultiply(MatrixMultiply(scale, rotX), rotZ), translate);
 }
 
 // Pick the correct matrix for a shape mesh (cone needs rotation)
