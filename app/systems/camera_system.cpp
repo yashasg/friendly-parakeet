@@ -13,6 +13,7 @@
 #include "../constants.h"
 #include "../platform_display.h"
 #include <raylib.h>
+#include <raymath.h>
 #include <rlgl.h>
 #include <algorithm>
 
@@ -45,84 +46,67 @@ void unload_shape_meshes(ShapeMeshes& sm) {
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 static Matrix slab_matrix(float x, float z, float w, float h, float d) {
-    return {
-        to_world(w), 0, 0, 0,
-        0, to_world(h), 0, 0,
-        0, 0, to_world(d), 0,
-        to_world(x), 0, to_world(z), 1,
-    };
+    return MatrixMultiply(MatrixScale(w, h, d), MatrixTranslate(x, 0, z));
 }
 
 static Matrix shape_matrix(float cx, float y_3d, float cz, float sz, float radius_scale) {
-    float s = to_world(sz * radius_scale);
-    return {
-        s,    0.0f, 0.0f, 0.0f,
-        0.0f, s,    0.0f, 0.0f,
-        0.0f, 0.0f, s,    0.0f,
-        to_world(cx), to_world(y_3d), to_world(cz), 1.0f,
-    };
+    float s = sz * radius_scale;
+    return MatrixMultiply(MatrixScale(s, s, s), MatrixTranslate(cx, y_3d, cz));
 }
 
-// ── camera_system: compute transforms for all renderables ───────────────────
+// ── game_camera_system: model-to-world transforms for all 3D renderables ────
 
-void camera_system(entt::registry& reg, float /*dt*/) {
-    // 1. Screen transform (letterbox)
-    {
-        float win_w, win_h;
-        platform_get_display_size(win_w, win_h);
-        float scale = std::min(
-            win_w / static_cast<float>(constants::SCREEN_W),
-            win_h / static_cast<float>(constants::SCREEN_H));
-        float dst_w = constants::SCREEN_W * scale;
-        float dst_h = constants::SCREEN_H * scale;
-        auto& st     = reg.ctx().get<ScreenTransform>();
-        st.offset_x  = (win_w - dst_w) * 0.5f;
-        st.offset_y  = (win_h - dst_h) * 0.5f;
-        st.scale     = scale;
-    }
-
+void game_camera_system(entt::registry& reg, float /*dt*/) {
     constexpr float OBSTACLE_HEIGHT = 20.0f;
     constexpr float LOWBAR_HEIGHT   = 30.0f;
     constexpr float HIGHBAR_HEIGHT  = 10.0f;
 
-    // 2. Obstacle slab transforms
+    // 1. Single-slab obstacle transforms
     {
         auto view = reg.view<ObstacleTag, Position, Obstacle, Color, DrawSize>();
         for (auto [entity, pos, obs, col, dsz] : view.each()) {
-            // Remove stale transforms from previous frame
-            while (reg.any_of<ModelTransform>(entity))
-                reg.remove<ModelTransform>(entity);
-
-            auto emit = [&](float x, float z, float w, float d, float h, Color tint) {
-                // Multi-slab obstacles (ShapeGate, LaneBlock, etc.) need multiple
-                // transforms per entity. Use a separate entity or overwrite.
-                // For simplicity: emplace on the entity for single-slab, and use
-                // the primary entity's transform for the main slab.
-                reg.emplace_or_replace<ModelTransform>(entity,
-                    ModelTransform{slab_matrix(x, z, w, h, d), tint, MeshType::Slab, 0});
-            };
-
             switch (obs.kind) {
-                case ObstacleKind::ShapeGate:
-                    // Two slabs — store the wider one on the entity
-                    emit(0, pos.y, pos.x-50, dsz.h, OBSTACLE_HEIGHT, col);
-                    // Second slab will be handled by render_system inline
-                    // (multi-slab obstacles need a different approach — skip for now)
-                    break;
                 case ObstacleKind::LanePushLeft:
                 case ObstacleKind::LanePushRight:
-                    emit(pos.x-dsz.w/2, pos.y, dsz.w, dsz.h, OBSTACLE_HEIGHT, col);
+                    reg.emplace_or_replace<ModelTransform>(entity,
+                        ModelTransform{slab_matrix(pos.x-dsz.w/2, pos.y, dsz.w, dsz.h, OBSTACLE_HEIGHT),
+                                       col, MeshType::Slab, 0});
                     break;
                 case ObstacleKind::LowBar:
-                    emit(0, pos.y, static_cast<float>(constants::SCREEN_W), dsz.h, LOWBAR_HEIGHT, col);
+                    reg.emplace_or_replace<ModelTransform>(entity,
+                        ModelTransform{slab_matrix(0, pos.y, static_cast<float>(constants::SCREEN_W), dsz.h, LOWBAR_HEIGHT),
+                                       col, MeshType::Slab, 0});
                     break;
                 case ObstacleKind::HighBar:
-                    emit(0, pos.y, static_cast<float>(constants::SCREEN_W), dsz.h, HIGHBAR_HEIGHT, col);
+                    reg.emplace_or_replace<ModelTransform>(entity,
+                        ModelTransform{slab_matrix(0, pos.y, static_cast<float>(constants::SCREEN_W), dsz.h, HIGHBAR_HEIGHT),
+                                       col, MeshType::Slab, 0});
                     break;
                 default:
-                    // LaneBlock, ComboGate, SplitPath have multiple slabs per entity.
-                    // These need render-side iteration for now.
                     break;
+            }
+        }
+    }
+
+    // 2. MeshChild transforms (multi-slab obstacles, ghost shapes)
+    {
+        auto view = reg.view<MeshChild>();
+        for (auto [entity, mc] : view.each()) {
+            if (!reg.valid(mc.parent)) continue;
+            auto* parent_pos = reg.try_get<Position>(mc.parent);
+            if (!parent_pos) continue;
+
+            float z = parent_pos->y + mc.z_offset;
+
+            if (mc.mesh_type == MeshType::Slab) {
+                reg.emplace_or_replace<ModelTransform>(entity,
+                    ModelTransform{slab_matrix(mc.x, z, mc.width, mc.depth, mc.height),
+                                   mc.tint, MeshType::Slab, 0});
+            } else {
+                const auto& desc = SHAPE_TABLE[mc.mesh_index];
+                reg.emplace_or_replace<ModelTransform>(entity,
+                    ModelTransform{shape_matrix(mc.x, 0.0f, z, mc.width, desc.radius_scale),
+                                   mc.tint, MeshType::Shape, mc.mesh_index});
             }
         }
     }
@@ -148,25 +132,39 @@ void camera_system(entt::registry& reg, float /*dt*/) {
             float ratio = (life.max_time > 0.0f) ? (life.remaining / life.max_time) : 1.0f;
             float sz = pdata.size * ratio;
             float half = sz / 2.0f;
-            Matrix mat = {
-                to_world(sz), 0, 0, 0,
-                0, 1, 0, 0,
-                0, 0, to_world(sz), 0,
-                to_world(pos.x - half), 0, to_world(pos.y - half), 1,
-            };
+            Matrix mat = MatrixMultiply(
+                MatrixScale(sz, 1, sz),
+                MatrixTranslate(pos.x - half, 0, pos.y - half));
             reg.emplace_or_replace<ModelTransform>(entity,
                 ModelTransform{mat, col, MeshType::Quad, 0});
         }
     }
+}
 
-    // 5. Ghost shape transforms — skipped (multi-visual per entity)
+// ── ui_camera_system: screen-space transforms for UI layer ──────────────────
 
-    // 6. Popup screen-space projection
+void ui_camera_system(entt::registry& reg, float /*dt*/) {
+    // 1. Screen transform (letterbox)
+    {
+        float win_w, win_h;
+        platform_get_display_size(win_w, win_h);
+        float scale = std::min(
+            win_w / static_cast<float>(constants::SCREEN_W),
+            win_h / static_cast<float>(constants::SCREEN_H));
+        float dst_w = constants::SCREEN_W * scale;
+        float dst_h = constants::SCREEN_H * scale;
+        auto& st     = reg.ctx().get<ScreenTransform>();
+        st.offset_x  = (win_w - dst_w) * 0.5f;
+        st.offset_y  = (win_h - dst_h) * 0.5f;
+        st.scale     = scale;
+    }
+
+    // 2. Popup screen-space projection
     {
         auto& cam = reg.ctx().get<Camera3D>();
         auto view = reg.view<ScorePopup, Position>();
         for (auto [entity, popup, pos] : view.each()) {
-            Vector3 world_pos = {to_world(pos.x), to_world(5.0f), to_world(pos.y)};
+            Vector3 world_pos = {pos.x, 5.0f, pos.y};
             Vector2 sp = GetWorldToScreenEx(world_pos, cam,
                              constants::SCREEN_W, constants::SCREEN_H);
             reg.emplace_or_replace<ScreenPosition>(entity,

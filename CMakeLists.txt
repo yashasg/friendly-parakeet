@@ -84,15 +84,17 @@ endforeach()
 
 # ── Game library (shared between exe and tests) ──────────────
 file(GLOB SYSTEM_SOURCES app/systems/*.cpp)
-# Exclude render_system.cpp from the library (requires raylib renderer)
-list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "render_system\\.cpp$")
+file(GLOB GAMEOBJECT_SOURCES app/gameobjects/*.cpp)
+# Exclude render system files from the library (requires raylib renderer)
+list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "game_render_system\\.cpp$")
+list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "ui_render_system\\.cpp$")
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "/input_system\\.cpp$")
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "song_playback_system\\.cpp$")
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "text_renderer\\.cpp$")
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "camera_system\\.cpp$")
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "shape_mesh_builder\\.cpp$")
 
-add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES})
+add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES} ${GAMEOBJECT_SOURCES})
 target_include_directories(shapeshifter_lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/app
     ${CMAKE_BINARY_DIR}/generated
@@ -121,7 +123,8 @@ add_executable(shapeshifter
     app/platform_display.cpp
     app/systems/camera_system.cpp
     app/systems/shape_mesh_builder.cpp
-    app/systems/render_system.cpp
+    app/systems/game_render_system.cpp
+    app/systems/ui_render_system.cpp
     app/systems/input_system.cpp
     app/systems/song_playback_system.cpp
     app/systems/text_renderer.cpp

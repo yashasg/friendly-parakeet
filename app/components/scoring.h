@@ -20,9 +20,7 @@ struct ScorePopup {
 };
 
 // Pre-computed popup display data. Computed by popup_display_system,
-// consumed by render_ui_system (just draws text at position with color).
-// Pre-computed popup display data. Computed by popup_display_system,
-// consumed by render_ui_system (just draws text at position with color).
+// consumed by ui_render_system (just draws text at position with color).
 struct PopupDisplay {
     char     text[16] = {};
     FontSize font_size = FontSize::Small;

@@ -5,6 +5,7 @@
 #include "../components/obstacle_data.h"
 #include "../components/transform.h"
 #include "../components/rendering.h"
+#include "../gameobjects/shape_obstacle.h"
 #include "../constants.h"
 
 void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
@@ -122,6 +123,9 @@ void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
                 break;
             }
         }
+
+        // Spawn visual mesh children for multi-slab obstacle types
+        spawn_obstacle_meshes(reg, obstacle);
 
         song->next_spawn_idx++;
     }

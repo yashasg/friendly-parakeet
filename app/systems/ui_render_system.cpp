@@ -1,7 +1,4 @@
 #include "all_systems.h"
-#include "../components/shape_mesh.h"
-#include "../components/shape_vertices.h"
-#include "../components/camera.h"
 #include "../components/transform.h"
 #include "../components/player.h"
 #include "../components/obstacle.h"
@@ -10,26 +7,20 @@
 #include "../components/scoring.h"
 #include "../components/burnout.h"
 #include "../components/rhythm.h"
-#include "../components/lifetime.h"
 #include "../components/game_state.h"
 #include "../components/difficulty.h"
-#include "../components/particle.h"
-#include "../components/audio.h"
 #include "../components/song_state.h"
 #include "../constants.h"
 #include "text_renderer.h"
-#include "camera_system.h"
 #include "../components/ui_state.h"
 #include "../components/ui_element.h"
 #include "ui_loader.h"
 #include <raylib.h>
-#include <rlgl.h>
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
-#include <fstream>
 
-// World coordinates = game-pixel coordinates (1:1 scale).
+// ── 2D shape drawing (flat, screen-space) ────────────────────
 
 static void draw_shape_flat(Shape shape, float cx, float cy, float size, Color color) {
     switch (shape) {
@@ -52,7 +43,6 @@ static void draw_shape_flat(Shape shape, float cx, float cy, float size, Color c
             break;
         }
         case Shape::Hexagon: {
-            // Pointy-top hexagon: first vertex at -90° (straight up)
             float radius = size * 0.6f;
             constexpr float ANGLE_OFFSET = -90.0f * DEG2RAD;
             for (int i = 0; i < 6; ++i) {
@@ -60,7 +50,6 @@ static void draw_shape_flat(Shape shape, float cx, float cy, float size, Color c
                 float a2 = ANGLE_OFFSET + (float)(i + 1) * 60.0f * DEG2RAD;
                 Vector2 v1h = {cx + radius * cosf(a1), cy + radius * sinf(a1)};
                 Vector2 v2h = {cx + radius * cosf(a2), cy + radius * sinf(a2)};
-                // v2h before v1h for counter-clockwise winding (raylib requirement)
                 DrawTriangle({cx, cy}, v2h, v1h, color);
             }
             break;
@@ -68,9 +57,7 @@ static void draw_shape_flat(Shape shape, float cx, float cy, float size, Color c
     }
 }
 
-// ── Scene / overlay draw helpers ─────────────────────────────
-// Each function draws one viewport-space scene or overlay.
-// They read singletons from the registry but don't modify game state.
+// ── JSON helper utilities ────────────────────────────────────
 
 using json = nlohmann::json;
 
@@ -114,6 +101,8 @@ static const json* find_el(const json& screen, const std::string& id) {
     }
     return nullptr;
 }
+
+// ── JSON-driven element renderers ────────────────────────────
 
 static void render_text(const json& el, const TextContext& ctx, float timer) {
     Color c = json_color(el["color"]);
@@ -182,14 +171,14 @@ static void render_elements(const json& screen, const TextContext& ctx, float ti
     }
 }
 
+// ── Specialized screen renderers ─────────────────────────────
+
 static void draw_level_select_scene(const TextContext& text_ctx,
                                     const LevelSelectState& lss,
                                     const GameState& gs,
                                     const json& screen) {
-    // Static elements (header, start button) rendered generically
     render_elements(screen, text_ctx, gs.phase_timer);
 
-    // Dynamic card list
     auto* cards = find_el(screen, "song_cards");
     if (cards) {
         auto& c = *cards;
@@ -264,7 +253,6 @@ static void draw_hud(entt::registry& reg, const TextContext& text_ctx,
                      const json& screen) {
     auto& score  = reg.ctx().get<ScoreState>();
 
-    // Dynamic text: score and high score
     auto* score_el = find_el(screen, "score");
     if (score_el) {
         text_draw_number(text_ctx, score.displayed_score,
@@ -363,7 +351,7 @@ static void draw_hud(entt::registry& reg, const TextContext& text_ctx,
         }
     }
 
-    // Energy bar — vertical gradient bar with beat-bounce visualizer
+    // Energy bar
     auto* energy = reg.ctx().find<EnergyState>();
     if (energy) {
         constexpr float BAR_X      = 10.0f;
@@ -379,13 +367,12 @@ static void draw_hud(entt::registry& reg, const TextContext& text_ctx,
         if (fill < 0.0f) fill = 0.0f;
         if (fill > 1.0f) fill = 1.0f;
 
-        // Beat bounce: on each beat, temporarily push the visible level up
         float bounce = 0.0f;
         auto* song = reg.ctx().find<SongState>();
         if (song && song->playing && song->beat_period > 0.0f) {
             float phase = std::fmod(song->song_time, song->beat_period) / song->beat_period;
             bounce = 1.0f - phase;
-            bounce = bounce * bounce * bounce;  // cubic decay
+            bounce = bounce * bounce * bounce;
         }
 
         float flash_ratio = 0.0f;
@@ -405,19 +392,16 @@ static void draw_hud(entt::registry& reg, const TextContext& text_ctx,
         float critical_pulse = 0.5f + 0.5f * std::sin(pulse_time * CRITICAL_PULSE_FREQ);
         float critical_intensity = critical_ratio
             * (CRITICAL_PULSE_BASE + CRITICAL_PULSE_MODULATION * critical_pulse);
-        // Bounce adds up to ~5 extra segments worth above fill
         constexpr float BOUNCE_HEIGHT = 5.0f / SEG_COUNT;
         float visible_level = fill + bounce * BOUNCE_HEIGHT;
         if (visible_level > 1.0f) visible_level = 1.0f;
 
-        // Pink overflow: bounce segments above the bar when full
         constexpr int   OVERFLOW_MAX = 5;
         int overflow_segs = 0;
         if (fill >= 0.99f) {
             overflow_segs = static_cast<int>(bounce * OVERFLOW_MAX + 0.5f);
         }
 
-        // Overflow segments (pink, drawn above the bar)
         for (int i = 0; i < overflow_segs; ++i) {
             float seg_y = BAR_TOP - (i + 1) * (SEG_H + SEG_GAP);
             float fade = 1.0f - static_cast<float>(i) / OVERFLOW_MAX;
@@ -425,7 +409,6 @@ static void draw_hud(entt::registry& reg, const TextContext& text_ctx,
             DrawRectangleRec({BAR_X, seg_y, BAR_W, SEG_H}, {255, 80, 200, alpha});
         }
 
-        // Background
         DrawRectangleRec({BAR_X, BAR_TOP, BAR_W, BAR_H}, {15, 15, 25, 180});
 
         int filled_segs  = static_cast<int>(fill * SEG_COUNT + 0.5f);
@@ -434,7 +417,6 @@ static void draw_hud(entt::registry& reg, const TextContext& text_ctx,
         for (int i = 0; i < SEG_COUNT; ++i) {
             float seg_y = BAR_BOT - (i + 1) * (SEG_H + SEG_GAP) + SEG_GAP;
 
-            // Gradient: red → yellow → green → cyan → dark blue (bottom to top)
             float t = static_cast<float>(i) / (SEG_COUNT - 1);
             uint8_t cr, cg, cb;
             if (t < 0.25f) {
@@ -454,7 +436,6 @@ static void draw_hud(entt::registry& reg, const TextContext& text_ctx,
             }
 
             if (i < filled_segs) {
-                // Solid energy segment
                 constexpr float FLASH_RED_BOOST_FACTOR    = 0.45f;
                 constexpr float CRITICAL_RED_BOOST_FACTOR = 0.35f;
                 constexpr float CRITICAL_COOL_DIM_FACTOR  = 0.40f;
@@ -472,13 +453,11 @@ static void draw_hud(entt::registry& reg, const TextContext& text_ctx,
                     0.0f, 255.0f));
                 DrawRectangleRec({BAR_X, seg_y, BAR_W, SEG_H}, {rr, rg, rb, 255});
             } else if (i < visible_segs) {
-                // Bounce segment — same gradient color, fades out toward top
                 float fade = 1.0f - static_cast<float>(i - filled_segs)
                                    / std::max(1.0f, static_cast<float>(visible_segs - filled_segs));
                 uint8_t alpha = static_cast<uint8_t>(fade * 200.0f);
                 DrawRectangleRec({BAR_X, seg_y, BAR_W, SEG_H}, {cr, cg, cb, alpha});
             } else {
-                // Empty
                 DrawRectangleRec({BAR_X, seg_y, BAR_W, SEG_H}, {35, 35, 50, 50});
             }
         }
@@ -489,7 +468,6 @@ static void draw_hud(entt::registry& reg, const TextContext& text_ctx,
                 {255, 80, 80, alpha});
         }
 
-        // Border
         float border_thickness = 1.0f + critical_intensity * 2.0f;
         uint8_t border_r = static_cast<uint8_t>(80.0f + critical_intensity * 175.0f);
         uint8_t border_g = static_cast<uint8_t>(80.0f - critical_intensity * 40.0f);
@@ -509,320 +487,10 @@ static void draw_hud(entt::registry& reg, const TextContext& text_ctx,
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// 3D world draw passes — floor, obstacles, particles, shapes
+// UI render system — 2D overlay pass
 // ═════════════════════════════════════════════════════════════════════════════
 
-static void draw_floor_lines(entt::registry& reg, const FloorParams& fp) {
-    (void)reg;
-    static const Color LANE_COLORS[3] = {
-        {80, 200, 255, 255}, {255, 100, 100, 255}, {100, 255, 100, 255},
-    };
-
-    rlBegin(RL_LINES);
-
-    // Corridor edges
-    {
-        constexpr float sw = static_cast<float>(constants::SCREEN_W);
-        constexpr float sh = static_cast<float>(constants::SCREEN_H);
-        rlColor4ub(40, 40, 60, 120);
-        rlVertex3f(0.0f, 0.0f, 0.0f);  rlVertex3f(0.0f, 0.0f, sh);
-        rlVertex3f(sw,   0.0f, 0.0f);  rlVertex3f(sw,   0.0f, sh);
-    }
-
-    // Lane guide lines
-    {
-        constexpr float sh = static_cast<float>(constants::SCREEN_H);
-        constexpr float lane_half = 120.0f;
-        for (int lane = 0; lane < constants::LANE_COUNT; ++lane) {
-            float cx = constants::LANE_X[lane];
-            Color c = LANE_COLORS[lane];
-            rlColor4ub(c.r, c.g, c.b, 50);
-            rlVertex3f(cx - lane_half, 0.0f, 0.0f);
-            rlVertex3f(cx - lane_half, 0.0f, sh);
-            rlVertex3f(cx + lane_half, 0.0f, 0.0f);
-            rlVertex3f(cx + lane_half, 0.0f, sh);
-        }
-    }
-
-    // Floor connectors + shape outlines
-    for (int lane = 0; lane < constants::LANE_COUNT; ++lane) {
-        float cx = constants::LANE_X[lane];
-        Color c = LANE_COLORS[lane];
-        c.a = fp.alpha;
-
-        for (int j = 0; j < constants::FLOOR_SHAPE_COUNT; ++j) {
-            float cz = constants::FLOOR_Y_START
-                + static_cast<float>(j) * constants::FLOOR_SHAPE_SPACING;
-
-            if (j < constants::FLOOR_SHAPE_COUNT - 1) {
-                float next_cz = cz + constants::FLOOR_SHAPE_SPACING;
-                rlColor4ub(c.r, c.g, c.b, c.a);
-                rlVertex3f(cx, 0.0f, cz + fp.half);
-                rlVertex3f(cx, 0.0f, next_cz - fp.half);
-            }
-
-            if (lane == 1) {
-                float l = cx - fp.half, r = cx + fp.half;
-                float t = cz - fp.half, b = cz + fp.half;
-                rlColor4ub(c.r, c.g, c.b, c.a);
-                rlVertex3f(l, 0.0f, t); rlVertex3f(r, 0.0f, t);
-                rlVertex3f(r, 0.0f, t); rlVertex3f(r, 0.0f, b);
-                rlVertex3f(r, 0.0f, b); rlVertex3f(l, 0.0f, b);
-                rlVertex3f(l, 0.0f, b); rlVertex3f(l, 0.0f, t);
-            }
-
-            if (lane == 2) {
-                float apex_x = cx, apex_z = cz - fp.half;
-                float bl_x = cx - fp.half, bl_z = cz + fp.half;
-                float br_x = cx + fp.half, br_z = cz + fp.half;
-                rlColor4ub(c.r, c.g, c.b, c.a);
-                rlVertex3f(apex_x, 0.0f, apex_z); rlVertex3f(br_x, 0.0f, br_z);
-                rlVertex3f(br_x, 0.0f, br_z);     rlVertex3f(bl_x, 0.0f, bl_z);
-                rlVertex3f(bl_x, 0.0f, bl_z);     rlVertex3f(apex_x, 0.0f, apex_z);
-            }
-        }
-    }
-
-    rlEnd();
-}
-
-static void draw_floor_rings(const FloorParams& fp) {
-    static const Color LANE0_COLOR = {80, 200, 255, 255};
-    Color c = LANE0_COLOR;
-    c.a = fp.alpha;
-
-    rlBegin(RL_TRIANGLES);
-    for (int j = 0; j < constants::FLOOR_SHAPE_COUNT; ++j) {
-        float cz = constants::FLOOR_Y_START
-            + static_cast<float>(j) * constants::FLOOR_SHAPE_SPACING;
-        float cx = constants::LANE_X[0];
-        float inner_r = fp.half - fp.thick;
-        float outer_r = fp.half;
-
-        int seg = 12;
-        for (int i = 0; i < seg; ++i) {
-            int idx      = (i * shape_verts::CIRCLE_SEGMENTS) / seg;
-            int next_idx = ((i + 1) * shape_verts::CIRCLE_SEGMENTS) / seg
-                           % shape_verts::CIRCLE_SEGMENTS;
-
-            float ox1 = cx + shape_verts::CIRCLE[idx].x      * outer_r;
-            float oz1 = cz + shape_verts::CIRCLE[idx].y      * outer_r;
-            float ox2 = cx + shape_verts::CIRCLE[next_idx].x * outer_r;
-            float oz2 = cz + shape_verts::CIRCLE[next_idx].y * outer_r;
-            float ix1 = cx + shape_verts::CIRCLE[idx].x      * inner_r;
-            float iz1 = cz + shape_verts::CIRCLE[idx].y      * inner_r;
-            float ix2 = cx + shape_verts::CIRCLE[next_idx].x * inner_r;
-            float iz2 = cz + shape_verts::CIRCLE[next_idx].y * inner_r;
-
-            rlColor4ub(c.r, c.g, c.b, c.a);
-            rlVertex3f(ox1, 0.0f, oz1);
-            rlVertex3f(ix1, 0.0f, iz1);
-            rlVertex3f(ox2, 0.0f, oz2);
-            rlVertex3f(ix1, 0.0f, iz1);
-            rlVertex3f(ix2, 0.0f, iz2);
-            rlVertex3f(ox2, 0.0f, oz2);
-        }
-    }
-    rlEnd();
-}
-
-static void draw_world_rects(entt::registry& reg) {
-    auto* sm = reg.ctx().find<camera::ShapeMeshes>();
-    if (!sm) return;
-
-    constexpr float OBSTACLE_HEIGHT = 20.0f;
-
-    auto draw_slab = [&](float x, float z, float w, float d, float h, Color tint) {
-        Matrix mat = {
-            to_world(w), 0, 0, 0,
-            0, to_world(h), 0, 0,
-            0, 0, to_world(d), 0,
-            to_world(x), 0, to_world(z), 1,
-        };
-        sm->material.maps[MATERIAL_MAP_DIFFUSE].color = tint;
-        DrawMesh(sm->slab, sm->material, mat);
-    };
-
-    // Multi-slab obstacles (camera_system can't store multiple transforms per entity)
-    {
-        auto view = reg.view<ObstacleTag, Position, Obstacle, Color, DrawSize>();
-        for (auto [entity, pos, obs, col, dsz] : view.each()) {
-            switch (obs.kind) {
-                case ObstacleKind::ShapeGate:
-                    draw_slab(0, pos.y, pos.x-50, dsz.h, OBSTACLE_HEIGHT, col);
-                    draw_slab(pos.x+50, pos.y, constants::SCREEN_W-pos.x-50, dsz.h, OBSTACLE_HEIGHT, col);
-                    break;
-                case ObstacleKind::LaneBlock: {
-                    auto* blocked = reg.try_get<BlockedLanes>(entity);
-                    if (blocked)
-                        for (int i = 0; i < 3; ++i)
-                            if ((blocked->mask >> i) & 1)
-                                draw_slab(constants::LANE_X[i]-dsz.w/2, pos.y, dsz.w, dsz.h, OBSTACLE_HEIGHT, col);
-                    break;
-                }
-                case ObstacleKind::ComboGate: {
-                    auto* blocked = reg.try_get<BlockedLanes>(entity);
-                    if (blocked)
-                        for (int i = 0; i < 3; ++i)
-                            if ((blocked->mask >> i) & 1)
-                                draw_slab(constants::LANE_X[i]-120, pos.y, 240.0f, dsz.h, OBSTACLE_HEIGHT, col);
-                    break;
-                }
-                case ObstacleKind::SplitPath: {
-                    auto* rlane = reg.try_get<RequiredLane>(entity);
-                    for (int i = 0; i < 3; ++i)
-                        if (!rlane || i != rlane->lane)
-                            draw_slab(constants::LANE_X[i]-120, pos.y, 240.0f, dsz.h, OBSTACLE_HEIGHT, col);
-                    break;
-                }
-                default: {
-                    // Single-slab obstacles: use ModelTransform from camera_system
-                    auto* mt = reg.try_get<ModelTransform>(entity);
-                    if (mt && mt->mesh_type == MeshType::Slab) {
-                        sm->material.maps[MATERIAL_MAP_DIFFUSE].color = mt->tint;
-                        DrawMesh(sm->slab, sm->material, mt->mat);
-                    }
-                    break;
-                }
-            }
-        }
-    }
-
-    // Particles: use ModelTransform from camera_system
-    {
-        auto view = reg.view<ParticleTag, ModelTransform>();
-        for (auto [entity, mt] : view.each()) {
-            sm->material.maps[MATERIAL_MAP_DIFFUSE].color = mt.tint;
-            DrawMesh(sm->quad, sm->material, mt.mat);
-        }
-    }
-}
-
-static void draw_gameplay_shapes(entt::registry& reg) {
-    auto* sm = reg.ctx().find<camera::ShapeMeshes>();
-    if (!sm) return;
-
-    auto draw_shape = [&](Shape shape, float cx, float y_3d, float cz,
-                          float sz, Color tint) {
-        int idx = static_cast<int>(shape);
-        const auto& desc = SHAPE_TABLE[idx];
-        float s = to_world(sz * desc.radius_scale);
-        Matrix mat = {
-            s, 0, 0, 0,  0, s, 0, 0,  0, 0, s, 0,
-            to_world(cx), to_world(y_3d), to_world(cz), 1.0f,
-        };
-        sm->material.maps[MATERIAL_MAP_DIFFUSE].color = tint;
-        DrawMesh(sm->shapes[idx], sm->material, mat);
-    };
-
-    // Ghost shapes (multiple visuals per entity — can't use ModelTransform)
-    {
-        auto view = reg.view<ObstacleTag, Position, Obstacle, Color, DrawSize>();
-        for (auto [entity, pos, obs, col, dsz] : view.each()) {
-            switch (obs.kind) {
-                case ObstacleKind::ShapeGate: {
-                    auto* req = reg.try_get<RequiredShape>(entity);
-                    if (req) draw_shape(req->shape, pos.x, 0.0f, pos.y+dsz.h/2, 40, {col.r,col.g,col.b,120});
-                    break;
-                }
-                case ObstacleKind::ComboGate: {
-                    auto* req = reg.try_get<RequiredShape>(entity);
-                    if (req) {
-                        auto* blocked = reg.try_get<BlockedLanes>(entity);
-                        int open = 1;
-                        if (blocked)
-                            for (int i = 0; i < 3; ++i)
-                                if (!((blocked->mask >> i) & 1)) { open = i; break; }
-                        draw_shape(req->shape, constants::LANE_X[open], 0.0f, pos.y+dsz.h/2, 30, {255,255,255,180});
-                    }
-                    break;
-                }
-                case ObstacleKind::SplitPath: {
-                    auto* req = reg.try_get<RequiredShape>(entity);
-                    auto* rlane = reg.try_get<RequiredLane>(entity);
-                    if (req && rlane)
-                        draw_shape(req->shape, constants::LANE_X[rlane->lane], 0.0f, pos.y+dsz.h/2, 30, {255,255,255,180});
-                    break;
-                }
-                default: break;
-            }
-        }
-    }
-
-    // Player: use ModelTransform from camera_system
-    {
-        auto view = reg.view<PlayerTag, ModelTransform>();
-        for (auto [entity, mt] : view.each()) {
-            sm->material.maps[MATERIAL_MAP_DIFFUSE].color = mt.tint;
-            DrawMesh(sm->shapes[mt.mesh_index], sm->material, mt.mat);
-        }
-    }
-}
-
-void render_world_system(entt::registry& reg, float /*alpha*/) {
-    auto& gs = reg.ctx().get<GameState>();
-    auto& camera = reg.ctx().get<Camera3D>();
-
-    ClearBackground({15, 15, 25, 255});
-
-    BeginMode3D(camera);
-
-    // Override projection for pixel-scale far plane
-    {
-        rlDrawRenderBatchActive();
-        rlMatrixMode(RL_PROJECTION);
-        rlLoadIdentity();
-        double near_plane = 1.0;
-        double far_plane  = 2000.0;
-        double top   = near_plane * tan(static_cast<double>(camera.fovy) * 0.5 * DEG2RAD);
-        double right = top * (static_cast<double>(constants::SCREEN_W)
-                            / static_cast<double>(constants::SCREEN_H));
-        rlFrustum(-right, right, -top, top, near_plane, far_plane);
-        rlMatrixMode(RL_MODELVIEW);
-    }
-
-    // Floor pulse params
-    FloorParams floor_params{};
-    {
-        auto* song = reg.ctx().find<SongState>();
-        float pulse = 0.0f;
-        if (song && song->playing && song->beat_period > 0.0f && song->current_beat >= 0) {
-            float time_since_beat = song->song_time
-                - (song->offset + static_cast<float>(song->current_beat) * song->beat_period);
-            float pulse_t = std::clamp(time_since_beat / constants::FLOOR_PULSE_DECAY, 0.0f, 1.0f);
-            float ease = 1.0f - (1.0f - pulse_t) * (1.0f - pulse_t);
-            pulse = 1.0f - ease;
-        }
-        float alpha_f = constants::FLOOR_ALPHA_REST
-            + (constants::FLOOR_ALPHA_PEAK - constants::FLOOR_ALPHA_REST) * pulse;
-        float scale = constants::FLOOR_SCALE_REST
-            + (constants::FLOOR_SCALE_PEAK - constants::FLOOR_SCALE_REST) * pulse;
-        floor_params.size  = constants::FLOOR_SHAPE_SIZE * scale;
-        floor_params.half  = floor_params.size / 2.0f;
-        floor_params.thick = constants::FLOOR_OUTLINE_THICK;
-        floor_params.alpha = static_cast<uint8_t>(alpha_f);
-    }
-
-    // ── Render passes ──────────────────────────────────────────
-    rlPushMatrix();
-    rlScalef(INV_WORLD_SCALE, INV_WORLD_SCALE, INV_WORLD_SCALE);
-    draw_floor_lines(reg, floor_params);
-    draw_floor_rings(floor_params);
-    rlPopMatrix();
-
-    if (gs.phase != GamePhase::Title) {
-        rlDrawRenderBatchActive();
-        rlDisableDepthTest();
-        draw_world_rects(reg);
-        draw_gameplay_shapes(reg);
-        rlDrawRenderBatchActive();
-        rlEnableDepthTest();
-    }
-
-    EndMode3D();
-}
-
-void render_ui_system(entt::registry& reg, float /*alpha*/) {
+void ui_render_system(entt::registry& reg, float /*alpha*/) {
     auto& text_ctx = reg.ctx().get<TextContext>();
     auto& ui = reg.ctx().get<UIState>();
     auto& gs = reg.ctx().get<GameState>();
@@ -860,7 +528,6 @@ void render_ui_system(entt::registry& reg, float /*alpha*/) {
         auto view = reg.view<UIElementTag, UIText, Position>();
         for (auto [entity, text, pos] : view.each()) {
             Color c = text.color;
-            // Apply animation if present
             auto* anim = reg.try_get<UIAnimation>(entity);
             if (anim) {
                 float pulse = (sinf(gs.phase_timer * anim->speed) + 1.0f) / 2.0f;
@@ -914,8 +581,6 @@ void render_ui_system(entt::registry& reg, float /*alpha*/) {
         default:
             break;
     }
-
-    // Overlay elements (paused screen) — TODO: spawn with OverlayTag
 
     EndMode2D();
 }

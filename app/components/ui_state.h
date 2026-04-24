@@ -3,7 +3,7 @@
 #include <string>
 
 // Which UI screen the renderer should draw.
-// Set by ui_navigation_system, consumed by render_ui_system.
+// Set by ui_navigation_system, consumed by ui_render_system.
 enum class ActiveScreen : uint8_t {
     Title,
     LevelSelect,

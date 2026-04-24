@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <raylib.h>
+#include <entt/entt.hpp>
 
 struct DrawSize {
     float w = 64.0f;
@@ -27,8 +28,8 @@ struct ScreenTransform {
 };
 
 // ── Model-to-world transform ────────────────────────────────────────────────
-// Computed by camera_system each frame from Position/Size/Shape.
-// Consumed by render_system for DrawMesh calls.
+// Computed by game_camera_system each frame from Position/Size/Shape.
+// Consumed by game_render_system for DrawMesh calls.
 // MeshType tells the render system which GPU mesh to draw.
 enum class MeshType : uint8_t { Shape, Slab, Quad };
 
@@ -37,6 +38,21 @@ struct ModelTransform {
     Color    tint;
     MeshType mesh_type;
     int      mesh_index;  // index into ShapeMeshes.shapes[] for Shape type
+};
+
+// Visual mesh child of a logical entity (e.g., obstacle slabs, ghost shapes).
+// Created at spawn time by game object factories. game_camera_system reads
+// parent Position + child offsets to compute ModelTransform each frame.
+struct MeshChild {
+    entt::entity parent;
+    float x;             // absolute X position in game coords
+    float z_offset;      // offset from parent Position.y (scroll axis)
+    float width;         // slab width (game coords)
+    float depth;         // slab depth (game coords)
+    float height;        // slab height (game coords)
+    Color tint;
+    MeshType mesh_type;
+    int mesh_index;      // index into ShapeMeshes.shapes[] for Shape type
 };
 
 // ── Screen-space position ───────────────────────────────────────────────────

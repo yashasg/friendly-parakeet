@@ -7,6 +7,7 @@
 #include "../components/difficulty.h"
 #include "../components/player.h"
 #include "../components/rhythm.h"
+#include "../gameobjects/shape_obstacle.h"
 #include "../constants.h"
 #include <cstdlib>
 
@@ -128,4 +129,7 @@ void obstacle_spawn_system(entt::registry& reg, float dt) {
             break;
         }
     }
+
+    // Spawn visual mesh children for multi-slab obstacle types
+    spawn_obstacle_meshes(reg, obstacle);
 }

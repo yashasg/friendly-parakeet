@@ -43,7 +43,8 @@ void game_loop_frame(entt::registry& reg, float& accumulator,
     accumulator += raw_dt;
     if (accumulator > MAX_ACCUM) accumulator = MAX_ACCUM;
 
-    camera_system(reg, raw_dt);
+    game_camera_system(reg, raw_dt);
+    ui_camera_system(reg, raw_dt);
     input_system(reg, raw_dt);
     hit_test_system(reg);
     test_player_system(reg, raw_dt);
@@ -58,12 +59,12 @@ void game_loop_frame(entt::registry& reg, float& accumulator,
 
     // Pass 1: World (3D)
     BeginTextureMode(targets.world);
-        render_world_system(reg, alpha);
+        game_render_system(reg, alpha);
     EndTextureMode();
 
     // Pass 2: UI (2D)
     BeginTextureMode(targets.ui);
-        render_ui_system(reg, alpha);
+        ui_render_system(reg, alpha);
     EndTextureMode();
 
     // Composite: blit world, then UI (alpha-blended) onto window
