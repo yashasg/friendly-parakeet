@@ -181,18 +181,6 @@ static void render_elements(const json& screen, const TextContext& ctx, float ti
     }
 }
 
-static const char* phase_to_screen(GamePhase phase) {
-    switch (phase) {
-        case GamePhase::Title:        return "title";
-        case GamePhase::LevelSelect:  return "level_select";
-        case GamePhase::Playing:      return "gameplay";
-        case GamePhase::Paused:       return "paused";
-        case GamePhase::GameOver:     return "game_over";
-        case GamePhase::SongComplete: return "song_complete";
-    }
-    return "title";
-}
-
 static void draw_title_scene(const TextContext& text_ctx, const GameState& gs,
                              const json& screen) {
     render_elements(screen, text_ctx, gs.phase_timer);
@@ -918,18 +906,14 @@ void render_world_system(entt::registry& reg, float /*alpha*/) {
 }
 
 void render_ui_system(entt::registry& reg, float /*alpha*/) {
-    auto& gs = reg.ctx().get<GameState>();
     auto& text_ctx = reg.ctx().get<TextContext>();
     auto& ui = reg.ctx().get<UIState>();
     auto& ui_cam = reg.ctx().get<Camera2D>();
 
-    ui.load_screen(phase_to_screen(gs.phase));
-
     ClearBackground(BLANK);
-
     BeginMode2D(ui_cam);
 
-    // Popups — just draw pre-computed text
+    // Popups
     {
         auto view = reg.view<PopupDisplay, ScreenPosition>();
         for (auto [entity, pd, sp] : view.each()) {
@@ -938,34 +922,30 @@ void render_ui_system(entt::registry& reg, float /*alpha*/) {
         }
     }
 
-    // Phase-specific UI
-    if (gs.phase == GamePhase::Title) {
-        draw_title_scene(text_ctx, gs, ui.screen);
-    } else if (gs.phase == GamePhase::LevelSelect) {
-        auto& lss = reg.ctx().get<LevelSelectState>();
-        draw_level_select_scene(text_ctx, lss, gs, ui.screen);
-    } else {
-        if (gs.phase == GamePhase::Playing || gs.phase == GamePhase::Paused) {
-            auto gameplay = ui.screen;
-            if (gs.phase == GamePhase::Paused) {
-                std::string path = ui.base_dir + "/screens/gameplay.json";
-                std::ifstream f(path);
-                if (f.is_open()) gameplay = json::parse(f);
-            }
-            draw_hud(reg, text_ctx, gameplay);
+    // Active screen — ui_navigation_system already loaded the correct JSON
+    auto& gs = reg.ctx().get<GameState>();
+    switch (ui.active) {
+        case ActiveScreen::Title:
+            draw_title_scene(text_ctx, gs, ui.screen);
+            break;
+        case ActiveScreen::LevelSelect: {
+            auto& lss = reg.ctx().get<LevelSelectState>();
+            draw_level_select_scene(text_ctx, lss, gs, ui.screen);
+            break;
         }
-
-        if (gs.phase == GamePhase::GameOver)
+        case ActiveScreen::Gameplay:
+            draw_hud(reg, text_ctx, ui.screen);
+            break;
+        case ActiveScreen::Paused:
+            draw_hud(reg, text_ctx, ui.screen);
+            draw_pause_overlay(text_ctx, ui.overlay_screen);
+            break;
+        case ActiveScreen::GameOver:
             draw_game_over_overlay(reg, text_ctx, gs, ui.screen);
-
-        if (gs.phase == GamePhase::SongComplete)
+            break;
+        case ActiveScreen::SongComplete:
             draw_song_complete_overlay(reg, text_ctx, gs, ui.screen);
-
-        if (gs.phase == GamePhase::Paused) {
-            ui.load_screen("paused");
-            draw_pause_overlay(text_ctx, ui.screen);
-            ui.current.clear();
-        }
+            break;
     }
 
     EndMode2D();

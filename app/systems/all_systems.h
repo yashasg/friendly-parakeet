@@ -41,8 +41,9 @@ void lifetime_system(entt::registry& reg, float dt);
 void particle_system(entt::registry& reg, float dt);
 void cleanup_system(entt::registry& reg, float dt);
 
-// Phase 6.5: UI prep (compute popup display data from scoring + lifetime)
+// Phase 6.5: UI prep
 void popup_display_system(entt::registry& reg, float dt);
+void ui_navigation_system(entt::registry& reg, float dt);
 
 // Phase 7: Camera (updates screen transform + model-to-world matrices)
 void camera_system(entt::registry& reg, float dt);
