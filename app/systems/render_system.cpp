@@ -20,6 +20,7 @@
 #include "text_renderer.h"
 #include "camera_system.h"
 #include "../components/ui_state.h"
+#include "../components/ui_element.h"
 #include "ui_loader.h"
 #include <raylib.h>
 #include <rlgl.h>
@@ -179,11 +180,6 @@ static void render_elements(const json& screen, const TextContext& ctx, float ti
         else if (type == "button") render_button(el, ctx, timer);
         else if (type == "shape")  render_shape(el);
     }
-}
-
-static void draw_title_scene(const TextContext& text_ctx, const GameState& gs,
-                             const json& screen) {
-    render_elements(screen, text_ctx, gs.phase_timer);
 }
 
 static void draw_level_select_scene(const TextContext& text_ctx,
@@ -512,89 +508,6 @@ static void draw_hud(entt::registry& reg, const TextContext& text_ctx,
     }
 }
 
-static void draw_overlay(const json& screen) {
-    if (screen.contains("overlay")) {
-        Color oc = json_color(screen["overlay"]["color"]);
-        DrawRectangleRec({0, 0, float(constants::SCREEN_W), float(constants::SCREEN_H)}, oc);
-    }
-}
-
-static void draw_game_over_overlay(entt::registry& reg, const TextContext& text_ctx,
-                                   const GameState& gs, const json& screen) {
-    auto& score_state = reg.ctx().get<ScoreState>();
-    draw_overlay(screen);
-    render_elements(screen, text_ctx, gs.phase_timer);
-
-    auto* sc = find_el(screen, "score");
-    if (sc) {
-        Color c = json_color((*sc)["color"]);
-        text_draw_number(text_ctx, score_state.score,
-            el_x(*sc), el_y(*sc),
-            json_font(sc->value("font_size", "medium")),
-            c.r, c.g, c.b, c.a);
-    }
-    auto* hi = find_el(screen, "high_score");
-    if (hi) {
-        Color c = json_color((*hi)["color"]);
-        text_draw_number(text_ctx, score_state.high_score,
-            el_x(*hi), el_y(*hi),
-            json_font(hi->value("font_size", "small")),
-            c.r, c.g, c.b, c.a);
-    }
-}
-
-static void draw_song_complete_overlay(entt::registry& reg, const TextContext& text_ctx,
-                                       const GameState& gs, const json& screen) {
-    auto& score_state = reg.ctx().get<ScoreState>();
-    draw_overlay(screen);
-    render_elements(screen, text_ctx, gs.phase_timer);
-
-    auto* sc = find_el(screen, "score");
-    if (sc) {
-        Color c = json_color((*sc)["color"]);
-        text_draw_number(text_ctx, score_state.score,
-            el_x(*sc), el_y(*sc),
-            json_font(sc->value("font_size", "medium")),
-            c.r, c.g, c.b, c.a);
-    }
-    auto* hi = find_el(screen, "high_score");
-    if (hi) {
-        Color c = json_color((*hi)["color"]);
-        text_draw_number(text_ctx, score_state.high_score,
-            el_x(*hi), el_y(*hi),
-            json_font(hi->value("font_size", "medium")),
-            c.r, c.g, c.b, c.a);
-    }
-
-    auto* st = find_el(screen, "timing_stats");
-    auto* results = reg.ctx().find<SongResults>();
-    if (st && results) {
-        float y = (*st)["y_n"].get<float>() * constants::SCREEN_H;
-        float dy = (*st)["row_spacing_n"].get<float>() * constants::SCREEN_H;
-        float lx = (*st)["label_x_n"].get<float>() * constants::SCREEN_W;
-        float rx = (*st)["value_x_n"].get<float>() * constants::SCREEN_W;
-        auto fs = json_font(st->value("font_size", "small"));
-
-        const int counts[] = {
-            results->perfect_count, results->good_count,
-            results->ok_count, results->bad_count, results->miss_count
-        };
-        auto& rows = (*st)["rows"];
-        for (size_t i = 0; i < rows.size() && i < 5; ++i) {
-            Color rc = json_color(rows[i]["color"]);
-            text_draw(text_ctx, rows[i]["label"].get<std::string>().c_str(),
-                lx, y, fs, rc.r, rc.g, rc.b, rc.a, TextAlign::Left);
-            text_draw_number(text_ctx, counts[i], rx, y, fs, 255, 255, 255, 255);
-            y += dy;
-        }
-    }
-}
-
-static void draw_pause_overlay(const TextContext& text_ctx, const json& screen) {
-    draw_overlay(screen);
-    render_elements(screen, text_ctx, 0.0f);
-}
-
 // ═════════════════════════════════════════════════════════════════════════════
 // 3D world draw passes — floor, obstacles, particles, shapes
 // ═════════════════════════════════════════════════════════════════════════════
@@ -908,6 +821,7 @@ void render_world_system(entt::registry& reg, float /*alpha*/) {
 void render_ui_system(entt::registry& reg, float /*alpha*/) {
     auto& text_ctx = reg.ctx().get<TextContext>();
     auto& ui = reg.ctx().get<UIState>();
+    auto& gs = reg.ctx().get<GameState>();
     auto& ui_cam = reg.ctx().get<Camera2D>();
 
     ClearBackground(BLANK);
@@ -922,12 +836,66 @@ void render_ui_system(entt::registry& reg, float /*alpha*/) {
         }
     }
 
-    // Active screen — ui_navigation_system already loaded the correct JSON
-    auto& gs = reg.ctx().get<GameState>();
+    // Overlay (if active)
+    if (ui.has_overlay) {
+        auto& ovr = ui.overlay_screen;
+        if (ovr.contains("overlay_color")) {
+            Color oc = {
+                ovr["overlay_color"][0].get<uint8_t>(),
+                ovr["overlay_color"][1].get<uint8_t>(),
+                ovr["overlay_color"][2].get<uint8_t>(),
+                ovr["overlay_color"][3].get<uint8_t>()
+            };
+            DrawRectangleRec({0, 0, float(constants::SCREEN_W),
+                              float(constants::SCREEN_H)}, oc);
+        }
+    }
+
+    // UI text elements (data-driven from JSON)
+    {
+        auto view = reg.view<UIElementTag, UIText, Position>();
+        for (auto [entity, text, pos] : view.each()) {
+            Color c = text.color;
+            // Apply animation if present
+            auto* anim = reg.try_get<UIAnimation>(entity);
+            if (anim) {
+                float pulse = (sinf(gs.phase_timer * anim->speed) + 1.0f) / 2.0f;
+                c.a = static_cast<uint8_t>(anim->alpha_min +
+                    static_cast<int>(pulse * (anim->alpha_max - anim->alpha_min)));
+            }
+            text_draw(text_ctx, text.text, pos.x, pos.y, text.font_size,
+                      c.r, c.g, c.b, c.a, text.align);
+        }
+    }
+
+    // UI button elements
+    {
+        auto view = reg.view<UIElementTag, UIButton, Position>();
+        for (auto [entity, btn, pos] : view.each()) {
+            Color tc = btn.text_color;
+            auto* anim = reg.try_get<UIAnimation>(entity);
+            if (anim) {
+                float pulse = (sinf(gs.phase_timer * anim->speed) + 1.0f) / 2.0f;
+                tc.a = static_cast<uint8_t>(anim->alpha_min +
+                    static_cast<int>(pulse * (anim->alpha_max - anim->alpha_min)));
+            }
+            DrawRectangleRounded({pos.x, pos.y, btn.w, btn.h}, btn.corner_radius, 4, btn.bg);
+            DrawRectangleRoundedLinesEx({pos.x, pos.y, btn.w, btn.h}, btn.corner_radius, 4, 1.5f, btn.border);
+            text_draw(text_ctx, btn.text, pos.x + btn.w / 2.0f, pos.y + 12.0f,
+                      btn.font_size, tc.r, tc.g, tc.b, tc.a, TextAlign::Center);
+        }
+    }
+
+    // UI shape elements
+    {
+        auto view = reg.view<UIElementTag, UIShape, Position>();
+        for (auto [entity, sh, pos] : view.each()) {
+            draw_shape_flat(sh.shape, pos.x, pos.y, sh.size, sh.color);
+        }
+    }
+
+    // Dynamic screens that still need specialized rendering
     switch (ui.active) {
-        case ActiveScreen::Title:
-            draw_title_scene(text_ctx, gs, ui.screen);
-            break;
         case ActiveScreen::LevelSelect: {
             auto& lss = reg.ctx().get<LevelSelectState>();
             draw_level_select_scene(text_ctx, lss, gs, ui.screen);
@@ -938,15 +906,12 @@ void render_ui_system(entt::registry& reg, float /*alpha*/) {
             break;
         case ActiveScreen::Paused:
             draw_hud(reg, text_ctx, ui.screen);
-            draw_pause_overlay(text_ctx, ui.overlay_screen);
             break;
-        case ActiveScreen::GameOver:
-            draw_game_over_overlay(reg, text_ctx, gs, ui.screen);
-            break;
-        case ActiveScreen::SongComplete:
-            draw_song_complete_overlay(reg, text_ctx, gs, ui.screen);
+        default:
             break;
     }
+
+    // Overlay elements (paused screen) — TODO: spawn with OverlayTag
 
     EndMode2D();
 }

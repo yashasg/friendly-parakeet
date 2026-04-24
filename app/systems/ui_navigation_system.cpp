@@ -1,54 +1,144 @@
 #include "all_systems.h"
 #include "../components/game_state.h"
 #include "../components/ui_state.h"
+#include "../components/ui_element.h"
+#include "../components/transform.h"
+#include "../constants.h"
 #include <fstream>
+#include <cstring>
 
 static const char* phase_to_screen_name(GamePhase phase) {
     switch (phase) {
         case GamePhase::Title:        return "title";
         case GamePhase::LevelSelect:  return "level_select";
         case GamePhase::Playing:      return "gameplay";
-        case GamePhase::Paused:       return "gameplay";  // HUD uses gameplay screen
+        case GamePhase::Paused:       return "gameplay";
         case GamePhase::GameOver:     return "game_over";
         case GamePhase::SongComplete: return "song_complete";
     }
     return "title";
 }
 
+static Color json_color(const nlohmann::json& arr) {
+    uint8_t a = arr.size() > 3 ? arr[3].get<uint8_t>() : 255;
+    return {arr[0].get<uint8_t>(), arr[1].get<uint8_t>(),
+            arr[2].get<uint8_t>(), a};
+}
+
+static FontSize json_font(const std::string& s) {
+    if (s == "large") return FontSize::Large;
+    if (s == "small") return FontSize::Small;
+    return FontSize::Medium;
+}
+
+static TextAlign json_align(const std::string& s) {
+    if (s == "center") return TextAlign::Center;
+    if (s == "right")  return TextAlign::Right;
+    return TextAlign::Left;
+}
+
+static Shape json_shape(const std::string& s) {
+    if (s == "square")   return Shape::Square;
+    if (s == "triangle") return Shape::Triangle;
+    return Shape::Circle;
+}
+
+// Destroy all UI element entities from the previous screen.
+static void destroy_ui_elements(entt::registry& reg) {
+    auto view = reg.view<UIElementTag>();
+    for (auto entity : view) reg.destroy(entity);
+}
+
+// Spawn UI element entities from JSON screen definition.
+static void spawn_ui_elements(entt::registry& reg, const nlohmann::json& screen) {
+    if (!screen.contains("elements")) return;
+
+    for (auto& el : screen["elements"]) {
+        auto type = el.value("type", "");
+        auto e = reg.create();
+        reg.emplace<UIElementTag>(e);
+
+        float px = el.value("x_n", 0.0f) * constants::SCREEN_W;
+        float py = el.value("y_n", 0.0f) * constants::SCREEN_H;
+        reg.emplace<Position>(e, px, py);
+
+        if (type == "text") {
+            UIText t{};
+            auto s = el.value("text", "");
+            std::strncpy(t.text, s.c_str(), sizeof(t.text) - 1);
+            t.font_size = json_font(el.value("font_size", "medium"));
+            t.align = json_align(el.value("align", "left"));
+            t.color = json_color(el["color"]);
+            reg.emplace<UIText>(e, t);
+
+            if (el.contains("animation")) {
+                UIAnimation anim{};
+                anim.speed = el["animation"]["speed"].get<float>();
+                anim.alpha_min = el["animation"]["alpha_range"][0].get<uint8_t>();
+                anim.alpha_max = el["animation"]["alpha_range"][1].get<uint8_t>();
+                reg.emplace<UIAnimation>(e, anim);
+            }
+        } else if (type == "button") {
+            UIButton btn{};
+            auto s = el.value("text", "");
+            std::strncpy(btn.text, s.c_str(), sizeof(btn.text) - 1);
+            btn.font_size = json_font(el.value("font_size", "small"));
+            btn.w = el.value("w_n", 0.0f) * constants::SCREEN_W;
+            btn.h = el.value("h_n", 0.0f) * constants::SCREEN_H;
+            btn.corner_radius = el.value("corner_radius", 0.2f);
+            btn.bg = json_color(el["bg_color"]);
+            btn.border = json_color(el["border_color"]);
+            btn.text_color = json_color(el["text_color"]);
+            reg.emplace<UIButton>(e, btn);
+
+            if (el.contains("animation")) {
+                UIAnimation anim{};
+                anim.speed = el["animation"]["speed"].get<float>();
+                anim.alpha_min = el["animation"]["alpha_range"][0].get<uint8_t>();
+                anim.alpha_max = el["animation"]["alpha_range"][1].get<uint8_t>();
+                reg.emplace<UIAnimation>(e, anim);
+            }
+        } else if (type == "shape") {
+            UIShape sh{};
+            sh.shape = json_shape(el.value("shape", "circle"));
+            sh.size = el.value("size_n", 0.0f) * constants::SCREEN_W;
+            sh.color = json_color(el["color"]);
+            reg.emplace<UIShape>(e, sh);
+        }
+    }
+}
+
 void ui_navigation_system(entt::registry& reg, float /*dt*/) {
     auto& gs = reg.ctx().get<GameState>();
     auto& ui = reg.ctx().get<UIState>();
 
-    // Load the primary screen for the current phase
-    ui.load_screen(phase_to_screen_name(gs.phase));
+    const char* screen_name = phase_to_screen_name(gs.phase);
+    bool screen_changed = (ui.current != screen_name);
+
+    ui.load_screen(screen_name);
     ui.has_overlay = false;
 
+    // Re-spawn UI elements when screen changes
+    if (screen_changed) {
+        destroy_ui_elements(reg);
+        spawn_ui_elements(reg, ui.screen);
+    }
+
     switch (gs.phase) {
-        case GamePhase::Title:
-            ui.active = ActiveScreen::Title;
-            break;
-        case GamePhase::LevelSelect:
-            ui.active = ActiveScreen::LevelSelect;
-            break;
-        case GamePhase::Playing:
-            ui.active = ActiveScreen::Gameplay;
-            break;
+        case GamePhase::Title:        ui.active = ActiveScreen::Title; break;
+        case GamePhase::LevelSelect:  ui.active = ActiveScreen::LevelSelect; break;
+        case GamePhase::Playing:      ui.active = ActiveScreen::Gameplay; break;
+        case GamePhase::GameOver:     ui.active = ActiveScreen::GameOver; break;
+        case GamePhase::SongComplete: ui.active = ActiveScreen::SongComplete; break;
         case GamePhase::Paused:
             ui.active = ActiveScreen::Paused;
             ui.has_overlay = true;
-            // Load paused overlay
             {
                 std::string path = ui.base_dir + "/screens/paused.json";
                 std::ifstream f(path);
                 if (f.is_open())
                     ui.overlay_screen = nlohmann::json::parse(f);
             }
-            break;
-        case GamePhase::GameOver:
-            ui.active = ActiveScreen::GameOver;
-            break;
-        case GamePhase::SongComplete:
-            ui.active = ActiveScreen::SongComplete;
             break;
     }
 }
