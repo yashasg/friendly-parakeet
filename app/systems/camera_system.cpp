@@ -108,8 +108,8 @@ static void unload_shape_meshes(ShapeMeshes& sm) {
 void init(entt::registry& reg) {
     // 3D gameplay camera
     Camera3D cam3d = {};
-    cam3d.position   = {360.0f, 380.0f, 1600.0f};
-    cam3d.target     = {360.0f, 0.0f,   400.0f};
+    cam3d.position   = {360.0f, 700.0f, 1600.0f};
+    cam3d.target     = {360.0f, 0.0f,   500.0f};
     cam3d.up         = {0.0f, 1.0f, 0.0f};
     cam3d.fovy       = 45.0f;
     cam3d.projection = CAMERA_PERSPECTIVE;
