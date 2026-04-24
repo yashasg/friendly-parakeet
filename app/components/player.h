@@ -64,3 +64,5 @@ struct VerticalState {
     float timer    = 0.0f;
     float y_offset = 0.0f;
 };
+
+#undef SHAPE_LIST

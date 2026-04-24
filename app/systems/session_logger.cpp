@@ -11,6 +11,7 @@
 #include <cstdarg>
 #include <cmath>
 #include <ctime>
+#include "../util/safe_localtime.h"
 
 // ── Core log function ────────────────────────────────────────
 
@@ -20,7 +21,7 @@ void session_log_open(SessionLog& log, const char* path) {
     if (log.file) {
         std::time_t now = std::time(nullptr);
         std::tm tm{};
-        localtime_r(&now, &tm);
+        safe_localtime(&now, &tm);
         char ts[32];
         std::strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M", &tm);
         std::fprintf(log.file, "══════ Test Session started %s ══════\n\n", ts);

@@ -10,12 +10,12 @@ using Catch::Matchers::WithinAbs;
 // ═════════════════════════════════════════════════════════════════════════════
 // §1  Camera3D setup validation
 // ═════════════════════════════════════════════════════════════════════════════
-// These tests verify the Camera3D configuration constants that render_system
+// These tests verify the Camera3D configuration constants that camera_system
 // uses.  No GPU context required — pure struct/math tests.
 
 TEST_CASE("Camera3D: default setup covers game world", "[camera3d]") {
     Camera3D cam{};
-    cam.position   = {360.0f, 300.0f, 1148.0f};
+    cam.position   = {360.0f, 460.0f, 2390.0f};
     cam.target     = {360.0f, 0.0f, 400.0f};
     cam.up         = {0.0f, 1.0f, 0.0f};
     cam.fovy       = 45.0f;

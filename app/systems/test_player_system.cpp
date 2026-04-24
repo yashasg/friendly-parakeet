@@ -18,6 +18,7 @@
 #include <cstdio>
 #include <cstring>
 #include <random>
+#include "../util/safe_localtime.h"
 
 // ── Helpers ──────────────────────────────────────────────────
 
@@ -132,10 +133,14 @@ void test_player_system(entt::registry& reg, float dt) {
     if (gs.phase == GamePhase::Title || gs.phase == GamePhase::GameOver ||
         gs.phase == GamePhase::SongComplete) {
         if (gs.phase_timer > 0.5f) {
-            // Find a Confirm menu button active in this phase and press it
+            // On end screens, press Restart; on Title, press Confirm
+            auto target_action = (gs.phase == GamePhase::GameOver ||
+                                  gs.phase == GamePhase::SongComplete)
+                                 ? MenuActionKind::Restart
+                                 : MenuActionKind::Confirm;
             auto mv = reg.view<MenuButtonTag, MenuAction, ActiveInPhase>();
             for (auto [e, ma, aip] : mv.each()) {
-                if (ma.kind == MenuActionKind::Confirm && phase_active(aip, gs.phase)) {
+                if (ma.kind == target_action && phase_active(aip, gs.phase)) {
                     eq.push_press(e);
                     break;
                 }
@@ -518,7 +523,7 @@ void test_player_init(entt::registry& reg, TestPlayerSkill skill,
     auto& slog = reg.ctx().emplace<SessionLog>();
     std::time_t now = std::time(nullptr);
     std::tm tm{};
-    localtime_r(&now, &tm);
+    safe_localtime(&now, &tm);
     char log_filename[256];
     std::snprintf(log_filename, sizeof(log_filename),
         "%ssession_%s_%04d%02d%02d_%02d%02d%02d.log",

@@ -22,5 +22,6 @@ struct UIState {
     ActiveScreen active = ActiveScreen::Title;
     bool has_overlay = false;
 
-    void load_screen(const std::string& name);
+    // Returns true if the screen actually changed (new name + successful load).
+    bool load_screen(const std::string& name);
 };

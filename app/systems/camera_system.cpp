@@ -17,6 +17,8 @@
 #include <raymath.h>
 #include <rlgl.h>
 #include <algorithm>
+#include <cmath>
+#include <tuple>
 
 // Shape properties: radius_scale, height_ratio (height / radius)
 const ShapeProps SHAPE_PROPS[4] = {

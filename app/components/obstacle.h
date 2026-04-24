@@ -39,3 +39,5 @@ struct ScoredTag {};
 
 // Existential tag: scored obstacle was failed/missed and should not award points.
 struct MissTag {};
+
+#undef OBSTACLE_KIND_LIST

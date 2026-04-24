@@ -6,6 +6,7 @@
 #include "../constants.h"
 #include <fstream>
 #include <cstring>
+#include <raylib.h>
 
 static const char* phase_to_screen_name(GamePhase phase) {
     switch (phase) {
@@ -20,6 +21,7 @@ static const char* phase_to_screen_name(GamePhase phase) {
 }
 
 static Color json_color(const nlohmann::json& arr) {
+    if (!arr.is_array() || arr.size() < 3) return WHITE;
     uint8_t a = arr.size() > 3 ? arr[3].get<uint8_t>() : 255;
     return {arr[0].get<uint8_t>(), arr[1].get<uint8_t>(),
             arr[2].get<uint8_t>(), a};
@@ -65,7 +67,7 @@ static void spawn_ui_elements(entt::registry& reg, const nlohmann::json& screen)
         if (type == "text") {
             UIText t{};
             auto s = el.value("text", "");
-            std::strncpy(t.text, s.c_str(), sizeof(t.text) - 1);
+            std::snprintf(t.text, sizeof(t.text), "%s", s.c_str());
             t.font_size = json_font(el.value("font_size", "medium"));
             t.align = json_align(el.value("align", "left"));
             t.color = json_color(el["color"]);
@@ -81,7 +83,7 @@ static void spawn_ui_elements(entt::registry& reg, const nlohmann::json& screen)
         } else if (type == "button") {
             UIButton btn{};
             auto s = el.value("text", "");
-            std::strncpy(btn.text, s.c_str(), sizeof(btn.text) - 1);
+            std::snprintf(btn.text, sizeof(btn.text), "%s", s.c_str());
             btn.font_size = json_font(el.value("font_size", "small"));
             btn.w = el.value("w_n", 0.0f) * constants::SCREEN_W;
             btn.h = el.value("h_n", 0.0f) * constants::SCREEN_H;
@@ -113,9 +115,7 @@ void ui_navigation_system(entt::registry& reg, float /*dt*/) {
     auto& ui = reg.ctx().get<UIState>();
 
     const char* screen_name = phase_to_screen_name(gs.phase);
-    bool screen_changed = (ui.current != screen_name);
-
-    ui.load_screen(screen_name);
+    bool screen_changed = ui.load_screen(screen_name);
     ui.has_overlay = false;
 
     // Re-spawn UI elements when screen changes
@@ -136,8 +136,17 @@ void ui_navigation_system(entt::registry& reg, float /*dt*/) {
             {
                 std::string path = ui.base_dir + "/screens/paused.json";
                 std::ifstream f(path);
-                if (f.is_open())
-                    ui.overlay_screen = nlohmann::json::parse(f);
+                if (f.is_open()) {
+                    try {
+                        ui.overlay_screen = nlohmann::json::parse(f);
+                    } catch (const nlohmann::json::exception& e) {
+                        TraceLog(LOG_WARNING, "Overlay parse error: %s (%s)",
+                                 path.c_str(), e.what());
+                        ui.has_overlay = false;
+                    }
+                } else {
+                    ui.has_overlay = false;
+                }
             }
             break;
     }

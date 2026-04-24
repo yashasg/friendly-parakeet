@@ -2,16 +2,23 @@
 #include <fstream>
 #include <cstdio>
 
-void UIState::load_screen(const std::string& name) {
-    if (name == current) return;
+bool UIState::load_screen(const std::string& name) {
+    if (name == current) return false;
     std::string path = base_dir + "/screens/" + name + ".json";
     std::ifstream f(path);
     if (f.is_open()) {
-        screen = nlohmann::json::parse(f);
-        current = name;
+        try {
+            screen = nlohmann::json::parse(f);
+            current = name;
+            return true;
+        } catch (const nlohmann::json::exception& e) {
+            std::fprintf(stderr, "[WARN] UI screen parse error: %s (%s)\n",
+                         path.c_str(), e.what());
+        }
     } else {
         std::fprintf(stderr, "[WARN] UI screen not found: %s\n", path.c_str());
     }
+    return false;
 }
 
 UIState load_ui(const std::string& ui_dir) {

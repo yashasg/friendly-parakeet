@@ -75,6 +75,8 @@ inline float timing_multiplier(TimingTier tier) {
     return 0.25f;
 }
 
+#undef TIMING_TIER_LIST
+
 // ── Helper: compute timing tier from pct_from_peak ──
 inline TimingTier compute_timing_tier(float pct_from_peak) {
     if (pct_from_peak <= 0.25f) return TimingTier::Perfect;

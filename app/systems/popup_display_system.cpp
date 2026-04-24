@@ -26,7 +26,7 @@ void popup_display_system(entt::registry& reg, float /*dt*/) {
                 case 1: grade = "OK"; break;
                 default: break;
             }
-            std::strncpy(pd.text, grade, sizeof(pd.text) - 1);
+            std::snprintf(pd.text, sizeof(pd.text), "%s", grade);
         } else {
             std::snprintf(pd.text, sizeof(pd.text), "%d", popup.value);
         }

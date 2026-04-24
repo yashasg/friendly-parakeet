@@ -13,5 +13,8 @@ void game_loop_init(entt::registry& reg,
 // Run the game loop (blocks until quit). Handles Emscripten vs native.
 void game_loop_run(entt::registry& reg);
 
+// Single frame tick (used by Emscripten main loop callback).
+void game_loop_frame(entt::registry& reg, float& accumulator);
+
 // Shutdown: unload GPU resources, close logs, release audio, close window.
 void game_loop_shutdown(entt::registry& reg);

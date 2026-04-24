@@ -142,7 +142,9 @@ void game_state_system(entt::registry& reg, float dt) {
     // Paused → resume on any press or go event
     bool pause_resume = eq.press_count > 0 || eq.go_count > 0;
     if (gs.phase == GamePhase::Paused && pause_resume) {
-        destroy_ui_buttons(reg);
+        // Only destroy menu buttons (the pause overlay); preserve shape buttons
+        auto mv = reg.view<MenuButtonTag>();
+        reg.destroy(mv.begin(), mv.end());
         gs.previous_phase = gs.phase;
         gs.phase = GamePhase::Playing;
         gs.phase_timer = 0.0f;

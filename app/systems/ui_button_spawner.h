@@ -67,7 +67,33 @@ inline void spawn_end_screen_buttons(entt::registry& reg) {
 // A full-screen Confirm tap (→ LevelSelect) plus, on non-web builds,
 // a small Exit button at the bottom.
 inline void spawn_title_buttons(entt::registry& reg) {
-    // Full-screen tap → confirm (go to level select)
+#ifndef PLATFORM_WEB
+    // Exit button (bottom centre).
+    // game_state_system.cpp: EXIT_W=200, EXIT_H=50, EXIT_Y=1050
+    // centre-Y = 1050 + 25 = 1075
+    constexpr float EXIT_W = 200.0f;
+    constexpr float EXIT_H =  50.0f;
+    constexpr float EXIT_CENTER_Y = 1075.0f;
+    constexpr float EXIT_TOP = EXIT_CENTER_Y - EXIT_H / 2.0f;
+
+    // Full-screen tap → confirm (go to level select), excluding Exit region
+    auto btn = reg.create();
+    reg.emplace<MenuButtonTag>(btn);
+    reg.emplace<Position>(btn, constants::SCREEN_W / 2.0f,
+                               EXIT_TOP / 2.0f);
+    reg.emplace<HitBox>(btn, constants::SCREEN_W / 2.0f,
+                              EXIT_TOP / 2.0f);
+    reg.emplace<MenuAction>(btn, MenuActionKind::Confirm, uint8_t{0});
+    reg.emplace<ActiveInPhase>(btn, phase_bit(GamePhase::Title));
+
+    auto exit_btn = reg.create();
+    reg.emplace<MenuButtonTag>(exit_btn);
+    reg.emplace<Position>(exit_btn, constants::SCREEN_W / 2.0f, EXIT_CENTER_Y);
+    reg.emplace<HitBox>(exit_btn, EXIT_W / 2.0f, EXIT_H / 2.0f);
+    reg.emplace<MenuAction>(exit_btn, MenuActionKind::Exit, uint8_t{0});
+    reg.emplace<ActiveInPhase>(exit_btn, phase_bit(GamePhase::Title));
+#else
+    // On web, no Exit button — full-screen Confirm
     auto btn = reg.create();
     reg.emplace<MenuButtonTag>(btn);
     reg.emplace<Position>(btn, constants::SCREEN_W / 2.0f,
@@ -76,21 +102,6 @@ inline void spawn_title_buttons(entt::registry& reg) {
                               constants::SCREEN_H / 2.0f);
     reg.emplace<MenuAction>(btn, MenuActionKind::Confirm, uint8_t{0});
     reg.emplace<ActiveInPhase>(btn, phase_bit(GamePhase::Title));
-
-#ifndef PLATFORM_WEB
-    // Exit button (bottom centre).
-    // game_state_system.cpp: EXIT_W=200, EXIT_H=50, EXIT_Y=1050
-    // centre-Y = 1050 + 25 = 1075
-    constexpr float EXIT_W = 200.0f;
-    constexpr float EXIT_H =  50.0f;
-    constexpr float EXIT_CENTER_Y = 1075.0f;
-
-    auto exit_btn = reg.create();
-    reg.emplace<MenuButtonTag>(exit_btn);
-    reg.emplace<Position>(exit_btn, constants::SCREEN_W / 2.0f, EXIT_CENTER_Y);
-    reg.emplace<HitBox>(exit_btn, EXIT_W / 2.0f, EXIT_H / 2.0f);
-    reg.emplace<MenuAction>(exit_btn, MenuActionKind::Exit, uint8_t{0});
-    reg.emplace<ActiveInPhase>(exit_btn, phase_bit(GamePhase::Title));
 #endif
 }
 

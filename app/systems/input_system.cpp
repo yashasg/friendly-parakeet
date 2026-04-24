@@ -79,26 +79,27 @@ void input_system(entt::registry& reg, float raw_dt) {
     if (IsKeyPressed(KEY_A) || IsKeyPressed(KEY_LEFT))  { eq.push_go(Direction::Left); }
     if (IsKeyPressed(KEY_D) || IsKeyPressed(KEY_RIGHT)) { eq.push_go(Direction::Right); }
 
-    if (IsKeyPressed(KEY_ONE) || IsKeyPressed(KEY_Z)) {
-        auto sv = reg.view<ShapeButtonTag, ShapeButtonData>();
-        for (auto [e, sbd] : sv.each()) {
-            if (sbd.shape == Shape::Circle) { eq.push_press(e); break; }
+    auto phase = reg.ctx().get<GameState>().phase;
+    auto push_active_shape_press = [&](Shape target_shape) {
+        auto sv = reg.view<ShapeButtonTag, ShapeButtonData, ActiveInPhase>();
+        for (auto [e, sbd, aip] : sv.each()) {
+            if (sbd.shape == target_shape && phase_active(aip, phase)) {
+                eq.push_press(e);
+                break;
+            }
         }
+    };
+
+    if (IsKeyPressed(KEY_ONE) || IsKeyPressed(KEY_Z)) {
+        push_active_shape_press(Shape::Circle);
     }
     if (IsKeyPressed(KEY_TWO) || IsKeyPressed(KEY_X)) {
-        auto sv = reg.view<ShapeButtonTag, ShapeButtonData>();
-        for (auto [e, sbd] : sv.each()) {
-            if (sbd.shape == Shape::Square) { eq.push_press(e); break; }
-        }
+        push_active_shape_press(Shape::Square);
     }
     if (IsKeyPressed(KEY_THREE) || IsKeyPressed(KEY_C)) {
-        auto sv = reg.view<ShapeButtonTag, ShapeButtonData>();
-        for (auto [e, sbd] : sv.each()) {
-            if (sbd.shape == Shape::Triangle) { eq.push_press(e); break; }
-        }
+        push_active_shape_press(Shape::Triangle);
     }
     if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
-        auto phase = reg.ctx().get<GameState>().phase;
         auto mv = reg.view<MenuButtonTag, MenuAction, ActiveInPhase>();
         for (auto [e, ma, aip] : mv.each()) {
             if (ma.kind == MenuActionKind::Confirm && phase_active(aip, phase)) {

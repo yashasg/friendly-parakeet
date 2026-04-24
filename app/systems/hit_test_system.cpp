@@ -9,6 +9,9 @@ void hit_test_system(entt::registry& reg) {
     auto& eq = reg.ctx().get<EventQueue>();
     auto  phase = reg.ctx().get<GameState>().phase;
 
+    auto box_view = reg.view<Position, HitBox, ActiveInPhase>();
+    auto circle_view = reg.view<Position, HitCircle, ActiveInPhase>();
+
     for (int i = 0; i < eq.input_count; ++i) {
         auto& evt = eq.inputs[i];
 
@@ -18,27 +21,21 @@ void hit_test_system(entt::registry& reg) {
         }
 
         // Tap: hit-test against HitBox entities
-        {
-            auto view = reg.view<Position, HitBox, ActiveInPhase>();
-            for (auto [entity, pos, hb, aip] : view.each()) {
-                if (!phase_active(aip, phase)) continue;
-                if (std::abs(evt.x - pos.x) <= hb.half_w &&
-                    std::abs(evt.y - pos.y) <= hb.half_h) {
-                    eq.push_press(entity);
-                }
+        for (auto [entity, pos, hb, aip] : box_view.each()) {
+            if (!phase_active(aip, phase)) continue;
+            if (std::abs(evt.x - pos.x) <= hb.half_w &&
+                std::abs(evt.y - pos.y) <= hb.half_h) {
+                eq.push_press(entity);
             }
         }
 
         // Tap: hit-test against HitCircle entities
-        {
-            auto view = reg.view<Position, HitCircle, ActiveInPhase>();
-            for (auto [entity, pos, hc, aip] : view.each()) {
-                if (!phase_active(aip, phase)) continue;
-                float dx = evt.x - pos.x;
-                float dy = evt.y - pos.y;
-                if (dx * dx + dy * dy <= hc.radius * hc.radius) {
-                    eq.push_press(entity);
-                }
+        for (auto [entity, pos, hc, aip] : circle_view.each()) {
+            if (!phase_active(aip, phase)) continue;
+            float dx = evt.x - pos.x;
+            float dy = evt.y - pos.y;
+            if (dx * dx + dy * dy <= hc.radius * hc.radius) {
+                eq.push_press(entity);
             }
         }
     }
