@@ -84,7 +84,7 @@ static ShapeMeshes build_shape_meshes() {
 
     sm.shapes[0] = GenMeshCylinder(1.0f, SHAPE_PROPS[0].height_ratio, 12);
     sm.shapes[1] = GenMeshCube(2.0f, SHAPE_PROPS[1].height_ratio, 2.0f);
-    sm.shapes[2] = GenMeshCone(1.0f, SHAPE_PROPS[2].height_ratio, 3);
+    sm.shapes[2] = GenMeshCylinder(1.0f, SHAPE_PROPS[2].height_ratio, 3);
     sm.shapes[3] = GenMeshCylinder(1.0f, SHAPE_PROPS[3].height_ratio, 6);
     sm.slab = GenMeshCube(1.0f, 1.0f, 1.0f);
     sm.quad = GenMeshPlane(1.0f, 1.0f, 1, 1);
@@ -160,21 +160,20 @@ static Matrix shape_matrix(float cx, float y_3d, float cz, float sz, float radiu
     return MatrixMultiply(MatrixScale(s, s, s), MatrixTranslate(cx, y_3d, cz));
 }
 
-// Cone (triangle) rotated so the base faces the camera with one vertex pointing up (△)
-static Matrix cone_matrix(float cx, float y_3d, float cz, float sz, float radius_scale) {
+// Triangular prism rotated so one vertex of the cross-section points up (△)
+static Matrix prism_matrix(float cx, float y_3d, float cz, float sz, float radius_scale) {
     float s = sz * radius_scale;
     Matrix scale = MatrixScale(s, s, s);
-    Matrix rotX = MatrixRotateX(-90.0f * DEG2RAD);
-    Matrix rotZ = MatrixRotateZ(90.0f * DEG2RAD);
+    Matrix rot = MatrixRotateY(90.0f * DEG2RAD);
     Matrix translate = MatrixTranslate(cx, y_3d, cz);
-    return MatrixMultiply(MatrixMultiply(MatrixMultiply(scale, rotX), rotZ), translate);
+    return MatrixMultiply(MatrixMultiply(scale, rot), translate);
 }
 
-// Pick the correct matrix for a shape mesh (cone needs rotation)
+// Pick the correct matrix for a shape mesh (triangle prism needs rotation)
 static Matrix make_shape_matrix(int mesh_index, float cx, float y_3d, float cz,
                                 float sz, float radius_scale) {
     if (mesh_index == static_cast<int>(Shape::Triangle))
-        return cone_matrix(cx, y_3d, cz, sz, radius_scale);
+        return prism_matrix(cx, y_3d, cz, sz, radius_scale);
     return shape_matrix(cx, y_3d, cz, sz, radius_scale);
 }
 
