@@ -30,6 +30,55 @@ const ShapeProps SHAPE_PROPS[4] = {
 
 namespace camera {
 
+// GLSL 330 (desktop OpenGL 3.3) vs GLSL 100 (WebGL / OpenGL ES 2.0)
+#ifdef PLATFORM_WEB
+static const char* MESH_VS =
+    "#version 100\n"
+    "attribute vec3 vertexPosition;\n"
+    "attribute vec3 vertexNormal;\n"
+    "attribute vec2 vertexTexCoord;\n"
+    "uniform mat4 mvp;\n"
+    "uniform mat4 matNormal;\n"
+    "varying vec3 fragNormal;\n"
+    "void main() {\n"
+    "    fragNormal = normalize((matNormal * vec4(vertexNormal, 0.0)).xyz);\n"
+    "    gl_Position = mvp * vec4(vertexPosition, 1.0);\n"
+    "}\n";
+
+static const char* MESH_FS =
+    "#version 100\n"
+    "precision mediump float;\n"
+    "varying vec3 fragNormal;\n"
+    "uniform vec4 colDiffuse;\n"
+    "void main() {\n"
+    "    float shade = 0.35 + 0.65 * clamp(fragNormal.y, 0.0, 1.0);\n"
+    "    gl_FragColor = vec4(colDiffuse.rgb * shade, colDiffuse.a);\n"
+    "}\n";
+#else
+static const char* MESH_VS =
+    "#version 330\n"
+    "in vec3 vertexPosition;\n"
+    "in vec3 vertexNormal;\n"
+    "in vec2 vertexTexCoord;\n"
+    "uniform mat4 mvp;\n"
+    "uniform mat4 matNormal;\n"
+    "out vec3 fragNormal;\n"
+    "void main() {\n"
+    "    fragNormal = normalize((matNormal * vec4(vertexNormal, 0.0)).xyz);\n"
+    "    gl_Position = mvp * vec4(vertexPosition, 1.0);\n"
+    "}\n";
+
+static const char* MESH_FS =
+    "#version 330\n"
+    "in vec3 fragNormal;\n"
+    "uniform vec4 colDiffuse;\n"
+    "out vec4 finalColor;\n"
+    "void main() {\n"
+    "    float shade = 0.35 + 0.65 * clamp(fragNormal.y, 0.0, 1.0);\n"
+    "    finalColor = vec4(colDiffuse.rgb * shade, colDiffuse.a);\n"
+    "}\n";
+#endif
+
 static ShapeMeshes build_shape_meshes() {
     ShapeMeshes sm = {};
 
@@ -40,7 +89,7 @@ static ShapeMeshes build_shape_meshes() {
     sm.slab = GenMeshCube(1.0f, 1.0f, 1.0f);
     sm.quad = GenMeshPlane(1.0f, 1.0f, 1, 1);
 
-    Shader shader = LoadShader("content/shaders/mesh.vs", "content/shaders/mesh.fs");
+    Shader shader = LoadShaderFromMemory(MESH_VS, MESH_FS);
     sm.material = LoadMaterialDefault();
     sm.material.shader = shader;
 
