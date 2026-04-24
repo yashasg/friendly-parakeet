@@ -115,6 +115,11 @@ elseif(EMSCRIPTEN)
     target_compile_definitions(shapeshifter_lib PUBLIC PLATFORM_WEB PLATFORM_HAS_KEYBOARD)
 endif()
 
+# Suppress MSVC CRT deprecation warnings for standard C functions (fopen, etc.)
+if(WIN32)
+    target_compile_definitions(shapeshifter_lib PUBLIC _CRT_SECURE_NO_WARNINGS)
+endif()
+
 # ── Main executable ──────────────────────────────────────────
 add_executable(shapeshifter
     app/main.cpp
