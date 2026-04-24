@@ -33,6 +33,7 @@ static void tick_fixed_systems(entt::registry& reg, float dt) {
     lifetime_system(reg, dt);
     particle_system(reg, dt);
     cleanup_system(reg, dt);
+    popup_display_system(reg, dt);
 }
 
 void game_loop_frame(entt::registry& reg, float& accumulator,

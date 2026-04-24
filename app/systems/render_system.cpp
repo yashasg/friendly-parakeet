@@ -925,36 +925,16 @@ void render_ui_system(entt::registry& reg, float /*alpha*/) {
 
     ui.load_screen(phase_to_screen(gs.phase));
 
-    ClearBackground(BLANK);  // transparent — composited over world
+    ClearBackground(BLANK);
 
     BeginMode2D(ui_cam);
 
-    // Timing grade popups (use ScreenPosition from camera_system)
+    // Popups — just draw pre-computed text
     {
-        auto view = reg.view<ScorePopup, ScreenPosition, Color, Lifetime>();
-        for (auto [entity, popup, sp, col, life] : view.each()) {
-            float alpha_ratio = life.remaining / life.max_time;
-            auto popup_alpha = static_cast<uint8_t>(alpha_ratio * 255);
-
-            if (popup.timing_tier <= 3) {
-                const char* grade_text = "BAD";
-                FontSize grade_font = FontSize::Small;
-                switch (popup.timing_tier) {
-                    case 3: grade_text = "PERFECT"; grade_font = FontSize::Medium; break;
-                    case 2: grade_text = "GOOD";    grade_font = FontSize::Small;  break;
-                    case 1: grade_text = "OK";      grade_font = FontSize::Small;  break;
-                    case 0: grade_text = "BAD";     grade_font = FontSize::Small;  break;
-                }
-                text_draw(text_ctx, grade_text,
-                    sp.x, sp.y, grade_font,
-                    col.r, col.g, col.b, popup_alpha,
-                    TextAlign::Center);
-            } else {
-                FontSize popup_font = FontSize::Small;
-                text_draw_number(text_ctx, popup.value,
-                    sp.x, sp.y, popup_font,
-                    col.r, col.g, col.b, popup_alpha);
-            }
+        auto view = reg.view<PopupDisplay, ScreenPosition>();
+        for (auto [entity, pd, sp] : view.each()) {
+            text_draw(text_ctx, pd.text, sp.x, sp.y, pd.font_size,
+                      pd.r, pd.g, pd.b, pd.a, TextAlign::Center);
         }
     }
 
