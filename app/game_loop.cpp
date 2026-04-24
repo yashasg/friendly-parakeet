@@ -4,6 +4,7 @@
 #include "components/game_state.h"
 #include "components/session_log.h"
 #include "components/rendering.h"
+#include "components/camera.h"
 #include "systems/all_systems.h"
 #include "systems/session_logger.h"
 #include "platform_display.h"
@@ -35,7 +36,7 @@ static void tick_fixed_systems(entt::registry& reg, float dt) {
 }
 
 void game_loop_frame(entt::registry& reg, float& accumulator,
-                     RenderTexture2D& target) {
+                     RenderTexture2D& /*world_target*/) {
     float raw_dt = GetFrameTime();
     accumulator += raw_dt;
     if (accumulator > MAX_ACCUM) accumulator = MAX_ACCUM;
@@ -51,11 +52,19 @@ void game_loop_frame(entt::registry& reg, float& accumulator,
     }
 
     float alpha = accumulator / FIXED_DT;
-    BeginTextureMode(target);
-        render_system(reg, alpha);
+    auto& targets = reg.ctx().get<RenderTargets>();
+
+    // Pass 1: World (3D)
+    BeginTextureMode(targets.world);
+        render_world_system(reg, alpha);
     EndTextureMode();
 
-    // Blit render target to window, letterboxed
+    // Pass 2: UI (2D)
+    BeginTextureMode(targets.ui);
+        render_ui_system(reg, alpha);
+    EndTextureMode();
+
+    // Composite: blit world, then UI (alpha-blended) onto window
     const auto& st = reg.ctx().get<ScreenTransform>();
     float dst_w = constants::SCREEN_W * st.scale;
     float dst_h = constants::SCREEN_H * st.scale;
@@ -63,10 +72,12 @@ void game_loop_frame(entt::registry& reg, float& accumulator,
         static_cast<float>(constants::SCREEN_W),
         -static_cast<float>(constants::SCREEN_H) };
     Rectangle dst = { st.offset_x, st.offset_y, dst_w, dst_h };
+
     platform_pre_blit();
     BeginDrawing();
         ClearBackground(BLACK);
-        DrawTexturePro(target.texture, src, dst, {0, 0}, 0.0f, WHITE);
+        DrawTexturePro(targets.world.texture, src, dst, {0, 0}, 0.0f, WHITE);
+        DrawTexturePro(targets.ui.texture, src, dst, {0, 0}, 0.0f, WHITE);
     EndDrawing();
 
     audio_system(reg);

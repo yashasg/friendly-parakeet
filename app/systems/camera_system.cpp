@@ -8,6 +8,7 @@
 #include "../components/obstacle_data.h"
 #include "../components/particle.h"
 #include "../components/lifetime.h"
+#include "../components/scoring.h"
 #include "../components/camera.h"
 #include "../constants.h"
 #include "../platform_display.h"
@@ -158,21 +159,18 @@ void camera_system(entt::registry& reg, float /*dt*/) {
         }
     }
 
-    // 5. Ghost shape transforms (shape gates, combo gates, split paths)
+    // 5. Ghost shape transforms — skipped (multi-visual per entity)
+
+    // 6. Popup screen-space projection
     {
-        auto view = reg.view<ObstacleTag, Position, Obstacle, Color, DrawSize>();
-        for (auto [entity, pos, obs, col, dsz] : view.each()) {
-            switch (obs.kind) {
-                case ObstacleKind::ShapeGate: {
-                    auto* req = reg.try_get<RequiredShape>(entity);
-                    if (!req) break;
-                    // Ghost shape is a separate visual — we can't put two
-                    // ModelTransforms on one entity. Ghost shapes will still
-                    // be handled by render_system for now.
-                    break;
-                }
-                default: break;
-            }
+        auto& cam = reg.ctx().get<Camera3D>();
+        auto view = reg.view<ScorePopup, Position>();
+        for (auto [entity, popup, pos] : view.each()) {
+            Vector3 world_pos = {pos.x, 5.0f, pos.y};
+            Vector2 sp = GetWorldToScreenEx(world_pos, cam,
+                             constants::SCREEN_W, constants::SCREEN_H);
+            reg.emplace_or_replace<ScreenPosition>(entity,
+                ScreenPosition{sp.x, sp.y});
         }
     }
 }

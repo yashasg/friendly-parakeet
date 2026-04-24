@@ -38,3 +38,11 @@ struct ModelTransform {
     MeshType mesh_type;
     int      mesh_index;  // index into ShapeMeshes.shapes[] for Shape type
 };
+
+// ── Screen-space position ───────────────────────────────────────────────────
+// Computed by camera_system via GetWorldToScreenEx projection.
+// Used by UI render pass to draw popups at the correct screen location.
+struct ScreenPosition {
+    float x = 0.0f;
+    float y = 0.0f;
+};

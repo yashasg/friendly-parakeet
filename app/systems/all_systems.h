@@ -41,11 +41,12 @@ void lifetime_system(entt::registry& reg, float dt);
 void particle_system(entt::registry& reg, float dt);
 void cleanup_system(entt::registry& reg, float dt);
 
-// Phase 7: Camera (updates screen transform before rendering)
+// Phase 7: Camera (updates screen transform + model-to-world matrices)
 void camera_system(entt::registry& reg, float dt);
 
-// Phase 8: Render (interpolation alpha only — no renderer handle)
-void render_system(entt::registry& reg, float alpha);
+// Phase 8: Render — world pass (3D) + UI pass (2D)
+void render_world_system(entt::registry& reg, float alpha);
+void render_ui_system(entt::registry& reg, float alpha);
 
 // Audio (no dt needed)
 void audio_system(entt::registry& reg);

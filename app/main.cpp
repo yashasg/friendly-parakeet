@@ -174,17 +174,31 @@ int main(int argc, char* argv[]) {
         reg.on_construct<ScoredTag>().connect<&session_log_on_scored>();
     }
 
-    // ── Render target + game loop ────────────────────────────
-    RenderTexture2D target = LoadRenderTexture(
+    // ── Render targets + game loop ──────────────────────────────
+    RenderTexture2D world_target = LoadRenderTexture(
         constants::SCREEN_W, constants::SCREEN_H);
-    SetTextureFilter(target.texture, TEXTURE_FILTER_BILINEAR);
+    SetTextureFilter(world_target.texture, TEXTURE_FILTER_BILINEAR);
+    RenderTexture2D ui_target = LoadRenderTexture(
+        constants::SCREEN_W, constants::SCREEN_H);
+    SetTextureFilter(ui_target.texture, TEXTURE_FILTER_BILINEAR);
+    reg.ctx().emplace<RenderTargets>(RenderTargets{world_target, ui_target});
+
+    // UI camera: identity (2D screen-space, no transform)
+    {
+        Camera2D cam2d = {};
+        cam2d.offset   = {0, 0};
+        cam2d.target   = {0, 0};
+        cam2d.rotation = 0.0f;
+        cam2d.zoom     = 1.0f;
+        reg.ctx().emplace<Camera2D>(cam2d);
+    }
 
 #ifdef __EMSCRIPTEN__
-    platform_run_loop(reg, target);
+    platform_run_loop(reg, world_target);
 #else
     float accumulator = 0.0f;
     while (!WindowShouldClose()) {
-        game_loop_frame(reg, accumulator, target);
+        game_loop_frame(reg, accumulator, world_target);
         if (reg.ctx().get<InputState>().quit_requested) break;
     }
 #endif
@@ -203,7 +217,8 @@ int main(int argc, char* argv[]) {
         }
     }
     CloseAudioDevice();
-    UnloadRenderTexture(target);
+    UnloadRenderTexture(world_target);
+    UnloadRenderTexture(ui_target);
     camera::unload_shape_meshes(reg.ctx().get<camera::ShapeMeshes>());
     text_shutdown(reg.ctx().get<TextContext>());
     CloseWindow();

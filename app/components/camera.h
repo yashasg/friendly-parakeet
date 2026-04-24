@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <raylib.h>
 
 // ── Camera configuration ────────────────────────────────────────────────────
 // World coordinates = game-pixel coordinates (1:1). No conversion needed.
@@ -11,4 +12,10 @@ struct FloorParams {
     float   half  = 0.0f;
     float   thick = 0.0f;
     uint8_t alpha = 0;
+};
+
+// Render targets for world (3D) and UI (2D) layers.
+struct RenderTargets {
+    RenderTexture2D world;
+    RenderTexture2D ui;
 };

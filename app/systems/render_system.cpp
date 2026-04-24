@@ -858,28 +858,15 @@ static void draw_gameplay_shapes(entt::registry& reg) {
     }
 }
 
-void render_system(entt::registry& reg, float /*alpha*/) {
+void render_world_system(entt::registry& reg, float /*alpha*/) {
     auto& gs = reg.ctx().get<GameState>();
-    auto& text_ctx = reg.ctx().get<TextContext>();
     auto& camera = reg.ctx().get<Camera3D>();
-    auto& ui = reg.ctx().get<UIState>();
 
-    // Load the right screen JSON when phase changes
-    ui.load_screen(phase_to_screen(gs.phase));
-
-    // Clear
     ClearBackground({15, 15, 25, 255});
 
-    // ── WORLD SPACE (Camera3D) ───────────────────────────────
-    // A single BeginMode3D/EndMode3D pair wraps ALL world-space draws.
-    // Game positions (x, y) are mapped to 3D as (x, 0, y) on the XZ plane.
-    // Camera3D perspective projection handles lane convergence and
-    // foreshortening automatically — no manual trapezoid warping needed.
     BeginMode3D(camera);
 
-    // Override projection: the game world spans ~1500 units in Z, exceeding
-    // raylib's default RL_CULL_DISTANCE_FAR (1000).  Re-set the projection
-    // matrix with a 2000-unit far plane so distant obstacles aren't clipped.
+    // Override projection for pixel-scale far plane
     {
         rlDrawRenderBatchActive();
         rlMatrixMode(RL_PROJECTION);
@@ -893,7 +880,7 @@ void render_system(entt::registry& reg, float /*alpha*/) {
         rlMatrixMode(RL_MODELVIEW);
     }
 
-    // ── Compute floor pulse params (shared across GPU batches) ─
+    // Floor pulse params
     FloorParams floor_params{};
     {
         auto* song = reg.ctx().find<SongState>();
@@ -915,7 +902,6 @@ void render_system(entt::registry& reg, float /*alpha*/) {
         floor_params.alpha = static_cast<uint8_t>(alpha_f);
     }
 
-    // ── Render passes ──────────────────────────────────────────
     draw_floor_lines(reg, floor_params);
     draw_floor_rings(floor_params);
 
@@ -929,21 +915,28 @@ void render_system(entt::registry& reg, float /*alpha*/) {
     }
 
     EndMode3D();
+}
 
-    // ── Draw timing grade popups (screen-space, after EndMode3D) ──
+void render_ui_system(entt::registry& reg, float /*alpha*/) {
+    auto& gs = reg.ctx().get<GameState>();
+    auto& text_ctx = reg.ctx().get<TextContext>();
+    auto& ui = reg.ctx().get<UIState>();
+    auto& ui_cam = reg.ctx().get<Camera2D>();
+
+    ui.load_screen(phase_to_screen(gs.phase));
+
+    ClearBackground(BLANK);  // transparent — composited over world
+
+    BeginMode2D(ui_cam);
+
+    // Timing grade popups (use ScreenPosition from camera_system)
     {
-        auto view = reg.view<ScorePopup, Position, Color, Lifetime>();
-        for (auto [entity, popup, pos, col, life] : view.each()) {
+        auto view = reg.view<ScorePopup, ScreenPosition, Color, Lifetime>();
+        for (auto [entity, popup, sp, col, life] : view.each()) {
             float alpha_ratio = life.remaining / life.max_time;
             auto popup_alpha = static_cast<uint8_t>(alpha_ratio * 255);
 
-            // Map game position to 3D world, then project to screen coords
-            Vector3 world_pos = {pos.x, 5.0f, pos.y};
-            Vector2 sp = GetWorldToScreenEx(world_pos, camera,
-                             constants::SCREEN_W, constants::SCREEN_H);
-
             if (popup.timing_tier <= 3) {
-                // Show timing grade text: PERFECT / GOOD / OK / BAD
                 const char* grade_text = "BAD";
                 FontSize grade_font = FontSize::Small;
                 switch (popup.timing_tier) {
@@ -957,7 +950,6 @@ void render_system(entt::registry& reg, float /*alpha*/) {
                     col.r, col.g, col.b, popup_alpha,
                     TextAlign::Center);
             } else {
-                // Non-timed obstacle: show score number
                 FontSize popup_font = FontSize::Small;
                 text_draw_number(text_ctx, popup.value,
                     sp.x, sp.y, popup_font,
@@ -965,43 +957,36 @@ void render_system(entt::registry& reg, float /*alpha*/) {
             }
         }
     }
-    // ── VIEWPORT SPACE (HUD + overlays) ─────────────────────
 
+    // Phase-specific UI
     if (gs.phase == GamePhase::Title) {
         draw_title_scene(text_ctx, gs, ui.screen);
-        return;
-    }
-
-    if (gs.phase == GamePhase::LevelSelect) {
+    } else if (gs.phase == GamePhase::LevelSelect) {
         auto& lss = reg.ctx().get<LevelSelectState>();
         draw_level_select_scene(text_ctx, lss, gs, ui.screen);
-        return;
-    }
-
-    if (gs.phase == GamePhase::Playing || gs.phase == GamePhase::Paused) {
-        // HUD needs the gameplay screen, not the paused screen
-        auto gameplay = ui.screen;
-        if (gs.phase == GamePhase::Paused) {
-            // Temporarily load gameplay screen for HUD
-            std::string path = ui.base_dir + "/screens/gameplay.json";
-            std::ifstream f(path);
-            if (f.is_open()) gameplay = json::parse(f);
+    } else {
+        if (gs.phase == GamePhase::Playing || gs.phase == GamePhase::Paused) {
+            auto gameplay = ui.screen;
+            if (gs.phase == GamePhase::Paused) {
+                std::string path = ui.base_dir + "/screens/gameplay.json";
+                std::ifstream f(path);
+                if (f.is_open()) gameplay = json::parse(f);
+            }
+            draw_hud(reg, text_ctx, gameplay);
         }
-        draw_hud(reg, text_ctx, gameplay);
+
+        if (gs.phase == GamePhase::GameOver)
+            draw_game_over_overlay(reg, text_ctx, gs, ui.screen);
+
+        if (gs.phase == GamePhase::SongComplete)
+            draw_song_complete_overlay(reg, text_ctx, gs, ui.screen);
+
+        if (gs.phase == GamePhase::Paused) {
+            ui.load_screen("paused");
+            draw_pause_overlay(text_ctx, ui.screen);
+            ui.current.clear();
+        }
     }
 
-    if (gs.phase == GamePhase::GameOver) {
-        draw_game_over_overlay(reg, text_ctx, gs, ui.screen);
-    }
-
-    if (gs.phase == GamePhase::SongComplete) {
-        draw_song_complete_overlay(reg, text_ctx, gs, ui.screen);
-    }
-
-    if (gs.phase == GamePhase::Paused) {
-        ui.load_screen("paused");
-        draw_pause_overlay(text_ctx, ui.screen);
-        // Reset so next frame re-evaluates
-        ui.current.clear();
-    }
+    EndMode2D();
 }
