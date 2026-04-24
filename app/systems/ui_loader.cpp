@@ -26,7 +26,8 @@ UIState load_ui(const std::string& ui_dir) {
         std::fprintf(stderr, "[WARN] UI routes not found: %s\n", routes_path.c_str());
     }
 
-    auto initial = ui.routes.value("initial_screen", "title");
-    ui.load_screen(initial);
+    // Don't pre-load the initial screen here — ui_navigation_system
+    // will detect the first phase→screen mapping as a change and both
+    // load the JSON *and* spawn the UIElementTag entities.
     return ui;
 }
