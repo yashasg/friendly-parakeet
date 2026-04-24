@@ -108,7 +108,7 @@ static void unload_shape_meshes(ShapeMeshes& sm) {
 void init(entt::registry& reg) {
     // 3D gameplay camera
     Camera3D cam3d = {};
-    cam3d.position   = {360.0f, 460.0f, 2390.0f};
+    cam3d.position   = {360.0f, 380.0f, 1600.0f};
     cam3d.target     = {360.0f, 0.0f,   400.0f};
     cam3d.up         = {0.0f, 1.0f, 0.0f};
     cam3d.fovy       = 45.0f;
@@ -160,6 +160,23 @@ static Matrix shape_matrix(float cx, float y_3d, float cz, float sz, float radiu
     return MatrixMultiply(MatrixScale(s, s, s), MatrixTranslate(cx, y_3d, cz));
 }
 
+// Cone (triangle) needs a -90° X rotation so the apex points toward the camera
+static Matrix cone_matrix(float cx, float y_3d, float cz, float sz, float radius_scale) {
+    float s = sz * radius_scale;
+    Matrix scale = MatrixScale(s, s, s);
+    Matrix rot = MatrixRotateX(-90.0f * DEG2RAD);
+    Matrix translate = MatrixTranslate(cx, y_3d, cz);
+    return MatrixMultiply(MatrixMultiply(scale, rot), translate);
+}
+
+// Pick the correct matrix for a shape mesh (cone needs rotation)
+static Matrix make_shape_matrix(int mesh_index, float cx, float y_3d, float cz,
+                                float sz, float radius_scale) {
+    if (mesh_index == static_cast<int>(Shape::Triangle))
+        return cone_matrix(cx, y_3d, cz, sz, radius_scale);
+    return shape_matrix(cx, y_3d, cz, sz, radius_scale);
+}
+
 // ── game_camera_system: model-to-world transforms for all 3D renderables ────
 
 void game_camera_system(entt::registry& reg, float /*dt*/) {
@@ -204,7 +221,7 @@ void game_camera_system(entt::registry& reg, float /*dt*/) {
             } else {
                 const auto& props = SHAPE_PROPS[mc.mesh_index];
                 reg.emplace_or_replace<ModelTransform>(entity,
-                    ModelTransform{shape_matrix(mc.x, 0.0f, z, mc.width, props.radius_scale),
+                    ModelTransform{make_shape_matrix(mc.mesh_index, mc.x, 0.0f, z, mc.width, props.radius_scale),
                                    mc.tint, MeshType::Shape, mc.mesh_index});
             }
         }
@@ -217,10 +234,11 @@ void game_camera_system(entt::registry& reg, float /*dt*/) {
             float y_3d = -vstate.y_offset;
             float sz = constants::PLAYER_SIZE;
             if (vstate.mode == VMode::Sliding) sz *= 0.5f;
-            const auto& props = SHAPE_PROPS[static_cast<int>(pshape.current)];
+            int shape_idx = static_cast<int>(pshape.current);
+            const auto& props = SHAPE_PROPS[shape_idx];
             reg.emplace_or_replace<ModelTransform>(entity,
-                ModelTransform{shape_matrix(pos.x, y_3d, pos.y, sz, props.radius_scale),
-                               col, MeshType::Shape, static_cast<int>(pshape.current)});
+                ModelTransform{make_shape_matrix(shape_idx, pos.x, y_3d, pos.y, sz, props.radius_scale),
+                               col, MeshType::Shape, shape_idx});
         }
     }
 
