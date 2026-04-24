@@ -14,5 +14,5 @@ void platform_pre_blit();
 // Start the platform main loop. On Emscripten this never returns.
 // On native this is a no-op — the caller runs its own while loop.
 #ifdef __EMSCRIPTEN__
-void platform_run_loop(entt::registry& reg, RenderTexture2D& target);
+void platform_run_loop(entt::registry& reg);
 #endif

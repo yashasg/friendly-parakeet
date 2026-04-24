@@ -1,23 +1,18 @@
 #include "all_systems.h"
-#include "../components/shape_mesh.h"
 #include "../components/shape_vertices.h"
 #include "../components/camera.h"
 #include "../components/rendering.h"
 #include "../components/game_state.h"
-#include "../components/song_state.h"
 #include "../constants.h"
 #include "camera_system.h"
 #include <raylib.h>
 #include <rlgl.h>
-#include <algorithm>
-#include <cmath>
 
 // ═════════════════════════════════════════════════════════════════════════════
 // 3D world draw passes — floor, obstacles, particles, shapes
 // ═════════════════════════════════════════════════════════════════════════════
 
-static void draw_floor_lines(entt::registry& reg, const FloorParams& fp) {
-    (void)reg;
+static void draw_floor_lines(const FloorParams& fp) {
     static const Color LANE_COLORS[3] = {
         {80, 200, 255, 255}, {255, 100, 100, 255}, {100, 255, 100, 255},
     };
@@ -153,37 +148,17 @@ static void draw_meshes(entt::registry& reg) {
 
 void game_render_system(entt::registry& reg, float /*alpha*/) {
     auto& gs = reg.ctx().get<GameState>();
-    auto& camera = reg.ctx().get<Camera3D>();
+    auto& camera = reg.ctx().get<GameCamera>().cam;
 
     ClearBackground({15, 15, 25, 255});
 
     rlSetClipPlanes(1.0, 5000.0);
     BeginMode3D(camera);
 
-    // Floor pulse params
-    FloorParams floor_params{};
-    {
-        auto* song = reg.ctx().find<SongState>();
-        float pulse = 0.0f;
-        if (song && song->playing && song->beat_period > 0.0f && song->current_beat >= 0) {
-            float time_since_beat = song->song_time
-                - (song->offset + static_cast<float>(song->current_beat) * song->beat_period);
-            float pulse_t = std::clamp(time_since_beat / constants::FLOOR_PULSE_DECAY, 0.0f, 1.0f);
-            float ease = 1.0f - (1.0f - pulse_t) * (1.0f - pulse_t);
-            pulse = 1.0f - ease;
-        }
-        float alpha_f = constants::FLOOR_ALPHA_REST
-            + (constants::FLOOR_ALPHA_PEAK - constants::FLOOR_ALPHA_REST) * pulse;
-        float scale = constants::FLOOR_SCALE_REST
-            + (constants::FLOOR_SCALE_PEAK - constants::FLOOR_SCALE_REST) * pulse;
-        floor_params.size  = constants::FLOOR_SHAPE_SIZE * scale;
-        floor_params.half  = floor_params.size / 2.0f;
-        floor_params.thick = constants::FLOOR_OUTLINE_THICK;
-        floor_params.alpha = static_cast<uint8_t>(alpha_f);
-    }
+    const auto& floor_params = reg.ctx().get<FloorParams>();
 
     // ── Render passes ──────────────────────────────────────────
-    draw_floor_lines(reg, floor_params);
+    draw_floor_lines(floor_params);
     draw_floor_rings(floor_params);
 
     if (gs.phase != GamePhase::Title) {

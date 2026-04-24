@@ -8,6 +8,10 @@
 // Returns true on success.  On failure, TextContext fonts remain invalid.
 bool text_init(TextContext& ctx, const char* font_path);
 
+// Load fonts from default search paths (exe dir, local assets, system fonts).
+// Returns true on success.
+bool text_init_default(TextContext& ctx);
+
 // Unload fonts.
 void text_shutdown(TextContext& ctx);
 

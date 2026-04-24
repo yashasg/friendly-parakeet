@@ -92,7 +92,6 @@ list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "/input_system\\.cpp$")
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "song_playback_system\\.cpp$")
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "text_renderer\\.cpp$")
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "camera_system\\.cpp$")
-list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "shape_mesh_builder\\.cpp$")
 
 add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES} ${GAMEOBJECT_SOURCES})
 target_include_directories(shapeshifter_lib PUBLIC
@@ -122,7 +121,6 @@ add_executable(shapeshifter
     app/game_loop.cpp
     app/platform_display.cpp
     app/systems/camera_system.cpp
-    app/systems/shape_mesh_builder.cpp
     app/systems/game_render_system.cpp
     app/systems/ui_render_system.cpp
     app/systems/input_system.cpp
@@ -330,6 +328,19 @@ add_custom_command(TARGET shapeshifter POST_BUILD
     COMMENT "Copying shared constants"
 )
 
+# Copy shader files next to the executable
+file(GLOB SHADER_FILES ${CMAKE_SOURCE_DIR}/content/shaders/*.vs ${CMAKE_SOURCE_DIR}/content/shaders/*.fs)
+if(SHADER_FILES)
+    add_custom_command(TARGET shapeshifter POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+            "$<TARGET_FILE_DIR:shapeshifter>/content/shaders"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${SHADER_FILES}
+            "$<TARGET_FILE_DIR:shapeshifter>/content/shaders/"
+        COMMENT "Copying shader assets"
+    )
+endif()
+
 # ── Tests + Benchmarks (native only) ─────────────────────────
 if(NOT EMSCRIPTEN)
     enable_testing()
@@ -339,7 +350,6 @@ if(NOT EMSCRIPTEN)
         ${TEST_SOURCES}
         app/util/file_logger.cpp
         app/systems/camera_system.cpp
-        app/systems/shape_mesh_builder.cpp
         app/systems/song_playback_system.cpp
         app/platform_display.cpp
     )

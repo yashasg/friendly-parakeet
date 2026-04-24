@@ -3,9 +3,12 @@
 #include <raylib.h>
 
 // ── Camera configuration ────────────────────────────────────────────────────
-// Game logic and 3D world share the same coordinate space (game-pixel units).
-// No scaling is applied; the model-to-world transform is scale + translate
-// in game coordinates directly.
+// Game logic and 3D world share the same coordinate space (1 unit = 1 cm).
+// The model-to-world transform is scale + translate in game coordinates.
+
+// Tagged camera singletons so the registry distinguishes 3D vs 2D.
+struct GameCamera  { Camera3D cam; };
+struct UICamera    { Camera2D cam; };
 
 // Per-frame render parameters computed from SongState beat pulse.
 struct FloorParams {

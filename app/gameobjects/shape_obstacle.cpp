@@ -3,10 +3,7 @@
 #include "../components/obstacle_data.h"
 #include "../components/transform.h"
 #include "../components/rendering.h"
-#include "../components/shape_mesh.h"
 #include "../constants.h"
-
-constexpr float OBSTACLE_HEIGHT = 20.0f;
 
 static entt::entity add_slab_child(entt::registry& reg, entt::entity parent,
                                    float x, float w, float d, float h, Color tint) {
@@ -31,20 +28,17 @@ void spawn_obstacle_meshes(entt::registry& reg, entt::entity logical) {
     auto& col = reg.get<Color>(logical);
     auto& dsz = reg.get<DrawSize>(logical);
 
-    ShapeObstacleGO go{};
-
     switch (obs.kind) {
         case ObstacleKind::ShapeGate: {
-            go.meshes[go.mesh_count++] =
-                add_slab_child(reg, logical, 0, pos.x-50, dsz.h, OBSTACLE_HEIGHT, col);
-            go.meshes[go.mesh_count++] =
-                add_slab_child(reg, logical, pos.x+50,
-                    constants::SCREEN_W-pos.x-50, dsz.h, OBSTACLE_HEIGHT, col);
+            add_slab_child(reg, logical, 0, pos.x-50, dsz.h,
+                           constants::OBSTACLE_3D_HEIGHT, col);
+            add_slab_child(reg, logical, pos.x+50,
+                constants::SCREEN_W-pos.x-50, dsz.h,
+                constants::OBSTACLE_3D_HEIGHT, col);
             auto* req = reg.try_get<RequiredShape>(logical);
             if (req)
-                go.meshes[go.mesh_count++] =
-                    add_shape_child(reg, logical, req->shape, pos.x, dsz.h/2,
-                                    40, {col.r, col.g, col.b, 120});
+                add_shape_child(reg, logical, req->shape, pos.x, dsz.h/2,
+                                40, {col.r, col.g, col.b, 120});
             break;
         }
         case ObstacleKind::LaneBlock: {
@@ -52,9 +46,8 @@ void spawn_obstacle_meshes(entt::registry& reg, entt::entity logical) {
             if (blocked)
                 for (int i = 0; i < 3; ++i)
                     if ((blocked->mask >> i) & 1)
-                        go.meshes[go.mesh_count++] =
-                            add_slab_child(reg, logical, constants::LANE_X[i]-dsz.w/2,
-                                           dsz.w, dsz.h, OBSTACLE_HEIGHT, col);
+                        add_slab_child(reg, logical, constants::LANE_X[i]-dsz.w/2,
+                                       dsz.w, dsz.h, constants::OBSTACLE_3D_HEIGHT, col);
             break;
         }
         case ObstacleKind::ComboGate: {
@@ -62,18 +55,16 @@ void spawn_obstacle_meshes(entt::registry& reg, entt::entity logical) {
             if (blocked)
                 for (int i = 0; i < 3; ++i)
                     if ((blocked->mask >> i) & 1)
-                        go.meshes[go.mesh_count++] =
-                            add_slab_child(reg, logical, constants::LANE_X[i]-120,
-                                           240.0f, dsz.h, OBSTACLE_HEIGHT, col);
+                        add_slab_child(reg, logical, constants::LANE_X[i]-120,
+                                       240.0f, dsz.h, constants::OBSTACLE_3D_HEIGHT, col);
             auto* req = reg.try_get<RequiredShape>(logical);
             if (req) {
                 int open = 1;
                 if (blocked)
                     for (int i = 0; i < 3; ++i)
                         if (!((blocked->mask >> i) & 1)) { open = i; break; }
-                go.meshes[go.mesh_count++] =
-                    add_shape_child(reg, logical, req->shape, constants::LANE_X[open],
-                                    dsz.h/2, 30, {255, 255, 255, 180});
+                add_shape_child(reg, logical, req->shape, constants::LANE_X[open],
+                                dsz.h/2, 30, {255, 255, 255, 180});
             }
             break;
         }
@@ -81,30 +72,27 @@ void spawn_obstacle_meshes(entt::registry& reg, entt::entity logical) {
             auto* rlane = reg.try_get<RequiredLane>(logical);
             for (int i = 0; i < 3; ++i)
                 if (!rlane || i != rlane->lane)
-                    go.meshes[go.mesh_count++] =
-                        add_slab_child(reg, logical, constants::LANE_X[i]-120,
-                                       240.0f, dsz.h, OBSTACLE_HEIGHT, col);
+                    add_slab_child(reg, logical, constants::LANE_X[i]-120,
+                                   240.0f, dsz.h, constants::OBSTACLE_3D_HEIGHT, col);
             auto* req = reg.try_get<RequiredShape>(logical);
             if (req && rlane)
-                go.meshes[go.mesh_count++] =
-                    add_shape_child(reg, logical, req->shape,
-                                    constants::LANE_X[rlane->lane],
-                                    dsz.h/2, 30, {255, 255, 255, 180});
+                add_shape_child(reg, logical, req->shape,
+                                constants::LANE_X[rlane->lane],
+                                dsz.h/2, 30, {255, 255, 255, 180});
             break;
         }
         default:
             break;
     }
-
-    if (go.mesh_count > 0)
-        reg.emplace<ShapeObstacleGO>(logical, go);
 }
 
-void destroy_obstacle_meshes(entt::registry& reg, entt::entity logical) {
-    auto* go = reg.try_get<ShapeObstacleGO>(logical);
-    if (!go) return;
-    for (int i = 0; i < go->mesh_count; ++i) {
-        if (go->meshes[i] != entt::null && reg.valid(go->meshes[i]))
-            reg.destroy(go->meshes[i]);
+// on_destroy listener: destroy all MeshChild entities that reference this parent.
+void on_obstacle_destroy(entt::registry& reg, entt::entity parent) {
+    auto view = reg.view<MeshChild>();
+    for (auto it = view.begin(); it != view.end(); ) {
+        auto e = *it;
+        ++it;
+        if (view.get<MeshChild>(e).parent == parent)
+            reg.destroy(e);
     }
 }

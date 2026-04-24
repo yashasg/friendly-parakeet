@@ -11,6 +11,11 @@ void hit_test_system(entt::registry& reg);
 // Phase 0.5: Test player AI (injects into InputState key flags)
 void test_player_system(entt::registry& reg, float dt);
 
+// Test player initialization (call once from main if --test-player is set)
+enum class TestPlayerSkill : uint8_t;
+void test_player_init(entt::registry& reg, TestPlayerSkill skill,
+                      const char* difficulty);
+
 // Phase 2: Game State
 void game_state_system(entt::registry& reg, float dt);
 void level_select_system(entt::registry& reg, float dt);

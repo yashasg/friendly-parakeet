@@ -10,6 +10,7 @@
 #include "../components/lifetime.h"
 #include "../components/scoring.h"
 #include "../components/camera.h"
+#include "../components/song_state.h"
 #include "../constants.h"
 #include "../platform_display.h"
 #include <raylib.h>
@@ -17,23 +18,35 @@
 #include <rlgl.h>
 #include <algorithm>
 
+// Shape properties: radius_scale, height_ratio (height / radius)
+const ShapeProps SHAPE_PROPS[4] = {
+    { 0.5f, 0.6f },  // Circle:   cylinder
+    { 0.5f, 0.6f },  // Square:   cube
+    { 0.5f, 0.6f },  // Triangle: cone
+    { 0.6f, 1.17f }, // Hexagon:  cylinder (6 slices)
+};
+
 namespace camera {
 
-ShapeMeshes build_shape_meshes() {
+static ShapeMeshes build_shape_meshes() {
     ShapeMeshes sm = {};
-    for (int i = 0; i < 4; ++i) {
-        sm.shapes[i] = build_prism(SHAPE_TABLE[i]);
-        UploadMesh(&sm.shapes[i], false);
-    }
-    sm.slab = build_unit_slab();
-    UploadMesh(&sm.slab, false);
-    sm.quad = build_unit_quad();
-    UploadMesh(&sm.quad, false);
+
+    sm.shapes[0] = GenMeshCylinder(1.0f, SHAPE_PROPS[0].height_ratio, 12);
+    sm.shapes[1] = GenMeshCube(2.0f, SHAPE_PROPS[1].height_ratio, 2.0f);
+    sm.shapes[2] = GenMeshCone(1.0f, SHAPE_PROPS[2].height_ratio, 3);
+    sm.shapes[3] = GenMeshCylinder(1.0f, SHAPE_PROPS[3].height_ratio, 6);
+    sm.slab = GenMeshCube(1.0f, 1.0f, 1.0f);
+    sm.quad = GenMeshPlane(1.0f, 1.0f, 1, 1);
+
+    Shader shader = LoadShader("content/shaders/mesh.vs", "content/shaders/mesh.fs");
     sm.material = LoadMaterialDefault();
+    sm.material.shader = shader;
+
     return sm;
 }
 
-void unload_shape_meshes(ShapeMeshes& sm) {
+static void unload_shape_meshes(ShapeMeshes& sm) {
+    UnloadShader(sm.material.shader);
     for (int i = 0; i < 4; ++i)
         UnloadMesh(sm.shapes[i]);
     UnloadMesh(sm.slab);
@@ -41,12 +54,54 @@ void unload_shape_meshes(ShapeMeshes& sm) {
     UnloadMaterial(sm.material);
 }
 
+void init(entt::registry& reg) {
+    // 3D gameplay camera
+    Camera3D cam3d = {};
+    cam3d.position   = {360.0f, 460.0f, 2390.0f};
+    cam3d.target     = {360.0f, 0.0f,   400.0f};
+    cam3d.up         = {0.0f, 1.0f, 0.0f};
+    cam3d.fovy       = 45.0f;
+    cam3d.projection = CAMERA_PERSPECTIVE;
+    reg.ctx().emplace<GameCamera>(GameCamera{cam3d});
+
+    // 2D UI camera (identity — screen-space, no transform)
+    Camera2D cam2d = {};
+    cam2d.offset   = {0, 0};
+    cam2d.target   = {0, 0};
+    cam2d.rotation = 0.0f;
+    cam2d.zoom     = 1.0f;
+    reg.ctx().emplace<UICamera>(UICamera{cam2d});
+
+    // Render targets
+    RenderTexture2D world = LoadRenderTexture(
+        constants::SCREEN_W, constants::SCREEN_H);
+    SetTextureFilter(world.texture, TEXTURE_FILTER_BILINEAR);
+    RenderTexture2D ui = LoadRenderTexture(
+        constants::SCREEN_W, constants::SCREEN_H);
+    SetTextureFilter(ui.texture, TEXTURE_FILTER_BILINEAR);
+    reg.ctx().emplace<RenderTargets>(RenderTargets{world, ui});
+
+    reg.ctx().emplace<ScreenTransform>();
+    reg.ctx().emplace<FloorParams>();
+    reg.ctx().emplace<ShapeMeshes>(build_shape_meshes());
+}
+
+void shutdown(entt::registry& reg) {
+    unload_shape_meshes(reg.ctx().get<ShapeMeshes>());
+    auto& targets = reg.ctx().get<RenderTargets>();
+    UnloadRenderTexture(targets.world);
+    UnloadRenderTexture(targets.ui);
+}
+
 } // namespace camera
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
+// GenMeshCube is centered at origin. Translate to position the slab's
+// bottom-left corner at (x, 0, z) with the given dimensions.
 static Matrix slab_matrix(float x, float z, float w, float h, float d) {
-    return MatrixMultiply(MatrixScale(w, h, d), MatrixTranslate(x, 0, z));
+    return MatrixMultiply(MatrixScale(w, h, d),
+                          MatrixTranslate(x + w/2, h/2, z + d/2));
 }
 
 static Matrix shape_matrix(float cx, float y_3d, float cz, float sz, float radius_scale) {
@@ -57,10 +112,6 @@ static Matrix shape_matrix(float cx, float y_3d, float cz, float sz, float radiu
 // ── game_camera_system: model-to-world transforms for all 3D renderables ────
 
 void game_camera_system(entt::registry& reg, float /*dt*/) {
-    constexpr float OBSTACLE_HEIGHT = 20.0f;
-    constexpr float LOWBAR_HEIGHT   = 30.0f;
-    constexpr float HIGHBAR_HEIGHT  = 10.0f;
-
     // 1. Single-slab obstacle transforms
     {
         auto view = reg.view<ObstacleTag, Position, Obstacle, Color, DrawSize>();
@@ -69,17 +120,17 @@ void game_camera_system(entt::registry& reg, float /*dt*/) {
                 case ObstacleKind::LanePushLeft:
                 case ObstacleKind::LanePushRight:
                     reg.emplace_or_replace<ModelTransform>(entity,
-                        ModelTransform{slab_matrix(pos.x-dsz.w/2, pos.y, dsz.w, dsz.h, OBSTACLE_HEIGHT),
+                        ModelTransform{slab_matrix(pos.x-dsz.w/2, pos.y, dsz.w, dsz.h, constants::OBSTACLE_3D_HEIGHT),
                                        col, MeshType::Slab, 0});
                     break;
                 case ObstacleKind::LowBar:
                     reg.emplace_or_replace<ModelTransform>(entity,
-                        ModelTransform{slab_matrix(0, pos.y, static_cast<float>(constants::SCREEN_W), dsz.h, LOWBAR_HEIGHT),
+                        ModelTransform{slab_matrix(0, pos.y, static_cast<float>(constants::SCREEN_W), dsz.h, constants::LOWBAR_3D_HEIGHT),
                                        col, MeshType::Slab, 0});
                     break;
                 case ObstacleKind::HighBar:
                     reg.emplace_or_replace<ModelTransform>(entity,
-                        ModelTransform{slab_matrix(0, pos.y, static_cast<float>(constants::SCREEN_W), dsz.h, HIGHBAR_HEIGHT),
+                        ModelTransform{slab_matrix(0, pos.y, static_cast<float>(constants::SCREEN_W), dsz.h, constants::HIGHBAR_3D_HEIGHT),
                                        col, MeshType::Slab, 0});
                     break;
                 default:
@@ -92,20 +143,17 @@ void game_camera_system(entt::registry& reg, float /*dt*/) {
     {
         auto view = reg.view<MeshChild>();
         for (auto [entity, mc] : view.each()) {
-            if (!reg.valid(mc.parent)) continue;
-            auto* parent_pos = reg.try_get<Position>(mc.parent);
-            if (!parent_pos) continue;
-
-            float z = parent_pos->y + mc.z_offset;
+            auto& parent_pos = reg.get<Position>(mc.parent);
+            float z = parent_pos.y + mc.z_offset;
 
             if (mc.mesh_type == MeshType::Slab) {
                 reg.emplace_or_replace<ModelTransform>(entity,
                     ModelTransform{slab_matrix(mc.x, z, mc.width, mc.depth, mc.height),
                                    mc.tint, MeshType::Slab, 0});
             } else {
-                const auto& desc = SHAPE_TABLE[mc.mesh_index];
+                const auto& props = SHAPE_PROPS[mc.mesh_index];
                 reg.emplace_or_replace<ModelTransform>(entity,
-                    ModelTransform{shape_matrix(mc.x, 0.0f, z, mc.width, desc.radius_scale),
+                    ModelTransform{shape_matrix(mc.x, 0.0f, z, mc.width, props.radius_scale),
                                    mc.tint, MeshType::Shape, mc.mesh_index});
             }
         }
@@ -118,9 +166,9 @@ void game_camera_system(entt::registry& reg, float /*dt*/) {
             float y_3d = -vstate.y_offset;
             float sz = constants::PLAYER_SIZE;
             if (vstate.mode == VMode::Sliding) sz *= 0.5f;
-            const auto& desc = SHAPE_TABLE[static_cast<int>(pshape.current)];
+            const auto& props = SHAPE_PROPS[static_cast<int>(pshape.current)];
             reg.emplace_or_replace<ModelTransform>(entity,
-                ModelTransform{shape_matrix(pos.x, y_3d, pos.y, sz, desc.radius_scale),
+                ModelTransform{shape_matrix(pos.x, y_3d, pos.y, sz, props.radius_scale),
                                col, MeshType::Shape, static_cast<int>(pshape.current)});
         }
     }
@@ -138,6 +186,28 @@ void game_camera_system(entt::registry& reg, float /*dt*/) {
             reg.emplace_or_replace<ModelTransform>(entity,
                 ModelTransform{mat, col, MeshType::Quad, 0});
         }
+    }
+
+    // 5. Floor pulse params (SongState → FloorParams singleton)
+    {
+        auto& fp = reg.ctx().get<FloorParams>();
+        auto* song = reg.ctx().find<SongState>();
+        float pulse = 0.0f;
+        if (song && song->playing && song->beat_period > 0.0f && song->current_beat >= 0) {
+            float time_since_beat = song->song_time
+                - (song->offset + static_cast<float>(song->current_beat) * song->beat_period);
+            float pulse_t = std::clamp(time_since_beat / constants::FLOOR_PULSE_DECAY, 0.0f, 1.0f);
+            float ease = 1.0f - (1.0f - pulse_t) * (1.0f - pulse_t);
+            pulse = 1.0f - ease;
+        }
+        float alpha_f = constants::FLOOR_ALPHA_REST
+            + (constants::FLOOR_ALPHA_PEAK - constants::FLOOR_ALPHA_REST) * pulse;
+        float scale = constants::FLOOR_SCALE_REST
+            + (constants::FLOOR_SCALE_PEAK - constants::FLOOR_SCALE_REST) * pulse;
+        fp.size  = constants::FLOOR_SHAPE_SIZE * scale;
+        fp.half  = fp.size / 2.0f;
+        fp.thick = constants::FLOOR_OUTLINE_THICK;
+        fp.alpha = static_cast<uint8_t>(alpha_f);
     }
 }
 
@@ -161,7 +231,7 @@ void ui_camera_system(entt::registry& reg, float /*dt*/) {
 
     // 2. Popup screen-space projection
     {
-        auto& cam = reg.ctx().get<Camera3D>();
+        auto& cam = reg.ctx().get<GameCamera>().cam;
         auto view = reg.view<ScorePopup, Position>();
         for (auto [entity, popup, pos] : view.each()) {
             Vector3 world_pos = {pos.x, 5.0f, pos.y};

@@ -1,18 +1,21 @@
 #pragma once
 #include "../components/camera.h"
-#include "../components/shape_mesh.h"
 #include <raylib.h>
+#include <entt/entt.hpp>
 
 namespace camera {
 
 struct ShapeMeshes {
-    Mesh     shapes[4];
-    Mesh     slab;
-    Mesh     quad;
-    Material material;
+    Mesh     shapes[4];  // Circle, Square, Triangle, Hexagon
+    Mesh     slab;       // unit cube for obstacles
+    Mesh     quad;       // flat quad for particles
+    Material material;   // shared material with directional shading shader
 };
 
-ShapeMeshes build_shape_meshes();
-void        unload_shape_meshes(ShapeMeshes& sm);
+// Initialize camera, screen transform, and GPU meshes into registry.
+void init(entt::registry& reg);
+
+// Unload GPU meshes and shader.
+void shutdown(entt::registry& reg);
 
 } // namespace camera

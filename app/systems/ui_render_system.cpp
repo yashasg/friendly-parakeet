@@ -1,4 +1,5 @@
 #include "all_systems.h"
+#include "../components/camera.h"
 #include "../components/transform.h"
 #include "../components/player.h"
 #include "../components/obstacle.h"
@@ -494,7 +495,7 @@ void ui_render_system(entt::registry& reg, float /*alpha*/) {
     auto& text_ctx = reg.ctx().get<TextContext>();
     auto& ui = reg.ctx().get<UIState>();
     auto& gs = reg.ctx().get<GameState>();
-    auto& ui_cam = reg.ctx().get<Camera2D>();
+    auto& ui_cam = reg.ctx().get<UICamera>().cam;
 
     ClearBackground(BLANK);
     BeginMode2D(ui_cam);

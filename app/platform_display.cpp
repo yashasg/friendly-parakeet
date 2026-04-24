@@ -39,15 +39,14 @@ void platform_pre_blit() {
 static struct {
     entt::registry* reg;
     float accumulator;
-    RenderTexture2D target;
 } g_state;
 
 static void frame_callback() {
-    game_loop_frame(*g_state.reg, g_state.accumulator, g_state.target);
+    game_loop_frame(*g_state.reg, g_state.accumulator);
 }
 
-void platform_run_loop(entt::registry& reg, RenderTexture2D& target) {
-    g_state = { &reg, 0.0f, target };
+void platform_run_loop(entt::registry& reg) {
+    g_state = { &reg, 0.0f };
     emscripten_set_main_loop(frame_callback, 0, 1);
 }
 

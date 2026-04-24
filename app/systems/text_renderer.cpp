@@ -1,6 +1,7 @@
 #include "text_renderer.h"
 #include <raylib.h>
 #include <cstdio>
+#include <string>
 
 // ── Helper: pick font by size index ─────────────────────────
 static const Font& pick_font(const TextContext& ctx, FontSize font_size) {
@@ -39,6 +40,25 @@ bool text_init(TextContext& ctx, const char* font_path) {
 
     ctx.loaded = true;
     return true;
+}
+
+bool text_init_default(TextContext& ctx) {
+    std::string exe_font = std::string(GetApplicationDirectory())
+                         + "assets/fonts/LiberationMono-Regular.ttf";
+    const char* font_paths[] = {
+        exe_font.c_str(),
+        "assets/fonts/LiberationMono-Regular.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
+    };
+    for (const char* path : font_paths) {
+        if (text_init(ctx, path)) {
+            TraceLog(LOG_INFO, "Loaded font: %s", path);
+            return true;
+        }
+    }
+    TraceLog(LOG_ERROR, "Could not load any TTF font");
+    return false;
 }
 
 // ── text_shutdown ───────────────────────────────────────────

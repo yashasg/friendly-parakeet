@@ -27,6 +27,11 @@ constexpr float SPAWN_Y           = -120.0f;
 constexpr float DESTROY_Y         = 1400.0f;
 constexpr float BASE_SCROLL_SPEED = 400.0f;
 
+// 3D slab heights for obstacle rendering (model-to-world Y scale)
+constexpr float OBSTACLE_3D_HEIGHT = 20.0f;
+constexpr float LOWBAR_3D_HEIGHT   = 30.0f;
+constexpr float HIGHBAR_3D_HEIGHT  = 10.0f;
+
 // ── Burnout Zones (distance from player, in px) ──
 constexpr float ZONE_SAFE_MAX     = 700.0f;
 constexpr float ZONE_SAFE_MIN     = 500.0f;

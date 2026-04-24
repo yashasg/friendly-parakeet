@@ -9,10 +9,14 @@
 #include "../components/obstacle_data.h"
 #include "../components/rhythm.h"
 #include "../components/scoring.h"
+#include "../components/session_log.h"
 #include "session_logger.h"
 #include "../constants.h"
 
 #include <cmath>
+#include <ctime>
+#include <cstdio>
+#include <cstring>
 #include <random>
 
 // ── Helpers ──────────────────────────────────────────────────
@@ -492,4 +496,39 @@ void test_player_system(entt::registry& reg, float dt) {
             state->remove_action(i);
         }
     }
+}
+
+void test_player_init(entt::registry& reg, TestPlayerSkill skill,
+                      const char* difficulty) {
+    auto& lss = reg.ctx().get<LevelSelectState>();
+    lss.selected_level = 1;
+    for (int d = 0; d < 3; ++d)
+        if (std::strcmp(LevelSelectState::DIFFICULTY_KEYS[d], difficulty) == 0)
+            { lss.selected_difficulty = d; break; }
+
+    auto& tp_state = reg.ctx().emplace<TestPlayerState>();
+    tp_state.skill  = skill;
+    tp_state.active = true;
+    tp_state.rng.seed(static_cast<unsigned>(std::time(nullptr)));
+
+    static const char* skill_names[] = { "pro", "good", "bad" };
+    TraceLog(LOG_INFO, "TEST PLAYER: skill=%s",
+             skill_names[static_cast<int>(skill)]);
+
+    auto& slog = reg.ctx().emplace<SessionLog>();
+    std::time_t now = std::time(nullptr);
+    std::tm tm{};
+    localtime_r(&now, &tm);
+    char log_filename[256];
+    std::snprintf(log_filename, sizeof(log_filename),
+        "%ssession_%s_%04d%02d%02d_%02d%02d%02d.log",
+        GetApplicationDirectory(),
+        skill_names[static_cast<int>(skill)],
+        tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+        tm.tm_hour, tm.tm_min, tm.tm_sec);
+    session_log_open(slog, log_filename);
+    TraceLog(LOG_INFO, "SESSION LOG: %s", log_filename);
+
+    reg.on_construct<ObstacleTag>().connect<&session_log_on_obstacle_spawn>();
+    reg.on_construct<ScoredTag>().connect<&session_log_on_scored>();
 }
