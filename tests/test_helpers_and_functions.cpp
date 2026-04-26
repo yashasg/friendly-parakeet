@@ -55,21 +55,38 @@ TEST_CASE("timing_multiplier: Bad gives 0.25x", "[timing]") {
 }
 
 // ── window_scale_for_tier ────────────────────────────────────
+// Spec (rhythm-spec.md §5/§7): better timing → smaller scale → window collapses sooner.
 
-TEST_CASE("window_scale: Perfect gives 1.50", "[timing]") {
-    CHECK(window_scale_for_tier(TimingTier::Perfect) == 1.50f);
+TEST_CASE("window_scale: Perfect gives 0.50", "[timing]") {
+    CHECK(window_scale_for_tier(TimingTier::Perfect) == 0.50f);
 }
 
-TEST_CASE("window_scale: Good gives 1.00", "[timing]") {
-    CHECK(window_scale_for_tier(TimingTier::Good) == 1.00f);
+TEST_CASE("window_scale: Good gives 0.75", "[timing]") {
+    CHECK(window_scale_for_tier(TimingTier::Good) == 0.75f);
 }
 
-TEST_CASE("window_scale: Ok gives 0.75", "[timing]") {
-    CHECK(window_scale_for_tier(TimingTier::Ok) == 0.75f);
+TEST_CASE("window_scale: Ok gives 1.00", "[timing]") {
+    CHECK(window_scale_for_tier(TimingTier::Ok) == 1.00f);
 }
 
-TEST_CASE("window_scale: Bad gives 0.50", "[timing]") {
-    CHECK(window_scale_for_tier(TimingTier::Bad) == 0.50f);
+TEST_CASE("window_scale: Bad gives 1.00 (no-op, miss handled elsewhere)", "[timing]") {
+    CHECK(window_scale_for_tier(TimingTier::Bad) == 1.00f);
+}
+
+// Regression for issue #223 — values must be strictly ordered:
+// Perfect(0.50) < Good(0.75) < Ok(1.00) == Bad(1.00).
+// If this order inverts again the inversion bug has regressed.
+TEST_CASE("window_scale: ordering — better tier gives smaller scale", "[timing][regression]") {
+    CHECK(window_scale_for_tier(TimingTier::Perfect) < window_scale_for_tier(TimingTier::Good));
+    CHECK(window_scale_for_tier(TimingTier::Good)    < window_scale_for_tier(TimingTier::Ok));
+    CHECK(window_scale_for_tier(TimingTier::Ok)     == window_scale_for_tier(TimingTier::Bad));
+}
+
+TEST_CASE("window_scale: Perfect strictly shrinks, Ok/Bad are neutral", "[timing][regression]") {
+    CHECK(window_scale_for_tier(TimingTier::Perfect) <  1.0f);
+    CHECK(window_scale_for_tier(TimingTier::Good)    <  1.0f);
+    CHECK(window_scale_for_tier(TimingTier::Ok)      == 1.0f);
+    CHECK(window_scale_for_tier(TimingTier::Bad)     == 1.0f);
 }
 
 // ── song_state_compute_derived ───────────────────────────────

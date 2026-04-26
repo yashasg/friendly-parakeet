@@ -117,7 +117,7 @@ TEST_CASE("shape_window: window_scale > 1 extends Active duration", "[shape_wind
     ps.current = Shape::Circle;
     sw.phase_raw = static_cast<uint8_t>(WindowPhase::Active);
     sw.window_start = song.song_time;
-    sw.window_scale = 1.50f;  // Perfect extends to 1.5x duration
+    sw.window_scale = 1.50f;  // hypothetical extended scale (system-level test)
 
     // Advance by normal window_duration — should still be Active
     song.song_time += song.window_duration + 0.01f;
@@ -199,5 +199,61 @@ TEST_CASE("shape_window: full lifecycle MorphIn→Active→MorphOut→Idle", "[s
     shape_window_system(reg, 0.016f);
     CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::Idle));
     CHECK(ps.current == Shape::Hexagon);
+}
+
+// ── Regression tests for issue #223 (window_scale inversion) ────────────────
+// collision_system shortens the Active window by adjusting window_start backward
+// when scale < 1.0: window_start -= remaining * (1.0 - scale).
+// These tests drive that path directly so a re-inversion of window_scale_for_tier
+// would immediately break them.
+
+TEST_CASE("shape_window regression #223: Perfect scale (0.50) collapses window to <=50%", "[shape_window][rhythm][regression]") {
+    auto reg = make_rhythm_registry();
+    auto player = make_rhythm_player(reg);
+    auto& sw = reg.get<ShapeWindow>(player);
+    auto& song = reg.ctx().get<SongState>();
+
+    // Simulate what collision_system does on a Perfect hit at t=0 of the Active window.
+    // At that instant window_timer == 0, remaining == window_duration.
+    float scale = window_scale_for_tier(TimingTier::Perfect);
+    CHECK(scale == 0.50f);
+
+    sw.phase_raw  = static_cast<uint8_t>(WindowPhase::Active);
+    sw.window_start = song.song_time;
+
+    // Apply the collision_system shortening: shift window_start backward.
+    float remaining = song.window_duration;  // hit at window open (timer==0)
+    sw.window_start -= remaining * (1.0f - scale);
+
+    // The active window should now expire at (original_window_start + remaining*scale).
+    // Advance by 55% of window_duration; should already be in MorphOut.
+    song.song_time += song.window_duration * 0.55f;
+    shape_window_system(reg, 0.016f);
+
+    CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::MorphOut));
+}
+
+TEST_CASE("shape_window regression #223: Ok scale (1.00) leaves window duration unchanged", "[shape_window][rhythm][regression]") {
+    auto reg = make_rhythm_registry();
+    auto player = make_rhythm_player(reg);
+    auto& sw = reg.get<ShapeWindow>(player);
+    auto& song = reg.ctx().get<SongState>();
+
+    float scale = window_scale_for_tier(TimingTier::Ok);
+    CHECK(scale == 1.00f);
+
+    sw.phase_raw    = static_cast<uint8_t>(WindowPhase::Active);
+    sw.window_start = song.song_time;
+    // scale == 1.0 → no window_start adjustment, no extension.
+
+    // Advance by 90% of window_duration — should still be Active.
+    song.song_time += song.window_duration * 0.90f;
+    shape_window_system(reg, 0.016f);
+    CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::Active));
+
+    // Advance past the full window_duration — should transition to MorphOut.
+    song.song_time += song.window_duration * 0.15f;
+    shape_window_system(reg, 0.016f);
+    CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::MorphOut));
 }
 
