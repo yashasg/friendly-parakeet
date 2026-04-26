@@ -1,6 +1,7 @@
 #include "all_systems.h"
 #include "../components/game_state.h"
 #include "../components/player.h"
+#include "../components/rhythm.h"
 #include "../components/transform.h"
 #include "../constants.h"
 #include <cmath>
@@ -11,10 +12,16 @@ void player_movement_system(entt::registry& reg, float dt) {
     auto view = reg.view<PlayerTag, Position, PlayerShape, Lane, VerticalState>();
     for (auto [entity, pos, pshape, lane, vstate] : view.each()) {
 
-        // Morph animation
-        if (pshape.morph_t < 1.0f) {
-            pshape.morph_t += dt / constants::MORPH_DURATION;
-            if (pshape.morph_t > 1.0f) pshape.morph_t = 1.0f;
+        // Morph animation — freeplay only.
+        // In rhythm mode shape_window_system owns morph_t (derives from song_time);
+        // writing it here too would double-update it every tick. (#207)
+        {
+            auto* song = reg.ctx().find<SongState>();
+            bool rhythm_mode = (song != nullptr && song->playing);
+            if (!rhythm_mode && pshape.morph_t < 1.0f) {
+                pshape.morph_t += dt / constants::MORPH_DURATION;
+                if (pshape.morph_t > 1.0f) pshape.morph_t = 1.0f;
+            }
         }
 
         // Lane transition
