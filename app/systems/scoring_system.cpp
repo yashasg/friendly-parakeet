@@ -1,4 +1,5 @@
 #include "all_systems.h"
+#include "burnout_helpers.h"
 #include "../components/game_state.h"
 #include "../components/scoring.h"
 #include "../components/burnout.h"
@@ -7,21 +8,12 @@
 #include "../components/rendering.h"
 #include "../components/lifetime.h"
 #include "../components/audio.h"
+#include "../components/haptics.h"
+#include "../components/settings.h"
 #include "../components/difficulty.h"
 #include "../components/rhythm.h"
 #include "../constants.h"
 #include <cmath>
-
-static float multiplier_for_zone(BurnoutZone zone) {
-    switch (zone) {
-        case BurnoutZone::None:   return constants::MULT_SAFE;
-        case BurnoutZone::Safe:   return constants::MULT_SAFE;
-        case BurnoutZone::Risky:  return constants::MULT_RISKY;
-        case BurnoutZone::Danger: return constants::MULT_DANGER;
-        case BurnoutZone::Dead:   return constants::MULT_CLUTCH;
-    }
-    return 1.0f;
-}
 
 static uint8_t tier_for_multiplier(float mult) {
     if (mult >= 5.0f) return 5;
@@ -36,7 +28,6 @@ void scoring_system(entt::registry& reg, float dt) {
     if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
 
     auto& score   = reg.ctx().get<ScoreState>();
-    auto& burnout = reg.ctx().get<BurnoutState>();
     auto& config  = reg.ctx().get<DifficultyConfig>();
 
     // Distance bonus
@@ -63,7 +54,23 @@ void scoring_system(entt::registry& reg, float dt) {
             continue;
         }
 
-        float burnout_mult = multiplier_for_zone(burnout.zone);
+        // LanePush is passive scenery — excluded from the burnout ladder:
+        // no score popup, no chain contribution, no best_burnout update.
+        if (obs.kind == ObstacleKind::LanePushLeft ||
+            obs.kind == ObstacleKind::LanePushRight) {
+            reg.remove<Obstacle>(entity);
+            reg.remove<ScoredTag>(entity);
+            continue;
+        }
+
+        // Use the burnout multiplier banked at press time; fall back to
+        // MULT_SAFE (×1.0) for no-op clears where the player pressed nothing.
+        float burnout_mult;
+        if (auto* banked = reg.try_get<BankedBurnout>(entity)) {
+            burnout_mult = banked->multiplier;
+        } else {
+            burnout_mult = constants::MULT_SAFE;
+        }
 
         // Check for timing grade (rhythm mode)
         float timing_mult = 1.0f;
@@ -143,9 +150,17 @@ void scoring_system(entt::registry& reg, float dt) {
 
         audio_push(reg.ctx().get<AudioQueue>(), SFX::BurnoutBank);
 
+        // NearMiss haptic: survived a score in the most dangerous zone (Dead = 5× mult)
+        if (burnout_mult >= constants::MULT_CLUTCH) {
+            auto* hq = reg.ctx().find<HapticQueue>();
+            auto* st = reg.ctx().find<SettingsState>();
+            if (hq) haptic_push(*hq, !st || st->haptics_enabled, HapticEvent::NearMiss);
+        }
+
         reg.remove<Obstacle>(entity);
         reg.remove<ScoredTag>(entity);
         if (timing) reg.remove<TimingGrade>(entity);
+        if (reg.any_of<BankedBurnout>(entity)) reg.remove<BankedBurnout>(entity);
     }
 
     // Smooth score display

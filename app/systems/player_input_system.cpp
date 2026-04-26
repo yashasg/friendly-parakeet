@@ -5,6 +5,8 @@
 #include "../components/rendering.h"
 #include "../components/input_events.h"
 #include "../components/audio.h"
+#include "../components/haptics.h"
+#include "../components/settings.h"
 #include "../components/rhythm.h"
 #include "../components/obstacle.h"
 #include "../components/obstacle_data.h"
@@ -32,6 +34,11 @@ void player_input_system(entt::registry& reg, float /*dt*/) {
         sw.window_scale = 1.0f;
         sw.graded = false;
         audio_push(reg.ctx().get<AudioQueue>(), SFX::ShapeShift);
+        {
+            auto* hq = reg.ctx().find<HapticQueue>();
+            auto* st = reg.ctx().find<SettingsState>();
+            if (hq) haptic_push(*hq, !st || st->haptics_enabled, HapticEvent::ShapeShift);
+        }
     };
 
     // Find nearest unscored obstacle ahead of the player matching kind_pred.
@@ -103,6 +110,11 @@ void player_input_system(entt::registry& reg, float /*dt*/) {
                     auto& sc = constants::SHAPE_COLORS[si];
                     reg.replace<Color>(entity, sc);
                     audio_push(reg.ctx().get<AudioQueue>(), SFX::ShapeShift);
+                    {
+                        auto* hq = reg.ctx().find<HapticQueue>();
+                        auto* st = reg.ctx().find<SettingsState>();
+                        if (hq) haptic_push(*hq, !st || st->haptics_enabled, HapticEvent::ShapeShift);
+                    }
                 }
             }
 
@@ -121,6 +133,11 @@ void player_input_system(entt::registry& reg, float /*dt*/) {
             if (dir == Direction::Left && lane.current > 0) {
                 lane.target = lane.current - 1;
                 lane.lerp_t = 0.0f;
+                {
+                    auto* hq = reg.ctx().find<HapticQueue>();
+                    auto* st = reg.ctx().find<SettingsState>();
+                    if (hq) haptic_push(*hq, !st || st->haptics_enabled, HapticEvent::LaneSwitch);
+                }
                 auto target = find_nearest_unscored(ppos.y, [](ObstacleKind k) {
                     return k == ObstacleKind::LaneBlock ||
                            k == ObstacleKind::ComboGate ||
@@ -131,6 +148,11 @@ void player_input_system(entt::registry& reg, float /*dt*/) {
             if (dir == Direction::Right && lane.current < constants::LANE_COUNT - 1) {
                 lane.target = lane.current + 1;
                 lane.lerp_t = 0.0f;
+                {
+                    auto* hq = reg.ctx().find<HapticQueue>();
+                    auto* st = reg.ctx().find<SettingsState>();
+                    if (hq) haptic_push(*hq, !st || st->haptics_enabled, HapticEvent::LaneSwitch);
+                }
                 auto target = find_nearest_unscored(ppos.y, [](ObstacleKind k) {
                     return k == ObstacleKind::LaneBlock ||
                            k == ObstacleKind::ComboGate ||
@@ -138,21 +160,8 @@ void player_input_system(entt::registry& reg, float /*dt*/) {
                 });
                 bank_burnout(target, ppos.y);
             }
-            if (dir == Direction::Up && vstate.mode == VMode::Grounded) {
-                vstate.mode = VMode::Jumping;
-                auto target = find_nearest_unscored(ppos.y, [](ObstacleKind k) {
-                    return k == ObstacleKind::LowBar;
-                });
-                bank_burnout(target, ppos.y);
-            }
-            if (dir == Direction::Down && vstate.mode == VMode::Grounded) {
-                vstate.mode = VMode::Sliding;
-                auto target = find_nearest_unscored(ppos.y, [](ObstacleKind k) {
-                    return k == ObstacleKind::HighBar;
-                });
-                bank_burnout(target, ppos.y);
-            }
         }
+
     }
 
     // Consume action events so the fixed-step accumulator's subsequent sub-ticks

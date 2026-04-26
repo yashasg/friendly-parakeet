@@ -38,7 +38,7 @@ TEST_CASE("scoring: combined timing and burnout multipliers", "[scoring][rhythm]
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<ScoredTag>(obs);
     reg.emplace<TimingGrade>(obs, TimingTier::Perfect, 1.0f);
-    reg.ctx().get<BurnoutState>().zone = BurnoutZone::Dead;  // 5.0x
+    reg.emplace<BankedBurnout>(obs, constants::MULT_CLUTCH, BurnoutZone::Dead);
 
     scoring_system(reg, 0.016f);
 
@@ -63,10 +63,9 @@ TEST_CASE("scoring: SongResults tracks max_chain", "[scoring]") {
 
 TEST_CASE("scoring: SongResults tracks best_burnout", "[scoring]") {
     auto reg = make_registry();
-    reg.ctx().get<BurnoutState>().zone = BurnoutZone::Danger;  // 3.0x
-
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<ScoredTag>(obs);
+    reg.emplace<BankedBurnout>(obs, constants::MULT_DANGER, BurnoutZone::Danger);
     scoring_system(reg, 0.016f);
 
     auto& results = reg.ctx().get<SongResults>();

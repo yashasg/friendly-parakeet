@@ -1,5 +1,5 @@
 #include "all_systems.h"
-#include "../components/burnout.h"
+#include "burnout_helpers.h"
 #include "../components/game_state.h"
 #include "../components/obstacle.h"
 #include "../components/obstacle_data.h"
@@ -7,7 +7,8 @@
 #include "../components/transform.h"
 #include "../components/difficulty.h"
 #include "../components/audio.h"
-#include "../constants.h"
+#include "../components/haptics.h"
+#include "../components/settings.h"
 #include <cmath>
 #include <limits>
 
@@ -49,38 +50,26 @@ void burnout_system(entt::registry& reg, float /*dt*/) {
         return;
     }
 
-    // Scale zones by difficulty
-    float scale = config.burnout_window_scale;
-    float safe_max   = constants::ZONE_SAFE_MAX * scale;
-    float safe_min   = constants::ZONE_SAFE_MIN * scale;
-    float risky_min  = constants::ZONE_RISKY_MIN * scale;
-    float danger_min = constants::ZONE_DANGER_MIN * scale;
-
     BurnoutZone prev_zone = burnout.zone;
 
-    if (nearest_dist > safe_max) {
-        burnout.zone  = BurnoutZone::None;
-        burnout.meter = 0.0f;
-    } else if (nearest_dist > safe_min) {
-        burnout.zone  = BurnoutZone::Safe;
-        burnout.meter = 1.0f - (nearest_dist - safe_min) / (safe_max - safe_min);
-        burnout.meter *= 0.4f; // Safe zone = 0..0.4
-    } else if (nearest_dist > risky_min) {
-        burnout.zone  = BurnoutZone::Risky;
-        burnout.meter = 0.4f + (1.0f - (nearest_dist - risky_min) / (safe_min - risky_min)) * 0.3f;
-    } else if (nearest_dist > danger_min) {
-        burnout.zone  = BurnoutZone::Danger;
-        burnout.meter = 0.7f + (1.0f - (nearest_dist - danger_min) / (risky_min - danger_min)) * 0.25f;
-    } else {
-        burnout.zone  = BurnoutZone::Dead;
-        burnout.meter = 1.0f;
-    }
+    auto sample   = compute_burnout_for_distance(nearest_dist, config.burnout_window_scale);
+    burnout.zone  = sample.zone;
+    burnout.meter = sample.meter;
 
-    // Push zone change SFX
+    // Push zone change SFX and haptics
     if (burnout.zone != prev_zone) {
         auto& audio = reg.ctx().get<AudioQueue>();
         if (burnout.zone == BurnoutZone::Risky)  audio_push(audio, SFX::ZoneRisky);
         if (burnout.zone == BurnoutZone::Danger) audio_push(audio, SFX::ZoneDanger);
         if (burnout.zone == BurnoutZone::Dead)   audio_push(audio, SFX::ZoneDead);
+
+        auto* hq = reg.ctx().find<HapticQueue>();
+        auto* st = reg.ctx().find<SettingsState>();
+        if (hq) {
+            bool haptics_on = !st || st->haptics_enabled;
+            if (burnout.zone == BurnoutZone::Risky)  haptic_push(*hq, haptics_on, HapticEvent::Burnout1_5x);
+            if (burnout.zone == BurnoutZone::Danger) haptic_push(*hq, haptics_on, HapticEvent::Burnout3_0x);
+            if (burnout.zone == BurnoutZone::Dead)   haptic_push(*hq, haptics_on, HapticEvent::Burnout5_0x);
+        }
     }
 }
