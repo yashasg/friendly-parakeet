@@ -237,6 +237,17 @@ bool validate_beat_map(const BeatMap& map, std::vector<BeatMapError>& errors) {
             }
         }
 
+        // Rule 5b: combo_gate blocked_mask must block at least one lane and leave at least one open
+        if (entry.kind == ObstacleKind::ComboGate) {
+            if (entry.blocked_mask == 0) {
+                errors.push_back({entry.beat_index, "ComboGate must block at least one lane"});
+                valid = false;
+            } else if (entry.blocked_mask == 0x07) {
+                errors.push_back({entry.beat_index, "ComboGate must leave at least one lane open"});
+                valid = false;
+            }
+        }
+
         // Rule 6: different-shape gates must be >= min_shape_change_gap beats apart
         bool has_shape = (entry.kind == ObstacleKind::ShapeGate ||
                           entry.kind == ObstacleKind::ComboGate ||

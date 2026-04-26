@@ -253,6 +253,75 @@ TEST_CASE("validate: multiple errors accumulated", "[validate]") {
     CHECK(errors.size() >= 3);
 }
 
+// ── validate_beat_map: ComboGate blocked_mask rules ──────────
+
+TEST_CASE("validate: combo_gate blocked_mask 0 fails", "[validate][combo_gate]") {
+    BeatMap map;
+    map.bpm = 120.0f;
+    map.offset = 0.0f;
+    map.lead_beats = 4;
+    map.duration = 60.0f;
+    map.beats.push_back({4, ObstacleKind::ComboGate, Shape::Circle, 1, 0x00});
+
+    std::vector<BeatMapError> errors;
+    CHECK_FALSE(validate_beat_map(map, errors));
+    REQUIRE_FALSE(errors.empty());
+    CHECK(errors[0].message.find("block at least one lane") != std::string::npos);
+}
+
+TEST_CASE("validate: combo_gate blocked_mask 0x07 fails", "[validate][combo_gate]") {
+    BeatMap map;
+    map.bpm = 120.0f;
+    map.offset = 0.0f;
+    map.lead_beats = 4;
+    map.duration = 60.0f;
+    map.beats.push_back({4, ObstacleKind::ComboGate, Shape::Circle, 1, 0x07});
+
+    std::vector<BeatMapError> errors;
+    CHECK_FALSE(validate_beat_map(map, errors));
+    REQUIRE_FALSE(errors.empty());
+    CHECK(errors[0].message.find("leave at least one lane open") != std::string::npos);
+}
+
+TEST_CASE("validate: combo_gate blocked_mask 0x01 passes", "[validate][combo_gate]") {
+    BeatMap map;
+    map.bpm = 120.0f;
+    map.offset = 0.0f;
+    map.lead_beats = 4;
+    map.duration = 60.0f;
+    map.beats.push_back({4, ObstacleKind::ComboGate, Shape::Circle, 1, 0x01});
+
+    std::vector<BeatMapError> errors;
+    CHECK(validate_beat_map(map, errors));
+    CHECK(errors.empty());
+}
+
+TEST_CASE("validate: combo_gate blocked_mask 0x06 passes", "[validate][combo_gate]") {
+    BeatMap map;
+    map.bpm = 120.0f;
+    map.offset = 0.0f;
+    map.lead_beats = 4;
+    map.duration = 60.0f;
+    map.beats.push_back({4, ObstacleKind::ComboGate, Shape::Circle, 1, 0x06});
+
+    std::vector<BeatMapError> errors;
+    CHECK(validate_beat_map(map, errors));
+    CHECK(errors.empty());
+}
+
+TEST_CASE("validate: combo_gate blocked_mask 0x05 passes", "[validate][combo_gate]") {
+    BeatMap map;
+    map.bpm = 120.0f;
+    map.offset = 0.0f;
+    map.lead_beats = 4;
+    map.duration = 60.0f;
+    map.beats.push_back({4, ObstacleKind::ComboGate, Shape::Circle, 1, 0x05});
+
+    std::vector<BeatMapError> errors;
+    CHECK(validate_beat_map(map, errors));
+    CHECK(errors.empty());
+}
+
 // ── init_song_state ──────────────────────────────────────────
 
 TEST_CASE("init_song_state: copies metadata from BeatMap", "[init_song]") {
