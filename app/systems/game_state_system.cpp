@@ -6,15 +6,28 @@
 #include "../components/input_events.h"
 #include "../components/scoring.h"
 #include "../components/audio.h"
+#include "../components/haptics.h"
+#include "../components/settings.h"
 #include "../components/rhythm.h"
 #include "../constants.h"
 
 static void enter_game_over(entt::registry& reg) {
     auto& score = reg.ctx().get<ScoreState>();
-    if (score.score > score.high_score) {
+    bool is_new_high_score = (score.score > score.high_score);
+    if (is_new_high_score) {
         score.high_score = score.score;
     }
     audio_push(reg.ctx().get<AudioQueue>(), SFX::Crash);
+
+    {
+        auto* hq = reg.ctx().find<HapticQueue>();
+        auto* st = reg.ctx().find<SettingsState>();
+        if (hq) {
+            bool haptics_on = !st || st->haptics_enabled;
+            haptic_push(*hq, haptics_on, HapticEvent::DeathCrash);
+            if (is_new_high_score) haptic_push(*hq, haptics_on, HapticEvent::NewHighScore);
+        }
+    }
 
     auto& gs = reg.ctx().get<GameState>();
     gs.previous_phase = gs.phase;
@@ -24,8 +37,17 @@ static void enter_game_over(entt::registry& reg) {
 
 static void enter_song_complete(entt::registry& reg) {
     auto& score = reg.ctx().get<ScoreState>();
-    if (score.score > score.high_score) {
+    bool is_new_high_score = (score.score > score.high_score);
+    if (is_new_high_score) {
         score.high_score = score.score;
+    }
+
+    {
+        auto* hq = reg.ctx().find<HapticQueue>();
+        auto* st = reg.ctx().find<SettingsState>();
+        if (hq && is_new_high_score) {
+            haptic_push(*hq, !st || st->haptics_enabled, HapticEvent::NewHighScore);
+        }
     }
 
     auto& gs = reg.ctx().get<GameState>();
@@ -87,6 +109,11 @@ void game_state_system(entt::registry& reg, float dt) {
             if (!reg.valid(entity)) continue;
             if (!reg.all_of<MenuButtonTag, MenuAction>(entity)) continue;
             auto& ma = reg.get<MenuAction>(entity);
+            {
+                auto* hq = reg.ctx().find<HapticQueue>();
+                auto* st = reg.ctx().find<SettingsState>();
+                if (hq) haptic_push(*hq, !st || st->haptics_enabled, HapticEvent::UIButtonTap);
+            }
             if (ma.kind == MenuActionKind::Exit) {
                 #ifndef PLATFORM_WEB
                 reg.ctx().get<InputState>().quit_requested = true;
@@ -117,6 +144,18 @@ void game_state_system(entt::registry& reg, float dt) {
             if (!reg.valid(entity)) continue;
             if (!reg.all_of<MenuButtonTag, MenuAction>(entity)) continue;
             auto& ma = reg.get<MenuAction>(entity);
+            {
+                auto* hq = reg.ctx().find<HapticQueue>();
+                auto* st = reg.ctx().find<SettingsState>();
+                if (hq) {
+                    bool haptics_on = !st || st->haptics_enabled;
+                    // RetryTap is distinct (crisp) per spec; other buttons use generic UIButtonTap
+                    if (ma.kind == MenuActionKind::Restart)
+                        haptic_push(*hq, haptics_on, HapticEvent::RetryTap);
+                    else
+                        haptic_push(*hq, haptics_on, HapticEvent::UIButtonTap);
+                }
+            }
             if (ma.kind == MenuActionKind::Restart)
                 gs.end_choice = EndScreenChoice::Restart;
             else if (ma.kind == MenuActionKind::GoLevelSelect)

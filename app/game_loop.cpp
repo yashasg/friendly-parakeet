@@ -8,6 +8,8 @@
 #include "components/burnout.h"
 #include "components/difficulty.h"
 #include "components/audio.h"
+#include "components/haptics.h"
+#include "components/settings.h"
 #include "components/rhythm.h"
 #include "components/music.h"
 #include "components/session_log.h"
@@ -23,6 +25,7 @@
 #include "systems/ui_button_spawner.h"
 #include "gameobjects/shape_obstacle.h"
 #include "platform_display.h"
+#include "util/settings_persistence.h"
 
 #include <raylib.h>
 #include <algorithm>
@@ -73,9 +76,17 @@ void game_loop_init(entt::registry& reg,
     reg.ctx().emplace<BurnoutState>();
     reg.ctx().emplace<DifficultyConfig>();
     reg.ctx().emplace<AudioQueue>();
+    reg.ctx().emplace<HapticQueue>();
     reg.ctx().emplace<LevelSelectState>();
     reg.ctx().emplace<EnergyState>();
     reg.ctx().emplace<SongResults>();
+
+    // Settings — load from disk; default values apply when no file exists.
+    {
+        SettingsState settings;
+        settings::load_settings(settings, settings::get_settings_file_path());
+        reg.ctx().emplace<SettingsState>(settings);
+    }
 
     // Cameras + render targets + GPU meshes
     camera::init(reg);
@@ -170,6 +181,7 @@ void game_loop_frame(entt::registry& reg, float& accumulator) {
     EndDrawing();
 
     audio_system(reg);
+    haptic_system(reg);
 
     auto* session_log = reg.ctx().find<SessionLog>();
     if (session_log) session_log_flush(*session_log);

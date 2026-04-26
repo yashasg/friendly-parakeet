@@ -15,6 +15,8 @@
 #include "components/lifetime.h"
 #include "components/particle.h"
 #include "components/audio.h"
+#include "components/haptics.h"
+#include "components/settings.h"
 #include "components/rhythm.h"
 #include "constants.h"
 #include "systems/all_systems.h"
@@ -31,6 +33,8 @@ inline entt::registry make_registry() {
     reg.ctx().emplace<BurnoutState>();
     reg.ctx().emplace<DifficultyConfig>();
     reg.ctx().emplace<AudioQueue>();
+    reg.ctx().emplace<HapticQueue>();
+    reg.ctx().emplace<SettingsState>();  // defaults: haptics_enabled=true
     reg.ctx().emplace<LevelSelectState>();
     reg.ctx().emplace<BeatMap>();
     reg.ctx().emplace<SongState>();

@@ -60,3 +60,6 @@ void ui_render_system(entt::registry& reg, float alpha);
 
 // Audio (no dt needed)
 void audio_system(entt::registry& reg);
+
+// Haptics (no dt needed) — drains HapticQueue; gating is at push time via haptics_enabled
+void haptic_system(entt::registry& reg);
