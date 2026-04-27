@@ -2,6 +2,7 @@
 #include "play_session.h"
 #include "ui_button_spawner.h"
 #include "../components/game_state.h"
+#include "../components/obstacle_counter.h"
 #include "../components/input.h"
 #include "../components/input_events.h"
 #include "../components/scoring.h"
@@ -207,9 +208,9 @@ void game_state_system(entt::registry& reg, float dt) {
     if (gs.phase == GamePhase::Playing) {
         auto* song = reg.ctx().find<SongState>();
         if (song && song->finished) {
-            // Wait until all remaining obstacles have scrolled past
-            auto unscored = reg.view<ObstacleTag>(entt::exclude<ScoredTag>);
-            if (unscored.begin() == unscored.end()) {
+            // Wait until all obstacle entities have been destroyed (O(1) counter).
+            auto* oc = reg.ctx().find<ObstacleCounter>();
+            if (!oc || oc->count == 0) {
                 gs.transition_pending = true;
                 gs.next_phase = GamePhase::SongComplete;
             }

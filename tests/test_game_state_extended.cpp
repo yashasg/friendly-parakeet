@@ -38,7 +38,7 @@ TEST_CASE("game_state: song complete waits for obstacles to clear", "[gamestate]
     CHECK_FALSE(gs.transition_pending);
 }
 
-TEST_CASE("game_state: song complete ignores scored obstacles", "[gamestate]") {
+TEST_CASE("game_state: song complete proceeds when scored obstacle is destroyed", "[gamestate]") {
     auto reg = make_rhythm_registry();
     auto& gs = reg.ctx().get<GameState>();
     gs.phase = GamePhase::Playing;
@@ -46,7 +46,27 @@ TEST_CASE("game_state: song complete ignores scored obstacles", "[gamestate]") {
     song.finished = true;
     song.playing = false;
 
-    // Only a scored obstacle remains → should transition to SongComplete
+    // Obstacle scored and destroyed (scoring_system + cleanup_system both ran) → SongComplete
+    auto obs = reg.create();
+    reg.emplace<ObstacleTag>(obs);
+    reg.emplace<ScoredTag>(obs);
+    reg.destroy(obs);  // on_destroy<ObstacleTag> fires → counter reaches 0
+
+    game_state_system(reg, 0.016f);
+
+    CHECK(gs.transition_pending);
+    CHECK(gs.next_phase == GamePhase::SongComplete);
+}
+
+TEST_CASE("game_state: song complete waits for scored obstacle to be destroyed", "[gamestate]") {
+    auto reg = make_rhythm_registry();
+    auto& gs = reg.ctx().get<GameState>();
+    gs.phase = GamePhase::Playing;
+    auto& song = reg.ctx().get<SongState>();
+    song.finished = true;
+    song.playing = false;
+
+    // Obstacle scored but still alive (cleanup_system has not yet destroyed it)
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
     reg.emplace<ScoredTag>(obs);
@@ -54,8 +74,7 @@ TEST_CASE("game_state: song complete ignores scored obstacles", "[gamestate]") {
 
     game_state_system(reg, 0.016f);
 
-    CHECK(gs.transition_pending);
-    CHECK(gs.next_phase == GamePhase::SongComplete);
+    CHECK_FALSE(gs.transition_pending);
 }
 
 TEST_CASE("game_state: enter_song_complete updates high score", "[gamestate]") {

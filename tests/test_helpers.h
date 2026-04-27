@@ -4,6 +4,7 @@
 #include "components/transform.h"
 #include "components/player.h"
 #include "components/obstacle.h"
+#include "components/obstacle_counter.h"
 #include "components/obstacle_data.h"
 #include "components/input.h"
 #include "components/input_events.h"
@@ -46,6 +47,8 @@ inline entt::registry make_registry() {
     reg.ctx().emplace<HighScorePersistence>();
     reg.ctx().emplace<GameOverState>();
     reg.ctx().emplace<RNGState>();
+    reg.ctx().emplace<ObstacleCounter>();
+    wire_obstacle_counter(reg);
     return reg;
 }
 
@@ -87,7 +90,7 @@ inline entt::entity make_rhythm_player(entt::registry& reg) {
     ps.previous = Shape::Hexagon;
     auto& sw = reg.get<ShapeWindow>(player);
     sw.target_shape = Shape::Hexagon;
-    sw.phase_raw = 0; // WindowPhase::Idle
+    sw.phase = WindowPhase::Idle;
     return player;
 }
 

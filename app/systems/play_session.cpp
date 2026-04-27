@@ -1,5 +1,6 @@
 #include "play_session.h"
 #include "../components/game_state.h"
+#include "../components/obstacle_counter.h"
 #include "../components/player.h"
 #include "../components/transform.h"
 #include "../components/rendering.h"
@@ -18,6 +19,17 @@
 
 void setup_play_session(entt::registry& reg) {
     reg.clear();
+
+    // Initialise (first session) or reset (subsequent sessions) the obstacle counter.
+    // reg.clear() above fires on_destroy<ObstacleTag> for any leftover entities, which
+    // decrements the counter; reset to 0 here unconditionally so it is always clean.
+    // Signals are wired once and survive reg.clear().
+    if (!reg.ctx().find<ObstacleCounter>()) {
+        reg.ctx().emplace<ObstacleCounter>();
+        wire_obstacle_counter(reg);
+    } else {
+        reg.ctx().get<ObstacleCounter>().count = 0;
+    }
 
     // Reset singletons
     reg.ctx().insert_or_assign(ScoreState{});
@@ -138,7 +150,7 @@ void setup_play_session(entt::registry& reg) {
     {
         ShapeWindow sw;
         sw.target_shape = Shape::Hexagon;
-        sw.phase_raw    = static_cast<uint8_t>(WindowPhase::Idle);
+        sw.phase = WindowPhase::Idle;
         reg.emplace<ShapeWindow>(player, sw);
     }
     reg.emplace<Lane>(player);
