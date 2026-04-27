@@ -6,41 +6,33 @@
 
 using json = nlohmann::json;
 
-// ── Shared validation constants (loaded from content/constants.json) ──
-struct ValidationConstants {
-    float bpm_min = 60.0f;
-    float bpm_max = 300.0f;
-    float offset_min = 0.0f;
-    float offset_max = 5.0f;
-    int   lead_beats_min = 2;
-    int   lead_beats_max = 8;
-    int   min_shape_change_gap = 3;
-};
-
-static ValidationConstants load_validation_constants() {
-    ValidationConstants vc;
-    std::ifstream file("content/constants.json");
-    if (!file.is_open()) return vc;
+static bool try_load_constants_from(const std::string& path, ValidationConstants& vc) {
+    std::ifstream file(path);
+    if (!file.is_open()) return false;
     try {
         json j = json::parse(file);
         if (j.contains("validation")) {
             const auto& v = j["validation"];
-            vc.bpm_min             = v.value("bpm_min", vc.bpm_min);
-            vc.bpm_max             = v.value("bpm_max", vc.bpm_max);
-            vc.offset_min          = v.value("offset_min", vc.offset_min);
-            vc.offset_max          = v.value("offset_max", vc.offset_max);
-            vc.lead_beats_min      = v.value("lead_beats_min", vc.lead_beats_min);
-            vc.lead_beats_max      = v.value("lead_beats_max", vc.lead_beats_max);
+            vc.bpm_min              = v.value("bpm_min",              vc.bpm_min);
+            vc.bpm_max              = v.value("bpm_max",              vc.bpm_max);
+            vc.offset_min           = v.value("offset_min",           vc.offset_min);
+            vc.offset_max           = v.value("offset_max",           vc.offset_max);
+            vc.lead_beats_min       = v.value("lead_beats_min",       vc.lead_beats_min);
+            vc.lead_beats_max       = v.value("lead_beats_max",       vc.lead_beats_max);
             vc.min_shape_change_gap = v.value("min_shape_change_gap", vc.min_shape_change_gap);
         }
     } catch (...) {
-        // Fall back to defaults on parse error
+        return false;
     }
-    return vc;
+    return true;
 }
 
-static const ValidationConstants& get_validation_constants() {
-    static ValidationConstants vc = load_validation_constants();
+ValidationConstants load_validation_constants(const std::string& app_dir) {
+    ValidationConstants vc;
+    if (!app_dir.empty() && try_load_constants_from(app_dir + "content/constants.json", vc)) {
+        return vc;
+    }
+    try_load_constants_from("content/constants.json", vc);
     return vc;
 }
 
@@ -175,8 +167,12 @@ bool load_beat_map(const std::string& json_path, BeatMap& out,
 }
 
 bool validate_beat_map(const BeatMap& map, std::vector<BeatMapError>& errors) {
+    return validate_beat_map(map, errors, load_validation_constants());
+}
+
+bool validate_beat_map(const BeatMap& map, std::vector<BeatMapError>& errors,
+                       const ValidationConstants& vc) {
     bool valid = true;
-    const auto& vc = get_validation_constants();
 
     // Rule 7: BPM in range
     if (map.bpm < vc.bpm_min || map.bpm > vc.bpm_max) {
