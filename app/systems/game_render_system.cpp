@@ -12,11 +12,18 @@
 // 3D world draw passes — floor, obstacles, particles, shapes
 // ═════════════════════════════════════════════════════════════════════════════
 
-static void draw_floor_lines(const FloorParams& fp) {
-    static const Color LANE_COLORS[3] = {
-        {80, 200, 255, 255}, {255, 100, 100, 255}, {100, 255, 100, 255},
-    };
+static constexpr int SHAPE_COLOR_COUNT =
+    static_cast<int>(sizeof(constants::SHAPE_COLORS) / sizeof(constants::SHAPE_COLORS[0]));
+static_assert(constants::LANE_COUNT <= SHAPE_COLOR_COUNT,
+              "Lane rendering expects one canonical shape color per lane");
 
+static Color floor_lane_color(int lane, uint8_t alpha) {
+    Color c = constants::SHAPE_COLORS[lane];
+    c.a = alpha;
+    return c;
+}
+
+static void draw_floor_lines(const FloorParams& fp) {
     rlBegin(RL_LINES);
 
     // Corridor edges
@@ -34,8 +41,8 @@ static void draw_floor_lines(const FloorParams& fp) {
         constexpr float lane_half = 120.0f;
         for (int lane = 0; lane < constants::LANE_COUNT; ++lane) {
             float cx = constants::LANE_X[lane];
-            Color c = LANE_COLORS[lane];
-            rlColor4ub(c.r, c.g, c.b, 50);
+            Color c = floor_lane_color(lane, 50);
+            rlColor4ub(c.r, c.g, c.b, c.a);
             rlVertex3f(cx - lane_half, 0.0f, 0.0f);
             rlVertex3f(cx - lane_half, 0.0f, sh);
             rlVertex3f(cx + lane_half, 0.0f, 0.0f);
@@ -46,8 +53,7 @@ static void draw_floor_lines(const FloorParams& fp) {
     // Floor connectors + shape outlines
     for (int lane = 0; lane < constants::LANE_COUNT; ++lane) {
         float cx = constants::LANE_X[lane];
-        Color c = LANE_COLORS[lane];
-        c.a = fp.alpha;
+        Color c = floor_lane_color(lane, fp.alpha);
 
         for (int j = 0; j < constants::FLOOR_SHAPE_COUNT; ++j) {
             float cz = constants::FLOOR_Y_START
@@ -86,9 +92,7 @@ static void draw_floor_lines(const FloorParams& fp) {
 }
 
 static void draw_floor_rings(const FloorParams& fp) {
-    static const Color LANE0_COLOR = {80, 200, 255, 255};
-    Color c = LANE0_COLOR;
-    c.a = fp.alpha;
+    Color c = floor_lane_color(0, fp.alpha);
 
     rlBegin(RL_TRIANGLES);
     for (int j = 0; j < constants::FLOOR_SHAPE_COUNT; ++j) {
