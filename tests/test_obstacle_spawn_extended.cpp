@@ -1,6 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
 #include "test_helpers.h"
-#include <cstdlib>
 
 // ── obstacle_spawn_system: rhythm mode bypass ────────────────
 
@@ -32,7 +31,6 @@ TEST_CASE("spawn: rhythm mode bypass even with expired timer", "[spawn][rhythm]"
 // ── obstacle_spawn_system: component validation ──────────────
 
 TEST_CASE("spawn: ShapeGate has RequiredShape component", "[spawn]") {
-    std::srand(42);
     auto reg = make_registry();
     auto& config = reg.ctx().get<DifficultyConfig>();
     config.elapsed = 0.0f;  // Only ShapeGate at t=0
@@ -52,7 +50,6 @@ TEST_CASE("spawn: ShapeGate has RequiredShape component", "[spawn]") {
 }
 
 TEST_CASE("spawn: ShapeGate has Color component", "[spawn]") {
-    std::srand(42);
     auto reg = make_registry();
     auto& config = reg.ctx().get<DifficultyConfig>();
     config.elapsed = 0.0f;
@@ -67,7 +64,6 @@ TEST_CASE("spawn: ShapeGate has Color component", "[spawn]") {
 }
 
 TEST_CASE("spawn: LanePushLeft or LanePushRight obstacles spawn at late game", "[spawn]") {
-    std::srand(100);
     auto reg = make_registry();
     auto& config = reg.ctx().get<DifficultyConfig>();
     config.elapsed = 35.0f;  // LaneBlock available
@@ -88,7 +84,6 @@ TEST_CASE("spawn: LanePushLeft or LanePushRight obstacles spawn at late game", "
 }
 
 TEST_CASE("spawn: LowBar has RequiredVAction component", "[spawn]") {
-    std::srand(200);
     auto reg = make_registry();
     auto& config = reg.ctx().get<DifficultyConfig>();
     config.elapsed = 50.0f;  // LowBar available
@@ -110,7 +105,6 @@ TEST_CASE("spawn: LowBar has RequiredVAction component", "[spawn]") {
 }
 
 TEST_CASE("spawn: HighBar has RequiredVAction for Sliding", "[spawn]") {
-    std::srand(300);
     auto reg = make_registry();
     auto& config = reg.ctx().get<DifficultyConfig>();
     config.elapsed = 65.0f;  // HighBar available
@@ -132,7 +126,6 @@ TEST_CASE("spawn: HighBar has RequiredVAction for Sliding", "[spawn]") {
 }
 
 TEST_CASE("spawn: ComboGate has both RequiredShape and BlockedLanes", "[spawn]") {
-    std::srand(400);
     auto reg = make_registry();
     auto& config = reg.ctx().get<DifficultyConfig>();
     config.elapsed = 95.0f;  // ComboGate available
@@ -153,7 +146,6 @@ TEST_CASE("spawn: ComboGate has both RequiredShape and BlockedLanes", "[spawn]")
 }
 
 TEST_CASE("spawn: SplitPath has RequiredShape and RequiredLane", "[spawn]") {
-    std::srand(500);
     auto reg = make_registry();
     auto& config = reg.ctx().get<DifficultyConfig>();
     config.elapsed = 125.0f;  // SplitPath available

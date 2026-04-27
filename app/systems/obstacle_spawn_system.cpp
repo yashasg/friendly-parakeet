@@ -7,9 +7,10 @@
 #include "../components/difficulty.h"
 #include "../components/player.h"
 #include "../components/rhythm.h"
+#include "../components/rng.h"
 #include "../gameobjects/shape_obstacle.h"
 #include "../constants.h"
-#include <cstdlib>
+#include <random>
 
 void obstacle_spawn_system(entt::registry& reg, float dt) {
     if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
@@ -24,6 +25,9 @@ void obstacle_spawn_system(entt::registry& reg, float dt) {
 
     config.spawn_timer = config.spawn_interval;
 
+    if (!reg.ctx().find<RNGState>()) reg.ctx().emplace<RNGState>();
+    auto& rng = *reg.ctx().find<RNGState>();
+
     // Determine which obstacle kinds are available based on elapsed time
     float t = config.elapsed;
     int max_kind = 0;
@@ -33,7 +37,7 @@ void obstacle_spawn_system(entt::registry& reg, float dt) {
     if (t >= 90.0f)  max_kind = 4; // + ComboGate
     if (t >= 120.0f) max_kind = 5; // + SplitPath
 
-    int kind_i = std::rand() % (max_kind + 1);
+    int kind_i = std::uniform_int_distribution<int>(0, max_kind)(rng.engine);
     auto kind  = static_cast<ObstacleKind>(kind_i);
 
     auto obstacle = reg.create();
@@ -41,11 +45,11 @@ void obstacle_spawn_system(entt::registry& reg, float dt) {
     reg.emplace<Velocity>(obstacle, 0.0f, config.scroll_speed);
     reg.emplace<DrawLayer>(obstacle, Layer::Game);
 
-    int lane = std::rand() % 3;
+    int lane = std::uniform_int_distribution<int>(0, 2)(rng.engine);
 
     switch (kind) {
         case ObstacleKind::ShapeGate: {
-            auto shape = static_cast<Shape>(std::rand() % 3);
+            auto shape = static_cast<Shape>(std::uniform_int_distribution<int>(0, 2)(rng.engine));
             reg.emplace<Position>(obstacle, constants::LANE_X[1], constants::SPAWN_Y);
             reg.emplace<Obstacle>(obstacle, kind, int16_t{constants::PTS_SHAPE_GATE});
             reg.emplace<RequiredShape>(obstacle, shape);
@@ -71,7 +75,7 @@ void obstacle_spawn_system(entt::registry& reg, float dt) {
             } else if (lane == 2) {
                 push_kind = ObstacleKind::LanePushLeft;
             } else {
-                push_kind = (std::rand() % 2 == 0)
+                push_kind = (std::uniform_int_distribution<int>(0, 1)(rng.engine) == 0)
                     ? ObstacleKind::LanePushLeft
                     : ObstacleKind::LanePushRight;
             }
@@ -98,7 +102,7 @@ void obstacle_spawn_system(entt::registry& reg, float dt) {
             break;
         }
         case ObstacleKind::ComboGate: {
-            auto shape = static_cast<Shape>(std::rand() % 3);
+            auto shape = static_cast<Shape>(std::uniform_int_distribution<int>(0, 2)(rng.engine));
             uint8_t mask = uint8_t(1 << lane) | uint8_t(1 << ((lane + 1) % 3));
             reg.emplace<Position>(obstacle, constants::LANE_X[1], constants::SPAWN_Y);
             reg.emplace<Obstacle>(obstacle, kind, int16_t{constants::PTS_COMBO_GATE});
@@ -109,7 +113,7 @@ void obstacle_spawn_system(entt::registry& reg, float dt) {
             break;
         }
         case ObstacleKind::SplitPath: {
-            auto shape = static_cast<Shape>(std::rand() % 3);
+            auto shape = static_cast<Shape>(std::uniform_int_distribution<int>(0, 2)(rng.engine));
             reg.emplace<Position>(obstacle, constants::LANE_X[1], constants::SPAWN_Y);
             reg.emplace<Obstacle>(obstacle, kind, int16_t{constants::PTS_SPLIT_PATH});
             reg.emplace<RequiredShape>(obstacle, shape);
