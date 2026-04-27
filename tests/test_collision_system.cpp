@@ -280,6 +280,7 @@ TEST_CASE("collision: low bar drains energy when sliding", "[collision]") {
     make_vertical_bar(reg, ObstacleKind::LowBar, constants::PLAYER_Y);
 
     collision_system(reg, 0.016f);
+    scoring_system(reg, 0.016f);
 
     CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
     auto& energy = reg.ctx().get<EnergyState>();
@@ -294,6 +295,7 @@ TEST_CASE("collision: high bar drains energy when jumping", "[collision]") {
     make_vertical_bar(reg, ObstacleKind::HighBar, constants::PLAYER_Y);
 
     collision_system(reg, 0.016f);
+    scoring_system(reg, 0.016f);
 
     CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
     auto& energy = reg.ctx().get<EnergyState>();
