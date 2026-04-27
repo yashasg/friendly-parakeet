@@ -12,8 +12,12 @@ TEST_CASE("death_model: one miss drains energy without immediate GameOver", "[de
     const auto obstacle = make_shape_gate(reg, Shape::Triangle, constants::PLAYER_Y);
     collision_system(reg, 0.016f);
 
+    // collision_system stamps MissTag+ScoredTag; energy effects are deferred to scoring_system.
     CHECK(reg.all_of<MissTag>(obstacle));
     CHECK(reg.all_of<ScoredTag>(obstacle));
+
+    scoring_system(reg, 0.016f);
+
     CHECK(reg.ctx().get<SongResults>().miss_count == 1);
     CHECK_THAT(energy.energy,
                Catch::Matchers::WithinAbs(constants::ENERGY_MAX - constants::ENERGY_DRAIN_MISS,
@@ -41,6 +45,7 @@ TEST_CASE("death_model: GameOver is deferred to energy depletion", "[death_model
     for (int i = 0; i < SAFE_MISS_COUNT; ++i) {
         make_shape_gate(reg, Shape::Triangle, constants::PLAYER_Y);
         collision_system(reg, 0.016f);
+        scoring_system(reg, 0.016f);
         energy_system(reg, 0.016f);
     }
 
@@ -52,6 +57,7 @@ TEST_CASE("death_model: GameOver is deferred to energy depletion", "[death_model
 
     make_shape_gate(reg, Shape::Triangle, constants::PLAYER_Y);
     collision_system(reg, 0.016f);
+    scoring_system(reg, 0.016f);
 
     CHECK(energy.energy == 0.0f);
     CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
@@ -81,6 +87,7 @@ TEST_CASE("death_model: timing recovery can preserve survival margin", "[death_m
 
     make_shape_gate(reg, Shape::Triangle, constants::PLAYER_Y);
     collision_system(reg, 0.016f);
+    scoring_system(reg, 0.016f);
     energy_system(reg, 0.016f);
 
     CHECK_THAT(energy.energy,
@@ -121,9 +128,11 @@ TEST_CASE("death_model: close miss drains energy instead of instant GameOver", "
     reg.emplace<RequiredShape>(obstacle, Shape::Triangle);
 
     collision_system(reg, 0.016f);
+    // collision_system stamps MissTag; verify before scoring_system removes it.
+    CHECK(reg.all_of<MissTag>(obstacle));
+    scoring_system(reg, 0.016f);
     energy_system(reg, 0.016f);
 
-    CHECK(reg.all_of<MissTag>(obstacle));
     CHECK_THAT(reg.ctx().get<EnergyState>().energy,
                Catch::Matchers::WithinAbs(constants::ENERGY_MAX - constants::ENERGY_DRAIN_MISS,
                                            0.0001f));
@@ -139,6 +148,7 @@ TEST_CASE("death_model: collision clamps depleted energy before GameOver transit
 
     make_shape_gate(reg, Shape::Triangle, constants::PLAYER_Y);
     collision_system(reg, 0.016f);
+    scoring_system(reg, 0.016f);
 
     CHECK(energy.energy == 0.0f);
     CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
@@ -149,7 +159,7 @@ TEST_CASE("death_model: collision clamps depleted energy before GameOver transit
     CHECK(reg.ctx().get<GameState>().next_phase == GamePhase::GameOver);
 }
 
-TEST_CASE("death_model: cleanup miss drains energy without directly requesting GameOver", "[death_model]") {
+TEST_CASE("death_model: scroll-past miss drains energy without directly requesting GameOver", "[death_model]") {
     auto reg = make_rhythm_registry();
 
     auto& energy = reg.ctx().get<EnergyState>();
@@ -160,11 +170,17 @@ TEST_CASE("death_model: cleanup miss drains energy without directly requesting G
     reg.emplace<Position>(obstacle, 0.0f, constants::DESTROY_Y + 10.0f);
     reg.emplace<Obstacle>(obstacle, ObstacleKind::ShapeGate, int16_t{constants::PTS_SHAPE_GATE});
 
-    cleanup_system(reg, 0.016f);
+    // miss_detection_system tags; scoring_system drains.
+    miss_detection_system(reg, 0.016f);
 
     CHECK(reg.valid(obstacle));
     CHECK(reg.all_of<MissTag>(obstacle));
     CHECK(reg.all_of<ScoredTag>(obstacle));
+    // Energy not yet drained — scoring_system hasn't run.
+    CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
+
+    scoring_system(reg, 0.016f);
+
     CHECK(energy.energy == 0.0f);
     CHECK(reg.ctx().get<SongResults>().miss_count == 1);
     CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
@@ -173,4 +189,74 @@ TEST_CASE("death_model: cleanup miss drains energy without directly requesting G
 
     CHECK(reg.ctx().get<GameState>().transition_pending);
     CHECK(reg.ctx().get<GameState>().next_phase == GamePhase::GameOver);
+}
+
+// Regression: a scroll-past miss that depletes energy to 0 triggers GameOver
+// in the same frame (miss_detection → scoring → energy run in order).
+TEST_CASE("death_model: scroll-past fatal miss triggers GameOver same frame", "[death_model]") {
+    auto reg = make_rhythm_registry();
+
+    auto& energy = reg.ctx().get<EnergyState>();
+    energy.energy = constants::ENERGY_DRAIN_MISS;  // exactly one miss away from death
+
+    auto obstacle = reg.create();
+    reg.emplace<ObstacleTag>(obstacle);
+    reg.emplace<Position>(obstacle, 0.0f, constants::DESTROY_Y + 10.0f);
+    reg.emplace<Obstacle>(obstacle, ObstacleKind::ShapeGate, int16_t{constants::PTS_SHAPE_GATE});
+
+    miss_detection_system(reg, 0.016f);
+    scoring_system(reg, 0.016f);
+
+    CHECK(energy.energy == 0.0f);
+    CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
+
+    energy_system(reg, 0.016f);
+
+    CHECK(reg.ctx().get<GameState>().transition_pending);
+    CHECK(reg.ctx().get<GameState>().next_phase == GamePhase::GameOver);
+}
+
+// Regression: a scroll-past miss must not double-drain (energy delta = exactly
+// -ENERGY_DRAIN_MISS, miss_count delta = 1).
+TEST_CASE("death_model: scroll-past miss does not double-drain", "[death_model]") {
+    auto reg = make_rhythm_registry();
+
+    auto& energy = reg.ctx().get<EnergyState>();
+    energy.energy = constants::ENERGY_MAX;
+
+    auto obstacle = reg.create();
+    reg.emplace<ObstacleTag>(obstacle);
+    reg.emplace<Position>(obstacle, 0.0f, constants::DESTROY_Y + 10.0f);
+    reg.emplace<Obstacle>(obstacle, ObstacleKind::ShapeGate, int16_t{constants::PTS_SHAPE_GATE});
+
+    miss_detection_system(reg, 0.016f);
+    scoring_system(reg, 0.016f);
+
+    CHECK(reg.ctx().get<SongResults>().miss_count == 1);
+    CHECK_THAT(energy.energy,
+               Catch::Matchers::WithinAbs(constants::ENERGY_MAX - constants::ENERGY_DRAIN_MISS,
+                                          0.0001f));
+}
+
+// Regression: a LanePush that scrolls past DESTROY_Y must not produce a MissTag
+// or any energy delta (ScoredTag from collision is the guard).
+TEST_CASE("death_model: LanePush scroll-past does not produce MissTag", "[death_model]") {
+    auto reg = make_rhythm_registry();
+    make_player(reg);
+
+    auto& energy = reg.ctx().get<EnergyState>();
+    const float initial_energy = energy.energy;
+
+    auto obstacle = reg.create();
+    reg.emplace<ObstacleTag>(obstacle);
+    reg.emplace<Position>(obstacle, 0.0f, constants::DESTROY_Y + 10.0f);
+    reg.emplace<Obstacle>(obstacle, ObstacleKind::LanePushLeft, int16_t{0});
+    reg.emplace<ScoredTag>(obstacle);  // collision_system stamps ScoredTag for LanePush at pass-through
+
+    miss_detection_system(reg, 0.016f);
+    scoring_system(reg, 0.016f);
+
+    CHECK_FALSE(reg.all_of<MissTag>(obstacle));
+    CHECK_THAT(energy.energy, Catch::Matchers::WithinAbs(initial_energy, 0.0001f));
+    CHECK(reg.ctx().get<SongResults>().miss_count == 0);
 }

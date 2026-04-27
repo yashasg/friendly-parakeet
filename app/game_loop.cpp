@@ -142,6 +142,7 @@ static void tick_fixed_systems(entt::registry& reg, float dt) {
     scroll_system(reg, dt);
     ring_zone_log_system(reg, dt);
     collision_system(reg, dt);
+    miss_detection_system(reg, dt);
     scoring_system(reg, dt);
     energy_system(reg, dt);
     lifetime_system(reg, dt);

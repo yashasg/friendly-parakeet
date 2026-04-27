@@ -21,13 +21,15 @@ TEST_CASE("collision: shape gate drains energy with wrong shape", "[collision]")
     auto obs = make_shape_gate(reg, Shape::Triangle, constants::PLAYER_Y);
 
     collision_system(reg, 0.016f);
+    CHECK(reg.all_of<MissTag>(obs));
+
+    scoring_system(reg, 0.016f);
 
     auto& gs = reg.ctx().get<GameState>();
     CHECK_FALSE(gs.transition_pending);
     auto& energy = reg.ctx().get<EnergyState>();
     CHECK(energy.energy < 1.0f);
     CHECK(energy.flash_timer > 0.0f);
-    CHECK(reg.all_of<MissTag>(obs));
 }
 
 TEST_CASE("collision: lane block cleared when player in unblocked lane", "[collision]") {
@@ -48,6 +50,7 @@ TEST_CASE("collision: lane block drains energy when player in blocked lane", "[c
     make_lane_block(reg, 0b010, constants::PLAYER_Y);
 
     collision_system(reg, 0.016f);
+    scoring_system(reg, 0.016f);
 
     CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
     auto& energy = reg.ctx().get<EnergyState>();
@@ -72,6 +75,7 @@ TEST_CASE("collision: low bar drains energy when grounded", "[collision]") {
     make_vertical_bar(reg, ObstacleKind::LowBar, constants::PLAYER_Y);
 
     collision_system(reg, 0.016f);
+    scoring_system(reg, 0.016f);
 
     CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
     auto& energy = reg.ctx().get<EnergyState>();
@@ -96,6 +100,7 @@ TEST_CASE("collision: high bar drains energy when grounded", "[collision]") {
     make_vertical_bar(reg, ObstacleKind::HighBar, constants::PLAYER_Y);
 
     collision_system(reg, 0.016f);
+    scoring_system(reg, 0.016f);
 
     CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
     auto& energy = reg.ctx().get<EnergyState>();
@@ -182,6 +187,7 @@ TEST_CASE("collision: combo gate fails with wrong shape", "[collision]") {
     reg.emplace<Color>(obs, Color{200, 100, 255, 255});
 
     collision_system(reg, 0.016f);
+    scoring_system(reg, 0.016f);
 
     CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
     auto& energy = reg.ctx().get<EnergyState>();
@@ -196,6 +202,7 @@ TEST_CASE("collision: combo gate fails when lane is blocked", "[collision]") {
     make_combo_gate(reg, Shape::Circle, 0b010, constants::PLAYER_Y);
 
     collision_system(reg, 0.016f);
+    scoring_system(reg, 0.016f);
 
     CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
     auto& energy = reg.ctx().get<EnergyState>();
@@ -222,6 +229,7 @@ TEST_CASE("collision: split path fails with wrong shape", "[collision]") {
     make_split_path(reg, Shape::Triangle, 1, constants::PLAYER_Y);
 
     collision_system(reg, 0.016f);
+    scoring_system(reg, 0.016f);
 
     CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
     auto& energy = reg.ctx().get<EnergyState>();
@@ -236,6 +244,7 @@ TEST_CASE("collision: split path fails with wrong lane", "[collision]") {
     make_split_path(reg, Shape::Circle, 0, constants::PLAYER_Y);
 
     collision_system(reg, 0.016f);
+    scoring_system(reg, 0.016f);
 
     CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
     auto& energy = reg.ctx().get<EnergyState>();
@@ -303,7 +312,7 @@ TEST_CASE("collision: BAD timing does not adjust window_start", "[collision][rhy
 
     // Put player in Active phase
     ps.current = Shape::Circle;
-    sw.phase_raw = static_cast<uint8_t>(WindowPhase::Active);
+    sw.phase = WindowPhase::Active;
     sw.graded = false;
     sw.window_timer = 0.0f;
     sw.window_start = song.song_time;
@@ -339,7 +348,7 @@ TEST_CASE("collision: Perfect timing shrinks window via window_start adjustment"
     auto& song = reg.ctx().get<SongState>();
 
     ps.current = Shape::Circle;
-    sw.phase_raw = static_cast<uint8_t>(WindowPhase::Active);
+    sw.phase = WindowPhase::Active;
     sw.graded = false;
     sw.window_timer = 0.0f;
     sw.window_start = song.song_time;

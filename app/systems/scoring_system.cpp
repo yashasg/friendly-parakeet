@@ -34,6 +34,16 @@ void scoring_system(entt::registry& reg, float dt) {
     auto* energy = reg.ctx().find<EnergyState>();
     for (auto [entity, obs, pos] : view.each()) {
         if (reg.any_of<MissTag>(entity)) {
+            // Single owner of ENERGY_DRAIN_MISS and miss_count for all miss paths
+            // (collision miss and scroll-past miss both route through here).
+            if (energy) {
+                energy->energy -= constants::ENERGY_DRAIN_MISS;
+                if (energy->energy < 1e-6f) energy->energy = 0.0f;
+                energy->flash_timer = constants::ENERGY_FLASH_DURATION;
+            }
+            if (auto* results = reg.ctx().find<SongResults>()) {
+                results->miss_count++;
+            }
             score.chain_count = 0;
             score.chain_timer = 0.0f;
             reg.remove<Obstacle>(entity);

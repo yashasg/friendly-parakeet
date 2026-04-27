@@ -63,7 +63,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
         if (cleared) {
             // In rhythm mode, compute timing grade
             if (rhythm_mode) {
-                auto window_phase = static_cast<WindowPhase>(p_window.phase_raw);
+                auto window_phase = p_window.phase;
                 if (window_phase == WindowPhase::Active && song->half_window > 0.0f) {
                     // Grade timing by comparing the player's predicted peak
                     // (center of the Active window) against the obstacle's
@@ -109,14 +109,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
             }
             reg.emplace<ScoredTag>(entity);
         } else {
-            // MISS — drain energy and record death cause
-            if (results) results->miss_count++;
-            auto* energy = reg.ctx().find<EnergyState>();
-            if (energy) {
-                energy->energy -= constants::ENERGY_DRAIN_MISS;
-                if (energy->energy < 1e-6f) energy->energy = 0.0f;
-                energy->flash_timer = constants::ENERGY_FLASH_DURATION;
-            }
+            // MISS — tag and record cause; energy drain handled by scoring_system.
             // Tag the cause of death for the UI (does not override a prior cause)
             if (auto* gos = reg.ctx().find<GameOverState>()) {
                 if (gos->cause == DeathCause::None) {
