@@ -366,8 +366,7 @@ TEST_CASE("beat_scheduler: clamped late-spawn stores adjusted spawn_time in Beat
 
     beat_scheduler_system(reg, 0.016f);
 
-    constexpr float COLLISION_MARGIN = 40.0f;
-    float max_start_y = constants::PLAYER_Y - COLLISION_MARGIN;
+    float max_start_y = constants::PLAYER_Y - constants::COLLISION_MARGIN;
 
     // Position must be clamped
     auto pview = reg.view<ObstacleTag, Position>();

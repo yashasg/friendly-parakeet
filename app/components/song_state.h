@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include "../constants.h"
 
 // ── Song State (singleton, lives in registry context) ─
 struct SongState {
@@ -69,8 +70,7 @@ inline void song_state_compute_derived(SongState& s) {
     s.beat_period     = 60.0f / s.bpm;
     s.lead_time       = s.lead_beats * s.beat_period;
 
-    constexpr float APPROACH_DIST = 1040.0f;
-    s.scroll_speed    = APPROACH_DIST / s.lead_time;
+    s.scroll_speed    = constants::APPROACH_DIST / s.lead_time;
 
     constexpr float BASE_WINDOW_BEATS = 1.6f;
     constexpr float MIN_WINDOW        = 0.36f;

@@ -316,8 +316,6 @@ void test_player_system(entt::registry& reg, float dt) {
     // Shape presses are fine — they're how you clear shape gates.
     // Zone blocking and shape-pending guards are computed per-action below
     // to avoid self-blocking (an obstacle can't block its own dodge).
-    constexpr float COLLISION_MARGIN = 40.0f;
-
     // Track which obstacle has a pending shape press (pressed but not yet scored).
     // Lane changes for OTHER obstacles should wait, but lane changes for the
     // SAME obstacle are fine — they're part of clearing it.
@@ -399,7 +397,7 @@ void test_player_system(entt::registry& reg, float dt) {
             for (auto [ze, zpos] : zone_view.each()) {
                 if (ze == action.obstacle) continue; // don't self-block
                 float zdist = p_pos.y - zpos.y + p_vstate.y_offset;
-                if (zdist >= -COLLISION_MARGIN && zdist <= COLLISION_MARGIN * 3.0f) {
+                if (zdist >= -constants::COLLISION_MARGIN && zdist <= constants::COLLISION_MARGIN * 3.0f) {
                     zone_blocked = true;
                     break;
                 }
@@ -479,7 +477,7 @@ void test_player_system(entt::registry& reg, float dt) {
             for (auto [ze, zpos] : zone_view.each()) {
                 if (ze == action.obstacle) continue;
                 float zdist = p_pos.y - zpos.y + p_vstate.y_offset;
-                if (zdist >= -COLLISION_MARGIN && zdist <= COLLISION_MARGIN * 3.0f) {
+                if (zdist >= -constants::COLLISION_MARGIN && zdist <= constants::COLLISION_MARGIN * 3.0f) {
                     vert_zone_blocked = true;
                     break;
                 }

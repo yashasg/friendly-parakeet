@@ -13,8 +13,6 @@
 
 namespace {
 
-constexpr float COLLISION_MARGIN = 40.0f;
-
 Rectangle centered_rect(float cx, float cy, float w, float h) {
     return {cx - w * 0.5f, cy - h * 0.5f, w, h};
 }
@@ -28,9 +26,9 @@ bool player_in_timing_window(const Position& player_pos,
                              const Position& obstacle_pos) {
     Rectangle timing_window = {
         0.0f,
-        obstacle_pos.y - COLLISION_MARGIN,
+        obstacle_pos.y - constants::COLLISION_MARGIN,
         1.0f,
-        COLLISION_MARGIN * 2.0f
+        constants::COLLISION_MARGIN * 2.0f
     };
     return CheckCollisionPointRec(player_timing_point(player_pos, vstate), timing_window);
 }

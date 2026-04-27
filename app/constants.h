@@ -68,6 +68,7 @@ constexpr float MIN_SPAWN_INT     = 0.5f;
 
 // ── Rhythm Constants ──────────────────────────────
 constexpr float APPROACH_DIST      = 1040.0f;  // |PLAYER_Y - SPAWN_Y|
+constexpr float COLLISION_MARGIN   = 40.0f;    // half-height of timing window (px)
 
 // ── Energy Bar ────────────────────────────────────
 constexpr float ENERGY_MAX              = 1.0f;
