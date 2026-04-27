@@ -49,7 +49,7 @@ void obstacle_spawn_system(entt::registry& reg, float dt) {
             reg.emplace<Position>(obstacle, constants::LANE_X[1], constants::SPAWN_Y);
             reg.emplace<Obstacle>(obstacle, kind, int16_t{constants::PTS_SHAPE_GATE});
             reg.emplace<RequiredShape>(obstacle, shape);
-            reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W), 80.0f);
+            reg.emplace<DrawSize>(obstacle, constants::SCREEN_W_F, 80.0f);
 
             // Color based on required shape
             if (shape == Shape::Circle)
@@ -77,7 +77,7 @@ void obstacle_spawn_system(entt::registry& reg, float dt) {
             }
             reg.emplace<Position>(obstacle, constants::LANE_X[lane], constants::SPAWN_Y);
             reg.emplace<Obstacle>(obstacle, push_kind, int16_t{constants::PTS_LANE_PUSH});
-            reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W / 3), 60.0f);
+            reg.emplace<DrawSize>(obstacle, static_cast<float>(constants::SCREEN_W / 3), 60.0f);
             reg.emplace<Color>(obstacle, Color{255, 138, 101, 255});
             break;
         }
@@ -85,7 +85,7 @@ void obstacle_spawn_system(entt::registry& reg, float dt) {
             reg.emplace<Position>(obstacle, constants::LANE_X[1], constants::SPAWN_Y);
             reg.emplace<Obstacle>(obstacle, kind, int16_t{constants::PTS_LOW_BAR});
             reg.emplace<RequiredVAction>(obstacle, VMode::Jumping);
-            reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W), 40.0f);
+            reg.emplace<DrawSize>(obstacle, constants::SCREEN_W_F, 40.0f);
             reg.emplace<Color>(obstacle, Color{255, 180, 0, 255});
             break;
         }
@@ -93,7 +93,7 @@ void obstacle_spawn_system(entt::registry& reg, float dt) {
             reg.emplace<Position>(obstacle, constants::LANE_X[1], constants::SPAWN_Y);
             reg.emplace<Obstacle>(obstacle, kind, int16_t{constants::PTS_HIGH_BAR});
             reg.emplace<RequiredVAction>(obstacle, VMode::Sliding);
-            reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W), 40.0f);
+            reg.emplace<DrawSize>(obstacle, constants::SCREEN_W_F, 40.0f);
             reg.emplace<Color>(obstacle, Color{180, 0, 255, 255});
             break;
         }
@@ -104,7 +104,7 @@ void obstacle_spawn_system(entt::registry& reg, float dt) {
             reg.emplace<Obstacle>(obstacle, kind, int16_t{constants::PTS_COMBO_GATE});
             reg.emplace<RequiredShape>(obstacle, shape);
             reg.emplace<BlockedLanes>(obstacle, mask);
-            reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W), 80.0f);
+            reg.emplace<DrawSize>(obstacle, constants::SCREEN_W_F, 80.0f);
             reg.emplace<Color>(obstacle, Color{200, 100, 255, 255});
             break;
         }
@@ -114,7 +114,7 @@ void obstacle_spawn_system(entt::registry& reg, float dt) {
             reg.emplace<Obstacle>(obstacle, kind, int16_t{constants::PTS_SPLIT_PATH});
             reg.emplace<RequiredShape>(obstacle, shape);
             reg.emplace<RequiredLane>(obstacle, int8_t(lane));
-            reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W), 80.0f);
+            reg.emplace<DrawSize>(obstacle, constants::SCREEN_W_F, 80.0f);
             reg.emplace<Color>(obstacle, Color{255, 215, 0, 255});
             break;
         }
@@ -124,7 +124,7 @@ void obstacle_spawn_system(entt::registry& reg, float dt) {
             // but handle gracefully.
             reg.emplace<Position>(obstacle, constants::LANE_X[lane], constants::SPAWN_Y);
             reg.emplace<Obstacle>(obstacle, kind, int16_t{constants::PTS_LANE_PUSH});
-            reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W / 3), 60.0f);
+            reg.emplace<DrawSize>(obstacle, static_cast<float>(constants::SCREEN_W / 3), 60.0f);
             reg.emplace<Color>(obstacle, Color{255, 138, 101, 255});
             break;
         }

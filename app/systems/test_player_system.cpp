@@ -207,7 +207,7 @@ void test_player_system(entt::registry& reg, float dt) {
 
     // ── Find player ──────────────────────────────────────────
     auto player_view = reg.view<PlayerTag, Position, PlayerShape, ShapeWindow, Lane, VerticalState>();
-    if (player_view.size_hint() == 0) return;
+    if (player_view.begin() == player_view.end()) return;
 
     auto player_entity = *player_view.begin();
     auto [p_pos, p_shape, p_window, p_lane, p_vstate] =

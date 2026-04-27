@@ -58,7 +58,7 @@ void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
                 reg.emplace<Position>(obstacle, constants::LANE_X[entry.lane], start_y);
                 reg.emplace<Obstacle>(obstacle, ObstacleKind::ShapeGate, int16_t{constants::PTS_SHAPE_GATE});
                 reg.emplace<RequiredShape>(obstacle, entry.shape);
-                reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W), 80.0f);
+                reg.emplace<DrawSize>(obstacle, constants::SCREEN_W_F, 80.0f);
                 if (entry.shape == Shape::Circle)
                     reg.emplace<Color>(obstacle, Color{80, 200, 255, 255});
                 else if (entry.shape == Shape::Square)
@@ -75,7 +75,7 @@ void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
                 reg.emplace<Position>(obstacle, constants::LANE_X[display_lane], start_y);
                 reg.emplace<Obstacle>(obstacle, ObstacleKind::LaneBlock, int16_t{constants::PTS_LANE_BLOCK});
                 reg.emplace<BlockedLanes>(obstacle, entry.blocked_mask);
-                reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W / 3), 80.0f);
+                reg.emplace<DrawSize>(obstacle, static_cast<float>(constants::SCREEN_W / 3), 80.0f);
                 reg.emplace<Color>(obstacle, Color{255, 60, 60, 255});
                 break;
             }
@@ -83,7 +83,7 @@ void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
                 reg.emplace<Position>(obstacle, constants::LANE_X[1], start_y);
                 reg.emplace<Obstacle>(obstacle, ObstacleKind::LowBar, int16_t{constants::PTS_LOW_BAR});
                 reg.emplace<RequiredVAction>(obstacle, VMode::Jumping);
-                reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W), 40.0f);
+                reg.emplace<DrawSize>(obstacle, constants::SCREEN_W_F, 40.0f);
                 reg.emplace<Color>(obstacle, Color{255, 180, 0, 255});
                 break;
             }
@@ -91,7 +91,7 @@ void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
                 reg.emplace<Position>(obstacle, constants::LANE_X[1], start_y);
                 reg.emplace<Obstacle>(obstacle, ObstacleKind::HighBar, int16_t{constants::PTS_HIGH_BAR});
                 reg.emplace<RequiredVAction>(obstacle, VMode::Sliding);
-                reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W), 40.0f);
+                reg.emplace<DrawSize>(obstacle, constants::SCREEN_W_F, 40.0f);
                 reg.emplace<Color>(obstacle, Color{180, 0, 255, 255});
                 break;
             }
@@ -100,7 +100,7 @@ void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
                 reg.emplace<Obstacle>(obstacle, ObstacleKind::ComboGate, int16_t{constants::PTS_COMBO_GATE});
                 reg.emplace<RequiredShape>(obstacle, entry.shape);
                 reg.emplace<BlockedLanes>(obstacle, entry.blocked_mask);
-                reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W), 80.0f);
+                reg.emplace<DrawSize>(obstacle, constants::SCREEN_W_F, 80.0f);
                 reg.emplace<Color>(obstacle, Color{200, 100, 255, 255});
                 break;
             }
@@ -109,7 +109,7 @@ void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
                 reg.emplace<Obstacle>(obstacle, ObstacleKind::SplitPath, int16_t{constants::PTS_SPLIT_PATH});
                 reg.emplace<RequiredShape>(obstacle, entry.shape);
                 reg.emplace<RequiredLane>(obstacle, entry.lane);
-                reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W), 80.0f);
+                reg.emplace<DrawSize>(obstacle, constants::SCREEN_W_F, 80.0f);
                 reg.emplace<Color>(obstacle, Color{255, 215, 0, 255});
                 break;
             }
@@ -117,7 +117,7 @@ void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
             case ObstacleKind::LanePushRight: {
                 reg.emplace<Position>(obstacle, constants::LANE_X[entry.lane], start_y);
                 reg.emplace<Obstacle>(obstacle, entry.kind, int16_t{constants::PTS_LANE_PUSH});
-                reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W / 3), 60.0f);
+                reg.emplace<DrawSize>(obstacle, static_cast<float>(constants::SCREEN_W / 3), 60.0f);
                 // Orange arrows
                 reg.emplace<Color>(obstacle, Color{255, 138, 101, 255});
                 break;

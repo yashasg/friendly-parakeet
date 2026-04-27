@@ -50,7 +50,8 @@ void scoring_system(entt::registry& reg, float dt) {
             reg.remove<Obstacle>(entity);
             reg.remove<ScoredTag>(entity);
             reg.remove<MissTag>(entity);
-            if (reg.any_of<TimingGrade>(entity)) reg.remove<TimingGrade>(entity);
+            if (reg.any_of<TimingGrade>(entity))  reg.remove<TimingGrade>(entity);
+            if (reg.any_of<BankedBurnout>(entity)) reg.remove<BankedBurnout>(entity);
             continue;
         }
 
@@ -132,7 +133,7 @@ void scoring_system(entt::registry& reg, float dt) {
         reg.emplace<Velocity>(popup, 0.0f, -80.0f);
         reg.emplace<Lifetime>(popup, constants::POPUP_DURATION, constants::POPUP_DURATION);
 
-        uint8_t tt = timing ? static_cast<uint8_t>(timing->tier) : uint8_t{255};
+        uint8_t tt = timing ? static_cast<uint8_t>(timing->tier) : ScorePopup::TIMING_TIER_NONE;
         reg.emplace<ScorePopup>(popup, points, tier_for_multiplier(burnout_mult), tt);
 
         // Color by timing grade

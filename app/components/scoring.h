@@ -14,9 +14,14 @@ struct ScoreState {
 };
 
 struct ScorePopup {
+    // Sentinel for timing_tier meaning "no timing grade" (non-shape obstacle
+    // or freeplay mode).  Defined as a named constant so readers don't need
+    // to interpret the raw 255 at every use site.
+    static constexpr uint8_t TIMING_TIER_NONE = 255;
+
     int32_t value       = 0;
-    uint8_t tier        = 0;     // burnout tier (legacy)
-    uint8_t timing_tier = 255;   // TimingTier value, 255 = no timing (non-shape obstacle)
+    uint8_t tier        = 0;              // burnout tier (legacy)
+    uint8_t timing_tier = TIMING_TIER_NONE;
 };
 
 // Pre-computed popup display data. Computed by popup_display_system,

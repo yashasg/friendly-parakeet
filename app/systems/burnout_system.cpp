@@ -20,7 +20,7 @@ void burnout_system(entt::registry& reg, float /*dt*/) {
 
     // Find player
     auto player_view = reg.view<PlayerTag, Position, Lane>();
-    if (player_view.size_hint() == 0) {
+    if (player_view.begin() == player_view.end()) {
         burnout.nearest_threat = entt::null;
         return;
     }

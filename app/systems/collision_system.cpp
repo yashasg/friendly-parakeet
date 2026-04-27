@@ -13,7 +13,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
     if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
 
     auto player_view = reg.view<PlayerTag, Position, PlayerShape, ShapeWindow, Lane, VerticalState>();
-    if (player_view.size_hint() == 0) return;
+    if (player_view.begin() == player_view.end()) return;
 
     auto player_it = player_view.begin();
     auto [p_pos, p_shape, p_window, p_lane, p_vstate] =

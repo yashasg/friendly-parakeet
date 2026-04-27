@@ -519,8 +519,8 @@ void ui_render_system(entt::registry& reg, float /*alpha*/) {
                 ovr["overlay_color"][2].get<uint8_t>(),
                 ovr["overlay_color"][3].get<uint8_t>()
             };
-            DrawRectangleRec({0, 0, float(constants::SCREEN_W),
-                              float(constants::SCREEN_H)}, oc);
+            DrawRectangleRec({0, 0, constants::SCREEN_W_F,
+                              constants::SCREEN_H_F}, oc);
         }
     }
 

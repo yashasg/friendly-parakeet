@@ -8,6 +8,9 @@ namespace constants {
 // ── Logical Resolution ────────────────────────────
 constexpr int   SCREEN_W          = 720;
 constexpr int   SCREEN_H          = 1280;
+// Float companions used by obstacle drawing (avoids C-style functional casts)
+constexpr float SCREEN_W_F        = static_cast<float>(SCREEN_W);
+constexpr float SCREEN_H_F        = static_cast<float>(SCREEN_H);
 
 // ── Lanes ─────────────────────────────────────────
 constexpr int   LANE_COUNT        = 3;

@@ -17,7 +17,7 @@ void popup_display_system(entt::registry& reg, float /*dt*/) {
         pd.b = col.b;
         pd.a = static_cast<uint8_t>(alpha_ratio * 255);
 
-        if (popup.timing_tier <= 3) {
+        if (popup.timing_tier != ScorePopup::TIMING_TIER_NONE) {
             const char* grade = "BAD";
             pd.font_size = FontSize::Small;
             switch (popup.timing_tier) {
