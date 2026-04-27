@@ -1,4 +1,7 @@
-// Regression tests for GitHub issue #288 (originally filed as #208).
+// Regression tests for GitHub issues #208 and #288.
+//
+// #208: popup_display_system had zero test coverage.
+// #288: timing_tier migrated from raw uint8_t sentinel (255) to optional<TimingTier>.
 //
 // Covers popup_display_system — the system that converts ScorePopup entities
 // into renderable PopupDisplay structs (text label, font size, RGBA alpha).
@@ -55,7 +58,7 @@ static entt::entity make_popup_entity(entt::registry& reg,
 // ── Grade text + font size ────────────────────────────────────────────────
 
 TEST_CASE("popup_display_system: TimingTier::Perfect → PERFECT, Medium font",
-          "[popup_display][issue288]") {
+          "[popup_display][issue208][issue288]") {
     entt::registry reg;
     auto e = make_popup_entity(reg, TimingTier::Perfect, 0, 1.0f, 1.0f);
 
@@ -68,7 +71,7 @@ TEST_CASE("popup_display_system: TimingTier::Perfect → PERFECT, Medium font",
 }
 
 TEST_CASE("popup_display_system: TimingTier::Good → GOOD, Small font",
-          "[popup_display][issue288]") {
+          "[popup_display][issue208][issue288]") {
     entt::registry reg;
     auto e = make_popup_entity(reg, TimingTier::Good, 0, 1.0f, 1.0f);
 
@@ -81,7 +84,7 @@ TEST_CASE("popup_display_system: TimingTier::Good → GOOD, Small font",
 }
 
 TEST_CASE("popup_display_system: TimingTier::Ok → OK, Small font",
-          "[popup_display][issue288]") {
+          "[popup_display][issue208][issue288]") {
     entt::registry reg;
     auto e = make_popup_entity(reg, TimingTier::Ok, 0, 1.0f, 1.0f);
 
@@ -94,7 +97,7 @@ TEST_CASE("popup_display_system: TimingTier::Ok → OK, Small font",
 }
 
 TEST_CASE("popup_display_system: TimingTier::Bad → BAD, Small font",
-          "[popup_display][issue288]") {
+          "[popup_display][issue208][issue288]") {
     entt::registry reg;
     auto e = make_popup_entity(reg, TimingTier::Bad, 0, 1.0f, 1.0f);
 
@@ -109,7 +112,7 @@ TEST_CASE("popup_display_system: TimingTier::Bad → BAD, Small font",
 // ── Numeric score path ────────────────────────────────────────────────────
 
 TEST_CASE("popup_display_system: nullopt timing_tier → numeric score string",
-          "[popup_display][issue288]") {
+          "[popup_display][issue208][issue288]") {
     entt::registry reg;
     auto e = make_popup_entity(reg, std::nullopt, 150, 1.0f, 1.0f);
 
@@ -125,7 +128,7 @@ TEST_CASE("popup_display_system: nullopt timing_tier → numeric score string",
 // ── Alpha decay ───────────────────────────────────────────────────────────
 
 TEST_CASE("popup_display_system: alpha at half lifetime is 127",
-          "[popup_display][issue288]") {
+          "[popup_display][issue208][issue288]") {
     entt::registry reg;
     // remaining = 0.5, max_time = 1.0 → alpha_ratio = 0.5
     // pd.a = static_cast<uint8_t>(0.5f * 255) = 127
