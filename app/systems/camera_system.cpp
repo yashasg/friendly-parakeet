@@ -188,17 +188,17 @@ void game_camera_system(entt::registry& reg, float /*dt*/) {
                 case ObstacleKind::LanePushLeft:
                 case ObstacleKind::LanePushRight:
                     reg.emplace_or_replace<ModelTransform>(entity,
-                        ModelTransform{slab_matrix(pos.x-dsz.w/2, pos.y, dsz.w, dsz.h, constants::OBSTACLE_3D_HEIGHT),
+                        ModelTransform{slab_matrix(pos.x-dsz.w/2, pos.y, dsz.w, constants::OBSTACLE_3D_HEIGHT, dsz.h),
                                        col, MeshType::Slab, 0});
                     break;
                 case ObstacleKind::LowBar:
                     reg.emplace_or_replace<ModelTransform>(entity,
-                        ModelTransform{slab_matrix(0, pos.y, static_cast<float>(constants::SCREEN_W), dsz.h, constants::LOWBAR_3D_HEIGHT),
+                        ModelTransform{slab_matrix(0, pos.y, static_cast<float>(constants::SCREEN_W), constants::LOWBAR_3D_HEIGHT, dsz.h),
                                        col, MeshType::Slab, 0});
                     break;
                 case ObstacleKind::HighBar:
                     reg.emplace_or_replace<ModelTransform>(entity,
-                        ModelTransform{slab_matrix(0, pos.y, static_cast<float>(constants::SCREEN_W), dsz.h, constants::HIGHBAR_3D_HEIGHT),
+                        ModelTransform{slab_matrix(0, pos.y, static_cast<float>(constants::SCREEN_W), constants::HIGHBAR_3D_HEIGHT, dsz.h),
                                        col, MeshType::Slab, 0});
                     break;
                 default:
@@ -216,7 +216,7 @@ void game_camera_system(entt::registry& reg, float /*dt*/) {
 
             if (mc.mesh_type == MeshType::Slab) {
                 reg.emplace_or_replace<ModelTransform>(entity,
-                    ModelTransform{slab_matrix(mc.x, z, mc.width, mc.depth, mc.height),
+                    ModelTransform{slab_matrix(mc.x, z, mc.width, mc.height, mc.depth),
                                    mc.tint, MeshType::Slab, 0});
             } else {
                 const auto& props = SHAPE_PROPS[mc.mesh_index];
@@ -280,23 +280,27 @@ void game_camera_system(entt::registry& reg, float /*dt*/) {
     }
 }
 
+// ── compute_screen_transform: letterbox scale/offset from window size ────────
+
+void compute_screen_transform(entt::registry& reg) {
+    float win_w, win_h;
+    platform_get_display_size(win_w, win_h);
+    float scale = std::min(
+        win_w / static_cast<float>(constants::SCREEN_W),
+        win_h / static_cast<float>(constants::SCREEN_H));
+    float dst_w = constants::SCREEN_W * scale;
+    float dst_h = constants::SCREEN_H * scale;
+    auto& st     = reg.ctx().get<ScreenTransform>();
+    st.offset_x  = (win_w - dst_w) * 0.5f;
+    st.offset_y  = (win_h - dst_h) * 0.5f;
+    st.scale     = scale;
+}
+
 // ── ui_camera_system: screen-space transforms for UI layer ──────────────────
 
 void ui_camera_system(entt::registry& reg, float /*dt*/) {
-    // 1. Screen transform (letterbox)
-    {
-        float win_w, win_h;
-        platform_get_display_size(win_w, win_h);
-        float scale = std::min(
-            win_w / static_cast<float>(constants::SCREEN_W),
-            win_h / static_cast<float>(constants::SCREEN_H));
-        float dst_w = constants::SCREEN_W * scale;
-        float dst_h = constants::SCREEN_H * scale;
-        auto& st     = reg.ctx().get<ScreenTransform>();
-        st.offset_x  = (win_w - dst_w) * 0.5f;
-        st.offset_y  = (win_h - dst_h) * 0.5f;
-        st.scale     = scale;
-    }
+    // 1. Screen transform (letterbox) — also called pre-input; keep in sync.
+    compute_screen_transform(reg);
 
     // 2. Popup screen-space projection
     {

@@ -9,6 +9,7 @@ static entt::entity add_slab_child(entt::registry& reg, entt::entity parent,
                                    float x, float w, float d, float h, Color tint) {
     auto e = reg.create();
     reg.emplace<MeshChild>(e, MeshChild{parent, x, 0.0f, w, d, h, tint, MeshType::Slab, 0});
+    reg.get_or_emplace<ObstacleChildren>(parent).push(e);
     return e;
 }
 
@@ -19,6 +20,7 @@ static entt::entity add_shape_child(entt::registry& reg, entt::entity parent,
     auto e = reg.create();
     reg.emplace<MeshChild>(e, MeshChild{parent, cx, z_offset, size, 0, 0, tint,
                                         MeshType::Shape, idx});
+    reg.get_or_emplace<ObstacleChildren>(parent).push(e);
     return e;
 }
 
@@ -86,13 +88,13 @@ void spawn_obstacle_meshes(entt::registry& reg, entt::entity logical) {
     }
 }
 
-// on_destroy listener: destroy all MeshChild entities that reference this parent.
+// on_destroy listener: destroy MeshChild entities owned by this parent.
+// Uses ObstacleChildren for O(N) lookup instead of scanning the full pool.
 void on_obstacle_destroy(entt::registry& reg, entt::entity parent) {
-    auto view = reg.view<MeshChild>();
-    for (auto it = view.begin(); it != view.end(); ) {
-        auto e = *it;
-        ++it;
-        if (view.get<MeshChild>(e).parent == parent)
-            reg.destroy(e);
+    auto* oc = reg.try_get<ObstacleChildren>(parent);
+    if (!oc) return;
+    for (int i = 0; i < oc->count; ++i) {
+        if (reg.valid(oc->children[i]))
+            reg.destroy(oc->children[i]);
     }
 }

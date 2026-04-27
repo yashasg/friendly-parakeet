@@ -76,13 +76,14 @@ inline void spawn_title_buttons(entt::registry& reg) {
     constexpr float EXIT_CENTER_Y = 1075.0f;
     constexpr float EXIT_TOP = EXIT_CENTER_Y - EXIT_H / 2.0f;
 
-    // Full-screen tap → confirm (go to level select), excluding Exit region
+    // Full-screen tap → confirm (go to level select), excluding Exit region.
+    // Shrink by 1px so the confirm region ends at EXIT_TOP - 1 and does not
+    // overlap the Exit button whose top edge is at EXIT_TOP.
+    constexpr float CONFIRM_HALF = (EXIT_TOP - 1.0f) / 2.0f;
     auto btn = reg.create();
     reg.emplace<MenuButtonTag>(btn);
-    reg.emplace<Position>(btn, constants::SCREEN_W / 2.0f,
-                               EXIT_TOP / 2.0f);
-    reg.emplace<HitBox>(btn, constants::SCREEN_W / 2.0f,
-                              EXIT_TOP / 2.0f);
+    reg.emplace<Position>(btn, constants::SCREEN_W / 2.0f, CONFIRM_HALF);
+    reg.emplace<HitBox>(btn, constants::SCREEN_W / 2.0f, CONFIRM_HALF);
     reg.emplace<MenuAction>(btn, MenuActionKind::Confirm, uint8_t{0});
     reg.emplace<ActiveInPhase>(btn, phase_bit(GamePhase::Title));
 

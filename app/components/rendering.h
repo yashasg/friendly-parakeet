@@ -55,6 +55,19 @@ struct MeshChild {
     int mesh_index;      // index into ShapeMeshes.shapes[] for Shape type
 };
 
+// ── Mesh-child ownership ─────────────────────────────────────────────────────
+// Emplaced on logical obstacle entities by spawn_obstacle_meshes.
+// on_obstacle_destroy reads this to destroy children in O(count) without
+// scanning the entire MeshChild pool.
+struct ObstacleChildren {
+    static constexpr int MAX = 8;
+    entt::entity children[MAX];
+    int count = 0;
+    void push(entt::entity e) {
+        if (count < MAX) children[count++] = e;
+    }
+};
+
 // ── Screen-space position ───────────────────────────────────────────────────
 // Computed by camera_system via GetWorldToScreenEx projection.
 // Used by UI render pass to draw popups at the correct screen location.

@@ -171,23 +171,24 @@ void ui_navigation_system(entt::registry& reg, float /*dt*/) {
         case GamePhase::GameOver:     ui.active = ActiveScreen::GameOver; break;
         case GamePhase::SongComplete: ui.active = ActiveScreen::SongComplete; break;
         case GamePhase::Paused:
-            ui.active = ActiveScreen::Paused;
-            ui.has_overlay = true;
-            {
+            // Load the overlay JSON once when first entering Paused.
+            // Subsequent frames while Paused reuse the cached overlay_screen.
+            if (ui.active != ActiveScreen::Paused) {
                 std::string path = ui.base_dir + "/screens/paused.json";
                 std::ifstream f(path);
                 if (f.is_open()) {
                     try {
                         ui.overlay_screen = nlohmann::json::parse(f);
+                        ui.has_overlay = true;
                     } catch (const nlohmann::json::exception& e) {
                         TraceLog(LOG_WARNING, "Overlay parse error: %s (%s)",
                                  path.c_str(), e.what());
-                        ui.has_overlay = false;
                     }
-                } else {
-                    ui.has_overlay = false;
                 }
+            } else {
+                ui.has_overlay = true;
             }
+            ui.active = ActiveScreen::Paused;
             break;
     }
 }

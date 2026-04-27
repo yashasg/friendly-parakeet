@@ -140,6 +140,7 @@ void game_loop_frame(entt::registry& reg, float& accumulator) {
     accumulator += raw_dt;
     if (accumulator > MAX_ACCUM) accumulator = MAX_ACCUM;
 
+    compute_screen_transform(reg);
     input_system(reg, raw_dt);
     hit_test_system(reg);
     test_player_system(reg, raw_dt);

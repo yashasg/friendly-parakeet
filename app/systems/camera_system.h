@@ -19,3 +19,7 @@ void init(entt::registry& reg);
 void shutdown(entt::registry& reg);
 
 } // namespace camera
+
+// Update ScreenTransform (letterbox scale/offset) from the current window size.
+// Called before input_system so coordinate transforms are never one-frame stale.
+void compute_screen_transform(entt::registry& reg);
