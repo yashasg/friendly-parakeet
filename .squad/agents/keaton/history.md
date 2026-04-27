@@ -140,3 +140,12 @@ Fixed all 7 unresolved review threads in commit d90abf9 on `user/yashasg/ecs_ref
 - **SFX::COUNT removed** — Count derived via `magic_enum::enum_count<SFX>()`. SFXBank::SFX_COUNT and the local SFX_COUNT in sfx_bank.cpp both use enum_count. A `static_assert` ties SFX_SPECS.size() to enum_count so any future SFX addition without a corresponding spec entry fails at compile time.
 - **Test edit justified** — `test_audio_system.cpp` used `SFX::COUNT` in a static_assert and in a modulo expression; both replaced with `magic_enum::enum_count<SFX>()`. This was the minimum edit to unblock compile.
 - **Validation:** zero warnings, 2123 assertions, 667 test cases, all pass.
+
+### 2026 — Issue #244: emplace_or_replace<ModelTransform> per frame
+
+**Scope:** `app/systems/camera_system.cpp`
+
+- **`emplace_or_replace` fires `on_construct` or `on_update` signals every frame** — for components that exist every frame (transforms, positions), this is unnecessary signal traffic. No observers are connected to `ModelTransform` today, but the pattern is still wrong by contract.
+- **Fix pattern: `get_or_emplace<T>(entity) = T{...}`** — `get_or_emplace` emplaces once (firing `on_construct` once at entity birth), then returns a reference on subsequent frames. Assigning to the reference mutates in-place with no signal. This is the canonical steady-state mutation idiom in EnTT.
+- **Confirmed no `ModelTransform` signal observers** — `grep on_construct/on_update/on_destroy` across all sources; only `ObstacleTag` and `ScoredTag` have live observers. The fix is signal-safe.
+- **Pre-existing build failures in `beat_map_loader.cpp`** blocked full rebuild; compiled `camera_system.cpp` in isolation with `-Wall -Wextra -Werror`, zero warnings.

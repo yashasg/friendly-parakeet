@@ -187,19 +187,19 @@ void game_camera_system(entt::registry& reg, float /*dt*/) {
             switch (obs.kind) {
                 case ObstacleKind::LanePushLeft:
                 case ObstacleKind::LanePushRight:
-                    reg.emplace_or_replace<ModelTransform>(entity,
+                    reg.get_or_emplace<ModelTransform>(entity) =
                         ModelTransform{slab_matrix(pos.x-dsz.w/2, pos.y, dsz.w, constants::OBSTACLE_3D_HEIGHT, dsz.h),
-                                       col, MeshType::Slab, 0});
+                                       col, MeshType::Slab, 0};
                     break;
                 case ObstacleKind::LowBar:
-                    reg.emplace_or_replace<ModelTransform>(entity,
+                    reg.get_or_emplace<ModelTransform>(entity) =
                         ModelTransform{slab_matrix(0, pos.y, static_cast<float>(constants::SCREEN_W), constants::LOWBAR_3D_HEIGHT, dsz.h),
-                                       col, MeshType::Slab, 0});
+                                       col, MeshType::Slab, 0};
                     break;
                 case ObstacleKind::HighBar:
-                    reg.emplace_or_replace<ModelTransform>(entity,
+                    reg.get_or_emplace<ModelTransform>(entity) =
                         ModelTransform{slab_matrix(0, pos.y, static_cast<float>(constants::SCREEN_W), constants::HIGHBAR_3D_HEIGHT, dsz.h),
-                                       col, MeshType::Slab, 0});
+                                       col, MeshType::Slab, 0};
                     break;
                 default:
                     break;
@@ -215,14 +215,14 @@ void game_camera_system(entt::registry& reg, float /*dt*/) {
             float z = parent_pos.y + mc.z_offset;
 
             if (mc.mesh_type == MeshType::Slab) {
-                reg.emplace_or_replace<ModelTransform>(entity,
+                reg.get_or_emplace<ModelTransform>(entity) =
                     ModelTransform{slab_matrix(mc.x, z, mc.width, mc.height, mc.depth),
-                                   mc.tint, MeshType::Slab, 0});
+                                   mc.tint, MeshType::Slab, 0};
             } else {
                 const auto& props = SHAPE_PROPS[mc.mesh_index];
-                reg.emplace_or_replace<ModelTransform>(entity,
+                reg.get_or_emplace<ModelTransform>(entity) =
                     ModelTransform{make_shape_matrix(mc.mesh_index, mc.x, 0.0f, z, mc.width, props.radius_scale),
-                                   mc.tint, MeshType::Shape, mc.mesh_index});
+                                   mc.tint, MeshType::Shape, mc.mesh_index};
             }
         }
     }
@@ -236,9 +236,9 @@ void game_camera_system(entt::registry& reg, float /*dt*/) {
             if (vstate.mode == VMode::Sliding) sz *= 0.5f;
             int shape_idx = static_cast<int>(pshape.current);
             const auto& props = SHAPE_PROPS[shape_idx];
-            reg.emplace_or_replace<ModelTransform>(entity,
+            reg.get_or_emplace<ModelTransform>(entity) =
                 ModelTransform{make_shape_matrix(shape_idx, pos.x, y_3d, pos.y, sz, props.radius_scale),
-                               col, MeshType::Shape, shape_idx});
+                               col, MeshType::Shape, shape_idx};
         }
     }
 
@@ -252,8 +252,8 @@ void game_camera_system(entt::registry& reg, float /*dt*/) {
             Matrix mat = MatrixMultiply(
                 MatrixScale(sz, 1, sz),
                 MatrixTranslate(pos.x - half, 0, pos.y - half));
-            reg.emplace_or_replace<ModelTransform>(entity,
-                ModelTransform{mat, col, MeshType::Quad, 0});
+            reg.get_or_emplace<ModelTransform>(entity) =
+                ModelTransform{mat, col, MeshType::Quad, 0};
         }
     }
 
