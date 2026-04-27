@@ -169,3 +169,31 @@ Fixed all 7 unresolved review threads in commit d90abf9 on `user/yashasg/ecs_ref
 - **Production code was already correct** — `game_loop_init` primes `ObstacleChildren` before any `ObstacleTag` pool exists (because `wire_obstacle_counter` is first called from `setup_play_session` at runtime, not during init). The bug was test-only.
 - **Key EnTT ordering rule:** `reg.on_construct/on_destroy<T>()` creates the pool for `T` (via `assure<T>()` internally). Any component that must be readable in a destroy-signal handler must be registered as a pool BEFORE `T`'s pool is created.
 - **Validation:** `[pr43]` 44/44 assertions pass; full suite 2390/2390 assertions pass, zero warnings.
+
+### 2026-04-27 — EnTT Input Model Guardrails (PRE-IMPLEMENTATION GUIDANCE from Keyser)
+
+**Cross-agent context:** Keyser published pre-implementation guardrails for dispatcher-based input refactor. You are Keaton (C++ Perf), identified as the implementation lead.
+
+**What you need to know:**
+- **Target:** Replace `EventQueue` fixed arrays with `entt::dispatcher` in `reg.ctx()`
+- **Delivery model:** `enqueue`+`update`, **not** `trigger` (must preserve fixed-step seam)
+- **System order unchanged:** Dispatcher is transport layer only
+- **Listener pattern:** Free functions or lambdas, registered in canonical order in `game_loop_init`
+- **Seven guardrails:** Multi-consumer ordering, overflow cap, clear-vs-update, registry access pattern, no connect-in-handler, trigger prohibition, stale event discard
+
+**Recommended migration (in order):**
+1. Add dispatcher to ctx (inert, zero-risk)
+2. Migrate InputEvent tier → gesture_routing + hit_test as listeners
+3. Migrate GoEvent/ButtonPressEvent tier → player_input_system handlers
+4. Remove EventQueue struct
+5. Baer gate: R7 test + no-replay validation
+
+**Key invariants to preserve:**
+- No multi-tick input replay (#213)
+- Deterministic fixed-step behavior
+- No frame-late input
+- MorphOut interrupt (#209) unchanged
+- BankedBurnout first-commit-lock (#167) unchanged
+
+**Full decision:** `.squad/decisions.md` (EnTT Input Model Guardrails section)
+**Orchestration log:** `.squad/orchestration-log/2026-04-27T19-09-18Z-keyser-entt-input-guardrails.md`

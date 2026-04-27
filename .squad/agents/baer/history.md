@@ -407,3 +407,77 @@ ctest --test-dir build -R "shipped beatmaps"
 4. **Catch2 + EnTT null comparisons** always require explicit parentheses: `REQUIRE((e != entt::null))` — without them, template expression SFINAE fails on `ExprLhs<entt::entity>`.
 
 5. **Theme 4 (EXIT_TOP):** After the fix in ui_button_spawner.h, Confirm half_h = (EXIT_TOP - 1)/2 = 524.5 → `pos.y = 524.5, half_h = 524.5`, covering y ∈ [0, 1049]. Exit starts at EXIT_TOP = 1050. Regions are non-overlapping.
+
+---
+
+### 2026-05-17 — Review: Redfoot #251 popup_display_system one-shot formatting
+
+**Decision: APPROVED — #251 can be closed.**
+
+**What was reviewed:** Commit `fbf0297` (`perf(popup_display_system): format static text once at spawn (#251)`).
+
+**Behavioral verification:**
+
+- `init_popup_display()` is a new free function in `popup_display_system.cpp` that formats text, font size, and base RGB exactly once at spawn. It is declared in `all_systems.h` under the Phase 6.5 block with a concise comment. Scope is appropriate — it is not a member of any class and creates no ownership creep.
+- `scoring_system.cpp` (lines 141–146) calls `init_popup_display()` at popup-spawn time, then `reg.emplace<PopupDisplay>()` with the pre-filled struct. No `emplace_or_replace` in scoring_system.
+- `popup_display_system` iterates `<PopupDisplay, Color, Lifetime>` and **only** mutates `pd.a` per-frame via the alpha_ratio formula. No `snprintf`, no `switch`, no `emplace_or_replace` anywhere in the tick path.
+- Alpha fade formula: `pd.a = static_cast<uint8_t>(col.a * (remaining / max_time))` with clamping — identical semantics to the prior implementation.
+
+**Test coverage:**
+
+| Test | Coverage | Pass |
+|------|----------|------|
+| Perfect/Good/Ok/Bad grade paths | text + font_size correct | ✅ |
+| nullopt timing_tier | numeric string (e.g. "150") | ✅ |
+| alpha at half lifetime | pd.a == 127 | ✅ |
+| static text survives multiple ticks (sentinel) | `[issue251]` | ✅ |
+| storage size unchanged after multiple ticks | `[issue251]` | ✅ |
+| works after ScorePopup removed | `[issue251]` | ✅ |
+| `init_popup_display` unit: grade + RGB copy | `[issue251]` | ✅ |
+| `init_popup_display` unit: numeric path | `[issue251]` | ✅ |
+
+**Test run:** `[popup_display]` → 11 test cases, 33 assertions, all pass. `[issue251]` → 5 test cases, 16 assertions, all pass. Pre-existing 4 failures (`test_collision_system.cpp`, `test_pr43_regression.cpp`) are documented in decisions.md and unrelated to #251.
+
+**No gaps found.** All checklist items from the issue spec are covered: grade/numeric paths, alpha fade, no per-frame storage churn, static text surviving multiple ticks, behavior after `ScorePopup` removal, and direct `init_popup_display` unit tests. API scoping in `all_systems.h` is clean.
+
+### PR #43 — Windows beat_log test failures (c6ca0e8)
+
+**Task:** Investigate and fix Windows-only failures in `test_beat_log_system.cpp` (lines 98, 110, 164 all expanding to `-1 == N`).
+
+**Root cause:** `make_open_log()` test helper opened `/dev/null` — which does not exist on Windows. `std::fopen("/dev/null", "w")` returns `nullptr` on Windows, so `beat_log_system` bails immediately at the `!log->file` guard, leaving `last_logged_beat` at its initial `-1`. All three failing tests use this helper.
+
+**Fix:** `#ifdef _WIN32` guard in the helper — use `"NUL"` on Windows, `"/dev/null"` on POSIX. One-file, six-line change in `tests/test_beat_log_system.cpp`.
+
+**Verification:**
+- macOS local run: `[beat_log]` → 11 test cases, 13 assertions, all pass
+- Fix is additive (no logic change, no test weakening)
+- Commit: c6ca0e8 on `user/yashasg/ecs_refactor`
+
+### 2026-04-27 — EnTT Input Model Guardrails (PRE-IMPLEMENTATION GUIDANCE from Keyser)
+
+**Cross-agent context:** Keyser published pre-implementation guardrails for dispatcher-based input refactor. You are Baer (Testing), identified as the validation gate owner.
+
+**Your role:** Implement validation tests for guardrails R1–R7, with specific focus on:
+
+**R7 — Stale event discard across phase transitions (PRIORITY TEST):**
+- Add a Catch2 test `[entt_input][stale_event_discard]` that:
+  1. Enqueues GoEvents/ButtonPressEvents while game is in Playing phase
+  2. Transitions to Paused/MenuOpen phase
+  3. `player_input_system` returns early (events NOT drained)
+  4. Next frame's `input_system` calls `disp.clear<GoEvent/ButtonPressEvent>()`
+  5. Verify events were discarded, not replayed (prevent #213 regression)
+
+**No-replay validation (R1 + R2):**
+- Verify multi-consumer ordering in registration order (R1)
+- Test that `update()` on empty queue = no-op on sub-ticks (R2 + #213 invariant)
+- Verify test_player_system doesn't emit >8 events/frame (R2 cap check)
+
+**Supporting tests (non-critical):**
+- R3: Document clear-vs-update semantics in a comment test
+- R4: Verify listener registry access pattern (payload/lambda, no naked global)
+- R5: Cannot be tested directly (UB at runtime); document in code comment
+- R6: Lint-only guarantee; document trigger prohibition in `input_system`/`player_input_system`
+
+**Full decision:** `.squad/decisions.md` (EnTT Input Model Guardrails section)
+**Orchestration log:** `.squad/orchestration-log/2026-04-27T19-09-18Z-keyser-entt-input-guardrails.md`
+**Unblock condition:** Keaton completes migration step 1 (dispatcher placement)

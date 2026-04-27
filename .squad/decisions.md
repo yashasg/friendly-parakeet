@@ -2,6 +2,50 @@
 
 ## Active Decisions
 
+### EnTT Input Model Guardrails (2026-04-27)
+
+**Owners:** Keyser (diagnostics), Keaton (implementation), Baer (validation), McManus (integration)  
+**Status:** PRE-IMPLEMENTATION GUIDANCE
+
+Replace hand-rolled `EventQueue` fixed arrays with `entt::dispatcher` stored in `reg.ctx()`. Use `enqueue`+`update` (deferred delivery) — **not** `trigger`. System execution order remains unchanged; dispatcher becomes the transport layer.
+
+**Target architecture:**
+- `reg.ctx().emplace<entt::dispatcher>()` at init (consistent with existing singleton pattern)
+- Preserve `(entt::registry&, float dt)` system signature convention
+- Listeners registered in `game_loop_init` in canonical order (block-comment documented)
+
+**Event delivery:** Two-tier `enqueue`+`update`
+- Tier 1: `input_system` enqueues `InputEvent`, then `disp.update<InputEvent>()` fires gesture_routing and hit_test listeners (before fixed-step)
+- Tier 2: Inside `player_input_system`, `disp.update<GoEvent/ButtonPressEvent>()` drains those queues (fixed-step-only delivery)
+- Eliminates manual `eq.go_count = 0` anti-pattern; no-replay invariant (#213) preserved
+
+**Seven guardrails:**
+1. **R1 — Multi-consumer ordering:** Registration order in `game_loop_init` is canonical
+2. **R2 — No overflow cap:** Verify test_player_system ≤ prior MAX=8/frame
+3. **R3 — clear vs update:** `clear` skips listeners (defensive cleanup); `update` fires listeners
+4. **R4 — Listener registry access:** Use payload/lambda; no naked global ref
+5. **R5 — No connect-in-handler:** EnTT UB; all connects in init/shutdown only
+6. **R6 — trigger prohibited:** For game input; only out-of-band signals (app suspend)
+7. **R7 — Stale event discard:** Phase transitions leave events queued; start-of-frame `clear` discards (add Baer test)
+
+**Migration order:**
+1. Add dispatcher to ctx (inert)
+2. Migrate InputEvent tier → gesture_routing + hit_test listeners
+3. Migrate GoEvent/ButtonPressEvent tier → player_input_system handlers
+4. Remove EventQueue struct
+5. Baer gate: R7 test + no-replay validation
+
+**Preserved invariants:**
+- No multi-tick input replay (#213) — `update()` on empty queue = no-op
+- Deterministic fixed-step — raw input and gesture/hit routing stay pre-loop
+- No frame-late input — defensive `clear()` at input_system top
+- Taps → ButtonPressEvents — hit_test listener logic unchanged
+- Swipes → GoEvents — gesture_routing listener logic unchanged
+- MorphOut interrupt (#209) — inside player_press_handler, unchanged
+- BankedBurnout first-commit-lock (#167) — inside player_input_system, unchanged
+
+---
+
 ### #135 — Difficulty Ramp: Easy Variety + Medium LanePush Teaching (2026-04-27)
 
 **Owners:** Saul (design), Rabin (initial impl, locked out), McManus (revision), Baer (initial testing, locked out), Verbal (revision), Kujan (review)  
