@@ -208,14 +208,19 @@ void game_loop_frame(entt::registry& reg, float& accumulator) {
     if (session_log) session_log_flush(*session_log);
 }
 
+bool game_loop_should_quit(entt::registry& reg) {
+    if (WindowShouldClose()) return true;
+    auto* input = reg.ctx().find<InputState>();
+    return input && input->quit_requested;
+}
+
 void game_loop_run(entt::registry& reg) {
 #ifdef __EMSCRIPTEN__
     platform_run_loop(reg);
 #else
     float accumulator = 0.0f;
-    while (!WindowShouldClose()) {
+    while (!game_loop_should_quit(reg)) {
         game_loop_frame(reg, accumulator);
-        if (reg.ctx().get<InputState>().quit_requested) break;
     }
 #endif
 }

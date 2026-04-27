@@ -39,14 +39,42 @@ void platform_pre_blit() {
 static struct {
     entt::registry* reg;
     float accumulator;
-} g_state;
+} g_state = { nullptr, 0.0f };
+
+// Idempotent WASM shutdown — guarded by g_state.reg sentinel.
+// Called either from frame_callback (graceful quit) or from the browser
+// beforeunload event (tab close / page navigate).
+static void wasm_shutdown_once() {
+    if (!g_state.reg) return;
+    entt::registry* reg = g_state.reg;
+    // Null before calling shutdown so any re-entrant call is a no-op.
+    g_state.reg = nullptr;
+    g_state.accumulator = 0.0f;
+    game_loop_shutdown(*reg);
+}
 
 static void frame_callback() {
+    if (!g_state.reg) return;
     game_loop_frame(*g_state.reg, g_state.accumulator);
+    // Mirror the native quit conditions: window-close OR explicit quit request.
+    if (game_loop_should_quit(*g_state.reg)) {
+        emscripten_cancel_main_loop();
+        wasm_shutdown_once();
+    }
+}
+
+// Belt-and-suspenders: also shut down when the browser unloads the page
+// (tab close, navigation, refresh) while the main loop is still running.
+static const char* on_web_unload(int /*event_type*/,
+                                  const void* /*reserved*/,
+                                  void* /*user_data*/) {
+    wasm_shutdown_once();
+    return nullptr; // empty string suppresses the browser confirmation dialog
 }
 
 void platform_run_loop(entt::registry& reg) {
     g_state = { &reg, 0.0f };
+    emscripten_set_beforeunload_callback(nullptr, on_web_unload);
     emscripten_set_main_loop(frame_callback, 0, 1);
 }
 

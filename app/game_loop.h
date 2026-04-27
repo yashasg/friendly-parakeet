@@ -18,3 +18,7 @@ void game_loop_frame(entt::registry& reg, float& accumulator);
 
 // Shutdown: unload GPU resources, close logs, release audio, close window.
 void game_loop_shutdown(entt::registry& reg);
+
+// Returns true when the game loop should exit (quit requested or window closed).
+// Used by both native and Emscripten paths to detect shutdown conditions.
+bool game_loop_should_quit(entt::registry& reg);

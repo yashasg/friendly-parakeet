@@ -297,10 +297,11 @@ void compute_screen_transform(entt::registry& reg) {
 // ── ui_camera_system: screen-space transforms for UI layer ──────────────────
 
 void ui_camera_system(entt::registry& reg, float /*dt*/) {
-    // 1. Screen transform (letterbox) — also called pre-input; keep in sync.
-    compute_screen_transform(reg);
+    // ScreenTransform is computed once per frame by game_loop_frame (before
+    // input_system) and stored in the registry context.  Reading it here is
+    // sufficient; do NOT call compute_screen_transform again (#241).
 
-    // 2. Popup screen-space projection
+    // Popup screen-space projection
     {
         auto& cam = reg.ctx().get<GameCamera>().cam;
         auto view = reg.view<ScorePopup, Position>();
