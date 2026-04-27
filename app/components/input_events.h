@@ -113,31 +113,11 @@ inline uint8_t phase_bit(GamePhase p) {
 // Force the next ensure_active_tags_synced() call to do a full resync.
 // Call after spawning/destroying buttons or mutating GameState.phase outside
 // the normal phase-transition seam.
-inline void invalidate_active_tag_cache(entt::registry& reg) {
-    auto* cache = reg.ctx().find<UIActiveCache>();
-    if (!cache) cache = &reg.ctx().emplace<UIActiveCache>();
-    cache->valid = false;
-}
+// Implemented in app/systems/active_tag_system.cpp.
+void invalidate_active_tag_cache(entt::registry& reg);
 
 // Sync ActiveTag presence against ActiveInPhase masks for the current
 // GameState.phase. No-op when the phase has not changed since the last sync,
 // so the per-frame cost in steady state is O(1).
-inline void ensure_active_tags_synced(entt::registry& reg) {
-    auto* cache = reg.ctx().find<UIActiveCache>();
-    if (!cache) cache = &reg.ctx().emplace<UIActiveCache>();
-    auto phase = reg.ctx().get<GameState>().phase;
-    if (cache->valid && cache->phase == phase) return;
-
-    auto view = reg.view<ActiveInPhase>();
-    for (auto [e, aip] : view.each()) {
-        const bool should_be_active = phase_active(aip, phase);
-        const bool has_tag          = reg.all_of<ActiveTag>(e);
-        if (should_be_active && !has_tag) {
-            reg.emplace<ActiveTag>(e);
-        } else if (!should_be_active && has_tag) {
-            reg.remove<ActiveTag>(e);
-        }
-    }
-    cache->phase = phase;
-    cache->valid = true;
-}
+// Implemented in app/systems/active_tag_system.cpp.
+void ensure_active_tags_synced(entt::registry& reg);

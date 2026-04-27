@@ -16,6 +16,13 @@ void gesture_routing_system(entt::registry& reg);
 // HitBox/HitCircle entities). No gesture classification.
 void hit_test_system(entt::registry& reg);
 
+// Active-tag cache management (#317).
+// Sync structural ActiveTag components against the current GameState.phase
+// (O(1) when phase unchanged). Call invalidate after button spawn/destroy or
+// out-of-seam phase mutation so the next ensure call does a full resync.
+void ensure_active_tags_synced(entt::registry& reg);
+void invalidate_active_tag_cache(entt::registry& reg);
+
 // Phase 0.5: Test player AI (enqueues synthetic input actions)
 void test_player_system(entt::registry& reg, float dt);
 
