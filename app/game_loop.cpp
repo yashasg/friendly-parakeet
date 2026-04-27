@@ -93,10 +93,11 @@ void game_loop_init(entt::registry& reg,
 
     // High scores — load from disk; default values apply when no file exists.
     {
+        const auto high_scores_path = high_score::get_high_scores_file_path();
         HighScoreState hs;
-        high_score::load_high_scores(hs, high_score::get_high_scores_file_path());
+        high_score::load_high_scores(hs, high_scores_path);
         reg.ctx().emplace<HighScoreState>(hs);
-        reg.ctx().emplace<HighScorePersistence>();
+        reg.ctx().emplace<HighScorePersistence>(HighScorePersistence{high_scores_path.string()});
     }
 
     // Cameras + render targets + GPU meshes

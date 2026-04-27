@@ -118,3 +118,41 @@ TEST_CASE("High score integration: lower game-over score does not overwrite pers
 
     remove_path(file);
 }
+
+TEST_CASE("High score bootstrap: persistence path is populated for save call sites",
+          "[high_score][gamestate][issue-302]") {
+    const auto file = temp_high_score_path("shapeshifter_issue_302_high_scores_bootstrap.json");
+    remove_path(file);
+
+    HighScoreState seeded;
+    seeded.scores["song_001|easy"] = 1000;
+    REQUIRE(high_score::save_high_scores(seeded, file));
+
+    entt::registry reg;
+    HighScoreState loaded_at_bootstrap;
+    high_score::load_high_scores(loaded_at_bootstrap, file);
+    reg.ctx().emplace<HighScoreState>(loaded_at_bootstrap);
+    reg.ctx().emplace<HighScorePersistence>(HighScorePersistence{file.string()});
+    reg.ctx().emplace<EventQueue>();
+    reg.ctx().emplace<GameState>(GameState{
+        GamePhase::Playing, GamePhase::Playing, 0.0f, true, GamePhase::SongComplete, 0.0f
+    });
+    auto& score = reg.ctx().emplace<ScoreState>();
+    score.high_score = 1000;
+    score.score = 2500;
+
+    auto& high_scores = reg.ctx().get<HighScoreState>();
+    high_scores.set_current_key("song_001", "easy");
+
+    const auto& persistence = reg.ctx().get<HighScorePersistence>();
+    REQUIRE_FALSE(persistence.path.empty());
+    CHECK(persistence.path == file.string());
+
+    game_state_system(reg, 0.016f);
+
+    HighScoreState loaded;
+    REQUIRE(high_score::load_high_scores(loaded, file));
+    CHECK(loaded.scores.at("song_001|easy") == 2500);
+
+    remove_path(file);
+}
