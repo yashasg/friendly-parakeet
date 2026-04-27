@@ -83,6 +83,9 @@ constexpr float ENERGY_CRITICAL_THRESH  = 0.25f;
 // ── Rendering ─────────────────────────────────────
 constexpr float POPUP_DURATION    = 1.2f;
 
+// ── Particles ─────────────────────────────────────
+constexpr float PARTICLE_GRAVITY  = 600.0f;
+
 // ── Input ─────────────────────────────────────────
 constexpr float SWIPE_ZONE_SPLIT  = 0.80f;
 constexpr float MIN_SWIPE_DIST    = 50.0f;
