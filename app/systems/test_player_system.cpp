@@ -13,7 +13,7 @@
 #include "session_logger.h"
 #include "../constants.h"
 
-#include <cmath>
+#include <raylib.h>
 #include <ctime>
 #include <cstdio>
 #include <cstring>
@@ -21,6 +21,14 @@
 #include "../util/safe_localtime.h"
 
 // ── Helpers ──────────────────────────────────────────────────
+
+static Rectangle lane_overlap_rect(float x) {
+    return {x - constants::PLAYER_SIZE * 0.5f, 0.0f, constants::PLAYER_SIZE, 1.0f};
+}
+
+static bool lane_centers_overlap(float lhs_x, float rhs_x) {
+    return CheckCollisionRecs(lane_overlap_rect(lhs_x), lane_overlap_rect(rhs_x));
+}
 
 static const char* shape_key_name(Shape s) {
     switch (s) {
@@ -78,7 +86,7 @@ static TestPlayerAction determine_action(
         auto* obs_pos = reg.try_get<Position>(entity);
         if (obs_pos && !reg.all_of<BlockedLanes>(entity) && !reg.all_of<RequiredLane>(entity)) {
             for (int i = 0; i < constants::LANE_COUNT; ++i) {
-                if (std::abs(obs_pos->x - constants::LANE_X[i]) < constants::PLAYER_SIZE) {
+                if (lane_centers_overlap(obs_pos->x, constants::LANE_X[i])) {
                     if (i != player_lane) {
                         action.target_lane = static_cast<int8_t>(i);
                     }
@@ -416,7 +424,7 @@ void test_player_system(entt::registry& reg, float dt) {
                 auto* oshape = reg.try_get<RequiredShape>(oe);
                 if (oshape) {
                     float lane_x = constants::LANE_X[next_lane];
-                    if (std::abs(opos.x - lane_x) >= constants::PLAYER_SIZE) {
+                    if (!lane_centers_overlap(opos.x, lane_x)) {
                         move_would_fail_closer = true;
                         break;
                     }

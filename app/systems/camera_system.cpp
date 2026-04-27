@@ -265,14 +265,12 @@ void game_camera_system(entt::registry& reg, float /*dt*/) {
         if (song && song->playing && song->beat_period > 0.0f && song->current_beat >= 0) {
             float time_since_beat = song->song_time
                 - (song->offset + static_cast<float>(song->current_beat) * song->beat_period);
-            float pulse_t = std::clamp(time_since_beat / constants::FLOOR_PULSE_DECAY, 0.0f, 1.0f);
+            float pulse_t = Clamp(time_since_beat / constants::FLOOR_PULSE_DECAY, 0.0f, 1.0f);
             float ease = 1.0f - (1.0f - pulse_t) * (1.0f - pulse_t);
             pulse = 1.0f - ease;
         }
-        float alpha_f = constants::FLOOR_ALPHA_REST
-            + (constants::FLOOR_ALPHA_PEAK - constants::FLOOR_ALPHA_REST) * pulse;
-        float scale = constants::FLOOR_SCALE_REST
-            + (constants::FLOOR_SCALE_PEAK - constants::FLOOR_SCALE_REST) * pulse;
+        float alpha_f = Lerp(constants::FLOOR_ALPHA_REST, constants::FLOOR_ALPHA_PEAK, pulse);
+        float scale = Lerp(constants::FLOOR_SCALE_REST, constants::FLOOR_SCALE_PEAK, pulse);
         fp.size  = constants::FLOOR_SHAPE_SIZE * scale;
         fp.half  = fp.size / 2.0f;
         fp.thick = constants::FLOOR_OUTLINE_THICK;

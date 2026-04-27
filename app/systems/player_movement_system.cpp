@@ -6,7 +6,7 @@
 #include "../components/haptics.h"
 #include "../components/settings.h"
 #include "../constants.h"
-#include <cmath>
+#include <raymath.h>
 
 void player_movement_system(entt::registry& reg, float dt) {
     if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
@@ -21,8 +21,7 @@ void player_movement_system(entt::registry& reg, float dt) {
         // In rhythm mode shape_window_system owns morph_t (derives from song_time);
         // writing it here too would double-update it every tick. (#207)
         if (!rhythm_mode && pshape.morph_t < 1.0f) {
-            pshape.morph_t += dt / constants::MORPH_DURATION;
-            if (pshape.morph_t > 1.0f) pshape.morph_t = 1.0f;
+            pshape.morph_t = Clamp(pshape.morph_t + dt / constants::MORPH_DURATION, 0.0f, 1.0f);
         }
 
         // Lane transition
@@ -30,7 +29,7 @@ void player_movement_system(entt::registry& reg, float dt) {
             lane.lerp_t += dt * constants::LANE_SWITCH_SPEED;
             float from_x = constants::LANE_X[lane.current];
             float to_x   = constants::LANE_X[lane.target];
-            pos.x = from_x + (to_x - from_x) * lane.lerp_t;
+            pos.x = Lerp(from_x, to_x, lane.lerp_t);
 
             if (lane.lerp_t >= 1.0f) {
                 lane.current = lane.target;

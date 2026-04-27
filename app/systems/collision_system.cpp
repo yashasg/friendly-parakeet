@@ -8,7 +8,40 @@
 #include "../components/rhythm.h"
 #include "../components/song_state.h"
 #include "../constants.h"
+#include <raylib.h>
 #include <cmath>
+
+namespace {
+
+constexpr float COLLISION_MARGIN = 40.0f;
+
+Rectangle centered_rect(float cx, float cy, float w, float h) {
+    return {cx - w * 0.5f, cy - h * 0.5f, w, h};
+}
+
+Vector2 player_timing_point(const Position& pos, const VerticalState& vstate) {
+    return {0.0f, pos.y + vstate.y_offset};
+}
+
+bool player_in_timing_window(const Position& player_pos,
+                             const VerticalState& vstate,
+                             const Position& obstacle_pos) {
+    Rectangle timing_window = {
+        0.0f,
+        obstacle_pos.y - COLLISION_MARGIN,
+        1.0f,
+        COLLISION_MARGIN * 2.0f
+    };
+    return CheckCollisionPointRec(player_timing_point(player_pos, vstate), timing_window);
+}
+
+bool player_overlaps_lane(const Position& player_pos, const Position& obstacle_pos) {
+    Rectangle player_lane = centered_rect(player_pos.x, 0.0f, constants::PLAYER_SIZE, 1.0f);
+    Rectangle obstacle_lane = centered_rect(obstacle_pos.x, 0.0f, constants::PLAYER_SIZE, 1.0f);
+    return CheckCollisionRecs(player_lane, obstacle_lane);
+}
+
+}  // namespace
 
 void collision_system(entt::registry& reg, float /*dt*/) {
     if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
@@ -20,15 +53,12 @@ void collision_system(entt::registry& reg, float /*dt*/) {
     auto [p_pos, p_shape, p_window, p_lane, p_vstate] =
         player_view.get<Position, PlayerShape, ShapeWindow, Lane, VerticalState>(*player_it);
 
-    constexpr float COLLISION_MARGIN = 40.0f;
-
     auto* song    = reg.ctx().find<SongState>();
     auto* results = reg.ctx().find<SongResults>();
     bool rhythm_mode = (song != nullptr);
 
     auto resolve = [&](entt::entity entity, const Position& obs_pos, bool cleared) {
-        float dist = std::abs(p_pos.y - obs_pos.y + p_vstate.y_offset);
-        if (dist > COLLISION_MARGIN) return;
+        if (!player_in_timing_window(p_pos, p_vstate, obs_pos)) return;
 
         if (cleared) {
             // In rhythm mode, compute timing grade
@@ -109,7 +139,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
                 auto* req = reg.try_get<RequiredShape>(e);
                 if (!req) break;
                 bool shape_match = (p_shape.current == req->shape) && (p_shape.current != Shape::Hexagon);
-                bool lane_match = (std::abs(p_pos.x - pos.x) < constants::PLAYER_SIZE);
+                bool lane_match = player_overlaps_lane(p_pos, pos);
                 resolve(e, pos, shape_match && lane_match);
                 break;
             }
@@ -149,9 +179,8 @@ void collision_system(entt::registry& reg, float /*dt*/) {
                 // Passive: only trigger within the collision window (same
                 // distance gate as resolve()).  Scores the obstacle and
                 // auto-pushes the player when in the same lane.
-                float y_dist = std::abs(p_pos.y - pos.y + p_vstate.y_offset);
-                if (y_dist > COLLISION_MARGIN) break;
-                bool on_same_lane = (std::abs(p_pos.x - pos.x) < constants::PLAYER_SIZE);
+                if (!player_in_timing_window(p_pos, p_vstate, pos)) break;
+                bool on_same_lane = player_overlaps_lane(p_pos, pos);
                 if (on_same_lane && p_lane.target < 0) {
                     int8_t delta = (obs.kind == ObstacleKind::LanePushLeft) ? -1 : 1;
                     int8_t dest = static_cast<int8_t>(p_lane.current + delta);

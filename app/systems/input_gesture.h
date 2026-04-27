@@ -2,9 +2,10 @@
 
 #include "../components/input_events.h"
 #include "../constants.h"
+#include <raymath.h>
 #include <cmath>
 
-// Pure gesture classification helper with no raylib dependency.
+// Pure gesture classification helper with no window/input dependency.
 // Classifies a touch release into an InputEvent based on position and duration.
 // This is the canonical logic used by input_system and tested independently.
 
@@ -21,7 +22,7 @@ inline InputEvent classify_touch_release(
     } else {
         float dx = end_x - start_x;
         float dy = end_y - start_y;
-        float dist = std::sqrt(dx * dx + dy * dy);
+        float dist = Vector2Distance({start_x, start_y}, {end_x, end_y});
 
         if (dist >= constants::MIN_SWIPE_DIST && duration_sec <= constants::MAX_SWIPE_TIME) {
             Direction dir;

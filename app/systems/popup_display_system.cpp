@@ -10,12 +10,13 @@ void popup_display_system(entt::registry& reg, float /*dt*/) {
     auto view = reg.view<ScorePopup, ScreenPosition, Color, Lifetime>();
     for (auto [entity, popup, sp, col, life] : view.each()) {
         float alpha_ratio = life.remaining / life.max_time;
+        Color faded = Fade(col, alpha_ratio);
 
         PopupDisplay pd{};
-        pd.r = col.r;
-        pd.g = col.g;
-        pd.b = col.b;
-        pd.a = static_cast<uint8_t>(alpha_ratio * 255);
+        pd.r = faded.r;
+        pd.g = faded.g;
+        pd.b = faded.b;
+        pd.a = faded.a;
 
         if (popup.timing_tier != ScorePopup::TIMING_TIER_NONE) {
             const char* grade = "BAD";

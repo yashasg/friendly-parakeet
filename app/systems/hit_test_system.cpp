@@ -3,7 +3,7 @@
 #include "../components/input.h"
 #include "../components/game_state.h"
 #include "../components/transform.h"
-#include <cmath>
+#include <raylib.h>
 
 void hit_test_system(entt::registry& reg) {
     auto& eq = reg.ctx().get<EventQueue>();
@@ -20,11 +20,18 @@ void hit_test_system(entt::registry& reg) {
             continue;
         }
 
+        Vector2 point = {evt.x, evt.y};
+
         // Tap: hit-test against HitBox entities
         for (auto [entity, pos, hb, aip] : box_view.each()) {
             if (!phase_active(aip, phase)) continue;
-            if (std::abs(evt.x - pos.x) <= hb.half_w &&
-                std::abs(evt.y - pos.y) <= hb.half_h) {
+            Rectangle bounds = {
+                pos.x - hb.half_w,
+                pos.y - hb.half_h,
+                hb.half_w * 2.0f,
+                hb.half_h * 2.0f
+            };
+            if (CheckCollisionPointRec(point, bounds)) {
                 eq.push_press(entity);
             }
         }
@@ -32,9 +39,7 @@ void hit_test_system(entt::registry& reg) {
         // Tap: hit-test against HitCircle entities
         for (auto [entity, pos, hc, aip] : circle_view.each()) {
             if (!phase_active(aip, phase)) continue;
-            float dx = evt.x - pos.x;
-            float dy = evt.y - pos.y;
-            if (dx * dx + dy * dy <= hc.radius * hc.radius) {
+            if (CheckCollisionPointCircle(point, {pos.x, pos.y}, hc.radius)) {
                 eq.push_press(entity);
             }
         }

@@ -18,6 +18,7 @@
 #include "ui_loader.h"
 #include "ui_source_resolver.h"
 #include <raylib.h>
+#include <raymath.h>
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -217,9 +218,8 @@ static void draw_hud(entt::registry& reg, const json& screen) {
             if (nearest_dist[i] > 0.0f && nearest_dist[i] < ring_appear_dist) {
                 float ratio = (nearest_dist[i] - perfect_dist)
                             / (ring_appear_dist - perfect_dist);
-                if (ratio < 0.0f) ratio = 0.0f;
-                if (ratio > 1.0f) ratio = 1.0f;
-                float ring_r = btn_radius + (max_ring_radius - btn_radius) * ratio;
+                ratio = Clamp(ratio, 0.0f, 1.0f);
+                float ring_r = Lerp(btn_radius, max_ring_radius, ratio);
 
                 Color rc;
                 if (nearest_dist[i] <= perfect_dist)
@@ -229,8 +229,9 @@ static void draw_hud(entt::registry& reg, const json& screen) {
                 else
                     rc = ring_far;
 
-                uint8_t ring_alpha = static_cast<uint8_t>(200 * (1.0f - ratio * 0.5f));
-                DrawCircleLinesV({btn_cx, btn_cy}, ring_r, {rc.r, rc.g, rc.b, ring_alpha});
+                Color ring_color = Fade(rc, (200.0f / 255.0f) * (1.0f - ratio * 0.5f));
+                DrawCircleLinesV({btn_cx, btn_cy}, ring_r, ring_color);
+                uint8_t ring_alpha = ring_color.a;
                 DrawCircleLinesV({btn_cx, btn_cy}, ring_r - 1.0f,
                     {rc.r, rc.g, rc.b, static_cast<uint8_t>(ring_alpha / 2)});
             }
@@ -264,12 +265,12 @@ static void draw_hud(entt::registry& reg, const json& screen) {
         float flash_ratio = 0.0f;
         if (energy->flash_timer > 0.0f && constants::ENERGY_FLASH_DURATION > 0.0f) {
             flash_ratio = energy->flash_timer / constants::ENERGY_FLASH_DURATION;
-            flash_ratio = std::clamp(flash_ratio, 0.0f, 1.0f);
+            flash_ratio = Clamp(flash_ratio, 0.0f, 1.0f);
         }
         float critical_ratio = 0.0f;
         if (fill < constants::ENERGY_CRITICAL_THRESH && constants::ENERGY_CRITICAL_THRESH > 0.0f) {
             critical_ratio = (constants::ENERGY_CRITICAL_THRESH - fill) / constants::ENERGY_CRITICAL_THRESH;
-            critical_ratio = std::clamp(critical_ratio, 0.0f, 1.0f);
+            critical_ratio = Clamp(critical_ratio, 0.0f, 1.0f);
         }
         float pulse_time = (song && song->playing) ? song->song_time : static_cast<float>(GetTime());
         constexpr float CRITICAL_PULSE_FREQ       = 10.0f;
@@ -291,8 +292,8 @@ static void draw_hud(entt::registry& reg, const json& screen) {
         for (int i = 0; i < overflow_segs; ++i) {
             float seg_y = BAR_TOP - (i + 1) * (SEG_H + SEG_GAP);
             float fade = 1.0f - static_cast<float>(i) / OVERFLOW_MAX;
-            uint8_t alpha = static_cast<uint8_t>(fade * 220.0f);
-            DrawRectangleRec({BAR_X, seg_y, BAR_W, SEG_H}, {255, 80, 200, alpha});
+            DrawRectangleRec({BAR_X, seg_y, BAR_W, SEG_H},
+                Fade({255, 80, 200, 255}, fade * (220.0f / 255.0f)));
         }
 
         DrawRectangleRec({BAR_X, BAR_TOP, BAR_W, BAR_H}, {15, 15, 25, 180});
@@ -328,30 +329,29 @@ static void draw_hud(entt::registry& reg, const json& screen) {
                 float red_boost = flash_ratio * FLASH_RED_BOOST_FACTOR
                                 + critical_intensity * CRITICAL_RED_BOOST_FACTOR;
                 float cool_dim  = critical_intensity * CRITICAL_COOL_DIM_FACTOR;
-                uint8_t rr = static_cast<uint8_t>(std::clamp(
-                    static_cast<float>(cr) + red_boost * (255.0f - static_cast<float>(cr)),
+                uint8_t rr = static_cast<uint8_t>(Clamp(
+                    Lerp(static_cast<float>(cr), 255.0f, red_boost),
                     0.0f, 255.0f));
-                uint8_t rg = static_cast<uint8_t>(std::clamp(
-                    static_cast<float>(cg) * (1.0f - cool_dim),
+                uint8_t rg = static_cast<uint8_t>(Clamp(
+                    Lerp(static_cast<float>(cg), 0.0f, cool_dim),
                     0.0f, 255.0f));
-                uint8_t rb = static_cast<uint8_t>(std::clamp(
-                    static_cast<float>(cb) * (1.0f - cool_dim),
+                uint8_t rb = static_cast<uint8_t>(Clamp(
+                    Lerp(static_cast<float>(cb), 0.0f, cool_dim),
                     0.0f, 255.0f));
                 DrawRectangleRec({BAR_X, seg_y, BAR_W, SEG_H}, {rr, rg, rb, 255});
             } else if (i < visible_segs) {
                 float fade = 1.0f - static_cast<float>(i - filled_segs)
                                    / std::max(1.0f, static_cast<float>(visible_segs - filled_segs));
-                uint8_t alpha = static_cast<uint8_t>(fade * 200.0f);
-                DrawRectangleRec({BAR_X, seg_y, BAR_W, SEG_H}, {cr, cg, cb, alpha});
+                DrawRectangleRec({BAR_X, seg_y, BAR_W, SEG_H},
+                    Fade({cr, cg, cb, 255}, fade * (200.0f / 255.0f)));
             } else {
                 DrawRectangleRec({BAR_X, seg_y, BAR_W, SEG_H}, {35, 35, 50, 50});
             }
         }
 
         if (flash_ratio > 0.0f) {
-            uint8_t alpha = static_cast<uint8_t>(std::clamp(flash_ratio * 140.0f, 0.0f, 255.0f));
             DrawRectangleRec({BAR_X - 1.0f, BAR_TOP - 1.0f, BAR_W + 2.0f, BAR_H + 2.0f},
-                {255, 80, 80, alpha});
+                Fade({255, 80, 80, 255}, flash_ratio * (140.0f / 255.0f)));
         }
 
         float border_thickness = 1.0f + critical_intensity * 2.0f;
