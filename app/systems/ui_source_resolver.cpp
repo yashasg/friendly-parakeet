@@ -1,10 +1,13 @@
 #include "ui_source_resolver.h"
 
 #include <cstdio>
+#include <entt/entt.hpp>
 
 #include "../components/scoring.h"
 #include "../components/song_state.h"
 #include "../components/settings.h"
+
+using namespace entt::literals;
 
 namespace {
 
@@ -22,115 +25,128 @@ const char* death_cause_to_string(DeathCause cause) {
 
 std::optional<std::int32_t> resolve_ui_int_source(entt::registry& reg,
                                                    std::string_view source) {
-    if (source == "ScoreState.score") {
-        auto* score = reg.ctx().find<ScoreState>();
-        if (!score) return std::nullopt;
-        return score->score;
-    }
-    if (source == "ScoreState.displayed_score") {
-        auto* score = reg.ctx().find<ScoreState>();
-        if (!score) return std::nullopt;
-        return score->displayed_score;
-    }
-    if (source == "ScoreState.high_score") {
-        auto* score = reg.ctx().find<ScoreState>();
-        if (!score) return std::nullopt;
-        return score->high_score;
-    }
-    if (source == "ScoreState.chain_count") {
-        auto* score = reg.ctx().find<ScoreState>();
-        if (!score) return std::nullopt;
-        return score->chain_count;
-    }
+    // Sources come from JSON-parsed std::string fields; data() is null-terminated.
+    switch (entt::hashed_string::value(source.data())) {  // #310 hashed dispatch
 
-    if (source == "SongResults.perfect_count") {
-        auto* results = reg.ctx().find<SongResults>();
-        if (!results) return std::nullopt;
-        return static_cast<std::int32_t>(results->perfect_count);
-    }
-    if (source == "SongResults.good_count") {
-        auto* results = reg.ctx().find<SongResults>();
-        if (!results) return std::nullopt;
-        return static_cast<std::int32_t>(results->good_count);
-    }
-    if (source == "SongResults.ok_count") {
-        auto* results = reg.ctx().find<SongResults>();
-        if (!results) return std::nullopt;
-        return static_cast<std::int32_t>(results->ok_count);
-    }
-    if (source == "SongResults.bad_count") {
-        auto* results = reg.ctx().find<SongResults>();
-        if (!results) return std::nullopt;
-        return static_cast<std::int32_t>(results->bad_count);
-    }
-    if (source == "SongResults.miss_count") {
-        auto* results = reg.ctx().find<SongResults>();
-        if (!results) return std::nullopt;
-        return static_cast<std::int32_t>(results->miss_count);
-    }
-    if (source == "SongResults.max_chain") {
-        auto* results = reg.ctx().find<SongResults>();
-        if (!results) return std::nullopt;
-        return static_cast<std::int32_t>(results->max_chain);
-    }
-    if (source == "SongResults.total_notes") {
-        auto* results = reg.ctx().find<SongResults>();
-        if (!results) return std::nullopt;
-        return static_cast<std::int32_t>(results->total_notes);
-    }
+        case "ScoreState.score"_hs: {
+            auto* score = reg.ctx().find<ScoreState>();
+            if (!score) return std::nullopt;
+            return score->score;
+        }
+        case "ScoreState.displayed_score"_hs: {
+            auto* score = reg.ctx().find<ScoreState>();
+            if (!score) return std::nullopt;
+            return score->displayed_score;
+        }
+        case "ScoreState.high_score"_hs: {
+            auto* score = reg.ctx().find<ScoreState>();
+            if (!score) return std::nullopt;
+            return score->high_score;
+        }
+        case "ScoreState.chain_count"_hs: {
+            auto* score = reg.ctx().find<ScoreState>();
+            if (!score) return std::nullopt;
+            return score->chain_count;
+        }
 
-    if (source == "SettingsState.audio_offset_ms") {
-        auto* settings = reg.ctx().find<SettingsState>();
-        if (!settings) return std::nullopt;
-        return static_cast<std::int32_t>(settings->audio_offset_ms);
-    }
-    if (source == "SettingsState.haptics_enabled") {
-        auto* settings = reg.ctx().find<SettingsState>();
-        if (!settings) return std::nullopt;
-        return settings->haptics_enabled ? 1 : 0;
-    }
-    if (source == "SettingsState.reduce_motion") {
-        auto* settings = reg.ctx().find<SettingsState>();
-        if (!settings) return std::nullopt;
-        return settings->reduce_motion ? 1 : 0;
-    }
+        case "SongResults.perfect_count"_hs: {
+            auto* results = reg.ctx().find<SongResults>();
+            if (!results) return std::nullopt;
+            return static_cast<std::int32_t>(results->perfect_count);
+        }
+        case "SongResults.good_count"_hs: {
+            auto* results = reg.ctx().find<SongResults>();
+            if (!results) return std::nullopt;
+            return static_cast<std::int32_t>(results->good_count);
+        }
+        case "SongResults.ok_count"_hs: {
+            auto* results = reg.ctx().find<SongResults>();
+            if (!results) return std::nullopt;
+            return static_cast<std::int32_t>(results->ok_count);
+        }
+        case "SongResults.bad_count"_hs: {
+            auto* results = reg.ctx().find<SongResults>();
+            if (!results) return std::nullopt;
+            return static_cast<std::int32_t>(results->bad_count);
+        }
+        case "SongResults.miss_count"_hs: {
+            auto* results = reg.ctx().find<SongResults>();
+            if (!results) return std::nullopt;
+            return static_cast<std::int32_t>(results->miss_count);
+        }
+        case "SongResults.max_chain"_hs: {
+            auto* results = reg.ctx().find<SongResults>();
+            if (!results) return std::nullopt;
+            return static_cast<std::int32_t>(results->max_chain);
+        }
+        case "SongResults.total_notes"_hs: {
+            auto* results = reg.ctx().find<SongResults>();
+            if (!results) return std::nullopt;
+            return static_cast<std::int32_t>(results->total_notes);
+        }
 
-    return std::nullopt;
+        case "SettingsState.audio_offset_ms"_hs: {
+            auto* settings = reg.ctx().find<SettingsState>();
+            if (!settings) return std::nullopt;
+            return static_cast<std::int32_t>(settings->audio_offset_ms);
+        }
+        case "SettingsState.haptics_enabled"_hs: {
+            auto* settings = reg.ctx().find<SettingsState>();
+            if (!settings) return std::nullopt;
+            return settings->haptics_enabled ? 1 : 0;
+        }
+        case "SettingsState.reduce_motion"_hs: {
+            auto* settings = reg.ctx().find<SettingsState>();
+            if (!settings) return std::nullopt;
+            return settings->reduce_motion ? 1 : 0;
+        }
+
+        default: return std::nullopt;
+    }
 }
 
 std::optional<std::string> resolve_ui_dynamic_text(entt::registry& reg,
                                                     std::string_view source,
                                                     std::string_view format) {
-    // String-only source: cause-of-death readout.
-    if (source == "GameOverState.reason") {
-        auto* gos = reg.ctx().find<GameOverState>();
-        if (!gos) return std::nullopt;
-        return std::string(death_cause_to_string(gos->cause));
+    // Sources/formats come from JSON-parsed std::string fields; data() is null-terminated.
+    switch (entt::hashed_string::value(source.data())) {  // #310 hashed dispatch
+        case "GameOverState.reason"_hs: {
+            auto* gos = reg.ctx().find<GameOverState>();
+            if (!gos) return std::nullopt;
+            return std::string(death_cause_to_string(gos->cause));
+        }
+        default: break;
     }
 
-    // Composite button-face labels for Settings toggles.
-    if (format == "haptics_button") {
-        auto v = resolve_ui_int_source(reg, source);
-        if (!v.has_value()) return std::nullopt;
-        return std::string(*v ? "HAPTICS: ON" : "HAPTICS: OFF");
-    }
-    if (format == "motion_button") {
-        auto v = resolve_ui_int_source(reg, source);
-        if (!v.has_value()) return std::nullopt;
-        return std::string(*v ? "MOTION: ON" : "MOTION: OFF");
+    // Composite button-face labels for Settings toggles (format-driven).
+    switch (entt::hashed_string::value(format.data())) {  // #310 hashed dispatch
+        case "haptics_button"_hs: {
+            auto v = resolve_ui_int_source(reg, source);
+            if (!v.has_value()) return std::nullopt;
+            return std::string(*v ? "HAPTICS: ON" : "HAPTICS: OFF");
+        }
+        case "motion_button"_hs: {
+            auto v = resolve_ui_int_source(reg, source);
+            if (!v.has_value()) return std::nullopt;
+            return std::string(*v ? "MOTION: ON" : "MOTION: OFF");
+        }
+        default: break;
     }
 
     // Numeric sources with formatters.
     auto v = resolve_ui_int_source(reg, source);
     if (!v.has_value()) return std::nullopt;
 
-    if (format == "on_off") {
-        return std::string(*v ? "ON" : "OFF");
-    }
-    if (format == "signed_ms") {
-        char buf[32];
-        std::snprintf(buf, sizeof(buf), "%+d ms", *v);
-        return std::string(buf);
+    switch (entt::hashed_string::value(format.data())) {  // #310 hashed dispatch
+        case "on_off"_hs: {
+            return std::string(*v ? "ON" : "OFF");
+        }
+        case "signed_ms"_hs: {
+            char buf[32];
+            std::snprintf(buf, sizeof(buf), "%+d ms", *v);
+            return std::string(buf);
+        }
+        default: break;
     }
 
     // Default: plain decimal integer.
