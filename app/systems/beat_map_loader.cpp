@@ -3,6 +3,7 @@
 #include <fstream>
 #include <cmath>
 #include <algorithm>
+#include <optional>
 
 using json = nlohmann::json;
 
@@ -36,7 +37,7 @@ ValidationConstants load_validation_constants(const std::string& app_dir) {
     return vc;
 }
 
-static ObstacleKind parse_kind(const std::string& s) {
+static std::optional<ObstacleKind> parse_kind(const std::string& s) {
     if (s == "shape_gate")       return ObstacleKind::ShapeGate;
     if (s == "lane_block")       return ObstacleKind::LaneBlock;
     if (s == "low_bar")          return ObstacleKind::LowBar;
@@ -45,14 +46,14 @@ static ObstacleKind parse_kind(const std::string& s) {
     if (s == "split_path")       return ObstacleKind::SplitPath;
     if (s == "lane_push_left")   return ObstacleKind::LanePushLeft;
     if (s == "lane_push_right")  return ObstacleKind::LanePushRight;
-    return ObstacleKind::ShapeGate;
+    return std::nullopt;
 }
 
-static Shape parse_shape(const std::string& s) {
+static std::optional<Shape> parse_shape(const std::string& s) {
     if (s == "circle")   return Shape::Circle;
     if (s == "square")   return Shape::Square;
     if (s == "triangle") return Shape::Triangle;
-    return Shape::Circle;
+    return std::nullopt;
 }
 
 bool parse_beat_map(const std::string& json_str, BeatMap& out,
@@ -118,15 +119,31 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
     }
 
     // ── Parse individual beat entries ────────────────────────
+    bool parse_ok = true;
     for (const auto& b : *beats_array) {
         BeatEntry entry;
         entry.beat_index = b.value("beat", 0);
 
         std::string kind_str = b.value("kind", "shape_gate");
-        entry.kind = parse_kind(kind_str);
+        auto kind_opt = parse_kind(kind_str);
+        if (!kind_opt) {
+            errors.push_back({entry.beat_index,
+                "Unknown obstacle kind '" + kind_str + "' at beat " + std::to_string(entry.beat_index)});
+            parse_ok = false;
+            continue;
+        }
+        entry.kind = *kind_opt;
 
         if (b.contains("shape")) {
-            entry.shape = parse_shape(b["shape"].get<std::string>());
+            std::string shape_str = b["shape"].get<std::string>();
+            auto shape_opt = parse_shape(shape_str);
+            if (!shape_opt) {
+                errors.push_back({entry.beat_index,
+                    "Unknown shape '" + shape_str + "' at beat " + std::to_string(entry.beat_index)});
+                parse_ok = false;
+                continue;
+            }
+            entry.shape = *shape_opt;
         }
 
         entry.lane = static_cast<int8_t>(b.value("lane", 1));
@@ -143,6 +160,8 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
 
         out.beats.push_back(entry);
     }
+
+    if (!parse_ok) return false;
 
     // Sort beats by beat_index (chart may not be pre-sorted)
     std::sort(out.beats.begin(), out.beats.end(),
