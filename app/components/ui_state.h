@@ -14,7 +14,6 @@ enum class ActiveScreen : uint8_t {
 };
 
 struct UIState {
-    nlohmann::json routes;
     nlohmann::json screen;           // primary screen JSON
     nlohmann::json overlay_screen;   // overlay JSON (paused, game over, etc.)
     std::string current;

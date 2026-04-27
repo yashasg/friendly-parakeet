@@ -25,13 +25,11 @@ UIState load_ui(const std::string& ui_dir) {
     UIState ui;
     ui.base_dir = ui_dir;
 
-    std::string routes_path = ui_dir + "/routes.json";
-    std::ifstream f(routes_path);
-    if (f.is_open()) {
-        ui.routes = nlohmann::json::parse(f);
-    } else {
-        std::fprintf(stderr, "[WARN] UI routes not found: %s\n", routes_path.c_str());
-    }
+    // Note: content/ui/routes.json is intentionally not parsed here.
+    // It is a human-authored design reference describing screen transitions;
+    // the actual screen graph is driven by GamePhase via phase_to_screen_name()
+    // in ui_navigation_system. Loading it would be a per-startup JSON parse
+    // with no consumer.
 
     // Don't pre-load the initial screen here — ui_navigation_system
     // will detect the first phase→screen mapping as a change and both
