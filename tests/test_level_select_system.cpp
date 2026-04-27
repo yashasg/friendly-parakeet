@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
 #include "systems/ui_button_spawner.h"
 
@@ -368,4 +369,99 @@ TEST_CASE("level_select — title click should NOT leak into level select", "[le
 
     CHECK(lss.selected_level == 0);
     CHECK(lss.confirmed == false);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// PR #43 regression — difficulty button Y must be repositioned in the
+// same tick that selected_level changes (Go Up/Down or SelectLevel press).
+// Before the fix the function returned early, leaving hitboxes at the old
+// level's Y coordinate until the *next* frame.
+// ═══════════════════════════════════════════════════════════════════════
+
+// Mirrors the local constants in level_select_system.cpp.
+namespace {
+    constexpr float LS_CARD_START_Y   = 200.0f;
+    constexpr float LS_CARD_HEIGHT    = 200.0f;
+    constexpr float LS_CARD_GAP       =  40.0f;
+    constexpr float LS_DIFF_BTN_Y_OFF = 120.0f;
+    constexpr float LS_DIFF_BTN_H     =  50.0f;
+
+    float expected_diff_y(int level) {
+        float card_y = LS_CARD_START_Y
+                     + static_cast<float>(level) * (LS_CARD_HEIGHT + LS_CARD_GAP);
+        return card_y + LS_DIFF_BTN_Y_OFF + LS_DIFF_BTN_H / 2.0f;
+    }
+
+    // Collect Y positions of all SelectDiff buttons into a small array.
+    // All three buttons share the same Y after repositioning.
+    float diff_button_y(entt::registry& reg) {
+        float y = -1.0f;
+        auto view = reg.view<MenuButtonTag, MenuAction, Position>();
+        for (auto [e, ma, pos] : view.each())
+            if (ma.kind == MenuActionKind::SelectDiff) { y = pos.y; break; }
+        return y;
+    }
+}  // anonymous namespace
+
+TEST_CASE("level_select: diff button Y updated same tick as Go Up (level 1→0)",
+          "[level_select][pr43][regression]") {
+    auto reg  = make_level_select_registry();
+    auto& lss = reg.ctx().get<LevelSelectState>();
+    lss.selected_level = 1;  // start at level 1
+
+    // Pre-condition: run a no-op tick so diff buttons start at level-1 Y.
+    level_select_system(reg, 0.016f);
+    CHECK_THAT(diff_button_y(reg),
+               Catch::Matchers::WithinAbs(expected_diff_y(1), 1.0f));
+
+    // Go Up → selected_level should become 0 AND diff Y should reflect level 0.
+    auto& eq = reg.ctx().get<EventQueue>();
+    eq.push_go(Direction::Up);
+    level_select_system(reg, 0.016f);
+
+    REQUIRE(lss.selected_level == 0);
+    // Diff button Y must already be at level-0 position in the SAME tick.
+    CHECK_THAT(diff_button_y(reg),
+               Catch::Matchers::WithinAbs(expected_diff_y(0), 1.0f));
+}
+
+TEST_CASE("level_select: diff button Y updated same tick as Go Down (level 0→1)",
+          "[level_select][pr43][regression]") {
+    auto reg  = make_level_select_registry();
+    auto& lss = reg.ctx().get<LevelSelectState>();
+    lss.selected_level = 0;
+
+    level_select_system(reg, 0.016f);
+
+    auto& eq = reg.ctx().get<EventQueue>();
+    eq.push_go(Direction::Down);
+    level_select_system(reg, 0.016f);
+
+    REQUIRE(lss.selected_level == 1);
+    CHECK_THAT(diff_button_y(reg),
+               Catch::Matchers::WithinAbs(expected_diff_y(1), 1.0f));
+}
+
+TEST_CASE("level_select: diff button Y updated same tick as SelectLevel press",
+          "[level_select][pr43][regression]") {
+    auto reg  = make_level_select_registry();
+    auto& lss = reg.ctx().get<LevelSelectState>();
+    lss.selected_level = 0;
+
+    // Run a neutral tick to anchor diff buttons at level-0 Y.
+    level_select_system(reg, 0.016f);
+    CHECK_THAT(diff_button_y(reg),
+               Catch::Matchers::WithinAbs(expected_diff_y(0), 1.0f));
+
+    // Press the level-2 card
+    auto& eq   = reg.ctx().get<EventQueue>();
+    auto card2 = find_menu_button(reg, MenuActionKind::SelectLevel, 2);
+    REQUIRE((card2 != entt::null));
+    eq.push_press(card2);
+    level_select_system(reg, 0.016f);
+
+    REQUIRE(lss.selected_level == 2);
+    // Diff buttons must be repositioned to level-2 Y in the same tick.
+    CHECK_THAT(diff_button_y(reg),
+               Catch::Matchers::WithinAbs(expected_diff_y(2), 1.0f));
 }
