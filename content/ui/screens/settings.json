@@ -81,6 +81,17 @@
       "font_size": "medium"
     },
     {
+      "id": "haptics_value",
+      "type": "text_dynamic",
+      "source": "SettingsState.haptics_enabled",
+      "format": "on_off",
+      "x_n": 0.5,
+      "y_n": 0.648,
+      "font_size": "small",
+      "align": "center",
+      "color": [150, 220, 150, 200]
+    },
+    {
       "id": "reduce_motion_toggle",
       "type": "button",
       "text": "MOTION: OFF",
@@ -95,6 +106,17 @@
       "border_color": [255, 150, 150, 255],
       "text_color": [255, 210, 210, 255],
       "font_size": "medium"
+    },
+    {
+      "id": "reduce_motion_value",
+      "type": "text_dynamic",
+      "source": "SettingsState.reduce_motion",
+      "format": "on_off",
+      "x_n": 0.5,
+      "y_n": 0.773,
+      "font_size": "small",
+      "align": "center",
+      "color": [220, 150, 150, 200]
     },
     {
       "id": "close_button",

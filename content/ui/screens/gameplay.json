@@ -51,6 +51,19 @@
       "type": "line",
       "y_n": 0.875,
       "color": [40, 40, 60, 200]
+    },
+    {
+      "id": "pause_button",
+      "type": "button",
+      "text": "||",
+      "action": "pause",
+      "x_n": 0.861, "y_n": 0.008,
+      "w_n": 0.111, "h_n": 0.039,
+      "corner_radius": 0.2,
+      "bg_color": [40, 40, 60, 255],
+      "border_color": [80, 80, 120, 255],
+      "text_color": [160, 160, 200, 255],
+      "font_size": "small"
     }
   ]
 }

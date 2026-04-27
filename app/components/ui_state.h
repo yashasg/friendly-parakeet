@@ -13,6 +13,7 @@ enum class ActiveScreen : uint8_t {
     Paused,
 };
 
+// Pure data component. File I/O is performed by ui_loader free functions.
 struct UIState {
     nlohmann::json screen;           // primary screen JSON
     nlohmann::json overlay_screen;   // overlay JSON (paused, game over, etc.)
@@ -20,7 +21,4 @@ struct UIState {
     std::string base_dir = "content/ui";
     ActiveScreen active = ActiveScreen::Title;
     bool has_overlay = false;
-
-    // Returns true if the screen actually changed (new name + successful load).
-    bool load_screen(const std::string& name);
 };

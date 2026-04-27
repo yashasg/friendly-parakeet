@@ -4,7 +4,7 @@
 #include "../components/ui_element.h"
 #include "../components/transform.h"
 #include "../constants.h"
-#include <fstream>
+#include "ui_loader.h"
 #include <cstring>
 #include <raylib.h>
 
@@ -155,7 +155,7 @@ void ui_navigation_system(entt::registry& reg, float /*dt*/) {
     auto& ui = reg.ctx().get<UIState>();
 
     const char* screen_name = phase_to_screen_name(gs.phase);
-    bool screen_changed = ui.load_screen(screen_name);
+    bool screen_changed = ui_load_screen(ui, screen_name);
     ui.has_overlay = false;
 
     // Re-spawn UI elements when screen changes
@@ -174,17 +174,7 @@ void ui_navigation_system(entt::registry& reg, float /*dt*/) {
             // Load the overlay JSON once when first entering Paused.
             // Subsequent frames while Paused reuse the cached overlay_screen.
             if (ui.active != ActiveScreen::Paused) {
-                std::string path = ui.base_dir + "/screens/paused.json";
-                std::ifstream f(path);
-                if (f.is_open()) {
-                    try {
-                        ui.overlay_screen = nlohmann::json::parse(f);
-                        ui.has_overlay = true;
-                    } catch (const nlohmann::json::exception& e) {
-                        TraceLog(LOG_WARNING, "Overlay parse error: %s (%s)",
-                                 path.c_str(), e.what());
-                    }
-                }
+                ui_load_overlay(ui, "paused");
             } else {
                 ui.has_overlay = true;
             }
