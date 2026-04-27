@@ -1214,3 +1214,20 @@ All three are `.squad/` documentation files with zero compile impact. A clean ch
 - No regressions introduced
 
 **Verdict:** Issue #315 closed; pattern ready for team reference.
+
+### 2026-04-27 — Review: issue #320 (consolidate duplicated rhythm timing constants)
+
+**Scope:** McManus implementation — single canonical `COLLISION_MARGIN` in `constants.h`, removal of local copies from `collision_system.cpp`, `beat_scheduler_system.cpp`, and `test_player_system.cpp`; removal of duplicate `APPROACH_DIST` local from `song_state.h`.
+
+**Findings:**
+- `constants::COLLISION_MARGIN = 40.0f` added under "Rhythm Constants" section of `constants.h` alongside `APPROACH_DIST`. Correct location and value.
+- All three local `constexpr float COLLISION_MARGIN = 40.0f` definitions removed from production systems; all call sites updated to `constants::COLLISION_MARGIN`. Clean.
+- `song_state.h` local `APPROACH_DIST = 1040.0f` removed; `constants.h` included; `song_state_compute_derived()` now uses `constants::APPROACH_DIST`. Correct.
+- `test_beat_scheduler_system.cpp` updated to `constants::COLLISION_MARGIN` (was the only test-side local copy).
+- No residual local copies of either constant found anywhere in `app/` or `tests/`. Zero stray definitions.
+- No unrelated production changes. 6 files, all narrowly scoped to the consolidation.
+- Numeric values unchanged: 40.0f and 1040.0f — timing behavior preserved exactly.
+- Build: clean, zero warnings (ld duplicate-lib linker note is pre-existing, not introduced here).
+- Tests: **2419 assertions / 750 test cases — all pass**.
+
+**Verdict:** APPROVED
