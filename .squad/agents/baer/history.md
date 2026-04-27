@@ -481,3 +481,31 @@ ctest --test-dir build -R "shipped beatmaps"
 **Full decision:** `.squad/decisions.md` (EnTT Input Model Guardrails section)
 **Orchestration log:** `.squad/orchestration-log/2026-04-27T19-09-18Z-keyser-entt-input-guardrails.md`
 **Unblock condition:** Keaton completes migration step 1 (dispatcher placement)
+
+### 2026-04-27 — EnTT Input Model: Dispatcher Contract + Pipeline Behavior Tests
+
+**Directive:** User directive to move input pipeline from EventQueue arrays to entt::dispatcher/signal model. Keaton owns implementation; Baer owns test coverage.
+
+**Tests added (commit 0471598, branch user/yashasg/ecs_refactor):**
+
+`tests/test_entt_dispatcher_contract.cpp` — 10 tests, `[entt_dispatcher]` tag:
+- Pins `entt::dispatcher` v3.16.0 semantics: trigger() fires immediately, enqueue() without update() is silent, update() drains queue (no replay).
+- Documents the **one-frame latency hazard**: if the GoEvent pool is registered BEFORE the InputEvent pool, then `update()` runs GoEvent pool first (empty), then InputEvent pool fires the router which enqueues GoEvent — but GoEvent pool already ran. The GoEvent is not delivered until the next `update()`. **Fix: gesture_routing must use `trigger()`, not `enqueue()`, when emitting GoEvents.** This is verified by the companion "trigger() in listener is always safe" test.
+- ButtonPressEvent trigger/enqueue contract.
+
+`tests/test_input_pipeline_behavior.cpp` — 10 tests, `[input_pipeline]` tag:
+- Full pipeline: gesture_routing_system → hit_test_system → player_input_system.
+- Asserts only on player component state (Lane::target, ShapeWindow::phase) — never on EventQueue internals. Survives dispatcher refactor unchanged.
+- Covers: swipe→lane change same frame, tap→shape change same frame, mixed swipe+tap, wrong-phase tap (ActiveTag filter), boundary no-wrap, no-latency regression check, #213 consumption (lerp_t not reset on sub-tick 2, window_start not replayed on sub-tick 2).
+
+**EnTT v3.16.0 dispatcher internals (learned):**
+- `dispatcher_handler::publish()` snapshots `events.size()` before iterating. Events enqueued by listeners during `publish()` go into the same vector at the end, past the snapshot boundary — they are NOT processed in the same `publish()` call.
+- `dispatcher::update()` iterates pools in registration order (order `sink<T>()` or `enqueue<T>()` was first called). This determines whether enqueue-during-update has zero or one-frame latency.
+- `trigger()` fires listeners synchronously, bypassing the queue entirely — immune to registration order.
+
+**Existing tests: zero regressions.** All 2390 assertions from the existing suite continue to pass (2430 total with new additions, 752 test cases excluding bench).
+
+**Handoff note to Keaton:**
+- Use `dispatcher.trigger<GoEvent>()` (not `enqueue`) inside gesture_routing's InputEvent listener.
+- Register InputEvent sink before GoEvent sink in system setup to stay safe even if enqueue is used.
+- `dispatcher.update()` per tick (once) satisfies #213: second sub-tick update is a no-op since the queue is drained.
