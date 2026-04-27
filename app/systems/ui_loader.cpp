@@ -267,3 +267,12 @@ LevelSelectLayout build_level_select_layout(const UIState& ui) {
     layout.valid = true;
     return layout;
 }
+
+OverlayLayout build_overlay_layout(const UIState& ui) {
+    OverlayLayout layout{};
+    auto col = extract_overlay_color(ui.overlay_screen);
+    if (!col.has_value()) return layout;
+    layout.dim_color = {col->r, col->g, col->b, col->a};
+    layout.valid = true;
+    return layout;
+}

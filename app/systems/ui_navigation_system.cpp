@@ -186,6 +186,7 @@ void ui_navigation_system(entt::registry& reg, float /*dt*/) {
             // Subsequent frames while Paused reuse the cached overlay_screen.
             if (ui.active != ActiveScreen::Paused) {
                 ui_load_overlay(ui, "paused");
+                reg.ctx().insert_or_assign(build_overlay_layout(ui));
             } else {
                 ui.has_overlay = true;
             }

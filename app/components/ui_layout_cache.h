@@ -29,6 +29,15 @@ struct HudLayout {
     bool  valid                        = false;
 };
 
+// Pre-computed overlay dim layout.
+// Built at overlay load boundary (e.g. entering Paused) using extract_overlay_color().
+// Stored in reg.ctx(); consumed by ui_render_system.
+// valid=false when the overlay screen is absent or the schema is invalid.
+struct OverlayLayout {
+    Color dim_color = {};
+    bool  valid     = false;
+};
+
 // Pre-computed, pixel-space layout data for the Level Select screen.
 // Built once at "level_select" screen load by build_level_select_layout() in ui_loader.cpp.
 // Stored in reg.ctx(); consumed by ui_render_system.

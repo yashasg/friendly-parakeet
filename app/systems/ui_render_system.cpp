@@ -346,16 +346,10 @@ void ui_render_system(const entt::registry& reg, float /*alpha*/) {
 
     // Overlay (if active)
     if (ui.has_overlay) {
-        auto& ovr = ui.overlay_screen;
-        if (ovr.contains("overlay_color")) {
-            Color oc = {
-                ovr["overlay_color"][0].get<uint8_t>(),
-                ovr["overlay_color"][1].get<uint8_t>(),
-                ovr["overlay_color"][2].get<uint8_t>(),
-                ovr["overlay_color"][3].get<uint8_t>()
-            };
-            DrawRectangleRec({0, 0, constants::SCREEN_W_F,
-                              constants::SCREEN_H_F}, oc);
+        const auto* ovl = reg.ctx().find<OverlayLayout>();
+        if (ovl && ovl->valid) {
+            DrawRectangleRec({0, 0, constants::SCREEN_W_F, constants::SCREEN_H_F},
+                             ovl->dim_color);
         }
     }
 

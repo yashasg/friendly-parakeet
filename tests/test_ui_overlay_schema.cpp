@@ -1,6 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include <nlohmann/json.hpp>
 #include "systems/ui_loader.h"
+#include "components/ui_state.h"
+#include "components/ui_layout_cache.h"
 #include <fstream>
 
 TEST_CASE("overlay: validate_overlay_schema accepts valid nested color", "[ui]") {
@@ -139,4 +141,74 @@ TEST_CASE("overlay: paused screen dim color matches content schema", "[ui]") {
     CHECK(color->g == 0);
     CHECK(color->b == 0);
     CHECK(color->a == 160);
+}
+
+// ── build_overlay_layout cache tests (#143) ───────────────────────────────────
+
+TEST_CASE("build_overlay_layout: empty UIState yields invalid layout", "[ui][overlay_cache]") {
+    UIState ui;
+    auto layout = build_overlay_layout(ui);
+    CHECK_FALSE(layout.valid);
+}
+
+TEST_CASE("build_overlay_layout: missing overlay in overlay_screen yields invalid", "[ui][overlay_cache]") {
+    UIState ui;
+    ui.overlay_screen = nlohmann::json::object();
+    ui.overlay_screen["screen"] = "paused";
+    // no "overlay" key
+    auto layout = build_overlay_layout(ui);
+    CHECK_FALSE(layout.valid);
+}
+
+TEST_CASE("build_overlay_layout: invalid overlay schema yields invalid", "[ui][overlay_cache]") {
+    UIState ui;
+    ui.overlay_screen = nlohmann::json::object();
+    // wrong key ("overlay_color" instead of nested "overlay.color")
+    ui.overlay_screen["overlay_color"] = {0, 0, 0, 160};
+    auto layout = build_overlay_layout(ui);
+    CHECK_FALSE(layout.valid);
+}
+
+TEST_CASE("build_overlay_layout: valid overlay_screen yields correct color", "[ui][overlay_cache]") {
+    UIState ui;
+    ui.overlay_screen = nlohmann::json::object();
+    ui.overlay_screen["overlay"] = nlohmann::json::object();
+    ui.overlay_screen["overlay"]["color"] = {0, 0, 0, 160};
+
+    auto layout = build_overlay_layout(ui);
+    REQUIRE(layout.valid);
+    CHECK(layout.dim_color.r == 0);
+    CHECK(layout.dim_color.g == 0);
+    CHECK(layout.dim_color.b == 0);
+    CHECK(layout.dim_color.a == 160);
+}
+
+TEST_CASE("build_overlay_layout: RGB (no alpha) defaults to 255", "[ui][overlay_cache]") {
+    UIState ui;
+    ui.overlay_screen = nlohmann::json::object();
+    ui.overlay_screen["overlay"] = nlohmann::json::object();
+    ui.overlay_screen["overlay"]["color"] = {50, 100, 200};
+
+    auto layout = build_overlay_layout(ui);
+    REQUIRE(layout.valid);
+    CHECK(layout.dim_color.r == 50);
+    CHECK(layout.dim_color.g == 100);
+    CHECK(layout.dim_color.b == 200);
+    CHECK(layout.dim_color.a == 255);
+}
+
+TEST_CASE("build_overlay_layout: shipped paused.json produces correct dim color", "[ui][overlay_cache][integration]") {
+    std::ifstream f("content/ui/screens/paused.json");
+    REQUIRE(f.is_open());
+    auto screen = nlohmann::json::parse(f);
+
+    UIState ui;
+    ui.overlay_screen = screen;
+    auto layout = build_overlay_layout(ui);
+
+    REQUIRE(layout.valid);
+    CHECK(layout.dim_color.r == 0);
+    CHECK(layout.dim_color.g == 0);
+    CHECK(layout.dim_color.b == 0);
+    CHECK(layout.dim_color.a == 160);
 }

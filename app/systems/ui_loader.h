@@ -50,3 +50,7 @@ HudLayout build_hud_layout(const UIState& ui);
 // Build LevelSelectLayout from the current "level_select" screen JSON.
 // Returns LevelSelectLayout{.valid=false} if required elements are absent.
 LevelSelectLayout build_level_select_layout(const UIState& ui);
+
+// Build OverlayLayout from ui.overlay_screen using extract_overlay_color().
+// Returns OverlayLayout{.valid=false} when overlay_screen is absent or schema is invalid.
+OverlayLayout build_overlay_layout(const UIState& ui);
