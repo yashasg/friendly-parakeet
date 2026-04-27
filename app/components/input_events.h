@@ -104,6 +104,20 @@ struct ActiveInPhase {
     uint8_t phase_mask = 0;
 };
 
+// Zero-size structural tag. Present iff the entity's ActiveInPhase mask covers
+// the current GamePhase. Maintained by ensure_active_tags_synced(); consumers
+// (hit_test_system) iterate view<..., ActiveTag>() without any runtime
+// predicate, so the per-event hot path is O(active buttons) instead of
+// O(all buttons with ActiveInPhase).
+struct ActiveTag {};
+
+// Cache of the last phase ActiveTag was synced for. Used to skip the sync
+// pass when the phase has not changed since the previous call.
+struct UIActiveCache {
+    GamePhase phase = GamePhase::Title;
+    bool      valid = false;
+};
+
 // Helper: check if a GamePhase is active in the mask
 inline bool phase_active(const ActiveInPhase& aip, GamePhase phase) {
     return (aip.phase_mask >> static_cast<uint8_t>(phase)) & 1;
@@ -112,4 +126,36 @@ inline bool phase_active(const ActiveInPhase& aip, GamePhase phase) {
 // Helper: build mask from a single phase
 inline uint8_t phase_bit(GamePhase p) {
     return uint8_t(1) << static_cast<uint8_t>(p);
+}
+
+// Force the next ensure_active_tags_synced() call to do a full resync.
+// Call after spawning/destroying buttons or mutating GameState.phase outside
+// the normal phase-transition seam.
+inline void invalidate_active_tag_cache(entt::registry& reg) {
+    auto* cache = reg.ctx().find<UIActiveCache>();
+    if (!cache) cache = &reg.ctx().emplace<UIActiveCache>();
+    cache->valid = false;
+}
+
+// Sync ActiveTag presence against ActiveInPhase masks for the current
+// GameState.phase. No-op when the phase has not changed since the last sync,
+// so the per-frame cost in steady state is O(1).
+inline void ensure_active_tags_synced(entt::registry& reg) {
+    auto* cache = reg.ctx().find<UIActiveCache>();
+    if (!cache) cache = &reg.ctx().emplace<UIActiveCache>();
+    auto phase = reg.ctx().get<GameState>().phase;
+    if (cache->valid && cache->phase == phase) return;
+
+    auto view = reg.view<ActiveInPhase>();
+    for (auto [e, aip] : view.each()) {
+        const bool should_be_active = phase_active(aip, phase);
+        const bool has_tag          = reg.all_of<ActiveTag>(e);
+        if (should_be_active && !has_tag) {
+            reg.emplace<ActiveTag>(e);
+        } else if (!should_be_active && has_tag) {
+            reg.remove<ActiveTag>(e);
+        }
+    }
+    cache->phase = phase;
+    cache->valid = true;
 }

@@ -7,10 +7,14 @@
 
 void hit_test_system(entt::registry& reg) {
     auto& eq = reg.ctx().get<EventQueue>();
-    auto  phase = reg.ctx().get<GameState>().phase;
 
-    auto box_view = reg.view<Position, HitBox, ActiveInPhase>();
-    auto circle_view = reg.view<Position, HitCircle, ActiveInPhase>();
+    // Sync structural ActiveTag against current phase. Cheap when phase has
+    // not changed since the last sync; the per-event loops below then iterate
+    // only the active subset with no runtime predicate.
+    ensure_active_tags_synced(reg);
+
+    auto box_view    = reg.view<Position, HitBox,    ActiveTag>();
+    auto circle_view = reg.view<Position, HitCircle, ActiveTag>();
 
     for (int i = 0; i < eq.input_count; ++i) {
         auto& evt = eq.inputs[i];
@@ -22,9 +26,8 @@ void hit_test_system(entt::registry& reg) {
 
         Vector2 point = {evt.x, evt.y};
 
-        // Tap: hit-test against HitBox entities
-        for (auto [entity, pos, hb, aip] : box_view.each()) {
-            if (!phase_active(aip, phase)) continue;
+        // Tap: hit-test against active HitBox entities
+        for (auto [entity, pos, hb] : box_view.each()) {
             Rectangle bounds = {
                 pos.x - hb.half_w,
                 pos.y - hb.half_h,
@@ -36,9 +39,8 @@ void hit_test_system(entt::registry& reg) {
             }
         }
 
-        // Tap: hit-test against HitCircle entities
-        for (auto [entity, pos, hc, aip] : circle_view.each()) {
-            if (!phase_active(aip, phase)) continue;
+        // Tap: hit-test against active HitCircle entities
+        for (auto [entity, pos, hc] : circle_view.each()) {
             if (CheckCollisionPointCircle(point, {pos.x, pos.y}, hc.radius)) {
                 eq.push_press(entity);
             }

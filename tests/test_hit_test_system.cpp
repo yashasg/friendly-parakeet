@@ -116,3 +116,93 @@ TEST_CASE("hit_test: no input events no output", "[hit_test]") {
     CHECK(eq.press_count == 0);
     CHECK(eq.go_count == 0);
 }
+
+// ── Structural ActiveTag sync (#249) ──────────────────────────────
+// hit_test_system filters via the structural ActiveTag component, which is
+// (re-)synced from ActiveInPhase masks when the GamePhase changes. These
+// tests pin that contract so the per-event hot loops stay predicate-free.
+
+TEST_CASE("hit_test: ActiveTag emplaced on entities active in current phase",
+          "[hit_test][active_tag]") {
+    auto reg = make_registry();  // default phase = Playing
+    auto btn = make_shape_button(reg, Shape::Circle);  // mask = Playing
+
+    // Tag is not present on creation; sync happens lazily inside hit_test_system.
+    CHECK_FALSE(reg.all_of<ActiveTag>(btn));
+
+    auto& eq = reg.ctx().get<EventQueue>();
+    eq.push_input(InputType::Tap, 9999.0f, 9999.0f);  // far from button
+    hit_test_system(reg);
+
+    // After the system runs, ActiveTag should be present on the Playing-phase button.
+    CHECK(reg.all_of<ActiveTag>(btn));
+}
+
+TEST_CASE("hit_test: ActiveTag removed when phase no longer covers entity",
+          "[hit_test][active_tag]") {
+    auto reg = make_registry();
+    auto btn = make_shape_button(reg, Shape::Circle);  // mask = Playing
+    reg.get<Position>(btn) = {100.0f, 100.0f};
+    auto& eq = reg.ctx().get<EventQueue>();
+
+    // First pass in Playing: tag synced on, tap registers a press.
+    eq.push_input(InputType::Tap, 100.0f, 100.0f);
+    hit_test_system(reg);
+    CHECK(reg.all_of<ActiveTag>(btn));
+    CHECK(eq.press_count == 1);
+
+    // Move to Title; the Playing-only button must lose its ActiveTag and
+    // stop receiving presses without any per-event predicate.
+    reg.ctx().get<GameState>().phase = GamePhase::Title;
+    eq.input_count = 0;
+    eq.press_count = 0;
+    eq.push_input(InputType::Tap, 100.0f, 100.0f);
+    hit_test_system(reg);
+
+    CHECK_FALSE(reg.all_of<ActiveTag>(btn));
+    CHECK(eq.press_count == 0);
+}
+
+TEST_CASE("hit_test: ActiveTag re-emplaced when phase returns to coverage",
+          "[hit_test][active_tag]") {
+    auto reg = make_registry();
+    auto btn = make_shape_button(reg, Shape::Circle);  // mask = Playing
+    reg.get<Position>(btn) = {50.0f, 50.0f};
+    auto& eq = reg.ctx().get<EventQueue>();
+
+    // Title: button inactive.
+    reg.ctx().get<GameState>().phase = GamePhase::Title;
+    hit_test_system(reg);
+    CHECK_FALSE(reg.all_of<ActiveTag>(btn));
+
+    // Back to Playing: button must become active again on next system run.
+    reg.ctx().get<GameState>().phase = GamePhase::Playing;
+    eq.push_input(InputType::Tap, 50.0f, 50.0f);
+    hit_test_system(reg);
+
+    CHECK(reg.all_of<ActiveTag>(btn));
+    CHECK(eq.press_count == 1);
+}
+
+TEST_CASE("hit_test: invalidate_active_tag_cache forces resync on same phase",
+          "[hit_test][active_tag]") {
+    auto reg = make_registry();
+    auto& eq = reg.ctx().get<EventQueue>();
+
+    // Initial sync with no buttons (warms the cache for Playing).
+    hit_test_system(reg);
+
+    // Spawn a button after the cache was warmed; without invalidation
+    // ensure_active_tags_synced would skip it. Invalidating the cache
+    // mirrors what spawners must do when they create entities outside
+    // a phase transition.
+    auto btn = make_shape_button(reg, Shape::Circle);
+    reg.get<Position>(btn) = {200.0f, 200.0f};
+    invalidate_active_tag_cache(reg);
+
+    eq.push_input(InputType::Tap, 200.0f, 200.0f);
+    hit_test_system(reg);
+
+    CHECK(reg.all_of<ActiveTag>(btn));
+    CHECK(eq.press_count == 1);
+}
