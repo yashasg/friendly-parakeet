@@ -332,3 +332,14 @@ Fixed all 7 unresolved review threads in commit d90abf9 on `user/yashasg/ecs_ref
 **Build note:** The local worktree had a pre-existing cmake configuration issue where the build was not configured (no Makefile). Fixed by running `vcpkg install --triplet arm64-osx` in the project directory to populate `vcpkg_installed/`, then running a fresh `cmake -B build -S .` with the vcpkg toolchain. All 2419 assertions / 768 test cases pass.
 
 **Build note 2:** Worktree had uncommitted in-progress changes to `app/components/ui_state.h` and `app/systems/ui_loader.h` (UIState::load_screen refactor, partial). These caused build failures. Restored to HEAD for this task; not part of #323 scope.
+
+### 2026-04-27 — Issue #317: active-tag registry logic out of component headers (commit d30fad3)
+
+**Scope:** `app/components/input_events.h`, `app/systems/active_tag_system.cpp` (new), `app/systems/all_systems.h`
+
+- **Inline registry-mutating functions in headers are ODR-safe but architecturally wrong** — `ensure_active_tags_synced` and `invalidate_active_tag_cache` were `inline` bodies in `input_events.h`, making a component header responsible for registry iteration and component emplace/remove. This violates the component-header-as-data-only rule.
+- **Fix: `active_tag_system.cpp`** — both functions moved to a new source file. Declarations added to `all_systems.h` near `hit_test_system` to make ownership clear. Tests reach them through `test_helpers.h` → `all_systems.h` (no test changes needed).
+- **`input_events.h` now pure data** — retains `UIActiveCache`, `ActiveTag`, `ActiveInPhase` structs and the two pure bitfield helpers (`phase_active`, `phase_bit`). No registry access anywhere in the header.
+- **Forward declarations are the contract** — headers should declare what functions exist; source files own the implementation. The `// Implemented in app/systems/active_tag_system.cpp` comments point reviewers to the owner.
+- **Local build environment note:** The worktree build required `vcpkg install --x-install-root=build/vcpkg_installed_real --triplet=arm64-osx` before cmake configure. Without this, `shapeshifter_lib` was missing raylib includes (a pre-existing build-environment issue, not caused by this change). After install, all packages share `arm64-osx/include` as a single isystem path, and `shapeshifter_lib` compiles cleanly.
+- **Validation:** zero warnings, 2419 assertions in 768 test cases, all pass (including all `[hit_test]`, `[gesture_routing]`, `[active_tag]`, `[input_pipeline]` tag groups).
