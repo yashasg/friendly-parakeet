@@ -1,6 +1,7 @@
 #include "all_systems.h"
 #include "../components/haptics.h"
 #include "../components/settings.h"
+#include <magic_enum/magic_enum.hpp>
 #include <raylib.h>
 
 // ── Platform notes ────────────────────────────────────────────────────────────
@@ -11,23 +12,13 @@
 //   Do NOT add a silent fallback; unsupported platforms must be explicit here.
 // ─────────────────────────────────────────────────────────────────────────────
 
-static const char* haptic_event_name(HapticEvent e) {
-    switch (e) {
-        case HapticEvent::ShapeShift:  return "ShapeShift";
-        case HapticEvent::LaneSwitch:  return "LaneSwitch";
-        case HapticEvent::JumpLand:    return "JumpLand";
-        case HapticEvent::Burnout1_5x: return "Burnout1_5x";
-        case HapticEvent::Burnout2_0x: return "Burnout2_0x";
-        case HapticEvent::Burnout3_0x: return "Burnout3_0x";
-        case HapticEvent::Burnout4_0x: return "Burnout4_0x";
-        case HapticEvent::Burnout5_0x: return "Burnout5_0x";
-        case HapticEvent::NearMiss:    return "NearMiss";
-        case HapticEvent::DeathCrash:  return "DeathCrash";
-        case HapticEvent::NewHighScore: return "NewHighScore";
-        case HapticEvent::RetryTap:    return "RetryTap";
-        case HapticEvent::UIButtonTap: return "UIButtonTap";
+static void trace_haptic_event(const char* prefix, HapticEvent e) {
+    const auto event_name = magic_enum::enum_name(e);
+    if (event_name.empty()) {
+        TraceLog(LOG_DEBUG, "%sUnknown", prefix);
+        return;
     }
-    return "Unknown";
+    TraceLog(LOG_DEBUG, "%s%.*s", prefix, static_cast<int>(event_name.size()), event_name.data());
 }
 
 void haptic_system(entt::registry& reg) {
@@ -41,10 +32,10 @@ void haptic_system(entt::registry& reg) {
         // TODO(Hockney): call UIImpactFeedbackGenerator bridge here.
         // Example: haptic_ios_trigger(e);
         // Until implemented, log only — do NOT silently swallow the event.
-        TraceLog(LOG_DEBUG, "HAPTIC [iOS-stub]: %s", haptic_event_name(e));
+        trace_haptic_event("HAPTIC [iOS-stub]: ", e);
 #else
         // Desktop / WASM: log only — no platform vibration API available.
-        TraceLog(LOG_DEBUG, "HAPTIC: %s", haptic_event_name(e));
+        trace_haptic_event("HAPTIC: ", e);
 #endif
     }
 
