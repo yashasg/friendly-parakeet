@@ -3,11 +3,15 @@
 #include "systems/session_logger.h"
 #include "components/session_log.h"
 
-// Helper: inject an open in-memory SessionLog backed by a temp file path.
-// We use /dev/null so no real I/O is needed; the buffer is in-memory.
+// Helper: inject an open in-memory SessionLog backed by the platform null device.
+// /dev/null on POSIX; NUL on Windows — no real I/O, buffer stays in-memory.
 static SessionLog make_open_log() {
     SessionLog log;
+#ifdef _WIN32
+    log.file  = std::fopen("NUL", "w");
+#else
     log.file  = std::fopen("/dev/null", "w");
+#endif
     log.frame = 0;
     log.last_logged_beat = -1;
     return log;
