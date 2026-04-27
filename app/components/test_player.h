@@ -59,7 +59,12 @@ struct TestPlayerAction {
 };
 
 // ── Test player state (context singleton) ────────────────────
+// Hot state (accessed every frame): active, frame_count, swipe_cooldown_timer,
+//   action_count, actions[].
+// Warm state (accessed during perception): skill, rng.
+// Cold state (accessed during scan + stale-entity cleanup): planned[], planned_count.
 struct TestPlayerState {
+    // ── Hot ──────────────────────────────────────────────────
     TestPlayerSkill skill   = TestPlayerSkill::Pro;
     bool            active  = false;
     uint32_t        frame_count = 0;
@@ -72,11 +77,13 @@ struct TestPlayerState {
     TestPlayerAction actions[MAX_ACTIONS] = {};
     int              action_count = 0;
 
+    // ── Warm ─────────────────────────────────────────────────
+    std::mt19937     rng;
+
+    // ── Cold ─────────────────────────────────────────────────
     static constexpr int MAX_PLANNED = 256;
     entt::entity     planned[MAX_PLANNED] = {};
     int              planned_count = 0;
-
-    std::mt19937     rng;
 
     const SkillConfig& config() const { return SKILL_TABLE[static_cast<int>(skill)]; }
 
@@ -91,17 +98,6 @@ struct TestPlayerState {
         if (planned_count < MAX_PLANNED) {
             planned[planned_count++] = e;
         }
-    }
-
-    // Remove stale entries (destroyed/scored entities)
-    void clean_planned(entt::registry& reg) {
-        int write = 0;
-        for (int i = 0; i < planned_count; ++i) {
-            if (reg.valid(planned[i])) {
-                planned[write++] = planned[i];
-            }
-        }
-        planned_count = write;
     }
 
     void push_action(const TestPlayerAction& a) {

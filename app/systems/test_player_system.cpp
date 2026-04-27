@@ -39,6 +39,17 @@ static const char* shape_key_name(Shape s) {
     }
 }
 
+// Remove stale entries from the planned set (destroyed/scored entities).
+static void test_player_clean_planned(TestPlayerState& state, entt::registry& reg) {
+    int write = 0;
+    for (int i = 0; i < state.planned_count; ++i) {
+        if (reg.valid(state.planned[i])) {
+            state.planned[write++] = state.planned[i];
+        }
+    }
+    state.planned_count = write;
+}
+
 // Find nearest unblocked lane to current position.
 static int8_t nearest_unblocked_lane(uint8_t blocked_mask, int8_t current) {
     // Try current lane first
@@ -127,7 +138,7 @@ void test_player_system(entt::registry& reg, float dt) {
     if (!state || !state->active) return;
 
     state->frame_count++;
-    state->clean_planned(reg);
+    test_player_clean_planned(*state, reg);
 
     auto& gs    = reg.ctx().get<GameState>();
     auto& eq    = reg.ctx().get<EventQueue>();
