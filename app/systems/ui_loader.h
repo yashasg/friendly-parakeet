@@ -27,6 +27,11 @@ UIState load_ui(const std::string& ui_dir = "content/ui");
 // actually changed (new name + successful parse). Pure file I/O; no ECS access.
 bool ui_load_screen(UIState& ui, const std::string& name);
 
+// Build ui.element_map from the current ui.screen["elements"] array.
+// Must be called after every successful ui_load_screen(). O(N) build cost
+// amortised at screen-load time; subsequent find_el calls are O(1).
+void build_ui_element_map(UIState& ui);
+
 // Load the overlay screen JSON into ui.overlay_screen and set ui.has_overlay.
 // Pure file I/O; no ECS access.
 void ui_load_overlay(UIState& ui, const std::string& screen_name);

@@ -1,6 +1,8 @@
 #pragma once
 #include <nlohmann/json.hpp>
 #include <string>
+#include <unordered_map>
+#include <entt/entt.hpp>
 
 // Which UI screen the renderer should draw.
 // Set by ui_navigation_system, consumed by ui_render_system.
@@ -21,4 +23,10 @@ struct UIState {
     std::string base_dir = "content/ui";
     ActiveScreen active = ActiveScreen::Title;
     bool has_overlay = false;
+
+    // Pre-computed element lookup built at screen-load time (#312).
+    // Maps entt::hashed_string value of each element's "id" field to its
+    // index in screen["elements"].  O(1) lookups replace the per-frame
+    // linear scan performed by the render system's find_el helper.
+    std::unordered_map<entt::id_type, std::size_t> element_map;
 };

@@ -156,6 +156,9 @@ void ui_navigation_system(entt::registry& reg, float /*dt*/) {
 
     const char* screen_name = phase_to_screen_name(gs.phase);
     bool screen_changed = ui_load_screen(ui, screen_name);
+    if (screen_changed) {
+        build_ui_element_map(ui);
+    }
     ui.has_overlay = false;
 
     // Re-spawn UI elements when screen changes

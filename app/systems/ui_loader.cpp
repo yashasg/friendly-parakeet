@@ -1,4 +1,5 @@
 #include "ui_loader.h"
+#include <entt/entt.hpp>
 #include <fstream>
 #include <cstdio>
 
@@ -98,6 +99,18 @@ bool ui_load_screen(UIState& ui, const std::string& name) {
         std::fprintf(stderr, "[WARN] UI screen not found: %s\n", path.c_str());
     }
     return false;
+}
+
+void build_ui_element_map(UIState& ui) {
+    ui.element_map.clear();
+    if (!ui.screen.contains("elements")) return;
+    const auto& elems = ui.screen["elements"];
+    for (std::size_t i = 0; i < elems.size(); ++i) {
+        std::string id = elems[i].value("id", "");
+        if (!id.empty()) {
+            ui.element_map[entt::hashed_string::value(id.c_str())] = i;
+        }
+    }
 }
 
 void ui_load_overlay(UIState& ui, const std::string& screen_name) {

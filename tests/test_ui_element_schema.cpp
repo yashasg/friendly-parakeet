@@ -1,6 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include <nlohmann/json.hpp>
 #include "systems/ui_loader.h"
+#include "components/ui_state.h"
+#include <entt/entt.hpp>
 #include <fstream>
 #include <string>
 
@@ -454,4 +456,93 @@ TEST_CASE("UI element schema: paused screen exposes instructions and main menu b
     CHECK(menu_button->at("y_n").get<float>() + menu_button->at("h_n").get<float>() <= 1.0f);
     CHECK(menu_button->at("w_n").get<float>() < 1.0f);
     CHECK(menu_button->at("h_n").get<float>() < 1.0f);
+}
+
+// ── #312: build_ui_element_map tests ─────────────────────────────────────────
+
+TEST_CASE("UI element map: build_ui_element_map is empty with no elements", "[ui][312]") {
+    UIState ui;
+    ui.screen = nlohmann::json::object();
+    build_ui_element_map(ui);
+    CHECK(ui.element_map.empty());
+}
+
+TEST_CASE("UI element map: build_ui_element_map indexes elements by hashed id", "[ui][312]") {
+    using namespace entt::literals;
+
+    UIState ui;
+    ui.screen = {{"elements", nlohmann::json::array({
+        {{"id", "shape_buttons"}, {"type", "shape_button_row"}},
+        {{"id", "lane_divider"},  {"type", "line"}},
+        {{"id", "song_cards"},    {"type", "card_list"}},
+    })}};
+
+    build_ui_element_map(ui);
+
+    REQUIRE(ui.element_map.size() == 3);
+
+    auto it_sb = ui.element_map.find("shape_buttons"_hs);
+    REQUIRE(it_sb != ui.element_map.end());
+    CHECK(it_sb->second == 0u);
+
+    auto it_ld = ui.element_map.find("lane_divider"_hs);
+    REQUIRE(it_ld != ui.element_map.end());
+    CHECK(it_ld->second == 1u);
+
+    auto it_sc = ui.element_map.find("song_cards"_hs);
+    REQUIRE(it_sc != ui.element_map.end());
+    CHECK(it_sc->second == 2u);
+}
+
+TEST_CASE("UI element map: elements without id are not indexed", "[ui][312]") {
+    UIState ui;
+    ui.screen = {{"elements", nlohmann::json::array({
+        {{"type", "text"}},               // no id
+        {{"id", "pause_button"}, {"type", "button"}},
+    })}};
+
+    build_ui_element_map(ui);
+
+    CHECK(ui.element_map.size() == 1u);
+    using namespace entt::literals;
+    CHECK(ui.element_map.count("pause_button"_hs) == 1u);
+}
+
+TEST_CASE("UI element map: map is cleared and rebuilt on re-call", "[ui][312]") {
+    using namespace entt::literals;
+
+    UIState ui;
+    ui.screen = {{"elements", nlohmann::json::array({
+        {{"id", "title_text"}, {"type", "text"}},
+    })}};
+    build_ui_element_map(ui);
+    REQUIRE(ui.element_map.size() == 1u);
+
+    // Simulate screen change: replace JSON and rebuild.
+    ui.screen = {{"elements", nlohmann::json::array({
+        {{"id", "pause_button"}, {"type", "button"}},
+        {{"id", "energy_label"}, {"type", "text"}},
+    })}};
+    build_ui_element_map(ui);
+
+    CHECK(ui.element_map.size() == 2u);
+    CHECK(ui.element_map.count("title_text"_hs) == 0u);
+    CHECK(ui.element_map.count("pause_button"_hs) == 1u);
+    CHECK(ui.element_map.count("energy_label"_hs) == 1u);
+}
+
+TEST_CASE("UI element map: gameplay.json builds non-empty map with known ids", "[ui][312]") {
+    using namespace entt::literals;
+
+    std::ifstream file("content/ui/screens/gameplay.json");
+    REQUIRE(file.is_open());
+
+    UIState ui;
+    ui.screen = nlohmann::json::parse(file);
+    build_ui_element_map(ui);
+
+    CHECK_FALSE(ui.element_map.empty());
+    // These ids are accessed per-frame by draw_hud.
+    CHECK(ui.element_map.count("shape_buttons"_hs) == 1u);
+    CHECK(ui.element_map.count("lane_divider"_hs) == 1u);
 }

@@ -65,6 +65,7 @@ static void draw_shape_flat(Shape shape, float cx, float cy, float size, Color c
 // ── JSON helper utilities ────────────────────────────────────
 
 using json = nlohmann::json;
+using namespace entt::literals;
 
 static Color json_color(const json& arr) {
     uint8_t a = arr.size() > 3 ? arr[3].get<uint8_t>() : 255;
@@ -72,20 +73,23 @@ static Color json_color(const json& arr) {
             arr[2].get<uint8_t>(), a};
 }
 
-static const json* find_el(const json& screen, const std::string& id) {
-    if (!screen.contains("elements")) return nullptr;
-    for (auto& el : screen["elements"]) {
-        if (el.value("id", "") == id) return &el;
-    }
-    return nullptr;
+// O(1) element lookup via the pre-computed hashed map (#312).
+// Falls back gracefully if the map or screen is stale.
+static const json* find_el(const UIState& ui, entt::id_type key) {
+    auto it = ui.element_map.find(key);
+    if (it == ui.element_map.end()) return nullptr;
+    if (!ui.screen.contains("elements")) return nullptr;
+    const auto& elems = ui.screen["elements"];
+    if (it->second >= elems.size()) return nullptr;
+    return &elems[it->second];
 }
 
 // ── Specialized screen renderers ─────────────────────────────
 
 static void draw_level_select_scene(const TextContext& text_ctx,
                                     const LevelSelectState& lss,
-                                    const json& screen) {
-    auto* cards = find_el(screen, "song_cards");
+                                    const UIState& ui) {
+    auto* cards = find_el(ui, "song_cards"_hs);
     if (cards) {
         auto& c = *cards;
         float card_x  = c["x_n"].get<float>() * constants::SCREEN_W;
@@ -121,7 +125,7 @@ static void draw_level_select_scene(const TextContext& text_ctx,
                 80, 180, 255, 100, TextAlign::Right);
 
             if (selected) {
-                auto* diff = find_el(screen, "difficulty_buttons");
+                auto* diff = find_el(ui, "difficulty_buttons"_hs);
                 if (diff) {
                     auto& d = *diff;
                     float diff_y   = cy + d["y_offset_n"].get<float>() * constants::SCREEN_H;
@@ -155,9 +159,9 @@ static void draw_level_select_scene(const TextContext& text_ctx,
     }
 }
 
-static void draw_hud(const entt::registry& reg, const json& screen) {
+static void draw_hud(const entt::registry& reg, const UIState& ui) {
     // Shape buttons
-    auto* sb = find_el(screen, "shape_buttons");
+    auto* sb = find_el(ui, "shape_buttons"_hs);
     if (sb) {
         auto& s = *sb;
         float btn_w       = s["button_w_n"].get<float>() * constants::SCREEN_W;
@@ -364,7 +368,7 @@ static void draw_hud(const entt::registry& reg, const json& screen) {
     }
 
     // Lane divider
-    auto* line = find_el(screen, "lane_divider");
+    auto* line = find_el(ui, "lane_divider"_hs);
     if (line) {
         float div_y = (*line)["y_n"].get<float>() * constants::SCREEN_H;
         Color lc = json_color((*line)["color"]);
@@ -479,14 +483,14 @@ void ui_render_system(const entt::registry& reg, float /*alpha*/) {
     switch (ui.active) {
         case ActiveScreen::LevelSelect: {
             auto& lss = reg.ctx().get<LevelSelectState>();
-            draw_level_select_scene(text_ctx, lss, ui.screen);
+            draw_level_select_scene(text_ctx, lss, ui);
             break;
         }
         case ActiveScreen::Gameplay:
-            draw_hud(reg, ui.screen);
+            draw_hud(reg, ui);
             break;
         case ActiveScreen::Paused:
-            draw_hud(reg, ui.screen);
+            draw_hud(reg, ui);
             break;
         default:
             break;
