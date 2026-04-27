@@ -173,3 +173,56 @@ TEST_CASE("ecs: make_split_path creates proper entity", "[ecs]") {
     CHECK(reg.get<RequiredShape>(obs).shape == Shape::Triangle);
     CHECK(reg.get<RequiredLane>(obs).lane == 2);
 }
+
+// ── GamePhaseBit / ActiveInPhase typed mask tests ─────────────────────────
+
+TEST_CASE("GamePhaseBit: single-phase mask matches only that phase", "[phase_mask]") {
+    ActiveInPhase aip{ GamePhaseBit::Playing };
+    CHECK( phase_active(aip, GamePhase::Playing));
+    CHECK(!phase_active(aip, GamePhase::Title));
+    CHECK(!phase_active(aip, GamePhase::LevelSelect));
+    CHECK(!phase_active(aip, GamePhase::Paused));
+    CHECK(!phase_active(aip, GamePhase::GameOver));
+    CHECK(!phase_active(aip, GamePhase::SongComplete));
+}
+
+TEST_CASE("GamePhaseBit: multi-phase OR mask covers both phases", "[phase_mask]") {
+    ActiveInPhase aip{ GamePhaseBit::GameOver | GamePhaseBit::SongComplete };
+    CHECK( phase_active(aip, GamePhase::GameOver));
+    CHECK( phase_active(aip, GamePhase::SongComplete));
+    CHECK(!phase_active(aip, GamePhase::Playing));
+    CHECK(!phase_active(aip, GamePhase::Title));
+    CHECK(!phase_active(aip, GamePhase::LevelSelect));
+    CHECK(!phase_active(aip, GamePhase::Paused));
+}
+
+TEST_CASE("GamePhaseBit: all six phases have distinct bits", "[phase_mask]") {
+    // Each GamePhaseBit value must be a distinct power-of-two
+    CHECK(GamePhaseBit::Title        != GamePhaseBit::LevelSelect);
+    CHECK(GamePhaseBit::LevelSelect  != GamePhaseBit::Playing);
+    CHECK(GamePhaseBit::Playing      != GamePhaseBit::Paused);
+    CHECK(GamePhaseBit::Paused       != GamePhaseBit::GameOver);
+    CHECK(GamePhaseBit::GameOver     != GamePhaseBit::SongComplete);
+    // Combined mask must not equal any single bit
+    GamePhaseBit combined = GamePhaseBit::GameOver | GamePhaseBit::SongComplete;
+    CHECK(combined != GamePhaseBit::GameOver);
+    CHECK(combined != GamePhaseBit::SongComplete);
+}
+
+TEST_CASE("GamePhaseBit: to_phase_bit round-trips all GamePhase values", "[phase_mask]") {
+    using P = GamePhase;
+    using B = GamePhaseBit;
+    CHECK(to_phase_bit(P::Title)        == B::Title);
+    CHECK(to_phase_bit(P::LevelSelect)  == B::LevelSelect);
+    CHECK(to_phase_bit(P::Playing)      == B::Playing);
+    CHECK(to_phase_bit(P::Paused)       == B::Paused);
+    CHECK(to_phase_bit(P::GameOver)     == B::GameOver);
+    CHECK(to_phase_bit(P::SongComplete) == B::SongComplete);
+}
+
+TEST_CASE("GamePhaseBit: empty mask is inactive for all phases", "[phase_mask]") {
+    ActiveInPhase aip{};  // default-constructed GamePhaseBit
+    CHECK(!phase_active(aip, GamePhase::Title));
+    CHECK(!phase_active(aip, GamePhase::Playing));
+    CHECK(!phase_active(aip, GamePhase::GameOver));
+}

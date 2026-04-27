@@ -83,7 +83,7 @@ struct MenuAction {
 };
 
 struct ActiveInPhase {
-    uint8_t phase_mask = 0;
+    GamePhaseBit phase_mask = GamePhaseBit{};
 };
 
 // Zero-size structural tag. Present iff the entity's ActiveInPhase mask covers
@@ -100,14 +100,9 @@ struct UIActiveCache {
     bool      valid = false;
 };
 
-// Helper: check if a GamePhase is active in the mask
+// Helper: check if a GamePhase is active in the typed mask
 inline bool phase_active(const ActiveInPhase& aip, GamePhase phase) {
-    return (aip.phase_mask >> static_cast<uint8_t>(phase)) & 1;
-}
-
-// Helper: build mask from a single phase
-inline uint8_t phase_bit(GamePhase p) {
-    return uint8_t(1) << static_cast<uint8_t>(p);
+    return !!(aip.phase_mask & to_phase_bit(phase));
 }
 
 // Force the next ensure_active_tags_synced() call to do a full resync.

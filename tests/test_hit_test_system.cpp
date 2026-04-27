@@ -12,7 +12,7 @@ TEST_CASE("hit_test: tap inside hitbox emits press", "[hit_test]") {
     reg.emplace<MenuAction>(btn, MenuActionKind::Confirm, uint8_t{0});
     reg.emplace<Position>(btn, 100.0f, 100.0f);
     reg.emplace<HitBox>(btn, 50.0f, 50.0f);  // half extents: ±50
-    reg.emplace<ActiveInPhase>(btn, phase_bit(GamePhase::Playing));
+    reg.emplace<ActiveInPhase>(btn, GamePhaseBit::Playing);
 
     eq.push_input(InputType::Tap, 120.0f, 110.0f);  // inside
     hit_test_system(reg);
@@ -31,7 +31,7 @@ TEST_CASE("hit_test: tap outside hitbox no event", "[hit_test]") {
     reg.emplace<MenuAction>(btn, MenuActionKind::Confirm, uint8_t{0});
     reg.emplace<Position>(btn, 100.0f, 100.0f);
     reg.emplace<HitBox>(btn, 50.0f, 50.0f);
-    reg.emplace<ActiveInPhase>(btn, phase_bit(GamePhase::Playing));
+    reg.emplace<ActiveInPhase>(btn, GamePhaseBit::Playing);
 
     eq.push_input(InputType::Tap, 300.0f, 300.0f);  // outside
     hit_test_system(reg);

@@ -229,7 +229,7 @@ inline entt::entity make_shape_button(entt::registry& reg, Shape shape) {
     reg.emplace<ShapeButtonData>(btn, shape);
     reg.emplace<Position>(btn, 0.0f, 0.0f);
     reg.emplace<HitCircle>(btn, 50.0f);
-    reg.emplace<ActiveInPhase>(btn, phase_bit(GamePhase::Playing));
+    reg.emplace<ActiveInPhase>(btn, GamePhaseBit::Playing);
     return btn;
 }
 
@@ -240,6 +240,6 @@ inline entt::entity make_menu_button(entt::registry& reg, MenuActionKind kind,
     reg.emplace<MenuAction>(btn, kind, index);
     reg.emplace<Position>(btn, 0.0f, 0.0f);
     reg.emplace<HitBox>(btn, 100.0f, 100.0f);
-    reg.emplace<ActiveInPhase>(btn, phase_bit(phase));
+    reg.emplace<ActiveInPhase>(btn, to_phase_bit(phase));
     return btn;
 }

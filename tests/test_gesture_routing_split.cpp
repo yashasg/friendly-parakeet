@@ -27,7 +27,7 @@ TEST_CASE("gesture_routing: tap input does not emit GoEvent", "[gesture_routing]
     reg.emplace<MenuAction>(btn, MenuActionKind::Confirm, uint8_t{0});
     reg.emplace<Position>(btn, 100.0f, 100.0f);
     reg.emplace<HitBox>(btn, 50.0f, 50.0f);
-    reg.emplace<ActiveInPhase>(btn, phase_bit(GamePhase::Playing));
+    reg.emplace<ActiveInPhase>(btn, GamePhaseBit::Playing);
 
     eq.push_input(InputType::Tap, 100.0f, 100.0f);
     gesture_routing_system(reg);
@@ -63,7 +63,7 @@ TEST_CASE("hit_test: swipe input is ignored (no GoEvent emitted)", "[hit_test][i
     reg.emplace<MenuAction>(btn, MenuActionKind::Confirm, uint8_t{0});
     reg.emplace<Position>(btn, 100.0f, 100.0f);
     reg.emplace<HitBox>(btn, 50.0f, 50.0f);
-    reg.emplace<ActiveInPhase>(btn, phase_bit(GamePhase::Playing));
+    reg.emplace<ActiveInPhase>(btn, GamePhaseBit::Playing);
 
     eq.push_input(InputType::Swipe, 100.0f, 100.0f, Direction::Down);
     hit_test_system(reg);
@@ -83,7 +83,7 @@ TEST_CASE("hit_test: tap inside hitbox emits press without gesture routing",
     reg.emplace<MenuAction>(btn, MenuActionKind::Confirm, uint8_t{0});
     reg.emplace<Position>(btn, 100.0f, 100.0f);
     reg.emplace<HitBox>(btn, 50.0f, 50.0f);
-    reg.emplace<ActiveInPhase>(btn, phase_bit(GamePhase::Playing));
+    reg.emplace<ActiveInPhase>(btn, GamePhaseBit::Playing);
 
     eq.push_input(InputType::Tap, 110.0f, 110.0f);
     hit_test_system(reg);
@@ -104,7 +104,7 @@ TEST_CASE("split systems: mixed inputs preserve event ordering and counts",
     reg.emplace<MenuAction>(btn, MenuActionKind::Confirm, uint8_t{0});
     reg.emplace<Position>(btn, 200.0f, 200.0f);
     reg.emplace<HitBox>(btn, 30.0f, 30.0f);
-    reg.emplace<ActiveInPhase>(btn, phase_bit(GamePhase::Playing));
+    reg.emplace<ActiveInPhase>(btn, GamePhaseBit::Playing);
 
     eq.push_input(InputType::Swipe, 0.0f, 0.0f, Direction::Left);
     eq.push_input(InputType::Tap,   210.0f, 210.0f);
@@ -136,7 +136,7 @@ TEST_CASE("hit_test: ActiveTag phase filtering preserved after split",
     reg.emplace<MenuAction>(btn, MenuActionKind::Confirm, uint8_t{0});
     reg.emplace<Position>(btn, 100.0f, 100.0f);
     reg.emplace<HitBox>(btn, 50.0f, 50.0f);
-    reg.emplace<ActiveInPhase>(btn, phase_bit(GamePhase::Playing));
+    reg.emplace<ActiveInPhase>(btn, GamePhaseBit::Playing);
 
     eq.push_input(InputType::Tap, 110.0f, 110.0f);
     hit_test_system(reg);

@@ -177,7 +177,7 @@ void setup_play_session(entt::registry& reg) {
             reg.emplace<Position>(btn, btn_cx, btn_cy);
             reg.emplace<HitCircle>(btn, hit_radius);
             reg.emplace<ShapeButtonData>(btn, shapes[i]);
-            reg.emplace<ActiveInPhase>(btn, phase_bit(GamePhase::Playing));
+            reg.emplace<ActiveInPhase>(btn, GamePhaseBit::Playing);
         }
     }
 

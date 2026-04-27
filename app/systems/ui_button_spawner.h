@@ -48,8 +48,8 @@ inline void spawn_end_screen_buttons(entt::registry& reg) {
         MenuActionKind::GoMainMenu,
     };
 
-    const uint8_t mask = phase_bit(GamePhase::GameOver)
-                       | phase_bit(GamePhase::SongComplete);
+    const GamePhaseBit mask = GamePhaseBit::GameOver
+                           | GamePhaseBit::SongComplete;
 
     for (int i = 0; i < 3; ++i) {
         auto btn = reg.create();
@@ -85,14 +85,14 @@ inline void spawn_title_buttons(entt::registry& reg) {
     reg.emplace<Position>(btn, constants::SCREEN_W / 2.0f, CONFIRM_HALF);
     reg.emplace<HitBox>(btn, constants::SCREEN_W / 2.0f, CONFIRM_HALF);
     reg.emplace<MenuAction>(btn, MenuActionKind::Confirm, uint8_t{0});
-    reg.emplace<ActiveInPhase>(btn, phase_bit(GamePhase::Title));
+    reg.emplace<ActiveInPhase>(btn, GamePhaseBit::Title);
 
     auto exit_btn = reg.create();
     reg.emplace<MenuButtonTag>(exit_btn);
     reg.emplace<Position>(exit_btn, constants::SCREEN_W / 2.0f, EXIT_CENTER_Y);
     reg.emplace<HitBox>(exit_btn, EXIT_W / 2.0f, EXIT_H / 2.0f);
     reg.emplace<MenuAction>(exit_btn, MenuActionKind::Exit, uint8_t{0});
-    reg.emplace<ActiveInPhase>(exit_btn, phase_bit(GamePhase::Title));
+    reg.emplace<ActiveInPhase>(exit_btn, GamePhaseBit::Title);
 #else
     // On web, no Exit button — full-screen Confirm
     auto btn = reg.create();
@@ -102,7 +102,7 @@ inline void spawn_title_buttons(entt::registry& reg) {
     reg.emplace<HitBox>(btn, constants::SCREEN_W / 2.0f,
                               constants::SCREEN_H / 2.0f);
     reg.emplace<MenuAction>(btn, MenuActionKind::Confirm, uint8_t{0});
-    reg.emplace<ActiveInPhase>(btn, phase_bit(GamePhase::Title));
+    reg.emplace<ActiveInPhase>(btn, GamePhaseBit::Title);
 #endif
 }
 
@@ -115,7 +115,7 @@ inline void spawn_pause_button(entt::registry& reg) {
     reg.emplace<HitBox>(btn, constants::SCREEN_W / 2.0f,
                               constants::SCREEN_H / 2.0f);
     reg.emplace<MenuAction>(btn, MenuActionKind::Confirm, uint8_t{0});
-    reg.emplace<ActiveInPhase>(btn, phase_bit(GamePhase::Paused));
+    reg.emplace<ActiveInPhase>(btn, GamePhaseBit::Paused);
 }
 
 // Spawn level-select UI entities (cards + difficulty buttons + start).
@@ -140,7 +140,7 @@ inline void spawn_level_select_buttons(entt::registry& reg) {
 
     constexpr float PAD = 10.0f;
 
-    const uint8_t mask = phase_bit(GamePhase::LevelSelect);
+    const GamePhaseBit mask = GamePhaseBit::LevelSelect;
 
     // 3 level cards
     for (int c = 0; c < LevelSelectState::LEVEL_COUNT; ++c) {
