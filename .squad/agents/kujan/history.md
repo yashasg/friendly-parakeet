@@ -1159,3 +1159,46 @@ All three are `.squad/` documentation files with zero compile impact. A clean ch
 **Noise items (approved as-is):** cleanup_system static buffer (#242), no groups (correct choice), BurnoutState stale fields (no UB).
 
 **Status:** Orchestration log written. Backlog ready for team sprint assignment. Decision inbox consolidated. Orchestration log: `.squad/orchestration-log/2026-04-27T19-14-36Z-entt-ecs-audit.md`
+
+### 2026-04-27 — Review: EnTT Dispatcher Input Model Rewrite (commit 2547830, Keaton)
+
+**Scope:** Full input-model migration from hand-rolled EventQueue go/press arrays to entt::dispatcher.
+
+**Key findings:**
+
+- GoEvent and ButtonPressEvent are fully delivered via `entt::dispatcher` in `reg.ctx()`. Old `go_count`/`press_count` manual arrays gone. #213 replay bug eliminated naturally via `disp.update<T>()` drain semantics.
+- Architecture diverged from decisions.md Tier-1 spec (InputEvent through dispatcher with listeners). Instead, gesture_routing and hit_test remain direct system calls; they read raw EventQueue and enqueue semantic events. This avoids pool-order latency without needing `trigger()`. Same-frame behavior preserved.
+- EventQueue struct not fully removed (migration step 4 deferred). Still serves as raw gesture buffer (InputEvent[] only). Acceptable per "where intended" qualifier in acceptance criteria.
+- R7 (start-of-frame dispatcher clear) not hardened for dispatcher queues — benign in practice since game_state_system always drains first tick.
+- Contract test comments about "must use trigger()" are now stale/misleading (approach changed).
+- All 2419 assertions / 768 test cases pass. Zero build warnings.
+
+**Verdict:** APPROVED
+
+**Guardrails for future dispatcher work:**
+- Always unwire listeners before reg.clear() — registry pointer in sink is not ref-counted.
+- The redundant disp.update() in player_input_system is load-bearing for isolated unit tests; do not remove it.
+- If EventQueue raw-buffer is removed in future, test_input_pipeline_behavior.cpp and test_gesture_routing_split.cpp will need updating to inject events via dispatcher directly.
+
+### 2026-04-27 — Input Dispatcher Review COMPLETE (APPROVED)
+
+**Evidence:** 2419 assertions / 768 test cases pass; zero warnings; architecture documented; follow-ups identified.
+
+**Review Decision:** APPROVED
+
+**Approved architecture:**
+- GoEvent/ButtonPressEvent delivery via entt::dispatcher ✓
+- Same-frame semantics preserved ✓
+- Manual zeroing anti-pattern (#213) eliminated ✓
+
+**Architecture diff from decisions.md:**
+- Tier-1 spec used InputEvent → dispatcher with gesture_routing/hit_test as listeners (to avoid pool order latency)
+- Actual implementation: gesture_routing/hit_test stay as direct system calls, read raw EventQueue, enqueue semantic events. No latency hazard, same effect.
+- This is architecturally equivalent and acceptable per acceptance criteria.
+
+**Non-blocking follow-ups:**
+1. Harden R7: explicit start-of-frame dispatcher clear for GoEvent/ButtonPressEvent
+2. Update stale test comments in test_entt_dispatcher_contract.cpp
+3. Audit EventQueue raw InputEvent buffer (defensive)
+
+**Merged to decisions.md with full review details.**

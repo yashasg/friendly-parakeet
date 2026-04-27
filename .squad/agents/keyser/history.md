@@ -283,3 +283,17 @@ Replaced 15-branch `if (source == "...")` chains in `resolve_ui_int_source` and 
 - ECS guide: `docs/entt/Entity_Component_System.md`
 - Component headers with logic: `app/components/ui_state.h`, `app/components/high_score.h`, `app/components/input_events.h`, `app/components/obstacle_counter.h`, `app/components/song_state.h`
 - Systems audited: all 47 `reg.view<>` call sites, `app/game_loop.cpp`
+
+### 2026-04-27 — Input Dispatcher Approval (Context Note)
+
+**Status:** Approved by Kujan; 2419 assertions / 768 test cases pass; zero warnings.
+
+**ECS alignment:** Input dispatcher pipeline (gesture_routing → hit_test → player_input) architecture is sound and maintains ECS separation of concerns. Dispatcher-based event delivery via `reg.ctx()` follows established singleton pattern.
+
+**Approved changes maintain:**
+- All systems as free functions ✓
+- Dispatcher as registry context singleton ✓
+- No component-level logic in listeners ✓
+- Fixed-step delivery semantics ✓
+
+**No changes needed to ECS guide; architectural alignment verified.**

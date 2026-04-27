@@ -509,3 +509,16 @@ ctest --test-dir build -R "shipped beatmaps"
 - Use `dispatcher.trigger<GoEvent>()` (not `enqueue`) inside gesture_routing's InputEvent listener.
 - Register InputEvent sink before GoEvent sink in system setup to stay safe even if enqueue is used.
 - `dispatcher.update()` per tick (once) satisfies #213: second sub-tick update is a no-op since the queue is drained.
+
+### 2026-04-27 — Dispatcher Contract Tests APPROVED (Kujan review)
+
+**Test outcome:** 40 contract + pipeline tests pass; zero warnings; dispatcher contract validated.
+
+**Approved:** All guardrails documented in test suite accurately reflect implementation behavior.
+
+**Findings from review:**
+- Contract test comments reference outdated Keaton approach (trigger() vs enqueue()).
+- Actual implementation avoids latency hazard via direct system call (not listener architecture).
+- Comment should be updated to prevent future reader confusion.
+
+**Status:** Ready for production; on-call for defensive queue clearing hardening (R7 follow-up).

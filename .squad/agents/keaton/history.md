@@ -292,3 +292,20 @@ Fixed all 7 unresolved review threads in commit d90abf9 on `user/yashasg/ecs_ref
 - **`GoCapture` / `PressCapture` structs in `test_helpers.h`** — test-only capture helpers for tests that need to inspect which events were produced (gesture_routing tests, hit_test tests, pr43 hitbox regression tests).
 - **`update_diff_buttons_pos()` static helper** — extracted from `level_select_system` to avoid code duplication between the listener functions and the system body.
 - **Validation:** zero warnings, 2419 assertions in 768 test cases, all pass. `test_entt_dispatcher_contract.cpp` and `test_input_pipeline_behavior.cpp` both pass unchanged.
+
+### 2026-04-27 — Input Dispatcher Implementation APPROVED (Kujan review)
+
+**Evidence:** 2419 assertions / 768 test cases pass; zero warnings; architecture review completed.
+
+**Approved Changes:**
+- GoEvent/ButtonPressEvent delivery via `entt::dispatcher` in `reg.ctx()` ✓
+- `go_count`/`press_count` arrays eliminated; drain semantics replace manual zeroing ✓
+- Same-frame delivery preserved; pool-order latency hazard avoided ✓
+- EventQueue remains as raw gesture shuttle (InputEvent only) — acceptable scope
+
+**Non-blocking follow-ups identified:**
+1. Hardening: Start-of-frame event queue clearing + explicit contracts
+2. Documentation: Stale test comments in `test_entt_dispatcher_contract.cpp`
+3. Defensive: EventQueue raw InputEvent buffer audit
+
+**Next:** Awaiting obstacle spawning / beatmap feature work.
