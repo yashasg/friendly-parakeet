@@ -277,3 +277,18 @@ Fixed all 7 unresolved review threads in commit d90abf9 on `user/yashasg/ecs_ref
 **Pre-existing build failures (not caused by this work):**
 - `input_dispatcher.cpp` references unimplemented handler functions (`game_state_handle_go`, etc.) — in-progress dispatcher migration.
 - Test files `test_player_input_rhythm_extended.cpp`, `test_player_action_rhythm.cpp`, `test_burnout_bank_on_action.cpp` have unused `eq` variable warnings-as-errors — pre-existing.
+
+### 2026-04-27 — EnTT Dispatcher Input Migration (commit 2547830)
+
+**Scope:** `app/components/input_events.h`, `app/systems/{input_dispatcher,input_system,gesture_routing_system,hit_test_system,game_state_system,level_select_system,player_input_system,test_player_system}.cpp`, `app/game_loop.cpp`, `app/systems/all_systems.h`, all relevant test files.
+
+- **EventQueue slimmed to InputEvent only** — `GoEvent goes[MAX]`, `ButtonPressEvent presses[MAX]`, `go_count`, `press_count`, `push_go()`, `push_press()` all removed. Only `InputEvent inputs[MAX]` and `input_count` remain (the raw tap/swipe pre-route shuttle).
+- **`entt::dispatcher` in registry context** — added to `game_loop_init` and `make_registry`. `wire_input_dispatcher(reg)` connects game_state/level_select/player_input handler functions in system-execution order.
+- **Producers use `disp.enqueue<GoEvent/ButtonPressEvent>()`** — `input_system` (keyboard), `gesture_routing_system` (swipe), `hit_test_system` (tap hit), `test_player_system` (synthetic) all enqueue into the dispatcher.
+- **Dispatch in `game_state_system` first** — calls `disp.update<GoEvent>()` and `disp.update<ButtonPressEvent>()` after incrementing `phase_timer`, so `phase_timer > 0.4f` guards in `game_state_handle_press` read the current-tick timer value. All three consumer listeners (game_state, level_select, player_input) fire in one update call.
+- **`level_select_system` and `player_input_system` call update() too** — no-ops in production (game_state already drained). Needed for tests that call these systems in isolation without game_state_system.
+- **`player_input_system` is now a pure drain** — calls `disp.update<>()` and returns. All event logic is in `player_input_handle_go` and `player_input_handle_press`.
+- **Consume-once solved naturally** — `entt::dispatcher::update()` drains the queue. Second fixed sub-tick calls find an empty queue. No manual `go_count = 0` needed. `test_entt_dispatcher_contract.cpp` (pre-written) documents this contract.
+- **`GoCapture` / `PressCapture` structs in `test_helpers.h`** — test-only capture helpers for tests that need to inspect which events were produced (gesture_routing tests, hit_test tests, pr43 hitbox regression tests).
+- **`update_diff_buttons_pos()` static helper** — extracted from `level_select_system` to avoid code duplication between the listener functions and the system body.
+- **Validation:** zero warnings, 2419 assertions in 768 test cases, all pass. `test_entt_dispatcher_contract.cpp` and `test_input_pipeline_behavior.cpp` both pass unchanged.
