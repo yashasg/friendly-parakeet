@@ -22,6 +22,7 @@ void level_select_system(entt::registry& reg, float dt);
 
 // Phase 3: Rhythm Engine
 void song_playback_system(entt::registry& reg, float dt);
+void beat_log_system(entt::registry& reg, float dt);
 void beat_scheduler_system(entt::registry& reg, float dt);
 
 // Phase 4: Player

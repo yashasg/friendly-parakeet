@@ -132,6 +132,7 @@ static void tick_fixed_systems(entt::registry& reg, float dt) {
     game_state_system(reg, dt);
     level_select_system(reg, dt);
     song_playback_system(reg, dt);
+    beat_log_system(reg, dt);
     beat_scheduler_system(reg, dt);
     player_input_system(reg, dt);
     shape_window_system(reg, dt);
