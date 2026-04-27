@@ -79,11 +79,11 @@ TEST_CASE("scoring: popup timing_tier set for graded obstacles", "[scoring][rhyt
 
     auto popup_view = reg.view<ScorePopup>();
     for (auto [e, popup] : popup_view.each()) {
-        CHECK(popup.timing_tier == static_cast<uint8_t>(TimingTier::Good));
+        CHECK(popup.timing_tier == TimingTier::Good);
     }
 }
 
-TEST_CASE("scoring: popup timing_tier is 255 for ungraded obstacles", "[scoring]") {
+TEST_CASE("scoring: popup timing_tier is nullopt for ungraded obstacles", "[scoring]") {
     auto reg = make_registry();
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<ScoredTag>(obs);
@@ -93,7 +93,7 @@ TEST_CASE("scoring: popup timing_tier is 255 for ungraded obstacles", "[scoring]
 
     auto popup_view = reg.view<ScorePopup>();
     for (auto [e, popup] : popup_view.each()) {
-        CHECK(popup.timing_tier == 255);
+        CHECK(!popup.timing_tier.has_value());
     }
 }
 

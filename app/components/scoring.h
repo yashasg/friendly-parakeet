@@ -1,8 +1,10 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 #include <entt/entity/entity.hpp>
 #include "../components/text.h"
+#include "../components/rhythm.h"
 
 struct ScoreState {
     int32_t score             = 0;
@@ -14,14 +16,9 @@ struct ScoreState {
 };
 
 struct ScorePopup {
-    // Sentinel for timing_tier meaning "no timing grade" (non-shape obstacle
-    // or freeplay mode).  Defined as a named constant so readers don't need
-    // to interpret the raw 255 at every use site.
-    static constexpr uint8_t TIMING_TIER_NONE = 255;
-
-    int32_t value       = 0;
-    uint8_t tier        = 0;              // burnout tier (legacy)
-    uint8_t timing_tier = TIMING_TIER_NONE;
+    int32_t                    value       = 0;
+    uint8_t                    tier        = 0;    // burnout tier (legacy)
+    std::optional<TimingTier>  timing_tier = std::nullopt;
 };
 
 // Pre-computed popup display data. Computed by popup_display_system,

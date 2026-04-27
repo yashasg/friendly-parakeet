@@ -18,14 +18,14 @@ void popup_display_system(entt::registry& reg, float /*dt*/) {
         pd.b = faded.b;
         pd.a = faded.a;
 
-        if (popup.timing_tier != ScorePopup::TIMING_TIER_NONE) {
+        if (popup.timing_tier.has_value()) {
             const char* grade = "BAD";
             pd.font_size = FontSize::Small;
-            switch (popup.timing_tier) {
-                case 3: grade = "PERFECT"; pd.font_size = FontSize::Medium; break;
-                case 2: grade = "GOOD"; break;
-                case 1: grade = "OK"; break;
-                default: break;
+            switch (*popup.timing_tier) {
+                case TimingTier::Perfect: grade = "PERFECT"; pd.font_size = FontSize::Medium; break;
+                case TimingTier::Good:    grade = "GOOD";    break;
+                case TimingTier::Ok:      grade = "OK";      break;
+                case TimingTier::Bad:                        break;
             }
             std::snprintf(pd.text, sizeof(pd.text), "%s", grade);
         } else {

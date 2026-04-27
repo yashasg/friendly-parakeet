@@ -112,7 +112,7 @@ void scoring_system(entt::registry& reg, float dt) {
         reg.emplace<Velocity>(popup, 0.0f, -80.0f);
         reg.emplace<Lifetime>(popup, constants::POPUP_DURATION, constants::POPUP_DURATION);
 
-        uint8_t tt = timing ? static_cast<uint8_t>(timing->tier) : ScorePopup::TIMING_TIER_NONE;
+        std::optional<TimingTier> tt = timing ? std::make_optional(timing->tier) : std::nullopt;
         reg.emplace<ScorePopup>(popup, points, uint8_t{0}, tt);
 
         // Color by timing grade
