@@ -172,3 +172,14 @@ Rhythm obstacles that escape the collision window (e.g. during jump peak) reach 
 - **Structural view split for branching:** When an `any_of<T>` branch is the primary discriminator inside a view loop, split into two structural views (`with T` / `entt::exclude<T>`). This is both safer and gives EnTT better cardinality info.
 - **MissTag entities don't need Position:** Miss processing (energy drain, miss_count, chain reset) never reads position. The structural split lets the miss view drop Position from its component list entirely.
 - **Build workaround (worktree):** The 315 worktree doesn't have vcpkg_installed. Used symlink + explicit `-D*_DIR` flags to point CMake at the main worktree's built packages.
+
+### 2026-04-27 — Issue #315 Closure (EnTT-safe scoring_system iteration)
+
+**Implementation complete; review approved; main branch integration validated.**
+
+**Final outcome:**
+- Commit 5f0ffb8: Scoring_system refactored with collect-then-remove pattern
+- Two structural views (miss/hit) replace per-entity `any_of<MissTag>` branching
+- Zero per-frame heap allocation (static vector with `.clear()`)
+- All 2419 assertions / 768 test cases pass on main branch; zero compiler warnings
+- Pattern documented and ready for reuse across other systems

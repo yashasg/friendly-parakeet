@@ -1202,3 +1202,15 @@ All three are `.squad/` documentation files with zero compile impact. A clean ch
 3. Audit EventQueue raw InputEvent buffer (defensive)
 
 **Merged to decisions.md with full review details.**
+
+### 2026-04-27 — Issue #315 Review Approval (EnTT-safe scoring_system iteration)
+
+**McManus implementation reviewed and approved.**
+
+**Evidence:** 
+- Zero-warning build confirmed
+- 2419 assertions / 768 test cases passed on main branch post-integration
+- Collect-then-remove pattern properly implemented across two structural views
+- No regressions introduced
+
+**Verdict:** Issue #315 closed; pattern ready for team reference.

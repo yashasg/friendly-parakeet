@@ -309,3 +309,7 @@ Fixed all 7 unresolved review threads in commit d90abf9 on `user/yashasg/ecs_ref
 3. Defensive: EventQueue raw InputEvent buffer audit
 
 **Next:** Awaiting obstacle spawning / beatmap feature work.
+
+### 2026-04-27 — Issue #315 Closure (EnTT-safe scoring_system iteration)
+
+**Structural safety confirmed:** McManus's collect-then-remove pattern in scoring_system (#315) eliminates the structural mutation hazard. Two-pass approach (collect miss/hit records, then remove components) is safe and matches DOD iteration best practices. Pattern now available for reuse in other systems.

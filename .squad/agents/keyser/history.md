@@ -297,3 +297,7 @@ Replaced 15-branch `if (source == "...")` chains in `resolve_ui_int_source` and 
 - Fixed-step delivery semantics ✓
 
 **No changes needed to ECS guide; architectural alignment verified.**
+
+### 2026-04-27 — Issue #315 Closure (EnTT-safe scoring_system iteration)
+
+**Architectural note:** McManus's collect-then-remove pattern for scoring_system (#315) follows the ECS structural view split pattern. Architecture review confirms alignment with existing collision_system design. Pattern is reusable and documented for team reference.
