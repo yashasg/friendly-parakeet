@@ -245,3 +245,35 @@ Fixed all 7 unresolved review threads in commit d90abf9 on `user/yashasg/ecs_ref
 
 **Full decision:** `.squad/decisions.md` (EnTT Input Model Guardrails section)
 **Orchestration log:** `.squad/orchestration-log/2026-04-27T19-09-18Z-keyser-entt-input-guardrails.md`
+
+### 2026 — EnTT Core Functionalities Audit Pass
+
+**Scope:** Read-only audit of `docs/entt/Core_Functionalities.md` against `app/components/` and `app/systems/`.
+
+**Key findings (actionable, filed as GitHub issues #308–#313):**
+
+1. **`lifetime_system.cpp` per-frame vector alloc** (#308, P1, FIXED in commit 7fc569a) — `static std::vector<entt::entity> expired; expired.clear();` pattern. Eliminates per-frame malloc/free.
+
+2. **`ctx().find<>` inside entity loops** (#309, P1, FIXED in commit 7fc569a) — `SongResults` and `EnergyState` hoisted above view loop in `scoring_system.cpp`; `GameOverState` hoisted above resolve lambda in `collision_system.cpp` and above loop in `miss_detection_system.cpp`.
+
+3. **`entt::enum_as_bitmask` for `GamePhase`** (#311, P2, open) — `ActiveInPhase.phase_mask` and `phase_bit()`/`phase_active()` helpers can be replaced with native bitmask operators. **Breaking:** GamePhase values must shift from sequential (0–5) to power-of-two (0x01–0x20); audit all raw-value comparisons before landing.
+
+4. **Pre-compute UI element map at screen-load time** (#312, P2, open) — `find_el()` in `ui_render_system.cpp` does linear JSON string scan per frame. Replace with `std::unordered_map<entt::hashed_string::hash_type, const json*>` built once at `UIState::load_screen()`. Lookup keys become compile-time `"id"_hs` constants.
+
+5. **`HighScoreState::make_key()` heap string** (#313, P3, open) — `current_key: std::string` can be replaced with `uint32_t` (FNV-1a via `entt::hashed_string::value()`). Entry::key char[32] remains for persistence. Low urgency (called once per session).
+
+**EnTT Core Functionalities NOT worth adopting:**
+- `entt::monostate` — `reg.ctx()` is the correct singleton owner in this game; monostate is global and bypasses registry lifetime.
+- `entt::any` — no opaque container needs; all component types are concrete.
+- `entt::allocate_unique` — no custom allocators in the project.
+- `entt::y_combinator` — no recursive lambda needs.
+- `entt::compressed_pair` — no pair-heavy code; internal use only.
+- `entt::iota_iterator` — superseded by C++20 ranges; project targets C++20.
+- `entt::type_index/type_hash/type_name` — magic_enum handles type names; no custom RTTI needed.
+- `entt::family` / `entt::ident` — no dynamic type ID registration.
+- `entt::input_iterator_pointer` — internal EnTT implementation detail.
+- `entt::fast_mod` — only one modulo in hot code (`obstacle_spawn_system.cpp:88`, `(lane+1)%3`); the modulus 3 is not a power of two, so fast_mod doesn't apply.
+
+**Pre-existing build failures (not caused by this work):**
+- `input_dispatcher.cpp` references unimplemented handler functions (`game_state_handle_go`, etc.) — in-progress dispatcher migration.
+- Test files `test_player_input_rhythm_extended.cpp`, `test_player_action_rhythm.cpp`, `test_burnout_bank_on_action.cpp` have unused `eq` variable warnings-as-errors — pre-existing.

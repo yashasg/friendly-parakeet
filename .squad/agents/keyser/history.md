@@ -10,6 +10,20 @@
 
 <!-- Append learnings below -->
 
+### 2026-05-18 — EnTT Core_Functionalities Audit
+
+Audited `docs/entt/Core_Functionalities.md` against the full codebase. Two actionable findings beyond the prior ECS structural audit:
+
+**P2 (#310) — `entt::hashed_string` for `ui_source_resolver.cpp` — IMPLEMENTED (commit `4f4574f`)**  
+Replaced 15-branch `if (source == "...")` chains in `resolve_ui_int_source` and 5-branch chain in `resolve_ui_dynamic_text` with `switch(entt::hashed_string::value(source.data()))` + `_hs` UDL cases. Single FNV-1a hash per dispatch. Sources always come from JSON-parsed `std::string` — `data()` is null-terminated and safe. The compiler will flag duplicate `_hs` case values (collision guard).
+
+**P3 (#314) — `entt::enum_as_bitmask` for `ActiveInPhase` — Deferred to McManus**  
+`ActiveInPhase::phase_mask (uint8_t)` uses manual `phase_bit()` / `phase_active()` helpers. A `GamePhaseBit` bitmask enum (power-of-2 values + `_entt_enum_as_bitmask` sentinel) would make it type-safe. Current helpers are correct — ergonomic improvement only.
+
+**Features with no actionable issue:** `entt::monostate` (ctx() is better), `entt::any` (typed ctx covers it), `entt::tag<"name"_hs>` (empty structs are fine), `entt::compressed_pair` (internal), `entt::allocate_unique` (no custom allocators), `entt::overloaded` (no variant pattern), `entt::type_name` (magic_enum covers enum value names), `entt::fast_mod` (lane % 3 is not a power of 2), `entt::ident`/`family` (no type sequencing need), `entt::integral_constant` tags (existing empty structs are clearer).
+
+**Key lesson:** The most impactful Core_Functionalities feature for this codebase is `entt::hashed_string` as a drop-in for runtime string dispatch. Apply it wherever there's an if-chain on `string_view` keys against a fixed schema (especially in data-driven UI binding). The null-termination assumption on `hashed_string::value(source.data())` must be respected — only safe when source originates from `std::string` or string literal.
+
 ### 2026-05-17 — Issue #242 Review (cleanup_system per-frame heap allocation)
 
 **Verdict: APPROVED — #242 can be closed.**
