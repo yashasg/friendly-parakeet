@@ -150,3 +150,25 @@ Rhythm obstacles that escape the collision window (e.g. during jump peak) reach 
 - Rule 3: Hoist ctx() lookups in scoring/collision systems
 
 **Status:** Orchestration log: `.squad/orchestration-log/2026-04-27T19-14-36Z-entt-ecs-audit.md`. Input dispatcher pipeline validated (no architectural rework needed). Ready for team sprint assignment.
+
+## 2026-05-17 — #315 scoring_system EnTT iteration safety
+
+**Task:** Make scoring_system EnTT-safe — it was removing Obstacle/ScoredTag components while iterating a view containing those exact components (swap-and-pop UB).
+
+**Fix:**
+- Replaced single combined view loop with two structural views:
+  - Miss pass: `reg.view<ObstacleTag, ScoredTag, MissTag, Obstacle>()` — no Position needed, energy/chain processed inline, entities collected, removals applied after iteration
+  - Hit pass: `reg.view<ObstacleTag, ScoredTag, Obstacle, Position>(entt::exclude<MissTag>)` — collects entity+pos+obs+timing into `HitRecord`, processes scoring/popups after iteration
+- Per-entity `any_of<MissTag>` branch replaced by structural view split (matches collision_system pattern)
+- Both passes use `static std::vector<>` with `.clear()` for zero per-frame heap allocation
+- All `reg.remove<>` on view components happen after the view is exhausted
+
+**Commit:** fa97d7e  
+**Tests:** 2430 assertions (770 test cases) — all pass, zero build warnings.
+
+## Learnings
+
+- **EnTT collect-then-remove pattern:** Any `reg.remove<C>` where C is in the active view's component list is potential swap-and-pop UB. Always collect entities first, remove after. Static vectors avoid per-frame alloc.
+- **Structural view split for branching:** When an `any_of<T>` branch is the primary discriminator inside a view loop, split into two structural views (`with T` / `entt::exclude<T>`). This is both safer and gives EnTT better cardinality info.
+- **MissTag entities don't need Position:** Miss processing (energy drain, miss_count, chain reset) never reads position. The structural split lets the miss view drop Position from its component list entirely.
+- **Build workaround (worktree):** The 315 worktree doesn't have vcpkg_installed. Used symlink + explicit `-D*_DIR` flags to point CMake at the main worktree's built packages.
