@@ -343,3 +343,19 @@ Fixed all 7 unresolved review threads in commit d90abf9 on `user/yashasg/ecs_ref
 - **Forward declarations are the contract** — headers should declare what functions exist; source files own the implementation. The `// Implemented in app/systems/active_tag_system.cpp` comments point reviewers to the owner.
 - **Local build environment note:** The worktree build required `vcpkg install --x-install-root=build/vcpkg_installed_real --triplet=arm64-osx` before cmake configure. Without this, `shapeshifter_lib` was missing raylib includes (a pre-existing build-environment issue, not caused by this change). After install, all packages share `arm64-osx/include` as a single isystem path, and `shapeshifter_lib` compiles cleanly.
 - **Validation:** zero warnings, 2419 assertions in 768 test cases, all pass (including all `[hit_test]`, `[gesture_routing]`, `[active_tag]`, `[input_pipeline]` tag groups).
+
+### 2026-04-27 — Issue #316 Closure: UIState loading boundary
+
+**Completion confirmed** — Commit 2a32122. UIState established as pure data; `ui_load_screen` and `ui_load_overlay` extracted as free functions; schema tests enabled. Test result: **2588 assertions / 808 test cases pass**. Kujan approved.
+
+### 2026-04-27 — Issue #317 Closure: active-tag system extraction
+
+**Completion confirmed** — Commits bd34aec + 04f9f89. Active-tag registry logic moved to `active_tag_system.cpp`; component headers now data-only. Focused and full tests pass. Kujan approved.
+
+### 2026-04-27 — Issue #323 Closure: RNGState initialization moved to setup path
+
+**Completion confirmed** — Commits e4f63b9 + b33b57f. `RNGState` initialized in `game_loop_init` and `setup_play_session`; hot-path lazy init removed; deterministic-per-session pattern established. Kujan approved.
+
+### 2026-04-27 — Issue #325 Closure: const render registry
+
+**Completion confirmed** — Commit e03170f. Render systems now take const registry; material tinting uses local copies. Kujan approved.

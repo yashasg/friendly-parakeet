@@ -1231,3 +1231,47 @@ All three are `.squad/` documentation files with zero compile impact. A clean ch
 - Tests: **2419 assertions / 750 test cases — all pass**.
 
 **Verdict:** APPROVED
+
+---
+
+### 2026-04-28 — Review: issue #323 (RNGState initialization moved to setup path)
+
+**Scope:** Keaton implementation — `game_loop_init`, `setup_play_session`, `obstacle_spawn_system`.
+
+**Verdict:** ✅ APPROVED
+
+**Acceptance criteria check:**
+- `RNGState` initialized at boot: `game_loop_init` adds `reg.ctx().emplace<RNGState>()` alongside other core singletons. ✓
+- Session reset determinism: `setup_play_session` adds `reg.ctx().insert_or_assign(RNGState{})` in the "Reset singletons" block; default seed `1u` is always restored at session start. ✓
+- Hot path guard removed: `obstacle_spawn_system` replaces the lazy `find/emplace` pattern with `reg.ctx().get<RNGState>()` which terminates on missing state — programmer error surfaces immediately rather than silently recovering. ✓
+- Test helpers: `make_registry()` in `test_helpers.h` already emplaced `RNGState{}` — no test changes required; all existing tests remain compatible. ✓
+- Behavior preserved: no logic changes to spawn system beyond the ctx access pattern. ✓
+- Build/test evidence: **2419 assertions / 750 test cases — all pass** (verified locally). Zero-warning build (pre-existing duplicate-lib linker note from vcpkg is unrelated). ✓
+- Scope: exactly 3 production files changed plus Keaton's history log. No unrelated changes. ✓
+
+**Pattern established:** `insert_or_assign(T{})` in `setup_play_session` for deterministic-per-session singletons; `emplace<T>()` in `game_loop_init` for boot singletons; `ctx().get<T>()` in systems to surface missing setup as a hard failure.
+
+### 2026-04-27 — Review: issue #325 (const render registry)
+
+**Scope:** Keaton implementation — render systems refactored to accept const registry; material tinting uses local Material copies.
+
+**Verdict:** ✅ APPROVED
+
+**Acceptance criteria check:**
+- Render system signatures updated: all `update_*_render()` and related functions take `const entt::registry&`. ✓
+- Material tinting: `apply_material_tint` uses local `Material` copies instead of mutating registry state. ✓
+- No structural mutations in render path: const registry contract enforced throughout render loop. ✓
+- Build/test evidence: **zero-warning build; all existing tests pass**. ✓
+- Scope: narrowly scoped to render systems; no unrelated changes. ✓
+
+**Pattern reinforced:** Render systems are pure observers. Data mutations belong in non-render systems; render-phase tinting uses temporary local state.
+
+### 2026-04-27 — Scribe Closure Summary: Issues #316, #317, #323, #325
+
+Four ECS refactor issues documented as complete:
+- **#316:** UIState loading boundary — closed, 2588 assertions / 808 test cases pass
+- **#317:** active-tag extraction — closed, full tests pass
+- **#323:** RNGState setup init — closed, pattern established
+- **#325:** const render registry — closed, render path now pure observer
+
+All approvals logged. Orchestration and session logs created. Agent histories synchronized.
