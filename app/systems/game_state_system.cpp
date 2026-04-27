@@ -141,6 +141,25 @@ void game_state_system(entt::registry& reg, float dt) {
 
     gs.phase_timer += dt;
 
+    // ── Primary event drain ───────────────────────────────────────────────────
+    // game_state_system runs first in tick_fixed_systems (game_loop.cpp) and
+    // owns the authoritative drain for GoEvent and ButtonPressEvent.
+    // Calling update<T>() here fires every registered listener in registration
+    // order: game_state → level_select → player_input
+    // (see wire_input_dispatcher in input_dispatcher.cpp).
+    //
+    // Events are enqueued earlier in the same frame by input_system (keyboard),
+    // gesture_routing_system (swipes), and hit_test_system (taps) — all of
+    // which run as direct pre-tick calls before the fixed-step loop.
+    //
+    // ⚠ Do NOT call disp.clear<GoEvent/ButtonPressEvent>() before this point
+    //   within a frame.  Those pre-tick systems enqueue same-frame events that
+    //   must reach player_input_handle_go / player_input_handle_press through
+    //   this update() call.  clear() would silently drop them before delivery.
+    //
+    // player_input_system also calls update<GoEvent/ButtonPressEvent>() later
+    // in the same tick, but the queue is already empty after this drain, so
+    // those calls are no-ops — preserving the #213 no-replay invariant.
     auto& disp = reg.ctx().get<entt::dispatcher>();
     disp.update<GoEvent>();
     disp.update<ButtonPressEvent>();

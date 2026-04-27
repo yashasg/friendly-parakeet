@@ -12,6 +12,8 @@ void input_system(entt::registry& reg, float raw_dt) {
     auto& st    = reg.ctx().get<ScreenTransform>();
     auto& eq    = reg.ctx().get<EventQueue>();
     auto& disp  = reg.ctx().get<entt::dispatcher>();
+    // disp is used only inside the PLATFORM_HAS_KEYBOARD block below.
+    // (void) suppresses the unused-variable warning on non-keyboard platforms.
     (void)disp;
     eq.clear();
     clear_input_events(input);

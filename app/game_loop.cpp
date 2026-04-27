@@ -133,6 +133,13 @@ void game_loop_init(entt::registry& reg,
 // ── Run ─────────────────────────────────────────────────────────────────────
 
 static void tick_fixed_systems(entt::registry& reg, float dt) {
+    // game_state_system runs FIRST and owns the authoritative GoEvent /
+    // ButtonPressEvent drain for this tick (calls disp.update<GoEvent>() and
+    // disp.update<ButtonPressEvent>() at its top).  All pre-tick enqueues from
+    // input_system, gesture_routing_system, and hit_test_system are delivered
+    // here to listeners in registration order (see wire_input_dispatcher).
+    // Systems later in this list that also call disp.update<T>() (e.g.,
+    // player_input_system) will find an empty queue and execute as no-ops.
     game_state_system(reg, dt);
     level_select_system(reg, dt);
     song_playback_system(reg, dt);

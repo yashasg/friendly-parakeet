@@ -98,14 +98,24 @@ void player_input_handle_press(entt::registry& reg, const ButtonPressEvent& evt)
 
 // ── EventQueue consumption contract ──────────────────────────────────────────
 // player_input_handle_go and player_input_handle_press are connected as
-// listeners in wire_input_dispatcher(). GoEvent and ButtonPressEvent are
+// listeners in wire_input_dispatcher().  GoEvent and ButtonPressEvent are
 // enqueued by input_system/gesture_routing/hit_test and dispatched once per
 // logical frame by the first consumer system that calls disp.update<T>()
 // (game_state_system in the production tick order).
 //
-// This function drains any remaining queued events (no-op in production since
-// game_state_system already drained; needed for test scenarios where only
-// player_input_system is called directly).
+// In production the queue is already empty by the time this function runs, so
+// the two update<T>() calls below are no-ops — enforcing the #213 no-replay
+// invariant without extra bookkeeping.
+//
+// In isolated test scenarios where only player_input_system is invoked (no
+// preceding game_state_system call), these update<T>() calls are the sole
+// drain — they fire the listeners and deliver the enqueued events.  This dual
+// role is intentional: update() on an empty queue is a defined no-op in EnTT,
+// so the production path is never harmed by the defensive drain below.
+//
+// ⚠ Do NOT replace these update() calls with clear<T>() calls here.
+//   clear() skips listeners entirely (EnTT R3), which would silently drop
+//   events in the isolated-test path and mask regressions.
 // ─────────────────────────────────────────────────────────────────────────────
 void player_input_system(entt::registry& reg, float /*dt*/) {
     auto& disp = reg.ctx().get<entt::dispatcher>();
