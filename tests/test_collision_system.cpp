@@ -370,3 +370,56 @@ TEST_CASE("collision: Perfect timing shrinks window via window_start adjustment"
     CHECK(sw.window_scale == 0.50f);
     CHECK(sw.graded);
 }
+
+TEST_CASE("collision: lane push left scores and pushes player left", "[collision][lane_push]") {
+    auto reg = make_registry();
+    auto p = make_player(reg);
+    // Player starts in lane 1 (center); push left moves to lane 0
+    auto obs = make_lane_push(reg, ObstacleKind::LanePushLeft, constants::PLAYER_Y);
+
+    collision_system(reg, 0.016f);
+
+    CHECK(reg.all_of<ScoredTag>(obs));
+    auto& lane = reg.get<Lane>(p);
+    CHECK(lane.target == 0);
+}
+
+TEST_CASE("collision: lane push right scores and pushes player right", "[collision][lane_push]") {
+    auto reg = make_registry();
+    auto p = make_player(reg);
+    // Player starts in lane 1 (center); push right moves to lane 2
+    auto obs = make_lane_push(reg, ObstacleKind::LanePushRight, constants::PLAYER_Y);
+
+    collision_system(reg, 0.016f);
+
+    CHECK(reg.all_of<ScoredTag>(obs));
+    auto& lane = reg.get<Lane>(p);
+    CHECK(lane.target == 2);
+}
+
+TEST_CASE("collision: lane push out of range does not move player off edge", "[collision][lane_push]") {
+    auto reg = make_registry();
+    auto p = make_player(reg);
+    // Move player to rightmost lane (lane 2); push right would go out of bounds
+    reg.get<Lane>(p).current = 2;
+    reg.get<Position>(p).x = constants::LANE_X[2];
+    auto obs = make_lane_push(reg, ObstacleKind::LanePushRight, constants::PLAYER_Y);
+
+    collision_system(reg, 0.016f);
+
+    // Always scored even when push is out of range
+    CHECK(reg.all_of<ScoredTag>(obs));
+    auto& lane = reg.get<Lane>(p);
+    // target stays -1 (no movement initiated)
+    CHECK(lane.target < 0);
+}
+
+TEST_CASE("collision: lane push too far away is ignored", "[collision][lane_push]") {
+    auto reg = make_registry();
+    make_player(reg);
+    auto obs = make_lane_push(reg, ObstacleKind::LanePushLeft, constants::PLAYER_Y - 200.0f);
+
+    collision_system(reg, 0.016f);
+
+    CHECK_FALSE(reg.all_of<ScoredTag>(obs));
+}
