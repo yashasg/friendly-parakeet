@@ -57,6 +57,10 @@ void player_input_system(entt::registry& reg, float dt);
 void shape_window_system(entt::registry& reg, float dt);
 void player_movement_system(entt::registry& reg, float dt);
 
+// Obstacle counter signal wiring — call once per registry lifetime.
+// Safe to call multiple times (guarded by ObstacleCounter::wired flag).
+void wire_obstacle_counter(entt::registry& reg);
+
 // Phase 5: World
 void difficulty_system(entt::registry& reg, float dt);
 void obstacle_spawn_system(entt::registry& reg, float dt);
