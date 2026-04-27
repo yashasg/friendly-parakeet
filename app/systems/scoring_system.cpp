@@ -138,6 +138,13 @@ void scoring_system(entt::registry& reg, float dt) {
         reg.emplace<Color>(popup, Color{pr, pg, pb, 255});
         reg.emplace<DrawLayer>(popup, Layer::Effects);
 
+        // Format the popup display once at spawn (#251): popup_display_system
+        // only updates the alpha each frame; text/font/base RGB stay put.
+        PopupDisplay pd{};
+        init_popup_display(pd, reg.get<ScorePopup>(popup),
+                           Color{pr, pg, pb, 255});
+        reg.emplace<PopupDisplay>(popup, pd);
+
         audio_push(reg.ctx().get<AudioQueue>(), SFX::ScorePopup);
 
         reg.remove<Obstacle>(entity);

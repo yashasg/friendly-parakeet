@@ -5,7 +5,12 @@
 // Phase 0: Raw input (polls raylib input)
 void input_system(entt::registry& reg, float raw_dt);
 
-// Phase 0.25: Hit-test (resolves taps → button presses, swipes → go events)
+// Phase 0.25a: Gesture routing (Swipe inputs → GoEvents). #272 split out
+// of hit_test_system so gesture classification has no spatial responsibility.
+void gesture_routing_system(entt::registry& reg);
+
+// Phase 0.25b: Hit-test (Tap inputs → ButtonPressEvents against active UI
+// HitBox/HitCircle entities). No gesture classification.
 void hit_test_system(entt::registry& reg);
 
 // Phase 0.5: Test player AI (pushes synthetic input events into EventQueue)
@@ -50,6 +55,16 @@ void cleanup_system(entt::registry& reg, float dt);
 
 // Phase 6.5: UI prep
 void popup_display_system(entt::registry& reg, float dt);
+
+// One-time initializer for a PopupDisplay (text + font size + base color).
+// Called at spawn so popup_display_system never re-formats static fields per
+// frame (#251).
+struct ScorePopup;
+struct PopupDisplay;
+struct Color;
+void init_popup_display(PopupDisplay& pd,
+                        const ScorePopup& sp,
+                        const Color& base);
 void ui_navigation_system(entt::registry& reg, float dt);
 
 // Phase 7: Camera
