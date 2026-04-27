@@ -87,8 +87,8 @@ void game_camera_system(entt::registry& reg, float dt);  // model-to-world trans
 void ui_camera_system(entt::registry& reg, float dt);    // screen-space transforms
 
 // Phase 8: Render — world pass (3D) + UI pass (2D)
-void game_render_system(entt::registry& reg, float alpha);
-void ui_render_system(entt::registry& reg, float alpha);
+void game_render_system(const entt::registry& reg, float alpha);
+void ui_render_system(const entt::registry& reg, float alpha);
 
 // Audio (no dt needed)
 void sfx_bank_init(entt::registry& reg);

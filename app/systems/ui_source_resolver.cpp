@@ -23,7 +23,7 @@ const char* death_cause_to_string(DeathCause cause) {
 
 }  // namespace
 
-std::optional<std::int32_t> resolve_ui_int_source(entt::registry& reg,
+std::optional<std::int32_t> resolve_ui_int_source(const entt::registry& reg,
                                                    std::string_view source) {
     // Sources come from JSON-parsed std::string fields; data() is null-terminated.
     switch (entt::hashed_string::value(source.data())) {  // #310 hashed dispatch
@@ -105,7 +105,7 @@ std::optional<std::int32_t> resolve_ui_int_source(entt::registry& reg,
     }
 }
 
-std::optional<std::string> resolve_ui_dynamic_text(entt::registry& reg,
+std::optional<std::string> resolve_ui_dynamic_text(const entt::registry& reg,
                                                     std::string_view source,
                                                     std::string_view format) {
     // Sources/formats come from JSON-parsed std::string fields; data() is null-terminated.

@@ -6,7 +6,7 @@
 #include <string_view>
 #include <entt/entity/registry.hpp>
 
-std::optional<std::int32_t> resolve_ui_int_source(entt::registry& reg,
+std::optional<std::int32_t> resolve_ui_int_source(const entt::registry& reg,
                                                    std::string_view source);
 
 // Resolve a UI source + format into a display-ready string.  Used by the
@@ -24,6 +24,6 @@ std::optional<std::int32_t> resolve_ui_int_source(entt::registry& reg,
 //   * any int source + "" (default)                      → "%d"
 //
 // Returns std::nullopt when the source cannot be resolved.
-std::optional<std::string> resolve_ui_dynamic_text(entt::registry& reg,
+std::optional<std::string> resolve_ui_dynamic_text(const entt::registry& reg,
                                                     std::string_view source,
                                                     std::string_view format);

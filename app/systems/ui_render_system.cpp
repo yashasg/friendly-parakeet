@@ -155,7 +155,7 @@ static void draw_level_select_scene(const TextContext& text_ctx,
     }
 }
 
-static void draw_hud(entt::registry& reg, const json& screen) {
+static void draw_hud(const entt::registry& reg, const json& screen) {
     // Shape buttons
     auto* sb = find_el(screen, "shape_buttons");
     if (sb) {
@@ -376,7 +376,7 @@ static void draw_hud(entt::registry& reg, const json& screen) {
 // UI render system — 2D overlay pass
 // ═════════════════════════════════════════════════════════════════════════════
 
-void ui_render_system(entt::registry& reg, float /*alpha*/) {
+void ui_render_system(const entt::registry& reg, float /*alpha*/) {
     auto& text_ctx = reg.ctx().get<TextContext>();
     auto& ui = reg.ctx().get<UIState>();
     auto& gs = reg.ctx().get<GameState>();
@@ -412,11 +412,11 @@ void ui_render_system(entt::registry& reg, float /*alpha*/) {
     // UI text elements (data-driven from JSON)
     {
         auto view = reg.view<UIElementTag, UIText, Position>();
-        auto& anim_store = reg.storage<UIAnimation>();
-        auto& dyn_store  = reg.storage<UIDynamicText>();
+        const auto* anim_store = reg.storage<UIAnimation>();
+        const auto* dyn_store  = reg.storage<UIDynamicText>();
         for (auto [entity, text, pos] : view.each()) {
             Color c = text.color;
-            auto* anim = anim_store.contains(entity) ? &anim_store.get(entity) : nullptr;
+            const auto* anim = (anim_store && anim_store->contains(entity)) ? &anim_store->get(entity) : nullptr;
             if (anim) {
                 float pulse = (sinf(gs.phase_timer * anim->speed) + 1.0f) / 2.0f;
                 c.a = static_cast<uint8_t>(anim->alpha_min +
@@ -424,7 +424,7 @@ void ui_render_system(entt::registry& reg, float /*alpha*/) {
             }
             const char* draw_str = text.text;
             std::string resolved;
-            auto* dyn = dyn_store.contains(entity) ? &dyn_store.get(entity) : nullptr;
+            const auto* dyn = (dyn_store && dyn_store->contains(entity)) ? &dyn_store->get(entity) : nullptr;
             if (dyn) {
                 auto v = resolve_ui_dynamic_text(reg, dyn->source, dyn->format);
                 if (v.has_value()) {
@@ -440,11 +440,11 @@ void ui_render_system(entt::registry& reg, float /*alpha*/) {
     // UI button elements
     {
         auto view = reg.view<UIElementTag, UIButton, Position>();
-        auto& anim_store = reg.storage<UIAnimation>();
-        auto& dyn_store  = reg.storage<UIDynamicText>();
+        const auto* anim_store = reg.storage<UIAnimation>();
+        const auto* dyn_store  = reg.storage<UIDynamicText>();
         for (auto [entity, btn, pos] : view.each()) {
             Color tc = btn.text_color;
-            auto* anim = anim_store.contains(entity) ? &anim_store.get(entity) : nullptr;
+            const auto* anim = (anim_store && anim_store->contains(entity)) ? &anim_store->get(entity) : nullptr;
             if (anim) {
                 float pulse = (sinf(gs.phase_timer * anim->speed) + 1.0f) / 2.0f;
                 tc.a = static_cast<uint8_t>(anim->alpha_min +
@@ -454,7 +454,7 @@ void ui_render_system(entt::registry& reg, float /*alpha*/) {
             DrawRectangleRoundedLinesEx({pos.x, pos.y, btn.w, btn.h}, btn.corner_radius, 4, 1.5f, btn.border);
             const char* draw_str = btn.text;
             std::string resolved;
-            auto* dyn = dyn_store.contains(entity) ? &dyn_store.get(entity) : nullptr;
+            const auto* dyn = (dyn_store && dyn_store->contains(entity)) ? &dyn_store->get(entity) : nullptr;
             if (dyn) {
                 auto v = resolve_ui_dynamic_text(reg, dyn->source, dyn->format);
                 if (v.has_value()) {
