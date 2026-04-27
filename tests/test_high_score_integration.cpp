@@ -33,7 +33,8 @@ TEST_CASE("High score integration: setup_play_session loads selected song diffic
 
     setup_play_session(reg);
 
-    CHECK(reg.ctx().get<HighScoreState>().current_key == "1_stomper|easy");
+    CHECK(reg.ctx().get<HighScoreState>().current_key_hash
+        == HighScoreState::make_key_hash("1_stomper", "easy"));
     CHECK(reg.ctx().get<ScoreState>().high_score == 1234);
 }
 
@@ -68,7 +69,8 @@ TEST_CASE("High score integration: new song-complete high score persists",
     auto reg = make_registry();
     reg.ctx().get<HighScorePersistence>().path = file.string();
     auto& high_scores = reg.ctx().get<HighScoreState>();
-    high_scores.current_key = HighScoreState::make_key("song_001", "easy");
+    high_scores.ensure_entry("song_001|easy");
+    high_scores.current_key_hash = HighScoreState::make_key_hash("song_001", "easy");
     high_scores.set_score("song_001|easy", 1000);
 
     auto& score = reg.ctx().get<ScoreState>();
@@ -99,7 +101,8 @@ TEST_CASE("High score integration: lower game-over score does not overwrite pers
     auto reg = make_registry();
     reg.ctx().get<HighScorePersistence>().path = file.string();
     auto& high_scores = reg.ctx().get<HighScoreState>();
-    high_scores.current_key = HighScoreState::make_key("song_001", "easy");
+    high_scores.ensure_entry("song_001|easy");
+    high_scores.current_key_hash = HighScoreState::make_key_hash("song_001", "easy");
     high_scores.set_score("song_001|easy", 3000);
 
     auto& score = reg.ctx().get<ScoreState>();
@@ -141,7 +144,8 @@ TEST_CASE("High score bootstrap: persistence path is populated for save call sit
     score.score = 2500;
 
     auto& high_scores = reg.ctx().get<HighScoreState>();
-    high_scores.current_key = HighScoreState::make_key("song_001", "easy");
+    high_scores.ensure_entry("song_001|easy");
+    high_scores.current_key_hash = HighScoreState::make_key_hash("song_001", "easy");
 
     const auto& persistence = reg.ctx().get<HighScorePersistence>();
     REQUIRE_FALSE(persistence.path.empty());

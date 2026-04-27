@@ -72,7 +72,9 @@ void setup_play_session(entt::registry& reg) {
         TraceLog(LOG_WARNING, "Failed to load beatmap: %s", beatmap_path);
     }
 
-    // Wire high score: derive song_id from beatmap filename and set current_key
+    // Wire high score: derive song_id from beatmap filename and set current_key_hash.
+    // The key string is built once in a stack buffer (no heap); ensure_entry pre-registers
+    // the entry so update_if_higher can later update by hash without the key string.
     if (auto* hs = reg.ctx().find<HighScoreState>()) {
         std::string stem = std::filesystem::path(beatmap_path).stem().string();
         static const std::string BEATMAP_SUFFIX = "_beatmap";
@@ -80,7 +82,10 @@ void setup_play_session(entt::registry& reg) {
             stem.compare(stem.size() - BEATMAP_SUFFIX.size(), BEATMAP_SUFFIX.size(), BEATMAP_SUFFIX) == 0) {
             stem.erase(stem.size() - BEATMAP_SUFFIX.size());
         }
-        hs->current_key = HighScoreState::make_key(stem, difficulty_key);
+        char key_buf[HighScoreState::KEY_CAP]{};
+        HighScoreState::make_key_str(key_buf, HighScoreState::KEY_CAP, stem.c_str(), difficulty_key);
+        hs->ensure_entry(key_buf);
+        hs->current_key_hash = entt::hashed_string::value(static_cast<const char*>(key_buf));
     }
 
     // Init song state

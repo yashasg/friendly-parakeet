@@ -2,6 +2,7 @@
 #include <filesystem>
 #include <fstream>
 #include <limits>
+#include <string_view>
 
 #include "components/high_score.h"
 #include "util/high_score_persistence.h"
@@ -20,18 +21,52 @@ void remove_path(const std::filesystem::path& path) {
 }  // namespace
 
 TEST_CASE("High score: keys are stable per song and difficulty", "[high_score]") {
-    CHECK(HighScoreState::make_key("song_001", "easy") == "song_001|easy");
-    CHECK(HighScoreState::make_key("song_001", "easy")
-        == HighScoreState::make_key("song_001", "easy"));
-    CHECK(HighScoreState::make_key("song_001", "easy")
-        != HighScoreState::make_key("song_001", "hard"));
+    // make_key_hash() produces a stable FNV-1a hash: same inputs → same hash, different inputs → different hash.
+    // Collision risk across our 9 shipped keys ("1_stomper|easy" … "3_mental|hard") is negligible.
+    const auto hash_easy = HighScoreState::make_key_hash("song_001", "easy");
+    const auto hash_hard = HighScoreState::make_key_hash("song_001", "hard");
+    CHECK(hash_easy == HighScoreState::make_key_hash("song_001", "easy"));
+    CHECK(hash_easy != hash_hard);
+    CHECK(hash_easy != HighScoreState::make_key_hash("song_002", "easy"));
+}
+
+TEST_CASE("High score: make_key_str produces correct key string", "[high_score]") {
+    char buf[HighScoreState::KEY_CAP]{};
+    int32_t n = HighScoreState::make_key_str(buf, HighScoreState::KEY_CAP, "song_001", "easy");
+    CHECK(n > 0);
+    CHECK(std::string_view{buf} == "song_001|easy");
+}
+
+TEST_CASE("High score: no hash collisions across all 9 shipped song+difficulty keys", "[high_score]") {
+    // FNV-1a 32-bit collisions across exactly 9 short ASCII keys are negligible —
+    // this test confirms the shipped set is collision-free and will catch any future
+    // key additions that happen to collide.
+    const char* songs[]       = {"1_stomper", "2_drama", "3_mental"};
+    const char* diffs[]       = {"easy", "medium", "hard"};
+
+    entt::hashed_string::hash_type hashes[9]{};
+    int32_t idx = 0;
+    for (const char* song : songs) {
+        for (const char* diff : diffs) {
+            hashes[idx++] = HighScoreState::make_key_hash(song, diff);
+        }
+    }
+
+    // All 9 hashes must be distinct.
+    for (int32_t i = 0; i < 9; ++i) {
+        for (int32_t j = i + 1; j < 9; ++j) {
+            CHECK(hashes[i] != hashes[j]);
+        }
+    }
 }
 
 TEST_CASE("High score: current score lookup and update never lowers stored score", "[high_score]") {
     HighScoreState state;
     CHECK(state.get_current_high_score() == 0);
 
-    state.current_key = HighScoreState::make_key("song_001", "easy");
+    // ensure_entry + current_key_hash mirrors the production setup_play_session path.
+    state.ensure_entry("song_001|easy");
+    state.current_key_hash = HighScoreState::make_key_hash("song_001", "easy");
     CHECK(state.get_current_high_score() == 0);
 
     high_score::update_if_higher(state, 5000);
@@ -44,13 +79,16 @@ TEST_CASE("High score: current score lookup and update never lowers stored score
 TEST_CASE("High score: tracks songs and difficulties independently", "[high_score]") {
     HighScoreState state;
 
-    state.current_key = HighScoreState::make_key("song_001", "easy");
+    state.ensure_entry("song_001|easy");
+    state.current_key_hash = HighScoreState::make_key_hash("song_001", "easy");
     high_score::update_if_higher(state, 1000);
 
-    state.current_key = HighScoreState::make_key("song_001", "hard");
+    state.ensure_entry("song_001|hard");
+    state.current_key_hash = HighScoreState::make_key_hash("song_001", "hard");
     high_score::update_if_higher(state, 2000);
 
-    state.current_key = HighScoreState::make_key("song_002", "easy");
+    state.ensure_entry("song_002|easy");
+    state.current_key_hash = HighScoreState::make_key_hash("song_002", "easy");
     high_score::update_if_higher(state, 3000);
 
     CHECK(state.get_score("song_001|easy") == 1000);
@@ -183,10 +221,13 @@ TEST_CASE("High score persistence: load preserves current active key", "[high_sc
     REQUIRE(high_score::save_high_scores(original, file));
 
     HighScoreState loaded;
-    loaded.current_key = HighScoreState::make_key("song_002", "hard");
+    // Simulate a session already active on song_002|hard before the load.
+    const auto pre_load_hash = HighScoreState::make_key_hash("song_002", "hard");
+    loaded.current_key_hash = pre_load_hash;
     REQUIRE(high_score::load_high_scores(loaded, file));
 
-    CHECK(loaded.current_key == "song_002|hard");
+    // Load must not clobber the in-progress session key.
+    CHECK(loaded.current_key_hash == pre_load_hash);
     CHECK(loaded.get_score("song_001|easy") == 1000);
 
     remove_path(dir);

@@ -35,7 +35,7 @@ bool high_score_state_from_json(const nlohmann::json& obj, HighScoreState& state
     }
     
     HighScoreState next;
-    next.current_key = state.current_key;
+    next.current_key_hash = state.current_key_hash; // preserve session key across load
     
     if (obj.contains("scores")) {
         const auto& scores_obj = obj["scores"];
@@ -119,11 +119,11 @@ bool save_high_scores(const HighScoreState& state, const std::filesystem::path& 
 }
 
 void update_if_higher(HighScoreState& state, int32_t new_score) {
-    if (state.current_key.empty()) return;
+    if (state.current_key_hash == 0) return;
     if (new_score < 0) new_score = 0;
-    int32_t stored = state.get_score(state.current_key.c_str());
+    int32_t stored = state.get_score_by_hash(state.current_key_hash);
     if (new_score > stored) {
-        state.set_score(state.current_key.c_str(), new_score);
+        state.set_score_by_hash(state.current_key_hash, new_score);
     }
 }
 
