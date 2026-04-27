@@ -5,6 +5,7 @@
   "description": "Endless runner with shape-shifting and burnout scoring",
   "dependencies": [
     "entt",
+    "magic-enum",
     "raylib",
     "nlohmann-json",
     { "name": "catch2", "platform": "!linux" }

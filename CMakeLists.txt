@@ -50,6 +50,7 @@ configure_file(
 # nlohmann-json: JSON parsing for beat map loading (vcpkg on all platforms).
 
 find_package(EnTT CONFIG REQUIRED)
+find_package(magic_enum CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(raylib CONFIG REQUIRED)
 
@@ -68,7 +69,7 @@ target_compile_options(shapeshifter_warnings INTERFACE
 
 # Mark third-party include directories as SYSTEM so warnings from their
 # headers are suppressed and cannot be promoted to errors by -Werror.
-set(_system_deps EnTT::EnTT raylib nlohmann_json::nlohmann_json Catch2::Catch2 Catch2::Catch2WithMain)
+set(_system_deps EnTT::EnTT magic_enum::magic_enum raylib nlohmann_json::nlohmann_json Catch2::Catch2 Catch2::Catch2WithMain)
 foreach(_dep ${_system_deps})
     if(TARGET ${_dep})
         # Resolve alias targets — set_target_properties doesn't work on aliases
@@ -104,6 +105,7 @@ target_include_directories(shapeshifter_lib PUBLIC
 )
 target_link_libraries(shapeshifter_lib PUBLIC
     EnTT::EnTT
+    magic_enum::magic_enum
     nlohmann_json::nlohmann_json
 )
 target_link_libraries(shapeshifter_lib PRIVATE shapeshifter_warnings)
@@ -363,7 +365,7 @@ file(GLOB TEST_SOURCES tests/*.cpp benchmarks/*.cpp)
 # Exclude untracked test files from other in-progress agents that reference
 # symbols not yet merged into this branch.
 list(FILTER TEST_SOURCES EXCLUDE REGEX
-    ".*(test_safe_area_layout|test_ui_redfoot_pass|test_audio_system|test_ui_element_schema|test_ui_overlay_schema|test_ui_source_resolver)\\.cpp$"
+    ".*(test_safe_area_layout|test_ui_redfoot_pass|test_ui_element_schema|test_ui_overlay_schema|test_ui_source_resolver)\\.cpp$"
 )
 add_executable(shapeshifter_tests
     ${TEST_SOURCES}
