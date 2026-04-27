@@ -19,7 +19,7 @@ TEST_CASE("player_action: rhythm mode starts window on button press from Idle", 
     player_input_system(reg, 0.016f);
 
     CHECK(sw.target_shape == Shape::Circle);
-    CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::MorphIn));
+    CHECK(sw.phase == WindowPhase::MorphIn);
     CHECK(sw.window_timer == 0.0f);
     CHECK(ps.morph_t == 0.0f);
     CHECK(sw.window_start == 5.0f);
@@ -52,7 +52,7 @@ TEST_CASE("player_action: rhythm mode ignores same shape during Active (spam pro
     auto player = make_rhythm_player(reg);
     auto& ps = reg.get<PlayerShape>(player);
     auto& sw = reg.get<ShapeWindow>(player);
-    sw.phase_raw = static_cast<uint8_t>(WindowPhase::Active);
+    sw.phase = WindowPhase::Active;
     ps.current = Shape::Square;
     sw.window_timer = 0.1f;
 
@@ -63,7 +63,7 @@ TEST_CASE("player_action: rhythm mode ignores same shape during Active (spam pro
     player_input_system(reg, 0.016f);
 
     // Same shape re-press: window timer resets for next obstacle
-    CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::Active));
+    CHECK(sw.phase == WindowPhase::Active);
     CHECK(sw.window_timer == 0.0f);
     CHECK_FALSE(sw.graded);
 }
@@ -75,7 +75,7 @@ TEST_CASE("player_action: rhythm mode interrupts Active with different shape", "
     auto& sw = reg.get<ShapeWindow>(player);
     auto& song = reg.ctx().get<SongState>();
     song.song_time = 8.0f;
-    sw.phase_raw = static_cast<uint8_t>(WindowPhase::Active);
+    sw.phase = WindowPhase::Active;
     ps.current = Shape::Square;
     sw.window_timer = 0.3f;
 
@@ -86,7 +86,7 @@ TEST_CASE("player_action: rhythm mode interrupts Active with different shape", "
     player_input_system(reg, 0.016f);
 
     CHECK(sw.target_shape == Shape::Triangle);
-    CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::MorphIn));
+    CHECK(sw.phase == WindowPhase::MorphIn);
     CHECK(sw.window_timer == 0.0f);
     CHECK(ps.morph_t == 0.0f);
     CHECK(sw.window_start == 8.0f);
@@ -101,14 +101,14 @@ TEST_CASE("player_action: rhythm mode no action when no tap in queue", "[player_
     // Empty EventQueue
     player_input_system(reg, 0.016f);
 
-    CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::Idle));
+    CHECK(sw.phase == WindowPhase::Idle);
 }
 
 TEST_CASE("player_action: rhythm mode does not interrupt MorphIn phase", "[player_rhythm]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
     auto& sw = reg.get<ShapeWindow>(player);
-    sw.phase_raw = static_cast<uint8_t>(WindowPhase::MorphIn);
+    sw.phase = WindowPhase::MorphIn;
     sw.target_shape = Shape::Circle;
     sw.window_timer = 0.05f;
 
@@ -119,7 +119,7 @@ TEST_CASE("player_action: rhythm mode does not interrupt MorphIn phase", "[playe
     player_input_system(reg, 0.016f);
 
     // MorphIn should not be interrupted (only Active can be interrupted)
-    CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::MorphIn));
+    CHECK(sw.phase == WindowPhase::MorphIn);
     CHECK(sw.target_shape == Shape::Circle);
 }
 
@@ -131,7 +131,7 @@ TEST_CASE("player_action: rhythm mode ACCEPTS button press during MorphOut (#209
     auto& sw = reg.get<ShapeWindow>(player);
     auto& song = reg.ctx().get<SongState>();
     song.song_time = 15.0f;
-    sw.phase_raw = static_cast<uint8_t>(WindowPhase::MorphOut);
+    sw.phase = WindowPhase::MorphOut;
     ps.current = Shape::Circle;
     ps.previous = Shape::Circle;
     sw.window_timer = 0.05f;
@@ -145,7 +145,7 @@ TEST_CASE("player_action: rhythm mode ACCEPTS button press during MorphOut (#209
 
     // MorphOut interrupted: new MorphIn started for Triangle
     CHECK(sw.target_shape == Shape::Triangle);
-    CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::MorphIn));
+    CHECK(sw.phase == WindowPhase::MorphIn);
     CHECK(sw.window_timer == 0.0f);
     CHECK(ps.morph_t == 0.0f);
     CHECK(sw.window_start == 15.0f);
@@ -253,7 +253,7 @@ TEST_CASE("player_input: ButtonPressEvents consumed after first tick (#213)", "[
 
     // First tick: starts a MorphIn window, consumes the event.
     player_input_system(reg, 1.0f / 60.0f);
-    CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::MorphIn));
+    CHECK(sw.phase == WindowPhase::MorphIn);
     CHECK(eq.press_count == 0);  // consumed
 
     // Record state after first tick.

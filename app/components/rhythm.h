@@ -13,12 +13,8 @@
 #include <magic_enum/magic_enum.hpp>
 
 // ── Window Phase ────────────────────────────────────
-enum class WindowPhase : uint8_t {
-    Idle     = 0,
-    MorphIn  = 1,
-    Active   = 2,
-    MorphOut = 3
-};
+// Defined in window_phase.h; re-exported here for consumers of rhythm.h.
+#include "window_phase.h"
 
 // ── Timing Grade (emplaced on obstacle at collision) ─
 enum class TimingTier : uint8_t {

@@ -10,7 +10,7 @@ TEST_CASE("player_input_rhythm: shape press in Idle begins MorphIn", "[player][r
     auto& sw = reg.get<ShapeWindow>(player);
     auto& song = reg.ctx().get<SongState>();
 
-    CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::Idle));
+    CHECK(sw.phase == WindowPhase::Idle);
 
     auto& eq = reg.ctx().get<EventQueue>();
     auto btn = make_shape_button(reg, Shape::Circle);
@@ -18,7 +18,7 @@ TEST_CASE("player_input_rhythm: shape press in Idle begins MorphIn", "[player][r
 
     player_input_system(reg, 0.016f);
 
-    CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::MorphIn));
+    CHECK(sw.phase == WindowPhase::MorphIn);
     CHECK(sw.target_shape == Shape::Circle);
     CHECK(sw.window_start == song.song_time);
 }
@@ -32,7 +32,7 @@ TEST_CASE("player_input_rhythm: different shape in Active restarts window", "[pl
 
     // Already Active as Circle
     ps.current = Shape::Circle;
-    sw.phase_raw = static_cast<uint8_t>(WindowPhase::Active);
+    sw.phase = WindowPhase::Active;
     sw.window_start = song.song_time - 0.5f;
 
     auto& eq = reg.ctx().get<EventQueue>();
@@ -42,7 +42,7 @@ TEST_CASE("player_input_rhythm: different shape in Active restarts window", "[pl
     player_input_system(reg, 0.016f);
 
     // Should restart as MorphIn for Square
-    CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::MorphIn));
+    CHECK(sw.phase == WindowPhase::MorphIn);
     CHECK(sw.target_shape == Shape::Square);
 }
 
@@ -54,7 +54,7 @@ TEST_CASE("player_input_rhythm: same shape in Active re-extends window", "[playe
     auto& song = reg.ctx().get<SongState>();
 
     ps.current = Shape::Circle;
-    sw.phase_raw = static_cast<uint8_t>(WindowPhase::Active);
+    sw.phase = WindowPhase::Active;
     sw.window_start = song.song_time - 0.5f;
     sw.graded = true;  // was previously graded
 
@@ -65,7 +65,7 @@ TEST_CASE("player_input_rhythm: same shape in Active re-extends window", "[playe
     player_input_system(reg, 0.016f);
 
     // Should remain Active and reset timing
-    CHECK(sw.phase_raw == static_cast<uint8_t>(WindowPhase::Active));
+    CHECK(sw.phase == WindowPhase::Active);
     CHECK(sw.window_timer == 0.0f);
     CHECK(sw.window_start == song.song_time);
     CHECK_FALSE(sw.graded);

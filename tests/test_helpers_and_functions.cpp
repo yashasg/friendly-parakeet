@@ -263,6 +263,6 @@ TEST_CASE("make_rhythm_player: starts as Hexagon", "[helpers]") {
     CHECK(ps.previous == Shape::Hexagon);
     auto& sw = reg.get<ShapeWindow>(player);
     CHECK(sw.target_shape == Shape::Hexagon);
-    CHECK(sw.phase_raw == 0);
+    CHECK(sw.phase == WindowPhase::Idle);
 }
 

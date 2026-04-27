@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <magic_enum/magic_enum.hpp>
+#include "window_phase.h"
 
 enum class Shape : uint8_t {
     Circle,
@@ -19,9 +20,6 @@ inline const char* ToString(Shape s) noexcept {
 
 struct PlayerTag {};
 
-// Forward-declared in rhythm.h; duplicated here to keep player.h self-contained.
-enum class WindowPhase : uint8_t;
-
 // Hot render data — read by render_system, player_movement_system every frame.
 struct PlayerShape {
     Shape current  = Shape::Circle;
@@ -32,13 +30,13 @@ struct PlayerShape {
 // Rhythm-mode shape window timing — read by shape_window_system,
 // collision_system, player_action_system.
 struct ShapeWindow {
-    Shape   target_shape  = Shape::Circle;
-    uint8_t phase_raw     = 0;       // WindowPhase stored as uint8_t
-    float   window_timer  = 0.0f;
-    float   window_start  = 0.0f;
-    float   peak_time     = 0.0f;
-    float   window_scale  = 1.0f;
-    bool    graded        = false;
+    Shape       target_shape  = Shape::Circle;
+    WindowPhase phase         = WindowPhase::Idle;
+    float       window_timer  = 0.0f;
+    float       window_start  = 0.0f;
+    float       peak_time     = 0.0f;
+    float       window_scale  = 1.0f;
+    bool        graded        = false;
 };
 
 struct Lane {

@@ -39,7 +39,7 @@ void player_input_system(entt::registry& reg, float /*dt*/) {
     auto begin_shape_window = [&](PlayerShape& ps, ShapeWindow& sw, Shape shape) {
         sw.target_shape = shape;
         ps.previous = ps.current;
-        sw.phase_raw = static_cast<uint8_t>(WindowPhase::MorphIn);
+        sw.phase = WindowPhase::MorphIn;
         sw.window_timer = 0.0f;
         sw.window_start = song->song_time;
         sw.peak_time = song->song_time + song->morph_duration + song->half_window;
@@ -65,7 +65,7 @@ void player_input_system(entt::registry& reg, float /*dt*/) {
             auto pressed_shape = reg.get<ShapeButtonData>(btn_entity).shape;
 
             if (rhythm_mode) {
-                auto phase = static_cast<WindowPhase>(swindow.phase_raw);
+                auto phase = swindow.phase;
 
                 if (phase == WindowPhase::Idle) {
                     begin_shape_window(pshape, swindow, pressed_shape);

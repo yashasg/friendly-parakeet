@@ -240,7 +240,7 @@ void spawn_aligned_player(entt::registry& reg, float y) {
     PlayerShape ps; ps.current = Shape::Hexagon; ps.previous = Shape::Hexagon;
     reg.emplace<PlayerShape>(p, ps);
     ShapeWindow sw{};
-    sw.phase_raw = static_cast<uint8_t>(WindowPhase::Idle);
+    sw.phase = WindowPhase::Idle;
     reg.emplace<ShapeWindow>(p, sw);
     Lane lane{}; lane.current = 1; lane.target = -1;
     reg.emplace<Lane>(p, lane);
