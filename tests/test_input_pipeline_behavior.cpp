@@ -6,15 +6,17 @@
 //
 // All assertions are on player component state (Lane::target, ShapeWindow::phase,
 // PlayerShape::current) — never on EventQueue::go_count / press_count / input_count.
-// This makes the tests implementation-agnostic: they will remain valid when
-// Keaton replaces EventQueue with entt::dispatcher because the observable
-// behavior must be identical.
+// This makes the tests implementation-agnostic: the raw EventQueue feeds
+// gesture_routing_system and hit_test_system, which enqueue into entt::dispatcher;
+// the observable player-state outcomes remain the stable contract regardless of
+// internal transport changes.
 //
-// Failure modes these tests catch after the refactor:
-//   - One-frame latency: swipe arrives but lane.target unchanged until next frame
-//     (symptom: gesture_routing uses enqueue() and update() is not called again)
+// Failure modes these tests guard against:
+//   - One-frame latency: swipe arrives but lane.target unchanged until next tick
+//     (would occur if game_state_system's disp.update<GoEvent>() call were
+//     removed or moved after player_input_handle_go runs)
 //   - Dropped tap: tap arrives but sw.phase stays Idle
-//     (symptom: hit_test uses enqueue() for ButtonPressEvent without trigger)
+//     (would occur if hit_test_system's enqueue<ButtonPressEvent> were dropped)
 //   - Wrong-phase activation: button presses fire in an inactive phase
 //   - Event replay: second pipeline tick resets lane.lerp_t (symptom: #213 bug)
 
@@ -191,9 +193,8 @@ TEST_CASE("pipeline: swipe effect visible immediately — lane.target differs fr
 // render frame.  After the first sub-tick consumes a swipe, subsequent
 // sub-ticks must NOT replay it and must not reset lane.lerp_t.
 //
-// In the current model player_input_system zeros eq.go_count.
-// After the dispatcher refactor, update() drains the queue.
-// Either way, the observable behavior must be identical:
+// game_state_system calls disp.update<GoEvent>() at the start of each fixed
+// tick; update() drains the queue so a second tick sees no events.
 // lane.lerp_t must not be reset by the second sub-tick.
 
 TEST_CASE("pipeline: swipe consumed after first sub-tick — second sub-tick does not reset lane.lerp_t (#213 behavior)",

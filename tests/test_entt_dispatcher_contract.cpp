@@ -1,23 +1,33 @@
 // tests/test_entt_dispatcher_contract.cpp
 //
-// Verifies the entt::dispatcher semantics that the input pipeline refactor
-// (#entt-input-model) must correctly implement.  Uses entt::dispatcher and
-// the game's event types (InputEvent, GoEvent) directly — no game system
-// calls — so every test compiles and passes against the current build and
-// forms a stable, implementation-independent contract for Keaton's work.
+// Verifies the entt::dispatcher semantics that the production input pipeline
+// relies on.  Uses entt::dispatcher and the game's event types (InputEvent,
+// GoEvent) directly — no game system calls — forming a stable,
+// implementation-independent contract.
 //
-// Key hazards the dispatcher model introduces that these tests document:
+// Landed architecture (see game_loop.cpp + game_state_system.cpp):
+//   - gesture_routing_system and hit_test_system are called directly as
+//     pre-tick system functions (before the fixed-step accumulator loop).
+//     They read the raw EventQueue and call disp.enqueue<GoEvent/ButtonPressEvent>().
+//   - game_state_system (first in the fixed-step loop) calls
+//     disp.update<GoEvent>() + disp.update<ButtonPressEvent>(), draining the
+//     queues and delivering events to all registered listeners in a single tick.
+//   - There is no InputEvent tier in the dispatcher: gesture routing and
+//     hit-testing are direct pre-tick calls, not dispatcher listeners.  The
+//     pool-order latency hazard (see below) is therefore never triggered.
+//
+// Key properties the dispatcher model introduces that these tests document:
 //
 //   1. enqueue() without update() silently drops events (not an error).
 //   2. Events produced BY a listener during update() are NOT delivered until
-//      the next update() call — the "one-frame latency" hazard.  This is the
-//      core architectural decision: gesture_routing must use trigger(), not
-//      enqueue(), when emitting GoEvents so player_input_system receives them
-//      in the same logical frame.
+//      the next update() call — the "one-frame latency" hazard.  The landed
+//      architecture avoids this by routing gesture/hit-test through direct
+//      pre-tick calls rather than dispatcher listeners, so the pool-order
+//      constraint never arises in production.
 //   3. update() drains its queue; a second update() with no new enqueues is
-//      a no-op.  This is the fix for the #213 fixed-step replay bug: once the
-//      refactor lands, calling update() twice per render frame must not replay
-//      the same GoEvents / ButtonPressEvents to player_input_system.
+//      a no-op.  This preserves the #213 no-replay invariant: calling
+//      update() on the second sub-tick of the fixed-step accumulator does
+//      not replay the same GoEvents / ButtonPressEvents.
 
 #include <catch2/catch_test_macros.hpp>
 #include <entt/entt.hpp>
@@ -38,7 +48,10 @@ struct PressCounter {
     void on_press(const ButtonPressEvent& e) { ++count; (void)e; }
 };
 
-// Mimics gesture_routing_system routing via enqueue() — introduces latency.
+// Test helper: demonstrates the pool-order latency hazard when enqueue() is
+// called inside a dispatcher listener.  Production gesture_routing_system also
+// uses enqueue(), but is invoked as a direct pre-tick function — not a
+// listener — so this hazard never arises in production.
 struct EnqueueRouter {
     entt::dispatcher* disp{nullptr};
     void on_input(const InputEvent& e) {
@@ -47,7 +60,9 @@ struct EnqueueRouter {
     }
 };
 
-// Mimics gesture_routing_system routing via trigger() — no latency.
+// Test helper: demonstrates trigger() synchronous delivery inside a listener.
+// Production gesture_routing_system uses enqueue(), not trigger(); zero-frame
+// latency is achieved by calling it as a direct pre-tick function instead.
 struct TriggerRouter {
     entt::dispatcher* disp{nullptr};
     void on_input(const InputEvent& e) {
@@ -143,8 +158,11 @@ TEST_CASE("dispatcher: update drains queue — second update does not replay eve
 // which enqueues a GoEvent) — but the GoEvent pool has already run, so the
 // new GoEvent is NOT delivered until the next update() call.
 //
-// This order-dependent one-frame latency is the core hazard Keaton must avoid.
-// The safe fix is to use trigger() in intermediate listeners (see next test).
+// This order-dependent one-frame latency is documented here as an EnTT
+// contract property.  The production architecture avoids it entirely:
+// gesture_routing_system and hit_test_system are called as direct pre-tick
+// functions (not as dispatcher listeners), so the InputEvent pool is never
+// registered in the dispatcher and the pool-order constraint cannot arise.
 
 TEST_CASE("dispatcher: GoEvent pool registered before InputEvent pool — enqueue in listener introduces one-frame latency",
           "[entt_dispatcher][latency]") {
@@ -169,14 +187,15 @@ TEST_CASE("dispatcher: GoEvent pool registered before InputEvent pool — enqueu
     CHECK(player.count == 1);
 }
 
-// ── Correct pattern: trigger() in intermediate listener eliminates latency ──
+// ── EnTT property: trigger() in listener delivers synchronously ──────────────
 //
-// gesture_routing_system must call dispatcher.trigger<GoEvent>() (not enqueue)
-// when routing a swipe.  trigger() fires listeners synchronously, so the
-// GoEvent reaches player_input_system within the same update() that delivered
-// the InputEvent.
+// This test documents trigger()'s synchronous semantics for completeness.
+// Production gesture_routing_system uses enqueue() (not trigger()); zero-frame
+// latency is achieved by calling gesture_routing_system directly as a pre-tick
+// function before the fixed-step loop, so its enqueued GoEvents are ready to
+// drain when game_state_system calls disp.update<GoEvent>() on the first tick.
 
-TEST_CASE("dispatcher: trigger() in listener delivers GoEvent in same update() — correct zero-latency pattern",
+TEST_CASE("dispatcher: trigger() in listener delivers GoEvent in same update() — synchronous delivery semantics",
           "[entt_dispatcher][latency]") {
     entt::dispatcher dispatcher;
     TriggerRouter router{&dispatcher};
