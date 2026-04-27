@@ -8,7 +8,7 @@ void audio_system(entt::registry& reg) {
     auto* backend = reg.ctx().find<SFXPlaybackBackend>();
     if (backend && backend->dispatch) {
         for (int i = 0; i < audio->count; ++i) {
-            backend->dispatch(backend->user_data, audio->queue[i]);
+            backend->dispatch(reg, audio->queue[i]);
         }
     }
 

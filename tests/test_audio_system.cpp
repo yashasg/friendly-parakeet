@@ -27,32 +27,32 @@ struct BackendRecorder {
     std::vector<SFX> calls;
 };
 
-void record_sfx(void* user_data, SFX sfx) {
-    auto& recorder = *static_cast<BackendRecorder*>(user_data);
-    recorder.calls.push_back(sfx);
+void record_sfx(entt::registry& reg, SFX sfx) {
+    auto* recorder = reg.ctx().find<BackendRecorder>();
+    if (recorder) recorder->calls.push_back(sfx);
 }
 
-SFXPlaybackBackend backend_for(BackendRecorder& recorder) {
-    return SFXPlaybackBackend{record_sfx, &recorder};
+SFXPlaybackBackend backend_for() {
+    return SFXPlaybackBackend{record_sfx};
 }
 
 }  // namespace
 
 TEST_CASE("audio_system: empty queue does not call backend", "[audio]") {
     auto reg = make_registry();
-    BackendRecorder recorder;
-    reg.ctx().emplace<SFXPlaybackBackend>(backend_for(recorder));
+    reg.ctx().emplace<BackendRecorder>();
+    reg.ctx().emplace<SFXPlaybackBackend>(backend_for());
 
     audio_system(reg);
 
-    CHECK(recorder.calls.empty());
+    CHECK(reg.ctx().get<BackendRecorder>().calls.empty());
     CHECK(reg.ctx().get<AudioQueue>().count == 0);
 }
 
 TEST_CASE("audio_system: dispatches queued SFX to backend in order", "[audio]") {
     auto reg = make_registry();
-    BackendRecorder recorder;
-    reg.ctx().emplace<SFXPlaybackBackend>(backend_for(recorder));
+    reg.ctx().emplace<BackendRecorder>();
+    reg.ctx().emplace<SFXPlaybackBackend>(backend_for());
 
     auto& queue = reg.ctx().get<AudioQueue>();
     audio_push(queue, SFX::ShapeShift);
@@ -61,6 +61,7 @@ TEST_CASE("audio_system: dispatches queued SFX to backend in order", "[audio]") 
 
     audio_system(reg);
 
+    auto& recorder = reg.ctx().get<BackendRecorder>();
     REQUIRE(recorder.calls.size() == 3);
     CHECK(recorder.calls[0] == SFX::ShapeShift);
     CHECK(recorder.calls[1] == SFX::Crash);
@@ -70,8 +71,8 @@ TEST_CASE("audio_system: dispatches queued SFX to backend in order", "[audio]") 
 
 TEST_CASE("audio_system: dispatches every queued SFX up to queue capacity", "[audio]") {
     auto reg = make_registry();
-    BackendRecorder recorder;
-    reg.ctx().emplace<SFXPlaybackBackend>(backend_for(recorder));
+    reg.ctx().emplace<BackendRecorder>();
+    reg.ctx().emplace<SFXPlaybackBackend>(backend_for());
 
     auto& queue = reg.ctx().get<AudioQueue>();
     for (int i = 0; i < AudioQueue::MAX_QUEUED; ++i) {
@@ -81,7 +82,7 @@ TEST_CASE("audio_system: dispatches every queued SFX up to queue capacity", "[au
 
     audio_system(reg);
 
-    CHECK(recorder.calls.size() == static_cast<std::size_t>(AudioQueue::MAX_QUEUED));
+    CHECK(reg.ctx().get<BackendRecorder>().calls.size() == static_cast<std::size_t>(AudioQueue::MAX_QUEUED));
     CHECK(queue.count == 0);
 }
 
@@ -108,7 +109,6 @@ TEST_CASE("sfx lifecycle: production backend is callable without audio hardware"
     REQUIRE(bank != nullptr);
     REQUIRE(backend != nullptr);
     REQUIRE(backend->dispatch != nullptr);
-    CHECK(backend->user_data == &reg);
 
     auto& queue = reg.ctx().get<AudioQueue>();
     audio_push(queue, SFX::GameStart);
@@ -122,8 +122,8 @@ TEST_CASE("sfx lifecycle: production backend is callable without audio hardware"
 
 TEST_CASE("sfx lifecycle: injected playback backend is preserved", "[audio]") {
     auto reg = make_registry();
-    BackendRecorder recorder;
-    reg.ctx().emplace<SFXPlaybackBackend>(backend_for(recorder));
+    reg.ctx().emplace<BackendRecorder>();
+    reg.ctx().emplace<SFXPlaybackBackend>(backend_for());
 
     sfx_playback_backend_init(reg);
 
@@ -131,6 +131,7 @@ TEST_CASE("sfx lifecycle: injected playback backend is preserved", "[audio]") {
     audio_push(queue, SFX::Crash);
     audio_system(reg);
 
+    auto& recorder = reg.ctx().get<BackendRecorder>();
     REQUIRE(recorder.calls.size() == 1);
     CHECK(recorder.calls[0] == SFX::Crash);
 }

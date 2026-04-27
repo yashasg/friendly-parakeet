@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <entt/entt.hpp>
 #include <magic_enum/magic_enum.hpp>
 #include <raylib.h>
 
@@ -40,9 +41,11 @@ inline void audio_clear(AudioQueue& q) { q.count = 0; }
 // Optional dispatch backend.  Tests can inject this to capture SFX calls;
 // production code wires it to PlaySound().  If absent, the queue is drained
 // silently (headless / test mode).
+//
+// The registry is passed explicitly at the call site (audio_system) so that
+// no raw pointer to the registry is stored inside this struct.
 struct SFXPlaybackBackend {
-    void (*dispatch)(void* user_data, SFX sfx) = nullptr;
-    void*  user_data                            = nullptr;
+    void (*dispatch)(entt::registry& reg, SFX sfx) = nullptr;
 };
 
 // Resident sound bank initialised by sfx_bank_init (app/systems/sfx_bank.cpp).
