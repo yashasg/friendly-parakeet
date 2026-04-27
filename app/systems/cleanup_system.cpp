@@ -6,7 +6,10 @@
 #include <vector>
 
 void cleanup_system(entt::registry& reg, float /*dt*/) {
-    std::vector<entt::entity> to_destroy;
+    // Static buffer: capacity is retained across frames; clear() keeps the allocation.
+    // This eliminates per-frame heap allocation on the hot path (#242).
+    static std::vector<entt::entity> to_destroy;
+    to_destroy.clear();
 
     auto view = reg.view<ObstacleTag, Position>();
     for (auto [entity, pos] : view.each()) {
@@ -16,4 +19,3 @@ void cleanup_system(entt::registry& reg, float /*dt*/) {
 
     for (auto e : to_destroy) reg.destroy(e);
 }
-

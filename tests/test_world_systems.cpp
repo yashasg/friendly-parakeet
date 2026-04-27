@@ -400,6 +400,39 @@ TEST_CASE("cleanup: obstacle at exactly DESTROY_Y is kept", "[cleanup]") {
     CHECK(reg.valid(obs));
 }
 
+// #242 — static buffer must handle multiple entities in one pass.
+TEST_CASE("cleanup: destroys multiple obstacles past DESTROY_Y in one pass", "[cleanup]") {
+    auto reg = make_registry();
+
+    constexpr int N = 5;
+    entt::entity obs[N];
+    for (int i = 0; i < N; ++i) {
+        obs[i] = reg.create();
+        reg.emplace<ObstacleTag>(obs[i]);
+        reg.emplace<Position>(obs[i], 0.0f, constants::DESTROY_Y + static_cast<float>(i + 1) * 10.0f);
+    }
+
+    cleanup_system(reg, 0.016f);
+
+    for (int i = 0; i < N; ++i)
+        CHECK_FALSE(reg.valid(obs[i]));
+}
+
+// #242 / #280 — cleanup must not emplace MissTag or ScoredTag; that is miss_detection_system's job.
+TEST_CASE("cleanup: does not emplace MissTag or ScoredTag on surviving obstacles", "[cleanup]") {
+    auto reg = make_registry();
+
+    auto survivor = reg.create();
+    reg.emplace<ObstacleTag>(survivor);
+    reg.emplace<Position>(survivor, 0.0f, constants::DESTROY_Y - 1.0f);
+
+    cleanup_system(reg, 0.016f);
+
+    CHECK(reg.valid(survivor));
+    CHECK_FALSE(reg.all_of<MissTag>(survivor));
+    CHECK_FALSE(reg.all_of<ScoredTag>(survivor));
+}
+
 // ── obstacle_spawn: phase guard ─────────────────────────────
 
 TEST_CASE("spawn: no spawn when not in Playing phase", "[spawn]") {
