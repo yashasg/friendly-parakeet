@@ -159,3 +159,13 @@ Fixed all 7 unresolved review threads in commit d90abf9 on `user/yashasg/ecs_ref
 - **Regression tests added:** `tests/test_ndc_viewport.cpp` — two new `[screen_transform][regression]` tests verify the letterbox math is idempotent and produces correct pillarbox offsets. These mirror the pure math of `compute_screen_transform` without requiring a raylib window.
 - **Zero-warning policy:** `camera_system.cpp` and `test_ndc_viewport.cpp` compiled with `-Wall -Wextra -Werror`, zero warnings.
 - **Note:** Fix landed in commit `a5cad3d` (bundled with #304 wasm shutdown work from a prior pass). Both changed files reference `#241` explicitly.
+
+### 2026 — PR #43 CI: mesh child cleanup regression (commit b0569a6)
+
+**Scope:** `tests/test_helpers.h`, `tests/test_pr43_regression.cpp`
+
+- **Root cause:** `make_registry()` calls `wire_obstacle_counter(reg)`, which accesses `on_construct/on_destroy<ObstacleTag>()` — this creates the `ObstacleTag` pool. Any `reg.storage<ObstacleChildren>()` call after that lands at a **higher** pool index. EnTT's `reg.destroy(entity)` iterates pools in **reverse insertion order**, so `ObstacleChildren` (higher index) was removed **first**, before the `on_destroy<ObstacleTag>` signal fired. `on_obstacle_destroy` then found `try_get<ObstacleChildren>` null and silently skipped child cleanup.
+- **Fix:** Prime `reg.storage<ObstacleChildren>()` as the **first** pool created in `make_registry()`, before `wire_obstacle_counter`. This gives `ObstacleChildren` a lower index, so it is removed last and is readable when the signal fires. `make_obs_registry()` in the test drops its own (now-redundant) priming call; `make_registry()` owns the invariant.
+- **Production code was already correct** — `game_loop_init` primes `ObstacleChildren` before any `ObstacleTag` pool exists (because `wire_obstacle_counter` is first called from `setup_play_session` at runtime, not during init). The bug was test-only.
+- **Key EnTT ordering rule:** `reg.on_construct/on_destroy<T>()` creates the pool for `T` (via `assure<T>()` internally). Any component that must be readable in a destroy-signal handler must be registered as a pool BEFORE `T`'s pool is created.
+- **Validation:** `[pr43]` 44/44 assertions pass; full suite 2390/2390 assertions pass, zero warnings.
