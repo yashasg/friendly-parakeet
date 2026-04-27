@@ -519,3 +519,173 @@ Any system that removes components present in its own active view should apply
 this pattern. Known candidates from the ECS audit (F1 was scoring_system —
 now fixed). Collision_system already tags-only (emplace) and does not remove
 during iteration — compliant.
+
+---
+
+## Parallel ECS/EnTT Audit Findings (2026-04-27)
+
+**Agents:** Keyser, Keaton, McManus, Redfoot, Baer  
+**Branch:** user/yashasg/ecs_refactor  
+**Status:** AUDIT COMPLETE — Findings documented for prioritization
+
+### P1 Findings
+
+**Keyser — sfx_bank.cpp: Raw registry pointer in ctx singleton**
+
+- **File:** `app/systems/sfx_bank.cpp:149`
+- **Issue:** `reg.ctx().emplace<SFXPlaybackBackend>(SFXPlaybackBackend{play_sfx_from_bank, &reg})`
+- **Risk:** Storing `&reg` inside ctx singleton couples lifetime to registry address stability. Safe today (stack-local, synchronous), breaks if invocation becomes async or registry moves.
+- **Fix:** Remove `user_data = &reg`; pass `reg` directly at invocation time in `audio_system()`.
+- **Owner:** Keaton
+
+**McManus — obstacle_counter.h: Signal wiring in component header**
+
+- **File:** `app/components/obstacle_counter.h:29-35`
+- **Issue:** `inline void wire_obstacle_counter(entt::registry& reg)` performs signal registration (system concern) in a component header.
+- **EnTT principle:** Signal wiring is system logic, not component data.
+- **Fix:** Move `wire_obstacle_counter()` and its two listener functions to new `app/systems/obstacle_counter_system.cpp`. Keep `ObstacleCounter` data struct in header.
+- **Owner:** McManus
+
+**Redfoot — overlay_render: Dead code + hot-path JSON violation**
+
+- **File:** `app/systems/ui_render_system.cpp:350–358`
+- **Issue:** Checks `ovr.contains("overlay_color")` (flat key) but paused.json stores `overlay.color` (nested). Condition always false — pause dim overlay never rendered. Compounds hot-path JSON access (#322 policy violation).
+- **Fix:** Extract overlay color at screen-load time into ctx POD (`OverlayLayout` struct). Call `extract_overlay_color(ui.overlay_screen)` in `ui_navigation_system` at `ui_load_overlay`. Replace JSON traversal in render with ctx read.
+- **Bonus:** Fixes silent visual regression (pause dim not rendering).
+- **Owner:** McManus
+
+### P2 Findings
+
+**Keyser — high_score.h: Mutation methods in component**
+
+- **File:** `app/components/high_score.h:71–110`
+- **Methods:** `set_score()`, `set_score_by_hash()`, `ensure_entry()`
+- **EnTT principle:** Components are data; mutations belong in systems or free functions.
+- **Context:** Commit `fdcd709` (#318) moved logic out of systems; next step is to move methods out of struct into `high_score_persistence.cpp` (or new `high_score_ops.h`) as free functions taking `HighScoreState&`.
+- **Not blocking:** `HighScoreState` is ctx singleton with correct logic; this is purity cleanup.
+- **Owner:** Keaton
+
+**Keaton — TestPlayerAction.done_flags: Hand-rolled bitmask**
+
+- **File:** `app/components/test_player.h:39-47`
+- **Issue:** `uint8_t done_flags` with six manual getters/setters using raw hex masks.
+- **Fix:** Use `enum class ActionDoneBit : uint8_t { ShapeDone=1, LaneDone=2, VerticalDone=4, _entt_enum_as_bitmask }` — consistent with `GamePhaseBit` pattern.
+- **Owner:** Keaton or any C++ contributor
+
+**McManus — EventQueue Tier-1: Incomplete dispatcher migration**
+
+- **Files:** `app/components/input_events.h`, `app/systems/input_system.cpp`, `app/systems/gesture_routing_system.cpp`, `app/systems/hit_test_system.cpp`
+- **Issue:** decisions.md specifies full migration to `entt::dispatcher` with step 4 = "Remove EventQueue struct". Tier 2 (GoEvent, ButtonPressEvent) is fully migrated and wired in `input_dispatcher.cpp`. Tier 1 remains incomplete: `input_system` still pushes raw inputs to `EventQueue`, and `gesture_routing_system`/`hit_test_system` read from `EventQueue` before forwarding.
+- **Fix:** Complete Tier 1: Replace `EventQueue::inputs` with `disp.enqueue<InputEvent>()` in `input_system`. Update `gesture_routing_system`/`hit_test_system` to receive `InputEvent` via dispatcher. Remove `EventQueue` struct.
+- **Owner:** Keaton (per decisions.md ownership)
+
+**Baer — entt::dispatcher not asserted in singleton coverage test**
+
+- **File:** `tests/test_components.cpp`
+- **Issue:** `make_registry()` test asserts only 6 of ~17 singletons. `entt::dispatcher` is NOT listed. Any test that constructs bare `entt::registry` and calls `gesture_routing_system`, `hit_test_system`, `player_input_system`, etc., will hard-crash without diagnostic.
+- **Fix:** Extend singleton test to call `reg.ctx().get<T>()` for every singleton added by `make_registry()`. Add a null-registry crash-guard test for at least one ctx-dependent system.
+- **Owner:** Baer
+
+### P3 Findings
+
+**Keyser — input_events.h: EventQueue member methods (deferred to Tier-1 migration)**
+
+- **File:** `app/components/input_events.h:38–46`
+- **Methods:** `push_input()`, `clear()`
+- **Issue:** Deviates from team convention — `AudioQueue` uses free-function pattern (`audio_push`, `audio_clear`).
+- **Resolution:** Resolved by Tier-1 EventQueue migration (McManus P2 finding).
+- **Owner:** Keaton (as part of dispatcher migration)
+
+**Keaton — TestPlayerState.planned[]: Raw entity array**
+
+- **File:** `app/components/test_player.h:85`
+- **Issue:** `entt::entity planned[MAX_PLANNED]` stores raw obstacle entity IDs with no validation at storage time. Use sites apply `.valid()` guards.
+- **Fix:** Consider wrapping in version-tagged weak ref or documenting "caller must validate" contract explicitly.
+- **Owner:** Keaton
+
+**Keaton — UIState.current: String vs hashed dispatch**
+
+- **File:** `app/components/ui_state.h:22`
+- **Issue:** `std::string current` used for screen-change comparisons while `element_map` uses `entt::id_type` (hashed).
+- **Note:** Minor inconsistency. Could use `entt::hashed_string` for transitions.
+- **Priority:** Low.
+- **Owner:** Low priority; any contributor.
+
+**Redfoot — spawn_ui_elements: JSON operator[] without exception guard**
+
+- **File:** `app/systems/ui_navigation_system.cpp` (spawn_ui_elements, lines ~107–141)
+- **Issue:** `el["animation"]["speed"].get<float>()` uses `operator[]` on const references. Per SKILL guideline, `operator[]` on const nlohmann::json triggers `assert()` on missing key; use `.at()` inside `try/catch` instead.
+- **Note:** Not hot path (screen-load time), but malformed animation block would crash.
+- **Fix:** Replace `el["animation"]["speed"]` with `el.at("animation").at("speed")` inside try/catch.
+- **Owner:** McManus or Keaton.
+
+**Redfoot — UIActiveCache: Lazy emplacement during game loop**
+
+- **File:** `app/systems/active_tag_system.cpp:20-21`
+- **Issue:** Fallback `emplace` fires on first call to `ensure_active_tags_synced()` during game loop. Not a crash risk (idempotent after), but registry mutation during gameplay is code smell.
+- **Fix:** Initialize `UIActiveCache` alongside other ctx singletons in `game_loop_init`.
+- **Owner:** McManus (low effort, follows existing pattern).
+
+### Coverage Gaps (Baer)
+
+**P1 — R7 Stale event discard not tested**
+
+- **Guarantee:** Events queued before phase transition must be discarded, not replayed after transition.
+- **Gap:** No test exists. `test_input_pipeline_behavior.cpp` covers #213 (same-frame drain) but not cross-phase accumulation.
+- **Risk:** Events enqueued in Playing → GameOver frame survive in dispatcher; if next frame re-enters Playing, events fire into fresh player state.
+- **Test:** Enqueue GoEvent → trigger phase transition → run `game_state_system` → verify no GoEvent delivered to post-transition player state.
+- **Owner:** Baer (explicitly assigned in R7)
+
+**P1 — Dispatcher singleton coverage**
+
+- **Guarantee:** `entt::dispatcher` in ctx required by 8 production systems; absence is hard UB/crash.
+- **Gap:** `test_components.cpp` asserts only 6 of ~17 singletons; dispatcher not checked. See P2 finding above.
+- **Owner:** Baer
+
+**P2 — miss_detection_system emplace idempotency**
+
+- **Guarantee:** collect-then-remove is safe pattern for view-time destruction.
+- **Gap:** `miss_detection_system` emplaces `ScoredTag` and `MissTag` during `exclude<ScoredTag>` view iteration. No test verifies (a) each entity gets exactly one tag, (b) no entity skipped, (c) no entity double-tagged.
+- **Test:** Run `miss_detection_system` on N obstacles with all past DESTROY_Y; verify MissTag count == N and ScoredTag count == N; run again, verify no second tag.
+- **Owner:** Baer
+
+**P2 — make_registry() singleton completeness**
+
+- **Guarantee:** `make_registry()` is canonical init contract; all singletons must be present.
+- **Gap:** ~11 singletons (SongState, EnergyState, BeatMap, etc.) emplaced but not checked. Adding singleton and forgetting it would silently crash.
+- **Test:** Extend singleton test to call `reg.ctx().get<T>()` for every singleton, or use `find<T>() != nullptr` to report missing by name.
+- **Owner:** Baer
+
+**P3 — on_construct<> signal tests platform-gated**
+
+- **Guarantee:** on_construct<ObstacleTag> / on_construct<ScoredTag> signal lifecycle: connect once, no double-connect.
+- **Gap:** Tests entirely within `#ifdef PLATFORM_DESKTOP` — invisible on Linux CI. No test for double-connect risk.
+- **Test:** Port at least one `on_construct<ObstacleTag>` signal test to non-platform-gated file.
+- **Owner:** Baer
+
+**P3 — Component purity contract test**
+
+- **Guarantee:** Components are plain data, no business logic.
+- **Gap:** No contract test asserting purity boundary. Methods tested functionally, but no test would catch future addition of external-call side effects.
+- **Note:** Low urgency for existing code. Flag for future refactor.
+- **Owner:** No immediate test needed — design note for Keyser/McManus.
+
+### SKILL File Correction (Keaton)
+
+**File:** `.squad/skills/ui-json-to-pod-layout/SKILL.md`
+
+**Error:** States "EnTT v3 context API: insert_or_assign (NOT emplace). emplace is deprecated in v3."
+
+**Correction:** In EnTT v3.16.0, `ctx().emplace<T>()` is NOT deprecated. It uses `try_emplace` internally (insert-if-absent, idempotent).
+
+**Correct guidance:**
+- Use `emplace<T>()` for first-time-only insertion (startup context init)
+- Use `insert_or_assign(value)` when you need to replace existing value (session restart)
+
+**Code status:** Mixed usage in `game_loop.cpp` (emplace) and `play_session.cpp` (insert_or_assign) is CORRECT. No code change needed; update SKILL doc only.
+
+**Owner:** Keaton or doc maintainer.
+
+---
+
+*Audit completed 2026-04-27T22:30:13Z. All findings documented for prioritization.*

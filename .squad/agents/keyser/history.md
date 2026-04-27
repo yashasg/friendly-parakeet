@@ -10,6 +10,25 @@
 
 <!-- Append learnings below -->
 
+### 2026-04-27 — Parallel ECS/EnTT Audit (user/yashasg/ecs_refactor branch)
+
+**Status:** AUDIT COMPLETE — Read-only analysis with 5-agent parallel pass against docs/entt/.
+
+**Scope:** Entity_Component_System.md, Core_Functionalities.md, EnTT_In_Action.md  
+**Verdict:** Mostly clean — Three actionable findings (P1, P2, P3) plus 8 confirmed-clean patterns.
+
+**P1 Finding:** sfx_bank.cpp (line 149) stores raw registry pointer (`&reg`) inside ctx singleton. Safe today (stack-local, synchronous), breaks if registry moves or invocation becomes async. **Fix:** Remove `user_data = &reg`; pass `reg` at call time in `audio_system()`. Owner: Keaton.
+
+**P2 Finding:** high_score.h (lines 71–110) embeds mutation methods in component struct. Should move to free functions in `high_score_persistence.cpp`. Not blocking (logic is correct). Owner: Keaton.
+
+**P3 Finding:** input_events.h uses member methods (`push_input`, `clear`) — deviates from team convention (see `AudioQueue` free-function pattern). Scheduled for resolution by EventQueue → dispatcher migration.
+
+**Confirmed clean:** 8 patterns confirmed including dispatcher with R1–R7 guardrails, static collect-then-destroy buffers, pool priming, signal disconnect at shutdown, obstacle_counter.h ctx pattern, on_construct<ObstacleTag> dependency pattern, system execution order docs, UIActiveCache invalidation.
+
+**Already resolved:** #316 UI screen loading, #318 high-score/settings mutation, #322 UI layout POD cache, #324 burnout ECS surface, #327 dispatcher drain comments, #311/#314 GamePhaseBit enum, #312/#313 hashed_string.
+
+**Orchestration log:** `.squad/orchestration-log/2026-04-27T22-30-13Z-keyser.md`
+
 ### 2026-05-18 — EnTT Core_Functionalities Audit
 
 Audited `docs/entt/Core_Functionalities.md` against the full codebase. Two actionable findings beyond the prior ECS structural audit:
@@ -301,3 +320,30 @@ Replaced 15-branch `if (source == "...")` chains in `resolve_ui_int_source` and 
 ### 2026-04-27 — Issue #315 Closure (EnTT-safe scoring_system iteration)
 
 **Architectural note:** McManus's collect-then-remove pattern for scoring_system (#315) follows the ECS structural view split pattern. Architecture review confirms alignment with existing collision_system design. Pattern is reusable and documented for team reference.
+
+### 2026-05-19 — Full ECS Audit Against docs/entt/ (branch: user/yashasg/ecs_refactor)
+
+**Scope:** Full read-only ECS audit using four parallel subagents across all component headers, system .cpp files, game_loop.cpp, and all three EnTT docs (Entity_Component_System.md, Core_Functionalities.md, EnTT_In_Action.md).
+
+**Verdict: mostly clean.** Architecture is disciplined and recent refactor commits (#316, #317, #318, #322, #324, #327) have resolved multiple prior issues. Three findings remain.
+
+**Key findings:**
+- **P1 — sfx_bank.cpp:149**: `SFXPlaybackBackend{play_sfx_from_bank, &reg}` stores a raw registry pointer in a ctx singleton. Called synchronously today (audio_system on main thread), but architecturally fragile — any async move of the callback invocation path breaks it. Fix: pass reg at invocation point, not at storage time.
+- **P2 — high_score.h:71–110**: `HighScoreState` still embeds mutation methods (`set_score`, `ensure_entry`, `set_score_by_hash`). #318 removed mutation from systems but the methods remain in the struct. Only caller is `high_score_persistence.cpp`. Should be free functions in the persistence util.
+- **P3 — input_events.h:38–46**: `EventQueue` uses member methods (`push_input`, `clear`) while `AudioQueue` uses free functions — inconsistency in team's own free-function convention. Will be resolved by dispatcher migration.
+
+**Green patterns confirmed:**
+- Dispatcher guardrails (R1–R7) in `input_dispatcher.cpp`
+- Static collect-then-destroy buffers (cleanup_system, scoring_system)
+- Pool priming before signal connection (`game_loop.cpp:111–116`)
+- Signal disconnect on shutdown (`game_loop.cpp:241–245`)
+- `obstacle_counter.h` as gold standard for ctx singleton + signal wiring
+- `on_construct<ObstacleTag>` → `emplace<RingZoneTracker>` is valid EnTT dependency pattern (not a violation)
+- System execution order documented in `all_systems.h` phase labels
+- Registry stack-local in main(), always passed by reference, never stored globally (Emscripten pointer exception is guarded)
+
+**Key file paths audited:**
+- `app/components/` — all 32 headers
+- `app/systems/` — all 47 .cpp/.h files
+- `app/game_loop.cpp`, `app/main.cpp`
+- `docs/entt/Entity_Component_System.md`, `Core_Functionalities.md`, `EnTT_In_Action.md`

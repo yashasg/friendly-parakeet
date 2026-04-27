@@ -11,6 +11,29 @@
 
 <!-- Append learnings below -->
 
+### 2026-04-27 — Parallel ECS/EnTT Audit (user/yashasg/ecs_refactor branch)
+
+**Status:** AUDIT COMPLETE — Read-only test coverage audit with Keyser, Keaton, McManus, Redfoot.
+
+**Verdict:** Coverage gaps — High-signal gaps only. All "mostly covered" areas preserved.
+
+**P1 Gaps:**
+- **R7 Stale event discard** — No test. Events queued before phase transition must not replay after (explicitly assigned in decisions.md). **Test:** Enqueue GoEvent → trigger transition → verify no delivery to post-transition player state.
+- **Dispatcher singleton** — test_components.cpp asserts only 6 of ~17 singletons; dispatcher NOT checked. Any bare registry call to gesture_routing/hit_test/player_input systems hard-crashes. **Test:** Extend singleton assertion; add null-registry crash-guard for at least one system. (Owner: Baer.)
+
+**P2 Gaps:**
+- **miss_detection idempotency** — No test verifies collect-then-emplace is safe during exclude<ScoredTag> iteration. **Test:** Run on N obstacles past DESTROY_Y; verify MissTag count == N and ScoredTag count == N; run again, verify no second tag.
+- **make_registry completeness** — Only 6 singletons asserted; ~11 others (SongState, EnergyState, BeatMap, etc.) emplaced but unchecked. **Test:** Extend to call ctx().get<T>() or find<T>() for every singleton.
+
+**P3 Gaps:**
+- **on_construct<> signals platform-gated** — All in `#ifdef PLATFORM_DESKTOP` — invisible on Linux CI. **Test:** Port at least one on_construct<ObstacleTag> test to non-gated file.
+
+**Coverage to Preserve:** test_entt_dispatcher_contract.cpp (enqueue/update deferred + drain=no-replay), test_input_pipeline_behavior.cpp (same-frame delivery, #213 no-replay), test_event_queue.cpp (dispatcher listener hygiene), test_components.cpp [phase_mask] (enum_as_bitmask), test_pr43_regression.cpp on_obstacle_destroy (pool-insertion-order), test_lifecycle.cpp (ctx null-safe), test_ui_element_schema.cpp (_hs hashed dispatch), test_high_score_persistence.cpp (FNV-1a collision-free), test_world_systems.cpp [#242] (collect-then-remove).
+
+**Platform risks:** PLATFORM_DESKTOP gates 12 tests (test_test_player_system.cpp invisible on Linux), WASM has zero tests, one #ifndef PLATFORM_WEB gate in test_pr43_regression.cpp, static buffer in cleanup_system.cpp (data race risk if parallelized), test_beat_log_system.cpp #ifdef _WIN32 path handling.
+
+**Orchestration log:** `.squad/orchestration-log/2026-04-27T22-30-13Z-baer.md`
+
 ### 2026-04-25 — Regression/Platform Diagnostics Run
 
 **Test run baseline:** 508 tests (CTRF), 526 test cases executed (including 18 bench), 1611 assertions. All pass.
@@ -522,3 +545,60 @@ ctest --test-dir build -R "shipped beatmaps"
 - Comment should be updated to prevent future reader confusion.
 
 **Status:** Ready for production; on-call for defensive queue clearing hardening (R7 follow-up).
+
+### 2026-04-27 — #324 burnout dead-surface regression pass
+
+**Task:** Test-focused regression pass on `d9be464` (Remove dead burnout ECS surface).
+
+**Diff analyzed:** 22 files, 397 deletions / 39 insertions. Removed: `burnout.h`, `burnout_system.cpp`, `burnout_helpers.h`, `BurnoutState` singleton, `DifficultyConfig::burnout_window_scale`, `SongResults::best_burnout`, `burnout_mult` variable in `scoring_system`, constants (ZONE_*, MULT_*), `test_burnout_system.cpp`, `test_burnout_bank_on_action.cpp`.
+
+**Behavior risks assessed:**
+- All deleted tests tested dead behavior (no-op system, dead components, dead fields). Zero regression risk.
+- `scoring_system.cpp`: `base_points * timing_mult * burnout_mult(1.0)` → `base_points * timing_mult`. Semantically identical; covered by existing `[scoring]` tests.
+- LanePush exclusion from chain/popup: migrated from AC#4 of deleted `test_burnout_bank_on_action.cpp` to `test_scoring_extended.cpp`. Migration only covered `LanePushLeft`.
+
+**Gap found:** `LanePushRight` had no dedicated scoring-exclusion test. The `scoring_system.cpp` condition covers both Left and Right in a single `||` branch — if the branch were narrowed to only one variant, the Left-only test would pass silently.
+
+**Fix applied:** Added `TEST_CASE("scoring: LanePushRight excluded from chain and popup", "[scoring][lane_push]")` to `test_scoring_extended.cpp`. Mirror of the LanePushLeft test.
+
+**Preserved coverage confirmed:**
+- Energy bar: `test_energy_system.cpp` — 5 tests ✅
+- Timing-graded scoring: `test_scoring_extended.cpp` + `test_scoring_system.cpp` — Perfect/Good/Bad/Ok multipliers ✅
+- Chain: `test_scoring_system.cpp` — accumulation, reset, 5+ bonus ✅
+- Distance bonus: `test_scoring_system.cpp` — accumulation from scroll_speed ✅
+- LanePush exclusion: `test_scoring_extended.cpp` — both Left and Right ✅
+- SongResults (max_chain, miss_count, etc.): multiple test files ✅
+
+**Test run:** `[scoring][lane_push]` → 2 test cases, 8 assertions, all pass. Full suite: 2565 assertions, 792 test cases, all pass. Zero warnings.
+
+**Commit:** `6ee912a` on `squad/324-remove-dead-burnout-surface`.
+
+### 2026-04-27 — ECS/EnTT Test Coverage Audit (parallel subagents)
+
+**Scope:** Read-only audit of tests/** and app/components/** and app/systems/** against docs/entt/. Dispatcher contract, collect-then-remove safety, component purity, ctx singleton init, UI layout/cache, hashed string, enum bitmask, signal/observer lifecycle, CI platform guards.
+
+**Key file paths:**
+- `tests/test_entt_dispatcher_contract.cpp` — dispatcher trigger/enqueue/update/drain, one-frame latency hazard, #213 no-replay
+- `tests/test_event_queue.cpp` — GoEvent/ButtonPressEvent through ctx-stored dispatcher
+- `tests/test_input_pipeline_behavior.cpp` — same-frame delivery, #213 sub-tick no-replay, mixed events, phase guard
+- `tests/test_components.cpp` — GamePhaseBit bitmask, make_registry singletons (incomplete), entity creation
+- `tests/test_lifecycle.cpp` — missing InputState ctx returns false (not crash)
+- `tests/test_pr43_regression.cpp` — on_destroy<ObstacleTag> signal lifecycle, pool insertion order
+- `tests/test_ui_element_schema.cpp` — hashed string (`_hs`) element_map lookups, rebuild-on-re-call
+- `tests/test_ui_layout_cache.cpp` — HudLayout/LevelSelectLayout valid/invalid construction, integration
+- `tests/test_high_score_persistence.cpp` — FNV-1a hash collision coverage (9 keys)
+- `app/systems/cleanup_system.cpp` — collect-then-remove static vector pattern (#242)
+- `app/systems/miss_detection_system.cpp` — emplace-during-exclude-view pattern (ScoredTag+MissTag)
+
+**Verdict:** `coverage gaps`
+
+**High-priority gaps:**
+1. R7 stale event discard test explicitly missing (decisions.md: "add Baer test"). No test verifies that events enqueued before a phase transition are not replayed in the post-transition frame.
+2. `entt::dispatcher` missing from ctx not tested for crash safety. `make_registry creates all singletons` verifies only 6 of ~17 singletons; dispatcher is absent from assertions.
+3. Emplace-during-exclude-view safety (miss_detection_system) untested explicitly.
+
+**Medium-priority gaps:**
+4. on_construct<ObstacleTag>/on_construct<ScoredTag> disconnect lifecycle tests only run under #ifdef PLATFORM_DESKTOP — invisible on Linux CI.
+5. make_registry singleton test incomplete (doesn't verify SongState, EnergyState, HighScoreState, entt::dispatcher, etc.).
+
+**Coverage to preserve:** dispatcher contract tests, #213 no-replay, GamePhaseBit bitmask, on_destroy signal pool-order test, hashed string element_map, FNV-1a collision test, lifecycle ctx null test.

@@ -10,6 +10,22 @@
 
 <!-- Append learnings below -->
 
+### 2026-04-27 — Parallel ECS/EnTT Audit (user/yashasg/ecs_refactor branch)
+
+**Status:** AUDIT COMPLETE — Read-only gameplay ECS audit with Keyser, Keaton, Redfoot, Baer.
+
+**Verdict:** Mostly clean — One P1, one P2, one P3.
+
+**P1 Finding:** obstacle_counter.h:29-35 — `wire_obstacle_counter()` performs signal wiring (system concern) in component header. **Fix:** Move `wire_obstacle_counter()` and listener functions to new `app/systems/obstacle_counter_system.cpp`. Declare in all_systems.h. Keep ObstacleCounter data in header.
+
+**P2 Finding:** EventQueue Tier-1 incomplete migration. Decisions.md specifies "Remove EventQueue struct" (step 4). Tier 2 (GoEvent, ButtonPressEvent) fully migrated in input_dispatcher.cpp. Tier 1 remains: input_system pushes to EventQueue; gesture_routing/hit_test read from EventQueue before dispatcher. **Fix:** Replace with `disp.enqueue<InputEvent>()`; update systems to receive via dispatcher; remove EventQueue. (Owner: Keaton per decisions.md.)
+
+**P3 Finding:** SongState/DifficultyConfig mix metadata (immutable) with runtime state (mutable per-frame). No correctness issue; document which fields are "set once at init" vs "mutated per-frame".
+
+**Confirmed clean:** scoring_system collect-then-remove, collision_system per-kind views, miss_detection_system iteration safety, cleanup_system static buffer, beat_scheduler ctx state, obstacle_spawn RNGState, dispatcher wiring, on_obstacle_destroy signal lifecycle, burnout ECS removed.
+
+**Orchestration log:** `.squad/orchestration-log/2026-04-27T22-30-13Z-mcmanus.md`
+
 ### 2026 — Diagnostics pass (full codebase review)
 
 **Critical: Jump/Slide are NOT wired up**
@@ -183,3 +199,32 @@ Rhythm obstacles that escape the collision window (e.g. during jump peak) reach 
 - Zero per-frame heap allocation (static vector with `.clear()`)
 - All 2419 assertions / 768 test cases pass on main branch; zero compiler warnings
 - Pattern documented and ready for reuse across other systems
+
+## 2026 — EnTT ECS Audit (gameplay/rhythm/scoring/obstacle surface)
+
+**Scope:** obstacle.h, song_state.h, rhythm.h, scoring_system, collision_system, beat_scheduler_system, obstacle_spawn_system, play_session, cleanup_system, miss_detection_system. Validated against docs/entt/Entity_Component_System.md and Core_Functionalities.md.
+
+**Verdict:** Mostly clean. Two actionable findings; rest is solid.
+
+**Key file paths:**
+- `app/components/obstacle.h` — ObstacleTag, ScoredTag, MissTag: clean tag/data split
+- `app/components/song_state.h` — SongState, EnergyState, GameOverState, SongResults: ctx singletons, mixing metadata + runtime state (soft smell)
+- `app/components/rhythm.h` — TimingTier, TimingGrade, BeatInfo, pure helpers: clean
+- `app/components/obstacle_counter.h` — wire_obstacle_counter() is registry logic in a component header (F4 residual, not moved to .cpp)
+- `app/systems/scoring_system.cpp` — collect-then-remove (#315 complete), structural view split (miss/hit), ctx hoisting: CLEAN
+- `app/systems/collision_system.cpp` — per-kind structural views + entt::exclude<ScoredTag>, emplace during iteration: SAFE per EnTT docs §"What is allowed and what is not"
+- `app/systems/miss_detection_system.cpp` — emplace MissTag+ScoredTag during view iteration: SAFE
+- `app/systems/cleanup_system.cpp` — static vector + two-pass destroy: CLEAN
+- `app/systems/beat_scheduler_system.cpp` — all state in ctx, no global state: CLEAN
+- `app/systems/obstacle_spawn_system.cpp` — RNGState in ctx, mt19937: CLEAN
+- `app/systems/play_session.cpp` — session reset, ctx singletons via insert_or_assign: CLEAN
+- `app/components/input_events.h` — EventQueue struct still present (Tier 1 migration incomplete per decisions.md step 4)
+
+**Findings:**
+1. (P1) wire_obstacle_counter() in obstacle_counter.h — F4 residual, registry logic in component header
+2. (P2) EventQueue not removed — Tier 1 raw InputEvent routing still uses EventQueue alongside dispatcher (decisions.md migration step 4 incomplete)
+3. (P3/soft) SongState and DifficultyConfig mix metadata with mutable runtime state — no correctness issue
+
+**EnTT confirmation:** Emplacing components during view iteration (collision, miss_detection) is explicitly allowed in EnTT docs: "Creating entities and components is allowed during iterations in most cases." The exclude<ScoredTag> pattern in collision_system is safe because the ScoredTag pool's modifications don't affect the leading iteration pool.
+
+**Burnout surface:** Fully removed; no residual BankedBurnout, BurnoutState, or burnout-related ECS components in scope files.

@@ -11,6 +11,22 @@
 
 <!-- Append learnings below -->
 
+### 2026-04-27 — Parallel ECS/EnTT Audit (user/yashasg/ecs_refactor branch)
+
+**Status:** AUDIT COMPLETE — Read-only UI ECS audit with Keyser, Keaton, McManus, Baer.
+
+**Verdict:** Mostly clean — One P1 (render bug), two P3.
+
+**P1 Finding — CRITICAL BUG:** ui_render_system.cpp:350–358 checks `ovr.contains("overlay_color")` (flat key) but paused.json stores as `overlay.color` (nested). Condition always false — **pause dim overlay has never rendered**. Compounds hot-path JSON access violation (#322 policy). **Fix:** Extract overlay color at screen-load in `ui_navigation_system` and cache in ctx POD (OverlayLayout). Render system reads from ctx instead of live JSON. Bonus: fixes visual regression. (Owner: McManus.)
+
+**P3 Findings:**
+- `spawn_ui_elements` uses JSON `el["animation"]["speed"].get<float>()` without exception guard. Per SKILL guideline: use `.at()` inside try/catch (not hot path, but malformed animation would crash).
+- `UIActiveCache` lazily emplaced inside game loop (active_tag_system.cpp:20-21). Code smell (registry mutation during gameplay). Initialize alongside other ctx singletons in game_loop_init.
+
+**Confirmed clean (#322 aftermath):** UIState pure data, ensure_active_tags_synced moved to system, ui_render_system const registry, HudLayout/LevelSelectLayout POD cache at load, O(1) element_map lookup, gesture_routing EventQueue→dispatcher, hit_test structural ActiveTag view, ui_source_resolver hashed dispatch, spawn/destroy only on screen_changed.
+
+**Orchestration log:** `.squad/orchestration-log/2026-04-27T22-30-13Z-redfoot.md`
+
 ### 2026-04-26 — Diagnostic Pass
 
 - UI is data-driven via `content/ui/screens/*.json` + `routes.json`, loaded by `ui_loader.cpp`/`ui_navigation_system.cpp` and rendered by `ui_render_system.cpp`. UIElementTag entities are rebuilt only on screen *change*.
@@ -141,3 +157,50 @@ Implemented a focused content + small-renderer pass.
 **Context:** Keyser's audit identified `UIState::load_screen()` (file I/O in a component) and `ensure_active_tags_synced()` (registry-mutating logic in component header) as P1 deviations from ECS principles.
 
 **Status:** Both issues are assigned to McManus (primary) with Redfoot (UI specialist) as stakeholder. Part of EnTT ECS remediation backlog. Orchestration log: `.squad/orchestration-log/2026-04-27T19-14-36Z-entt-ecs-audit.md`. File I/O refactor may be paired with #202 (data-driven HUD layout) for efficiency.
+
+### 2026-05-17 — ECS Audit Pass 2: #312/#322 Validation
+
+**Scope:** Read-only UI/input ECS audit against `docs/entt/`. Focus: UIState, layout caches, overlay, hit-test, gesture routing, render hot paths.
+
+**Key file paths audited:**
+- `app/components/ui_state.h`
+- `app/components/ui_layout_cache.h`
+- `app/systems/ui_loader.{h,cpp}`
+- `app/systems/ui_navigation_system.cpp`
+- `app/systems/ui_render_system.cpp`
+- `app/systems/hit_test_system.cpp`
+- `app/systems/gesture_routing_system.cpp`
+- `app/systems/active_tag_system.cpp`
+- `app/systems/ui_source_resolver.{h,cpp}`
+- `content/ui/screens/paused.json`
+- `tests/test_ui_overlay_schema.cpp`
+
+**Prior audit items resolved (F4, F5 from 2026-04-27 orchestration):**
+- `ensure_active_tags_synced` — moved out of header and into `active_tag_system.cpp` ✅
+- `ui_render_system` — now takes `const entt::registry&` ✅
+- UIState — no file I/O methods; pure data struct ✅
+
+**New findings:**
+
+1. **P1 — Overlay render: dead code + live JSON traversal**
+   - `ui_render_system.cpp:350` checks `ovr.contains("overlay_color")` (flat key).
+   - `paused.json` uses `overlay.color` (nested), confirmed by `extract_overlay_color()` in `ui_loader.cpp` and `test_ui_overlay_schema.cpp`.
+   - Branch always fails → pause dim overlay never renders.
+   - Also violates the #322 hot-path JSON avoidance: should cache overlay Color in ctx POD.
+   - `extract_overlay_color()` free function already exists and is correct; not wired to render path.
+   - Fix: cache `Color overlay_color` in a small ctx struct at `ui_load_overlay` time; render reads from ctx.
+   - Suggested owner: McManus.
+
+2. **P3 — `spawn_ui_elements` uses `operator[]` on JSON animation fields**
+   - `ui_navigation_system.cpp` lines ~107-141: `el["animation"]["speed"].get<float>()` etc.
+   - Per SKILL.md: `operator[]` on const json asserts (SIGABRT) on missing key; `.at()` throws catchably.
+   - Screen-load time only (not hot path), but crash risk on malformed JSON.
+   - Suggested owner: McManus or Keaton.
+
+3. **P3 — `UIActiveCache` lazily emplace'd inside game loop call**
+   - `active_tag_system.cpp`: `if (!cache) cache = &reg.ctx().emplace<UIActiveCache>();`
+   - The emplace can trigger inside the game loop (first call to `ensure_active_tags_synced`).
+   - Preferred: initialize `UIActiveCache` at `game_loop_init`.
+   - Low risk (emplace is a no-op on subsequent frames), but an antipattern in production ECS.
+
+**Overall verdict:** mostly clean. The #312/#322 work correctly addressed the prior P1s. One new P1 found (overlay key mismatch = silently broken UI feature). Two minor P3s.

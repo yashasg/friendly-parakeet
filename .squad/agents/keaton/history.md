@@ -11,6 +11,26 @@
 
 <!-- Append learnings below -->
 
+### 2026-04-27 — Parallel ECS/EnTT Audit (user/yashasg/ecs_refactor branch)
+
+**Status:** AUDIT COMPLETE — Read-only EnTT API leverage audit with Keyser, McManus, Redfoot, Baer.
+
+**Verdict:** Mostly clean — No UB, no unsafe iteration, no correctness bugs.
+
+**P2 Findings:**
+- `TestPlayerAction.done_flags` — hand-rolled `uint8_t` bitmask with 6 manual getters/setters. Use `enum class ActionDoneBit : uint8_t` with `_entt_enum_as_bitmask`.
+- `TestPlayerState.planned[]` — raw entity array with no validation. Document "caller must validate" contract or wrap in weak ref.
+
+**P3 Findings:**
+- `UIState.current` — std::string for transitions (inconsistent with element_map entt::id_type). Low priority.
+- Per-frame std::string alloc in ui_render_system — acceptable for UI layer.
+
+**SKILL Correction:** `.squad/skills/ui-json-to-pod-layout/SKILL.md` incorrectly states emplace is deprecated in v3. In v3.16.0, ctx().emplace<T>() is NOT deprecated (uses try_emplace internally). Guidance: emplace for first-time init; insert_or_assign for replacement. Mixed usage in game_loop.cpp/play_session.cpp is CORRECT — update doc only.
+
+**Confirmed clean:** Collect-then-remove, exclude<> structural views, find<T>() null-guards, hashed_string, GamePhaseBit, dispatcher drain, tag components, signal/sinks.
+
+**Orchestration log:** `.squad/orchestration-log/2026-04-27T22-30-13Z-keaton.md`
+
 ### 2025 — Diagnostic Run 1
 
 - **`on_construct<ScoredTag>` signal fires during `collision_system`** — at signal time `MissTag` is already present (emplaced just before ScoredTag), so `reg.any_of<MissTag>(entity)` is the correct miss detector inside signal handlers. The `transition_pending` heuristic only fires on fatal misses.
@@ -359,3 +379,95 @@ Fixed all 7 unresolved review threads in commit d90abf9 on `user/yashasg/ecs_ref
 ### 2026-04-27 — Issue #325 Closure: const render registry
 
 **Completion confirmed** — Commit e03170f. Render systems now take const registry; material tinting uses local copies. Kujan approved.
+
+### 2026-04-27 — Issue #318 Rebase: merge ecs_refactor post-rejection
+
+**Revision cycle** — Kujan rejected the original McManus PR because `squad/318-high-score-settings-logic` was stale behind `user/yashasg/ecs_refactor` (commits `2e2b0c8` and `b5e81c1` not present). I (Keaton) took over as revision owner.
+
+- Merged `origin/user/yashasg/ecs_refactor` into `squad/318-high-score-settings-logic` with `git merge --no-edit`. No conflicts — `2e2b0c8` only touched `.squad/` files; `b5e81c1` added dispatcher comments to files McManus did not modify in the same region.
+- `game_state_system.cpp` had a 3-way merge (McManus changed call sites, `b5e81c1` added block comments) — resolved cleanly by git ort strategy.
+- CMake configure, full build, and `./build/shapeshifter_tests` all passed: **2588 assertions in 808 test cases, zero warnings**.
+- Merge commit: `d4d3f01`. Force-pushed with `--force-with-lease` to `origin/squad/318-high-score-settings-logic`.
+
+## Learnings
+
+### #311 + #314 — GamePhaseBit typed enum (2026-04-27)
+
+**Branch:** `squad/311-314-phase-bitmasks`
+**Commit:** `6efd1b7`
+
+**Decision:** Adopted #314's approach (separate `GamePhaseBit` enum) rather than #311's original plan of changing `GamePhase` to power-of-two values.
+- `GamePhase` stays sequential (state machine, stored in `GameState::phase`)
+- `GamePhaseBit` is the new mask enum (power-of-2, `_entt_enum_as_bitmask` sentinel)
+- `to_phase_bit(GamePhase)` helper bridges the two
+
+**Key files changed:**
+- `app/components/game_state.h` — added `GamePhaseBit`, `to_phase_bit()`
+- `app/components/input_events.h` — `ActiveInPhase::phase_mask` → `GamePhaseBit`, removed `phase_bit()`, updated `phase_active()`
+- `app/systems/ui_button_spawner.h` — all spawn sites use `GamePhaseBit::X` / `|` directly
+- `app/systems/play_session.cpp` — single spawn site updated
+- `tests/test_components.cpp` — 5 new `[phase_mask]` test cases (28 assertions)
+- `tests/test_helpers.h`, `test_hit_test_system.cpp`, `test_gesture_routing_split.cpp`, `benchmarks/bench_systems.cpp` — `phase_bit()` → `GamePhaseBit::*`
+
+**Tests run:** `./build/shapeshifter_tests "~[bench]"` → 2616 assertions in 795 test cases, all pass. Zero warnings.
+
+**EnTT pattern:** Add `_entt_enum_as_bitmask` sentinel to enum class; `entt/core/enum.hpp` provides typed `|`, `&`, `^`, `~`, `!` operators. `!!` double-not idiom converts masked `GamePhaseBit` result to `bool`.
+
+## Learnings
+
+### #313 — HighScoreState::current_key allocation (2026-04-28)
+
+**Status:** Implemented. Commit `880b389` on `squad/313-high-score-key-allocation`.
+
+**Findings post-#318:** The allocation issue was NOT resolved by #318. `current_key` was still `std::string` and `make_key()` still heap-allocated a concatenated string.
+
+**Files changed:**
+- `app/components/high_score.h` — replaced `std::string current_key` with `entt::hashed_string::hash_type current_key_hash{0}`; added `make_key_hash()`, `make_key_str()`, `get_score_by_hash()`, `set_score_by_hash()`, `ensure_entry()`
+- `app/systems/play_session.cpp` — builds key in stack buf via `make_key_str`, calls `ensure_entry`, sets `current_key_hash` via runtime hash
+- `app/util/high_score_persistence.cpp` — `update_if_higher` and `from_json` now use `current_key_hash`
+- `app/util/high_score_persistence.h` — updated comment
+- `tests/test_high_score_persistence.cpp` — updated all `current_key` → hash API; added `make_key_str` round-trip test and 9-key collision-free test
+- `tests/test_high_score_integration.cpp` — updated 4 test cases to use `current_key_hash` and `ensure_entry`
+
+**Key technical note:** `entt::hashed_string{buf}` where `buf` is a char array uses the `ENTT_CONSTEVAL` array constructor and cannot be used at runtime. Must use `entt::hashed_string::value(static_cast<const char*>(buf))` to select the `const_wrapper` (constexpr, runtime-capable) overload.
+
+**Test results:** 2645 assertions / 815 test cases — all pass.
+
+**ensure_entry contract:** `setup_play_session` calls `ensure_entry(key_buf)` before setting `current_key_hash`. This pre-registers the entry (score=0 if new) so `update_if_higher` can find and update it by hash without ever needing the key string again.
+
+### 2025 — EnTT ECS API Audit
+
+**Scope:** Read-only audit of `app/components/`, `app/systems/`, `tests/` (EnTT patterns only), and `docs/entt/`. Parallel subagents used for components, systems, docs cross-ref, and test coverage.
+
+**Verdict:** `mostly clean` — no UB or correctness bugs; handful of P2/P3 items.
+
+**Key findings (new, not in prior issues #311-#327):**
+
+1. **P2 — `TestPlayerAction.done_flags` hand-rolled uint8_t bitmask** (`app/components/test_player.h:39-47`). Six getter/setter methods with raw hex masks `0x01/0x02/0x04`. Should use `enum class ActionDoneBit : uint8_t` with `_entt_enum_as_bitmask` sentinel, consistent with the GamePhaseBit pattern already in the codebase.
+
+2. **P2 — `TestPlayerState.planned[]` raw entity array** (`app/components/test_player.h:85`). Stores up to `MAX_PLANNED` `entt::entity` values. Entities could become stale if obstacles are destroyed before the test player processes them. Guarded by `is_planned()` checks, but no `reg.valid()` call before component access. Risk is mitigated because test_player_system.cpp uses `.valid()` guards at use sites — but the data structure itself provides no safety guarantee.
+
+3. **P2 — `ButtonPressEvent.entity` raw entity field** (`app/components/input_events.h:23`). Entity stored in event; may be stale at dispatch time (enqueue → dispatch is one tick, so risk is low but nonzero). Mitigated by `reg.valid()` guards in all event handler callbacks. Documented and acceptable as-is, but worth noting.
+
+4. **P3 — `UIState.current` is `std::string`** (`app/components/ui_state.h:22`). Screen name stored as mutable `std::string`, used in screen-change comparisons. The `element_map` in the same struct uses `entt::id_type` (hashed). Inconsistency: screen lookup could use `entt::hashed_string` to avoid string comparisons on transitions.
+
+5. **P3 — Per-frame `std::string` allocation in UI render system** (`app/systems/ui_render_system.cpp:376-387, 405-414`). Each UIText/UIButton entity with UIDynamicText allocates a temporary `std::string` per frame. Move-assigned from `optional` return, so no extra copies — but the allocation itself happens each frame. Acceptable for UI layer; not on the gameplay hot path.
+
+6. **P3 — Lazy ctx init in `active_tag_system.cpp:18,24`**: `if (!cache) cache = &reg.ctx().emplace<UIActiveCache>()`. In v3.16 `emplace` uses `try_emplace` internally (idempotent), so this is safe and actually works. But it's inconsistent with the "all ctx types initialized in game_loop.cpp" convention. Low risk.
+
+7. **INFO — `ctx().emplace<T>()` is NOT deprecated in v3.16.0**: The SKILL file (`ui-json-to-pod-layout`) incorrectly states "v3.13+ deprecated emplace". In v3.16.0 header, `emplace` uses `try_emplace` (insert-if-absent, idempotent). The mixed usage in the codebase is CORRECT: `game_loop.cpp` uses `emplace` for one-time startup (right tool), `play_session.cpp` uses `insert_or_assign` for session restarts (replaces existing value — right tool). No action needed, but the SKILL file should be corrected to avoid confusing future contributors.
+
+8. **INFO — No entt::organizer or entt::observer used**. Documented in EnTT docs. Not needed for current system count, but worth knowing for future system dependency graph management.
+
+9. **INFO — No entt::group<> used**. All access via `view<>()` + `exclude<>`. Appropriate for current cardinalities; no measured hot-path bottleneck to motivate groups.
+
+**Already-good patterns confirmed:**
+- Collect-then-remove: `cleanup_system.cpp`, `lifetime_system.cpp`, `scoring_system.cpp` — all correct
+- `entt::exclude<>` structural exclusion: `collision_system.cpp` — 6 per-kind structural views, exemplary
+- `ctx().find<T>()` null-checks: all call sites null-guarded or early-return before access
+- `entt::hashed_string` / `_hs` literals: in use in `ui_loader.cpp` and `ui_source_resolver.cpp`
+- `GamePhaseBit` / `entt::enum_as_bitmask`: correctly implemented with sentinel, tested in `test_components.cpp [phase_mask]`
+- Dispatcher drain behavior: tested in `test_entt_dispatcher_contract.cpp` (no-replay contract)
+- Tag components: all 9 are properly idiomatic empty structs
+
+**Key files touched:** `app/components/test_player.h`, `app/components/input_events.h`, `app/components/ui_state.h`, `app/systems/ui_render_system.cpp`, `app/systems/active_tag_system.cpp`, `app/game_loop.cpp`, `app/systems/play_session.cpp`, `.squad/skills/ui-json-to-pod-layout/SKILL.md` (SKILL file needs a correction — emplace is not deprecated in v3.16).
