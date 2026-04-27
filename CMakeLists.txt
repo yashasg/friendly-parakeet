@@ -8,6 +8,11 @@ if(DEFINED ENV{VCPKG_ROOT} AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
         CACHE STRING "Vcpkg toolchain file")
 endif()
 
+if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/vcpkg-overlay" AND NOT DEFINED VCPKG_OVERLAY_PORTS)
+    set(VCPKG_OVERLAY_PORTS "${CMAKE_CURRENT_LIST_DIR}/vcpkg-overlay"
+        CACHE STRING "Vcpkg overlay ports")
+endif()
+
 project(shapeshifter VERSION 0.1 LANGUAGES CXX)
 
 # C++20 required: designated initializers are used throughout the codebase
