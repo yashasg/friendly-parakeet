@@ -267,15 +267,13 @@ static entt::entity make_obstacle(entt::registry& reg,
     return obs;
 }
 
-// Helper: set up the registry with ObstacleChildren pool primed before the
-// on_destroy<ObstacleTag> signal is connected (mirrors the required production fix).
+// Helper: set up the registry with on_obstacle_destroy wired.
+// make_registry() already primes the ObstacleChildren pool before wire_obstacle_counter
+// creates the ObstacleTag pool, guaranteeing that ObstacleChildren has a lower insertion
+// index. EnTT destroy() iterates pools in reverse order, so ObstacleChildren is removed
+// LAST — still accessible when on_obstacle_destroy fires for ObstacleTag.
 static entt::registry make_obs_registry() {
     auto reg = make_registry();
-    // Prime ObstacleChildren pool BEFORE connecting on_destroy<ObstacleTag>.
-    // EnTT destroy() iterates pools in reverse insertion order; if ObstacleChildren
-    // is inserted first (lower index), it is removed LAST during destroy(), so
-    // on_obstacle_destroy can still read it when the signal fires.
-    reg.storage<ObstacleChildren>();
     reg.on_destroy<ObstacleTag>().connect<&on_obstacle_destroy>();
     return reg;
 }

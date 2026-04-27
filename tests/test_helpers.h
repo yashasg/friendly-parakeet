@@ -27,6 +27,10 @@
 // Sets up a registry with all singletons in their default state
 inline entt::registry make_registry() {
     entt::registry reg;
+    // Prime ObstacleChildren pool before wire_obstacle_counter creates the ObstacleTag
+    // pool. EnTT::destroy() iterates pools in reverse insertion order; ObstacleChildren
+    // must have a lower index so it is still accessible when on_obstacle_destroy fires.
+    reg.storage<ObstacleChildren>();
     reg.ctx().emplace<InputState>();
     reg.ctx().emplace<EventQueue>();
     reg.ctx().emplace<GameState>(GameState{
