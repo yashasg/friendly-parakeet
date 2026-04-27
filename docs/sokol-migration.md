@@ -498,8 +498,8 @@ Linux. Evaluate during implementation.
 | `.github/workflows/ci-windows.yml` | Remove SDL/SDL_ttf references |
 | `.github/workflows/ci-web.yml` | New — Emscripten build job |
 
-**Unaffected:** All ECS components, all game-logic systems (burnout, collision,
-scoring, gesture, etc.), all tests.
+**Unaffected:** All ECS components, all game-logic systems (collision,
+scoring, energy, gesture, etc.), all tests.
 
 ---
 

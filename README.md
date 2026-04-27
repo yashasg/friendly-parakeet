@@ -72,7 +72,7 @@ export VCPKG_ROOT=/path/to/vcpkg
 ```
 input -> gesture -> game_state -> song_playback -> beat_scheduler ->
 player_action -> shape_window -> player_movement -> difficulty ->
-obstacle_spawn -> scroll -> burnout -> collision -> scoring ->
+obstacle_spawn -> scroll -> collision -> scoring ->
 hp -> lifetime -> particle -> cleanup -> render -> audio
 ```
 

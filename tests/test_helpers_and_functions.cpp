@@ -173,12 +173,14 @@ TEST_CASE("ToString: Shape covers all shapes", "[ToString]") {
 }
 
 TEST_CASE("ToString: ObstacleKind covers all kinds", "[ToString]") {
-    CHECK(std::string(ToString(ObstacleKind::ShapeGate)) == "ShapeGate");
-    CHECK(std::string(ToString(ObstacleKind::LaneBlock)) == "LaneBlock");
-    CHECK(std::string(ToString(ObstacleKind::LowBar))    == "LowBar");
-    CHECK(std::string(ToString(ObstacleKind::HighBar))   == "HighBar");
-    CHECK(std::string(ToString(ObstacleKind::ComboGate)) == "ComboGate");
-    CHECK(std::string(ToString(ObstacleKind::SplitPath)) == "SplitPath");
+    CHECK(std::string(ToString(ObstacleKind::ShapeGate))     == "ShapeGate");
+    CHECK(std::string(ToString(ObstacleKind::LaneBlock))     == "LaneBlock");
+    CHECK(std::string(ToString(ObstacleKind::LowBar))        == "LowBar");
+    CHECK(std::string(ToString(ObstacleKind::HighBar))       == "HighBar");
+    CHECK(std::string(ToString(ObstacleKind::ComboGate))     == "ComboGate");
+    CHECK(std::string(ToString(ObstacleKind::SplitPath))     == "SplitPath");
+    CHECK(std::string(ToString(ObstacleKind::LanePushLeft))  == "LanePushLeft");
+    CHECK(std::string(ToString(ObstacleKind::LanePushRight)) == "LanePushRight");
 }
 
 TEST_CASE("ToString: TimingTier covers all tiers", "[ToString]") {

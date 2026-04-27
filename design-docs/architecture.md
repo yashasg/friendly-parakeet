@@ -4,6 +4,20 @@
 > **Guiding principle**: Data lives in flat structs. Logic lives in free functions.
 > The `entt::registry` is the single source of truth. No globals. No virtuals.
 
+> ⚠️ **HISTORICAL — partial supersession (issue #239).**
+> The "Burnout" risk/reward scoring system described in earlier sections of
+> this document has been **removed from the design**. References below to
+> `BurnoutState`, `BurnoutZone`, `BankedBurnout`, `burnout_system`,
+> `BURNOUT_*` constants, and the burnout meter HUD element are retained for
+> historical context only and are not part of the current game.
+>
+> The current scoring model is **on-beat timing × chain**: timing grade
+> (Perfect/Good/Ok/Bad) is computed from the input's distance to the beat
+> when an obstacle resolves. Shape changes that land on the beat are valid
+> play even when no obstacle is currently arriving — there is no penalty
+> for "early" shape changes. See `rhythm-design.md` and `rhythm-spec.md`
+> for the authoritative scoring and pipeline model.
+
 ---
 
 ## Table of Contents

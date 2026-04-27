@@ -4,6 +4,23 @@
 > Three implementation-ready specs for the Input System, Burnout Scoring,
 > and Obstacle Spawning & Difficulty systems.
 
+> ⚠️ **HISTORICAL — SPEC 2 superseded (issue #239).**
+> The "Burnout Scoring System" defined in SPEC 2 below has been **removed
+> from the game design**. The burnout meter, burnout zones, burnout
+> multiplier, `BurnoutState`/`BurnoutMeter` singletons, and the burnout
+> DEAD-zone game-over rule are no longer part of the game. SPEC 2 is
+> retained only for historical context.
+>
+> The current scoring model is rhythm-first: timing-vs-beat grade
+> (Perfect/Good/Ok/Bad) × chain. On-beat shape changes are valid play
+> regardless of obstacle proximity. The authoritative specs are
+> `rhythm-design.md` (design rationale, grade/multiplier table) and
+> `rhythm-spec.md` (BPM-derived constants, ECS components, system
+> pipeline, collision logic). Failure is owned by the energy bar — see
+> `energy-bar.md`. SPEC 1 (Input System) and SPEC 3 (Obstacle Spawning &
+> Difficulty) are still partially relevant; cross-check against the
+> rhythm specs before relying on numeric values here.
+
 ```
   ┌─────────────────────────────────────────────────┐
   │  SPEC 1: Input System ..................... p.1  │

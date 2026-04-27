@@ -90,7 +90,7 @@
 - [x] Perfect timing window is achievable with fast reflexes
 - [x] Score ceiling feels rewarding (high multipliers)
 - [x] No obstacles are physically impossible (always solvable)
-- [x] Burnout zones reward skilled late-play
+- [x] Timing windows reward skilled on-beat play
 
 
 ---

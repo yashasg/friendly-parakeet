@@ -5,6 +5,22 @@
 > the player experiences from first launch to 100th death.
 > If it's on screen, it's in here. If the player feels it, it's in here.
 
+> ⚠️ **PARTIAL SUPERSESSION (issue #239).**
+> All references in this document to a **burnout meter**, burnout zones
+> (Safe/Risky/Danger/Crit), burnout popups (×1.5 / ×3 / ×5 "CLUTCH" /
+> "LEGENDARY"), burnout-zone heartbeat audio, and the "Burnout intro"
+> tutorial run are **stale**. The burnout system has been removed from
+> the game design.
+>
+> What replaces it on the HUD: the **proximity ring** around shape
+> buttons (see `rhythm-spec.md` §6) is the live timing cue, and the
+> **energy bar** (see `energy-bar.md`) is the survival meter. Scoring is
+> driven by on-beat timing grades (Perfect/Good/Ok/Bad) × chain — not by
+> a fill-the-meter risk/reward. On-beat shape changes are valid play
+> even when no obstacle is arriving, so any tutorial/FTUE language that
+> teaches "wait until the meter fills" should be ignored. See the
+> rewritten Run 4 below for the current FTUE intent.
+
 ---
 
 ## TABLE OF CONTENTS
@@ -754,28 +770,29 @@ to `GamePhase::Playing`.
 
 ---
 
-### TUTORIAL RUN 4 — "Risk & Reward"
+### TUTORIAL RUN 4 — "Stay on the Beat"
 
-**Goal:** Introduce the burnout meter. Show waiting = more points.
+**Goal:** Introduce on-beat timing as the scoring axis. Show that hitting the
+shape closer to the beat gives a higher grade (Perfect > Good > Ok > Bad).
 
 ```
   WHAT'S DIFFERENT:
   ─────────────────
-  • Burnout meter NOW VISIBLE for first time
   • Score counter visible
+  • Proximity ring around the active shape button NOW VISIBLE
   • Speed: ×0.8 (still gentle)
-  • First obstacle has a HUGE burnout window (3× normal)
-  • Visual cue: burnout meter glows brighter as it fills
-  • One-time hint text: "WAIT for more points!" (6 words, our limit)
+  • Timing-grade popups appear on every clear (PERFECT / GOOD / OK / BAD)
+  • One-time hint text: "Hit on the beat!" (4 words, under the limit)
 
   WHAT PLAYER LEARNS:
   ───────────────────
-  "The meter fills up as obstacles get closer"
-  "Waiting longer = more points"
-  "But wait too long = death"
+  "The ring shrinks toward the button as the beat approaches"
+  "Pressing when the ring is tight = PERFECT"
+  "Earlier or later = lower grade"
+  "Changing shape on the beat is fine even if no obstacle is here"
 ```
 
-#### Run 4 — Frame 1: Burnout meter appears for the first time
+#### Run 4 — Frame 1: Proximity ring appears for the first time
 
 ```
   ╔══════════════════════════════════════╗
@@ -788,76 +805,54 @@ to `GamePhase::Playing`.
   ║              :                       ║
   ║              :                       ║
   ║              :                       ║
-  ║              :                       ║
   ║              ■  ← you               ║
   ║                                      ║
-  ║ ┌──── NEW! ──────────────────────┐   ║
-  ║ │ BURNOUT ░░░░░░░░░░░░░░░░░░░░░ │   ║  ← glowing border
-  ║ │     wait for more points!      │   ║     to draw attention
-  ║ └────────────────────────────────┘   ║
+  ║         "Hit on the beat!"           ║  ← one-time hint
   ║                                      ║
   ║   ┌──────┐ ┌──────┐ ┌──────┐        ║
-  ║   │  ●   │ │ ■■■  │ │  ▲   │        ║
-  ║   └──────┘ └──────┘ └──────┘        ║
+  ║   │((●)) │ │ ■■■  │ │  ▲   │        ║  ← ring around target
+  ║   └──────┘ └──────┘ └──────┘        ║     shape begins wide
   ║                                      ║
   ╚══════════════════════════════════════╝
 ```
 
-#### Run 4 — Frame 2: Burnout building, visual reward preview
+#### Run 4 — Frame 2: Ring tightens as the beat approaches
 
 ```
   ╔══════════════════════════════════════╗
-  ║  SCORE: 00,000         ×2.0 ✦       ║
-  ║                                      ║
+  ║  SCORE: 00,000                       ║
   ║                                      ║
   ║                                      ║
   ║         ╔══════════╗                 ║
   ║         ║███╭──╮███║  ← closer      ║
   ║         ╚══════════╝                 ║
   ║              :                       ║
-  ║              :                       ║
-  ║              ■  ← still waiting...   ║
-  ║                                      ║
-  ║                                      ║
-  ║ ┌────────────────────────────────┐   ║
-  ║ │ BURNOUT ░░░░░▓▓▓▓▓▓░░░░░░░░░ │   ║
-  ║ │              ↑                 │   ║
-  ║ │        ×2 = 400 pts!           │   ║  ← shows point
-  ║ └────────────────────────────────┘   ║     preview!
+  ║              ■  ← still on beat-2    ║
   ║                                      ║
   ║   ┌──────┐ ┌──────┐ ┌──────┐        ║
-  ║   │  ●   │ │ ■■■  │ │  ▲   │        ║
+  ║   │ (●)  │ │ ■■■  │ │  ▲   │        ║  ← ring tighter
   ║   └──────┘ └──────┘ └──────┘        ║
   ║                                      ║
+  ║      Ring touching the button =       ║
+  ║      press NOW for PERFECT.           ║
   ╚══════════════════════════════════════╝
 
-  The burnout meter shows a POINT PREVIEW during
-  tutorial run 4 ONLY. This makes the relationship
-  between waiting and scoring visually explicit.
-
-  After this run, the point preview disappears.
-  The player now instinctively understands.
+  The ring is the live timing cue: tight = on the beat.
+  No "fill the meter" — earlier presses are not penalised
+  more than later ones.
 ```
 
-#### Run 4 — Frame 3: Player banks at ×3 — big reward!
+#### Run 4 — Frame 3: Player presses on the beat — PERFECT!
 
 ```
   ╔══════════════════════════════════════╗
-  ║  SCORE: 00,600  ★+600★   ×3.0       ║
+  ║  SCORE: 00,300  ★+300★   chain ×2   ║
+  ║                                      ║
+  ║          ✨ PERFECT! ✨               ║
+  ║             +300 pts                  ║
   ║                                      ║
   ║                                      ║
-  ║        ✨ ★ CLUTCH! ★ ✨              ║
-  ║             ×3.0                      ║
-  ║          600 points!                  ║
-  ║                                      ║
-  ║                                      ║
-  ║                                      ║
-  ║              ●  ← switched!          ║
-  ║                                      ║
-  ║ ┌────────────────────────────────┐   ║
-  ║ │ BURNOUT ░░░░░░░░░░░░░░░░░░░░░ │   ║
-  ║ │          ^reset                │   ║
-  ║ └────────────────────────────────┘   ║
+  ║              ●  ← switched on beat   ║
   ║                                      ║
   ║   ┌──────┐ ┌──────┐ ┌──────┐        ║
   ║   │ ●●●  │ │  ■   │ │  ▲   │        ║
@@ -874,7 +869,7 @@ to `GamePhase::Playing`.
   WHAT'S DIFFERENT:
   ─────────────────
   • ALL systems active
-  • Full HUD: score, speed, burnout, all buttons
+  • Full HUD: score, energy, proximity rings, all buttons
   • Normal difficulty ramp
   • No more tutorial hints
   • This IS the real game now
@@ -884,7 +879,7 @@ to `GamePhase::Playing`.
   Run 1: Shape matching (tap button to change)
   Run 2: Shape switching (read what's coming, react)
   Run 3: Lane dodging (swipe to avoid)
-  Run 4: Burnout scoring (wait = more points)
+  Run 4: On-beat timing (Perfect/Good/Ok/Bad grades + chain)
   Run 5: Put it all together → PLAY
 ```
 

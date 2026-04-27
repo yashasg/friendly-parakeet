@@ -210,9 +210,9 @@ in `tick_fixed_systems()` and `all_systems.h`.
   ████████████████████████████████████████████████ 100% — GREEN
 ```
 
-The energy bar reuses the existing burnout bar HUD position
-(`BURNOUT_BAR_Y_N`).  If the burnout bar is kept, the energy bar
-sits directly above it.
+The energy bar occupies the HUD slot formerly held by the legacy
+burnout bar (top of the play area, beneath the score). The burnout
+bar has been removed; the energy bar is now the only survival meter.
 
 ### Flash Effect (on drain)
 
@@ -316,6 +316,6 @@ runtime tuning without recompilation.
 - **Difficulty-based energy tuning** — all difficulties use the same
   drain/recovery values for now.  Can be added later via `DifficultyConfig`.
 - **Energy powerups / pickups** — not in this feature.
-- **Energy affects scoring** — energy is purely survival.  Burnout
-  multiplier remains the scoring risk/reward mechanic.
+- **Energy affects scoring** — energy is purely survival.  Scoring
+  is owned by the rhythm timing × chain pipeline (see `rhythm-design.md`).
 - **Passive energy drain over time** — energy only changes on note events.

@@ -111,7 +111,7 @@ All game state lives in the `entt::registry` (per architecture). The following i
 | Current shape | ✅ Yes | `PlayerShape` component |
 | Current lane | ✅ Yes | `PlayerLane` component |
 | Active obstacles (entities) | ✅ Yes | Registry intact in memory |
-| Burnout zone / multiplier | ✅ Yes | `BurnoutState` / `BankedBurnout` |
+| Chain count | ✅ Yes | `ScoreState.chain_count` |
 
 **Not preserved (acceptable for v1):**
 
