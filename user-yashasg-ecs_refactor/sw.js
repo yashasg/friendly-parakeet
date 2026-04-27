@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'shapeshifter-';
-const CACHE_NAME = CACHE_PREFIX + '4d7dba0';
+const CACHE_NAME = CACHE_PREFIX + '8c3d1bd';
 const ASSETS_TO_CACHE = ['index.js', 'index.wasm', 'index.data'];
 
 self.addEventListener('install', e => {
