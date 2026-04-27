@@ -1,0 +1,88 @@
+{
+  "assignment_cast_snapshots": {
+    "repl-cast-2026-04-26T02:07:46.515Z": {
+      "created_at": "2026-04-26T02:07:46.515Z",
+      "agents": [
+        "keyser",
+        "mcmanus",
+        "fenster",
+        "hockney",
+        "verbal",
+        "scribe",
+        "ralph"
+      ],
+      "universe": "The Usual Suspects"
+    },
+    "squad-add-keaton-2026-04-26T02:09:15.781Z": {
+      "created_at": "2026-04-26T02:09:15.781Z",
+      "agents": [
+        "keyser",
+        "mcmanus",
+        "fenster",
+        "hockney",
+        "verbal",
+        "keaton",
+        "scribe",
+        "ralph"
+      ],
+      "universe": "The Usual Suspects"
+    },
+    "squad-add-kobayashi-2026-04-26T02:11:09.785Z": {
+      "created_at": "2026-04-26T02:11:09.785Z",
+      "agents": [
+        "keyser",
+        "mcmanus",
+        "fenster",
+        "hockney",
+        "verbal",
+        "keaton",
+        "kobayashi",
+        "scribe",
+        "ralph"
+      ],
+      "universe": "The Usual Suspects"
+    },
+    "squad-add-product-design-qa-2026-04-26T02:12:00.632Z": {
+      "created_at": "2026-04-26T02:12:00.632Z",
+      "agents": [
+        "keyser",
+        "mcmanus",
+        "fenster",
+        "hockney",
+        "verbal",
+        "keaton",
+        "kobayashi",
+        "edie",
+        "redfoot",
+        "saul",
+        "rabin",
+        "baer",
+        "kujan",
+        "scribe",
+        "ralph"
+      ],
+      "universe": "The Usual Suspects"
+    }
+  },
+  "universe_usage_history": [
+    {
+      "universe": "The Usual Suspects",
+      "used_at": "2026-04-26T02:07:46.515Z"
+    },
+    {
+      "universe": "The Usual Suspects",
+      "assignment_id": "squad-add-keaton-2026-04-26T02:09:15.781Z",
+      "used_at": "2026-04-26T02:09:15.781Z"
+    },
+    {
+      "universe": "The Usual Suspects",
+      "assignment_id": "squad-add-kobayashi-2026-04-26T02:11:09.785Z",
+      "used_at": "2026-04-26T02:11:09.785Z"
+    },
+    {
+      "universe": "The Usual Suspects",
+      "assignment_id": "squad-add-product-design-qa-2026-04-26T02:12:00.632Z",
+      "used_at": "2026-04-26T02:12:00.632Z"
+    }
+  ]
+}

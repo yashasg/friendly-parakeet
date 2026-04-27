@@ -13,6 +13,16 @@
 
 ---
 
+### 2026-05 — magic_enum vcpkg wiring
+
+**vcpkg package name:** `magic-enum` (hyphen); CMake target: `magic_enum::magic_enum`; find_package module: `magic_enum`.
+
+**Wiring pattern:** `find_package(magic_enum CONFIG REQUIRED)` → add to `_system_deps` SYSTEM-include loop → `target_link_libraries(shapeshifter_lib PUBLIC magic_enum::magic_enum)`. Public link on the lib propagates to both the exe and the test binary automatically — no need to repeat on downstream targets.
+
+**Validated:** vcpkg installed `magic-enum:arm64-osx@0.9.7#1`; configure + `shapeshifter_lib` build clean, zero warnings.
+
+---
+
 ### 2026-05 — Issues #170 + #174 (4-platform release + semver gate)
 
 **Scope:** Surgical fixes to `squad-release.yml` and `squad-insider-release.yml`.
@@ -113,3 +123,9 @@ build-wasm   ─┘
 **Milestones confirmed present:** `test-flight` (id=2), `AppStore` (id=3).
 
 **Key architectural note:** The 4-platform CI matrix is well-structured and consistent. The gap is entirely in the release layer — CI builds everything but the release workflow only packages one platform. This is the highest-priority finding.
+
+---
+
+**Wave Summary (2026-04-26T23:40:25Z):**
+- Diagnostics filed 6 new issues: #170 (multi-platform release, AppStore blocker), #174 (release trigger discipline), #177 (WASM triplet), #179 (macOS bundle), #187 (notarization), #197 (checkout@v4).
+- Kobayashi findings merged to `.squad/decisions.md`; no duplicates with #44–#162.

@@ -140,3 +140,10 @@ Fresh pass over CMakeLists.txt, vcpkg.json, vcpkg-overlay/, build.sh, run.sh, al
 - Diagnostics filed 3 new issues: #165 (actions@v4 EOL), #172 (WASM CI validation, test-flight blocker), #173 (CONFIGURE_DEPENDS).
 - Hockney active: #180–#186 (5 issues in current wave).
 - Findings merged to `.squad/decisions.md`.
+
+**Final Wave (2026-04-26):**
+- #180/#182/#183/#184/#186: iOS TestFlight readiness — audio session, app lifecycle, version scheme, bundle ID proposal, device matrix
+- Created `docs/ios-testflight-readiness.md` (CMake generation, signing, device setup)
+- Created `app/ios/build_number.txt` (initialized to 0)
+- Decisions merged to `decisions.md` (Status: PROPOSED, 5 user-provided blockers documented)
+- Comments posted to all five issues

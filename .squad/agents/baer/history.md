@@ -356,3 +356,54 @@ ctest --test-dir build -R "shipped beatmaps"
 - `make_registry()` must include all context singletons that production code accesses via `reg.ctx().get<T>()` (not just `find<T>()`). Missing context items cause SIGABRT via EnTT dense_map assert.
 - `cleanup_system` should only miss-tag entities that have the `Obstacle` component (scoreable). Structural entities with just `ObstacleTag` should be destroyed immediately.
 
+
+### 2026-04-26 — magic_enum enum refactor test update
+
+**Task:** Update/add tests for the DECLARE_ENUM → magic_enum refactor applied by Keaton.
+
+**Key findings:**
+- Keaton's refactor was already applied in the working tree before this session started: `audio.h`, `player.h`, `obstacle.h`, `rhythm.h` all converted from X-macro pattern to `magic_enum` (`magic_enum::enum_name`, `magic_enum::enum_count`).
+- `SFX::COUNT` sentinel was **removed** from the `SFX` enum. Count is now via `magic_enum::enum_count<SFX>()`. `SFXBank::SFX_COUNT` and `sfx_bank.cpp::SFX_COUNT` both updated.
+- `audio.h` already contains two static_asserts: `enum_count<SFX>() == 10` and `ShapeShift == 0`.
+- `test_audio_system.cpp` was gated out of the build via the CMakeLists EXCLUDE filter (reason: "symbols not yet merged").
+
+**Deliverables:**
+1. **CMakeLists.txt** — removed `test_audio_system` from the exclusion regex; file is now compiled and linked.
+2. **tests/test_audio_system.cpp** — added `kAllSfx[]` array (all 10 real SFX values, no COUNT), `kSfxCount` constant, and two static_asserts: zero-based guard (`ShapeShift == 0`) + count sync guard (`magic_enum::enum_count<SFX>() == kSfxCount`). Replaced `static_cast<SFX>(i % static_cast<int>(SFX::COUNT))` cycle with `kAllSfx[i % kSfxCount]`.
+3. **tests/test_helpers_and_functions.cpp** — extended `ToString: ObstacleKind covers all kinds` to include `LanePushLeft` and `LanePushRight` (were in the enum but missing from the test after the 8-enumerator expansion).
+
+**Test results:**
+- Focused: `[ToString],[audio]` → 7 test cases, 26 assertions, all pass
+- Full suite: 657 test cases, 2064 assertions, all pass
+
+**Guards in place:**
+- `static_assert(magic_enum::enum_count<SFX>() == kSfxCount)` in `test_audio_system.cpp` — breaks build if SFX enum diverges from explicit test array
+- `static_assert(SFX::ShapeShift == 0)` in both header and test — enforces zero-based contract
+- `kAllSfx[i % kSfxCount]` — queue-capacity test now cycles only real SFX values, never an invalid cast
+
+**Residual note:** `SFX::COUNT` is fully gone from the codebase after Keaton's refactor. Any future use of the sentinel pattern would need to use `magic_enum::enum_count<SFX>()` or `SFXBank::SFX_COUNT` instead.
+
+### 2026-04-26 — PR #43 regression test suite
+
+**Task:** Write regression tests for all 6 unresolved PR #43 review threads.
+
+**Files created/modified:**
+- `tests/test_pr43_regression.cpp` — new (350 lines), covers all 6 themes (14 test cases)
+- `tests/test_level_select_system.cpp` — 3 new test cases for Theme 3 (level select diff-Y same-tick)
+- `app/game_loop.cpp` — added `reg.storage<ObstacleChildren>()` before on_destroy connection
+
+**Key findings:**
+
+1. **All 7 fixes were already applied** in commit `d90abf9` ("fix: resolve all PR #43 review issues") — tests confirm fixes work.
+
+2. **EnTT `destroy()` reverse pool iteration bug (found during test investigation):**
+   - `entt::registry::destroy(entity)` iterates component pools in **reverse insertion order** (line 545 of registry.hpp).
+   - If `ObstacleChildren` pool is inserted after `ObstacleTag` pool (which happens in production because `on_destroy<ObstacleTag>` is connected before any obstacle is spawned), then `ObstacleChildren` is removed first during `destroy()`, before the `on_destroy<ObstacleTag>` signal fires.
+   - Result: `on_obstacle_destroy` calls `try_get<ObstacleChildren>()` → null → skips child cleanup → MeshChild entities become zombies → camera_system then does `reg.get<Position>(mc.parent)` on a destroyed entity → UB.
+   - **Fix:** Prime the `ObstacleChildren` pool with `reg.storage<ObstacleChildren>()` before connecting `on_destroy<ObstacleTag>`. This gives ObstacleChildren a lower pool index, so it survives until after the signal fires.
+
+3. **Test pattern for signal + pool ordering:** Use `make_obs_registry()` helper that primes `ObstacleChildren` then connects signal — tests both the function logic AND the correct setup pattern.
+
+4. **Catch2 + EnTT null comparisons** always require explicit parentheses: `REQUIRE((e != entt::null))` — without them, template expression SFINAE fails on `ExprLhs<entt::entity>`.
+
+5. **Theme 4 (EXIT_TOP):** After the fix in ui_button_spawner.h, Confirm half_h = (EXIT_TOP - 1)/2 = 524.5 → `pos.y = 524.5, half_h = 524.5`, covering y ∈ [0, 1049]. Exit starts at EXIT_TOP = 1050. Regions are non-overlapping.
