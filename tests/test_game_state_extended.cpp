@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
+#include "systems/ui_source_resolver.h"
 
 // ── game_state_system: SongComplete transitions ──────────────
 
@@ -248,5 +249,80 @@ TEST_CASE("game_state: transition_pending consumed on execution", "[gamestate]")
     game_state_system(reg, 0.016f);
 
     CHECK_FALSE(gs.transition_pending);
+}
+
+// ── song_complete: score and high_score visible after transition ─────────────
+// Regression: "when the song completes score and highscore dont render"
+// These tests lock down that (a) the final score is NOT reset on transition,
+// (b) both ScoreState sources resolve to non-empty strings, and (c) the
+// values match what gameplay produced.
+
+TEST_CASE("song_complete: score.score is retained (not zeroed) after enter_song_complete",
+          "[gamestate][song_complete]") {
+    auto reg = make_registry();
+    auto& score = reg.ctx().get<ScoreState>();
+    score.score      = 12345;
+    score.high_score = 10000;
+
+    auto& gs = reg.ctx().get<GameState>();
+    gs.transition_pending = true;
+    gs.next_phase = GamePhase::SongComplete;
+
+    game_state_system(reg, 0.016f);
+
+    // score.score must NOT be zeroed — it is the final value rendered on the results screen
+    CHECK(score.score == 12345);
+    CHECK(gs.phase == GamePhase::SongComplete);
+}
+
+TEST_CASE("song_complete: both score and high_score resolve to non-empty strings after transition",
+          "[gamestate][song_complete][ui]") {
+    auto reg = make_registry();
+    auto& score = reg.ctx().get<ScoreState>();
+    score.score      = 7500;
+    score.high_score = 6000;  // score beats high_score → high_score updated to 7500
+
+    auto& gs = reg.ctx().get<GameState>();
+    gs.transition_pending = true;
+    gs.next_phase = GamePhase::SongComplete;
+
+    game_state_system(reg, 0.016f);
+
+    REQUIRE(gs.phase == GamePhase::SongComplete);
+
+    // These are the exact source strings used by song_complete.json text_dynamic elements.
+    // They must resolve to non-empty strings with the correct final values so the
+    // ui_render_system can draw them.
+    auto v_score = resolve_ui_dynamic_text(reg, "ScoreState.score", "");
+    auto v_hs    = resolve_ui_dynamic_text(reg, "ScoreState.high_score", "");
+
+    REQUIRE(v_score.has_value());
+    REQUIRE(v_hs.has_value());
+    CHECK(*v_score == "7500");
+    CHECK(*v_hs    == "7500");  // updated because 7500 > 6000
+}
+
+TEST_CASE("song_complete: score is visible even when it does not set a new high score",
+          "[gamestate][song_complete][ui]") {
+    auto reg = make_registry();
+    auto& score = reg.ctx().get<ScoreState>();
+    score.score      = 3000;
+    score.high_score = 9999;  // existing high score remains higher
+
+    auto& gs = reg.ctx().get<GameState>();
+    gs.transition_pending = true;
+    gs.next_phase = GamePhase::SongComplete;
+
+    game_state_system(reg, 0.016f);
+
+    REQUIRE(gs.phase == GamePhase::SongComplete);
+
+    auto v_score = resolve_ui_dynamic_text(reg, "ScoreState.score", "");
+    auto v_hs    = resolve_ui_dynamic_text(reg, "ScoreState.high_score", "");
+
+    REQUIRE(v_score.has_value());
+    REQUIRE(v_hs.has_value());
+    CHECK(*v_score == "3000");
+    CHECK(*v_hs    == "9999");  // high_score NOT overwritten
 }
 

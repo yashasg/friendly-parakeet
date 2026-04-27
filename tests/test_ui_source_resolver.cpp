@@ -96,3 +96,58 @@ TEST_CASE("UI source resolver: all shipped Song Complete sources resolve", "[ui]
 
     CHECK(resolved_sources == 7);
 }
+
+// ── Song Complete: source binding anchors ───────────────────────────────────
+// These tests pin the exact "source" bindings used in song_complete.json so
+// that a JSON edit or resolver rename causes an immediate build-level failure
+// rather than a silent blank field on the results screen.
+
+TEST_CASE("song_complete.json: score element declares source ScoreState.score",
+          "[ui][song_complete]") {
+    std::ifstream file("content/ui/screens/song_complete.json");
+    REQUIRE(file.is_open());
+    auto screen = nlohmann::json::parse(file);
+
+    const nlohmann::json* el = nullptr;
+    for (const auto& e : screen["elements"]) {
+        if (e.value("id", "") == "score") { el = &e; break; }
+    }
+    REQUIRE(el != nullptr);
+    CHECK(el->value("type",   "") == "text_dynamic");
+    CHECK(el->value("source", "") == "ScoreState.score");
+}
+
+TEST_CASE("song_complete.json: high_score element declares source ScoreState.high_score",
+          "[ui][song_complete]") {
+    std::ifstream file("content/ui/screens/song_complete.json");
+    REQUIRE(file.is_open());
+    auto screen = nlohmann::json::parse(file);
+
+    const nlohmann::json* el = nullptr;
+    for (const auto& e : screen["elements"]) {
+        if (e.value("id", "") == "high_score") { el = &e; break; }
+    }
+    REQUIRE(el != nullptr);
+    CHECK(el->value("type",   "") == "text_dynamic");
+    CHECK(el->value("source", "") == "ScoreState.high_score");
+}
+
+TEST_CASE("song_complete: ScoreState.score source formats to decimal string",
+          "[ui][song_complete]") {
+    // Verify the default (empty) format path used by song_complete.json elements
+    // yields a plain decimal string — not nullopt, not empty.
+    entt::registry reg;
+    auto& score = reg.ctx().emplace<ScoreState>();
+    score.score      = 9750;
+    score.high_score = 8500;
+
+    auto v_score = resolve_ui_dynamic_text(reg, "ScoreState.score", "");
+    auto v_hs    = resolve_ui_dynamic_text(reg, "ScoreState.high_score", "");
+
+    REQUIRE(v_score.has_value());
+    REQUIRE(v_hs.has_value());
+    CHECK(*v_score == "9750");
+    CHECK(*v_hs    == "8500");
+    CHECK_FALSE(v_score->empty());
+    CHECK_FALSE(v_hs->empty());
+}

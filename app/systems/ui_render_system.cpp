@@ -16,10 +16,13 @@
 #include "../components/ui_state.h"
 #include "../components/ui_element.h"
 #include "ui_loader.h"
+#include "ui_source_resolver.h"
 #include <raylib.h>
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <string>
+#include <utility>
 
 // ── 2D shape drawing (flat, screen-space) ────────────────────
 
@@ -535,7 +538,16 @@ void ui_render_system(entt::registry& reg, float /*alpha*/) {
                 c.a = static_cast<uint8_t>(anim->alpha_min +
                     static_cast<int>(pulse * (anim->alpha_max - anim->alpha_min)));
             }
-            text_draw(text_ctx, text.text, pos.x, pos.y, text.font_size,
+            const char* draw_str = text.text;
+            std::string resolved;
+            if (auto* dyn = reg.try_get<UIDynamicText>(entity)) {
+                auto v = resolve_ui_dynamic_text(reg, dyn->source, dyn->format);
+                if (v.has_value()) {
+                    resolved = std::move(*v);
+                    draw_str = resolved.c_str();
+                }
+            }
+            text_draw(text_ctx, draw_str, pos.x, pos.y, text.font_size,
                       c.r, c.g, c.b, c.a, text.align);
         }
     }
@@ -553,7 +565,16 @@ void ui_render_system(entt::registry& reg, float /*alpha*/) {
             }
             DrawRectangleRounded({pos.x, pos.y, btn.w, btn.h}, btn.corner_radius, 4, btn.bg);
             DrawRectangleRoundedLinesEx({pos.x, pos.y, btn.w, btn.h}, btn.corner_radius, 4, 1.5f, btn.border);
-            text_draw(text_ctx, btn.text, pos.x + btn.w / 2.0f, pos.y + 12.0f,
+            const char* draw_str = btn.text;
+            std::string resolved;
+            if (auto* dyn = reg.try_get<UIDynamicText>(entity)) {
+                auto v = resolve_ui_dynamic_text(reg, dyn->source, dyn->format);
+                if (v.has_value()) {
+                    resolved = std::move(*v);
+                    draw_str = resolved.c_str();
+                }
+            }
+            text_draw(text_ctx, draw_str, pos.x + btn.w / 2.0f, pos.y + 12.0f,
                       btn.font_size, tc.r, tc.g, tc.b, tc.a, TextAlign::Center);
         }
     }

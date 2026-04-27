@@ -26,6 +26,8 @@
 #include "gameobjects/shape_obstacle.h"
 #include "platform_display.h"
 #include "util/settings_persistence.h"
+#include "components/high_score.h"
+#include "util/high_score_persistence.h"
 
 #include <raylib.h>
 #include <algorithm>
@@ -87,6 +89,14 @@ void game_loop_init(entt::registry& reg,
         SettingsState settings;
         settings::load_settings(settings, settings::get_settings_file_path());
         reg.ctx().emplace<SettingsState>(settings);
+    }
+
+    // High scores — load from disk; default values apply when no file exists.
+    {
+        HighScoreState hs;
+        high_score::load_high_scores(hs, high_score::get_high_scores_file_path());
+        reg.ctx().emplace<HighScoreState>(hs);
+        reg.ctx().emplace<HighScorePersistence>();
     }
 
     // Cameras + render targets + GPU meshes
