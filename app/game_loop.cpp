@@ -58,6 +58,8 @@ void game_loop_init(entt::registry& reg,
     }
     SetTargetFPS(60);
     InitAudioDevice();
+    sfx_bank_init(reg);
+    sfx_playback_backend_init(reg);
     TraceLog(LOG_INFO, "SHAPESHIFTER v%s", SHAPESHIFTER_VERSION);
 
     // Text rendering
@@ -241,6 +243,7 @@ void game_loop_shutdown(entt::registry& reg) {
     }
     camera::shutdown(reg);
     text_shutdown(reg.ctx().get<TextContext>());
+    sfx_bank_unload(reg);
     CloseAudioDevice();
     CloseWindow();
 }

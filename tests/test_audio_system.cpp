@@ -96,3 +96,41 @@ TEST_CASE("audio_system: clears queue without backend in headless mode", "[audio
 
     CHECK(queue.count == 0);
 }
+
+TEST_CASE("sfx lifecycle: production backend is callable without audio hardware", "[audio]") {
+    auto reg = make_registry();
+
+    sfx_bank_init(reg);
+    sfx_playback_backend_init(reg);
+
+    auto* bank = reg.ctx().find<SFXBank>();
+    auto* backend = reg.ctx().find<SFXPlaybackBackend>();
+    REQUIRE(bank != nullptr);
+    REQUIRE(backend != nullptr);
+    REQUIRE(backend->dispatch != nullptr);
+    CHECK(backend->user_data == &reg);
+
+    auto& queue = reg.ctx().get<AudioQueue>();
+    audio_push(queue, SFX::GameStart);
+    audio_system(reg);
+
+    CHECK(queue.count == 0);
+
+    sfx_bank_unload(reg);
+    CHECK_FALSE(bank->loaded);
+}
+
+TEST_CASE("sfx lifecycle: injected playback backend is preserved", "[audio]") {
+    auto reg = make_registry();
+    BackendRecorder recorder;
+    reg.ctx().emplace<SFXPlaybackBackend>(backend_for(recorder));
+
+    sfx_playback_backend_init(reg);
+
+    auto& queue = reg.ctx().get<AudioQueue>();
+    audio_push(queue, SFX::Crash);
+    audio_system(reg);
+
+    REQUIRE(recorder.calls.size() == 1);
+    CHECK(recorder.calls[0] == SFX::Crash);
+}

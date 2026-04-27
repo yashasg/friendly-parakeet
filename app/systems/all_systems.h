@@ -59,6 +59,9 @@ void game_render_system(entt::registry& reg, float alpha);
 void ui_render_system(entt::registry& reg, float alpha);
 
 // Audio (no dt needed)
+void sfx_bank_init(entt::registry& reg);
+void sfx_playback_backend_init(entt::registry& reg);
+void sfx_bank_unload(entt::registry& reg);
 void audio_system(entt::registry& reg);
 
 // Haptics (no dt needed) — drains HapticQueue; gating is at push time via haptics_enabled
