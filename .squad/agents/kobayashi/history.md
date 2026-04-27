@@ -13,6 +13,33 @@
 
 ---
 
+### 2026-04-27 — PR #43 CI failure triage and resolution
+
+**Scope:** Coordinated verification and resolution of all 4-platform CI failures on PR #43 (`user/yashasg/ecs_refactor`, HEAD `95031c07`).
+
+**Failure families diagnosed (from CI job logs 73182280813/414/504/515):**
+
+| Family | Files | Platforms | Root cause |
+|---|---|---|---|
+| Bar miss energy drain | `test_collision_system.cpp:286-301` | All 4 | After #280 moved miss energy drain from `collision_system` to `scoring_system`, two bar-miss tests were left calling only `collision_system` — the scoring side-effect (energy drain, flash_timer) was never exercised. |
+| PR43 child cleanup | `test_pr43_regression.cpp:297-298,319` | All 4 | `make_registry()` called `wire_obstacle_counter()` which registered the `ObstacleTag` pool (via `on_construct<ObstacleTag>`) with a lower index than `ObstacleChildren`. EnTT `destroy()` iterates pools in reverse insertion order, so `ObstacleChildren` was removed first — `on_obstacle_destroy` found `try_get<ObstacleChildren>` null and silently skipped child cleanup. |
+| beat_log Windows | `test_beat_log_system.cpp:98,110,164` | Windows only | `make_open_log()` opened `"/dev/null"` unconditionally; on Windows this path does not exist, `fopen` returns null, `beat_log_system` bailed early leaving `last_logged_beat == -1`. |
+
+**Fixes landed (all 3 authored by yashasg / Co-authored Copilot):**
+- `dca7664` — add `scoring_system(reg, 0.016f)` call after `collision_system` in both bar-miss tests
+- `c6ca0e8` — `#ifdef _WIN32` guard in `make_open_log()` to use `"NUL"` on Windows
+- `b0569a6` — `reg.storage<ObstacleChildren>()` added as the **first line** of `make_registry()`, before `wire_obstacle_counter()`, ensuring ObstacleChildren always has a lower pool index than ObstacleTag
+
+**Local validation:** `./build/shapeshifter_tests "~[bench]"` → `All tests passed (2390 assertions in 733 test cases)`.
+
+**CI state at handoff:** New 4-platform runs on `b0569a6c` / `a269665b` are `in_progress` (runs 25011375644, 25011375674, 25011375650, 25011375691). No duplicate reruns issued — new commits already triggered fresh checks automatically.
+
+**Expected outcome:** All 4 platform checks (Linux, macOS, WASM, Windows) PASS. No remaining failures.
+
+**Key lesson:** `wire_obstacle_counter()` in the shared test helper registers the `ObstacleTag` pool as a side effect. Any pool that `on_obstacle_destroy` must read must be primed (`reg.storage<T>()`) in the base `make_registry()` **before** `wire_obstacle_counter()` is called — not in a derived helper or after the fact.
+
+---
+
 ### 2026-05 — Issue #272 CMake EXCLUDE REGEX revision (Keyser review)
 
 **Scope:** Reviewer Keyser approved the #272 functional split but flagged a single build-wiring defect: `CMakeLists.txt:368` EXCLUDE REGEX contained `test_gesture_routing_split`, silently omitting the 7 new `[issue272]` tests from the `shapeshifter_tests` binary.
