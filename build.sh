@@ -64,8 +64,11 @@ if [[ "${CI:-}" == "true" ]] && [[ -d build/vcpkg_installed ]] && [[ -f build/CM
         CMAKE_ARGS+=("-DVCPKG_MANIFEST_INSTALL=OFF")
         echo "vcpkg packages found in cache and manifest unchanged, skipping vcpkg install."
     else
+        CMAKE_ARGS+=("-DVCPKG_MANIFEST_INSTALL=ON")
         echo "vcpkg cache present but manifest changed or stamp missing; running full vcpkg install."
     fi
+else
+    CMAKE_ARGS+=("-DVCPKG_MANIFEST_INSTALL=ON")
 fi
 
 cmake "${CMAKE_ARGS[@]}"

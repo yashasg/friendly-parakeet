@@ -146,6 +146,8 @@ TEST_CASE("MeshChild: height stores OBSTACLE_3D_HEIGHT for ShapeGate side slabs"
 // button; it sits on the Exit button's inclusive upper edge.
 // ═══════════════════════════════════════════════════════════════════════
 
+#ifndef PLATFORM_WEB
+
 // EXIT_TOP is EXIT_CENTER_Y - EXIT_H/2 = 1075 - 25 = 1050.
 // These values mirror ui_button_spawner.h.
 static constexpr float EXIT_H          = 50.0f;
@@ -159,7 +161,6 @@ static entt::entity find_button_by_kind(entt::registry& reg, MenuActionKind kind
     return entt::null;
 }
 
-#ifndef PLATFORM_WEB
 TEST_CASE("title hitbox: tap at EXIT_TOP triggers Exit, not Confirm",
           "[title][hitbox][pr43]") {
     auto reg = make_registry();
