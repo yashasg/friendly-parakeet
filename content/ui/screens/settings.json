@@ -1,0 +1,114 @@
+{
+  "screen": "settings",
+  "viewport": { "width": 720, "height": 1280 },
+  "overlay": {
+    "color": [0, 0, 0, 160]
+  },
+  "elements": [
+    {
+      "id": "settings_title",
+      "type": "text",
+      "text": "SETTINGS",
+      "x_n": 0.5,
+      "y_n": 0.313,
+      "font_size": "large",
+      "align": "center",
+      "color": [80, 180, 255, 255]
+    },
+    {
+      "id": "audio_offset_label",
+      "type": "text",
+      "text": "Audio Offset",
+      "x_n": 0.2,
+      "y_n": 0.398,
+      "font_size": "medium",
+      "align": "left",
+      "color": [200, 200, 200, 255]
+    },
+    {
+      "id": "audio_offset_minus",
+      "type": "button",
+      "text": "-",
+      "action": "audio_offset_minus",
+      "x_n": 0.25,
+      "y_n": 0.438,
+      "w_n": 0.1,
+      "h_n": 0.06,
+      "bg_color": [60, 60, 100, 255],
+      "border_color": [120, 180, 255, 255],
+      "text_color": [200, 230, 255, 255],
+      "font_size": "medium"
+    },
+    {
+      "id": "audio_offset_display",
+      "type": "text_dynamic",
+      "source": "SettingsState.audio_offset_ms",
+      "format": "signed_ms",
+      "x_n": 0.5,
+      "y_n": 0.438,
+      "font_size": "medium",
+      "align": "center",
+      "color": [150, 200, 255, 255]
+    },
+    {
+      "id": "audio_offset_plus",
+      "type": "button",
+      "text": "+",
+      "action": "audio_offset_plus",
+      "x_n": 0.65,
+      "y_n": 0.438,
+      "w_n": 0.1,
+      "h_n": 0.06,
+      "bg_color": [60, 60, 100, 255],
+      "border_color": [120, 180, 255, 255],
+      "text_color": [200, 230, 255, 255],
+      "font_size": "medium"
+    },
+    {
+      "id": "haptics_toggle",
+      "type": "button",
+      "text": "HAPTICS: ON",
+      "text_source": "SettingsState.haptics_enabled",
+      "format": "haptics_button",
+      "action": "haptics_toggle",
+      "x_n": 0.211,
+      "y_n": 0.563,
+      "w_n": 0.578,
+      "h_n": 0.078,
+      "bg_color": [60, 100, 60, 255],
+      "border_color": [120, 255, 120, 255],
+      "text_color": [200, 255, 200, 255],
+      "font_size": "medium"
+    },
+    {
+      "id": "reduce_motion_toggle",
+      "type": "button",
+      "text": "MOTION: OFF",
+      "text_source": "SettingsState.reduce_motion",
+      "format": "motion_button",
+      "action": "reduce_motion_toggle",
+      "x_n": 0.211,
+      "y_n": 0.688,
+      "w_n": 0.578,
+      "h_n": 0.078,
+      "bg_color": [100, 60, 60, 255],
+      "border_color": [255, 150, 150, 255],
+      "text_color": [255, 210, 210, 255],
+      "font_size": "medium"
+    },
+    {
+      "id": "close_button",
+      "type": "button",
+      "text": "BACK",
+      "action": "settings_back",
+      "x_n": 0.361,
+      "y_n": 0.813,
+      "w_n": 0.278,
+      "h_n": 0.078,
+      "bg_color": [80, 80, 80, 255],
+      "border_color": [180, 180, 180, 255],
+      "text_color": [220, 220, 220, 255],
+      "font_size": "medium"
+    }
+  ]
+}

@@ -130,23 +130,16 @@ void player_input_system(entt::registry& reg, float /*dt*/) {
         // GoEvents: lane changes and jump/slide
         for (int i = 0; i < eq.go_count; ++i) {
             auto dir = eq.goes[i].dir;
-            if (dir == Direction::Left && lane.current > 0) {
-                lane.target = lane.current - 1;
-                lane.lerp_t = 0.0f;
-                {
-                    auto* hq = reg.ctx().find<HapticQueue>();
-                    auto* st = reg.ctx().find<SettingsState>();
-                    if (hq) haptic_push(*hq, !st || st->haptics_enabled, HapticEvent::LaneSwitch);
-                }
-                auto target = find_nearest_unscored(ppos.y, [](ObstacleKind k) {
-                    return k == ObstacleKind::LaneBlock ||
-                           k == ObstacleKind::ComboGate ||
-                           k == ObstacleKind::SplitPath;
-                });
-                bank_burnout(target, ppos.y);
-            }
-            if (dir == Direction::Right && lane.current < constants::LANE_COUNT - 1) {
-                lane.target = lane.current + 1;
+
+            // Determine delta: -1 for Left, +1 for Right, 0 if at boundary.
+            int8_t delta = 0;
+            if (dir == Direction::Left  && lane.current > 0)
+                delta = -1;
+            else if (dir == Direction::Right && lane.current < constants::LANE_COUNT - 1)
+                delta = 1;
+
+            if (delta != 0) {
+                lane.target = lane.current + delta;
                 lane.lerp_t = 0.0f;
                 {
                     auto* hq = reg.ctx().find<HapticQueue>();

@@ -41,6 +41,14 @@ struct UIOverlay {
     Color color = {0, 0, 0, 128};
 };
 
+// Optional: dynamic text source. Attached alongside UIText or UIButton
+// to override the static `text` field at render time by resolving
+// `source` (and applying `format`) through ui_source_resolver.
+struct UIDynamicText {
+    char source[64] = {};
+    char format[24] = {};
+};
+
 // Optional: pulsing alpha animation.
 struct UIAnimation {
     float   speed = 1.0f;

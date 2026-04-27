@@ -36,6 +36,15 @@
       }
     },
     {
+      "id": "energy_label",
+      "type": "text",
+      "text": "ENERGY",
+      "x_n": 0.014, "y_n": 0.582,
+      "font_size": "small",
+      "align": "left",
+      "color": [180, 200, 220, 220]
+    },
+    {
       "id": "lane_divider",
       "type": "line",
       "y_n": 0.875,

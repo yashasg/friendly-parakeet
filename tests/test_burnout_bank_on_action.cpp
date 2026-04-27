@@ -185,38 +185,46 @@ TEST_CASE("bank_on_action: LanePush does not contribute to chain, popup, or best
 }
 
 // ── AC#5: First-commit-locks for ComboGate ────────────────────────────────────
+// ComboGate is ideal: player_input_system banks it on BOTH ButtonPressEvent
+// (shape press) AND GoEvent (lane swipe), so both paths share the same lock.
+// This test drives the system with real events — no manual BankedBurnout emplace.
 
-TEST_CASE("bank_on_action: first-commit-locks — early press is not overwritten",
+TEST_CASE("bank_on_action: first-commit-locks — shape press at Safe preserved after lane swipe at Danger",
           "[burnout_bank][first_commit_locks]") {
     auto reg = make_registry();
     make_player(reg);
 
-    // ComboGate at dist=600 when the first press happens
-    auto gate = make_combo_gate(reg, Shape::Circle, /*blocked_mask=*/0b010, constants::PLAYER_Y - 600.0f);
+    // Gate at dist=600 → Safe zone (ZONE_SAFE_MIN=500 < 600 < ZONE_SAFE_MAX=700)
+    auto gate = make_combo_gate(reg, Shape::Circle, /*blocked_mask=*/0b010,
+                                constants::PLAYER_Y - 600.0f);
 
-    // First press at dist=600 → Safe
+    auto& eq = reg.ctx().get<EventQueue>();
+
+    // ── Pass 1: ButtonPressEvent at dist=600 (Safe) ───────────────────────────
+    auto btn = make_shape_button(reg, Shape::Circle);
+    eq.push_press(btn);
+    player_input_system(reg, 0.016f);
+    // player_input_system clears eq.press_count after processing
+
+    REQUIRE(reg.any_of<BankedBurnout>(gate));
     {
-        float dist  = 600.0f;
-        float scale = reg.ctx().get<DifficultyConfig>().burnout_window_scale;
-        auto sample = compute_burnout_for_distance(dist, scale);
-        float mult  = multiplier_for_zone(sample.zone);
-        reg.emplace<BankedBurnout>(gate, mult, sample.zone);
+        auto& b = reg.get<BankedBurnout>(gate);
+        CHECK(b.zone == BurnoutZone::Safe);
+        CHECK_THAT(b.multiplier, Catch::Matchers::WithinAbs(constants::MULT_SAFE, 0.01f));
     }
 
-    // Simulate a second press at dist=200 → Danger — first-commit-locks must prevent overwrite
-    {
-        if (!reg.any_of<BankedBurnout>(gate)) {
-            float dist  = 200.0f;
-            float scale = reg.ctx().get<DifficultyConfig>().burnout_window_scale;
-            auto sample = compute_burnout_for_distance(dist, scale);
-            float mult  = multiplier_for_zone(sample.zone);
-            reg.emplace<BankedBurnout>(gate, mult, sample.zone);
-        }
-        // Already banked → no-op (this is what the system enforces)
-    }
+    // ── Advance gate to dist=200 (Danger zone: ZONE_DANGER_MIN=140 < 200 < ZONE_RISKY_MIN=300)
+    reg.get<Position>(gate).y = constants::PLAYER_Y - 200.0f;
 
+    // ── Pass 2: GoEvent (lane swipe) at dist=200 (Danger) ─────────────────────
+    // GoEvent also triggers bank_burnout on ComboGate; lock must refuse overwrite.
+    eq.push_go(Direction::Right);
+    player_input_system(reg, 0.016f);
+
+    // Safe bank must survive — this assertion fails if the first-commit-lock guard
+    // (reg.any_of<BankedBurnout>(target)) is removed from player_input_system.
+    REQUIRE(reg.any_of<BankedBurnout>(gate));
     auto& banked = reg.get<BankedBurnout>(gate);
-    // Must still be the Safe-tier multiplier
     CHECK(banked.zone == BurnoutZone::Safe);
     CHECK_THAT(banked.multiplier, Catch::Matchers::WithinAbs(constants::MULT_SAFE, 0.01f));
 }

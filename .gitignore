@@ -1,4 +1,5 @@
 build/
+build-*/
 vcpkg_installed/
 .DS_Store
 *.o
@@ -9,6 +10,29 @@ session_*.log
 tools/__pycache__/
 content/audio-web/
 .cache/
+.copilot/
 excalidraw.log
 tasks/
 bench_logger.log
+
+# Local run/test artifacts
+/build_output.txt
+/test_output.txt
+/test_empty_hs.cpp
+/high_scores.json
+/haptics_enabled*
+
+# Generated diagnostics and one-off delivery notes
+/BOARD_CLEANUP_REPORT.md
+/DELIVERABLES.md
+/ISSUE_*_CHANGES.md
+/ISSUE_*_DELIVERABLES.md
+/ISSUE_*_SOLUTION.md
+/ISSUE_*_VALIDATION.md
+/PERSISTENCE_TESTING.md
+/RALPH_FINAL_REPORT.md
+/WASM_TEST_*.md
+/WASM_TEST_*.txt
+
+# Root-level beatmap exports; shipped beatmaps live under content/beatmaps/.
+/*_beatmap.json

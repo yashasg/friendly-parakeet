@@ -79,6 +79,7 @@ void game_loop_init(entt::registry& reg,
     reg.ctx().emplace<HapticQueue>();
     reg.ctx().emplace<LevelSelectState>();
     reg.ctx().emplace<EnergyState>();
+    reg.ctx().emplace<GameOverState>();
     reg.ctx().emplace<SongResults>();
 
     // Settings — load from disk; default values apply when no file exists.

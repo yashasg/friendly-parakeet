@@ -18,6 +18,15 @@ void energy_system(entt::registry& reg, float dt) {
         auto& gs = reg.ctx().get<GameState>();
         gs.transition_pending = true;
         gs.next_phase = GamePhase::GameOver;
+        // Fallback cause: if nothing more specific was recorded by a
+        // collision (e.g. energy decayed through some non-collision path
+        // in future systems), surface "ENERGY DEPLETED" rather than
+        // showing a blank reason.
+        if (auto* gos = reg.ctx().find<GameOverState>()) {
+            if (gos->cause == DeathCause::None) {
+                gos->cause = DeathCause::EnergyDepleted;
+            }
+        }
         song->finished = true;
         song->playing  = false;
         return;

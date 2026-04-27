@@ -1,0 +1,126 @@
+{
+  "screen": "tutorial",
+  "elements": [
+    {
+      "id": "tutorial_title",
+      "type": "text",
+      "text": "QUICK START",
+      "x_n": 0.5, "y_n": 0.16,
+      "font_size": "large",
+      "align": "center",
+      "color": [80, 180, 255, 255]
+    },
+    {
+      "id": "tutorial_section_match",
+      "type": "text",
+      "text": "1. MATCH THE SHAPE",
+      "x_n": 0.5, "y_n": 0.26,
+      "font_size": "medium",
+      "align": "center",
+      "color": [230, 230, 240, 255]
+    },
+    {
+      "id": "tutorial_demo_circle",
+      "type": "shape",
+      "shape": "circle",
+      "x_n": 0.36, "y_n": 0.34,
+      "size_n": 0.09,
+      "color": [80, 180, 255, 255]
+    },
+    {
+      "id": "tutorial_demo_square",
+      "type": "shape",
+      "shape": "square",
+      "x_n": 0.5, "y_n": 0.34,
+      "size_n": 0.09,
+      "color": [255, 200, 80, 255]
+    },
+    {
+      "id": "tutorial_demo_triangle",
+      "type": "shape",
+      "shape": "triangle",
+      "x_n": 0.64, "y_n": 0.34,
+      "size_n": 0.09,
+      "color": [100, 255, 100, 255]
+    },
+    {
+      "id": "tutorial_match_hint",
+      "type": "text",
+      "text": "BECOME THE SHAPE BEFORE IT HITS YOU",
+      "x_n": 0.5, "y_n": 0.42,
+      "font_size": "small",
+      "align": "center",
+      "color": [200, 200, 220, 255]
+    },
+    {
+      "id": "tutorial_section_dodge",
+      "type": "text",
+      "text": "2. DODGE LANES",
+      "x_n": 0.5, "y_n": 0.50,
+      "font_size": "medium",
+      "align": "center",
+      "color": [230, 230, 240, 255]
+    },
+    {
+      "id": "tutorial_dodge_desktop",
+      "type": "text",
+      "text": "USE LEFT / RIGHT ARROW KEYS",
+      "x_n": 0.5, "y_n": 0.555,
+      "font_size": "small",
+      "align": "center",
+      "color": [200, 200, 220, 255],
+      "platform_only": "desktop"
+    },
+    {
+      "id": "tutorial_dodge_web",
+      "type": "text",
+      "text": "SWIPE LEFT OR RIGHT",
+      "x_n": 0.5, "y_n": 0.555,
+      "font_size": "small",
+      "align": "center",
+      "color": [200, 200, 220, 255],
+      "platform_only": "web"
+    },
+    {
+      "id": "tutorial_section_energy",
+      "type": "text",
+      "text": "3. KEEP YOUR ENERGY",
+      "x_n": 0.5, "y_n": 0.63,
+      "font_size": "medium",
+      "align": "center",
+      "color": [230, 230, 240, 255]
+    },
+    {
+      "id": "tutorial_energy_hint",
+      "type": "text",
+      "text": "MISSES DRAIN THE BAR ON THE LEFT",
+      "x_n": 0.5, "y_n": 0.685,
+      "font_size": "small",
+      "align": "center",
+      "color": [200, 200, 220, 255]
+    },
+    {
+      "id": "tutorial_hint",
+      "type": "text",
+      "text": "CLEAR A SONG TO SET A HIGH SCORE",
+      "x_n": 0.5, "y_n": 0.76,
+      "font_size": "small",
+      "align": "center",
+      "color": [170, 170, 190, 255]
+    },
+    {
+      "id": "continue_button",
+      "type": "button",
+      "text": "START",
+      "action": "confirm",
+      "x_n": 0.25, "y_n": 0.84,
+      "w_n": 0.5, "h_n": 0.08,
+      "corner_radius": 0.2,
+      "bg_color": [40, 90, 130, 255],
+      "border_color": [80, 180, 255, 255],
+      "text_color": [240, 250, 255, 255],
+      "font_size": "medium",
+      "animation": { "type": "pulse", "speed": 2.0, "alpha_range": [160, 255] }
+    }
+  ]
+}

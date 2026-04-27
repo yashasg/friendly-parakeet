@@ -27,6 +27,14 @@
       "color": [200, 200, 100, 255]
     },
     {
+      "id": "reason",
+      "type": "text_dynamic",
+      "source": "GameOverState.reason",
+      "x_n": 0.5, "y_n": 0.500,
+      "font_size": "medium", "align": "center",
+      "color": [255, 220, 220, 255]
+    },
+    {
       "id": "restart_button",
       "type": "button", "text": "RESTART", "action": "restart",
       "x_n": 0.3056, "y_n": 0.6797,

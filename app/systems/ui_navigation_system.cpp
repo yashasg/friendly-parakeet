@@ -52,11 +52,24 @@ static void destroy_ui_elements(entt::registry& reg) {
 }
 
 // Spawn UI element entities from JSON screen definition.
+// Returns true if this element should be skipped on the current build platform.
+// Mirrors the runtime check used by render_button() in ui_render_system.cpp.
+static bool skip_for_platform(const nlohmann::json& el) {
+    if (!el.contains("platform_only")) return false;
+    auto plat = el.value("platform_only", "");
+    #ifdef PLATFORM_WEB
+    return plat == "desktop";
+    #else
+    return plat == "web";
+    #endif
+}
+
 static void spawn_ui_elements(entt::registry& reg, const nlohmann::json& screen) {
     if (!screen.contains("elements")) return;
 
     for (auto& el : screen["elements"]) {
         auto type = el.value("type", "");
+        if (skip_for_platform(el)) continue;
         auto e = reg.create();
         reg.emplace<UIElementTag>(e);
 
@@ -64,14 +77,29 @@ static void spawn_ui_elements(entt::registry& reg, const nlohmann::json& screen)
         float py = el.value("y_n", 0.0f) * constants::SCREEN_H;
         reg.emplace<Position>(e, px, py);
 
-        if (type == "text") {
+        if (type == "text" || type == "text_dynamic") {
             UIText t{};
             auto s = el.value("text", "");
             std::snprintf(t.text, sizeof(t.text), "%s", s.c_str());
             t.font_size = json_font(el.value("font_size", "medium"));
             t.align = json_align(el.value("align", "left"));
-            t.color = json_color(el["color"]);
+            // Dynamic text elements may omit `color` (resolved at draw
+            // time) but a sensible default keeps the layout legible.
+            if (el.contains("color")) {
+                t.color = json_color(el["color"]);
+            } else {
+                t.color = {255, 255, 255, 255};
+            }
             reg.emplace<UIText>(e, t);
+
+            if (type == "text_dynamic" && el.contains("source")) {
+                UIDynamicText dt{};
+                auto src = el.value("source", "");
+                auto fmt = el.value("format", "");
+                std::snprintf(dt.source, sizeof(dt.source), "%s", src.c_str());
+                std::snprintf(dt.format, sizeof(dt.format), "%s", fmt.c_str());
+                reg.emplace<UIDynamicText>(e, dt);
+            }
 
             if (el.contains("animation")) {
                 UIAnimation anim{};
@@ -92,6 +120,18 @@ static void spawn_ui_elements(entt::registry& reg, const nlohmann::json& screen)
             btn.border = json_color(el["border_color"]);
             btn.text_color = json_color(el["text_color"]);
             reg.emplace<UIButton>(e, btn);
+
+            // Optional: bind the button face text to a runtime source
+            // (e.g. "HAPTICS: ON/OFF") so the control surface always
+            // reflects current state.
+            if (el.contains("text_source")) {
+                UIDynamicText dt{};
+                auto src = el.value("text_source", "");
+                auto fmt = el.value("format", "");
+                std::snprintf(dt.source, sizeof(dt.source), "%s", src.c_str());
+                std::snprintf(dt.format, sizeof(dt.format), "%s", fmt.c_str());
+                reg.emplace<UIDynamicText>(e, dt);
+            }
 
             if (el.contains("animation")) {
                 UIAnimation anim{};
