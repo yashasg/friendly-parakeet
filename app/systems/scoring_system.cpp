@@ -128,7 +128,7 @@ void scoring_system(entt::registry& reg, float dt) {
         reg.emplace<Color>(popup, Color{pr, pg, pb, 255});
         reg.emplace<DrawLayer>(popup, Layer::Effects);
 
-        audio_push(reg.ctx().get<AudioQueue>(), SFX::BurnoutBank);
+        audio_push(reg.ctx().get<AudioQueue>(), SFX::ScorePopup);
 
         reg.remove<Obstacle>(entity);
         reg.remove<ScoredTag>(entity);

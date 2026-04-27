@@ -9,7 +9,7 @@
 // removed, the static_assert below will fail, forcing an update here.
 namespace {
 constexpr SFX kAllSfx[] = {
-    SFX::ShapeShift, SFX::BurnoutBank, SFX::Crash,    SFX::UITap,
+    SFX::ShapeShift, SFX::Crash,    SFX::UITap,
     SFX::ChainBonus, SFX::ZoneRisky,   SFX::ZoneDanger, SFX::ZoneDead,
     SFX::ScorePopup, SFX::GameStart,
 };

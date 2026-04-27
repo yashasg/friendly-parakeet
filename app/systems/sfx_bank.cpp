@@ -33,7 +33,6 @@ constexpr int SFX_COUNT = static_cast<int>(magic_enum::enum_count<SFX>());
 
 constexpr std::array<SfxSpec, SFX_COUNT> SFX_SPECS{{
     {660.0f, 0.080f, 0.35f, ProceduralWave::Sine, 1u},       // ShapeShift
-    {523.0f, 0.110f, 0.35f, ProceduralWave::Square, 2u},     // BurnoutBank
     {180.0f, 0.220f, 0.45f, ProceduralWave::Noise, 3u},      // Crash
     {880.0f, 0.050f, 0.25f, ProceduralWave::Sine, 4u},       // UITap
     {784.0f, 0.120f, 0.35f, ProceduralWave::Sine, 5u},       // ChainBonus
