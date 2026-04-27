@@ -2,7 +2,6 @@
 #include "test_helpers.h"
 #include "components/haptics.h"
 #include "components/settings.h"
-#include "components/burnout.h"
 #include "components/player.h"
 #include "components/transform.h"
 #include "components/input_events.h"
@@ -62,41 +61,6 @@ TEST_CASE("haptic_system: no-op when queue is empty", "[haptic]") {
 TEST_CASE("haptic_system: safe when HapticQueue absent from context", "[haptic]") {
     entt::registry reg;  // bare registry — no HapticQueue
     haptic_system(reg);  // must not crash
-}
-
-// ── burnout_system wiring (no-op since #239) ─────────────────────────────────
-
-TEST_CASE("burnout haptic: no haptic emitted — burnout_system is a no-op", "[haptic]") {
-    auto reg = make_registry();
-    make_player(reg);
-    // Obstacle at Risky-zone distance — burnout_system must not push any haptic
-    make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y - 400.0f);
-
-    burnout_system(reg, 0.016f);
-
-    CHECK(reg.ctx().get<HapticQueue>().count == 0);
-}
-
-TEST_CASE("burnout haptic: no haptic emitted for close obstacle — burnout_system is a no-op",
-          "[haptic]") {
-    auto reg = make_registry();
-    make_player(reg);
-    make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y - 50.0f);
-
-    burnout_system(reg, 0.016f);
-
-    CHECK(reg.ctx().get<HapticQueue>().count == 0);
-}
-
-TEST_CASE("burnout haptic: no haptic emitted even when haptics_enabled=true", "[haptic]") {
-    auto reg = make_registry();
-    reg.ctx().get<SettingsState>().haptics_enabled = true;
-    make_player(reg);
-    make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y - 100.0f);
-
-    burnout_system(reg, 0.016f);
-
-    CHECK(reg.ctx().get<HapticQueue>().count == 0);
 }
 
 // ── game_state_system haptic wiring ──────────────────────────────────────────

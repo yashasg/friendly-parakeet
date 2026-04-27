@@ -35,18 +35,6 @@ constexpr float OBSTACLE_3D_HEIGHT = 20.0f;
 constexpr float LOWBAR_3D_HEIGHT   = 30.0f;
 constexpr float HIGHBAR_3D_HEIGHT  = 10.0f;
 
-// ── Burnout Zones (distance from player, in px) ──
-constexpr float ZONE_SAFE_MAX     = 700.0f;
-constexpr float ZONE_SAFE_MIN     = 500.0f;
-constexpr float ZONE_RISKY_MIN    = 300.0f;
-constexpr float ZONE_DANGER_MIN   = 140.0f;
-
-// ── Burnout Multipliers ───────────────────────────
-constexpr float MULT_SAFE         = 1.0f;
-constexpr float MULT_RISKY        = 1.5f;
-constexpr float MULT_DANGER       = 3.0f;
-constexpr float MULT_CLUTCH       = 5.0f;
-
 // ── Scoring ───────────────────────────────────────
 constexpr int   PTS_SHAPE_GATE    = 200;
 constexpr int   PTS_LANE_BLOCK    = 100;
@@ -62,7 +50,6 @@ constexpr int   CHAIN_BONUS[5]    = { 0, 0, 50, 100, 200 };
 // Retained for legacy random-spawn mode
 constexpr float SPEED_RAMP_RATE   = 0.011f;
 constexpr float SPAWN_RAMP_RATE   = 0.003f;
-constexpr float BURNOUT_SHRINK    = 0.002f;
 constexpr float INITIAL_SPAWN_INT = 1.8f;
 constexpr float MIN_SPAWN_INT     = 0.5f;
 
@@ -93,8 +80,6 @@ constexpr float MIN_SWIPE_DIST    = 50.0f;
 constexpr float MAX_SWIPE_TIME    = 0.3f;
 
 // ── UI Layout (pixel-space; retained to derive the NDC constants below and for tests) ────
-constexpr float BURNOUT_BAR_Y     = 1020.0f;
-constexpr float BURNOUT_BAR_H     = 20.0f;
 constexpr float BUTTON_Y          = 1140.0f;
 constexpr float BUTTON_W          = 140.0f;
 constexpr float BUTTON_H          = 100.0f;
@@ -118,10 +103,6 @@ constexpr float BUTTON_Y_N            = BUTTON_Y       / SCREEN_H;  // ≈ 0.891
 constexpr float BUTTON_W_N            = BUTTON_W       / SCREEN_W;  // ≈ 0.194
 constexpr float BUTTON_H_N            = BUTTON_H       / SCREEN_H;  // ≈ 0.078
 constexpr float BUTTON_SPACING_N      = BUTTON_SPACING / SCREEN_W;  // ≈ 0.083
-
-// HUD – burnout bar (NDC companions to the pixel constants above)
-constexpr float BURNOUT_BAR_Y_N       = BURNOUT_BAR_Y / SCREEN_H;   // ≈ 0.797
-constexpr float BURNOUT_BAR_H_N       = BURNOUT_BAR_H / SCREEN_H;   // ≈ 0.016
 
 // Scene – Title (shapes + text)
 constexpr float SCENE_TITLE_SHAPES_Y_N       =  400.0f / SCREEN_H;  // ≈ 0.313

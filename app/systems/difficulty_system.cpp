@@ -9,7 +9,7 @@ void difficulty_system(entt::registry& reg, float dt) {
     if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
 
     // In rhythm mode, scroll speed is BPM-derived (SongState.scroll_speed).
-    // Don't ramp speed/spawn/burnout — the beatmap controls difficulty.
+    // Don't ramp speed/spawn — the beatmap controls difficulty.
     auto* song = reg.ctx().find<SongState>();
     if (song && song->playing) return;
 
@@ -25,6 +25,4 @@ void difficulty_system(entt::registry& reg, float dt) {
     config.spawn_interval = constants::INITIAL_SPAWN_INT
         - config.elapsed * constants::SPAWN_RAMP_RATE;
     config.spawn_interval = std::max(config.spawn_interval, constants::MIN_SPAWN_INT);
-
-    config.burnout_window_scale = 1.0f / (1.0f + config.elapsed * constants::BURNOUT_SHRINK);
 }

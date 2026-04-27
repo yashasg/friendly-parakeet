@@ -95,8 +95,8 @@ void scoring_system(entt::registry& reg, float dt) {
         }
 
         for (auto& r : hit_buf) {
-            // LanePush is passive scenery — excluded from the burnout ladder:
-            // no score popup, no chain contribution, no best_burnout update.
+            // LanePush is passive scenery — excluded from the scoring ladder:
+            // no score popup, no chain contribution.
             if (r.obs.kind == ObstacleKind::LanePushLeft ||
                 r.obs.kind == ObstacleKind::LanePushRight) {
                 reg.remove<Obstacle>(r.e);
@@ -104,8 +104,6 @@ void scoring_system(entt::registry& reg, float dt) {
                 continue;
             }
 
-            // Scoring uses a flat 1.0× base — burnout multipliers removed (#239).
-            float burnout_mult = 1.0f;
             float timing_mult  = r.has_timing ? timing_multiplier(r.timing.tier) : 1.0f;
 
             // Energy adjustment based on timing
@@ -130,7 +128,7 @@ void scoring_system(entt::registry& reg, float dt) {
             }
 
             int points = static_cast<int>(
-                std::floor(r.obs.base_points * timing_mult * burnout_mult));
+                std::floor(r.obs.base_points * timing_mult));
 
             // Chain bonus
             score.chain_count++;

@@ -10,7 +10,6 @@
 #include "components/input_events.h"
 #include "components/game_state.h"
 #include "components/scoring.h"
-#include "components/burnout.h"
 #include "components/difficulty.h"
 #include "components/rendering.h"
 #include "components/lifetime.h"
@@ -31,7 +30,6 @@ static entt::registry make_bench_registry() {
         GamePhase::Playing, GamePhase::Playing, 0.0f, false, GamePhase::Playing, 0.0f
     });
     reg.ctx().emplace<ScoreState>();
-    reg.ctx().emplace<BurnoutState>();
     reg.ctx().emplace<DifficultyConfig>();
     reg.ctx().emplace<AudioQueue>();
     return reg;
@@ -99,27 +97,6 @@ TEST_CASE("Bench: scroll_system", "[bench]") {
         auto reg = make_bench_registry();
         spawn_obstacles(reg, 1000);
         meter.measure([&] { scroll_system(reg, DT); });
-    };
-}
-
-TEST_CASE("Bench: burnout_system", "[bench]") {
-    BENCHMARK_ADVANCED("1 obstacle")(Catch::Benchmark::Chronometer meter) {
-        auto reg = make_bench_registry();
-        make_bench_player(reg);
-        spawn_obstacles(reg, 1);
-        meter.measure([&] { burnout_system(reg, DT); });
-    };
-    BENCHMARK_ADVANCED("10 obstacles")(Catch::Benchmark::Chronometer meter) {
-        auto reg = make_bench_registry();
-        make_bench_player(reg);
-        spawn_obstacles(reg, 10);
-        meter.measure([&] { burnout_system(reg, DT); });
-    };
-    BENCHMARK_ADVANCED("100 obstacles")(Catch::Benchmark::Chronometer meter) {
-        auto reg = make_bench_registry();
-        make_bench_player(reg);
-        spawn_obstacles(reg, 100);
-        meter.measure([&] { burnout_system(reg, DT); });
     };
 }
 
@@ -240,7 +217,6 @@ TEST_CASE("Bench: full frame (typical)", "[bench]") {
             player_movement_system(reg, DT);
             difficulty_system(reg, DT);
             scroll_system(reg, DT);
-            burnout_system(reg, DT);
             collision_system(reg, DT);
             scoring_system(reg, DT);
             lifetime_system(reg, DT);
@@ -262,7 +238,6 @@ TEST_CASE("Bench: full frame (stress)", "[bench]") {
             player_movement_system(reg, DT);
             difficulty_system(reg, DT);
             scroll_system(reg, DT);
-            burnout_system(reg, DT);
             collision_system(reg, DT);
             scoring_system(reg, DT);
             lifetime_system(reg, DT);

@@ -6,7 +6,6 @@
 #include "../components/obstacle_data.h"
 #include "../components/rendering.h"
 #include "../components/scoring.h"
-#include "../components/burnout.h"
 #include "../components/rhythm.h"
 #include "../components/game_state.h"
 #include "../components/difficulty.h"

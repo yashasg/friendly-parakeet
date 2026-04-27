@@ -152,14 +152,11 @@ TEST_CASE("scoring: distance_traveled accumulates from scroll speed", "[scoring]
     CHECK(reg.ctx().get<ScoreState>().distance_traveled == 400.0f);
 }
 
-// Issue #239: on-beat shape changes must not be penalized.
-// Without any burnout component on an obstacle the scoring_system applies
-// the MULT_SAFE (1.0×) floor — identical to what a post-burnout build will do.
-TEST_CASE("scoring: no-penalty — on-beat gate scores at base points", "[scoring][no_burnout]") {
+// On-beat shape gate scores at base points (timing only, no burnout multiplier).
+TEST_CASE("scoring: no-penalty — on-beat gate scores at base points", "[scoring]") {
     auto reg = make_registry();
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<ScoredTag>(obs);
-    // No BankedBurnout — represents a shape change made on beat with no obstacle proximity
 
     scoring_system(reg, 0.0f);  // dt=0 excludes distance bonus for exact assertion
 

@@ -61,7 +61,6 @@ struct SongResults {
     int   bad_count     = 0;
     int   miss_count    = 0;
     int   max_chain     = 0;
-    float best_burnout  = 0.0f;
     int   total_notes   = 0;
 };
 

@@ -21,8 +21,6 @@ TEST_CASE("ndc: all NDC constants are in range [0, 1]", "[ndc]") {
     CHECK(constants::BUTTON_W_N                  >= 0.0f); CHECK(constants::BUTTON_W_N                  <= 1.0f);
     CHECK(constants::BUTTON_H_N                  >= 0.0f); CHECK(constants::BUTTON_H_N                  <= 1.0f);
     CHECK(constants::BUTTON_SPACING_N            >= 0.0f); CHECK(constants::BUTTON_SPACING_N            <= 1.0f);
-    CHECK(constants::BURNOUT_BAR_Y_N             >= 0.0f); CHECK(constants::BURNOUT_BAR_Y_N             <= 1.0f);
-    CHECK(constants::BURNOUT_BAR_H_N             >= 0.0f); CHECK(constants::BURNOUT_BAR_H_N             <= 1.0f);
     CHECK(constants::SCENE_TITLE_SHAPES_Y_N      >= 0.0f); CHECK(constants::SCENE_TITLE_SHAPES_Y_N      <= 1.0f);
     CHECK(constants::SCENE_TITLE_SHAPES_OFFSET_N >= 0.0f); CHECK(constants::SCENE_TITLE_SHAPES_OFFSET_N <= 1.0f);
     CHECK(constants::SCENE_TITLE_SHAPES_SIZE_N   >= 0.0f); CHECK(constants::SCENE_TITLE_SHAPES_SIZE_N   <= 1.0f);
@@ -84,15 +82,6 @@ TEST_CASE("ndc: button NDC constants round-trip to pixel constants", "[ndc]") {
                WithinAbs(constants::BUTTON_H, 0.01f));
     CHECK_THAT(constants::BUTTON_SPACING_N * static_cast<float>(constants::SCREEN_W),
                WithinAbs(constants::BUTTON_SPACING, 0.01f));
-    CHECK_THAT(constants::BURNOUT_BAR_Y_N * static_cast<float>(constants::SCREEN_H),
-               WithinAbs(constants::BURNOUT_BAR_Y, 0.01f));
-    CHECK_THAT(constants::BURNOUT_BAR_H_N * static_cast<float>(constants::SCREEN_H),
-               WithinAbs(constants::BURNOUT_BAR_H, 0.01f));
-}
-
-TEST_CASE("ndc: burnout bar is above the button row", "[ndc]") {
-    // Burnout bar sits between the game area and buttons
-    CHECK(constants::BURNOUT_BAR_Y_N < constants::BUTTON_Y_N);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -62,7 +62,6 @@ void difficulty_system(entt::registry& reg, float dt);
 void obstacle_spawn_system(entt::registry& reg, float dt);
 void scroll_system(entt::registry& reg, float dt);
 void ring_zone_log_system(entt::registry& reg, float dt);
-void burnout_system(entt::registry& reg, float dt);
 void collision_system(entt::registry& reg, float dt);
 void miss_detection_system(entt::registry& reg, float dt);
 void scoring_system(entt::registry& reg, float dt);

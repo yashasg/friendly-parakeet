@@ -10,7 +10,6 @@
 #include "components/input_events.h"
 #include "components/game_state.h"
 #include "components/scoring.h"
-#include "components/burnout.h"
 #include "components/difficulty.h"
 #include "components/rendering.h"
 #include "components/lifetime.h"
@@ -39,7 +38,6 @@ inline entt::registry make_registry() {
         GamePhase::Playing, GamePhase::Playing, 0.0f, false, GamePhase::Playing, 0.0f
     });
     reg.ctx().emplace<ScoreState>();
-    reg.ctx().emplace<BurnoutState>();
     reg.ctx().emplace<DifficultyConfig>();
     reg.ctx().emplace<AudioQueue>();
     reg.ctx().emplace<HapticQueue>();

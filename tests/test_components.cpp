@@ -66,13 +66,6 @@ TEST_CASE("components: ScoreState defaults to zero", "[components]") {
     CHECK(s.chain_count == 0);
 }
 
-TEST_CASE("components: BurnoutState defaults to no threat", "[components]") {
-    BurnoutState bs{};
-    CHECK(bs.meter == 0.0f);
-    CHECK(bs.zone == BurnoutZone::None);
-    CHECK((bs.nearest_threat == entt::null));
-}
-
 TEST_CASE("components: DifficultyConfig defaults", "[components]") {
     DifficultyConfig dc{};
     CHECK(dc.speed_multiplier == 1.0f);
@@ -92,7 +85,6 @@ TEST_CASE("ecs: make_registry creates all singletons", "[ecs]") {
     static_cast<void>(reg.ctx().get<EventQueue>());
     static_cast<void>(reg.ctx().get<GameState>());
     static_cast<void>(reg.ctx().get<ScoreState>());
-    static_cast<void>(reg.ctx().get<BurnoutState>());
     static_cast<void>(reg.ctx().get<DifficultyConfig>());
     static_cast<void>(reg.ctx().get<AudioQueue>());
     SUCCEED("all required singletons exist in registry context");

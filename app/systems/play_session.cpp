@@ -5,7 +5,6 @@
 #include "../components/transform.h"
 #include "../components/rendering.h"
 #include "../components/scoring.h"
-#include "../components/burnout.h"
 #include "../components/difficulty.h"
 #include "../components/audio.h"
 #include "../components/rhythm.h"
@@ -40,10 +39,8 @@ void setup_play_session(entt::registry& reg) {
         .scroll_speed         = constants::BASE_SCROLL_SPEED,
         .spawn_interval       = constants::INITIAL_SPAWN_INT,
         .spawn_timer          = 1.0f,
-        .burnout_window_scale = 1.0f,
         .elapsed              = 0.0f
     });
-    reg.ctx().insert_or_assign(BurnoutState{});
     reg.ctx().insert_or_assign(AudioQueue{});
 
     // Load beatmap from level selection.

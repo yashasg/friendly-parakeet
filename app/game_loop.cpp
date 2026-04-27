@@ -5,7 +5,6 @@
 #include "components/input_events.h"
 #include "components/game_state.h"
 #include "components/scoring.h"
-#include "components/burnout.h"
 #include "components/difficulty.h"
 #include "components/audio.h"
 #include "components/haptics.h"
@@ -80,7 +79,6 @@ void game_loop_init(entt::registry& reg,
         .next_phase = GamePhase::Title, .transition_alpha = 0.0f
     });
     reg.ctx().emplace<ScoreState>();
-    reg.ctx().emplace<BurnoutState>();
     reg.ctx().emplace<DifficultyConfig>();
     reg.ctx().emplace<AudioQueue>();
     reg.ctx().emplace<HapticQueue>();
