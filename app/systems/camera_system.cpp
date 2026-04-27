@@ -370,8 +370,8 @@ void ui_camera_system(entt::registry& reg, float /*dt*/) {
             Vector3 world_pos = {pos.x, 5.0f, pos.y};
             Vector2 sp = GetWorldToScreenEx(world_pos, cam,
                              constants::SCREEN_W, constants::SCREEN_H);
-            reg.emplace_or_replace<ScreenPosition>(entity,
-                ScreenPosition{sp.x, sp.y});
+            reg.get_or_emplace<ScreenPosition>(entity) =
+                ScreenPosition{sp.x, sp.y};
         }
     }
 }
