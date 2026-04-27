@@ -121,3 +121,17 @@ Implemented a focused content + small-renderer pass.
 - #168/#196/#198: Game Over reason field + Settings stateful toggle labels (Game Over reason toggle, display mode toggle) implemented and commented
 - Renderer now supports `text_dynamic` and `text_source` on all elements; score/high_score on game_over.json now render correctly
 - All test files passing; Settings toggles are renderer-ready (wiring into screen graph is separate ticket)
+
+### 2026-04-27 — #251: popup_display_system one-shot static formatting
+
+`popup_display_system` was re-snprintf'ing the grade/score text and calling `emplace_or_replace<PopupDisplay>` for every live popup every frame. After this pass:
+
+- New `init_popup_display(PopupDisplay&, ScorePopup&, Color&)` (declared in `app/systems/all_systems.h`, defined in `app/systems/popup_display_system.cpp`) formats text + font_size + base RGBA once at spawn.
+- `scoring_system.cpp` emplaces a fully-initialized `PopupDisplay` alongside `ScorePopup` at popup spawn.
+- `popup_display_system` now iterates `<PopupDisplay, Color, Lifetime>` and only mutates the per-frame alpha in place — no `emplace_or_replace`, no per-tick `snprintf`, no per-tick `TimingTier` switch.
+
+**Tests (`tests/test_popup_display_system.cpp`):** 5 new `[issue251]` cases — text-sentinel survives 3 ticks (would fail if static formatting returned), `PopupDisplay` storage size unchanged across ticks (catches `emplace_or_replace` churn), system still fades alpha after `ScorePopup` is removed (decouples display from source), direct unit checks for `init_popup_display` on grade and numeric paths. Helper updated to pre-emplace `PopupDisplay` via `init_popup_display`. All 11 cases / 33 assertions pass under `[popup_display]`.
+
+**Validation:** `popup_display_system.cpp`, `scoring_system.cpp`, and `test_popup_display_system.cpp` compile clean under `-Wall -Wextra -Werror -std=c++20` (used compile_commands flags directly). `shapeshifter_lib` builds clean. `./build/shapeshifter_tests "[popup_display]"` — all 11 cases pass. Pre-existing `high_score_*` failures from concurrent #253 work are unrelated and out of scope.
+
+**Heavy concurrent-agent churn:** working tree was reverted twice mid-edit by parallel squad agents; recovered by re-applying via a single Python pass + immediate `git add` + `git commit`. Followed history.md's prior advice (stage early, atomic apply). Final commit: `fbf0297`.

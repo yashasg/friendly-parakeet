@@ -53,9 +53,9 @@ TEST_CASE("High score: tracks songs and difficulties independently", "[high_scor
     state.set_current_key("song_002", "easy");
     state.update_current_high_score(3000);
 
-    CHECK(state.scores.at("song_001|easy") == 1000);
-    CHECK(state.scores.at("song_001|hard") == 2000);
-    CHECK(state.scores.at("song_002|easy") == 3000);
+    CHECK(state.get_score("song_001|easy") == 1000);
+    CHECK(state.get_score("song_001|hard") == 2000);
+    CHECK(state.get_score("song_002|easy") == 3000);
 }
 
 TEST_CASE("High score persistence: round-trips score map", "[high_score]") {
@@ -64,15 +64,17 @@ TEST_CASE("High score persistence: round-trips score map", "[high_score]") {
     remove_path(dir);
 
     HighScoreState original;
-    original.scores["song_001|easy"] = 1000;
-    original.scores["song_001|hard"] = 2000;
-    original.scores["song_002|easy"] = 1500;
+    original.set_score("song_001|easy", 1000);
+    original.set_score("song_001|hard", 2000);
+    original.set_score("song_002|easy", 1500);
 
     REQUIRE(high_score::save_high_scores(original, file));
 
     HighScoreState loaded;
     REQUIRE(high_score::load_high_scores(loaded, file));
-    CHECK(loaded.scores == original.scores);
+    CHECK(loaded.get_score("song_001|easy") == original.get_score("song_001|easy"));
+    CHECK(loaded.get_score("song_001|hard") == original.get_score("song_001|hard"));
+    CHECK(loaded.get_score("song_002|easy") == original.get_score("song_002|easy"));
 
     remove_path(dir);
 }
@@ -82,13 +84,13 @@ TEST_CASE("High score persistence: supports current-directory files", "[high_sco
     remove_path(file);
 
     HighScoreState original;
-    original.scores["song_001|easy"] = 2000;
+    original.set_score("song_001|easy", 2000);
 
     REQUIRE(high_score::save_high_scores(original, file));
 
     HighScoreState loaded;
     REQUIRE(high_score::load_high_scores(loaded, file));
-    CHECK(loaded.scores.at("song_001|easy") == 2000);
+    CHECK(loaded.get_score("song_001|easy") == 2000);
 
     remove_path(file);
 }
@@ -98,10 +100,10 @@ TEST_CASE("High score persistence: missing file returns false and preserves stat
     remove_path(file);
 
     HighScoreState state;
-    state.scores["song_001|easy"] = 500;
+    state.set_score("song_001|easy", 500);
 
     CHECK_FALSE(high_score::load_high_scores(state, file));
-    CHECK(state.scores.at("song_001|easy") == 500);
+    CHECK(state.get_score("song_001|easy") == 500);
 }
 
 TEST_CASE("High score persistence: malformed JSON preserves state", "[high_score]") {
@@ -116,10 +118,10 @@ TEST_CASE("High score persistence: malformed JSON preserves state", "[high_score
     }
 
     HighScoreState state;
-    state.scores["song_001|easy"] = 500;
+    state.set_score("song_001|easy", 500);
 
     CHECK_FALSE(high_score::load_high_scores(state, file));
-    CHECK(state.scores.at("song_001|easy") == 500);
+    CHECK(state.get_score("song_001|easy") == 500);
 
     remove_path(dir);
 }
@@ -136,10 +138,10 @@ TEST_CASE("High score persistence: invalid schema preserves state", "[high_score
     }
 
     HighScoreState state;
-    state.scores["song_001|easy"] = 500;
+    state.set_score("song_001|easy", 500);
 
     CHECK_FALSE(high_score::load_high_scores(state, file));
-    CHECK(state.scores.at("song_001|easy") == 500);
+    CHECK(state.get_score("song_001|easy") == 500);
 
     {
         std::ofstream out(file);
@@ -147,7 +149,7 @@ TEST_CASE("High score persistence: invalid schema preserves state", "[high_score
     }
 
     CHECK_FALSE(high_score::load_high_scores(state, file));
-    CHECK(state.scores.at("song_001|easy") == 500);
+    CHECK(state.get_score("song_001|easy") == 500);
 
     remove_path(dir);
 }
@@ -165,8 +167,8 @@ TEST_CASE("High score persistence: clamps negative and oversized scores", "[high
 
     HighScoreState state;
     REQUIRE(high_score::load_high_scores(state, file));
-    CHECK(state.scores.at("negative|easy") == 0);
-    CHECK(state.scores.at("huge|hard") == std::numeric_limits<int32_t>::max());
+    CHECK(state.get_score("negative|easy") == 0);
+    CHECK(state.get_score("huge|hard") == std::numeric_limits<int32_t>::max());
 
     remove_path(dir);
 }
@@ -177,7 +179,7 @@ TEST_CASE("High score persistence: load preserves current active key", "[high_sc
     remove_path(dir);
 
     HighScoreState original;
-    original.scores["song_001|easy"] = 1000;
+    original.set_score("song_001|easy", 1000);
     REQUIRE(high_score::save_high_scores(original, file));
 
     HighScoreState loaded;
@@ -185,7 +187,7 @@ TEST_CASE("High score persistence: load preserves current active key", "[high_sc
     REQUIRE(high_score::load_high_scores(loaded, file));
 
     CHECK(loaded.current_key == "song_002|hard");
-    CHECK(loaded.scores.at("song_001|easy") == 1000);
+    CHECK(loaded.get_score("song_001|easy") == 1000);
 
     remove_path(dir);
 }

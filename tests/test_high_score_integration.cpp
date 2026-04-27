@@ -28,8 +28,8 @@ TEST_CASE("High score integration: setup_play_session loads selected song diffic
     lss.selected_difficulty = 0;
 
     auto& high_scores = reg.ctx().get<HighScoreState>();
-    high_scores.scores["1_stomper|easy"] = 1234;
-    high_scores.scores["1_stomper|hard"] = 9999;
+    high_scores.set_score("1_stomper|easy", 1234);
+    high_scores.set_score("1_stomper|hard", 9999);
 
     setup_play_session(reg);
 
@@ -69,7 +69,7 @@ TEST_CASE("High score integration: new song-complete high score persists",
     reg.ctx().get<HighScorePersistence>().path = file.string();
     auto& high_scores = reg.ctx().get<HighScoreState>();
     high_scores.set_current_key("song_001", "easy");
-    high_scores.scores["song_001|easy"] = 1000;
+    high_scores.set_score("song_001|easy", 1000);
 
     auto& score = reg.ctx().get<ScoreState>();
     score.high_score = 1000;
@@ -82,11 +82,11 @@ TEST_CASE("High score integration: new song-complete high score persists",
     game_state_system(reg, 0.016f);
 
     CHECK(score.high_score == 2500);
-    CHECK(high_scores.scores.at("song_001|easy") == 2500);
+    CHECK(high_scores.get_score("song_001|easy") == 2500);
 
     HighScoreState loaded;
     REQUIRE(high_score::load_high_scores(loaded, file));
-    CHECK(loaded.scores.at("song_001|easy") == 2500);
+    CHECK(loaded.get_score("song_001|easy") == 2500);
 
     remove_path(file);
 }
@@ -100,7 +100,7 @@ TEST_CASE("High score integration: lower game-over score does not overwrite pers
     reg.ctx().get<HighScorePersistence>().path = file.string();
     auto& high_scores = reg.ctx().get<HighScoreState>();
     high_scores.set_current_key("song_001", "easy");
-    high_scores.scores["song_001|easy"] = 3000;
+    high_scores.set_score("song_001|easy", 3000);
 
     auto& score = reg.ctx().get<ScoreState>();
     score.high_score = 3000;
@@ -113,7 +113,7 @@ TEST_CASE("High score integration: lower game-over score does not overwrite pers
     game_state_system(reg, 0.016f);
 
     CHECK(score.high_score == 3000);
-    CHECK(high_scores.scores.at("song_001|easy") == 3000);
+    CHECK(high_scores.get_score("song_001|easy") == 3000);
     CHECK_FALSE(std::filesystem::exists(file));
 
     remove_path(file);
@@ -125,7 +125,7 @@ TEST_CASE("High score bootstrap: persistence path is populated for save call sit
     remove_path(file);
 
     HighScoreState seeded;
-    seeded.scores["song_001|easy"] = 1000;
+    seeded.set_score("song_001|easy", 1000);
     REQUIRE(high_score::save_high_scores(seeded, file));
 
     entt::registry reg;
@@ -152,7 +152,7 @@ TEST_CASE("High score bootstrap: persistence path is populated for save call sit
 
     HighScoreState loaded;
     REQUIRE(high_score::load_high_scores(loaded, file));
-    CHECK(loaded.scores.at("song_001|easy") == 2500);
+    CHECK(loaded.get_score("song_001|easy") == 2500);
 
     remove_path(file);
 }

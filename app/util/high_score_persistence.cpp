@@ -21,8 +21,8 @@ nlohmann::json high_score_state_to_json(const HighScoreState& state) {
     nlohmann::json result;
     nlohmann::json scores_obj;
     
-    for (const auto& [key, score] : state.scores) {
-        scores_obj[key] = score;
+    for (int32_t i = 0; i < state.entry_count; ++i) {
+        scores_obj[state.entries[i].key] = state.entries[i].score;
     }
     
     result["scores"] = scores_obj;
@@ -70,7 +70,7 @@ bool high_score_state_from_json(const nlohmann::json& obj, HighScoreState& state
                 raw = std::numeric_limits<std::int32_t>::max();
             }
             
-            next.scores[key] = static_cast<std::int32_t>(raw);
+            next.set_score(key.c_str(), static_cast<std::int32_t>(raw));
         }
     }
     
