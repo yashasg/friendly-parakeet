@@ -9,6 +9,25 @@
 #include "../components/rhythm.h"
 #include "../constants.h"
 
+// ── EventQueue consumption contract ──────────────────────────────────────────
+// The fixed-step accumulator in game_loop.cpp may invoke the tick systems
+// multiple times per render frame (once per accumulated dt step).
+//
+// player_input_system is the SOLE consumer of EventQueue action events:
+//   • eq.goes[0..go_count-1]    — directional GoEvents (lane change, jump/slide)
+//   • eq.presses[0..press_count-1] — ButtonPressEvents (shape buttons)
+//
+// After processing, it clears both queues (go_count = 0, press_count = 0) so
+// that subsequent sub-ticks within the same render frame do NOT replay the
+// same events (see #213 fix in commit 7b420ed).
+//
+// CONTRACT: No system that executes after player_input_system within the same
+// fixed-step tick may read eq.go_count or eq.press_count and expect non-zero
+// values. If a future system needs these queues it must either:
+//   (a) run before player_input_system in the tick order, or
+//   (b) be promoted to its own dedicated event-flush system that owns clearing.
+// ─────────────────────────────────────────────────────────────────────────────
+
 void player_input_system(entt::registry& reg, float /*dt*/) {
     if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
 
