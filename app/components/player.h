@@ -1,26 +1,20 @@
 #pragma once
 
 #include <cstdint>
-
-#define SHAPE_LIST(X) \
-    X(Circle)         \
-    X(Square)         \
-    X(Triangle)       \
-    X(Hexagon)
+#include <magic_enum/magic_enum.hpp>
 
 enum class Shape : uint8_t {
-    #define SHAPE_ENUM(name) name,
-    SHAPE_LIST(SHAPE_ENUM)
-    #undef SHAPE_ENUM
+    Circle,
+    Square,
+    Triangle,
+    Hexagon,
 };
 
-inline const char* ToString(Shape s) {
-    switch (s) {
-        #define SHAPE_STR(name) case Shape::name: return #name;
-        SHAPE_LIST(SHAPE_STR)
-        #undef SHAPE_STR
-    }
-    return "???";
+// magic_enum::enum_name_v is a static_str with a null-terminated char array,
+// so .data() is safe for printf-style %s formatting.
+inline const char* ToString(Shape s) noexcept {
+    const auto name = magic_enum::enum_name(s);
+    return name.empty() ? "???" : name.data();
 }
 
 struct PlayerTag {};
@@ -64,5 +58,3 @@ struct VerticalState {
     float timer    = 0.0f;
     float y_offset = 0.0f;
 };
-
-#undef SHAPE_LIST

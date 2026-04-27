@@ -10,6 +10,7 @@
 #include "player.h"
 #include "obstacle.h"
 #include <cstdint>
+#include <magic_enum/magic_enum.hpp>
 
 // ── Window Phase ────────────────────────────────────
 enum class WindowPhase : uint8_t {
@@ -20,25 +21,18 @@ enum class WindowPhase : uint8_t {
 };
 
 // ── Timing Grade (emplaced on obstacle at collision) ─
-#define TIMING_TIER_LIST(X) \
-    X(Bad)                  \
-    X(Ok)                   \
-    X(Good)                 \
-    X(Perfect)
-
 enum class TimingTier : uint8_t {
-    #define TIMING_TIER_ENUM(name) name,
-    TIMING_TIER_LIST(TIMING_TIER_ENUM)
-    #undef TIMING_TIER_ENUM
+    Bad,
+    Ok,
+    Good,
+    Perfect,
 };
 
-inline const char* ToString(TimingTier t) {
-    switch (t) {
-        #define TIMING_TIER_STR(name) case TimingTier::name: return #name;
-        TIMING_TIER_LIST(TIMING_TIER_STR)
-        #undef TIMING_TIER_STR
-    }
-    return "???";
+// magic_enum::enum_name_v is a static_str with a null-terminated char array,
+// so .data() is safe for printf-style %s formatting.
+inline const char* ToString(TimingTier t) noexcept {
+    const auto name = magic_enum::enum_name(t);
+    return name.empty() ? "???" : name.data();
 }
 
 struct TimingGrade {
@@ -77,8 +71,6 @@ inline float timing_multiplier(TimingTier tier) {
     }
     return 0.25f;
 }
-
-#undef TIMING_TIER_LIST
 
 // ── Helper: compute timing tier from pct_from_peak ──
 inline TimingTier compute_timing_tier(float pct_from_peak) {

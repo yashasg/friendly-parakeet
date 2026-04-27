@@ -1,32 +1,26 @@
 #pragma once
 
 #include <cstdint>
+#include <magic_enum/magic_enum.hpp>
 
 struct ObstacleTag {};
 
-#define OBSTACLE_KIND_LIST(X) \
-    X(ShapeGate)              \
-    X(LaneBlock)              \
-    X(LowBar)                 \
-    X(HighBar)                \
-    X(ComboGate)              \
-    X(SplitPath)              \
-    X(LanePushLeft)           \
-    X(LanePushRight)
-
 enum class ObstacleKind : uint8_t {
-    #define OBSTACLE_KIND_ENUM(name) name,
-    OBSTACLE_KIND_LIST(OBSTACLE_KIND_ENUM)
-    #undef OBSTACLE_KIND_ENUM
+    ShapeGate,
+    LaneBlock,
+    LowBar,
+    HighBar,
+    ComboGate,
+    SplitPath,
+    LanePushLeft,
+    LanePushRight,
 };
 
-inline const char* ToString(ObstacleKind k) {
-    switch (k) {
-        #define OBSTACLE_KIND_STR(name) case ObstacleKind::name: return #name;
-        OBSTACLE_KIND_LIST(OBSTACLE_KIND_STR)
-        #undef OBSTACLE_KIND_STR
-    }
-    return "???";
+// magic_enum::enum_name_v is a static_str with a null-terminated char array,
+// so .data() is safe for printf-style %s formatting.
+inline const char* ToString(ObstacleKind k) noexcept {
+    const auto name = magic_enum::enum_name(k);
+    return name.empty() ? "???" : name.data();
 }
 
 struct Obstacle {
@@ -39,5 +33,3 @@ struct ScoredTag {};
 
 // Existential tag: scored obstacle was failed/missed and should not award points.
 struct MissTag {};
-
-#undef OBSTACLE_KIND_LIST
