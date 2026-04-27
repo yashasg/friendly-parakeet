@@ -1,11 +1,11 @@
 #include "all_systems.h"
+#include "input_gesture.h"
 #include "../components/input.h"
 #include "../components/input_events.h"
 #include "../components/rendering.h"
 #include "../components/game_state.h"
 #include "../constants.h"
 #include <raylib.h>
-#include <cmath>
 
 void input_system(entt::registry& reg, float raw_dt) {
     auto& input = reg.ctx().get<InputState>();
@@ -129,27 +129,11 @@ void input_system(entt::registry& reg, float raw_dt) {
 
     // Touch/mouse gesture → actions
     if (input.touch_up) {
-        float zone_y = constants::SCREEN_H * constants::SWIPE_ZONE_SPLIT;
-
-        if (input.start_y >= zone_y) {
-            // Button zone (bottom 20%) — always a Tap for the hit_test_system
-            eq.push_input(InputType::Tap, input.end_x, input.end_y);
-        } else {
-            // Swipe zone
-            float dx = input.end_x - input.start_x;
-            float dy = input.end_y - input.start_y;
-            float dist = std::sqrt(dx * dx + dy * dy);
-            if (dist >= constants::MIN_SWIPE_DIST && input.duration <= constants::MAX_SWIPE_TIME) {
-                Direction dir;
-                if (std::abs(dx) > std::abs(dy)) {
-                    dir = dx > 0 ? Direction::Right : Direction::Left;
-                } else {
-                    dir = dy > 0 ? Direction::Down : Direction::Up;
-                }
-                eq.push_input(InputType::Swipe, input.end_x, input.end_y, dir);
-            } else {
-                eq.push_input(InputType::Tap, input.end_x, input.end_y);
-            }
-        }
+        const InputEvent event = classify_touch_release(
+            input.start_x, input.start_y,
+            input.end_x, input.end_y,
+            input.duration
+        );
+        eq.push_input(event.type, event.x, event.y, event.dir);
     }
 }
