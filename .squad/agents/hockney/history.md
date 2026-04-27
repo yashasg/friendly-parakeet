@@ -10,6 +10,19 @@
 
 <!-- Append learnings below -->
 
+## Session: Issue #253 — HighScoreState compact flat array (2026-04-27)
+
+### Problem
+`HighScoreState::scores` was `std::map<std::string, int32_t>`: O(log N) node-based tree with heap allocations for ≤9 entries (3 songs × 3 difficulties = 9 max).
+
+### Fix (commit 60bcd26 / afd7921)
+- `app/components/high_score.h`: replaced `std::map` with `std::array<Entry, 9>` + `entry_count` counter.  `Entry = {char key[32]; int32_t score;}` — zero heap, trivially copyable.  Added `get_score(key)` and `set_score(key, val)` helpers (linear scan, O(N) for N≤9).  `update_current_high_score` semantics preserved (never-lower, clamp negative).  `current_key` kept as `std::string` (not hot-path).
+- `app/util/high_score_persistence.cpp`: iteration changed to index loop over `entries[]`; `set_score()` replaces `operator[]`.  JSON on-disk format unchanged.
+- `tests/test_high_score_persistence.cpp` + `tests/test_high_score_integration.cpp`: all `.scores["key"]=val` → `set_score("key", val)`, `.scores.at("key")` → `get_score("key")`, map equality check → per-key comparisons.
+
+### Learning: shared working-tree contention
+Concurrent agent commits in the shared tree caused commit `afd7921` (my message) to contain other agents' staged changes, and `60bcd26` (Redfoot's message) to contain my high_score changes.  The changes ARE correctly in HEAD; attribution is split across two commits.  Strategy for future sessions: use `git update-index --cacheinfo` (atomic index write) to avoid racing with concurrent `git add` from other agents.
+
 ## Session: iOS TestFlight Readiness #180 #182 #183 #184 #186
 
 ### Issues Addressed
