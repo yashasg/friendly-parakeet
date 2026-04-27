@@ -36,11 +36,6 @@ struct UIShape {
     Color color = WHITE;
 };
 
-// Renderable overlay (full-screen tinted rect).
-struct UIOverlay {
-    Color color = {0, 0, 0, 128};
-};
-
 // Optional: dynamic text source. Attached alongside UIText or UIButton
 // to override the static `text` field at render time by resolving
 // `source` (and applying `format`) through ui_source_resolver.
