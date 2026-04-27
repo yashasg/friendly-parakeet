@@ -1,5 +1,6 @@
 #pragma once
 #include "components/ui_state.h"
+#include "components/ui_layout_cache.h"
 #include <optional>
 #include <string>
 #include <vector>
@@ -35,3 +36,17 @@ void build_ui_element_map(UIState& ui);
 // Load the overlay screen JSON into ui.overlay_screen and set ui.has_overlay.
 // Pure file I/O; no ECS access.
 void ui_load_overlay(UIState& ui, const std::string& screen_name);
+
+// --- Layout cache builders (#322) ---
+// Call after build_ui_element_map() when a screen change is detected.
+// Reads stable layout constants from ui.screen once; returns a POD struct
+// ready to store in reg.ctx().  All coordinate fields are pre-multiplied by
+// SCREEN_W / SCREEN_H so the render path does zero JSON access per frame.
+
+// Build HudLayout from the current "gameplay" screen JSON.
+// Returns HudLayout{.valid=false} if required elements are absent.
+HudLayout build_hud_layout(const UIState& ui);
+
+// Build LevelSelectLayout from the current "level_select" screen JSON.
+// Returns LevelSelectLayout{.valid=false} if required elements are absent.
+LevelSelectLayout build_level_select_layout(const UIState& ui);

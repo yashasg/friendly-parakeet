@@ -10,6 +10,7 @@
 #include "../components/game_state.h"
 #include "../components/difficulty.h"
 #include "../components/song_state.h"
+#include "../components/ui_layout_cache.h"
 #include "../constants.h"
 #include "text_renderer.h"
 #include "../components/ui_state.h"
@@ -61,121 +62,71 @@ static void draw_shape_flat(Shape shape, float cx, float cy, float size, Color c
     }
 }
 
-// ── JSON helper utilities ────────────────────────────────────
-
-using json = nlohmann::json;
-using namespace entt::literals;
-
-static Color json_color(const json& arr) {
-    uint8_t a = arr.size() > 3 ? arr[3].get<uint8_t>() : 255;
-    return {arr[0].get<uint8_t>(), arr[1].get<uint8_t>(),
-            arr[2].get<uint8_t>(), a};
-}
-
-// O(1) element lookup via the pre-computed hashed map (#312).
-// Falls back gracefully if the map or screen is stale.
-static const json* find_el(const UIState& ui, entt::id_type key) {
-    auto it = ui.element_map.find(key);
-    if (it == ui.element_map.end()) return nullptr;
-    if (!ui.screen.contains("elements")) return nullptr;
-    const auto& elems = ui.screen["elements"];
-    if (it->second >= elems.size()) return nullptr;
-    return &elems[it->second];
-}
-
 // ── Specialized screen renderers ─────────────────────────────
 
 static void draw_level_select_scene(const TextContext& text_ctx,
                                     const LevelSelectState& lss,
-                                    const UIState& ui) {
-    auto* cards = find_el(ui, "song_cards"_hs);
-    if (cards) {
-        auto& c = *cards;
-        float card_x  = c["x_n"].get<float>() * constants::SCREEN_W;
-        float start_y = c["start_y_n"].get<float>() * constants::SCREEN_H;
-        float card_w  = c["card_w_n"].get<float>() * constants::SCREEN_W;
-        float card_h  = c["card_h_n"].get<float>() * constants::SCREEN_H;
-        float gap     = c["card_gap_n"].get<float>() * constants::SCREEN_H;
-        float cr      = c.value("corner_radius", 0.1f);
-        Color sel_bg     = json_color(c["selected_bg"]);
-        Color unsel_bg   = json_color(c["unselected_bg"]);
-        Color sel_border = json_color(c["selected_border"]);
-        Color unsel_border = json_color(c["unselected_border"]);
-        float title_ox = c["title_offset_x_n"].get<float>() * constants::SCREEN_W;
-        float title_oy = c["title_offset_y_n"].get<float>() * constants::SCREEN_H;
+                                    const LevelSelectLayout& layout) {
+    if (!layout.valid) return;
 
-        for (int i = 0; i < LevelSelectState::LEVEL_COUNT; ++i) {
-            float cy = start_y + static_cast<float>(i) * (card_h + gap);
-            bool selected = (i == lss.selected_level);
-            Color bg     = selected ? sel_bg     : unsel_bg;
-            Color border = selected ? sel_border : unsel_border;
-            DrawRectangleRounded({card_x, cy, card_w, card_h}, cr, 4, bg);
-            DrawRectangleRoundedLinesEx({card_x, cy, card_w, card_h}, cr, 4, 2.0f, border);
+    for (int i = 0; i < LevelSelectState::LEVEL_COUNT; ++i) {
+        float cy = layout.start_y + static_cast<float>(i) * (layout.card_h + layout.card_gap);
+        bool selected = (i == lss.selected_level);
+        Color bg     = selected ? layout.selected_bg     : layout.unselected_bg;
+        Color border = selected ? layout.selected_border : layout.unselected_border;
+        DrawRectangleRounded(
+            {layout.card_x, cy, layout.card_w, layout.card_h},
+            layout.card_corner_radius, 4, bg);
+        DrawRectangleRoundedLinesEx(
+            {layout.card_x, cy, layout.card_w, layout.card_h},
+            layout.card_corner_radius, 4, 2.0f, border);
 
-            uint8_t title_a = selected ? 255 : 150;
-            text_draw(text_ctx, LevelSelectState::LEVELS[i].title,
-                card_x + title_ox, cy + title_oy, FontSize::Medium,
-                255, 255, 255, title_a, TextAlign::Left);
+        uint8_t title_a = selected ? 255 : 150;
+        text_draw(text_ctx, LevelSelectState::LEVELS[i].title,
+            layout.card_x + layout.title_offset_x, cy + layout.title_offset_y,
+            FontSize::Medium, 255, 255, 255, title_a, TextAlign::Left);
 
-            char track_num[4];
-            std::snprintf(track_num, sizeof(track_num), "%d", i + 1);
-            text_draw(text_ctx, track_num,
-                card_x + card_w - 40.0f, cy + title_oy, FontSize::Medium,
-                80, 180, 255, 100, TextAlign::Right);
+        char track_num[4];
+        std::snprintf(track_num, sizeof(track_num), "%d", i + 1);
+        text_draw(text_ctx, track_num,
+            layout.card_x + layout.card_w - 40.0f, cy + layout.title_offset_y,
+            FontSize::Medium, 80, 180, 255, 100, TextAlign::Right);
 
-            if (selected) {
-                auto* diff = find_el(ui, "difficulty_buttons"_hs);
-                if (diff) {
-                    auto& d = *diff;
-                    float diff_y   = cy + d["y_offset_n"].get<float>() * constants::SCREEN_H;
-                    float dx_start = d["x_start_n"].get<float>() * constants::SCREEN_W;
-                    float btn_w    = d["button_w_n"].get<float>() * constants::SCREEN_W;
-                    float btn_h    = d["button_h_n"].get<float>() * constants::SCREEN_H;
-                    float btn_gap  = d["button_gap_n"].get<float>() * constants::SCREEN_W;
-                    float dcr      = d.value("corner_radius", 0.2f);
-                    Color a_bg     = json_color(d["active_bg"]);
-                    Color a_border = json_color(d["active_border"]);
-                    Color a_text   = json_color(d["active_text"]);
-                    Color i_bg     = json_color(d["inactive_bg"]);
-                    Color i_border = json_color(d["inactive_border"]);
-                    Color i_text   = json_color(d["inactive_text"]);
-
-                    for (int dd = 0; dd < 3; ++dd) {
-                        float bx = dx_start + static_cast<float>(dd) * (btn_w + btn_gap);
-                        bool active = (dd == lss.selected_difficulty);
-                        Color bbg = active ? a_bg : i_bg;
-                        Color bborder = active ? a_border : i_border;
-                        Color btc = active ? a_text : i_text;
-                        DrawRectangleRounded({bx, diff_y, btn_w, btn_h}, dcr, 4, bbg);
-                        DrawRectangleRoundedLinesEx({bx, diff_y, btn_w, btn_h}, dcr, 4, 1.5f, bborder);
-                        text_draw(text_ctx, LevelSelectState::DIFFICULTY_NAMES[dd],
-                            bx + btn_w / 2.0f, diff_y + 10.0f, FontSize::Small,
-                            btc.r, btc.g, btc.b, btc.a, TextAlign::Center);
-                    }
-                }
+        if (selected) {
+            float diff_y = cy + layout.diff_y_offset;
+            for (int dd = 0; dd < 3; ++dd) {
+                float bx = layout.dx_start
+                    + static_cast<float>(dd) * (layout.diff_btn_w + layout.diff_btn_gap);
+                bool active = (dd == lss.selected_difficulty);
+                Color bbg     = active ? layout.diff_active_bg     : layout.diff_inactive_bg;
+                Color bborder = active ? layout.diff_active_border  : layout.diff_inactive_border;
+                Color btc     = active ? layout.diff_active_text    : layout.diff_inactive_text;
+                DrawRectangleRounded(
+                    {bx, diff_y, layout.diff_btn_w, layout.diff_btn_h},
+                    layout.diff_corner_radius, 4, bbg);
+                DrawRectangleRoundedLinesEx(
+                    {bx, diff_y, layout.diff_btn_w, layout.diff_btn_h},
+                    layout.diff_corner_radius, 4, 1.5f, bborder);
+                text_draw(text_ctx, LevelSelectState::DIFFICULTY_NAMES[dd],
+                    bx + layout.diff_btn_w / 2.0f, diff_y + 10.0f, FontSize::Small,
+                    btc.r, btc.g, btc.b, btc.a, TextAlign::Center);
             }
         }
     }
 }
 
-static void draw_hud(const entt::registry& reg, const UIState& ui) {
+static void draw_hud(const entt::registry& reg, const HudLayout& layout) {
+    if (!layout.valid) return;
+
     // Shape buttons
-    auto* sb = find_el(ui, "shape_buttons"_hs);
-    if (sb) {
-        auto& s = *sb;
-        float btn_w       = s["button_w_n"].get<float>() * constants::SCREEN_W;
-        float btn_h       = s["button_h_n"].get<float>() * constants::SCREEN_H;
-        float btn_spacing = s["spacing_n"].get<float>()   * constants::SCREEN_W;
-        float btn_y       = s["y_n"].get<float>()         * constants::SCREEN_H;
+    {
+        float btn_w       = layout.btn_w;
+        float btn_h       = layout.btn_h;
+        float btn_spacing = layout.btn_spacing;
+        float btn_y       = layout.btn_y;
         float btn_radius  = btn_w / 2.8f;
         float btn_area_x  = (constants::SCREEN_W - 3.0f * btn_w - 2.0f * btn_spacing) / 2.0f;
         float btn_cy      = btn_y + btn_h / 2.0f;
-        Color a_bg     = json_color(s["active_bg"]);
-        Color i_bg     = json_color(s["inactive_bg"]);
-        Color a_border = json_color(s["active_border"]);
-        Color i_border = json_color(s["inactive_border"]);
-        Color a_icon   = json_color(s["active_icon"]);
-        Color i_icon   = json_color(s["inactive_icon"]);
 
         Shape active_shape = Shape::Hexagon;
         for (auto [e, ps] : reg.view<PlayerTag, PlayerShape>().each()) {
@@ -199,23 +150,20 @@ static void draw_hud(const entt::registry& reg, const UIState& ui) {
             ? song_hud->scroll_speed * (song_hud->morph_duration + song_hud->half_window)
             : config.scroll_speed * 0.5f;
         float ring_appear_dist = constants::APPROACH_DIST;
-        float max_ring_radius  = btn_radius * s["approach_ring"]["max_radius_scale"].get<float>();
-        Color ring_perfect = json_color(s["approach_ring"]["perfect_color"]);
-        Color ring_near    = json_color(s["approach_ring"]["near_color"]);
-        Color ring_far     = json_color(s["approach_ring"]["far_color"]);
+        float max_ring_radius  = btn_radius * layout.approach_ring_max_radius_scale;
 
         for (int i = 0; i < 3; ++i) {
             float btn_cx = btn_area_x
                 + static_cast<float>(i) * (btn_w + btn_spacing) + btn_w / 2.0f;
             bool is_active = (static_cast<int>(active_shape) == i);
 
-            Color bg     = is_active ? a_bg     : i_bg;
-            Color border = is_active ? a_border : i_border;
+            Color bg     = is_active ? layout.active_bg     : layout.inactive_bg;
+            Color border = is_active ? layout.active_border : layout.inactive_border;
             DrawCircleV({btn_cx, btn_cy}, btn_radius, bg);
             DrawCircleLinesV({btn_cx, btn_cy}, btn_radius, border);
 
             auto shape = static_cast<Shape>(i);
-            Color icon = is_active ? a_icon : i_icon;
+            Color icon = is_active ? layout.active_icon : layout.inactive_icon;
             draw_shape_flat(shape, btn_cx, btn_cy, btn_radius * 1.2f, icon);
 
             if (nearest_dist[i] > 0.0f && nearest_dist[i] < ring_appear_dist) {
@@ -226,11 +174,11 @@ static void draw_hud(const entt::registry& reg, const UIState& ui) {
 
                 Color rc;
                 if (nearest_dist[i] <= perfect_dist)
-                    rc = ring_perfect;
+                    rc = layout.ring_perfect;
                 else if (ratio < 0.3f)
-                    rc = ring_near;
+                    rc = layout.ring_near;
                 else
-                    rc = ring_far;
+                    rc = layout.ring_far;
 
                 Color ring_color = Fade(rc, (200.0f / 255.0f) * (1.0f - ratio * 0.5f));
                 DrawCircleLinesV({btn_cx, btn_cy}, ring_r, ring_color);
@@ -367,11 +315,10 @@ static void draw_hud(const entt::registry& reg, const UIState& ui) {
     }
 
     // Lane divider
-    auto* line = find_el(ui, "lane_divider"_hs);
-    if (line) {
-        float div_y = (*line)["y_n"].get<float>() * constants::SCREEN_H;
-        Color lc = json_color((*line)["color"]);
-        DrawLineV({0, div_y}, {static_cast<float>(constants::SCREEN_W), div_y}, lc);
+    if (layout.has_lane_divider) {
+        DrawLineV({0.0f, layout.lane_divider_y},
+                  {constants::SCREEN_W_F, layout.lane_divider_y},
+                  layout.lane_divider_color);
     }
 }
 
@@ -482,15 +429,16 @@ void ui_render_system(const entt::registry& reg, float /*alpha*/) {
     switch (ui.active) {
         case ActiveScreen::LevelSelect: {
             auto& lss = reg.ctx().get<LevelSelectState>();
-            draw_level_select_scene(text_ctx, lss, ui);
+            const auto* layout = reg.ctx().find<LevelSelectLayout>();
+            if (layout) draw_level_select_scene(text_ctx, lss, *layout);
             break;
         }
         case ActiveScreen::Gameplay:
-            draw_hud(reg, ui);
+        case ActiveScreen::Paused: {
+            const auto* hud = reg.ctx().find<HudLayout>();
+            if (hud) draw_hud(reg, *hud);
             break;
-        case ActiveScreen::Paused:
-            draw_hud(reg, ui);
-            break;
+        }
         default:
             break;
     }

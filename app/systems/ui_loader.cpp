@@ -1,5 +1,8 @@
 #include "ui_loader.h"
+#include "../components/ui_layout_cache.h"
+#include "../constants.h"
 #include <entt/entt.hpp>
+#include <raylib.h>
 #include <fstream>
 #include <cstdio>
 
@@ -141,4 +144,126 @@ UIState load_ui(const std::string& ui_dir) {
     // will detect the first phase→screen mapping as a change and both
     // load the JSON *and* spawn the UIElementTag entities.
     return ui;
+}
+
+// ── Layout cache builders (#322) ──────────────────────────────────────────────
+
+// Helper: build a raylib Color from a JSON array [r, g, b] or [r, g, b, a].
+static Color json_color_rl(const nlohmann::json& arr) {
+    uint8_t a = arr.size() > 3 ? arr[3].get<uint8_t>() : 255;
+    return {arr[0].get<uint8_t>(), arr[1].get<uint8_t>(),
+            arr[2].get<uint8_t>(), a};
+}
+
+// Return a pointer into ui.screen["elements"] by hashed id, or nullptr.
+static const nlohmann::json* find_layout_el(const UIState& ui, entt::id_type key) {
+    auto it = ui.element_map.find(key);
+    if (it == ui.element_map.end()) return nullptr;
+    if (!ui.screen.contains("elements")) return nullptr;
+    const auto& elems = ui.screen["elements"];
+    if (it->second >= elems.size()) return nullptr;
+    return &elems[it->second];
+}
+
+HudLayout build_hud_layout(const UIState& ui) {
+    using namespace entt::literals;
+    HudLayout layout{};
+
+    const auto* sb_ptr = find_layout_el(ui, "shape_buttons"_hs);
+    if (!sb_ptr) return layout;
+
+    try {
+        const auto& sb = *sb_ptr;
+        layout.btn_w       = sb.at("button_w_n").get<float>() * constants::SCREEN_W_F;
+        layout.btn_h       = sb.at("button_h_n").get<float>() * constants::SCREEN_H_F;
+        layout.btn_spacing = sb.at("spacing_n").get<float>()  * constants::SCREEN_W_F;
+        layout.btn_y       = sb.at("y_n").get<float>()        * constants::SCREEN_H_F;
+        layout.active_bg      = json_color_rl(sb.at("active_bg"));
+        layout.inactive_bg    = json_color_rl(sb.at("inactive_bg"));
+        layout.active_border  = json_color_rl(sb.at("active_border"));
+        layout.inactive_border = json_color_rl(sb.at("inactive_border"));
+        layout.active_icon    = json_color_rl(sb.at("active_icon"));
+        layout.inactive_icon  = json_color_rl(sb.at("inactive_icon"));
+        const auto& ar = sb.at("approach_ring");
+        layout.approach_ring_max_radius_scale = ar.at("max_radius_scale").get<float>();
+        layout.ring_perfect = json_color_rl(ar.at("perfect_color"));
+        layout.ring_near    = json_color_rl(ar.at("near_color"));
+        layout.ring_far     = json_color_rl(ar.at("far_color"));
+    } catch (const nlohmann::json::exception& e) {
+        std::fprintf(stderr, "[WARN] build_hud_layout: shape_buttons field error: %s\n",
+                     e.what());
+        return layout;
+    }
+
+    // lane_divider is optional — missing it is not a failure
+    const auto* ld_ptr = find_layout_el(ui, "lane_divider"_hs);
+    if (ld_ptr) {
+        try {
+            const auto& ld = *ld_ptr;
+            layout.lane_divider_y     = ld.at("y_n").get<float>() * constants::SCREEN_H_F;
+            layout.lane_divider_color = json_color_rl(ld.at("color"));
+            layout.has_lane_divider   = true;
+        } catch (const nlohmann::json::exception& e) {
+            std::fprintf(stderr, "[WARN] build_hud_layout: lane_divider field error: %s\n",
+                         e.what());
+        }
+    }
+
+    layout.valid = true;
+    return layout;
+}
+
+LevelSelectLayout build_level_select_layout(const UIState& ui) {
+    using namespace entt::literals;
+    LevelSelectLayout layout{};
+
+    const auto* sc_ptr = find_layout_el(ui, "song_cards"_hs);
+    if (!sc_ptr) return layout;
+
+    try {
+        const auto& sc = *sc_ptr;
+        layout.card_x            = sc.at("x_n").get<float>()          * constants::SCREEN_W_F;
+        layout.start_y           = sc.at("start_y_n").get<float>()    * constants::SCREEN_H_F;
+        layout.card_w            = sc.at("card_w_n").get<float>()      * constants::SCREEN_W_F;
+        layout.card_h            = sc.at("card_h_n").get<float>()      * constants::SCREEN_H_F;
+        layout.card_gap          = sc.at("card_gap_n").get<float>()    * constants::SCREEN_H_F;
+        layout.card_corner_radius = sc.value("corner_radius", 0.1f);
+        layout.selected_bg       = json_color_rl(sc.at("selected_bg"));
+        layout.unselected_bg     = json_color_rl(sc.at("unselected_bg"));
+        layout.selected_border   = json_color_rl(sc.at("selected_border"));
+        layout.unselected_border = json_color_rl(sc.at("unselected_border"));
+        layout.title_offset_x    = sc.at("title_offset_x_n").get<float>() * constants::SCREEN_W_F;
+        layout.title_offset_y    = sc.at("title_offset_y_n").get<float>() * constants::SCREEN_H_F;
+    } catch (const nlohmann::json::exception& e) {
+        std::fprintf(stderr, "[WARN] build_level_select_layout: song_cards field error: %s\n",
+                     e.what());
+        return layout;
+    }
+
+    const auto* db_ptr = find_layout_el(ui, "difficulty_buttons"_hs);
+    if (!db_ptr) return layout;
+
+    try {
+        const auto& db = *db_ptr;
+        layout.diff_y_offset      = db.at("y_offset_n").get<float>()  * constants::SCREEN_H_F;
+        layout.dx_start           = db.at("x_start_n").get<float>()   * constants::SCREEN_W_F;
+        layout.diff_btn_w         = db.at("button_w_n").get<float>()  * constants::SCREEN_W_F;
+        layout.diff_btn_h         = db.at("button_h_n").get<float>()  * constants::SCREEN_H_F;
+        layout.diff_btn_gap       = db.at("button_gap_n").get<float>() * constants::SCREEN_W_F;
+        layout.diff_corner_radius = db.value("corner_radius", 0.2f);
+        layout.diff_active_bg     = json_color_rl(db.at("active_bg"));
+        layout.diff_active_border = json_color_rl(db.at("active_border"));
+        layout.diff_active_text   = json_color_rl(db.at("active_text"));
+        layout.diff_inactive_bg   = json_color_rl(db.at("inactive_bg"));
+        layout.diff_inactive_border = json_color_rl(db.at("inactive_border"));
+        layout.diff_inactive_text = json_color_rl(db.at("inactive_text"));
+    } catch (const nlohmann::json::exception& e) {
+        std::fprintf(stderr,
+                     "[WARN] build_level_select_layout: difficulty_buttons field error: %s\n",
+                     e.what());
+        return layout;
+    }
+
+    layout.valid = true;
+    return layout;
 }

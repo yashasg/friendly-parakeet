@@ -2,6 +2,7 @@
 #include "../components/game_state.h"
 #include "../components/ui_state.h"
 #include "../components/ui_element.h"
+#include "../components/ui_layout_cache.h"
 #include "../components/transform.h"
 #include "../constants.h"
 #include "ui_loader.h"
@@ -158,6 +159,13 @@ void ui_navigation_system(entt::registry& reg, float /*dt*/) {
     bool screen_changed = ui_load_screen(ui, screen_name);
     if (screen_changed) {
         build_ui_element_map(ui);
+        // Build layout caches for screens with specialized render paths (#322).
+        // Pre-multiplied pixel coords eliminate per-frame JSON field access.
+        if (std::strcmp(screen_name, "gameplay") == 0) {
+            reg.ctx().insert_or_assign(build_hud_layout(ui));
+        } else if (std::strcmp(screen_name, "level_select") == 0) {
+            reg.ctx().insert_or_assign(build_level_select_layout(ui));
+        }
     }
     ui.has_overlay = false;
 
