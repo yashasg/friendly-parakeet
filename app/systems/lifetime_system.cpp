@@ -3,7 +3,8 @@
 #include <vector>
 
 void lifetime_system(entt::registry& reg, float dt) {
-    std::vector<entt::entity> expired;
+    static std::vector<entt::entity> expired;  // #308: retain capacity across frames
+    expired.clear();
     auto view = reg.view<Lifetime>();
     for (auto [entity, life] : view.each()) {
         life.remaining -= dt;

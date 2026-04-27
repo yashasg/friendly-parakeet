@@ -11,6 +11,7 @@
 void miss_detection_system(entt::registry& reg, float /*dt*/) {
     if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
 
+    auto* gos = reg.ctx().find<GameOverState>();  // #309: hoisted above loop
     auto view = reg.view<ObstacleTag, Obstacle, Position>(entt::exclude<ScoredTag>);
     for (auto [entity, obs, pos] : view.each()) {
         if (pos.y <= constants::DESTROY_Y) continue;
@@ -19,10 +20,8 @@ void miss_detection_system(entt::registry& reg, float /*dt*/) {
         reg.emplace<ScoredTag>(entity);
 
         // Set death-cause for the UI (does not override a prior cause).
-        if (auto* gos = reg.ctx().find<GameOverState>()) {
-            if (gos->cause == DeathCause::None) {
-                gos->cause = DeathCause::MissedABeat;
-            }
+        if (gos && gos->cause == DeathCause::None) {
+            gos->cause = DeathCause::MissedABeat;
         }
     }
 }

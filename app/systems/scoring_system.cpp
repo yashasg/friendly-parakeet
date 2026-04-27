@@ -31,7 +31,8 @@ void scoring_system(entt::registry& reg, float dt) {
 
     // Process scored obstacles
     auto view = reg.view<ObstacleTag, ScoredTag, Obstacle, Position>();
-    auto* energy = reg.ctx().find<EnergyState>();
+    auto* energy  = reg.ctx().find<EnergyState>();   // #309: hoisted above loop
+    auto* results = reg.ctx().find<SongResults>();   // #309: hoisted above loop
     for (auto [entity, obs, pos] : view.each()) {
         if (reg.any_of<MissTag>(entity)) {
             // Single owner of ENERGY_DRAIN_MISS and miss_count for all miss paths
@@ -41,7 +42,7 @@ void scoring_system(entt::registry& reg, float dt) {
                 if (energy->energy < 1e-6f) energy->energy = 0.0f;
                 energy->flash_timer = constants::ENERGY_FLASH_DURATION;
             }
-            if (auto* results = reg.ctx().find<SongResults>()) {
+            if (results) {
                 results->miss_count++;
             }
             score.chain_count = 0;
@@ -107,7 +108,6 @@ void scoring_system(entt::registry& reg, float dt) {
         }
 
         // Update max chain in results
-        auto* results = reg.ctx().find<SongResults>();
         if (results) {
             if (score.chain_count > results->max_chain) {
                 results->max_chain = score.chain_count;

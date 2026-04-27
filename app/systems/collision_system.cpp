@@ -55,6 +55,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
 
     auto* song    = reg.ctx().find<SongState>();
     auto* results = reg.ctx().find<SongResults>();
+    auto* gos     = reg.ctx().find<GameOverState>();  // #309: hoisted above resolve lambda
     bool rhythm_mode = (song != nullptr);
 
     // resolve: tag entity as scored (cleared) or missed.
@@ -115,11 +116,9 @@ void collision_system(entt::registry& reg, float /*dt*/) {
         } else {
             // MISS — tag and record cause; energy drain handled by scoring_system.
             // Tag the cause of death for the UI (does not override a prior cause)
-            if (auto* gos = reg.ctx().find<GameOverState>()) {
-                if (gos->cause == DeathCause::None) {
-                    bool is_bar = (kind == ObstacleKind::LowBar || kind == ObstacleKind::HighBar);
-                    gos->cause = is_bar ? DeathCause::HitABar : DeathCause::MissedABeat;
-                }
+            if (gos && gos->cause == DeathCause::None) {
+                bool is_bar = (kind == ObstacleKind::LowBar || kind == ObstacleKind::HighBar);
+                gos->cause = is_bar ? DeathCause::HitABar : DeathCause::MissedABeat;
             }
             reg.emplace<MissTag>(entity);
             reg.emplace<ScoredTag>(entity);
