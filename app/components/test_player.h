@@ -2,6 +2,7 @@
 
 #include "player.h"
 #include <entt/entity/entity.hpp>
+#include <entt/core/enum.hpp>
 #include <cstdint>
 #include <random>
 
@@ -21,6 +22,16 @@ inline constexpr SkillConfig SKILL_TABLE[] = {
     { 400.0f, 0.800f, 1.200f, false },   // Bad
 };
 
+// ── Done-flag bits for TestPlayerAction ──────────────────────
+// Power-of-two values + _entt_enum_as_bitmask activates EnTT's
+// typed |/&/^ operators, replacing raw uint8_t literal helpers.
+enum class ActionDoneBit : uint8_t {
+    Shape    = 1 << 0,
+    Lane     = 1 << 1,
+    Vertical = 1 << 2,
+    _entt_enum_as_bitmask
+};
+
 // ── Queued action (value type, NOT a component) ──────────────
 // Sentinel values encode "no action needed":
 //   target_shape  = Hexagon   → no shape change
@@ -35,16 +46,15 @@ struct TestPlayerAction {
     int8_t target_lane          = -1;
     VMode  target_vertical      = VMode::Grounded;
 
-    // Bitmask: bit 0 = shape_done, bit 1 = lane_done, bit 2 = vertical_done
-    uint8_t done_flags          = 0;
+    ActionDoneBit done_flags = ActionDoneBit{};
 
-    bool shape_done()    const { return (done_flags & 0x01) != 0; }
-    bool lane_done()     const { return (done_flags & 0x02) != 0; }
-    bool vertical_done() const { return (done_flags & 0x04) != 0; }
+    bool shape_done()    const { return !!(done_flags & ActionDoneBit::Shape); }
+    bool lane_done()     const { return !!(done_flags & ActionDoneBit::Lane); }
+    bool vertical_done() const { return !!(done_flags & ActionDoneBit::Vertical); }
 
-    void mark_shape_done()    { done_flags |= 0x01; }
-    void mark_lane_done()     { done_flags |= 0x02; }
-    void mark_vertical_done() { done_flags |= 0x04; }
+    void mark_shape_done()    { done_flags |= ActionDoneBit::Shape; }
+    void mark_lane_done()     { done_flags |= ActionDoneBit::Lane; }
+    void mark_vertical_done() { done_flags |= ActionDoneBit::Vertical; }
 
     bool needs_shape()    const { return target_shape != Shape::Hexagon && !shape_done(); }
     bool needs_lane()     const { return target_lane >= 0 && !lane_done(); }
