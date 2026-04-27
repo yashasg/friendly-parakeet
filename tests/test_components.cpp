@@ -80,14 +80,90 @@ TEST_CASE("components: GameState defaults to title", "[components]") {
 
 TEST_CASE("ecs: make_registry creates all singletons", "[ecs]") {
     auto reg = make_registry();
-    // These should not throw
+    // These should not throw — assert every ctx singleton required by systems.
+    // Input / event transport
     static_cast<void>(reg.ctx().get<InputState>());
     static_cast<void>(reg.ctx().get<EventQueue>());
+    static_cast<void>(reg.ctx().get<entt::dispatcher>());   // #332: must be present
+    // Gameplay state
     static_cast<void>(reg.ctx().get<GameState>());
     static_cast<void>(reg.ctx().get<ScoreState>());
     static_cast<void>(reg.ctx().get<DifficultyConfig>());
+    // Audio / haptics / settings
     static_cast<void>(reg.ctx().get<AudioQueue>());
-    SUCCEED("all required singletons exist in registry context");
+    static_cast<void>(reg.ctx().get<HapticQueue>());
+    static_cast<void>(reg.ctx().get<SettingsState>());
+    // Level / song / rhythm
+    static_cast<void>(reg.ctx().get<LevelSelectState>());
+    static_cast<void>(reg.ctx().get<BeatMap>());
+    static_cast<void>(reg.ctx().get<SongState>());
+    static_cast<void>(reg.ctx().get<EnergyState>());
+    static_cast<void>(reg.ctx().get<SongResults>());
+    // Scoring persistence / end-screen
+    static_cast<void>(reg.ctx().get<HighScoreState>());
+    static_cast<void>(reg.ctx().get<HighScorePersistence>());
+    static_cast<void>(reg.ctx().get<GameOverState>());
+    // Misc
+    static_cast<void>(reg.ctx().get<RNGState>());
+    static_cast<void>(reg.ctx().get<ObstacleCounter>());
+    SUCCEED("all required ctx singletons exist in registry context");
+}
+
+TEST_CASE("ecs: make_registry dispatcher is wired — GoEvent listeners registered", "[ecs][dispatcher]") {
+    // Verifies that wire_input_dispatcher() was called during make_registry(),
+    // so any system can immediately enqueue+update GoEvents without separate setup.
+    auto reg = make_registry();
+
+    // Promote to Playing so player_input_handle_go has observable effect.
+    reg.ctx().get<GameState>().phase = GamePhase::Playing;
+    auto player = make_player(reg);
+    auto& lane  = reg.get<Lane>(player);
+
+    auto& disp = reg.ctx().get<entt::dispatcher>();
+    disp.enqueue(GoEvent{Direction::Right});
+    disp.update<GoEvent>();
+
+    // If dispatcher listeners were NOT wired, lane.target would remain -1.
+    CHECK(lane.target == 2);   // listener wired: player_input_handle_go fired
+}
+
+TEST_CASE("ecs: make_registry dispatcher is wired — ButtonPressEvent listeners registered", "[ecs][dispatcher]") {
+    // Verifies ButtonPressEvent sink is wired: a press event on a valid button
+    // in Playing phase reaches player_input_handle_press.
+    auto reg = make_rhythm_registry();
+    auto player = make_rhythm_player(reg);
+    auto& sw    = reg.get<ShapeWindow>(player);
+    REQUIRE(sw.phase == WindowPhase::Idle);
+
+    auto btn = make_shape_button(reg, Shape::Triangle);
+    reg.get<Position>(btn) = {0.f, 0.f};
+    reg.get<HitCircle>(btn).radius = 50.f;
+
+    auto& disp = reg.ctx().get<entt::dispatcher>();
+    disp.enqueue(ButtonPressEvent{btn});
+    disp.update<ButtonPressEvent>();
+
+    // If dispatcher listeners were NOT wired, sw.phase would stay Idle.
+    CHECK(sw.phase        == WindowPhase::MorphIn);  // listener wired: handle_press fired
+    CHECK(sw.target_shape == Shape::Triangle);
+}
+
+TEST_CASE("ecs: make_registry dispatcher ctx — second update is a no-op (no replay)", "[ecs][dispatcher]") {
+    // Contract: after an authoritative drain, a subsequent update<T>() with no
+    // new enqueues must not re-deliver the previously drained event.
+    // Applies to both GoEvent and ButtonPressEvent pools.
+    auto reg = make_rhythm_registry();
+    auto player = make_rhythm_player(reg);
+    auto& lane  = reg.get<Lane>(player);
+
+    auto& disp = reg.ctx().get<entt::dispatcher>();
+    disp.enqueue(GoEvent{Direction::Right});
+    disp.update<GoEvent>();
+    CHECK(lane.target == 2);
+
+    // Second drain — must be a no-op.
+    disp.update<GoEvent>();
+    CHECK(lane.target == 2);   // not replayed
 }
 
 TEST_CASE("ecs: make_player creates proper entity", "[ecs]") {

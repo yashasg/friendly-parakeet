@@ -32,6 +32,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <entt/entt.hpp>
 #include "components/input_events.h"   // InputEvent, GoEvent, ButtonPressEvent
+#include "test_helpers.h"              // make_rhythm_registry, make_rhythm_player
 
 // ── Listener helpers ──────────────────────────────────────────────────────
 // EnTT dispatcher.sink<T>().connect<&Struct::method>(instance) requires a
@@ -235,4 +236,106 @@ TEST_CASE("dispatcher: enqueue ButtonPressEvent without update delivers nothing"
     dispatcher.enqueue(ButtonPressEvent{entt::null});
 
     CHECK(counter.count == 0);
+}
+
+// ── R7: Stale-event discard across phase transitions ──────────────────────
+//
+// R7 contract: queued dispatcher events must not cause effects in the wrong
+// gameplay phase after an authoritative phase transition.
+//
+// The production architecture satisfies R7 through two cooperating mechanisms:
+//   1. Drain-first order: game_state_system calls disp.update<GoEvent>() BEFORE
+//      processing transition_pending, so events queued in phase X are processed
+//      in phase X's context — not leaked into phase Y.
+//   2. Phase guards: player_input_handle_go and player_input_handle_press each
+//      check gs.phase == Playing at entry and return early otherwise.  Even if
+//      a GoEvent is delivered in a non-Playing phase, these guards prevent mutation.
+//
+// The three tests below document both mechanisms and their interaction.
+
+TEST_CASE("R7: GoEvent delivered in GameOver phase — player_input_handle_go no-ops due to phase guard",
+          "[dispatcher][R7][regression]") {
+    // Arrange: simulate a stale GoEvent reaching the dispatcher after a
+    // Playing→GameOver phase transition (e.g. transition happened without a
+    // preceding drain, which can arise in test-harness or edge-case paths).
+    auto reg = make_rhythm_registry();
+    auto player = make_rhythm_player(reg);
+    auto& lane  = reg.get<Lane>(player);
+    auto& gs    = reg.ctx().get<GameState>();
+    auto& disp  = reg.ctx().get<entt::dispatcher>();
+
+    // Transition to GameOver BEFORE enqueuing — simulating that the phase
+    // boundary crossed before the input reached the drain.
+    gs.phase = GamePhase::GameOver;
+
+    disp.enqueue(GoEvent{Direction::Right});
+    disp.update<GoEvent>();   // deliver in GameOver context
+
+    // player_input_handle_go: phase != Playing → early return → lane unchanged
+    CHECK(lane.target  == -1);   // default — never updated
+    CHECK(lane.current == 1);    // unchanged
+}
+
+TEST_CASE("R7: drain-first order — GoEvent processed in pre-transition phase, queue empty post-transition",
+          "[dispatcher][R7]") {
+    // Documents production game_state_system behaviour: events are drained
+    // BEFORE transition_pending is processed.  A GoEvent queued in Playing is
+    // delivered while still in Playing (lane moves), then queue empties.
+    // Any additional update() calls after the transition are no-ops —
+    // no stale replay in the post-transition frame.
+    auto reg = make_rhythm_registry();
+    auto player = make_rhythm_player(reg);
+    auto& lane = reg.get<Lane>(player);
+    auto& gs   = reg.ctx().get<GameState>();
+    auto& disp = reg.ctx().get<entt::dispatcher>();
+
+    REQUIRE(gs.phase == GamePhase::Playing);
+
+    disp.enqueue(GoEvent{Direction::Right});
+
+    // Drain first (mirrors game_state_system drain before transition check).
+    disp.update<GoEvent>();
+    CHECK(lane.target == 2);   // event processed in Playing phase → lane moved
+
+    // Now perform the phase transition.
+    gs.phase = GamePhase::GameOver;
+
+    // Post-transition drain: queue already empty — must be a no-op.
+    disp.update<GoEvent>();
+    CHECK(lane.target == 2);   // unchanged: no stale GoEvent replayed
+}
+
+TEST_CASE("R7: two-tick stale-event regression — GoEvent from tick N absent in tick N+1",
+          "[dispatcher][R7][regression]") {
+    // Full two-tick sequence proving cross-tick isolation.
+    //
+    // Tick N (Playing): enqueue GoEvent → drain → lane.target moves to 2.
+    // Phase transitions to GameOver between ticks.
+    // Tick N+1 (GameOver): pre-tick produces no new events; drain is a no-op.
+    //   Verify lane.target is still 2 — the tick-N event was not re-delivered.
+    auto reg = make_rhythm_registry();
+    auto player = make_rhythm_player(reg);
+    auto& lane = reg.get<Lane>(player);
+    auto& gs   = reg.ctx().get<GameState>();
+    auto& disp = reg.ctx().get<entt::dispatcher>();
+
+    // ── Tick N ──────────────────────────────────────────────────────────────
+    REQUIRE(gs.phase == GamePhase::Playing);
+    disp.enqueue(GoEvent{Direction::Right});
+    disp.update<GoEvent>();           // authoritative drain for tick N
+    CHECK(lane.target == 2);
+
+    // Partial lerp simulates player_movement_system advancing the interpolation.
+    lane.lerp_t = 0.5f;
+
+    // ── Phase transition ─────────────────────────────────────────────────────
+    gs.phase = GamePhase::GameOver;
+
+    // ── Tick N+1 ─────────────────────────────────────────────────────────────
+    // No new GoEvents enqueued (pre-tick systems produced nothing new).
+    disp.update<GoEvent>();           // post-transition drain — must be a no-op
+
+    CHECK(lane.target  == 2);         // target unchanged: no stale replay
+    CHECK(lane.lerp_t  == 0.5f);      // lerp_t not reset: no second lane move
+    CHECK(lane.current == 1);         // current unchanged: no instant snap
 }
