@@ -32,7 +32,11 @@ void setup_play_session(entt::registry& reg) {
     reg.ctx().insert_or_assign(BurnoutState{});
     reg.ctx().insert_or_assign(AudioQueue{});
 
-    // Load beatmap from level selection
+    // Load beatmap from level selection.
+    // BeatMap is a context singleton (cold asset). It is reset here via move
+    // assignment and populated by load_beat_map(). It remains immutable for
+    // the duration of the play session. On song unload (next setup_play_session
+    // call) the beat array is replaced in-place via another move assignment.
     auto& lss = reg.ctx().get<LevelSelectState>();
     auto& beatmap = reg.ctx().get<BeatMap>();
     beatmap = BeatMap{};
