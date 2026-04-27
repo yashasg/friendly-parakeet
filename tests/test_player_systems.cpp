@@ -8,9 +8,8 @@ TEST_CASE("player_action: shape change on button press", "[player]") {
     auto reg = make_registry();
     make_player(reg);
 
-    auto& eq = reg.ctx().get<EventQueue>();
     auto btn = make_shape_button(reg, Shape::Triangle);
-    eq.push_press(btn);
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>({btn});
 
     player_input_system(reg, 0.016f);
 
@@ -29,9 +28,8 @@ TEST_CASE("player_action: no shape change when same shape pressed", "[player]") 
     make_player(reg);
 
     // Player starts as Circle, press Circle
-    auto& eq = reg.ctx().get<EventQueue>();
     auto btn = make_shape_button(reg, Shape::Circle);
-    eq.push_press(btn);
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>({btn});
 
     player_input_system(reg, 0.016f);
 
@@ -47,8 +45,7 @@ TEST_CASE("player_action: swipe left changes lane", "[player]") {
     auto reg = make_registry();
     make_player(reg);
 
-    auto& eq = reg.ctx().get<EventQueue>();
-    eq.push_go(Direction::Left);
+    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Left});
 
     player_input_system(reg, 0.016f);
 
@@ -63,8 +60,7 @@ TEST_CASE("player_action: swipe right changes lane", "[player]") {
     auto reg = make_registry();
     make_player(reg);
 
-    auto& eq = reg.ctx().get<EventQueue>();
-    eq.push_go(Direction::Right);
+    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Right});
 
     player_input_system(reg, 0.016f);
 
@@ -79,8 +75,7 @@ TEST_CASE("player_action: swipe left at lane 0 is clamped", "[player]") {
     auto p = make_player(reg);
     reg.get<Lane>(p).current = 0;
 
-    auto& eq = reg.ctx().get<EventQueue>();
-    eq.push_go(Direction::Left);
+    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Left});
 
     player_input_system(reg, 0.016f);
 
@@ -92,8 +87,7 @@ TEST_CASE("player_action: swipe right at lane 2 is clamped", "[player]") {
     auto p = make_player(reg);
     reg.get<Lane>(p).current = 2;
 
-    auto& eq = reg.ctx().get<EventQueue>();
-    eq.push_go(Direction::Right);
+    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Right});
 
     player_input_system(reg, 0.016f);
 
@@ -104,8 +98,7 @@ TEST_CASE("player_action: swipe up does not jump (disabled)", "[player]") {
     auto reg = make_registry();
     make_player(reg);
 
-    auto& eq = reg.ctx().get<EventQueue>();
-    eq.push_go(Direction::Up);
+    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Up});
 
     player_input_system(reg, 0.016f);
 
@@ -119,8 +112,7 @@ TEST_CASE("player_action: swipe down does not slide (disabled)", "[player]") {
     auto reg = make_registry();
     make_player(reg);
 
-    auto& eq = reg.ctx().get<EventQueue>();
-    eq.push_go(Direction::Down);
+    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Down});
 
     player_input_system(reg, 0.016f);
 
@@ -136,8 +128,7 @@ TEST_CASE("player_action: cannot jump while already jumping", "[player]") {
     reg.get<VerticalState>(p).mode  = VMode::Jumping;
     reg.get<VerticalState>(p).timer = 0.2f;
 
-    auto& eq = reg.ctx().get<EventQueue>();
-    eq.push_go(Direction::Up);
+    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Up});
 
     player_input_system(reg, 0.016f);
 
@@ -232,8 +223,7 @@ TEST_CASE("player_action: not in Playing phase skips processing", "[player]") {
     reg.ctx().get<GameState>().phase = GamePhase::Title;
     make_player(reg);
 
-    auto& eq = reg.ctx().get<EventQueue>();
-    eq.push_go(Direction::Up);
+    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Up});
 
     player_input_system(reg, 0.016f);
 
@@ -260,8 +250,7 @@ TEST_CASE("player_action: cannot slide while already sliding", "[player]") {
     reg.get<VerticalState>(p).mode  = VMode::Sliding;
     reg.get<VerticalState>(p).timer = 0.3f;
 
-    auto& eq = reg.ctx().get<EventQueue>();
-    eq.push_go(Direction::Down);
+    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Down});
 
     player_input_system(reg, 0.016f);
 
@@ -275,8 +264,7 @@ TEST_CASE("player_action: cannot slide while jumping", "[player]") {
     reg.get<VerticalState>(p).mode  = VMode::Jumping;
     reg.get<VerticalState>(p).timer = 0.2f;
 
-    auto& eq = reg.ctx().get<EventQueue>();
-    eq.push_go(Direction::Down);
+    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Down});
 
     player_input_system(reg, 0.016f);
 
@@ -290,8 +278,7 @@ TEST_CASE("player_action: cannot jump while sliding", "[player]") {
     reg.get<VerticalState>(p).mode  = VMode::Sliding;
     reg.get<VerticalState>(p).timer = 0.3f;
 
-    auto& eq = reg.ctx().get<EventQueue>();
-    eq.push_go(Direction::Up);
+    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Up});
 
     player_input_system(reg, 0.016f);
 

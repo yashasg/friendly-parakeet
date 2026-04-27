@@ -17,8 +17,9 @@ TEST_CASE("hit_test: tap inside hitbox emits press", "[hit_test]") {
     eq.push_input(InputType::Tap, 120.0f, 110.0f);  // inside
     hit_test_system(reg);
 
-    CHECK(eq.press_count == 1);
-    CHECK(eq.presses[0].entity == btn);
+    auto cap = drain_press_events(reg);
+    CHECK(cap.count == 1);
+    CHECK(cap.buf[0].entity == btn);
 }
 
 TEST_CASE("hit_test: tap outside hitbox no event", "[hit_test]") {
@@ -35,7 +36,7 @@ TEST_CASE("hit_test: tap outside hitbox no event", "[hit_test]") {
     eq.push_input(InputType::Tap, 300.0f, 300.0f);  // outside
     hit_test_system(reg);
 
-    CHECK(eq.press_count == 0);
+    CHECK(drain_press_events(reg).count == 0);
 }
 
 TEST_CASE("hit_test: tap inside hitcircle emits press", "[hit_test]") {
@@ -50,8 +51,9 @@ TEST_CASE("hit_test: tap inside hitcircle emits press", "[hit_test]") {
     eq.push_input(InputType::Tap, 210.0f, 210.0f);  // inside circle
     hit_test_system(reg);
 
-    CHECK(eq.press_count == 1);
-    CHECK(eq.presses[0].entity == btn);
+    auto cap = drain_press_events(reg);
+    CHECK(cap.count == 1);
+    CHECK(cap.buf[0].entity == btn);
 }
 
 TEST_CASE("hit_test: wrong phase skips entity", "[hit_test]") {
@@ -66,7 +68,7 @@ TEST_CASE("hit_test: wrong phase skips entity", "[hit_test]") {
     eq.push_input(InputType::Tap, 100.0f, 100.0f);  // exact center
     hit_test_system(reg);
 
-    CHECK(eq.press_count == 0);  // skipped: wrong phase
+    CHECK(drain_press_events(reg).count == 0);  // skipped: wrong phase
 }
 
 TEST_CASE("hit_test: swipe emits go not press", "[hit_test]") {
@@ -81,9 +83,10 @@ TEST_CASE("hit_test: swipe emits go not press", "[hit_test]") {
     gesture_routing_system(reg);
     hit_test_system(reg);
 
-    CHECK(eq.go_count == 1);
-    CHECK(eq.goes[0].dir == Direction::Right);
-    CHECK(eq.press_count == 0);  // swipe → go, not press
+    auto go_cap = drain_go_events(reg);
+    CHECK(go_cap.count == 1);
+    CHECK(go_cap.buf[0].dir == Direction::Right);
+    CHECK(drain_press_events(reg).count == 0);  // swipe → go, not press
 }
 
 TEST_CASE("hit_test: penetrating hits multiple entities", "[hit_test]") {
@@ -102,20 +105,19 @@ TEST_CASE("hit_test: penetrating hits multiple entities", "[hit_test]") {
     eq.push_input(InputType::Tap, 100.0f, 100.0f);
     hit_test_system(reg);
 
-    CHECK(eq.press_count == 2);
+    CHECK(drain_press_events(reg).count == 2);
 }
 
 TEST_CASE("hit_test: no input events no output", "[hit_test]") {
     auto reg = make_registry();
-    auto& eq = reg.ctx().get<EventQueue>();
 
     make_shape_button(reg, Shape::Circle);
 
     // No input events pushed
     hit_test_system(reg);
 
-    CHECK(eq.press_count == 0);
-    CHECK(eq.go_count == 0);
+    CHECK(drain_press_events(reg).count == 0);
+    CHECK(drain_go_events(reg).count == 0);
 }
 
 // ── Structural ActiveTag sync (#249) ──────────────────────────────
@@ -150,18 +152,17 @@ TEST_CASE("hit_test: ActiveTag removed when phase no longer covers entity",
     eq.push_input(InputType::Tap, 100.0f, 100.0f);
     hit_test_system(reg);
     CHECK(reg.all_of<ActiveTag>(btn));
-    CHECK(eq.press_count == 1);
+    CHECK(drain_press_events(reg).count == 1);
 
     // Move to Title; the Playing-only button must lose its ActiveTag and
     // stop receiving presses without any per-event predicate.
     reg.ctx().get<GameState>().phase = GamePhase::Title;
-    eq.input_count = 0;
-    eq.press_count = 0;
+    eq.clear();
     eq.push_input(InputType::Tap, 100.0f, 100.0f);
     hit_test_system(reg);
 
     CHECK_FALSE(reg.all_of<ActiveTag>(btn));
-    CHECK(eq.press_count == 0);
+    CHECK(drain_press_events(reg).count == 0);
 }
 
 TEST_CASE("hit_test: ActiveTag re-emplaced when phase returns to coverage",
@@ -182,7 +183,7 @@ TEST_CASE("hit_test: ActiveTag re-emplaced when phase returns to coverage",
     hit_test_system(reg);
 
     CHECK(reg.all_of<ActiveTag>(btn));
-    CHECK(eq.press_count == 1);
+    CHECK(drain_press_events(reg).count == 1);
 }
 
 TEST_CASE("hit_test: invalidate_active_tag_cache forces resync on same phase",
@@ -205,5 +206,5 @@ TEST_CASE("hit_test: invalidate_active_tag_cache forces resync on same phase",
     hit_test_system(reg);
 
     CHECK(reg.all_of<ActiveTag>(btn));
-    CHECK(eq.press_count == 1);
+    CHECK(drain_press_events(reg).count == 1);
 }

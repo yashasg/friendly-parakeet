@@ -178,15 +178,14 @@ TEST_CASE("spawn: obstacles have position at SPAWN_Y", "[spawn]") {
 TEST_CASE("game_state: title to level select on touch", "[gamestate]") {
     auto reg = make_registry();
     reg.ctx().get<GameState>().phase = GamePhase::Title;
-    auto& eq = reg.ctx().get<EventQueue>();
     auto btn = make_menu_button(reg, MenuActionKind::Confirm, GamePhase::Title);
-    eq.push_press(btn);
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>({btn});
 
     game_state_system(reg, 0.016f);
 
     auto& gs = reg.ctx().get<GameState>();
-    CHECK(gs.transition_pending);
-    CHECK(gs.next_phase == GamePhase::LevelSelect);
+    CHECK_FALSE(gs.transition_pending);
+    CHECK(gs.phase == GamePhase::LevelSelect);
 }
 
 TEST_CASE("game_state: game over button choice after delay", "[gamestate]") {
@@ -194,9 +193,8 @@ TEST_CASE("game_state: game over button choice after delay", "[gamestate]") {
     auto& gs = reg.ctx().get<GameState>();
     gs.phase = GamePhase::GameOver;
     gs.phase_timer = 0.5f;
-    auto& eq = reg.ctx().get<EventQueue>();
     auto btn = make_menu_button(reg, MenuActionKind::GoLevelSelect, GamePhase::GameOver);
-    eq.push_press(btn);
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>({btn});
 
     game_state_system(reg, 0.016f);
 
@@ -210,9 +208,8 @@ TEST_CASE("game_state: game over ignores touch during delay", "[gamestate]") {
     auto& gs = reg.ctx().get<GameState>();
     gs.phase = GamePhase::GameOver;
     gs.phase_timer = 0.2f;  // within 0.4s delay
-    auto& eq = reg.ctx().get<EventQueue>();
     auto btn = make_menu_button(reg, MenuActionKind::Confirm, GamePhase::GameOver);
-    eq.push_press(btn);
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>({btn});
 
     game_state_system(reg, 0.016f);
 
@@ -304,9 +301,8 @@ TEST_CASE("game_state: paused to playing on touch", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
     gs.phase = GamePhase::Paused;
-    auto& eq = reg.ctx().get<EventQueue>();
     auto btn = make_menu_button(reg, MenuActionKind::Confirm, GamePhase::Paused);
-    eq.push_press(btn);
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>({btn});
 
     game_state_system(reg, 0.016f);
 

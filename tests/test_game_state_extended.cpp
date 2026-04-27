@@ -133,6 +133,7 @@ TEST_CASE("game_state: song_complete button choice level_select", "[gamestate]")
 
     CHECK(gs.transition_pending);
     CHECK(gs.next_phase == GamePhase::LevelSelect);
+    CHECK(gs.end_choice == EndScreenChoice::None);
 }
 
 TEST_CASE("game_state: song_complete button choice main_menu", "[gamestate]") {
@@ -248,15 +249,14 @@ TEST_CASE("game_state: title position tap triggers level_select", "[gamestate]")
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
     gs.phase = GamePhase::Title;
-    auto& eq = reg.ctx().get<EventQueue>();
     // Simulate a tap → Confirm menu button press (title screen has full-screen confirm)
     auto btn = make_menu_button(reg, MenuActionKind::Confirm, GamePhase::Title);
-    eq.push_press(btn);
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>({btn});
 
     game_state_system(reg, 0.016f);
 
-    CHECK(gs.transition_pending);
-    CHECK(gs.next_phase == GamePhase::LevelSelect);
+    CHECK_FALSE(gs.transition_pending);
+    CHECK(gs.phase == GamePhase::LevelSelect);
 }
 
 TEST_CASE("game_state: transition_pending consumed on execution", "[gamestate]") {
@@ -344,4 +344,3 @@ TEST_CASE("song_complete: score is visible even when it does not set a new high 
     CHECK(*v_score == "3000");
     CHECK(*v_hs    == "9999");  // high_score NOT overwritten
 }
-

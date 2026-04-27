@@ -35,9 +35,8 @@ TEST_CASE("level_select — phase guard: does nothing when not LevelSelect",
     auto& lss = reg.ctx().get<LevelSelectState>();
     lss.selected_level = 0;
 
-    auto& eq = reg.ctx().get<EventQueue>();
     auto btn = make_menu_button(reg, MenuActionKind::SelectLevel, GamePhase::LevelSelect, 1);
-    eq.push_press(btn);
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>({btn});
 
     level_select_system(reg, 0.016f);
     REQUIRE(lss.selected_level == 0);        // unchanged
@@ -70,10 +69,9 @@ TEST_CASE("level_select — touch card 0", "[level_select]") {
     auto& lss   = reg.ctx().get<LevelSelectState>();
     lss.selected_level = 1;                  // start elsewhere
 
-    auto& eq = reg.ctx().get<EventQueue>();
     auto card = find_menu_button(reg, MenuActionKind::SelectLevel, 0);
     REQUIRE((card != entt::null));
-    eq.push_press(card);
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>({card});
 
     level_select_system(reg, 0.016f);
     REQUIRE(lss.selected_level == 0);
@@ -83,10 +81,9 @@ TEST_CASE("level_select — touch card 1", "[level_select]") {
     auto reg    = make_level_select_registry();
     auto& lss   = reg.ctx().get<LevelSelectState>();
 
-    auto& eq = reg.ctx().get<EventQueue>();
     auto card = find_menu_button(reg, MenuActionKind::SelectLevel, 1);
     REQUIRE((card != entt::null));
-    eq.push_press(card);
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>({card});
 
     level_select_system(reg, 0.016f);
     REQUIRE(lss.selected_level == 1);
@@ -96,10 +93,9 @@ TEST_CASE("level_select — touch card 2", "[level_select]") {
     auto reg    = make_level_select_registry();
     auto& lss   = reg.ctx().get<LevelSelectState>();
 
-    auto& eq = reg.ctx().get<EventQueue>();
     auto card = find_menu_button(reg, MenuActionKind::SelectLevel, 2);
     REQUIRE((card != entt::null));
-    eq.push_press(card);
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>({card});
 
     level_select_system(reg, 0.016f);
     REQUIRE(lss.selected_level == 2);
@@ -128,10 +124,9 @@ TEST_CASE("level_select — touch difficulty easy", "[level_select]") {
     auto& lss   = reg.ctx().get<LevelSelectState>();
     lss.selected_level = 0;
 
-    auto& eq = reg.ctx().get<EventQueue>();
     auto diff = find_menu_button(reg, MenuActionKind::SelectDiff, 0);
     REQUIRE((diff != entt::null));
-    eq.push_press(diff);
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>({diff});
 
     level_select_system(reg, 0.016f);
     REQUIRE(lss.selected_difficulty == 0);
@@ -143,10 +138,9 @@ TEST_CASE("level_select — touch difficulty medium", "[level_select]") {
     lss.selected_level      = 0;
     lss.selected_difficulty = 0;             // start at easy
 
-    auto& eq = reg.ctx().get<EventQueue>();
     auto diff = find_menu_button(reg, MenuActionKind::SelectDiff, 1);
     REQUIRE((diff != entt::null));
-    eq.push_press(diff);
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>({diff});
 
     level_select_system(reg, 0.016f);
     REQUIRE(lss.selected_difficulty == 1);
@@ -157,10 +151,9 @@ TEST_CASE("level_select — touch difficulty hard", "[level_select]") {
     auto& lss   = reg.ctx().get<LevelSelectState>();
     lss.selected_level = 0;
 
-    auto& eq = reg.ctx().get<EventQueue>();
     auto diff = find_menu_button(reg, MenuActionKind::SelectDiff, 2);
     REQUIRE((diff != entt::null));
-    eq.push_press(diff);
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>({diff});
 
     level_select_system(reg, 0.016f);
     REQUIRE(lss.selected_difficulty == 2);
@@ -174,13 +167,15 @@ TEST_CASE("level_select — touch START button confirms", "[level_select]") {
     auto reg    = make_level_select_registry();
     auto& lss   = reg.ctx().get<LevelSelectState>();
 
-    auto& eq = reg.ctx().get<EventQueue>();
     auto start = find_menu_button(reg, MenuActionKind::Confirm, 0);
     REQUIRE((start != entt::null));
-    eq.push_press(start);
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>({start});
 
     level_select_system(reg, 0.016f);
-    REQUIRE(lss.confirmed);
+    REQUIRE_FALSE(lss.confirmed);
+    auto& gs = reg.ctx().get<GameState>();
+    REQUIRE(gs.transition_pending);
+    REQUIRE(gs.next_phase == GamePhase::Playing);
 }
 
 TEST_CASE("level_select — no START press: no confirm",
@@ -202,8 +197,7 @@ TEST_CASE("level_select — Go Up cycles level up", "[level_select][keyboard]") 
     auto& lss   = reg.ctx().get<LevelSelectState>();
     lss.selected_level = 1;
 
-    auto& eq = reg.ctx().get<EventQueue>();
-    eq.push_go(Direction::Up);
+    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Up});
     level_select_system(reg, 0.016f);
     REQUIRE(lss.selected_level == 0);        // 1 → 0
 }
@@ -213,8 +207,7 @@ TEST_CASE("level_select — Go Down cycles level down", "[level_select][keyboard
     auto& lss   = reg.ctx().get<LevelSelectState>();
     lss.selected_level = 0;
 
-    auto& eq = reg.ctx().get<EventQueue>();
-    eq.push_go(Direction::Down);
+    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Down});
     level_select_system(reg, 0.016f);
     REQUIRE(lss.selected_level == 1);        // 0 → 1
 }
@@ -224,8 +217,7 @@ TEST_CASE("level_select — Go Left cycles difficulty left", "[level_select][key
     auto& lss   = reg.ctx().get<LevelSelectState>();
     // default selected_difficulty = 1 (medium)
 
-    auto& eq = reg.ctx().get<EventQueue>();
-    eq.push_go(Direction::Left);
+    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Left});
     level_select_system(reg, 0.016f);
     REQUIRE(lss.selected_difficulty == 0);   // 1 → 0
 }
@@ -235,8 +227,7 @@ TEST_CASE("level_select — Go Right cycles difficulty right", "[level_select][k
     auto& lss   = reg.ctx().get<LevelSelectState>();
     // default selected_difficulty = 1 (medium)
 
-    auto& eq = reg.ctx().get<EventQueue>();
-    eq.push_go(Direction::Right);
+    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Right});
     level_select_system(reg, 0.016f);
     REQUIRE(lss.selected_difficulty == 2);   // 1 → 2
 }
@@ -245,12 +236,14 @@ TEST_CASE("level_select — Tap Confirm confirms", "[level_select][keyboard]") {
     auto reg    = make_level_select_registry();
     auto& lss   = reg.ctx().get<LevelSelectState>();
 
-    auto& eq = reg.ctx().get<EventQueue>();
     auto start = find_menu_button(reg, MenuActionKind::Confirm, 0);
     REQUIRE((start != entt::null));
-    eq.push_press(start);
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>({start});
     level_select_system(reg, 0.016f);
-    REQUIRE(lss.confirmed);
+    REQUIRE_FALSE(lss.confirmed);
+    auto& gs = reg.ctx().get<GameState>();
+    REQUIRE(gs.transition_pending);
+    REQUIRE(gs.next_phase == GamePhase::Playing);
 }
 
 TEST_CASE("level_select — Go Up wraps level 0 → 2", "[level_select][keyboard]") {
@@ -258,8 +251,7 @@ TEST_CASE("level_select — Go Up wraps level 0 → 2", "[level_select][keyboard
     auto& lss   = reg.ctx().get<LevelSelectState>();
     lss.selected_level = 0;
 
-    auto& eq = reg.ctx().get<EventQueue>();
-    eq.push_go(Direction::Up);
+    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Up});
     level_select_system(reg, 0.016f);
     REQUIRE(lss.selected_level == 2);        // (0 - 1 + 3) % 3 = 2
 }
@@ -269,8 +261,7 @@ TEST_CASE("level_select — Go Down wraps level 2 → 0", "[level_select][keyboa
     auto& lss   = reg.ctx().get<LevelSelectState>();
     lss.selected_level = 2;
 
-    auto& eq = reg.ctx().get<EventQueue>();
-    eq.push_go(Direction::Down);
+    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Down});
     level_select_system(reg, 0.016f);
     REQUIRE(lss.selected_level == 0);        // (2 + 1) % 3 = 0
 }
@@ -280,8 +271,7 @@ TEST_CASE("level_select — Go Left wraps difficulty 0 → 2", "[level_select][k
     auto& lss   = reg.ctx().get<LevelSelectState>();
     lss.selected_difficulty = 0;
 
-    auto& eq = reg.ctx().get<EventQueue>();
-    eq.push_go(Direction::Left);
+    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Left});
     level_select_system(reg, 0.016f);
     REQUIRE(lss.selected_difficulty == 2);   // (0 - 1 + 3) % 3 = 2
 }
@@ -291,8 +281,7 @@ TEST_CASE("level_select — Go Right wraps difficulty 2 → 0", "[level_select][
     auto& lss   = reg.ctx().get<LevelSelectState>();
     lss.selected_difficulty = 2;
 
-    auto& eq = reg.ctx().get<EventQueue>();
-    eq.push_go(Direction::Right);
+    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Right});
     level_select_system(reg, 0.016f);
     REQUIRE(lss.selected_difficulty == 0);   // (2 + 1) % 3 = 0
 }
@@ -308,10 +297,9 @@ TEST_CASE("level_select — desktop mouse click full pipeline", "[level_select][
     lss.confirmed = false;
 
     // Tap on card 2 (via hit_test_system → press event)
-    auto& eq = reg.ctx().get<EventQueue>();
     auto card2 = find_menu_button(reg, MenuActionKind::SelectLevel, 2);
     REQUIRE((card2 != entt::null));
-    eq.push_press(card2);
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>({card2});
 
     // Run systems in exact execution order
     game_state_system(reg, 0.016f);
@@ -330,15 +318,16 @@ TEST_CASE("level_select — mouse click on START triggers confirmed", "[level_se
     auto& lss = reg.ctx().get<LevelSelectState>();
     lss.confirmed = false;
 
-    auto& eq = reg.ctx().get<EventQueue>();
     auto start = find_menu_button(reg, MenuActionKind::Confirm, 0);
     REQUIRE((start != entt::null));
-    eq.push_press(start);
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>({start});
 
     game_state_system(reg, 0.016f);
     level_select_system(reg, 0.016f);
 
-    REQUIRE(lss.confirmed == true);
+    REQUIRE_FALSE(lss.confirmed);
+    REQUIRE(gs.transition_pending);
+    REQUIRE(gs.next_phase == GamePhase::Playing);
 }
 
 TEST_CASE("level_select — title click should NOT leak into level select", "[level_select][regression]") {
@@ -350,10 +339,9 @@ TEST_CASE("level_select — title click should NOT leak into level select", "[le
     lss.selected_level = 0;
     lss.confirmed = false;
 
-    auto& eq = reg.ctx().get<EventQueue>();
     // Simulate a title-screen confirm press
     auto btn = make_menu_button(reg, MenuActionKind::Confirm, GamePhase::Title);
-    eq.push_press(btn);
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>({btn});
 
     // Tick 1: Title → sets transition_pending
     game_state_system(reg, 0.016f);
@@ -415,8 +403,7 @@ TEST_CASE("level_select: diff button Y updated same tick as Go Up (level 1→0)"
                Catch::Matchers::WithinAbs(expected_diff_y(1), 1.0f));
 
     // Go Up → selected_level should become 0 AND diff Y should reflect level 0.
-    auto& eq = reg.ctx().get<EventQueue>();
-    eq.push_go(Direction::Up);
+    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Up});
     level_select_system(reg, 0.016f);
 
     REQUIRE(lss.selected_level == 0);
@@ -433,8 +420,7 @@ TEST_CASE("level_select: diff button Y updated same tick as Go Down (level 0→1
 
     level_select_system(reg, 0.016f);
 
-    auto& eq = reg.ctx().get<EventQueue>();
-    eq.push_go(Direction::Down);
+    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Down});
     level_select_system(reg, 0.016f);
 
     REQUIRE(lss.selected_level == 1);
@@ -454,10 +440,9 @@ TEST_CASE("level_select: diff button Y updated same tick as SelectLevel press",
                Catch::Matchers::WithinAbs(expected_diff_y(0), 1.0f));
 
     // Press the level-2 card
-    auto& eq   = reg.ctx().get<EventQueue>();
     auto card2 = find_menu_button(reg, MenuActionKind::SelectLevel, 2);
     REQUIRE((card2 != entt::null));
-    eq.push_press(card2);
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>({card2});
     level_select_system(reg, 0.016f);
 
     REQUIRE(lss.selected_level == 2);

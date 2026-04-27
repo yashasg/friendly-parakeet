@@ -33,6 +33,8 @@ inline entt::registry make_registry() {
     reg.storage<ObstacleChildren>();
     reg.ctx().emplace<InputState>();
     reg.ctx().emplace<EventQueue>();
+    reg.ctx().emplace<entt::dispatcher>();
+    wire_input_dispatcher(reg);
     reg.ctx().emplace<GameState>(GameState{
         GamePhase::Playing, GamePhase::Playing, 0.0f, false, GamePhase::Playing, 0.0f
     });
@@ -54,6 +56,36 @@ inline entt::registry make_registry() {
     reg.ctx().emplace<ObstacleCounter>();
     wire_obstacle_counter(reg);
     return reg;
+}
+
+struct GoCapture {
+    GoEvent  buf[8] = {};
+    int      count  = 0;
+    void capture(const GoEvent& e) { if (count < 8) buf[count++] = e; }
+};
+
+struct PressCapture {
+    ButtonPressEvent buf[8] = {};
+    int              count  = 0;
+    void capture(const ButtonPressEvent& e) { if (count < 8) buf[count++] = e; }
+};
+
+inline GoCapture drain_go_events(entt::registry& reg) {
+    GoCapture cap;
+    auto& disp = reg.ctx().get<entt::dispatcher>();
+    disp.sink<GoEvent>().connect<&GoCapture::capture>(cap);
+    disp.update<GoEvent>();
+    disp.sink<GoEvent>().disconnect<&GoCapture::capture>(cap);
+    return cap;
+}
+
+inline PressCapture drain_press_events(entt::registry& reg) {
+    PressCapture cap;
+    auto& disp = reg.ctx().get<entt::dispatcher>();
+    disp.sink<ButtonPressEvent>().connect<&PressCapture::capture>(cap);
+    disp.update<ButtonPressEvent>();
+    disp.sink<ButtonPressEvent>().disconnect<&PressCapture::capture>(cap);
+    return cap;
 }
 
 // Sets up a registry with rhythm singletons included

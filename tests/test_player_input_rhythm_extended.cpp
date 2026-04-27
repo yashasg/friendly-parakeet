@@ -12,9 +12,8 @@ TEST_CASE("player_input_rhythm: shape press in Idle begins MorphIn", "[player][r
 
     CHECK(sw.phase == WindowPhase::Idle);
 
-    auto& eq = reg.ctx().get<EventQueue>();
     auto btn = make_shape_button(reg, Shape::Circle);
-    eq.push_press(btn);
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>({btn});
 
     player_input_system(reg, 0.016f);
 
@@ -35,9 +34,8 @@ TEST_CASE("player_input_rhythm: different shape in Active restarts window", "[pl
     sw.phase = WindowPhase::Active;
     sw.window_start = song.song_time - 0.5f;
 
-    auto& eq = reg.ctx().get<EventQueue>();
     auto btn = make_shape_button(reg, Shape::Square);
-    eq.push_press(btn);
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>({btn});
 
     player_input_system(reg, 0.016f);
 
@@ -58,9 +56,8 @@ TEST_CASE("player_input_rhythm: same shape in Active re-extends window", "[playe
     sw.window_start = song.song_time - 0.5f;
     sw.graded = true;  // was previously graded
 
-    auto& eq = reg.ctx().get<EventQueue>();
     auto btn = make_shape_button(reg, Shape::Circle);
-    eq.push_press(btn);
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>({btn});
 
     player_input_system(reg, 0.016f);
 
@@ -75,9 +72,8 @@ TEST_CASE("player_input_rhythm: shape change pushes ShapeShift SFX", "[player][r
     auto reg = make_rhythm_registry();
     make_rhythm_player(reg);
 
-    auto& eq = reg.ctx().get<EventQueue>();
     auto btn = make_shape_button(reg, Shape::Circle);
-    eq.push_press(btn);
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>({btn});
 
     player_input_system(reg, 0.016f);
 
@@ -90,8 +86,7 @@ TEST_CASE("player_input_rhythm: lane change works in rhythm mode", "[player][rhy
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
 
-    auto& eq = reg.ctx().get<EventQueue>();
-    eq.push_go(Direction::Left);
+    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Left});
 
     player_input_system(reg, 0.016f);
 
@@ -104,9 +99,8 @@ TEST_CASE("player_input: non-rhythm shape press changes immediately", "[player]"
     // No SongState → freeplay mode
     make_player(reg);
 
-    auto& eq = reg.ctx().get<EventQueue>();
     auto btn = make_shape_button(reg, Shape::Square);
-    eq.push_press(btn);
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>({btn});
 
     player_input_system(reg, 0.016f);
 
@@ -123,9 +117,8 @@ TEST_CASE("player_input: non-rhythm same shape press does nothing", "[player]") 
     make_player(reg);
     // Player starts as Circle
 
-    auto& eq = reg.ctx().get<EventQueue>();
     auto btn = make_shape_button(reg, Shape::Circle);
-    eq.push_press(btn);
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>({btn});
 
     player_input_system(reg, 0.016f);
 
@@ -140,9 +133,8 @@ TEST_CASE("player_input: non-rhythm shape press updates Color", "[player]") {
     auto reg = make_registry();
     auto p = make_player(reg);
 
-    auto& eq = reg.ctx().get<EventQueue>();
     auto btn = make_shape_button(reg, Shape::Square);
-    eq.push_press(btn);
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>({btn});
 
     player_input_system(reg, 0.016f);
 

@@ -22,49 +22,58 @@ TEST_CASE("EventQueue: push_input stores swipe with direction", "[events]") {
     CHECK(eq.inputs[0].y == 60.0f);
 }
 
-TEST_CASE("EventQueue: push_go stores direction", "[events]") {
-    EventQueue eq{};
-    eq.push_go(Direction::Right);
-    eq.push_go(Direction::Up);
-    CHECK(eq.go_count == 2);
-    CHECK(eq.goes[0].dir == Direction::Right);
-    CHECK(eq.goes[1].dir == Direction::Up);
-}
-
-TEST_CASE("EventQueue: push_press stores entity", "[events]") {
-    entt::registry reg;
-    auto e1 = reg.create();
-    auto e2 = reg.create();
-    EventQueue eq{};
-    eq.push_press(e1);
-    eq.push_press(e2);
-    CHECK(eq.press_count == 2);
-    CHECK(eq.presses[0].entity == e1);
-    CHECK(eq.presses[1].entity == e2);
-}
-
-TEST_CASE("EventQueue: clear resets all counts", "[events]") {
+TEST_CASE("EventQueue: clear resets raw input count", "[events]") {
     EventQueue eq{};
     eq.push_input(InputType::Tap, 0.0f, 0.0f);
-    eq.push_go(Direction::Left);
-    eq.push_press(entt::null);
     CHECK(eq.input_count == 1);
-    CHECK(eq.go_count == 1);
-    CHECK(eq.press_count == 1);
     eq.clear();
     CHECK(eq.input_count == 0);
-    CHECK(eq.go_count == 0);
-    CHECK(eq.press_count == 0);
 }
 
-TEST_CASE("EventQueue: overflow capped at MAX", "[events]") {
+TEST_CASE("EventQueue: input overflow capped at MAX", "[events]") {
     EventQueue eq{};
     for (int i = 0; i < EventQueue::MAX + 5; ++i) {
         eq.push_input(InputType::Tap, 0.0f, 0.0f);
-        eq.push_go(Direction::Left);
-        eq.push_press(entt::null);
     }
     CHECK(eq.input_count == EventQueue::MAX);
-    CHECK(eq.go_count == EventQueue::MAX);
-    CHECK(eq.press_count == EventQueue::MAX);
+}
+
+TEST_CASE("dispatcher: GoEvent enqueue/update flows to listeners", "[events]") {
+    entt::registry reg;
+    reg.ctx().emplace<EventQueue>();
+    reg.ctx().emplace<entt::dispatcher>();
+
+    auto& disp = reg.ctx().get<entt::dispatcher>();
+    GoCapture cap;
+    disp.sink<GoEvent>().connect<&GoCapture::capture>(cap);
+
+    disp.enqueue<GoEvent>({Direction::Right});
+    disp.enqueue<GoEvent>({Direction::Up});
+    disp.update<GoEvent>();
+    disp.sink<GoEvent>().disconnect<&GoCapture::capture>(cap);
+
+    REQUIRE(cap.count == 2);
+    CHECK(cap.buf[0].dir == Direction::Right);
+    CHECK(cap.buf[1].dir == Direction::Up);
+}
+
+TEST_CASE("dispatcher: ButtonPressEvent enqueue/update flows to listeners", "[events]") {
+    entt::registry reg;
+    reg.ctx().emplace<EventQueue>();
+    reg.ctx().emplace<entt::dispatcher>();
+    auto e1 = reg.create();
+    auto e2 = reg.create();
+
+    auto& disp = reg.ctx().get<entt::dispatcher>();
+    PressCapture cap;
+    disp.sink<ButtonPressEvent>().connect<&PressCapture::capture>(cap);
+
+    disp.enqueue<ButtonPressEvent>({e1});
+    disp.enqueue<ButtonPressEvent>({e2});
+    disp.update<ButtonPressEvent>();
+    disp.sink<ButtonPressEvent>().disconnect<&PressCapture::capture>(cap);
+
+    REQUIRE(cap.count == 2);
+    CHECK(cap.buf[0].entity == e1);
+    CHECK(cap.buf[1].entity == e2);
 }

@@ -192,13 +192,6 @@ TEST_CASE("ToString: TimingTier covers all tiers", "[ToString]") {
 
 // ── EventQueue ──────────────────────────────────────────────
 
-TEST_CASE("event_queue: push_go adds direction event", "[input]") {
-    EventQueue eq{};
-    eq.push_go(Direction::Left);
-    CHECK(eq.go_count == 1);
-    CHECK(eq.goes[0].dir == Direction::Left);
-}
-
 TEST_CASE("event_queue: push_input stores tap with coordinates", "[input]") {
     EventQueue eq{};
     eq.push_input(InputType::Tap, 100.0f, 200.0f);
@@ -208,40 +201,46 @@ TEST_CASE("event_queue: push_input stores tap with coordinates", "[input]") {
     CHECK(eq.inputs[0].y == 200.0f);
 }
 
-TEST_CASE("event_queue: overflow is rejected", "[input]") {
+TEST_CASE("event_queue: input overflow is rejected", "[input]") {
     EventQueue eq{};
     for (int i = 0; i < EventQueue::MAX + 5; ++i) {
-        eq.push_go(Direction::Right);
+        eq.push_input(InputType::Tap, 0.0f, 0.0f);
     }
-    CHECK(eq.go_count == EventQueue::MAX);
+    CHECK(eq.input_count == EventQueue::MAX);
 }
 
-TEST_CASE("event_queue: clear resets all counts", "[input]") {
+TEST_CASE("event_queue: clear resets input count", "[input]") {
     EventQueue eq{};
-    eq.push_go(Direction::Left);
     eq.push_input(InputType::Tap, 0.0f, 0.0f);
-    eq.push_press(entt::null);
-    CHECK(eq.go_count == 1);
     CHECK(eq.input_count == 1);
-    CHECK(eq.press_count == 1);
     eq.clear();
-    CHECK(eq.go_count == 0);
     CHECK(eq.input_count == 0);
-    CHECK(eq.press_count == 0);
 }
 
-TEST_CASE("event_queue: mixed go and press operations", "[input]") {
-    EventQueue eq{};
-    eq.push_go(Direction::Up);
-    entt::registry reg;
+TEST_CASE("dispatcher: mixed go and press operations", "[input]") {
+    auto reg = make_registry();
     auto e = reg.create();
-    eq.push_press(e);
-    eq.push_go(Direction::Down);
-    CHECK(eq.go_count == 2);
-    CHECK(eq.press_count == 1);
-    CHECK(eq.goes[0].dir == Direction::Up);
-    CHECK(eq.presses[0].entity == e);
-    CHECK(eq.goes[1].dir == Direction::Down);
+
+    auto& disp = reg.ctx().get<entt::dispatcher>();
+    GoCapture go_cap;
+    PressCapture press_cap;
+    disp.sink<GoEvent>().connect<&GoCapture::capture>(go_cap);
+    disp.sink<ButtonPressEvent>().connect<&PressCapture::capture>(press_cap);
+
+    disp.enqueue<GoEvent>({Direction::Up});
+    disp.enqueue<ButtonPressEvent>({e});
+    disp.enqueue<GoEvent>({Direction::Down});
+    disp.update<GoEvent>();
+    disp.update<ButtonPressEvent>();
+
+    disp.sink<GoEvent>().disconnect<&GoCapture::capture>(go_cap);
+    disp.sink<ButtonPressEvent>().disconnect<&PressCapture::capture>(press_cap);
+
+    REQUIRE(go_cap.count == 2);
+    REQUIRE(press_cap.count == 1);
+    CHECK(go_cap.buf[0].dir == Direction::Up);
+    CHECK(press_cap.buf[0].entity == e);
+    CHECK(go_cap.buf[1].dir == Direction::Down);
 }
 
 // ── make_rhythm_registry / make_rhythm_player helpers ────────
@@ -265,4 +264,3 @@ TEST_CASE("make_rhythm_player: starts as Hexagon", "[helpers]") {
     CHECK(sw.target_shape == Shape::Hexagon);
     CHECK(sw.phase == WindowPhase::Idle);
 }
-

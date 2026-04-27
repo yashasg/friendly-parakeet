@@ -137,8 +137,9 @@ TEST_CASE("classify_touch_release: bottom-zone tap activates current button", "[
     eq.push_input(tap_event.type, tap_event.x, tap_event.y, tap_event.dir);
     hit_test_system(reg);
 
-    REQUIRE(eq.press_count == 1);
-    CHECK(eq.presses[0].entity == button);
+    auto press_cap = drain_press_events(reg);
+    REQUIRE(press_cap.count == 1);
+    CHECK(press_cap.buf[0].entity == button);
 
     eq.clear();
     auto swipe_event = classify_touch_release(50.0f, zone_y - 5.0f,
@@ -147,6 +148,6 @@ TEST_CASE("classify_touch_release: bottom-zone tap activates current button", "[
     gesture_routing_system(reg);
     hit_test_system(reg);
 
-    CHECK(eq.press_count == 0);
-    CHECK(eq.go_count == 1);
+    CHECK(drain_press_events(reg).count == 0);
+    CHECK(drain_go_events(reg).count == 1);
 }

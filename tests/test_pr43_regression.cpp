@@ -186,9 +186,10 @@ TEST_CASE("title hitbox: tap at EXIT_TOP triggers Exit, not Confirm",
     // After the fix the boundary is no longer shared, so Confirm must NOT fire.
     bool confirm_pressed = false;
     bool exit_pressed    = false;
-    for (int i = 0; i < eq.press_count; ++i) {
-        if (eq.presses[i].entity == confirm) confirm_pressed = true;
-        if (eq.presses[i].entity == exit_e)  exit_pressed    = true;
+    auto cap = drain_press_events(reg);
+    for (int i = 0; i < cap.count; ++i) {
+        if (cap.buf[i].entity == confirm) confirm_pressed = true;
+        if (cap.buf[i].entity == exit_e)  exit_pressed    = true;
     }
     CHECK_FALSE(confirm_pressed);   // boundary tap must NOT reach Confirm
     CHECK(exit_pressed);            // boundary tap must reach Exit
@@ -214,9 +215,10 @@ TEST_CASE("title hitbox: tap clearly inside Confirm region triggers Confirm only
 
     bool confirm_pressed = false;
     bool exit_pressed    = false;
-    for (int i = 0; i < eq.press_count; ++i) {
-        if (eq.presses[i].entity == confirm) confirm_pressed = true;
-        if (eq.presses[i].entity == exit_e)  exit_pressed    = true;
+    auto cap = drain_press_events(reg);
+    for (int i = 0; i < cap.count; ++i) {
+        if (cap.buf[i].entity == confirm) confirm_pressed = true;
+        if (cap.buf[i].entity == exit_e)  exit_pressed    = true;
     }
     CHECK(confirm_pressed);
     CHECK_FALSE(exit_pressed);
@@ -241,8 +243,9 @@ TEST_CASE("title hitbox: tap inside Exit region triggers Exit only",
     hit_test_system(reg);
 
     bool exit_pressed = false;
-    for (int i = 0; i < eq.press_count; ++i)
-        if (eq.presses[i].entity == exit_e) exit_pressed = true;
+    auto cap = drain_press_events(reg);
+    for (int i = 0; i < cap.count; ++i)
+        if (cap.buf[i].entity == exit_e) exit_pressed = true;
 
     CHECK(exit_pressed);
 }

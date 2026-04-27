@@ -122,8 +122,6 @@ TEST_CASE("components: Velocity default is zero", "[components]") {
 TEST_CASE("components: EventQueue default is empty", "[components]") {
     EventQueue eq{};
     CHECK(eq.input_count == 0);
-    CHECK(eq.press_count == 0);
-    CHECK(eq.go_count == 0);
 }
 
 TEST_CASE("components: Lifetime defaults", "[components]") {
@@ -155,15 +153,6 @@ TEST_CASE("components: Obstacle construction", "[components]") {
 TEST_CASE("components: ParticleData construction", "[components]") {
     ParticleData pd{10.0f};
     CHECK(pd.size == 10.0f);
-}
-
-TEST_CASE("components: EventQueue push_press stores entity", "[components]") {
-    EventQueue eq{};
-    entt::registry reg;
-    auto e = reg.create();
-    eq.push_press(e);
-    CHECK(eq.press_count == 1);
-    CHECK(eq.presses[0].entity == e);
 }
 
 TEST_CASE("ecs: make_combo_gate creates proper entity", "[ecs]") {

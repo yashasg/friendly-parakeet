@@ -141,7 +141,7 @@ void test_player_system(entt::registry& reg, float dt) {
     test_player_clean_planned(*state, reg);
 
     auto& gs    = reg.ctx().get<GameState>();
-    auto& eq    = reg.ctx().get<EventQueue>();
+    auto& disp  = reg.ctx().get<entt::dispatcher>();
     auto* log   = reg.ctx().find<SessionLog>();
     auto* song  = reg.ctx().find<SongState>();
     float song_time = song ? song->song_time : 0.0f;
@@ -160,7 +160,7 @@ void test_player_system(entt::registry& reg, float dt) {
             auto mv = reg.view<MenuButtonTag, MenuAction, ActiveInPhase>();
             for (auto [e, ma, aip] : mv.each()) {
                 if (ma.kind == target_action && phase_active(aip, gs.phase)) {
-                    eq.push_press(e);
+                    disp.enqueue<ButtonPressEvent>({e});
                     break;
                 }
             }
@@ -193,7 +193,7 @@ void test_player_system(entt::registry& reg, float dt) {
         auto mv = reg.view<MenuButtonTag, MenuAction, ActiveInPhase>();
         for (auto [e, ma, aip] : mv.each()) {
             if (ma.kind == MenuActionKind::Confirm && phase_active(aip, gs.phase)) {
-                eq.push_press(e);
+                disp.enqueue<ButtonPressEvent>({e});
                 break;
             }
         }
@@ -205,7 +205,7 @@ void test_player_system(entt::registry& reg, float dt) {
         auto mv = reg.view<MenuButtonTag, MenuAction, ActiveInPhase>();
         for (auto [e, ma, aip] : mv.each()) {
             if (ma.kind == MenuActionKind::Confirm && phase_active(aip, gs.phase)) {
-                eq.push_press(e);
+                disp.enqueue<ButtonPressEvent>({e});
                 break;
             }
         }
@@ -368,7 +368,7 @@ void test_player_system(entt::registry& reg, float dt) {
                 auto sv = reg.view<ShapeButtonTag, ShapeButtonData>();
                 for (auto [e, sbd] : sv.each()) {
                     if (sbd.shape == action.target_shape) {
-                        eq.push_press(e);
+                        disp.enqueue<ButtonPressEvent>({e});
                         break;
                     }
                 }
@@ -446,14 +446,14 @@ void test_player_system(entt::registry& reg, float dt) {
         if (action.needs_lane() && p_lane.target < 0 && state->swipe_cooldown_timer <= 0.0f
             && !zone_blocked && !blocked_by_shape && !move_would_fail_closer) {
             if (action.target_lane < p_lane.current) {
-                eq.push_go(Direction::Left);
+                disp.enqueue<GoEvent>({Direction::Left});
                 if (log) {
                     session_log_write(*log, song_time, "PLAYER",
                         "EXECUTE Go(Left) for obstacle=%u beat=%d",
                         static_cast<unsigned>(entt::to_integral(action.obstacle)), act_beat);
                 }
             } else if (action.target_lane > p_lane.current) {
-                eq.push_go(Direction::Right);
+                disp.enqueue<GoEvent>({Direction::Right});
                 if (log) {
                     session_log_write(*log, song_time, "PLAYER",
                         "EXECUTE Go(Right) for obstacle=%u beat=%d",
@@ -488,14 +488,14 @@ void test_player_system(entt::registry& reg, float dt) {
         if (action.needs_vertical() && p_vstate.mode == VMode::Grounded
             && !vert_zone_blocked && !vert_blocked_by_shape) {
             if (action.target_vertical == VMode::Jumping) {
-                eq.push_go(Direction::Up);
+                disp.enqueue<GoEvent>({Direction::Up});
                 if (log) {
                     session_log_write(*log, song_time, "PLAYER",
                         "EXECUTE Go(Up) for obstacle=%u beat=%d",
                         static_cast<unsigned>(entt::to_integral(action.obstacle)), act_beat);
                 }
             } else if (action.target_vertical == VMode::Sliding) {
-                eq.push_go(Direction::Down);
+                disp.enqueue<GoEvent>({Direction::Down});
                 if (log) {
                     session_log_write(*log, song_time, "PLAYER",
                         "EXECUTE Go(Down) for obstacle=%u beat=%d",

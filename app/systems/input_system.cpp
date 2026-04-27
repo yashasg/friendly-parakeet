@@ -11,6 +11,8 @@ void input_system(entt::registry& reg, float raw_dt) {
     auto& input = reg.ctx().get<InputState>();
     auto& st    = reg.ctx().get<ScreenTransform>();
     auto& eq    = reg.ctx().get<EventQueue>();
+    auto& disp  = reg.ctx().get<entt::dispatcher>();
+    (void)disp;
     eq.clear();
     clear_input_events(input);
 
@@ -74,17 +76,17 @@ void input_system(entt::registry& reg, float raw_dt) {
 
 #ifdef PLATFORM_HAS_KEYBOARD
     // ── Keyboard — IsKeyPressed fires once per press (no repeat) ──
-    if (IsKeyPressed(KEY_W) || IsKeyPressed(KEY_UP))    { eq.push_go(Direction::Up); }
-    if (IsKeyPressed(KEY_S) || IsKeyPressed(KEY_DOWN))  { eq.push_go(Direction::Down); }
-    if (IsKeyPressed(KEY_A) || IsKeyPressed(KEY_LEFT))  { eq.push_go(Direction::Left); }
-    if (IsKeyPressed(KEY_D) || IsKeyPressed(KEY_RIGHT)) { eq.push_go(Direction::Right); }
+    if (IsKeyPressed(KEY_W) || IsKeyPressed(KEY_UP))    { disp.enqueue<GoEvent>({Direction::Up}); }
+    if (IsKeyPressed(KEY_S) || IsKeyPressed(KEY_DOWN))  { disp.enqueue<GoEvent>({Direction::Down}); }
+    if (IsKeyPressed(KEY_A) || IsKeyPressed(KEY_LEFT))  { disp.enqueue<GoEvent>({Direction::Left}); }
+    if (IsKeyPressed(KEY_D) || IsKeyPressed(KEY_RIGHT)) { disp.enqueue<GoEvent>({Direction::Right}); }
 
     auto phase = reg.ctx().get<GameState>().phase;
     auto push_active_shape_press = [&](Shape target_shape) {
         auto sv = reg.view<ShapeButtonTag, ShapeButtonData, ActiveInPhase>();
         for (auto [e, sbd, aip] : sv.each()) {
             if (sbd.shape == target_shape && phase_active(aip, phase)) {
-                eq.push_press(e);
+                disp.enqueue<ButtonPressEvent>({e});
                 break;
             }
         }
@@ -103,7 +105,7 @@ void input_system(entt::registry& reg, float raw_dt) {
         auto mv = reg.view<MenuButtonTag, MenuAction, ActiveInPhase>();
         for (auto [e, ma, aip] : mv.each()) {
             if (ma.kind == MenuActionKind::Confirm && phase_active(aip, phase)) {
-                eq.push_press(e);
+                disp.enqueue<ButtonPressEvent>({e});
                 break;
             }
         }

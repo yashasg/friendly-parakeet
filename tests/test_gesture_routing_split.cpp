@@ -11,9 +11,10 @@ TEST_CASE("gesture_routing: swipe input emits GoEvent", "[gesture_routing][issue
     eq.push_input(InputType::Swipe, 0.0f, 0.0f, Direction::Up);
     gesture_routing_system(reg);
 
-    CHECK(eq.go_count == 1);
-    CHECK(eq.goes[0].dir == Direction::Up);
-    CHECK(eq.press_count == 0);
+    auto cap = drain_go_events(reg);
+    CHECK(cap.count == 1);
+    CHECK(cap.buf[0].dir == Direction::Up);
+    CHECK(drain_press_events(reg).count == 0);
 }
 
 TEST_CASE("gesture_routing: tap input does not emit GoEvent", "[gesture_routing][issue272]") {
@@ -32,8 +33,8 @@ TEST_CASE("gesture_routing: tap input does not emit GoEvent", "[gesture_routing]
     gesture_routing_system(reg);
 
     // Gesture system must not perform spatial hit-tests.
-    CHECK(eq.go_count == 0);
-    CHECK(eq.press_count == 0);
+    CHECK(drain_go_events(reg).count == 0);
+    CHECK(drain_press_events(reg).count == 0);
 }
 
 TEST_CASE("gesture_routing: multiple swipes preserve order", "[gesture_routing][issue272]") {
@@ -45,11 +46,12 @@ TEST_CASE("gesture_routing: multiple swipes preserve order", "[gesture_routing][
     eq.push_input(InputType::Swipe, 0.0f, 0.0f, Direction::Right);
     gesture_routing_system(reg);
 
-    REQUIRE(eq.go_count == 2);
-    CHECK(eq.goes[0].dir == Direction::Left);
-    CHECK(eq.goes[1].dir == Direction::Right);
+    auto cap = drain_go_events(reg);
+    REQUIRE(cap.count == 2);
+    CHECK(cap.buf[0].dir == Direction::Left);
+    CHECK(cap.buf[1].dir == Direction::Right);
     // Tap is intentionally untouched by gesture routing.
-    CHECK(eq.press_count == 0);
+    CHECK(drain_press_events(reg).count == 0);
 }
 
 TEST_CASE("hit_test: swipe input is ignored (no GoEvent emitted)", "[hit_test][issue272]") {
@@ -67,8 +69,8 @@ TEST_CASE("hit_test: swipe input is ignored (no GoEvent emitted)", "[hit_test][i
     hit_test_system(reg);
 
     // hit_test must no longer route swipes — that is gesture_routing's job.
-    CHECK(eq.go_count == 0);
-    CHECK(eq.press_count == 0);
+    CHECK(drain_go_events(reg).count == 0);
+    CHECK(drain_press_events(reg).count == 0);
 }
 
 TEST_CASE("hit_test: tap inside hitbox emits press without gesture routing",
@@ -86,9 +88,10 @@ TEST_CASE("hit_test: tap inside hitbox emits press without gesture routing",
     eq.push_input(InputType::Tap, 110.0f, 110.0f);
     hit_test_system(reg);
 
-    REQUIRE(eq.press_count == 1);
-    CHECK(eq.presses[0].entity == btn);
-    CHECK(eq.go_count == 0);
+    auto cap = drain_press_events(reg);
+    REQUIRE(cap.count == 1);
+    CHECK(cap.buf[0].entity == btn);
+    CHECK(drain_go_events(reg).count == 0);
 }
 
 TEST_CASE("split systems: mixed inputs preserve event ordering and counts",
@@ -111,12 +114,14 @@ TEST_CASE("split systems: mixed inputs preserve event ordering and counts",
     gesture_routing_system(reg);
     hit_test_system(reg);
 
-    REQUIRE(eq.go_count == 2);
-    CHECK(eq.goes[0].dir == Direction::Left);
-    CHECK(eq.goes[1].dir == Direction::Right);
+    auto go_cap = drain_go_events(reg);
+    REQUIRE(go_cap.count == 2);
+    CHECK(go_cap.buf[0].dir == Direction::Left);
+    CHECK(go_cap.buf[1].dir == Direction::Right);
 
-    REQUIRE(eq.press_count == 1);
-    CHECK(eq.presses[0].entity == btn);
+    auto press_cap = drain_press_events(reg);
+    REQUIRE(press_cap.count == 1);
+    CHECK(press_cap.buf[0].entity == btn);
 }
 
 TEST_CASE("hit_test: ActiveTag phase filtering preserved after split",
@@ -135,12 +140,12 @@ TEST_CASE("hit_test: ActiveTag phase filtering preserved after split",
 
     eq.push_input(InputType::Tap, 110.0f, 110.0f);
     hit_test_system(reg);
-    CHECK(eq.press_count == 0);  // not active in Title
+    CHECK(drain_press_events(reg).count == 0);  // not active in Title
 
     // Switch to Playing — now active.
     eq.clear();
     reg.ctx().get<GameState>().phase = GamePhase::Playing;
     eq.push_input(InputType::Tap, 110.0f, 110.0f);
     hit_test_system(reg);
-    CHECK(eq.press_count == 1);
+    CHECK(drain_press_events(reg).count == 1);
 }

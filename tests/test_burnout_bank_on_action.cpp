@@ -14,9 +14,8 @@ TEST_CASE("no_burnout_bank: shape press does NOT attach BankedBurnout to obstacl
     make_player(reg);
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y - 400.0f);
 
-    auto& eq = reg.ctx().get<EventQueue>();
     auto btn = make_shape_button(reg, Shape::Circle);
-    eq.push_press(btn);
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>({btn});
 
     player_input_system(reg, 0.016f);
 
@@ -29,8 +28,7 @@ TEST_CASE("no_burnout_bank: lane swipe does NOT attach BankedBurnout to obstacle
     make_player(reg);
     auto obs = make_lane_block(reg, 0b010, constants::PLAYER_Y - 300.0f);
 
-    auto& eq = reg.ctx().get<EventQueue>();
-    eq.push_go(Direction::Right);
+    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Right});
 
     player_input_system(reg, 0.016f);
 

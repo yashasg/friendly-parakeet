@@ -71,6 +71,8 @@ void game_loop_init(entt::registry& reg,
     // Core singletons
     reg.ctx().emplace<InputState>();
     reg.ctx().emplace<EventQueue>();
+    reg.ctx().emplace<entt::dispatcher>();
+    wire_input_dispatcher(reg);
     reg.ctx().emplace<GameState>(GameState{
         .phase = GamePhase::Title, .previous_phase = GamePhase::Title,
         .phase_timer = 0.0f, .transition_pending = false,
@@ -230,6 +232,7 @@ void game_loop_run(entt::registry& reg) {
 
 void game_loop_shutdown(entt::registry& reg) {
     // Disconnect all destroy/construct listeners before clearing entities
+    unwire_input_dispatcher(reg);
     reg.on_destroy<ObstacleTag>().disconnect<&on_obstacle_destroy>();
     reg.on_construct<ObstacleTag>().disconnect<&session_log_on_obstacle_spawn>();
     reg.on_construct<ScoredTag>().disconnect<&session_log_on_scored>();

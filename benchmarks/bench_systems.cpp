@@ -25,6 +25,8 @@ static entt::registry make_bench_registry() {
     entt::registry reg;
     reg.ctx().emplace<InputState>();
     reg.ctx().emplace<EventQueue>();
+    reg.ctx().emplace<entt::dispatcher>();
+    wire_input_dispatcher(reg);
     reg.ctx().emplace<GameState>(GameState{
         GamePhase::Playing, GamePhase::Playing, 0.0f, false, GamePhase::Playing, 0.0f
     });
@@ -192,9 +194,9 @@ TEST_CASE("Bench: player_input + movement", "[bench]") {
         reg.emplace<HitCircle>(btn, 50.0f);
         reg.emplace<ActiveInPhase>(btn, phase_bit(GamePhase::Playing));
 
-        auto& eq = reg.ctx().get<EventQueue>();
-        eq.push_press(btn);
-        eq.push_go(Direction::Right);
+        auto& disp = reg.ctx().get<entt::dispatcher>();
+        disp.enqueue<ButtonPressEvent>({btn});
+        disp.enqueue<GoEvent>({Direction::Right});
         meter.measure([&] {
             player_input_system(reg, DT);
             player_movement_system(reg, DT);

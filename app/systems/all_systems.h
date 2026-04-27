@@ -2,6 +2,9 @@
 
 #include <entt/entt.hpp>
 
+struct ButtonPressEvent;
+struct GoEvent;
+
 // Phase 0: Raw input (polls raylib input)
 void input_system(entt::registry& reg, float raw_dt);
 
@@ -13,8 +16,20 @@ void gesture_routing_system(entt::registry& reg);
 // HitBox/HitCircle entities). No gesture classification.
 void hit_test_system(entt::registry& reg);
 
-// Phase 0.5: Test player AI (pushes synthetic input events into EventQueue)
+// Phase 0.5: Test player AI (enqueues synthetic input actions)
 void test_player_system(entt::registry& reg, float dt);
+
+// Input dispatcher wiring
+void wire_input_dispatcher(entt::registry& reg);
+void unwire_input_dispatcher(entt::registry& reg);
+
+// Per-event listener functions (exposed for make_registry in test_helpers.h)
+void game_state_handle_go(entt::registry& reg, const GoEvent& evt);
+void game_state_handle_press(entt::registry& reg, const ButtonPressEvent& evt);
+void level_select_handle_go(entt::registry& reg, const GoEvent& evt);
+void level_select_handle_press(entt::registry& reg, const ButtonPressEvent& evt);
+void player_input_handle_go(entt::registry& reg, const GoEvent& evt);
+void player_input_handle_press(entt::registry& reg, const ButtonPressEvent& evt);
 
 // Test player initialization (call once from main if --test-player is set)
 enum class TestPlayerSkill : uint8_t;

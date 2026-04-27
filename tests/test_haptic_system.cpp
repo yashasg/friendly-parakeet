@@ -174,7 +174,7 @@ TEST_CASE("game state haptic: RetryTap emitted when Restart pressed on end scree
     auto btn = reg.create();
     reg.emplace<MenuButtonTag>(btn);
     reg.emplace<MenuAction>(btn, MenuActionKind::Restart, uint8_t{0});
-    reg.ctx().get<EventQueue>().push_press(btn);
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>({btn});
 
     game_state_system(reg, 0.016f);
 
@@ -193,7 +193,7 @@ TEST_CASE("game state haptic: UIButtonTap emitted for non-Restart end screen but
     auto btn = reg.create();
     reg.emplace<MenuButtonTag>(btn);
     reg.emplace<MenuAction>(btn, MenuActionKind::GoMainMenu, uint8_t{0});
-    reg.ctx().get<EventQueue>().push_press(btn);
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>({btn});
 
     game_state_system(reg, 0.016f);
 
@@ -213,7 +213,7 @@ TEST_CASE("game state haptic: RetryTap suppressed when haptics_enabled=false", "
     auto btn = reg.create();
     reg.emplace<MenuButtonTag>(btn);
     reg.emplace<MenuAction>(btn, MenuActionKind::Restart, uint8_t{0});
-    reg.ctx().get<EventQueue>().push_press(btn);
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>({btn});
 
     game_state_system(reg, 0.016f);
 

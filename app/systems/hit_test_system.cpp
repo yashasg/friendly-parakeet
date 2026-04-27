@@ -10,7 +10,8 @@
 // intentionally ignored — gesture routing is owned by gesture_routing_system
 // (see #272). Active-phase filtering is structural via ActiveTag (see #249).
 void hit_test_system(entt::registry& reg) {
-    auto& eq = reg.ctx().get<EventQueue>();
+    auto& eq   = reg.ctx().get<EventQueue>();
+    auto& disp = reg.ctx().get<entt::dispatcher>();
 
     // Sync structural ActiveTag against current phase. Cheap when phase has
     // not changed since the last sync; the per-event loops below then iterate
@@ -36,16 +37,15 @@ void hit_test_system(entt::registry& reg) {
                 hb.half_h * 2.0f
             };
             if (CheckCollisionPointRec(point, bounds)) {
-                eq.push_press(entity);
+                disp.enqueue<ButtonPressEvent>({entity});
             }
         }
 
         // Tap: hit-test against active HitCircle entities
         for (auto [entity, pos, hc] : circle_view.each()) {
             if (CheckCollisionPointCircle(point, {pos.x, pos.y}, hc.radius)) {
-                eq.push_press(entity);
+                disp.enqueue<ButtonPressEvent>({entity});
             }
         }
     }
 }
-

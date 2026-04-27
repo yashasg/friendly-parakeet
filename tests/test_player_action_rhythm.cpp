@@ -12,9 +12,8 @@ TEST_CASE("player_action: rhythm mode starts window on button press from Idle", 
     auto& song = reg.ctx().get<SongState>();
     song.song_time = 5.0f;
 
-    auto& eq = reg.ctx().get<EventQueue>();
     auto btn = make_shape_button(reg, Shape::Circle);
-    eq.push_press(btn);
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>({btn});
 
     player_input_system(reg, 0.016f);
 
@@ -36,9 +35,8 @@ TEST_CASE("player_action: rhythm mode calculates peak_time correctly", "[player_
     auto& song = reg.ctx().get<SongState>();
     song.song_time = 10.0f;
 
-    auto& eq = reg.ctx().get<EventQueue>();
     auto btn = make_shape_button(reg, Shape::Triangle);
-    eq.push_press(btn);
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>({btn});
 
     player_input_system(reg, 0.016f);
 
@@ -56,9 +54,8 @@ TEST_CASE("player_action: rhythm mode ignores same shape during Active (spam pro
     ps.current = Shape::Square;
     sw.window_timer = 0.1f;
 
-    auto& eq = reg.ctx().get<EventQueue>();
     auto btn = make_shape_button(reg, Shape::Square);
-    eq.push_press(btn);
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>({btn});
 
     player_input_system(reg, 0.016f);
 
@@ -79,9 +76,8 @@ TEST_CASE("player_action: rhythm mode interrupts Active with different shape", "
     ps.current = Shape::Square;
     sw.window_timer = 0.3f;
 
-    auto& eq = reg.ctx().get<EventQueue>();
     auto btn = make_shape_button(reg, Shape::Triangle);
-    eq.push_press(btn);
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>({btn});
 
     player_input_system(reg, 0.016f);
 
@@ -112,9 +108,8 @@ TEST_CASE("player_action: rhythm mode does not interrupt MorphIn phase", "[playe
     sw.target_shape = Shape::Circle;
     sw.window_timer = 0.05f;
 
-    auto& eq = reg.ctx().get<EventQueue>();
     auto btn = make_shape_button(reg, Shape::Square);
-    eq.push_press(btn);
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>({btn});
 
     player_input_system(reg, 0.016f);
 
@@ -137,9 +132,8 @@ TEST_CASE("player_action: rhythm mode ACCEPTS button press during MorphOut (#209
     sw.window_timer = 0.05f;
     sw.window_start = 14.9f;
 
-    auto& eq = reg.ctx().get<EventQueue>();
     auto btn = make_shape_button(reg, Shape::Triangle);
-    eq.push_press(btn);
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>({btn});
 
     player_input_system(reg, 0.016f);
 
@@ -159,9 +153,8 @@ TEST_CASE("player_action: legacy mode instant shape change", "[player_legacy]") 
     auto reg = make_registry();
     auto player = make_player(reg);
 
-    auto& eq = reg.ctx().get<EventQueue>();
     auto btn = make_shape_button(reg, Shape::Triangle);
-    eq.push_press(btn);
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>({btn});
 
     player_input_system(reg, 0.016f);
 
@@ -176,9 +169,8 @@ TEST_CASE("player_action: legacy mode no change for same shape", "[player_legacy
     auto reg = make_registry();
     auto player = make_player(reg);
 
-    auto& eq = reg.ctx().get<EventQueue>();
     auto btn = make_shape_button(reg, Shape::Circle);
-    eq.push_press(btn);
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>({btn});
 
     player_input_system(reg, 0.016f);
 
@@ -193,8 +185,7 @@ TEST_CASE("player_action: swipe left works in rhythm mode", "[player_rhythm]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
 
-    auto& eq = reg.ctx().get<EventQueue>();
-    eq.push_go(Direction::Left);
+    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Left});
 
     player_input_system(reg, 0.016f);
 
@@ -205,8 +196,7 @@ TEST_CASE("player_action: jump disabled in rhythm mode", "[player_rhythm]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
 
-    auto& eq = reg.ctx().get<EventQueue>();
-    eq.push_go(Direction::Up);
+    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Up});
 
     player_input_system(reg, 0.016f);
 
@@ -219,17 +209,15 @@ TEST_CASE("player_input: GoEvents consumed after first tick, lane lerp_t not res
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
     auto& lane = reg.get<Lane>(player);
-    auto& eq = reg.ctx().get<EventQueue>();
 
     REQUIRE(lane.current == 1);
 
-    eq.push_go(Direction::Left);
+    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Left});
 
     // First tick: starts lane transition, consumes the event.
     player_input_system(reg, 1.0f / 60.0f);
     CHECK(lane.target == 0);
     CHECK(lane.lerp_t == 0.0f);
-    CHECK(eq.go_count == 0);  // consumed
 
     // Simulate partial lerp progress (as player_movement_system would do).
     lane.lerp_t = 0.3f;
@@ -244,17 +232,15 @@ TEST_CASE("player_input: ButtonPressEvents consumed after first tick (#213)", "[
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
     auto& sw = reg.get<ShapeWindow>(player);
-    auto& eq = reg.ctx().get<EventQueue>();
     auto& song = reg.ctx().get<SongState>();
     song.song_time = 5.0f;
 
     auto btn = make_shape_button(reg, Shape::Circle);
-    eq.push_press(btn);
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>({btn});
 
     // First tick: starts a MorphIn window, consumes the event.
     player_input_system(reg, 1.0f / 60.0f);
     CHECK(sw.phase == WindowPhase::MorphIn);
-    CHECK(eq.press_count == 0);  // consumed
 
     // Record state after first tick.
     float start_after_tick1 = sw.window_start;
@@ -291,4 +277,3 @@ TEST_CASE("player_movement: morph_t IS advanced in freeplay mode (#207 regressio
 
     CHECK(ps.morph_t > 0.3f);  // freeplay: player_movement_system owns morph_t
 }
-

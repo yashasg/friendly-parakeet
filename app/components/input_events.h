@@ -35,32 +35,14 @@ struct EventQueue {
     InputEvent       inputs[MAX]  = {};
     int              input_count  = 0;
 
-    ButtonPressEvent presses[MAX] = {};
-    int              press_count  = 0;
-
-    GoEvent          goes[MAX]    = {};
-    int              go_count     = 0;
-
     void push_input(InputType t, float px, float py,
                     Direction d = Direction::Up) {
         if (input_count < MAX) {
             inputs[input_count++] = {t, d, px, py};
         }
     }
-    void push_press(entt::entity e) {
-        if (press_count < MAX) {
-            presses[press_count++] = {e};
-        }
-    }
-    void push_go(Direction d) {
-        if (go_count < MAX) {
-            goes[go_count++] = {d};
-        }
-    }
     void clear() {
         input_count = 0;
-        press_count = 0;
-        go_count    = 0;
     }
 };
 

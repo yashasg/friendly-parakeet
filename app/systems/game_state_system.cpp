@@ -71,11 +71,79 @@ static void enter_song_complete(entt::registry& reg) {
     gs.phase_timer = 0.0f;
 }
 
+void game_state_handle_go(entt::registry& reg, const GoEvent& /*evt*/) {
+    auto& gs = reg.ctx().get<GameState>();
+    if (gs.phase != GamePhase::Paused) return;
+    auto mv = reg.view<MenuButtonTag>();
+    reg.destroy(mv.begin(), mv.end());
+    gs.previous_phase = gs.phase;
+    gs.phase = GamePhase::Playing;
+    gs.phase_timer = 0.0f;
+}
+
+void game_state_handle_press(entt::registry& reg, const ButtonPressEvent& evt) {
+    auto& gs = reg.ctx().get<GameState>();
+    if (!reg.valid(evt.entity)) return;
+    if (!reg.all_of<MenuButtonTag, MenuAction>(evt.entity)) return;
+    auto& ma = reg.get<MenuAction>(evt.entity);
+
+    if (gs.phase == GamePhase::Title) {
+        {
+            auto* hq = reg.ctx().find<HapticQueue>();
+            auto* st = reg.ctx().find<SettingsState>();
+            if (hq) haptic_push(*hq, !st || st->haptics_enabled, HapticEvent::UIButtonTap);
+        }
+        if (ma.kind == MenuActionKind::Exit) {
+#ifndef PLATFORM_WEB
+            reg.ctx().get<InputState>().quit_requested = true;
+#endif
+        } else if (ma.kind == MenuActionKind::Confirm) {
+            gs.transition_pending = true;
+            gs.next_phase = GamePhase::LevelSelect;
+        }
+        return;
+    }
+
+    if ((gs.phase == GamePhase::GameOver || gs.phase == GamePhase::SongComplete)
+        && gs.phase_timer > 0.4f) {
+        {
+            auto* hq = reg.ctx().find<HapticQueue>();
+            auto* st = reg.ctx().find<SettingsState>();
+            if (hq) {
+                bool haptics_on = !st || st->haptics_enabled;
+                if (ma.kind == MenuActionKind::Restart)
+                    haptic_push(*hq, haptics_on, HapticEvent::RetryTap);
+                else
+                    haptic_push(*hq, haptics_on, HapticEvent::UIButtonTap);
+            }
+        }
+        if (ma.kind == MenuActionKind::Restart)
+            gs.end_choice = EndScreenChoice::Restart;
+        else if (ma.kind == MenuActionKind::GoLevelSelect)
+            gs.end_choice = EndScreenChoice::LevelSelect;
+        else if (ma.kind == MenuActionKind::GoMainMenu)
+            gs.end_choice = EndScreenChoice::MainMenu;
+        return;
+    }
+
+    if (gs.phase == GamePhase::Paused) {
+        auto mv = reg.view<MenuButtonTag>();
+        reg.destroy(mv.begin(), mv.end());
+        gs.previous_phase = gs.phase;
+        gs.phase = GamePhase::Playing;
+        gs.phase_timer = 0.0f;
+        return;
+    }
+}
+
 void game_state_system(entt::registry& reg, float dt) {
-    auto& gs    = reg.ctx().get<GameState>();
-    auto& eq    = reg.ctx().get<EventQueue>();
+    auto& gs = reg.ctx().get<GameState>();
 
     gs.phase_timer += dt;
+
+    auto& disp = reg.ctx().get<entt::dispatcher>();
+    disp.update<GoEvent>();
+    disp.update<ButtonPressEvent>();
 
     if (gs.transition_pending) {
         gs.transition_pending = false;
@@ -117,30 +185,6 @@ void game_state_system(entt::registry& reg, float dt) {
         return;
     }
 
-    // Title → LevelSelect on button press
-    if (gs.phase == GamePhase::Title) {
-        for (int i = 0; i < eq.press_count; ++i) {
-            auto entity = eq.presses[i].entity;
-            if (!reg.valid(entity)) continue;
-            if (!reg.all_of<MenuButtonTag, MenuAction>(entity)) continue;
-            auto& ma = reg.get<MenuAction>(entity);
-            {
-                auto* hq = reg.ctx().find<HapticQueue>();
-                auto* st = reg.ctx().find<SettingsState>();
-                if (hq) haptic_push(*hq, !st || st->haptics_enabled, HapticEvent::UIButtonTap);
-            }
-            if (ma.kind == MenuActionKind::Exit) {
-                #ifndef PLATFORM_WEB
-                reg.ctx().get<InputState>().quit_requested = true;
-                #endif
-            } else if (ma.kind == MenuActionKind::Confirm) {
-                gs.transition_pending = true;
-                gs.next_phase = GamePhase::LevelSelect;
-            }
-            break;
-        }
-    }
-
     // LevelSelect input handling
     if (gs.phase == GamePhase::LevelSelect && gs.phase_timer > 0.2f) {
         auto& lss = reg.ctx().get<LevelSelectState>();
@@ -148,36 +192,6 @@ void game_state_system(entt::registry& reg, float dt) {
             lss.confirmed = false;
             gs.transition_pending = true;
             gs.next_phase = GamePhase::Playing;
-        }
-    }
-
-    // End screen button detection (shared by GameOver and SongComplete)
-    if ((gs.phase == GamePhase::GameOver || gs.phase == GamePhase::SongComplete)
-        && gs.phase_timer > 0.4f) {
-        for (int i = 0; i < eq.press_count; ++i) {
-            auto entity = eq.presses[i].entity;
-            if (!reg.valid(entity)) continue;
-            if (!reg.all_of<MenuButtonTag, MenuAction>(entity)) continue;
-            auto& ma = reg.get<MenuAction>(entity);
-            {
-                auto* hq = reg.ctx().find<HapticQueue>();
-                auto* st = reg.ctx().find<SettingsState>();
-                if (hq) {
-                    bool haptics_on = !st || st->haptics_enabled;
-                    // RetryTap is distinct (crisp) per spec; other buttons use generic UIButtonTap
-                    if (ma.kind == MenuActionKind::Restart)
-                        haptic_push(*hq, haptics_on, HapticEvent::RetryTap);
-                    else
-                        haptic_push(*hq, haptics_on, HapticEvent::UIButtonTap);
-                }
-            }
-            if (ma.kind == MenuActionKind::Restart)
-                gs.end_choice = EndScreenChoice::Restart;
-            else if (ma.kind == MenuActionKind::GoLevelSelect)
-                gs.end_choice = EndScreenChoice::LevelSelect;
-            else if (ma.kind == MenuActionKind::GoMainMenu)
-                gs.end_choice = EndScreenChoice::MainMenu;
-            break;
         }
     }
 
@@ -191,17 +205,6 @@ void game_state_system(entt::registry& reg, float dt) {
         else
             gs.next_phase = GamePhase::Title;
         gs.end_choice = EndScreenChoice::None;
-    }
-
-    // Paused → resume on any press or go event
-    bool pause_resume = eq.press_count > 0 || eq.go_count > 0;
-    if (gs.phase == GamePhase::Paused && pause_resume) {
-        // Only destroy menu buttons (the pause overlay); preserve shape buttons
-        auto mv = reg.view<MenuButtonTag>();
-        reg.destroy(mv.begin(), mv.end());
-        gs.previous_phase = gs.phase;
-        gs.phase = GamePhase::Playing;
-        gs.phase_timer = 0.0f;
     }
 
     // Playing → SongComplete when song finishes (all obstacles cleared)

@@ -128,16 +128,15 @@ TEST_CASE("High score bootstrap: persistence path is populated for save call sit
     seeded.set_score("song_001|easy", 1000);
     REQUIRE(high_score::save_high_scores(seeded, file));
 
-    entt::registry reg;
+    auto reg = make_registry();
     HighScoreState loaded_at_bootstrap;
     high_score::load_high_scores(loaded_at_bootstrap, file);
-    reg.ctx().emplace<HighScoreState>(loaded_at_bootstrap);
-    reg.ctx().emplace<HighScorePersistence>(HighScorePersistence{file.string()});
-    reg.ctx().emplace<EventQueue>();
-    reg.ctx().emplace<GameState>(GameState{
+    reg.ctx().get<HighScoreState>() = loaded_at_bootstrap;
+    reg.ctx().get<HighScorePersistence>() = HighScorePersistence{file.string()};
+    reg.ctx().get<GameState>() = GameState{
         GamePhase::Playing, GamePhase::Playing, 0.0f, true, GamePhase::SongComplete, 0.0f
-    });
-    auto& score = reg.ctx().emplace<ScoreState>();
+    };
+    auto& score = reg.ctx().get<ScoreState>();
     score.high_score = 1000;
     score.score = 2500;
 

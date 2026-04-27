@@ -149,10 +149,10 @@ TEST_CASE("test_player: auto-starts from title screen", "[test_player]") {
     auto confirm_btn = make_menu_button(reg, MenuActionKind::Confirm, GamePhase::Title);
 
     test_player_system(reg, 0.016f);
-    auto& eq = reg.ctx().get<EventQueue>();
     bool has_confirm = false;
-    for (int i = 0; i < eq.press_count; ++i) {
-        if (eq.presses[i].entity == confirm_btn) {
+    auto cap = drain_press_events(reg);
+    for (int i = 0; i < cap.count; ++i) {
+        if (cap.buf[i].entity == confirm_btn) {
             has_confirm = true;
             break;
         }
@@ -177,12 +177,8 @@ TEST_CASE("test_player: swipe cooldown blocks immediate second swipe", "[test_pl
     tp.push_action(action);
     tp.mark_planned(obs);
 
-    auto& eq = reg.ctx().get<EventQueue>();
     test_player_system(reg, 0.016f);
-    bool has_go = false;
-    for (int i = 0; i < eq.go_count; ++i) {
-        has_go = true; break;
-    }
+    bool has_go = drain_go_events(reg).count > 0;
     CHECK_FALSE(has_go);
 }
 
