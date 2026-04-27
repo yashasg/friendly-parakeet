@@ -165,3 +165,34 @@ TEST_CASE("scoring: LanePush excluded from chain and popup", "[scoring][lane_pus
     CHECK_FALSE(reg.all_of<Obstacle>(lp));
     CHECK_FALSE(reg.all_of<ScoredTag>(lp));
 }
+
+TEST_CASE("scoring: LanePushRight excluded from chain and popup", "[scoring][lane_push]") {
+    auto reg = make_registry();
+    make_player(reg);
+
+    auto& config = reg.ctx().get<DifficultyConfig>();
+    auto lp = reg.create();
+    reg.emplace<ObstacleTag>(lp);
+    reg.emplace<Position>(lp, constants::LANE_X[1], constants::PLAYER_Y);
+    reg.emplace<Velocity>(lp, 0.0f, config.scroll_speed);
+    reg.emplace<Obstacle>(lp, ObstacleKind::LanePushRight, int16_t{constants::PTS_LANE_PUSH});
+    reg.emplace<DrawSize>(lp, float(constants::PLAYER_SIZE), 80.0f);
+    reg.emplace<DrawLayer>(lp, Layer::Game);
+    reg.emplace<Color>(lp, Color{100, 200, 100, 255});
+    reg.emplace<ScoredTag>(lp);
+
+    auto& score = reg.ctx().get<ScoreState>();
+    int chain_before = score.chain_count;
+
+    scoring_system(reg, 0.016f);
+
+    CHECK(score.chain_count == chain_before);
+
+    auto popup_view = reg.view<ScorePopup>();
+    int popup_count = 0;
+    for (auto e : popup_view) { ++popup_count; (void)e; }
+    CHECK(popup_count == 0);
+
+    CHECK_FALSE(reg.all_of<Obstacle>(lp));
+    CHECK_FALSE(reg.all_of<ScoredTag>(lp));
+}
