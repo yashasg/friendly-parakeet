@@ -95,6 +95,41 @@
 
 ## Learnings
 
+### 2026 — EnTT ECS Guide Audit Pass
+
+**Scope:** Read-only audit of `app/components/` and `app/systems/` against the EnTT ECS guide (docs/entt/Entity_Component_System.md).
+
+**Confirmed findings (not yet fixed):**
+
+1. **`camera_system.cpp:373` — `emplace_or_replace<ScreenPosition>` per frame** — same anti-pattern as issue #244 (fixed for ModelTransform), missed for ScreenPosition. Fix: `get_or_emplace<ScreenPosition>(entity) = ScreenPosition{...}`. No signal observers exist for ScreenPosition, so this is waste-only not a correctness issue.
+
+2. **`scoring_system.cpp:36` — `any_of<MissTag>` branch inside structural view** — `view<ObstacleTag, ScoredTag, Obstacle, Position>` then branches on `any_of<MissTag>`. The EnTT guide and collision_system both favor per-kind structural views. Fix: two views, one with MissTag, one with `entt::exclude<MissTag>`. Note: scored obstacle count per frame is 0–3, so runtime impact is very low; this is a pattern debt, not a hot spot.
+
+3. **`lifetime_system.cpp:6` — per-frame `std::vector<entt::entity>` allocation** — allocates a fresh `std::vector` every call, unlike `cleanup_system.cpp` which already uses a `static std::vector`. Fix: make the vector static (same pattern as cleanup_system). Filed as separate quick-win.
+
+4. **`scoring_system.cpp:44,110` — double `ctx().find<SongResults>()` inside entity loop** — SongResults is looked up twice; `find<GameOverState>()` is also looked up per-entity inside loops in both `collision_system.cpp:118` and `miss_detection_system.cpp:22`. All should be hoisted above the loop.
+
+5. **`BurnoutState`/`BankedBurnout` dead code since #239** — `burnout_system` is a no-op; `BurnoutState` is still emplaced in `game_loop.cpp:80` and reset in `play_session.cpp:44`; `BankedBurnout` is defined in `burnout.h` but never emplaced in production. Should be removed in a coordinated pass. Coordinate with McManus/Saul before removing.
+
+6. **`ui_render_system.cpp` — JSON traversal per frame** — `find_el()` scans `UIState::screen["elements"]` linearly by ID string; layout constants (widths, colors, positions) are re-extracted via `json.get<float>()`/`json_color()` every frame. UIState is a context singleton (not per-entity component), so no pool cost, but per-frame JSON traversal is avoidable. Fix: pre-compute layout structs at screen-load time.
+
+7. **`obstacle_spawn_system.cpp:29-30` — lazy `ctx().emplace<RNGState>()` inside update** — conditional emplace inside a per-frame system. Better: emplace in `game_loop_init()` or `setup_play_session()`.
+
+**Already confirmed good / do not touch:**
+- collision_system per-kind structural views — textbook ECS
+- get_or_emplace<ModelTransform> in game_camera_system (fixed in #244)
+- ObstacleChildren fixed array O(N) child cleanup (PR #43)
+- EventQueue/AudioQueue/HapticQueue as fixed-size inline arrays
+- PopupDisplay char[16] fixed text buffer
+- All singletons in reg.ctx() — correct ownership boundary
+- cleanup_system static buffer (intentional, commented)
+- Magic enum ToString — zero allocation
+- Pool insertion order for ObstacleChildren in game_loop_init (PR #43)
+- BeatMap copy-delete guards against accidental duplication
+- ActiveTag structural caching with UIActiveCache
+
+---
+
 ### PR #43 Review Fixes (2026-04-27)
 
 Fixed all 7 unresolved review threads in commit d90abf9 on `user/yashasg/ecs_refactor`.
@@ -187,6 +222,19 @@ Fixed all 7 unresolved review threads in commit d90abf9 on `user/yashasg/ecs_ref
 3. Migrate GoEvent/ButtonPressEvent tier → player_input_system handlers
 4. Remove EventQueue struct
 5. Baer gate: R7 test + no-replay validation
+
+### 2026-05-17 — EnTT ECS Performance Audit
+
+**Scope:** Audit of hot-path patterns and idiomatic EnTT usage against DoD principles.
+
+**Key findings:**
+
+- **Rule 1 — Per-frame component mutation:** Use `get_or_emplace<T>(e) = value`, not `emplace_or_replace<T>(e, value)` (unnecessary signal dispatch). Violation: `camera_system.cpp:373` ScreenPosition per-frame on popup entities (mirrors issue #244 pattern, already fixed for ModelTransform).
+- **Rule 2 — Branching inside views:** Use structural views (separate Miss/Hit views), not `any_of<T>` inside shared view. Violation: `scoring_system.cpp:36` branches on MissTag (low cardinality, pattern debt only).
+- **Rule 3 — Hoist ctx() lookups:** Move `reg.ctx().find<T>()` outside loops. Violations: `scoring_system.cpp` (2×), `collision_system.cpp`, `miss_detection_system.cpp`.
+- **Out-of-scope deferred:** UI JSON per-frame (refactor cost), BurnoutState dead code (cross-team sign-off needed), lifetime_system vector (quick win), obstacle_spawn RNGState (minor).
+
+**Status:** Delivered. Remediation backlog created (low-risk, mostly low-effort fixes). Orchestration log: `.squad/orchestration-log/2026-04-27T19-14-36Z-entt-ecs-audit.md`.
 
 **Key invariants to preserve:**
 - No multi-tick input replay (#213)

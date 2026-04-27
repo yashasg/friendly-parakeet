@@ -61,3 +61,21 @@
 - **Fix:** Replaced with a two-pass event-driven test: `push_press` at dist=600 → `player_input_system` (banks Safe), move gate to dist=200, `push_go(Direction::Right)` → `player_input_system` (lock holds). `ComboGate` is the canonical fixture because `player_input_system`'s GoEvent path also calls `bank_burnout` on it — both banking paths share the same lock.
 - **Sentinel pattern:** A meaningful first-commit-lock test must have a clear failure mode: removing the `reg.any_of<BankedBurnout>(target)` guard must cause the second-pass assertion to fail.
 - **Validation:** 26 assertions / 11 test cases in `[burnout_bank]` all pass; 62 assertions / 34 test cases in `[player]` all pass. Comment posted at https://github.com/yashasg/friendly-parakeet/issues/167#issuecomment-4323307927.
+
+## 2026-XX-XX — PR #43 CI Fix: Bar miss tests missing scoring_system call
+
+**Task:** Fix CI failures in `[collision]` tests after #280 moved miss energy drain / flash_timer ownership from `collision_system` to `scoring_system`.
+
+**Failing tests:**
+- `collision: low bar drains energy when sliding` (test_collision_system.cpp:286-287)
+- `collision: high bar drains energy when jumping` (test_collision_system.cpp:300-301)
+
+**Root cause:** Both bar-miss tests called only `collision_system` then asserted `energy.energy < 1.0f` and `energy.flash_timer > 0.0f`. After #280, those side-effects are produced by `scoring_system` (which processes `MissTag`). Every other miss-drain test in the file already followed the two-step pattern: `collision_system` → `scoring_system`.
+
+**Fix:** Added `scoring_system(reg, 0.016f)` after `collision_system` in both failing test cases. No assertions weakened; no gameplay ownership changed.
+
+**Validation:** `./build/shapeshifter_tests "[collision]"` → 105 assertions / 49 test cases, all pass.
+
+**Commit:** dca7664 on branch `user/yashasg/ecs_refactor`.
+
+**Pattern to remember:** Whenever a miss-drain test asserts energy or flash_timer, it must call `collision_system` then `scoring_system` — never just `collision_system` alone. MissTag is stamped by collision; the energy/flash side-effects are owned by scoring.

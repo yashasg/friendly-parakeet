@@ -180,3 +180,42 @@ Fresh pass over CMakeLists.txt, vcpkg.json, vcpkg-overlay/, build.sh, run.sh, al
 - **Working-tree contention race**: Concurrent agents revert working-tree files between `edit` and `git add`. Reliable fix: use a private `GIT_INDEX_FILE`, `git read-tree HEAD`, `git update-index --cacheinfo` per file, `git write-tree`, `git commit-tree`, then `git update-ref` to update the branch atomically. Follow with `git checkout <commit> -- <files>` to restore the working tree.
 
 - **Bytes-level cmake patching**: CMake regex strings contain literal `\.` (two backslashes, dot). Python raw-string comparison of the exact bytes avoids escaping confusion; alternatively use line-level `replace` on the string representation.
+
+## Session: PR #43 Review — Dependency Submission Workflow Hardening (commit e32468a)
+
+### Review Outcome: APPROVED
+
+**Changes reviewed:** `.github/workflows/dependency-submission.yml` — 2 lines added: `retries: 3` on the `actions/github-script@v8` submit step; `fail-fast: false` on the OS matrix `strategy` block.
+
+**Verification performed:**
+
+1. **`retries: 3` validity:** Confirmed against the upstream `actions/github-script` v8 `action.yml`. `retries` is a first-class declared input (default `"0"`). The `retry-exempt-status-codes` default is `400,401,403,404,422`; HTTP 500 is not exempt, so transient 5xx responses from the Dependency Graph API will be retried up to 3 times. ✅
+
+2. **`fail-fast: false` placement:** Correctly placed inside the `strategy` block of the `submit` job, directly above the `matrix` key. Prevents a transient Windows failure from cancelling the macOS and Linux sibling jobs. ✅
+
+3. **Permissions:** Workflow-level `permissions: contents: read` is overridden by job-level `permissions: contents: write`. The Dependency Graph snapshots API requires `contents: write`; that permission is present at the job level. No over-privilege introduced. ✅
+
+4. **Scope tightness:** Exactly 2 lines added to one file (`.github/workflows/dependency-submission.yml`). No build, test, or release workflows touched. ✅
+
+**Root cause addressed:** Prior failure was `Dependency Submission/Submit Dependencies (windows-latest)` — HTTP 500 from `POST /dependency-graph/snapshots` at `retries: 0`. macOS job was cancelled by fail-fast. Both failure modes are now mitigated.
+
+---
+
+## Session: PR #43 Review — Windows beat_log CI Fix (commit c6ca0e8)
+
+### Review Outcome: APPROVED
+
+**Fix reviewed:** `make_open_log()` test helper in `tests/test_beat_log_system.cpp`.
+
+**Root cause confirmed:** Commit `95031c07` Windows CI log showed exactly the three described failures (`-1 == 1`, `-1 == 5`, `-1 == 2`) — `fopen("/dev/null", "w")` returns `nullptr` on Windows, causing `beat_log_system` to bail early.
+
+**Fix analysis:**
+- `#ifdef _WIN32` / `NUL` / `#else` / `/dev/null` / `#endif` is the canonical cross-platform null-device pattern. `_WIN32` is defined by MSVC, MinGW, and the pinned Chocolatey `llvm 20.1.4` Clang used by this project's Windows CI.
+- Change is strictly scoped to the test helper — zero production code touched.
+- All `[beat_log]` CHECK assertions remain intact and now execute correctly on Windows (file opens successfully → `beat_log_system` proceeds → `last_logged_beat` advances as expected).
+- No new headers required; `<cstdio>` is transitively present via `session_log.h` (which declares `FILE* file`).
+- No warning-policy concerns: `#ifdef` and `std::fopen("NUL","w")` are clean under `-Wall -Wextra -Werror`.
+
+**Non-beat_log failures in prior run** (`collision` low/high bar, `on_obstacle_destroy`) are unrelated to this commit and not in scope.
+
+**The PR #43 Windows beat_log failure family is resolved.**

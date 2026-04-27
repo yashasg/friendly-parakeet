@@ -355,6 +355,55 @@ iOS build pipeline and TestFlight submission readiness defined.
 
 ---
 
+### EnTT ECS Audit Findings (2026-05-17)
+
+**Scope:** Three-agent read-only audit of ECS compliance and C++/DoD performance patterns.
+
+**Owners:** Keyser (compliance), Keaton (performance), Kujan (materiality review)  
+**Status:** DOCUMENTED — remediation backlog created, all owners assigned
+
+**Consolidated Material Findings:**
+
+| Item | Category | File(s) | Owner | Est. | Priority |
+|------|----------|---------|-------|------|----------|
+| F1 | scoring_system removes iterated view components inside loop | scoring_system.cpp:33–152 | McManus | Low | MEDIUM |
+| F2 | COLLISION_MARGIN tripled across 3 files | collision_system.cpp:16, beat_scheduler_system.cpp:25, test_player_system.cpp:319 | McManus/Fenster | Low | MEDIUM |
+| F3 | APPROACH_DIST duplicated between headers | constants.h:70, song_state.h:72 | McManus/Fenster | Trivial | MEDIUM |
+| F4 | System logic in component headers | input_events.h, obstacle_counter.h | McManus | Low-Med | LOW-MEDIUM |
+| F5 | Render systems non-const registry parameter | game_render_system.cpp:153, ui_render_system.cpp:379 | McManus/Keaton | Trivial | LOW |
+| F6 | Component structs with mutation methods | high_score.h, settings.h | McManus/Saul | Low | LOW |
+| Rule 1 | emplace_or_replace → get_or_emplace per-frame | camera_system.cpp:373 | Keaton | Trivial | LOW |
+| Rule 2 | Branching by component inside view loop | scoring_system.cpp:36 | McManus | Low | LOW |
+| Rule 3 | Hoist ctx() lookups above loops | scoring_system.cpp, collision_system.cpp, miss_detection_system.cpp | McManus/Keaton | Low | LOW |
+
+**In-flight validation:**
+- Input dispatcher pipeline (PR #272, in-flight) is architecturally sound — no rework needed on structure
+- Only placement of `ensure_active_tags_synced()` needs move (already in F4 above)
+
+**Noise items (approved as-is, no action needed):**
+- `cleanup_system.cpp:11` static buffer — intentional optimization, documented in #242
+- No groups in codebase — correct choice given query cardinality
+- `BurnoutState` stale fields — no UB risk, deferred to broader burnout review
+
+**Compliant patterns noted (no action needed):**
+- All systems are pure free functions
+- Game state lives in registry context singletons
+- Signal wiring/disconnection lifecycle-safe
+- Tag/empty-type patterns used correctly
+- No groups (correct for this workload)
+
+**Remediation backlog:** 9 items total (3 trivial, 5 low, 1 low-medium effort). All owners assigned. Ready for team sprint prioritization.
+
+**Key learnings for team:**
+- ECS violations are allowed by EnTT but often represent latent traps (e.g., iterator invalidation)
+- Constants triplication is a consistency risk that compounds over time
+- Per-frame `emplace_or_replace` is an anti-pattern for stable entities (unnecessary signal dispatch)
+- Component headers should contain only data definitions; all logic belongs in system `.cpp` files
+
+**Decisions that follow from this audit:** Should be routed through Coordinator to McManus (primary) and Keaton (performance items) for sprint assignment.
+
+---
+
 ## Governance
 
 - All meaningful changes require team consensus

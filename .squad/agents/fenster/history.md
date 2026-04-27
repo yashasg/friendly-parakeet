@@ -130,3 +130,9 @@ Checked all existing issues #44–#220 for overlap before filing.
 - Diagnostics filed 7 new issues (#222–#230): aubio timeout (#222, test-flight blocker), parse_beat_map defaults, JS editor strictness, clean_level gaps, structure fallback, etc.
 - Fenster findings merged to `.squad/decisions.md` (inbox deleted).
 - No duplicates found with #44–#162 baseline.
+
+### 2026-05-17 — EnTT ECS Audit: Constant Deduplication (F2/F3)
+
+**Context:** Kujan's audit review identified `COLLISION_MARGIN` (tripled in 3 files) and `APPROACH_DIST` (duplicated between header and constant file) as medium-risk drift vectors. When promoted/consolidated to `app/constants.h`, both are now authoritative single-source-of-truth.
+
+**Status:** Assigned to McManus (primary), Fenster (tooling/constants). Part of EnTT ECS remediation backlog (low-effort, low-risk fixes). Orchestration log: `.squad/orchestration-log/2026-04-27T19-14-36Z-entt-ecs-audit.md`.

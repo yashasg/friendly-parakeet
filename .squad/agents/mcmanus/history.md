@@ -137,3 +137,16 @@ Rhythm obstacles that escape the collision window (e.g. during jump peak) reach 
 
 **Commit:** afd7921 (code changes bundled; dedicated ref commit below)
 **Tests:** All 6 `cleanup*` tests pass. 2 pre-existing failures in `[cleanup]` tag are from `test_pr43_regression.cpp` (child-entity signal tests, unrelated to cleanup_system).
+
+### 2026-05-17 — EnTT ECS Audit: Key Stakeholder Summary
+
+**Three-agent audit complete.** Keyser delivered compliance findings (5 P1, 5 P2). Keaton delivered performance rules + violations (3 rules, multiple sites). Kujan synthesized into actionable backlog (9 remediation items, all owners assigned).
+
+**Material backlog items assigned to you:**
+- F1: scoring_system collect-then-process pattern (latent UB trap)
+- F2/F3: COLLISION_MARGIN + APPROACH_DIST constant deduplication
+- F4: Move ensure_active_tags_synced() / wire_obstacle_counter() to system `.cpp` files
+- Rule 2: Scoring system structural view refactor (pattern debt, low cardinality)
+- Rule 3: Hoist ctx() lookups in scoring/collision systems
+
+**Status:** Orchestration log: `.squad/orchestration-log/2026-04-27T19-14-36Z-entt-ecs-audit.md`. Input dispatcher pipeline validated (no architectural rework needed). Ready for team sprint assignment.

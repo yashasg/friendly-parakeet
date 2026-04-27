@@ -54,3 +54,14 @@
 - Lesson: when scoring depends on a transient world state (burnout meter), the *snapshot moment* is itself a design decision, not an implementation detail. The GDD already encoded "bank on action" in prose; the bug is that the codepath never honoured it.
 - Lesson: even with bank-on-action, the rhythm timing pipeline forces Perfect-timed presses into the Dead distance band (~88 px at 400 px/s × (morph + half_window)). The ladder becomes *reachable* (which is what #167 asks for) but late-press-Dead remains *strategically dominant*. That dominance is #176's problem, not #167's — keep the issues separated to avoid scope creep.
 - Lesson: define "first-commit-locks" up-front for ComboGate/SplitPath. Without it, players are incentivised to wait for higher zones and the design intent ("decide *when* to commit") collapses to "always commit late".
+
+### 2026-05-17 — EnTT ECS Audit: Design Perspective
+
+**Context:** Three-agent audit (Keyser, Keaton, Kujan) completed on ECS compliance and performance patterns. Backlog items assigned across gameplay, UI, and tools teams.
+
+**Design stakeholder notes:**
+- **HighScoreState methods (F6):** Mutation logic (e.g., `set_score`) should move to a `high_score_system.cpp` to maintain component-data separation. Affects balance/tuning workflows if high-score persistence requires formula tweaks.
+- **SettingsState methods (F6):** Similar pattern; mutation helpers belong in systems. Already flagged in decisions.md as "low urgency."
+- **Burnout/Scoring constants:** F2/F3 deduplication (COLLISION_MARGIN, APPROACH_DIST) are infrastructure; no design policy changes needed.
+
+**Status:** Backlog assigned. No design-gate changes needed for remediation. Orchestration log: `.squad/orchestration-log/2026-04-27T19-14-36Z-entt-ecs-audit.md`.

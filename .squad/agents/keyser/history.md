@@ -245,3 +245,27 @@
 **Recipients:** Keaton (implementation), Baer (validation gates), McManus (integration)
 
 **Status:** Ready for Keaton to begin implementation stage 1 (dispatcher placement + zero-risk init).
+
+### 2026-05-17 — EnTT ECS Guide Audit
+
+**Scope:** Read-only pass of all `app/components/` and `app/systems/` against `docs/entt/Entity_Component_System.md`.
+
+**Key findings:**
+
+- **P1: Logic in component headers** — Three component headers carry system-grade logic: `UIState::load_screen()` (file I/O in a component), `HighScoreState` business methods (`set_score`, `update_current_high_score`), and `ensure_active_tags_synced()` / `invalidate_active_tag_cache()` (registry-iterating functions in `input_events.h`). All should move to system `.cpp` files.
+- **P2: Signal wiring and helpers in component headers** — `obstacle_counter.h` contains signal callbacks and `wire_obstacle_counter()`; `song_state.h` contains `song_state_compute_derived()`. Minor but worth cleanup.
+- **P2: `SettingsState` mutation methods** — `mark_ftue_complete()` et al. are logic on a component; should migrate to a settings system.
+- **P2: `cleanup_system.cpp` static vector** — Known/approved optimization (#242).
+- **In-flight validation:** Input dispatcher pipeline is well-aligned with ECS principles. Only ensure_active_tags_synced() placement needs move; pipeline structure is sound.
+
+**Status:** Delivered to Coordinator. Decision gate open for team prioritization and backlog assignment. Orchestration log: `.squad/orchestration-log/2026-04-27T19-14-36Z-entt-ecs-audit.md`.
+- **P3: `BurnoutState` context var** — Orphaned no-op post-#239; can be removed.
+- **In-flight input dispatcher** — `input_system → gesture_routing → hit_test → player_input` pipeline is ECS-correct. Only `ensure_active_tags_synced` placement (in header) needs to move.
+- **Good patterns:** All systems are free functions ✅; `reg.ctx()` singletons ✅; signal disconnect before `reg.clear()` ✅; ETO on all tag structs ✅; fixed-size array buffers ✅; no groups (correct choice) ✅; `entt::exclude<>` view narrowing ✅.
+
+**Decision filed:** `.squad/decisions/inbox/keyser-entt-ecs-guide-audit.md`
+
+**Key file paths for this audit:**
+- ECS guide: `docs/entt/Entity_Component_System.md`
+- Component headers with logic: `app/components/ui_state.h`, `app/components/high_score.h`, `app/components/input_events.h`, `app/components/obstacle_counter.h`, `app/components/song_state.h`
+- Systems audited: all 47 `reg.view<>` call sites, `app/game_loop.cpp`

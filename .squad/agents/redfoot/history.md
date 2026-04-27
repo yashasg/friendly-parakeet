@@ -135,3 +135,9 @@ Implemented a focused content + small-renderer pass.
 **Validation:** `popup_display_system.cpp`, `scoring_system.cpp`, and `test_popup_display_system.cpp` compile clean under `-Wall -Wextra -Werror -std=c++20` (used compile_commands flags directly). `shapeshifter_lib` builds clean. `./build/shapeshifter_tests "[popup_display]"` — all 11 cases pass. Pre-existing `high_score_*` failures from concurrent #253 work are unrelated and out of scope.
 
 **Heavy concurrent-agent churn:** working tree was reverted twice mid-edit by parallel squad agents; recovered by re-applying via a single Python pass + immediate `git add` + `git commit`. Followed history.md's prior advice (stage early, atomic apply). Final commit: `fbf0297`.
+
+### 2026-05-17 — EnTT ECS Audit: UI System Audit
+
+**Context:** Keyser's audit identified `UIState::load_screen()` (file I/O in a component) and `ensure_active_tags_synced()` (registry-mutating logic in component header) as P1 deviations from ECS principles.
+
+**Status:** Both issues are assigned to McManus (primary) with Redfoot (UI specialist) as stakeholder. Part of EnTT ECS remediation backlog. Orchestration log: `.squad/orchestration-log/2026-04-27T19-14-36Z-entt-ecs-audit.md`. File I/O refactor may be paired with #202 (data-driven HUD layout) for efficiency.

@@ -970,3 +970,192 @@ All three are `.squad/` documentation files with zero compile impact. A clean ch
 1. The three dirty `.squad/` files (two history updates + one deleted inbox decision) are orphaned squad-doc changes. A housekeeping commit would tidy them but is not required.
 2. `squad-ci.yml`, `squad-docs.yml`, `squad-heartbeat.yml`, `squad-issue-assign.yml`, `squad-label-enforce.yml`, `squad-preview.yml`, `squad-promote.yml`, `squad-triage.yml`, `sync-squad-labels.yml` remain untracked. Committing any of these activates live GitHub automations — requires explicit team decision before commit. Prior flag stands.
 3. Prior non-blockers from the cleanup pass review (cleanup_system 1-frame chain-reset delay, `< 0.0f` vs `< 1e-6f` energy floor inconsistency, `CONFIGURE_DEPENDS` absent from CMake GLOBs) remain open; not introduced by this pass.
+
+---
+
+### 2026-04-27 — Review: issue #304 (WASM lifecycle / hidden registry global) — commit a5cad3d
+
+**Scope:** Kobayashi implementation — explicit WASM shutdown path, idempotency guard, dangling global clear, `game_loop_should_quit` extraction, camera GLSL shader variants, lifecycle tests.
+
+**Verdict:** ✅ APPROVED — #304 can be closed.
+
+**Criteria verified:**
+
+| Criterion | Result |
+|-----------|--------|
+| WASM frame_callback detects quit and calls shutdown | ✅ `game_loop_should_quit` checked every frame; `emscripten_cancel_main_loop()` + `wasm_shutdown_once()` called on true |
+| Browser unload path covered | ✅ `emscripten_set_beforeunload_callback` registered → `on_web_unload` → `wasm_shutdown_once()` |
+| Idempotency guarded | ✅ `wasm_shutdown_once()` nulls `g_state.reg` before calling shutdown; any re-entrant call is a no-op |
+| Dangling registry pointer eliminated | ✅ `g_state.reg = nullptr; g_state.accumulator = 0.0f` set before `game_loop_shutdown()` call |
+| Native run loop preserved | ✅ `while (!game_loop_should_quit(reg))` — equivalent to prior `WindowShouldClose()` plus adds `quit_requested` path |
+| `game_loop_should_quit` correctness | ✅ Checks `WindowShouldClose()` first, then `input->quit_requested`; null-safe via `find<InputState>()` |
+| camera_system.cpp changes necessary and safe | ✅ Adds `#ifdef PLATFORM_WEB` GLSL 100 shaders for WebGL; `camera::shutdown()` unaffected; no conflict with #265 RAII |
+| Tests — quit predicate coverage | ✅ 4 `[lifecycle]` tests: null-InputState safety, false/true flag, flag reset |
+| Tests — no coverage weakened | ✅ `test_ndc_viewport.cpp` additions are net-new ScreenTransform tests; existing checks intact |
+| Commit scope limited to #304 | ✅ All touched files are on-scope; `test_ndc_viewport.cpp` additions are minor scope expansion but harmless |
+
+**Non-blocking observations:**
+- `on_web_unload` returns `nullptr` with comment "empty string suppresses the browser confirmation dialog" — `nullptr` and `""` are functionally equivalent for Emscripten's beforeunload handler; comment is slightly inaccurate, behaviour is correct.
+- `WindowShouldClose()` branch of `game_loop_should_quit` is untested in the native test binary (requires a raylib window context). This is acknowledged in the test file header comment and is acceptable — the flag branch is fully tested.
+- `test_ndc_viewport.cpp` +51 lines (ScreenTransform coordinate math) are slightly out of the #304 lifecycle scope but add genuine coverage and do not introduce regressions.
+
+---
+
+### 2026-05-XX — Review: issue #253 (HighScoreState compact array — Hockney impl)
+
+**Scope:** Replace `std::map<std::string,int32_t>` with compact fixed-size inline array in `HighScoreState`. Commits reviewed: `60bcd26` (functional impl), cross-checked with HEAD.
+
+**Criteria verified:**
+
+| Criterion | Result |
+|-----------|--------|
+| No `std::map` or node-based storage | ✅ `std::array<Entry, MAX_ENTRIES>` with `entry_count` counter — zero heap nodes |
+| Inline key storage (no heap per entry) | ✅ `char key[KEY_CAP=32]` inside `Entry` — fully inline |
+| Correct lookup for known keys | ✅ `get_score` linear scan via `strncmp`; returns stored value |
+| Correct lookup for missing keys | ✅ Returns 0; tested via `get_current_high_score()` before any insert |
+| Update existing key without duplicate | ✅ `set_score` finds and updates in-place; does not append |
+| Capacity behavior explicit and safe | ✅ Comment: "Silently drops if table is full." Guard: `if (entry_count < MAX_ENTRIES)` — no corruption |
+| Capacity sized to game data | ✅ `MAX_ENTRIES=9` = `LEVEL_COUNT(3) × DIFFICULTY_COUNT(3)` — table cannot overflow in normal operation |
+| Negative scores clamped on load | ✅ `raw < 0 → 0`; tested with `"negative|easy": -100` → `get_score == 0` |
+| Oversized scores clamped on load | ✅ `raw > INT32_MAX → INT32_MAX`; tested with `"huge|hard": 999999999999` → `get_score == INT32_MAX` |
+| JSON format preserved (backward compat) | ✅ Same `{"scores":{key:value,...}}` structure; load preserves `current_key` |
+| Missing file returns false, state unchanged | ✅ Tested |
+| Malformed JSON returns false, state unchanged | ✅ Tested |
+| Invalid schema (array instead of object) returns false | ✅ Tested |
+| String-typed score value returns false | ✅ Tested |
+| `current_key` preserved across load | ✅ `next.current_key = state.current_key` before JSON parse; tested |
+| SIGABRT from old `dense_map::operator[]` resolved | ✅ `set_score` replaces the crashing `scores["key"] = value` pattern entirely |
+| No new heap allocations in hot score paths | ✅ `get_score`/`set_score` touch only `char[]` and `int32_t` inside fixed array |
+| Targeted `[high_score]` tests pass | ✅ 47 assertions / 14 test cases — all pass |
+| Build: zero warnings | ✅ Clean compile, no warnings |
+
+**Non-blocking note:**
+- No explicit test for the capacity-overflow path (`set_score` when `entry_count == MAX_ENTRIES`). Under normal game operation this edge is unreachable (3×3=9=`MAX_ENTRIES`), and the drop behavior is safe and documented. Acceptable gap; could harden if song/difficulty counts ever expand.
+
+**Verdict:** ✅ APPROVED — #253 can be closed.
+
+### 2026-04-27 — Review: issue #243 (collision perf — per-kind structural views)
+
+**Scope:** Keaton's `b65c301` — replace broad `ObstacleTag+Obstacle` view + `try_get` dispatch chain with six tight per-kind structural EnTT views.
+
+**Verification performed:**
+- Ran `[collision]` test tag: 47/49 test cases pass, 101/105 assertions pass.
+- 2 failures (`low bar drains energy when sliding`, `high bar drains energy when jumping`) are pre-existing: both tests call `collision_system` but omit the required `scoring_system` call to complete the energy-drain chain. These pre-date this commit; Keaton explicitly documented them in the commit message.
+- Structural views confirmed: ShapeGate, LaneBlock, LowBar/HighBar (RequiredVAction), ComboGate, SplitPath, LanePush — all six correct.
+- No per-entity `try_get` for obstacle kind/data in any hot path. One `try_get<BeatInfo>` remains in `resolve()` for rhythm timing grade only — correct and out of scope.
+- `resolve()` lambda receives `ObstacleKind` directly from caller; last `try_get<Obstacle>` removed.
+- #280 boundary intact: `collision_system` emplace `MissTag`/`ScoredTag` only; energy drain stays in `scoring_system`.
+- LanePush: timing-window guard (`continue` before `ScoredTag`), same-lane check, delta ±1, `dest >= 0 && dest < LANE_COUNT` edge clamp, `p_lane.target < 0` no-overwrite guard, always scores once in window. All correct.
+- Four `[lane_push]` tests added: push-left, push-right, out-of-range clamp (stays -1), timing-window guard (not scored). `make_lane_push` helper added to `test_helpers.h`. Full coverage of critical paths.
+- No try_get chain regressions. Exclude masks on structural views correctly differentiate overlapping component sets (ComboGate vs SplitPath vs ShapeGate via `RequiredLane` exclusion).
+- Build: zero warnings (zero-warning policy enforced via `-Wall -Wextra -Werror`).
+
+**Non-blocking notes:**
+- No test covers LanePush when player is in timing window but NOT on the same lane (obstacle still scores, no push). Minor gap; not blocking.
+- The 2 pre-existing test failures (`low bar drains energy when sliding`, `high bar drains energy when jumping`) are a test-authoring bug: missing `scoring_system` calls. These should be assigned to Verbal for a future cleanup pass.
+
+**Verdict:** ✅ APPROVED — #243 can be closed.
+
+### 2026-05-XX — Review: issue #265 (GPU RAII guards — Hockney impl)
+
+**Scope:** Hockney `817b062` — RAII ownership semantics for `RenderTargets` (camera.h) and `camera::ShapeMeshes` (camera_system.h/.cpp); test coverage in `test_gpu_resource_lifecycle.cpp`.
+
+**Criteria verified:**
+
+| Criterion | Result |
+|-----------|--------|
+| Copy ctor/assign deleted (RenderTargets) | ✅ `= delete` on both |
+| Copy ctor/assign deleted (ShapeMeshes) | ✅ `= delete` on both |
+| Move ctor/assign declared noexcept (both) | ✅ `noexcept` on all four |
+| Move transfers ownership — source `owned` cleared | ✅ `o.owned = false` in both move ctor bodies |
+| Move assign calls `release()` on `this` before steal | ✅ `release()` called first in both move assign bodies; self-assign guarded |
+| `release()` idempotent — `if (!owned) return` guard | ✅ Both structs |
+| `release()` zeros members after unload | ✅ Shapes, slab, quad, material zeroed; world, ui zeroed |
+| `owned` set only after successful GPU creation | ✅ `sm.owned = true` at end of `build_shape_meshes()`; `RenderTargets(w,u)` ctor sets `owned{true}` after both textures are passed in |
+| `camera::shutdown` + ctx destruction safe (no double-unload) | ✅ `shutdown()` calls `.release()` on both → `owned=false`; registry-ctx destructor fires `release()` again → no-op |
+| Tests: no GL context required | ✅ Static type-trait `static_assert` and manual `owned` manipulation only; no `InitWindow()` |
+| Tests: static_assert non-copyable | ✅ 4 static_asserts (copy ctor + copy assign for each struct) |
+| Tests: static_assert movable | ✅ 4 static_asserts (move ctor + move assign for each struct) |
+| Tests: default-constructed `owned == false` | ✅ 2 test cases |
+| Tests: move transfers ownership | ✅ 2 test cases; `owned = false` cleanup prevents spurious GL unload |
+| Tests: idempotent release on unowned | ✅ 2 test cases (double `release()` on default-constructed objects) |
+| CMake: new test picked up via `file(GLOB)` | ✅ `file(GLOB TEST_SOURCES tests/*.cpp)` — `test_gpu_resource_lifecycle` is NOT in the EXCLUDE REGEX list |
+| CMake EXCLUDE REGEX unchanged (no scratch tests admitted) | ✅ Filter still excludes `test_safe_area_layout`, `test_ui_redfoot_pass`, `test_ui_element_schema`, `test_ui_overlay_schema`, `test_lifecycle` only |
+| No conflict with #304 WASM GLSL changes | ✅ `#ifdef PLATFORM_WEB` shader blocks are independent of RAII wrappers; `camera::shutdown()` logic unchanged for WASM path |
+| Build: zero warnings | ✅ Clean compile with `-Wall -Wextra -Werror` |
+| `[gpu_resource_lifecycle]` tests pass | ✅ 8 assertions / 6 test cases — all pass |
+
+**Non-blocking observations:**
+- In `unload_shape_meshes()`, `UnloadShader(sm.material.shader)` is called before `UnloadMaterial(sm.material)`. raylib's `UnloadMaterial` also unloads the material's shader, which means the shader ID could be freed twice. This is pre-existing code (not introduced by #265); raylib's `rlUnloadShaderProgram` is a no-op for the default shader and on most drivers calling `glDeleteProgram` on an already-deleted program is also a no-op. Not blocking for this review, but worth a cleanup ticket.
+- Moved-from structs leave stale GPU ID values in fields (only `owned` is cleared, not the ID fields). This is safe and standard RAII practice — `owned=false` prevents the destructor from acting on them.
+
+**Verdict:** ✅ APPROVED — #265 can be closed.
+
+---
+
+### 2026-04-27 — Review: PR #43 mesh child cleanup CI fix (Keaton)
+
+**Scope:** `tests/test_helpers.h` + `tests/test_pr43_regression.cpp` — priming `ObstacleChildren` pool before `wire_obstacle_counter` in `make_registry()`; removing redundant priming from `make_obs_registry()`.
+
+**Root cause verified:** `wire_obstacle_counter(reg)` calls `reg.on_construct/on_destroy<ObstacleTag>()`, which allocates the `ObstacleTag` pool. Any subsequent `reg.storage<ObstacleChildren>()` therefore gets a higher pool index. EnTT `reg.destroy()` iterates pools in reverse insertion order, so `ObstacleChildren` (higher index) was torn down **before** `on_obstacle_destroy` fired for `ObstacleTag` — `try_get<ObstacleChildren>` returned null and silently skipped child deletion.
+
+**Criteria verified:**
+
+| Criterion | Result |
+|-----------|--------|
+| Fix mirrors production ordering in `game_loop.cpp:113-114` | ✅ `reg.storage<ObstacleChildren>()` is now the first pool operation in `make_registry()`, before `wire_obstacle_counter` |
+| `make_registry()` priming is side-effect-free for all tests | ✅ Only ensures pool exists; no components emplaced, no signals connected; unrelated tests unaffected |
+| `make_obs_registry()` redundant priming correctly removed | ✅ Old `reg.storage<ObstacleChildren>()` inside `make_obs_registry()` fired *after* `make_registry()` already created the `ObstacleTag` pool — it was the broken call; removing it is correct |
+| Ordering invariant ownership is clear | ✅ Comment at `test_pr43_regression.cpp:271-274` and `test_helpers.h:30-32` both document the invariant and point to `make_registry()` as the owner |
+| `on_obstacle_destroy` still connected correctly in `make_obs_registry()` | ✅ Signal connection retained; only the redundant priming removed |
+| Regression tests correctly exercise the fix | ✅ Both `[obstacle][cleanup][pr43]` tests verify: children of destroyed parent removed, bystander parent's children untouched |
+| Fix is strictly test-scoped — production code untouched | ✅ `game_loop.cpp` was already correct; no production files modified |
+| No hidden production bug masked | ✅ Production invariant is the reference; tests now replicate it rather than deviate from it |
+
+**Verdict:** ✅ APPROVED — PR #43 mesh child cleanup CI failure family is resolved.
+
+**Non-blocking notes:** None.
+
+### 2026-05-16 — EnTT ECS Audit: systems and components vs. Entity_Component_System.md
+
+**Scope:** Full pass of `app/components/` and `app/systems/` against the EnTT wiki guide.
+
+**Key findings:**
+- `scoring_system.cpp` removes iterated view components (`Obstacle`, `ScoredTag`) inside `view.each()` — allowed by EnTT but invalidates dangling refs. Safe today because refs aren't used post-remove; latent UB trap. Collect-then-process pattern preferred.
+- `COLLISION_MARGIN = 40.0f` defined in three separate `.cpp` files (collision, beat_scheduler, test_player). Promoted to `constants.h` is the fix. Drift = broken rhythm timing.
+- `APPROACH_DIST` duplicated between `constants.h` and `song_state.h`. Known; still present.
+- `ensure_active_tags_synced()` in `input_events.h` is a full registry-mutating system operation living in a component header — convention violation but no correctness risk.
+- Render systems (`game_render_system`, `ui_render_system`) take non-const `entt::registry&` though they are read-only. Should be `const`.
+- `HighScoreState` and `SettingsState` components contain non-trivial mutation methods — low risk (context singletons), but precedent concern.
+- `static std::vector` in `cleanup_system.cpp` — intentional/documented optimization, NOISE.
+- No groups used anywhere — views are correct, groups are optimization opportunity only, NOISE.
+
+**Deliverables:** Decision written to `.squad/decisions/inbox/kujan-entt-ecs-audit-review.md`. Reusable checklist at `.squad/skills/entt-ecs-audit/SKILL.md`.
+
+**Key file paths to remember:**
+- ECS guide: `docs/entt/Entity_Component_System.md`
+- `COLLISION_MARGIN` triplicated: `app/systems/collision_system.cpp:16`, `app/systems/beat_scheduler_system.cpp:25`, `app/systems/test_player_system.cpp:319`
+- `APPROACH_DIST` duplicated: `app/constants.h:70`, `app/components/song_state.h:72`
+- System logic in component headers: `app/components/input_events.h` (`ensure_active_tags_synced`), `app/components/obstacle_counter.h` (`wire_obstacle_counter`)
+
+### 2026-05-17 — EnTT ECS Audit Review: Synthesis & Prioritization
+
+**Role:** Review findings from Keyser (compliance) and Keaton (performance). Synthesize into actionable backlog with clear ownership.
+
+**Material findings consolidated:**
+
+| Priority | Category | Owner | Est. Effort |
+|----------|----------|-------|------------|
+| F1 | scoring_system removes iterated view components | McManus | Low |
+| F2 | COLLISION_MARGIN triplicated across 3 files | McManus/Fenster | Low |
+| F3 | APPROACH_DIST duplicated in .h files | McManus/Fenster | Trivial |
+| F4 | System logic in component headers | McManus | Low-Medium |
+| F5 | Render systems non-const registry | McManus/Keaton | Trivial |
+| F6 | Component struct mutation methods | McManus/Saul | Low |
+| Rule 1 | ScreenPosition emplace_or_replace → get_or_emplace | Keaton | Trivial |
+| Rule 2 | scoring_system structural view branching | McManus | Low |
+| Rule 3 | Hoist ctx() lookups above loops | McManus/Keaton | Low |
+
+**Noise items (approved as-is):** cleanup_system static buffer (#242), no groups (correct choice), BurnoutState stale fields (no UB).
+
+**Status:** Orchestration log written. Backlog ready for team sprint assignment. Decision inbox consolidated. Orchestration log: `.squad/orchestration-log/2026-04-27T19-14-36Z-entt-ecs-audit.md`
