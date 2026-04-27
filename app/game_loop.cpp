@@ -161,6 +161,7 @@ void game_loop_frame(entt::registry& reg, float& accumulator) {
 
     compute_screen_transform(reg);
     input_system(reg, raw_dt);
+    gesture_routing_system(reg);
     hit_test_system(reg);
     test_player_system(reg, raw_dt);
 

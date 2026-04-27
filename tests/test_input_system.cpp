@@ -144,6 +144,7 @@ TEST_CASE("classify_touch_release: bottom-zone tap activates current button", "[
     auto swipe_event = classify_touch_release(50.0f, zone_y - 5.0f,
                                               360.0f, 1100.0f, 0.05f);
     eq.push_input(swipe_event.type, swipe_event.x, swipe_event.y, swipe_event.dir);
+    gesture_routing_system(reg);
     hit_test_system(reg);
 
     CHECK(eq.press_count == 0);

@@ -78,6 +78,7 @@ TEST_CASE("hit_test: swipe emits go not press", "[hit_test]") {
     reg.get<Position>(btn) = {0.0f, 0.0f};
 
     eq.push_input(InputType::Swipe, 0.0f, 0.0f, Direction::Right);
+    gesture_routing_system(reg);
     hit_test_system(reg);
 
     CHECK(eq.go_count == 1);

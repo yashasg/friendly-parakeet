@@ -5,6 +5,10 @@
 #include "../components/transform.h"
 #include <raylib.h>
 
+// Resolves Tap inputs in the EventQueue against active UI HitBox/HitCircle
+// entities and emits ButtonPressEvents. Swipe and other input types are
+// intentionally ignored — gesture routing is owned by gesture_routing_system
+// (see #272). Active-phase filtering is structural via ActiveTag (see #249).
 void hit_test_system(entt::registry& reg) {
     auto& eq = reg.ctx().get<EventQueue>();
 
@@ -17,12 +21,9 @@ void hit_test_system(entt::registry& reg) {
     auto circle_view = reg.view<Position, HitCircle, ActiveTag>();
 
     for (int i = 0; i < eq.input_count; ++i) {
-        auto& evt = eq.inputs[i];
+        const auto& evt = eq.inputs[i];
 
-        if (evt.type == InputType::Swipe) {
-            eq.push_go(evt.dir);
-            continue;
-        }
+        if (evt.type != InputType::Tap) continue;
 
         Vector2 point = {evt.x, evt.y};
 
@@ -47,3 +48,4 @@ void hit_test_system(entt::registry& reg) {
         }
     }
 }
+
