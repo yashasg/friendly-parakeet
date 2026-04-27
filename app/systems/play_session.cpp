@@ -83,7 +83,7 @@ void setup_play_session(entt::registry& reg) {
             stem.compare(stem.size() - BEATMAP_SUFFIX.size(), BEATMAP_SUFFIX.size(), BEATMAP_SUFFIX) == 0) {
             stem.erase(stem.size() - BEATMAP_SUFFIX.size());
         }
-        hs->set_current_key(stem, difficulty_key);
+        hs->current_key = HighScoreState::make_key(stem, difficulty_key);
     }
 
     // Init song state

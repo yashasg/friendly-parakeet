@@ -118,4 +118,13 @@ bool save_high_scores(const HighScoreState& state, const std::filesystem::path& 
     return true;
 }
 
+void update_if_higher(HighScoreState& state, int32_t new_score) {
+    if (state.current_key.empty()) return;
+    if (new_score < 0) new_score = 0;
+    int32_t stored = state.get_score(state.current_key.c_str());
+    if (new_score > stored) {
+        state.set_score(state.current_key.c_str(), new_score);
+    }
+}
+
 }  // namespace high_score

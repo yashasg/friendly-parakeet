@@ -23,15 +23,15 @@ TEST_CASE("Settings: clamp_audio_offset() restricts to [-250, 250]", "[settings]
     SettingsState state;
 
     state.audio_offset_ms = 500;
-    state.clamp_audio_offset();
+    settings::clamp_audio_offset(state);
     CHECK(state.audio_offset_ms == 250);
 
     state.audio_offset_ms = -500;
-    state.clamp_audio_offset();
+    settings::clamp_audio_offset(state);
     CHECK(state.audio_offset_ms == -250);
 
     state.audio_offset_ms = 0;
-    state.clamp_audio_offset();
+    settings::clamp_audio_offset(state);
     CHECK(state.audio_offset_ms == 0);
 }
 

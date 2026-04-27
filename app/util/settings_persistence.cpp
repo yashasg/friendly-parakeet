@@ -151,4 +151,25 @@ bool save_settings(const SettingsState& state, const std::filesystem::path& path
     return true;
 }
 
+void clamp_audio_offset(SettingsState& state) {
+    state.audio_offset_ms = std::clamp(
+        state.audio_offset_ms,
+        SettingsState::MIN_AUDIO_OFFSET_MS,
+        SettingsState::MAX_AUDIO_OFFSET_MS);
+}
+
+void clamp_ftue_run_count(SettingsState& state) {
+    state.ftue_run_count = static_cast<uint8_t>(std::clamp(
+        static_cast<int>(state.ftue_run_count),
+        static_cast<int>(SettingsState::MIN_FTUE_RUN_COUNT),
+        static_cast<int>(SettingsState::MAX_FTUE_RUN_COUNT)));
+}
+
+void mark_ftue_complete(SettingsState& state) {
+    if (state.ftue_run_count == 0) {
+        state.ftue_run_count = 1;
+    }
+    clamp_ftue_run_count(state);
+}
+
 } // namespace settings

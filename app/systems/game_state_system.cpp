@@ -20,7 +20,7 @@ static void enter_game_over(entt::registry& reg) {
     if (is_new_high_score) {
         score.high_score = score.score;
         if (auto* hs = reg.ctx().find<HighScoreState>()) {
-            hs->update_current_high_score(score.score);
+            high_score::update_if_higher(*hs, score.score);
             if (auto* hp = reg.ctx().find<HighScorePersistence>()) {
                 if (!hp->path.empty()) high_score::save_high_scores(*hs, hp->path);
             }
@@ -50,7 +50,7 @@ static void enter_song_complete(entt::registry& reg) {
     if (is_new_high_score) {
         score.high_score = score.score;
         if (auto* hs = reg.ctx().find<HighScoreState>()) {
-            hs->update_current_high_score(score.score);
+            high_score::update_if_higher(*hs, score.score);
             if (auto* hp = reg.ctx().find<HighScorePersistence>()) {
                 if (!hp->path.empty()) high_score::save_high_scores(*hs, hp->path);
             }

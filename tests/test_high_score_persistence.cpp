@@ -31,27 +31,27 @@ TEST_CASE("High score: current score lookup and update never lowers stored score
     HighScoreState state;
     CHECK(state.get_current_high_score() == 0);
 
-    state.set_current_key("song_001", "easy");
+    state.current_key = HighScoreState::make_key("song_001", "easy");
     CHECK(state.get_current_high_score() == 0);
 
-    state.update_current_high_score(5000);
+    high_score::update_if_higher(state, 5000);
     CHECK(state.get_current_high_score() == 5000);
 
-    state.update_current_high_score(1000);
+    high_score::update_if_higher(state, 1000);
     CHECK(state.get_current_high_score() == 5000);
 }
 
 TEST_CASE("High score: tracks songs and difficulties independently", "[high_score]") {
     HighScoreState state;
 
-    state.set_current_key("song_001", "easy");
-    state.update_current_high_score(1000);
+    state.current_key = HighScoreState::make_key("song_001", "easy");
+    high_score::update_if_higher(state, 1000);
 
-    state.set_current_key("song_001", "hard");
-    state.update_current_high_score(2000);
+    state.current_key = HighScoreState::make_key("song_001", "hard");
+    high_score::update_if_higher(state, 2000);
 
-    state.set_current_key("song_002", "easy");
-    state.update_current_high_score(3000);
+    state.current_key = HighScoreState::make_key("song_002", "easy");
+    high_score::update_if_higher(state, 3000);
 
     CHECK(state.get_score("song_001|easy") == 1000);
     CHECK(state.get_score("song_001|hard") == 2000);
@@ -183,7 +183,7 @@ TEST_CASE("High score persistence: load preserves current active key", "[high_sc
     REQUIRE(high_score::save_high_scores(original, file));
 
     HighScoreState loaded;
-    loaded.set_current_key("song_002", "hard");
+    loaded.current_key = HighScoreState::make_key("song_002", "hard");
     REQUIRE(high_score::load_high_scores(loaded, file));
 
     CHECK(loaded.current_key == "song_002|hard");

@@ -58,19 +58,6 @@ struct HighScoreState {
         if (current_key.empty()) return 0;
         return get_score(current_key.c_str());
     }
-
-    void update_current_high_score(int32_t score) {
-        if (current_key.empty()) return;
-        if (score < 0) score = 0;
-        int32_t stored = get_score(current_key.c_str());
-        if (score > stored) {
-            set_score(current_key.c_str(), score);
-        }
-    }
-
-    void set_current_key(const std::string& song_id, const std::string& difficulty) {
-        current_key = make_key(song_id, difficulty);
-    }
 };
 
 struct HighScorePersistence {
