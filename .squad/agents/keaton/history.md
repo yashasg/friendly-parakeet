@@ -149,3 +149,13 @@ Fixed all 7 unresolved review threads in commit d90abf9 on `user/yashasg/ecs_ref
 - **Fix pattern: `get_or_emplace<T>(entity) = T{...}`** — `get_or_emplace` emplaces once (firing `on_construct` once at entity birth), then returns a reference on subsequent frames. Assigning to the reference mutates in-place with no signal. This is the canonical steady-state mutation idiom in EnTT.
 - **Confirmed no `ModelTransform` signal observers** — `grep on_construct/on_update/on_destroy` across all sources; only `ObstacleTag` and `ScoredTag` have live observers. The fix is signal-safe.
 - **Pre-existing build failures in `beat_map_loader.cpp`** blocked full rebuild; compiled `camera_system.cpp` in isolation with `-Wall -Wextra -Werror`, zero warnings.
+
+### 2026 — Issue #241: compute_screen_transform called twice per frame
+
+**Scope:** `app/systems/camera_system.cpp`, `tests/test_ndc_viewport.cpp`
+
+- **Root cause:** `ui_camera_system` called `compute_screen_transform(reg)` at the top of its body. `game_loop_frame` already calls `compute_screen_transform` before input every frame — so the transform was computed twice per frame from the same window dimensions, wasting cycles and making ownership ambiguous.
+- **Fix:** Removed the duplicate `compute_screen_transform(reg)` call from `ui_camera_system`. The function now reads the already-canonical `ScreenTransform` stored in the registry context. Comment updated to document the ownership rule and reference `#241`.
+- **Regression tests added:** `tests/test_ndc_viewport.cpp` — two new `[screen_transform][regression]` tests verify the letterbox math is idempotent and produces correct pillarbox offsets. These mirror the pure math of `compute_screen_transform` without requiring a raylib window.
+- **Zero-warning policy:** `camera_system.cpp` and `test_ndc_viewport.cpp` compiled with `-Wall -Wextra -Werror`, zero warnings.
+- **Note:** Fix landed in commit `a5cad3d` (bundled with #304 wasm shutdown work from a prior pass). Both changed files reference `#241` explicitly.
