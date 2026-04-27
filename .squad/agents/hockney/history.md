@@ -160,3 +160,23 @@ Fresh pass over CMakeLists.txt, vcpkg.json, vcpkg-overlay/, build.sh, run.sh, al
 - Created `app/ios/build_number.txt` (initialized to 0)
 - Decisions merged to `decisions.md` (Status: PROPOSED, 5 user-provided blockers documented)
 - Comments posted to all five issues
+
+## Session: Issue #265 — ShapeMeshes & RenderTargets RAII GPU lifecycle (2026-05)
+
+### Problem
+`ShapeMeshes` and `RenderTargets` were plain data structs stored in registry context with GPU handles (Mesh[], Material, RenderTexture2D). Resources were only unloaded if `camera::shutdown(reg)` was called explicitly. Any abnormal exit skipped cleanup; any future refactor that omits the manual call leaks GPU memory.
+
+### Fix (commit 817b062)
+- **`app/components/camera.h` — `RenderTargets`**: Added `owned` flag, deleted copy ctor/assign, declared move ctor/assign + destructor + `release()`. Destructor calls `release()` only when `owned == true`. New 2-arg ctor `(RenderTexture2D w, RenderTexture2D u)` sets `owned = true`.
+- **`app/systems/camera_system.h` — `ShapeMeshes`** (inside `namespace camera`): Same pattern. `owned = false` by default; set to `true` in `build_shape_meshes()`.
+- **`app/systems/camera_system.cpp`**: Member definitions for both structs. `ShapeMeshes` defs inside `namespace camera`; `RenderTargets` defs at file scope (after `} // namespace camera`). `camera::shutdown` now calls `.release()` on both — idempotent belt-and-suspenders before `CloseWindow()`.
+- **`tests/test_gpu_resource_lifecycle.cpp`**: 6 test cases — `static_assert` type-trait checks (non-copyable, move-constructible/assignable) + runtime idempotency and move-ownership tests (no GL context required).
+- **`CMakeLists.txt`**: Removed `test_gpu_resource_lifecycle` from the per-agent test exclusion list so the new tests compile and run.
+
+### Key Learnings
+
+- **Namespace placement of out-of-class defs**: `ShapeMeshes` is in `namespace camera`, so its member definitions must be written inside that namespace (or qualified). `RenderTargets` is global scope, so its defs go after the `} // namespace camera` close. Mixing them causes compiler error "cannot define X here because namespace camera does not enclose namespace RenderTargets".
+
+- **Working-tree contention race**: Concurrent agents revert working-tree files between `edit` and `git add`. Reliable fix: use a private `GIT_INDEX_FILE`, `git read-tree HEAD`, `git update-index --cacheinfo` per file, `git write-tree`, `git commit-tree`, then `git update-ref` to update the branch atomically. Follow with `git checkout <commit> -- <files>` to restore the working tree.
+
+- **Bytes-level cmake patching**: CMake regex strings contain literal `\.` (two backslashes, dot). Python raw-string comparison of the exact bytes avoids escaping confusion; alternatively use line-level `replace` on the string representation.
