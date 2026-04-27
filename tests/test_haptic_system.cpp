@@ -64,65 +64,38 @@ TEST_CASE("haptic_system: safe when HapticQueue absent from context", "[haptic]"
     haptic_system(reg);  // must not crash
 }
 
-// ── burnout_system wiring ─────────────────────────────────────────────────────
+// ── burnout_system wiring (no-op since #239) ─────────────────────────────────
 
-TEST_CASE("burnout haptic: Burnout1_5x emitted on entering Risky zone", "[haptic]") {
+TEST_CASE("burnout haptic: no haptic emitted — burnout_system is a no-op", "[haptic]") {
     auto reg = make_registry();
     make_player(reg);
-    // Obstacle at Risky-zone distance
+    // Obstacle at Risky-zone distance — burnout_system must not push any haptic
     make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y - 400.0f);
-
-    burnout_system(reg, 0.016f);
-
-    auto& hq = reg.ctx().get<HapticQueue>();
-    REQUIRE(hq.count == 1);
-    CHECK(hq.queue[0] == HapticEvent::Burnout1_5x);
-}
-
-TEST_CASE("burnout haptic: Burnout3_0x emitted on entering Danger zone", "[haptic]") {
-    auto reg = make_registry();
-    make_player(reg);
-    make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y - 200.0f);
-
-    burnout_system(reg, 0.016f);
-
-    auto& hq = reg.ctx().get<HapticQueue>();
-    REQUIRE(hq.count == 1);
-    CHECK(hq.queue[0] == HapticEvent::Burnout3_0x);
-}
-
-TEST_CASE("burnout haptic: Burnout5_0x emitted on entering Dead zone", "[haptic]") {
-    auto reg = make_registry();
-    make_player(reg);
-    make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y - 100.0f);
-
-    burnout_system(reg, 0.016f);
-
-    auto& hq = reg.ctx().get<HapticQueue>();
-    REQUIRE(hq.count == 1);
-    CHECK(hq.queue[0] == HapticEvent::Burnout5_0x);
-}
-
-TEST_CASE("burnout haptic: suppressed when haptics_enabled=false", "[haptic]") {
-    auto reg = make_registry();
-    reg.ctx().get<SettingsState>().haptics_enabled = false;
-    make_player(reg);
-    make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y - 100.0f);
 
     burnout_system(reg, 0.016f);
 
     CHECK(reg.ctx().get<HapticQueue>().count == 0);
 }
 
-TEST_CASE("burnout haptic: no haptic emitted when zone unchanged", "[haptic]") {
+TEST_CASE("burnout haptic: no haptic emitted for close obstacle — burnout_system is a no-op",
+          "[haptic]") {
     auto reg = make_registry();
     make_player(reg);
-    make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y - 200.0f);  // Danger
+    make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y - 50.0f);
 
     burnout_system(reg, 0.016f);
-    reg.ctx().get<HapticQueue>().count = 0;  // drain
 
-    burnout_system(reg, 0.016f);  // same zone — no new haptic
+    CHECK(reg.ctx().get<HapticQueue>().count == 0);
+}
+
+TEST_CASE("burnout haptic: no haptic emitted even when haptics_enabled=true", "[haptic]") {
+    auto reg = make_registry();
+    reg.ctx().get<SettingsState>().haptics_enabled = true;
+    make_player(reg);
+    make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y - 100.0f);
+
+    burnout_system(reg, 0.016f);
+
     CHECK(reg.ctx().get<HapticQueue>().count == 0);
 }
 

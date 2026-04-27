@@ -90,7 +90,7 @@ TEST_CASE("death_model: timing recovery can preserve survival margin", "[death_m
     CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
 }
 
-TEST_CASE("death_model: Burnout Dead-zone hit banks points without instant GameOver", "[death_model]") {
+TEST_CASE("death_model: close hit banks points without instant GameOver", "[death_model]") {
     auto reg = make_rhythm_registry();
     make_player(reg);
 
@@ -101,9 +101,6 @@ TEST_CASE("death_model: Burnout Dead-zone hit banks points without instant GameO
     reg.emplace<Obstacle>(obstacle, ObstacleKind::ShapeGate, int16_t{constants::PTS_SHAPE_GATE});
     reg.emplace<RequiredShape>(obstacle, Shape::Circle);
 
-    burnout_system(reg, 0.016f);
-    CHECK(reg.ctx().get<BurnoutState>().zone == BurnoutZone::Dead);
-
     collision_system(reg, 0.016f);
     energy_system(reg, 0.016f);
 
@@ -112,7 +109,7 @@ TEST_CASE("death_model: Burnout Dead-zone hit banks points without instant GameO
     CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
 }
 
-TEST_CASE("death_model: Burnout Dead-zone miss drains energy instead of instant GameOver", "[death_model]") {
+TEST_CASE("death_model: close miss drains energy instead of instant GameOver", "[death_model]") {
     auto reg = make_rhythm_registry();
     make_player(reg);
 
@@ -122,9 +119,6 @@ TEST_CASE("death_model: Burnout Dead-zone miss drains energy instead of instant 
     reg.emplace<Velocity>(obstacle, 0.0f, 0.0f);
     reg.emplace<Obstacle>(obstacle, ObstacleKind::ShapeGate, int16_t{constants::PTS_SHAPE_GATE});
     reg.emplace<RequiredShape>(obstacle, Shape::Triangle);
-
-    burnout_system(reg, 0.016f);
-    CHECK(reg.ctx().get<BurnoutState>().zone == BurnoutZone::Dead);
 
     collision_system(reg, 0.016f);
     energy_system(reg, 0.016f);

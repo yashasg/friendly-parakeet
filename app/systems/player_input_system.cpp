@@ -1,5 +1,4 @@
 #include "all_systems.h"
-#include "burnout_helpers.h"
 #include "../components/game_state.h"
 #include "../components/player.h"
 #include "../components/rendering.h"
@@ -8,12 +7,7 @@
 #include "../components/haptics.h"
 #include "../components/settings.h"
 #include "../components/rhythm.h"
-#include "../components/obstacle.h"
-#include "../components/obstacle_data.h"
-#include "../components/transform.h"
-#include "../components/difficulty.h"
 #include "../constants.h"
-#include <limits>
 
 void player_input_system(entt::registry& reg, float /*dt*/) {
     if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
@@ -41,39 +35,8 @@ void player_input_system(entt::registry& reg, float /*dt*/) {
         }
     };
 
-    // Find nearest unscored obstacle ahead of the player matching kind_pred.
-    auto find_nearest_unscored = [&](float player_y, auto kind_pred) -> entt::entity {
-        float best_dist = std::numeric_limits<float>::max();
-        entt::entity best = entt::null;
-        auto obs_view = reg.view<ObstacleTag, Position, Obstacle>(entt::exclude<ScoredTag>);
-        for (auto [e, opos, obs] : obs_view.each()) {
-            if (!kind_pred(obs.kind)) continue;
-            float dist = player_y - opos.y;
-            if (dist > 0.0f && dist < best_dist) {
-                best_dist = dist;
-                best = e;
-            }
-        }
-        return best;
-    };
-
-    // Snapshot BurnoutZone/multiplier on target at press-time distance.
-    // First-commit-locks: does not overwrite an existing bank.
-    auto bank_burnout = [&](entt::entity target, float player_y) {
-        if (target == entt::null || !reg.valid(target)) return;
-        if (reg.any_of<BankedBurnout>(target)) return;
-        auto* opos = reg.try_get<Position>(target);
-        if (!opos) return;
-        float dist = player_y - opos->y;
-        if (dist <= 0.0f) return;
-        float scale = reg.ctx().get<DifficultyConfig>().burnout_window_scale;
-        auto sample = compute_burnout_for_distance(dist, scale);
-        float mult  = multiplier_for_zone(sample.zone);
-        reg.emplace<BankedBurnout>(target, mult, sample.zone);
-    };
-
-    auto view = reg.view<PlayerTag, PlayerShape, ShapeWindow, Lane, VerticalState, Position>();
-    for (auto [entity, pshape, swindow, lane, vstate, ppos] : view.each()) {
+    auto view = reg.view<PlayerTag, PlayerShape, ShapeWindow, Lane>();
+    for (auto [entity, pshape, swindow, lane] : view.each()) {
 
         // Shape changes from ButtonPressEvents
         for (int i = 0; i < eq.press_count; ++i) {
@@ -118,14 +81,7 @@ void player_input_system(entt::registry& reg, float /*dt*/) {
                 }
             }
 
-            // Bank burnout on the nearest unscored shape-relevant obstacle.
-            auto target = find_nearest_unscored(ppos.y, [](ObstacleKind k) {
-                return k == ObstacleKind::ShapeGate ||
-                       k == ObstacleKind::ComboGate ||
-                       k == ObstacleKind::SplitPath;
-            });
-            bank_burnout(target, ppos.y);
-        }
+        } // end shape button loop
 
         // GoEvents: lane changes and jump/slide
         for (int i = 0; i < eq.go_count; ++i) {
@@ -146,12 +102,6 @@ void player_input_system(entt::registry& reg, float /*dt*/) {
                     auto* st = reg.ctx().find<SettingsState>();
                     if (hq) haptic_push(*hq, !st || st->haptics_enabled, HapticEvent::LaneSwitch);
                 }
-                auto target = find_nearest_unscored(ppos.y, [](ObstacleKind k) {
-                    return k == ObstacleKind::LaneBlock ||
-                           k == ObstacleKind::ComboGate ||
-                           k == ObstacleKind::SplitPath;
-                });
-                bank_burnout(target, ppos.y);
             }
         }
 
