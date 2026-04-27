@@ -365,7 +365,7 @@ file(GLOB TEST_SOURCES tests/*.cpp benchmarks/*.cpp)
 # Exclude untracked test files from other in-progress agents that reference
 # symbols not yet merged into this branch.
 list(FILTER TEST_SOURCES EXCLUDE REGEX
-    ".*(test_safe_area_layout|test_ui_redfoot_pass|test_ui_element_schema|test_ui_overlay_schema|test_lifecycle|test_gpu_resource_lifecycle)\\.cpp$"
+    ".*(test_safe_area_layout|test_ui_redfoot_pass|test_ui_element_schema|test_ui_overlay_schema|test_lifecycle)\\.cpp$"
 )
 add_executable(shapeshifter_tests
     ${TEST_SOURCES}

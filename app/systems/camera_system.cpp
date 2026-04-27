@@ -93,6 +93,7 @@ static ShapeMeshes build_shape_meshes() {
     sm.material = LoadMaterialDefault();
     sm.material.shader = shader;
 
+    sm.owned = true;
     return sm;
 }
 
@@ -103,6 +104,36 @@ static void unload_shape_meshes(ShapeMeshes& sm) {
     UnloadMesh(sm.slab);
     UnloadMesh(sm.quad);
     UnloadMaterial(sm.material);
+}
+
+// ── ShapeMeshes RAII member definitions ─────────────────────────────────────
+
+void ShapeMeshes::release() {
+    if (!owned) return;
+    unload_shape_meshes(*this);
+    for (int i = 0; i < 4; ++i) shapes[i] = {};
+    slab = {}; quad = {}; material = {};
+    owned = false;
+}
+
+ShapeMeshes::~ShapeMeshes() { release(); }
+
+ShapeMeshes::ShapeMeshes(ShapeMeshes&& o) noexcept
+    : slab{o.slab}, quad{o.quad}, material{o.material}, owned{o.owned}
+{
+    for (int i = 0; i < 4; ++i) shapes[i] = o.shapes[i];
+    o.owned = false;
+}
+
+ShapeMeshes& ShapeMeshes::operator=(ShapeMeshes&& o) noexcept {
+    if (this != &o) {
+        release();
+        for (int i = 0; i < 4; ++i) shapes[i] = o.shapes[i];
+        slab = o.slab; quad = o.quad; material = o.material;
+        owned = o.owned;
+        o.owned = false;
+    }
+    return *this;
 }
 
 void init(entt::registry& reg) {
@@ -130,7 +161,8 @@ void init(entt::registry& reg) {
     RenderTexture2D ui = LoadRenderTexture(
         constants::SCREEN_W, constants::SCREEN_H);
     SetTextureFilter(ui.texture, TEXTURE_FILTER_BILINEAR);
-    reg.ctx().emplace<RenderTargets>(RenderTargets{world, ui});
+    // RAII: owned=true set by RenderTargets(w,u) ctor
+    reg.ctx().emplace<RenderTargets>(world, ui);
 
     reg.ctx().emplace<ScreenTransform>();
     reg.ctx().emplace<FloorParams>();
@@ -138,13 +170,42 @@ void init(entt::registry& reg) {
 }
 
 void shutdown(entt::registry& reg) {
-    unload_shape_meshes(reg.ctx().get<ShapeMeshes>());
-    auto& targets = reg.ctx().get<RenderTargets>();
-    UnloadRenderTexture(targets.world);
-    UnloadRenderTexture(targets.ui);
+    // Belt-and-suspenders: release early before CloseWindow().
+    // The RAII destructors on the ctx objects will no-op because
+    // release() clears the owned flag.
+    reg.ctx().get<ShapeMeshes>().release();
+    reg.ctx().get<RenderTargets>().release();
 }
 
 } // namespace camera
+
+// ── RenderTargets RAII member definitions ────────────────────────────────────
+
+void RenderTargets::release() {
+    if (!owned) return;
+    UnloadRenderTexture(world);
+    UnloadRenderTexture(ui);
+    world = {}; ui = {};
+    owned = false;
+}
+
+RenderTargets::~RenderTargets() { release(); }
+
+RenderTargets::RenderTargets(RenderTargets&& o) noexcept
+    : world{o.world}, ui{o.ui}, owned{o.owned}
+{
+    o.owned = false;
+}
+
+RenderTargets& RenderTargets::operator=(RenderTargets&& o) noexcept {
+    if (this != &o) {
+        release();
+        world = o.world; ui = o.ui;
+        owned = o.owned;
+        o.owned = false;
+    }
+    return *this;
+}
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
