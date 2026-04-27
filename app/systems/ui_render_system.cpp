@@ -71,33 +71,6 @@ static Color json_color(const json& arr) {
             arr[2].get<uint8_t>(), a};
 }
 
-static FontSize json_font(const std::string& s) {
-    if (s == "large") return FontSize::Large;
-    if (s == "small") return FontSize::Small;
-    return FontSize::Medium;
-}
-
-static TextAlign json_align(const json& el) {
-    auto a = el.value("align", "left");
-    if (a == "center") return TextAlign::Center;
-    if (a == "right")  return TextAlign::Right;
-    return TextAlign::Left;
-}
-
-static Shape json_shape(const std::string& s) {
-    if (s == "square")   return Shape::Square;
-    if (s == "triangle") return Shape::Triangle;
-    return Shape::Circle;
-}
-
-static float el_x(const json& el) {
-    return el["x_n"].get<float>() * constants::SCREEN_W;
-}
-
-static float el_y(const json& el) {
-    return el["y_n"].get<float>() * constants::SCREEN_H;
-}
-
 static const json* find_el(const json& screen, const std::string& id) {
     if (!screen.contains("elements")) return nullptr;
     for (auto& el : screen["elements"]) {
@@ -106,83 +79,11 @@ static const json* find_el(const json& screen, const std::string& id) {
     return nullptr;
 }
 
-// ── JSON-driven element renderers ────────────────────────────
-
-static void render_text(const json& el, const TextContext& ctx, float timer) {
-    Color c = json_color(el["color"]);
-    if (el.contains("animation")) {
-        auto& anim = el["animation"];
-        float pulse = (std::sin(timer * anim["speed"].get<float>()) + 1.0f) / 2.0f;
-        auto amin = anim["alpha_range"][0].get<uint8_t>();
-        auto amax = anim["alpha_range"][1].get<uint8_t>();
-        c.a = static_cast<uint8_t>(amin + static_cast<int>(pulse * (amax - amin)));
-    }
-    text_draw(ctx, el["text"].get<std::string>().c_str(),
-        el_x(el), el_y(el),
-        json_font(el.value("font_size", "medium")),
-        c.r, c.g, c.b, c.a, json_align(el));
-}
-
-static void render_button(const json& el, const TextContext& ctx, float timer) {
-    if (el.contains("platform_only")) {
-        auto plat = el["platform_only"].get<std::string>();
-        #ifdef PLATFORM_WEB
-        if (plat == "desktop") return;
-        #else
-        if (plat == "web") return;
-        #endif
-    }
-    float x = el["x_n"].get<float>() * constants::SCREEN_W;
-    float y = el["y_n"].get<float>() * constants::SCREEN_H;
-    float w = el["w_n"].get<float>() * constants::SCREEN_W;
-    float h = el["h_n"].get<float>() * constants::SCREEN_H;
-    float cr = el.value("corner_radius", 0.2f);
-    Color bg = json_color(el["bg_color"]);
-    Color border = json_color(el["border_color"]);
-    Color tc = json_color(el["text_color"]);
-    if (el.contains("animation")) {
-        auto& anim = el["animation"];
-        float pulse = (std::sin(timer * anim["speed"].get<float>()) + 1.0f) / 2.0f;
-        auto amin = anim["alpha_range"][0].get<uint8_t>();
-        auto amax = anim["alpha_range"][1].get<uint8_t>();
-        tc.a = static_cast<uint8_t>(amin + static_cast<int>(pulse * (amax - amin)));
-    }
-    DrawRectangleRounded({x, y, w, h}, cr, 4, bg);
-    DrawRectangleRoundedLinesEx({x, y, w, h}, cr, 4, 1.5f, border);
-    float cx = x + w / 2.0f;
-    text_draw(ctx, el["text"].get<std::string>().c_str(),
-        cx, y + 12.0f,
-        json_font(el.value("font_size", "small")),
-        tc.r, tc.g, tc.b, tc.a, TextAlign::Center);
-}
-
-static void render_shape(const json& el) {
-    draw_shape_flat(
-        json_shape(el["shape"].get<std::string>()),
-        el["x_n"].get<float>() * static_cast<float>(constants::SCREEN_W),
-        el["y_n"].get<float>() * static_cast<float>(constants::SCREEN_H),
-        el["size_n"].get<float>() * static_cast<float>(constants::SCREEN_W),
-        json_color(el["color"]));
-}
-
-static void render_elements(const json& screen, const TextContext& ctx, float timer) {
-    if (!screen.contains("elements")) return;
-    for (auto& el : screen["elements"]) {
-        auto type = el.value("type", "");
-        if (type == "text")        render_text(el, ctx, timer);
-        else if (type == "button") render_button(el, ctx, timer);
-        else if (type == "shape")  render_shape(el);
-    }
-}
-
 // ── Specialized screen renderers ─────────────────────────────
 
 static void draw_level_select_scene(const TextContext& text_ctx,
                                     const LevelSelectState& lss,
-                                    const GameState& gs,
                                     const json& screen) {
-    render_elements(screen, text_ctx, gs.phase_timer);
-
     auto* cards = find_el(screen, "song_cards");
     if (cards) {
         auto& c = *cards;
@@ -253,26 +154,7 @@ static void draw_level_select_scene(const TextContext& text_ctx,
     }
 }
 
-static void draw_hud(entt::registry& reg, const TextContext& text_ctx,
-                     const json& screen) {
-    auto& score  = reg.ctx().get<ScoreState>();
-
-    auto* score_el = find_el(screen, "score");
-    if (score_el) {
-        text_draw_number(text_ctx, score.displayed_score,
-            el_x(*score_el), el_y(*score_el),
-            json_font(score_el->value("font_size", "medium")),
-            255, 255, 255, 255);
-    }
-    auto* hi_el = find_el(screen, "high_score");
-    if (hi_el) {
-        Color hc = json_color((*hi_el)["color"]);
-        text_draw_number(text_ctx, score.high_score,
-            el_x(*hi_el), el_y(*hi_el),
-            json_font(hi_el->value("font_size", "small")),
-            hc.r, hc.g, hc.b, hc.a);
-    }
-
+static void draw_hud(entt::registry& reg, const json& screen) {
     // Shape buttons
     auto* sb = find_el(screen, "shape_buttons");
     if (sb) {
@@ -591,14 +473,14 @@ void ui_render_system(entt::registry& reg, float /*alpha*/) {
     switch (ui.active) {
         case ActiveScreen::LevelSelect: {
             auto& lss = reg.ctx().get<LevelSelectState>();
-            draw_level_select_scene(text_ctx, lss, gs, ui.screen);
+            draw_level_select_scene(text_ctx, lss, ui.screen);
             break;
         }
         case ActiveScreen::Gameplay:
-            draw_hud(reg, text_ctx, ui.screen);
+            draw_hud(reg, ui.screen);
             break;
         case ActiveScreen::Paused:
-            draw_hud(reg, text_ctx, ui.screen);
+            draw_hud(reg, ui.screen);
             break;
         default:
             break;

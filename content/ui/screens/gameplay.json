@@ -7,6 +7,7 @@
       "source": "ScoreState.displayed_score",
       "x_n": 0.167, "y_n": 0.016,
       "font_size": "medium",
+      "align": "center",
       "color": [255, 255, 255, 255]
     },
     {
@@ -15,6 +16,7 @@
       "source": "ScoreState.high_score",
       "x_n": 0.167, "y_n": 0.039,
       "font_size": "small",
+      "align": "center",
       "color": [150, 150, 150, 180]
     },
     {

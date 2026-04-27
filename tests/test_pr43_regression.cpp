@@ -17,7 +17,11 @@
 #include "components/ui_state.h"
 #include "components/rendering.h"
 #include "constants.h"
+#include <fstream>
+#include <nlohmann/json.hpp>
 #include <raylib.h>
+#include <sstream>
+#include <string>
 
 // ═══════════════════════════════════════════════════════════════════════
 // Theme 1 – ScreenTransform ordering: stale identity ST causes wrong
@@ -348,4 +352,80 @@ TEST_CASE("ui_navigation: paused overlay parsed once, not every frame",
 
     // After fix: sentinel survives.  With the bug: sentinel is gone.
     CHECK(ui.overlay_screen.contains("__pr43_sentinel__"));
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Issue #259 – UI elements loaded into ECS must not be re-drawn by the
+// legacy generic JSON render path in ui_render_system.cpp.
+// ═══════════════════════════════════════════════════════════════════════
+
+static std::string load_ui_render_source() {
+    const char* paths[] = {
+        "app/systems/ui_render_system.cpp",
+        "../app/systems/ui_render_system.cpp"
+    };
+
+    for (const char* path : paths) {
+        std::ifstream file(path);
+        if (!file.is_open()) continue;
+
+        std::ostringstream buffer;
+        buffer << file.rdbuf();
+        return buffer.str();
+    }
+
+    return {};
+}
+
+TEST_CASE("ui_render_system: ECS is the only generic UI element render path",
+          "[ui][render][issue259]") {
+    const std::string source = load_ui_render_source();
+    if (source.empty()) {
+        SKIP("ui_render_system.cpp not accessible from test working directory");
+    }
+
+    CHECK(source.find("render_elements(") == std::string::npos);
+    CHECK(source.find("render_text(") == std::string::npos);
+    CHECK(source.find("render_button(") == std::string::npos);
+    CHECK(source.find("render_shape(") == std::string::npos);
+    CHECK(source.find("find_el(screen, \"score\")") == std::string::npos);
+    CHECK(source.find("find_el(screen, \"high_score\")") == std::string::npos);
+}
+
+TEST_CASE("gameplay HUD score ECS elements preserve centered alignment",
+          "[ui][render][issue259]") {
+    const char* paths[] = {
+        "content/ui/screens/gameplay.json",
+        "../content/ui/screens/gameplay.json"
+    };
+
+    nlohmann::json screen;
+    bool loaded = false;
+    for (const char* path : paths) {
+        std::ifstream file(path);
+        if (!file.is_open()) continue;
+        screen = nlohmann::json::parse(file);
+        loaded = true;
+        break;
+    }
+
+    if (!loaded) {
+        SKIP("gameplay.json not accessible from test working directory");
+    }
+
+    const nlohmann::json* score = nullptr;
+    const nlohmann::json* high_score = nullptr;
+    for (const auto& el : screen["elements"]) {
+        if (el.value("id", "") == "score") score = &el;
+        if (el.value("id", "") == "high_score") high_score = &el;
+    }
+
+    REQUIRE(score != nullptr);
+    REQUIRE(high_score != nullptr);
+    CHECK(score->value("type", "") == "text_dynamic");
+    CHECK(score->value("source", "") == "ScoreState.displayed_score");
+    CHECK(score->value("align", "") == "center");
+    CHECK(high_score->value("type", "") == "text_dynamic");
+    CHECK(high_score->value("source", "") == "ScoreState.high_score");
+    CHECK(high_score->value("align", "") == "center");
 }
