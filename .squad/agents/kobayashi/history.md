@@ -13,6 +13,20 @@
 
 ---
 
+### 2026-05 — Issue #272 CMake EXCLUDE REGEX revision (Keyser review)
+
+**Scope:** Reviewer Keyser approved the #272 functional split but flagged a single build-wiring defect: `CMakeLists.txt:368` EXCLUDE REGEX contained `test_gesture_routing_split`, silently omitting the 7 new `[issue272]` tests from the `shapeshifter_tests` binary.
+
+**Fix:** Removed `test_gesture_routing_split|` from the EXCLUDE REGEX pipe-delimited list. One-line surgical edit to `CMakeLists.txt`.
+
+**Validation:** `cmake --build build --target shapeshifter_tests` compiled `test_gesture_routing_split.cpp` (confirmed in build output). `./build/shapeshifter_tests "[issue272]"` → `All tests passed (21 assertions in 7 test cases)`.
+
+**Commit:** e600644 on `user/yashasg/ecs_refactor`
+
+**Key lesson:** Whenever a new test file is added for a feature, explicitly verify it is NOT in any EXCLUDE REGEX in the CMakeLists test-sources section. The EXCLUDE list is a maintenance hazard — entries added for in-progress work on other agents can linger and silently exclude new tests when they are intentionally ready to ship.
+
+---
+
 ### 2026-05 — Issue #177 (WASM CI VCPKG_TARGET_TRIPLET)
 
 **Root cause:** `ci-wasm.yml` invoked `emcmake cmake` directly, bypassing `build.sh`'s `VCPKG_DEFAULT_TRIPLET` → `-DVCPKG_TARGET_TRIPLET` forwarding. Without the explicit CMake variable, vcpkg auto-detection during Emscripten cross-compile was not guaranteed to select `wasm32-emscripten`.
