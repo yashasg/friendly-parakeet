@@ -13,6 +13,16 @@
 
 ---
 
+### 2026-05 — Issue #177 (WASM CI VCPKG_TARGET_TRIPLET)
+
+**Root cause:** `ci-wasm.yml` invoked `emcmake cmake` directly, bypassing `build.sh`'s `VCPKG_DEFAULT_TRIPLET` → `-DVCPKG_TARGET_TRIPLET` forwarding. Without the explicit CMake variable, vcpkg auto-detection during Emscripten cross-compile was not guaranteed to select `wasm32-emscripten`.
+
+**Fix:** Added `-DVCPKG_TARGET_TRIPLET=wasm32-emscripten` directly to the `emcmake cmake` invocation in `ci-wasm.yml`. No `-Wno-dev` added; the pre-existing flag was left as-is (not a new workaround). Fix was committed in `61ed9d6` as part of a multi-issue batch commit alongside #172 and #173.
+
+**Key lesson:** When a CI workflow bypasses `build.sh` (e.g. for cross-compile), any triplet/toolchain forwarding that lives in `build.sh` must be duplicated explicitly in the workflow step. Two options: (1) add the flag inline — simple and surgical for a single triplet, (2) route through `build.sh` with a new `--wasm` mode — more maintainable if the build script grows. This project chose option (1) as the minimal fix.
+
+---
+
 ### 2026-05 — magic_enum vcpkg wiring
 
 **vcpkg package name:** `magic-enum` (hyphen); CMake target: `magic_enum::magic_enum`; find_package module: `magic_enum`.
