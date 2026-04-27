@@ -313,3 +313,22 @@ Fixed all 7 unresolved review threads in commit d90abf9 on `user/yashasg/ecs_ref
 ### 2026-04-27 — Issue #315 Closure (EnTT-safe scoring_system iteration)
 
 **Structural safety confirmed:** McManus's collect-then-remove pattern in scoring_system (#315) eliminates the structural mutation hazard. Two-pass approach (collect miss/hit records, then remove components) is safe and matches DOD iteration best practices. Pattern now available for reuse in other systems.
+
+### 2026 — Issue #323: RNGState initialization moved to setup path
+
+**Scope:** `app/game_loop.cpp`, `app/systems/play_session.cpp`, `app/systems/obstacle_spawn_system.cpp`
+
+**Problem:** `obstacle_spawn_system` lazily initialized `RNGState` every frame via `if (!reg.ctx().find<RNGState>()) reg.ctx().emplace<RNGState>()`. This is a hot-path ctx mutation on every spawn tick, and silently recovers from missing setup state.
+
+**Fix (commit 2fe229d):**
+1. `game_loop_init` — `reg.ctx().emplace<RNGState>()` alongside other core singletons.
+2. `setup_play_session` — `reg.ctx().insert_or_assign(RNGState{})` in the "Reset singletons" block, deterministically re-seeding to `1u` at the start of every session.
+3. `obstacle_spawn_system` — lazy-init guard removed; replaced with `reg.ctx().get<RNGState>()` which asserts on missing state (programmer error surfaces immediately).
+
+**Pattern established:** Session singletons that must be deterministically reset per play belong in the `setup_play_session` "Reset singletons" block via `insert_or_assign`. Singletons initialized once at boot belong in `game_loop_init` via `emplace`. Missing required ctx should surface via `reg.ctx().get<>()` (assert/terminate) not `find<>` (silent recover).
+
+**Test helpers:** `make_registry()` in `test_helpers.h` already had `reg.ctx().emplace<RNGState>()` — no test changes required.
+
+**Build note:** The local worktree had a pre-existing cmake configuration issue where the build was not configured (no Makefile). Fixed by running `vcpkg install --triplet arm64-osx` in the project directory to populate `vcpkg_installed/`, then running a fresh `cmake -B build -S .` with the vcpkg toolchain. All 2419 assertions / 768 test cases pass.
+
+**Build note 2:** Worktree had uncommitted in-progress changes to `app/components/ui_state.h` and `app/systems/ui_loader.h` (UIState::load_screen refactor, partial). These caused build failures. Restored to HEAD for this task; not part of #323 scope.
