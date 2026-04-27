@@ -6,6 +6,10 @@ on:
     branches: [preview]
     paths:
       - 'docs/**'
+      # TEMPLATE NOTE: The path below refers to the deployed location in .github/workflows/,
+      # NOT this template's source path (.squad/templates/workflows/squad-docs.yml).
+      # When copying this template, update this value to match the actual deployed filename
+      # (e.g., '.github/workflows/squad-docs.yml').
       - '.github/workflows/squad-docs.yml'
 
 permissions:

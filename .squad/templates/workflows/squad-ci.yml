@@ -1,3 +1,7 @@
+# TEMPLATE — Do not place this file in .github/workflows/ directly.
+# Copy or generate this file to .github/workflows/squad-ci.yml (or your chosen filename).
+# GitHub Actions only executes workflows from .github/workflows/; files under
+# .squad/templates/workflows/ are source templates and are never run automatically.
 name: Squad CI
 
 on:

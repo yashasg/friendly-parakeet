@@ -19,9 +19,24 @@ jobs:
 
       - name: Validate version consistency
         run: |
+          # TEMPLATE REQUIREMENT: repo root must contain package.json with a 'version' field
+          # and CHANGELOG.md with entries in '## [x.y.z]' format (Keep a Changelog / standard-version style).
+          if [ ! -f package.json ]; then
+            echo "::error::❌ package.json not found at repo root — this workflow requires a root-level package.json with a 'version' field."
+            exit 1
+          fi
+          if [ ! -f CHANGELOG.md ]; then
+            echo "::error::❌ CHANGELOG.md not found at repo root — this workflow requires a CHANGELOG.md with version entries in '## [x.y.z]' format."
+            exit 1
+          fi
           VERSION=$(node -e "console.log(require('./package.json').version)")
-          if ! grep -q "## \[$VERSION\]" CHANGELOG.md 2>/dev/null; then
-            echo "::error::Version $VERSION not found in CHANGELOG.md — update CHANGELOG.md before release"
+          if [ -z "$VERSION" ]; then
+            echo "::error::❌ 'version' field is missing or empty in package.json."
+            exit 1
+          fi
+          # Matches Keep a Changelog heading: ## [x.y.z] or ## [x.y.z] - YYYY-MM-DD
+          if ! grep -q "## \[$VERSION\]" CHANGELOG.md; then
+            echo "::error::Version $VERSION not found in CHANGELOG.md — add a '## [$VERSION]' heading (Keep a Changelog format) before release."
             exit 1
           fi
           echo "✅ Version $VERSION validated in CHANGELOG.md"
@@ -29,21 +44,34 @@ jobs:
       - name: Run tests
         run: node --test test/*.test.js
 
-      - name: Check no .ai-team/ or .squad/ files are tracked
+      - name: Check no AI-team state files are tracked
         run: |
+          # .ai-team/ must never ship entirely.
+          # For .squad/: only stateful runtime paths are forbidden; .squad/templates/** is
+          # intentionally tracked and must not be blocked here.
           FOUND_FORBIDDEN=0
-          if git ls-files --error-unmatch .ai-team/ 2>/dev/null; then
+          if git ls-files .ai-team/ 2>/dev/null | grep -q .; then
             echo "::error::❌ .ai-team/ files are tracked on preview — this must not ship."
             FOUND_FORBIDDEN=1
           fi
-          if git ls-files --error-unmatch .squad/ 2>/dev/null; then
-            echo "::error::❌ .squad/ files are tracked on preview — this must not ship."
-            FOUND_FORBIDDEN=1
-          fi
+          # Forbidden stateful .squad/ subdirectories (generated/runtime state that must not ship)
+          for STATEFUL_PATH in \
+            .squad/agents/ \
+            .squad/decisions/ \
+            .squad/identity/ \
+            .squad/log/ \
+            .squad/orchestration-log/ \
+            .squad/sessions/ \
+            .squad/casting/; do
+            if git ls-files "$STATEFUL_PATH" 2>/dev/null | grep -q .; then
+              echo "::error::❌ $STATEFUL_PATH files are tracked on preview — generated/runtime state must not ship."
+              FOUND_FORBIDDEN=1
+            fi
+          done
           if [ $FOUND_FORBIDDEN -eq 1 ]; then
             exit 1
           fi
-          echo "✅ No .ai-team/ or .squad/ files tracked — clean for release."
+          echo "✅ No AI-team state files tracked — clean for release."
 
       - name: Validate package.json version
         run: |
