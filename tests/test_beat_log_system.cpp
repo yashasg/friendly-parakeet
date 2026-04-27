@@ -13,6 +13,24 @@ static SessionLog make_open_log() {
     return log;
 }
 
+// ── SessionLog construction: buffer pre-reserved ─────────────
+
+TEST_CASE("SessionLog: buffer pre-reserved at construction", "[beat_log][session_log]") {
+    SessionLog log;
+    // Constructor must pre-reserve kMaxLogBufferBytes so the hot write path
+    // never triggers a heap reallocation from an empty string.
+    CHECK(log.buffer.capacity() >= SessionLog::kMaxLogBufferBytes);
+}
+
+TEST_CASE("SessionLog: clear preserves reserved capacity", "[beat_log][session_log]") {
+    SessionLog log;
+    log.buffer.append("some log line\n");
+    std::size_t cap_before = log.buffer.capacity();
+    log.buffer.clear();
+    // clear() must not shrink capacity — no realloc on next frame's writes.
+    CHECK(log.buffer.capacity() == cap_before);
+}
+
 // ── beat_log_system: no-op when logging disabled ─────────────
 
 TEST_CASE("beat_log: no-op when SessionLog absent", "[beat_log]") {

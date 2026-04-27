@@ -28,7 +28,6 @@ void session_log_open(SessionLog& log, const char* path) {
         std::fflush(log.file);
     }
     log.frame = 0;
-    log.buffer.reserve(4096);  // avoid early reallocs
 }
 
 void session_log_close(SessionLog& log) {
