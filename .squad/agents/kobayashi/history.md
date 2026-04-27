@@ -13,6 +13,18 @@
 
 ---
 
+### 2026-05 — PR #43 Dependency Submission 500 retry fix
+
+**Scope:** `dependency-submission.yml` — transient GitHub 5xx on the POST to `/dependency-graph/snapshots` was failing the Windows matrix leg (run 25011478602 job 73248065522), and `fail-fast: true` (default) was cancelling the macOS sibling.
+
+**Fixes (commit e32468a):**
+- Added `retries: 3` to the `actions/github-script@v8` submit step — the input wires directly into Octokit's built-in retry logic and covers all 5xx responses without any custom scripting.
+- Added `fail-fast: false` to the OS matrix strategy so a transient failure on one platform never cancels siblings.
+
+**Key lesson:** `actions/github-script` exposes an `retries` input (integer) that passes straight to Octokit's `@octokit/plugin-retry`. Always set it on any step that POSTs to GitHub APIs that can transiently 5xx (dependency graph, check runs, deployments). Pair with `fail-fast: false` on matrix jobs that do external API calls so a single transient failure doesn't cascade.
+
+---
+
 ### 2026-04-27 — PR #43 CI failure triage and resolution
 
 **Scope:** Coordinated verification and resolution of all 4-platform CI failures on PR #43 (`user/yashasg/ecs_refactor`, HEAD `95031c07`).
