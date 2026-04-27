@@ -729,10 +729,11 @@ TEST_CASE("timing: timing_multiplier values", "[rhythm][timing]") {
 }
 
 TEST_CASE("timing: window_scale_for_tier values", "[rhythm][timing]") {
-    CHECK(window_scale_for_tier(TimingTier::Perfect) == 1.50f);
-    CHECK(window_scale_for_tier(TimingTier::Good) == 1.00f);
-    CHECK(window_scale_for_tier(TimingTier::Ok) == 0.75f);
-    CHECK(window_scale_for_tier(TimingTier::Bad) == 0.50f);
+    // Post-#223 inversion: smaller scale = better timing = faster window collapse.
+    CHECK(window_scale_for_tier(TimingTier::Perfect) == 0.50f);
+    CHECK(window_scale_for_tier(TimingTier::Good) == 0.75f);
+    CHECK(window_scale_for_tier(TimingTier::Ok) == 1.00f);
+    CHECK(window_scale_for_tier(TimingTier::Bad) == 1.00f);
 }
 
 // Window Scaling
@@ -750,19 +751,26 @@ TEST_CASE("window_scaling: PERFECT grade shortens remaining window", "[rhythm][w
     sw.window_timer = song.window_duration * 0.5f; // halfway through
     song.song_time = 5.0f;
     sw.peak_time = 5.0f; // PERFECT timing
+    sw.window_start = song.song_time - sw.window_timer;
 
+    float start_before = sw.window_start;
     float timer_before = sw.window_timer;
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<BeatInfo>(obs, 0, 5.0f, 5.0f - song.lead_time);
     collision_system(reg, 0.016f);
 
     CHECK(sw.graded);
-    CHECK(sw.window_scale == 1.50f);
-    // Perfect: scale > 1.0 means window extends. Timer not advanced.
+    // Post-#223: Perfect scale = 0.50 (shrinks remaining window by 50%)
+    CHECK(sw.window_scale == 0.50f);
+    // window_start moved backward so remaining Active window expires at 50%
+    float remaining = song.window_duration - timer_before;
+    float expected_shift = remaining * 0.50f;
+    CHECK_THAT(sw.window_start, WithinAbs(start_before - expected_shift, 0.001f));
+    // window_timer is not touched by collision_system
     CHECK_THAT(sw.window_timer, WithinAbs(timer_before, 0.001f));
 }
 
-TEST_CASE("window_scaling: GOOD grade keeps normal window", "[rhythm][window_scaling]") {
+TEST_CASE("window_scaling: GOOD grade shortens window slightly", "[rhythm][window_scaling]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
     auto& ps = reg.get<PlayerShape>(player);
@@ -774,7 +782,9 @@ TEST_CASE("window_scaling: GOOD grade keeps normal window", "[rhythm][window_sca
     sw.window_timer = song.window_duration * 0.4f;
     song.song_time = 5.0f;
     sw.peak_time = 5.0f;
+    sw.window_start = song.song_time - sw.window_timer;
 
+    float start_before = sw.window_start;
     float timer_before = sw.window_timer;
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     // arrival offset 30% from peak → Good
@@ -782,12 +792,15 @@ TEST_CASE("window_scaling: GOOD grade keeps normal window", "[rhythm][window_sca
     collision_system(reg, 0.016f);
 
     CHECK(sw.graded);
-    CHECK(sw.window_scale == 1.00f);
-    // Good: scale=1.0, no timer change
+    // Post-#223: Good scale = 0.75 (shrinks remaining window by 25%)
+    CHECK(sw.window_scale == 0.75f);
+    float remaining = song.window_duration - timer_before;
+    float expected_shift = remaining * 0.25f;
+    CHECK_THAT(sw.window_start, WithinAbs(start_before - expected_shift, 0.001f));
     CHECK_THAT(sw.window_timer, WithinAbs(timer_before, 0.001f));
 }
 
-TEST_CASE("window_scaling: OK grade shortens window", "[rhythm][window_scaling]") {
+TEST_CASE("window_scaling: OK grade keeps window unchanged", "[rhythm][window_scaling]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
     auto& ps = reg.get<PlayerShape>(player);
@@ -809,16 +822,14 @@ TEST_CASE("window_scaling: OK grade shortens window", "[rhythm][window_scaling]"
     collision_system(reg, 0.016f);
 
     CHECK(sw.graded);
-    CHECK(sw.window_scale == 0.75f);
-    // Ok: scale=0.75 → window_start moved backward by remaining * (1-0.75)
-    float remaining = song.window_duration - sw.window_timer;
-    float expected_shift = remaining * 0.25f;
-    CHECK_THAT(sw.window_start, WithinAbs(start_before - expected_shift, 0.001f));
+    // Post-#223: Ok scale = 1.0 → no window adjustment
+    CHECK(sw.window_scale == 1.00f);
+    CHECK_THAT(sw.window_start, WithinAbs(start_before, 0.001f));
     // window_timer must NOT be changed by collision_system
     CHECK_THAT(sw.window_timer, WithinAbs(song.window_duration * 0.3f, 0.001f));
 }
 
-TEST_CASE("window_scaling: BAD grade shortens window aggressively", "[rhythm][window_scaling]") {
+TEST_CASE("window_scaling: BAD grade keeps window unchanged", "[rhythm][window_scaling]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
     auto& ps = reg.get<PlayerShape>(player);
@@ -840,11 +851,9 @@ TEST_CASE("window_scaling: BAD grade shortens window aggressively", "[rhythm][wi
     collision_system(reg, 0.016f);
 
     CHECK(sw.graded);
-    CHECK(sw.window_scale == 0.50f);
-    // Bad: scale=0.50 → window_start moved backward by remaining * (1-0.50)
-    float remaining = song.window_duration - sw.window_timer;
-    float expected_shift = remaining * 0.50f;
-    CHECK_THAT(sw.window_start, WithinAbs(start_before - expected_shift, 0.001f));
+    // Post-#223: Bad scale = 1.0 → no window adjustment
+    CHECK(sw.window_scale == 1.00f);
+    CHECK_THAT(sw.window_start, WithinAbs(start_before, 0.001f));
     // window_timer must NOT be changed by collision_system
     CHECK_THAT(sw.window_timer, WithinAbs(song.window_duration * 0.2f, 0.001f));
 }

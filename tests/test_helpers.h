@@ -18,6 +18,7 @@
 #include "components/haptics.h"
 #include "components/settings.h"
 #include "components/rhythm.h"
+#include "components/high_score.h"
 #include "constants.h"
 #include "systems/all_systems.h"
 
@@ -40,6 +41,9 @@ inline entt::registry make_registry() {
     reg.ctx().emplace<SongState>();
     reg.ctx().emplace<EnergyState>();
     reg.ctx().emplace<SongResults>();
+    reg.ctx().emplace<HighScoreState>();
+    reg.ctx().emplace<HighScorePersistence>();
+    reg.ctx().emplace<GameOverState>();
     return reg;
 }
 

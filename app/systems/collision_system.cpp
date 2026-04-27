@@ -6,6 +6,7 @@
 #include "../components/rendering.h"
 #include "../components/game_state.h"
 #include "../components/rhythm.h"
+#include "../components/song_state.h"
 #include "../constants.h"
 #include <cmath>
 
@@ -78,13 +79,22 @@ void collision_system(entt::registry& reg, float /*dt*/) {
             }
             reg.emplace<ScoredTag>(entity);
         } else {
-            // MISS — drain energy
+            // MISS — drain energy and record death cause
             if (results) results->miss_count++;
             auto* energy = reg.ctx().find<EnergyState>();
             if (energy) {
                 energy->energy -= constants::ENERGY_DRAIN_MISS;
-                if (energy->energy < 0.0f) energy->energy = 0.0f;
+                if (energy->energy < 1e-6f) energy->energy = 0.0f;
                 energy->flash_timer = constants::ENERGY_FLASH_DURATION;
+            }
+            // Tag the cause of death for the UI (does not override a prior cause)
+            if (auto* gos = reg.ctx().find<GameOverState>()) {
+                if (gos->cause == DeathCause::None) {
+                    auto* obs_comp = reg.try_get<Obstacle>(entity);
+                    bool is_bar = obs_comp && (obs_comp->kind == ObstacleKind::LowBar ||
+                                              obs_comp->kind == ObstacleKind::HighBar);
+                    gos->cause = is_bar ? DeathCause::HitABar : DeathCause::MissedABeat;
+                }
             }
             reg.emplace<MissTag>(entity);
             reg.emplace<ScoredTag>(entity);

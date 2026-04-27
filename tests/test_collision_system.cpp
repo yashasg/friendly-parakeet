@@ -273,11 +273,9 @@ TEST_CASE("collision: high bar drains energy when jumping", "[collision]") {
     CHECK(energy.flash_timer > 0.0f);
 }
 
-TEST_CASE("collision: BAD timing adjusts window_start, not window_timer", "[collision][rhythm]") {
-    // Verify that for a BAD hit (scale < 1), collision_system adjusts window_start
-    // backward instead of advancing window_timer.  shape_window_system derives
-    // window_timer from song_time - window_start each frame, so only window_start
-    // changes survive across ticks.
+TEST_CASE("collision: BAD timing does not adjust window_start", "[collision][rhythm]") {
+    // Post-#223: Bad scale = 1.0 → collision_system does NOT adjust window_start.
+    // The window_start shortening path (scale < 1.0) only fires for Perfect and Good.
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
     auto& ps = reg.get<PlayerShape>(player);
@@ -293,7 +291,7 @@ TEST_CASE("collision: BAD timing adjusts window_start, not window_timer", "[coll
 
     // peak_time doesn't affect grading anymore — timing is based on
     // BeatInfo.arrival_time.  Set arrival_time far from song_time so
-    // pct_from_peak > 0.75 → BAD (scale = 0.5).
+    // pct_from_peak > 0.75 → BAD (scale = 1.0).
     sw.peak_time = song.song_time;
     float bad_arrival = song.song_time - song.half_window * 2.0f;
 
@@ -304,17 +302,17 @@ TEST_CASE("collision: BAD timing adjusts window_start, not window_timer", "[coll
     float original_window_start = sw.window_start;
     collision_system(reg, 0.016f);
 
-    // window_start must have moved backward (earlier) to shorten the window
-    CHECK(sw.window_start < original_window_start);
+    // window_start must NOT be adjusted for Bad (scale == 1.0)
+    CHECK_THAT(sw.window_start, Catch::Matchers::WithinAbs(original_window_start, 0.0001f));
     // window_timer should remain unchanged by collision_system
     CHECK(sw.window_timer == 0.0f);
     // graded flag must be set
     CHECK(sw.graded);
 }
 
-TEST_CASE("collision: Perfect timing extends window via window_scale only", "[collision][rhythm]") {
-    // For a Perfect hit (scale > 1), only window_scale is updated; window_start
-    // must not be changed (no shortening needed).
+TEST_CASE("collision: Perfect timing shrinks window via window_start adjustment", "[collision][rhythm]") {
+    // Post-#223: Perfect scale = 0.50 (< 1.0); collision_system adjusts
+    // window_start backward to collapse the remaining Active window to 50%.
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
     auto& ps = reg.get<PlayerShape>(player);
@@ -336,8 +334,11 @@ TEST_CASE("collision: Perfect timing extends window via window_scale only", "[co
     float original_window_start = sw.window_start;
     collision_system(reg, 0.016f);
 
-    // window_start must NOT be adjusted for Perfect (scale >= 1)
-    CHECK_THAT(sw.window_start, Catch::Matchers::WithinAbs(original_window_start, 0.0001f));
-    CHECK(sw.window_scale > 1.0f);
+    // Perfect scale = 0.50; remaining = window_duration - 0 = window_duration
+    // window_start is shifted backward by remaining * (1 - 0.50) = remaining * 0.50
+    float remaining = song.window_duration - 0.0f;
+    float expected_shift = remaining * 0.50f;
+    CHECK_THAT(sw.window_start, Catch::Matchers::WithinAbs(original_window_start - expected_shift, 0.0001f));
+    CHECK(sw.window_scale == 0.50f);
     CHECK(sw.graded);
 }

@@ -9,6 +9,8 @@
 #include "../components/haptics.h"
 #include "../components/settings.h"
 #include "../components/rhythm.h"
+#include "../components/high_score.h"
+#include "../util/high_score_persistence.h"
 #include "../constants.h"
 
 static void enter_game_over(entt::registry& reg) {
@@ -16,6 +18,12 @@ static void enter_game_over(entt::registry& reg) {
     bool is_new_high_score = (score.score > score.high_score);
     if (is_new_high_score) {
         score.high_score = score.score;
+        if (auto* hs = reg.ctx().find<HighScoreState>()) {
+            hs->update_current_high_score(score.score);
+            if (auto* hp = reg.ctx().find<HighScorePersistence>()) {
+                if (!hp->path.empty()) high_score::save_high_scores(*hs, hp->path);
+            }
+        }
     }
     audio_push(reg.ctx().get<AudioQueue>(), SFX::Crash);
 
@@ -40,6 +48,12 @@ static void enter_song_complete(entt::registry& reg) {
     bool is_new_high_score = (score.score > score.high_score);
     if (is_new_high_score) {
         score.high_score = score.score;
+        if (auto* hs = reg.ctx().find<HighScoreState>()) {
+            hs->update_current_high_score(score.score);
+            if (auto* hp = reg.ctx().find<HighScorePersistence>()) {
+                if (!hp->path.empty()) high_score::save_high_scores(*hs, hp->path);
+            }
+        }
     }
 
     {

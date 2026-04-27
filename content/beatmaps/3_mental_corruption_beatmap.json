@@ -9,106 +9,759 @@
     "easy": {
       "beats": [
         {
-          "beat": 11,
+          "beat": 10,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 13,
+          "beat": 12,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 19,
+          "beat": 18,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 38,
+          "beat": 37,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 43,
+          "beat": 42,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 55,
+          "beat": 54,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0
         },
         {
-          "beat": 58,
+          "beat": 57,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 61,
+          "beat": 60,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0
         },
         {
-          "beat": 65,
+          "beat": 64,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 67,
+          "beat": 66,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 68,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 76,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 78,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 80,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 83,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2
         },
         {
-          "beat": 69,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 77,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 79,
+          "beat": 85,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2
         },
         {
-          "beat": 81,
+          "beat": 87,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 91,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 93,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 95,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 133,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
+        },
+        {
+          "beat": 135,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 137,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 140,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 142,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 144,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 148,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 150,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 152,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 192,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 194,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 197,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 199,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 201,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 212,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 214,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 223,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 226,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 228,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 235,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 237,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 240,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 242,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 244,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 250,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 252,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 255,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 257,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 264,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 266,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 268,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 272,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 274,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 302,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 305,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 308,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 310,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 312,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 318,
+          "kind": "shape_gate",
+          "shape": "circle",
+          "lane": 0
+        },
+        {
+          "beat": 321,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 324,
+          "kind": "shape_gate",
+          "shape": "circle",
+          "lane": 0
+        },
+        {
+          "beat": 328,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 330,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 332,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 339,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 341,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 343,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 347,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 349,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 351,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 376,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 380,
+          "kind": "shape_gate",
+          "shape": "circle",
+          "lane": 0
+        },
+        {
+          "beat": 384,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 389,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 391,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 393,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 403,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 405,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 408,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 410,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 412,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 416,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 418,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 450,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 452,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 455,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 458,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 460,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 462,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 465,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 468,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 470,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 472,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 475,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 478,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 504,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 531,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 534,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 537,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 540,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 543,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 546,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 551,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 553,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 555,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 559,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 561,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        }
+      ],
+      "count": 107
+    },
+    "medium": {
+      "beats": [
+        {
+          "beat": 6,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 10,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 12,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 37,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 39,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 54,
+          "kind": "shape_gate",
+          "lane": 1,
+          "shape": "square"
+        },
+        {
+          "beat": 57,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 60,
+          "kind": "shape_gate",
+          "shape": "circle",
+          "lane": 0
+        },
+        {
+          "beat": 64,
+          "kind": "shape_gate",
+          "lane": 0,
+          "shape": "circle"
+        },
+        {
+          "beat": 66,
+          "kind": "shape_gate",
+          "shape": "circle",
+          "lane": 0
+        },
+        {
+          "beat": 68,
+          "kind": "shape_gate",
+          "shape": "circle",
+          "lane": 0
+        },
+        {
+          "beat": 72,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 76,
+          "kind": "shape_gate",
+          "shape": "circle",
+          "lane": 0
+        },
+        {
+          "beat": 78,
+          "kind": "shape_gate",
+          "shape": "circle",
+          "lane": 0
+        },
+        {
+          "beat": 80,
+          "kind": "shape_gate",
+          "shape": "circle",
+          "lane": 0
         },
         {
           "beat": 84,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
+          "shape": "circle",
+          "lane": 0
         },
         {
           "beat": 86,
           "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
+          "shape": "circle",
+          "lane": 0
         },
         {
           "beat": 88,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
+          "shape": "circle",
+          "lane": 0
         },
         {
           "beat": 92,
@@ -125,32 +778,44 @@
         {
           "beat": 96,
           "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 134,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 136,
-          "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2
         },
         {
-          "beat": 138,
+          "beat": 100,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 141,
+          "beat": 102,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 132,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 135,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 137,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 139,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
         },
         {
           "beat": 143,
@@ -161,20 +826,20 @@
         {
           "beat": 145,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
+          "shape": "square",
+          "lane": 1
         },
         {
-          "beat": 149,
+          "beat": 147,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
+          "shape": "square",
+          "lane": 1
         },
         {
           "beat": 151,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
+          "shape": "square",
+          "lane": 1
         },
         {
           "beat": 153,
@@ -183,22 +848,38 @@
           "lane": 1
         },
         {
-          "beat": 193,
+          "beat": 155,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 195,
+          "beat": 160,
+          "kind": "lane_push_right",
+          "lane": 2
+        },
+        {
+          "beat": 190,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
+        },
+        {
+          "beat": 192,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 194,
+          "kind": "lane_push_right",
+          "lane": 2
         },
         {
           "beat": 198,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
+          "shape": "square",
+          "lane": 1
         },
         {
           "beat": 200,
@@ -209,77 +890,97 @@
         {
           "beat": 202,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
+          "shape": "square",
+          "lane": 1
         },
         {
-          "beat": 213,
+          "beat": 207,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 215,
+          "beat": 209,
+          "kind": "lane_push_left",
+          "lane": 1
+        },
+        {
+          "beat": 211,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 224,
+          "beat": 221,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2
         },
         {
-          "beat": 227,
+          "beat": 223,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 226,
+          "kind": "lane_push_right",
+          "lane": 2
+        },
+        {
+          "beat": 228,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 229,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 236,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 238,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 241,
+          "beat": 230,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 243,
-          "kind": "shape_gate",
-          "shape": "triangle",
+          "beat": 235,
+          "kind": "lane_push_left",
           "lane": 2
         },
         {
-          "beat": 245,
+          "beat": 237,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 251,
+          "beat": 240,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 253,
+          "beat": 242,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 244,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 249,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 252,
+          "kind": "lane_push_right",
+          "lane": 1
+        },
+        {
+          "beat": 254,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
@@ -287,50 +988,74 @@
         {
           "beat": 256,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
+          "shape": "square",
+          "lane": 1
         },
         {
-          "beat": 258,
+          "beat": 260,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 265,
+          "beat": 263,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2
         },
         {
-          "beat": 267,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 269,
+          "beat": 264,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2
         },
         {
-          "beat": 273,
+          "beat": 266,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2
         },
         {
-          "beat": 275,
+          "beat": 268,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 272,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 274,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 276,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 280,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 302,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 303,
+          "beat": 305,
           "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
+          "shape": "triangle",
+          "lane": 2
         },
         {
           "beat": 306,
@@ -339,34 +1064,39 @@
           "lane": 2
         },
         {
-          "beat": 309,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 311,
+          "beat": 308,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2
         },
         {
-          "beat": 313,
+          "beat": 310,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 314,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 318,
+          "kind": "lane_push_right",
+          "lane": 1
+        },
+        {
+          "beat": 321,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 319,
+          "beat": 324,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0
-        },
-        {
-          "beat": 322,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
         },
         {
           "beat": 325,
@@ -375,19 +1105,24 @@
           "lane": 0
         },
         {
-          "beat": 329,
+          "beat": 328,
+          "kind": "lane_push_right",
+          "lane": 1
+        },
+        {
+          "beat": 330,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 331,
+          "beat": 332,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
+          "shape": "square",
+          "lane": 1
         },
         {
-          "beat": 333,
+          "beat": 338,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
@@ -401,20 +1136,20 @@
         {
           "beat": 342,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
+          "shape": "square",
+          "lane": 1
         },
         {
-          "beat": 344,
+          "beat": 346,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
+          "shape": "square",
+          "lane": 1
         },
         {
           "beat": 348,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
+          "shape": "square",
+          "lane": 1
         },
         {
           "beat": 350,
@@ -423,22 +1158,33 @@
           "lane": 1
         },
         {
-          "beat": 352,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 377,
+          "beat": 354,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 381,
+          "beat": 356,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 376,
+          "kind": "lane_push_left",
+          "lane": 2
+        },
+        {
+          "beat": 380,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0
+        },
+        {
+          "beat": 384,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
         },
         {
           "beat": 385,
@@ -447,22 +1193,44 @@
           "lane": 1
         },
         {
-          "beat": 390,
+          "beat": 389,
+          "kind": "lane_push_left",
+          "lane": 2
+        },
+        {
+          "beat": 391,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2
         },
         {
-          "beat": 392,
+          "beat": 393,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 394,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 397,
+          "kind": "lane_push_left",
+          "lane": 1
+        },
+        {
+          "beat": 399,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 394,
+          "beat": 402,
           "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
+          "shape": "triangle",
+          "lane": 2
         },
         {
           "beat": 404,
@@ -473,157 +1241,196 @@
         {
           "beat": 406,
           "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
+          "shape": "triangle",
+          "lane": 2
         },
         {
-          "beat": 409,
+          "beat": 410,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2
         },
         {
-          "beat": 411,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 413,
+          "beat": 412,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2
         },
         {
-          "beat": 417,
+          "beat": 414,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2
         },
         {
-          "beat": 419,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 451,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 453,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 456,
+          "beat": 418,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2
         },
         {
-          "beat": 459,
+          "beat": 420,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 422,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 449,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 461,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 463,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 466,
+          "beat": 450,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 469,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 471,
+          "beat": 452,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 473,
-          "kind": "shape_gate",
-          "shape": "triangle",
+          "beat": 455,
+          "kind": "lane_push_left",
           "lane": 2
         },
         {
-          "beat": 476,
+          "beat": 458,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 479,
+          "beat": 460,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 462,
+          "kind": "lane_push_right",
+          "lane": 2
+        },
+        {
+          "beat": 465,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 468,
+          "kind": "lane_push_right",
+          "lane": 2
+        },
+        {
+          "beat": 470,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2
+        },
+        {
+          "beat": 472,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 475,
+          "kind": "lane_push_left",
+          "lane": 2
+        },
+        {
+          "beat": 478,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 480,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 482,
+          "kind": "lane_push_right",
+          "lane": 2
+        },
+        {
+          "beat": 485,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 488,
+          "kind": "lane_push_right",
+          "lane": 2
+        },
+        {
+          "beat": 509,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 530,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
         },
         {
           "beat": 532,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 535,
-          "kind": "shape_gate",
           "shape": "square",
           "lane": 1
+        },
+        {
+          "beat": 534,
+          "kind": "lane_push_right",
+          "lane": 2
         },
         {
           "beat": 538,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
+          "shape": "square",
+          "lane": 1
         },
         {
-          "beat": 541,
+          "beat": 540,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 544,
-          "kind": "shape_gate",
-          "shape": "triangle",
+          "beat": 542,
+          "kind": "lane_push_right",
           "lane": 2
         },
         {
-          "beat": 547,
+          "beat": 546,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 552,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 554,
+          "beat": 551,
           "kind": "shape_gate",
           "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 553,
+          "kind": "lane_push_left",
           "lane": 1
         },
         {
@@ -633,886 +1440,21 @@
           "lane": 1
         },
         {
+          "beat": 558,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
           "beat": 560,
-          "kind": "shape_gate",
-          "shape": "triangle",
+          "kind": "lane_push_right",
           "lane": 2
-        },
-        {
-          "beat": 562,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
         }
       ],
-      "count": 106
-    },
-    "medium": {
-      "beats": [
-        {
-          "beat": 5,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 6,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 8,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 11,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 12,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 13,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 14,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 38,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 40,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 41,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 55,
-          "kind": "lane_push_left",
-          "lane": 2
-        },
-        {
-          "beat": 58,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 61,
-          "kind": "shape_gate",
-          "shape": "circle",
-          "lane": 0
-        },
-        {
-          "beat": 62,
-          "kind": "shape_gate",
-          "shape": "circle",
-          "lane": 0
-        },
-        {
-          "beat": 65,
-          "kind": "lane_push_right",
-          "lane": 0
-        },
-        {
-          "beat": 67,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 69,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 73,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 77,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 79,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 81,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 85,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 87,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 89,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 93,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 95,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 97,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 101,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 103,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 133,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 134,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 136,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 138,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 142,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 144,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 146,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 150,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 152,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 154,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 158,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 161,
-          "kind": "lane_push_right",
-          "lane": 1
-        },
-        {
-          "beat": 191,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 193,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 195,
-          "kind": "lane_push_right",
-          "lane": 1
-        },
-        {
-          "beat": 199,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 201,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 203,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 208,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 210,
-          "kind": "lane_push_left",
-          "lane": 2
-        },
-        {
-          "beat": 212,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 222,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 224,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 225,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 227,
-          "kind": "lane_push_right",
-          "lane": 1
-        },
-        {
-          "beat": 229,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 236,
-          "kind": "lane_push_right",
-          "lane": 1
-        },
-        {
-          "beat": 238,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 239,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 241,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 243,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 247,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 250,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 251,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 253,
-          "kind": "lane_push_right",
-          "lane": 0
-        },
-        {
-          "beat": 255,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 259,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 261,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 264,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 265,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 267,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 269,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 273,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 275,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 277,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 281,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 303,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 306,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 307,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 309,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 311,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 315,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 319,
-          "kind": "lane_push_left",
-          "lane": 2
-        },
-        {
-          "beat": 322,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 325,
-          "kind": "shape_gate",
-          "shape": "circle",
-          "lane": 0
-        },
-        {
-          "beat": 326,
-          "kind": "shape_gate",
-          "shape": "circle",
-          "lane": 0
-        },
-        {
-          "beat": 329,
-          "kind": "lane_push_right",
-          "lane": 0
-        },
-        {
-          "beat": 331,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 333,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 339,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 341,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 343,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 347,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 349,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 351,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 355,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 357,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 377,
-          "kind": "lane_push_left",
-          "lane": 2
-        },
-        {
-          "beat": 381,
-          "kind": "shape_gate",
-          "shape": "circle",
-          "lane": 0
-        },
-        {
-          "beat": 385,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 386,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 390,
-          "kind": "lane_push_right",
-          "lane": 1
-        },
-        {
-          "beat": 392,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 394,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 395,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 398,
-          "kind": "lane_push_right",
-          "lane": 0
-        },
-        {
-          "beat": 400,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 403,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 405,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 407,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 411,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 413,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 415,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 419,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 421,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 423,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 450,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 451,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 453,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 454,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 456,
-          "kind": "lane_push_right",
-          "lane": 1
-        },
-        {
-          "beat": 459,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 461,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 463,
-          "kind": "lane_push_right",
-          "lane": 1
-        },
-        {
-          "beat": 466,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 469,
-          "kind": "lane_push_right",
-          "lane": 1
-        },
-        {
-          "beat": 471,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 473,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 474,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 476,
-          "kind": "lane_push_right",
-          "lane": 1
-        },
-        {
-          "beat": 479,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 481,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 483,
-          "kind": "lane_push_right",
-          "lane": 1
-        },
-        {
-          "beat": 486,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 489,
-          "kind": "lane_push_right",
-          "lane": 1
-        },
-        {
-          "beat": 531,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 533,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 535,
-          "kind": "lane_push_right",
-          "lane": 1
-        },
-        {
-          "beat": 539,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 541,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 543,
-          "kind": "lane_push_right",
-          "lane": 1
-        },
-        {
-          "beat": 547,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 552,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 554,
-          "kind": "lane_push_left",
-          "lane": 2
-        },
-        {
-          "beat": 557,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 559,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 561,
-          "kind": "lane_push_right",
-          "lane": 1
-        }
-      ],
-      "count": 146
+      "count": 136
     },
     "hard": {
       "beats": [
-        {
-          "beat": 3,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
         {
           "beat": 4,
           "kind": "shape_gate",
@@ -1520,31 +1462,7 @@
           "lane": 1
         },
         {
-          "beat": 5,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
           "beat": 6,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 7,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 8,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 9,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
@@ -1556,12 +1474,6 @@
           "lane": 1
         },
         {
-          "beat": 11,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
           "beat": 12,
           "kind": "shape_gate",
           "shape": "square",
@@ -1574,7 +1486,7 @@
           "lane": 1
         },
         {
-          "beat": 14,
+          "beat": 37,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
@@ -1592,19 +1504,13 @@
           "lane": 1
         },
         {
-          "beat": 40,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
           "beat": 41,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 42,
+          "beat": 54,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
@@ -1616,49 +1522,49 @@
           "lane": 1
         },
         {
-          "beat": 56,
+          "beat": 57,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 58,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 60,
+          "beat": 59,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 64,
+          "beat": 63,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 66,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 68,
+          "beat": 65,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 72,
+          "beat": 67,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 74,
+          "beat": 71,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 73,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 76,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2
@@ -1670,99 +1576,99 @@
           "lane": 2
         },
         {
-          "beat": 78,
+          "beat": 79,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2
         },
         {
-          "beat": 80,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 82,
+          "beat": 81,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2
         },
         {
-          "beat": 86,
+          "beat": 85,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2
         },
         {
-          "beat": 88,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 90,
+          "beat": 87,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2
         },
         {
-          "beat": 94,
+          "beat": 89,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2
         },
         {
-          "beat": 96,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 98,
+          "beat": 93,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2
         },
         {
-          "beat": 102,
+          "beat": 95,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2
         },
         {
-          "beat": 104,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 106,
+          "beat": 97,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2
         },
         {
-          "beat": 110,
+          "beat": 101,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2
         },
         {
-          "beat": 112,
+          "beat": 103,
           "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
+          "shape": "triangle",
+          "lane": 2
         },
         {
-          "beat": 114,
+          "beat": 105,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 109,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 111,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 113,
           "kind": "lane_push_left",
-          "lane": 2
+          "lane": 1
         },
         {
-          "beat": 118,
+          "beat": 117,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 132,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
         },
         {
           "beat": 133,
@@ -1771,104 +1677,104 @@
           "lane": 1
         },
         {
-          "beat": 134,
+          "beat": 135,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 136,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 138,
+          "beat": 137,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 142,
+          "beat": 141,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 144,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 146,
+          "beat": 143,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 150,
+          "beat": 145,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 152,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 154,
+          "beat": 149,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 158,
+          "beat": 151,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 161,
+          "beat": 153,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 157,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 160,
           "kind": "lane_push_right",
-          "lane": 1
+          "lane": 2
         },
         {
-          "beat": 163,
+          "beat": 162,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 165,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 169,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 172,
-          "kind": "lane_push_right",
-          "lane": 0
-        },
-        {
-          "beat": 174,
+          "beat": 164,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 176,
+          "beat": 168,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 171,
+          "kind": "lane_push_left",
+          "lane": 1
+        },
+        {
+          "beat": 173,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 175,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 190,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
         },
         {
           "beat": 191,
@@ -1877,97 +1783,97 @@
           "lane": 1
         },
         {
-          "beat": 192,
+          "beat": 193,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 194,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 196,
+          "beat": 195,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 200,
+          "beat": 199,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 202,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 204,
+          "beat": 201,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 208,
+          "beat": 203,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 210,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 212,
+          "beat": 207,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 216,
+          "beat": 209,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 218,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 222,
+          "beat": 211,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 224,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 226,
+          "beat": 215,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 230,
+          "beat": 217,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 232,
+          "beat": 221,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 223,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 225,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 229,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 231,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 234,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2
@@ -1979,172 +1885,172 @@
           "lane": 2
         },
         {
-          "beat": 236,
+          "beat": 237,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2
         },
         {
-          "beat": 238,
+          "beat": 239,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 243,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 245,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 249,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 240,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 244,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 246,
+          "beat": 251,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 250,
+          "beat": 253,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 252,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 254,
+          "beat": 257,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 258,
+          "beat": 259,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 260,
+          "beat": 263,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2
         },
         {
-          "beat": 264,
+          "beat": 265,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2
         },
         {
-          "beat": 266,
+          "beat": 267,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 271,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 273,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 275,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 279,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 281,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 283,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 287,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 289,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 291,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 301,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 268,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 272,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 274,
+          "beat": 303,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 276,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 280,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 282,
+          "beat": 305,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 284,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 288,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 290,
+          "beat": 309,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 292,
+          "beat": 311,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 313,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 318,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2
-        },
-        {
-          "beat": 302,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 304,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 306,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 310,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 312,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 314,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
         },
         {
           "beat": 319,
@@ -2153,43 +2059,43 @@
           "lane": 2
         },
         {
-          "beat": 320,
+          "beat": 321,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2
         },
         {
-          "beat": 322,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 324,
+          "beat": 323,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2
         },
         {
-          "beat": 328,
+          "beat": 327,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2
         },
         {
-          "beat": 330,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 332,
+          "beat": 329,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2
         },
         {
-          "beat": 336,
+          "beat": 331,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 335,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 338,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2
@@ -2201,67 +2107,67 @@
           "lane": 2
         },
         {
-          "beat": 340,
+          "beat": 341,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2
         },
         {
-          "beat": 342,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 344,
+          "beat": 343,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2
         },
         {
-          "beat": 348,
+          "beat": 347,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2
         },
         {
-          "beat": 350,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 352,
+          "beat": 349,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2
         },
         {
-          "beat": 356,
+          "beat": 351,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2
         },
         {
-          "beat": 358,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 360,
+          "beat": 355,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2
         },
         {
-          "beat": 364,
+          "beat": 357,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2
         },
         {
-          "beat": 366,
+          "beat": 359,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 363,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 365,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2
+        },
+        {
+          "beat": 376,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
@@ -2273,53 +2179,53 @@
           "lane": 1
         },
         {
-          "beat": 378,
+          "beat": 380,
+          "kind": "lane_push_right",
+          "lane": 2
+        },
+        {
+          "beat": 382,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 381,
+          "beat": 384,
           "kind": "lane_push_right",
           "lane": 1
         },
         {
-          "beat": 383,
+          "beat": 388,
+          "kind": "lane_push_right",
+          "lane": 1
+        },
+        {
+          "beat": 390,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 385,
+          "beat": 393,
           "kind": "lane_push_left",
           "lane": 2
         },
         {
-          "beat": 389,
-          "kind": "lane_push_right",
-          "lane": 0
-        },
-        {
-          "beat": 391,
+          "beat": 395,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 394,
-          "kind": "lane_push_right",
-          "lane": 1
-        },
-        {
-          "beat": 396,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 398,
+          "beat": 397,
           "kind": "lane_push_left",
-          "lane": 2
+          "lane": 1
+        },
+        {
+          "beat": 402,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
         },
         {
           "beat": 403,
@@ -2328,235 +2234,223 @@
           "lane": 1
         },
         {
-          "beat": 404,
+          "beat": 405,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 406,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 408,
+          "beat": 407,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 412,
+          "beat": 411,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 414,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 416,
+          "beat": 413,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 420,
+          "beat": 415,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 422,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 424,
+          "beat": 419,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 428,
+          "beat": 421,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 430,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 432,
+          "beat": 423,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 436,
+          "beat": 427,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 438,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 450,
+          "beat": 429,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 451,
+          "beat": 431,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 453,
-          "kind": "lane_push_right",
-          "lane": 0
-        },
-        {
-          "beat": 456,
+          "beat": 435,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 459,
+          "beat": 437,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 449,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 452,
           "kind": "lane_push_right",
           "lane": 1
         },
         {
-          "beat": 461,
+          "beat": 455,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 463,
+          "beat": 458,
+          "kind": "lane_push_right",
+          "lane": 2
+        },
+        {
+          "beat": 460,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 462,
+          "kind": "lane_push_right",
+          "lane": 1
+        },
+        {
+          "beat": 465,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 468,
+          "kind": "lane_push_right",
+          "lane": 2
+        },
+        {
+          "beat": 470,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 472,
+          "kind": "lane_push_right",
+          "lane": 1
+        },
+        {
+          "beat": 475,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 478,
+          "kind": "lane_push_right",
+          "lane": 2
+        },
+        {
+          "beat": 480,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 482,
+          "kind": "lane_push_right",
+          "lane": 1
+        },
+        {
+          "beat": 485,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 488,
+          "kind": "lane_push_right",
+          "lane": 2
+        },
+        {
+          "beat": 490,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 492,
+          "kind": "lane_push_right",
+          "lane": 1
+        },
+        {
+          "beat": 495,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 498,
+          "kind": "lane_push_right",
+          "lane": 2
+        },
+        {
+          "beat": 500,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 503,
           "kind": "lane_push_left",
-          "lane": 2
+          "lane": 1
         },
         {
-          "beat": 466,
+          "beat": 505,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 469,
+          "beat": 508,
           "kind": "lane_push_right",
           "lane": 1
         },
         {
-          "beat": 471,
+          "beat": 510,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 473,
-          "kind": "lane_push_right",
-          "lane": 0
-        },
-        {
-          "beat": 476,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 479,
-          "kind": "lane_push_right",
-          "lane": 1
-        },
-        {
-          "beat": 481,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 483,
-          "kind": "lane_push_left",
-          "lane": 2
-        },
-        {
-          "beat": 486,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 489,
-          "kind": "lane_push_right",
-          "lane": 1
-        },
-        {
-          "beat": 491,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 493,
-          "kind": "lane_push_right",
-          "lane": 0
-        },
-        {
-          "beat": 496,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 499,
-          "kind": "lane_push_right",
-          "lane": 1
-        },
-        {
-          "beat": 501,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 504,
-          "kind": "lane_push_left",
-          "lane": 2
-        },
-        {
-          "beat": 506,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 507,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1
-        },
-        {
-          "beat": 509,
-          "kind": "lane_push_right",
-          "lane": 0
-        },
-        {
-          "beat": 511,
+          "beat": 529,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
@@ -2568,67 +2462,61 @@
           "lane": 1
         },
         {
-          "beat": 531,
+          "beat": 532,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 533,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 535,
+          "beat": 534,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 539,
+          "beat": 538,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 541,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 543,
+          "beat": 540,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 552,
+          "beat": 542,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 554,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2
-        },
-        {
-          "beat": 556,
+          "beat": 551,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         },
         {
-          "beat": 560,
+          "beat": 553,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 555,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1
+        },
+        {
+          "beat": 559,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1
         }
       ],
-      "count": 190
+      "count": 180
     }
   },
   "structure": [

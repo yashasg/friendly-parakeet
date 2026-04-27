@@ -410,10 +410,11 @@ TEST_CASE("timing_multiplier: returns correct values", "[rhythm_helpers]") {
 }
 
 TEST_CASE("window_scale_for_tier: returns correct values", "[rhythm_helpers]") {
-    CHECK(window_scale_for_tier(TimingTier::Perfect) == 1.50f);
-    CHECK(window_scale_for_tier(TimingTier::Good) == 1.00f);
-    CHECK(window_scale_for_tier(TimingTier::Ok) == 0.75f);
-    CHECK(window_scale_for_tier(TimingTier::Bad) == 0.50f);
+    // Post-#223 inversion: smaller scale = better timing = faster window collapse.
+    CHECK(window_scale_for_tier(TimingTier::Perfect) == 0.50f);
+    CHECK(window_scale_for_tier(TimingTier::Good) == 0.75f);
+    CHECK(window_scale_for_tier(TimingTier::Ok) == 1.00f);
+    CHECK(window_scale_for_tier(TimingTier::Bad) == 1.00f);
 }
 
 TEST_CASE("song_state_compute_derived: beat_period calculation", "[rhythm_helpers]") {

@@ -9,9 +9,11 @@
 #include "../components/audio.h"
 #include "../components/rhythm.h"
 #include "../components/music.h"
+#include "../components/high_score.h"
 #include "beat_map_loader.h"
 #include "../components/input_events.h"
 #include "../constants.h"
+#include <filesystem>
 #include <raylib.h>
 
 void setup_play_session(entt::registry& reg) {
@@ -55,6 +57,17 @@ void setup_play_session(entt::registry& reg) {
         TraceLog(LOG_WARNING, "Failed to load beatmap: %s", beatmap_path);
     }
 
+    // Wire high score: derive song_id from beatmap filename and set current_key
+    if (auto* hs = reg.ctx().find<HighScoreState>()) {
+        std::string stem = std::filesystem::path(beatmap_path).stem().string();
+        static const std::string BEATMAP_SUFFIX = "_beatmap";
+        if (stem.size() > BEATMAP_SUFFIX.size() &&
+            stem.compare(stem.size() - BEATMAP_SUFFIX.size(), BEATMAP_SUFFIX.size(), BEATMAP_SUFFIX) == 0) {
+            stem.erase(stem.size() - BEATMAP_SUFFIX.size());
+        }
+        hs->set_current_key(stem, difficulty_key);
+    }
+
     // Init song state
     auto& song = reg.ctx().get<SongState>();
     song = SongState{};
@@ -95,7 +108,18 @@ void setup_play_session(entt::registry& reg) {
 
     // Reset energy and results
     reg.ctx().insert_or_assign(EnergyState{});
-    reg.ctx().insert_or_assign(SongResults{});
+    {
+        SongResults results{};
+        results.total_notes = static_cast<int>(beatmap.beats.size());
+        reg.ctx().insert_or_assign(results);
+    }
+    reg.ctx().insert_or_assign(GameOverState{});
+
+    // Load stored high score for this song+difficulty into ScoreState
+    if (auto* hs = reg.ctx().find<HighScoreState>()) {
+        auto& score = reg.ctx().get<ScoreState>();
+        score.high_score = hs->get_current_high_score();
+    }
 
     // Create player entity
     auto player = reg.create();
