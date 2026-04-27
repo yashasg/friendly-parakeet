@@ -26,8 +26,7 @@ void obstacle_spawn_system(entt::registry& reg, float dt) {
 
     config.spawn_timer = config.spawn_interval;
 
-    if (!reg.ctx().find<RNGState>()) reg.ctx().emplace<RNGState>();
-    auto& rng = *reg.ctx().find<RNGState>();
+    auto& rng = reg.ctx().get<RNGState>();
 
     // Determine which obstacle kinds are available based on elapsed time
     float t = config.elapsed;

@@ -17,6 +17,7 @@
 #include "components/camera.h"
 #include "components/test_player.h"
 #include "components/obstacle.h"
+#include "components/rng.h"
 #include "systems/all_systems.h"
 #include "systems/text_renderer.h"
 #include "systems/session_logger.h"
@@ -87,6 +88,7 @@ void game_loop_init(entt::registry& reg,
     reg.ctx().emplace<EnergyState>();
     reg.ctx().emplace<GameOverState>();
     reg.ctx().emplace<SongResults>();
+    reg.ctx().emplace<RNGState>();
 
     // Settings — load from disk; default values apply when no file exists.
     {

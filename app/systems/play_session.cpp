@@ -11,6 +11,7 @@
 #include "../components/rhythm.h"
 #include "../components/music.h"
 #include "../components/high_score.h"
+#include "../components/rng.h"
 #include "beat_map_loader.h"
 #include "../components/input_events.h"
 #include "../constants.h"
@@ -32,6 +33,7 @@ void setup_play_session(entt::registry& reg) {
     }
 
     // Reset singletons
+    reg.ctx().insert_or_assign(RNGState{});
     reg.ctx().insert_or_assign(ScoreState{});
     reg.ctx().insert_or_assign(DifficultyConfig{
         .speed_multiplier     = 1.0f,
