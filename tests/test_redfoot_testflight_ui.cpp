@@ -235,7 +235,6 @@ namespace {
 void spawn_aligned_player(entt::registry& reg, float y) {
     auto p = reg.create();
     reg.emplace<PlayerTag>(p);
-    reg.emplace<Position>(p, constants::LANE_X[1], y);
     reg.emplace<WorldTransform>(p, WorldTransform{{constants::LANE_X[1], y}});
     PlayerShape ps; ps.current = Shape::Hexagon; ps.previous = Shape::Hexagon;
     reg.emplace<PlayerShape>(p, ps);

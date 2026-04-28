@@ -134,7 +134,6 @@ inline entt::registry make_rhythm_registry() {
 inline entt::entity make_player(entt::registry& reg) {
     auto player = reg.create();
     reg.emplace<PlayerTag>(player);
-    reg.emplace<Position>(player, constants::LANE_X[1], constants::PLAYER_Y);
     reg.emplace<WorldTransform>(player, WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y}});
     reg.emplace<PlayerShape>(player);
     reg.emplace<ShapeWindow>(player);

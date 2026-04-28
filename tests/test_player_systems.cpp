@@ -159,7 +159,6 @@ TEST_CASE("player_movement: lane transition moves position", "[player]") {
     player_movement_system(reg, 0.016f);
 
     CHECK(reg.get<WorldTransform>(p).position.x < initial_x);
-    CHECK(reg.get<Position>(p).x == reg.get<WorldTransform>(p).position.x);
 }
 
 TEST_CASE("player_movement: lane transition completes", "[player]") {
@@ -176,7 +175,6 @@ TEST_CASE("player_movement: lane transition completes", "[player]") {
     CHECK(reg.get<Lane>(p).current == 2);
     CHECK(reg.get<Lane>(p).target == -1);
     CHECK(reg.get<WorldTransform>(p).position.x == constants::LANE_X[2]);
-    CHECK(reg.get<Position>(p).x == constants::LANE_X[2]);
 }
 
 TEST_CASE("player_movement: jump creates negative y_offset", "[player]") {

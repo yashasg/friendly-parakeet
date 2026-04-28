@@ -200,7 +200,6 @@ TEST_CASE("collision: split path succeeds with correct shape and lane", "[collis
     ps.current = Shape::Triangle;
     auto& lane = reg.get<Lane>(p);
     lane.current = 2;
-    reg.get<Position>(p).x = constants::LANE_X[2];
     reg.get<WorldTransform>(p).position.x = constants::LANE_X[2];
 
     auto obs = make_split_path(reg, Shape::Triangle, 2, constants::PLAYER_Y);

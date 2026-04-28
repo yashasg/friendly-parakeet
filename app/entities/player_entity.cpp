@@ -13,7 +13,6 @@ entt::entity create_player_entity(entt::registry& reg) {
 
     auto player = reg.create();
     reg.emplace<PlayerTag>(player);
-    reg.emplace<Position>(player, constants::LANE_X[1], constants::PLAYER_Y);
     reg.emplace<WorldTransform>(player, WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y}});
     {
         PlayerShape ps;
