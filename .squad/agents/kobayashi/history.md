@@ -214,3 +214,36 @@ build-wasm   ─┘
 **Validation:** `git ls-tree -r --name-only HEAD | grep ':'` → empty after commit. Full C++ suite (2808 assertions / 840 tests) already passed before this fix; no rebuild required for a path-only rename.
 
 **Key lesson:** All squad log filenames using timestamps must replace `:` with `-` or `_` to stay Windows-safe. Any tooling that auto-generates log files should adopt the `-` convention permanently.
+
+---
+
+### 2026-04 — Dead ECS File / Build Cleanup
+
+**Scope:** Prove dead-file removals are real by fixing the build that previous agents left broken.
+
+**What was broken at start:**
+- `obstacle_archetypes.{h,cpp}` in both `app/archetypes/` and `app/systems/` were supposed to be deleted; `app/archetypes/` copies were deleted in working tree but not committed; `app/systems/` copies were already deleted.
+- `ring_zone.h` and `ring_zone_log_system.cpp` still alive despite Keaton's decision to delete them.
+- `obstacle_entity.cpp` (new entity factory) existed but `app/entities/` was NOT in CMakeLists GLOB so it never compiled — guaranteed link failure.
+- `obstacle_entity.cpp` still included `obstacle_data.h` which was deleted in working tree.
+- `session_logger.cpp` still included `ring_zone.h` and emplaced `RingZoneTracker`.
+- `test_obstacle_archetypes.cpp` included deleted `systems/obstacle_archetypes.h`.
+- `obstacle_spawn_system.cpp` and test files used positional `ObstacleSpawnParams` init without `beat_info` field → `-Wmissing-field-initializers` errors.
+
+**Fixes applied (commit 0d642e2):**
+1. Deleted `app/components/ring_zone.h`
+2. Deleted `app/systems/ring_zone_log_system.cpp`
+3. Removed `ring_zone_log_system` declaration from `all_systems.h` and call from `game_loop.cpp`
+4. Removed `ring_zone.h` include and `RingZoneTracker` emplace + `RING_APPEAR` log from `session_logger.cpp`
+5. Removed stale `obstacle_data.h` include from `obstacle_entity.cpp`
+6. Added `file(GLOB ENTITY_SOURCES app/entities/*.cpp)` to `CMakeLists.txt` and wired it into `shapeshifter_lib`
+7. Rewrote `test_obstacle_archetypes.cpp` to use `entities/obstacle_entity.h` + `spawn_obstacle` + `ObstacleSpawnParams` with C++20 designated initializers
+8. Fixed `test_obstacle_model_slice.cpp` 3-arg positional calls with designated initializers
+9. Fixed `obstacle_spawn_system.cpp` multi-line positional init with explicit `beat_info = {}`
+
+**Result:** Zero warnings. All 887 test cases pass (2983 assertions).
+
+**Key lessons:**
+- When a new `app/entities/` (or any new source dir) is created, it MUST be added to CMakeLists `file(GLOB ...)` and the `add_library` call. CMake GLOBs are dir-scoped; new dirs are invisible until explicitly added.
+- `-Wmissing-field-initializers` fires for ALL positional aggregate inits shorter than the struct's field count, even when omitted fields have default member initializers. Use C++20 designated initializers (`{.kind = ..., .x = ...}`) for structs with optional/defaulted trailing fields — they suppress the warning and document intent.
+- `app/components/` is exclusively for types emplaced on entities via `reg.emplace<T>()`. Context singletons live next to their wiring code (`obstacle_counter_system.h`). Non-component utility types live in `app/util/` or `app/systems/`.
