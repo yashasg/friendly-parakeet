@@ -4,12 +4,32 @@
 #include "../components/rendering.h"
 #include "../constants.h"
 #include <raymath.h>
+#include <stdexcept>
+
+namespace {
+struct ObstacleModelLifecycleState {
+    bool wired = false;
+};
+
+bool obstacle_model_lifecycle_wired(entt::registry& reg) {
+    auto* state = reg.ctx().find<ObstacleModelLifecycleState>();
+    return state && state->wired;
+}
+}
+
+static void append_child(entt::registry& reg, entt::entity parent, entt::entity child) {
+    auto& children = reg.get_or_emplace<ObstacleChildren>(parent);
+    if (children.count >= ObstacleChildren::MAX) {
+        throw std::logic_error("ObstacleChildren capacity exceeded");
+    }
+    children.children[children.count++] = child;
+}
 
 static entt::entity add_slab_child(entt::registry& reg, entt::entity parent,
                                    float x, float w, float d, float h, Color tint) {
     auto e = reg.create();
     reg.emplace<MeshChild>(e, MeshChild{parent, x, 0.0f, w, d, h, tint, MeshType::Slab, 0});
-    reg.get_or_emplace<ObstacleChildren>(parent).push(e);
+    append_child(reg, parent, e);
     return e;
 }
 
@@ -20,7 +40,7 @@ static entt::entity add_shape_child(entt::registry& reg, entt::entity parent,
     auto e = reg.create();
     reg.emplace<MeshChild>(e, MeshChild{parent, cx, z_offset, size, 0, 0, tint,
                                         MeshType::Shape, idx});
-    reg.get_or_emplace<ObstacleChildren>(parent).push(e);
+    append_child(reg, parent, e);
     return e;
 }
 
@@ -112,6 +132,9 @@ void build_obstacle_model(entt::registry& reg, entt::entity logical) {
 
     float height = 0.0f;
     if (!bar_height_for(obs->kind, height)) return;
+    if (!obstacle_model_lifecycle_wired(reg)) {
+        throw std::logic_error("build_obstacle_model requires wire_obstacle_model_lifecycle() first");
+    }
 
     // Manual model construction — never use LoadModelFromMesh (opaque + GPU-implicit).
     // raylib 5.5: GenMeshCube already returns an uploaded mesh; no UploadMesh needed.
@@ -154,6 +177,24 @@ void on_obstacle_model_destroy(entt::registry& reg, entt::entity entity) {
     }
     om->model = Model{};
     om->owned = false;
+}
+
+void wire_obstacle_model_lifecycle(entt::registry& reg) {
+    auto* state = reg.ctx().find<ObstacleModelLifecycleState>();
+    if (!state) {
+        state = &reg.ctx().emplace<ObstacleModelLifecycleState>();
+    }
+    if (state->wired) return;
+
+    reg.on_destroy<ObstacleModel>().connect<&on_obstacle_model_destroy>();
+    state->wired = true;
+}
+
+void unwire_obstacle_model_lifecycle(entt::registry& reg) {
+    reg.on_destroy<ObstacleModel>().disconnect<&on_obstacle_model_destroy>();
+    if (auto* state = reg.ctx().find<ObstacleModelLifecycleState>()) {
+        state->wired = false;
+    }
 }
 
 // on_destroy listener: destroy MeshChild entities owned by this parent.

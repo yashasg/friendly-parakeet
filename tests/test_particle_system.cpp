@@ -8,8 +8,7 @@ static entt::entity make_particle(entt::registry& reg, float size, float life_re
                                   float vx = 0.0f, float vy = 0.0f) {
     auto e = reg.create();
     reg.emplace<ParticleTag>(e);
-    reg.emplace<ParticleData>(e, size);
-    reg.emplace<Lifetime>(e, life_remaining, life_max);
+    reg.emplace<ParticleData>(e, size, life_remaining, life_max);
     reg.emplace<Velocity>(e, vx, vy);
     reg.emplace<Position>(e, 100.0f, 200.0f);
     return e;
@@ -41,12 +40,21 @@ TEST_CASE("particle: full lifetime means full size", "[particle]") {
 
 TEST_CASE("particle: size is immutable across ticks", "[particle]") {
     auto reg = make_registry();
-    auto e = make_particle(reg, 10.0f, 0.01f, 1.0f);
+    auto e = make_particle(reg, 10.0f, 0.5f, 1.0f);
 
     particle_system(reg, 0.016f);
 
     auto& pd = reg.get<ParticleData>(e);
     CHECK_THAT(pd.size, Catch::Matchers::WithinAbs(10.0f, 0.01f));
+}
+
+TEST_CASE("particle: expired particles are destroyed", "[particle]") {
+    auto reg = make_registry();
+    auto e = make_particle(reg, 10.0f, 0.01f, 1.0f);
+
+    particle_system(reg, 0.016f);
+
+    CHECK_FALSE(reg.valid(e));
 }
 
 TEST_CASE("particle: multiple particles retain original size", "[particle]") {

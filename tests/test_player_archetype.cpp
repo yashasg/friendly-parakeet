@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <stdexcept>
 #include "test_helpers.h"
 #include "archetypes/player_archetype.h"
 
@@ -70,4 +71,11 @@ TEST_CASE("player_archetype: Lane defaults to center (1), Grounded vertical", "[
 
     CHECK(reg.get<Lane>(p).current        == int8_t{1});
     CHECK(reg.get<VerticalState>(p).mode  == VMode::Grounded);
+}
+
+TEST_CASE("player_archetype: rejects duplicate canonical players", "[archetype][player]") {
+    auto reg = make_registry();
+    create_player_entity(reg);
+
+    CHECK_THROWS_AS(create_player_entity(reg), std::logic_error);
 }

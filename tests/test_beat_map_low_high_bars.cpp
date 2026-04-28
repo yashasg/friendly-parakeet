@@ -11,7 +11,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 #include "test_helpers.h"
-#include "systems/beat_map_loader.h"
+#include "util/beat_map_loader.h"
 #include "components/beat_map.h"
 #include "components/obstacle.h"
 

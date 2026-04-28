@@ -13,7 +13,7 @@
 // explicitly excluded from the shape-change check in validate_beat_map.
 
 #include <catch2/catch_test_macros.hpp>
-#include "systems/beat_map_loader.h"
+#include "util/beat_map_loader.h"
 
 #include <algorithm>
 #include <filesystem>

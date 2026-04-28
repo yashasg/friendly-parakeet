@@ -1,5 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include "test_helpers.h"
+#include "audio/audio_queue.h"
+#include "input/input_state.h"
+#include "input/phase_activation.h"
 
 // Verify component defaults and basic ECS operations
 
@@ -66,12 +69,6 @@ TEST_CASE("components: ScoreState defaults to zero", "[components]") {
     CHECK(s.chain_count == 0);
 }
 
-TEST_CASE("components: DifficultyConfig defaults", "[components]") {
-    DifficultyConfig dc{};
-    CHECK(dc.speed_multiplier == 1.0f);
-    CHECK(dc.elapsed == 0.0f);
-}
-
 TEST_CASE("components: GameState defaults to title", "[components]") {
     GameState gs{};
     CHECK(gs.phase == GamePhase::Title);
@@ -87,7 +84,6 @@ TEST_CASE("ecs: make_registry creates all singletons", "[ecs]") {
     // Gameplay state
     static_cast<void>(reg.ctx().get<GameState>());
     static_cast<void>(reg.ctx().get<ScoreState>());
-    static_cast<void>(reg.ctx().get<DifficultyConfig>());
     // Audio / haptics / settings
     static_cast<void>(reg.ctx().get<AudioQueue>());
     static_cast<void>(reg.ctx().get<HapticQueue>());
@@ -165,6 +161,38 @@ TEST_CASE("ecs: make_registry dispatcher ctx — second update is a no-op (no re
     CHECK(lane.target == 2);   // not replayed
 }
 
+TEST_CASE("ecs: wire_input_dispatcher is idempotent", "[ecs][dispatcher]") {
+    auto reg = make_rhythm_registry();
+    auto player = make_rhythm_player(reg);
+    auto btn = make_shape_button(reg, Shape::Triangle);
+    reg.get<Position>(btn) = {0.f, 0.f};
+    reg.get<HitCircle>(btn).radius = 50.f;
+
+    wire_input_dispatcher(reg);
+    press_button(reg, btn);
+    reg.ctx().get<entt::dispatcher>().update<ButtonPressEvent>();
+
+    CHECK(reg.get<ShapeWindow>(player).phase == WindowPhase::MorphIn);
+    CHECK(reg.ctx().get<AudioQueue>().count == 1);
+}
+
+struct ExternalGoListener {
+    int count = 0;
+    void on_go(const GoEvent&) { ++count; }
+};
+
+TEST_CASE("ecs: unwire_input_dispatcher preserves external listeners", "[ecs][dispatcher]") {
+    auto reg = make_registry();
+    auto& disp = reg.ctx().get<entt::dispatcher>();
+    ExternalGoListener listener;
+    disp.sink<GoEvent>().connect<&ExternalGoListener::on_go>(listener);
+
+    unwire_input_dispatcher(reg);
+    disp.trigger(GoEvent{Direction::Left});
+
+    CHECK(listener.count == 1);
+}
+
 TEST_CASE("ecs: make_player creates proper entity", "[ecs]") {
     auto reg = make_registry();
     auto p = make_player(reg);
@@ -184,12 +212,6 @@ TEST_CASE("components: Velocity default is zero", "[components]") {
     Velocity v{};
     CHECK(v.dx == 0.0f);
     CHECK(v.dy == 0.0f);
-}
-
-TEST_CASE("components: Lifetime defaults", "[components]") {
-    Lifetime lt{};
-    CHECK(lt.remaining == 0.0f);
-    CHECK(lt.max_time == 0.0f);
 }
 
 TEST_CASE("components: Color construction", "[components]") {

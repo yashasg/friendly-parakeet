@@ -48,24 +48,6 @@ struct TestPlayerAction {
 
     ActionDoneBit done_flags = ActionDoneBit{};
 
-    bool shape_done()    const { return !!(done_flags & ActionDoneBit::Shape); }
-    bool lane_done()     const { return !!(done_flags & ActionDoneBit::Lane); }
-    bool vertical_done() const { return !!(done_flags & ActionDoneBit::Vertical); }
-
-    void mark_shape_done()    { done_flags |= ActionDoneBit::Shape; }
-    void mark_lane_done()     { done_flags |= ActionDoneBit::Lane; }
-    void mark_vertical_done() { done_flags |= ActionDoneBit::Vertical; }
-
-    bool needs_shape()    const { return target_shape != Shape::Hexagon && !shape_done(); }
-    bool needs_lane()     const { return target_lane >= 0 && !lane_done(); }
-    bool needs_vertical() const { return target_vertical != VMode::Grounded && !vertical_done(); }
-
-    bool all_done() const {
-        bool s = (target_shape == Shape::Hexagon)       || shape_done();
-        bool l = (target_lane < 0)                      || lane_done();
-        bool v = (target_vertical == VMode::Grounded)   || vertical_done();
-        return s && l && v;
-    }
 };
 
 // ── Test player state (context singleton) ────────────────────
@@ -108,31 +90,4 @@ struct TestPlayerState {
     entt::entity     planned[MAX_PLANNED] = {};
     int              planned_count = 0;
 
-    const SkillConfig& config() const { return SKILL_TABLE[static_cast<int>(skill)]; }
-
-    bool is_planned(entt::entity e) const {
-        for (int i = 0; i < planned_count; ++i) {
-            if (planned[i] == e) return true;
-        }
-        return false;
-    }
-
-    void mark_planned(entt::entity e) {
-        if (planned_count < MAX_PLANNED) {
-            planned[planned_count++] = e;
-        }
-    }
-
-    void push_action(const TestPlayerAction& a) {
-        if (action_count < MAX_ACTIONS) {
-            actions[action_count++] = a;
-        }
-    }
-
-    void remove_action(int idx) {
-        if (idx >= 0 && idx < action_count) {
-            actions[idx] = actions[action_count - 1];
-            --action_count;
-        }
-    }
 };

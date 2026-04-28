@@ -1,7 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
-#include "systems/ui_source_resolver.h"
+#include "ui/ui_source_resolver.h"
 
 // ── game_state_system: SongComplete transitions ──────────────
 
@@ -46,7 +46,7 @@ TEST_CASE("game_state: song complete proceeds when scored obstacle is destroyed"
     song.finished = true;
     song.playing = false;
 
-    // Obstacle scored and destroyed (scoring_system + cleanup_system both ran) → SongComplete
+    // Obstacle scored and destroyed (scoring_system + obstacle_despawn_system both ran) → SongComplete
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
     reg.emplace<ScoredTag>(obs);
@@ -66,7 +66,7 @@ TEST_CASE("game_state: song complete waits for scored obstacle to be destroyed",
     song.finished = true;
     song.playing = false;
 
-    // Obstacle scored but still alive (cleanup_system has not yet destroyed it)
+    // Obstacle scored but still alive (obstacle_despawn_system has not yet destroyed it)
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
     reg.emplace<ScoredTag>(obs);

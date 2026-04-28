@@ -1,6 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
+#include "util/enum_names.h"
+#include "util/rhythm_math.h"
 
 // ── compute_timing_tier ──────────────────────────────────────
 

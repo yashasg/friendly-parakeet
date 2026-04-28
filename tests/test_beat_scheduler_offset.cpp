@@ -22,6 +22,7 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
 #include "components/rhythm.h"
+#include "util/rhythm_math.h"
 #include "components/beat_map.h"
 #include "systems/all_systems.h"
 #include "constants.h"

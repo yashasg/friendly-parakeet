@@ -6,7 +6,7 @@
 #include "components/scoring.h"
 #include "components/song_state.h"
 #include "util/settings.h"
-#include "systems/ui_source_resolver.h"
+#include "ui/ui_source_resolver.h"
 
 TEST_CASE("UI source resolver: resolves ScoreState integer sources", "[ui]") {
     entt::registry reg;

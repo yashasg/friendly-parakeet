@@ -1,7 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
-#include "systems/beat_map_loader.h"
+#include "util/rhythm_math.h"
+#include "util/beat_map_loader.h"
 
 using Catch::Matchers::WithinAbs;
 
@@ -685,23 +686,6 @@ TEST_CASE("scoring: timing_mult applied to scored obstacle", "[rhythm][scoring]"
     int gained = score.score - prev;
     int dt_bonus = static_cast<int>(0.016f * constants::PTS_PER_SECOND);
     CHECK(gained >= 300 + dt_bonus);
-}
-
-// Obstacle Spawn Bypass
-
-TEST_CASE("obstacle_spawn: bypassed when song playing", "[rhythm][spawn]") {
-    auto reg = make_rhythm_registry();
-    make_player(reg);
-    int initial = static_cast<int>(reg.view<ObstacleTag>().size());
-    for (int i = 0; i < 200; ++i) obstacle_spawn_system(reg, 0.016f);
-    CHECK(static_cast<int>(reg.view<ObstacleTag>().size()) == initial);
-}
-
-TEST_CASE("obstacle_spawn: works in legacy mode", "[rhythm][spawn]") {
-    auto reg = make_registry();
-    make_player(reg);
-    for (int i = 0; i < 200; ++i) obstacle_spawn_system(reg, 0.016f);
-    CHECK(reg.view<ObstacleTag>().size() > 0);
 }
 
 // Timing Helpers

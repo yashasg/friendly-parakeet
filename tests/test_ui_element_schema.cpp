@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <nlohmann/json.hpp>
-#include "systems/ui_loader.h"
+#include "ui/ui_loader.h"
 #include "components/ui_state.h"
 #include <entt/entt.hpp>
 #include <fstream>

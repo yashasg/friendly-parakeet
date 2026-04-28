@@ -14,7 +14,7 @@
 //
 //   Systems updated by Keaton (Slice 1 WIP):
 //     scroll_system:      model_beat_view <ObstacleTag, ObstacleScrollZ, BeatInfo>
-//     cleanup_system:     model_view      <ObstacleTag, ObstacleScrollZ>
+//     obstacle_despawn_system:     model_view      <ObstacleTag, ObstacleScrollZ>
 //     miss_detection:     model_view      <ObstacleTag, Obstacle, ObstacleScrollZ>
 //     scoring_system:     hit_view2       <ObstacleTag, ScoredTag, Obstacle, ObstacleScrollZ>
 //     collision_system:   view            <ObstacleTag, ObstacleScrollZ, Obstacle, RequiredVAction>
@@ -115,9 +115,9 @@ TEST_CASE("bridge: entity with ObstacleModel only (no ObstacleScrollZ, no Positi
     CHECK(reg.get<ObstacleModel>(obs).model.transform.m14 == 0.0f);
 }
 
-// ── A2. cleanup_system: ObstacleScrollZ path ─────────────────────────────────
+// ── A2. obstacle_despawn_system: ObstacleScrollZ path ─────────────────────────────────
 
-TEST_CASE("bridge: cleanup_system destroys ObstacleScrollZ entities past DESTROY_Y",
+TEST_CASE("bridge: obstacle_despawn_system destroys ObstacleScrollZ entities past DESTROY_Y",
           "[model_authority][cleanup]") {
     auto reg = make_registry();
 
@@ -136,7 +136,7 @@ TEST_CASE("bridge: cleanup_system destroys ObstacleScrollZ entities past DESTROY
     reg.emplace<ObstacleTag>(live_obs);
     reg.emplace<ObstacleScrollZ>(live_obs, ObstacleScrollZ{constants::PLAYER_Y});
 
-    cleanup_system(reg, 0.016f);
+    obstacle_despawn_system(reg, 0.016f);
 
     CHECK_FALSE(reg.valid(model_obs));  // bridge-state path: destroyed
     CHECK_FALSE(reg.valid(pos_obs));    // legacy path: destroyed (no regression)
@@ -147,7 +147,7 @@ TEST_CASE("bridge: entity with ObstacleModel only (no ObstacleScrollZ) is not de
           "[model_authority][cleanup]") {
     // Negative gap: invariant test. Any entity that has ObstacleModel but
     // NOT ObstacleScrollZ (and NOT Position) will never be destroyed by
-    // cleanup_system. Such entities should not exist in production — every
+    // obstacle_despawn_system. Such entities should not exist in production — every
     // Model-owned obstacle spawned by apply_obstacle_archetype must also get
     // ObstacleScrollZ at spawn time.
     auto reg = make_registry();
@@ -159,9 +159,9 @@ TEST_CASE("bridge: entity with ObstacleModel only (no ObstacleScrollZ) is not de
     auto& om = reg.get<ObstacleModel>(obs);
     om.model.transform.m14 = constants::DESTROY_Y + 100.0f;  // cleanup won't see this
 
-    cleanup_system(reg, 0.016f);
+    obstacle_despawn_system(reg, 0.016f);
 
-    // Not destroyed: cleanup_system does not read Model.transform directly.
+    // Not destroyed: obstacle_despawn_system does not read Model.transform directly.
     // This confirms that ObstacleScrollZ is REQUIRED alongside ObstacleModel.
     CHECK(reg.valid(obs));
 }

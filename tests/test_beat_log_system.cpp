@@ -1,7 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include "test_helpers.h"
-#include "systems/session_logger.h"
-#include "components/session_log.h"
+#include "util/session_logger.h"
 
 // Helper: inject an open in-memory SessionLog backed by the platform null device.
 // /dev/null on POSIX; NUL on Windows — no real I/O, buffer stays in-memory.

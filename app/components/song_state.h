@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cstddef>
-#include "../constants.h"
+#include <cstdint>
 
 // ── Song State (singleton, lives in registry context) ─
 // Emplaced once in game_loop.cpp; reset and populated by setup_play_session()
@@ -14,7 +14,7 @@ struct SongState {
     int   lead_beats      = 4;
     float duration_sec    = 180.0f;
 
-    // ── Derived fields (computed once by song_state_compute_derived) ────────
+    // ── Derived fields (computed once by util/rhythm_math.h) ────────────────
     // Recalculated from bpm/lead_beats at session init; read-only during play.
     float beat_period     = 0.5f;   // seconds per beat
     float lead_time       = 2.0f;   // total approach window in seconds
@@ -69,24 +69,3 @@ struct SongResults {
     int   max_chain     = 0;
     int   total_notes   = 0;
 };
-
-// ── Helper: compute derived SongState fields from BPM ─
-inline void song_state_compute_derived(SongState& s) {
-    s.beat_period     = 60.0f / s.bpm;
-    s.lead_time       = s.lead_beats * s.beat_period;
-
-    s.scroll_speed    = constants::APPROACH_DIST / s.lead_time;
-
-    constexpr float BASE_WINDOW_BEATS = 1.6f;
-    constexpr float MIN_WINDOW        = 0.36f;
-    constexpr float BASE_MORPH_BEATS  = 0.2f;
-    constexpr float MIN_MORPH         = 0.06f;
-
-    float bpm_scale = (s.bpm > 130.0f) ? (130.0f / s.bpm) : 1.0f;
-    s.window_duration = BASE_WINDOW_BEATS * s.beat_period * bpm_scale;
-    if (s.window_duration < MIN_WINDOW) s.window_duration = MIN_WINDOW;
-    s.half_window     = s.window_duration / 2.0f;
-
-    s.morph_duration  = BASE_MORPH_BEATS * s.beat_period;
-    if (s.morph_duration < MIN_MORPH) s.morph_duration = MIN_MORPH;
-}

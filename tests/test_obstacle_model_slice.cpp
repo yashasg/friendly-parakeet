@@ -60,6 +60,7 @@
 #include <entt/entt.hpp>
 
 #include "test_helpers.h"
+#include "util/enum_names.h"
 #include "entities/obstacle_entity.h"
 #include "components/obstacle.h"
 #include "components/transform.h"
@@ -227,7 +228,7 @@ TEST_CASE("Each render-pass tag creates a distinct EnTT component pool (Slice 0)
 // Verifies that build_obstacle_model() is safe to call from any context
 // (no InitWindow required) and confirms the IsWindowReady() guard is active.
 // Also validates the on_destroy listener for ObstacleModel is safe on unowned
-// instances — critical because cleanup_system will destroy obstacle entities
+// instances — critical because obstacle_despawn_system will destroy obstacle entities
 // including any future Model-carrying ones.
 // ════════════════════════════════════════════════════════════════════════════
 
@@ -272,7 +273,7 @@ TEST_CASE("on_obstacle_model_destroy: safe on unowned ObstacleModel (headless)",
 // SECTION C — ObstacleScrollZ scroll + cleanup behaviour (Slice 2)
 //
 // These tests validate that scroll_system writes ObstacleScrollZ.z correctly
-// and that cleanup_system destroys ObstacleScrollZ entities past DESTROY_Y.
+// and that obstacle_despawn_system destroys ObstacleScrollZ entities past DESTROY_Y.
 // All tests are headless-safe (no GPU context required).
 // ════════════════════════════════════════════════════════════════════════════
 
@@ -350,7 +351,7 @@ TEST_CASE("post-migration: scroll_system ObstacleScrollZ formula is deterministi
     CHECK(reg.get<ObstacleScrollZ>(e).z == expected);
 }
 
-TEST_CASE("post-migration: cleanup_system destroys ObstacleScrollZ entities past DESTROY_Y (Slice 2)",
+TEST_CASE("post-migration: obstacle_despawn_system destroys ObstacleScrollZ entities past DESTROY_Y (Slice 2)",
           "[post_migration][model_slice]") {
     auto reg = make_registry();
 
@@ -364,7 +365,7 @@ TEST_CASE("post-migration: cleanup_system destroys ObstacleScrollZ entities past
     reg.emplace<ObstacleScrollZ>(active, constants::PLAYER_Y - 200.0f);
     reg.emplace<Obstacle>(active, ObstacleKind::LowBar, static_cast<int16_t>(0));
 
-    cleanup_system(reg, 0.016f);
+    obstacle_despawn_system(reg, 0.016f);
 
     CHECK_FALSE(reg.valid(expired));
     CHECK(reg.valid(active));
@@ -378,7 +379,7 @@ TEST_CASE("post-migration: cleanup_system destroys ObstacleScrollZ entities past
 // These tests verify the five Kujan blockers / component-cleanup invariants.
 //   BF-1: LoadModelFromMesh must not appear; manual mesh arrays used.
 //   BF-2: Camera writes model.transform, not ModelTransform, for migrated entities.
-//   BF-3: Duplicate systems/obstacle_archetypes.* deleted; canonical path used.
+//   BF-3: Duplicate archetype helpers deleted; canonical app/archetypes/ path used.
 //   BF-4: ObstacleParts carries explicit geometry fields, not an empty tag.
 //   BF-5: ObstacleScrollZ and ObstacleModel meet structural/RAII contract.
 // ════════════════════════════════════════════════════════════════════════════

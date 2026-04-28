@@ -50,7 +50,7 @@ struct PressCounter {
 };
 
 // Test helper: demonstrates the pool-order latency hazard when enqueue() is
-// called inside a dispatcher listener.  Production gesture_routing_system also
+// called inside a dispatcher listener.  Production gesture routing also
 // uses enqueue(), but is invoked as a direct pre-tick function — not a
 // listener — so this hazard never arises in production.
 struct EnqueueRouter {
@@ -62,7 +62,7 @@ struct EnqueueRouter {
 };
 
 // Test helper: demonstrates trigger() synchronous delivery inside a listener.
-// Production gesture_routing_system uses enqueue(), not trigger(); zero-frame
+// Production gesture routing uses enqueue(), not trigger(); zero-frame
 // latency is achieved by calling it as a direct pre-tick function instead.
 struct TriggerRouter {
     entt::dispatcher* disp{nullptr};
@@ -192,8 +192,8 @@ TEST_CASE("dispatcher: GoEvent pool registered before InputEvent pool — enqueu
 // ── EnTT property: trigger() in listener delivers synchronously ──────────────
 //
 // This test documents trigger()'s synchronous semantics for completeness.
-// Production gesture_routing_system uses enqueue() (not trigger()); zero-frame
-// latency is achieved by calling gesture_routing_system directly as a pre-tick
+// Production gesture routing uses enqueue() (not trigger()); zero-frame
+// latency is achieved by delivering InputEvent routing before the fixed tick
 // function before the fixed-step loop, so its enqueued GoEvents are ready to
 // drain when game_state_system calls disp.update<GoEvent>() on the first tick.
 

@@ -5,6 +5,7 @@
 #include "../components/rendering.h"
 #include "../components/game_state.h"
 #include "../components/rhythm.h"
+#include "../util/rhythm_math.h"
 #include "../components/song_state.h"
 #include "../constants.h"
 #include <raylib.h>

@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
+#include "util/rhythm_math.h"
 
 // ── shape_window_system: full lifecycle ──────────────────────
 
@@ -256,4 +257,3 @@ TEST_CASE("shape_window regression #223: Ok scale (1.00) leaves window duration 
     shape_window_system(reg, 0.016f);
     CHECK(sw.phase == WindowPhase::MorphOut);
 }
-

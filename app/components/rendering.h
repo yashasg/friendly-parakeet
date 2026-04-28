@@ -63,9 +63,6 @@ struct ObstacleChildren {
     static constexpr int MAX = 8;
     entt::entity children[MAX];
     int count = 0;
-    void push(entt::entity e) {
-        if (count < MAX) children[count++] = e;
-    }
 };
 
 // ── Screen-space position ───────────────────────────────────────────────────

@@ -8,16 +8,13 @@
 #include "../components/obstacle.h"
 #include "../components/rhythm.h"
 #include "../components/scoring.h"
-#include "../components/session_log.h"
-#include "session_logger.h"
+#include "../util/enum_names.h"
+#include "../util/session_logger.h"
+#include "../util/test_player_helpers.h"
 #include "../constants.h"
 
 #include <raylib.h>
-#include <ctime>
-#include <cstdio>
-#include <cstring>
 #include <random>
-#include "../util/safe_localtime.h"
 
 // ── Helpers ──────────────────────────────────────────────────
 
@@ -210,7 +207,7 @@ void test_player_system(entt::registry& reg, float dt) {
         state->planned_count = 0;
     }
 
-    const auto& cfg = state->config();
+    const auto& cfg = test_player_config(*state);
 
     // ── Find player ──────────────────────────────────────────
     auto player_view = reg.view<PlayerTag, Position, PlayerShape, ShapeWindow, Lane, VerticalState>();
@@ -226,7 +223,7 @@ void test_player_system(entt::registry& reg, float dt) {
     int8_t effective_lane = p_lane.current;
     if (p_lane.target >= 0) effective_lane = p_lane.target;
     for (int i = 0; i < state->action_count; ++i) {
-        if (state->actions[i].target_lane >= 0 && !state->actions[i].lane_done()) {
+        if (state->actions[i].target_lane >= 0 && !test_player_lane_done(state->actions[i])) {
             effective_lane = state->actions[i].target_lane;
         }
     }
@@ -235,7 +232,7 @@ void test_player_system(entt::registry& reg, float dt) {
     for (auto [entity, obs_pos, obs] : obs_view.each()) {
         float dist = p_pos.y - obs_pos.y;
         if (dist <= 0.0f || dist > cfg.vision_range) continue;
-        if (state->is_planned(entity)) continue;
+        if (test_player_is_planned(*state, entity)) continue;
 
         TestPlayerAction action = determine_action(reg, entity, effective_lane, *song);
 
@@ -263,8 +260,8 @@ void test_player_system(entt::registry& reg, float dt) {
             action.timer = reaction;
         }
 
-        state->push_action(action);
-        state->mark_planned(entity);
+        test_player_push_action(*state, action);
+        test_player_mark_planned(*state, entity);
 
         if (log) {
             auto* beat_info = reg.try_get<BeatInfo>(entity);
@@ -292,15 +289,15 @@ void test_player_system(entt::registry& reg, float dt) {
     for (auto [entity, oz, obs] : model_obs_view.each()) {
         float dist = p_pos.y - oz.z;
         if (dist <= 0.0f || dist > cfg.vision_range) continue;
-        if (state->is_planned(entity)) continue;
+        if (test_player_is_planned(*state, entity)) continue;
 
         TestPlayerAction action = determine_action(reg, entity, effective_lane, *song);
 
         std::uniform_real_distribution<float> reaction_dist(cfg.reaction_min, cfg.reaction_max);
         action.timer = reaction_dist(state->rng);
 
-        state->push_action(action);
-        state->mark_planned(entity);
+        test_player_push_action(*state, action);
+        test_player_mark_planned(*state, entity);
 
         if (log) {
             auto* beat_info = reg.try_get<BeatInfo>(entity);
@@ -348,7 +345,7 @@ void test_player_system(entt::registry& reg, float dt) {
         auto& a = state->actions[i];
         // Shape press fired but obstacle hasn't been scored yet.
         // scoring_system removes Obstacle component after processing.
-        if (a.target_shape != Shape::Hexagon && a.shape_done()
+        if (a.target_shape != Shape::Hexagon && test_player_shape_done(a)
             && reg.valid(a.obstacle) && reg.all_of<Obstacle>(a.obstacle)
             && !reg.all_of<ScoredTag>(a.obstacle)) {
             pending_shape_obstacle = a.obstacle;
@@ -385,10 +382,10 @@ void test_player_system(entt::registry& reg, float dt) {
         }
 
         // Priority 1: Shape change
-        if (action.needs_shape()) {
+        if (test_player_needs_shape(action)) {
             disp.enqueue<ButtonPressEvent>({ButtonPressKind::Shape, action.target_shape,
                                            MenuActionKind::Confirm, 0});
-            action.mark_shape_done();
+            test_player_mark_shape_done(action);
             key_injected = true;
 
             if (log) {
@@ -436,7 +433,7 @@ void test_player_system(entt::registry& reg, float dt) {
         // obstacle? A human player would see "something is in the way" and
         // wait. Don't move for a far obstacle if it breaks a closer one.
         bool move_would_fail_closer = false;
-        if (action.needs_lane()) {
+        if (test_player_needs_lane(action)) {
             int8_t next_lane = p_lane.current;
             if (action.target_lane < next_lane) next_lane--;
             else if (action.target_lane > next_lane) next_lane++;
@@ -469,7 +466,7 @@ void test_player_system(entt::registry& reg, float dt) {
             }
         }
 
-        if (action.needs_lane() && p_lane.target < 0 && state->swipe_cooldown_timer <= 0.0f
+        if (test_player_needs_lane(action) && p_lane.target < 0 && state->swipe_cooldown_timer <= 0.0f
             && !zone_blocked && !blocked_by_shape && !move_would_fail_closer) {
             if (action.target_lane < p_lane.current) {
                 disp.enqueue<GoEvent>({Direction::Left});
@@ -490,7 +487,7 @@ void test_player_system(entt::registry& reg, float dt) {
             state->swipe_cooldown_timer = TestPlayerState::SWIPE_COOLDOWN;
             // Check if we've reached the target
             if (p_lane.current == action.target_lane) {
-                action.mark_lane_done();
+                test_player_mark_lane_done(action);
             }
             key_injected = true;
             continue;
@@ -522,7 +519,7 @@ void test_player_system(entt::registry& reg, float dt) {
                 }
             }
         }
-        if (action.needs_vertical() && p_vstate.mode == VMode::Grounded
+        if (test_player_needs_vertical(action) && p_vstate.mode == VMode::Grounded
             && !vert_zone_blocked && !vert_blocked_by_shape) {
             if (action.target_vertical == VMode::Jumping) {
                 disp.enqueue<GoEvent>({Direction::Up});
@@ -539,7 +536,7 @@ void test_player_system(entt::registry& reg, float dt) {
                         static_cast<unsigned>(entt::to_integral(action.obstacle)), act_beat);
                 }
             }
-            action.mark_vertical_done();
+            test_player_mark_vertical_done(action);
             key_injected = true;
             continue;
         }
@@ -548,48 +545,13 @@ void test_player_system(entt::registry& reg, float dt) {
     // ── CLEANUP completed actions ────────────────────────────
     for (int i = state->action_count - 1; i >= 0; --i) {
         auto& action = state->actions[i];
-        bool done = action.all_done();
+        bool done = test_player_action_done(action);
         // Entity no longer an active obstacle (scored + processed by scoring_system,
-        // or destroyed by cleanup_system)
+        // or destroyed by obstacle_despawn_system)
         bool expired = !reg.valid(action.obstacle) ||
                        !reg.all_of<Obstacle>(action.obstacle);
         if (done || expired) {
-            state->remove_action(i);
+            test_player_remove_action(*state, i);
         }
     }
-}
-
-void test_player_init(entt::registry& reg, TestPlayerSkill skill,
-                      const char* difficulty) {
-    auto& lss = reg.ctx().get<LevelSelectState>();
-    lss.selected_level = 1;
-    for (int d = 0; d < 3; ++d)
-        if (std::strcmp(LevelSelectState::DIFFICULTY_KEYS[d], difficulty) == 0)
-            { lss.selected_difficulty = d; break; }
-
-    auto& tp_state = reg.ctx().emplace<TestPlayerState>();
-    tp_state.skill  = skill;
-    tp_state.active = true;
-    tp_state.rng.seed(static_cast<unsigned>(std::time(nullptr)));
-
-    static const char* skill_names[] = { "pro", "good", "bad" };
-    TraceLog(LOG_INFO, "TEST PLAYER: skill=%s",
-             skill_names[static_cast<int>(skill)]);
-
-    auto& slog = reg.ctx().emplace<SessionLog>();
-    std::time_t now = std::time(nullptr);
-    std::tm tm{};
-    safe_localtime(&now, &tm);
-    char log_filename[256];
-    std::snprintf(log_filename, sizeof(log_filename),
-        "%ssession_%s_%04d%02d%02d_%02d%02d%02d.log",
-        GetApplicationDirectory(),
-        skill_names[static_cast<int>(skill)],
-        tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
-        tm.tm_hour, tm.tm_min, tm.tm_sec);
-    session_log_open(slog, log_filename);
-    TraceLog(LOG_INFO, "SESSION LOG: %s", log_filename);
-
-    reg.on_construct<ObstacleTag>().connect<&session_log_on_obstacle_spawn>();
-    reg.on_construct<ScoredTag>().connect<&session_log_on_scored>();
 }

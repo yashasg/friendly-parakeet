@@ -141,7 +141,7 @@ read infrequently or only by one system.
 
 /// Spatial position in logical pixels. 12 bytes.
 /// Iterated by: scroll_system, render_system, collision_system,
-///              burnout_system, spawn_system, cleanup_system
+///              burnout_system, obstacle_despawn_system
 struct Position {
     float x;
     float y;
@@ -257,15 +257,16 @@ struct RequiredVAction {
 };
 ```
 
-### 2.5 — HOT: Lifetime (iterated every frame for popups + particles)
+### 2.5 — HOT: Fixed-lifetime FX timers
 
 ```cpp
-// components/lifetime.h
+// components/particle.h
 
-/// Countdown timer — entity destroyed when remaining <= 0. 8 bytes.
-struct Lifetime {
-    float remaining;
-    float max_time;     // original duration, for lerping alpha etc.
+/// Particle-specific render and expiry data.
+struct ParticleData {
+    float size      = 4.0f;
+    float remaining = 0.0f;
+    float max_time  = 0.0f;
 };
 ```
 
@@ -385,20 +386,11 @@ struct GameState {
 };
 ```
 
-### 2.9 — COLD: Difficulty (singleton)
+### 2.9 — Legacy: Difficulty (removed)
 
 ```cpp
-// components/difficulty.h
-
-/// Singleton: dynamic difficulty parameters. Updated by difficulty_system.
-struct DifficultyConfig {
-    float  speed_multiplier;       // starts 1.0, ramps to 3.0
-    float  scroll_speed;           // BASE_SCROLL_SPEED × speed_multiplier
-    float  spawn_interval;         // seconds between obstacles (shrinks)
-    float  spawn_timer;            // countdown to next spawn
-    float  burnout_window_scale;   // 1.0 = normal, <1.0 = tighter zones
-    float  elapsed;                // total seconds of gameplay (for ramp calc)
-};
+// DifficultyConfig / difficulty_system were removed from the current song-mode
+// runtime. Authored beatmaps and SongState now provide timing and spawn cadence.
 ```
 
 ### 2.10 — COLD: Rendering Data
@@ -436,10 +428,11 @@ struct DrawLayer {
 ```cpp
 // components/particle.h
 
-/// Particle-specific data (Position, Velocity, Lifetime, Color are separate). 8 bytes.
+/// Particle-specific data (Position, Velocity, Color are separate). 12 bytes.
 struct ParticleData {
-    float  size;           // current radius in px
-    float  start_size;     // initial radius (for shrink-over-life)
+    float size;            // current radius in px
+    float remaining;       // seconds until destroy
+    float max_time;        // original duration, for alpha/size fades
 };
 
 /// Empty tag — marks particle entities. 0 bytes.
@@ -457,21 +450,19 @@ struct ParticleEmitter {
 ### 2.12 — COLD: Audio (singleton)
 
 ```cpp
-// components/audio.h
+// audio/audio_types.h
 
-/// Sound effect identifiers — map to loaded Mix_Chunk* in audio init.
+/// Sound effect identifiers — map to loaded Sound handles in audio init.
 enum class SFX : uint8_t {
-    ShapeShift     = 0,
-    BurnoutBank    = 1,
-    Crash          = 2,
-    UITap          = 3,
-    ChainBonus     = 4,
-    ZoneRisky      = 5,
-    ZoneDanger     = 6,
-    ZoneDead       = 7,
-    ScorePopup     = 8,
-    GameStart      = 9,
-    COUNT
+    ShapeShift = 0,
+    Crash,
+    UITap,
+    ChainBonus,
+    ZoneRisky,
+    ZoneDanger,
+    ZoneDead,
+    ScorePopup,
+    GameStart,
 };
 
 /// Singleton: ring buffer of SFX to play this frame. Systems push, audio_system pops.
@@ -495,9 +486,10 @@ struct AudioQueue {
 ```
 COMPONENT          BYTES   ACCESS     ITERATED BY
 ─────────────────────────────────────────────────────────────
-Position             8     HOT        scroll, render, collision, burnout, cleanup
+Position             8     HOT        scroll, render, collision, burnout, despawn
 Velocity             8     HOT        scroll
-Lifetime             8     HOT        lifetime, render (alpha fade)
+ParticleData        12     HOT        particle expiry/render fade
+ScorePopup          16     HOT        popup expiry/render fade
 PlayerTag            0     HOT        collision, burnout (filter)
 PlayerShape          4     HOT        collision, burnout, render, player_action
 Lane                 8     HOT        collision, render, player_action
@@ -519,7 +511,7 @@ ParticleEmitter     16     COLD       particle_spawn
 SINGLETONS (ctx)
 ─────────────────────────────────────────────────────────────
 InputState          36     per-frame  input_system (write), player_input (read)
-EventQueue          var    per-frame  input_system (write raw), hit_test_system (resolve), player_input (read), test_player_system (write)
+EventQueue          var    per-frame  input_system (write raw), input routing (resolve), player_input (read), test_player_system (write)
 ShapeButtonEvent     2     per-frame  input_system (write), player_action (read)
 GameState           12     per-frame  game_state_system
 DifficultyConfig    24     per-frame  difficulty_system (write), spawn_system (read)
@@ -547,7 +539,7 @@ the same frame (unidirectional data flow).
  │  │                           Populate InputState +        │
  │  │                           EventQueue (raw InputEvents).│
  │  │                                                        │
- │  │  2. hit_test_system       Resolve taps → ButtonPress-  │
+ │  │  2. input routing         Resolve taps → ButtonPress-  │
  │  │                           Event (via HitBox/HitCircle) │
  │  │                           and swipes → GoEvent.        │
  │  └────────────────────────────────────────────────────────┘
@@ -621,17 +613,15 @@ the same frame (unidirectional data flow).
  │
  │  ┌─ PHASE 5: CLEANUP & FX ──────────────────────────────┐
  │  │                                                        │
- │  │ 12. lifetime_system       Decrement Lifetime.remaining │
- │  │                           for popups + particles.      │
- │  │                           Destroy entity when ≤ 0.     │
+ │  │ 12. particle_system       Tick ParticleData.remaining. │
+ │  │                           Destroy expired particles.   │
+ │  │                           Apply gravity to survivors.  │
  │  │                                                        │
- │  │ 13. particle_system       Advance particle positions.  │
- │  │                           Apply gravity, shrink size.  │
- │  │                           Spawn new particles from     │
- │  │                           active ParticleEmitters.     │
+ │  │ 13. obstacle_despawn_     Destroy obstacles past the   │
+ │  │     system                camera Z / DESTROY_Y limit.  │
  │  │                                                        │
- │  │ 14. cleanup_system        Destroy obstacles with       │
- │  │                           Position.y > DESTROY_Y.      │
+ │  │ 14. popup_display_system  Tick ScorePopup.remaining.   │
+ │  │                           Fade and destroy popups.     │
  │  └────────────────────────────────────────────────────────┘
  │
  │  ┌─ PHASE 6: RENDER (always runs) ──────────────────────┐
@@ -654,31 +644,14 @@ the same frame (unidirectional data flow).
  ═══════════════════════════════════════════════════════════════
 ```
 
-### System → Component Access Matrix
+### System → Component Access Notes
 
-```
-                        Pos  Vel  PSh  Lan  VSt  Obs  RSh  BLn  RLn  RVA  Lft  Col  DSz  DLy  SPp  PDt
- input_system            ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·
- game_state_system       ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·
- player_input_system     ·    ·    W    W    W    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·
- player_movement_sys     W    ·    W    W    W    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·
- difficulty_system        ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·
- obstacle_spawn_sys      W    W    ·    ·    ·    W    W    W    W    W    ·    W    W    W    ·    ·
- scroll_system           W    R    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·
- burnout_system          R    ·    R    R    R    R    R    R    R    R    ·    ·    ·    ·    ·    ·
- collision_system        R    ·    R    R    R    R    R    R    R    R    ·    ·    ·    ·    ·    ·
- scoring_system          W    ·    ·    ·    ·    W    ·    ·    ·    ·    ·    ·    ·    ·    W    ·
- lifetime_system         ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    W    ·    ·    ·    ·    ·
- particle_system         W    R    ·    ·    ·    ·    ·    ·    ·    ·    W    ·    ·    ·    ·    W
- cleanup_system          R    ·    ·    ·    ·    R    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·
- render_system           R    ·    R    R    R    R    R    R    ·    ·    R    R    R    R    R    R
- audio_system            ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·    ·
-
- R = read, W = write, · = not accessed
- Pos=Position  Vel=Velocity  PSh=PlayerShape  Lan=Lane  VSt=VerticalState
- Obs=Obstacle  RSh=RequiredShape  BLn=BlockedLanes  RLn=RequiredLane  RVA=RequiredVAction
- Lft=Lifetime  Col=Color  DSz=DrawSize  DLy=DrawLayer  SPp=ScorePopup  PDt=ParticleData
-```
+`app/systems/all_systems.h` is the authoritative declaration list for runtime
+systems. Fixed-lifetime effects no longer use a shared generic timer component:
+`particle_system` owns `ParticleData::remaining`, and `popup_display_system`
+owns `ScorePopup::remaining`. Obstacle destruction is handled by
+`obstacle_despawn_system`, which reads `ObstacleScrollZ` for model-authority
+obstacles and `Position` for legacy position-authority obstacles.
 
 ---
 
@@ -939,8 +912,7 @@ Total: ~44 bytes per entity
 ┌─ Score Popup ─────────────────────────────────────────────┐
 │ Position           { x: 360.0, y: 900.0 }                │
 │ Velocity           { dx: 0.0, dy: -80.0 }  (floats up)   │
-│ Lifetime           { remaining: 1.2, max_time: 1.2 }      │
-│ ScorePopup         { value: 600, tier: 3, timing_tier: 255 }  │
+│ ScorePopup         { value: 600, tier: 3, remaining: 1.2 } │
 │ Color              { r: 255, g: 200, b: 50, a: 255 }     │
 │ DrawLayer          { layer: Effects }                      │
 └───────────────────────────────────────────────────────────┘
@@ -954,8 +926,7 @@ Total: ~33 bytes per entity (0–5 active)
 │ ParticleTag        (tag, 0 bytes)                         │
 │ Position           { x: 360.0, y: 920.0 }                │
 │ Velocity           { dx: rand, dy: rand }  (random burst) │
-│ Lifetime           { remaining: 0.6, max_time: 0.6 }      │
-│ ParticleData       { size: 4.0, start_size: 4.0 }         │
+│ ParticleData       { size: 4.0, remaining: 0.6, max_time: 0.6 } │
 │ Color              { r: 255, g: 100, b: 50, a: 255 }     │
 │ DrawLayer          { layer: Effects }                      │
 └───────────────────────────────────────────────────────────┘
@@ -1036,29 +1007,21 @@ int main(int argc, char* argv[]) {
             //  Phase 1: Input Classification
             // (gesture_system removed; input classified in input_system)
 
-            //  Phase 2: Game State Gate
             game_state_system(reg, FIXED_DT);
-
-            auto phase = reg.ctx().get<GameState>().phase;
-
-            if (phase == GamePhase::Playing) {
-                //  Phase 3: Player
-                player_input_system(reg, FIXED_DT);
-                player_movement_system(reg, FIXED_DT);
-
-                //  Phase 4: World
-                difficulty_system(reg, FIXED_DT);
-                obstacle_spawn_system(reg, FIXED_DT);
-                scroll_system(reg, FIXED_DT);
-                burnout_system(reg, FIXED_DT);
-                collision_system(reg, FIXED_DT);
-                scoring_system(reg, FIXED_DT);
-            }
-
-            //  Phase 5: Cleanup (runs in all phases to drain popups/particles)
-            lifetime_system(reg, FIXED_DT);
+            song_playback_system(reg, FIXED_DT);
+            beat_log_system(reg, FIXED_DT);
+            beat_scheduler_system(reg, FIXED_DT);
+            player_input_system(reg, FIXED_DT);
+            shape_window_system(reg, FIXED_DT);
+            player_movement_system(reg, FIXED_DT);
+            scroll_system(reg, FIXED_DT);
+            collision_system(reg, FIXED_DT);
+            miss_detection_system(reg, FIXED_DT);
+            scoring_system(reg, FIXED_DT);
+            energy_system(reg, FIXED_DT);
             particle_system(reg, FIXED_DT);
-            cleanup_system(reg, FIXED_DT);
+            obstacle_despawn_system(reg, FIXED_DT);
+            popup_display_system(reg, FIXED_DT);
 
             accumulator -= FIXED_DT;
         }
@@ -1086,18 +1049,21 @@ int main(int argc, char* argv[]) {
 ├────────────────────────────────┼──────────┼──────────┤
 │ raylib input polling            │ Variable │ OS events│
 │ game_state_system              │ Fixed    │ Logic    │
+│ song_playback_system           │ Fixed    │ Timing   │
+│ beat_log_system                │ Fixed    │ Telemetry│
+│ beat_scheduler_system          │ Fixed    │ Logic    │
 │ player_input_system            │ Fixed    │ Logic    │
+│ shape_window_system            │ Fixed    │ Timing   │
 │ player_movement_system         │ Fixed    │ Physics  │
-│ difficulty_system              │ Fixed    │ Logic    │
-│ obstacle_spawn_system          │ Fixed    │ Logic    │
 │ scroll_system                  │ Fixed    │ Physics  │
-│ burnout_system                 │ Fixed    │ Logic    │
 │ collision_system               │ Fixed    │ Physics  │
+│ miss_detection_system          │ Fixed    │ Logic    │
 │ scoring_system                 │ Fixed    │ Logic    │
-│ lifetime_system                │ Fixed    │ Timing   │
-│ particle_system                │ Fixed    │ Physics  │
-│ cleanup_system                 │ Fixed    │ Logic    │
-│ render_system                  │ Variable │ Display  │
+│ energy_system                  │ Fixed    │ Logic    │
+│ particle_system                │ Fixed    │ FX       │
+│ obstacle_despawn_system        │ Fixed    │ Cleanup  │
+│ popup_display_system           │ Fixed    │ FX       │
+│ render systems                 │ Variable │ Display  │
 │ audio_system                   │ Variable │ Playback │
 └────────────────────────────────┴──────────┴──────────┘
 ```
@@ -1394,7 +1360,8 @@ This entire game state fits in L1 cache (~32-64 KB).
   │
   │  ■ Position        (every system, every frame, R+W)
   │  ■ Velocity        (scroll + particle, every frame, R+W)
-  │  ■ Lifetime        (lifetime sys, every frame, R+W)
+  │  ■ ParticleData    (particle sys, every frame, R+W)
+  │  ■ ScorePopup      (popup sys, every frame, R+W)
   │
   │  □ PlayerShape     (burnout + collision + render, every frame, R)
   │  □ Lane            (burnout + collision + render, every frame, R)
@@ -1468,16 +1435,15 @@ void scroll_system(entt::registry& reg, float dt) {
 │ game_state            │ < 0.01 ms     │ Branch + singleton write  │
 │ player_action         │ < 0.01 ms     │ 1 entity                 │
 │ player_movement       │ < 0.01 ms     │ 1 entity                 │
-│ difficulty            │ < 0.01 ms     │ Singleton math            │
-│ obstacle_spawn        │ < 0.05 ms     │ 0-1 entity create/frame   │
+│ beat_scheduler        │ < 0.05 ms     │ 0-N song obstacles/tick    │
 │ scroll_system         │ < 0.05 ms     │ ~71 entities, 2 floats    │
-│ burnout_system        │ < 0.10 ms     │ ~15 obstacles × player    │
 │ collision_system      │ < 0.10 ms     │ ~15 obstacles × player    │
+│ miss_detection        │ < 0.05 ms     │ ~15 obstacles              │
 │ scoring_system        │ < 0.05 ms     │ 0-1 scores/frame          │
-│ lifetime_system       │ < 0.05 ms     │ ~55 entities              │
 │ particle_system       │ < 0.10 ms     │ ~50 particles             │
-│ cleanup_system        │ < 0.05 ms     │ scan + destroy            │
-│ render_system         │ < 1.50 ms     │ raylib draw calls (GPU)   │
+│ obstacle_despawn      │ < 0.05 ms     │ scan + destroy            │
+│ popup_display         │ < 0.05 ms     │ ~5 score popups           │
+│ render systems        │ < 1.50 ms     │ raylib draw calls (GPU)   │
 │ audio_system          │ < 0.05 ms     │ 0-3 PlaySound calls       │
 ├───────────────────────┼───────────────┼───────────────────────────┤
 │ TOTAL                 │ < 2.2 ms      │ Well within 16.67ms budget│
@@ -1608,9 +1574,9 @@ void render_system(entt::registry& reg, float alpha) {
     // ── Layer 2: Effects ──────────────────────────────
     // Particles
     {
-        auto view = reg.view<ParticleTag, Position, ParticleData, Color, Lifetime>();
-        for (auto [e, pos, pd, col, life] : view.each()) {
-            float t = life.remaining / life.max_time;
+        auto view = reg.view<ParticleTag, Position, ParticleData, Color>();
+        for (auto [e, pos, pd, col] : view.each()) {
+            float t = pd.remaining / pd.max_time;
             uint8_t a = static_cast<uint8_t>(col.a * t);
             float size = pd.size * t;
             draw_particle(pos.x, pos.y, size, {col.r, col.g, col.b, a});
@@ -1619,9 +1585,9 @@ void render_system(entt::registry& reg, float alpha) {
 
     // Score popups
     {
-        auto view = reg.view<ScorePopup, Position, Lifetime>();
-        for (auto [e, popup, pos, life] : view.each()) {
-            float t = life.remaining / life.max_time;
+        auto view = reg.view<ScorePopup, Position>();
+        for (auto [e, popup, pos] : view.each()) {
+            float t = popup.remaining / popup.max_time;
             draw_score_popup(pos.x, pos.y, popup.value, popup.tier, t);
         }
     }
@@ -1660,42 +1626,45 @@ app/
 ├── components/                  ← all component structs
 │   ├── transform.h              ← Position, Velocity
 │   ├── player.h                 ← PlayerTag, PlayerShape, Lane, VerticalState
-│   ├── obstacle.h               ← ObstacleTag, Obstacle, ObstacleKind
-│   ├── obstacle_data.h          ← RequiredShape, BlockedLanes, RequiredLane, RequiredVAction
+│   ├── obstacle.h               ← obstacle tags/data and requirements
 │   ├── scoring.h                ← ScoreState, ScorePopup
-│   ├── burnout.h                ← BurnoutState, BurnoutZone
-│   ├── input.h                  ← InputState, GestureResult, ShapeButtonEvent
-│   ├── game_state.h             ← GameState, GamePhase
-│   ├── difficulty.h             ← DifficultyConfig
-│   ├── rendering.h              ← Color, DrawSize, DrawLayer, Layer
-│   ├── particle.h               ← ParticleData, ParticleTag, ParticleEmitter
-│   ├── lifetime.h               ← Lifetime
-│   └── audio.h                  ← SFX, AudioQueue
+│   ├── input.h                  ← InputState, Direction
+│   ├── input_events.h           ← InputEvent, ButtonPressEvent, UI button data
+│   ├── game_state.h             ← GameState, GamePhase, LevelSelectState
+│   ├── rendering.h              ← DrawSize, DrawLayer, screen/model transforms
+│   ├── particle.h               ← ParticleData, ParticleTag
+│   ├── rhythm.h                 ← BeatInfo, TimingGrade, TimingTier
+│   └── song_state.h             ← SongState
 │
 ├── systems/                     ← all system free functions
 │   ├── all_systems.h            ← convenience #include for all systems
-│   ├── input_system.cpp         ← raylib input → InputState + EventQueue (raw InputEvents)
-│   ├── hit_test_system.cpp     ← resolves taps → ButtonPressEvent, swipes → GoEvent
+│   ├── input_system.cpp         ← raylib polling → InputEvent
 │   ├── game_state_system.cpp    ← phase transitions
+│   ├── song_playback_system.cpp ← music stream timing
+│   ├── beat_log_system.cpp      ← session beat telemetry
 │   ├── player_input_system.cpp  ← EventQueue (ButtonPressEvent + GoEvent) → player component writes
 │   ├── test_player_system.cpp   ← automated test player (writes EventQueue)
 │   ├── player_movement_system.cpp ← lane lerp, jump parabola, morph advance
-│   ├── difficulty_system.cpp    ← ramp speed, spawn interval, burnout window
-│   ├── obstacle_spawn_system.cpp ← create obstacle entities
+│   ├── beat_scheduler_system.cpp ← song-authored obstacle entities
 │   ├── scroll_system.cpp        ← pos += vel × dt
-│   ├── burnout_system.cpp       ← nearest threat → meter + zone
 │   ├── collision_system.cpp     ← obstacle vs player match test
+│   ├── miss_detection_system.cpp ← missed obstacles → miss events
 │   ├── scoring_system.cpp       ← bank points, chain, spawn popup
-│   ├── lifetime_system.cpp      ← countdown, destroy
-│   ├── particle_system.cpp      ← advance, spawn, cull
-│   ├── cleanup_system.cpp       ← off-screen entity removal
-│   ├── render_system.cpp        ← raylib draw calls
+│   ├── particle_system.cpp      ← tick, gravity, cull particles
+│   ├── obstacle_despawn_system.cpp ← off-camera obstacle removal
+│   ├── popup_display_system.cpp ← tick, fade, cull popups
+│   ├── game_render_system.cpp   ← world raylib draw calls
+│   ├── ui_render_system.cpp     ← UI raylib draw calls
 │   └── audio_system.cpp         ← AudioQueue → PlaySound
 │
-└── util/
-    ├── math_util.h              ← remap(), lerp(), clamp()
-    ├── random.h                 ← seeded RNG (xoshiro256**)
-    └── persistence.h            ← load/save high score (platform-specific)
+├── input/                       ← input routing/listeners and hit-test helpers
+├── ui/                          ← UI layout loading, button spawning, controllers
+├── audio/                       ← audio data and SFX bank helpers
+├── session/                     ← play/test-player session setup
+├── entities/                    ← named entity factories and entity resources
+├── archetypes/                  ← reusable component compositions
+├── rendering/                   ← render/camera resource context types
+└── util/                        ← persistence, beatmap loading, session logging
 ```
 
 ---
@@ -1760,22 +1729,17 @@ entt::entity spawn_shape_gate(entt::registry& reg, Shape required,
 ### A.5 Entity Destruction
 
 ```cpp
-// cleanup_system: destroy off-screen obstacles
-auto view = reg.view<ObstacleTag, Position>();
-for (auto [entity, pos] : view.each()) {
-    if (pos.y > constants::DESTROY_Y) {
+// obstacle_despawn_system: destroy obstacles past the camera boundary
+auto model_view = reg.view<ObstacleTag, ObstacleScrollZ>();
+for (auto [entity, scroll] : model_view.each()) {
+    if (scroll.z > camera_despawn_z) {
         reg.destroy(entity);   // safe during iteration in EnTT v3
     }
 }
 
-// lifetime_system: destroy expired popups/particles
-auto view = reg.view<Lifetime>();
-for (auto [entity, life] : view.each()) {
-    life.remaining -= dt;
-    if (life.remaining <= 0.0f) {
-        reg.destroy(entity);
-    }
-}
+// Fixed-lifetime effects own their timers in domain components.
+// particle_system ticks ParticleData::remaining.
+// popup_display_system ticks ScorePopup::remaining.
 ```
 
 ---

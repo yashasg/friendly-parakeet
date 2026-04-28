@@ -13,7 +13,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <nlohmann/json.hpp>
 #include <entt/entt.hpp>
-#include "systems/ui_loader.h"
+#include "ui/ui_loader.h"
 #include "components/ui_element.h"
 #include "components/transform.h"
 

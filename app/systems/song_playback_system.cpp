@@ -1,7 +1,7 @@
 #include "all_systems.h"
 #include "../components/game_state.h"
 #include "../components/rhythm.h"
-#include "music_context.h"
+#include "../audio/music_context.h"
 #include <raylib.h>
 
 void song_playback_system(entt::registry& reg, float dt) {

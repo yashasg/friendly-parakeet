@@ -1,6 +1,5 @@
 #pragma once
 
-#include <entt/entt.hpp>
 #include "input.h"       // Direction
 #include "game_state.h"  // GamePhase
 #include "player.h"      // Shape
@@ -42,7 +41,7 @@ struct MenuAction {
     uint8_t        index = 0;   // for SelectLevel / SelectDiff
 };
 
-// ── Semantic Events (produced by hit_test_system or keyboard) ────────
+// ── Semantic Events (produced by hit-test helpers or keyboard) ────────
 //
 // ButtonPressEvent carries semantic value data encoded at hit-test time (#273).
 // Consumers act on kind/shape/menu_action — never on a live entity handle,
@@ -81,8 +80,8 @@ struct ActiveInPhase {
 };
 
 // Zero-size structural tag. Present iff the entity's ActiveInPhase mask covers
-// the current GamePhase. Maintained by ensure_active_tags_synced(); consumers
-// (hit_test_system) iterate view<..., ActiveTag>() without any runtime
+// the current GamePhase. Maintained by input routing helpers; consumers
+// (hit-test helpers) iterate view<..., ActiveTag>() without any runtime
 // predicate, so the per-event hot path is O(active buttons) instead of
 // O(all buttons with ActiveInPhase).
 struct ActiveTag {};
@@ -93,20 +92,3 @@ struct UIActiveCache {
     GamePhase phase = GamePhase::Title;
     bool      valid = false;
 };
-
-// Helper: check if a GamePhase is active in the typed mask
-inline bool phase_active(const ActiveInPhase& aip, GamePhase phase) {
-    return !!(aip.phase_mask & to_phase_bit(phase));
-}
-
-// Force the next ensure_active_tags_synced() call to do a full resync.
-// Call after spawning/destroying buttons or mutating GameState.phase outside
-// the normal phase-transition seam.
-// Implemented in app/systems/active_tag_system.cpp.
-void invalidate_active_tag_cache(entt::registry& reg);
-
-// Sync ActiveTag presence against ActiveInPhase masks for the current
-// GameState.phase. No-op when the phase has not changed since the last sync,
-// so the per-frame cost in steady state is O(1).
-// Implemented in app/systems/active_tag_system.cpp.
-void ensure_active_tags_synced(entt::registry& reg);

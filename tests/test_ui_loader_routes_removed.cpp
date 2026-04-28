@@ -5,7 +5,7 @@
 // doesn't silently re-introduce an unread per-startup JSON parse.
 
 #include "components/ui_state.h"
-#include "systems/ui_loader.h"
+#include "ui/ui_loader.h"
 #include <catch2/catch_test_macros.hpp>
 
 TEST_CASE("UIState has no routes member (issue #266)", "[ui][loader][issue266]") {

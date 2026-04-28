@@ -2,6 +2,8 @@
 
 #include <vector>
 
+#include "audio/audio_queue.h"
+#include "audio/sfx_bank.h"
 #include "test_helpers.h"
 
 // ── SFX contiguity guard ─────────────────────────────────────────────────────

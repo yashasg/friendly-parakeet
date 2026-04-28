@@ -28,7 +28,7 @@
 #include "components/transform.h"
 #include "constants.h"
 #include "systems/all_systems.h"
-#include "systems/ui_source_resolver.h"
+#include "ui/ui_source_resolver.h"
 
 using json = nlohmann::json;
 

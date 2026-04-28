@@ -22,14 +22,10 @@ struct InputState {
 
     InputSource active_source = InputSource::None;
     bool was_focused = true;
+    bool gestures_configured = false;
 };
 
-inline void clear_input_events(InputState& input) {
-    input.touch_down = false;
-    input.touch_up   = false;
-}
-
 // ── Directions ──────────────────────────────────────────────────────────────
-// Shared by EventQueue, hit_test_system, and all consumer systems.
+// Shared by InputEvent routing, hit-test helpers, and consumer systems.
 
 enum class Direction : uint8_t { Left, Right, Up, Down };

@@ -16,7 +16,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <entt/entt.hpp>
 #include "test_helpers.h"
-#include "systems/obstacle_counter_system.h"
+#include "util/obstacle_counter.h"
 
 // ── 1. on_construct fires and increments counter ─────────────────────────────
 

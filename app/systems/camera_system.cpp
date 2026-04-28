@@ -6,9 +6,7 @@
 #include "../components/player.h"
 #include "../components/obstacle.h"
 #include "../components/particle.h"
-#include "../components/lifetime.h"
 #include "../components/scoring.h"
-#include "../components/camera.h"
 #include "../components/song_state.h"
 #include "../constants.h"
 #include "../platform_display.h"
@@ -136,22 +134,11 @@ ShapeMeshes& ShapeMeshes::operator=(ShapeMeshes&& o) noexcept {
 }
 
 void init(entt::registry& reg) {
-    // 3D gameplay camera
-    Camera3D cam3d = {};
-    cam3d.position   = {360.0f, 700.0f, 1900.0f};
-    cam3d.target     = {360.0f, 0.0f,   500.0f};
-    cam3d.up         = {0.0f, 1.0f, 0.0f};
-    cam3d.fovy       = 45.0f;
-    cam3d.projection = CAMERA_PERSPECTIVE;
-    reg.ctx().emplace<GameCamera>(GameCamera{cam3d});
+    // 3D gameplay camera entity
+    spawn_game_camera(reg);
 
-    // 2D UI camera (identity — screen-space, no transform)
-    Camera2D cam2d = {};
-    cam2d.offset   = {0, 0};
-    cam2d.target   = {0, 0};
-    cam2d.rotation = 0.0f;
-    cam2d.zoom     = 1.0f;
-    reg.ctx().emplace<UICamera>(UICamera{cam2d});
+    // 2D UI camera entity (identity — screen-space, no transform)
+    spawn_ui_camera(reg);
 
     // Render targets
     RenderTexture2D world = LoadRenderTexture(
@@ -172,8 +159,12 @@ void shutdown(entt::registry& reg) {
     // Belt-and-suspenders: release early before CloseWindow().
     // The RAII destructors on the ctx objects will no-op because
     // release() clears the owned flag.
-    reg.ctx().get<ShapeMeshes>().release();
-    reg.ctx().get<RenderTargets>().release();
+    if (auto* meshes = reg.ctx().find<ShapeMeshes>()) {
+        meshes->release();
+    }
+    if (auto* targets = reg.ctx().find<RenderTargets>()) {
+        targets->release();
+    }
 }
 
 } // namespace camera
@@ -305,9 +296,9 @@ void game_camera_system(entt::registry& reg, float /*dt*/) {
 
     // 4. Particle transforms
     {
-        auto view = reg.view<ParticleTag, Position, ParticleData, Color, Lifetime>();
-        for (auto [entity, pos, pdata, col, life] : view.each()) {
-            float ratio = (life.max_time > 0.0f) ? (life.remaining / life.max_time) : 1.0f;
+        auto view = reg.view<ParticleTag, Position, ParticleData, Color>();
+        for (auto [entity, pos, pdata, col] : view.each()) {
+            float ratio = (pdata.max_time > 0.0f) ? (pdata.remaining / pdata.max_time) : 1.0f;
             float sz = pdata.size * ratio;
             float half = sz / 2.0f;
             Matrix mat = MatrixMultiply(
@@ -364,7 +355,7 @@ void ui_camera_system(entt::registry& reg, float /*dt*/) {
 
     // Popup screen-space projection
     {
-        auto& cam = reg.ctx().get<GameCamera>().cam;
+        auto& cam = game_camera(reg).cam;
         auto view = reg.view<ScorePopup, Position>();
         for (auto [entity, popup, pos] : view.each()) {
             Vector3 world_pos = {pos.x, 5.0f, pos.y};

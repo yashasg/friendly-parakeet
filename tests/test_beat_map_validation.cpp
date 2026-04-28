@@ -1,7 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
-#include "systems/beat_map_loader.h"
+#include "util/beat_map_loader.h"
+#include "util/rhythm_math.h"
 
 // ── validate_beat_map: BPM rules ─────────────────────────────
 
@@ -548,4 +549,3 @@ TEST_CASE("validate_beat_map explicit constants: custom shape gap is respected",
     REQUIRE_FALSE(errors.empty());
     CHECK(errors[0].message.find("beats apart") != std::string::npos);
 }
-

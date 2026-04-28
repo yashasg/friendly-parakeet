@@ -1,6 +1,5 @@
 #include "all_systems.h"
 #include "../util/shape_vertices.h"
-#include "../components/camera.h"
 #include "../components/rendering.h"
 #include "../components/game_state.h"
 #include "../constants.h"
@@ -168,7 +167,7 @@ static void draw_owned_models(const entt::registry& reg) {
 
 void game_render_system(const entt::registry& reg, float /*alpha*/) {
     auto& gs = reg.ctx().get<GameState>();
-    auto& camera = reg.ctx().get<GameCamera>().cam;
+    auto& camera = game_camera(reg).cam;
 
     ClearBackground({15, 15, 25, 255});
 

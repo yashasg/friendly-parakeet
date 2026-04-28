@@ -4,23 +4,23 @@
 #include "components/transform.h"
 #include "components/player.h"
 #include "components/obstacle.h"
-#include "systems/obstacle_counter_system.h"
+#include "util/obstacle_counter.h"
 #include "components/input.h"
 #include "components/input_events.h"
 #include "components/game_state.h"
 #include "components/scoring.h"
-#include "components/difficulty.h"
 #include "components/rendering.h"
-#include "components/lifetime.h"
 #include "components/particle.h"
-#include "systems/audio_types.h"
+#include "audio/audio_types.h"
 #include "components/haptics.h"
 #include "util/settings.h"
 #include "components/rhythm.h"
+#include "util/rhythm_math.h"
 #include "components/high_score.h"
 #include "components/rng.h"
 #include "constants.h"
 #include "systems/all_systems.h"
+#include "input/input_routing.h"
 
 // Sets up a registry with all singletons in their default state
 inline entt::registry make_registry() {
@@ -36,7 +36,6 @@ inline entt::registry make_registry() {
         GamePhase::Playing, GamePhase::Playing, 0.0f, false, GamePhase::Playing, 0.0f
     });
     reg.ctx().emplace<ScoreState>();
-    reg.ctx().emplace<DifficultyConfig>();
     reg.ctx().emplace<AudioQueue>();
     reg.ctx().emplace<HapticQueue>();
     reg.ctx().emplace<SettingsState>();  // defaults: haptics_enabled=true
@@ -160,11 +159,11 @@ inline entt::entity make_rhythm_player(entt::registry& reg) {
 
 // Creates a shape gate obstacle at given y, requiring given shape
 inline entt::entity make_shape_gate(entt::registry& reg, Shape shape, float y) {
-    auto& config = reg.ctx().get<DifficultyConfig>();
+    const auto& song = reg.ctx().get<SongState>();
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
     reg.emplace<Position>(obs, constants::LANE_X[1], y);
-    reg.emplace<Velocity>(obs, 0.0f, config.scroll_speed);
+    reg.emplace<Velocity>(obs, 0.0f, song.scroll_speed);
     reg.emplace<Obstacle>(obs, ObstacleKind::ShapeGate, int16_t{constants::PTS_SHAPE_GATE});
     reg.emplace<RequiredShape>(obs, shape);
     reg.emplace<DrawSize>(obs, float(constants::SCREEN_W), 80.0f);
@@ -175,11 +174,11 @@ inline entt::entity make_shape_gate(entt::registry& reg, Shape shape, float y) {
 
 // Creates a lane block obstacle blocking specified lanes (bitmask)
 inline entt::entity make_lane_block(entt::registry& reg, uint8_t mask, float y) {
-    auto& config = reg.ctx().get<DifficultyConfig>();
+    const auto& song = reg.ctx().get<SongState>();
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
     reg.emplace<Position>(obs, constants::LANE_X[1], y);
-    reg.emplace<Velocity>(obs, 0.0f, config.scroll_speed);
+    reg.emplace<Velocity>(obs, 0.0f, song.scroll_speed);
     reg.emplace<Obstacle>(obs, ObstacleKind::LaneBlock, int16_t{constants::PTS_LANE_BLOCK});
     reg.emplace<BlockedLanes>(obs, mask);
     reg.emplace<DrawSize>(obs, float(constants::SCREEN_W / 3), 80.0f);
@@ -190,11 +189,11 @@ inline entt::entity make_lane_block(entt::registry& reg, uint8_t mask, float y) 
 
 // Creates a low bar (must jump) or high bar (must slide) obstacle
 inline entt::entity make_vertical_bar(entt::registry& reg, ObstacleKind kind, float y) {
-    auto& config = reg.ctx().get<DifficultyConfig>();
+    const auto& song = reg.ctx().get<SongState>();
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
     reg.emplace<ObstacleScrollZ>(obs, y);
-    reg.emplace<Velocity>(obs, 0.0f, config.scroll_speed);
+    reg.emplace<Velocity>(obs, 0.0f, song.scroll_speed);
     int16_t pts = (kind == ObstacleKind::LowBar) ? constants::PTS_LOW_BAR : constants::PTS_HIGH_BAR;
     reg.emplace<Obstacle>(obs, kind, pts);
     VMode action = (kind == ObstacleKind::LowBar) ? VMode::Jumping : VMode::Sliding;
@@ -207,11 +206,11 @@ inline entt::entity make_vertical_bar(entt::registry& reg, ObstacleKind kind, fl
 
 // Creates a combo gate requiring shape AND lane not blocked
 inline entt::entity make_combo_gate(entt::registry& reg, Shape shape, uint8_t blocked_mask, float y) {
-    auto& config = reg.ctx().get<DifficultyConfig>();
+    const auto& song = reg.ctx().get<SongState>();
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
     reg.emplace<Position>(obs, constants::LANE_X[1], y);
-    reg.emplace<Velocity>(obs, 0.0f, config.scroll_speed);
+    reg.emplace<Velocity>(obs, 0.0f, song.scroll_speed);
     reg.emplace<Obstacle>(obs, ObstacleKind::ComboGate, int16_t{constants::PTS_COMBO_GATE});
     reg.emplace<RequiredShape>(obs, shape);
     reg.emplace<BlockedLanes>(obs, blocked_mask);
@@ -223,11 +222,11 @@ inline entt::entity make_combo_gate(entt::registry& reg, Shape shape, uint8_t bl
 
 // Creates a split path requiring shape AND specific lane
 inline entt::entity make_split_path(entt::registry& reg, Shape shape, int8_t lane, float y) {
-    auto& config = reg.ctx().get<DifficultyConfig>();
+    const auto& song = reg.ctx().get<SongState>();
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
     reg.emplace<Position>(obs, constants::LANE_X[1], y);
-    reg.emplace<Velocity>(obs, 0.0f, config.scroll_speed);
+    reg.emplace<Velocity>(obs, 0.0f, song.scroll_speed);
     reg.emplace<Obstacle>(obs, ObstacleKind::SplitPath, int16_t{constants::PTS_SPLIT_PATH});
     reg.emplace<RequiredShape>(obs, shape);
     reg.emplace<RequiredLane>(obs, lane);
@@ -239,11 +238,11 @@ inline entt::entity make_split_path(entt::registry& reg, Shape shape, int8_t lan
 
 // Creates a LanePushLeft or LanePushRight obstacle (no data components)
 inline entt::entity make_lane_push(entt::registry& reg, ObstacleKind kind, float y) {
-    auto& config = reg.ctx().get<DifficultyConfig>();
+    const auto& song = reg.ctx().get<SongState>();
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
     reg.emplace<Position>(obs, constants::LANE_X[1], y);
-    reg.emplace<Velocity>(obs, 0.0f, config.scroll_speed);
+    reg.emplace<Velocity>(obs, 0.0f, song.scroll_speed);
     reg.emplace<Obstacle>(obs, kind, int16_t{0});
     reg.emplace<DrawSize>(obs, float(constants::SCREEN_W / 3), 80.0f);
     reg.emplace<DrawLayer>(obs, Layer::Game);

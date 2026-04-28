@@ -5,24 +5,24 @@
 #include "components/input_events.h"
 #include "components/game_state.h"
 #include "components/scoring.h"
-#include "components/difficulty.h"
-#include "systems/audio_types.h"
+#include "audio/audio_types.h"
+#include "audio/sfx_bank.h"
 #include "components/haptics.h"
 #include "util/settings.h"
 #include "components/rhythm.h"
-#include "systems/music_context.h"
-#include "components/session_log.h"
+#include "audio/music_context.h"
 #include "components/rendering.h"
-#include "components/camera.h"
 #include "components/test_player.h"
 #include "components/obstacle.h"
 #include "components/rng.h"
 #include "systems/all_systems.h"
-#include "systems/text_renderer.h"
-#include "systems/session_logger.h"
+#include "session/test_player_session.h"
+#include "input/input_routing.h"
+#include "ui/text_renderer.h"
+#include "util/session_logger.h"
 #include "systems/camera_system.h"
-#include "systems/ui_loader.h"
-#include "systems/ui_button_spawner.h"
+#include "ui/ui_loader.h"
+#include "ui/ui_button_spawner.h"
 #include "gameobjects/shape_obstacle.h"
 #include "platform_display.h"
 #include "util/settings_persistence.h"
@@ -78,7 +78,6 @@ void game_loop_init(entt::registry& reg,
         .next_phase = GamePhase::Title, .transition_alpha = 0.0f
     });
     reg.ctx().emplace<ScoreState>();
-    reg.ctx().emplace<DifficultyConfig>();
     reg.ctx().emplace<AudioQueue>();
     reg.ctx().emplace<HapticQueue>();
     reg.ctx().emplace<LevelSelectState>();
@@ -113,6 +112,7 @@ void game_loop_init(entt::registry& reg,
     // it's still readable when on_obstacle_destroy fires for ObstacleTag.
     reg.storage<ObstacleChildren>();
     reg.on_destroy<ObstacleTag>().connect<&on_obstacle_destroy>();
+    wire_obstacle_model_lifecycle(reg);
 
     // UI + beatmap + music
     reg.ctx().emplace<UIActiveCache>();
@@ -134,28 +134,24 @@ static void tick_fixed_systems(entt::registry& reg, float dt) {
     // game_state_system runs FIRST and owns the authoritative GoEvent /
     // ButtonPressEvent drain for this tick (calls disp.update<GoEvent>() and
     // disp.update<ButtonPressEvent>() at its top).  All pre-tick enqueues from
-    // input_system, gesture_routing_system, and hit_test_system are delivered
+    // input_system, gesture_routing, and hit_test are delivered
     // here to listeners in registration order (see wire_input_dispatcher).
     // Systems later in this list that also call disp.update<T>() (e.g.,
     // player_input_system) will find an empty queue and execute as no-ops.
     game_state_system(reg, dt);
-    level_select_system(reg, dt);
     song_playback_system(reg, dt);
     beat_log_system(reg, dt);
     beat_scheduler_system(reg, dt);
     player_input_system(reg, dt);
     shape_window_system(reg, dt);
     player_movement_system(reg, dt);
-    difficulty_system(reg, dt);
-    obstacle_spawn_system(reg, dt);
     scroll_system(reg, dt);
     collision_system(reg, dt);
     miss_detection_system(reg, dt);
     scoring_system(reg, dt);
     energy_system(reg, dt);
-    lifetime_system(reg, dt);
     particle_system(reg, dt);
-    cleanup_system(reg, dt);
+    obstacle_despawn_system(reg, dt);
     popup_display_system(reg, dt);
     ui_navigation_system(reg, dt);
 }
@@ -247,6 +243,7 @@ void game_loop_shutdown(entt::registry& reg) {
 
     // Destroy all entities while GPU context is still alive
     reg.clear();
+    unwire_obstacle_model_lifecycle(reg);
 
     {
         auto* slog = reg.ctx().find<SessionLog>();

@@ -23,10 +23,10 @@
 
 #include "components/scoring.h"   // ScorePopup, PopupDisplay
 #include "components/rendering.h" // ScreenPosition, Color (via raylib)
-#include "components/lifetime.h"  // Lifetime
 #include "components/text.h"      // FontSize
 #include "components/rhythm.h"    // TimingTier
 #include "systems/all_systems.h"  // popup_display_system declaration
+#include "entities/popup_entity.h"
 
 // ── Helper ────────────────────────────────────────────────────────────────
 //
@@ -42,15 +42,12 @@ static entt::entity make_popup_entity(entt::registry& reg,
     ScorePopup sp{};
     sp.timing_tier = timing_tier;
     sp.value       = value;
+    sp.remaining   = remaining;
+    sp.max_time    = max_time;
     reg.emplace<ScorePopup>(e, sp);
 
     reg.emplace<ScreenPosition>(e, 0.0f, 0.0f);
     reg.emplace<Color>(e, Color{255, 255, 255, 255});
-
-    Lifetime lt{};
-    lt.remaining = remaining;
-    lt.max_time  = max_time;
-    reg.emplace<Lifetime>(e, lt);
 
     // #251: PopupDisplay's static fields (text, font size, base RGB) are
     // initialized once at spawn — popup_display_system only fades alpha.
@@ -191,7 +188,7 @@ TEST_CASE("popup_display_system: does not churn PopupDisplay storage (#251)",
 }
 
 TEST_CASE("popup_display_system: works without ScorePopup component (#251)",
-          "[popup_display][issue251]") {
+           "[popup_display][issue251]") {
     entt::registry reg;
     auto e = make_popup_entity(reg, TimingTier::Ok, 0, 0.5f, 1.0f);
     reg.remove<ScorePopup>(e);
@@ -200,8 +197,32 @@ TEST_CASE("popup_display_system: works without ScorePopup component (#251)",
 
     REQUIRE(reg.all_of<PopupDisplay>(e));
     const auto& pd = reg.get<PopupDisplay>(e);
-    CHECK(pd.a == uint8_t{127});
+    CHECK(pd.a == uint8_t{255});
     CHECK(std::strcmp(pd.text, "OK") == 0);
+}
+
+TEST_CASE("popup_display_system: ScorePopup expires without render components",
+          "[popup_display]") {
+    entt::registry reg;
+    auto e = reg.create();
+    ScorePopup popup{};
+    popup.remaining = 0.01f;
+    popup.max_time = 1.0f;
+    reg.emplace<ScorePopup>(e, popup);
+
+    popup_display_system(reg, 0.02f);
+
+    CHECK_FALSE(reg.valid(e));
+}
+
+TEST_CASE("popup_display_system: expired popups are destroyed",
+          "[popup_display]") {
+    entt::registry reg;
+    auto e = make_popup_entity(reg, std::nullopt, 50, 0.01f, 1.0f);
+
+    popup_display_system(reg, 0.016f);
+
+    CHECK_FALSE(reg.valid(e));
 }
 
 TEST_CASE("init_popup_display: formats grade text + font size from ScorePopup (#251)",

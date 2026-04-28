@@ -11,8 +11,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
-#include "systems/ui_button_spawner.h"
-#include "systems/ui_loader.h"
+#include "ui/ui_button_spawner.h"
+#include "ui/ui_loader.h"
 #include "gameobjects/shape_obstacle.h"
 #include "components/ui_state.h"
 #include "components/rendering.h"
@@ -263,7 +263,10 @@ static entt::entity make_obstacle(entt::registry& reg,
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
     auto& oc = reg.emplace<ObstacleChildren>(obs);
-    for (auto k : kids) oc.push(k);
+    for (auto k : kids) {
+        REQUIRE(oc.count < ObstacleChildren::MAX);
+        oc.children[oc.count++] = k;
+    }
     return obs;
 }
 

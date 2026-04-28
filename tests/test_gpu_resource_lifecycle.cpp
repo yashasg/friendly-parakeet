@@ -12,8 +12,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include <type_traits>
 
-#include "systems/camera_system.h"  // ShapeMeshes
-#include "components/camera.h"      // RenderTargets
+#include "rendering/camera_resources.h"
+#include "entities/camera_entity.h"  // GameCamera, UICamera
 
 // ── ShapeMeshes type traits ──────────────────────────────────────────────────
 

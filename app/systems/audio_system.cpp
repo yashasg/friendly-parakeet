@@ -1,5 +1,5 @@
 #include "all_systems.h"
-#include "audio_types.h"
+#include "../audio/audio_queue.h"
 
 void audio_system(entt::registry& reg) {
     auto* audio = reg.ctx().find<AudioQueue>();

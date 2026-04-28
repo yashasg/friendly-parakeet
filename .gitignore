@@ -14,6 +14,12 @@ content/audio-web/
 excalidraw.log
 tasks/
 bench_logger.log
+*.tmp
+
+# Generated Squad run artifacts (tracked agent charters/history stay explicit)
+.squad/decisions/inbox/
+.squad/log/
+.squad/orchestration-log/
 
 # Local run/test artifacts
 /build_output.txt

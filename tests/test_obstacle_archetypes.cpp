@@ -3,8 +3,21 @@
 #include "entities/obstacle_entity.h"
 
 // spawn_obstacle: entity bundle contract tests.
-// Calls the entity factory directly, independent of either
-// beat_scheduler_system or obstacle_spawn_system.
+// Calls the entity factory directly, independent of beat_scheduler_system.
+
+namespace {
+struct ObstacleTagConstructProbe {
+    bool saw_obstacle = false;
+    bool saw_beat_info = false;
+};
+
+void probe_obstacle_tag_construct(entt::registry& reg, entt::entity entity) {
+    auto* probe = reg.ctx().find<ObstacleTagConstructProbe>();
+    if (!probe) return;
+    probe->saw_obstacle = reg.all_of<Obstacle>(entity);
+    probe->saw_beat_info = reg.all_of<BeatInfo>(entity);
+}
+}
 
 TEST_CASE("entity: ShapeGate Circle - correct components and color", "[archetype]") {
     entt::registry reg;
@@ -23,6 +36,18 @@ TEST_CASE("entity: ShapeGate Circle - correct components and color", "[archetype
 
     auto& c = reg.get<Color>(e);
     CHECK(c.r == 80); CHECK(c.g == 200); CHECK(c.b == 255);
+}
+
+TEST_CASE("entity: ObstacleTag is emplaced after obstacle metadata", "[archetype]") {
+    entt::registry reg;
+    auto& probe = reg.ctx().emplace<ObstacleTagConstructProbe>();
+    reg.on_construct<ObstacleTag>().connect<&probe_obstacle_tag_construct>();
+    BeatInfo beat_info{7, 1.5f, 0.25f};
+
+    spawn_obstacle(reg, {ObstacleKind::ShapeGate, 360.0f, -120.0f, Shape::Circle}, &beat_info);
+
+    CHECK(probe.saw_obstacle);
+    CHECK(probe.saw_beat_info);
 }
 
 TEST_CASE("entity: ShapeGate Square - red color", "[archetype]") {

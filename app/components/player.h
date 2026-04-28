@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <magic_enum/magic_enum.hpp>
 #include "window_phase.h"
 
 enum class Shape : uint8_t {
@@ -10,13 +9,6 @@ enum class Shape : uint8_t {
     Triangle,
     Hexagon,
 };
-
-// magic_enum::enum_name_v is a static_str with a null-terminated char array,
-// so .data() is safe for printf-style %s formatting.
-inline const char* ToString(Shape s) noexcept {
-    const auto name = magic_enum::enum_name(s);
-    return name.empty() ? "???" : name.data();
-}
 
 struct PlayerTag {};
 

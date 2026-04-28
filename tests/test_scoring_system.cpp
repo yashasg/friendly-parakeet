@@ -144,8 +144,8 @@ TEST_CASE("scoring: displayed_score does not overshoot score", "[scoring]") {
 
 TEST_CASE("scoring: distance_traveled accumulates from scroll speed", "[scoring]") {
     auto reg = make_registry();
-    auto& config = reg.ctx().get<DifficultyConfig>();
-    config.scroll_speed = 400.0f;
+    auto& song = reg.ctx().get<SongState>();
+    song.scroll_speed = 400.0f;
 
     scoring_system(reg, 1.0f);
 

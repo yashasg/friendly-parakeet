@@ -10,13 +10,13 @@
 #include "components/input_events.h"
 #include "components/game_state.h"
 #include "components/scoring.h"
-#include "components/difficulty.h"
 #include "components/rendering.h"
-#include "components/lifetime.h"
 #include "components/particle.h"
-#include "systems/audio_types.h"
+#include "components/rhythm.h"
+#include "audio/audio_types.h"
 #include "constants.h"
 #include "systems/all_systems.h"
+#include "input/input_routing.h"
 
 // ── Helpers ─────────────────────────────────────────────────
 
@@ -29,7 +29,7 @@ static entt::registry make_bench_registry() {
         GamePhase::Playing, GamePhase::Playing, 0.0f, false, GamePhase::Playing, 0.0f
     });
     reg.ctx().emplace<ScoreState>();
-    reg.ctx().emplace<DifficultyConfig>();
+    reg.ctx().emplace<SongState>();
     reg.ctx().emplace<AudioQueue>();
     return reg;
 }
@@ -48,13 +48,13 @@ static entt::entity make_bench_player(entt::registry& reg) {
 }
 
 static void spawn_obstacles(entt::registry& reg, int count) {
-    auto& config = reg.ctx().get<DifficultyConfig>();
+    const auto& song = reg.ctx().get<SongState>();
     for (int i = 0; i < count; ++i) {
         auto obs = reg.create();
         reg.emplace<ObstacleTag>(obs);
         float y = constants::SPAWN_Y + static_cast<float>(i) * 80.0f;
         reg.emplace<Position>(obs, constants::LANE_X[i % 3], y);
-        reg.emplace<Velocity>(obs, 0.0f, config.scroll_speed);
+        reg.emplace<Velocity>(obs, 0.0f, song.scroll_speed);
         auto shape = static_cast<Shape>(i % 3);
         reg.emplace<Obstacle>(obs, ObstacleKind::ShapeGate, int16_t{200});
         reg.emplace<RequiredShape>(obs, shape);
@@ -70,8 +70,7 @@ static void spawn_particles(entt::registry& reg, int count) {
         reg.emplace<ParticleTag>(p);
         reg.emplace<Position>(p, 360.0f, 500.0f);
         reg.emplace<Velocity>(p, static_cast<float>(i % 50 - 25), -100.0f);
-        reg.emplace<Lifetime>(p, 0.6f, 0.6f);
-        reg.emplace<ParticleData>(p, 4.0f);
+        reg.emplace<ParticleData>(p, 4.0f, 0.6f, 0.6f);
         reg.emplace<Color>(p, Color{255, 100, 50, 255});
         reg.emplace<DrawLayer>(p, Layer::Effects);
     }
@@ -126,13 +125,6 @@ TEST_CASE("Bench: collision_system", "[bench]") {
     };
 }
 
-TEST_CASE("Bench: difficulty_system", "[bench]") {
-    BENCHMARK_ADVANCED("single tick")(Catch::Benchmark::Chronometer meter) {
-        auto reg = make_bench_registry();
-        meter.measure([&] { difficulty_system(reg, DT); });
-    };
-}
-
 TEST_CASE("Bench: scoring_system", "[bench]") {
     BENCHMARK_ADVANCED("no scored obstacles")(Catch::Benchmark::Chronometer meter) {
         auto reg = make_bench_registry();
@@ -180,14 +172,6 @@ TEST_CASE("Bench: player_input + movement", "[bench]") {
     };
 }
 
-TEST_CASE("Bench: lifetime_system", "[bench]") {
-    BENCHMARK_ADVANCED("50 particles")(Catch::Benchmark::Chronometer meter) {
-        auto reg = make_bench_registry();
-        spawn_particles(reg, 50);
-        meter.measure([&] { lifetime_system(reg, DT); });
-    };
-}
-
 TEST_CASE("Bench: particle_system", "[bench]") {
     BENCHMARK_ADVANCED("50 particles")(Catch::Benchmark::Chronometer meter) {
         auto reg = make_bench_registry();
@@ -196,11 +180,11 @@ TEST_CASE("Bench: particle_system", "[bench]") {
     };
 }
 
-TEST_CASE("Bench: cleanup_system", "[bench]") {
+TEST_CASE("Bench: obstacle_despawn_system", "[bench]") {
     BENCHMARK_ADVANCED("10 obstacles (none past threshold)")(Catch::Benchmark::Chronometer meter) {
         auto reg = make_bench_registry();
         spawn_obstacles(reg, 10);
-        meter.measure([&] { cleanup_system(reg, DT); });
+        meter.measure([&] { obstacle_despawn_system(reg, DT); });
     };
 }
 
@@ -214,13 +198,11 @@ TEST_CASE("Bench: full frame (typical)", "[bench]") {
             game_state_system(reg, DT);
             player_input_system(reg, DT);
             player_movement_system(reg, DT);
-            difficulty_system(reg, DT);
             scroll_system(reg, DT);
             collision_system(reg, DT);
             scoring_system(reg, DT);
-            lifetime_system(reg, DT);
             particle_system(reg, DT);
-            cleanup_system(reg, DT);
+            obstacle_despawn_system(reg, DT);
         });
     };
 }
@@ -235,13 +217,11 @@ TEST_CASE("Bench: full frame (stress)", "[bench]") {
             game_state_system(reg, DT);
             player_input_system(reg, DT);
             player_movement_system(reg, DT);
-            difficulty_system(reg, DT);
             scroll_system(reg, DT);
             collision_system(reg, DT);
             scoring_system(reg, DT);
-            lifetime_system(reg, DT);
             particle_system(reg, DT);
-            cleanup_system(reg, DT);
+            obstacle_despawn_system(reg, DT);
         });
     };
 }

@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include "test_helpers.h"
 #include "components/haptics.h"
+#include "util/haptic_queue.h"
 #include "util/settings.h"
 #include "components/player.h"
 #include "components/transform.h"

@@ -86,21 +86,26 @@ foreach(_dep ${_system_deps})
 endforeach()
 
 # ── Game library (shared between exe and tests) ──────────────
-file(GLOB SYSTEM_SOURCES app/systems/*.cpp)
-file(GLOB GAMEOBJECT_SOURCES app/gameobjects/*.cpp)
-file(GLOB UTIL_SOURCES app/util/*.cpp)
-file(GLOB ARCHETYPE_SOURCES app/archetypes/*.cpp)
-file(GLOB ENTITY_SOURCES app/entities/*.cpp)
-# Exclude render system files from the library (requires raylib renderer)
-list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "game_render_system\\.cpp$")
-list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "ui_render_system\\.cpp$")
-list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "/input_system\\.cpp$")
-list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "song_playback_system\\.cpp$")
-list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "text_renderer\\.cpp$")
-list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "camera_system\\.cpp$")
-list(FILTER UTIL_SOURCES EXCLUDE REGEX "file_logger\\.cpp$")
+file(GLOB SYSTEM_SOURCES CONFIGURE_DEPENDS app/systems/*.cpp)
+file(GLOB GAMEOBJECT_SOURCES CONFIGURE_DEPENDS app/gameobjects/*.cpp)
+file(GLOB AUDIO_SOURCES CONFIGURE_DEPENDS app/audio/*.cpp)
+file(GLOB UTIL_SOURCES CONFIGURE_DEPENDS app/util/*.cpp)
+file(GLOB UI_SOURCES CONFIGURE_DEPENDS app/ui/*.cpp)
+file(GLOB INPUT_SOURCES CONFIGURE_DEPENDS app/input/*.cpp)
+file(GLOB SESSION_SOURCES CONFIGURE_DEPENDS app/session/*.cpp)
+file(GLOB ARCHETYPE_SOURCES CONFIGURE_DEPENDS app/archetypes/*.cpp)
+file(GLOB ENTITY_SOURCES CONFIGURE_DEPENDS app/entities/*.cpp)
+# Exclude files requiring a live raylib context from the library. They are
+# compiled directly into the executable targets.
+list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "(^|/)game_render_system\\.cpp$")
+list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "(^|/)ui_render_system\\.cpp$")
+list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "(^|/)input_system\\.cpp$")
+list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "(^|/)song_playback_system\\.cpp$")
+list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "(^|/)camera_system\\.cpp$")
+list(FILTER UI_SOURCES EXCLUDE REGEX "(^|/)text_renderer\\.cpp$")
+list(FILTER UTIL_SOURCES EXCLUDE REGEX "(^|/)file_logger\\.cpp$")
 
-add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES} ${GAMEOBJECT_SOURCES} ${UTIL_SOURCES} ${ARCHETYPE_SOURCES} ${ENTITY_SOURCES})
+add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES} ${GAMEOBJECT_SOURCES} ${AUDIO_SOURCES} ${UTIL_SOURCES} ${UI_SOURCES} ${INPUT_SOURCES} ${SESSION_SOURCES} ${ARCHETYPE_SOURCES} ${ENTITY_SOURCES})
 target_include_directories(shapeshifter_lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/app
     ${CMAKE_BINARY_DIR}/generated
@@ -109,6 +114,7 @@ target_link_libraries(shapeshifter_lib PUBLIC
     EnTT::EnTT
     magic_enum::magic_enum
     nlohmann_json::nlohmann_json
+    raylib
 )
 target_link_libraries(shapeshifter_lib PRIVATE shapeshifter_warnings)
 
@@ -140,7 +146,7 @@ add_executable(shapeshifter
     app/systems/ui_render_system.cpp
     app/systems/input_system.cpp
     app/systems/song_playback_system.cpp
-    app/systems/text_renderer.cpp
+    app/ui/text_renderer.cpp
     app/util/file_logger.cpp
 )
 target_include_directories(shapeshifter PRIVATE
@@ -364,7 +370,7 @@ endif()
 # ── Tests + Benchmarks ──────────────────────────────────────
 enable_testing()
 
-file(GLOB TEST_SOURCES tests/*.cpp benchmarks/*.cpp)
+file(GLOB TEST_SOURCES CONFIGURE_DEPENDS tests/*.cpp benchmarks/*.cpp)
 # Exclude untracked test files from other in-progress agents that reference
 # symbols not yet merged into this branch.
 list(FILTER TEST_SOURCES EXCLUDE REGEX

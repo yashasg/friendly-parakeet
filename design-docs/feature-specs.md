@@ -176,9 +176,9 @@ struct EventQueue {
 // Called once per frame in the input phase.
 void input_system(entt::registry& reg, float raw_dt);
 
-// Resolves raw InputEvents: taps → ButtonPressEvent (via HitBox/HitCircle),
-// swipes → GoEvent. Runs immediately after input_system.
-void hit_test_system(entt::registry& reg);
+// Input routing resolves raw InputEvents: taps → ButtonPressEvent
+// (via HitBox/HitCircle), swipes → GoEvent. Runs immediately after input_system.
+void wire_input_dispatcher(entt::registry& reg);
 
 // Automated test player: writes EventQueue (push_press, push_go) from
 // scripted patterns. Replaces human input when running in test-player mode.
@@ -197,7 +197,7 @@ void test_player_system(entt::registry& reg, float dt);
              │
              ▼
   ┌──────────────────────┐
-  │ hit_test_system       │  → resolves taps → ButtonPressEvent, swipes → GoEvent
+  │ input routing         │  → resolves taps → ButtonPressEvent, swipes → GoEvent
   └──────────┬───────────┘
              │
              ▼
@@ -644,9 +644,9 @@ void difficulty_ramp_system(entt::registry& reg, float dt);
 // Enforces spacing, lane-repeat, combo-frequency, and pool-cap rules.
 void obstacle_spawn_system(entt::registry& reg, float dt);
 
-// Destroys obstacle entities that have scrolled past the player
-// beyond CLEANUP_DIST.  Decrements SpawnTimer::obstacles_alive.
-void obstacle_cleanup_system(entt::registry& reg, float dt);
+// Destroys obstacle entities that have scrolled past the camera-Z
+// despawn boundary, with a legacy Position.y fallback.
+void obstacle_despawn_system(entt::registry& reg, float dt);
 ```
 
 ### Spawn Pipeline (per-frame)
@@ -676,7 +676,7 @@ void obstacle_cleanup_system(entt::registry& reg, float dt);
               │
               ▼
   ┌────────────────────────┐
-  │ obstacle_cleanup_system │  → destroy entities behind player
+  │ obstacle_despawn_system │  → destroy entities behind player
   └────────────────────────┘
 ```
 
@@ -752,7 +752,7 @@ void obstacle_cleanup_system(entt::registry& reg, float dt);
   │  PHASE 4 — PLAYER & PHYSICS                                │
   │    6. player_input_system          (EventQueue → player)    │
   │    7. (movement systems — not in these specs)              │
-  │    8. obstacle_cleanup_system      (destroy passed obs)    │
+  │    8. obstacle_despawn_system      (destroy passed obs)    │
   │                                                             │
   │  PHASE 5 — RENDER                                          │
   │   11. (render systems — not in these specs)                │

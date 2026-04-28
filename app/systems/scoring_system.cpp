@@ -1,26 +1,57 @@
 #include "all_systems.h"
+#include "../entities/popup_entity.h"
 #include "../components/game_state.h"
 #include "../components/scoring.h"
 #include "../components/obstacle.h"
 #include "../components/transform.h"
 #include "../components/rendering.h"
-#include "../components/lifetime.h"
-#include "audio_types.h"
+#include "../audio/audio_queue.h"
 #include "../components/haptics.h"
 #include "../util/settings.h"
-#include "../components/difficulty.h"
 #include "../components/rhythm.h"
+#include "../util/rhythm_math.h"
 #include "../constants.h"
 #include <cmath>
+#include <vector>
+
+namespace {
+
+struct MissRecord {
+    entt::entity e;
+    bool has_timing = false;
+};
+
+struct HitRecord {
+    entt::entity e;
+    Position     pos;
+    Obstacle     obs;
+    bool         has_timing = false;
+    TimingGrade  timing{};
+};
+
+struct ScoringSystemScratch {
+    std::vector<MissRecord> miss_buf;
+    std::vector<HitRecord> hit_buf;
+};
+
+ScoringSystemScratch& scratch_for(entt::registry& reg) {
+    if (auto* scratch = reg.ctx().find<ScoringSystemScratch>()) {
+        return *scratch;
+    }
+    return reg.ctx().emplace<ScoringSystemScratch>();
+}
+
+}  // namespace
 
 void scoring_system(entt::registry& reg, float dt) {
     if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
 
     auto& score   = reg.ctx().get<ScoreState>();
-    auto& config  = reg.ctx().get<DifficultyConfig>();
+    auto* song    = reg.ctx().find<SongState>();
+    const float scroll_speed = song ? song->scroll_speed : constants::BASE_SCROLL_SPEED;
 
     // Distance bonus
-    score.distance_traveled += config.scroll_speed * dt;
+    score.distance_traveled += scroll_speed * dt;
     score.score += static_cast<int>(dt * constants::PTS_PER_SECOND);
 
     // Chain timer
@@ -41,8 +72,7 @@ void scoring_system(entt::registry& reg, float dt) {
     // mid-iteration would swap-and-pop the pool (UB). Collect entities during
     // the read pass, apply removals after the view is exhausted. (#315)
     {
-        struct MissRecord { entt::entity e; bool has_timing; };
-        static std::vector<MissRecord> miss_buf;
+        auto& miss_buf = scratch_for(reg).miss_buf;
         miss_buf.clear();
 
         auto miss_view = reg.view<ObstacleTag, ScoredTag, MissTag, Obstacle>();
@@ -72,14 +102,7 @@ void scoring_system(entt::registry& reg, float dt) {
     //
     // EnTT safety: same collect-then-remove pattern as miss pass. (#315)
     {
-        struct HitRecord {
-            entt::entity e;
-            Position     pos;
-            Obstacle     obs;
-            bool         has_timing = false;
-            TimingGrade  timing{};
-        };
-        static std::vector<HitRecord> hit_buf;
+        auto& hit_buf = scratch_for(reg).hit_buf;
         hit_buf.clear();
 
         auto hit_view = reg.view<ObstacleTag, ScoredTag, Obstacle, Position>(
@@ -161,11 +184,11 @@ void scoring_system(entt::registry& reg, float dt) {
             auto popup = reg.create();
             reg.emplace<Position>(popup, r.pos.x, r.pos.y - 40.0f);
             reg.emplace<Velocity>(popup, 0.0f, -80.0f);
-            reg.emplace<Lifetime>(popup, constants::POPUP_DURATION, constants::POPUP_DURATION);
 
             std::optional<TimingTier> tt = r.has_timing
                 ? std::make_optional(r.timing.tier) : std::nullopt;
-            reg.emplace<ScorePopup>(popup, points, uint8_t{0}, tt);
+            reg.emplace<ScorePopup>(popup, points, uint8_t{0}, tt,
+                                    constants::POPUP_DURATION, constants::POPUP_DURATION);
 
             // Color by timing grade
             uint8_t pr = 255, pg = 255, pb = 50;

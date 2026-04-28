@@ -1,5 +1,5 @@
 #include "all_systems.h"
-#include "../components/camera.h"
+#include "camera_system.h"
 #include "../components/transform.h"
 #include "../components/player.h"
 #include "../components/obstacle.h"
@@ -7,15 +7,13 @@
 #include "../components/scoring.h"
 #include "../components/rhythm.h"
 #include "../components/game_state.h"
-#include "../components/difficulty.h"
 #include "../components/song_state.h"
 #include "../components/ui_layout_cache.h"
 #include "../constants.h"
-#include "text_renderer.h"
+#include "../ui/text_renderer.h"
 #include "../components/ui_state.h"
 #include "../components/ui_element.h"
-#include "ui_loader.h"
-#include "ui_source_resolver.h"
+#include "../ui/ui_source_resolver.h"
 #include <raylib.h>
 #include <raymath.h>
 #include <algorithm>
@@ -133,7 +131,6 @@ static void draw_hud(const entt::registry& reg, const HudLayout& layout) {
         }
 
         float nearest_dist[3] = {-1.0f, -1.0f, -1.0f};
-        auto& config = reg.ctx().get<DifficultyConfig>();
         for (auto [e, opos, req] :
              reg.view<ObstacleTag, Position, RequiredShape>(entt::exclude<ScoredTag>).each()) {
             int si = static_cast<int>(req.shape);
@@ -147,7 +144,7 @@ static void draw_hud(const entt::registry& reg, const HudLayout& layout) {
         auto* song_hud = reg.ctx().find<SongState>();
         float perfect_dist = song_hud
             ? song_hud->scroll_speed * (song_hud->morph_duration + song_hud->half_window)
-            : config.scroll_speed * 0.5f;
+            : constants::BASE_SCROLL_SPEED * 0.5f;
         float ring_appear_dist = constants::APPROACH_DIST;
         float max_ring_radius  = btn_radius * layout.approach_ring_max_radius_scale;
 
@@ -329,7 +326,7 @@ void ui_render_system(const entt::registry& reg, float /*alpha*/) {
     auto& text_ctx = reg.ctx().get<TextContext>();
     auto& ui = reg.ctx().get<UIState>();
     auto& gs = reg.ctx().get<GameState>();
-    auto& ui_cam = reg.ctx().get<UICamera>().cam;
+    auto& ui_cam = ui_camera(reg).cam;
 
     ClearBackground(BLANK);
     BeginMode2D(ui_cam);

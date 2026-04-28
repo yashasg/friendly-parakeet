@@ -8,7 +8,6 @@
 entt::entity spawn_obstacle(entt::registry& reg, const ObstacleSpawnParams& params,
                              const BeatInfo* beat_info) {
     auto e = reg.create();
-    reg.emplace<ObstacleTag>(e);
     reg.emplace<Velocity>(e, 0.0f, params.speed);
     reg.emplace<DrawLayer>(e, Layer::Game);
 
@@ -83,6 +82,8 @@ entt::entity spawn_obstacle(entt::registry& reg, const ObstacleSpawnParams& para
     }
 
     spawn_obstacle_meshes(reg, e);
+    build_obstacle_model(reg, e);
+    reg.emplace<ObstacleTag>(e);
 
     return e;
 }

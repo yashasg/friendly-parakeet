@@ -2,8 +2,9 @@
 #include <filesystem>
 
 #include "components/high_score.h"
-#include "systems/play_session.h"
-#include "systems/ui_source_resolver.h"
+#include "entities/camera_entity.h"
+#include "session/play_session.h"
+#include "ui/ui_source_resolver.h"
 #include "test_helpers.h"
 #include "util/high_score_persistence.h"
 
@@ -36,6 +37,8 @@ TEST_CASE("High score integration: setup_play_session loads selected song diffic
     CHECK(reg.ctx().get<HighScoreState>().current_key_hash
         == high_score::make_key_hash("1_stomper", "easy"));
     CHECK(reg.ctx().get<ScoreState>().high_score == 1234);
+    CHECK_FALSE(reg.view<GameCamera>().empty());
+    CHECK_FALSE(reg.view<UICamera>().empty());
 }
 
 TEST_CASE("Play session: SongResults total_notes matches every shipped song difficulty",

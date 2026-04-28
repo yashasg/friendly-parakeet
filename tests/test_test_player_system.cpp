@@ -1,7 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include "test_helpers.h"
 #include "components/test_player.h"
-#include "systems/session_logger.h"
+#include "util/session_logger.h"
+#include "util/test_player_helpers.h"
 
 #ifdef PLATFORM_DESKTOP
 
@@ -49,7 +50,7 @@ static void tick_systems(entt::registry& reg, int frames, float dt = 1.0f / 60.0
         scroll_system(reg, dt);
         collision_system(reg, dt);
         scoring_system(reg, dt);
-        cleanup_system(reg, dt);
+        obstacle_despawn_system(reg, dt);
         auto& disp = reg.ctx().get<entt::dispatcher>();
         disp.clear<InputEvent>();
 
@@ -175,8 +176,8 @@ TEST_CASE("test_player: swipe cooldown blocks immediate second swipe", "[test_pl
     action.timer = -1.0f;
     action.target_lane = 0;
     action.arrival_time = reg.ctx().get<SongState>().song_time + 1.0f;
-    tp.push_action(action);
-    tp.mark_planned(obs);
+    test_player_push_action(tp, action);
+    test_player_mark_planned(tp, obs);
 
     test_player_system(reg, 0.016f);
     bool has_go = drain_go_events(reg).count > 0;
@@ -234,9 +235,9 @@ TEST_CASE("test_player: stale planned entity is removed on next tick", "[test_pl
     // Manually insert an entity into planned[] and then destroy it.
     auto& tp = reg.ctx().get<TestPlayerState>();
     auto ghost = reg.create();
-    tp.mark_planned(ghost);
+    test_player_mark_planned(tp, ghost);
     REQUIRE(tp.planned_count == 1);
-    REQUIRE(tp.is_planned(ghost));
+    REQUIRE(test_player_is_planned(tp, ghost));
 
     reg.destroy(ghost);
     REQUIRE_FALSE(reg.valid(ghost));
@@ -245,7 +246,7 @@ TEST_CASE("test_player: stale planned entity is removed on next tick", "[test_pl
     test_player_system(reg, 1.0f / 60.0f);
 
     CHECK(tp.planned_count == 0);
-    CHECK_FALSE(tp.is_planned(ghost));
+    CHECK_FALSE(test_player_is_planned(tp, ghost));
 }
 
 TEST_CASE("test_player: valid planned entities are retained after stale cleanup", "[test_player]") {
@@ -258,9 +259,9 @@ TEST_CASE("test_player: valid planned entities are retained after stale cleanup"
     auto live1  = reg.create();
     auto ghost  = reg.create();
     auto live2  = reg.create();
-    tp.mark_planned(live1);
-    tp.mark_planned(ghost);
-    tp.mark_planned(live2);
+    test_player_mark_planned(tp, live1);
+    test_player_mark_planned(tp, ghost);
+    test_player_mark_planned(tp, live2);
     REQUIRE(tp.planned_count == 3);
 
     reg.destroy(ghost);
@@ -269,9 +270,9 @@ TEST_CASE("test_player: valid planned entities are retained after stale cleanup"
 
     // Stale entry removed; live entries retained.
     CHECK(tp.planned_count == 2);
-    CHECK(tp.is_planned(live1));
-    CHECK(tp.is_planned(live2));
-    CHECK_FALSE(tp.is_planned(ghost));
+    CHECK(test_player_is_planned(tp, live1));
+    CHECK(test_player_is_planned(tp, live2));
+    CHECK_FALSE(test_player_is_planned(tp, ghost));
 
     reg.destroy(live1);
     reg.destroy(live2);

@@ -1,5 +1,6 @@
 #include "all_systems.h"
-#include "input_gesture.h"
+#include "../input/raylib_gesture_input.h"
+#include "../input/input_state.h"
 #include "../components/input.h"
 #include "../components/input_events.h"
 #include "../components/rendering.h"
@@ -11,6 +12,10 @@ void input_system(entt::registry& reg, float raw_dt) {
     auto& input = reg.ctx().get<InputState>();
     auto& st    = reg.ctx().get<ScreenTransform>();
     auto& disp  = reg.ctx().get<entt::dispatcher>();
+    if (!input.gestures_configured) {
+        SetGesturesEnabled(kGameplayGestureFlags);
+        input.gestures_configured = true;
+    }
     // Discard any InputEvents that were not consumed before this frame
     // (defensive guard — R7: phase transitions can leave events queued).
     disp.clear<InputEvent>();
@@ -122,11 +127,11 @@ void input_system(entt::registry& reg, float raw_dt) {
     // gesture_routing_handle_input and hit_test_handle_input via
     // disp.update<InputEvent>() in game_loop_frame (#333).
     if (input.touch_up) {
-        const InputEvent event = classify_touch_release(
-            input.start_x, input.start_y,
-            input.end_x, input.end_y,
-            input.duration
-        );
+        const InputEvent event = input_event_from_raylib_gesture(
+            read_detected_raylib_gesture(),
+            input.start_y,
+            input.end_x,
+            input.end_y);
         disp.enqueue<InputEvent>(event);
     }
 }
