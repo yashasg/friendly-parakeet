@@ -1,7 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
-#include "beat_map_loader.h"
+#include "util/beat_map_loader.h"
+#include "util/rhythm_math.h"
 
 // ── validate_beat_map: BPM rules ─────────────────────────────
 
@@ -253,6 +254,75 @@ TEST_CASE("validate: multiple errors accumulated", "[validate]") {
     CHECK(errors.size() >= 3);
 }
 
+// ── validate_beat_map: ComboGate blocked_mask rules ──────────
+
+TEST_CASE("validate: combo_gate blocked_mask 0 fails", "[validate][combo_gate]") {
+    BeatMap map;
+    map.bpm = 120.0f;
+    map.offset = 0.0f;
+    map.lead_beats = 4;
+    map.duration = 60.0f;
+    map.beats.push_back({4, ObstacleKind::ComboGate, Shape::Circle, 1, 0x00});
+
+    std::vector<BeatMapError> errors;
+    CHECK_FALSE(validate_beat_map(map, errors));
+    REQUIRE_FALSE(errors.empty());
+    CHECK(errors[0].message.find("block at least one lane") != std::string::npos);
+}
+
+TEST_CASE("validate: combo_gate blocked_mask 0x07 fails", "[validate][combo_gate]") {
+    BeatMap map;
+    map.bpm = 120.0f;
+    map.offset = 0.0f;
+    map.lead_beats = 4;
+    map.duration = 60.0f;
+    map.beats.push_back({4, ObstacleKind::ComboGate, Shape::Circle, 1, 0x07});
+
+    std::vector<BeatMapError> errors;
+    CHECK_FALSE(validate_beat_map(map, errors));
+    REQUIRE_FALSE(errors.empty());
+    CHECK(errors[0].message.find("leave at least one lane open") != std::string::npos);
+}
+
+TEST_CASE("validate: combo_gate blocked_mask 0x01 passes", "[validate][combo_gate]") {
+    BeatMap map;
+    map.bpm = 120.0f;
+    map.offset = 0.0f;
+    map.lead_beats = 4;
+    map.duration = 60.0f;
+    map.beats.push_back({4, ObstacleKind::ComboGate, Shape::Circle, 1, 0x01});
+
+    std::vector<BeatMapError> errors;
+    CHECK(validate_beat_map(map, errors));
+    CHECK(errors.empty());
+}
+
+TEST_CASE("validate: combo_gate blocked_mask 0x06 passes", "[validate][combo_gate]") {
+    BeatMap map;
+    map.bpm = 120.0f;
+    map.offset = 0.0f;
+    map.lead_beats = 4;
+    map.duration = 60.0f;
+    map.beats.push_back({4, ObstacleKind::ComboGate, Shape::Circle, 1, 0x06});
+
+    std::vector<BeatMapError> errors;
+    CHECK(validate_beat_map(map, errors));
+    CHECK(errors.empty());
+}
+
+TEST_CASE("validate: combo_gate blocked_mask 0x05 passes", "[validate][combo_gate]") {
+    BeatMap map;
+    map.bpm = 120.0f;
+    map.offset = 0.0f;
+    map.lead_beats = 4;
+    map.duration = 60.0f;
+    map.beats.push_back({4, ObstacleKind::ComboGate, Shape::Circle, 1, 0x05});
+
+    std::vector<BeatMapError> errors;
+    CHECK(validate_beat_map(map, errors));
+    CHECK(errors.empty());
+}
+
 // ── init_song_state ──────────────────────────────────────────
 
 TEST_CASE("init_song_state: copies metadata from BeatMap", "[init_song]") {
@@ -341,10 +411,11 @@ TEST_CASE("timing_multiplier: returns correct values", "[rhythm_helpers]") {
 }
 
 TEST_CASE("window_scale_for_tier: returns correct values", "[rhythm_helpers]") {
-    CHECK(window_scale_for_tier(TimingTier::Perfect) == 1.50f);
-    CHECK(window_scale_for_tier(TimingTier::Good) == 1.00f);
-    CHECK(window_scale_for_tier(TimingTier::Ok) == 0.75f);
-    CHECK(window_scale_for_tier(TimingTier::Bad) == 0.50f);
+    // Post-#223 inversion: smaller scale = better timing = faster window collapse.
+    CHECK(window_scale_for_tier(TimingTier::Perfect) == 0.50f);
+    CHECK(window_scale_for_tier(TimingTier::Good) == 0.75f);
+    CHECK(window_scale_for_tier(TimingTier::Ok) == 1.00f);
+    CHECK(window_scale_for_tier(TimingTier::Bad) == 1.00f);
 }
 
 TEST_CASE("song_state_compute_derived: beat_period calculation", "[rhythm_helpers]") {
@@ -401,4 +472,80 @@ TEST_CASE("song_state_compute_derived: scroll_speed calculation", "[rhythm_helpe
 
     // scroll_speed = APPROACH_DIST / lead_time = 1040 / 2.0 = 520
     CHECK_THAT(s.scroll_speed, Catch::Matchers::WithinAbs(520.0f, 1.0f));
+}
+
+// ── load_validation_constants: path resolution ───────────────
+
+TEST_CASE("load_validation_constants: missing file returns compiled-in defaults", "[validate][constants]") {
+    // No constants.json exists at CWD or an empty app_dir path; defaults must be returned.
+    ValidationConstants vc = load_validation_constants("");
+    CHECK(vc.bpm_min == 60.0f);
+    CHECK(vc.bpm_max == 300.0f);
+    CHECK(vc.offset_min == 0.0f);
+    CHECK(vc.offset_max == 5.0f);
+    CHECK(vc.lead_beats_min == 2);
+    CHECK(vc.lead_beats_max == 8);
+    CHECK(vc.min_shape_change_gap == 3);
+}
+
+TEST_CASE("load_validation_constants: bad app_dir falls back to CWD path silently", "[validate][constants]") {
+    // A nonsense app_dir that doesn't contain a constants.json; must not throw or crash.
+    ValidationConstants vc = load_validation_constants("/nonexistent_dir_xyz/");
+    // Defaults must still be intact.
+    CHECK(vc.bpm_min == 60.0f);
+    CHECK(vc.bpm_max == 300.0f);
+}
+
+TEST_CASE("validate_beat_map explicit constants: custom BPM range is respected", "[validate][constants]") {
+    ValidationConstants vc;
+    vc.bpm_min = 80.0f;
+    vc.bpm_max = 200.0f;
+
+    BeatMap map;
+    map.bpm = 70.0f;  // below custom min, above compiled-in default min
+    map.offset = 0.0f;
+    map.lead_beats = 4;
+    map.duration = 60.0f;
+    map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
+
+    std::vector<BeatMapError> errors;
+    CHECK_FALSE(validate_beat_map(map, errors, vc));
+    REQUIRE_FALSE(errors.empty());
+    CHECK(errors[0].message.find("BPM") != std::string::npos);
+}
+
+TEST_CASE("validate_beat_map explicit constants: BPM within custom range passes", "[validate][constants]") {
+    ValidationConstants vc;
+    vc.bpm_min = 80.0f;
+    vc.bpm_max = 200.0f;
+
+    BeatMap map;
+    map.bpm = 120.0f;
+    map.offset = 0.0f;
+    map.lead_beats = 4;
+    map.duration = 60.0f;
+    map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
+
+    std::vector<BeatMapError> errors;
+    CHECK(validate_beat_map(map, errors, vc));
+    CHECK(errors.empty());
+}
+
+TEST_CASE("validate_beat_map explicit constants: custom shape gap is respected", "[validate][constants]") {
+    ValidationConstants vc;
+    vc.min_shape_change_gap = 5;  // stricter than default 3
+
+    BeatMap map;
+    map.bpm = 120.0f;
+    map.offset = 0.0f;
+    map.lead_beats = 4;
+    map.duration = 60.0f;
+    // 3 beats apart — passes default rule but must fail the stricter custom rule
+    map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
+    map.beats.push_back({3, ObstacleKind::ShapeGate, Shape::Square, 1, 0});
+
+    std::vector<BeatMapError> errors;
+    CHECK_FALSE(validate_beat_map(map, errors, vc));
+    REQUIRE_FALSE(errors.empty());
+    CHECK(errors[0].message.find("beats apart") != std::string::npos);
 }

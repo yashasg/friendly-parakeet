@@ -10,6 +10,28 @@
 
 <!-- Append learnings below -->
 
+## Session: WASM Unity Builds (2026-05)
+
+### Problem
+WASM CI builds taking 10+ minutes. Root cause: each source file triggers its own `emcc` invocation with ~3s overhead, meaning 40+ source files = 120+ seconds of pure overhead before any actual compilation.
+
+### Fix
+1. **CMakeLists.txt line 24–33**: `CMAKE_UNITY_BUILD` now automatically set `ON` when `EMSCRIPTEN` is detected. Native builds unchanged (unity OFF by default).
+2. **CMakeLists.txt after TEST_SOURCES glob**: `set_source_files_properties(... SKIP_UNITY_BUILD_INCLUSION TRUE)` for 10 test files identified by Keaton's hazard audit (anonymous namespace / static symbol collisions).
+3. **ci-wasm.yml**: Cache key bumped `v2` → `v3` (invalidates stale non-unity object files), added `-- -j$(nproc)` to `cmake --build` command.
+
+### Keaton audit coordination
+Keaton's inbox file `keaton-unity-hazard-audit.md` identified app sources as safe and 10 test files needing exclusion. Applied those exclusions verbatim. **Long-term suggestion** (from Keaton): extract duplicated helpers into `tests/test_helpers.h` to eliminate the exclusions entirely.
+
+### Key file paths
+- Unity build entry point: `CMakeLists.txt` lines 24–33 (EMSCRIPTEN → CMAKE_UNITY_BUILD)
+- Test exclusions: `CMakeLists.txt` after `list(FILTER TEST_SOURCES ...)`  
+- CI cache key: `.github/workflows/ci-wasm.yml` `Cache build directory` step
+
+### ODR hazard audit findings (per Keaton)
+- **App sources**: All anonymous namespace symbols have unique names across files → safe for unity build
+- **Test sources with hazards**: `test_high_score_persistence.cpp`, `test_high_score_integration.cpp` (`remove_path`/`temp_high_score_path`), six `test_shipped_beatmap_*.cpp` (`find_shipped_beatmaps`), `test_ui_redfoot_pass.cpp` + `test_redfoot_testflight_ui.cpp` (`find_by_id`)
+
 ## Session: Issue #253 — HighScoreState compact flat array (2026-04-27)
 
 ### Problem
@@ -239,3 +261,58 @@ Pre-existing compile failures in `input_events.h`/`ButtonPressEvent` (from anoth
 ### Key patterns learned
 - `edit` tool changes to files do not always persist reliably; use Python or heredoc writes for multi-file or file-replacement operations.
 - Free functions in the same persistence namespace is the established pattern for helpers that operate on context state.
+
+## Session: render_tags.h cleanup (2026-04-28)
+
+### Problem
+`app/components/render_tags.h` was an untracked file violating the team directive against new component headers during cleanup passes. It defined three empty tag structs (`TagWorldPass`, `TagEffectsPass`, `TagHUDPass`) used by `game_render_system.cpp`, `shape_obstacle.cpp/.h`, and `tests/test_obstacle_model_slice.cpp`.
+
+### What I did
+- Folded all three tag structs into the end of `app/components/rendering.h` (no new header created).
+- Removed `#include "../components/render_tags.h"` from `game_render_system.cpp`, `shape_obstacle.h`, `shape_obstacle.cpp` (all already included `rendering.h`).
+- Updated `tests/test_obstacle_model_slice.cpp` Section B: replaced the `#include "components/render_tags.h"` with a comment pointing to `rendering.h`.
+- Deleted `app/components/render_tags.h`.
+- Build: zero warnings, zero errors. `[render_tags][model_slice]` tests: 71/71 pass.
+
+### Learnings
+- Cleanup passes are surface-accumulation risks: a single needed tag quietly creates a new component header. Check `git status` for `??` new files at diff boundary.
+- When a tag has no dependencies (pure empty structs), it can always be folded into an existing justified header rather than creating a new one.
+- The `owned` guard in `ObstacleModel` makes `TagWorldPass` redundant as a *view filter*, but the struct itself is kept for clarity and test coverage.
+
+---
+
+### 2026-04-28 — Team Session Closure: ECS Cleanup Approval
+
+**Status:** APPROVED ✅ — Deliverable logged; ready for merge.
+
+Scribe documentation:
+- Orchestration log written: .squad/orchestration-log/2026-04-28T08-12-03Z-hockney.md
+- Team decision inbox merged into .squad/decisions.md
+- Session log: .squad/log/2026-04-28T08-12-03Z-ecs-cleanup-approval.md
+
+Next: Await merge approval.
+
+---
+
+## Session: Utility-Move Platform Plan (2026-05)
+
+### Task
+Read-only analysis of mechanical safety for moving non-system utilities out of `app/systems/`. No code changes made.
+
+### Key Findings
+
+**CMake glob gap (Issue #55 still open):** Source globs (`app/systems/*.cpp`, `app/util/*.cpp`) lack `CONFIGURE_DEPENDS`. Moving a `.cpp` requires a forced reconfigure (`cmake -B build -S .`) before the next build; without it, the file silently disappears from the build. Header-only files (`.h`) are never caught by source globs — their moves have zero CMake impact.
+
+**lib/exe split:** `shapeshifter_lib` does not link raylib, yet several systems already in the lib include `<raylib.h>` (sfx_bank.cpp, play_session.cpp, ui_loader.cpp). This works via vcpkg global include paths. Moves must preserve this pattern.
+
+**text_renderer.cpp is special:** It is explicitly filtered out of SYSTEM_SOURCES and manually listed in both the exe and test targets. Moving it to `util/` without 3 CMake edits would pull it into UTIL_SOURCES → shapeshifter_lib → link failure. This is the only move that requires CMake changes.
+
+**play_session.cpp must not move:** It includes `"all_systems.h"` (the systems aggregator). Moving to util/ would create a reverse dependency: util → systems. Leave in place.
+
+### Canonical Batch Order
+- **Batch A (header-only):** audio_types.h, music_context.h, ui_button_spawner.h, obstacle_counter_system.h → no CMake edits, no reconfigure
+- **Batch B (.cpp pairs):** session_logger.*, ui_source_resolver.*, ui_loader.*, sfx_bank.cpp → reconfigure required, no CMake edits
+- **Batch C (risky):** text_renderer.* → 3 CMake edits + reconfigure
+
+### Deliverable
+`.squad/decisions/inbox/hockney-utility-move-plan.md` — full include-path change table, risk notes, validation command sequence per batch.

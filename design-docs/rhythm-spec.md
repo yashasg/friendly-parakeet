@@ -318,7 +318,7 @@ struct SongResults {
   │   → updates SongResults counters                           │
   │   → spawns grade popup VFX                                 │
   │                                                            │
-  │ lifetime_system / particle_system / cleanup_system         │
+  │ particle_system / obstacle_despawn_system / popup_display  │
   └────────────────────────────────────────────────────────────┘
            ↓
   ┌─ RENDER ───────────────────────────────────────────────────┐

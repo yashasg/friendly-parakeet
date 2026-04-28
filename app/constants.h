@@ -1,12 +1,16 @@
 #pragma once
 
 #include <cstdint>
+#include <raylib.h>
 
 namespace constants {
 
 // ── Logical Resolution ────────────────────────────
 constexpr int   SCREEN_W          = 720;
 constexpr int   SCREEN_H          = 1280;
+// Float companions used by obstacle drawing (avoids C-style functional casts)
+constexpr float SCREEN_W_F        = static_cast<float>(SCREEN_W);
+constexpr float SCREEN_H_F        = static_cast<float>(SCREEN_H);
 
 // ── Lanes ─────────────────────────────────────────
 constexpr int   LANE_COUNT        = 3;
@@ -26,18 +30,10 @@ constexpr float SPAWN_Y           = -120.0f;
 constexpr float DESTROY_Y         = 1400.0f;
 constexpr float BASE_SCROLL_SPEED = 400.0f;
 
-// ── Burnout Zones (distance from player, in px) ──
-constexpr float ZONE_SAFE_MAX     = 700.0f;
-constexpr float ZONE_SAFE_MIN     = 500.0f;
-constexpr float ZONE_RISKY_MIN    = 300.0f;
-constexpr float ZONE_DANGER_MIN   = 140.0f;
-constexpr float ZONE_DEAD_MIN     = 0.0f;
-
-// ── Burnout Multipliers ───────────────────────────
-constexpr float MULT_SAFE         = 1.0f;
-constexpr float MULT_RISKY        = 1.5f;
-constexpr float MULT_DANGER       = 3.0f;
-constexpr float MULT_CLUTCH       = 5.0f;
+// 3D slab heights for obstacle rendering (model-to-world Y scale)
+constexpr float OBSTACLE_3D_HEIGHT = 20.0f;
+constexpr float LOWBAR_3D_HEIGHT   = 30.0f;
+constexpr float HIGHBAR_3D_HEIGHT  = 10.0f;
 
 // ── Scoring ───────────────────────────────────────
 constexpr int   PTS_SHAPE_GATE    = 200;
@@ -54,34 +50,15 @@ constexpr int   CHAIN_BONUS[5]    = { 0, 0, 50, 100, 200 };
 // Retained for legacy random-spawn mode
 constexpr float SPEED_RAMP_RATE   = 0.011f;
 constexpr float SPAWN_RAMP_RATE   = 0.003f;
-constexpr float BURNOUT_SHRINK    = 0.002f;
 constexpr float INITIAL_SPAWN_INT = 1.8f;
 constexpr float MIN_SPAWN_INT     = 0.5f;
 
 // ── Rhythm Constants ──────────────────────────────
 constexpr float APPROACH_DIST      = 1040.0f;  // |PLAYER_Y - SPAWN_Y|
-constexpr float BASE_WINDOW_BEATS  = 1.6f;
-constexpr float MIN_WINDOW         = 0.36f;
-constexpr float BASE_MORPH_BEATS   = 0.2f;
-constexpr float MIN_MORPH          = 0.06f;
-constexpr float COOLDOWN_DURATION  = 0.05f;
-
-// ── Timing Grade Thresholds ──────────────────────
-constexpr float TIMING_PERFECT_PCT = 0.25f;
-constexpr float TIMING_GOOD_PCT    = 0.50f;
-constexpr float TIMING_OK_PCT      = 0.75f;
-
-// ── Window Scaling by Grade ───────────────────────
-// Perfect holds shape longer (extends window).
-// Bad/Ok shorten window (snap back to Hexagon faster).
-constexpr float WINDOW_SCALE_BAD     = 0.50f;
-constexpr float WINDOW_SCALE_OK      = 0.75f;
-constexpr float WINDOW_SCALE_GOOD    = 1.00f;
-constexpr float WINDOW_SCALE_PERFECT = 1.50f;
+constexpr float COLLISION_MARGIN   = 40.0f;    // half-height of timing window (px)
 
 // ── Energy Bar ────────────────────────────────────
 constexpr float ENERGY_MAX              = 1.0f;
-constexpr float ENERGY_START            = 1.0f;
 constexpr float ENERGY_DRAIN_MISS       = 0.20f;
 constexpr float ENERGY_DRAIN_BAD        = 0.10f;
 constexpr float ENERGY_RECOVER_OK       = 0.02f;
@@ -93,18 +70,16 @@ constexpr float ENERGY_CRITICAL_THRESH  = 0.25f;
 
 // ── Rendering ─────────────────────────────────────
 constexpr float POPUP_DURATION    = 1.2f;
-constexpr float PARTICLE_LIFE     = 0.6f;
-constexpr int   MAX_PARTICLES     = 50;
+
+// ── Particles ─────────────────────────────────────
+constexpr float PARTICLE_GRAVITY  = 600.0f;
 
 // ── Input ─────────────────────────────────────────
 constexpr float SWIPE_ZONE_SPLIT  = 0.80f;
 constexpr float MIN_SWIPE_DIST    = 50.0f;
 constexpr float MAX_SWIPE_TIME    = 0.3f;
-constexpr float BUTTON_DEBOUNCE   = 0.1f;
 
 // ── UI Layout (pixel-space; retained to derive the NDC constants below and for tests) ────
-constexpr float BURNOUT_BAR_Y     = 1020.0f;
-constexpr float BURNOUT_BAR_H     = 20.0f;
 constexpr float BUTTON_Y          = 1140.0f;
 constexpr float BUTTON_W          = 140.0f;
 constexpr float BUTTON_H          = 100.0f;
@@ -128,10 +103,6 @@ constexpr float BUTTON_Y_N            = BUTTON_Y       / SCREEN_H;  // ≈ 0.891
 constexpr float BUTTON_W_N            = BUTTON_W       / SCREEN_W;  // ≈ 0.194
 constexpr float BUTTON_H_N            = BUTTON_H       / SCREEN_H;  // ≈ 0.078
 constexpr float BUTTON_SPACING_N      = BUTTON_SPACING / SCREEN_W;  // ≈ 0.083
-
-// HUD – burnout bar (NDC companions to the pixel constants above)
-constexpr float BURNOUT_BAR_Y_N       = BURNOUT_BAR_Y / SCREEN_H;   // ≈ 0.797
-constexpr float BURNOUT_BAR_H_N       = BURNOUT_BAR_H / SCREEN_H;   // ≈ 0.016
 
 // Scene – Title (shapes + text)
 constexpr float SCENE_TITLE_SHAPES_Y_N       =  400.0f / SCREEN_H;  // ≈ 0.313
@@ -176,44 +147,11 @@ constexpr float FLOOR_PULSE_DECAY    = 0.15f;   // seconds
 // ── Shape Colors ──────────────────────────────────
 // Used for both obstacles and player character.
 // Index by static_cast<int>(Shape).
-struct ShapeColor { uint8_t r, g, b, a; };
-constexpr ShapeColor SHAPE_COLORS[] = {
+constexpr Color SHAPE_COLORS[] = {
     {  80, 200, 255, 255 },   // Circle   — cyan/blue
     { 255, 100, 100, 255 },   // Square   — red
     { 100, 255, 100, 255 },   // Triangle — green
     {  80, 180, 255, 255 },   // Hexagon  — neutral blue
 };
-
-// ── Perspective / Isometric Effect ───────────────
-// PERSPECTIVE_ANGLE_DEG is the full convergence angle (degrees) between
-// the left and right edges of the playfield as they recede toward the
-// vanishing point.  0° = flat (no perspective), 20° = noticeable.
-//
-//    angle →  VP_Y (derived)  → top-of-screen width
-//      5°      -7860              ~96%  (barely visible)
-//     10°      -3820              ~91%
-//     15°      -1455              ~54%
-//     17°      -1060              ~45%
-//     20°      -761               ~37%
-//
-// The vanishing point is derived at compile time:
-//   VP_Y = SCREEN_H - (SCREEN_W / 2) / tan(angle / 2)
-constexpr float PERSPECTIVE_ANGLE_DEG = 25.0f;
-
-namespace detail {
-    constexpr float deg_to_rad(float deg) { return deg * 3.14159265358979f / 180.0f; }
-    // tan() is not constexpr in C++17, so we use a rational approximation
-    // valid for small angles (0–45°).  Max error < 0.001 in that range.
-    constexpr float tan_approx(float rad) {
-        // Padé [3/2] approximant: tan(x) ≈ x(1 - x²/15) / (1 - 2x²/5)
-        float x2 = rad * rad;
-        return rad * (1.0f - x2 / 15.0f) / (1.0f - 2.0f * x2 / 5.0f);
-    }
-    constexpr float half_angle_rad = deg_to_rad(PERSPECTIVE_ANGLE_DEG / 2.0f);
-    constexpr float tan_half = tan_approx(half_angle_rad);
-} // namespace detail
-
-constexpr float VANISHING_POINT_Y = static_cast<float>(SCREEN_H)
-    - (static_cast<float>(SCREEN_W) / 2.0f) / detail::tan_half;
 
 } // namespace constants

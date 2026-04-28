@@ -13,6 +13,7 @@ TEST_CASE("collision: Hexagon shape never matches shape gate", "[collision]") {
     make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
 
     collision_system(reg, 0.016f);
+    scoring_system(reg, 0.016f);
 
     auto& gs = reg.ctx().get<GameState>();
     CHECK_FALSE(gs.transition_pending);
@@ -36,9 +37,11 @@ TEST_CASE("collision: Hexagon fails even when matching gate shape", "[collision]
     reg.emplace<RequiredShape>(obs, Shape::Hexagon);
     reg.emplace<DrawSize>(obs, float(constants::SCREEN_W), 80.0f);
     reg.emplace<DrawLayer>(obs, Layer::Game);
-    reg.emplace<DrawColor>(obs, uint8_t{255}, uint8_t{255}, uint8_t{255}, uint8_t{255});
+    reg.emplace<Color>(obs, Color{255, 255, 255, 255});
 
     collision_system(reg, 0.016f);
+    // Hexagon should NEVER clear shape gates
+    scoring_system(reg, 0.016f);
 
     // Hexagon should NEVER clear shape gates
     auto& gs = reg.ctx().get<GameState>();
@@ -58,7 +61,7 @@ TEST_CASE("collision: rhythm mode assigns Perfect for on-time hit", "[collision]
     auto& song = reg.ctx().get<SongState>();
 
     ps.current = Shape::Circle;
-    sw.phase_raw = static_cast<uint8_t>(WindowPhase::Active);
+    sw.phase = WindowPhase::Active;
     sw.graded = false;
     sw.window_start = song.song_time;
     sw.peak_time = song.song_time;
@@ -81,7 +84,7 @@ TEST_CASE("collision: rhythm mode assigns Bad for far-off hit", "[collision][rhy
     auto& song = reg.ctx().get<SongState>();
 
     ps.current = Shape::Circle;
-    sw.phase_raw = static_cast<uint8_t>(WindowPhase::Active);
+    sw.phase = WindowPhase::Active;
     sw.graded = false;
     sw.window_start = song.song_time;
     sw.peak_time = song.song_time + song.half_window;
@@ -104,6 +107,7 @@ TEST_CASE("collision: rhythm miss increments miss_count in SongResults", "[colli
     make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
 
     collision_system(reg, 0.016f);
+    scoring_system(reg, 0.016f);
 
     auto& results = reg.ctx().get<SongResults>();
     CHECK(results.miss_count == 1);
@@ -117,7 +121,7 @@ TEST_CASE("collision: rhythm perfect increments perfect_count in SongResults", "
     auto& song = reg.ctx().get<SongState>();
 
     ps.current = Shape::Circle;
-    sw.phase_raw = static_cast<uint8_t>(WindowPhase::Active);
+    sw.phase = WindowPhase::Active;
     sw.graded = false;
 
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
@@ -136,6 +140,7 @@ TEST_CASE("collision: multiple misses accumulate in miss_count", "[collision][rh
     // First miss
     make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     collision_system(reg, 0.016f);
+    scoring_system(reg, 0.016f);
 
     // Reset game over for second collision
     auto& gs = reg.ctx().get<GameState>();
@@ -145,6 +150,7 @@ TEST_CASE("collision: multiple misses accumulate in miss_count", "[collision][rh
     // Second miss
     make_shape_gate(reg, Shape::Triangle, constants::PLAYER_Y);
     collision_system(reg, 0.016f);
+    scoring_system(reg, 0.016f);
 
     auto& results = reg.ctx().get<SongResults>();
     CHECK(results.miss_count == 2);
@@ -162,6 +168,7 @@ TEST_CASE("collision: combo gate requires both shape AND open lane", "[collision
     make_combo_gate(reg, Shape::Triangle, 0b010, constants::PLAYER_Y);
 
     collision_system(reg, 0.016f);
+    scoring_system(reg, 0.016f);
 
     CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
     auto& energy = reg.ctx().get<EnergyState>();
@@ -193,7 +200,7 @@ TEST_CASE("collision: split path succeeds with correct shape and lane", "[collis
     ps.current = Shape::Triangle;
     auto& lane = reg.get<Lane>(p);
     lane.current = 2;
-    reg.get<Position>(p).x = constants::LANE_X[2];
+    reg.get<WorldTransform>(p).position.x = constants::LANE_X[2];
 
     auto obs = make_split_path(reg, Shape::Triangle, 2, constants::PLAYER_Y);
 
@@ -222,6 +229,7 @@ TEST_CASE("collision: low bar fails when sliding", "[collision]") {
     make_vertical_bar(reg, ObstacleKind::LowBar, constants::PLAYER_Y);
 
     collision_system(reg, 0.016f);
+    scoring_system(reg, 0.016f);
 
     CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
     auto& energy = reg.ctx().get<EnergyState>();
@@ -236,10 +244,10 @@ TEST_CASE("collision: high bar fails when jumping", "[collision]") {
     make_vertical_bar(reg, ObstacleKind::HighBar, constants::PLAYER_Y);
 
     collision_system(reg, 0.016f);
+    scoring_system(reg, 0.016f);
 
     CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
     auto& energy = reg.ctx().get<EnergyState>();
     CHECK(energy.energy < 1.0f);
     CHECK(energy.flash_timer > 0.0f);
 }
-

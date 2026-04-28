@@ -485,3 +485,232 @@ a final `else` for unknown types with a `[WARN]` stderr log.
 
 **Tests:** 8 new regression tests tagged `[issue347]` in `test_ui_spawn_malformed.cpp`.
 Full suite: 2854 assertions, all pass.
+
+### 2026-05-18 — Model Authority Revision Check (post-Kujan rejection)
+
+**Status:** COMPLETE — read-only audit, no production code changes.
+
+**Scope:** Produced correction checklist for McManus after Kujan rejected Keaton's model authority slice. Verified all four blocking findings (BF-1..BF-4) are unresolved in HEAD ef7767d.
+
+**Key findings confirmed:**
+- BF-1: `LoadModelFromMesh` still at `shape_obstacle.cpp:117` — manual mesh array construction not done.
+- BF-2: `camera_system.cpp:267–273` (section 1b) still emits `ModelTransform` for LowBar/HighBar; `game_render_system` still has no owned-model draw loop; `TagWorldPass` emplacement is dead code.
+- BF-3: ODR violation confirmed — `app/systems/obstacle_archetypes.cpp` and `app/archetypes/obstacle_archetypes.cpp` both define `apply_obstacle_archetype`; `tests/test_obstacle_archetypes.cpp:3` still includes stale `systems/` path.
+- BF-4: `struct ObstacleParts {}` is still empty in `rendering.h:105`.
+
+**Additional hazard called out:** `camera_system.cpp:286` (`MeshChild` section) reads `Position` directly from parent — not in scope for this slice, flagged as P2 item for McManus awareness.
+
+**Do not widen scope:** Position emission for non-LowBar/HighBar kinds is correct; section 1a (`ModelTransform` via Position) must stay for P1 entities.
+
+**Artifact:** `.squad/decisions/inbox/keyser-authority-revision-check.md`
+
+### 2026-05-19 — Double-Scale Fix: RF-1 + RF-2 (post-Kujan rejection of McManus revision)
+
+**Status:** COMPLETE — validation passed, not committed per task spec.
+
+**Scope:** Two Kujan blocking findings from the McManus authority revision review.
+
+**RF-1 (CRITICAL) — Unit cube mesh in build_obstacle_model()**
+- File: `app/gameobjects/shape_obstacle.cpp:124`
+- Changed: `GenMeshCube(constants::SCREEN_W_F, height, dsz->h)` → `GenMeshCube(1.0f, 1.0f, 1.0f)`
+- `slab_matrix` is a unit-cube scaler — identical to the shared slab pattern in `camera::ShapeMeshes.slab`. The pre-scaled mesh caused a double-scale (dimensions squared at render time).
+- `ObstacleParts.width/height/depth` unchanged — they correctly feed `slab_matrix` as intended world dimensions.
+
+**RF-2 (HIGH) — Scale diagonal test for slab_matrix**
+- File: `tests/test_obstacle_model_slice.cpp`
+- Replaced the weak "non-zero translation" BF-2 test with a proper `slab_matrix` scale-diagonal assertion.
+- Added `#include <raymath.h>` to test file.
+- New test replicates the `slab_matrix` formula inline (`MatrixMultiply(MatrixScale(w,h,d), MatrixTranslate(...))`) — GPU-free.
+- Asserts `mat.m0 == w`, `mat.m5 == h`, `mat.m10 == d` (scale diagonal equals world dimensions exactly once).
+- Also asserts `mat.m12/m13/m14 != 0` for non-identity transform confirmation.
+- Correction: raylib Matrix uses column-major layout; translation is in `m12/m13/m14`, NOT `m3/m7/m11`.
+
+**Validation:**
+- `cmake -B build -S . -Wno-dev`: clean
+- `cmake --build build --target shapeshifter_tests`: 0 errors, 0 warnings
+- `./build/shapeshifter_tests "~[bench]" --reporter compact`: 2978 assertions, 885 tests, all pass
+- `cmake --build build --target shapeshifter`: clean
+- `git diff --check`: clean (exit 0)
+- No executable `LoadModelFromMesh(` in app/ or tests/
+- No stale `"systems/obstacle_archetypes"` includes
+
+**Learning:** raylib Matrix column-major storage: translation is in `m12/m13/m14` (not `m3/m7/m11`). Scale diagonal is `m0, m5, m10`. The `slab_matrix` pattern requires a unit cube mesh — any pre-scaled mesh will double the dimensions at render time.
+
+### 2026-05-19 — Component Cleanup Audit (ECS Boundary Map)
+
+**Status:** COMPLETE — read-only audit, no code changes.
+
+**Scope:** Full ECS boundary audit of suspect component headers flagged by the user.
+
+**Key findings:**
+
+- `app/components/audio.h` and `app/components/music.h` are EXACT BYTE-FOR-BYTE DUPLICATES of `app/systems/audio_types.h` and `app/systems/music_context.h`. Zero consumers include the components/ versions. These are dead files — DELETE both.
+- `app/components/render_tags.h` does NOT exist. The tags (TagWorldPass/TagEffectsPass/TagHUDPass) already live in `rendering.h`. No action needed; directive is "do not re-create this file."
+- `app/components/obstacle_counter.h` and `app/components/obstacle_data.h`: valid ECS entity components (ObstacleCounter, RequiredShape, BlockedLanes, RequiredLane, RequiredVAction) but split across too many files. Both must be MERGED into `obstacle.h` and their standalone files deleted.
+- `app/components/ring_zone.h` (`RingZoneTracker`): a real entity component still in active use by ring_zone_log_system and session_logger. Directive says remove but it wasn't done. Decision: MERGE into obstacle.h and delete ring_zone.h; ring_zone_log_system removal is a separate scope call.
+- `app/components/settings.h`: NOT entity data. Stored in reg.ctx(). Move to app/util/ alongside settings_persistence.h.
+- `app/components/shape_vertices.h`: constexpr math constants, NOT a component. Only used by game_render_system.cpp. Move to app/util/.
+- `app/components/ui_layout_cache.h`: reg.ctx() layout cache structs. Directive says not needed. Currently active in three UI systems. Relocate to app/systems/ as a step toward eventual elimination.
+
+**Learning:** Model-slice work introduced DUPLICATE component files (audio.h ≡ audio_types.h, music.h ≡ music_context.h). Components/ folder accumulated six files that are not entity components: two dead duplicates, two context singletons misrouted to components/, one math utility, one layout cache. Pattern: when migration work runs in subagents without a post-pass audit, files proliferate in components/ without checks.
+
+**Artifact:** `.squad/decisions/inbox/keyser-component-cleanup-audit.md`
+
+### 2026-04-28 — Kujan Rejection Gate Fix (component cleanup revision)
+
+**Status:** GATE PASSED — zero code changes required. All three Kujan blockers were already resolved by prior agents before my inspection.
+
+**Scope:** Verified the three build-breaking errors Kujan identified were fixed, then ran the full validation suite.
+
+**Evidence:**
+- Fix 1 (obstacle_entity.cpp stale include): `app/entities/obstacle_entity.cpp` includes only `obstacle_entity.h`, `../components/obstacle.h`, `../components/transform.h`, `../components/rendering.h`, `../gameobjects/shape_obstacle.h`, `../constants.h`. No reference to the deleted `components/obstacle_data.h`. ✅
+- Fix 2 (test ObstacleArchetypeInput migration): `tests/test_obstacle_archetypes.cpp` now includes `entities/obstacle_entity.h` and calls `spawn_obstacle(reg, {ObstacleKind::..., x, y, ...})` with named struct fields. No positional aggregate-init missing fields. ✅
+- Fix 3 (test include path): `tests/test_obstacle_archetypes.cpp` includes `entities/obstacle_entity.h`, not the deleted `archetypes/obstacle_archetypes.h`. ✅
+- Stale include scan: grep across `app/` and `tests/` for all 10 deleted headers returned zero hits in non-.squad files. ✅
+- `app/archetypes/obstacle_archetypes.*` and `app/systems/obstacle_archetypes.*` both absent from filesystem. ✅
+- `app/entities/obstacle_entity.h/.cpp` present; CMakeLists.txt has `file(GLOB ENTITY_SOURCES app/entities/*.cpp)` wired into `shapeshifter_lib`. ✅
+- `cmake -B build -S . -Wno-dev` → exit 0 ✅
+- `cmake --build build --target shapeshifter_tests` → exit 0, zero warnings ✅
+- `./build/shapeshifter_tests "~[bench]" --reporter compact` → All tests passed (2983 assertions in 887 test cases) ✅
+- `cmake --build build --target shapeshifter` → exit 0, zero warnings ✅
+- `git --no-pager diff --check` → CLEAN ✅
+
+**Key lesson:** When multiple agents report fixes in parallel, the gate-fix owner must still inspect the actual working tree and run the build — agent reports can lag or be partially applied. In this case, the tree was already clean and no changes were needed.
+
+---
+
+### 2026-04-28 — Team Session Closure: ECS Cleanup Approval
+
+**Status:** APPROVED ✅ — Deliverable logged; ready for merge.
+
+Scribe documentation:
+- Orchestration log written: .squad/orchestration-log/2026-04-28T08-12-03Z-keyser.md
+- Team decision inbox merged into .squad/decisions.md
+- Session log: .squad/log/2026-04-28T08-12-03Z-ecs-cleanup-approval.md
+
+Next: Await merge approval.
+
+## Learnings
+
+### 2026-05-20 — Camera Entity Cleanup
+
+**Status:** COMPLETE — zero warnings, all tests pass.
+
+**What changed:**
+- Deleted `app/components/camera.h` (was: `GameCamera`, `UICamera`, `FloorParams`, `RenderTargets`)
+- Created `app/entities/camera_entity.h` / `.cpp` — `GameCamera` and `UICamera` are now entity components with `spawn_game_camera(reg)` / `spawn_ui_camera(reg)` factory functions and inline accessors `game_camera(reg)` / `ui_camera(reg)`.
+- `FloorParams` and `RenderTargets` moved into `app/systems/camera_system.h` — render/system state, not entity components.
+- `camera::init()` now calls `spawn_game_camera(reg)` and `spawn_ui_camera(reg)` instead of `reg.ctx().emplace<GameCamera>()`.
+- All call sites updated: `reg.ctx().get<GameCamera>().cam` → `game_camera(reg).cam`; same pattern for UICamera.
+- `game_loop.cpp`, `game_render_system.cpp`, `ui_render_system.cpp` all drop `#include "components/camera.h"`.
+- Test `test_gpu_resource_lifecycle.cpp` was pre-updated to the new include layout.
+
+**Validation:** `cmake --build build --target shapeshifter_tests` → 2547 assertions, 867 tests, all pass. Game binary builds with zero warnings.
+
+**Pattern learned:** When `git stash pop` fails due to working-tree conflicts, the untracked new files survive but all modified tracked file edits are rolled back into the stash. Always re-apply edits manually if stash pop is aborted.
+
+### 2026-05-18 — System Boundary Audit: beat_map_loader + cleanup_system
+
+**Status:** AUDIT COMPLETE — No code changes. Recommendation written for Keaton.
+
+**Scope:** `app/systems/beat_map_loader.h/.cpp` and `app/systems/cleanup_system.cpp` reviewed against ECS boundary rules, CMake glob structure, and user directive.
+
+**beat_map_loader findings:**
+- Has zero ECS surface: no `entt::registry`, no `float dt`, no system signature.
+- Pure JSON→BeatMap I/O + validation. Identical profile to `high_score_persistence`, `settings_persistence` in `app/util/`.
+- Single production caller: `play_session.cpp` (via `#include "beat_map_loader.h"`).
+- Test callers (3 files): `test_shipped_beatmap_shape_gap.cpp`, `test_beat_map_parser_unknown_fields.cpp`, `test_beat_map_low_high_bars.cpp` — all include via `"systems/beat_map_loader.h"`.
+- CMake: `UTIL_SOURCES = app/util/*.cpp` picks it up automatically on move. No new GLOB/FILTER needed.
+- Verdict: Move to `app/util/beat_map_loader.h/.cpp`. Update 4 include sites. Keep all function names unchanged.
+
+**cleanup_system findings:**
+- HAS a valid `(entt::registry&, float dt)` signature — it IS a system structurally. `dt` is unused; accepted via `/*dt*/` cast so no warning risk.
+- Runs two structural views: `<ObstacleTag, ObstacleScrollZ>` and `<ObstacleTag, Position>` — covers both model-authority (LowBar/HighBar) and 2D-Position (all others) paths.
+- Threshold: `constants::DESTROY_Y = 1400.0f` — a 2D screen-Y constant named DESTROY_Y. For the Position.y path this means "120px past the bottom of the 1280px screen," which is fine.
+- For the `ObstacleScrollZ.z` path: the camera sits at world Z=1900 (`camera.position.z` in `spawn_game_camera`). The destroy threshold of 1400 culls obstacles before they reach the camera — adequate but not camera-derived.
+- **User directive:** cleanup threshold for Z-path obstacles should come from the camera's Z position (`GameCamera.cam.position.z`, queryable from the registry), not a hardcoded screen constant.
+- Rename recommendation: `obstacle_despawn_system` — clearly describes what it does (despawn expired obstacles) and avoids confusion with the generic "cleanup" phase.
+- Location: stays in `app/systems/` (it IS a system). No folder move needed.
+
+**Test risks:**
+- `test_world_systems.cpp`: 4 tests call `cleanup_system(reg, ...)` by name — must be updated to `obstacle_despawn_system` on rename.
+- `test_death_model_unified.cpp`, `test_game_state_extended.cpp`: reference `cleanup_system` in comments — update for clarity.
+- `game_loop.cpp`: one call site at Phase 6.
+- `miss_detection_system.cpp`: comment references — update.
+
+**CMake risks on beat_map_loader move:**
+- Move from `app/systems/*.cpp` to `app/util/*.cpp`: SYSTEM_SOURCES glob loses it, UTIL_SOURCES glob gains it — both pick up automatically. `shapeshifter_lib` link graph unchanged. No rebuild issues except CMake re-configure needed (`cmake -B build -S .`).
+
+**Canonical patterns confirmed:**
+- `app/util/` = JSON I/O + persistence utilities (no ECS surface)
+- `app/systems/` = ECS systems with `(entt::registry&, float dt)` signature
+- Threshold for 3D-path obstacle despawn should be camera-Z derived (read `GameCamera.cam.position.z` from registry), not DESTROY_Y
+
+**Decision written:** `.squad/decisions/inbox/keyser-system-boundary-cleanup.md`
+
+### 2026-04-28 — Input/UI System Boundary Audit
+
+**Status:** COMPLETE — read-only audit. No code changes.
+
+**Scope:** Reviewed hit_test_system, input_dispatcher, input_gesture, input_system, level_select_system, all_systems.h, game_loop.cpp, input_events.h, and associated tests.
+
+**Findings:**
+
+- `input_system.cpp` is a REAL frame system. Polls raylib every frame, handles mouse/touch/keyboard, emits InputEvent. Keep, rename nothing.
+- `input_gesture.h` is a pure math utility function (`classify_touch_release`), header-only. Not a system, not a file that needs to be a system. Name is slightly misleading but functional.
+- `gesture_routing_system.cpp` is a 3-line dispatcher LISTENER, not a frame system. Function `gesture_routing_handle_input` converts swipe InputEvent → GoEvent. Can be collapsed into a combined `input_router.cpp` alongside `hit_test_handle_input`.
+- `hit_test_system.cpp` is a dispatcher LISTENER, not a frame system. Converts tap InputEvent → ButtonPressEvent via spatial hit-test. Correct behavior, wrong name.
+- `input_dispatcher.cpp` is init/teardown wiring only (`wire_input_dispatcher`, `unwire_input_dispatcher`). Not a system.
+- `level_select_system.cpp` contains: two event handlers (`level_select_handle_go/press`) wired as dispatcher listeners, one frame function (`level_select_system()`) that calls redundant `disp.update<>()` no-ops, checks `lss.confirmed`, and updates button positions. Confirmed → Playing transition belongs in `game_state_system`. `update_diff_buttons_pos` is UI layout, not a game system.
+- The `disp.update<GoEvent/ButtonPressEvent>()` calls in `level_select_system()` are guaranteed no-ops because `game_state_system` (first in `tick_fixed_systems`) already drains those queues.
+- Raylib's `GetGestureDetected()` cannot replace the current touch classifier because the zone-split logic (bottom 20% = always tap) is not expressible in raylib's gesture API. Keep `classify_touch_release()` as-is.
+
+**Files to change in refactor:**
+- DELETE: `gesture_routing_system.cpp` (inline into `input_router.cpp`)
+- RENAME: `hit_test_system.cpp` → `input_router.cpp` (merge gesture routing here)
+- RENAME: `input_dispatcher.cpp` → stays, OR inline into `input_router.cpp`
+- RENAME: `level_select_system.cpp` → `level_select_ui.cpp`
+- RENAME: `level_select_system()` → `level_select_ui_tick()`
+- MOVE: `lss.confirmed` → `gs.transition_pending` logic into `game_state_system`
+- REMOVE: redundant `disp.update<GoEvent/ButtonPressEvent>()` from `level_select_system()`
+
+**Tests to update in refactor:**
+- `test_gesture_routing_split.cpp` — no logic change, just include path if file renamed
+- `test_hit_test_system.cpp` — no logic change, just file rename
+- `test_level_select_system.cpp` — must call `level_select_ui_tick()` instead of `level_select_system()`
+- `test_input_pipeline_behavior.cpp` — check for any direct references to gesture_routing file
+- `test_input_system.cpp` — low risk, only tests `classify_touch_release`
+
+**Artifact:** `.squad/decisions/inbox/keyser-input-ui-boundary-audit.md`
+
+### 2026-05-XX — Kujan boundary cleanup revision
+
+**Status:** COMPLETE
+
+**Context:** Keaton's boundary cleanup was rejected by Kujan. Revision ownership transferred to Keyser with Keaton locked out.
+
+**What I found:**
+- Benchmark `cleanup_system` rename: already clean. Grep confirmed zero stale references in app/tests/benchmarks — no changes required.
+- `obstacle_despawn_system.cpp`: `ObstacleScrollZ` path was comparing `oz.z > constants::DESTROY_Y` (the 2D legacy constant). Reviewer required it use the actual game camera's position.z from the registry.
+
+**What I changed:**
+- `app/systems/obstacle_despawn_system.cpp`: Added `#include "../entities/camera_entity.h"`. Added `cam_view = reg.view<GameCamera>()` query before the model_view loop. Threshold is `cam.position.z` (1900.0f in production) when a `GameCamera` entity exists, `constants::DESTROY_Y` (1400.0f) as headless fallback. `Position.y` legacy path unchanged.
+- Updated block comment at top of file to document the two paths and their respective thresholds.
+
+**Validation:**
+- Zero warnings, zero errors (build with -Wall -Wextra -Werror via VCPKG_ROOT build).
+- `[cleanup]` + `[model_authority]` tags: 49 assertions in 22 test cases — all pass.
+- `grep cleanup_system app/ tests/ benchmarks/`: CLEAN — no stale references anywhere.
+
+**Lessons:**
+- The camera entity is queryable via `reg.view<GameCamera>()` — safe in both headless and production contexts.
+- DESTROY_Y is a 2D screen-coordinate constant; 3D model-authority obstacles use a different scale (camera.position.z ~= 1900 vs DESTROY_Y = 1400). Always distinguish axis semantics when mixing legacy 2D and new 3D despawn paths.
+
+### 2026-04-28 — ECS Boundary Audit (Wave 2)
+
+**Status:** AUDIT COMPLETE — Next safe refactor slice identified: popup entity factory.
+
+**Finding:** Popup entity factory (app/entities/popup_entity.*) currently inline in scoring_system. Extraction unblocks downstream: shape button → render split → helper alignment → obstacle logical/render split.
+
+**Verdict:** Popup factory extraction is low risk, mechanical refactor. Confirmed sequence documented; all downstream work depends on this completing first.
+

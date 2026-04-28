@@ -175,7 +175,7 @@ Non-timed obstacles (LanePush, LaneBlock) do NOT affect energy.
   collision_system    ← modifies energy on MISS
   scoring_system      ← modifies energy on timed obstacle clear
   energy_system       ← checks depletion → GameOver, smooths display
-  lifetime_system
+  particle_system / popup_display_system
   ...
 ```
 
@@ -302,7 +302,7 @@ runtime tuning without recompilation.
 | `app/systems/all_systems.h` | Replace `hp_system` decl with `energy_system` |
 | `app/systems/collision_system.cpp` | Miss → drain energy instead of instant GameOver |
 | `app/systems/scoring_system.cpp` | Add energy recovery/drain on TimingGrade |
-| `app/systems/play_session.cpp` | Init `EnergyState` instead of `HPState` |
+| `app/session/play_session.cpp` | Init `EnergyState` instead of `HPState` |
 | `app/systems/render_system.cpp` | Draw energy bar (color ramp, flash, pulse) |
 | `app/main.cpp` | Emplace `EnergyState`, call `energy_system`, update tick order |
 | `CMakeLists.txt` | Rename source file if needed |

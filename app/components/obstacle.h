@@ -2,17 +2,19 @@
 
 #include <cstdint>
 
+#include "player.h"
+
 struct ObstacleTag {};
 
 enum class ObstacleKind : uint8_t {
-    ShapeGate     = 0,
-    LaneBlock     = 1,
-    LowBar        = 2,
-    HighBar       = 3,
-    ComboGate     = 4,
-    SplitPath     = 5,
-    LanePushLeft  = 6,
-    LanePushRight = 7
+    ShapeGate,
+    LaneBlock,
+    LowBar,
+    HighBar,
+    ComboGate,
+    SplitPath,
+    LanePushLeft,
+    LanePushRight,
 };
 
 struct Obstacle {
@@ -25,3 +27,27 @@ struct ScoredTag {};
 
 // Existential tag: scored obstacle was failed/missed and should not award points.
 struct MissTag {};
+
+// Bridge-state component for Model-authority obstacles (LowBar, HighBar).
+// Holds the scroll-axis Z coordinate in lieu of Position.y.
+// Updated each frame by scroll_system; consumed by collision_system,
+// obstacle_despawn_system, miss_detection_system, and scoring_system.
+struct ObstacleScrollZ {
+    float z = 0.0f;
+};
+
+struct RequiredShape {
+    Shape shape = Shape::Circle;
+};
+
+struct BlockedLanes {
+    uint8_t mask = 0;
+};
+
+struct RequiredLane {
+    int8_t lane = 0;
+};
+
+struct RequiredVAction {
+    VMode action = VMode::Jumping;
+};

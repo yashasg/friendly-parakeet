@@ -2,7 +2,7 @@
 #include <catch2/benchmark/catch_benchmark.hpp>
 #include <raylib.h>
 
-#include "file_logger.h"
+#include "util/file_logger.h"
 
 #include <cstdio>
 #include <cstring>

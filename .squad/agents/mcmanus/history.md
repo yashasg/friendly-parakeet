@@ -268,3 +268,84 @@ Rhythm obstacles that escape the collision window (e.g. during jump peak) reach 
 **Commit:** `1c1bf08`
 
 **Closure-ready:** Yes — acceptance criteria fully met.
+
+### 2026 — Model Authority Revision (BF-1..BF-4)
+
+**Task:** Fix four Kujan blockers in the Model authority slice (original author Keaton, locked out).
+
+**BF-1 Fixed:** Replaced `LoadModelFromMesh` in `app/gameobjects/shape_obstacle.cpp` with manual raylib `Model` construction: `RL_MALLOC` for `meshes`, `materials`, `meshMaterial`; `GenMeshCube` directly into `model.meshes[0]`; `LoadMaterialDefault()` for `model.materials[0]`; `RL_CALLOC` zeroes `meshMaterial`. No `UploadMesh` call (raylib 5.5 GenMesh* already returns uploaded meshes).
+
+**BF-2 Fixed:** `camera_system.cpp` section 1b now queries `ObstacleModel + ObstacleParts + ObstacleScrollZ` and writes `om.model.transform = slab_matrix(pd.cx, oz.z + pd.cz, ...)` directly. No longer emits `ModelTransform` for LowBar/HighBar. `game_render_system.cpp` added `draw_owned_models()` that iterates `ObstacleModel + TagWorldPass` entities and calls `DrawMesh` per-mesh. Added `render_tags.h` include to render system.
+
+**BF-3 Fixed:** Deleted `app/systems/obstacle_archetypes.cpp` and `app/systems/obstacle_archetypes.h` (duplicate of `app/archetypes/obstacle_archetypes.*`). Updated stale includes in `beat_scheduler_system.cpp`, `obstacle_spawn_system.cpp`, and `tests/test_obstacle_archetypes.cpp` to canonical `archetypes/obstacle_archetypes.h` path.
+
+**BF-4 Fixed:** `ObstacleParts` replaced empty tag with POD geometry fields: `cx, cy, cz` (origin offsets), `width, height, depth` (world-space dimensions). `build_obstacle_model()` now populates all six fields at spawn.
+
+**Validation:** cmake configure clean, `shapeshifter_tests` 2975/2975 pass, `shapeshifter` binary builds clean, `git diff --check` clean, no `LoadModelFromMesh(` calls, no stale `systems/obstacle_archetypes` includes.
+
+### 2026-04-28 — #entity-layer Obstacle Entity Layer
+
+**Task:** Introduce `app/entities/` as an entity construction surface for obstacles. Consolidate the component bundle contract that was split across archetypes and spawn sites.
+
+**What was done:**
+- Created `app/entities/obstacle_entity.h` — defines `ObstacleSpawnParams` (kind, x, y, shape, mask, req_lane, speed) and `spawn_obstacle(reg, params, beat_info*)`.
+- Created `app/entities/obstacle_entity.cpp` — implements `spawn_obstacle`: emplaces ObstacleTag, Velocity, DrawLayer, optional BeatInfo, all kind-specific components, and calls `spawn_obstacle_meshes`. Single owner of the full component bundle contract.
+- Deleted `app/archetypes/obstacle_archetypes.h` and `app/archetypes/obstacle_archetypes.cpp` — fully superseded.
+- Updated `obstacle_spawn_system.cpp` and `beat_scheduler_system.cpp` to include `entities/obstacle_entity.h` and call `spawn_obstacle`. Both systems no longer manually emplace base components.
+- Rewrote `tests/test_obstacle_archetypes.cpp` to test `spawn_obstacle` directly. Added BeatInfo-present/absent tests.
+- Updated `tests/test_obstacle_model_slice.cpp` to use `spawn_obstacle` via helper.
+
+**Key design decisions:**
+- `beat_info` passed as `const BeatInfo*` (nullable pointer) rather than `std::optional<BeatInfo>` field in the struct, to avoid `-Wmissing-field-initializers` on positional brace-init callsites. Clean API, zero warning overhead.
+- `spawn_obstacle_meshes` is called inside `spawn_obstacle` so callers get the full entity — logical + visual — in one call.
+- `ObstacleSpawnParams` is a plain aggregate with all-defaulted trailing fields, same pattern as the old `ObstacleArchetypeInput`.
+
+**Build/Tests:** Zero warnings. 2983 assertions in 904 test cases — all pass.
+
+---
+
+### 2026-04-28 — Lifetime Component/System Removal Plan
+
+**Task:** Read-only analysis pass — plan removal of `Lifetime` component and `lifetime_system`. Keaton is actively editing adjacent files (`game_loop.cpp`, `all_systems.h`, tests, benchmarks), so no code changes allowed yet.
+
+**Key findings:**
+- `Lifetime` is NOT attached to obstacle entities anywhere in game code. `obstacle_despawn_system` already owns correct positional despawn (camera-Z threshold). Status quo is correct for obstacles.
+- Three active uses of `Lifetime` remain: popup alpha fade (`popup_display_system`), particle size ratio (`camera_system`), and entity destruction (`lifetime_system` for both).
+- Replacement: add `remaining`/`max_time` to `ScorePopup` (popup timer) and `ParticleData` (particle timer). No new component needed — fields belong in the domain-specific structs per user directive.
+- Timer countdown + particle destruction moves to `particle_system`. Popup timer countdown + destruction moves to `popup_display_system` (collect-then-destroy, static buffer).
+- `benchmarks/bench_systems.cpp` references `cleanup_system` (stale name — renamed to `obstacle_despawn_system`). This is Keaton's active work; must not touch until Keaton's patch lands.
+
+**Files to change after Keaton lands:** `lifetime.h` (delete), `lifetime_system.cpp` (delete), `scoring.h`, `particle.h`, `scoring_system.cpp`, `popup_display_system.cpp`, `camera_system.cpp`, `particle_system.cpp`, `all_systems.h`, `game_loop.cpp`, three test files, benchmarks.
+
+**Plan filed:** `.squad/decisions/inbox/mcmanus-lifetime-removal-plan.md`
+
+**Learning: Always audit ALL uses of a component before planning removal.** The user framed this as an obstacle issue, but obstacles never used `Lifetime` — the real usage was entirely in popups and particles. Read the code before accepting the framing.
+
+---
+
+### 2026-04-28 — Team Session Closure: ECS Cleanup Approval
+
+**Status:** APPROVED ✅ — Deliverable logged; ready for merge.
+
+Scribe documentation:
+- Orchestration log written: .squad/orchestration-log/2026-04-28T08-12-03Z-mcmanus.md
+- Team decision inbox merged into .squad/decisions.md
+- Session log: .squad/log/2026-04-28T08-12-03Z-ecs-cleanup-approval.md
+
+Next: Await merge approval.
+
+### 2026-04-28 — Popup Entity Factory (#349 slice)
+
+**Status:** COMPLETE
+
+**What changed:**
+- `app/entities/popup_entity.h` — Added `PopupSpawnParams` struct and `spawn_score_popup()` declaration (entt + rhythm.h included).
+- `app/entities/popup_entity.cpp` — Implemented `spawn_score_popup()`: emplace WorldTransform at {x, y-40}, MotionVelocity {0, -80}, ScorePopup, Color (by timing tier), DrawLayer::Effects, TagHUDPass, PopupDisplay via init_popup_display.
+- `app/systems/scoring_system.cpp` — Replaced 28-line inline popup bundle (lines 184-211) with 3-line `spawn_score_popup()` call; audio push stays in scoring_system.
+- `tests/test_popup_display_system.cpp` — Added 8 factory contract tests under `[popup_entity][issue349]` tag.
+- `tests/test_scoring_system.cpp` — Added full-contract popup test + LanePush no-popup test.
+
+**Build:** Zero warnings, zero errors (clang -Wall -Wextra -Werror).
+**Tests:** 52 test cases, 132 assertions — all passed.
+
+**Key decision:** `spawn_score_popup` does not push audio (kept in scoring_system per task spec).

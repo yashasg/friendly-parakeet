@@ -56,10 +56,28 @@ SECTION_ROLE = {
 
 DIFFICULTY_SCALE = {"easy": 0.55, "medium": 0.80, "hard": 1.20}
 DIFFICULTY_INTRO_REST = {"easy": 8, "medium": 4, "hard": 2}
+# Issue #175 — first-collision readability floor (seconds).
+# The first authored obstacle must give the player time to register the song
+# before they have to react. Measured as offset + first.beat * 60/bpm.
+# See design-docs/rhythm-spec.md "First-collision floor (per difficulty)".
+MIN_FIRST_COLLISION_SEC = {"easy": 4.0, "medium": 2.5, "hard": 2.0}
 DIFFICULTY_KINDS = {
     "easy":   {"shape_gate"},
     "medium": {"shape_gate", "lane_push"},
     "hard":   {"shape_gate", "lane_push"},
+}
+MAX_EMPTY_GAP = {"easy": 40, "medium": 32, "hard": 30}
+MAX_BEAT_DIFF = {diff: gap + 1 for diff, gap in MAX_EMPTY_GAP.items()}
+MIN_SHAPE_CHANGE_GAP = 3
+GAP_ONE_MEDIUM_START_PROGRESS = 0.30
+GAP_ONE_HARD_MIN_BEAT = 11
+GAP_ONE_MAX_RUN = {"medium": 1, "hard": 2}
+LANE_PUSH_KINDS = {"lane_push_left", "lane_push_right"}
+UNREADABLE_KINDS = LANE_PUSH_KINDS | {"low_bar", "high_bar"}
+MEDIUM_SHAPE_TARGETS = {
+    0: (10, 20),  # Circle / lane 0
+    1: (45, 60),  # Square / lane 1
+    2: (25, 45),  # Triangle / lane 2
 }
 
 # Shape palette per section: controls how many shapes are in play.
@@ -122,6 +140,71 @@ def lane_of(obs, fallback=1):
         else:
             return min(obs_lane + 1, 2)
     return fallback
+
+
+def is_shape_gate(obs):
+    return obs.get("kind") == "shape_gate"
+
+
+def is_lane_push(obs):
+    return obs.get("kind") in LANE_PUSH_KINDS
+
+
+def is_unreadable_kind(obs):
+    return obs.get("kind") in UNREADABLE_KINDS
+
+
+def clamp_lane(lane):
+    return min(max(int(lane), 0), 2)
+
+
+def set_shape_gate(obs, shape):
+    """Mutate an obstacle into a canonical shape_gate."""
+    if shape not in SHAPE_TO_LANE:
+        shape = "square"
+    obs["kind"] = "shape_gate"
+    obs["shape"] = shape
+    obs["lane"] = SHAPE_TO_LANE[shape]
+
+
+def nearest_shape_lane(obstacles, index):
+    """Find the nearest authored shape/lane around index."""
+    for j in range(index - 1, -1, -1):
+        if is_shape_gate(obstacles[j]):
+            shape = obstacles[j].get("shape", "square")
+            if shape in SHAPE_TO_LANE:
+                return shape, SHAPE_TO_LANE[shape]
+    for j in range(index + 1, len(obstacles)):
+        if is_shape_gate(obstacles[j]):
+            shape = obstacles[j].get("shape", "square")
+            if shape in SHAPE_TO_LANE:
+                return shape, SHAPE_TO_LANE[shape]
+    if 0 <= index < len(obstacles):
+        lane = clamp_lane(lane_of(obstacles[index], 1))
+    else:
+        lane = 1
+    return LANE_TO_SHAPE[lane], lane
+
+
+def shape_gate_clusters(obstacles):
+    """Shape gates connected by <3-beat gaps must share one shape."""
+    clusters = []
+    current = []
+    prev_beat = None
+    for i, obs in enumerate(obstacles):
+        if not is_shape_gate(obs):
+            continue
+        beat = obs["beat"]
+        if prev_beat is None or beat - prev_beat >= MIN_SHAPE_CHANGE_GAP:
+            if current:
+                clusters.append(current)
+            current = [i]
+        else:
+            current.append(i)
+        prev_beat = beat
+    if current:
+        clusters.append(current)
+    return clusters
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -504,6 +587,112 @@ def clean_minimum_gap(obstacles, difficulty):
     return result
 
 
+def clean_shape_change_gap(obstacles):
+    """RULE: Different shape gates must be at least 3 beats apart.
+
+    Consecutive shape gates separated by 1-2 beats form a readability cluster.
+    The runtime validator allows those dense clusters only when all gates use
+    the same shape, so normalize each cluster to its majority shape.
+    """
+    if not obstacles:
+        return obstacles
+
+    for cluster in shape_gate_clusters(obstacles):
+        shapes = [
+            obstacles[i].get("shape", "square")
+            for i in cluster
+            if obstacles[i].get("shape", "square") in SHAPE_TO_LANE
+        ]
+        shape = Counter(shapes).most_common(1)[0][0] if shapes else "square"
+        for i in cluster:
+            set_shape_gate(obstacles[i], shape)
+    return obstacles
+
+
+def is_readable_gap_one_family(left, right):
+    """gap=1 is readable only for identical shape_gate shape/lane pairs."""
+    return (
+        is_shape_gate(left)
+        and is_shape_gate(right)
+        and left.get("shape") == right.get("shape")
+        and left.get("lane") == right.get("lane")
+    )
+
+
+def has_readable_gap_one_neighbors(previous, left, right, following):
+    """No LanePush/bar may sit within 2 beats around a gap=1 pair."""
+    if previous and left["beat"] - previous["beat"] <= 2 and is_unreadable_kind(previous):
+        return False
+    if following and following["beat"] - right["beat"] <= 2 and is_unreadable_kind(following):
+        return False
+    return True
+
+
+def clean_gap_one_early(obstacles, difficulty):
+    """RULE: gap=1 pairs must obey per-difficulty readability policy."""
+    if len(obstacles) < 2:
+        return obstacles
+    if difficulty not in ("easy", "medium", "hard"):
+        return obstacles
+
+    obstacles = sorted(obstacles, key=lambda obs: obs["beat"])
+    for _ in range(len(obstacles)):
+        changed = False
+        last_beat = max(1, max(obs["beat"] for obs in obstacles))
+        result = [obstacles[0]]
+        gap_one_run = 0
+
+        for i in range(1, len(obstacles)):
+            left = result[-1]
+            right = obstacles[i]
+            gap = right["beat"] - left["beat"]
+
+            if gap <= 0:
+                changed = True
+                continue
+
+            if gap != 1:
+                result.append(right)
+                gap_one_run = 0
+                continue
+
+            previous = result[-2] if len(result) > 1 else None
+            following = obstacles[i + 1] if i + 1 < len(obstacles) else None
+
+            violation = False
+            if difficulty == "easy":
+                violation = True
+            elif difficulty == "medium":
+                progress = left["beat"] / last_beat
+                violation = (
+                    progress <= GAP_ONE_MEDIUM_START_PROGRESS
+                    or gap_one_run >= GAP_ONE_MAX_RUN["medium"]
+                )
+            else:
+                violation = (
+                    left["beat"] < GAP_ONE_HARD_MIN_BEAT
+                    or gap_one_run >= GAP_ONE_MAX_RUN["hard"]
+                )
+
+            if not is_readable_gap_one_family(left, right):
+                violation = True
+            if not has_readable_gap_one_neighbors(previous, left, right, following):
+                violation = True
+
+            if violation:
+                changed = True
+                continue
+
+            result.append(right)
+            gap_one_run += 1
+
+        obstacles = result
+        if not changed:
+            break
+
+    return obstacles
+
+
 def clean_breathing_room(obstacles, boundary_beats, difficulty):
     """RULE: No obstacles at section boundaries."""
     if not boundary_beats or not obstacles:
@@ -569,19 +758,309 @@ def get_section_boundary_beats(analysis):
 
 def clean_level(obstacles, difficulty, boundary_beats):
     """Run all cleaners. Order:
-    1. Breathing room (section boundaries)
-    2. Two-lane jumps (worst violations)
-    3. Lane change gap (depends on lane tracking)
-    4. Type transition (action family switches)
-    5. Gap monotony (variety enforcement)
+    1. Minimum gap
+    2. Breathing room (section boundaries)
+    3. Two-lane jumps (worst violations)
+    4. Lane change gap (depends on lane tracking)
+    5. Type transition (action family switches)
+    6. Shape-change gap
+    7. gap=1 readability
+    8. Gap monotony (variety enforcement)
     """
     obstacles = clean_minimum_gap(obstacles, difficulty)
     obstacles = clean_breathing_room(obstacles, boundary_beats, difficulty)
     obstacles = clean_two_lane_jumps(obstacles)
     obstacles = clean_lane_change_gap(obstacles)
     obstacles = clean_type_transition(obstacles)
+    obstacles = clean_shape_change_gap(obstacles)
+    obstacles = clean_gap_one_early(obstacles, difficulty)
     obstacles = clean_gap_monotony(obstacles)
     return obstacles
+
+
+def fill_max_gaps(obstacles, difficulty, analysis):
+    """Insert shape gates so consecutive authored beats stay under max-gap."""
+    del analysis
+    max_diff = MAX_BEAT_DIFF.get(difficulty)
+    if not max_diff or len(obstacles) < 2:
+        return obstacles
+
+    obstacles = sorted(obstacles, key=lambda obs: obs["beat"])
+    result = []
+    for i, obs in enumerate(obstacles[:-1]):
+        next_obs = obstacles[i + 1]
+        result.append(obs)
+
+        diff = next_obs["beat"] - obs["beat"]
+        if diff <= max_diff:
+            continue
+
+        shape, lane = nearest_shape_lane(obstacles, i)
+        segments = (diff + max_diff - 1) // max_diff
+        for segment in range(1, segments):
+            beat = obs["beat"] + int(round(diff * segment / segments))
+            result.append({
+                "beat": beat,
+                "kind": "shape_gate",
+                "shape": shape,
+                "lane": lane,
+            })
+
+    result.append(obstacles[-1])
+    return result
+
+
+def beat_arrival_seconds(beat, analysis):
+    bpm = float(analysis.get("bpm", 120) or 120)
+    beats = analysis.get("beats") or []
+    offset = round(beats[0], 3) if beats else 0.0
+    return offset + beat * (60.0 / bpm)
+
+
+def convert_to_nearest_shape_gate(obstacles, index):
+    shape, _ = nearest_shape_lane(obstacles, index)
+    set_shape_gate(obstacles[index], shape)
+
+
+def fix_medium_lanepush_window(obstacles, difficulty, analysis):
+    """Delay and cap medium LanePush usage by converting extras to shapes."""
+    if difficulty != "medium" or not obstacles:
+        return obstacles
+
+    obstacles = sorted(obstacles, key=lambda obs: obs["beat"])
+
+    for i, obs in enumerate(obstacles):
+        if is_lane_push(obs) and beat_arrival_seconds(obs["beat"], analysis) < 30.0:
+            convert_to_nearest_shape_gate(obstacles, i)
+
+    total = len(obstacles)
+    max_allowed = (total * 25) // 100
+    min_required = (total * 5 + 99) // 100
+    target = max(max_allowed, min_required)
+    lane_push_indices = [i for i, obs in enumerate(obstacles) if is_lane_push(obs)]
+    excess = max(0, len(lane_push_indices) - target)
+
+    for i in lane_push_indices:
+        if excess <= 0:
+            break
+        convert_to_nearest_shape_gate(obstacles, i)
+        excess -= 1
+
+    lane_push_count = sum(1 for obs in obstacles if is_lane_push(obs))
+    run = 0
+    for i, obs in enumerate(obstacles):
+        if not is_lane_push(obs):
+            run = 0
+            continue
+        run += 1
+        if run > 3 and lane_push_count > min_required:
+            convert_to_nearest_shape_gate(obstacles, i)
+            lane_push_count -= 1
+            run = 0
+
+    return clean_shape_change_gap(obstacles)
+
+
+def medium_shape_counts(obstacles):
+    counts = {0: 0, 1: 0, 2: 0}
+    for obs in obstacles:
+        if not is_shape_gate(obs):
+            continue
+        shape = obs.get("shape", "square")
+        lane = SHAPE_TO_LANE.get(shape, clamp_lane(obs.get("lane", 1)))
+        counts[lane] += 1
+    total = sum(counts.values())
+    return counts, total
+
+
+def target_count_range(shape_idx, total):
+    min_pct, max_pct = MEDIUM_SHAPE_TARGETS[shape_idx]
+    return (min_pct * total + 99) // 100, (max_pct * total) // 100
+
+
+def shape_balance_score(counts, total):
+    score = 0
+    for shape_idx in range(3):
+        low, high = target_count_range(shape_idx, total)
+        if counts[shape_idx] < low:
+            score += low - counts[shape_idx]
+        elif counts[shape_idx] > high:
+            score += counts[shape_idx] - high
+    return score
+
+
+def shape_cluster_lane(obstacles, cluster):
+    shape = obstacles[cluster[0]].get("shape", "square")
+    return SHAPE_TO_LANE.get(shape, 1)
+
+
+def easy_shape_score(counts, total):
+    if total == 0:
+        return 0
+    max_allowed = (65 * total) // 100
+    missing = sum(1 for shape_idx in range(3) if counts[shape_idx] == 0)
+    dominant = sum(max(0, counts[shape_idx] - max_allowed) for shape_idx in range(3))
+    return missing + dominant
+
+
+def rebalance_easy_shapes(obstacles, difficulty):
+    """Keep easy shape variety valid after dense clusters are normalized."""
+    if difficulty != "easy" or not obstacles:
+        return obstacles
+
+    obstacles = clean_shape_change_gap(obstacles)
+    seen = set()
+    for _ in range(200):
+        counts, total = medium_shape_counts(obstacles)
+        if total == 0 or easy_shape_score(counts, total) == 0:
+            break
+
+        key = tuple(counts[i] for i in range(3))
+        if key in seen:
+            break
+        seen.add(key)
+
+        max_allowed = (65 * total) // 100
+        donors = [
+            shape_idx for shape_idx in range(3)
+            if counts[shape_idx] > max_allowed
+        ]
+        if not donors:
+            donors = [
+                max(range(3), key=lambda shape_idx: counts[shape_idx])
+            ]
+
+        recipients = [
+            shape_idx for shape_idx in range(3)
+            if shape_idx not in donors and counts[shape_idx] < max_allowed
+        ]
+        recipients.sort(key=lambda shape_idx: counts[shape_idx])
+        if not recipients:
+            break
+
+        current_score = easy_shape_score(counts, total)
+        best = None
+        best_score = current_score
+        clusters = shape_gate_clusters(obstacles)
+
+        for donor in donors:
+            donor_excess = max(1, counts[donor] - max_allowed)
+            for under in recipients:
+                for cluster in clusters:
+                    if shape_cluster_lane(obstacles, cluster) != donor:
+                        continue
+                    size = len(cluster)
+                    new_counts = dict(counts)
+                    new_counts[donor] -= size
+                    new_counts[under] += size
+                    new_score = easy_shape_score(new_counts, total)
+                    tie = (abs(size - donor_excess), size)
+                    if (
+                        new_score < best_score
+                        or (new_score == best_score and best and tie < best[2])
+                    ):
+                        best = (cluster, under, tie)
+                        best_score = new_score
+
+        if best is None:
+            break
+
+        cluster, shape_idx, _ = best
+        shape = LANE_TO_SHAPE[shape_idx]
+        for i in cluster:
+            set_shape_gate(obstacles[i], shape)
+
+    return clean_shape_change_gap(obstacles)
+
+
+def rebalance_medium_shapes(obstacles, difficulty):
+    """Mutate medium shape clusters until shape/lane counts enter targets."""
+    if difficulty != "medium" or not obstacles:
+        return obstacles
+
+    obstacles = clean_shape_change_gap(obstacles)
+    seen = set()
+    for _ in range(200):
+        counts, total = medium_shape_counts(obstacles)
+        if total == 0 or shape_balance_score(counts, total) == 0:
+            break
+
+        key = tuple(counts[i] for i in range(3))
+        if key in seen:
+            break
+        seen.add(key)
+
+        under_shapes = []
+        donor_shapes = []
+        for shape_idx in range(3):
+            low, high = target_count_range(shape_idx, total)
+            if counts[shape_idx] < low:
+                under_shapes.append((low - counts[shape_idx], shape_idx))
+            if counts[shape_idx] > high:
+                donor_shapes.append((counts[shape_idx] - high, shape_idx))
+
+        under_shapes.sort(reverse=True)
+        donor_shapes.sort(reverse=True)
+        if under_shapes:
+            under = under_shapes[0][1]
+            under_need = under_shapes[0][0]
+        elif donor_shapes:
+            donor_set = {shape_idx for _, shape_idx in donor_shapes}
+            recipients = []
+            for shape_idx in range(3):
+                if shape_idx in donor_set:
+                    continue
+                _, high = target_count_range(shape_idx, total)
+                headroom = high - counts[shape_idx]
+                if headroom > 0:
+                    recipients.append((headroom, shape_idx))
+            if not recipients:
+                break
+            recipients.sort(reverse=True)
+            under = recipients[0][1]
+            under_need = min(donor_shapes[0][0], recipients[0][0])
+        else:
+            break
+
+        if donor_shapes:
+            donors = [shape_idx for _, shape_idx in donor_shapes]
+        else:
+            donors = [
+                shape_idx for shape_idx in range(3)
+                if shape_idx != under
+                and counts[shape_idx] > target_count_range(shape_idx, total)[0]
+            ]
+
+        current_score = shape_balance_score(counts, total)
+        best = None
+        best_score = current_score
+        best_tie = None
+        clusters = shape_gate_clusters(obstacles)
+
+        for donor in donors:
+            for cluster in clusters:
+                if shape_cluster_lane(obstacles, cluster) != donor:
+                    continue
+                size = len(cluster)
+                new_counts = dict(counts)
+                new_counts[donor] -= size
+                new_counts[under] += size
+                new_score = shape_balance_score(new_counts, total)
+                tie = (abs(size - under_need), size)
+                if new_score < best_score or (new_score == best_score and best_tie and tie < best_tie):
+                    best = (cluster, under)
+                    best_score = new_score
+                    best_tie = tie
+
+        if best is None:
+            break
+
+        cluster, shape_idx = best
+        shape = LANE_TO_SHAPE[shape_idx]
+        for i in cluster:
+            set_shape_gate(obstacles[i], shape)
+
+    return clean_shape_change_gap(obstacles)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -594,6 +1073,56 @@ def design_level(analysis, difficulty):
     obstacles = assign_obstacles(selected, event_map, analysis, difficulty)
     boundary_beats = get_section_boundary_beats(analysis)
     obstacles = clean_level(obstacles, difficulty, boundary_beats)
+    # Issue #175 — guarantee per-difficulty first-collision reaction floor.
+    obstacles = enforce_first_collision_floor(obstacles, difficulty, analysis)
+    obstacles = fill_max_gaps(obstacles, difficulty, analysis)
+    obstacles = fix_medium_lanepush_window(obstacles, difficulty, analysis)
+    obstacles = clean_shape_change_gap(obstacles)
+    obstacles = clean_gap_one_early(obstacles, difficulty)
+    obstacles = rebalance_easy_shapes(obstacles, difficulty)
+    obstacles = rebalance_medium_shapes(obstacles, difficulty)
+    return obstacles
+
+
+def enforce_first_collision_floor(obstacles, difficulty, analysis):
+    """Issue #175 — first obstacle must clear the per-difficulty reaction floor.
+
+    The collision time of the first authored obstacle is
+        first_collision = offset + first.beat * 60/bpm
+    where offset anchors the beat grid to the analysis beat times. We
+    operate on the analysis beat grid here, since beats[i] is the runtime
+    arrival time of beat_index i.
+
+    Strategy:
+      1. Locate the smallest beat index whose grid time clears the floor.
+      2. If the leading obstacle's beat is below that index, postpone it.
+      3. If postponing would collide with the next obstacle (overlap or
+         < MIN_GAP), drop the leading obstacle instead and re-evaluate.
+
+    All subsequent obstacles are untouched, preserving the rhythm grid.
+    """
+    floor = MIN_FIRST_COLLISION_SEC.get(difficulty)
+    if floor is None or not obstacles:
+        return obstacles
+
+    beats = analysis.get("beats") or []
+    if not beats:
+        return obstacles
+
+    min_beat = next((i for i, t in enumerate(beats) if t >= floor), None)
+    if min_beat is None:
+        return obstacles
+
+    MIN_GAP = {"easy": 2, "medium": 1, "hard": 1}
+    min_gap = MIN_GAP.get(difficulty, 2)
+
+    while obstacles and obstacles[0]["beat"] < min_beat:
+        if len(obstacles) > 1 and obstacles[1]["beat"] - min_beat < min_gap:
+            obstacles = obstacles[1:]
+            continue
+        obstacles[0]["beat"] = min_beat
+        break
+
     return obstacles
 
 

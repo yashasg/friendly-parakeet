@@ -136,3 +136,27 @@ Checked all existing issues #44–#220 for overlap before filing.
 **Context:** Kujan's audit review identified `COLLISION_MARGIN` (tripled in 3 files) and `APPROACH_DIST` (duplicated between header and constant file) as medium-risk drift vectors. When promoted/consolidated to `app/constants.h`, both are now authoritative single-source-of-truth.
 
 **Status:** Assigned to McManus (primary), Fenster (tooling/constants). Part of EnTT ECS remediation backlog (low-effort, low-risk fixes). Orchestration log: `.squad/orchestration-log/2026-04-27T19-14-36Z-entt-ecs-audit.md`.
+
+## 2026-04-28 — Non-Component Header Cleanup
+
+- Deleted `app/components/audio.h` (duplicate of `app/systems/audio_types.h`) — updated all includes across app/, tests/, benchmarks/.
+- Deleted `app/components/music.h` (duplicate of `app/systems/music_context.h`) — updated all includes.
+- Deleted `app/components/settings.h` (duplicate of `app/util/settings.h`) — updated all includes including `app/util/settings_persistence.h`.
+- Moved `app/components/shape_vertices.h` → `app/util/shape_vertices.h` (vertex data, not an ECS component) — updated game_render_system.cpp, test_perspective.cpp, bench_perspective.cpp.
+- Deleted `app/components/obstacle_counter.h` (duplicate of `app/systems/obstacle_counter_system.h`) — `obstacle_counter_system.cpp` now explicitly includes `obstacle_counter_system.h`.
+- Deleted `app/components/obstacle_data.h` — folded `RequiredShape`, `BlockedLanes`, `RequiredLane`, `RequiredVAction` into `app/components/obstacle.h` (added `#include "player.h"` there for Shape/VMode types).
+- Benchmarks dir also had stale includes — fixed bench_systems.cpp and bench_perspective.cpp.
+- Build and all 2978 test assertions pass after cleanup.
+
+---
+
+### 2026-04-28 — Team Session Closure: ECS Cleanup Approval
+
+**Status:** APPROVED ✅ — Deliverable logged; ready for merge.
+
+Scribe documentation:
+- Orchestration log written: .squad/orchestration-log/2026-04-28T08-12-03Z-fenster.md
+- Team decision inbox merged into .squad/decisions.md
+- Session log: .squad/log/2026-04-28T08-12-03Z-ecs-cleanup-approval.md
+
+Next: Await merge approval.

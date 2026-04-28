@@ -662,3 +662,144 @@ Fixed all 7 unresolved review threads in commit d90abf9 on `user/yashasg/ecs_ref
 **Side-fix:** Added `app/archetypes/*.cpp` glob to `CMakeLists.txt` (pre-existing missing glob prevented `player_archetype.cpp` from linking).
 
 **Validation:** All 2808 assertions pass in 840 test cases. Zero compiler warnings.
+
+## Slice 2 — Model-authority LowBar/HighBar migration (ObstacleScrollZ)
+
+**Issue:** Remove `Position` from `LowBar` and `HighBar` obstacle entities; replace with `ObstacleScrollZ { float z; }` as the narrow bridge component for the scroll axis.
+
+**Implementation summary:**
+
+**Component addition:**
+- Added `struct ObstacleScrollZ { float z = 0.0f; }` to `app/components/obstacle.h`
+
+**Archetype migration:**
+- `app/archetypes/obstacle_archetypes.cpp`: LowBar + HighBar now emplace `ObstacleScrollZ(in.y)` instead of `Position(in.x, in.y)`
+
+**System dual-view pattern (two-view migration):**
+- `scroll_system`: Added `model_beat_view` for `ObstacleTag + ObstacleScrollZ + BeatInfo` before legacy Position beat view
+- `cleanup_system`: Added `model_view` for `ObstacleTag + ObstacleScrollZ` before legacy Position view
+- `collision_system`: `player_in_timing_window` refactored to take `float obstacle_z`; LowBar/HighBar view uses `ObstacleScrollZ`
+- `miss_detection_system`: Added ObstacleScrollZ view with `DeathCause::HitABar`
+- `camera_system`: Pass 1b uses ObstacleScrollZ; dead LowBar/HighBar cases removed from pass 1
+- `scoring_system`: Added `hit_view2` for ObstacleScrollZ entities; popup anchor at screen center
+- `test_player_system`: Secondary PERCEIVE loop + zone-blocked checks for ObstacleScrollZ
+
+**Spawn fix:**
+- `shape_obstacle.cpp`: `spawn_obstacle_meshes()` guarded `Position` fetch with `try_get` (LowBar/HighBar have no Position; ShapeGate case early-exits if no Position)
+- Added HighBar case to `build_obstacle_model()`
+
+**Test updates:**
+- `tests/test_helpers.h`: `make_vertical_bar` uses `ObstacleScrollZ` instead of `Position`
+- `tests/test_obstacle_archetypes.cpp`: LowBar/HighBar tests check `ObstacleScrollZ`; "position propagated" split into ObstacleScrollZ test + ShapeGate Position test
+- `tests/test_obstacle_model_slice.cpp`: Section A replaced with post-migration assertions; Section C enabled with headless-safe scroll + cleanup tests
+- `tests/test_model_authority_gaps.cpp`: Added `#include "components/obstacle.h"`
+
+**Learnings:**
+- The "two-view migration" pattern (legacy Position view + new ObstacleScrollZ view in each system) is the canonical approach for zero-regression ECS component migrations in this codebase
+- `spawn_obstacle_meshes()` used unconditional `reg.get<Position>` — any kind without Position will SIGSEGV there; always guard with `try_get` when a function handles multiple obstacle kinds
+- LanePush* remain on Position (not yet migrated)
+
+**Validation:** All 2957 assertions pass in 898 test cases. Zero compiler warnings.
+
+### 2026-04-28 — System Boundary Cleanup (beat_map_loader + cleanup_system)
+
+**Status:** COMPLETE
+
+**Work done:**
+1. Moved `beat_map_loader.h/.cpp` from `app/systems/` → `app/util/`. It is a JSON/IO utility, not a system. CMake `file(GLOB UTIL_SOURCES app/util/*.cpp)` picks it up automatically; no CMakeLists changes needed.
+2. Renamed `cleanup_system` → `obstacle_despawn_system` (file + function). The old name was generic; the new name communicates exactly what it does: despawn obstacles that scroll past `constants::DESTROY_Y` (the camera's far-Z boundary).
+3. Updated all callers: `game_loop.cpp`, `all_systems.h`, `app/components/obstacle.h` comment, `app/systems/test_player_system.cpp` comment.
+4. Updated all test files: `test_world_systems.cpp`, `test_model_authority_gaps.cpp`, `test_obstacle_model_slice.cpp`, `test_test_player_system.cpp`, `test_game_state_extended.cpp`.
+5. Updated all test includes: `systems/beat_map_loader.h` → `util/beat_map_loader.h` (10 test files).
+6. Updated `app/systems/play_session.cpp` include path: `"beat_map_loader.h"` → `"../util/beat_map_loader.h"`.
+
+**Build note:** Pre-existing build environment issue — `shapeshifter_lib` links to EnTT/magic_enum/nlohmann_json but NOT raylib, yet many lib sources include `<raylib.h>` transitively through `constants.h`. This causes fresh builds to fail with "raylib.h not found" when building shapeshifter_lib. This predates these changes; it only manifests when the build/ directory is recreated from scratch (the old cached build/ had pre-compiled objects). All changed files verified warning-free via direct `c++ -fsyntax-only` with all include paths.
+
+**Key decision:** Kept `DESTROY_Y` constant name unchanged — renaming a constant is a larger footprint than the task required, and it's documented in `constants.h`. The semantic meaning is clear from the obstacle_despawn_system function comment.
+
+### 2026-05-XX — Unity Build Hazard Audit
+
+**Status:** AUDIT COMPLETE — read-only analysis, no files modified.
+
+**Findings:**
+
+**App sources (shapeshifter_lib + shapeshifter exe): CLEAN**
+- No macros defined in .cpp files
+- All anonymous-namespace symbols in app/ are unique across files
+- All file-scope `static` functions in app/ have unique names
+- `constexpr` variables in `app/audio/sfx_bank.cpp` (kPi, SAMPLE_RATE, SFX_COUNT, SFX_SPECS) are inside the anonymous namespace — internal linkage, safe
+- `SHAPE_PROPS` in `app/systems/camera_system.cpp` is the sole definition (with extern decl in header) — no conflict
+- `platform_display.cpp` uses `#ifdef __EMSCRIPTEN__` to swap implementations but both branches are within one file — fine for unity
+
+**Test sources (shapeshifter_tests): THREE HAZARD CLUSTERS requiring opt-out**
+
+1. **`remove_path` / `temp_high_score_path` collision** (anonymous namespace):
+   - `tests/test_high_score_persistence.cpp`
+   - `tests/test_high_score_integration.cpp`
+
+2. **`find_shipped_beatmaps` collision** (file-scope `static` function — same signature in 6 files):
+   - `tests/test_shipped_beatmap_shape_gap.cpp`
+   - `tests/test_shipped_beatmap_gap_one_readability.cpp`
+   - `tests/test_shipped_beatmap_max_gap.cpp`
+   - `tests/test_shipped_beatmap_difficulty_ramp.cpp`
+   - `tests/test_shipped_beatmap_first_collision.cpp`
+   - `tests/test_shipped_beatmap_medium_balance.cpp`
+
+3. **`find_by_id` collision** (anonymous namespace, identical bodies):
+   - `tests/test_ui_redfoot_pass.cpp`
+   - `tests/test_redfoot_testflight_ui.cpp`
+
+**Recommended CMake exclusions (add to CMakeLists.txt after TEST_SOURCES glob):**
+```cmake
+set_source_files_properties(
+    tests/test_high_score_persistence.cpp
+    tests/test_high_score_integration.cpp
+    tests/test_shipped_beatmap_shape_gap.cpp
+    tests/test_shipped_beatmap_gap_one_readability.cpp
+    tests/test_shipped_beatmap_max_gap.cpp
+    tests/test_shipped_beatmap_difficulty_ramp.cpp
+    tests/test_shipped_beatmap_first_collision.cpp
+    tests/test_shipped_beatmap_medium_balance.cpp
+    tests/test_ui_redfoot_pass.cpp
+    tests/test_redfoot_testflight_ui.cpp
+    PROPERTIES SKIP_UNITY_BUILD_INCLUSION TRUE
+)
+```
+
+**Unity build option:** `SHAPESHIFTER_UNITY_BUILD` already exists in CMakeLists.txt (line 24, defaulting OFF). Safe to enable for app targets. Tests need the 10 file exclusions above first.
+
+### 2026-04-28 — Obstacle Spatial Audit
+
+**Status:** AUDIT COMPLETE — Confirmed reader-only migration safe after fixture prep.
+
+**Finding:** Production obstacle readers (Position + ObstacleScrollZ) are stable; legacy bridge writers can coexist during transition. QA fixture prep is critical path blocker — tests lack WorldTransform + render tags.
+
+**Verdict:** Defer reader migration to after fixture update. Spatial semantics locked: Position (world), ObstacleScrollZ (scroll layer).
+
+
+### 2026-05-XX — Unity Build ODR Fix (scratch_for collisions)
+
+**Status:** COMPLETE
+
+**Hazards fixed:**
+Four app system files all defined `scratch_for(entt::registry&)` in anonymous namespaces with different return types. In unity builds (all app .cpp files in one TU), these collide at the function signature level — the anonymous namespace does NOT prevent intra-TU ODR violations.
+
+Files and renames applied:
+- `app/systems/particle_system.cpp`: `scratch_for` → `particle_scratch_for`
+- `app/systems/obstacle_despawn_system.cpp`: `scratch_for` → `despawn_scratch_for`
+- `app/systems/popup_display_system.cpp`: `scratch_for` → `popup_scratch_for`
+- `app/systems/scoring_system.cpp`: `scratch_for` → `scoring_scratch_for` (two call sites)
+
+**Commands run:**
+```
+rm -rf build-unity-verify-vcpkg
+cmake -B build-unity-verify-vcpkg -S . -DCMAKE_TOOLCHAIN_FILE=.../vcpkg.cmake -DSHAPESHIFTER_UNITY_BUILD=ON -Wno-dev
+cmake --build build-unity-verify-vcpkg --target shapeshifter_tests -- -j2
+./build-unity-verify-vcpkg/shapeshifter_tests
+```
+
+**Result:** All tests passed (2631 assertions in 901 test cases). Zero warnings.
+
+**Learnings:**
+- Anonymous namespaces do NOT protect against intra-TU collisions in unity builds; they only suppress inter-TU linkage. Any file-scope symbol in an anonymous namespace must be unique across all files that share a unity TU.
+- The correct fix is unique naming (not SKIP_UNITY_BUILD_INCLUSION) when the function body is trivially file-specific. Exclusion is reserved for files with deeper structural hazards (e.g., static helpers used by multiple tests that can't be trivially renamed).

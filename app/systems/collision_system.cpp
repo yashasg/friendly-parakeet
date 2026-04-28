@@ -1,38 +1,73 @@
 #include "all_systems.h"
 #include "../components/obstacle.h"
-#include "../components/obstacle_data.h"
 #include "../components/player.h"
 #include "../components/transform.h"
 #include "../components/rendering.h"
 #include "../components/game_state.h"
 #include "../components/rhythm.h"
+#include "../util/rhythm_math.h"
+#include "../components/song_state.h"
 #include "../constants.h"
+#include <raylib.h>
 #include <cmath>
+
+namespace {
+
+Rectangle centered_rect(float cx, float cy, float w, float h) {
+    return {cx - w * 0.5f, cy - h * 0.5f, w, h};
+}
+
+Vector2 player_timing_point(const WorldTransform& transform, const VerticalState& vstate) {
+    return {0.0f, transform.position.y + vstate.y_offset};
+}
+
+bool player_in_timing_window(const WorldTransform& player_transform,
+                              const VerticalState& vstate,
+                              float obstacle_z) {
+    Rectangle timing_window = {
+        0.0f,
+        obstacle_z - constants::COLLISION_MARGIN,
+        1.0f,
+        constants::COLLISION_MARGIN * 2.0f
+    };
+    return CheckCollisionPointRec(player_timing_point(player_transform, vstate), timing_window);
+}
+
+bool player_overlaps_lane(const WorldTransform& player_transform, const Position& obstacle_pos) {
+    Rectangle player_lane = centered_rect(player_transform.position.x, 0.0f,
+                                          constants::PLAYER_SIZE, 1.0f);
+    Rectangle obstacle_lane = centered_rect(obstacle_pos.x, 0.0f, constants::PLAYER_SIZE, 1.0f);
+    return CheckCollisionRecs(player_lane, obstacle_lane);
+}
+
+}  // namespace
 
 void collision_system(entt::registry& reg, float /*dt*/) {
     if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
 
-    auto player_view = reg.view<PlayerTag, Position, PlayerShape, ShapeWindow, Lane, VerticalState>();
-    if (player_view.size_hint() == 0) return;
+    auto player_view = reg.view<PlayerTag, WorldTransform, PlayerShape, ShapeWindow, Lane, VerticalState>();
+    if (player_view.begin() == player_view.end()) return;
 
     auto player_it = player_view.begin();
-    auto [p_pos, p_shape, p_window, p_lane, p_vstate] =
-        player_view.get<Position, PlayerShape, ShapeWindow, Lane, VerticalState>(*player_it);
-
-    constexpr float COLLISION_MARGIN = 40.0f;
+    auto [p_transform, p_shape, p_window, p_lane, p_vstate] =
+        player_view.get<WorldTransform, PlayerShape, ShapeWindow, Lane, VerticalState>(*player_it);
 
     auto* song    = reg.ctx().find<SongState>();
     auto* results = reg.ctx().find<SongResults>();
+    auto* gos     = reg.ctx().find<GameOverState>();  // #309: hoisted above resolve lambda
     bool rhythm_mode = (song != nullptr);
 
-    auto resolve = [&](entt::entity entity, const Position& obs_pos, bool cleared) {
-        float dist = std::abs(p_pos.y - obs_pos.y + p_vstate.y_offset);
-        if (dist > COLLISION_MARGIN) return;
+    // resolve: tag entity as scored (cleared) or missed.
+    // kind is passed by the caller — no try_get needed since each per-kind
+    // loop already holds the Obstacle component.
+    auto resolve = [&](entt::entity entity, float obs_z, bool cleared,
+                       ObstacleKind kind) {
+        if (!player_in_timing_window(p_transform, p_vstate, obs_z)) return;
 
         if (cleared) {
             // In rhythm mode, compute timing grade
             if (rhythm_mode) {
-                auto window_phase = static_cast<WindowPhase>(p_window.phase_raw);
+                auto window_phase = p_window.phase;
                 if (window_phase == WindowPhase::Active && song->half_window > 0.0f) {
                     // Grade timing by comparing the player's predicted peak
                     // (center of the Active window) against the obstacle's
@@ -78,81 +113,88 @@ void collision_system(entt::registry& reg, float /*dt*/) {
             }
             reg.emplace<ScoredTag>(entity);
         } else {
-            // MISS — drain energy
-            if (results) results->miss_count++;
-            auto* energy = reg.ctx().find<EnergyState>();
-            if (energy) {
-                energy->energy -= constants::ENERGY_DRAIN_MISS;
-                if (energy->energy < 0.0f) energy->energy = 0.0f;
-                energy->flash_timer = constants::ENERGY_FLASH_DURATION;
+            // MISS — tag and record cause; energy drain handled by scoring_system.
+            // Tag the cause of death for the UI (does not override a prior cause)
+            if (gos && gos->cause == DeathCause::None) {
+                bool is_bar = (kind == ObstacleKind::LowBar || kind == ObstacleKind::HighBar);
+                gos->cause = is_bar ? DeathCause::HitABar : DeathCause::MissedABeat;
             }
             reg.emplace<MissTag>(entity);
             reg.emplace<ScoredTag>(entity);
         }
     };
 
-    // Single-pass collision: iterate all unscored obstacles once, dispatch by kind.
-    auto obs_view = reg.view<ObstacleTag, Position, Obstacle>(entt::exclude<ScoredTag>);
-    for (auto [e, pos, obs] : obs_view.each()) {
-        switch (obs.kind) {
-            case ObstacleKind::ShapeGate: {
-                auto* req = reg.try_get<RequiredShape>(e);
-                if (!req) break;
-                bool shape_match = (p_shape.current == req->shape) && (p_shape.current != Shape::Hexagon);
-                bool lane_match = (std::abs(p_pos.x - pos.x) < constants::PLAYER_SIZE);
-                resolve(e, pos, shape_match && lane_match);
-                break;
-            }
-            case ObstacleKind::LaneBlock: {
-                auto* blocked = reg.try_get<BlockedLanes>(e);
-                if (!blocked) break;
-                resolve(e, pos, !((blocked->mask >> p_lane.current) & 1));
-                break;
-            }
-            case ObstacleKind::LowBar:
-            case ObstacleKind::HighBar: {
-                auto* req_v = reg.try_get<RequiredVAction>(e);
-                if (!req_v) break;
-                resolve(e, pos, p_vstate.mode == req_v->action);
-                break;
-            }
-            case ObstacleKind::ComboGate: {
-                auto* req = reg.try_get<RequiredShape>(e);
-                auto* blocked = reg.try_get<BlockedLanes>(e);
-                if (!req || !blocked) break;
-                bool shape_ok = (p_shape.current == req->shape) && (p_shape.current != Shape::Hexagon);
-                bool lane_ok  = !((blocked->mask >> p_lane.current) & 1);
-                resolve(e, pos, shape_ok && lane_ok);
-                break;
-            }
-            case ObstacleKind::SplitPath: {
-                auto* req = reg.try_get<RequiredShape>(e);
-                auto* rlane = reg.try_get<RequiredLane>(e);
-                if (!req || !rlane) break;
-                bool shape_ok = (p_shape.current == req->shape) && (p_shape.current != Shape::Hexagon);
-                bool lane_ok  = (p_lane.current == rlane->lane);
-                resolve(e, pos, shape_ok && lane_ok);
-                break;
-            }
-            case ObstacleKind::LanePushLeft:
-            case ObstacleKind::LanePushRight: {
-                // Passive: only trigger within the collision window (same
-                // distance gate as resolve()).  Scores the obstacle and
-                // auto-pushes the player when in the same lane.
-                float y_dist = std::abs(p_pos.y - pos.y + p_vstate.y_offset);
-                if (y_dist > COLLISION_MARGIN) break;
-                bool on_same_lane = (std::abs(p_pos.x - pos.x) < constants::PLAYER_SIZE);
-                if (on_same_lane && p_lane.target < 0) {
-                    int8_t delta = (obs.kind == ObstacleKind::LanePushLeft) ? -1 : 1;
-                    int8_t dest = static_cast<int8_t>(p_lane.current + delta);
-                    if (dest >= 0 && dest < constants::LANE_COUNT) {
-                        p_lane.target = dest;
-                        p_lane.lerp_t = 0.0f;
-                    }
+    // Per-kind structural views — each loop touches only entities that actually
+    // carry the required components, eliminating per-entity try_get branches.
+
+    // ShapeGate: RequiredShape only (no BlockedLanes, no RequiredLane)
+    {
+        auto view = reg.view<ObstacleTag, Position, Obstacle, RequiredShape>(
+            entt::exclude<ScoredTag, BlockedLanes, RequiredLane>);
+        for (auto [e, pos, obs, req] : view.each()) {
+            bool shape_match = (p_shape.current == req.shape) && (p_shape.current != Shape::Hexagon);
+            bool lane_match  = player_overlaps_lane(p_transform, pos);
+            resolve(e, pos.y, shape_match && lane_match, obs.kind);
+        }
+    }
+
+    // LaneBlock: BlockedLanes only (no RequiredShape)
+    {
+        auto view = reg.view<ObstacleTag, Position, Obstacle, BlockedLanes>(
+            entt::exclude<ScoredTag, RequiredShape>);
+        for (auto [e, pos, obs, blocked] : view.each()) {
+            resolve(e, pos.y, !((blocked.mask >> p_lane.current) & 1), obs.kind);
+        }
+    }
+
+    // LowBar / HighBar: RequiredVAction
+    {
+        auto view = reg.view<ObstacleTag, ObstacleScrollZ, Obstacle, RequiredVAction>(
+            entt::exclude<ScoredTag>);
+        for (auto [e, oz, obs, req_v] : view.each()) {
+            resolve(e, oz.z, p_vstate.mode == req_v.action, obs.kind);
+        }
+    }
+
+    // ComboGate: RequiredShape + BlockedLanes (no RequiredLane)
+    {
+        auto view = reg.view<ObstacleTag, Position, Obstacle, RequiredShape, BlockedLanes>(
+            entt::exclude<ScoredTag, RequiredLane>);
+        for (auto [e, pos, obs, req, blocked] : view.each()) {
+            bool shape_ok = (p_shape.current == req.shape) && (p_shape.current != Shape::Hexagon);
+            bool lane_ok  = !((blocked.mask >> p_lane.current) & 1);
+            resolve(e, pos.y, shape_ok && lane_ok, obs.kind);
+        }
+    }
+
+    // SplitPath: RequiredShape + RequiredLane
+    {
+        auto view = reg.view<ObstacleTag, Position, Obstacle, RequiredShape, RequiredLane>(
+            entt::exclude<ScoredTag>);
+        for (auto [e, pos, obs, req, rlane] : view.each()) {
+            bool shape_ok = (p_shape.current == req.shape) && (p_shape.current != Shape::Hexagon);
+            bool lane_ok  = (p_lane.current == rlane.lane);
+            resolve(e, pos.y, shape_ok && lane_ok, obs.kind);
+        }
+    }
+
+    // LanePushLeft / LanePushRight: no data components (structural negative).
+    // Passive: auto-pushes player when in the same lane; always scores.
+    {
+        auto view = reg.view<ObstacleTag, Position, Obstacle>(
+            entt::exclude<ScoredTag, RequiredShape, BlockedLanes, RequiredLane, RequiredVAction>);
+        for (auto [e, pos, obs] : view.each()) {
+            if (!player_in_timing_window(p_transform, p_vstate, pos.y)) continue;
+            bool on_same_lane = player_overlaps_lane(p_transform, pos);
+            if (on_same_lane && p_lane.target < 0) {
+                int8_t delta = (obs.kind == ObstacleKind::LanePushLeft) ? -1 : 1;
+                int8_t dest  = static_cast<int8_t>(p_lane.current + delta);
+                if (dest >= 0 && dest < constants::LANE_COUNT) {
+                    p_lane.target = dest;
+                    p_lane.lerp_t = 0.0f;
                 }
-                reg.emplace<ScoredTag>(e);
-                break;
             }
+            reg.emplace<ScoredTag>(e);
         }
     }
 }

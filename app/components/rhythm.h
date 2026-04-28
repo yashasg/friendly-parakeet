@@ -1,6 +1,6 @@
 #pragma once
 
-// rhythm.h — Per-entity rhythm components, timing enums, and helpers.
+// rhythm.h — Per-entity rhythm components and timing enums.
 // Loaded-once data (BeatMap) lives in beat_map.h.
 // Runtime singletons (SongState, EnergyState, SongResults) live in song_state.h.
 // This header re-exports both for backward compatibility.
@@ -12,19 +12,15 @@
 #include <cstdint>
 
 // ── Window Phase ────────────────────────────────────
-enum class WindowPhase : uint8_t {
-    Idle     = 0,
-    MorphIn  = 1,
-    Active   = 2,
-    MorphOut = 3
-};
+// Defined in window_phase.h; re-exported here for consumers of rhythm.h.
+#include "window_phase.h"
 
 // ── Timing Grade (emplaced on obstacle at collision) ─
 enum class TimingTier : uint8_t {
-    Bad     = 0,
-    Ok      = 1,
-    Good    = 2,
-    Perfect = 3
+    Bad,
+    Ok,
+    Good,
+    Perfect,
 };
 
 struct TimingGrade {
@@ -38,33 +34,3 @@ struct BeatInfo {
     float arrival_time = 0.0f;
     float spawn_time   = 0.0f;
 };
-
-// ── Helper: window scale factor from tier ────────────
-inline float window_scale_for_tier(TimingTier tier) {
-    switch (tier) {
-        case TimingTier::Perfect: return 1.50f;
-        case TimingTier::Good:    return 1.00f;
-        case TimingTier::Ok:      return 0.75f;
-        case TimingTier::Bad:     return 0.50f;
-    }
-    return 1.00f;
-}
-
-// ── Helper: timing multiplier from tier ─────────────
-inline float timing_multiplier(TimingTier tier) {
-    switch (tier) {
-        case TimingTier::Perfect: return 1.50f;
-        case TimingTier::Good:    return 1.00f;
-        case TimingTier::Ok:      return 0.50f;
-        case TimingTier::Bad:     return 0.25f;
-    }
-    return 0.25f;
-}
-
-// ── Helper: compute timing tier from pct_from_peak ──
-inline TimingTier compute_timing_tier(float pct_from_peak) {
-    if (pct_from_peak <= 0.25f) return TimingTier::Perfect;
-    if (pct_from_peak <= 0.50f) return TimingTier::Good;
-    if (pct_from_peak <= 0.75f) return TimingTier::Ok;
-    return TimingTier::Bad;
-}

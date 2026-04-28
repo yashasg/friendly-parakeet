@@ -1,5 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
+#include <type_traits>
 #include "test_helpers.h"
+#include "audio/audio_queue.h"
+#include "input/input_state.h"
+#include "input/phase_activation.h"
 
 // Verify component defaults and basic ECS operations
 
@@ -7,6 +11,29 @@ TEST_CASE("components: Position default is zero", "[components]") {
     Position p{};
     CHECK(p.x == 0.0f);
     CHECK(p.y == 0.0f);
+}
+
+TEST_CASE("components: WorldTransform defaults to identity world transform", "[components][transform]") {
+    WorldTransform transform{};
+    CHECK(transform.position.x == 0.0f);
+    CHECK(transform.position.y == 0.0f);
+    CHECK(transform.rotation == 0.0f);
+    CHECK(transform.scale.x == 1.0f);
+    CHECK(transform.scale.y == 1.0f);
+}
+
+TEST_CASE("components: MotionVelocity defaults to zero vector", "[components][transform]") {
+    MotionVelocity velocity{};
+    CHECK(velocity.value.x == 0.0f);
+    CHECK(velocity.value.y == 0.0f);
+}
+
+TEST_CASE("components: UIPosition is distinct screen-space placement", "[components][transform][ui]") {
+    UIPosition position{};
+    CHECK(position.value.x == 0.0f);
+    CHECK(position.value.y == 0.0f);
+    CHECK_FALSE((std::is_same_v<UIPosition, WorldTransform>));
+    CHECK_FALSE((std::is_same_v<UIPosition, ScreenPosition>));
 }
 
 TEST_CASE("components: PlayerShape defaults to Circle", "[components]") {
@@ -66,19 +93,6 @@ TEST_CASE("components: ScoreState defaults to zero", "[components]") {
     CHECK(s.chain_count == 0);
 }
 
-TEST_CASE("components: BurnoutState defaults to no threat", "[components]") {
-    BurnoutState bs{};
-    CHECK(bs.meter == 0.0f);
-    CHECK(bs.zone == BurnoutZone::None);
-    CHECK((bs.nearest_threat == entt::null));
-}
-
-TEST_CASE("components: DifficultyConfig defaults", "[components]") {
-    DifficultyConfig dc{};
-    CHECK(dc.speed_multiplier == 1.0f);
-    CHECK(dc.elapsed == 0.0f);
-}
-
 TEST_CASE("components: GameState defaults to title", "[components]") {
     GameState gs{};
     CHECK(gs.phase == GamePhase::Title);
@@ -87,15 +101,120 @@ TEST_CASE("components: GameState defaults to title", "[components]") {
 
 TEST_CASE("ecs: make_registry creates all singletons", "[ecs]") {
     auto reg = make_registry();
-    // These should not throw
+    // These should not throw — assert every ctx singleton required by systems.
+    // Input / event transport
     static_cast<void>(reg.ctx().get<InputState>());
-    static_cast<void>(reg.ctx().get<ActionQueue>());
+    static_cast<void>(reg.ctx().get<entt::dispatcher>());   // #332: must be present
+    // Gameplay state
     static_cast<void>(reg.ctx().get<GameState>());
     static_cast<void>(reg.ctx().get<ScoreState>());
-    static_cast<void>(reg.ctx().get<BurnoutState>());
-    static_cast<void>(reg.ctx().get<DifficultyConfig>());
+    // Audio / haptics / settings
     static_cast<void>(reg.ctx().get<AudioQueue>());
-    SUCCEED("all required singletons exist in registry context");
+    static_cast<void>(reg.ctx().get<HapticQueue>());
+    static_cast<void>(reg.ctx().get<SettingsState>());
+    // Level / song / rhythm
+    static_cast<void>(reg.ctx().get<LevelSelectState>());
+    static_cast<void>(reg.ctx().get<BeatMap>());
+    static_cast<void>(reg.ctx().get<SongState>());
+    static_cast<void>(reg.ctx().get<EnergyState>());
+    static_cast<void>(reg.ctx().get<SongResults>());
+    // Scoring persistence / end-screen
+    static_cast<void>(reg.ctx().get<HighScoreState>());
+    static_cast<void>(reg.ctx().get<HighScorePersistence>());
+    static_cast<void>(reg.ctx().get<GameOverState>());
+    // Misc
+    static_cast<void>(reg.ctx().get<RNGState>());
+    static_cast<void>(reg.ctx().get<ObstacleCounter>());
+    SUCCEED("all required ctx singletons exist in registry context");
+}
+
+TEST_CASE("ecs: make_registry dispatcher is wired — GoEvent listeners registered", "[ecs][dispatcher]") {
+    // Verifies that wire_input_dispatcher() was called during make_registry(),
+    // so any system can immediately enqueue+update GoEvents without separate setup.
+    auto reg = make_registry();
+
+    // Promote to Playing so player_input_handle_go has observable effect.
+    reg.ctx().get<GameState>().phase = GamePhase::Playing;
+    auto player = make_player(reg);
+    auto& lane  = reg.get<Lane>(player);
+
+    auto& disp = reg.ctx().get<entt::dispatcher>();
+    disp.enqueue(GoEvent{Direction::Right});
+    disp.update<GoEvent>();
+
+    // If dispatcher listeners were NOT wired, lane.target would remain -1.
+    CHECK(lane.target == 2);   // listener wired: player_input_handle_go fired
+}
+
+TEST_CASE("ecs: make_registry dispatcher is wired — ButtonPressEvent listeners registered", "[ecs][dispatcher]") {
+    // Verifies ButtonPressEvent sink is wired: a press event on a valid button
+    // in Playing phase reaches player_input_handle_press.
+    auto reg = make_rhythm_registry();
+    auto player = make_rhythm_player(reg);
+    auto& sw    = reg.get<ShapeWindow>(player);
+    REQUIRE(sw.phase == WindowPhase::Idle);
+
+    auto btn = make_shape_button(reg, Shape::Triangle);
+    reg.get<UIPosition>(btn).value = {0.f, 0.f};
+    reg.get<HitCircle>(btn).radius = 50.f;
+
+    auto& disp = reg.ctx().get<entt::dispatcher>();
+    press_button(reg, btn);
+    disp.update<ButtonPressEvent>();
+
+    // If dispatcher listeners were NOT wired, sw.phase would stay Idle.
+    CHECK(sw.phase        == WindowPhase::MorphIn);  // listener wired: handle_press fired
+    CHECK(sw.target_shape == Shape::Triangle);
+}
+
+TEST_CASE("ecs: make_registry dispatcher ctx — second update is a no-op (no replay)", "[ecs][dispatcher]") {
+    // Contract: after an authoritative drain, a subsequent update<T>() with no
+    // new enqueues must not re-deliver the previously drained event.
+    // Applies to both GoEvent and ButtonPressEvent pools.
+    auto reg = make_rhythm_registry();
+    auto player = make_rhythm_player(reg);
+    auto& lane  = reg.get<Lane>(player);
+
+    auto& disp = reg.ctx().get<entt::dispatcher>();
+    disp.enqueue(GoEvent{Direction::Right});
+    disp.update<GoEvent>();
+    CHECK(lane.target == 2);
+
+    // Second drain — must be a no-op.
+    disp.update<GoEvent>();
+    CHECK(lane.target == 2);   // not replayed
+}
+
+TEST_CASE("ecs: wire_input_dispatcher is idempotent", "[ecs][dispatcher]") {
+    auto reg = make_rhythm_registry();
+    auto player = make_rhythm_player(reg);
+    auto btn = make_shape_button(reg, Shape::Triangle);
+    reg.get<UIPosition>(btn).value = {0.f, 0.f};
+    reg.get<HitCircle>(btn).radius = 50.f;
+
+    wire_input_dispatcher(reg);
+    press_button(reg, btn);
+    reg.ctx().get<entt::dispatcher>().update<ButtonPressEvent>();
+
+    CHECK(reg.get<ShapeWindow>(player).phase == WindowPhase::MorphIn);
+    CHECK(reg.ctx().get<AudioQueue>().count == 1);
+}
+
+struct ExternalGoListener {
+    int count = 0;
+    void on_go(const GoEvent&) { ++count; }
+};
+
+TEST_CASE("ecs: unwire_input_dispatcher preserves external listeners", "[ecs][dispatcher]") {
+    auto reg = make_registry();
+    auto& disp = reg.ctx().get<entt::dispatcher>();
+    ExternalGoListener listener;
+    disp.sink<GoEvent>().connect<&ExternalGoListener::on_go>(listener);
+
+    unwire_input_dispatcher(reg);
+    disp.trigger(GoEvent{Direction::Left});
+
+    CHECK(listener.count == 1);
 }
 
 TEST_CASE("ecs: make_player creates proper entity", "[ecs]") {
@@ -103,14 +222,16 @@ TEST_CASE("ecs: make_player creates proper entity", "[ecs]") {
     auto p = make_player(reg);
 
     CHECK(reg.all_of<PlayerTag>(p));
-    CHECK(reg.all_of<Position>(p));
+    CHECK(reg.all_of<WorldTransform>(p));
+    CHECK_FALSE(reg.all_of<Position>(p));
     CHECK(reg.all_of<PlayerShape>(p));
     CHECK(reg.all_of<ShapeWindow>(p));
     CHECK(reg.all_of<Lane>(p));
     CHECK(reg.all_of<VerticalState>(p));
-    CHECK(reg.all_of<DrawColor>(p));
+    CHECK(reg.all_of<Color>(p));
     CHECK(reg.all_of<DrawSize>(p));
     CHECK(reg.all_of<DrawLayer>(p));
+    CHECK(reg.all_of<TagWorldPass>(p));
 }
 
 TEST_CASE("components: Velocity default is zero", "[components]") {
@@ -119,19 +240,8 @@ TEST_CASE("components: Velocity default is zero", "[components]") {
     CHECK(v.dy == 0.0f);
 }
 
-TEST_CASE("components: ActionQueue default is empty", "[components]") {
-    ActionQueue aq{};
-    CHECK(aq.count == 0);
-}
-
-TEST_CASE("components: Lifetime defaults", "[components]") {
-    Lifetime lt{};
-    CHECK(lt.remaining == 0.0f);
-    CHECK(lt.max_time == 0.0f);
-}
-
-TEST_CASE("components: DrawColor construction", "[components]") {
-    DrawColor c{uint8_t{255}, uint8_t{128}, uint8_t{64}, uint8_t{200}};
+TEST_CASE("components: Color construction", "[components]") {
+    Color c{255, 128, 64, 200};
     CHECK(c.r == 255);
     CHECK(c.g == 128);
     CHECK(c.b == 64);
@@ -153,14 +263,6 @@ TEST_CASE("components: Obstacle construction", "[components]") {
 TEST_CASE("components: ParticleData construction", "[components]") {
     ParticleData pd{10.0f};
     CHECK(pd.size == 10.0f);
-}
-
-TEST_CASE("components: PlayerAction construction", "[components]") {
-    ActionQueue aq{};
-    aq.tap(Button::ShapeCircle);
-    CHECK(aq.count == 1);
-    CHECK(aq.actions[0].verb == ActionVerb::Tap);
-    CHECK(aq.actions[0].button == Button::ShapeCircle);
 }
 
 TEST_CASE("ecs: make_combo_gate creates proper entity", "[ecs]") {
@@ -188,4 +290,57 @@ TEST_CASE("ecs: make_split_path creates proper entity", "[ecs]") {
     CHECK(reg.get<Obstacle>(obs).kind == ObstacleKind::SplitPath);
     CHECK(reg.get<RequiredShape>(obs).shape == Shape::Triangle);
     CHECK(reg.get<RequiredLane>(obs).lane == 2);
+}
+
+// ── GamePhaseBit / ActiveInPhase typed mask tests ─────────────────────────
+
+TEST_CASE("GamePhaseBit: single-phase mask matches only that phase", "[phase_mask]") {
+    ActiveInPhase aip{ GamePhaseBit::Playing };
+    CHECK( phase_active(aip, GamePhase::Playing));
+    CHECK(!phase_active(aip, GamePhase::Title));
+    CHECK(!phase_active(aip, GamePhase::LevelSelect));
+    CHECK(!phase_active(aip, GamePhase::Paused));
+    CHECK(!phase_active(aip, GamePhase::GameOver));
+    CHECK(!phase_active(aip, GamePhase::SongComplete));
+}
+
+TEST_CASE("GamePhaseBit: multi-phase OR mask covers both phases", "[phase_mask]") {
+    ActiveInPhase aip{ GamePhaseBit::GameOver | GamePhaseBit::SongComplete };
+    CHECK( phase_active(aip, GamePhase::GameOver));
+    CHECK( phase_active(aip, GamePhase::SongComplete));
+    CHECK(!phase_active(aip, GamePhase::Playing));
+    CHECK(!phase_active(aip, GamePhase::Title));
+    CHECK(!phase_active(aip, GamePhase::LevelSelect));
+    CHECK(!phase_active(aip, GamePhase::Paused));
+}
+
+TEST_CASE("GamePhaseBit: all six phases have distinct bits", "[phase_mask]") {
+    // Each GamePhaseBit value must be a distinct power-of-two
+    CHECK(GamePhaseBit::Title        != GamePhaseBit::LevelSelect);
+    CHECK(GamePhaseBit::LevelSelect  != GamePhaseBit::Playing);
+    CHECK(GamePhaseBit::Playing      != GamePhaseBit::Paused);
+    CHECK(GamePhaseBit::Paused       != GamePhaseBit::GameOver);
+    CHECK(GamePhaseBit::GameOver     != GamePhaseBit::SongComplete);
+    // Combined mask must not equal any single bit
+    GamePhaseBit combined = GamePhaseBit::GameOver | GamePhaseBit::SongComplete;
+    CHECK(combined != GamePhaseBit::GameOver);
+    CHECK(combined != GamePhaseBit::SongComplete);
+}
+
+TEST_CASE("GamePhaseBit: to_phase_bit round-trips all GamePhase values", "[phase_mask]") {
+    using P = GamePhase;
+    using B = GamePhaseBit;
+    CHECK(to_phase_bit(P::Title)        == B::Title);
+    CHECK(to_phase_bit(P::LevelSelect)  == B::LevelSelect);
+    CHECK(to_phase_bit(P::Playing)      == B::Playing);
+    CHECK(to_phase_bit(P::Paused)       == B::Paused);
+    CHECK(to_phase_bit(P::GameOver)     == B::GameOver);
+    CHECK(to_phase_bit(P::SongComplete) == B::SongComplete);
+}
+
+TEST_CASE("GamePhaseBit: empty mask is inactive for all phases", "[phase_mask]") {
+    ActiveInPhase aip{};  // default-constructed GamePhaseBit
+    CHECK(!phase_active(aip, GamePhase::Title));
+    CHECK(!phase_active(aip, GamePhase::Playing));
+    CHECK(!phase_active(aip, GamePhase::GameOver));
 }

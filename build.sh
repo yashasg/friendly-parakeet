@@ -47,17 +47,32 @@ case "$(uname -s)" in
         ;;
 esac
 
-# Always run CMake configure, but in CI skip vcpkg manifest install when
-# packages are already restored from cache — vcpkg re-runs install on every
-# configure, rebuilding packages if the runner's vcpkg version changed.
-# Gated to CI only to avoid silently using stale packages in local builds.
+# In CI, skip vcpkg manifest install only when the cached install is known to
+# match the current manifest inputs.  We store a hash of vcpkg.json +
+# vcpkg-overlay contents as a stamp file inside the build directory; the stamp
+# travels with the cached build/ tree.  A stale restore (e.g. after adding
+# magic-enum) has no stamp or a mismatched hash, so vcpkg runs normally.
+_VCPKG_STAMP="build/.vcpkg_manifest_stamp"
+_MANIFEST_HASH=$(
+    { cat vcpkg.json; find vcpkg-overlay -type f 2>/dev/null | sort | xargs cat 2>/dev/null || true; } \
+    | (sha256sum 2>/dev/null || shasum -a 256 2>/dev/null) \
+    | cut -d' ' -f1
+)
+
 if [[ "${CI:-}" == "true" ]] && [[ -d build/vcpkg_installed ]] && [[ -f build/CMakeCache.txt ]]; then
-    # Packages already installed from cache — tell vcpkg not to re-install.
-    # This prevents vcpkg from rebuilding all deps when the runner's
-    # pre-installed vcpkg version differs from what built the cache.
-    CMAKE_ARGS+=("-DVCPKG_MANIFEST_INSTALL=OFF")
-    echo "vcpkg packages found in cache, skipping vcpkg install."
+    if [[ -f "$_VCPKG_STAMP" ]] && [[ "$(cat "$_VCPKG_STAMP")" == "$_MANIFEST_HASH" ]]; then
+        CMAKE_ARGS+=("-DVCPKG_MANIFEST_INSTALL=OFF")
+        echo "vcpkg packages found in cache and manifest unchanged, skipping vcpkg install."
+    else
+        CMAKE_ARGS+=("-DVCPKG_MANIFEST_INSTALL=ON")
+        echo "vcpkg cache present but manifest changed or stamp missing; running full vcpkg install."
+    fi
+else
+    CMAKE_ARGS+=("-DVCPKG_MANIFEST_INSTALL=ON")
 fi
 
 cmake "${CMAKE_ARGS[@]}"
+# Write/refresh the stamp so the next cached run can safely skip install.
+mkdir -p build
+echo "$_MANIFEST_HASH" > "$_VCPKG_STAMP"
 cmake --build build --config "$BUILD_TYPE" -j "$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)"

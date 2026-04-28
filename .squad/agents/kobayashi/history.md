@@ -13,6 +13,57 @@
 
 ---
 
+### 2026-04-28 — WASM Build Duration Audit (Unity Build Recommendation)
+
+**Scope:** `ci-wasm.yml` build performance; PR #43 (`user/yashasg/ecs_refactor`) WASM job timing.
+
+**Measured timing (run 25051888494, job 73381563501):**
+| Step | Duration |
+|---|---|
+| Setup Emscripten | 41s (cached via `emsdk-cache`) |
+| Cache build directory restore | 2s |
+| **Build (Emscripten)** | **9m 11s** ← 91% of total |
+| Run WASM tests (CTest/Node) | 1s |
+| Upload artifact | 4s |
+| **Total job wall time** | **~10m 9s** |
+
+Consistent across 5 sampled runs: all land in the 10–11 minute range.
+
+**Root cause:** Unity builds are disabled. `SHAPESHIFTER_UNITY_BUILD` (CMakeLists.txt line 24) defaults to `OFF`. The WASM workflow never passes `-DSHAPESHIFTER_UNITY_BUILD=ON`. Result: Emscripten compiles all 122 translation units (49 app/*.cpp + 73 tests/*.cpp) individually. Emscripten is ~2-4× slower than native clang per TU, so the cumulative cost is severe.
+
+**The deploy and test steps are not the problem.** WASM tests run in 1 second. Deploy is post-build and sequential — not blocking PR checks.
+
+**Recommended CI-side changes (2 lines in `ci-wasm.yml`):**
+
+1. Add `-DSHAPESHIFTER_UNITY_BUILD=ON` to the `emcmake cmake` invocation:
+   ```yaml
+   - name: Build (Emscripten)
+     run: |
+       emcmake cmake -B build-web -S . \
+         -DCMAKE_BUILD_TYPE=Release \
+         -Wno-dev \
+         "-DCMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" \
+         "-DVCPKG_OVERLAY_PORTS=$(pwd)/vcpkg-overlay" \
+         "-DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=${EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake" \
+         -DVCPKG_TARGET_TRIPLET=wasm32-emscripten \
+         -DSHAPESHIFTER_UNITY_BUILD=ON
+       cmake --build build-web
+   ```
+
+2. Bump cache key prefix from `cmake-web-emscripten-v2-` → `cmake-web-emscripten-v3-` (same restore-keys bump). Unity builds generate synthetic `unity_N_cxx.cxx` files in the build dir; a build dir created without unity cannot be safely reused for a unity build — the old TU objects stay and link against the new merged objects, causing duplicate symbol errors. The version bump forces a cold start on the first run so the build dir is clean.
+
+**No CMake changes needed.** The `CMAKE_UNITY_BUILD` option and plumbing already exist. Default batch size (8) is fine for 122 TUs — yields ~6 unity files for `shapeshifter_lib` and ~9 for `shapeshifter_tests`.
+
+**Expected outcome:** "Build (Emscripten)" drops from ~9m to ~2-4m (empirical; unity typically saves 50-70% on Emscripten due to header parsing amortization).
+
+**Validation on PR #43:** Push any commit to the branch → new WASM run triggers automatically → compare "Build (Emscripten)" step duration. First run is a cache miss (version bump) — this is correct and expected; the cold time will still show the unity benefit. Subsequent pushes with unchanged sources get cache hits and will be near-instant.
+
+**Workflow URLs:**
+- Most recent run: https://github.com/yashasg/friendly-parakeet/actions/runs/25051888494
+- Build job: https://github.com/yashasg/friendly-parakeet/actions/runs/25051888494/job/73381563501
+
+---
+
 ### 2026-05 — PR #43 Dependency Submission 500 retry fix
 
 **Scope:** `dependency-submission.yml` — transient GitHub 5xx on the POST to `/dependency-graph/snapshots` was failing the Windows matrix leg (run 25011478602 job 73248065522), and `fail-fast: true` (default) was cancelling the macOS sibling.
@@ -214,3 +265,49 @@ build-wasm   ─┘
 **Validation:** `git ls-tree -r --name-only HEAD | grep ':'` → empty after commit. Full C++ suite (2808 assertions / 840 tests) already passed before this fix; no rebuild required for a path-only rename.
 
 **Key lesson:** All squad log filenames using timestamps must replace `:` with `-` or `_` to stay Windows-safe. Any tooling that auto-generates log files should adopt the `-` convention permanently.
+
+---
+
+### 2026-04 — Dead ECS File / Build Cleanup
+
+**Scope:** Prove dead-file removals are real by fixing the build that previous agents left broken.
+
+**What was broken at start:**
+- `obstacle_archetypes.{h,cpp}` in both `app/archetypes/` and `app/systems/` were supposed to be deleted; `app/archetypes/` copies were deleted in working tree but not committed; `app/systems/` copies were already deleted.
+- `ring_zone.h` and `ring_zone_log_system.cpp` still alive despite Keaton's decision to delete them.
+- `obstacle_entity.cpp` (new entity factory) existed but `app/entities/` was NOT in CMakeLists GLOB so it never compiled — guaranteed link failure.
+- `obstacle_entity.cpp` still included `obstacle_data.h` which was deleted in working tree.
+- `session_logger.cpp` still included `ring_zone.h` and emplaced `RingZoneTracker`.
+- `test_obstacle_archetypes.cpp` included deleted `systems/obstacle_archetypes.h`.
+- `obstacle_spawn_system.cpp` and test files used positional `ObstacleSpawnParams` init without `beat_info` field → `-Wmissing-field-initializers` errors.
+
+**Fixes applied (commit 0d642e2):**
+1. Deleted `app/components/ring_zone.h`
+2. Deleted `app/systems/ring_zone_log_system.cpp`
+3. Removed `ring_zone_log_system` declaration from `all_systems.h` and call from `game_loop.cpp`
+4. Removed `ring_zone.h` include and `RingZoneTracker` emplace + `RING_APPEAR` log from `session_logger.cpp`
+5. Removed stale `obstacle_data.h` include from `obstacle_entity.cpp`
+6. Added `file(GLOB ENTITY_SOURCES app/entities/*.cpp)` to `CMakeLists.txt` and wired it into `shapeshifter_lib`
+7. Rewrote `test_obstacle_archetypes.cpp` to use `entities/obstacle_entity.h` + `spawn_obstacle` + `ObstacleSpawnParams` with C++20 designated initializers
+8. Fixed `test_obstacle_model_slice.cpp` 3-arg positional calls with designated initializers
+9. Fixed `obstacle_spawn_system.cpp` multi-line positional init with explicit `beat_info = {}`
+
+**Result:** Zero warnings. All 887 test cases pass (2983 assertions).
+
+**Key lessons:**
+- When a new `app/entities/` (or any new source dir) is created, it MUST be added to CMakeLists `file(GLOB ...)` and the `add_library` call. CMake GLOBs are dir-scoped; new dirs are invisible until explicitly added.
+- `-Wmissing-field-initializers` fires for ALL positional aggregate inits shorter than the struct's field count, even when omitted fields have default member initializers. Use C++20 designated initializers (`{.kind = ..., .x = ...}`) for structs with optional/defaulted trailing fields — they suppress the warning and document intent.
+- `app/components/` is exclusively for types emplaced on entities via `reg.emplace<T>()`. Context singletons live next to their wiring code (`obstacle_counter_system.h`). Non-component utility types live in `app/util/` or `app/systems/`.
+
+---
+
+### 2026-04-28 — Team Session Closure: ECS Cleanup Approval
+
+**Status:** APPROVED ✅ — Deliverable logged; ready for merge.
+
+Scribe documentation:
+- Orchestration log written: .squad/orchestration-log/2026-04-28T08-12-03Z-kobayashi.md
+- Team decision inbox merged into .squad/decisions.md
+- Session log: .squad/log/2026-04-28T08-12-03Z-ecs-cleanup-approval.md
+
+Next: Await merge approval.

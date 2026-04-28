@@ -1,16 +1,17 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
+#include "constants.h"
 
 // Helper: create a particle entity with all required components
 static entt::entity make_particle(entt::registry& reg, float size, float life_remaining, float life_max,
                                   float vx = 0.0f, float vy = 0.0f) {
     auto e = reg.create();
     reg.emplace<ParticleTag>(e);
-    reg.emplace<ParticleData>(e, size);
-    reg.emplace<Lifetime>(e, life_remaining, life_max);
-    reg.emplace<Velocity>(e, vx, vy);
-    reg.emplace<Position>(e, 100.0f, 200.0f);
+    reg.emplace<ParticleData>(e, size, life_remaining, life_max);
+    reg.emplace<MotionVelocity>(e, MotionVelocity{{vx, vy}});
+    reg.emplace<WorldTransform>(e, WorldTransform{{100.0f, 200.0f}});
+    reg.emplace<TagEffectsPass>(e);
     return e;
 }
 
@@ -40,12 +41,21 @@ TEST_CASE("particle: full lifetime means full size", "[particle]") {
 
 TEST_CASE("particle: size is immutable across ticks", "[particle]") {
     auto reg = make_registry();
-    auto e = make_particle(reg, 10.0f, 0.01f, 1.0f);
+    auto e = make_particle(reg, 10.0f, 0.5f, 1.0f);
 
     particle_system(reg, 0.016f);
 
     auto& pd = reg.get<ParticleData>(e);
     CHECK_THAT(pd.size, Catch::Matchers::WithinAbs(10.0f, 0.01f));
+}
+
+TEST_CASE("particle: expired particles are destroyed", "[particle]") {
+    auto reg = make_registry();
+    auto e = make_particle(reg, 10.0f, 0.01f, 1.0f);
+
+    particle_system(reg, 0.016f);
+
+    CHECK_FALSE(reg.valid(e));
 }
 
 TEST_CASE("particle: multiple particles retain original size", "[particle]") {
@@ -67,8 +77,8 @@ TEST_CASE("particle: gravity increases downward velocity", "[particle]") {
 
     particle_system(reg, 0.1f);
 
-    auto& vel = reg.get<Velocity>(e);
-    CHECK_THAT(vel.dy, Catch::Matchers::WithinAbs(60.0f, 0.01f));  // 600 * 0.1
+    auto& vel = reg.get<MotionVelocity>(e);
+    CHECK_THAT(vel.value.y, Catch::Matchers::WithinAbs(constants::PARTICLE_GRAVITY * 0.1f, 0.01f));
 }
 
 TEST_CASE("particle: gravity accumulates over multiple frames", "[particle]") {
@@ -78,8 +88,8 @@ TEST_CASE("particle: gravity accumulates over multiple frames", "[particle]") {
     particle_system(reg, 0.1f);
     particle_system(reg, 0.1f);
 
-    auto& vel = reg.get<Velocity>(e);
-    CHECK_THAT(vel.dy, Catch::Matchers::WithinAbs(120.0f, 0.01f));  // 600 * 0.2 total
+    auto& vel = reg.get<MotionVelocity>(e);
+    CHECK_THAT(vel.value.y, Catch::Matchers::WithinAbs(constants::PARTICLE_GRAVITY * 0.2f, 0.01f));
 }
 
 TEST_CASE("particle: gravity does not affect horizontal velocity", "[particle]") {
@@ -88,7 +98,7 @@ TEST_CASE("particle: gravity does not affect horizontal velocity", "[particle]")
 
     particle_system(reg, 0.1f);
 
-    CHECK(reg.get<Velocity>(e).dx == 50.0f);
+    CHECK(reg.get<MotionVelocity>(e).value.x == 50.0f);
 }
 
 TEST_CASE("particle: no particles means no crash", "[particle]") {

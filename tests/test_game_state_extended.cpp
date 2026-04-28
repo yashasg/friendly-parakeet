@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
+#include "ui/ui_source_resolver.h"
 
 // ── game_state_system: SongComplete transitions ──────────────
 
@@ -37,7 +38,7 @@ TEST_CASE("game_state: song complete waits for obstacles to clear", "[gamestate]
     CHECK_FALSE(gs.transition_pending);
 }
 
-TEST_CASE("game_state: song complete ignores scored obstacles", "[gamestate]") {
+TEST_CASE("game_state: song complete proceeds when scored obstacle is destroyed", "[gamestate]") {
     auto reg = make_rhythm_registry();
     auto& gs = reg.ctx().get<GameState>();
     gs.phase = GamePhase::Playing;
@@ -45,7 +46,27 @@ TEST_CASE("game_state: song complete ignores scored obstacles", "[gamestate]") {
     song.finished = true;
     song.playing = false;
 
-    // Only a scored obstacle remains → should transition to SongComplete
+    // Obstacle scored and destroyed (scoring_system + obstacle_despawn_system both ran) → SongComplete
+    auto obs = reg.create();
+    reg.emplace<ObstacleTag>(obs);
+    reg.emplace<ScoredTag>(obs);
+    reg.destroy(obs);  // on_destroy<ObstacleTag> fires → counter reaches 0
+
+    game_state_system(reg, 0.016f);
+
+    CHECK(gs.transition_pending);
+    CHECK(gs.next_phase == GamePhase::SongComplete);
+}
+
+TEST_CASE("game_state: song complete waits for scored obstacle to be destroyed", "[gamestate]") {
+    auto reg = make_rhythm_registry();
+    auto& gs = reg.ctx().get<GameState>();
+    gs.phase = GamePhase::Playing;
+    auto& song = reg.ctx().get<SongState>();
+    song.finished = true;
+    song.playing = false;
+
+    // Obstacle scored but still alive (obstacle_despawn_system has not yet destroyed it)
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
     reg.emplace<ScoredTag>(obs);
@@ -53,8 +74,7 @@ TEST_CASE("game_state: song complete ignores scored obstacles", "[gamestate]") {
 
     game_state_system(reg, 0.016f);
 
-    CHECK(gs.transition_pending);
-    CHECK(gs.next_phase == GamePhase::SongComplete);
+    CHECK_FALSE(gs.transition_pending);
 }
 
 TEST_CASE("game_state: enter_song_complete updates high score", "[gamestate]") {
@@ -113,6 +133,7 @@ TEST_CASE("game_state: song_complete button choice level_select", "[gamestate]")
 
     CHECK(gs.transition_pending);
     CHECK(gs.next_phase == GamePhase::LevelSelect);
+    CHECK(gs.end_choice == EndScreenChoice::None);
 }
 
 TEST_CASE("game_state: song_complete button choice main_menu", "[gamestate]") {
@@ -228,14 +249,14 @@ TEST_CASE("game_state: title position tap triggers level_select", "[gamestate]")
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
     gs.phase = GamePhase::Title;
-    auto& aq = reg.ctx().get<ActionQueue>();
-    // Tap in the middle of the screen (not on exit button)
-    aq.tap(Button::Position, float(constants::SCREEN_W) / 2.0f, 500.0f);
+    // Simulate a tap → Confirm menu button press (title screen has full-screen confirm)
+    auto btn = make_menu_button(reg, MenuActionKind::Confirm, GamePhase::Title);
+    press_button(reg, btn);
 
     game_state_system(reg, 0.016f);
 
-    CHECK(gs.transition_pending);
-    CHECK(gs.next_phase == GamePhase::LevelSelect);
+    CHECK_FALSE(gs.transition_pending);
+    CHECK(gs.phase == GamePhase::LevelSelect);
 }
 
 TEST_CASE("game_state: transition_pending consumed on execution", "[gamestate]") {
@@ -249,3 +270,77 @@ TEST_CASE("game_state: transition_pending consumed on execution", "[gamestate]")
     CHECK_FALSE(gs.transition_pending);
 }
 
+// ── song_complete: score and high_score visible after transition ─────────────
+// Regression: "when the song completes score and highscore dont render"
+// These tests lock down that (a) the final score is NOT reset on transition,
+// (b) both ScoreState sources resolve to non-empty strings, and (c) the
+// values match what gameplay produced.
+
+TEST_CASE("song_complete: score.score is retained (not zeroed) after enter_song_complete",
+          "[gamestate][song_complete]") {
+    auto reg = make_registry();
+    auto& score = reg.ctx().get<ScoreState>();
+    score.score      = 12345;
+    score.high_score = 10000;
+
+    auto& gs = reg.ctx().get<GameState>();
+    gs.transition_pending = true;
+    gs.next_phase = GamePhase::SongComplete;
+
+    game_state_system(reg, 0.016f);
+
+    // score.score must NOT be zeroed — it is the final value rendered on the results screen
+    CHECK(score.score == 12345);
+    CHECK(gs.phase == GamePhase::SongComplete);
+}
+
+TEST_CASE("song_complete: both score and high_score resolve to non-empty strings after transition",
+          "[gamestate][song_complete][ui]") {
+    auto reg = make_registry();
+    auto& score = reg.ctx().get<ScoreState>();
+    score.score      = 7500;
+    score.high_score = 6000;  // score beats high_score → high_score updated to 7500
+
+    auto& gs = reg.ctx().get<GameState>();
+    gs.transition_pending = true;
+    gs.next_phase = GamePhase::SongComplete;
+
+    game_state_system(reg, 0.016f);
+
+    REQUIRE(gs.phase == GamePhase::SongComplete);
+
+    // These are the exact source strings used by song_complete.json text_dynamic elements.
+    // They must resolve to non-empty strings with the correct final values so the
+    // ui_render_system can draw them.
+    auto v_score = resolve_ui_dynamic_text(reg, "ScoreState.score", "");
+    auto v_hs    = resolve_ui_dynamic_text(reg, "ScoreState.high_score", "");
+
+    REQUIRE(v_score.has_value());
+    REQUIRE(v_hs.has_value());
+    CHECK(*v_score == "7500");
+    CHECK(*v_hs    == "7500");  // updated because 7500 > 6000
+}
+
+TEST_CASE("song_complete: score is visible even when it does not set a new high score",
+          "[gamestate][song_complete][ui]") {
+    auto reg = make_registry();
+    auto& score = reg.ctx().get<ScoreState>();
+    score.score      = 3000;
+    score.high_score = 9999;  // existing high score remains higher
+
+    auto& gs = reg.ctx().get<GameState>();
+    gs.transition_pending = true;
+    gs.next_phase = GamePhase::SongComplete;
+
+    game_state_system(reg, 0.016f);
+
+    REQUIRE(gs.phase == GamePhase::SongComplete);
+
+    auto v_score = resolve_ui_dynamic_text(reg, "ScoreState.score", "");
+    auto v_hs    = resolve_ui_dynamic_text(reg, "ScoreState.high_score", "");
+
+    REQUIRE(v_score.has_value());
+    REQUIRE(v_hs.has_value());
+    CHECK(*v_score == "3000");
+    CHECK(*v_hs    == "9999");  // high_score NOT overwritten
+}

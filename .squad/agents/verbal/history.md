@@ -79,3 +79,30 @@
 **Commit:** dca7664 on branch `user/yashasg/ecs_refactor`.
 
 **Pattern to remember:** Whenever a miss-drain test asserts energy or flash_timer, it must call `collision_system` then `scoring_system` — never just `collision_system` alone. MissTag is stamped by collision; the energy/flash side-effects are owned by scoring.
+
+## 2026-04-28 — Input/UI refactor test mapping
+
+**Task:** Read-only audit of test coverage for input/UI system consolidation. User directive: `hit_test_system`, `input_dispatcher`, `input_gesture`, `input_system` are over-fragmented; `level_select_system` is not a real system (no per-frame logic, just UI event handlers).
+
+**Files audited:**
+- `app/systems/hit_test_system.cpp` — dispatcher listener (`hit_test_handle_input`), not a per-frame system
+- `app/systems/input_dispatcher.cpp` — setup/teardown only (`wire_input_dispatcher`/`unwire_input_dispatcher`)
+- `app/systems/input_gesture.h` — single inline pure function `classify_touch_release`, header-only
+- `app/systems/input_system.cpp` — real per-frame system; polls raylib mouse/touch/keyboard; calls `classify_touch_release`
+- `app/systems/level_select_system.cpp` — two event handlers (`level_select_handle_go`, `level_select_handle_press`) + a thin `level_select_system(reg, dt)` that just calls `disp.update<>()` then runs confirmed→Playing transition
+
+**Test files:**
+| File | Tag | Cases | What it actually tests |
+|---|---|---|---|
+| `test_input_system.cpp` | `[input_gesture]` | 9 | `classify_touch_release` only — MISNAMED |
+| `test_hit_test_system.cpp` | `[hit_test]` | 11 | `hit_test_handle_input` + ActiveTag lifecycle |
+| `test_input_pipeline_behavior.cpp` | `[input_pipeline]` | 10 | End-to-end: push_input → player state |
+| `test_level_select_system.cpp` | `[level_select]` | 26 | Both event handlers + level_select_system |
+
+**Key findings:**
+- `test_input_system.cpp` is a misnomer: it tests gesture classification, not `input_system()`. Should be renamed `test_input_gesture.cpp`.
+- `input_system()` (the per-frame raylib poller) has zero direct unit tests. This is expected (raylib hardware can't be mocked), but the keyboard path (WASD → GoEvent, 1/2/3 → ButtonPressEvent) is an undocumented gap.
+- `wire_input_dispatcher` is only tested implicitly via `make_registry()` calling it. No standalone test for listener registration order, which is load-bearing (comment says "Registration order = processing order").
+- All test behavior contracts are stable and reusable across any renaming.
+
+**Rename candidates:** See `verbal-input-ui-test-map.md` in decisions/inbox.

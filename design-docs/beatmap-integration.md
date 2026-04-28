@@ -223,9 +223,9 @@ The current obstacle components already match the beatmap schema:
   │  collision_system        (player vs obstacles → ScoredTag)      │
   │  scoring_system          (ScoredTag → ScoreState, popups)       │
   │  energy_system           (miss tracking → drain → game over)    │
-  │  lifetime_system         (Lifetime → destroy expired)           │
-  │  particle_system         (ParticleData → shrink, gravity)       │
-  │  cleanup_system          (destroy off-screen obstacles)         │
+  │  particle_system         (ParticleData timer → gravity/cull)    │
+  │  obstacle_despawn_system (destroy off-camera obstacles)         │
+  │  popup_display_system    (ScorePopup timer → fade/cull)         │
   │       │                                                          │
   │  render_system           (draw everything)                      │
   │  ★ audio_system          (raylib: stream music, play SFX)      │

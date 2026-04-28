@@ -10,10 +10,56 @@
       "type": "text",
       "text": "PAUSED",
       "x_n": 0.5,
-      "y_n": 0.453,
+      "y_n": 0.344,
       "font_size": "large",
       "align": "center",
       "color": [255, 255, 255, 255]
+    },
+    {
+      "id": "resume_instruction",
+      "type": "text",
+      "text": "TAP RESUME TO CONTINUE",
+      "x_n": 0.5,
+      "y_n": 0.422,
+      "font_size": "small",
+      "align": "center",
+      "color": [180, 180, 180, 200]
+    },
+    {
+      "id": "resume_button",
+      "type": "button",
+      "text": "RESUME",
+      "action": "resume",
+      "x_n": 0.222, "y_n": 0.484,
+      "w_n": 0.556, "h_n": 0.078,
+      "corner_radius": 0.2,
+      "bg_color": [40, 80, 40, 255],
+      "border_color": [100, 200, 100, 255],
+      "text_color": [180, 255, 180, 255],
+      "font_size": "medium"
+    },
+    {
+      "id": "menu_instruction",
+      "type": "text",
+      "text": "OR RETURN TO MAIN MENU",
+      "x_n": 0.5,
+      "y_n": 0.594,
+      "font_size": "small",
+      "align": "center",
+      "color": [180, 180, 180, 200]
+    },
+    {
+      "id": "menu_button",
+      "type": "button",
+      "text": "MAIN MENU",
+      "action": "main_menu",
+      "x_n": 0.222, "y_n": 0.641,
+      "w_n": 0.556, "h_n": 0.078,
+      "corner_radius": 0.2,
+      "bg_color": [60, 40, 40, 255],
+      "border_color": [180, 100, 100, 255],
+      "text_color": [255, 180, 180, 255],
+      "font_size": "medium"
     }
   ]
 }

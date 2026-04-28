@@ -116,9 +116,9 @@ while (accumulator >= FIXED_DT) {
     collision_system(reg, FIXED_DT);
     scoring_system(reg, FIXED_DT);
     energy_system(reg, FIXED_DT);
-    lifetime_system(reg, FIXED_DT);
     particle_system(reg, FIXED_DT);
-    cleanup_system(reg, FIXED_DT);
+    obstacle_despawn_system(reg, FIXED_DT);
+    popup_display_system(reg, FIXED_DT);
     accumulator -= FIXED_DT;
 }
 ```

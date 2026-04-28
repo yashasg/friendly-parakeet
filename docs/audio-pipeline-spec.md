@@ -813,7 +813,7 @@ Future: will read SFX Sound handles. For now, stub.
 
 ```cpp
 #include "all_systems.h"
-#include "../components/audio.h"
+#include "../audio/audio_types.h"
 
 void audio_system(entt::registry& reg) {
     auto* audio = reg.ctx().find<AudioQueue>();

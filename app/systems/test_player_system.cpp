@@ -2,21 +2,29 @@
 #include "../components/test_player.h"
 #include "../components/game_state.h"
 #include "../components/input.h"
+#include "../components/input_events.h"
 #include "../components/player.h"
 #include "../components/transform.h"
 #include "../components/obstacle.h"
-#include "../components/obstacle_data.h"
 #include "../components/rhythm.h"
 #include "../components/scoring.h"
-#include "../session_logger.h"
-#include "../enum_names.h"
-#include "../platform.h"
+#include "../util/enum_names.h"
+#include "../util/session_logger.h"
+#include "../util/test_player_helpers.h"
 #include "../constants.h"
 
-#include <cmath>
+#include <raylib.h>
 #include <random>
 
 // ── Helpers ──────────────────────────────────────────────────
+
+static Rectangle lane_overlap_rect(float x) {
+    return {x - constants::PLAYER_SIZE * 0.5f, 0.0f, constants::PLAYER_SIZE, 1.0f};
+}
+
+static bool lane_centers_overlap(float lhs_x, float rhs_x) {
+    return CheckCollisionRecs(lane_overlap_rect(lhs_x), lane_overlap_rect(rhs_x));
+}
 
 static const char* shape_key_name(Shape s) {
     switch (s) {
@@ -25,6 +33,17 @@ static const char* shape_key_name(Shape s) {
         case Shape::Triangle: return "key_3(Triangle)";
         default:              return "key_?(?)";
     }
+}
+
+// Remove stale entries from the planned set (destroyed/scored entities).
+static void test_player_clean_planned(TestPlayerState& state, entt::registry& reg) {
+    int write = 0;
+    for (int i = 0; i < state.planned_count; ++i) {
+        if (reg.valid(state.planned[i])) {
+            state.planned[write++] = state.planned[i];
+        }
+    }
+    state.planned_count = write;
 }
 
 // Find nearest unblocked lane to current position.
@@ -57,10 +76,14 @@ static TestPlayerAction determine_action(
     } else {
         // Estimate from position + velocity
         auto* pos = reg.try_get<Position>(entity);
+        auto* oz = reg.try_get<ObstacleScrollZ>(entity);
         auto* vel = reg.try_get<Velocity>(entity);
         if (pos && vel && vel->dy > 0.0f) {
             action.arrival_time = song.song_time +
                 (constants::PLAYER_Y - pos->y) / vel->dy;
+        } else if (oz && vel && vel->dy > 0.0f) {
+            action.arrival_time = song.song_time +
+                (constants::PLAYER_Y - oz->z) / vel->dy;
         }
     }
 
@@ -74,7 +97,7 @@ static TestPlayerAction determine_action(
         auto* obs_pos = reg.try_get<Position>(entity);
         if (obs_pos && !reg.all_of<BlockedLanes>(entity) && !reg.all_of<RequiredLane>(entity)) {
             for (int i = 0; i < constants::LANE_COUNT; ++i) {
-                if (std::abs(obs_pos->x - constants::LANE_X[i]) < constants::PLAYER_SIZE) {
+                if (lane_centers_overlap(obs_pos->x, constants::LANE_X[i])) {
                     if (i != player_lane) {
                         action.target_lane = static_cast<int8_t>(i);
                     }
@@ -115,10 +138,10 @@ void test_player_system(entt::registry& reg, float dt) {
     if (!state || !state->active) return;
 
     state->frame_count++;
-    state->clean_planned(reg);
+    test_player_clean_planned(*state, reg);
 
     auto& gs    = reg.ctx().get<GameState>();
-    auto& aq    = reg.ctx().get<ActionQueue>();
+    auto& disp  = reg.ctx().get<entt::dispatcher>();
     auto* log   = reg.ctx().find<SessionLog>();
     auto* song  = reg.ctx().find<SongState>();
     float song_time = song ? song->song_time : 0.0f;
@@ -129,7 +152,13 @@ void test_player_system(entt::registry& reg, float dt) {
     if (gs.phase == GamePhase::Title || gs.phase == GamePhase::GameOver ||
         gs.phase == GamePhase::SongComplete) {
         if (gs.phase_timer > 0.5f) {
-            aq.tap(Button::Confirm);
+            // On end screens, press Restart; on Title, press Confirm
+            auto target_action = (gs.phase == GamePhase::GameOver ||
+                                  gs.phase == GamePhase::SongComplete)
+                                 ? MenuActionKind::Restart
+                                 : MenuActionKind::Confirm;
+            disp.enqueue<ButtonPressEvent>({ButtonPressKind::Menu, Shape::Circle,
+                                           target_action, 0});
             if (log) {
                 const char* phase_name =
                     (gs.phase == GamePhase::Title) ? "Title" :
@@ -156,7 +185,15 @@ void test_player_system(entt::registry& reg, float dt) {
     }
 
     if (gs.phase == GamePhase::Paused) {
-        aq.tap(Button::Confirm);
+        disp.enqueue<ButtonPressEvent>({ButtonPressKind::Menu, Shape::Circle,
+                                       MenuActionKind::Confirm, 0});
+        return;
+    }
+
+    // Auto-confirm on LevelSelect (level/difficulty already set in main.cpp)
+    if (gs.phase == GamePhase::LevelSelect && gs.phase_timer > 0.2f) {
+        disp.enqueue<ButtonPressEvent>({ButtonPressKind::Menu, Shape::Circle,
+                                       MenuActionKind::Confirm, 0});
         return;
     }
 
@@ -170,15 +207,15 @@ void test_player_system(entt::registry& reg, float dt) {
         state->planned_count = 0;
     }
 
-    const auto& cfg = state->config();
+    const auto& cfg = test_player_config(*state);
 
     // ── Find player ──────────────────────────────────────────
-    auto player_view = reg.view<PlayerTag, Position, PlayerShape, ShapeWindow, Lane, VerticalState>();
-    if (player_view.size_hint() == 0) return;
+    auto player_view = reg.view<PlayerTag, WorldTransform, PlayerShape, ShapeWindow, Lane, VerticalState>();
+    if (player_view.begin() == player_view.end()) return;
 
     auto player_entity = *player_view.begin();
-    auto [p_pos, p_shape, p_window, p_lane, p_vstate] =
-        player_view.get<Position, PlayerShape, ShapeWindow, Lane, VerticalState>(player_entity);
+    auto [p_transform, p_shape, p_window, p_lane, p_vstate] =
+        player_view.get<WorldTransform, PlayerShape, ShapeWindow, Lane, VerticalState>(player_entity);
 
     // ── PERCEIVE: scan obstacles in vision range ─────────────
     // Compute the "effective lane" — where the player will be after
@@ -186,16 +223,16 @@ void test_player_system(entt::registry& reg, float dt) {
     int8_t effective_lane = p_lane.current;
     if (p_lane.target >= 0) effective_lane = p_lane.target;
     for (int i = 0; i < state->action_count; ++i) {
-        if (state->actions[i].target_lane >= 0 && !state->actions[i].lane_done()) {
+        if (state->actions[i].target_lane >= 0 && !test_player_lane_done(state->actions[i])) {
             effective_lane = state->actions[i].target_lane;
         }
     }
 
     auto obs_view = reg.view<ObstacleTag, Position, Obstacle>(entt::exclude<ScoredTag>);
     for (auto [entity, obs_pos, obs] : obs_view.each()) {
-        float dist = p_pos.y - obs_pos.y;
+        float dist = p_transform.position.y - obs_pos.y;
         if (dist <= 0.0f || dist > cfg.vision_range) continue;
-        if (state->is_planned(entity)) continue;
+        if (test_player_is_planned(*state, entity)) continue;
 
         TestPlayerAction action = determine_action(reg, entity, effective_lane, *song);
 
@@ -223,8 +260,8 @@ void test_player_system(entt::registry& reg, float dt) {
             action.timer = reaction;
         }
 
-        state->push_action(action);
-        state->mark_planned(entity);
+        test_player_push_action(*state, action);
+        test_player_mark_planned(*state, entity);
 
         if (log) {
             auto* beat_info = reg.try_get<BeatInfo>(entity);
@@ -234,13 +271,49 @@ void test_player_system(entt::registry& reg, float dt) {
                 "PERCEIVE obstacle=%u beat=%d kind=%s shape=%s lane=%d dist=%.0fpx",
                 static_cast<unsigned>(entt::to_integral(entity)),
                 beat_num,
-                obstacle_kind_name(obs.kind),
-                shape_name(action.target_shape),
+                ToString(obs.kind),
+                ToString(action.target_shape),
                 action.target_lane, dist);
 
             session_log_write(*log, song_time, "PLAYER",
                 "PLAN action=%s%s%s react=%.3fs arrival=%.3fs",
-                action.target_shape != Shape::Hexagon ? shape_name(action.target_shape) : "",
+                action.target_shape != Shape::Hexagon ? ToString(action.target_shape) : "",
+                action.target_lane >= 0 ? "+lane" : "",
+                action.target_vertical != VMode::Grounded ?
+                    (action.target_vertical == VMode::Jumping ? "+jump" : "+slide") : "",
+                action.timer, action.arrival_time);
+        }
+    }
+
+    auto model_obs_view = reg.view<ObstacleTag, ObstacleScrollZ, Obstacle>(entt::exclude<ScoredTag>);
+    for (auto [entity, oz, obs] : model_obs_view.each()) {
+        float dist = p_transform.position.y - oz.z;
+        if (dist <= 0.0f || dist > cfg.vision_range) continue;
+        if (test_player_is_planned(*state, entity)) continue;
+
+        TestPlayerAction action = determine_action(reg, entity, effective_lane, *song);
+
+        std::uniform_real_distribution<float> reaction_dist(cfg.reaction_min, cfg.reaction_max);
+        action.timer = reaction_dist(state->rng);
+
+        test_player_push_action(*state, action);
+        test_player_mark_planned(*state, entity);
+
+        if (log) {
+            auto* beat_info = reg.try_get<BeatInfo>(entity);
+            int beat_num = beat_info ? beat_info->beat_index : -1;
+
+            session_log_write(*log, song_time, "PLAYER",
+                "PERCEIVE obstacle=%u beat=%d kind=%s shape=%s lane=%d dist=%.0fpx",
+                static_cast<unsigned>(entt::to_integral(entity)),
+                beat_num,
+                ToString(obs.kind),
+                ToString(action.target_shape),
+                action.target_lane, dist);
+
+            session_log_write(*log, song_time, "PLAYER",
+                "PLAN action=%s%s%s react=%.3fs arrival=%.3fs",
+                action.target_shape != Shape::Hexagon ? ToString(action.target_shape) : "",
                 action.target_lane >= 0 ? "+lane" : "",
                 action.target_vertical != VMode::Grounded ?
                     (action.target_vertical == VMode::Jumping ? "+jump" : "+slide") : "",
@@ -264,8 +337,6 @@ void test_player_system(entt::registry& reg, float dt) {
     // Shape presses are fine — they're how you clear shape gates.
     // Zone blocking and shape-pending guards are computed per-action below
     // to avoid self-blocking (an obstacle can't block its own dodge).
-    constexpr float COLLISION_MARGIN = 40.0f;
-
     // Track which obstacle has a pending shape press (pressed but not yet scored).
     // Lane changes for OTHER obstacles should wait, but lane changes for the
     // SAME obstacle are fine — they're part of clearing it.
@@ -274,7 +345,7 @@ void test_player_system(entt::registry& reg, float dt) {
         auto& a = state->actions[i];
         // Shape press fired but obstacle hasn't been scored yet.
         // scoring_system removes Obstacle component after processing.
-        if (a.target_shape != Shape::Hexagon && a.shape_done()
+        if (a.target_shape != Shape::Hexagon && test_player_shape_done(a)
             && reg.valid(a.obstacle) && reg.all_of<Obstacle>(a.obstacle)
             && !reg.all_of<ScoredTag>(a.obstacle)) {
             pending_shape_obstacle = a.obstacle;
@@ -311,14 +382,10 @@ void test_player_system(entt::registry& reg, float dt) {
         }
 
         // Priority 1: Shape change
-        if (action.needs_shape()) {
-            switch (action.target_shape) {
-                case Shape::Circle:   aq.tap(Button::ShapeCircle); break;
-                case Shape::Square:   aq.tap(Button::ShapeSquare); break;
-                case Shape::Triangle: aq.tap(Button::ShapeTri); break;
-                default: break;
-            }
-            action.mark_shape_done();
+        if (test_player_needs_shape(action)) {
+            disp.enqueue<ButtonPressEvent>({ButtonPressKind::Shape, action.target_shape,
+                                           MenuActionKind::Confirm, 0});
+            test_player_mark_shape_done(action);
             key_injected = true;
 
             if (log) {
@@ -343,10 +410,21 @@ void test_player_system(entt::registry& reg, float dt) {
             auto zone_view = reg.view<ObstacleTag, Position>(entt::exclude<ScoredTag>);
             for (auto [ze, zpos] : zone_view.each()) {
                 if (ze == action.obstacle) continue; // don't self-block
-                float zdist = p_pos.y - zpos.y + p_vstate.y_offset;
-                if (zdist >= -COLLISION_MARGIN && zdist <= COLLISION_MARGIN * 3.0f) {
+                float zdist = p_transform.position.y - zpos.y + p_vstate.y_offset;
+                if (zdist >= -constants::COLLISION_MARGIN && zdist <= constants::COLLISION_MARGIN * 3.0f) {
                     zone_blocked = true;
                     break;
+                }
+            }
+            if (!zone_blocked) {
+                auto model_zone_view = reg.view<ObstacleTag, ObstacleScrollZ>(entt::exclude<ScoredTag>);
+                for (auto [ze, oz] : model_zone_view.each()) {
+                    if (ze == action.obstacle) continue; // don't self-block
+                    float zdist = p_transform.position.y - oz.z + p_vstate.y_offset;
+                    if (zdist >= -constants::COLLISION_MARGIN && zdist <= constants::COLLISION_MARGIN * 3.0f) {
+                        zone_blocked = true;
+                        break;
+                    }
                 }
             }
         }
@@ -355,7 +433,7 @@ void test_player_system(entt::registry& reg, float dt) {
         // obstacle? A human player would see "something is in the way" and
         // wait. Don't move for a far obstacle if it breaks a closer one.
         bool move_would_fail_closer = false;
-        if (action.needs_lane()) {
+        if (test_player_needs_lane(action)) {
             int8_t next_lane = p_lane.current;
             if (action.target_lane < next_lane) next_lane--;
             else if (action.target_lane > next_lane) next_lane++;
@@ -363,7 +441,7 @@ void test_player_system(entt::registry& reg, float dt) {
             auto closer_view = reg.view<ObstacleTag, Position>(entt::exclude<ScoredTag>);
             for (auto [oe, opos] : closer_view.each()) {
                 if (oe == action.obstacle) continue;
-                float odist = p_pos.y - opos.y + p_vstate.y_offset;
+                float odist = p_transform.position.y - opos.y + p_vstate.y_offset;
                 if (odist <= 0.0f) continue;
 
                 auto* obeat = reg.try_get<BeatInfo>(oe);
@@ -380,7 +458,7 @@ void test_player_system(entt::registry& reg, float dt) {
                 auto* oshape = reg.try_get<RequiredShape>(oe);
                 if (oshape) {
                     float lane_x = constants::LANE_X[next_lane];
-                    if (std::abs(opos.x - lane_x) >= constants::PLAYER_SIZE) {
+                    if (!lane_centers_overlap(opos.x, lane_x)) {
                         move_would_fail_closer = true;
                         break;
                     }
@@ -388,17 +466,17 @@ void test_player_system(entt::registry& reg, float dt) {
             }
         }
 
-        if (action.needs_lane() && p_lane.target < 0 && state->swipe_cooldown_timer <= 0.0f
+        if (test_player_needs_lane(action) && p_lane.target < 0 && state->swipe_cooldown_timer <= 0.0f
             && !zone_blocked && !blocked_by_shape && !move_would_fail_closer) {
             if (action.target_lane < p_lane.current) {
-                aq.go(Direction::Left);
+                disp.enqueue<GoEvent>({Direction::Left});
                 if (log) {
                     session_log_write(*log, song_time, "PLAYER",
                         "EXECUTE Go(Left) for obstacle=%u beat=%d",
                         static_cast<unsigned>(entt::to_integral(action.obstacle)), act_beat);
                 }
             } else if (action.target_lane > p_lane.current) {
-                aq.go(Direction::Right);
+                disp.enqueue<GoEvent>({Direction::Right});
                 if (log) {
                     session_log_write(*log, song_time, "PLAYER",
                         "EXECUTE Go(Right) for obstacle=%u beat=%d",
@@ -409,7 +487,7 @@ void test_player_system(entt::registry& reg, float dt) {
             state->swipe_cooldown_timer = TestPlayerState::SWIPE_COOLDOWN;
             // Check if we've reached the target
             if (p_lane.current == action.target_lane) {
-                action.mark_lane_done();
+                test_player_mark_lane_done(action);
             }
             key_injected = true;
             continue;
@@ -423,31 +501,42 @@ void test_player_system(entt::registry& reg, float dt) {
             auto zone_view = reg.view<ObstacleTag, Position>(entt::exclude<ScoredTag>);
             for (auto [ze, zpos] : zone_view.each()) {
                 if (ze == action.obstacle) continue;
-                float zdist = p_pos.y - zpos.y + p_vstate.y_offset;
-                if (zdist >= -COLLISION_MARGIN && zdist <= COLLISION_MARGIN * 3.0f) {
+                float zdist = p_transform.position.y - zpos.y + p_vstate.y_offset;
+                if (zdist >= -constants::COLLISION_MARGIN && zdist <= constants::COLLISION_MARGIN * 3.0f) {
                     vert_zone_blocked = true;
                     break;
                 }
             }
+            if (!vert_zone_blocked) {
+                auto model_zone_view = reg.view<ObstacleTag, ObstacleScrollZ>(entt::exclude<ScoredTag>);
+                for (auto [ze, oz] : model_zone_view.each()) {
+                    if (ze == action.obstacle) continue;
+                    float zdist = p_transform.position.y - oz.z + p_vstate.y_offset;
+                    if (zdist >= -constants::COLLISION_MARGIN && zdist <= constants::COLLISION_MARGIN * 3.0f) {
+                        vert_zone_blocked = true;
+                        break;
+                    }
+                }
+            }
         }
-        if (action.needs_vertical() && p_vstate.mode == VMode::Grounded
+        if (test_player_needs_vertical(action) && p_vstate.mode == VMode::Grounded
             && !vert_zone_blocked && !vert_blocked_by_shape) {
             if (action.target_vertical == VMode::Jumping) {
-                aq.go(Direction::Up);
+                disp.enqueue<GoEvent>({Direction::Up});
                 if (log) {
                     session_log_write(*log, song_time, "PLAYER",
                         "EXECUTE Go(Up) for obstacle=%u beat=%d",
                         static_cast<unsigned>(entt::to_integral(action.obstacle)), act_beat);
                 }
             } else if (action.target_vertical == VMode::Sliding) {
-                aq.go(Direction::Down);
+                disp.enqueue<GoEvent>({Direction::Down});
                 if (log) {
                     session_log_write(*log, song_time, "PLAYER",
                         "EXECUTE Go(Down) for obstacle=%u beat=%d",
                         static_cast<unsigned>(entt::to_integral(action.obstacle)), act_beat);
                 }
             }
-            action.mark_vertical_done();
+            test_player_mark_vertical_done(action);
             key_injected = true;
             continue;
         }
@@ -456,13 +545,13 @@ void test_player_system(entt::registry& reg, float dt) {
     // ── CLEANUP completed actions ────────────────────────────
     for (int i = state->action_count - 1; i >= 0; --i) {
         auto& action = state->actions[i];
-        bool done = action.all_done();
+        bool done = test_player_action_done(action);
         // Entity no longer an active obstacle (scored + processed by scoring_system,
-        // or destroyed by cleanup_system)
+        // or destroyed by obstacle_despawn_system)
         bool expired = !reg.valid(action.obstacle) ||
                        !reg.all_of<Obstacle>(action.obstacle);
         if (done || expired) {
-            state->remove_action(i);
+            test_player_remove_action(*state, i);
         }
     }
 }

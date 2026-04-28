@@ -717,3 +717,57 @@ ctest --test-dir build -R "shipped beatmaps"
 - `git ls-tree -r --name-only HEAD | grep ':'` — no colons.
 - Pushed to `origin user/yashasg/ecs_refactor` (commit 710ff34).
 - Issue #346: **closure-ready** — not closed per task instructions.
+
+### 2026-04-29 — Component Cleanup Pass Regression Coverage
+
+**Status:** COMPLETE — static_assert guards added; decision note filed.
+
+**Task:** Lightweight regression coverage for the ObstacleScrollZ bridge-state + ObstacleModel/ObstacleParts component cleanup pass without overlapping Hockney/Fenster implementation files.
+
+**What I added:**
+- BF-5a static_asserts in `tests/test_obstacle_model_slice.cpp` Section D: `ObstacleScrollZ` is non-empty, standard-layout, and `z` field is `float`.
+- BF-5b static_asserts: `ObstacleModel` is non-copy-constructible, non-copy-assignable, move-constructible, move-assignable.
+- These mirror the existing BF-4 guards for `ObstacleParts`.
+
+**Pre-existing build blockers discovered (Keaton's WIP):**
+- `app/entities/obstacle_entity.h` referenced from `beat_scheduler_system.cpp` but does not exist → `apply_obstacle_archetype` and `spawn_obstacle_meshes` undeclared.
+- `obstacle_spawn_system.cpp:91` missing `beat_info` field initializer (Werror).
+- The cached test binary was valid but a clean rebuild fails. Flagged in decision inbox.
+
+**Coverage finding:** `test_model_authority_gaps.cpp` and `test_obstacle_model_slice.cpp` Section C already provide comprehensive dual-view bridge-state coverage for all 5 lifecycle systems. No new runtime tests were necessary.
+
+**Key pattern:** Static_asserts for component RAII + layout contracts belong in `test_obstacle_model_slice.cpp` Section D alongside BF-4.
+
+---
+
+### 2026-04-28 — Team Session Closure: ECS Cleanup Approval
+
+**Status:** APPROVED ✅ — Deliverable logged; ready for merge.
+
+Scribe documentation:
+- Orchestration log written: .squad/orchestration-log/2026-04-28T08-12-03Z-baer.md
+- Team decision inbox merged into .squad/decisions.md
+- Session log: .squad/log/2026-04-28T08-12-03Z-ecs-cleanup-approval.md
+
+Next: Await merge approval.
+
+### 2026-04-29 — Camera Cleanup Validation Gate
+
+**Status:** COMPLETE — 7 new [camera_cleanup] tests green; static guards compile clean.
+
+**Task:** Prepare validation for camera.h → entity migration. Keyser owns production code; Baer owns test/static coverage only.
+
+**Discovery:** Keyser's implementation was already partially landed (camera_entity.h, camera_entity.cpp, camera_system.h updated). The test file `test_gpu_resource_lifecycle.cpp` had a stale `#include "components/camera.h"` causing a redefinition conflict with the updated `camera_system.h`. Fixed as compile prerequisite.
+
+**Changes made:**
+- `tests/test_gpu_resource_lifecycle.cpp`: Replaced `components/camera.h` include with `entities/camera_entity.h`; added 5 static_asserts for `GameCamera`/`UICamera` type traits (standard-layout, default-constructible, distinct types).
+- `tests/test_camera_entity_contracts.cpp` (new): 7 runtime tests using `spawn_game_camera`/`spawn_ui_camera` factories covering: single-entity per type, distinct entity IDs, no dual-carry, accessor validity, independent destruction.
+
+**Remaining gate items for Keyser:**
+- `grep -r "components/camera.h" app/` must return zero
+- `reg.ctx().get<GameCamera/UICamera>` in game_render_system, ui_render_system, camera_system must switch to `game_camera(reg)`/`ui_camera(reg)` accessors
+- `reg.ctx().emplace<GameCamera>` in `camera::init()` must switch to `spawn_game_camera(reg)`
+
+**Results:** 2547 assertions / 867 test cases — all pass. Zero warnings.
+
+**Decision filed:** `.squad/decisions/inbox/baer-camera-cleanup-tests.md`
