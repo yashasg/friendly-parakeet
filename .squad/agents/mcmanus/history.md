@@ -282,3 +282,22 @@ Rhythm obstacles that escape the collision window (e.g. during jump peak) reach 
 **BF-4 Fixed:** `ObstacleParts` replaced empty tag with POD geometry fields: `cx, cy, cz` (origin offsets), `width, height, depth` (world-space dimensions). `build_obstacle_model()` now populates all six fields at spawn.
 
 **Validation:** cmake configure clean, `shapeshifter_tests` 2975/2975 pass, `shapeshifter` binary builds clean, `git diff --check` clean, no `LoadModelFromMesh(` calls, no stale `systems/obstacle_archetypes` includes.
+
+### 2026-04-28 — #entity-layer Obstacle Entity Layer
+
+**Task:** Introduce `app/entities/` as an entity construction surface for obstacles. Consolidate the component bundle contract that was split across archetypes and spawn sites.
+
+**What was done:**
+- Created `app/entities/obstacle_entity.h` — defines `ObstacleSpawnParams` (kind, x, y, shape, mask, req_lane, speed) and `spawn_obstacle(reg, params, beat_info*)`.
+- Created `app/entities/obstacle_entity.cpp` — implements `spawn_obstacle`: emplaces ObstacleTag, Velocity, DrawLayer, optional BeatInfo, all kind-specific components, and calls `spawn_obstacle_meshes`. Single owner of the full component bundle contract.
+- Deleted `app/archetypes/obstacle_archetypes.h` and `app/archetypes/obstacle_archetypes.cpp` — fully superseded.
+- Updated `obstacle_spawn_system.cpp` and `beat_scheduler_system.cpp` to include `entities/obstacle_entity.h` and call `spawn_obstacle`. Both systems no longer manually emplace base components.
+- Rewrote `tests/test_obstacle_archetypes.cpp` to test `spawn_obstacle` directly. Added BeatInfo-present/absent tests.
+- Updated `tests/test_obstacle_model_slice.cpp` to use `spawn_obstacle` via helper.
+
+**Key design decisions:**
+- `beat_info` passed as `const BeatInfo*` (nullable pointer) rather than `std::optional<BeatInfo>` field in the struct, to avoid `-Wmissing-field-initializers` on positional brace-init callsites. Clean API, zero warning overhead.
+- `spawn_obstacle_meshes` is called inside `spawn_obstacle` so callers get the full entity — logical + visual — in one call.
+- `ObstacleSpawnParams` is a plain aggregate with all-defaulted trailing fields, same pattern as the old `ObstacleArchetypeInput`.
+
+**Build/Tests:** Zero warnings. 2983 assertions in 904 test cases — all pass.
