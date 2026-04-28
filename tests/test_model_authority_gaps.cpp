@@ -45,7 +45,7 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
 #include "components/obstacle.h"
-#include "gameobjects/shape_obstacle.h"
+#include "entities/obstacle_render_entity.h"
 
 // ════════════════════════════════════════════════════════════════════════════
 // PART A — Active bridge-state validation (headless-safe, runs today)

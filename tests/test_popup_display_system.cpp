@@ -25,8 +25,10 @@
 #include "components/rendering.h" // ScreenPosition, Color (via raylib)
 #include "components/text.h"      // FontSize
 #include "components/rhythm.h"    // TimingTier
+#include "components/transform.h" // WorldTransform, MotionVelocity
 #include "systems/all_systems.h"  // popup_display_system declaration
 #include "entities/popup_entity.h"
+#include "constants.h"
 
 // ── Helper ────────────────────────────────────────────────────────────────
 //
@@ -252,4 +254,110 @@ TEST_CASE("init_popup_display: nullopt tier formats numeric value (#251)",
 
     CHECK(std::strcmp(pd.text, "4242") == 0);
     CHECK(pd.font_size == FontSize::Small);
+}
+
+// ── spawn_score_popup: entity factory contract (#349) ─────────────────────────
+//
+// These tests prove that spawn_score_popup creates an entity carrying the full
+// expected component bundle with correct values.
+
+TEST_CASE("spawn_score_popup: entity has WorldTransform at pos - 40",
+          "[popup_entity][issue349]") {
+    entt::registry reg;
+    auto e = spawn_score_popup(reg, {100.0f, 500.0f, 200, std::nullopt});
+
+    REQUIRE(reg.all_of<WorldTransform>(e));
+    const auto& wt = reg.get<WorldTransform>(e);
+    CHECK(wt.position.x == 100.0f);
+    CHECK(wt.position.y == 460.0f);  // 500 - 40
+}
+
+TEST_CASE("spawn_score_popup: entity has MotionVelocity {0, -80}",
+          "[popup_entity][issue349]") {
+    entt::registry reg;
+    auto e = spawn_score_popup(reg, {0.0f, 0.0f, 100, std::nullopt});
+
+    REQUIRE(reg.all_of<MotionVelocity>(e));
+    const auto& mv = reg.get<MotionVelocity>(e);
+    CHECK(mv.value.x == 0.0f);
+    CHECK(mv.value.y == -80.0f);
+}
+
+TEST_CASE("spawn_score_popup: ScorePopup has correct points, tier=0, duration",
+          "[popup_entity][issue349]") {
+    entt::registry reg;
+    auto e = spawn_score_popup(reg, {0.0f, 0.0f, 350, TimingTier::Good});
+
+    REQUIRE(reg.all_of<ScorePopup>(e));
+    const auto& sp = reg.get<ScorePopup>(e);
+    CHECK(sp.value == 350);
+    CHECK(sp.tier == uint8_t{0});
+    CHECK(sp.timing_tier == TimingTier::Good);
+    CHECK(sp.remaining == constants::POPUP_DURATION);
+    CHECK(sp.max_time  == constants::POPUP_DURATION);
+}
+
+TEST_CASE("spawn_score_popup: color is green for Perfect tier",
+          "[popup_entity][issue349]") {
+    entt::registry reg;
+    auto e = spawn_score_popup(reg, {0.0f, 0.0f, 300, TimingTier::Perfect});
+
+    REQUIRE(reg.all_of<Color>(e));
+    const auto& c = reg.get<Color>(e);
+    CHECK(c.r == 100);
+    CHECK(c.g == 255);
+    CHECK(c.b == 100);
+    CHECK(c.a == 255);
+}
+
+TEST_CASE("spawn_score_popup: color is orange for Bad tier",
+          "[popup_entity][issue349]") {
+    entt::registry reg;
+    auto e = spawn_score_popup(reg, {0.0f, 0.0f, 50, TimingTier::Bad});
+
+    REQUIRE(reg.all_of<Color>(e));
+    const auto& c = reg.get<Color>(e);
+    CHECK(c.r == 255);
+    CHECK(c.g == 150);
+    CHECK(c.b == 100);
+}
+
+TEST_CASE("spawn_score_popup: default color when no timing tier",
+          "[popup_entity][issue349]") {
+    entt::registry reg;
+    auto e = spawn_score_popup(reg, {0.0f, 0.0f, 200, std::nullopt});
+
+    REQUIRE(reg.all_of<Color>(e));
+    const auto& c = reg.get<Color>(e);
+    CHECK(c.r == 255);
+    CHECK(c.g == 255);
+    CHECK(c.b == 50);
+}
+
+TEST_CASE("spawn_score_popup: DrawLayer is Effects",
+          "[popup_entity][issue349]") {
+    entt::registry reg;
+    auto e = spawn_score_popup(reg, {0.0f, 0.0f, 100, std::nullopt});
+
+    REQUIRE(reg.all_of<DrawLayer>(e));
+    CHECK(reg.get<DrawLayer>(e).layer == Layer::Effects);
+}
+
+TEST_CASE("spawn_score_popup: entity carries TagHUDPass",
+          "[popup_entity][issue349]") {
+    entt::registry reg;
+    auto e = spawn_score_popup(reg, {0.0f, 0.0f, 100, std::nullopt});
+    CHECK(reg.all_of<TagHUDPass>(e));
+}
+
+TEST_CASE("spawn_score_popup: PopupDisplay initialized at spawn",
+          "[popup_entity][issue349]") {
+    entt::registry reg;
+    auto e = spawn_score_popup(reg, {0.0f, 0.0f, 0, TimingTier::Perfect});
+
+    REQUIRE(reg.all_of<PopupDisplay>(e));
+    const auto& pd = reg.get<PopupDisplay>(e);
+    CHECK(std::strcmp(pd.text, "PERFECT") == 0);
+    CHECK(pd.font_size == FontSize::Medium);
+    CHECK(pd.a == 255);
 }

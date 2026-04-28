@@ -2,7 +2,7 @@
 #include "../components/obstacle.h"
 #include "../components/transform.h"
 #include "../components/rendering.h"
-#include "../gameobjects/shape_obstacle.h"
+#include "obstacle_render_entity.h"
 #include "../constants.h"
 
 entt::entity spawn_obstacle(entt::registry& reg, const ObstacleSpawnParams& params,

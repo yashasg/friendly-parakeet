@@ -333,3 +333,19 @@ Scribe documentation:
 - Session log: .squad/log/2026-04-28T08-12-03Z-ecs-cleanup-approval.md
 
 Next: Await merge approval.
+
+### 2026-04-28 — Popup Entity Factory (#349 slice)
+
+**Status:** COMPLETE
+
+**What changed:**
+- `app/entities/popup_entity.h` — Added `PopupSpawnParams` struct and `spawn_score_popup()` declaration (entt + rhythm.h included).
+- `app/entities/popup_entity.cpp` — Implemented `spawn_score_popup()`: emplace WorldTransform at {x, y-40}, MotionVelocity {0, -80}, ScorePopup, Color (by timing tier), DrawLayer::Effects, TagHUDPass, PopupDisplay via init_popup_display.
+- `app/systems/scoring_system.cpp` — Replaced 28-line inline popup bundle (lines 184-211) with 3-line `spawn_score_popup()` call; audio push stays in scoring_system.
+- `tests/test_popup_display_system.cpp` — Added 8 factory contract tests under `[popup_entity][issue349]` tag.
+- `tests/test_scoring_system.cpp` — Added full-contract popup test + LanePush no-popup test.
+
+**Build:** Zero warnings, zero errors (clang -Wall -Wextra -Werror).
+**Tests:** 52 test cases, 132 assertions — all passed.
+
+**Key decision:** `spawn_score_popup` does not push audio (kept in scoring_system per task spec).

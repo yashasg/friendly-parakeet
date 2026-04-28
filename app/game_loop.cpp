@@ -23,7 +23,7 @@
 #include "systems/camera_system.h"
 #include "ui/ui_loader.h"
 #include "ui/ui_button_spawner.h"
-#include "gameobjects/shape_obstacle.h"
+#include "entities/obstacle_render_entity.h"
 #include "platform_display.h"
 #include "util/settings_persistence.h"
 #include "components/high_score.h"

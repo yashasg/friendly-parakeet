@@ -9,7 +9,7 @@ struct PopupDisplayScratch {
     std::vector<entt::entity> expired;
 };
 
-PopupDisplayScratch& scratch_for(entt::registry& reg) {
+PopupDisplayScratch& popup_scratch_for(entt::registry& reg) {
     if (auto* scratch = reg.ctx().find<PopupDisplayScratch>()) {
         return *scratch;
     }
@@ -23,7 +23,7 @@ PopupDisplayScratch& scratch_for(entt::registry& reg) {
 // re-snprintf and emplace_or_replace<PopupDisplay> every tick; that re-did
 // static work on every frame for every popup and forced storage churn.
 void popup_display_system(entt::registry& reg, float dt) {
-    auto& expired = scratch_for(reg).expired;
+    auto& expired = popup_scratch_for(reg).expired;
     expired.clear();
 
     auto view = reg.view<ScorePopup>();

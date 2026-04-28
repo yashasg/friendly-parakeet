@@ -66,7 +66,7 @@
 #include "components/transform.h"
 #include "components/rendering.h"
 #include "constants.h"
-#include "gameobjects/shape_obstacle.h"
+#include "entities/obstacle_render_entity.h"
 #include "systems/all_systems.h"
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -165,7 +165,7 @@ TEST_CASE("post-migration: LowBar ObstacleScrollZ.z set from spawn input",
 #if 1  // SLICE0_RENDER_TAGS_ADDED — render-pass tags folded into rendering.h
 
 // (TagWorldPass / TagEffectsPass / TagHUDPass are defined in components/rendering.h,
-//  already included above via shape_obstacle.h -> rendering.h)
+//  already included above via obstacle_render_entity.h -> rendering.h)
 
 // Type-trait asserts: render-pass tags are empty standard-layout structs.
 // EnTT represents empty structs as zero-size components for tag queries.

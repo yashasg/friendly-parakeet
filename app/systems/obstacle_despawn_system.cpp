@@ -12,7 +12,7 @@ struct ObstacleDespawnScratch {
     std::vector<entt::entity> to_destroy;
 };
 
-ObstacleDespawnScratch& scratch_for(entt::registry& reg) {
+ObstacleDespawnScratch& despawn_scratch_for(entt::registry& reg) {
     if (auto* scratch = reg.ctx().find<ObstacleDespawnScratch>()) {
         return *scratch;
     }
@@ -32,7 +32,7 @@ ObstacleDespawnScratch& scratch_for(entt::registry& reg) {
 void obstacle_despawn_system(entt::registry& reg, float /*dt*/) {
     // Per-registry scratch retains capacity across frames without sharing mutable
     // state between registries.
-    auto& to_destroy = scratch_for(reg).to_destroy;
+    auto& to_destroy = despawn_scratch_for(reg).to_destroy;
     to_destroy.clear();
 
     // Resolve the camera-Z despawn threshold for model-authority obstacles.

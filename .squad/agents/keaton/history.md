@@ -776,3 +776,30 @@ set_source_files_properties(
 
 **Verdict:** Defer reader migration to after fixture update. Spatial semantics locked: Position (world), ObstacleScrollZ (scroll layer).
 
+
+### 2026-05-XX — Unity Build ODR Fix (scratch_for collisions)
+
+**Status:** COMPLETE
+
+**Hazards fixed:**
+Four app system files all defined `scratch_for(entt::registry&)` in anonymous namespaces with different return types. In unity builds (all app .cpp files in one TU), these collide at the function signature level — the anonymous namespace does NOT prevent intra-TU ODR violations.
+
+Files and renames applied:
+- `app/systems/particle_system.cpp`: `scratch_for` → `particle_scratch_for`
+- `app/systems/obstacle_despawn_system.cpp`: `scratch_for` → `despawn_scratch_for`
+- `app/systems/popup_display_system.cpp`: `scratch_for` → `popup_scratch_for`
+- `app/systems/scoring_system.cpp`: `scratch_for` → `scoring_scratch_for` (two call sites)
+
+**Commands run:**
+```
+rm -rf build-unity-verify-vcpkg
+cmake -B build-unity-verify-vcpkg -S . -DCMAKE_TOOLCHAIN_FILE=.../vcpkg.cmake -DSHAPESHIFTER_UNITY_BUILD=ON -Wno-dev
+cmake --build build-unity-verify-vcpkg --target shapeshifter_tests -- -j2
+./build-unity-verify-vcpkg/shapeshifter_tests
+```
+
+**Result:** All tests passed (2631 assertions in 901 test cases). Zero warnings.
+
+**Learnings:**
+- Anonymous namespaces do NOT protect against intra-TU collisions in unity builds; they only suppress inter-TU linkage. Any file-scope symbol in an anonymous namespace must be unique across all files that share a unity TU.
+- The correct fix is unique naming (not SKIP_UNITY_BUILD_INCLUSION) when the function body is trivially file-specific. Exclusion is reserved for files with deeper structural hazards (e.g., static helpers used by multiple tests that can't be trivially renamed).

@@ -3,7 +3,7 @@
 #include "../components/rendering.h"
 #include <entt/entt.hpp>
 
-// Spawn mesh child entities for multi-slab obstacle types.
+// Spawn render child entities for multi-slab obstacle types.
 // Call after creating the logical obstacle entity.
 void spawn_obstacle_meshes(entt::registry& reg, entt::entity logical);
 

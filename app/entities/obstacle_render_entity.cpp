@@ -1,4 +1,4 @@
-#include "shape_obstacle.h"
+#include "obstacle_render_entity.h"
 #include "../components/obstacle.h"
 #include "../components/transform.h"
 #include "../components/rendering.h"

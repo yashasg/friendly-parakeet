@@ -11,7 +11,7 @@ struct ParticleSystemScratch {
     std::vector<entt::entity> expired;
 };
 
-ParticleSystemScratch& scratch_for(entt::registry& reg) {
+ParticleSystemScratch& particle_scratch_for(entt::registry& reg) {
     if (auto* scratch = reg.ctx().find<ParticleSystemScratch>()) {
         return *scratch;
     }
@@ -21,7 +21,7 @@ ParticleSystemScratch& scratch_for(entt::registry& reg) {
 }  // namespace
 
 void particle_system(entt::registry& reg, float dt) {
-    auto& expired = scratch_for(reg).expired;
+    auto& expired = particle_scratch_for(reg).expired;
     expired.clear();
 
     auto view = reg.view<ParticleTag, ParticleData>();

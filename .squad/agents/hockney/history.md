@@ -10,6 +10,28 @@
 
 <!-- Append learnings below -->
 
+## Session: WASM Unity Builds (2026-05)
+
+### Problem
+WASM CI builds taking 10+ minutes. Root cause: each source file triggers its own `emcc` invocation with ~3s overhead, meaning 40+ source files = 120+ seconds of pure overhead before any actual compilation.
+
+### Fix
+1. **CMakeLists.txt line 24–33**: `CMAKE_UNITY_BUILD` now automatically set `ON` when `EMSCRIPTEN` is detected. Native builds unchanged (unity OFF by default).
+2. **CMakeLists.txt after TEST_SOURCES glob**: `set_source_files_properties(... SKIP_UNITY_BUILD_INCLUSION TRUE)` for 10 test files identified by Keaton's hazard audit (anonymous namespace / static symbol collisions).
+3. **ci-wasm.yml**: Cache key bumped `v2` → `v3` (invalidates stale non-unity object files), added `-- -j$(nproc)` to `cmake --build` command.
+
+### Keaton audit coordination
+Keaton's inbox file `keaton-unity-hazard-audit.md` identified app sources as safe and 10 test files needing exclusion. Applied those exclusions verbatim. **Long-term suggestion** (from Keaton): extract duplicated helpers into `tests/test_helpers.h` to eliminate the exclusions entirely.
+
+### Key file paths
+- Unity build entry point: `CMakeLists.txt` lines 24–33 (EMSCRIPTEN → CMAKE_UNITY_BUILD)
+- Test exclusions: `CMakeLists.txt` after `list(FILTER TEST_SOURCES ...)`  
+- CI cache key: `.github/workflows/ci-wasm.yml` `Cache build directory` step
+
+### ODR hazard audit findings (per Keaton)
+- **App sources**: All anonymous namespace symbols have unique names across files → safe for unity build
+- **Test sources with hazards**: `test_high_score_persistence.cpp`, `test_high_score_integration.cpp` (`remove_path`/`temp_high_score_path`), six `test_shipped_beatmap_*.cpp` (`find_shipped_beatmaps`), `test_ui_redfoot_pass.cpp` + `test_redfoot_testflight_ui.cpp` (`find_by_id`)
+
 ## Session: Issue #253 — HighScoreState compact flat array (2026-04-27)
 
 ### Problem

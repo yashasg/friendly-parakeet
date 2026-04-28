@@ -170,3 +170,41 @@ TEST_CASE("scoring: no-penalty — on-beat gate scores at base points", "[scorin
     auto& score = reg.ctx().get<ScoreState>();
     CHECK(score.score == constants::PTS_SHAPE_GATE);
 }
+
+TEST_CASE("scoring: popup entity has full factory contract", "[scoring][popup_entity]") {
+    auto reg = make_registry();
+    auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
+    reg.emplace<ScoredTag>(obs);
+
+    scoring_system(reg, 0.016f);
+
+    auto popup_view = reg.view<ScorePopup>();
+    int count = 0;
+    for (auto e : popup_view) {
+        ++count;
+        CHECK(reg.all_of<WorldTransform>(e));
+        CHECK(reg.all_of<MotionVelocity>(e));
+        CHECK(reg.all_of<Color>(e));
+        CHECK(reg.all_of<DrawLayer>(e));
+        CHECK(reg.all_of<TagHUDPass>(e));
+        CHECK(reg.all_of<PopupDisplay>(e));
+
+        const auto& mv = reg.get<MotionVelocity>(e);
+        CHECK(mv.value.x == 0.0f);
+        CHECK(mv.value.y == -80.0f);
+
+        const auto& dl = reg.get<DrawLayer>(e);
+        CHECK(dl.layer == Layer::Effects);
+    }
+    CHECK(count == 1);
+}
+
+TEST_CASE("scoring: LanePush emits no popup", "[scoring][lane_push]") {
+    auto reg = make_registry();
+    auto lp = make_lane_push(reg, ObstacleKind::LanePushLeft, constants::PLAYER_Y);
+    reg.emplace<ScoredTag>(lp);
+
+    scoring_system(reg, 0.016f);
+
+    CHECK(reg.view<ScorePopup>().size() == 0);
+}

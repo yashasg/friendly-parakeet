@@ -13,7 +13,7 @@
 #include "test_helpers.h"
 #include "ui/ui_button_spawner.h"
 #include "ui/ui_loader.h"
-#include "gameobjects/shape_obstacle.h"
+#include "entities/obstacle_render_entity.h"
 #include "components/ui_state.h"
 #include "components/rendering.h"
 #include "constants.h"

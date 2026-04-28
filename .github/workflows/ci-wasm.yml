@@ -52,9 +52,10 @@ jobs:
         uses: actions/cache@v5
         with:
           path: build-web
-          key: cmake-web-emscripten-v2-${{ hashFiles('CMakeLists.txt', 'vcpkg.json', 'vcpkg-overlay/**') }}
+          # v3: unity builds enabled — old non-unity object files are incompatible
+          key: cmake-web-emscripten-v3-${{ hashFiles('CMakeLists.txt', 'vcpkg.json', 'vcpkg-overlay/**') }}
           restore-keys: |
-            cmake-web-emscripten-v2-
+            cmake-web-emscripten-v3-
 
       - name: Build (Emscripten)
         run: |
@@ -65,7 +66,7 @@ jobs:
             "-DVCPKG_OVERLAY_PORTS=$(pwd)/vcpkg-overlay" \
             "-DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=${EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake" \
             -DVCPKG_TARGET_TRIPLET=wasm32-emscripten
-          cmake --build build-web
+          cmake --build build-web -- -j$(nproc)
 
       - name: Run WASM tests (via CTest + Node)
         run: |

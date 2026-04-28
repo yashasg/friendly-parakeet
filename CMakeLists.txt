@@ -21,7 +21,15 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-option(SHAPESHIFTER_UNITY_BUILD "Enable unity builds for faster compilation" OFF)
+# Emscripten pays ~3s of per-file overhead per emcc invocation; batching TUs via
+# unity builds cuts WASM compile time from 10+ minutes to ~3 minutes. Native builds
+# keep unity OFF by default (incremental rebuilds matter more there). Override with
+# -DSHAPESHIFTER_UNITY_BUILD=ON/OFF for either platform.
+if(EMSCRIPTEN)
+    option(SHAPESHIFTER_UNITY_BUILD "Enable unity builds for faster compilation" ON)
+else()
+    option(SHAPESHIFTER_UNITY_BUILD "Enable unity builds for faster compilation" OFF)
+endif()
 set(CMAKE_UNITY_BUILD ${SHAPESHIFTER_UNITY_BUILD})
 
 # ── Version (major.minor.githash) ────────────────────────────
@@ -87,7 +95,6 @@ endforeach()
 
 # ── Game library (shared between exe and tests) ──────────────
 file(GLOB SYSTEM_SOURCES CONFIGURE_DEPENDS app/systems/*.cpp)
-file(GLOB GAMEOBJECT_SOURCES CONFIGURE_DEPENDS app/gameobjects/*.cpp)
 file(GLOB AUDIO_SOURCES CONFIGURE_DEPENDS app/audio/*.cpp)
 file(GLOB UTIL_SOURCES CONFIGURE_DEPENDS app/util/*.cpp)
 file(GLOB UI_SOURCES CONFIGURE_DEPENDS app/ui/*.cpp)
@@ -105,7 +112,7 @@ list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "(^|/)camera_system\\.cpp$")
 list(FILTER UI_SOURCES EXCLUDE REGEX "(^|/)text_renderer\\.cpp$")
 list(FILTER UTIL_SOURCES EXCLUDE REGEX "(^|/)file_logger\\.cpp$")
 
-add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES} ${GAMEOBJECT_SOURCES} ${AUDIO_SOURCES} ${UTIL_SOURCES} ${UI_SOURCES} ${INPUT_SOURCES} ${SESSION_SOURCES} ${ARCHETYPE_SOURCES} ${ENTITY_SOURCES})
+add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES} ${AUDIO_SOURCES} ${UTIL_SOURCES} ${UI_SOURCES} ${INPUT_SOURCES} ${SESSION_SOURCES} ${ARCHETYPE_SOURCES} ${ENTITY_SOURCES})
 target_include_directories(shapeshifter_lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/app
     ${CMAKE_BINARY_DIR}/generated
@@ -376,6 +383,24 @@ file(GLOB TEST_SOURCES CONFIGURE_DEPENDS tests/*.cpp benchmarks/*.cpp)
 list(FILTER TEST_SOURCES EXCLUDE REGEX
     ".*(test_safe_area_layout|test_ui_redfoot_pass|test_lifecycle)\\.cpp$"
 )
+
+# Unity build hazard exclusions (Keaton audit). These test files define
+# duplicate symbols in anonymous namespaces or as static functions; merging them
+# into a unity TU would produce redefinition errors. Exclude them from unity
+# batching so each compiles as its own TU even when CMAKE_UNITY_BUILD is ON.
+set_source_files_properties(
+    tests/test_high_score_persistence.cpp
+    tests/test_high_score_integration.cpp
+    tests/test_shipped_beatmap_shape_gap.cpp
+    tests/test_shipped_beatmap_gap_one_readability.cpp
+    tests/test_shipped_beatmap_max_gap.cpp
+    tests/test_shipped_beatmap_difficulty_ramp.cpp
+    tests/test_shipped_beatmap_first_collision.cpp
+    tests/test_shipped_beatmap_medium_balance.cpp
+    tests/test_redfoot_testflight_ui.cpp
+    PROPERTIES SKIP_UNITY_BUILD_INCLUSION TRUE
+)
+
 add_executable(shapeshifter_tests
     ${TEST_SOURCES}
     app/util/file_logger.cpp

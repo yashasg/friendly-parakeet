@@ -34,7 +34,7 @@ struct ScoringSystemScratch {
     std::vector<HitRecord> hit_buf;
 };
 
-ScoringSystemScratch& scratch_for(entt::registry& reg) {
+ScoringSystemScratch& scoring_scratch_for(entt::registry& reg) {
     if (auto* scratch = reg.ctx().find<ScoringSystemScratch>()) {
         return *scratch;
     }
@@ -72,7 +72,7 @@ void scoring_system(entt::registry& reg, float dt) {
     // mid-iteration would swap-and-pop the pool (UB). Collect entities during
     // the read pass, apply removals after the view is exhausted. (#315)
     {
-        auto& miss_buf = scratch_for(reg).miss_buf;
+        auto& miss_buf = scoring_scratch_for(reg).miss_buf;
         miss_buf.clear();
 
         auto miss_view = reg.view<ObstacleTag, ScoredTag, MissTag, Obstacle>();
@@ -102,7 +102,7 @@ void scoring_system(entt::registry& reg, float dt) {
     //
     // EnTT safety: same collect-then-remove pattern as miss pass. (#315)
     {
-        auto& hit_buf = scratch_for(reg).hit_buf;
+        auto& hit_buf = scoring_scratch_for(reg).hit_buf;
         hit_buf.clear();
 
         auto hit_view = reg.view<ObstacleTag, ScoredTag, Obstacle, Position>(
@@ -180,36 +180,10 @@ void scoring_system(entt::registry& reg, float dt) {
 
             score.score += points;
 
-            // Spawn timing/score popup
-            auto popup = reg.create();
-            reg.emplace<WorldTransform>(popup, WorldTransform{{r.pos.x, r.pos.y - 40.0f}});
-            reg.emplace<MotionVelocity>(popup, MotionVelocity{{0.0f, -80.0f}});
-
+            // Spawn timing/score popup via entity factory (#349).
             std::optional<TimingTier> tt = r.has_timing
                 ? std::make_optional(r.timing.tier) : std::nullopt;
-            reg.emplace<ScorePopup>(popup, points, uint8_t{0}, tt,
-                                    constants::POPUP_DURATION, constants::POPUP_DURATION);
-
-            // Color by timing grade
-            uint8_t pr = 255, pg = 255, pb = 50;
-            if (r.has_timing) {
-                switch (r.timing.tier) {
-                    case TimingTier::Perfect: pr = 100; pg = 255; pb = 100; break; // green
-                    case TimingTier::Good:    pr = 180; pg = 255; pb = 100; break; // yellow-green
-                    case TimingTier::Ok:      pr = 255; pg = 255; pb = 100; break; // yellow
-                    case TimingTier::Bad:     pr = 255; pg = 150; pb = 100; break; // orange
-                }
-            }
-            reg.emplace<Color>(popup, Color{pr, pg, pb, 255});
-            reg.emplace<DrawLayer>(popup, Layer::Effects);
-            reg.emplace<TagHUDPass>(popup);
-
-            // Format the popup display once at spawn (#251): popup_display_system
-            // only updates the alpha each frame; text/font/base RGB stay put.
-            PopupDisplay pd{};
-            init_popup_display(pd, reg.get<ScorePopup>(popup), Color{pr, pg, pb, 255});
-            reg.emplace<PopupDisplay>(popup, pd);
-
+            spawn_score_popup(reg, {r.pos.x, r.pos.y, points, tt});
             audio_push(reg.ctx().get<AudioQueue>(), SFX::ScorePopup);
 
             // Structural removals after all reads — safe.
