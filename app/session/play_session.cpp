@@ -159,7 +159,7 @@ void setup_play_session(entt::registry& reg) {
             float btn_cx = btn_area_x + static_cast<float>(i) * (btn_w + btn_spacing) + btn_w / 2.0f;
             auto btn = reg.create();
             reg.emplace<ShapeButtonTag>(btn);
-            reg.emplace<Position>(btn, btn_cx, btn_cy);
+            reg.emplace<UIPosition>(btn, Vector2{btn_cx, btn_cy});
             reg.emplace<HitCircle>(btn, hit_radius);
             reg.emplace<ShapeButtonData>(btn, shapes[i]);
             reg.emplace<ActiveInPhase>(btn, GamePhaseBit::Playing);

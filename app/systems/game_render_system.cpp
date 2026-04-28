@@ -128,25 +128,38 @@ static void draw_floor_rings(const FloorParams& fp) {
     rlEnd();
 }
 
+static void draw_model_transform(const camera::ShapeMeshes& sm, const ModelTransform& mt) {
+    // Use a per-draw local copy so the shared material is never mutated.
+    Material mat = sm.material;
+    mat.maps[MATERIAL_MAP_DIFFUSE].color = mt.tint;
+    switch (mt.mesh_type) {
+        case MeshType::Slab:
+            DrawMesh(sm.slab, mat, mt.mat);
+            break;
+        case MeshType::Shape:
+            DrawMesh(sm.shapes[mt.mesh_index], mat, mt.mat);
+            break;
+        case MeshType::Quad:
+            DrawMesh(sm.quad, mat, mt.mat);
+            break;
+    }
+}
+
 static void draw_meshes(const entt::registry& reg) {
     const auto* sm = reg.ctx().find<camera::ShapeMeshes>();
     if (!sm) return;
 
-    auto view = reg.view<const ModelTransform>();
-    for (auto [entity, mt] : view.each()) {
-        // Use a per-draw local copy so the shared material is never mutated.
-        Material mat = sm->material;
-        mat.maps[MATERIAL_MAP_DIFFUSE].color = mt.tint;
-        switch (mt.mesh_type) {
-            case MeshType::Slab:
-                DrawMesh(sm->slab, mat, mt.mat);
-                break;
-            case MeshType::Shape:
-                DrawMesh(sm->shapes[mt.mesh_index], mat, mt.mat);
-                break;
-            case MeshType::Quad:
-                DrawMesh(sm->quad, mat, mt.mat);
-                break;
+    {
+        auto view = reg.view<const ModelTransform, const TagWorldPass>();
+        for (auto [entity, mt] : view.each()) {
+            draw_model_transform(*sm, mt);
+        }
+    }
+
+    {
+        auto view = reg.view<const ModelTransform, const TagEffectsPass>();
+        for (auto [entity, mt] : view.each()) {
+            draw_model_transform(*sm, mt);
         }
     }
 }

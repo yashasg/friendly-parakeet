@@ -103,7 +103,7 @@ TEST_CASE("pipeline: tap on active button triggers shape change in same pipeline
     REQUIRE(sw.phase == WindowPhase::Idle);
 
     auto btn = make_shape_button(reg, Shape::Square);
-    reg.get<Position>(btn) = {200.f, 200.f};
+    reg.get<UIPosition>(btn).value = {200.f, 200.f};
     reg.get<HitCircle>(btn).radius = 40.f;
     invalidate_active_tag_cache(reg);
 
@@ -124,7 +124,7 @@ TEST_CASE("pipeline: tap on button inactive in current phase has no effect",
     // care that no press bleeds through.
 
     auto btn = make_shape_button(reg, Shape::Square);  // mask = Playing
-    reg.get<Position>(btn) = {100.f, 100.f};
+    reg.get<UIPosition>(btn).value = {100.f, 100.f};
     reg.get<HitCircle>(btn).radius = 40.f;
     invalidate_active_tag_cache(reg);
 
@@ -152,7 +152,7 @@ TEST_CASE("pipeline: mixed swipe and tap both take effect within a single pipeli
     REQUIRE(sw.phase == WindowPhase::Idle);
 
     auto btn = make_shape_button(reg, Shape::Triangle);
-    reg.get<Position>(btn) = {200.f, 200.f};
+    reg.get<UIPosition>(btn).value = {200.f, 200.f};
     reg.get<HitCircle>(btn).radius = 40.f;
     invalidate_active_tag_cache(reg);
 
@@ -229,7 +229,7 @@ TEST_CASE("pipeline: tap consumed after first sub-tick — second sub-tick does 
     song.song_time = 5.0f;
 
     auto btn = make_shape_button(reg, Shape::Circle);
-    reg.get<Position>(btn) = {100.f, 100.f};
+    reg.get<UIPosition>(btn).value = {100.f, 100.f};
     reg.get<HitCircle>(btn).radius = 40.f;
     invalidate_active_tag_cache(reg);
 

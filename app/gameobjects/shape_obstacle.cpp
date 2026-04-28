@@ -29,6 +29,7 @@ static entt::entity add_slab_child(entt::registry& reg, entt::entity parent,
                                    float x, float w, float d, float h, Color tint) {
     auto e = reg.create();
     reg.emplace<MeshChild>(e, MeshChild{parent, x, 0.0f, w, d, h, tint, MeshType::Slab, 0});
+    reg.emplace<TagWorldPass>(e);
     append_child(reg, parent, e);
     return e;
 }
@@ -40,6 +41,7 @@ static entt::entity add_shape_child(entt::registry& reg, entt::entity parent,
     auto e = reg.create();
     reg.emplace<MeshChild>(e, MeshChild{parent, cx, z_offset, size, 0, 0, tint,
                                         MeshType::Shape, idx});
+    reg.emplace<TagWorldPass>(e);
     append_child(reg, parent, e);
     return e;
 }

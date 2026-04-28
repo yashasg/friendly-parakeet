@@ -281,29 +281,30 @@ void game_camera_system(entt::registry& reg, float /*dt*/) {
 
     // 3. Player shape transform
     {
-        auto view = reg.view<PlayerTag, Position, PlayerShape, VerticalState, Color>();
-        for (auto [entity, pos, pshape, vstate, col] : view.each()) {
+        auto view = reg.view<PlayerTag, WorldTransform, PlayerShape, VerticalState, Color>();
+        for (auto [entity, transform, pshape, vstate, col] : view.each()) {
             float y_3d = -vstate.y_offset;
             float sz = constants::PLAYER_SIZE;
             if (vstate.mode == VMode::Sliding) sz *= 0.5f;
             int shape_idx = static_cast<int>(pshape.current);
             const auto& props = SHAPE_PROPS[shape_idx];
             reg.get_or_emplace<ModelTransform>(entity) =
-                ModelTransform{make_shape_matrix(shape_idx, pos.x, y_3d, pos.y, sz, props.radius_scale),
+                ModelTransform{make_shape_matrix(shape_idx, transform.position.x, y_3d,
+                                                 transform.position.y, sz, props.radius_scale),
                                col, MeshType::Shape, shape_idx};
         }
     }
 
     // 4. Particle transforms
     {
-        auto view = reg.view<ParticleTag, Position, ParticleData, Color>();
-        for (auto [entity, pos, pdata, col] : view.each()) {
+        auto view = reg.view<ParticleTag, WorldTransform, ParticleData, Color>();
+        for (auto [entity, transform, pdata, col] : view.each()) {
             float ratio = (pdata.max_time > 0.0f) ? (pdata.remaining / pdata.max_time) : 1.0f;
             float sz = pdata.size * ratio;
             float half = sz / 2.0f;
             Matrix mat = MatrixMultiply(
                 MatrixScale(sz, 1, sz),
-                MatrixTranslate(pos.x - half, 0, pos.y - half));
+                MatrixTranslate(transform.position.x - half, 0, transform.position.y - half));
             reg.get_or_emplace<ModelTransform>(entity) =
                 ModelTransform{mat, col, MeshType::Quad, 0};
         }
@@ -356,9 +357,9 @@ void ui_camera_system(entt::registry& reg, float /*dt*/) {
     // Popup screen-space projection
     {
         auto& cam = game_camera(reg).cam;
-        auto view = reg.view<ScorePopup, Position>();
-        for (auto [entity, popup, pos] : view.each()) {
-            Vector3 world_pos = {pos.x, 5.0f, pos.y};
+        auto view = reg.view<ScorePopup, WorldTransform>();
+        for (auto [entity, popup, transform] : view.each()) {
+            Vector3 world_pos = {transform.position.x, 5.0f, transform.position.y};
             Vector2 sp = GetWorldToScreenEx(world_pos, cam,
                              constants::SCREEN_W, constants::SCREEN_H);
             reg.get_or_emplace<ScreenPosition>(entity) =

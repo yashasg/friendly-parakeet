@@ -10,7 +10,7 @@
 // UI button entity spawning helpers.
 //
 // Called from game_state_system during phase transitions.  Each function
-// stamps out lightweight button entities carrying Position + HitBox +
+// stamps out lightweight button entities carrying UIPosition + HitBox +
 // MenuAction + ActiveInPhase so the hit-test system can do generic
 // point-in-rect tests instead of hard-coded coordinate checks.
 // ---------------------------------------------------------------------------
@@ -54,7 +54,7 @@ inline void spawn_end_screen_buttons(entt::registry& reg) {
     for (int i = 0; i < 3; ++i) {
         auto btn = reg.create();
         reg.emplace<MenuButtonTag>(btn);
-        reg.emplace<Position>(btn, btn_x_center, btn_y_centers[i]);
+        reg.emplace<UIPosition>(btn, Vector2{btn_x_center, btn_y_centers[i]});
         reg.emplace<HitBox>(btn, (BTN_W + BTN_PAD * 2) / 2.0f,
                                  (BTN_H + BTN_PAD * 2) / 2.0f);
         reg.emplace<MenuAction>(btn, actions[i], uint8_t{0});
@@ -82,14 +82,14 @@ inline void spawn_title_buttons(entt::registry& reg) {
     constexpr float CONFIRM_HALF = (EXIT_TOP - 1.0f) / 2.0f;
     auto btn = reg.create();
     reg.emplace<MenuButtonTag>(btn);
-    reg.emplace<Position>(btn, constants::SCREEN_W / 2.0f, CONFIRM_HALF);
+    reg.emplace<UIPosition>(btn, Vector2{constants::SCREEN_W / 2.0f, CONFIRM_HALF});
     reg.emplace<HitBox>(btn, constants::SCREEN_W / 2.0f, CONFIRM_HALF);
     reg.emplace<MenuAction>(btn, MenuActionKind::Confirm, uint8_t{0});
     reg.emplace<ActiveInPhase>(btn, GamePhaseBit::Title);
 
     auto exit_btn = reg.create();
     reg.emplace<MenuButtonTag>(exit_btn);
-    reg.emplace<Position>(exit_btn, constants::SCREEN_W / 2.0f, EXIT_CENTER_Y);
+    reg.emplace<UIPosition>(exit_btn, Vector2{constants::SCREEN_W / 2.0f, EXIT_CENTER_Y});
     reg.emplace<HitBox>(exit_btn, EXIT_W / 2.0f, EXIT_H / 2.0f);
     reg.emplace<MenuAction>(exit_btn, MenuActionKind::Exit, uint8_t{0});
     reg.emplace<ActiveInPhase>(exit_btn, GamePhaseBit::Title);
@@ -97,8 +97,8 @@ inline void spawn_title_buttons(entt::registry& reg) {
     // On web, no Exit button — full-screen Confirm
     auto btn = reg.create();
     reg.emplace<MenuButtonTag>(btn);
-    reg.emplace<Position>(btn, constants::SCREEN_W / 2.0f,
-                               constants::SCREEN_H / 2.0f);
+    reg.emplace<UIPosition>(btn, Vector2{constants::SCREEN_W / 2.0f,
+                                         constants::SCREEN_H / 2.0f});
     reg.emplace<HitBox>(btn, constants::SCREEN_W / 2.0f,
                               constants::SCREEN_H / 2.0f);
     reg.emplace<MenuAction>(btn, MenuActionKind::Confirm, uint8_t{0});
@@ -110,8 +110,8 @@ inline void spawn_title_buttons(entt::registry& reg) {
 inline void spawn_pause_button(entt::registry& reg) {
     auto btn = reg.create();
     reg.emplace<MenuButtonTag>(btn);
-    reg.emplace<Position>(btn, constants::SCREEN_W / 2.0f,
-                               constants::SCREEN_H / 2.0f);
+    reg.emplace<UIPosition>(btn, Vector2{constants::SCREEN_W / 2.0f,
+                                         constants::SCREEN_H / 2.0f});
     reg.emplace<HitBox>(btn, constants::SCREEN_W / 2.0f,
                               constants::SCREEN_H / 2.0f);
     reg.emplace<MenuAction>(btn, MenuActionKind::Confirm, uint8_t{0});
@@ -149,7 +149,7 @@ inline void spawn_level_select_buttons(entt::registry& reg) {
                  + CARD_HEIGHT / 2.0f;
         auto card = reg.create();
         reg.emplace<MenuButtonTag>(card);
-        reg.emplace<Position>(card, CARD_X + CARD_W / 2.0f, cy);
+        reg.emplace<UIPosition>(card, Vector2{CARD_X + CARD_W / 2.0f, cy});
         reg.emplace<HitBox>(card, CARD_W / 2.0f, CARD_HEIGHT / 2.0f);
         reg.emplace<MenuAction>(card, MenuActionKind::SelectLevel,
                                 static_cast<uint8_t>(c));
@@ -170,7 +170,7 @@ inline void spawn_level_select_buttons(entt::registry& reg) {
 
         auto dbtn = reg.create();
         reg.emplace<MenuButtonTag>(dbtn);
-        reg.emplace<Position>(dbtn, bx, by);
+        reg.emplace<UIPosition>(dbtn, Vector2{bx, by});
         reg.emplace<HitBox>(dbtn, (DIFF_BTN_W + PAD * 2) / 2.0f,
                                   (DIFF_BTN_H + PAD * 2) / 2.0f);
         reg.emplace<MenuAction>(dbtn, MenuActionKind::SelectDiff,
@@ -181,8 +181,8 @@ inline void spawn_level_select_buttons(entt::registry& reg) {
     // Start button
     auto start = reg.create();
     reg.emplace<MenuButtonTag>(start);
-    reg.emplace<Position>(start, constants::SCREEN_W / 2.0f,
-                                 START_BTN_Y + START_BTN_H / 2.0f);
+    reg.emplace<UIPosition>(start, Vector2{constants::SCREEN_W / 2.0f,
+                                           START_BTN_Y + START_BTN_H / 2.0f});
     reg.emplace<HitBox>(start, (START_BTN_W + PAD * 2) / 2.0f,
                                 (START_BTN_H + PAD * 2) / 2.0f);
     reg.emplace<MenuAction>(start, MenuActionKind::Confirm, uint8_t{0});

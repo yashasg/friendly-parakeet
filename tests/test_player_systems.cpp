@@ -155,10 +155,11 @@ TEST_CASE("player_movement: lane transition moves position", "[player]") {
     reg.get<Lane>(p).target = 0;
     reg.get<Lane>(p).lerp_t = 0.0f;
 
-    float initial_x = reg.get<Position>(p).x;
+    float initial_x = reg.get<WorldTransform>(p).position.x;
     player_movement_system(reg, 0.016f);
 
-    CHECK(reg.get<Position>(p).x < initial_x);
+    CHECK(reg.get<WorldTransform>(p).position.x < initial_x);
+    CHECK(reg.get<Position>(p).x == reg.get<WorldTransform>(p).position.x);
 }
 
 TEST_CASE("player_movement: lane transition completes", "[player]") {
@@ -174,6 +175,7 @@ TEST_CASE("player_movement: lane transition completes", "[player]") {
 
     CHECK(reg.get<Lane>(p).current == 2);
     CHECK(reg.get<Lane>(p).target == -1);
+    CHECK(reg.get<WorldTransform>(p).position.x == constants::LANE_X[2]);
     CHECK(reg.get<Position>(p).x == constants::LANE_X[2]);
 }
 

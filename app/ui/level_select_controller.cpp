@@ -11,9 +11,9 @@ static void update_diff_buttons_pos(entt::registry& reg, const LevelSelectState&
     constexpr float DIFF_BTN_H     =  50.0f;
     float card_y = CARD_START_Y + static_cast<float>(lss.selected_level) * (CARD_HEIGHT + CARD_GAP);
     float diff_y = card_y + DIFF_BTN_Y_OFF + DIFF_BTN_H / 2.0f;
-    auto view = reg.view<MenuButtonTag, MenuAction, Position>();
+    auto view = reg.view<MenuButtonTag, MenuAction, UIPosition>();
     for (auto [e, ma, pos] : view.each()) {
-        if (ma.kind == MenuActionKind::SelectDiff) pos.y = diff_y;
+        if (ma.kind == MenuActionKind::SelectDiff) pos.value.y = diff_y;
     }
 }
 

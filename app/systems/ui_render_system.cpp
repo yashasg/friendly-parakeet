@@ -333,7 +333,7 @@ void ui_render_system(const entt::registry& reg, float /*alpha*/) {
 
     // Popups
     {
-        auto view = reg.view<PopupDisplay, ScreenPosition>();
+        auto view = reg.view<PopupDisplay, ScreenPosition, TagHUDPass>();
         for (auto [entity, pd, sp] : view.each()) {
             text_draw(text_ctx, pd.text, sp.x, sp.y, pd.font_size,
                       pd.r, pd.g, pd.b, pd.a, TextAlign::Center);
@@ -351,7 +351,7 @@ void ui_render_system(const entt::registry& reg, float /*alpha*/) {
 
     // UI text elements (data-driven from JSON)
     {
-        auto view = reg.view<UIElementTag, UIText, Position>();
+        auto view = reg.view<UIElementTag, UIText, UIPosition, TagHUDPass>();
         const auto* anim_store = reg.storage<UIAnimation>();
         const auto* dyn_store  = reg.storage<UIDynamicText>();
         for (auto [entity, text, pos] : view.each()) {
@@ -372,14 +372,14 @@ void ui_render_system(const entt::registry& reg, float /*alpha*/) {
                     draw_str = resolved.c_str();
                 }
             }
-            text_draw(text_ctx, draw_str, pos.x, pos.y, text.font_size,
+            text_draw(text_ctx, draw_str, pos.value.x, pos.value.y, text.font_size,
                       c.r, c.g, c.b, c.a, text.align);
         }
     }
 
     // UI button elements
     {
-        auto view = reg.view<UIElementTag, UIButton, Position>();
+        auto view = reg.view<UIElementTag, UIButton, UIPosition, TagHUDPass>();
         const auto* anim_store = reg.storage<UIAnimation>();
         const auto* dyn_store  = reg.storage<UIDynamicText>();
         for (auto [entity, btn, pos] : view.each()) {
@@ -390,8 +390,8 @@ void ui_render_system(const entt::registry& reg, float /*alpha*/) {
                 tc.a = static_cast<uint8_t>(anim->alpha_min +
                     static_cast<int>(pulse * (anim->alpha_max - anim->alpha_min)));
             }
-            DrawRectangleRounded({pos.x, pos.y, btn.w, btn.h}, btn.corner_radius, 4, btn.bg);
-            DrawRectangleRoundedLinesEx({pos.x, pos.y, btn.w, btn.h}, btn.corner_radius, 4, 1.5f, btn.border);
+            DrawRectangleRounded({pos.value.x, pos.value.y, btn.w, btn.h}, btn.corner_radius, 4, btn.bg);
+            DrawRectangleRoundedLinesEx({pos.value.x, pos.value.y, btn.w, btn.h}, btn.corner_radius, 4, 1.5f, btn.border);
             const char* draw_str = btn.text;
             std::string resolved;
             const auto* dyn = (dyn_store && dyn_store->contains(entity)) ? &dyn_store->get(entity) : nullptr;
@@ -402,16 +402,16 @@ void ui_render_system(const entt::registry& reg, float /*alpha*/) {
                     draw_str = resolved.c_str();
                 }
             }
-            text_draw(text_ctx, draw_str, pos.x + btn.w / 2.0f, pos.y + 12.0f,
+            text_draw(text_ctx, draw_str, pos.value.x + btn.w / 2.0f, pos.value.y + 12.0f,
                       btn.font_size, tc.r, tc.g, tc.b, tc.a, TextAlign::Center);
         }
     }
 
     // UI shape elements
     {
-        auto view = reg.view<UIElementTag, UIShape, Position>();
+        auto view = reg.view<UIElementTag, UIShape, UIPosition, TagHUDPass>();
         for (auto [entity, sh, pos] : view.each()) {
-            draw_shape_flat(sh.shape, pos.x, pos.y, sh.size, sh.color);
+            draw_shape_flat(sh.shape, pos.value.x, pos.value.y, sh.size, sh.color);
         }
     }
 

@@ -24,7 +24,7 @@ TEST_CASE("gesture_routing: tap input does not emit GoEvent", "[gesture_routing]
     auto btn = reg.create();
     reg.emplace<MenuButtonTag>(btn);
     reg.emplace<MenuAction>(btn, MenuActionKind::Confirm, uint8_t{0});
-    reg.emplace<Position>(btn, 100.0f, 100.0f);
+    reg.emplace<UIPosition>(btn, Vector2{100.0f, 100.0f});
     reg.emplace<HitBox>(btn, 50.0f, 50.0f);
     reg.emplace<ActiveInPhase>(btn, GamePhaseBit::Playing);
 
@@ -63,7 +63,7 @@ TEST_CASE("hit_test: swipe input is ignored (no GoEvent emitted)", "[hit_test][i
     auto btn = reg.create();
     reg.emplace<MenuButtonTag>(btn);
     reg.emplace<MenuAction>(btn, MenuActionKind::Confirm, uint8_t{0});
-    reg.emplace<Position>(btn, 100.0f, 100.0f);
+    reg.emplace<UIPosition>(btn, Vector2{100.0f, 100.0f});
     reg.emplace<HitBox>(btn, 50.0f, 50.0f);
     reg.emplace<ActiveInPhase>(btn, GamePhaseBit::Playing);
 
@@ -84,7 +84,7 @@ TEST_CASE("hit_test: tap inside hitbox emits press without gesture routing",
     auto btn = reg.create();
     reg.emplace<MenuButtonTag>(btn);
     reg.emplace<MenuAction>(btn, MenuActionKind::Confirm, uint8_t{0});
-    reg.emplace<Position>(btn, 100.0f, 100.0f);
+    reg.emplace<UIPosition>(btn, Vector2{100.0f, 100.0f});
     reg.emplace<HitBox>(btn, 50.0f, 50.0f);
     reg.emplace<ActiveInPhase>(btn, GamePhaseBit::Playing);
 
@@ -105,7 +105,7 @@ TEST_CASE("split systems: mixed inputs preserve event ordering and counts",
     auto btn = reg.create();
     reg.emplace<MenuButtonTag>(btn);
     reg.emplace<MenuAction>(btn, MenuActionKind::Confirm, uint8_t{0});
-    reg.emplace<Position>(btn, 200.0f, 200.0f);
+    reg.emplace<UIPosition>(btn, Vector2{200.0f, 200.0f});
     reg.emplace<HitBox>(btn, 30.0f, 30.0f);
     reg.emplace<ActiveInPhase>(btn, GamePhaseBit::Playing);
 
@@ -135,7 +135,7 @@ TEST_CASE("hit_test: ActiveTag phase filtering preserved after split",
     auto btn = reg.create();
     reg.emplace<MenuButtonTag>(btn);
     reg.emplace<MenuAction>(btn, MenuActionKind::Confirm, uint8_t{0});
-    reg.emplace<Position>(btn, 100.0f, 100.0f);
+    reg.emplace<UIPosition>(btn, Vector2{100.0f, 100.0f});
     reg.emplace<HitBox>(btn, 50.0f, 50.0f);
     reg.emplace<ActiveInPhase>(btn, GamePhaseBit::Playing);
 

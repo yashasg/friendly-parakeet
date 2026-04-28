@@ -16,6 +16,7 @@
 #include "ui/ui_loader.h"
 #include "components/ui_element.h"
 #include "components/transform.h"
+#include "components/rendering.h"
 
 using json = nlohmann::json;
 
@@ -72,6 +73,25 @@ TEST_CASE("spawn_ui_elements: screen with empty elements array creates no entiti
     entt::registry reg;
     spawn_ui_elements(reg, make_screen(json::array()));
     CHECK(reg.view<UIElementTag>().size() == 0);
+}
+
+TEST_CASE("spawn_ui_elements: renderable elements declare HUD pass and UI position", "[ui][spawn][render]") {
+    entt::registry reg;
+    json els = json::array({
+        text_el("txt"),
+        button_el("btn"),
+        shape_el("shape")
+    });
+
+    spawn_ui_elements(reg, make_screen(els));
+
+    int count = 0;
+    auto view = reg.view<UIElementTag, UIPosition, TagHUDPass>();
+    for (auto entity : view) {
+        CHECK_FALSE(reg.all_of<Position>(entity));
+        ++count;
+    }
+    CHECK(count == 3);
 }
 
 // ---------------------------------------------------------------------------

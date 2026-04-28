@@ -15,8 +15,8 @@ void player_movement_system(entt::registry& reg, float dt) {
     auto* song = reg.ctx().find<SongState>();
     bool rhythm_mode = (song != nullptr && song->playing);
 
-    auto view = reg.view<PlayerTag, Position, PlayerShape, Lane, VerticalState>();
-    for (auto [entity, pos, pshape, lane, vstate] : view.each()) {
+    auto view = reg.view<PlayerTag, Position, WorldTransform, PlayerShape, Lane, VerticalState>();
+    for (auto [entity, pos, transform, pshape, lane, vstate] : view.each()) {
 
         // Morph animation — freeplay only.
         // In rhythm mode shape_window_system owns morph_t (derives from song_time);
@@ -31,14 +31,18 @@ void player_movement_system(entt::registry& reg, float dt) {
             float from_x = constants::LANE_X[lane.current];
             float to_x   = constants::LANE_X[lane.target];
             pos.x = Lerp(from_x, to_x, lane.lerp_t);
+            transform.position.x = pos.x;
 
             if (lane.lerp_t >= 1.0f) {
                 lane.current = lane.target;
                 lane.target  = -1;
                 lane.lerp_t  = 1.0f;
                 pos.x = constants::LANE_X[lane.current];
+                transform.position.x = pos.x;
             }
         }
+
+        transform.position.y = pos.y;
 
         // Vertical movement
         if (vstate.mode != VMode::Grounded) {

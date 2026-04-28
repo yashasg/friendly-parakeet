@@ -236,6 +236,7 @@ void spawn_aligned_player(entt::registry& reg, float y) {
     auto p = reg.create();
     reg.emplace<PlayerTag>(p);
     reg.emplace<Position>(p, constants::LANE_X[1], y);
+    reg.emplace<WorldTransform>(p, WorldTransform{{constants::LANE_X[1], y}});
     PlayerShape ps; ps.current = Shape::Hexagon; ps.previous = Shape::Hexagon;
     reg.emplace<PlayerShape>(p, ps);
     ShapeWindow sw{};
@@ -251,8 +252,10 @@ entt::entity spawn_obstacle(entt::registry& reg, ObstacleKind kind, float y) {
     reg.emplace<ObstacleTag>(e);
     if (kind == ObstacleKind::LowBar || kind == ObstacleKind::HighBar) {
         reg.emplace<ObstacleScrollZ>(e, y);
+        reg.emplace<WorldTransform>(e, WorldTransform{{constants::SCREEN_W_F * 0.5f, y}});
     } else {
         reg.emplace<Position>(e, constants::LANE_X[1], y);
+        reg.emplace<WorldTransform>(e, WorldTransform{{constants::LANE_X[1], y}});
     }
     reg.emplace<Obstacle>(e, kind, int16_t{0});
     return e;

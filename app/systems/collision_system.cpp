@@ -17,11 +17,11 @@ Rectangle centered_rect(float cx, float cy, float w, float h) {
     return {cx - w * 0.5f, cy - h * 0.5f, w, h};
 }
 
-Vector2 player_timing_point(const Position& pos, const VerticalState& vstate) {
-    return {0.0f, pos.y + vstate.y_offset};
+Vector2 player_timing_point(const WorldTransform& transform, const VerticalState& vstate) {
+    return {0.0f, transform.position.y + vstate.y_offset};
 }
 
-bool player_in_timing_window(const Position& player_pos,
+bool player_in_timing_window(const WorldTransform& player_transform,
                               const VerticalState& vstate,
                               float obstacle_z) {
     Rectangle timing_window = {
@@ -30,11 +30,12 @@ bool player_in_timing_window(const Position& player_pos,
         1.0f,
         constants::COLLISION_MARGIN * 2.0f
     };
-    return CheckCollisionPointRec(player_timing_point(player_pos, vstate), timing_window);
+    return CheckCollisionPointRec(player_timing_point(player_transform, vstate), timing_window);
 }
 
-bool player_overlaps_lane(const Position& player_pos, const Position& obstacle_pos) {
-    Rectangle player_lane = centered_rect(player_pos.x, 0.0f, constants::PLAYER_SIZE, 1.0f);
+bool player_overlaps_lane(const WorldTransform& player_transform, const Position& obstacle_pos) {
+    Rectangle player_lane = centered_rect(player_transform.position.x, 0.0f,
+                                          constants::PLAYER_SIZE, 1.0f);
     Rectangle obstacle_lane = centered_rect(obstacle_pos.x, 0.0f, constants::PLAYER_SIZE, 1.0f);
     return CheckCollisionRecs(player_lane, obstacle_lane);
 }
@@ -44,12 +45,12 @@ bool player_overlaps_lane(const Position& player_pos, const Position& obstacle_p
 void collision_system(entt::registry& reg, float /*dt*/) {
     if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
 
-    auto player_view = reg.view<PlayerTag, Position, PlayerShape, ShapeWindow, Lane, VerticalState>();
+    auto player_view = reg.view<PlayerTag, WorldTransform, PlayerShape, ShapeWindow, Lane, VerticalState>();
     if (player_view.begin() == player_view.end()) return;
 
     auto player_it = player_view.begin();
-    auto [p_pos, p_shape, p_window, p_lane, p_vstate] =
-        player_view.get<Position, PlayerShape, ShapeWindow, Lane, VerticalState>(*player_it);
+    auto [p_transform, p_shape, p_window, p_lane, p_vstate] =
+        player_view.get<WorldTransform, PlayerShape, ShapeWindow, Lane, VerticalState>(*player_it);
 
     auto* song    = reg.ctx().find<SongState>();
     auto* results = reg.ctx().find<SongResults>();
@@ -61,7 +62,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
     // loop already holds the Obstacle component.
     auto resolve = [&](entt::entity entity, float obs_z, bool cleared,
                        ObstacleKind kind) {
-        if (!player_in_timing_window(p_pos, p_vstate, obs_z)) return;
+        if (!player_in_timing_window(p_transform, p_vstate, obs_z)) return;
 
         if (cleared) {
             // In rhythm mode, compute timing grade
@@ -132,7 +133,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
             entt::exclude<ScoredTag, BlockedLanes, RequiredLane>);
         for (auto [e, pos, obs, req] : view.each()) {
             bool shape_match = (p_shape.current == req.shape) && (p_shape.current != Shape::Hexagon);
-            bool lane_match  = player_overlaps_lane(p_pos, pos);
+            bool lane_match  = player_overlaps_lane(p_transform, pos);
             resolve(e, pos.y, shape_match && lane_match, obs.kind);
         }
     }
@@ -183,8 +184,8 @@ void collision_system(entt::registry& reg, float /*dt*/) {
         auto view = reg.view<ObstacleTag, Position, Obstacle>(
             entt::exclude<ScoredTag, RequiredShape, BlockedLanes, RequiredLane, RequiredVAction>);
         for (auto [e, pos, obs] : view.each()) {
-            if (!player_in_timing_window(p_pos, p_vstate, pos.y)) continue;
-            bool on_same_lane = player_overlaps_lane(p_pos, pos);
+            if (!player_in_timing_window(p_transform, p_vstate, pos.y)) continue;
+            bool on_same_lane = player_overlaps_lane(p_transform, pos);
             if (on_same_lane && p_lane.target < 0) {
                 int8_t delta = (obs.kind == ObstacleKind::LanePushLeft) ? -1 : 1;
                 int8_t dest  = static_cast<int8_t>(p_lane.current + delta);

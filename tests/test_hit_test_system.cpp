@@ -15,7 +15,7 @@ TEST_CASE("hit_test: tap inside hitbox emits press", "[hit_test]") {
     auto btn = reg.create();
     reg.emplace<MenuButtonTag>(btn);
     reg.emplace<MenuAction>(btn, MenuActionKind::Confirm, uint8_t{0});
-    reg.emplace<Position>(btn, 100.0f, 100.0f);
+    reg.emplace<UIPosition>(btn, Vector2{100.0f, 100.0f});
     reg.emplace<HitBox>(btn, 50.0f, 50.0f);  // half extents: ±50
     reg.emplace<ActiveInPhase>(btn, GamePhaseBit::Playing);
 
@@ -34,7 +34,7 @@ TEST_CASE("hit_test: tap outside hitbox no event", "[hit_test]") {
     auto btn = reg.create();
     reg.emplace<MenuButtonTag>(btn);
     reg.emplace<MenuAction>(btn, MenuActionKind::Confirm, uint8_t{0});
-    reg.emplace<Position>(btn, 100.0f, 100.0f);
+    reg.emplace<UIPosition>(btn, Vector2{100.0f, 100.0f});
     reg.emplace<HitBox>(btn, 50.0f, 50.0f);
     reg.emplace<ActiveInPhase>(btn, GamePhaseBit::Playing);
 
@@ -48,7 +48,7 @@ TEST_CASE("hit_test: tap inside hitcircle emits press", "[hit_test]") {
     auto reg = make_registry();
 
     auto btn = make_shape_button(reg, Shape::Circle);
-    reg.get<Position>(btn) = {200.0f, 200.0f};
+    reg.get<UIPosition>(btn).value = {200.0f, 200.0f};
     reg.get<HitCircle>(btn).radius = 40.0f;
 
     push_input(reg, InputType::Tap, 210.0f, 210.0f);  // inside circle
@@ -66,7 +66,7 @@ TEST_CASE("hit_test: wrong phase skips entity", "[hit_test]") {
 
     // Button is active only in Playing phase
     auto btn = make_shape_button(reg, Shape::Circle);
-    reg.get<Position>(btn) = {100.0f, 100.0f};
+    reg.get<UIPosition>(btn).value = {100.0f, 100.0f};
 
     push_input(reg, InputType::Tap, 100.0f, 100.0f);  // exact center
     run_input_tier1(reg);
@@ -78,7 +78,7 @@ TEST_CASE("hit_test: swipe emits go not press", "[hit_test]") {
     auto reg = make_registry();
 
     auto btn = make_shape_button(reg, Shape::Circle);
-    reg.get<Position>(btn) = {0.0f, 0.0f};
+    reg.get<UIPosition>(btn).value = {0.0f, 0.0f};
 
     push_input(reg, InputType::Swipe, 0.0f, 0.0f, Direction::Right);
     run_input_tier1(reg);
@@ -94,11 +94,11 @@ TEST_CASE("hit_test: penetrating hits multiple entities", "[hit_test]") {
 
     // Two overlapping buttons at same position
     auto btn1 = make_shape_button(reg, Shape::Circle);
-    reg.get<Position>(btn1) = {100.0f, 100.0f};
+    reg.get<UIPosition>(btn1).value = {100.0f, 100.0f};
     reg.get<HitCircle>(btn1).radius = 50.0f;
 
     auto btn2 = make_shape_button(reg, Shape::Square);
-    reg.get<Position>(btn2) = {100.0f, 100.0f};
+    reg.get<UIPosition>(btn2).value = {100.0f, 100.0f};
     reg.get<HitCircle>(btn2).radius = 50.0f;
 
     push_input(reg, InputType::Tap, 100.0f, 100.0f);
@@ -142,7 +142,7 @@ TEST_CASE("hit_test: ActiveTag removed when phase no longer covers entity",
           "[hit_test][active_tag]") {
     auto reg = make_registry();
     auto btn = make_shape_button(reg, Shape::Circle);  // mask = Playing
-    reg.get<Position>(btn) = {100.0f, 100.0f};
+    reg.get<UIPosition>(btn).value = {100.0f, 100.0f};
 
     // First pass in Playing: tag synced on, tap registers a press.
     push_input(reg, InputType::Tap, 100.0f, 100.0f);
@@ -164,7 +164,7 @@ TEST_CASE("hit_test: ActiveTag re-emplaced when phase returns to coverage",
           "[hit_test][active_tag]") {
     auto reg = make_registry();
     auto btn = make_shape_button(reg, Shape::Circle);  // mask = Playing
-    reg.get<Position>(btn) = {50.0f, 50.0f};
+    reg.get<UIPosition>(btn).value = {50.0f, 50.0f};
 
     // Title: button inactive.
     reg.ctx().get<GameState>().phase = GamePhase::Title;
@@ -190,7 +190,7 @@ TEST_CASE("hit_test: invalidate_active_tag_cache forces resync on same phase",
     // Spawn a button after the cache was warmed; without invalidation
     // ensure_active_tags_synced would skip it.
     auto btn = make_shape_button(reg, Shape::Circle);
-    reg.get<Position>(btn) = {200.0f, 200.0f};
+    reg.get<UIPosition>(btn).value = {200.0f, 200.0f};
     invalidate_active_tag_cache(reg);
 
     push_input(reg, InputType::Tap, 200.0f, 200.0f);

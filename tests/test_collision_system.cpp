@@ -405,6 +405,7 @@ TEST_CASE("collision: lane push out of range does not move player off edge", "[c
     // Move player to rightmost lane (lane 2); push right would go out of bounds
     reg.get<Lane>(p).current = 2;
     reg.get<Position>(p).x = constants::LANE_X[2];
+    reg.get<WorldTransform>(p).position.x = constants::LANE_X[2];
     auto obs = make_lane_push(reg, ObstacleKind::LanePushRight, constants::PLAYER_Y);
 
     collision_system(reg, 0.016f);

@@ -9,8 +9,9 @@ static entt::entity make_particle(entt::registry& reg, float size, float life_re
     auto e = reg.create();
     reg.emplace<ParticleTag>(e);
     reg.emplace<ParticleData>(e, size, life_remaining, life_max);
-    reg.emplace<Velocity>(e, vx, vy);
-    reg.emplace<Position>(e, 100.0f, 200.0f);
+    reg.emplace<MotionVelocity>(e, MotionVelocity{{vx, vy}});
+    reg.emplace<WorldTransform>(e, WorldTransform{{100.0f, 200.0f}});
+    reg.emplace<TagEffectsPass>(e);
     return e;
 }
 
@@ -76,8 +77,8 @@ TEST_CASE("particle: gravity increases downward velocity", "[particle]") {
 
     particle_system(reg, 0.1f);
 
-    auto& vel = reg.get<Velocity>(e);
-    CHECK_THAT(vel.dy, Catch::Matchers::WithinAbs(constants::PARTICLE_GRAVITY * 0.1f, 0.01f));
+    auto& vel = reg.get<MotionVelocity>(e);
+    CHECK_THAT(vel.value.y, Catch::Matchers::WithinAbs(constants::PARTICLE_GRAVITY * 0.1f, 0.01f));
 }
 
 TEST_CASE("particle: gravity accumulates over multiple frames", "[particle]") {
@@ -87,8 +88,8 @@ TEST_CASE("particle: gravity accumulates over multiple frames", "[particle]") {
     particle_system(reg, 0.1f);
     particle_system(reg, 0.1f);
 
-    auto& vel = reg.get<Velocity>(e);
-    CHECK_THAT(vel.dy, Catch::Matchers::WithinAbs(constants::PARTICLE_GRAVITY * 0.2f, 0.01f));
+    auto& vel = reg.get<MotionVelocity>(e);
+    CHECK_THAT(vel.value.y, Catch::Matchers::WithinAbs(constants::PARTICLE_GRAVITY * 0.2f, 0.01f));
 }
 
 TEST_CASE("particle: gravity does not affect horizontal velocity", "[particle]") {
@@ -97,7 +98,7 @@ TEST_CASE("particle: gravity does not affect horizontal velocity", "[particle]")
 
     particle_system(reg, 0.1f);
 
-    CHECK(reg.get<Velocity>(e).dx == 50.0f);
+    CHECK(reg.get<MotionVelocity>(e).value.x == 50.0f);
 }
 
 TEST_CASE("particle: no particles means no crash", "[particle]") {

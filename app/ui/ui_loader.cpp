@@ -2,6 +2,7 @@
 #include "../components/ui_layout_cache.h"
 #include "../components/ui_element.h"
 #include "../components/transform.h"
+#include "../components/rendering.h"
 #include "../constants.h"
 #include <entt/entt.hpp>
 #include <raylib.h>
@@ -197,10 +198,11 @@ void spawn_ui_elements(entt::registry& reg, const nlohmann::json& screen) {
         if (skip_for_platform(el)) continue;
         auto e = reg.create();
         reg.emplace<UIElementTag>(e);
+        reg.emplace<TagHUDPass>(e);
 
         float px = el.value("x_n", 0.0f) * constants::SCREEN_W;
         float py = el.value("y_n", 0.0f) * constants::SCREEN_H;
-        reg.emplace<Position>(e, px, py);
+        reg.emplace<UIPosition>(e, Vector2{px, py});
 
         if (type == "text" || type == "text_dynamic") {
             UIText t{};
@@ -298,7 +300,7 @@ void spawn_ui_elements(entt::registry& reg, const nlohmann::json& screen) {
             }
         } else if (is_supported_type(type)) {
             // Supported type with no spawn branch yet — destroy the base entity
-            // to avoid leaving an orphan with only UIElementTag + Position.
+            // to avoid leaving an orphan with only UIElementTag + UIPosition.
             reg.destroy(e);
             continue;
         } else {

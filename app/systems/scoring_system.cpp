@@ -182,8 +182,8 @@ void scoring_system(entt::registry& reg, float dt) {
 
             // Spawn timing/score popup
             auto popup = reg.create();
-            reg.emplace<Position>(popup, r.pos.x, r.pos.y - 40.0f);
-            reg.emplace<Velocity>(popup, 0.0f, -80.0f);
+            reg.emplace<WorldTransform>(popup, WorldTransform{{r.pos.x, r.pos.y - 40.0f}});
+            reg.emplace<MotionVelocity>(popup, MotionVelocity{{0.0f, -80.0f}});
 
             std::optional<TimingTier> tt = r.has_timing
                 ? std::make_optional(r.timing.tier) : std::nullopt;
@@ -202,6 +202,7 @@ void scoring_system(entt::registry& reg, float dt) {
             }
             reg.emplace<Color>(popup, Color{pr, pg, pb, 255});
             reg.emplace<DrawLayer>(popup, Layer::Effects);
+            reg.emplace<TagHUDPass>(popup);
 
             // Format the popup display once at spawn (#251): popup_display_system
             // only updates the alpha each frame; text/font/base RGB stay put.

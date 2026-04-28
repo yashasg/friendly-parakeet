@@ -210,12 +210,12 @@ void test_player_system(entt::registry& reg, float dt) {
     const auto& cfg = test_player_config(*state);
 
     // ── Find player ──────────────────────────────────────────
-    auto player_view = reg.view<PlayerTag, Position, PlayerShape, ShapeWindow, Lane, VerticalState>();
+    auto player_view = reg.view<PlayerTag, WorldTransform, PlayerShape, ShapeWindow, Lane, VerticalState>();
     if (player_view.begin() == player_view.end()) return;
 
     auto player_entity = *player_view.begin();
-    auto [p_pos, p_shape, p_window, p_lane, p_vstate] =
-        player_view.get<Position, PlayerShape, ShapeWindow, Lane, VerticalState>(player_entity);
+    auto [p_transform, p_shape, p_window, p_lane, p_vstate] =
+        player_view.get<WorldTransform, PlayerShape, ShapeWindow, Lane, VerticalState>(player_entity);
 
     // ── PERCEIVE: scan obstacles in vision range ─────────────
     // Compute the "effective lane" — where the player will be after
@@ -230,7 +230,7 @@ void test_player_system(entt::registry& reg, float dt) {
 
     auto obs_view = reg.view<ObstacleTag, Position, Obstacle>(entt::exclude<ScoredTag>);
     for (auto [entity, obs_pos, obs] : obs_view.each()) {
-        float dist = p_pos.y - obs_pos.y;
+        float dist = p_transform.position.y - obs_pos.y;
         if (dist <= 0.0f || dist > cfg.vision_range) continue;
         if (test_player_is_planned(*state, entity)) continue;
 
@@ -287,7 +287,7 @@ void test_player_system(entt::registry& reg, float dt) {
 
     auto model_obs_view = reg.view<ObstacleTag, ObstacleScrollZ, Obstacle>(entt::exclude<ScoredTag>);
     for (auto [entity, oz, obs] : model_obs_view.each()) {
-        float dist = p_pos.y - oz.z;
+        float dist = p_transform.position.y - oz.z;
         if (dist <= 0.0f || dist > cfg.vision_range) continue;
         if (test_player_is_planned(*state, entity)) continue;
 
@@ -410,7 +410,7 @@ void test_player_system(entt::registry& reg, float dt) {
             auto zone_view = reg.view<ObstacleTag, Position>(entt::exclude<ScoredTag>);
             for (auto [ze, zpos] : zone_view.each()) {
                 if (ze == action.obstacle) continue; // don't self-block
-                float zdist = p_pos.y - zpos.y + p_vstate.y_offset;
+                float zdist = p_transform.position.y - zpos.y + p_vstate.y_offset;
                 if (zdist >= -constants::COLLISION_MARGIN && zdist <= constants::COLLISION_MARGIN * 3.0f) {
                     zone_blocked = true;
                     break;
@@ -420,7 +420,7 @@ void test_player_system(entt::registry& reg, float dt) {
                 auto model_zone_view = reg.view<ObstacleTag, ObstacleScrollZ>(entt::exclude<ScoredTag>);
                 for (auto [ze, oz] : model_zone_view.each()) {
                     if (ze == action.obstacle) continue; // don't self-block
-                    float zdist = p_pos.y - oz.z + p_vstate.y_offset;
+                    float zdist = p_transform.position.y - oz.z + p_vstate.y_offset;
                     if (zdist >= -constants::COLLISION_MARGIN && zdist <= constants::COLLISION_MARGIN * 3.0f) {
                         zone_blocked = true;
                         break;
@@ -441,7 +441,7 @@ void test_player_system(entt::registry& reg, float dt) {
             auto closer_view = reg.view<ObstacleTag, Position>(entt::exclude<ScoredTag>);
             for (auto [oe, opos] : closer_view.each()) {
                 if (oe == action.obstacle) continue;
-                float odist = p_pos.y - opos.y + p_vstate.y_offset;
+                float odist = p_transform.position.y - opos.y + p_vstate.y_offset;
                 if (odist <= 0.0f) continue;
 
                 auto* obeat = reg.try_get<BeatInfo>(oe);
@@ -501,7 +501,7 @@ void test_player_system(entt::registry& reg, float dt) {
             auto zone_view = reg.view<ObstacleTag, Position>(entt::exclude<ScoredTag>);
             for (auto [ze, zpos] : zone_view.each()) {
                 if (ze == action.obstacle) continue;
-                float zdist = p_pos.y - zpos.y + p_vstate.y_offset;
+                float zdist = p_transform.position.y - zpos.y + p_vstate.y_offset;
                 if (zdist >= -constants::COLLISION_MARGIN && zdist <= constants::COLLISION_MARGIN * 3.0f) {
                     vert_zone_blocked = true;
                     break;
@@ -511,7 +511,7 @@ void test_player_system(entt::registry& reg, float dt) {
                 auto model_zone_view = reg.view<ObstacleTag, ObstacleScrollZ>(entt::exclude<ScoredTag>);
                 for (auto [ze, oz] : model_zone_view.each()) {
                     if (ze == action.obstacle) continue;
-                    float zdist = p_pos.y - oz.z + p_vstate.y_offset;
+                    float zdist = p_transform.position.y - oz.z + p_vstate.y_offset;
                     if (zdist >= -constants::COLLISION_MARGIN && zdist <= constants::COLLISION_MARGIN * 3.0f) {
                         vert_zone_blocked = true;
                         break;

@@ -26,11 +26,11 @@ void hit_test_handle_input(entt::registry& reg, const InputEvent& evt) {
     Vector2 point = {evt.x, evt.y};
 
     // Tap: hit-test against active HitBox entities
-    auto box_view = reg.view<Position, HitBox, ActiveTag>();
+    auto box_view = reg.view<UIPosition, HitBox, ActiveTag>();
     for (auto [entity, pos, hb] : box_view.each()) {
         Rectangle bounds = {
-            pos.x - hb.half_w,
-            pos.y - hb.half_h,
+            pos.value.x - hb.half_w,
+            pos.value.y - hb.half_h,
             hb.half_w * 2.0f,
             hb.half_h * 2.0f
         };
@@ -49,9 +49,9 @@ void hit_test_handle_input(entt::registry& reg, const InputEvent& evt) {
     }
 
     // Tap: hit-test against active HitCircle entities
-    auto circle_view = reg.view<Position, HitCircle, ActiveTag>();
+    auto circle_view = reg.view<UIPosition, HitCircle, ActiveTag>();
     for (auto [entity, pos, hc] : circle_view.each()) {
-        if (!CheckCollisionPointCircle(point, {pos.x, pos.y}, hc.radius)) continue;
+        if (!CheckCollisionPointCircle(point, pos.value, hc.radius)) continue;
 
         if (reg.all_of<ShapeButtonTag, ShapeButtonData>(entity)) {
             auto shape = reg.get<ShapeButtonData>(entity).shape;

@@ -23,7 +23,7 @@ TEST_CASE("entity: ShapeGate Circle - correct components and color", "[archetype
     entt::registry reg;
     auto e = spawn_obstacle(reg, {ObstacleKind::ShapeGate, 360.0f, -120.0f, Shape::Circle});
 
-    REQUIRE(reg.all_of<ObstacleTag, Velocity, DrawLayer, Position, Obstacle, RequiredShape, DrawSize, Color>(e));
+    REQUIRE(reg.all_of<ObstacleTag, Velocity, DrawLayer, Position, WorldTransform, Obstacle, RequiredShape, DrawSize, Color>(e));
     CHECK(!reg.all_of<RequiredVAction>(e));
     CHECK(!reg.all_of<BlockedLanes>(e));
     CHECK(!reg.all_of<RequiredLane>(e));
@@ -33,6 +33,8 @@ TEST_CASE("entity: ShapeGate Circle - correct components and color", "[archetype
     CHECK(reg.get<RequiredShape>(e).shape == Shape::Circle);
     CHECK(reg.get<Position>(e).x == 360.0f);
     CHECK(reg.get<Position>(e).y == -120.0f);
+    CHECK(reg.get<WorldTransform>(e).position.x == 360.0f);
+    CHECK(reg.get<WorldTransform>(e).position.y == -120.0f);
 
     auto& c = reg.get<Color>(e);
     CHECK(c.r == 80); CHECK(c.g == 200); CHECK(c.b == 255);
@@ -48,6 +50,24 @@ TEST_CASE("entity: ObstacleTag is emplaced after obstacle metadata", "[archetype
 
     CHECK(probe.saw_obstacle);
     CHECK(probe.saw_beat_info);
+}
+
+TEST_CASE("entity: obstacle roots and mesh children declare world render pass", "[archetype][render]") {
+    entt::registry reg;
+    auto e = spawn_obstacle(reg, {ObstacleKind::ShapeGate, 360.0f, -120.0f, Shape::Circle});
+
+    CHECK(reg.all_of<TagWorldPass>(e));
+    REQUIRE(reg.all_of<ObstacleChildren>(e));
+    const auto& children = reg.get<ObstacleChildren>(e);
+    REQUIRE(children.count > 0);
+    for (int i = 0; i < children.count; ++i) {
+        CHECK(reg.all_of<MeshChild>(children.children[i]));
+        CHECK(reg.all_of<TagWorldPass>(children.children[i]));
+    }
+
+    auto low_bar = spawn_obstacle(reg, {ObstacleKind::LowBar, 360.0f, -120.0f});
+    CHECK(reg.all_of<TagWorldPass>(low_bar));
+    CHECK(reg.all_of<WorldTransform>(low_bar));
 }
 
 TEST_CASE("entity: ShapeGate Square - red color", "[archetype]") {
@@ -85,7 +105,7 @@ TEST_CASE("entity: LowBar - RequiredVAction Jumping", "[archetype]") {
     entt::registry reg;
     auto e = spawn_obstacle(reg, {ObstacleKind::LowBar, 360.0f, -120.0f});
 
-    REQUIRE(reg.all_of<ObstacleTag, Velocity, DrawLayer, ObstacleScrollZ, Obstacle, RequiredVAction, DrawSize, Color>(e));
+    REQUIRE(reg.all_of<ObstacleTag, Velocity, DrawLayer, ObstacleScrollZ, WorldTransform, Obstacle, RequiredVAction, DrawSize, Color>(e));
     CHECK_FALSE(reg.all_of<Position>(e));
     CHECK(!reg.all_of<RequiredShape>(e));
     CHECK(!reg.all_of<BlockedLanes>(e));
@@ -94,6 +114,7 @@ TEST_CASE("entity: LowBar - RequiredVAction Jumping", "[archetype]") {
     CHECK(reg.get<Obstacle>(e).kind == ObstacleKind::LowBar);
     CHECK(reg.get<Obstacle>(e).base_points == int16_t{constants::PTS_LOW_BAR});
     CHECK(reg.get<ObstacleScrollZ>(e).z == -120.0f);
+    CHECK(reg.get<WorldTransform>(e).position.y == -120.0f);
     CHECK(reg.get<RequiredVAction>(e).action == VMode::Jumping);
     CHECK(reg.get<DrawSize>(e).h == 40.0f);
 }
@@ -102,11 +123,12 @@ TEST_CASE("entity: HighBar - RequiredVAction Sliding", "[archetype]") {
     entt::registry reg;
     auto e = spawn_obstacle(reg, {ObstacleKind::HighBar, 360.0f, -120.0f});
 
-    REQUIRE(reg.all_of<ObstacleTag, Velocity, DrawLayer, ObstacleScrollZ, Obstacle, RequiredVAction, DrawSize, Color>(e));
+    REQUIRE(reg.all_of<ObstacleTag, Velocity, DrawLayer, ObstacleScrollZ, WorldTransform, Obstacle, RequiredVAction, DrawSize, Color>(e));
     CHECK_FALSE(reg.all_of<Position>(e));
     CHECK(reg.get<Obstacle>(e).kind == ObstacleKind::HighBar);
     CHECK(reg.get<Obstacle>(e).base_points == int16_t{constants::PTS_HIGH_BAR});
     CHECK(reg.get<ObstacleScrollZ>(e).z == -120.0f);
+    CHECK(reg.get<WorldTransform>(e).position.y == -120.0f);
     CHECK(reg.get<RequiredVAction>(e).action == VMode::Sliding);
     CHECK(reg.get<DrawSize>(e).h == 40.0f);
 }
@@ -178,8 +200,11 @@ TEST_CASE("entity: ShapeGate position x/y propagated from input", "[archetype]")
     auto e = spawn_obstacle(reg, {ObstacleKind::ShapeGate, 123.5f, 456.7f});
 
     auto& pos = reg.get<Position>(e);
+    auto& transform = reg.get<WorldTransform>(e);
     CHECK(pos.x == 123.5f);
     CHECK(pos.y == 456.7f);
+    CHECK(transform.position.x == 123.5f);
+    CHECK(transform.position.y == 456.7f);
 }
 
 TEST_CASE("entity: BeatInfo emplaced when provided", "[archetype]") {

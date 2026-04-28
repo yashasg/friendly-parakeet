@@ -36,8 +36,8 @@ void particle_system(entt::registry& reg, float dt) {
         reg.destroy(entity);
     }
 
-    auto vel_view = reg.view<ParticleTag, Velocity>();
+    auto vel_view = reg.view<ParticleTag, MotionVelocity>();
     for (auto [entity, vel] : vel_view.each()) {
-        vel.dy += constants::PARTICLE_GRAVITY * dt;
+        vel.value.y += constants::PARTICLE_GRAVITY * dt;
     }
 }

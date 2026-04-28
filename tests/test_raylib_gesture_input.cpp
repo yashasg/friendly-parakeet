@@ -71,7 +71,7 @@ TEST_CASE("raylib gesture input: unknown gesture is tap", "[input][gesture]") {
 TEST_CASE("raylib gesture input: bottom-zone tap activates current button", "[input][gesture][hit_test]") {
     auto reg = make_registry();
     auto button = make_menu_button(reg, MenuActionKind::Confirm, GamePhase::Playing);
-    reg.get<Position>(button) = {360.0f, 1100.0f};
+    reg.get<UIPosition>(button).value = {360.0f, 1100.0f};
     reg.get<HitBox>(button) = {80.0f, 40.0f};
 
     float zone_y = constants::SCREEN_H * constants::SWIPE_ZONE_SPLIT;

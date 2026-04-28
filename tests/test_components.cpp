@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <type_traits>
 #include "test_helpers.h"
 #include "audio/audio_queue.h"
 #include "input/input_state.h"
@@ -10,6 +11,29 @@ TEST_CASE("components: Position default is zero", "[components]") {
     Position p{};
     CHECK(p.x == 0.0f);
     CHECK(p.y == 0.0f);
+}
+
+TEST_CASE("components: WorldTransform defaults to identity world transform", "[components][transform]") {
+    WorldTransform transform{};
+    CHECK(transform.position.x == 0.0f);
+    CHECK(transform.position.y == 0.0f);
+    CHECK(transform.rotation == 0.0f);
+    CHECK(transform.scale.x == 1.0f);
+    CHECK(transform.scale.y == 1.0f);
+}
+
+TEST_CASE("components: MotionVelocity defaults to zero vector", "[components][transform]") {
+    MotionVelocity velocity{};
+    CHECK(velocity.value.x == 0.0f);
+    CHECK(velocity.value.y == 0.0f);
+}
+
+TEST_CASE("components: UIPosition is distinct screen-space placement", "[components][transform][ui]") {
+    UIPosition position{};
+    CHECK(position.value.x == 0.0f);
+    CHECK(position.value.y == 0.0f);
+    CHECK_FALSE((std::is_same_v<UIPosition, WorldTransform>));
+    CHECK_FALSE((std::is_same_v<UIPosition, ScreenPosition>));
 }
 
 TEST_CASE("components: PlayerShape defaults to Circle", "[components]") {
@@ -131,7 +155,7 @@ TEST_CASE("ecs: make_registry dispatcher is wired — ButtonPressEvent listeners
     REQUIRE(sw.phase == WindowPhase::Idle);
 
     auto btn = make_shape_button(reg, Shape::Triangle);
-    reg.get<Position>(btn) = {0.f, 0.f};
+    reg.get<UIPosition>(btn).value = {0.f, 0.f};
     reg.get<HitCircle>(btn).radius = 50.f;
 
     auto& disp = reg.ctx().get<entt::dispatcher>();
@@ -165,7 +189,7 @@ TEST_CASE("ecs: wire_input_dispatcher is idempotent", "[ecs][dispatcher]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
     auto btn = make_shape_button(reg, Shape::Triangle);
-    reg.get<Position>(btn) = {0.f, 0.f};
+    reg.get<UIPosition>(btn).value = {0.f, 0.f};
     reg.get<HitCircle>(btn).radius = 50.f;
 
     wire_input_dispatcher(reg);
@@ -199,6 +223,7 @@ TEST_CASE("ecs: make_player creates proper entity", "[ecs]") {
 
     CHECK(reg.all_of<PlayerTag>(p));
     CHECK(reg.all_of<Position>(p));
+    CHECK(reg.all_of<WorldTransform>(p));
     CHECK(reg.all_of<PlayerShape>(p));
     CHECK(reg.all_of<ShapeWindow>(p));
     CHECK(reg.all_of<Lane>(p));
@@ -206,6 +231,7 @@ TEST_CASE("ecs: make_player creates proper entity", "[ecs]") {
     CHECK(reg.all_of<Color>(p));
     CHECK(reg.all_of<DrawSize>(p));
     CHECK(reg.all_of<DrawLayer>(p));
+    CHECK(reg.all_of<TagWorldPass>(p));
 }
 
 TEST_CASE("components: Velocity default is zero", "[components]") {

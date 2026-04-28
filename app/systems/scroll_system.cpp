@@ -18,12 +18,19 @@ void scroll_system(entt::registry& reg, float dt) {
         for (auto [entity, oz, info] : model_beat_view.each()) {
             oz.z = constants::SPAWN_Y
                  + (song->song_time - info.spawn_time) * song->scroll_speed;
+            if (auto* transform = reg.try_get<WorldTransform>(entity)) {
+                transform->position.y = oz.z;
+            }
         }
 
         auto beat_view = reg.view<ObstacleTag, Position, BeatInfo>();
         for (auto [entity, pos, info] : beat_view.each()) {
             pos.y = constants::SPAWN_Y
                   + (song->song_time - info.spawn_time) * song->scroll_speed;
+            if (auto* transform = reg.try_get<WorldTransform>(entity)) {
+                transform->position.x = pos.x;
+                transform->position.y = pos.y;
+            }
         }
     }
 
@@ -31,11 +38,24 @@ void scroll_system(entt::registry& reg, float dt) {
     auto model_view = reg.view<ObstacleTag, ObstacleScrollZ, Velocity>(entt::exclude<BeatInfo>);
     for (auto [entity, oz, vel] : model_view.each()) {
         oz.z += vel.dy * dt;
+        if (auto* transform = reg.try_get<WorldTransform>(entity)) {
+            transform->position.y = oz.z;
+        }
     }
 
     auto view = reg.view<Position, Velocity>(entt::exclude<BeatInfo>);
     for (auto [entity, pos, vel] : view.each()) {
         pos.x += vel.dx * dt;
         pos.y += vel.dy * dt;
+        if (auto* transform = reg.try_get<WorldTransform>(entity)) {
+            transform->position.x = pos.x;
+            transform->position.y = pos.y;
+        }
+    }
+
+    auto motion_view = reg.view<WorldTransform, MotionVelocity>(entt::exclude<BeatInfo>);
+    for (auto [entity, transform, velocity] : motion_view.each()) {
+        transform.position.x += velocity.value.x * dt;
+        transform.position.y += velocity.value.y * dt;
     }
 }

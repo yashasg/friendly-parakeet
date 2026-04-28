@@ -62,7 +62,14 @@ TEST_CASE("scoring: popup entity spawned on score", "[scoring]") {
 
     auto popup_view = reg.view<ScorePopup>();
     int popup_count = 0;
-    for (auto e : popup_view) { ++popup_count; (void)e; }
+    for (auto e : popup_view) {
+        CHECK(reg.all_of<WorldTransform>(e));
+        CHECK(reg.all_of<MotionVelocity>(e));
+        CHECK(reg.all_of<TagHUDPass>(e));
+        CHECK_FALSE(reg.all_of<Position>(e));
+        CHECK_FALSE(reg.all_of<Velocity>(e));
+        ++popup_count;
+    }
     CHECK(popup_count == 1);
 }
 

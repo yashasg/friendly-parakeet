@@ -201,6 +201,7 @@ TEST_CASE("collision: split path succeeds with correct shape and lane", "[collis
     auto& lane = reg.get<Lane>(p);
     lane.current = 2;
     reg.get<Position>(p).x = constants::LANE_X[2];
+    reg.get<WorldTransform>(p).position.x = constants::LANE_X[2];
 
     auto obs = make_split_path(reg, Shape::Triangle, 2, constants::PLAYER_Y);
 
@@ -251,4 +252,3 @@ TEST_CASE("collision: high bar fails when jumping", "[collision]") {
     CHECK(energy.energy < 1.0f);
     CHECK(energy.flash_timer > 0.0f);
 }
-

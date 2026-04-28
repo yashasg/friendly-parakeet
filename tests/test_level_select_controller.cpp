@@ -381,9 +381,9 @@ namespace {
     // All three buttons share the same Y after repositioning.
     float diff_button_y(entt::registry& reg) {
         float y = -1.0f;
-        auto view = reg.view<MenuButtonTag, MenuAction, Position>();
+        auto view = reg.view<MenuButtonTag, MenuAction, UIPosition>();
         for (auto [e, ma, pos] : view.each())
-            if (ma.kind == MenuActionKind::SelectDiff) { y = pos.y; break; }
+            if (ma.kind == MenuActionKind::SelectDiff) { y = pos.value.y; break; }
         return y;
     }
 }  // anonymous namespace
