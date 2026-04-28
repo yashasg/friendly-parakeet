@@ -13,6 +13,57 @@
 
 ---
 
+### 2026-04-28 — WASM Build Duration Audit (Unity Build Recommendation)
+
+**Scope:** `ci-wasm.yml` build performance; PR #43 (`user/yashasg/ecs_refactor`) WASM job timing.
+
+**Measured timing (run 25051888494, job 73381563501):**
+| Step | Duration |
+|---|---|
+| Setup Emscripten | 41s (cached via `emsdk-cache`) |
+| Cache build directory restore | 2s |
+| **Build (Emscripten)** | **9m 11s** ← 91% of total |
+| Run WASM tests (CTest/Node) | 1s |
+| Upload artifact | 4s |
+| **Total job wall time** | **~10m 9s** |
+
+Consistent across 5 sampled runs: all land in the 10–11 minute range.
+
+**Root cause:** Unity builds are disabled. `SHAPESHIFTER_UNITY_BUILD` (CMakeLists.txt line 24) defaults to `OFF`. The WASM workflow never passes `-DSHAPESHIFTER_UNITY_BUILD=ON`. Result: Emscripten compiles all 122 translation units (49 app/*.cpp + 73 tests/*.cpp) individually. Emscripten is ~2-4× slower than native clang per TU, so the cumulative cost is severe.
+
+**The deploy and test steps are not the problem.** WASM tests run in 1 second. Deploy is post-build and sequential — not blocking PR checks.
+
+**Recommended CI-side changes (2 lines in `ci-wasm.yml`):**
+
+1. Add `-DSHAPESHIFTER_UNITY_BUILD=ON` to the `emcmake cmake` invocation:
+   ```yaml
+   - name: Build (Emscripten)
+     run: |
+       emcmake cmake -B build-web -S . \
+         -DCMAKE_BUILD_TYPE=Release \
+         -Wno-dev \
+         "-DCMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" \
+         "-DVCPKG_OVERLAY_PORTS=$(pwd)/vcpkg-overlay" \
+         "-DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=${EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake" \
+         -DVCPKG_TARGET_TRIPLET=wasm32-emscripten \
+         -DSHAPESHIFTER_UNITY_BUILD=ON
+       cmake --build build-web
+   ```
+
+2. Bump cache key prefix from `cmake-web-emscripten-v2-` → `cmake-web-emscripten-v3-` (same restore-keys bump). Unity builds generate synthetic `unity_N_cxx.cxx` files in the build dir; a build dir created without unity cannot be safely reused for a unity build — the old TU objects stay and link against the new merged objects, causing duplicate symbol errors. The version bump forces a cold start on the first run so the build dir is clean.
+
+**No CMake changes needed.** The `CMAKE_UNITY_BUILD` option and plumbing already exist. Default batch size (8) is fine for 122 TUs — yields ~6 unity files for `shapeshifter_lib` and ~9 for `shapeshifter_tests`.
+
+**Expected outcome:** "Build (Emscripten)" drops from ~9m to ~2-4m (empirical; unity typically saves 50-70% on Emscripten due to header parsing amortization).
+
+**Validation on PR #43:** Push any commit to the branch → new WASM run triggers automatically → compare "Build (Emscripten)" step duration. First run is a cache miss (version bump) — this is correct and expected; the cold time will still show the unity benefit. Subsequent pushes with unchanged sources get cache hits and will be near-instant.
+
+**Workflow URLs:**
+- Most recent run: https://github.com/yashasg/friendly-parakeet/actions/runs/25051888494
+- Build job: https://github.com/yashasg/friendly-parakeet/actions/runs/25051888494/job/73381563501
+
+---
+
 ### 2026-05 — PR #43 Dependency Submission 500 retry fix
 
 **Scope:** `dependency-submission.yml` — transient GitHub 5xx on the POST to `/dependency-graph/snapshots` was failing the Windows matrix leg (run 25011478602 job 73248065522), and `fail-fast: true` (default) was cancelling the macOS sibling.

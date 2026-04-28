@@ -204,3 +204,21 @@ Implemented a focused content + small-renderer pass.
    - Low risk (emplace is a no-op on subsequent frames), but an antipattern in production ECS.
 
 **Overall verdict:** mostly clean. The #312/#322 work correctly addressed the prior P1s. One new P1 found (overlay key mismatch = silently broken UI feature). Two minor P3s.
+
+### 2026-04-28 — UI System Cleanup Plan (read-only)
+
+**Context:** User directive (copilot-directive-20260428T092900Z) asked for cleanup of `app/systems/` so it contains only real frame/tick logic.
+
+**Audit findings:**
+
+- `ui_loader.h/cpp`: NOT a system. Five distinct concerns mixed in one file — schema validators, overlay color parser, file I/O helpers, layout cache builders, entity factory (`spawn_ui_elements`). All fire at transition time or test time, never per-frame.
+- `ui_navigation_system.cpp`: IS a real system (runs every fixed tick, detects phase changes). Currently bloated by pulling in the entire ui_loader utility grab-bag; should become a thin orchestrator.
+- `ui_source_resolver.h/cpp`: NOT a system. Pure lookup + string-formatting utilities called by the render system. Equivalent to `text_renderer.h` — a renderer helper, not a tick system.
+- `ui_button_spawner.h`: NOT a system. Header-only inline entity factory; called only at phase-transition seams (game_state_system + game_loop_init).
+- `ui_render_system.cpp`: Correctly a frame system. Has one redundant `#include "ui_loader.h"` that is never used (all types come from `components/ui_element.h` and `components/ui_layout_cache.h`).
+
+**Proposed structure:** New `app/ui/` directory holding `ui_schema.h/cpp`, `ui_screen_loader.h/cpp`, `ui_element_spawner.h/cpp`, `ui_source_resolver.h/cpp`, `ui_button_factory.h`. CMake gains one `file(GLOB UI_SOURCES app/ui/*.cpp)` line. No behavior or test changes — 8 test files need include-path updates only.
+
+**4 migration batches** (source-resolver → schema split → button factory → screen loader + spawner), ordered smallest-to-largest risk. Batch 4 is the largest and should be coordinated to not overlap with Keyser edits to shared files.
+
+**Full plan:** `.squad/decisions/inbox/redfoot-ui-system-cleanup-plan.md`

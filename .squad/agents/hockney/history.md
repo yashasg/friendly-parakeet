@@ -269,3 +269,28 @@ Scribe documentation:
 - Session log: .squad/log/2026-04-28T08-12-03Z-ecs-cleanup-approval.md
 
 Next: Await merge approval.
+
+---
+
+## Session: Utility-Move Platform Plan (2026-05)
+
+### Task
+Read-only analysis of mechanical safety for moving non-system utilities out of `app/systems/`. No code changes made.
+
+### Key Findings
+
+**CMake glob gap (Issue #55 still open):** Source globs (`app/systems/*.cpp`, `app/util/*.cpp`) lack `CONFIGURE_DEPENDS`. Moving a `.cpp` requires a forced reconfigure (`cmake -B build -S .`) before the next build; without it, the file silently disappears from the build. Header-only files (`.h`) are never caught by source globs — their moves have zero CMake impact.
+
+**lib/exe split:** `shapeshifter_lib` does not link raylib, yet several systems already in the lib include `<raylib.h>` (sfx_bank.cpp, play_session.cpp, ui_loader.cpp). This works via vcpkg global include paths. Moves must preserve this pattern.
+
+**text_renderer.cpp is special:** It is explicitly filtered out of SYSTEM_SOURCES and manually listed in both the exe and test targets. Moving it to `util/` without 3 CMake edits would pull it into UTIL_SOURCES → shapeshifter_lib → link failure. This is the only move that requires CMake changes.
+
+**play_session.cpp must not move:** It includes `"all_systems.h"` (the systems aggregator). Moving to util/ would create a reverse dependency: util → systems. Leave in place.
+
+### Canonical Batch Order
+- **Batch A (header-only):** audio_types.h, music_context.h, ui_button_spawner.h, obstacle_counter_system.h → no CMake edits, no reconfigure
+- **Batch B (.cpp pairs):** session_logger.*, ui_source_resolver.*, ui_loader.*, sfx_bank.cpp → reconfigure required, no CMake edits
+- **Batch C (risky):** text_renderer.* → 3 CMake edits + reconfigure
+
+### Deliverable
+`.squad/decisions/inbox/hockney-utility-move-plan.md` — full include-path change table, risk notes, validation command sequence per batch.

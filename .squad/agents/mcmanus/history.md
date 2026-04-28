@@ -304,6 +304,25 @@ Rhythm obstacles that escape the collision window (e.g. during jump peak) reach 
 
 ---
 
+### 2026-04-28 — Lifetime Component/System Removal Plan
+
+**Task:** Read-only analysis pass — plan removal of `Lifetime` component and `lifetime_system`. Keaton is actively editing adjacent files (`game_loop.cpp`, `all_systems.h`, tests, benchmarks), so no code changes allowed yet.
+
+**Key findings:**
+- `Lifetime` is NOT attached to obstacle entities anywhere in game code. `obstacle_despawn_system` already owns correct positional despawn (camera-Z threshold). Status quo is correct for obstacles.
+- Three active uses of `Lifetime` remain: popup alpha fade (`popup_display_system`), particle size ratio (`camera_system`), and entity destruction (`lifetime_system` for both).
+- Replacement: add `remaining`/`max_time` to `ScorePopup` (popup timer) and `ParticleData` (particle timer). No new component needed — fields belong in the domain-specific structs per user directive.
+- Timer countdown + particle destruction moves to `particle_system`. Popup timer countdown + destruction moves to `popup_display_system` (collect-then-destroy, static buffer).
+- `benchmarks/bench_systems.cpp` references `cleanup_system` (stale name — renamed to `obstacle_despawn_system`). This is Keaton's active work; must not touch until Keaton's patch lands.
+
+**Files to change after Keaton lands:** `lifetime.h` (delete), `lifetime_system.cpp` (delete), `scoring.h`, `particle.h`, `scoring_system.cpp`, `popup_display_system.cpp`, `camera_system.cpp`, `particle_system.cpp`, `all_systems.h`, `game_loop.cpp`, three test files, benchmarks.
+
+**Plan filed:** `.squad/decisions/inbox/mcmanus-lifetime-removal-plan.md`
+
+**Learning: Always audit ALL uses of a component before planning removal.** The user framed this as an obstacle issue, but obstacles never used `Lifetime` — the real usage was entirely in popups and particles. Read the code before accepting the framing.
+
+---
+
 ### 2026-04-28 — Team Session Closure: ECS Cleanup Approval
 
 **Status:** APPROVED ✅ — Deliverable logged; ready for merge.

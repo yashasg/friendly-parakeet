@@ -1849,3 +1849,67 @@ Scribe tasks completed:
 - Git commit staged and ready
 
 The cleanup wave is complete. Next phase: await merge.
+
+---
+
+### 2026-05-18 — Systems Inventory (read-only audit)
+
+**Scope:** Full classification of all 44 files in `app/systems/`. Requested by yashasg: "systems that aren't actually systems" + raylib directive for input/gestures.
+
+**Key findings:**
+
+**Correctly placed (19 files):** beat_scheduler, collision, energy, lifetime, miss_detection, obstacle_despawn, particle, player_movement, scoring, scroll, shape_window, song_playback, popup_display, game_state, game_render, ui_render, camera_system, audio_system, haptic_system.
+
+**Event listeners misnamed as systems (5 files to consolidate/rename):**
+- `gesture_routing_system.cpp` — 14 lines, one sink callback. Fold into input_dispatcher.cpp.
+- `input_dispatcher.cpp` — pure wiring. Rename to input_wiring or fold.
+- `level_select_system.cpp` — click handlers + suspicious duplicate disp.update<> drain. Rename to level_select_handler.cpp.
+- `player_input_system.cpp` — two event callbacks, no frame loop. Rename to player_input_handler.cpp.
+- `active_tag_system.cpp` — cache sync utility, called from hit_test not main loop. Rename.
+
+**Loaders/util in wrong location (6 files to move to app/util/):**
+- `play_session.cpp/.h` — one-shot session initializer
+- `ui_loader.cpp/.h` — JSON file parser
+- `ui_source_resolver.cpp/.h` — string→component data accessor
+- `session_logger.cpp/.h` — file I/O logger (beat_log_system stays linked)
+- `sfx_bank.cpp` — procedural DSP + audio service init
+- `text_renderer.cpp/.h` — font load + text draw (CMake already excludes from lib)
+
+**Data types in wrong location (2 headers to move to app/components/):**
+- `audio_types.h` → `app/components/audio.h`
+- `music_context.h` → fold into same
+
+**Entity factories in wrong location (2 to move to app/entities/):**
+- `ui_button_spawner.h`
+- `obstacle_counter_system.*`
+
+**Raylib directive violation (1 file — HIGH priority):**
+- `input_gesture.h` — custom swipe/tap classifier conflicts with user directive to use raylib gesture helpers (`IsGestureDetected`, `GetGestureDragVector`). Zone-split logic must be preserved in input_system.cpp. Test migration required.
+
+**CMake note:** `file(GLOB SYSTEM_SOURCES app/systems/*.cpp)` means moving files automatically removes them from the glob. UTIL_SOURCES, ENTITY_SOURCES globs cover the target directories. Explicit CMake exclusion rules for `text_renderer.cpp`, `camera_system.cpp` etc. must be updated when those files move.
+
+**Recommended wave order:** A (header moves) → B (renames/consolidations) → C (small util moves) → D (heavier util moves) → E (raylib input replacement + level_select drain audit).
+
+**Output:** `.squad/decisions/inbox/kujan-systems-inventory.md`
+
+### 2026-05-18 — System Boundary Cleanup Review (Keaton)
+
+**Scope:** `beat_map_loader` move to `app/util/` + `cleanup_system` → `obstacle_despawn_system` rename + Z-despawn camera fix.
+
+**Verdict:** ❌ REJECTED — 2 blocking defects. Keaton locked out. Revision owner: Keyser.
+
+**What was correct:**
+- `app/util/beat_map_loader.h/.cpp` present with unchanged content; `app/systems/` copies deleted.
+- All 4 Keyser-listed include sites updated to `"util/beat_map_loader.h"`. No stale includes remain.
+- `all_systems.h`, `game_loop.cpp`, `test_world_systems.cpp` all correctly renamed to `obstacle_despawn_system`.
+- `app/components/obstacle.h` comment updated.
+
+**BL-1 — `benchmarks/bench_systems.cpp` (lines 192, 196, 215, 235): 4 stale `cleanup_system` calls.**
+Rename not applied to benchmarks. Build-breaking "use of undeclared identifier" on compile.
+
+**BL-2 — `obstacle_despawn_system.cpp` line 20: `ObstacleScrollZ` path still uses `constants::DESTROY_Y` (1400.0f) instead of `GameCamera.cam.position.z` (1900.0f).**
+The directive acceptance criterion is explicit: query `reg.view<GameCamera>()`, use `cam.cam.position.z`, fall back to `DESTROY_Y` when no camera exists (headless tests). The function comment claims "camera's far-Z boundary" but the constant makes that a lie.
+
+**Gate file:** `.squad/decisions/inbox/kujan-boundary-cleanup-review.md`
+
+**Learning:** Rename propagation must cover benchmarks/ as well as tests/ — these are separate directories that both call named system functions. Any "rename a system function" task checklist must include `grep -r old_name benchmarks/` explicitly. Also: a comment claiming "camera-derived" threshold while the code uses a constant is a review signal that the key requirement was deferred or forgotten.

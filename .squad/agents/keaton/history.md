@@ -700,3 +700,79 @@ Fixed all 7 unresolved review threads in commit d90abf9 on `user/yashasg/ecs_ref
 - LanePush* remain on Position (not yet migrated)
 
 **Validation:** All 2957 assertions pass in 898 test cases. Zero compiler warnings.
+
+### 2026-04-28 — System Boundary Cleanup (beat_map_loader + cleanup_system)
+
+**Status:** COMPLETE
+
+**Work done:**
+1. Moved `beat_map_loader.h/.cpp` from `app/systems/` → `app/util/`. It is a JSON/IO utility, not a system. CMake `file(GLOB UTIL_SOURCES app/util/*.cpp)` picks it up automatically; no CMakeLists changes needed.
+2. Renamed `cleanup_system` → `obstacle_despawn_system` (file + function). The old name was generic; the new name communicates exactly what it does: despawn obstacles that scroll past `constants::DESTROY_Y` (the camera's far-Z boundary).
+3. Updated all callers: `game_loop.cpp`, `all_systems.h`, `app/components/obstacle.h` comment, `app/systems/test_player_system.cpp` comment.
+4. Updated all test files: `test_world_systems.cpp`, `test_model_authority_gaps.cpp`, `test_obstacle_model_slice.cpp`, `test_test_player_system.cpp`, `test_game_state_extended.cpp`.
+5. Updated all test includes: `systems/beat_map_loader.h` → `util/beat_map_loader.h` (10 test files).
+6. Updated `app/systems/play_session.cpp` include path: `"beat_map_loader.h"` → `"../util/beat_map_loader.h"`.
+
+**Build note:** Pre-existing build environment issue — `shapeshifter_lib` links to EnTT/magic_enum/nlohmann_json but NOT raylib, yet many lib sources include `<raylib.h>` transitively through `constants.h`. This causes fresh builds to fail with "raylib.h not found" when building shapeshifter_lib. This predates these changes; it only manifests when the build/ directory is recreated from scratch (the old cached build/ had pre-compiled objects). All changed files verified warning-free via direct `c++ -fsyntax-only` with all include paths.
+
+**Key decision:** Kept `DESTROY_Y` constant name unchanged — renaming a constant is a larger footprint than the task required, and it's documented in `constants.h`. The semantic meaning is clear from the obstacle_despawn_system function comment.
+
+### 2026-05-XX — Unity Build Hazard Audit
+
+**Status:** AUDIT COMPLETE — read-only analysis, no files modified.
+
+**Findings:**
+
+**App sources (shapeshifter_lib + shapeshifter exe): CLEAN**
+- No macros defined in .cpp files
+- All anonymous-namespace symbols in app/ are unique across files
+- All file-scope `static` functions in app/ have unique names
+- `constexpr` variables in `app/audio/sfx_bank.cpp` (kPi, SAMPLE_RATE, SFX_COUNT, SFX_SPECS) are inside the anonymous namespace — internal linkage, safe
+- `SHAPE_PROPS` in `app/systems/camera_system.cpp` is the sole definition (with extern decl in header) — no conflict
+- `platform_display.cpp` uses `#ifdef __EMSCRIPTEN__` to swap implementations but both branches are within one file — fine for unity
+
+**Test sources (shapeshifter_tests): THREE HAZARD CLUSTERS requiring opt-out**
+
+1. **`remove_path` / `temp_high_score_path` collision** (anonymous namespace):
+   - `tests/test_high_score_persistence.cpp`
+   - `tests/test_high_score_integration.cpp`
+
+2. **`find_shipped_beatmaps` collision** (file-scope `static` function — same signature in 6 files):
+   - `tests/test_shipped_beatmap_shape_gap.cpp`
+   - `tests/test_shipped_beatmap_gap_one_readability.cpp`
+   - `tests/test_shipped_beatmap_max_gap.cpp`
+   - `tests/test_shipped_beatmap_difficulty_ramp.cpp`
+   - `tests/test_shipped_beatmap_first_collision.cpp`
+   - `tests/test_shipped_beatmap_medium_balance.cpp`
+
+3. **`find_by_id` collision** (anonymous namespace, identical bodies):
+   - `tests/test_ui_redfoot_pass.cpp`
+   - `tests/test_redfoot_testflight_ui.cpp`
+
+**Recommended CMake exclusions (add to CMakeLists.txt after TEST_SOURCES glob):**
+```cmake
+set_source_files_properties(
+    tests/test_high_score_persistence.cpp
+    tests/test_high_score_integration.cpp
+    tests/test_shipped_beatmap_shape_gap.cpp
+    tests/test_shipped_beatmap_gap_one_readability.cpp
+    tests/test_shipped_beatmap_max_gap.cpp
+    tests/test_shipped_beatmap_difficulty_ramp.cpp
+    tests/test_shipped_beatmap_first_collision.cpp
+    tests/test_shipped_beatmap_medium_balance.cpp
+    tests/test_ui_redfoot_pass.cpp
+    tests/test_redfoot_testflight_ui.cpp
+    PROPERTIES SKIP_UNITY_BUILD_INCLUSION TRUE
+)
+```
+
+**Unity build option:** `SHAPESHIFTER_UNITY_BUILD` already exists in CMakeLists.txt (line 24, defaulting OFF). Safe to enable for app targets. Tests need the 10 file exclusions above first.
+
+### 2026-04-28 — Obstacle Spatial Audit
+
+**Status:** AUDIT COMPLETE — Confirmed reader-only migration safe after fixture prep.
+
+**Finding:** Production obstacle readers (Position + ObstacleScrollZ) are stable; legacy bridge writers can coexist during transition. QA fixture prep is critical path blocker — tests lack WorldTransform + render tags.
+
+**Verdict:** Defer reader migration to after fixture update. Spatial semantics locked: Position (world), ObstacleScrollZ (scroll layer).
+
