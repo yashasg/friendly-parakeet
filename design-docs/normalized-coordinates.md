@@ -34,7 +34,7 @@ aspect-ratio-relative units instead of raw pixels.
 ## What Needs to Change
 
 - [ ] `constants.h` — all values become ratios (0.0–1.0 of screen H or W)
-- [ ] Collision margins, burnout zones, vision ranges — all normalized
+- [ ] Collision margins, proximity-ring radii, vision ranges — all normalized
 - [ ] Render system — multiply normalized coords by actual screen dimensions
 - [ ] Input system — divide touch coords by screen dimensions
 - [ ] Test player — vision_range and all distance thresholds become normalized

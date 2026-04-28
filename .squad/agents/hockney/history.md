@@ -1,0 +1,241 @@
+# Hockney — History
+
+## Core Context
+
+- **Project:** A C++20 raylib/EnTT rhythm bullet hell game with song-driven obstacles and shape matching synced to music.
+- **Role:** Platform Engineer
+- **Joined:** 2026-04-26T02:07:46.546Z
+
+## Learnings
+
+<!-- Append learnings below -->
+
+## Session: Issue #253 — HighScoreState compact flat array (2026-04-27)
+
+### Problem
+`HighScoreState::scores` was `std::map<std::string, int32_t>`: O(log N) node-based tree with heap allocations for ≤9 entries (3 songs × 3 difficulties = 9 max).
+
+### Fix (commit 60bcd26 / afd7921)
+- `app/components/high_score.h`: replaced `std::map` with `std::array<Entry, 9>` + `entry_count` counter.  `Entry = {char key[32]; int32_t score;}` — zero heap, trivially copyable.  Added `get_score(key)` and `set_score(key, val)` helpers (linear scan, O(N) for N≤9).  `update_current_high_score` semantics preserved (never-lower, clamp negative).  `current_key` kept as `std::string` (not hot-path).
+- `app/util/high_score_persistence.cpp`: iteration changed to index loop over `entries[]`; `set_score()` replaces `operator[]`.  JSON on-disk format unchanged.
+- `tests/test_high_score_persistence.cpp` + `tests/test_high_score_integration.cpp`: all `.scores["key"]=val` → `set_score("key", val)`, `.scores.at("key")` → `get_score("key")`, map equality check → per-key comparisons.
+
+### Learning: shared working-tree contention
+Concurrent agent commits in the shared tree caused commit `afd7921` (my message) to contain other agents' staged changes, and `60bcd26` (Redfoot's message) to contain my high_score changes.  The changes ARE correctly in HEAD; attribution is split across two commits.  Strategy for future sessions: use `git update-index --cacheinfo` (atomic index write) to avoid racing with concurrent `git add` from other agents.
+
+## Session: iOS TestFlight Readiness #180 #182 #183 #184 #186
+
+### Issues Addressed
+
+| Issue | Title | Deliverable |
+|-------|-------|-------------|
+| #180 | iOS audio session interruption handling | `docs/ios-testflight-readiness.md` §1 |
+| #182 | App background/foreground lifecycle mid-song | `docs/ios-testflight-readiness.md` §2 |
+| #183 | iOS version and build number scheme | `docs/ios-testflight-readiness.md` §3, `app/ios/build_number.txt` |
+| #184 | Bundle identifier, team, code signing | `docs/ios-testflight-readiness.md` §4 |
+| #186 | Device and OS support matrix | `docs/ios-testflight-readiness.md` §5 |
+
+### Key Decisions Made
+
+- **AVAudioSession: `Playback` (not Ambient).** Rhythm game is primary audio — needs interruption-begin/end callbacks and mute-switch respect. `Ambient` loses the callbacks needed for `song_time` resync.
+- **All audio interruptions + backgrounding map to the same pause state machine as #74.** No auto-resume — player must tap. Keeps one code path, avoids surprise desync.
+- **`StopMusicStream` (not just Pause) on `applicationDidEnterBackground`.** Safer under iOS process suspension. Re-seek with `SetMusicTimePlayed` on foreground.
+- **Version: `MAJOR.MINOR.PATCH` SemVer from `CMakeLists.txt`, build number from `app/ios/build_number.txt`.** Single source of truth per field; build number is a monotonic integer that never resets.
+- **Bundle ID: `com.yashasg.shapeshifter` (proposed).** User must confirm and register. Team ID is user-provided.
+- **iOS v1 signing: local Xcode Automatic Signing.** CI signing deferred post-TF.
+- **Minimum iOS: 16.0.** iPhone-only, portrait-only. iPad deferred.
+- **Viewport: 720×1280 centered with uniform scaling + black letterbox bars.** No layout reflow.
+- **Cap at 60fps** until #204 (ProMotion) resolved.
+
+### User-Provided Values Still Needed
+
+1. Apple Developer Team ID (10-char) — for CMake `-DCMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM`
+2. Apple Developer Program type (individual/org)
+3. Confirm or modify bundle ID `com.yashasg.shapeshifter`
+4. App icons (1024×1024 + all sizes)
+5. Bump `app/ios/build_number.txt` from 0 → 1 before first TF upload
+
+### Files Changed
+
+- **Created:** `docs/ios-testflight-readiness.md` (comprehensive, 5 sections)
+- **Created:** `app/ios/build_number.txt` (initial value: 0)
+
+### What's Still Needed (Not Hockney's scope)
+
+- `ios/Info.plist`, `ios/Entitlements.plist`, `ios/LaunchScreen.storyboard`, `ios/Assets.xcassets/` — needs implementation work.
+- `tools/ios_preflight.sh` — placeholder defined in doc; needs implementation.
+- `CHANGELOG.md` — needs creating before first TF upload.
+- iOS CMake toolchain integration (raylib iOS build, asset bundling) — larger implementation issue.
+
+---
+
+## Session: TestFlight Blockers #172 #173 #177 (2026-05-01)
+
+### Issues Fixed
+
+| Issue | Title | File |
+|-------|-------|------|
+| #172 | WASM CI branch triggers missing dev/preview/insider | `.github/workflows/ci-wasm.yml` |
+| #173 | Six asset globs lack CONFIGURE_DEPENDS | `CMakeLists.txt` |
+| #177 | emcmake cmake missing -DVCPKG_TARGET_TRIPLET | `.github/workflows/ci-wasm.yml` |
+
+### Key Learnings
+
+- **#172 pattern:** When a new long-lived branch is added to the project (`dev`, `preview`, `insider`), all CI workflow `pull_request.branches` lists must be updated. The WASM workflow was divergent from `squad-ci.yml` which already listed all four branches. Lesson: check branch parity across workflows any time a new protected branch is created.
+
+- **#173 pattern:** `CONFIGURE_DEPENDS` must be added inline after the `GLOB` keyword, before the glob expressions. CMake 3.20 (our minimum) fully supports this. The flag does not affect build output, only re-configure triggering — safe to add retroactively. Only the six *asset-copy* globs needed fixing here; source-code globs (#55) are a separate issue.
+
+- **#177 pattern:** When calling `emcmake cmake` directly (not through `build.sh`), all vcpkg context normally provided by the shell script must be replicated. For WASM cross-compilation, vcpkg's CMake toolchain reads `VCPKG_TARGET_TRIPLET` as a CMake variable — setting `VCPKG_DEFAULT_TRIPLET` as an env var is insufficient and not present in the WASM workflow anyway. Explicit `-DVCPKG_TARGET_TRIPLET=wasm32-emscripten` is the reliable fix.
+
+### Validation Performed
+- YAML: `python3 -c 'import yaml; yaml.safe_load(open(".github/workflows/ci-wasm.yml"))'` → valid
+- CMake: `cmake -B build -S . -Wno-dev` → `Configuring done` exit 0
+- Commit: `61ed9d6` on `user/yashasg/ecs_refactor`
+
+## Session: 2026-04-26 Diagnostics Run
+
+### Platform / CI Findings
+
+- **CMakeLists.txt** uses `cmake_minimum_required(VERSION 3.20)`, C++20, cmake EXPORT_COMPILE_COMMANDS.
+- **Warning policy**: `shapeshifter_warnings` INTERFACE target applies `-Wall -Wextra -Werror` for GCC/Clang/AppleClang only. MSVC `/W4 /WX` is documented in `copilot-instructions.md` but NOT wired into CMake. Windows CI uses Clang (not MSVC), so this gap is currently latent.
+- **file(GLOB)**: All `file(GLOB ...)` calls lack `CONFIGURE_DEPENDS`. New source files are silently ignored until re-configure.
+- **LINK_FLAGS**: WASM preload-file flags use deprecated `LINK_FLAGS` property rather than `target_link_options()`.
+- **Cache keys**: All four CI workflows hash only `CMakeLists.txt` + `vcpkg.json`. `vcpkg-overlay/**` changes don't invalidate cache.
+- **WASM only passes `-Wno-dev`** at configure step; native CI uses `build.sh` which omits it.
+- **Misleading comment** at CMakeLists.txt:146 claims "RGFW — no GLFW" but portfile builds `PLATFORM=Desktop` (bundled GLFW). WASM uses `-sUSE_GLFW=3`.
+- **WASM deploy scripts** use `cp || cp || true` pattern — silent failure masking. A completely failed copy still exits 0.
+### 2026-04-26 — Windows LLVM Pin: Issue #48 Diagnostics Validated
+
+**Scope:** Hockney's earlier diagnostics (Windows LLVM unsafe `choco install llvm` pin) now finalized by Ralph/Coordinator/Kujan.
+
+**Finding from diagnostics:** "Windows CI: `choco install llvm` has no version pin; version check fails if choco ships Clang 21+."
+
+**Resolution:** Ralph + Coordinator pinned to `llvm 20.1.4`; Kujan approved. Windows CI now safe from Chocolatey version drift.
+
+**Platform matrix update:** README.md documents Windows as `Clang 20.1.4 (Chocolatey LLVM)` — no longer "pre-installed" (clarified as CI-time install with version pin).
+
+- **WASM missing `-sNO_EXIT_RUNTIME=1`**: If raylib's main loop exits, the Emscripten runtime tears down.
+- **copilot-setup-steps** uses cache key prefix `cmake-linux-clang-` while `ci-linux.yml` uses `cmake-linux-clang20-v2-` — they never share cache entries.
+- **Git hash** is captured at CMake configure time (`execute_process`). Stale after new commits without re-configure.
+
+## Session: 2025 Fresh Diagnostics Run
+
+### Scope
+Fresh pass over CMakeLists.txt, vcpkg.json, vcpkg-overlay/, build.sh, run.sh, all .github/workflows/, README.md. Checked existing issues #44–#162 to avoid duplicates.
+
+### Previously-fixed issues confirmed resolved
+- #56 (CI cache keys omit vcpkg-overlay): FIXED — all workflows now hash `vcpkg-overlay/**`
+- #59 (WASM missing `-sNO_EXIT_RUNTIME=1`): FIXED — present in current CMakeLists.txt `target_link_options`
+- #62 (WASM CI no test execution): FIXED — `ci-wasm.yml` now has "Run WASM tests (via CTest + Node)"
+- #54 (MSVC /W4 /WX not wired): FIXED — `shapeshifter_warnings` INTERFACE target has MSVC generator expressions
+
+### New issues filed (this session)
+| Issue | Title | Milestone |
+|-------|-------|-----------|
+| #165 | squad-promote.yml uses stale actions/checkout@v4 (all others @v6) | AppStore |
+| #166 | GitHub Releases Linux-only (CLOSED as duplicate of #170) | — |
+| #172 | WASM CI does not validate PRs targeting dev/preview/insider branches | test-flight |
+| #173 | CMake content/asset globs lack CONFIGURE_DEPENDS (fonts, beatmaps, audio, UI, shaders) — distinct from source glob issue #55 | test-flight |
+
+### Duplicates skipped
+- #166 closed as dup of #170 (Kobayashi filed more complete version covering WASM artifacts too)
+
+### Key architectural notes
+- `squad-promote.yml` uses `actions/checkout@v4` (not @v6) — inconsistency
+- Six asset-copy `file(GLOB)` calls in CMakeLists.txt all lack `CONFIGURE_DEPENDS`; adds new content silently skipped until re-configure
+- WASM CI only triggers on PRs to `main`; dev/preview/insider branch PRs get Linux-only validation
+- `LINK_FLAGS` deprecated property (#60) is still present (not yet fixed)
+- `squad-release.yml`/`squad-insider-release.yml` are Linux-only release builders — covered by #170
+
+---
+
+**Wave Summary (2026-04-26T23:40:25Z):**
+- Diagnostics filed 3 new issues: #165 (actions@v4 EOL), #172 (WASM CI validation, test-flight blocker), #173 (CONFIGURE_DEPENDS).
+- Hockney active: #180–#186 (5 issues in current wave).
+- Findings merged to `.squad/decisions.md`.
+
+**Final Wave (2026-04-26):**
+- #180/#182/#183/#184/#186: iOS TestFlight readiness — audio session, app lifecycle, version scheme, bundle ID proposal, device matrix
+- Created `docs/ios-testflight-readiness.md` (CMake generation, signing, device setup)
+- Created `app/ios/build_number.txt` (initialized to 0)
+- Decisions merged to `decisions.md` (Status: PROPOSED, 5 user-provided blockers documented)
+- Comments posted to all five issues
+
+## Session: Issue #265 — ShapeMeshes & RenderTargets RAII GPU lifecycle (2026-05)
+
+### Problem
+`ShapeMeshes` and `RenderTargets` were plain data structs stored in registry context with GPU handles (Mesh[], Material, RenderTexture2D). Resources were only unloaded if `camera::shutdown(reg)` was called explicitly. Any abnormal exit skipped cleanup; any future refactor that omits the manual call leaks GPU memory.
+
+### Fix (commit 817b062)
+- **`app/components/camera.h` — `RenderTargets`**: Added `owned` flag, deleted copy ctor/assign, declared move ctor/assign + destructor + `release()`. Destructor calls `release()` only when `owned == true`. New 2-arg ctor `(RenderTexture2D w, RenderTexture2D u)` sets `owned = true`.
+- **`app/systems/camera_system.h` — `ShapeMeshes`** (inside `namespace camera`): Same pattern. `owned = false` by default; set to `true` in `build_shape_meshes()`.
+- **`app/systems/camera_system.cpp`**: Member definitions for both structs. `ShapeMeshes` defs inside `namespace camera`; `RenderTargets` defs at file scope (after `} // namespace camera`). `camera::shutdown` now calls `.release()` on both — idempotent belt-and-suspenders before `CloseWindow()`.
+- **`tests/test_gpu_resource_lifecycle.cpp`**: 6 test cases — `static_assert` type-trait checks (non-copyable, move-constructible/assignable) + runtime idempotency and move-ownership tests (no GL context required).
+- **`CMakeLists.txt`**: Removed `test_gpu_resource_lifecycle` from the per-agent test exclusion list so the new tests compile and run.
+
+### Key Learnings
+
+- **Namespace placement of out-of-class defs**: `ShapeMeshes` is in `namespace camera`, so its member definitions must be written inside that namespace (or qualified). `RenderTargets` is global scope, so its defs go after the `} // namespace camera` close. Mixing them causes compiler error "cannot define X here because namespace camera does not enclose namespace RenderTargets".
+
+- **Working-tree contention race**: Concurrent agents revert working-tree files between `edit` and `git add`. Reliable fix: use a private `GIT_INDEX_FILE`, `git read-tree HEAD`, `git update-index --cacheinfo` per file, `git write-tree`, `git commit-tree`, then `git update-ref` to update the branch atomically. Follow with `git checkout <commit> -- <files>` to restore the working tree.
+
+- **Bytes-level cmake patching**: CMake regex strings contain literal `\.` (two backslashes, dot). Python raw-string comparison of the exact bytes avoids escaping confusion; alternatively use line-level `replace` on the string representation.
+
+## Session: PR #43 Review — Dependency Submission Workflow Hardening (commit e32468a)
+
+### Review Outcome: APPROVED
+
+**Changes reviewed:** `.github/workflows/dependency-submission.yml` — 2 lines added: `retries: 3` on the `actions/github-script@v8` submit step; `fail-fast: false` on the OS matrix `strategy` block.
+
+**Verification performed:**
+
+1. **`retries: 3` validity:** Confirmed against the upstream `actions/github-script` v8 `action.yml`. `retries` is a first-class declared input (default `"0"`). The `retry-exempt-status-codes` default is `400,401,403,404,422`; HTTP 500 is not exempt, so transient 5xx responses from the Dependency Graph API will be retried up to 3 times. ✅
+
+2. **`fail-fast: false` placement:** Correctly placed inside the `strategy` block of the `submit` job, directly above the `matrix` key. Prevents a transient Windows failure from cancelling the macOS and Linux sibling jobs. ✅
+
+3. **Permissions:** Workflow-level `permissions: contents: read` is overridden by job-level `permissions: contents: write`. The Dependency Graph snapshots API requires `contents: write`; that permission is present at the job level. No over-privilege introduced. ✅
+
+4. **Scope tightness:** Exactly 2 lines added to one file (`.github/workflows/dependency-submission.yml`). No build, test, or release workflows touched. ✅
+
+**Root cause addressed:** Prior failure was `Dependency Submission/Submit Dependencies (windows-latest)` — HTTP 500 from `POST /dependency-graph/snapshots` at `retries: 0`. macOS job was cancelled by fail-fast. Both failure modes are now mitigated.
+
+---
+
+## Session: PR #43 Review — Windows beat_log CI Fix (commit c6ca0e8)
+
+### Review Outcome: APPROVED
+
+**Fix reviewed:** `make_open_log()` test helper in `tests/test_beat_log_system.cpp`.
+
+**Root cause confirmed:** Commit `95031c07` Windows CI log showed exactly the three described failures (`-1 == 1`, `-1 == 5`, `-1 == 2`) — `fopen("/dev/null", "w")` returns `nullptr` on Windows, causing `beat_log_system` to bail early.
+
+**Fix analysis:**
+- `#ifdef _WIN32` / `NUL` / `#else` / `/dev/null` / `#endif` is the canonical cross-platform null-device pattern. `_WIN32` is defined by MSVC, MinGW, and the pinned Chocolatey `llvm 20.1.4` Clang used by this project's Windows CI.
+- Change is strictly scoped to the test helper — zero production code touched.
+- All `[beat_log]` CHECK assertions remain intact and now execute correctly on Windows (file opens successfully → `beat_log_system` proceeds → `last_logged_beat` advances as expected).
+- No new headers required; `<cstdio>` is transitively present via `session_log.h` (which declares `FILE* file`).
+- No warning-policy concerns: `#ifdef` and `std::fopen("NUL","w")` are clean under `-Wall -Wextra -Werror`.
+
+**Non-beat_log failures in prior run** (`collision` low/high bar, `on_obstacle_destroy`) are unrelated to this commit and not in scope.
+
+**The PR #43 Windows beat_log failure family is resolved.**
+
+## Session: Issue #286 — SettingsState/HighScoreState business logic extraction (2026-04-27)
+
+### Problem
+`SettingsState` and `HighScoreState` had non-trivial business logic methods on the structs themselves, violating the project's plain-data component convention.
+
+### Solution
+- Removed `audio_offset_seconds()` and `ftue_complete()` from `SettingsState`.
+- Added as free functions in `namespace settings` (settings_persistence.h/.cpp).
+- Removed all 8 methods from `HighScoreState` (make_key_str, make_key_hash, get_score, get_score_by_hash, set_score, set_score_by_hash, ensure_entry, get_current_high_score).
+- Added all 8 as free functions in `namespace high_score` (high_score_persistence.h/.cpp).
+- Updated all call sites: play_session.cpp, 3 test files.
+- JSON persistence shape preserved; no semantic changes.
+
+### Build Note
+Pre-existing compile failures in `input_events.h`/`ButtonPressEvent` (from another agent on this branch) prevented full `shapeshifter_tests` link. All 6 TUs directly changed compile with zero warnings under CMake's full `-Wall -Wextra -Werror` flags — verified by building each object file individually with CMake's generated flags.
+
+### Key patterns learned
+- `edit` tool changes to files do not always persist reliably; use Python or heredoc writes for multi-file or file-replacement operations.
+- Free functions in the same persistence namespace is the established pattern for helpers that operate on context state.

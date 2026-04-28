@@ -340,7 +340,7 @@ The player can hear the beat coming. The timing is legible. What the player cann
   │                                                             │
   │  Thresholds are percentage of half-window, not fixed ms.    │
   │  They scale dynamically with BPM.                           │
-  │  Score = base_points × timing_multiplier × burnout_mult.    │
+  │  Score = base_points × timing_multiplier × chain_multiplier. │
   │                                                             │
   └─────────────────────────────────────────────────────────────┘
 ```

@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "defaultModel": "claude-sonnet-4.6",
+  "agentModelOverrides": {
+    "Edie": "claude-opus-4.7",
+    "Redfoot": "claude-opus-4.7",
+    "Saul": "claude-opus-4.7",
+    "Rabin": "claude-opus-4.7",
+    "Scribe": "claude-haiku-4.5",
+    "Ralph": "claude-haiku-4.5"
+  }
+}

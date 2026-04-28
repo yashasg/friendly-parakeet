@@ -1,0 +1,28 @@
+# TEMPLATE — Do not place this file in .github/workflows/ directly.
+# Copy or generate this file to .github/workflows/squad-ci.yml (or your chosen filename).
+# GitHub Actions only executes workflows from .github/workflows/; files under
+# .squad/templates/workflows/ are source templates and are never run automatically.
+name: Squad CI
+
+on:
+  pull_request:
+    branches: [dev, preview, main, insider]
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [dev, insider]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Run tests
+        run: node --test test/*.test.js
