@@ -1,10 +1,12 @@
 #include "all_systems.h"
+#include "obstacle_archetypes.h"
 #include "../components/game_state.h"
 #include "../components/rhythm.h"
 #include "../components/obstacle.h"
 #include "../components/obstacle_data.h"
 #include "../components/transform.h"
 #include "../components/rendering.h"
+#include "../gameobjects/shape_obstacle.h"
 #include "../constants.h"
 
 void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
@@ -20,8 +22,7 @@ void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
         float beat_time  = song->offset + entry.beat_index * song->beat_period;
         // Compensate for collision margin: collision resolves COLLISION_MARGIN px
         // before the obstacle reaches PLAYER_Y, so spawn slightly later.
-        constexpr float COLLISION_MARGIN = 40.0f;
-        float margin_offset = COLLISION_MARGIN / song->scroll_speed;
+        float margin_offset = constants::COLLISION_MARGIN / song->scroll_speed;
         float spawn_time = beat_time - song->lead_time + margin_offset;
 
         if (song->song_time < spawn_time) break;
@@ -34,7 +35,7 @@ void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
         // scored before scrolling off-screen.
         float overshoot = song->song_time - spawn_time;
         float start_y = constants::SPAWN_Y + overshoot * song->scroll_speed;
-        float max_start_y = constants::PLAYER_Y - COLLISION_MARGIN;
+        float max_start_y = constants::PLAYER_Y - constants::COLLISION_MARGIN;
         float effective_spawn_time = spawn_time;
         if (start_y > max_start_y) {
             start_y = max_start_y;
@@ -52,76 +53,32 @@ void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
         reg.emplace<DrawLayer>(obstacle, Layer::Game);
         reg.emplace<BeatInfo>(obstacle, entry.beat_index, beat_time, effective_spawn_time);
 
-        switch (entry.kind) {
-            case ObstacleKind::ShapeGate: {
-                reg.emplace<Position>(obstacle, constants::LANE_X[entry.lane], start_y);
-                reg.emplace<Obstacle>(obstacle, ObstacleKind::ShapeGate, int16_t{constants::PTS_SHAPE_GATE});
-                reg.emplace<RequiredShape>(obstacle, entry.shape);
-                reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W), 80.0f);
-                if (entry.shape == Shape::Circle)
-                    reg.emplace<DrawColor>(obstacle, uint8_t{80}, uint8_t{200}, uint8_t{255}, uint8_t{255});
-                else if (entry.shape == Shape::Square)
-                    reg.emplace<DrawColor>(obstacle, uint8_t{255}, uint8_t{100}, uint8_t{100}, uint8_t{255});
-                else
-                    reg.emplace<DrawColor>(obstacle, uint8_t{100}, uint8_t{255}, uint8_t{100}, uint8_t{255});
-                break;
+        // Compute x: LaneBlock derives it from blocked_mask; lane-based kinds
+        // use entry.lane directly; bar/gate types default to center lane.
+        float x_pos = constants::LANE_X[1];
+        if (entry.kind == ObstacleKind::ShapeGate ||
+            entry.kind == ObstacleKind::LanePushLeft ||
+            entry.kind == ObstacleKind::LanePushRight) {
+            x_pos = constants::LANE_X[static_cast<int>(entry.lane)];
+        } else if (entry.kind == ObstacleKind::LaneBlock) {
+            int display_lane = 1;
+            for (int l = 0; l < 3; ++l) {
+                if ((entry.blocked_mask >> l) & 1) { display_lane = l; break; }
             }
-            case ObstacleKind::LaneBlock: {
-                int display_lane = 1;
-                for (int l = 0; l < 3; ++l) {
-                    if ((entry.blocked_mask >> l) & 1) { display_lane = l; break; }
-                }
-                reg.emplace<Position>(obstacle, constants::LANE_X[display_lane], start_y);
-                reg.emplace<Obstacle>(obstacle, ObstacleKind::LaneBlock, int16_t{constants::PTS_LANE_BLOCK});
-                reg.emplace<BlockedLanes>(obstacle, entry.blocked_mask);
-                reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W / 3), 80.0f);
-                reg.emplace<DrawColor>(obstacle, uint8_t{255}, uint8_t{60}, uint8_t{60}, uint8_t{255});
-                break;
-            }
-            case ObstacleKind::LowBar: {
-                reg.emplace<Position>(obstacle, constants::LANE_X[1], start_y);
-                reg.emplace<Obstacle>(obstacle, ObstacleKind::LowBar, int16_t{constants::PTS_LOW_BAR});
-                reg.emplace<RequiredVAction>(obstacle, VMode::Jumping);
-                reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W), 40.0f);
-                reg.emplace<DrawColor>(obstacle, uint8_t{255}, uint8_t{180}, uint8_t{0}, uint8_t{255});
-                break;
-            }
-            case ObstacleKind::HighBar: {
-                reg.emplace<Position>(obstacle, constants::LANE_X[1], start_y);
-                reg.emplace<Obstacle>(obstacle, ObstacleKind::HighBar, int16_t{constants::PTS_HIGH_BAR});
-                reg.emplace<RequiredVAction>(obstacle, VMode::Sliding);
-                reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W), 40.0f);
-                reg.emplace<DrawColor>(obstacle, uint8_t{180}, uint8_t{0}, uint8_t{255}, uint8_t{255});
-                break;
-            }
-            case ObstacleKind::ComboGate: {
-                reg.emplace<Position>(obstacle, constants::LANE_X[1], start_y);
-                reg.emplace<Obstacle>(obstacle, ObstacleKind::ComboGate, int16_t{constants::PTS_COMBO_GATE});
-                reg.emplace<RequiredShape>(obstacle, entry.shape);
-                reg.emplace<BlockedLanes>(obstacle, entry.blocked_mask);
-                reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W), 80.0f);
-                reg.emplace<DrawColor>(obstacle, uint8_t{200}, uint8_t{100}, uint8_t{255}, uint8_t{255});
-                break;
-            }
-            case ObstacleKind::SplitPath: {
-                reg.emplace<Position>(obstacle, constants::LANE_X[1], start_y);
-                reg.emplace<Obstacle>(obstacle, ObstacleKind::SplitPath, int16_t{constants::PTS_SPLIT_PATH});
-                reg.emplace<RequiredShape>(obstacle, entry.shape);
-                reg.emplace<RequiredLane>(obstacle, entry.lane);
-                reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W), 80.0f);
-                reg.emplace<DrawColor>(obstacle, uint8_t{255}, uint8_t{215}, uint8_t{0}, uint8_t{255});
-                break;
-            }
-            case ObstacleKind::LanePushLeft:
-            case ObstacleKind::LanePushRight: {
-                reg.emplace<Position>(obstacle, constants::LANE_X[entry.lane], start_y);
-                reg.emplace<Obstacle>(obstacle, entry.kind, int16_t{constants::PTS_LANE_PUSH});
-                reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W / 3), 60.0f);
-                // Orange arrows
-                reg.emplace<DrawColor>(obstacle, uint8_t{255}, uint8_t{138}, uint8_t{101}, uint8_t{255});
-                break;
-            }
+            x_pos = constants::LANE_X[display_lane];
         }
+
+        apply_obstacle_archetype(reg, obstacle, {
+            entry.kind,
+            x_pos,
+            start_y,
+            entry.shape,
+            entry.blocked_mask,
+            entry.lane
+        });
+
+        // Spawn visual mesh children for multi-slab obstacle types
+        spawn_obstacle_meshes(reg, obstacle);
 
         song->next_spawn_idx++;
     }

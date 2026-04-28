@@ -1,7 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
-#include "enum_names.h"
 
 // ── compute_timing_tier ──────────────────────────────────────
 
@@ -56,21 +55,38 @@ TEST_CASE("timing_multiplier: Bad gives 0.25x", "[timing]") {
 }
 
 // ── window_scale_for_tier ────────────────────────────────────
+// Spec (rhythm-spec.md §5/§7): better timing → smaller scale → window collapses sooner.
 
-TEST_CASE("window_scale: Perfect gives 1.50", "[timing]") {
-    CHECK(window_scale_for_tier(TimingTier::Perfect) == 1.50f);
+TEST_CASE("window_scale: Perfect gives 0.50", "[timing]") {
+    CHECK(window_scale_for_tier(TimingTier::Perfect) == 0.50f);
 }
 
-TEST_CASE("window_scale: Good gives 1.00", "[timing]") {
-    CHECK(window_scale_for_tier(TimingTier::Good) == 1.00f);
+TEST_CASE("window_scale: Good gives 0.75", "[timing]") {
+    CHECK(window_scale_for_tier(TimingTier::Good) == 0.75f);
 }
 
-TEST_CASE("window_scale: Ok gives 0.75", "[timing]") {
-    CHECK(window_scale_for_tier(TimingTier::Ok) == 0.75f);
+TEST_CASE("window_scale: Ok gives 1.00", "[timing]") {
+    CHECK(window_scale_for_tier(TimingTier::Ok) == 1.00f);
 }
 
-TEST_CASE("window_scale: Bad gives 0.50", "[timing]") {
-    CHECK(window_scale_for_tier(TimingTier::Bad) == 0.50f);
+TEST_CASE("window_scale: Bad gives 1.00 (no-op, miss handled elsewhere)", "[timing]") {
+    CHECK(window_scale_for_tier(TimingTier::Bad) == 1.00f);
+}
+
+// Regression for issue #223 — values must be strictly ordered:
+// Perfect(0.50) < Good(0.75) < Ok(1.00) == Bad(1.00).
+// If this order inverts again the inversion bug has regressed.
+TEST_CASE("window_scale: ordering — better tier gives smaller scale", "[timing][regression]") {
+    CHECK(window_scale_for_tier(TimingTier::Perfect) < window_scale_for_tier(TimingTier::Good));
+    CHECK(window_scale_for_tier(TimingTier::Good)    < window_scale_for_tier(TimingTier::Ok));
+    CHECK(window_scale_for_tier(TimingTier::Ok)     == window_scale_for_tier(TimingTier::Bad));
+}
+
+TEST_CASE("window_scale: Perfect strictly shrinks, Ok/Bad are neutral", "[timing][regression]") {
+    CHECK(window_scale_for_tier(TimingTier::Perfect) <  1.0f);
+    CHECK(window_scale_for_tier(TimingTier::Good)    <  1.0f);
+    CHECK(window_scale_for_tier(TimingTier::Ok)      == 1.0f);
+    CHECK(window_scale_for_tier(TimingTier::Bad)     == 1.0f);
 }
 
 // ── song_state_compute_derived ───────────────────────────────
@@ -149,78 +165,57 @@ TEST_CASE("song_state_derived: BPM below 130 has no scale reduction", "[song_sta
 
 // ── enum name helpers ────────────────────────────────────────
 
-TEST_CASE("enum_names: shape_name covers all shapes", "[enum_names]") {
-    CHECK(std::string(shape_name(Shape::Circle))   == "Circle");
-    CHECK(std::string(shape_name(Shape::Square))    == "Square");
-    CHECK(std::string(shape_name(Shape::Triangle))  == "Triangle");
-    CHECK(std::string(shape_name(Shape::Hexagon))   == "Hexagon");
+TEST_CASE("ToString: Shape covers all shapes", "[ToString]") {
+    CHECK(std::string(ToString(Shape::Circle))   == "Circle");
+    CHECK(std::string(ToString(Shape::Square))    == "Square");
+    CHECK(std::string(ToString(Shape::Triangle))  == "Triangle");
+    CHECK(std::string(ToString(Shape::Hexagon))   == "Hexagon");
 }
 
-TEST_CASE("enum_names: obstacle_kind_name covers all kinds", "[enum_names]") {
-    CHECK(std::string(obstacle_kind_name(ObstacleKind::ShapeGate)) == "ShapeGate");
-    CHECK(std::string(obstacle_kind_name(ObstacleKind::LaneBlock)) == "LaneBlock");
-    CHECK(std::string(obstacle_kind_name(ObstacleKind::LowBar))    == "LowBar");
-    CHECK(std::string(obstacle_kind_name(ObstacleKind::HighBar))   == "HighBar");
-    CHECK(std::string(obstacle_kind_name(ObstacleKind::ComboGate)) == "ComboGate");
-    CHECK(std::string(obstacle_kind_name(ObstacleKind::SplitPath)) == "SplitPath");
+TEST_CASE("ToString: ObstacleKind covers all kinds", "[ToString]") {
+    CHECK(std::string(ToString(ObstacleKind::ShapeGate))     == "ShapeGate");
+    CHECK(std::string(ToString(ObstacleKind::LaneBlock))     == "LaneBlock");
+    CHECK(std::string(ToString(ObstacleKind::LowBar))        == "LowBar");
+    CHECK(std::string(ToString(ObstacleKind::HighBar))       == "HighBar");
+    CHECK(std::string(ToString(ObstacleKind::ComboGate))     == "ComboGate");
+    CHECK(std::string(ToString(ObstacleKind::SplitPath))     == "SplitPath");
+    CHECK(std::string(ToString(ObstacleKind::LanePushLeft))  == "LanePushLeft");
+    CHECK(std::string(ToString(ObstacleKind::LanePushRight)) == "LanePushRight");
 }
 
-TEST_CASE("enum_names: timing_tier_name covers all tiers", "[enum_names]") {
-    CHECK(std::string(timing_tier_name(TimingTier::Bad))     == "Bad");
-    CHECK(std::string(timing_tier_name(TimingTier::Ok))      == "Ok");
-    CHECK(std::string(timing_tier_name(TimingTier::Good))    == "Good");
-    CHECK(std::string(timing_tier_name(TimingTier::Perfect)) == "Perfect");
+TEST_CASE("ToString: TimingTier covers all tiers", "[ToString]") {
+    CHECK(std::string(ToString(TimingTier::Bad))     == "Bad");
+    CHECK(std::string(ToString(TimingTier::Ok))      == "Ok");
+    CHECK(std::string(ToString(TimingTier::Good))    == "Good");
+    CHECK(std::string(ToString(TimingTier::Perfect)) == "Perfect");
 }
 
-// ── ActionQueue ──────────────────────────────────────────────
+// ── dispatcher helpers ───────────────────────────────────────
 
-TEST_CASE("action_queue: go adds direction action", "[input]") {
-    ActionQueue aq{};
-    aq.go(Direction::Left);
-    CHECK(aq.count == 1);
-    CHECK(aq.actions[0].verb == ActionVerb::Go);
-    CHECK(aq.actions[0].dir == Direction::Left);
-}
+TEST_CASE("dispatcher: mixed go and press operations", "[input]") {
+    auto reg = make_registry();
 
-TEST_CASE("action_queue: tap with position stores coordinates", "[input]") {
-    ActionQueue aq{};
-    aq.tap(Button::Position, 100.0f, 200.0f);
-    CHECK(aq.count == 1);
-    CHECK(aq.actions[0].verb == ActionVerb::Tap);
-    CHECK(aq.actions[0].button == Button::Position);
-    CHECK(aq.actions[0].x == 100.0f);
-    CHECK(aq.actions[0].y == 200.0f);
-}
+    auto& disp = reg.ctx().get<entt::dispatcher>();
+    GoCapture go_cap;
+    PressCapture press_cap;
+    disp.sink<GoEvent>().connect<&GoCapture::capture>(go_cap);
+    disp.sink<ButtonPressEvent>().connect<&PressCapture::capture>(press_cap);
 
-TEST_CASE("action_queue: overflow is rejected", "[input]") {
-    ActionQueue aq{};
-    for (int i = 0; i < ActionQueue::MAX + 5; ++i) {
-        aq.go(Direction::Right);
-    }
-    CHECK(aq.count == ActionQueue::MAX);
-}
+    disp.enqueue<GoEvent>({Direction::Up});
+    disp.enqueue<ButtonPressEvent>({ButtonPressKind::Shape, Shape::Circle});
+    disp.enqueue<GoEvent>({Direction::Down});
+    disp.update<GoEvent>();
+    disp.update<ButtonPressEvent>();
 
-TEST_CASE("action_queue: clear resets count", "[input]") {
-    ActionQueue aq{};
-    aq.go(Direction::Left);
-    aq.tap(Button::Confirm);
-    CHECK(aq.count == 2);
-    aq.clear();
-    CHECK(aq.count == 0);
-}
+    disp.sink<GoEvent>().disconnect<&GoCapture::capture>(go_cap);
+    disp.sink<ButtonPressEvent>().disconnect<&PressCapture::capture>(press_cap);
 
-TEST_CASE("action_queue: mixed go and tap operations", "[input]") {
-    ActionQueue aq{};
-    aq.go(Direction::Up);
-    aq.tap(Button::ShapeCircle);
-    aq.go(Direction::Down);
-    CHECK(aq.count == 3);
-    CHECK(aq.actions[0].verb == ActionVerb::Go);
-    CHECK(aq.actions[0].dir == Direction::Up);
-    CHECK(aq.actions[1].verb == ActionVerb::Tap);
-    CHECK(aq.actions[1].button == Button::ShapeCircle);
-    CHECK(aq.actions[2].verb == ActionVerb::Go);
-    CHECK(aq.actions[2].dir == Direction::Down);
+    REQUIRE(go_cap.count == 2);
+    REQUIRE(press_cap.count == 1);
+    CHECK(go_cap.buf[0].dir == Direction::Up);
+    CHECK(press_cap.buf[0].kind  == ButtonPressKind::Shape);
+    CHECK(press_cap.buf[0].shape == Shape::Circle);
+    CHECK(go_cap.buf[1].dir == Direction::Down);
 }
 
 // ── make_rhythm_registry / make_rhythm_player helpers ────────
@@ -242,6 +237,5 @@ TEST_CASE("make_rhythm_player: starts as Hexagon", "[helpers]") {
     CHECK(ps.previous == Shape::Hexagon);
     auto& sw = reg.get<ShapeWindow>(player);
     CHECK(sw.target_shape == Shape::Hexagon);
-    CHECK(sw.phase_raw == 0);
+    CHECK(sw.phase == WindowPhase::Idle);
 }
-

@@ -1,7 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
-
+#include <algorithm>
 // ─────────────────────────────────────────────────────────────────────────────
 // NDC Viewport Constants
 // All *_N constants must lie in [0, 1] and must round-trip to the intended
@@ -21,8 +21,6 @@ TEST_CASE("ndc: all NDC constants are in range [0, 1]", "[ndc]") {
     CHECK(constants::BUTTON_W_N                  >= 0.0f); CHECK(constants::BUTTON_W_N                  <= 1.0f);
     CHECK(constants::BUTTON_H_N                  >= 0.0f); CHECK(constants::BUTTON_H_N                  <= 1.0f);
     CHECK(constants::BUTTON_SPACING_N            >= 0.0f); CHECK(constants::BUTTON_SPACING_N            <= 1.0f);
-    CHECK(constants::BURNOUT_BAR_Y_N             >= 0.0f); CHECK(constants::BURNOUT_BAR_Y_N             <= 1.0f);
-    CHECK(constants::BURNOUT_BAR_H_N             >= 0.0f); CHECK(constants::BURNOUT_BAR_H_N             <= 1.0f);
     CHECK(constants::SCENE_TITLE_SHAPES_Y_N      >= 0.0f); CHECK(constants::SCENE_TITLE_SHAPES_Y_N      <= 1.0f);
     CHECK(constants::SCENE_TITLE_SHAPES_OFFSET_N >= 0.0f); CHECK(constants::SCENE_TITLE_SHAPES_OFFSET_N <= 1.0f);
     CHECK(constants::SCENE_TITLE_SHAPES_SIZE_N   >= 0.0f); CHECK(constants::SCENE_TITLE_SHAPES_SIZE_N   <= 1.0f);
@@ -84,15 +82,6 @@ TEST_CASE("ndc: button NDC constants round-trip to pixel constants", "[ndc]") {
                WithinAbs(constants::BUTTON_H, 0.01f));
     CHECK_THAT(constants::BUTTON_SPACING_N * static_cast<float>(constants::SCREEN_W),
                WithinAbs(constants::BUTTON_SPACING, 0.01f));
-    CHECK_THAT(constants::BURNOUT_BAR_Y_N * static_cast<float>(constants::SCREEN_H),
-               WithinAbs(constants::BURNOUT_BAR_Y, 0.01f));
-    CHECK_THAT(constants::BURNOUT_BAR_H_N * static_cast<float>(constants::SCREEN_H),
-               WithinAbs(constants::BURNOUT_BAR_H, 0.01f));
-}
-
-TEST_CASE("ndc: burnout bar is above the button row", "[ndc]") {
-    // Burnout bar sits between the game area and buttons
-    CHECK(constants::BURNOUT_BAR_Y_N < constants::BUTTON_Y_N);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -219,4 +208,54 @@ TEST_CASE("ndc: zone boundary constant is 0.80", "[ndc]") {
     float zone_y = static_cast<float>(constants::SCREEN_H) * constants::SWIPE_ZONE_SPLIT;
     CHECK(zone_y > 0.0f);
     CHECK(zone_y < static_cast<float>(constants::SCREEN_H));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// compute_screen_transform idempotency (#241)
+// The letterbox formula must be pure (depends only on win/virtual dims).
+// Calling it once or twice with the same window size yields identical results.
+// This mirrors the math inside compute_screen_transform without raylib.
+// ─────────────────────────────────────────────────────────────────────────────
+
+namespace {
+// Pure mirror of the letterbox math in compute_screen_transform.
+ScreenTransform make_screen_transform(float win_w, float win_h) {
+    float scale = std::min(
+        win_w / static_cast<float>(constants::SCREEN_W),
+        win_h / static_cast<float>(constants::SCREEN_H));
+    float dst_w = constants::SCREEN_W * scale;
+    float dst_h = constants::SCREEN_H * scale;
+    ScreenTransform st;
+    st.offset_x = (win_w - dst_w) * 0.5f;
+    st.offset_y = (win_h - dst_h) * 0.5f;
+    st.scale    = scale;
+    return st;
+}
+}  // anonymous namespace
+
+TEST_CASE("screen_transform: letterbox math is idempotent (#241)",
+          "[screen_transform][regression]") {
+    // Simulate a 1440×2560 window (2× virtual 720×1280, no bars).
+    const float win_w = 1440.0f, win_h = 2560.0f;
+    ScreenTransform a = make_screen_transform(win_w, win_h);
+    ScreenTransform b = make_screen_transform(win_w, win_h);
+    CHECK(a.scale    == b.scale);
+    CHECK(a.offset_x == b.offset_x);
+    CHECK(a.offset_y == b.offset_y);
+    // Scale must be 2.0 and offsets 0 (no letterbar at exact 2× ratio)
+    using Catch::Matchers::WithinAbs;
+    CHECK_THAT(a.scale,    WithinAbs(2.0f, 1e-5f));
+    CHECK_THAT(a.offset_x, WithinAbs(0.0f, 1e-5f));
+    CHECK_THAT(a.offset_y, WithinAbs(0.0f, 1e-5f));
+}
+
+TEST_CASE("screen_transform: letterbox math produces correct pillarbox offsets (#241)",
+          "[screen_transform][regression]") {
+    // 1280×1280 window: scale = min(1280/720, 1280/1280) = 1.0;
+    // dst_w = 720, offset_x = (1280-720)/2 = 280; dst_h = 1280, offset_y = 0.
+    ScreenTransform st = make_screen_transform(1280.0f, 1280.0f);
+    using Catch::Matchers::WithinAbs;
+    CHECK_THAT(st.scale,    WithinAbs(1.0f,  1e-5f));
+    CHECK_THAT(st.offset_x, WithinAbs(280.0f, 1e-5f));
+    CHECK_THAT(st.offset_y, WithinAbs(0.0f,  1e-5f));
 }

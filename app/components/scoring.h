@@ -1,7 +1,10 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 #include <entt/entity/entity.hpp>
+#include "../components/text.h"
+#include "../components/rhythm.h"
 
 struct ScoreState {
     int32_t score             = 0;
@@ -13,7 +16,15 @@ struct ScoreState {
 };
 
 struct ScorePopup {
-    int32_t value       = 0;
-    uint8_t tier        = 0;     // burnout tier (legacy)
-    uint8_t timing_tier = 255;   // TimingTier value, 255 = no timing (non-shape obstacle)
+    int32_t                    value       = 0;
+    uint8_t                    tier        = 0;    // burnout tier (legacy)
+    std::optional<TimingTier>  timing_tier = std::nullopt;
+};
+
+// Pre-computed popup display data. Computed by popup_display_system,
+// consumed by ui_render_system (just draws text at position with color).
+struct PopupDisplay {
+    char     text[16] = {};
+    FontSize font_size = FontSize::Small;
+    uint8_t  r = 255, g = 255, b = 255, a = 255;
 };

@@ -178,14 +178,14 @@ TEST_CASE("spawn: obstacles have position at SPAWN_Y", "[spawn]") {
 TEST_CASE("game_state: title to level select on touch", "[gamestate]") {
     auto reg = make_registry();
     reg.ctx().get<GameState>().phase = GamePhase::Title;
-    auto& aq = reg.ctx().get<ActionQueue>();
-    aq.tap(Button::Confirm);
+    auto btn = make_menu_button(reg, MenuActionKind::Confirm, GamePhase::Title);
+    press_button(reg, btn);
 
     game_state_system(reg, 0.016f);
 
     auto& gs = reg.ctx().get<GameState>();
-    CHECK(gs.transition_pending);
-    CHECK(gs.next_phase == GamePhase::LevelSelect);
+    CHECK_FALSE(gs.transition_pending);
+    CHECK(gs.phase == GamePhase::LevelSelect);
 }
 
 TEST_CASE("game_state: game over button choice after delay", "[gamestate]") {
@@ -193,8 +193,8 @@ TEST_CASE("game_state: game over button choice after delay", "[gamestate]") {
     auto& gs = reg.ctx().get<GameState>();
     gs.phase = GamePhase::GameOver;
     gs.phase_timer = 0.5f;
-    auto& aq = reg.ctx().get<ActionQueue>();
-    aq.tap(Button::Position, constants::SCREEN_W / 2.0f, 940.0f);
+    auto btn = make_menu_button(reg, MenuActionKind::GoLevelSelect, GamePhase::GameOver);
+    press_button(reg, btn);
 
     game_state_system(reg, 0.016f);
 
@@ -208,8 +208,8 @@ TEST_CASE("game_state: game over ignores touch during delay", "[gamestate]") {
     auto& gs = reg.ctx().get<GameState>();
     gs.phase = GamePhase::GameOver;
     gs.phase_timer = 0.2f;  // within 0.4s delay
-    auto& aq = reg.ctx().get<ActionQueue>();
-    aq.tap(Button::Confirm);
+    auto btn = make_menu_button(reg, MenuActionKind::Confirm, GamePhase::GameOver);
+    press_button(reg, btn);
 
     game_state_system(reg, 0.016f);
 
@@ -301,8 +301,8 @@ TEST_CASE("game_state: paused to playing on touch", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
     gs.phase = GamePhase::Paused;
-    auto& aq = reg.ctx().get<ActionQueue>();
-    aq.tap(Button::Confirm);
+    auto btn = make_menu_button(reg, MenuActionKind::Confirm, GamePhase::Paused);
+    press_button(reg, btn);
 
     game_state_system(reg, 0.016f);
 
@@ -314,7 +314,7 @@ TEST_CASE("game_state: title stays title without touch", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
     gs.phase = GamePhase::Title;
-    // Empty ActionQueue — no actions
+    // No ButtonPressEvent in queue — no actions
 
     game_state_system(reg, 0.5f);
 
@@ -394,6 +394,39 @@ TEST_CASE("cleanup: obstacle at exactly DESTROY_Y is kept", "[cleanup]") {
     cleanup_system(reg, 0.016f);
 
     CHECK(reg.valid(obs));
+}
+
+// #242 — static buffer must handle multiple entities in one pass.
+TEST_CASE("cleanup: destroys multiple obstacles past DESTROY_Y in one pass", "[cleanup]") {
+    auto reg = make_registry();
+
+    constexpr int N = 5;
+    entt::entity obs[N];
+    for (int i = 0; i < N; ++i) {
+        obs[i] = reg.create();
+        reg.emplace<ObstacleTag>(obs[i]);
+        reg.emplace<Position>(obs[i], 0.0f, constants::DESTROY_Y + static_cast<float>(i + 1) * 10.0f);
+    }
+
+    cleanup_system(reg, 0.016f);
+
+    for (int i = 0; i < N; ++i)
+        CHECK_FALSE(reg.valid(obs[i]));
+}
+
+// #242 / #280 — cleanup must not emplace MissTag or ScoredTag; that is miss_detection_system's job.
+TEST_CASE("cleanup: does not emplace MissTag or ScoredTag on surviving obstacles", "[cleanup]") {
+    auto reg = make_registry();
+
+    auto survivor = reg.create();
+    reg.emplace<ObstacleTag>(survivor);
+    reg.emplace<Position>(survivor, 0.0f, constants::DESTROY_Y - 1.0f);
+
+    cleanup_system(reg, 0.016f);
+
+    CHECK(reg.valid(survivor));
+    CHECK_FALSE(reg.all_of<MissTag>(survivor));
+    CHECK_FALSE(reg.all_of<ScoredTag>(survivor));
 }
 
 // ── obstacle_spawn: phase guard ─────────────────────────────

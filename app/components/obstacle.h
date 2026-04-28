@@ -1,19 +1,27 @@
 #pragma once
 
 #include <cstdint>
+#include <magic_enum/magic_enum.hpp>
 
 struct ObstacleTag {};
 
 enum class ObstacleKind : uint8_t {
-    ShapeGate     = 0,
-    LaneBlock     = 1,
-    LowBar        = 2,
-    HighBar       = 3,
-    ComboGate     = 4,
-    SplitPath     = 5,
-    LanePushLeft  = 6,
-    LanePushRight = 7
+    ShapeGate,
+    LaneBlock,
+    LowBar,
+    HighBar,
+    ComboGate,
+    SplitPath,
+    LanePushLeft,
+    LanePushRight,
 };
+
+// magic_enum::enum_name_v is a static_str with a null-terminated char array,
+// so .data() is safe for printf-style %s formatting.
+inline const char* ToString(ObstacleKind k) noexcept {
+    const auto name = magic_enum::enum_name(k);
+    return name.empty() ? "???" : name.data();
+}
 
 struct Obstacle {
     ObstacleKind kind       = ObstacleKind::ShapeGate;

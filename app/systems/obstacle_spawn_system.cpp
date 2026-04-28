@@ -1,4 +1,5 @@
 #include "all_systems.h"
+#include "obstacle_archetypes.h"
 #include "../components/game_state.h"
 #include "../components/obstacle.h"
 #include "../components/obstacle_data.h"
@@ -7,8 +8,10 @@
 #include "../components/difficulty.h"
 #include "../components/player.h"
 #include "../components/rhythm.h"
+#include "../components/rng.h"
+#include "../gameobjects/shape_obstacle.h"
 #include "../constants.h"
-#include <cstdlib>
+#include <random>
 
 void obstacle_spawn_system(entt::registry& reg, float dt) {
     if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
@@ -23,6 +26,8 @@ void obstacle_spawn_system(entt::registry& reg, float dt) {
 
     config.spawn_timer = config.spawn_interval;
 
+    auto& rng = reg.ctx().get<RNGState>();
+
     // Determine which obstacle kinds are available based on elapsed time
     float t = config.elapsed;
     int max_kind = 0;
@@ -32,7 +37,7 @@ void obstacle_spawn_system(entt::registry& reg, float dt) {
     if (t >= 90.0f)  max_kind = 4; // + ComboGate
     if (t >= 120.0f) max_kind = 5; // + SplitPath
 
-    int kind_i = std::rand() % (max_kind + 1);
+    int kind_i = std::uniform_int_distribution<int>(0, max_kind)(rng.engine);
     auto kind  = static_cast<ObstacleKind>(kind_i);
 
     auto obstacle = reg.create();
@@ -40,92 +45,57 @@ void obstacle_spawn_system(entt::registry& reg, float dt) {
     reg.emplace<Velocity>(obstacle, 0.0f, config.scroll_speed);
     reg.emplace<DrawLayer>(obstacle, Layer::Game);
 
-    int lane = std::rand() % 3;
+    int lane = std::uniform_int_distribution<int>(0, 2)(rng.engine);
 
-    switch (kind) {
-        case ObstacleKind::ShapeGate: {
-            auto shape = static_cast<Shape>(std::rand() % 3);
-            reg.emplace<Position>(obstacle, constants::LANE_X[1], constants::SPAWN_Y);
-            reg.emplace<Obstacle>(obstacle, kind, int16_t{constants::PTS_SHAPE_GATE});
-            reg.emplace<RequiredShape>(obstacle, shape);
-            reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W), 80.0f);
+    // Resolve kind and position.  LaneBlock is a legacy slot in the random pool
+    // that maps to a directional LanePush; all other gate/bar kinds centre on
+    // lane 1.  LanePushLeft/Right (not reached from random pool) use lane x.
+    ObstacleKind resolved_kind = kind;
+    float x_pos = constants::LANE_X[1];
 
-            // DrawColor based on required shape
-            if (shape == Shape::Circle)
-                reg.emplace<DrawColor>(obstacle, uint8_t{80}, uint8_t{200}, uint8_t{255}, uint8_t{255});
-            else if (shape == Shape::Square)
-                reg.emplace<DrawColor>(obstacle, uint8_t{255}, uint8_t{100}, uint8_t{100}, uint8_t{255});
-            else
-                reg.emplace<DrawColor>(obstacle, uint8_t{100}, uint8_t{255}, uint8_t{100}, uint8_t{255});
-            break;
+    if (kind == ObstacleKind::LaneBlock) {
+        // Convert legacy LaneBlock to LanePush:
+        //   Lane 0 (left)   → push right
+        //   Lane 2 (right)  → push left
+        //   Lane 1 (center) → random
+        if (lane == 0) {
+            resolved_kind = ObstacleKind::LanePushRight;
+        } else if (lane == 2) {
+            resolved_kind = ObstacleKind::LanePushLeft;
+        } else {
+            resolved_kind = (std::uniform_int_distribution<int>(0, 1)(rng.engine) == 0)
+                ? ObstacleKind::LanePushLeft
+                : ObstacleKind::LanePushRight;
         }
-        case ObstacleKind::LaneBlock: {
-            // Convert legacy LaneBlock to LanePush:
-            //   Lane 0 (left)   → push right
-            //   Lane 2 (right)  → push left
-            //   Lane 1 (center) → random
-            ObstacleKind push_kind;
-            if (lane == 0) {
-                push_kind = ObstacleKind::LanePushRight;
-            } else if (lane == 2) {
-                push_kind = ObstacleKind::LanePushLeft;
-            } else {
-                push_kind = (std::rand() % 2 == 0)
-                    ? ObstacleKind::LanePushLeft
-                    : ObstacleKind::LanePushRight;
-            }
-            reg.emplace<Position>(obstacle, constants::LANE_X[lane], constants::SPAWN_Y);
-            reg.emplace<Obstacle>(obstacle, push_kind, int16_t{constants::PTS_LANE_PUSH});
-            reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W / 3), 60.0f);
-            reg.emplace<DrawColor>(obstacle, uint8_t{255}, uint8_t{138}, uint8_t{101}, uint8_t{255});
-            break;
-        }
-        case ObstacleKind::LowBar: {
-            reg.emplace<Position>(obstacle, constants::LANE_X[1], constants::SPAWN_Y);
-            reg.emplace<Obstacle>(obstacle, kind, int16_t{constants::PTS_LOW_BAR});
-            reg.emplace<RequiredVAction>(obstacle, VMode::Jumping);
-            reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W), 40.0f);
-            reg.emplace<DrawColor>(obstacle, uint8_t{255}, uint8_t{180}, uint8_t{0}, uint8_t{255});
-            break;
-        }
-        case ObstacleKind::HighBar: {
-            reg.emplace<Position>(obstacle, constants::LANE_X[1], constants::SPAWN_Y);
-            reg.emplace<Obstacle>(obstacle, kind, int16_t{constants::PTS_HIGH_BAR});
-            reg.emplace<RequiredVAction>(obstacle, VMode::Sliding);
-            reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W), 40.0f);
-            reg.emplace<DrawColor>(obstacle, uint8_t{180}, uint8_t{0}, uint8_t{255}, uint8_t{255});
-            break;
-        }
-        case ObstacleKind::ComboGate: {
-            auto shape = static_cast<Shape>(std::rand() % 3);
-            uint8_t mask = uint8_t(1 << lane) | uint8_t(1 << ((lane + 1) % 3));
-            reg.emplace<Position>(obstacle, constants::LANE_X[1], constants::SPAWN_Y);
-            reg.emplace<Obstacle>(obstacle, kind, int16_t{constants::PTS_COMBO_GATE});
-            reg.emplace<RequiredShape>(obstacle, shape);
-            reg.emplace<BlockedLanes>(obstacle, mask);
-            reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W), 80.0f);
-            reg.emplace<DrawColor>(obstacle, uint8_t{200}, uint8_t{100}, uint8_t{255}, uint8_t{255});
-            break;
-        }
-        case ObstacleKind::SplitPath: {
-            auto shape = static_cast<Shape>(std::rand() % 3);
-            reg.emplace<Position>(obstacle, constants::LANE_X[1], constants::SPAWN_Y);
-            reg.emplace<Obstacle>(obstacle, kind, int16_t{constants::PTS_SPLIT_PATH});
-            reg.emplace<RequiredShape>(obstacle, shape);
-            reg.emplace<RequiredLane>(obstacle, int8_t(lane));
-            reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W), 80.0f);
-            reg.emplace<DrawColor>(obstacle, uint8_t{255}, uint8_t{215}, uint8_t{0}, uint8_t{255});
-            break;
-        }
-        case ObstacleKind::LanePushLeft:
-        case ObstacleKind::LanePushRight: {
-            // Shouldn't reach here from random spawner (converted from LaneBlock above),
-            // but handle gracefully.
-            reg.emplace<Position>(obstacle, constants::LANE_X[lane], constants::SPAWN_Y);
-            reg.emplace<Obstacle>(obstacle, kind, int16_t{constants::PTS_LANE_PUSH});
-            reg.emplace<DrawSize>(obstacle, float(constants::SCREEN_W / 3), 60.0f);
-            reg.emplace<DrawColor>(obstacle, uint8_t{255}, uint8_t{138}, uint8_t{101}, uint8_t{255});
-            break;
-        }
+        x_pos = constants::LANE_X[lane];
+    } else if (kind == ObstacleKind::LanePushLeft || kind == ObstacleKind::LanePushRight) {
+        // Shouldn't reach here from random spawner (converted from LaneBlock above),
+        // but handle gracefully.
+        x_pos = constants::LANE_X[lane];
     }
+
+    Shape   shape        = Shape::Circle;
+    uint8_t mask         = 0;
+    auto    req_lane_val = int8_t(lane);
+
+    if (kind == ObstacleKind::ShapeGate ||
+        kind == ObstacleKind::ComboGate ||
+        kind == ObstacleKind::SplitPath) {
+        shape = static_cast<Shape>(std::uniform_int_distribution<int>(0, 2)(rng.engine));
+    }
+    if (kind == ObstacleKind::ComboGate) {
+        mask = uint8_t(uint8_t(1 << lane) | uint8_t(1 << ((lane + 1) % 3)));
+    }
+
+    apply_obstacle_archetype(reg, obstacle, {
+        resolved_kind,
+        x_pos,
+        constants::SPAWN_Y,
+        shape,
+        mask,
+        req_lane_val
+    });
+
+    // Spawn visual mesh children for multi-slab obstacle types
+    spawn_obstacle_meshes(reg, obstacle);
 }

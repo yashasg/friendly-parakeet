@@ -1,0 +1,377 @@
+name: Squad Release
+
+# Triggers:
+#   push: semver tags only (e.g. v1.2.3) — never fires on doc-only commits.
+#   workflow_dispatch: manual release; provide the version tag that already
+#     exists in the repo (e.g. v1.2.3).
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag to release (must already exist, e.g. v1.2.3)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  # ── Platform build jobs ───────────────────────────────────────────────────
+
+  build-linux:
+    name: Build (Linux)
+    runs-on: ubuntu-latest
+    env:
+      VCPKG_BINARY_SOURCES: "clear;default,readwrite"
+      VCPKG_FORCE_SYSTEM_BINARIES: "1"
+      CC: clang-20
+      CXX: clang++-20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          lfs: true
+
+      - name: Export GitHub Actions cache variables
+        uses: actions/github-script@v8
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - name: Install Clang 20 + system dependencies
+        run: |
+          sudo mkdir -p /etc/apt/keyrings
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
+            | gpg --dearmor \
+            | sudo tee /etc/apt/keyrings/llvm-archive-keyring.gpg > /dev/null
+          echo "deb [signed-by=/etc/apt/keyrings/llvm-archive-keyring.gpg] https://apt.llvm.org/$(lsb_release -cs)/ llvm-toolchain-$(lsb_release -cs)-20 main" \
+            | sudo tee /etc/apt/sources.list.d/llvm-20.list > /dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            clang-20 \
+            libgl1-mesa-dev \
+            libx11-dev \
+            libxrandr-dev \
+            libxinerama-dev \
+            libxcursor-dev \
+            libxi-dev \
+            libpulse-dev \
+            catch2
+
+      - name: Setup vcpkg
+        run: |
+          if [ -z "${VCPKG_INSTALLATION_ROOT:-}" ]; then
+            echo "::error title=Missing vcpkg installation::VCPKG_INSTALLATION_ROOT is not set on this runner, so VCPKG_ROOT cannot be exported."
+            exit 1
+          fi
+          echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> "$GITHUB_ENV"
+
+      - name: Cache CMake build directory
+        uses: actions/cache@v5
+        with:
+          path: build
+          key: cmake-linux-clang20-v2-${{ hashFiles('CMakeLists.txt', 'vcpkg.json', 'vcpkg-overlay/**') }}
+          restore-keys: |
+            cmake-linux-clang20-v2-
+
+      - name: Configure and Build
+        run: |
+          chmod +x build.sh
+          ./build.sh Release
+
+      - name: Run tests
+        run: ./build/shapeshifter_tests "~[bench]"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: shapeshifter-linux
+          path: build/shapeshifter
+
+  build-macos:
+    name: Build (macOS)
+    runs-on: macos-latest
+    env:
+      VCPKG_BINARY_SOURCES: "clear;default,readwrite"
+      VCPKG_FORCE_SYSTEM_BINARIES: "1"
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          lfs: true
+
+      - name: Export GitHub Actions cache variables
+        uses: actions/github-script@v8
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - name: Install LLVM 20
+        run: brew install llvm@20
+
+      - name: Set Clang 20 as compiler
+        run: |
+          LLVM_PREFIX="$(brew --prefix llvm@20)"
+          echo "CC=${LLVM_PREFIX}/bin/clang" >> "$GITHUB_ENV"
+          echo "CXX=${LLVM_PREFIX}/bin/clang++" >> "$GITHUB_ENV"
+
+      - name: Setup vcpkg
+        run: |
+          if [ -z "${VCPKG_INSTALLATION_ROOT:-}" ]; then
+            echo "::error::VCPKG_INSTALLATION_ROOT is unset or empty on this runner; cannot set VCPKG_ROOT."
+            exit 1
+          fi
+          echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> "$GITHUB_ENV"
+
+      - name: Cache CMake build directory
+        uses: actions/cache@v5
+        with:
+          path: build
+          key: cmake-macos-clang20-v2-${{ hashFiles('CMakeLists.txt', 'vcpkg.json', 'vcpkg-overlay/**') }}
+          restore-keys: |
+            cmake-macos-clang20-v2-
+
+      - name: Configure and Build
+        run: |
+          chmod +x build.sh
+          ./build.sh Release
+
+      - name: Ad-hoc code sign
+        run: codesign --force --sign - build/shapeshifter
+
+      - name: Run tests
+        run: ./build/shapeshifter_tests "~[bench]"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: shapeshifter-macos
+          path: build/shapeshifter
+
+  build-windows:
+    name: Build (Windows)
+    runs-on: windows-latest
+    env:
+      VCPKG_BINARY_SOURCES: "clear;default,readwrite"
+      VCPKG_FORCE_SYSTEM_BINARIES: "1"
+      VCPKG_DEFAULT_TRIPLET: x64-windows-static-md
+      VCPKG_DEFAULT_HOST_TRIPLET: x64-windows-static-md
+      CC: clang
+      CXX: clang++
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          lfs: true
+
+      - name: Export GitHub Actions cache variables
+        uses: actions/github-script@v8
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - name: Setup vcpkg
+        shell: bash
+        run: |
+          if [ -z "${VCPKG_INSTALLATION_ROOT:-}" ]; then
+            echo "::error::VCPKG_INSTALLATION_ROOT is not set on this runner. Cannot configure VCPKG_ROOT for the Windows build."
+            exit 1
+          fi
+          echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> "$GITHUB_ENV"
+
+      - name: Install Ninja
+        run: choco install ninja -y --no-progress
+
+      - name: Install LLVM 20
+        shell: powershell
+        run: |
+          choco install llvm --version=20.1.4 -y --no-progress
+          $clangVer = (clang --version) -join " "
+          Write-Host "Clang: $clangVer"
+          if ($clangVer -notmatch "clang version 20\.") {
+            Write-Error "Expected Clang 20.x but got: $clangVer"
+            exit 1
+          }
+
+      - name: Cache CMake build directory
+        uses: actions/cache@v5
+        with:
+          path: build
+          key: cmake-windows-clang20-v2-${{ hashFiles('CMakeLists.txt', 'vcpkg.json', 'vcpkg-overlay/**') }}
+          restore-keys: |
+            cmake-windows-clang20-v2-
+
+      - name: Configure and Build
+        run: ./build.sh Release
+        shell: bash
+
+      - name: Run tests
+        run: ./build/shapeshifter_tests.exe "~[bench]"
+        shell: bash
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: shapeshifter-windows
+          path: build/shapeshifter.exe
+
+  build-wasm:
+    name: Build (WebAssembly)
+    runs-on: ubuntu-latest
+    env:
+      VCPKG_BINARY_SOURCES: "clear;default,readwrite"
+      VCPKG_FORCE_SYSTEM_BINARIES: "1"
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          lfs: true
+
+      - name: Export GitHub Actions cache variables
+        uses: actions/github-script@v8
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - name: Setup Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: 5.0.3
+          actions-cache-folder: emsdk-cache
+
+      - name: Setup vcpkg
+        run: |
+          if [ -z "${VCPKG_INSTALLATION_ROOT:-}" ]; then
+            echo "::error title=Missing vcpkg installation::VCPKG_INSTALLATION_ROOT is not set on this runner, so VCPKG_ROOT cannot be exported."
+            exit 1
+          fi
+          echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> "$GITHUB_ENV"
+
+      - name: Cache build directory
+        uses: actions/cache@v5
+        with:
+          path: build-web
+          key: cmake-web-emscripten-v2-${{ hashFiles('CMakeLists.txt', 'vcpkg.json', 'vcpkg-overlay/**') }}
+          restore-keys: |
+            cmake-web-emscripten-v2-
+
+      - name: Build (Emscripten)
+        run: |
+          emcmake cmake -B build-web -S . \
+            -DCMAKE_BUILD_TYPE=Release \
+            -Wno-dev \
+            "-DCMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" \
+            "-DVCPKG_OVERLAY_PORTS=$(pwd)/vcpkg-overlay" \
+            "-DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=${EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake" \
+            -DVCPKG_TARGET_TRIPLET=wasm32-emscripten
+          cmake --build build-web
+
+      - name: Run WASM tests (via CTest + Node)
+        run: |
+          cd build-web
+          ctest --verbose --output-on-failure
+
+      - name: Validate WASM outputs
+        run: |
+          for f in build-web/index.html build-web/index.js build-web/index.wasm build-web/index.data build-web/sw.js; do
+            if [ ! -s "$f" ]; then
+              echo "::error::Missing or empty WASM output: $f"
+              exit 1
+            fi
+          done
+
+      - name: Package WASM artifacts
+        run: |
+          zip -j shapeshifter-web.zip \
+            build-web/index.html \
+            build-web/index.js \
+            build-web/index.wasm \
+            build-web/index.data \
+            build-web/sw.js
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: shapeshifter-web
+          path: shapeshifter-web.zip
+
+  # ── Release collector ─────────────────────────────────────────────────────
+
+  release:
+    name: Create GitHub Release
+    needs: [build-linux, build-macos, build-windows, build-wasm]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${{ github.ref_name }}"
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Download all platform artifacts
+        uses: actions/download-artifact@v5
+        with:
+          path: release-artifacts
+
+      - name: Validate artifacts are non-empty
+        run: |
+          check() {
+            if [ ! -f "$1" ]; then
+              echo "::error::Missing artifact: $1"
+              exit 1
+            fi
+            if [ ! -s "$1" ]; then
+              echo "::error::Empty artifact: $1"
+              exit 1
+            fi
+          }
+          check "release-artifacts/shapeshifter-linux/shapeshifter"
+          check "release-artifacts/shapeshifter-macos/shapeshifter"
+          check "release-artifacts/shapeshifter-windows/shapeshifter.exe"
+          check "release-artifacts/shapeshifter-web/shapeshifter-web.zip"
+          echo "All 4 platform artifacts validated."
+
+      - name: Check for duplicate release
+        id: check-dup
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "$VERSION" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            echo "Release $VERSION already exists; skipping creation."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Stage artifacts with platform labels
+        if: steps.check-dup.outputs.skip == 'false'
+        run: |
+          cp release-artifacts/shapeshifter-linux/shapeshifter   shapeshifter-linux
+          cp release-artifacts/shapeshifter-macos/shapeshifter   shapeshifter-macos
+          cp release-artifacts/shapeshifter-windows/shapeshifter.exe shapeshifter-windows.exe
+          cp release-artifacts/shapeshifter-web/shapeshifter-web.zip shapeshifter-web.zip
+
+      - name: Create release
+        if: steps.check-dup.outputs.skip == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$VERSION" \
+            "shapeshifter-linux#shapeshifter (Linux)" \
+            "shapeshifter-macos#shapeshifter (macOS)" \
+            "shapeshifter-windows.exe#shapeshifter.exe (Windows)" \
+            "shapeshifter-web.zip#shapeshifter-web.zip (WebAssembly)" \
+            --title "Release $VERSION" \
+            --repo "${{ github.repository }}" \
+            --generate-notes

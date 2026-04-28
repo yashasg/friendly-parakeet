@@ -4,9 +4,9 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    branches: [main, dev, preview, insider]
+    types: [opened, synchronize, reopened, closed]
     paths-ignore:
-      - "content/**"
       - "tools/**"
       - "design-docs/**"
       - "*.md"
@@ -15,6 +15,7 @@ on:
 jobs:
   build-web:
     name: Build (WebAssembly)
+    if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -51,7 +52,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: build-web
-          key: cmake-web-emscripten-v2-${{ hashFiles('CMakeLists.txt', 'vcpkg.json') }}
+          key: cmake-web-emscripten-v2-${{ hashFiles('CMakeLists.txt', 'vcpkg.json', 'vcpkg-overlay/**') }}
           restore-keys: |
             cmake-web-emscripten-v2-
 
@@ -62,8 +63,14 @@ jobs:
             -Wno-dev \
             "-DCMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" \
             "-DVCPKG_OVERLAY_PORTS=$(pwd)/vcpkg-overlay" \
-            "-DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=${EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
+            "-DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=${EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake" \
+            -DVCPKG_TARGET_TRIPLET=wasm32-emscripten
           cmake --build build-web
+
+      - name: Run WASM tests (via CTest + Node)
+        run: |
+          cd build-web
+          ctest --verbose --output-on-failure
 
       - name: Upload artifact
         if: success()
@@ -77,29 +84,171 @@ jobs:
             build-web/index.data
             build-web/sw.js
 
-  deploy:
-    name: Deploy to GitHub Pages
+  deploy-main:
+    name: Deploy to GitHub Pages (main)
     needs: build-web
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      contents: write
     steps:
+      - name: Checkout gh-pages
+        uses: actions/checkout@v6
+        with:
+          ref: gh-pages
+          fetch-depth: 1
+
       - name: Download build artifact
         uses: actions/download-artifact@v5
         with:
           name: shapeshifter-web
-          path: site
+          path: _new_build
 
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Validate build artifacts
+        run: |
+          for file in index.html index.js index.wasm index.data sw.js; do
+            if [ ! -f "_new_build/$file" ]; then
+              echo "::error title=Missing artifact::_new_build/$file not found"
+              exit 1
+            fi
+            if [ ! -s "_new_build/$file" ]; then
+              echo "::error title=Empty artifact::_new_build/$file is empty"
+              exit 1
+            fi
+          done
+          echo "All build artifacts validated"
+
+      - name: Deploy to root (preserving PR previews)
+        run: |
+          # Remove old root files but keep subdirectories (PR previews)
+          find . -maxdepth 1 -type f ! -name '.nojekyll' ! -name '.git' -delete
+          # Move new build files to root
+          cp -f _new_build/* .
+          for file in index.html index.js index.wasm index.data sw.js; do
+            if [ ! -s "$file" ]; then
+              echo "::error title=Invalid deployed artifact::$file missing or empty after deploy copy"
+              exit 1
+            fi
+          done
+          rm -rf _new_build
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet || git commit -m "Deploy main to root"
+          git push
+
+  deploy-pr:
+    name: Deploy PR Preview
+    needs: build-web
+    if: github.event_name == 'pull_request' && github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout gh-pages
+        uses: actions/checkout@v6
         with:
-          path: site
+          ref: gh-pages
+          fetch-depth: 1
 
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Download build artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: shapeshifter-web
+          path: _new_build
+
+      - name: Validate build artifacts
+        run: |
+          for file in index.html index.js index.wasm index.data sw.js; do
+            if [ ! -f "_new_build/$file" ]; then
+              echo "::error title=Missing artifact::_new_build/$file not found"
+              exit 1
+            fi
+            if [ ! -s "_new_build/$file" ]; then
+              echo "::error title=Empty artifact::_new_build/$file is empty"
+              exit 1
+            fi
+          done
+          echo "All build artifacts validated"
+
+      - name: Deploy to branch subdirectory
+        env:
+          BRANCH_NAME: ${{ github.head_ref }}
+        run: |
+          # Sanitize branch name: replace / with -
+          SAFE_BRANCH=$(echo "$BRANCH_NAME" | tr '/' '-')
+          rm -rf "$SAFE_BRANCH"
+          mkdir -p "$SAFE_BRANCH"
+          cp -f _new_build/* "$SAFE_BRANCH/"
+          for file in index.html index.js index.wasm index.data sw.js; do
+            if [ ! -s "$SAFE_BRANCH/$file" ]; then
+              echo "::error title=Invalid preview artifact::$SAFE_BRANCH/$file missing or empty after deploy copy"
+              exit 1
+            fi
+          done
+          rm -rf _new_build
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet || git commit -m "PR preview: $SAFE_BRANCH"
+          git push
+
+      - name: Comment preview URL on PR
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const branch = process.env.BRANCH_NAME || context.payload.pull_request.head.ref;
+            const safeBranch = branch.replace(/\//g, '-');
+            const url = `https://yashasg.github.io/friendly-parakeet/${safeBranch}/`;
+            const body = `🎮 **WASM Preview:** ${url}`;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body.includes('🎮 **WASM Preview:**'));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+        env:
+          BRANCH_NAME: ${{ github.head_ref }}
+
+  cleanup-pr:
+    name: Cleanup PR Preview
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout gh-pages
+        uses: actions/checkout@v6
+        with:
+          ref: gh-pages
+          fetch-depth: 1
+
+      - name: Remove preview subdirectory
+        env:
+          BRANCH_NAME: ${{ github.head_ref }}
+        run: |
+          SAFE_BRANCH=$(echo "$BRANCH_NAME" | tr '/' '-')
+          if [ -d "$SAFE_BRANCH" ]; then
+            rm -rf "$SAFE_BRANCH"
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add -A
+            git commit -m "Remove PR preview: $SAFE_BRANCH"
+            git push
+          fi

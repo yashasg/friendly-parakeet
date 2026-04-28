@@ -8,6 +8,11 @@ if(DEFINED ENV{VCPKG_ROOT} AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
         CACHE STRING "Vcpkg toolchain file")
 endif()
 
+if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/vcpkg-overlay" AND NOT DEFINED VCPKG_OVERLAY_PORTS)
+    set(VCPKG_OVERLAY_PORTS "${CMAKE_CURRENT_LIST_DIR}/vcpkg-overlay"
+        CACHE STRING "Vcpkg overlay ports")
+endif()
+
 project(shapeshifter VERSION 0.1 LANGUAGES CXX)
 
 # C++20 required: designated initializers are used throughout the codebase
@@ -41,16 +46,15 @@ configure_file(
 # EnTT: header-only ECS framework (vcpkg on all platforms).
 # raylib: rendering, windowing, input, audio (vcpkg on all platforms, including
 #         wasm32-emscripten via the vcpkg-overlay portfile).
-# Catch2: test framework (vcpkg on Windows/macOS, system package on Linux).
+# Catch2: test framework (vcpkg on all platforms).
 # nlohmann-json: JSON parsing for beat map loading (vcpkg on all platforms).
 
 find_package(EnTT CONFIG REQUIRED)
+find_package(magic_enum CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(raylib CONFIG REQUIRED)
 
-if(NOT EMSCRIPTEN)
-    find_package(Catch2 3 CONFIG REQUIRED)
-endif()
+find_package(Catch2 3 CONFIG REQUIRED)
 
 # ── Warnings-as-errors (project targets only) ────────────────
 # Applied via an INTERFACE target so it never leaks into third-party code.
@@ -59,14 +63,13 @@ endif()
 add_library(shapeshifter_warnings INTERFACE)
 target_compile_options(shapeshifter_warnings INTERFACE
     $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wall -Wextra -Werror>
+    $<$<CXX_COMPILER_ID:MSVC>:/W4>
+    $<$<CXX_COMPILER_ID:MSVC>:/WX>
 )
 
 # Mark third-party include directories as SYSTEM so warnings from their
 # headers are suppressed and cannot be promoted to errors by -Werror.
-set(_system_deps EnTT::EnTT raylib nlohmann_json::nlohmann_json)
-if(NOT EMSCRIPTEN)
-    list(APPEND _system_deps Catch2::Catch2 Catch2::Catch2WithMain)
-endif()
+set(_system_deps EnTT::EnTT magic_enum::magic_enum raylib nlohmann_json::nlohmann_json Catch2::Catch2 Catch2::Catch2WithMain)
 foreach(_dep ${_system_deps})
     if(TARGET ${_dep})
         # Resolve alias targets — set_target_properties doesn't work on aliases
@@ -84,42 +87,60 @@ endforeach()
 
 # ── Game library (shared between exe and tests) ──────────────
 file(GLOB SYSTEM_SOURCES app/systems/*.cpp)
-# Exclude render_system.cpp from the library (requires raylib renderer)
-list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "render_system\\.cpp$")
+file(GLOB GAMEOBJECT_SOURCES app/gameobjects/*.cpp)
+file(GLOB UTIL_SOURCES app/util/*.cpp)
+file(GLOB ARCHETYPE_SOURCES app/archetypes/*.cpp)
+# Exclude render system files from the library (requires raylib renderer)
+list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "game_render_system\\.cpp$")
+list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "ui_render_system\\.cpp$")
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "/input_system\\.cpp$")
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "song_playback_system\\.cpp$")
+list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "text_renderer\\.cpp$")
+list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "camera_system\\.cpp$")
+list(FILTER UTIL_SOURCES EXCLUDE REGEX "file_logger\\.cpp$")
 
-add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES} app/beat_map_loader.cpp app/session_logger.cpp app/ui_loader.cpp)
+add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES} ${GAMEOBJECT_SOURCES} ${UTIL_SOURCES} ${ARCHETYPE_SOURCES})
 target_include_directories(shapeshifter_lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/app
     ${CMAKE_BINARY_DIR}/generated
 )
 target_link_libraries(shapeshifter_lib PUBLIC
     EnTT::EnTT
+    magic_enum::magic_enum
     nlohmann_json::nlohmann_json
 )
 target_link_libraries(shapeshifter_lib PRIVATE shapeshifter_warnings)
 
 # ── Platform capability flags ────────────────────────────────
 # PLATFORM_DESKTOP is set for Windows / macOS / Linux builds.
+# PLATFORM_WEB is set for Emscripten builds.
+# PLATFORM_HAS_KEYBOARD is set for platforms with keyboard input.
 # Mobile (Android / iOS) gets no keyboard handling compiled in.
-# We use CMAKE_SYSTEM_NAME rather than raylib platform macros so that
-# app/components/input.h stays portable (no raylib.h dependency in headers).
 if(CMAKE_SYSTEM_NAME MATCHES "Windows|Darwin|Linux")
-    target_compile_definitions(shapeshifter_lib PUBLIC PLATFORM_DESKTOP)
+    target_compile_definitions(shapeshifter_lib PUBLIC PLATFORM_DESKTOP PLATFORM_HAS_KEYBOARD)
 elseif(EMSCRIPTEN)
-    target_compile_definitions(shapeshifter_lib PUBLIC PLATFORM_WEB)
+    target_compile_definitions(shapeshifter_lib PUBLIC PLATFORM_WEB PLATFORM_HAS_KEYBOARD)
+    # JSON/settings loaders use C++ try/catch for recoverable parse failures.
+    target_compile_options(shapeshifter_lib PUBLIC -fexceptions)
+endif()
+
+# Suppress MSVC CRT deprecation warnings for standard C functions (fopen, etc.)
+if(WIN32)
+    target_compile_definitions(shapeshifter_lib PUBLIC _CRT_SECURE_NO_WARNINGS)
 endif()
 
 # ── Main executable ──────────────────────────────────────────
 add_executable(shapeshifter
     app/main.cpp
-    app/perspective.cpp
-    app/systems/render_system.cpp
+    app/game_loop.cpp
+    app/platform_display.cpp
+    app/systems/camera_system.cpp
+    app/systems/game_render_system.cpp
+    app/systems/ui_render_system.cpp
     app/systems/input_system.cpp
     app/systems/song_playback_system.cpp
-    app/text_renderer.cpp
-    app/file_logger.cpp
+    app/systems/text_renderer.cpp
+    app/util/file_logger.cpp
 )
 target_include_directories(shapeshifter PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/app
@@ -229,8 +250,12 @@ if(EMSCRIPTEN)
 
     target_link_options(shapeshifter PRIVATE
         -sUSE_GLFW=3
+        -fexceptions
         -sALLOW_MEMORY_GROWTH=1
         -sDYNAMIC_EXECUTION=0
+        # The browser frame loop is registered with emscripten_set_main_loop();
+        # keep the Emscripten runtime alive for that long-running callback.
+        -sNO_EXIT_RUNTIME=1
         --shell-file ${_shell_html}
     )
     # Use LINK_FLAGS (raw string) for the two --preload-file entries so that
@@ -252,7 +277,7 @@ if(EMSCRIPTEN)
 endif()
 
 # Copy font assets next to the executable so text_init() can find them
-file(GLOB FONT_FILES ${CMAKE_SOURCE_DIR}/assets/fonts/*.ttf)
+file(GLOB FONT_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/assets/fonts/*.ttf)
 if(FONT_FILES)
     add_custom_command(TARGET shapeshifter POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory
@@ -265,7 +290,7 @@ if(FONT_FILES)
 endif()
 
 # Copy beatmap JSON files next to the executable
-file(GLOB BEATMAP_FILES ${CMAKE_SOURCE_DIR}/content/beatmaps/*.json)
+file(GLOB BEATMAP_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/content/beatmaps/*.json)
 if(BEATMAP_FILES)
     add_custom_command(TARGET shapeshifter POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory
@@ -278,7 +303,7 @@ if(BEATMAP_FILES)
 endif()
 
 # Copy audio files next to the executable
-file(GLOB AUDIO_FILES ${CMAKE_SOURCE_DIR}/content/audio/*.flac)
+file(GLOB AUDIO_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/content/audio/*.flac)
 if(AUDIO_FILES)
     add_custom_command(TARGET shapeshifter POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory
@@ -291,8 +316,8 @@ if(AUDIO_FILES)
 endif()
 
 # Copy UI screen JSON files next to the executable
-file(GLOB UI_SCREEN_FILES ${CMAKE_SOURCE_DIR}/content/ui/screens/*.json)
-file(GLOB UI_ROOT_FILES ${CMAKE_SOURCE_DIR}/content/ui/*.json)
+file(GLOB UI_SCREEN_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/content/ui/screens/*.json)
+file(GLOB UI_ROOT_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/content/ui/*.json)
 if(UI_SCREEN_FILES)
     add_custom_command(TARGET shapeshifter POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory
@@ -321,41 +346,95 @@ add_custom_command(TARGET shapeshifter POST_BUILD
     COMMENT "Copying shared constants"
 )
 
-# ── Tests + Benchmarks (native only) ─────────────────────────
-if(NOT EMSCRIPTEN)
-    enable_testing()
+# Copy shader files next to the executable
+file(GLOB SHADER_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/content/shaders/*.vs ${CMAKE_SOURCE_DIR}/content/shaders/*.fs)
+if(SHADER_FILES)
+    add_custom_command(TARGET shapeshifter POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+            "$<TARGET_FILE_DIR:shapeshifter>/content/shaders"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${SHADER_FILES}
+            "$<TARGET_FILE_DIR:shapeshifter>/content/shaders/"
+        COMMENT "Copying shader assets"
+    )
+endif()
 
-    file(GLOB TEST_SOURCES tests/*.cpp benchmarks/*.cpp)
-    add_executable(shapeshifter_tests
-        ${TEST_SOURCES}
-        app/file_logger.cpp
-        app/perspective.cpp
-        app/systems/song_playback_system.cpp
-    )
-    target_include_directories(shapeshifter_tests PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/app
-    )
+# ── Tests + Benchmarks ──────────────────────────────────────
+enable_testing()
+
+file(GLOB TEST_SOURCES tests/*.cpp benchmarks/*.cpp)
+# Exclude untracked test files from other in-progress agents that reference
+# symbols not yet merged into this branch.
+list(FILTER TEST_SOURCES EXCLUDE REGEX
+    ".*(test_safe_area_layout|test_ui_redfoot_pass|test_lifecycle)\\.cpp$"
+)
+add_executable(shapeshifter_tests
+    ${TEST_SOURCES}
+    app/util/file_logger.cpp
+    app/systems/camera_system.cpp
+    app/systems/song_playback_system.cpp
+    app/platform_display.cpp
+)
+target_include_directories(shapeshifter_tests PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/app
+)
+target_link_libraries(shapeshifter_tests PRIVATE
+    shapeshifter_lib
+    raylib
+    Catch2::Catch2WithMain
+    shapeshifter_warnings
+)
+
+# Apply platform definitions to tests (same as shapeshifter_lib)
+if(CMAKE_SYSTEM_NAME MATCHES "Windows|Darwin|Linux")
+    target_compile_definitions(shapeshifter_tests PRIVATE PLATFORM_DESKTOP PLATFORM_HAS_KEYBOARD)
+elseif(EMSCRIPTEN)
+    target_compile_definitions(shapeshifter_tests PRIVATE PLATFORM_WEB PLATFORM_HAS_KEYBOARD)
+endif()
+
+if(APPLE)
     target_link_libraries(shapeshifter_tests PRIVATE
-        shapeshifter_lib
-        raylib
-        Catch2::Catch2WithMain
-        shapeshifter_warnings
+        "-framework Cocoa"
+        "-framework OpenGL"
+        "-framework IOKit"
+        "-framework CoreFoundation"
+        "-framework CoreVideo"
     )
-    if(APPLE)
-        target_link_libraries(shapeshifter_tests PRIVATE
-            "-framework Cocoa"
-            "-framework OpenGL"
-            "-framework IOKit"
-            "-framework CoreFoundation"
-            "-framework CoreVideo"
-        )
-    elseif(WIN32)
-        target_link_libraries(shapeshifter_tests PRIVATE opengl32 gdi32 winmm)
-    elseif(UNIX)
-        target_link_libraries(shapeshifter_tests PRIVATE GL X11 Xrandr m pthread dl)
-    endif()
+elseif(WIN32)
+    target_link_libraries(shapeshifter_tests PRIVATE opengl32 gdi32 winmm)
+elseif(UNIX AND NOT EMSCRIPTEN)
+    target_link_libraries(shapeshifter_tests PRIVATE GL X11 Xrandr m pthread dl)
+endif()
 
+if(EMSCRIPTEN)
+    set_target_properties(shapeshifter_tests PROPERTIES
+        SUFFIX ".js"
+    )
+    # Catch2 reports assertion failures and unexpected exceptions by catching
+    # C++ exceptions; enable that runtime support for the test binary only.
+    target_compile_options(shapeshifter_tests PRIVATE -fexceptions)
+    target_link_options(shapeshifter_tests PRIVATE
+        -fexceptions
+        -sALLOW_MEMORY_GROWTH=1
+        -sDYNAMIC_EXECUTION=0
+        -sNODERAWFS=1
+    )
+endif()
+
+if(NOT EMSCRIPTEN)
     include(CTest)
     include(Catch)
     catch_discover_tests(shapeshifter_tests)
+else()
+    # Run the Emscripten Catch2 binary under Node. NODERAWFS lets tests read
+    # repository/build content files directly instead of preloading game assets.
+    set(_wasm_test_runner ${CMAKE_CROSSCOMPILING_EMULATOR})
+    if(NOT _wasm_test_runner)
+        find_program(_wasm_test_runner node REQUIRED)
+    endif()
+    add_test(
+        NAME shapeshifter_tests_wasm
+        COMMAND ${_wasm_test_runner} $<TARGET_FILE:shapeshifter_tests> "~[bench]"
+        WORKING_DIRECTORY $<TARGET_FILE_DIR:shapeshifter_tests>
+    )
 endif()

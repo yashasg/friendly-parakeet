@@ -23,7 +23,7 @@
       "type": "text_dynamic",
       "source": "ScoreState.score",
       "x_n": 0.5, "y_n": 0.355,
-      "font_size": "medium",
+      "font_size": "medium", "align": "center",
       "color": [255, 255, 255, 255]
     },
     {
@@ -39,7 +39,7 @@
       "type": "text_dynamic",
       "source": "ScoreState.high_score",
       "x_n": 0.5, "y_n": 0.426,
-      "font_size": "medium",
+      "font_size": "medium", "align": "center",
       "color": [255, 215, 0, 255]
     },
     {

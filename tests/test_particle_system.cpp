@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
+#include "constants.h"
 
 // Helper: create a particle entity with all required components
 static entt::entity make_particle(entt::registry& reg, float size, float life_remaining, float life_max,
@@ -68,7 +69,7 @@ TEST_CASE("particle: gravity increases downward velocity", "[particle]") {
     particle_system(reg, 0.1f);
 
     auto& vel = reg.get<Velocity>(e);
-    CHECK_THAT(vel.dy, Catch::Matchers::WithinAbs(60.0f, 0.01f));  // 600 * 0.1
+    CHECK_THAT(vel.dy, Catch::Matchers::WithinAbs(constants::PARTICLE_GRAVITY * 0.1f, 0.01f));
 }
 
 TEST_CASE("particle: gravity accumulates over multiple frames", "[particle]") {
@@ -79,7 +80,7 @@ TEST_CASE("particle: gravity accumulates over multiple frames", "[particle]") {
     particle_system(reg, 0.1f);
 
     auto& vel = reg.get<Velocity>(e);
-    CHECK_THAT(vel.dy, Catch::Matchers::WithinAbs(120.0f, 0.01f));  // 600 * 0.2 total
+    CHECK_THAT(vel.dy, Catch::Matchers::WithinAbs(constants::PARTICLE_GRAVITY * 0.2f, 0.01f));
 }
 
 TEST_CASE("particle: gravity does not affect horizontal velocity", "[particle]") {

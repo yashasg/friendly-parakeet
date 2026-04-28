@@ -54,16 +54,6 @@ TEST_CASE("difficulty: spawn interval has floor", "[difficulty]") {
     CHECK(reg.ctx().get<DifficultyConfig>().spawn_interval >= constants::MIN_SPAWN_INT);
 }
 
-TEST_CASE("difficulty: burnout window shrinks", "[difficulty]") {
-    auto reg = make_registry();
-
-    for (int i = 0; i < 3600; ++i) {
-        difficulty_system(reg, 1.0f / 60.0f);
-    }
-
-    CHECK(reg.ctx().get<DifficultyConfig>().burnout_window_scale < 1.0f);
-}
-
 TEST_CASE("difficulty: elapsed time accumulates", "[difficulty]") {
     auto reg = make_registry();
 
