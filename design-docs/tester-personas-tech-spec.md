@@ -113,10 +113,9 @@ while (accumulator >= FIXED_DT) {
     obstacle_spawn_system(reg, FIXED_DT);
     scroll_system(reg, FIXED_DT);
     ring_zone_log_system(reg, FIXED_DT); // Phase 5.1: ★ NEW — after scroll
-    burnout_system(reg, FIXED_DT);
     collision_system(reg, FIXED_DT);
     scoring_system(reg, FIXED_DT);
-    hp_system(reg, FIXED_DT);
+    energy_system(reg, FIXED_DT);
     lifetime_system(reg, FIXED_DT);
     particle_system(reg, FIXED_DT);
     cleanup_system(reg, FIXED_DT);
@@ -134,10 +133,10 @@ while (accumulator >= FIXED_DT) {
                                             writes GestureResult /
                                             ShapeButtonEvent
 
-  scroll_system ──▶ ring_zone_log_system ──▶ burnout_system ──▶ collision_system
+  scroll_system ──▶ ring_zone_log_system ──▶ collision_system ──▶ scoring_system
        │                │                         │                  │
-    updates          reads Position             reads Position     resolves
-    Position         logs [GAME] RING_ZONE      updates BurnoutState  pass/fail
+    updates          reads Position             resolves           grades timing
+    Position         logs [GAME] RING_ZONE      pass/fail          Perfect/Good/Ok/Bad/Miss
 ```
 
 
@@ -585,7 +584,7 @@ a separate system to do the emplacement.
 
 ## ring_zone_log_system
 
-Runs after scroll_system, before burnout_system. Iterates ONLY
+Runs after scroll_system, before collision_system. Iterates ONLY
 obstacles that have both Position and RingZoneTracker:
 
 ```cpp

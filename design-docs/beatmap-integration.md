@@ -150,7 +150,6 @@ struct SongState {
 struct SongResults {
     int perfect_count, good_count, ok_count, bad_count, miss_count;
     int max_chain;
-    float best_burnout;
     int total_notes;
 };
 ```
@@ -217,14 +216,13 @@ The current obstacle components already match the beatmap schema:
   │  player_action_system    (GestureResult → PlayerShape, Lane)    │
   │  shape_window_system     (timing window morphing)               │
   │  player_movement_system  (animate Position from Lane/VState)    │
-  │  difficulty_system       (elapsed → speed/spawn/burnout ramp)   │
+  │  difficulty_system       (elapsed → speed/spawn ramp)           │
   │  obstacle_spawn_system   (SKIPPED when SongState.playing)       │
   │       │                                                          │
   │  scroll_system           (Position += Velocity × dt)            │
-  │  burnout_system          (nearest obstacle → BurnoutState)      │
   │  collision_system        (player vs obstacles → ScoredTag)      │
   │  scoring_system          (ScoredTag → ScoreState, popups)       │
-  │  hp_system               (miss tracking → game over)            │
+  │  energy_system           (miss tracking → drain → game over)    │
   │  lifetime_system         (Lifetime → destroy expired)           │
   │  particle_system         (ParticleData → shrink, gravity)       │
   │  cleanup_system          (destroy off-screen obstacles)         │

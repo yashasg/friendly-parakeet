@@ -4,6 +4,20 @@
 > **Guiding principle**: Data lives in flat structs. Logic lives in free functions.
 > The `entt::registry` is the single source of truth. No globals. No virtuals.
 
+> ⚠️ **HISTORICAL — partial supersession (issue #239).**
+> The "Burnout" risk/reward scoring system described in earlier sections of
+> this document has been **removed from the design**. References below to
+> `BurnoutState`, `BurnoutZone`, `BankedBurnout`, `burnout_system`,
+> `BURNOUT_*` constants, and the burnout meter HUD element are retained for
+> historical context only and are not part of the current game.
+>
+> The current scoring model is **on-beat timing × chain**: timing grade
+> (Perfect/Good/Ok/Bad) is computed from the input's distance to the beat
+> when an obstacle resolves. Shape changes that land on the beat are valid
+> play even when no obstacle is currently arriving — there is no penalty
+> for "early" shape changes. See `rhythm-design.md` and `rhythm-spec.md`
+> for the authoritative scoring and pipeline model.
+
 ---
 
 ## Table of Contents
@@ -505,7 +519,7 @@ ParticleEmitter     16     COLD       particle_spawn
 SINGLETONS (ctx)
 ─────────────────────────────────────────────────────────────
 InputState          36     per-frame  input_system (write), player_input (read)
-ActionQueue          9     per-frame  test_player_system (write), player_input (read)
+EventQueue          var    per-frame  input_system (write raw), hit_test_system (resolve), player_input (read), test_player_system (write)
 ShapeButtonEvent     2     per-frame  input_system (write), player_action (read)
 GameState           12     per-frame  game_state_system
 DifficultyConfig    24     per-frame  difficulty_system (write), spawn_system (read)
@@ -531,7 +545,11 @@ the same frame (unidirectional data flow).
  │  │                                                        │
  │  │  1. input_system          Read raylib input queue.  │
  │  │                           Populate InputState +        │
- │  │                           ShapeButtonEvent singletons. │
+ │  │                           EventQueue (raw InputEvents).│
+ │  │                                                        │
+ │  │  2. hit_test_system       Resolve taps → ButtonPress-  │
+ │  │                           Event (via HitBox/HitCircle) │
+ │  │                           and swipes → GoEvent.        │
  │  └────────────────────────────────────────────────────────┘
  │
  │  ┌─ PHASE 2: GAME STATE GATE ────────────────────────────┐
@@ -548,10 +566,9 @@ the same frame (unidirectional data flow).
  │
  │  ┌─ PHASE 3: PLAYER UPDATE ──────────────────────────────┐
  │  │                                                        │
- │  │  4. player_input_system   Consume ActionQueue.         │
- │  │                           Apply:                       │
- │  │                           • shape change → PlayerShape │
- │  │                           • lane change  → Lane        │
+ │  │  4. player_input_system   Consume EventQueue:          │
+ │  │                           • ButtonPressEvent→PlayerShape│
+ │  │                           • GoEvent → Lane             │
  │  │                           • jump/slide   → VertState   │
  │  │                           Push SFX::ShapeShift if      │
  │  │                           shape changed.               │
@@ -1241,9 +1258,9 @@ int main(int argc, char* argv[]) {
                │                          │
                ▼                          │
     ┌──────────────────────────┐          │
-    │ ActionQueue (ctx)        │          │
-    │   .actions[0] = Go Left │          │
-    │   .count = 1             │          │
+    │ EventQueue (ctx)         │          │
+    │   .goes[0] = { Left }   │          │
+    │   .go_count = 1          │          │
     └──────────┬───────────────┘          │
                │                          │
                ▼                          ▼
@@ -1657,10 +1674,11 @@ app/
 │
 ├── systems/                     ← all system free functions
 │   ├── all_systems.h            ← convenience #include for all systems
-│   ├── input_system.cpp         ← raylib input → InputState + ActionQueue
+│   ├── input_system.cpp         ← raylib input → InputState + EventQueue (raw InputEvents)
+│   ├── hit_test_system.cpp     ← resolves taps → ButtonPressEvent, swipes → GoEvent
 │   ├── game_state_system.cpp    ← phase transitions
-│   ├── player_input_system.cpp  ← ActionQueue → player component writes
-│   ├── test_player_system.cpp   ← automated test player (writes ActionQueue)
+│   ├── player_input_system.cpp  ← EventQueue (ButtonPressEvent + GoEvent) → player component writes
+│   ├── test_player_system.cpp   ← automated test player (writes EventQueue)
 │   ├── player_movement_system.cpp ← lane lerp, jump parabola, morph advance
 │   ├── difficulty_system.cpp    ← ramp speed, spawn interval, burnout window
 │   ├── obstacle_spawn_system.cpp ← create obstacle entities

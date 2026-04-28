@@ -1,0 +1,19 @@
+{
+  "id": "50f7351c-00a3-4c97-92e9-712d3e47ae74",
+  "createdAt": "2026-04-27T23:22:45.930Z",
+  "lastActiveAt": "2026-04-27T23:24:36.670Z",
+  "messages": [
+    {
+      "role": "agent",
+      "agentName": "coordinator",
+      "content": "No active background agents or tracked tasks.\n\nI couldn’t retrieve git worktree status because the terminal permission check failed.",
+      "timestamp": "2026-04-27T23:23:28.801Z"
+    },
+    {
+      "role": "agent",
+      "agentName": "coordinator",
+      "content": "No active background agents, and no tracked SQL todos exist yet.\n\nGit worktree status is unavailable because the terminal permission check failed again.",
+      "timestamp": "2026-04-27T23:24:36.670Z"
+    }
+  ]
+}

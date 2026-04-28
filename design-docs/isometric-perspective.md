@@ -494,7 +494,7 @@ replaced entirely by `perspective::draw_shape()`.
 
 ### NOT transformed (viewport-space, lines 590–618)
 
-- HUD (score, buttons, burnout bar, approach rings)
+- HUD (score, buttons, energy bar, proximity rings)
 - Title screen, Level select
 - Overlays (game over, song complete, paused)
 - Input zones
