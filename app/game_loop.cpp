@@ -6,11 +6,11 @@
 #include "components/game_state.h"
 #include "components/scoring.h"
 #include "components/difficulty.h"
-#include "components/audio.h"
+#include "systems/audio_types.h"
 #include "components/haptics.h"
-#include "components/settings.h"
+#include "util/settings.h"
 #include "components/rhythm.h"
-#include "components/music.h"
+#include "systems/music_context.h"
 #include "components/session_log.h"
 #include "components/rendering.h"
 #include "components/camera.h"
@@ -149,7 +149,6 @@ static void tick_fixed_systems(entt::registry& reg, float dt) {
     difficulty_system(reg, dt);
     obstacle_spawn_system(reg, dt);
     scroll_system(reg, dt);
-    ring_zone_log_system(reg, dt);
     collision_system(reg, dt);
     miss_detection_system(reg, dt);
     scoring_system(reg, dt);

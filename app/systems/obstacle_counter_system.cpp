@@ -1,5 +1,5 @@
 #include "all_systems.h"
-#include "../components/obstacle_counter.h"
+#include "obstacle_counter_system.h"
 #include "../components/obstacle.h"
 #include <entt/entt.hpp>
 

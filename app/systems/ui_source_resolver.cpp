@@ -5,7 +5,7 @@
 
 #include "../components/scoring.h"
 #include "../components/song_state.h"
-#include "../components/settings.h"
+#include "../util/settings.h"
 
 using namespace entt::literals;
 

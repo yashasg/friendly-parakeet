@@ -4,8 +4,7 @@
 #include "components/transform.h"
 #include "components/player.h"
 #include "components/obstacle.h"
-#include "components/obstacle_counter.h"
-#include "components/obstacle_data.h"
+#include "systems/obstacle_counter_system.h"
 #include "components/input.h"
 #include "components/input_events.h"
 #include "components/game_state.h"
@@ -14,9 +13,9 @@
 #include "components/rendering.h"
 #include "components/lifetime.h"
 #include "components/particle.h"
-#include "components/audio.h"
+#include "systems/audio_types.h"
 #include "components/haptics.h"
-#include "components/settings.h"
+#include "util/settings.h"
 #include "components/rhythm.h"
 #include "components/high_score.h"
 #include "components/rng.h"
@@ -194,7 +193,7 @@ inline entt::entity make_vertical_bar(entt::registry& reg, ObstacleKind kind, fl
     auto& config = reg.ctx().get<DifficultyConfig>();
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
-    reg.emplace<Position>(obs, constants::LANE_X[1], y);
+    reg.emplace<ObstacleScrollZ>(obs, y);
     reg.emplace<Velocity>(obs, 0.0f, config.scroll_speed);
     int16_t pts = (kind == ObstacleKind::LowBar) ? constants::PTS_LOW_BAR : constants::PTS_HIGH_BAR;
     reg.emplace<Obstacle>(obs, kind, pts);

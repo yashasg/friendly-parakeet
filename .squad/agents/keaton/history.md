@@ -662,3 +662,41 @@ Fixed all 7 unresolved review threads in commit d90abf9 on `user/yashasg/ecs_ref
 **Side-fix:** Added `app/archetypes/*.cpp` glob to `CMakeLists.txt` (pre-existing missing glob prevented `player_archetype.cpp` from linking).
 
 **Validation:** All 2808 assertions pass in 840 test cases. Zero compiler warnings.
+
+## Slice 2 — Model-authority LowBar/HighBar migration (ObstacleScrollZ)
+
+**Issue:** Remove `Position` from `LowBar` and `HighBar` obstacle entities; replace with `ObstacleScrollZ { float z; }` as the narrow bridge component for the scroll axis.
+
+**Implementation summary:**
+
+**Component addition:**
+- Added `struct ObstacleScrollZ { float z = 0.0f; }` to `app/components/obstacle.h`
+
+**Archetype migration:**
+- `app/archetypes/obstacle_archetypes.cpp`: LowBar + HighBar now emplace `ObstacleScrollZ(in.y)` instead of `Position(in.x, in.y)`
+
+**System dual-view pattern (two-view migration):**
+- `scroll_system`: Added `model_beat_view` for `ObstacleTag + ObstacleScrollZ + BeatInfo` before legacy Position beat view
+- `cleanup_system`: Added `model_view` for `ObstacleTag + ObstacleScrollZ` before legacy Position view
+- `collision_system`: `player_in_timing_window` refactored to take `float obstacle_z`; LowBar/HighBar view uses `ObstacleScrollZ`
+- `miss_detection_system`: Added ObstacleScrollZ view with `DeathCause::HitABar`
+- `camera_system`: Pass 1b uses ObstacleScrollZ; dead LowBar/HighBar cases removed from pass 1
+- `scoring_system`: Added `hit_view2` for ObstacleScrollZ entities; popup anchor at screen center
+- `test_player_system`: Secondary PERCEIVE loop + zone-blocked checks for ObstacleScrollZ
+
+**Spawn fix:**
+- `shape_obstacle.cpp`: `spawn_obstacle_meshes()` guarded `Position` fetch with `try_get` (LowBar/HighBar have no Position; ShapeGate case early-exits if no Position)
+- Added HighBar case to `build_obstacle_model()`
+
+**Test updates:**
+- `tests/test_helpers.h`: `make_vertical_bar` uses `ObstacleScrollZ` instead of `Position`
+- `tests/test_obstacle_archetypes.cpp`: LowBar/HighBar tests check `ObstacleScrollZ`; "position propagated" split into ObstacleScrollZ test + ShapeGate Position test
+- `tests/test_obstacle_model_slice.cpp`: Section A replaced with post-migration assertions; Section C enabled with headless-safe scroll + cleanup tests
+- `tests/test_model_authority_gaps.cpp`: Added `#include "components/obstacle.h"`
+
+**Learnings:**
+- The "two-view migration" pattern (legacy Position view + new ObstacleScrollZ view in each system) is the canonical approach for zero-regression ECS component migrations in this codebase
+- `spawn_obstacle_meshes()` used unconditional `reg.get<Position>` — any kind without Position will SIGSEGV there; always guard with `try_get` when a function handles multiple obstacle kinds
+- LanePush* remain on Position (not yet migrated)
+
+**Validation:** All 2957 assertions pass in 898 test cases. Zero compiler warnings.

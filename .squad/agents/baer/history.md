@@ -717,3 +717,23 @@ ctest --test-dir build -R "shipped beatmaps"
 - `git ls-tree -r --name-only HEAD | grep ':'` — no colons.
 - Pushed to `origin user/yashasg/ecs_refactor` (commit 710ff34).
 - Issue #346: **closure-ready** — not closed per task instructions.
+
+### 2026-04-29 — Component Cleanup Pass Regression Coverage
+
+**Status:** COMPLETE — static_assert guards added; decision note filed.
+
+**Task:** Lightweight regression coverage for the ObstacleScrollZ bridge-state + ObstacleModel/ObstacleParts component cleanup pass without overlapping Hockney/Fenster implementation files.
+
+**What I added:**
+- BF-5a static_asserts in `tests/test_obstacle_model_slice.cpp` Section D: `ObstacleScrollZ` is non-empty, standard-layout, and `z` field is `float`.
+- BF-5b static_asserts: `ObstacleModel` is non-copy-constructible, non-copy-assignable, move-constructible, move-assignable.
+- These mirror the existing BF-4 guards for `ObstacleParts`.
+
+**Pre-existing build blockers discovered (Keaton's WIP):**
+- `app/entities/obstacle_entity.h` referenced from `beat_scheduler_system.cpp` but does not exist → `apply_obstacle_archetype` and `spawn_obstacle_meshes` undeclared.
+- `obstacle_spawn_system.cpp:91` missing `beat_info` field initializer (Werror).
+- The cached test binary was valid but a clean rebuild fails. Flagged in decision inbox.
+
+**Coverage finding:** `test_model_authority_gaps.cpp` and `test_obstacle_model_slice.cpp` Section C already provide comprehensive dual-view bridge-state coverage for all 5 lifecycle systems. No new runtime tests were necessary.
+
+**Key pattern:** Static_asserts for component RAII + layout contracts belong in `test_obstacle_model_slice.cpp` Section D alongside BF-4.

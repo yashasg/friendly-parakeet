@@ -6,7 +6,6 @@
 #include "../components/player.h"
 #include "../components/transform.h"
 #include "../components/obstacle.h"
-#include "../components/obstacle_data.h"
 #include "../components/rhythm.h"
 #include "../components/scoring.h"
 #include "../components/session_log.h"
@@ -80,10 +79,14 @@ static TestPlayerAction determine_action(
     } else {
         // Estimate from position + velocity
         auto* pos = reg.try_get<Position>(entity);
+        auto* oz = reg.try_get<ObstacleScrollZ>(entity);
         auto* vel = reg.try_get<Velocity>(entity);
         if (pos && vel && vel->dy > 0.0f) {
             action.arrival_time = song.song_time +
                 (constants::PLAYER_Y - pos->y) / vel->dy;
+        } else if (oz && vel && vel->dy > 0.0f) {
+            action.arrival_time = song.song_time +
+                (constants::PLAYER_Y - oz->z) / vel->dy;
         }
     }
 
@@ -285,6 +288,42 @@ void test_player_system(entt::registry& reg, float dt) {
         }
     }
 
+    auto model_obs_view = reg.view<ObstacleTag, ObstacleScrollZ, Obstacle>(entt::exclude<ScoredTag>);
+    for (auto [entity, oz, obs] : model_obs_view.each()) {
+        float dist = p_pos.y - oz.z;
+        if (dist <= 0.0f || dist > cfg.vision_range) continue;
+        if (state->is_planned(entity)) continue;
+
+        TestPlayerAction action = determine_action(reg, entity, effective_lane, *song);
+
+        std::uniform_real_distribution<float> reaction_dist(cfg.reaction_min, cfg.reaction_max);
+        action.timer = reaction_dist(state->rng);
+
+        state->push_action(action);
+        state->mark_planned(entity);
+
+        if (log) {
+            auto* beat_info = reg.try_get<BeatInfo>(entity);
+            int beat_num = beat_info ? beat_info->beat_index : -1;
+
+            session_log_write(*log, song_time, "PLAYER",
+                "PERCEIVE obstacle=%u beat=%d kind=%s shape=%s lane=%d dist=%.0fpx",
+                static_cast<unsigned>(entt::to_integral(entity)),
+                beat_num,
+                ToString(obs.kind),
+                ToString(action.target_shape),
+                action.target_lane, dist);
+
+            session_log_write(*log, song_time, "PLAYER",
+                "PLAN action=%s%s%s react=%.3fs arrival=%.3fs",
+                action.target_shape != Shape::Hexagon ? ToString(action.target_shape) : "",
+                action.target_lane >= 0 ? "+lane" : "",
+                action.target_vertical != VMode::Grounded ?
+                    (action.target_vertical == VMode::Jumping ? "+jump" : "+slide") : "",
+                action.timer, action.arrival_time);
+        }
+    }
+
     // ── TICK timers ──────────────────────────────────────────
     for (int i = 0; i < state->action_count; ++i) {
         state->actions[i].timer -= dt;
@@ -380,6 +419,17 @@ void test_player_system(entt::registry& reg, float dt) {
                     break;
                 }
             }
+            if (!zone_blocked) {
+                auto model_zone_view = reg.view<ObstacleTag, ObstacleScrollZ>(entt::exclude<ScoredTag>);
+                for (auto [ze, oz] : model_zone_view.each()) {
+                    if (ze == action.obstacle) continue; // don't self-block
+                    float zdist = p_pos.y - oz.z + p_vstate.y_offset;
+                    if (zdist >= -constants::COLLISION_MARGIN && zdist <= constants::COLLISION_MARGIN * 3.0f) {
+                        zone_blocked = true;
+                        break;
+                    }
+                }
+            }
         }
 
         // Would moving to target_lane cause a MISS on any CLOSER unresolved
@@ -458,6 +508,17 @@ void test_player_system(entt::registry& reg, float dt) {
                 if (zdist >= -constants::COLLISION_MARGIN && zdist <= constants::COLLISION_MARGIN * 3.0f) {
                     vert_zone_blocked = true;
                     break;
+                }
+            }
+            if (!vert_zone_blocked) {
+                auto model_zone_view = reg.view<ObstacleTag, ObstacleScrollZ>(entt::exclude<ScoredTag>);
+                for (auto [ze, oz] : model_zone_view.each()) {
+                    if (ze == action.obstacle) continue;
+                    float zdist = p_pos.y - oz.z + p_vstate.y_offset;
+                    if (zdist >= -constants::COLLISION_MARGIN && zdist <= constants::COLLISION_MARGIN * 3.0f) {
+                        vert_zone_blocked = true;
+                        break;
+                    }
                 }
             }
         }

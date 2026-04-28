@@ -1,6 +1,6 @@
 #include "all_systems.h"
 #include "../components/haptics.h"
-#include "../components/settings.h"
+#include "../util/settings.h"
 #include <magic_enum/magic_enum.hpp>
 #include <raylib.h>
 

@@ -3,9 +3,9 @@
 #include "../components/player.h"
 #include "../components/rendering.h"
 #include "../components/input_events.h"
-#include "../components/audio.h"
+#include "audio_types.h"
 #include "../components/haptics.h"
-#include "../components/settings.h"
+#include "../util/settings.h"
 #include "../components/rhythm.h"
 #include "../constants.h"
 

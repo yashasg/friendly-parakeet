@@ -19,12 +19,11 @@
 
 #include "components/game_state.h"
 #include "components/obstacle.h"
-#include "components/obstacle_data.h"
 #include "components/player.h"
 #include "components/rendering.h"
 #include "components/rhythm.h"
 #include "components/scoring.h"
-#include "components/settings.h"
+#include "util/settings.h"
 #include "components/song_state.h"
 #include "components/transform.h"
 #include "constants.h"
@@ -250,7 +249,11 @@ void spawn_aligned_player(entt::registry& reg, float y) {
 entt::entity spawn_obstacle(entt::registry& reg, ObstacleKind kind, float y) {
     auto e = reg.create();
     reg.emplace<ObstacleTag>(e);
-    reg.emplace<Position>(e, constants::LANE_X[1], y);
+    if (kind == ObstacleKind::LowBar || kind == ObstacleKind::HighBar) {
+        reg.emplace<ObstacleScrollZ>(e, y);
+    } else {
+        reg.emplace<Position>(e, constants::LANE_X[1], y);
+    }
     reg.emplace<Obstacle>(e, kind, int16_t{0});
     return e;
 }

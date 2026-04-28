@@ -4,7 +4,7 @@
 #include "../components/rhythm.h"
 #include "../components/transform.h"
 #include "../components/haptics.h"
-#include "../components/settings.h"
+#include "../util/settings.h"
 #include "../constants.h"
 #include <raymath.h>
 

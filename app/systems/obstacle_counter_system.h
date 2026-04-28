@@ -1,5 +1,6 @@
 #pragma once
 
+// Registry context singleton — not an entity component.
 // Maintained O(1) counter for live obstacle entities.
 // Incremented via on_construct<ObstacleTag> signal.
 // Decremented via on_destroy<ObstacleTag>  signal.

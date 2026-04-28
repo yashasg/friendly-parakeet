@@ -1,12 +1,11 @@
 #include <catch2/catch_test_macros.hpp>
 #include "test_helpers.h"
 #include "components/haptics.h"
-#include "components/settings.h"
+#include "util/settings.h"
 #include "components/player.h"
 #include "components/transform.h"
 #include "components/input_events.h"
 #include "components/obstacle.h"
-#include "components/obstacle_data.h"
 #include "constants.h"
 
 // ── HapticQueue unit tests ────────────────────────────────────────────────────

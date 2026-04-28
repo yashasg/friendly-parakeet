@@ -14,6 +14,12 @@ void scroll_system(entt::registry& reg, float dt) {
     // This prevents floating-point drift from desynchronizing collisions
     // with the beat grid. (See: "never use anything other than song position")
     if (song && song->playing) {
+        auto model_beat_view = reg.view<ObstacleTag, ObstacleScrollZ, BeatInfo>();
+        for (auto [entity, oz, info] : model_beat_view.each()) {
+            oz.z = constants::SPAWN_Y
+                 + (song->song_time - info.spawn_time) * song->scroll_speed;
+        }
+
         auto beat_view = reg.view<ObstacleTag, Position, BeatInfo>();
         for (auto [entity, pos, info] : beat_view.each()) {
             pos.y = constants::SPAWN_Y
@@ -22,6 +28,11 @@ void scroll_system(entt::registry& reg, float dt) {
     }
 
     // Non-rhythm entities (particles, popups, freeplay obstacles): dt-based
+    auto model_view = reg.view<ObstacleTag, ObstacleScrollZ, Velocity>(entt::exclude<BeatInfo>);
+    for (auto [entity, oz, vel] : model_view.each()) {
+        oz.z += vel.dy * dt;
+    }
+
     auto view = reg.view<Position, Velocity>(entt::exclude<BeatInfo>);
     for (auto [entity, pos, vel] : view.each()) {
         pos.x += vel.dx * dt;

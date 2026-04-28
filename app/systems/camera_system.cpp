@@ -5,7 +5,6 @@
 #include "../components/transform.h"
 #include "../components/player.h"
 #include "../components/obstacle.h"
-#include "../components/obstacle_data.h"
 #include "../components/particle.h"
 #include "../components/lifetime.h"
 #include "../components/scoring.h"
@@ -252,19 +251,20 @@ void game_camera_system(entt::registry& reg, float /*dt*/) {
                         ModelTransform{slab_matrix(pos.x-dsz.w/2, pos.y, dsz.w, constants::OBSTACLE_3D_HEIGHT, dsz.h),
                                        col, MeshType::Slab, 0};
                     break;
-                case ObstacleKind::LowBar:
-                    reg.get_or_emplace<ModelTransform>(entity) =
-                        ModelTransform{slab_matrix(0, pos.y, static_cast<float>(constants::SCREEN_W), constants::LOWBAR_3D_HEIGHT, dsz.h),
-                                       col, MeshType::Slab, 0};
-                    break;
-                case ObstacleKind::HighBar:
-                    reg.get_or_emplace<ModelTransform>(entity) =
-                        ModelTransform{slab_matrix(0, pos.y, static_cast<float>(constants::SCREEN_W), constants::HIGHBAR_3D_HEIGHT, dsz.h),
-                                       col, MeshType::Slab, 0};
-                    break;
                 default:
                     break;
             }
+        }
+    }
+
+    // 1b. Model-authority vertical bars: write scroll transform directly into
+    //     ObstacleModel.model.transform. Do NOT emit ModelTransform for these —
+    //     game_render_system draws them via the ObstacleModel + TagWorldPass path.
+    {
+        auto view = reg.view<ObstacleTag, ObstacleScrollZ, ObstacleModel, ObstacleParts>();
+        for (auto [entity, oz, om, pd] : view.each()) {
+            if (!om.owned) continue;  // headless: model not allocated, skip transform
+            om.model.transform = slab_matrix(pd.cx, oz.z + pd.cz, pd.width, pd.height, pd.depth);
         }
     }
 

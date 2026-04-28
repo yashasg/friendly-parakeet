@@ -268,3 +268,17 @@ Rhythm obstacles that escape the collision window (e.g. during jump peak) reach 
 **Commit:** `1c1bf08`
 
 **Closure-ready:** Yes — acceptance criteria fully met.
+
+### 2026 — Model Authority Revision (BF-1..BF-4)
+
+**Task:** Fix four Kujan blockers in the Model authority slice (original author Keaton, locked out).
+
+**BF-1 Fixed:** Replaced `LoadModelFromMesh` in `app/gameobjects/shape_obstacle.cpp` with manual raylib `Model` construction: `RL_MALLOC` for `meshes`, `materials`, `meshMaterial`; `GenMeshCube` directly into `model.meshes[0]`; `LoadMaterialDefault()` for `model.materials[0]`; `RL_CALLOC` zeroes `meshMaterial`. No `UploadMesh` call (raylib 5.5 GenMesh* already returns uploaded meshes).
+
+**BF-2 Fixed:** `camera_system.cpp` section 1b now queries `ObstacleModel + ObstacleParts + ObstacleScrollZ` and writes `om.model.transform = slab_matrix(pd.cx, oz.z + pd.cz, ...)` directly. No longer emits `ModelTransform` for LowBar/HighBar. `game_render_system.cpp` added `draw_owned_models()` that iterates `ObstacleModel + TagWorldPass` entities and calls `DrawMesh` per-mesh. Added `render_tags.h` include to render system.
+
+**BF-3 Fixed:** Deleted `app/systems/obstacle_archetypes.cpp` and `app/systems/obstacle_archetypes.h` (duplicate of `app/archetypes/obstacle_archetypes.*`). Updated stale includes in `beat_scheduler_system.cpp`, `obstacle_spawn_system.cpp`, and `tests/test_obstacle_archetypes.cpp` to canonical `archetypes/obstacle_archetypes.h` path.
+
+**BF-4 Fixed:** `ObstacleParts` replaced empty tag with POD geometry fields: `cx, cy, cz` (origin offsets), `width, height, depth` (world-space dimensions). `build_obstacle_model()` now populates all six fields at spawn.
+
+**Validation:** cmake configure clean, `shapeshifter_tests` 2975/2975 pass, `shapeshifter` binary builds clean, `git diff --check` clean, no `LoadModelFromMesh(` calls, no stale `systems/obstacle_archetypes` includes.

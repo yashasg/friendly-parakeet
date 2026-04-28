@@ -1699,3 +1699,115 @@ All four issues are closure-ready. One non-blocking hardening gap noted for #338
 **Verdict: ✅ APPROVED — closure-ready.**
 
 Non-blocking note: open a follow-on issue for `spawn_ui_elements` to `continue` + warn on unrecognized element types, to prevent silent orphan accumulation if new composite types are added to `kSupportedTypes` without a spawn branch.
+
+---
+
+### 2026-05-18 — Review: Model Authority Slice (Keaton/Baer — Slice 1 + Slice 2)
+
+**Scope:** Keaton implementation of ObstacleScrollZ bridge-state migration for LowBar/HighBar + ObstacleModel GPU RAII + Baer test coverage. Reviewed against: `kujan-model-slice-criteria.md` (B1–B9), `keyser-model-authority-audit.md` (HB-1–5), and user's stated requirements.
+
+**Verdict:** ❌ REJECTED — 4 blocking findings. Keaton locked out. Revision owner: McManus (primary) + Keyser (co-owner on BF-3/BF-4).
+
+**Blocking findings:**
+
+**BF-1 (HIGH) — `LoadModelFromMesh` used in `shape_obstacle.cpp:117`**
+- `Mesh mesh = GenMeshCube(...); Model model = LoadModelFromMesh(mesh);`
+- User requirement and criteria B2 explicitly prohibit this call in the obstacle path.
+- Required: manual `RL_MALLOC` + mesh array construction, material assignment, `meshMaterial` index init.
+
+**BF-2 (HIGH) — Render path does not use owned ObstacleModel; camera writes legacy ModelTransform**
+- `camera_system.cpp:263–274` emits `ModelTransform` (via `get_or_emplace`) for LowBar/HighBar from `ObstacleScrollZ`.
+- `game_render_system.cpp` has no `<ObstacleModel, TagWorldPass>` draw loop; `draw_meshes()` reads only `ModelTransform` + `ShapeMeshes`.
+- The owned mesh allocated by `build_obstacle_model()` is never drawn. `TagWorldPass` emplacement in `build_obstacle_model()` is dead code.
+- GPU resource is allocated, RAII-guarded, and destroyed — but never rendered. Violates criteria B5 and B7.
+
+**BF-3 (HIGH) — `app/systems/obstacle_archetypes.*` still present (ODR violation)**
+- CMakeLists.txt uses `file(GLOB SYSTEM_SOURCES app/systems/*.cpp)` AND `file(GLOB ARCHETYPE_SOURCES app/archetypes/*.cpp)`.
+- Both `app/systems/obstacle_archetypes.cpp` AND `app/archetypes/obstacle_archetypes.cpp` define `apply_obstacle_archetype`. Linker ODR violation.
+- These were intentionally deleted in a prior cleanup. `test_obstacle_archetypes.cpp` still includes `"systems/obstacle_archetypes.h"` — not the canonical `"archetypes/obstacle_archetypes.h"`.
+
+**BF-4 (MEDIUM) — `ObstacleParts` is an empty tag, not a geometry descriptor**
+- `rendering.h:105`: `struct ObstacleParts {};` — no geometry fields.
+- Criteria B4 requires typed descriptors (x, w, h, d per slab) alongside the Model so `scroll_system`/camera can recompute `model.transform` per frame without reading raw vertex buffers.
+- Without these, the correct render path (BF-2 fix) cannot reconstruct per-part origin matrices at scroll time.
+
+**What passes:**
+- LowBar/HighBar archetype correctly emits `ObstacleScrollZ`, not `Position` ✅
+- All lifecycle systems (scroll, cleanup, miss, collision, scoring) correctly implement the two-view bridge-state pattern ✅
+- `IsWindowReady()` headless guard in `build_obstacle_model()` correct ✅
+- `on_obstacle_model_destroy` owned-flag double-unload protection correct ✅
+- `ObstacleModel` RAII move semantics correct ✅
+- All 898 test assertions pass ✅
+
+**Test coverage note:**
+Tests correctly cover bridge-state contract for scroll, cleanup, miss, collision, scoring. They do NOT catch BF-1/BF-2 because the render path for owned models is never tested — tests only verify structural component presence/absence and score/miss/cleanup logic. Tests do not and cannot detect that the allocated GPU mesh is never drawn.
+
+**Learning:** "LoadModelFromMesh prohibition" and "owned-model render path completeness" are the two hardest gaps to detect from tests alone. Future criteria must include an explicit render-path integration test: a spawned LowBar with a mock GPU context must produce a `DrawMesh` call from `ObstacleModel.model`, not from `ShapeMeshes`. Without this test shape, the render path gap propagates through review.
+
+### 2026-05-18 — Re-Review: Model Authority Revision (McManus — BF-1..BF-4)
+
+**Scope:** McManus revision resolving the four Kujan blockers from the Keaton/Baer rejection.
+
+**Verdict:** ❌ REJECTED — 1 new blocking defect (RF-1) + 1 test gap (RF-2). McManus locked out. Revision owner: Keyser.
+
+**What was fixed correctly:**
+- **BF-1 ✅** — `LoadModelFromMesh` removed; manual `RL_MALLOC` construction correct; `UploadMesh` correctly omitted for raylib 5.5 (GenMesh* already uploads).
+- **BF-3 ✅** — `app/systems/obstacle_archetypes.*` deleted; stale includes gone; ODR resolved.
+- **BF-4 ✅** — `ObstacleParts` populated with 6 POD float fields; `static_assert(!std::is_empty_v<ObstacleParts>)` added.
+- **BF-2 render path ✅** — `draw_owned_models()` added in `game_render_system`; camera section 1b writes `om.model.transform`; no `ModelTransform` emitted for LowBar/HighBar. Draw paths are mutually exclusive.
+
+**Blocking finding RF-1 — Double-scale on owned mesh:**
+`build_obstacle_model()` creates `GenMeshCube(SCREEN_W_F, height, dsz->h)` — a pre-dimensioned mesh with vertices already spanning ±360 in X. The camera system then calls `slab_matrix(..., pd.width=720, pd.height=30, pd.depth=40)` which applies `MatrixScale(720, 30, 40)` to those already-dimensioned vertices. The shared slab mesh (`sm.slab = GenMeshCube(1.0f, 1.0f, 1.0f)`) shows the correct pattern: slab_matrix assumes a unit mesh. Fix: `GenMeshCube(1.0f, 1.0f, 1.0f)` in `build_obstacle_model()`. ObstacleParts width/height/depth values remain correct (they feed slab_matrix as intended dimensions).
+
+**Test gap RF-2 — BF-2 regression test doesn't validate scale components:**
+The test at `test_obstacle_model_slice.cpp:424–449` only checks that translation components are non-zero. It cannot detect double-scaling because any non-zero scaling still produces non-zero translations. Keyser must add a test that verifies diagonal scale entries (m0, m5, m10 for the final matrix) equal expected width/height/depth.
+
+**Learning:** Any time a mesh is pre-dimensioned (GenMeshCube with actual dimensions), a transform-only (translate-only) matrix must be used. Any time slab_matrix or another scale-compose function is used, the input mesh must be a unit mesh. Tests that verify transform "non-identity" are insufficient — they must verify the actual scale components against expected values to catch double-scaling.
+
+### 2026-04-28 — Gate Addendum: render_tags.h surface (cleanup slice, Keyser revision)
+
+**Scope:** Model authority cleanup slice — `app/components/render_tags.h` added as untracked file in violation of directive `copilot-directive-20260428T073749Z-no-render-tags-component.md`.
+
+**Verdict:** ❌ BLOCKING gate addendum written. Revision owner: Keyser.
+
+**Finding:**
+- `render_tags.h` is a net-new untracked component header containing `TagWorldPass`, `TagEffectsPass`, `TagHUDPass`.
+- Only `TagWorldPass` has production use (`draw_owned_models` view + `shape_obstacle.cpp` emplace). `TagEffectsPass` and `TagHUDPass` are test-only.
+- Directive explicitly prohibits new component headers during this cleanup pass.
+
+**Required action:**
+- Fold all three tag structs into the existing `app/components/rendering.h`.
+- Delete `render_tags.h`.
+- Update all include paths (production and test).
+- No new header files are acceptable.
+
+**Learning:** Cleanup slices are especially prone to surface accumulation: a single `TagWorldPass` needed for a render path view silently attracts a new component header. The cleanup directive must be checked at diff boundary, not just at feature boundary. A new `app/components/*.h` file in a "cleanup" diff is always a red flag requiring directive review before accepting.
+
+**Gate file:** `.squad/decisions/inbox/kujan-render-tags-gate.md`
+
+### 2026-04-28 — Component Cleanup Pass Review
+
+**Scope:** Full component cleanup batch — deletion of non-component headers, render_tags fold, ObstacleScrollZ migration (LowBar/HighBar), new entities layer.
+
+**Gate outcome:** ❌ REJECTED — build broken at time of inspection.
+
+**What was correct:**
+- `render_tags.h` properly folded into `rendering.h`; standalone deleted; includes cleaned up in production code
+- 7 non-component/wrong-location headers deleted from `app/components/`: `audio.h`, `music.h`, `obstacle_counter.h`, `obstacle_data.h`, `ring_zone.h`, `settings.h`, `shape_vertices.h`
+- `ObstacleScrollZ`, `ObstacleModel`, `ObstacleParts` are proper entity-data components added to existing headers (not new headers)
+- `TagWorldPass/EffectsPass/HUDPass` folded into `rendering.h` correctly
+- `app/systems/obstacle_archetypes.*` dedup removed; replaced by `app/entities/obstacle_entity.*`
+
+**Build errors found:**
+1. `app/entities/obstacle_entity.cpp` includes deleted `obstacle_data.h`
+2. `test_obstacle_archetypes.cpp` has 13 `beat_info` field initializer errors (old API)
+3. `test_obstacle_archetypes.cpp` includes deleted `archetypes/obstacle_archetypes.h`
+
+**Reviewer lockout:** Keaton locked out. Keyser owns the revision fix.
+
+**Still-deferred:** `ui_layout_cache.h` (context singleton in components/) — not part of this slice.
+
+**Learnings:**
+- Implementation agents modifying the working tree during review cause state inconsistency; always re-run `git diff HEAD` and the build at gate time, not just at inspection start
+- The "two-view migration" pattern (Position + ObstacleScrollZ dual views) is established as canonical for zero-regression ECS component migrations in this project
+- When deleting a component header, ALL transitive includes must be audited — not just the direct consumers in `app/components/` callers, but new files added in the same batch (like `entities/obstacle_entity.cpp`)

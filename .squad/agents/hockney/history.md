@@ -239,3 +239,20 @@ Pre-existing compile failures in `input_events.h`/`ButtonPressEvent` (from anoth
 ### Key patterns learned
 - `edit` tool changes to files do not always persist reliably; use Python or heredoc writes for multi-file or file-replacement operations.
 - Free functions in the same persistence namespace is the established pattern for helpers that operate on context state.
+
+## Session: render_tags.h cleanup (2026-04-28)
+
+### Problem
+`app/components/render_tags.h` was an untracked file violating the team directive against new component headers during cleanup passes. It defined three empty tag structs (`TagWorldPass`, `TagEffectsPass`, `TagHUDPass`) used by `game_render_system.cpp`, `shape_obstacle.cpp/.h`, and `tests/test_obstacle_model_slice.cpp`.
+
+### What I did
+- Folded all three tag structs into the end of `app/components/rendering.h` (no new header created).
+- Removed `#include "../components/render_tags.h"` from `game_render_system.cpp`, `shape_obstacle.h`, `shape_obstacle.cpp` (all already included `rendering.h`).
+- Updated `tests/test_obstacle_model_slice.cpp` Section B: replaced the `#include "components/render_tags.h"` with a comment pointing to `rendering.h`.
+- Deleted `app/components/render_tags.h`.
+- Build: zero warnings, zero errors. `[render_tags][model_slice]` tests: 71/71 pass.
+
+### Learnings
+- Cleanup passes are surface-accumulation risks: a single needed tag quietly creates a new component header. Check `git status` for `??` new files at diff boundary.
+- When a tag has no dependencies (pure empty structs), it can always be folded into an existing justified header rather than creating a new one.
+- The `owned` guard in `ObstacleModel` makes `TagWorldPass` redundant as a *view filter*, but the struct itself is kept for clarity and test coverage.

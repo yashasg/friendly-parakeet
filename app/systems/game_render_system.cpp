@@ -1,5 +1,5 @@
 #include "all_systems.h"
-#include "../components/shape_vertices.h"
+#include "../util/shape_vertices.h"
 #include "../components/camera.h"
 #include "../components/rendering.h"
 #include "../components/game_state.h"
@@ -152,6 +152,20 @@ static void draw_meshes(const entt::registry& reg) {
     }
 }
 
+// Draw Model-authority entities (LowBar, HighBar) that own their mesh arrays.
+// These entities carry ObstacleModel + TagWorldPass and are NOT in the ModelTransform pool.
+static void draw_owned_models(const entt::registry& reg) {
+    auto view = reg.view<const ObstacleModel, const TagWorldPass>();
+    for (auto [entity, om] : view.each()) {
+        if (!om.owned || !om.model.meshes) continue;
+        for (int i = 0; i < om.model.meshCount; ++i) {
+            DrawMesh(om.model.meshes[i],
+                     om.model.materials[om.model.meshMaterial[i]],
+                     om.model.transform);
+        }
+    }
+}
+
 void game_render_system(const entt::registry& reg, float /*alpha*/) {
     auto& gs = reg.ctx().get<GameState>();
     auto& camera = reg.ctx().get<GameCamera>().cam;
@@ -171,6 +185,7 @@ void game_render_system(const entt::registry& reg, float /*alpha*/) {
         rlDrawRenderBatchActive();
         rlDisableDepthTest();
         draw_meshes(reg);
+        draw_owned_models(reg);
         rlDrawRenderBatchActive();
         rlEnableDepthTest();
     }

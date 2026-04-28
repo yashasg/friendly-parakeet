@@ -1,15 +1,13 @@
 #include "all_systems.h"
-#include "obstacle_archetypes.h"
+#include "../entities/obstacle_entity.h"
 #include "../components/game_state.h"
 #include "../components/obstacle.h"
-#include "../components/obstacle_data.h"
 #include "../components/transform.h"
 #include "../components/rendering.h"
 #include "../components/difficulty.h"
 #include "../components/player.h"
 #include "../components/rhythm.h"
 #include "../components/rng.h"
-#include "../gameobjects/shape_obstacle.h"
 #include "../constants.h"
 #include <random>
 
@@ -39,11 +37,6 @@ void obstacle_spawn_system(entt::registry& reg, float dt) {
 
     int kind_i = std::uniform_int_distribution<int>(0, max_kind)(rng.engine);
     auto kind  = static_cast<ObstacleKind>(kind_i);
-
-    auto obstacle = reg.create();
-    reg.emplace<ObstacleTag>(obstacle);
-    reg.emplace<Velocity>(obstacle, 0.0f, config.scroll_speed);
-    reg.emplace<DrawLayer>(obstacle, Layer::Game);
 
     int lane = std::uniform_int_distribution<int>(0, 2)(rng.engine);
 
@@ -87,15 +80,14 @@ void obstacle_spawn_system(entt::registry& reg, float dt) {
         mask = uint8_t(uint8_t(1 << lane) | uint8_t(1 << ((lane + 1) % 3)));
     }
 
-    apply_obstacle_archetype(reg, obstacle, {
+
+    spawn_obstacle(reg, {
         resolved_kind,
         x_pos,
         constants::SPAWN_Y,
         shape,
         mask,
-        req_lane_val
+        req_lane_val,
+        config.scroll_speed
     });
-
-    // Spawn visual mesh children for multi-slab obstacle types
-    spawn_obstacle_meshes(reg, obstacle);
 }

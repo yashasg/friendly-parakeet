@@ -5,7 +5,7 @@
 
 #include "components/scoring.h"
 #include "components/song_state.h"
-#include "components/settings.h"
+#include "util/settings.h"
 #include "systems/ui_source_resolver.h"
 
 TEST_CASE("UI source resolver: resolves ScoreState integer sources", "[ui]") {

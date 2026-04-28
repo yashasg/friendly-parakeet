@@ -90,6 +90,7 @@ file(GLOB SYSTEM_SOURCES app/systems/*.cpp)
 file(GLOB GAMEOBJECT_SOURCES app/gameobjects/*.cpp)
 file(GLOB UTIL_SOURCES app/util/*.cpp)
 file(GLOB ARCHETYPE_SOURCES app/archetypes/*.cpp)
+file(GLOB ENTITY_SOURCES app/entities/*.cpp)
 # Exclude render system files from the library (requires raylib renderer)
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "game_render_system\\.cpp$")
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "ui_render_system\\.cpp$")
@@ -99,7 +100,7 @@ list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "text_renderer\\.cpp$")
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "camera_system\\.cpp$")
 list(FILTER UTIL_SOURCES EXCLUDE REGEX "file_logger\\.cpp$")
 
-add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES} ${GAMEOBJECT_SOURCES} ${UTIL_SOURCES} ${ARCHETYPE_SOURCES})
+add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES} ${GAMEOBJECT_SOURCES} ${UTIL_SOURCES} ${ARCHETYPE_SOURCES} ${ENTITY_SOURCES})
 target_include_directories(shapeshifter_lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/app
     ${CMAKE_BINARY_DIR}/generated
@@ -154,6 +155,7 @@ target_link_libraries(shapeshifter PRIVATE
 # ── Platform link dependencies for raylib (RGFW backend) ─────
 # RGFW uses native platform APIs directly — no GLFW.
 if(APPLE)
+    target_link_options(shapeshifter PRIVATE "LINKER:-no_warn_duplicate_libraries")
     target_link_libraries(shapeshifter PRIVATE
         "-framework Cocoa"
         "-framework OpenGL"
@@ -393,6 +395,7 @@ elseif(EMSCRIPTEN)
 endif()
 
 if(APPLE)
+    target_link_options(shapeshifter_tests PRIVATE "LINKER:-no_warn_duplicate_libraries")
     target_link_libraries(shapeshifter_tests PRIVATE
         "-framework Cocoa"
         "-framework OpenGL"

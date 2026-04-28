@@ -12,6 +12,19 @@ void miss_detection_system(entt::registry& reg, float /*dt*/) {
     if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
 
     auto* gos = reg.ctx().find<GameOverState>();  // #309: hoisted above loop
+
+    auto model_view = reg.view<ObstacleTag, Obstacle, ObstacleScrollZ>(entt::exclude<ScoredTag>);
+    for (auto [entity, obs, oz] : model_view.each()) {
+        if (oz.z <= constants::DESTROY_Y) continue;
+
+        reg.emplace<MissTag>(entity);
+        reg.emplace<ScoredTag>(entity);
+
+        if (gos && gos->cause == DeathCause::None) {
+            gos->cause = DeathCause::HitABar;
+        }
+    }
+
     auto view = reg.view<ObstacleTag, Obstacle, Position>(entt::exclude<ScoredTag>);
     for (auto [entity, obs, pos] : view.each()) {
         if (pos.y <= constants::DESTROY_Y) continue;

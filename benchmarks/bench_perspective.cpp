@@ -2,7 +2,7 @@
 #include <catch2/benchmark/catch_benchmark.hpp>
 #include <catch2/benchmark/catch_optimizer.hpp>
 
-#include "components/shape_vertices.h"
+#include "util/shape_vertices.h"
 #include "constants.h"
 
 // ── Camera3D rendering benchmarks ───────────────────────────

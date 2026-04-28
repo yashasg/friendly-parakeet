@@ -5,9 +5,9 @@
 #include "../components/transform.h"
 #include "../components/rendering.h"
 #include "../components/lifetime.h"
-#include "../components/audio.h"
+#include "audio_types.h"
 #include "../components/haptics.h"
-#include "../components/settings.h"
+#include "../util/settings.h"
 #include "../components/difficulty.h"
 #include "../components/rhythm.h"
 #include "../constants.h"
@@ -88,6 +88,18 @@ void scoring_system(entt::registry& reg, float dt) {
             HitRecord r;
             r.e   = e;
             r.pos = pos;
+            r.obs = obs;
+            auto* tg = reg.try_get<TimingGrade>(e);
+            if (tg) { r.has_timing = true; r.timing = *tg; }
+            hit_buf.push_back(r);
+        }
+
+        auto model_hit_view = reg.view<ObstacleTag, ScoredTag, Obstacle, ObstacleScrollZ>(
+            entt::exclude<MissTag, Position>);
+        for (auto [e, obs, oz] : model_hit_view.each()) {
+            HitRecord r;
+            r.e   = e;
+            r.pos = Position{constants::SCREEN_W_F * 0.5f, oz.z};
             r.obs = obs;
             auto* tg = reg.try_get<TimingGrade>(e);
             if (tg) { r.has_timing = true; r.timing = *tg; }

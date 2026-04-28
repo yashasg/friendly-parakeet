@@ -1,8 +1,6 @@
 #include "session_logger.h"
 #include "../components/obstacle.h"
-#include "../components/obstacle_data.h"
 #include "../components/rhythm.h"
-#include "../components/ring_zone.h"
 #include "../components/transform.h"
 #include "../components/scoring.h"
 #include "../components/game_state.h"
@@ -104,7 +102,6 @@ void session_log_on_obstacle_spawn(entt::registry& reg, entt::entity entity) {
     int beat_idx = beat ? beat->beat_index : -1;
 
     auto* req = reg.try_get<RequiredShape>(entity);
-    auto* pos = reg.try_get<Position>(entity);
 
     int8_t lane = 1;
     auto* rlane = reg.try_get<RequiredLane>(entity);
@@ -116,17 +113,6 @@ void session_log_on_obstacle_spawn(entt::registry& reg, entt::entity entity) {
         "OBSTACLE_SPAWN beat=%d arrival=%.3f kind=%s shape=%s lane=%d",
         beat_idx, arrival, ToString(obs->kind),
         req ? ToString(req->shape) : "-", lane);
-
-    // Emplace RingZoneTracker only on obstacles that have a ring visual
-    if (req) {
-        reg.emplace<RingZoneTracker>(entity);
-
-        float dist = pos ? (constants::PLAYER_Y - pos->y) : constants::APPROACH_DIST;
-        session_log_write(*log, t, "GAME",
-            "RING_APPEAR shape=%s obstacle=%u dist=%.0fpx",
-            ToString(req->shape),
-            static_cast<unsigned>(entt::to_integral(entity)), dist);
-    }
 }
 
 // ── EnTT signal: obstacle scored (collision resolved) ────────

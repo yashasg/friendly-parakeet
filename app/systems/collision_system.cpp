@@ -1,6 +1,5 @@
 #include "all_systems.h"
 #include "../components/obstacle.h"
-#include "../components/obstacle_data.h"
 #include "../components/player.h"
 #include "../components/transform.h"
 #include "../components/rendering.h"
@@ -22,11 +21,11 @@ Vector2 player_timing_point(const Position& pos, const VerticalState& vstate) {
 }
 
 bool player_in_timing_window(const Position& player_pos,
-                             const VerticalState& vstate,
-                             const Position& obstacle_pos) {
+                              const VerticalState& vstate,
+                              float obstacle_z) {
     Rectangle timing_window = {
         0.0f,
-        obstacle_pos.y - constants::COLLISION_MARGIN,
+        obstacle_z - constants::COLLISION_MARGIN,
         1.0f,
         constants::COLLISION_MARGIN * 2.0f
     };
@@ -59,9 +58,9 @@ void collision_system(entt::registry& reg, float /*dt*/) {
     // resolve: tag entity as scored (cleared) or missed.
     // kind is passed by the caller — no try_get needed since each per-kind
     // loop already holds the Obstacle component.
-    auto resolve = [&](entt::entity entity, const Position& obs_pos, bool cleared,
+    auto resolve = [&](entt::entity entity, float obs_z, bool cleared,
                        ObstacleKind kind) {
-        if (!player_in_timing_window(p_pos, p_vstate, obs_pos)) return;
+        if (!player_in_timing_window(p_pos, p_vstate, obs_z)) return;
 
         if (cleared) {
             // In rhythm mode, compute timing grade
@@ -133,7 +132,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
         for (auto [e, pos, obs, req] : view.each()) {
             bool shape_match = (p_shape.current == req.shape) && (p_shape.current != Shape::Hexagon);
             bool lane_match  = player_overlaps_lane(p_pos, pos);
-            resolve(e, pos, shape_match && lane_match, obs.kind);
+            resolve(e, pos.y, shape_match && lane_match, obs.kind);
         }
     }
 
@@ -142,16 +141,16 @@ void collision_system(entt::registry& reg, float /*dt*/) {
         auto view = reg.view<ObstacleTag, Position, Obstacle, BlockedLanes>(
             entt::exclude<ScoredTag, RequiredShape>);
         for (auto [e, pos, obs, blocked] : view.each()) {
-            resolve(e, pos, !((blocked.mask >> p_lane.current) & 1), obs.kind);
+            resolve(e, pos.y, !((blocked.mask >> p_lane.current) & 1), obs.kind);
         }
     }
 
     // LowBar / HighBar: RequiredVAction
     {
-        auto view = reg.view<ObstacleTag, Position, Obstacle, RequiredVAction>(
+        auto view = reg.view<ObstacleTag, ObstacleScrollZ, Obstacle, RequiredVAction>(
             entt::exclude<ScoredTag>);
-        for (auto [e, pos, obs, req_v] : view.each()) {
-            resolve(e, pos, p_vstate.mode == req_v.action, obs.kind);
+        for (auto [e, oz, obs, req_v] : view.each()) {
+            resolve(e, oz.z, p_vstate.mode == req_v.action, obs.kind);
         }
     }
 
@@ -162,7 +161,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
         for (auto [e, pos, obs, req, blocked] : view.each()) {
             bool shape_ok = (p_shape.current == req.shape) && (p_shape.current != Shape::Hexagon);
             bool lane_ok  = !((blocked.mask >> p_lane.current) & 1);
-            resolve(e, pos, shape_ok && lane_ok, obs.kind);
+            resolve(e, pos.y, shape_ok && lane_ok, obs.kind);
         }
     }
 
@@ -173,7 +172,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
         for (auto [e, pos, obs, req, rlane] : view.each()) {
             bool shape_ok = (p_shape.current == req.shape) && (p_shape.current != Shape::Hexagon);
             bool lane_ok  = (p_lane.current == rlane.lane);
-            resolve(e, pos, shape_ok && lane_ok, obs.kind);
+            resolve(e, pos.y, shape_ok && lane_ok, obs.kind);
         }
     }
 
@@ -183,7 +182,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
         auto view = reg.view<ObstacleTag, Position, Obstacle>(
             entt::exclude<ScoredTag, RequiredShape, BlockedLanes, RequiredLane, RequiredVAction>);
         for (auto [e, pos, obs] : view.each()) {
-            if (!player_in_timing_window(p_pos, p_vstate, pos)) continue;
+            if (!player_in_timing_window(p_pos, p_vstate, pos.y)) continue;
             bool on_same_lane = player_overlaps_lane(p_pos, pos);
             if (on_same_lane && p_lane.target < 0) {
                 int8_t delta = (obs.kind == ObstacleKind::LanePushLeft) ? -1 : 1;

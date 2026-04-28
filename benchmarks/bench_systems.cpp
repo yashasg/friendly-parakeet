@@ -5,7 +5,7 @@
 #include "components/transform.h"
 #include "components/player.h"
 #include "components/obstacle.h"
-#include "components/obstacle_data.h"
+#include "components/obstacle.h"
 #include "components/input.h"
 #include "components/input_events.h"
 #include "components/game_state.h"
@@ -14,7 +14,7 @@
 #include "components/rendering.h"
 #include "components/lifetime.h"
 #include "components/particle.h"
-#include "components/audio.h"
+#include "systems/audio_types.h"
 #include "constants.h"
 #include "systems/all_systems.h"
 

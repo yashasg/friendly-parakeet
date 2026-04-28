@@ -485,3 +485,73 @@ a final `else` for unknown types with a `[WARN]` stderr log.
 
 **Tests:** 8 new regression tests tagged `[issue347]` in `test_ui_spawn_malformed.cpp`.
 Full suite: 2854 assertions, all pass.
+
+### 2026-05-18 — Model Authority Revision Check (post-Kujan rejection)
+
+**Status:** COMPLETE — read-only audit, no production code changes.
+
+**Scope:** Produced correction checklist for McManus after Kujan rejected Keaton's model authority slice. Verified all four blocking findings (BF-1..BF-4) are unresolved in HEAD ef7767d.
+
+**Key findings confirmed:**
+- BF-1: `LoadModelFromMesh` still at `shape_obstacle.cpp:117` — manual mesh array construction not done.
+- BF-2: `camera_system.cpp:267–273` (section 1b) still emits `ModelTransform` for LowBar/HighBar; `game_render_system` still has no owned-model draw loop; `TagWorldPass` emplacement is dead code.
+- BF-3: ODR violation confirmed — `app/systems/obstacle_archetypes.cpp` and `app/archetypes/obstacle_archetypes.cpp` both define `apply_obstacle_archetype`; `tests/test_obstacle_archetypes.cpp:3` still includes stale `systems/` path.
+- BF-4: `struct ObstacleParts {}` is still empty in `rendering.h:105`.
+
+**Additional hazard called out:** `camera_system.cpp:286` (`MeshChild` section) reads `Position` directly from parent — not in scope for this slice, flagged as P2 item for McManus awareness.
+
+**Do not widen scope:** Position emission for non-LowBar/HighBar kinds is correct; section 1a (`ModelTransform` via Position) must stay for P1 entities.
+
+**Artifact:** `.squad/decisions/inbox/keyser-authority-revision-check.md`
+
+### 2026-05-19 — Double-Scale Fix: RF-1 + RF-2 (post-Kujan rejection of McManus revision)
+
+**Status:** COMPLETE — validation passed, not committed per task spec.
+
+**Scope:** Two Kujan blocking findings from the McManus authority revision review.
+
+**RF-1 (CRITICAL) — Unit cube mesh in build_obstacle_model()**
+- File: `app/gameobjects/shape_obstacle.cpp:124`
+- Changed: `GenMeshCube(constants::SCREEN_W_F, height, dsz->h)` → `GenMeshCube(1.0f, 1.0f, 1.0f)`
+- `slab_matrix` is a unit-cube scaler — identical to the shared slab pattern in `camera::ShapeMeshes.slab`. The pre-scaled mesh caused a double-scale (dimensions squared at render time).
+- `ObstacleParts.width/height/depth` unchanged — they correctly feed `slab_matrix` as intended world dimensions.
+
+**RF-2 (HIGH) — Scale diagonal test for slab_matrix**
+- File: `tests/test_obstacle_model_slice.cpp`
+- Replaced the weak "non-zero translation" BF-2 test with a proper `slab_matrix` scale-diagonal assertion.
+- Added `#include <raymath.h>` to test file.
+- New test replicates the `slab_matrix` formula inline (`MatrixMultiply(MatrixScale(w,h,d), MatrixTranslate(...))`) — GPU-free.
+- Asserts `mat.m0 == w`, `mat.m5 == h`, `mat.m10 == d` (scale diagonal equals world dimensions exactly once).
+- Also asserts `mat.m12/m13/m14 != 0` for non-identity transform confirmation.
+- Correction: raylib Matrix uses column-major layout; translation is in `m12/m13/m14`, NOT `m3/m7/m11`.
+
+**Validation:**
+- `cmake -B build -S . -Wno-dev`: clean
+- `cmake --build build --target shapeshifter_tests`: 0 errors, 0 warnings
+- `./build/shapeshifter_tests "~[bench]" --reporter compact`: 2978 assertions, 885 tests, all pass
+- `cmake --build build --target shapeshifter`: clean
+- `git diff --check`: clean (exit 0)
+- No executable `LoadModelFromMesh(` in app/ or tests/
+- No stale `"systems/obstacle_archetypes"` includes
+
+**Learning:** raylib Matrix column-major storage: translation is in `m12/m13/m14` (not `m3/m7/m11`). Scale diagonal is `m0, m5, m10`. The `slab_matrix` pattern requires a unit cube mesh — any pre-scaled mesh will double the dimensions at render time.
+
+### 2026-05-19 — Component Cleanup Audit (ECS Boundary Map)
+
+**Status:** COMPLETE — read-only audit, no code changes.
+
+**Scope:** Full ECS boundary audit of suspect component headers flagged by the user.
+
+**Key findings:**
+
+- `app/components/audio.h` and `app/components/music.h` are EXACT BYTE-FOR-BYTE DUPLICATES of `app/systems/audio_types.h` and `app/systems/music_context.h`. Zero consumers include the components/ versions. These are dead files — DELETE both.
+- `app/components/render_tags.h` does NOT exist. The tags (TagWorldPass/TagEffectsPass/TagHUDPass) already live in `rendering.h`. No action needed; directive is "do not re-create this file."
+- `app/components/obstacle_counter.h` and `app/components/obstacle_data.h`: valid ECS entity components (ObstacleCounter, RequiredShape, BlockedLanes, RequiredLane, RequiredVAction) but split across too many files. Both must be MERGED into `obstacle.h` and their standalone files deleted.
+- `app/components/ring_zone.h` (`RingZoneTracker`): a real entity component still in active use by ring_zone_log_system and session_logger. Directive says remove but it wasn't done. Decision: MERGE into obstacle.h and delete ring_zone.h; ring_zone_log_system removal is a separate scope call.
+- `app/components/settings.h`: NOT entity data. Stored in reg.ctx(). Move to app/util/ alongside settings_persistence.h.
+- `app/components/shape_vertices.h`: constexpr math constants, NOT a component. Only used by game_render_system.cpp. Move to app/util/.
+- `app/components/ui_layout_cache.h`: reg.ctx() layout cache structs. Directive says not needed. Currently active in three UI systems. Relocate to app/systems/ as a step toward eventual elimination.
+
+**Learning:** Model-slice work introduced DUPLICATE component files (audio.h ≡ audio_types.h, music.h ≡ music_context.h). Components/ folder accumulated six files that are not entity components: two dead duplicates, two context singletons misrouted to components/, one math utility, one layout cache. Pattern: when migration work runs in subagents without a post-pass audit, files proliferate in components/ without checks.
+
+**Artifact:** `.squad/decisions/inbox/keyser-component-cleanup-audit.md`

@@ -1,9 +1,9 @@
 #include "shape_obstacle.h"
 #include "../components/obstacle.h"
-#include "../components/obstacle_data.h"
 #include "../components/transform.h"
 #include "../components/rendering.h"
 #include "../constants.h"
+#include <raymath.h>
 
 static entt::entity add_slab_child(entt::registry& reg, entt::entity parent,
                                    float x, float w, float d, float h, Color tint) {
@@ -14,8 +14,8 @@ static entt::entity add_slab_child(entt::registry& reg, entt::entity parent,
 }
 
 static entt::entity add_shape_child(entt::registry& reg, entt::entity parent,
-                                    Shape shape, float cx, float z_offset,
-                                    float size, Color tint) {
+                                     Shape shape, float cx, float z_offset,
+                                     float size, Color tint) {
     int idx = static_cast<int>(shape);
     auto e = reg.create();
     reg.emplace<MeshChild>(e, MeshChild{parent, cx, z_offset, size, 0, 0, tint,
@@ -24,14 +24,29 @@ static entt::entity add_shape_child(entt::registry& reg, entt::entity parent,
     return e;
 }
 
+static bool bar_height_for(ObstacleKind kind, float& height) {
+    switch (kind) {
+        case ObstacleKind::LowBar:
+            height = constants::LOWBAR_3D_HEIGHT;
+            return true;
+        case ObstacleKind::HighBar:
+            height = constants::HIGHBAR_3D_HEIGHT;
+            return true;
+        default:
+            return false;
+    }
+}
+
 void spawn_obstacle_meshes(entt::registry& reg, entt::entity logical) {
     auto& obs = reg.get<Obstacle>(logical);
-    auto& pos = reg.get<Position>(logical);
+    const auto* pos_ptr = reg.try_get<Position>(logical);
     auto& col = reg.get<Color>(logical);
     auto& dsz = reg.get<DrawSize>(logical);
 
     switch (obs.kind) {
         case ObstacleKind::ShapeGate: {
+            if (!pos_ptr) break;
+            const auto& pos = *pos_ptr;
             add_slab_child(reg, logical, 0, pos.x-50, dsz.h,
                            constants::OBSTACLE_3D_HEIGHT, col);
             add_slab_child(reg, logical, pos.x+50,
@@ -86,6 +101,59 @@ void spawn_obstacle_meshes(entt::registry& reg, entt::entity logical) {
         default:
             break;
     }
+}
+
+void build_obstacle_model(entt::registry& reg, entt::entity logical) {
+    if (!IsWindowReady()) return;
+
+    auto* obs = reg.try_get<Obstacle>(logical);
+    auto* dsz = reg.try_get<DrawSize>(logical);
+    if (!obs || !dsz) return;
+
+    float height = 0.0f;
+    if (!bar_height_for(obs->kind, height)) return;
+
+    // Manual model construction — never use LoadModelFromMesh (opaque + GPU-implicit).
+    // raylib 5.5: GenMeshCube already returns an uploaded mesh; no UploadMesh needed.
+    Model model = {};
+    model.transform     = MatrixIdentity();
+    model.meshCount     = 1;
+    model.meshes        = static_cast<Mesh*>(RL_MALLOC(sizeof(Mesh)));
+    model.meshes[0]     = GenMeshCube(1.0f, 1.0f, 1.0f);  // unit cube; slab_matrix scales to world dims
+    model.materialCount = 1;
+    model.materials     = static_cast<Material*>(RL_MALLOC(sizeof(Material)));
+    model.materials[0]  = LoadMaterialDefault();
+    model.meshMaterial  = static_cast<int*>(RL_CALLOC(model.meshCount, sizeof(int)));
+    // meshMaterial[0] == 0 via RL_CALLOC
+
+    if (reg.all_of<ObstacleModel>(logical)) {
+        on_obstacle_model_destroy(reg, logical);
+        reg.remove<ObstacleModel>(logical);
+    }
+    auto& om = reg.emplace<ObstacleModel>(logical);
+    om.model = model;
+    om.owned = true;
+
+    auto& pd    = reg.get_or_emplace<ObstacleParts>(logical);
+    pd.cx       = 0.0f;
+    pd.cy       = 0.0f;
+    pd.cz       = 0.0f;
+    pd.width    = constants::SCREEN_W_F;
+    pd.height   = height;
+    pd.depth    = dsz->h;
+
+    reg.get_or_emplace<TagWorldPass>(logical);
+}
+
+void on_obstacle_model_destroy(entt::registry& reg, entt::entity entity) {
+    auto* om = reg.try_get<ObstacleModel>(entity);
+    if (!om || !om->owned) return;
+
+    if (om->model.meshes) {
+        UnloadModel(om->model);
+    }
+    om->model = Model{};
+    om->owned = false;
 }
 
 // on_destroy listener: destroy MeshChild entities owned by this parent.

@@ -1,12 +1,10 @@
 #include "all_systems.h"
-#include "obstacle_archetypes.h"
+#include "../entities/obstacle_entity.h"
 #include "../components/game_state.h"
 #include "../components/rhythm.h"
 #include "../components/obstacle.h"
-#include "../components/obstacle_data.h"
 #include "../components/transform.h"
 #include "../components/rendering.h"
-#include "../gameobjects/shape_obstacle.h"
 #include "../constants.h"
 
 void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
@@ -47,12 +45,6 @@ void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
                 - (max_start_y - constants::SPAWN_Y) / song->scroll_speed;
         }
 
-        auto obstacle = reg.create();
-        reg.emplace<ObstacleTag>(obstacle);
-        reg.emplace<Velocity>(obstacle, 0.0f, song->scroll_speed);
-        reg.emplace<DrawLayer>(obstacle, Layer::Game);
-        reg.emplace<BeatInfo>(obstacle, entry.beat_index, beat_time, effective_spawn_time);
-
         // Compute x: LaneBlock derives it from blocked_mask; lane-based kinds
         // use entry.lane directly; bar/gate types default to center lane.
         float x_pos = constants::LANE_X[1];
@@ -68,17 +60,16 @@ void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
             x_pos = constants::LANE_X[display_lane];
         }
 
-        apply_obstacle_archetype(reg, obstacle, {
+        const BeatInfo bi{entry.beat_index, beat_time, effective_spawn_time};
+        spawn_obstacle(reg, {
             entry.kind,
             x_pos,
             start_y,
             entry.shape,
             entry.blocked_mask,
-            entry.lane
-        });
-
-        // Spawn visual mesh children for multi-slab obstacle types
-        spawn_obstacle_meshes(reg, obstacle);
+            entry.lane,
+            song->scroll_speed
+        }, &bi);
 
         song->next_spawn_idx++;
     }

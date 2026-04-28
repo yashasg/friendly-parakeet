@@ -3,7 +3,6 @@
 #include "../components/transform.h"
 #include "../components/player.h"
 #include "../components/obstacle.h"
-#include "../components/obstacle_data.h"
 #include "../components/rendering.h"
 #include "../components/scoring.h"
 #include "../components/rhythm.h"

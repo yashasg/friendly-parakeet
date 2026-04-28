@@ -1,5 +1,5 @@
 #include "all_systems.h"
-#include "../components/audio.h"
+#include "audio_types.h"
 
 #include <raylib.h>
 

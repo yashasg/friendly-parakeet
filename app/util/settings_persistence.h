@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../components/settings.h"
+#include "settings.h"
 #include <nlohmann/json.hpp>
 #include <filesystem>
 
