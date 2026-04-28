@@ -301,3 +301,16 @@ Rhythm obstacles that escape the collision window (e.g. during jump peak) reach 
 - `ObstacleSpawnParams` is a plain aggregate with all-defaulted trailing fields, same pattern as the old `ObstacleArchetypeInput`.
 
 **Build/Tests:** Zero warnings. 2983 assertions in 904 test cases — all pass.
+
+---
+
+### 2026-04-28 — Team Session Closure: ECS Cleanup Approval
+
+**Status:** APPROVED ✅ — Deliverable logged; ready for merge.
+
+Scribe documentation:
+- Orchestration log written: .squad/orchestration-log/2026-04-28T08-12-03Z-mcmanus.md
+- Team decision inbox merged into .squad/decisions.md
+- Session log: .squad/log/2026-04-28T08-12-03Z-ecs-cleanup-approval.md
+
+Next: Await merge approval.

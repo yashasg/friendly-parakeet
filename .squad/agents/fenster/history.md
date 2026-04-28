@@ -147,3 +147,16 @@ Checked all existing issues #44–#220 for overlap before filing.
 - Deleted `app/components/obstacle_data.h` — folded `RequiredShape`, `BlockedLanes`, `RequiredLane`, `RequiredVAction` into `app/components/obstacle.h` (added `#include "player.h"` there for Shape/VMode types).
 - Benchmarks dir also had stale includes — fixed bench_systems.cpp and bench_perspective.cpp.
 - Build and all 2978 test assertions pass after cleanup.
+
+---
+
+### 2026-04-28 — Team Session Closure: ECS Cleanup Approval
+
+**Status:** APPROVED ✅ — Deliverable logged; ready for merge.
+
+Scribe documentation:
+- Orchestration log written: .squad/orchestration-log/2026-04-28T08-12-03Z-fenster.md
+- Team decision inbox merged into .squad/decisions.md
+- Session log: .squad/log/2026-04-28T08-12-03Z-ecs-cleanup-approval.md
+
+Next: Await merge approval.

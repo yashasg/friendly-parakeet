@@ -737,3 +737,16 @@ ctest --test-dir build -R "shipped beatmaps"
 **Coverage finding:** `test_model_authority_gaps.cpp` and `test_obstacle_model_slice.cpp` Section C already provide comprehensive dual-view bridge-state coverage for all 5 lifecycle systems. No new runtime tests were necessary.
 
 **Key pattern:** Static_asserts for component RAII + layout contracts belong in `test_obstacle_model_slice.cpp` Section D alongside BF-4.
+
+---
+
+### 2026-04-28 — Team Session Closure: ECS Cleanup Approval
+
+**Status:** APPROVED ✅ — Deliverable logged; ready for merge.
+
+Scribe documentation:
+- Orchestration log written: .squad/orchestration-log/2026-04-28T08-12-03Z-baer.md
+- Team decision inbox merged into .squad/decisions.md
+- Session log: .squad/log/2026-04-28T08-12-03Z-ecs-cleanup-approval.md
+
+Next: Await merge approval.

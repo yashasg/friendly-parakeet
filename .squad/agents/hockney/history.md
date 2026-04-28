@@ -256,3 +256,16 @@ Pre-existing compile failures in `input_events.h`/`ButtonPressEvent` (from anoth
 - Cleanup passes are surface-accumulation risks: a single needed tag quietly creates a new component header. Check `git status` for `??` new files at diff boundary.
 - When a tag has no dependencies (pure empty structs), it can always be folded into an existing justified header rather than creating a new one.
 - The `owned` guard in `ObstacleModel` makes `TagWorldPass` redundant as a *view filter*, but the struct itself is kept for clarity and test coverage.
+
+---
+
+### 2026-04-28 — Team Session Closure: ECS Cleanup Approval
+
+**Status:** APPROVED ✅ — Deliverable logged; ready for merge.
+
+Scribe documentation:
+- Orchestration log written: .squad/orchestration-log/2026-04-28T08-12-03Z-hockney.md
+- Team decision inbox merged into .squad/decisions.md
+- Session log: .squad/log/2026-04-28T08-12-03Z-ecs-cleanup-approval.md
+
+Next: Await merge approval.

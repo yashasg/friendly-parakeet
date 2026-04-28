@@ -247,3 +247,16 @@ build-wasm   ─┘
 - When a new `app/entities/` (or any new source dir) is created, it MUST be added to CMakeLists `file(GLOB ...)` and the `add_library` call. CMake GLOBs are dir-scoped; new dirs are invisible until explicitly added.
 - `-Wmissing-field-initializers` fires for ALL positional aggregate inits shorter than the struct's field count, even when omitted fields have default member initializers. Use C++20 designated initializers (`{.kind = ..., .x = ...}`) for structs with optional/defaulted trailing fields — they suppress the warning and document intent.
 - `app/components/` is exclusively for types emplaced on entities via `reg.emplace<T>()`. Context singletons live next to their wiring code (`obstacle_counter_system.h`). Non-component utility types live in `app/util/` or `app/systems/`.
+
+---
+
+### 2026-04-28 — Team Session Closure: ECS Cleanup Approval
+
+**Status:** APPROVED ✅ — Deliverable logged; ready for merge.
+
+Scribe documentation:
+- Orchestration log written: .squad/orchestration-log/2026-04-28T08-12-03Z-kobayashi.md
+- Team decision inbox merged into .squad/decisions.md
+- Session log: .squad/log/2026-04-28T08-12-03Z-ecs-cleanup-approval.md
+
+Next: Await merge approval.

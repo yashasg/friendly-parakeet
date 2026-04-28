@@ -2818,3 +2818,148 @@ The original `#SQUAD` comment suggested replacing `Position`/`Velocity` with `Ve
 - `rg #SQUAD`: Zero matches (all markers replaced/resolved)
 - Tests: `cmake --build build --target shapeshifter_tests` passed
 - Coverage: `./build/shapeshifter_tests "[shape_verts],[floor]"` passed (60 assertions, 5 test cases)
+
+
+---
+
+### ECS Cleanup Wave: Approval Batch (2026-04-28)
+
+**Owners:** Hockney, Fenster, Baer, Kobayashi, McManus, Keyser, Kujan  
+**Status:** APPROVED / IMPLEMENTED  
+
+## Decision: Render Tags Component → Folded into Rendering
+
+**Author:** Hockney  
+**Date:** 2026-04-28
+
+`app/components/render_tags.h` deleted. `TagWorldPass`, `TagEffectsPass`, `TagHUDPass` moved to the end of `app/components/rendering.h`.
+
+**Rationale:** Per directive and Kujan gate — no new component headers during cleanup passes. All three tags are empty structs with no dependencies, so folding them into an existing header is zero-cost.
+
+**Impact:**
+- Production includes: `render_tags.h` removed; `rendering.h` already present
+- Tests: include replaced with comment; tags visible via `rendering.h`
+- Build: zero warnings, all tests pass
+
+## Decision: Non-Component Header Cleanup
+
+**Author:** Fenster  
+**Date:** 2026-04-28
+
+Six headers removed from `app/components/` that were not ECS components:
+
+| Deleted | Replacement |
+|---|---|
+| `audio.h` | `app/systems/audio_types.h` (duplicate) |
+| `music.h` | `app/systems/music_context.h` (duplicate) |
+| `settings.h` | `app/util/settings.h` (duplicate) |
+| `shape_vertices.h` | `app/util/shape_vertices.h` (moved) |
+| `obstacle_counter.h` | `app/systems/obstacle_counter_system.h` (duplicate) |
+| `obstacle_data.h` | folded into `app/components/obstacle.h` |
+
+**Impact:** `app/components/obstacle.h` now includes `player.h` and defines `RequiredShape`, `BlockedLanes`, `RequiredLane`, `RequiredVAction`. All 2978 test assertions pass.
+
+## Decision: Dead ECS File / Build Cleanup
+
+**Author:** Kobayashi  
+**Date:** 2026-04-28
+
+**Files Deleted:**
+- `app/components/ring_zone.h` — `RingZoneTracker` had no consumers
+- `app/systems/ring_zone_log_system.cpp` — diagnostic logger, no gameplay effect
+- `app/archetypes/obstacle_archetypes.h/cpp` — superseded by `app/entities/obstacle_entity.h/cpp`
+- `app/systems/obstacle_archetypes.h/cpp` — duplicate
+
+**CMakeLists Change:** Added `file(GLOB ENTITY_SOURCES app/entities/*.cpp)` and wired into `shapeshifter_lib`.
+
+**Build Policy:** C++20 designated initializers (`{.kind = ..., .x = ...}`) required for `ObstacleSpawnParams` to suppress `-Wmissing-field-initializers`.
+
+**Validation:** Zero warnings, 887 test cases (2983 assertions) pass. Commit: `0d642e2`
+
+## Decision: Obstacle Entity Layer — app/entities/ Introduction
+
+**Author:** McManus  
+**Date:** 2026-04-28
+
+Introduced `app/entities/` as the canonical surface for named gameplay entity construction. Obstacle entity/component bundle logic now owned exclusively by `app/entities/obstacle_entity.*`.
+
+**What Changed:**
+- **New:** `app/entities/obstacle_entity.h` — `ObstacleSpawnParams` struct + `spawn_obstacle(reg, params, beat_info*)`
+- **New:** `app/entities/obstacle_entity.cpp` — single implementation of obstacle bundle contract
+- **Deleted:** `app/archetypes/obstacle_archetypes.h/cpp` — fully superseded
+- **Updated:** `obstacle_spawn_system.cpp`, `beat_scheduler_system.cpp` — call `spawn_obstacle` directly
+
+**API Contract:**
+```cpp
+struct ObstacleSpawnParams {
+    ObstacleKind kind;
+    float x = 0.0f, y = 0.0f;
+    Shape shape = Shape::Circle;
+    uint8_t mask = 0;
+    int8_t req_lane = 0;
+    float speed = 0.0f;
+};
+
+entt::entity spawn_obstacle(entt::registry& reg,
+                             const ObstacleSpawnParams& params,
+                             const BeatInfo* beat_info = nullptr);
+```
+
+**Why pointer for BeatInfo:** `std::optional<BeatInfo>` triggers `-Wmissing-field-initializers` on all positional brace-init callsites under `-Wextra -Werror`. Nullable pointer keeps struct trivially aggregate-initializable and zero-overhead.
+
+## Decision: Cleanup Gate Fix — Evidence Report
+
+**Author:** Keyser  
+**Date:** 2026-04-28  
+**Gate:** kujan-component-cleanup-review  
+**Status:** GATE PASSED
+
+**Three Blockers — Resolution:**
+1. `obstacle_entity.cpp` stale include of `components/obstacle_data.h` — ✅ FIXED (only valid includes present)
+2. `test_obstacle_archetypes.cpp` `-Wmissing-field-initializers` warnings — ✅ FIXED (uses `ObstacleSpawnParams` with trailing defaults)
+3. `test_obstacle_archetypes.cpp` deleted include of `archetypes/obstacle_archetypes.h` — ✅ FIXED (now includes `entities/obstacle_entity.h`)
+
+**Full Stale-Include Scan:** All 10 deleted headers scanned; zero hits in `app/` and `tests/`.
+
+**Archetype Dedup:** All old archetype files confirmed absent; canonical surface (`entities/obstacle_entity.*`) present and wired into CMakeLists.
+
+**Model.transform Scope:** `ObstacleScrollZ` emitted only for LowBar/HighBar. No expansion creep.
+
+**Build Validation:** All commands clean; 2983 assertions / 887 test cases pass; zero warnings.
+
+## Decision: Re-Review — Component Cleanup / Entity Layer / Model Scope
+
+**Author:** Kujan  
+**Date:** 2026-04-28  
+**Status:** ✅ APPROVED  
+
+**Prior Rejection Blockers — All Resolved:**
+
+| Blocker | Status |
+|---------|--------|
+| `obstacle_entity.cpp` included deleted `components/obstacle_data.h` | ✅ FIXED |
+| `test_obstacle_archetypes.cpp` `-Wmissing-field-initializers` | ✅ FIXED |
+| Deleted include of `archetypes/obstacle_archetypes.h` | ✅ FIXED |
+
+**Gate Criteria — All Pass:**
+
+| Criterion | Result |
+|-----------|--------|
+| No stale includes of any deleted header | ✅ PASS |
+| `obstacle_entity.*` present, compiles, wired into CMakeLists | ✅ PASS |
+| `app/archetypes/obstacle_archetypes.*` deleted | ✅ PASS |
+| `app/systems/obstacle_archetypes.*` deleted | ✅ PASS |
+| No duplicate obstacle bundle API | ✅ PASS |
+| `render_tags.h` gone as standalone header | ✅ PASS |
+| No new component clutter created | ✅ PASS |
+| User-called non-component headers deleted/relocated | ✅ PASS |
+| `Model.transform` scope narrow (LowBar/HighBar only) | ✅ PASS |
+| Build clean (zero warnings) | ✅ PASS |
+| Tests pass (2983 assertions / 887 test cases) | ✅ PASS |
+
+**Non-Blocking Notes:**
+- `app/components/difficulty.h.tmp` leftover temp file (should be deleted in housekeeping)
+- Test comments referencing old `render_tags.h` are stale but code is correct
+- `ui_layout_cache.h` remains (acknowledged deferred item)
+
+**Verdict:** APPROVED. Cleanup artifact meets all gate criteria; three prior blockers resolved; canonical entity surface correct; archetype duplication eliminated; render tags properly folded; Model.transform migration scope narrow.

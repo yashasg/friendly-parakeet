@@ -555,3 +555,37 @@ Full suite: 2854 assertions, all pass.
 **Learning:** Model-slice work introduced DUPLICATE component files (audio.h ≡ audio_types.h, music.h ≡ music_context.h). Components/ folder accumulated six files that are not entity components: two dead duplicates, two context singletons misrouted to components/, one math utility, one layout cache. Pattern: when migration work runs in subagents without a post-pass audit, files proliferate in components/ without checks.
 
 **Artifact:** `.squad/decisions/inbox/keyser-component-cleanup-audit.md`
+
+### 2026-04-28 — Kujan Rejection Gate Fix (component cleanup revision)
+
+**Status:** GATE PASSED — zero code changes required. All three Kujan blockers were already resolved by prior agents before my inspection.
+
+**Scope:** Verified the three build-breaking errors Kujan identified were fixed, then ran the full validation suite.
+
+**Evidence:**
+- Fix 1 (obstacle_entity.cpp stale include): `app/entities/obstacle_entity.cpp` includes only `obstacle_entity.h`, `../components/obstacle.h`, `../components/transform.h`, `../components/rendering.h`, `../gameobjects/shape_obstacle.h`, `../constants.h`. No reference to the deleted `components/obstacle_data.h`. ✅
+- Fix 2 (test ObstacleArchetypeInput migration): `tests/test_obstacle_archetypes.cpp` now includes `entities/obstacle_entity.h` and calls `spawn_obstacle(reg, {ObstacleKind::..., x, y, ...})` with named struct fields. No positional aggregate-init missing fields. ✅
+- Fix 3 (test include path): `tests/test_obstacle_archetypes.cpp` includes `entities/obstacle_entity.h`, not the deleted `archetypes/obstacle_archetypes.h`. ✅
+- Stale include scan: grep across `app/` and `tests/` for all 10 deleted headers returned zero hits in non-.squad files. ✅
+- `app/archetypes/obstacle_archetypes.*` and `app/systems/obstacle_archetypes.*` both absent from filesystem. ✅
+- `app/entities/obstacle_entity.h/.cpp` present; CMakeLists.txt has `file(GLOB ENTITY_SOURCES app/entities/*.cpp)` wired into `shapeshifter_lib`. ✅
+- `cmake -B build -S . -Wno-dev` → exit 0 ✅
+- `cmake --build build --target shapeshifter_tests` → exit 0, zero warnings ✅
+- `./build/shapeshifter_tests "~[bench]" --reporter compact` → All tests passed (2983 assertions in 887 test cases) ✅
+- `cmake --build build --target shapeshifter` → exit 0, zero warnings ✅
+- `git --no-pager diff --check` → CLEAN ✅
+
+**Key lesson:** When multiple agents report fixes in parallel, the gate-fix owner must still inspect the actual working tree and run the build — agent reports can lag or be partially applied. In this case, the tree was already clean and no changes were needed.
+
+---
+
+### 2026-04-28 — Team Session Closure: ECS Cleanup Approval
+
+**Status:** APPROVED ✅ — Deliverable logged; ready for merge.
+
+Scribe documentation:
+- Orchestration log written: .squad/orchestration-log/2026-04-28T08-12-03Z-keyser.md
+- Team decision inbox merged into .squad/decisions.md
+- Session log: .squad/log/2026-04-28T08-12-03Z-ecs-cleanup-approval.md
+
+Next: Await merge approval.

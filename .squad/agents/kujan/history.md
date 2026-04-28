@@ -1811,3 +1811,41 @@ The test at `test_obstacle_model_slice.cpp:424–449` only checks that translati
 - Implementation agents modifying the working tree during review cause state inconsistency; always re-run `git diff HEAD` and the build at gate time, not just at inspection start
 - The "two-view migration" pattern (Position + ObstacleScrollZ dual views) is established as canonical for zero-regression ECS component migrations in this project
 - When deleting a component header, ALL transitive includes must be audited — not just the direct consumers in `app/components/` callers, but new files added in the same batch (like `entities/obstacle_entity.cpp`)
+
+### 2026-04-29 — Re-Review: Component Cleanup / Entity Layer / Model Scope
+
+**Scope:** Keyser-fixed revision of Keaton's cleanup batch (commit `0d642e2`).
+
+**Prior rejection blockers all resolved:**
+- `obstacle_entity.cpp` no longer includes deleted `obstacle_data.h`.
+- `test_obstacle_archetypes.cpp` uses `spawn_obstacle` + `ObstacleSpawnParams` — no missing-field-initializer warnings.
+- `test_obstacle_archetypes.cpp` includes `entities/obstacle_entity.h` (not deleted `archetypes/obstacle_archetypes.h`).
+
+**All gate criteria pass:**
+- All 10 deleted headers have zero includes remaining in `app/` and `tests/`.
+- `entities/obstacle_entity.*` compiles cleanly, wired via `file(GLOB ENTITY_SOURCES)` in CMakeLists.
+- `archetypes/obstacle_archetypes.*` and `systems/obstacle_archetypes.*` are both gone; no duplicate bundle API.
+- `render_tags.h` gone as standalone; tags folded into `rendering.h`; Slice 0 tests enabled correctly.
+- `Model.transform` scope narrow — `ObstacleScrollZ` emitted only for `LowBar`/`HighBar` in `obstacle_entity.cpp`.
+- Build: 2983 assertions / 887 test cases pass, zero warnings, diff-check clean (verified locally).
+
+**Non-blocking notes:**
+- `app/components/difficulty.h.tmp` leftover; not included anywhere; housekeeping ticket warranted.
+- `ui_layout_cache.h` remains as acknowledged deferred item (out of this slice's scope).
+
+**Verdict:** APPROVED
+
+---
+
+### 2026-04-28 — Final Session Completion: ECS Cleanup Approval Scribe Log
+
+**Completion status:** APPROVED ✅ — All team deliverables logged and committed.
+
+Scribe tasks completed:
+- Orchestration logs written for all 7 agents (Hockney, Fenster, Baer, Kobayashi, McManus, Keyser, Kujan)
+- Session log written: ECS cleanup approval batch
+- Decision inbox merged into decisions.md; 6 merged decisions; inbox files deleted
+- Agent history files updated with team context
+- Git commit staged and ready
+
+The cleanup wave is complete. Next phase: await merge.
