@@ -100,8 +100,7 @@ TEST_CASE("entity: obstacle roots and mesh children declare world render pass", 
 
 TEST_CASE("entity: obstacle mesh overflow does not create orphan MeshChild", "[archetype][render][cleanup]") {
     entt::registry reg;
-    reg.storage<ObstacleChildren>();
-    reg.on_destroy<ObstacleTag>().connect<&on_obstacle_destroy>();
+    wire_obstacle_mesh_lifetime(reg);
 
     auto parent = reg.create();
     reg.emplace<Position>(parent, 360.0f, -120.0f);
@@ -125,6 +124,31 @@ TEST_CASE("entity: obstacle mesh overflow does not create orphan MeshChild", "[a
     CHECK_THROWS_AS(spawn_obstacle_meshes(reg, parent), std::logic_error);
     CHECK(count_mesh_children(reg) == ObstacleChildren::MAX);
     CHECK(reg.get<ObstacleChildren>(parent).count == ObstacleChildren::MAX);
+
+    reg.destroy(parent);
+
+    CHECK(count_mesh_children(reg) == 0);
+}
+
+TEST_CASE("entity: obstacle mesh lifetime is wired by the factory", "[archetype][render][cleanup]") {
+    entt::registry reg;
+    auto parent = spawn_obstacle(reg, {ObstacleKind::ShapeGate, 360.0f, -120.0f, Shape::Circle});
+
+    REQUIRE(count_mesh_children(reg) > 0);
+
+    reg.destroy(parent);
+
+    CHECK(count_mesh_children(reg) == 0);
+}
+
+TEST_CASE("entity: direct mesh factory cleanup does not depend on ObstacleTag order", "[archetype][render][cleanup]") {
+    entt::registry reg;
+    auto parent = make_mesh_factory_obstacle(reg, ObstacleKind::ShapeGate);
+    reg.emplace<RequiredShape>(parent, Shape::Circle);
+    reg.emplace<ObstacleTag>(parent);
+
+    spawn_obstacle_meshes(reg, parent);
+    REQUIRE(count_mesh_children(reg) > 0);
 
     reg.destroy(parent);
 

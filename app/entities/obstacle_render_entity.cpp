@@ -8,6 +8,10 @@
 #include <stdexcept>
 
 namespace {
+struct ObstacleMeshLifetimeState {
+    bool wired = false;
+};
+
 struct ObstacleModelLifecycleState {
     bool wired = false;
 };
@@ -61,6 +65,27 @@ struct PendingEntity {
         active = false;
     }
 };
+}
+
+void on_obstacle_destroy(entt::registry& reg, entt::entity parent);
+
+void wire_obstacle_mesh_lifetime(entt::registry& reg) {
+    auto* state = reg.ctx().find<ObstacleMeshLifetimeState>();
+    if (!state) {
+        state = &reg.ctx().emplace<ObstacleMeshLifetimeState>();
+    }
+    if (state->wired) return;
+
+    reg.storage<ObstacleChildren>();
+    reg.on_destroy<ObstacleChildren>().connect<&on_obstacle_destroy>();
+    state->wired = true;
+}
+
+void unwire_obstacle_mesh_lifetime(entt::registry& reg) {
+    reg.on_destroy<ObstacleChildren>().disconnect<&on_obstacle_destroy>();
+    if (auto* state = reg.ctx().find<ObstacleMeshLifetimeState>()) {
+        state->wired = false;
+    }
 }
 
 static void append_child(entt::registry& reg, entt::entity parent, entt::entity child) {
@@ -121,6 +146,8 @@ static bool bar_height_for(ObstacleKind kind, float& height) {
 }
 
 void spawn_obstacle_meshes(entt::registry& reg, entt::entity logical) {
+    wire_obstacle_mesh_lifetime(reg);
+
     auto& obs = reg.get<Obstacle>(logical);
     const auto* pos_ptr = reg.try_get<Position>(logical);
     auto& col = reg.get<Color>(logical);

@@ -104,13 +104,8 @@ void game_loop_init(entt::registry& reg,
     // Cameras + render targets + GPU meshes
     camera::init(reg);
 
-    // MeshChild auto-cleanup: destroy children when parent obstacle is destroyed.
-    // Prime ObstacleChildren pool BEFORE connecting on_destroy<ObstacleTag>.
-    // EnTT destroy() iterates pools in reverse insertion order; priming first
-    // ensures ObstacleChildren has a lower index so it's removed last — i.e.,
-    // it's still readable when on_obstacle_destroy fires for ObstacleTag.
-    reg.storage<ObstacleChildren>();
-    reg.on_destroy<ObstacleTag>().connect<&on_obstacle_destroy>();
+    // MeshChild auto-cleanup: destroy children when parent ownership is removed.
+    wire_obstacle_mesh_lifetime(reg);
     wire_obstacle_model_lifecycle(reg);
 
     // UI + beatmap + music
@@ -235,7 +230,7 @@ void game_loop_run(entt::registry& reg) {
 void game_loop_shutdown(entt::registry& reg) {
     // Disconnect all destroy/construct listeners before clearing entities
     unwire_input_dispatcher(reg);
-    reg.on_destroy<ObstacleTag>().disconnect<&on_obstacle_destroy>();
+    unwire_obstacle_mesh_lifetime(reg);
     reg.on_construct<ObstacleTag>().disconnect<&session_log_on_obstacle_spawn>();
     reg.on_construct<ScoredTag>().disconnect<&session_log_on_scored>();
 

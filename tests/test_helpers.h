@@ -19,16 +19,14 @@
 #include "components/high_score.h"
 #include "components/rng.h"
 #include "constants.h"
+#include "entities/obstacle_render_entity.h"
 #include "systems/all_systems.h"
 #include "input/input_routing.h"
 
 // Sets up a registry with all singletons in their default state
 inline entt::registry make_registry() {
     entt::registry reg;
-    // Prime ObstacleChildren pool before wire_obstacle_counter creates the ObstacleTag
-    // pool. EnTT::destroy() iterates pools in reverse insertion order; ObstacleChildren
-    // must have a lower index so it is still accessible when on_obstacle_destroy fires.
-    reg.storage<ObstacleChildren>();
+    wire_obstacle_mesh_lifetime(reg);
     reg.ctx().emplace<InputState>();
     reg.ctx().emplace<entt::dispatcher>();
     wire_input_dispatcher(reg);

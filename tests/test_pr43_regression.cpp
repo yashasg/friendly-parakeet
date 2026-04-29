@@ -140,12 +140,10 @@ TEST_CASE("MeshChild: height stores OBSTACLE_3D_HEIGHT for ShapeGate side slabs"
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// Theme 6 – on_obstacle_destroy must only destroy children whose parent
+// Theme 6 – obstacle mesh lifetime must only destroy children whose parent
 //           is the entity being destroyed, not other obstacles' children.
-// on_obstacle_destroy uses ObstacleChildren for O(N) lookup.
-// The production fix must prime the ObstacleChildren pool before connecting
-// on_destroy<ObstacleTag>, so the pool's insertion index is lower than
-// ObstacleTag's; EnTT destroy() iterates pools in reverse insertion order.
+// The cleanup listener follows ObstacleChildren ownership directly, so it does
+// not depend on ObstacleTag pool insertion order.
 // ═══════════════════════════════════════════════════════════════════════
 
 // Helper: create an obstacle with an ObstacleChildren list.
@@ -161,19 +159,13 @@ static entt::entity make_obstacle(entt::registry& reg,
     return obs;
 }
 
-// Helper: set up the registry with on_obstacle_destroy wired.
-// make_registry() already primes the ObstacleChildren pool before wire_obstacle_counter
-// creates the ObstacleTag pool, guaranteeing that ObstacleChildren has a lower insertion
-// index. EnTT destroy() iterates pools in reverse order, so ObstacleChildren is removed
-// LAST — still accessible when on_obstacle_destroy fires for ObstacleTag.
+// Helper: set up the registry with centralized obstacle mesh lifetime wiring.
 static entt::registry make_obs_registry() {
-    auto reg = make_registry();
-    reg.on_destroy<ObstacleTag>().connect<&on_obstacle_destroy>();
-    return reg;
+    return make_registry();
 }
 
-TEST_CASE("on_obstacle_destroy: only removes the destroyed parent's children",
-          "[obstacle][cleanup][pr43]") {
+TEST_CASE("obstacle mesh lifetime: only removes the destroyed parent's children",
+           "[obstacle][cleanup][pr43]") {
     auto reg = make_obs_registry();
 
     auto childA1 = reg.create();
@@ -191,8 +183,8 @@ TEST_CASE("on_obstacle_destroy: only removes the destroyed parent's children",
     CHECK(reg.valid(childB));
 }
 
-TEST_CASE("on_obstacle_destroy: all children of destroyed parent removed",
-          "[obstacle][cleanup][pr43]") {
+TEST_CASE("obstacle mesh lifetime: all children of destroyed parent removed",
+           "[obstacle][cleanup][pr43]") {
     auto reg = make_obs_registry();
 
     const int NUM_CHILDREN = 4;
