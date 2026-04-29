@@ -13,11 +13,39 @@ if [[ -z "${VCPKG_ROOT:-}" ]]; then
     exit 1
 fi
 
+VCPKG_TOOLCHAIN_FILE="${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+if [[ ! -f "$VCPKG_TOOLCHAIN_FILE" ]]; then
+    echo "Error: vcpkg toolchain file not found: $VCPKG_TOOLCHAIN_FILE" >&2
+    echo "  Check VCPKG_ROOT or install vcpkg: https://vcpkg.io" >&2
+    exit 1
+fi
+
+# CMAKE_TOOLCHAIN_FILE is only honored on the first configure of a build tree.
+# If an older local/CI cache was created before vcpkg was required, re-running
+# cmake cannot activate the toolchain, and find_package() cannot see manifest
+# packages such as EnTT.  Drop just the CMake configure cache while preserving
+# any vcpkg_installed payload that may have been restored from cache.
+if [[ -f build/CMakeCache.txt ]]; then
+    _reset_cmake_cache=false
+
+    if ! grep -q '^CMAKE_TOOLCHAIN_FILE:' build/CMakeCache.txt; then
+        _reset_cmake_cache=true
+    elif ! grep -q '^VCPKG_INSTALLED_DIR:' build/CMakeCache.txt; then
+        _reset_cmake_cache=true
+    fi
+
+    if [[ "$_reset_cmake_cache" == "true" ]]; then
+        echo "Existing build cache was not configured with a vcpkg toolchain; regenerating CMake cache."
+        rm -f build/CMakeCache.txt
+        rm -rf build/CMakeFiles
+    fi
+fi
+
 CMAKE_ARGS=(
     -B build
     -S .
     -DCMAKE_BUILD_TYPE="$BUILD_TYPE"
-    "-DCMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+    "-DCMAKE_TOOLCHAIN_FILE=${VCPKG_TOOLCHAIN_FILE}"
     "-DVCPKG_OVERLAY_PORTS=${SCRIPT_DIR}/vcpkg-overlay"
 )
 
