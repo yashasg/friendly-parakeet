@@ -19,9 +19,9 @@ TitleController title_controller;
 bool is_start_tap(const TitleLayoutState& state) {
     if (!IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) return false;
     const Vector2 mouse = GetMousePosition();
-    const Rectangle exit_button = {state.Anchor01.x + 260, state.Anchor01.y + 1080, 200, 56};
     const Rectangle settings_button = {state.Anchor01.x + 632, state.Anchor01.y + 1170, 64, 64};
 #ifndef PLATFORM_WEB
+    const Rectangle exit_button = {state.Anchor01.x + 260, state.Anchor01.y + 1080, 200, 56};
     if (CheckCollisionPointRec(mouse, exit_button)) return false;
 #endif
     if (CheckCollisionPointRec(mouse, settings_button)) return false;

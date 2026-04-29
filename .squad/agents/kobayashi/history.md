@@ -11,6 +11,8 @@
 
 <!-- Append learnings below -->
 
+- 2026-04-29: A `#ifndef PLATFORM_WEB` guard around *usage* but not *declaration* can pass native CI and still fail WebAssembly with `-Werror,-Wunused-variable`. For cross-platform UI hit-test rectangles, guard declaration+use together (or mark intentionally unused) to keep wasm deterministic.
+
 ---
 
 ### 2026-04 — PR #351 rguilayout Adapter Migration & Push Workflow
