@@ -2,91 +2,8 @@
 #include "../session/play_session.h"
 #include "../components/game_state.h"
 #include "../util/obstacle_counter.h"
-#include "../components/input.h"
 #include "../components/input_events.h"
-#include "../components/scoring.h"
-#include "../audio/audio_queue.h"
-#include "../components/haptics.h"
-#include "../util/haptic_queue.h"
-#include "../util/settings.h"
 #include "../components/rhythm.h"
-#include "../components/high_score.h"
-#include "../util/high_score_persistence.h"
-#include "../constants.h"
-
-static void enter_game_over(entt::registry& reg) {
-    auto& score = reg.ctx().get<ScoreState>();
-    bool is_new_high_score = (score.score > score.high_score);
-    if (is_new_high_score) {
-        score.high_score = score.score;
-        if (auto* hs = reg.ctx().find<HighScoreState>()) {
-            high_score::update_if_higher(*hs, score.score);
-            if (auto* hp = reg.ctx().find<HighScorePersistence>()) {
-                hp->dirty = true;
-                if (hp->path.empty()) {
-                    hp->last_save = persistence::Result{persistence::Status::PathUnavailable, {}};
-                } else {
-                    hp->last_save = high_score::save_high_scores(*hs, hp->path);
-                    if (hp->last_save.ok()) hp->dirty = false;
-                }
-            }
-        }
-    }
-    audio_push(reg.ctx().get<AudioQueue>(), SFX::Crash);
-
-    {
-        auto* hq = reg.ctx().find<HapticQueue>();
-        auto* st = reg.ctx().find<SettingsState>();
-        if (hq) {
-            bool haptics_on = !st || st->haptics_enabled;
-            haptic_push(*hq, haptics_on, HapticEvent::DeathCrash);
-            if (is_new_high_score) haptic_push(*hq, haptics_on, HapticEvent::NewHighScore);
-        }
-    }
-
-    auto& gs = reg.ctx().get<GameState>();
-    gs.previous_phase = gs.phase;
-    gs.phase = GamePhase::GameOver;
-    gs.phase_timer = 0.0f;
-
-    if (auto* song = reg.ctx().find<SongState>()) {
-        song->finished = true;
-        song->playing = false;
-    }
-}
-
-static void enter_song_complete(entt::registry& reg) {
-    auto& score = reg.ctx().get<ScoreState>();
-    bool is_new_high_score = (score.score > score.high_score);
-    if (is_new_high_score) {
-        score.high_score = score.score;
-        if (auto* hs = reg.ctx().find<HighScoreState>()) {
-            high_score::update_if_higher(*hs, score.score);
-            if (auto* hp = reg.ctx().find<HighScorePersistence>()) {
-                hp->dirty = true;
-                if (hp->path.empty()) {
-                    hp->last_save = persistence::Result{persistence::Status::PathUnavailable, {}};
-                } else {
-                    hp->last_save = high_score::save_high_scores(*hs, hp->path);
-                    if (hp->last_save.ok()) hp->dirty = false;
-                }
-            }
-        }
-    }
-
-    {
-        auto* hq = reg.ctx().find<HapticQueue>();
-        auto* st = reg.ctx().find<SettingsState>();
-        if (hq && is_new_high_score) {
-            haptic_push(*hq, !st || st->haptics_enabled, HapticEvent::NewHighScore);
-        }
-    }
-
-    auto& gs = reg.ctx().get<GameState>();
-    gs.previous_phase = gs.phase;
-    gs.phase = GamePhase::SongComplete;
-    gs.phase_timer = 0.0f;
-}
 
 void game_state_system(entt::registry& reg, float dt) {
     auto& gs = reg.ctx().get<GameState>();
@@ -121,10 +38,10 @@ void game_state_system(entt::registry& reg, float dt) {
         switch (gs.next_phase) {
             case GamePhase::Playing:      setup_play_session(reg);  break;
             case GamePhase::GameOver:
-                enter_game_over(reg);
+                game_state_enter_terminal_phase(reg, GamePhase::GameOver);
                 break;
             case GamePhase::SongComplete:
-                enter_song_complete(reg);
+                game_state_enter_terminal_phase(reg, GamePhase::SongComplete);
                 break;
             case GamePhase::Paused:
                 gs.previous_phase = gs.phase;
@@ -169,18 +86,6 @@ void game_state_system(entt::registry& reg, float dt) {
         }
     }
 
-    // GameOver → button choice (after brief delay)
-    if (gs.phase == GamePhase::GameOver && gs.phase_timer > 0.4f && gs.end_choice != EndScreenChoice::None) {
-        gs.transition_pending = true;
-        if (gs.end_choice == EndScreenChoice::Restart)
-            gs.next_phase = GamePhase::Playing;
-        else if (gs.end_choice == EndScreenChoice::LevelSelect)
-            gs.next_phase = GamePhase::LevelSelect;
-        else
-            gs.next_phase = GamePhase::Title;
-        gs.end_choice = EndScreenChoice::None;
-    }
-
     // Playing → SongComplete when song finishes (all obstacles cleared)
     if (gs.phase == GamePhase::Playing) {
         auto* energy = reg.ctx().find<EnergyState>();
@@ -206,15 +111,5 @@ void game_state_system(entt::registry& reg, float dt) {
         }
     }
 
-    // SongComplete → button choice (after brief delay)
-    if (gs.phase == GamePhase::SongComplete && gs.phase_timer > 0.5f && gs.end_choice != EndScreenChoice::None) {
-        gs.transition_pending = true;
-        if (gs.end_choice == EndScreenChoice::Restart)
-            gs.next_phase = GamePhase::Playing;
-        else if (gs.end_choice == EndScreenChoice::LevelSelect)
-            gs.next_phase = GamePhase::LevelSelect;
-        else
-            gs.next_phase = GamePhase::Title;
-        gs.end_choice = EndScreenChoice::None;
-    }
+    game_state_end_screen_system(reg, dt);
 }

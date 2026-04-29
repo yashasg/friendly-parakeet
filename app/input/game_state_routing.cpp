@@ -36,25 +36,7 @@ void game_state_handle_press(entt::registry& reg, const ButtonPressEvent& evt) {
         return;
     }
 
-    if ((gs.phase == GamePhase::GameOver || gs.phase == GamePhase::SongComplete)
-        && gs.phase_timer > 0.4f) {
-        {
-            auto* hq = reg.ctx().find<HapticQueue>();
-            auto* st = reg.ctx().find<SettingsState>();
-            if (hq) {
-                bool haptics_on = !st || st->haptics_enabled;
-                if (evt.menu_action == MenuActionKind::Restart)
-                    haptic_push(*hq, haptics_on, HapticEvent::RetryTap);
-                else
-                    haptic_push(*hq, haptics_on, HapticEvent::UIButtonTap);
-            }
-        }
-        if (evt.menu_action == MenuActionKind::Restart)
-            gs.end_choice = EndScreenChoice::Restart;
-        else if (evt.menu_action == MenuActionKind::GoLevelSelect)
-            gs.end_choice = EndScreenChoice::LevelSelect;
-        else if (evt.menu_action == MenuActionKind::GoMainMenu)
-            gs.end_choice = EndScreenChoice::MainMenu;
+    if (game_state_handle_end_screen_press(reg, evt)) {
         return;
     }
 
