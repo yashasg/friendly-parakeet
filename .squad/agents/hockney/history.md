@@ -6,6 +6,34 @@
 - **Role:** Platform Engineer
 - **Joined:** 2026-04-26T02:07:46.546Z
 
+## 2026-04-29 — Settings Gear Click Fix + Standalone UI Cleanup Wave
+
+### Settings Gear Click Reliability
+Fixed title screen settings button (bottom-right gear, `#142#`) unresponsiveness under letterbox scaling.
+
+**Root cause:** raygui hit-testing used unadjusted window coordinates; UI renders in virtual 720×1280 space.
+
+**Solution:** Applied `SetMouseOffset(-ScreenTransform.offset)` + `SetMouseScale(1 / ScreenTransform.scale)` around screen-controller rendering in `ui_render_system`, restored defaults immediately after. Canonized pattern for all future raygui controls.
+
+**Files modified:** `app/systems/ui_render_system.cpp`, `app/ui/screen_controllers/title_screen_controller.cpp`, `app/ui/generated/title_layout.h`.
+
+**Validation:** 867 test cases, 2603 assertions, zero warnings. Settings navigation regression test added (`test_game_state_extended.cpp`).
+
+**Status:** ✅ APPROVED (Kujan)
+
+### Standalone UI Export Cleanup
+Deleted 17 committed standalone rguilayout exports from `app/ui/generated/standalone/`. These were dead surface; runtime UI now uses embeddable headers + screen controllers.
+
+**Policy formalized:** Scratch exports only under `build/rguilayout-scratch/` (auto-ignored). Docs + tooling updated to enforce. Active paths (`content/ui/screens/*.rgl`, `app/ui/generated/*_layout.h`, `app/ui/screen_controllers/`) untouched.
+
+**Validation:** Zero build/runtime reference breakage. All active files preserved.
+
+**Status:** ✅ APPROVED (Kujan)
+
+**Decisions logged:** `2026-04-29T07-30-55Z-hockney.md`
+
+---
+
 ## 2026-04-30 — Repo Pollution Cleanup: Scratch Build Dirs + Tracked CMake Artifacts
 
 **Task:** Remove stale scratch build directories and de-track generated CMake output that leaked into version control.
@@ -58,6 +86,9 @@
 - Keep title rendering on the generated `title_controller.render()` path; apply style overrides around it (`GuiSetStyle(LABEL, TEXT_ALIGNMENT, TEXT_ALIGN_CENTER)`) instead of manual `DrawText`/`GuiButton` overrides.
 - Settings affordance decision: move to bottom-right at `632,1170,64,64` with raygui gear label `#142#`; keep behavior wired to `GamePhase::Settings`.
 - Validation command for this change: `cmake -B build -S . -Wno-dev && cmake --build build && ./build/shapeshifter_tests '~[bench]'` (pass).
+- Root cause (settings gear no-op): raygui buttons were hit-tested in raw window coordinates while UI renders in fixed virtual space (720x1280) with letterbox scaling/offset; the small bottom-right gear missed clicks under scaled windows.
+- Files changed: `app/systems/ui_render_system.cpp` (scoped `SetMouseOffset/SetMouseScale` virtual-space mapping around screen-controller render), `tests/test_world_systems.cpp` (settings transition regression for game-state path).
+- Validation command: `cmake -B build -S . -Wno-dev && cmake --build build && ./build/shapeshifter_tests '~[bench]'`.
 
 ### 2026-04-29 — Title Screen Layout Revision (approved)
 
@@ -70,3 +101,6 @@ Removed runtime override entirely from `title_screen_controller.cpp`. Updated `c
 **Approval criteria met:** All 5 blocking criteria from Redfoot passed. Build: zero warnings. Tests: 2595 assertions pass.
 
 **Non-blocking note:** Per-element font sizing deferred (uniform 28px is architecturally correct; per-element would require new RGuiScreenController infrastructure).
+- Removed committed `app/ui/generated/standalone/` artifacts (README + all standalone `.c/.h` exports) so repo UI source-of-truth is `.rgl` + `*_layout.h` + `screen_controllers` only.
+- Updated rguilayout tooling/docs to treat standalone exports as scratch-only artifacts under `build/rguilayout-scratch/` and never committed (`tools/rguilayout/generate_embeddable.sh`, `tools/rguilayout/INTEGRATION.md`, `tools/rguilayout/SUMMARY.md`, `design-docs/rguilayout-portable-c-integration.md`, `RGUILAYOUT_INTEGRATION_PLAN.md`).
+- Validation command: `cmake -B build -S . -Wno-dev && cmake --build build && ./build/shapeshifter_tests '~[bench]'` (pass).

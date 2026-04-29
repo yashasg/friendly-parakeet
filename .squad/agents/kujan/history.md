@@ -580,3 +580,41 @@ Verified all blocking acceptance criteria from Redfoot: runtime override removed
 Non-blocking note: `GuiSetStyle(DEFAULT, TEXT_SIZE, 28)` uniform across all labels. Per-element sizing would require re-introducing interleaved manual draws (override pattern smell). Uniform 28px is architecturally correct; per-element styling infrastructure is deferred scope.
 
 **Reusable criteria:** Generated single-pass render functions must have uniform styles unless infrastructure supports per-element injection.
+
+### 2026-05-XX — Review: Settings gear click fix (raygui letterbox hit-mapping)
+
+**Scope:** Hockney + Baer — `SetMouseOffset/Scale` bracketing in `ui_render_system.cpp`; `title_screen_controller.cpp` Settings routing; regression tests in `test_game_state_extended.cpp` and `test_world_systems.cpp`.
+
+**User issue:** "i see the settings button but it doesnt do anything?" — confirmed root cause: raygui hit-testing in window-space while UI rendered in 720×1280 virtual space under letterboxing.
+
+**Mouse transform math (ui_render_system.cpp lines 69–74):**
+- `SetMouseOffset(lround(-offset_x), lround(-offset_y))` + `SetMouseScale(1/scale, 1/scale)` — correct formula. raygui internal transform: `adjusted = (raw - offset) * invScale`, so `adjusted = (window - offset_x) / scale = virtual`. ✅
+- `std::lround` → `static_cast<int>` for the integer `SetMouseOffset` API — correct rounding. ✅
+- `scale > 0.0f` guard prevents divide-by-zero. ✅
+- Uniform `inv_scale` correct: `ScreenTransform` uses a single `scale` field. ✅
+
+**Restore safety:**
+- `input_system` runs BEFORE `ui_render_system`. Uses own `to_vx`/`to_vy` lambdas — does NOT depend on `SetMouseOffset/Scale` global state. ✅
+- Restore `(0,0)/(1,1)` unconditional even when `scale ≤ 0` path skipped transform — idempotent, correct. ✅
+
+**Settings routing:**
+- `SettingsButtonPressed` → `gs.transition_pending = true; gs.next_phase = GamePhase::Settings` — direct, no adapters, no JSON/ECS UI render loops. ✅
+- Button rect `{632, 1170, 64, 64}` (bottom-right `#142#` gear icon). ✅
+
+**Tests:**
+- `test_world_systems.cpp` Settings phase unit test — narrow, correct.
+- `test_game_state_extended.cpp` Settings navigation proxy — broader, `SKIP` guard correct and documented.
+- Acknowledged GuiButton seam gap in Baer's decision memo — acceptable.
+
+**Verdict:** ✅ APPROVED
+
+**Reusable quality note (raygui letterbox):** Bracket ALL raygui calls in `ui_render_system` with `SetMouseOffset(-offset_x, -offset_y)` / `SetMouseScale(1/scale, 1/scale)` and unconditional restore. Apply at the system level, not per screen-controller. `scale > 0` guard is mandatory.
+
+### Review: standalone UI cleanup (2026)
+**Verdict:** APPROVED  
+**Criteria met:**
+- `app/ui/generated/standalone/` confirmed deleted (all 17 files show `D` in git status); zero references in CMakeLists.txt or any `.cpp`/`.h` source file — deletion is safe.
+- All 8 `*_layout.h` embeddable headers and all `.rgl` authoring files intact in their active paths.
+- `generate_embeddable.sh`, `INTEGRATION.md`, `SUMMARY.md`, and `design-docs/rguilayout-portable-c-integration.md` all consistently state standalone exports are scratch-only under `build/rguilayout-scratch/` (covered by `.gitignore`'s `build/` rule) and must not be committed.
+- Hockney decision inbox present and consistent with implementation.
+- No unrelated dirty-file churn introduced by this change; other modifications in working tree predate this task.

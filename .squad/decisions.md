@@ -1,6 +1,47 @@
 # Decisions Registry
 
-*Last merged: 2026-04-29T04:35:58Z*
+*Last merged: 2026-04-29T07:30:55Z*
+
+### Settings Gear Click Reliability — Letterbox Hit-Mapping (2026-04-29)
+
+**Owners:** Hockney (Platform Engineering), Baer (Test), Kujan (Review)  
+**Status:** APPROVED & IMPLEMENTED
+
+The title screen settings gear (bottom-right, `#142#` icon) was unresponsive due to raygui hit-testing using unadjusted window coordinates when UI renders in fixed 720×1280 virtual space under letterboxing.
+
+**Solution:** Applied `SetMouseOffset(-ScreenTransform.offset)` and `SetMouseScale(1 / ScreenTransform.scale)` around screen-controller/raygui rendering in `ui_render_system`, then restored defaults immediately after. This canonizes the pattern for all future raygui controls without per-controller changes or reintroducing JSON/ECS UI render loops.
+
+**Validation:**
+- Full non-bench test suite: 867 test cases pass, 2603 assertions
+- Zero compilation warnings
+- No regressions in `input_system` (uses independent `to_vx`/`to_vy` lambdas)
+- Settings navigation regression test added to `test_game_state_extended.cpp` (headless proxy approach)
+
+**Future scope:** Title Settings dispatch wiring (separate PR), additional screen layout migrations (incremental rollout per screen).
+
+---
+
+### Standalone rguilayout Exports: Commit-Free, Scratch-Only Policy (2026-04-29)
+
+**Owners:** Hockney (Platform Engineering), Kujan (Review)  
+**Status:** APPROVED & IMPLEMENTED
+
+Deleted 17 committed standalone rguilayout exports from `app/ui/generated/standalone/` (9 screens × `.c`, `.h`, README). These were dead surface contamination; the runtime UI path is now embeddable headers + screen controllers.
+
+**Policy:** 
+- **Commit:** `content/ui/screens/*.rgl` (authoring source), `app/ui/generated/*_layout.h` (embeddable headers), `app/ui/screen_controllers/*.cpp` (runtime behavior)
+- **Do NOT commit:** Standalone rguilayout exports; these go to scratch-only `build/rguilayout-scratch/` (auto-ignored by `.gitignore`)
+- **Tooling:** `tools/rguilayout/generate_embeddable.sh` writes scratch output with explicit "do not commit" warning
+- **Docs:** `design-docs/rguilayout-portable-c-integration.md` rule #6 + `INTEGRATION.md` + `SUMMARY.md` all formalize scratch-only requirement
+
+**Validation:**
+- Zero references to `app/ui/generated/standalone` in any `.cpp`, `.h`, `CMakeLists.txt`
+- All 8 active `app/ui/generated/*_layout.h` headers present
+- All 8 `content/ui/screens/*.rgl` authoring files present
+- All screen controllers intact
+- 867 test cases pass, 2603 assertions
+
+---
 
 ### #167 — Bank-on-Action Burnout Multiplier (2026)
 

@@ -7,6 +7,24 @@
 - **Role:** Test Engineer
 - **Joined:** 2026-04-26T02:12:00.632Z
 
+## 2026-04-29 — Settings Transition Regression Test
+
+**Task:** Add headless regression test for Settings navigation (title gear click → Settings screen).
+
+**Approach:** Headless proxy test (no GUI window, no injectable seam for `GuiButton` state). Test sets `transition_pending=true`, `next_phase=Settings` directly, then runs `game_state_system` + `ui_navigation_system` to verify contract is consumed and routing reaches `ActiveScreen::Settings`.
+
+**File created:** Test case added to `tests/test_game_state_extended.cpp`, tagged as regression.
+
+**Why this approach:** Deterministic in CI, exercises real production systems in same order as runtime fixed-step. Avoids new adapters or JSON/ECS UI render loops.
+
+**Known gap:** Actual raygui button state (`GuiButton` click) remains untested in headless. Manual smoke test on desktop build required for production validation.
+
+**Status:** ✅ APPROVED (Kujan), integrated with Hockney's settings-click-fix (related PRs).
+
+**Decisions logged:** `2026-04-29T07-30-55Z-baer.md`
+
+---
+
 ## 2026-04-28 — Issues #208 and #217 Implemented
 
 ### #208 — popup_display_system coverage
@@ -464,3 +482,10 @@ Next: Await merge approval.
 **Results:** 2547 assertions / 867 test cases — all pass. Zero warnings.
 
 **Decision filed:** `.squad/decisions/inbox/baer-camera-cleanup-tests.md`
+
+### 2026-04-29 — Title Settings Navigation Regression Strategy
+
+- Added a **headless proxy regression** in `tests/test_game_state_extended.cpp` that simulates the title gear outcome (`transition_pending=true`, `next_phase=Settings`) and verifies the fixed-step + navigation chain reaches `GamePhase::Settings` and `ActiveScreen::Settings` without opening a window.
+- This locks down the non-graphical contract between `title_screen_controller` output state, `game_state_system` transition consumption, and `ui_navigation_system` screen activation.
+- **Testability gap:** we still cannot deterministically unit-test the actual `GuiButton` click for `SettingsButtonPressed` in `render_title_screen_ui()` because the controller has no injectable raygui input seam and depends on live GUI calls.
+- Best validation proxy remains: (1) this headless transition-contract test, plus (2) manual smoke in desktop build confirming gear click sets Title → Settings.
