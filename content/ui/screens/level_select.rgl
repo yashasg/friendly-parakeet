@@ -1,0 +1,27 @@
+# rgl layout text file (v4.0) - raygui layout file generated using rGuiLayout
+# Level Select Screen Layout - 720x1280 portrait
+# Reference: level_select.json design specification
+# Target exports: app/ui/level_select.h, app/ui/level_select.c
+#
+# Note: The JSON specifies a data-driven card_list and button_row that require
+# custom adapter logic. This layout provides static slots for the first 5 song
+# cards and 3 difficulty buttons. Runtime card population, scrolling, and
+# dynamic difficulty state must be handled by the adapter using these slots
+# as placement guides.
+#
+# Ref. window:    r <x> <y> <width> <height>
+# Anchor info:    a <id> <name> <posx> <posy> <enabled>
+# Control info:   c <id> <type> <name> <rectangle> <anchor_id> <text>
+#
+r 0 0 720 1280
+a 001 Anchor01 0 0 1
+c 000 4 HeaderText 210 80 300 48 1 SELECT LEVEL
+c 001 24 SongCard01 60 200 600 200 1 
+c 002 24 SongCard02 60 440 600 200 1 
+c 003 24 SongCard03 60 680 600 200 1 
+c 004 24 SongCard04 60 920 600 200 1 
+c 005 24 SongCard05 60 1160 600 200 1 
+c 006 5 DifficultyEasy 100 1400 160 50 1 EASY
+c 007 5 DifficultyMedium 280 1400 160 50 1 MEDIUM
+c 008 5 DifficultyHard 460 1400 160 50 1 HARD
+c 009 5 StartButton 210 1050 300 60 1 START

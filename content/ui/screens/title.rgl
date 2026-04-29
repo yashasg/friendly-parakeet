@@ -1,0 +1,18 @@
+# rgl layout text file (v4.0) - raygui layout file generated using rGuiLayout
+# Title Screen Layout - 720x1280 portrait
+# Reference: title.json design specification
+# Target exports: app/ui/title.h, app/ui/title.c
+#
+# Ref. window:    r <x> <y> <width> <height>
+# Anchor info:    a <id> <name> <posx> <posy> <enabled>
+# Control info:   c <id> <type> <name> <rectangle> <anchor_id> <text>
+#
+r 0 0 720 1280
+a 001 Anchor01 0 0 1
+c 000 24 ShapeCircle 280 401 80 80 1 
+c 001 24 ShapeSquare 360 401 80 80 1 
+c 002 24 ShapeTriangle 440 401 80 80 1 
+c 003 4 TitleText 160 480 400 48 1 SHAPESHIFTER
+c 004 4 StartPrompt 220 588 280 32 1 TAP TO START
+c 005 5 ExitButton 260 1050 200 50 1 EXIT
+c 006 5 SettingsButton 20 10 80 50 1 SET

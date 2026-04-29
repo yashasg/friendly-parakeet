@@ -1,0 +1,26 @@
+# rgl layout text file (v4.0) - raygui layout file generated using rGuiLayout
+# Settings Screen Layout - 720x1280 portrait
+# Reference: settings.json design specification
+# Target exports: app/ui/settings.h, app/ui/settings.c
+#
+# Note: JSON overlay color [0,0,0,160] for dim background must be handled
+# by adapter or render system. Dynamic text sources (audio_offset_ms,
+# haptics_enabled, reduce_motion) must be bound at render time. Toggle
+# button state and display values are runtime-driven.
+#
+# Ref. window:    r <x> <y> <width> <height>
+# Anchor info:    a <id> <name> <posx> <posy> <enabled>
+# Control info:   c <id> <type> <name> <rectangle> <anchor_id> <text>
+#
+r 0 0 720 1280
+a 001 Anchor01 0 0 1
+c 000 4 SettingsTitle 210 400 300 48 1 SETTINGS
+c 001 4 AudioOffsetLabel 144 510 200 40 1 Audio Offset
+c 002 5 AudioOffsetMinus 180 560 72 77 1 -
+c 003 4 AudioOffsetDisplay 252 560 216 77 1 
+c 004 5 AudioOffsetPlus 468 560 72 77 1 +
+c 005 5 HapticsToggle 152 720 416 100 1 HAPTICS: ON
+c 006 4 HapticsValue 260 829 200 32 1 
+c 007 5 ReduceMotionToggle 152 880 416 100 1 MOTION: OFF
+c 008 4 ReduceMotionValue 260 989 200 32 1 
+c 009 5 CloseButton 260 1040 200 100 1 BACK

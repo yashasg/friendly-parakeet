@@ -14,6 +14,7 @@
 #include "../components/ui_state.h"
 #include "../components/ui_element.h"
 #include "../ui/ui_source_resolver.h"
+#include "../ui/adapters/title_adapter.h"
 #include <raylib.h>
 #include <raymath.h>
 #include <algorithm>
@@ -417,6 +418,10 @@ void ui_render_system(const entt::registry& reg, float /*alpha*/) {
 
     // Dynamic screens that still need specialized rendering
     switch (ui.active) {
+        case ActiveScreen::Title: {
+            title_adapter_render(reg);
+            break;
+        }
         case ActiveScreen::LevelSelect: {
             auto& lss = reg.ctx().get<LevelSelectState>();
             const auto* layout = reg.ctx().find<LevelSelectLayout>();

@@ -98,6 +98,7 @@ file(GLOB SYSTEM_SOURCES CONFIGURE_DEPENDS app/systems/*.cpp)
 file(GLOB AUDIO_SOURCES CONFIGURE_DEPENDS app/audio/*.cpp)
 file(GLOB UTIL_SOURCES CONFIGURE_DEPENDS app/util/*.cpp)
 file(GLOB UI_SOURCES CONFIGURE_DEPENDS app/ui/*.cpp)
+file(GLOB UI_ADAPTER_SOURCES CONFIGURE_DEPENDS app/ui/adapters/*.cpp)
 file(GLOB INPUT_SOURCES CONFIGURE_DEPENDS app/input/*.cpp)
 file(GLOB SESSION_SOURCES CONFIGURE_DEPENDS app/session/*.cpp)
 file(GLOB ARCHETYPE_SOURCES CONFIGURE_DEPENDS app/archetypes/*.cpp)
@@ -112,7 +113,7 @@ list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "(^|/)camera_system\\.cpp$")
 list(FILTER UI_SOURCES EXCLUDE REGEX "(^|/)text_renderer\\.cpp$")
 list(FILTER UTIL_SOURCES EXCLUDE REGEX "(^|/)file_logger\\.cpp$")
 
-add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES} ${AUDIO_SOURCES} ${UTIL_SOURCES} ${UI_SOURCES} ${INPUT_SOURCES} ${SESSION_SOURCES} ${ARCHETYPE_SOURCES} ${ENTITY_SOURCES})
+add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES} ${AUDIO_SOURCES} ${UTIL_SOURCES} ${UI_SOURCES} ${UI_ADAPTER_SOURCES} ${INPUT_SOURCES} ${SESSION_SOURCES} ${ARCHETYPE_SOURCES} ${ENTITY_SOURCES})
 target_include_directories(shapeshifter_lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/app
     ${CMAKE_BINARY_DIR}/generated
@@ -398,6 +399,13 @@ set_source_files_properties(
     tests/test_shipped_beatmap_first_collision.cpp
     tests/test_shipped_beatmap_medium_balance.cpp
     tests/test_redfoot_testflight_ui.cpp
+    PROPERTIES SKIP_UNITY_BUILD_INCLUSION TRUE
+)
+
+# raygui_impl.cpp defines RAYGUI_IMPLEMENTATION which brings in hundreds of static
+# functions; must compile separately to avoid ODR violations
+set_source_files_properties(
+    app/ui/raygui_impl.cpp
     PROPERTIES SKIP_UNITY_BUILD_INCLUSION TRUE
 )
 

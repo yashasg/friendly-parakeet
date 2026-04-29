@@ -1,0 +1,29 @@
+# rgl layout text file (v4.0) - raygui layout file generated using rGuiLayout
+# Tutorial Screen Layout - 720x1280 portrait
+# Reference: tutorial.json design specification
+# Target exports: app/ui/tutorial.h, app/ui/tutorial.c
+#
+# Note: Shape demo elements (circle/square/triangle at y_n 0.34) and
+# platform-specific text require adapter logic to render actual shapes
+# and select appropriate platform text. DummyRec controls are used as
+# layout guides for shape placement.
+#
+# Ref. window:    r <x> <y> <width> <height>
+# Anchor info:    a <id> <name> <posx> <posy> <enabled>
+# Control info:   c <id> <type> <name> <rectangle> <anchor_id> <text>
+#
+r 0 0 720 1280
+a 001 Anchor01 0 0 1
+c 000 4 TutorialTitle 160 205 400 48 1 QUICK START
+c 001 4 SectionMatch 160 333 400 40 1 1. MATCH THE SHAPE
+c 002 24 DemoCircleSlot 229 435 65 65 1 
+c 003 24 DemoSquareSlot 328 435 65 65 1 
+c 004 24 DemoTriangleSlot 427 435 65 65 1 
+c 005 4 MatchHint 110 538 500 32 1 BECOME THE SHAPE BEFORE IT HITS YOU
+c 006 4 SectionDodge 160 640 400 40 1 2. DODGE LANES
+c 007 4 DodgeHintDesktop 110 710 500 32 1 USE LEFT / RIGHT ARROW KEYS
+c 008 4 DodgeHintWeb 110 710 500 32 1 SWIPE LEFT OR RIGHT
+c 009 4 SectionEnergy 160 806 400 40 1 3. KEEP YOUR ENERGY
+c 010 4 EnergyHint 110 877 500 32 1 MISSES DRAIN THE BAR ON THE LEFT
+c 011 4 ClearHint 110 973 500 32 1 CLEAR A SONG TO SET A HIGH SCORE
+c 012 5 ContinueButton 180 1075 360 102 1 START
