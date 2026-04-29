@@ -106,10 +106,10 @@ TEST_CASE("High score persistence: round-trips score map", "[high_score]") {
     high_score::set_score(original, "song_001|hard", 2000);
     high_score::set_score(original, "song_002|easy", 1500);
 
-    REQUIRE(high_score::save_high_scores(original, file));
+    REQUIRE(high_score::save_high_scores(original, file).ok());
 
     HighScoreState loaded;
-    REQUIRE(high_score::load_high_scores(loaded, file));
+    REQUIRE(high_score::load_high_scores(loaded, file).ok());
     CHECK(high_score::get_score(loaded, "song_001|easy") == high_score::get_score(original, "song_001|easy"));
     CHECK(high_score::get_score(loaded, "song_001|hard") == high_score::get_score(original, "song_001|hard"));
     CHECK(high_score::get_score(loaded, "song_002|easy") == high_score::get_score(original, "song_002|easy"));
@@ -124,10 +124,10 @@ TEST_CASE("High score persistence: supports current-directory files", "[high_sco
     HighScoreState original;
     high_score::set_score(original, "song_001|easy", 2000);
 
-    REQUIRE(high_score::save_high_scores(original, file));
+    REQUIRE(high_score::save_high_scores(original, file).ok());
 
     HighScoreState loaded;
-    REQUIRE(high_score::load_high_scores(loaded, file));
+    REQUIRE(high_score::load_high_scores(loaded, file).ok());
     CHECK(high_score::get_score(loaded, "song_001|easy") == 2000);
 
     remove_path(file);
@@ -140,7 +140,8 @@ TEST_CASE("High score persistence: missing file returns false and preserves stat
     HighScoreState state;
     high_score::set_score(state, "song_001|easy", 500);
 
-    CHECK_FALSE(high_score::load_high_scores(state, file));
+    const auto result = high_score::load_high_scores(state, file);
+    CHECK(result.status == persistence::Status::MissingFile);
     CHECK(high_score::get_score(state, "song_001|easy") == 500);
 }
 
@@ -158,7 +159,8 @@ TEST_CASE("High score persistence: malformed JSON preserves state", "[high_score
     HighScoreState state;
     high_score::set_score(state, "song_001|easy", 500);
 
-    CHECK_FALSE(high_score::load_high_scores(state, file));
+    const auto result = high_score::load_high_scores(state, file);
+    CHECK(result.status == persistence::Status::CorruptData);
     CHECK(high_score::get_score(state, "song_001|easy") == 500);
 
     remove_path(dir);
@@ -178,7 +180,7 @@ TEST_CASE("High score persistence: invalid schema preserves state", "[high_score
     HighScoreState state;
     high_score::set_score(state, "song_001|easy", 500);
 
-    CHECK_FALSE(high_score::load_high_scores(state, file));
+    CHECK(high_score::load_high_scores(state, file).status == persistence::Status::CorruptData);
     CHECK(high_score::get_score(state, "song_001|easy") == 500);
 
     {
@@ -186,7 +188,7 @@ TEST_CASE("High score persistence: invalid schema preserves state", "[high_score
         out << R"({"scores":{"song_001|easy":"not_a_number"}})";
     }
 
-    CHECK_FALSE(high_score::load_high_scores(state, file));
+    CHECK(high_score::load_high_scores(state, file).status == persistence::Status::CorruptData);
     CHECK(high_score::get_score(state, "song_001|easy") == 500);
 
     remove_path(dir);
@@ -204,7 +206,7 @@ TEST_CASE("High score persistence: clamps negative and oversized scores", "[high
     }
 
     HighScoreState state;
-    REQUIRE(high_score::load_high_scores(state, file));
+    REQUIRE(high_score::load_high_scores(state, file).ok());
     CHECK(high_score::get_score(state, "negative|easy") == 0);
     CHECK(high_score::get_score(state, "huge|hard") == std::numeric_limits<int32_t>::max());
 
@@ -218,17 +220,57 @@ TEST_CASE("High score persistence: load preserves current active key", "[high_sc
 
     HighScoreState original;
     high_score::set_score(original, "song_001|easy", 1000);
-    REQUIRE(high_score::save_high_scores(original, file));
+    REQUIRE(high_score::save_high_scores(original, file).ok());
 
     HighScoreState loaded;
     // Simulate a session already active on song_002|hard before the load.
     const auto pre_load_hash = high_score::make_key_hash("song_002", "hard");
     loaded.current_key_hash = pre_load_hash;
-    REQUIRE(high_score::load_high_scores(loaded, file));
+    REQUIRE(high_score::load_high_scores(loaded, file).ok());
 
     // Load must not clobber the in-progress session key.
     CHECK(loaded.current_key_hash == pre_load_hash);
     CHECK(high_score::get_score(loaded, "song_001|easy") == 1000);
 
     remove_path(dir);
+}
+
+TEST_CASE("High score persistence: save reports unwritable parent path", "[high_score]") {
+    const auto root = std::filesystem::path("test_high_score_unwritable_parent");
+    const auto not_a_dir = root / "not_a_directory";
+    const auto file = not_a_dir / "high_scores.json";
+
+    remove_path(root);
+    std::filesystem::create_directories(root);
+    {
+        std::ofstream out(not_a_dir);
+        REQUIRE(out.is_open());
+        out << "file blocks directory creation";
+    }
+
+    HighScoreState state;
+    high_score::set_score(state, "song_001|easy", 1000);
+    const auto result = high_score::save_high_scores(state, file);
+    CHECK(result.status == persistence::Status::DirectoryCreateFailed);
+
+    remove_path(root);
+}
+
+TEST_CASE("High score helper: file path resolution reports failure without CWD fallback", "[high_score]") {
+    const auto root = std::filesystem::path("test_high_score_path_resolution_failure");
+    const auto blocked_root = root / "blocked_root";
+    remove_path(root);
+    std::filesystem::create_directories(root);
+    {
+        std::ofstream out(blocked_root);
+        REQUIRE(out.is_open());
+        out << "file blocks directory creation";
+    }
+
+    std::filesystem::path file_path = "seed_should_clear.json";
+    const auto result = high_score::get_high_scores_file_path(file_path, blocked_root);
+    CHECK(result.status == persistence::Status::DirectoryCreateFailed);
+    CHECK(file_path.empty());
+
+    remove_path(root);
 }

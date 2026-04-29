@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <string>
 
+#include "persistence_policy.h"
+
 // Settings state singleton (lives in registry context)
 struct SettingsState {
     static constexpr int16_t MIN_AUDIO_OFFSET_MS = -250;
@@ -28,4 +30,7 @@ struct SettingsState {
 
 struct SettingsPersistence {
     std::string path;
+    persistence::Result last_load{};
+    persistence::Result last_save{};
+    bool dirty{false};
 };

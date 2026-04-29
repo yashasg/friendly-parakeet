@@ -1,6 +1,6 @@
 #include "high_score_persistence.h"
-#include "settings_persistence.h"
 #include "fs_utils.h"
+#include "persistence_policy.h"
 #include <nlohmann/json.hpp>
 #include <fstream>
 #include <filesystem>
@@ -12,11 +12,23 @@
 namespace high_score {
 
 std::filesystem::path get_high_scores_dir() {
-    return settings::get_settings_dir();
+    persistence::Paths paths;
+    const auto result = persistence::resolve_paths(paths);
+    return result.ok() ? paths.root_dir : std::filesystem::path{};
 }
 
-std::filesystem::path get_high_scores_file_path() {
-    return get_high_scores_dir() / "high_scores.json";
+persistence::Result get_high_scores_file_path(
+    std::filesystem::path& out_path,
+    const std::filesystem::path& root_override) {
+    persistence::Paths paths;
+    const auto result = persistence::resolve_paths(paths, root_override);
+    if (!result.ok()) {
+        out_path.clear();
+        return result;
+    }
+
+    out_path = paths.high_scores_file;
+    return persistence::Result{};
 }
 
 int32_t make_key_str(char* buf, int32_t cap, const char* song_id, const char* difficulty) {
@@ -153,44 +165,55 @@ bool high_score_state_from_json(const nlohmann::json& obj, HighScoreState& state
 
 }  // namespace
 
-bool load_high_scores(HighScoreState& state, const std::filesystem::path& path) {
+persistence::Result load_high_scores(HighScoreState& state, const std::filesystem::path& path) {
     std::error_code ec;
-    if (!std::filesystem::exists(path, ec) || ec) {
-        return false;
+    const bool exists = std::filesystem::exists(path, ec);
+    if (ec) {
+        return persistence::Result{persistence::Status::FileReadFailed, ec};
+    }
+    if (!exists) {
+        return persistence::Result{persistence::Status::MissingFile, {}};
     }
 
     try {
         std::ifstream file(path);
         if (!file.is_open()) {
-            return false;
+            return persistence::Result{persistence::Status::FileOpenFailed, {}};
         }
 
         nlohmann::json obj;
         file >> obj;
-        return high_score_state_from_json(obj, state);
+        if (file.bad()) {
+            return persistence::Result{persistence::Status::FileReadFailed, {}};
+        }
+        if (!high_score_state_from_json(obj, state)) {
+            return persistence::Result{persistence::Status::CorruptData, {}};
+        }
+        return persistence::Result{};
     } catch (const nlohmann::json::exception&) {
-        return false;
+        return persistence::Result{persistence::Status::CorruptData, {}};
     }
 }
 
-bool save_high_scores(const HighScoreState& state, const std::filesystem::path& path) {
-    if (!fs_utils::ensure_directory(path.parent_path())) {
-        return false;
+persistence::Result save_high_scores(const HighScoreState& state, const std::filesystem::path& path) {
+    const auto ensure = fs_utils::ensure_directory_result(path.parent_path());
+    if (!ensure.ok) {
+        return persistence::Result{persistence::Status::DirectoryCreateFailed, ensure.error};
     }
 
     std::ofstream file(path);
     if (!file.is_open()) {
-        return false;
+        return persistence::Result{persistence::Status::FileOpenFailed, {}};
     }
 
     nlohmann::json obj = high_score_state_to_json(state);
     file << obj.dump(2);
     file.flush();
     if (!file.good()) {
-        return false;
+        return persistence::Result{persistence::Status::FileWriteFailed, {}};
     }
     file.close();
-    return true;
+    return persistence::Result{};
 }
 
 void update_if_higher(HighScoreState& state, int32_t new_score) {

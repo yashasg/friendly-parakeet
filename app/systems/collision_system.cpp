@@ -54,14 +54,12 @@ void collision_system(entt::registry& reg, float /*dt*/) {
 
     auto* song    = reg.ctx().find<SongState>();
     auto* results = reg.ctx().find<SongResults>();
-    auto* gos     = reg.ctx().find<GameOverState>();  // #309: hoisted above resolve lambda
     bool rhythm_mode = (song != nullptr);
 
     // resolve: tag entity as scored (cleared) or missed.
     // kind is passed by the caller — no try_get needed since each per-kind
     // loop already holds the Obstacle component.
-    auto resolve = [&](entt::entity entity, float obs_z, bool cleared,
-                       ObstacleKind kind) {
+    auto resolve = [&](entt::entity entity, float obs_z, bool cleared) {
         if (!player_in_timing_window(p_transform, p_vstate, obs_z)) return;
 
         if (cleared) {
@@ -113,12 +111,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
             }
             reg.emplace<ScoredTag>(entity);
         } else {
-            // MISS — tag and record cause; energy drain handled by scoring_system.
-            // Tag the cause of death for the UI (does not override a prior cause)
-            if (gos && gos->cause == DeathCause::None) {
-                bool is_bar = (kind == ObstacleKind::LowBar || kind == ObstacleKind::HighBar);
-                gos->cause = is_bar ? DeathCause::HitABar : DeathCause::MissedABeat;
-            }
+            // MISS — tag only; scoring_system owns energy drain and death-cause attribution.
             reg.emplace<MissTag>(entity);
             reg.emplace<ScoredTag>(entity);
         }
@@ -129,52 +122,52 @@ void collision_system(entt::registry& reg, float /*dt*/) {
 
     // ShapeGate: RequiredShape only (no BlockedLanes, no RequiredLane)
     {
-        auto view = reg.view<ObstacleTag, Position, Obstacle, RequiredShape>(
+        auto view = reg.view<ObstacleTag, Position, RequiredShape>(
             entt::exclude<ScoredTag, BlockedLanes, RequiredLane>);
-        for (auto [e, pos, obs, req] : view.each()) {
+        for (auto [e, pos, req] : view.each()) {
             bool shape_match = (p_shape.current == req.shape) && (p_shape.current != Shape::Hexagon);
             bool lane_match  = player_overlaps_lane(p_transform, pos);
-            resolve(e, pos.y, shape_match && lane_match, obs.kind);
+            resolve(e, pos.y, shape_match && lane_match);
         }
     }
 
     // LaneBlock: BlockedLanes only (no RequiredShape)
     {
-        auto view = reg.view<ObstacleTag, Position, Obstacle, BlockedLanes>(
+        auto view = reg.view<ObstacleTag, Position, BlockedLanes>(
             entt::exclude<ScoredTag, RequiredShape>);
-        for (auto [e, pos, obs, blocked] : view.each()) {
-            resolve(e, pos.y, !((blocked.mask >> p_lane.current) & 1), obs.kind);
+        for (auto [e, pos, blocked] : view.each()) {
+            resolve(e, pos.y, !((blocked.mask >> p_lane.current) & 1));
         }
     }
 
     // LowBar / HighBar: RequiredVAction
     {
-        auto view = reg.view<ObstacleTag, ObstacleScrollZ, Obstacle, RequiredVAction>(
+        auto view = reg.view<ObstacleTag, ObstacleScrollZ, RequiredVAction>(
             entt::exclude<ScoredTag>);
-        for (auto [e, oz, obs, req_v] : view.each()) {
-            resolve(e, oz.z, p_vstate.mode == req_v.action, obs.kind);
+        for (auto [e, oz, req_v] : view.each()) {
+            resolve(e, oz.z, p_vstate.mode == req_v.action);
         }
     }
 
     // ComboGate: RequiredShape + BlockedLanes (no RequiredLane)
     {
-        auto view = reg.view<ObstacleTag, Position, Obstacle, RequiredShape, BlockedLanes>(
+        auto view = reg.view<ObstacleTag, Position, RequiredShape, BlockedLanes>(
             entt::exclude<ScoredTag, RequiredLane>);
-        for (auto [e, pos, obs, req, blocked] : view.each()) {
+        for (auto [e, pos, req, blocked] : view.each()) {
             bool shape_ok = (p_shape.current == req.shape) && (p_shape.current != Shape::Hexagon);
             bool lane_ok  = !((blocked.mask >> p_lane.current) & 1);
-            resolve(e, pos.y, shape_ok && lane_ok, obs.kind);
+            resolve(e, pos.y, shape_ok && lane_ok);
         }
     }
 
     // SplitPath: RequiredShape + RequiredLane
     {
-        auto view = reg.view<ObstacleTag, Position, Obstacle, RequiredShape, RequiredLane>(
+        auto view = reg.view<ObstacleTag, Position, RequiredShape, RequiredLane>(
             entt::exclude<ScoredTag>);
-        for (auto [e, pos, obs, req, rlane] : view.each()) {
+        for (auto [e, pos, req, rlane] : view.each()) {
             bool shape_ok = (p_shape.current == req.shape) && (p_shape.current != Shape::Hexagon);
             bool lane_ok  = (p_lane.current == rlane.lane);
-            resolve(e, pos.y, shape_ok && lane_ok, obs.kind);
+            resolve(e, pos.y, shape_ok && lane_ok);
         }
     }
 

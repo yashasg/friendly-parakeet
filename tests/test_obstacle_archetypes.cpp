@@ -1,6 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
 #include "test_helpers.h"
 #include "entities/obstacle_entity.h"
+#include "entities/obstacle_render_entity.h"
+
+#include <stdexcept>
 
 // spawn_obstacle: entity bundle contract tests.
 // Calls the entity factory directly, independent of beat_scheduler_system.
@@ -16,6 +19,31 @@ void probe_obstacle_tag_construct(entt::registry& reg, entt::entity entity) {
     if (!probe) return;
     probe->saw_obstacle = reg.all_of<Obstacle>(entity);
     probe->saw_beat_info = reg.all_of<BeatInfo>(entity);
+}
+
+int count_mesh_children(entt::registry& reg) {
+    int count = 0;
+    auto view = reg.view<MeshChild>();
+    for ([[maybe_unused]] auto entity : view) {
+        ++count;
+    }
+    return count;
+}
+
+entt::entity make_mesh_factory_obstacle(entt::registry& reg, ObstacleKind kind) {
+    auto parent = reg.create();
+    reg.emplace<Position>(parent, constants::LANE_X[1], -120.0f);
+    reg.emplace<Obstacle>(parent, kind, int16_t{0});
+    reg.emplace<DrawSize>(parent, constants::SCREEN_W_F, 80.0f);
+    reg.emplace<Color>(parent, Color{255, 255, 255, 255});
+    return parent;
+}
+
+void check_no_mesh_children(entt::registry& reg, entt::entity parent) {
+    CHECK(count_mesh_children(reg) == 0);
+    if (auto* children = reg.try_get<ObstacleChildren>(parent)) {
+        CHECK(children->count == 0);
+    }
 }
 }
 
@@ -68,6 +96,118 @@ TEST_CASE("entity: obstacle roots and mesh children declare world render pass", 
     auto low_bar = spawn_obstacle(reg, {ObstacleKind::LowBar, 360.0f, -120.0f});
     CHECK(reg.all_of<TagWorldPass>(low_bar));
     CHECK(reg.all_of<WorldTransform>(low_bar));
+}
+
+TEST_CASE("entity: obstacle mesh overflow does not create orphan MeshChild", "[archetype][render][cleanup]") {
+    entt::registry reg;
+    wire_obstacle_mesh_lifetime(reg);
+
+    auto parent = reg.create();
+    reg.emplace<Position>(parent, 360.0f, -120.0f);
+    reg.emplace<Obstacle>(parent, ObstacleKind::ShapeGate, int16_t{constants::PTS_SHAPE_GATE});
+    reg.emplace<DrawSize>(parent, constants::SCREEN_W_F, 80.0f);
+    reg.emplace<Color>(parent, Color{80, 200, 255, 255});
+    reg.emplace<RequiredShape>(parent, Shape::Circle);
+
+    auto& children = reg.emplace<ObstacleChildren>(parent);
+    for (int i = 0; i < ObstacleChildren::MAX; ++i) {
+        auto child = reg.create();
+        reg.emplace<MeshChild>(child, MeshChild{
+            parent, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f,
+            Color{255, 255, 255, 255}, MeshType::Slab, 0
+        });
+        children.children[children.count++] = child;
+    }
+    reg.emplace<ObstacleTag>(parent);
+
+    CHECK(count_mesh_children(reg) == ObstacleChildren::MAX);
+    CHECK_THROWS_AS(spawn_obstacle_meshes(reg, parent), std::logic_error);
+    CHECK(count_mesh_children(reg) == ObstacleChildren::MAX);
+    CHECK(reg.get<ObstacleChildren>(parent).count == ObstacleChildren::MAX);
+
+    reg.destroy(parent);
+
+    CHECK(count_mesh_children(reg) == 0);
+}
+
+TEST_CASE("entity: obstacle mesh lifetime is wired by the factory", "[archetype][render][cleanup]") {
+    entt::registry reg;
+    auto parent = spawn_obstacle(reg, {ObstacleKind::ShapeGate, 360.0f, -120.0f, Shape::Circle});
+
+    REQUIRE(count_mesh_children(reg) > 0);
+
+    reg.destroy(parent);
+
+    CHECK(count_mesh_children(reg) == 0);
+}
+
+TEST_CASE("entity: direct mesh factory cleanup does not depend on ObstacleTag order", "[archetype][render][cleanup]") {
+    entt::registry reg;
+    auto parent = make_mesh_factory_obstacle(reg, ObstacleKind::ShapeGate);
+    reg.emplace<RequiredShape>(parent, Shape::Circle);
+    reg.emplace<ObstacleTag>(parent);
+
+    spawn_obstacle_meshes(reg, parent);
+    REQUIRE(count_mesh_children(reg) > 0);
+
+    reg.destroy(parent);
+
+    CHECK(count_mesh_children(reg) == 0);
+}
+
+TEST_CASE("entity: mesh factory rejects invalid RequiredShape before children", "[archetype][render][validation]") {
+    const Shape invalid_shape = static_cast<Shape>(255);
+
+    SECTION("ShapeGate") {
+        entt::registry reg;
+        auto parent = make_mesh_factory_obstacle(reg, ObstacleKind::ShapeGate);
+        reg.emplace<RequiredShape>(parent, invalid_shape);
+
+        CHECK_THROWS_AS(spawn_obstacle_meshes(reg, parent), std::logic_error);
+        check_no_mesh_children(reg, parent);
+    }
+
+    SECTION("ComboGate") {
+        entt::registry reg;
+        auto parent = make_mesh_factory_obstacle(reg, ObstacleKind::ComboGate);
+        reg.emplace<RequiredShape>(parent, invalid_shape);
+        reg.emplace<BlockedLanes>(parent, uint8_t{0b101});
+
+        CHECK_THROWS_AS(spawn_obstacle_meshes(reg, parent), std::logic_error);
+        check_no_mesh_children(reg, parent);
+    }
+
+    SECTION("SplitPath") {
+        entt::registry reg;
+        auto parent = make_mesh_factory_obstacle(reg, ObstacleKind::SplitPath);
+        reg.emplace<RequiredShape>(parent, invalid_shape);
+        reg.emplace<RequiredLane>(parent, int8_t{1});
+
+        CHECK_THROWS_AS(spawn_obstacle_meshes(reg, parent), std::logic_error);
+        check_no_mesh_children(reg, parent);
+    }
+}
+
+TEST_CASE("entity: mesh factory rejects invalid RequiredLane before children", "[archetype][render][validation]") {
+    SECTION("negative lane") {
+        entt::registry reg;
+        auto parent = make_mesh_factory_obstacle(reg, ObstacleKind::SplitPath);
+        reg.emplace<RequiredShape>(parent, Shape::Square);
+        reg.emplace<RequiredLane>(parent, int8_t{-1});
+
+        CHECK_THROWS_AS(spawn_obstacle_meshes(reg, parent), std::logic_error);
+        check_no_mesh_children(reg, parent);
+    }
+
+    SECTION("lane beyond lane table") {
+        entt::registry reg;
+        auto parent = make_mesh_factory_obstacle(reg, ObstacleKind::SplitPath);
+        reg.emplace<RequiredShape>(parent, Shape::Square);
+        reg.emplace<RequiredLane>(parent, int8_t{3});
+
+        CHECK_THROWS_AS(spawn_obstacle_meshes(reg, parent), std::logic_error);
+        check_no_mesh_children(reg, parent);
+    }
 }
 
 TEST_CASE("entity: ShapeGate Square - red color", "[archetype]") {

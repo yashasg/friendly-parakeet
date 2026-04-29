@@ -3,7 +3,7 @@
 //
 // These tests now focus on runtime-live coverage only:
 //   * Schema/content checks that remain relevant to current UI flows.
-//   * Wiring checks that collision and energy systems set GameOverState.cause.
+//   * Wiring checks that scoring and game_state systems set GameOverState.cause.
 
 #include <catch2/catch_test_macros.hpp>
 #include <entt/entity/registry.hpp>
@@ -66,7 +66,7 @@ TEST_CASE("redfoot/#168: existing game_over buttons keep their original position
     CHECK(menu   ->value("action", "") == "main_menu");
 }
 
-// ── Wiring: collision sets DeathCause for misses and bar hits ───────────────
+// ── Wiring: scoring sets DeathCause for misses and bar hits ──────────────────
 
 namespace {
 // Spawn a player aligned with an obstacle so the collision system's
@@ -106,6 +106,7 @@ TEST_CASE("redfoot/#168: collision flags HitABar when a bar passes ungraded",
     entt::registry reg;
     reg.ctx().emplace<GameState>().phase = GamePhase::Playing;
     reg.ctx().emplace<EnergyState>();
+    reg.ctx().emplace<ScoreState>();
     reg.ctx().emplace<SongResults>();
     reg.ctx().emplace<GameOverState>();
 
@@ -114,6 +115,7 @@ TEST_CASE("redfoot/#168: collision flags HitABar when a bar passes ungraded",
     reg.emplace<RequiredVAction>(bar, VMode::Jumping);
 
     collision_system(reg, 0.016f);
+    scoring_system(reg, 0.016f);
 
     auto& gos = reg.ctx().get<GameOverState>();
     CHECK(gos.cause == DeathCause::HitABar);
@@ -124,6 +126,7 @@ TEST_CASE("redfoot/#168: collision flags MissedABeat for a missed shape gate",
     entt::registry reg;
     reg.ctx().emplace<GameState>().phase = GamePhase::Playing;
     reg.ctx().emplace<EnergyState>();
+    reg.ctx().emplace<ScoreState>();
     reg.ctx().emplace<SongResults>();
     reg.ctx().emplace<GameOverState>();
 
@@ -132,6 +135,7 @@ TEST_CASE("redfoot/#168: collision flags MissedABeat for a missed shape gate",
     reg.emplace<RequiredShape>(gate, Shape::Circle);
 
     collision_system(reg, 0.016f);
+    scoring_system(reg, 0.016f);
 
     auto& gos = reg.ctx().get<GameOverState>();
     CHECK(gos.cause == DeathCause::MissedABeat);
@@ -141,13 +145,14 @@ TEST_CASE("redfoot/#168: energy depletion falls back to ENERGY DEPLETED",
           "[ui][redfoot][game_over][wiring]") {
     entt::registry reg;
     reg.ctx().emplace<GameState>().phase = GamePhase::Playing;
+    reg.ctx().emplace<entt::dispatcher>();
     auto& energy = reg.ctx().emplace<EnergyState>();
     auto& song = reg.ctx().emplace<SongState>();
     song.playing = true;
     reg.ctx().emplace<GameOverState>();  // cause stays None
     energy.energy = 0.0f;
 
-    energy_system(reg, 0.016f);
+    game_state_system(reg, 0.016f);
 
     auto& gos = reg.ctx().get<GameOverState>();
     CHECK(gos.cause == DeathCause::EnergyDepleted);
@@ -157,6 +162,7 @@ TEST_CASE("redfoot/#168: energy depletion does not overwrite a specific cause",
           "[ui][redfoot][game_over][wiring]") {
     entt::registry reg;
     reg.ctx().emplace<GameState>().phase = GamePhase::Playing;
+    reg.ctx().emplace<entt::dispatcher>();
     auto& energy = reg.ctx().emplace<EnergyState>();
     auto& song = reg.ctx().emplace<SongState>();
     song.playing = true;
@@ -164,7 +170,7 @@ TEST_CASE("redfoot/#168: energy depletion does not overwrite a specific cause",
     gos.cause = DeathCause::HitABar;
     energy.energy = 0.0f;
 
-    energy_system(reg, 0.016f);
+    game_state_system(reg, 0.016f);
 
     CHECK(gos.cause == DeathCause::HitABar);  // preserved, not clobbered
 }

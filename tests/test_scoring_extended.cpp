@@ -11,6 +11,8 @@ TEST_CASE("scoring: perfect timing multiplier gives 1.5x base", "[scoring][rhyth
     reg.emplace<TimingGrade>(obs, TimingTier::Perfect, 1.0f);
 
     scoring_system(reg, 0.016f);
+    popup_feedback_system(reg, 0.016f);
+    energy_system(reg, 0.016f);
 
     auto& score = reg.ctx().get<ScoreState>();
     // 200 * 1.5 * 1.0 = 300, plus distance bonus and chain
@@ -24,6 +26,8 @@ TEST_CASE("scoring: bad timing multiplier gives 0.25x base", "[scoring][rhythm]"
     reg.emplace<TimingGrade>(obs, TimingTier::Bad, 0.0f);
 
     scoring_system(reg, 0.016f);
+    popup_feedback_system(reg, 0.016f);
+    energy_system(reg, 0.016f);
 
     auto& score = reg.ctx().get<ScoreState>();
     // 200 * 0.25 * 1.0 = 50, plus distance bonus
@@ -38,6 +42,8 @@ TEST_CASE("scoring: perfect timing and base points combine correctly", "[scoring
     reg.emplace<TimingGrade>(obs, TimingTier::Perfect, 1.0f);
 
     scoring_system(reg, 0.016f);
+    popup_feedback_system(reg, 0.016f);
+    energy_system(reg, 0.016f);
 
     auto& score = reg.ctx().get<ScoreState>();
     // 200 * 1.5 (perfect) = 300, plus distance bonus
@@ -51,6 +57,8 @@ TEST_CASE("scoring: SongResults tracks max_chain", "[scoring]") {
         auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y + float(i));
         reg.emplace<ScoredTag>(obs);
         scoring_system(reg, 0.016f);
+    popup_feedback_system(reg, 0.016f);
+    energy_system(reg, 0.016f);
     }
 
     auto& results = reg.ctx().get<SongResults>();
@@ -64,6 +72,8 @@ TEST_CASE("scoring: TimingGrade removed from entity after scoring", "[scoring]")
     reg.emplace<TimingGrade>(obs, TimingTier::Good, 0.5f);
 
     scoring_system(reg, 0.016f);
+    popup_feedback_system(reg, 0.016f);
+    energy_system(reg, 0.016f);
 
     CHECK_FALSE(reg.all_of<TimingGrade>(obs));
 }
@@ -75,6 +85,8 @@ TEST_CASE("scoring: popup timing_tier set for graded obstacles", "[scoring][rhyt
     reg.emplace<TimingGrade>(obs, TimingTier::Good, 0.5f);
 
     scoring_system(reg, 0.016f);
+    popup_feedback_system(reg, 0.016f);
+    energy_system(reg, 0.016f);
 
     auto popup_view = reg.view<ScorePopup>();
     for (auto [e, popup] : popup_view.each()) {
@@ -89,6 +101,8 @@ TEST_CASE("scoring: popup timing_tier is nullopt for ungraded obstacles", "[scor
     // No TimingGrade
 
     scoring_system(reg, 0.016f);
+    popup_feedback_system(reg, 0.016f);
+    energy_system(reg, 0.016f);
 
     auto popup_view = reg.view<ScorePopup>();
     for (auto [e, popup] : popup_view.each()) {
@@ -105,6 +119,8 @@ TEST_CASE("scoring: multiple obstacles scored in single frame", "[scoring]") {
     reg.emplace<ScoredTag>(obs2);
 
     scoring_system(reg, 0.016f);
+    popup_feedback_system(reg, 0.016f);
+    energy_system(reg, 0.016f);
 
     auto popup_view = reg.view<ScorePopup>();
     int popup_count = 0;
@@ -124,6 +140,8 @@ TEST_CASE("scoring: miss-tagged obstacles do not award score and reset chain", "
 
     int score_before = score.score;
     scoring_system(reg, 0.016f);
+    popup_feedback_system(reg, 0.016f);
+    energy_system(reg, 0.016f);
 
     CHECK(score.chain_count == 0);
     CHECK(score.chain_timer == 0.0f);
@@ -131,6 +149,26 @@ TEST_CASE("scoring: miss-tagged obstacles do not award score and reset chain", "
     CHECK_FALSE(reg.all_of<Obstacle>(obs));
     CHECK_FALSE(reg.all_of<ScoredTag>(obs));
     CHECK_FALSE(reg.all_of<MissTag>(obs));
+}
+
+TEST_CASE("scoring: mixed miss and perfect at zero preserves per-event clamp ordering", "[scoring][energy]") {
+    auto reg = make_registry();
+    auto& energy = reg.ctx().get<EnergyState>();
+    energy.energy = 0.0f;
+
+    auto miss = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
+    reg.emplace<ScoredTag>(miss);
+    reg.emplace<MissTag>(miss);
+
+    auto hit = make_shape_gate(reg, Shape::Square, constants::PLAYER_Y + 1.0f);
+    reg.emplace<ScoredTag>(hit);
+    reg.emplace<TimingGrade>(hit, TimingTier::Perfect, 1.0f);
+
+    scoring_system(reg, 0.016f);
+    popup_feedback_system(reg, 0.016f);
+    energy_system(reg, 0.016f);
+
+    CHECK_THAT(energy.energy, Catch::Matchers::WithinAbs(constants::ENERGY_RECOVER_PERFECT, 0.0001f));
 }
 
 // ── LanePush exclusion from chain and popup ──────────────────────────────────
@@ -154,6 +192,8 @@ TEST_CASE("scoring: LanePush excluded from chain and popup", "[scoring][lane_pus
     int chain_before = score.chain_count;
 
     scoring_system(reg, 0.016f);
+    popup_feedback_system(reg, 0.016f);
+    energy_system(reg, 0.016f);
 
     CHECK(score.chain_count == chain_before);
 
@@ -185,6 +225,8 @@ TEST_CASE("scoring: LanePushRight excluded from chain and popup", "[scoring][lan
     int chain_before = score.chain_count;
 
     scoring_system(reg, 0.016f);
+    popup_feedback_system(reg, 0.016f);
+    energy_system(reg, 0.016f);
 
     CHECK(score.chain_count == chain_before);
 

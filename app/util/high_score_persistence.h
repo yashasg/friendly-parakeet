@@ -6,18 +6,21 @@
 namespace high_score {
 
 // Load high scores from JSON file.
-// If file doesn't exist or parsing fails, returns false and leaves state unchanged.
-bool load_high_scores(HighScoreState& state, const std::filesystem::path& path);
+// Distinguishes missing/corrupt/path errors via structured status.
+persistence::Result load_high_scores(HighScoreState& state, const std::filesystem::path& path);
 
 // Save high scores to JSON file.
-// Returns false if write fails.
-bool save_high_scores(const HighScoreState& state, const std::filesystem::path& path);
+// Distinguishes path/open/write failures via structured status.
+persistence::Result save_high_scores(const HighScoreState& state, const std::filesystem::path& path);
 
 // Get platform-specific high scores directory (same as settings dir).
 std::filesystem::path get_high_scores_dir();
 
-// Get full high scores file path (dir/high_scores.json)
-std::filesystem::path get_high_scores_file_path();
+// Resolve full high scores file path.
+// Returns structured failure and clears out_path when resolution fails.
+persistence::Result get_high_scores_file_path(
+    std::filesystem::path& out_path,
+    const std::filesystem::path& root_override = {});
 
 // Update the stored score for state.current_key_hash if new_score is strictly higher.
 // Negative new_score is clamped to 0. No-op if current_key_hash is zero.

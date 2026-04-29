@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <filesystem>
+#include <fstream>
 
 #include "components/high_score.h"
 #include "entities/camera_entity.h"
@@ -88,7 +89,7 @@ TEST_CASE("High score integration: new song-complete high score persists",
     CHECK(high_score::get_score(high_scores, "song_001|easy") == 2500);
 
     HighScoreState loaded;
-    REQUIRE(high_score::load_high_scores(loaded, file));
+    REQUIRE(high_score::load_high_scores(loaded, file).ok());
     CHECK(high_score::get_score(loaded, "song_001|easy") == 2500);
 
     remove_path(file);
@@ -123,6 +124,43 @@ TEST_CASE("High score integration: lower game-over score does not overwrite pers
     remove_path(file);
 }
 
+TEST_CASE("High score integration: failed save keeps dirty state for retry",
+          "[high_score][gamestate]") {
+    const auto root = std::filesystem::path("test_high_score_retry_state");
+    const auto blocked_parent = root / "blocked_parent";
+    const auto blocked_file = blocked_parent / "high_scores.json";
+    remove_path(root);
+    std::filesystem::create_directories(root);
+    {
+        std::ofstream out(blocked_parent);
+        REQUIRE(out.is_open());
+        out << "file blocks directory creation";
+    }
+
+    auto reg = make_registry();
+    reg.ctx().get<HighScorePersistence>().path = blocked_file.string();
+    auto& high_scores = reg.ctx().get<HighScoreState>();
+    high_score::ensure_entry(high_scores, "song_001|easy");
+    high_scores.current_key_hash = high_score::make_key_hash("song_001", "easy");
+    high_score::set_score(high_scores, "song_001|easy", 1000);
+
+    auto& score = reg.ctx().get<ScoreState>();
+    score.high_score = 1000;
+    score.score = 2500;
+
+    auto& gs = reg.ctx().get<GameState>();
+    gs.transition_pending = true;
+    gs.next_phase = GamePhase::SongComplete;
+
+    game_state_system(reg, 0.016f);
+
+    const auto& persistence_state = reg.ctx().get<HighScorePersistence>();
+    CHECK(persistence_state.dirty);
+    CHECK(persistence_state.last_save.status == persistence::Status::DirectoryCreateFailed);
+
+    remove_path(root);
+}
+
 TEST_CASE("High score bootstrap: persistence path is populated for save call sites",
           "[high_score][gamestate][issue-302]") {
     const auto file = temp_high_score_path("shapeshifter_issue_302_high_scores_bootstrap.json");
@@ -130,11 +168,11 @@ TEST_CASE("High score bootstrap: persistence path is populated for save call sit
 
     HighScoreState seeded;
     high_score::set_score(seeded, "song_001|easy", 1000);
-    REQUIRE(high_score::save_high_scores(seeded, file));
+    REQUIRE(high_score::save_high_scores(seeded, file).ok());
 
     auto reg = make_registry();
     HighScoreState loaded_at_bootstrap;
-    high_score::load_high_scores(loaded_at_bootstrap, file);
+    CHECK(high_score::load_high_scores(loaded_at_bootstrap, file).ok());
     reg.ctx().get<HighScoreState>() = loaded_at_bootstrap;
     reg.ctx().get<HighScorePersistence>() = HighScorePersistence{file.string()};
     reg.ctx().get<GameState>() = GameState{
@@ -155,7 +193,7 @@ TEST_CASE("High score bootstrap: persistence path is populated for save call sit
     game_state_system(reg, 0.016f);
 
     HighScoreState loaded;
-    REQUIRE(high_score::load_high_scores(loaded, file));
+    REQUIRE(high_score::load_high_scores(loaded, file).ok());
     CHECK(high_score::get_score(loaded, "song_001|easy") == 2500);
 
     remove_path(file);

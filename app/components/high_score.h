@@ -5,6 +5,8 @@
 #include <string>
 #include <entt/entt.hpp>
 
+#include "../util/persistence_policy.h"
+
 // Compact fixed-size high-score table.
 // Max entries: LEVEL_COUNT x DIFFICULTY_COUNT = 9.
 // Flat array storage -- no heap nodes, O(N) linear scan (faster than
@@ -30,4 +32,7 @@ struct HighScoreState {
 
 struct HighScorePersistence {
     std::string path;
+    persistence::Result last_load{};
+    persistence::Result last_save{};
+    bool dirty{false};
 };

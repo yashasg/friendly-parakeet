@@ -95,6 +95,7 @@ endforeach()
 file(GLOB SYSTEM_SOURCES CONFIGURE_DEPENDS app/systems/*.cpp)
 file(GLOB AUDIO_SOURCES CONFIGURE_DEPENDS app/audio/*.cpp)
 file(GLOB UTIL_SOURCES CONFIGURE_DEPENDS app/util/*.cpp)
+file(GLOB PLATFORM_SOURCES CONFIGURE_DEPENDS app/platform/*.cpp app/platform/ios/*.cpp)
 file(GLOB UI_SOURCES CONFIGURE_DEPENDS app/ui/*.cpp)
 file(GLOB UI_SCREEN_CONTROLLER_SOURCES CONFIGURE_DEPENDS app/ui/screen_controllers/*.cpp)
 file(GLOB INPUT_SOURCES CONFIGURE_DEPENDS app/input/*.cpp)
@@ -111,7 +112,22 @@ list(FILTER UI_SOURCES EXCLUDE REGEX "(^|/)text_renderer\\.cpp$")
 list(FILTER UI_SOURCES EXCLUDE REGEX "(^|/)raygui_impl\\.cpp$")
 list(FILTER UTIL_SOURCES EXCLUDE REGEX "(^|/)file_logger\\.cpp$")
 
-add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES} ${AUDIO_SOURCES} ${UTIL_SOURCES} ${UI_SOURCES} ${UI_SCREEN_CONTROLLER_SOURCES} ${INPUT_SOURCES} ${SESSION_SOURCES} ${ENTITY_SOURCES})
+set(SHAPESHIFTER_IOS FALSE)
+if(APPLE)
+    if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+        set(SHAPESHIFTER_IOS TRUE)
+    elseif(DEFINED CMAKE_OSX_SYSROOT AND CMAKE_OSX_SYSROOT MATCHES "iphoneos|iphonesimulator")
+        set(SHAPESHIFTER_IOS TRUE)
+    endif()
+endif()
+
+if(SHAPESHIFTER_IOS)
+    enable_language(OBJCXX)
+    list(FILTER PLATFORM_SOURCES EXCLUDE REGEX "(^|/)haptics_ios_bridge_stub\\.cpp$")
+    list(APPEND PLATFORM_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/app/platform/ios/haptics_ios_bridge_ios.mm")
+endif()
+
+add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES} ${AUDIO_SOURCES} ${UTIL_SOURCES} ${PLATFORM_SOURCES} ${UI_SOURCES} ${UI_SCREEN_CONTROLLER_SOURCES} ${INPUT_SOURCES} ${SESSION_SOURCES} ${ENTITY_SOURCES})
 target_include_directories(shapeshifter_lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/app
     ${CMAKE_BINARY_DIR}/generated
@@ -125,6 +141,12 @@ target_link_libraries(shapeshifter_lib PUBLIC
     nlohmann_json::nlohmann_json
     raylib
 )
+if(SHAPESHIFTER_IOS)
+    target_link_libraries(shapeshifter_lib PUBLIC
+        "-framework Foundation"
+        "-framework UIKit"
+    )
+endif()
 target_link_libraries(shapeshifter_lib PRIVATE shapeshifter_warnings)
 
 # ── Platform capability flags ────────────────────────────────
@@ -138,6 +160,8 @@ elseif(EMSCRIPTEN)
     target_compile_definitions(shapeshifter_lib PUBLIC PLATFORM_WEB PLATFORM_HAS_KEYBOARD)
     # JSON/settings loaders use C++ try/catch for recoverable parse failures.
     target_compile_options(shapeshifter_lib PUBLIC -fexceptions)
+elseif(SHAPESHIFTER_IOS)
+    target_compile_definitions(shapeshifter_lib PUBLIC PLATFORM_IOS)
 endif()
 
 # Suppress MSVC CRT deprecation warnings for standard C functions (fopen, etc.)

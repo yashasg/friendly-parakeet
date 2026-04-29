@@ -1,6 +1,7 @@
 #pragma once
 
 #include <entt/entt.hpp>
+#include "../components/game_state.h"
 
 // Phase 0: Raw input (polls raylib input)
 void input_system(entt::registry& reg, float raw_dt);
@@ -10,6 +11,8 @@ void test_player_system(entt::registry& reg, float dt);
 
 // Phase 2: Game State
 void game_state_system(entt::registry& reg, float dt);
+void game_state_enter_terminal_phase(entt::registry& reg, GamePhase phase);
+void game_state_end_screen_system(entt::registry& reg, float dt);
 
 // Phase 3: Rhythm Engine
 void song_playback_system(entt::registry& reg, float dt);
@@ -26,6 +29,7 @@ void scroll_system(entt::registry& reg, float dt);
 void collision_system(entt::registry& reg, float dt);
 void miss_detection_system(entt::registry& reg, float dt);
 void scoring_system(entt::registry& reg, float dt);
+void popup_feedback_system(entt::registry& reg, float dt);
 
 // Phase 5.5: Energy
 void energy_system(entt::registry& reg, float dt);

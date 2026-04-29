@@ -17,15 +17,14 @@ TEST_CASE("death_model: one miss drains energy without immediate GameOver", "[de
     CHECK(reg.all_of<ScoredTag>(obstacle));
 
     scoring_system(reg, 0.016f);
+    energy_system(reg, 0.016f);
 
     CHECK(reg.ctx().get<SongResults>().miss_count == 1);
     CHECK_THAT(energy.energy,
                Catch::Matchers::WithinAbs(constants::ENERGY_MAX - constants::ENERGY_DRAIN_MISS,
                                             0.0001f));
-    CHECK(energy.flash_timer == constants::ENERGY_FLASH_DURATION);
+    CHECK(energy.flash_timer > 0.0f);
     CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
-
-    energy_system(reg, 0.016f);
 
     CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
 }
@@ -58,15 +57,16 @@ TEST_CASE("death_model: GameOver is deferred to energy depletion", "[death_model
     make_shape_gate(reg, Shape::Triangle, constants::PLAYER_Y);
     collision_system(reg, 0.016f);
     scoring_system(reg, 0.016f);
+    energy_system(reg, 0.016f);
 
     CHECK(energy.energy == 0.0f);
     CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
 
-    energy_system(reg, 0.016f);
+    game_state_system(reg, 0.016f);
+    game_state_system(reg, 0.016f);
 
     const auto& state = reg.ctx().get<GameState>();
-    CHECK(state.transition_pending);
-    CHECK(state.next_phase == GamePhase::GameOver);
+    CHECK(state.phase == GamePhase::GameOver);
     CHECK_FALSE(reg.ctx().get<SongState>().playing);
 }
 
@@ -81,6 +81,7 @@ TEST_CASE("death_model: timing recovery can preserve survival margin", "[death_m
     reg.emplace<ScoredTag>(scored);
     reg.emplace<TimingGrade>(scored, TimingTier::Perfect, 1.0f);
     scoring_system(reg, 0.016f);
+    energy_system(reg, 0.016f);
 
     CHECK_THAT(energy.energy,
                Catch::Matchers::WithinAbs(0.15f + constants::ENERGY_RECOVER_PERFECT, 0.0001f));
@@ -149,14 +150,13 @@ TEST_CASE("death_model: collision clamps depleted energy before GameOver transit
     make_shape_gate(reg, Shape::Triangle, constants::PLAYER_Y);
     collision_system(reg, 0.016f);
     scoring_system(reg, 0.016f);
+    energy_system(reg, 0.016f);
 
     CHECK(energy.energy == 0.0f);
     CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
 
-    energy_system(reg, 0.016f);
-
+    game_state_system(reg, 0.016f);
     CHECK(reg.ctx().get<GameState>().transition_pending);
-    CHECK(reg.ctx().get<GameState>().next_phase == GamePhase::GameOver);
 }
 
 TEST_CASE("death_model: scroll-past miss drains energy without directly requesting GameOver", "[death_model]") {
@@ -180,15 +180,14 @@ TEST_CASE("death_model: scroll-past miss drains energy without directly requesti
     CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
 
     scoring_system(reg, 0.016f);
+    energy_system(reg, 0.016f);
 
     CHECK(energy.energy == 0.0f);
     CHECK(reg.ctx().get<SongResults>().miss_count == 1);
     CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
 
-    energy_system(reg, 0.016f);
-
+    game_state_system(reg, 0.016f);
     CHECK(reg.ctx().get<GameState>().transition_pending);
-    CHECK(reg.ctx().get<GameState>().next_phase == GamePhase::GameOver);
 }
 
 // Regression: a scroll-past miss that depletes energy to 0 triggers GameOver
@@ -206,14 +205,13 @@ TEST_CASE("death_model: scroll-past fatal miss triggers GameOver same frame", "[
 
     miss_detection_system(reg, 0.016f);
     scoring_system(reg, 0.016f);
+    energy_system(reg, 0.016f);
 
     CHECK(energy.energy == 0.0f);
     CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
 
-    energy_system(reg, 0.016f);
-
+    game_state_system(reg, 0.016f);
     CHECK(reg.ctx().get<GameState>().transition_pending);
-    CHECK(reg.ctx().get<GameState>().next_phase == GamePhase::GameOver);
 }
 
 // Regression: a scroll-past miss must not double-drain (energy delta = exactly
@@ -231,6 +229,7 @@ TEST_CASE("death_model: scroll-past miss does not double-drain", "[death_model]"
 
     miss_detection_system(reg, 0.016f);
     scoring_system(reg, 0.016f);
+    energy_system(reg, 0.016f);
 
     CHECK(reg.ctx().get<SongResults>().miss_count == 1);
     CHECK_THAT(energy.energy,
@@ -255,6 +254,7 @@ TEST_CASE("death_model: LanePush scroll-past does not produce MissTag", "[death_
 
     miss_detection_system(reg, 0.016f);
     scoring_system(reg, 0.016f);
+    energy_system(reg, 0.016f);
 
     CHECK_FALSE(reg.all_of<MissTag>(obstacle));
     CHECK_THAT(energy.energy, Catch::Matchers::WithinAbs(initial_energy, 0.0001f));

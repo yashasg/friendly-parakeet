@@ -155,3 +155,12 @@ Removed runtime override entirely from `title_screen_controller.cpp`. Updated `c
 - Pattern documented for future single-header library implementations
 
 **Orchestration log:** `.squad/orchestration-log/2026-04-29T08:05:08Z-hockney.md`
+
+## 2026-04-29 — TestFlight Persistence hardening (#297, #298)
+
+- Added shared persistence policy (`app/util/persistence_policy.*`) that resolves one canonical root + file paths for settings/high scores and returns structured `persistence::Result` status.
+- iOS path contract is explicit: `HOME/Library/Application Support/shapeshifter` (no silent CWD fallback). Path/directory failures now surface as `PathUnavailable` / `DirectoryCreateFailed`.
+- Upgraded settings/high-score load/save APIs from `bool` to structured result enums (`MissingFile`, `CorruptData`, `FileOpenFailed`, etc.) and propagated results through startup and save call sites.
+- Added save observability and retry state (`last_load`, `last_save`, `dirty`) on persistence ctx structs; game-state high-score save now preserves dirty state on failure.
+- Validation: `cmake --build build-ralph --target shapeshifter_tests && ./build-ralph/shapeshifter_tests "[settings],[high_score]" --reporter compact` → pass (174 assertions / 37 tests).
+- 2026-04-29: Restored pre-split energy semantics by applying ordered pending energy events with clamp-after-each-step in energy_system; added mixed same-tick boundary regression coverage.

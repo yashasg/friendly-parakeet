@@ -170,14 +170,14 @@ TEST_CASE("Settings persistence: round-trip save and load", "[settings]") {
     original.reduce_motion = true;
     original.ftue_run_count = 1;
 
-    bool save_result = settings::save_settings(original, test_file);
-    CHECK(save_result == true);
+    const auto save_result = settings::save_settings(original, test_file);
+    CHECK(save_result.status == persistence::Status::Success);
     CHECK(std::filesystem::exists(test_file));
 
     // Load and verify
     SettingsState loaded;
-    bool load_result = settings::load_settings(loaded, test_file);
-    CHECK(load_result == true);
+    const auto load_result = settings::load_settings(loaded, test_file);
+    CHECK(load_result.status == persistence::Status::Success);
     CHECK(loaded.audio_offset_ms == -75);
     CHECK(loaded.haptics_enabled == false);
     CHECK(loaded.reduce_motion == true);
@@ -194,11 +194,11 @@ TEST_CASE("Settings persistence: save_settings supports current-directory files"
     SettingsState state;
     state.audio_offset_ms = 20;
 
-    CHECK(settings::save_settings(state, test_file));
+    CHECK(settings::save_settings(state, test_file).ok());
     CHECK(std::filesystem::exists(test_file));
 
     SettingsState loaded;
-    CHECK(settings::load_settings(loaded, test_file));
+    CHECK(settings::load_settings(loaded, test_file).ok());
     CHECK(loaded.audio_offset_ms == 20);
 
     std::filesystem::remove(test_file);
@@ -208,8 +208,8 @@ TEST_CASE("Settings persistence: load_settings returns false for missing file", 
     std::filesystem::path nonexistent = "nonexistent_file_xyz.json";
     SettingsState state;
 
-    bool result = settings::load_settings(state, nonexistent);
-    CHECK(result == false);
+    const auto result = settings::load_settings(state, nonexistent);
+    CHECK(result.status == persistence::Status::MissingFile);
 }
 
 TEST_CASE("Settings persistence: load_settings handles malformed JSON", "[settings]") {
@@ -224,9 +224,75 @@ TEST_CASE("Settings persistence: load_settings handles malformed JSON", "[settin
     out.close();
 
     SettingsState state;
-    bool result = settings::load_settings(state, test_file);
-    CHECK(result == false);
+    const auto result = settings::load_settings(state, test_file);
+    CHECK(result.status == persistence::Status::CorruptData);
 
     // Cleanup
     std::filesystem::remove_all(test_dir);
+}
+
+TEST_CASE("Settings persistence: save_settings reports unwritable parent path", "[settings]") {
+    std::filesystem::path root = "test_settings_unwritable_parent";
+    std::filesystem::path not_a_dir = root / "not_a_directory";
+    std::filesystem::path target = not_a_dir / "settings.json";
+
+    std::filesystem::remove_all(root);
+    std::filesystem::create_directories(root);
+    {
+        std::ofstream out(not_a_dir);
+        REQUIRE(out.is_open());
+        out << "file blocks directory creation";
+    }
+
+    SettingsState state;
+    const auto result = settings::save_settings(state, target);
+    CHECK(result.status == persistence::Status::DirectoryCreateFailed);
+
+    std::filesystem::remove_all(root);
+}
+
+TEST_CASE("Persistence paths: one shared policy resolves both settings and high-score files", "[settings]") {
+    persistence::Paths paths;
+    const auto result = persistence::resolve_paths(paths, "test_persistence_policy_root");
+    REQUIRE(result.ok());
+    CHECK(paths.settings_file == paths.root_dir / "settings.json");
+    CHECK(paths.high_scores_file == paths.root_dir / "high_scores.json");
+    std::filesystem::remove_all(paths.root_dir);
+}
+
+TEST_CASE("Settings persistence helper: file path resolution reports failure without CWD fallback", "[settings]") {
+    const auto root = std::filesystem::path("test_settings_path_resolution_failure");
+    const auto blocked_root = root / "blocked_root";
+    std::filesystem::remove_all(root);
+    std::filesystem::create_directories(root);
+    {
+        std::ofstream out(blocked_root);
+        REQUIRE(out.is_open());
+        out << "file blocks directory creation";
+    }
+
+    std::filesystem::path file_path = "seed_should_clear.json";
+    const auto result = settings::get_settings_file_path(file_path, blocked_root);
+    CHECK(result.status == persistence::Status::DirectoryCreateFailed);
+    CHECK(file_path.empty());
+
+    std::filesystem::remove_all(root);
+}
+
+TEST_CASE("Persistence paths: directory creation failure is observable", "[settings]") {
+    const auto root = std::filesystem::path("test_persistence_policy_failure");
+    const auto blocked_root = root / "blocked_root";
+    std::filesystem::remove_all(root);
+    std::filesystem::create_directories(root);
+    {
+        std::ofstream out(blocked_root);
+        REQUIRE(out.is_open());
+        out << "file blocks directory creation";
+    }
+
+    persistence::Paths paths;
+    const auto result = persistence::resolve_paths(paths, blocked_root);
+    CHECK(result.status == persistence::Status::DirectoryCreateFailed);
+
+    std::filesystem::remove_all(root);
 }

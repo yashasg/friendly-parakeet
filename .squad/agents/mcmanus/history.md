@@ -214,3 +214,27 @@ Next: Await merge approval.
 **Status:** Decision captured and merged into team decisions.
 
 **Related:** `mcmanus-popup-entity-factory.md` merged into `.squad/decisions.md`
+
+### 2026-04-29 — Gameplay boundary cluster (#276/#278/#279/#282)
+
+- Shifted **energy writes** behind a single-writer boundary: `scoring_system` now accumulates `PendingEnergyEffects` intent; `energy_system` is the only system that mutates `EnergyState` (`energy`, `flash_timer`).
+- Shifted **popup spawn + popup SFX** behind a dedicated bridge: `scoring_system` now emits `ScorePopupRequestQueue` intents; new `popup_feedback_system` owns `spawn_score_popup` + `audio_push(SFX::ScorePopup)`.
+- Centralized **miss death-cause attribution** in `scoring_system` MissTag processing (first-cause-wins), removing direct `GameOverState::cause` writes from `collision_system` and `miss_detection_system`.
+- Moved **energy-zero → GameOver transition ownership** to `game_state_system` (state-machine owner). `enter_game_over` now owns setting `SongState.finished/playing` on death.
+
+### 2026-04-29 — #281 setup_play_session ownership split (surgical)
+
+- Extracted player spawn call from `setup_play_session()` into focused helper `spawn_session_player(entt::registry&)`.
+- Isolated runtime Playing HUD button spawning behind `spawn_playing_shape_buttons(entt::registry&)` and phase mutation behind `enter_playing_phase(GameState&)`.
+- Added regression coverage for end-screen restart path: GameOver restart now explicitly validated across two ticks (choice tick + transition tick) to ensure fresh play-session setup.
+- Validation: `cmake --build build-ralph --target shapeshifter_tests`, `./build-ralph/shapeshifter_tests "[gamestate]"`, `./build-ralph/shapeshifter_tests "[play_session]"`, and full `./build-ralph/shapeshifter_tests` all pass.
+
+### 2026-04-29 — #277 game_state boundary extraction (surgical)
+
+- Extracted terminal-phase side effects out of `game_state_system.cpp` into `game_state_enter_terminal_phase(...)` (`app/systems/game_state_terminal_phase_system.cpp`).
+  - High-score compare/update/persist now lives outside the core state-machine file.
+  - Terminal feedback (Crash SFX, DeathCrash/NewHighScore haptics with `SettingsState` gating) moved with it.
+- Isolated end-screen transition loop behind `game_state_end_screen_system(...)` (`app/systems/game_state_end_screen_system.cpp`) and called it from `game_state_system`.
+- Isolated menu/end-screen input mapping behind focused routing boundary `game_state_handle_end_screen_press(...)` (`app/input/game_state_end_screen_routing.cpp`), invoked by `game_state_handle_press`.
+- Preserved behavior and timing guards (`0.4s` end-screen input, `0.5s` SongComplete choice application).
+- Validation: `cmake --build build-ralph --target shapeshifter_tests`; `./build-ralph/shapeshifter_tests "[gamestate]"`; `"[haptic]"`; `"[high_score]"`; `"[redfoot]"`; full `./build-ralph/shapeshifter_tests` (pass, exit 0).
