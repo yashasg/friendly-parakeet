@@ -13,6 +13,31 @@
 
 ---
 
+### 2026-04 — PR #351 rguilayout Adapter Migration & Push Workflow
+
+**Scope:** Final push of accepted rguilayout migration to PR #351 (`ui_layout_refactor` branch).
+
+**What happened:** 
+- Received 4 local accepted commits advancing the UI adapter pattern (raygui dispatch wiring, Keyser template refactor, adapter revision logging).
+- Local branch was 4 commits ahead of `origin/ui_layout_refactor` (which was at `15c89e8`).
+- No unstaged/staged changes in worktree — clean state confirmed.
+
+**Actions taken:**
+1. **Verified commit chain**: Confirmed HEAD (`13d629d`) was indeed the final accepted adapter revision commit.
+2. **Pushed branch**: `git push origin ui_layout_refactor --force-with-lease` → all 4 commits transmitted; origin now at `13d629d`.
+3. **Verified PR head**: PR #351 now shows HEAD as `13d629d` (all screens wired through rguilayout adapters, Keyser template refactor accepted, platform validation passed).
+4. **Added PR comment**: Summarized final state concisely (no huge logs) — screens migrated, adapters templated, CI green across all 4 platforms.
+
+**Key lesson:** Before pushing, always verify:
+- No unexpected unstaged/staged changes (detect local contamination early)
+- Commit chain is what was expected (catch rebase/reorder issues)
+- Branch is tracking the intended remote (avoid pushing to wrong upstreams)
+- After push, immediately verify the PR head updated correctly on GitHub (confirm push was received)
+
+**Workflow was clean and reproducible.** No CI re-runs needed; the push itself was sufficient to update the PR state.
+
+---
+
 ### 2026-04-28 — WASM Build Duration Audit (Unity Build Recommendation)
 
 **Scope:** `ci-wasm.yml` build performance; PR #43 (`user/yashasg/ecs_refactor`) WASM job timing.
