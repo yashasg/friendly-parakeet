@@ -73,8 +73,10 @@ When reviewing template-based refactors in unity build projects:
    - Verify no duplicate definitions: `nm unity_*.o | grep " T " | sort | uniq -d`
 
 4. **CMake exclusions**
-   - Files with ODR hazards: `set_source_files_properties(... SKIP_UNITY_BUILD_INCLUSION TRUE)`
-   - Example: `raygui_impl.cpp` (defines RAYGUI_IMPLEMENTATION with static functions)
+    - Files with ODR hazards: `set_source_files_properties(... SKIP_UNITY_BUILD_INCLUSION TRUE)`
+    - For single-header libs, prefer source-level ownership:
+      - `COMPILE_DEFINITIONS RAYGUI_IMPLEMENTATION` on exactly one real TU
+      - `SKIP_UNITY_BUILD_INCLUSION TRUE` on that same TU
 
 ## When to Apply
 
@@ -85,6 +87,5 @@ When reviewing template-based refactors in unity build projects:
 ## References
 
 - Shapeshifter commit 958a7d9: UI adapter template refactor (Keyser)
-- CMakeLists.txt lines 24-33: Unity build config (Emscripten only)
-- CMakeLists.txt lines 407-410: raygui_impl.cpp unity exclusion
+- CMakeLists.txt: unity build option + source-level `RAYGUI_IMPLEMENTATION` owner (`title_screen_controller.cpp`) with unity exclusion
 - Hockney history: Unity build WASM session, Keaton hazard audit coordination

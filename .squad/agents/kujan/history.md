@@ -730,3 +730,30 @@ Non-blocking note: `GuiSetStyle(DEFAULT, TEXT_SIZE, 28)` uniform across all labe
 
 **Approval Verdict:** User directive 2026-04-29T08:17:40Z fully satisfied. Ready for merge.
 
+### 2026-04-29T08:29:40Z — Level-select interaction regression audit (post-spawner removal)
+
+- **Verdict on current visible state:** ❌ **REJECT for now** (Easy/Medium/Hard are not raygui buttons yet; they are still manual rectangle hit checks in `level_select_screen_controller.cpp` via `CheckCollisionPointRec` + `GetMousePosition`).
+- **Expected interaction surface confirmed:** level card selection, difficulty selection (Easy/Medium/Hard), Start confirm; no Back/Menu control is currently present in `level_select.json`/`.rgl` for this screen.
+- **Dead routing identified:** `level_select_handle_press()` still handles `MenuActionKind::SelectLevel/SelectDiff`, but runtime no longer spawns matching `MenuButtonTag` entities for level-select, so those press routes are effectively dead in gameplay and now only reachable in synthetic test setups.
+- **Approval bar for fix:** difficulty and card selection must be controller-owned raygui controls with visible active-state feedback, must mutate `LevelSelectState` immediately, must keep Start → `lss.confirmed` behavior, and must not reintroduce `ui_button_spawner`, UI JSON loader/cache routing, or legacy `MenuButtonTag` hitbox dependencies.
+- **Coverage gap note:** no dedicated tests currently assert level-select pointer behavior for card/difficulty raygui controls; existing `[gamestate]`, `[ui]`, `[hit_test]`, `[gesture_routing]` suites pass but do not prove Easy/Medium/Hard clickability on this screen.
+
+### 2026-04-29T08:37:25Z — Final gate: level-select difficulty raygui buttons
+
+- **Verdict:** ✅ **APPROVE**
+- Reviewed current implementation in `app/ui/screen_controllers/level_select_screen_controller.cpp`: Easy/Medium/Hard are controller-owned `GuiButton` interactions (no ECS hitbox dependency), updating `LevelSelectState::selected_difficulty` immediately on click.
+- Visible selection feedback confirmed: active difficulty button uses distinct active background/border colors tied directly to `selected_difficulty`; selected card styling remains intact.
+- Card selection and Start flow preserved: card selection still mutates `selected_level`; Start `GuiButton` still drives `lss.confirmed` with phase-timer guard (`>0.2f`), preserving transition behavior in `game_state_system`.
+- Forbidden legacy surfaces remain absent (no reintroduction): `ui_button_spawner`, `ui_loader`, `spawn_ui_elements`, adapters, `app/ui/vendor`, committed `generated/standalone`, and `app/ui/raygui_impl.cpp`.
+- Validation executed: `cmake -B build -S . -Wno-dev && cmake --build build && ./build/shapeshifter_tests '[level_select]' && ./build/shapeshifter_tests '[ui]' && ./build/shapeshifter_tests '~[bench]'` — all passing (full non-bench: 756 test cases / 2148 assertions).
+
+## 2026-04-29T08:38:21Z — Level-Select Audit & Final Review: APPROVED & ORCHESTRATED
+
+**Status:** ✅ MERGED TO DECISIONS
+
+- Spawn 1: `kujan-audit-level-select-inter` — audit completed, gate set on controller-owned raygui proof
+- Spawn 2: `kujan-review-difficulty-raygui` — final review approved
+- **Gate check:** Easy/Medium/Hard are raygui buttons, not ECS hitboxes; no legacy surfaces; all tests pass
+- **Sign-off:** Difficulty select controls ready to merge
+- **Orchestration logs written:** 
+  - `.squad/orchestration-log/2026-04-29T08-38-21Z-kujan.md` (audit + review)

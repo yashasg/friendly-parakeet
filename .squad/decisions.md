@@ -1,6 +1,6 @@
 # Decisions Registry
 
-*Last merged: 2026-04-29T08:23:46Z*
+*Last merged: 2026-04-29T08:38:21Z*
 
 ### UI Cleanup Initiative (2026-04-29)
 
@@ -10013,3 +10013,62 @@ Runtime no longer uses JSON layout metadata or invisible ECS menu hitboxes. UI i
 **Reason:** All entries dated 2026-04-26 or later (within 30-day window). No entries older than 30 days exist; archival not necessary at this time.  
 **Next check:** Recommend archive review on 2026-05-27 if registry exceeds 600 KB.
 
+
+---
+
+### Level-Select Difficulty Controls (2026-04-29)
+
+**Initiative:** Migrate Easy/Medium/Hard difficulty select from invisible ECS hitbox entities to visible raygui controller-owned buttons. Agents: Keyser (Fix), Kujan (Audit & Review).
+
+#### User Directive: RayGUI Difficulty Controls
+
+- **Date:** 2026-04-29T08:29:40Z
+- **By:** yashasg (via Copilot)
+- **Directive:** Easy/Medium/Hard level-select controls should be implemented as raygui/controller-owned buttons after removing `ui_button_spawner`; do not restore invisible ECS hitbox entities.
+- **Captured for:** Team memory and implementation gate.
+
+#### Audit Gate: Level-Select Interaction Model (Kujan)
+
+- **Date:** 2026-04-29
+- **Reviewer:** Kujan (QA)
+- **Gate Requirements:**
+  1. Easy/Medium/Hard must be actual raygui button interactions (not ECS hitboxes, not manual invisible hit regions)
+  2. Level-card selection and difficulty selection must update `LevelSelectState` in-frame with immediate visual feedback
+  3. Start must still set `lss.confirmed` and preserve `game_state_system` transition semantics
+  4. No resurrection of `ui_button_spawner`, `MenuButtonTag`, legacy JSON loader/cache, or `ui_source_resolver` paths
+  5. Focused tests must catch regressions (LevelSelect state mutation paths, Start confirm path, controller interaction)
+- **Rationale:** Manual `CheckCollisionPointRec` pointer checks do not satisfy raygui-button directive; legacy dead routing creates false confidence.
+- **Status:** GATE SET — gating level-select fix on controller-owned raygui interaction proof.
+
+#### Implementation: Difficulty RayGUI Buttons (Keyser)
+
+- **Date:** 2026-04-29
+- **Agent:** Keyser (Platform & UI Fix)
+- **Scope:** Easy/Medium/Hard as controller-owned raygui `GuiButton` interactions in `app/ui/screen_controllers/level_select_screen_controller.cpp`
+- **Changes:**
+  - Replaced dead ECS hitbox entities with raygui GuiButton calls
+  - Integrated button state into controller update loop
+  - Updated `selected_difficulty` on button press
+  - Preserved card selection and Start behavior
+  - Added focused regression tests
+  - Zero warnings maintained
+- **Validation:**
+  - Native build: pass
+  - Unity build: pass
+  - All tests pass (756 cases / 2148 assertions)
+- **Status:** COMPLETED & READY FOR REVIEW
+
+#### Final Review: Difficulty RayGUI Buttons (Kujan)
+
+- **Date:** 2026-04-29
+- **Reviewer:** Kujan (QA)
+- **Verdict:** ✅ **APPROVE**
+- **Gate Check Results:**
+  1. ✅ Real controller-owned raygui difficulty controls confirmed using `GuiButton()` with direct `lss.selected_difficulty = dd` mutation
+  2. ✅ No fake hitbox fallback; difficulty selection uses raygui, not invisible ECS entities
+  3. ✅ State + visual feedback: `selected_difficulty` updates in-frame with distinct active/inactive styling
+  4. ✅ Card + Start behavior preserved: `selected_level` and `lss.confirmed` still function; `game_state_system` owns LevelSelect→Playing transition
+  5. ✅ Legacy surface guardrails held: No `ui_button_spawner`, `ui_loader`, `spawn_ui_elements`, adapters, `app/ui/vendor`, generated exports, or `app/ui/raygui_impl.cpp` resurrection
+  6. ✅ Build + focused and full non-bench tests pass
+- **Notes:** `level_select_handle_press()` supports `MenuActionKind::SelectLevel/SelectDiff` for semantic event routing; controller-owned raygui buttons now handle pointer difficulty interaction as required.
+- **Sign-Off:** Difficulty select controls are now working raygui buttons with proper state management. Ready to merge.

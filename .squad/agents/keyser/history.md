@@ -286,3 +286,18 @@ See `.squad/orchestration-log/2026-04-29T03:13:21Z-keyser.md`
 
 **Next:** Ready for merge.
 
+- 2026-04-29: Root cause of non-working Easy/Medium/Hard was controller hit-test ordering: level-card collision consumed clicks before difficulty regions, and difficulty UI was drawn labels/rects without raygui button interaction.
+- Fix: moved difficulty selection to controller-owned raygui `GuiButton` controls per difficulty chip, kept level-card selection as controller hit region, and preserved Start button confirm flow.
+- Files changed: `app/ui/screen_controllers/level_select_screen_controller.cpp`, `tests/test_level_select_controller.cpp`.
+- Validation: `cmake -B build -S . -Wno-dev && cmake --build build && ./build/shapeshifter_tests '~[bench]'` plus focused `./build/shapeshifter_tests "[level_select]"` and `./build/shapeshifter_tests "[ui]"`.
+
+## 2026-04-29T08:38:21Z — Difficulty RayGUI Buttons: APPROVED & ORCHESTRATED
+
+**Status:** ✅ MERGED TO DECISIONS
+
+- Spawn: `keyser-fix-difficulty-raygui-b` completed
+- Easy/Medium/Hard converted to raygui GuiButtons in `level_select_screen_controller.cpp`
+- `selected_difficulty` updates with active styling; card selection and Start preserved
+- All tests pass (756 cases / 2148 assertions), zero warnings
+- **Kujan final review:** ✅ APPROVED — ready to merge
+- **Orchestration log written:** `.squad/orchestration-log/2026-04-29T08-38-21Z-keyser.md`
