@@ -776,3 +776,105 @@ Integration path: `.rgl` → (custom template) → `app/ui/rgl_generated/*.h` (h
 **Decision written:** `.squad/decisions/inbox/keyser-rguilayout-integration-spine.md`
 
 **Impact:** Establishes the runtime seam that respects all prior architecture constraints (no layout mirrors, generated files own data, incremental migration, build-safe). Unblocks Phase 3 build integration.
+
+## 2026-04-29: Assigned — c7700f8 UI Adapter Abstraction Pattern Design
+
+**Date:** 2026-04-29T03:13:21Z  
+**Task:** Design template/trait-based abstraction pattern for rguilayout UI adapters  
+**Context:** Keaton review of c7700f8 revealed 377-line boilerplate duplication across 8 adapter files  
+**Priority:** HIGH  
+**Status:** ASSIGNED
+
+### Assignment Scope
+
+Keyser (Lead Architect) is assigned to design an abstraction pattern that eliminates boilerplate duplication across 8 UI screen adapter files (game_over, song_complete, paused, settings, tutorial, gameplay, level_select, title).
+
+### Problem Statement
+
+c7700f8 introduces identical init/render/state patterns repeated per-screen:
+```cpp
+namespace {
+    {Screen}LayoutState {screen}_layout_state;
+    bool {screen}_initialized = false;
+}
+void {screen}_adapter_init() { /* identical */ }
+void {screen}_adapter_render(entt::registry& reg) { /* identical */ }
+```
+
+This violates user directive: "maximize code reuse, no slop."
+
+### Design Requirements
+
+1. **Abstract shared lifecycle**
+   - Anonymous namespace state initialization
+   - Guard-checked init function
+   - Render entrypoint with lazy init
+
+2. **Support per-adapter customization**
+   - Dispatch logic varies by screen (button handlers, timers, etc.)
+   - Pattern must allow screen-specific behavior without duplication
+
+3. **Preserve generated header interface**
+   - Must use existing `{Screen}Layout_Init()` and `{Screen}Layout_Render(&state)` functions
+   - No changes to `.rgl` export workflow
+
+4. **Compile-time enforcement**
+   - Use C++17 templates or CRTP for type safety
+   - Wrong function signature = compiler error
+
+### Recommended Approaches
+
+**Option A: Non-type Template Parameters (Simplest)**
+- Best for stateless init/render functions
+- 377 lines → ~50 template + 8 using-declarations
+- Zero runtime overhead
+
+**Option B: CRTP + Traits (More Flexible)**
+- Better for per-adapter state/dispatch customization
+- Trait contract: State typedef, init(), render_layout(), dispatch() methods
+- Clear pattern for future adapter implementations
+
+**Option C: Hybrid**
+- Template base for init/render lifecycle
+- CRTP for dispatch customization
+
+### Deliverables Expected
+
+1. **Pattern design document** (to `.squad/decisions/inbox/keyser-ui-adapter-pattern.md`)
+   - Chosen approach and rationale
+   - Template signatures / trait contract
+   - Example specializations (2–3 adapters)
+
+2. **Proof-of-concept refactor**
+   - Refactored 2–3 adapters (game_over, title, gameplay) using chosen pattern
+   - Demonstrates elimination of duplication
+   - Validates generated header interface compatibility
+
+3. **Implementation handoff spec**
+   - Clear steps to refactor remaining 5 adapters
+   - Assign implementation to non-Fenster agent
+
+### Blocking Considerations
+
+- Fenster is locked out (per review protocol); cannot execute refactor
+- Hockney has already approved platform concerns
+- McManus (Gameplay) can proceed independently on dispatch logic
+
+### Timeline
+
+- **Design:** 1–2 hours
+- **Proof-of-concept:** 1–2 hours
+- **Implementation (assigned agent):** 2–4 hours
+- **Re-review (Keaton):** 1 hour
+- **Total cycle:** ~5–9 hours
+
+### Related Decisions
+
+- User directive: `.squad/decisions.md` ("User Directive: Maximize Code Reuse, No Slop")
+- UI adapter abstraction directive: `.squad/decisions.md` ("Directive: UI Adapter Boilerplate Abstraction Pattern")
+- Keaton review: `.squad/orchestration-log/2026-04-29T03:13:21Z-keaton.md`
+
+### Orchestration Log
+
+See `.squad/orchestration-log/2026-04-29T03:13:21Z-keyser.md`
+

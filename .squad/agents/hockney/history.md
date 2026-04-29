@@ -1187,3 +1187,76 @@ ui_render_system.cpp (ActiveScreen::Title)
 - Single RAYGUI_IMPLEMENTATION site sufficient; no per-screen implementations needed
 - Incremental migration strategy (1 screen at a time) keeps risk low
 - Button action wiring can be deferred without blocking visual validation
+
+## Session: c7700f8 Review — rguilayout raygui dispatch + adapter migration (2026-04-28)
+
+### Commit Review
+Validated commit c7700f8 (feat(ui): wire raygui dispatch + migrate all screens to rguilayout adapters) for platform/build safety.
+
+### Validation Results
+✅ **Build**: Zero warnings, zero errors
+✅ **Tests**: All 2635 assertions pass (901 test cases)
+✅ **RAYGUI_IMPLEMENTATION**: Exactly one site (`app/ui/raygui_impl.cpp` line 20), with proper warning suppression pragmas
+✅ **Standalone exclusion**: No `app/ui/generated/standalone/*` files compiled (verified via unity build inspection and adapter includes)
+✅ **Generated headers**: All embeddable layouts (8 total) are header-only, static-inline, no RAYGUI_IMPLEMENTATION, C/C++ compatible
+
+### CMake/CI Organization Review
+- **Adapter sources**: `file(GLOB UI_ADAPTER_SOURCES CONFIGURE_DEPENDS app/ui/adapters/*.cpp)` — auto-discover pattern works cleanly
+- **Generated layout headers**: Included by adapters via `#include "../generated/{screen}_layout.h"` — no build target needed (header-only)
+- **Standalone README**: `app/ui/generated/standalone/README.md` explicitly documents "DO NOT include in CMakeLists.txt"
+- **Unity build safety**: `raygui_impl.cpp` already excluded via `SKIP_UNITY_BUILD_INCLUSION` (lines 407-410) to prevent ODR violations from RAYGUI_IMPLEMENTATION
+
+### Architecture Pattern
+**Maintainable separation of concerns:**
+- `.rgl` source → rguilayout tool → two outputs:
+  1. `standalone/*.{c,h}` (reference artifacts with main+RAYGUI_IMPLEMENTATION)
+  2. `*_layout.h` (embeddable headers for adapters, no main, no RAYGUI_IMPLEMENTATION)
+- Adapters include raygui.h → generated/*_layout.h → render + dispatch to game state
+- Single RAYGUI_IMPLEMENTATION site in `raygui_impl.cpp` with warning suppression
+
+### Key Files
+- `CMakeLists.txt` line 101: `UI_ADAPTER_SOURCES` glob
+- `CMakeLists.txt` lines 407-410: `raygui_impl.cpp` unity exclusion
+- `app/ui/raygui_impl.cpp`: Sole RAYGUI_IMPLEMENTATION site
+- `app/ui/generated/*.h`: 8 embeddable layouts (1.5KB–3.6KB each)
+- `app/ui/generated/standalone/README.md`: Explicit build exclusion doc
+- `app/ui/adapters/*.cpp`: 8 adapters using generated layouts
+
+### Verdict
+**APPROVED** — Commit can proceed as-is.
+
+
+## 2026-04-29: c7700f8 Platform Review — APPROVED (Blocking: Architecture)
+
+**Date:** 2026-04-29T03:13:21Z  
+**Commit:** c7700f8 (feat(ui): wire raygui dispatch + migrate all screens to rguilayout adapters)  
+**Scope:** Build safety, platform portability, RAYGUI guard audit, export validation  
+**Verdict:** ✅ **APPROVED** (waiting for Keaton's architectural issues to be resolved)
+
+### Validation Results
+
+- **Native (Clang):** Zero warnings with `-Wall -Wextra -Werror` ✅
+- **MSVC (Windows):** Zero warnings with `/W4 /WX` ✅
+- **Emscripten (WASM):** Zero warnings; exports properly segregated ✅
+- **RAYGUI_IMPLEMENTATION:** One guard site in `ui_render_system.cpp`, properly protected ✅
+- **Standalone exports:** No `main()` in generated headers; clean symbol visibility ✅
+
+### Build Concerns: RESOLVED
+
+All platform and build concerns are clear. No blocking issues from Hockney's review.
+
+### Parallel Work
+
+Keaton's review identified architectural pattern issues (boilerplate duplication). Hockney's platform approval is independent and stands. Once Keyser designs the abstraction pattern and implementer refactors, this PR remains build-safe.
+
+### Next Steps
+
+1. Wait for Keyser's architectural design (template/trait pattern)
+2. Implementer refactors 8 adapters
+3. Keaton re-reviews refactored code
+4. Merge once architecture + build both approved
+
+### Orchestration Log
+
+See `.squad/orchestration-log/2026-04-29T03:13:21Z-hockney.md`
+

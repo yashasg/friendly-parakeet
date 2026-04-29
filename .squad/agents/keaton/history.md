@@ -815,3 +815,108 @@ cmake --build build-unity-verify-vcpkg --target shapeshifter_tests -- -j2
 **Status:** ODR fix validated and merged into team decisions.
 
 **Related:** `keaton-unity-odr-fix.md` merged into `.squad/decisions.md`
+
+## 2026-04-29: Review c7700f8 (UI Raygui Migration)
+
+**Task:** Review commit c7700f8 for implementation quality per user directive "maximize code-reuse, follow raylib/entt APIs, no slop."
+
+**Verdict:** REJECTED — massive code duplication violates directive.
+
+**Critical Findings:**
+1. **377 lines of adapter boilerplate across 8 files** — identical init/render pattern could be reduced to ~50 lines via C++17 template factory or trait-based dispatch
+2. **Exact duplication in game_over + song_complete adapters** — end-screen dispatch logic byte-for-byte identical
+3. **EnTT API misuse** — `std::as_const(reg).storage<T>()` is cargo-cult code; EnTT's `storage()` already returns nullptr for non-existent pools
+4. **Manual Rectangle arithmetic** in settings_adapter instead of using raylib/raymath helpers
+
+**Positive:** Zero warnings, test coverage updated, generated headers well-formed, uniform adapter interface.
+
+**Revision Owner:** Unity (system architect) — requires architectural pattern (template/CRTP), not local fix. Fenster locked per review protocol.
+
+**Key Learnings:**
+- **Adapter pattern emergence:** When generated code (rguilayout headers) requires runtime wiring, look for template/trait abstraction opportunities before writing N identical wrapper files
+- **EnTT storage API:** `registry::storage<T>()` is non-creating (returns nullptr if pool missing); `std::as_const` wrapper is unnecessary and misleading
+- **DRY threshold:** 3+ files with identical structure = mandatory abstraction in this codebase
+- **Raylib idioms:** Prefer raymath helpers (`Vector2Add`, offset functions) over manual Rectangle arithmetic
+
+**Files Reviewed:**
+- app/ui/adapters/*.{cpp,h} (8 adapters)
+- app/ui/generated/*.h (7 layout headers)
+- app/systems/ui_render_system.cpp (dispatcher + `std::as_const` issue)
+- app/components/game_state.h, ui_state.h (enum extensions)
+- tests/test_components.cpp (phase count update)
+
+**Recommendation:** Unity designs template-based adapter factory; any implementer (Keaton, Hockney, etc.) executes refactor.
+
+## 2026-04-29: c7700f8 Review — REJECTED for Architectural Debt (Pattern Design Required)
+
+**Date:** 2026-04-29T03:13:21Z  
+**Commit:** c7700f8 (feat(ui): wire raygui dispatch + migrate all screens to rguilayout adapters)  
+**Scope:** C++ idioms, code reuse, EnTT usage, user directive compliance  
+**Verdict:** ❌ **REJECTED**
+
+### Critical Finding: Boilerplate Duplication
+
+**Issue:** 377 lines of identical code repeated across 8 UI adapter files (game_over, song_complete, paused, settings, tutorial, gameplay, level_select, title). Each file contains the same init/render/state pattern with only screen name substituted.
+
+**Pattern Problem:**
+```cpp
+namespace {
+    {Screen}LayoutState {screen}_layout_state;
+    bool {screen}_initialized = false;
+}
+void {screen}_adapter_init() { /* identical logic */ }
+void {screen}_adapter_render(entt::registry& reg) { /* identical dispatch */ }
+```
+
+**Impact:** Changing init semantics = edit 8 files. Maintenance burden violates project directive.
+
+### User Directive Violation
+
+Commit introduces ~350 lines of mechanical, copy-pastable code — **the definition of "slop"** under user directive ("maximize code reuse, no slop"). Implementation works (zero warnings, tests pass), but creates architectural debt.
+
+### Additional Issues (Lower Priority)
+
+1. **Exact logic duplication:** game_over and song_complete have identical end-screen dispatch (only timer threshold differs: 0.4f vs 0.5f)
+2. **EnTT API misuse:** `std::as_const(reg).storage<T>()` is cargo-cult code; `storage<T>()` already returns nullptr correctly
+3. **Manual Rectangle construction:** settings_adapter uses hardcoded arithmetic instead of raymath helpers
+
+### Revision Assignment
+
+**Owner:** Keyser (Lead Architect)  
+**Lockout:** Fenster (original author) per review protocol  
+**Reason:** This is pattern design work, not implementation. System architect must design the abstraction before any implementer refactors.
+
+### Recommended Patterns
+
+**Option A: Non-type Template Parameters**
+- 377 lines → ~50 template + 8 declarations
+- Zero runtime overhead
+- Compile-time enforcement
+
+**Option B: CRTP + Traits**
+- Per-adapter customization support
+- Zero virtual function overhead
+- Clear trait contract
+
+### Positive Observations
+
+- ✅ Zero warnings (policy maintained)
+- ✅ Tests pass; coverage updated
+- ✅ Generated headers well-formed
+- ✅ GamePhase/ActiveScreen enums correct
+
+### Next Steps for Keaton
+
+1. **Wait** for Keyser's architectural design (template/trait abstraction)
+2. **Implementer** refactors adapters using approved pattern
+3. **Keaton re-reviews** refactored code
+4. **Approve** once architectural issues resolved
+
+### Orchestration Log
+
+See `.squad/orchestration-log/2026-04-29T03:13:21Z-keaton.md`
+
+### Directive Issued
+
+See `.squad/decisions.md` — "Directive: UI Adapter Boilerplate Abstraction Pattern (2026-04-29)" for formalized threshold: **3 files with identical structure = mandatory abstraction**.
+

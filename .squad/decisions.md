@@ -10724,3 +10724,208 @@ This is either a limitation of macOS standalone build, expected upstream behavio
 **Expected Omissions ✅**
 **DummyRec controls** correctly **not present** in generated code. rguilayout v4.0 codegen exports only interactive controls (GuiLabel, GuiButton); static geometry placeholders (type 24 DummyRec) silently omitted.
 
+
+---
+
+## User Directive: Maximize Code Reuse, No Slop (2026-04-29)
+
+**Date:** 2026-04-29T02:58:00.308Z  
+**Source:** yashasg (via Copilot)  
+**Priority:** CRITICAL  
+**Status:** ACTIVE
+
+**Directive:**
+Do not introduce slop in the codebase. Maximize code reuse. Follow raylib and EnTT suggestions and helper APIs.
+
+**Context:**
+- User's core requirement for all team work
+- Drives architectural review of c7700f8 (rejected for boilerplate duplication)
+- Applies to all generated code patterns (rguilayout, protobuf, etc.)
+
+**Related:**
+- c7700f8 review (keaton-c7700f8-rejection.md)
+- UI adapter abstraction directive (keaton-directive-ui-adapter-abstraction.md)
+
+---
+
+## Review Gate: c7700f8 Platform & Architecture (2026-04-29)
+
+**Commit:** c7700f8 (feat(ui): wire raygui dispatch + migrate all screens to rguilayout adapters)  
+**Author:** Fenster (Tools Engineer)  
+**Date:** 2026-04-29  
+**Session:** ui_runtime_review_gate
+
+### Verdict Summary
+
+| Reviewer | Scope | Result | Reason |
+|----------|-------|--------|--------|
+| **Hockney** | Build, portability, RAYGUI guard, exports | ✅ APPROVED | Zero warnings all platforms; RAYGUI properly scoped; exports clean |
+| **Keaton** | C++ idioms, code reuse, EnTT usage, user directive | ❌ REJECTED | 377-line boilerplate duplication; violates "maximize reuse, no slop" |
+
+### Critical Issue: Boilerplate Duplication
+
+Commit c7700f8 introduces **377 lines of identical code** repeated across 8 UI adapter files (game_over, song_complete, paused, settings, tutorial, gameplay, level_select, title). Each file contains:
+
+```cpp
+namespace {
+    {Screen}LayoutState {screen}_layout_state;
+    bool {screen}_initialized = false;
+}
+void {screen}_adapter_init() {
+    if (!{screen}_initialized) {
+        {screen}_layout_state = {Screen}Layout_Init();
+        {screen}_initialized = true;
+    }
+}
+void {screen}_adapter_render(entt::registry& reg) {
+    if (!{screen}_initialized) {
+        {screen}_adapter_init();
+    }
+    {Screen}Layout_Render(&{screen}_layout_state);
+    // dispatch logic...
+}
+```
+
+This pattern should have been abstracted to a template or trait-based system before writing 3+ wrapper files (per user directive).
+
+### Additional Issues
+
+1. **Exact logic duplication:** game_over and song_complete adapters have byte-for-byte identical end-screen dispatch (only timer threshold differs)
+2. **EnTT API misuse:** `std::as_const(reg).storage<T>()` wrapper is cargo-cult code (provides no benefit over direct `storage<T>()`)
+3. **Manual Rectangle construction:** settings_adapter uses hardcoded arithmetic instead of raymath helpers
+
+### Lockout Decision
+
+**Fenster locked out** from revision per review protocol.
+
+**Reason:** Issue is architectural pattern design, not localized implementation. Requires system architect (Keyser) to design template/trait abstraction before any implementer executes refactor.
+
+**Next owner:** Keyser (Lead Architect)
+
+### Recommended Patterns
+
+**Option A: Non-type Template Parameters (C++17)**
+```cpp
+template<typename State, State(*Init)(), void(*Render)(State*)>
+class LayoutAdapter {
+    State state_{Init()};
+public:
+    void render() { Render(&state_); }
+    State& state() { return state_; }
+};
+
+using GameOverAdapter = LayoutAdapter<GameOverLayoutState, 
+                                      &GameOverLayout_Init, 
+                                      &GameOverLayout_Render>;
+```
+
+**Option B: CRTP + Traits**
+```cpp
+template<typename Derived>
+class RGuiAdapterBase {
+public:
+    void render(entt::registry& reg) {
+        static typename Derived::State state = Derived::init();
+        Derived::render_layout(&state);
+        static_cast<Derived*>(this)->dispatch(reg, state);
+    }
+};
+
+struct GameOverAdapter : RGuiAdapterBase<GameOverAdapter> {
+    using State = GameOverLayoutState;
+    static void render_layout(State* s) { GameOverLayout_Render(s); }
+    void dispatch(entt::registry& reg, const State& s);
+};
+```
+
+Both reduce 377 lines → ~50 lines template + 8 declarations, provide compile-time enforcement, preserve generated header interface.
+
+### Positive Observations
+
+- ✅ Zero warnings (project policy maintained)
+- ✅ Tests pass; coverage updated (phase 6→8)
+- ✅ Generated headers well-formed (no ODR violations)
+- ✅ Uniform adapter interface
+- ✅ GamePhase/ActiveScreen enums correctly extended
+
+### Full Review
+
+See `.squad/decisions/inbox/keaton-c7700f8-rejection.md` for complete analysis.
+
+---
+
+## Directive: UI Adapter Boilerplate Abstraction Pattern (2026-04-29)
+
+**Author:** Keaton (C++ Performance Engineer)  
+**Date:** 2026-04-29  
+**Status:** PROPOSED (requires Keyser architectural design)  
+**Priority:** HIGH
+
+**Directive:**
+
+When generated code (rguilayout, protobuf, flatbuffers, etc.) requires runtime wiring, **extract shared boilerplate into template or trait-based abstraction before writing 3+ wrapper files.**
+
+**Threshold:** 3 files with identical init/render/lifecycle pattern = **mandatory abstraction**.
+
+**Rationale:**
+
+c7700f8 demonstrated this pattern's importance: 8 UI adapters with identical structure created maintenance burden and violated user directive ("maximize code reuse, no slop"). A single abstraction layer reduces 377 lines to ~50 lines template + 8 declarations.
+
+**When This Applies:**
+- Generated code + runtime wiring (rguilayout, protobuf, flatbuffers)
+- Plugin/adapter systems with identical lifecycle (init, update, cleanup)
+- Entity archetype helpers with shared component patterns
+
+**When NOT to Apply:**
+- <3 files (abstraction overhead exceeds benefit)
+- Divergent logic (>2 branches of custom behavior per file)
+- Hot-path micro-optimization (measure first; templates increase binary size)
+
+**Assignment:**
+
+Keyser (Lead Architect) designs the abstraction pattern; any implementer (not Fenster) executes refactor.
+
+---
+
+## Decision: rGuiLayout Title Screen Checkpoint PR #351 (2026-05-27)
+
+**Status:** ✅ IMPLEMENTED  
+**Release:** PR #351  
+**Commit:** 15c89e8395a787e5e02fdda3dfb3a3c7f21d3bd2  
+**Branch:** ui_layout_refactor
+
+### Summary
+
+Title screen runtime integration checkpointed to PR #351 **before dispatch wiring**. This deliberate split isolates layout rendering from interaction logic.
+
+### Delivered
+
+1. ✅ Layout sources (`.rgl`) for all 8 UI screens authored
+2. ✅ Title screen rendering live via raygui/rGuiLayout
+3. ✅ Generated C code for all screen layouts
+4. ✅ Integration documentation (plan + spec)
+5. ✅ Vendored rGuiLayout tool available for future migrations
+
+### Deferred (Intentional)
+
+- Title button click handlers → dispatch wiring (follow-up PR)
+- Other screen layout migrations (separate PRs per screen)
+
+### Rationale
+
+- **Reviewability:** Layout rendering self-contained; dispatch wiring is separate system concern
+- **Rollback safety:** Rendering bugs don't affect interaction logic and vice versa
+- **Testing cadence:** Incremental coverage (rendering first, then event routing)
+- **Parallelization:** Other agents can migrate additional screens while dispatch wiring is implemented separately
+
+### Artifacts
+
+- PR: https://github.com/yashasg/friendly-parakeet/pull/351
+- Integration plan: `RGUILAYOUT_INTEGRATION_PLAN.md`
+- Spec: `design-docs/raygui-rguilayout-ui-spec.md`
+- Vendored tool: `tools/rguilayout/`
+
+### Approval
+
+All validation gates passed. Safe to merge.
+
