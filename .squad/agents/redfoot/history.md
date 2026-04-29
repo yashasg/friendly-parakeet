@@ -347,3 +347,31 @@ These do not generate draw code; adapters must use the generated rectangles for 
 **Status:** Phase 2 complete and ACCEPTED by Hockney. Build integration (Phase 3) deferred. Adapter implementation (Phase 4) awaits Phase 3 CMake/CI wiring completion.
 
 **Related:** `.squad/orchestration-log/2026-04-28T22-35-09Z-redfoot-remaining-ui-layouts.md`
+
+### 2026-04-30 — Title Screen UX Regression Review
+
+**User report:** "the text on the title screen is off, and what is the point of the 'Set' button on the top left corner?"
+
+**Findings:**
+1. `app/ui/screen_controllers/title_screen_controller.cpp` contains a "Runtime override" block that bypasses the generated `TitleLayout_Render` entirely and re-issues `GuiLabel`/`GuiButton` calls with hardcoded coordinates and a 60pt font that overflows the generated 48px rect. Also `GuiLabel` defaults to LEFT alignment so the 520-wide override rect leaves "SHAPESHIFTER" hugging the left edge — looks "off-center" even when the rect is centered. This is an architectural regression: generated rguilayout output is the source of truth.
+2. "SET" button = Settings affordance, but mislabeled (should be gear glyph `#142#` or "SETTINGS"), mispositioned (top-left violates mobile conventions; spec says bottom-right per `design-docs/game-flow.md §2a`), and wrong size (80×50 vs spec'd 48×48 dp).
+
+**Acceptance guidance written to:** `.squad/decisions/inbox/redfoot-title-screen-ux.md`
+
+**Key UX patterns reaffirmed:**
+- `GuiLabel` is left-aligned by default. Centered title text requires `GuiSetStyle(LABEL, TEXT_ALIGNMENT, TEXT_ALIGN_CENTER)` set before render and restored after — this can live in the controller without violating "no manual draws."
+- raygui has built-in icons (`#142#` = gear); prefer over text labels for universal affordances like settings.
+- Mobile portrait: top-left is reserved for status/back. Settings belongs bottom-right per game-flow §2a (x≈0.90W, y≈0.92H).
+- `.rgl` authoring source at `content/ui/screens/title.rgl` had title rect overlapping the shape triad band (y=480 vs triad y=401–481). Original layout authoring was flawed, not just the override.
+
+**Routing note:** Asked coordinator to route rework to a different implementer (not the original override author) per charter.
+
+### 2026-04-29 — Title Screen UX Analysis (approved, no revision needed)
+
+**Session:** Title Screen UI Fix consolidation  
+**Artifact:** `.squad/decisions/inbox/redfoot-title-screen-ux.md`  
+**Status:** Complete
+
+Diagnosed off-center title text (runtime override issue) and improper "SET" button placement (top-left instead of bottom-right). Provided acceptance criteria: remove override, regenerate `.rgl` with corrected geometry, move settings to bottom-right gear icon (#142#).
+
+Keaton's first implementation attempt preserved the override and kept settings at top-left, triggering rejection and lockout. Hockney's revision removed the override entirely and applied correct layout, resulting in approval.

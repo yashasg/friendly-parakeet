@@ -155,3 +155,56 @@ Issue #137 is resolved. Offset semantics are now explicitly defined, correctly c
 ### Non-blocking Notes
 
 None.
+
+---
+
+## 2026-04-28 — Engineering Model Override & Keaton UI Fix
+
+### Decision: Switch Engineering to gpt-5.3-codex
+
+**Initiator:** User (yashasg)  
+**Date:** 2026-04-28T23:30:11.427-07:00  
+**Status:** ✅ EXECUTED  
+
+### Directive
+
+User requested engineering members switch from default `claude-sonnet-4.6` to `gpt-5.3-codex` for specialized code generation capabilities.
+
+### Resolution
+
+**Applied to:** Keyser, McManus, Fenster, Hockney, Verbal, Keaton, Kobayashi, Baer  
+**Preserved:** Edie, Redfoot, Saul, Rabin remain on `claude-opus-4.7`; Scribe and Ralph on `claude-haiku-4.5`  
+**File:** `.squad/config.json` — `agentModelOverrides` updated and validated  
+**Effective:** Immediate — all subsequent engineering work uses gpt-5.3-codex
+
+---
+
+## Keaton UI Regression Fix Completion
+
+### Decision: Screen-Controller Runtime Overrides Restore Visual Consistency
+
+**Owner:** Keaton (Screen Controller Implementation)  
+**Approver:** Kujan (Integration Review)  
+**Date:** 2026-04-29  
+**Status:** ✅ APPROVED  
+
+### Problem
+
+UI elements (title text, level select cards, difficulty buttons, gameplay HUD) were visually inconsistent after rguilayout integration. Root cause: runtime rendering overrides needed to ensure screen-controller state machine properly manages visual state across screen transitions.
+
+### Resolution
+
+Implemented screen-controller runtime overrides that:
+- Restore title text rendering with consistent positioning and styling
+- Restore level select card layout and interactive difficulty buttons
+- Restore gameplay HUD state machine with proper component visibility management
+
+### Evidence
+
+**Test Coverage:** 2595 passing assertions across UI regression suites  
+**Validation:** All visual elements verified across title, level select, and gameplay screens  
+**Approval:** Kujan signed off after staging unblock resolved tracking issue
+
+### Impact
+
+Visual consistency fully restored. UI no longer exhibits regression from rguilayout integration. Ready for merge.
