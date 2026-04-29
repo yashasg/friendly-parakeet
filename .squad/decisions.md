@@ -1,6 +1,36 @@
 # Decisions Registry
 
-*Last merged: 2026-04-29T07:30:55Z*
+*Last merged: 2026-04-29T07:42:57Z*
+
+### Vendored raygui Removed; vcpkg Integration Complete (2026-04-29)
+
+**Owners:** Hockney (Platform Engineering), Kujan (Review)  
+**Status:** APPROVED & IMPLEMENTED
+
+Deleted committed vendored raygui header (`app/ui/vendor/raygui.h`) and integrated vcpkg-provided raygui throughout the build system.
+
+**Changes:**
+- Added `raygui` dependency to `vcpkg.json`
+- Updated `CMakeLists.txt` to resolve `raygui.h` via `find_path()` and apply as SYSTEM include on `shapeshifter_lib`
+- Changed all includes from `#include "raygui.h"` to `#include <raygui.h>` across UI controllers and `app/ui/raygui_impl.cpp`
+- Retained `app/ui/raygui_impl.cpp` as minimal project-owned TU to own the sole `RAYGUI_IMPLEMENTATION` definition (vcpkg raygui is header-only)
+
+**Rationale:**
+- User directive (2026-04-29T07:33:37Z): do not commit vendored raygui when vcpkg provides it
+- Maintains zero-warning build without requiring source duplication
+- Canonizes single-TU pattern for RAYGUI_IMPLEMENTATION across all build targets
+
+**Validation:**
+- Full non-bench test suite: 867 test cases pass, 2603 assertions
+- Zero compilation warnings
+- No regressions in any system
+- All 8 screen controllers functional
+
+**Non-blocking follow-up items:**
+- `tools/rguilayout/SUMMARY.md` lines 76–78, 81–88, 237 contain stale "future work" language; update status to ✅ Resolved
+- `design-docs/rguilayout-portable-c-integration.md` line 283: update example `#include "raygui.h"` to `#include <raygui.h>` for consistency
+
+---
 
 ### Settings Gear Click Reliability — Letterbox Hit-Mapping (2026-04-29)
 
@@ -9777,3 +9807,28 @@ Title screen had two regressions: (1) text was off-center due to runtime overrid
 **Non-blocking note:** Uniform 28px font size for all labels (per-element sizing would require new controller infrastructure, deferred as future scope).
 
 **Revision history:** Keaton's first implementation preserved the runtime override and top-left placement, so was rejected and locked out per charter. Hockney revised from scratch with correct approach.
+
+### app/ui Root-Level Files Retention Audit (2026-04-29)
+
+**Owners:** Hockney (Platform Engineering)  
+**Status:** APPROVED & DOCUMENTED
+
+Audit confirmed that all current root-level `app/ui/*.cpp` and `app/ui/*.h` files remain active and are necessary for the build. Do not delete any of these files in current or future migration passes.
+
+**Files retained and their purposes:**
+- `app/ui/raygui_impl.cpp` — Sole RAYGUI_IMPLEMENTATION translation unit
+- `app/ui/text_renderer.*` — Used by `game_loop` and `ui_render_system`
+- `app/ui/ui_loader.*` — Powers screen JSON loading and layout-cache builders used by `ui_navigation_system` and tests
+- `app/ui/ui_source_resolver.*` — Used by UI resolver tests and game-state text validation
+- `app/ui/level_select_controller.*` — Wired into `input_dispatcher` and level-select test flow
+- `app/ui/ui_button_spawner.h` — Used by `game_state_system`, `game_loop`, routing, and hitbox menu tests
+
+**Validation:**
+- Repo-wide symbol scans confirmed no orphaned root-level files
+- All include/symbol references verified live
+- 867 test cases pass, 2603 assertions
+- Zero compilation warnings
+
+**Rationale:**
+The migration to `app/ui/screen_controllers/` is an incremental integration; root-level files provide live infrastructure that cannot be removed until all dependent systems migrate to the new pattern.
+

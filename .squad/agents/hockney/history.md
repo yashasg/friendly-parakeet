@@ -6,7 +6,7 @@
 - **Role:** Platform Engineer
 - **Joined:** 2026-04-26T02:07:46.546Z
 
-## 2026-04-29 — Settings Gear Click Fix + Standalone UI Cleanup Wave
+## 2026-04-29 — Settings Gear Click Fix + Standalone UI Cleanup + Vendored raygui Removal
 
 ### Settings Gear Click Reliability
 Fixed title screen settings button (bottom-right gear, `#142#`) unresponsiveness under letterbox scaling.
@@ -30,7 +30,33 @@ Deleted 17 committed standalone rguilayout exports from `app/ui/generated/standa
 
 **Status:** ✅ APPROVED (Kujan)
 
-**Decisions logged:** `2026-04-29T07-30-55Z-hockney.md`
+### Vendored raygui Removed; vcpkg Integration Complete
+Completed user directive to stop committing vendored raygui. Removed `app/ui/vendor/raygui.h` and integrated vcpkg-provided raygui throughout build system.
+
+**Changes:**
+- Added `raygui` to `vcpkg.json` dependencies
+- Updated CMake to resolve raygui via `find_path()` and apply as SYSTEM include on `shapeshifter_lib`
+- Switched all UI controllers and `app/ui/raygui_impl.cpp` to `#include <raygui.h>` (system include)
+- Retained `app/ui/raygui_impl.cpp` as minimal project-owned TU to own single RAYGUI_IMPLEMENTATION definition
+
+**Validation:** 867 test cases, 2603 assertions, zero warnings.
+
+**Status:** ✅ APPROVED (Kujan)
+
+### app/ui Root-Level Files Retention Audit
+Conducted comprehensive audit of `app/ui/*.cpp/.h` root-level files. Confirmed all are active and necessary for the build:
+- `raygui_impl.cpp` — sole RAYGUI_IMPLEMENTATION TU
+- `text_renderer.*` — used by game_loop and ui_render_system
+- `ui_loader.*` — powers screen JSON loading and layout cache builders
+- `ui_source_resolver.*` — used by UI tests and game-state validation
+- `level_select_controller.*` — wired into input_dispatcher and level-select tests
+- `ui_button_spawner.h` — used by game_state_system, game_loop, routing, and hitbox tests
+
+**Decision:** Do not delete any current root-level files; migration to screen_controllers is incremental and live infrastructure is still required.
+
+**Status:** ✅ DOCUMENTED
+
+**Decisions logged:** `2026-04-29T07-42-57Z-` (orchestration log)
 
 ---
 
@@ -82,6 +108,10 @@ Deleted 17 committed standalone rguilayout exports from `app/ui/generated/standa
 
 ## Learnings
 
+- raygui is now supplied by vcpkg manifest dependency `raygui` (header-only); CMake resolves it via `find_path(RAYGUI_INCLUDE_DIR raygui.h REQUIRED)` and injects it as a SYSTEM include on `shapeshifter_lib`.
+- Removed committed third-party source `app/ui/vendor/raygui.h`; all active UI screen controllers and `app/ui/raygui_impl.cpp` now include `<raygui.h>`.
+- Kept `app/ui/raygui_impl.cpp` as a minimal project-owned integration TU because raygui is header-only and still requires exactly one `#define RAYGUI_IMPLEMENTATION` site.
+- Validation command: `cmake -B build -S . -Wno-dev && cmake --build build && ./build/shapeshifter_tests '~[bench]'` (pass, 867 test cases / 2603 assertions).
 - Title screen source-of-truth paths: `content/ui/screens/title.rgl` and `app/ui/generated/title_layout.h`; controller glue stays in `app/ui/screen_controllers/title_screen_controller.cpp`.
 - Keep title rendering on the generated `title_controller.render()` path; apply style overrides around it (`GuiSetStyle(LABEL, TEXT_ALIGNMENT, TEXT_ALIGN_CENTER)`) instead of manual `DrawText`/`GuiButton` overrides.
 - Settings affordance decision: move to bottom-right at `632,1170,64,64` with raygui gear label `#142#`; keep behavior wired to `GamePhase::Settings`.
@@ -89,6 +119,9 @@ Deleted 17 committed standalone rguilayout exports from `app/ui/generated/standa
 - Root cause (settings gear no-op): raygui buttons were hit-tested in raw window coordinates while UI renders in fixed virtual space (720x1280) with letterbox scaling/offset; the small bottom-right gear missed clicks under scaled windows.
 - Files changed: `app/systems/ui_render_system.cpp` (scoped `SetMouseOffset/SetMouseScale` virtual-space mapping around screen-controller render), `tests/test_world_systems.cpp` (settings transition regression for game-state path).
 - Validation command: `cmake -B build -S . -Wno-dev && cmake --build build && ./build/shapeshifter_tests '~[bench]'`.
+- Root-level `app/ui/*.cpp|*.h` audit after screen-controller migration: all 10 files are still live; no safe deletions. `raygui_impl.cpp` is the single `RAYGUI_IMPLEMENTATION` TU; `text_renderer.*`, `ui_loader.*`, and `ui_source_resolver.*` are used by runtime systems and tests; `level_select_controller.*` and `ui_button_spawner.h` still drive dispatcher/game-state/menu-hitbox flow.
+- Search proof was captured with repo-wide symbol/include scans (`rg`) for each candidate file (`level_select_controller`, `ui_loader`, `ui_source_resolver`, `text_renderer`, `ui_button_spawner`, `raygui_impl`) showing active references in `app/` and `tests/`.
+- Validation command for root-level UI audit: `cmake -B build -S . -Wno-dev && cmake --build build && ./build/shapeshifter_tests '~[bench]'` (pass, 867 test cases / 2603 assertions).
 
 ### 2026-04-29 — Title Screen Layout Revision (approved)
 

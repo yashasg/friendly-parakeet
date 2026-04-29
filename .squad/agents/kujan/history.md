@@ -7,12 +7,40 @@
 - **Role:** Reviewer
 - **Joined:** 2026-04-26T02:12:00.632Z
 
-## Learnings
-- **Reusable quality note:** When removing a dead mechanic, verify that (1) all live ECS ctx registrations are removed, (2) the dead multiplier variable is dropped (not left as hardcoded 1.0f), and (3) both symmetric variants of an exclusion rule (Left+Right, Up+Down) have independent regression tests.
-- **UI layer removal completeness:** When replacing a UI rendering layer (adapters → screen controllers), removing the adapter wrapper files alone is insufficient. The underlying JSON UI entity spawning (`ui_load_screen`, `spawn_ui_elements`) and ECS-entity rendering (UIElement view loops) must also be removed, otherwise both systems render simultaneously. Check the full pipeline: load → spawn → render.
-- **Dead code removal quality bar:** When cleaning up stale code after a refactor, the new implementation must be staged (screen_controllers/ added to git) before deleting old paths, to ensure diff reviewers can verify no functionality loss. Untracked replacement directories make the refactor invisible in diff review. The cleanup itself is architecturally sound (deleted 377-line adapter boilerplate, consolidated into 57-line template-based screen_controller_base.h; removed 265+ lines of stale JSON rendering logic from ui_render_system.cpp), but staging the new implementation allows diff-based verification.
+## 2026-04-29 — Review: Vendored raygui Removal (User Directive Compliance)
 
-### 2026-05-17 — Review: issues #311/#314 (GamePhaseBit enum with entt::enum_as_bitmask)
+**Implementer:** Hockney  
+**Issue:** User directive — do not commit vendored raygui when vcpkg provides it at build time
+
+**Scope:** Verified complete removal of `app/ui/vendor/raygui.h`, vcpkg integration via `vcpkg.json` and CMake, all includes switched to system `<raygui.h>`, single RAYGUI_IMPLEMENTATION definition retained in `app/ui/raygui_impl.cpp`.
+
+**Tests run:**
+- Full non-bench suite: **867 test cases, 2603 assertions — all pass**
+- Build: zero warnings (arm64 macOS clang, -Wall -Wextra -Werror)
+
+**Verification checklist:**
+| Requirement | Outcome |
+|---|---|
+| `app/ui/vendor/raygui.h` removed | ✅ Absent, zero references in source/CMake |
+| `vcpkg.json` lists `raygui` | ✅ Present in dependencies |
+| CMake `find_path(RAYGUI_INCLUDE_DIR raygui.h REQUIRED)` as SYSTEM | ✅ Applied on `shapeshifter_lib` |
+| `raygui_impl.cpp` is project-owned glue only | ✅ Minimal TU with single `#define RAYGUI_IMPLEMENTATION` |
+| Exactly one `RAYGUI_IMPLEMENTATION` definition | ✅ Only in `app/ui/raygui_impl.cpp` |
+| All screen controllers use `<raygui.h>` (system include) | ✅ Confirmed across 8 controllers |
+| `ui_render_system.cpp` clean (no adapters/JSON/ECS loops) | ✅ Verified |
+| Generated layout headers exclude RAYGUI_IMPLEMENTATION | ✅ Confirmed |
+
+**Non-blocking follow-ups (stale doc language):**
+1. `tools/rguilayout/SUMMARY.md` lines 76–78, 81–88, 237 — update "future work" status to ✅ Resolved with pointer to this change
+2. `design-docs/rguilayout-portable-c-integration.md` line 283 — change example `#include "raygui.h"` to `#include <raygui.h>` to match actual implementation
+
+**Reusable quality note:** When completing a "future build-integration task" documented as deferred in earlier reports, update the status in all referenced summary/integration docs simultaneously. Stale "Future task" bullets become materially misleading for the next developer.
+
+**Verdict:** ✅ APPROVED WITH NOTES
+
+---
+
+## 2026-05-17 — Review: issues #311/#314 (GamePhaseBit enum with entt::enum_as_bitmask)
 
 **Scope:** Keaton implementation — `GamePhaseBit` power-of-two enum class with `_entt_enum_as_bitmask` sentinel in `game_state.h`; `GamePhase` stays sequential state-machine discriminant; `to_phase_bit(GamePhase)` bridge function; `ActiveInPhase::phase_mask` typed as `GamePhaseBit`; all `phase_bit()`/raw `uint8_t` spawn sites migrated; 5 new `[phase_mask]` tests (28 assertions).
 
@@ -618,3 +646,24 @@ Non-blocking note: `GuiSetStyle(DEFAULT, TEXT_SIZE, 28)` uniform across all labe
 - `generate_embeddable.sh`, `INTEGRATION.md`, `SUMMARY.md`, and `design-docs/rguilayout-portable-c-integration.md` all consistently state standalone exports are scratch-only under `build/rguilayout-scratch/` (covered by `.gitignore`'s `build/` rule) and must not be committed.
 - Hockney decision inbox present and consistent with implementation.
 - No unrelated dirty-file churn introduced by this change; other modifications in working tree predate this task.
+
+### 2026-04-29 — Review: remove vendored raygui, add via vcpkg (#user-directive)
+
+**Scope:** Hockney implementation — remove `app/ui/vendor/raygui.h`, switch `raygui_impl.cpp` to `#include <raygui.h>`, add `raygui` to `vcpkg.json`, wire `find_path(RAYGUI_INCLUDE_DIR raygui.h REQUIRED)` as SYSTEM include on `shapeshifter_lib`.
+
+**Evidence confirmed:**
+- `app/ui/vendor/` directory: absent. Zero `vendor/raygui` references in source or CMake.
+- `vcpkg.json`: contains `"raygui"` in dependencies. ✅
+- `CMakeLists.txt`: `find_path(RAYGUI_INCLUDE_DIR raygui.h REQUIRED)` → `target_include_directories(shapeshifter_lib SYSTEM PUBLIC ${RAYGUI_INCLUDE_DIR})`. ✅
+- `app/ui/raygui_impl.cpp`: exactly one `#define RAYGUI_IMPLEMENTATION`, includes `<raygui.h>`, wraps third-party code in compiler warning suppression pragmas (clang/gcc/MSVC). Exactly one definition site in the whole project. ✅
+- All screen controllers use `#include <raygui.h>` (angle brackets, system include path). ✅
+- `ui_render_system.cpp`: no JSON access, no UIElement view loops, no adapter wiring. Exclusively calls screen controller render functions. ✅
+- `app/ui/generated/*_layout.h` headers: none define `RAYGUI_IMPLEMENTATION`. ✅
+
+**Non-blocking findings (doc staleness):**
+1. `tools/rguilayout/SUMMARY.md` §2 (line 76-78), §3 (line 81-88), and §CONCLUSION "Next steps" (line 237) still say raygui is not in the build and RAYGUI_IMPLEMENTATION is undefined — both now FALSE. Materially misleading to anyone consulting this doc. Should be updated to ✅ Resolved.
+2. `design-docs/rguilayout-portable-c-integration.md` code snippet (line 283) shows `#include "raygui.h"` (quoted, implies relative/local path) in example `raygui_impl.cpp` while actual file uses `<raygui.h>` (system include). Doc example should match implementation.
+
+**Verdict:** ✅ APPROVED WITH NOTES — code and build changes are correct and complete; two doc-staleness items (non-blocking) should be cleaned up by whoever owns SUMMARY.md next.
+
+**Reusable quality note:** When completing a "future build-integration task" that was documented as deferred, update the status in all referenced summary/integration documents at the same time. Stale "Future task" bullets become materially misleading for the next developer who opens those docs.
