@@ -1,40 +1,31 @@
 // Game Over screen adapter - renders raygui layout and dispatches end-screen choices.
 
 #include "../../components/game_state.h"
+#include "adapter_base.h"
+#include "end_screen_dispatch.h"
 #include <entt/entt.hpp>
-#include <raylib.h>
 
 #include "../vendor/raygui.h"
 #include "../generated/game_over_layout.h"
 
 namespace {
 
-GameOverLayoutState game_over_layout_state;
-bool game_over_initialized = false;
+using GameOverAdapter = RGuiAdapter<GameOverLayoutState,
+                                    &GameOverLayout_Init,
+                                    &GameOverLayout_Render>;
+GameOverAdapter game_over_adapter;
 
 } // anonymous namespace
 
 void game_over_adapter_init() {
-    if (!game_over_initialized) {
-        game_over_layout_state = GameOverLayout_Init();
-        game_over_initialized = true;
-    }
+    game_over_adapter.init();
 }
 
 void game_over_adapter_render(entt::registry& reg) {
-    if (!game_over_initialized) {
-        game_over_adapter_init();
-    }
-
-    GameOverLayout_Render(&game_over_layout_state);
+    game_over_adapter.render();
 
     auto& gs = reg.ctx().get<GameState>();
-    if (gs.phase_timer <= 0.4f) return; // match existing delay guard
+    if (gs.phase_timer <= 0.4f) return;
 
-    if (game_over_layout_state.RestartButtonPressed)
-        gs.end_choice = EndScreenChoice::Restart;
-    else if (game_over_layout_state.LevelSelectButtonPressed)
-        gs.end_choice = EndScreenChoice::LevelSelect;
-    else if (game_over_layout_state.MenuButtonPressed)
-        gs.end_choice = EndScreenChoice::MainMenu;
+    dispatch_end_screen_choice(gs, game_over_adapter.state());
 }

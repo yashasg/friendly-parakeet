@@ -3,34 +3,29 @@
 // by draw_hud() in ui_render_system.cpp.
 
 #include "../../components/game_state.h"
+#include "adapter_base.h"
 #include <entt/entt.hpp>
-#include <raylib.h>
 
 #include "../vendor/raygui.h"
 #include "../generated/gameplay_hud_layout.h"
 
 namespace {
 
-GameplayHudLayoutState gameplay_hud_layout_state;
-bool gameplay_hud_initialized = false;
+using GameplayAdapter = RGuiAdapter<GameplayHudLayoutState,
+                                    &GameplayHudLayout_Init,
+                                    &GameplayHudLayout_Render>;
+GameplayAdapter gameplay_adapter;
 
 } // anonymous namespace
 
 void gameplay_adapter_init() {
-    if (!gameplay_hud_initialized) {
-        gameplay_hud_layout_state = GameplayHudLayout_Init();
-        gameplay_hud_initialized = true;
-    }
+    gameplay_adapter.init();
 }
 
 void gameplay_adapter_render(entt::registry& reg) {
-    if (!gameplay_hud_initialized) {
-        gameplay_adapter_init();
-    }
+    gameplay_adapter.render();
 
-    GameplayHudLayout_Render(&gameplay_hud_layout_state);
-
-    if (gameplay_hud_layout_state.PauseButtonPressed) {
+    if (gameplay_adapter.state().PauseButtonPressed) {
         auto& gs = reg.ctx().get<GameState>();
         if (gs.phase == GamePhase::Playing) {
             gs.transition_pending = true;

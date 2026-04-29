@@ -1,40 +1,31 @@
 // Song Complete screen adapter - renders raygui layout and dispatches end-screen choices.
 
 #include "../../components/game_state.h"
+#include "adapter_base.h"
+#include "end_screen_dispatch.h"
 #include <entt/entt.hpp>
-#include <raylib.h>
 
 #include "../vendor/raygui.h"
 #include "../generated/song_complete_layout.h"
 
 namespace {
 
-SongCompleteLayoutState song_complete_layout_state;
-bool song_complete_initialized = false;
+using SongCompleteAdapter = RGuiAdapter<SongCompleteLayoutState,
+                                        &SongCompleteLayout_Init,
+                                        &SongCompleteLayout_Render>;
+SongCompleteAdapter song_complete_adapter;
 
 } // anonymous namespace
 
 void song_complete_adapter_init() {
-    if (!song_complete_initialized) {
-        song_complete_layout_state = SongCompleteLayout_Init();
-        song_complete_initialized = true;
-    }
+    song_complete_adapter.init();
 }
 
 void song_complete_adapter_render(entt::registry& reg) {
-    if (!song_complete_initialized) {
-        song_complete_adapter_init();
-    }
-
-    SongCompleteLayout_Render(&song_complete_layout_state);
+    song_complete_adapter.render();
 
     auto& gs = reg.ctx().get<GameState>();
-    if (gs.phase_timer <= 0.5f) return; // match existing delay guard
+    if (gs.phase_timer <= 0.5f) return;
 
-    if (song_complete_layout_state.RestartButtonPressed)
-        gs.end_choice = EndScreenChoice::Restart;
-    else if (song_complete_layout_state.LevelSelectButtonPressed)
-        gs.end_choice = EndScreenChoice::LevelSelect;
-    else if (song_complete_layout_state.MenuButtonPressed)
-        gs.end_choice = EndScreenChoice::MainMenu;
+    dispatch_end_screen_choice(gs, song_complete_adapter.state());
 }

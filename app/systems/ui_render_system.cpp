@@ -360,11 +360,9 @@ void ui_render_system(entt::registry& reg, float /*alpha*/) {
     // UI text elements (data-driven from JSON)
     {
         auto view = reg.view<UIElementTag, UIText, UIPosition, TagHUDPass>();
-        const auto* anim_store = std::as_const(reg).storage<UIAnimation>();
-        const auto* dyn_store  = std::as_const(reg).storage<UIDynamicText>();
         for (auto [entity, text, pos] : view.each()) {
             Color c = text.color;
-            const auto* anim = (anim_store && anim_store->contains(entity)) ? &anim_store->get(entity) : nullptr;
+            const auto* anim = reg.try_get<UIAnimation>(entity);
             if (anim) {
                 float pulse = (sinf(gs.phase_timer * anim->speed) + 1.0f) / 2.0f;
                 c.a = static_cast<uint8_t>(anim->alpha_min +
@@ -372,7 +370,7 @@ void ui_render_system(entt::registry& reg, float /*alpha*/) {
             }
             const char* draw_str = text.text;
             std::string resolved;
-            const auto* dyn = (dyn_store && dyn_store->contains(entity)) ? &dyn_store->get(entity) : nullptr;
+            const auto* dyn = reg.try_get<UIDynamicText>(entity);
             if (dyn) {
                 auto v = resolve_ui_dynamic_text(reg, dyn->source, dyn->format);
                 if (v.has_value()) {
@@ -388,11 +386,9 @@ void ui_render_system(entt::registry& reg, float /*alpha*/) {
     // UI button elements
     {
         auto view = reg.view<UIElementTag, UIButton, UIPosition, TagHUDPass>();
-        const auto* anim_store = std::as_const(reg).storage<UIAnimation>();
-        const auto* dyn_store  = std::as_const(reg).storage<UIDynamicText>();
         for (auto [entity, btn, pos] : view.each()) {
             Color tc = btn.text_color;
-            const auto* anim = (anim_store && anim_store->contains(entity)) ? &anim_store->get(entity) : nullptr;
+            const auto* anim = reg.try_get<UIAnimation>(entity);
             if (anim) {
                 float pulse = (sinf(gs.phase_timer * anim->speed) + 1.0f) / 2.0f;
                 tc.a = static_cast<uint8_t>(anim->alpha_min +
@@ -402,7 +398,7 @@ void ui_render_system(entt::registry& reg, float /*alpha*/) {
             DrawRectangleRoundedLinesEx({pos.value.x, pos.value.y, btn.w, btn.h}, btn.corner_radius, 4, 1.5f, btn.border);
             const char* draw_str = btn.text;
             std::string resolved;
-            const auto* dyn = (dyn_store && dyn_store->contains(entity)) ? &dyn_store->get(entity) : nullptr;
+            const auto* dyn = reg.try_get<UIDynamicText>(entity);
             if (dyn) {
                 auto v = resolve_ui_dynamic_text(reg, dyn->source, dyn->format);
                 if (v.has_value()) {

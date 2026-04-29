@@ -3,40 +3,35 @@
 #include "../../components/game_state.h"
 #include "../../components/ui_state.h"
 #include "../../components/input.h"
+#include "adapter_base.h"
 #include <entt/entt.hpp>
-#include <raylib.h>
 
 #include "../vendor/raygui.h"
 #include "../generated/title_layout.h"
 
 namespace {
 
-TitleLayoutState layout_state;
-bool initialized = false;
+using TitleAdapter = RGuiAdapter<TitleLayoutState,
+                                 &TitleLayout_Init,
+                                 &TitleLayout_Render>;
+TitleAdapter title_adapter;
 
 } // anonymous namespace
 
 void title_adapter_init() {
-    if (!initialized) {
-        layout_state = TitleLayout_Init();
-        initialized = true;
-    }
+    title_adapter.init();
 }
 
 void title_adapter_render(entt::registry& reg) {
-    if (!initialized) {
-        title_adapter_init();
-    }
-
-    TitleLayout_Render(&layout_state);
+    title_adapter.render();
 
 #ifndef PLATFORM_WEB
-    if (layout_state.ExitButtonPressed) {
+    if (title_adapter.state().ExitButtonPressed) {
         reg.ctx().get<InputState>().quit_requested = true;
     }
 #endif
 
-    if (layout_state.SettingsButtonPressed) {
+    if (title_adapter.state().SettingsButtonPressed) {
         auto& gs = reg.ctx().get<GameState>();
         gs.transition_pending = true;
         gs.next_phase = GamePhase::Settings;

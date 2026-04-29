@@ -3,36 +3,31 @@
 #include "../../components/game_state.h"
 #include "../../components/input.h"
 #include "../../components/input_events.h"
+#include "adapter_base.h"
 #include <entt/entt.hpp>
-#include <raylib.h>
 
 #include "../vendor/raygui.h"
 #include "../generated/paused_layout.h"
 
 namespace {
 
-PausedLayoutState paused_layout_state;
-bool paused_initialized = false;
+using PausedAdapter = RGuiAdapter<PausedLayoutState,
+                                  &PausedLayout_Init,
+                                  &PausedLayout_Render>;
+PausedAdapter paused_adapter;
 
 } // anonymous namespace
 
 void paused_adapter_init() {
-    if (!paused_initialized) {
-        paused_layout_state = PausedLayout_Init();
-        paused_initialized = true;
-    }
+    paused_adapter.init();
 }
 
 void paused_adapter_render(entt::registry& reg) {
-    if (!paused_initialized) {
-        paused_adapter_init();
-    }
-
-    PausedLayout_Render(&paused_layout_state);
+    paused_adapter.render();
 
     auto& gs = reg.ctx().get<GameState>();
 
-    if (paused_layout_state.ResumeButtonPressed) {
+    if (paused_adapter.state().ResumeButtonPressed) {
         auto mv = reg.view<MenuButtonTag>();
         reg.destroy(mv.begin(), mv.end());
         gs.previous_phase = gs.phase;
@@ -40,7 +35,7 @@ void paused_adapter_render(entt::registry& reg) {
         gs.phase_timer = 0.0f;
     }
 
-    if (paused_layout_state.MenuButtonPressed) {
+    if (paused_adapter.state().MenuButtonPressed) {
         gs.transition_pending = true;
         gs.next_phase = GamePhase::Title;
     }
