@@ -15,6 +15,28 @@ bool obstacle_model_lifecycle_wired(entt::registry& reg) {
     auto* state = reg.ctx().find<ObstacleModelLifecycleState>();
     return state && state->wired;
 }
+
+struct PendingEntity {
+    entt::registry& reg;
+    entt::entity entity;
+    bool active = true;
+
+    PendingEntity(entt::registry& registry, entt::entity created)
+        : reg(registry), entity(created) {}
+
+    PendingEntity(const PendingEntity&) = delete;
+    PendingEntity& operator=(const PendingEntity&) = delete;
+
+    ~PendingEntity() {
+        if (active && reg.valid(entity)) {
+            reg.destroy(entity);
+        }
+    }
+
+    void release() {
+        active = false;
+    }
+};
 }
 
 static void append_child(entt::registry& reg, entt::entity parent, entt::entity child) {
@@ -25,24 +47,40 @@ static void append_child(entt::registry& reg, entt::entity parent, entt::entity 
     children.children[children.count++] = child;
 }
 
+// ObstacleChildren::MAX is the hard cap for mesh children owned by one
+// logical obstacle. Factory helpers reserve a slot before reg.create() so an
+// overflow cannot leave an unregistered MeshChild entity behind.
+static void require_child_capacity(entt::registry& reg, entt::entity parent) {
+    auto& children = reg.get_or_emplace<ObstacleChildren>(parent);
+    if (children.count >= ObstacleChildren::MAX) {
+        throw std::logic_error("ObstacleChildren capacity exceeded");
+    }
+}
+
 static entt::entity add_slab_child(entt::registry& reg, entt::entity parent,
                                    float x, float w, float d, float h, Color tint) {
+    require_child_capacity(reg, parent);
     auto e = reg.create();
+    PendingEntity pending{reg, e};
     reg.emplace<MeshChild>(e, MeshChild{parent, x, 0.0f, w, d, h, tint, MeshType::Slab, 0});
     reg.emplace<TagWorldPass>(e);
     append_child(reg, parent, e);
+    pending.release();
     return e;
 }
 
 static entt::entity add_shape_child(entt::registry& reg, entt::entity parent,
                                      Shape shape, float cx, float z_offset,
                                      float size, Color tint) {
+    require_child_capacity(reg, parent);
     int idx = static_cast<int>(shape);
     auto e = reg.create();
+    PendingEntity pending{reg, e};
     reg.emplace<MeshChild>(e, MeshChild{parent, cx, z_offset, size, 0, 0, tint,
                                         MeshType::Shape, idx});
     reg.emplace<TagWorldPass>(e);
     append_child(reg, parent, e);
+    pending.release();
     return e;
 }
 

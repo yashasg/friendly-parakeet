@@ -1,6 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
 #include "test_helpers.h"
 #include "entities/obstacle_entity.h"
+#include "entities/obstacle_render_entity.h"
+
+#include <stdexcept>
 
 // spawn_obstacle: entity bundle contract tests.
 // Calls the entity factory directly, independent of beat_scheduler_system.
@@ -16,6 +19,15 @@ void probe_obstacle_tag_construct(entt::registry& reg, entt::entity entity) {
     if (!probe) return;
     probe->saw_obstacle = reg.all_of<Obstacle>(entity);
     probe->saw_beat_info = reg.all_of<BeatInfo>(entity);
+}
+
+int count_mesh_children(entt::registry& reg) {
+    int count = 0;
+    auto view = reg.view<MeshChild>();
+    for ([[maybe_unused]] auto entity : view) {
+        ++count;
+    }
+    return count;
 }
 }
 
@@ -68,6 +80,39 @@ TEST_CASE("entity: obstacle roots and mesh children declare world render pass", 
     auto low_bar = spawn_obstacle(reg, {ObstacleKind::LowBar, 360.0f, -120.0f});
     CHECK(reg.all_of<TagWorldPass>(low_bar));
     CHECK(reg.all_of<WorldTransform>(low_bar));
+}
+
+TEST_CASE("entity: obstacle mesh overflow does not create orphan MeshChild", "[archetype][render][cleanup]") {
+    entt::registry reg;
+    reg.storage<ObstacleChildren>();
+    reg.on_destroy<ObstacleTag>().connect<&on_obstacle_destroy>();
+
+    auto parent = reg.create();
+    reg.emplace<Position>(parent, 360.0f, -120.0f);
+    reg.emplace<Obstacle>(parent, ObstacleKind::ShapeGate, int16_t{constants::PTS_SHAPE_GATE});
+    reg.emplace<DrawSize>(parent, constants::SCREEN_W_F, 80.0f);
+    reg.emplace<Color>(parent, Color{80, 200, 255, 255});
+    reg.emplace<RequiredShape>(parent, Shape::Circle);
+
+    auto& children = reg.emplace<ObstacleChildren>(parent);
+    for (int i = 0; i < ObstacleChildren::MAX; ++i) {
+        auto child = reg.create();
+        reg.emplace<MeshChild>(child, MeshChild{
+            parent, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f,
+            Color{255, 255, 255, 255}, MeshType::Slab, 0
+        });
+        children.children[children.count++] = child;
+    }
+    reg.emplace<ObstacleTag>(parent);
+
+    CHECK(count_mesh_children(reg) == ObstacleChildren::MAX);
+    CHECK_THROWS_AS(spawn_obstacle_meshes(reg, parent), std::logic_error);
+    CHECK(count_mesh_children(reg) == ObstacleChildren::MAX);
+    CHECK(reg.get<ObstacleChildren>(parent).count == ObstacleChildren::MAX);
+
+    reg.destroy(parent);
+
+    CHECK(count_mesh_children(reg) == 0);
 }
 
 TEST_CASE("entity: ShapeGate Square - red color", "[archetype]") {
