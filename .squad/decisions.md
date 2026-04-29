@@ -1,6 +1,6 @@
 # Decisions Registry
 
-*Last merged: 2026-04-29T08:05:08Z*
+*Last merged: 2026-04-29T08:23:46Z*
 
 ### UI Cleanup Initiative (2026-04-29)
 
@@ -9937,4 +9937,79 @@ Audit confirmed that all current root-level `app/ui/*.cpp` and `app/ui/*.h` file
 
 **Rationale:**
 The migration to `app/ui/screen_controllers/` is an incremental integration; root-level files provide live infrastructure that cannot be removed until all dependent systems migrate to the new pattern.
+
+
+---
+
+## Decision: Remove Legacy UI JSON Loader & ECS Menu-Hitbox Paths (2026-04-29)
+
+**Date:** 2026-04-29  
+**Status:** ✅ APPROVED & IMPLEMENTED  
+**Owner:** Keyser (Architecture), Kujan (Code Review)  
+**User Directive:** 2026-04-29T08:09:55Z, 2026-04-29T08:17:40Z
+
+### Context
+
+Runtime no longer uses JSON layout metadata or invisible ECS menu hitboxes. UI interactions must stay on raygui screen-controller surfaces only. User requested outright deletion of `ui_loader` and `ui_button_spawner` with all live references resolved.
+
+### Decision
+
+1. **Delete legacy files:**
+   - `app/ui/ui_loader.cpp` / `app/ui/ui_loader.h`
+   - `app/ui/ui_button_spawner.h`
+   - `app/ui/ui_source_resolver.cpp` / `app/ui/ui_source_resolver.h`
+   - `app/components/ui_element.h`
+
+2. **Remove all runtime calls to:**
+   - `load_ui`, `ui_load_screen`, `build_ui_element_map`
+   - `build_hud_layout`, `build_level_select_layout`, `build_overlay_layout`, `ui_load_overlay`
+   - `spawn_*_buttons` and `destroy_ui_buttons` menu transition hooks
+
+3. **Move menu interaction ownership to screen controllers:**
+   - Title: tap-to-start, settings, exit (all raygui)
+   - Level Select: card/difficulty selection (all raygui)
+   - Paused: resume, menu navigation (all raygui)
+   - Game Over / Song Complete: navigation (all raygui)
+
+4. **Preserve gameplay hit-test ECS** for shape-based interactions only (not menu).
+
+### Consequences
+
+- Runtime UI path is now single-source: `ui_navigation_system` → `ui_render_system` (raygui controllers only)
+- Paused overlay dim is runtime-owned constant in UI render pass (no JSON overlay parsing/caching)
+- No invisible ECS `MenuButtonTag + HitBox` entities in menu screens
+- Legacy loader/cache/spawner regression tests removed or rewritten to reflect controller-owned behavior
+
+### Validation
+
+✅ **Build & Test (Approved 2026-04-29T08:23:46Z by Kujan)**
+- `cmake -B build -S . -Wno-dev && cmake --build build`
+- `./build/shapeshifter_tests '~[bench]'`
+- **Result:** All 753 tests pass, zero warnings
+
+✅ **File Deletion Verification**
+- 6 legacy files deleted, zero runtime/test/CMake references remain
+
+✅ **Screen-Controller Coverage**
+- All required flows (title, level-select, paused, game-over, song-complete) operational via raygui
+
+✅ **Forbidden Surfaces Absent**
+- No adapters, no JSON/ECS UI path, no `spawn_ui_elements`, no vendor code, no legacy raygui_impl dependencies
+
+### Artifacts
+
+- Orchestration (Keyser): `.squad/orchestration-log/2026-04-29T08-23-46Z-keyser.md`
+- Orchestration (Kujan): `.squad/orchestration-log/2026-04-29T08-23-46Z-kujan.md`
+- Session Log: `.squad/log/2026-04-29T08-23-46Z-legacy-ui-removal.md`
+
+---
+
+---
+
+## Scribe Note: Decisions Registry Size Check (2026-04-29T08:23:46Z)
+
+**Registry size:** ~508 KB (exceeds 20 KB threshold)  
+**Archive trigger:** Deferred  
+**Reason:** All entries dated 2026-04-26 or later (within 30-day window). No entries older than 30 days exist; archival not necessary at this time.  
+**Next check:** Recommend archive review on 2026-05-27 if registry exceeds 600 KB.
 

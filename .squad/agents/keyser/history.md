@@ -258,3 +258,31 @@ See `.squad/orchestration-log/2026-04-29T03:13:21Z-keyser.md`
 **Orchestration logs:** 
 - `.squad/orchestration-log/2026-04-29T08:05:08Z-keyser-first-pass.md`
 - `.squad/orchestration-log/2026-04-29T08:05:08Z-keyser-second-pass.md`
+
+
+- 2026-04-29: Removed legacy runtime UI JSON loader and invisible ECS menu-hitbox spawner paths.
+- Replacement path: ui_navigation now only maps `GamePhase -> ActiveScreen` (+ paused overlay flag), while title/level-select/paused/game-over/song-complete interactions are handled by raygui screen controllers (including direct pointer hit-testing for title tap-to-start and level card/difficulty selection).
+- Key files changed: deleted `app/ui/ui_loader.cpp/.h`, deleted `app/ui/ui_button_spawner.h`, updated `app/game_loop.cpp`, `app/systems/ui_navigation_system.cpp`, `app/systems/game_state_system.cpp`, `app/input/game_state_routing.cpp`, `app/ui/level_select_controller.*`, `app/ui/screen_controllers/{title,level_select,paused}_screen_controller.cpp`, `app/components/ui_state.h`, `app/components/ui_layout_cache.h`, plus removal/updates of legacy loader/spawner tests.
+- Validation: `cmake -B build -S . -Wno-dev && cmake --build build && ./build/shapeshifter_tests '~[bench]'` (pass: 753 test cases).
+
+### 2026-04-29T08:23:46Z — Legacy UI Removal Orchestration & Approval
+
+**Session:** Legacy UI Removal Final Wave  
+**Task:** keyser-remove-legacy-ui-runtime (orchestration + implementation summary)  
+**Status:** ✅ COMPLETED & APPROVED
+
+**Work Summary:**
+- Implemented full removal of `ui_loader`, `ui_button_spawner`, `ui_source_resolver`, and `ui_element` component per user directive
+- Resolved all live references; migrated menu interactions to raygui screen controllers
+- Coordinated with Kujan on final validation gate
+
+**Artifacts:**
+- Orchestration log: `.squad/orchestration-log/2026-04-29T08-23-46Z-keyser.md`
+
+**Verification:**
+- All 753 tests pass; zero warnings
+- 6 legacy files deleted, zero references remain
+- Screen-controller coverage complete (title, level-select, paused, game-over, song-complete)
+
+**Next:** Ready for merge.
+

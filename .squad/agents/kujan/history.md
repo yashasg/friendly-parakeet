@@ -689,3 +689,44 @@ Non-blocking note: `GuiSetStyle(DEFAULT, TEXT_SIZE, 28)` uniform across all labe
 - Recommended targeted cleanup PR for remaining dead surface
 
 **Orchestration log:** `.squad/orchestration-log/2026-04-29T08:05:08Z-kujan.md`
+
+### 2026-04-29 — Review: Keyser legacy UI removal audit (`ui_loader` + `ui_button_spawner`)
+
+- **Verdict:** ❌ Not complete; user directive not yet met.
+- **Diff reviewed:** active working diff for `CMakeLists.txt`, `app/ui/ui_loader.*`, `app/systems/ui_navigation_system.cpp`, `app/systems/ui_render_system.cpp`, `tests/test_game_state_extended.cpp`, `tests/test_world_systems.cpp`.
+- **What is correctly removed:** `spawn_ui_elements` runtime path, `app/ui/adapters/*`, `app/ui/vendor/*`, `app/ui/generated/standalone/*`, and `app/ui/raygui_impl.cpp` (implementation ownership moved to title screen controller TU).
+- **Blocking gaps vs directive:**
+  1. `ui_loader` remains runtime-critical (`game_loop.cpp`, `ui_navigation_system.cpp`, layout cache + overlay builders, JSON screen loading).
+  2. `ui_button_spawner.h` remains live and still spawns invisible menu hitbox entities from `game_loop.cpp` and `game_state_system.cpp`.
+  3. `game_state_routing.cpp`, `level_select_controller.cpp`, and many tests still depend on `MenuButtonTag/HitBox` semantics.
+  4. Legacy JSON tests and comments remain (`test_ui_layout_cache.cpp`, `test_ui_element_schema.cpp`, `test_ui_loader_routes_removed.cpp`, `ui_state.h`, `ui_layout_cache.h` comments).
+- **Regression risks if spawner is deleted now:** Title "TAP TO START" has no raygui click handler; level-select card/difficulty interactions are rendered but not raygui-hit-tested; deleting ECS hitboxes without replacement will strand those flows.
+- **Verification run:** `cmake -B build -S . -Wno-dev && cmake --build build -j4 && ./build/shapeshifter_tests "~[bench]" && ./build/shapeshifter_tests "[ui]" && ./build/shapeshifter_tests "[gamestate]" && ./build/shapeshifter_tests "[level_select]"` — all pass (848/74/36/26 cases respectively).
+
+### 2026-04-29 — Final gate: legacy UI runtime removal (`ui_loader` + menu hitbox spawner)
+
+- **Verdict:** ✅ APPROVE
+- Verified deleted and unreferenced from runtime/tests/CMake: `app/ui/ui_loader.cpp`, `app/ui/ui_loader.h`, `app/ui/ui_button_spawner.h`, `app/ui/ui_source_resolver.cpp`, `app/ui/ui_source_resolver.h`, `app/components/ui_element.h`.
+- Verified no live runtime calls remain to legacy JSON loader/cache or invisible menu spawner APIs (`load_ui`, `ui_load_screen`, `build_ui_element_map`, `build_hud_layout`, `build_level_select_layout`, `ui_load_overlay`, `build_overlay_layout`, `spawn_*_buttons`, `destroy_ui_buttons`, `spawn_ui_elements` all absent).
+- Verified controller-owned interaction coverage: title tap-to-start/settings/exit, level-select card+difficulty+start, paused resume/menu (no settings control in current paused layout), and game-over/song-complete restart/level-select/main-menu.
+- Verified forbidden legacy surfaces remain absent: adapters, JSON/ECS UI renderer path, `app/ui/vendor`, committed standalone exports, `app/ui/raygui_impl.cpp`.
+- Validation run: `cmake -B build -S . -Wno-dev && cmake --build build && ./build/shapeshifter_tests '~[bench]'` passed (`753` test cases, `2145` assertions).
+
+### 2026-04-29T08:23:46Z — Legacy UI Removal Final Review & Approval
+
+**Session:** Legacy UI Removal Final Wave  
+**Task:** kujan-final-legacy-ui-removal (code review & validation)  
+**Status:** ✅ COMPLETED & APPROVED
+
+**Verification Summary:**
+1. File deletion audit (6 files): ✅ All deleted, zero references remain
+2. Runtime reference audit: ✅ All legacy loader/spawner calls absent
+3. Screen-controller coverage: ✅ All required flows operational
+4. Forbidden surfaces audit: ✅ All absent (adapters, JSON/ECS path, vendor, etc.)
+5. Build & test validation: ✅ 753 tests pass, zero warnings
+
+**Artifacts:**
+- Orchestration log: `.squad/orchestration-log/2026-04-29T08-23-46Z-kujan.md`
+
+**Approval Verdict:** User directive 2026-04-29T08:17:40Z fully satisfied. Ready for merge.
+
