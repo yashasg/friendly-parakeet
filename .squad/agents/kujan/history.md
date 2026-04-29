@@ -757,3 +757,122 @@ Non-blocking note: `GuiSetStyle(DEFAULT, TEXT_SIZE, 28)` uniform across all labe
 - **Sign-off:** Difficulty select controls ready to merge
 - **Orchestration logs written:** 
   - `.squad/orchestration-log/2026-04-29T08-38-21Z-kujan.md` (audit + review)
+
+### 2026-04-29 — Song Complete text/layout review (Keyser)
+
+- **Verdict:** ❌ REJECT (lockout: require non-Keyser reviser for follow-up)
+- **Blocking findings:** No visible fix diff in `content/ui/screens/song_complete.rgl`, `app/ui/generated/song_complete_layout.h`, or `app/ui/screen_controllers/song_complete_screen_controller.cpp`; current Song Complete path still renders title/status via default `GuiLabel` style without controller-scoped text sizing/alignment override, so the reported "text off / too small / not centered" issue is not demonstrably resolved.
+- **Expected behavior baseline:** Song Complete title + status labels must be centered and readable (matching active raygui controller flow), while end-screen buttons remain at existing coordinates and preserve Restart / Level Select / Main Menu actions via `dispatch_end_screen_choice` and `game_state_system` transition handling.
+- **Architecture/path audit:** Active runtime path is confirmed as `ui_render_system -> render_song_complete_screen_ui -> SongCompleteLayout_Render` (generated/raygui), with no reintroduction of forbidden legacy surfaces (`ui_loader`, `ui_button_spawner`, `spawn_ui_elements`, adapters, `app/ui/vendor`, standalone exports, `app/ui/raygui_impl.cpp`).
+- **Validation run:** `cmake -B build -S . -Wno-dev && cmake --build build && ./build/shapeshifter_tests '~[bench]' && ./build/shapeshifter_tests '[song_playback]' && ./build/shapeshifter_tests '[ui]'` passed (756 non-bench, 23 song_playback, 12 ui).
+
+## Learnings
+
+### 2026-05-XX — Review: Pause Screen UI Text Fix (Keaton)
+
+**Verdict:** ❌ REJECT — structural fix present but numeric values miss Redfoot AC
+
+**Files reviewed:** `app/ui/generated/paused_layout.h`, `content/ui/screens/paused.rgl`, `app/ui/screen_controllers/paused_screen_controller.cpp/.h`, `app/systems/ui_render_system.cpp`
+
+**What was correct:**
+- `PausedLayout_DrawCenteredLabel()` helper added with identical save/restore pattern to `SongCompleteLayout_DrawCenteredLabel` — correct structural approach
+- Helper is used for all three text labels in `PausedLayout_Render()`
+- Buttons (RESUME 160, 620, 400×100; MAIN MENU 160, 820, 400×100) unchanged
+- No legacy paths: no `ui_loader`, `ui_button_spawner`, `spawn_ui_elements`, no `DrawText`, no JSON adapters
+- `ui_render_system.cpp` unchanged — letterbox hit-mapping preserved
+- Build: zero warnings; tests: 2148 assertions, 756 cases — all pass
+
+**Blocking failures vs. Redfoot AC:**
+| AC | Required | Actual | Result |
+|---|---|---|---|
+| "PAUSED" font size | 56 | 48 | ❌ |
+| "PAUSED" rect x,w,h | ~90, 420, 540, 80 | 160, 430, 400, 72 | ❌ |
+| "TAP RESUME…" font size | 24 | 22 | ❌ |
+| "TAP RESUME…" rect width | ≥540 | 500 | ❌ |
+| "OR RETURN…" font size | 24 | 22 | ❌ |
+| "OR RETURN…" rect width | ≥540 | 500 | ❌ |
+
+**Pattern learned:** When AC specifies bold numeric values (font size, rect dimensions), those are exact requirements. The implementer used visually-similar but non-conforming values (48 not 56, 22 not 24, 500 not 540). The Redfoot spec also uses "≥540" for instruction widths — this is a floor, not a suggestion.
+
+**Lockout:** Keaton is locked out of the follow-up revision per reviewer protocol. Recommend a non-Keaton agent (e.g., the agent who landed the Song Complete fix) own the correction.
+
+**Key AC source:** `.squad/decisions/inbox/redfoot-pause-screen-text-fix.md`
+
+### Pause Screen — Fenster Revision (Final Review, APPROVED)
+
+**Date:** 2026-05-XX  
+**Implementer:** Fenster (non-Keaton per lockout protocol)  
+**Prior rejection:** Keaton's values missed on all 6 numeric AC items (sizes 48/22 not 56/24, widths 400/500 not 540, wrong rect y/x origins).
+
+**Fenster's correction passed all AC items:**
+- "PAUSED": `(90, 420, 540, 80)`, size 56 ✅
+- "TAP RESUME TO CONTINUE": `(90, 540, 540, 36)`, size 24 ✅
+- "OR RETURN TO MAIN MENU": `(90, 760, 540, 36)`, size 24 ✅
+- `paused.rgl` geometry mirrors header exactly ✅
+- `PausedLayout_DrawCenteredLabel()` save/restore pattern identical to `SongCompleteLayout_DrawCenteredLabel` ✅
+- Buttons (RESUME, MAIN MENU) geometry and dispatch unchanged ✅
+- No forbidden legacy paths ✅
+- Build: zero warnings; tests: 2148 assertions, 771 cases — all pass ✅
+
+**Pattern reinforced:** When rejecting on numeric AC failures and assigning to a non-original-author reviser, the reviser should apply the exact numbers from the AC spec and mirror them in both the `.h` and the `.rgl`. Fenster did this correctly.
+
+**Verdict:** ✅ APPROVED
+
+## 2026-04-29T09:55:21Z — Reviewer: Song Complete & Pause Screen Text Fixes
+
+**Session:** UI Layout Fixes — Song Complete & Pause Screen Text Readability  
+**Scope:** Reviewed two parallel UI text fixes (Keyser on Song Complete, Keaton on Pause Screen).
+
+### Song Complete Review — Initial Attempt (Keyser, Rejected)
+
+**Verdict:** ❌ REJECTED
+
+**Reason:** No visible active artifacts demonstrated fix. Default GuiLabel still in use with no centered-label helper added. Song Complete title/status text acceptance criteria unmet.
+
+**Lockout applied:** Keyser locked out for revision cycle. Next reviser must be different.
+
+**Related:** `.squad/orchestration-log/2026-04-29T09:55:21Z-kujan-song-complete.md`
+
+### Pause Screen Review — Initial Attempt (Keaton, Rejected)
+
+**Verdict:** ❌ REJECTED — Numeric AC failures on all 6 items
+
+**Blocking failures vs. Redfoot AC:**
+
+| Label | AC Requirement | Actual | Result |
+|---|---|---|---|
+| "PAUSED" font size | **56** | 48 | ❌ |
+| "PAUSED" rect | ~(90, 420, 540, 80) | (160, 430, 400, 72) | ❌ |
+| "TAP RESUME TO CONTINUE" font size | **24** | 22 | ❌ |
+| "TAP RESUME TO CONTINUE" rect width | **≥540** | 500 | ❌ |
+| "OR RETURN TO MAIN MENU" font size | **24** | 22 | ❌ |
+| "OR RETURN TO MAIN MENU" rect width | **≥540** | 500 | ❌ |
+
+**Structural quality:** ✅ Helper pattern correct (save/restore), buttons unchanged, no legacy paths reintroduced, build/tests pass.
+
+**Required corrections:** Update three label call-site arguments: "PAUSED" size→56 and rect→(90,420,540,80); both instruction labels size→24 and width→540. Update `content/ui/screens/paused.rgl` to match.
+
+**Lockout applied:** Keaton locked out for revision cycle. Recommended: assign to agent who landed Song Complete fix (already owns helper pattern).
+
+**Related:** `.squad/orchestration-log/2026-04-29T09:55:21Z-keaton-pause.md`
+
+### Pause Screen Review — Fenster Revision (Approved)
+
+**Verdict:** ✅ APPROVED
+
+**Implementation:** Fenster (non-Keaton per lockout protocol) corrected only the three pause label call-site bounds/sizes in `app/ui/generated/paused_layout.h` and mirrored them in `content/ui/screens/paused.rgl`. Buttons/actions unchanged.
+
+**AC verification:** All requirements met exactly:
+- "PAUSED": (x=90, y=420, w=540, h=80), size 56 ✅
+- "TAP RESUME TO CONTINUE": (x=90, y=540, w=540, h=36), size 24 ✅
+- "OR RETURN TO MAIN MENU": (x=90, y=760, w=540, h=36), size 24 ✅
+- `PausedLayout_DrawCenteredLabel()` matches `SongCompleteLayout_DrawCenteredLabel` pattern ✅
+- Buttons (RESUME, MAIN MENU) untouched ✅
+- No legacy UI paths ✅
+- Build: zero warnings; tests: 2148 assertions, 771 cases — all pass ✅
+
+**Sign-off:** Pause screen text readability fix complete. All numeric and structural criteria met. Ready to merge.
+
+**Related:** 
+- `.squad/orchestration-log/2026-04-29T09:55:21Z-fenster.md`
+- Session log: `.squad/log/2026-04-29T09:55:21Z-ui-layout-fixes.md`

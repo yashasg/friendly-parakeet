@@ -72,3 +72,36 @@ Ported the removed HUD behavior (shape buttons, approach-ring affordance, colorf
 
 1. **Preserve dynamic HUD visuals during controller migration:** generated rguilayout output can carry only static controls, so dynamic affordances (approach rings, active-shape highlighting, beat-reactive bars) must be explicitly re-implemented in the screen controller or they silently disappear.
 2. **Keep HudLayout as style data even after JSON element rendering removal:** layout-cache structs remain a stable source of theme and spacing values for custom controller rendering; adding a small fallback prevents blank HUD when layout parsing fails.
+
+## Learnings
+
+- Pause screen text parity fix requires updating both generated call-site values in `app/ui/generated/paused_layout.h` and source geometry in `content/ui/screens/paused.rgl`; changing only one side risks regeneration drift.
+- For centered-label readability fixes, preserve existing helper pattern and change only label rectangle/size arguments; keep pause button rectangles/actions untouched.
+- Focused validation for this UI artifact path can be done with `cmake --build build --target shapeshifter_tests` followed by `./build/shapeshifter_tests` to confirm no regressions.
+
+## 2026-04-29T09:55:21Z — Pause Screen Text Fix (Approved)
+
+**Session:** UI Layout Fixes — Song Complete & Pause Screen Text Readability  
+**Task:** Apply exact numeric AC corrections to pause-screen text labels (non-Keaton reviser per lockout protocol).
+
+**Scope:** Correct only the three pause label call-site bounds/sizes in `app/ui/generated/paused_layout.h` and mirror them in `content/ui/screens/paused.rgl`. Buttons/actions unchanged.
+
+**Applied Values:**
+- `PAUSED`: (x=90, y=420, w=540, h=80), text size **56**
+- `TAP RESUME TO CONTINUE`: (x=90, y=540, w=540, h=36), text size **24**
+- `OR RETURN TO MAIN MENU`: (x=90, y=760, w=540, h=36), text size **24**
+
+**Guardrails Respected:**
+- Pause buttons (RESUME, MAIN MENU) geometry/order/actions/timing intact
+- No legacy UI paths restored (no loader/spawner/cache/adapter/vendor/standalone export changes)
+- `PausedLayout_DrawCenteredLabel()` helper implementation matches `SongCompleteLayout_DrawCenteredLabel` exactly
+
+**Validation:**
+- Build: zero warnings (clang -Wall -Wextra -Werror)
+- Tests: 2148 assertions, 771 test cases — all pass
+
+**Verdict:** ✅ APPROVED by Kujan (2026-04-29T09:55:21Z)
+
+**Sign-off:** All blocking AC from Keaton rejection met exactly. No new issues found. Pattern is consistent across both layout headers. Controller unchanged; action dispatch and timing preserved. Scope was precise: only three label call-site arguments plus mirrored .rgl geometry.
+
+**Orchestration:** `.squad/orchestration-log/2026-04-29T09:55:21Z-fenster.md`

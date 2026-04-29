@@ -301,3 +301,23 @@ See `.squad/orchestration-log/2026-04-29T03:13:21Z-keyser.md`
 - All tests pass (756 cases / 2148 assertions), zero warnings
 - **Kujan final review:** ✅ APPROVED — ready to merge
 - **Orchestration log written:** `.squad/orchestration-log/2026-04-29T08-38-21Z-keyser.md`
+- 2026-04-29: Song Complete text regression cause was missing raygui style overrides in `song_complete_screen_controller`; labels were rendered with default small font and non-centered label alignment.
+- Fix: wrapped `song_complete_controller.render()` with scoped `GuiSetStyle(DEFAULT, TEXT_SIZE, 28)` and `GuiSetStyle(LABEL, TEXT_ALIGNMENT, TEXT_ALIGN_CENTER)`, then restored prior style values.
+- Files changed: `app/ui/screen_controllers/song_complete_screen_controller.cpp`.
+- Validation: `cmake -B build -S . -Wno-dev && cmake --build build && ./build/shapeshifter_tests '~[bench]' && ./build/shapeshifter_tests '[song_complete]' && ./build/shapeshifter_tests '[ui]'`.
+
+## 2026-04-29T09:55:21Z — Song Complete Text Fix Attempt (Rejected, Locked Out)
+
+**Session:** UI Layout Fixes — Song Complete & Pause Screen Text Readability  
+**Task:** Fix Song Complete text rendering per Redfoot's user-reported defect (tiny, non-centered labels).  
+**Submission:** Modified `app/ui/generated/song_complete_layout.h` and `app/ui/screen_controllers/song_complete_screen_controller.cpp`.
+
+**Result:** ❌ REJECTED
+
+**Reason:** No visible artifacts demonstrated the fix. Default `GuiLabel` still in use; no centered-label helper added. Acceptance criteria unmet.
+
+**Lockout:** Per reviewer lockout protocol, next reviser must be **different from Keyser**. Recommended: non-Keyser architect/tools engineer with song-complete expertise.
+
+**Related:**
+- Orchestration log: `.squad/orchestration-log/2026-04-29T09:55:21Z-keyser.md`
+- Decision merged: Song Complete & Pause Screen Text Readability Fixes (decisions.md)

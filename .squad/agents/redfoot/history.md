@@ -375,3 +375,50 @@ These do not generate draw code; adapters must use the generated rectangles for 
 Diagnosed off-center title text (runtime override issue) and improper "SET" button placement (top-left instead of bottom-right). Provided acceptance criteria: remove override, regenerate `.rgl` with corrected geometry, move settings to bottom-right gear icon (#142#).
 
 Keaton's first implementation attempt preserved the override and kept settings at top-left, triggering rejection and lockout. Hockney's revision removed the override entirely and applied correct layout, resulting in approval.
+
+### 2026-05-01 — Pause Screen Text Audit (parity with Song Complete fix)
+
+**User report:** "might as well validate the pause screen ui text, check if has the same problems"
+
+**Findings:** YES, same defect. `app/ui/generated/paused_layout.h` lines 44–48 emit raw `GuiLabel` calls for "PAUSED", "TAP RESUME TO CONTINUE", "OR RETURN TO MAIN MENU" with no `TEXT_SIZE` override and no `TEXT_ALIGN_CENTER`. `paused_screen_controller.cpp` sets no GuiStyle either. Result: tiny left-aligned text on the dim overlay, identical to pre-fix Song Complete.
+
+**Active path confirmed:** `ui_render_system.cpp:59` — "UI rendering is handled exclusively by rguilayout screen controllers." Paused routes through `render_paused_screen_ui` → controller → generated layout. No legacy JSON/adapter path active. **Do not restore any legacy path.**
+
+**Acceptance criteria provided:**
+- Reuse/replicate `SongCompleteLayout_DrawCenteredLabel` pattern (saves/restores DEFAULT.TEXT_SIZE + LABEL.TEXT_ALIGNMENT).
+- "PAUSED" → size 56 centered in widened rect (~90,420,540,80).
+- Instruction lines → size 24 centered, widened to ≥540 wide.
+- Buttons untouched (GuiButton centers by default).
+- Update `content/ui/screens/paused.rgl` geometry so regen doesn't reintroduce defect.
+- No DrawText, no legacy resurrection, controller calls only.
+
+**Routing recommendation:** Different implementer from original `paused_layout.h` author; Song Complete fix author preferred (already built the helper).
+
+**Decision filed:** `.squad/decisions/inbox/redfoot-pause-screen-text-fix.md`
+
+**Pattern reaffirmed (cross-screen rule):**
+> Any rguilayout-generated header that emits `GuiLabel` for headline/instruction text MUST go through a centered-label helper that overrides `DEFAULT.TEXT_SIZE` and sets `LABEL.TEXT_ALIGNMENT = TEXT_ALIGN_CENTER` (with save/restore). Default raygui label styling (~10pt, left-aligned) is never acceptable for screen text.
+
+## 2026-04-29T09:55:21Z — Pause Screen Audit: Text Readability
+
+**Session:** UI Layout Fixes — Song Complete & Pause Screen Text Readability  
+**Task:** Validate pause screen UI after Song Complete text fix.
+
+**Finding:** The active pause screen has the **identical default GuiLabel failure mode** as Song Complete had before fix: `app/ui/generated/paused_layout.h` emits raw `GuiLabel` for "PAUSED", "TAP RESUME TO CONTINUE", and "OR RETURN TO MAIN MENU" with no text-size override and no center alignment. Result: tiny ~10pt left-aligned text floating in the upper-left of each label rect on the dim overlay.
+
+**Active path confirmed:** `ui_render_system.cpp:59` renders exclusively via rguilayout screen controllers. Paused routes through `render_paused_screen_ui()`. No legacy JSON/adapter path live. **Do not restore any legacy path.**
+
+**Acceptance Criteria Filed:**
+1. Use centered-label helper matching `SongCompleteLayout_DrawCenteredLabel`: save/restore `DEFAULT.TEXT_SIZE` and `LABEL.TEXT_ALIGNMENT`, then call `GuiLabel`.
+2. "PAUSED": font size **56**, centered, rect (~90, 420, 540, 80).
+3. "TAP RESUME TO CONTINUE": font size **24**, centered, rect ≥540 wide.
+4. "OR RETURN TO MAIN MENU": font size **24**, centered, rect ≥540 wide.
+5. Buttons (RESUME 400×100, MAIN MENU 400×100) untouched.
+6. Update `content/ui/screens/paused.rgl` geometry to prevent regeneration regression.
+7. No `DrawText`, no legacy JSON, no `ui_button_spawner`, no manual hit-testing.
+8. Letterbox hit-mapping unchanged (already correct in `ui_render_system`).
+9. Visual check at 720×1280: "PAUSED" centered and readable, instruction lines above buttons.
+
+**Routing:** Different implementer from original paused.rgl author. Recommended: agent who landed Song Complete fix.
+
+**Orchestration:** `.squad/orchestration-log/2026-04-29T09:55:21Z-redfoot.md`

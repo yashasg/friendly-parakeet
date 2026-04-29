@@ -168,6 +168,8 @@ Applied runtime overrides in screen controllers to preserve generated code owner
 - Title screen generated layout (`app/ui/generated/title_layout.h`) can remain read-only while the active controller (`app/ui/screen_controllers/title_screen_controller.cpp`) performs runtime overrides for text readability and control labeling.
 - For centered hero text in raylib/raygui screens, use `DrawText` + `MeasureText` against `TITLE_LAYOUT_WIDTH` instead of relying on `GuiLabel` rectangles; this avoids clipping/alignment drift from undersized generated bounds.
 - If generated button text is truncated ("SET"), keep the state wiring (`SettingsButtonPressed`) but relabel and resize in controller runtime (`"SETTINGS"` with explicit rectangle) so behavior stays intact and intent is clear.
+- Pause screen (`app/ui/generated/paused_layout.h`) had the same default `GuiLabel` failure mode as pre-fix Song Complete (small, not centered labels); using a local centered-label helper with scoped `TEXT_SIZE` + `LABEL/TEXT_ALIGNMENT` fixes readability without touching button dispatch.
+- Keep pause layout source and export aligned when text bounds change: update both `content/ui/screens/paused.rgl` and `app/ui/generated/paused_layout.h` together so future regen does not regress sizing.
 
 ### 2026-04-29 — Title Screen UI Fix (first implementation, rejected)
 
@@ -180,3 +182,32 @@ Centered `SHAPESHIFTER` and `TAP TO START` with manual `DrawText` + `MeasureText
 However, preserved the runtime override block in controller and kept settings button at top-left (only renamed it). Redfoot's acceptance criteria required *removing* the override entirely and moving settings to bottom-right. This rejection triggered lockout per charter protocol.
 
 **Assigned to:** Hockney (independent revision, not locked out)
+
+## 2026-04-29T09:55:21Z — Pause Screen Text Fix Attempt (Rejected, Locked Out)
+
+**Session:** UI Layout Fixes — Song Complete & Pause Screen Text Readability  
+**Task:** Implement first pause-screen active-path fix per Redfoot's acceptance criteria.
+
+**Approach:** Added `PausedLayout_DrawCenteredLabel()` helper with correct save/restore pattern (matching Song Complete), routed all three text labels through it, kept buttons/actions unchanged.
+
+**Validation (passed):**
+- Build: zero warnings (clang -Wall -Wextra -Werror)
+- Tests: 2148 assertions, 756 test cases — all pass
+- Structural quality: helper pattern correct, no legacy paths reintroduced
+
+**Result:** ❌ REJECTED — Numeric AC values NOT met. Six individual AC items failed:
+
+| Label | AC Requirement | Actual | Result |
+|---|---|---|---|
+| "PAUSED" font size | **56** | 48 | ❌ |
+| "PAUSED" rect | ~(90, 420, 540, 80) | (160, 430, 400, 72) | ❌ |
+| "TAP RESUME TO CONTINUE" font size | **24** | 22 | ❌ |
+| "TAP RESUME TO CONTINUE" rect width | **≥540** | 500 | ❌ |
+| "OR RETURN TO MAIN MENU" font size | **24** | 22 | ❌ |
+| "OR RETURN TO MAIN MENU" rect width | **≥540** | 500 | ❌ |
+
+**Kujan's correction guidance:** Update three label call-site arguments to exact values. Update `content/ui/screens/paused.rgl` geometry to match. Buttons remain untouched.
+
+**Lockout:** Per reviewer lockout protocol: Keaton locked out for this revision cycle. Next reviser must be **different from Keaton**. Recommended: agent who landed Song Complete fix.
+
+**Orchestration:** `.squad/orchestration-log/2026-04-29T09:55:21Z-keaton-pause.md`
