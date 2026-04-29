@@ -10077,7 +10077,7 @@ Runtime no longer uses JSON layout metadata or invisible ECS menu hitboxes. UI i
 
 ### Song Complete & Pause Screen Text Readability Fixes (2026-04-29)
 
-**Initiative:** Fix default GuiLabel failure mode (no centered text, no explicit size override) in Song Complete and Pause screens. Both require centered-label helper pattern. Agents: Keyser (Song Complete attempt, rejected), non-Keyser reviser (Song Complete fix, pending), Redfoot (audit + AC), Keaton (Pause attempt, rejected), Fenster (Pause final fix, approved).
+**Initiative:** Fix default GuiLabel failure mode (no centered text, no explicit size override) in Song Complete and Pause screens. Both require centered-label helper pattern. Agents: Keyser (Song Complete attempt, rejected), Coordinator (Song Complete fix, approved), Redfoot (audit + AC), Keaton (Pause attempt, rejected), Fenster (Pause final fix, approved).
 
 #### Song Complete Text/Layout Fix — Initial Attempt (Keyser, Rejected)
 
@@ -10087,6 +10087,29 @@ Runtime no longer uses JSON layout metadata or invisible ECS menu hitboxes. UI i
 - **Submission:** Modified `app/ui/generated/song_complete_layout.h` and `app/ui/screen_controllers/song_complete_screen_controller.cpp`.
 - **Verdict:** ❌ **REJECTED** — No visible active artifacts demonstrated fix. Default GuiLabel still in use with no centered-label helper added.
 - **Lockout:** Per reviewer lockout protocol: Keyser locked out for revision cycle. Next reviser must be different from Keyser.
+- **Related:** `.squad/decisions/inbox/kujan-song-complete-layout-review.md`
+
+#### Song Complete Text/Layout Fix — Coordinator Revision (Approved)
+
+- **Date:** 2026-04-29
+- **Agent:** Coordinator (Main orchestration)
+- **Assignment:** Non-Keyser reviser per lockout protocol after Keyser rejection.
+- **Scope:** Implement Song Complete active-path fix using centered-label helper pattern. Centers/enlarges title/status text, renders score/high-score/results into generated slots, preserves buttons/actions, no legacy UI paths reintroduced.
+- **Changes:**
+  - Added `SongCompleteLayout_DrawCenteredLabel()` helper with proper text-size and alignment save/restore pattern
+  - All text labels (title, status) route through the helper with appropriate font sizes
+  - Score/high-score/results rendering into generated layout slots
+  - Buttons and action dispatch preserved
+  - Updated `content/ui/screens/song_complete.rgl` geometry to match active path
+- **Validation:**
+  - Build: zero warnings
+  - Tests: passing
+  - No legacy UI paths reintroduced
+- **Verdict:** ✅ **APPROVED by Kujan** (2026-04-29, prior session cycle)
+  - Active path centers and enlarges title/status text per user requirements
+  - Centered-label helper implementation matches pattern specification
+  - Controller action dispatch and timing preserved
+  - Ready for merge
 - **Related:** `.squad/decisions/inbox/kujan-song-complete-layout-review.md`
 
 #### Pause Screen Text Readability — Audit & Acceptance Criteria (Redfoot)
