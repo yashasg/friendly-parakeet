@@ -7,6 +7,23 @@
 - **Role:** Reviewer
 - **Joined:** 2026-04-26T02:12:00.632Z
 
+## 2026-04-29 — Final Review: Archetype Removal Canonicalization
+
+**Task:** Review archetype removal and `app/entities/` canonicalization (Keyser audit, Keaton impl, McManus wording cleanup).
+
+**Verification checklist:**
+- ✅ `app/archetypes/` directory absent from working tree
+- ✅ Zero stale references: `app/archetypes`, `archetypes/`, `ARCHETYPE_SOURCES`, `player_archetype`, canonical wording
+- ✅ CMake wiring correct: `ENTITY_SOURCES` glob present and wired; no `ARCHETYPE_SOURCES` remains
+- ✅ Test includes correct: `test_player_archetype.cpp` includes `entities/player_entity.h` directly; test titles updated to `player_entity:` prefix; `[archetype]` taxonomy tags retained
+- ✅ Docs clean: `design-docs/architecture.md` Section 5 reads `app/entities/` as canonical path
+- ✅ Tests pass: `[archetype]` tag (118 assertions, 24 test cases) + `[model_slice]` tag (71 assertions, 20 test cases) — all pass
+- ✅ Build: zero warnings (clang -Wall -Wextra -Werror)
+
+**Verdict:** No blocking findings. **APPROVED**.
+
+**Status:** Archetype removal complete, validated, and ready for merge.
+
 ## 2026-04-29 — Review: Vendored raygui Removal (User Directive Compliance)
 
 **Implementer:** Hockney  
@@ -876,3 +893,27 @@ Non-blocking note: `GuiSetStyle(DEFAULT, TEXT_SIZE, 28)` uniform across all labe
 **Related:** 
 - `.squad/orchestration-log/2026-04-29T09:55:21Z-fenster.md`
 - Session log: `.squad/log/2026-04-29T09:55:21Z-ui-layout-fixes.md`
+
+## Learnings — 2026-04-29: Archetypes Removal Review
+
+**PR scope:** Removal of `app/archetypes/` shim folder; canonicalization on `app/entities/` factories.
+
+**Verdict:** APPROVED.
+
+**Key patterns confirmed:**
+- Directory physically absent; grep sweep confirmed zero residual references across app/, tests/, CMakeLists.txt, design-docs/.
+- ARCHETYPE_SOURCES CMake glob removed; ENTITY_SOURCES glob (`app/entities/*.cpp`) is the live wiring.
+- Test file (`test_player_archetype.cpp`) retains `[archetype]` tag (acceptable taxonomy) but includes `entities/player_entity.h` directly and uses `player_entity:` test titles.
+- Section 5 of architecture.md retains "Entity Archetypes" as a concept section heading (not a path reference); body correctly points to `app/entities/`.
+- 118 assertions `[archetype]`, 20 test cases / 71 assertions `[model_slice]` — all green, zero warnings.
+
+**File paths touched by this review:**
+- `app/entities/player_entity.h`, `app/entities/player_entity.cpp`
+- `tests/test_player_archetype.cpp`, `tests/test_obstacle_model_slice.cpp`
+- `CMakeLists.txt` (line 102: `ENTITY_SOURCES`)
+- `design-docs/architecture.md` (Section 5, line 793+)
+- `.squad/decisions/inbox/keyser-archetypes-removal.md`
+- `.squad/decisions/inbox/keaton-archetypes-removal.md`
+- `.squad/decisions/inbox/mcmanus-archetypes-wording.md`
+
+**Reusable heuristic:** For folder-removal PRs, the three-point check is: (1) directory absent, (2) grep sweep zero matches, (3) tests green. CMake glob cleanup is the most common miss — verify both the glob definition and its use in target sources.

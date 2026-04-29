@@ -6,14 +6,43 @@
 - **Role:** Gameplay Engineer
 - **Joined:** 2026-04-26T02:07:46.544Z
 
+## Core Context
+
+- **Project:** A C++20 raylib/EnTT rhythm bullet hell game with song-driven obstacles and shape matching synced to music.
+- **Role:** Gameplay Engineer
+- **Joined:** 2026-04-26T02:07:46.544Z
+
 ## Learnings
 
 - **EnTT collect-then-remove pattern:** Any `reg.remove<C>` where C is in the active view's component list is potential swap-and-pop UB. Always collect entities first, remove after. Static vectors avoid per-frame alloc.
 - **Structural view split for branching:** When an `any_of<T>` branch is the primary discriminator inside a view loop, split into two structural views (`with T` / `entt::exclude<T>`). This is both safer and gives EnTT better cardinality info.
 - **MissTag entities don't need Position:** Miss processing (energy drain, miss_count, chain reset) never reads position. The structural split lets the miss view drop Position from its component list entirely.
 - **Build workaround (worktree):** The 315 worktree doesn't have vcpkg_installed. Used symlink + explicit `-D*_DIR` flags to point CMake at the main worktree's built packages.
+- **Archetypes wording cleanup rule:** Keep historical test taxonomy tags like `[archetype]` if churn is noisy, but update all code/path comments and docs to canonical `app/entities/` factories.
+- **Archetype canonicalization:** When removing legacy folders/shims, always update docs and code comments to reflect the new canonical boundary. Document retained test taxonomy (e.g., `[archetype]` tags) to avoid confusion on future audits.
 
-### 2026-04-27 — Issue #315 Closure (EnTT-safe scoring_system iteration)
+## 2026-04-29: Archetype Wording Cleanup Validation
+
+**Task:** Clean stale doc/comment wording to reflect `app/entities/` as canonical path per Keyser audit and Keaton implementation.
+
+**Changes (docs/comments only, no behavior changes):**
+- `design-docs/architecture.md` Section 5:
+  - Added explicit note: reusable construction implemented by `app/entities/` factories (`create_player_entity`, `spawn_obstacle`)
+  - Removed stale repo-tree line implying `app/archetypes/` is current directory
+- `tests/test_obstacle_model_slice.cpp`:
+  - Reworded stale comments (removed wording implying duplicate archetype helpers or canonical `app/archetypes/` path)
+  - Updated local helper naming/comments to use entity-factory terminology
+  - Preserved `[archetype]` tags as acceptable historical test taxonomy
+
+**Validation:**
+- Focused grep search: zero remaining references to `app/archetypes/` canonical wording
+- `cmake --build build --target shapeshifter_tests`
+- `./build/shapeshifter_tests "[model_slice]"` — PASS (71 assertions, 20 test cases)
+- Zero compiler warnings
+
+**Status:** Wording cleanup complete; final review (Kujan) approved.
+
+## 2026-04-27 — Issue #315 Closure (EnTT-safe scoring_system iteration)
 
 **Implementation complete; review approved; main branch integration validated.**
 

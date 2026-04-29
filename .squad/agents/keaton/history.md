@@ -7,6 +7,24 @@
 - **Role:** C++ Performance Engineer
 - **Joined:** 2026-04-26T02:09:15.781Z
 
+## 2026-04-29: Archetype Removal Implementation Completed
+
+**Task:** Implement removal of `app/archetypes/player_archetype.h` shim and finalize archetype removal per Keyser's audit decision.
+
+**Changes:**
+- Removed `app/archetypes/player_archetype.h` shim (header-only include forwarding to `../entities/player_entity.h`)
+- Updated `tests/test_player_archetype.cpp` to include `entities/player_entity.h` directly
+- Updated test case titles to `player_entity:` prefix; retained `[archetype]` tags as historical taxonomy
+- Removed stale `ARCHETYPE_SOURCES` CMake glob from `CMakeLists.txt`
+
+**Validation:**
+- `cmake -B build -S . -Wno-dev && cmake --build build`
+- `./build/shapeshifter_tests "[archetype][player]"` — PASS (118 assertions, 24 test cases)
+- `./build/shapeshifter_tests "[archetype]"` — PASS
+- Zero compiler warnings (clang -Wall -Wextra -Werror)
+
+**Status:** Implementation approved; wording cleanup (McManus) and final review (Kujan) complete.
+
 ## 2026-04-29: Screen Controller Migration (adapters → screen_controllers)
 
 **Task:** Migrate `app/ui/adapters/` to `app/ui/screen_controllers/` per design spec `rguilayout-portable-c-integration.md`. User directive: remove dead code, start fresh.
@@ -170,6 +188,7 @@ Applied runtime overrides in screen controllers to preserve generated code owner
 - If generated button text is truncated ("SET"), keep the state wiring (`SettingsButtonPressed`) but relabel and resize in controller runtime (`"SETTINGS"` with explicit rectangle) so behavior stays intact and intent is clear.
 - Pause screen (`app/ui/generated/paused_layout.h`) had the same default `GuiLabel` failure mode as pre-fix Song Complete (small, not centered labels); using a local centered-label helper with scoped `TEXT_SIZE` + `LABEL/TEXT_ALIGNMENT` fixes readability without touching button dispatch.
 - Keep pause layout source and export aligned when text bounds change: update both `content/ui/screens/paused.rgl` and `app/ui/generated/paused_layout.h` together so future regen does not regress sizing.
+- `app/archetypes/` is now legacy for player creation; canonical player factory lives in `app/entities/player_entity.{h,cpp}` and tests should include `entities/player_entity.h` directly (no shim header).
 
 ### 2026-04-29 — Title Screen UI Fix (first implementation, rejected)
 

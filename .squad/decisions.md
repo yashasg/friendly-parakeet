@@ -1,6 +1,100 @@
 # Decisions Registry
 
-*Last merged: 2026-04-29T08:38:21Z*
+*Last merged: 2026-04-29T10:10:30Z*
+
+### Archetype Removal and Canonicalization Initiative (2026-04-29)
+
+**Initiative:** Remove legacy `app/archetypes/` and establish `app/entities/` as canonical construction boundary. Agents: Keyser (Audit), Keaton (Impl), McManus (Wording), Kujan (Review).
+
+#### Archetype Removal Audit Decision (Keyser)
+
+- **Date:** 2026-04-29
+- **Author:** Keyser (Lead Architect)
+- **Status:** DECIDED — removal/migration is architecturally correct
+
+**Verdict:** `app/archetypes/` is no longer a canonical runtime boundary for player/obstacle construction. The live construction seam is `app/entities/` (`create_player_entity`, `spawn_obstacle`).
+
+For player construction specifically, `app/archetypes/player_archetype.h` was a compatibility shim to `../entities/player_entity.h`; keeping the archetypes folder for that shim adds indirection without adding ownership.
+
+**Architectural rationale:**
+1. Single ownership boundary already exists in entities:
+   - Runtime setup uses `create_player_entity` from `app/entities/player_entity.h` (play-session path)
+   - Beat scheduling uses `spawn_obstacle` from `app/entities/obstacle_entity.h`
+2. ECS contract is entity-factory based now:
+   - Component bundle contracts are documented and tested at entity factory call sites
+   - Tests already target entity factories directly (`entities/player_entity.h`, `entities/obstacle_entity.h`)
+3. Dead namespace risk:
+   - Retaining a folder with forwarding headers or no sources invites stale includes and false architecture signals
+
+**Concrete migration/removal actions:**
+1. Remove player archetype shim surface: Delete `app/archetypes/player_archetype.h`
+2. Keep all player includes on entities path: Required include in tests `#include "entities/player_entity.h"`
+3. Build wiring cleanup: Remove `ARCHETYPE_SOURCES` glob and usage from `shapeshifter_lib`
+4. Docs cleanup: Update `design-docs/architecture.md` and stale comments referencing "canonical app/archetypes path"
+
+**Validation target:** `cmake -B build -S . -Wno-dev && cmake --build build --target shapeshifter_tests && ./build/shapeshifter_tests "[archetype]"` — expected: pass with zero warnings and no `#include "archetypes/..."` references
+
+#### Archetype Removal Implementation (Keaton)
+
+- **Date:** 2026-04-29
+- **Author:** Keaton (C++ Performance Engineer)
+- **Status:** IMPLEMENTED
+
+**Changes:**
+- Verified `app/archetypes/` only contained `player_archetype.h`, a shim that just included `entities/player_entity.h`
+- Removed the shim header and let tests include `entities/player_entity.h` directly
+- Removed stale `ARCHETYPE_SOURCES` CMake glob (`app/archetypes/*.cpp`) from `CMakeLists.txt`; no remaining archetype sources
+- Kept runtime behavior unchanged (`create_player_entity` remains in `app/entities/player_entity.cpp`)
+
+**Validation:**
+- `cmake -B build -S . -Wno-dev && cmake --build build`
+- `./build/shapeshifter_tests "[archetype][player]"` — PASS (118 assertions, 24 test cases)
+- `./build/shapeshifter_tests "[archetype]"` — PASS
+- Zero compiler warnings
+
+#### Archetype Wording Cleanup (McManus)
+
+- **Date:** 2026-04-29
+- **Owner:** McManus (Gameplay Engineer)
+- **Scope:** docs/tests wording only (no behavior changes)
+
+**Decision:** Treat `app/entities/` as the canonical reusable construction surface in docs and code comments. Retain `[archetype]` test tags as historical taxonomy where renaming would add noise without value.
+
+**Applied updates:**
+- `design-docs/architecture.md` Section 5:
+  - Added explicit note: reusable construction implemented by `app/entities/` factories (`create_player_entity`, `spawn_obstacle`)
+  - Removed stale repo-tree line implying `app/archetypes/` is current directory
+- `tests/test_obstacle_model_slice.cpp`:
+  - Reworded stale comments (removed wording implying duplicate archetype helpers or canonical `app/archetypes/` path)
+  - Updated local helper naming/comments to use entity-factory terminology
+  - Left behavior and assertions untouched
+  - Retained `[archetype]` tags as acceptable test taxonomy
+
+**Validation:**
+- Focused grep search over touched files: zero remaining `app/archetypes/` canonical wording
+- `cmake --build build --target shapeshifter_tests`
+- `./build/shapeshifter_tests "[model_slice]"` — PASS (71 assertions, 20 test cases)
+- Zero compiler warnings
+
+#### Archetype Removal Final Review (Kujan)
+
+- **Date:** 2026-04-29
+- **Author:** Kujan (Reviewer)
+- **Status:** APPROVED
+
+**Verdict:** The `app/archetypes/` removal and `app/entities/` canonicalization patch is **APPROVED**.
+
+**Evidence:**
+1. `app/archetypes/` is absent — directory does not exist in the working tree
+2. Zero stale references — grep found no matches for: `app/archetypes`, `archetypes/`, `ARCHETYPE_SOURCES`, `player_archetype`, canonical wording, or duplicate archetype helper patterns
+3. CMake wiring correct — `ENTITY_SOURCES` glob (`app/entities/*.cpp`) is present and wired into `shapeshifter_lib`; no `ARCHETYPE_SOURCES` glob remains
+4. Test includes correct — `tests/test_player_archetype.cpp` includes `entities/player_entity.h` directly; test case titles updated to `player_entity:` prefix; `[archetype]` tags retained (acceptable taxonomy)
+5. Docs clean — `design-docs/architecture.md` Section 5 body reads `app/entities/` as canonical path; section heading "Entity Archetypes" is acceptable concept terminology (not a path reference)
+6. Tests pass — `[archetype]` tag: 118 assertions, 24 test cases — all pass. `[model_slice]` tag: 71 assertions, 20 test cases — all pass. Build: zero warnings.
+
+**No blocking findings.**
+
+---
 
 ### UI Cleanup Initiative (2026-04-29)
 

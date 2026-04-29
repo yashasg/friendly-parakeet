@@ -6,6 +6,16 @@
 - **Role:** Lead Architect
 - **Joined:** 2026-04-26T02:07:46.542Z
 
+## Session: 2026-04-29T10:10:30Z — Archetype Removal Audit Completed and Approved
+
+**Context:** Scribe processed archetype removal completion across Keyser → Keaton → McManus → Kujan pipeline.
+
+**Your work:** Conducted architectural audit determining `app/archetypes/` is legacy; canonicalized on `app/entities/` entity factories. Documented concrete removal actions. Decision merged into `.squad/decisions.md`.
+
+**Status:** Audit approved. Implementation (Keaton), wording cleanup (McManus), and final review (Kujan) all complete. Zero stale references; all tests pass; build clean.
+
+**Related:** Orchestration logs in `.squad/orchestration-log/2026-04-29T10-10-30Z-*.md`
+
 ## Session: 2026-04-28T22:35:09Z — Architecture Spine and Boundary Decisions Consolidated
 
 **Context:** Scribe merged all inbox decisions (including keyser-raygui-migration-spine.md, keyser-ui-layout-data-boundary.md) into decisions.md and updated cross-agent history.
@@ -230,6 +240,10 @@ See `.squad/orchestration-log/2026-04-29T03:13:21Z-keyser.md`
 **Skills Created:** `.squad/skills/cpp-template-adapter/`, `.squad/skills/unity-build-template-safety/`
 
 ## Learnings
+
+- Archetype-to-entity migration rule: when runtime and tests call `app/entities/*_entity.h` factories directly, any remaining `app/archetypes/` forwarding header is dead surface and should be removed.
+- Decommission checklist for namespace-folder migrations: remove include shims, remove CMake source globs for the retired folder, and scrub stale docs/comments that still mark the old folder as canonical.
+- Verification command for this migration class: `cmake -B build -S . -Wno-dev && cmake --build build --target shapeshifter_tests && ./build/shapeshifter_tests "[archetype]"`.
 
 - Gameplay HUD restoration should read live `ShapeButtonTag + ShapeButtonData + UIPosition` entities first, then fall back to layout-derived defaults; this keeps visible buttons aligned with actual input-hit targets.
 - Keep gameplay HUD dynamic behavior (shape buttons, approach rings, segmented energy feedback) inside `gameplay_hud_screen_controller.cpp` while leaving generated rguilayout header focused on static controls like pause.
