@@ -13,6 +13,8 @@ enum class ActiveScreen : uint8_t {
     GameOver,
     SongComplete,
     Paused,
+    Settings,
+    Tutorial,
 };
 
 // Pure data component. File I/O is performed by ui_loader free functions.

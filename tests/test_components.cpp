@@ -314,13 +314,15 @@ TEST_CASE("GamePhaseBit: multi-phase OR mask covers both phases", "[phase_mask]"
     CHECK(!phase_active(aip, GamePhase::Paused));
 }
 
-TEST_CASE("GamePhaseBit: all six phases have distinct bits", "[phase_mask]") {
+TEST_CASE("GamePhaseBit: all eight phases have distinct bits", "[phase_mask]") {
     // Each GamePhaseBit value must be a distinct power-of-two
     CHECK(GamePhaseBit::Title        != GamePhaseBit::LevelSelect);
     CHECK(GamePhaseBit::LevelSelect  != GamePhaseBit::Playing);
     CHECK(GamePhaseBit::Playing      != GamePhaseBit::Paused);
     CHECK(GamePhaseBit::Paused       != GamePhaseBit::GameOver);
     CHECK(GamePhaseBit::GameOver     != GamePhaseBit::SongComplete);
+    CHECK(GamePhaseBit::SongComplete != GamePhaseBit::Settings);
+    CHECK(GamePhaseBit::Settings     != GamePhaseBit::Tutorial);
     // Combined mask must not equal any single bit
     GamePhaseBit combined = GamePhaseBit::GameOver | GamePhaseBit::SongComplete;
     CHECK(combined != GamePhaseBit::GameOver);
@@ -336,6 +338,8 @@ TEST_CASE("GamePhaseBit: to_phase_bit round-trips all GamePhase values", "[phase
     CHECK(to_phase_bit(P::Paused)       == B::Paused);
     CHECK(to_phase_bit(P::GameOver)     == B::GameOver);
     CHECK(to_phase_bit(P::SongComplete) == B::SongComplete);
+    CHECK(to_phase_bit(P::Settings)     == B::Settings);
+    CHECK(to_phase_bit(P::Tutorial)     == B::Tutorial);
 }
 
 TEST_CASE("GamePhaseBit: empty mask is inactive for all phases", "[phase_mask]") {

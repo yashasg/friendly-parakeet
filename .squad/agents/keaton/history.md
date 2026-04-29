@@ -803,3 +803,15 @@ cmake --build build-unity-verify-vcpkg --target shapeshifter_tests -- -j2
 **Learnings:**
 - Anonymous namespaces do NOT protect against intra-TU collisions in unity builds; they only suppress inter-TU linkage. Any file-scope symbol in an anonymous namespace must be unique across all files that share a unity TU.
 - The correct fix is unique naming (not SKIP_UNITY_BUILD_INCLUSION) when the function body is trivially file-specific. Exclusion is reserved for files with deeper structural hazards (e.g., static helpers used by multiple tests that can't be trivially renamed).
+
+---
+
+## Session: 2026-04-28T22:35:09Z — Unity ODR Fix and History Consolidation
+
+**Context:** Scribe merged inbox decisions into decisions.md and updated cross-agent context.
+
+**Your work:** (1) Unity ODR fix: renamed 4 anonymous-namespace `scratch_for` functions to unique domain-scoped names (particle_scratch_for, despawn_scratch_for, popup_scratch_for, scoring_scratch_for) to prevent intra-TU collisions. (2) Established rule: any new anonymous-namespace or file-scope static function in app/ must use domain-prefixed name to avoid collisions under unity builds.
+
+**Status:** ODR fix validated and merged into team decisions.
+
+**Related:** `keaton-unity-odr-fix.md` merged into `.squad/decisions.md`

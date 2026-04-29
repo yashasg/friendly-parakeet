@@ -349,3 +349,15 @@ Next: Await merge approval.
 **Tests:** 52 test cases, 132 assertions — all passed.
 
 **Key decision:** `spawn_score_popup` does not push audio (kept in scoring_system per task spec).
+
+---
+
+## Session: 2026-04-28T22:35:09Z — Popup Entity Factory Boundary Established
+
+**Context:** Scribe consolidated inbox decisions into decisions.md and updated cross-agent context.
+
+**Your work:** Established popup entity factory boundary: `spawn_score_popup(entt::registry&, PopupSpawnParams)` in `app/entities/popup_entity.h/.cpp` is authoritative constructor owning full component bundle (WorldTransform, MotionVelocity, ScorePopup, Color, DrawLayer::Effects, TagHUDPass, PopupDisplay). Audio push remains caller responsibility (scoring_system pushes SFX::ScorePopup after call). Follows spawn_obstacle pattern.
+
+**Status:** Decision captured and merged into team decisions.
+
+**Related:** `mcmanus-popup-entity-factory.md` merged into `.squad/decisions.md`

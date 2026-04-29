@@ -160,3 +160,137 @@ Scribe documentation:
 - Session log: .squad/log/2026-04-28T08-12-03Z-ecs-cleanup-approval.md
 
 Next: Await merge approval.
+
+---
+
+## Session: 2026-04-28T22:35:09Z — Audio Abstraction Cleanup Consolidated
+
+**Context:** Scribe merged inbox decisions into decisions.md and updated cross-agent history files.
+
+**Your work:** Audio abstraction boundary cleanup (app/audio/ deleted; all audio types consolidated to canonical ECS and utility locations). Validated: shapeshifter and tests build zero-warning; Unity build clean (no ODR collisions). 297 test assertions pass.
+
+**Status:** Audio cleanup complete and merged into team decisions.
+
+**Related:** `fenster-audio-boundary-cleanup.md` merged into `.squad/decisions.md`
+
+---
+
+## Session: 2026-04-28T17:xx:xxZ — rguilayout Integration Path Setup
+
+**Context:** Set up concrete, compile-safe integration path for rguilayout-generated UI layouts to replace JSON-driven UI system.
+
+**Deliverables:**
+1. ✅ Custom embeddable template: `tools/rguilayout/templates/embeddable_layout.h` (header-only, no main, no RAYGUI_IMPLEMENTATION)
+2. ✅ Manual embeddable proof artifact: `app/ui/generated/title_layout.h` (compile-safe, 122 lines)
+3. ✅ Thin adapter: `app/ui/adapters/title_adapter.{cpp,h}` (bridges generated layout to game systems)
+4. ✅ Standalone files archived: `app/ui/generated/standalone/*.{c,h}` (NOT built, reference only)
+5. ✅ Integration documentation: `tools/rguilayout/INTEGRATION.md` (6.5KB, complete path and limitations)
+6. ✅ Generation helper script: `tools/rguilayout/generate_embeddable.sh`
+
+**Key Findings:**
+- **rguilayout template substitution is incomplete**: The `--template` flag does not properly substitute template variables like `$(GUILAYOUT_INITIALIZATION_C)` or `$(GUILAYOUT_DRAWING_C)`. The portable `.h` template uses different variables (`$(GUILAYOUT_STRUCT_TYPE)`, `$(GUILAYOUT_FUNCTION_DRAWING_H)`) that produce nested/malformed code.
+- **Manual generation required**: Embeddable headers must be manually crafted from standalone output by extracting initialization and drawing code blocks.
+- **Standalone files are dangerous**: Default exports include `main()` and `RAYGUI_IMPLEMENTATION` - must never be added to build. Moved to `generated/standalone/` archive.
+
+**Compile Safety Verified:**
+- ✅ Build passes with zero warnings after moving standalone files
+- ✅ No CMake changes (adapters not wired yet - future work)
+- ✅ JSON UI runtime still active (no regression)
+- ✅ Generated layout header is header-only STB-style (safe to include multiple times)
+
+**Integration Path (deferred to future build-integration task):**
+1. Add raygui.h to include path (vendor or vcpkg)
+2. Define RAYGUI_IMPLEMENTATION in single .cpp file
+3. Wire adapters into CMakeLists.txt
+4. Call adapters from ui_render_system
+5. Add compile-time flag to switch JSON vs rguilayout (default OFF)
+6. Generate embeddable headers for remaining 7 screens
+
+**Safety Rules Established:**
+- ❌ Never include standalone generated files (they have main())
+- ❌ Never copy layout rectangles into ECS components
+- ❌ Never create layout cache structs (HudLayout, LevelSelectLayout, etc.)
+- ✅ Only compile embeddable headers via adapters
+- ✅ Define RAYGUI_IMPLEMENTATION once in entire binary
+- ✅ Keep JSON UI active until rguilayout validated
+
+**Files Changed:**
+- Created: `tools/rguilayout/templates/embeddable_layout.h`
+- Created: `app/ui/generated/title_layout.h`
+- Created: `app/ui/adapters/title_adapter.{cpp,h}`
+- Created: `tools/rguilayout/INTEGRATION.md`
+- Created: `tools/rguilayout/generate_embeddable.sh`
+- Created: `app/ui/generated/standalone/README.md`
+- Moved: 16 standalone `.{c,h}` files → `app/ui/generated/standalone/`
+
+**Team Decision:** See `.squad/decisions/inbox/fenster-rguilayout-template-integration.md`
+
+---
+
+## 2025-04-28 — rguilayout Title Screen Runtime Integration
+
+**Context:** User requested rguilayout title screen to render in-game. Existing work:
+- `.rgl` sources under `content/ui/screens/` (authored layouts)
+- Generated header `app/ui/generated/title_layout.h` (embeddable, header-only)
+- Thin adapter `app/ui/adapters/title_adapter.{cpp,h}` (not wired into build)
+- raygui.h was NOT vendored yet
+
+**Implementation:**
+1. **Vendored raygui.h**: Downloaded from https://github.com/raysan5/raygui into `app/ui/vendor/raygui.h` (6056 lines, v5.0)
+2. **Created raygui implementation TU**: `app/ui/raygui_impl.cpp` with `#define RAYGUI_IMPLEMENTATION` wrapped in compiler-specific warning suppression pragmas (`-Wmissing-field-initializers`, `-Wunused-parameter`) to comply with zero-warnings policy
+3. **Fixed generated header extern "C" issues**: Removed redundant `extern "C"` blocks in implementation section and converted functions to `static inline` within the header's extern "C" block to avoid C/C++ linkage mismatch
+4. **Fixed nested comment issue**: Changed `/* ... */` comments inside the header's multi-line `/* ... */` block comment to `//` style
+5. **Fixed aggregate initialization warning**: Changed `TitleLayoutState state = {0};` to `TitleLayoutState state = {};` (C++20 empty braces)
+6. **Added UI adapter to CMake**: Added `file(GLOB UI_ADAPTER_SOURCES ...)` and included in `shapeshifter_lib`
+7. **Marked raygui_impl.cpp for unity build exclusion**: Added `SKIP_UNITY_BUILD_INCLUSION` property to avoid ODR violations (raygui defines hundreds of static functions)
+8. **Wired title adapter into ui_render_system**: Added `#include "../ui/adapters/title_adapter.h"` and `case ActiveScreen::Title:` dispatch that calls `title_adapter_render(reg)`
+9. **Fixed const correctness**: Changed `title_adapter_render` signature to `const entt::registry&` to match `ui_render_system`'s const ref
+
+**Build & Test Results:**
+- ✅ Zero-warning build on macOS arm64 with clang++ `-Wall -Wextra -Werror`
+- ✅ All 2631 assertions pass in 901 test cases
+- ✅ Game launches successfully with raygui title screen rendering at startup
+
+**Key Technical Learnings:**
+
+1. **Nested extern "C" blocks don't work in C++**: When a header declares types/functions in `extern "C" {}` and then an implementation section re-opens `extern "C" {}`, the implementation functions have C linkage but the types from the closed block don't carry over cleanly in C++ mode. Solution: make functions `static inline` within the header's single `extern "C"` block.
+
+2. **raygui needs warning suppression for zero-warning builds**: raygui v5.0 has `-Wmissing-field-initializers` (uses `Rectangle r = {0}` idiom) and `-Wunused-parameter` warnings. Wrap `RAYGUI_IMPLEMENTATION` in pragma push/pop blocks.
+
+3. **Nested block comments are illegal**: `/* ... /* inner */ ... */` is not valid C/C++. Generated headers with example code in block comments must use `//` for inner code comments.
+
+4. **Unity builds and header-only libraries**: raygui defines hundreds of static functions when `RAYGUI_IMPLEMENTATION` is set. The TU that defines it must be excluded from unity builds via `SKIP_UNITY_BUILD_INCLUSION`.
+
+5. **C++20 aggregate init**: `{0}` triggers `-Wmissing-field-initializers` for structs with multiple fields; `{}` (empty braces) is the correct C++20 zero-init syntax.
+
+**Runtime Status:**
+- rguilayout title screen now renders in-game when `ActiveScreen::Title` is active
+- Button actions NOT wired yet (settings navigation, exit dispatch) — rendering-only for now
+- JSON UI path still active for other screens (LevelSelect, Gameplay HUD, etc.)
+
+**Files Changed:**
+- `app/ui/vendor/raygui.h` (new, vendored from upstream)
+- `app/ui/raygui_impl.cpp` (new, single RAYGUI_IMPLEMENTATION site)
+- `app/ui/adapters/title_adapter.{cpp,h}` (updated: const registry, removed TITLE_LAYOUT_IMPLEMENTATION)
+- `app/ui/generated/title_layout.h` (fixed: extern C, nested comments, aggregate init, static inline)
+- `app/systems/ui_render_system.cpp` (added title_adapter.h include, ActiveScreen::Title case)
+- `CMakeLists.txt` (added UI_ADAPTER_SOURCES glob, raygui_impl.cpp unity exclusion)
+
+**Next Steps (if needed):**
+- Wire button actions to game dispatchers (settings nav, exit handler)
+- Migrate remaining 7 screens to rguilayout adapters (level_select, gameplay HUD, etc.)
+- Add feature flag to toggle JSON vs rguilayout at compile-time (default rguilayout)
+
+## 2026-04-29T02:45:27Z — Session Wrap: raygui Title Runtime Integration APPROVED
+
+**Status:** Decision #189 APPROVED and merged into decisions.md. Work complete.
+
+**Team Communications:**
+- **Hockney:** Final validation passed. Title screen renders correctly, zero warnings, tests pass.
+- **Keyser:** Integration architecture confirmed working end-to-end.
+- **Scribe:** Orchestration logs created, inbox merged into decisions.md.
+- **All agents:** Pattern established for future screen migrations (1/8 title screen done).
+
+**Deferred (Intentional):**
+- Button action wiring (visuals complete; event system refactor needed)
+- Remaining 7 screens (7/8 screens still JSON-driven, incremental adoption preserved)

@@ -311,3 +311,52 @@ Scribe documentation:
 - Session log: .squad/log/2026-04-28T08-12-03Z-ecs-cleanup-approval.md
 
 Next: Await merge approval.
+
+---
+
+## Session: 2026-04-28T22:35:09Z — WASM CI Unity Build Flag Decision Consolidated
+
+**Context:** Scribe merged all inbox decisions into decisions.md and updated cross-agent history files.
+
+**Your work:** WASM CI unity build flag recommendation: add `-DSHAPESHIFTER_UNITY_BUILD=ON` to emcmake cmake invocation and bump cache key v2→v3 to avoid stale-object collisions. Expected impact: reduce "Build (Emscripten)" step from ~9m to ~2–4m.
+
+**Status:** Recommendation captured and merged into team decisions. Ready for CI update.
+
+**Related:** `kobayashi-wasm-ci-duration.md` merged into `.squad/decisions.md`
+
+---
+
+## Session: 2026-05-27T14:22:00Z — rGuiLayout Title Runtime Integration Checkpoint PR
+
+**Scope:** Create PR checkpoint for rGuiLayout title screen runtime integration **before dispatch wiring**.
+
+**What was staged & committed:**
+- rGuiLayout sources for all 8 UI screens (`.rgl` files in `content/ui/screens/`)
+- Generated C layout code for all screens (`app/ui/generated/standalone/`)
+- Title screen adapter (`app/ui/adapters/title_adapter.{h,cpp}`)
+- Raygui vendor header (`app/ui/vendor/raygui.h`)
+- raygui_impl.cpp wiring
+- Integration plan (`RGUILAYOUT_INTEGRATION_PLAN.md`)
+- UI spec (`design-docs/raygui-rguilayout-ui-spec.md`)
+- Vendored rGuiLayout tool (`tools/rguilayout/` with macOS .app binary)
+- CMakeLists.txt and ui_render_system.cpp updates
+- All squad log/decision updates (but NOT squad decision deletions — those were pre-existing)
+
+**Commit:** `15c89e8395a787e5e02fdda3dfb3a3c7f21d3bd2`
+**Branch:** `ui_layout_refactor`
+**PR:** #351 (https://github.com/yashasg/friendly-parakeet/pull/351)
+
+**Key decisions:**
+- Title dispatch wiring is **intentionally omitted** from this PR — will be added in follow-up PR
+- Other screens remain JSON-backed
+- Vendored tool (`tools/rguilayout/`) included as project input per design docs
+
+**Validation notes:**
+- Build passed per Hockney CI
+- Tests passed per Fenster validation
+- Zero-warnings policy maintained
+- All temp files (test_title_layout.cpp, build_output_rgui.txt) verified gone before commit
+
+**Release engineer checkpoint:** This is a safe merge point. The title screen layout is live and rendering, but button interactions and other screen migrations are deferred to separate PRs for reviewability and rollback safety if needed.
+
+---

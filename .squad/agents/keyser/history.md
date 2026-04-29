@@ -714,3 +714,65 @@ Next: Await merge approval.
 
 **Verdict:** Popup factory extraction is low risk, mechanical refactor. Confirmed sequence documented; all downstream work depends on this completing first.
 
+
+---
+
+## Session: 2026-04-28T22:35:09Z — Architecture Spine and Boundary Decisions Consolidated
+
+**Context:** Scribe merged all inbox decisions (including keyser-raygui-migration-spine.md, keyser-ui-layout-data-boundary.md) into decisions.md and updated cross-agent history.
+
+**Your work:** Keyser authored Architecture Spine for UI Migration (problem statement, goals, non-goals, hard boundary rules U1–U7), and finalized rguilayout Export-Data Boundary decision. Rejected prior recommendations: no `RaguiAnchors<ScreenTag>` / layout POD duplication, no UI widget entities for static menus/HUD, Phase 5 deletes layout caches instead of rebuilding. Approach rings removed from scope per user directive.
+
+**Status:** Spine document and boundary decisions now consolidated in decisions.md. Ready for Phase 3 handoff with clear ECS/render boundaries established.
+
+**Related:** Merged decisions in `.squad/decisions.md` (Architecture Spine section and UI Layout Data Boundary section)
+
+### 2026-04-28 — rguilayout Integration Spine (#0, user-requested)
+
+**Status:** SPINE DEFINED — Integration path established; ready for tooling handoff.
+
+**Context:** Phase 2 complete: all 8 screens have `.rgl` sources and generated `.c/.h` files. But generated files are standalone programs (`main()` + `RAYGUI_IMPLEMENTATION`) that cannot compile into the game. User asked: "setup an integration path."
+
+**Problem:** Cannot integrate generated code as-is — ODR violations, symbol collisions, and presence of `main()` in each `.c` file.
+
+**Decision: Custom Template + Adapter Layer**
+
+Integration path: `.rgl` → (custom template) → `app/ui/rgl_generated/*.h` (header-only layout functions) → `app/ui/rgl_adapters/*.cpp` (C++ adapters) → `ui_render_system.cpp`
+
+**Key constraints satisfied:**
+- ✅ No ECS layout mirrors (adapters call generated functions; no layout copied into components)
+- ✅ Generated files own layout data (never duplicated into project structs)
+- ✅ Incremental migration (screen-by-screen with parallel runtime paths)
+- ✅ Build-safe (header-only avoids ODR; `RAYGUI_IMPLEMENTATION` stays singular)
+- ✅ Preserves JSON path (unmigrated screens keep existing system)
+
+**File structure:**
+- `app/ui/rgl_generated/*.h` — header-only layout functions (8 screens)
+- `app/ui/rgl_adapters/*.cpp` — hand-written C++ adapters (added incrementally)
+- **Deletes:** `app/ui/*.c`, `app/ui/*.h` (current standalone generated files)
+- **No CMake changes:** Adapters auto-globbed by existing `file(GLOB UI_SOURCES app/ui/*.cpp)`
+
+**Custom template requirements:**
+1. No `main()` — just layout drawing functions
+2. No `RAYGUI_IMPLEMENTATION` — raygui already implemented elsewhere in game
+3. Header-only — pure inline or extern "C" callable
+4. Named control accessors — expose button states, rectangles for dynamic content
+
+**Migration strategy:**
+1. Screen-by-screen with feature flags
+2. Migrated screens call rgl adapter; unmigrated use JSON
+3. Validate behavior parity per screen before removing JSON dependency
+
+**Open issues:**
+1. raygui implementation location — grep found no current `RAYGUI_IMPLEMENTATION` in app/ (only in standalone generated files). Must add exactly one implementation site.
+2. Custom template authoring — tooling task, not architecture.
+3. Dynamic text binding (scores, song names) — template must export slots/rectangles.
+
+**Next steps:**
+1. Create custom template: `tools/rguilayout/templates/shapeshifter_header.rgl`
+2. Proof of concept: re-export title screen, write adapter, wire into ui_render_system
+3. Iterate for remaining screens
+
+**Decision written:** `.squad/decisions/inbox/keyser-rguilayout-integration-spine.md`
+
+**Impact:** Establishes the runtime seam that respects all prior architecture constraints (no layout mirrors, generated files own data, incremental migration, build-safe). Unblocks Phase 3 build integration.

@@ -136,6 +136,18 @@ void game_state_system(entt::registry& reg, float dt) {
                     lss.confirmed = false;
                 }
                 break;
+            case GamePhase::Settings:
+                destroy_ui_buttons(reg);
+                gs.previous_phase = gs.phase;
+                gs.phase = GamePhase::Settings;
+                gs.phase_timer = 0.0f;
+                break;
+            case GamePhase::Tutorial:
+                destroy_ui_buttons(reg);
+                gs.previous_phase = gs.phase;
+                gs.phase = GamePhase::Tutorial;
+                gs.phase_timer = 0.0f;
+                break;
         }
         return;
     }

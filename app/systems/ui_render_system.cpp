@@ -15,6 +15,13 @@
 #include "../components/ui_element.h"
 #include "../ui/ui_source_resolver.h"
 #include "../ui/adapters/title_adapter.h"
+#include "../ui/adapters/paused_adapter.h"
+#include "../ui/adapters/game_over_adapter.h"
+#include "../ui/adapters/song_complete_adapter.h"
+#include "../ui/adapters/settings_adapter.h"
+#include "../ui/adapters/tutorial_adapter.h"
+#include "../ui/adapters/level_select_adapter.h"
+#include "../ui/adapters/gameplay_adapter.h"
 #include <raylib.h>
 #include <raymath.h>
 #include <algorithm>
@@ -323,7 +330,7 @@ static void draw_hud(const entt::registry& reg, const HudLayout& layout) {
 // UI render system — 2D overlay pass
 // ═════════════════════════════════════════════════════════════════════════════
 
-void ui_render_system(const entt::registry& reg, float /*alpha*/) {
+void ui_render_system(entt::registry& reg, float /*alpha*/) {
     auto& text_ctx = reg.ctx().get<TextContext>();
     auto& ui = reg.ctx().get<UIState>();
     auto& gs = reg.ctx().get<GameState>();
@@ -353,8 +360,8 @@ void ui_render_system(const entt::registry& reg, float /*alpha*/) {
     // UI text elements (data-driven from JSON)
     {
         auto view = reg.view<UIElementTag, UIText, UIPosition, TagHUDPass>();
-        const auto* anim_store = reg.storage<UIAnimation>();
-        const auto* dyn_store  = reg.storage<UIDynamicText>();
+        const auto* anim_store = std::as_const(reg).storage<UIAnimation>();
+        const auto* dyn_store  = std::as_const(reg).storage<UIDynamicText>();
         for (auto [entity, text, pos] : view.each()) {
             Color c = text.color;
             const auto* anim = (anim_store && anim_store->contains(entity)) ? &anim_store->get(entity) : nullptr;
@@ -381,8 +388,8 @@ void ui_render_system(const entt::registry& reg, float /*alpha*/) {
     // UI button elements
     {
         auto view = reg.view<UIElementTag, UIButton, UIPosition, TagHUDPass>();
-        const auto* anim_store = reg.storage<UIAnimation>();
-        const auto* dyn_store  = reg.storage<UIDynamicText>();
+        const auto* anim_store = std::as_const(reg).storage<UIAnimation>();
+        const auto* dyn_store  = std::as_const(reg).storage<UIDynamicText>();
         for (auto [entity, btn, pos] : view.each()) {
             Color tc = btn.text_color;
             const auto* anim = (anim_store && anim_store->contains(entity)) ? &anim_store->get(entity) : nullptr;
@@ -426,16 +433,37 @@ void ui_render_system(const entt::registry& reg, float /*alpha*/) {
             auto& lss = reg.ctx().get<LevelSelectState>();
             const auto* layout = reg.ctx().find<LevelSelectLayout>();
             if (layout) draw_level_select_scene(text_ctx, lss, *layout);
+            level_select_adapter_render(reg);
             break;
         }
-        case ActiveScreen::Gameplay:
+        case ActiveScreen::Gameplay: {
+            const auto* hud = reg.ctx().find<HudLayout>();
+            if (hud) draw_hud(reg, *hud);
+            gameplay_adapter_render(reg);
+            break;
+        }
         case ActiveScreen::Paused: {
             const auto* hud = reg.ctx().find<HudLayout>();
             if (hud) draw_hud(reg, *hud);
+            paused_adapter_render(reg);
             break;
         }
-        default:
+        case ActiveScreen::GameOver: {
+            game_over_adapter_render(reg);
             break;
+        }
+        case ActiveScreen::SongComplete: {
+            song_complete_adapter_render(reg);
+            break;
+        }
+        case ActiveScreen::Settings: {
+            settings_adapter_render(reg);
+            break;
+        }
+        case ActiveScreen::Tutorial: {
+            tutorial_adapter_render(reg);
+            break;
+        }
     }
 
     EndMode2D();

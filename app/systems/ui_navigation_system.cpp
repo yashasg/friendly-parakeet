@@ -16,6 +16,8 @@ static const char* phase_to_screen_name(GamePhase phase) {
         case GamePhase::Paused:       return "gameplay";
         case GamePhase::GameOver:     return "game_over";
         case GamePhase::SongComplete: return "song_complete";
+        case GamePhase::Settings:     return "settings";
+        case GamePhase::Tutorial:     return "tutorial";
     }
     return "title";
 }
@@ -56,6 +58,8 @@ void ui_navigation_system(entt::registry& reg, float /*dt*/) {
         case GamePhase::Playing:      ui.active = ActiveScreen::Gameplay; break;
         case GamePhase::GameOver:     ui.active = ActiveScreen::GameOver; break;
         case GamePhase::SongComplete: ui.active = ActiveScreen::SongComplete; break;
+        case GamePhase::Settings:     ui.active = ActiveScreen::Settings; break;
+        case GamePhase::Tutorial:     ui.active = ActiveScreen::Tutorial; break;
         case GamePhase::Paused:
             // Load the overlay JSON once when first entering Paused.
             // Subsequent frames while Paused reuse the cached overlay_screen.
