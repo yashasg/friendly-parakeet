@@ -3,6 +3,7 @@
 
 #include "../../components/game_state.h"
 #include "../../util/settings.h"
+#include "../../platform/haptics_backend.h"
 #include "screen_controller_base.h"
 #include <algorithm>
 #include <cstdio>
@@ -68,6 +69,9 @@ void render_settings_screen_ui(entt::registry& reg) {
         }
         if (settings_controller.state().HapticsTogglePressed) {
             st->haptics_enabled = !st->haptics_enabled;
+            if (st->haptics_enabled) {
+                platform::haptics::warmup();
+            }
         }
         if (settings_controller.state().ReduceMotionTogglePressed) {
             st->reduce_motion = !st->reduce_motion;

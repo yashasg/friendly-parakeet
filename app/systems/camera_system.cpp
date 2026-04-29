@@ -95,11 +95,12 @@ static ShapeMeshes build_shape_meshes() {
 }
 
 static void unload_shape_meshes(ShapeMeshes& sm) {
-    UnloadShader(sm.material.shader);
     for (int i = 0; i < 4; ++i)
         UnloadMesh(sm.shapes[i]);
     UnloadMesh(sm.slab);
     UnloadMesh(sm.quad);
+    // raylib's UnloadMaterial() owns material.shader; unloading it separately
+    // double-frees the shader's location array.
     UnloadMaterial(sm.material);
 }
 

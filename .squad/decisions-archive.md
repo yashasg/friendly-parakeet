@@ -1,7 +1,7 @@
 ### #190 — Portable C rGuiLayout Integration Decision (2026-05-19)
 
-**Owner:** Keyser (Lead Architect)  
-**Status:** APPROVED — Ready for implementation  
+**Owner:** Keyser (Lead Architect)
+**Status:** APPROVED — Ready for implementation
 **Scope:** ECS architecture, UI integration boundary, terminology
 
 **Decision:** Portable generated C is the primary integration contract. rGuiLayout exports header-only UI layout definitions; game screen controllers include these and translate raygui input into game events. Generated code is the authoritative contract; screen controllers are game-specific glue.
@@ -54,8 +54,8 @@
 ---
 
 ### keyser-system-boundary-cleanup (2026-05-18)
-**By:** Keyser  
-**Status:** RECOMMENDATION — for Keaton/reviewer to implement  
+**By:** Keyser
+**Status:** RECOMMENDATION — for Keaton/reviewer to implement
 **Directive source:** `.squad/decisions/inbox/copilot-directive-20260428T091354Z-system-boundaries.md`
 
 ---
@@ -95,7 +95,7 @@
    - The `GameCamera` entity lives in the registry with `cam.position.z = 1900.0f` (set in `spawn_game_camera`).
    - For `ObstacleScrollZ.z` (model-authority obstacles: LowBar, HighBar), "past the camera" means `oz.z >= camera.cam.position.z`. The current 1400 threshold culls them 500 units before the camera — it works accidentally but is wrong conceptually and will break if the camera Z ever changes.
    - Fix: query `reg.view<GameCamera>()`, read `cam.cam.position.z`, use that as the despawn Z.
-   
+
 3. **The Position.y path (2D obstacles) is acceptable as-is.** `pos.y > DESTROY_Y(1400)` means 120px past the bottom of the 1280px logical screen. This path is not 3D-projection-dependent — a small screen-margin constant is the right approach. Rename `DESTROY_Y` to `OBSTACLE_DESPAWN_SCREEN_Y` or add a comment clarifying it is screen-space, not camera-space.
 
 **Recommendation:**
@@ -145,9 +145,9 @@
 
 
 # Transform Migration Contract
-**Author:** Keyser  
-**Date:** 2026-04-28  
-**Executors:** Keaton (implementation), McManus (integration + tests)  
+**Author:** Keyser
+**Date:** 2026-04-28
+**Executors:** Keaton (implementation), McManus (integration + tests)
 **Status:** READY FOR EXECUTION — pending answers to blocking questions in §4
 
 ---
@@ -186,9 +186,9 @@ vertical → computed by camera_system from VerticalState, not stored in Transfo
 ## 3. Migration Contract
 
 ### kujan-boundary-cleanup-review (2026-05-18)
-**By:** Kujan  
-**Scope:** Keaton's system-boundary cleanup — beat_map_loader move + cleanup_system → obstacle_despawn_system rename  
-**Directive refs:** `copilot-directive-20260428T091354Z-system-boundaries.md`, `keyser-system-boundary-cleanup.md`  
+**By:** Kujan
+**Scope:** Keaton's system-boundary cleanup — beat_map_loader move + cleanup_system → obstacle_despawn_system rename
+**Directive refs:** `copilot-directive-20260428T091354Z-system-boundaries.md`, `keyser-system-boundary-cleanup.md`
 **Verdict:** ❌ REJECTED — 2 blocking defects (BL-1, BL-2). Keaton locked out. Revision owner: Keyser.
 
 ---
@@ -277,8 +277,8 @@ Add `#include "../components/camera.h"` to the include list.
 
 # Kujan Review Decision: ECS Cleanup Batch #273/#333/#286/#336/#342/#340
 
-**Filed:** 2026-04-28  
-**Reviewer:** Kujan  
+**Filed:** 2026-04-28
+**Reviewer:** Kujan
 **Branch:** user/yashasg/ecs_refactor
 
 ---
@@ -293,7 +293,7 @@ Add `#include "../components/camera.h"` to the include list.
 
 **Scope:** Three-agent read-only audit of ECS compliance and C++/DoD performance patterns.
 
-**Owners:** Keyser (compliance), Keaton (performance), Kujan (materiality review)  
+**Owners:** Keyser (compliance), Keaton (performance), Kujan (materiality review)
 **Status:** DOCUMENTED — remediation backlog created, all owners assigned
 
 **Consolidated Material Findings:**
@@ -348,7 +348,7 @@ Add `#include "../components/camera.h"` to the include list.
 
 ### Post-TestFlight Cleanup Findings (2026-05-16)
 
-**Owners:** Keyser (ECS audit)  
+**Owners:** Keyser (ECS audit)
 **Status:** DOCUMENTED
 
 **Fixed in this pass:**
@@ -372,7 +372,7 @@ Add `#include "../components/camera.h"` to the include list.
 
 ### Data Ownership and Input Processing Rules (2026-05-15)
 
-**Owners:** Keyser (diagnostics, recommendations), Development team (implementation)  
+**Owners:** Keyser (diagnostics, recommendations), Development team (implementation)
 **Status:** DOCUMENTED
 
 Diagnostics identified critical data ownership and input processing patterns requiring formalization.
@@ -409,7 +409,7 @@ The following were filed in diagnostics but are fixed in the current codebase:
 
 ### #190 — Approved Template Adapter Pattern for UI Boilerplate (2026-04-29)
 
-**Owner:** Keaton (C++ Performance Engineer)  
+**Owner:** Keaton (C++ Performance Engineer)
 **Status:** APPROVED
 
 The `RGuiAdapter<State, InitFunc, RenderFunc>` pattern demonstrated in commit 958a7d9 is now the **approved standard** for wrapping external library state in this codebase.
@@ -441,7 +441,7 @@ Consider this pattern for:
 
 ### #191 — Validation: Keyser Commit 958a7d9 — UI Adapter Template Refactor (2026-04-29)
 
-**Owner:** Hockney (Platform Engineer)  
+**Owner:** Hockney (Platform Engineer)
 **Status:** ✅ APPROVED
 
 Validated Keyser's UI adapter template refactor (commit 958a7d9) for build/platform safety. All validation criteria met: zero-warning unity build, passing test suite, RAYGUI_IMPLEMENTATION single-site invariant preserved, standalone generated files confirmed uncompiled, template headers safe for unity builds.
@@ -487,7 +487,7 @@ Validated Keyser's UI adapter template refactor (commit 958a7d9) for build/platf
 
 ### #189 — raygui Title Screen Runtime Integration (2026-04-28)
 
-**Owners:** Fenster (implementation), Hockney (validation)  
+**Owners:** Fenster (implementation), Hockney (validation)
 **Status:** APPROVED
 
 Title screen now renders via rguilayout in-game. Completed Phase 3 runtime integration with zero warnings, passing test suite (2631 assertions, 901 cases), and no regressions to other screens.
@@ -557,7 +557,7 @@ app/systems/ui_render_system.cpp (ActiveScreen::Title case, line 421-424)
 
 ### #188 — rguilayout Integration Path: Custom Template + Adapters (2026-04-28)
 
-**Owners:** Keyser (architecture), Fenster (implementation), Hockney (validation)  
+**Owners:** Keyser (architecture), Fenster (implementation), Hockney (validation)
 **Status:** APPROVED
 
 rguilayout Phase 2 complete. Established integration architecture using custom embeddable template and thin C++ adapter layer. Generated standalone code cannot compile directly into game (contains `main()` and `RAYGUI_IMPLEMENTATION`), so architecture provides safe, reversible path:
@@ -634,7 +634,7 @@ All deferred work documented in `tools/rguilayout/INTEGRATION.md` with clear blo
 
 ### ECS Cleanup Wave: Approval Batch (2026-04-28)
 
-**Owners:** Hockney, Fenster, Baer, Kobayashi, McManus, Keyser, Kujan  
+**Owners:** Hockney, Fenster, Baer, Kobayashi, McManus, Keyser, Kujan
 **Status:** APPROVED / IMPLEMENTED
 
 ### 2026-04-28T04:59:02Z: User directive
@@ -864,8 +864,8 @@ All deferred work documented in `tools/rguilayout/INTEGRATION.md` with clear blo
 
 # Decision: Rename cleanup_system → obstacle_despawn_system in benchmarks
 
-**Author:** Hockney (Platform Engineer)  
-**Date:** 2025-07-15  
+**Author:** Hockney (Platform Engineer)
+**Date:** 2025-07-15
 **File touched:** `benchmarks/bench_systems.cpp`
 
 ## Context
@@ -883,8 +883,8 @@ Post-edit grep across `app/`, `tests/`, and `benchmarks/` confirms zero remainin
 
 # Decision: HighScoreState/SettingsState helpers live in persistence namespaces
 
-**Date:** 2026-04-27  
-**Issue:** #286  
+**Date:** 2026-04-27
+**Issue:** #286
 **Author:** Hockney
 
 ## Decision
@@ -903,7 +903,7 @@ Business logic helpers for `SettingsState` and `HighScoreState` are placed as fr
 
 # Decision: text.h and ui_state.h removed from app/components/
 
-**Date:** 2026-05-01  
+**Date:** 2026-05-01
 **Author:** Hockney
 
 ## What changed
@@ -924,9 +924,9 @@ No evidence remains to justify keeping these in `app/components/`. This is close
 
 # Platform Plan: Moving Non-System Utilities out of app/systems/
 
-**Author:** Hockney  
-**Date:** 2026-05  
-**Status:** READ-ONLY PLAN — do not implement while Keyser resolves review blockers  
+**Author:** Hockney
+**Date:** 2026-05
+**Status:** READ-ONLY PLAN — do not implement while Keyser resolves review blockers
 **Scope:** Mechanical safety analysis only. No code changes.
 
 ---
@@ -963,9 +963,9 @@ file(GLOB ARCHETYPE_SOURCES app/archetypes/*.cpp)
 
 # Code Removal Estimate: Component Consolidation & Entity Refactor
 
-**Author:** Keaton (C++ Performance Engineer)  
-**Date:** 2026-04-28  
-**Status:** READ-ONLY AUDIT (no edits made)  
+**Author:** Keaton (C++ Performance Engineer)
+**Date:** 2026-04-28
+**Status:** READ-ONLY AUDIT (no edits made)
 **Scope:** File-level C++ audit identifying removals + moves + renames (LOC savings where possible)
 
 ---
@@ -980,7 +980,7 @@ Estimated **~485 LOC can be cleanly removed** (three deletable categories) + **~
 
 ### #135 — Difficulty Ramp: Easy Variety + Medium LanePush Teaching (2026-04-27)
 
-**Owners:** Saul (design), Rabin (initial impl, locked out), McManus (revision), Baer (initial testing, locked out), Verbal (revision), Kujan (review)  
+**Owners:** Saul (design), Rabin (initial impl, locked out), McManus (revision), Baer (initial testing, locked out), Verbal (revision), Kujan (review)
 **Status:** APPROVED
 
 Easy difficulty gains controlled *variety without complexity*: rhythm-driven (section density, gap/lane distribution) and shape-driven (3-shape rotation), but zero new mechanics. Medium LanePush becomes a *taught mechanic*: shape-only intro (no pushes before max(30s, first chorus)), capped share (5–25%), readable spacing (min 3 beats between consecutive, 4-beat telegraph window around first 3), and safe directions (no wall-pushes).
@@ -1010,7 +1010,7 @@ Easy difficulty gains controlled *variety without complexity*: rhythm-driven (se
 
 ### #SQUAD Comment Cleanup (2026-04-27)
 
-**Owners:** Keaton (implementation), Kujan (review)  
+**Owners:** Keaton (implementation), Kujan (review)
 **Status:** APPROVED / IMPLEMENTED
 
 ### 2026-04-27 — Verbal: test cleanup for burnout removal (#239)
@@ -1092,14 +1092,14 @@ Easy difficulty gains controlled *variety without complexity*: rhythm-driven (se
 
 ### Archetype Candidate Audit (2026-04-27)
 
-**Owners:** Keyser (ECS/archetype analysis), Keaton (duplicate audit), Coordinator (routing)  
+**Owners:** Keyser (ECS/archetype analysis), Keaton (duplicate audit), Coordinator (routing)
 **Status:** AUDIT COMPLETE — findings ranked for implementation
 
 Read-only audit of `app/systems/` and `tests/test_helpers.h` identified entity construction patterns suitable for extraction into `app/archetypes/` factories or construction helpers.
 
 ### EnTT Input Model Guardrails (2026-04-27)
 
-**Owners:** Keyser (diagnostics), Keaton (implementation), Baer (validation), McManus (integration)  
+**Owners:** Keyser (diagnostics), Keaton (implementation), Baer (validation), McManus (integration)
 **Status:** PRE-IMPLEMENTATION GUIDANCE
 
 Replace hand-rolled `EventQueue` fixed arrays with `entt::dispatcher` stored in `reg.ctx()`. Use `enqueue`+`update` (deferred delivery) — **not** `trigger`. System execution order remains unchanged; dispatcher becomes the transport layer.
@@ -1197,7 +1197,7 @@ Replace hand-rolled `EventQueue` fixed arrays with `entt::dispatcher` stored in 
 
 ### #134 — Enforce min_shape_change_gap in Shipped Beatmaps (2026-04-26)
 
-**Owners:** Rabin (content), Baer (validation), Kujan (review)  
+**Owners:** Rabin (content), Baer (validation), Kujan (review)
 **Status:** APPROVED
 
 Rule 6 (`min_shape_change_gap = 3` beats) now enforced in shipped beatmap generation. Shape-bearing obstacles (`shape_gate`, `split_path`, `combo_gate`) must be ≥3 beats apart; if violation detected after cleaner passes, the later gate is mutated to match the prior shape.
@@ -1224,7 +1224,7 @@ Dropping reduces density and risks emptying short sections. Mutating never viola
 
 ### #180/#182/#183/#184/#186 — iOS TestFlight Readiness (2026-04-26)
 
-**Owners:** Hockney (platform implementation), Edie (product docs), Coordinator (validation)  
+**Owners:** Hockney (platform implementation), Edie (product docs), Coordinator (validation)
 **Status:** PROPOSED — awaiting user-provided values
 
 iOS build pipeline and TestFlight submission readiness defined.
@@ -1274,7 +1274,7 @@ iOS build pipeline and TestFlight submission readiness defined.
 
 ### #46 — Release Workflows (2026-04-26)
 
-**Owners:** Ralph (implementation), Coordinator (validation), Kujan (review)  
+**Owners:** Ralph (implementation), Coordinator (validation), Kujan (review)
 **Status:** APPROVED
 
 Push-to-main and insider-branch release workflows implemented and approved.
@@ -1314,7 +1314,7 @@ Push-to-main and insider-branch release workflows implemented and approved.
 
 ### Agent Role Fit Assessment (2026-04-26)
 
-**Owners:** Edie, Keyser  
+**Owners:** Edie, Keyser
 **Status:** DOCUMENTED
 
 Reviewed all 13 specialist agents against README and architecture docs. Assessment:
@@ -1338,7 +1338,7 @@ Reviewed all 13 specialist agents against README and architecture docs. Assessme
 
 ### User Model Directives (2026-04-26)
 
-**Owners:** yashasg (via Copilot)  
+**Owners:** yashasg (via Copilot)
 **Status:** CAPTURED
 
 1. **Default model:** claude-sonnet-4.6
@@ -1351,4 +1351,714 @@ Reviewed all 13 specialist agents against README and architecture docs. Assessme
 ### copilot-directive-2026-04-26T22-06-enum-macro
 
 ### copilot-directive-2026-04-26T22-20-burnout-removal
+
+### Archetype Removal and Canonicalization Initiative (2026-04-29)
+
+**Initiative:** Remove legacy `app/archetypes/` and establish `app/entities/` as canonical construction boundary. Agents: Keyser (Audit), Keaton (Impl), McManus (Wording), Kujan (Review).
+
+#### Archetype Removal Audit Decision (Keyser)
+
+- **Date:** 2026-04-29
+- **Author:** Keyser (Lead Architect)
+- **Status:** DECIDED — removal/migration is architecturally correct
+
+**Verdict:** `app/archetypes/` is no longer a canonical runtime boundary for player/obstacle construction. The live construction seam is `app/entities/` (`create_player_entity`, `spawn_obstacle`).
+
+For player construction specifically, `app/archetypes/player_archetype.h` was a compatibility shim to `../entities/player_entity.h`; keeping the archetypes folder for that shim adds indirection without adding ownership.
+
+**Architectural rationale:**
+1. Single ownership boundary already exists in entities:
+   - Runtime setup uses `create_player_entity` from `app/entities/player_entity.h` (play-session path)
+   - Beat scheduling uses `spawn_obstacle` from `app/entities/obstacle_entity.h`
+2. ECS contract is entity-factory based now:
+   - Component bundle contracts are documented and tested at entity factory call sites
+   - Tests already target entity factories directly (`entities/player_entity.h`, `entities/obstacle_entity.h`)
+3. Dead namespace risk:
+   - Retaining a folder with forwarding headers or no sources invites stale includes and false architecture signals
+
+**Concrete migration/removal actions:**
+1. Remove player archetype shim surface: Delete `app/archetypes/player_archetype.h`
+2. Keep all player includes on entities path: Required include in tests `#include "entities/player_entity.h"`
+3. Build wiring cleanup: Remove `ARCHETYPE_SOURCES` glob and usage from `shapeshifter_lib`
+4. Docs cleanup: Update `design-docs/architecture.md` and stale comments referencing "canonical app/archetypes path"
+
+**Validation target:** `cmake -B build -S . -Wno-dev && cmake --build build --target shapeshifter_tests && ./build/shapeshifter_tests "[archetype]"` — expected: pass with zero warnings and no `#include "archetypes/..."` references
+
+#### Archetype Removal Implementation (Keaton)
+
+- **Date:** 2026-04-29
+- **Author:** Keaton (C++ Performance Engineer)
+- **Status:** IMPLEMENTED
+
+**Changes:**
+- Verified `app/archetypes/` only contained `player_archetype.h`, a shim that just included `entities/player_entity.h`
+- Removed the shim header and let tests include `entities/player_entity.h` directly
+- Removed stale `ARCHETYPE_SOURCES` CMake glob (`app/archetypes/*.cpp`) from `CMakeLists.txt`; no remaining archetype sources
+- Kept runtime behavior unchanged (`create_player_entity` remains in `app/entities/player_entity.cpp`)
+
+**Validation:**
+- `cmake -B build -S . -Wno-dev && cmake --build build`
+- `./build/shapeshifter_tests "[archetype][player]"` — PASS (118 assertions, 24 test cases)
+- `./build/shapeshifter_tests "[archetype]"` — PASS
+- Zero compiler warnings
+
+#### Archetype Wording Cleanup (McManus)
+
+- **Date:** 2026-04-29
+- **Owner:** McManus (Gameplay Engineer)
+- **Scope:** docs/tests wording only (no behavior changes)
+
+**Decision:** Treat `app/entities/` as the canonical reusable construction surface in docs and code comments. Retain `[archetype]` test tags as historical taxonomy where renaming would add noise without value.
+
+**Applied updates:**
+- `design-docs/architecture.md` Section 5:
+  - Added explicit note: reusable construction implemented by `app/entities/` factories (`create_player_entity`, `spawn_obstacle`)
+  - Removed stale repo-tree line implying `app/archetypes/` is current directory
+- `tests/test_obstacle_model_slice.cpp`:
+  - Reworded stale comments (removed wording implying duplicate archetype helpers or canonical `app/archetypes/` path)
+  - Updated local helper naming/comments to use entity-factory terminology
+  - Left behavior and assertions untouched
+  - Retained `[archetype]` tags as acceptable test taxonomy
+
+**Validation:**
+- Focused grep search over touched files: zero remaining `app/archetypes/` canonical wording
+- `cmake --build build --target shapeshifter_tests`
+- `./build/shapeshifter_tests "[model_slice]"` — PASS (71 assertions, 20 test cases)
+- Zero compiler warnings
+
+#### Archetype Removal Final Review (Kujan)
+
+- **Date:** 2026-04-29
+- **Author:** Kujan (Reviewer)
+- **Status:** APPROVED
+
+**Verdict:** The `app/archetypes/` removal and `app/entities/` canonicalization patch is **APPROVED**.
+
+**Evidence:**
+1. `app/archetypes/` is absent — directory does not exist in the working tree
+2. Zero stale references — grep found no matches for: `app/archetypes`, `archetypes/`, `ARCHETYPE_SOURCES`, `player_archetype`, canonical wording, or duplicate archetype helper patterns
+3. CMake wiring correct — `ENTITY_SOURCES` glob (`app/entities/*.cpp`) is present and wired into `shapeshifter_lib`; no `ARCHETYPE_SOURCES` glob remains
+4. Test includes correct — `tests/test_player_archetype.cpp` includes `entities/player_entity.h` directly; test case titles updated to `player_entity:` prefix; `[archetype]` tags retained (acceptable taxonomy)
+5. Docs clean — `design-docs/architecture.md` Section 5 body reads `app/entities/` as canonical path; section heading "Entity Archetypes" is acceptable concept terminology (not a path reference)
+6. Tests pass — `[archetype]` tag: 118 assertions, 24 test cases — all pass. `[model_slice]` tag: 71 assertions, 20 test cases — all pass. Build: zero warnings.
+
+**No blocking findings.**
+
+---
+
+### UI Cleanup Initiative (2026-04-29)
+
+**Initiative:** Consolidate raygui implementation ownership, audit root UI surface, remove runtime-dead files. Agents: Hockney (Platform), Keyser (Audit), Kujan (Review).
+
+#### Raygui Implementation: Compile Definition Owner
+
+- **Date:** 2026-04-29
+- **Owner:** Hockney (Platform)
+- **Scope:** CMake + unity-build-safe ownership of `RAYGUI_IMPLEMENTATION`
+## Decision
+Use a **real screen-controller TU** as raygui implementation owner instead of a dedicated `app/ui/raygui_impl.cpp` file.
+Implemented shape:
+- Excluded `app/ui/raygui_impl.cpp` from `UI_SOURCES` and deleted the file.
+- Set source properties on `app/ui/screen_controllers/title_screen_controller.cpp`:
+  - `COMPILE_DEFINITIONS RAYGUI_IMPLEMENTATION`
+  - `SKIP_UNITY_BUILD_INCLUSION TRUE`
+## Why
+- raygui is header-only and requires exactly one implementation owner.
+- Source-level compile definition keeps ownership explicit without a dedicated glue TU.
+- `SKIP_UNITY_BUILD_INCLUSION` prevents macro leakage/redefinition hazards in unity amalgamated TUs.
+## Evidence
+- Native validation (required command):
+  - `cmake -B build -S . -Wno-dev && cmake --build build && ./build/shapeshifter_tests '~[bench]'`
+  - Result: pass, all tests pass.
+- Unity validation (vcpkg-backed cache):
+  - `cmake -B build-unity-verify-vcpkg -S . -Wno-dev && cmake --build build-unity-verify-vcpkg && ./build-unity-verify-vcpkg/shapeshifter_tests '~[bench]'`
+  - Result: pass, all tests pass.
+  - Build output shows `Unity/unity_*.cxx.o` plus standalone `title_screen_controller.cpp.o`.
+  - `build-unity-verify-vcpkg/compile_commands.json` contains `-DRAYGUI_IMPLEMENTATION` exactly once.
+## Follow-up
+- Keep this pattern documented for future single-header libraries needing one implementation site under unity builds.
+
+#### Raygui Keep Decision (Audit)
+
+- **Context:** User challenged whether `raygui_impl.cpp` is redundant because it only defines `RAYGUI_IMPLEMENTATION`.
+- **Evidence gathered:**
+  - `build/compile_commands.json` and `build-unity-verify-vcpkg/compile_commands.json` contain no `-DRAYGUI_IMPLEMENTATION` compiler definition.
+  - vcpkg install provides `build/vcpkg_installed/arm64-osx/include/raygui.h` only; no `raygui` static/shared library is installed to provide symbols.
+  - Removal probe (temporary rename of `app/ui/raygui_impl.cpp` + configure/build) fails at link with missing symbols (`_GuiButton`, `_GuiLabel`, `_GuiSetStyle`, `_GuiGetStyle`, `_GuiSetAlpha`, etc.).
+  - Global define probe (`-DRAYGUI_IMPLEMENTATION`) fails under unity build with redefinitions (`guiIcons`, `guiState`, `GuiPropertyElement`, etc.) because raygui implementation section is not safe to include multiple times.
+- **Decision:** Keep dedicated single implementation TU (`app/ui/raygui_impl.cpp`) and keep unity exclusion for that file.
+- **Validation:** `cmake -B build -S . -Wno-dev && cmake --build build && ./build/shapeshifter_tests '~[bench]'` passes after probes.
+
+---
+
+#### Root UI Cleanup: Live Dependencies Classification
+
+## Decision
+Treat `app/ui/ui_source_resolver.cpp` as a **test-only UI utility** (not a runtime dependency of the active rguilayout screen-controller path). Keep it compiled for test targets, but remove it from the runtime game library source set.
+## Why
+- Runtime UI now renders via `content/ui/screens/*.rgl` -> generated layout headers -> screen controllers.
+- `ui_source_resolver` has no runtime call sites in `app/` rendering/navigation paths and is only referenced by UI/state validation tests.
+- Keeping it in runtime sources creates misleading architecture surface and unnecessary linkage.
+## Implementation
+- Added `list(FILTER UI_SOURCES EXCLUDE REGEX "(^|/)ui_source_resolver\\.cpp$")` in `CMakeLists.txt`.
+- Added `app/ui/ui_source_resolver.cpp` to `shapeshifter_tests` source list.
+- Removed dead disabled legacy test file `tests/test_ui_spawn_malformed.cpp`.
+## Validation
+- Build + tests pass: `cmake -B build -S . -Wno-dev && cmake --build build && ./build/shapeshifter_tests '~[bench]'`.
+- Search verification in code/build paths (`app/`, `tests/`, `CMakeLists.txt`) shows no references to deleted spawn path symbols (`spawn_ui_elements`), vendored UI path (`app/ui/vendor`), standalone generated sources, or adapter path.
+
+#### Independent Audit: Confirm Classification & Guardrails
+
+## Summary
+The branch has correctly removed JSON/ECS entity-spawn rendering (`spawn_ui_elements`) and adapter wiring from runtime UI render/navigation. Current runtime is screen-controller-driven with cache-only JSON reads at screen transition boundaries.
+## Keep (still live)
+- `app/ui/ui_loader.cpp/.h` loader + cache + overlay APIs (`load_ui`, `ui_load_screen`, `build_ui_element_map`, `build_hud_layout`, `build_level_select_layout`, `ui_load_overlay`, `build_overlay_layout`)
+- `app/ui/text_renderer.cpp/.h` (`text_init_default`, `text_draw`, `text_shutdown`)
+- `app/ui/ui_button_spawner.h` (menu hit targets)
+- `app/ui/level_select_controller.cpp/.h` (dispatcher listeners + diff-button relayout)
+- `app/ui/screen_controllers/*`
+## Safe follow-up cleanup candidates
+1. Remove test-only legacy dead surface in a dedicated PR:
+   - `app/ui/ui_source_resolver.cpp/.h` (runtime-dead)
+   - `app/components/ui_element.h` (runtime-dead)
+   - `tests/test_ui_spawn_malformed.cpp` (disabled legacy tests)
+2. Remove stale/unused APIs/comments:
+   - `text_width()` if no planned use
+   - `init_*_screen_ui()` declarations if lifecycle pre-init is not planned
+   - stale `ui_loader.cpp` comment claiming screen load also spawns entities
+3. Delete empty `app/ui/vendor/` directory.
+## Must-not-break guardrails
+- No reintroduction of adapter path (`app/ui/adapters/*`)
+- No reintroduction of JSON->ECS UI render loops
+- Keep `ui_render_system` as single screen-controller switchpoint
+- Keep generated standalone exports commit-free (scratch-only policy)
+
+---
+
+#### Runtime-Dead Removal: Test-Only Components
+
+## Context
+A second-pass audit confirmed `app/ui/ui_source_resolver.*` and `app/components/ui_element.h` had no runtime callers after rguilayout screen-controller migration. Their remaining usage was test-only, validating legacy JSON/ECS dynamic-text paths no longer executed by production UI rendering.
+## Decision
+Delete `ui_source_resolver.*` and `ui_element.h` from `app/`, and retire resolver-only tests. Keep only runtime-live tests and gameplay-state assertions.
+## Why
+Keeping dead runtime files in `app/` misrepresents the active architecture and creates maintenance drag. Tests that exercised removed JSON dynamic-source binding were not protecting live behavior.
+## Guardrails respected
+- Kept live dependencies: `ui_loader`, `text_renderer`, `ui_button_spawner`, level select + all screen controllers, navigation/render systems.
+- Did not reintroduce adapters, legacy JSON/ECS rendering, `spawn_ui_elements`, standalone exports, vendored raygui, or `app/ui/raygui_impl.cpp`.
+## Validation
+`cmake -B build -S . -Wno-dev && cmake --build build && ./build/shapeshifter_tests '~[bench]'` passed.
+Search proof in app/tests/CMake: no references to `ui_source_resolver`, legacy `UIElement*` components, `spawn_ui_elements`, `app/ui/vendor`, or generated standalone exports.
+
+---
+
+### Vendored raygui Removed; vcpkg Integration Complete (2026-04-29)
+
+**Owners:** Hockney (Platform Engineering), Kujan (Review)
+**Status:** APPROVED & IMPLEMENTED
+
+Deleted committed vendored raygui header (`app/ui/vendor/raygui.h`) and integrated vcpkg-provided raygui throughout the build system.
+
+**Changes:**
+- Added `raygui` dependency to `vcpkg.json`
+- Updated `CMakeLists.txt` to resolve `raygui.h` via `find_path()` and apply as SYSTEM include on `shapeshifter_lib`
+- Changed all includes from `#include "raygui.h"` to `#include <raygui.h>` across UI controllers and `app/ui/raygui_impl.cpp`
+- Retained `app/ui/raygui_impl.cpp` as minimal project-owned TU to own the sole `RAYGUI_IMPLEMENTATION` definition (vcpkg raygui is header-only)
+
+**Rationale:**
+- User directive (2026-04-29T07:33:37Z): do not commit vendored raygui when vcpkg provides it
+- Maintains zero-warning build without requiring source duplication
+- Canonizes single-TU pattern for RAYGUI_IMPLEMENTATION across all build targets
+
+**Validation:**
+- Full non-bench test suite: 867 test cases pass, 2603 assertions
+- Zero compilation warnings
+- No regressions in any system
+- All 8 screen controllers functional
+
+**Non-blocking follow-up items:**
+- `tools/rguilayout/SUMMARY.md` lines 76–78, 81–88, 237 contain stale "future work" language; update status to ✅ Resolved
+- `design-docs/rguilayout-portable-c-integration.md` line 283: update example `#include "raygui.h"` to `#include <raygui.h>` for consistency
+
+---
+
+### Settings Gear Click Reliability — Letterbox Hit-Mapping (2026-04-29)
+
+**Owners:** Hockney (Platform Engineering), Baer (Test), Kujan (Review)
+**Status:** APPROVED & IMPLEMENTED
+
+The title screen settings gear (bottom-right, `#142#` icon) was unresponsive due to raygui hit-testing using unadjusted window coordinates when UI renders in fixed 720×1280 virtual space under letterboxing.
+
+**Solution:** Applied `SetMouseOffset(-ScreenTransform.offset)` and `SetMouseScale(1 / ScreenTransform.scale)` around screen-controller/raygui rendering in `ui_render_system`, then restored defaults immediately after. This canonizes the pattern for all future raygui controls without per-controller changes or reintroducing JSON/ECS UI render loops.
+
+**Validation:**
+- Full non-bench test suite: 867 test cases pass, 2603 assertions
+- Zero compilation warnings
+- No regressions in `input_system` (uses independent `to_vx`/`to_vy` lambdas)
+- Settings navigation regression test added to `test_game_state_extended.cpp` (headless proxy approach)
+
+**Future scope:** Title Settings dispatch wiring (separate PR), additional screen layout migrations (incremental rollout per screen).
+
+---
+
+### Standalone rguilayout Exports: Commit-Free, Scratch-Only Policy (2026-04-29)
+
+**Owners:** Hockney (Platform Engineering), Kujan (Review)
+**Status:** APPROVED & IMPLEMENTED
+
+Deleted 17 committed standalone rguilayout exports from `app/ui/generated/standalone/` (9 screens × `.c`, `.h`, README). These were dead surface contamination; the runtime UI path is now embeddable headers + screen controllers.
+
+**Policy:**
+- **Commit:** `content/ui/screens/*.rgl` (authoring source), `app/ui/generated/*_layout.h` (embeddable headers), `app/ui/screen_controllers/*.cpp` (runtime behavior)
+- **Do NOT commit:** Standalone rguilayout exports; these go to scratch-only `build/rguilayout-scratch/` (auto-ignored by `.gitignore`)
+- **Tooling:** `tools/rguilayout/generate_embeddable.sh` writes scratch output with explicit "do not commit" warning
+- **Docs:** `design-docs/rguilayout-portable-c-integration.md` rule #6 + `INTEGRATION.md` + `SUMMARY.md` all formalize scratch-only requirement
+
+**Validation:**
+- Zero references to `app/ui/generated/standalone` in any `.cpp`, `.h`, `CMakeLists.txt`
+- All 8 active `app/ui/generated/*_layout.h` headers present
+- All 8 `content/ui/screens/*.rgl` authoring files present
+- All screen controllers intact
+- 867 test cases pass, 2603 assertions
+
+---
+
+### Title Screen UX Revision (2026-04-29)
+
+**Owners:** Redfoot (UX analysis), Keaton (first implementation, rejected), Hockney (revision, approved), Kujan (reviewer)
+**Status:** APPROVED
+
+Title screen had two regressions: (1) text was off-center due to runtime override bypassing generated rguilayout render, and (2) "SET" button was at top-left (wrong affordance) instead of bottom-right gear icon per design doc.
+
+**Implementation (Hockney):**
+- Removed runtime override draw calls from `app/ui/screen_controllers/title_screen_controller.cpp`
+- Updated `content/ui/screens/title.rgl` geometry: TitleText (40 200 640 96), StartPrompt (40 640 640 56), ExitButton (260 1080 200 56), SettingsButton (632 1170 64 64 with icon #142# gear)
+- Synced `app/ui/generated/title_layout.h` to match
+- Controller now calls `title_controller.render()` with style wrapping (center alignment, uniform 28px text size)
+- Settings button behavior preserved (routes to `GamePhase::Settings`)
+
+**Validation:**
+- All blocking acceptance criteria met (no override, generated layout active, settings moved to bottom-right gear, settings wired, no adapters/JSON/ECS UI)
+- Build: zero warnings
+- Tests: 2595 assertions pass
+
+**Non-blocking note:** Uniform 28px font size for all labels (per-element sizing would require new controller infrastructure, deferred as future scope).
+
+**Revision history:** Keaton's first implementation preserved the runtime override and top-left placement, so was rejected and locked out per charter. Hockney revised from scratch with correct approach.
+
+### app/ui Root-Level Files Retention Audit (2026-04-29)
+
+**Owners:** Hockney (Platform Engineering)
+**Status:** APPROVED & DOCUMENTED
+
+Audit confirmed that all current root-level `app/ui/*.cpp` and `app/ui/*.h` files remain active and are necessary for the build. Do not delete any of these files in current or future migration passes.
+
+**Files retained and their purposes:**
+- `app/ui/raygui_impl.cpp` — Sole RAYGUI_IMPLEMENTATION translation unit
+- `app/ui/text_renderer.*` — Used by `game_loop` and `ui_render_system`
+- `app/ui/ui_loader.*` — Powers screen JSON loading and layout-cache builders used by `ui_navigation_system` and tests
+- `app/ui/ui_source_resolver.*` — Used by UI resolver tests and game-state text validation
+- `app/ui/level_select_controller.*` — Wired into `input_dispatcher` and level-select test flow
+- `app/ui/ui_button_spawner.h` — Used by `game_state_system`, `game_loop`, routing, and hitbox menu tests
+
+**Validation:**
+- Repo-wide symbol scans confirmed no orphaned root-level files
+- All include/symbol references verified live
+- 867 test cases pass, 2603 assertions
+- Zero compilation warnings
+
+**Rationale:**
+The migration to `app/ui/screen_controllers/` is an incremental integration; root-level files provide live infrastructure that cannot be removed until all dependent systems migrate to the new pattern.
+
+
+---
+
+## Decision: Remove Legacy UI JSON Loader & ECS Menu-Hitbox Paths (2026-04-29)
+
+**Date:** 2026-04-29
+**Status:** ✅ APPROVED & IMPLEMENTED
+**Owner:** Keyser (Architecture), Kujan (Code Review)
+**User Directive:** 2026-04-29T08:09:55Z, 2026-04-29T08:17:40Z
+
+### Level-Select Difficulty Controls (2026-04-29)
+
+**Initiative:** Migrate Easy/Medium/Hard difficulty select from invisible ECS hitbox entities to visible raygui controller-owned buttons. Agents: Keyser (Fix), Kujan (Audit & Review).
+
+#### User Directive: RayGUI Difficulty Controls
+
+- **Date:** 2026-04-29T08:29:40Z
+- **By:** yashasg (via Copilot)
+- **Directive:** Easy/Medium/Hard level-select controls should be implemented as raygui/controller-owned buttons after removing `ui_button_spawner`; do not restore invisible ECS hitbox entities.
+- **Captured for:** Team memory and implementation gate.
+
+#### Audit Gate: Level-Select Interaction Model (Kujan)
+
+- **Date:** 2026-04-29
+- **Reviewer:** Kujan (QA)
+- **Gate Requirements:**
+  1. Easy/Medium/Hard must be actual raygui button interactions (not ECS hitboxes, not manual invisible hit regions)
+  2. Level-card selection and difficulty selection must update `LevelSelectState` in-frame with immediate visual feedback
+  3. Start must still set `lss.confirmed` and preserve `game_state_system` transition semantics
+  4. No resurrection of `ui_button_spawner`, `MenuButtonTag`, legacy JSON loader/cache, or `ui_source_resolver` paths
+  5. Focused tests must catch regressions (LevelSelect state mutation paths, Start confirm path, controller interaction)
+- **Rationale:** Manual `CheckCollisionPointRec` pointer checks do not satisfy raygui-button directive; legacy dead routing creates false confidence.
+- **Status:** GATE SET — gating level-select fix on controller-owned raygui interaction proof.
+
+#### Implementation: Difficulty RayGUI Buttons (Keyser)
+
+- **Date:** 2026-04-29
+- **Agent:** Keyser (Platform & UI Fix)
+- **Scope:** Easy/Medium/Hard as controller-owned raygui `GuiButton` interactions in `app/ui/screen_controllers/level_select_screen_controller.cpp`
+- **Changes:**
+  - Replaced dead ECS hitbox entities with raygui GuiButton calls
+  - Integrated button state into controller update loop
+  - Updated `selected_difficulty` on button press
+  - Preserved card selection and Start behavior
+  - Added focused regression tests
+  - Zero warnings maintained
+- **Validation:**
+  - Native build: pass
+  - Unity build: pass
+  - All tests pass (756 cases / 2148 assertions)
+- **Status:** COMPLETED & READY FOR REVIEW
+
+#### Final Review: Difficulty RayGUI Buttons (Kujan)
+
+- **Date:** 2026-04-29
+- **Reviewer:** Kujan (QA)
+- **Verdict:** ✅ **APPROVE**
+- **Gate Check Results:**
+  1. ✅ Real controller-owned raygui difficulty controls confirmed using `GuiButton()` with direct `lss.selected_difficulty = dd` mutation
+  2. ✅ No fake hitbox fallback; difficulty selection uses raygui, not invisible ECS entities
+  3. ✅ State + visual feedback: `selected_difficulty` updates in-frame with distinct active/inactive styling
+  4. ✅ Card + Start behavior preserved: `selected_level` and `lss.confirmed` still function; `game_state_system` owns LevelSelect→Playing transition
+  5. ✅ Legacy surface guardrails held: No `ui_button_spawner`, `ui_loader`, `spawn_ui_elements`, adapters, `app/ui/vendor`, generated exports, or `app/ui/raygui_impl.cpp` resurrection
+  6. ✅ Build + focused and full non-bench tests pass
+- **Notes:** `level_select_handle_press()` supports `MenuActionKind::SelectLevel/SelectDiff` for semantic event routing; controller-owned raygui buttons now handle pointer difficulty interaction as required.
+- **Sign-Off:** Difficulty select controls are now working raygui buttons with proper state management. Ready to merge.
+
+---
+
+### Song Complete & Pause Screen Text Readability Fixes (2026-04-29)
+
+**Initiative:** Fix default GuiLabel failure mode (no centered text, no explicit size override) in Song Complete and Pause screens. Both require centered-label helper pattern. Agents: Keyser (Song Complete attempt, rejected), Coordinator (Song Complete fix, approved), Redfoot (audit + AC), Keaton (Pause attempt, rejected), Fenster (Pause final fix, approved).
+
+#### Song Complete Text/Layout Fix — Initial Attempt (Keyser, Rejected)
+
+- **Date:** 2026-04-29
+- **Agent:** Keyser (Architecture & UI)
+- **Task:** Fix Song Complete title/status text rendering to match user requirements (centered, larger, readable).
+- **Submission:** Modified `app/ui/generated/song_complete_layout.h` and `app/ui/screen_controllers/song_complete_screen_controller.cpp`.
+- **Verdict:** ❌ **REJECTED** — No visible active artifacts demonstrated fix. Default GuiLabel still in use with no centered-label helper added.
+- **Lockout:** Per reviewer lockout protocol: Keyser locked out for revision cycle. Next reviser must be different from Keyser.
+- **Related:** `.squad/decisions/inbox/kujan-song-complete-layout-review.md`
+
+#### Song Complete Text/Layout Fix — Coordinator Revision (Approved)
+
+- **Date:** 2026-04-29
+- **Agent:** Coordinator (Main orchestration)
+- **Assignment:** Non-Keyser reviser per lockout protocol after Keyser rejection.
+- **Scope:** Implement Song Complete active-path fix using centered-label helper pattern. Centers/enlarges title/status text, renders score/high-score/results into generated slots, preserves buttons/actions, no legacy UI paths reintroduced.
+- **Changes:**
+  - Added `SongCompleteLayout_DrawCenteredLabel()` helper with proper text-size and alignment save/restore pattern
+  - All text labels (title, status) route through the helper with appropriate font sizes
+  - Score/high-score/results rendering into generated layout slots
+  - Buttons and action dispatch preserved
+  - Updated `content/ui/screens/song_complete.rgl` geometry to match active path
+- **Validation:**
+  - Build: zero warnings
+  - Tests: passing
+  - No legacy UI paths reintroduced
+- **Verdict:** ✅ **APPROVED by Kujan** (2026-04-29, prior session cycle)
+  - Active path centers and enlarges title/status text per user requirements
+  - Centered-label helper implementation matches pattern specification
+  - Controller action dispatch and timing preserved
+  - Ready for merge
+- **Related:** `.squad/decisions/inbox/kujan-song-complete-layout-review.md`
+
+#### Pause Screen Text Readability — Audit & Acceptance Criteria (Redfoot)
+
+- **Date:** 2026-04-29
+- **Auditor:** Redfoot (UI/UX)
+- **Finding:** Active pause screen has **identical default GuiLabel failure mode** as Song Complete had: `app/ui/generated/paused_layout.h` emits raw `GuiLabel` for three labels ("PAUSED", "TAP RESUME TO CONTINUE", "OR RETURN TO MAIN MENU") with no text-size override and no center alignment. Result: tiny ~10pt left-aligned text floating in upper-left of each label rect.
+- **Acceptance Criteria:**
+  1. Use centered-label helper matching `SongCompleteLayout_DrawCenteredLabel`: save/restore `DEFAULT.TEXT_SIZE` and `LABEL.TEXT_ALIGNMENT`, then call `GuiLabel`. Share via common header or replicate inside `paused_layout.h`.
+  2. "PAUSED": font size **56**, centered, rect widened (~90, 420, 540, 80).
+  3. "TAP RESUME TO CONTINUE": font size **24**, centered, rect ≥540 wide (e.g. 90, 540, 540, 36).
+  4. "OR RETURN TO MAIN MENU": font size **24**, centered, rect ≥540 wide (e.g. 90, 760, 540, 36).
+  5. Buttons (RESUME 400×100, MAIN MENU 400×100) untouched — `GuiButton` already centers text.
+  6. Update `content/ui/screens/paused.rgl` geometry so regenerating the header doesn't reintroduce the defect.
+  7. No `DrawText`, no legacy JSON path, no `ui_button_spawner`, no manual hit-testing. Controller-owned raygui only.
+  8. Letterbox hit-mapping unchanged (already handled in `ui_render_system.cpp` via `SetMouseOffset/Scale`).
+  9. Visual check at 720×1280: "PAUSED" centered, readable at phone arm's-length, instruction lines centered above buttons.
+- **Routing:** Per Redfoot charter, on rework prefer different implementer than original paused.rgl author. Recommended: agent who landed Song Complete fix.
+- **Related:** `.squad/decisions/inbox/redfoot-pause-screen-text-fix.md`
+
+#### Pause Screen Text Fix — Keaton Attempt (Rejected, Locked Out)
+
+- **Date:** 2026-04-29
+- **Agent:** Keaton (Performance Engineer)
+- **Scope:** Implement first pause-screen active-path fix per Redfoot AC.
+- **Changes:**
+  - Added `PausedLayout_DrawCenteredLabel()` helper with correct save/restore pattern
+  - All three text labels route through the helper
+  - Buttons (RESUME, MAIN MENU) geometry and dispatch unchanged
+  - No forbidden legacy paths reintroduced
+  - Build: zero warnings, tests pass (2148 assertions, 756 cases)
+- **Submission:** Generated layout header and screen controller updated.
+- **Verdict:** ❌ **REJECTED** — Numeric AC values NOT met. Six individual AC items fail:
+  | Label | AC Requirement | Actual | Result |
+  |---|---|---|---|
+  | "PAUSED" font size | **56** | 48 | ❌ |
+  | "PAUSED" rect | ~(90, 420, 540, 80) | (160, 430, 400, 72) | ❌ |
+  | "TAP RESUME TO CONTINUE" font size | **24** | 22 | ❌ |
+  | "TAP RESUME TO CONTINUE" rect width | **≥540** | 500 | ❌ |
+  | "OR RETURN TO MAIN MENU" font size | **24** | 22 | ❌ |
+  | "OR RETURN TO MAIN MENU" rect width | **≥540** | 500 | ❌ |
+- **Required Corrections:**
+  1. `PausedLayout_DrawCenteredLabel` for "PAUSED": size → **56**, rect → (90, 420, 540, 80)
+  2. Both instruction labels: size → **24**, rect width → **≥540** (e.g. x=90, w=540)
+  3. Update `content/ui/screens/paused.rgl` geometry to match
+- **Lockout:** Per reviewer lockout protocol: Keaton locked out for revision cycle. Next reviser must be different (recommended: agent who landed Song Complete fix).
+- **Related:** `.squad/decisions/inbox/kujan-paused-label-values-reject.md`
+
+#### Pause Screen Text Fix — Fenster Revision (Approved)
+
+- **Date:** 2026-04-29
+- **Agent:** Fenster (Tools Engineer)
+- **Assignment:** Non-Keaton reviser per lockout protocol.
+- **Scope:** Apply exact numeric AC from Redfoot via correcting call-site bounds only.
+- **Changes:**
+  - Updated three label call-site arguments in `app/ui/generated/paused_layout.h`
+  - Mirrored exact bounds in `content/ui/screens/paused.rgl`
+  - Buttons (RESUME, MAIN MENU) unchanged
+- **Applied Values:**
+  - `PAUSED`: (x=90, y=420, w=540, h=80), text size **56**
+  - `TAP RESUME TO CONTINUE`: (x=90, y=540, w=540, h=36), text size **24**
+  - `OR RETURN TO MAIN MENU`: (x=90, y=760, w=540, h=36), text size **24**
+- **Validation:**
+  - Build: zero warnings (clang -Wall -Wextra -Werror)
+  - Tests: 2148 assertions, 771 test cases — all pass
+  - No legacy UI paths reintroduced
+- **Verdict:** ✅ **APPROVED by Kujan** (2026-04-29T09:55:21Z)
+  - All blocking AC from rejection met exactly
+  - No new issues found
+  - `PausedLayout_DrawCenteredLabel` implementation clean parallel of `SongCompleteLayout_DrawCenteredLabel`
+  - Controller unchanged; action dispatch and timing preserved
+  - Scope precise: only three label call-site arguments plus mirrored .rgl geometry
+- **Sign-Off:** Pause screen text readability fix complete. All numeric and structural criteria met. Ready to merge.
+- **Related:**
+  - `.squad/decisions/inbox/fenster-pause-screen-text-fix.md`
+  - `.squad/decisions/inbox/kujan-pause-screen-final-review.md`
+
+---
+
+## Scribe Note: Session Merge Complete (2026-04-29T09:55:21Z)
+
+**Inbox status:** 6 files merged into decisions.md
+**Inbox files deleted:** ✅ Deletion pending after git commit
+**Decisions size:** ~512 KB (still under archive threshold; no entries older than 30 days)
+**Last merged:** 2026-04-29T09:55:21Z
+
+# Baer Decision Inbox — Startup/Shutdown Smoke Harness
+
+## Decision
+Add an explicit, opt-in native smoke executable target named `shapeshifter_startup_shutdown_smoke`.
+
+## Rationale
+The normal `shapeshifter_tests` target is intentionally headless and cannot safely exercise raylib GPU allocation/free paths that require `InitWindow()`. The reported macOS allocator abort occurs during real startup/shutdown resource teardown, so the smallest reproducible harness is a target that calls `game_loop_init()`, optionally runs a bounded number of frames, then calls `game_loop_shutdown()`.
+
+## Validation command
+
+```bash
+cmake --build build --target shapeshifter_startup_shutdown_smoke
+./build/shapeshifter_startup_shutdown_smoke --frames 0
+```
+
+Use `--frames 1` when the render frame path also needs coverage. The target is excluded from the default build/test path because it opens a real raylib window and is not appropriate for headless CI.
+
+## Current finding
+On macOS arm64, the zero-frame shutdown path reproduces the allocator abort before any gameplay: `ShapeMeshes::release()` calls `UnloadShader()` and then `UnloadMaterial()`, and raylib 5.5's `UnloadMaterial()` unloads non-default shaders itself. This produces a double shader unload during `game_loop_shutdown()`.
+
+### 2026-04-29T11:30:51Z: User directive
+**By:** yashasg (via Copilot)
+**What:** Do not stop until all issues under TestFlight are fixed.
+**Why:** User request — captured for team memory.
+
+# Decision: Preserve per-event energy clamp semantics under intent boundary
+
+- **Owner:** Hockney
+- **Date:** 2026-04-29
+- **Scope:** Issue #278 revision (scoring/energy boundary)
+
+## Decision
+Keep `energy_system` as the sole writer of `EnergyState`, but switch deferred energy intents from net-sum semantics to ordered event semantics. `scoring_system` now enqueues ordered energy events (miss pass first, then hit pass), and `energy_system` applies each event with clamp-after-each-step.
+
+## Why
+Net delta + single clamp changed gameplay at boundaries (0/max) for mixed same-frame miss/hit outcomes. Ordered per-event clamp restores prior behavior while preserving the single-writer boundary.
+
+## Notes
+`PendingEnergyEffects.delta/flash` are retained only as compatibility fields for existing direct tests; gameplay producers should enqueue `events`.
+
+# hockney-haptics-ios-bridge
+
+## Decision
+Introduce a platform haptics abstraction (`platform::haptics::trigger`) with an iOS bridge boundary and deterministic desktop/WASM logging fallback.
+
+## Why
+- Issue #236 requires explicit platform separation and an iOS-native backend path without changing gameplay gating semantics.
+- Keeping all gating at `haptic_push` preserves existing behavior and test contracts while making the runtime backend swappable per platform.
+
+## Implemented
+- Added `app/platform/haptics_backend.{h,cpp}` for event→pattern mapping and platform dispatch.
+- Added iOS bridge surface (`app/platform/ios/haptics_ios_bridge.h`) plus default stub (`haptics_ios_bridge_stub.cpp`).
+- Added Objective-C++ iOS backend (`haptics_ios_bridge_ios.mm`) using `UIImpactFeedbackGenerator`.
+- Wired CMake to include platform sources, compile `.mm` only on iOS, and keep non-iOS builds on stub path.
+- Replaced TODO path in `haptic_system.cpp` with abstraction call.
+- Added desktop-testable mapping coverage in `tests/test_haptics_backend.cpp`.
+
+# hockney-persistence-results
+
+## Decision
+Adopt a single shared persistence path policy plus structured persistence result codes for settings/high-score load/save.
+
+## Why
+- TestFlight iOS builds cannot rely on CWD durability/writability.
+- Bare bools collapsed missing/corrupt/path/open/write failures and hid actionable state.
+
+## Implemented
+- `persistence::resolve_paths()` now owns root/file-path selection for both settings/high scores.
+- iOS explicitly targets `~/Library/Application Support/shapeshifter`.
+- Load/save APIs now return `persistence::Result` with status enum.
+- Startup load path handling logs and records success/missing/corrupt/path outcomes.
+- High-score save path now tracks `dirty` + `last_save` so failures are observable and retryable.
+- Added deterministic tests for malformed JSON, unwritable parent path, success round-trip, and shared policy path resolution/failure.
+
+## Validation
+`cmake --build build-ralph --target shapeshifter_tests && ./build-ralph/shapeshifter_tests "[settings],[high_score]" --reporter compact`
+
+Passed: 174 assertions in 37 test cases.
+
+# Hockney Decision: vcpkg CMake cache guard
+
+**Date:** 2026-04-29
+**Status:** Implemented
+
+## Decision
+
+`build.sh` now owns recovery from stale non-vcpkg CMake caches. If `build/CMakeCache.txt` exists but lacks vcpkg toolchain/install markers, the script removes only `build/CMakeCache.txt` and `build/CMakeFiles`, then configures again with the manifest toolchain.
+
+## Rationale
+
+`CMAKE_TOOLCHAIN_FILE` is only activated during the first configure of a build tree. Passing it to an older non-vcpkg cache records the variable but does not make `find_package(EnTT CONFIG REQUIRED)` see manifest packages.
+
+Preserving `build/vcpkg_installed` keeps local and CI package caches useful while still forcing CMake to activate the vcpkg toolchain correctly.
+
+## Validation
+
+- Reproduced the EnTT configure failure with the stale local `build/` cache.
+- `bash run.sh test '~[bench]'` passes after the guard (775 test cases, 2210 assertions).
+- `build/CMakeCache.txt` resolves `EnTT_DIR` under `build/vcpkg_installed/arm64-osx/share/entt`.
+
+# McManus decision — #277 game_state boundary split
+
+## Decision
+For #277, we kept the core phase machine surgical and extracted terminal concerns into focused boundaries instead of rewriting transitions:
+
+1. `game_state_enter_terminal_phase(entt::registry&, GamePhase)` owns terminal high-score + persistence and terminal feedback side effects.
+2. `game_state_end_screen_system(entt::registry&, float)` owns end-screen choice-to-transition mapping.
+3. `game_state_handle_end_screen_press(entt::registry&, const ButtonPressEvent&)` owns end-screen menu input mapping and Retry/UI tap haptic selection.
+
+## Why
+- Removes high-score persistence from `game_state_system.cpp` while preserving #297/#298 dirty/save semantics.
+- Keeps end-screen/menu routing isolated from core transition execution without churn to the existing dispatcher model.
+- Preserves existing haptic/audio behavior and guard timings.
+
+## Impacted files
+- `app/systems/game_state_system.cpp`
+- `app/systems/game_state_terminal_phase_system.cpp` (new)
+- `app/systems/game_state_end_screen_system.cpp` (new)
+- `app/input/game_state_routing.cpp`
+- `app/input/game_state_end_screen_routing.cpp` (new)
+- `app/input/input_routing.h`
+- `app/systems/all_systems.h`
+
+# Decision: Gameplay boundary ownership for #276/#278/#279/#282
+
+## Context
+TestFlight boundary issues required cutting direct cross-domain writes among collision/scoring/energy/game-state surfaces while preserving gameplay behavior.
+
+## Decision
+1. `EnergyState` is now a strict single-writer surface owned by `energy_system`.
+   - Producers (currently `scoring_system`) publish `PendingEnergyEffects` intent.
+   - Consumer (`energy_system`) applies + clamps energy and flash.
+2. Popup visuals and popup SFX are now owned by `popup_feedback_system`.
+   - `scoring_system` publishes `ScorePopupRequestQueue` only.
+3. Death-cause attribution for misses moved to `scoring_system` MissTag pass (first-cause-wins).
+   - Removed direct cause writes from `collision_system` and `miss_detection_system`.
+4. Game-over transition ownership for energy depletion moved to `game_state_system`.
+   - `energy_system` no longer writes GameState transition fields or SongState run-state.
+   - `enter_game_over` owns stopping song (`finished=true`, `playing=false`).
+
+## Why
+This keeps systems aligned to domain ownership: collision tags outcomes, scoring resolves outcomes, energy applies resource mutations, and game_state drives phase transitions.
+
+## Validation
+- Focused suite passed: `[scoring],[collision],[energy],[gamestate]` (290 assertions, 137 test cases).
+- Additional regressions passed:
+  - `[ui][redfoot][game_over][wiring]`
+  - `[death_model]`
+
+# Decision: #281 play-session setup ownership split
+
+## Context
+`setup_play_session()` had accumulated multiple responsibilities (registry reset, content load, entity/UI spawn, and phase transition), making ownership boundaries hard to reason about.
+
+## Decision
+1. Player spawning is now isolated behind `spawn_session_player(entt::registry&)` in `app/session/play_session.cpp`.
+   - Session setup owns *when* to spawn the player.
+   - `create_player_entity()` continues to own *how* the player bundle is built.
+2. Playing HUD shape-button construction is isolated behind `spawn_playing_shape_buttons(entt::registry&)`.
+   - Session setup remains the owner of *when* these runtime UI entities exist.
+3. Phase mutation to Playing is isolated behind `enter_playing_phase(GameState&)`.
+
+## Why
+This keeps #281 surgical while making ownership explicit in the session boundary: setup orchestrates lifecycle timing, domain constructors/helpers own bundle details.
+
+## Validation
+- Built `shapeshifter_tests` in `build-ralph` with zero warnings.
+- Passed focused tests: `[gamestate]`, `[play_session]`.
+- Passed full `./build-ralph/shapeshifter_tests` suite.
+
+# Decision: Move cold shape-switch work out of the first gameplay input
+
+## Context
+
+The first tap-to-shape path was doing avoidable one-time work in the input frame:
+
+- `hit_test_handle_input()` called `ensure_active_tags_synced()`.
+- Fresh Playing shape buttons were spawned with `ActiveInPhase` only.
+- The first tap after `setup_play_session()` structurally emplaced `ActiveTag` on those buttons.
+- On restart, `UIActiveCache` could still say `valid=true, phase=Playing` after `reg.clear()`, so freshly spawned buttons could be missed unless setup invalidated the cache.
+- iOS haptics lazily allocated `UIImpactFeedbackGenerator` instances on first feedback; the first shape switch is often the first haptic event because title/level select pointer UI bypasses haptic routing.
+- EnTT dispatcher event vectors allocate on first `enqueue<T>()`; the first shape tap can be the first `InputEvent`/`ButtonPressEvent`.
+
+## Decision
+
+Gameplay session setup owns warming the Playing input surface:
+
+1. After `enter_playing_phase()` in `setup_play_session()`, invalidate and immediately sync `ActiveTag`.
+2. During dispatcher wiring, enqueue-and-clear one event of each input event type to allocate queues before gameplay input.
+3. Add `platform::haptics::warmup()` and call it after settings load when haptics are enabled, and when settings toggles haptics back on.
+
+## Rationale
+
+Shape switching should only mutate player shape/window state, enqueue ShapeShift SFX, and enqueue haptics. ECS structural UI activation, dispatcher queue allocation, and platform haptic generator allocation are cold setup concerns, not input-frame concerns.
+
+## Validation
+
+- Focused tests: `[haptic]`, `[input_pipeline]`, `[entt_dispatcher]`, `[gamestate][play_session]`, `[player][rhythm]`
+- Full `shapeshifter_tests`
+- `shapeshifter` target build
+- `git diff --check`
 

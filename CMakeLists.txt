@@ -170,8 +170,7 @@ if(WIN32)
 endif()
 
 # ── Main executable ──────────────────────────────────────────
-add_executable(shapeshifter
-    app/main.cpp
+set(SHAPESHIFTER_RUNTIME_SOURCES
     app/game_loop.cpp
     app/platform_display.cpp
     app/systems/camera_system.cpp
@@ -181,6 +180,11 @@ add_executable(shapeshifter
     app/systems/song_playback_system.cpp
     app/ui/text_renderer.cpp
     app/util/file_logger.cpp
+)
+
+add_executable(shapeshifter
+    app/main.cpp
+    ${SHAPESHIFTER_RUNTIME_SOURCES}
 )
 target_include_directories(shapeshifter PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/app
@@ -315,6 +319,38 @@ if(EMSCRIPTEN)
             $<TARGET_FILE_DIR:shapeshifter>/sw.js
         COMMENT "Copying service worker"
     )
+endif()
+
+# Optional desktop smoke harness. It is intentionally excluded from the default
+# build/test path because it opens a real raylib window; build and run it
+# explicitly when validating platform startup/shutdown resource lifetimes.
+add_executable(shapeshifter_startup_shutdown_smoke EXCLUDE_FROM_ALL
+    tests/smoke/startup_shutdown_smoke.cpp
+    ${SHAPESHIFTER_RUNTIME_SOURCES}
+)
+target_include_directories(shapeshifter_startup_shutdown_smoke PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/app
+)
+target_link_libraries(shapeshifter_startup_shutdown_smoke PRIVATE
+    shapeshifter_lib
+    raylib
+    shapeshifter_warnings
+)
+add_dependencies(shapeshifter_startup_shutdown_smoke shapeshifter)
+
+if(APPLE)
+    target_link_options(shapeshifter_startup_shutdown_smoke PRIVATE "LINKER:-no_warn_duplicate_libraries")
+    target_link_libraries(shapeshifter_startup_shutdown_smoke PRIVATE
+        "-framework Cocoa"
+        "-framework OpenGL"
+        "-framework IOKit"
+        "-framework CoreFoundation"
+        "-framework CoreVideo"
+    )
+elseif(WIN32)
+    target_link_libraries(shapeshifter_startup_shutdown_smoke PRIVATE opengl32 gdi32 winmm)
+elseif(UNIX AND NOT EMSCRIPTEN)
+    target_link_libraries(shapeshifter_startup_shutdown_smoke PRIVATE GL X11 Xrandr m pthread dl)
 endif()
 
 # Copy font assets next to the executable so text_init() can find them

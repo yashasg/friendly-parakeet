@@ -8,6 +8,16 @@ namespace {
 struct InputDispatcherWiringState {
     bool wired = false;
 };
+
+void warm_dispatcher_event_queues(entt::dispatcher& disp) {
+    // Move first vector allocation out of the first gameplay input frame.
+    disp.enqueue<InputEvent>(InputEvent{});
+    disp.enqueue<GoEvent>(GoEvent{});
+    disp.enqueue<ButtonPressEvent>(ButtonPressEvent{});
+    disp.clear<InputEvent>();
+    disp.clear<GoEvent>();
+    disp.clear<ButtonPressEvent>();
+}
 }
 
 // ── Drain-ownership model ────────────────────────────────────────────────────
@@ -56,6 +66,7 @@ void wire_input_dispatcher(entt::registry& reg) {
     disp->sink<GoEvent>().connect<&player_input_handle_go>(reg);
     disp->sink<ButtonPressEvent>().connect<&player_input_handle_press>(reg);
 
+    warm_dispatcher_event_queues(*disp);
     state->wired = true;
 }
 

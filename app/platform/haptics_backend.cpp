@@ -45,6 +45,14 @@ TriggerPattern pattern_for_event(HapticEvent event) noexcept {
     }
 }
 
+void warmup() noexcept {
+#if defined(PLATFORM_IOS)
+    if (platform::ios::haptics_ios_available()) {
+        platform::ios::haptics_ios_warmup();
+    }
+#endif
+}
+
 void trigger(HapticEvent event) noexcept {
 #if defined(PLATFORM_IOS)
     if (platform::ios::haptics_ios_available()) {

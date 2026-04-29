@@ -53,6 +53,17 @@ bool haptics_ios_available() noexcept {
     return true;
 }
 
+void haptics_ios_warmup() noexcept {
+    @autoreleasepool {
+        UIImpactFeedbackGenerator* light = generator_for_style(platform::haptics::ImpactStyle::Light);
+        UIImpactFeedbackGenerator* medium = generator_for_style(platform::haptics::ImpactStyle::Medium);
+        UIImpactFeedbackGenerator* heavy = generator_for_style(platform::haptics::ImpactStyle::Heavy);
+        [light prepare];
+        [medium prepare];
+        [heavy prepare];
+    }
+}
+
 void haptics_ios_trigger(HapticEvent event) noexcept {
     @autoreleasepool {
         const auto pattern = platform::haptics::pattern_for_event(event);

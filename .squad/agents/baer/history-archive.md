@@ -310,3 +310,22 @@ ctest --test-dir build -R "shipped beatmaps"
 **Observation for future runs:** The `test_test_player_system.cpp` PLATFORM_DESKTOP guard is the highest-risk gap because it silently drops regression tests for known bugs (#111) in the WASM path. The Python CI gap (#216) is the easiest to fix (add a step to ci-linux.yml).
 
 
+## 2026-04-29 — Settings Transition Regression Test
+
+**Task:** Add headless regression test for Settings navigation (title gear click → Settings screen).
+
+**Approach:** Headless proxy test (no GUI window, no injectable seam for `GuiButton` state). Test sets `transition_pending=true`, `next_phase=Settings` directly, then runs `game_state_system` + `ui_navigation_system` to verify contract is consumed and routing reaches `ActiveScreen::Settings`.
+
+**File created:** Test case added to `tests/test_game_state_extended.cpp`, tagged as regression.
+
+**Why this approach:** Deterministic in CI, exercises real production systems in same order as runtime fixed-step. Avoids new adapters or JSON/ECS UI render loops.
+
+**Known gap:** Actual raygui button state (`GuiButton` click) remains untested in headless. Manual smoke test on desktop build required for production validation.
+
+**Status:** ✅ APPROVED (Kujan), integrated with Hockney's settings-click-fix (related PRs).
+
+**Decisions logged:** `2026-04-29T07-30-55Z-baer.md`
+
+---
+
+

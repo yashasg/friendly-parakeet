@@ -18,7 +18,7 @@ Keaton's inbox file `keaton-unity-hazard-audit.md` identified app sources as saf
 
 ### Key file paths
 - Unity build entry point: `CMakeLists.txt` lines 24–33 (EMSCRIPTEN → CMAKE_UNITY_BUILD)
-- Test exclusions: `CMakeLists.txt` after `list(FILTER TEST_SOURCES ...)`  
+- Test exclusions: `CMakeLists.txt` after `list(FILTER TEST_SOURCES ...)`
 - CI cache key: `.github/workflows/ci-wasm.yml` `Cache build directory` step
 
 ### ODR hazard audit findings (per Keaton)
@@ -497,7 +497,7 @@ tools/rguilayout/rguilayout.app/Contents/MacOS/rguilayout \
 **DummyRec omission is EXPECTED and CORRECT.**
 
 From USAGE.md:
-> DUMMYREC | DummyRec001 | - 
+> DUMMYREC | DummyRec001 | -
 
 Controls of type DUMMYREC generate no variables, no drawing calls, and serve only as visual reference in the rguilayout GUI editor.
 
@@ -557,7 +557,7 @@ Validate all 8 UI screen migrations from JSON to rGuiLayout v4.0 format:
 - Control syntax correct, anchor usage consistent
 
 #### ⚠️ Issue 1: level_select Out-of-Bounds Coordinates
-**Location:** `content/ui/screens/level_select.rgl` lines 24-26  
+**Location:** `content/ui/screens/level_select.rgl` lines 24-26
 **Problem:** Difficulty buttons placed at y=1400 (exceeds viewport height 1280)
 - SongCard05 also extends to y=1360 (y=1160 + h=200)
 - Total layout height ~1400px > viewport 1280px
@@ -578,7 +578,7 @@ Validate all 8 UI screen migrations from JSON to rGuiLayout v4.0 format:
 **Documentation added:** `.rgl` header comment updated to note scroll expectation
 
 #### ⚠️ Issue 2: tutorial Platform Text Overlap
-**Location:** `content/ui/screens/tutorial.rgl` lines 25-26  
+**Location:** `content/ui/screens/tutorial.rgl` lines 25-26
 **Problem:** Desktop hint "USE LEFT / RIGHT ARROW KEYS" and mobile hint "SWIPE LEFT OR RIGHT" both at coordinates (110, 710, 500, 32)
 
 **Analysis:**
@@ -595,7 +595,7 @@ Validate all 8 UI screen migrations from JSON to rGuiLayout v4.0 format:
 **Documentation:** Tutorial .rgl header notes platform text selection is deferred to adapter
 
 #### ⚠️ Issue 3: NULL Text in Generated Labels
-**Location:** 10 GuiLabel calls across game_over.c, gameplay.c, settings.c, song_complete.c  
+**Location:** 10 GuiLabel calls across game_over.c, gameplay.c, settings.c, song_complete.c
 **Problem:** Dynamic text slots authored with empty text generate `GuiLabel(..., NULL)`
 
 **Analysis:**
@@ -1048,10 +1048,10 @@ Per `tools/rguilayout/INTEGRATION.md` and `.squad/decisions.md` #188:
 
 ### Footguns Avoided
 
-✅ **Exactly one RAYGUI_IMPLEMENTATION** — only in raygui_impl.cpp (not compiled yet, safe)  
-✅ **No standalone main() compiled** — all standalone files archived, embeddable header has no main()  
-✅ **CMake glob only includes app/ui/*.cpp** — adapters/ subdirectory correctly excluded  
-✅ **No unity build ODR issues** — adapter not yet compiled, raygui_impl single-site design  
+✅ **Exactly one RAYGUI_IMPLEMENTATION** — only in raygui_impl.cpp (not compiled yet, safe)
+✅ **No standalone main() compiled** — all standalone files archived, embeddable header has no main()
+✅ **CMake glob only includes app/ui/*.cpp** — adapters/ subdirectory correctly excluded
+✅ **No unity build ODR issues** — adapter not yet compiled, raygui_impl single-site design
 ✅ **JSON path preserved** — all 8 JSON files still present, render system unchanged
 
 ### Verdict: **APPROVE with caveats**
@@ -1244,9 +1244,9 @@ Validated commit c7700f8 (feat(ui): wire raygui dispatch + migrate all screens t
 
 ## 2026-04-29: c7700f8 Platform Review — APPROVED (Blocking: Architecture)
 
-**Date:** 2026-04-29T03:13:21Z  
-**Commit:** c7700f8 (feat(ui): wire raygui dispatch + migrate all screens to rguilayout adapters)  
-**Scope:** Build safety, platform portability, RAYGUI guard audit, export validation  
+**Date:** 2026-04-29T03:13:21Z
+**Commit:** c7700f8 (feat(ui): wire raygui dispatch + migrate all screens to rguilayout adapters)
+**Scope:** Build safety, platform portability, RAYGUI guard audit, export validation
 **Verdict:** ✅ **APPROVED** (waiting for Keaton's architectural issues to be resolved)
 
 ### Validation Results
@@ -1282,37 +1282,37 @@ See `.squad/orchestration-log/2026-04-29T03:13:21Z-hockney.md`
 
 ### Commit Review
 
-**Commit:** 958a7d9 (refactor(ui): extract adapter boilerplate into C++17 template helpers)  
-**Author:** Keyser  
+**Commit:** 958a7d9 (refactor(ui): extract adapter boilerplate into C++17 template helpers)
+**Author:** Keyser
 **Scope:** UI adapter layer boilerplate elimination via template abstraction
 
 ### Validation Checks Performed
 
-1. **Build safety (zero warnings)**  
+1. **Build safety (zero warnings)**
    ✅ Unity build (`build-unity-verify-vcpkg`) compiled cleanly: `cmake --build . --clean-first` completed with zero warnings (clang `-Wall -Wextra -Werror` policy satisfied)
 
-2. **Test integrity**  
+2. **Test integrity**
    ✅ Full test suite passed: 2635 assertions, 901 test cases
 
-3. **RAYGUI_IMPLEMENTATION single-site invariant**  
+3. **RAYGUI_IMPLEMENTATION single-site invariant**
    ✅ `grep -r "RAYGUI_IMPLEMENTATION" app/` confirmed exactly ONE compiled site:
    - `app/ui/raygui_impl.cpp` defines it (line 20)
    - All `app/ui/generated/*_layout.h` headers contain comment disclaimers ("NO RAYGUI_IMPLEMENTATION")
    - All `app/ui/generated/standalone/*.h` headers contain `#define RAYGUI_IMPLEMENTATION` BUT these are C source files (.c/.h) in excluded directory — CMake globs only `app/ui/*.cpp` and `app/ui/adapters/*.cpp`, so standalone never compiles
 
-4. **Unity build safety**  
+4. **Unity build safety**
    ✅ Template headers (`adapter_base.h`, `end_screen_dispatch.h`) are header-only with `inline` functions and template definitions
    ✅ Adapter instances have unique names per file (anonymous namespace scoped):
    - `gameplay_adapter`, `title_adapter`, `paused_adapter`, `settings_adapter`, `level_select_adapter`, `game_over_adapter`, `song_complete_adapter`, `tutorial_adapter`
    ✅ Unity TU symbol check: `nm unity_*.cxx.o` shows template instantiations properly instantiated per-adapter (no ODR conflicts)
    ✅ `raygui_impl.cpp` explicitly excluded from unity batching (line 407-410 CMakeLists.txt)
 
-5. **C++17/C++20 compatibility**  
+5. **C++17/C++20 compatibility**
    ✅ Project standard: C++20 (CMakeLists.txt line 20)
    ✅ Adapter template uses C++17 `auto` template parameters (`template<typename LayoutState, auto InitFunc, auto RenderFunc>`) — valid in C++20
    ✅ Commit message claims "C++17 template helpers" which is accurate (feature origin) and compatible with project's C++20 requirement
 
-6. **Standalone generated output exclusion**  
+6. **Standalone generated output exclusion**
    ✅ `app/ui/generated/standalone/` contains 8 C source files (`.c`) + headers (`.h`) + README
    ✅ CMake glob patterns:
    - `file(GLOB UI_SOURCES CONFIGURE_DEPENDS app/ui/*.cpp)` — doesn't recurse
@@ -1324,7 +1324,7 @@ See `.squad/orchestration-log/2026-04-29T03:13:21Z-hockney.md`
 
 **Before:** 8 adapter files × ~30 lines each = ~240 lines of duplicated init/state-management/render boilerplate
 
-**After:**  
+**After:**
 - `adapter_base.h`: 44 lines (generic `RGuiAdapter<State, InitFunc, RenderFunc>` template)
 - `end_screen_dispatch.h`: 20 lines (shared button dispatcher for game_over/song_complete)
 - 8 adapters reduced to ~20 lines each (type alias + instance + 2 glue functions)
@@ -1403,5 +1403,93 @@ No revision required. Recommend merge to trunk.
 **Build Command Used:** `cmake --build build-unity-verify-vcpkg --parallel` (pre-configured directory with vcpkg toolchain at `/Users/yashasgujjar/vcpkg`).
 
 **Note on `build/` dir:** The plain `build/` directory is stale (no Makefile) — coordinators must use `build-unity-verify-vcpkg` for native validation, or reconfigure from scratch passing `-DCMAKE_TOOLCHAIN_FILE=/Users/yashasgujjar/vcpkg/scripts/buildsystems/vcpkg.cmake`.
+
+
+## 2026-04-29 — Settings Gear Click Fix + Standalone UI Cleanup + Vendored raygui Removal
+
+### Settings Gear Click Reliability
+Fixed title screen settings button (bottom-right gear, `#142#`) unresponsiveness under letterbox scaling.
+
+**Root cause:** raygui hit-testing used unadjusted window coordinates; UI renders in virtual 720×1280 space.
+
+**Solution:** Applied `SetMouseOffset(-ScreenTransform.offset)` + `SetMouseScale(1 / ScreenTransform.scale)` around screen-controller rendering in `ui_render_system`, restored defaults immediately after. Canonized pattern for all future raygui controls.
+
+**Files modified:** `app/systems/ui_render_system.cpp`, `app/ui/screen_controllers/title_screen_controller.cpp`, `app/ui/generated/title_layout.h`.
+
+**Validation:** 867 test cases, 2603 assertions, zero warnings. Settings navigation regression test added (`test_game_state_extended.cpp`).
+
+**Status:** ✅ APPROVED (Kujan)
+
+### Standalone UI Export Cleanup
+Deleted 17 committed standalone rguilayout exports from `app/ui/generated/standalone/`. These were dead surface; runtime UI now uses embeddable headers + screen controllers.
+
+**Policy formalized:** Scratch exports only under `build/rguilayout-scratch/` (auto-ignored). Docs + tooling updated to enforce. Active paths (`content/ui/screens/*.rgl`, `app/ui/generated/*_layout.h`, `app/ui/screen_controllers/`) untouched.
+
+**Validation:** Zero build/runtime reference breakage. All active files preserved.
+
+**Status:** ✅ APPROVED (Kujan)
+
+### Vendored raygui Removed; vcpkg Integration Complete
+Completed user directive to stop committing vendored raygui. Removed `app/ui/vendor/raygui.h` and integrated vcpkg-provided raygui throughout build system.
+
+**Changes:**
+- Added `raygui` to `vcpkg.json` dependencies
+- Updated CMake to resolve raygui via `find_path()` and apply as SYSTEM include on `shapeshifter_lib`
+- Switched all UI controllers and `app/ui/raygui_impl.cpp` to `#include <raygui.h>` (system include)
+- Retained `app/ui/raygui_impl.cpp` as minimal project-owned TU to own single RAYGUI_IMPLEMENTATION definition
+
+**Validation:** 867 test cases, 2603 assertions, zero warnings.
+
+**Status:** ✅ APPROVED (Kujan)
+
+### app/ui Root-Level Files Retention Audit
+Conducted comprehensive audit of `app/ui/*.cpp/.h` root-level files. Confirmed all are active and necessary for the build:
+- `raygui_impl.cpp` — sole RAYGUI_IMPLEMENTATION TU
+- `text_renderer.*` — used by game_loop and ui_render_system
+- `ui_loader.*` — powers screen JSON loading and layout cache builders
+- `ui_source_resolver.*` — used by UI tests and game-state validation
+- `level_select_controller.*` — wired into input_dispatcher and level-select tests
+- `ui_button_spawner.h` — used by game_state_system, game_loop, routing, and hitbox tests
+
+**Decision:** Do not delete any current root-level files; migration to screen_controllers is incremental and live infrastructure is still required.
+
+**Status:** ✅ DOCUMENTED
+
+**Decisions logged:** `2026-04-29T07-42-57Z-` (orchestration log)
+
+---
+
+
+## 2026-04-30 — Repo Pollution Cleanup: Scratch Build Dirs + Tracked CMake Artifacts
+
+**Task:** Remove stale scratch build directories and de-track generated CMake output that leaked into version control.
+
+**Actions taken:**
+- Deleted local scratch dirs: `build/`, `build-baer-336342/`, `build-hockney-audit/`, `build-keaton-273333/`, `build-keyser-ui/`, `build-unity-verify/`, `build-verify/` (all already covered by `.gitignore` patterns `build/` and `build-*/`).
+- `git rm -r --cached build_test_check/` — un-tracked 7 generated CMake files (CMakeCache.txt, CMakeConfigureLog.yaml, CompilerIdCXX artifacts, etc.) and deleted from working tree.
+- `git rm --cached build_cmake.txt` — un-tracked this file; it was clearly a captured `cmake -B build` vcpkg install log output, not intentional documentation. Deleted from working tree.
+- Added `/build_cmake.txt` and `/build_test_check/` to `.gitignore` so they cannot re-enter the index.
+- Preserved `build-unity-verify-vcpkg/` intact (the canonical vcpkg-backed build prefix; already ignored).
+
+**Rule to enforce going forward:** Never `git add` anything under a `build*` directory, or any `*_cmake.txt` / `*_output.txt` diagnostic files. These patterns are covered by `.gitignore` but agents must not force-add them.
+
+
+## 2026-04-30 — Unity Build Diagnosis: Individual .cpp compiles in build.sh are EXPECTED
+
+**Question:** Did the screen-controller/CMake cleanup break unity builds? Why does `build.sh` compile individual .cpp files?
+
+**Root cause:** Unity builds are intentionally OFF for native (non-Emscripten) platforms by design.
+
+**CMakeLists.txt logic (lines 28-33):**
+- `EMSCRIPTEN` → `SHAPESHIFTER_UNITY_BUILD` defaults `ON`
+- Non-Emscripten (macOS, Linux, Windows) → defaults `OFF`
+
+**`build.sh` behavior:** Does not pass `-DSHAPESHIFTER_UNITY_BUILD=ON`. Targets the plain `build/` directory. Cache confirms: `SHAPESHIFTER_UNITY_BUILD:BOOL=OFF`.
+
+**Verdict:** No bug. Screen-controller changes did not break unity. Individual `.cpp` compile lines are expected on native. The design intent is: incremental rebuilds matter more locally; unity is used to cut WASM compile time.
+
+**How to get unity builds natively:** Pass `-DSHAPESHIFTER_UNITY_BUILD=ON` to cmake, or use the pre-configured `build-unity-verify-vcpkg/` directory (cache has `SHAPESHIFTER_UNITY_BUILD:BOOL=ON`).
+
+**FAQ for future confusion:** If someone says "build.sh compiles individual .cpp files" — that is correct and intentional on macOS/native. Only `build-unity-verify-vcpkg` tests unity behavior.
 
 

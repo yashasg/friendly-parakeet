@@ -6,42 +6,6 @@
 - **Role:** Gameplay Engineer
 - **Joined:** 2026-04-26T02:07:46.544Z
 
-## Core Context
-
-- **Project:** A C++20 raylib/EnTT rhythm bullet hell game with song-driven obstacles and shape matching synced to music.
-- **Role:** Gameplay Engineer
-- **Joined:** 2026-04-26T02:07:46.544Z
-
-## Learnings
-
-- **EnTT collect-then-remove pattern:** Any `reg.remove<C>` where C is in the active view's component list is potential swap-and-pop UB. Always collect entities first, remove after. Static vectors avoid per-frame alloc.
-- **Structural view split for branching:** When an `any_of<T>` branch is the primary discriminator inside a view loop, split into two structural views (`with T` / `entt::exclude<T>`). This is both safer and gives EnTT better cardinality info.
-- **MissTag entities don't need Position:** Miss processing (energy drain, miss_count, chain reset) never reads position. The structural split lets the miss view drop Position from its component list entirely.
-- **Build workaround (worktree):** The 315 worktree doesn't have vcpkg_installed. Used symlink + explicit `-D*_DIR` flags to point CMake at the main worktree's built packages.
-- **Archetypes wording cleanup rule:** Keep historical test taxonomy tags like `[archetype]` if churn is noisy, but update all code/path comments and docs to canonical `app/entities/` factories.
-- **Archetype canonicalization:** When removing legacy folders/shims, always update docs and code comments to reflect the new canonical boundary. Document retained test taxonomy (e.g., `[archetype]` tags) to avoid confusion on future audits.
-
-## 2026-04-29: Archetype Wording Cleanup Validation
-
-**Task:** Clean stale doc/comment wording to reflect `app/entities/` as canonical path per Keyser audit and Keaton implementation.
-
-**Changes (docs/comments only, no behavior changes):**
-- `design-docs/architecture.md` Section 5:
-  - Added explicit note: reusable construction implemented by `app/entities/` factories (`create_player_entity`, `spawn_obstacle`)
-  - Removed stale repo-tree line implying `app/archetypes/` is current directory
-- `tests/test_obstacle_model_slice.cpp`:
-  - Reworded stale comments (removed wording implying duplicate archetype helpers or canonical `app/archetypes/` path)
-  - Updated local helper naming/comments to use entity-factory terminology
-  - Preserved `[archetype]` tags as acceptable historical test taxonomy
-
-**Validation:**
-- Focused grep search: zero remaining references to `app/archetypes/` canonical wording
-- `cmake --build build --target shapeshifter_tests`
-- `./build/shapeshifter_tests "[model_slice]"` — PASS (71 assertions, 20 test cases)
-- Zero compiler warnings
-
-**Status:** Wording cleanup complete; final review (Kujan) approved.
-
 ## 2026-04-27 — Issue #315 Closure (EnTT-safe scoring_system iteration)
 
 **Implementation complete; review approved; main branch integration validated.**
@@ -238,3 +202,11 @@ Next: Await merge approval.
 - Isolated menu/end-screen input mapping behind focused routing boundary `game_state_handle_end_screen_press(...)` (`app/input/game_state_end_screen_routing.cpp`), invoked by `game_state_handle_press`.
 - Preserved behavior and timing guards (`0.4s` end-screen input, `0.5s` SongComplete choice application).
 - Validation: `cmake --build build-ralph --target shapeshifter_tests`; `./build-ralph/shapeshifter_tests "[gamestate]"`; `"[haptic]"`; `"[high_score]"`; `"[redfoot]"`; full `./build-ralph/shapeshifter_tests` (pass, exit 0).
+
+### 2026-04-29 — First shape-switch stutter audit/fix
+
+- First tap-to-shape path was doing cold work: `hit_test_handle_input()` called `ensure_active_tags_synced()`, which structurally emplaced `ActiveTag` on the three Playing shape buttons on the first tap after `setup_play_session()`.
+- `UIActiveCache` can also remain `valid=true, phase=Playing` across `reg.clear()` on restart, so setup must invalidate the cache whenever it respawns Playing shape buttons.
+- Fixed by invalidating and syncing `ActiveTag` immediately after `enter_playing_phase()` in `setup_play_session()`, moving that ECS structural churn out of the first input frame.
+- Also moved other cold first-input work earlier: `wire_input_dispatcher()` now warms Input/Go/ButtonPress event queues, and iOS haptic generators are warmed at startup / when haptics are re-enabled so `ShapeShift` feedback does not allocate its generator on the first shape press.
+- Validation: focused `[haptic]`, `[input_pipeline]`, `[entt_dispatcher]`, `[gamestate][play_session]`, `[player][rhythm]`; full `shapeshifter_tests`; `shapeshifter` target build; `git diff --check`.
