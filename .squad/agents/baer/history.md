@@ -7,24 +7,6 @@
 - **Role:** Test Engineer
 - **Joined:** 2026-04-26T02:12:00.632Z
 
-## 2026-04-29 — Settings Transition Regression Test
-
-**Task:** Add headless regression test for Settings navigation (title gear click → Settings screen).
-
-**Approach:** Headless proxy test (no GUI window, no injectable seam for `GuiButton` state). Test sets `transition_pending=true`, `next_phase=Settings` directly, then runs `game_state_system` + `ui_navigation_system` to verify contract is consumed and routing reaches `ActiveScreen::Settings`.
-
-**File created:** Test case added to `tests/test_game_state_extended.cpp`, tagged as regression.
-
-**Why this approach:** Deterministic in CI, exercises real production systems in same order as runtime fixed-step. Avoids new adapters or JSON/ECS UI render loops.
-
-**Known gap:** Actual raygui button state (`GuiButton` click) remains untested in headless. Manual smoke test on desktop build required for production validation.
-
-**Status:** ✅ APPROVED (Kujan), integrated with Hockney's settings-click-fix (related PRs).
-
-**Decisions logged:** `2026-04-29T07-30-55Z-baer.md`
-
----
-
 ## 2026-04-28 — Issues #208 and #217 Implemented
 
 ### #208 — popup_display_system coverage
@@ -489,3 +471,43 @@ Next: Await merge approval.
 - This locks down the non-graphical contract between `title_screen_controller` output state, `game_state_system` transition consumption, and `ui_navigation_system` screen activation.
 - **Testability gap:** we still cannot deterministically unit-test the actual `GuiButton` click for `SettingsButtonPressed` in `render_title_screen_ui()` because the controller has no injectable raygui input seam and depends on live GUI calls.
 - Best validation proxy remains: (1) this headless transition-contract test, plus (2) manual smoke in desktop build confirming gear click sets Title → Settings.
+
+---
+
+### 2026-04-29 — macOS Startup/Shutdown Invalid-Free Isolation
+
+**Task:** Independently reproduce the `bash run.sh` macOS allocator abort (`pointer being freed was not allocated`) without manual gameplay.
+
+**Reproduction found:**
+- LLDB automation can force `game_loop_should_quit()` to return true on the first quit check, so runtime executes `game_loop_init()` then `game_loop_shutdown()` without any manual click or gameplay.
+- The crash reproduces before gameplay and before obstacle spawning.
+- Backtrace: `UnloadMaterial()` → `camera::ShapeMeshes::release()` → `camera::shutdown()` → `game_loop_shutdown()` → `main`.
+
+**Root-cause evidence:**
+- `camera_system.cpp::unload_shape_meshes()` calls `UnloadShader(sm.material.shader)` and then `UnloadMaterial(sm.material)`.
+- raylib 5.5 `UnloadMaterial()` already unloads any non-default shader before freeing material maps.
+- Runtime log shows shader ID 6 unloaded twice, then macOS aborts in `UnloadMaterial()`.
+
+**Existing coverage assessment:**
+- `[gpu_resource_lifecycle]` covers copy/move/default-unowned RAII invariants only.
+- `[model_slice][headless_guard]` covers `build_obstacle_model()` no-op behavior without `InitWindow()`.
+- These headless tests pass and are useful, but they cannot catch live GPU-resource startup/shutdown invalid frees.
+- `tests/test_lifecycle.cpp` only covers `game_loop_should_quit()` and is excluded from the current CMake test source list; it also does not initialize raylib.
+
+**Test-only addition:**
+- Added opt-in target `shapeshifter_startup_shutdown_smoke` with source `tests/smoke/startup_shutdown_smoke.cpp`.
+- Command:
+  ```bash
+  cmake --build build --target shapeshifter_startup_shutdown_smoke
+  ./build/shapeshifter_startup_shutdown_smoke --frames 0
+  ```
+- The target is `EXCLUDE_FROM_ALL` because it opens a real raylib window and is not headless-CI safe.
+- `--frames 0` isolates init/shutdown; `--frames 1` also exercises one render frame before shutdown.
+
+**Validation:**
+- Smoke target builds warning-free.
+- Smoke run currently fails with abort status 134, as expected until the production teardown bug is fixed.
+- Focused headless tests: `[gpu_resource_lifecycle],[model_slice][headless_guard]` → 8 test cases / 12 assertions, all pass.
+- Full non-bench suite: 777 test cases / 2217 assertions, all pass.
+
+**Decision filed:** `.squad/decisions/inbox/baer-startup-shutdown-smoke.md`

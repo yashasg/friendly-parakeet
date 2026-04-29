@@ -77,7 +77,7 @@ Rhythm obstacles that escape the collision window (e.g. during jump peak) reach 
 - **Task:** Fix `apply_lanepush_ramp` to disable early injection for easy difficulty.
 - **Finding:** Rabin's initial implementation set `LANEPUSH_RAMP["easy"]` to a non-None config (start_progress, min_gap, max_count) that injected 1.6–4.1% lane_push into easy beatmaps.
 - **Contract violation:** `DIFFICULTY_KINDS["easy"] = {"shape_gate"}` explicitly excludes lane_push. Also violates Saul's #135 design target ("easy shape_gate only").
-- **Fix applied:** 
+- **Fix applied:**
   1. Set `LANEPUSH_RAMP["easy"] = None`
   2. `apply_lanepush_ramp` now skips easy entirely
   3. `balance_easy_shapes` remains the only variety pass for easy (produces 3-shape palettes with dominant ≤60%)
@@ -99,7 +99,7 @@ Rhythm obstacles that escape the collision window (e.g. during jump peak) reach 
 
 **Fix:** Corrected 4 values in `window_scale_for_tier()`. Updated 4 stale unit tests. Added 4 regression tests (2 value/ordering in `test_helpers_and_functions.cpp`, 2 integration in `test_shape_window_extended.cpp`). All compile with `-Wall -Wextra -Werror`.
 
-**Commit:** 7aa899c  
+**Commit:** 7aa899c
 **Comment:** https://github.com/yashasg/friendly-parakeet/issues/223#issuecomment-4323253652
 
 **Learning: Always trace the full scale path before assuming a system is correct.** The issue said "system is correct" but the collision_system had the real shortening logic (`window_start` adjustment) that made it true — the `shape_window_system`'s `> 1.0f` guard was never needed for the spec's collapse behavior.
@@ -125,7 +125,7 @@ Rhythm obstacles that escape the collision window (e.g. during jump peak) reach 
 - **`scoring_system.cpp` had agent-added code not in git** (haptics check `if (burnout.zone == BurnoutZone::Dead)`). When modifying existing systems, always view the real file on disk, not just the git version.
 - **LanePush must be excluded from every scoring ladder** (chain, popup, `best_burnout`). Easy to miss because the entity passes through `scoring_system` with `base_points=0` but still triggers chain increment.
 
-**Commit:** e82b8d1  
+**Commit:** e82b8d1
 **Tests:** 11 new `[burnout_bank]` tests, all pass. 49 assertions in `[burnout_bank],[scoring],[player],[player_rhythm]` pass.
 
 
@@ -177,7 +177,46 @@ Rhythm obstacles that escape the collision window (e.g. during jump peak) reach 
 - Both passes use `static std::vector<>` with `.clear()` for zero per-frame heap allocation
 - All `reg.remove<>` on view components happen after the view is exhausted
 
-**Commit:** fa97d7e  
+**Commit:** fa97d7e
 **Tests:** 2430 assertions (770 test cases) — all pass, zero build warnings.
+
+
+## Core Context
+
+- **Project:** A C++20 raylib/EnTT rhythm bullet hell game with song-driven obstacles and shape matching synced to music.
+- **Role:** Gameplay Engineer
+- **Joined:** 2026-04-26T02:07:46.544Z
+
+
+## Learnings
+
+- **EnTT collect-then-remove pattern:** Any `reg.remove<C>` where C is in the active view's component list is potential swap-and-pop UB. Always collect entities first, remove after. Static vectors avoid per-frame alloc.
+- **Structural view split for branching:** When an `any_of<T>` branch is the primary discriminator inside a view loop, split into two structural views (`with T` / `entt::exclude<T>`). This is both safer and gives EnTT better cardinality info.
+- **MissTag entities don't need Position:** Miss processing (energy drain, miss_count, chain reset) never reads position. The structural split lets the miss view drop Position from its component list entirely.
+- **Build workaround (worktree):** The 315 worktree doesn't have vcpkg_installed. Used symlink + explicit `-D*_DIR` flags to point CMake at the main worktree's built packages.
+- **Archetypes wording cleanup rule:** Keep historical test taxonomy tags like `[archetype]` if churn is noisy, but update all code/path comments and docs to canonical `app/entities/` factories.
+- **Archetype canonicalization:** When removing legacy folders/shims, always update docs and code comments to reflect the new canonical boundary. Document retained test taxonomy (e.g., `[archetype]` tags) to avoid confusion on future audits.
+
+
+## 2026-04-29: Archetype Wording Cleanup Validation
+
+**Task:** Clean stale doc/comment wording to reflect `app/entities/` as canonical path per Keyser audit and Keaton implementation.
+
+**Changes (docs/comments only, no behavior changes):**
+- `design-docs/architecture.md` Section 5:
+  - Added explicit note: reusable construction implemented by `app/entities/` factories (`create_player_entity`, `spawn_obstacle`)
+  - Removed stale repo-tree line implying `app/archetypes/` is current directory
+- `tests/test_obstacle_model_slice.cpp`:
+  - Reworded stale comments (removed wording implying duplicate archetype helpers or canonical `app/archetypes/` path)
+  - Updated local helper naming/comments to use entity-factory terminology
+  - Preserved `[archetype]` tags as acceptable historical test taxonomy
+
+**Validation:**
+- Focused grep search: zero remaining references to `app/archetypes/` canonical wording
+- `cmake --build build --target shapeshifter_tests`
+- `./build/shapeshifter_tests "[model_slice]"` — PASS (71 assertions, 20 test cases)
+- Zero compiler warnings
+
+**Status:** Wording cleanup complete; final review (Kujan) approved.
 
 

@@ -16,6 +16,7 @@
 #include "../util/beat_map_loader.h"
 #include "../util/rhythm_math.h"
 #include "../components/input_events.h"
+#include "../input/input_routing.h"
 #include "../entities/camera_entity.h"
 #include "../entities/player_entity.h"
 #include "../constants.h"
@@ -185,4 +186,6 @@ void setup_play_session(entt::registry& reg) {
     // Transition game state
     auto& gs = reg.ctx().get<GameState>();
     enter_playing_phase(gs);
+    invalidate_active_tag_cache(reg);
+    ensure_active_tags_synced(reg);
 }

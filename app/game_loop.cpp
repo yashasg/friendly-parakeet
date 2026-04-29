@@ -28,6 +28,7 @@
 #include "util/settings_persistence.h"
 #include "components/high_score.h"
 #include "util/high_score_persistence.h"
+#include "platform/haptics_backend.h"
 
 #include <raylib.h>
 #include <algorithm>
@@ -128,6 +129,9 @@ void game_loop_init(entt::registry& reg,
             settings_persistence.last_load = path_result;
         }
         log_persistence_result("settings load", settings_persistence.last_load);
+        if (settings.haptics_enabled) {
+            platform::haptics::warmup();
+        }
         reg.ctx().emplace<SettingsState>(settings);
         reg.ctx().emplace<SettingsPersistence>(settings_persistence);
     }

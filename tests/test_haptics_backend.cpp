@@ -22,3 +22,9 @@ TEST_CASE("haptics backend maps light and medium events deterministically", "[ha
     CHECK(score.style == platform::haptics::ImpactStyle::Medium);
     CHECK(score.pulse_count == 1);
 }
+
+TEST_CASE("haptics backend warmup is safe to call repeatedly", "[haptic]") {
+    platform::haptics::warmup();
+    platform::haptics::warmup();
+    SUCCEED("haptic warmup completed");
+}

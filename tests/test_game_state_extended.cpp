@@ -256,6 +256,9 @@ TEST_CASE("game_state: game_over restart enters fresh play session on next tick"
     reg.emplace<ObstacleTag>(stale);
     reg.emplace<Position>(stale, 0.0f, 0.0f);
     reg.ctx().get<ScoreState>().score = 3210;
+    auto& cache = reg.ctx().get<UIActiveCache>();
+    cache.valid = true;
+    cache.phase = GamePhase::Playing;
 
     game_state_system(reg, 0.016f);
     REQUIRE(gs.transition_pending);
@@ -270,7 +273,7 @@ TEST_CASE("game_state: game_over restart enters fresh play session on next tick"
     int shape_button_count = 0;
     for (auto entity : reg.view<ShapeButtonTag>()) {
         ++shape_button_count;
-        (void)entity;
+        CHECK(reg.all_of<ActiveTag>(entity));
     }
     CHECK(shape_button_count == 3);
     CHECK(reg.ctx().get<ScoreState>().score == 0);

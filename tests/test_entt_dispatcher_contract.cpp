@@ -239,6 +239,16 @@ TEST_CASE("dispatcher: enqueue ButtonPressEvent without update delivers nothing"
     CHECK(counter.count == 0);
 }
 
+TEST_CASE("wire_input_dispatcher prewarms event queues without leaving pending events",
+          "[entt_dispatcher][input_pipeline]") {
+    auto reg = make_registry();
+    auto& dispatcher = reg.ctx().get<entt::dispatcher>();
+
+    CHECK(dispatcher.size<InputEvent>() == 0);
+    CHECK(dispatcher.size<GoEvent>() == 0);
+    CHECK(dispatcher.size<ButtonPressEvent>() == 0);
+}
+
 // ── R7: Stale-event discard across phase transitions ──────────────────────
 //
 // R7 contract: queued dispatcher events must not cause effects in the wrong

@@ -2,280 +2,9 @@
 
 *Last merged: 2026-04-29T10:10:30Z*
 
-### Archetype Removal and Canonicalization Initiative (2026-04-29)
-
-**Initiative:** Remove legacy `app/archetypes/` and establish `app/entities/` as canonical construction boundary. Agents: Keyser (Audit), Keaton (Impl), McManus (Wording), Kujan (Review).
-
-#### Archetype Removal Audit Decision (Keyser)
-
-- **Date:** 2026-04-29
-- **Author:** Keyser (Lead Architect)
-- **Status:** DECIDED — removal/migration is architecturally correct
-
-**Verdict:** `app/archetypes/` is no longer a canonical runtime boundary for player/obstacle construction. The live construction seam is `app/entities/` (`create_player_entity`, `spawn_obstacle`).
-
-For player construction specifically, `app/archetypes/player_archetype.h` was a compatibility shim to `../entities/player_entity.h`; keeping the archetypes folder for that shim adds indirection without adding ownership.
-
-**Architectural rationale:**
-1. Single ownership boundary already exists in entities:
-   - Runtime setup uses `create_player_entity` from `app/entities/player_entity.h` (play-session path)
-   - Beat scheduling uses `spawn_obstacle` from `app/entities/obstacle_entity.h`
-2. ECS contract is entity-factory based now:
-   - Component bundle contracts are documented and tested at entity factory call sites
-   - Tests already target entity factories directly (`entities/player_entity.h`, `entities/obstacle_entity.h`)
-3. Dead namespace risk:
-   - Retaining a folder with forwarding headers or no sources invites stale includes and false architecture signals
-
-**Concrete migration/removal actions:**
-1. Remove player archetype shim surface: Delete `app/archetypes/player_archetype.h`
-2. Keep all player includes on entities path: Required include in tests `#include "entities/player_entity.h"`
-3. Build wiring cleanup: Remove `ARCHETYPE_SOURCES` glob and usage from `shapeshifter_lib`
-4. Docs cleanup: Update `design-docs/architecture.md` and stale comments referencing "canonical app/archetypes path"
-
-**Validation target:** `cmake -B build -S . -Wno-dev && cmake --build build --target shapeshifter_tests && ./build/shapeshifter_tests "[archetype]"` — expected: pass with zero warnings and no `#include "archetypes/..."` references
-
-#### Archetype Removal Implementation (Keaton)
-
-- **Date:** 2026-04-29
-- **Author:** Keaton (C++ Performance Engineer)
-- **Status:** IMPLEMENTED
-
-**Changes:**
-- Verified `app/archetypes/` only contained `player_archetype.h`, a shim that just included `entities/player_entity.h`
-- Removed the shim header and let tests include `entities/player_entity.h` directly
-- Removed stale `ARCHETYPE_SOURCES` CMake glob (`app/archetypes/*.cpp`) from `CMakeLists.txt`; no remaining archetype sources
-- Kept runtime behavior unchanged (`create_player_entity` remains in `app/entities/player_entity.cpp`)
-
-**Validation:**
-- `cmake -B build -S . -Wno-dev && cmake --build build`
-- `./build/shapeshifter_tests "[archetype][player]"` — PASS (118 assertions, 24 test cases)
-- `./build/shapeshifter_tests "[archetype]"` — PASS
-- Zero compiler warnings
-
-#### Archetype Wording Cleanup (McManus)
-
-- **Date:** 2026-04-29
-- **Owner:** McManus (Gameplay Engineer)
-- **Scope:** docs/tests wording only (no behavior changes)
-
-**Decision:** Treat `app/entities/` as the canonical reusable construction surface in docs and code comments. Retain `[archetype]` test tags as historical taxonomy where renaming would add noise without value.
-
-**Applied updates:**
-- `design-docs/architecture.md` Section 5:
-  - Added explicit note: reusable construction implemented by `app/entities/` factories (`create_player_entity`, `spawn_obstacle`)
-  - Removed stale repo-tree line implying `app/archetypes/` is current directory
-- `tests/test_obstacle_model_slice.cpp`:
-  - Reworded stale comments (removed wording implying duplicate archetype helpers or canonical `app/archetypes/` path)
-  - Updated local helper naming/comments to use entity-factory terminology
-  - Left behavior and assertions untouched
-  - Retained `[archetype]` tags as acceptable test taxonomy
-
-**Validation:**
-- Focused grep search over touched files: zero remaining `app/archetypes/` canonical wording
-- `cmake --build build --target shapeshifter_tests`
-- `./build/shapeshifter_tests "[model_slice]"` — PASS (71 assertions, 20 test cases)
-- Zero compiler warnings
-
-#### Archetype Removal Final Review (Kujan)
-
-- **Date:** 2026-04-29
-- **Author:** Kujan (Reviewer)
-- **Status:** APPROVED
-
-**Verdict:** The `app/archetypes/` removal and `app/entities/` canonicalization patch is **APPROVED**.
-
-**Evidence:**
-1. `app/archetypes/` is absent — directory does not exist in the working tree
-2. Zero stale references — grep found no matches for: `app/archetypes`, `archetypes/`, `ARCHETYPE_SOURCES`, `player_archetype`, canonical wording, or duplicate archetype helper patterns
-3. CMake wiring correct — `ENTITY_SOURCES` glob (`app/entities/*.cpp`) is present and wired into `shapeshifter_lib`; no `ARCHETYPE_SOURCES` glob remains
-4. Test includes correct — `tests/test_player_archetype.cpp` includes `entities/player_entity.h` directly; test case titles updated to `player_entity:` prefix; `[archetype]` tags retained (acceptable taxonomy)
-5. Docs clean — `design-docs/architecture.md` Section 5 body reads `app/entities/` as canonical path; section heading "Entity Archetypes" is acceptable concept terminology (not a path reference)
-6. Tests pass — `[archetype]` tag: 118 assertions, 24 test cases — all pass. `[model_slice]` tag: 71 assertions, 20 test cases — all pass. Build: zero warnings.
-
-**No blocking findings.**
-
----
-
-### UI Cleanup Initiative (2026-04-29)
-
-**Initiative:** Consolidate raygui implementation ownership, audit root UI surface, remove runtime-dead files. Agents: Hockney (Platform), Keyser (Audit), Kujan (Review).
-
-#### Raygui Implementation: Compile Definition Owner
-
-- **Date:** 2026-04-29
-- **Owner:** Hockney (Platform)
-- **Scope:** CMake + unity-build-safe ownership of `RAYGUI_IMPLEMENTATION`
-## Decision
-Use a **real screen-controller TU** as raygui implementation owner instead of a dedicated `app/ui/raygui_impl.cpp` file.
-Implemented shape:
-- Excluded `app/ui/raygui_impl.cpp` from `UI_SOURCES` and deleted the file.
-- Set source properties on `app/ui/screen_controllers/title_screen_controller.cpp`:
-  - `COMPILE_DEFINITIONS RAYGUI_IMPLEMENTATION`
-  - `SKIP_UNITY_BUILD_INCLUSION TRUE`
-## Why
-- raygui is header-only and requires exactly one implementation owner.
-- Source-level compile definition keeps ownership explicit without a dedicated glue TU.
-- `SKIP_UNITY_BUILD_INCLUSION` prevents macro leakage/redefinition hazards in unity amalgamated TUs.
-## Evidence
-- Native validation (required command):
-  - `cmake -B build -S . -Wno-dev && cmake --build build && ./build/shapeshifter_tests '~[bench]'`
-  - Result: pass, all tests pass.
-- Unity validation (vcpkg-backed cache):
-  - `cmake -B build-unity-verify-vcpkg -S . -Wno-dev && cmake --build build-unity-verify-vcpkg && ./build-unity-verify-vcpkg/shapeshifter_tests '~[bench]'`
-  - Result: pass, all tests pass.
-  - Build output shows `Unity/unity_*.cxx.o` plus standalone `title_screen_controller.cpp.o`.
-  - `build-unity-verify-vcpkg/compile_commands.json` contains `-DRAYGUI_IMPLEMENTATION` exactly once.
-## Follow-up
-- Keep this pattern documented for future single-header libraries needing one implementation site under unity builds.
-
-#### Raygui Keep Decision (Audit)
-
-- **Context:** User challenged whether `raygui_impl.cpp` is redundant because it only defines `RAYGUI_IMPLEMENTATION`.
-- **Evidence gathered:**
-  - `build/compile_commands.json` and `build-unity-verify-vcpkg/compile_commands.json` contain no `-DRAYGUI_IMPLEMENTATION` compiler definition.
-  - vcpkg install provides `build/vcpkg_installed/arm64-osx/include/raygui.h` only; no `raygui` static/shared library is installed to provide symbols.
-  - Removal probe (temporary rename of `app/ui/raygui_impl.cpp` + configure/build) fails at link with missing symbols (`_GuiButton`, `_GuiLabel`, `_GuiSetStyle`, `_GuiGetStyle`, `_GuiSetAlpha`, etc.).
-  - Global define probe (`-DRAYGUI_IMPLEMENTATION`) fails under unity build with redefinitions (`guiIcons`, `guiState`, `GuiPropertyElement`, etc.) because raygui implementation section is not safe to include multiple times.
-- **Decision:** Keep dedicated single implementation TU (`app/ui/raygui_impl.cpp`) and keep unity exclusion for that file.
-- **Validation:** `cmake -B build -S . -Wno-dev && cmake --build build && ./build/shapeshifter_tests '~[bench]'` passes after probes.
-
----
-
-#### Root UI Cleanup: Live Dependencies Classification
-
-## Decision
-Treat `app/ui/ui_source_resolver.cpp` as a **test-only UI utility** (not a runtime dependency of the active rguilayout screen-controller path). Keep it compiled for test targets, but remove it from the runtime game library source set.
-## Why
-- Runtime UI now renders via `content/ui/screens/*.rgl` -> generated layout headers -> screen controllers.
-- `ui_source_resolver` has no runtime call sites in `app/` rendering/navigation paths and is only referenced by UI/state validation tests.
-- Keeping it in runtime sources creates misleading architecture surface and unnecessary linkage.
-## Implementation
-- Added `list(FILTER UI_SOURCES EXCLUDE REGEX "(^|/)ui_source_resolver\\.cpp$")` in `CMakeLists.txt`.
-- Added `app/ui/ui_source_resolver.cpp` to `shapeshifter_tests` source list.
-- Removed dead disabled legacy test file `tests/test_ui_spawn_malformed.cpp`.
-## Validation
-- Build + tests pass: `cmake -B build -S . -Wno-dev && cmake --build build && ./build/shapeshifter_tests '~[bench]'`.
-- Search verification in code/build paths (`app/`, `tests/`, `CMakeLists.txt`) shows no references to deleted spawn path symbols (`spawn_ui_elements`), vendored UI path (`app/ui/vendor`), standalone generated sources, or adapter path.
-
-#### Independent Audit: Confirm Classification & Guardrails
-
-## Summary
-The branch has correctly removed JSON/ECS entity-spawn rendering (`spawn_ui_elements`) and adapter wiring from runtime UI render/navigation. Current runtime is screen-controller-driven with cache-only JSON reads at screen transition boundaries.
-## Keep (still live)
-- `app/ui/ui_loader.cpp/.h` loader + cache + overlay APIs (`load_ui`, `ui_load_screen`, `build_ui_element_map`, `build_hud_layout`, `build_level_select_layout`, `ui_load_overlay`, `build_overlay_layout`)
-- `app/ui/text_renderer.cpp/.h` (`text_init_default`, `text_draw`, `text_shutdown`)
-- `app/ui/ui_button_spawner.h` (menu hit targets)
-- `app/ui/level_select_controller.cpp/.h` (dispatcher listeners + diff-button relayout)
-- `app/ui/screen_controllers/*`
-## Safe follow-up cleanup candidates
-1. Remove test-only legacy dead surface in a dedicated PR:
-   - `app/ui/ui_source_resolver.cpp/.h` (runtime-dead)
-   - `app/components/ui_element.h` (runtime-dead)
-   - `tests/test_ui_spawn_malformed.cpp` (disabled legacy tests)
-2. Remove stale/unused APIs/comments:
-   - `text_width()` if no planned use
-   - `init_*_screen_ui()` declarations if lifecycle pre-init is not planned
-   - stale `ui_loader.cpp` comment claiming screen load also spawns entities
-3. Delete empty `app/ui/vendor/` directory.
-## Must-not-break guardrails
-- No reintroduction of adapter path (`app/ui/adapters/*`)
-- No reintroduction of JSON->ECS UI render loops
-- Keep `ui_render_system` as single screen-controller switchpoint
-- Keep generated standalone exports commit-free (scratch-only policy)
-
----
-
-#### Runtime-Dead Removal: Test-Only Components
-
-## Context
-A second-pass audit confirmed `app/ui/ui_source_resolver.*` and `app/components/ui_element.h` had no runtime callers after rguilayout screen-controller migration. Their remaining usage was test-only, validating legacy JSON/ECS dynamic-text paths no longer executed by production UI rendering.
-## Decision
-Delete `ui_source_resolver.*` and `ui_element.h` from `app/`, and retire resolver-only tests. Keep only runtime-live tests and gameplay-state assertions.
-## Why
-Keeping dead runtime files in `app/` misrepresents the active architecture and creates maintenance drag. Tests that exercised removed JSON dynamic-source binding were not protecting live behavior.
-## Guardrails respected
-- Kept live dependencies: `ui_loader`, `text_renderer`, `ui_button_spawner`, level select + all screen controllers, navigation/render systems.
-- Did not reintroduce adapters, legacy JSON/ECS rendering, `spawn_ui_elements`, standalone exports, vendored raygui, or `app/ui/raygui_impl.cpp`.
-## Validation
-`cmake -B build -S . -Wno-dev && cmake --build build && ./build/shapeshifter_tests '~[bench]'` passed.
-Search proof in app/tests/CMake: no references to `ui_source_resolver`, legacy `UIElement*` components, `spawn_ui_elements`, `app/ui/vendor`, or generated standalone exports.
-
----
-
-### Vendored raygui Removed; vcpkg Integration Complete (2026-04-29)
-
-**Owners:** Hockney (Platform Engineering), Kujan (Review)  
-**Status:** APPROVED & IMPLEMENTED
-
-Deleted committed vendored raygui header (`app/ui/vendor/raygui.h`) and integrated vcpkg-provided raygui throughout the build system.
-
-**Changes:**
-- Added `raygui` dependency to `vcpkg.json`
-- Updated `CMakeLists.txt` to resolve `raygui.h` via `find_path()` and apply as SYSTEM include on `shapeshifter_lib`
-- Changed all includes from `#include "raygui.h"` to `#include <raygui.h>` across UI controllers and `app/ui/raygui_impl.cpp`
-- Retained `app/ui/raygui_impl.cpp` as minimal project-owned TU to own the sole `RAYGUI_IMPLEMENTATION` definition (vcpkg raygui is header-only)
-
-**Rationale:**
-- User directive (2026-04-29T07:33:37Z): do not commit vendored raygui when vcpkg provides it
-- Maintains zero-warning build without requiring source duplication
-- Canonizes single-TU pattern for RAYGUI_IMPLEMENTATION across all build targets
-
-**Validation:**
-- Full non-bench test suite: 867 test cases pass, 2603 assertions
-- Zero compilation warnings
-- No regressions in any system
-- All 8 screen controllers functional
-
-**Non-blocking follow-up items:**
-- `tools/rguilayout/SUMMARY.md` lines 76–78, 81–88, 237 contain stale "future work" language; update status to ✅ Resolved
-- `design-docs/rguilayout-portable-c-integration.md` line 283: update example `#include "raygui.h"` to `#include <raygui.h>` for consistency
-
----
-
-### Settings Gear Click Reliability — Letterbox Hit-Mapping (2026-04-29)
-
-**Owners:** Hockney (Platform Engineering), Baer (Test), Kujan (Review)  
-**Status:** APPROVED & IMPLEMENTED
-
-The title screen settings gear (bottom-right, `#142#` icon) was unresponsive due to raygui hit-testing using unadjusted window coordinates when UI renders in fixed 720×1280 virtual space under letterboxing.
-
-**Solution:** Applied `SetMouseOffset(-ScreenTransform.offset)` and `SetMouseScale(1 / ScreenTransform.scale)` around screen-controller/raygui rendering in `ui_render_system`, then restored defaults immediately after. This canonizes the pattern for all future raygui controls without per-controller changes or reintroducing JSON/ECS UI render loops.
-
-**Validation:**
-- Full non-bench test suite: 867 test cases pass, 2603 assertions
-- Zero compilation warnings
-- No regressions in `input_system` (uses independent `to_vx`/`to_vy` lambdas)
-- Settings navigation regression test added to `test_game_state_extended.cpp` (headless proxy approach)
-
-**Future scope:** Title Settings dispatch wiring (separate PR), additional screen layout migrations (incremental rollout per screen).
-
----
-
-### Standalone rguilayout Exports: Commit-Free, Scratch-Only Policy (2026-04-29)
-
-**Owners:** Hockney (Platform Engineering), Kujan (Review)  
-**Status:** APPROVED & IMPLEMENTED
-
-Deleted 17 committed standalone rguilayout exports from `app/ui/generated/standalone/` (9 screens × `.c`, `.h`, README). These were dead surface contamination; the runtime UI path is now embeddable headers + screen controllers.
-
-**Policy:** 
-- **Commit:** `content/ui/screens/*.rgl` (authoring source), `app/ui/generated/*_layout.h` (embeddable headers), `app/ui/screen_controllers/*.cpp` (runtime behavior)
-- **Do NOT commit:** Standalone rguilayout exports; these go to scratch-only `build/rguilayout-scratch/` (auto-ignored by `.gitignore`)
-- **Tooling:** `tools/rguilayout/generate_embeddable.sh` writes scratch output with explicit "do not commit" warning
-- **Docs:** `design-docs/rguilayout-portable-c-integration.md` rule #6 + `INTEGRATION.md` + `SUMMARY.md` all formalize scratch-only requirement
-
-**Validation:**
-- Zero references to `app/ui/generated/standalone` in any `.cpp`, `.h`, `CMakeLists.txt`
-- All 8 active `app/ui/generated/*_layout.h` headers present
-- All 8 `content/ui/screens/*.rgl` authoring files present
-- All screen controllers intact
-- 867 test cases pass, 2603 assertions
-
----
-
 ### #167 — Bank-on-Action Burnout Multiplier (2026)
 
-**Owners:** Saul (design), McManus (implementation)  
+**Owners:** Saul (design), McManus (implementation)
 **Status:** IMPLEMENTED
 
 Burnout multiplier is snapshotted onto obstacle entities (`BankedBurnout` component) at the moment the player commits a qualifying input (shape press or lane change), not at geometric collision time. `scoring_system` reads `BankedBurnout::multiplier` instead of live `BurnoutState::zone`.
@@ -297,14 +26,14 @@ Any `reg.ctx().find<T>()` or `reg.ctx().get<T>()` call inside a `view.each()` lo
 
 ### 1. `.squad/` ship-gate narrowed to stateful subdirs
 
-**File:** `.squad/templates/workflows/squad-preview.yml`  
-**Decision:** The `Check no AI-team state files are tracked` step now checks specific stateful subdirectories (`.squad/agents/`, `.squad/decisions/`, `.squad/identity/`, `.squad/log/`, `.squad/orchestration-log/`, `.squad/sessions/`, `.squad/casting/`) instead of the entire `.squad/` tree. `.squad/templates/**` is explicitly permitted to be tracked.  
+**File:** `.squad/templates/workflows/squad-preview.yml`
+**Decision:** The `Check no AI-team state files are tracked` step now checks specific stateful subdirectories (`.squad/agents/`, `.squad/decisions/`, `.squad/identity/`, `.squad/log/`, `.squad/orchestration-log/`, `.squad/sessions/`, `.squad/casting/`) instead of the entire `.squad/` tree. `.squad/templates/**` is explicitly permitted to be tracked.
 **Rationale:** Broad `.squad/` check broke any repo that legitimately tracks squad templates (like this one). Stateful state must not ship; template content can.
 
 ### 2. TEMPLATE header added to all three workflow templates
 
-**Files:** `squad-ci.yml`, `squad-preview.yml` (implicitly), `squad-docs.yml`  
-**Decision:** Added `# TEMPLATE — ...` comment block at the top of `squad-ci.yml` (the most likely to be confused with a live workflow) explaining that GitHub Actions does not execute files under `.squad/templates/workflows/` and they must be copied to `.github/workflows/`.  
+**Files:** `squad-ci.yml`, `squad-preview.yml` (implicitly), `squad-docs.yml`
+**Decision:** Added `# TEMPLATE — ...` comment block at the top of `squad-ci.yml` (the most likely to be confused with a live workflow) explaining that GitHub Actions does not execute files under `.squad/templates/workflows/` and they must be copied to `.github/workflows/`.
 **Rationale:** GitHub Actions' discovery is strictly `.github/workflows/` scoped. Without the comment, a new contributor could expect these templates to run automatically.
 
 ### 3. `entt::enum_as_bitmask` is the right replacement for `ActiveInPhase.phase_mask` (PENDING)
@@ -312,8 +41,8 @@ The `GamePhase` enum + `phase_bit()` + `phase_active()` manual bitmask pattern s
 
 ### 3. squad-docs.yml path filter — clarify deployment target
 
-**File:** `.squad/templates/workflows/squad-docs.yml`  
-**Decision:** Path filter `'.github/workflows/squad-docs.yml'` is CORRECT for the deployed workflow; it refers to the target path after the template is copied. Added inline TEMPLATE NOTE clarifying this so authors do not "fix" a working path.  
+**File:** `.squad/templates/workflows/squad-docs.yml`
+**Decision:** Path filter `'.github/workflows/squad-docs.yml'` is CORRECT for the deployed workflow; it refers to the target path after the template is copied. Added inline TEMPLATE NOTE clarifying this so authors do not "fix" a working path.
 **Rationale:** The path is an intentional forward-reference to the deployed filename. The confusion arises only when reading the template in its source location.
 
 ### 4. `entt::hashed_string` is the right key type for the UI element lookup map (PENDING)
@@ -321,8 +50,8 @@ The `GamePhase` enum + `phase_bit()` + `phase_active()` manual bitmask pattern s
 
 ### 4. squad-preview.yml package.json/CHANGELOG.md expectations explicit
 
-**File:** `.squad/templates/workflows/squad-preview.yml`  
-**Decision:** Added explicit file-existence checks for `package.json` and `CHANGELOG.md` with targeted `::error::` messages, plus a comment documenting the expected CHANGELOG format (`## [x.y.z]` — Keep a Changelog / standard-version).  
+**File:** `.squad/templates/workflows/squad-preview.yml`
+**Decision:** Added explicit file-existence checks for `package.json` and `CHANGELOG.md` with targeted `::error::` messages, plus a comment documenting the expected CHANGELOG format (`## [x.y.z]` — Keep a Changelog / standard-version).
 **Rationale:** Silent failure mode (`grep -q ... 2>/dev/null`) was unhelpful for repos missing these files. Fail fast with actionable messages.
 
 ### 5. `entt::monostate` is NOT adopted — `reg.ctx()` remains the singleton standard
@@ -333,8 +62,8 @@ The project uses `reg.ctx().emplace<T>()` consistently for all game singletons. 
 
 ### 5. team.md PR mismatch — no-op
 
-**File:** `.squad/team.md`  
-**Decision:** No change required. The reviewer artifact is a transient GitHub diff comment from the PR including `.squad/` files alongside a large C++ refactor. `team.md` content is correct.  
+**File:** `.squad/team.md`
+**Decision:** No change required. The reviewer artifact is a transient GitHub diff comment from the PR including `.squad/` files alongside a large C++ refactor. `team.md` content is correct.
 **Rationale:** PR review diff confusion, not a content error.
 
 ### Architecture actually used (differs from decisions.md Tier-1 spec)
@@ -535,7 +264,7 @@ PR #43 (ecs_refactor) touches `player.h`, `rendering.h`, `rhythm.h`, and several
 
 ### #125 — LowBar and HighBar Obstacles (Hard Difficulty Only)
 
-**Owners:** Rabin (implementation), Baer (validation), Kujan (review)  
+**Owners:** Rabin (implementation), Baer (validation), Kujan (review)
 **Status:** APPROVED
 
 LowBar and HighBar obstacles ship on hard difficulty only. Both are documented in `design-docs/game.md` (Swipe UP = jump = low_bar, Swipe DOWN = slide = high_bar) and fully runtime-supported (loader, scheduler, collision, burnout systems). Bars are confined to verse, pre-chorus, chorus, and drop sections.
@@ -619,8 +348,8 @@ P2 (miss_detection idempotency test) and P3 (on_construct platform-gate test) ga
 
 # Decision: beat_log_system placement and state ownership (#283)
 
-**Date:** 2026-04-27  
-**Author:** Baer  
+**Date:** 2026-04-27
+**Author:** Baer
 **Status:** IMPLEMENTED (commit c2720ea)
 
 ## Decision
@@ -643,16 +372,16 @@ Beat logging is extracted from `song_playback_system` into a new `beat_log_syste
 
 # Decision: SFX Enum Test Contract After magic_enum Refactor
 
-**Author:** Baer  
-**Date:** 2026-04-26  
+**Author:** Baer
+**Date:** 2026-04-26
 **Status:** RECOMMENDED — no approval needed (test-only change)
 
 ---
 
 ## Context
 
-Keaton's magic_enum refactor removed the `SFX::COUNT` sentinel from the `SFX` enum.  
-The `test_audio_system.cpp` file was previously excluded from the build via a CMakeLists regex.  
+Keaton's magic_enum refactor removed the `SFX::COUNT` sentinel from the `SFX` enum.
+The `test_audio_system.cpp` file was previously excluded from the build via a CMakeLists regex.
 The queue-capacity test used `static_cast<SFX>(i % static_cast<int>(SFX::COUNT))` — now invalid.
 
 ---
@@ -689,8 +418,8 @@ static_assert(static_cast<int>(magic_enum::enum_count<SFX>()) == kSfxCount,
 
 ## Scope of Change
 
-- `CMakeLists.txt` — removed `test_audio_system` from EXCLUDE regex  
-- `tests/test_audio_system.cpp` — contiguity guards + COUNT-free cycle  
+- `CMakeLists.txt` — removed `test_audio_system` from EXCLUDE regex
+- `tests/test_audio_system.cpp` — contiguity guards + COUNT-free cycle
 - `tests/test_helpers_and_functions.cpp` — added `LanePushLeft`/`LanePushRight` to ObstacleKind ToString test
 
 ---
@@ -709,8 +438,8 @@ The build will fail at static_assert if any of these are missed.
 
 # Decision: PR #43 — Regression tests verified, 10 threads resolved
 
-**Author:** Baer  
-**Date:** 2026-04-27  
+**Author:** Baer
+**Date:** 2026-04-27
 **Status:** VERIFIED
 
 ## Summary
@@ -743,8 +472,8 @@ All five C++ review themes from PR #43 have deterministic regression tests that 
 
 # Decision: PR #43 regression test suite + pool-priming fix
 
-**Author:** Baer  
-**Date:** 2026-04-26  
+**Author:** Baer
+**Date:** 2026-04-26
 **Commit:** 31bc2d8
 
 ## Summary
@@ -760,8 +489,8 @@ Added regression tests for all 6 PR #43 review themes and fixed a real productio
 
 # Decision: Song-Complete Score/High-Score Render Regression Tests
 
-**Date:** 2026-05-27  
-**Author:** Baer (Test Engineer)  
+**Date:** 2026-05-27
+**Author:** Baer (Test Engineer)
 **Triggered by:** Bug report — "when the song completes score and highscore dont render"
 
 ## Coverage gaps identified
@@ -802,8 +531,8 @@ Existing tests verified `score.high_score` is updated on transition and that all
 
 # Decision: magic_enum Build Wiring Must Co-Land With Include Usage
 
-**Author:** Hockney  
-**Date:** 2026-05  
+**Author:** Hockney
+**Date:** 2026-05
 **Status:** RESOLVED — commit `72c83b5`
 
 ## Context
@@ -837,8 +566,8 @@ Leaving dependency wiring as working-tree-only while committing include usage cr
 
 # Decision: PR #43 Template Workflow Fixes
 
-**Author:** Hockney  
-**Date:** 2026-05  
+**Author:** Hockney
+**Date:** 2026-05
 **Status:** IMPLEMENTED — pending coordinator merge
 
 ## Summary
@@ -851,8 +580,8 @@ Five unresolved review threads on PR #43 addressed in `.squad/templates/workflow
 
 # Decision: beat_map_loader validation constants path resolution
 
-**Author:** Hockney  
-**Date:** 2026-05  
+**Author:** Hockney
+**Date:** 2026-05
 **Issue:** #289
 
 ## Decision
@@ -875,9 +604,9 @@ Meyer's singleton was removed because it locked constants at first-use and only 
 
 # Decision: GamePhaseBit as dedicated mask enum (not changing GamePhase)
 
-**Date:** 2026-04-27  
-**Author:** Keaton  
-**Issues:** #311, #314  
+**Date:** 2026-04-27
+**Author:** Keaton
+**Issues:** #311, #314
 **Branch:** squad/311-314-phase-bitmasks
 
 ## Decision
@@ -916,8 +645,8 @@ All `phase_bit()` call sites migrated. `phase_active()` unchanged at call sites.
 
 # Decision: entt::hashed_string runtime API — use const_wrapper overload
 
-**Author:** Keaton  
-**Issue:** #313  
+**Author:** Keaton
+**Issue:** #313
 **Date:** 2026-04-28
 
 ## Decision
@@ -973,8 +702,8 @@ and require a harder force-push that can confuse reviewers.
 
 # Archetype sources live in `app/archetypes`
 
-**Author:** Keaton (C++ Performance Engineer)  
-**Date:** 2026-04-27  
+**Author:** Keaton (C++ Performance Engineer)
+**Date:** 2026-04-27
 **Status:** IMPLEMENTED
 
 ## Decision
@@ -989,9 +718,9 @@ Archetypes are shared construction/factory code used by scheduler, random spawni
 
 # Decision: Remove SFX::BurnoutBank — Use SFX::ScorePopup for Obstacle-Clear Audio
 
-**Owner:** Keaton  
-**Date:** 2026-05-17  
-**Commit:** 9ab0a1c  
+**Owner:** Keaton
+**Date:** 2026-05-17
+**Commit:** 9ab0a1c
 **Blocker:** Kujan rejection — BurnoutBank fires on every obstacle clear in a non-burnout scoring path
 
 ## Decision
@@ -1034,9 +763,9 @@ Audited `docs/entt/Core_Functionalities.md` against the full `app/` codebase. Fi
 
 # Decision: Safe Enum Macro — DECLARE_ENUM
 
-**Author:** Keaton  
-**Date:** 2026-05-17  
-**Status:** PROPOSED — awaiting user approval before implementation  
+**Author:** Keaton
+**Date:** 2026-05-17
+**Status:** PROPOSED — awaiting user approval before implementation
 **Blocks:** PR #43 must merge first; do not touch component headers until then
 
 ---
@@ -1061,9 +790,9 @@ What we CAN do: accept the list inline in a single macro call that both defines 
 
 # Decision: magic_enum ToString Refactor
 
-**Author:** Keaton  
-**Date:** 2026-05-17  
-**Commit:** 8fbce9c  
+**Author:** Keaton
+**Date:** 2026-05-17
+**Commit:** 8fbce9c
 **Status:** IMPLEMENTED
 
 ## What changed
@@ -1091,8 +820,8 @@ Replaced X-macro `ToString` scaffolding in `player.h`, `obstacle.h`, and `rhythm
 
 # Decision: ScorePopup::timing_tier is now std::optional<TimingTier>
 
-**Date:** 2025  
-**Author:** Keaton  
+**Date:** 2025
+**Author:** Keaton
 **Issue:** #288
 
 ## Decision
@@ -1113,8 +842,8 @@ The sentinel value `255` duplicated enum knowledge outside the type system. Any 
 
 # Decision: #322 — UI Layout POD Cache in reg.ctx()
 
-**Author:** Keyser  
-**Date:** 2026-04-27  
+**Author:** Keyser
+**Date:** 2026-04-27
 **Issue:** #322 — Precompute UI layout data instead of traversing JSON during render
 
 ## Decision
@@ -1159,8 +888,8 @@ Render (ui_render_system):
 
 # Architectural Validation: `app/archetypes/` as canonical archetype home
 
-**Author:** Keyser (Lead Architect)  
-**Date:** 2026-05-18  
+**Author:** Keyser (Lead Architect)
+**Date:** 2026-05-18
 **Status:** APPROVED — no blocking issues, one P1 VCS hygiene note
 
 ---
@@ -1173,11 +902,11 @@ The move of `obstacle_archetypes.h/.cpp` from `app/systems/` → `app/archetypes
 
 ## What Was Audited
 
-- `app/archetypes/obstacle_archetypes.h` and `.cpp`  
-- `app/systems/beat_scheduler_system.cpp` and `obstacle_spawn_system.cpp` (callers)  
-- `tests/test_obstacle_archetypes.cpp`  
-- `CMakeLists.txt` (build configuration)  
-- `app/systems/` (stale reference scan)  
+- `app/archetypes/obstacle_archetypes.h` and `.cpp`
+- `app/systems/beat_scheduler_system.cpp` and `obstacle_spawn_system.cpp` (callers)
+- `tests/test_obstacle_archetypes.cpp`
+- `CMakeLists.txt` (build configuration)
+- `app/systems/` (stale reference scan)
 - `app/components/` (component ownership boundary check)
 
 ---
@@ -1196,9 +925,9 @@ The header only includes component headers (`obstacle.h`, `player.h`) and `entt/
 
 ### ✅ Include paths correct in all callers
 
-- `beat_scheduler_system.cpp:2` → `#include "archetypes/obstacle_archetypes.h"` ✅  
-- `obstacle_spawn_system.cpp:2` → `#include "archetypes/obstacle_archetypes.h"` ✅  
-- `test_obstacle_archetypes.cpp:3` → `#include "archetypes/obstacle_archetypes.h"` ✅  
+- `beat_scheduler_system.cpp:2` → `#include "archetypes/obstacle_archetypes.h"` ✅
+- `obstacle_spawn_system.cpp:2` → `#include "archetypes/obstacle_archetypes.h"` ✅
+- `test_obstacle_archetypes.cpp:3` → `#include "archetypes/obstacle_archetypes.h"` ✅
 
 Both `shapeshifter_lib` and `shapeshifter_tests` have `${CMAKE_CURRENT_SOURCE_DIR}/app` on their include path, so all three resolve to `app/archetypes/obstacle_archetypes.h`. No broken include paths remain.
 
@@ -1214,14 +943,14 @@ add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES} ${ARCHETYPE_SOURCES} ...)
 ### ✅ Test coverage complete (all 7 kinds)
 
 `test_obstacle_archetypes.cpp` covers all `ObstacleKind` variants with 10 test cases:
-- ShapeGate × 3 (Circle/Square/Triangle color variants)  
-- LaneBlock (component exclusion and mask check)  
-- LowBar (RequiredVAction Jumping)  
-- HighBar (RequiredVAction Sliding)  
-- ComboGate (RequiredShape + BlockedLanes)  
-- SplitPath (RequiredShape + RequiredLane)  
-- LanePushLeft — dedicated test ✅  
-- LanePushRight — dedicated test ✅ (symmetric coverage per dead-surface skill)  
+- ShapeGate × 3 (Circle/Square/Triangle color variants)
+- LaneBlock (component exclusion and mask check)
+- LowBar (RequiredVAction Jumping)
+- HighBar (RequiredVAction Sliding)
+- ComboGate (RequiredShape + BlockedLanes)
+- SplitPath (RequiredShape + RequiredLane)
+- LanePushLeft — dedicated test ✅
+- LanePushRight — dedicated test ✅ (symmetric coverage per dead-surface skill)
 - Position x/y propagation
 
 Component exclusion assertions are present on all kinds that should not carry optional components.
@@ -1236,7 +965,7 @@ The new files in `app/archetypes/` are **untracked** (`?? app/archetypes/`). The
 
 ## P2/P3 — Deferred (explicitly out of scope for this TestFlight issue)
 
-- **P3:** `LaneBlock` case in `apply_obstacle_archetype` still emits `BlockedLanes`. In the random spawner, `LaneBlock` is converted to `LanePushLeft/Right` before calling the factory, so this case may only be reached from beatmap-driven content or legacy paths. Audit whether `LaneBlock` is live or dead surface. Out of scope for #344.  
+- **P3:** `LaneBlock` case in `apply_obstacle_archetype` still emits `BlockedLanes`. In the random spawner, `LaneBlock` is converted to `LanePushLeft/Right` before calling the factory, so this case may only be reached from beatmap-driven content or legacy paths. Audit whether `LaneBlock` is live or dead surface. Out of scope for #344.
 - **P3:** Hardcoded colors per kind in the factory. No data-driven color spec. Cosmetic/data-driven cleanup. Out of scope.
 
 ---
@@ -1249,8 +978,8 @@ The new files in `app/archetypes/` are **untracked** (`?? app/archetypes/`). The
 
 # EnTT Core_Functionalities Leverage — Audit Conclusions
 
-**Author:** Keyser  
-**Date:** 2026-05-18  
+**Author:** Keyser
+**Date:** 2026-05-18
 **Status:** DOCUMENTED — two issues filed, P2 implemented
 
 ## What Was Audited
@@ -1297,9 +1026,9 @@ The new files in `app/archetypes/` are **untracked** (`?? app/archetypes/`). The
 
 # Decision Recommendation: Enum Macro Refactor
 
-**Author:** Keyser  
-**Date:** 2026-05-17  
-**Status:** NO-GO on exact macro — propose safer alternative  
+**Author:** Keyser
+**Date:** 2026-05-17
+**Status:** NO-GO on exact macro — propose safer alternative
 **Blocks:** PR #43 must merge first
 
 ---
@@ -1320,8 +1049,8 @@ Replace all codebase enums with a fixed 7-argument unscoped macro:
 
 # TestFlight DoD Execution Queue — After #288
 
-**Date:** 2026-05-17  
-**Author:** Keyser  
+**Date:** 2026-05-17
+**Author:** Keyser
 **Status:** PROPOSED — for coordinator routing
 
 ## Decision
@@ -1390,8 +1119,8 @@ The TestFlight queue of 20 open issues has been prioritized. The ordering rule i
 
 # Decision: magic_enum via vcpkg — Single Source of Truth
 
-**Author:** Kobayashi  
-**Date:** 2026-05  
+**Author:** Kobayashi
+**Date:** 2026-05
 **Status:** IMPLEMENTED
 
 ## Decision
@@ -1431,9 +1160,9 @@ The TestFlight queue of 20 open issues has been prioritized. The ordering rule i
 
 # Decision: #313 High-Score Key Allocation — APPROVED
 
-**Reviewer:** Kujan  
-**Date:** 2026-05-17  
-**Branch:** `squad/313-high-score-key-allocation` (commit `880b389`)  
+**Reviewer:** Kujan
+**Date:** 2026-05-17
+**Branch:** `squad/313-high-score-key-allocation` (commit `880b389`)
 **Against target:** `origin/user/yashasg/ecs_refactor` (`6887eae`)
 
 ### kujan-318-state-logic-rereview
@@ -1464,18 +1193,18 @@ Safe to merge. No further revision needed.
 
 # Decision: #318 Review Outcome
 
-**Author:** Kujan  
-**Date:** 2026-05-17  
-**Issue:** #318 — Move high-score and settings mutation logic out of components  
+**Author:** Kujan
+**Date:** 2026-05-17
+**Issue:** #318 — Move high-score and settings mutation logic out of components
 **Commit reviewed:** f34de773d419639d4c6e5cb5e6b9365b3b79276a
 
 ### kujan-322-ui-layout-cache-review
 
 # Decision: #322 UI Layout Cache — APPROVED
 
-**Date:** 2026-05-17  
-**Author:** Kujan  
-**Branch:** `squad/322-ui-render-pod-layout`  
+**Date:** 2026-05-17
+**Author:** Kujan
+**Branch:** `squad/322-ui-render-pod-layout`
 **Commit:** f8e049a
 
 ## Decision
@@ -1492,7 +1221,7 @@ Safe to merge. No further revision needed.
 4. **AC4 — Tests:** 11 test cases / 64 assertions covering invalid-input (empty, missing required element, missing nested field), valid construction with field-value verification, and integration against shipped JSON files.
 5. **AC5 — Merge compatibility:** `git merge-tree origin/user/yashasg/ecs_refactor HEAD` → single clean tree hash, zero conflicts.
 
-**Full suite:** 2671 assertions / 824 test cases — all pass.  
+**Full suite:** 2671 assertions / 824 test cases — all pass.
 **Build:** Zero compiler warnings.
 
 ## Pattern established
@@ -1503,18 +1232,18 @@ Safe to merge. No further revision needed.
 
 # Decision: #324 burnout ECS surface removal — APPROVED
 
-**Date:** 2026-05-17  
-**Reviewer:** Kujan  
-**Authors:** McManus (implementation), Baer (test follow-up)  
-**Branch:** `squad/324-remove-dead-burnout-surface`  
+**Date:** 2026-05-17
+**Reviewer:** Kujan
+**Authors:** McManus (implementation), Baer (test follow-up)
+**Branch:** `squad/324-remove-dead-burnout-surface`
 **Commits:** d9be464, 6ee912a
 
 ### kujan-archetypes-folder-review
 
 # Kujan Review Decision: Archetype Move Approved (issue #344)
 
-**Author:** Kujan (Reviewer)  
-**Date:** 2026-04-27  
+**Author:** Kujan (Reviewer)
+**Date:** 2026-04-27
 **Status:** APPROVED WITH NON-BLOCKING NOTES
 
 ## Decision
@@ -1533,16 +1262,16 @@ The archetype relocation from `app/systems/obstacle_archetypes.*` to `app/archet
 
 # Decision: EnTT Dispatcher Input Model — Review Outcome
 
-**Author:** Kujan  
-**Date:** 2026-04-27  
+**Author:** Kujan
+**Date:** 2026-04-27
 **Scope:** EnTT dispatcher/sink input-model rewrite (commit 2547830, Keaton)
 
 ### kujan-pr43-template-review
 
 # Decision: PR #43 Workflow Template Review — APPROVED
 
-**Author:** Kujan  
-**Date:** 2026-05  
+**Author:** Kujan
+**Date:** 2026-05
 **Status:** APPROVED — coordinator may commit and push
 
 ## Summary
@@ -1563,8 +1292,8 @@ Reviewed Hockney's uncommitted changes to `.squad/templates/workflows/` (squad-p
 
 # Decision: Burnout Multiplier Removed (#239)
 
-**Author:** McManus  
-**Date:** 2026-04-27  
+**Author:** McManus
+**Date:** 2026-04-27
 **Status:** Implemented
 
 ## Decision
@@ -1600,8 +1329,8 @@ Per issue #239: the multiplier system taught players to delay shape changes unti
 
 # Decision: RNGState used via ctx().find/emplace in obstacle_spawn_system
 
-**Author:** McManus  
-**Date:** 2026-04-27  
+**Author:** McManus
+**Date:** 2026-04-27
 **Issue:** #248
 
 ## Decision
@@ -1772,9 +1501,9 @@ their no-op behavior.
 
 ## Decision: Cleanup Gate Fix — Evidence Report
 
-**Author:** Keyser  
-**Date:** 2026-04-28  
-**Gate:** kujan-component-cleanup-review  
+**Author:** Keyser
+**Date:** 2026-04-28
+**Gate:** kujan-component-cleanup-review
 **Status:** GATE PASSED
 
 **Three Blockers — Resolution:**
@@ -1792,7 +1521,7 @@ their no-op behavior.
 
 ## Decision: Dead ECS File / Build Cleanup
 
-**Author:** Kobayashi  
+**Author:** Kobayashi
 **Date:** 2026-04-28
 
 **Files Deleted:**
@@ -1809,8 +1538,8 @@ their no-op behavior.
 
 ## Decision: EnTT-safe iteration pattern for scoring_system (#315)
 
-**Author:** McManus  
-**Date:** 2026-05-17  
+**Author:** McManus
+**Date:** 2026-05-17
 **Issue:** #315
 
 ### Decision
@@ -1856,7 +1585,7 @@ during iteration — compliant.
 
 ## Decision: Non-Component Header Cleanup
 
-**Author:** Fenster  
+**Author:** Fenster
 **Date:** 2026-04-28
 
 Six headers removed from `app/components/` that were not ECS components:
@@ -1874,7 +1603,7 @@ Six headers removed from `app/components/` that were not ECS components:
 
 ## Decision: Obstacle Entity Layer — app/entities/ Introduction
 
-**Author:** McManus  
+**Author:** McManus
 **Date:** 2026-04-28
 
 Introduced `app/entities/` as the canonical surface for named gameplay entity construction. Obstacle entity/component bundle logic now owned exclusively by `app/entities/obstacle_entity.*`.
@@ -1905,9 +1634,9 @@ entt::entity spawn_obstacle(entt::registry& reg,
 
 ## Decision: Re-Review — Component Cleanup / Entity Layer / Model Scope
 
-**Author:** Kujan  
-**Date:** 2026-04-28  
-**Status:** ✅ APPROVED  
+**Author:** Kujan
+**Date:** 2026-04-28
+**Status:** ✅ APPROVED
 
 **Prior Rejection Blockers — All Resolved:**
 
@@ -1942,7 +1671,7 @@ entt::entity spawn_obstacle(entt::registry& reg,
 
 ## Decision: Render Tags Component → Folded into Rendering
 
-**Author:** Hockney  
+**Author:** Hockney
 **Date:** 2026-04-28
 
 `app/components/render_tags.h` deleted. `TagWorldPass`, `TagEffectsPass`, `TagHUDPass` moved to the end of `app/components/rendering.h`.
@@ -1960,8 +1689,8 @@ The `#SQUAD` comment in `shape_vertices.h` claimed raylib 2D draw calls (`DrawCi
 
 ### shape_vertices.h — Partial cleanup (implemented)
 
-**Removed:** `HEXAGON`/`HEX_SEGMENTS`, `SQUARE`, `TRIANGLE` — unused in production code.  
-**Kept:** `CIRCLE`, `CIRCLE_SEGMENTS`, `V2` struct — required by the 3D floor renderer and its tests.  
+**Removed:** `HEXAGON`/`HEX_SEGMENTS`, `SQUARE`, `TRIANGLE` — unused in production code.
+**Kept:** `CIRCLE`, `CIRCLE_SEGMENTS`, `V2` struct — required by the 3D floor renderer and its tests.
 **Test/benchmark files updated:** `tests/test_perspective.cpp` and `benchmarks/bench_perspective.cpp` modified to match deletions.
 
 ### transform.h — Position/Velocity retained (implemented)
@@ -2064,7 +1793,7 @@ Every enum in this codebase fails at least one compatibility test with the propo
 | 5 | Baer | Zero-warnings build on macOS (arm64) + WASM; run full test suite |
 | 6 | Kujan | Review pass |
 
-**Files touched:** `app/util/enum_utils.h` (new), `app/components/player.h`, `app/components/obstacle.h`, `app/components/rhythm.h`, `app/components/audio.h`, `app/components/haptics.h`, `app/components/ui_state.h`, `app/components/song_state.h`, `app/systems/ui_source_resolver.cpp`.  
+**Files touched:** `app/util/enum_utils.h` (new), `app/components/player.h`, `app/components/obstacle.h`, `app/components/rhythm.h`, `app/components/audio.h`, `app/components/haptics.h`, `app/components/ui_state.h`, `app/components/song_state.h`, `app/systems/ui_source_resolver.cpp`.
 No system `.cpp` files change behavior; `death_cause_to_string` in `ui_source_resolver.cpp` is the only logic migration.
 
 ---
@@ -2192,7 +1921,7 @@ Additional manual check: confirm `SFXBank::SFX_COUNT` still equals `static_cast<
 
 ## Assignment
 
-Per lockout protocol, McManus (original author) is locked out of the rebase revision.  
+Per lockout protocol, McManus (original author) is locked out of the rebase revision.
 **Keaton** should own the rebase onto `user/yashasg/ecs_refactor` and re-submit.
 
 ## Non-Blocking Notes (not blocking merge)
@@ -2227,8 +1956,8 @@ Hockney authored this revision. No lockout applies here — this is an approval,
 
 ## Parallel ECS/EnTT Audit Findings (2026-04-27)
 
-**Agents:** Keyser, Keaton, McManus, Redfoot, Baer  
-**Branch:** user/yashasg/ecs_refactor  
+**Agents:** Keyser, Keaton, McManus, Redfoot, Baer
+**Branch:** user/yashasg/ecs_refactor
 **Status:** AUDIT COMPLETE — Findings documented for prioritization
 
 ### P1 Findings
@@ -2584,9 +2313,9 @@ The `draw_hud` function renders score/high_score via `find_el` + `text_draw_numb
 
 ## Review: EnTT Dispatcher Input Model (2026-04-27)
 
-**Reviewer:** Kujan  
-**Verdict:** APPROVED  
-**Date:** 2026-04-27  
+**Reviewer:** Kujan
+**Verdict:** APPROVED
+**Date:** 2026-04-27
 **Commits:** 2547830 (Keaton implementation), bd6ff37 (history)
 
 ### Test Results
@@ -2756,8 +2485,8 @@ Ready for reviewer sign-off on #344. No further P0/P1 items outstanding.
 
 # Validation: Audio/Music Component Cleanup
 
-**Date:** 2026-04-28  
-**Author:** Baer  
+**Date:** 2026-04-28
+**Author:** Baer
 **Status:** PASS (audio cleanup) | BLOCKER FLAGGED (separate clean-build failure)
 
 ## Validation Result
@@ -2774,7 +2503,7 @@ The audio/music cleanup performed by Keaton (removing `app/components/audio.h` a
 
 ## Separate Blocker: Clean Build Fails (NOT Audio-Related)
 
-**Command:** `cmake --build build --clean-first`  
+**Command:** `cmake --build build --clean-first`
 **Error:** 4 redefinition errors in `beat_scheduler_system.cpp`:
 
 ```
@@ -2979,8 +2708,8 @@ grep -r "components/shape_vertices\.h" app/ tests/ --include="*.h" --include="*.
 
 # Component Cleanup Pass — Test & Validation Coverage Notes
 
-**Filed by:** Baer  
-**Date:** 2026-04-29  
+**Filed by:** Baer
+**Date:** 2026-04-29
 **Relates to:** Keaton's Slice 1/2 component cleanup (ObstacleScrollZ bridge-state, ObstacleModel/ObstacleParts, archetype path move)
 
 ---
@@ -3023,13 +2752,13 @@ Added `static_assert` structural guards (BF-5a, BF-5b) to `tests/test_obstacle_m
 
 ## Pre-existing Build Blockers (not caused by my changes)
 
-**These prevent a clean rebuild from scratch but do not affect the cached test binary.**  
+**These prevent a clean rebuild from scratch but do not affect the cached test binary.**
 Owner: Keaton.
 
-1. **`app/entities/obstacle_entity.h` missing** — `beat_scheduler_system.cpp` includes it but the file doesn't exist. `apply_obstacle_archetype` and `spawn_obstacle_meshes` are undeclared.  
-2. **`ObstacleSpawnParams` initializer warning** — `obstacle_spawn_system.cpp:91`: missing `beat_info` field initializer treated as error under `-Werror`.  
+1. **`app/entities/obstacle_entity.h` missing** — `beat_scheduler_system.cpp` includes it but the file doesn't exist. `apply_obstacle_archetype` and `spawn_obstacle_meshes` are undeclared.
+2. **`ObstacleSpawnParams` initializer warning** — `obstacle_spawn_system.cpp:91`: missing `beat_info` field initializer treated as error under `-Werror`.
 
-The cached test binary (built before these files were touched) runs cleanly:  
+The cached test binary (built before these files were touched) runs cleanly:
 `All tests passed (2978 assertions in 885 test cases)`
 
 **Action required by Keaton:** Deliver `app/entities/obstacle_entity.h` and fix the `ObstacleSpawnParams` initializer before the next CI gate.
@@ -3047,8 +2776,8 @@ The cached test binary (built before these files were touched) runs cleanly:
 
 # Baer Decision: ECS Regression Test Coverage (#336 + #342)
 
-**Filed:** 2026-04-28  
-**Author:** Baer (Test Engineer)  
+**Filed:** 2026-04-28
+**Author:** Baer (Test Engineer)
 **Issues:** #336 (miss_detection idempotency), #342 (on_construct signal lifecycle ungated)
 
 ## Decision
@@ -3065,7 +2794,7 @@ Added two new non-platform-gated test files to cover P2 and P3 gaps identified i
 ### `tests/test_signal_lifecycle_nogated.cpp` (issue #342)
 
 - Tag: `[signal][lifecycle][issue342]`
-- 6 test cases, 23 assertions  
+- 6 test cases, 23 assertions
 - Covers: on_construct<ObstacleTag> increments counter; on_destroy<ObstacleTag> decrements; wire_obstacle_counter idempotent (no double-connect); counter reaches zero; no underflow; wired flag blocks re-entry
 - No PLATFORM_DESKTOP guard — runs on Linux/macOS/Windows CI
 
@@ -3075,7 +2804,7 @@ Full `shapeshifter_tests` binary cannot link due to pre-existing in-progress bre
 
 Both new files:
 - Pass `-fsyntax-only` check against dirty working tree
-- Compile to object files cleanly: zero errors, zero warnings  
+- Compile to object files cleanly: zero errors, zero warnings
 - CMake build.make lists both in the shapeshifter_tests target (GLOB picked them up after reconfigure)
 
 The pre-existing binary at `build/shapeshifter_tests` (built April 27, 812 tests, 2749 assertions) confirms baseline is green. New tests not in that binary.
@@ -3092,9 +2821,9 @@ Do not close #336 or #342 until `bench_systems.cpp` is updated and the test bina
 
 # Baer — Model Authority Test Gaps
 
-**Filed:** 2026-05-01  
-**Updated:** 2026-05-01 (all blockers resolved — build green, all tests passing)  
-**Owner:** Baer (test coverage), Keaton (system implementation), Kujan (review gate)  
+**Filed:** 2026-05-01
+**Updated:** 2026-05-01 (all blockers resolved — build green, all tests passing)
+**Owner:** Baer (test coverage), Keaton (system implementation), Kujan (review gate)
 **Status:** COMPLETE — All tests active, build green, 898 tests pass.
 
 ---
@@ -3190,9 +2919,9 @@ All tests passed (898 test cases)
 
 
 # Baer Decision — Model Slice Test Coverage
-**Author:** Baer  
-**Date:** 2026-04-28  
-**Status:** ACTIVE — test files written, ready for review  
+**Author:** Baer
+**Date:** 2026-04-28
+**Status:** ACTIVE — test files written, ready for review
 **Executors:** Keaton (must resolve BLOCKER-1/2/3 before enabling Section C)
 
 ---
@@ -3236,13 +2965,13 @@ Added deterministic test coverage for the Model/Transform obstacle migration sli
 
 ## 3. Blockers for Section C
 
-**BLOCKER-1 — `slab_matrix()` in render_matrix_helpers.h:**  
+**BLOCKER-1 — `slab_matrix()` in render_matrix_helpers.h:**
 `slab_matrix()` is currently `static` in `camera_system.cpp`. Scroll transform tests (asserting `model.transform.m14` after a scroll update) require it to be in `app/util/render_matrix_helpers.h`. Owner: Keaton.
 
-**BLOCKER-2 — `ObstaclePartDescriptor` struct definition:**  
+**BLOCKER-2 — `ObstaclePartDescriptor` struct definition:**
 User directive requires obstacle entities to carry explicit part descriptors. The exact struct (field names, `count` semantics) is TBD. Section C tests are placeholder stubs; field access commented out. Owner: Keaton.
 
-**BLOCKER-3 — `LoadMaterialDefault()` in headless tests:**  
+**BLOCKER-3 — `LoadMaterialDefault()` in headless tests:**
 After Slice 1, `apply_obstacle_archetype` will call `LoadMaterialDefault()` per entity. This requires an OpenGL context (`InitWindow`). Section C tests that call `apply_obstacle_archetype` for Model-carrying kinds CANNOT run in headless Catch2 without a material stub or integration harness. Options:
 - (a) Run those specific tests under `InitWindow` in a dedicated integration binary.
 - (b) Provide a stub `LoadMaterialDefault()` that returns a zeroed `Material{}` for test builds.
@@ -3283,8 +3012,8 @@ No production source files were modified. Changes are entirely additive:
 
 # Decision: Duplicate Archetype + RingZone Removal — Validated Clean
 
-**Filed by:** Baer  
-**Date:** 2026-04-28  
+**Filed by:** Baer
+**Date:** 2026-04-28
 **Status:** PASS
 
 ## Summary
@@ -3589,8 +3318,8 @@ cmake --build build
 
 # Decision: Canonical Obstacle + Player Archetype Factories (#344)
 
-**Date:** 2026-05-XX  
-**Author:** Keaton  
+**Date:** 2026-05-XX
+**Author:** Keaton
 **Scope:** `app/archetypes/`
 
 ## Decisions Made
@@ -3607,8 +3336,8 @@ cmake --build build
 
 # Decision: Audio/Music Types Rehomed from components/ to systems/
 
-**Date:** 2026-04-28  
-**Author:** Keaton  
+**Date:** 2026-04-28
+**Author:** Keaton
 **Status:** IMPLEMENTED
 
 ## Decision
@@ -3630,8 +3359,8 @@ All includes updated across app/, tests/, and benchmarks/. Build: zero warnings.
 
 # Component Boundary Cleanup
 
-**Date:** 2026-04-28  
-**Author:** Keaton (C++ Performance Engineer)  
+**Date:** 2026-04-28
+**Author:** Keaton (C++ Performance Engineer)
 **Status:** Implemented (settings.h), Rejected (shape_vertices.h)
 
 ## Decision
@@ -3696,8 +3425,8 @@ This is NOT "moving a misplaced file" - it's "rewriting how we render floors."
 
 # Decision: Input Events Migration (#273 + #333)
 
-**Author:** Keaton  
-**Date:** 2026-04-27  
+**Author:** Keaton
+**Date:** 2026-04-27
 **Issues:** #273, #333
 
 ## Decision
@@ -3787,8 +3516,8 @@ LowBar and HighBar obstacles needed their world-space scroll position decoupled 
 
 # Model.transform Migration — Scope & First Slice
 
-**Date:** 2026-04-28  
-**Author:** Keaton  
+**Date:** 2026-04-28
+**Author:** Keaton
 **Status:** ANALYSIS ONLY — no production code changed
 
 ---
@@ -3937,8 +3666,8 @@ struct OwnedModel {
 
 
 # Keaton Decision — ObstacleModel Migration: Slice 0+1 Outcome
-**Date:** 2026-04-28  
-**Author:** Keaton  
+**Date:** 2026-04-28
+**Author:** Keaton
 **Status:** DELIVERED
 
 ---
@@ -3995,7 +3724,7 @@ Used `GenMeshCube(SCREEN_W, LOWBAR_3D_HEIGHT, dsz.h)` (sized mesh). `model.trans
 
 ### ✅ 1a. RingZone Complete Removal (~117 LOC deleted)
 
-**Status:** AUDITED (McManus), ready to implement  
+**Status:** AUDITED (McManus), ready to implement
 **Risk:** LOW — zero test coverage, logging-only system, no game logic dependencies
 
 | File | Action | LOC | Notes |
@@ -4007,14 +3736,14 @@ Used `GenMeshCube(SCREEN_W, LOWBAR_3D_HEIGHT, dsz.h)` (sized mesh). `model.trans
 | `app/systems/session_logger.cpp:5` | DELETE | 1 | Include: `#include "../components/ring_zone.h"` |
 | `app/systems/session_logger.cpp:121-129` | DELETE | 8 | Emplace block: RingZoneTracker emplacement |
 
-**Total deletions: 117 LOC**  
+**Total deletions: 117 LOC**
 **Validation:** `rg "RingZone\|ring_zone\|RING_ZONE"` should be empty post-removal (except in doc files)
 
 ---
 
 ### ✅ 1b. UILayoutCache Removal (~73 LOC deleted)
 
-**Status:** USER DIRECTIVE ("not needed", JSON loads once, renders repeatedly)  
+**Status:** USER DIRECTIVE ("not needed", JSON loads once, renders repeatedly)
 **Risk:** MEDIUM-HIGH — Verify all render paths still work; affects gameplay HUD flow
 
 **Deletion path:**
@@ -4027,7 +3756,7 @@ Used `GenMeshCube(SCREEN_W, LOWBAR_3D_HEIGHT, dsz.h)` (sized mesh). `model.trans
 
 *Edit LOC TBD — must trace all `HudLayout`/`OverlayLayout`/`LevelSelectLayout` usage (24 references found via grep)
 
-**Current usage:** 24 references across 3 systems  
+**Current usage:** 24 references across 3 systems
 **Refactor approach:** Cache layout data as fixed entity Position/Size components set once, not in struct
 
 **Validation commands:**
@@ -4049,16 +3778,16 @@ rg "HudLayout|OverlayLayout|LevelSelectLayout" app/
 
 ### ✅ 2a. Settings Already Moved ✓ (Complete)
 
-**Status:** COMPLETED (Keaton, earlier session)  
-**Files:** `app/util/settings.h` (created), `app/components/settings.h` (deleted)  
-**LOC impact:** ZERO (struct definitions moved, not removed; imports updated)  
+**Status:** COMPLETED (Keaton, earlier session)
+**Files:** `app/util/settings.h` (created), `app/components/settings.h` (deleted)
+**LOC impact:** ZERO (struct definitions moved, not removed; imports updated)
 **Validation:** Already tested, zero-warning build confirmed
 
 ---
 
 ### ⚠️ 2b. WindowPhase Consolidation (~13 LOC moved, not deleted)
 
-**Current state:** Separate file `app/components/window_phase.h` to avoid header cycle  
+**Current state:** Separate file `app/components/window_phase.h` to avoid header cycle
 **Proposed move:** Inline enum in `app/components/player.h`
 
 **Files:**
@@ -4068,7 +3797,7 @@ rg "HudLayout|OverlayLayout|LevelSelectLayout" app/
 | `app/components/player.h` | EDIT | +13 | Add enum definition inline |
 | `app/components/rhythm.h` | EDIT | 0 | Update include: remove `#include "window_phase.h"`, add include `"player.h"` if needed (or leave as is if rhythm doesn't use it) |
 
-**Risk:** LOW  
+**Risk:** LOW
 **Check:** `rg "include.*window_phase" app/` (currently 2 refs; both should be eliminated)
 
 **Total: 13 LOC moved, 0 LOC deleted**
@@ -4077,14 +3806,14 @@ rg "HudLayout|OverlayLayout|LevelSelectLayout" app/
 
 ### ⚠️ 2c. Shape Vertices: KEEP (Not Safe to Delete)
 
-**Status:** REJECTED (see keaton-component-boundary-cleanup.md)  
+**Status:** REJECTED (see keaton-component-boundary-cleanup.md)
 **Why NOT removed:**
 - Used for performance-critical floor rendering (rlVertex3f batch mode)
 - Not equivalent to raylib DrawCircle/DrawRectangle (which are immediate mode)
 - Requires rendering architecture redesign, not cleanup
 - Also used in benchmarks
 
-**Files:** `app/components/shape_vertices.h` — REMAINS  
+**Files:** `app/components/shape_vertices.h` — REMAINS
 **LOC: 51** (not moved or deleted)
 
 ---
@@ -4114,7 +3843,7 @@ rg "HudLayout|OverlayLayout|LevelSelectLayout" app/
 | `app/components/rendering.h` → `app/util/rendering.h` | MOVE | 77 | All 19 includes updated |
 | All render systems | EDIT | 0 | Update 19 `#include "../components/rendering.h"` → `#include "../util/rendering.h"` |
 
-**LOC impact: ZERO** (pure move)  
+**LOC impact: ZERO** (pure move)
 **Risk:** LOW (single include path change)
 
 ---
@@ -4129,7 +3858,7 @@ rg "HudLayout|OverlayLayout|LevelSelectLayout" app/
 - `Position` (x, y) + `Velocity` (dx, dy) = 78 usage points across game
 - `Transform` component exists but appears unused in game loop
 
-**Claimed benefit:** Consolidate two structs into one  
+**Claimed benefit:** Consolidate two structs into one
 **Risk factors:**
 1. **Query structure changes:** All systems querying `Position, Velocity` would need `Transform` + property access changes
 2. **Backward compatibility:** 78 edit sites × high risk of introducing bugs
@@ -4149,7 +3878,7 @@ rg "HudLayout|OverlayLayout|LevelSelectLayout" app/
 
 **Status:** MISUNDERSTANDING — already correctly in context
 
-**Current state:** `GameCamera` and `UICamera` stored in `reg.ctx()` (singletons)  
+**Current state:** `GameCamera` and `UICamera` stored in `reg.ctx()` (singletons)
 **Why it's correct:**
 - Only one camera per render pass; entity model would waste IDs and complicate queries
 - All access is `reg.ctx().get<GameCamera>()` (3 references, all in render systems)
@@ -4259,8 +3988,8 @@ echo "All validation passed"
 
 # Decision: Safe ECS Cleanup — Obstacle Archetypes Dedup + RingZone Removal
 
-**Date:** 2026-04-28  
-**Author:** Keaton  
+**Date:** 2026-04-28
+**Author:** Keaton
 **Status:** Implemented
 
 ## What Changed
@@ -4287,8 +4016,8 @@ Build: zero warnings (`-Wall -Wextra -Werror`). Tests: 2854/2854 pass.
 
 # Decision: high_score.h and window_phase.h removed from app/components/
 
-**Author:** Keaton  
-**Date:** 2026  
+**Author:** Keaton
+**Date:** 2026
 **Status:** Shipped
 
 ## What changed
@@ -4311,8 +4040,8 @@ All includes updated. Zero-warning build. 436 assertions passing.
 
 # Decision: System boundary cleanup — beat_map_loader + cleanup_system
 
-**Date:** 2026-04-28  
-**Author:** Keaton (C++ Performance Engineer)  
+**Date:** 2026-04-28
+**Author:** Keaton (C++ Performance Engineer)
 **Related directive:** `.squad/decisions/inbox/copilot-directive-20260428T091354Z-system-boundaries.md`
 
 ## Decisions Made
@@ -4348,8 +4077,8 @@ A fresh `cmake -B build` + `cmake --build build` fails with `raylib.h not found`
 
 # Decision: Unity Build Hazard Audit Results
 
-**Author:** Keaton  
-**Date:** 2026-05-XX  
+**Author:** Keaton
+**Date:** 2026-05-XX
 **Context:** WASM builds taking 10+ minutes; investigating unity build safety.
 
 ## Verdict
@@ -4405,9 +4134,9 @@ Extract duplicated helpers into `tests/test_helpers.h` (already exists) or a sha
 
 # Keaton: Wave 2 Review Fix
 
-**Filed:** 2026-04-28  
-**Author:** Keaton  
-**Branch:** user/yashasg/ecs_refactor (working tree)  
+**Filed:** 2026-04-28
+**Author:** Keaton
+**Branch:** user/yashasg/ecs_refactor (working tree)
 **Context:** Targeted revision after Kujan rejected wave 2 cleanup (Hockney locked out)
 
 ---
@@ -4466,8 +4195,8 @@ Surgical header reorganisation only. No logic, no API, no data layout altered.
 
 # Decision: make_player routes through create_player_entity
 
-**Date:** 2026-05-18  
-**Author:** Keyser  
+**Date:** 2026-05-18
+**Author:** Keyser
 **Issue:** #344 blocker
 
 ## Decision
@@ -4487,8 +4216,8 @@ Surgical header reorganisation only. No logic, no API, no data layout altered.
 
 # Decision: Destroy unbranched supported element entities in spawn_ui_elements (#347)
 
-**Author:** Keyser  
-**Date:** 2026-05-18  
+**Author:** Keyser
+**Date:** 2026-05-18
 **Issue:** #347
 
 ## Decision
@@ -4523,9 +4252,9 @@ Full suite: 2854 assertions, all pass.
 
 # Authority Revision Checklist — McManus + Kujan Final Review
 
-**Author:** Keyser  
-**Date:** 2026-05-18  
-**Status:** ACTIVE — McManus revision guide  
+**Author:** Keyser
+**Date:** 2026-05-18
+**Status:** ACTIVE — McManus revision guide
 **Scope:** BF-1..BF-4 from Kujan's rejection. Read-only. Do not widen scope to P2/P3 kinds.
 
 ---
@@ -4729,8 +4458,8 @@ All four BF items resolved per the checklist above, verified by the acceptance s
 
 # Boundary Review Fix — Keyser Revision
 
-**Date:** 2026-05-XX  
-**Owner:** Keyser  
+**Date:** 2026-05-XX
+**Owner:** Keyser
 **Status:** COMPLETE — awaiting Kujan sign-off
 
 ## Context
@@ -4815,8 +4544,8 @@ if (oz.z > camera_despawn_z)
 
 # Component Cleanup Audit — ECS Boundary Map
 
-**By:** Keyser (Lead Architect)  
-**Date:** 2026-05-19  
+**By:** Keyser (Lead Architect)
+**Date:** 2026-05-19
 **Type:** Read-only audit — no code changes. Priority map for implementation.
 
 ---
@@ -4933,9 +4662,9 @@ without explicit architect approval and a confirmed include-site switch.
 
 # Revision Decision: Double-Scale Fix (RF-1 + RF-2)
 
-**Author:** Keyser  
-**Date:** 2026-05-19  
-**Status:** COMPLETE — awaiting Kujan re-review  
+**Author:** Keyser
+**Date:** 2026-05-19
+**Status:** COMPLETE — awaiting Kujan re-review
 **Context:** Kujan rejected McManus revision; Keyser assigned as sole owner of this revision cycle.
 
 ---
@@ -4959,7 +4688,7 @@ model.meshes[0] = GenMeshCube(constants::SCREEN_W_F, height, dsz->h);
 model.meshes[0] = GenMeshCube(1.0f, 1.0f, 1.0f);  // unit cube; slab_matrix scales to world dims
 ```
 
-**Rationale:**  
+**Rationale:**
 `slab_matrix` applies `MatrixScale(w, h, d)` designed for a unit cube — identical to the shared `ShapeMeshes.slab = GenMeshCube(1,1,1)` pattern. Pre-scaling the mesh to real dimensions and then applying `slab_matrix` with the same dimensions squares every axis, producing a bar 720² wide and invisible off-screen. `ObstacleParts.width/height/depth` remain unchanged and continue to feed `slab_matrix` as the intended final world dimensions.
 
 ---
@@ -4970,20 +4699,20 @@ model.meshes[0] = GenMeshCube(1.0f, 1.0f, 1.0f);  // unit cube; slab_matrix scal
 
 **Change:** Replaced the weak "non-zero translation components" BF-2 test with a scale-diagonal assertion that catches double-scaling.
 
-**New test name:** `"BF-2: slab_matrix scale diagonal equals world dimensions (unit-cube contract)"`  
+**New test name:** `"BF-2: slab_matrix scale diagonal equals world dimensions (unit-cube contract)"`
 **Tag:** `[model_slice][bf2_regression]`
 
 **What it asserts:**
 - Replicates `slab_matrix` formula inline: `MatrixMultiply(MatrixScale(w,h,d), MatrixTranslate(...))`
 - `mat.m0 == w` (scale diagonal X = intended width)
-- `mat.m5 == h` (scale diagonal Y = intended height)  
+- `mat.m5 == h` (scale diagonal Y = intended height)
 - `mat.m10 == d` (scale diagonal Z = intended depth)
 - `mat.m12 / mat.m13 / mat.m14 != 0.0f` (non-identity transform)
 - GPU-free: all raymath functions are pure arithmetic
 
 **Why this catches the defect:** With the old pre-scaled mesh (`GenMeshCube(w, h, d)`), the rendered dimensions would be `w²` × `h²` × `d²` because slab_matrix scales a mesh assumed to be unit-size. The test verifies the diagonal is exactly once the intended dimension, so any double-scale regression would require the test constants to be wrong — not the scale check itself.
 
-**Note on raylib Matrix layout:**  
+**Note on raylib Matrix layout:**
 raylib uses column-major storage. Scale diagonal is `m0, m5, m10`. Translation is `m12, m13, m14`. The incorrect `m3/m7/m11` fields are always zero in a Scale×Translate product — discovered during validation, corrected before final pass.
 
 ---
@@ -5018,9 +4747,9 @@ Route to Kujan for re-review.
 
 # Entity Migration Code Removal Audit
 
-**Prepared by:** Keyser (Lead Architect)  
-**Date:** 2026-05-18  
-**Scope:** Architecture-level removal/consolidation assessment for the entity migration effort  
+**Prepared by:** Keyser (Lead Architect)
+**Date:** 2026-05-18
+**Scope:** Architecture-level removal/consolidation assessment for the entity migration effort
 **Status:** Read-only audit — **NO PRODUCTION CODE CHANGES** made
 
 ---
@@ -5320,16 +5049,16 @@ app/archetypes/
 
 ---
 
-**Decision owner:** Keyser (Lead Architect)  
-**Review required from:** McManus (ECS), Baer (testing), Kujan (code quality)  
+**Decision owner:** Keyser (Lead Architect)
+**Review required from:** McManus (ECS), Baer (testing), Kujan (code quality)
 **Blocking issues:** None (audit only, no code changes)
 
 
 # Input/UI System Boundary Audit
 
-**Author:** Keyser (Lead Architect)  
-**Date:** 2026-04-28  
-**Status:** Recommendation — awaiting implementation assignment  
+**Author:** Keyser (Lead Architect)
+**Date:** 2026-04-28
+**Status:** Recommendation — awaiting implementation assignment
 **Trigger:** User directive (`copilot-directive-20260428T091614Z-system-definition-input-ui.md`)
 
 ---
@@ -5372,13 +5101,13 @@ The only simplification raylib helpers afford is dropping the manual `IsMouseBut
 3. `if (lss.confirmed) { gs.transition_pending = true; gs.next_phase = Playing; }` — phase transition trigger
 4. `update_diff_buttons_pos(reg, lss)` — button position layout
 
-Item 1 and 2 should be **deleted** (dead code).  
-Item 3 (transition trigger) belongs in **`game_state_system`** — all phase-transition decisions live there.  
+Item 1 and 2 should be **deleted** (dead code).
+Item 3 (transition trigger) belongs in **`game_state_system`** — all phase-transition decisions live there.
 Item 4 (layout) belongs in a UI tick, not a "system."
 
-**Proposed rename:** `level_select_system.cpp` → `level_select_ui.cpp`  
-**Proposed function rename:** `level_select_system(reg, dt)` → `level_select_ui_tick(reg, dt)`  
-**Function contents after cleanup:** only `update_diff_buttons_pos(reg, lss)` (one line).  
+**Proposed rename:** `level_select_system.cpp` → `level_select_ui.cpp`
+**Proposed function rename:** `level_select_system(reg, dt)` → `level_select_ui_tick(reg, dt)`
+**Function contents after cleanup:** only `update_diff_buttons_pos(reg, lss)` (one line).
 The event handlers `level_select_handle_go` and `level_select_handle_press` stay in the same file — they are the real selection logic and are already correctly wired as dispatcher listeners.
 
 ---
@@ -5455,9 +5184,9 @@ These are ordered so each step compiles and all tests pass before the next begin
 
 
 # Architecture Audit — Model.transform Authority Slice (Slice 2)
-**Author:** Keyser  
-**Date:** 2026-05-18  
-**Status:** ACTIVE — read-only audit for Keaton/Kujan  
+**Author:** Keyser
+**Date:** 2026-05-18
+**Status:** ACTIVE — read-only audit for Keaton/Kujan
 **Scope:** Removing `Position` from LowBar (and HighBar); making `Model.transform` the sole world-space authority for those kinds.
 
 ---
@@ -5511,8 +5240,8 @@ Rationale:
 - Headless-testable: `ScrollZ` has no raylib/GPU dependency. Tests for scroll, cleanup, miss, collision can all run without `InitWindow`.
 - Matches the DOD principle: separate the scroll-axis position (game logic data) from the model transform (render output). `game_camera_system` derives `model.transform` FROM `ScrollZ`, not the other way around.
 
-**Type:** `struct ScrollZ { float z = 0.0f; }` in `app/components/transform.h` (alongside `Position`).  
-**Write owner:** `scroll_system` (rhythm path writes absolute; non-rhythm path could keep Position or also migrate).  
+**Type:** `struct ScrollZ { float z = 0.0f; }` in `app/components/transform.h` (alongside `Position`).
+**Write owner:** `scroll_system` (rhythm path writes absolute; non-rhythm path could keep Position or also migrate).
 **Readers:** `game_camera_system`, `cleanup_system`, `miss_detection_system`, `collision_system`, `scoring_system`.
 
 Do NOT read `model.transform.m14` directly in any game logic system. That is render data.
@@ -5557,9 +5286,9 @@ The current Section C guards reference wrong types from the pre-RAII design. Con
 BLOCKER-3 (LoadMaterialDefault in headless) is NOT resolved by this slice. Section C tests that call `apply_obstacle_archetype` for LowBar still require GPU context. Use the `IsWindowReady()` guard in `build_obstacle_model` — it means Section C spawn tests will silently no-op in headless. Acceptable IF Section C tests assert `reg.all_of<ObstacleModel>(e) == false` in headless (since no-op), or if they require `InitWindow` in a dedicated integration test binary.
 
 ### New headless tests to add (all GPU-free)
-1. **scroll_system → ScrollZ** — Verify `ScrollZ.z = SPAWN_Y + (song_time - spawn_time) * speed` for a BeatInfo entity. No GPU needed.  
-2. **cleanup_system → ScrollZ path** — Emplace `ObstacleTag + ScrollZ{z = DESTROY_Y + 1.0f}`, run cleanup_system, verify entity destroyed.  
-3. **miss_detection_system → ScrollZ path** — Same setup, run miss_detection, verify `MissTag + ScoredTag` emplaced.  
+1. **scroll_system → ScrollZ** — Verify `ScrollZ.z = SPAWN_Y + (song_time - spawn_time) * speed` for a BeatInfo entity. No GPU needed.
+2. **cleanup_system → ScrollZ path** — Emplace `ObstacleTag + ScrollZ{z = DESTROY_Y + 1.0f}`, run cleanup_system, verify entity destroyed.
+3. **miss_detection_system → ScrollZ path** — Same setup, run miss_detection, verify `MissTag + ScoredTag` emplaced.
 4. **collision_system timing window → ScrollZ** — Emplace `ObstacleTag + ScrollZ + Obstacle + RequiredVAction`, assert timing window logic works without Position.
 
 ---
@@ -5577,10 +5306,10 @@ Everything else (cleanup, miss, collision, scoring) can be updated in the same P
 
 
 # Model Contract Amendment — Owned-Mesh Obstacles
-**Author:** Keyser  
-**Date:** 2026-05-18  
-**Supersedes (partial):** `keyser-model-transform-contract.md` §4 HQ1 and HQ2 only  
-**Status:** ACTIVE — supersedes prior guidance on obstacle Model construction  
+**Author:** Keyser
+**Date:** 2026-05-18
+**Supersedes (partial):** `keyser-model-transform-contract.md` §4 HQ1 and HQ2 only
+**Status:** ACTIVE — supersedes prior guidance on obstacle Model construction
 **Executors:** Keaton (implementation), McManus (integration + tests)
 
 ---
@@ -5730,10 +5459,10 @@ Remaining obstacle kinds follow the same pattern in subsequent slices.
 
 
 # Model-Centric Transform Contract (Revision 2)
-**Author:** Keyser  
-**Date:** 2026-05-18  
-**Supersedes:** `keyser-transform-contract.md`  
-**Status:** READY FOR REVIEW — 5 hard questions listed in §4 must be answered before implementation begins  
+**Author:** Keyser
+**Date:** 2026-05-18
+**Supersedes:** `keyser-transform-contract.md`
+**Status:** READY FOR REVIEW — 5 hard questions listed in §4 must be answered before implementation begins
 **Executors:** Keaton (implementation), McManus (integration + tests)
 
 ---
@@ -5844,7 +5573,7 @@ void on_model_destroy(entt::registry& reg, entt::entity e) {
 }
 ```
 
-**Question for user:** Is this borrow-pointer pattern acceptable, or should each entity hold a full deep-copy of the mesh (per-entity GPU upload)?  
+**Question for user:** Is this borrow-pointer pattern acceptable, or should each entity hold a full deep-copy of the mesh (per-entity GPU upload)?
 *Recommendation: borrow-pointer. The shared ShapeMeshes lifetime (camera::init → camera::shutdown) already envelops all entity lifetimes via the existing game loop order.*
 
 ---
@@ -5853,23 +5582,23 @@ void on_model_destroy(entt::registry& reg, entt::entity e) {
 
 ShapeGate, ComboGate, SplitPath each need 2–3 visual meshes. Three options:
 
-**Option A — Single `Model` with `meshCount > 1`**  
+**Option A — Single `Model` with `meshCount > 1`**
 All slabs + shape for one obstacle packed into one Model. Each mesh has its own local transform baked as an offset from the obstacle's origin. Scroll update patches the top-level `model.transform` origin; each mesh offset remains fixed. `DrawModel(model, pos, 1.0f, WHITE)` draws all in one call.
 
 *Con:* Building a dynamic multi-mesh Model requires managing the meshes array; offsets must be computed at spawn and stored separately for re-computation when Z changes (scroll).
 
-**Option B — Typed auxiliary model components**  
+**Option B — Typed auxiliary model components**
 Primary mesh on `Model model`, extra meshes on typed components `AuxModel1`, `AuxModel2`. Render system queries each type separately. Scroll system writes to `model.transform` (primary) and uses a fixed offset to compute `aux1.transform`, `aux2.transform`.
 
 *Con:* Max aux mesh count varies per obstacle kind; awkward fixed-component typing for variable geometry.
 
-**Option C — Keep MeshChild child entities, but each MeshChild now owns a `Model`**  
+**Option C — Keep MeshChild child entities, but each MeshChild now owns a `Model`**
 Logical obstacle entity: owns `Model` (primary mesh for collision and scroll). Child entities: each owns its own `Model`. `MeshChild.z_offset` is still used to offset from parent's `model.transform`.
 
-*Pro:* Minimal change from current architecture; existing `ObstacleChildren` + `on_obstacle_destroy` pattern works as-is.  
+*Pro:* Minimal change from current architecture; existing `ObstacleChildren` + `on_obstacle_destroy` pattern works as-is.
 *Con:* Child entities with their own `Model` require the same `on_destroy<Model>` listener.
 
-**User decision needed:** Which option? This determines Slice 0's implementation path entirely.  
+**User decision needed:** Which option? This determines Slice 0's implementation path entirely.
 *Recommendation: Option C initially — lowest risk, preserves existing spawner logic, only changes what each child entity carries (`Model` instead of `ModelTransform`).*
 
 ---
@@ -5894,7 +5623,7 @@ m.transform = slab_matrix(obs_x, z, dsz.w, constants::OBSTACLE_3D_HEIGHT, dsz.h)
 
 `obs_x` must be accessible. Options: store in `DrawSize`, or add `ObstacleX { float x; }`, or re-read from the entity's `Obstacle.kind` + `Lane`.
 
-**Question for user:** Should `DrawSize` be extended with `float x` for the scroll-path lookup? Or is there a cleaner place to store the obstacle's fixed x-coordinate once it's on a `Model`?  
+**Question for user:** Should `DrawSize` be extended with `float x` for the scroll-path lookup? Or is there a cleaner place to store the obstacle's fixed x-coordinate once it's on a `Model`?
 *Recommendation: Extend `DrawSize` with `float x = 0.0f` for now; rename to `MeshParams` in a future pass.*
 
 ---
@@ -5907,7 +5636,7 @@ This affects `camera::init` (ctx emplace → entity create), `game_render_system
 
 This is non-trivial scope added to an already large migration.
 
-**Question for user:** Is camera-as-entity part of this sprint, or a follow-up issue after Model adoption is complete?  
+**Question for user:** Is camera-as-entity part of this sprint, or a follow-up issue after Model adoption is complete?
 *Recommendation: Defer to a dedicated issue. The migration is already large; camera entity is additive and doesn't block obstacle/player Model adoption.*
 
 ---
@@ -5920,7 +5649,7 @@ This is non-trivial scope added to an already large migration.
 
 **Option B:** Give `ScorePopup` a `Model` with `meshCount = 0`. Purely for transform storage. `ui_camera_system` reads `model.transform.m12` and `model.transform.m14` for {x, y}. Avoids needing `WorldPos` at all, but using a `Model` with no mesh is an unusual pattern and wastes a material-array alloc.
 
-**Question for user:** Which representation for non-visible world-anchored entities?  
+**Question for user:** Which representation for non-visible world-anchored entities?
 *Recommendation: Option A — `WorldPos` in `transform.h`. Explicit, minimal, correct.*
 
 ---
@@ -6328,8 +6057,8 @@ All phases must compile clean under `-Wall -Wextra -Werror`. Specific risks:
 
 
 # Keyser — UI ECS Batch Decision Record
-**Date:** 2026-05-18  
-**Issues:** #337, #338, #339, #343  
+**Date:** 2026-05-18
+**Issues:** #337, #338, #339, #343
 **Author:** Keyser (Lead Architect)
 
 ---
@@ -6410,9 +6139,9 @@ Missing animation keys now produce `[WARN]` stderr output instead of asserting. 
 
 # PR Validation Gate — Systems Cleanup
 
-**Status:** READY (cleanup implementation in progress on `user/yashasg/ecs_refactor`)  
-**Branch:** `user/yashasg/ecs_refactor`  
-**Prepared by:** Kobayashi (CI/CD Release Engineer)  
+**Status:** READY (cleanup implementation in progress on `user/yashasg/ecs_refactor`)
+**Branch:** `user/yashasg/ecs_refactor`
+**Prepared by:** Kobayashi (CI/CD Release Engineer)
 **Date:** 2026-04-28
 
 ## Current State
@@ -6536,10 +6265,10 @@ gh release view v0.1.0
 
 ## Reminders
 
-✅ **DO commit with the Co-authored-by trailer** (required by repo policy)  
-✅ **DO run local tests before pushing** (catch platform issues early)  
-✅ **DO monitor all 4 CI jobs** (cleanup touches core ECS systems)  
-✅ **DO NOT merge without 4/4 CI checks passing**  
+✅ **DO commit with the Co-authored-by trailer** (required by repo policy)
+✅ **DO run local tests before pushing** (catch platform issues early)
+✅ **DO monitor all 4 CI jobs** (cleanup touches core ECS systems)
+✅ **DO NOT merge without 4/4 CI checks passing**
 
 ⚠ **Key lesson from history:** Cleanup PRs often fail on one platform (Windows path issues, WASM triplet mismatches, signed/unsigned warnings). Set initial_wait=120+ on build steps.
 
@@ -6565,8 +6294,8 @@ gh release view v0.1.0
 
 # Decision: SessionLog moved from app/components/ to app/systems/session_logger.h
 
-**Author:** Kobayashi  
-**Date:** 2026-05  
+**Author:** Kobayashi
+**Date:** 2026-05
 **Status:** COMPLETE ✅
 
 ## What changed
@@ -6602,8 +6331,8 @@ No remaining includes of `components/session_log.h` anywhere in the tree (`grep 
 
 # Decision: Squad log filenames must be Windows-safe (no colons)
 
-**Author:** Kobayashi  
-**Date:** 2026-05  
+**Author:** Kobayashi
+**Date:** 2026-05
 **Triggered by:** PR #43 Windows checkout failure
 
 ## Decision
@@ -6626,10 +6355,10 @@ Convention only (no linter configured). The Coordinator / spawning tooling shoul
 
 
 # Review Decision: #335 and #341
-**Reviewer:** Kujan  
-**Author:** Keaton  
-**Commit:** a9ed3fc  
-**Date:** 2026-04-27  
+**Reviewer:** Kujan
+**Author:** Keaton
+**Commit:** a9ed3fc
+**Date:** 2026-04-27
 **Verdict:** ✅ APPROVED — both issues are closure-ready
 
 ---
@@ -6681,8 +6410,8 @@ Both issues meet all stated acceptance criteria. Coordinator may close #335 and 
 
 # Decision: #344 Final Review Gate — APPROVED WITH NON-BLOCKING NOTES
 
-**Author:** Kujan  
-**Date:** 2026-05-18  
+**Author:** Kujan
+**Date:** 2026-05-18
 **Issue:** #344 — ECS Archetype Consolidation (P0/P1a/P1b)
 
 ## Verdict
@@ -6714,9 +6443,9 @@ No new lockout created. Keaton was locked out from revising the rejected artifac
 
 # Kujan — #344 Review Readiness Gate
 
-**Date:** 2026-04-27  
-**Issue:** #344 — Audit and consolidate dead or duplicate ECS systems  
-**Scope:** P0/P1 pre-commit review gate  
+**Date:** 2026-04-27
+**Issue:** #344 — Audit and consolidate dead or duplicate ECS systems
+**Scope:** P0/P1 pre-commit review gate
 **Status:** PRE-FINAL — blocker identified; cannot approve until resolved
 
 ---
@@ -6841,9 +6570,9 @@ sw.phase        = WindowPhase::Idle;
 
 # Kujan Review Decision — #346 (spawn_ui_elements extraction + malformed JSON regression tests)
 
-**Date:** 2026-04-27  
-**Reviewer:** Kujan  
-**Author:** Baer  
+**Date:** 2026-04-27
+**Reviewer:** Kujan
+**Author:** Baer
 **Commits:** 710ff34, ff96be8
 
 ## Verdict: ✅ APPROVED — closure-ready
@@ -6876,9 +6605,9 @@ No revision required. #346 is closure-ready.
 
 # Decision: audio/music component header relocation
 
-**Date:** 2026-04-28  
-**Reviewer:** Kujan  
-**Author:** Keaton  
+**Date:** 2026-04-28
+**Reviewer:** Kujan
+**Author:** Keaton
 **Verdict:** APPROVED
 
 ## Decision
@@ -6902,11 +6631,11 @@ No revision required. #346 is closure-ready.
 
 # Review Decision: Model Authority Revision (McManus)
 
-**Author:** Kujan  
-**Date:** 2026-05-18  
-**Status:** ❌ REJECTED  
-**Reviewed:** McManus revision of Kujan BF-1..BF-4  
-**Next revision owner:** Keyser (McManus locked out on rejection)  
+**Author:** Kujan
+**Date:** 2026-05-18
+**Status:** ❌ REJECTED
+**Reviewed:** McManus revision of Kujan BF-1..BF-4
+**Next revision owner:** Keyser (McManus locked out on rejection)
 **Keaton:** Remains locked out.
 
 ---
@@ -6939,7 +6668,7 @@ om.model.transform = slab_matrix(pd.cx, oz.z + pd.cz, pd.width, pd.height, pd.de
 
 When `build_obstacle_model()` uses `GenMeshCube(SCREEN_W_F, height, dsz->h)`, the mesh vertices already span the full intended dimensions. Applying `slab_matrix(..., SCREEN_W_F, height, dsz->h)` then applies `MatrixScale(720, 30, 40)` again, yielding a bar that is 720² = 518,400 virtual units wide, 30² = 900 units tall, 40² = 1,600 deep — invisible and off-screen.
 
-**Required fix (Keyser):**  
+**Required fix (Keyser):**
 Change line 124 to use a unit cube:
 ```cpp
 model.meshes[0] = GenMeshCube(1.0f, 1.0f, 1.0f);
@@ -6962,7 +6691,7 @@ CHECK(exp_tz != 0.0f);
 
 This test passes whether the scaling is correct or catastrophically wrong. It does **not** validate scale components. A test that exercises double-scaling would still pass because the center translation is non-zero regardless.
 
-**Required fix (Keyser):**  
+**Required fix (Keyser):**
 Add a test that verifies the scale entries of the produced matrix match expected final dimensions for a unit mesh. At minimum, invoke `slab_matrix` with known inputs and assert `mat.m0 ≈ pd.width`, `mat.m5 ≈ pd.height`, `mat.m10 ≈ pd.depth` (using raylib Matrix component indices for the diagonal scaling terms). Alternatively, verify that the matrix correctly maps a canonical unit corner vertex to the expected world-space position.
 
 ---
@@ -7110,9 +6839,9 @@ All six issues are code-complete and test-verified. They may be closed:
 
 # Kujan — Reviewer Gate: Component Cleanup Pass
 
-**Date:** 2026-04-28  
-**Artifact:** Component cleanup batch (working tree vs HEAD on `user/yashasg/ecs_refactor`)  
-**Status:** ❌ REJECTED — BUILD BROKEN  
+**Date:** 2026-04-28
+**Artifact:** Component cleanup batch (working tree vs HEAD on `user/yashasg/ecs_refactor`)
+**Status:** ❌ REJECTED — BUILD BROKEN
 **Gate type:** Preliminary (implementation agents still active at inspection time)
 
 ---
@@ -7125,11 +6854,11 @@ cmake --build build → FAILED
 
 **Hard errors (blocks merge):**
 
-1. `app/entities/obstacle_entity.cpp:3: fatal error: '../components/obstacle_data.h' file not found`  
+1. `app/entities/obstacle_entity.cpp:3: fatal error: '../components/obstacle_data.h' file not found`
    — `obstacle_data.h` was deleted from `app/components/` but the new `obstacle_entity.cpp` still includes it.
 
-2. `tests/test_obstacle_archetypes.cpp` — 13 `[-Werror,-Wmissing-field-initializers]` errors  
-   — All callsites using `{ObstacleKind::..., x, y}` aggregate-init are missing the `beat_info` field.  
+2. `tests/test_obstacle_archetypes.cpp` — 13 `[-Werror,-Wmissing-field-initializers]` errors
+   — All callsites using `{ObstacleKind::..., x, y}` aggregate-init are missing the `beat_info` field.
    — The old `ObstacleArchetypeInput` struct has been replaced/modified but the tests were not updated to match.
 
 3. `app/archetypes/obstacle_archetypes.h` deleted; `tests/test_obstacle_archetypes.cpp` still attempts `#include "archetypes/obstacle_archetypes.h"` which is the deleted file — fatal include error blocks compilation.
@@ -7164,13 +6893,13 @@ The substance of the cleanup is good:
 
 ## Required Fixes Before Gate Passes
 
-**Fix 1 — `obstacle_entity.cpp` include:**  
+**Fix 1 — `obstacle_entity.cpp` include:**
 Remove `#include "../components/obstacle_data.h"` from `app/entities/obstacle_entity.cpp`. The types from that header (`RequiredShape`, `BlockedLanes`, `RequiredLane`, `RequiredVAction`) now live in `app/components/obstacle.h`.
 
-**Fix 2 — Test `ObstacleArchetypeInput` migration:**  
+**Fix 2 — Test `ObstacleArchetypeInput` migration:**
 `tests/test_obstacle_archetypes.cpp` must be updated to match the new entity-creation API. If `apply_obstacle_archetype` + `ObstacleArchetypeInput` are being replaced by `spawn_obstacle` + `ObstacleSpawnParams` (in `app/entities/obstacle_entity.h`), update every callsite. If `ObstacleArchetypeInput` is being retained with a new `beat_info` field, add `{}` defaults to all aggregate-init callsites.
 
-**Fix 3 — Test include path:**  
+**Fix 3 — Test include path:**
 `tests/test_obstacle_archetypes.cpp` includes `#include "archetypes/obstacle_archetypes.h"` which has been deleted. Update to the canonical header for archetype/entity creation (likely `entities/obstacle_entity.h`), or if `obstacle_archetypes.h` is being re-introduced, ensure it exists before this test compiles.
 
 ---
@@ -7201,9 +6930,9 @@ Remove `#include "../components/obstacle_data.h"` from `app/entities/obstacle_en
 
 # Kujan Review Decision: Component Cleanup Wave 2
 
-**Filed:** 2026-04-28  
-**Reviewer:** Kujan  
-**Branch:** user/yashasg/ecs_refactor (uncommitted working-tree changes)  
+**Filed:** 2026-04-28
+**Reviewer:** Kujan
+**Branch:** user/yashasg/ecs_refactor (uncommitted working-tree changes)
 **Artifact:** app/components/{high_score.h, text.h, ui_state.h, window_phase.h} cleanup
 
 ---
@@ -7277,7 +7006,7 @@ The late `#include <optional>` after the struct definition is a structural defec
 
 **No prior-wave lockout applies** (wave 2 has no committed author).
 
-**Owner for fixes:** Keaton  
+**Owner for fixes:** Keaton
 **Scope:**
 1. Create `app/util/text_types.h` with `TextAlign`, `FontSize`, `TextContext`
 2. Update `app/systems/text_renderer.h` to `#include "../util/text_types.h"` (remove inline definitions)
@@ -7290,11 +7019,11 @@ The late `#include <optional>` after the struct definition is a structural defec
 
 # Review Decision: Model Authority Slice (Keaton/Baer)
 
-**Author:** Kujan  
-**Date:** 2026-05-18  
-**Status:** ❌ REJECTED  
-**Reviewed:** Keaton (Slice 1 + 2) + Baer (test coverage)  
-**Revision owner:** McManus (primary — BF-1, BF-2), Keyser (co-owner — BF-3, BF-4)  
+**Author:** Kujan
+**Date:** 2026-05-18
+**Status:** ❌ REJECTED
+**Reviewed:** Keaton (Slice 1 + 2) + Baer (test coverage)
+**Revision owner:** McManus (primary — BF-1, BF-2), Keyser (co-owner — BF-3, BF-4)
 **Keaton:** Locked out per reviewer rejection protocol.
 
 ---
@@ -7316,7 +7045,7 @@ Mesh mesh = GenMeshCube(constants::SCREEN_W_F, height, dsz->h);
 Model model = LoadModelFromMesh(mesh);   // ← PROHIBITED
 ```
 
-**Criterion:** B2 — "Zero calls to `LoadModelFromMesh` in the obstacle spawn path."  
+**Criterion:** B2 — "Zero calls to `LoadModelFromMesh` in the obstacle spawn path."
 **Why blocking:** User stated obstacles must use manually constructed models with owned mesh arrays. `LoadModelFromMesh` also calls `LoadMaterialDefault()` internally (GPU-dependent), making the material allocation opaque and untestable. The owned-mesh invariant (separate `RL_MALLOC` allocation, explicit `meshCount`/`materialCount`, `meshMaterial[i]` init) cannot be verified from `LoadModelFromMesh`.
 
 **Required fix (McManus):**
@@ -7419,7 +7148,7 @@ struct ObstacleParts {};  // ← empty tag only
 
 **Criterion:** B4 — "Each obstacle entity carries a typed part-descriptor component that records per-slab/per-shape geometry data (x, w, h, d) alongside the Model. At minimum: enough data for scroll_system to recompute model.transform each frame."
 
-**Required fix (Keyser):**  
+**Required fix (Keyser):**
 Replace the empty tag with geometry fields sufficient for the camera system to recompute `model.transform` per frame from `ObstacleScrollZ.z` + descriptor data, without reading raw mesh vertex buffers:
 ```cpp
 struct ObstacleParts {
@@ -7458,9 +7187,9 @@ Re-route revised PR to Kujan for re-review.
 
 
 # Review Criteria — Model/Transform Obstacle Slice (First Slice)
-**Author:** Kujan  
-**Date:** 2026-05-18  
-**Status:** ACTIVE — gates Keaton's implementation once obstacle-data cleanup (current diff) is merged  
+**Author:** Kujan
+**Date:** 2026-05-18
+**Status:** ACTIVE — gates Keaton's implementation once obstacle-data cleanup (current diff) is merged
 **Scope:** LowBar obstacle as the first kind migrated to owned multi-mesh `Model` + `Model.transform` authority
 
 ---
@@ -7606,8 +7335,8 @@ Each item below is a gate. All must be PASS before approval.
 
 
 ### Kujan — Reviewer Gate Addendum: render_tags.h Surface
-**Date:** 2026-04-28  
-**Artifact:** Model authority cleanup slice (current revision — Keyser owns)  
+**Date:** 2026-04-28
+**Artifact:** Model authority cleanup slice (current revision — Keyser owns)
 **Status:** ❌ BLOCKING — must be resolved before this slice is accepted
 
 ---
@@ -7719,9 +7448,9 @@ The cleanup is in the working tree as unstaged changes, not committed via `git m
 
 # Systems Inventory — Kujan (read-only audit)
 
-**Date:** 2026-05-18  
-**Author:** Kujan (Reviewer)  
-**Scope:** `app/systems/` — full classification of every file  
+**Date:** 2026-05-18
+**Author:** Kujan (Reviewer)
+**Scope:** `app/systems/` — full classification of every file
 **Status:** AUDIT ONLY — no code edits made
 
 ---
@@ -7937,15 +7666,15 @@ To avoid breaking `game_loop`, `all_systems.h`, CMakeLists, and the test suite:
 | Move to entities (factories) | 2 | Wave A + D |
 | Raylib replacement (directive) | 1 | Wave E |
 
-Total files in `app/systems/`: 44 (31 `.cpp` + 13 `.h`)  
+Total files in `app/systems/`: 44 (31 `.cpp` + 13 `.h`)
 Files that should leave `app/systems/`: **~16**
 
 
 # Kujan — Review Decision: UI ECS Batch (#337, #338, #339, #343)
 
-**Date:** 2026-05-18  
-**Reviewer:** Kujan  
-**Author:** Keyser (decision record) / Keaton (code, landed in `fdefeb1`)  
+**Date:** 2026-05-18
+**Reviewer:** Kujan
+**Author:** Keyser (decision record) / Keaton (code, landed in `fdefeb1`)
 **Requested by:** yashasg
 
 ---
@@ -8037,9 +7766,9 @@ These are defensive paths; their absence is not a correctness issue for the happ
 
 # Model Authority Revision — BF-1..BF-4 Fixed
 
-**Author:** McManus  
-**Date:** 2026  
-**Status:** COMPLETE — awaiting Kujan re-review  
+**Author:** McManus
+**Date:** 2026
+**Status:** COMPLETE — awaiting Kujan re-review
 **Scope:** Model authority slice revision; Keaton locked out.
 
 ---
@@ -8126,9 +7855,9 @@ Section D in `tests/test_obstacle_model_slice.cpp`:
 
 # Lifetime Component/System Removal Plan
 
-**Author:** McManus  
-**Date:** 2026-04-28  
-**Status:** READ-ONLY PLAN — awaiting Keaton's adjacent patch to land before execution  
+**Author:** McManus
+**Date:** 2026-04-28
+**Status:** READ-ONLY PLAN — awaiting Keaton's adjacent patch to land before execution
 **Scope:** Remove `app/components/lifetime.h` and `app/systems/lifetime_system.cpp`
 
 ---
@@ -8239,18 +7968,18 @@ float max_time  = 0.0f;
 
 ### Update (adjust helpers/fixtures, keep test intent)
 
-**`tests/test_particle_system.cpp`**  
+**`tests/test_particle_system.cpp`**
 - `make_particle()` helper: replace `reg.emplace<Lifetime>(e, life_remaining, life_max)` with setting `ParticleData.remaining` and `ParticleData.max_time` in the `reg.emplace<ParticleData>` call
 - Remove the `life_remaining` / `life_max` parameters from `make_particle()` — or fold them into `ParticleData` construction: `reg.emplace<ParticleData>(e, size, life_remaining, life_max)`
 - Existing size/gravity test assertions are unchanged
 
-**`tests/test_popup_display_system.cpp`**  
+**`tests/test_popup_display_system.cpp`**
 - Remove `#include "components/lifetime.h"` (line 26)
 - `make_popup_entity()` helper: remove `Lifetime lt{}` / `reg.emplace<Lifetime>(e, lt)` block; instead set `ScorePopup.remaining = remaining` and `ScorePopup.max_time = max_time` in the `sp` initialization before `reg.emplace<ScorePopup>`
 - Alpha decay test (`"alpha at half lifetime is 127"`) continues to work — same ratio logic, different source struct
 - All `[issue251]` and `[issue208]` tests are unaffected (they test text/font formatting, not the timer)
 
-**`benchmarks/bench_systems.cpp`**  
+**`benchmarks/bench_systems.cpp`**
 - Remove `#include "components/lifetime.h"` (line 14)
 - `spawn_particles()`: replace `reg.emplace<Lifetime>(p, 0.6f, 0.6f)` with setting `ParticleData` fields: `reg.emplace<ParticleData>(p, 4.0f, 0.6f, 0.6f)` (once `ParticleData` gains those fields)
 - `"Bench: full frame (typical)"` and `"Bench: full frame (stress)"` calls: remove `lifetime_system(reg, DT)` from both
@@ -8283,8 +8012,8 @@ Zero-warnings policy applies: `-Wall -Wextra -Werror`. Verify no unused-variable
 
 # McManus Decision: Player Archetype Cleanup
 
-**Date:** 2026  
-**Author:** McManus  
+**Date:** 2026
+**Author:** McManus
 **Status:** COMPLETE ✅
 
 ## What was done
@@ -8312,8 +8041,8 @@ This is a pure relocation. The function signature, implementation, and component
 
 # Decision: Remove RingZone code
 
-**Author:** McManus  
-**Date:** 2026-04-26  
+**Author:** McManus
+**Date:** 2026-04-26
 **Status:** Proposed
 
 ## Context
@@ -8364,11 +8093,11 @@ if (req) {
 **Preserve:** OBSTACLE_SPAWN logging (lines 100-118) — no change needed.
 
 #### 4. CMakeLists.txt (if present)
-**Check for:** `ring_zone_log_system.cpp` in source lists.  
+**Check for:** `ring_zone_log_system.cpp` in source lists.
 **Remove:** Any explicit references.
 
 ### Test Impact
-**No test files reference RingZone, RingZoneTracker, RING_ZONE, or RING_APPEAR.**  
+**No test files reference RingZone, RingZoneTracker, RING_ZONE, or RING_APPEAR.**
 Zero test coverage → zero test breakage.
 
 ### Log Format Impact
@@ -8422,10 +8151,10 @@ rg "RingZone|ring_zone" app/ tests/ --type cpp
 
 ## Constraints Respected
 
-✓ READ-ONLY audit (no edits made)  
-✓ No commits/pushes  
-✓ Smallest surgical removal  
-✓ User directive: remove broken code, don't redesign  
+✓ READ-ONLY audit (no edits made)
+✓ No commits/pushes
+✓ Smallest surgical removal
+✓ User directive: remove broken code, don't redesign
 ✓ Keaton actively modifying component boundaries — this audit provides the blueprint for when worktree is clear
 
 ## Next Steps
@@ -8438,8 +8167,8 @@ rg "RingZone|ring_zone" app/ tests/ --type cpp
 
 # Decision: SongState and DifficultyConfig field ownership
 
-**Author:** McManus  
-**Date:** 2026-04-28  
+**Author:** McManus
+**Date:** 2026-04-28
 **Related issue:** #340
 
 ## Decision
@@ -8463,8 +8192,8 @@ Any new system reading or writing these singletons should respect these ownershi
 
 # UI Cleanup Removal & Consolidation Audit
 
-**Authored by:** Redfoot (UI/UX Designer)  
-**Date:** 2026-05-17  
+**Authored by:** Redfoot (UI/UX Designer)
+**Date:** 2026-05-17
 **Scope:** Full UI code audit for removal/consolidation opportunities when transitioning to ECS entity-driven UI rendering.
 
 ---
@@ -8482,7 +8211,7 @@ The UI codebase has **~1,800 LOC in active use**. Based on the directive "load o
 **Purpose:** Three POD structs (`HudLayout`, `LevelSelectLayout`, `OverlayLayout`) store pre-computed pixel-space layout data extracted from JSON at screen load, cached in `reg.ctx()`, and consumed by `draw_hud()` and `draw_level_select_scene()`.
 
 **Current Flow:**
-1. `ui_navigation_system.cpp:39–64` — On screen change, calls `build_hud_layout()`, `build_level_select_layout()`, or `build_overlay_layout()` 
+1. `ui_navigation_system.cpp:39–64` — On screen change, calls `build_hud_layout()`, `build_level_select_layout()`, or `build_overlay_layout()`
 2. Functions in `ui_loader.cpp` extract from `UIState::screen` JSON and pre-multiply pixel coords (avoids hot-path JSON traversal per #322)
 3. `ui_render_system.cpp:69–116, 118–338` — `draw_hud()` and `draw_level_select_scene()` read layout from ctx
 
@@ -8549,8 +8278,8 @@ The UI codebase has **~1,800 LOC in active use**. Based on the directive "load o
 | `text_draw()` for UIButton text | `ui_render_system.cpp:409–410` | 4 | Entity-driven button labels |
 | `PopupDisplay` text rendering | `ui_render_system.cpp:342–343` | 5 | Popup score/combo text via PopupDisplay component |
 
-**Duplication source:** 
-- `text_draw()` calls appear in three contexts: 
+**Duplication source:**
+- `text_draw()` calls appear in three contexts:
   1. Specialized screen renderers (level select, HUD)
   2. Entity-driven UI text
   3. Score popups
@@ -8561,9 +8290,9 @@ The UI codebase has **~1,800 LOC in active use**. Based on the directive "load o
 
 **Classification:** **CONSOLIDATE NOW** (no risk; improves clarity)
 
-**Improvement:** 
+**Improvement:**
 - All text calls already funnel through `text_draw()` in `text_renderer.cpp` — **no code duplication, clean abstraction ✓**
-- Minor redundancy: `text_draw()` and `text_draw_number()` both exist; `text_draw_number()` is used by popups — consider inlining or deprecating  
+- Minor redundancy: `text_draw()` and `text_draw_number()` both exist; `text_draw_number()` is used by popups — consider inlining or deprecating
 
 **Safe removals:** ~5–10 LOC if `text_draw_number()` utility is folded into snprintf at call site (low priority).
 
@@ -8602,13 +8331,13 @@ struct UIText {
 
 ### 5. **rendering.h (DrawLayer + Layer enum)**
 
-**Current state:** 
+**Current state:**
 ```cpp
 enum class Layer : uint8_t { Background = 0, Game = 1, Effects = 2, HUD = 3 };
 struct DrawLayer { Layer layer = Layer::Game; };
 ```
 
-**Usage:** 
+**Usage:**
 - Game entities (obstacles, player) spawn with `DrawLayer(Layer::Game)`
 - Popups spawn with `DrawLayer(Layer::Effects)`
 - HUD/UI would spawn with `DrawLayer(Layer::HUD)` (not yet implemented)
@@ -8692,7 +8421,7 @@ struct DrawLayer { Layer layer = Layer::Game; };
 
 3. **Level select card layout:** Currently special-cased in `draw_level_select_scene()`. Post-migration, spawn card entities at screen load and query them; selection state updates trigger re-renders (existing path). No pre-multiplication needed if cards are entities.
 
-4. **Test migration:** 
+4. **Test migration:**
    - `test_ui_layout_cache.cpp` → archive or convert to archetype spawn validation tests
    - `test_ui_element_schema.cpp` → keep UI JSON parsing tests; add archetype spawn coverage
    - New tests: validate HUD entity archetype initialization (Position, Size, DrawLayer)
@@ -8709,7 +8438,7 @@ struct DrawLayer { Layer layer = Layer::Game; };
 - Refactoring draw_hud() and draw_level_select_scene() requires coordinating entity spawn with specialized rendering
 - Ensure gameplay/level-select rendering systems are in place *before* removing draw_hud/draw_level_select_scene
 
-**Prerequisite:** 
+**Prerequisite:**
 - Full entity-driven UI rendering system must be implemented and tested before removals are safe
 - This audit does not recommend deletion *now*, only post-migration cleanup.
 
@@ -8744,9 +8473,9 @@ struct DrawLayer { Layer layer = Layer::Game; };
 
 
 # UI System Cleanup Plan
-**Author:** Redfoot  
-**Date:** 2026-04-28  
-**Status:** Draft — read-only. No code changed yet; Keyser is resolving review blockers in shared files.  
+**Author:** Redfoot
+**Date:** 2026-04-28
+**Status:** Draft — read-only. No code changed yet; Keyser is resolving review blockers in shared files.
 **Directive:** `.squad/decisions/inbox/copilot-directive-20260428T092900Z-system-cleanup-overnight.md`
 
 ---
@@ -8866,7 +8595,7 @@ Each batch is independent enough to not break a build mid-way. Do them sequentia
 ---
 
 ### Batch 1 — Source resolver rename (isolated, zero risk)
-**Files touched:** 3  
+**Files touched:** 3
 **Build risk:** None — pure path change, no logic change.
 
 1. Create `app/ui/ui_source_resolver.h` and `app/ui/ui_source_resolver.cpp` (copy content from `app/systems/`; no logic changes).
@@ -8880,7 +8609,7 @@ Each batch is independent enough to not break a build mid-way. Do them sequentia
 ---
 
 ### Batch 2 — Schema validators split out of ui_loader
-**Files touched:** 4  
+**Files touched:** 4
 **Build risk:** Low — the only change is which header exports the schema functions.
 
 1. Create `app/ui/ui_schema.h`: expose `UIElementDiagnostic`, `validate_ui_element_types`, `validate_overlay_schema`, `RaylibColor`, `extract_overlay_color`.
@@ -8893,7 +8622,7 @@ Each batch is independent enough to not break a build mid-way. Do them sequentia
 ---
 
 ### Batch 3 — Button factory rename
-**Files touched:** 3  
+**Files touched:** 3
 **Build risk:** None — header-only, pure path change.
 
 1. Create `app/ui/ui_button_factory.h` (copy `ui_button_spawner.h`; rename file only, no function renames).
@@ -8905,7 +8634,7 @@ Each batch is independent enough to not break a build mid-way. Do them sequentia
 ---
 
 ### Batch 4 — Screen loader + element spawner (largest batch; coordinate with Keyser)
-**Files touched:** ~8  
+**Files touched:** ~8
 **Build risk:** Medium — touches `ui_navigation_system`, `game_loop`, and four test files. Run full test suite after.
 
 This is the largest batch because `ui_loader.cpp` mixes three concerns that all need to move together (otherwise the remaining stubs in `ui_loader.cpp` would be orphaned).
@@ -8962,8 +8691,8 @@ After all batches:
 
 # QA Coverage Notes — Wave-2 Component Boundary Cleanup
 
-**Date:** 2026-04-28  
-**Author:** Verbal (QA)  
+**Date:** 2026-04-28
+**Author:** Verbal (QA)
 **Subject:** high_score.h, text.h, ui_state.h, window_phase.h
 
 ---
@@ -8985,20 +8714,20 @@ After all batches:
 
 ### Static assertions (compile-time guards):
 
-- `WindowPhase::Idle == 0, MorphIn == 1, Active == 2, MorphOut == 3`  
+- `WindowPhase::Idle == 0, MorphIn == 1, Active == 2, MorphOut == 3`
   Guards the sequential ordering that `shape_window_system` / `rhythm_system` depend on.
 
-- `HighScoreState::MAX_ENTRIES == 9`  
+- `HighScoreState::MAX_ENTRIES == 9`
   Guards `LEVEL_COUNT(3) × DIFFICULTY_COUNT(3) == 9`; persistence format depends on this.
 
-- `HighScoreState::KEY_CAP == 32`  
+- `HighScoreState::KEY_CAP == 32`
   Guards key buffer size; longest shipped key `3_mental_corruption|hard\0` is 26 chars.
 
 ### Runtime tests:
 
-- `HighScoreState: default-constructed is empty` — verifies `entry_count == 0`, `hash == 0`, all entry scores zero.  
-- `HighScoreState: lives in ctx, not attached to entities` — uses `make_registry()`, asserts ctx singleton present and entity view is empty.  
-- `UIState: defaults to Title screen with empty current`  
+- `HighScoreState: default-constructed is empty` — verifies `entry_count == 0`, `hash == 0`, all entry scores zero.
+- `HighScoreState: lives in ctx, not attached to entities` — uses `make_registry()`, asserts ctx singleton present and entity view is empty.
+- `UIState: defaults to Title screen with empty current`
 - `UIState: load_ui sets base_dir and leaves current empty`
 
 ---
@@ -9008,15 +8737,15 @@ After all batches:
 ### 1. Delete `app/components/window_phase.h`
 Already moved; file still exists. Safe to delete. No consumers remain.
 
-### 2. Delete `app/components/ui_state.h`  
+### 2. Delete `app/components/ui_state.h`
 Canonical: `systems/ui_loader.h`. File still exists but no app or test includes it. Safe to delete.
 
-### 3. Delete `app/components/text.h`  
+### 3. Delete `app/components/text.h`
 Canonical: `systems/text_renderer.h`. File still exists but no app or test includes it. Safe to delete.
 
 ### 4. Move or fold `app/components/high_score.h`
-Suggested: move to `app/util/high_score.h` (precedent: `settings.h` → `util/settings.h`).  
-Then update `app/util/high_score_persistence.h:3` from `"../components/high_score.h"` to `"high_score.h"`.  
+Suggested: move to `app/util/high_score.h` (precedent: `settings.h` → `util/settings.h`).
+Then update `app/util/high_score_persistence.h:3` from `"../components/high_score.h"` to `"high_score.h"`.
 The `test_empty_hs.cpp` root-level debug script still includes the old path — update or delete it.
 
 ---
@@ -9039,8 +8768,8 @@ Neither include will need changing when high_score.h is moved, as long as `high_
 
 # Test Map: Input / UI Consolidation
 
-**Author:** Verbal (QA)  
-**Date:** 2026-04-28  
+**Author:** Verbal (QA)
+**Date:** 2026-04-28
 **Trigger:** User directive — input file fragmentation is excessive; `level_select_system` is not a real system.
 
 ---
@@ -9201,8 +8930,8 @@ If the refactor replaces the hand-rolled `classify_touch_release` with `GetGestu
 
 ## rGuiLayout Title Screen Export and Export Data Boundary (2026-04-28)
 
-**Owners:** Redfoot (UI author), Hockney (platform lead), Coordinator (docs)  
-**Status:** APPROVED — Phase 2 artifacts exported, Phase 3 integration deferred  
+**Owners:** Redfoot (UI author), Hockney (platform lead), Coordinator (docs)
+**Status:** APPROVED — Phase 2 artifacts exported, Phase 3 integration deferred
 **Scope:** Title screen `.rgl` authoring, C/H code generation, export data isolation
 
 ### Decision: Export Data Boundary (from inbox: hockney-rguilayout-export-data.md)
@@ -9268,7 +8997,7 @@ tools/rguilayout/rguilayout.app/Contents/MacOS/rguilayout \
 
 ## Copilot Directive: Audio Abstraction (2026-04-28T07:26:14Z)
 
-**By:** yashasg (via Copilot)  
+**By:** yashasg (via Copilot)
 **Status:** Captured for team memory
 
 **Directive:** `app/audio/` should not remain a custom audio abstraction; raylib `Sound`, `Music`, and related audio handles can be used directly as ECS-owned data/components where appropriate.
@@ -9279,7 +9008,7 @@ tools/rguilayout/rguilayout.app/Contents/MacOS/rguilayout \
 
 ## Copilot Directive: rguilayout Data Boundary (2026-04-28T14:22:54Z)
 
-**By:** yashasg (via Copilot)  
+**By:** yashasg (via Copilot)
 **Status:** Captured for team memory
 
 **Directive:** Approach rings were removed and are out of scope for the raygui/rguilayout refactor for now. rguilayout data should stay contained in exported files; do not spin up custom ECS components or entities just to mirror layout data.
@@ -9290,9 +9019,9 @@ tools/rguilayout/rguilayout.app/Contents/MacOS/rguilayout \
 
 ## Decision: Audio Abstraction Boundary Cleanup (2026-04-28)
 
-**Author:** Fenster  
-**Date:** 2026-04-28  
-**Branch:** user/yashasg/ecs_refactor  
+**Author:** Fenster
+**Date:** 2026-04-28
+**Branch:** user/yashasg/ecs_refactor
 **Status:** IMPLEMENTED & VALIDATED
 
 `app/audio/` has been deleted entirely. All audio types are now in canonical ECS and utility locations:
@@ -9311,8 +9040,8 @@ tools/rguilayout/rguilayout.app/Contents/MacOS/rguilayout \
 
 ## Decision: Enable Unity Builds for WASM/Emscripten (2026-04-28)
 
-**Author:** Hockney  
-**Date:** 2026-04-28  
+**Author:** Hockney
+**Date:** 2026-04-28
 **Status:** IMPLEMENTED
 
 Unity builds now **auto-enabled for Emscripten builds only**. Native builds remain unchanged.
@@ -9336,8 +9065,8 @@ Unity builds now **auto-enabled for Emscripten builds only**. Native builds rema
 
 ## Decision: Unity ODR Fix — Rename Anonymous-namespace Helpers (2026-04-28)
 
-**Author:** Keaton  
-**Date:** 2026-04-28  
+**Author:** Keaton
+**Date:** 2026-04-28
 **Status:** IMPLEMENTED
 
 Unity builds merge multiple .cpp files into a single TU. Four app system files each had an anonymous-namespace function `scratch_for(entt::registry&)` with different return types. Anonymous namespaces do NOT prevent intra-TU collisions.
@@ -9356,8 +9085,8 @@ Unity builds merge multiple .cpp files into a single TU. Four app system files e
 
 ## Decision: rguilayout Exported Files Are the UI Layout Boundary (2026-04-28)
 
-**Author:** Keyser  
-**Date:** 2026-04-28  
+**Author:** Keyser
+**Date:** 2026-04-28
 **Status:** SUPERSEDES conflicting recommendations
 
 For the raygui/rguilayout migration, rguilayout exported files are the layout-data boundary. Commit `.rgl` source and generated `.c/.h` output, compile generated C as C, and consume directly from render code or a thin non-ECS adapter. **Do not mirror rguilayout rectangles, anchors, widget IDs, or hit targets into ECS components, ECS entities, or `reg.ctx()` layout PODs.**
@@ -9399,8 +9128,8 @@ Approach/proximity rings removed from migration scope. Delete or ignore prior `a
 
 ## Decision: WASM CI Unity Build Flag (2026-04-28)
 
-**Author:** Kobayashi  
-**Date:** 2026-04-28  
+**Author:** Kobayashi
+**Date:** 2026-04-28
 **Status:** APPROVED
 
 WASM builds consistently take 10–11 minutes; "Build (Emscripten)" step consumes ~9m 11s (91% of total). Root cause: `SHAPESHIFTER_UNITY_BUILD` defaults OFF; WASM workflow never enables it. All 122 TUs (49 app + 73 tests) compiled individually by Emscripten (2–4× slower per TU than native clang).
@@ -9421,9 +9150,9 @@ WASM builds consistently take 10–11 minutes; "Build (Emscripten)" step consume
 
 ## Decision: Popup Entity Factory Owns the Full Component Bundle (2026-04-28)
 
-**Author:** McManus  
-**Date:** 2026-04-28  
-**Related issue:** #349 (ECS entity-boundary migration)  
+**Author:** McManus
+**Date:** 2026-04-28
+**Related issue:** #349 (ECS entity-boundary migration)
 **Status:** APPROVED
 
 `spawn_score_popup(entt::registry&, PopupSpawnParams)` in `app/entities/popup_entity.h/.cpp` is now the authoritative constructor for score popup entities.
@@ -9445,9 +9174,9 @@ WASM builds consistently take 10–11 minutes; "Build (Emscripten)" step consume
 
 ## Decision: Architecture Spine — UI Migration to raygui + rguilayout (2026-04-28)
 
-**Author:** Keyser (Lead Architect)  
-**Date:** 2026-04-28  
-**Branch:** `ui_layout_refactor`  
+**Author:** Keyser (Lead Architect)
+**Date:** 2026-04-28
+**Branch:** `ui_layout_refactor`
 **Status:** SPINE — merged with Redfoot (layout requirements), Hockney (build integration), Keaton (C++/ECS boundary)
 
 ### Problem Statement
@@ -9492,33 +9221,33 @@ Current UI is retained-mode, JSON-driven ECS system:
 
 ### Entity / System / Component Boundary Rules (Hard Rules — Not Suggestions)
 
-**Rule U1 — No ECS entities for static raygui widgets**  
+**Rule U1 — No ECS entities for static raygui widgets**
 raygui widgets (buttons, labels, panels, sliders) are immediate-mode, not entities. `reg.create()` must not be called for any widget in rguilayout-generated file.
 
-**Rule U2 — UIState ctx singleton holds only routing data**  
+**Rule U2 — UIState ctx singleton holds only routing data**
 Allowed: `ActiveScreen active`, `bool has_overlay`. Disallowed: JSON objects, element maps, file paths, widget state. Persistent widget state lives in purpose-built ctx singleton (e.g., `LevelSelectState`).
 
-**Rule U3 — Layout files are generated artifacts, not hand-edited**  
+**Rule U3 — Layout files are generated artifacts, not hand-edited**
 Files under `app/ui/generated/` produced by rguilayout and committed verbatim. Must not be hand-edited. Layout changes: update Excalidraw mockup, regenerate file. Enforced by file header comment: `// AUTO-GENERATED by rguilayout — do not edit manually`.
 
-**Rule U4 — raygui calls live only in `ui_render_system.cpp`**  
+**Rule U4 — raygui calls live only in `ui_render_system.cpp`**
 No other system calls `Gui*` functions. `ui_navigation_system` sets `ActiveScreen` but does not draw. `game_render_system` draws game-world entities but does not call `Gui*`.
 
-**Rule U5 — Dynamic text resolution stays in `ui_source_resolver`**  
+**Rule U5 — Dynamic text resolution stays in `ui_source_resolver`**
 Score values, song names, difficulty labels flow through `ui_source_resolver.cpp`. Resolver returns `const char*`; `ui_render_system` passes to raygui's `GuiLabel()` / `GuiButton()`.
 
-**Rule U6 — HUD entity components are not raygui**  
+**Rule U6 — HUD entity components are not raygui**
 `RingZoneTracker`, `ScorePopup`, energy bar components drawn by `game_render_system` using raw raylib calls, not raygui. raygui exclusively for menu/overlay screens in `ActiveScreen`.
 
-**Rule U7 — rguilayout C files compiled as C, not C++**  
+**Rule U7 — rguilayout C files compiled as C, not C++**
 rguilayout generates standard C99. Compiled with `target_compile_features(shapeshifter_lib PRIVATE c_std_99)` or equivalent guard. C++ sources include generated header (`#include "generated/screen_title.h"`), not `.c` file.
 
 ---
 
 ## Decision: Remaining UI Screens Migrated to rGuiLayout (2026-04-28)
 
-**Author:** Redfoot (UI/UX Designer)  
-**Date:** 2026-04-28  
+**Author:** Redfoot (UI/UX Designer)
+**Date:** 2026-04-28
 **Status:** Migration Complete (Build integration deferred)
 
 Following user objection that only Title had been migrated, migrated 7 remaining screens to rGuiLayout v4.0 text format with generated C/H exports. Completes Phase 2 (authoring) of `design-docs/raygui-rguilayout-ui-spec.md`.
@@ -9539,10 +9268,10 @@ Following user objection that only Title had been migrated, migrated 7 remaining
 
 ### Key Choices
 
-**1. Approach Ring Data Intentionally Dropped**  
+**1. Approach Ring Data Intentionally Dropped**
 Per user directive, `gameplay.json`'s stale `approach_ring` fields not carried into `gameplay.rgl`. Out of scope for migration.
 
-**2. DummyRec Controls as Layout Guides**  
+**2. DummyRec Controls as Layout Guides**
 Used type 24 (DummyRec) for decorative/custom elements needing placement but no generated draw code (tutorial shape demos, song cards, energy bar, lane divider). Adapters use generated rectangle bounds for custom rendering.
 
 **3. Complex Controls Require Adapter Logic**
@@ -9552,10 +9281,10 @@ Used type 24 (DummyRec) for decorative/custom elements needing placement but no 
 - **Tutorial:** Platform-aware text selection (desktop vs web), live shape demos
 - **Gameplay:** Shape buttons (circular hit test), energy bar (custom progress), lane divider
 
-**4. Overlay Backgrounds Deferred**  
+**4. Overlay Backgrounds Deferred**
 JSON overlay colors (paused, game_over, song_complete, settings) handled by adapters or render system, not rGuiLayout.
 
-**5. JSON Files Preserved**  
+**5. JSON Files Preserved**
 All `content/ui/screens/*.json` remain untouched. Deletion deferred to Phase 6 per spec.
 
 ### Generated File Structure
@@ -9621,16 +9350,16 @@ Each screen produces standalone C/H files with:
 
 ## Decision: UI rGuiLayout Batch Validation — ACCEPT with Caveats (2026-04-28)
 
-**Author:** Hockney (Platform/Build/Validation Engineer)  
-**Date:** 2026-04-28  
-**Status:** ACCEPTED (with documented limitations)  
+**Author:** Hockney (Platform/Build/Validation Engineer)
+**Date:** 2026-04-28
+**Status:** ACCEPTED (with documented limitations)
 **Related:** Redfoot's remaining UI screens migration
 
 Validated Redfoot's batch migration of 8 UI screens (title + 7 remaining) from JSON to rGuiLayout v4.0 format. All files meet Phase 2 (authoring) quality gates. Three flagged issues are intentional design choices or low-risk given deferred build integration.
 
 ### Files Validated
 
-**Layouts (8):** `content/ui/screens/{title,paused,game_over,song_complete,tutorial,settings,level_select,gameplay}.rgl`  
+**Layouts (8):** `content/ui/screens/{title,paused,game_over,song_complete,tutorial,settings,level_select,gameplay}.rgl`
 **Exports (16):** `app/ui/{screen}.{c,h}` for each screen
 
 ### Validation Results
@@ -9695,17 +9424,17 @@ All 8 screens are valid Phase 2 authoring artifacts ready for Phase 3 build inte
 
 ### Approval
 
-**Status:** ACCEPTED  
-**Blocking issues:** None  
-**Quality gate:** Phase 2 (authoring) complete ✅  
+**Status:** ACCEPTED
+**Blocking issues:** None
+**Quality gate:** Phase 2 (authoring) complete ✅
 **Next gate:** Phase 3 (build integration) — separate deferred task
 
 ---
 
 ## Decision: rguilayout Export Workflow and Template Limitations (2026-04-28)
 
-**Author:** Hockney (validation), Redfoot (export)  
-**Date:** 2026-04-28  
+**Author:** Hockney (validation), Redfoot (export)
+**Date:** 2026-04-28
 **Status:** INFORMATIONAL — no blocking issues, limitations documented
 
 Redfoot exported the first rguilayout layout (`content/ui/screens/title.rgl`) to `app/ui/title.c` and `app/ui/title.h` using vendored rguilayout v4.0 CLI tool. Quick inspection validated whether that behavior is correct and documented tool's export capabilities.
@@ -9741,7 +9470,7 @@ Redfoot exported the first rguilayout layout (`content/ui/screens/title.rgl`) to
 - Control drawing code inside game loop
 - Anchor and state variable declarations
 
-**Missing: Portable Header Template**  
+**Missing: Portable Header Template**
 USAGE.md describes a **Portable Template (.h)** mode that generates header-only layout APIs. Expected portable .h usage:
 
 ```c
@@ -9779,9 +9508,9 @@ This is either a limitation of macOS standalone build, expected upstream behavio
 
 ## User Directive: Maximize Code Reuse, No Slop (2026-04-29)
 
-**Date:** 2026-04-29T02:58:00.308Z  
-**Source:** yashasg (via Copilot)  
-**Priority:** CRITICAL  
+**Date:** 2026-04-29T02:58:00.308Z
+**Source:** yashasg (via Copilot)
+**Priority:** CRITICAL
 **Status:** ACTIVE
 
 **Directive:**
@@ -9800,9 +9529,9 @@ Do not introduce slop in the codebase. Maximize code reuse. Follow raylib and En
 
 ## Review Gate: c7700f8 Platform & Architecture (2026-04-29)
 
-**Commit:** c7700f8 (feat(ui): wire raygui dispatch + migrate all screens to rguilayout adapters)  
-**Author:** Fenster (Tools Engineer)  
-**Date:** 2026-04-29  
+**Commit:** c7700f8 (feat(ui): wire raygui dispatch + migrate all screens to rguilayout adapters)
+**Author:** Fenster (Tools Engineer)
+**Date:** 2026-04-29
 **Session:** ui_runtime_review_gate
 
 ### Verdict Summary
@@ -9864,8 +9593,8 @@ public:
     State& state() { return state_; }
 };
 
-using GameOverAdapter = LayoutAdapter<GameOverLayoutState, 
-                                      &GameOverLayout_Init, 
+using GameOverAdapter = LayoutAdapter<GameOverLayoutState,
+                                      &GameOverLayout_Init,
                                       &GameOverLayout_Render>;
 ```
 
@@ -9906,9 +9635,9 @@ See `.squad/decisions/inbox/keaton-c7700f8-rejection.md` for complete analysis.
 
 ## Directive: UI Adapter Boilerplate Abstraction Pattern (2026-04-29)
 
-**Author:** Keaton (C++ Performance Engineer)  
-**Date:** 2026-04-29  
-**Status:** PROPOSED (requires Keyser architectural design)  
+**Author:** Keaton (C++ Performance Engineer)
+**Date:** 2026-04-29
+**Status:** PROPOSED (requires Keyser architectural design)
 **Priority:** HIGH
 
 **Directive:**
@@ -9939,9 +9668,9 @@ Keyser (Lead Architect) designs the abstraction pattern; any implementer (not Fe
 
 ## Decision: rGuiLayout Title Screen Checkpoint PR #351 (2026-05-27)
 
-**Status:** ✅ IMPLEMENTED  
-**Release:** PR #351  
-**Commit:** 15c89e8395a787e5e02fdda3dfb3a3c7f21d3bd2  
+**Status:** ✅ IMPLEMENTED
+**Release:** PR #351
+**Commit:** 15c89e8395a787e5e02fdda3dfb3a3c7f21d3bd2
 **Branch:** ui_layout_refactor
 
 ### Summary
@@ -9984,63 +9713,6 @@ All validation gates passed. Safe to merge.
 
 
 ---
-
-### Title Screen UX Revision (2026-04-29)
-
-**Owners:** Redfoot (UX analysis), Keaton (first implementation, rejected), Hockney (revision, approved), Kujan (reviewer)  
-**Status:** APPROVED
-
-Title screen had two regressions: (1) text was off-center due to runtime override bypassing generated rguilayout render, and (2) "SET" button was at top-left (wrong affordance) instead of bottom-right gear icon per design doc.
-
-**Implementation (Hockney):**
-- Removed runtime override draw calls from `app/ui/screen_controllers/title_screen_controller.cpp`
-- Updated `content/ui/screens/title.rgl` geometry: TitleText (40 200 640 96), StartPrompt (40 640 640 56), ExitButton (260 1080 200 56), SettingsButton (632 1170 64 64 with icon #142# gear)
-- Synced `app/ui/generated/title_layout.h` to match
-- Controller now calls `title_controller.render()` with style wrapping (center alignment, uniform 28px text size)
-- Settings button behavior preserved (routes to `GamePhase::Settings`)
-
-**Validation:**
-- All blocking acceptance criteria met (no override, generated layout active, settings moved to bottom-right gear, settings wired, no adapters/JSON/ECS UI)
-- Build: zero warnings
-- Tests: 2595 assertions pass
-
-**Non-blocking note:** Uniform 28px font size for all labels (per-element sizing would require new controller infrastructure, deferred as future scope).
-
-**Revision history:** Keaton's first implementation preserved the runtime override and top-left placement, so was rejected and locked out per charter. Hockney revised from scratch with correct approach.
-
-### app/ui Root-Level Files Retention Audit (2026-04-29)
-
-**Owners:** Hockney (Platform Engineering)  
-**Status:** APPROVED & DOCUMENTED
-
-Audit confirmed that all current root-level `app/ui/*.cpp` and `app/ui/*.h` files remain active and are necessary for the build. Do not delete any of these files in current or future migration passes.
-
-**Files retained and their purposes:**
-- `app/ui/raygui_impl.cpp` — Sole RAYGUI_IMPLEMENTATION translation unit
-- `app/ui/text_renderer.*` — Used by `game_loop` and `ui_render_system`
-- `app/ui/ui_loader.*` — Powers screen JSON loading and layout-cache builders used by `ui_navigation_system` and tests
-- `app/ui/ui_source_resolver.*` — Used by UI resolver tests and game-state text validation
-- `app/ui/level_select_controller.*` — Wired into `input_dispatcher` and level-select test flow
-- `app/ui/ui_button_spawner.h` — Used by `game_state_system`, `game_loop`, routing, and hitbox menu tests
-
-**Validation:**
-- Repo-wide symbol scans confirmed no orphaned root-level files
-- All include/symbol references verified live
-- 867 test cases pass, 2603 assertions
-- Zero compilation warnings
-
-**Rationale:**
-The migration to `app/ui/screen_controllers/` is an incremental integration; root-level files provide live infrastructure that cannot be removed until all dependent systems migrate to the new pattern.
-
-
----
-
-## Decision: Remove Legacy UI JSON Loader & ECS Menu-Hitbox Paths (2026-04-29)
-
-**Date:** 2026-04-29  
-**Status:** ✅ APPROVED & IMPLEMENTED  
-**Owner:** Keyser (Architecture), Kujan (Code Review)  
-**User Directive:** 2026-04-29T08:09:55Z, 2026-04-29T08:17:40Z
 
 ### Context
 
@@ -10102,190 +9774,10 @@ Runtime no longer uses JSON layout metadata or invisible ECS menu hitboxes. UI i
 
 ## Scribe Note: Decisions Registry Size Check (2026-04-29T08:23:46Z)
 
-**Registry size:** ~508 KB (exceeds 20 KB threshold)  
-**Archive trigger:** Deferred  
-**Reason:** All entries dated 2026-04-26 or later (within 30-day window). No entries older than 30 days exist; archival not necessary at this time.  
+**Registry size:** ~508 KB (exceeds 20 KB threshold)
+**Archive trigger:** Deferred
+**Reason:** All entries dated 2026-04-26 or later (within 30-day window). No entries older than 30 days exist; archival not necessary at this time.
 **Next check:** Recommend archive review on 2026-05-27 if registry exceeds 600 KB.
 
 
 ---
-
-### Level-Select Difficulty Controls (2026-04-29)
-
-**Initiative:** Migrate Easy/Medium/Hard difficulty select from invisible ECS hitbox entities to visible raygui controller-owned buttons. Agents: Keyser (Fix), Kujan (Audit & Review).
-
-#### User Directive: RayGUI Difficulty Controls
-
-- **Date:** 2026-04-29T08:29:40Z
-- **By:** yashasg (via Copilot)
-- **Directive:** Easy/Medium/Hard level-select controls should be implemented as raygui/controller-owned buttons after removing `ui_button_spawner`; do not restore invisible ECS hitbox entities.
-- **Captured for:** Team memory and implementation gate.
-
-#### Audit Gate: Level-Select Interaction Model (Kujan)
-
-- **Date:** 2026-04-29
-- **Reviewer:** Kujan (QA)
-- **Gate Requirements:**
-  1. Easy/Medium/Hard must be actual raygui button interactions (not ECS hitboxes, not manual invisible hit regions)
-  2. Level-card selection and difficulty selection must update `LevelSelectState` in-frame with immediate visual feedback
-  3. Start must still set `lss.confirmed` and preserve `game_state_system` transition semantics
-  4. No resurrection of `ui_button_spawner`, `MenuButtonTag`, legacy JSON loader/cache, or `ui_source_resolver` paths
-  5. Focused tests must catch regressions (LevelSelect state mutation paths, Start confirm path, controller interaction)
-- **Rationale:** Manual `CheckCollisionPointRec` pointer checks do not satisfy raygui-button directive; legacy dead routing creates false confidence.
-- **Status:** GATE SET — gating level-select fix on controller-owned raygui interaction proof.
-
-#### Implementation: Difficulty RayGUI Buttons (Keyser)
-
-- **Date:** 2026-04-29
-- **Agent:** Keyser (Platform & UI Fix)
-- **Scope:** Easy/Medium/Hard as controller-owned raygui `GuiButton` interactions in `app/ui/screen_controllers/level_select_screen_controller.cpp`
-- **Changes:**
-  - Replaced dead ECS hitbox entities with raygui GuiButton calls
-  - Integrated button state into controller update loop
-  - Updated `selected_difficulty` on button press
-  - Preserved card selection and Start behavior
-  - Added focused regression tests
-  - Zero warnings maintained
-- **Validation:**
-  - Native build: pass
-  - Unity build: pass
-  - All tests pass (756 cases / 2148 assertions)
-- **Status:** COMPLETED & READY FOR REVIEW
-
-#### Final Review: Difficulty RayGUI Buttons (Kujan)
-
-- **Date:** 2026-04-29
-- **Reviewer:** Kujan (QA)
-- **Verdict:** ✅ **APPROVE**
-- **Gate Check Results:**
-  1. ✅ Real controller-owned raygui difficulty controls confirmed using `GuiButton()` with direct `lss.selected_difficulty = dd` mutation
-  2. ✅ No fake hitbox fallback; difficulty selection uses raygui, not invisible ECS entities
-  3. ✅ State + visual feedback: `selected_difficulty` updates in-frame with distinct active/inactive styling
-  4. ✅ Card + Start behavior preserved: `selected_level` and `lss.confirmed` still function; `game_state_system` owns LevelSelect→Playing transition
-  5. ✅ Legacy surface guardrails held: No `ui_button_spawner`, `ui_loader`, `spawn_ui_elements`, adapters, `app/ui/vendor`, generated exports, or `app/ui/raygui_impl.cpp` resurrection
-  6. ✅ Build + focused and full non-bench tests pass
-- **Notes:** `level_select_handle_press()` supports `MenuActionKind::SelectLevel/SelectDiff` for semantic event routing; controller-owned raygui buttons now handle pointer difficulty interaction as required.
-- **Sign-Off:** Difficulty select controls are now working raygui buttons with proper state management. Ready to merge.
-
----
-
-### Song Complete & Pause Screen Text Readability Fixes (2026-04-29)
-
-**Initiative:** Fix default GuiLabel failure mode (no centered text, no explicit size override) in Song Complete and Pause screens. Both require centered-label helper pattern. Agents: Keyser (Song Complete attempt, rejected), Coordinator (Song Complete fix, approved), Redfoot (audit + AC), Keaton (Pause attempt, rejected), Fenster (Pause final fix, approved).
-
-#### Song Complete Text/Layout Fix — Initial Attempt (Keyser, Rejected)
-
-- **Date:** 2026-04-29
-- **Agent:** Keyser (Architecture & UI)
-- **Task:** Fix Song Complete title/status text rendering to match user requirements (centered, larger, readable).
-- **Submission:** Modified `app/ui/generated/song_complete_layout.h` and `app/ui/screen_controllers/song_complete_screen_controller.cpp`.
-- **Verdict:** ❌ **REJECTED** — No visible active artifacts demonstrated fix. Default GuiLabel still in use with no centered-label helper added.
-- **Lockout:** Per reviewer lockout protocol: Keyser locked out for revision cycle. Next reviser must be different from Keyser.
-- **Related:** `.squad/decisions/inbox/kujan-song-complete-layout-review.md`
-
-#### Song Complete Text/Layout Fix — Coordinator Revision (Approved)
-
-- **Date:** 2026-04-29
-- **Agent:** Coordinator (Main orchestration)
-- **Assignment:** Non-Keyser reviser per lockout protocol after Keyser rejection.
-- **Scope:** Implement Song Complete active-path fix using centered-label helper pattern. Centers/enlarges title/status text, renders score/high-score/results into generated slots, preserves buttons/actions, no legacy UI paths reintroduced.
-- **Changes:**
-  - Added `SongCompleteLayout_DrawCenteredLabel()` helper with proper text-size and alignment save/restore pattern
-  - All text labels (title, status) route through the helper with appropriate font sizes
-  - Score/high-score/results rendering into generated layout slots
-  - Buttons and action dispatch preserved
-  - Updated `content/ui/screens/song_complete.rgl` geometry to match active path
-- **Validation:**
-  - Build: zero warnings
-  - Tests: passing
-  - No legacy UI paths reintroduced
-- **Verdict:** ✅ **APPROVED by Kujan** (2026-04-29, prior session cycle)
-  - Active path centers and enlarges title/status text per user requirements
-  - Centered-label helper implementation matches pattern specification
-  - Controller action dispatch and timing preserved
-  - Ready for merge
-- **Related:** `.squad/decisions/inbox/kujan-song-complete-layout-review.md`
-
-#### Pause Screen Text Readability — Audit & Acceptance Criteria (Redfoot)
-
-- **Date:** 2026-04-29
-- **Auditor:** Redfoot (UI/UX)
-- **Finding:** Active pause screen has **identical default GuiLabel failure mode** as Song Complete had: `app/ui/generated/paused_layout.h` emits raw `GuiLabel` for three labels ("PAUSED", "TAP RESUME TO CONTINUE", "OR RETURN TO MAIN MENU") with no text-size override and no center alignment. Result: tiny ~10pt left-aligned text floating in upper-left of each label rect.
-- **Acceptance Criteria:**
-  1. Use centered-label helper matching `SongCompleteLayout_DrawCenteredLabel`: save/restore `DEFAULT.TEXT_SIZE` and `LABEL.TEXT_ALIGNMENT`, then call `GuiLabel`. Share via common header or replicate inside `paused_layout.h`.
-  2. "PAUSED": font size **56**, centered, rect widened (~90, 420, 540, 80).
-  3. "TAP RESUME TO CONTINUE": font size **24**, centered, rect ≥540 wide (e.g. 90, 540, 540, 36).
-  4. "OR RETURN TO MAIN MENU": font size **24**, centered, rect ≥540 wide (e.g. 90, 760, 540, 36).
-  5. Buttons (RESUME 400×100, MAIN MENU 400×100) untouched — `GuiButton` already centers text.
-  6. Update `content/ui/screens/paused.rgl` geometry so regenerating the header doesn't reintroduce the defect.
-  7. No `DrawText`, no legacy JSON path, no `ui_button_spawner`, no manual hit-testing. Controller-owned raygui only.
-  8. Letterbox hit-mapping unchanged (already handled in `ui_render_system.cpp` via `SetMouseOffset/Scale`).
-  9. Visual check at 720×1280: "PAUSED" centered, readable at phone arm's-length, instruction lines centered above buttons.
-- **Routing:** Per Redfoot charter, on rework prefer different implementer than original paused.rgl author. Recommended: agent who landed Song Complete fix.
-- **Related:** `.squad/decisions/inbox/redfoot-pause-screen-text-fix.md`
-
-#### Pause Screen Text Fix — Keaton Attempt (Rejected, Locked Out)
-
-- **Date:** 2026-04-29
-- **Agent:** Keaton (Performance Engineer)
-- **Scope:** Implement first pause-screen active-path fix per Redfoot AC.
-- **Changes:**
-  - Added `PausedLayout_DrawCenteredLabel()` helper with correct save/restore pattern
-  - All three text labels route through the helper
-  - Buttons (RESUME, MAIN MENU) geometry and dispatch unchanged
-  - No forbidden legacy paths reintroduced
-  - Build: zero warnings, tests pass (2148 assertions, 756 cases)
-- **Submission:** Generated layout header and screen controller updated.
-- **Verdict:** ❌ **REJECTED** — Numeric AC values NOT met. Six individual AC items fail:
-  | Label | AC Requirement | Actual | Result |
-  |---|---|---|---|
-  | "PAUSED" font size | **56** | 48 | ❌ |
-  | "PAUSED" rect | ~(90, 420, 540, 80) | (160, 430, 400, 72) | ❌ |
-  | "TAP RESUME TO CONTINUE" font size | **24** | 22 | ❌ |
-  | "TAP RESUME TO CONTINUE" rect width | **≥540** | 500 | ❌ |
-  | "OR RETURN TO MAIN MENU" font size | **24** | 22 | ❌ |
-  | "OR RETURN TO MAIN MENU" rect width | **≥540** | 500 | ❌ |
-- **Required Corrections:**
-  1. `PausedLayout_DrawCenteredLabel` for "PAUSED": size → **56**, rect → (90, 420, 540, 80)
-  2. Both instruction labels: size → **24**, rect width → **≥540** (e.g. x=90, w=540)
-  3. Update `content/ui/screens/paused.rgl` geometry to match
-- **Lockout:** Per reviewer lockout protocol: Keaton locked out for revision cycle. Next reviser must be different (recommended: agent who landed Song Complete fix).
-- **Related:** `.squad/decisions/inbox/kujan-paused-label-values-reject.md`
-
-#### Pause Screen Text Fix — Fenster Revision (Approved)
-
-- **Date:** 2026-04-29
-- **Agent:** Fenster (Tools Engineer)
-- **Assignment:** Non-Keaton reviser per lockout protocol.
-- **Scope:** Apply exact numeric AC from Redfoot via correcting call-site bounds only.
-- **Changes:**
-  - Updated three label call-site arguments in `app/ui/generated/paused_layout.h`
-  - Mirrored exact bounds in `content/ui/screens/paused.rgl`
-  - Buttons (RESUME, MAIN MENU) unchanged
-- **Applied Values:**
-  - `PAUSED`: (x=90, y=420, w=540, h=80), text size **56**
-  - `TAP RESUME TO CONTINUE`: (x=90, y=540, w=540, h=36), text size **24**
-  - `OR RETURN TO MAIN MENU`: (x=90, y=760, w=540, h=36), text size **24**
-- **Validation:**
-  - Build: zero warnings (clang -Wall -Wextra -Werror)
-  - Tests: 2148 assertions, 771 test cases — all pass
-  - No legacy UI paths reintroduced
-- **Verdict:** ✅ **APPROVED by Kujan** (2026-04-29T09:55:21Z)
-  - All blocking AC from rejection met exactly
-  - No new issues found
-  - `PausedLayout_DrawCenteredLabel` implementation clean parallel of `SongCompleteLayout_DrawCenteredLabel`
-  - Controller unchanged; action dispatch and timing preserved
-  - Scope precise: only three label call-site arguments plus mirrored .rgl geometry
-- **Sign-Off:** Pause screen text readability fix complete. All numeric and structural criteria met. Ready to merge.
-- **Related:** 
-  - `.squad/decisions/inbox/fenster-pause-screen-text-fix.md`
-  - `.squad/decisions/inbox/kujan-pause-screen-final-review.md`
-
----
-
-## Scribe Note: Session Merge Complete (2026-04-29T09:55:21Z)
-
-**Inbox status:** 6 files merged into decisions.md
-**Inbox files deleted:** ✅ Deletion pending after git commit
-**Decisions size:** ~512 KB (still under archive threshold; no entries older than 30 days)
-**Last merged:** 2026-04-29T09:55:21Z
