@@ -221,3 +221,10 @@ Next: Await merge approval.
 - Shifted **popup spawn + popup SFX** behind a dedicated bridge: `scoring_system` now emits `ScorePopupRequestQueue` intents; new `popup_feedback_system` owns `spawn_score_popup` + `audio_push(SFX::ScorePopup)`.
 - Centralized **miss death-cause attribution** in `scoring_system` MissTag processing (first-cause-wins), removing direct `GameOverState::cause` writes from `collision_system` and `miss_detection_system`.
 - Moved **energy-zero → GameOver transition ownership** to `game_state_system` (state-machine owner). `enter_game_over` now owns setting `SongState.finished/playing` on death.
+
+### 2026-04-29 — #281 setup_play_session ownership split (surgical)
+
+- Extracted player spawn call from `setup_play_session()` into focused helper `spawn_session_player(entt::registry&)`.
+- Isolated runtime Playing HUD button spawning behind `spawn_playing_shape_buttons(entt::registry&)` and phase mutation behind `enter_playing_phase(GameState&)`.
+- Added regression coverage for end-screen restart path: GameOver restart now explicitly validated across two ticks (choice tick + transition tick) to ensure fresh play-session setup.
+- Validation: `cmake --build build-ralph --target shapeshifter_tests`, `./build-ralph/shapeshifter_tests "[gamestate]"`, `./build-ralph/shapeshifter_tests "[play_session]"`, and full `./build-ralph/shapeshifter_tests` all pass.

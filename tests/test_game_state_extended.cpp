@@ -245,6 +245,37 @@ TEST_CASE("game_state: game_over main_menu button triggers title", "[gamestate]"
     CHECK(gs.next_phase == GamePhase::Title);
 }
 
+TEST_CASE("game_state: game_over restart enters fresh play session on next tick", "[gamestate][play_session]") {
+    auto reg = make_registry();
+    auto& gs = reg.ctx().get<GameState>();
+    gs.phase = GamePhase::GameOver;
+    gs.phase_timer = 0.5f;
+    gs.end_choice = EndScreenChoice::Restart;
+
+    auto stale = reg.create();
+    reg.emplace<ObstacleTag>(stale);
+    reg.emplace<Position>(stale, 0.0f, 0.0f);
+    reg.ctx().get<ScoreState>().score = 3210;
+
+    game_state_system(reg, 0.016f);
+    REQUIRE(gs.transition_pending);
+    REQUIRE(gs.next_phase == GamePhase::Playing);
+
+    game_state_system(reg, 0.016f);
+
+    CHECK_FALSE(gs.transition_pending);
+    CHECK(gs.phase == GamePhase::Playing);
+    CHECK_FALSE(reg.valid(stale));
+    CHECK_FALSE(reg.view<PlayerTag>().empty());
+    int shape_button_count = 0;
+    for (auto entity : reg.view<ShapeButtonTag>()) {
+        ++shape_button_count;
+        (void)entity;
+    }
+    CHECK(shape_button_count == 3);
+    CHECK(reg.ctx().get<ScoreState>().score == 0);
+}
+
 TEST_CASE("game_state: title position tap triggers level_select", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
