@@ -1,6 +1,49 @@
 # Decisions Registry
 
-*Last merged: 2026-04-29T10:10:30Z*
+*Last merged: 2026-04-29T22:03:09Z*
+
+### #169 — Gameplay Shape Buttons Migrated to raygui HUD Ownership (2026-04-29)
+
+**Owners:** Redfoot (UX spec), McManus/Fenster/Keyser/Baer/Hockney (implementation cycle), Kujan (reviewer)
+**Status:** IMPLEMENTED AND APPROVED
+
+Gameplay shape button controls transitioned from ECS hit-testing entities (`ShapeButtonTag + HitCircle + ActiveTag`) to raygui HUD–owned custom-rendered controls. Multi-pass revision cycle resolved visual overlay, tap-forgiveness regression, and geometry source-of-truth drift issues.
+
+**Final Architecture:**
+- Shape buttons are entirely HUD screen controller–owned; no ECS spawning in `play_session`
+- Rendering: custom circular silhouettes (~50px radius) and approach rings (stock rectangular raygui visuals hidden via temporary transparent BUTTON styles)
+- Hit testing: raw raygui bounds expanded from slot center to enclose 1.4× circular hit radius (~70px), then final acceptance gate is circular filter (`CheckCollisionPointCircle`) before dispatching semantic `ButtonPressEvent`
+- Geometry sourced from `content/ui/screens/gameplay.rgl` DummyRec slots (single source of truth):
+  - Circle: `(60, 1140, 140, 100)` → center `(130, 1190)`
+  - Square: `(220, 1140, 140, 100)` → center `(290, 1190)`
+  - Triangle: `(380, 1140, 140, 100)` → center `(450, 1190)`
+- Behavioral preservation: shape presses enqueue `ButtonPressEvent` with same payload as before; existing `player_input_system` side effects and `ButtonPressKind::Shape` dispatch remain unchanged
+
+**Acceptance Gates (All Passed):**
+1. HUD/raygui-owned shape controls; ECS `spawn_playing_shape_buttons()` removed from play-session
+2. Stock rectangular visuals hidden; custom circular visuals and approach rings preserved
+3. Legacy 1.4× circular tap forgiveness preserved and production-reachable (contract: `+70px vertical accepted`, `+71px rejected`)
+4. Geometry matches `gameplay.rgl` DummyRec slots; no divergence in generated layout
+5. Pause behavior and existing side effects (phase gating, player-input scoring path) intact
+
+**Revision Timeline:**
+- **Redfoot:** UX specification
+- **McManus (R1):** Implementation → REJECTED (stock rectangular overlay violates circular UX)
+- **Fenster (R2):** Visual fix → REJECTED (reachability regression + geometry drift)
+- **Keyser (R3):** Circular filter → REJECTED (production bounds blocked; geometry mismatch)
+- **Baer (R4):** Geometry audit → REJECTED (source drift 60/220/380 vs 90/290/490)
+- **Baer (R5):** Raw bounds expansion + reachability contract → APPROVED
+- **Hockney (R6):** Final alignment with `gameplay.rgl` → APPROVED (all gates pass)
+
+**Validation Evidence:**
+- `shapeshifter` build: zero warnings (clang arm64)
+- `shapeshifter_tests` suite: all passing
+- `[input_pipeline][hud]` reachability contract: ✅
+- `[gamestate][play_session]` invariants: ✅
+- `[hit_test]` legacy coverage: ✅
+- Git diff: no trailing whitespace, no semantic drift
+
+---
 
 ### #167 — Bank-on-Action Burnout Multiplier (2026)
 
@@ -9781,3 +9824,167 @@ Runtime no longer uses JSON layout metadata or invisible ECS menu hitboxes. UI i
 
 
 ---
+
+## #168 — ActiveTag Partial Obsolescence (2026-04-29)
+
+**Owner:** Keyser (architecture audit)
+**Status:** DECISION
+
+After raygui migration, audited whether `ActiveTag` ECS component + `hit_test_handle_input` system are still runtime-live.
+
+### Finding
+
+`ActiveTag` is **partially obsolete**:
+
+- **Live:** Gameplay shape buttons use ECS hit path (`ShapeButtonTag + HitCircle + ActiveInPhase` → `hit_test_handle_input`)
+- **Legacy/Transitional:** Menu, pause, end-screen, settings, level-select buttons are now raygui-driven in screen controllers (`app/ui/screen_controllers/*.cpp`)
+- **Dead code:** `MenuButtonTag`, `HitBox` entities, and menu-action branches in `hit_test_handle_input` are no longer spawned at runtime
+
+### Evidence
+
+1. Runtime entity spawning audit (`app/session/play_session.cpp`): Only `ShapeButtonTag + HitCircle + ActiveInPhase` entities are created.
+2. No runtime code spawns `MenuButtonTag` or `HitBox` entities.
+3. Menu/overlay control ownership is now raygui screen controllers (not ECS).
+
+### Migration Guidance (Future)
+
+1. Split `hit_test_handle_input` into gameplay-only path; remove dead menu branches (`MenuButtonTag`/`MenuAction`).
+2. Replace `ActiveInPhase`/`ActiveTag` gates with simpler `GamePhase::Playing` guard once synthetic menu test entities are migrated.
+3. Update tests (`test_hit_test_system.cpp`, `test_gesture_routing_split.cpp`, `test_world_systems.cpp`, `test_raylib_gesture_input.cpp`, helpers in `tests/test_helpers.h`) that fabricate menu hitboxes.
+4. Preserve keyboard/semantic routing (`ButtonPressEvent` handlers) during transition.
+
+### Rationale
+
+Keeps live gameplay tap behavior stable while removing dead menu-era ECS surface area. Aligns raygui architecture decision: UI widgets and menu hit testing live in screen controllers, not ECS hitbox entities.
+
+### Artifacts
+
+- Orchestration: `.squad/orchestration-log/2026-04-29T21:20:03Z-keyser.md`
+- Session Log: `.squad/log/2026-04-29T21:20:03Z-active-tag-raygui-audit.md`
+
+---
+
+## #169 — Guard-Clause Refactor: Early Returns for Readability (2026-04-29)
+
+**Owner:** Copilot (user directive + team execution)
+**Status:** DECISION
+
+User directive: Prefer early returns / guard clauses over nested `if` conditions whenever possible because it improves readability.
+
+### Decision
+
+Apply guard-clause pattern systematically across codebase to improve readability while maintaining correctness and lifecycle invariants.
+
+### Scope
+
+- Baer: Validation planning & risk hotspot identification (dispatcher order, RAII/signal lifetimes, Begin/End pairing, else-if lifecycle exclusivity)
+- Keaton: Safe refactor implementation (app/components/rendering.h, app/session/play_session.cpp, app/systems/*.cpp, settings controller, util files)
+- Kujan: Review gate (approved, no regressions)
+
+### Validation
+
+- ✅ Full build: `cmake --build build --parallel` passed
+- ✅ Test suite: 2181 assertions / 777 test cases passed
+- ✅ High-risk filter: 305 assertions / 139 test cases passed
+- ✅ Git check: no whitespace issues
+
+### Rationale
+
+Early returns reduce cognitive load by eliminating nested conditions, making control flow explicit and easier to verify. Risk hotspots were identified upfront and validated—no lifecycle or dispatcher ordering regressions.
+
+### Artifacts
+
+- Orchestration: `.squad/orchestration-log/2026-04-29T23-54-05Z-{baer,keaton,kujan}.md`
+- Session Log: `.squad/log/2026-04-29T23-54-05Z-guard-clause-refactor.md`
+
+---
+
+## #170 — User Directive: Guard-Clause Preference (2026-04-29T16:47:50.752-07:00)
+
+**Owner:** yashasg (via Copilot)
+**Status:** DECISION
+
+**What:** Prefer early returns / guard clauses over nested `if` conditions whenever possible.
+
+**Why:** User request — improves readability and maintainability.
+
+**Implementation:** Applied team-wide in #169.
+
+---
+
+## #171 — User Directive: Rectangular HUD Shape Buttons + ActiveTag Cleanup (2026-04-29T22:31:30Z)
+
+**Owner:** yashasg (via Copilot)
+**Status:** DECISION
+
+**What:** Rectangular gameplay shape buttons are acceptable if they make HUD/raygui code simpler. If ActiveTag is no longer used after raygui migration, remove all ActiveTag references and systems.
+
+**Why:** User request — reduce complexity while maintaining functionality.
+
+**Scope:** Pending next phase (not included in current guard-clause refactor).
+
+---
+
+## #172 — Baer Note: ActiveTag/ECS Hit-Test Cleanup Test Impact Plan (2026-04-29)
+
+**Owner:** Baer (validation audit)
+**Status:** ADVISORY
+
+If `ActiveTag` + ECS gameplay hit-test are removed in future cleanup:
+
+1. Delete: `tests/test_hit_test_system.cpp`, `tests/test_gesture_routing_split.cpp`
+2. Update: `tests/test_input_pipeline_behavior.cpp` (remove synthetic ECS-hit tests, keep HUD + swipe + keyboard semantic coverage)
+3. Update: `tests/test_raylib_gesture_input.cpp` (bottom-zone assertion without ECS `HitBox`)
+4. Update: `tests/test_components.cpp` (remove `phase_mask` section)
+5. Update: `tests/test_game_state_extended.cpp` (remove `UIActiveCache` assertions)
+6. Update: `tests/test_helpers.h` (delete `make_shape_button`, `make_menu_button`, stale press-button branches)
+
+**Validation:** All current tests pass. Will provide targeted test commands when cleanup passes approved.
+
+**Artifacts:** `.squad/orchestration-log/...` (validation phase)
+
+---
+
+## #173 — Keyser Audit: ActiveTag Partial Obsolescence (2026-04-29)
+
+**Owner:** Keyser (architecture audit)
+**Status:** ADVISORY
+
+Audited `ActiveTag` ECS component + `hit_test_handle_input` system post-raygui migration.
+
+### Finding
+
+`ActiveTag` is **partially obsolete**:
+
+- **Live:** Gameplay shape buttons use ECS hit path (`ShapeButtonTag + HitCircle + ActiveInPhase → hit_test_handle_input`)
+- **Legacy/Transitional:** Menu, pause, end-screen, settings, level-select buttons are now raygui-driven in screen controllers
+- **Dead code:** `MenuButtonTag`, `HitBox` entities, and menu-action branches in `hit_test_handle_input` are no longer spawned at runtime
+
+### Evidence
+
+1. Runtime entity spawning audit: Only `ShapeButtonTag + HitCircle + ActiveInPhase` created
+2. No runtime code spawns `MenuButtonTag` or `HitBox` entities
+3. Menu/overlay control ownership is now raygui screen controllers
+
+### Migration Guidance (Future)
+
+1. Split `hit_test_handle_input` into gameplay-only path; remove dead menu branches
+2. Replace `ActiveInPhase/ActiveTag` gates with simpler `GamePhase::Playing` guard
+3. Update tests to remove synthetic menu hitbox fabrication
+4. Preserve keyboard/semantic routing (`ButtonPressEvent` handlers)
+
+### Rationale
+
+Keeps live gameplay tap behavior stable while removing dead menu-era ECS surface. Aligns raygui architecture decision: UI widgets and menu hit testing live in screen controllers, not ECS hitbox entities.
+
+**Artifacts:** Orchestration logs (pending next phase)
+
+---
+
+## Scribe Note: Decisions Registry Size Check (2026-04-29T23:54:05Z)
+
+**Registry size:** ~558 KB (exceeds 20 KB threshold)
+**Archive trigger:** Deferred
+**Reason:** All entries dated 2026-04-26 or later (within 30-day window). No entries older than 30 days exist; archival not necessary at this time.
+**Next check:** Recommend archive review on 2026-05-27 if registry exceeds 650 KB.
+

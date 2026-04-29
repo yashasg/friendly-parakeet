@@ -82,3 +82,40 @@ Removed runtime override entirely from `title_screen_controller.cpp`. Updated `c
 - Added save observability and retry state (`last_load`, `last_save`, `dirty`) on persistence ctx structs; game-state high-score save now preserves dirty state on failure.
 - Validation: `cmake --build build-ralph --target shapeshifter_tests && ./build-ralph/shapeshifter_tests "[settings],[high_score]" --reporter compact` → pass (174 assertions / 37 tests).
 - 2026-04-29: Restored pre-split energy semantics by applying ordered pending energy events with clamp-after-each-step in energy_system; added mixed same-tick boundary regression coverage.
+- 2026-04-29: `content/ui/screens/gameplay.rgl` is authoritative for gameplay HUD shape slots; `GameplayHudLayout_*ButtonBounds` in `app/ui/generated/gameplay_hud_layout.h` must match DummyRec rectangles exactly (Circle 60/1140/140/100, Square 220/1140/140/100, Triangle 380/1140/140/100).
+- When rguilayout omits DummyRec from export, keep geometry helpers in the generated embeddable header and pin them with gameplay HUD pipeline tests (`[input_pipeline][hud]`) so source/generated drift fails CI.
+
+## 2026-04-29 — Gameplay shape buttons migration (final revision R6 → approved)
+
+**Status:** FINAL IMPLEMENTATION PASS
+**Reviewer:** Kujan
+**Verdict:** APPROVED (all 5 acceptance gates pass)
+
+**Work completed:**
+- Resolved geometry source-of-truth drift: aligned generated `gameplay_hud_layout.h` shape slot positions with `content/ui/screens/gameplay.rgl` DummyRec definitions
+- Updated shape slot coordinates to match `.rgl` exactly:
+  - Circle slot: `(60, 1140, 140, 100)` → center `(130, 1190)`
+  - Square slot: `(220, 1140, 140, 100)` → center `(290, 1190)`
+  - Triangle slot: `(380, 1140, 140, 100)` → center `(450, 1190)`
+- Added source-drift regression test to detect future misalignment
+- Full production acceptance path validated: raw raygui bounds expanded to enclose 1.4× forgiveness radius, circular filter applied before semantic dispatch
+
+**Acceptance gates (all pass):**
+1. ✅ HUD/raygui-owned shape controls; ECS spawning removed
+2. ✅ Stock rectangular visuals hidden; custom circular visuals preserved
+3. ✅ Legacy 1.4× circular tap forgiveness production-reachable (+70 accept, +71 reject)
+4. ✅ Geometry matches `gameplay.rgl` DummyRec slots; no divergence
+5. ✅ Pause behavior and existing side effects intact
+
+**Validation:**
+- `cmake -B build -S . -Wno-dev` ✅
+- `cmake --build build` ✅
+- `./build/shapeshifter_tests "[input_pipeline][hud]"` ✅
+- `./build/shapeshifter_tests "[gamestate][play_session]"` ✅
+- `./build/shapeshifter_tests "[hit_test]"` ✅
+- `./build/shapeshifter` ✅
+- `git diff --check` ✅
+
+**Kujan final approval:** Migration ready for production. All reviewer blockers resolved. Gameplay shape buttons now HUD/raygui-owned with preserved circular UX and 1.4× tap forgiveness.
+
+**See:** `.squad/orchestration-log/2026-04-29T22-03-09Z-hockney.md`

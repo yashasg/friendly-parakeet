@@ -511,3 +511,55 @@ Next: Await merge approval.
 - Full non-bench suite: 777 test cases / 2217 assertions, all pass.
 
 **Decision filed:** `.squad/decisions/inbox/baer-startup-shutdown-smoke.md`
+
+### 2026-04-29 — Gameplay Shape Buttons HUD Migration Coverage
+
+- For raygui-owned gameplay controls, deterministic tests need a seam at the controller boundary (e.g., injectable button-result provider or explicit controller action handler). Without that seam, headless tests can verify state-transition contracts but cannot reliably assert direct `GuiButton` click behavior.
+- Migration off ECS shape-button entities requires replacing tests that assert `ShapeButtonTag` spawn/hit-test wiring with tests that assert semantic outcomes (`ButtonPressEvent` shape payloads and `player_input_system` shape-window transitions) from the HUD controller path.
+
+## Learnings
+
+- For HUD shape taps mediated by raygui `GuiButton`, preserve circular forgiveness by separating concerns: raygui should use an input-only square that encloses the intended circular radius, and acceptance should remain a circle check in controller logic.
+- Deterministic reachability tests should assert both stages: (1) the production raw raygui bounds admit the +70px edge tap and exclude +71px, and (2) the circular filter still rejects out-of-radius taps.
+- A small half-pixel expansion on raw input bounds avoids floating-edge misses at exact boundary taps while still letting the circular filter enforce the real hit radius.
+
+## 2026-04-29 — Gameplay shape buttons migration (revisions R4, R5)
+
+**Status:** TWO-PASS WORK CYCLE
+**Reviewer:** Kujan
+**Verdict (R4 / geometry audit):** REJECTED (source drift 60/220/380 vs 90/290/490)
+**Verdict (R5 / reachability):** APPROVED
+
+**Revision 1 (Regression Strategy, Pre-Migration):**
+- Wrote deterministic regression coverage plan for gameplay shape HUD migration
+- Tested both HUD controller shape event emission boundary and unchanged downstream `player_input_system` outcomes
+- Deliberately avoided brittle ECS entity-structure tests during migration transition
+- Plan itself approved but execution was blocked by prior geometry issues
+
+**Revision 2 (Geometry Audit & Blocker Identification):**
+- Audited geometry source drift: `gameplay.rgl` DummyRec slots are x=60/220/380, but generated header exposes x=90/290/490
+- Identified live drift violating source-of-truth requirement and breaking safe regeneration
+- Flagged mismatch as blocking issue for reviewer re-assignment
+
+**Revision 3 (Reachability Expansion + Contract):**
+- Implemented raw raygui input bounds expansion to enclose 1.4× circular hit radius
+- Created `GameplayHudLayout_ExpandedShapeButtonBounds(...)` helper in generated layout
+- Expanded bounds from slot center + `visual_radius * 1.4f` + 0.5 padding
+- Added deterministic reachability contract tests: `+70px vertical tap accepted`, `+71px rejected`
+- Circular acceptance gate (`CheckCollisionPointCircle`) remains final filter in controller before `ButtonPressEvent` dispatch
+
+**Kujan approval (R5):** Reachability contract implementation approved. Production acceptance path now passes `+70` and rejects `+71` per spec. Flagged downstream geometry source alignment for final implementer (Hockney).
+
+**See:** `.squad/orchestration-log/2026-04-29T22-03-09Z-baer-r1.md` (R1 plan), `.squad/orchestration-log/2026-04-29T22-03-09Z-baer-r2.md` (R5 approval)
+
+### 2026-04-29 — ActiveTag/ECS hit-test retirement test impact (read-only)
+
+- If gameplay shape input is fully HUD-owned (raygui/controller path), tests asserting ECS `ShapeButtonTag` spawn state or `ActiveTag` structural sync become dead-surface checks and should be removed/replaced with controller-level shape press tests plus downstream `player_input_system` effects.
+- Keep phase-gating behavior coverage, but assert it through observable outcomes (e.g., no shape morph outside Playing) instead of asserting `ActiveTag` component presence/absence.
+- Minimal regression gate for this migration: `[input_pipeline][hud]`, `[gamestate][play_session]`, `[gesture_routing]`, plus any retained menu hit-test coverage if menu `HitBox` path remains ECS-based.
+
+## 2026-04-29T23:54:05Z — Guard-Clause Refactor Validation Phase
+
+Orchestration log written. Guard-clause validation planning completed successfully. Team coordination: Baer (planning) → Keaton (implementation) → Kujan (review gate) ✓ All passed.
+
+Decision #169 captured in decisions.md. Risk hotspots validated during refactor sweep.

@@ -141,3 +141,68 @@
 - `.squad/decisions/inbox/mcmanus-archetypes-wording.md`
 
 **Reusable heuristic:** For folder-removal PRs, the three-point check is: (1) directory absent, (2) grep sweep zero matches, (3) tests green. CMake glob cleanup is the most common miss — verify both the glob definition and its use in target sources.
+
+## Learnings — 2026-05-02: Gameplay HUD shape-button review
+
+- Empty-text `GuiButton` still draws a visible rectangular control. If custom circular gameplay buttons are rendered first and `GuiButton` is called after, the rectangle overlays/regresses the circular silhouette and approach-ring readability.
+- For "raygui-owned" gameplay controls, keep raygui handling for input/state but make the stock widget visuals transparent or otherwise hidden so custom-drawn affordances remain authoritative.
+- A full-slot rectangle hit region is **not** equivalent to legacy 1.4× circular forgiveness. If visual radius is 50 and intended hit radius is 70, rect clipping at ±50 on Y silently removes valid top/bottom taps that previously landed.
+
+## Learnings — 2026-05-02: HUD raw-press gate vs circular forgiveness
+
+- If shape acceptance logic is `if (!raw_pressed) return false`, then effective acceptance is the intersection of raygui widget bounds and the post-filter geometry.
+- Therefore, tests that call the circular filter with `raw_pressed=true` are insufficient unless a production path can actually produce `raw_pressed` at those coordinates.
+- For 140x100 slots centered at y=1190, taps at y+60/y+70 are outside the widget (`max y=1240`) and cannot be accepted in production even if the circular filter alone returns true.
+
+## Learnings — 2026-05-02: Reachability-safe raygui raw bounds
+
+- If circular gameplay forgiveness is required but raygui still supplies `raw_pressed`, raw input bounds must enclose the intended circular hit radius (not just visual slot bounds) or valid edge taps are unreachable in production.
+- A deterministic edge contract (`+70` inside, `+71` outside for visual radius 50 / hit radius 70) is a high-signal regression guard for future HUD geometry edits.
+- A small half-extent padding (`+0.5f`) on the enclosing raw square helps avoid precision misses exactly at the intended edge without widening functional gameplay acceptance beyond the tested contract.
+
+## Learnings — 2026-05-02: HUD layout source-of-truth gate
+
+- For gameplay HUD migration, `.rgl` slot geometry and generated layout exports must agree exactly; offsets introduced only in generated/header code are source-of-truth violations.
+- `app/ui/generated/*` files are governed as generated, non-hand-edited artifacts in this repo; behavior additions belong in templates/tooling or downstream controller glue, not manual generated-file edits.
+- DummyRec-driven custom controls still require auditable alignment across authoring (`content/ui/screens/*.rgl`), generation path, and runtime consumption before approval.
+
+## Learnings — 2026-05-02: HUD raygui migration final gate
+
+- When gameplay shape controls are migrated to raygui ownership, acceptance should require both (a) no runtime `ShapeButtonTag` spawning in play-session setup and (b) preserved shape-input side effects through `ButtonPressEvent` dispatch into existing player input handling.
+- Reachability proof must cover the full production chain (`raw raygui bounds` ∩ `circular filter`), not just isolated circle math; deterministic `+70 accepted / +71 rejected` edge tests are a durable regression guard.
+
+## 2026-04-29 — Gameplay shape buttons migration (multi-pass review)
+
+**Status:** COMPREHENSIVE REVIEW CYCLE
+**Agent work:** Reviewed 6 revision submissions; identified and enforced blockers; approved final implementation
+
+**Submission review log:**
+1. **McManus (R1, 2026-04-29):** REJECTED — Stock rectangular raygui button visuals overlay custom circular silhouettes and approach rings (UX violation). Reassign to Fenster (non-locked).
+2. **Fenster (R2, 2026-04-29):** REJECTED — Visual fix valid, but tap-forgiveness regression (140×100 input rectangles cannot reach ±70px band) + geometry drift from `.rgl` slots. Reassign to Keyser (non-locked).
+3. **Keyser (R3, 2026-04-29):** REJECTED — Circular filter logic correct, but production reachability blocked: raw raygui bounds (140×100 at y=1140..1240) cannot deliver taps at center.y±70 to the filter. Also identified `.rgl` source drift (60/220/380 vs 90/290/490). Reassign to Baer for reachability + geometry audit.
+4. **Baer (R4 / audit, 2026-04-29):** REJECTED — Confirmed geometry source drift as blocker: `gameplay.rgl` slots are x=60/220/380, generated header hard-codes x=90/290/490. Violates source-of-truth requirement. Reassign to Baer for expansion implementation.
+5. **Baer (R5 / reachability, 2026-04-29):** APPROVED — Raw raygui bounds expansion to enclose 1.4× forgiveness radius is sound. Reachability contract tests (+70 accept, +71 reject) validated. Circular filter gate preserved. Flagged downstream geometry alignment for final implementer.
+6. **Hockney (R6 / final, 2026-04-29):** APPROVED — All 5 acceptance gates pass. Geometry sourced from `.rgl` DummyRec slots, raw bounds expanded, circular filter enforced, semantic ButtonPressEvent path intact, existing side effects preserved. Ready for production.
+
+**Key review decisions:**
+- **Acceptance gates enforced (5 total):**
+  1. HUD/raygui-owned shape controls; ECS spawning removed
+  2. Stock rectangular visuals hidden; circular visuals preserved
+  3. Legacy 1.4× circular forgiveness production-reachable
+  4. Geometry alignment with `gameplay.rgl`
+  5. Pause and existing side effects intact
+- **Lockout protocol enforced:** McManus, Fenster, Keyser, Baer (R4) locked after rejection; subsequent revisions reassigned to non-locked agents.
+- **Blocker identification:** Visual overlay (R1) → reachability regression (R2) → production bounds blocking (R3) → geometry source drift (R4) → resolution path clarified for final implementation (R5→R6).
+
+**Final validation:**
+- Build: zero warnings (clang arm64)
+- Test suites: all passing (`[input_pipeline][hud]`, `[gamestate][play_session]`, `[hit_test]`)
+- Git diff: clean
+
+**Orchestration logs:** `.squad/orchestration-log/2026-04-29T22-03-09Z-kujan.md`
+
+## 2026-04-29T23:54:05Z — Guard-Clause Refactor Review Gate
+
+Orchestration log written. Review gate on guard-clause refactor completed. APPROVED—no blocking correctness/lifecycle/maintainability regressions identified. Test suite validates high-risk hotspots (dispatcher, RAII, Begin/End pairing).
+
+Decision #169 captured in decisions.md.

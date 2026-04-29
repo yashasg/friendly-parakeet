@@ -78,10 +78,11 @@ Ported the removed HUD behavior (shape buttons, approach-ring affordance, colorf
 - Pause screen text parity fix requires updating both generated call-site values in `app/ui/generated/paused_layout.h` and source geometry in `content/ui/screens/paused.rgl`; changing only one side risks regeneration drift.
 - For centered-label readability fixes, preserve existing helper pattern and change only label rectangle/size arguments; keep pause button rectangles/actions untouched.
 - Focused validation for this UI artifact path can be done with `cmake --build build --target shapeshifter_tests` followed by `./build/shapeshifter_tests` to confirm no regressions.
+- For raygui-backed hit targets that must stay visually custom, wrap `GuiButton` with temporary per-control style overrides (transparent button state colors) and restore immediately; this preserves hit testing without leaking global HUD alpha/state.
 
 ## 2026-04-29T09:55:21Z — Pause Screen Text Fix (Approved)
 
-**Session:** UI Layout Fixes — Song Complete & Pause Screen Text Readability  
+**Session:** UI Layout Fixes — Song Complete & Pause Screen Text Readability
 **Task:** Apply exact numeric AC corrections to pause-screen text labels (non-Keaton reviser per lockout protocol).
 
 **Scope:** Correct only the three pause label call-site bounds/sizes in `app/ui/generated/paused_layout.h` and mirror them in `content/ui/screens/paused.rgl`. Buttons/actions unchanged.
@@ -105,3 +106,23 @@ Ported the removed HUD behavior (shape buttons, approach-ring affordance, colorf
 **Sign-off:** All blocking AC from Keaton rejection met exactly. No new issues found. Pattern is consistent across both layout headers. Controller unchanged; action dispatch and timing preserved. Scope was precise: only three label call-site arguments plus mirrored .rgl geometry.
 
 **Orchestration:** `.squad/orchestration-log/2026-04-29T09:55:21Z-fenster.md`
+
+## 2026-04-29 — Gameplay shape buttons migration (revisions R2 → rejected)
+
+**Status:** TWO-PASS REVISION CYCLE
+**Reviewer:** Kujan
+**Verdict (R2):** REJECTED (reachability regression + geometry drift)
+
+**Revision 1 (Visual Fix):**
+- Hid stock rectangular raygui button visuals by temporarily overriding BUTTON style colors to transparent during shape `GuiButton` calls
+- Preserved input/state capture path (raygui ownership intact)
+- Kept custom circular silhouettes and approach rings visible
+- Build and tests passing
+
+**Kujan feedback (R2):** Visual fix approved, but upstream blockers discovered:
+- Tap forgiveness regression: 140×100 input rectangles cannot reach the required ±70px vertical forgiveness band (legacy circular geometry)
+- Shape slot geometry diverges from `gameplay.rgl`: controller uses constants-derived math instead of `.rgl` as authoritative source
+
+**Reassignment:** Keyser (Lead Architect, non-locked) to address circular hit detection and generated-layout alignment.
+
+**See:** `.squad/orchestration-log/2026-04-29T22-03-09Z-fenster.md`
