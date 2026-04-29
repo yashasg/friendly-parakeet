@@ -4,6 +4,7 @@
 #include "../components/rendering.h"
 #include "../constants.h"
 #include <raymath.h>
+#include <cstdint>
 #include <stdexcept>
 
 namespace {
@@ -14,6 +15,29 @@ struct ObstacleModelLifecycleState {
 bool obstacle_model_lifecycle_wired(entt::registry& reg) {
     auto* state = reg.ctx().find<ObstacleModelLifecycleState>();
     return state && state->wired;
+}
+
+int checked_shape_mesh_index(Shape shape) {
+    switch (shape) {
+        case Shape::Circle:
+            return 0;
+        case Shape::Square:
+            return 1;
+        case Shape::Triangle:
+            return 2;
+        case Shape::Hexagon:
+            return 3;
+    }
+
+    throw std::logic_error("Invalid RequiredShape shape");
+}
+
+int checked_lane_index(int8_t lane) {
+    const int lane_index = static_cast<int>(lane);
+    if (lane_index < 0 || lane_index >= constants::LANE_COUNT) {
+        throw std::logic_error("Invalid RequiredLane lane");
+    }
+    return lane_index;
 }
 
 struct PendingEntity {
@@ -70,14 +94,13 @@ static entt::entity add_slab_child(entt::registry& reg, entt::entity parent,
 }
 
 static entt::entity add_shape_child(entt::registry& reg, entt::entity parent,
-                                     Shape shape, float cx, float z_offset,
+                                     int mesh_index, float cx, float z_offset,
                                      float size, Color tint) {
     require_child_capacity(reg, parent);
-    int idx = static_cast<int>(shape);
     auto e = reg.create();
     PendingEntity pending{reg, e};
-    reg.emplace<MeshChild>(e, MeshChild{parent, cx, z_offset, size, 0, 0, tint,
-                                        MeshType::Shape, idx});
+    reg.emplace<MeshChild>(e, MeshChild{parent, cx, z_offset, size, 0.0f, 0.0f, tint,
+                                        MeshType::Shape, mesh_index});
     reg.emplace<TagWorldPass>(e);
     append_child(reg, parent, e);
     pending.release();
@@ -107,21 +130,25 @@ void spawn_obstacle_meshes(entt::registry& reg, entt::entity logical) {
         case ObstacleKind::ShapeGate: {
             if (!pos_ptr) break;
             const auto& pos = *pos_ptr;
+            auto* req = reg.try_get<RequiredShape>(logical);
+            int mesh_index = 0;
+            if (req) {
+                mesh_index = checked_shape_mesh_index(req->shape);
+            }
             add_slab_child(reg, logical, 0, pos.x-50, dsz.h,
                            constants::OBSTACLE_3D_HEIGHT, col);
             add_slab_child(reg, logical, pos.x+50,
                 constants::SCREEN_W-pos.x-50, dsz.h,
                 constants::OBSTACLE_3D_HEIGHT, col);
-            auto* req = reg.try_get<RequiredShape>(logical);
             if (req)
-                add_shape_child(reg, logical, req->shape, pos.x, dsz.h/2,
+                add_shape_child(reg, logical, mesh_index, pos.x, dsz.h/2,
                                 40, {col.r, col.g, col.b, 120});
             break;
         }
         case ObstacleKind::LaneBlock: {
             auto* blocked = reg.try_get<BlockedLanes>(logical);
             if (blocked)
-                for (int i = 0; i < 3; ++i)
+                for (int i = 0; i < constants::LANE_COUNT; ++i)
                     if ((blocked->mask >> i) & 1)
                         add_slab_child(reg, logical, constants::LANE_X[i]-dsz.w/2,
                                        dsz.w, dsz.h, constants::OBSTACLE_3D_HEIGHT, col);
@@ -129,32 +156,44 @@ void spawn_obstacle_meshes(entt::registry& reg, entt::entity logical) {
         }
         case ObstacleKind::ComboGate: {
             auto* blocked = reg.try_get<BlockedLanes>(logical);
+            auto* req = reg.try_get<RequiredShape>(logical);
+            int mesh_index = 0;
+            if (req) {
+                mesh_index = checked_shape_mesh_index(req->shape);
+            }
             if (blocked)
-                for (int i = 0; i < 3; ++i)
+                for (int i = 0; i < constants::LANE_COUNT; ++i)
                     if ((blocked->mask >> i) & 1)
                         add_slab_child(reg, logical, constants::LANE_X[i]-120,
                                        240.0f, dsz.h, constants::OBSTACLE_3D_HEIGHT, col);
-            auto* req = reg.try_get<RequiredShape>(logical);
             if (req) {
                 int open = 1;
                 if (blocked)
-                    for (int i = 0; i < 3; ++i)
+                    for (int i = 0; i < constants::LANE_COUNT; ++i)
                         if (!((blocked->mask >> i) & 1)) { open = i; break; }
-                add_shape_child(reg, logical, req->shape, constants::LANE_X[open],
-                                dsz.h/2, 30, {255, 255, 255, 180});
+                add_shape_child(reg, logical, mesh_index, constants::LANE_X[open],
+                                 dsz.h/2, 30, {255, 255, 255, 180});
             }
             break;
         }
         case ObstacleKind::SplitPath: {
             auto* rlane = reg.try_get<RequiredLane>(logical);
-            for (int i = 0; i < 3; ++i)
-                if (!rlane || i != rlane->lane)
+            int lane_index = 0;
+            if (rlane) {
+                lane_index = checked_lane_index(rlane->lane);
+            }
+            auto* req = reg.try_get<RequiredShape>(logical);
+            int mesh_index = 0;
+            if (req) {
+                mesh_index = checked_shape_mesh_index(req->shape);
+            }
+            for (int i = 0; i < constants::LANE_COUNT; ++i)
+                if (!rlane || i != lane_index)
                     add_slab_child(reg, logical, constants::LANE_X[i]-120,
                                    240.0f, dsz.h, constants::OBSTACLE_3D_HEIGHT, col);
-            auto* req = reg.try_get<RequiredShape>(logical);
             if (req && rlane)
-                add_shape_child(reg, logical, req->shape,
-                                constants::LANE_X[rlane->lane],
+                add_shape_child(reg, logical, mesh_index,
+                                constants::LANE_X[lane_index],
                                 dsz.h/2, 30, {255, 255, 255, 180});
             break;
         }
