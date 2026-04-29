@@ -122,6 +122,12 @@ Conducted comprehensive audit of `app/ui/*.cpp/.h` root-level files. Confirmed a
 - Root-level `app/ui/*.cpp|*.h` audit after screen-controller migration: all 10 files are still live; no safe deletions. `raygui_impl.cpp` is the single `RAYGUI_IMPLEMENTATION` TU; `text_renderer.*`, `ui_loader.*`, and `ui_source_resolver.*` are used by runtime systems and tests; `level_select_controller.*` and `ui_button_spawner.h` still drive dispatcher/game-state/menu-hitbox flow.
 - Search proof was captured with repo-wide symbol/include scans (`rg`) for each candidate file (`level_select_controller`, `ui_loader`, `ui_source_resolver`, `text_renderer`, `ui_button_spawner`, `raygui_impl`) showing active references in `app/` and `tests/`.
 - Validation command for root-level UI audit: `cmake -B build -S . -Wno-dev && cmake --build build && ./build/shapeshifter_tests '~[bench]'` (pass, 867 test cases / 2603 assertions).
+- `app/ui/raygui_impl.cpp` was audited and retained: removing it (temporary rename + rebuild) fails link with undefined raygui symbols (`_GuiButton`, `_GuiLabel`, `_GuiSetStyle`, etc.); compile database contains no `-DRAYGUI_IMPLEMENTATION`, and vcpkg installs only `raygui.h` (no raygui library object to link).
+- Global `-DRAYGUI_IMPLEMENTATION` is unsafe: unity build fails with intra-TU redefinitions (`guiIcons`, `guiState`, `GuiPropertyElement`) because `raygui.h` has no include guard and implementation section cannot be enabled in multiple includes.
+- Validation command for audit: `cmake -B build -S . -Wno-dev && cmake --build build && ./build/shapeshifter_tests '~[bench]'` after probe (pass, 867 test cases / 2603 assertions).
+- Re-tested compile-definition ownership without `app/ui/raygui_impl.cpp`: excluded `raygui_impl.cpp` from `UI_SOURCES`, set `COMPILE_DEFINITIONS RAYGUI_IMPLEMENTATION` on `app/ui/screen_controllers/title_screen_controller.cpp`, and set `SKIP_UNITY_BUILD_INCLUSION TRUE` on that same file.
+- Outcome: approach is stable under unity builds; `build-unity-verify-vcpkg` compiles `Unity/unity_*.cxx` plus one standalone `title_screen_controller.cpp.o` carrying `-DRAYGUI_IMPLEMENTATION` exactly once (verified in `build-unity-verify-vcpkg/compile_commands.json`).
+- Validation commands: `cmake -B build -S . -Wno-dev && cmake --build build && ./build/shapeshifter_tests '~[bench]'` and `cmake -B build-unity-verify-vcpkg -S . -Wno-dev && cmake --build build-unity-verify-vcpkg && ./build-unity-verify-vcpkg/shapeshifter_tests '~[bench]'` (both pass, 867 test cases / 2603 assertions).
 
 ### 2026-04-29 — Title Screen Layout Revision (approved)
 
@@ -137,3 +143,15 @@ Removed runtime override entirely from `title_screen_controller.cpp`. Updated `c
 - Removed committed `app/ui/generated/standalone/` artifacts (README + all standalone `.c/.h` exports) so repo UI source-of-truth is `.rgl` + `*_layout.h` + `screen_controllers` only.
 - Updated rguilayout tooling/docs to treat standalone exports as scratch-only artifacts under `build/rguilayout-scratch/` and never committed (`tools/rguilayout/generate_embeddable.sh`, `tools/rguilayout/INTEGRATION.md`, `tools/rguilayout/SUMMARY.md`, `design-docs/rguilayout-portable-c-integration.md`, `RGUILAYOUT_INTEGRATION_PLAN.md`).
 - Validation command: `cmake -B build -S . -Wno-dev && cmake --build build && ./build/shapeshifter_tests '~[bench]'` (pass).
+
+### 2026-04-29T08:05:08Z — Raygui Implementation Ownership Consolidation (Session)
+
+**Task:** `hockney-raygui-compile-define` — Replace dedicated `raygui_impl.cpp` with source-level RAYGUI_IMPLEMENTATION ownership on `title_screen_controller.cpp`.
+
+**Outcome:** ✅ Implemented
+- Deleted `app/ui/raygui_impl.cpp` from runtime sources
+- Set `COMPILE_DEFINITIONS RAYGUI_IMPLEMENTATION` and `SKIP_UNITY_BUILD_INCLUSION TRUE` on `title_screen_controller.cpp`
+- Validated native + unity builds pass (867 tests, zero warnings)
+- Pattern documented for future single-header library implementations
+
+**Orchestration log:** `.squad/orchestration-log/2026-04-29T08:05:08Z-hockney.md`

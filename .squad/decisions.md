@@ -1,6 +1,112 @@
 # Decisions Registry
 
-*Last merged: 2026-04-29T07:42:57Z*
+*Last merged: 2026-04-29T08:05:08Z*
+
+### UI Cleanup Initiative (2026-04-29)
+
+**Initiative:** Consolidate raygui implementation ownership, audit root UI surface, remove runtime-dead files. Agents: Hockney (Platform), Keyser (Audit), Kujan (Review).
+
+#### Raygui Implementation: Compile Definition Owner
+
+- **Date:** 2026-04-29
+- **Owner:** Hockney (Platform)
+- **Scope:** CMake + unity-build-safe ownership of `RAYGUI_IMPLEMENTATION`
+## Decision
+Use a **real screen-controller TU** as raygui implementation owner instead of a dedicated `app/ui/raygui_impl.cpp` file.
+Implemented shape:
+- Excluded `app/ui/raygui_impl.cpp` from `UI_SOURCES` and deleted the file.
+- Set source properties on `app/ui/screen_controllers/title_screen_controller.cpp`:
+  - `COMPILE_DEFINITIONS RAYGUI_IMPLEMENTATION`
+  - `SKIP_UNITY_BUILD_INCLUSION TRUE`
+## Why
+- raygui is header-only and requires exactly one implementation owner.
+- Source-level compile definition keeps ownership explicit without a dedicated glue TU.
+- `SKIP_UNITY_BUILD_INCLUSION` prevents macro leakage/redefinition hazards in unity amalgamated TUs.
+## Evidence
+- Native validation (required command):
+  - `cmake -B build -S . -Wno-dev && cmake --build build && ./build/shapeshifter_tests '~[bench]'`
+  - Result: pass, all tests pass.
+- Unity validation (vcpkg-backed cache):
+  - `cmake -B build-unity-verify-vcpkg -S . -Wno-dev && cmake --build build-unity-verify-vcpkg && ./build-unity-verify-vcpkg/shapeshifter_tests '~[bench]'`
+  - Result: pass, all tests pass.
+  - Build output shows `Unity/unity_*.cxx.o` plus standalone `title_screen_controller.cpp.o`.
+  - `build-unity-verify-vcpkg/compile_commands.json` contains `-DRAYGUI_IMPLEMENTATION` exactly once.
+## Follow-up
+- Keep this pattern documented for future single-header libraries needing one implementation site under unity builds.
+
+#### Raygui Keep Decision (Audit)
+
+- **Context:** User challenged whether `raygui_impl.cpp` is redundant because it only defines `RAYGUI_IMPLEMENTATION`.
+- **Evidence gathered:**
+  - `build/compile_commands.json` and `build-unity-verify-vcpkg/compile_commands.json` contain no `-DRAYGUI_IMPLEMENTATION` compiler definition.
+  - vcpkg install provides `build/vcpkg_installed/arm64-osx/include/raygui.h` only; no `raygui` static/shared library is installed to provide symbols.
+  - Removal probe (temporary rename of `app/ui/raygui_impl.cpp` + configure/build) fails at link with missing symbols (`_GuiButton`, `_GuiLabel`, `_GuiSetStyle`, `_GuiGetStyle`, `_GuiSetAlpha`, etc.).
+  - Global define probe (`-DRAYGUI_IMPLEMENTATION`) fails under unity build with redefinitions (`guiIcons`, `guiState`, `GuiPropertyElement`, etc.) because raygui implementation section is not safe to include multiple times.
+- **Decision:** Keep dedicated single implementation TU (`app/ui/raygui_impl.cpp`) and keep unity exclusion for that file.
+- **Validation:** `cmake -B build -S . -Wno-dev && cmake --build build && ./build/shapeshifter_tests '~[bench]'` passes after probes.
+
+---
+
+#### Root UI Cleanup: Live Dependencies Classification
+
+## Decision
+Treat `app/ui/ui_source_resolver.cpp` as a **test-only UI utility** (not a runtime dependency of the active rguilayout screen-controller path). Keep it compiled for test targets, but remove it from the runtime game library source set.
+## Why
+- Runtime UI now renders via `content/ui/screens/*.rgl` -> generated layout headers -> screen controllers.
+- `ui_source_resolver` has no runtime call sites in `app/` rendering/navigation paths and is only referenced by UI/state validation tests.
+- Keeping it in runtime sources creates misleading architecture surface and unnecessary linkage.
+## Implementation
+- Added `list(FILTER UI_SOURCES EXCLUDE REGEX "(^|/)ui_source_resolver\\.cpp$")` in `CMakeLists.txt`.
+- Added `app/ui/ui_source_resolver.cpp` to `shapeshifter_tests` source list.
+- Removed dead disabled legacy test file `tests/test_ui_spawn_malformed.cpp`.
+## Validation
+- Build + tests pass: `cmake -B build -S . -Wno-dev && cmake --build build && ./build/shapeshifter_tests '~[bench]'`.
+- Search verification in code/build paths (`app/`, `tests/`, `CMakeLists.txt`) shows no references to deleted spawn path symbols (`spawn_ui_elements`), vendored UI path (`app/ui/vendor`), standalone generated sources, or adapter path.
+
+#### Independent Audit: Confirm Classification & Guardrails
+
+## Summary
+The branch has correctly removed JSON/ECS entity-spawn rendering (`spawn_ui_elements`) and adapter wiring from runtime UI render/navigation. Current runtime is screen-controller-driven with cache-only JSON reads at screen transition boundaries.
+## Keep (still live)
+- `app/ui/ui_loader.cpp/.h` loader + cache + overlay APIs (`load_ui`, `ui_load_screen`, `build_ui_element_map`, `build_hud_layout`, `build_level_select_layout`, `ui_load_overlay`, `build_overlay_layout`)
+- `app/ui/text_renderer.cpp/.h` (`text_init_default`, `text_draw`, `text_shutdown`)
+- `app/ui/ui_button_spawner.h` (menu hit targets)
+- `app/ui/level_select_controller.cpp/.h` (dispatcher listeners + diff-button relayout)
+- `app/ui/screen_controllers/*`
+## Safe follow-up cleanup candidates
+1. Remove test-only legacy dead surface in a dedicated PR:
+   - `app/ui/ui_source_resolver.cpp/.h` (runtime-dead)
+   - `app/components/ui_element.h` (runtime-dead)
+   - `tests/test_ui_spawn_malformed.cpp` (disabled legacy tests)
+2. Remove stale/unused APIs/comments:
+   - `text_width()` if no planned use
+   - `init_*_screen_ui()` declarations if lifecycle pre-init is not planned
+   - stale `ui_loader.cpp` comment claiming screen load also spawns entities
+3. Delete empty `app/ui/vendor/` directory.
+## Must-not-break guardrails
+- No reintroduction of adapter path (`app/ui/adapters/*`)
+- No reintroduction of JSON->ECS UI render loops
+- Keep `ui_render_system` as single screen-controller switchpoint
+- Keep generated standalone exports commit-free (scratch-only policy)
+
+---
+
+#### Runtime-Dead Removal: Test-Only Components
+
+## Context
+A second-pass audit confirmed `app/ui/ui_source_resolver.*` and `app/components/ui_element.h` had no runtime callers after rguilayout screen-controller migration. Their remaining usage was test-only, validating legacy JSON/ECS dynamic-text paths no longer executed by production UI rendering.
+## Decision
+Delete `ui_source_resolver.*` and `ui_element.h` from `app/`, and retire resolver-only tests. Keep only runtime-live tests and gameplay-state assertions.
+## Why
+Keeping dead runtime files in `app/` misrepresents the active architecture and creates maintenance drag. Tests that exercised removed JSON dynamic-source binding were not protecting live behavior.
+## Guardrails respected
+- Kept live dependencies: `ui_loader`, `text_renderer`, `ui_button_spawner`, level select + all screen controllers, navigation/render systems.
+- Did not reintroduce adapters, legacy JSON/ECS rendering, `spawn_ui_elements`, standalone exports, vendored raygui, or `app/ui/raygui_impl.cpp`.
+## Validation
+`cmake -B build -S . -Wno-dev && cmake --build build && ./build/shapeshifter_tests '~[bench]'` passed.
+Search proof in app/tests/CMake: no references to `ui_source_resolver`, legacy `UIElement*` components, `spawn_ui_elements`, `app/ui/vendor`, or generated standalone exports.
+
+---
 
 ### Vendored raygui Removed; vcpkg Integration Complete (2026-04-29)
 

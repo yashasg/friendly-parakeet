@@ -234,3 +234,27 @@ See `.squad/orchestration-log/2026-04-29T03:13:21Z-keyser.md`
 - Gameplay HUD restoration should read live `ShapeButtonTag + ShapeButtonData + UIPosition` entities first, then fall back to layout-derived defaults; this keeps visible buttons aligned with actual input-hit targets.
 - Keep gameplay HUD dynamic behavior (shape buttons, approach rings, segmented energy feedback) inside `gameplay_hud_screen_controller.cpp` while leaving generated rguilayout header focused on static controls like pause.
 - Compact, multi-stop segmented energy bars with critical pulse + flash overlays better preserve readability on 720x1280 than oversized single-fill bars.
+- Root UI cleanup (post-rguilayout activation): classified `ui_loader` + `text_renderer` + `ui_button_spawner` as live runtime dependencies, `ui_source_resolver` as live test-only dependency, and `tests/test_ui_spawn_malformed.cpp` as dead legacy spawn-surface documentation.
+- Applied surgical cleanup: removed `tests/test_ui_spawn_malformed.cpp`, excluded `app/ui/ui_source_resolver.cpp` from `shapeshifter_lib` runtime build while compiling it directly into `shapeshifter_tests`, and updated root UI comments to reflect the active screen-controller path.
+- Key files changed: `CMakeLists.txt`, `app/ui/ui_loader.cpp`, `app/ui/ui_source_resolver.h`, deleted `tests/test_ui_spawn_malformed.cpp`.
+- Validation: `cmake -B build -S . -Wno-dev && cmake --build build && ./build/shapeshifter_tests '~[bench]'` (pass: 867 test cases).
+- Second-pass dead-surface cleanup: deleted test-only `app/ui/ui_source_resolver.*`, removed legacy `app/components/ui_element.h`, and retired resolver-only tests (`tests/test_ui_source_resolver.cpp` plus resolver assertions in game-state/high-score/redfoot tests) because runtime now renders via screen controllers without JSON dynamic-source resolution.
+- Kept live runtime dependencies untouched (`ui_loader`, `text_renderer`, `ui_button_spawner`, level-select + screen controllers, navigation/render systems) and refreshed stale loader/render comments to reflect the active rguilayout controller path.
+- Validation and dead-surface proof: `cmake -B build -S . -Wno-dev && cmake --build build && ./build/shapeshifter_tests '~[bench]'` passed (848 test cases); no app/tests/CMake references remain to `ui_source_resolver`, legacy `UIElement*` components, `spawn_ui_elements`, `app/ui/vendor`, or generated standalone exports.
+
+### 2026-04-29T08:05:08Z — Root UI Surface Cleanup & Test-Only Component Removal (Session)
+
+**Tasks:**
+1. `keyser-root-ui-cleanup` — First-pass audit of root `app/ui/` files; classified live dependencies vs. test-only vs. dead
+2. `keyser-test-only-ui-leftovers` — Second-pass cleanup; deleted runtime-dead `ui_source_resolver.*`, `ui_element.h`, legacy tests; kept all live dependencies
+
+**Outcome:** ✅ Completed
+- Identified live runtime: `ui_loader`, `text_renderer`, `ui_button_spawner`, `level_select_controller`, all 8 screen controllers
+- Moved `ui_source_resolver.cpp` to test sources (test-only)
+- Deleted `ui_element.h` and `test_ui_spawn_malformed.cpp` (no runtime use)
+- Updated stale comments and empty vendor dir notes
+- Validated native + unity builds pass (867 tests, zero warnings)
+
+**Orchestration logs:** 
+- `.squad/orchestration-log/2026-04-29T08:05:08Z-keyser-first-pass.md`
+- `.squad/orchestration-log/2026-04-29T08:05:08Z-keyser-second-pass.md`

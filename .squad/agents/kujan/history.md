@@ -667,3 +667,25 @@ Non-blocking note: `GuiSetStyle(DEFAULT, TEXT_SIZE, 28)` uniform across all labe
 **Verdict:** ✅ APPROVED WITH NOTES — code and build changes are correct and complete; two doc-staleness items (non-blocking) should be cleaned up by whoever owns SUMMARY.md next.
 
 **Reusable quality note:** When completing a "future build-integration task" that was documented as deferred, update the status in all referenced summary/integration documents at the same time. Stale "Future task" bullets become materially misleading for the next developer who opens those docs.
+
+## Learnings
+
+### 2026-04-29 — Root app/ui cleanup audit (read-only)
+
+- **Still live (do not delete):** `ui_loader` load/map/cache/overlay functions are used by `game_loop.cpp` + `ui_navigation_system.cpp`; `text_renderer` is still runtime-critical for popup text and startup/shutdown font lifecycle; `ui_button_spawner.h` still drives title/level-select/paused/end-screen hit targets through `game_state_system.cpp`; `level_select_controller.cpp` is still wired through `input_dispatcher.cpp` listeners for Go/ButtonPress handling and diff-button re-layout.
+- **Dead or test-only surface:** `spawn_ui_elements` path is fully removed; `ui_source_resolver.cpp/h` is no longer used by runtime code (tests only); `components/ui_element.h` types (`UIElementTag/UIText/UIButton/UIShape/UIDynamicText/UIAnimation`) have no runtime references; `text_width()` appears unused; `init_*_screen_ui()` entry points are defined but currently unused.
+- **Regression-risk map:** deleting `ui_button_spawner` or `level_select_controller` now will break menu/level-select semantic input; deleting `ui_loader` caches/overlay helpers will break gameplay HUD cache, level-select cache, and paused dim overlay paths; deleting screen-controller dispatch in `ui_render_system` breaks title, level select, settings, HUD, paused, game over, song complete, tutorial.
+- **Test migration note:** `tests/test_ui_spawn_malformed.cpp` is intentionally disabled legacy coverage and should be removed or rewritten to cache/controller paths; if `ui_source_resolver` is removed, rewrite/remove dependent tests (`test_ui_source_resolver.cpp`, `test_redfoot_testflight_ui.cpp`, `test_high_score_integration.cpp`, and song-complete resolver assertions in `test_game_state_extended.cpp`).
+
+### 2026-04-29T08:05:08Z — Independent Root UI Cleanup Audit (Session)
+
+**Task:** `kujan-root-ui-cleanup-audit` — Second-pass independent review; confirm live dependencies, identify remaining dead surface, enforce guardrails.
+
+**Outcome:** ✅ Completed
+- Confirmed live runtime dependencies (8 controllers, loader, text_renderer, button_spawner, level_select)
+- Identified runtime-dead: `ui_source_resolver.*`, `ui_element.h`
+- Flagged additional cleanup: stale comments, empty vendor dir
+- Enforced guardrails: no adapter reintroduction, no legacy JSON/ECS loops, no standalone exports to committed tree
+- Recommended targeted cleanup PR for remaining dead surface
+
+**Orchestration log:** `.squad/orchestration-log/2026-04-29T08:05:08Z-kujan.md`
