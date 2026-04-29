@@ -108,6 +108,9 @@ Conducted comprehensive audit of `app/ui/*.cpp/.h` root-level files. Confirmed a
 
 ## Learnings
 
+- 2026-04-29: `bash run.sh test` can fail to find EnTT when `build/CMakeCache.txt` was first configured before the vcpkg toolchain was active; `CMAKE_TOOLCHAIN_FILE` cannot be retrofitted into an existing CMake build tree.
+- `build.sh` now verifies `${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake` exists and regenerates only `build/CMakeCache.txt` + `build/CMakeFiles` when the cache lacks vcpkg markers, preserving `build/vcpkg_installed` for CI/local cache reuse.
+- Validation: `bash run.sh test '~[bench]'` passed (775 test cases, 2210 assertions); EnTT resolved from `build/vcpkg_installed/arm64-osx/share/entt`.
 - raygui is now supplied by vcpkg manifest dependency `raygui` (header-only); CMake resolves it via `find_path(RAYGUI_INCLUDE_DIR raygui.h REQUIRED)` and injects it as a SYSTEM include on `shapeshifter_lib`.
 - Removed committed third-party source `app/ui/vendor/raygui.h`; all active UI screen controllers and `app/ui/raygui_impl.cpp` now include `<raygui.h>`.
 - Kept `app/ui/raygui_impl.cpp` as a minimal project-owned integration TU because raygui is header-only and still requires exactly one `#define RAYGUI_IMPLEMENTATION` site.
