@@ -26,6 +26,7 @@ void scroll_system(entt::registry& reg, float dt);
 void collision_system(entt::registry& reg, float dt);
 void miss_detection_system(entt::registry& reg, float dt);
 void scoring_system(entt::registry& reg, float dt);
+void popup_feedback_system(entt::registry& reg, float dt);
 
 // Phase 5.5: Energy
 void energy_system(entt::registry& reg, float dt);

@@ -1,25 +1,14 @@
 #include "settings_persistence.h"
 #include "fs_utils.h"
+#include "persistence_policy.h"
 #include <fstream>
-#include <cstdlib>
 #include <algorithm>
 #include <cstdint>
 #include <limits>
-#include <system_error>
-
-#ifndef _WIN32
-    #include <pwd.h>
-    #include <unistd.h>
-#endif
 
 namespace settings {
 
 namespace {
-
-std::filesystem::path create_or_fallback(const std::filesystem::path& dir) {
-    if (fs_utils::ensure_directory(dir)) return dir;
-    return std::filesystem::path(".");
-}
 
 bool json_integer_to_i64(const nlohmann::json& value, std::int64_t& out) {
     if (!value.is_number_integer()) return false;
@@ -37,29 +26,23 @@ bool json_integer_to_i64(const nlohmann::json& value, std::int64_t& out) {
 }  // namespace
 
 std::filesystem::path get_settings_dir() {
-    #ifdef _WIN32
-        const char* appdata = std::getenv("APPDATA");
-        if (appdata) {
-            return create_or_fallback(std::filesystem::path(appdata) / "shapeshifter");
-        }
-    #elif defined(__EMSCRIPTEN__)
-        return create_or_fallback(std::filesystem::path("."));
-    #else
-        const char* home = std::getenv("HOME");
-        if (!home) {
-            const passwd* pw = getpwuid(getuid());
-            if (pw) home = pw->pw_dir;
-        }
-        if (home) {
-            return create_or_fallback(std::filesystem::path(home) / ".shapeshifter");
-        }
-    #endif
-    // Fallback to current directory if no home found
-    return std::filesystem::path(".");
+    persistence::Paths paths;
+    const auto result = persistence::resolve_paths(paths);
+    return result.ok() ? paths.root_dir : std::filesystem::path{};
 }
 
-std::filesystem::path get_settings_file_path() {
-    return get_settings_dir() / "settings.json";
+persistence::Result get_settings_file_path(
+    std::filesystem::path& out_path,
+    const std::filesystem::path& root_override) {
+    persistence::Paths paths;
+    const auto result = persistence::resolve_paths(paths, root_override);
+    if (!result.ok()) {
+        out_path.clear();
+        return result;
+    }
+
+    out_path = paths.settings_file;
+    return persistence::Result{};
 }
 
 nlohmann::json settings_to_json(const SettingsState& state) {
@@ -112,43 +95,54 @@ bool settings_from_json(const nlohmann::json& obj, SettingsState& state) {
     return true;
 }
 
-bool load_settings(SettingsState& state, const std::filesystem::path& path) {
+persistence::Result load_settings(SettingsState& state, const std::filesystem::path& path) {
     std::error_code ec;
-    if (!std::filesystem::exists(path, ec) || ec) {
-        return false;
+    const bool exists = std::filesystem::exists(path, ec);
+    if (ec) {
+        return persistence::Result{persistence::Status::FileReadFailed, ec};
+    }
+    if (!exists) {
+        return persistence::Result{persistence::Status::MissingFile, {}};
     }
 
     try {
         std::ifstream file(path);
         if (!file.is_open()) {
-            return false;
+            return persistence::Result{persistence::Status::FileOpenFailed, {}};
         }
 
         nlohmann::json obj;
         file >> obj;
-        return settings_from_json(obj, state);
+        if (file.bad()) {
+            return persistence::Result{persistence::Status::FileReadFailed, {}};
+        }
+        if (!settings_from_json(obj, state)) {
+            return persistence::Result{persistence::Status::CorruptData, {}};
+        }
+        return persistence::Result{};
     } catch (const nlohmann::json::exception&) {
-        return false;
+        return persistence::Result{persistence::Status::CorruptData, {}};
     }
 }
 
-bool save_settings(const SettingsState& state, const std::filesystem::path& path) {
-    if (!fs_utils::ensure_directory(path.parent_path())) {
-        return false;
+persistence::Result save_settings(const SettingsState& state, const std::filesystem::path& path) {
+    const auto ensure = fs_utils::ensure_directory_result(path.parent_path());
+    if (!ensure.ok) {
+        return persistence::Result{persistence::Status::DirectoryCreateFailed, ensure.error};
     }
 
     std::ofstream file(path);
     if (!file.is_open()) {
-        return false;
+        return persistence::Result{persistence::Status::FileOpenFailed, {}};
     }
 
     nlohmann::json obj = settings_to_json(state);
     file << obj.dump(2);
     file.flush();
     if (!file.good()) {
-        return false;
+        return persistence::Result{persistence::Status::FileWriteFailed, {}};
     }
-    return true;
+    return persistence::Result{};
 }
 
 void clamp_audio_offset(SettingsState& state) {

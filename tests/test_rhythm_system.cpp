@@ -487,6 +487,7 @@ TEST_CASE("collision: hexagon fails shape gates — drains energy", "[rhythm][co
     make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     collision_system(reg, 0.016f);
     scoring_system(reg, 0.016f);
+    energy_system(reg, 0.016f);
     auto& gs = reg.ctx().get<GameState>();
     CHECK_FALSE(gs.transition_pending);
     auto& energy = reg.ctx().get<EnergyState>();
@@ -502,6 +503,7 @@ TEST_CASE("collision: MISS drains energy", "[rhythm][collision]") {
     make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     collision_system(reg, 0.016f);
     scoring_system(reg, 0.016f);
+    energy_system(reg, 0.016f);
     auto& gs = reg.ctx().get<GameState>();
     CHECK_FALSE(gs.transition_pending);
     auto& energy = reg.ctx().get<EnergyState>();
@@ -644,10 +646,10 @@ TEST_CASE("collision: SongResults updated", "[rhythm][collision]") {
 
 // Energy System
 
-TEST_CASE("energy_system: triggers game over at 0 energy", "[rhythm][energy]") {
+TEST_CASE("game_state: triggers game over at 0 energy", "[rhythm][energy]") {
     auto reg = make_rhythm_registry();
     reg.ctx().get<EnergyState>().energy = 0.0f;
-    energy_system(reg, 0.016f);
+    game_state_system(reg, 0.016f);
     CHECK(reg.ctx().get<GameState>().transition_pending);
     CHECK(reg.ctx().get<GameState>().next_phase == GamePhase::GameOver);
 }
@@ -659,10 +661,11 @@ TEST_CASE("energy_system: does nothing when energy is positive", "[rhythm][energ
     CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
 }
 
-TEST_CASE("energy_system: marks song finished on depletion", "[rhythm][energy]") {
+TEST_CASE("game_state: enter_game_over marks song finished on depletion", "[rhythm][energy]") {
     auto reg = make_rhythm_registry();
     reg.ctx().get<EnergyState>().energy = 0.0f;
-    energy_system(reg, 0.016f);
+    game_state_system(reg, 0.016f);
+    game_state_system(reg, 0.016f);
     auto& song = reg.ctx().get<SongState>();
     CHECK(song.finished);
     CHECK_FALSE(song.playing);

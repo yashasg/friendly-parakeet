@@ -24,6 +24,7 @@ TEST_CASE("collision: shape gate drains energy with wrong shape", "[collision]")
     CHECK(reg.all_of<MissTag>(obs));
 
     scoring_system(reg, 0.016f);
+    energy_system(reg, 0.016f);
 
     auto& gs = reg.ctx().get<GameState>();
     CHECK_FALSE(gs.transition_pending);
@@ -51,6 +52,7 @@ TEST_CASE("collision: lane block drains energy when player in blocked lane", "[c
 
     collision_system(reg, 0.016f);
     scoring_system(reg, 0.016f);
+    energy_system(reg, 0.016f);
 
     CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
     auto& energy = reg.ctx().get<EnergyState>();
@@ -76,6 +78,7 @@ TEST_CASE("collision: low bar drains energy when grounded", "[collision]") {
 
     collision_system(reg, 0.016f);
     scoring_system(reg, 0.016f);
+    energy_system(reg, 0.016f);
 
     CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
     auto& energy = reg.ctx().get<EnergyState>();
@@ -101,6 +104,7 @@ TEST_CASE("collision: high bar drains energy when grounded", "[collision]") {
 
     collision_system(reg, 0.016f);
     scoring_system(reg, 0.016f);
+    energy_system(reg, 0.016f);
 
     CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
     auto& energy = reg.ctx().get<EnergyState>();
@@ -188,6 +192,7 @@ TEST_CASE("collision: combo gate fails with wrong shape", "[collision]") {
 
     collision_system(reg, 0.016f);
     scoring_system(reg, 0.016f);
+    energy_system(reg, 0.016f);
 
     CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
     auto& energy = reg.ctx().get<EnergyState>();
@@ -203,6 +208,7 @@ TEST_CASE("collision: combo gate fails when lane is blocked", "[collision]") {
 
     collision_system(reg, 0.016f);
     scoring_system(reg, 0.016f);
+    energy_system(reg, 0.016f);
 
     CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
     auto& energy = reg.ctx().get<EnergyState>();
@@ -230,6 +236,7 @@ TEST_CASE("collision: split path fails with wrong shape", "[collision]") {
 
     collision_system(reg, 0.016f);
     scoring_system(reg, 0.016f);
+    energy_system(reg, 0.016f);
 
     CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
     auto& energy = reg.ctx().get<EnergyState>();
@@ -245,6 +252,7 @@ TEST_CASE("collision: split path fails with wrong lane", "[collision]") {
 
     collision_system(reg, 0.016f);
     scoring_system(reg, 0.016f);
+    energy_system(reg, 0.016f);
 
     CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
     auto& energy = reg.ctx().get<EnergyState>();
@@ -281,6 +289,7 @@ TEST_CASE("collision: low bar drains energy when sliding", "[collision]") {
 
     collision_system(reg, 0.016f);
     scoring_system(reg, 0.016f);
+    energy_system(reg, 0.016f);
 
     CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
     auto& energy = reg.ctx().get<EnergyState>();
@@ -296,6 +305,7 @@ TEST_CASE("collision: high bar drains energy when jumping", "[collision]") {
 
     collision_system(reg, 0.016f);
     scoring_system(reg, 0.016f);
+    energy_system(reg, 0.016f);
 
     CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
     auto& energy = reg.ctx().get<EnergyState>();

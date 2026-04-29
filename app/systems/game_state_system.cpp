@@ -22,7 +22,13 @@ static void enter_game_over(entt::registry& reg) {
         if (auto* hs = reg.ctx().find<HighScoreState>()) {
             high_score::update_if_higher(*hs, score.score);
             if (auto* hp = reg.ctx().find<HighScorePersistence>()) {
-                if (!hp->path.empty()) high_score::save_high_scores(*hs, hp->path);
+                hp->dirty = true;
+                if (hp->path.empty()) {
+                    hp->last_save = persistence::Result{persistence::Status::PathUnavailable, {}};
+                } else {
+                    hp->last_save = high_score::save_high_scores(*hs, hp->path);
+                    if (hp->last_save.ok()) hp->dirty = false;
+                }
             }
         }
     }
@@ -42,6 +48,11 @@ static void enter_game_over(entt::registry& reg) {
     gs.previous_phase = gs.phase;
     gs.phase = GamePhase::GameOver;
     gs.phase_timer = 0.0f;
+
+    if (auto* song = reg.ctx().find<SongState>()) {
+        song->finished = true;
+        song->playing = false;
+    }
 }
 
 static void enter_song_complete(entt::registry& reg) {
@@ -52,7 +63,13 @@ static void enter_song_complete(entt::registry& reg) {
         if (auto* hs = reg.ctx().find<HighScoreState>()) {
             high_score::update_if_higher(*hs, score.score);
             if (auto* hp = reg.ctx().find<HighScorePersistence>()) {
-                if (!hp->path.empty()) high_score::save_high_scores(*hs, hp->path);
+                hp->dirty = true;
+                if (hp->path.empty()) {
+                    hp->last_save = persistence::Result{persistence::Status::PathUnavailable, {}};
+                } else {
+                    hp->last_save = high_score::save_high_scores(*hs, hp->path);
+                    if (hp->last_save.ok()) hp->dirty = false;
+                }
             }
         }
     }
@@ -166,7 +183,19 @@ void game_state_system(entt::registry& reg, float dt) {
 
     // Playing → SongComplete when song finishes (all obstacles cleared)
     if (gs.phase == GamePhase::Playing) {
+        auto* energy = reg.ctx().find<EnergyState>();
         auto* song = reg.ctx().find<SongState>();
+        if (energy && song && song->playing && energy->energy <= 0.0f) {
+            if (auto* gos = reg.ctx().find<GameOverState>()) {
+                if (gos->cause == DeathCause::None) {
+                    gos->cause = DeathCause::EnergyDepleted;
+                }
+            }
+            gs.transition_pending = true;
+            gs.next_phase = GamePhase::GameOver;
+            return;
+        }
+
         if (song && song->finished) {
             // Wait until all obstacle entities have been destroyed (O(1) counter).
             auto* oc = reg.ctx().find<ObstacleCounter>();

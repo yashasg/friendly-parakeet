@@ -7,21 +7,23 @@
 namespace settings {
 
 // Load settings from JSON file (platform-aware path).
-// If file doesn't exist or parsing fails, returns false.
+// Distinguishes missing/corrupt/path errors via structured status.
 // Settings are clamped to valid ranges.
-bool load_settings(SettingsState& state, const std::filesystem::path& path);
+persistence::Result load_settings(SettingsState& state, const std::filesystem::path& path);
 
 // Save settings to JSON file (platform-aware path).
-// Returns false if write fails.
-bool save_settings(const SettingsState& state, const std::filesystem::path& path);
+// Distinguishes path/open/write failures via structured status.
+persistence::Result save_settings(const SettingsState& state, const std::filesystem::path& path);
 
 // Get platform-specific settings directory.
-// On desktop: ~/.shapeshifter or %APPDATA%\shapeshifter
-// On web/mobile where a home directory is unavailable, falls back to ".".
+// Returns empty path when resolution fails.
 std::filesystem::path get_settings_dir();
 
-// Get full settings file path (dir/settings.json)
-std::filesystem::path get_settings_file_path();
+// Resolve full settings file path.
+// Returns structured failure and clears out_path when resolution fails.
+persistence::Result get_settings_file_path(
+    std::filesystem::path& out_path,
+    const std::filesystem::path& root_override = {});
 
 // Convert SettingsState to JSON
 nlohmann::json settings_to_json(const SettingsState& state);

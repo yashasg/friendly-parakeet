@@ -214,3 +214,10 @@ Next: Await merge approval.
 **Status:** Decision captured and merged into team decisions.
 
 **Related:** `mcmanus-popup-entity-factory.md` merged into `.squad/decisions.md`
+
+### 2026-04-29 — Gameplay boundary cluster (#276/#278/#279/#282)
+
+- Shifted **energy writes** behind a single-writer boundary: `scoring_system` now accumulates `PendingEnergyEffects` intent; `energy_system` is the only system that mutates `EnergyState` (`energy`, `flash_timer`).
+- Shifted **popup spawn + popup SFX** behind a dedicated bridge: `scoring_system` now emits `ScorePopupRequestQueue` intents; new `popup_feedback_system` owns `spawn_score_popup` + `audio_push(SFX::ScorePopup)`.
+- Centralized **miss death-cause attribution** in `scoring_system` MissTag processing (first-cause-wins), removing direct `GameOverState::cause` writes from `collision_system` and `miss_detection_system`.
+- Moved **energy-zero → GameOver transition ownership** to `game_state_system` (state-machine owner). `enter_game_over` now owns setting `SongState.finished/playing` on death.

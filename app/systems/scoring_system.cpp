@@ -1,11 +1,10 @@
 #include "all_systems.h"
-#include "../entities/popup_entity.h"
 #include "../components/game_state.h"
 #include "../components/scoring.h"
 #include "../components/obstacle.h"
+#include "../components/gameplay_intents.h"
 #include "../components/transform.h"
 #include "../components/rendering.h"
-#include "../audio/audio_queue.h"
 #include "../components/haptics.h"
 #include "../util/settings.h"
 #include "../components/rhythm.h"
@@ -31,7 +30,7 @@ struct HitRecord {
 
 struct ScoringSystemScratch {
     std::vector<MissRecord> miss_buf;
-    std::vector<HitRecord> hit_buf;
+    std::vector<HitRecord>  hit_buf;
 };
 
 ScoringSystemScratch& scoring_scratch_for(entt::registry& reg) {
@@ -39,6 +38,25 @@ ScoringSystemScratch& scoring_scratch_for(entt::registry& reg) {
         return *scratch;
     }
     return reg.ctx().emplace<ScoringSystemScratch>();
+}
+
+PendingEnergyEffects& pending_energy_for(entt::registry& reg) {
+    if (auto* pending = reg.ctx().find<PendingEnergyEffects>()) {
+        return *pending;
+    }
+    return reg.ctx().emplace<PendingEnergyEffects>();
+}
+
+void enqueue_energy_effect(entt::registry& reg, float delta, bool flash = false) {
+    auto& pending = pending_energy_for(reg);
+    pending.events.push_back(PendingEnergyEffects::Event{delta, flash});
+}
+
+ScorePopupRequestQueue& popup_queue_for(entt::registry& reg) {
+    if (auto* queue = reg.ctx().find<ScorePopupRequestQueue>()) {
+        return *queue;
+    }
+    return reg.ctx().emplace<ScorePopupRequestQueue>();
 }
 
 }  // namespace
@@ -60,8 +78,10 @@ void scoring_system(entt::registry& reg, float dt) {
         score.chain_count = 0;
     }
 
-    auto* energy  = reg.ctx().find<EnergyState>();   // #309: hoisted above loop
     auto* results = reg.ctx().find<SongResults>();   // #309: hoisted above loop
+    auto* gos     = reg.ctx().find<GameOverState>();
+
+    auto& popup_queue = popup_queue_for(reg);
 
     // ── Miss pass ────────────────────────────────────────────────────────────
     // Structural view: only entities carrying MissTag.
@@ -77,14 +97,15 @@ void scoring_system(entt::registry& reg, float dt) {
 
         auto miss_view = reg.view<ObstacleTag, ScoredTag, MissTag, Obstacle>();
         for (auto e : miss_view) {
-            if (energy) {
-                energy->energy -= constants::ENERGY_DRAIN_MISS;
-                if (energy->energy < 1e-6f) energy->energy = 0.0f;
-                energy->flash_timer = constants::ENERGY_FLASH_DURATION;
-            }
+            enqueue_energy_effect(reg, -constants::ENERGY_DRAIN_MISS, true);
             if (results) results->miss_count++;
             score.chain_count = 0;
             score.chain_timer = 0.0f;
+            const auto kind = miss_view.get<Obstacle>(e).kind;
+            if (gos && gos->cause == DeathCause::None) {
+                const bool is_bar = (kind == ObstacleKind::LowBar || kind == ObstacleKind::HighBar);
+                gos->cause = is_bar ? DeathCause::HitABar : DeathCause::MissedABeat;
+            }
             miss_buf.push_back({e, reg.any_of<TimingGrade>(e)});
         }
         // Apply structural removals after iteration — safe.
@@ -142,24 +163,21 @@ void scoring_system(entt::registry& reg, float dt) {
             float timing_mult  = r.has_timing ? timing_multiplier(r.timing.tier) : 1.0f;
 
             // Energy adjustment based on timing
-            if (r.has_timing && energy) {
+            if (r.has_timing) {
                 switch (r.timing.tier) {
                     case TimingTier::Perfect:
-                        energy->energy += constants::ENERGY_RECOVER_PERFECT;
+                        enqueue_energy_effect(reg, constants::ENERGY_RECOVER_PERFECT);
                         break;
                     case TimingTier::Good:
-                        energy->energy += constants::ENERGY_RECOVER_GOOD;
+                        enqueue_energy_effect(reg, constants::ENERGY_RECOVER_GOOD);
                         break;
                     case TimingTier::Ok:
-                        energy->energy += constants::ENERGY_RECOVER_OK;
+                        enqueue_energy_effect(reg, constants::ENERGY_RECOVER_OK);
                         break;
                     case TimingTier::Bad:
-                        energy->energy -= constants::ENERGY_DRAIN_BAD;
-                        energy->flash_timer = constants::ENERGY_FLASH_DURATION;
+                        enqueue_energy_effect(reg, -constants::ENERGY_DRAIN_BAD, true);
                         break;
                 }
-                if (energy->energy < 0.0f) energy->energy = 0.0f;
-                if (energy->energy > constants::ENERGY_MAX) energy->energy = constants::ENERGY_MAX;
             }
 
             int points = static_cast<int>(
@@ -180,11 +198,10 @@ void scoring_system(entt::registry& reg, float dt) {
 
             score.score += points;
 
-            // Spawn timing/score popup via entity factory (#349).
+            // Queue timing/score popup; popup_feedback_system owns spawn/SFX.
             std::optional<TimingTier> tt = r.has_timing
                 ? std::make_optional(r.timing.tier) : std::nullopt;
-            spawn_score_popup(reg, {r.pos.x, r.pos.y, points, tt});
-            audio_push(reg.ctx().get<AudioQueue>(), SFX::ScorePopup);
+            popup_queue.requests.push_back({r.pos.x, r.pos.y, points, tt});
 
             // Structural removals after all reads — safe.
             reg.remove<Obstacle>(r.e);

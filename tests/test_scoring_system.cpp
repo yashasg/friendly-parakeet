@@ -5,6 +5,8 @@ TEST_CASE("scoring: distance bonus accumulates", "[scoring]") {
     auto reg = make_registry();
 
     scoring_system(reg, 1.0f);
+    popup_feedback_system(reg, 1.0f);
+    energy_system(reg, 1.0f);
 
     auto& score = reg.ctx().get<ScoreState>();
     CHECK(score.score >= constants::PTS_PER_SECOND);
@@ -17,6 +19,8 @@ TEST_CASE("scoring: scored obstacle awards points", "[scoring]") {
     reg.emplace<ScoredTag>(obs);
 
     scoring_system(reg, 0.016f);
+    popup_feedback_system(reg, 0.016f);
+    energy_system(reg, 0.016f);
 
     auto& score = reg.ctx().get<ScoreState>();
     CHECK(score.score >= constants::PTS_SHAPE_GATE);
@@ -30,6 +34,8 @@ TEST_CASE("scoring: chain bonus increases points", "[scoring]") {
         auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y + float(i));
         reg.emplace<ScoredTag>(obs);
         scoring_system(reg, 0.016f);
+    popup_feedback_system(reg, 0.016f);
+    energy_system(reg, 0.016f);
     }
 
     auto& score = reg.ctx().get<ScoreState>();
@@ -45,10 +51,14 @@ TEST_CASE("scoring: chain resets after timeout", "[scoring]") {
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<ScoredTag>(obs);
     scoring_system(reg, 0.016f);
+    popup_feedback_system(reg, 0.016f);
+    energy_system(reg, 0.016f);
     CHECK(reg.ctx().get<ScoreState>().chain_count == 1);
 
     // Wait > 2 seconds
     scoring_system(reg, 2.5f);
+    popup_feedback_system(reg, 2.5f);
+    energy_system(reg, 2.5f);
 
     CHECK(reg.ctx().get<ScoreState>().chain_count == 0);
 }
@@ -59,6 +69,8 @@ TEST_CASE("scoring: popup entity spawned on score", "[scoring]") {
     reg.emplace<ScoredTag>(obs);
 
     scoring_system(reg, 0.016f);
+    popup_feedback_system(reg, 0.016f);
+    energy_system(reg, 0.016f);
 
     auto popup_view = reg.view<ScorePopup>();
     int popup_count = 0;
@@ -79,6 +91,8 @@ TEST_CASE("scoring: SFX pushed on score", "[scoring]") {
     reg.emplace<ScoredTag>(obs);
 
     scoring_system(reg, 0.016f);
+    popup_feedback_system(reg, 0.016f);
+    energy_system(reg, 0.016f);
 
     CHECK(reg.ctx().get<AudioQueue>().count > 0);
 }
@@ -90,6 +104,8 @@ TEST_CASE("scoring: displayed_score rolls up toward score", "[scoring]") {
     score.displayed_score = 0;
 
     scoring_system(reg, 0.1f);
+    popup_feedback_system(reg, 0.1f);
+    energy_system(reg, 0.1f);
 
     CHECK(score.displayed_score > 0);
     CHECK(score.displayed_score <= score.score);
@@ -100,6 +116,8 @@ TEST_CASE("scoring: not in Playing phase skips processing", "[scoring]") {
     reg.ctx().get<GameState>().phase = GamePhase::GameOver;
 
     scoring_system(reg, 1.0f);
+    popup_feedback_system(reg, 1.0f);
+    energy_system(reg, 1.0f);
 
     CHECK(reg.ctx().get<ScoreState>().score == 0);
 }
@@ -112,6 +130,8 @@ TEST_CASE("scoring: chain bonus 5+ gives extended bonus", "[scoring]") {
         auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y + float(i));
         reg.emplace<ScoredTag>(obs);
         scoring_system(reg, 0.016f);
+    popup_feedback_system(reg, 0.016f);
+    energy_system(reg, 0.016f);
     }
 
     auto& score = reg.ctx().get<ScoreState>();
@@ -127,6 +147,8 @@ TEST_CASE("scoring: obstacle entity cleaned up after scoring", "[scoring]") {
     reg.emplace<ScoredTag>(obs);
 
     scoring_system(reg, 0.016f);
+    popup_feedback_system(reg, 0.016f);
+    energy_system(reg, 0.016f);
 
     // Obstacle and ScoredTag components should be removed
     CHECK_FALSE(reg.all_of<Obstacle>(obs));
@@ -143,6 +165,8 @@ TEST_CASE("scoring: displayed_score does not overshoot score", "[scoring]") {
 
     // Very large dt that would normally overshoot
     scoring_system(reg, 10.0f);
+    popup_feedback_system(reg, 10.0f);
+    energy_system(reg, 10.0f);
 
     // displayed_score should not exceed score (capped)
     // Note: score increases by dt * PTS_PER_SECOND too
@@ -155,6 +179,8 @@ TEST_CASE("scoring: distance_traveled accumulates from scroll speed", "[scoring]
     song.scroll_speed = 400.0f;
 
     scoring_system(reg, 1.0f);
+    popup_feedback_system(reg, 1.0f);
+    energy_system(reg, 1.0f);
 
     CHECK(reg.ctx().get<ScoreState>().distance_traveled == 400.0f);
 }
@@ -165,7 +191,9 @@ TEST_CASE("scoring: no-penalty — on-beat gate scores at base points", "[scorin
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<ScoredTag>(obs);
 
-    scoring_system(reg, 0.0f);  // dt=0 excludes distance bonus for exact assertion
+    scoring_system(reg, 0.0f);
+    popup_feedback_system(reg, 0.0f);
+    energy_system(reg, 0.0f);  // dt=0 excludes distance bonus for exact assertion
 
     auto& score = reg.ctx().get<ScoreState>();
     CHECK(score.score == constants::PTS_SHAPE_GATE);
@@ -177,6 +205,8 @@ TEST_CASE("scoring: popup entity has full factory contract", "[scoring][popup_en
     reg.emplace<ScoredTag>(obs);
 
     scoring_system(reg, 0.016f);
+    popup_feedback_system(reg, 0.016f);
+    energy_system(reg, 0.016f);
 
     auto popup_view = reg.view<ScorePopup>();
     int count = 0;
@@ -205,6 +235,8 @@ TEST_CASE("scoring: LanePush emits no popup", "[scoring][lane_push]") {
     reg.emplace<ScoredTag>(lp);
 
     scoring_system(reg, 0.016f);
+    popup_feedback_system(reg, 0.016f);
+    energy_system(reg, 0.016f);
 
     CHECK(reg.view<ScorePopup>().size() == 0);
 }
