@@ -1,14 +1,14 @@
 #include <catch2/catch_test_macros.hpp>
 #include <stdexcept>
 #include "test_helpers.h"
-#include "archetypes/player_archetype.h"
+#include "entities/player_entity.h"
 
 // ── create_player_entity: canonical component set and initial values ──────────
 //
-// These tests lock in the player archetype contract so divergence between
+// These tests lock in the player entity-factory contract so divergence between
 // play_session.cpp and test helpers is caught at compile/test time.
 
-TEST_CASE("player_archetype: canonical component set present", "[archetype][player]") {
+TEST_CASE("player_entity: canonical component set present", "[archetype][player]") {
     auto reg = make_registry();
     auto p = create_player_entity(reg);
 
@@ -25,7 +25,7 @@ TEST_CASE("player_archetype: canonical component set present", "[archetype][play
     CHECK(reg.all_of<TagWorldPass>(p));
 }
 
-TEST_CASE("player_archetype: starts at center lane position", "[archetype][player]") {
+TEST_CASE("player_entity: starts at center lane position", "[archetype][player]") {
     auto reg = make_registry();
     auto p = create_player_entity(reg);
 
@@ -34,7 +34,7 @@ TEST_CASE("player_archetype: starts at center lane position", "[archetype][playe
     CHECK(transform.position.y == constants::PLAYER_Y);
 }
 
-TEST_CASE("player_archetype: initial shape is Hexagon", "[archetype][player]") {
+TEST_CASE("player_entity: initial shape is Hexagon", "[archetype][player]") {
     auto reg = make_registry();
     auto p = create_player_entity(reg);
 
@@ -43,7 +43,7 @@ TEST_CASE("player_archetype: initial shape is Hexagon", "[archetype][player]") {
     CHECK(ps.previous == Shape::Hexagon);
 }
 
-TEST_CASE("player_archetype: ShapeWindow starts Idle targeting Hexagon", "[archetype][player]") {
+TEST_CASE("player_entity: ShapeWindow starts Idle targeting Hexagon", "[archetype][player]") {
     auto reg = make_registry();
     auto p = create_player_entity(reg);
 
@@ -52,13 +52,13 @@ TEST_CASE("player_archetype: ShapeWindow starts Idle targeting Hexagon", "[arche
     CHECK(sw.phase        == WindowPhase::Idle);
 }
 
-TEST_CASE("player_archetype: DrawLayer is Game", "[archetype][player]") {
+TEST_CASE("player_entity: DrawLayer is Game", "[archetype][player]") {
     auto reg = make_registry();
     auto p = create_player_entity(reg);
     CHECK(reg.get<DrawLayer>(p).layer == Layer::Game);
 }
 
-TEST_CASE("player_archetype: DrawSize matches PLAYER_SIZE", "[archetype][player]") {
+TEST_CASE("player_entity: DrawSize matches PLAYER_SIZE", "[archetype][player]") {
     auto reg = make_registry();
     auto p = create_player_entity(reg);
 
@@ -67,7 +67,7 @@ TEST_CASE("player_archetype: DrawSize matches PLAYER_SIZE", "[archetype][player]
     CHECK(ds.h == constants::PLAYER_SIZE);
 }
 
-TEST_CASE("player_archetype: Lane defaults to center (1), Grounded vertical", "[archetype][player]") {
+TEST_CASE("player_entity: Lane defaults to center (1), Grounded vertical", "[archetype][player]") {
     auto reg = make_registry();
     auto p = create_player_entity(reg);
 
@@ -75,7 +75,7 @@ TEST_CASE("player_archetype: Lane defaults to center (1), Grounded vertical", "[
     CHECK(reg.get<VerticalState>(p).mode  == VMode::Grounded);
 }
 
-TEST_CASE("player_archetype: rejects duplicate canonical players", "[archetype][player]") {
+TEST_CASE("player_entity: rejects duplicate canonical players", "[archetype][player]") {
     auto reg = make_registry();
     create_player_entity(reg);
 

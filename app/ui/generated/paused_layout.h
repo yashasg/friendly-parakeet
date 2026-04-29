@@ -39,12 +39,24 @@ static inline PausedLayoutState PausedLayout_Init(void) {
     return state;
 }
 
+static inline void PausedLayout_DrawCenteredLabel(Rectangle bounds, const char *text, int text_size) {
+    const int saved_text_size = GuiGetStyle(DEFAULT, TEXT_SIZE);
+    const int saved_label_alignment = GuiGetStyle(LABEL, TEXT_ALIGNMENT);
+
+    GuiSetStyle(DEFAULT, TEXT_SIZE, text_size);
+    GuiSetStyle(LABEL, TEXT_ALIGNMENT, TEXT_ALIGN_CENTER);
+    GuiLabel(bounds, text);
+
+    GuiSetStyle(LABEL, TEXT_ALIGNMENT, saved_label_alignment);
+    GuiSetStyle(DEFAULT, TEXT_SIZE, saved_text_size);
+}
+
 static inline void PausedLayout_Render(PausedLayoutState *state) {
     if (!state) return;
-    GuiLabel((Rectangle){ state->Anchor01.x + 200, state->Anchor01.y + 440, 320, 60 }, "PAUSED");
-    GuiLabel((Rectangle){ state->Anchor01.x + 110, state->Anchor01.y + 540, 500, 32 }, "TAP RESUME TO CONTINUE");
+    PausedLayout_DrawCenteredLabel((Rectangle){ state->Anchor01.x + 90, state->Anchor01.y + 420, 540, 80 }, "PAUSED", 56);
+    PausedLayout_DrawCenteredLabel((Rectangle){ state->Anchor01.x + 90, state->Anchor01.y + 540, 540, 36 }, "TAP RESUME TO CONTINUE", 24);
     state->ResumeButtonPressed = GuiButton((Rectangle){ state->Anchor01.x + 160, state->Anchor01.y + 620, 400, 100 }, "RESUME");
-    GuiLabel((Rectangle){ state->Anchor01.x + 110, state->Anchor01.y + 760, 500, 32 }, "OR RETURN TO MAIN MENU");
+    PausedLayout_DrawCenteredLabel((Rectangle){ state->Anchor01.x + 90, state->Anchor01.y + 760, 540, 36 }, "OR RETURN TO MAIN MENU", 24);
     state->MenuButtonPressed   = GuiButton((Rectangle){ state->Anchor01.x + 160, state->Anchor01.y + 820, 400, 100 }, "MAIN MENU");
 }
 

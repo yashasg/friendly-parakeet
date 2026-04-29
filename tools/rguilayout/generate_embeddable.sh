@@ -1,5 +1,5 @@
 #!/bin/bash
-# Generate embeddable rguilayout header manually from standalone output
+# Generate embeddable rguilayout header manually from a standalone scratch export
 # Usage: ./generate_embeddable.sh <screen_name>
 # Example: ./generate_embeddable.sh title
 
@@ -13,7 +13,8 @@ fi
 
 SCREEN_NAME="$1"
 RGL_FILE="content/ui/screens/${SCREEN_NAME}.rgl"
-STANDALONE_C="app/ui/generated/standalone/${SCREEN_NAME}_temp.c"
+SCRATCH_DIR="build/rguilayout-scratch"
+STANDALONE_C="${SCRATCH_DIR}/${SCREEN_NAME}_temp.c"
 OUTPUT_H="app/ui/generated/${SCREEN_NAME}_layout.h"
 
 if [ ! -f "$RGL_FILE" ]; then
@@ -22,6 +23,7 @@ if [ ! -f "$RGL_FILE" ]; then
 fi
 
 echo "==> Generating standalone C file (temp)..."
+mkdir -p "$SCRATCH_DIR"
 tools/rguilayout/rguilayout.app/Contents/MacOS/rguilayout \
     --input "$RGL_FILE" \
     --output "$STANDALONE_C"
@@ -41,7 +43,8 @@ echo ""
 echo "4. Create $OUTPUT_H using app/ui/generated/title_layout.h as template"
 echo "5. Replace struct fields and function bodies with extracted code"
 echo ""
-echo "Standalone C file is at: $STANDALONE_C"
+echo "Standalone scratch C file is at: $STANDALONE_C"
+echo "Do not commit scratch standalone exports."
 echo "Target embeddable header: $OUTPUT_H"
 echo ""
 echo "See tools/rguilayout/INTEGRATION.md for full manual generation guide."

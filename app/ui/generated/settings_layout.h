@@ -6,13 +6,13 @@
 *   Template: tools/rguilayout/templates/embeddable_layout.h
 *
 *   NOTE: HapticsToggle and ReduceMotionToggle have dynamic labels.
-*         The adapter renders them separately with runtime-resolved text.
+*         The screen controller renders them separately with runtime-resolved text.
 *         Call SettingsLayout_RenderStatic for non-toggle controls.
 *
 *   USAGE:
 *      1. Include raygui.h BEFORE this header
 *      2. Call SettingsLayout_Init() once to get initial state
-*      3. Call SettingsLayout_RenderStatic() + handle toggle buttons in adapter
+*      3. Call SettingsLayout_RenderStatic() + handle toggle buttons in screen controller
 *      4. Check button result fields after render
 *
 ********************************************************************************************/

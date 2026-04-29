@@ -84,10 +84,10 @@ static inline void TitleLayout_Render(TitleLayoutState *state) {
     if (!state) return;
     
     // Draw controls
-    GuiLabel((Rectangle){ state->Anchor01.x + 160, state->Anchor01.y + 480, 400, 48 }, "SHAPESHIFTER");
-    GuiLabel((Rectangle){ state->Anchor01.x + 220, state->Anchor01.y + 588, 280, 32 }, "TAP TO START");
-    state->ExitButtonPressed = GuiButton((Rectangle){ state->Anchor01.x + 260, state->Anchor01.y + 1050, 200, 50 }, "EXIT"); 
-    state->SettingsButtonPressed = GuiButton((Rectangle){ state->Anchor01.x + 20, state->Anchor01.y + 10, 80, 50 }, "SET"); 
+    GuiLabel((Rectangle){ state->Anchor01.x + 40, state->Anchor01.y + 200, 640, 96 }, "SHAPESHIFTER");
+    GuiLabel((Rectangle){ state->Anchor01.x + 40, state->Anchor01.y + 640, 640, 56 }, "TAP TO START");
+    state->ExitButtonPressed = GuiButton((Rectangle){ state->Anchor01.x + 260, state->Anchor01.y + 1080, 200, 56 }, "EXIT"); 
+    state->SettingsButtonPressed = GuiButton((Rectangle){ state->Anchor01.x + 632, state->Anchor01.y + 1170, 64, 64 }, "#142#"); 
 }
 
 #ifdef __cplusplus

@@ -25,21 +25,19 @@
 - State struct: `TitleLayoutState` (anchors + button press flags)
 - API: `TitleLayout_Init()` and `TitleLayout_Render(state*)`
 
-### 3. Thin Adapter
-**Files:** `app/ui/adapters/title_adapter.{cpp,h}`  
-**Purpose:** Bridge generated layout to game systems  
+### 3. Screen Controller Integration
+**Files:** `app/ui/screen_controllers/title_screen_controller.cpp`  
+**Purpose:** Bridge generated layout to runtime game behavior  
 **Status:** Compile-safe but **not wired into CMakeLists.txt or ui_render_system yet**  
 **Contract:**
 ```cpp
-void title_adapter_init();                      // Call once
-void title_adapter_render(entt::registry& reg); // Call every frame
+void init_title_screen_ui();
+void render_title_screen_ui(entt::registry& reg);
 ```
 
-### 4. Standalone Files Archived
-**Location:** `app/ui/generated/standalone/`  
-**Contents:** 16 original rguilayout exports (8 screens × .c/.h)  
-**Status:** ✅ **Moved from app/ui/ to prevent accidental inclusion**  
-**Purpose:** Reference only (contain `main()` and `RAYGUI_IMPLEMENTATION`)
+### 4. Standalone Files Removed
+**Status:** ✅ Removed from the committed tree  
+**Policy:** Standalone exports are scratch-only and must never be committed (they contain `main()` and `RAYGUI_IMPLEMENTATION`)
 
 ### 5. Integration Documentation
 **File:** `tools/rguilayout/INTEGRATION.md` (6.5KB)  
@@ -53,7 +51,7 @@ void title_adapter_render(entt::registry& reg); // Call every frame
 
 ### 6. Generation Helper Script
 **File:** `tools/rguilayout/generate_embeddable.sh`  
-**Purpose:** Automate standalone generation + remind developer of manual steps  
+**Purpose:** Generate scratch standalone output + remind developer of manual steps  
 **Usage:** `./generate_embeddable.sh title`
 
 ---
@@ -69,14 +67,14 @@ void title_adapter_render(entt::registry& reg); // Call every frame
 **Impact:** **Manual generation required** for all embeddable headers
 
 **Workaround:**
-1. Generate standalone C file: `rguilayout --input title.rgl --output standalone.c`
+1. Generate standalone C file to scratch: `rguilayout --input title.rgl --output build/rguilayout-scratch/title_temp.c`
 2. Extract initialization code (anchors, button state)
 3. Extract drawing code (GuiLabel, GuiButton calls)
 4. Wrap in embeddable header template (see `title_layout.h`)
 
 ### 2. raygui Not in Build
 **Status:** raygui.h not added to CMakeLists.txt  
-**Impact:** Cannot compile adapters yet  
+**Impact:** Cannot compile full screen-controller path yet  
 **Solution:** Future build-integration task
 
 ### 3. RAYGUI_IMPLEMENTATION Placement
@@ -85,8 +83,8 @@ void title_adapter_render(entt::registry& reg); // Call every frame
 **Solution:** Define in one .cpp file during build integration
 
 ### 4. Adapters Not Wired
-**Status:** Adapters exist but not added to CMake or called from ui_render_system  
-**Impact:** rguilayout path is inactive; JSON UI still runs  
+**Status:** Historical note: wiring was pending at that point  
+**Impact:** Historical note: JSON UI was still active at that time  
 **Solution:** Future build-integration task (intentionally deferred)
 
 ---
@@ -95,7 +93,7 @@ void title_adapter_render(entt::registry& reg); // Call every frame
 
 ### DO NOT:
 - ❌ Include standalone generated files (they have `main()`)
-- ❌ Add `app/ui/generated/standalone/*.{c,h}` to CMakeLists.txt
+- ❌ Commit standalone exports or add them to CMakeLists.txt
 - ❌ Copy layout rectangles from generated files into ECS components
 - ❌ Create `HudLayout`, `LevelSelectLayout`, or similar layout cache structs
 - ❌ Spawn widget entities for raygui controls
@@ -106,7 +104,7 @@ void title_adapter_render(entt::registry& reg); // Call every frame
 - ✅ Include raygui.h **before** defining `<SCREEN>_LAYOUT_IMPLEMENTATION`
 - ✅ Define `RAYGUI_IMPLEMENTATION` **once** in entire binary
 - ✅ Keep JSON UI active until rguilayout validated
-- ✅ Archive standalone outputs for reference
+- ✅ Keep standalone exports scratch-only under `build/rguilayout-scratch/`
 
 ---
 
@@ -121,22 +119,22 @@ void title_adapter_render(entt::registry& reg); // Call every frame
    - Option A: In `ui_render_system.cpp`
    - Option B: New file `app/ui/raygui_impl.c`
 
-3. **Wire adapters into CMakeLists.txt:**
+3. **Wire screen controller sources into CMakeLists.txt:**
    ```cmake
    target_sources(shapeshifter PRIVATE
-       app/ui/adapters/title_adapter.cpp
+       app/ui/screen_controllers/title_screen_controller.cpp
    )
    ```
 
-4. **Call adapters from ui_render_system:**
+4. **Call screen controllers from ui_render_system:**
    ```cpp
    switch (game_state.phase) {
-       case GamePhase::Title:
-           #ifdef ENABLE_RGUILAYOUT_UI
-           title_adapter_render(reg);
-           #else
-           // JSON UI path
-           #endif
+        case GamePhase::Title:
+            #ifdef ENABLE_RGUILAYOUT_UI
+            render_title_screen_ui(reg);
+            #else
+            // JSON UI path
+            #endif
            break;
    }
    ```
@@ -152,9 +150,9 @@ void title_adapter_render(entt::registry& reg); // Call every frame
 - ✅ **Build passes:** `cmake --build build` succeeds with zero warnings
 - ✅ **No CMake changes:** No build regression (adapters not compiled yet)
 - ✅ **JSON UI active:** Existing runtime behavior preserved
-- ✅ **Standalone files safe:** Moved to archive, cannot be accidentally included
+- ✅ **Standalone files safe:** Removed from the committed tree; scratch-only policy documented
 - ✅ **title_layout.h compile-safe:** Header-only, no `main()`, no `RAYGUI_IMPLEMENTATION`
-- ✅ **Adapter signature correct:** C++ compatible, takes `entt::registry&`
+- ✅ **Controller contract preserved:** C++ integration stays in screen controllers
 
 ---
 
@@ -163,14 +161,9 @@ void title_adapter_render(entt::registry& reg); // Call every frame
 ### Created:
 - `tools/rguilayout/templates/embeddable_layout.h` (template - not working with CLI)
 - `app/ui/generated/title_layout.h` (manual embeddable header)
-- `app/ui/adapters/title_adapter.{cpp,h}` (thin adapter)
+- `app/ui/screen_controllers/title_screen_controller.cpp` (thin adapter)
 - `tools/rguilayout/INTEGRATION.md` (6.5KB integration guide)
 - `tools/rguilayout/generate_embeddable.sh` (generation helper)
-- `app/ui/generated/standalone/README.md` (archive documentation)
-
-### Moved:
-- `app/ui/{title,tutorial,level_select,gameplay,paused,game_over,song_complete,settings}.{c,h}`  
-  → `app/ui/generated/standalone/` (16 files archived)
 
 ### Modified:
 - `.squad/agents/fenster/history.md` (session appended)
@@ -189,7 +182,7 @@ void title_adapter_render(entt::registry& reg); // Call every frame
 cd /Users/yashasgujjar/dev/bullethell
 tools/rguilayout/rguilayout.app/Contents/MacOS/rguilayout \
     --input content/ui/screens/title.rgl \
-    --output app/ui/generated/standalone/title_temp.c
+    --output build/rguilayout-scratch/title_temp.c
 ```
 
 **Step 2:** Extract code blocks from `title_temp.c`
@@ -216,14 +209,14 @@ tools/rguilayout/rguilayout.app/Contents/MacOS/rguilayout \
 **Current state:**
 - ✅ Build compiles with zero warnings
 - ✅ No linker errors (adapters not built yet)
-- ✅ No ODR violations (standalone files archived)
+- ✅ No ODR violations from committed standalone files (removed from repo)
 - ✅ No accidental includes of `main()`
 
 **Future state (after build integration):**
 - Must define `RAYGUI_IMPLEMENTATION` exactly once
 - Must include raygui.h in adapters or before defining implementation
 - Must not unity-batch raygui implementation with other files
-- Must exclude generated/standalone from any build target
+- Must keep standalone scratch outputs out of source control and all build targets
 
 ---
 

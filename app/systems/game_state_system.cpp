@@ -1,6 +1,5 @@
 #include "all_systems.h"
 #include "../session/play_session.h"
-#include "../ui/ui_button_spawner.h"
 #include "../components/game_state.h"
 #include "../util/obstacle_counter.h"
 #include "../components/input.h"
@@ -106,28 +105,21 @@ void game_state_system(entt::registry& reg, float dt) {
             case GamePhase::Playing:      setup_play_session(reg);  break;
             case GamePhase::GameOver:
                 enter_game_over(reg);
-                spawn_end_screen_buttons(reg);
                 break;
             case GamePhase::SongComplete:
                 enter_song_complete(reg);
-                spawn_end_screen_buttons(reg);
                 break;
             case GamePhase::Paused:
-                spawn_pause_button(reg);
                 gs.previous_phase = gs.phase;
                 gs.phase = GamePhase::Paused;
                 gs.phase_timer = 0.0f;
                 break;
             case GamePhase::Title:
-                destroy_ui_buttons(reg);
-                spawn_title_buttons(reg);
                 gs.previous_phase = gs.phase;
                 gs.phase = GamePhase::Title;
                 gs.phase_timer = 0.0f;
                 break;
             case GamePhase::LevelSelect:
-                destroy_ui_buttons(reg);
-                spawn_level_select_buttons(reg);
                 gs.previous_phase = gs.phase;
                 gs.phase = GamePhase::LevelSelect;
                 gs.phase_timer = 0.0f;
@@ -137,13 +129,11 @@ void game_state_system(entt::registry& reg, float dt) {
                 }
                 break;
             case GamePhase::Settings:
-                destroy_ui_buttons(reg);
                 gs.previous_phase = gs.phase;
                 gs.phase = GamePhase::Settings;
                 gs.phase_timer = 0.0f;
                 break;
             case GamePhase::Tutorial:
-                destroy_ui_buttons(reg);
                 gs.previous_phase = gs.phase;
                 gs.phase = GamePhase::Tutorial;
                 gs.phase_timer = 0.0f;

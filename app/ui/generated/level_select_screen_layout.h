@@ -5,10 +5,8 @@
 *   Source: content/ui/screens/level_select.rgl
 *   Template: tools/rguilayout/templates/embeddable_layout.h
 *
-*   NOTE: The rguilayout difficulty buttons (y=1400) are off-screen at 1280px height.
-*         Dynamic card/difficulty rendering is handled by draw_level_select_scene in
-*         ui_render_system.cpp. This adapter provides the static "SELECT LEVEL" heading
-*         and the Start button only.
+*   NOTE: Currently provides "SELECT LEVEL" heading and Start button only.
+*         Dynamic card/difficulty rendering to be ported to rguilayout in future work.
 *
 *   The name "LevelSelectScreenLayoutState" avoids collision with "LevelSelectLayout"
 *   in ui_layout_cache.h which is a separate ECS cache struct.

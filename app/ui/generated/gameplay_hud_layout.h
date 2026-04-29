@@ -5,9 +5,9 @@
 *   Source: content/ui/screens/gameplay.rgl
 *   Template: tools/rguilayout/templates/embeddable_layout.h
 *
-*   NOTE: The dynamic energy bar, shape buttons, and approach rings are rendered by
-*         draw_hud() in ui_render_system.cpp. This adapter provides only the
-*         static Pause button overlay.
+*   NOTE: Currently provides static Pause button only.
+*         Dynamic energy bar, shape buttons, and approach rings to be ported to
+*         rguilayout in future work.
 *
 *   The name "GameplayHudLayoutState" avoids collision with "HudLayout" in
 *   ui_layout_cache.h which is a separate ECS cache struct.

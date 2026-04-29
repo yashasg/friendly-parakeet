@@ -23,6 +23,8 @@ bench_logger.log
 
 # Local run/test artifacts
 /build_output.txt
+/build_cmake.txt
+/build_test_check/
 /test_output.txt
 /test_empty_hs.cpp
 /high_scores.json

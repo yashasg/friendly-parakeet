@@ -11,7 +11,7 @@
 //     └─ components/player.h → components/window_phase.h (WindowPhase)
 //     └─ util/high_score_persistence.h → HighScoreState
 //
-//   ui/ui_loader.h        (UIState / ActiveScreen — already canonical)
+//   components/ui_state.h (UIState / ActiveScreen)
 //
 // Static assertions catch silent breakage if constants or ordinals are changed
 // during or after the header reorganisation.
@@ -20,7 +20,7 @@
 #include <type_traits>
 
 #include "test_helpers.h"        // WindowPhase (via player.h), HighScoreState (via high_score_persistence.h)
-#include "ui/ui_loader.h"        // UIState, ActiveScreen (canonical location)
+#include "components/ui_state.h" // UIState, ActiveScreen
 
 // ── WindowPhase ordinal contract ─────────────────────────────────────────────
 //
@@ -85,14 +85,5 @@ TEST_CASE("HighScoreState: lives in ctx, not attached to entities", "[boundary_w
 TEST_CASE("UIState: defaults to Title screen with empty current", "[boundary_wave2][ui_state]") {
     UIState ui;
     CHECK(ui.active    == ActiveScreen::Title);
-    CHECK(ui.current.empty());
-    CHECK(ui.base_dir  == "content/ui");
     CHECK_FALSE(ui.has_overlay);
-}
-
-TEST_CASE("UIState: load_ui sets base_dir and leaves current empty", "[boundary_wave2][ui_state]") {
-    UIState ui = load_ui("content/ui");
-    CHECK(ui.base_dir == "content/ui");
-    CHECK(ui.current.empty());
-    CHECK(ui.active == ActiveScreen::Title);
 }

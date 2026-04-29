@@ -41,11 +41,23 @@ static inline SongCompleteLayoutState SongCompleteLayout_Init(void) {
     return state;
 }
 
+static inline void SongCompleteLayout_DrawCenteredLabel(Rectangle bounds, const char *text, int text_size) {
+    const int saved_text_size = GuiGetStyle(DEFAULT, TEXT_SIZE);
+    const int saved_label_alignment = GuiGetStyle(LABEL, TEXT_ALIGNMENT);
+
+    GuiSetStyle(DEFAULT, TEXT_SIZE, text_size);
+    GuiSetStyle(LABEL, TEXT_ALIGNMENT, TEXT_ALIGN_CENTER);
+    GuiLabel(bounds, text);
+
+    GuiSetStyle(LABEL, TEXT_ALIGNMENT, saved_label_alignment);
+    GuiSetStyle(DEFAULT, TEXT_SIZE, saved_text_size);
+}
+
 static inline void SongCompleteLayout_Render(SongCompleteLayoutState *state) {
     if (!state) return;
-    GuiLabel((Rectangle){ state->Anchor01.x + 160, state->Anchor01.y + 340, 400, 60 }, "SONG COMPLETE");
-    GuiLabel((Rectangle){ state->Anchor01.x + 260, state->Anchor01.y + 420, 200, 24 }, "SCORE");
-    GuiLabel((Rectangle){ state->Anchor01.x + 210, state->Anchor01.y + 510, 300, 24 }, "HIGH SCORE");
+    SongCompleteLayout_DrawCenteredLabel((Rectangle){ state->Anchor01.x + 90, state->Anchor01.y + 315, 540, 72 }, "SONG COMPLETE", 42);
+    SongCompleteLayout_DrawCenteredLabel((Rectangle){ state->Anchor01.x + 180, state->Anchor01.y + 425, 360, 36 }, "SCORE", 24);
+    SongCompleteLayout_DrawCenteredLabel((Rectangle){ state->Anchor01.x + 180, state->Anchor01.y + 535, 360, 36 }, "HIGH SCORE", 24);
     state->RestartButtonPressed     = GuiButton((Rectangle){ state->Anchor01.x + 220, state->Anchor01.y + 870, 280, 50 }, "RESTART");
     state->LevelSelectButtonPressed = GuiButton((Rectangle){ state->Anchor01.x + 220, state->Anchor01.y + 935, 280, 50 }, "LEVEL SELECT");
     state->MenuButtonPressed        = GuiButton((Rectangle){ state->Anchor01.x + 220, state->Anchor01.y + 1000, 280, 50 }, "MAIN MENU");

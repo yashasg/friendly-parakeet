@@ -1,5 +1,11 @@
 # rguilayout Integration Plan
 
+> Historical planning artifact. Current committed source of truth is:
+> - `content/ui/screens/*.rgl` (authoring)
+> - `app/ui/generated/*_layout.h` (generated embeddable headers)
+> - `app/ui/screen_controllers/` (runtime behavior)
+> Standalone rguilayout exports are scratch-only and must not be committed.
+
 **Status:** Architecture spine defined, ready for implementation  
 **Author:** Keyser (Lead Architect)  
 **Date:** 2025-04-28

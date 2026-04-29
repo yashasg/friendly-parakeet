@@ -3,10 +3,9 @@
 # Reference: song_complete.json design specification
 # Target exports: app/ui/song_complete.h, app/ui/song_complete.c
 #
-# Note: JSON overlay color [0,0,0,180] for dim background must be handled
-# by adapter or render system. Dynamic text (score, high_score, timing stats)
-# must be bound at render time. The stat_table from JSON requires custom
-# rendering logic in the adapter using the generated slot rectangles.
+# Note: overlay dimming is handled by the render system. Dynamic text
+# (score, high_score, timing stats) is bound by the screen controller using
+# the generated slot rectangles.
 #
 # Ref. window:    r <x> <y> <width> <height>
 # Anchor info:    a <id> <name> <posx> <posy> <enabled>
@@ -14,12 +13,12 @@
 #
 r 0 0 720 1280
 a 001 Anchor01 0 0 1
-c 000 4 TitleText 160 340 400 60 1 SONG COMPLETE
-c 001 4 ScoreLabel 260 420 200 24 1 SCORE
-c 002 4 ScoreSlot 260 455 200 40 1 
-c 003 4 HighScoreLabel 210 510 300 24 1 HIGH SCORE
-c 004 4 HighScoreSlot 210 545 300 40 1 
-c 005 24 StatTableSlot 140 600 440 180 1 
+c 000 4 TitleText 90 315 540 72 1 SONG COMPLETE
+c 001 4 ScoreLabel 180 425 360 36 1 SCORE
+c 002 4 ScoreSlot 160 463 400 50 1 
+c 003 4 HighScoreLabel 180 535 360 36 1 HIGH SCORE
+c 004 4 HighScoreSlot 160 573 400 50 1 
+c 005 24 StatTableSlot 120 650 480 150 1 
 c 006 5 RestartButton 220 870 280 50 1 RESTART
 c 007 5 LevelSelectButton 220 935 280 50 1 LEVEL SELECT
 c 008 5 MenuButton 220 1000 280 50 1 MAIN MENU

@@ -118,12 +118,12 @@ constexpr float SCENE_GO_HISCORE_Y_N  =  560.0f / SCREEN_H;  // ≈ 0.438
 constexpr float SCENE_GO_PROMPT_Y_N   =  650.0f / SCREEN_H;  // ≈ 0.508
 
 // Scene – Song Complete overlay
-constexpr float SCENE_SC_TITLE_Y_N    =  340.0f / SCREEN_H;  // ≈ 0.266
-constexpr float SCENE_SC_SLABEL_Y_N   =  420.0f / SCREEN_H;  // ≈ 0.328
-constexpr float SCENE_SC_SCORE_Y_N    =  455.0f / SCREEN_H;  // ≈ 0.355
-constexpr float SCENE_SC_HSLABEL_Y_N  =  510.0f / SCREEN_H;  // ≈ 0.398
-constexpr float SCENE_SC_HISCORE_Y_N  =  545.0f / SCREEN_H;  // ≈ 0.426
-constexpr float SCENE_SC_TIMING_Y_N   =  600.0f / SCREEN_H;  // ≈ 0.469
+constexpr float SCENE_SC_TITLE_Y_N    =  315.0f / SCREEN_H;  // ≈ 0.246
+constexpr float SCENE_SC_SLABEL_Y_N   =  425.0f / SCREEN_H;  // ≈ 0.332
+constexpr float SCENE_SC_SCORE_Y_N    =  463.0f / SCREEN_H;  // ≈ 0.362
+constexpr float SCENE_SC_HSLABEL_Y_N  =  535.0f / SCREEN_H;  // ≈ 0.418
+constexpr float SCENE_SC_HISCORE_Y_N  =  573.0f / SCREEN_H;  // ≈ 0.448
+constexpr float SCENE_SC_TIMING_Y_N   =  650.0f / SCREEN_H;  // ≈ 0.508
 constexpr float SCENE_SC_TIMING_DY_N  =   30.0f / SCREEN_H;  // ≈ 0.023 (line spacing)
 constexpr float SCENE_SC_STATS_LX_N   =  240.0f / SCREEN_W;  // ≈ 0.333
 constexpr float SCENE_SC_STATS_RX_N   =  500.0f / SCREEN_W;  // ≈ 0.694
