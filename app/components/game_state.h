@@ -10,7 +10,9 @@ enum class GamePhase : uint8_t {
     Playing      = 2,
     Paused       = 3,
     GameOver     = 4,
-    SongComplete = 5
+    SongComplete = 5,
+    Settings     = 6,
+    Tutorial     = 7
 };
 
 // Typed phase-mask enum for ActiveInPhase.  Values are power-of-two so that
@@ -28,6 +30,8 @@ enum class GamePhaseBit : uint8_t {
     Paused       = 1 << 3,  // 0x08
     GameOver     = 1 << 4,  // 0x10
     SongComplete = 1 << 5,  // 0x20
+    Settings     = 1 << 6,  // 0x40
+    Tutorial     = 1 << 7,  // 0x80 (fills uint8_t; combine with caution)
     _entt_enum_as_bitmask   // sentinel: activates entt typed operators
 };
 

@@ -6,711 +6,332 @@
 - **Role:** Lead Architect
 - **Joined:** 2026-04-26T02:07:46.542Z
 
-## Learnings
+## Session: 2026-04-29T10:10:30Z — Archetype Removal Audit Completed and Approved
 
-<!-- Append learnings below -->
+**Context:** Scribe processed archetype removal completion across Keyser → Keaton → McManus → Kujan pipeline.
 
-### 2026-05-18 — Archetype Folder Validation (#344 TestFlight audit)
+**Your work:** Conducted architectural audit determining `app/archetypes/` is legacy; canonicalized on `app/entities/` entity factories. Documented concrete removal actions. Decision merged into `.squad/decisions.md`.
 
-**Status:** APPROVED — read-only audit, no code changes required.
+**Status:** Audit approved. Implementation (Keaton), wording cleanup (McManus), and final review (Kujan) all complete. Zero stale references; all tests pass; build clean.
 
-**Scope:** Validated the move of `obstacle_archetypes.h/.cpp` from `app/systems/` → `app/archetypes/`. Checked ECS ownership boundary, include paths, CMakeLists.txt build config, stale duplicates, and test coverage.
+**Related:** Orchestration logs in `.squad/orchestration-log/2026-04-29T10-10-30Z-*.md`
 
-**Verdict:** Move is architecturally correct and complete. `apply_obstacle_archetype` is a pure entity assembly function (no `dt`, no `GameState` query, no iteration) — it never belonged in `app/systems/`. The `app/archetypes/` layer is now the confirmed canonical home for shared factory/archetype code.
+## Session: 2026-04-28T22:35:09Z — Architecture Spine and Boundary Decisions Consolidated
 
-**Key findings:**
-- No stale references remain in `app/systems/` — `all_systems.h` is clean, deleted files are git-staged.
-- All three callers (beat_scheduler_system, obstacle_spawn_system, test_obstacle_archetypes) use `"archetypes/obstacle_archetypes.h"` — resolves correctly via the `app/` include root.
-- `ARCHETYPE_SOURCES` GLOB in CMakeLists.txt correctly picks up `app/archetypes/*.cpp` and links into `shapeshifter_lib`. No ODR violations.
-- Test coverage: all 7 `ObstacleKind` variants tested with 10 cases; symmetric LanePushLeft/Right both have dedicated tests.
-- **P1 (VCS):** `app/archetypes/` is still untracked. Must be committed atomically with the deleted `app/systems/` files, ideally via `git mv` for rename history.
-- **P3 (deferred):** `LaneBlock` case in factory may be dead surface; `LanePush*` conversion only happens in spawner. Audit separately.
+**Context:** Scribe merged all inbox decisions (including keyser-raygui-migration-spine.md, keyser-ui-layout-data-boundary.md) into decisions.md and updated cross-agent history.
 
-**Canonical pattern established:** Future archetypes → `app/archetypes/{domain}_archetypes.h/.cpp`, included as `"archetypes/{domain}_archetypes.h"`.
+**Your work:** Keyser authored Architecture Spine for UI Migration (problem statement, goals, non-goals, hard boundary rules U1–U7), and finalized rguilayout Export-Data Boundary decision. Rejected prior recommendations: no `RaguiAnchors<ScreenTag>` / layout POD duplication, no UI widget entities for static menus/HUD, Phase 5 deletes layout caches instead of rebuilding. Approach rings removed from scope per user directive.
 
-**Decision written:** `.squad/decisions/inbox/keyser-archetypes-folder-validation.md`
+**Status:** Spine document and boundary decisions now consolidated in decisions.md. Ready for Phase 3 handoff with clear ECS/render boundaries established.
 
-### 2026-04-27 — Parallel ECS/EnTT Audit (user/yashasg/ecs_refactor branch)
+**Related:** Merged decisions in `.squad/decisions.md` (Architecture Spine section and UI Layout Data Boundary section)
 
-**Status:** AUDIT COMPLETE — Read-only analysis with 5-agent parallel pass against docs/entt/.
+### 2026-04-28 — rguilayout Integration Spine (#0, user-requested)
 
-**Scope:** Entity_Component_System.md, Core_Functionalities.md, EnTT_In_Action.md  
-**Verdict:** Mostly clean — Three actionable findings (P1, P2, P3) plus 8 confirmed-clean patterns.
+**Status:** SPINE DEFINED — Integration path established; ready for tooling handoff.
 
-**P1 Finding:** sfx_bank.cpp (line 149) stores raw registry pointer (`&reg`) inside ctx singleton. Safe today (stack-local, synchronous), breaks if registry moves or invocation becomes async. **Fix:** Remove `user_data = &reg`; pass `reg` at call time in `audio_system()`. Owner: Keaton.
+**Context:** Phase 2 complete: all 8 screens have `.rgl` sources and generated `.c/.h` files. But generated files are standalone programs (`main()` + `RAYGUI_IMPLEMENTATION`) that cannot compile into the game. User asked: "setup an integration path."
 
-**P2 Finding:** high_score.h (lines 71–110) embeds mutation methods in component struct. Should move to free functions in `high_score_persistence.cpp`. Not blocking (logic is correct). Owner: Keaton.
+**Problem:** Cannot integrate generated code as-is — ODR violations, symbol collisions, and presence of `main()` in each `.c` file.
 
-**P3 Finding:** input_events.h uses member methods (`push_input`, `clear`) — deviates from team convention (see `AudioQueue` free-function pattern). Scheduled for resolution by EventQueue → dispatcher migration.
+**Decision: Custom Template + Adapter Layer**
 
-**Confirmed clean:** 8 patterns confirmed including dispatcher with R1–R7 guardrails, static collect-then-destroy buffers, pool priming, signal disconnect at shutdown, obstacle_counter.h ctx pattern, on_construct<ObstacleTag> dependency pattern, system execution order docs, UIActiveCache invalidation.
+Integration path: `.rgl` → (custom template) → `app/ui/rgl_generated/*.h` (header-only layout functions) → `app/ui/rgl_adapters/*.cpp` (C++ adapters) → `ui_render_system.cpp`
 
-**Already resolved:** #316 UI screen loading, #318 high-score/settings mutation, #322 UI layout POD cache, #324 burnout ECS surface, #327 dispatcher drain comments, #311/#314 GamePhaseBit enum, #312/#313 hashed_string.
+**Key constraints satisfied:**
+- ✅ No ECS layout mirrors (adapters call generated functions; no layout copied into components)
+- ✅ Generated files own layout data (never duplicated into project structs)
+- ✅ Incremental migration (screen-by-screen with parallel runtime paths)
+- ✅ Build-safe (header-only avoids ODR; `RAYGUI_IMPLEMENTATION` stays singular)
+- ✅ Preserves JSON path (unmigrated screens keep existing system)
 
-**Orchestration log:** `.squad/orchestration-log/2026-04-27T22-30-13Z-keyser.md`
+**File structure:**
+- `app/ui/rgl_generated/*.h` — header-only layout functions (8 screens)
+- `app/ui/rgl_adapters/*.cpp` — hand-written C++ adapters (added incrementally)
+- **Deletes:** `app/ui/*.c`, `app/ui/*.h` (current standalone generated files)
+- **No CMake changes:** Adapters auto-globbed by existing `file(GLOB UI_SOURCES app/ui/*.cpp)`
 
-### 2026-05-18 — EnTT Core_Functionalities Audit
+**Custom template requirements:**
+1. No `main()` — just layout drawing functions
+2. No `RAYGUI_IMPLEMENTATION` — raygui already implemented elsewhere in game
+3. Header-only — pure inline or extern "C" callable
+4. Named control accessors — expose button states, rectangles for dynamic content
 
-Audited `docs/entt/Core_Functionalities.md` against the full codebase. Two actionable findings beyond the prior ECS structural audit:
+**Migration strategy:**
+1. Screen-by-screen with feature flags
+2. Migrated screens call rgl adapter; unmigrated use JSON
+3. Validate behavior parity per screen before removing JSON dependency
 
-**P2 (#310) — `entt::hashed_string` for `ui_source_resolver.cpp` — IMPLEMENTED (commit `4f4574f`)**  
-Replaced 15-branch `if (source == "...")` chains in `resolve_ui_int_source` and 5-branch chain in `resolve_ui_dynamic_text` with `switch(entt::hashed_string::value(source.data()))` + `_hs` UDL cases. Single FNV-1a hash per dispatch. Sources always come from JSON-parsed `std::string` — `data()` is null-terminated and safe. The compiler will flag duplicate `_hs` case values (collision guard).
+**Open issues:**
+1. raygui implementation location — grep found no current `RAYGUI_IMPLEMENTATION` in app/ (only in standalone generated files). Must add exactly one implementation site.
+2. Custom template authoring — tooling task, not architecture.
+3. Dynamic text binding (scores, song names) — template must export slots/rectangles.
 
-**P3 (#314) — `entt::enum_as_bitmask` for `ActiveInPhase` — Deferred to McManus**  
-`ActiveInPhase::phase_mask (uint8_t)` uses manual `phase_bit()` / `phase_active()` helpers. A `GamePhaseBit` bitmask enum (power-of-2 values + `_entt_enum_as_bitmask` sentinel) would make it type-safe. Current helpers are correct — ergonomic improvement only.
+**Next steps:**
+1. Create custom template: `tools/rguilayout/templates/shapeshifter_header.rgl`
+2. Proof of concept: re-export title screen, write adapter, wire into ui_render_system
+3. Iterate for remaining screens
 
-**Features with no actionable issue:** `entt::monostate` (ctx() is better), `entt::any` (typed ctx covers it), `entt::tag<"name"_hs>` (empty structs are fine), `entt::compressed_pair` (internal), `entt::allocate_unique` (no custom allocators), `entt::overloaded` (no variant pattern), `entt::type_name` (magic_enum covers enum value names), `entt::fast_mod` (lane % 3 is not a power of 2), `entt::ident`/`family` (no type sequencing need), `entt::integral_constant` tags (existing empty structs are clearer).
+**Decision written:** `.squad/decisions/inbox/keyser-rguilayout-integration-spine.md`
 
-**Key lesson:** The most impactful Core_Functionalities feature for this codebase is `entt::hashed_string` as a drop-in for runtime string dispatch. Apply it wherever there's an if-chain on `string_view` keys against a fixed schema (especially in data-driven UI binding). The null-termination assumption on `hashed_string::value(source.data())` must be respected — only safe when source originates from `std::string` or string literal.
+**Impact:** Establishes the runtime seam that respects all prior architecture constraints (no layout mirrors, generated files own data, incremental migration, build-safe). Unblocks Phase 3 build integration.
 
-### 2026-05-17 — Issue #242 Review (cleanup_system per-frame heap allocation)
+## 2026-04-29: Assigned — c7700f8 UI Adapter Abstraction Pattern Design
 
-**Verdict: APPROVED — #242 can be closed.**
+**Date:** 2026-04-29T03:13:21Z  
+**Task:** Design template/trait-based abstraction pattern for rguilayout UI adapters  
+**Context:** Keaton review of c7700f8 revealed 377-line boilerplate duplication across 8 adapter files  
+**Priority:** HIGH  
+**Status:** ASSIGNED
 
-**Code change landed in commit `afd7921` (mislabeled as #253 high_score perf; #242 changes are bundled).**
+### Assignment Scope
 
-**Checks performed:**
+Keyser (Lead Architect) is assigned to design an abstraction pattern that eliminates boilerplate duplication across 8 UI screen adapter files (game_over, song_complete, paused, settings, tutorial, gameplay, level_select, title).
 
-1. **Static buffer confirmed** — `cleanup_system.cpp` now uses `static std::vector<entt::entity> to_destroy; to_destroy.clear();`. Capacity is retained across frames; `clear()` resets size without freeing. No per-frame heap allocation on the hot path. The `#242` comment in-code documents the intent explicitly.
+### Problem Statement
 
-2. **No `reg.all_of` predicate remains** — `cleanup_system.cpp` has zero calls to `all_of` or `any_of`. The predicate was already removed by #280 (`miss_detection_system` extracted the miss path). Current structural view `reg.view<ObstacleTag, Position>()` is correct EnTT-native filtering.
+c7700f8 introduces identical init/render/state patterns repeated per-screen:
+```cpp
+namespace {
+    {Screen}LayoutState {screen}_layout_state;
+    bool {screen}_initialized = false;
+}
+void {screen}_adapter_init() { /* identical */ }
+void {screen}_adapter_render(entt::registry& reg) { /* identical */ }
+```
 
-3. **Collect-then-destroy pattern is iterator-safe** — Entities are pushed into `to_destroy` during the view iteration, then destroyed in a separate loop. No modification of the view storage during iteration; EnTT iterator safety is preserved.
+This violates user directive: "maximize code reuse, no slop."
 
-4. **#280 ownership boundary preserved** — `cleanup_system` does not emplace `MissTag` or `ScoredTag`. It destroys expired off-screen obstacles only. `miss_detection_system` owns the miss-tagging responsibility as per #280.
+### Design Requirements
 
-5. **Tests cover required cases** — Two new `[cleanup]` tests in `test_world_systems.cpp`:
-   - `"cleanup: destroys multiple obstacles past DESTROY_Y in one pass"` — validates batch destruction with N=5 entities (guards static buffer correctness).
-   - `"cleanup: does not emplace MissTag or ScoredTag on surviving obstacles"` — validates #280 ownership boundary.
-   All 6 `[cleanup]` tests (excluding pre-existing `[pr43]` failures) pass: **12 assertions, 0 failures**.
+1. **Abstract shared lifecycle**
+   - Anonymous namespace state initialization
+   - Guard-checked init function
+   - Render entrypoint with lazy init
 
-6. **CMakeLists exclusion is justified** — Three files (`test_lifecycle.cpp`, `test_gesture_routing_split.cpp`, `test_gpu_resource_lifecycle.cpp`) are real but untracked agent-in-progress files referencing symbols not yet merged. Exclusion is correct; no real shipped tests are accidentally dropped.
+2. **Support per-adapter customization**
+   - Dispatch logic varies by screen (button handlers, timers, etc.)
+   - Pattern must allow screen-specific behavior without duplication
 
-7. **Pre-existing `[pr43]` failures are unrelated** — Two `on_obstacle_destroy` tests in `test_pr43_regression.cpp` fail, but these predate `afd7921` by multiple commits and are not caused by #242 changes.
+3. **Preserve generated header interface**
+   - Must use existing `{Screen}Layout_Init()` and `{Screen}Layout_Render(&state)` functions
+   - No changes to `.rgl` export workflow
 
-### 2026-05-18 — Issue #272 Re-Review (Kobayashi revision — CMake EXCLUDE REGEX fix)
+4. **Compile-time enforcement**
+   - Use C++17 templates or CRTP for type safety
+   - Wrong function signature = compiler error
 
-**Verdict: APPROVED — #272 can be closed.**
+### Recommended Approaches
 
-**Revision commit:** `e600644` (`fix(ci): include test_gesture_routing_split in shapeshifter_tests (#272)`)
+**Option A: Non-type Template Parameters (Simplest)**
+- Best for stateless init/render functions
+- 377 lines → ~50 template + 8 using-declarations
+- Zero runtime overhead
 
-**Checks performed:**
+**Option B: CRTP + Traits (More Flexible)**
+- Better for per-adapter state/dispatch customization
+- Trait contract: State typedef, init(), render_layout(), dispatch() methods
+- Clear pattern for future adapter implementations
 
-1. **EXCLUDE REGEX defect resolved** — `CMakeLists.txt:368` no longer contains `test_gesture_routing_split`. The surgical one-token removal from the pipe-separated regex is confirmed in the commit diff. The five remaining entries (`test_safe_area_layout`, `test_ui_redfoot_pass`, `test_ui_element_schema`, `test_ui_overlay_schema`, `test_lifecycle`, `test_gpu_resource_lifecycle`) are all still-unmerged agent files; their continued exclusion is correct.
+**Option C: Hybrid**
+- Template base for init/render lifecycle
+- CRTP for dispatch customization
 
-2. **Test file is now in-scope** — `test_gesture_routing_split.cpp` is picked up by `file(GLOB TEST_SOURCES tests/*.cpp ...)` at line 364 and passes the EXCLUDE REGEX filter. All 7 test cases carry `[issue272]` tags, matching Kobayashi's reported run: `"[issue272]"` → 21 assertions, 7 test cases.
+### Deliverables Expected
 
-3. **No unrelated wiring changes** — The commit diff touches exactly one line in CMakeLists.txt. No other test sources, build targets, or CI files were modified.
+1. **Pattern design document** (to `.squad/decisions/inbox/keyser-ui-adapter-pattern.md`)
+   - Chosen approach and rationale
+   - Template signatures / trait contract
+   - Example specializations (2–3 adapters)
 
-4. **All prior approvals unchanged** — Split correctness, ActiveTag filtering, game-loop ordering, ECS cleanliness, and `all_systems.h` declarations were PASS in the original review and are unaffected by this patch.
+2. **Proof-of-concept refactor**
+   - Refactored 2–3 adapters (game_over, title, gameplay) using chosen pattern
+   - Demonstrates elimination of duplication
+   - Validates generated header interface compatibility
 
-### 2026-05-18 — Issue #272 Review (gesture_routing/hit_test split) [SUPERSEDED — see re-review above]
+3. **Implementation handoff spec**
+   - Clear steps to refactor remaining 5 adapters
+   - Assign implementation to non-Fenster agent
 
-**Verdict: REJECTED — CMakeLists.txt excludes the test file; tests never run in CI.**
+### Blocking Considerations
 
-**Revision assigned to: Kobayashi**
+- Fenster is locked out (per review protocol); cannot execute refactor
+- Hockney has already approved platform concerns
+- McManus (Gameplay) can proceed independently on dispatch logic
 
-**Defect (single, exact):**
-`CMakeLists.txt:368` — the EXCLUDE REGEX filter includes `test_gesture_routing_split`, keeping all 7 #272 tests out of the `shapeshifter_tests` binary. The exclusion was introduced in `afd7921` (before the test file existed) as a preemptive guard for unmerged work. Commit `2403632` added the test file but did not remove it from the exclusion pattern. The test file compiles clean (`-fsyntax-only` verified); it simply isn't linked.
+### Timeline
 
-**Fix (one line):** Remove `test_gesture_routing_split` from the exclusion regex in `CMakeLists.txt:368`.
+- **Design:** 1–2 hours
+- **Proof-of-concept:** 1–2 hours
+- **Implementation (assigned agent):** 2–4 hours
+- **Re-review (Keaton):** 1 hour
+- **Total cycle:** ~5–9 hours
 
-**All other checks PASS:**
+### Related Decisions
 
-1. **Split is clean** — `gesture_routing_system` iterates `EventQueue::inputs`, emits `push_go` on `InputType::Swipe` only; no spatial logic. `hit_test_system` skips any input where `evt.type != InputType::Tap`; no GoEvent path.
-2. **#249 ActiveTag filtering preserved** — `hit_test_system` calls `ensure_active_tags_synced(reg)` then queries `view<Position, HitBox, ActiveTag>()` / `view<Position, HitCircle, ActiveTag>()`. Structural; identical to the pre-split implementation.
-3. **Game loop ordering** — `game_loop.cpp:164-165`: `gesture_routing_system(reg)` immediately before `hit_test_system(reg)`, both after `input_system` and before the fixed-step accumulator loop. Ordering matches prior behavior.
-4. **No globals, clean ECS** — both systems read/write only `EventQueue` (registry context). No cross-system component ownership creep.
-5. **`all_systems.h`** — both declarations present with Phase 0.25a/0.25b comments and #272 cross-reference.
-6. **Test coverage** — `test_gesture_routing_split.cpp` covers: swipe→GoEvent, tap→no GoEvent (gesture system), swipe→no press (hit-test system), tap→press (hit-test alone), mixed ordering (both systems sequenced), ActiveTag phase filtering (Title vs Playing).
+- User directive: `.squad/decisions.md` ("User Directive: Maximize Code Reuse, No Slop")
+- UI adapter abstraction directive: `.squad/decisions.md` ("Directive: UI Adapter Boilerplate Abstraction Pattern")
+- Keaton review: `.squad/orchestration-log/2026-04-29T03:13:21Z-keaton.md`
 
-**Root cause of defect:** `afd7921` added the exclusion list before `test_gesture_routing_split.cpp` existed (to guard unmerged test files). Redfoot's `2403632` added the file but did not clean up the exclusion entry.
+### Orchestration Log
 
-### 2026-05-17 — Issue #241 Review (compute_screen_transform duplicate)
+See `.squad/orchestration-log/2026-04-29T03:13:21Z-keyser.md`
 
-**Verdict: APPROVED — #241 can be closed.**
 
-**Code fix landed in commit a5cad3d, bundled with #304 (WASM shutdown).**
+### 2026-04-29 — RGUILayout Adapter Template Refactor (Keaton Review Revision)
 
-**Checks performed:**
+**Status:** COMMITTED (958a7d9) — Architectural refactor of c7700f8 after Keaton rejection.
 
-1. **Single canonical call confirmed** — `compute_screen_transform(reg)` appears exactly once in `game_loop.cpp:162`, at the top of `game_loop_frame`, before `input_system`. No other call site exists in `app/`.
+**Scope:** Replaced 377 lines of duplicated adapter boilerplate across 8 screen adapters with template-based pattern and shared helpers.
 
-2. **`ui_camera_system` reads, does not recompute** — The body of `ui_camera_system` contains no call to `compute_screen_transform`. An explicit code comment at `camera_system.cpp:302` documents the intent: "ScreenTransform is computed once per frame by game_loop_frame (before input_system) and stored in the registry context. Reading it here is sufficient; do NOT call compute_screen_transform again (#241)."
+**Changes implemented:**
 
-3. **No one-frame latency** — `compute_screen_transform` runs before `input_system`, `hit_test_system`, and `ui_camera_system`, so both input mapping and UI camera use the current frame's transform.
+1. **Created `adapter_base.h` with `RGuiAdapter` template** — Uses C++17 auto template parameters (`template<typename State, auto InitFunc, auto RenderFunc>`) for compile-time dispatch to generated layout functions. Eliminates manual state variable + bool flag + init guard pattern repeated across 8 files. Each adapter now declares a type alias (`using TitleAdapter = RGuiAdapter<...>`) and single static instance.
 
-4. **ECS context state, not hidden global** — `ScreenTransform` lives in `reg.ctx()`, derived from `platform_get_display_size` each frame. No global variable.
+2. **Created `end_screen_dispatch.h` template helper** — Consolidates byte-for-byte identical dispatch logic from `game_over_adapter.cpp` and `song_complete_adapter.cpp` (Restart/LevelSelect/MainMenu button → `EndScreenChoice` enum). Generic over any layout state with the three button-pressed fields.
 
-5. **Tests are additive and meaningful** — Two new `[screen_transform][regression]` tests added to `test_ndc_viewport.cpp`:
-   - "letterbox math is idempotent (#241)": pure-math mirror of `compute_screen_transform`; proves same-inputs → same-outputs and validates the 2× no-bar case (scale=2, offset=0).
-   - "letterbox math produces correct pillarbox offsets (#241)": validates 1280×1280 window → scale=1, offset_x=280, offset_y=0.
-   No existing tests were removed or weakened.
+3. **Fixed EnTT storage access pattern** — Removed cargo-cult `std::as_const(reg).storage<T>()` wrapping in `ui_render_system.cpp` lines 363–364, 391–392. Replaced with direct `reg.try_get<T>(entity)` per-entity queries matching codebase conventions (collision_system, scoring_system, test_player_system all use `try_get`). EnTT v3.16.0 `storage()` returns a reference, not a pointer; the `std::as_const` wrapper does not prevent pool creation and is unnecessary.
 
-6. **Commit bundling** — The commit message credits #304 only. The #241 portion is a small, self-contained, semantically independent change. No risk bleed from #304 work. #241 can be closed without waiting for a separate #304 review.
+4. **Added `offset_rect()` helper** — Small raylib-friendly utility for anchor-relative Rectangle construction (`offset_rect(anchor, x, y, w, h)`) used in `settings_adapter.cpp` to replace 3 instances of manual `(Rectangle){anchor.x + x, anchor.y + y, w, h}` arithmetic.
 
-### 2026-05-17 — Enum Macro Refactor Analysis
+5. **Renamed adapter instances for unity build safety** — Each adapter's static instance now has a unique name (`game_over_adapter`, `title_adapter`, etc.) instead of generic `adapter`. Avoids symbol collision when multiple adapters are merged into a single translation unit by CMake unity builds.
 
-**Request:** Replace all codebase enums with a fixed 7-argument unscoped macro that produces `enum name { v1..v7 }` and `const char *nameStrings[]`.
+**Build/test validation:**
+- Zero-warning build with Clang on macOS (arm64-osx triplet, unity build enabled).
+- All 901 test cases pass (2635 assertions).
+- Verified no `app/ui/generated/standalone/*.c` files are compiled (only `app/ui/raygui_impl.cpp` is the real `RAYGUI_IMPLEMENTATION` site).
 
-**Finding: Zero enums are directly convertible.** Every enum fails on at least one of these structural incompatibilities:
-1. All enums are `enum class` — macro produces plain unscoped `enum`, breaking every `EnumName::Value` call site.
-2. All enums specify an underlying type (`:uint8_t` or `:int`) — macro has none; triggers `-Wconversion` = build failure under zero-warnings policy.
-3. Enumerator counts range from 2 to 13 — only `MenuActionKind` hits 7, but it has explicit `= 0..6` assignments the macro can't encode.
-4. `WindowPhase` is forward-declared in `player.h` — a macro cannot be forward-declared.
-5. Three enums (`ObstacleKind`, `Shape`, `TimingTier`) already use the superior X-macro pattern with `ToString()` functions; the proposed macro would be a regression to a mutable global string array.
+**Patterns established:**
 
-**Decision: NO-GO on the exact macro.** Recommend extending the existing X-macro/`ToString()` pattern (already in use in the project) to remaining enums that genuinely need string tables. Wait for PR #43 to merge before touching any component headers.
+- **RGUILayout adapter pattern:** Any new screen adapter should use `RGuiAdapter<StateType, &InitFunc, &RenderFunc>` type alias + named static instance, not manual init/render boilerplate.
+- **EnTT optional component access:** Use `reg.try_get<T>(entity)` per-entity checks, not `storage<T>()` + contains + get. The latter is EnTT v2/v3-early API surface; v3.16.0 `try_get` is idiomatic.
+- **Unity build compatibility:** Static variables in anonymous namespaces must have unique names when file-scoped uniqueness is insufficient (adapters are likely to be batched together).
 
-**Key rule confirmed:** This codebase uses `enum class` with explicit underlying types universally. Any enum helper macro must preserve both. The 3-enums-with-X-macro pattern is the canonical project approach.
+**Key lesson:** Template-based DRY elimination in C++17 is straightforward when the generated output is uniform (all adapters follow same init/render contract). The cost is one template definition; the benefit scales linearly with the number of conforming types. This pattern can extend to other generated-code adapter layers (audio event callbacks, beatmap parsers, etc.) if similar boilerplate emerges.
 
-### 2026-05-15 — Diagnostics Pass Learnings
-
-- `session_log_on_scored` (session_logger.cpp:123) checks `gs->transition_pending && next_phase==GameOver` for miss detection — always wrong at signal-fire time because energy_system hasn't run yet. Correct check: `reg.any_of<MissTag>(entity)`.
-- `SongResults::total_notes` is declared (song_state.h:48) but never populated anywhere in the codebase — always 0.
-- `audio_system` drains the AudioQueue but never calls `PlaySound()` — all SFX is silently dropped. Marked as "Future:" in code.
-- SongComplete gating view (`game_state_system.cpp:158`) uses `ObstacleTag` exclude `ScoredTag`. Post-scored entities keep `ObstacleTag` (scoring_system only removes `Obstacle` + `ScoredTag`), causing ~1s SongComplete delay after last note.
-- `APPROACH_DIST` duplicated: `constants.h:67` (namespace constant) and `song_state.h:56` (local inside `song_state_compute_derived`). Both are 1040.0f; drift risk if geometry changes.
-- `song_playback_system` resume guard uses `gs.previous_phase == Paused` which is not edge-triggered — calls `ResumeMusicStream` every frame after unpause until next phase change. Benign in practice (raylib no-ops idempotent Resume) but sloppy.
-- `burnout_system` finds nearest obstacle by y-distance regardless of lane — an obstacle in a different lane that can't actually hit the player still raises the burnout zone.
-- `obstacle_spawn_system` uses `std::rand()` without `srand()` — same obstacle sequence every session in freeplay mode.
-- `scoring_system` spawns a 0-point ScorePopup for LanePush obstacles (base_points=0), showing "0" on screen. Should skip popup when points==0.
-- LANE_X in architecture.md (180/360/540) is stale; code uses 60/360/660.
-- Single-slab obstacles (LowBar, HighBar, LanePushLeft/Right) lose `ModelTransform` updates after scoring_system removes `Obstacle` component, but entity persists with stale transform until cleanup — visual ghost at score position.
-- `reg.clear()` in `setup_play_session` fires `on_destroy<ObstacleTag>` signal mid-clear, which calls `reg.destroy()` on MeshChild entities. Works in practice with EnTT 3.16.0 but is undefined-behavior territory.
-
-### 2026-04-26 — Project Tech Stack & Agent Fit
-
-- Stack: C++20, raylib 5.5, EnTT 3.16.0 (ECS/DOD), CMake+vcpkg, Catch2 (386 tests), Python beatmap pipeline (aubio), 4-platform CI (macOS/Linux/Windows/WASM), GitHub Pages WebAssembly deploy.
-- 19 POD components, 23 systems, strict zero-warnings policy (-Wall -Wextra -Werror / /W4 /WX).
-- Rhythm is derived from song_time (not accumulated dt) — prevents beat drift. This is a core invariant all gameplay agents must respect.
-- Agent role-fit evaluated: McManus, Hockney, Keaton, Kobayashi, Fenster, Baer, Kujan are HIGH value. Rabin, Saul, Edie, Verbal are MEDIUM. Redfoot is LOW (minimal HUD complexity). No gaps for typical game dev work; audio-specialist role could add value if pipeline depth grows.
-
-### 2026-05-15 — TestFlight ECS Bug Fixes (#207, #209, #213)
-
-**#207 (morph_t double-update in rhythm mode):**
-- `player_movement_system` was advancing `morph_t` unconditionally every tick. `shape_window_system` also writes it from `song_time`. Both in the same tick = double-speed morph animation.
-- Fix: gate `player_movement_system`'s morph update on `!SongState::playing`. Single-owner invariant now enforced in code.
-- Rule documented in decision record.
-
-**#209 (MorphOut button press silently dropped):**
-- Shape button presses during `WindowPhase::MorphOut` fell through all if/else-if branches with no action.
-- Decision: accept and interrupt (not queue). MorphOut has no active window; starting a fresh MorphIn is safe and preserves player intent.
-- Fix: added `else if (phase == WindowPhase::MorphOut) { begin_shape_window(...); }`.
-
-**#213 (GoEvents replayed in multi-tick accumulator frames):**
-- `game_loop_frame` fills `EventQueue` once per render frame, then loops `tick_fixed_systems` N times (fixed-step accumulator). `player_input_system` read GoEvents on each sub-tick, resetting `lane.lerp_t = 0.0f` every tick on slow frames.
-- Fix: `player_input_system` zeroes `eq.go_count` and `eq.press_count` after processing. Events consumed on first sub-tick.
-
-**All three fixed in commit 7b420ed on branch user/yashasg/ecs_refactor.**
-**GitHub comments posted to #207, #209, #213 (issues left open).**
-**Regression tests added in `tests/test_player_action_rhythm.cpp`.**
-
-
-- Many bugs from the previous pass are now FIXED in code but issues remain open: #108 (std::rand unseeded, now uses RNGState), #113 (audio SFX now plays), #114 (total_notes now populated), #116 (reg.clear signal guard now correct), #117 (burnout is_burnout_relevant now filters by lane), #119 (music resume now edge-triggered via music->paused flag), #111 (session_log_on_scored now uses any_of<MissTag>).
-- `PlayerShape::morph_t` is written by BOTH `shape_window_system` (sets from song time) AND `player_movement_system` (adds dt-based delta) in the same fixed-step tick during rhythm mode → data ownership conflict → #207.
-- `player_input_system` has a MorphOut dead zone: button presses during `WindowPhase::MorphOut` are silently ignored, not deferred → #209.
-- `EventQueue` GoEvents (lane Left/Right) are re-processed on every sub-tick in the fixed-step accumulator, resetting `lane.lerp_t = 0.0f` on each → stutter/snap under load spikes → #213.
-- `scoring_system` emits `SFX::BurnoutBank` unconditionally for ALL cleared obstacles including 0-point LanePush, giving misleading audio feedback → #215.
-- System execution order is consistent with semantics: energy_system after scoring (correct), game_state_system before all gameplay (correct 1-frame GameOver trigger is unavoidable).
-- `APPROACH_DIST` still duplicated in constants.h (namespace constant) and song_state.h (local constexpr in `song_state_compute_derived`). Already filed as #84.
-- `cleanup_system` properly handles the scored-entity lifecycle in concert with scoring_system; no double-miss-count identified.
-- `collision_system`'s window contraction math (adjusting window_start backward by `remaining * (1 - scale)`) is algebraically correct and intentional — not a bug.
-
-### 2026-05-16 — Post-TestFlight Cleanup Pass
-
-**Scope:** ECS/state code cleanup after #207/#209/#213 fixes (branch user/yashasg/ecs_refactor).
-
-**Changes Made:**
-
-1. **`scoring_system.cpp` — BankedBurnout stale component on miss path (FIXED)**
-   - Miss path removed `Obstacle`, `ScoredTag`, `MissTag`, `TimingGrade` but NOT `BankedBurnout`.
-   - A player could bank burnout on an obstacle (press near it) and then miss the window; the entity retained `BankedBurnout` until `cleanup_system` destroyed it.
-   - Fix: added `if (reg.any_of<BankedBurnout>(entity)) reg.remove<BankedBurnout>(entity);` to the miss path in `scoring_system`.
-
-2. **`play_session.cpp` — `SongResults::total_notes` never populated (FIXED, issue #114)**
-   - `setup_play_session` reset `SongResults{}` (total_notes = 0) but never set `total_notes` from `beatmap.beats.size()`.
-   - History claimed this was fixed but the code was missing the assignment.
-   - Fix: `SongResults results{}; results.total_notes = static_cast<int>(beatmap.beats.size());` before insert_or_assign.
-   - Test `[issue-114]` now passes.
-
-3. **`player_movement_system.cpp` — `SongState` ctx lookup inside entity loop (CLEANED)**
-   - `reg.ctx().find<SongState>()` was called inside the per-entity loop.
-   - Moved outside the loop; `rhythm_mode` is a frame-level invariant, not per-entity.
-
-4. **`player_input_system.cpp` — Duplicate Left/Right lane change blocks (CLEANED)**
-   - Left and Right lane change handling were identical 16-line blocks differing only by delta direction and boundary check.
-   - Replaced with a single block using `int8_t delta = 0; if Left delta=-1; else if Right delta=+1; if delta!=0 { ... }`.
-
-**Pre-existing build errors uncovered (cache invalidation triggered rebuild):**
-- `high_score_persistence.cpp` and `ui_source_resolver.cpp` had compilation errors hidden by cached `.o` files. Both were untracked files. Build correctly succeeds in full rebuild — these files compile clean once all headers are included. NOTE: The initial "build succeeded" on the first pass was from cached objects only.
-
-**Pre-existing test failures (not introduced by my changes):**
-- `test_collision_system.cpp:308,340,341` — timing window behavior: "Perfect timing extends window via window_scale only" test expects `window_scale > 1.0` but collision_system sets 0.5; "BAD timing adjusts window_start" test expects `window_start < original` but it's unchanged. These were in the baseline.
-- `test_death_model_unified.cpp` — "cleanup miss drains energy" test: `cleanup_system` destroys scrolled-past unscored obstacles without marking them as missed. Test expects `MissTag`+`ScoredTag` emplaced + energy drain. This is a real **gameplay bug** (missed obstacles silently disappear without energy penalty). Deferred — requires behavioral change to `cleanup_system`.
-- `test_shipped_beatmap_max_gap.cpp` — stomper/mental_corruption easy+medium have gaps > limit. Content tooling issue.
-- `test_high_score_integration.cpp:24` — SIGABRT from EnTT dense_map assertion. `HighScoreState.scores` map access with invalid key in test setup. Pre-existing.
-- `test_shipped_beatmap_difficulty_ramp.cpp` — content/pipeline issue.
-
-**Deferred Findings (material bugs, not safe for cleanup scope):**
-- **`cleanup_system` miss-marking gap**: Unscored obstacles that scroll past `DESTROY_Y` are silently destroyed without draining energy. `test_death_model_unified` proves this is intended behavior that's not implemented. Fix requires `cleanup_system` to check `any_of<ScoredTag>` and emplace `MissTag`+`ScoredTag` before cleanup, then let `scoring_system` handle the miss penalty on the next frame. This is a gameplay balance change — needs Saul sign-off on energy curve implications.
-- **`test_high_score_integration` SIGABRT**: EnTT dense_map assertion at `scores["key"] = value` access. Likely `HighScoreState.scores` is an `ankerl::unordered_dense::map` that doesn't support `operator[]` creation on miss. Test needs `scores.emplace(key, value)` or pre-initialization.
-
-**Invariant confirmed:** `player_input_system` correctly consumes `go_count` and `press_count` at end of frame (fix #213). `player_movement_system` correctly gates morph_t update on `!rhythm_mode` (fix #207). `shape_window_system` has sole ownership of `morph_t` in rhythm mode.
+**Decision written:** None required — this is a revision of c7700f8 per Keaton's architectural requirements, not a new team decision.
 
 ---
 
-### 2026-04-27 — PR #43 Collision CI Fix Review (commit `dca7664`)
+## 2026-04-29 — UI Adapter Template Refactor (Commit 958a7d9) — APPROVED
 
-**Verdict: APPROVED — PR #43 collision failure family is resolved.**
+**Context:** Revision of rejected c7700f8 (code duplication in 8 UI adapters).
 
-**Scope:** `fix(tests): run scoring_system after collision_system in bar miss tests (#43)`
+**Challenge:** Keaton's rejection identified 377 lines of duplicated boilerplate init/render patterns across 8 adapters, plus byte-for-byte identical end-screen dispatch logic, manual rectangle construction, and incorrect EnTT API usage.
 
-**Findings:**
+**Solution:** 
+- Created `adapter_base.h` with `RGuiAdapter<LayoutState, InitFunc, RenderFunc>` C++17 template
+- Created `end_screen_dispatch.h` with shared button dispatch helper
+- Refactored all 8 adapters to use template (reduced ~45 LOC → ~25-35 LOC per adapter)
+- Fixed ui_render_system.cpp: removed std::as_const cargo-cult pattern, replaced with idiomatic `reg.try_get<T>(entity)`
+- Added `offset_rect()` helper to eliminate manual Rectangle arithmetic
 
-1. **Only file touched:** `tests/test_collision_system.cpp` — confirmed via `git diff --name-only`. No production code, no unrelated test files, no cmake or header changes.
+**Metrics:**
+- 377 lines of duplication eliminated (~33% reduction)
+- All 8 adapters now use reusable template
+- Zero warnings, all tests pass, no behavior changes
 
-2. **Two tests fixed:**
-   - `collision: low bar drains energy when sliding` (line 282)
-   - `collision: high bar drains energy when jumping` (line 297)
-   Both now call `collision_system(reg, 0.016f)` → `scoring_system(reg, 0.016f)` before asserting `energy.energy < 1.0f` and `energy.flash_timer > 0.0f`.
+**Approvals:**
+- ✅ Keaton (code reviewer): Exemplary modern C++ implementation, all rejection criteria resolved
+- ✅ Hockney (platform engineer): Zero-warning unity build, all tests pass, RAYGUI_IMPLEMENTATION invariant preserved, no ODR violations
 
-3. **Assertions unchanged:** No relaxation of energy drain or flash_timer checks. Behavior contract is identical — the fix only adds the missing pipeline step.
+**Outcome:** Ready for merge to trunk. PR #351 (origin/ui_layout_refactor) will be pushed after logging.
 
-4. **Ownership intact:** Energy drain and flash_timer remain owned by `scoring_system`. `collision_system` still only produces miss tags/events; `scoring_system` still consumes them. No behavior was moved back.
-
-5. **Pattern consistency:** All other miss-drain tests in the file (shape gate, lane block, split path miss, combo gate miss) already used the two-step pipeline. These two bar-miss tests were the only outliers — the fix aligns them with established test pattern.
-
-**PR #43 collision failure family is resolved.**
-
-### 2026-04-27 — EnTT Input Model Guardrails (PRE-IMPLEMENTATION GUIDANCE)
-
-**Outcome:** Published architecture guardrails for dispatcher-based input refactor.
-
-**Core decision:** Replace hand-rolled `EventQueue` fixed arrays with `entt::dispatcher` stored in `reg.ctx()`. Use `enqueue`+`update` (deferred delivery) — **not** `trigger` (immediate). System execution order remains unchanged; dispatcher becomes the transport layer.
-
-**Key recommendations:**
-- **Dispatcher placement:** `reg.ctx().emplace<entt::dispatcher>()` (consistent with existing singleton pattern)
-- **Event delivery:** Two-tier `enqueue`+`update` (Tier 1: InputEvent pre-loop; Tier 2: GoEvent/ButtonPressEvent inside fixed-step)
-- **Listener registration:** Canonical ordering in `game_loop_init` (block-comment documented)
-- **Seven guardrails:** Multi-consumer ordering, overflow cap verification, clear-vs-update semantics, listener registry access, no connect-in-handler, trigger prohibition, stale event discard across phase transitions
-
-**Recipients:** Keaton (implementation), Baer (validation gates), McManus (integration)
-
-**Status:** Ready for Keaton to begin implementation stage 1 (dispatcher placement + zero-risk init).
-
-### 2026-05-17 — EnTT ECS Guide Audit
-
-**Scope:** Read-only pass of all `app/components/` and `app/systems/` against `docs/entt/Entity_Component_System.md`.
-
-**Key findings:**
-
-- **P1: Logic in component headers** — Three component headers carry system-grade logic: `UIState::load_screen()` (file I/O in a component), `HighScoreState` business methods (`set_score`, `update_current_high_score`), and `ensure_active_tags_synced()` / `invalidate_active_tag_cache()` (registry-iterating functions in `input_events.h`). All should move to system `.cpp` files.
-- **P2: Signal wiring and helpers in component headers** — `obstacle_counter.h` contains signal callbacks and `wire_obstacle_counter()`; `song_state.h` contains `song_state_compute_derived()`. Minor but worth cleanup.
-- **P2: `SettingsState` mutation methods** — `mark_ftue_complete()` et al. are logic on a component; should migrate to a settings system.
-- **P2: `cleanup_system.cpp` static vector** — Known/approved optimization (#242).
-- **In-flight validation:** Input dispatcher pipeline is well-aligned with ECS principles. Only ensure_active_tags_synced() placement needs move; pipeline structure is sound.
-
-**Status:** Delivered to Coordinator. Decision gate open for team prioritization and backlog assignment. Orchestration log: `.squad/orchestration-log/2026-04-27T19-14-36Z-entt-ecs-audit.md`.
-- **P3: `BurnoutState` context var** — Orphaned no-op post-#239; can be removed.
-- **In-flight input dispatcher** — `input_system → gesture_routing → hit_test → player_input` pipeline is ECS-correct. Only `ensure_active_tags_synced` placement (in header) needs to move.
-- **Good patterns:** All systems are free functions ✅; `reg.ctx()` singletons ✅; signal disconnect before `reg.clear()` ✅; ETO on all tag structs ✅; fixed-size array buffers ✅; no groups (correct choice) ✅; `entt::exclude<>` view narrowing ✅.
-
-**Decision filed:** `.squad/decisions/inbox/keyser-entt-ecs-guide-audit.md`
-
-**Key file paths for this audit:**
-- ECS guide: `docs/entt/Entity_Component_System.md`
-- Component headers with logic: `app/components/ui_state.h`, `app/components/high_score.h`, `app/components/input_events.h`, `app/components/obstacle_counter.h`, `app/components/song_state.h`
-- Systems audited: all 47 `reg.view<>` call sites, `app/game_loop.cpp`
-
-### 2026-04-27 — Input Dispatcher Approval (Context Note)
-
-**Status:** Approved by Kujan; 2419 assertions / 768 test cases pass; zero warnings.
-
-**ECS alignment:** Input dispatcher pipeline (gesture_routing → hit_test → player_input) architecture is sound and maintains ECS separation of concerns. Dispatcher-based event delivery via `reg.ctx()` follows established singleton pattern.
-
-**Approved changes maintain:**
-- All systems as free functions ✓
-- Dispatcher as registry context singleton ✓
-- No component-level logic in listeners ✓
-- Fixed-step delivery semantics ✓
-
-**No changes needed to ECS guide; architectural alignment verified.**
-
-### 2026-04-27 — Issue #315 Closure (EnTT-safe scoring_system iteration)
-
-**Architectural note:** McManus's collect-then-remove pattern for scoring_system (#315) follows the ECS structural view split pattern. Architecture review confirms alignment with existing collision_system design. Pattern is reusable and documented for team reference.
-
-### 2026-05-19 — Full ECS Audit Against docs/entt/ (branch: user/yashasg/ecs_refactor)
-
-**Scope:** Full read-only ECS audit using four parallel subagents across all component headers, system .cpp files, game_loop.cpp, and all three EnTT docs (Entity_Component_System.md, Core_Functionalities.md, EnTT_In_Action.md).
-
-**Verdict: mostly clean.** Architecture is disciplined and recent refactor commits (#316, #317, #318, #322, #324, #327) have resolved multiple prior issues. Three findings remain.
-
-**Key findings:**
-- **P1 — sfx_bank.cpp:149**: `SFXPlaybackBackend{play_sfx_from_bank, &reg}` stores a raw registry pointer in a ctx singleton. Called synchronously today (audio_system on main thread), but architecturally fragile — any async move of the callback invocation path breaks it. Fix: pass reg at invocation point, not at storage time.
-- **P2 — high_score.h:71–110**: `HighScoreState` still embeds mutation methods (`set_score`, `ensure_entry`, `set_score_by_hash`). #318 removed mutation from systems but the methods remain in the struct. Only caller is `high_score_persistence.cpp`. Should be free functions in the persistence util.
-- **P3 — input_events.h:38–46**: `EventQueue` uses member methods (`push_input`, `clear`) while `AudioQueue` uses free functions — inconsistency in team's own free-function convention. Will be resolved by dispatcher migration.
-
-**Green patterns confirmed:**
-- Dispatcher guardrails (R1–R7) in `input_dispatcher.cpp`
-- Static collect-then-destroy buffers (cleanup_system, scoring_system)
-- Pool priming before signal connection (`game_loop.cpp:111–116`)
-- Signal disconnect on shutdown (`game_loop.cpp:241–245`)
-- `obstacle_counter.h` as gold standard for ctx singleton + signal wiring
-- `on_construct<ObstacleTag>` → `emplace<RingZoneTracker>` is valid EnTT dependency pattern (not a violation)
-- System execution order documented in `all_systems.h` phase labels
-- Registry stack-local in main(), always passed by reference, never stored globally (Emscripten pointer exception is guarded)
-
-**Key file paths audited:**
-- `app/components/` — all 32 headers
-- `app/systems/` — all 47 .cpp/.h files
-- `app/game_loop.cpp`, `app/main.cpp`
-- `docs/entt/Entity_Component_System.md`, `Core_Functionalities.md`, `EnTT_In_Action.md`
-
-### 2026-04-27T23:30:53Z — P0 TestFlight: ecs_refactor Archetype Audit (Issue #344)
-
-**Status:** STOP POINT REACHED — All validations complete, P2/P3 deferred
-
-**Role in manifest:** Lead Architect (background validation)
-
-**Summary:** Validated `app/archetypes/` move. Confirmed:
-- `apply_obstacle_archetype` correctly belongs outside systems (pure factory, no dt/GameState/iteration)
-- Old `app/systems/obstacle_archetypes.*` duplicate is gone
-- Include paths and CMake wiring are correct
-- No stale references remain
-
-**Non-blocking note:** P1 VCS — commit atomically with old-path deletions, preferably preserving rename history via `git mv`.
-
-**Deferred:** P3 items (LaneBlock analysis, LanePush spawner mapping) to separate issue.
-
-
-### 2026-05-18 — Archetype Candidate Audit (systems → archetypes expansion)
-
-**Status:** AUDIT COMPLETE — read-only, no code changes.
-
-**Scope:** All `app/systems/*.cpp`, `app/archetypes/`, `app/gameobjects/`, `ui_button_spawner.h`, `play_session.cpp`, `scoring_system.cpp`, `beat_scheduler_system.cpp`, `obstacle_spawn_system.cpp`.
-
-**User preference:** Audit first, identify and rank candidates, defer all P2/P3 implementation.
-
-**Ranked Candidates:**
-
-**P1 — Obstacle base pre-bundle dedup (belongs under #344)**
-- Files: `beat_scheduler_system.cpp:50-53`, `obstacle_spawn_system.cpp:43-46`
-- Both callers emit identical 3-emplace preamble (`ObstacleTag`, `Velocity(0, speed)`, `DrawLayer(Game)`) before calling `apply_obstacle_archetype`. Speed value differs (song speed vs config speed), so a helper signature `make_obstacle_entity(reg, speed) -> entt::entity` or folding the preamble into `apply_obstacle_archetype` both work.
-- Blocker: requires existing `test_obstacle_archetypes.cpp` to be updated with the new pre-bundle path; no new test file needed.
-
-**P1 — Player entity archetype**
-- File: `play_session.cpp:146-165` (8 inline emplaces)
-- Components: `PlayerTag`, `Position`, `PlayerShape`, `ShapeWindow`, `Lane`, `VerticalState`, `Color`, `DrawSize`, `DrawLayer`
-- Proposed: `create_player_entity(reg)` in `app/archetypes/player_archetypes.h/.cpp`
-- Benefit: `setup_play_session` is 195 lines mixing asset loading, singleton reset, and entity construction; factory extraction isolates ownership and makes the entity's component bundle testable.
-- Blocker: no existing player archetype test. New test required before or alongside implementation.
-
-**P2 — Score popup entity factory**
-- File: `scoring_system.cpp:149-175` (7 inline emplaces inside scoring logic)
-- `init_popup_display` is already extracted (per #251) but the entity shell (Position, Velocity, Lifetime, ScorePopup, Color, DrawLayer, PopupDisplay) remains inline in the hit-pass loop.
-- Proposed: `spawn_score_popup(reg, pos, points, has_timing, tier)` → `app/archetypes/popup_archetypes.h/.cpp`
-- Benefit: `scoring_system` stays pure scoring behavior; `test_popup_display_system.cpp` tests already exist and cover the output.
-- Blocker: existing test_popup_display_system.cpp coverage is adequate; no new file needed, existing tests cover the archetype.
-
-**P2 — Shape button orphan in play_session**
-- File: `play_session.cpp:167-188` (layout math + 3-entity loop for ShapeButtonTag entities)
-- All other button types are already in `ui_button_spawner.h` (`spawn_end_screen_buttons`, `spawn_title_buttons`, `spawn_pause_button`, `spawn_level_select_buttons`). Shape buttons are the only orphan.
-- Proposed: `spawn_shape_buttons(reg)` added to `ui_button_spawner.h` (inline, consistent with existing pattern).
-- Benefit: removes layout math from play_session; pure consistency win. No new file needed.
-- Blocker: none — pattern is well-established.
-
-**P3 — `app/gameobjects/` vs `app/archetypes/` home for mesh spawn/destroy**
-- File: `app/gameobjects/shape_obstacle.cpp` — `spawn_obstacle_meshes` + `on_obstacle_destroy`
-- These are pure entity-assembly/destruction functions; no system iteration, no `dt`. They logically belong in `app/archetypes/` alongside `obstacle_archetypes.cpp`.
-- Benefit: removes `app/gameobjects/` as a mixed-layer directory; all archetype factories in one place.
-- Risk: rename is mechanical (update includes + CMakeLists). Low risk but no urgency.
-- Blocker: should be done only after P1 obstacle bundle dedup is settled to avoid double-touching the include graph.
-
-**Non-candidates (explicit):**
-- `enter_game_over` / `enter_song_complete` in `game_state_system.cpp`: State transition logic, not entity construction. Duplication is intentional — different haptic/SFX triggers per path.
-- `spawn_ui_elements` in `ui_navigation_system.cpp`: Data-driven JSON→entity loop already owns its context cleanly; extraction would over-engineer a data-driven system.
-- `collision_system.cpp` tag emplaces (`ScoredTag`, `MissTag`, `TimingGrade`): State mutations on existing entities, not entity construction — correct to stay in the system.
-- `active_tag_system.cpp` emplace: Structural phase-gating tag, not entity construction.
-
-**Architecture finding:** The P1 obstacle pre-bundle gap means `apply_obstacle_archetype` currently has an implicit caller contract ("you provide the preamble") that is undocumented and duplicated in two systems. Folding it in would make the contract explicit and complete.
-
-**Decision written:** `.squad/decisions/inbox/keyser-archetype-candidate-audit.md`
-
-### 2026-05-18 — UI ECS Cleanup Batch (#337, #338, #339, #343)
-
-**Status:** COMPLETE — all code changes validated, all 840 tests pass.
-
-**Scope:** Four P3 audit findings from Redfoot/Keaton UI ECS audit.
-
-**#337 — UIActiveCache initialization**
-- Implementation already landed in `fdefeb1` (Keaton's dispatcher migration).
-- `reg.ctx().emplace<UIActiveCache>()` added to `game_loop.cpp` and `make_registry()` in `test_helpers.h`.
-- `active_tag_system.cpp` uses `ctx().get<UIActiveCache>()` — fails fast if not initialized, deterministic hot path.
-
-**#338 — Safe JSON operator[] in spawn path**
-- Implementation already landed in `fdefeb1`.
-- `spawn_ui_elements()` in `ui_navigation_system.cpp`: animation keys wrapped in try/catch with `.at()`, button/shape required color fields wrapped in outer try/catch that destroys entity on schema error.
-
-**#339 — UIState.current hashing: NO MIGRATION**
-- `UIState.current` is a `std::string` compared at load-time only (phase transition boundary).
-- Not a hot path; hashing would trade debuggability for zero measurable gain.
-- Decision documented in inbox with full rationale.
-
-**#343 — Dynamic text allocation: NO CACHE**
-- ~2–5 dynamic text entities per screen; strings fit in SSO.
-- At 60fps × 5 entities = ~300 small string ops/sec, most stack-only via SSO.
-- Cache would add component bloat + invalidation complexity for negligible benefit.
-- Decision documented in inbox with full rationale.
-
-**Validation:** `cmake --build build --target shapeshifter_tests && ./build/shapeshifter_tests`
-- All 2808 assertions in 840 test cases PASS.
-- `shapeshifter_lib` builds with zero warnings (-Wall -Wextra -Werror).
-
-**Learning:** On an active feature branch, audit findings may already be partially or fully implemented by concurrent agents (e.g., Keaton's `fdefeb1` covered #337 and #338 before I completed implementation). Always check commit history before re-implementing.
-
-### 2026-05-18 — Unbranched element fallback in spawn_ui_elements (#347)
-
-**Status:** SHIPPED — committed and pushed to `user/yashasg/ecs_refactor`.
-
-**Scope:** `app/systems/ui_loader.cpp`, `tests/test_ui_spawn_malformed.cpp`
-
-**Problem:** Supported-but-unimplemented types (`stat_table`, `card_list`, `line`,
-`burnout_meter`, `shape_button_row`, `button_row`) fell through the if/else chain
-in `spawn_ui_elements()`, leaving orphan entities with only `UIElementTag` + `Position`.
-
-**Fix:** Added `else if (is_supported_type(type)) { reg.destroy(e); continue; }` plus
-a final `else` for unknown types with a `[WARN]` stderr log.
-
-**Tests:** 8 new regression tests tagged `[issue347]` in `test_ui_spawn_malformed.cpp`.
-Full suite: 2854 assertions, all pass.
-
-### 2026-05-18 — Model Authority Revision Check (post-Kujan rejection)
-
-**Status:** COMPLETE — read-only audit, no production code changes.
-
-**Scope:** Produced correction checklist for McManus after Kujan rejected Keaton's model authority slice. Verified all four blocking findings (BF-1..BF-4) are unresolved in HEAD ef7767d.
-
-**Key findings confirmed:**
-- BF-1: `LoadModelFromMesh` still at `shape_obstacle.cpp:117` — manual mesh array construction not done.
-- BF-2: `camera_system.cpp:267–273` (section 1b) still emits `ModelTransform` for LowBar/HighBar; `game_render_system` still has no owned-model draw loop; `TagWorldPass` emplacement is dead code.
-- BF-3: ODR violation confirmed — `app/systems/obstacle_archetypes.cpp` and `app/archetypes/obstacle_archetypes.cpp` both define `apply_obstacle_archetype`; `tests/test_obstacle_archetypes.cpp:3` still includes stale `systems/` path.
-- BF-4: `struct ObstacleParts {}` is still empty in `rendering.h:105`.
-
-**Additional hazard called out:** `camera_system.cpp:286` (`MeshChild` section) reads `Position` directly from parent — not in scope for this slice, flagged as P2 item for McManus awareness.
-
-**Do not widen scope:** Position emission for non-LowBar/HighBar kinds is correct; section 1a (`ModelTransform` via Position) must stay for P1 entities.
-
-**Artifact:** `.squad/decisions/inbox/keyser-authority-revision-check.md`
-
-### 2026-05-19 — Double-Scale Fix: RF-1 + RF-2 (post-Kujan rejection of McManus revision)
-
-**Status:** COMPLETE — validation passed, not committed per task spec.
-
-**Scope:** Two Kujan blocking findings from the McManus authority revision review.
-
-**RF-1 (CRITICAL) — Unit cube mesh in build_obstacle_model()**
-- File: `app/gameobjects/shape_obstacle.cpp:124`
-- Changed: `GenMeshCube(constants::SCREEN_W_F, height, dsz->h)` → `GenMeshCube(1.0f, 1.0f, 1.0f)`
-- `slab_matrix` is a unit-cube scaler — identical to the shared slab pattern in `camera::ShapeMeshes.slab`. The pre-scaled mesh caused a double-scale (dimensions squared at render time).
-- `ObstacleParts.width/height/depth` unchanged — they correctly feed `slab_matrix` as intended world dimensions.
-
-**RF-2 (HIGH) — Scale diagonal test for slab_matrix**
-- File: `tests/test_obstacle_model_slice.cpp`
-- Replaced the weak "non-zero translation" BF-2 test with a proper `slab_matrix` scale-diagonal assertion.
-- Added `#include <raymath.h>` to test file.
-- New test replicates the `slab_matrix` formula inline (`MatrixMultiply(MatrixScale(w,h,d), MatrixTranslate(...))`) — GPU-free.
-- Asserts `mat.m0 == w`, `mat.m5 == h`, `mat.m10 == d` (scale diagonal equals world dimensions exactly once).
-- Also asserts `mat.m12/m13/m14 != 0` for non-identity transform confirmation.
-- Correction: raylib Matrix uses column-major layout; translation is in `m12/m13/m14`, NOT `m3/m7/m11`.
-
-**Validation:**
-- `cmake -B build -S . -Wno-dev`: clean
-- `cmake --build build --target shapeshifter_tests`: 0 errors, 0 warnings
-- `./build/shapeshifter_tests "~[bench]" --reporter compact`: 2978 assertions, 885 tests, all pass
-- `cmake --build build --target shapeshifter`: clean
-- `git diff --check`: clean (exit 0)
-- No executable `LoadModelFromMesh(` in app/ or tests/
-- No stale `"systems/obstacle_archetypes"` includes
-
-**Learning:** raylib Matrix column-major storage: translation is in `m12/m13/m14` (not `m3/m7/m11`). Scale diagonal is `m0, m5, m10`. The `slab_matrix` pattern requires a unit cube mesh — any pre-scaled mesh will double the dimensions at render time.
-
-### 2026-05-19 — Component Cleanup Audit (ECS Boundary Map)
-
-**Status:** COMPLETE — read-only audit, no code changes.
-
-**Scope:** Full ECS boundary audit of suspect component headers flagged by the user.
-
-**Key findings:**
-
-- `app/components/audio.h` and `app/components/music.h` are EXACT BYTE-FOR-BYTE DUPLICATES of `app/systems/audio_types.h` and `app/systems/music_context.h`. Zero consumers include the components/ versions. These are dead files — DELETE both.
-- `app/components/render_tags.h` does NOT exist. The tags (TagWorldPass/TagEffectsPass/TagHUDPass) already live in `rendering.h`. No action needed; directive is "do not re-create this file."
-- `app/components/obstacle_counter.h` and `app/components/obstacle_data.h`: valid ECS entity components (ObstacleCounter, RequiredShape, BlockedLanes, RequiredLane, RequiredVAction) but split across too many files. Both must be MERGED into `obstacle.h` and their standalone files deleted.
-- `app/components/ring_zone.h` (`RingZoneTracker`): a real entity component still in active use by ring_zone_log_system and session_logger. Directive says remove but it wasn't done. Decision: MERGE into obstacle.h and delete ring_zone.h; ring_zone_log_system removal is a separate scope call.
-- `app/components/settings.h`: NOT entity data. Stored in reg.ctx(). Move to app/util/ alongside settings_persistence.h.
-- `app/components/shape_vertices.h`: constexpr math constants, NOT a component. Only used by game_render_system.cpp. Move to app/util/.
-- `app/components/ui_layout_cache.h`: reg.ctx() layout cache structs. Directive says not needed. Currently active in three UI systems. Relocate to app/systems/ as a step toward eventual elimination.
-
-**Learning:** Model-slice work introduced DUPLICATE component files (audio.h ≡ audio_types.h, music.h ≡ music_context.h). Components/ folder accumulated six files that are not entity components: two dead duplicates, two context singletons misrouted to components/, one math utility, one layout cache. Pattern: when migration work runs in subagents without a post-pass audit, files proliferate in components/ without checks.
-
-**Artifact:** `.squad/decisions/inbox/keyser-component-cleanup-audit.md`
-
-### 2026-04-28 — Kujan Rejection Gate Fix (component cleanup revision)
-
-**Status:** GATE PASSED — zero code changes required. All three Kujan blockers were already resolved by prior agents before my inspection.
-
-**Scope:** Verified the three build-breaking errors Kujan identified were fixed, then ran the full validation suite.
-
-**Evidence:**
-- Fix 1 (obstacle_entity.cpp stale include): `app/entities/obstacle_entity.cpp` includes only `obstacle_entity.h`, `../components/obstacle.h`, `../components/transform.h`, `../components/rendering.h`, `../gameobjects/shape_obstacle.h`, `../constants.h`. No reference to the deleted `components/obstacle_data.h`. ✅
-- Fix 2 (test ObstacleArchetypeInput migration): `tests/test_obstacle_archetypes.cpp` now includes `entities/obstacle_entity.h` and calls `spawn_obstacle(reg, {ObstacleKind::..., x, y, ...})` with named struct fields. No positional aggregate-init missing fields. ✅
-- Fix 3 (test include path): `tests/test_obstacle_archetypes.cpp` includes `entities/obstacle_entity.h`, not the deleted `archetypes/obstacle_archetypes.h`. ✅
-- Stale include scan: grep across `app/` and `tests/` for all 10 deleted headers returned zero hits in non-.squad files. ✅
-- `app/archetypes/obstacle_archetypes.*` and `app/systems/obstacle_archetypes.*` both absent from filesystem. ✅
-- `app/entities/obstacle_entity.h/.cpp` present; CMakeLists.txt has `file(GLOB ENTITY_SOURCES app/entities/*.cpp)` wired into `shapeshifter_lib`. ✅
-- `cmake -B build -S . -Wno-dev` → exit 0 ✅
-- `cmake --build build --target shapeshifter_tests` → exit 0, zero warnings ✅
-- `./build/shapeshifter_tests "~[bench]" --reporter compact` → All tests passed (2983 assertions in 887 test cases) ✅
-- `cmake --build build --target shapeshifter` → exit 0, zero warnings ✅
-- `git --no-pager diff --check` → CLEAN ✅
-
-**Key lesson:** When multiple agents report fixes in parallel, the gate-fix owner must still inspect the actual working tree and run the build — agent reports can lag or be partially applied. In this case, the tree was already clean and no changes were needed.
-
----
-
-### 2026-04-28 — Team Session Closure: ECS Cleanup Approval
-
-**Status:** APPROVED ✅ — Deliverable logged; ready for merge.
-
-Scribe documentation:
-- Orchestration log written: .squad/orchestration-log/2026-04-28T08-12-03Z-keyser.md
-- Team decision inbox merged into .squad/decisions.md
-- Session log: .squad/log/2026-04-28T08-12-03Z-ecs-cleanup-approval.md
-
-Next: Await merge approval.
+**Skills Created:** `.squad/skills/cpp-template-adapter/`, `.squad/skills/unity-build-template-safety/`
 
 ## Learnings
 
-### 2026-05-20 — Camera Entity Cleanup
+- Archetype-to-entity migration rule: when runtime and tests call `app/entities/*_entity.h` factories directly, any remaining `app/archetypes/` forwarding header is dead surface and should be removed.
+- Decommission checklist for namespace-folder migrations: remove include shims, remove CMake source globs for the retired folder, and scrub stale docs/comments that still mark the old folder as canonical.
+- Verification command for this migration class: `cmake -B build -S . -Wno-dev && cmake --build build --target shapeshifter_tests && ./build/shapeshifter_tests "[archetype]"`.
 
-**Status:** COMPLETE — zero warnings, all tests pass.
+- Gameplay HUD restoration should read live `ShapeButtonTag + ShapeButtonData + UIPosition` entities first, then fall back to layout-derived defaults; this keeps visible buttons aligned with actual input-hit targets.
+- Keep gameplay HUD dynamic behavior (shape buttons, approach rings, segmented energy feedback) inside `gameplay_hud_screen_controller.cpp` while leaving generated rguilayout header focused on static controls like pause.
+- Compact, multi-stop segmented energy bars with critical pulse + flash overlays better preserve readability on 720x1280 than oversized single-fill bars.
+- Root UI cleanup (post-rguilayout activation): classified `ui_loader` + `text_renderer` + `ui_button_spawner` as live runtime dependencies, `ui_source_resolver` as live test-only dependency, and `tests/test_ui_spawn_malformed.cpp` as dead legacy spawn-surface documentation.
+- Applied surgical cleanup: removed `tests/test_ui_spawn_malformed.cpp`, excluded `app/ui/ui_source_resolver.cpp` from `shapeshifter_lib` runtime build while compiling it directly into `shapeshifter_tests`, and updated root UI comments to reflect the active screen-controller path.
+- Key files changed: `CMakeLists.txt`, `app/ui/ui_loader.cpp`, `app/ui/ui_source_resolver.h`, deleted `tests/test_ui_spawn_malformed.cpp`.
+- Validation: `cmake -B build -S . -Wno-dev && cmake --build build && ./build/shapeshifter_tests '~[bench]'` (pass: 867 test cases).
+- Second-pass dead-surface cleanup: deleted test-only `app/ui/ui_source_resolver.*`, removed legacy `app/components/ui_element.h`, and retired resolver-only tests (`tests/test_ui_source_resolver.cpp` plus resolver assertions in game-state/high-score/redfoot tests) because runtime now renders via screen controllers without JSON dynamic-source resolution.
+- Kept live runtime dependencies untouched (`ui_loader`, `text_renderer`, `ui_button_spawner`, level-select + screen controllers, navigation/render systems) and refreshed stale loader/render comments to reflect the active rguilayout controller path.
+- Validation and dead-surface proof: `cmake -B build -S . -Wno-dev && cmake --build build && ./build/shapeshifter_tests '~[bench]'` passed (848 test cases); no app/tests/CMake references remain to `ui_source_resolver`, legacy `UIElement*` components, `spawn_ui_elements`, `app/ui/vendor`, or generated standalone exports.
 
-**What changed:**
-- Deleted `app/components/camera.h` (was: `GameCamera`, `UICamera`, `FloorParams`, `RenderTargets`)
-- Created `app/entities/camera_entity.h` / `.cpp` — `GameCamera` and `UICamera` are now entity components with `spawn_game_camera(reg)` / `spawn_ui_camera(reg)` factory functions and inline accessors `game_camera(reg)` / `ui_camera(reg)`.
-- `FloorParams` and `RenderTargets` moved into `app/systems/camera_system.h` — render/system state, not entity components.
-- `camera::init()` now calls `spawn_game_camera(reg)` and `spawn_ui_camera(reg)` instead of `reg.ctx().emplace<GameCamera>()`.
-- All call sites updated: `reg.ctx().get<GameCamera>().cam` → `game_camera(reg).cam`; same pattern for UICamera.
-- `game_loop.cpp`, `game_render_system.cpp`, `ui_render_system.cpp` all drop `#include "components/camera.h"`.
-- Test `test_gpu_resource_lifecycle.cpp` was pre-updated to the new include layout.
+### 2026-04-29T08:05:08Z — Root UI Surface Cleanup & Test-Only Component Removal (Session)
 
-**Validation:** `cmake --build build --target shapeshifter_tests` → 2547 assertions, 867 tests, all pass. Game binary builds with zero warnings.
+**Tasks:**
+1. `keyser-root-ui-cleanup` — First-pass audit of root `app/ui/` files; classified live dependencies vs. test-only vs. dead
+2. `keyser-test-only-ui-leftovers` — Second-pass cleanup; deleted runtime-dead `ui_source_resolver.*`, `ui_element.h`, legacy tests; kept all live dependencies
 
-**Pattern learned:** When `git stash pop` fails due to working-tree conflicts, the untracked new files survive but all modified tracked file edits are rolled back into the stash. Always re-apply edits manually if stash pop is aborted.
+**Outcome:** ✅ Completed
+- Identified live runtime: `ui_loader`, `text_renderer`, `ui_button_spawner`, `level_select_controller`, all 8 screen controllers
+- Moved `ui_source_resolver.cpp` to test sources (test-only)
+- Deleted `ui_element.h` and `test_ui_spawn_malformed.cpp` (no runtime use)
+- Updated stale comments and empty vendor dir notes
+- Validated native + unity builds pass (867 tests, zero warnings)
 
-### 2026-05-18 — System Boundary Audit: beat_map_loader + cleanup_system
+**Orchestration logs:** 
+- `.squad/orchestration-log/2026-04-29T08:05:08Z-keyser-first-pass.md`
+- `.squad/orchestration-log/2026-04-29T08:05:08Z-keyser-second-pass.md`
 
-**Status:** AUDIT COMPLETE — No code changes. Recommendation written for Keaton.
 
-**Scope:** `app/systems/beat_map_loader.h/.cpp` and `app/systems/cleanup_system.cpp` reviewed against ECS boundary rules, CMake glob structure, and user directive.
+- 2026-04-29: Removed legacy runtime UI JSON loader and invisible ECS menu-hitbox spawner paths.
+- Replacement path: ui_navigation now only maps `GamePhase -> ActiveScreen` (+ paused overlay flag), while title/level-select/paused/game-over/song-complete interactions are handled by raygui screen controllers (including direct pointer hit-testing for title tap-to-start and level card/difficulty selection).
+- Key files changed: deleted `app/ui/ui_loader.cpp/.h`, deleted `app/ui/ui_button_spawner.h`, updated `app/game_loop.cpp`, `app/systems/ui_navigation_system.cpp`, `app/systems/game_state_system.cpp`, `app/input/game_state_routing.cpp`, `app/ui/level_select_controller.*`, `app/ui/screen_controllers/{title,level_select,paused}_screen_controller.cpp`, `app/components/ui_state.h`, `app/components/ui_layout_cache.h`, plus removal/updates of legacy loader/spawner tests.
+- Validation: `cmake -B build -S . -Wno-dev && cmake --build build && ./build/shapeshifter_tests '~[bench]'` (pass: 753 test cases).
 
-**beat_map_loader findings:**
-- Has zero ECS surface: no `entt::registry`, no `float dt`, no system signature.
-- Pure JSON→BeatMap I/O + validation. Identical profile to `high_score_persistence`, `settings_persistence` in `app/util/`.
-- Single production caller: `play_session.cpp` (via `#include "beat_map_loader.h"`).
-- Test callers (3 files): `test_shipped_beatmap_shape_gap.cpp`, `test_beat_map_parser_unknown_fields.cpp`, `test_beat_map_low_high_bars.cpp` — all include via `"systems/beat_map_loader.h"`.
-- CMake: `UTIL_SOURCES = app/util/*.cpp` picks it up automatically on move. No new GLOB/FILTER needed.
-- Verdict: Move to `app/util/beat_map_loader.h/.cpp`. Update 4 include sites. Keep all function names unchanged.
+### 2026-04-29T08:23:46Z — Legacy UI Removal Orchestration & Approval
 
-**cleanup_system findings:**
-- HAS a valid `(entt::registry&, float dt)` signature — it IS a system structurally. `dt` is unused; accepted via `/*dt*/` cast so no warning risk.
-- Runs two structural views: `<ObstacleTag, ObstacleScrollZ>` and `<ObstacleTag, Position>` — covers both model-authority (LowBar/HighBar) and 2D-Position (all others) paths.
-- Threshold: `constants::DESTROY_Y = 1400.0f` — a 2D screen-Y constant named DESTROY_Y. For the Position.y path this means "120px past the bottom of the 1280px screen," which is fine.
-- For the `ObstacleScrollZ.z` path: the camera sits at world Z=1900 (`camera.position.z` in `spawn_game_camera`). The destroy threshold of 1400 culls obstacles before they reach the camera — adequate but not camera-derived.
-- **User directive:** cleanup threshold for Z-path obstacles should come from the camera's Z position (`GameCamera.cam.position.z`, queryable from the registry), not a hardcoded screen constant.
-- Rename recommendation: `obstacle_despawn_system` — clearly describes what it does (despawn expired obstacles) and avoids confusion with the generic "cleanup" phase.
-- Location: stays in `app/systems/` (it IS a system). No folder move needed.
+**Session:** Legacy UI Removal Final Wave  
+**Task:** keyser-remove-legacy-ui-runtime (orchestration + implementation summary)  
+**Status:** ✅ COMPLETED & APPROVED
 
-**Test risks:**
-- `test_world_systems.cpp`: 4 tests call `cleanup_system(reg, ...)` by name — must be updated to `obstacle_despawn_system` on rename.
-- `test_death_model_unified.cpp`, `test_game_state_extended.cpp`: reference `cleanup_system` in comments — update for clarity.
-- `game_loop.cpp`: one call site at Phase 6.
-- `miss_detection_system.cpp`: comment references — update.
+**Work Summary:**
+- Implemented full removal of `ui_loader`, `ui_button_spawner`, `ui_source_resolver`, and `ui_element` component per user directive
+- Resolved all live references; migrated menu interactions to raygui screen controllers
+- Coordinated with Kujan on final validation gate
 
-**CMake risks on beat_map_loader move:**
-- Move from `app/systems/*.cpp` to `app/util/*.cpp`: SYSTEM_SOURCES glob loses it, UTIL_SOURCES glob gains it — both pick up automatically. `shapeshifter_lib` link graph unchanged. No rebuild issues except CMake re-configure needed (`cmake -B build -S .`).
+**Artifacts:**
+- Orchestration log: `.squad/orchestration-log/2026-04-29T08-23-46Z-keyser.md`
 
-**Canonical patterns confirmed:**
-- `app/util/` = JSON I/O + persistence utilities (no ECS surface)
-- `app/systems/` = ECS systems with `(entt::registry&, float dt)` signature
-- Threshold for 3D-path obstacle despawn should be camera-Z derived (read `GameCamera.cam.position.z` from registry), not DESTROY_Y
+**Verification:**
+- All 753 tests pass; zero warnings
+- 6 legacy files deleted, zero references remain
+- Screen-controller coverage complete (title, level-select, paused, game-over, song-complete)
 
-**Decision written:** `.squad/decisions/inbox/keyser-system-boundary-cleanup.md`
+**Next:** Ready for merge.
 
-### 2026-04-28 — Input/UI System Boundary Audit
+- 2026-04-29: Root cause of non-working Easy/Medium/Hard was controller hit-test ordering: level-card collision consumed clicks before difficulty regions, and difficulty UI was drawn labels/rects without raygui button interaction.
+- Fix: moved difficulty selection to controller-owned raygui `GuiButton` controls per difficulty chip, kept level-card selection as controller hit region, and preserved Start button confirm flow.
+- Files changed: `app/ui/screen_controllers/level_select_screen_controller.cpp`, `tests/test_level_select_controller.cpp`.
+- Validation: `cmake -B build -S . -Wno-dev && cmake --build build && ./build/shapeshifter_tests '~[bench]'` plus focused `./build/shapeshifter_tests "[level_select]"` and `./build/shapeshifter_tests "[ui]"`.
 
-**Status:** COMPLETE — read-only audit. No code changes.
+## 2026-04-29T08:38:21Z — Difficulty RayGUI Buttons: APPROVED & ORCHESTRATED
 
-**Scope:** Reviewed hit_test_system, input_dispatcher, input_gesture, input_system, level_select_system, all_systems.h, game_loop.cpp, input_events.h, and associated tests.
+**Status:** ✅ MERGED TO DECISIONS
 
-**Findings:**
+- Spawn: `keyser-fix-difficulty-raygui-b` completed
+- Easy/Medium/Hard converted to raygui GuiButtons in `level_select_screen_controller.cpp`
+- `selected_difficulty` updates with active styling; card selection and Start preserved
+- All tests pass (756 cases / 2148 assertions), zero warnings
+- **Kujan final review:** ✅ APPROVED — ready to merge
+- **Orchestration log written:** `.squad/orchestration-log/2026-04-29T08-38-21Z-keyser.md`
+- 2026-04-29: Song Complete text regression cause was missing raygui style overrides in `song_complete_screen_controller`; labels were rendered with default small font and non-centered label alignment.
+- Fix: wrapped `song_complete_controller.render()` with scoped `GuiSetStyle(DEFAULT, TEXT_SIZE, 28)` and `GuiSetStyle(LABEL, TEXT_ALIGNMENT, TEXT_ALIGN_CENTER)`, then restored prior style values.
+- Files changed: `app/ui/screen_controllers/song_complete_screen_controller.cpp`.
+- Validation: `cmake -B build -S . -Wno-dev && cmake --build build && ./build/shapeshifter_tests '~[bench]' && ./build/shapeshifter_tests '[song_complete]' && ./build/shapeshifter_tests '[ui]'`.
 
-- `input_system.cpp` is a REAL frame system. Polls raylib every frame, handles mouse/touch/keyboard, emits InputEvent. Keep, rename nothing.
-- `input_gesture.h` is a pure math utility function (`classify_touch_release`), header-only. Not a system, not a file that needs to be a system. Name is slightly misleading but functional.
-- `gesture_routing_system.cpp` is a 3-line dispatcher LISTENER, not a frame system. Function `gesture_routing_handle_input` converts swipe InputEvent → GoEvent. Can be collapsed into a combined `input_router.cpp` alongside `hit_test_handle_input`.
-- `hit_test_system.cpp` is a dispatcher LISTENER, not a frame system. Converts tap InputEvent → ButtonPressEvent via spatial hit-test. Correct behavior, wrong name.
-- `input_dispatcher.cpp` is init/teardown wiring only (`wire_input_dispatcher`, `unwire_input_dispatcher`). Not a system.
-- `level_select_system.cpp` contains: two event handlers (`level_select_handle_go/press`) wired as dispatcher listeners, one frame function (`level_select_system()`) that calls redundant `disp.update<>()` no-ops, checks `lss.confirmed`, and updates button positions. Confirmed → Playing transition belongs in `game_state_system`. `update_diff_buttons_pos` is UI layout, not a game system.
-- The `disp.update<GoEvent/ButtonPressEvent>()` calls in `level_select_system()` are guaranteed no-ops because `game_state_system` (first in `tick_fixed_systems`) already drains those queues.
-- Raylib's `GetGestureDetected()` cannot replace the current touch classifier because the zone-split logic (bottom 20% = always tap) is not expressible in raylib's gesture API. Keep `classify_touch_release()` as-is.
+## 2026-04-29T09:55:21Z — Song Complete Text Fix Attempt (Rejected, Locked Out)
 
-**Files to change in refactor:**
-- DELETE: `gesture_routing_system.cpp` (inline into `input_router.cpp`)
-- RENAME: `hit_test_system.cpp` → `input_router.cpp` (merge gesture routing here)
-- RENAME: `input_dispatcher.cpp` → stays, OR inline into `input_router.cpp`
-- RENAME: `level_select_system.cpp` → `level_select_ui.cpp`
-- RENAME: `level_select_system()` → `level_select_ui_tick()`
-- MOVE: `lss.confirmed` → `gs.transition_pending` logic into `game_state_system`
-- REMOVE: redundant `disp.update<GoEvent/ButtonPressEvent>()` from `level_select_system()`
+**Session:** UI Layout Fixes — Song Complete & Pause Screen Text Readability  
+**Task:** Fix Song Complete text rendering per Redfoot's user-reported defect (tiny, non-centered labels).  
+**Submission:** Modified `app/ui/generated/song_complete_layout.h` and `app/ui/screen_controllers/song_complete_screen_controller.cpp`.
 
-**Tests to update in refactor:**
-- `test_gesture_routing_split.cpp` — no logic change, just include path if file renamed
-- `test_hit_test_system.cpp` — no logic change, just file rename
-- `test_level_select_system.cpp` — must call `level_select_ui_tick()` instead of `level_select_system()`
-- `test_input_pipeline_behavior.cpp` — check for any direct references to gesture_routing file
-- `test_input_system.cpp` — low risk, only tests `classify_touch_release`
+**Result:** ❌ REJECTED
 
-**Artifact:** `.squad/decisions/inbox/keyser-input-ui-boundary-audit.md`
+**Reason:** No visible artifacts demonstrated the fix. Default `GuiLabel` still in use; no centered-label helper added. Acceptance criteria unmet.
 
-### 2026-05-XX — Kujan boundary cleanup revision
+**Lockout:** Per reviewer lockout protocol, next reviser must be **different from Keyser**. Recommended: non-Keyser architect/tools engineer with song-complete expertise.
 
-**Status:** COMPLETE
-
-**Context:** Keaton's boundary cleanup was rejected by Kujan. Revision ownership transferred to Keyser with Keaton locked out.
-
-**What I found:**
-- Benchmark `cleanup_system` rename: already clean. Grep confirmed zero stale references in app/tests/benchmarks — no changes required.
-- `obstacle_despawn_system.cpp`: `ObstacleScrollZ` path was comparing `oz.z > constants::DESTROY_Y` (the 2D legacy constant). Reviewer required it use the actual game camera's position.z from the registry.
-
-**What I changed:**
-- `app/systems/obstacle_despawn_system.cpp`: Added `#include "../entities/camera_entity.h"`. Added `cam_view = reg.view<GameCamera>()` query before the model_view loop. Threshold is `cam.position.z` (1900.0f in production) when a `GameCamera` entity exists, `constants::DESTROY_Y` (1400.0f) as headless fallback. `Position.y` legacy path unchanged.
-- Updated block comment at top of file to document the two paths and their respective thresholds.
-
-**Validation:**
-- Zero warnings, zero errors (build with -Wall -Wextra -Werror via VCPKG_ROOT build).
-- `[cleanup]` + `[model_authority]` tags: 49 assertions in 22 test cases — all pass.
-- `grep cleanup_system app/ tests/ benchmarks/`: CLEAN — no stale references anywhere.
-
-**Lessons:**
-- The camera entity is queryable via `reg.view<GameCamera>()` — safe in both headless and production contexts.
-- DESTROY_Y is a 2D screen-coordinate constant; 3D model-authority obstacles use a different scale (camera.position.z ~= 1900 vs DESTROY_Y = 1400). Always distinguish axis semantics when mixing legacy 2D and new 3D despawn paths.
-
-### 2026-04-28 — ECS Boundary Audit (Wave 2)
-
-**Status:** AUDIT COMPLETE — Next safe refactor slice identified: popup entity factory.
-
-**Finding:** Popup entity factory (app/entities/popup_entity.*) currently inline in scoring_system. Extraction unblocks downstream: shape button → render split → helper alignment → obstacle logical/render split.
-
-**Verdict:** Popup factory extraction is low risk, mechanical refactor. Confirmed sequence documented; all downstream work depends on this completing first.
-
+**Related:**
+- Orchestration log: `.squad/orchestration-log/2026-04-29T09:55:21Z-keyser.md`
+- Decision merged: Song Complete & Pause Screen Text Readability Fixes (decisions.md)

@@ -1,0 +1,26 @@
+# rgl layout text file (v4.0) - raygui layout file generated using rGuiLayout
+# Gameplay HUD Layout - 720x1280 portrait
+# Reference: gameplay.json design specification
+# Target exports: app/ui/gameplay.h, app/ui/gameplay.c
+#
+# Note: Shape buttons at y_n 0.891 must be rendered as custom raygui-style
+# controls for circular hit testing and shape-specific drawing. The JSON's
+# approach_ring data is OUT OF SCOPE per user directive and should not be
+# carried forward. Energy bar placement is data-driven. DummyRec controls
+# serve as layout slots for custom-rendered elements.
+#
+# Ref. window:    r <x> <y> <width> <height>
+# Anchor info:    a <id> <name> <posx> <posy> <enabled>
+# Control info:   c <id> <type> <name> <rectangle> <anchor_id> <text>
+#
+r 0 0 720 1280
+a 001 Anchor01 0 0 1
+c 000 4 ScoreSlot 60 20 150 40 1 
+c 001 4 HighScoreSlot 60 50 150 32 1 
+c 002 4 EnergyLabel 10 745 120 32 1 ENERGY
+c 003 24 EnergyBarSlot 10 790 30 200 1 
+c 004 24 LaneDividerSlot 0 1120 720 4 1 
+c 005 24 ShapeButtonCircle 60 1140 140 100 1 
+c 006 24 ShapeButtonSquare 220 1140 140 100 1 
+c 007 24 ShapeButtonTriangle 380 1140 140 100 1 
+c 008 5 PauseButton 620 10 80 50 1 ||

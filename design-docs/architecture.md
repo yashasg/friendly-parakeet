@@ -794,6 +794,8 @@ void resume_playing(entt::registry& reg) {
 
 Each "type" of entity is defined by which components it carries.
 EnTT has no formal archetype — this is purely documentation of intent.
+In code, reusable construction lives in `app/entities/` factory functions
+(`create_player_entity`, `spawn_obstacle`, etc.).
 
 ### 5.1 Player Entity (always exactly 1)
 
@@ -1661,8 +1663,7 @@ app/
 ├── ui/                          ← UI layout loading, button spawning, controllers
 ├── audio/                       ← audio data and SFX bank helpers
 ├── session/                     ← play/test-player session setup
-├── entities/                    ← named entity factories and entity resources
-├── archetypes/                  ← reusable component compositions
+├── entities/                    ← canonical reusable entity factories/resources
 ├── rendering/                   ← render/camera resource context types
 └── util/                        ← persistence, beatmap loading, session logging
 ```

@@ -2,10 +2,18 @@
   "version": 1,
   "defaultModel": "claude-sonnet-4.6",
   "agentModelOverrides": {
+    "Keyser": "gpt-5.3-codex",
+    "McManus": "gpt-5.3-codex",
+    "Fenster": "gpt-5.3-codex",
+    "Hockney": "gpt-5.3-codex",
+    "Verbal": "gpt-5.3-codex",
+    "Keaton": "gpt-5.3-codex",
+    "Kobayashi": "gpt-5.3-codex",
     "Edie": "claude-opus-4.7",
     "Redfoot": "claude-opus-4.7",
     "Saul": "claude-opus-4.7",
     "Rabin": "claude-opus-4.7",
+    "Baer": "gpt-5.3-codex",
     "Scribe": "claude-haiku-4.5",
     "Ralph": "claude-haiku-4.5"
   }

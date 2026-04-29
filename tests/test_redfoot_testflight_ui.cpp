@@ -1,15 +1,9 @@
 // Tests for the Redfoot TestFlight UI pass — issues #168/#196 (game over
 // reason) and #198 (settings toggles show state on the button face).
 //
-// These tests cover three layers:
-//   * Resolver — the new `GameOverState.reason` source and the
-//     `haptics_button` / `motion_button` formatters used by toggle buttons.
-//   * Schema/content — shipped JSON has the new reason element on
-//     game_over and the existing buttons sit at their original y_n.
-//     Settings toggle buttons must declare a `text_source` so the face
-//     reflects the runtime state.
-//   * Wiring — collision and energy systems set `GameOverState.cause`
-//     so the resolver returns the correct one-line reason.
+// These tests now focus on runtime-live coverage only:
+//   * Schema/content checks that remain relevant to current UI flows.
+//   * Wiring checks that collision and energy systems set GameOverState.cause.
 
 #include <catch2/catch_test_macros.hpp>
 #include <entt/entity/registry.hpp>
@@ -28,7 +22,6 @@
 #include "components/transform.h"
 #include "constants.h"
 #include "systems/all_systems.h"
-#include "ui/ui_source_resolver.h"
 
 using json = nlohmann::json;
 
@@ -48,115 +41,7 @@ json load_screen(const std::string& path) {
 }
 }  // namespace
 
-// ── Resolver: GameOverState.reason ──────────────────────────────────────────
-
-TEST_CASE("redfoot/#168: GameOverState.reason resolves to platform-neutral copy",
-          "[ui][redfoot][game_over]") {
-    entt::registry reg;
-    auto& gos = reg.ctx().emplace<GameOverState>();
-
-    gos.cause = DeathCause::None;
-    auto none_v = resolve_ui_dynamic_text(reg, "GameOverState.reason", "");
-    REQUIRE(none_v.has_value());
-    CHECK(none_v->empty());
-
-    gos.cause = DeathCause::EnergyDepleted;
-    CHECK(resolve_ui_dynamic_text(reg, "GameOverState.reason", "").value()
-          == "ENERGY DEPLETED");
-
-    gos.cause = DeathCause::MissedABeat;
-    CHECK(resolve_ui_dynamic_text(reg, "GameOverState.reason", "").value()
-          == "MISSED A BEAT");
-
-    gos.cause = DeathCause::HitABar;
-    CHECK(resolve_ui_dynamic_text(reg, "GameOverState.reason", "").value()
-          == "HIT A BAR");
-}
-
-TEST_CASE("redfoot/#168: missing GameOverState yields nullopt", "[ui][redfoot]") {
-    entt::registry reg;
-    auto v = resolve_ui_dynamic_text(reg, "GameOverState.reason", "");
-    CHECK_FALSE(v.has_value());
-}
-
-// ── Resolver: settings toggle button labels ─────────────────────────────────
-
-TEST_CASE("redfoot/#198: haptics_button formatter renders state on button face",
-          "[ui][redfoot][settings]") {
-    entt::registry reg;
-    auto& s = reg.ctx().emplace<SettingsState>();
-
-    s.haptics_enabled = true;
-    CHECK(resolve_ui_dynamic_text(reg,
-            "SettingsState.haptics_enabled", "haptics_button").value()
-          == "HAPTICS: ON");
-
-    s.haptics_enabled = false;
-    CHECK(resolve_ui_dynamic_text(reg,
-            "SettingsState.haptics_enabled", "haptics_button").value()
-          == "HAPTICS: OFF");
-}
-
-TEST_CASE("redfoot/#198: motion_button formatter renders state on button face",
-          "[ui][redfoot][settings]") {
-    entt::registry reg;
-    auto& s = reg.ctx().emplace<SettingsState>();
-
-    s.reduce_motion = true;
-    CHECK(resolve_ui_dynamic_text(reg,
-            "SettingsState.reduce_motion", "motion_button").value()
-          == "MOTION: ON");
-
-    s.reduce_motion = false;
-    CHECK(resolve_ui_dynamic_text(reg,
-            "SettingsState.reduce_motion", "motion_button").value()
-          == "MOTION: OFF");
-}
-
-TEST_CASE("redfoot/#198: signed_ms formatter is unaffected by toggle changes",
-          "[ui][redfoot][settings]") {
-    entt::registry reg;
-    auto& s = reg.ctx().emplace<SettingsState>();
-
-    s.audio_offset_ms = 30;
-    CHECK(resolve_ui_dynamic_text(reg,
-            "SettingsState.audio_offset_ms", "signed_ms").value() == "+30 ms");
-
-    s.audio_offset_ms = -40;
-    CHECK(resolve_ui_dynamic_text(reg,
-            "SettingsState.audio_offset_ms", "signed_ms").value() == "-40 ms");
-
-    s.audio_offset_ms = 0;
-    CHECK(resolve_ui_dynamic_text(reg,
-            "SettingsState.audio_offset_ms", "signed_ms").value() == "+0 ms");
-}
-
-TEST_CASE("redfoot/#198: default integer formatter still works", "[ui][redfoot]") {
-    entt::registry reg;
-    auto& score = reg.ctx().emplace<ScoreState>();
-    score.high_score = 12345;
-    CHECK(resolve_ui_dynamic_text(reg, "ScoreState.high_score", "").value()
-          == "12345");
-}
-
 // ── Content: game_over.json layout ──────────────────────────────────────────
-
-TEST_CASE("redfoot/#168: game_over screen carries a one-line reason source",
-          "[ui][redfoot][game_over]") {
-    auto screen = load_screen("content/ui/screens/game_over.json");
-
-    const json* reason = find_by_id(screen, "reason");
-    REQUIRE(reason != nullptr);
-    CHECK(reason->value("type", "") == "text_dynamic");
-    CHECK(reason->value("source", "") == "GameOverState.reason");
-    CHECK(reason->value("align", "") == "center");
-
-    // Reason sits between the high score (y_n=0.438) and the first
-    // button (y_n=0.6797) so it never visually crowds the buttons.
-    const float y_n = reason->at("y_n").get<float>();
-    CHECK(y_n > 0.438f);
-    CHECK(y_n < 0.6797f);
-}
 
 TEST_CASE("redfoot/#168: existing game_over buttons keep their original positions",
           "[ui][redfoot][game_over]") {
@@ -179,51 +64,6 @@ TEST_CASE("redfoot/#168: existing game_over buttons keep their original position
     CHECK(restart->value("action", "") == "restart");
     CHECK(level  ->value("action", "") == "level_select");
     CHECK(menu   ->value("action", "") == "main_menu");
-}
-
-// ── Content: settings.json toggle buttons show state on the face ────────────
-
-TEST_CASE("redfoot/#198: settings toggle buttons declare a text_source",
-          "[ui][redfoot][settings]") {
-    auto screen = load_screen("content/ui/screens/settings.json");
-
-    const json* haptics = find_by_id(screen, "haptics_toggle");
-    const json* motion  = find_by_id(screen, "reduce_motion_toggle");
-    REQUIRE(haptics != nullptr);
-    REQUIRE(motion  != nullptr);
-
-    CHECK(haptics->value("type", "") == "button");
-    CHECK(haptics->value("text_source", "") == "SettingsState.haptics_enabled");
-    CHECK(haptics->value("format", "") == "haptics_button");
-    CHECK(haptics->value("action", "") == "haptics_toggle");
-
-    CHECK(motion->value("type", "") == "button");
-    CHECK(motion->value("text_source", "") == "SettingsState.reduce_motion");
-    CHECK(motion->value("format", "") == "motion_button");
-    CHECK(motion->value("action", "") == "reduce_motion_toggle");
-}
-
-TEST_CASE("redfoot/#198: audio offset controls remain pure -/+ buttons with display",
-          "[ui][redfoot][settings]") {
-    auto screen = load_screen("content/ui/screens/settings.json");
-
-    const json* minus = find_by_id(screen, "audio_offset_minus");
-    const json* plus  = find_by_id(screen, "audio_offset_plus");
-    const json* disp  = find_by_id(screen, "audio_offset_display");
-    REQUIRE(minus != nullptr);
-    REQUIRE(plus  != nullptr);
-    REQUIRE(disp  != nullptr);
-
-    // -/+ buttons must NOT be turned into dynamic-text controls; they
-    // remain literal +/- nudges and stay unchanged.
-    CHECK_FALSE(minus->contains("text_source"));
-    CHECK_FALSE(plus->contains("text_source"));
-    CHECK(minus->value("text", "") == "-");
-    CHECK(plus->value("text", "") == "+");
-
-    // Audio offset display still uses signed_ms format.
-    CHECK(disp->value("source", "") == "SettingsState.audio_offset_ms");
-    CHECK(disp->value("format", "") == "signed_ms");
 }
 
 // ── Wiring: collision sets DeathCause for misses and bar hits ───────────────
@@ -277,8 +117,6 @@ TEST_CASE("redfoot/#168: collision flags HitABar when a bar passes ungraded",
 
     auto& gos = reg.ctx().get<GameOverState>();
     CHECK(gos.cause == DeathCause::HitABar);
-    CHECK(resolve_ui_dynamic_text(reg, "GameOverState.reason", "").value()
-          == "HIT A BAR");
 }
 
 TEST_CASE("redfoot/#168: collision flags MissedABeat for a missed shape gate",
@@ -297,8 +135,6 @@ TEST_CASE("redfoot/#168: collision flags MissedABeat for a missed shape gate",
 
     auto& gos = reg.ctx().get<GameOverState>();
     CHECK(gos.cause == DeathCause::MissedABeat);
-    CHECK(resolve_ui_dynamic_text(reg, "GameOverState.reason", "").value()
-          == "MISSED A BEAT");
 }
 
 TEST_CASE("redfoot/#168: energy depletion falls back to ENERGY DEPLETED",
@@ -315,8 +151,6 @@ TEST_CASE("redfoot/#168: energy depletion falls back to ENERGY DEPLETED",
 
     auto& gos = reg.ctx().get<GameOverState>();
     CHECK(gos.cause == DeathCause::EnergyDepleted);
-    CHECK(resolve_ui_dynamic_text(reg, "GameOverState.reason", "").value()
-          == "ENERGY DEPLETED");
 }
 
 TEST_CASE("redfoot/#168: energy depletion does not overwrite a specific cause",

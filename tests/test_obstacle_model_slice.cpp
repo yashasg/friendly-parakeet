@@ -14,12 +14,13 @@
 //                after render_tags.h is committed.
 //
 //   Section C  — GUARDED (#if 0).  Requires Slice 1 deliverables:
-//                  · LowBar / HighBar / LanePushLeft / LanePushRight archetypes
-//                    updated to emplace Model + TagWorldPass, NOT Position.
+//                  · LowBar / HighBar / LanePushLeft / LanePushRight obstacle
+//                    entity construction updated to emplace Model + TagWorldPass,
+//                    NOT Position.
 //                  · app/util/render_matrix_helpers.h with slab_matrix() exposed.
 //                  · ObstaclePartDescriptor emplaced on obstacle entities.
 //                Enable by: #define SLICE1_LOWBAR_MODEL_MIGRATION (or remove guard)
-//                after the archetype migration and helper header are committed.
+//                after the entity-factory migration and helper header are committed.
 //
 // ── BLOCKER NOTES ─────────────────────────────────────────────────────────────
 //
@@ -41,7 +42,7 @@
 //   BLOCKER-3 (build_obstacle_model is headless-safe but a no-op):
 //     build_obstacle_model() guards all GPU calls with IsWindowReady() and
 //     returns early in headless/test environments — confirmed by Section B.5
-//     tests below.  HOWEVER, the early return means apply_obstacle_archetype
+//     tests below.  HOWEVER, the early return means spawn_obstacle
 //     does NOT emplace ObstacleModel in headless, so Section C tests that call
 //     spawn_obstacle and then expect ObstacleModel to be present will
 //     still fail in headless mode.
@@ -49,7 +50,7 @@
 //     tests that don't need real mesh content (see test_model_authority_gaps.cpp).
 //     Tests that need real mesh data (meshCount, materialCount) require a full
 //     GPU-context harness (InitWindow).
-//     Owner: Keaton (archetype update), Baer (Section C enablement).
+//     Owner: Keaton (entity-factory contract update), Baer (Section C enablement).
 //
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -71,7 +72,7 @@
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-static entt::entity make_archetype_entity(entt::registry& reg, ObstacleKind kind) {
+static entt::entity make_obstacle_entity(entt::registry& reg, ObstacleKind kind) {
     return spawn_obstacle(reg, {.kind = kind, .x = 360.0f, .y = constants::SPAWN_Y});
 }
 
@@ -86,17 +87,17 @@ static entt::entity make_archetype_entity(entt::registry& reg, ObstacleKind kind
 TEST_CASE("post-migration: LowBar has ObstacleScrollZ, not Position",
           "[post_migration][model_slice]") {
     entt::registry reg;
-    auto e = make_archetype_entity(reg, ObstacleKind::LowBar);
+    auto e = make_obstacle_entity(reg, ObstacleKind::LowBar);
 
     REQUIRE(reg.all_of<ObstacleScrollZ>(e));
     CHECK_FALSE(reg.all_of<Position>(e));
-    CHECK_FALSE(reg.all_of<Model>(e));  // raw Model not emplaced by archetype
+    CHECK_FALSE(reg.all_of<Model>(e));  // raw Model not emplaced by entity factory
 }
 
 TEST_CASE("post-migration: HighBar has ObstacleScrollZ, not Position",
           "[post_migration][model_slice]") {
     entt::registry reg;
-    auto e = make_archetype_entity(reg, ObstacleKind::HighBar);
+    auto e = make_obstacle_entity(reg, ObstacleKind::HighBar);
 
     REQUIRE(reg.all_of<ObstacleScrollZ>(e));
     CHECK_FALSE(reg.all_of<Position>(e));
@@ -106,7 +107,7 @@ TEST_CASE("post-migration: HighBar has ObstacleScrollZ, not Position",
 TEST_CASE("post-migration: LanePushLeft still has Position (not yet migrated)",
           "[post_migration][model_slice]") {
     entt::registry reg;
-    auto e = make_archetype_entity(reg, ObstacleKind::LanePushLeft);
+    auto e = make_obstacle_entity(reg, ObstacleKind::LanePushLeft);
     REQUIRE(reg.all_of<Position>(e));
     CHECK_FALSE(reg.all_of<ObstacleScrollZ>(e));
 }
@@ -114,14 +115,14 @@ TEST_CASE("post-migration: LanePushLeft still has Position (not yet migrated)",
 TEST_CASE("post-migration: LanePushRight still has Position (not yet migrated)",
           "[post_migration][model_slice]") {
     entt::registry reg;
-    auto e = make_archetype_entity(reg, ObstacleKind::LanePushRight);
+    auto e = make_obstacle_entity(reg, ObstacleKind::LanePushRight);
     REQUIRE(reg.all_of<Position>(e));
     CHECK_FALSE(reg.all_of<ObstacleScrollZ>(e));
 }
 
 TEST_CASE("post-migration: spawn_obstacle does not emplace Model on any kind",
           "[post_migration][model_slice]") {
-    // Exhaustive: confirm NO archetype directly emplaces raw Model.
+    // Exhaustive: confirm NO obstacle entity factory directly emplaces raw Model.
     // ObstacleModel (RAII wrapper) is emplaced separately by build_obstacle_model
     // which requires GPU context — not exercised here.
     const ObstacleKind all_kinds[] = {
@@ -136,7 +137,7 @@ TEST_CASE("post-migration: spawn_obstacle does not emplace Model on any kind",
     };
     for (auto kind : all_kinds) {
         entt::registry reg;
-        auto e = make_archetype_entity(reg, kind);
+        auto e = make_obstacle_entity(reg, kind);
         INFO("Kind: " << ToString(kind));
         CHECK_FALSE(reg.all_of<Model>(e));
     }
@@ -282,7 +283,7 @@ TEST_CASE("on_obstacle_model_destroy: safe on unowned ObstacleModel (headless)",
 TEST_CASE("post-migration: LowBar has ObstacleScrollZ + RequiredVAction + DrawSize (Slice 2)",
           "[post_migration][model_slice]") {
     entt::registry reg;
-    auto e = make_archetype_entity(reg, ObstacleKind::LowBar);
+    auto e = make_obstacle_entity(reg, ObstacleKind::LowBar);
 
     REQUIRE(reg.all_of<ObstacleScrollZ>(e));
     REQUIRE(reg.all_of<RequiredVAction>(e));
@@ -294,7 +295,7 @@ TEST_CASE("post-migration: LowBar has ObstacleScrollZ + RequiredVAction + DrawSi
 TEST_CASE("post-migration: HighBar has ObstacleScrollZ + RequiredVAction (Slice 2)",
           "[post_migration][model_slice]") {
     entt::registry reg;
-    auto e = make_archetype_entity(reg, ObstacleKind::HighBar);
+    auto e = make_obstacle_entity(reg, ObstacleKind::HighBar);
 
     REQUIRE(reg.all_of<ObstacleScrollZ>(e));
     REQUIRE(reg.all_of<RequiredVAction>(e));
@@ -379,7 +380,7 @@ TEST_CASE("post-migration: obstacle_despawn_system destroys ObstacleScrollZ enti
 // These tests verify the five Kujan blockers / component-cleanup invariants.
 //   BF-1: LoadModelFromMesh must not appear; manual mesh arrays used.
 //   BF-2: Camera writes model.transform, not ModelTransform, for migrated entities.
-//   BF-3: Duplicate archetype helpers deleted; canonical app/archetypes/ path used.
+//   BF-3: Duplicate helpers deleted; canonical app/entities/ path used.
 //   BF-4: ObstacleParts carries explicit geometry fields, not an empty tag.
 //   BF-5: ObstacleScrollZ and ObstacleModel meet structural/RAII contract.
 // ════════════════════════════════════════════════════════════════════════════
@@ -428,7 +429,7 @@ TEST_CASE("BF-4: ObstacleParts default-constructed has zero geometry fields",
     CHECK(pd.depth  == 0.0f);
 }
 
-TEST_CASE("BF-2: migrated LowBar/HighBar archetypes do not get ModelTransform from archetype",
+TEST_CASE("BF-2: migrated LowBar/HighBar entities do not get ModelTransform from factory",
           "[model_slice][bf2_regression]") {
     // ModelTransform must not be emitted by spawn_obstacle.
     // camera_system section 1b (fixed) writes om.model.transform instead.
@@ -460,7 +461,7 @@ TEST_CASE("BF-2: slab_matrix scale diagonal equals world dimensions (unit-cube c
     const float cz     = 0.0f;
     const float w      = constants::SCREEN_W_F;
     const float h      = constants::LOWBAR_3D_HEIGHT;
-    const float d      = 40.0f;  // DrawSize.h for LowBar archetype
+    const float d      = 40.0f;  // DrawSize.h for LowBar obstacle entity
 
     const float z = oz_z + cz;
     const Matrix mat = MatrixMultiply(

@@ -240,6 +240,20 @@ TEST_CASE("game_state: transition to Paused sets phase", "[gamestate]") {
     CHECK_FALSE(gs.transition_pending);
 }
 
+TEST_CASE("game_state: transition to Settings sets phase", "[gamestate]") {
+    auto reg = make_registry();
+    auto& gs = reg.ctx().get<GameState>();
+    gs.phase = GamePhase::Title;
+    gs.transition_pending = true;
+    gs.next_phase = GamePhase::Settings;
+
+    game_state_system(reg, 0.016f);
+
+    CHECK(gs.phase == GamePhase::Settings);
+    CHECK(gs.phase_timer == 0.0f);
+    CHECK_FALSE(gs.transition_pending);
+}
+
 TEST_CASE("game_state: enter_playing resets score", "[gamestate]") {
     auto reg = make_registry();
     reg.ctx().get<ScoreState>().score = 9999;

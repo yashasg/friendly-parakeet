@@ -21,15 +21,11 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-# Emscripten pays ~3s of per-file overhead per emcc invocation; batching TUs via
-# unity builds cuts WASM compile time from 10+ minutes to ~3 minutes. Native builds
-# keep unity OFF by default (incremental rebuilds matter more there). Override with
-# -DSHAPESHIFTER_UNITY_BUILD=ON/OFF for either platform.
-if(EMSCRIPTEN)
-    option(SHAPESHIFTER_UNITY_BUILD "Enable unity builds for faster compilation" ON)
-else()
-    option(SHAPESHIFTER_UNITY_BUILD "Enable unity builds for faster compilation" OFF)
-endif()
+# Unity builds batch multiple TUs per compilation unit, cutting total compile time.
+# Emscripten benefits most (~3s overhead per emcc invocation → 10+ minutes to ~3 minutes),
+# but all platforms see faster full rebuilds. Defaults ON; override with
+# -DSHAPESHIFTER_UNITY_BUILD=OFF if incremental rebuild performance is critical.
+option(SHAPESHIFTER_UNITY_BUILD "Enable unity builds for faster compilation" ON)
 set(CMAKE_UNITY_BUILD ${SHAPESHIFTER_UNITY_BUILD})
 
 # ── Version (major.minor.githash) ────────────────────────────
@@ -54,6 +50,7 @@ configure_file(
 # EnTT: header-only ECS framework (vcpkg on all platforms).
 # raylib: rendering, windowing, input, audio (vcpkg on all platforms, including
 #         wasm32-emscripten via the vcpkg-overlay portfile).
+# raygui: immediate-mode UI header (vcpkg on all platforms, header-only package).
 # Catch2: test framework (vcpkg on all platforms).
 # nlohmann-json: JSON parsing for beat map loading (vcpkg on all platforms).
 
@@ -61,6 +58,7 @@ find_package(EnTT CONFIG REQUIRED)
 find_package(magic_enum CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(raylib CONFIG REQUIRED)
+find_path(RAYGUI_INCLUDE_DIR raygui.h REQUIRED)
 
 find_package(Catch2 3 CONFIG REQUIRED)
 
@@ -98,9 +96,9 @@ file(GLOB SYSTEM_SOURCES CONFIGURE_DEPENDS app/systems/*.cpp)
 file(GLOB AUDIO_SOURCES CONFIGURE_DEPENDS app/audio/*.cpp)
 file(GLOB UTIL_SOURCES CONFIGURE_DEPENDS app/util/*.cpp)
 file(GLOB UI_SOURCES CONFIGURE_DEPENDS app/ui/*.cpp)
+file(GLOB UI_SCREEN_CONTROLLER_SOURCES CONFIGURE_DEPENDS app/ui/screen_controllers/*.cpp)
 file(GLOB INPUT_SOURCES CONFIGURE_DEPENDS app/input/*.cpp)
 file(GLOB SESSION_SOURCES CONFIGURE_DEPENDS app/session/*.cpp)
-file(GLOB ARCHETYPE_SOURCES CONFIGURE_DEPENDS app/archetypes/*.cpp)
 file(GLOB ENTITY_SOURCES CONFIGURE_DEPENDS app/entities/*.cpp)
 # Exclude files requiring a live raylib context from the library. They are
 # compiled directly into the executable targets.
@@ -110,12 +108,16 @@ list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "(^|/)input_system\\.cpp$")
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "(^|/)song_playback_system\\.cpp$")
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "(^|/)camera_system\\.cpp$")
 list(FILTER UI_SOURCES EXCLUDE REGEX "(^|/)text_renderer\\.cpp$")
+list(FILTER UI_SOURCES EXCLUDE REGEX "(^|/)raygui_impl\\.cpp$")
 list(FILTER UTIL_SOURCES EXCLUDE REGEX "(^|/)file_logger\\.cpp$")
 
-add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES} ${AUDIO_SOURCES} ${UTIL_SOURCES} ${UI_SOURCES} ${INPUT_SOURCES} ${SESSION_SOURCES} ${ARCHETYPE_SOURCES} ${ENTITY_SOURCES})
+add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES} ${AUDIO_SOURCES} ${UTIL_SOURCES} ${UI_SOURCES} ${UI_SCREEN_CONTROLLER_SOURCES} ${INPUT_SOURCES} ${SESSION_SOURCES} ${ENTITY_SOURCES})
 target_include_directories(shapeshifter_lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/app
     ${CMAKE_BINARY_DIR}/generated
+)
+target_include_directories(shapeshifter_lib SYSTEM PUBLIC
+    ${RAYGUI_INCLUDE_DIR}
 )
 target_link_libraries(shapeshifter_lib PUBLIC
     EnTT::EnTT
@@ -399,6 +401,16 @@ set_source_files_properties(
     tests/test_shipped_beatmap_medium_balance.cpp
     tests/test_redfoot_testflight_ui.cpp
     PROPERTIES SKIP_UNITY_BUILD_INCLUSION TRUE
+)
+
+# raygui is header-only and requires one implementation owner TU.
+# Under unity builds we force that TU out of unity batching so
+# RAYGUI_IMPLEMENTATION is scoped to exactly one translation unit.
+set_source_files_properties(
+    app/ui/screen_controllers/title_screen_controller.cpp
+    PROPERTIES
+        COMPILE_DEFINITIONS RAYGUI_IMPLEMENTATION
+        SKIP_UNITY_BUILD_INCLUSION TRUE
 )
 
 add_executable(shapeshifter_tests

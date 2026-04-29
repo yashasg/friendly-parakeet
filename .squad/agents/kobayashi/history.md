@@ -11,6 +11,33 @@
 
 <!-- Append learnings below -->
 
+- 2026-04-29: A `#ifndef PLATFORM_WEB` guard around *usage* but not *declaration* can pass native CI and still fail WebAssembly with `-Werror,-Wunused-variable`. For cross-platform UI hit-test rectangles, guard declaration+use together (or mark intentionally unused) to keep wasm deterministic.
+
+---
+
+### 2026-04 — PR #351 rguilayout Adapter Migration & Push Workflow
+
+**Scope:** Final push of accepted rguilayout migration to PR #351 (`ui_layout_refactor` branch).
+
+**What happened:** 
+- Received 4 local accepted commits advancing the UI adapter pattern (raygui dispatch wiring, Keyser template refactor, adapter revision logging).
+- Local branch was 4 commits ahead of `origin/ui_layout_refactor` (which was at `15c89e8`).
+- No unstaged/staged changes in worktree — clean state confirmed.
+
+**Actions taken:**
+1. **Verified commit chain**: Confirmed HEAD (`13d629d`) was indeed the final accepted adapter revision commit.
+2. **Pushed branch**: `git push origin ui_layout_refactor --force-with-lease` → all 4 commits transmitted; origin now at `13d629d`.
+3. **Verified PR head**: PR #351 now shows HEAD as `13d629d` (all screens wired through rguilayout adapters, Keyser template refactor accepted, platform validation passed).
+4. **Added PR comment**: Summarized final state concisely (no huge logs) — screens migrated, adapters templated, CI green across all 4 platforms.
+
+**Key lesson:** Before pushing, always verify:
+- No unexpected unstaged/staged changes (detect local contamination early)
+- Commit chain is what was expected (catch rebase/reorder issues)
+- Branch is tracking the intended remote (avoid pushing to wrong upstreams)
+- After push, immediately verify the PR head updated correctly on GitHub (confirm push was received)
+
+**Workflow was clean and reproducible.** No CI re-runs needed; the push itself was sufficient to update the PR state.
+
 ---
 
 ### 2026-04-28 — WASM Build Duration Audit (Unity Build Recommendation)
@@ -311,3 +338,52 @@ Scribe documentation:
 - Session log: .squad/log/2026-04-28T08-12-03Z-ecs-cleanup-approval.md
 
 Next: Await merge approval.
+
+---
+
+## Session: 2026-04-28T22:35:09Z — WASM CI Unity Build Flag Decision Consolidated
+
+**Context:** Scribe merged all inbox decisions into decisions.md and updated cross-agent history files.
+
+**Your work:** WASM CI unity build flag recommendation: add `-DSHAPESHIFTER_UNITY_BUILD=ON` to emcmake cmake invocation and bump cache key v2→v3 to avoid stale-object collisions. Expected impact: reduce "Build (Emscripten)" step from ~9m to ~2–4m.
+
+**Status:** Recommendation captured and merged into team decisions. Ready for CI update.
+
+**Related:** `kobayashi-wasm-ci-duration.md` merged into `.squad/decisions.md`
+
+---
+
+## Session: 2026-05-27T14:22:00Z — rGuiLayout Title Runtime Integration Checkpoint PR
+
+**Scope:** Create PR checkpoint for rGuiLayout title screen runtime integration **before dispatch wiring**.
+
+**What was staged & committed:**
+- rGuiLayout sources for all 8 UI screens (`.rgl` files in `content/ui/screens/`)
+- Generated C layout code for all screens (`app/ui/generated/standalone/`)
+- Title screen adapter (`app/ui/adapters/title_adapter.{h,cpp}`)
+- Raygui vendor header (`app/ui/vendor/raygui.h`)
+- raygui_impl.cpp wiring
+- Integration plan (`RGUILAYOUT_INTEGRATION_PLAN.md`)
+- UI spec (`design-docs/raygui-rguilayout-ui-spec.md`)
+- Vendored rGuiLayout tool (`tools/rguilayout/` with macOS .app binary)
+- CMakeLists.txt and ui_render_system.cpp updates
+- All squad log/decision updates (but NOT squad decision deletions — those were pre-existing)
+
+**Commit:** `15c89e8395a787e5e02fdda3dfb3a3c7f21d3bd2`
+**Branch:** `ui_layout_refactor`
+**PR:** #351 (https://github.com/yashasg/friendly-parakeet/pull/351)
+
+**Key decisions:**
+- Title dispatch wiring is **intentionally omitted** from this PR — will be added in follow-up PR
+- Other screens remain JSON-backed
+- Vendored tool (`tools/rguilayout/`) included as project input per design docs
+
+**Validation notes:**
+- Build passed per Hockney CI
+- Tests passed per Fenster validation
+- Zero-warnings policy maintained
+- All temp files (test_title_layout.cpp, build_output_rgui.txt) verified gone before commit
+
+**Release engineer checkpoint:** This is a safe merge point. The title screen layout is live and rendering, but button interactions and other screen migrations are deferred to separate PRs for reviewability and rollback safety if needed.
+
+---

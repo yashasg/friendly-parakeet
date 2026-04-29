@@ -3,18 +3,13 @@
 //   1. ScreenTransform stale on first/resize frame before input_system
 //   2. camera_system slab_matrix Y/Z dimension swap (LowBar, HighBar, LanePush)
 //   3. camera_system MeshChild slab Y/Z dimension swap
-//   4. level_select difficulty hitboxes repositioned same tick as selected_level changes
-//   5. Title Confirm / Exit hitboxes must not overlap at EXIT_TOP
+//   4. title/controller input routing remains outside legacy ECS hitbox plumbing
 //   6. shape_obstacle child destruction must not touch other parents' children
-//   7. paused overlay JSON must not be re-parsed every Paused frame
 
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
-#include "ui/ui_button_spawner.h"
-#include "ui/ui_loader.h"
 #include "entities/obstacle_render_entity.h"
-#include "components/ui_state.h"
 #include "components/rendering.h"
 #include "constants.h"
 #include <fstream>
@@ -145,110 +140,6 @@ TEST_CASE("MeshChild: height stores OBSTACLE_3D_HEIGHT for ShapeGate side slabs"
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// Theme 5 – Title Confirm / Exit hitbox non-overlap at EXIT_TOP.
-// A tap exactly on the boundary y=EXIT_TOP must NOT trigger the Confirm
-// button; it sits on the Exit button's inclusive upper edge.
-// ═══════════════════════════════════════════════════════════════════════
-
-#ifndef PLATFORM_WEB
-
-// EXIT_TOP is EXIT_CENTER_Y - EXIT_H/2 = 1075 - 25 = 1050.
-// These values mirror ui_button_spawner.h.
-static constexpr float EXIT_H          = 50.0f;
-static constexpr float EXIT_CENTER_Y   = 1075.0f;
-static constexpr float EXIT_TOP        = EXIT_CENTER_Y - EXIT_H / 2.0f;  // 1050
-
-static entt::entity find_button_by_kind(entt::registry& reg, MenuActionKind kind) {
-    auto view = reg.view<MenuButtonTag, MenuAction>();
-    for (auto [e, ma] : view.each())
-        if (ma.kind == kind) return e;
-    return entt::null;
-}
-
-TEST_CASE("title hitbox: tap at EXIT_TOP triggers Exit, not Confirm",
-          "[title][hitbox][pr43]") {
-    auto reg = make_registry();
-    auto& gs = reg.ctx().get<GameState>();
-    gs.phase = GamePhase::Title;
-
-    spawn_title_buttons(reg);
-
-    auto confirm = find_button_by_kind(reg, MenuActionKind::Confirm);
-    auto exit_e  = find_button_by_kind(reg, MenuActionKind::Exit);
-    REQUIRE((confirm != entt::null));
-    REQUIRE((exit_e  != entt::null));
-
-    // Tap exactly on the boundary line
-    push_input(reg, InputType::Tap, constants::SCREEN_W / 2.0f, EXIT_TOP);
-    run_input_tier1(reg);
-
-    // After the fix the boundary is no longer shared, so Confirm must NOT fire.
-    bool confirm_pressed = false;
-    bool exit_pressed    = false;
-    auto cap = drain_press_events(reg);
-    for (int i = 0; i < cap.count; ++i) {
-        if (cap.buf[i].menu_action == MenuActionKind::Confirm) confirm_pressed = true;
-        if (cap.buf[i].menu_action == MenuActionKind::Exit)    exit_pressed    = true;
-    }
-    CHECK_FALSE(confirm_pressed);   // boundary tap must NOT reach Confirm
-    CHECK(exit_pressed);            // boundary tap must reach Exit
-}
-
-TEST_CASE("title hitbox: tap clearly inside Confirm region triggers Confirm only",
-          "[title][hitbox][pr43]") {
-    auto reg = make_registry();
-    auto& gs = reg.ctx().get<GameState>();
-    gs.phase = GamePhase::Title;
-
-    spawn_title_buttons(reg);
-
-    auto confirm = find_button_by_kind(reg, MenuActionKind::Confirm);
-    auto exit_e  = find_button_by_kind(reg, MenuActionKind::Exit);
-    REQUIRE((confirm != entt::null));
-    REQUIRE((exit_e  != entt::null));
-
-    // Tap well inside the Confirm region (top half of screen)
-    push_input(reg, InputType::Tap, constants::SCREEN_W / 2.0f, 400.0f);
-    run_input_tier1(reg);
-
-    bool confirm_pressed = false;
-    bool exit_pressed    = false;
-    auto cap = drain_press_events(reg);
-    for (int i = 0; i < cap.count; ++i) {
-        if (cap.buf[i].menu_action == MenuActionKind::Confirm) confirm_pressed = true;
-        if (cap.buf[i].menu_action == MenuActionKind::Exit)    exit_pressed    = true;
-    }
-    CHECK(confirm_pressed);
-    CHECK_FALSE(exit_pressed);
-}
-
-TEST_CASE("title hitbox: tap inside Exit region triggers Exit only",
-          "[title][hitbox][pr43]") {
-    auto reg = make_registry();
-    auto& gs = reg.ctx().get<GameState>();
-    gs.phase = GamePhase::Title;
-
-    spawn_title_buttons(reg);
-
-    auto confirm = find_button_by_kind(reg, MenuActionKind::Confirm);
-    auto exit_e  = find_button_by_kind(reg, MenuActionKind::Exit);
-    REQUIRE((confirm != entt::null));
-    REQUIRE((exit_e  != entt::null));
-
-    // Tap at Exit button centre
-    push_input(reg, InputType::Tap, constants::SCREEN_W / 2.0f, EXIT_CENTER_Y);
-    run_input_tier1(reg);
-
-    bool exit_pressed = false;
-    auto cap = drain_press_events(reg);
-    for (int i = 0; i < cap.count; ++i)
-        if (cap.buf[i].menu_action == MenuActionKind::Exit) exit_pressed = true;
-
-    CHECK(exit_pressed);
-}
-#endif  // !PLATFORM_WEB
-
-// ═══════════════════════════════════════════════════════════════════════
 // Theme 6 – on_obstacle_destroy must only destroy children whose parent
 //           is the entity being destroyed, not other obstacles' children.
 // on_obstacle_destroy uses ObstacleChildren for O(N) lookup.
@@ -319,40 +210,6 @@ TEST_CASE("on_obstacle_destroy: all children of destroyed parent removed",
     for (auto c : children)
         CHECK_FALSE(reg.valid(c));
     CHECK(reg.valid(bystanderChild));
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// Theme 7 – paused overlay JSON must not be re-parsed every Paused frame.
-// After the fix, a mutated overlay_screen must survive a second tick.
-// ═══════════════════════════════════════════════════════════════════════
-
-TEST_CASE("ui_navigation: paused overlay parsed once, not every frame",
-          "[ui][overlay][pr43]") {
-    // Requires content/ui/screens/paused.json to be reachable from CWD
-    // (true when tests run from the project root with ./build/shapeshifter_tests).
-    auto reg = make_registry();
-    reg.ctx().emplace<UIState>(load_ui("content/ui"));
-
-    auto& gs = reg.ctx().get<GameState>();
-    gs.phase = GamePhase::Paused;
-
-    // First tick: enters Paused, loads gameplay screen, parses overlay
-    ui_navigation_system(reg, 0.016f);
-
-    auto& ui = reg.ctx().get<UIState>();
-    if (!ui.has_overlay) {
-        // paused.json not accessible; skip rather than false-fail
-        SKIP("paused.json not accessible from test working directory");
-    }
-
-    // Inject a sentinel key that a re-parse from file would destroy
-    ui.overlay_screen["__pr43_sentinel__"] = 99;
-
-    // Second tick: same phase, same screen — must NOT re-parse
-    ui_navigation_system(reg, 0.016f);
-
-    // After fix: sentinel survives.  With the bug: sentinel is gone.
-    CHECK(ui.overlay_screen.contains("__pr43_sentinel__"));
 }
 
 // ═══════════════════════════════════════════════════════════════════════

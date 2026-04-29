@@ -1,0 +1,22 @@
+# rgl layout text file (v4.0) - raygui layout file generated using rGuiLayout
+# Game Over Screen Layout - 720x1280 portrait
+# Reference: game_over.json design specification
+# Target exports: app/ui/game_over.h, app/ui/game_over.c
+#
+# Note: JSON overlay color [0,0,0,180] for dim background must be handled
+# by adapter or render system. Dynamic text (score, high_score, reason)
+# must be bound at render time using generated slots or adapter logic.
+#
+# Ref. window:    r <x> <y> <width> <height>
+# Anchor info:    a <id> <name> <posx> <posy> <enabled>
+# Control info:   c <id> <type> <name> <rectangle> <anchor_id> <text>
+#
+r 0 0 720 1280
+a 001 Anchor01 0 0 1
+c 000 4 TitleText 210 440 300 60 1 GAME OVER
+c 001 4 ScoreSlot 210 510 300 40 1 
+c 002 4 HighScoreSlot 210 560 300 32 1 
+c 003 4 ReasonSlot 110 640 500 40 1 
+c 004 5 RestartButton 220 870 280 50 1 RESTART
+c 005 5 LevelSelectButton 220 935 280 50 1 LEVEL SELECT
+c 006 5 MenuButton 220 1000 280 50 1 MAIN MENU

@@ -25,6 +25,12 @@ When a PR deletes dead ECS surface (components, systems, constants, fields), the
 
 6. **Run focused tests before full suite.** Use the tag filter to verify the migrated/new tests in isolation before running all 700+ test cases.
 
+7. **Decommission retired folders end-to-end.** If a namespace/folder migration (e.g., `archetypes/` → `entities/`) is complete, ensure there are no forwarding headers left, remove obsolete CMake globs/sources, and update docs/comments that still call the old folder canonical.
+
+8. **Preserve low-value taxonomy tags, fix high-signal ownership wording.**
+   - Keep legacy test tags (e.g., `[archetype]`) when renaming would be churn-only.
+   - Still update code comments, test titles, and docs so they do not imply removed paths (e.g., `app/archetypes/`) are canonical.
+
 ---
 
 ## Key Heuristic

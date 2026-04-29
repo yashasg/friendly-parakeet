@@ -1,5 +1,4 @@
 #include "input_routing.h"
-#include "../ui/ui_button_spawner.h"
 #include "../components/game_state.h"
 #include "../components/input.h"
 #include "../components/input_events.h"
@@ -11,8 +10,6 @@
 void game_state_handle_go(entt::registry& reg, const GoEvent& /*evt*/) {
     auto& gs = reg.ctx().get<GameState>();
     if (gs.phase != GamePhase::Paused) return;
-    auto mv = reg.view<MenuButtonTag>();
-    reg.destroy(mv.begin(), mv.end());
     gs.previous_phase = gs.phase;
     gs.phase = GamePhase::Playing;
     gs.phase_timer = 0.0f;
@@ -62,8 +59,6 @@ void game_state_handle_press(entt::registry& reg, const ButtonPressEvent& evt) {
     }
 
     if (gs.phase == GamePhase::Paused) {
-        auto mv = reg.view<MenuButtonTag>();
-        reg.destroy(mv.begin(), mv.end());
         gs.previous_phase = gs.phase;
         gs.phase = GamePhase::Playing;
         gs.phase_timer = 0.0f;

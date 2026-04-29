@@ -12,6 +12,7 @@
 #include "components/rhythm.h"
 #include "audio/music_context.h"
 #include "components/rendering.h"
+#include "components/ui_state.h"
 #include "components/test_player.h"
 #include "components/obstacle.h"
 #include "components/rng.h"
@@ -21,8 +22,6 @@
 #include "ui/text_renderer.h"
 #include "util/session_logger.h"
 #include "systems/camera_system.h"
-#include "ui/ui_loader.h"
-#include "ui/ui_button_spawner.h"
 #include "entities/obstacle_render_entity.h"
 #include "platform_display.h"
 #include "util/settings_persistence.h"
@@ -116,11 +115,10 @@ void game_loop_init(entt::registry& reg,
 
     // UI + beatmap + music
     reg.ctx().emplace<UIActiveCache>();
-    reg.ctx().emplace<UIState>(load_ui());
+    reg.ctx().emplace<UIState>();
     reg.ctx().emplace<BeatMap>();
     reg.ctx().emplace<SongState>();
     reg.ctx().emplace<MusicContext>();
-    spawn_title_buttons(reg);
 
     // Test player (optional)
     if (test_player_mode) {

@@ -8,6 +8,7 @@
 
 ## Learnings
 
+- **Portable rGuiLayout Spec Consolidation (2026-04-29T04:35:58Z):** Merged decision #190 from inbox to decisions.md. Keyser's spec clarified portable C as primary architectural contract; Fenster cleaned adapter terminology; Coordinator approved revised spec targeting screen_controllers, not adapters. Decision now public in team records. Orchestration and session logs created; no commits per charter.
 - **Issue #142 (2026-04-26T08:36:55Z):** Medium balance fix completed. Tight integration between Ralph (initial impl), Coordinator (finalization + content regen), and Kujan (review gate). All orchestration logs created; no git commits made per charter.
 - **Decision inbox:** Remains empty for this session; no new team decisions required.
 - **Issue #54 (2026-04-26T09:08:09Z):** MSVC warning policy fix completed. Ralph wired `/W4` and `/WX`; Coordinator tightened CMake and resolved utility-source link validation; Kujan approved. Session and orchestration logs created; GitHub comment posted.
@@ -48,3 +49,15 @@
 - **Scope:** GitHub backlog triage, ECS component/system refactoring, C++ optimization, test coverage improvements. No product code or issue modifications. Zero warnings maintained.
 - **Orchestration log:** `.squad/orchestration-log/2026-04-27T02:51:05Z-cleanup-wave.md`.
 - **Status:** LAUNCHED (parallel cleanup agents + Kujan review gate).
+
+---
+
+- **Screen Controller Migration & Validation (2026-04-29T05:03:05Z):** Keaton implemented adapter removal and screen_controllers migration (deleted `app/ui/adapters/`, created `app/ui/screen_controllers/` with template-based abstraction reducing 377 lines of boilerplate to ~50 lines template + 8 declarations). Hockney validated zero-warning builds, 2635 assertions, 901 tests passing. Fenster fixed stale app-code comments and polished spec wording. Kujan re-reviewed and approved after spec clarification. Orchestration log: `.squad/orchestration-log/2026-04-29T05-03-05Z-screen-controller-migration-batch.md`. Session log: `.squad/log/2026-04-29T05-03-05Z-screen-controller-migration.md`. No new decision inbox; prior inbox now empty. No git commits made per charter.
+
+---
+
+**Correction Note (2026-04-29T09:55:21Z): UI Layout Fixes Status Update**
+- **Issue:** Initiative summary in `.squad/decisions.md` (Song Complete & Pause Screen section) incorrectly stated "non-Keyser reviser (Song Complete fix, pending)".
+- **Fact Correction:** Song Complete fix was NOT pending. Keyser's first attempt was rejected and locked out; the main coordinator performed the non-Keyser Song Complete revision directly in the active rguilayout/raygui path. Kujan's final review (`kujan-final-song-complete-revi` in session log) APPROVED the Song Complete fix. Status: COMPLETE & APPROVED.
+- **Session Log Reference:** `.squad/log/2026-04-29T09:55:21Z-ui-layout-fixes.md` (line 11) documents "Song Complete: Approved in prior cycle."
+- **Action:** Updated Initiative line in decisions.md to reflect correct status. Song Complete section details added via append-only correction note below section header.

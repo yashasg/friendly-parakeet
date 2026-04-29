@@ -4,7 +4,6 @@
 #include "components/high_score.h"
 #include "entities/camera_entity.h"
 #include "session/play_session.h"
-#include "ui/ui_source_resolver.h"
 #include "test_helpers.h"
 #include "util/high_score_persistence.h"
 
@@ -59,7 +58,6 @@ TEST_CASE("Play session: SongResults total_notes matches every shipped song diff
             CAPTURE(LevelSelectState::LEVELS[level].title);
             CAPTURE(LevelSelectState::DIFFICULTY_KEYS[difficulty]);
             CHECK(reg.ctx().get<SongResults>().total_notes == expected_total);
-            CHECK(resolve_ui_int_source(reg, "SongResults.total_notes").value() == expected_total);
         }
     }
 }
