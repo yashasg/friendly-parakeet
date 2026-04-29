@@ -10929,3 +10929,83 @@ Title screen runtime integration checkpointed to PR #351 **before dispatch wirin
 
 All validation gates passed. Safe to merge.
 
+
+---
+
+### #190 — Approved Template Adapter Pattern for UI Boilerplate (2026-04-29)
+
+**Owner:** Keaton (C++ Performance Engineer)  
+**Status:** APPROVED
+
+The `RGuiAdapter<State, InitFunc, RenderFunc>` pattern demonstrated in commit 958a7d9 is now the **approved standard** for wrapping external library state in this codebase.
+
+**Rationale:**
+1. Proven effectiveness: Eliminated 377 lines of duplicated adapter boilerplate (33% reduction)
+2. Zero overhead: Compile-time template instantiation, no runtime cost
+3. Type safety: Incorrect signatures caught at compile-time
+4. Maintainability: New adapters require ~20 lines vs ~45 lines manual implementation
+
+**Application Scope:**
+Use this pattern when:
+- 3+ classes share identical lifecycle (init, render/update, cleanup)
+- State managed by external C library with function pointers
+- Need zero-overhead abstraction (performance-sensitive paths)
+
+**Reference Implementation:**
+- Location: `app/ui/adapters/adapter_base.h`
+- Example usage: `app/ui/adapters/game_over_adapter.cpp`
+- Skill documentation: `.squad/skills/cpp-template-adapter/SKILL.md`
+
+**Future Application:**
+Consider this pattern for:
+- Audio context wrappers
+- Physics engine state managers
+- Platform-specific window/input abstractions
+
+---
+
+### #191 — Validation: Keyser Commit 958a7d9 — UI Adapter Template Refactor (2026-04-29)
+
+**Owner:** Hockney (Platform Engineer)  
+**Status:** ✅ APPROVED
+
+Validated Keyser's UI adapter template refactor (commit 958a7d9) for build/platform safety. All validation criteria met: zero-warning unity build, passing test suite, RAYGUI_IMPLEMENTATION single-site invariant preserved, standalone generated files confirmed uncompiled, template headers safe for unity builds.
+
+**Validation Results:**
+
+1. **Build Safety (Zero Warnings):** ✅ PASS
+   - Unity build (`build-unity-verify-vcpkg`) completed cleanly
+   - `clang -Wall -Wextra -Werror` flags: no errors
+
+2. **Test Integrity:** ✅ PASS
+   - Full test suite: All tests passed (2635 assertions in 901 test cases)
+
+3. **RAYGUI_IMPLEMENTATION Single-Site Invariant:** ✅ PASS
+   - Exactly ONE compiled site: `app/ui/raygui_impl.cpp` (line 20)
+   - All embeddable layout headers: comment disclaimers ("NO RAYGUI_IMPLEMENTATION")
+   - All standalone files: contain `#define RAYGUI_IMPLEMENTATION` BUT are C source (.c) in excluded directory
+
+4. **Unity Build Safety:** ✅ PASS
+   - Template headers properly structured (implicitly inline)
+   - Adapter instances have unique names per file: gameplay_adapter, title_adapter, paused_adapter, settings_adapter, level_select_adapter, game_over_adapter, song_complete_adapter, tutorial_adapter
+   - Symbol check confirms no ODR conflicts
+
+5. **C++17/C++20 Compatibility:** ✅ PASS
+   - Project requires C++20 (CMakeLists.txt line 20)
+   - Adapter template uses C++17 `auto` template parameters (fully compatible, superset)
+
+6. **Standalone Generated Output Exclusion:** ✅ PASS
+   - Verified standalone files never compiled
+   - `find build -name "*.c.o" | grep standalone` → 0 results
+
+**Architectural Impact:**
+- Before: ~240 lines of duplicated init/state-management/render boilerplate across 8 adapters
+- After: ~150 fewer lines total
+  - `adapter_base.h`: 44 lines (generic template)
+  - `end_screen_dispatch.h`: 20 lines (shared button dispatcher)
+  - 8 adapters: ~20 lines each (type alias + instance + glue functions)
+
+**Verdict:** ✅ APPROVED — No revision required. Recommend merge to trunk.
+
+**Follow-up:** Created skill: `.squad/skills/unity-build-template-safety/SKILL.md` (reusable pattern for future template-based refactors in unity build projects).
+

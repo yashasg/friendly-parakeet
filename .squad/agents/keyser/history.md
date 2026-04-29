@@ -878,3 +878,64 @@ This violates user directive: "maximize code reuse, no slop."
 
 See `.squad/orchestration-log/2026-04-29T03:13:21Z-keyser.md`
 
+
+### 2026-04-29 — RGUILayout Adapter Template Refactor (Keaton Review Revision)
+
+**Status:** COMMITTED (958a7d9) — Architectural refactor of c7700f8 after Keaton rejection.
+
+**Scope:** Replaced 377 lines of duplicated adapter boilerplate across 8 screen adapters with template-based pattern and shared helpers.
+
+**Changes implemented:**
+
+1. **Created `adapter_base.h` with `RGuiAdapter` template** — Uses C++17 auto template parameters (`template<typename State, auto InitFunc, auto RenderFunc>`) for compile-time dispatch to generated layout functions. Eliminates manual state variable + bool flag + init guard pattern repeated across 8 files. Each adapter now declares a type alias (`using TitleAdapter = RGuiAdapter<...>`) and single static instance.
+
+2. **Created `end_screen_dispatch.h` template helper** — Consolidates byte-for-byte identical dispatch logic from `game_over_adapter.cpp` and `song_complete_adapter.cpp` (Restart/LevelSelect/MainMenu button → `EndScreenChoice` enum). Generic over any layout state with the three button-pressed fields.
+
+3. **Fixed EnTT storage access pattern** — Removed cargo-cult `std::as_const(reg).storage<T>()` wrapping in `ui_render_system.cpp` lines 363–364, 391–392. Replaced with direct `reg.try_get<T>(entity)` per-entity queries matching codebase conventions (collision_system, scoring_system, test_player_system all use `try_get`). EnTT v3.16.0 `storage()` returns a reference, not a pointer; the `std::as_const` wrapper does not prevent pool creation and is unnecessary.
+
+4. **Added `offset_rect()` helper** — Small raylib-friendly utility for anchor-relative Rectangle construction (`offset_rect(anchor, x, y, w, h)`) used in `settings_adapter.cpp` to replace 3 instances of manual `(Rectangle){anchor.x + x, anchor.y + y, w, h}` arithmetic.
+
+5. **Renamed adapter instances for unity build safety** — Each adapter's static instance now has a unique name (`game_over_adapter`, `title_adapter`, etc.) instead of generic `adapter`. Avoids symbol collision when multiple adapters are merged into a single translation unit by CMake unity builds.
+
+**Build/test validation:**
+- Zero-warning build with Clang on macOS (arm64-osx triplet, unity build enabled).
+- All 901 test cases pass (2635 assertions).
+- Verified no `app/ui/generated/standalone/*.c` files are compiled (only `app/ui/raygui_impl.cpp` is the real `RAYGUI_IMPLEMENTATION` site).
+
+**Patterns established:**
+
+- **RGUILayout adapter pattern:** Any new screen adapter should use `RGuiAdapter<StateType, &InitFunc, &RenderFunc>` type alias + named static instance, not manual init/render boilerplate.
+- **EnTT optional component access:** Use `reg.try_get<T>(entity)` per-entity checks, not `storage<T>()` + contains + get. The latter is EnTT v2/v3-early API surface; v3.16.0 `try_get` is idiomatic.
+- **Unity build compatibility:** Static variables in anonymous namespaces must have unique names when file-scoped uniqueness is insufficient (adapters are likely to be batched together).
+
+**Key lesson:** Template-based DRY elimination in C++17 is straightforward when the generated output is uniform (all adapters follow same init/render contract). The cost is one template definition; the benefit scales linearly with the number of conforming types. This pattern can extend to other generated-code adapter layers (audio event callbacks, beatmap parsers, etc.) if similar boilerplate emerges.
+
+**Decision written:** None required — this is a revision of c7700f8 per Keaton's architectural requirements, not a new team decision.
+
+---
+
+## 2026-04-29 — UI Adapter Template Refactor (Commit 958a7d9) — APPROVED
+
+**Context:** Revision of rejected c7700f8 (code duplication in 8 UI adapters).
+
+**Challenge:** Keaton's rejection identified 377 lines of duplicated boilerplate init/render patterns across 8 adapters, plus byte-for-byte identical end-screen dispatch logic, manual rectangle construction, and incorrect EnTT API usage.
+
+**Solution:** 
+- Created `adapter_base.h` with `RGuiAdapter<LayoutState, InitFunc, RenderFunc>` C++17 template
+- Created `end_screen_dispatch.h` with shared button dispatch helper
+- Refactored all 8 adapters to use template (reduced ~45 LOC → ~25-35 LOC per adapter)
+- Fixed ui_render_system.cpp: removed std::as_const cargo-cult pattern, replaced with idiomatic `reg.try_get<T>(entity)`
+- Added `offset_rect()` helper to eliminate manual Rectangle arithmetic
+
+**Metrics:**
+- 377 lines of duplication eliminated (~33% reduction)
+- All 8 adapters now use reusable template
+- Zero warnings, all tests pass, no behavior changes
+
+**Approvals:**
+- ✅ Keaton (code reviewer): Exemplary modern C++ implementation, all rejection criteria resolved
+- ✅ Hockney (platform engineer): Zero-warning unity build, all tests pass, RAYGUI_IMPLEMENTATION invariant preserved, no ODR violations
+
+**Outcome:** Ready for merge to trunk. PR #351 (origin/ui_layout_refactor) will be pushed after logging.
+
+**Skills Created:** `.squad/skills/cpp-template-adapter/`, `.squad/skills/unity-build-template-safety/`
