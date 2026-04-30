@@ -378,8 +378,8 @@ library needed. `InitAudioDevice()`, `LoadMusicStream()`, `PlayMusicStream()`,
 
 ## 4.2 CMakeLists.txt — NEEDS CONTENT COPY RULES
 
-The existing CMakeLists.txt links raylib and nlohmann-json. Only missing piece
-is copying content/ assets to the build directory.
+The existing CMakeLists.txt links raylib and nlohmann-json. The remaining piece
+is copying `content/` files to the build directory.
 
 ## 4.3 Content Asset Copying
 

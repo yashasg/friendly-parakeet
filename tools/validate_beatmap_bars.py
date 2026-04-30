@@ -78,14 +78,14 @@ def _check_beats(file_label: str, diff_label: str, beats: list, failures: list) 
 
     # Sanity: no unknown or deprecated/non-shipping kinds
     known = {
-        "shape_gate", "lane_push_left", "lane_push_right",
+        "shape_gate",
         "low_bar", "high_bar", "combo_gate", "split_path",
     }
-    deprecated = kind_set & {"lane_block"}
+    deprecated = kind_set & {"lane_block", "lane_push_left", "lane_push_right"}
     if deprecated:
         failures.append(
             f"{file_label} [{diff_label}]: deprecated/non-shipping obstacle kinds: "
-            f"{sorted(deprecated)}; use lane_push_left/lane_push_right"
+            f"{sorted(deprecated)}"
         )
 
     unknown = kind_set - known - deprecated

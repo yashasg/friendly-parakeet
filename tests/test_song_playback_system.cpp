@@ -131,6 +131,62 @@ TEST_CASE("song_playback: song finishes exactly at duration", "[song_playback]")
     CHECK_FALSE(song.playing);
 }
 
+TEST_CASE("song_playback: finished song stays latched and does not restart on later ticks",
+          "[song_playback][regression]") {
+    auto reg = make_rhythm_registry();
+    auto& song = reg.ctx().get<SongState>();
+    song.duration_sec = 2.0f;
+    song.song_time = 1.9f;
+
+    song_playback_system(reg, 0.2f);
+    REQUIRE(song.finished);
+    REQUIRE_FALSE(song.playing);
+    const float finished_time = song.song_time;
+    const int finished_beat = song.current_beat;
+
+    song_playback_system(reg, 1.5f);
+
+    CHECK(song.finished);
+    CHECK_FALSE(song.playing);
+    CHECK(song.song_time == finished_time);
+    CHECK(song.current_beat == finished_beat);
+    CHECK_FALSE(song.restart_music);
+}
+
+TEST_CASE("song_playback: end-of-song transitions to SongComplete and remains stopped",
+          "[song_playback][gamestate][song_complete][regression]") {
+    auto reg = make_rhythm_registry();
+    auto& gs = reg.ctx().get<GameState>();
+    gs.phase = GamePhase::Playing;
+
+    auto& song = reg.ctx().get<SongState>();
+    song.duration_sec = 1.0f;
+    song.song_time = 0.95f;
+    song.playing = true;
+    song.finished = false;
+    song.restart_music = false;
+
+    song_playback_system(reg, 0.1f);
+    REQUIRE(song.finished);
+    REQUIRE_FALSE(song.playing);
+
+    game_state_system(reg, 0.016f);
+    REQUIRE(gs.transition_pending);
+    REQUIRE(gs.next_phase == GamePhase::SongComplete);
+
+    game_state_system(reg, 0.016f);
+    REQUIRE_FALSE(gs.transition_pending);
+    REQUIRE(gs.phase == GamePhase::SongComplete);
+
+    const float terminal_song_time = song.song_time;
+    song_playback_system(reg, 1.0f);
+
+    CHECK(song.finished);
+    CHECK_FALSE(song.playing);
+    CHECK(song.song_time == terminal_song_time);
+    CHECK_FALSE(song.restart_music);
+}
+
 // ── song_playback_system: beat tracking edge cases ───────────
 
 TEST_CASE("song_playback: beat does not go backwards", "[song_playback]") {

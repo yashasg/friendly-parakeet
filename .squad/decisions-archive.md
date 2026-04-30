@@ -2062,3 +2062,333 @@ Shape switching should only mutate player shape/window state, enqueue ShapeShift
 - `shapeshifter` target build
 - `git diff --check`
 
+### #173 — Assets Root Audit and QA Validation (2026-04-30)
+
+**Owner:** Verbal (QA)  
+**Status:** IMPLEMENTED AND APPROVED
+
+Comprehensive audit confirming all `assets/` references post-removal and validating standardization on `content/` root across runtime, build, workflows, editor, tooling, tests, and docs.
+
+**Scope:**
+- Audited references in: runtime `.cpp` files, CMake, CI workflows, editor config, tooling scripts, test suite, docs
+- Confirmed only Apple-specific (`Assets.xcassets`) and historical `.squad/` logs contain `assets` term
+- Validated migration completeness with zero drift detected
+
+**Decision:** Treat `content/` as the only shipped game-data root. Any `assets/` path usage in runtime/build/editor surfaces is considered stale unless it refers to Apple's `Assets.xcassets` packaging term or generic English prose.
+
+**QA Blocker Identified:** `test_shipped_beatmap_difficulty_ramp.cpp` medium LanePush percentage = 0% in shipped beatmaps (unrelated to folder migration; fixed by Baer).
+
+---
+
+### #174 — LanePush Difficulty-Ramp Test Contract Migration (2026-04-30)
+
+**Owner:** Baer (Test)  
+**Status:** IMPLEMENTED AND APPROVED
+
+Replaced stale LanePush difficulty-ramp assertions in `tests/test_shipped_beatmap_difficulty_ramp.cpp` with bar-focused contracts aligned to current shipped content and validators.
+
+**Applied Changes:**
+- Medium bars: low+high percentage window, max consecutive run, first-arrival readability gate
+- Hard: low/high coverage requirement
+- Explicit rejection of removed legacy kinds (`lane_push_left/right`, `lane_block`) in medium/hard
+- Easy: shape_gate-only (unchanged)
+
+**Rationale:** Aligns C++ regression checks with shipped content and acceptance validators (`validate_difficulty_ramp.py`, `validate_beatmap_bars.py`) while retaining meaningful progression/readability protections.
+
+**Validation:**
+- `./build/shapeshifter_tests "[difficulty_ramp]"` passes
+- Full non-bench suite passes
+- Both Python beatmap validators pass
+- Diff check clean
+
+---
+
+### #175 — Asset Bundle Specification Documentation Fix (2026-04-30)
+
+**Owner:** Verbal (QA), Reviewer: Kujan  
+**Status:** IMPLEMENTED AND APPROVED
+
+Corrected `docs/asset-bundle-spec.md` tree diagram per Kujan's review feedback (duplicate `content/` nodes under root).
+
+**Applied Changes:**
+- Revised tree diagram: single `content/` node as child of root, with `beatmaps/`, `audio/`, `fonts/` as children of `content/`
+- Verified no other duplicate or orphan sibling nodes
+- Updated prose to align with corrected tree
+
+**Validation:**
+- Kujan approved revised diagram
+- Diff check clean
+- All downstream documentation consistent
+
+---
+
+### #176 — Force One-Shot Music Playback for Play Sessions (2026-04-30)
+
+**Owners:** McManus (fix), Baer (regression testing), Kujan (review)  
+**Status:** IMPLEMENTED AND APPROVED
+
+**Issue:** Song completes without displaying Song Complete UI; music audibly repeats/loops.
+
+**Root Cause:** `raylib::Music` backend default-loops streams. If wrapped before terminal phase detects `finished=true` and transitions to `SongComplete`, the phase-transition gate misses the signal and playback continues in `Playing`.
+
+**Decision:** When loading a play-session music stream in `setup_play_session(...)`, explicitly set:
+
+```cpp
+music->stream.looping = false;
+```
+
+Immediately after successful `LoadMusicStream(...)` call.
+
+**Why:** Explicit one-shot playback ensures song-end behavior is deterministic and aligns with phase transition contract (`Playing` → `SongComplete` via `game_state_system` on `finished` latch).
+
+**Scope:**
+- File: `app/session/play_session.cpp`
+- No collateral changes to asset-root, editor-hardening, or other subsystems
+
+**Testing (Baer):**
+- Added deterministic regression tests in `tests/test_song_playback_system.cpp`
+- Coverage: finish-state latching + two-tick transition into `GamePhase::SongComplete`
+- Focused suites `[song_playback]`, `[gamestate]`, `[play_session]` ✅
+- Full suite `~[bench]` ✅
+- Git diff clean
+
+**Known Testability Gap:**
+- Runtime `GetMusicTimePlayed()` wraparound at track end not deterministically controllable in headless tests
+- Recommendation: Add injectable music-clock seam to `song_playback_system` for CI to force wraparound and prevent regressions
+
+**Validation Evidence:**
+- `cmake --build build -- -j4` passed, zero warnings (clang arm64)
+- `git --no-pager diff --check` clean
+
+---
+
+
+### #170 — Beatmap Editor Help Dialog UX Pass (2026-04-30)
+
+**Owners:** Redfoot (UX/A11y), Fenster (implementation), Baer (verification)
+**Status:** IMPLEMENTED AND APPROVED
+
+Beatmap editor Help button and modal enhanced with accessibility guarantees and keyboard shortcuts.
+
+**Scope:**
+- Visible `❔ Help` button in toolbar (pre-Settings)
+- Static help content: Load, Playback, Place/Move, Properties+Validation+Export, Shortcuts
+- Dismiss affordances: close button, backdrop click, Escape key
+- Global `?` (Shift+/) shortcut with form-field guard
+- A11y semantics: `role="dialog"`, `aria-modal`, `aria-labelledby`, `aria-haspopup`, `aria-controls`, `aria-hidden` toggling
+- Safe rendering: no HTML injection of user-controlled strings
+
+**Implementation:**
+- **Fenster:** Help button, modal structure, dismiss wiring, reusable `bindModal()` pattern
+- **Redfoot:** A11y enhancements, `?` shortcut + guard, close-button auto-focus, footnote styling
+- **Baer:** Initial verification (feature not visible), final verification (accepted)
+
+**Key Decisions:**
+1. Reused existing modal pattern rather than creating parallel duplicate
+2. `bindModal({trigger, modal, close})` helper is generic and dependency-free — reuse for Settings, About, Diagnostics
+3. Help shortcuts table mirrors `editor.js` wiring; keep in sync manually (no auto-generation)
+4. Form-field guard on `?` shortcut matches existing `editor.js` pattern (INPUT/SELECT/TEXTAREA)
+
+**Validation Evidence:**
+- `node --check tools/beatmap-editor/js/main.js` ✅
+- `node --test tools/beatmap-editor/test/*.test.js` ✅ (22/22 passing)
+- `git --no-pager diff --check` ✅
+- Browserless validation confirmed modal presence, wiring, safety
+
+**Files Changed:**
+- `tools/beatmap-editor/index.html`
+- `tools/beatmap-editor/css/editor.css`
+- `tools/beatmap-editor/js/main.js`
+- `tools/beatmap-editor/test/help-modal-ui.test.js`
+
+**For other agents:**
+- When adding new shortcuts to `editor.js`, mirror them in help shortcuts table
+- Reuse `bindModal()` for future dialogs (Settings model for template)
+- Avoid generic `kbd { }` rule; scope to `.help-content kbd, .help-shortcuts kbd`
+
+**Limitation:** Browserless validation cannot certify focus trapping or screen-reader announcement timing; require browser-capable tests if those become release gates.
+
+---
+
+
+# Baer Decision Inbox — Music Load Repeat Verification
+
+Date: 2026-04-30
+
+## Decision
+
+Accept the refactor shape as correct for this cycle: play-session now uses project-local `load_music_stream(path, false)` and direct `music->stream.looping = false` writes are removed from `setup_play_session`.
+
+## Why
+
+The architectural requirement is source-level (call path + ownership of repeat policy), and that is now satisfied. A pure deterministic unit seam still does not exist for behavior-level loop testing because the helper calls raylib `LoadMusicStream` directly; therefore existing terminal-phase regressions remain the practical safety net.
+
+## Validation run
+
+- Source sweep for `music->stream.looping = false` and `LoadMusicStream(` call sites
+- `cmake --build build -- -j4`
+- `./build/shapeshifter_tests "[song_playback]"`
+- `./build/shapeshifter_tests "[gamestate]"`
+- `./build/shapeshifter_tests "[play_session]"`
+- `./build/shapeshifter_tests "[song_complete]"`
+- `./build/shapeshifter_tests "~[bench]"`
+- `git --no-pager diff --check`
+
+### 2026-04-30T00:20:10-07:00: User directive
+**By:** yashasg (via Copilot)
+**What:** `LoadMusicStream` should be wrapped behind a helper that takes a `bool repeat` input; play-session should pass `false` instead of explicitly setting the loaded stream's looping flag in play-session.
+**Why:** User request — captured for team memory
+
+# Kobayashi Decision — PR #357 CI gate status
+
+- **PR:** https://github.com/yashasg/friendly-parakeet/pull/357
+- **Decision:** Treat PR #357 as CI-passing and merge-ready from automation perspective.
+- **Evidence:** `gh pr checks 357` reported 15 successful checks, 2 skipped checks (`Cleanup PR Preview`, `Deploy to GitHub Pages`), and 0 failing/pending.
+- **Why this matters:** Required multi-platform gates (Linux/macOS/Windows/WASM), Squad CI, CodeQL, and dependency checks all passed on the current head.
+
+## McManus Decision — Encapsulate music repeat at load seam
+
+- **Date:** 2026-04-30
+- **Scope:** play-session music loading
+- **Decision:** Added `load_music_stream(const char* path, bool repeat)` in `app/audio/music_stream.h`. It wraps raylib `LoadMusicStream`, applies `stream.looping = repeat`, and returns the `Music`.
+- **Call-site change:** `setup_play_session(...)` now uses `load_music_stream(path, false)` and no longer sets `music->stream.looping` directly.
+- **Rationale:** Keeps repeat/looping intent at the loading seam, avoids scattering backend-specific `Music.stream` mutation across session orchestration code.
+
+### #169 — Gameplay Shape Buttons Migrated to raygui HUD Ownership (2026-04-29)
+
+**Owners:** Redfoot (UX spec), McManus/Fenster/Keyser/Baer/Hockney (implementation cycle), Kujan (reviewer)
+**Status:** IMPLEMENTED AND APPROVED
+
+Gameplay shape button controls transitioned from ECS hit-testing entities (`ShapeButtonTag + HitCircle + ActiveTag`) to raygui HUD–owned custom-rendered controls. Multi-pass revision cycle resolved visual overlay, tap-forgiveness regression, and geometry source-of-truth drift issues.
+
+**Final Architecture:**
+- Shape buttons are entirely HUD screen controller–owned; no ECS spawning in `play_session`
+- Rendering: custom circular silhouettes (~50px radius) and approach rings (stock rectangular raygui visuals hidden via temporary transparent BUTTON styles)
+- Hit testing: raw raygui bounds expanded from slot center to enclose 1.4× circular hit radius (~70px), then final acceptance gate is circular filter (`CheckCollisionPointCircle`) before dispatching semantic `ButtonPressEvent`
+- Geometry sourced from `content/ui/screens/gameplay.rgl` DummyRec slots (single source of truth):
+  - Circle: `(60, 1140, 140, 100)` → center `(130, 1190)`
+  - Square: `(220, 1140, 140, 100)` → center `(290, 1190)`
+  - Triangle: `(380, 1140, 140, 100)` → center `(450, 1190)`
+- Behavioral preservation: shape presses enqueue `ButtonPressEvent` with same payload as before; existing `player_input_system` side effects and `ButtonPressKind::Shape` dispatch remain unchanged
+
+**Acceptance Gates (All Passed):**
+1. HUD/raygui-owned shape controls; ECS `spawn_playing_shape_buttons()` removed from play-session
+2. Stock rectangular visuals hidden; custom circular visuals and approach rings preserved
+3. Legacy 1.4× circular tap forgiveness preserved and production-reachable (contract: `+70px vertical accepted`, `+71px rejected`)
+4. Geometry matches `gameplay.rgl` DummyRec slots; no divergence in generated layout
+5. Pause behavior and existing side effects (phase gating, player-input scoring path) intact
+
+**Revision Timeline:**
+- **Redfoot:** UX specification
+- **McManus (R1):** Implementation → REJECTED (stock rectangular overlay violates circular UX)
+- **Fenster (R2):** Visual fix → REJECTED (reachability regression + geometry drift)
+- **Keyser (R3):** Circular filter → REJECTED (production bounds blocked; geometry mismatch)
+- **Baer (R4):** Geometry audit → REJECTED (source drift 60/220/380 vs 90/290/490)
+- **Baer (R5):** Raw bounds expansion + reachability contract → APPROVED
+- **Hockney (R6):** Final alignment with `gameplay.rgl` → APPROVED (all gates pass)
+
+**Validation Evidence:**
+- `shapeshifter` build: zero warnings (clang arm64)
+- `shapeshifter_tests` suite: all passing
+- `[input_pipeline][hud]` reachability contract: ✅
+- `[gamestate][play_session]` invariants: ✅
+- `[hit_test]` legacy coverage: ✅
+- Git diff: no trailing whitespace, no semantic drift
+
+---
+
+### #172 — Remove Top-Level assets/ Root; Standardize on content/ (2026-04-29)
+
+**Owner:** Hockney (Platform)  
+**Status:** IMPLEMENTED AND APPROVED
+
+Eliminated duplicate asset root by consolidating all shipped content under `content/` directory and updating all references across runtime, CMake, Emscripten, docs, and tooling.
+
+**Applied Changes:**
+- Moved font payload from `assets/fonts/` → `content/fonts/`
+- Updated runtime font fallback paths in `app/ui/text_renderer.cpp` to `content/fonts/LiberationMono-Regular.ttf`
+- Updated CMake to copy fonts from/to `content/fonts` only; removed `assets@/assets` from Emscripten preload; only `content@/content` preloaded
+- Updated docs/beatmap-authoring references: `assets/beatmaps/` → `content/beatmaps/`
+
+**Rationale:** Single-root packaging eliminates drift between runtime search paths, native post-build copy destinations, and WASM virtual filesystem mounting. Also removes duplicated content expectations in tooling/docs.
+
+**Validation:**
+- Build succeeded (CMake + Emscripten stack)
+- Diff check clean
+- Exposed stale LanePush test contract (delegated to Baer)
+
+---
+
+### Issue #303 — Settings Save Pipeline (2026-04-30)
+
+**Owner:** Hockney (Runtime Engineer)  
+**Status:** IMPLEMENTED
+
+Runtime persistence pipeline for game settings. Adopted mutation-time persistence contract consistent with high score persistence semantics.
+
+**Implementation:**
+- Added `settings::mark_dirty_and_save(SettingsPersistence&, const SettingsState&)` helper
+- Every settings mutation in `settings_screen_controller` triggers persistence
+- Dirty flag lifecycle: set → write → clear on success
+- Observable failure handling via `PathUnavailable` event emission
+- Retriable save logic retains dirty state if path unavailable
+
+**Validation:**
+- Full build passed (zero-warning policy maintained)
+- Full test suite passed
+- Added issue-303 test cases: success round-trip + path-unavailable dirty retention
+
+**Rationale:** Coherent persistence semantics across settings and high scores, making save failures observable and retriable without introducing a separate settings-save system.
+
+---
+
+
+---
+
+## PR #357 — WASM Runtime Responsiveness & Linker Guardrails (2026-04-30)
+
+**Owners:** Hockney (Platform Engineer), Baer (Test Engineer)  
+**Status:** COMPLETED
+
+Root-cause fix for WASM runtime abort (`Aborted(Please compile your program with async support...)`) in preview builds, plus regression coverage.
+
+**Lifecycle Decision:**
+- Remove `game_loop_shutdown()` call after `game_loop_run()` on WebAssembly
+- Move shutdown ownership to platform runtime callbacks (`frame_callback` quit path + `beforeunload`)
+- Prevents premature unwind side effects that manifest as unresponsive previews
+
+**Linker Enforcement (CI):**
+- `-sASYNCIFY` (required for browser async operations like `emscripten_sleep`)
+- `-sNO_EXIT_RUNTIME=1` (prevents runtime exit before browser closes)
+- Automated validation in CI prevents silent regressions
+
+**Browser Runtime Smoke Test:**
+- New `tests/wasm_runtime_smoke.cjs` (Playwright-core)
+- Boots WASM in headless browser; fails on abort/pageerror/missing canvas
+- Integrated into `.github/workflows/ci-wasm.yml`
+- Deterministic signal for dead-on-boot and stuck-loader regressions
+
+**Files Changed:**
+- `app/main.cpp`: Lifecycle teardown relocation
+- `app/platform_display.cpp`: Linker validation
+- `.github/workflows/ci-wasm.yml`: Smoke test step + linker checks
+- `tests/wasm_runtime_smoke.cjs`: New smoke test
+
+**Validation:**
+- Native build + tests pass (zero-warning policy)
+- WASM build + Emscripten tests pass
+- Browser smoke detects abort patterns reliably
+
+**Rationale:** Closes validation blind spot where artifact checks pass but runtime fails. Centralizes shutdown semantics in platform callbacks for robustness across toolchain modes.
+
+---
+
+## User Directive: WASM Sleep Path Avoidance (2026-04-30T01:02:32-07:00)
+
+**By:** yashasg (via Copilot)  
+**Decision:** Do not let raylib sleep on web; fix WASM runtime abort by avoiding raylib's web sleep path rather than relying on Asyncify as the primary approach.  
+**Rationale:** User request — captured for team memory
+
+---
+
+

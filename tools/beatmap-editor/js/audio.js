@@ -25,11 +25,11 @@ let metronomeGain = null;
 let metronomeTimerId = null;
 let lastScheduledBeat = -1;
 
-function ensureContext() {
+function ensureContext({ resume = true } = {}) {
     if (!audioCtx) {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }
-    if (audioCtx.state === 'suspended') {
+    if (resume && audioCtx.state === 'suspended') {
         audioCtx.resume();
     }
     return audioCtx;
@@ -45,6 +45,30 @@ export async function loadAudioFile(file) {
         reader.readAsArrayBuffer(file);
     });
 
+    audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+
+    // Invalidate waveform cache on new file load
+    waveformCache = null;
+    waveformCacheWidth = 0;
+
+    // Reset playback state
+    if (playing) {
+        stopSource();
+    }
+    seekOffset = 0;
+    playing = false;
+
+    return audioBuffer;
+}
+
+export async function loadAudioUrl(url) {
+    const ctx = ensureContext({ resume: false });
+    const response = await fetch(url);
+    if (!response.ok) {
+        throw new Error(`Failed to load audio: ${response.status} ${response.statusText}`);
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
     audioBuffer = await ctx.decodeAudioData(arrayBuffer);
 
     // Invalidate waveform cache on new file load

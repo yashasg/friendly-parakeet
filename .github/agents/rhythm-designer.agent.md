@@ -283,7 +283,7 @@ When the user provides a URL:
 3. Ask if they want to tweak flux threshold, min gap, or structure before designing
 4. Design all three difficulties from the real onset data
 5. Output the full `beatmap.json` as a fenced code block
-6. Offer to save it to `assets/beatmaps/<song_id>.json` — if yes, write it using the edit tool
+6. Offer to save it to `content/beatmaps/<song_id>.json` — if yes, write it using the edit tool
 
 Incorporate any designer notes the user provides.
 
@@ -304,6 +304,6 @@ Before outputting, verify:
 
 ## File Location
 
-Save beatmaps to: `assets/beatmaps/<song_id>.json`
+Save beatmaps to: `content/beatmaps/<song_id>.json`
 
 Check `design-docs/rhythm-design.md` and `design-docs/rhythm-spec.md` for full game context if needed.

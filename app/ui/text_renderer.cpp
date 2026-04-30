@@ -44,10 +44,10 @@ bool text_init(TextContext& ctx, const char* font_path) {
 
 bool text_init_default(TextContext& ctx) {
     std::string exe_font = std::string(GetApplicationDirectory())
-                         + "assets/fonts/LiberationMono-Regular.ttf";
+                         + "content/fonts/LiberationMono-Regular.ttf";
     const char* font_paths[] = {
         exe_font.c_str(),
-        "assets/fonts/LiberationMono-Regular.ttf",
+        "content/fonts/LiberationMono-Regular.ttf",
         "/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf",
         "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
     };

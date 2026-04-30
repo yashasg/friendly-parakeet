@@ -8,6 +8,12 @@
 
 ## Learnings
 
+### 2026-04-30 — Assets root removal QA audit
+
+- **Validation sweep pattern:** For root-folder migrations, run both textual sweeps and path sweeps: `rg "assets/|\bassets\b"` across code/docs/workflows plus `find . -type d -name '*assets*'`. Text-only sweeps miss directory-state regressions; path-only sweeps miss stale string literals.
+- **Required post-change checks:** In this repo, use `cmake --build build -- -j4`, `./build/shapeshifter_tests "~[bench]"`, `node --check tools/beatmap-editor/js/*.js`, and `node --test tools/beatmap-editor/test/*.test.js` to validate migration safety across runtime + editor surfaces.
+- **Key migration paths:** Runtime/bundle/font loading now resolves from `content/` only (`CMakeLists.txt`, `app/ui/text_renderer.cpp`, `content/fonts/`). `assets/` should not exist as a top-level game data root after commit.
+
 ### 2026-04-27 — Revision #135: Easy shape_gate_only contract guard
 
 - **Kujan rejected Baer's #135 artifact** because easy tests checked shape *variety* but not obstacle *kind*. This allowed Rabin's lane_push contamination in easy beatmaps to silently pass.
@@ -106,3 +112,59 @@
 - All test behavior contracts are stable and reusable across any renaming.
 
 **Rename candidates:** See `verbal-input-ui-test-map.md` in decisions/inbox.
+
+### 2026-04-30 — Diagram integrity check
+
+- When reviewing tree diagrams in specs, validate parent-child indentation as strictly as code structure; duplicated parent nodes can silently change deployment assumptions.
+
+## Session: Assets Root Removal (2026-04-30)
+
+Part 1 (Audit): Audited all `assets/` references across runtime/build/workflows/editor/tooling/tests/docs. Confirmed only Apple-specific (`Assets.xcassets`) and historical `.squad/` logs contain `assets` term. Identified stale LanePush test contract blocker.
+
+Part 2 (Doc Fix): Revised `docs/asset-bundle-spec.md` tree diagram per Kujan's feedback (fixed duplicate `content/` sibling nodes). Single `content/` root node with `beatmaps/`, `audio/`, `fonts/` children. Approved by Kujan.
+
+**Manifested:** Decisions #173, #175 merged to `.squad/decisions.md`
+
+### 2026-04-30T01:30:59.881-07:00 — WASM responsiveness validation
+
+- **Root QA gap found:** The browser smoke test only validated asset load (loader hides) but did not assert post-load interactivity, so input regressions could slip through while CI stayed green.
+- **Playwright pitfall:** `page.waitForFunction(fn, {timeout})` may treat the second argument as page-function arg; use `page.waitForFunction(fn, undefined, {timeout})` for deterministic timeout behavior.
+- **Regression guard added:** Browser smoke now compares pre/post-input canvas screenshots (safe click at 200x200 + Enter) and fails with `no-visual-response-after-input` when the build loads but does not react.
+
+## 2026-04-30T08:30:59Z — Scribe Session: Decision merge + orchestration logging
+
+Session log written: `.squad/orchestration-log/2026-04-30T08-30-59Z-verbal.md`
+Decision #170 merged to registry. Team session log: `.squad/log/2026-04-30T08-30-59Z-wasm-responsiveness-fix.md`
+
+### 2026-04-30T03:05:46.543-07:00 — Low/High bar white-wall QA check
+
+- The full-lane white wall symptom maps to Model-authority bars when `draw_owned_models` does not preserve ECS tint; if diffuse color is not overridden, `LoadMaterialDefault()` yields a white slab across all lanes.
+- Add a source-gate regression in `tests/test_pr43_regression.cpp` that asserts `game_render_system.cpp` still queries `Color` in the owned-model path and applies `MATERIAL_MAP_DIFFUSE` tint.
+- For manual repro targeting hard difficulty, use the first bar beats: stomper beat 182 (low_bar), drama beat 111 (high_bar), mental_corruption beat 113 (high_bar).
+
+## Session: White Lane Wall Fix Validation (2026-04-30T10:05:46Z)
+
+**Role:** Independent validation and regression coverage
+
+**Task:** Independently reproduce and validate fix/regression coverage
+
+**Work Summary:**
+- Reproduced white wall visual in hard mode with LowBar and HighBar obstacles
+- Validated McManus fix by verifying correct tint application
+- Added regression guard in test suite to ensure `ObstacleModel` color tint is applied
+- Verified all test suites pass with fix in place
+
+**Outcome:** Fix validated; regression coverage added to test_pr43_regression.cpp; all suites passed
+
+**Status:** Complete
+
+**Artifacts:**
+- Decision: `.squad/decisions.md` (white lane wall fix section)
+- Orchestration: `.squad/orchestration-log/2026-04-30T10-05-46Z-verbal.md`
+- Session Log: `.squad/log/2026-04-30T10-05-46Z-white-lane-wall-fix.md`
+
+### 2026-04-30T03:24:36.429-07:00 — Low/High bar disablement QA verification
+
+- **Gameplay-vs-content contract:** For temporary mechanic shutdowns, regressions should assert runtime gameplay behavior (`load_beat_map` output and scheduler spawning), not raw authored JSON. Source content may intentionally retain disabled kinds for later re-enable.
+- **Safety pattern for temporary disables:** Pair a content-load guard with a runtime scheduler guard. In this repo, `difficulty_ramp` now verifies medium/hard loaded charts are bar-free, and `beat_scheduler` verifies bar entries are skipped even if injected manually.
+- **Progression check while disabled:** Always assert remaining non-disabled obstacle content is still present after filtering; a pure “forbidden kind absent” check can hide accidental empty charts.

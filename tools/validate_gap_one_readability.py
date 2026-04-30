@@ -4,7 +4,7 @@
 Policy:
   EASY   - gap=1 is never allowed.
   MEDIUM - gap=1 is allowed only after 30% authored beat progress, only
-           between identical shape gates, away from nearby LanePush/bar
+           between identical shape gates, away from nearby bar
            obstacles, and never in back-to-back runs.
   HARD   - gap=1 is allowed after beat 10 under the same readability guard,
            with at most two consecutive one-beat gaps.
@@ -22,7 +22,7 @@ DEFAULT_DIR = REPO / "content" / "beatmaps"
 GAP_ONE_MEDIUM_START_PROGRESS = 0.30
 GAP_ONE_HARD_MIN_BEAT = 11
 GAP_ONE_MAX_RUN = {"medium": 1, "hard": 2}
-UNREADABLE_KINDS = {"lane_push_left", "lane_push_right", "low_bar", "high_bar"}
+UNREADABLE_KINDS = {"low_bar", "high_bar"}
 
 
 def is_readable_family(left: dict, right: dict) -> bool:
@@ -93,7 +93,7 @@ def validate_gap_one(beats: list[dict], difficulty: str) -> list[tuple[int, str]
             violations.append((left["beat"], "gap=1 pair is not identical shape_gate family"))
 
         if not has_readable_neighbors(beats, index - 1):
-            violations.append((left["beat"], "gap=1 pair is too close to LanePush/bar obstacle"))
+            violations.append((left["beat"], "gap=1 pair is too close to bar obstacle"))
 
         gap_one_run += 1
 

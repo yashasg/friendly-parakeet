@@ -256,7 +256,9 @@ void game_loop_frame(entt::registry& reg, float& accumulator) {
 }
 
 bool game_loop_should_quit(entt::registry& reg) {
+#ifndef __EMSCRIPTEN__
     if (WindowShouldClose()) return true;
+#endif
     auto* input = reg.ctx().find<InputState>();
     return input && input->quit_requested;
 }

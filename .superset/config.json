@@ -1,6 +1,10 @@
 {
-  "setup": [],
-  "teardown": [],
+  "setup": [
+    "npm install -g @bradygaster/squad-cli@latest\nsquad upgrade\ncopilot --agent squad --yolo"
+  ],
+  "teardown": [
+    "/exit\nsquad nap --deep"
+  ],
   "run": [
     "bash run.sh"
   ]

@@ -6,13 +6,11 @@
 //     • All 3 shapes (Circle, Square, Triangle) must appear at least once.
 //     • No single shape > 65 % of all ShapeGate obstacles.
 //
-//   MEDIUM — LanePush introduction ramp
-//     • LanePush (Left + Right combined) must be ≥ 5 % of total obstacles
-//       so the mechanic is actually taught.
-//     • LanePush must be ≤ 25 % of total to avoid the readability cliff.
-//     • No more than 3 consecutive LanePush obstacles (readability ramp).
-//     • First LanePush arrival time must be ≥ 30 s so players learn shape
-//       gates before the mechanic is introduced. (#217)
+//   MEDIUM/HARD — LowBar/HighBar are temporarily disabled
+//     • low_bar and high_bar must not appear in shipped gameplay beatmaps.
+//
+//   MEDIUM/HARD — no removed legacy lane kinds
+//     • lane_push_left/lane_push_right/lane_block must not appear.
 //
 // All checks use FAIL_CHECK (non-aborting) so every offending song is
 // reported in a single run.  The test is tagged [difficulty_ramp][issue135].
@@ -44,11 +42,6 @@ namespace fs = std::filesystem;
 static constexpr int   EASY_MIN_DISTINCT_SHAPES        = 3;
 static constexpr float EASY_MAX_DOMINANT_SHAPE_PCT      = 65.0f;
 
-static constexpr float MEDIUM_MIN_LANE_PUSH_PCT         = 5.0f;
-static constexpr float MEDIUM_MAX_LANE_PUSH_PCT         = 25.0f;
-static constexpr int   MEDIUM_MAX_CONSEC_LANE_PUSH      = 3;
-static constexpr float MEDIUM_MIN_FIRST_LANEPUSH_SEC    = 30.0f;
-
 // ── Helpers ───────────────────────────────────────────────────────────────
 
 static std::vector<std::string> find_shipped_beatmaps() {
@@ -64,8 +57,14 @@ static std::vector<std::string> find_shipped_beatmaps() {
     return paths;
 }
 
-static bool is_lane_push(ObstacleKind k) {
-    return k == ObstacleKind::LanePushLeft || k == ObstacleKind::LanePushRight;
+static bool is_bar(ObstacleKind k) {
+    return k == ObstacleKind::LowBar || k == ObstacleKind::HighBar;
+}
+
+static bool is_removed_lane_kind(ObstacleKind k) {
+    return k == ObstacleKind::LanePushLeft
+        || k == ObstacleKind::LanePushRight
+        || k == ObstacleKind::LaneBlock;
 }
 
 // ── Guard: content directory must be reachable ────────────────────────────
@@ -76,12 +75,12 @@ TEST_CASE("difficulty ramp: content directory is reachable from test CWD",
     REQUIRE_FALSE(find_shipped_beatmaps().empty());
 }
 
-// ── Easy: shape_gate only — no lane_push, low_bar, or high_bar ───────────
+// ── Easy: shape_gate only ──────────────────────────────────────────────────
 //
 // Contract from #125: easy difficulty = shape_gate exclusively.
 // This test is the regression guard Kujan required before merging #135.
 
-TEST_CASE("difficulty ramp: easy contains no lane_push, low_bar, or high_bar obstacles",
+TEST_CASE("difficulty ramp: easy contains only shape_gate obstacles",
           "[difficulty_ramp][issue135][easy][shape_gate_only]") {
     const auto beatmaps = find_shipped_beatmaps();
     REQUIRE_FALSE(beatmaps.empty());
@@ -93,14 +92,11 @@ TEST_CASE("difficulty ramp: easy contains no lane_push, low_bar, or high_bar obs
 
         for (const auto& beat : map.beats) {
             const auto k = beat.kind;
-            if (k == ObstacleKind::LanePushLeft
-                || k == ObstacleKind::LanePushRight
-                || k == ObstacleKind::LowBar
-                || k == ObstacleKind::HighBar) {
+            if (k != ObstacleKind::ShapeGate) {
                 FAIL_CHECK("easy shape_gate_only: " << path
                            << " contains non-shape_gate obstacle kind="
                            << static_cast<int>(k)
-                           << " (lane_push/low_bar/high_bar are hard/medium only per #125)");
+                           << " (easy must be shape_gate-only per #125)");
             }
         }
     }
@@ -160,112 +156,72 @@ TEST_CASE("difficulty ramp: easy uses all 3 shapes and no single shape dominates
     }
 }
 
-// ── Medium: LanePush ramp ─────────────────────────────────────────────────
+// ── Medium/Hard: low/high bars are disabled ────────────────────────────────
 
-TEST_CASE("difficulty ramp: medium LanePush percentage within [5%, 25%]",
-          "[difficulty_ramp][issue135][medium]") {
+TEST_CASE("difficulty ramp: medium and hard have no low_bar/high_bar",
+          "[difficulty_ramp][issue135][medium][hard][bars_disabled]") {
     const auto beatmaps = find_shipped_beatmaps();
     REQUIRE_FALSE(beatmaps.empty());
 
     for (const auto& path : beatmaps) {
-        BeatMap map;
-        std::vector<BeatMapError> errors;
-        if (!load_beat_map(path, map, errors, "medium")) continue;
+        for (const auto* difficulty : {"medium", "hard"}) {
+            BeatMap map;
+            std::vector<BeatMapError> errors;
+            if (!load_beat_map(path, map, errors, difficulty)) {
+                FAIL_CHECK("bars disabled: failed to load " << path
+                           << " difficulty=" << difficulty);
+                continue;
+            }
 
-        const int total = static_cast<int>(map.beats.size());
-        if (total == 0) continue;
+            if (map.beats.empty()) {
+                FAIL_CHECK("bars disabled: " << path
+                           << " difficulty=" << difficulty
+                           << " has zero beats after loading");
+            }
 
-        int lp_count = 0;
-        for (const auto& beat : map.beats) {
-            if (is_lane_push(beat.kind)) ++lp_count;
-        }
-
-        const float lp_pct = 100.0f * static_cast<float>(lp_count)
-                             / static_cast<float>(total);
-
-        if (lp_pct < MEDIUM_MIN_LANE_PUSH_PCT) {
-            FAIL_CHECK("medium ramp: " << path
-                       << " LanePush only " << lp_pct << "% of obstacles"
-                       << " (need >=" << MEDIUM_MIN_LANE_PUSH_PCT
-                       << "% to teach the mechanic)");
-        }
-        if (lp_pct > MEDIUM_MAX_LANE_PUSH_PCT) {
-            FAIL_CHECK("medium ramp: " << path
-                       << " LanePush at " << lp_pct << "% of obstacles"
-                       << " (limit " << MEDIUM_MAX_LANE_PUSH_PCT
-                       << "% to avoid readability cliff)");
-        }
-    }
-}
-
-TEST_CASE("difficulty ramp: medium LanePush max consecutive run <= 3",
-          "[difficulty_ramp][issue135][medium]") {
-    const auto beatmaps = find_shipped_beatmaps();
-    REQUIRE_FALSE(beatmaps.empty());
-
-    for (const auto& path : beatmaps) {
-        BeatMap map;
-        std::vector<BeatMapError> errors;
-        if (!load_beat_map(path, map, errors, "medium")) continue;
-
-        int max_consec = 0;
-        int cur = 0;
-        for (const auto& beat : map.beats) {
-            if (is_lane_push(beat.kind)) {
-                ++cur;
-                if (cur > max_consec) max_consec = cur;
-            } else {
-                cur = 0;
+            int non_bar_count = 0;
+            for (const auto& beat : map.beats) {
+                if (is_bar(beat.kind)) {
+                    FAIL_CHECK("bars disabled: " << path
+                               << " difficulty=" << difficulty
+                               << " contains bar obstacle at beat "
+                               << beat.beat_index
+                               << " kind=" << static_cast<int>(beat.kind));
+                } else {
+                    ++non_bar_count;
+                }
+            }
+            if (non_bar_count == 0) {
+                FAIL_CHECK("bars disabled: " << path
+                           << " difficulty=" << difficulty
+                           << " has no remaining non-bar obstacles");
             }
         }
-
-        if (max_consec > MEDIUM_MAX_CONSEC_LANE_PUSH) {
-            FAIL_CHECK("medium ramp: " << path
-                       << " has " << max_consec << " consecutive LanePush obstacles"
-                       << " (limit " << MEDIUM_MAX_CONSEC_LANE_PUSH
-                       << " for readability)");
-        }
     }
 }
 
-// ── Medium: first LanePush arrival time ≥ 30 s ───────────────────────────
-//
-// Design contract from #135 (decision doc gap noted as non-blocking):
-// LanePush must not appear before 30 seconds so players learn shape gates
-// first. Arrival time is computed from bpm and offset in the beatmap JSON:
-//     arrival = offset + beat_index * (60.0 / bpm)
-//
-// Uses the minimum beat_index among all LanePush beats in case the obstacle
-// list is not strictly sorted.
-
-TEST_CASE("difficulty ramp: medium first LanePush arrival time >= 30 s",
-          "[difficulty_ramp][issue217][medium]") {
+TEST_CASE("difficulty ramp: medium and hard contain no removed lane kinds",
+          "[difficulty_ramp][issue135][medium][hard]") {
     const auto beatmaps = find_shipped_beatmaps();
     REQUIRE_FALSE(beatmaps.empty());
 
     for (const auto& path : beatmaps) {
-        BeatMap map;
-        std::vector<BeatMapError> errors;
-        if (!load_beat_map(path, map, errors, "medium")) continue;
+        for (const auto* difficulty : {"medium", "hard"}) {
+            BeatMap map;
+            std::vector<BeatMapError> errors;
+            if (!load_beat_map(path, map, errors, difficulty)) {
+                FAIL_CHECK("removed lane kinds: failed to load " << path
+                           << " difficulty=" << difficulty);
+                continue;
+            }
 
-        // Find the beat_index of the earliest LanePush obstacle.
-        int first_beat_index = -1;
-        for (const auto& beat : map.beats) {
-            if (!is_lane_push(beat.kind)) continue;
-            if (first_beat_index < 0 || beat.beat_index < first_beat_index)
-                first_beat_index = beat.beat_index;
-        }
-
-        if (first_beat_index < 0) continue;  // no LanePush in this map — skip
-
-        const float beat_period   = 60.0f / map.bpm;
-        const float first_arrival = map.offset + static_cast<float>(first_beat_index) * beat_period;
-
-        if (first_arrival < MEDIUM_MIN_FIRST_LANEPUSH_SEC) {
-            FAIL_CHECK("medium start_progress: " << path
-                       << " first LanePush (beat_index=" << first_beat_index
-                       << ") arrives at " << first_arrival << " s"
-                       << " (minimum " << MEDIUM_MIN_FIRST_LANEPUSH_SEC << " s per #135/#217)");
+            for (const auto& beat : map.beats) {
+                if (!is_removed_lane_kind(beat.kind)) continue;
+                FAIL_CHECK("removed lane kinds: " << path
+                           << " difficulty=" << difficulty
+                           << " contains removed obstacle kind="
+                           << static_cast<int>(beat.kind));
+            }
         }
     }
 }

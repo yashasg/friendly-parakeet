@@ -14,7 +14,6 @@ build/
   content/
     beatmaps/2_drama_beatmap.json
     audio/2_drama.flac
-  assets/
     fonts/LiberationMono-Regular.ttf
 ```
 
@@ -32,11 +31,11 @@ The solution is a single-file asset bundle (PAK) that:
 
 | In scope                              | Out of scope                      |
 |---------------------------------------|-----------------------------------|
-| content/ bundle (beatmaps + audio)    | assets/ bundle (fonts) — later    |
-| Ed25519 PAK signature                 | Per-entry encryption              |
-| `--dev` loose-file mode               | Hot reload / live patching        |
-| pak_tool CLI (pack + sign)            | Compression (add later if needed) |
-| AssetLoader abstraction in game       | Streaming / partial loads         |
+| content/ bundle (beatmaps + audio + fonts) | Per-entry encryption          |
+| Ed25519 PAK signature                 | Hot reload / live patching        |
+| `--dev` loose-file mode               | Compression (add later if needed) |
+| pak_tool CLI (pack + sign)            | Streaming / partial loads         |
+| AssetLoader abstraction in game       | —                                 |
 
 ---
 

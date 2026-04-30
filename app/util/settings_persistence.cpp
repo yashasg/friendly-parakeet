@@ -145,6 +145,19 @@ persistence::Result save_settings(const SettingsState& state, const std::filesys
     return persistence::Result{};
 }
 
+void mark_dirty_and_save(SettingsPersistence& persistence_state, const SettingsState& state) {
+    persistence_state.dirty = true;
+    if (persistence_state.path.empty()) {
+        persistence_state.last_save = persistence::Result{persistence::Status::PathUnavailable, {}};
+        return;
+    }
+
+    persistence_state.last_save = save_settings(state, persistence_state.path);
+    if (persistence_state.last_save.ok()) {
+        persistence_state.dirty = false;
+    }
+}
+
 void clamp_audio_offset(SettingsState& state) {
     state.audio_offset_ms = std::clamp(
         state.audio_offset_ms,

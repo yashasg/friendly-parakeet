@@ -127,7 +127,7 @@ elseif(EMSCRIPTEN)
         -sUSE_WEBGL2=1
         -sALLOW_MEMORY_GROWTH=1
         --shell-file ${CMAKE_SOURCE_DIR}/app/web/shell.html
-        --preload-file ${CMAKE_SOURCE_DIR}/assets@/assets)
+        --preload-file ${CMAKE_SOURCE_DIR}/content@/content)
 else()  # Linux
     target_compile_definitions(sokol_impl PUBLIC SOKOL_GLCORE)
     target_link_libraries(sokol_impl PUBLIC GL X11 Xi Xcursor Xrandr dl pthread)
@@ -375,7 +375,7 @@ struct TextContext {
 ```
 
 On Emscripten the font file is loaded from the virtual FS populated by
-`--preload-file assets@/assets` in the linker flags.
+`--preload-file content@/content` in the linker flags.
 
 ### Drawing (`text_draw`)
 

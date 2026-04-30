@@ -101,14 +101,13 @@ endif()
 ```
 
 ### Emscripten path
-The existing Emscripten linker flags on line 170 preload only `assets@/assets`. Add a second `--preload-file` for content. Modify the `target_link_options` block:
+Preload `content/` into the virtual filesystem. The linker options should include:
 
 ```cmake
     target_link_options(shapeshifter PRIVATE
         -sUSE_GLFW=3
         -sALLOW_MEMORY_GROWTH=1
         --shell-file ${_shell_html}
-        --preload-file ${CMAKE_SOURCE_DIR}/assets@/assets
         --preload-file ${CMAKE_SOURCE_DIR}/content@/content
     )
 ```

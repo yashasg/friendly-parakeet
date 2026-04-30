@@ -1,7 +1,7 @@
 // state.js — Single source of truth for all beatmap editor data.
 // Pure data logic: no DOM, no canvas.
 
-import { DEFAULT_BPM, DEFAULT_ZOOM } from "./constants.js";
+import { DEFAULT_BPM, DEFAULT_ZOOM, DIFFICULTY_KEYS } from "./constants.js";
 
 // ── Event Bus ───────────────────────────────────────
 const listeners = {};
@@ -127,6 +127,7 @@ export function updateBeat(index, fields) {
 }
 
 export function setActiveDifficulty(name) {
+  if (!DIFFICULTY_KEYS.includes(name) || !state.difficulties[name]) return;
   state.activeDifficulty = name;
   state.selectedIndices = [];
   emit("difficulty-changed");
@@ -134,12 +135,14 @@ export function setActiveDifficulty(name) {
 }
 
 export function addDifficulty(name) {
+  if (!DIFFICULTY_KEYS.includes(name)) return;
   if (!state.difficulties[name]) {
     state.difficulties[name] = { beats: [] };
   }
 }
 
 export function copyDifficulty(from, to) {
+  if (!DIFFICULTY_KEYS.includes(from) || !DIFFICULTY_KEYS.includes(to)) return;
   const src = state.difficulties[from];
   if (!src) return;
   state.difficulties[to] = { beats: src.beats.map((b) => ({ ...b })) };

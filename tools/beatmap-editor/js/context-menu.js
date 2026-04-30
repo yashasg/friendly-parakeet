@@ -6,12 +6,13 @@ import {
 } from './state.js';
 
 import {
-  OBSTACLE_KINDS, SHAPES, LANES, KINDS_WITH_SHAPE,
+  SHAPES, LANES, KINDS_WITH_SHAPE,
   KIND_LABELS, SHAPE_LABELS, LANE_LABELS,
-  EDITOR_OBSTACLE_KINDS
+  EDITOR_OBSTACLE_KINDS, isEditorObstacleKind
 } from './constants.js';
 
 let container = null;
+const AUTHORING_KINDS = EDITOR_OBSTACLE_KINDS.filter((kind) => kind !== 'combo_gate');
 
 // ── Helpers ─────────────────────────────────────────
 
@@ -61,10 +62,11 @@ function buildObstacleMenu(context) {
 
   // Change Kind ►
   const kindItem = createItem('Change Kind', { hasSubmenu: true });
-  const kindSubs = EDITOR_OBSTACLE_KINDS.map((kind) =>
+  const kindSubs = AUTHORING_KINDS.map((kind) =>
     createItem(KIND_LABELS[kind], {
       checked: obstacle.kind === kind,
       onClick() {
+        if (!isEditorObstacleKind(kind)) return;
         pushUndo('Change obstacle kind');
         updateBeat(context.obstacleIndex, { kind });
         hide();
@@ -136,7 +138,7 @@ function buildObstacleMenu(context) {
 // ── Empty-space menu ────────────────────────────────
 
 function buildEmptyMenu(context) {
-  for (const kind of EDITOR_OBSTACLE_KINDS) {
+  for (const kind of AUTHORING_KINDS) {
     const hasShape = KINDS_WITH_SHAPE.includes(kind);
     const label = `Place ${KIND_LABELS[kind]}`;
 
@@ -145,6 +147,7 @@ function buildEmptyMenu(context) {
       const subs = SHAPES.map((shape) =>
         createItem(SHAPE_LABELS[shape], {
           onClick() {
+            if (!isEditorObstacleKind(kind)) return;
             pushUndo('Place obstacle');
             addBeat({ beat: context.beat, kind, shape, lane: context.lane });
             hide();
@@ -157,6 +160,7 @@ function buildEmptyMenu(context) {
       container.appendChild(
         createItem(label, {
           onClick() {
+            if (!isEditorObstacleKind(kind)) return;
             pushUndo('Place obstacle');
             addBeat({ beat: context.beat, kind, lane: context.lane });
             hide();

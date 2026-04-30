@@ -5,10 +5,11 @@
 // glyphs, zoom, layout) stay here.
 
 // ── Shared constants (populated by loadSharedConstants) ──────
-export let OBSTACLE_KINDS = ["shape_gate", "lane_block", "low_bar", "high_bar", "combo_gate", "split_path"];
+export let OBSTACLE_KINDS = ["shape_gate", "low_bar", "high_bar", "combo_gate", "split_path"];
 export let SHAPES = ["circle", "square", "triangle"];
 export let LANES = [0, 1, 2];
 export let KINDS_WITH_SHAPE = ["shape_gate", "combo_gate", "split_path"];
+export const DIFFICULTY_KEYS = Object.freeze(["easy", "medium", "hard"]);
 export let VALIDATION = {
     BPM_MIN: 60,
     BPM_MAX: 300,
@@ -19,11 +20,34 @@ export let VALIDATION = {
     MIN_SHAPE_CHANGE_GAP: 3,
 };
 
+function getContentRootUrl() {
+    const moduleUrl = new URL(import.meta.url);
+    if (moduleUrl.pathname.includes('/tools/beatmap-editor/js/')) {
+        return new URL('../../../content/', moduleUrl);
+    }
+    return new URL('../content/', moduleUrl);
+}
+
+export function getContentUrl(path) {
+    const normalized = path.replace(/^\/+/, '').replace(/^content\//, '');
+    return new URL(normalized, getContentRootUrl());
+}
+
+export function canAutoLoadBundledContent() {
+    const moduleUrl = new URL(import.meta.url);
+    return (moduleUrl.protocol === 'http:' || moduleUrl.protocol === 'https:') &&
+        moduleUrl.pathname.includes('/tools/beatmap-editor/js/');
+}
+
+function getSharedConstantsUrl() {
+    return getContentUrl('constants.json');
+}
+
 // Load shared constants from content/constants.json (call once at startup).
 // Falls back to the defaults above if the fetch fails (e.g. file:// protocol).
 export async function loadSharedConstants() {
     try {
-        const resp = await fetch('../../content/constants.json');
+        const resp = await fetch(getSharedConstantsUrl());
         if (!resp.ok) return;
         const data = await resp.json();
         if (data.obstacle_kinds) OBSTACLE_KINDS = data.obstacle_kinds;
@@ -50,14 +74,36 @@ export async function loadSharedConstants() {
 // ── Editor-only constants ────────────────────────────────────
 export const LANE_LABELS = ["Left", "Center", "Right"];
 
-// Obstacle kinds available in the editor UI
-export const EDITOR_OBSTACLE_KINDS = ["shape_gate", "lane_push_left", "lane_push_right"];
+export const DEFAULT_LEVELS = Object.freeze([
+    Object.freeze({
+        id: "1_stomper",
+        label: "STOMPER",
+        beatmapPath: "content/beatmaps/1_stomper_beatmap.json",
+        audioPath: "content/audio/1_stomper.flac",
+    }),
+    Object.freeze({
+        id: "2_drama",
+        label: "DRAMA",
+        beatmapPath: "content/beatmaps/2_drama_beatmap.json",
+        audioPath: "content/audio/2_drama.flac",
+    }),
+    Object.freeze({
+        id: "3_mental_corruption",
+        label: "MENTAL CORRUPTION",
+        beatmapPath: "content/beatmaps/3_mental_corruption_beatmap.json",
+        audioPath: "content/audio/3_mental_corruption.flac",
+    }),
+]);
+
+// Obstacle kinds available in the editor UI (authoring surfaces only)
+export const EDITOR_OBSTACLE_KINDS = Object.freeze(["shape_gate", "low_bar", "high_bar", "split_path"]);
+
+export function isEditorObstacleKind(kind) {
+    return EDITOR_OBSTACLE_KINDS.includes(kind);
+}
 
 export const KIND_LABELS = {
     shape_gate: "ShapeGate",
-    lane_block: "LaneBlock",
-    lane_push_left: "Push Left",
-    lane_push_right: "Push Right",
     low_bar: "LowBar",
     high_bar: "HighBar",
     combo_gate: "ComboGate",
@@ -91,9 +137,6 @@ export const COLORS = {
 
     kind: {
         shape_gate: "#4fc3f7",
-        lane_block: "#ff8a65",
-        lane_push_left: "#ff8a65",
-        lane_push_right: "#ff8a65",
         low_bar: "#aed581",
         high_bar: "#ce93d8",
         combo_gate: "#fff176",
@@ -109,9 +152,6 @@ export const COLORS = {
 
 export const GLYPHS = {
     shape_gate: "◆",
-    lane_block: "▬",
-    lane_push_left: "◁◁◁",
-    lane_push_right: "▷▷▷",
     low_bar: "⌐",
     high_bar: "¬",
     combo_gate: "◈",

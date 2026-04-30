@@ -12,6 +12,13 @@
     <!-- ── Top Bar: essential actions only ────────────── -->
     <div id="toolbar">
         <div class="toolbar-group">
+            <span class="toolbar-label">Level</span>
+            <select id="default-level-select" class="btn btn-sm" title="Load bundled level and audio">
+                <option value="">Custom</option>
+            </select>
+        </div>
+        <div class="toolbar-separator"></div>
+        <div class="toolbar-group">
             <button id="btn-import" class="btn btn-sm" title="Import beatmap JSON">📂 Import</button>
             <button id="btn-export" class="btn btn-sm btn-accent" title="Export (Ctrl+S)">💾 Export</button>
         </div>
@@ -40,6 +47,8 @@
         </div>
         <div class="toolbar-separator"></div>
         <span id="beat-count-display" class="toolbar-label" style="color: var(--text);">0 beats</span>
+        <div class="toolbar-separator"></div>
+        <button id="btn-help" class="btn btn-sm" title="How to use this editor (?)" aria-haspopup="dialog" aria-controls="help-modal">❔ Help</button>
         <div class="toolbar-separator"></div>
         <button id="btn-settings" class="btn btn-sm" title="Song settings">⚙</button>
     </div>
@@ -89,11 +98,82 @@
 
 </div>
 
-<!-- ── Settings Modal (song metadata) ────────────── -->
-<div id="settings-modal" class="modal-overlay">
-    <div class="modal">
+<!-- ── Help Modal (how to use) ─────────────────────── -->
+<div id="help-modal" class="modal-overlay" aria-hidden="true">
+    <div class="modal modal-help" role="dialog" aria-modal="true" aria-labelledby="help-modal-title">
         <div class="modal-header">
-            <span class="panel-title" style="margin:0;">Song Settings</span>
+            <span id="help-modal-title" class="panel-title" style="margin:0;">How to Use the Beatmap Editor</span>
+            <button id="btn-help-close" class="btn btn-sm" aria-label="Close help">✕</button>
+        </div>
+        <div class="help-content">
+            <section>
+                <h3>Loading Audio &amp; Levels</h3>
+                <ul>
+                    <li><strong>Level</strong> dropdown loads bundled beatmap + audio.</li>
+                    <li><strong>Import</strong> loads a beatmap JSON from disk.</li>
+                    <li><strong>Audio</strong> loads local audio (<code>.flac</code>, <code>.mp3</code>, <code>.wav</code>, <code>.ogg</code>).</li>
+                    <li>Drag and drop audio/beatmap files anywhere in the editor.</li>
+                    <li><strong>Analysis</strong> imports analysis overlay JSON for structure/intensity regions.</li>
+                </ul>
+            </section>
+
+            <section>
+                <h3>Playback &amp; Seek</h3>
+                <ul>
+                    <li>Use <strong>Play / Pause</strong> (or <kbd>Space</kbd>) to audition timing.</li>
+                    <li><strong>Stop</strong> resets playback to the start.</li>
+                    <li>Use playback-rate control (0.25×–1.0×) and optional <strong>Metro</strong> click track.</li>
+                    <li><strong>Set Offset</strong> writes the current playhead time into offset metadata.</li>
+                </ul>
+            </section>
+
+            <section>
+                <h3>Placing, Selecting &amp; Moving Obstacles</h3>
+                <ul>
+                    <li>Left-click an empty beat/lane cell to place the current tool.</li>
+                    <li>Left-click an obstacle to select it. <kbd>Shift</kbd>+click adds/removes multi-select.</li>
+                    <li>Drag selected obstacle(s) to move beat/lane position.</li>
+                    <li>Right-click for context actions (change kind/shape/lane, duplicate, delete).</li>
+                </ul>
+            </section>
+
+            <section>
+                <h3>Editing Properties, Validation &amp; Export</h3>
+                <ul>
+                    <li>Use <strong>Song Settings</strong> for song ID/title/BPM/offset/lead beats/duration/path.</li>
+                    <li><strong>Tap BPM</strong> estimates tempo from repeated taps.</li>
+                    <li>The validation panel appears automatically when rules fail.</li>
+                    <li>Export with <strong>Export</strong> button or <kbd>Ctrl/Cmd+S</kbd>.</li>
+                </ul>
+            </section>
+
+            <section>
+                <h3>Keyboard Shortcuts</h3>
+                <div class="help-shortcuts">
+                    <div><kbd>Space</kbd> Play/Pause</div>
+                    <div><kbd>←</kbd>/<kbd>→</kbd> Move cursor 1 beat</div>
+                    <div><kbd>Shift</kbd>+<kbd>←</kbd>/<kbd>→</kbd> Move cursor 4 beats</div>
+                    <div><kbd>1</kbd>/<kbd>2</kbd>/<kbd>3</kbd> Set lane (left/center/right)</div>
+                    <div><kbd>Q</kbd>/<kbd>W</kbd>/<kbd>E</kbd> Set shape (circle/square/triangle)</div>
+                    <div><kbd>Enter</kbd> Place at cursor</div>
+                    <div><kbd>Delete</kbd>/<kbd>Backspace</kbd> Delete selected</div>
+                    <div><kbd>Ctrl/Cmd+Z</kbd> Undo</div>
+                    <div><kbd>Ctrl/Cmd+Shift+Z</kbd> Redo</div>
+                    <div><kbd>Ctrl/Cmd+S</kbd> Export</div>
+                    <div><kbd>+</kbd>/<kbd>-</kbd> Zoom in/out</div>
+                    <div><kbd>Esc</kbd> Close this dialog</div>
+                </div>
+                <p class="help-footnote">Shortcuts are ignored while typing in form fields. Press <kbd>?</kbd> any time to reopen this help.</p>
+            </section>
+        </div>
+    </div>
+</div>
+
+<!-- ── Settings Modal (song metadata) ────────────── -->
+<div id="settings-modal" class="modal-overlay" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="settings-modal-title">
+        <div class="modal-header">
+            <span id="settings-modal-title" class="panel-title" style="margin:0;">Song Settings</span>
             <button id="btn-settings-close" class="btn btn-sm">✕</button>
         </div>
         <div class="form-row">
@@ -149,8 +229,9 @@
     <div id="panel-palette">
         <div id="kind-palette">
             <button class="palette-btn active" data-kind="shape_gate"></button>
-            <button class="palette-btn" data-kind="lane_push_left"></button>
-            <button class="palette-btn" data-kind="lane_push_right"></button>
+            <button class="palette-btn" data-kind="low_bar"></button>
+            <button class="palette-btn" data-kind="high_bar"></button>
+            <button class="palette-btn" data-kind="split_path"></button>
         </div>
         <div id="shape-palette">
             <button class="palette-btn active" data-shape="circle"></button>

@@ -44,3 +44,5 @@ bench_logger.log
 
 # Root-level beatmap exports; shipped beatmaps live under content/beatmaps/.
 /*_beatmap.json
+.squad/sessions/
+.squad-workstream

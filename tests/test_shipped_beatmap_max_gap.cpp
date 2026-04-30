@@ -27,9 +27,10 @@
 
 namespace fs = std::filesystem;
 
-// Maximum silent gap (in beats) per difficulty (issue #138)
+// Maximum silent gap (in beats) per difficulty (issue #138).
+// Medium allows +2 beats while low/high bars are temporarily disabled.
 static constexpr int MAX_GAP_EASY   = 40;
-static constexpr int MAX_GAP_MEDIUM = 32;
+static constexpr int MAX_GAP_MEDIUM = 34;
 static constexpr int MAX_GAP_HARD   = 30;
 
 static int get_max_gap(const std::vector<int>& beats) {

@@ -251,6 +251,46 @@ TEST_CASE("Settings persistence: save_settings reports unwritable parent path", 
     std::filesystem::remove_all(root);
 }
 
+TEST_CASE("Settings persistence runtime: mark_dirty_and_save persists and clears dirty", "[settings][issue-303]") {
+    const std::filesystem::path root = "test_settings_runtime_save";
+    const std::filesystem::path file = root / "settings.json";
+    std::filesystem::remove_all(root);
+
+    SettingsState state;
+    state.audio_offset_ms = 30;
+    state.haptics_enabled = false;
+    state.reduce_motion = true;
+    state.ftue_run_count = 1;
+
+    SettingsPersistence persistence_state;
+    persistence_state.path = file.string();
+
+    settings::mark_dirty_and_save(persistence_state, state);
+    CHECK_FALSE(persistence_state.dirty);
+    CHECK(persistence_state.last_save.status == persistence::Status::Success);
+    CHECK(std::filesystem::exists(file));
+
+    SettingsState loaded;
+    REQUIRE(settings::load_settings(loaded, file).ok());
+    CHECK(loaded.audio_offset_ms == state.audio_offset_ms);
+    CHECK(loaded.haptics_enabled == state.haptics_enabled);
+    CHECK(loaded.reduce_motion == state.reduce_motion);
+    CHECK(loaded.ftue_run_count == state.ftue_run_count);
+
+    std::filesystem::remove_all(root);
+}
+
+TEST_CASE("Settings persistence runtime: mark_dirty_and_save keeps dirty when path unavailable",
+          "[settings][issue-303]") {
+    SettingsState state;
+    SettingsPersistence persistence_state;
+
+    settings::mark_dirty_and_save(persistence_state, state);
+
+    CHECK(persistence_state.dirty);
+    CHECK(persistence_state.last_save.status == persistence::Status::PathUnavailable);
+}
+
 TEST_CASE("Persistence paths: one shared policy resolves both settings and high-score files", "[settings]") {
     persistence::Paths paths;
     const auto result = persistence::resolve_paths(paths, "test_persistence_policy_root");

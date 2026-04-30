@@ -109,7 +109,11 @@ TEST_CASE("parse: all valid kinds parse without errors", "[parse][kind]") {
         })";
         INFO("Testing kind: " << kind);
         CHECK(parse_beat_map(json, map, errors));
-        CHECK(map.beats.size() == 1);
+        if (kind == "low_bar" || kind == "high_bar") {
+            CHECK(map.beats.empty());
+        } else {
+            CHECK(map.beats.size() == 1);
+        }
     }
 }
 

@@ -1,6 +1,7 @@
 #include "all_systems.h"
 #include "../session/play_session.h"
 #include "../components/game_state.h"
+#include "../components/input.h"
 #include "../util/obstacle_counter.h"
 #include "../components/input_events.h"
 #include "../components/rhythm.h"
@@ -35,6 +36,17 @@ void game_state_system(entt::registry& reg, float dt) {
 
     if (gs.transition_pending) {
         gs.transition_pending = false;
+
+        // Clear any in-flight pointer capture when changing screens so
+        // down/up state from the previous phase cannot leak into the next UI.
+        if (auto* input = reg.ctx().find<InputState>()) {
+            input->touch_down = false;
+            input->touch_up = false;
+            input->touching = false;
+            input->active_source = InputSource::None;
+            input->duration = 0.0f;
+        }
+
         switch (gs.next_phase) {
             case GamePhase::Playing:      setup_play_session(reg);  break;
             case GamePhase::GameOver:

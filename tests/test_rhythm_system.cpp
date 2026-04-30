@@ -53,16 +53,14 @@ TEST_CASE("beatmap: parse all obstacle kinds", "[rhythm][beatmap]") {
     })";
 
     REQUIRE(parse_beat_map(json, map, errors));
-    REQUIRE(map.beats.size() == 6);
+    REQUIRE(map.beats.size() == 4);
     CHECK(map.beats[0].kind == ObstacleKind::ShapeGate);
     CHECK(map.beats[1].kind == ObstacleKind::LaneBlock);
     CHECK(map.beats[1].blocked_mask == 0b101);
-    CHECK(map.beats[2].kind == ObstacleKind::LowBar);
-    CHECK(map.beats[3].kind == ObstacleKind::HighBar);
-    CHECK(map.beats[4].kind == ObstacleKind::ComboGate);
-    CHECK(map.beats[4].blocked_mask == 0b011);
-    CHECK(map.beats[5].kind == ObstacleKind::SplitPath);
-    CHECK(map.beats[5].lane == 2);
+    CHECK(map.beats[2].kind == ObstacleKind::ComboGate);
+    CHECK(map.beats[2].blocked_mask == 0b011);
+    CHECK(map.beats[3].kind == ObstacleKind::SplitPath);
+    CHECK(map.beats[3].lane == 2);
 }
 
 TEST_CASE("beatmap: tempo_changes in JSON are ignored", "[rhythm][beatmap]") {

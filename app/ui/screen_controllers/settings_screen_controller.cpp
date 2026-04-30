@@ -3,6 +3,7 @@
 
 #include "../../components/game_state.h"
 #include "../../util/settings.h"
+#include "../../util/settings_persistence.h"
 #include "../../platform/haptics_backend.h"
 #include "screen_controller_base.h"
 #include <algorithm>
@@ -64,24 +65,37 @@ void render_settings_screen_ui(entt::registry& reg) {
     }
     if (!st) return;
 
+    bool settings_changed = false;
     if (settings_controller.state().AudioOffsetMinusPressed) {
+        const auto before = st->audio_offset_ms;
         st->audio_offset_ms = static_cast<int16_t>(
             std::max(static_cast<int>(SettingsState::MIN_AUDIO_OFFSET_MS),
                      static_cast<int>(st->audio_offset_ms) - SettingsState::AUDIO_OFFSET_STEP_MS));
+        settings_changed = settings_changed || (st->audio_offset_ms != before);
     }
     if (settings_controller.state().AudioOffsetPlusPressed) {
+        const auto before = st->audio_offset_ms;
         st->audio_offset_ms = static_cast<int16_t>(
             std::min(static_cast<int>(SettingsState::MAX_AUDIO_OFFSET_MS),
                      static_cast<int>(st->audio_offset_ms) + SettingsState::AUDIO_OFFSET_STEP_MS));
+        settings_changed = settings_changed || (st->audio_offset_ms != before);
     }
     if (settings_controller.state().HapticsTogglePressed) {
         st->haptics_enabled = !st->haptics_enabled;
+        settings_changed = true;
         if (st->haptics_enabled) {
             platform::haptics::warmup();
         }
     }
     if (settings_controller.state().ReduceMotionTogglePressed) {
         st->reduce_motion = !st->reduce_motion;
+        settings_changed = true;
+    }
+
+    if (settings_changed) {
+        if (auto* persistence_state = reg.ctx().find<SettingsPersistence>()) {
+            settings::mark_dirty_and_save(*persistence_state, *st);
+        }
     }
 
     if (close_pressed) {

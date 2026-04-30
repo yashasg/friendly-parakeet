@@ -15,7 +15,8 @@ import {
 import {
     OBSTACLE_KINDS, SHAPES, KINDS_WITH_SHAPE,
     KIND_LABELS, SHAPE_LABELS, COLORS, GLYPHS, SHAPE_GLYPHS,
-    MIN_ZOOM, MAX_ZOOM, DEFAULT_ZOOM,
+    MIN_ZOOM, MAX_ZOOM, DEFAULT_ZOOM, DIFFICULTY_KEYS,
+    DEFAULT_LEVELS, canAutoLoadBundledContent, getContentUrl,
 } from './constants.js';
 
 // ── DOM Element Cache ───────────────────────────────
@@ -53,6 +54,7 @@ export function init(audioModule) {
     // Cache DOM elements
     els = {
         // Toolbar
+        defaultLevelSelect: $('default-level-select'),
         btnImport:       $('btn-import'),
         btnExport:       $('btn-export'),
         btnLoadAudio:    $('btn-load-audio'),
@@ -100,6 +102,7 @@ export function init(audioModule) {
     bindPalette();
     bindDifficultyTabs();
     bindToolbar();
+    bindDefaultLevelSelector();
     bindValidation();
     bindDragAndDrop();
 
@@ -111,6 +114,7 @@ export function init(audioModule) {
     syncZoomDisplay();
     syncBeatCount();
     runValidation();
+    loadInitialDefaultLevel();
 }
 
 // ── Metadata Form ───────────────────────────────────
@@ -166,6 +170,113 @@ function syncMetadataToDOM() {
     els.metaLeadBeats.value = state.leadBeats;
     els.metaDuration.value = state.duration;
     els.metaSongPath.value = state.songPath;
+}
+
+function applyImportedBeatmapData(data) {
+    setMetadata({
+        songId:    data.songId,
+        title:     data.title,
+        bpm:       data.bpm,
+        offset:    data.offset,
+        leadBeats: data.leadBeats,
+        duration:  data.duration,
+        songPath:  data.songPath,
+    });
+
+    state.difficulties = data.difficulties;
+
+    // If the active difficulty doesn't exist in imported data, fix it
+    const diffKeys = Object.keys(data.difficulties);
+    if (!data.difficulties[state.activeDifficulty]) {
+        if (diffKeys.length > 0) {
+            setActiveDifficulty(diffKeys[0]);
+        } else {
+            state.difficulties = { easy: { beats: [] }, medium: { beats: [] }, hard: { beats: [] } };
+            setActiveDifficulty('easy');
+        }
+    }
+
+    state.selectedIndices = [];
+    rebuildDifficultyTabs();
+    emit('beats-changed');
+    emit('difficulty-changed');
+    emit('selection-changed');
+}
+
+function setDefaultLevelSelection(levelId) {
+    if (els.defaultLevelSelect) {
+        els.defaultLevelSelect.value = levelId || '';
+    }
+}
+
+function bindDefaultLevelSelector() {
+    if (!els.defaultLevelSelect) return;
+
+    for (const level of DEFAULT_LEVELS) {
+        const option = document.createElement('option');
+        option.value = level.id;
+        option.textContent = level.label;
+        els.defaultLevelSelect.appendChild(option);
+    }
+
+    els.defaultLevelSelect.addEventListener('change', () => {
+        const level = DEFAULT_LEVELS.find((candidate) => candidate.id === els.defaultLevelSelect.value);
+        if (level) {
+            loadBundledLevel(level, { recordUndo: true });
+        }
+    });
+}
+
+function loadInitialDefaultLevel() {
+    if (!canAutoLoadBundledContent()) return;
+
+    const firstLevel = DEFAULT_LEVELS[0];
+    if (firstLevel) {
+        loadBundledLevel(firstLevel, { recordUndo: false });
+    }
+}
+
+async function loadBundledLevel(level, { recordUndo }) {
+    if (!level) return;
+
+    if (els.defaultLevelSelect) {
+        els.defaultLevelSelect.disabled = true;
+    }
+
+    try {
+        const beatmapUrl = getContentUrl(level.beatmapPath);
+        const response = await fetch(beatmapUrl);
+        if (!response.ok) {
+            throw new Error(`Failed to load beatmap: ${response.status} ${response.statusText}`);
+        }
+
+        const { data, errors } = importBeatmap(await response.text());
+        if (!data || errors.length > 0) {
+            showValidationErrors(
+                (errors || []).map(msg => ({ message: msg, severity: 'error', beatIndex: -1 }))
+            );
+            return;
+        }
+
+        if (recordUndo) {
+            pushUndo('Load bundled level');
+        }
+        applyImportedBeatmapData(data);
+        setDefaultLevelSelection(level.id);
+
+        if (_audioModule && typeof _audioModule.loadAudioUrl === 'function') {
+            const buffer = await _audioModule.loadAudioUrl(getContentUrl(level.audioPath));
+            state.audioBuffer = buffer;
+        }
+    } catch (e) {
+        showValidationErrors([
+            { message: e.message || 'Failed to load bundled level', severity: 'error', beatIndex: -1 },
+        ]);
+    } finally {
+        if (els.defaultLevelSelect) {
+            els.defaultLevelSelect.disabled = false;
+        }
+    }
 }
 
 function handleTapBpm() {
@@ -238,6 +349,16 @@ function bindDifficultyTabs() {
         const name = window.prompt('New difficulty name:');
         if (!name || !name.trim()) return;
         const key = name.trim().toLowerCase().replace(/\s+/g, '_');
+        if (!DIFFICULTY_KEYS.includes(key)) {
+            showValidationErrors([
+                {
+                    message: `Difficulty must be one of: ${DIFFICULTY_KEYS.join(', ')}`,
+                    severity: 'error',
+                    beatIndex: -1,
+                },
+            ]);
+            return;
+        }
         addDifficulty(key);
         rebuildDifficultyTabs();
         setActiveDifficulty(key);
@@ -290,6 +411,7 @@ function bindToolbar() {
 
     // Export beatmap
     els.btnExport.addEventListener('click', handleExportBeatmap);
+    on('export-requested', handleExportBeatmap);
 
     // Load audio
     els.btnLoadAudio.addEventListener('click', () => els.fileInputAudio.click());
@@ -338,36 +460,8 @@ async function handleImportBeatmap() {
         }
 
         pushUndo('Import beatmap');
-
-        // Apply imported data to state
-        setMetadata({
-            songId:    data.songId,
-            title:     data.title,
-            bpm:       data.bpm,
-            offset:    data.offset,
-            leadBeats: data.leadBeats,
-            duration:  data.duration,
-            songPath:  data.songPath,
-        });
-
-        state.difficulties = data.difficulties;
-
-        // If the active difficulty doesn't exist in imported data, fix it
-        const diffKeys = Object.keys(data.difficulties);
-        if (!data.difficulties[state.activeDifficulty]) {
-            if (diffKeys.length > 0) {
-                setActiveDifficulty(diffKeys[0]);
-            } else {
-                state.difficulties = { easy: { beats: [] }, medium: { beats: [] }, hard: { beats: [] } };
-                setActiveDifficulty('easy');
-            }
-        }
-
-        state.selectedIndices = [];
-        rebuildDifficultyTabs();
-        emit('beats-changed');
-        emit('difficulty-changed');
-        emit('selection-changed');
+        applyImportedBeatmapData(data);
+        setDefaultLevelSelection('');
     } catch (e) {
         showValidationErrors([
             { message: 'Failed to read file: ' + e.message, severity: 'error', beatIndex: -1 },
@@ -379,9 +473,21 @@ async function handleImportBeatmap() {
 }
 
 function handleExportBeatmap() {
-    const json = exportBeatmap(state);
-    const filename = (state.songId || 'untitled') + '_beatmap.json';
-    downloadFile(filename, json);
+    try {
+        const json = exportBeatmap(state);
+        const filename = (state.songId || 'untitled') + '_beatmap.json';
+        downloadFile(filename, json);
+    } catch (e) {
+        const details = String(e?.message || 'Unknown export failure')
+            .split('\n')
+            .map((msg) => msg.trim())
+            .filter(Boolean);
+        showValidationErrors(details.map((message) => ({
+            message,
+            severity: 'error',
+            beatIndex: -1,
+        })));
+    }
 }
 
 async function handleLoadAudio() {
@@ -452,25 +558,21 @@ function runValidation() {
 
 function showValidationErrors(errors) {
     const list = els.validationList;
-    list.innerHTML = '';
+    list.textContent = '';
 
     for (const err of errors) {
         const icon = err.severity === 'error' ? '✗' : '⚠';
         const div = document.createElement('div');
         div.className = 'validation-item ' + err.severity;
-        div.innerHTML =
-            '<span class="validation-icon">' + icon + '</span> ' +
-            escapeHtml(err.message);
+        const iconSpan = document.createElement('span');
+        iconSpan.className = 'validation-icon';
+        iconSpan.textContent = icon;
+        div.appendChild(iconSpan);
+        div.appendChild(document.createTextNode(' ' + err.message));
         list.appendChild(div);
     }
 
     els.validationPanel.classList.toggle('has-errors', errors.length > 0);
-}
-
-function escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
 }
 
 // ── Drag and Drop ───────────────────────────────────
@@ -512,27 +614,8 @@ function bindDragAndDrop() {
                 const { data, errors } = importBeatmap(text);
                 if (data && errors.length === 0) {
                     pushUndo('Import beatmap (drop)');
-                    setMetadata({
-                        songId: data.songId, title: data.title,
-                        bpm: data.bpm, offset: data.offset,
-                        leadBeats: data.leadBeats, duration: data.duration,
-                        songPath: data.songPath,
-                    });
-                    state.difficulties = data.difficulties;
-                    const diffKeys = Object.keys(data.difficulties);
-                    if (!data.difficulties[state.activeDifficulty]) {
-                        if (diffKeys.length > 0) {
-                            setActiveDifficulty(diffKeys[0]);
-                        } else {
-                            state.difficulties = { easy: { beats: [] }, medium: { beats: [] }, hard: { beats: [] } };
-                            setActiveDifficulty('easy');
-                        }
-                    }
-                    state.selectedIndices = [];
-                    rebuildDifficultyTabs();
-                    emit('beats-changed');
-                    emit('difficulty-changed');
-                    emit('selection-changed');
+                    applyImportedBeatmapData(data);
+                    setDefaultLevelSelection('');
                 } else {
                     showValidationErrors(
                         (errors || []).map(msg => ({ message: msg, severity: 'error', beatIndex: -1 }))

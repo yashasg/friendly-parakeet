@@ -855,8 +855,7 @@
         },
         {
           "beat": 160,
-          "kind": "lane_push_right",
-          "lane": 2
+          "kind": "low_bar"
         },
         {
           "beat": 190,
@@ -872,8 +871,7 @@
         },
         {
           "beat": 194,
-          "kind": "lane_push_right",
-          "lane": 2
+          "kind": "low_bar"
         },
         {
           "beat": 198,
@@ -901,8 +899,7 @@
         },
         {
           "beat": 209,
-          "kind": "lane_push_left",
-          "lane": 1
+          "kind": "high_bar"
         },
         {
           "beat": 211,
@@ -924,8 +921,7 @@
         },
         {
           "beat": 226,
-          "kind": "lane_push_right",
-          "lane": 2
+          "kind": "low_bar"
         },
         {
           "beat": 228,
@@ -941,8 +937,7 @@
         },
         {
           "beat": 235,
-          "kind": "lane_push_left",
-          "lane": 2
+          "kind": "high_bar"
         },
         {
           "beat": 237,
@@ -976,8 +971,7 @@
         },
         {
           "beat": 252,
-          "kind": "lane_push_right",
-          "lane": 1
+          "kind": "low_bar"
         },
         {
           "beat": 254,
@@ -1083,8 +1077,7 @@
         },
         {
           "beat": 318,
-          "kind": "lane_push_right",
-          "lane": 1
+          "kind": "low_bar"
         },
         {
           "beat": 321,
@@ -1106,8 +1099,7 @@
         },
         {
           "beat": 328,
-          "kind": "lane_push_right",
-          "lane": 1
+          "kind": "low_bar"
         },
         {
           "beat": 330,
@@ -1171,8 +1163,7 @@
         },
         {
           "beat": 376,
-          "kind": "lane_push_left",
-          "lane": 2
+          "kind": "high_bar"
         },
         {
           "beat": 380,
@@ -1194,8 +1185,7 @@
         },
         {
           "beat": 389,
-          "kind": "lane_push_left",
-          "lane": 2
+          "kind": "high_bar"
         },
         {
           "beat": 391,
@@ -1217,8 +1207,7 @@
         },
         {
           "beat": 397,
-          "kind": "lane_push_left",
-          "lane": 1
+          "kind": "high_bar"
         },
         {
           "beat": 399,
@@ -1300,8 +1289,7 @@
         },
         {
           "beat": 455,
-          "kind": "lane_push_left",
-          "lane": 2
+          "kind": "high_bar"
         },
         {
           "beat": 458,
@@ -1317,8 +1305,7 @@
         },
         {
           "beat": 462,
-          "kind": "lane_push_right",
-          "lane": 2
+          "kind": "low_bar"
         },
         {
           "beat": 465,
@@ -1328,8 +1315,7 @@
         },
         {
           "beat": 468,
-          "kind": "lane_push_right",
-          "lane": 2
+          "kind": "low_bar"
         },
         {
           "beat": 470,
@@ -1345,8 +1331,7 @@
         },
         {
           "beat": 475,
-          "kind": "lane_push_left",
-          "lane": 2
+          "kind": "high_bar"
         },
         {
           "beat": 478,
@@ -1362,8 +1347,7 @@
         },
         {
           "beat": 482,
-          "kind": "lane_push_right",
-          "lane": 2
+          "kind": "low_bar"
         },
         {
           "beat": 485,
@@ -1373,8 +1357,7 @@
         },
         {
           "beat": 488,
-          "kind": "lane_push_right",
-          "lane": 2
+          "kind": "low_bar"
         },
         {
           "beat": 509,
@@ -1396,8 +1379,7 @@
         },
         {
           "beat": 534,
-          "kind": "lane_push_right",
-          "lane": 2
+          "kind": "low_bar"
         },
         {
           "beat": 538,
@@ -1413,8 +1395,7 @@
         },
         {
           "beat": 542,
-          "kind": "lane_push_right",
-          "lane": 2
+          "kind": "low_bar"
         },
         {
           "beat": 546,
@@ -1430,8 +1411,7 @@
         },
         {
           "beat": 553,
-          "kind": "lane_push_left",
-          "lane": 1
+          "kind": "high_bar"
         },
         {
           "beat": 556,
@@ -1447,8 +1427,7 @@
         },
         {
           "beat": 560,
-          "kind": "lane_push_right",
-          "lane": 2
+          "kind": "low_bar"
         }
       ],
       "count": 136
@@ -1655,8 +1634,7 @@
         },
         {
           "beat": 113,
-          "kind": "lane_push_left",
-          "lane": 1
+          "kind": "high_bar"
         },
         {
           "beat": 117,
@@ -1732,8 +1710,7 @@
         },
         {
           "beat": 160,
-          "kind": "lane_push_right",
-          "lane": 2
+          "kind": "low_bar"
         },
         {
           "beat": 162,
@@ -1755,8 +1732,7 @@
         },
         {
           "beat": 171,
-          "kind": "lane_push_left",
-          "lane": 1
+          "kind": "high_bar"
         },
         {
           "beat": 173,
@@ -2180,8 +2156,7 @@
         },
         {
           "beat": 380,
-          "kind": "lane_push_right",
-          "lane": 2
+          "kind": "low_bar"
         },
         {
           "beat": 382,
@@ -2191,13 +2166,11 @@
         },
         {
           "beat": 384,
-          "kind": "lane_push_right",
-          "lane": 1
+          "kind": "low_bar"
         },
         {
           "beat": 388,
-          "kind": "lane_push_right",
-          "lane": 1
+          "kind": "low_bar"
         },
         {
           "beat": 390,
@@ -2207,8 +2180,7 @@
         },
         {
           "beat": 393,
-          "kind": "lane_push_left",
-          "lane": 2
+          "kind": "high_bar"
         },
         {
           "beat": 395,
@@ -2218,8 +2190,7 @@
         },
         {
           "beat": 397,
-          "kind": "lane_push_left",
-          "lane": 1
+          "kind": "high_bar"
         },
         {
           "beat": 402,
@@ -2319,8 +2290,7 @@
         },
         {
           "beat": 452,
-          "kind": "lane_push_right",
-          "lane": 1
+          "kind": "low_bar"
         },
         {
           "beat": 455,
@@ -2330,8 +2300,7 @@
         },
         {
           "beat": 458,
-          "kind": "lane_push_right",
-          "lane": 2
+          "kind": "low_bar"
         },
         {
           "beat": 460,
@@ -2341,8 +2310,7 @@
         },
         {
           "beat": 462,
-          "kind": "lane_push_right",
-          "lane": 1
+          "kind": "low_bar"
         },
         {
           "beat": 465,
@@ -2352,8 +2320,7 @@
         },
         {
           "beat": 468,
-          "kind": "lane_push_right",
-          "lane": 2
+          "kind": "low_bar"
         },
         {
           "beat": 470,
@@ -2363,8 +2330,7 @@
         },
         {
           "beat": 472,
-          "kind": "lane_push_right",
-          "lane": 1
+          "kind": "low_bar"
         },
         {
           "beat": 475,
@@ -2374,8 +2340,7 @@
         },
         {
           "beat": 478,
-          "kind": "lane_push_right",
-          "lane": 2
+          "kind": "low_bar"
         },
         {
           "beat": 480,
@@ -2385,8 +2350,7 @@
         },
         {
           "beat": 482,
-          "kind": "lane_push_right",
-          "lane": 1
+          "kind": "low_bar"
         },
         {
           "beat": 485,
@@ -2396,8 +2360,7 @@
         },
         {
           "beat": 488,
-          "kind": "lane_push_right",
-          "lane": 2
+          "kind": "low_bar"
         },
         {
           "beat": 490,
@@ -2407,8 +2370,7 @@
         },
         {
           "beat": 492,
-          "kind": "lane_push_right",
-          "lane": 1
+          "kind": "low_bar"
         },
         {
           "beat": 495,
@@ -2418,8 +2380,7 @@
         },
         {
           "beat": 498,
-          "kind": "lane_push_right",
-          "lane": 2
+          "kind": "low_bar"
         },
         {
           "beat": 500,
@@ -2429,8 +2390,7 @@
         },
         {
           "beat": 503,
-          "kind": "lane_push_left",
-          "lane": 1
+          "kind": "high_bar"
         },
         {
           "beat": 505,
@@ -2440,8 +2400,7 @@
         },
         {
           "beat": 508,
-          "kind": "lane_push_right",
-          "lane": 1
+          "kind": "low_bar"
         },
         {
           "beat": 510,
