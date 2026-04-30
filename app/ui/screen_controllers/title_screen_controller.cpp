@@ -21,9 +21,9 @@ bool read_title_pointer_release(const entt::registry& reg, Vector2& pointer) {
     const auto& input = reg.ctx().get<InputState>();
     if (pointer_release_position(input, pointer)) return true;
 
-    // UI controllers rely on raygui/raylib pointer edges directly for web
-    // desktop reliability, then map to virtual UI space.
-    if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+    // Title activation is tolerant to browser stacks that miss release edges:
+    // accept either edge from raylib and map to virtual UI coordinates.
+    if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT) || IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
         const auto& st = reg.ctx().get<ScreenTransform>();
         const Vector2 raw = GetMousePosition();
         pointer = {(raw.x - st.offset_x) / st.scale, (raw.y - st.offset_y) / st.scale};
