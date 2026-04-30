@@ -175,6 +175,29 @@ TEST_CASE("game_state: transition to LevelSelect resets confirmed", "[gamestate]
     CHECK_FALSE(lss.confirmed);
 }
 
+TEST_CASE("game_state: transition clears in-flight pointer capture", "[gamestate][input]") {
+    auto reg = make_registry();
+    auto& gs = reg.ctx().get<GameState>();
+    auto& input = reg.ctx().get<InputState>();
+
+    input.touch_down = true;
+    input.touch_up = false;
+    input.touching = true;
+    input.active_source = InputSource::Mouse;
+    input.duration = 0.25f;
+
+    gs.transition_pending = true;
+    gs.next_phase = GamePhase::LevelSelect;
+
+    game_state_system(reg, 0.016f);
+
+    CHECK_FALSE(input.touch_down);
+    CHECK_FALSE(input.touch_up);
+    CHECK_FALSE(input.touching);
+    CHECK(input.active_source == InputSource::None);
+    CHECK(input.duration == 0.0f);
+}
+
 TEST_CASE("game_state: transition to Title sets phase and resets timer", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
