@@ -10,6 +10,7 @@
 #include "../components/rhythm.h"
 #include "../components/song_state.h"
 #include "../audio/music_context.h"
+#include "../audio/music_stream.h"
 #include "../components/high_score.h"
 #include "../util/high_score_persistence.h"
 #include "../components/rng.h"
@@ -126,7 +127,7 @@ void setup_play_session(entt::registry& reg) {
         std::string exe_audio = std::string(GetApplicationDirectory()) + beatmap.song_path;
         const char* audio_paths[] = { exe_audio.c_str(), beatmap.song_path.c_str() };
         for (const char* path : audio_paths) {
-            Music stream = LoadMusicStream(path);
+            Music stream = load_music_stream(path, false);
             if (stream.frameCount > 0) {
                 music->stream  = stream;
                 music->loaded  = true;

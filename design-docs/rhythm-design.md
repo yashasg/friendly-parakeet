@@ -561,7 +561,7 @@ The player can hear the beat coming. The timing is legible. What the player cann
 ## Beat Map File
 
 ```
-  assets/beatmaps/<song_id>.json
+  content/beatmaps/<song_id>.json
 
   Contains:
     • song_id, title, bpm, offset, duration_sec

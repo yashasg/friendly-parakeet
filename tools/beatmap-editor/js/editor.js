@@ -10,7 +10,7 @@ import { hitTest, beatToX, xToBeat, timeToX } from './timeline.js';
 
 import {
   KINDS_WITH_SHAPE, MIN_ZOOM, MAX_ZOOM,
-  HEADER_HEIGHT, LANE_HEIGHT
+  HEADER_HEIGHT, LANE_HEIGHT, isEditorObstacleKind
 } from './constants.js';
 
 // ── Drag State ──────────────────────────────────────
@@ -52,6 +52,11 @@ function clampLane(lane) {
 
 function clampBeat(beat) {
   return Math.max(0, beat);
+}
+
+function resolveAuthoringKind(kind) {
+  if (isEditorObstacleKind(kind)) return kind;
+  return 'shape_gate';
 }
 
 // ── Init ────────────────────────────────────────────
@@ -98,8 +103,9 @@ export function init(canvas, contextMenu, audioModule) {
       };
     } else if (beat >= 0 && lane >= 0) {
       // Clicked on empty cell — place obstacle
+      const kind = resolveAuthoringKind(state.tool.kind);
       pushUndo('Place obstacle');
-      addBeat({ beat, kind: state.tool.kind, shape: state.tool.shape, lane });
+      addBeat({ beat, kind, shape: state.tool.shape, lane });
       state.selectedIndices = [];
       emit('selection-changed');
     }
@@ -239,10 +245,11 @@ export function init(canvas, contextMenu, audioModule) {
       // Place at cursor
       case 'Enter':
         if (state.cursor.beat >= 0 && state.cursor.lane >= 0) {
+          const kind = resolveAuthoringKind(state.tool.kind);
           pushUndo('Place obstacle');
           addBeat({
             beat: state.cursor.beat,
-            kind: state.tool.kind,
+            kind,
             shape: state.tool.shape,
             lane: state.cursor.lane,
           });

@@ -80,8 +80,8 @@ what the browser provides natively.
 | Place | Click on a lane×beat intersection to place an obstacle |
 | Context menu | Right-click an obstacle to open an inline context menu |
 | Obstacle palette | Select active obstacle kind before placing (for new placements) |
-| Shape selector | For shape_gate/combo_gate/split_path: pick circle/square/triangle |
-| Lane push display | For lane_push_left/right: shows ▲/▼ direction arrow in lane |
+| Shape selector | For authored shape_gate/split_path entries: pick circle/square/triangle |
+| Obstacle glyph display | Uses per-kind glyphs/colors (LowBar, HighBar, valid imported ComboGate, SplitPath) in-lane |
 | Drag to move | Drag an obstacle to a different beat or lane |
 | Multi-select | Shift-click or box-select, then move/delete as group |
 | Copy/paste | Select a range of beats, copy, paste at a different position |
@@ -98,11 +98,8 @@ depending on whether the click target is an existing obstacle or empty space.
   ┌─────────────────────────────┐
   │  Change Kind ►              │
   │  ├─ ShapeGate               │
-  │  ├─ LanePushLeft            │
-  │  ├─ LanePushRight           │
   │  ├─ LowBar                  │
   │  ├─ HighBar                 │
-  │  ├─ ComboGate               │
   │  └─ SplitPath               │
   │─────────────────────────────│
   │  Change Shape ►             │
@@ -129,14 +126,8 @@ depending on whether the click target is an existing obstacle or empty space.
   │  ├─ ■ Square                │
   │  └─ ▲ Triangle              │
   │─────────────────────────────│
-  │  Place LanePushLeft         │
-  │  Place LanePushRight        │
   │  Place LowBar               │
   │  Place HighBar              │
-  │  Place ComboGate ►          │
-  │  ├─ ● Circle                │
-  │  ├─ ■ Square                │
-  │  └─ ▲ Triangle              │
   │  Place SplitPath ►          │
   │  ├─ ● Circle                │
   │  ├─ ■ Square                │
@@ -157,11 +148,10 @@ depending on whether the click target is an existing obstacle or empty space.
 ```
   ┌──────────────────────────────────────────────────┐
   │  Kind:                                           │
-  │  [■ ShapeGate] [▲ LanePushL] [▼ LanePushR]      │
-  │  [⌐ LowBar]                                     │
-  │  [¬ HighBar]   [◈ ComboGate] [⑂ SplitPath]      │
+  │  [■ ShapeGate] [⌐ LowBar] [¬ HighBar]           │
+  │  [⑂ SplitPath]                                  │
   │                                                  │
-  │  Shape (for shape_gate/combo/split):             │
+  │  Shape (for shape_gate/split):                   │
   │  [● Circle]  [■ Square]  [▲ Triangle]            │
   └──────────────────────────────────────────────────┘
 ```
@@ -434,7 +424,7 @@ export function isVisible()                                           → bool
 
 // Menu builds itself from the arguments:
 //   obstacleIndex !== null → "Change Kind / Shape / Lane / Duplicate / Delete"
-//   obstacleIndex === null → "Place ShapeGate▸ / LanePushLeft / LanePushRight / LowBar / ..."
+//   obstacleIndex === null → "Place ShapeGate▸ / LowBar / HighBar / SplitPath / ..."
 // Selecting a menu item calls the appropriate state.* mutation function.
 ```
 
@@ -490,7 +480,8 @@ export function downloadFile(filename, content)        → void  // triggers bro
 #### `constants.js` (Shared Constants)
 
 ```javascript
-export const OBSTACLE_KINDS = ["shape_gate","lane_push_left","lane_push_right","low_bar","high_bar","combo_gate","split_path"];
+export const OBSTACLE_KINDS = ["shape_gate","low_bar","high_bar","combo_gate","split_path"];
+export const EDITOR_OBSTACLE_KINDS = ["shape_gate","low_bar","high_bar","split_path"];
 export const SHAPES = ["circle", "square", "triangle"];
 export const LANES = [0, 1, 2];
 export const KINDS_WITH_SHAPE = ["shape_gate", "combo_gate", "split_path"];
@@ -684,7 +675,7 @@ Depends on: state.js, constants.js
 - Pure DOM component (no canvas)
 - `show(x, y, context)` — build menu items dynamically:
   - If obstacle exists at click: Change Kind ▸, Change Shape ▸, Change Lane ▸, Duplicate, Delete
-  - If empty: Place ShapeGate ▸ (circle/square/triangle), Place LanePushLeft, Place LanePushRight, etc.
+  - If empty: Place ShapeGate ▸ (circle/square/triangle), Place LowBar, Place HighBar, Place SplitPath, etc.
 - Submenus on hover with current value checkmarked
 - Click handler calls state mutation functions
 - `hide()` on click-outside or Escape
