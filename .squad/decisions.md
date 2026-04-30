@@ -1,6 +1,6 @@
 # Decisions Registry
 
-*Last merged: 2026-04-29T22:03:09Z*
+*Last merged: 2026-04-30T04:46:22Z*
 
 ### #169 — Gameplay Shape Buttons Migrated to raygui HUD Ownership (2026-04-29)
 
@@ -9987,4 +9987,87 @@ Keeps live gameplay tap behavior stable while removing dead menu-era ECS surface
 **Archive trigger:** Deferred
 **Reason:** All entries dated 2026-04-26 or later (within 30-day window). No entries older than 30 days exist; archival not necessary at this time.
 **Next check:** Recommend archive review on 2026-05-27 if registry exceeds 650 KB.
+
+
+---
+
+### #172 — Remove Top-Level assets/ Root; Standardize on content/ (2026-04-29)
+
+**Owner:** Hockney (Platform)  
+**Status:** IMPLEMENTED AND APPROVED
+
+Eliminated duplicate asset root by consolidating all shipped content under `content/` directory and updating all references across runtime, CMake, Emscripten, docs, and tooling.
+
+**Applied Changes:**
+- Moved font payload from `assets/fonts/` → `content/fonts/`
+- Updated runtime font fallback paths in `app/ui/text_renderer.cpp` to `content/fonts/LiberationMono-Regular.ttf`
+- Updated CMake to copy fonts from/to `content/fonts` only; removed `assets@/assets` from Emscripten preload; only `content@/content` preloaded
+- Updated docs/beatmap-authoring references: `assets/beatmaps/` → `content/beatmaps/`
+
+**Rationale:** Single-root packaging eliminates drift between runtime search paths, native post-build copy destinations, and WASM virtual filesystem mounting. Also removes duplicated content expectations in tooling/docs.
+
+**Validation:**
+- Build succeeded (CMake + Emscripten stack)
+- Diff check clean
+- Exposed stale LanePush test contract (delegated to Baer)
+
+---
+
+### #173 — Assets Root Audit and QA Validation (2026-04-30)
+
+**Owner:** Verbal (QA)  
+**Status:** IMPLEMENTED AND APPROVED
+
+Comprehensive audit confirming all `assets/` references post-removal and validating standardization on `content/` root across runtime, build, workflows, editor, tooling, tests, and docs.
+
+**Scope:**
+- Audited references in: runtime `.cpp` files, CMake, CI workflows, editor config, tooling scripts, test suite, docs
+- Confirmed only Apple-specific (`Assets.xcassets`) and historical `.squad/` logs contain `assets` term
+- Validated migration completeness with zero drift detected
+
+**Decision:** Treat `content/` as the only shipped game-data root. Any `assets/` path usage in runtime/build/editor surfaces is considered stale unless it refers to Apple's `Assets.xcassets` packaging term or generic English prose.
+
+**QA Blocker Identified:** `test_shipped_beatmap_difficulty_ramp.cpp` medium LanePush percentage = 0% in shipped beatmaps (unrelated to folder migration; fixed by Baer).
+
+---
+
+### #174 — LanePush Difficulty-Ramp Test Contract Migration (2026-04-30)
+
+**Owner:** Baer (Test)  
+**Status:** IMPLEMENTED AND APPROVED
+
+Replaced stale LanePush difficulty-ramp assertions in `tests/test_shipped_beatmap_difficulty_ramp.cpp` with bar-focused contracts aligned to current shipped content and validators.
+
+**Applied Changes:**
+- Medium bars: low+high percentage window, max consecutive run, first-arrival readability gate
+- Hard: low/high coverage requirement
+- Explicit rejection of removed legacy kinds (`lane_push_left/right`, `lane_block`) in medium/hard
+- Easy: shape_gate-only (unchanged)
+
+**Rationale:** Aligns C++ regression checks with shipped content and acceptance validators (`validate_difficulty_ramp.py`, `validate_beatmap_bars.py`) while retaining meaningful progression/readability protections.
+
+**Validation:**
+- `./build/shapeshifter_tests "[difficulty_ramp]"` passes
+- Full non-bench suite passes
+- Both Python beatmap validators pass
+- Diff check clean
+
+---
+
+### #175 — Asset Bundle Specification Documentation Fix (2026-04-30)
+
+**Owner:** Verbal (QA), Reviewer: Kujan  
+**Status:** IMPLEMENTED AND APPROVED
+
+Corrected `docs/asset-bundle-spec.md` tree diagram per Kujan's review feedback (duplicate `content/` nodes under root).
+
+**Applied Changes:**
+- Revised tree diagram: single `content/` node as child of root, with `beatmaps/`, `audio/`, `fonts/` as children of `content/`
+- Verified no other duplicate or orphan sibling nodes
+- Updated prose to align with corrected tree
+
+**Validation:**
+- Kujan approved revised diagram
+- Diff check clean
+- All downstream documentation consistent
 

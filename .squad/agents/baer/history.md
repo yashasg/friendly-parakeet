@@ -573,3 +573,32 @@ Decision #169 captured in decisions.md. Risk hotspots validated during refactor 
 **Your role:** Validation foundation. Initial stale-symbol audit confirmed zero orphaned references across `app`, `tests`, `benchmarks`, `docs`, `design-docs` for removed components/systems (`ActiveTag`, `ActiveInPhase`, `UIActiveCache`, `UIState`, `ActiveScreen`, `ui_navigation_system`, `has_overlay`, `HitBox`, `HitCircle`, `hit_test`, `phase_activation`).
 
 **Outcome:** All cleanup work passed final validation. Full test suite (2637 assertions, 795 test cases) passing. `git diff --check` clean. Orchestration logs written for all agents.
+
+## 2026-04-30 — Difficulty-ramp test contract migration (LanePush → bars)
+
+**File modified:** `tests/test_shipped_beatmap_difficulty_ramp.cpp`
+
+- Replaced stale medium LanePush contract (percentage / consecutive run / first-arrival) with medium **bar** contract using `low_bar` + `high_bar` combined:
+  - percentage within `[5%, 25%]`
+  - max consecutive bars `<= 3`
+  - first bar arrival `>= 30s`
+- Kept easy strictness and strengthened wording: easy now asserts **only** `shape_gate` (no non-shape kinds).
+- Added hard bar coverage regression: each shipped hard map must include both `low_bar` and `high_bar`.
+- Added medium/hard legacy-kind regression: `lane_push_left`, `lane_push_right`, and `lane_block` must not appear.
+
+**Validation evidence:**
+- `cmake --build build -- -j4` ✅
+- `./build/shapeshifter_tests "[difficulty_ramp]"` ✅ (9 assertions, 8 test cases)
+- `./build/shapeshifter_tests "~[bench]"` ✅ (2180 assertions, 763 test cases)
+- `python3 tools/validate_difficulty_ramp.py` ✅
+- `python3 tools/validate_beatmap_bars.py --difficulty hard` ✅
+- `git --no-pager diff --check` ✅
+
+## Learnings
+- When gameplay content migrates obstacle kinds, preserve regression intent by mirroring **validator contracts** (Python acceptance scripts) in C++ shipped-content tests; this avoids stale mechanics-specific assertions while keeping release-safety coverage intact.
+
+## Session: Assets Root Removal (2026-04-30)
+
+Replaced stale LanePush difficulty-ramp test contract in `tests/test_shipped_beatmap_difficulty_ramp.cpp`. Removed medium LanePush assertions (0% in shipped beatmaps). Implemented bar-focused medium contracts (low+high percentage window, max consecutive run, first-arrival readability gate). Hard: low/high coverage. Explicit rejection of legacy kinds. `./build/shapeshifter_tests "[difficulty_ramp]"` passes. Full suite + validators pass. Diff clean.
+
+**Manifested:** Decision #174 merged to `.squad/decisions.md`
