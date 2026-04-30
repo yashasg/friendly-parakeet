@@ -1,6 +1,6 @@
 # Decisions Registry
 
-*Last merged: 2026-04-30T07:15:10Z*
+*Last merged: 2026-04-30T07:37:46Z*
 
 ### #169 — Gameplay Shape Buttons Migrated to raygui HUD Ownership (2026-04-29)
 
@@ -10110,6 +10110,54 @@ Immediately after successful `LoadMusicStream(...)` call.
 **Validation Evidence:**
 - `cmake --build build -- -j4` passed, zero warnings (clang arm64)
 - `git --no-pager diff --check` clean
+
+---
+
+
+### #170 — Beatmap Editor Help Dialog UX Pass (2026-04-30)
+
+**Owners:** Redfoot (UX/A11y), Fenster (implementation), Baer (verification)
+**Status:** IMPLEMENTED AND APPROVED
+
+Beatmap editor Help button and modal enhanced with accessibility guarantees and keyboard shortcuts.
+
+**Scope:**
+- Visible `❔ Help` button in toolbar (pre-Settings)
+- Static help content: Load, Playback, Place/Move, Properties+Validation+Export, Shortcuts
+- Dismiss affordances: close button, backdrop click, Escape key
+- Global `?` (Shift+/) shortcut with form-field guard
+- A11y semantics: `role="dialog"`, `aria-modal`, `aria-labelledby`, `aria-haspopup`, `aria-controls`, `aria-hidden` toggling
+- Safe rendering: no HTML injection of user-controlled strings
+
+**Implementation:**
+- **Fenster:** Help button, modal structure, dismiss wiring, reusable `bindModal()` pattern
+- **Redfoot:** A11y enhancements, `?` shortcut + guard, close-button auto-focus, footnote styling
+- **Baer:** Initial verification (feature not visible), final verification (accepted)
+
+**Key Decisions:**
+1. Reused existing modal pattern rather than creating parallel duplicate
+2. `bindModal({trigger, modal, close})` helper is generic and dependency-free — reuse for Settings, About, Diagnostics
+3. Help shortcuts table mirrors `editor.js` wiring; keep in sync manually (no auto-generation)
+4. Form-field guard on `?` shortcut matches existing `editor.js` pattern (INPUT/SELECT/TEXTAREA)
+
+**Validation Evidence:**
+- `node --check tools/beatmap-editor/js/main.js` ✅
+- `node --test tools/beatmap-editor/test/*.test.js` ✅ (22/22 passing)
+- `git --no-pager diff --check` ✅
+- Browserless validation confirmed modal presence, wiring, safety
+
+**Files Changed:**
+- `tools/beatmap-editor/index.html`
+- `tools/beatmap-editor/css/editor.css`
+- `tools/beatmap-editor/js/main.js`
+- `tools/beatmap-editor/test/help-modal-ui.test.js`
+
+**For other agents:**
+- When adding new shortcuts to `editor.js`, mirror them in help shortcuts table
+- Reuse `bindModal()` for future dialogs (Settings model for template)
+- Avoid generic `kbd { }` rule; scope to `.help-content kbd, .help-shortcuts kbd`
+
+**Limitation:** Browserless validation cannot certify focus trapping or screen-reader announcement timing; require browser-capable tests if those become release gates.
 
 ---
 

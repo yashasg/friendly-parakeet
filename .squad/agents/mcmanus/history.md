@@ -256,3 +256,9 @@ Next: Await merge approval.
 - **Validation evidence:** `cmake --build build -- -j4`; `./build/shapeshifter_tests "[song_playback]"`; `./build/shapeshifter_tests "[gamestate]"`; `./build/shapeshifter_tests "[play_session]"`; `./build/shapeshifter_tests "~[bench]"`; `git --no-pager diff --check` (all passed).
 - **Decision logged:** #176 in `.squad/decisions.md` (2026-04-30T07:15:10Z)
 - **Cross-team:** Baer added regression tests; Kujan approved full cycle.
+
+### 2026-04-30 — Refactor: repeat intent moved to music-load seam
+
+- **Refactor:** Added `app/audio/music_stream.h` with `load_music_stream(const char* path, bool repeat)` that wraps `LoadMusicStream(...)`, sets `stream.looping = repeat`, and returns the `Music`.
+- **Call-site update:** `setup_play_session(...)` now calls `load_music_stream(path, false)` and no longer writes `music->stream.looping = false` directly.
+- **Validation evidence:** `cmake --build build -- -j4`; `./build/shapeshifter_tests "[song_playback]"`; `./build/shapeshifter_tests "[gamestate]"`; `./build/shapeshifter_tests "[play_session]"`; `./build/shapeshifter_tests "[song_complete]"`; `./build/shapeshifter_tests "~[bench]"`; `git --no-pager diff --check` (all passed).

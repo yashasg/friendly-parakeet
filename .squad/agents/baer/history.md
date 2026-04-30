@@ -630,3 +630,63 @@ Replaced stale LanePush difficulty-ramp test contract in `tests/test_shipped_bea
 ## Learnings
 - For terminal-phase regressions, use a deterministic two-tick contract test: tick A latches end-of-song state, tick B consumes `transition_pending` and enters `SongComplete`, then assert playback state remains latched (`finished=true`, `playing=false`) across later ticks.
 - If production relies on non-deterministic runtime clocks (e.g., `GetMusicTimePlayed()`), add an explicit injectable clock seam; otherwise loop-at-track-end bugs are not reliably reproducible in headless CI.
+
+## 2026-04-30 — Repeat-aware music loader refactor verification
+
+**Status:** VALIDATED (target shape present)
+
+**Verification result:**
+- Required shape is present: project-local helper `load_music_stream(const char* path, bool repeat)` added in `app/audio/music_stream.h`.
+- `setup_play_session` now calls `load_music_stream(path, false)` and no longer mutates `music->stream.looping` directly.
+- Source sweep in `app/` + `tests/`: no `music->stream.looping = false`; no raw `LoadMusicStream(` callsites outside the helper wrapper.
+- Deterministic unit seam for repeat policy is still limited: helper itself still calls raylib `LoadMusicStream`, so behavior-level tests remain integration-oriented.
+
+**Validation evidence:**
+- `cmake --build build -- -j4` ✅
+- `./build/shapeshifter_tests "[song_playback]"` ✅
+- `./build/shapeshifter_tests "[gamestate]"` ✅
+- `./build/shapeshifter_tests "[play_session]"` ✅
+- `./build/shapeshifter_tests "[song_complete]"` ✅
+- `./build/shapeshifter_tests "~[bench]"` ✅
+- `git --no-pager diff --check` ✅
+
+## Learnings
+- Repeat-policy wiring is easiest to review with a source-level gate: enforce that session code calls a repeat-aware project helper and that direct `music->stream.looping` writes are absent from play-session setup.
+
+## 2026-04-30 — Level editor help UI verification
+
+**Status:** NOT VERIFIED (implementation not visible in current tree)
+
+**Verification result:**
+- Re-checked `tools/beatmap-editor/index.html`, `css/editor.css`, and `js/main.js` after a brief wait; no help button/help dialog markup, styles, or wiring are present yet.
+- Existing modal behavior only covers song settings (`#settings-modal`), with close-button + backdrop-dismiss affordances.
+- Chose source inspection + static tests path (no browser-only deps) because current Node harness validates modules and file-level UI contracts, not runtime DOM interaction.
+
+**Validation evidence:**
+- `node --check` on touched beatmap-editor JS files ✅
+- `node --test tools/beatmap-editor/test/*.test.js` ✅ (20/20 passing)
+- `git --no-pager diff --check` ✅
+
+## Learnings
+- For browserless editor UI checks, gate regressions by asserting static HTML/CSS/JS contracts (element IDs, dismiss wiring, guidance text) in Node tests, then reserve interactive behavior for browser-capable runs.
+- When cross-agent UI changes are pending, perform a timed re-check before validation and explicitly report “not visible yet” rather than inferring intent.
+
+## 2026-04-30 — Level editor help UI final validation
+
+**Status:** VALIDATED (source-level + node tests)
+
+**Verification result:**
+- Help entrypoint exists and is visible: `#btn-help` in toolbar.
+- Help modal exists with static authored content: `#help-modal` + `#btn-help-close` + guidance sections for loading audio/levels, playback/seek, placing/selecting/moving obstacles, editing properties, validation/export, and shortcuts.
+- Dismiss behavior is wired for close button, backdrop click, and Escape key (`bindModal` + Escape handler in `main.js`).
+- Accessibility semantics present: trigger `aria-haspopup="dialog"`/`aria-controls`, modal `role="dialog"`, `aria-modal`, labelled title, and `aria-hidden` toggled in JS.
+- Rendering path is safe/static for help copy (no dynamic HTML injection; text is authored in `index.html`, modal state toggled via classes/attributes).
+
+**Validation evidence:**
+- `node --check tools/beatmap-editor/js/main.js` ✅
+- `node --test tools/beatmap-editor/test/*.test.js` ✅ (22/22 passing)
+- `git --no-pager diff --check` ✅
+
+## Learnings
+- The browserless help-UI validation pattern is now confirmed end-to-end: static contract checks plus Node tests are effective for modal presence, wiring, and safety assertions.
+- Limitation: without browser automation, we still cannot prove focus trapping, screen-reader announcement timing, or computed visual layering beyond source/test contracts.
