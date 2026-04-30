@@ -18,7 +18,7 @@ TitleController title_controller;
 
 bool is_start_tap(const TitleLayoutState& state, const InputState& input) {
     Vector2 pointer = {};
-    if (!pointer_release_position(input, pointer)) return false;
+    if (!pointer_activate_position(input, pointer)) return false;
     const Rectangle settings_button = {state.Anchor01.x + 632, state.Anchor01.y + 1170, 64, 64};
 #ifndef PLATFORM_WEB
     const Rectangle exit_button = {state.Anchor01.x + 260, state.Anchor01.y + 1080, 200, 56};

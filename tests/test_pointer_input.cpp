@@ -33,3 +33,15 @@ TEST_CASE("pointer input: release returns normalized coordinates", "[input][poin
     CHECK(pos.x == input.end_x);
     CHECK(pos.y == input.end_y);
 }
+
+TEST_CASE("pointer input: activate returns release coordinates", "[input][pointer]") {
+    InputState input{};
+    input.touch_up = true;
+    input.end_x = 123.0f;
+    input.end_y = 456.0f;
+
+    Vector2 pos{};
+    REQUIRE(pointer_activate_position(input, pos));
+    CHECK(pos.x == input.end_x);
+    CHECK(pos.y == input.end_y);
+}
