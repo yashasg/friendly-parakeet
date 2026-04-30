@@ -68,6 +68,19 @@ jobs:
             -DVCPKG_TARGET_TRIPLET=wasm32-emscripten
           cmake --build build-web -- -j$(nproc)
 
+      - name: Verify WASM async support flag
+        run: |
+          LINK_FILE="build-web/CMakeFiles/shapeshifter.dir/link.txt"
+          if [ ! -f "$LINK_FILE" ]; then
+            echo "::error title=Missing linker command::$LINK_FILE not found"
+            exit 1
+          fi
+          if ! grep -q -- "-sASYNCIFY" "$LINK_FILE"; then
+            echo "::error title=Missing async support flag::shapeshifter link flags must include -sASYNCIFY for emscripten_sleep support"
+            exit 1
+          fi
+          echo "Verified -sASYNCIFY is present in shapeshifter link flags"
+
       - name: Run WASM tests (via CTest + Node)
         run: |
           cd build-web
@@ -99,6 +112,12 @@ jobs:
           ref: gh-pages
           fetch-depth: 1
 
+      - name: Checkout source (main)
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          path: _src
+
       - name: Download build artifact
         uses: actions/download-artifact@v5
         with:
@@ -125,13 +144,29 @@ jobs:
           find . -maxdepth 1 -type f ! -name '.nojekyll' ! -name '.git' -delete
           # Move new build files to root
           cp -f _new_build/* .
+          # Deploy static level editor to /level-editor
+          rm -rf level-editor
+          mkdir -p level-editor/js level-editor/css
+          cp -f _src/tools/beatmap-editor/index.html level-editor/
+          cp -f _src/tools/beatmap-editor/js/*.js level-editor/js/
+          cp -f _src/tools/beatmap-editor/css/*.css level-editor/css/
           for file in index.html index.js index.wasm index.data sw.js; do
             if [ ! -s "$file" ]; then
               echo "::error title=Invalid deployed artifact::$file missing or empty after deploy copy"
               exit 1
             fi
           done
+          for file in \
+            level-editor/index.html \
+            level-editor/js/main.js \
+            level-editor/css/editor.css; do
+            if [ ! -s "$file" ]; then
+              echo "::error title=Invalid level editor artifact::$file missing or empty after deploy copy"
+              exit 1
+            fi
+          done
           rm -rf _new_build
+          rm -rf _src
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A

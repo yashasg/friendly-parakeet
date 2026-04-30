@@ -8,7 +8,7 @@ import * as timeline from './timeline.js';
 import * as editor from './editor.js';
 import * as contextMenu from './context-menu.js';
 import * as panels from './panels.js';
-import { validate, exportBeatmap, downloadFile } from './io.js';
+import { validate } from './io.js';
 import { loadSharedConstants, SHAPE_GLYPHS, KIND_LABELS, KINDS_WITH_SHAPE } from './constants.js';
 
 // ── Load shared constants, then boot ────────────────────────────────
@@ -43,16 +43,41 @@ catch (e) { console.error('[main] editor.init failed:', e); }
 try { panels.init(audio); }
 catch (e) { console.error('[main] panels.init failed:', e); }
 
-// ── Settings Modal ──────────────────────────────────────────────────
+// ── Modals ──────────────────────────────────────────────────────────
 
 const settingsModal = document.getElementById('settings-modal');
-const btnSettings = document.getElementById('btn-settings');
-const btnSettingsClose = document.getElementById('btn-settings-close');
+const helpModal = document.getElementById('help-modal');
 
-btnSettings.addEventListener('click', () => settingsModal.classList.add('visible'));
-btnSettingsClose.addEventListener('click', () => settingsModal.classList.remove('visible'));
-settingsModal.addEventListener('click', (e) => {
-    if (e.target === settingsModal) settingsModal.classList.remove('visible');
+bindModal({
+    trigger: document.getElementById('btn-settings'),
+    modal: settingsModal,
+    close: document.getElementById('btn-settings-close'),
+});
+
+bindModal({
+    trigger: document.getElementById('btn-help'),
+    modal: helpModal,
+    close: document.getElementById('btn-help-close'),
+});
+
+window.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    if (helpModal?.classList.contains('visible')) {
+        hideModal(helpModal);
+    } else if (settingsModal?.classList.contains('visible')) {
+        hideModal(settingsModal);
+    }
+});
+
+// Open help with '?' (Shift+/) when not typing in form fields.
+window.addEventListener('keydown', (e) => {
+    if (e.key !== '?') return;
+    const tag = e.target?.tagName;
+    if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+    if (helpModal?.classList.contains('visible')) return;
+    e.preventDefault();
+    showModal(helpModal);
+    document.getElementById('btn-help-close')?.focus();
 });
 
 // ── Tool Display ────────────────────────────────────────────────────
@@ -136,16 +161,6 @@ on('metadata-changed', () => {
     }
 });
 
-// ── Export Wiring ───────────────────────────────────────────────────
-// editor.js emits 'export-requested' on Ctrl+S; panels.js handles the
-// toolbar button click directly but doesn't listen on the event bus.
-
-on('export-requested', () => {
-    const json = exportBeatmap(state);
-    const filename = (state.songId || 'untitled') + '_beatmap.json';
-    downloadFile(filename, json);
-});
-
 // ── Time Formatting ─────────────────────────────────────────────────
 
 function formatTime(seconds) {
@@ -205,3 +220,23 @@ function frame() {
 requestAnimationFrame(frame);
 
 } // end boot()
+
+function bindModal({ trigger, modal, close }) {
+    if (!trigger || !modal || !close) return;
+
+    trigger.addEventListener('click', () => showModal(modal));
+    close.addEventListener('click', () => hideModal(modal));
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) hideModal(modal);
+    });
+}
+
+function showModal(modal) {
+    modal.classList.add('visible');
+    modal.setAttribute('aria-hidden', 'false');
+}
+
+function hideModal(modal) {
+    modal.classList.remove('visible');
+    modal.setAttribute('aria-hidden', 'true');
+}

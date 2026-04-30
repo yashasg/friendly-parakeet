@@ -79,6 +79,9 @@ Ported the removed HUD behavior (shape buttons, approach-ring affordance, colorf
 - For centered-label readability fixes, preserve existing helper pattern and change only label rectangle/size arguments; keep pause button rectangles/actions untouched.
 - Focused validation for this UI artifact path can be done with `cmake --build build --target shapeshifter_tests` followed by `./build/shapeshifter_tests` to confirm no regressions.
 - For raygui-backed hit targets that must stay visually custom, wrap `GuiButton` with temporary per-control style overrides (transparent button state colors) and restore immediately; this preserves hit testing without leaking global HUD alpha/state.
+- Beatmap editor help UX can reuse a single `bindModal({ trigger, modal, close })` helper in `tools/beatmap-editor/js/main.js` to keep settings/help dialog behavior consistent (open, overlay click dismiss, Escape dismiss, `aria-hidden` toggling).
+- Static, dependency-free UI regression coverage is practical in Node by asserting shell/wiring invariants from source files (`tools/beatmap-editor/test/help-modal-ui.test.js`) when DOM execution seams are unavailable.
+- Validation evidence for the help-modal change set: `node --check tools/beatmap-editor/js/main.js`, `node --check tools/beatmap-editor/test/help-modal-ui.test.js`, `node --test tools/beatmap-editor/test/*.test.js` (22/22 pass), and `git --no-pager diff --check` all passed.
 
 ## 2026-04-29T09:55:21Z — Pause Screen Text Fix (Approved)
 

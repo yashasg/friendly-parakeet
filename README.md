@@ -145,4 +145,4 @@ Builds on every push to main across 3 platforms:
 | macOS | Clang 20 (Homebrew LLVM) | Native |
 | Windows | Clang 20 (pre-installed) | Native |
 
-WebAssembly builds auto-deploy to GitHub Pages on merge to main.
+WebAssembly builds auto-deploy to GitHub Pages on merge to main, and the beatmap/level editor is published at `https://yashasg.github.io/friendly-parakeet/level-editor/`.

@@ -139,7 +139,7 @@ if(EMSCRIPTEN)
         -sUSE_WEBGL2=1
         -sALLOW_MEMORY_GROWTH=1
         --shell-file ${CMAKE_SOURCE_DIR}/app/web/shell.html
-        --preload-file ${CMAKE_SOURCE_DIR}/assets@/assets)
+        --preload-file ${CMAKE_SOURCE_DIR}/content@/content)
 endif()
 ```
 
@@ -459,7 +459,7 @@ void audio_system(entt::registry& reg) {
 CloseAudioDevice();
 ```
 
-Sound assets are loaded once at startup with `LoadSound("assets/sfx/hit.wav")`.
+Sound assets are loaded once at startup with `LoadSound("content/sfx/hit.wav")`.
 No streaming callback required — raylib handles the audio thread internally.
 
 This is **significantly simpler** than the `sokol_audio.h` push-model, which

@@ -60,6 +60,18 @@ jobs:
           fi
           echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> "$GITHUB_ENV"
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Run beatmap editor JS checks
+        run: |
+          for file in tools/beatmap-editor/js/*.js; do
+            node --check "$file"
+          done
+          node --test tools/beatmap-editor/test/*.test.js
+
       - name: Cache CMake build directory
         uses: actions/cache@v5
         with:

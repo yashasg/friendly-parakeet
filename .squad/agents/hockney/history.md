@@ -23,6 +23,9 @@
 
 ## Learnings
 
+- 2026-04-29: Runtime, CMake copy rules, and Emscripten preload flags must treat `content/` as the single shipped root; do not maintain a parallel top-level `assets/` tree.
+- Fonts now live at `content/fonts/LiberationMono-Regular.ttf` (plus `LICENSE-SIL-OFL.txt`), and `text_init_default()` resolves `content/fonts/...` both exe-relative and repo-relative.
+- When consolidating roots, update platform docs and tooling prompts (`.github/agents/rhythm-designer.agent.md`, `design-docs/rhythm-design.md`) so generated beatmaps target `content/beatmaps/`.
 - 2026-04-29: `bash run.sh test` can fail to find EnTT when `build/CMakeCache.txt` was first configured before the vcpkg toolchain was active; `CMAKE_TOOLCHAIN_FILE` cannot be retrofitted into an existing CMake build tree.
 - `build.sh` now verifies `${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake` exists and regenerates only `build/CMakeCache.txt` + `build/CMakeFiles` when the cache lacks vcpkg markers, preserving `build/vcpkg_installed` for CI/local cache reuse.
 - Validation: `bash run.sh test '~[bench]'` passed (775 test cases, 2210 assertions); EnTT resolved from `build/vcpkg_installed/arm64-osx/share/entt`.
@@ -119,3 +122,17 @@ Removed runtime override entirely from `title_screen_controller.cpp`. Updated `c
 **Kujan final approval:** Migration ready for production. All reviewer blockers resolved. Gameplay shape buttons now HUD/raygui-owned with preserved circular UX and 1.4× tap forgiveness.
 
 **See:** `.squad/orchestration-log/2026-04-29T22-03-09Z-hockney.md`
+
+## Session: Assets Root Removal (2026-04-30)
+
+Removed top-level `assets/` directory. Moved fonts to `content/fonts/`. Updated runtime paths in `app/ui/text_renderer.cpp`. Updated CMake font copy rules and Emscripten preload flags (removed `assets@/assets`, kept `content@/content`). Updated docs/tooling references from `assets/beatmaps/` to `content/beatmaps/`. Build validation passed. Exposed stale LanePush test contract.
+
+**Manifested:** Decision #172 merged to `.squad/decisions.md`
+
+## 2026-04-30 — PR #357 WASM preview abort (`emscripten_sleep`) hotfix
+
+- **Root cause:** `shapeshifter` WebAssembly link flags did not enable async stack transformation, so runtime calls that resolve to `emscripten_sleep` aborted in browser preview (`Aborted(Please compile your program with async support...)`).
+- **Fix:** Added `-sASYNCIFY` to the `if(EMSCRIPTEN)` link options for the `shapeshifter` target in `CMakeLists.txt` (web-only scope).
+- **Regression guard:** Added CI step `Verify WASM async support flag` in `.github/workflows/ci-wasm.yml` that fails if `build-web/CMakeFiles/shapeshifter.dir/link.txt` does not contain `-sASYNCIFY`.
+- **Validation:** `emcmake cmake -B build-web -S . ... -DVCPKG_TARGET_TRIPLET=wasm32-emscripten && cmake --build build-web -- -j$(sysctl -n hw.ncpu) && (cd build-web && ctest --verbose --output-on-failure)` passed (WASM build + `shapeshifter_tests_wasm` pass). `git diff --check -- CMakeLists.txt .github/workflows/ci-wasm.yml` clean.
+- **PR status:** Changes prepared for `squad/level-designer-html-hardening`; push/check monitoring pending this hotfix commit.

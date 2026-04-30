@@ -8,6 +8,12 @@
 
 ## Learnings
 
+### 2026-04-30 — Assets root removal QA audit
+
+- **Validation sweep pattern:** For root-folder migrations, run both textual sweeps and path sweeps: `rg "assets/|\bassets\b"` across code/docs/workflows plus `find . -type d -name '*assets*'`. Text-only sweeps miss directory-state regressions; path-only sweeps miss stale string literals.
+- **Required post-change checks:** In this repo, use `cmake --build build -- -j4`, `./build/shapeshifter_tests "~[bench]"`, `node --check tools/beatmap-editor/js/*.js`, and `node --test tools/beatmap-editor/test/*.test.js` to validate migration safety across runtime + editor surfaces.
+- **Key migration paths:** Runtime/bundle/font loading now resolves from `content/` only (`CMakeLists.txt`, `app/ui/text_renderer.cpp`, `content/fonts/`). `assets/` should not exist as a top-level game data root after commit.
+
 ### 2026-04-27 — Revision #135: Easy shape_gate_only contract guard
 
 - **Kujan rejected Baer's #135 artifact** because easy tests checked shape *variety* but not obstacle *kind*. This allowed Rabin's lane_push contamination in easy beatmaps to silently pass.
@@ -106,3 +112,15 @@
 - All test behavior contracts are stable and reusable across any renaming.
 
 **Rename candidates:** See `verbal-input-ui-test-map.md` in decisions/inbox.
+
+### 2026-04-30 — Diagram integrity check
+
+- When reviewing tree diagrams in specs, validate parent-child indentation as strictly as code structure; duplicated parent nodes can silently change deployment assumptions.
+
+## Session: Assets Root Removal (2026-04-30)
+
+Part 1 (Audit): Audited all `assets/` references across runtime/build/workflows/editor/tooling/tests/docs. Confirmed only Apple-specific (`Assets.xcassets`) and historical `.squad/` logs contain `assets` term. Identified stale LanePush test contract blocker.
+
+Part 2 (Doc Fix): Revised `docs/asset-bundle-spec.md` tree diagram per Kujan's feedback (fixed duplicate `content/` sibling nodes). Single `content/` root node with `beatmaps/`, `audio/`, `fonts/` children. Approved by Kujan.
+
+**Manifested:** Decisions #173, #175 merged to `.squad/decisions.md`

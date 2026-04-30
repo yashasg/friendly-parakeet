@@ -296,6 +296,9 @@ if(EMSCRIPTEN)
     target_link_options(shapeshifter PRIVATE
         -sUSE_GLFW=3
         -fexceptions
+        # Runtime uses async operations (e.g. emscripten_sleep); enable stack
+        # unwinding/rewinding support so browser preview does not abort.
+        -sASYNCIFY
         -sALLOW_MEMORY_GROWTH=1
         -sDYNAMIC_EXECUTION=0
         # The browser frame loop is registered with emscripten_set_main_loop();
@@ -303,11 +306,10 @@ if(EMSCRIPTEN)
         -sNO_EXIT_RUNTIME=1
         --shell-file ${_shell_html}
     )
-    # Use LINK_FLAGS (raw string) for the two --preload-file entries so that
-    # CMake does not deduplicate the identical flag prefixes, which would strip
-    # the second entry and leave its value as an orphaned positional argument.
+    # Use LINK_FLAGS (raw string) for --preload-file so CMake forwards the flag
+    # exactly as provided to the linker.
     set_property(TARGET shapeshifter APPEND_STRING PROPERTY LINK_FLAGS
-        " --preload-file ${CMAKE_SOURCE_DIR}/assets@/assets --preload-file ${CMAKE_SOURCE_DIR}/content@/content"
+        " --preload-file ${CMAKE_SOURCE_DIR}/content@/content"
     )
     set_target_properties(shapeshifter PROPERTIES
         OUTPUT_NAME "index"
@@ -353,16 +355,16 @@ elseif(UNIX AND NOT EMSCRIPTEN)
     target_link_libraries(shapeshifter_startup_shutdown_smoke PRIVATE GL X11 Xrandr m pthread dl)
 endif()
 
-# Copy font assets next to the executable so text_init() can find them
-file(GLOB FONT_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/assets/fonts/*.ttf)
+# Copy font files next to the executable so text_init() can find them
+file(GLOB FONT_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/content/fonts/*.ttf)
 if(FONT_FILES)
     add_custom_command(TARGET shapeshifter POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory
-            "$<TARGET_FILE_DIR:shapeshifter>/assets/fonts"
+            "$<TARGET_FILE_DIR:shapeshifter>/content/fonts"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             ${FONT_FILES}
-            "$<TARGET_FILE_DIR:shapeshifter>/assets/fonts/"
-        COMMENT "Copying font assets"
+            "$<TARGET_FILE_DIR:shapeshifter>/content/fonts/"
+        COMMENT "Copying font files"
     )
 endif()
 

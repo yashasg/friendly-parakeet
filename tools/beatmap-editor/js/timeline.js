@@ -265,15 +265,7 @@ function renderObstacles(ctx, state, firstBeat, lastBeat) {
         const x = beatToX(entry.beat, state);
         const y = HEADER_HEIGHT + entry.lane * LANE_HEIGHT + LANE_HEIGHT / 2;
 
-        if (entry.kind === 'lane_push_left' || entry.kind === 'lane_push_right') {
-            const arrow = entry.kind === 'lane_push_left' ? '▲' : '▼';
-            ctx.font = 'bold 12px sans-serif';
-            ctx.fillStyle = (COLORS.kind[entry.kind]) || COLORS.text;
-            ctx.fillText(arrow, x, y - 10);
-            ctx.fillText(arrow, x, y);
-            ctx.fillText(arrow, x, y + 10);
-            ctx.font = '20px sans-serif';
-        } else if (KINDS_WITH_SHAPE.includes(entry.kind)) {
+        if (KINDS_WITH_SHAPE.includes(entry.kind)) {
             const glyph = SHAPE_GLYPHS[entry.shape] || '?';
             ctx.fillStyle = (COLORS.shape[entry.shape]) || COLORS.text;
             ctx.fillText(glyph, x, y);
@@ -357,14 +349,16 @@ function renderLegend(ctx, w, h) {
         { glyph: SHAPE_GLYPHS.circle,      color: COLORS.shape.circle,          label: 'Circle' },
         { glyph: SHAPE_GLYPHS.square,      color: COLORS.shape.square,          label: 'Square' },
         { glyph: SHAPE_GLYPHS.triangle,    color: COLORS.shape.triangle,        label: 'Triangle' },
-        { glyph: '▲',                  color: COLORS.kind.lane_push_left,   label: 'Push Left' },
-        { glyph: '▼',                  color: COLORS.kind.lane_push_right,  label: 'Push Right' },
+        { glyph: GLYPHS.low_bar,           color: COLORS.kind.low_bar,          label: 'LowBar' },
+        { glyph: GLYPHS.high_bar,          color: COLORS.kind.high_bar,         label: 'HighBar' },
+        { glyph: GLYPHS.combo_gate,        color: COLORS.kind.combo_gate,       label: 'ComboGate' },
+        { glyph: GLYPHS.split_path,        color: COLORS.kind.split_path,       label: 'SplitPath' },
     ];
 
     const lineH = 16;
     const pad = 8;
     const legendH = items.length * lineH + pad * 2;
-    const legendW = 120;
+    const legendW = 132;
     const x = w - legendW - 10;
     const y = h - legendH - 10;
 

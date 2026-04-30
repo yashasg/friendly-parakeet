@@ -48,9 +48,9 @@ ALL_SHAPES = ["circle", "square", "triangle"]
 # Final section = hardest patterns (the "final fortress").
 SECTION_ROLE = {
     "intro":      {"density": 0.30, "types": ["shape_gate"], "consistent": True},
-    "verse":      {"density": 0.65, "types": ["shape_gate", "lane_push"], "consistent": False},
-    "pre-chorus": {"density": 0.80, "types": ["shape_gate", "lane_push"], "consistent": False},
-    "drop":       {"density": 0.90, "types": ["shape_gate", "lane_push"], "consistent": True},
+    "verse":      {"density": 0.65, "types": ["shape_gate", "low_bar", "high_bar"], "consistent": False},
+    "pre-chorus": {"density": 0.80, "types": ["shape_gate", "low_bar", "high_bar"], "consistent": False},
+    "drop":       {"density": 0.90, "types": ["shape_gate", "low_bar", "high_bar"], "consistent": True},
     "bridge":     {"density": 0.35, "types": ["shape_gate"], "consistent": False},
 }
 
@@ -63,8 +63,8 @@ DIFFICULTY_INTRO_REST = {"easy": 8, "medium": 4, "hard": 2}
 MIN_FIRST_COLLISION_SEC = {"easy": 4.0, "medium": 2.5, "hard": 2.0}
 DIFFICULTY_KINDS = {
     "easy":   {"shape_gate"},
-    "medium": {"shape_gate", "lane_push"},
-    "hard":   {"shape_gate", "lane_push"},
+    "medium": {"shape_gate", "low_bar", "high_bar"},
+    "hard":   {"shape_gate", "low_bar", "high_bar"},
 }
 MAX_EMPTY_GAP = {"easy": 40, "medium": 32, "hard": 30}
 MAX_BEAT_DIFF = {diff: gap + 1 for diff, gap in MAX_EMPTY_GAP.items()}
@@ -72,8 +72,7 @@ MIN_SHAPE_CHANGE_GAP = 3
 GAP_ONE_MEDIUM_START_PROGRESS = 0.30
 GAP_ONE_HARD_MIN_BEAT = 11
 GAP_ONE_MAX_RUN = {"medium": 1, "hard": 2}
-LANE_PUSH_KINDS = {"lane_push_left", "lane_push_right"}
-UNREADABLE_KINDS = LANE_PUSH_KINDS | {"low_bar", "high_bar"}
+UNREADABLE_KINDS = {"low_bar", "high_bar"}
 MEDIUM_SHAPE_TARGETS = {
     0: (10, 20),  # Circle / lane 0
     1: (45, 60),  # Square / lane 1
@@ -133,21 +132,11 @@ def lane_of(obs, fallback=1):
     """What lane does this obstacle put the player in?"""
     if obs["kind"] == "shape_gate":
         return obs.get("lane", 1)
-    elif obs["kind"] in ("lane_push_left", "lane_push_right"):
-        obs_lane = obs.get("lane", 1)
-        if obs["kind"] == "lane_push_left":
-            return max(obs_lane - 1, 0)
-        else:
-            return min(obs_lane + 1, 2)
     return fallback
 
 
 def is_shape_gate(obs):
     return obs.get("kind") == "shape_gate"
-
-
-def is_lane_push(obs):
-    return obs.get("kind") in LANE_PUSH_KINDS
 
 
 def is_unreadable_kind(obs):
@@ -311,7 +300,7 @@ def assign_obstacle(beat_idx, event, gap_to_prev, section_name, difficulty,
     Key insight from research: onset passes determine type, not rotation.
       - kick-only → high_bar (bass thump → slide down)
       - hihat-only → low_bar (percussive pop → jump up)
-      - snare-only or snare+kick → lane_push (transient → dodge)
+      - snare-only or snare+kick → alternating bars (transient → dodge)
       - melody or multi-pass → shape_gate (harmonic → match shape)
 
     Gap context (from Liang et al.): short gaps favor same-type obstacles.
@@ -335,7 +324,7 @@ def assign_obstacle(beat_idx, event, gap_to_prev, section_name, difficulty,
     elif has_hihat and not has_kick and not has_snare:
         natural_kind = "low_bar"
     elif has_snare:
-        natural_kind = "lane_push"
+        natural_kind = "low_bar" if beat_idx % 2 == 0 else "high_bar"
     else:
         natural_kind = "shape_gate"
 
@@ -400,43 +389,6 @@ def assign_obstacle(beat_idx, event, gap_to_prev, section_name, difficulty,
         obs["shape"] = shape
         obs["lane"] = lane
 
-    elif natural_kind == "lane_push":
-        # Push player toward a musically-appropriate lane
-        target_lane = prev_lane  # default: stay put
-        if has_kick:
-            target_lane = 0
-        elif has_snare:
-            target_lane = 1
-        elif has_hihat:
-            target_lane = 2
-
-        # Keep adjacent
-        if abs(target_lane - prev_lane) > 1:
-            target_lane = 1  # center is always safe
-
-        # Place push at prev_lane, pointing toward target
-        if target_lane > prev_lane:
-            obs["kind"] = "lane_push_right"
-            obs["lane"] = prev_lane
-        elif target_lane < prev_lane:
-            obs["kind"] = "lane_push_left"
-            obs["lane"] = prev_lane
-        else:
-            # Already at target; keep variety without generating
-            # out-of-bounds pushes on edge lanes.
-            if prev_lane == 0:
-                obs["kind"] = "lane_push_right"
-                obs["lane"] = prev_lane
-            elif prev_lane == 2:
-                obs["kind"] = "lane_push_left"
-                obs["lane"] = prev_lane
-            elif beat_idx % 2 == 0:
-                obs["kind"] = "lane_push_right"
-                obs["lane"] = prev_lane
-            else:
-                obs["kind"] = "lane_push_left"
-                obs["lane"] = prev_lane
-
     # low_bar and high_bar need no extra fields
 
     return obs
@@ -489,16 +441,8 @@ def assign_obstacles(selected_beats, event_map, analysis, difficulty):
 
         if force_variety and obs["kind"] == "shape_gate":
             # Override to a non-shape type based on passes
-            passes = set(event.get("passes", ["flux"])) if event else {"flux"}
             non_shape = sec_kinds - {"shape_gate"}
-            if "lane_push" in non_shape:
-                if bi % 2 == 0:
-                    obs = {"beat": bi, "kind": "lane_push_right",
-                           "lane": prev_lane}
-                else:
-                    obs = {"beat": bi, "kind": "lane_push_left",
-                           "lane": prev_lane}
-            elif "low_bar" in non_shape and "high_bar" in non_shape:
+            if "low_bar" in non_shape and "high_bar" in non_shape:
                 obs = {"beat": bi, "kind": "low_bar" if bi % 2 == 0 else "high_bar"}
             elif "low_bar" in non_shape:
                 obs = {"beat": bi, "kind": "low_bar"}
@@ -620,7 +564,7 @@ def is_readable_gap_one_family(left, right):
 
 
 def has_readable_gap_one_neighbors(previous, left, right, following):
-    """No LanePush/bar may sit within 2 beats around a gap=1 pair."""
+    """No bar obstacle may sit within 2 beats around a gap=1 pair."""
     if previous and left["beat"] - previous["beat"] <= 2 and is_unreadable_kind(previous):
         return False
     if following and following["beat"] - right["beat"] <= 2 and is_unreadable_kind(following):
@@ -808,57 +752,6 @@ def fill_max_gaps(obstacles, difficulty, analysis):
 
     result.append(obstacles[-1])
     return result
-
-
-def beat_arrival_seconds(beat, analysis):
-    bpm = float(analysis.get("bpm", 120) or 120)
-    beats = analysis.get("beats") or []
-    offset = round(beats[0], 3) if beats else 0.0
-    return offset + beat * (60.0 / bpm)
-
-
-def convert_to_nearest_shape_gate(obstacles, index):
-    shape, _ = nearest_shape_lane(obstacles, index)
-    set_shape_gate(obstacles[index], shape)
-
-
-def fix_medium_lanepush_window(obstacles, difficulty, analysis):
-    """Delay and cap medium LanePush usage by converting extras to shapes."""
-    if difficulty != "medium" or not obstacles:
-        return obstacles
-
-    obstacles = sorted(obstacles, key=lambda obs: obs["beat"])
-
-    for i, obs in enumerate(obstacles):
-        if is_lane_push(obs) and beat_arrival_seconds(obs["beat"], analysis) < 30.0:
-            convert_to_nearest_shape_gate(obstacles, i)
-
-    total = len(obstacles)
-    max_allowed = (total * 25) // 100
-    min_required = (total * 5 + 99) // 100
-    target = max(max_allowed, min_required)
-    lane_push_indices = [i for i, obs in enumerate(obstacles) if is_lane_push(obs)]
-    excess = max(0, len(lane_push_indices) - target)
-
-    for i in lane_push_indices:
-        if excess <= 0:
-            break
-        convert_to_nearest_shape_gate(obstacles, i)
-        excess -= 1
-
-    lane_push_count = sum(1 for obs in obstacles if is_lane_push(obs))
-    run = 0
-    for i, obs in enumerate(obstacles):
-        if not is_lane_push(obs):
-            run = 0
-            continue
-        run += 1
-        if run > 3 and lane_push_count > min_required:
-            convert_to_nearest_shape_gate(obstacles, i)
-            lane_push_count -= 1
-            run = 0
-
-    return clean_shape_change_gap(obstacles)
 
 
 def medium_shape_counts(obstacles):
@@ -1076,7 +969,6 @@ def design_level(analysis, difficulty):
     # Issue #175 — guarantee per-difficulty first-collision reaction floor.
     obstacles = enforce_first_collision_floor(obstacles, difficulty, analysis)
     obstacles = fill_max_gaps(obstacles, difficulty, analysis)
-    obstacles = fix_medium_lanepush_window(obstacles, difficulty, analysis)
     obstacles = clean_shape_change_gap(obstacles)
     obstacles = clean_gap_one_early(obstacles, difficulty)
     obstacles = rebalance_easy_shapes(obstacles, difficulty)

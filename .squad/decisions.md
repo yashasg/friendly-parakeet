@@ -1,6 +1,6 @@
 # Decisions Registry
 
-*Last merged: 2026-04-29T22:03:09Z*
+*Last merged: 2026-04-30T07:37:46Z*
 
 ### #169 — Gameplay Shape Buttons Migrated to raygui HUD Ownership (2026-04-29)
 
@@ -9987,4 +9987,177 @@ Keeps live gameplay tap behavior stable while removing dead menu-era ECS surface
 **Archive trigger:** Deferred
 **Reason:** All entries dated 2026-04-26 or later (within 30-day window). No entries older than 30 days exist; archival not necessary at this time.
 **Next check:** Recommend archive review on 2026-05-27 if registry exceeds 650 KB.
+
+
+---
+
+### #172 — Remove Top-Level assets/ Root; Standardize on content/ (2026-04-29)
+
+**Owner:** Hockney (Platform)  
+**Status:** IMPLEMENTED AND APPROVED
+
+Eliminated duplicate asset root by consolidating all shipped content under `content/` directory and updating all references across runtime, CMake, Emscripten, docs, and tooling.
+
+**Applied Changes:**
+- Moved font payload from `assets/fonts/` → `content/fonts/`
+- Updated runtime font fallback paths in `app/ui/text_renderer.cpp` to `content/fonts/LiberationMono-Regular.ttf`
+- Updated CMake to copy fonts from/to `content/fonts` only; removed `assets@/assets` from Emscripten preload; only `content@/content` preloaded
+- Updated docs/beatmap-authoring references: `assets/beatmaps/` → `content/beatmaps/`
+
+**Rationale:** Single-root packaging eliminates drift between runtime search paths, native post-build copy destinations, and WASM virtual filesystem mounting. Also removes duplicated content expectations in tooling/docs.
+
+**Validation:**
+- Build succeeded (CMake + Emscripten stack)
+- Diff check clean
+- Exposed stale LanePush test contract (delegated to Baer)
+
+---
+
+### #173 — Assets Root Audit and QA Validation (2026-04-30)
+
+**Owner:** Verbal (QA)  
+**Status:** IMPLEMENTED AND APPROVED
+
+Comprehensive audit confirming all `assets/` references post-removal and validating standardization on `content/` root across runtime, build, workflows, editor, tooling, tests, and docs.
+
+**Scope:**
+- Audited references in: runtime `.cpp` files, CMake, CI workflows, editor config, tooling scripts, test suite, docs
+- Confirmed only Apple-specific (`Assets.xcassets`) and historical `.squad/` logs contain `assets` term
+- Validated migration completeness with zero drift detected
+
+**Decision:** Treat `content/` as the only shipped game-data root. Any `assets/` path usage in runtime/build/editor surfaces is considered stale unless it refers to Apple's `Assets.xcassets` packaging term or generic English prose.
+
+**QA Blocker Identified:** `test_shipped_beatmap_difficulty_ramp.cpp` medium LanePush percentage = 0% in shipped beatmaps (unrelated to folder migration; fixed by Baer).
+
+---
+
+### #174 — LanePush Difficulty-Ramp Test Contract Migration (2026-04-30)
+
+**Owner:** Baer (Test)  
+**Status:** IMPLEMENTED AND APPROVED
+
+Replaced stale LanePush difficulty-ramp assertions in `tests/test_shipped_beatmap_difficulty_ramp.cpp` with bar-focused contracts aligned to current shipped content and validators.
+
+**Applied Changes:**
+- Medium bars: low+high percentage window, max consecutive run, first-arrival readability gate
+- Hard: low/high coverage requirement
+- Explicit rejection of removed legacy kinds (`lane_push_left/right`, `lane_block`) in medium/hard
+- Easy: shape_gate-only (unchanged)
+
+**Rationale:** Aligns C++ regression checks with shipped content and acceptance validators (`validate_difficulty_ramp.py`, `validate_beatmap_bars.py`) while retaining meaningful progression/readability protections.
+
+**Validation:**
+- `./build/shapeshifter_tests "[difficulty_ramp]"` passes
+- Full non-bench suite passes
+- Both Python beatmap validators pass
+- Diff check clean
+
+---
+
+### #175 — Asset Bundle Specification Documentation Fix (2026-04-30)
+
+**Owner:** Verbal (QA), Reviewer: Kujan  
+**Status:** IMPLEMENTED AND APPROVED
+
+Corrected `docs/asset-bundle-spec.md` tree diagram per Kujan's review feedback (duplicate `content/` nodes under root).
+
+**Applied Changes:**
+- Revised tree diagram: single `content/` node as child of root, with `beatmaps/`, `audio/`, `fonts/` as children of `content/`
+- Verified no other duplicate or orphan sibling nodes
+- Updated prose to align with corrected tree
+
+**Validation:**
+- Kujan approved revised diagram
+- Diff check clean
+- All downstream documentation consistent
+
+---
+
+### #176 — Force One-Shot Music Playback for Play Sessions (2026-04-30)
+
+**Owners:** McManus (fix), Baer (regression testing), Kujan (review)  
+**Status:** IMPLEMENTED AND APPROVED
+
+**Issue:** Song completes without displaying Song Complete UI; music audibly repeats/loops.
+
+**Root Cause:** `raylib::Music` backend default-loops streams. If wrapped before terminal phase detects `finished=true` and transitions to `SongComplete`, the phase-transition gate misses the signal and playback continues in `Playing`.
+
+**Decision:** When loading a play-session music stream in `setup_play_session(...)`, explicitly set:
+
+```cpp
+music->stream.looping = false;
+```
+
+Immediately after successful `LoadMusicStream(...)` call.
+
+**Why:** Explicit one-shot playback ensures song-end behavior is deterministic and aligns with phase transition contract (`Playing` → `SongComplete` via `game_state_system` on `finished` latch).
+
+**Scope:**
+- File: `app/session/play_session.cpp`
+- No collateral changes to asset-root, editor-hardening, or other subsystems
+
+**Testing (Baer):**
+- Added deterministic regression tests in `tests/test_song_playback_system.cpp`
+- Coverage: finish-state latching + two-tick transition into `GamePhase::SongComplete`
+- Focused suites `[song_playback]`, `[gamestate]`, `[play_session]` ✅
+- Full suite `~[bench]` ✅
+- Git diff clean
+
+**Known Testability Gap:**
+- Runtime `GetMusicTimePlayed()` wraparound at track end not deterministically controllable in headless tests
+- Recommendation: Add injectable music-clock seam to `song_playback_system` for CI to force wraparound and prevent regressions
+
+**Validation Evidence:**
+- `cmake --build build -- -j4` passed, zero warnings (clang arm64)
+- `git --no-pager diff --check` clean
+
+---
+
+
+### #170 — Beatmap Editor Help Dialog UX Pass (2026-04-30)
+
+**Owners:** Redfoot (UX/A11y), Fenster (implementation), Baer (verification)
+**Status:** IMPLEMENTED AND APPROVED
+
+Beatmap editor Help button and modal enhanced with accessibility guarantees and keyboard shortcuts.
+
+**Scope:**
+- Visible `❔ Help` button in toolbar (pre-Settings)
+- Static help content: Load, Playback, Place/Move, Properties+Validation+Export, Shortcuts
+- Dismiss affordances: close button, backdrop click, Escape key
+- Global `?` (Shift+/) shortcut with form-field guard
+- A11y semantics: `role="dialog"`, `aria-modal`, `aria-labelledby`, `aria-haspopup`, `aria-controls`, `aria-hidden` toggling
+- Safe rendering: no HTML injection of user-controlled strings
+
+**Implementation:**
+- **Fenster:** Help button, modal structure, dismiss wiring, reusable `bindModal()` pattern
+- **Redfoot:** A11y enhancements, `?` shortcut + guard, close-button auto-focus, footnote styling
+- **Baer:** Initial verification (feature not visible), final verification (accepted)
+
+**Key Decisions:**
+1. Reused existing modal pattern rather than creating parallel duplicate
+2. `bindModal({trigger, modal, close})` helper is generic and dependency-free — reuse for Settings, About, Diagnostics
+3. Help shortcuts table mirrors `editor.js` wiring; keep in sync manually (no auto-generation)
+4. Form-field guard on `?` shortcut matches existing `editor.js` pattern (INPUT/SELECT/TEXTAREA)
+
+**Validation Evidence:**
+- `node --check tools/beatmap-editor/js/main.js` ✅
+- `node --test tools/beatmap-editor/test/*.test.js` ✅ (22/22 passing)
+- `git --no-pager diff --check` ✅
+- Browserless validation confirmed modal presence, wiring, safety
+
+**Files Changed:**
+- `tools/beatmap-editor/index.html`
+- `tools/beatmap-editor/css/editor.css`
+- `tools/beatmap-editor/js/main.js`
+- `tools/beatmap-editor/test/help-modal-ui.test.js`
+
+**For other agents:**
+- When adding new shortcuts to `editor.js`, mirror them in help shortcuts table
+- Reuse `bindModal()` for future dialogs (Settings model for template)
+- Avoid generic `kbd { }` rule; scope to `.help-content kbd, .help-shortcuts kbd`
+
+**Limitation:** Browserless validation cannot certify focus trapping or screen-reader announcement timing; require browser-capable tests if those become release gates.
+
+---
 
