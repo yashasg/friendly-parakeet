@@ -20,6 +20,10 @@ TitleController title_controller;
 bool read_title_pointer_release(const entt::registry& reg, Vector2& pointer) {
     const auto& input = reg.ctx().get<InputState>();
     if (pointer_release_position(input, pointer)) return true;
+    if (input.touch_down) {
+        pointer = {input.start_x, input.start_y};
+        return true;
+    }
 
     // Title activation is tolerant to browser stacks that miss release edges:
     // accept either edge from raylib and map to virtual UI coordinates.
