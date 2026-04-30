@@ -3,6 +3,10 @@
 const { chromium } = require('playwright-core');
 const crypto = require('crypto');
 
+function sha256(buf) {
+  return crypto.createHash('sha256').update(buf).digest('hex');
+}
+
 async function main() {
   const url = process.argv[2];
   if (!url) {
@@ -59,19 +63,37 @@ async function main() {
     }, undefined, { timeout: 30000 });
 
     const beforeInput = await page.screenshot();
+    const beforeHash = sha256(beforeInput);
+
+    // Some browser stacks can consume the first click as focus acquisition.
     await page.click('#canvas', { position: { x: 200, y: 200 } });
-    await page.waitForTimeout(1000);
-    const afterClick = await page.screenshot();
+    await page.waitForTimeout(600);
+    let afterStart = await page.screenshot();
+    let afterStartHash = sha256(afterStart);
+    if (beforeHash === afterStartHash) {
+      await page.click('#canvas', { position: { x: 200, y: 200 } });
+      await page.waitForTimeout(600);
+      afterStart = await page.screenshot();
+      afterStartHash = sha256(afterStart);
+    }
+    if (beforeHash === afterStartHash) {
+      fatal.push('no-visual-response-after-title-clicks');
+    }
+
+    // Once on level select, clicking a different card should visibly update selection.
+    await page.click('#canvas', { position: { x: 220, y: 500 } });
+    await page.waitForTimeout(600);
+    const afterLevelSelectClick = await page.screenshot();
+    const afterLevelSelectClickHash = sha256(afterLevelSelectClick);
+    if (afterStartHash === afterLevelSelectClickHash) {
+      fatal.push('no-visual-response-after-level-select-click');
+    }
+
     await page.keyboard.press('Enter');
     await page.waitForTimeout(1000);
     const afterInput = await page.screenshot();
-    const beforeHash = crypto.createHash('sha256').update(beforeInput).digest('hex');
-    const clickHash = crypto.createHash('sha256').update(afterClick).digest('hex');
-    const afterHash = crypto.createHash('sha256').update(afterInput).digest('hex');
-    if (beforeHash === clickHash) {
-      fatal.push('no-visual-response-after-mouse-click');
-    }
-    if (clickHash === afterHash) {
+    const afterHash = sha256(afterInput);
+    if (afterLevelSelectClickHash === afterHash) {
       fatal.push('no-visual-response-after-enter');
     }
   } finally {
