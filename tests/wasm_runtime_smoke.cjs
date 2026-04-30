@@ -66,12 +66,12 @@ async function main() {
     const beforeHash = sha256(beforeInput);
 
     // Some browser stacks can consume the first click as focus acquisition.
-    await page.click('#canvas', { position: { x: 200, y: 200 } });
+    await page.click('#canvas', { position: { x: 360, y: 640 } });
     await page.waitForTimeout(600);
     let afterStart = await page.screenshot();
     let afterStartHash = sha256(afterStart);
     if (beforeHash === afterStartHash) {
-      await page.click('#canvas', { position: { x: 200, y: 200 } });
+      await page.click('#canvas', { position: { x: 360, y: 640 } });
       await page.waitForTimeout(600);
       afterStart = await page.screenshot();
       afterStartHash = sha256(afterStart);
@@ -81,7 +81,7 @@ async function main() {
     }
 
     // Once on level select, clicking a different card should visibly update selection.
-    await page.click('#canvas', { position: { x: 220, y: 500 } });
+    await page.click('#canvas', { position: { x: 360, y: 500 } });
     await page.waitForTimeout(600);
     const afterLevelSelectClick = await page.screenshot();
     const afterLevelSelectClickHash = sha256(afterLevelSelectClick);
