@@ -2,6 +2,7 @@
 
 #include "../../components/game_state.h"
 #include "../../components/input.h"
+#include "../../components/rendering.h"
 #include "../../input/pointer_input.h"
 #include "screen_controller_base.h"
 #include <entt/entt.hpp>
@@ -16,9 +17,24 @@ using TitleController = RGuiScreenController<TitleLayoutState,
                                               &TitleLayout_Render>;
 TitleController title_controller;
 
-bool is_start_tap(const TitleLayoutState& state, const InputState& input) {
+bool read_title_pointer_release(const entt::registry& reg, Vector2& pointer) {
+    const auto& input = reg.ctx().get<InputState>();
+    if (pointer_release_position(input, pointer)) return true;
+
+    // UI controllers rely on raygui/raylib pointer edges directly for web
+    // desktop reliability, then map to virtual UI space.
+    if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+        const auto& st = reg.ctx().get<ScreenTransform>();
+        const Vector2 raw = GetMousePosition();
+        pointer = {(raw.x - st.offset_x) / st.scale, (raw.y - st.offset_y) / st.scale};
+        return true;
+    }
+    return false;
+}
+
+bool is_start_tap(const entt::registry& reg, const TitleLayoutState& state) {
     Vector2 pointer = {};
-    if (!pointer_activate_position(input, pointer)) return false;
+    if (!read_title_pointer_release(reg, pointer)) return false;
     const Rectangle settings_button = {state.Anchor01.x + 632, state.Anchor01.y + 1170, 64, 64};
 #ifndef PLATFORM_WEB
     const Rectangle exit_button = {state.Anchor01.x + 260, state.Anchor01.y + 1080, 200, 56};
@@ -36,7 +52,6 @@ void init_title_screen_ui() {
 
 void render_title_screen_ui(entt::registry& reg) {
     auto& state = title_controller.state();
-    const auto& input = reg.ctx().get<InputState>();
     const int saved_text_size = GuiGetStyle(DEFAULT, TEXT_SIZE);
     const int saved_label_alignment = GuiGetStyle(LABEL, TEXT_ALIGNMENT);
 
@@ -58,7 +73,7 @@ void render_title_screen_ui(entt::registry& reg) {
         gs.next_phase = GamePhase::Settings;
     }
 
-    if (is_start_tap(state, input)) {
+    if (is_start_tap(reg, state)) {
         auto& gs = reg.ctx().get<GameState>();
         gs.transition_pending = true;
         gs.next_phase = GamePhase::LevelSelect;
