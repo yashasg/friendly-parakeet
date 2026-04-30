@@ -9,17 +9,18 @@ void song_playback_system(entt::registry& reg, float dt) {
 
     auto* song  = reg.ctx().find<SongState>();
     auto* music = reg.ctx().find<MusicContext>();
+    const bool music_loaded = music && music->loaded;
 
     // Must pump the stream buffer every frame to prevent audio underruns,
     // even when the game is paused.
-    if (music && music->loaded && music->started) {
+    if (music_loaded && music->started) {
         UpdateMusicStream(music->stream);
     }
 
     // ── Music restart request (from enter_playing) ────────────
     if (song && song->restart_music) {
         song->restart_music = false;
-        if (music && music->loaded) {
+        if (music_loaded) {
             StopMusicStream(music->stream);
             PlayMusicStream(music->stream);
             music->started = true;
@@ -27,21 +28,20 @@ void song_playback_system(entt::registry& reg, float dt) {
     }
 
     // ── Music lifecycle: start / pause / resume / stop ────────
-    if (music && music->loaded) {
-        if (gs.phase == GamePhase::Playing && song && song->playing) {
-            if (!music->started) {
-                PlayMusicStream(music->stream);
-                music->started = true;
-            } else if (gs.previous_phase == GamePhase::Paused) {
-                ResumeMusicStream(music->stream);
-            }
-        } else if (gs.phase == GamePhase::Paused && music->started) {
-            PauseMusicStream(music->stream);
-        } else if ((gs.phase == GamePhase::GameOver || gs.phase == GamePhase::SongComplete)
-                   && music->started) {
-            StopMusicStream(music->stream);
-            music->started = false;
+    if (music_loaded && gs.phase == GamePhase::Playing && song && song->playing) {
+        if (!music->started) {
+            PlayMusicStream(music->stream);
+            music->started = true;
+        } else if (gs.previous_phase == GamePhase::Paused) {
+            ResumeMusicStream(music->stream);
         }
+    } else if (music_loaded && gs.phase == GamePhase::Paused && music->started) {
+        PauseMusicStream(music->stream);
+    } else if (music_loaded &&
+               (gs.phase == GamePhase::GameOver || gs.phase == GamePhase::SongComplete) &&
+               music->started) {
+        StopMusicStream(music->stream);
+        music->started = false;
     }
 
     // ── Song time / beat advancement (Playing phase only) ─────
@@ -50,7 +50,7 @@ void song_playback_system(entt::registry& reg, float dt) {
 
     // Authoritative clock from audio stream; fall back to dt accumulation
     // when running in silent/test mode (no music loaded).
-    if (music && music->loaded && music->started) {
+    if (music_loaded && music->started) {
         song->song_time = GetMusicTimePlayed(music->stream);
     } else {
         song->song_time += dt;
@@ -68,7 +68,7 @@ void song_playback_system(entt::registry& reg, float dt) {
     if (song->song_time >= song->duration_sec) {
         song->finished = true;
         song->playing  = false;
-        if (music && music->loaded && music->started) {
+        if (music_loaded && music->started) {
             StopMusicStream(music->stream);
             music->started = false;
         }

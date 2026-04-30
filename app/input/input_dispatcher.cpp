@@ -26,8 +26,7 @@ void warm_dispatcher_event_queues(entt::dispatcher& disp) {
 // Tier 1 — Raw InputEvent (before fixed-step):
 //   input_system enqueues InputEvent objects; game_loop_frame then calls
 //   disp.update<InputEvent>(), which fires gesture_routing_handle_input and
-//   hit_test_handle_input in registration order.  Those listeners enqueue
-//   GoEvent / ButtonPressEvent as appropriate.
+//   enqueues GoEvent for swipe input.
 //
 // Tier 2 — Semantic GoEvent / ButtonPressEvent (fixed-step delivery):
 //   game_state_system (first in tick_fixed_systems) calls
@@ -52,9 +51,8 @@ void wire_input_dispatcher(entt::registry& reg) {
         return;
     }
 
-    // Tier-1: InputEvent → GoEvent / ButtonPressEvent (pre-fixed-step)
+    // Tier-1: InputEvent → GoEvent (pre-fixed-step swipe routing)
     disp->sink<InputEvent>().connect<&gesture_routing_handle_input>(reg);
-    disp->sink<InputEvent>().connect<&hit_test_handle_input>(reg);
 
     // Tier-2: semantic events → handler callbacks (fixed-step)
     // Registration order = processing order: game_state first (handles phase
@@ -74,7 +72,6 @@ void unwire_input_dispatcher(entt::registry& reg) {
     auto* disp = reg.ctx().find<entt::dispatcher>();
     if (!disp) return;
     disp->sink<InputEvent>().disconnect<&gesture_routing_handle_input>(reg);
-    disp->sink<InputEvent>().disconnect<&hit_test_handle_input>(reg);
     disp->sink<GoEvent>().disconnect<&game_state_handle_go>(reg);
     disp->sink<ButtonPressEvent>().disconnect<&game_state_handle_press>(reg);
     disp->sink<GoEvent>().disconnect<&level_select_handle_go>(reg);

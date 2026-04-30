@@ -210,3 +210,38 @@ Next: Await merge approval.
 - Fixed by invalidating and syncing `ActiveTag` immediately after `enter_playing_phase()` in `setup_play_session()`, moving that ECS structural churn out of the first input frame.
 - Also moved other cold first-input work earlier: `wire_input_dispatcher()` now warms Input/Go/ButtonPress event queues, and iOS haptic generators are warmed at startup / when haptics are re-enabled so `ShapeShift` feedback does not allocate its generator on the first shape press.
 - Validation: focused `[haptic]`, `[input_pipeline]`, `[entt_dispatcher]`, `[gamestate][play_session]`, `[player][rhythm]`; full `shapeshifter_tests`; `shapeshifter` target build; `git diff --check`.
+
+## Learnings
+
+- Gameplay shape-button ownership now lives in raygui HUD (`app/ui/generated/gameplay_hud_layout.h` + `app/ui/screen_controllers/gameplay_hud_screen_controller.cpp`), not ECS `ShapeButtonTag/HitCircle` entities from `setup_play_session`.
+- `gameplay_hud_apply_button_presses(...)` is the controller boundary for HUD button semantics: in `GamePhase::Playing` it enqueues shape `ButtonPressEvent`s, immediately drains `disp.update<ButtonPressEvent>()`, and applies pause transition.
+- `setup_play_session` no longer spawns gameplay shape button entities or performs `ActiveTag` warm-sync; restart-path expectation is now `reg.view<ShapeButtonTag>().empty()` (`tests/test_game_state_extended.cpp`).
+
+## 2026-04-29 — Gameplay shape buttons migration (first pass → rejected)
+
+**Status:** FIRST IMPLEMENTATION PASS
+**Reviewer:** Kujan
+**Verdict:** REJECTED (visual regression — stock rectangular overlay)
+
+**Work completed:**
+- Removed `spawn_playing_shape_buttons()` body and caller in `setup_play_session.cpp`
+- Removed `ShapeButtonTag` branches from `hit_test_handle_input` loop
+- Implemented shape press tracking in `GameplayHudLayoutState`
+- Implemented `gameplay_hud_apply_button_presses(...)` to emit semantic `ButtonPressEvent` shape presses
+- All tests passing; build warning-clean
+
+**Blocker:** Stock rectangular raygui `GuiButton` visuals (from generated `GameplayHudLayout_Render()` calls) overlay custom circular shape visuals and approach rings, violating Redfoot's circular-silhouette UX requirement.
+
+**Reassignment:** Fenster (Tools Engineer, non-locked) to fix visual overlay while keeping raygui ownership path.
+
+**See:** `.squad/orchestration-log/2026-04-29T22-03-09Z-mcmanus.md`
+
+---
+
+## 2026-04-30T02:04:27Z — Dead Code Prune — Stale Doc Cleanup (Rejected, rework by Fenster)
+
+**Session:** Multi-agent dead code cleanup.
+
+**Your role:** Doc cleanup in `design-docs/raygui-rguilayout-ui-spec.md`, `design-docs/feature-specs.md`, `design-docs/architecture.md` for removed `ui_navigation_system`, `UIState`/`ActiveScreen`, legacy hit-test references.
+
+**Outcome:** ❌ REJECTED by Kujan. Wording still implied raw input routing emits `ButtonPressEvent` (it doesn't). Fenster revised independently under lockout; clarifications approved. Input routing semantics now correctly documented: raw input → `InputEvent` → `GoEvent`; `ButtonPressEvent` from raygui/controller emitters only.

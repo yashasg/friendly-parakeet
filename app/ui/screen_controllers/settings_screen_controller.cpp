@@ -56,29 +56,35 @@ void render_settings_screen_ui(entt::registry& reg) {
     }
 
     // Dispatch actions
-    if (st) {
-        if (settings_controller.state().AudioOffsetMinusPressed) {
-            st->audio_offset_ms = static_cast<int16_t>(
-                std::max(static_cast<int>(SettingsState::MIN_AUDIO_OFFSET_MS),
-                         static_cast<int>(st->audio_offset_ms) - SettingsState::AUDIO_OFFSET_STEP_MS));
-        }
-        if (settings_controller.state().AudioOffsetPlusPressed) {
-            st->audio_offset_ms = static_cast<int16_t>(
-                std::min(static_cast<int>(SettingsState::MAX_AUDIO_OFFSET_MS),
-                         static_cast<int>(st->audio_offset_ms) + SettingsState::AUDIO_OFFSET_STEP_MS));
-        }
-        if (settings_controller.state().HapticsTogglePressed) {
-            st->haptics_enabled = !st->haptics_enabled;
-            if (st->haptics_enabled) {
-                platform::haptics::warmup();
-            }
-        }
-        if (settings_controller.state().ReduceMotionTogglePressed) {
-            st->reduce_motion = !st->reduce_motion;
+    const bool close_pressed = settings_controller.state().CloseButtonPressed;
+    if (!st && close_pressed) {
+        gs.transition_pending = true;
+        gs.next_phase = GamePhase::Title;
+        return;
+    }
+    if (!st) return;
+
+    if (settings_controller.state().AudioOffsetMinusPressed) {
+        st->audio_offset_ms = static_cast<int16_t>(
+            std::max(static_cast<int>(SettingsState::MIN_AUDIO_OFFSET_MS),
+                     static_cast<int>(st->audio_offset_ms) - SettingsState::AUDIO_OFFSET_STEP_MS));
+    }
+    if (settings_controller.state().AudioOffsetPlusPressed) {
+        st->audio_offset_ms = static_cast<int16_t>(
+            std::min(static_cast<int>(SettingsState::MAX_AUDIO_OFFSET_MS),
+                     static_cast<int>(st->audio_offset_ms) + SettingsState::AUDIO_OFFSET_STEP_MS));
+    }
+    if (settings_controller.state().HapticsTogglePressed) {
+        st->haptics_enabled = !st->haptics_enabled;
+        if (st->haptics_enabled) {
+            platform::haptics::warmup();
         }
     }
+    if (settings_controller.state().ReduceMotionTogglePressed) {
+        st->reduce_motion = !st->reduce_motion;
+    }
 
-    if (settings_controller.state().CloseButtonPressed) {
+    if (close_pressed) {
         gs.transition_pending = true;
         gs.next_phase = GamePhase::Title;
     }

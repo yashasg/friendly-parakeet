@@ -2,31 +2,31 @@
 //
 // End-to-end input pipeline behavioral tests.
 //
-// The pipeline: gesture_routing_handle_input → hit_test_handle_input →
-// player_input_system (via entt::dispatcher Tier-1 update).
+// The pipeline: gesture_routing_handle_input + HUD shape/menu dispatch →
+// player_input_system.
 //
 // All assertions are on player component state (Lane::target, ShapeWindow::phase,
 // PlayerShape::current) — never on raw event queues.
 // This makes the tests implementation-agnostic: push_input(reg,...) injects
-// a raw InputEvent; run_input_tier1(reg) fires gesture_routing + hit_test
-// listeners; player_input_system drains the resulting GoEvent/ButtonPressEvent
+// a raw InputEvent; run_input_tier1(reg) fires gesture_routing listeners;
+// player_input_system drains the resulting GoEvent/ButtonPressEvent
 // queues.  The observable player-state outcomes are the stable contract.
 //
 // Failure modes these tests guard against:
 //   - One-frame latency: swipe arrives but lane.target unchanged until next tick
 //     (would occur if game_state_system's disp.update<GoEvent>() call were
 //     removed or moved after player_input_handle_go runs)
-//   - Dropped tap: tap arrives but sw.phase stays Idle
-//     (would occur if hit_test_handle_input's enqueue<ButtonPressEvent> were dropped)
+//   - Dropped semantic shape press: ButtonPressEvent arrives but sw.phase stays Idle
 //   - Wrong-phase activation: button presses fire in an inactive phase
 //   - Event replay: second pipeline tick resets lane.lerp_t (symptom: #213 bug)
 
 #include <catch2/catch_test_macros.hpp>
 #include "test_helpers.h"
+#include "ui/screen_controllers/gameplay_hud_screen_controller.h"
 
-// Runs the Tier-1 input dispatch and then the player_input_system drain.
-// Mirrors the production order: update<InputEvent>() fires gesture_routing +
-// hit_test; player_input_system calls update<GoEvent/ButtonPressEvent>().
+// Runs Tier-1 input dispatch and then player_input_system drain.
+// Mirrors production order: update<InputEvent>() fires gesture_routing;
+// player_input_system calls update<GoEvent/ButtonPressEvent>().
 static void run_pipeline(entt::registry& reg, float dt = 0.016f) {
     run_input_tier1(reg);
     player_input_system(reg, dt);
@@ -93,51 +93,82 @@ TEST_CASE("pipeline: swipe right at right boundary does not wrap lane",
     CHECK(lane.target == constants::LANE_COUNT - 1);
 }
 
-// ── Tap → hit-test → shape change ─────────────────────────────────────────
+// ── Semantic shape press → shape change ───────────────────────────────────
 
-TEST_CASE("pipeline: tap on active button triggers shape change in same pipeline call",
+TEST_CASE("pipeline: semantic shape press triggers shape change in same pipeline call",
           "[input_pipeline]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
     auto& sw = reg.get<ShapeWindow>(player);
     REQUIRE(sw.phase == WindowPhase::Idle);
 
-    auto btn = make_shape_button(reg, Shape::Square);
-    reg.get<UIPosition>(btn).value = {200.f, 200.f};
-    reg.get<HitCircle>(btn).radius = 40.f;
-    invalidate_active_tag_cache(reg);
-
-    push_input(reg, InputType::Tap, 200.f, 200.f);
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>(
+        {ButtonPressKind::Shape, Shape::Square, MenuActionKind::Confirm, 0});
     run_pipeline(reg);
 
     CHECK(sw.phase        == WindowPhase::MorphIn);
     CHECK(sw.target_shape == Shape::Square);
 }
 
-TEST_CASE("pipeline: tap on button inactive in current phase has no effect",
-          "[input_pipeline]") {
-    // Button registered for Playing only; current phase is Title.
+TEST_CASE("pipeline: gameplay HUD raygui shape press triggers player shape input",
+          "[input_pipeline][hud]") {
     auto reg = make_rhythm_registry();
-    reg.ctx().get<GameState>().phase = GamePhase::Title;
-    make_rhythm_player(reg);
-    // player_input_system exits early when phase != Playing, so we only
-    // care that no press bleeds through.
+    auto player = make_rhythm_player(reg);
+    auto& sw = reg.get<ShapeWindow>(player);
+    REQUIRE(sw.phase == WindowPhase::Idle);
+    gameplay_hud_apply_button_presses(reg,
+                                      false,
+                                      false,
+                                      true,
+                                      false);
 
-    auto btn = make_shape_button(reg, Shape::Square);  // mask = Playing
-    reg.get<UIPosition>(btn).value = {100.f, 100.f};
-    reg.get<HitCircle>(btn).radius = 40.f;
-    invalidate_active_tag_cache(reg);
+    CHECK(sw.phase == WindowPhase::MorphIn);
+    CHECK(sw.target_shape == Shape::Square);
+}
 
-    push_input(reg, InputType::Tap, 100.f, 100.f);
-    run_pipeline(reg);
+TEST_CASE("pipeline: gameplay HUD shape tap uses slot rectangle bounds",
+          "[input_pipeline][hud]") {
+    const auto circle_input_bounds = gameplay_hud_shape_input_bounds(GameplayHudShapeSlot::Circle);
+    const Vector2 tap_center = {130.0f, 1190.0f};
+    const Vector2 tap_plus_49 = {130.0f, 1239.0f};
+    const Vector2 tap_plus_51 = {130.0f, 1241.0f};
 
-    // hit_test_handle_input filtered it out (ActiveTag absent in Title) AND
-    // player_input_system returned early.  Either guard alone is sufficient;
-    // the test asserts the observable outcome (no shape change).
-    auto view = reg.view<PlayerTag, ShapeWindow>();
-    for (auto [e, sw] : view.each()) {
-        CHECK(sw.phase == WindowPhase::Idle);
-    }
+    CHECK(CheckCollisionPointRec(tap_center, circle_input_bounds));
+    CHECK(CheckCollisionPointRec(tap_plus_49, circle_input_bounds));
+    CHECK_FALSE(CheckCollisionPointRec(tap_plus_51, circle_input_bounds));
+}
+
+TEST_CASE("pipeline: gameplay HUD shape geometry matches gameplay.rgl slots",
+          "[input_pipeline][hud]") {
+    const auto circle_bounds = gameplay_hud_shape_input_bounds(GameplayHudShapeSlot::Circle);
+    const auto square_bounds = gameplay_hud_shape_input_bounds(GameplayHudShapeSlot::Square);
+    const auto triangle_bounds = gameplay_hud_shape_input_bounds(GameplayHudShapeSlot::Triangle);
+
+    CHECK(circle_bounds.x == 60.0f);
+    CHECK(square_bounds.x == 220.0f);
+    CHECK(triangle_bounds.x == 380.0f);
+    CHECK(circle_bounds.y == 1140.0f);
+    CHECK(square_bounds.y == 1140.0f);
+    CHECK(triangle_bounds.y == 1140.0f);
+
+    CHECK(circle_bounds.width == 140.0f);
+    CHECK(circle_bounds.height == 100.0f);
+}
+
+TEST_CASE("pipeline: gameplay HUD raygui shape presses ignored outside Playing",
+          "[input_pipeline][hud]") {
+    auto reg = make_rhythm_registry();
+    reg.ctx().get<GameState>().phase = GamePhase::Paused;
+    auto player = make_rhythm_player(reg);
+    auto& sw = reg.get<ShapeWindow>(player);
+    REQUIRE(sw.phase == WindowPhase::Idle);
+    gameplay_hud_apply_button_presses(reg,
+                                      false,
+                                      false,
+                                      true,
+                                      false);
+
+    CHECK(sw.phase == WindowPhase::Idle);
 }
 
 // ── Mixed swipe + tap in same frame ───────────────────────────────────────
@@ -151,13 +182,9 @@ TEST_CASE("pipeline: mixed swipe and tap both take effect within a single pipeli
     REQUIRE(lane.current == 1);
     REQUIRE(sw.phase == WindowPhase::Idle);
 
-    auto btn = make_shape_button(reg, Shape::Triangle);
-    reg.get<UIPosition>(btn).value = {200.f, 200.f};
-    reg.get<HitCircle>(btn).radius = 40.f;
-    invalidate_active_tag_cache(reg);
-
     push_input(reg, InputType::Swipe, 0.f,   0.f,   Direction::Right);  // lane +1
-    push_input(reg, InputType::Tap,   200.f, 200.f);                     // shape Triangle
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>(
+        {ButtonPressKind::Shape, Shape::Triangle, MenuActionKind::Confirm, 0});
 
     run_pipeline(reg);
 
@@ -228,13 +255,9 @@ TEST_CASE("pipeline: tap consumed after first sub-tick — second sub-tick does 
     auto& song = reg.ctx().get<SongState>();
     song.song_time = 5.0f;
 
-    auto btn = make_shape_button(reg, Shape::Circle);
-    reg.get<UIPosition>(btn).value = {100.f, 100.f};
-    reg.get<HitCircle>(btn).radius = 40.f;
-    invalidate_active_tag_cache(reg);
-
     // Sub-tick 1: tap opens MorphIn.
-    push_input(reg, InputType::Tap, 100.f, 100.f);
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>(
+        {ButtonPressKind::Shape, Shape::Circle, MenuActionKind::Confirm, 0});
     run_pipeline(reg);
     CHECK(sw.phase        == WindowPhase::MorphIn);
     float start1 = sw.window_start;

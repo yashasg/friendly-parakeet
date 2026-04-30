@@ -78,3 +78,21 @@ However, preserved the runtime override block in controller and kept settings bu
 
 **Learning:**
 - For raylib `Material` ownership, do not manually unload `material.shader` immediately before `UnloadMaterial()`; `UnloadMaterial()` already owns that shader teardown path.
+- HUD shape input now uses direct rectangular `gameplay.rgl` slot bounds via raygui state (`GameplayHudLayout_*ButtonBounds`) with no expanded-circle acceptance filter; semantic shape `ButtonPressEvent` dispatch still happens in `gameplay_hud_apply_button_presses` during `Playing` only.
+- ECS tap hit-testing surface was removed from runtime (`hit_test`, `active_tag`, `UIActiveCache`, and related components); raw swipe routing remains via `gesture_routing_handle_input` on Tier-1 `InputEvent` dispatch.
+
+## 2026-04-29T23:54:05Z — Guard-Clause Refactor Implementation Complete
+
+Orchestration log written. Guard-clause early-exit refactor successfully implemented across scoped files. Full test suite validation passed (2181 assertions / 777 tests). Team review (Kujan) approved no regressions.
+
+Decision #169 captured in decisions.md.
+
+---
+
+## 2026-04-30T02:04:27Z — Dead Code Prune (Rejected, rework by Fenster)
+
+**Session:** Multi-agent dead code cleanup.
+
+**Your role:** Code cleanup in `app/components/input.h` and test setup removal in `tests/test_entt_dispatcher_contract.cpp`, `tests/test_test_player_system.cpp`.
+
+**Outcome:** ❌ REJECTED by Kujan. Wording in cleanup still implied raw input routing emits `ButtonPressEvent` (incorrect). Fenster revised independently under lockout protocol; clarifications approved. Cleanup integrated and validated.

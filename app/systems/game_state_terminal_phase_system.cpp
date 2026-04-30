@@ -61,10 +61,10 @@ void game_state_enter_terminal_phase(entt::registry& reg, GamePhase phase) {
     gs.phase = phase;
     gs.phase_timer = 0.0f;
 
-    if (phase == GamePhase::GameOver) {
-        if (auto* song = reg.ctx().find<SongState>()) {
-            song->finished = true;
-            song->playing = false;
-        }
+    if (phase != GamePhase::GameOver) return;
+
+    if (auto* song = reg.ctx().find<SongState>()) {
+        song->finished = true;
+        song->playing = false;
     }
 }

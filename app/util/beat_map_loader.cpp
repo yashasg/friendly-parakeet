@@ -246,11 +246,10 @@ bool validate_beat_map(const BeatMap& map, std::vector<BeatMapError>& errors,
         }
 
         // Rule 5: shape_gate / split_path must have lane 0-2
-        if (entry.kind == ObstacleKind::ShapeGate || entry.kind == ObstacleKind::SplitPath) {
-            if (entry.lane < 0 || entry.lane > 2) {
-                errors.push_back({entry.beat_index, "Lane must be 0-2"});
-                valid = false;
-            }
+        if ((entry.kind == ObstacleKind::ShapeGate || entry.kind == ObstacleKind::SplitPath) &&
+            (entry.lane < 0 || entry.lane > 2)) {
+            errors.push_back({entry.beat_index, "Lane must be 0-2"});
+            valid = false;
         }
 
         // Rule 5b: combo_gate blocked_mask must block at least one lane and leave at least one open
@@ -268,13 +267,12 @@ bool validate_beat_map(const BeatMap& map, std::vector<BeatMapError>& errors,
         bool has_shape = (entry.kind == ObstacleKind::ShapeGate ||
                           entry.kind == ObstacleKind::ComboGate ||
                           entry.kind == ObstacleKind::SplitPath);
-        if (has_shape && prev_had_shape) {
-            if (entry.shape != prev_shape &&
-                (entry.beat_index - prev_shape_beat) < vc.min_shape_change_gap) {
-                errors.push_back({entry.beat_index,
-                    "Different-shape gates must be >= " + std::to_string(vc.min_shape_change_gap) + " beats apart"});
-                valid = false;
-            }
+        if (has_shape && prev_had_shape &&
+            entry.shape != prev_shape &&
+            (entry.beat_index - prev_shape_beat) < vc.min_shape_change_gap) {
+            errors.push_back({entry.beat_index,
+                "Different-shape gates must be >= " + std::to_string(vc.min_shape_change_gap) + " beats apart"});
+            valid = false;
         }
         if (has_shape) {
             prev_shape_beat = entry.beat_index;

@@ -135,9 +135,7 @@ TEST_CASE("game state haptic: RetryTap emitted when Restart pressed on end scree
     reg.ctx().get<GameState>().phase = GamePhase::GameOver;
     reg.ctx().get<GameState>().phase_timer = 1.0f;
 
-    auto btn = reg.create();
-    reg.emplace<MenuButtonTag>(btn);
-    reg.emplace<MenuAction>(btn, MenuActionKind::Restart, uint8_t{0});
+    auto btn = make_menu_button(reg, MenuActionKind::Restart, GamePhase::GameOver);
     press_button(reg, btn);
 
     game_state_system(reg, 0.016f);
@@ -154,9 +152,7 @@ TEST_CASE("game state haptic: UIButtonTap emitted for non-Restart end screen but
     reg.ctx().get<GameState>().phase = GamePhase::GameOver;
     reg.ctx().get<GameState>().phase_timer = 1.0f;
 
-    auto btn = reg.create();
-    reg.emplace<MenuButtonTag>(btn);
-    reg.emplace<MenuAction>(btn, MenuActionKind::GoMainMenu, uint8_t{0});
+    auto btn = make_menu_button(reg, MenuActionKind::GoMainMenu, GamePhase::GameOver);
     press_button(reg, btn);
 
     game_state_system(reg, 0.016f);
@@ -174,9 +170,7 @@ TEST_CASE("game state haptic: RetryTap suppressed when haptics_enabled=false", "
     reg.ctx().get<GameState>().phase = GamePhase::GameOver;
     reg.ctx().get<GameState>().phase_timer = 1.0f;
 
-    auto btn = reg.create();
-    reg.emplace<MenuButtonTag>(btn);
-    reg.emplace<MenuAction>(btn, MenuActionKind::Restart, uint8_t{0});
+    auto btn = make_menu_button(reg, MenuActionKind::Restart, GamePhase::GameOver);
     press_button(reg, btn);
 
     game_state_system(reg, 0.016f);

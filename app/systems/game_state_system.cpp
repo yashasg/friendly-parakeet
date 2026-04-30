@@ -18,8 +18,8 @@ void game_state_system(entt::registry& reg, float dt) {
     // (see wire_input_dispatcher in input/input_dispatcher.cpp).
     //
     // Events are enqueued earlier in the same frame by input_system (keyboard),
-    // gesture_routing (swipes), and hit_test (taps) — all of
-    // which run as direct pre-tick calls before the fixed-step loop.
+    // gesture_routing (swipes), and raygui HUD controllers (buttons) before
+    // the fixed-step loop.
     //
     // ⚠ Do NOT call disp.clear<GoEvent/ButtonPressEvent>() before this point
     //   within a frame.  Those pre-tick systems enqueue same-frame events that
@@ -91,10 +91,9 @@ void game_state_system(entt::registry& reg, float dt) {
         auto* energy = reg.ctx().find<EnergyState>();
         auto* song = reg.ctx().find<SongState>();
         if (energy && song && song->playing && energy->energy <= 0.0f) {
-            if (auto* gos = reg.ctx().find<GameOverState>()) {
-                if (gos->cause == DeathCause::None) {
-                    gos->cause = DeathCause::EnergyDepleted;
-                }
+            auto* gos = reg.ctx().find<GameOverState>();
+            if (gos && gos->cause == DeathCause::None) {
+                gos->cause = DeathCause::EnergyDepleted;
             }
             gs.transition_pending = true;
             gs.next_phase = GamePhase::GameOver;

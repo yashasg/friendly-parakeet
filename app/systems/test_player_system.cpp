@@ -97,12 +97,11 @@ static TestPlayerAction determine_action(
         auto* obs_pos = reg.try_get<Position>(entity);
         if (obs_pos && !reg.all_of<BlockedLanes>(entity) && !reg.all_of<RequiredLane>(entity)) {
             for (int i = 0; i < constants::LANE_COUNT; ++i) {
-                if (lane_centers_overlap(obs_pos->x, constants::LANE_X[i])) {
-                    if (i != player_lane) {
-                        action.target_lane = static_cast<int8_t>(i);
-                    }
-                    break;
+                if (!lane_centers_overlap(obs_pos->x, constants::LANE_X[i])) continue;
+                if (i != player_lane) {
+                    action.target_lane = static_cast<int8_t>(i);
                 }
+                break;
             }
         }
     }

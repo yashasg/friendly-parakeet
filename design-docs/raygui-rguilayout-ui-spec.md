@@ -4,7 +4,7 @@
 
 Draft for `ui_layout_refactor`.
 
-This spec replaces the current JSON-driven UI layout path with raygui controls and rguilayout-authored/generated layout files. It is based on the existing `content/ui/screens/*.json`, `content/ui/routes.json`, `design-docs/game-flow.md`, and the current implementation under `app/ui/`, `app/systems/ui_navigation_system.cpp`, and `app/systems/ui_render_system.cpp`.
+This spec replaces the current JSON-driven UI layout path with raygui controls and rguilayout-authored/generated layout files. It is based on the existing `content/ui/screens/*.json`, `content/ui/routes.json`, `design-docs/game-flow.md`, and the current implementation under `app/ui/` and `app/systems/ui_render_system.cpp` (raygui screen-controller dispatch + render-pass glue).
 
 Current directive: the rguilayout application is vendored under `tools/rguilayout/`; `.rgl` files replace the current `content/ui` JSON layout sources; exported `.c/.h` files live directly under `app/ui`; CMake/CI/build-pipeline integration is deferred.
 
@@ -15,7 +15,7 @@ The Excalidraw tool currently returns an empty scene, so Excalidraw is not a usa
 1. Replace hand-authored runtime JSON UI layout files with rguilayout `.rgl` authoring files and generated `.c/.h` exports. Wiring those generated files into the game build is a later integration task.
 2. Use raygui for menu, overlay, settings, pause, and HUD UI controls where appropriate.
 3. Keep layout geometry contained in rguilayout exported files. Do not mirror exported rectangles, anchors, widget IDs, or hit targets into ECS components, ECS entities, or `reg.ctx()` layout caches.
-4. Preserve the existing `GamePhase` / `ActiveScreen` navigation behavior and dispatcher-driven game commands.
+4. Preserve existing `GamePhase`-driven screen-controller dispatch and dispatcher-driven game commands.
 5. Remove duplicated UI geometry across JSON, `ui_layout_cache.h`, and `ui_button_spawner.h`.
 
 ## Non-goals
@@ -53,7 +53,7 @@ Disallowed:
 - `RaguiAnchors<ScreenTag>` or similar ECS/ctx anchor structs.
 - Rebuilding `HudLayout`, `LevelSelectLayout`, or `OverlayLayout` from rguilayout constants.
 - `UIElementTag`-style entities for generated widgets.
-- `HitBox`/`HitCircle` entities whose only purpose is raygui widget hit testing.
+- Legacy UI hit-test entities whose only purpose is raygui widget hit testing.
 - Hand-written normalized-coordinate tables that duplicate `.rgl` data.
 
 Allowed:
@@ -88,7 +88,7 @@ ui_render_system()
 existing dispatcher + game state systems
 ```
 
-`ui_navigation_system` should remain responsible for screen/routing state only. It should not load JSON, spawn widget entities, or populate layout caches for rguilayout screens.
+Screen controllers and `ui_render_system` remain responsible for screen dispatch and widget interaction. They should not load JSON, spawn widget entities, or populate layout caches for rguilayout screens.
 
 `ui_render_system` switches on the active screen and calls the relevant adapter. The adapter calls generated layout functions directly. If the generated header exposes named controls, slots, or rectangles, adapters may use those generated symbols directly; the key rule is that the values stay in generated files and are not persisted into ECS or copied into hand-written layout tables.
 
@@ -192,7 +192,7 @@ Examples:
 - HUD pause -> existing pause action.
 - Shape button click/touch -> existing player shape-change path.
 
-For migrated raygui controls, do not spawn parallel `HitBox` entities. Existing hit-test code can be retired screen-by-screen as generated adapters take ownership of input for those controls.
+For migrated raygui controls, do not spawn parallel ECS hit-test entities. Generated adapters should emit semantic UI/gameplay actions directly as they take ownership of those controls.
 
 ## Build integration
 
@@ -250,9 +250,9 @@ Once all screens are generated:
 1. Delete `content/ui/screens/*.json` and `content/ui/routes.json` if routes have been moved to code or another non-layout source.
 2. Delete `ui_loader.*` layout loading code.
 3. Delete `ui_layout_cache.h` and all ctx layout cache writes/reads.
-4. Delete `ui_button_spawner.h` once no migrated screen uses widget entities/hitboxes.
+4. Keep `ui_button_spawner.h` removed; migrated screens should not depend on widget entities/hitboxes.
 5. Delete `UIElementTag`/`UIText`/`UIButton`/`UIShape` components if they no longer serve non-layout gameplay behavior.
-6. Narrow or remove `input/hit_test.cpp` after migrated controls no longer need UI hitbox entities.
+6. Keep legacy hit-test helpers removed; migrated controls should rely on raygui/controller callbacks and semantic events rather than UI hitbox entities.
 
 ## Validation
 

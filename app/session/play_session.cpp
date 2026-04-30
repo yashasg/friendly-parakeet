@@ -15,8 +15,6 @@
 #include "../components/rng.h"
 #include "../util/beat_map_loader.h"
 #include "../util/rhythm_math.h"
-#include "../components/input_events.h"
-#include "../input/input_routing.h"
 #include "../entities/camera_entity.h"
 #include "../entities/player_entity.h"
 #include "../constants.h"
@@ -28,29 +26,6 @@ namespace {
 // Session setup owns when a player is spawned; player_entity owns how.
 void spawn_session_player(entt::registry& reg) {
     create_player_entity(reg);
-}
-
-// Session setup owns the runtime "shape button" HUD population for Playing.
-void spawn_playing_shape_buttons(entt::registry& reg) {
-    float btn_w       = constants::BUTTON_W_N  * constants::SCREEN_W;
-    float btn_h       = constants::BUTTON_H_N  * constants::SCREEN_H;
-    float btn_spacing = constants::BUTTON_SPACING_N * constants::SCREEN_W;
-    float btn_y       = constants::BUTTON_Y_N  * constants::SCREEN_H;
-    float btn_area_x  = (constants::SCREEN_W - 3.0f * btn_w - 2.0f * btn_spacing) / 2.0f;
-    float btn_cy      = btn_y + btn_h / 2.0f;
-    float btn_radius  = btn_w / 2.8f;
-    float hit_radius  = btn_radius * 1.4f;
-
-    Shape shapes[3] = { Shape::Circle, Shape::Square, Shape::Triangle };
-    for (int i = 0; i < 3; ++i) {
-        float btn_cx = btn_area_x + static_cast<float>(i) * (btn_w + btn_spacing) + btn_w / 2.0f;
-        auto btn = reg.create();
-        reg.emplace<ShapeButtonTag>(btn);
-        reg.emplace<UIPosition>(btn, Vector2{btn_cx, btn_cy});
-        reg.emplace<HitCircle>(btn, hit_radius);
-        reg.emplace<ShapeButtonData>(btn, shapes[i]);
-        reg.emplace<ActiveInPhase>(btn, GamePhaseBit::Playing);
-    }
 }
 
 void enter_playing_phase(GameState& gs) {
@@ -141,26 +116,24 @@ void setup_play_session(entt::registry& reg) {
 
     // Load music (only if MusicContext exists — not in test mode)
     auto* music = reg.ctx().find<MusicContext>();
-    if (music) {
-        if (music->loaded) {
-            StopMusicStream(music->stream);
-            UnloadMusicStream(music->stream);
-            music->loaded = false;
-            music->started = false;
-        }
-        if (!beatmap.song_path.empty()) {
-            std::string exe_audio = std::string(GetApplicationDirectory()) + beatmap.song_path;
-            const char* audio_paths[] = { exe_audio.c_str(), beatmap.song_path.c_str() };
-            for (const char* path : audio_paths) {
-                Music stream = LoadMusicStream(path);
-                if (stream.frameCount > 0) {
-                    music->stream  = stream;
-                    music->loaded  = true;
-                    music->started = false;
-                    SetMusicVolume(music->stream, music->volume);
-                    TraceLog(LOG_INFO, "Loaded music: %s", path);
-                    break;
-                }
+    if (music && music->loaded) {
+        StopMusicStream(music->stream);
+        UnloadMusicStream(music->stream);
+        music->loaded = false;
+        music->started = false;
+    }
+    if (music && !beatmap.song_path.empty()) {
+        std::string exe_audio = std::string(GetApplicationDirectory()) + beatmap.song_path;
+        const char* audio_paths[] = { exe_audio.c_str(), beatmap.song_path.c_str() };
+        for (const char* path : audio_paths) {
+            Music stream = LoadMusicStream(path);
+            if (stream.frameCount > 0) {
+                music->stream  = stream;
+                music->loaded  = true;
+                music->started = false;
+                SetMusicVolume(music->stream, music->volume);
+                TraceLog(LOG_INFO, "Loaded music: %s", path);
+                break;
             }
         }
     }
@@ -181,11 +154,7 @@ void setup_play_session(entt::registry& reg) {
     }
 
     spawn_session_player(reg);
-    spawn_playing_shape_buttons(reg);
-
     // Transition game state
     auto& gs = reg.ctx().get<GameState>();
     enter_playing_phase(gs);
-    invalidate_active_tag_cache(reg);
-    ensure_active_tags_synced(reg);
 }

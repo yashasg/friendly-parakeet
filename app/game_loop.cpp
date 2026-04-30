@@ -12,7 +12,6 @@
 #include "components/rhythm.h"
 #include "audio/music_context.h"
 #include "components/rendering.h"
-#include "components/ui_state.h"
 #include "components/test_player.h"
 #include "components/obstacle.h"
 #include "components/rng.h"
@@ -159,8 +158,6 @@ void game_loop_init(entt::registry& reg,
     wire_obstacle_model_lifecycle(reg);
 
     // UI + beatmap + music
-    reg.ctx().emplace<UIActiveCache>();
-    reg.ctx().emplace<UIState>();
     reg.ctx().emplace<BeatMap>();
     reg.ctx().emplace<SongState>();
     reg.ctx().emplace<MusicContext>();
@@ -177,7 +174,7 @@ static void tick_fixed_systems(entt::registry& reg, float dt) {
     // game_state_system runs FIRST and owns the authoritative GoEvent /
     // ButtonPressEvent drain for this tick (calls disp.update<GoEvent>() and
     // disp.update<ButtonPressEvent>() at its top).  All pre-tick enqueues from
-    // input_system, gesture_routing, and hit_test are delivered
+    // input_system and gesture_routing are delivered
     // here to listeners in registration order (see wire_input_dispatcher).
     // Systems later in this list that also call disp.update<T>() (e.g.,
     // player_input_system) will find an empty queue and execute as no-ops.
@@ -198,7 +195,6 @@ static void tick_fixed_systems(entt::registry& reg, float dt) {
     particle_system(reg, dt);
     obstacle_despawn_system(reg, dt);
     popup_display_system(reg, dt);
-    ui_navigation_system(reg, dt);
 }
 
 // One frame: input → fixed timestep → render → blit → audio.
@@ -211,8 +207,7 @@ void game_loop_frame(entt::registry& reg, float& accumulator) {
     compute_screen_transform(reg);
     input_system(reg, raw_dt);
     // Deliver Tier-1 InputEvents: fires gesture_routing_handle_input and
-    // hit_test_handle_input in registration order, enqueuing GoEvent /
-    // ButtonPressEvent into the Tier-2 queues for fixed-step delivery.
+    // enqueues GoEvent into the Tier-2 queue for fixed-step delivery.
     reg.ctx().get<entt::dispatcher>().update<InputEvent>();
     test_player_system(reg, raw_dt);
 

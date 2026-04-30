@@ -28,55 +28,56 @@ void input_system(entt::registry& reg, float raw_dt) {
     auto to_vy = [&](float wy) { return (wy - st.offset_y) / st.scale; };
 
     // ── Mouse (desktop) — only when no touch gesture is active ─
-    if (input.active_source != InputSource::Touch) {
-        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-            input.touch_down = true;
-            input.touching   = true;
-            input.active_source = InputSource::Mouse;
-            Vector2 pos = GetMousePosition();
-            input.start_x = input.curr_x = to_vx(pos.x);
-            input.start_y = input.curr_y = to_vy(pos.y);
-            input.duration = 0.0f;
-        }
-        if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
-            input.active_source == InputSource::Mouse) {
-            input.touch_up  = true;
-            input.touching  = false;
-            input.active_source = InputSource::None;
-            Vector2 pos = GetMousePosition();
-            input.end_x = to_vx(pos.x);
-            input.end_y = to_vy(pos.y);
-        }
-        if (IsMouseButtonDown(MOUSE_BUTTON_LEFT) && input.touching &&
-            input.active_source == InputSource::Mouse) {
-            Vector2 pos = GetMousePosition();
-            input.curr_x = to_vx(pos.x);
-            input.curr_y = to_vy(pos.y);
-        }
+    if (input.active_source != InputSource::Touch &&
+        IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        input.touch_down = true;
+        input.touching   = true;
+        input.active_source = InputSource::Mouse;
+        Vector2 pos = GetMousePosition();
+        input.start_x = input.curr_x = to_vx(pos.x);
+        input.start_y = input.curr_y = to_vy(pos.y);
+        input.duration = 0.0f;
+    }
+    if (input.active_source != InputSource::Touch &&
+        IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
+        input.active_source == InputSource::Mouse) {
+        input.touch_up  = true;
+        input.touching  = false;
+        input.active_source = InputSource::None;
+        Vector2 pos = GetMousePosition();
+        input.end_x = to_vx(pos.x);
+        input.end_y = to_vy(pos.y);
+    }
+    if (input.active_source != InputSource::Touch &&
+        IsMouseButtonDown(MOUSE_BUTTON_LEFT) && input.touching &&
+        input.active_source == InputSource::Mouse) {
+        Vector2 pos = GetMousePosition();
+        input.curr_x = to_vx(pos.x);
+        input.curr_y = to_vy(pos.y);
     }
 
     // ── Touch (mobile / web) — only when no mouse gesture is active ─
-    if (input.active_source != InputSource::Mouse) {
-        if (GetTouchPointCount() > 0) {
-            Vector2 tp = GetTouchPosition(0);
-            if (!input.touching) {
-                input.touch_down = true;
-                input.touching   = true;
-                input.active_source = InputSource::Touch;
-                input.start_x = input.curr_x = to_vx(tp.x);
-                input.start_y = input.curr_y = to_vy(tp.y);
-                input.duration = 0.0f;
-            } else if (input.active_source == InputSource::Touch) {
-                input.curr_x = to_vx(tp.x);
-                input.curr_y = to_vy(tp.y);
-            }
-        } else if (input.touching && input.active_source == InputSource::Touch) {
-            input.touch_up  = true;
-            input.touching  = false;
-            input.active_source = InputSource::None;
-            input.end_x = input.curr_x;
-            input.end_y = input.curr_y;
+    if (input.active_source != InputSource::Mouse &&
+        GetTouchPointCount() > 0) {
+        Vector2 tp = GetTouchPosition(0);
+        if (!input.touching) {
+            input.touch_down = true;
+            input.touching   = true;
+            input.active_source = InputSource::Touch;
+            input.start_x = input.curr_x = to_vx(tp.x);
+            input.start_y = input.curr_y = to_vy(tp.y);
+            input.duration = 0.0f;
+        } else if (input.active_source == InputSource::Touch) {
+            input.curr_x = to_vx(tp.x);
+            input.curr_y = to_vy(tp.y);
         }
+    } else if (input.active_source != InputSource::Mouse &&
+               input.touching && input.active_source == InputSource::Touch) {
+        input.touch_up  = true;
+        input.touching  = false;
+        input.active_source = InputSource::None;
+        input.end_x = input.curr_x;
+        input.end_y = input.curr_y;
     }
 
 #ifdef PLATFORM_HAS_KEYBOARD
@@ -124,7 +125,7 @@ void input_system(entt::registry& reg, float raw_dt) {
     }
 
     // Touch/mouse gesture → InputEvent enqueued to dispatcher; delivered to
-    // gesture_routing_handle_input and hit_test_handle_input via
+    // gesture_routing_handle_input via
     // disp.update<InputEvent>() in game_loop_frame (#333).
     if (input.touch_up) {
         const InputEvent event = input_event_from_raylib_gesture(

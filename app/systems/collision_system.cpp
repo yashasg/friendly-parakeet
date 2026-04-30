@@ -62,59 +62,56 @@ void collision_system(entt::registry& reg, float /*dt*/) {
     auto resolve = [&](entt::entity entity, float obs_z, bool cleared) {
         if (!player_in_timing_window(p_transform, p_vstate, obs_z)) return;
 
-        if (cleared) {
-            // In rhythm mode, compute timing grade
-            if (rhythm_mode) {
-                auto window_phase = p_window.phase;
-                if (window_phase == WindowPhase::Active && song->half_window > 0.0f) {
-                    // Grade timing by comparing the player's predicted peak
-                    // (center of the Active window) against the obstacle's
-                    // scheduled arrival.  peak_time is set at press time as
-                    // press + morph_duration + half_window, so a perfectly-
-                    // timed tap gives peak_time ≈ arrival_time → pct ≈ 0.
-                    // A stale press from a previous beat has peak_time far
-                    // from the current obstacle's arrival → Bad.
-                    auto* beat_info = reg.try_get<BeatInfo>(entity);
-                    float reference_time = beat_info ? beat_info->arrival_time
-                                                     : p_window.peak_time;
-                    float pct_from_peak = std::abs(p_window.peak_time - reference_time) / song->half_window;
-                    if (pct_from_peak > 1.0f) pct_from_peak = 1.0f;
-                    TimingTier tier = compute_timing_tier(pct_from_peak);
-                    reg.emplace<TimingGrade>(entity, tier, 1.0f - pct_from_peak);
-
-                    if (results) {
-                        switch (tier) {
-                            case TimingTier::Perfect: results->perfect_count++; break;
-                            case TimingTier::Good:    results->good_count++;    break;
-                            case TimingTier::Ok:      results->ok_count++;      break;
-                            case TimingTier::Bad:     results->bad_count++;     break;
-                        }
-                    }
-
-                    if (!p_window.graded) {
-                        float scale = window_scale_for_tier(tier);
-                        float remaining = song->window_duration - p_window.window_timer;
-                        if (remaining > 0.0f) {
-                            if (scale < 1.0f) {
-                                // Adjust window_start backward so the song-time-derived
-                                // elapsed time is naturally larger on subsequent ticks,
-                                // causing the Active phase to expire earlier.  Mutating
-                                // window_timer directly would be overwritten by
-                                // shape_window_system on the next frame.
-                                p_window.window_start -= remaining * (1.0f - scale);
-                            }
-                        }
-                        p_window.window_scale = scale;
-                        p_window.graded = true;
-                    }
-                }
-            }
-            reg.emplace<ScoredTag>(entity);
-        } else {
+        if (!cleared) {
             // MISS — tag only; scoring_system owns energy drain and death-cause attribution.
             reg.emplace<MissTag>(entity);
             reg.emplace<ScoredTag>(entity);
+            return;
         }
+
+        // In rhythm mode, compute timing grade.
+        if (rhythm_mode && p_window.phase == WindowPhase::Active && song->half_window > 0.0f) {
+            // Grade timing by comparing the player's predicted peak
+            // (center of the Active window) against the obstacle's
+            // scheduled arrival.  peak_time is set at press time as
+            // press + morph_duration + half_window, so a perfectly-
+            // timed tap gives peak_time ≈ arrival_time → pct ≈ 0.
+            // A stale press from a previous beat has peak_time far
+            // from the current obstacle's arrival → Bad.
+            auto* beat_info = reg.try_get<BeatInfo>(entity);
+            float reference_time = beat_info ? beat_info->arrival_time
+                                             : p_window.peak_time;
+            float pct_from_peak = std::abs(p_window.peak_time - reference_time) / song->half_window;
+            if (pct_from_peak > 1.0f) pct_from_peak = 1.0f;
+            TimingTier tier = compute_timing_tier(pct_from_peak);
+            reg.emplace<TimingGrade>(entity, tier, 1.0f - pct_from_peak);
+
+            if (results) {
+                switch (tier) {
+                    case TimingTier::Perfect: results->perfect_count++; break;
+                    case TimingTier::Good:    results->good_count++;    break;
+                    case TimingTier::Ok:      results->ok_count++;      break;
+                    case TimingTier::Bad:     results->bad_count++;     break;
+                }
+            }
+
+            if (!p_window.graded) {
+                float scale = window_scale_for_tier(tier);
+                float remaining = song->window_duration - p_window.window_timer;
+                if (remaining > 0.0f && scale < 1.0f) {
+                    // Adjust window_start backward so the song-time-derived
+                    // elapsed time is naturally larger on subsequent ticks,
+                    // causing the Active phase to expire earlier.  Mutating
+                    // window_timer directly would be overwritten by
+                    // shape_window_system on the next frame.
+                    p_window.window_start -= remaining * (1.0f - scale);
+                }
+                p_window.window_scale = scale;
+                p_window.graded = true;
+            }
+        }
+
+        reg.emplace<ScoredTag>(entity);
     };
 
     // Per-kind structural views — each loop touches only entities that actually

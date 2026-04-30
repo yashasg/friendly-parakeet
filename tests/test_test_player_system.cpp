@@ -12,10 +12,6 @@ static entt::registry make_test_player_registry(TestPlayerSkill skill = TestPlay
     tp.skill = skill;
     tp.active = true;
     tp.rng.seed(42);
-    // Create shape button entities (test_player_system looks these up)
-    make_shape_button(reg, Shape::Circle);
-    make_shape_button(reg, Shape::Square);
-    make_shape_button(reg, Shape::Triangle);
     return reg;
 }
 

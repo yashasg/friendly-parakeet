@@ -8,6 +8,8 @@
 
 ## Learnings
 
+- Post-raygui migration, runtime no longer spawns menu ECS hit targets (`MenuButtonTag + HitBox`); menu interactions are handled directly in raygui screen controllers.
+- ActiveTag/ActiveInPhase currently remain runtime-live only for gameplay shape buttons (`ShapeButtonTag + HitCircle`) consumed by `hit_test_handle_input`.
 - Archetype-to-entity migration rule: when runtime and tests call `app/entities/*_entity.h` factories directly, any remaining `app/archetypes/` forwarding header is dead surface and should be removed.
 - Decommission checklist for namespace-folder migrations: remove include shims, remove CMake source globs for the retired folder, and scrub stale docs/comments that still mark the old folder as canonical.
 - Verification command for this migration class: `cmake -B build -S . -Wno-dev && cmake --build build --target shapeshifter_tests && ./build/shapeshifter_tests "[archetype]"`.
@@ -102,3 +104,56 @@
 **Related:**
 - Orchestration log: `.squad/orchestration-log/2026-04-29T09:55:21Z-keyser.md`
 - Decision merged: Song Complete & Pause Screen Text Readability Fixes (decisions.md)
+
+## 2026-04-29T21:20:03Z — ActiveTag Audit Post-raygui Migration
+
+**Session:** Keyser Leadership Audit — ActiveTag Component Viability
+**Outcome:** DECISION — Partial Obsolescence Confirmed
+**Decision ID:** #168
+
+Audited remaining ECS `ActiveTag` + `hit_test_handle_input` code paths to determine runtime liveness post-raygui migration.
+
+**Findings:**
+- **Live:** Gameplay shape buttons use ECS hit path (`ShapeButtonTag + HitCircle + ActiveInPhase`)
+- **Legacy/Transitional:** Menu/pause/end-screen buttons now raygui-driven in screen controllers
+- **Dead:** `MenuButtonTag`, `HitBox` entities, and menu-action branches never spawned at runtime
+
+**Decision:** Keep `ActiveTag` for gameplay shapes; deprecate menu ECS branches.
+
+**Migration Guidance (Future Work):**
+1. Split `hit_test_handle_input` into gameplay-only path
+2. Replace `ActiveInPhase`/`ActiveTag` with simpler `GamePhase::Playing` guard
+3. Update synthetic menu-button tests
+4. Preserve keyboard/semantic routing during transition
+
+**Artifacts:**
+- Orchestration: `.squad/orchestration-log/2026-04-29T21:20:03Z-keyser.md`
+- Session: `.squad/log/2026-04-29T21:20:03Z-active-tag-raygui-audit.md`
+- Decision: Merged to `.squad/decisions.md` as #168
+- Gameplay HUD shape controls can stay raygui-owned by using invisible rguilayout button slots for input while preserving circular tap semantics in the controller: center from slot bounds, `visual_radius = slot.width/2.8f`, `hit_radius = visual_radius*1.4f`.
+- Regression guard for HUD tap geometry: `[input_pipeline][hud]` now asserts vertical offsets of +60 and +70 from slot center are accepted while +71 is rejected, preventing fallback to rectangular 140x100 hit behavior.
+
+## 2026-04-29 — Gameplay shape buttons migration (revisions R3 → rejected)
+
+**Status:** TWO-PASS REVISION CYCLE
+**Reviewer:** Kujan
+**Verdict (R3):** REJECTED (production reachability blocked)
+**Verdict (post-feedback):** REJECTED (geometry source drift 60/220/380 vs 90/290/490)
+
+**Revision 1 (Circular Acceptance Filter):**
+- Added explicit circular acceptance filter (`CheckCollisionPointCircle`) before `ButtonPressEvent` dispatch
+- Preserved 1.4× forgiveness (hit_radius ~70) while keeping raygui HUD ownership
+- Design: raygui bounds capture raw press; circular filter applied after raygui reports press
+
+**Kujan feedback (R3):** Circular filter math correct in isolation, but **production acceptance gate blocked**: raygui input bounds (140×100 rectangles at y=1140..1240) cannot reach center.y±70 taps required for legacy 1.4× behavior. Must expand raw raygui bounds or provide alternative production path.
+
+**Revision 2 (Raw Bounds Investigation):**
+- Attempted to expand raw raygui input bounds to enclose the circular hit radius
+- Discovered upstream geometry source drift: `gameplay.rgl` slots define x=60/220/380, but generated header hard-codes x=90/290/490
+- Mismatch violates source-of-truth requirement and blocks safe regeneration
+
+**Reassignment:** Baer (Test Engineer, non-locked) to establish reachability contract and implement raw bounds expansion from correct geometry source.
+
+**See:** `.squad/orchestration-log/2026-04-29T22-03-09Z-keyser.md`
+
+- 2026-04-29: Post-HUD migration audit confirms ActiveTag/HitBox/HitCircle/UIActiveCache path is runtime-dead; gameplay input now flows via raygui HUD direct ButtonPressEvent dispatch + keyboard semantic events.

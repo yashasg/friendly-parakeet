@@ -154,14 +154,6 @@ TEST_CASE("Bench: player_input + movement", "[bench]") {
         auto reg = make_bench_registry();
         make_bench_player(reg);
 
-        // Create a shape button entity and push events
-        auto btn = reg.create();
-        reg.emplace<ShapeButtonTag>(btn);
-        reg.emplace<ShapeButtonData>(btn, Shape::Triangle);
-        reg.emplace<Position>(btn, 0.0f, 0.0f);
-        reg.emplace<HitCircle>(btn, 50.0f);
-        reg.emplace<ActiveInPhase>(btn, GamePhaseBit::Playing);
-
         auto& disp = reg.ctx().get<entt::dispatcher>();
         disp.enqueue<ButtonPressEvent>({ButtonPressKind::Shape, Shape::Triangle});
         disp.enqueue<GoEvent>({Direction::Right});

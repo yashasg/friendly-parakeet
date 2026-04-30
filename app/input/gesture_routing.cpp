@@ -2,8 +2,7 @@
 #include "../components/input_events.h"
 
 // Routes Swipe InputEvents into GoEvents.  Tap and other input types are
-// intentionally ignored here — spatial hit-testing is owned by
-// hit_test_handle_input (see #272).
+// intentionally ignored here.
 //
 // Registered as a disp.sink<InputEvent>() listener in wire_input_dispatcher()
 // and fired via disp.update<InputEvent>() in game_loop_frame before the

@@ -46,7 +46,6 @@ inline entt::registry make_registry() {
     reg.ctx().emplace<HighScorePersistence>();
     reg.ctx().emplace<GameOverState>();
     reg.ctx().emplace<RNGState>();
-    reg.ctx().emplace<UIActiveCache>();
     reg.ctx().emplace<ObstacleCounter>();
     wire_obstacle_counter(reg);
     return reg;
@@ -91,25 +90,34 @@ inline void push_input(entt::registry& reg, InputType type,
     reg.ctx().get<entt::dispatcher>().enqueue<InputEvent>({type, dir, x, y});
 }
 
-// Fire the Tier-1 InputEvent listeners (gesture_routing + hit_test).
+// Fire the Tier-1 InputEvent listeners (gesture_routing).
 // Equivalent to what game_loop_frame does after input_system.
 inline void run_input_tier1(entt::registry& reg) {
     reg.ctx().get<entt::dispatcher>().update<InputEvent>();
 }
+
+struct TestShapeButtonData {
+    Shape shape = Shape::Circle;
+};
+
+struct TestMenuButtonData {
+    MenuActionKind kind = MenuActionKind::Confirm;
+    uint8_t index = 0;
+};
 
 // ── Button-press injection helper (#273) ────────────────────────────────────
 // Enqueue a semantic ButtonPressEvent for a given entity, encoding the
 // payload at call time (no live entity handle stored in the event).
 inline void press_button(entt::registry& reg, entt::entity btn) {
     auto& disp = reg.ctx().get<entt::dispatcher>();
-    if (reg.all_of<ShapeButtonTag, ShapeButtonData>(btn)) {
-        auto shape = reg.get<ShapeButtonData>(btn).shape;
+    if (reg.all_of<TestShapeButtonData>(btn)) {
+        auto shape = reg.get<TestShapeButtonData>(btn).shape;
         disp.enqueue<ButtonPressEvent>({ButtonPressKind::Shape, shape,
                                        MenuActionKind::Confirm, 0});
-    } else if (reg.all_of<MenuButtonTag, MenuAction>(btn)) {
-        auto& ma = reg.get<MenuAction>(btn);
+    } else if (reg.all_of<TestMenuButtonData>(btn)) {
+        auto& ma = reg.get<TestMenuButtonData>(btn);
         disp.enqueue<ButtonPressEvent>({ButtonPressKind::Menu, Shape::Circle,
-                                       ma.kind, ma.index});
+                                        ma.kind, ma.index});
     }
 }
 
@@ -265,21 +273,14 @@ inline entt::entity make_lane_push(entt::registry& reg, ObstacleKind kind, float
 
 inline entt::entity make_shape_button(entt::registry& reg, Shape shape) {
     auto btn = reg.create();
-    reg.emplace<ShapeButtonTag>(btn);
-    reg.emplace<ShapeButtonData>(btn, shape);
-    reg.emplace<UIPosition>(btn, Vector2{0.0f, 0.0f});
-    reg.emplace<HitCircle>(btn, 50.0f);
-    reg.emplace<ActiveInPhase>(btn, GamePhaseBit::Playing);
+    reg.emplace<TestShapeButtonData>(btn, shape);
     return btn;
 }
 
 inline entt::entity make_menu_button(entt::registry& reg, MenuActionKind kind,
                                       GamePhase phase, uint8_t index = 0) {
+    (void)phase;
     auto btn = reg.create();
-    reg.emplace<MenuButtonTag>(btn);
-    reg.emplace<MenuAction>(btn, kind, index);
-    reg.emplace<UIPosition>(btn, Vector2{0.0f, 0.0f});
-    reg.emplace<HitBox>(btn, 100.0f, 100.0f);
-    reg.emplace<ActiveInPhase>(btn, to_phase_bit(phase));
+    reg.emplace<TestMenuButtonData>(btn, kind, index);
     return btn;
 }
