@@ -128,3 +128,11 @@ Removed runtime override entirely from `title_screen_controller.cpp`. Updated `c
 Removed top-level `assets/` directory. Moved fonts to `content/fonts/`. Updated runtime paths in `app/ui/text_renderer.cpp`. Updated CMake font copy rules and Emscripten preload flags (removed `assets@/assets`, kept `content@/content`). Updated docs/tooling references from `assets/beatmaps/` to `content/beatmaps/`. Build validation passed. Exposed stale LanePush test contract.
 
 **Manifested:** Decision #172 merged to `.squad/decisions.md`
+
+## 2026-04-30 — PR #357 WASM preview abort (`emscripten_sleep`) hotfix
+
+- **Root cause:** `shapeshifter` WebAssembly link flags did not enable async stack transformation, so runtime calls that resolve to `emscripten_sleep` aborted in browser preview (`Aborted(Please compile your program with async support...)`).
+- **Fix:** Added `-sASYNCIFY` to the `if(EMSCRIPTEN)` link options for the `shapeshifter` target in `CMakeLists.txt` (web-only scope).
+- **Regression guard:** Added CI step `Verify WASM async support flag` in `.github/workflows/ci-wasm.yml` that fails if `build-web/CMakeFiles/shapeshifter.dir/link.txt` does not contain `-sASYNCIFY`.
+- **Validation:** `emcmake cmake -B build-web -S . ... -DVCPKG_TARGET_TRIPLET=wasm32-emscripten && cmake --build build-web -- -j$(sysctl -n hw.ncpu) && (cd build-web && ctest --verbose --output-on-failure)` passed (WASM build + `shapeshifter_tests_wasm` pass). `git diff --check -- CMakeLists.txt .github/workflows/ci-wasm.yml` clean.
+- **PR status:** Changes prepared for `squad/level-designer-html-hardening`; push/check monitoring pending this hotfix commit.

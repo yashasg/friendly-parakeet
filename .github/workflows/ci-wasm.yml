@@ -68,6 +68,19 @@ jobs:
             -DVCPKG_TARGET_TRIPLET=wasm32-emscripten
           cmake --build build-web -- -j$(nproc)
 
+      - name: Verify WASM async support flag
+        run: |
+          LINK_FILE="build-web/CMakeFiles/shapeshifter.dir/link.txt"
+          if [ ! -f "$LINK_FILE" ]; then
+            echo "::error title=Missing linker command::$LINK_FILE not found"
+            exit 1
+          fi
+          if ! grep -q -- "-sASYNCIFY" "$LINK_FILE"; then
+            echo "::error title=Missing async support flag::shapeshifter link flags must include -sASYNCIFY for emscripten_sleep support"
+            exit 1
+          fi
+          echo "Verified -sASYNCIFY is present in shapeshifter link flags"
+
       - name: Run WASM tests (via CTest + Node)
         run: |
           cd build-web

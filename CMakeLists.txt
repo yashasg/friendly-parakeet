@@ -296,6 +296,9 @@ if(EMSCRIPTEN)
     target_link_options(shapeshifter PRIVATE
         -sUSE_GLFW=3
         -fexceptions
+        # Runtime uses async operations (e.g. emscripten_sleep); enable stack
+        # unwinding/rewinding support so browser preview does not abort.
+        -sASYNCIFY
         -sALLOW_MEMORY_GROWTH=1
         -sDYNAMIC_EXECUTION=0
         # The browser frame loop is registered with emscripten_set_main_loop();
