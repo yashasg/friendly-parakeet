@@ -235,3 +235,13 @@ Next: Await merge approval.
 **Reassignment:** Fenster (Tools Engineer, non-locked) to fix visual overlay while keeping raygui ownership path.
 
 **See:** `.squad/orchestration-log/2026-04-29T22-03-09Z-mcmanus.md`
+
+---
+
+## 2026-04-30T02:04:27Z — Dead Code Prune — Stale Doc Cleanup (Rejected, rework by Fenster)
+
+**Session:** Multi-agent dead code cleanup.
+
+**Your role:** Doc cleanup in `design-docs/raygui-rguilayout-ui-spec.md`, `design-docs/feature-specs.md`, `design-docs/architecture.md` for removed `ui_navigation_system`, `UIState`/`ActiveScreen`, legacy hit-test references.
+
+**Outcome:** ❌ REJECTED by Kujan. Wording still implied raw input routing emits `ButtonPressEvent` (it doesn't). Fenster revised independently under lockout; clarifications approved. Input routing semantics now correctly documented: raw input → `InputEvent` → `GoEvent`; `ButtonPressEvent` from raygui/controller emitters only.

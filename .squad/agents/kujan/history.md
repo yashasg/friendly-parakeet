@@ -206,3 +206,23 @@
 Orchestration log written. Review gate on guard-clause refactor completed. APPROVED—no blocking correctness/lifecycle/maintainability regressions identified. Test suite validates high-risk hotspots (dispatcher, RAII, Begin/End pairing).
 
 Decision #169 captured in decisions.md.
+
+---
+
+## 2026-04-30T02:04:27Z — Dead Code Prune — Round 1 Review (Rejected)
+
+**Session:** Multi-agent dead code cleanup.
+
+**Your role:** First-pass review of Keaton/McManus cleanup work.
+
+**Outcome:** ❌ REJECTED. Wording in both code cleanup and doc updates still implied raw input routing emits `ButtonPressEvent`. Core clarity issue: semantic vs raw event routing not properly distinguished. Invoked reviewer lockout; assigned Fenster (non-locked) for independent revision.
+
+---
+
+## 2026-04-30T02:04:27Z — Dead Code Prune — Round 2 Re-Review (Approved)
+
+**Session:** Multi-agent dead code cleanup.
+
+**Your role:** Re-review of Fenster's corrected artifacts.
+
+**Outcome:** ✓ APPROVED. Wording now correctly distinguishes: raw input routing (`InputEvent → GoEvent`), semantic UI events (`ButtonPressEvent` from raygui/controller only). All tests passing (2637 assertions, 795 test cases). `git diff --check` clean. Integration validated.

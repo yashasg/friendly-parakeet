@@ -126,3 +126,22 @@ Ported the removed HUD behavior (shape buttons, approach-ring affordance, colorf
 **Reassignment:** Keyser (Lead Architect, non-locked) to address circular hit detection and generated-layout alignment.
 
 **See:** `.squad/orchestration-log/2026-04-29T22-03-09Z-fenster.md`
+
+---
+
+## 2026-04-30T02:04:27Z — Dead Code Prune — Input Routing Doc Revision
+
+**Session:** Multi-agent dead code cleanup; independent revision under reviewer lockout.
+
+**Your role:** Rework rejected cleanup artifacts (Keaton code cleanup, McManus doc updates) to clarify input routing semantics.
+
+**Files revised:**
+- `design-docs/feature-specs.md` — clarified raw input routing (`InputEvent → GoEvent`)
+- `design-docs/architecture.md` — documented semantic event routing; `ButtonPressEvent` originates from raygui/controller emitters only
+- `tests/test_entt_dispatcher_contract.cpp` — revised test comments to reflect correct routing
+
+**Key clarifications:**
+- Raw input dispatcher: handles swipes, keyboard → emits `InputEvent` → system converts to `GoEvent`
+- Semantic UI dispatcher: raygui/controller → emits `ButtonPressEvent` (no raw input involvement)
+
+**Outcome:** ✓ APPROVED by Kujan (re-review). Rework integrated into cleanup session. Full test validation passed.

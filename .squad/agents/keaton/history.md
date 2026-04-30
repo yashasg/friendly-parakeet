@@ -86,3 +86,13 @@ However, preserved the runtime override block in controller and kept settings bu
 Orchestration log written. Guard-clause early-exit refactor successfully implemented across scoped files. Full test suite validation passed (2181 assertions / 777 tests). Team review (Kujan) approved no regressions.
 
 Decision #169 captured in decisions.md.
+
+---
+
+## 2026-04-30T02:04:27Z — Dead Code Prune (Rejected, rework by Fenster)
+
+**Session:** Multi-agent dead code cleanup.
+
+**Your role:** Code cleanup in `app/components/input.h` and test setup removal in `tests/test_entt_dispatcher_contract.cpp`, `tests/test_test_player_system.cpp`.
+
+**Outcome:** ❌ REJECTED by Kujan. Wording in cleanup still implied raw input routing emits `ButtonPressEvent` (incorrect). Fenster revised independently under lockout protocol; clarifications approved. Cleanup integrated and validated.
