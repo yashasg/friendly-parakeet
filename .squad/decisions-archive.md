@@ -2319,3 +2319,76 @@ Eliminated duplicate asset root by consolidating all shipped content under `cont
 
 ---
 
+### Issue #303 — Settings Save Pipeline (2026-04-30)
+
+**Owner:** Hockney (Runtime Engineer)  
+**Status:** IMPLEMENTED
+
+Runtime persistence pipeline for game settings. Adopted mutation-time persistence contract consistent with high score persistence semantics.
+
+**Implementation:**
+- Added `settings::mark_dirty_and_save(SettingsPersistence&, const SettingsState&)` helper
+- Every settings mutation in `settings_screen_controller` triggers persistence
+- Dirty flag lifecycle: set → write → clear on success
+- Observable failure handling via `PathUnavailable` event emission
+- Retriable save logic retains dirty state if path unavailable
+
+**Validation:**
+- Full build passed (zero-warning policy maintained)
+- Full test suite passed
+- Added issue-303 test cases: success round-trip + path-unavailable dirty retention
+
+**Rationale:** Coherent persistence semantics across settings and high scores, making save failures observable and retriable without introducing a separate settings-save system.
+
+---
+
+
+---
+
+## PR #357 — WASM Runtime Responsiveness & Linker Guardrails (2026-04-30)
+
+**Owners:** Hockney (Platform Engineer), Baer (Test Engineer)  
+**Status:** COMPLETED
+
+Root-cause fix for WASM runtime abort (`Aborted(Please compile your program with async support...)`) in preview builds, plus regression coverage.
+
+**Lifecycle Decision:**
+- Remove `game_loop_shutdown()` call after `game_loop_run()` on WebAssembly
+- Move shutdown ownership to platform runtime callbacks (`frame_callback` quit path + `beforeunload`)
+- Prevents premature unwind side effects that manifest as unresponsive previews
+
+**Linker Enforcement (CI):**
+- `-sASYNCIFY` (required for browser async operations like `emscripten_sleep`)
+- `-sNO_EXIT_RUNTIME=1` (prevents runtime exit before browser closes)
+- Automated validation in CI prevents silent regressions
+
+**Browser Runtime Smoke Test:**
+- New `tests/wasm_runtime_smoke.cjs` (Playwright-core)
+- Boots WASM in headless browser; fails on abort/pageerror/missing canvas
+- Integrated into `.github/workflows/ci-wasm.yml`
+- Deterministic signal for dead-on-boot and stuck-loader regressions
+
+**Files Changed:**
+- `app/main.cpp`: Lifecycle teardown relocation
+- `app/platform_display.cpp`: Linker validation
+- `.github/workflows/ci-wasm.yml`: Smoke test step + linker checks
+- `tests/wasm_runtime_smoke.cjs`: New smoke test
+
+**Validation:**
+- Native build + tests pass (zero-warning policy)
+- WASM build + Emscripten tests pass
+- Browser smoke detects abort patterns reliably
+
+**Rationale:** Closes validation blind spot where artifact checks pass but runtime fails. Centralizes shutdown semantics in platform callbacks for robustness across toolchain modes.
+
+---
+
+## User Directive: WASM Sleep Path Avoidance (2026-04-30T01:02:32-07:00)
+
+**By:** yashasg (via Copilot)  
+**Decision:** Do not let raylib sleep on web; fix WASM runtime abort by avoiding raylib's web sleep path rather than relying on Asyncify as the primary approach.  
+**Rationale:** User request — captured for team memory
+
+---
+
+

@@ -2,118 +2,7 @@
 
 *Last merged: 2026-04-30T01:30:59Z*
 
-### #171 — WASM Main Loop Lifecycle and Input Responsiveness (2026-04-30)
-
-**Owner:** Hockney (platform/WebAssembly)
-**Status:** IMPLEMENTED
-
-Keep `emscripten_set_main_loop(frame_callback, 0, 1)` for the web runtime and avoid post-run shutdown from `main()` under `__EMSCRIPTEN__`.
-
-**Why:** Switching to `simulate_infinite_loop=0` made the WASM runtime non-responsive locally and produced immediate `memory access out of bounds` failures during browser smoke. With `simulate_infinite_loop=1`, startup/input responsiveness is stable on this stack, and gating `game_loop_shutdown()` out of web `main()` prevents double-shutdown hazards.
-
-**Changes:**
-- `app/main.cpp`: skip `game_loop_shutdown(reg)` for `__EMSCRIPTEN__`.
-- `app/platform_display.cpp`: retain `emscripten_set_main_loop(..., 1)`.
-
-**Validation:** Browser smoke + native/wasm test binaries all pass.
-
----
-
-### #170 — WASM Smoke Test Must Validate Input Reaction (2026-04-30)
-
-**Owner:** Verbal (QA)
-**Status:** IMPLEMENTED
-
-Treat WASM "responsive" as a two-part contract:
-1. Loader clears and runtime boots.
-2. Canvas visibly reacts to user input.
-
-**Why:** Load-only checks can pass while users still report "not responsive" (no usable input path after boot). Adding one deterministic interaction assertion catches this class early.
-
-**Implementation (`tests/wasm_runtime_smoke.cjs`):**
-- Fixed Playwright timeout API usage for `waitForFunction` by passing `undefined` arg and explicit options.
-- Capture screenshot before/after a safe title-screen input (`click` at `x=200,y=200`, then `Enter`).
-- Fail smoke with `no-visual-response-after-input` if hashes are identical.
-
----
-
-### #167 — Bank-on-Action Burnout Multiplier (2026)
-
-**Owners:** Saul (design), McManus (implementation)
-**Status:** IMPLEMENTED
-
-Burnout multiplier is snapshotted onto obstacle entities (`BankedBurnout` component) at the moment the player commits a qualifying input (shape press or lane change), not at geometric collision time. `scoring_system` reads `BankedBurnout::multiplier` instead of live `BurnoutState::zone`.
-
-**Design:** `BankedBurnout { float multiplier; BurnoutZone zone; }` emplaced on obstacle entity during `player_input_system`. First-commit-locks prevent overwrite. Scoring falls back to `MULT_SAFE (1.0)` if no bank is present. LanePush obstacles are excluded from the scoring ladder (chain, popup, best_burnout).
-
-**Validation:**
-- 11 new `[burnout_bank]` Catch2 tests, all pass
-- All existing `[scoring]`, `[player]`, `[player_rhythm]` tests pass
-- Zero compilation warnings on macOS (arm64) clang
-
----
-
-### 1. Static vector pattern is the standard for deferred-destroy loops (CONFIRMED)
-`static std::vector<entt::entity>; .clear()` is the canonical pattern for collect-then-destroy loops in hot systems. `cleanup_system.cpp` is the reference implementation. `lifetime_system.cpp` now matches.
-
-### 2. `ctx().find<>()` must be hoisted above all entity loops
-Any `reg.ctx().find<T>()` or `reg.ctx().get<T>()` call inside a `view.each()` loop is a pattern violation. The lookup is O(1) but the null-check guard inside the loop is noise. Hoist once, use the pointer throughout. Applies to all future system authors.
-
-### 1. `.squad/` ship-gate narrowed to stateful subdirs
-
-**File:** `.squad/templates/workflows/squad-preview.yml`
-**Decision:** The `Check no AI-team state files are tracked` step now checks specific stateful subdirectories (`.squad/agents/`, `.squad/decisions/`, `.squad/identity/`, `.squad/log/`, `.squad/orchestration-log/`, `.squad/sessions/`, `.squad/casting/`) instead of the entire `.squad/` tree. `.squad/templates/**` is explicitly permitted to be tracked.
-**Rationale:** Broad `.squad/` check broke any repo that legitimately tracks squad templates (like this one). Stateful state must not ship; template content can.
-
-### 2. TEMPLATE header added to all three workflow templates
-
-**Files:** `squad-ci.yml`, `squad-preview.yml` (implicitly), `squad-docs.yml`
-**Decision:** Added `# TEMPLATE — ...` comment block at the top of `squad-ci.yml` (the most likely to be confused with a live workflow) explaining that GitHub Actions does not execute files under `.squad/templates/workflows/` and they must be copied to `.github/workflows/`.
-**Rationale:** GitHub Actions' discovery is strictly `.github/workflows/` scoped. Without the comment, a new contributor could expect these templates to run automatically.
-
-### 3. `entt::enum_as_bitmask` is the right replacement for `ActiveInPhase.phase_mask` (PENDING)
-The `GamePhase` enum + `phase_bit()` + `phase_active()` manual bitmask pattern should be replaced with `_entt_enum_as_bitmask`. **Blocker:** `GamePhase` values 0–5 must become powers-of-two 0x01–0x20. Any serialized or raw-cast usage must be audited first. Do not land until all GamePhase integer usages are confirmed safe.
-
-### 3. squad-docs.yml path filter — clarify deployment target
-
-**File:** `.squad/templates/workflows/squad-docs.yml`
-**Decision:** Path filter `'.github/workflows/squad-docs.yml'` is CORRECT for the deployed workflow; it refers to the target path after the template is copied. Added inline TEMPLATE NOTE clarifying this so authors do not "fix" a working path.
-**Rationale:** The path is an intentional forward-reference to the deployed filename. The confusion arises only when reading the template in its source location.
-
-### 4. `entt::hashed_string` is the right key type for the UI element lookup map (PENDING)
-`find_el()` in `ui_render_system.cpp` should be replaced with a pre-built `std::unordered_map<entt::hashed_string::hash_type, const json*>` at `UIState::load_screen()`. Lookup keys are compile-time string literals that become `"id"_hs` constants. FNV-1a collision risk is negligible for ~10 element IDs per screen.
-
-### 4. squad-preview.yml package.json/CHANGELOG.md expectations explicit
-
-**File:** `.squad/templates/workflows/squad-preview.yml`
-**Decision:** Added explicit file-existence checks for `package.json` and `CHANGELOG.md` with targeted `::error::` messages, plus a comment documenting the expected CHANGELOG format (`## [x.y.z]` — Keep a Changelog / standard-version).
-**Rationale:** Silent failure mode (`grep -q ... 2>/dev/null`) was unhelpful for repos missing these files. Fail fast with actionable messages.
-
-### 5. `entt::monostate` is NOT adopted — `reg.ctx()` remains the singleton standard
-The project uses `reg.ctx().emplace<T>()` consistently for all game singletons. `entt::monostate` is global and bypasses registry lifetime management. Decision: never adopt for game-owned state.
-
-### 6. No new EnTT Core utilities are needed for the hot path
-`entt::any`, `allocate_unique`, `y_combinator`, `iota_iterator`, `type_index`, `family`, `ident`, `compressed_pair`, `input_iterator_pointer` — none apply to the current codebase patterns.
-
-### 5. team.md PR mismatch — no-op
-
-**File:** `.squad/team.md`
-**Decision:** No change required. The reviewer artifact is a transient GitHub diff comment from the PR including `.squad/` files alongside a large C++ refactor. `team.md` content is correct.
-**Rationale:** PR review diff confusion, not a content error.
-
-### Architecture actually used (differs from decisions.md Tier-1 spec)
-
-`decisions.md` specified: input_system enqueues InputEvent → `disp.update<InputEvent>()` fires gesture_routing and hit_test as listeners.
-
-What shipped instead: gesture_routing_system and hit_test_system remain direct system calls (not listeners). They read the raw EventQueue (touch/mouse gesture buffer) and call `disp.enqueue<GoEvent/ButtonPressEvent>`. The dispatcher drains in the first fixed sub-tick via `game_state_system → disp.update<GoEvent/ButtonPressEvent>()`, firing all three listener chains (game_state, level_select, player_input handlers) atomically.
-
-**This is architecturally equivalent for the accepted acceptance criteria.** No pool-order latency hazard applies because gesture_routing and hit_test are not inside a `disp.update()` chain. Same-frame behavior is preserved.
-
-### EventQueue not fully removed
-
-`EventQueue` struct is retained as a raw gesture shuttle (InputEvent[] only). Decisions.md migration step 4 ("Remove EventQueue struct") is NOT done. The raw-input layer (EventQueue) and semantic-event layer (dispatcher) remain separate. This is acceptable — the acceptance criteria scoped the migration to "Go/ButtonPress event delivery where intended."
-
-## Guardrails for Future Dispatcher Work
+### Guardrails for Future Dispatcher Work
 
 1. **No start-of-frame `disp.clear<GoEvent/ButtonPressEvent>()`**: R7 from decisions.md is not explicitly addressed for the dispatcher queues. In practice, game_state_system drains within the same frame (it's the first fixed-tick system). If a frame skips the fixed tick, events accumulate until the next tick — currently benign but worth hardening.
 
@@ -9982,3 +9871,53 @@ Keeps live gameplay tap behavior stable while removing dead menu-era ECS surface
 
 ---
 
+
+# Hockney Decision — WASM desktop click fallback for UI taps
+
+## Context
+Desktop browser WASM smoke (`tests/wasm_runtime_smoke.cjs`) repeatedly failed `no-visual-response-after-mouse-click` while Enter-key input changed screens correctly.
+
+## Decision
+Treat `touch_down` from mouse as a web-only fallback in `pointer_release_position()` when `touch_up` is missing.
+
+## Why
+On this stack, automated desktop browser clicks can miss the release edge in the gameplay input path, so title/level-select tap routing never sees a pointer release. Keyboard path remains healthy, which isolated the issue to pointer tap edge detection.
+
+## Implementation
+- `app/input/pointer_input.h`: keep normal `touch_up` path; add `#ifdef PLATFORM_WEB` fallback for `touch_down && active_source == InputSource::Mouse` using start coordinates.
+- `app/systems/input_system.cpp`: harden mouse release edge with an additional `!IsMouseButtonDown && input.touching` fallback for active mouse gestures.
+
+## Validation
+- Native tests: `./build/shapeshifter_tests "~[bench]"` → pass.
+- WASM tests: `ctest --verbose --output-on-failure` in `build-web` → pass (`shapeshifter_tests_wasm`).
+- Browser smoke: `node tests/wasm_runtime_smoke.cjs http://127.0.0.1:4173/index.html` → pass (mouse click and Enter assertions).
+
+# Hockney Decision: unify UI click handling on InputState pointer release
+
+## Context
+Desktop mouse clicks in the WASM build were brittle because some screen controllers read raw mouse release/position directly.
+
+## Decision
+UI click hit-testing now consumes `InputState.touch_up` + normalized `end_x/end_y` via `app/input/pointer_input.h`.
+
+## Why
+`input_system` already normalizes mouse/touch coordinates through `ScreenTransform`, so controllers should use that single translated pointer path for both desktop and web.
+
+## Impact
+Title and Level Select click handlers now use the same pointer-release source as the rest of input delivery, improving WASM desktop click reliability and coordinate correctness.
+
+# Verbal Decision — WASM click regression guard
+
+## Context
+Desktop WASM can appear responsive when Enter works even if mouse clicks are dead.
+
+## Decision
+Split browser smoke interactivity assertion into two checks:
+1. `before` vs `afterClick` must differ (`no-visual-response-after-mouse-click` on failure).
+2. `afterClick` vs `afterEnter` must differ (`no-visual-response-after-enter` on failure).
+
+## Why
+The previous single before/after check (`click` + `Enter`) masked mouse regressions because keyboard input could still change the frame and make the test pass.
+
+## Impact
+CI now detects desktop mouse click regressions independently of keyboard fallback behavior.

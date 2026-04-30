@@ -1,5 +1,3 @@
-# Kobayashi — History
-
 ## Core Context
 
 - **Owner:** yashasg

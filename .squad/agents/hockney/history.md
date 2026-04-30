@@ -40,3 +40,14 @@ Team ready for next phase.
 
 Session log written: `.squad/orchestration-log/2026-04-30T08-30-59Z-hockney.md`
 Decision #171 merged to registry. Team session log: `.squad/log/2026-04-30T08-30-59Z-wasm-responsiveness-fix.md`
+
+## 2026-04-30T08:51:34Z Scribe spawned Hockney
+
+**Manifest:** WASM desktop click fix
+
+Merged 3 inbox decisions:
+- hockney-wasm-mouse-tap-fallback.md
+- hockney-wasm-pointer-release-unification.md  
+- verbal-wasm-click-regression-guard.md
+
+**Hockney Task:** Reproduce click failure → fix release-edge miss → validate native+WASM+browser smoke pass.
