@@ -16,16 +16,6 @@ struct InputEvent {
     float     y      = 0.0f;
 };
 
-// ── UI Button Tags and Data ─────────────────────────────────────────
-
-struct ShapeButtonTag {};
-
-struct ShapeButtonData {
-    Shape shape = Shape::Circle;
-};
-
-struct MenuButtonTag {};
-
 enum class MenuActionKind : uint8_t {
     Confirm       = 0,
     Restart       = 1,
@@ -36,14 +26,9 @@ enum class MenuActionKind : uint8_t {
     SelectDiff    = 6,
 };
 
-struct MenuAction {
-    MenuActionKind kind  = MenuActionKind::Confirm;
-    uint8_t        index = 0;   // for SelectLevel / SelectDiff
-};
-
-// ── Semantic Events (produced by hit-test helpers or keyboard) ────────
+// ── Semantic Events (produced by HUD controllers, test player, or keyboard) ────────
 //
-// ButtonPressEvent carries semantic value data encoded at hit-test time (#273).
+// ButtonPressEvent carries semantic value data encoded at source (#273).
 // Consumers act on kind/shape/menu_action — never on a live entity handle,
 // which would be a lifetime hazard if the button entity were destroyed between
 // event production and consumption.
@@ -62,33 +47,4 @@ struct ButtonPressEvent {
 
 struct GoEvent {
     Direction dir = Direction::Up;
-};
-
-// ── Hit-Test Components (on UI button entities) ──────────────────────
-
-struct HitBox {
-    float half_w = 0.0f;
-    float half_h = 0.0f;
-};
-
-struct HitCircle {
-    float radius = 0.0f;
-};
-
-struct ActiveInPhase {
-    GamePhaseBit phase_mask = GamePhaseBit{};
-};
-
-// Zero-size structural tag. Present iff the entity's ActiveInPhase mask covers
-// the current GamePhase. Maintained by input routing helpers; consumers
-// (hit-test helpers) iterate view<..., ActiveTag>() without any runtime
-// predicate, so the per-event hot path is O(active buttons) instead of
-// O(all buttons with ActiveInPhase).
-struct ActiveTag {};
-
-// Cache of the last phase ActiveTag was synced for. Used to skip the sync
-// pass when the phase has not changed since the previous call.
-struct UIActiveCache {
-    GamePhase phase = GamePhase::Title;
-    bool      valid = false;
 };

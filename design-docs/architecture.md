@@ -356,7 +356,7 @@ struct GestureResult {
     float    hit_y;
 };
 
-/// Singleton: shape button press (from button zone hit-test).
+/// Singleton: shape button press (from gameplay HUD control activation).
 struct ShapeButtonEvent {
     bool     pressed;      // true if a shape button was tapped this frame
     Shape    shape;        // which shape was tapped
@@ -539,9 +539,12 @@ the same frame (unidirectional data flow).
  │  │                           Populate InputState +        │
  │  │                           EventQueue (raw InputEvents).│
  │  │                                                        │
- │  │  2. input routing         Resolve taps → ButtonPress-  │
- │  │                           Event (via HitBox/HitCircle) │
- │  │                           and swipes → GoEvent.        │
+ │  │  2. input routing         Route swipe InputEvents →    │
+ │  │                           GoEvent via                  │
+ │  │                           gesture_routing_handle_input.│
+ │  │                           Semantic UI/controller       │
+ │  │                           emitters enqueue             │
+ │  │                           ButtonPressEvent separately. │
  │  └────────────────────────────────────────────────────────┘
  │
  │  ┌─ PHASE 2: GAME STATE GATE ────────────────────────────┐
@@ -1171,12 +1174,10 @@ int main(int argc, char* argv[]) {
     └──────┬──────┘    y = 0.91 × 1280 = 1165
            │
            │           ┌──────────────────────────────────────┐
-           │           │ HIT TEST: y > 1020 (button zone)?   │
-           ├──────────▶│ YES → check which shape button      │
-           │           │   x ∈ [120,240] → Circle            │
-           │           │   x ∈ [300,420] → Square            │
-           │           │   x ∈ [480,600] → Triangle          │
-           │           │   374 ∈ [300,420] → Square          │
+           │           │ GAMEPLAY HUD CONTROL ROUTING         │
+           ├──────────▶│ raygui/controller resolves tap to    │
+           │           │ shape control ID (e.g. Square) and   │
+           │           │ emits semantic button activation.     │
            │           └──────────────────┬───────────────────┘
            │                              │
            │                              ▼
@@ -1659,7 +1660,7 @@ app/
 │   ├── ui_render_system.cpp     ← UI raylib draw calls
 │   └── audio_system.cpp         ← AudioQueue → PlaySound
 │
-├── input/                       ← input routing/listeners and hit-test helpers
+├── input/                       ← input routing/listeners and semantic gesture helpers
 ├── ui/                          ← UI layout loading, button spawning, controllers
 ├── audio/                       ← audio data and SFX bank helpers
 ├── session/                     ← play/test-player session setup

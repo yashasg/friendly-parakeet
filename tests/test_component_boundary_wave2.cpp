@@ -1,7 +1,7 @@
 // Wave-2 component boundary regression guards.
 //
 // Pins contracts for types that have been or are being relocated out of
-// app/components/ (wave-2 cleanup: window_phase.h, high_score.h, ui_state.h,
+// app/components/ (wave-2 cleanup: window_phase.h, high_score.h,
 // text.h).
 //
 // Includes are routed through stable aggregation headers so this file needs no
@@ -11,8 +11,6 @@
 //     └─ components/player.h → components/window_phase.h (WindowPhase)
 //     └─ util/high_score_persistence.h → HighScoreState
 //
-//   components/ui_state.h (UIState / ActiveScreen)
-//
 // Static assertions catch silent breakage if constants or ordinals are changed
 // during or after the header reorganisation.
 
@@ -20,7 +18,6 @@
 #include <type_traits>
 
 #include "test_helpers.h"        // WindowPhase (via player.h), HighScoreState (via high_score_persistence.h)
-#include "components/ui_state.h" // UIState, ActiveScreen
 
 // ── WindowPhase ordinal contract ─────────────────────────────────────────────
 //
@@ -78,12 +75,4 @@ TEST_CASE("HighScoreState: lives in ctx, not attached to entities", "[boundary_w
     CHECK(hs.entry_count == 0);
     // The type must never appear as an entity component — view must be empty
     CHECK(reg.view<HighScoreState>().empty());
-}
-
-// ── Runtime: UIState default state ───────────────────────────────────────────
-
-TEST_CASE("UIState: defaults to Title screen with empty current", "[boundary_wave2][ui_state]") {
-    UIState ui;
-    CHECK(ui.active    == ActiveScreen::Title);
-    CHECK_FALSE(ui.has_overlay);
 }

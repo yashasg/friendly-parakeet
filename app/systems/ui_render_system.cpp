@@ -10,7 +10,6 @@
 #include "../components/song_state.h"
 #include "../constants.h"
 #include "../ui/text_renderer.h"
-#include "../components/ui_state.h"
 
 #include "../ui/screen_controllers/title_screen_controller.h"
 #include "../ui/screen_controllers/paused_screen_controller.h"
@@ -34,7 +33,7 @@
 
 void ui_render_system(entt::registry& reg, float /*alpha*/) {
     auto& text_ctx = reg.ctx().get<TextContext>();
-    auto& ui = reg.ctx().get<UIState>();
+    const auto& gs = reg.ctx().get<GameState>();
     const auto& st = reg.ctx().get<ScreenTransform>();
     auto& ui_cam = ui_camera(reg).cam;
 
@@ -51,7 +50,7 @@ void ui_render_system(entt::registry& reg, float /*alpha*/) {
     }
 
     // Overlay (if active)
-    if (ui.has_overlay) {
+    if (gs.phase == GamePhase::Paused) {
         DrawRectangleRec({0, 0, constants::SCREEN_W_F, constants::SCREEN_H_F},
                          {0, 0, 0, 160});
     }
@@ -68,36 +67,36 @@ void ui_render_system(entt::registry& reg, float /*alpha*/) {
     }
 
     // Dynamic screens that still need specialized rendering
-    switch (ui.active) {
-        case ActiveScreen::Title: {
+    switch (gs.phase) {
+        case GamePhase::Title: {
             render_title_screen_ui(reg);
             break;
         }
-        case ActiveScreen::LevelSelect: {
+        case GamePhase::LevelSelect: {
             render_level_select_screen_ui(reg);
             break;
         }
-        case ActiveScreen::Gameplay: {
+        case GamePhase::Playing: {
             render_gameplay_hud_screen_ui(reg);
             break;
         }
-        case ActiveScreen::Paused: {
+        case GamePhase::Paused: {
             render_paused_screen_ui(reg);
             break;
         }
-        case ActiveScreen::GameOver: {
+        case GamePhase::GameOver: {
             render_game_over_screen_ui(reg);
             break;
         }
-        case ActiveScreen::SongComplete: {
+        case GamePhase::SongComplete: {
             render_song_complete_screen_ui(reg);
             break;
         }
-        case ActiveScreen::Settings: {
+        case GamePhase::Settings: {
             render_settings_screen_ui(reg);
             break;
         }
-        case ActiveScreen::Tutorial: {
+        case GamePhase::Tutorial: {
             render_tutorial_screen_ui(reg);
             break;
         }

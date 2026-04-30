@@ -88,12 +88,11 @@ struct ObstacleModel {
         o.owned = false;
     }
     ObstacleModel& operator=(ObstacleModel&& o) noexcept {
-        if (this != &o) {
-            if (owned && model.meshes) UnloadModel(model);
-            model   = o.model;
-            owned   = o.owned;
-            o.owned = false;
-        }
+        if (this == &o) return *this;
+        if (owned && model.meshes) UnloadModel(model);
+        model   = o.model;
+        owned   = o.owned;
+        o.owned = false;
         return *this;
     }
 };

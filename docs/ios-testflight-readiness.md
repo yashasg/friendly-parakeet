@@ -152,7 +152,8 @@ This matches common rhythm game behavior (Beat Saber, Cytus II). A "resume saved
 | Field | Key | Example | Source of Truth |
 |---|---|---|---|
 | Marketing version | `CFBundleShortVersionString` | `0.1.0` | `CMakeLists.txt` `project(VERSION ...)` |
-| Build number | `CFBundleVersion` | `42` | `app/ios/build_number.txt` |
+| Runtime version macros | `SHAPESHIFTER_VERSION*` | `0.1.<git-hash>` | `app/version.h.in` configured by CMake from `project(VERSION ...)` + git hash |
+| Build number | `CFBundleVersion` | `42` | Set in Xcode/CI release configuration (no repo file source today) |
 
 ### 3.2 Marketing Version (`CFBundleShortVersionString`)
 
@@ -170,38 +171,20 @@ Currently `0.1.0` (pre-release). Bump rules:
 - **MINOR** (`0.x.0`): Feature-complete milestone (e.g., v1 App Store release).
 - **MAJOR** (`x.0.0`): Reserved for post-v1 significant rewrites.
 
-The version propagates to `generated/version.h` via CMake `configure_file` (already wired in `CMakeLists.txt`) and from there to the iOS `Info.plist` during Xcode build via a `$(MARKETING_VERSION)` build setting pointing at the same cmake-generated header or a manually synced field.
+The runtime version propagates to `generated/version.h` via CMake `configure_file` (already wired in `CMakeLists.txt`). `app/version.h.in` is the template that defines `SHAPESHIFTER_VERSION_MAJOR`, `SHAPESHIFTER_VERSION_MINOR`, and `SHAPESHIFTER_VERSION` using CMake project version + git hash.
 
 ### 3.3 Build Number (`CFBundleVersion`)
 
 **Scheme:** Monotonically increasing integer. Must never decrease for any build submitted to the same Apple ID / bundle identifier.
 
-**Source of truth:** `app/ios/build_number.txt` — a plain-text file containing a single integer.
-
-```
-42
-```
+**Current state:** There is no dedicated build-number source file in the repo. `app/ios/build_number.txt` was removed because it is not consumed by CMake or build scripts.
 
 **Bump policy:**
 - Bump before every TestFlight upload (even if marketing version is unchanged).
-- Bump is a manual commit on a dedicated branch or done by CI when uploading.
+- Bump is managed in Xcode (`CURRENT_PROJECT_VERSION`) or CI at archive/upload time.
 - The integer never resets, even across marketing version bumps.
 
-**Preflight check:** A build script (`tools/ios_preflight.sh`, to be authored) reads `build_number.txt`, compares against the last Git-tagged build number, and fails (`exit 1`) if the number was not bumped. This prevents duplicate `CFBundleVersion` rejections from App Store Connect.
-
-```bash
-#!/usr/bin/env bash
-# tools/ios_preflight.sh — placeholder; implement before first TF upload
-set -euo pipefail
-CURRENT=$(cat app/ios/build_number.txt)
-LAST_TAG=$(git tag --sort=-creatordate | head -1)
-LAST_BUILD=$(git show "${LAST_TAG}:app/ios/build_number.txt" 2>/dev/null || echo "0")
-if [ "$CURRENT" -le "$LAST_BUILD" ]; then
-  echo "ERROR: build_number.txt ($CURRENT) must be > last tagged build ($LAST_BUILD)"
-  exit 1
-fi
-echo "Preflight OK: build $CURRENT > $LAST_BUILD"
-```
+**Preflight note:** There is currently no repo-backed preflight script for `CFBundleVersion`. If future tooling is added, it should use the actual Xcode/CI build setting source rather than a standalone text file.
 
 ### 3.4 When Each Bumps
 
@@ -217,7 +200,7 @@ echo "Preflight OK: build $CURRENT > $LAST_BUILD"
 
 **Sections per release:** `Added`, `Changed`, `Fixed`, `Removed`.
 
-**Update cadence:** Every commit that bumps `CFBundleVersion` must include a CHANGELOG entry. This is a team convention, not a CI gate for v1 (add CI gate post-TF).
+**Update cadence:** Every TestFlight/App Store upload that bumps `CFBundleVersion` should include a CHANGELOG entry. This is a team convention, not a CI gate for v1 (add CI gate post-TF).
 
 `CHANGELOG.md` does not yet exist — it must be created before the first TestFlight submission. Template:
 
@@ -429,7 +412,7 @@ The following values are **not squad decisions** — they must be supplied by `y
 | 2 | Apple Developer Program type (individual/org) | Documentation only | _(unset)_ |
 | 3 | Confirm bundle ID `com.yashasg.shapeshifter` | `Info.plist`, App ID registration | Proposed; may change |
 | 4 | App icons (1024×1024 + all sizes) | `Assets.xcassets/AppIcon.appiconset/` | None |
-| 5 | Bump `app/ios/build_number.txt` from 0 → 1 before first upload | Preflight check script | `0` (initial) |
+| 5 | Set initial `CFBundleVersion` in Xcode/CI before first upload (no repo build-number file) | Release/archive configuration | _(unset)_ |
 
 ---
 

@@ -176,8 +176,10 @@ struct EventQueue {
 // Called once per frame in the input phase.
 void input_system(entt::registry& reg, float raw_dt);
 
-// Input routing resolves raw InputEvents: taps → ButtonPressEvent
-// (via HitBox/HitCircle), swipes → GoEvent. Runs immediately after input_system.
+// Input routing handles raw swipe InputEvents and enqueues GoEvent.
+// ButtonPressEvent is emitted by semantic UI/controller paths
+// (raygui screen controllers + HUD controls), not raw input routing.
+// Runs immediately after input_system.
 void wire_input_dispatcher(entt::registry& reg);
 
 // Automated test player: writes EventQueue (push_press, push_go) from
@@ -197,7 +199,8 @@ void test_player_system(entt::registry& reg, float dt);
              │
              ▼
   ┌──────────────────────┐
-  │ input routing         │  → resolves taps → ButtonPressEvent, swipes → GoEvent
+  │ input routing         │  → routes swipe InputEvents → GoEvent
+  │                      │    (UI/controller paths emit ButtonPressEvent separately)
   └──────────┬───────────┘
              │
              ▼

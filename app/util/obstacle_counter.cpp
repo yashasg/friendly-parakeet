@@ -13,9 +13,9 @@ static void on_obstacle_tag_constructed(entt::registry& reg, entt::entity /*e*/)
 }
 
 static void on_obstacle_tag_destroyed(entt::registry& reg, entt::entity /*e*/) {
-    if (auto* oc = reg.ctx().find<ObstacleCounter>()) {
-        if (oc->count > 0) --oc->count;
-    }
+    auto* oc = reg.ctx().find<ObstacleCounter>();
+    if (!oc || oc->count <= 0) return;
+    --oc->count;
 }
 
 // Call once per registry lifetime to wire the signals.

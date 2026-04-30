@@ -10,12 +10,11 @@
 #include "../../components/ui_layout_cache.h"
 #include "../../constants.h"
 #include "screen_controller_base.h"
+#include "gameplay_hud_screen_controller.h"
 #include <entt/entt.hpp>
-#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstdio>
-#include <vector>
 
 #include <raygui.h>
 #include "../generated/gameplay_hud_layout.h"
@@ -89,35 +88,41 @@ const HudLayout& resolved_hud_layout(const entt::registry& reg) {
     return fallback;
 }
 
-void render_shape_buttons(const entt::registry& reg, const HudLayout& layout) {
+Rectangle shape_slot_bounds(const GameplayHudLayoutState& state, GameplayHudShapeSlot slot) {
+    switch (slot) {
+        case GameplayHudShapeSlot::Circle:
+            return GameplayHudLayout_CircleButtonBounds(&state);
+        case GameplayHudShapeSlot::Square:
+            return GameplayHudLayout_SquareButtonBounds(&state);
+        case GameplayHudShapeSlot::Triangle:
+            return GameplayHudLayout_TriangleButtonBounds(&state);
+    }
+    return GameplayHudLayout_CircleButtonBounds(&state);
+}
+
+void render_shape_buttons(const entt::registry& reg,
+                          const HudLayout& layout,
+                          const GameplayHudLayoutState& ui_state) {
     struct ButtonVisual {
         Shape shape;
         float cx;
         float cy;
     };
-    std::vector<ButtonVisual> buttons;
+    std::array<ButtonVisual, 3> buttons{};
+    const auto circle_bounds = shape_slot_bounds(ui_state, GameplayHudShapeSlot::Circle);
+    const auto square_bounds = shape_slot_bounds(ui_state, GameplayHudShapeSlot::Square);
+    const auto triangle_bounds = shape_slot_bounds(ui_state, GameplayHudShapeSlot::Triangle);
+    buttons[0] = ButtonVisual{Shape::Circle,
+                              circle_bounds.x + circle_bounds.width * 0.5f,
+                              circle_bounds.y + circle_bounds.height * 0.5f};
+    buttons[1] = ButtonVisual{Shape::Square,
+                              square_bounds.x + square_bounds.width * 0.5f,
+                              square_bounds.y + square_bounds.height * 0.5f};
+    buttons[2] = ButtonVisual{Shape::Triangle,
+                              triangle_bounds.x + triangle_bounds.width * 0.5f,
+                              triangle_bounds.y + triangle_bounds.height * 0.5f};
 
-    auto shape_btn_view = reg.view<ShapeButtonTag, ShapeButtonData, UIPosition>();
-    buttons.reserve(shape_btn_view.size_hint());
-    for (auto [entity, shape_data, ui_pos] : shape_btn_view.each()) {
-        (void)entity;
-        buttons.push_back(ButtonVisual{shape_data.shape, ui_pos.value.x, ui_pos.value.y});
-    }
-
-    if (buttons.empty()) {
-        float btn_area_x = (constants::SCREEN_W_F - 3.0f * layout.btn_w - 2.0f * layout.btn_spacing) / 2.0f;
-        float btn_cy = layout.btn_y + layout.btn_h / 2.0f;
-        for (int i = 0; i < 3; ++i) {
-            float btn_cx = btn_area_x + static_cast<float>(i) * (layout.btn_w + layout.btn_spacing)
-                         + layout.btn_w / 2.0f;
-            buttons.push_back(ButtonVisual{static_cast<Shape>(i), btn_cx, btn_cy});
-        }
-    } else {
-        std::sort(buttons.begin(), buttons.end(),
-                  [](const ButtonVisual& a, const ButtonVisual& b) { return a.cx < b.cx; });
-    }
-
-    float btn_radius = layout.btn_w / 2.8f;
+    float btn_radius = circle_bounds.width / 2.8f;
 
     Shape active_shape = Shape::Hexagon;
     for (auto [entity, player_shape] : reg.view<PlayerTag, PlayerShape>().each()) {
@@ -279,6 +284,46 @@ void init_gameplay_hud_screen_ui() {
     gameplay_hud_controller.init();
 }
 
+Rectangle gameplay_hud_shape_input_bounds(GameplayHudShapeSlot slot) {
+    static const GameplayHudLayoutState geometry_state = GameplayHudLayout_Init();
+    return shape_slot_bounds(geometry_state, slot);
+}
+
+void gameplay_hud_apply_button_presses(entt::registry& reg,
+                                       bool pause_pressed,
+                                       bool circle_pressed,
+                                       bool square_pressed,
+                                       bool triangle_pressed) {
+    auto& gs = reg.ctx().get<GameState>();
+    if (gs.phase != GamePhase::Playing) return;
+
+    auto& disp = reg.ctx().get<entt::dispatcher>();
+    bool any_shape_press = false;
+    if (circle_pressed) {
+        disp.enqueue<ButtonPressEvent>(
+            {ButtonPressKind::Shape, Shape::Circle, MenuActionKind::Confirm, 0});
+        any_shape_press = true;
+    }
+    if (square_pressed) {
+        disp.enqueue<ButtonPressEvent>(
+            {ButtonPressKind::Shape, Shape::Square, MenuActionKind::Confirm, 0});
+        any_shape_press = true;
+    }
+    if (triangle_pressed) {
+        disp.enqueue<ButtonPressEvent>(
+            {ButtonPressKind::Shape, Shape::Triangle, MenuActionKind::Confirm, 0});
+        any_shape_press = true;
+    }
+    if (any_shape_press) {
+        disp.update<ButtonPressEvent>();
+    }
+
+    if (pause_pressed) {
+        gs.transition_pending = true;
+        gs.next_phase = GamePhase::Paused;
+    }
+}
+
 void render_gameplay_hud_screen_ui(entt::registry& reg) {
     auto& state = gameplay_hud_controller.state();
     auto* score = reg.ctx().find<ScoreState>();
@@ -303,7 +348,7 @@ void render_gameplay_hud_screen_ui(entt::registry& reg) {
         GuiSetAlpha(1.0f);
     }
 
-    render_shape_buttons(reg, hud_layout);
+    render_shape_buttons(reg, hud_layout, state);
 
     if (energy) render_energy_bar(reg, *energy);
     GuiSetStyle(DEFAULT, TEXT_SIZE, 16);
@@ -323,11 +368,9 @@ void render_gameplay_hud_screen_ui(entt::registry& reg) {
 
     GuiSetStyle(DEFAULT, TEXT_SIZE, saved_text_size);
 
-    if (state.PauseButtonPressed) {
-        auto& gs = reg.ctx().get<GameState>();
-        if (gs.phase == GamePhase::Playing) {
-            gs.transition_pending = true;
-            gs.next_phase = GamePhase::Paused;
-        }
-    }
+    gameplay_hud_apply_button_presses(reg,
+                                      state.PauseButtonPressed,
+                                      state.CircleButtonPressed,
+                                      state.SquareButtonPressed,
+                                      state.TriangleButtonPressed);
 }

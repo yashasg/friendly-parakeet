@@ -60,7 +60,8 @@ void player_movement_system(entt::registry& reg, float dt) {
             }
 
             if (vstate.timer <= 0.0f) {
-                if (vstate.mode == VMode::Jumping) {
+                const bool was_jumping = (vstate.mode == VMode::Jumping);
+                if (was_jumping) {
                     // Haptic on landing (spec: "Jump (land)" not takeoff)
                     auto* hq = reg.ctx().find<HapticQueue>();
                     auto* st = reg.ctx().find<SettingsState>();

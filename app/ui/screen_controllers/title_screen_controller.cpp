@@ -1,7 +1,6 @@
 // Title screen controller - bridges generated rguilayout output to game systems.
 
 #include "../../components/game_state.h"
-#include "../../components/ui_state.h"
 #include "../../components/input.h"
 #include "screen_controller_base.h"
 #include <entt/entt.hpp>

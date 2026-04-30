@@ -7,8 +7,7 @@
 //
 // Landed architecture (see game_loop.cpp + input_dispatcher.cpp):
 //   - input_system enqueues InputEvent; game_loop calls disp.update<InputEvent>()
-//     (Tier-1), which delivers to gesture_routing_handle_input (enqueues GoEvent)
-//     and hit_test_handle_input (enqueues ButtonPressEvent).
+//     (Tier-1), which delivers to gesture_routing_handle_input (enqueues GoEvent).
 //   - game_state_system (first in the fixed-step loop) calls
 //     disp.update<GoEvent>() + disp.update<ButtonPressEvent>(), draining the
 //     queues and delivering events to all registered listeners in a single tick.
@@ -21,13 +20,19 @@
 //   1. enqueue() without update() silently drops events (not an error).
 //   2. Events produced BY a listener during update() for the SAME type are NOT
 //      delivered until the next update() call — the "one-frame latency" hazard.
-//      The landed architecture routes gesture/hit-test as InputEvent listeners
-//      that enqueue GoEvent/ButtonPressEvent (different types), so this hazard
-//      cannot arise.
+//      In runtime, this stays safe because the InputEvent listener path only
+//      enqueues GoEvent for swipes; ButtonPressEvent is emitted separately by
+//      semantic UI/controller sources.
 //   3. update() drains its queue; a second update() with no new enqueues is
 //      a no-op.  This preserves the #213 no-replay invariant: calling
 //      update() on the second sub-tick of the fixed-step accumulator does
 //      not replay the same GoEvents / ButtonPressEvents.
+//
+// InputEvent listener path in runtime:
+//   - gesture_routing_handle_input listens to InputEvent and enqueues GoEvent
+//     for swipes.
+//   - ButtonPressEvent originates from semantic UI/controller emitters
+//     (raygui screen controllers + HUD controls), not raw InputEvent routing.
 
 #include <catch2/catch_test_macros.hpp>
 #include <entt/entt.hpp>
@@ -161,8 +166,7 @@ TEST_CASE("dispatcher: update drains queue — second update does not replay eve
 //
 // This order-dependent one-frame latency is documented here as an EnTT
 // contract property.  The production architecture avoids it entirely:
-// gesture_routing_handle_input and hit_test_handle_input are InputEvent
-// listeners that enqueue GoEvent/ButtonPressEvent (different types).
+// gesture_routing_handle_input is an InputEvent listener that enqueues GoEvent.
 // The pool-order hazard only occurs when a listener enqueues the SAME type
 // it is listening to — which never happens in production.
 

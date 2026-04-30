@@ -4,7 +4,7 @@
 // ── Raw InputEvent dispatcher tests (#333) ────────────────────────────────
 // EventQueue has been removed.  Raw touch/mouse gestures are now enqueued as
 // InputEvent objects into the entt::dispatcher and delivered to
-// gesture_routing_handle_input + hit_test_handle_input via update<InputEvent>().
+// gesture_routing_handle_input via update<InputEvent>().
 
 TEST_CASE("dispatcher: InputEvent enqueue/update fires listeners", "[events]") {
     entt::registry reg;

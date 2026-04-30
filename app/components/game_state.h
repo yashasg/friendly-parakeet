@@ -15,7 +15,7 @@ enum class GamePhase : uint8_t {
     Tutorial     = 7
 };
 
-// Typed phase-mask enum for ActiveInPhase.  Values are power-of-two so that
+// Typed phase-mask enum for phase mask use-cases. Values are power-of-two so that
 // multiple phases can be OR-combined into a single mask.  The
 // _entt_enum_as_bitmask sentinel enables entt's typed |/&/^ operators,
 // replacing the previous hand-rolled uint8_t shift helpers.

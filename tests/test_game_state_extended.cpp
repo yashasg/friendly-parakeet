@@ -1,7 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
-#include "components/ui_state.h"
 
 // ── game_state_system: SongComplete transitions ──────────────
 
@@ -256,9 +255,6 @@ TEST_CASE("game_state: game_over restart enters fresh play session on next tick"
     reg.emplace<ObstacleTag>(stale);
     reg.emplace<Position>(stale, 0.0f, 0.0f);
     reg.ctx().get<ScoreState>().score = 3210;
-    auto& cache = reg.ctx().get<UIActiveCache>();
-    cache.valid = true;
-    cache.phase = GamePhase::Playing;
 
     game_state_system(reg, 0.016f);
     REQUIRE(gs.transition_pending);
@@ -270,12 +266,6 @@ TEST_CASE("game_state: game_over restart enters fresh play session on next tick"
     CHECK(gs.phase == GamePhase::Playing);
     CHECK_FALSE(reg.valid(stale));
     CHECK_FALSE(reg.view<PlayerTag>().empty());
-    int shape_button_count = 0;
-    for (auto entity : reg.view<ShapeButtonTag>()) {
-        ++shape_button_count;
-        CHECK(reg.all_of<ActiveTag>(entity));
-    }
-    CHECK(shape_button_count == 3);
     CHECK(reg.ctx().get<ScoreState>().score == 0);
 }
 
@@ -301,7 +291,6 @@ TEST_CASE("title settings navigation: pending Settings transition reaches Settin
     gs.phase_timer = 2.0f;
     gs.transition_pending = true;
     gs.next_phase = GamePhase::Settings;
-    reg.ctx().emplace<UIState>();
 
     // Proxy for title gear click path: title_screen_controller sets
     // transition_pending + next_phase=Settings, then fixed-step consumes it.
@@ -309,10 +298,6 @@ TEST_CASE("title settings navigation: pending Settings transition reaches Settin
     REQUIRE(gs.phase == GamePhase::Settings);
     CHECK_FALSE(gs.transition_pending);
     CHECK(gs.phase_timer == 0.0f);
-
-    ui_navigation_system(reg, 0.016f);
-    const auto& ui = reg.ctx().get<UIState>();
-    CHECK(ui.active == ActiveScreen::Settings);
 }
 
 TEST_CASE("game_state: transition_pending consumed on execution", "[gamestate]") {

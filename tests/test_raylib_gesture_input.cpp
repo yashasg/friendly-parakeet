@@ -68,28 +68,16 @@ TEST_CASE("raylib gesture input: unknown gesture is tap", "[input][gesture]") {
     CHECK(evt.type == InputType::Tap);
 }
 
-TEST_CASE("raylib gesture input: bottom-zone tap activates current button", "[input][gesture][hit_test]") {
-    auto reg = make_registry();
-    auto button = make_menu_button(reg, MenuActionKind::Confirm, GamePhase::Playing);
-    reg.get<UIPosition>(button).value = {360.0f, 1100.0f};
-    reg.get<HitBox>(button) = {80.0f, 40.0f};
-
+TEST_CASE("raylib gesture input: bottom-zone always yields tap event", "[input][gesture]") {
     float zone_y = constants::SCREEN_H * constants::SWIPE_ZONE_SPLIT;
     auto tap_event = input_event_from_raylib_gesture(GESTURE_SWIPE_RIGHT, zone_y + 5.0f,
                                                      360.0f, 1100.0f);
-    push_input(reg, tap_event.type, tap_event.x, tap_event.y, tap_event.dir);
-    run_input_tier1(reg);
-
-    auto press_cap = drain_press_events(reg);
-    REQUIRE(press_cap.count == 1);
-    CHECK(press_cap.buf[0].kind        == ButtonPressKind::Menu);
-    CHECK(press_cap.buf[0].menu_action == MenuActionKind::Confirm);
+    CHECK(tap_event.type == InputType::Tap);
+    CHECK_THAT(tap_event.x, Catch::Matchers::WithinAbs(360.0f, 0.01f));
+    CHECK_THAT(tap_event.y, Catch::Matchers::WithinAbs(1100.0f, 0.01f));
 
     auto swipe_event = input_event_from_raylib_gesture(GESTURE_SWIPE_RIGHT, zone_y - 5.0f,
                                                        360.0f, 1100.0f);
-    push_input(reg, swipe_event.type, swipe_event.x, swipe_event.y, swipe_event.dir);
-    run_input_tier1(reg);
-
-    CHECK(drain_press_events(reg).count == 0);
-    CHECK(drain_go_events(reg).count == 1);
+    CHECK(swipe_event.type == InputType::Swipe);
+    CHECK(swipe_event.dir == Direction::Right);
 }

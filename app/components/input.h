@@ -26,6 +26,6 @@ struct InputState {
 };
 
 // ── Directions ──────────────────────────────────────────────────────────────
-// Shared by InputEvent routing, hit-test helpers, and consumer systems.
+// Shared by InputEvent routing and consumer systems.
 
 enum class Direction : uint8_t { Left, Right, Up, Down };

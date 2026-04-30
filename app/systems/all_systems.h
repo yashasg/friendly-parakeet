@@ -41,7 +41,6 @@ void obstacle_despawn_system(entt::registry& reg, float dt);
 
 // Phase 6.5: UI prep
 void popup_display_system(entt::registry& reg, float dt);
-void ui_navigation_system(entt::registry& reg, float dt);
 
 // Phase 7: Camera
 void game_camera_system(entt::registry& reg, float dt);  // model-to-world transforms

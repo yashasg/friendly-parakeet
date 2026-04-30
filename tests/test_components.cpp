@@ -3,7 +3,6 @@
 #include "test_helpers.h"
 #include "audio/audio_queue.h"
 #include "input/input_state.h"
-#include "input/phase_activation.h"
 
 // Verify component defaults and basic ECS operations
 
@@ -155,8 +154,6 @@ TEST_CASE("ecs: make_registry dispatcher is wired — ButtonPressEvent listeners
     REQUIRE(sw.phase == WindowPhase::Idle);
 
     auto btn = make_shape_button(reg, Shape::Triangle);
-    reg.get<UIPosition>(btn).value = {0.f, 0.f};
-    reg.get<HitCircle>(btn).radius = 50.f;
 
     auto& disp = reg.ctx().get<entt::dispatcher>();
     press_button(reg, btn);
@@ -189,8 +186,6 @@ TEST_CASE("ecs: wire_input_dispatcher is idempotent", "[ecs][dispatcher]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
     auto btn = make_shape_button(reg, Shape::Triangle);
-    reg.get<UIPosition>(btn).value = {0.f, 0.f};
-    reg.get<HitCircle>(btn).radius = 50.f;
 
     wire_input_dispatcher(reg);
     press_button(reg, btn);
@@ -292,26 +287,26 @@ TEST_CASE("ecs: make_split_path creates proper entity", "[ecs]") {
     CHECK(reg.get<RequiredLane>(obs).lane == 2);
 }
 
-// ── GamePhaseBit / ActiveInPhase typed mask tests ─────────────────────────
+// ── GamePhaseBit typed mask tests ─────────────────────────
 
-TEST_CASE("GamePhaseBit: single-phase mask matches only that phase", "[phase_mask]") {
-    ActiveInPhase aip{ GamePhaseBit::Playing };
-    CHECK( phase_active(aip, GamePhase::Playing));
-    CHECK(!phase_active(aip, GamePhase::Title));
-    CHECK(!phase_active(aip, GamePhase::LevelSelect));
-    CHECK(!phase_active(aip, GamePhase::Paused));
-    CHECK(!phase_active(aip, GamePhase::GameOver));
-    CHECK(!phase_active(aip, GamePhase::SongComplete));
+TEST_CASE("GamePhaseBit: single-phase bit does not overlap others", "[phase_mask]") {
+    auto playing = GamePhaseBit::Playing;
+    CHECK( (playing & GamePhaseBit::Playing) == GamePhaseBit::Playing);
+    CHECK( (playing & GamePhaseBit::Title) != GamePhaseBit::Title);
+    CHECK( (playing & GamePhaseBit::LevelSelect) != GamePhaseBit::LevelSelect);
+    CHECK( (playing & GamePhaseBit::Paused) != GamePhaseBit::Paused);
+    CHECK( (playing & GamePhaseBit::GameOver) != GamePhaseBit::GameOver);
+    CHECK( (playing & GamePhaseBit::SongComplete) != GamePhaseBit::SongComplete);
 }
 
 TEST_CASE("GamePhaseBit: multi-phase OR mask covers both phases", "[phase_mask]") {
-    ActiveInPhase aip{ GamePhaseBit::GameOver | GamePhaseBit::SongComplete };
-    CHECK( phase_active(aip, GamePhase::GameOver));
-    CHECK( phase_active(aip, GamePhase::SongComplete));
-    CHECK(!phase_active(aip, GamePhase::Playing));
-    CHECK(!phase_active(aip, GamePhase::Title));
-    CHECK(!phase_active(aip, GamePhase::LevelSelect));
-    CHECK(!phase_active(aip, GamePhase::Paused));
+    auto mask = GamePhaseBit::GameOver | GamePhaseBit::SongComplete;
+    CHECK((mask & GamePhaseBit::GameOver) == GamePhaseBit::GameOver);
+    CHECK((mask & GamePhaseBit::SongComplete) == GamePhaseBit::SongComplete);
+    CHECK((mask & GamePhaseBit::Playing) != GamePhaseBit::Playing);
+    CHECK((mask & GamePhaseBit::Title) != GamePhaseBit::Title);
+    CHECK((mask & GamePhaseBit::LevelSelect) != GamePhaseBit::LevelSelect);
+    CHECK((mask & GamePhaseBit::Paused) != GamePhaseBit::Paused);
 }
 
 TEST_CASE("GamePhaseBit: all eight phases have distinct bits", "[phase_mask]") {
@@ -342,9 +337,9 @@ TEST_CASE("GamePhaseBit: to_phase_bit round-trips all GamePhase values", "[phase
     CHECK(to_phase_bit(P::Tutorial)     == B::Tutorial);
 }
 
-TEST_CASE("GamePhaseBit: empty mask is inactive for all phases", "[phase_mask]") {
-    ActiveInPhase aip{};  // default-constructed GamePhaseBit
-    CHECK(!phase_active(aip, GamePhase::Title));
-    CHECK(!phase_active(aip, GamePhase::Playing));
-    CHECK(!phase_active(aip, GamePhase::GameOver));
+TEST_CASE("GamePhaseBit: zero mask has no phase bits set", "[phase_mask]") {
+    auto mask = static_cast<GamePhaseBit>(0);
+    CHECK((mask & GamePhaseBit::Title) != GamePhaseBit::Title);
+    CHECK((mask & GamePhaseBit::Playing) != GamePhaseBit::Playing);
+    CHECK((mask & GamePhaseBit::GameOver) != GamePhaseBit::GameOver);
 }
