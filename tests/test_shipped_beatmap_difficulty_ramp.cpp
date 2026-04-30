@@ -6,15 +6,8 @@
 //     • All 3 shapes (Circle, Square, Triangle) must appear at least once.
 //     • No single shape > 65 % of all ShapeGate obstacles.
 //
-//   MEDIUM — bar introduction/readability ramp
-//     • LowBar + HighBar combined must be within [5 %, 25 %] of total
-//       obstacles so the mechanic is taught without overload.
-//     • No more than 3 consecutive bars (readability ramp).
-//     • First bar arrival time must be ≥ 30 s so players learn shape gates
-//       before bars are introduced.
-//
-//   HARD — bar coverage
-//     • Both LowBar and HighBar must appear at least once.
+//   MEDIUM/HARD — LowBar/HighBar are temporarily disabled
+//     • low_bar and high_bar must not appear in shipped gameplay beatmaps.
 //
 //   MEDIUM/HARD — no removed legacy lane kinds
 //     • lane_push_left/lane_push_right/lane_block must not appear.
@@ -48,11 +41,6 @@ namespace fs = std::filesystem;
 
 static constexpr int   EASY_MIN_DISTINCT_SHAPES        = 3;
 static constexpr float EASY_MAX_DOMINANT_SHAPE_PCT      = 65.0f;
-
-static constexpr float MEDIUM_MIN_BAR_PCT               = 5.0f;
-static constexpr float MEDIUM_MAX_BAR_PCT               = 25.0f;
-static constexpr int   MEDIUM_MAX_CONSEC_BARS           = 3;
-static constexpr float MEDIUM_MIN_FIRST_BAR_SEC         = 30.0f;
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -168,139 +156,46 @@ TEST_CASE("difficulty ramp: easy uses all 3 shapes and no single shape dominates
     }
 }
 
-// ── Medium: bar ramp ───────────────────────────────────────────────────────
+// ── Medium/Hard: low/high bars are disabled ────────────────────────────────
 
-TEST_CASE("difficulty ramp: medium bar percentage within [5%, 25%]",
-          "[difficulty_ramp][issue135][medium]") {
+TEST_CASE("difficulty ramp: medium and hard have no low_bar/high_bar",
+          "[difficulty_ramp][issue135][medium][hard][bars_disabled]") {
     const auto beatmaps = find_shipped_beatmaps();
     REQUIRE_FALSE(beatmaps.empty());
 
     for (const auto& path : beatmaps) {
-        BeatMap map;
-        std::vector<BeatMapError> errors;
-        if (!load_beat_map(path, map, errors, "medium")) continue;
-
-        const int total = static_cast<int>(map.beats.size());
-        if (total == 0) continue;
-
-        int bar_count = 0;
-        for (const auto& beat : map.beats) {
-            if (is_bar(beat.kind)) ++bar_count;
-        }
-
-        const float bar_pct = 100.0f * static_cast<float>(bar_count)
-                             / static_cast<float>(total);
-
-        if (bar_pct < MEDIUM_MIN_BAR_PCT) {
-            FAIL_CHECK("medium ramp: " << path
-                       << " bars only " << bar_pct << "% of obstacles"
-                       << " (need >=" << MEDIUM_MIN_BAR_PCT
-                       << "% to teach jump/slide)");
-        }
-        if (bar_pct > MEDIUM_MAX_BAR_PCT) {
-            FAIL_CHECK("medium ramp: " << path
-                       << " bars at " << bar_pct << "% of obstacles"
-                       << " (limit " << MEDIUM_MAX_BAR_PCT
-                       << "% to avoid readability cliff)");
-        }
-    }
-}
-
-TEST_CASE("difficulty ramp: medium bars max consecutive run <= 3",
-          "[difficulty_ramp][issue135][medium]") {
-    const auto beatmaps = find_shipped_beatmaps();
-    REQUIRE_FALSE(beatmaps.empty());
-
-    for (const auto& path : beatmaps) {
-        BeatMap map;
-        std::vector<BeatMapError> errors;
-        if (!load_beat_map(path, map, errors, "medium")) continue;
-
-        int max_consec = 0;
-        int cur = 0;
-        for (const auto& beat : map.beats) {
-            if (is_bar(beat.kind)) {
-                ++cur;
-                if (cur > max_consec) max_consec = cur;
-            } else {
-                cur = 0;
+        for (const auto* difficulty : {"medium", "hard"}) {
+            BeatMap map;
+            std::vector<BeatMapError> errors;
+            if (!load_beat_map(path, map, errors, difficulty)) {
+                FAIL_CHECK("bars disabled: failed to load " << path
+                           << " difficulty=" << difficulty);
+                continue;
             }
-        }
 
-        if (max_consec > MEDIUM_MAX_CONSEC_BARS) {
-            FAIL_CHECK("medium ramp: " << path
-                       << " has " << max_consec << " consecutive bar obstacles"
-                       << " (limit " << MEDIUM_MAX_CONSEC_BARS
-                       << " for readability)");
-        }
-    }
-}
+            if (map.beats.empty()) {
+                FAIL_CHECK("bars disabled: " << path
+                           << " difficulty=" << difficulty
+                           << " has zero beats after loading");
+            }
 
-// ── Medium: first bar arrival time ≥ 30 s ──────────────────────────────────
-//
-// Bars must not appear before 30 seconds so players learn shape gates first.
-// Arrival time is computed from bpm and offset in the beatmap JSON:
-//     arrival = offset + beat_index * (60.0 / bpm)
-//
-// Uses the minimum beat_index among all bars in case the obstacle
-// list is not strictly sorted.
-
-TEST_CASE("difficulty ramp: medium first bar arrival time >= 30 s",
-          "[difficulty_ramp][issue217][medium]") {
-    const auto beatmaps = find_shipped_beatmaps();
-    REQUIRE_FALSE(beatmaps.empty());
-
-    for (const auto& path : beatmaps) {
-        BeatMap map;
-        std::vector<BeatMapError> errors;
-        if (!load_beat_map(path, map, errors, "medium")) continue;
-
-        // Find the beat_index of the earliest bar obstacle.
-        int first_beat_index = -1;
-        for (const auto& beat : map.beats) {
-            if (!is_bar(beat.kind)) continue;
-            if (first_beat_index < 0 || beat.beat_index < first_beat_index)
-                first_beat_index = beat.beat_index;
-        }
-
-        if (first_beat_index < 0) continue;  // no bars in this map — skip
-
-        const float beat_period   = 60.0f / map.bpm;
-        const float first_arrival = map.offset + static_cast<float>(first_beat_index) * beat_period;
-
-        if (first_arrival < MEDIUM_MIN_FIRST_BAR_SEC) {
-            FAIL_CHECK("medium start_progress: " << path
-                       << " first bar (beat_index=" << first_beat_index
-                       << ") arrives at " << first_arrival << " s"
-                       << " (minimum " << MEDIUM_MIN_FIRST_BAR_SEC << " s per #135/#217)");
-        }
-    }
-}
-
-TEST_CASE("difficulty ramp: hard includes low_bar and high_bar coverage",
-          "[difficulty_ramp][issue135][hard]") {
-    const auto beatmaps = find_shipped_beatmaps();
-    REQUIRE_FALSE(beatmaps.empty());
-
-    for (const auto& path : beatmaps) {
-        BeatMap map;
-        std::vector<BeatMapError> errors;
-        if (!load_beat_map(path, map, errors, "hard")) continue;
-
-        bool has_low_bar = false;
-        bool has_high_bar = false;
-        for (const auto& beat : map.beats) {
-            has_low_bar = has_low_bar || beat.kind == ObstacleKind::LowBar;
-            has_high_bar = has_high_bar || beat.kind == ObstacleKind::HighBar;
-        }
-
-        if (!has_low_bar) {
-            FAIL_CHECK("hard coverage: " << path
-                       << " has no low_bar obstacles");
-        }
-        if (!has_high_bar) {
-            FAIL_CHECK("hard coverage: " << path
-                       << " has no high_bar obstacles");
+            int non_bar_count = 0;
+            for (const auto& beat : map.beats) {
+                if (is_bar(beat.kind)) {
+                    FAIL_CHECK("bars disabled: " << path
+                               << " difficulty=" << difficulty
+                               << " contains bar obstacle at beat "
+                               << beat.beat_index
+                               << " kind=" << static_cast<int>(beat.kind));
+                } else {
+                    ++non_bar_count;
+                }
+            }
+            if (non_bar_count == 0) {
+                FAIL_CHECK("bars disabled: " << path
+                           << " difficulty=" << difficulty
+                           << " has no remaining non-bar obstacles");
+            }
         }
     }
 }
@@ -314,7 +209,11 @@ TEST_CASE("difficulty ramp: medium and hard contain no removed lane kinds",
         for (const auto* difficulty : {"medium", "hard"}) {
             BeatMap map;
             std::vector<BeatMapError> errors;
-            if (!load_beat_map(path, map, errors, difficulty)) continue;
+            if (!load_beat_map(path, map, errors, difficulty)) {
+                FAIL_CHECK("removed lane kinds: failed to load " << path
+                           << " difficulty=" << difficulty);
+                continue;
+            }
 
             for (const auto& beat : map.beats) {
                 if (!is_removed_lane_kind(beat.kind)) continue;

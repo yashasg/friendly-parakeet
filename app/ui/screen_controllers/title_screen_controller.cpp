@@ -2,6 +2,7 @@
 
 #include "../../components/game_state.h"
 #include "../../components/input.h"
+#include "../../input/pointer_input.h"
 #include "screen_controller_base.h"
 #include <entt/entt.hpp>
 
@@ -15,15 +16,15 @@ using TitleController = RGuiScreenController<TitleLayoutState,
                                               &TitleLayout_Render>;
 TitleController title_controller;
 
-bool is_start_tap(const TitleLayoutState& state) {
-    if (!IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) return false;
-    const Vector2 mouse = GetMousePosition();
+bool is_start_tap(const TitleLayoutState& state, const InputState& input) {
+    Vector2 pointer = {};
+    if (!pointer_release_position(input, pointer)) return false;
     const Rectangle settings_button = {state.Anchor01.x + 632, state.Anchor01.y + 1170, 64, 64};
 #ifndef PLATFORM_WEB
     const Rectangle exit_button = {state.Anchor01.x + 260, state.Anchor01.y + 1080, 200, 56};
-    if (CheckCollisionPointRec(mouse, exit_button)) return false;
+    if (CheckCollisionPointRec(pointer, exit_button)) return false;
 #endif
-    if (CheckCollisionPointRec(mouse, settings_button)) return false;
+    if (CheckCollisionPointRec(pointer, settings_button)) return false;
     return true;
 }
 
@@ -35,6 +36,7 @@ void init_title_screen_ui() {
 
 void render_title_screen_ui(entt::registry& reg) {
     auto& state = title_controller.state();
+    const auto& input = reg.ctx().get<InputState>();
     const int saved_text_size = GuiGetStyle(DEFAULT, TEXT_SIZE);
     const int saved_label_alignment = GuiGetStyle(LABEL, TEXT_ALIGNMENT);
 
@@ -56,7 +58,7 @@ void render_title_screen_ui(entt::registry& reg) {
         gs.next_phase = GamePhase::Settings;
     }
 
-    if (is_start_tap(state)) {
+    if (is_start_tap(state, input)) {
         auto& gs = reg.ctx().get<GameState>();
         gs.transition_pending = true;
         gs.next_phase = GamePhase::LevelSelect;

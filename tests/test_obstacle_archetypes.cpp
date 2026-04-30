@@ -257,6 +257,10 @@ TEST_CASE("entity: LowBar - RequiredVAction Jumping", "[archetype]") {
     CHECK(reg.get<WorldTransform>(e).position.y == -120.0f);
     CHECK(reg.get<RequiredVAction>(e).action == VMode::Jumping);
     CHECK(reg.get<DrawSize>(e).h == 40.0f);
+    const auto& c = reg.get<Color>(e);
+    CHECK(c.r == 255);
+    CHECK(c.g == 180);
+    CHECK(c.b == 0);
 }
 
 TEST_CASE("entity: HighBar - RequiredVAction Sliding", "[archetype]") {
@@ -271,6 +275,10 @@ TEST_CASE("entity: HighBar - RequiredVAction Sliding", "[archetype]") {
     CHECK(reg.get<WorldTransform>(e).position.y == -120.0f);
     CHECK(reg.get<RequiredVAction>(e).action == VMode::Sliding);
     CHECK(reg.get<DrawSize>(e).h == 40.0f);
+    const auto& c = reg.get<Color>(e);
+    CHECK(c.r == 180);
+    CHECK(c.g == 0);
+    CHECK(c.b == 255);
 }
 
 TEST_CASE("entity: ComboGate - RequiredShape and BlockedLanes", "[archetype]") {

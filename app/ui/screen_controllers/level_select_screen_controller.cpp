@@ -2,6 +2,8 @@
 // Dynamic card/difficulty rendering to be ported to rguilayout in future work.
 
 #include "../../components/game_state.h"
+#include "../../components/input.h"
+#include "../../input/pointer_input.h"
 #include "screen_controller_base.h"
 #include <entt/entt.hpp>
 #include <cstdio>
@@ -58,12 +60,12 @@ Rectangle difficulty_button_rect(int index, int selected_level) {
     };
 }
 
-void handle_level_card_pointer_input(LevelSelectState& lss) {
-    if (!IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) return;
-    const Vector2 mouse = GetMousePosition();
+void handle_level_card_pointer_input(LevelSelectState& lss, const InputState& input) {
+    Vector2 pointer = {};
+    if (!pointer_release_position(input, pointer)) return;
 
     for (int i = 0; i < LevelSelectState::LEVEL_COUNT; ++i) {
-        if (CheckCollisionPointRec(mouse, level_card_rect(i))) {
+        if (CheckCollisionPointRec(pointer, level_card_rect(i))) {
             lss.selected_level = i;
             return;
         }
@@ -78,9 +80,10 @@ void init_level_select_screen_ui() {
 
 void render_level_select_screen_ui(entt::registry& reg) {
     auto& lss = reg.ctx().get<LevelSelectState>();
+    const auto& input = reg.ctx().get<InputState>();
     auto& state = level_select_controller.state();
     auto& gs = reg.ctx().get<GameState>();
-    handle_level_card_pointer_input(lss);
+    handle_level_card_pointer_input(lss, input);
     
     int saved_text_size = GuiGetStyle(DEFAULT, TEXT_SIZE);
     

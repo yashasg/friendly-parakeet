@@ -167,12 +167,14 @@ static void draw_meshes(const entt::registry& reg) {
 // Draw Model-authority entities (LowBar, HighBar) that own their mesh arrays.
 // These entities carry ObstacleModel + TagWorldPass and are NOT in the ModelTransform pool.
 static void draw_owned_models(const entt::registry& reg) {
-    auto view = reg.view<const ObstacleModel, const TagWorldPass>();
-    for (auto [entity, om] : view.each()) {
+    auto view = reg.view<const ObstacleModel, const Color, const TagWorldPass>();
+    for (auto [entity, om, tint] : view.each()) {
         if (!om.owned || !om.model.meshes) continue;
         for (int i = 0; i < om.model.meshCount; ++i) {
+            Material mat = om.model.materials[om.model.meshMaterial[i]];
+            mat.maps[MATERIAL_MAP_DIFFUSE].color = tint;
             DrawMesh(om.model.meshes[i],
-                     om.model.materials[om.model.meshMaterial[i]],
+                     mat,
                      om.model.transform);
         }
     }

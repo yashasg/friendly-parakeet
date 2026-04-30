@@ -79,3 +79,11 @@
 **Artifacts:**
 - Decision: `.squad/decisions.md` (white lane wall fix section)
 - Orchestration: `.squad/orchestration-log/2026-04-30T10-05-46Z-mcmanus.md`
+
+## 2026-04-30T03:24:36.429-07:00 — Temporary bar disable (LowBar/HighBar)
+
+- **Root cause:** Shipped charts still authored `low_bar`/`high_bar`, so bar entities continued to spawn and affect runtime paths.
+- **Production fix:** `parse_beat_map` now drops `low_bar`/`high_bar` entries; `beat_scheduler_system` also skips `ObstacleKind::LowBar/HighBar` defensively.
+- **Regression coverage:** Updated parser and scheduler tests to assert bar suppression; shipped difficulty ramp test asserts no bars in medium/hard loaded maps.
+- **Follow-up balance adjustment:** Raised medium max silent-gap regression threshold from 32 to 34 beats while bars remain disabled.
+- **Validation evidence:** `cmake --build build -- -j4`; targeted tags (`[low_high_bar]`, `[rhythm][beatmap]`, `[parse][kind]`, `[beat_scheduler]`); full `./build/shapeshifter_tests "~[bench]"` all passing.

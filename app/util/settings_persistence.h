@@ -15,6 +15,10 @@ persistence::Result load_settings(SettingsState& state, const std::filesystem::p
 // Distinguishes path/open/write failures via structured status.
 persistence::Result save_settings(const SettingsState& state, const std::filesystem::path& path);
 
+// Mark settings persistence as dirty and attempt to save immediately.
+// Keeps dirty=true when save cannot complete so callers can retry later.
+void mark_dirty_and_save(SettingsPersistence& persistence_state, const SettingsState& state);
+
 // Get platform-specific settings directory.
 // Returns empty path when resolution fails.
 std::filesystem::path get_settings_dir();

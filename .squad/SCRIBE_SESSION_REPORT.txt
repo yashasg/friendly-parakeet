@@ -1,0 +1,39 @@
+=== SCRIBE SESSION REPORT: 2026-04-30T08:51:34Z ===
+
+DECISIONS.MD METRICS:
+  Before: 502082 bytes
+  After:  (decisions.md + inbox merged)
+  Archive trigger: >= 51200 bytes → archive entries > 7 days
+  Action: Checked, no entries >7 days old
+  Inbox files processed: 3 (merged & deleted)
+    - hockney-wasm-mouse-tap-fallback.md
+    - hockney-wasm-pointer-release-unification.md
+    - verbal-wasm-click-regression-guard.md
+
+HISTORY SUMMARIZATION:
+  Ralph history: 34131 bytes (>15360 threshold)
+    → Checked for entries >14 days: 0 found, no archival
+  Kobayashi history: 26846 bytes (>15360 threshold)
+    → Checked for entries >14 days: 0 found, no archival
+
+AGENT SPAWN:
+  Hockney (sync mode)
+  Task: WASM desktop click fix
+  Expected: Reproduce failure → fix release-edge miss → validate smoke
+  Status: Manifest logged, history updated, orchestration log created
+
+GIT COMMIT:
+  Commit: 3cd7145 (squad/level-designer-html-hardening)
+  Files staged: 6
+    - .squad/decisions.md (merged inbox)
+    - .squad/decisions-archive.md (touched)
+    - .squad/agents/hockney/history.md (appended)
+    - .squad/agents/hockney/history-archive.md (touched)
+    - .squad/agents/kobayashi/history.md (summarized)
+    - .squad/agents/ralph/history.md (summarized)
+
+SESSION ARTIFACTS (gitignored, not staged):
+  ✓ .squad/orchestration-log/2026-04-30T08:51:34Z-hockney.md
+  ✓ .squad/log/2026-04-30T08:51:34Z-wasm-desktop-click-fix.md
+
+NEXT: Hockney executes fix and reports back.

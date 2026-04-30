@@ -162,3 +162,9 @@ Decision #170 merged to registry. Team session log: `.squad/log/2026-04-30T08-30
 - Decision: `.squad/decisions.md` (white lane wall fix section)
 - Orchestration: `.squad/orchestration-log/2026-04-30T10-05-46Z-verbal.md`
 - Session Log: `.squad/log/2026-04-30T10-05-46Z-white-lane-wall-fix.md`
+
+### 2026-04-30T03:24:36.429-07:00 — Low/High bar disablement QA verification
+
+- **Gameplay-vs-content contract:** For temporary mechanic shutdowns, regressions should assert runtime gameplay behavior (`load_beat_map` output and scheduler spawning), not raw authored JSON. Source content may intentionally retain disabled kinds for later re-enable.
+- **Safety pattern for temporary disables:** Pair a content-load guard with a runtime scheduler guard. In this repo, `difficulty_ramp` now verifies medium/hard loaded charts are bar-free, and `beat_scheduler` verifies bar entries are skipped even if injected manually.
+- **Progression check while disabled:** Always assert remaining non-disabled obstacle content is still present after filtering; a pure “forbidden kind absent” check can hide accidental empty charts.

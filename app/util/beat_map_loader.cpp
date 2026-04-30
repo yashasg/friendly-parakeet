@@ -50,6 +50,10 @@ static std::optional<ObstacleKind> parse_kind(const std::string& s) {
     return std::nullopt;
 }
 
+static bool is_temporarily_disabled_kind(const ObstacleKind kind) {
+    return kind == ObstacleKind::LowBar || kind == ObstacleKind::HighBar;
+}
+
 static std::optional<Shape> parse_shape(const std::string& s) {
     if (s == "circle")   return Shape::Circle;
     if (s == "square")   return Shape::Square;
@@ -134,6 +138,9 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
             continue;
         }
         entry.kind = *kind_opt;
+        if (is_temporarily_disabled_kind(entry.kind)) {
+            continue;
+        }
 
         if (b.contains("shape")) {
             std::string shape_str = b["shape"].get<std::string>();

@@ -34,6 +34,7 @@ bool load_beat_map(const std::string& json_path, BeatMap& out,
                    const std::string& difficulty = "medium");
 
 // Parse a beat map from a JSON string. Returns true on success.
+// Temporary behavior: low_bar/high_bar entries are accepted but dropped.
 bool parse_beat_map(const std::string& json_str, BeatMap& out,
                     std::vector<BeatMapError>& errors,
                     const std::string& difficulty = "medium");

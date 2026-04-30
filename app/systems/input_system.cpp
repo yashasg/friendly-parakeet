@@ -38,9 +38,10 @@ void input_system(entt::registry& reg, float raw_dt) {
         input.start_y = input.curr_y = to_vy(pos.y);
         input.duration = 0.0f;
     }
+    const bool mouse_left_down = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
     if (input.active_source != InputSource::Touch &&
-        IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
-        input.active_source == InputSource::Mouse) {
+        input.active_source == InputSource::Mouse &&
+        (IsMouseButtonReleased(MOUSE_BUTTON_LEFT) || (!mouse_left_down && input.touching))) {
         input.touch_up  = true;
         input.touching  = false;
         input.active_source = InputSource::None;
@@ -49,7 +50,7 @@ void input_system(entt::registry& reg, float raw_dt) {
         input.end_y = to_vy(pos.y);
     }
     if (input.active_source != InputSource::Touch &&
-        IsMouseButtonDown(MOUSE_BUTTON_LEFT) && input.touching &&
+        mouse_left_down && input.touching &&
         input.active_source == InputSource::Mouse) {
         Vector2 pos = GetMousePosition();
         input.curr_x = to_vx(pos.x);
