@@ -387,3 +387,4 @@ Next: Await merge approval.
 **Release engineer checkpoint:** This is a safe merge point. The title screen layout is live and rendering, but button interactions and other screen migrations are deferred to separate PRs for reviewability and rollback safety if needed.
 
 ---
+- 2026-04-30: Opened PR #357 (https://github.com/yashasg/friendly-parakeet/pull/357) from `squad/level-designer-html-hardening` with commit `898c03e`. CI gate reached all-green: 15 successful, 2 skipped, 0 pending, 0 failing via `gh pr checks 357` (including Linux/macOS/Windows/WASM, Squad CI, CodeQL matrix, dependency review/submission, and WASM PR preview deploy).

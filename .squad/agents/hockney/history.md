@@ -23,6 +23,8 @@
 
 ## Learnings
 
+- 2026-04-30: Settings mutations now use the same dirty+save persistence contract as high scores via `settings::mark_dirty_and_save(SettingsPersistence&, const SettingsState&)`; save attempts happen at mutation time, and failures remain observable/retriable through `dirty` + `last_save`.
+- Added issue-303 regression tests to lock runtime behavior: successful save clears dirty and round-trips values; empty path reports `PathUnavailable` and keeps dirty set.
 - 2026-04-29: Runtime, CMake copy rules, and Emscripten preload flags must treat `content/` as the single shipped root; do not maintain a parallel top-level `assets/` tree.
 - Fonts now live at `content/fonts/LiberationMono-Regular.ttf` (plus `LICENSE-SIL-OFL.txt`), and `text_init_default()` resolves `content/fonts/...` both exe-relative and repo-relative.
 - When consolidating roots, update platform docs and tooling prompts (`.github/agents/rhythm-designer.agent.md`, `design-docs/rhythm-design.md`) so generated beatmaps target `content/beatmaps/`.
@@ -136,3 +138,21 @@ Removed top-level `assets/` directory. Moved fonts to `content/fonts/`. Updated 
 - **Regression guard:** Added CI step `Verify WASM async support flag` in `.github/workflows/ci-wasm.yml` that fails if `build-web/CMakeFiles/shapeshifter.dir/link.txt` does not contain `-sASYNCIFY`.
 - **Validation:** `emcmake cmake -B build-web -S . ... -DVCPKG_TARGET_TRIPLET=wasm32-emscripten && cmake --build build-web -- -j$(sysctl -n hw.ncpu) && (cd build-web && ctest --verbose --output-on-failure)` passed (WASM build + `shapeshifter_tests_wasm` pass). `git diff --check -- CMakeLists.txt .github/workflows/ci-wasm.yml` clean.
 - **PR status:** Changes prepared for `squad/level-designer-html-hardening`; push/check monitoring pending this hotfix commit.
+
+## 2026-04-30 — WASM responsiveness lifecycle hardening
+
+- **Root cause diagnosed:** Web runtime lifecycle depended on `emscripten_set_main_loop(..., simulate_infinite_loop=1)` unwind semantics while `main()` always called `game_loop_shutdown()` after `game_loop_run()`. That coupling is brittle across Emscripten/runtime modes and can tear down state at the wrong time, surfacing as an unresponsive preview.
+- **Fix shipped:** `main()` now skips post-run shutdown on `__EMSCRIPTEN__`; web shutdown remains owned by `frame_callback` + `beforeunload` in `platform_display.cpp`.
+- **Loop ownership hardening:** switched to `emscripten_set_main_loop(frame_callback, 0, 0)` and rely on `-sNO_EXIT_RUNTIME=1` to keep runtime alive instead of unwind control flow.
+- **Regression guard:** expanded `.github/workflows/ci-wasm.yml` runtime-flag check to require both `-sASYNCIFY` and `-sNO_EXIT_RUNTIME=1` in `build-web/CMakeFiles/shapeshifter.dir/link.txt`.
+- **Validation:** native build/tests pass (`./build/shapeshifter_tests "~[bench]"`), wasm configure/build/tests pass (`ctest` running `shapeshifter_tests_wasm` passes) with Emscripten toolchain + vcpkg chainload.
+
+## 2026-04-30 08:19:42Z — PR #357 Orchestration Complete
+
+PR #357 WASM responsiveness work finalized and logged:
+- Orchestration entry: `.squad/orchestration-log/2026-04-30T08-19-42Z-hockney-pr357.md`
+- Session summary: `.squad/log/2026-04-30T08-19-42Z-pr357-session.md`
+- Decisions merged to `.squad/decisions.md` (lifecycle + linker enforcement + user directive)
+- Inbox cleared: 5 decision entries processed
+
+Team ready for next phase.
