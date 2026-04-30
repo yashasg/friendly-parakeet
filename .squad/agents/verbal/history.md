@@ -135,3 +135,30 @@ Part 2 (Doc Fix): Revised `docs/asset-bundle-spec.md` tree diagram per Kujan's f
 
 Session log written: `.squad/orchestration-log/2026-04-30T08-30-59Z-verbal.md`
 Decision #170 merged to registry. Team session log: `.squad/log/2026-04-30T08-30-59Z-wasm-responsiveness-fix.md`
+
+### 2026-04-30T03:05:46.543-07:00 — Low/High bar white-wall QA check
+
+- The full-lane white wall symptom maps to Model-authority bars when `draw_owned_models` does not preserve ECS tint; if diffuse color is not overridden, `LoadMaterialDefault()` yields a white slab across all lanes.
+- Add a source-gate regression in `tests/test_pr43_regression.cpp` that asserts `game_render_system.cpp` still queries `Color` in the owned-model path and applies `MATERIAL_MAP_DIFFUSE` tint.
+- For manual repro targeting hard difficulty, use the first bar beats: stomper beat 182 (low_bar), drama beat 111 (high_bar), mental_corruption beat 113 (high_bar).
+
+## Session: White Lane Wall Fix Validation (2026-04-30T10:05:46Z)
+
+**Role:** Independent validation and regression coverage
+
+**Task:** Independently reproduce and validate fix/regression coverage
+
+**Work Summary:**
+- Reproduced white wall visual in hard mode with LowBar and HighBar obstacles
+- Validated McManus fix by verifying correct tint application
+- Added regression guard in test suite to ensure `ObstacleModel` color tint is applied
+- Verified all test suites pass with fix in place
+
+**Outcome:** Fix validated; regression coverage added to test_pr43_regression.cpp; all suites passed
+
+**Status:** Complete
+
+**Artifacts:**
+- Decision: `.squad/decisions.md` (white lane wall fix section)
+- Orchestration: `.squad/orchestration-log/2026-04-30T10-05-46Z-verbal.md`
+- Session Log: `.squad/log/2026-04-30T10-05-46Z-white-lane-wall-fix.md`

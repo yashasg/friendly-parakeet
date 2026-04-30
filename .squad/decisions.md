@@ -1,6 +1,6 @@
 # Decisions Registry
 
-*Last merged: 2026-04-30T01:30:59Z*
+*Last merged: 2026-04-30T10:12:30Z*
 
 ### Guardrails for Future Dispatcher Work
 
@@ -9921,3 +9921,32 @@ The previous single before/after check (`click` + `Enter`) masked mouse regressi
 
 ## Impact
 CI now detects desktop mouse click regressions independently of keyboard fallback behavior.
+
+### White Lane Wall Fix — Model Tint Application (2026-04-30)
+
+#### McManus Decision: Model-authority obstacle rendering must apply entity tint explicitly at draw time
+
+**Context**
+- LowBar and HighBar use `ObstacleModel` (owned model path), not `ModelTransform`.
+- The shared `ModelTransform` draw path already applies tint via `mat.maps[MATERIAL_MAP_DIFFUSE].color`.
+- The owned-model path was drawing default material color, which appears white.
+
+**Decision**
+- Keep LowBar/HighBar behavior and geometry as-is (full-lane bars are valid on hard).
+- Fix only rendering: in `draw_owned_models`, include `Color` in the view and apply that tint to a local `Material` copy before `DrawMesh`.
+
+**Why**
+- Removes the unintended white full-lane wall visual.
+- Preserves obstacle gameplay contract (spawn/collision/scoring/timing).
+- Keeps render behavior consistent across mesh paths.
+
+#### Verbal Decision: Preserve Model-authority bar tint
+
+**Context**
+- Players reported a white full-lane wall. LowBar/HighBar are rendered through `draw_owned_models` using `ObstacleModel` material copies, so losing diffuse tint override turns bars white.
+
+**Decision**
+- Keep a regression gate that checks `app/systems/game_render_system.cpp` still uses `reg.view<const ObstacleModel, const Color, const TagWorldPass>()` and sets `mat.maps[MATERIAL_MAP_DIFFUSE].color = tint;`.
+
+**Why team-relevant**
+- This path is separate from `ModelTransform` rendering and easy to break during render refactors; failing fast in CI protects obstacle readability.

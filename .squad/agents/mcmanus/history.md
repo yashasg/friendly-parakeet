@@ -51,3 +51,31 @@
 - **Refactor:** Added `app/audio/music_stream.h` with `load_music_stream(const char* path, bool repeat)` that wraps `LoadMusicStream(...)`, sets `stream.looping = repeat`, and returns the `Music`.
 - **Call-site update:** `setup_play_session(...)` now calls `load_music_stream(path, false)` and no longer writes `music->stream.looping = false` directly.
 - **Validation evidence:** `cmake --build build -- -j4`; `./build/shapeshifter_tests "[song_playback]"`; `./build/shapeshifter_tests "[gamestate]"`; `./build/shapeshifter_tests "[play_session]"`; `./build/shapeshifter_tests "[song_complete]"`; `./build/shapeshifter_tests "~[bench]"`; `git --no-pager diff --check` (all passed).
+
+### 2026-04-30T03:05:46.543-07:00 — White full-lane wall was untinted bar model
+
+- **Root cause:** LowBar/HighBar are full-width Model-authority obstacles. Their render path (`draw_owned_models`) ignored the obstacle `Color` component and drew with default material diffuse (white), producing a white wall across all three lanes.
+- **Production fix:** In `app/systems/game_render_system.cpp`, `draw_owned_models` now queries `Color` and applies it to a local per-draw `Material` before `DrawMesh(...)`.
+- **Behavior impact:** Obstacle behavior is unchanged (same spawn/collision/scoring); only rendering now matches intended bar colors instead of white.
+- **Validation evidence:** `cmake --build build -- -j4`; `./build/shapeshifter_tests "[archetype]"`; `./build/shapeshifter_tests "~[bench]"` (all passed).
+- **Regression coverage:** Added explicit LowBar/HighBar color assertions in `tests/test_obstacle_archetypes.cpp`.
+
+## Session: White Lane Wall Fix (2026-04-30T10:05:46Z)
+
+**Role:** Root cause identification and fix implementation
+
+**Task:** Identify and remove white 3-lane wall visual issue while preserving obstacle behavior
+
+**Work Summary:**
+- Traced white wall visual to `draw_owned_models` path in `game_render_system.cpp`
+- Root cause: `ObstacleModel` (owned model) render path was not applying `Color` component tint
+- LowBar/HighBar obstacles use owned-model path, not `ModelTransform` shared path
+- Fixed by adding `Color` to view and applying tint to material copy before `DrawMesh`
+
+**Outcome:** Root cause identified and fixed; added archetype color regression assertions
+
+**Status:** Complete
+
+**Artifacts:**
+- Decision: `.squad/decisions.md` (white lane wall fix section)
+- Orchestration: `.squad/orchestration-log/2026-04-30T10-05-46Z-mcmanus.md`
