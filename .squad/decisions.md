@@ -1,6 +1,6 @@
 # Decisions Registry
 
-*Last merged: 2026-04-30T04:46:22Z*
+*Last merged: 2026-04-30T07:15:10Z*
 
 ### #169 — Gameplay Shape Buttons Migrated to raygui HUD Ownership (2026-04-29)
 
@@ -10070,4 +10070,46 @@ Corrected `docs/asset-bundle-spec.md` tree diagram per Kujan's review feedback (
 - Kujan approved revised diagram
 - Diff check clean
 - All downstream documentation consistent
+
+---
+
+### #176 — Force One-Shot Music Playback for Play Sessions (2026-04-30)
+
+**Owners:** McManus (fix), Baer (regression testing), Kujan (review)  
+**Status:** IMPLEMENTED AND APPROVED
+
+**Issue:** Song completes without displaying Song Complete UI; music audibly repeats/loops.
+
+**Root Cause:** `raylib::Music` backend default-loops streams. If wrapped before terminal phase detects `finished=true` and transitions to `SongComplete`, the phase-transition gate misses the signal and playback continues in `Playing`.
+
+**Decision:** When loading a play-session music stream in `setup_play_session(...)`, explicitly set:
+
+```cpp
+music->stream.looping = false;
+```
+
+Immediately after successful `LoadMusicStream(...)` call.
+
+**Why:** Explicit one-shot playback ensures song-end behavior is deterministic and aligns with phase transition contract (`Playing` → `SongComplete` via `game_state_system` on `finished` latch).
+
+**Scope:**
+- File: `app/session/play_session.cpp`
+- No collateral changes to asset-root, editor-hardening, or other subsystems
+
+**Testing (Baer):**
+- Added deterministic regression tests in `tests/test_song_playback_system.cpp`
+- Coverage: finish-state latching + two-tick transition into `GamePhase::SongComplete`
+- Focused suites `[song_playback]`, `[gamestate]`, `[play_session]` ✅
+- Full suite `~[bench]` ✅
+- Git diff clean
+
+**Known Testability Gap:**
+- Runtime `GetMusicTimePlayed()` wraparound at track end not deterministically controllable in headless tests
+- Recommendation: Add injectable music-clock seam to `song_playback_system` for CI to force wraparound and prevent regressions
+
+**Validation Evidence:**
+- `cmake --build build -- -j4` passed, zero warnings (clang arm64)
+- `git --no-pager diff --check` clean
+
+---
 

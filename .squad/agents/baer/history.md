@@ -602,3 +602,31 @@ Decision #169 captured in decisions.md. Risk hotspots validated during refactor 
 Replaced stale LanePush difficulty-ramp test contract in `tests/test_shipped_beatmap_difficulty_ramp.cpp`. Removed medium LanePush assertions (0% in shipped beatmaps). Implemented bar-focused medium contracts (low+high percentage window, max consecutive run, first-arrival readability gate). Hard: low/high coverage. Explicit rejection of legacy kinds. `./build/shapeshifter_tests "[difficulty_ramp]"` passes. Full suite + validators pass. Diff clean.
 
 **Manifested:** Decision #174 merged to `.squad/decisions.md`
+
+## 2026-04-30 — Song-complete playback loop/regression coverage
+
+**Task:** Investigate report: on song end, Song Complete UI does not appear while music repeats.
+
+**Test changes:**
+- `tests/test_song_playback_system.cpp`
+  - Added `song_playback: finished song stays latched and does not restart on later ticks`
+  - Added `song_playback: end-of-song transitions to SongComplete and remains stopped`
+
+**Root-cause surface analyzed:**
+- Transition contract is split across systems: `song_playback_system` latches `finished/playing`, then `game_state_system` schedules and executes `SongComplete` on the next tick.
+- Existing coverage did not pin the full two-tick contract (finish → transition pending → phase enter) together with "no restart" invariants after finish.
+- Audio-device loop behavior when `GetMusicTimePlayed()` wraps cannot be deterministically forced in current headless tests; this requires an injectable music-clock seam.
+
+**Validation evidence:**
+- `cmake --build build -- -j4` ✅
+- `./build/shapeshifter_tests "[song_playback]"` ✅ (66 assertions, 25 test cases)
+- `./build/shapeshifter_tests "[gamestate]"` ✅ (98 assertions, 40 test cases)
+- `./build/shapeshifter_tests "[song_complete]"` ✅ (12 assertions, 2 test cases)
+- `./build/shapeshifter_tests "~[bench]"` ✅ (2197 assertions, 765 test cases)
+- `git --no-pager diff --check` ✅
+- **Decision logged:** #176 in `.squad/decisions.md` (2026-04-30T07:15:10Z)
+- **Cross-team:** McManus fixed looping; Kujan approved full cycle.
+
+## Learnings
+- For terminal-phase regressions, use a deterministic two-tick contract test: tick A latches end-of-song state, tick B consumes `transition_pending` and enters `SongComplete`, then assert playback state remains latched (`finished=true`, `playing=false`) across later ticks.
+- If production relies on non-deterministic runtime clocks (e.g., `GetMusicTimePlayed()`), add an explicit injectable clock seam; otherwise loop-at-track-end bugs are not reliably reproducible in headless CI.

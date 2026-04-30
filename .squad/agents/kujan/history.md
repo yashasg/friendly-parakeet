@@ -232,3 +232,15 @@ Decision #169 captured in decisions.md.
 Reviewed Hockney's asset root removal decision summary. Rejected Verbal's initial `docs/asset-bundle-spec.md` (duplicate sibling `content/` nodes under root). Approved Verbal's corrected diagram (single `content/` node with proper child hierarchy). Validated all changes; no remaining blockers identified.
 
 **Status:** All changes approved; ready for merge.
+
+## Session: Song-Complete Loop Fix (2026-04-30)
+
+**Issue:** Song completes without UI; music repeats.
+
+**Review focus:** Confirm `Music::looping` is the correct raylib seam; verify restart paths preserve `false`; validate test coverage.
+
+**Outcome:** ✓ APPROVED.
+- McManus fix correct: `music->stream.looping = false` after `LoadMusicStream` in `app/session/play_session.cpp`.
+- Baer regression tests guard latching/phase-transition behavior across two ticks.
+- All changes isolated; no collateral surface.
+- **Decision logged:** #176 in `.squad/decisions.md` (2026-04-30T07:15:10Z)
