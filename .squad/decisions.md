@@ -1,6 +1,41 @@
 # Decisions Registry
 
-*Last merged: 2026-04-30T08:13:07Z*
+*Last merged: 2026-04-30T01:30:59Z*
+
+### #171 — WASM Main Loop Lifecycle and Input Responsiveness (2026-04-30)
+
+**Owner:** Hockney (platform/WebAssembly)
+**Status:** IMPLEMENTED
+
+Keep `emscripten_set_main_loop(frame_callback, 0, 1)` for the web runtime and avoid post-run shutdown from `main()` under `__EMSCRIPTEN__`.
+
+**Why:** Switching to `simulate_infinite_loop=0` made the WASM runtime non-responsive locally and produced immediate `memory access out of bounds` failures during browser smoke. With `simulate_infinite_loop=1`, startup/input responsiveness is stable on this stack, and gating `game_loop_shutdown()` out of web `main()` prevents double-shutdown hazards.
+
+**Changes:**
+- `app/main.cpp`: skip `game_loop_shutdown(reg)` for `__EMSCRIPTEN__`.
+- `app/platform_display.cpp`: retain `emscripten_set_main_loop(..., 1)`.
+
+**Validation:** Browser smoke + native/wasm test binaries all pass.
+
+---
+
+### #170 — WASM Smoke Test Must Validate Input Reaction (2026-04-30)
+
+**Owner:** Verbal (QA)
+**Status:** IMPLEMENTED
+
+Treat WASM "responsive" as a two-part contract:
+1. Loader clears and runtime boots.
+2. Canvas visibly reacts to user input.
+
+**Why:** Load-only checks can pass while users still report "not responsive" (no usable input path after boot). Adding one deterministic interaction assertion catches this class early.
+
+**Implementation (`tests/wasm_runtime_smoke.cjs`):**
+- Fixed Playwright timeout API usage for `waitForFunction` by passing `undefined` arg and explicit options.
+- Capture screenshot before/after a safe title-screen input (`click` at `x=200,y=200`, then `Enter`).
+- Fail smoke with `no-visual-response-after-input` if hashes are identical.
+
+---
 
 ### #167 — Bank-on-Action Burnout Multiplier (2026)
 
@@ -9944,78 +9979,6 @@ Keeps live gameplay tap behavior stable while removing dead menu-era ECS surface
 **Archive trigger:** Deferred
 **Reason:** All entries dated 2026-04-26 or later (within 30-day window). No entries older than 30 days exist; archival not necessary at this time.
 **Next check:** Recommend archive review on 2026-05-27 if registry exceeds 650 KB.
-
----
-
-### Issue #303 — Settings Save Pipeline (2026-04-30)
-
-**Owner:** Hockney (Runtime Engineer)  
-**Status:** IMPLEMENTED
-
-Runtime persistence pipeline for game settings. Adopted mutation-time persistence contract consistent with high score persistence semantics.
-
-**Implementation:**
-- Added `settings::mark_dirty_and_save(SettingsPersistence&, const SettingsState&)` helper
-- Every settings mutation in `settings_screen_controller` triggers persistence
-- Dirty flag lifecycle: set → write → clear on success
-- Observable failure handling via `PathUnavailable` event emission
-- Retriable save logic retains dirty state if path unavailable
-
-**Validation:**
-- Full build passed (zero-warning policy maintained)
-- Full test suite passed
-- Added issue-303 test cases: success round-trip + path-unavailable dirty retention
-
-**Rationale:** Coherent persistence semantics across settings and high scores, making save failures observable and retriable without introducing a separate settings-save system.
-
----
-
-
----
-
-## PR #357 — WASM Runtime Responsiveness & Linker Guardrails (2026-04-30)
-
-**Owners:** Hockney (Platform Engineer), Baer (Test Engineer)  
-**Status:** COMPLETED
-
-Root-cause fix for WASM runtime abort (`Aborted(Please compile your program with async support...)`) in preview builds, plus regression coverage.
-
-**Lifecycle Decision:**
-- Remove `game_loop_shutdown()` call after `game_loop_run()` on WebAssembly
-- Move shutdown ownership to platform runtime callbacks (`frame_callback` quit path + `beforeunload`)
-- Prevents premature unwind side effects that manifest as unresponsive previews
-
-**Linker Enforcement (CI):**
-- `-sASYNCIFY` (required for browser async operations like `emscripten_sleep`)
-- `-sNO_EXIT_RUNTIME=1` (prevents runtime exit before browser closes)
-- Automated validation in CI prevents silent regressions
-
-**Browser Runtime Smoke Test:**
-- New `tests/wasm_runtime_smoke.cjs` (Playwright-core)
-- Boots WASM in headless browser; fails on abort/pageerror/missing canvas
-- Integrated into `.github/workflows/ci-wasm.yml`
-- Deterministic signal for dead-on-boot and stuck-loader regressions
-
-**Files Changed:**
-- `app/main.cpp`: Lifecycle teardown relocation
-- `app/platform_display.cpp`: Linker validation
-- `.github/workflows/ci-wasm.yml`: Smoke test step + linker checks
-- `tests/wasm_runtime_smoke.cjs`: New smoke test
-
-**Validation:**
-- Native build + tests pass (zero-warning policy)
-- WASM build + Emscripten tests pass
-- Browser smoke detects abort patterns reliably
-
-**Rationale:** Closes validation blind spot where artifact checks pass but runtime fails. Centralizes shutdown semantics in platform callbacks for robustness across toolchain modes.
-
----
-
-## User Directive: WASM Sleep Path Avoidance (2026-04-30T01:02:32-07:00)
-
-**By:** yashasg (via Copilot)  
-**Decision:** Do not let raylib sleep on web; fix WASM runtime abort by avoiding raylib's web sleep path rather than relying on Asyncify as the primary approach.  
-**Rationale:** User request — captured for team memory
 
 ---
 

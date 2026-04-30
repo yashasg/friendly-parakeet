@@ -124,3 +124,14 @@ Part 1 (Audit): Audited all `assets/` references across runtime/build/workflows/
 Part 2 (Doc Fix): Revised `docs/asset-bundle-spec.md` tree diagram per Kujan's feedback (fixed duplicate `content/` sibling nodes). Single `content/` root node with `beatmaps/`, `audio/`, `fonts/` children. Approved by Kujan.
 
 **Manifested:** Decisions #173, #175 merged to `.squad/decisions.md`
+
+### 2026-04-30T01:30:59.881-07:00 — WASM responsiveness validation
+
+- **Root QA gap found:** The browser smoke test only validated asset load (loader hides) but did not assert post-load interactivity, so input regressions could slip through while CI stayed green.
+- **Playwright pitfall:** `page.waitForFunction(fn, {timeout})` may treat the second argument as page-function arg; use `page.waitForFunction(fn, undefined, {timeout})` for deterministic timeout behavior.
+- **Regression guard added:** Browser smoke now compares pre/post-input canvas screenshots (safe click at 200x200 + Enter) and fails with `no-visual-response-after-input` when the build loads but does not react.
+
+## 2026-04-30T08:30:59Z — Scribe Session: Decision merge + orchestration logging
+
+Session log written: `.squad/orchestration-log/2026-04-30T08-30-59Z-verbal.md`
+Decision #170 merged to registry. Team session log: `.squad/log/2026-04-30T08-30-59Z-wasm-responsiveness-fix.md`
