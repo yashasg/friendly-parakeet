@@ -9,25 +9,6 @@
 #include "../components/rendering.h"
 #include "../constants.h"
 
-namespace {
-float obstacle_half_height_for_kind(ObstacleKind kind) {
-    switch (kind) {
-        case ObstacleKind::LowBar:
-        case ObstacleKind::HighBar:
-            return 20.0f;
-        case ObstacleKind::LanePushLeft:
-        case ObstacleKind::LanePushRight:
-            return 30.0f;
-        case ObstacleKind::ShapeGate:
-        case ObstacleKind::LaneBlock:
-        case ObstacleKind::ComboGate:
-        case ObstacleKind::SplitPath:
-            return 40.0f;
-    }
-    return constants::COLLISION_MARGIN;
-}
-}
-
 void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
     if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
 
