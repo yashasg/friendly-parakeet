@@ -4,7 +4,7 @@
 
 // ── player_input_system: rhythm mode window management ───────
 
-TEST_CASE("player_input_rhythm: shape press in Idle begins MorphIn", "[player][rhythm]") {
+TEST_CASE("player_input_rhythm: shape press in Idle begins Active window", "[player][rhythm]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
     auto& sw = reg.get<ShapeWindow>(player);
@@ -17,7 +17,7 @@ TEST_CASE("player_input_rhythm: shape press in Idle begins MorphIn", "[player][r
 
     player_input_system(reg, 0.016f);
 
-    CHECK(sw.phase == WindowPhase::MorphIn);
+    CHECK(sw.phase == WindowPhase::Active);
     CHECK(sw.target_shape == Shape::Circle);
     CHECK(sw.window_start == song.song_time);
 }
@@ -39,8 +39,8 @@ TEST_CASE("player_input_rhythm: different shape in Active restarts window", "[pl
 
     player_input_system(reg, 0.016f);
 
-    // Should restart as MorphIn for Square
-    CHECK(sw.phase == WindowPhase::MorphIn);
+    // Should restart as Active for Square
+    CHECK(sw.phase == WindowPhase::Active);
     CHECK(sw.target_shape == Shape::Square);
 }
 
@@ -108,7 +108,7 @@ TEST_CASE("player_input: non-rhythm shape press changes immediately", "[player]"
     for (auto [e, ps] : view.each()) {
         CHECK(ps.current == Shape::Square);
         CHECK(ps.previous == Shape::Circle);
-        CHECK(ps.morph_t == 0.0f);
+        CHECK(ps.morph_t == 1.0f);
     }
 }
 
@@ -144,4 +144,3 @@ TEST_CASE("player_input: non-rhythm shape press updates Color", "[player]") {
     CHECK(col.g == 100);
     CHECK(col.b == 100);
 }
-

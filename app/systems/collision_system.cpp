@@ -40,6 +40,22 @@ bool player_overlaps_lane(const WorldTransform& player_transform, const Position
     return CheckCollisionRecs(player_lane, obstacle_lane);
 }
 
+bool player_matches_required_shape(const PlayerShape& p_shape,
+                                   const ShapeWindow& p_window,
+                                   Shape required) {
+    if (p_shape.current == required && p_shape.current != Shape::Hexagon) {
+        return true;
+    }
+    // Press-time judgment: during an active/morphing window, the selected target
+    // shape should satisfy shape-gates even before visual morph completion.
+    if (p_window.phase != WindowPhase::Idle &&
+        p_window.target_shape == required &&
+        p_window.target_shape != Shape::Hexagon) {
+        return true;
+    }
+    return false;
+}
+
 }  // namespace
 
 void collision_system(entt::registry& reg, float /*dt*/) {
@@ -69,8 +85,11 @@ void collision_system(entt::registry& reg, float /*dt*/) {
             return;
         }
 
-        // In rhythm mode, compute timing grade from press time.
-        if (rhythm_mode && p_window.phase == WindowPhase::Active && song->half_window > 0.0f) {
+        // In rhythm mode, compute timing grade from press time for shape-based
+        // obstacles. This must not depend on window phase because collision can
+        // resolve a frame after input dispatch.
+        const bool shape_obstacle = reg.any_of<RequiredShape>(entity);
+        if (rhythm_mode && shape_obstacle && song->half_window > 0.0f && p_window.press_time >= 0.0f) {
             // Grade timing by comparing button-press timestamp against
             // the obstacle's scheduled arrival.
             auto* beat_info = reg.try_get<BeatInfo>(entity);
@@ -119,7 +138,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
         auto view = reg.view<ObstacleTag, Position, RequiredShape>(
             entt::exclude<ScoredTag, BlockedLanes, RequiredLane>);
         for (auto [e, pos, req] : view.each()) {
-            bool shape_match = (p_shape.current == req.shape) && (p_shape.current != Shape::Hexagon);
+            bool shape_match = player_matches_required_shape(p_shape, p_window, req.shape);
             bool lane_match  = player_overlaps_lane(p_transform, pos);
             resolve(e, pos.y, shape_match && lane_match);
         }
@@ -148,7 +167,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
         auto view = reg.view<ObstacleTag, Position, RequiredShape, BlockedLanes>(
             entt::exclude<ScoredTag, RequiredLane>);
         for (auto [e, pos, req, blocked] : view.each()) {
-            bool shape_ok = (p_shape.current == req.shape) && (p_shape.current != Shape::Hexagon);
+            bool shape_ok = player_matches_required_shape(p_shape, p_window, req.shape);
             bool lane_ok  = !((blocked.mask >> p_lane.current) & 1);
             resolve(e, pos.y, shape_ok && lane_ok);
         }
@@ -159,7 +178,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
         auto view = reg.view<ObstacleTag, Position, RequiredShape, RequiredLane>(
             entt::exclude<ScoredTag>);
         for (auto [e, pos, req, rlane] : view.each()) {
-            bool shape_ok = (p_shape.current == req.shape) && (p_shape.current != Shape::Hexagon);
+            bool shape_ok = player_matches_required_shape(p_shape, p_window, req.shape);
             bool lane_ok  = (p_lane.current == rlane.lane);
             resolve(e, pos.y, shape_ok && lane_ok);
         }

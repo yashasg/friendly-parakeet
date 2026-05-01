@@ -26,7 +26,7 @@ struct ShapeWindow {
     WindowPhase phase         = WindowPhase::Idle;
     float       window_timer  = 0.0f;
     float       window_start  = 0.0f;
-    float       press_time    = 0.0f;
+    float       press_time    = -1.0f;
     float       peak_time     = 0.0f;
     float       window_scale  = 1.0f;
     bool        graded        = false;

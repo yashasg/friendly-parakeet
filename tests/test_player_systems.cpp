@@ -17,7 +17,7 @@ TEST_CASE("player_action: shape change on button press", "[player]") {
     for (auto [e, ps] : view.each()) {
         CHECK(ps.current  == Shape::Triangle);
         CHECK(ps.previous == Shape::Circle);
-        CHECK(ps.morph_t  == 0.0f);
+        CHECK(ps.morph_t  == 1.0f);
     }
     // Should have pushed ShapeShift SFX
     CHECK(reg.ctx().get<AudioQueue>().count > 0);

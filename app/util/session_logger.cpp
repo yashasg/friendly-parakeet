@@ -105,9 +105,7 @@ void session_log_on_scored(entt::registry& reg, entt::entity entity) {
     auto* obs = reg.try_get<Obstacle>(entity);
     if (!obs) return;
 
-    auto* gs = reg.ctx().find<GameState>();
-    bool is_miss = gs && gs->transition_pending &&
-                   gs->next_phase == GamePhase::GameOver;
+    bool is_miss = reg.any_of<MissTag>(entity);
 
     auto* grade = reg.try_get<TimingGrade>(entity);
     auto* beat = reg.try_get<BeatInfo>(entity);

@@ -160,7 +160,7 @@ TEST_CASE("ecs: make_registry dispatcher is wired — ButtonPressEvent listeners
     disp.update<ButtonPressEvent>();
 
     // If dispatcher listeners were NOT wired, sw.phase would stay Idle.
-    CHECK(sw.phase        == WindowPhase::MorphIn);  // listener wired: handle_press fired
+    CHECK(sw.phase        == WindowPhase::Active);  // listener wired: handle_press fired
     CHECK(sw.target_shape == Shape::Triangle);
 }
 
@@ -191,7 +191,7 @@ TEST_CASE("ecs: wire_input_dispatcher is idempotent", "[ecs][dispatcher]") {
     press_button(reg, btn);
     reg.ctx().get<entt::dispatcher>().update<ButtonPressEvent>();
 
-    CHECK(reg.get<ShapeWindow>(player).phase == WindowPhase::MorphIn);
+    CHECK(reg.get<ShapeWindow>(player).phase == WindowPhase::Active);
     CHECK(reg.ctx().get<AudioQueue>().count == 1);
 }
 

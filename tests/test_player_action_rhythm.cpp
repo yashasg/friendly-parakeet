@@ -18,9 +18,9 @@ TEST_CASE("player_action: rhythm mode starts window on button press from Idle", 
     player_input_system(reg, 0.016f);
 
     CHECK(sw.target_shape == Shape::Circle);
-    CHECK(sw.phase == WindowPhase::MorphIn);
+    CHECK(sw.phase == WindowPhase::Active);
     CHECK(sw.window_timer == 0.0f);
-    CHECK(ps.morph_t == 0.0f);
+    CHECK(ps.morph_t == 1.0f);
     CHECK(sw.window_start == 5.0f);
     CHECK(sw.graded == false);
     CHECK(sw.window_scale == 1.0f);
@@ -41,7 +41,7 @@ TEST_CASE("player_action: rhythm mode calculates peak_time correctly", "[player_
     player_input_system(reg, 0.016f);
 
     auto& sw = reg.get<ShapeWindow>(player);
-    float expected_peak = 10.0f + song.morph_duration + song.half_window;
+    float expected_peak = 10.0f + song.half_window;
     CHECK_THAT(sw.peak_time, Catch::Matchers::WithinAbs(expected_peak, 0.001f));
 }
 
@@ -82,9 +82,9 @@ TEST_CASE("player_action: rhythm mode interrupts Active with different shape", "
     player_input_system(reg, 0.016f);
 
     CHECK(sw.target_shape == Shape::Triangle);
-    CHECK(sw.phase == WindowPhase::MorphIn);
+    CHECK(sw.phase == WindowPhase::Active);
     CHECK(sw.window_timer == 0.0f);
-    CHECK(ps.morph_t == 0.0f);
+    CHECK(ps.morph_t == 1.0f);
     CHECK(sw.window_start == 8.0f);
     CHECK(sw.graded == false);
 }
@@ -137,11 +137,11 @@ TEST_CASE("player_action: rhythm mode ACCEPTS button press during MorphOut (#209
 
     player_input_system(reg, 0.016f);
 
-    // MorphOut interrupted: new MorphIn started for Triangle
+    // MorphOut interrupted: new Active window started for Triangle
     CHECK(sw.target_shape == Shape::Triangle);
-    CHECK(sw.phase == WindowPhase::MorphIn);
+    CHECK(sw.phase == WindowPhase::Active);
     CHECK(sw.window_timer == 0.0f);
-    CHECK(ps.morph_t == 0.0f);
+    CHECK(ps.morph_t == 1.0f);
     CHECK(sw.window_start == 15.0f);
     CHECK(sw.graded == false);
     CHECK(reg.ctx().get<AudioQueue>().count > 0);
@@ -161,7 +161,7 @@ TEST_CASE("player_action: legacy mode instant shape change", "[player_legacy]") 
     auto& ps = reg.get<PlayerShape>(player);
     CHECK(ps.current == Shape::Triangle);
     CHECK(ps.previous == Shape::Circle);
-    CHECK(ps.morph_t == 0.0f);
+    CHECK(ps.morph_t == 1.0f);
     CHECK(reg.ctx().get<AudioQueue>().count > 0);
 }
 
@@ -238,9 +238,9 @@ TEST_CASE("player_input: ButtonPressEvents consumed after first tick (#213)", "[
     auto btn = make_shape_button(reg, Shape::Circle);
     press_button(reg, btn);
 
-    // First tick: starts a MorphIn window, consumes the event.
+    // First tick: starts an Active window, consumes the event.
     player_input_system(reg, 1.0f / 60.0f);
-    CHECK(sw.phase == WindowPhase::MorphIn);
+    CHECK(sw.phase == WindowPhase::Active);
 
     // Record state after first tick.
     float start_after_tick1 = sw.window_start;

@@ -413,7 +413,7 @@ TEST_CASE("player_action: button press starts window in rhythm mode", "[rhythm][
     press_button(reg, btn);
     player_input_system(reg, 0.016f);
     auto& sw = reg.get<ShapeWindow>(player);
-    CHECK(sw.phase == WindowPhase::MorphIn);
+    CHECK(sw.phase == WindowPhase::Active);
     CHECK(sw.target_shape == Shape::Triangle);
 }
 
@@ -452,7 +452,7 @@ TEST_CASE("player_action: different shape mid-window restarts", "[rhythm][action
     auto btn = make_shape_button(reg, Shape::Circle);
     press_button(reg, btn);
     player_input_system(reg, 0.016f);
-    CHECK(sw.phase == WindowPhase::MorphIn);
+    CHECK(sw.phase == WindowPhase::Active);
     CHECK(sw.target_shape == Shape::Circle);
 }
 
