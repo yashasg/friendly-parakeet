@@ -126,6 +126,9 @@ export function render(state, waveformData, validationErrors) {
         renderWaveform(ctx, state, waveformData, w);
     }
 
+    // 4b. Analysis onset rows (kick/snare/hihat/etc)
+    renderOnsetTracks(ctx, state, w, h);
+
     // 5. Beat grid lines
     renderBeatGrid(ctx, state, firstBeat, lastBeat, h);
 
@@ -159,6 +162,7 @@ function renderAnalysisOverlay(ctx, state, w) {
     const laneAreaTop = HEADER_HEIGHT;
     const laneAreaBottom = HEADER_HEIGHT + 3 * LANE_HEIGHT;
     const bandHeight = laneAreaBottom - laneAreaTop;
+    const trackLayout = getOnsetTracksLayout(state, ctx.canvas.height / dpr);
 
     for (const section of sections) {
         const x0 = timeToX(section.start, state);
@@ -176,7 +180,80 @@ function renderAnalysisOverlay(ctx, state, w) {
         }
 
         ctx.fillStyle = color;
-        ctx.fillRect(Math.max(x0, TIMELINE_PADDING_LEFT), laneAreaTop, x1 - Math.max(x0, TIMELINE_PADDING_LEFT), bandHeight);
+        const clampedX0 = Math.max(x0, TIMELINE_PADDING_LEFT);
+        const width = x1 - clampedX0;
+        if (width <= 0) continue;
+
+        ctx.fillRect(clampedX0, laneAreaTop, width, bandHeight);
+        if (trackLayout.bottom > trackLayout.top) {
+            ctx.fillRect(clampedX0, trackLayout.top, width, trackLayout.bottom - trackLayout.top);
+        }
+    }
+}
+
+function getOnsetRows(analysisData) {
+    const onsetMap = analysisData?.onsets;
+    if (!onsetMap || typeof onsetMap !== 'object') return [];
+
+    // Preserve source order from analysis JSON; do not impose class ordering here.
+    return Object.entries(onsetMap)
+        .filter(([, value]) => value && typeof value === 'object')
+        .map(([name, value]) => ({
+        name,
+        timestamps: Array.isArray(value.timestamps) ? value.timestamps : [],
+    }));
+}
+
+function getOnsetTracksLayout(state, canvasHeight) {
+    const rows = getOnsetRows(state.analysisData);
+    const rowHeight = 18;
+    const rowGap = 2;
+    const top = HEADER_HEIGHT + 3 * LANE_HEIGHT + WAVEFORM_HEIGHT + 8;
+    const available = Math.max(0, canvasHeight - top - 12);
+    const maxRows = Math.max(0, Math.floor((available + rowGap) / (rowHeight + rowGap)));
+    const visibleRows = rows.slice(0, maxRows);
+    const bottom = visibleRows.length > 0
+        ? top + visibleRows.length * rowHeight + (visibleRows.length - 1) * rowGap
+        : top;
+
+    return { top, bottom, rowHeight, rowGap, rows: visibleRows };
+}
+
+function getOnsetColor(index) {
+    const palette = ['#ff8a65', '#4fc3f7', '#aed581', '#ce93d8', '#ffd54f', '#80cbc4'];
+    return palette[index % palette.length];
+}
+
+function renderOnsetTracks(ctx, state, w, h) {
+    const layout = getOnsetTracksLayout(state, h);
+    if (layout.rows.length === 0) return;
+
+    for (let i = 0; i < layout.rows.length; i++) {
+        const row = layout.rows[i];
+        const y = layout.top + i * (layout.rowHeight + layout.rowGap);
+
+        ctx.fillStyle = i % 2 === 0 ? 'rgba(22, 33, 62, 0.55)' : 'rgba(22, 33, 62, 0.35)';
+        ctx.fillRect(0, y, w, layout.rowHeight);
+
+        ctx.fillStyle = COLORS.laneBorder;
+        ctx.fillRect(0, y + layout.rowHeight - 1, w, 1);
+
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.font = '11px monospace';
+        ctx.fillStyle = COLORS.textMuted;
+        ctx.fillText(row.name, 6, y + layout.rowHeight / 2);
+
+        ctx.strokeStyle = getOnsetColor(i);
+        ctx.lineWidth = 1;
+        for (const ts of row.timestamps) {
+            const x = timeToX(ts, state);
+            if (x < TIMELINE_PADDING_LEFT || x > w) continue;
+            ctx.beginPath();
+            ctx.moveTo(x, y + 2);
+            ctx.lineTo(x, y + layout.rowHeight - 3);
+            ctx.stroke();
+        }
     }
 }
 

@@ -264,6 +264,19 @@ async function loadBundledLevel(level, { recordUndo }) {
         applyImportedBeatmapData(data);
         setDefaultLevelSelection(level.id);
 
+        state.analysisData = null;
+        if (level.analysisPath) {
+            try {
+                const analysisResponse = await fetch(getContentUrl(level.analysisPath));
+                if (analysisResponse.ok) {
+                    state.analysisData = importAnalysis(await analysisResponse.text());
+                }
+            } catch (analysisError) {
+                console.warn('Failed to auto-load bundled analysis:', analysisError);
+            }
+        }
+        emit('analysis-loaded');
+
         if (_audioModule && typeof _audioModule.loadAudioUrl === 'function') {
             const buffer = await _audioModule.loadAudioUrl(getContentUrl(level.audioPath));
             state.audioBuffer = buffer;
