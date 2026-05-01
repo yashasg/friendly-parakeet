@@ -44,7 +44,7 @@ How to decide who handles what.
 |-----------|---------|----------|
 | ECS, DOD, decisions | Keyser | — |
 | Rhythm, scoring, obstacles | McManus | — |
-| Audio, beatmap pipeline | Fenster | — |
+| Audio, beatmap pipeline | Fenton | Fenster |
 | CMake, CI, WebAssembly | Hockney | — |
 | Tests, edge cases | Verbal | — |
 | C++20, performance, implementation | Keaton | Keyser |
