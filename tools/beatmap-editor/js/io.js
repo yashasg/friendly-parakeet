@@ -345,7 +345,7 @@ export function importAnalysis(jsonString) {
         duration: j.duration ?? 0,
         beats: Array.isArray(j.beats) ? j.beats : [],
         structure: Array.isArray(j.structure) ? j.structure : [],
-        onsets: Array.isArray(j.onsets) ? j.onsets : [],
+        onsets: (j.onsets && typeof j.onsets === 'object' && !Array.isArray(j.onsets)) ? j.onsets : {},
         events: Array.isArray(j.events) ? j.events : [],
         quietRegions: Array.isArray(j.quiet_regions) ? j.quiet_regions : [],
     };

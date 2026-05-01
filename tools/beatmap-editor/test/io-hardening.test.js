@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { importBeatmap, exportBeatmap, validate } from '../js/io.js';
+import { importAnalysis, importBeatmap, exportBeatmap, validate } from '../js/io.js';
 import {
   DEFAULT_LEVELS,
   EDITOR_OBSTACLE_KINDS,
@@ -77,6 +77,20 @@ test('valid beatmap import/export round-trip still works', () => {
   assert.equal(imported.data.duration, sourceState.duration);
   assert.deepEqual(imported.data.difficulties.easy.beats.map((b) => b.beat), [1, 5]);
   assert.deepEqual(imported.data.difficulties.hard.beats.map((b) => b.beat), [3, 6]);
+});
+
+test('analysis import preserves onset object keys in source order', () => {
+  const analysis = importAnalysis(JSON.stringify({
+    title: 'Demo',
+    onsets: {
+      clap: { timestamps: [0.5] },
+      kick: { timestamps: [1.0] },
+      snare: { timestamps: [1.5] },
+    },
+  }));
+
+  assert.ok(analysis);
+  assert.deepEqual(Object.keys(analysis.onsets), ['clap', 'kick', 'snare']);
 });
 
 test('malformed JSON import is rejected with parse error', () => {

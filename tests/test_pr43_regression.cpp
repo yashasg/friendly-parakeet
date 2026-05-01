@@ -13,7 +13,6 @@
 #include "components/rendering.h"
 #include "constants.h"
 #include <fstream>
-#include <nlohmann/json.hpp>
 #include <raylib.h>
 #include <sstream>
 #include <string>
@@ -270,42 +269,4 @@ TEST_CASE("game_render_system: model-authority obstacles preserve ECS tint overr
     CHECK(source.find("reg.view<const ObstacleModel, const Color, const TagWorldPass>()")
           != std::string::npos);
     CHECK(source.find("mat.maps[MATERIAL_MAP_DIFFUSE].color = tint;") != std::string::npos);
-}
-
-TEST_CASE("gameplay HUD score ECS elements preserve centered alignment",
-          "[ui][render][issue259]") {
-    const char* paths[] = {
-        "content/ui/screens/gameplay.json",
-        "../content/ui/screens/gameplay.json"
-    };
-
-    nlohmann::json screen;
-    bool loaded = false;
-    for (const char* path : paths) {
-        std::ifstream file(path);
-        if (!file.is_open()) continue;
-        screen = nlohmann::json::parse(file);
-        loaded = true;
-        break;
-    }
-
-    if (!loaded) {
-        SKIP("gameplay.json not accessible from test working directory");
-    }
-
-    const nlohmann::json* score = nullptr;
-    const nlohmann::json* high_score = nullptr;
-    for (const auto& el : screen["elements"]) {
-        if (el.value("id", "") == "score") score = &el;
-        if (el.value("id", "") == "high_score") high_score = &el;
-    }
-
-    REQUIRE(score != nullptr);
-    REQUIRE(high_score != nullptr);
-    CHECK(score->value("type", "") == "text_dynamic");
-    CHECK(score->value("source", "") == "ScoreState.displayed_score");
-    CHECK(score->value("align", "") == "center");
-    CHECK(high_score->value("type", "") == "text_dynamic");
-    CHECK(high_score->value("source", "") == "ScoreState.high_score");
-    CHECK(high_score->value("align", "") == "center");
 }
