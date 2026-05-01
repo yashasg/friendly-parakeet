@@ -104,7 +104,7 @@ TEST_CASE("death_model: close hit banks points without instant GameOver", "[deat
 
     auto obstacle = reg.create();
     reg.emplace<ObstacleTag>(obstacle);
-    reg.emplace<Position>(obstacle, constants::LANE_X[1], constants::PLAYER_Y - 10.0f);
+    reg.emplace<Position>(obstacle, constants::LANE_X[1], constants::PLAYER_Y);
     reg.emplace<Velocity>(obstacle, 0.0f, 0.0f);
     reg.emplace<Obstacle>(obstacle, ObstacleKind::ShapeGate, int16_t{constants::PTS_SHAPE_GATE});
     reg.emplace<RequiredShape>(obstacle, Shape::Circle);
@@ -123,7 +123,7 @@ TEST_CASE("death_model: close miss drains energy instead of instant GameOver", "
 
     auto obstacle = reg.create();
     reg.emplace<ObstacleTag>(obstacle);
-    reg.emplace<Position>(obstacle, constants::LANE_X[1], constants::PLAYER_Y - 10.0f);
+    reg.emplace<Position>(obstacle, constants::LANE_X[1], constants::PLAYER_Y);
     reg.emplace<Velocity>(obstacle, 0.0f, 0.0f);
     reg.emplace<Obstacle>(obstacle, ObstacleKind::ShapeGate, int16_t{constants::PTS_SHAPE_GATE});
     reg.emplace<RequiredShape>(obstacle, Shape::Triangle);

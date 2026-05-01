@@ -123,23 +123,23 @@ TEST_CASE("collision: obstacle too far away is ignored", "[collision]") {
     CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
 }
 
-TEST_CASE("collision: raylib timing window includes near edge and excludes beyond it",
+TEST_CASE("collision: beat line is collision point",
           "[collision][issue-305]") {
-    auto near_reg = make_registry();
-    make_player(near_reg);
-    auto near_obs = make_shape_gate(near_reg, Shape::Circle, constants::PLAYER_Y - 39.9f);
+    auto line_reg = make_registry();
+    make_player(line_reg);
+    auto line_obs = make_shape_gate(line_reg, Shape::Circle, constants::PLAYER_Y);
 
-    collision_system(near_reg, 0.016f);
+    collision_system(line_reg, 0.016f);
 
-    CHECK(near_reg.all_of<ScoredTag>(near_obs));
+    CHECK(line_reg.all_of<ScoredTag>(line_obs));
 
-    auto far_reg = make_registry();
-    make_player(far_reg);
-    auto far_obs = make_shape_gate(far_reg, Shape::Circle, constants::PLAYER_Y - 40.1f);
+    auto preline_reg = make_registry();
+    make_player(preline_reg);
+    auto preline_obs = make_shape_gate(preline_reg, Shape::Circle, constants::PLAYER_Y - 0.1f);
 
-    collision_system(far_reg, 0.016f);
+    collision_system(preline_reg, 0.016f);
 
-    CHECK_FALSE(far_reg.all_of<ScoredTag>(far_obs));
+    CHECK_FALSE(preline_reg.all_of<ScoredTag>(preline_obs));
 }
 
 TEST_CASE("collision: already scored obstacles are skipped", "[collision]") {

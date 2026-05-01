@@ -256,7 +256,7 @@ TEST_CASE("beat_scheduler: spawns obstacle at spawn_time", "[rhythm][scheduler]"
     auto& map = reg.ctx().get<BeatMap>();
     map.beats.push_back({4, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
     song.playing = true;
-    // Advance past spawn_time (margin_offset ≈ 0.077s at 120 BPM)
+    // Advance past spawn_time
     song.song_time = 0.1f;
     beat_scheduler_system(reg, 0.016f);
     CHECK(reg.view<ObstacleTag>().size() == 1);
@@ -904,8 +904,7 @@ TEST_CASE("integration: obstacle arrives on-beat within 1 frame", "[rhythm][inte
             if (pos.y >= constants::PLAYER_Y) {
                 obstacle_at_player = true;
                 float beat_time = song.offset + 4 * song.beat_period;
-                float margin_offset = 40.0f / song.scroll_speed;
-                CHECK_THAT(song.song_time, WithinAbs(beat_time + margin_offset, dt + 0.001f));
+                CHECK_THAT(song.song_time, WithinAbs(beat_time, dt + 0.001f));
                 break;
             }
         }

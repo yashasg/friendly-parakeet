@@ -24,13 +24,7 @@ Vector2 player_timing_point(const WorldTransform& transform, const VerticalState
 bool player_in_timing_window(const WorldTransform& player_transform,
                               const VerticalState& vstate,
                               float obstacle_z) {
-    Rectangle timing_window = {
-        0.0f,
-        obstacle_z - constants::COLLISION_MARGIN,
-        1.0f,
-        constants::COLLISION_MARGIN * 2.0f
-    };
-    return CheckCollisionPointRec(player_timing_point(player_transform, vstate), timing_window);
+    return obstacle_z >= player_timing_point(player_transform, vstate).y;
 }
 
 bool player_overlaps_lane(const WorldTransform& player_transform, const Position& obstacle_pos) {
