@@ -12,11 +12,15 @@ void beat_log_system(entt::registry& reg, float /*dt*/) {
     if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
 
     auto* song = reg.ctx().find<SongState>();
+    auto* map = reg.ctx().find<BeatMap>();
     if (!song || !song->playing || song->finished) return;
 
     if (song->current_beat > log->last_logged_beat) {
         for (int b = log->last_logged_beat + 1; b <= song->current_beat; ++b) {
             float expected = song->offset + b * song->beat_period;
+            if (map && !map->beat_times.empty()) {
+                expected = map->beat_times[static_cast<size_t>(b)];
+            }
             session_log_write(*log, song->song_time, "GAME",
                 "BEAT %d expected=%.3f", b, expected);
         }

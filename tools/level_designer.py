@@ -979,11 +979,10 @@ def design_level(analysis, difficulty):
 def enforce_first_collision_floor(obstacles, difficulty, analysis):
     """Issue #175 — first obstacle must clear the per-difficulty reaction floor.
 
-    The collision time of the first authored obstacle is
-        first_collision = offset + first.beat * 60/bpm
-    where offset anchors the beat grid to the analysis beat times. We
-    operate on the analysis beat grid here, since beats[i] is the runtime
-    arrival time of beat_index i.
+    Runtime uses analysis-derived beat timestamps as source of truth:
+        first_collision = beats[first.beat]
+    We operate on the analysis beat grid here, since beats[i] is the
+    runtime arrival time of beat_index i.
 
     Strategy:
       1. Locate the smallest beat index whose grid time clears the floor.
@@ -1021,16 +1020,47 @@ def enforce_first_collision_floor(obstacles, difficulty, analysis):
 def build_beatmap(analysis, difficulties):
     """Build the full beatmap JSON."""
     beats = analysis["beats"]
+    if not beats:
+        raise ValueError("analysis.beats is required and must not be empty")
+
+    def attach_and_validate_timing(obstacles, diff_name):
+        timed = []
+        for obs in obstacles:
+            beat_idx = obs.get("beat")
+            if not isinstance(beat_idx, int):
+                raise ValueError(f"{diff_name}: obstacle beat index must be int, got {beat_idx!r}")
+            if beat_idx < 0 or beat_idx >= len(beats):
+                raise ValueError(
+                    f"{diff_name}: beat index {beat_idx} out of range for beats[{len(beats)}]"
+                )
+            timed_obs = dict(obs)
+            timed_obs["time_sec"] = round(float(beats[beat_idx]), 6)
+            timed.append(timed_obs)
+
+        # Internal consistency check: every authored obstacle must map back to
+        # the same timestamp used by runtime.
+        for obs in timed:
+            beat_idx = obs["beat"]
+            expected = float(beats[beat_idx])
+            if abs(obs["time_sec"] - expected) > 1e-6:
+                raise ValueError(
+                    f"{diff_name}: time_sec mismatch at beat {beat_idx} "
+                    f"(time_sec={obs['time_sec']}, expected={expected})"
+                )
+        return timed
+
     diff_data = {}
     for diff in difficulties:
         obs = design_level(analysis, diff)
-        diff_data[diff] = {"beats": obs, "count": len(obs)}
+        timed = attach_and_validate_timing(obs, diff)
+        diff_data[diff] = {"beats": timed, "count": len(timed)}
     return {
         "song_id": analysis.get("title", "unknown"),
         "title": analysis.get("title", "unknown"),
         "bpm": analysis["bpm"],
         "offset": round(beats[0], 3) if beats else 0.0,
         "lead_beats": 4,
+        "beat_times": [round(float(t), 6) for t in beats],
         "duration_sec": analysis.get("duration", 180),
         "difficulties": diff_data,
         "structure": analysis["structure"],

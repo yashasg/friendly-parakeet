@@ -5,6 +5,7 @@
 #include <cmath>
 #include <algorithm>
 #include <optional>
+#include <raylib.h>
 
 using json = nlohmann::json;
 
@@ -74,6 +75,7 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
 
     // ── Metadata ─────────────────────────────────────────────
     out.beats.clear();  // reset before every parse to prevent stale entries on reuse
+    out.beat_times.clear();
     out.song_id    = j.value("song_id", "");
     out.title      = j.value("title", "");
     out.bpm        = j.value("bpm", 120.0f);
@@ -81,6 +83,14 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
     out.lead_beats = j.value("lead_beats", 4);
     out.duration   = j.value("duration_sec", 180.0f);
     out.difficulty = difficulty;
+
+    if (j.contains("beat_times") && j["beat_times"].is_array()) {
+        for (const auto& t : j["beat_times"]) {
+            if (t.is_number_float() || t.is_number_integer()) {
+                out.beat_times.push_back(t.get<float>());
+            }
+        }
+    }
 
     // ── song_path: explicit field, or derive from song_id ────
     if (j.contains("song_path") && j["song_path"].is_string()) {
@@ -156,6 +166,29 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
 
         entry.lane = static_cast<int8_t>(b.value("lane", 1));
 
+        const float grid_time = out.offset + entry.beat_index * (60.0f / out.bpm);
+        float beat_time = grid_time;
+        if (!out.beat_times.empty() &&
+            entry.beat_index >= 0 &&
+            static_cast<size_t>(entry.beat_index) < out.beat_times.size()) {
+            beat_time = out.beat_times[static_cast<size_t>(entry.beat_index)];
+        }
+
+        const bool has_time_sec = b.contains("time_sec") &&
+                                  (b["time_sec"].is_number_float() || b["time_sec"].is_number_integer());
+        entry.time_sec = has_time_sec ? b["time_sec"].get<float>() : beat_time;
+
+        if (has_time_sec && !out.beat_times.empty() &&
+            entry.beat_index >= 0 &&
+            static_cast<size_t>(entry.beat_index) < out.beat_times.size()) {
+            constexpr float kBeatTimeMismatchWarnSec = 0.010f;
+            if (std::fabs(entry.time_sec - beat_time) > kBeatTimeMismatchWarnSec) {
+                TraceLog(LOG_WARNING,
+                         "Beat time mismatch at beat=%d: time_sec=%.6f, beat_times[%d]=%.6f",
+                         entry.beat_index, entry.time_sec, entry.beat_index, beat_time);
+            }
+        }
+
         if (b.contains("blocked") && b["blocked"].is_array()) {
             entry.blocked_mask = 0;
             for (const auto& lane_idx : b["blocked"]) {
@@ -176,6 +209,17 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
               [](const BeatEntry& a, const BeatEntry& b) {
                   return a.beat_index < b.beat_index;
               });
+
+    if (out.beat_times.empty() && !out.beats.empty()) {
+        const int max_beat = out.beats.back().beat_index;
+        if (max_beat >= 0) {
+            out.beat_times.reserve(static_cast<size_t>(max_beat + 1));
+            const float beat_period = 60.0f / out.bpm;
+            for (int i = 0; i <= max_beat; ++i) {
+                out.beat_times.push_back(out.offset + static_cast<float>(i) * beat_period);
+            }
+        }
+    }
 
     return true;
 }
@@ -249,6 +293,13 @@ bool validate_beat_map(const BeatMap& map, std::vector<BeatMapError>& errors,
         // Rule 2: no beat index beyond song duration
         if (entry.beat_index > max_beat) {
             errors.push_back({entry.beat_index, "Beat index exceeds song duration"});
+            valid = false;
+        }
+
+        // Rule 2b: beat_index must reference a loaded timestamp when beat_times are present
+        if (!map.beat_times.empty() &&
+            (entry.beat_index < 0 || static_cast<size_t>(entry.beat_index) >= map.beat_times.size())) {
+            errors.push_back({entry.beat_index, "Beat index is out of range for beat_times array"});
             valid = false;
         }
 

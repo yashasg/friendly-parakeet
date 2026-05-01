@@ -93,6 +93,21 @@ TEST_CASE("song_playback: current_beat advances with offset", "[song_playback]")
     CHECK(song.current_beat == 1);
 }
 
+TEST_CASE("song_playback: current_beat follows beat_times array when present", "[song_playback]") {
+    auto reg = make_rhythm_registry();
+    auto& song = reg.ctx().get<SongState>();
+    auto& map = reg.ctx().get<BeatMap>();
+    song.song_time = 0.0f;
+    song.current_beat = -1;
+    map.beat_times = {0.4f, 0.9f, 1.6f};
+
+    song_playback_system(reg, 1.0f);
+    CHECK(song.current_beat == 1);
+
+    song_playback_system(reg, 0.7f);
+    CHECK(song.current_beat == 2);
+}
+
 // ── song_playback_system: song end ───────────────────────────
 
 TEST_CASE("song_playback: song finishes at duration", "[song_playback]") {

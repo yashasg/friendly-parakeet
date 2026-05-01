@@ -8,6 +8,7 @@ void song_playback_system(entt::registry& reg, float dt) {
     const auto& gs = reg.ctx().get<GameState>();
 
     auto* song  = reg.ctx().find<SongState>();
+    auto* map   = reg.ctx().find<BeatMap>();
     auto* music = reg.ctx().find<MusicContext>();
     const bool music_loaded = music && music->loaded;
 
@@ -57,7 +58,13 @@ void song_playback_system(entt::registry& reg, float dt) {
     }
 
     // Current beat (non-decreasing)
-    if (song->beat_period > 0.0f && song->song_time >= song->offset) {
+    if (map && !map->beat_times.empty()) {
+        while ((song->current_beat + 1) >= 0 &&
+               static_cast<size_t>(song->current_beat + 1) < map->beat_times.size() &&
+               song->song_time >= map->beat_times[static_cast<size_t>(song->current_beat + 1)]) {
+            ++song->current_beat;
+        }
+    } else if (song->beat_period > 0.0f && song->song_time >= song->offset) {
         int beat = static_cast<int>((song->song_time - song->offset) / song->beat_period);
         if (beat > song->current_beat) {
             song->current_beat = beat;

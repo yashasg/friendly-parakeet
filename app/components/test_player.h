@@ -41,6 +41,7 @@ struct TestPlayerAction {
     entt::entity obstacle       = entt::null;
     float        timer          = 0.0f;
     float        arrival_time   = 0.0f;
+    float        shape_not_before_time = 0.0f;
 
     Shape  target_shape         = Shape::Hexagon;
     int8_t target_lane          = -1;

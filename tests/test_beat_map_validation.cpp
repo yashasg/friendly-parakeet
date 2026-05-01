@@ -548,3 +548,39 @@ TEST_CASE("validate_beat_map explicit constants: custom shape gap is respected",
     REQUIRE_FALSE(errors.empty());
     CHECK(errors[0].message.find("beats apart") != std::string::npos);
 }
+
+TEST_CASE("parse: beat_times and per-obstacle time_sec are loaded", "[parse][beat_times]") {
+    BeatMap map;
+    std::vector<BeatMapError> errors;
+    std::string json = R"({
+        "song_id": "timing_test",
+        "bpm": 120,
+        "offset": 0.0,
+        "lead_beats": 4,
+        "duration_sec": 60.0,
+        "beat_times": [0.1, 0.7, 1.4],
+        "beats": [
+            { "beat": 2, "time_sec": 1.4, "kind": "shape_gate", "shape": "circle", "lane": 1 }
+        ]
+    })";
+
+    CHECK(parse_beat_map(json, map, errors));
+    REQUIRE(map.beats.size() == 1);
+    REQUIRE(map.beat_times.size() == 3);
+    CHECK_THAT(map.beats[0].time_sec, Catch::Matchers::WithinAbs(1.4f, 0.001f));
+}
+
+TEST_CASE("validate: beat index out of range for beat_times fails", "[validate][beat_times]") {
+    BeatMap map;
+    map.bpm = 120.0f;
+    map.offset = 0.0f;
+    map.lead_beats = 4;
+    map.duration = 60.0f;
+    map.beat_times = {0.0f, 0.5f}; // valid indices: 0..1
+    map.beats.push_back({2, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
+
+    std::vector<BeatMapError> errors;
+    CHECK_FALSE(validate_beat_map(map, errors));
+    REQUIRE_FALSE(errors.empty());
+    CHECK(errors[0].message.find("out of range for beat_times") != std::string::npos);
+}
