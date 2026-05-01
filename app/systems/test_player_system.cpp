@@ -16,6 +16,10 @@
 #include <raylib.h>
 #include <random>
 
+// Keep pro presses slightly ahead of beat arrival so the press is guaranteed
+// to land before collision resolution in fixed-step ordering.
+static constexpr float kProPressLeadSeconds = 0.033f;
+
 // ── Helpers ──────────────────────────────────────────────────
 
 static Rectangle lane_overlap_rect(float x) {
@@ -244,7 +248,7 @@ void test_player_system(entt::registry& reg, float dt) {
         bool has_shape = (action.target_shape != Shape::Hexagon);
 
         if (cfg.aim_perfect && has_shape) {
-            float ideal_press = action.arrival_time - song->morph_duration - song->half_window;
+            float ideal_press = action.arrival_time - kProPressLeadSeconds;
             float time_until_ideal = ideal_press - song->song_time;
             if (time_until_ideal > cfg.reaction_min) {
                 action.timer = time_until_ideal;

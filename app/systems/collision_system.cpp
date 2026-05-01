@@ -24,13 +24,7 @@ Vector2 player_timing_point(const WorldTransform& transform, const VerticalState
 bool player_in_timing_window(const WorldTransform& player_transform,
                               const VerticalState& vstate,
                               float obstacle_z) {
-    Rectangle timing_window = {
-        0.0f,
-        obstacle_z - constants::COLLISION_MARGIN,
-        1.0f,
-        constants::COLLISION_MARGIN * 2.0f
-    };
-    return CheckCollisionPointRec(player_timing_point(player_transform, vstate), timing_window);
+    return obstacle_z >= player_timing_point(player_transform, vstate).y;
 }
 
 bool player_overlaps_lane(const WorldTransform& player_transform, const Position& obstacle_pos) {
@@ -38,6 +32,22 @@ bool player_overlaps_lane(const WorldTransform& player_transform, const Position
                                           constants::PLAYER_SIZE, 1.0f);
     Rectangle obstacle_lane = centered_rect(obstacle_pos.x, 0.0f, constants::PLAYER_SIZE, 1.0f);
     return CheckCollisionRecs(player_lane, obstacle_lane);
+}
+
+bool player_matches_required_shape(const PlayerShape& p_shape,
+                                   const ShapeWindow& p_window,
+                                   Shape required) {
+    if (p_shape.current == required && p_shape.current != Shape::Hexagon) {
+        return true;
+    }
+    // Press-time judgment: during an active/morphing window, the selected target
+    // shape should satisfy shape-gates even before visual morph completion.
+    if (p_window.phase != WindowPhase::Idle &&
+        p_window.target_shape == required &&
+        p_window.target_shape != Shape::Hexagon) {
+        return true;
+    }
+    return false;
 }
 
 }  // namespace
@@ -69,22 +79,22 @@ void collision_system(entt::registry& reg, float /*dt*/) {
             return;
         }
 
-        // In rhythm mode, compute timing grade.
-        if (rhythm_mode && p_window.phase == WindowPhase::Active && song->half_window > 0.0f) {
-            // Grade timing by comparing the player's predicted peak
-            // (center of the Active window) against the obstacle's
-            // scheduled arrival.  peak_time is set at press time as
-            // press + morph_duration + half_window, so a perfectly-
-            // timed tap gives peak_time ≈ arrival_time → pct ≈ 0.
-            // A stale press from a previous beat has peak_time far
-            // from the current obstacle's arrival → Bad.
+        // In rhythm mode, compute timing grade from press time for shape-based
+        // obstacles. This must not depend on window phase because collision can
+        // resolve a frame after input dispatch.
+        const bool shape_obstacle = reg.any_of<RequiredShape>(entity);
+        if (rhythm_mode && shape_obstacle && song->half_window > 0.0f && p_window.press_time >= 0.0f) {
+            // Grade timing by comparing button-press timestamp against
+            // the obstacle's scheduled arrival.
             auto* beat_info = reg.try_get<BeatInfo>(entity);
             float reference_time = beat_info ? beat_info->arrival_time
-                                             : p_window.peak_time;
-            float pct_from_peak = std::abs(p_window.peak_time - reference_time) / song->half_window;
-            if (pct_from_peak > 1.0f) pct_from_peak = 1.0f;
-            TimingTier tier = compute_timing_tier(pct_from_peak);
-            reg.emplace<TimingGrade>(entity, tier, 1.0f - pct_from_peak);
+                                             : p_window.press_time;
+            float delta_seconds = std::abs(p_window.press_time - reference_time);
+            TimingTier tier = compute_timing_tier_from_delta(delta_seconds);
+            float precision = 1.0f - (delta_seconds / kTimingOkSeconds);
+            if (precision < 0.0f) precision = 0.0f;
+            if (precision > 1.0f) precision = 1.0f;
+            reg.emplace<TimingGrade>(entity, tier, precision);
 
             if (results) {
                 switch (tier) {
@@ -122,7 +132,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
         auto view = reg.view<ObstacleTag, Position, RequiredShape>(
             entt::exclude<ScoredTag, BlockedLanes, RequiredLane>);
         for (auto [e, pos, req] : view.each()) {
-            bool shape_match = (p_shape.current == req.shape) && (p_shape.current != Shape::Hexagon);
+            bool shape_match = player_matches_required_shape(p_shape, p_window, req.shape);
             bool lane_match  = player_overlaps_lane(p_transform, pos);
             resolve(e, pos.y, shape_match && lane_match);
         }
@@ -151,7 +161,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
         auto view = reg.view<ObstacleTag, Position, RequiredShape, BlockedLanes>(
             entt::exclude<ScoredTag, RequiredLane>);
         for (auto [e, pos, req, blocked] : view.each()) {
-            bool shape_ok = (p_shape.current == req.shape) && (p_shape.current != Shape::Hexagon);
+            bool shape_ok = player_matches_required_shape(p_shape, p_window, req.shape);
             bool lane_ok  = !((blocked.mask >> p_lane.current) & 1);
             resolve(e, pos.y, shape_ok && lane_ok);
         }
@@ -162,7 +172,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
         auto view = reg.view<ObstacleTag, Position, RequiredShape, RequiredLane>(
             entt::exclude<ScoredTag>);
         for (auto [e, pos, req, rlane] : view.each()) {
-            bool shape_ok = (p_shape.current == req.shape) && (p_shape.current != Shape::Hexagon);
+            bool shape_ok = player_matches_required_shape(p_shape, p_window, req.shape);
             bool lane_ok  = (p_lane.current == rlane.lane);
             resolve(e, pos.y, shape_ok && lane_ok);
         }

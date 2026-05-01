@@ -106,7 +106,7 @@ TEST_CASE("pipeline: semantic shape press triggers shape change in same pipeline
         {ButtonPressKind::Shape, Shape::Square, MenuActionKind::Confirm, 0});
     run_pipeline(reg);
 
-    CHECK(sw.phase        == WindowPhase::MorphIn);
+    CHECK(sw.phase        == WindowPhase::Active);
     CHECK(sw.target_shape == Shape::Square);
 }
 
@@ -122,7 +122,7 @@ TEST_CASE("pipeline: gameplay HUD raygui shape press triggers player shape input
                                       true,
                                       false);
 
-    CHECK(sw.phase == WindowPhase::MorphIn);
+    CHECK(sw.phase == WindowPhase::Active);
     CHECK(sw.target_shape == Shape::Square);
 }
 
@@ -189,7 +189,7 @@ TEST_CASE("pipeline: mixed swipe and tap both take effect within a single pipeli
     run_pipeline(reg);
 
     CHECK(lane.target     == 2);                  // swipe processed
-    CHECK(sw.phase        == WindowPhase::MorphIn); // tap processed
+    CHECK(sw.phase        == WindowPhase::Active); // tap processed
     CHECK(sw.target_shape == Shape::Triangle);
 }
 
@@ -255,11 +255,11 @@ TEST_CASE("pipeline: tap consumed after first sub-tick — second sub-tick does 
     auto& song = reg.ctx().get<SongState>();
     song.song_time = 5.0f;
 
-    // Sub-tick 1: tap opens MorphIn.
+    // Sub-tick 1: tap opens Active.
     reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>(
         {ButtonPressKind::Shape, Shape::Circle, MenuActionKind::Confirm, 0});
     run_pipeline(reg);
-    CHECK(sw.phase        == WindowPhase::MorphIn);
+    CHECK(sw.phase        == WindowPhase::Active);
     float start1 = sw.window_start;
 
     // Advance song time so a replayed window would produce a different window_start.

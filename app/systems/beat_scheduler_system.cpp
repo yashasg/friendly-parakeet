@@ -24,10 +24,8 @@ void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
         }
 
         float beat_time  = song->offset + entry.beat_index * song->beat_period;
-        // Compensate for collision margin: collision resolves COLLISION_MARGIN px
-        // before the obstacle reaches PLAYER_Y, so spawn slightly later.
-        float margin_offset = constants::COLLISION_MARGIN / song->scroll_speed;
-        float spawn_time = beat_time - song->lead_time + margin_offset;
+        // Beat line is the collision point: beat_time maps to crossing PLAYER_Y.
+        float spawn_time = beat_time - song->lead_time;
 
         if (song->song_time < spawn_time) break;
 
@@ -35,11 +33,11 @@ void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
         // place the obstacle below SPAWN_Y by the overshoot distance
         // so it arrives at the player at exactly beat_time.
         // Clamp the spawn position so a large overshoot cannot place the
-        // obstacle at or below the collision window, where it may never be
-        // scored before scrolling off-screen.
+        // obstacle below the beat line, where it may never be scored before
+        // scrolling off-screen.
         float overshoot = song->song_time - spawn_time;
         float start_y = constants::SPAWN_Y + overshoot * song->scroll_speed;
-        float max_start_y = constants::PLAYER_Y - constants::COLLISION_MARGIN;
+        float max_start_y = constants::PLAYER_Y;
         float effective_spawn_time = spawn_time;
         if (start_y > max_start_y) {
             start_y = max_start_y;
