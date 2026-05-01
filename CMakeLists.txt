@@ -543,6 +543,8 @@ else()
     add_test(
         NAME shapeshifter_tests_wasm
         COMMAND ${_wasm_test_runner} $<TARGET_FILE:shapeshifter_tests> "~[bench]"
-        WORKING_DIRECTORY $<TARGET_FILE_DIR:shapeshifter_tests>
+        # Match native CI execution context (repo root) so tests that validate
+        # source-managed UI layout assets resolve the same relative paths.
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     )
 endif()
