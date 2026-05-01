@@ -5,6 +5,7 @@
 #include "../components/transform.h"
 #include "../components/player.h"
 #include "../components/obstacle.h"
+#include "../components/beat_map.h"
 #include "../components/particle.h"
 #include "../components/scoring.h"
 #include "../components/song_state.h"
@@ -315,10 +316,14 @@ void game_camera_system(entt::registry& reg, float /*dt*/) {
     {
         auto& fp = reg.ctx().get<FloorParams>();
         auto* song = reg.ctx().find<SongState>();
+        auto* map = reg.ctx().find<BeatMap>();
         float pulse = 0.0f;
         if (song && song->playing && song->beat_period > 0.0f && song->current_beat >= 0) {
-            float time_since_beat = song->song_time
-                - (song->offset + static_cast<float>(song->current_beat) * song->beat_period);
+            float beat_time = song->offset + static_cast<float>(song->current_beat) * song->beat_period;
+            if (map && !map->beat_times.empty()) {
+                beat_time = map->beat_times[static_cast<size_t>(song->current_beat)];
+            }
+            float time_since_beat = song->song_time - beat_time;
             float pulse_t = Clamp(time_since_beat / constants::FLOOR_PULSE_DECAY, 0.0f, 1.0f);
             float ease = 1.0f - (1.0f - pulse_t) * (1.0f - pulse_t);
             pulse = 1.0f - ease;

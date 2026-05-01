@@ -246,11 +246,14 @@ void test_player_system(entt::registry& reg, float dt) {
         // Pro player aims for Perfect timing on SHAPE PRESSES.
         // Lane dodges and vertical-only actions react ASAP — no delay.
         bool has_shape = (action.target_shape != Shape::Hexagon);
+        bool has_lane_or_vertical = (action.target_lane >= 0 ||
+                                     action.target_vertical != VMode::Grounded);
 
         if (cfg.aim_perfect && has_shape) {
             float ideal_press = action.arrival_time - kProPressLeadSeconds;
+            action.shape_not_before_time = ideal_press;
             float time_until_ideal = ideal_press - song->song_time;
-            if (time_until_ideal > cfg.reaction_min) {
+            if (!has_lane_or_vertical && time_until_ideal > cfg.reaction_min) {
                 action.timer = time_until_ideal;
                 if (log) {
                     session_log_write(*log, song_time, "PLAYER",
@@ -385,7 +388,11 @@ void test_player_system(entt::registry& reg, float dt) {
         }
 
         // Priority 1: Shape change
-        if (test_player_needs_shape(action)) {
+        bool too_early_for_shape = (cfg.aim_perfect &&
+                                    action.shape_not_before_time > 0.0f &&
+                                    song->song_time < action.shape_not_before_time);
+        bool waiting_on_lane = test_player_needs_lane(action);
+        if (test_player_needs_shape(action) && !waiting_on_lane && !too_early_for_shape) {
             disp.enqueue<ButtonPressEvent>({ButtonPressKind::Shape, action.target_shape,
                                            MenuActionKind::Confirm, 0});
             test_player_mark_shape_done(action);

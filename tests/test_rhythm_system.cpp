@@ -899,9 +899,9 @@ TEST_CASE("integration: obstacle arrives on-beat within 1 frame", "[rhythm][inte
         beat_scheduler_system(reg, dt);
         scroll_system(reg, dt);
         frames++;
-        auto view = reg.view<ObstacleTag, Position>();
-        for (auto [e, pos] : view.each()) {
-            if (pos.y >= constants::PLAYER_Y) {
+        auto view = reg.view<ObstacleTag, Position, DrawSize>();
+        for (auto [e, pos, size] : view.each()) {
+            if (pos.y + size.h * 0.5f >= constants::PLAYER_Y) {
                 obstacle_at_player = true;
                 float beat_time = song.offset + 4 * song.beat_period;
                 CHECK_THAT(song.song_time, WithinAbs(beat_time, dt + 0.001f));

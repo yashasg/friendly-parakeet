@@ -9,6 +9,25 @@
 #include "../components/rendering.h"
 #include "../constants.h"
 
+namespace {
+float obstacle_half_height_for_kind(ObstacleKind kind) {
+    switch (kind) {
+        case ObstacleKind::LowBar:
+        case ObstacleKind::HighBar:
+            return 20.0f;
+        case ObstacleKind::LanePushLeft:
+        case ObstacleKind::LanePushRight:
+            return 30.0f;
+        case ObstacleKind::ShapeGate:
+        case ObstacleKind::LaneBlock:
+        case ObstacleKind::ComboGate:
+        case ObstacleKind::SplitPath:
+            return 40.0f;
+    }
+    return constants::COLLISION_MARGIN;
+}
+}
+
 void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
     if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
 
@@ -24,8 +43,15 @@ void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
         }
 
         float beat_time  = song->offset + entry.beat_index * song->beat_period;
-        // Beat line is the collision point: beat_time maps to crossing PLAYER_Y.
-        float spawn_time = beat_time - song->lead_time;
+        if (!map->beat_times.empty()) {
+            beat_time = map->beat_times[static_cast<size_t>(entry.beat_index)];
+        }
+        float half_h = obstacle_half_height_for_kind(entry.kind);
+        // Beat line is the front edge of the obstacle: beat_time maps to
+        // center crossing (PLAYER_Y - half_height).
+        float edge_target_y = constants::PLAYER_Y - half_h;
+        float edge_lead_time = (edge_target_y - constants::SPAWN_Y) / song->scroll_speed;
+        float spawn_time = beat_time - edge_lead_time;
 
         if (song->song_time < spawn_time) break;
 
@@ -37,7 +63,7 @@ void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
         // scrolling off-screen.
         float overshoot = song->song_time - spawn_time;
         float start_y = constants::SPAWN_Y + overshoot * song->scroll_speed;
-        float max_start_y = constants::PLAYER_Y;
+        float max_start_y = edge_target_y;
         float effective_spawn_time = spawn_time;
         if (start_y > max_start_y) {
             start_y = max_start_y;

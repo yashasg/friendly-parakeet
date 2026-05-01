@@ -100,6 +100,40 @@ TEST_CASE("test_player: shape+lane action is not blocked by own shape press", "[
     CHECK(survived(reg));
 }
 
+TEST_CASE("test_player: pro executes lane before shape for shape+lane actions", "[test_player]") {
+    auto reg = make_test_player_registry(TestPlayerSkill::Pro);
+    make_rhythm_player(reg);
+    make_shape_gate_at_lane(reg, Shape::Circle, 0, constants::PLAYER_Y - 600.0f);
+
+    bool saw_go_first = false;
+    bool saw_shape_first = false;
+
+    for (int i = 0; i < 240; ++i) {
+        auto& song = reg.ctx().get<SongState>();
+        song.song_time += 1.0f / 60.0f;
+        test_player_system(reg, 1.0f / 60.0f);
+
+        auto go = drain_go_events(reg);
+        auto press = drain_press_events(reg);
+        bool has_shape_press = false;
+        for (int j = 0; j < press.count; ++j) {
+            if (press.buf[j].kind == ButtonPressKind::Shape) {
+                has_shape_press = true;
+                break;
+            }
+        }
+
+        if (go.count > 0 || has_shape_press) {
+            saw_go_first = (go.count > 0);
+            saw_shape_first = has_shape_press && go.count == 0;
+            break;
+        }
+    }
+
+    CHECK(saw_go_first);
+    CHECK_FALSE(saw_shape_first);
+}
+
 // ── KEY FIX: shape gate then lane block in sequence ──────────
 
 TEST_CASE("test_player: shape gate then lane block sequential", "[test_player]") {

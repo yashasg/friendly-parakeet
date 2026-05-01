@@ -123,11 +123,11 @@ TEST_CASE("collision: obstacle too far away is ignored", "[collision]") {
     CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
 }
 
-TEST_CASE("collision: beat line is collision point",
+TEST_CASE("collision: beat line is obstacle front edge",
           "[collision][issue-305]") {
     auto line_reg = make_registry();
     make_player(line_reg);
-    auto line_obs = make_shape_gate(line_reg, Shape::Circle, constants::PLAYER_Y);
+    auto line_obs = make_shape_gate(line_reg, Shape::Circle, constants::PLAYER_Y - 40.0f);
 
     collision_system(line_reg, 0.016f);
 
@@ -135,7 +135,7 @@ TEST_CASE("collision: beat line is collision point",
 
     auto preline_reg = make_registry();
     make_player(preline_reg);
-    auto preline_obs = make_shape_gate(preline_reg, Shape::Circle, constants::PLAYER_Y - 0.1f);
+    auto preline_obs = make_shape_gate(preline_reg, Shape::Circle, constants::PLAYER_Y - 40.1f);
 
     collision_system(preline_reg, 0.016f);
 
