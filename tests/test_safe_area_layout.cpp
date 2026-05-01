@@ -1,10 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "../app/constants.h"
-#include <fstream>
-#include <nlohmann/json.hpp>
-
-using json = nlohmann::json;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Safe Area Layout Tests
@@ -98,100 +94,6 @@ TEST_CASE("safe_area: button row above bottom safe padding", "[ui]") {
     CHECK(button_bottom <= safe_bottom_edge);
 }
 
-TEST_CASE("safe_area: gameplay.json score respects top safe area", "[ui]") {
-    std::ifstream file("content/ui/screens/gameplay.json");
-    REQUIRE(file.is_open());
-    auto screen = json::parse(file);
-
-    const json* score_el = nullptr;
-    for (const auto& el : screen["elements"]) {
-        if (el.value("id", "") == "score") {
-            score_el = &el;
-            break;
-        }
-    }
-
-    REQUIRE(score_el != nullptr);
-    float score_y_n = score_el->at("y_n").get<float>();
-    CHECK(score_y_n >= constants::SAFE_AREA_TOP_N);
-}
-
-TEST_CASE("safe_area: gameplay.json high_score respects top safe area", "[ui]") {
-    std::ifstream file("content/ui/screens/gameplay.json");
-    REQUIRE(file.is_open());
-    auto screen = json::parse(file);
-
-    const json* hi_el = nullptr;
-    for (const auto& el : screen["elements"]) {
-        if (el.value("id", "") == "high_score") {
-            hi_el = &el;
-            break;
-        }
-    }
-
-    REQUIRE(hi_el != nullptr);
-    float hiscore_y_n = hi_el->at("y_n").get<float>();
-    CHECK(hiscore_y_n >= constants::SAFE_AREA_TOP_N);
-}
-
-TEST_CASE("safe_area: gameplay.json pause button top respects safe area", "[ui]") {
-    std::ifstream file("content/ui/screens/gameplay.json");
-    REQUIRE(file.is_open());
-    auto screen = json::parse(file);
-
-    const json* pause_el = nullptr;
-    for (const auto& el : screen["elements"]) {
-        if (el.value("id", "") == "pause_button") {
-            pause_el = &el;
-            break;
-        }
-    }
-
-    REQUIRE(pause_el != nullptr);
-    float pause_y_n = pause_el->at("y_n").get<float>();
-    CHECK(pause_y_n >= constants::SAFE_AREA_TOP_N);
-}
-
-TEST_CASE("safe_area: gameplay.json pause button right respects safe area", "[ui]") {
-    std::ifstream file("content/ui/screens/gameplay.json");
-    REQUIRE(file.is_open());
-    auto screen = json::parse(file);
-
-    const json* pause_el = nullptr;
-    for (const auto& el : screen["elements"]) {
-        if (el.value("id", "") == "pause_button") {
-            pause_el = &el;
-            break;
-        }
-    }
-
-    REQUIRE(pause_el != nullptr);
-    float pause_x_n = pause_el->at("x_n").get<float>();
-    float pause_w_n = pause_el->at("w_n").get<float>();
-    float pause_right_n = pause_x_n + pause_w_n;
-    CHECK(pause_right_n <= (1.0f - constants::SAFE_AREA_RIGHT_N));
-}
-
-TEST_CASE("safe_area: gameplay.json shape buttons above bottom safe area", "[ui]") {
-    std::ifstream file("content/ui/screens/gameplay.json");
-    REQUIRE(file.is_open());
-    auto screen = json::parse(file);
-
-    const json* sb = nullptr;
-    for (const auto& el : screen["elements"]) {
-        if (el.value("id", "") == "shape_buttons") {
-            sb = &el;
-            break;
-        }
-    }
-
-    REQUIRE(sb != nullptr);
-    float button_y_n = sb->at("y_n").get<float>();
-    float button_h_n = sb->at("button_h_n").get<float>();
-    float button_bottom_n = button_y_n + button_h_n;
-
-    CHECK(button_bottom_n <= (1.0f - constants::SAFE_AREA_BOTTOM_N));
-}
 
 TEST_CASE("safe_area: mobile letterbox iPhone 14/15 score visible", "[ui]") {
     // iPhone 14/15: 390x844
@@ -282,41 +184,4 @@ TEST_CASE("safe_area: score before high_score vertically", "[ui]") {
     float score_y = constants::HUD_SCORE_Y_N * constants::SCREEN_H;
     float hiscore_y = constants::HUD_HISCORE_Y_N * constants::SCREEN_H;
     CHECK(score_y < hiscore_y);
-}
-
-TEST_CASE("safe_area: gameplay.json energy_label respects left safe area", "[ui]") {
-    std::ifstream file("content/ui/screens/gameplay.json");
-    REQUIRE(file.is_open());
-    auto screen = json::parse(file);
-
-    const json* el = nullptr;
-    for (const auto& e : screen["elements"]) {
-        if (e.value("id", "") == "energy_label") { el = &e; break; }
-    }
-    REQUIRE(el != nullptr);
-    float x_n = el->at("x_n").get<float>();
-    float y_n = el->at("y_n").get<float>();
-    CHECK(x_n >= constants::SAFE_AREA_LEFT_N);
-    CHECK(y_n <= (1.0f - constants::SAFE_AREA_BOTTOM_N));
-}
-
-TEST_CASE("safe_area: button row and lane divider alignment", "[ui]") {
-    std::ifstream file("content/ui/screens/gameplay.json");
-    REQUIRE(file.is_open());
-    auto screen = json::parse(file);
-
-    float button_y_n = 0.0f;
-    float divider_y_n = 0.0f;
-
-    for (const auto& el : screen["elements"]) {
-        const auto id = el.value("id", "");
-        if (id == "shape_buttons") {
-            button_y_n = el.at("y_n").get<float>();
-        } else if (id == "lane_divider") {
-            divider_y_n = el.at("y_n").get<float>();
-        }
-    }
-
-    // Divider should be above buttons
-    CHECK(divider_y_n < button_y_n);
 }

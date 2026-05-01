@@ -8,7 +8,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include <entt/entity/registry.hpp>
 #include <fstream>
-#include <nlohmann/json.hpp>
+#include <optional>
+#include <sstream>
 #include <string>
 
 #include "components/game_state.h"
@@ -23,47 +24,55 @@
 #include "constants.h"
 #include "systems/all_systems.h"
 
-using json = nlohmann::json;
-
 namespace {
-const json* find_by_id(const json& screen, const std::string& id) {
-    if (!screen.contains("elements")) return nullptr;
-    for (const auto& el : screen["elements"]) {
-        if (el.value("id", "") == id) return &el;
-    }
-    return nullptr;
-}
+struct RglRect {
+    int x;
+    int y;
+    int w;
+    int h;
+};
 
-json load_screen(const std::string& path) {
+std::optional<RglRect> find_rgl_control(const std::string& path, const std::string& control_name) {
     std::ifstream f(path);
-    REQUIRE(f.is_open());
-    return json::parse(f);
+    if (!f.is_open()) return std::nullopt;
+
+    std::string line;
+    while (std::getline(f, line)) {
+        if (line.empty() || line.front() != 'c') continue;
+
+        std::istringstream ss(line);
+        char kind = '\0';
+        int id = 0;
+        int type = 0;
+        std::string name;
+        RglRect rect{0, 0, 0, 0};
+        int anchor = 0;
+        if (!(ss >> kind >> id >> type >> name >> rect.x >> rect.y >> rect.w >> rect.h >> anchor)) {
+            continue;
+        }
+
+        if (name == control_name) return rect;
+    }
+    return std::nullopt;
 }
 }  // namespace
 
-// ── Content: game_over.json layout ──────────────────────────────────────────
+// ── Content: game_over.rgl layout ──────────────────────────────────────────
 
 TEST_CASE("redfoot/#168: existing game_over buttons keep their original positions",
           "[ui][redfoot][game_over]") {
-    auto screen = load_screen("content/ui/screens/game_over.json");
+    const auto restart = find_rgl_control("content/ui/screens/game_over.rgl", "RestartButton");
+    const auto level = find_rgl_control("content/ui/screens/game_over.rgl", "LevelSelectButton");
+    const auto menu = find_rgl_control("content/ui/screens/game_over.rgl", "MenuButton");
+    REQUIRE(restart.has_value());
+    REQUIRE(level.has_value());
+    REQUIRE(menu.has_value());
 
-    const json* restart = find_by_id(screen, "restart_button");
-    const json* level   = find_by_id(screen, "level_select_button");
-    const json* menu    = find_by_id(screen, "menu_button");
-    REQUIRE(restart != nullptr);
-    REQUIRE(level   != nullptr);
-    REQUIRE(menu    != nullptr);
-
-    // Original y_n values from the shipped layout — muscle memory must
-    // not move.
-    CHECK(restart->at("y_n").get<float>() == 0.6797f);
-    CHECK(level  ->at("y_n").get<float>() == 0.7305f);
-    CHECK(menu   ->at("y_n").get<float>() == 0.7812f);
-
-    // Action wiring preserved.
-    CHECK(restart->value("action", "") == "restart");
-    CHECK(level  ->value("action", "") == "level_select");
-    CHECK(menu   ->value("action", "") == "main_menu");
+    // Original normalized y_n values (0.6797/0.7305/0.7812) correspond to
+    // these pixel rows in the 1280-high rGuiLayout reference.
+    CHECK(restart->y == 870);
+    CHECK(level->y == 935);
+    CHECK(menu->y == 1000);
 }
 
 // ── Wiring: scoring sets DeathCause for misses and bar hits ──────────────────

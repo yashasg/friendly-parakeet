@@ -80,18 +80,21 @@ export const DEFAULT_LEVELS = Object.freeze([
         label: "STOMPER",
         beatmapPath: "content/beatmaps/1_stomper_beatmap.json",
         audioPath: "content/audio/1_stomper.flac",
+        analysisPath: "content/beatmaps/1_stomper_analysis.json",
     }),
     Object.freeze({
         id: "2_drama",
         label: "DRAMA",
         beatmapPath: "content/beatmaps/2_drama_beatmap.json",
         audioPath: "content/audio/2_drama.flac",
+        analysisPath: "content/beatmaps/2_drama_analysis.json",
     }),
     Object.freeze({
         id: "3_mental_corruption",
         label: "MENTAL CORRUPTION",
         beatmapPath: "content/beatmaps/3_mental_corruption_beatmap.json",
         audioPath: "content/audio/3_mental_corruption.flac",
+        analysisPath: "content/beatmaps/3_mental_corruption_analysis.json",
     }),
 ]);
 
