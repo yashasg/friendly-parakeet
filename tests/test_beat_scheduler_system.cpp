@@ -365,7 +365,7 @@ TEST_CASE("beat_scheduler: ShapeGate Triangle has green color", "[beat_scheduler
 
 TEST_CASE("beat_scheduler: clamped late-spawn stores adjusted spawn_time in BeatInfo", "[beat_scheduler]") {
     // When song_time overshoots spawn_time by so much that start_y would exceed
-    // max_start_y (PLAYER_Y - half_height), the position is clamped.
+    // max_start_y (PLAYER_Y), the position is clamped.
     // The effective spawn_time stored in BeatInfo must be adjusted so that
     // scroll_system (pos.y = SPAWN_Y + (song_time - spawn_time) * scroll_speed)
     // reproduces the clamped start_y on the same frame, preventing it from
@@ -382,7 +382,7 @@ TEST_CASE("beat_scheduler: clamped late-spawn stores adjusted spawn_time in Beat
 
     beat_scheduler_system(reg, 0.016f);
 
-    float max_start_y = constants::PLAYER_Y - 40.0f;
+    float max_start_y = constants::PLAYER_Y;
 
     // Position must be clamped
     auto pview = reg.view<ObstacleTag, Position>();

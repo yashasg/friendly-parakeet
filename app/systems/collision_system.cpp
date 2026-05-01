@@ -23,9 +23,8 @@ Vector2 player_timing_point(const WorldTransform& transform, const VerticalState
 
 bool player_in_timing_window(const WorldTransform& player_transform,
                               const VerticalState& vstate,
-                              float obstacle_z,
-                              float obstacle_half_height) {
-    return obstacle_z + obstacle_half_height >= player_timing_point(player_transform, vstate).y;
+                              float obstacle_z) {
+    return obstacle_z >= player_timing_point(player_transform, vstate).y;
 }
 
 bool player_overlaps_lane(const WorldTransform& player_transform, const Position& obstacle_pos) {
@@ -51,13 +50,6 @@ bool player_matches_required_shape(const PlayerShape& p_shape,
     return false;
 }
 
-float obstacle_half_height(const entt::registry& reg, entt::entity entity) {
-    if (const auto* size = reg.try_get<DrawSize>(entity)) {
-        return size->h * 0.5f;
-    }
-    return constants::COLLISION_MARGIN;
-}
-
 }  // namespace
 
 void collision_system(entt::registry& reg, float /*dt*/) {
@@ -77,8 +69,8 @@ void collision_system(entt::registry& reg, float /*dt*/) {
     // resolve: tag entity as scored (cleared) or missed.
     // kind is passed by the caller — no try_get needed since each per-kind
     // loop already holds the Obstacle component.
-    auto resolve = [&](entt::entity entity, float obs_z, float obs_half_height, bool cleared) {
-        if (!player_in_timing_window(p_transform, p_vstate, obs_z, obs_half_height)) return;
+    auto resolve = [&](entt::entity entity, float obs_z, bool cleared) {
+        if (!player_in_timing_window(p_transform, p_vstate, obs_z)) return;
 
         if (!cleared) {
             // MISS — tag only; scoring_system owns energy drain and death-cause attribution.
@@ -142,7 +134,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
         for (auto [e, pos, req] : view.each()) {
             bool shape_match = player_matches_required_shape(p_shape, p_window, req.shape);
             bool lane_match  = player_overlaps_lane(p_transform, pos);
-            resolve(e, pos.y, obstacle_half_height(reg, e), shape_match && lane_match);
+            resolve(e, pos.y, shape_match && lane_match);
         }
     }
 
@@ -151,7 +143,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
         auto view = reg.view<ObstacleTag, Position, BlockedLanes>(
             entt::exclude<ScoredTag, RequiredShape>);
         for (auto [e, pos, blocked] : view.each()) {
-            resolve(e, pos.y, obstacle_half_height(reg, e), !((blocked.mask >> p_lane.current) & 1));
+            resolve(e, pos.y, !((blocked.mask >> p_lane.current) & 1));
         }
     }
 
@@ -160,7 +152,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
         auto view = reg.view<ObstacleTag, ObstacleScrollZ, RequiredVAction>(
             entt::exclude<ScoredTag>);
         for (auto [e, oz, req_v] : view.each()) {
-            resolve(e, oz.z, obstacle_half_height(reg, e), p_vstate.mode == req_v.action);
+            resolve(e, oz.z, p_vstate.mode == req_v.action);
         }
     }
 
@@ -171,7 +163,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
         for (auto [e, pos, req, blocked] : view.each()) {
             bool shape_ok = player_matches_required_shape(p_shape, p_window, req.shape);
             bool lane_ok  = !((blocked.mask >> p_lane.current) & 1);
-            resolve(e, pos.y, obstacle_half_height(reg, e), shape_ok && lane_ok);
+            resolve(e, pos.y, shape_ok && lane_ok);
         }
     }
 
@@ -182,7 +174,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
         for (auto [e, pos, req, rlane] : view.each()) {
             bool shape_ok = player_matches_required_shape(p_shape, p_window, req.shape);
             bool lane_ok  = (p_lane.current == rlane.lane);
-            resolve(e, pos.y, obstacle_half_height(reg, e), shape_ok && lane_ok);
+            resolve(e, pos.y, shape_ok && lane_ok);
         }
     }
 
@@ -192,7 +184,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
         auto view = reg.view<ObstacleTag, Position, Obstacle>(
             entt::exclude<ScoredTag, RequiredShape, BlockedLanes, RequiredLane, RequiredVAction>);
         for (auto [e, pos, obs] : view.each()) {
-            if (!player_in_timing_window(p_transform, p_vstate, pos.y, obstacle_half_height(reg, e))) continue;
+            if (!player_in_timing_window(p_transform, p_vstate, pos.y)) continue;
             bool on_same_lane = player_overlaps_lane(p_transform, pos);
             if (on_same_lane && p_lane.target < 0) {
                 int8_t delta = (obs.kind == ObstacleKind::LanePushLeft) ? -1 : 1;
