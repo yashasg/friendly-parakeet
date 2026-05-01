@@ -3,6 +3,11 @@
 #include "../components/rhythm.h"
 #include "../constants.h"
 
+constexpr float kTimingBpmCeiling = 180.0f;
+constexpr float kTimingPerfectSeconds = 0.050f;
+constexpr float kTimingGoodSeconds = 0.100f;
+constexpr float kTimingOkSeconds = 0.150f;
+
 // Better timing -> smaller scale -> remaining Active window collapses sooner.
 // collision_system applies this via window_start adjustment (scale < 1.0 path).
 // Spec: rhythm-spec.md §5/§7. BAD is treated as a miss; window is left unchanged.
@@ -27,9 +32,18 @@ inline float timing_multiplier(TimingTier tier) {
 }
 
 inline TimingTier compute_timing_tier(float pct_from_peak) {
-    if (pct_from_peak <= 0.25f) return TimingTier::Perfect;
-    if (pct_from_peak <= 0.50f) return TimingTier::Good;
-    if (pct_from_peak <= 0.75f) return TimingTier::Ok;
+    // Normalized against kTimingOkSeconds:
+    // Perfect <= 50ms, Good <= 100ms, Ok <= 150ms, otherwise Bad.
+    if (pct_from_peak <= (kTimingPerfectSeconds / kTimingOkSeconds)) return TimingTier::Perfect;
+    if (pct_from_peak <= (kTimingGoodSeconds / kTimingOkSeconds)) return TimingTier::Good;
+    if (pct_from_peak <= 1.0f) return TimingTier::Ok;
+    return TimingTier::Bad;
+}
+
+inline TimingTier compute_timing_tier_from_delta(float delta_seconds_abs) {
+    if (delta_seconds_abs <= kTimingPerfectSeconds) return TimingTier::Perfect;
+    if (delta_seconds_abs <= kTimingGoodSeconds) return TimingTier::Good;
+    if (delta_seconds_abs <= kTimingOkSeconds) return TimingTier::Ok;
     return TimingTier::Bad;
 }
 
@@ -39,14 +53,17 @@ inline void song_state_compute_derived(SongState& s) {
 
     s.scroll_speed    = constants::APPROACH_DIST / s.lead_time;
 
-    constexpr float BASE_WINDOW_BEATS = 1.6f;
-    constexpr float MIN_WINDOW        = 0.36f;
     constexpr float BASE_MORPH_BEATS  = 0.2f;
     constexpr float MIN_MORPH         = 0.06f;
+    constexpr float WINDOW_HALF_CEILING = 0.5f * (60.0f / kTimingBpmCeiling);
 
-    float bpm_scale = (s.bpm > 130.0f) ? (130.0f / s.bpm) : 1.0f;
-    s.window_duration = BASE_WINDOW_BEATS * s.beat_period * bpm_scale;
-    if (s.window_duration < MIN_WINDOW) s.window_duration = MIN_WINDOW;
+    // Fixed judgment window policy (press-time grading):
+    // keep active window at +/-150ms while respecting the selected BPM ceiling.
+    float half_window = kTimingOkSeconds;
+    if (half_window > WINDOW_HALF_CEILING) {
+        half_window = WINDOW_HALF_CEILING;
+    }
+    s.window_duration = half_window * 2.0f;
     s.half_window     = s.window_duration / 2.0f;
 
     s.morph_duration  = BASE_MORPH_BEATS * s.beat_period;

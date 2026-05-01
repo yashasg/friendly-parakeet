@@ -6,36 +6,36 @@
 
 // ── compute_timing_tier ──────────────────────────────────────
 
-TEST_CASE("timing_tier: perfect zone 0.0-0.25", "[timing]") {
+TEST_CASE("timing_tier: perfect zone 0.0-0.333", "[timing]") {
     CHECK(compute_timing_tier(0.0f)  == TimingTier::Perfect);
-    CHECK(compute_timing_tier(0.25f) == TimingTier::Perfect);
+    CHECK(compute_timing_tier(0.333f) == TimingTier::Perfect);
 }
 
-TEST_CASE("timing_tier: good zone 0.26-0.50", "[timing]") {
-    CHECK(compute_timing_tier(0.26f) == TimingTier::Good);
-    CHECK(compute_timing_tier(0.50f) == TimingTier::Good);
+TEST_CASE("timing_tier: good zone 0.334-0.666", "[timing]") {
+    CHECK(compute_timing_tier(0.34f) == TimingTier::Good);
+    CHECK(compute_timing_tier(0.66f) == TimingTier::Good);
 }
 
-TEST_CASE("timing_tier: ok zone 0.51-0.75", "[timing]") {
-    CHECK(compute_timing_tier(0.51f) == TimingTier::Ok);
-    CHECK(compute_timing_tier(0.75f) == TimingTier::Ok);
+TEST_CASE("timing_tier: ok zone 0.667-1.0", "[timing]") {
+    CHECK(compute_timing_tier(0.67f) == TimingTier::Ok);
+    CHECK(compute_timing_tier(1.0f) == TimingTier::Ok);
 }
 
-TEST_CASE("timing_tier: bad zone 0.76-1.0", "[timing]") {
-    CHECK(compute_timing_tier(0.76f) == TimingTier::Bad);
-    CHECK(compute_timing_tier(1.0f)  == TimingTier::Bad);
+TEST_CASE("timing_tier: bad zone > 1.0", "[timing]") {
+    CHECK(compute_timing_tier(1.01f) == TimingTier::Bad);
+    CHECK(compute_timing_tier(1.5f)  == TimingTier::Bad);
 }
 
-TEST_CASE("timing_tier: boundary at exactly 0.25 is perfect", "[timing]") {
-    CHECK(compute_timing_tier(0.25f) == TimingTier::Perfect);
+TEST_CASE("timing_tier: boundary at exactly 0.333 is perfect", "[timing]") {
+    CHECK(compute_timing_tier(0.333f) == TimingTier::Perfect);
 }
 
-TEST_CASE("timing_tier: boundary at exactly 0.50 is good", "[timing]") {
-    CHECK(compute_timing_tier(0.50f) == TimingTier::Good);
+TEST_CASE("timing_tier: boundary at exactly 0.666 is good", "[timing]") {
+    CHECK(compute_timing_tier(0.666f) == TimingTier::Good);
 }
 
-TEST_CASE("timing_tier: boundary at exactly 0.75 is ok", "[timing]") {
-    CHECK(compute_timing_tier(0.75f) == TimingTier::Ok);
+TEST_CASE("timing_tier: boundary at exactly 1.0 is ok", "[timing]") {
+    CHECK(compute_timing_tier(1.0f) == TimingTier::Ok);
 }
 
 // ── timing_multiplier ────────────────────────────────────────
@@ -119,7 +119,7 @@ TEST_CASE("song_state_derived: lead_time = lead_beats * beat_period", "[song_sta
     CHECK_THAT(s.lead_time, Catch::Matchers::WithinAbs(2.0f, 0.001f));
 }
 
-TEST_CASE("song_state_derived: window_duration scales for high BPM", "[song_state]") {
+TEST_CASE("song_state_derived: window_duration fixed at timing policy", "[song_state]") {
     SongState slow, fast;
     slow.bpm = 100.0f;
     slow.lead_beats = 4;
@@ -127,16 +127,16 @@ TEST_CASE("song_state_derived: window_duration scales for high BPM", "[song_stat
     fast.lead_beats = 4;
     song_state_compute_derived(slow);
     song_state_compute_derived(fast);
-    // Higher BPM → shorter window
-    CHECK(fast.window_duration < slow.window_duration);
+    CHECK_THAT(slow.window_duration, Catch::Matchers::WithinAbs(0.3f, 0.001f));
+    CHECK_THAT(fast.window_duration, Catch::Matchers::WithinAbs(0.3f, 0.001f));
 }
 
-TEST_CASE("song_state_derived: window_duration has minimum floor", "[song_state]") {
+TEST_CASE("song_state_derived: window_duration respects bpm ceiling cap", "[song_state]") {
     SongState s;
     s.bpm = 300.0f;
     s.lead_beats = 2;
     song_state_compute_derived(s);
-    CHECK(s.window_duration >= 0.36f);
+    CHECK(s.window_duration <= (60.0f / 180.0f));
 }
 
 TEST_CASE("song_state_derived: morph_duration has minimum floor", "[song_state]") {
@@ -155,14 +155,12 @@ TEST_CASE("song_state_derived: half_window is half of window_duration", "[song_s
     CHECK_THAT(s.half_window, Catch::Matchers::WithinAbs(s.window_duration / 2.0f, 0.001f));
 }
 
-TEST_CASE("song_state_derived: BPM below 130 has no scale reduction", "[song_state]") {
+TEST_CASE("song_state_derived: fixed window independent of song BPM", "[song_state]") {
     SongState s;
     s.bpm = 100.0f;
     s.lead_beats = 4;
     song_state_compute_derived(s);
-    // At 100 BPM, bpm_scale = 1.0
-    // window_duration = BASE_WINDOW_BEATS * beat_period * 1.0 = 1.6 * 0.6 = 0.96
-    CHECK_THAT(s.window_duration, Catch::Matchers::WithinAbs(1.6f * s.beat_period, 0.001f));
+    CHECK_THAT(s.window_duration, Catch::Matchers::WithinAbs(0.3f, 0.001f));
 }
 
 // ── enum name helpers ────────────────────────────────────────

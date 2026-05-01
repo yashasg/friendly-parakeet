@@ -69,22 +69,19 @@ void collision_system(entt::registry& reg, float /*dt*/) {
             return;
         }
 
-        // In rhythm mode, compute timing grade.
+        // In rhythm mode, compute timing grade from press time.
         if (rhythm_mode && p_window.phase == WindowPhase::Active && song->half_window > 0.0f) {
-            // Grade timing by comparing the player's predicted peak
-            // (center of the Active window) against the obstacle's
-            // scheduled arrival.  peak_time is set at press time as
-            // press + morph_duration + half_window, so a perfectly-
-            // timed tap gives peak_time ≈ arrival_time → pct ≈ 0.
-            // A stale press from a previous beat has peak_time far
-            // from the current obstacle's arrival → Bad.
+            // Grade timing by comparing button-press timestamp against
+            // the obstacle's scheduled arrival.
             auto* beat_info = reg.try_get<BeatInfo>(entity);
             float reference_time = beat_info ? beat_info->arrival_time
-                                             : p_window.peak_time;
-            float pct_from_peak = std::abs(p_window.peak_time - reference_time) / song->half_window;
-            if (pct_from_peak > 1.0f) pct_from_peak = 1.0f;
-            TimingTier tier = compute_timing_tier(pct_from_peak);
-            reg.emplace<TimingGrade>(entity, tier, 1.0f - pct_from_peak);
+                                             : p_window.press_time;
+            float delta_seconds = std::abs(p_window.press_time - reference_time);
+            TimingTier tier = compute_timing_tier_from_delta(delta_seconds);
+            float precision = 1.0f - (delta_seconds / kTimingOkSeconds);
+            if (precision < 0.0f) precision = 0.0f;
+            if (precision > 1.0f) precision = 1.0f;
+            reg.emplace<TimingGrade>(entity, tier, precision);
 
             if (results) {
                 switch (tier) {

@@ -244,7 +244,7 @@ void test_player_system(entt::registry& reg, float dt) {
         bool has_shape = (action.target_shape != Shape::Hexagon);
 
         if (cfg.aim_perfect && has_shape) {
-            float ideal_press = action.arrival_time - song->morph_duration - song->half_window;
+            float ideal_press = action.arrival_time;
             float time_until_ideal = ideal_press - song->song_time;
             if (time_until_ideal > cfg.reaction_min) {
                 action.timer = time_until_ideal;

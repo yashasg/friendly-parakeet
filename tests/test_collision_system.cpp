@@ -329,11 +329,9 @@ TEST_CASE("collision: BAD timing does not adjust window_start", "[collision][rhy
     sw.window_timer = 0.0f;
     sw.window_start = song.song_time;
 
-    // peak_time doesn't affect grading anymore — timing is based on
-    // BeatInfo.arrival_time.  Set arrival_time far from song_time so
-    // pct_from_peak > 0.75 → BAD (scale = 1.0).
-    sw.peak_time = song.song_time;
-    float bad_arrival = song.song_time - song.half_window * 2.0f;
+    // press_time anchors grading. Set arrival_time far enough so it's BAD.
+    sw.press_time = song.song_time;
+    float bad_arrival = song.song_time - song.half_window * 1.2f;
 
     // Spawn an obstacle at the player's position
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
@@ -365,8 +363,8 @@ TEST_CASE("collision: Perfect timing shrinks window via window_start adjustment"
     sw.window_timer = 0.0f;
     sw.window_start = song.song_time;
 
-    // Set peak_time to right now so the hit is perfect (pct_from_peak = 0)
-    sw.peak_time = song.song_time;
+    // Set press_time to right now so the hit is perfect.
+    sw.press_time = song.song_time;
 
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<BeatInfo>(obs, 0, song.song_time, song.song_time - song.lead_time);

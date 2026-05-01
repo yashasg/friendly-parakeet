@@ -383,24 +383,24 @@ TEST_CASE("init_song_state: computes derived fields", "[init_song]") {
 
 // ── rhythm helper functions ──────────────────────────────────
 
-TEST_CASE("compute_timing_tier: Perfect for <= 0.25", "[rhythm_helpers]") {
+TEST_CASE("compute_timing_tier: Perfect for <= 0.333", "[rhythm_helpers]") {
     CHECK(compute_timing_tier(0.0f) == TimingTier::Perfect);
-    CHECK(compute_timing_tier(0.25f) == TimingTier::Perfect);
+    CHECK(compute_timing_tier(0.333f) == TimingTier::Perfect);
 }
 
-TEST_CASE("compute_timing_tier: Good for <= 0.50", "[rhythm_helpers]") {
-    CHECK(compute_timing_tier(0.26f) == TimingTier::Good);
-    CHECK(compute_timing_tier(0.50f) == TimingTier::Good);
+TEST_CASE("compute_timing_tier: Good for <= 0.666", "[rhythm_helpers]") {
+    CHECK(compute_timing_tier(0.34f) == TimingTier::Good);
+    CHECK(compute_timing_tier(0.666f) == TimingTier::Good);
 }
 
-TEST_CASE("compute_timing_tier: Ok for <= 0.75", "[rhythm_helpers]") {
-    CHECK(compute_timing_tier(0.51f) == TimingTier::Ok);
-    CHECK(compute_timing_tier(0.75f) == TimingTier::Ok);
+TEST_CASE("compute_timing_tier: Ok for <= 1.0", "[rhythm_helpers]") {
+    CHECK(compute_timing_tier(0.67f) == TimingTier::Ok);
+    CHECK(compute_timing_tier(1.0f) == TimingTier::Ok);
 }
 
-TEST_CASE("compute_timing_tier: Bad for > 0.75", "[rhythm_helpers]") {
-    CHECK(compute_timing_tier(0.76f) == TimingTier::Bad);
-    CHECK(compute_timing_tier(1.0f) == TimingTier::Bad);
+TEST_CASE("compute_timing_tier: Bad for > 1.0", "[rhythm_helpers]") {
+    CHECK(compute_timing_tier(1.01f) == TimingTier::Bad);
+    CHECK(compute_timing_tier(1.5f) == TimingTier::Bad);
 }
 
 TEST_CASE("timing_multiplier: returns correct values", "[rhythm_helpers]") {
@@ -446,9 +446,8 @@ TEST_CASE("song_state_compute_derived: window_duration minimum enforced", "[rhyt
     s.lead_beats = 4;
     song_state_compute_derived(s);
 
-    // window_duration = BASE_WINDOW_BEATS * beat_period = 1.6 * 0.2 = 0.32
-    // But MIN_WINDOW = 0.36, so window_duration should be clamped
-    CHECK(s.window_duration >= 0.36f);
+    // Window is fixed by timing policy to +/-150ms, capped by BPM ceiling.
+    CHECK_THAT(s.window_duration, Catch::Matchers::WithinAbs(0.3f, 0.001f));
 }
 
 TEST_CASE("song_state_compute_derived: morph_duration minimum enforced", "[rhythm_helpers]") {

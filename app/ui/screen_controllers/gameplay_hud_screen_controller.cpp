@@ -144,7 +144,7 @@ void render_shape_buttons(const entt::registry& reg,
 
     auto* song_state = reg.ctx().find<SongState>();
     float perfect_dist = song_state
-        ? song_state->scroll_speed * (song_state->morph_duration + song_state->half_window)
+        ? 0.0f
         : constants::BASE_SCROLL_SPEED * 0.5f;
     float ring_appear_dist = constants::APPROACH_DIST;
     float max_ring_radius = btn_radius * layout.approach_ring_max_radius_scale;
