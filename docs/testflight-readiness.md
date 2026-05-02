@@ -280,7 +280,7 @@ of soak time:
 | Cold-start time (iPhone 12-class)     | ≤ 2.0 s                              | MetricKit launch metric      |
 | Accessibility baseline (A11Y-01..09)  | 100 % pass, 0 open accessibility Sev-1 | `docs/testflight-accessibility-baseline.md` |
 | Privacy label & ATT                   | Locked (#189, #194)                  | App Store Connect            |
-| Build signing & version bump          | Locked (#183, #184) + CFBundleVersion preflight gate in `ci-macos.yml` notarize job | Release checklist + CI |
+| Build signing & version bump          | #183 closed (preflight gate live); #184 requires one successful signed archive+IPA with confirmed Apple account metadata | Release checklist + CI |
 
 Failing any gate → fix, ship a new TF build, restart 7-day soak. The
 go/no-go review is owned by Edie (PM) with sign-off from Kobayashi (release)

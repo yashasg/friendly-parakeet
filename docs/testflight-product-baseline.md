@@ -66,10 +66,10 @@ Complete and execution-ready now:
 | Follow-up | Owner | Target |
 |---|---|---|
 | Confirm/register final bundle identifier and Team ID in Apple Developer account | **yashasg** | Before first signed archive |
-| Implement iOS project plumbing (`Info.plist`, entitlements wiring, archive path) | **Hockney (Platform)** | Before internal alpha upload |
+| Resolve iOS platform/archive blockers (including raylib iOS overlay) and produce one signed TestFlight archive+IPA end-to-end | **Hockney (Platform)** | Before internal alpha upload |
 | Implement MetricKit wiring + local telemetry event emission | **Hockney + McManus** | Before closed beta |
 | Create TestFlight groups/public-link flow and execute cohort ops | **Kobayashi (Release) + Verbal (QA)** | Start at internal alpha |
-| Add preflight guard for monotonically increasing `CFBundleVersion` | **Kobayashi (Release)** | Before external tester phase |
+| Maintain CFBundleVersion monotonicity gate execution in release path (`tools/ios/preflight_cfbundle_version.sh` + `ci-macos.yml`) | **Kobayashi (Release)** | Ongoing release hygiene |
 
 ## 5) Source References
 
