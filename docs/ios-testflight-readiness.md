@@ -277,7 +277,7 @@ Entitlements file (`ios/Entitlements.plist`) will be minimal:
 4. Set target device to your registered iPhone (or use generic iOS device for archive).
 5. Product → Archive → Distribute App → TestFlight.
 
-> The iOS CMake toolchain integration requires additional work not yet in the repo (raylib iOS build config, asset bundling into `.app`, `Info.plist` template). This document specifies the decisions; implementation tracking is a separate issue.
+> iOS CMake integration now uses the repo vcpkg overlay raylib path (`PLATFORM=SDL`, `OPENGL ES 2.0`, ObjC audio compile for `raudio.c`) so `ios/testflight_archive.sh configure` can complete on iOS toolchains.
 
 ### 4.4 Info.plist Template (Minimum Required Keys)
 
@@ -436,7 +436,7 @@ The following values are **not squad decisions** — they must be supplied by `y
 | 3 | Confirm bundle ID `com.yashasg.shapeshifter` | `Info.plist`, App ID registration | Proposed; may change |
 | 4 | App icons (1024×1024 + all sizes) | `Assets.xcassets/AppIcon.appiconset/` | None |
 | 5 | Set initial `CFBundleVersion` (`BUILD_NUMBER`) before first upload | `ios/testflight_archive.sh` env / archive configuration | _(unset)_ |
-| 6 | Resolve iOS raylib platform wiring (`OPENGL_LIBRARY` blocker under `PLATFORM=Desktop`) | vcpkg overlay + CMake platform configuration | Pending platform fix |
+| 6 | iOS raylib overlay path (`PLATFORM=SDL`, ES2 + ObjC raudio compile) | `vcpkg-overlay/raylib/*` + `ios/testflight_archive.sh configure` | Landed in repo; rerun configure on owner machine |
 
 ---
 

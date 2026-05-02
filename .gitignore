@@ -46,3 +46,7 @@ bench_logger.log
 /*_beatmap.json
 .squad/sessions/
 .squad-workstream
+
+# Local-only benchmark tracks for aubio tuning/evaluation (never commit)
+/benchmarks/audio-local/
+/benchmarks/ballroom-local/

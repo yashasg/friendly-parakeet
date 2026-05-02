@@ -132,10 +132,8 @@ configure_ios() {
     fi
     ensure_ios_triplet_dependencies
     if [[ -f "$BUILD_DIR/CMakeCache.txt" ]]; then
-        if ! grep -q "^CMAKE_TOOLCHAIN_FILE:.*=$vcpkg_toolchain" "$BUILD_DIR/CMakeCache.txt"; then
-            rm -f "$BUILD_DIR/CMakeCache.txt"
-            rm -rf "$BUILD_DIR/CMakeFiles"
-        fi
+        rm -f "$BUILD_DIR/CMakeCache.txt"
+        rm -rf "$BUILD_DIR/CMakeFiles"
     fi
     (
         cd "$ROOT_DIR"

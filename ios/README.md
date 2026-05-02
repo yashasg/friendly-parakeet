@@ -58,7 +58,7 @@ These are the remaining prerequisites:
 4. Apple Developer account signed into Xcode on the build machine (`yashasg`).
 5. Automatic signing resolves an Apple Distribution certificate and provisioning profile (`yashasg`).
 6. `VCPKG_ROOT` points to a vcpkg installation with iOS triplet resolution (`arm64-ios`) on the build machine.
-7. `raylib` iOS triplet configure currently fails in the overlay (`OPENGL_LIBRARY` not found from `PLATFORM=Desktop` path), blocking full iOS archive until platform/CMake fix lands (`Hockney`).
+7. `VCPKG_ROOT` points to a vcpkg install where `vcpkg install --triplet arm64-ios --overlay-ports=./vcpkg-overlay` can build `raylib` with the iOS SDL/OpenGL ES overlay path.
 
 ## Repo Wiring Added
 

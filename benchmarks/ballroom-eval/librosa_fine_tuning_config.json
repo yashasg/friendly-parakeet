@@ -1,0 +1,59 @@
+{
+  "description": "Librosa beat-tracking configs including OP-style spectrogram+tempogram variants",
+  "edge_trim_seconds": 0.25,
+  "tolerances_ms": [10, 20, 35, 50, 70],
+  "configs": [
+    {
+      "name": "tuned-baseline",
+      "hop_length": 384,
+      "tightness": 150,
+      "start_bpm": 120,
+      "trim": false,
+      "onset_envelope": "librosa_default",
+      "tempo_source": "fixed_start_bpm"
+    },
+    {
+      "name": "default-ish",
+      "hop_length": 512,
+      "tightness": 100,
+      "start_bpm": 120,
+      "trim": true,
+      "onset_envelope": "librosa_default",
+      "tempo_source": "fixed_start_bpm"
+    },
+    {
+      "name": "op-spectrogram-plus-tempogram-median",
+      "hop_length": 384,
+      "tightness": 150,
+      "trim": false,
+      "onset_envelope": "stft_flux",
+      "tempo_source": "tempogram_median",
+      "n_fft": 2048
+    },
+    {
+      "name": "op-spectrogram-plus-tempogram-dynamic",
+      "hop_length": 384,
+      "tightness": 150,
+      "trim": false,
+      "onset_envelope": "stft_flux",
+      "tempo_source": "tempogram_dynamic",
+      "n_fft": 2048
+    },
+    {
+      "name": "op-librosa-onset-plus-tempogram-median",
+      "hop_length": 384,
+      "tightness": 150,
+      "trim": false,
+      "onset_envelope": "librosa_default",
+      "tempo_source": "tempogram_median"
+    },
+    {
+      "name": "op-librosa-onset-plus-tempogram-dynamic",
+      "hop_length": 384,
+      "tightness": 150,
+      "trim": false,
+      "onset_envelope": "librosa_default",
+      "tempo_source": "tempogram_dynamic"
+    }
+  ]
+}
