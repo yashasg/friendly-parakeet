@@ -14,6 +14,7 @@
 3. [Version and Build Number Scheme (#183)](#3-version-and-build-number-scheme-183)
 4. [Bundle Identifier, Team, and Code Signing (#184)](#4-bundle-identifier-team-and-code-signing-184)
 5. [Device and OS Support Matrix (#186)](#5-device-and-os-support-matrix-186)
+6. [Accessibility Baseline Execution (#75)](#6-accessibility-baseline-execution-75)
 
 ---
 
@@ -399,6 +400,26 @@ The logical viewport is fixed at **720×1280** (portrait, ~16:9 baseline). Physi
 | D-04 | iPad (any, if iPad support added later) | ≥16.0 | Large screen | ❌ v1 not required |
 
 All three required devices must pass the full interruption (§1.4) and lifecycle (§2.4) UAT checklists.
+
+---
+
+## 6. Accessibility Baseline Execution (#75)
+
+iOS candidate builds must also pass the accessibility baseline in:
+
+- `docs/testflight-accessibility-baseline.md` (A11Y-01..A11Y-09)
+
+### 6.1 Required execution scope
+
+- Run AX-01..AX-09 on the required iPhone set from §5.5.
+- Include at least one run with device audio muted and one run with reduced
+  motion enabled.
+- Verify haptics opt-out (`haptics_enabled`) and persistence behavior.
+
+### 6.2 Promotion rule
+
+Any failed A11Y check blocks TestFlight promotion to App Store submission until
+resolved or explicitly deferred with PM + QA + Design sign-off.
 
 ---
 
