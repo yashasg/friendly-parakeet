@@ -177,6 +177,20 @@ TEST_CASE("player_movement: lane transition completes", "[player]") {
     CHECK(reg.get<WorldTransform>(p).position.x == constants::LANE_X[2]);
 }
 
+TEST_CASE("player_movement: clears stale lane target when target equals current", "[player]") {
+    auto reg = make_registry();
+    auto p = make_player(reg);
+    auto& lane = reg.get<Lane>(p);
+    lane.current = 1;
+    lane.target = 1;
+    lane.lerp_t = 0.0f;
+
+    player_movement_system(reg, 0.016f);
+
+    CHECK(lane.target == -1);
+    CHECK(lane.lerp_t == 1.0f);
+}
+
 TEST_CASE("player_movement: jump creates negative y_offset", "[player]") {
     auto reg = make_registry();
     auto p = make_player(reg);

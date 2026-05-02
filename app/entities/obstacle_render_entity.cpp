@@ -162,14 +162,10 @@ void spawn_obstacle_meshes(entt::registry& reg, entt::entity logical) {
             if (req) {
                 mesh_index = checked_shape_mesh_index(req->shape);
             }
-            add_slab_child(reg, logical, 0, pos.x-50, dsz.h,
-                           constants::OBSTACLE_3D_HEIGHT, col);
-            add_slab_child(reg, logical, pos.x+50,
-                constants::SCREEN_W-pos.x-50, dsz.h,
-                constants::OBSTACLE_3D_HEIGHT, col);
+            // Shape gates now render as shape-only prompts (no side walls/slabs).
             if (req)
                 add_shape_child(reg, logical, mesh_index, pos.x, dsz.h/2,
-                                40, {col.r, col.g, col.b, 120});
+                                40, col);
             break;
         }
         case ObstacleKind::LaneBlock: {
