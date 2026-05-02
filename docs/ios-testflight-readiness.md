@@ -321,19 +321,21 @@ Entitlements file (`ios/Entitlements.plist`) will be minimal:
 
 `$(MARKETING_VERSION)` and `$(CURRENT_PROJECT_VERSION)` are Xcode build settings; set them to match `CFBundleShortVersionString` and `CFBundleVersion` from §3.
 
-### 4.5 `ios/` Directory Structure (to be created)
+### 4.5 `ios/` Directory Structure
 
 ```
 ios/
-  README.md                  ← Build + signing instructions (this doc summarises)
-  Info.plist                 ← Template (above)
-  Entitlements.plist         ← Minimal (above)
+  README.md                  ← Build + signing instructions + blocker list
+  testflight_archive.sh      ← Preflight/configure/archive/export automation
+  Info.plist                 ← Template + CMake wired
+  Entitlements.plist         ← Minimal + CMake wired
   LaunchScreen.storyboard    ← Required by App Store (solid color + logo)
   Assets.xcassets/
     AppIcon.appiconset/      ← Required icons (1024×1024 + all sizes)
 ```
 
-> None of these files exist yet. Creating them is required before first TestFlight upload.
+`Info.plist`, `Entitlements.plist`, and `testflight_archive.sh` now exist in-repo.
+`LaunchScreen.storyboard` and full App Icon assets are still required before first TestFlight upload.
 
 ---
 
@@ -433,7 +435,8 @@ The following values are **not squad decisions** — they must be supplied by `y
 | 2 | Apple Developer Program type (individual/org) | Documentation only | _(unset)_ |
 | 3 | Confirm bundle ID `com.yashasg.shapeshifter` | `Info.plist`, App ID registration | Proposed; may change |
 | 4 | App icons (1024×1024 + all sizes) | `Assets.xcassets/AppIcon.appiconset/` | None |
-| 5 | Set initial `CFBundleVersion` in Xcode/CI before first upload (no repo build-number file) | Release/archive configuration | _(unset)_ |
+| 5 | Set initial `CFBundleVersion` (`BUILD_NUMBER`) before first upload | `ios/testflight_archive.sh` env / archive configuration | _(unset)_ |
+| 6 | Resolve iOS raylib platform wiring (`OPENGL_LIBRARY` blocker under `PLATFORM=Desktop`) | vcpkg overlay + CMake platform configuration | Pending platform fix |
 
 ---
 
