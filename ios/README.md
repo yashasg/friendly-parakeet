@@ -48,6 +48,15 @@ ios/testflight_archive.sh export      # export IPA from existing archive
 ios/testflight_archive.sh all         # configure + archive + export
 ```
 
+### Validation snapshot (2026-05-02)
+
+```bash
+TEAM_ID=ABCDE12345 BUILD_NUMBER=2 ios/testflight_archive.sh configure
+TEAM_ID=ABCDE12345 BUILD_NUMBER=3 BUNDLE_ID=com.yashasg.shapeshifter ios/testflight_archive.sh archive
+```
+
+Expected on machines without owner Apple credentials: configure succeeds; archive reaches Xcode signing and fails with Team/account/provisioning messages.
+
 ## Explicit Blocker Checklist (Issue #184)
 
 These are the remaining prerequisites:
