@@ -203,7 +203,7 @@ The runtime version propagates to `generated/version.h` via CMake `configure_fil
 
 **Update cadence:** Every TestFlight/App Store upload that bumps `CFBundleVersion` should include a CHANGELOG entry. This is a team convention, not a CI gate for v1 (add CI gate post-TF).
 
-`CHANGELOG.md` does not yet exist — it must be created before the first TestFlight submission. Template:
+`CHANGELOG.md` exists at repo root and should be updated for each TestFlight/App Store upload. Template:
 
 ```markdown
 # Changelog
