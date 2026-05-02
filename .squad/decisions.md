@@ -10053,3 +10053,93 @@ When `git switch main` is blocked by local modifications, do not stash or reset 
 ## Rationale
 
 This updates local `main` to remote latest while preserving all in-progress working tree changes on the current branch. It avoids accidental conflicts or context loss from temporary stashes during quick sync-and-inventory tasks.
+
+
+# Edie Decision Inbox — Ralph Round 2 TestFlight Disposition (#68, #183, #184, #185, #201)
+
+**Date:** 2026-05-02  
+**Owner:** Edie (PM)
+
+## Disposition
+
+- **Close now:** #68, #185, #201  
+  Product acceptance criteria are fully documented and locked in
+  `docs/testflight-product-baseline.md` with supporting detail in
+  `docs/testflight-readiness.md` / `docs/ios-testflight-readiness.md`.
+- **Keep open:** #183, #184  
+  These remain open for concrete owner-driven completion items below.
+
+## Remaining Acceptance Criteria (Open Issues)
+
+### #183 — iOS app version/build scheme
+- Implement a preflight gate that fails TestFlight upload if `CFBundleVersion` did not increase versus the previous uploaded/tagged build.
+- Validate the gate in release workflow and document invocation path in release docs.
+- **Owner:** Kobayashi (Release)
+
+### #184 — bundle/team/signing lock
+- Confirm and record final Apple Developer Team ID/program metadata in repository docs (replace placeholder-only state).
+- Confirm final registered bundle identifier in Apple Developer account and keep docs aligned.
+- Produce one signed TestFlight archive using the documented v1 signing path to prove the lock is executable.
+- **Owners:** yashasg (account metadata + bundle confirmation), Hockney (signed archive path)
+
+## Notes
+
+- This disposition intentionally closes product-decision tickets once policy acceptance criteria are met, while keeping execution-coupled tickets open only where unresolved criteria remain.
+
+
+# Hockney Decision — TestFlight archive path automation
+
+**Date:** 2026-05-02  
+**Owner:** Hockney (Platform)  
+**Issue:** #184
+
+## Decision
+
+Adopt a repo-owned iOS archive automation path via `ios/testflight_archive.sh` with explicit modes:
+
+- `preflight` (tool + blocker checks),
+- `configure` (CMake iOS Xcode generation),
+- `archive` (signed `.xcarchive`),
+- `export` (IPA export),
+- `all` (end-to-end).
+
+Also wire iOS bundle metadata in CMake (`MACOSX_BUNDLE`, `Info.plist`, entitlements) so archive steps run against a concrete app bundle target rather than policy-only docs.
+
+## Remaining external blockers
+
+To execute signed archive/export fully, owner-provided Apple account inputs are still required:
+`TEAM_ID`, monotonic `BUILD_NUMBER`, registered bundle identifier, Xcode Apple account sign-in, and automatic-signing certificate/profile resolution.
+Additionally, the build machine must provide a valid `VCPKG_ROOT` toolchain with iOS triplet support (`arm64-ios`) for dependency resolution.
+
+
+# Kobayashi Decision — TestFlight PR routing for squad/test-flight-fixes
+
+Date: 2026-05-02
+
+## Decision
+For PR from `squad/test-flight-fixes` into `main`, treat issues as follows:
+
+- Fully resolved by this branch: #68, #75, #184, #185, #187, #201
+- Partially resolved by this branch: #183 (missing preflight `CFBundleVersion` bump guard automation)
+
+## Rationale
+- Commits `07009bb`, `aecaa27`, and `b529233` lock the accessibility, notarization CI, and TestFlight product baseline docs.
+- #183 still tracks one explicit engineering follow-up: implement automated preflight bump validation.
+
+
+# Kobayashi Decision — TestFlight CFBundleVersion Preflight Gate (#183)
+
+Date: 2026-05-02
+
+## Decision
+Implement `tools/ios/preflight_cfbundle_version.sh` as the release gate for build-number monotonicity, and wire it into `.github/workflows/ci-macos.yml` `notarize` job before any signing/notarization/upload steps.
+
+## Rule
+- Gate fails unless `current CFBundleVersion > previous`.
+- Previous build source precedence:
+  1. `workflow_dispatch` input `previous_uploaded_cfbundle_version` (for App Store Connect-known latest upload).
+  2. Latest `ios-build-<n>` git tag in the repo.
+  3. Baseline `0` if neither exists yet.
+
+## Rationale
+This gives a deterministic, automation-enforced check in the release path without introducing a fake repo build-number file. It supports both tagged-release and manually-dispatched release workflows while keeping the policy compatible with real upload state when operators provide the previous uploaded build number.
