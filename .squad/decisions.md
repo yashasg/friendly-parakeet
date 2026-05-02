@@ -1,6 +1,99 @@
 # Decisions Registry
 
-*Last merged: 2026-04-30T10:12:30Z*
+P26-05-02T03:39:47Z*
+
+
+### Redfoot Decision Inbox — TestFlight Accessibility Baseline (#75)
+
+**Date:** 2026-05-02  
+**Owner:** Redfoot (UI/UX)  
+**Issue:** #75
+
+## Decision
+
+Adopt `docs/testflight-accessibility-baseline.md` as the canonical TestFlight
+accessibility gate, with 9 measurable checks (A11Y-01..A11Y-09) covering:
+- colorblind-safe shape readability + labels,
+- audio-off playability,
+- haptics opt-out/fallback,
+- reduced-motion behavior,
+- readable labels/contrast and settings persistence.
+
+## Release impact
+
+- `docs/testflight-readiness.md` now includes accessibility as a hard
+  go/no-go criterion.
+- `docs/ios-testflight-readiness.md` now requires executing AX-01..AX-09 on
+  the required iPhone matrix before promotion.
+
+## Why this matters
+
+This closes issue #75 acceptance criteria with concrete, testable thresholds
+instead of general intent. It gives engineering and QA one shared baseline to
+implement against and prevents accessibility regressions from slipping through
+TestFlight promotion.
+
+### Kobayashi Decision — macOS notarization gating and secrets
+
+- **Date:** 2026-05-02
+- **Issue:** #187
+
+Implemented notarization in `.github/workflows/ci-macos.yml` as a dedicated `notarize` job that depends on the existing macOS build job and is gated to `workflow_dispatch` and `v*` tag pushes only. This prevents consuming Apple notarization quota on every commit while still making release runs deterministic.
+
+The workflow now requires `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_ID`, `APPLE_TEAM_ID`, and `NOTARIZATION_PASSWORD`; these were documented in `README.md` under CI/CD so release setup is explicit and reproducible.
+
+### Edie Decision Inbox — TestFlight Product Baseline
+
+Date: 2026-05-02  
+Owner: Edie (PM)
+
+## Decision
+
+For the current TestFlight wave, issues #68, #183, #184, #185, and #201 are
+consolidated into one execution baseline:
+
+1. TestFlight release scope is iOS-only (iPhone portrait, touch-first).
+2. Version/build policy is locked (`CFBundleShortVersionString` from CMake
+   project version; monotonic `CFBundleVersion` per upload).
+3. Signing posture is locked (automatic Xcode signing for v1; no extra
+   Apple-service entitlements in v1).
+4. Telemetry/crash policy is Apple-first (MetricKit + TestFlight, zero
+   third-party SDK, no PII).
+5. Beta operations policy is locked (phased cohorts, defined feedback channels,
+   SLA, and go/no-go thresholds).
+
+## Follow-up Owners
+
+- Account metadata confirmation (Team ID, final App ID): `yashasg`
+- iOS archive/signing implementation: Hockney
+- Telemetry wiring implementation: Hockney + McManus
+- TF cohort operations and release gate execution: Kobayashi + Verbal
+- Build-number preflight gate automation: Kobayashi
+
+## Artifacts
+
+- `docs/testflight-product-baseline.md`
+- `ios/README.md`
+- `CHANGELOG.md`
+
+### Shape Selection — Deterministic Cycle with Bounded Randomness
+
+**Date:** 2026-05-02  
+**Owner:** Rabin (Level Designer)  
+**Scope:** `tools/level_designer.py` shape gate assignment
+
+**Decision:** Use deterministic cycle-first shape selection with bounded randomness:
+1. Base selection follows a section-local cycle
+2. Subdivision and short-gap groove can bias selection
+3. A deterministic jitter lane is occasionally allowed
+4. Hard cap prevents long single-shape runs (`max_same_shape_run = 2`)
+
+**Rationale:** Pure random shape picks reduce readability; pure cyclic behavior becomes repetitive. This hybrid keeps musical intent and learnability while avoiding long monotonous shape streaks.
+
+**Implementation notes:**
+- Deterministic seed per song+difficulty via SHA-256 (`deterministic_seed`)
+- Random source controlled (`random.Random(seed)`) in `assign_obstacles`
+- Shape run tracking state lives in `shape_state`, enforced in `assign_obstacle`
 
 ### Guardrails for Future Dispatcher Work
 
@@ -9922,3 +10015,41 @@ The previous single before/after check (`click` + `Enter`) masked mouse regressi
 ## Impact
 CI now detects desktop mouse click regressions independently of keyboard fallback behavior.
 
+
+# Decision: Center gameplay HUD shape buttons
+
+**Date:** 2026-05-02T01:27:43.700-07:00  
+**Owner:** Keaton  
+**Scope:** Gameplay HUD button slot positioning
+
+## Decision
+
+Center the three gameplay shape button slots in the 720px HUD layout by using:
+
+- Circle: `x = 130`
+- Square: `x = 290`
+- Triangle: `x = 450`
+
+Each slot remains `140x100` at `y = 1140`, preserving existing size and spacing while removing the previous left shift.
+
+## Rationale
+
+The prior positions (`60/220/380`) centered the row at `x = 290`, noticeably left of the viewport center (`x = 360`). The new positions center the row at `x = 360` while keeping button dimensions and relative spacing unchanged for input/render stability.
+
+# Decision: Non-destructive main sync with dirty worktree
+
+**Date:** 2026-05-02T01:27:43.700-07:00  
+**Owner:** Kobayashi  
+**Scope:** Local git sync operations when branch switching is blocked
+
+## Decision
+
+When `git switch main` is blocked by local modifications, do not stash or reset by default. Instead:
+
+1. `git fetch origin --prune`
+2. Verify fast-forward safety: `git merge-base --is-ancestor main origin/main`
+3. If safe, fast-forward local `main` ref non-destructively: `git branch -f main origin/main`
+
+## Rationale
+
+This updates local `main` to remote latest while preserving all in-progress working tree changes on the current branch. It avoids accidental conflicts or context loss from temporary stashes during quick sync-and-inventory tasks.

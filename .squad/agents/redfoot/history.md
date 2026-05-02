@@ -68,3 +68,4 @@ Fenster had already implemented the Help button and modal in `tools/beatmap-edit
 - `tools/beatmap-editor/index.html` — aria attrs on `#btn-help`, Esc shortcut row, footnote.
 - `tools/beatmap-editor/css/editor.css` — `.help-footnote` rule.
 - `tools/beatmap-editor/js/main.js` — `?` shortcut handler with form-field guard + close-button focus on open.
+- 2026-05-02: Completed TestFlight wave work; decision merged to decisions.md
