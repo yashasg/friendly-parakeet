@@ -82,6 +82,34 @@ TEST_CASE("player_input_rhythm: shape change pushes ShapeShift SFX", "[player][r
     CHECK(audio.queue[0] == SFX::ShapeShift);
 }
 
+TEST_CASE("player_input_rhythm: shape press also remaps lane target", "[player][rhythm]") {
+    auto reg = make_rhythm_registry();
+    auto player = make_rhythm_player(reg);
+    auto& lane = reg.get<Lane>(player);
+    REQUIRE(lane.current == 1);
+
+    auto btn = make_shape_button(reg, Shape::Triangle);
+    press_button(reg, btn);
+    player_input_system(reg, 0.016f);
+
+    CHECK(lane.target == 2);
+}
+
+TEST_CASE("player_input_rhythm: shape press does not set stale target when already in mapped lane",
+          "[player][rhythm]") {
+    auto reg = make_rhythm_registry();
+    auto player = make_rhythm_player(reg);
+    auto& lane = reg.get<Lane>(player);
+    lane.current = 0;
+    lane.target = -1;
+
+    auto btn = make_shape_button(reg, Shape::Circle);
+    press_button(reg, btn);
+    player_input_system(reg, 0.016f);
+
+    CHECK(lane.target == -1);
+}
+
 TEST_CASE("player_input_rhythm: lane change works in rhythm mode", "[player][rhythm]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
@@ -97,7 +125,7 @@ TEST_CASE("player_input_rhythm: lane change works in rhythm mode", "[player][rhy
 TEST_CASE("player_input: non-rhythm shape press changes immediately", "[player]") {
     auto reg = make_registry();
     // No SongState → freeplay mode
-    make_player(reg);
+    auto player = make_player(reg);
 
     auto btn = make_shape_button(reg, Shape::Square);
     press_button(reg, btn);
@@ -110,6 +138,9 @@ TEST_CASE("player_input: non-rhythm shape press changes immediately", "[player]"
         CHECK(ps.previous == Shape::Circle);
         CHECK(ps.morph_t == 1.0f);
     }
+
+    auto& lane = reg.get<Lane>(player);
+    CHECK(lane.target == -1);
 }
 
 TEST_CASE("player_input: non-rhythm same shape press does nothing", "[player]") {

@@ -48,15 +48,15 @@ static inline Rectangle GameplayHudLayout_PauseButtonBounds(const GameplayHudLay
 }
 
 static inline Rectangle GameplayHudLayout_CircleButtonBounds(const GameplayHudLayoutState *state) {
-    return (Rectangle){ state->Anchor01.x + 60, state->Anchor01.y + 1140, 140, 100 };
+    return (Rectangle){ state->Anchor01.x + 130, state->Anchor01.y + 1140, 140, 100 };
 }
 
 static inline Rectangle GameplayHudLayout_SquareButtonBounds(const GameplayHudLayoutState *state) {
-    return (Rectangle){ state->Anchor01.x + 220, state->Anchor01.y + 1140, 140, 100 };
+    return (Rectangle){ state->Anchor01.x + 290, state->Anchor01.y + 1140, 140, 100 };
 }
 
 static inline Rectangle GameplayHudLayout_TriangleButtonBounds(const GameplayHudLayoutState *state) {
-    return (Rectangle){ state->Anchor01.x + 380, state->Anchor01.y + 1140, 140, 100 };
+    return (Rectangle){ state->Anchor01.x + 450, state->Anchor01.y + 1140, 140, 100 };
 }
 
 static inline bool GameplayHudLayout_InputOnlyButton(Rectangle bounds) {

@@ -10,6 +10,16 @@
 #include "../components/rhythm.h"
 #include "../constants.h"
 
+static int8_t lane_for_shape_button(Shape shape) {
+    switch (shape) {
+        case Shape::Circle:   return 0;
+        case Shape::Square:   return 1;
+        case Shape::Triangle: return 2;
+        case Shape::Hexagon:  return -1;
+    }
+    return -1;
+}
+
 void player_input_handle_go(entt::registry& reg, const GoEvent& evt) {
     if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
     auto view = reg.view<PlayerTag, PlayerShape, ShapeWindow, Lane>();
@@ -39,6 +49,7 @@ void player_input_handle_press(entt::registry& reg, const ButtonPressEvent& evt)
     bool rhythm_mode = (song != nullptr && song->playing);
 
     auto pressed_shape = evt.shape;
+    auto shape_lane = lane_for_shape_button(pressed_shape);
 
     auto begin_shape_window = [&](entt::entity entity, PlayerShape& ps, ShapeWindow& sw) {
         Shape previous_shape = ps.current;
@@ -66,7 +77,13 @@ void player_input_handle_press(entt::registry& reg, const ButtonPressEvent& evt)
 
     auto view = reg.view<PlayerTag, PlayerShape, ShapeWindow, Lane>();
     for (auto [entity, pshape, swindow, lane] : view.each()) {
-        (void)lane;
+        if (shape_lane >= 0 && lane.current != shape_lane && lane.target != shape_lane) {
+            lane.target = shape_lane;
+            lane.lerp_t = 0.0f;
+            auto* hq = reg.ctx().find<HapticQueue>();
+            auto* st = reg.ctx().find<SettingsState>();
+            if (hq) haptic_push(*hq, !st || st->haptics_enabled, HapticEvent::LaneSwitch);
+        }
         if (rhythm_mode) {
             auto phase = swindow.phase;
             if (phase == WindowPhase::Idle) {

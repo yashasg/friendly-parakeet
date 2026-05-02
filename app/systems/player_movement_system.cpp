@@ -26,6 +26,10 @@ void player_movement_system(entt::registry& reg, float dt) {
         }
 
         // Lane transition
+        if (lane.target == lane.current) {
+            lane.target = -1;
+            lane.lerp_t = 1.0f;
+        }
         if (lane.target >= 0 && lane.target != lane.current) {
             lane.lerp_t += dt * constants::LANE_SWITCH_SPEED;
             float from_x = constants::LANE_X[lane.current];
