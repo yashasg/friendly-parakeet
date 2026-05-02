@@ -29,7 +29,7 @@ defines what is complete now versus what still needs explicit owners.
 - [x] Version propagation path documented.
 - [x] Bump policy documented.
 - [x] Changelog policy defined.
-- [ ] Pre-flight build-number bump gate implemented (engineering follow-up).
+- [x] Pre-flight build-number bump gate implemented (`tools/ios/preflight_cfbundle_version.sh`, wired in `.github/workflows/ci-macos.yml` release/notarize path).
 
 ### #184 — Lock iOS bundle identifier, team, and code-signing plan
 - [x] Bundle identifier decision documented (pending account-owner confirmation at Apple registration).
