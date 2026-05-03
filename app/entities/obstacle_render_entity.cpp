@@ -21,7 +21,7 @@ bool obstacle_model_lifecycle_wired(entt::registry& reg) {
     return state && state->wired;
 }
 
-int checked_shape_mesh_index(Shape shape) {
+uint8_t checked_shape_mesh_index(Shape shape) {
     switch (shape) {
         case Shape::Circle:
             return 0;
@@ -107,11 +107,11 @@ static void require_child_capacity(entt::registry& reg, entt::entity parent) {
 }
 
 static entt::entity add_slab_child(entt::registry& reg, entt::entity parent,
-                                   float x, float w, float d, float h, Color tint) {
+                                    float x, float w, float d, float h, Color tint) {
     require_child_capacity(reg, parent);
     auto e = reg.create();
     PendingEntity pending{reg, e};
-    reg.emplace<MeshChild>(e, MeshChild{parent, x, 0.0f, w, d, h, tint, MeshType::Slab, 0});
+    reg.emplace<MeshChild>(e, MeshChild{parent, x, 0.0f, w, d, h, tint, 0, MeshType::Slab});
     reg.emplace<TagWorldPass>(e);
     append_child(reg, parent, e);
     pending.release();
@@ -119,13 +119,13 @@ static entt::entity add_slab_child(entt::registry& reg, entt::entity parent,
 }
 
 static entt::entity add_shape_child(entt::registry& reg, entt::entity parent,
-                                     int mesh_index, float cx, float z_offset,
+                                     uint8_t mesh_index, float cx, float z_offset,
                                      float size, Color tint) {
     require_child_capacity(reg, parent);
     auto e = reg.create();
     PendingEntity pending{reg, e};
     reg.emplace<MeshChild>(e, MeshChild{parent, cx, z_offset, size, 0.0f, 0.0f, tint,
-                                        MeshType::Shape, mesh_index});
+                                        mesh_index, MeshType::Shape});
     reg.emplace<TagWorldPass>(e);
     append_child(reg, parent, e);
     pending.release();
@@ -158,13 +158,13 @@ void spawn_obstacle_meshes(entt::registry& reg, entt::entity logical) {
             if (!pos_ptr) break;
             const auto& pos = *pos_ptr;
             auto* req = reg.try_get<RequiredShape>(logical);
-            int mesh_index = 0;
+            uint8_t mesh_index = 0;
             if (req) {
                 mesh_index = checked_shape_mesh_index(req->shape);
             }
             // Shape gates now render as shape-only prompts (no side walls/slabs).
             if (req)
-                add_shape_child(reg, logical, mesh_index, pos.x, dsz.h/2,
+                add_shape_child(reg, logical, mesh_index, pos.x, 0.0f,
                                 40, col);
             break;
         }
@@ -180,7 +180,7 @@ void spawn_obstacle_meshes(entt::registry& reg, entt::entity logical) {
         case ObstacleKind::ComboGate: {
             auto* blocked = reg.try_get<BlockedLanes>(logical);
             auto* req = reg.try_get<RequiredShape>(logical);
-            int mesh_index = 0;
+            uint8_t mesh_index = 0;
             if (req) {
                 mesh_index = checked_shape_mesh_index(req->shape);
             }
@@ -195,7 +195,7 @@ void spawn_obstacle_meshes(entt::registry& reg, entt::entity logical) {
                     for (int i = 0; i < constants::LANE_COUNT; ++i)
                         if (!((blocked->mask >> i) & 1)) { open = i; break; }
                 add_shape_child(reg, logical, mesh_index, constants::LANE_X[open],
-                                 dsz.h/2, 30, {255, 255, 255, 180});
+                                 0.0f, 30, {255, 255, 255, 180});
             }
             break;
         }
@@ -206,7 +206,7 @@ void spawn_obstacle_meshes(entt::registry& reg, entt::entity logical) {
                 lane_index = checked_lane_index(rlane->lane);
             }
             auto* req = reg.try_get<RequiredShape>(logical);
-            int mesh_index = 0;
+            uint8_t mesh_index = 0;
             if (req) {
                 mesh_index = checked_shape_mesh_index(req->shape);
             }
@@ -217,7 +217,7 @@ void spawn_obstacle_meshes(entt::registry& reg, entt::entity logical) {
             if (req && rlane)
                 add_shape_child(reg, logical, mesh_index,
                                 constants::LANE_X[lane_index],
-                                dsz.h/2, 30, {255, 255, 255, 180});
+                                0.0f, 30, {255, 255, 255, 180});
             break;
         }
         default:

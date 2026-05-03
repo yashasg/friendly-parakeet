@@ -10,18 +10,17 @@
 enum class InputSource : uint8_t { None, Mouse, Touch };
 
 struct InputState {
-    bool  touch_down     = false;
-    bool  touch_up       = false;
-    bool  click          = false;
-    bool  touching       = false;
-    bool  quit_requested = false;
-
     float start_x  = 0.0f, start_y = 0.0f;
     float curr_x   = 0.0f, curr_y  = 0.0f;
     float end_x    = 0.0f, end_y   = 0.0f;
     float duration = 0.0f;
 
     InputSource active_source = InputSource::None;
+    bool  touch_down     = false;
+    bool  touch_up       = false;
+    bool  click          = false;
+    bool  touching       = false;
+    bool  quit_requested = false;
     bool was_focused = true;
     bool gestures_configured = false;
 };

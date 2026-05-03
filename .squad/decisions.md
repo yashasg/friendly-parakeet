@@ -1,6 +1,105 @@
 # Decisions Registry
 
 
+### Keaton scoring_system ctx Lookup Deduplication — Ralph Round 2
+
+**Date:** 2026-05-03  
+**Author:** Keaton (C++ Performance Engineer)  
+**File changed:** `app/systems/scoring_system.cpp`  
+**Loop:** Ralph perf+SOLID iteration (Round 2)
+
+## Target System
+
+`scoring_system` — benchmarked at **~39.8 ns** (no scored obstacles, 10 in registry) / **~40.3 ns** (5 scored) before this change.
+
+## What Was Inefficient
+
+Two redundant `ctx.find<ScoringSystemScratch>()` hash lookups per frame:
+
+```cpp
+// Before (simplified):
+auto& miss_buf = scoring_scratch_for(reg).miss_buf;   // find() #1
+// ...
+auto& hit_buf  = scoring_scratch_for(reg).hit_buf;    // find() #2 — always hits same entry
+```
+
+`scoring_scratch_for` is a find-or-emplace helper (exempt from eager-init because it's a scratch accumulator). In steady state, both calls hit the ctx map and dereference to the same struct. The second call was a waste.
+
+Additionally, `popup_queue_for(reg)` was hoisted unconditionally before the miss pass but the queue is only written inside the *hit processing* loop. On frames with no scored hits (the common case), the lookup was paid for but the result never used.
+
+## What Changed
+
+1. **Hoisted scratch lookup once** — `auto& scratch = scoring_scratch_for(reg)` at the top of the function body, then `scratch.miss_buf` and `scratch.hit_buf` accessed directly. Eliminates one `ctx.find<ScoringSystemScratch>()` call per frame.
+
+2. **Deferred popup_queue lookup** — moved `popup_queue_for(reg)` inside a `if (!hit_buf.empty())` guard. On frames with no scored obstacles (typical mid-song frame), the lookup is skipped entirely.
+
+No logic change. Output is identical for all inputs.
+
+## Before / After
+
+| Benchmark | Before | After | Δ |
+|---|---|---|---|
+| scoring_system — no scored obstacles | 39.8 ns | 37.3 ns | −6.3% |
+| scoring_system — 5 scored obstacles | 40.3 ns | 37.3 ns | −7.5% |
+
+Full frame typical unchanged within noise (~287 ns). scoring_system saves ~2.5–3 ns per call.
+
+## Notes
+
+- `ScoringSystemScratch` remains intentionally optional (not eagerly emplaced) per canonical pattern.
+- `PendingEnergyEffects` and `ScorePopupRequestQueue` remain lazy — they are inter-system message queues, not singletons with startup guarantees in all registries.
+- Build passes zero-warning with `-Wall -Wextra -Werror`. All 2209 assertions / 771 test cases pass.
+
+### Keyser Post-Keaton-1 scroll_system SOLID Audit — Ralph Round 2
+
+**Date:** 2026-05-03T03:54:52-07:00  
+**Author:** Keyser (Lead Architect)  
+**Subject:** Post-refactor SOLID audit of `app/systems/scroll_system.cpp`  
+**Verdict:** Module health: **yellow**  
+**Loop:** Ralph perf+SOLID iteration (Round 2)
+
+#### Audit Results
+
+##### S — Single Responsibility 🟡 Minor smell
+
+The function carries two distinct concerns:
+1. **Rhythm obstacle scrolling** — `model_beat_view` + `beat_view` (ObstacleTag required, song-time derived)
+2. **General entity motion** — `vel_view` (Position + Velocity, no ObstacleTag) + `motion_view` (WorldTransform + MotionVelocity, no ObstacleTag)
+
+`vel_view` and `motion_view` have no `ObstacleTag` constraint; they sweep particles, popups, and any future moving entity regardless of type. The system is named "scroll" but doubles as a general motion integrator.
+
+**Recommendation:** Extract `vel_view` + `motion_view` loops into a separate `motion_system`. scroll_system becomes obstacle-only; motion_system handles dt-integrated WorldTransform+MotionVelocity and legacy Position+Velocity entities.
+
+##### O — Open/Closed 🟡 Minor smell
+
+New motion modes require adding a view+loop block inside scroll_system. Tolerable in ECS — views act as the extension point — but the obstacle-specific and general-motion concerns are already diverging. A 6th view for a new concern (e.g., background parallax) adds to a function that shouldn't own it.
+
+**Recommendation:** Resolved by the SRP split above — once general motion is in motion_system, scroll_system's expansion surface narrows to obstacle-domain changes only.
+
+##### L — Liskov Substitution 🟢 Clean
+
+No virtual dispatch or inheritance. Component access patterns are consistent within each path.
+
+##### I — Interface Segregation 🟢 Clean
+
+All five views claim exactly what they use. Existential tag `ObstacleTag` is used as a filter (correct); data components are bound in the structured binding and used in the loop body.
+
+##### D — Dependency Inversion 🟢 Clean
+
+Singleton resolution via `reg.ctx().get<GameState>()` and `reg.ctx().find<SongState>()`. No file-statics or raw globals. `constants::SPAWN_Y` is compile-time. Clean.
+
+#### Most Impactful Improvement
+
+**Extract `vel_view` + `motion_view` into `motion_system`.** This eliminates the SRP smell and constrains scroll_system to obstacle scrolling only. With `Position`/`Velocity` already marked legacy (`transform.h` comments), this split also positions the migration cleanup cleanly — motion_system owns legacy → WorldTransform bridge; scroll_system stays rhythm/obstacle-domain.
+
+No code broken by this split today; the two views are independent of the rhythm views and have no shared state.
+
+#### Notes
+
+- Keaton's refactor (view collapse 9→5, `(void)entity` casts, variable renames) was correct and improved clarity. The SRP smell was pre-existing, not introduced by the refactor.
+- This is an advisory note, not a blocker. The module is functionally sound.
+- Action item: Extract motion_system in Keaton round 3 (parallel task in-flight; Scribe will merge in round 3).
+
 ### Keaton Singleton Eager-Init Refactor — Benchmark Verification
 
 **Date:** 2026-05-03  

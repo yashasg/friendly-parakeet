@@ -6,9 +6,36 @@
 - **Role:** Lead Architect
 - **Joined:** 2026-04-26T02:07:46.542Z
 
+# Keyser — History
+
+## Core Context
+
+- **Project:** A C++20 raylib/EnTT rhythm bullet hell game with song-driven obstacles and shape matching synced to music.
+- **Role:** Lead Architect
+- **Joined:** 2026-04-26T02:07:46.542Z
+
 ## Learnings
 
-- Post-raygui migration, runtime no longer spawns menu ECS hit targets (`MenuButtonTag + HitBox`); menu interactions are handled directly in raygui screen controllers.
+### 2026-05-03 — Ralph Round 2: scroll_system Post-Refactor SOLID Audit
+
+**Loop:** Ralph perf+SOLID iteration (Round 2)  
+**Task:** Audit scroll_system after Keaton's view consolidation (refactor pre-dating Ralph loop)  
+**Verdict:** Module health: 🟡 (yellow — SRP minor smell, otherwise clean)
+
+**Findings:**
+- **S (SRP) 🟡:** Function carries two concerns: rhythm obstacle scrolling (`model_beat_view` + `beat_view`) + general entity motion (`vel_view` + `motion_view` without ObstacleTag constraint). The "scroll" system doubles as motion integrator for particles/popups.
+- **O (Open/Closed) 🟡:** New motion modes add view+loop blocks inside scroll_system; concern divergence already visible.
+- **L (Liskov), I (Interface), D (Dependency) 🟢:** Clean — no virtual dispatch, views claim exactly what they use, singleton resolution is canonical.
+
+**Recommendation:** Extract `vel_view` + `motion_view` into separate `motion_system`. scroll_system narrows to obstacle-only; motion_system owns legacy Position+Velocity bridge + WorldTransform+MotionVelocity integration. No production breakage — views are independent of rhythm views with no shared state.
+
+**Action (in-flight):** Keaton round 3 will extract motion_system in parallel. Scribe round 3 will merge.
+
+**Decision:** `.squad/decisions.md` (merged from inbox, Round 2)
+
+**Generalized Anti-Pattern:** **Tagless view pairs (vel_view, motion_view without component filter) hidden inside named "rhythm" systems.** When splitting systems, verify constraints at each view site. If a system carries concerns, its views should make that visible via explicit filtering (tags, component subsets). Otherwise, layered or unrelated systems accumulate in one function — a strong SRP smell.
+
+### 2026-04-29T08:05:08Z — Root UI Surface Cleanup & Test-Only Component Removal (Session)
 - ActiveTag/ActiveInPhase currently remain runtime-live only for gameplay shape buttons (`ShapeButtonTag + HitCircle`) consumed by `hit_test_handle_input`.
 - Archetype-to-entity migration rule: when runtime and tests call `app/entities/*_entity.h` factories directly, any remaining `app/archetypes/` forwarding header is dead surface and should be removed.
 - Decommission checklist for namespace-folder migrations: remove include shims, remove CMake source globs for the retired folder, and scrub stale docs/comments that still mark the old folder as canonical.

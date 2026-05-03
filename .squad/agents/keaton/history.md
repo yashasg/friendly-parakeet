@@ -7,7 +7,31 @@
 - **Role:** C++ Performance Engineer
 - **Joined:** 2026-04-26T02:09:15.781Z
 
+# Keaton — History
+
+## Core Context
+
+- **Owner:** yashasg
+- **Project:** A C++20 raylib/EnTT rhythm bullet hell game with song-driven obstacles and shape matching synced to music.
+- **Role:** C++ Performance Engineer
+- **Joined:** 2026-04-26T02:09:15.781Z
+
 ## Learnings
+
+### 2026-05-03 — Ralph Round 2: scoring_system ctx Lookup Deduplication
+
+**Loop:** Ralph perf+SOLID iteration (Round 2)  
+**Task:** Profile and optimize `scoring_system` hot path  
+**Approach:** Identified redundant `ctx.find<ScoringSystemScratch>()` calls (2 per frame → 1) and deferred `popup_queue_for()` lookup behind emptiness guard.
+
+**Result:**
+- scoring_system: 39.8–40.3 ns → **37.3 ns** (−6.3%–−7.5%)
+- Full frame: ~287 ns (unchanged within noise)
+- All 2209 assertions / 771 test cases pass
+
+**Generalized Finding:** **Hot loops often hide redundant `ctx.find<>()` calls and unconditional sub-loop work that should be guarded on emptiness.** Canonical pattern: hoist `ctx.find<>()` once per function call (outside all loops), store result in a local reference. Deferred lookups for inter-system queues belong inside conditional guards (e.g., `if (!buffer.empty())`). Measure before and after to confirm cache/locality gains.
+
+**Decision:** `.squad/decisions.md` (merged from inbox, Round 2)
 
 ### 2026-05-03 — EnTT ctx Singleton Eager-Init
 

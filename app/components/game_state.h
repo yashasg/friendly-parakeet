@@ -52,6 +52,12 @@ struct GameState {
     EndScreenChoice end_choice = EndScreenChoice::None;
 };
 
+inline void enter_phase(GameState& gs, GamePhase next_phase) {
+    gs.previous_phase = gs.phase;
+    gs.phase = next_phase;
+    gs.phase_timer = 0.0f;
+}
+
 struct LevelInfo {
     const char* title;
     const char* beatmap_path;

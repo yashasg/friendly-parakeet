@@ -81,7 +81,8 @@ void scoring_system(entt::registry& reg, float dt) {
     auto* results = reg.ctx().find<SongResults>();   // #309: hoisted above loop
     auto* gos     = reg.ctx().find<GameOverState>();
 
-    auto& popup_queue = popup_queue_for(reg);
+    // Hoist single scratch lookup — miss_buf and hit_buf share the same struct.
+    auto& scratch = scoring_scratch_for(reg);
 
     // ── Miss pass ────────────────────────────────────────────────────────────
     // Structural view: only entities carrying MissTag.
@@ -92,7 +93,7 @@ void scoring_system(entt::registry& reg, float dt) {
     // mid-iteration would swap-and-pop the pool (UB). Collect entities during
     // the read pass, apply removals after the view is exhausted. (#315)
     {
-        auto& miss_buf = scoring_scratch_for(reg).miss_buf;
+        auto& miss_buf = scratch.miss_buf;
         miss_buf.clear();
 
         auto miss_view = reg.view<ObstacleTag, ScoredTag, MissTag, Obstacle>();
@@ -123,7 +124,7 @@ void scoring_system(entt::registry& reg, float dt) {
     //
     // EnTT safety: same collect-then-remove pattern as miss pass. (#315)
     {
-        auto& hit_buf = scoring_scratch_for(reg).hit_buf;
+        auto& hit_buf = scratch.hit_buf;
         hit_buf.clear();
 
         auto hit_view = reg.view<ObstacleTag, ScoredTag, Obstacle, Position>(
@@ -150,6 +151,8 @@ void scoring_system(entt::registry& reg, float dt) {
             hit_buf.push_back(r);
         }
 
+        if (!hit_buf.empty()) {
+        auto& popup_queue = popup_queue_for(reg);
         for (auto& r : hit_buf) {
             // LanePush is passive scenery — excluded from the scoring ladder:
             // no score popup, no chain contribution.
@@ -208,6 +211,7 @@ void scoring_system(entt::registry& reg, float dt) {
             reg.remove<ScoredTag>(r.e);
             if (r.has_timing) reg.remove<TimingGrade>(r.e);
         }
+        } // !hit_buf.empty()
     }
 
     // Smooth score display

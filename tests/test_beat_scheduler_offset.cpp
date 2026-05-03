@@ -185,7 +185,7 @@ TEST_CASE("offset_semantics: first authored beat_index=N>0 arrives after offset"
 }
 
 TEST_CASE("offset_semantics: offset must not be zero when pipeline sets it from first beat", "[beat_scheduler][offset][issue137]") {
-    // The pipeline sets offset = beats[0] (the first aubio-detected beat timestamp).
+    // The pipeline sets offset = beats[0] (the first detected beat timestamp).
     // beats[0] is typically > 0 (songs have some lead-in silence before the downbeat).
     // If offset were forced to 0.0, all beat_index=0 arrivals would land at t=0,
     // but the first authored obstacle (beat_index >= 2) would arrive at

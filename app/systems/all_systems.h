@@ -4,6 +4,7 @@
 #include "../components/game_state.h"
 
 // Phase 0: Raw input (polls raylib input)
+void input_system_init(entt::registry& reg);  // one-time: emplace WebInputPolicy + platform detection
 void input_system(entt::registry& reg, float raw_dt);
 
 // Phase 0.5: Test player AI (enqueues synthetic input actions)
@@ -26,6 +27,7 @@ void player_movement_system(entt::registry& reg, float dt);
 
 // Phase 5: World
 void scroll_system(entt::registry& reg, float dt);
+void motion_system(entt::registry& reg, float dt);
 void collision_system(entt::registry& reg, float dt);
 void miss_detection_system(entt::registry& reg, float dt);
 void scoring_system(entt::registry& reg, float dt);

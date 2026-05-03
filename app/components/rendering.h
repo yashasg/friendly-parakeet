@@ -27,6 +27,14 @@ struct ScreenTransform {
     float scale    = 1.0f;
 };
 
+[[nodiscard]] inline Vector2 screen_to_virtual(Vector2 screen_pos,
+                                               const ScreenTransform& st) noexcept {
+    return {
+        (screen_pos.x - st.offset_x) / st.scale,
+        (screen_pos.y - st.offset_y) / st.scale
+    };
+}
+
 // ── Model-to-world transform ────────────────────────────────────────────────
 // Computed by game_camera_system each frame from Position/Size/Shape.
 // Consumed by game_render_system for DrawMesh calls.
@@ -36,8 +44,8 @@ enum class MeshType : uint8_t { Shape, Slab, Quad };
 struct ModelTransform {
     Matrix   mat;
     Color    tint;
+    uint8_t  mesh_index = 0;  // index into ShapeMeshes.shapes[] for Shape type
     MeshType mesh_type;
-    int      mesh_index;  // index into ShapeMeshes.shapes[] for Shape type
 };
 
 // Visual mesh child of a logical entity (e.g., obstacle slabs, ghost shapes).
@@ -51,8 +59,8 @@ struct MeshChild {
     float depth;         // slab depth (game coords)
     float height;        // slab height (game coords)
     Color tint;
+    uint8_t mesh_index = 0;  // index into ShapeMeshes.shapes[] for Shape type
     MeshType mesh_type;
-    int mesh_index;      // index into ShapeMeshes.shapes[] for Shape type
 };
 
 // ── Mesh-child ownership ─────────────────────────────────────────────────────

@@ -100,6 +100,7 @@ void game_loop_init(entt::registry& reg,
     reg.ctx().emplace<InputState>();
     reg.ctx().emplace<entt::dispatcher>();
     wire_input_dispatcher(reg);
+    input_system_init(reg);
     reg.ctx().emplace<GameState>(GameState{
         .phase = GamePhase::Title, .previous_phase = GamePhase::Title,
         .phase_timer = 0.0f, .transition_pending = false,
@@ -186,15 +187,19 @@ static void tick_fixed_systems(entt::registry& reg, float dt) {
     shape_window_system(reg, dt);
     player_movement_system(reg, dt);
     scroll_system(reg, dt);
+    motion_system(reg, dt);
     collision_system(reg, dt);
     miss_detection_system(reg, dt);
     scoring_system(reg, dt);
-    // Scoring enqueues popup intents; popup_feedback_system owns popup spawn/SFX.
+    // Keep obstacle lifecycle systems contiguous while obstacle component pools
+    // are still hot in cache from scroll/collision/miss/scoring passes.
+    obstacle_despawn_system(reg, dt);
+    // Keep score-feedback chain contiguous (queue -> popup spawn -> popup state)
+    // while popup/score pools are warm.
     popup_feedback_system(reg, dt);
+    popup_display_system(reg, dt);
     energy_system(reg, dt);
     particle_system(reg, dt);
-    obstacle_despawn_system(reg, dt);
-    popup_display_system(reg, dt);
 }
 
 // One frame: input → fixed timestep → render → blit → audio.
