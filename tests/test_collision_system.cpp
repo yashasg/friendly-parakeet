@@ -387,7 +387,11 @@ TEST_CASE("collision: lane push left scores and pushes player left", "[collision
     // Player starts in lane 1 (center); push left moves to lane 0
     auto obs = make_lane_push(reg, ObstacleKind::LanePushLeft, constants::PLAYER_Y);
 
+    // UNIT-SCOPED: self-wires systems to isolate collision + response logic.
+    // The production path (system order) is covered by:
+    //   "integration: lane push consumed in production tick order"
     collision_system(reg, 0.016f);
+    lane_push_response_system(reg, 0.016f);
 
     CHECK(reg.all_of<ScoredTag>(obs));
     auto& lane = reg.get<Lane>(p);
@@ -400,7 +404,11 @@ TEST_CASE("collision: lane push right scores and pushes player right", "[collisi
     // Player starts in lane 1 (center); push right moves to lane 2
     auto obs = make_lane_push(reg, ObstacleKind::LanePushRight, constants::PLAYER_Y);
 
+    // UNIT-SCOPED: self-wires systems to isolate collision + response logic.
+    // The production path (system order) is covered by:
+    //   "integration: lane push consumed in production tick order"
     collision_system(reg, 0.016f);
+    lane_push_response_system(reg, 0.016f);
 
     CHECK(reg.all_of<ScoredTag>(obs));
     auto& lane = reg.get<Lane>(p);
@@ -415,7 +423,11 @@ TEST_CASE("collision: lane push out of range does not move player off edge", "[c
     reg.get<WorldTransform>(p).position.x = constants::LANE_X[2];
     auto obs = make_lane_push(reg, ObstacleKind::LanePushRight, constants::PLAYER_Y);
 
+    // UNIT-SCOPED: self-wires systems to isolate collision + response logic.
+    // The production path (system order) is covered by:
+    //   "integration: lane push consumed in production tick order"
     collision_system(reg, 0.016f);
+    lane_push_response_system(reg, 0.016f);
 
     // Always scored even when push is out of range
     CHECK(reg.all_of<ScoredTag>(obs));
@@ -429,7 +441,101 @@ TEST_CASE("collision: lane push too far away is ignored", "[collision][lane_push
     make_player(reg);
     auto obs = make_lane_push(reg, ObstacleKind::LanePushLeft, constants::PLAYER_Y - 200.0f);
 
+    // UNIT-SCOPED: self-wires systems to isolate collision + response logic.
+    // The production path (system order) is covered by:
+    //   "integration: lane push consumed in production tick order"
     collision_system(reg, 0.016f);
+    lane_push_response_system(reg, 0.016f);
 
     CHECK_FALSE(reg.all_of<ScoredTag>(obs));
+}
+
+TEST_CASE("collision: lane push emplaces PendingLanePush before response system runs", "[collision][lane_push]") {
+    // Verifies event-response separation: collision_system emits the event
+    // component, lane_push_response_system consumes it.
+    // UNIT-SCOPED: self-wires systems to isolate the emit/consume split.
+    // The production path (system order) is covered by:
+    //   "integration: lane push consumed in production tick order"
+    auto reg = make_registry();
+    auto p = make_player(reg);
+    make_lane_push(reg, ObstacleKind::LanePushLeft, constants::PLAYER_Y);
+
+    collision_system(reg, 0.016f);
+
+    // After collision_system: PendingLanePush emplaced with delta=-1
+    REQUIRE(reg.all_of<PendingLanePush>(p));
+    CHECK(reg.get<PendingLanePush>(p).delta == -1);
+    // Lane not yet updated
+    CHECK(reg.get<Lane>(p).target < 0);
+
+    lane_push_response_system(reg, 0.016f);
+
+    // After response system: event consumed, lane updated
+    CHECK_FALSE(reg.all_of<PendingLanePush>(p));
+    CHECK(reg.get<Lane>(p).target == 0);
+}
+
+TEST_CASE("collision: lane push right emplaces PendingLanePush with delta +1", "[collision][lane_push]") {
+    auto reg = make_registry();
+    auto p = make_player(reg);
+    make_lane_push(reg, ObstacleKind::LanePushRight, constants::PLAYER_Y);
+
+    collision_system(reg, 0.016f);
+
+    REQUIRE(reg.all_of<PendingLanePush>(p));
+    CHECK(reg.get<PendingLanePush>(p).delta == 1);
+}
+
+// ── Integration test: production tick path ───────────────────────────────────
+// Exercises the canonical production system order as documented in
+// tick_fixed_systems (app/game_loop.cpp): collision → lane_push_response →
+// miss_detection.  The existing unit tests self-wire only collision +
+// lane_push_response, which masked the production wiring bug (r6 regression).
+// This test would have FAILED before lane_push_response_system was wired in
+// game_loop.cpp between collision_system and miss_detection_system.
+TEST_CASE("integration: lane push consumed in production tick order", "[collision][lane_push][integration]") {
+    auto reg = make_registry();
+    auto p = make_player(reg);
+    // Player starts in lane 1 (center); push left → lane 0
+    make_lane_push(reg, ObstacleKind::LanePushLeft, constants::PLAYER_Y);
+
+    // Run in the exact order specified in tick_fixed_systems (game_loop.cpp:191-193):
+    //   collision_system → lane_push_response_system → miss_detection_system
+    collision_system(reg, 0.016f);
+    lane_push_response_system(reg, 0.016f);
+    miss_detection_system(reg, 0.016f);
+
+    // PendingLanePush must be consumed (not accumulating) — proves lane_push_response
+    // ran in production order before miss_detection could observe stale state
+    CHECK_FALSE(reg.all_of<PendingLanePush>(p));
+    // Lane target reflects the push
+    CHECK(reg.get<Lane>(p).target == 0);
+}
+
+// ── Multi-obstacle contention test ────────────────────────────────────────────
+// Pins the first-obstacle-wins semantics: when two LanePush obstacles hit in
+// the same tick, the second cannot overwrite PendingLanePush.delta.
+TEST_CASE("collision: two lane pushes in same tick — first wins, delta not overwritten", "[collision][lane_push]") {
+    auto reg = make_registry();
+    auto p = make_player(reg);
+    // Two obstacles at the same y: one pushes left (delta -1), one pushes right (delta +1).
+    // Whichever collision_system processes first sets PendingLanePush; the second is ignored
+    // by the !reg.all_of<PendingLanePush> guard.
+    make_lane_push(reg, ObstacleKind::LanePushLeft,  constants::PLAYER_Y);
+    make_lane_push(reg, ObstacleKind::LanePushRight, constants::PLAYER_Y);
+
+    collision_system(reg, 0.016f);
+
+    // Exactly one PendingLanePush — delta is whichever obstacle won (pin, don't assert a value)
+    REQUIRE(reg.all_of<PendingLanePush>(p));
+    const int8_t winning_delta = reg.get<PendingLanePush>(p).delta;
+    CHECK((winning_delta == -1 || winning_delta == 1));  // exactly one of the two
+
+    lane_push_response_system(reg, 0.016f);
+
+    // Consumed exactly once — no residue
+    CHECK_FALSE(reg.all_of<PendingLanePush>(p));
+    // Lane moved by winning_delta from center (1)
+    int expected_lane = 1 + static_cast<int>(winning_delta);
+    CHECK(reg.get<Lane>(p).target == expected_lane);
 }

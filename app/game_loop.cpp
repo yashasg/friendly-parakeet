@@ -189,6 +189,7 @@ static void tick_fixed_systems(entt::registry& reg, float dt) {
     scroll_system(reg, dt);
     motion_system(reg, dt);
     collision_system(reg, dt);
+    lane_push_response_system(reg, dt);
     miss_detection_system(reg, dt);
     scoring_system(reg, dt);
     // Keep obstacle lifecycle systems contiguous while obstacle component pools
