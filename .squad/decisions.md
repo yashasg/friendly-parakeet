@@ -11815,29 +11815,42 @@ Keaton-r10 verified via failing test: `test_entt_dispatcher_contract.cpp:290` ex
 
 ---
 
-### 🔴 CRITICAL: R9 Order Regression — Popup Feedback + Energy Moved Pre-Despawn
+### 🟢 RESOLVED in R11: Order Regression — Popup Feedback + Energy Restored to Post-Despawn
 
-**Status:** Identified in Keyser-r10 audit; fix in flight (Keaton-r11-order-fix)
+**Original Issue:** In R9, `popup_feedback_system` and `energy_system` were moved into `tick_playing_systems` (pre-despawn). Keyser-r10 audit identified this as a regression: broke design intent and comment at `game_loop.cpp:188` ("score-feedback chain contiguous").
 
-**Impact:** Popup feedback and energy_system run before obstacle despawn, breaking original design intent and comment at `game_loop.cpp:188` ("score-feedback chain contiguous").
+**Resolution:** Keaton-r11 picked option (a) — conservative revert. Both systems pulled back out of the runner; restored post-despawn order in `fixed_tick_runner.cpp`. Guards re-added at both systems (phase-check). New order:
 
-**Workaround:** None; design fidelity requires revert or explicit documentation + comment update.
+```
+tick_playing_systems(17)    ← runner: beat_log…scoring (11 calls now)
+obstacle_despawn_system(20)
+popup_feedback_system(27)   ← restored here
+popup_display_system(28)
+energy_system(29)           ← restored here
+particle_system(30)
+```
 
-**ETA Fix:** Keaton R11
+**Integration test:** New `[order_regression]` test in `test_phase_runner.cpp` verifies both systems consume their queues (doesn't enforce strict ordering — behavioral risk is low per Keyser-r10 notes; invariant comment in `fixed_tick_runner.cpp:21–26` is primary guard).
+
+**Audit accuracy note:** Keyser's r8/r9 "double-guard redundancy" claim was explicitly retracted in r11 after tracing the full dispatcher invocation path. Guards are necessary for callbacks that fire outside the runner gate (traced in `test_entt_dispatcher_contract.cpp:290`). This is a feature, not a flaw — retracting incorrect audit findings keeps the historical record honest.
+
+**Status:** ✅ Resolved r11; design fidelity restored
 
 ---
 
-## Round 10 Module Health Snapshot
+## Round 11 Module Health Snapshot
 
 | Module | Status | Notes | Audit Ref |
 |--------|--------|-------|-----------|
-| **scoring_system** | 🟢 | Kind-free; full OCP (R8 verified) | Keyser-r8 |
-| **collision_system** | 🟡 | SongResults mutation in test contexts; flagged for R12 scope (SRP violation) | Keaton-r9; Keyser-r10 |
+| **scoring_system** | 🟢 | Kind-free; full OCP (R8 verified); TimingGrade consumer (R11 prep note) | Keyser-r8; Keyser-r11 |
+| **collision_system** | 🟡 | SongResults mutation flagged for R12 SRP refactor (Keyser-r11 scope: move 7 lines `:82–89` to scoring_system) | Keaton-r9; Keyser-r10,r11 |
 | **motion_system** | 🟡 | Migration-bridge pattern established (R4); bridge comment in place; verified correct | Keyser-r4 |
-| **lane_push_response_system** | 🟢 | New (R6); event-consumed; insertion order preserved (R8); runner-level (R9); integration test verified (R10) | Keaton-r6,r8,r10; Keyser-r9 |
-| **playing_systems_runner** | 🔴 | New (R9); SOLID clean; 13 systems called; 11 guards dropped; **🔴 order regression: popup_feedback + energy pre-despawn; fix in flight (R11)** | Keaton-r9,r10; Keyser-r10 |
-| **fixed_tick_runner** | 🟢 | New (R10); test infrastructure; exposes production tick to tests; SOLID clean | Keaton-r10 |
-| **player_input_system** | 🟢 | Double-guard verified necessary (dispatcher callbacks run outside runner); not redundant (R8/R9 claim retracted) | Keaton-r10 |
+| **lane_push_response_system** | 🟢 | Event-consumed; insertion order preserved; integration test verified | Keaton-r6,r8,r10; Keyser-r9 |
+| **playing_systems_runner** | 🟢 | Now 11 calls (reduced from 13 in r10); order regression fixed (popup_feedback + energy restored post-despawn) | Keaton-r11; Keyser-r10 |
+| **fixed_tick_runner** | 🟢 | Test infrastructure; new r11 `[order_regression]` test covers popup_feedback + energy chain | Keaton-r10,r11 |
+| **popup_feedback_system** | 🟢 | Guard restored (phase-check); located post-despawn as designed | Keaton-r11 |
+| **energy_system** | 🟢 | Guard restored (phase-check); located post-despawn as designed | Keaton-r11 |
+| **player_input_system** | 🟢 | Double-guard verified necessary (dispatcher callbacks run outside runner); not redundant | Keaton-r10 |
 
 ---
 
@@ -11854,5 +11867,94 @@ Keaton-r10 verified via failing test: `test_entt_dispatcher_contract.cpp:290` ex
 **Implementation:** Add `.github/scripts/check_wiring.sh` CI job or inline check in existing lint step.
 
 **Low-cost:** Grep-based, no code change required; simple append to CI.
+
+---
+
+## Test Count Anomaly Tracking
+
+**Observation:** Keaton has reported inconsistent test counts in two consecutive rounds:
+- **R9:** Reported "781 cases / 2238 assertions" (later corrected: actual was 797 cases)
+- **R11:** Reported "783 cases / 2247 assertions" (measured live; Keyser-r12 is forensic-checking)
+
+**Root cause (R9):** Stale binary or test discovery timing before `test_phase_runner.cpp` was fully compiled.
+
+**R11 status:** Keaton measured 783 cases; Keyser-r10 verified 798 cases / 2240 assertions. Discrepancy: −15 cases. Keyser-r12 is tracing whether this is a stale-build artifact or a behavioral change.
+
+**Process concern:** If count misreports continue, this becomes worth surfacing as a CI/measurement hygiene issue. For now, treat as data point; Keyser-r12 forensic will clarify.
+
+---
+
+## Keaton's Heuristics Log
+
+### Round 11 Pattern: Conservative Revert on Order Regression
+
+**Pattern:** When restoring ordering after a refactor regression, the simpler path is conservative revert (option a in Keaton-r11) rather than restructuring. Re-add the per-system guards even if it feels like undoing prior cleanup — they protect correctness when the system is no longer runner-gated.
+
+**Evidence:** R11 order fix moved `popup_feedback_system` and `energy_system` back out of `tick_playing_systems`. Adding guards back was the quick path; restructuring would have required re-gating the runner or splitting concerns further. Simpler won.
+
+**Cost-benefit:** +2 guards, −2 systems from runner, +1 integration test. Design intent preserved. Code review load slightly increases (guards split across files), but correctness gain > cognitive load (per Keyser-r10 reasoning).
+
+**Lesson:** When order matters and you regress, revert conservatively first. Refactor structure later if perf or readability demands it.
+
+---
+
+## Keyser's Heuristics Log
+
+### Round 11 Pattern: Retracting Audit Findings
+
+**Pattern:** Retracting an audit finding when proven wrong is a virtue, not a fault. Cite the contradicting evidence (e.g., `test_entt_dispatcher_contract.cpp:290` in this case) and document the corrected understanding (e.g., event-dispatcher callbacks fire OUTSIDE the runner). Future audits should trace dispatcher.update<...>() before declaring guards redundant.
+
+**Evidence:** Keyser-r8/r9 claimed `player_input_system` guards were redundant (both check GamePhase::Playing). Keaton-r10 traced the full path: `game_state_system` calls `disp.update<GoEvent>()` BEFORE the runner gate. Dropping the guard fails the dispatcher-contract test.
+
+**Meta-lesson:** Audits are hypotheses. Honest retraction on disproof is the only way to build trust. The fact that an incorrect audit finding was caught and corrected is a sign the process is working, not that it failed.
+
+---
+
+## Orchestration Log
+
+| Round | Agent | Decision File | Status | Notes |
+|-------|-------|---------------|--------|-------|
+| 1–10 | Various | (see inbox archive) | ✅ Complete | Foundation, motion bridge, phase runner |
+| **11** | **Keaton** | **keaton-r11-order-fix.md** | **✅ Merged** | Fixed order regression (popup_feedback + energy back post-despawn); re-added guards; new [order_regression] test |
+| **11** | **Keyser** | **keyser-r11-testfix-audit-and-collision-scope.md** | **✅ Merged** | r10 audit clean; retracted double-guard claim; r12 collision scope (move 7 lines from collision to scoring) |
+| 12 (in flight) | Keaton | keaton-r12-collision-srp.md | 🔄 In flight | Collision SongResults count refactor (per Keyser-r11 scope) |
+| 12 (in flight) | Keyser | keyser-r12-order-and-count.md | 🔄 In flight | Forensic: test count discrepancy (783 vs 798); order invariant split visibility |
+
+---
+
+## Session Log — Round 11
+
+**Date:** 2026-05-04  
+**Scribe:** Ralph (logging cycle)
+
+### Entry 11.1: Inbox Merge (Keaton + Keyser R11 decisions)
+
+Merged two r11 decision files:
+- `keaton-r11-order-fix.md` — Order regression resolved; moved `popup_feedback_system` and `energy_system` back to post-despawn; guards re-added; new `[order_regression]` integration test.
+- `keyser-r11-testfix-audit-and-collision-scope.md` — r10 audit verified; double-guard claim retracted (evidence: `test_entt_dispatcher_contract.cpp:290`); r12 collision scope identified (7-line SongResults count move).
+
+### Entry 11.2: 🔴 → 🟢 Transition
+
+Updated the critical section: `🔴 CRITICAL: R9 Order Regression` → `🟢 RESOLVED in R11: Order Regression — Popup Feedback + Energy Restored to Post-Despawn`.
+
+Added audit accuracy note: Keyser explicitly retracted the r8/r9 "double-guard redundancy" claim. Traced full dispatcher invocation path. Guards are necessary for callbacks outside runner gate.
+
+### Entry 11.3: Module Health Snapshot
+
+Updated health snapshot for R11: all modules now 🟢 or 🟡 (no 🔴). `playing_systems_runner` reduced from 13 to 11 calls. Added explicit notes on `popup_feedback_system` and `energy_system` guard restoration.
+
+### Entry 11.4: Test Count Anomaly
+
+Created new subsection: "Test Count Anomaly Tracking". Noted Keaton reported 783 cases (measured); Keyser-r10 measured 798; discrepancy flagged for Keyser-r12 forensic. R9 discrepancy (781 reported vs 797 actual) traced to stale binary.
+
+### Entry 11.5: Process Patterns
+
+Added two heuristics logs:
+- **Keaton R11:** Conservative revert on order regression is simpler than restructuring. Cost: +2 guards, −2 runner systems. Benefit: design intent + correctness.
+- **Keyser R11:** Retracting audit findings honestly (with evidence) builds trust. Dispatcher callback guards need full path trace.
+
+### Entry 11.6: Orchestration + Session Logs
+
+Created formal tables: Orchestration log (round-by-round agent/decision tracking) and session log (this entry).
 
 ---

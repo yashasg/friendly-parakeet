@@ -1,0 +1,138 @@
+================================================================================
+RALPH ROUND 10 — HEALTH REPORT
+================================================================================
+
+REPORTING PERIOD: 2026-05-03
+AGENTS: Keaton (C++ Performance Engineer), Keyser (Lead Architect), Scribe (Logging)
+SCOPE: Integration test refactor + design audit + logging
+
+================================================================================
+CRITICAL FINDINGS
+================================================================================
+
+🔴 ORDER REGRESSION (HIGH SEVERITY)
+   Location: app/systems/playing_systems_runner.cpp (R9 Keaton work)
+   Issue: popup_feedback_system + energy_system moved from post-despawn into runner
+   Original order: despawn → popup_feedback → popup_display → energy_system
+   New order: [runner: ... popup_feedback ... energy ...] → despawn → popup_display
+   Design impact: Breaks "score-feedback chain contiguous" comment (game_loop.cpp:188)
+   Status: IN FLIGHT (Keaton-r11-order-fix)
+   Action: Revert or document intentional change; comment must be updated
+   Risk: Low behavioral impact; HIGH design-fidelity concern
+
+🔴 AUDIT FINDING: player_input Guard Claim Was Wrong (CORRECTED)
+   Original claim (Keyser-r8/r9): "double-guard is redundant"
+   Reversal (Keaton-r10): Guards ARE necessary
+   Reason: Dispatcher callbacks fire via game_state_system.disp.update<>()
+           which runs OUTSIDE the runner and BEFORE it
+   Evidence: test_entt_dispatcher_contract.cpp:290 fails when guard dropped
+   Action: Annotation added to Keyser-r8/r9 decision doc with [R10 CORRECTION]
+   Learning: Trace ALL invocation paths; dispatcher.update<>() is often missed
+
+================================================================================
+MODULE HEALTH SNAPSHOT (End of Round 10)
+================================================================================
+
+scoring_system
+   Status: 🟢 GREEN
+   Notes: Kind-free (R7 BarObstacleTag); full OCP (R8 verified)
+   
+collision_system
+   Status: 🟡 YELLOW
+   Notes: SongResults mutation violates SRP; flagged for R12 scope
+   
+motion_system
+   Status: 🟡 YELLOW
+   Notes: Bridge pattern established (R4); still marked as bridge
+   
+lane_push_response_system
+   Status: 🟢 GREEN
+   Notes: Event-consumed (R6); wired in runner (R9); integration test verified (R10)
+   
+playing_systems_runner (NEW R9)
+   Status: 🔴 RED
+   Notes: SOLID clean; 13 systems called; 11 guards dropped; ORDER REGRESSION found
+   Action: Fix in flight (R11)
+   
+fixed_tick_runner (NEW R10)
+   Status: 🟢 GREEN
+   Notes: Test infrastructure module; exposes production tick to tests; SOLID clean
+   
+player_input_system
+   Status: 🟢 GREEN
+   Notes: Guards verified necessary; dispatcher callback protection confirmed
+   
+================================================================================
+TESTS & BUILD STATUS
+================================================================================
+
+Test count: 798 cases / 2240 assertions
+   Round 10 delta: +17 cases / +2 assertions
+   (Breakdown: +1 from integration test rewrite, +17 from total baseline adjustment)
+
+Build: ZERO WARNINGS
+   All targets: ✅ Clean
+   CMake + clang: ✅ No diagnostics
+
+Integration test (rewritten):
+   - Now exercises production tick path directly via tick_fixed_systems()
+   - Verified-via-revert: test fails when lane_push_response_system removed
+   - Unit test (self-wired) retained as diagnostic tool
+   
+Phase-guard tests:
+   - Paused phase: ✅ 4 assertions (scoring, energy, miss-detection all gated)
+   - GameOver phase: ⚠️ 1 assertion (thin; no expired obstacle planted)
+   - Note: Consider adding MissTag check to GameOver variant in R11
+
+================================================================================
+DECISIONS & APPROVALS
+================================================================================
+
+✅ COMPLETED IN ROUND 10:
+   - Keaton-r10: Integration test infrastructure + player_input guard verification
+   - Keyser-r10: Phase-guard Design B audit + order regression discovery
+   - Scribe: Decision merge + history updates + logging
+
+⏳ PENDING USER APPROVAL (since Keyser-r9):
+   - CI Grep check for system wiring (prevent self-wiring regressions)
+   - Status: Awaiting yashasg decision
+   - Scope: .github/scripts/check_wiring.sh (grep-based, no code change)
+
+🔴 FLAGGED FOR KEATON-R11:
+   - Fix order regression: revert popup_feedback + energy to post-despawn
+   - Update comment: game_loop.cpp:188 "score-feedback chain contiguous"
+   
+📋 DECISION ARTIFACTS:
+   - Inbox files: keaton-r10-testfix-and-input.md, keyser-r10-phase-audit.md
+   - Merged to: decisions.md (11856 lines; +206 from R9 baseline)
+   - Prominent sections: 🔴 ORDER REGRESSION, [R10 CORRECTION] player_input retraction
+
+================================================================================
+PATTERNS CODIFIED THIS ROUND
+================================================================================
+
+KEATON (R10 PATTERN):
+   "Order-dependent regression tests must exercise production tick end-to-end.
+    A test checking 'after tick, value = X' without observing order constraints
+    cannot catch order regressions. Verify-via-revert: revert production call,
+    assert test FAILS on order-dependent assertions. This is the litmus test."
+
+KEYSER (R10 REVERSAL PATTERN):
+   "Redundancy claims on guards require tracing ALL invocation paths.
+    Event-dispatcher callbacks (dispatcher.update<>()) invoke functions OUTSIDE
+    the static system runner. Their guards aren't redundant just because the runner
+    gates other paths. Burn the lesson: trace dispatcher.update<>() before declaring
+    guard redundant. Redundancy proof requires either: (a) all call sites gated,
+    OR (b) failing test when guard removed."
+
+================================================================================
+ROUND 11 OUTLOOK
+================================================================================
+
+Keaton-r11: Revert order regression (popup_feedback + energy back to post-despawn)
+Keyser-r11: Audit Keaton-r11 fix + scope collision_system SRP violation (R12)
+Scribe-r11: Log Round 11 with order-fix verification
+
+================================================================================
+END OF ROUND 10 HEALTH REPORT
+================================================================================

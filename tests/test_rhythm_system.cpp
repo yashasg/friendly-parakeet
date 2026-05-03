@@ -635,6 +635,7 @@ TEST_CASE("collision: SongResults updated", "[rhythm][collision]") {
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<BeatInfo>(obs, 0, 5.0f, 5.0f - song.lead_time);
     collision_system(reg, 0.016f);
+    scoring_system(reg, 0.016f);
     CHECK(reg.ctx().get<SongResults>().perfect_count == 1);
 }
 

@@ -40,7 +40,6 @@ void collision_system(entt::registry& reg, float /*dt*/) {
         player_view.get<WorldTransform, PlayerShape, ShapeWindow, Lane, VerticalState>(player_entity);
 
     auto* song    = reg.ctx().find<SongState>();
-    auto* results = reg.ctx().find<SongResults>();
     bool rhythm_mode = (song != nullptr);
 
     // Frame-constant precomputes — both values are invariant across all obstacle
@@ -78,15 +77,6 @@ void collision_system(entt::registry& reg, float /*dt*/) {
             if (precision < 0.0f) precision = 0.0f;
             if (precision > 1.0f) precision = 1.0f;
             reg.emplace<TimingGrade>(entity, tier, precision);
-
-            if (results) {
-                switch (tier) {
-                    case TimingTier::Perfect: results->perfect_count++; break;
-                    case TimingTier::Good:    results->good_count++;    break;
-                    case TimingTier::Ok:      results->ok_count++;      break;
-                    case TimingTier::Bad:     results->bad_count++;     break;
-                }
-            }
 
             if (!p_window.graded) {
                 float scale = window_scale_for_tier(tier);

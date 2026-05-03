@@ -132,6 +132,7 @@ TEST_CASE("collision: rhythm perfect increments perfect_count in SongResults", "
     reg.emplace<BeatInfo>(obs, 0, song.song_time, song.song_time - song.lead_time);
 
     collision_system(reg, 0.016f);
+    scoring_system(reg, 0.016f);
 
     auto& results = reg.ctx().get<SongResults>();
     CHECK(results.perfect_count == 1);

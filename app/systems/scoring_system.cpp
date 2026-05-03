@@ -168,6 +168,14 @@ void scoring_system(entt::registry& reg, float dt) {
                         enqueue_energy_effect(reg, -constants::ENERGY_DRAIN_BAD, true);
                         break;
                 }
+                if (results) {
+                    switch (r.timing.tier) {
+                        case TimingTier::Perfect: results->perfect_count++; break;
+                        case TimingTier::Good:    results->good_count++;    break;
+                        case TimingTier::Ok:      results->ok_count++;      break;
+                        case TimingTier::Bad:     results->bad_count++;     break;
+                    }
+                }
             }
 
             int points = static_cast<int>(
