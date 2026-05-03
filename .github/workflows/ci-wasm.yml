@@ -190,7 +190,21 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A
           git diff --cached --quiet || git commit -m "Deploy main to root"
-          git push
+          # Retry push with rebase to handle concurrent updates to gh-pages
+          for attempt in 1 2 3 4 5; do
+            if git push; then
+              echo "Push succeeded on attempt $attempt"
+              break
+            fi
+            echo "Push failed on attempt $attempt; fetching and rebasing..."
+            git fetch origin gh-pages
+            git rebase origin/gh-pages || { git rebase --abort || true; exit 1; }
+            if [ "$attempt" = "5" ]; then
+              echo "::error title=gh-pages push failed::Could not push to gh-pages after 5 attempts"
+              exit 1;
+            fi
+            sleep $((attempt * 2))
+          done
 
   deploy-pr:
     name: Deploy PR Preview
@@ -247,14 +261,28 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A
           git diff --cached --quiet || git commit -m "PR preview: $SAFE_BRANCH"
-          git push
+          # Retry push with rebase to handle concurrent updates to gh-pages
+          for attempt in 1 2 3 4 5; do
+            if git push; then
+              echo "Push succeeded on attempt $attempt"
+              break
+            fi
+            echo "Push failed on attempt $attempt; fetching and rebasing..."
+            git fetch origin gh-pages
+            git rebase origin/gh-pages || { git rebase --abort || true; exit 1; }
+            if [ "$attempt" = "5" ]; then
+              echo "::error title=gh-pages push failed::Could not push to gh-pages after 5 attempts"
+              exit 1;
+            fi
+            sleep $((attempt * 2))
+          done
 
       - name: Comment preview URL on PR
         uses: actions/github-script@v8
         with:
           script: |
             const branch = process.env.BRANCH_NAME || context.payload.pull_request.head.ref;
-            const safeBranch = branch.replace(/\//g, '-');
+            const safeBranch = branch.replace(/\/g, '-');
             const url = `https://yashasg.github.io/friendly-parakeet/${safeBranch}/`;
             const body = `🎮 **WASM Preview:** ${url}`;
             const { data: comments } = await github.rest.issues.listComments({
@@ -305,5 +333,19 @@ jobs:
             git config user.email "github-actions[bot]@users.noreply.github.com"
             git add -A
             git commit -m "Remove PR preview: $SAFE_BRANCH"
-            git push
+            # Retry push with rebase to handle concurrent updates to gh-pages
+            for attempt in 1 2 3 4 5; do
+              if git push; then
+                echo "Push succeeded on attempt $attempt"
+                break
+              fi
+              echo "Push failed on attempt $attempt; fetching and rebasing..."
+              git fetch origin gh-pages
+              git rebase origin/gh-pages || { git rebase --abort || true; exit 1; }
+              if [ "$attempt" = "5" ]; then
+                echo "::error title=gh-pages push failed::Could not push to gh-pages after 5 attempts"
+                exit 1;
+              fi
+              sleep $((attempt * 2))
+            done
           fi
