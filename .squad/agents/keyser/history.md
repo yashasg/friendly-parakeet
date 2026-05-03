@@ -625,6 +625,28 @@ Merged to `.squad/decisions.md` under "Round 9: Keyser — Wirefix Audit + Self-
 
 ---
 
+### Round 14 — Bench Re-Baseline + Module Health Audit
+
+**Date:** 2026-05-03
+
+**Work:**
+1. Re-baselined bench numbers post-r13 archetype fix. Found spawn_particles was creating Position+Velocity (legacy vel_view) instead of WorldTransform+MotionVelocity (production motion_view). R13 fixed it. Captured corrected baseline: motion_system 10 ents ~34–38 ns, 100 ents ~191 ns, 1000 ents ~1.81 µs; particle_system 50: ~32–34 ns; full frame stress ~926–1012 ns.
+2. Flagged 3 prior round bench claims as questionable (R4 motion "already tight", R4/R9 full-frame, R12 "stable"): measured wrong particle archetype. R12 collision claim unaffected.
+3. Verified motion_view tests are real coverage (fail-sensitive to exclusion invariant + path switching).
+4. **Tentatively demoted** `fixed_tick_runner` 🟢 → 🟡 pending Keaton-r14 ordering verdict. If ordering test wiring-only, ordering assumption must be re-validated. **UPDATE:** Keaton-r14 confirmed commutative; `fixed_tick_runner` returns 🟢 with reconciliation note.
+5. Module health: 12 🟢 / 1 🟡 (motion #349). Zero regressions.
+6. Verified Scribe-20 commit selective (only `.squad/` paths). Protocol fix held.
+
+**Metrics:** 12 modules green. motion_system pending #349 migration.
+
+**Pattern Learned:** When tooling changes (archetype fix), prior measurements need re-validation. Bench baseline drift invalidates prior "no delta" claims. Commutativity proof reverses tentative degradations.
+
+**Decision:** Merged to `.squad/decisions.md` under "Round 14: Keaton — Ordering Commutative Analysis + Comment Fixes; Keyser — Bench Re-Baseline + Module Health Audit" section.
+
+
+
+---
+
 ### Round 13 — SRP Audit (Keaton R13) + R12 Forensic + Module Health Reclassification
 
 **Date:** 2026-05-05

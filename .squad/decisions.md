@@ -12452,3 +12452,185 @@ All tests passed (2251 assertions in 784 test cases)
 
 ---
 
+
+## Round 14: Keaton — Ordering Commutative Analysis + Comment Fixes; Keyser — Bench Re-Baseline + Module Health Audit
+
+### Keaton R14 Decision
+
+**Date:** 2026-05-03
+
+**Pre-change metrics:**
+```
+All tests passed (2255 assertions in 786 test cases)
+```
+
+**Post-change metrics:**
+```
+All tests passed (2255 assertions in 786 test cases)
+```
+
+**Changes:** Comment-only (2 files). No logic changes. Same test count.
+
+#### Investigation: obstacle_despawn ↔ popup_feedback ordering
+
+**Verdict: COMMUTATIVE.** Data surfaces are fully disjoint. No ordering dependency exists.
+
+##### Data surface analysis
+
+| System | Reads | Writes |
+|---|---|---|
+| `obstacle_despawn_system` | `ObstacleTag+ObstacleScrollZ` (ctx: `GameCamera`) → destroys past boundary; `ObstacleTag+Position` → same | entity destruction only |
+| `popup_feedback_system` | `ScorePopupRequestQueue` (ctx variable) | spawns `ScorePopup` entities, clears queue, pushes `AudioQueue` |
+
+**No overlap.** These systems read and write completely disjoint component sets.
+
+##### Why no observable ordering dependency
+
+1. `scoring_system` runs **inside** `tick_playing_systems` (line 17, `fixed_tick_runner.cpp`)
+2. By the time control returns from `tick_playing_systems`:
+   - All `ScoredTag` entities have had tags + `Obstacle` + `TimingGrade` removed (scoring_system.cpp:111–113,206–207)
+   - `ScorePopupRequestQueue` is fully populated (scoring_system.cpp:202)
+3. When `obstacle_despawn_system` (line 20) runs: sees no `ScoredTag` entities; destroys only by boundary threshold
+4. When `popup_feedback_system` (line 27) runs: reads pre-populated queue; never touches obstacles
+
+**Swapping lines 20 and 27 produces zero observable state difference.**
+
+##### Decision: no ordering regression test
+
+A test that fails when systems are swapped cannot be written because swapping produces no observable state change. Writing a false dependency to force a test failure would be dishonest.
+
+**Action taken:**
+1. Updated comment in `fixed_tick_runner.cpp:18–26` from "semantic invariant" to "cache-locality preference; commutative"
+2. Updated test comment in `test_phase_runner.cpp:73–78` to reflect actual invariant (wiring placement, not call order)
+
+#### vel_view migration (#349): deferred
+
+Investigated scope: `Velocity` component used in 8+ test files and production code paths. Not a surgical change. Deferring to dedicated round with explicit migration plan.
+
+#### Citations
+
+- `fixed_tick_runner.cpp:17,20,27` — call order analyzed
+- `scoring_system.cpp:202` — queue fully populated before despawn/feedback run
+- `obstacle_despawn_system.cpp:44–59` — reads only ObstacleTag/Position
+- `popup_feedback_system.cpp:10–18` — reads only ScorePopupRequestQueue
+
+---
+
+### Keyser R14 Decision
+
+**Date:** 2026-05-03
+
+**Canonical test command:**
+```
+./build/shapeshifter_tests '~[bench]' --reporter compact 2>&1 | tail -5
+```
+
+#### Task 1: Bench-fix validation (r13 archetype change)
+
+**Finding:** R13 commit `5177071` changed `benchmarks/bench_systems.cpp::spawn_particles` from `Position+Velocity` (legacy vel_view path) to `WorldTransform+MotionVelocity` (production motion_view path). **Change is real.**
+
+**Corrected bench baseline (r14):**
+
+```
+motion_system:
+  10 entities    — mean 33.7–38.1 ns
+  100 entities   — mean 191–198 ns
+  1000 entities  — mean 1.81–1.82 µs
+
+particle_system:
+  50 particles   — mean 32.4–34.2 ns
+
+full frame (stress: 50 obstacles + 50 particles):
+  — mean 926–1012 ns
+
+scroll_system:
+  10 entities    — mean 37.4–37.5 ns
+  100 entities   — mean 246 ns
+  1000 entities  — mean 2.29 µs
+
+collision_system:
+  1 obstacle at player   — mean 135–136 ns
+  10 obstacles scattered — mean 157–165 ns
+
+obstacle_despawn_system:
+  10 obstacles (none past threshold) — mean 36.4–36.8 ns
+```
+
+**These are the new reference numbers. Any prior-round claim about particle or motion_view benches must be treated as measuring the wrong path.**
+
+##### Prior-round bench claims now questionable
+
+| Round | Claim | Status |
+|-------|-------|--------|
+| R4 | "motion_system: already tight (pos += vel * dt); per-entity cost under 3 ns" | 🟡 **QUESTIONABLE** — measured vel_view, not production motion_view |
+| R4 | Full-frame bench after scroll+collision fixture fix | 🟡 **QUESTIONABLE** — spawn_particles bug meant measuring legacy path |
+| R9 | "Benchmarks: Zero measurable regression" (phase-guard runner) | 🟡 **QUESTIONABLE** — baseline was vel_view for particles; particle deltas measured wrong path |
+| R12 | "bench stable (~149/167 ns)" | 🟢 **UNAFFECTED** — 149/167 ns is collision_system, not particle |
+| R12 | "Full suite: ... bench stable" (full-frame bench) | 🟡 **QUESTIONABLE** — full-frame measured legacy particle archetype |
+
+**Summary:** R4 and R9 motion/particle claims should not be used as baseline. New reference is r14 numbers above.
+
+#### Task 2: motion_view coverage tests
+
+**Tests added (r13):**
+
+1. `"motion: WorldTransform+MotionVelocity entity moves by velocity * dt"` — Entity has only `WorldTransform+MotionVelocity` (no Position/Velocity). Cannot enter vel_view. Covers motion_view path only. **Fail-sensitive: if motion_view code deleted, CHECK would fail.**
+
+2. `"motion: WorldTransform+MotionVelocity entity with BeatInfo is excluded"` — Entity has `WorldTransform+MotionVelocity+BeatInfo`. Excluded from motion_view by `entt::exclude<BeatInfo>`. If exclusion dropped, test fails immediately. **Fail-sensitive to the invariant.**
+
+**Verdict: Both tests are real coverage, not wiring-only.** ✅
+
+#### Task 3: Module health re-scan (post-r13, post-r14-pending)
+
+Keaton-r14 found `obstacle_despawn → popup_feedback` commutative (disjoint data surfaces). This reverses Keyser's r14 tentative demotion of `fixed_tick_runner`.
+
+| Module | Status | Basis |
+|--------|--------|-------|
+| collision_system | 🟢 | SRP closed r12; no new changes |
+| scoring_system | 🟢 | Internal state scoring-only; no cross-system coupling |
+| motion_system | 🟡 | vel_view legacy path for freeplay (#349 pending); motion_view has 2 unit tests |
+| scroll_system | 🟢 | No issues |
+| lane_push_response_system | 🟢 | No issues |
+| playing_systems_runner | 🟢 | 11 systems; order correct |
+| fixed_tick_runner | 🟢 | Keaton-r14 commutativity proof removes ordering concern; both systems have disjoint data surfaces |
+| popup_feedback_system | 🟢 | No issues |
+| energy_system | 🟢 | No issues |
+| particle_system | 🟢 | Production archetype confirmed; bench corrected |
+| player_input_system | 🟢 | Guards load-bearing (r13 finding) |
+| beat_log_system | 🟢 | No issues |
+| popup_display_system | 🟢 | No issues |
+| miss_detection_system | 🟢 | No issues |
+
+**Summary:**
+- 🟢 GREEN: 12 modules
+- 🟡 YELLOW: 1 module (motion_system, pending #349 migration)
+- 🔴 RED: 0 modules
+
+#### Task 4: Keaton-r14 protocol compliance
+
+**Requirement:** Verbatim `tail -5` of canonical test command.
+
+**Status:** ✅ COMPLIANT. Keaton-r14 includes verbatim tail-5 paste (lines 93–99 of keaton-r14-ordering-commutative.md).
+
+#### Task 5: Scribe protocol for stale inbox files
+
+Previous rounds left merged r4/r5/r7–r10 inbox files without deleting them. This is a Scribe gap. **New rule:** After appending to decisions.md and committing, Scribe MUST verify inbox is clean (no merged files remain except those from agents still in flight).
+
+---
+
+## Heuristics Added (Post-R14)
+
+### Commutativity > forced ordering tests
+
+**Pattern:** When two systems have disjoint data surfaces, no ordering test can fail-on-swap. The honest action is to update misleading invariant comments to match reality ("cache-locality preference" not "semantic invariant") — not to fabricate a false dependency.
+
+**Evidence:** Keaton-r14 found `obstacle_despawn` and `popup_feedback` fully commutative (no shared reads/writes). Comment in `fixed_tick_runner.cpp` was incorrectly claiming a semantic invariant; truth is cache-locality preference.
+
+### Stale inbox files indicate Scribe protocol gap
+
+**Pattern:** When inbox files from prior rounds remain after merging, it signals Scribe did not complete the deletion step. New rule: Scribe MUST delete inbox files after appending to decisions.md (verified by `ls .squad/decisions/inbox/` returning empty except for in-flight agent files).
+
+**Evidence:** R1–R13 left 12 merged inbox files undeleted. This round, 8 are verified merged and deleted; 4 are flagged as NOT merged and preserved for manual review.
+
+---
+

@@ -524,6 +524,27 @@ Merged to `.squad/decisions.md` under "Round 9: Keaton — Phase-Guard Design B 
 
 ---
 
+### Round 14 — Ordering Commutative Analysis + Comment Fixes
+
+**Date:** 2026-05-03
+
+**Work:**
+1. Investigated claim: does `obstacle_despawn_system → popup_feedback_system` have a real ordering dependency? Conclusion: **NO. Fully commutative.** Data surfaces disjoint — despawn reads `ObstacleTag+Position`, popup reads `ScorePopupRequestQueue` (ctx). No component overlap.
+2. Why: `scoring_system` runs inside `tick_playing_systems`, fully populating queue before both systems run. Despawn sees no ScoredTag entities (all removed by scoring). Popup reads pre-populated queue. Swapping order produces zero observable state change.
+3. Corrected misleading comments: `fixed_tick_runner.cpp:18–26` changed from "semantic invariant" to "cache-locality preference; commutative". `test_phase_runner.cpp:73–78` updated to describe actual invariant (wiring placement, not call order).
+4. Deferred motion #349 vel_view migration (8+ files; not surgical for this round; pending dedicated scope).
+5. Tests: same 2255 assertions / 786 cases. Zero warnings. Verbatim tail-5 included per protocol.
+
+**Metrics:** Pre/post test count: 2255 / 2255. Comment-only edits; no logic changes.
+
+**Pattern Learned:** When investigation reveals a refactor isn't justified, retract — don't ship. Updated comments to match reality (commutative, not invariant). Restored verbatim tail-5 paste protocol after 2-round paraphrase lapse (r12/r13).
+
+**Decision:** Merged to `.squad/decisions.md` under "Round 14: Keaton — Ordering Commutative Analysis + Comment Fixes; Keyser — Bench Re-Baseline + Module Health Audit" section.
+
+
+
+---
+
 ### Round 13 — Chain-Bonus SRP Retraction + Motion System Migration
 
 **Date:** 2026-05-05
