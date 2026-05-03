@@ -1,33 +1,33 @@
 #include <catch2/catch_test_macros.hpp>
 #include "test_helpers.h"
 
-// ── scroll_system ────────────────────────────────────────────
+// ── motion_system ────────────────────────────────────────────
 
-TEST_CASE("scroll: entities move by velocity * dt", "[scroll]") {
+TEST_CASE("motion: entities move by velocity * dt", "[motion]") {
     auto reg = make_registry();
     auto e = reg.create();
     reg.emplace<Position>(e, 100.0f, 200.0f);
     reg.emplace<Velocity>(e, 10.0f, 20.0f);
 
-    scroll_system(reg, 1.0f);
+    motion_system(reg, 1.0f);
 
     CHECK(reg.get<Position>(e).x == 110.0f);
     CHECK(reg.get<Position>(e).y == 220.0f);
 }
 
-TEST_CASE("scroll: zero velocity means no movement", "[scroll]") {
+TEST_CASE("motion: zero velocity means no movement", "[motion]") {
     auto reg = make_registry();
     auto e = reg.create();
     reg.emplace<Position>(e, 100.0f, 200.0f);
     reg.emplace<Velocity>(e, 0.0f, 0.0f);
 
-    scroll_system(reg, 1.0f);
+    motion_system(reg, 1.0f);
 
     CHECK(reg.get<Position>(e).x == 100.0f);
     CHECK(reg.get<Position>(e).y == 200.0f);
 }
 
-TEST_CASE("scroll: multiple entities updated", "[scroll]") {
+TEST_CASE("motion: multiple entities updated", "[motion]") {
     auto reg = make_registry();
     auto e1 = reg.create();
     reg.emplace<Position>(e1, 0.0f, 0.0f);
@@ -36,7 +36,7 @@ TEST_CASE("scroll: multiple entities updated", "[scroll]") {
     reg.emplace<Position>(e2, 0.0f, 0.0f);
     reg.emplace<Velocity>(e2, 0.0f, 1.0f);
 
-    scroll_system(reg, 10.0f);
+    motion_system(reg, 10.0f);
 
     CHECK(reg.get<Position>(e1).x == 10.0f);
     CHECK(reg.get<Position>(e2).y == 10.0f);
@@ -277,6 +277,19 @@ TEST_CASE("scroll: no movement when not in Playing phase", "[scroll]") {
     reg.emplace<Velocity>(e, 10.0f, 20.0f);
 
     scroll_system(reg, 1.0f);
+
+    CHECK(reg.get<Position>(e).x == 100.0f);
+    CHECK(reg.get<Position>(e).y == 200.0f);
+}
+
+TEST_CASE("motion: no movement when not in Playing phase", "[motion]") {
+    auto reg = make_registry();
+    reg.ctx().get<GameState>().phase = GamePhase::Title;
+    auto e = reg.create();
+    reg.emplace<Position>(e, 100.0f, 200.0f);
+    reg.emplace<Velocity>(e, 10.0f, 20.0f);
+
+    motion_system(reg, 1.0f);
 
     CHECK(reg.get<Position>(e).x == 100.0f);
     CHECK(reg.get<Position>(e).y == 200.0f);

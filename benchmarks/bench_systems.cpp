@@ -180,6 +180,24 @@ TEST_CASE("Bench: obstacle_despawn_system", "[bench]") {
     };
 }
 
+TEST_CASE("Bench: motion_system", "[bench]") {
+    BENCHMARK_ADVANCED("10 entities")(Catch::Benchmark::Chronometer meter) {
+        auto reg = make_bench_registry();
+        spawn_obstacles(reg, 10);
+        meter.measure([&] { motion_system(reg, DT); });
+    };
+    BENCHMARK_ADVANCED("100 entities")(Catch::Benchmark::Chronometer meter) {
+        auto reg = make_bench_registry();
+        spawn_obstacles(reg, 100);
+        meter.measure([&] { motion_system(reg, DT); });
+    };
+    BENCHMARK_ADVANCED("1000 entities")(Catch::Benchmark::Chronometer meter) {
+        auto reg = make_bench_registry();
+        spawn_obstacles(reg, 1000);
+        meter.measure([&] { motion_system(reg, DT); });
+    };
+}
+
 TEST_CASE("Bench: full frame (typical)", "[bench]") {
     BENCHMARK_ADVANCED("6 obstacles + 20 particles")(Catch::Benchmark::Chronometer meter) {
         auto reg = make_bench_registry();
@@ -191,6 +209,7 @@ TEST_CASE("Bench: full frame (typical)", "[bench]") {
             player_input_system(reg, DT);
             player_movement_system(reg, DT);
             scroll_system(reg, DT);
+            motion_system(reg, DT);
             collision_system(reg, DT);
             scoring_system(reg, DT);
             particle_system(reg, DT);
@@ -210,6 +229,7 @@ TEST_CASE("Bench: full frame (stress)", "[bench]") {
             player_input_system(reg, DT);
             player_movement_system(reg, DT);
             scroll_system(reg, DT);
+            motion_system(reg, DT);
             collision_system(reg, DT);
             scoring_system(reg, DT);
             particle_system(reg, DT);

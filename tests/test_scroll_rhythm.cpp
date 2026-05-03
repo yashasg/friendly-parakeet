@@ -43,7 +43,7 @@ TEST_CASE("scroll: rhythm obstacles ignore Velocity component", "[scroll][rhythm
     CHECK_THAT(reg.get<WorldTransform>(obs).position.y, Catch::Matchers::WithinAbs(expected_y, 0.1f));
 }
 
-TEST_CASE("scroll: non-rhythm entities use dt-based movement even in rhythm mode", "[scroll][rhythm]") {
+TEST_CASE("motion: non-rhythm entities use dt-based movement", "[motion][rhythm]") {
     auto reg = make_rhythm_registry();
 
     auto particle = reg.create();
@@ -51,7 +51,7 @@ TEST_CASE("scroll: non-rhythm entities use dt-based movement even in rhythm mode
     reg.emplace<MotionVelocity>(particle, MotionVelocity{{10.0f, 20.0f}});
     // No BeatInfo → dt-based
 
-    scroll_system(reg, 0.5f);
+    motion_system(reg, 0.5f);
 
     CHECK_THAT(reg.get<WorldTransform>(particle).position.x, Catch::Matchers::WithinAbs(105.0f, 0.01f));
     CHECK_THAT(reg.get<WorldTransform>(particle).position.y, Catch::Matchers::WithinAbs(210.0f, 0.01f));
