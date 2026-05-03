@@ -1,0 +1,47 @@
+{
+  "tempo": {
+    "n_fft": 2048,
+    "hop_length": 384,
+    "start_bpm": 120.0,
+    "tightness": 150.0,
+    "trim": false
+  },
+  "beat": {
+    "n_fft": 3072,
+    "hop_length": 320,
+    "start_bpm": 120.0,
+    "tightness": 165.0,
+    "trim": false,
+    "onset_envelope": "stft_flux",
+    "tempo_source": "tempogram_median",
+    "flux_reduce": "mean",
+    "tempogram_win_length": 320,
+    "tempogram_norm": "inf",
+    "tempo_stat": "mean"
+  },
+  "onset": {
+    "n_mels": 40,
+    "n_fft": 2048,
+    "hop_length": 384,
+    "resolutions": [
+      { "n_fft": 2048, "hop_length": 384 }
+    ],
+    "threshold": 0.3
+  },
+  "mel": {
+    "n_mels": 40,
+    "n_fft": 2048,
+    "hop_length": 384
+  },
+  "mfcc": {
+    "n_mfcc": 13,
+    "n_fft": 2048,
+    "hop_length": 384
+  },
+  "quiet": {
+    "frame_length": 2048,
+    "hop_length": 384,
+    "quantile": 0.2,
+    "min_duration_s": 0.4
+  }
+}
