@@ -10404,3 +10404,86 @@ Continue the loop until the user says "stop ralph".
 
 User wants continuous performance + architecture quality work without per-iteration approval. Keaton owns profiling/optimization; Keyser owns SOLID audits. Coordinator chains the next iteration immediately on completion.
 
+---
+
+# Keaton R5 — NonScorableTag Refactor + motion_system bridge comment
+
+**Date:** 2026-05-03  
+**Author:** Keaton (Perf + SOLID implementer)  
+**Audit source:** `keyser-r4-motion-and-obstaclekind.md` (🔴 `scoring_system.cpp:159–160`)
+
+## Summary
+
+Implemented NonScorableTag pattern to replace inline `LanePushLeft`/`LanePushRight` scoring exclusion. Added `NonScorableTag` component, emplaced on lane-push obstacles at spawn, excluded from scoring views via `entt::exclude<NonScorableTag>`, and added cleanup pass. Also added migration-bridge comment in `motion_system.cpp:17–19` per Keyser's audit findings.
+
+## OCP Win
+
+Adding a new non-scorable obstacle kind now requires **zero edits to scoring_system**: only a single `reg.emplace<NonScorableTag>(e)` in `obstacle_entity.cpp`'s factory.
+
+## Behavior Preservation
+
+- `NonScorable cleanup` pass strips `ScoredTag`/`Obstacle` from every excluded entity after each scoring tick — identical behavioral outcome to the old inline `continue` guard
+- All 773 tests pass (2216 assertions), including the 3 existing `[lane_push]` regression tests
+- New test `[scoring][nonscorable]` verifies OCP property directly
+
+## Files Modified
+
+`app/components/obstacle.h`, `app/entities/obstacle_entity.cpp`, `app/systems/scoring_system.cpp`, `app/systems/motion_system.cpp`, `tests/test_helpers.h`, `tests/test_scoring_extended.cpp`, `tests/test_scoring_system.cpp`
+
+## Build & Test
+
+- `cmake --build build` — ✅ zero warnings
+- `./build/shapeshifter_tests '~[bench]'` — ✅ All 773 tests (2216 assertions)
+
+## Bench Delta: scoring_system
+
+No measurable change (bench uses only ShapeGate obstacles; LanePush not exercised). OCP win is the headline.
+
+---
+
+# Keyser R5 — collision_system SOLID Audit
+
+**Date:** 2026-05-04  
+**Author:** Keyser (SOLID Auditor)  
+**Verdict:** 🟡 Yellow (two substantive SRP findings; no 🔴 blockers; Keaton-r4 changes are behavior-preserving)
+
+## Summary
+
+Comprehensive SOLID audit of collision_system post-Keaton-r4 optimization. Verified 1D lane-overlap collapse is mathematically correct (y-axis was hardcoded constant, never an input). Verified all 4 removed helpers were genuinely dead. Surfaced two SRP violations: (1) resolve lambda conflates five concerns, (2) LanePush loop directly mutates player Lane component.
+
+## Key Findings
+
+### Section 1 — SOLID Audit
+
+| Principle | Status | Top Finding |
+|---|---|---|
+| **S (SRP)** | 🟡 | resolve lambda at :55–109 conflates 5 concerns: timing gate, tagging (Miss/Scored), rhythm grade computation, SongResults mutation, ShapeWindow mutation. LanePush loop (:173–193) directly mutates player Lane component — movement response in a detection system. |
+| **O (OCP)** | 🟡 | Per-kind view blocks (ShapeGate, LaneBlock, LowBar/HighBar, ComboGate, SplitPath, LanePush). New collision logic requires editing collision_system. Carry-forward: LanePushDelta component removes :188 ternary. |
+| **L, I, D** | 🟢 | Clean — no inheritance, views narrow, singleton resolution canonical. Minor: dead `#include <raylib.h>` at :10 after helper removal. |
+
+### Section 2a — Frame-constant hoist: SAFE ✅
+
+Verdict: Safe. `player_timing_y` and `player_x` precomputed before loops; no obstacle loop mutates `WorldTransform` or `VerticalState`. Later iterations cannot observe stale values.
+
+### Section 2b — 1D lane-overlap collapse: SAFE ✅ Algebraic Reduction
+
+Verdict: Mathematically equivalent by construction. Both hardcoded `cy=0.0f, h=1.0f`. Y-axis spans `[-0.5f, 0.5f]` identically; overlap **always true**. `VerticalState::y_offset` was never an input to `player_overlaps_lane`. No scenario exists where original y-overlap would be false. This is an algebraic reduction, not a behavior change.
+
+### Section 2c — Removed helpers: All GENUINELY DEAD ✅
+
+Helpers removed: `centered_rect`, `player_timing_point`, `player_in_timing_window`, `player_overlaps_lane`. Search confirmed no call sites remain — only comment-text references in test documentation. All four are dead-code eliminations.
+
+## Top Finding: SRP Violation
+
+**LanePush loop directly mutates player's Lane component** (`p_lane.target`, `p_lane.lerp_t` at :188–192). Player movement response is not a detection concern — this is the clearest SRP violation in the file.
+
+**Recipe:** Emplace `PendingLanePush{int8_t delta}` on the obstacle (or a transient event entity); a new `lane_push_response_system` reads and applies it.
+
+## Module Health
+
+🟡 Yellow — no blockers. Keaton-r4's changes are behavior-preserving: the 1D collapse is mathematically correct, the hoist is safe, and all helpers were genuinely dead.
+
+## Cross-Cutting Pattern
+
+Carry-forward: `LanePushDelta` component pattern (emplace at spawn, read at response) is the same factory-locality pattern as the NonScorableTag refactor from Keaton R5.
+

@@ -56,3 +56,10 @@ struct RequiredLane {
 struct RequiredVAction {
     VMode action = VMode::Jumping;
 };
+
+// Spawn-time component on LanePush obstacles: direction encoded as ±1.
+// -1 = LanePushLeft, +1 = LanePushRight. Emplaced in obstacle_entity.cpp;
+// consumed by collision_system to populate PendingLanePush.
+struct LanePushDelta {
+    int8_t delta = 0;
+};

@@ -286,5 +286,82 @@ Keyser conducted comprehensive audits of motion_system (post-Keaton's R3 extract
 
 Merged to `.squad/decisions.md` under "2026-05-03 — Ralph Round 4" section.
 
+---
+
+## 2026-05-04 — Ralph Round 5: collision_system Audit
+
+**Loop:** Ralph Round 5 (perf + SOLID continuous iteration)  
+**Task:** SOLID audit of collision_system post-Keaton-r4 optimization; verify behavior preservation of 1D lane-collapse  
+**Verdict:** 🟡 Yellow (two SRP findings; no blockers; behavior-preserving audit confirms Keaton-r4 safe)
+
+### Execution Summary
+
+Keyser conducted comprehensive SOLID audit of `app/systems/collision_system.cpp` post-Keaton-r4 perf optimization (1D lane-overlap collapse, frame-constant hoist, dead helper removal). Verified mathematical correctness of the collapse, confirmed all removed helpers were genuinely dead, and surfaced two SRP violations amenable to component-based refactoring in future rounds.
+
+### Audit Results: SOLID Principles
+
+| Principle | Status | Finding |
+|---|---|---|
+| **S (SRP)** | 🟡 | Two violations: (1) resolve lambda (:55–109) conflates five concerns (timing gate, tagging, rhythm grade, SongResults mutation, ShapeWindow mutation); (2) LanePush loop (:173–193) directly mutates player Lane component — movement response in a detection system. |
+| **O (OCP)** | 🟡 | Per-kind view blocks; adding new collision logic requires editing collision_system. Carry-forward: LanePushDelta component removes :188 ternary (same pattern as Keaton-r5 NonScorableTag). |
+| **L (Liskov)** | 🟢 | No inheritance/polymorphism. Clean. |
+| **I (Interface)** | 🟢 | Views structurally narrow per kind; no overwide interfaces. Minor: dead `#include <raylib.h>` at :10 (left over after helper removal). |
+| **D (Dependency)** | 🟢 | Singleton resolution canonical; no file-statics. |
+
+### Section 2 — Behavior Preservation Verification ✅
+
+#### 2a. Frame-constant hoist: SAFE
+
+**Verdict:** Safe. `player_timing_y` and `player_x` precomputed once before loops (:51–52). Obstacle loops never mutate `WorldTransform` or `VerticalState` — only `Lane` component is written (:189–190). Later iterations cannot observe stale values.
+
+#### 2b. 1D lane-overlap collapse: SAFE — Algebraic Reduction
+
+**Verdict:** Mathematically equivalent by construction. Not a behavior change.
+
+**Original code:** Both `centered_rect` calls hardcoded `cy=0.0f, h=1.0f`:
+- Player rect: `{player_x - SIZE/2, -0.5f, SIZE, 1.0f}`
+- Obstacle rect: `{obs_x - SIZE/2, -0.5f, SIZE, 1.0f}`
+
+**Y-axis collision:** Both rects span `[-0.5f, 0.5f]` identically; overlap **always true**. The `VerticalState::y_offset` (used in `player_timing_y` computation) was **never an input** to `player_overlaps_lane`. No scenario exists where y-overlap would be false.
+
+**X-axis collision:** Keaton's 1D check `|obs_x - player_x| < SIZE` is algebraic reduction of original 2D CheckCollisionRecs on x-interval.
+
+**Key insight:** Verify perf optimizations as algebraic reductions by tracing every input variable to its source. Here, y_offset was never wired into player_overlaps_lane, so the 1D collapse was safe.
+
+#### 2c. Removed helpers: All GENUINELY DEAD ✅
+
+Helpers removed by Keaton-r4: `centered_rect`, `player_timing_point`, `player_in_timing_window`, `player_overlaps_lane`.
+
+**Search proof:** 
+- `grep -r "centered_rect|player_timing_point|..." --include="*.cpp" --include="*.h"` returned only comment-text references in `test_model_authority_gaps.cpp` (WIP bug description, not call sites)
+- No other file in codebase calls any of the four helpers
+- Build compiles zero-warning, confirming no dead references
+
+**All four removals are confirmed dead-code eliminations.**
+
+### Module Health
+
+🟡 Yellow — no 🔴 blockers. Keaton-r4's optimization is correct and safe. Two actionable SRP improvements identified (resolve lambda extraction, LanePush response extraction via PendingLanePush component).
+
+### Top Finding: SRP Violation
+
+**LanePush loop directly mutates player's Lane component** (`p_lane.target`, `p_lane.lerp_t` at :188–192). This is a player-movement *response* embedded inside a collision *detector* — clearest SRP violation in the file.
+
+**Recipe:** Emplace `PendingLanePush{int8_t delta}` on the obstacle; a new `lane_push_response_system` reads and applies it. Identical pattern to Keaton-r5's NonScorableTag (factory-local emplace, system-level routing).
+
+### Cross-Cutting Pattern
+
+The LanePushDelta carry-forward recommendation mirrors Keaton-r5's NonScorableTag pattern: component carries data (delta or presence), factory emplaces at spawn, system reads at response. This is now a proven, reusable recipe.
+
+### Pattern Note for Future Reference
+
+**Verify perf optimizations as algebraic reductions by tracing every input variable to its source — y_offset was never wired into player_overlaps_lane, so the 1D collapse was safe.**
+
+When auditing perf changes, enumerate all inputs to the original function and verify whether each input remains reachable in the new code. If an input is provably constant or unreachable, the optimization is not a behavior change—it's a mathematical simplification.
+
+### Decision
+
+Merged to `.squad/decisions.md` under "Keyser R5 — collision_system SOLID Audit" section.
+
 
 

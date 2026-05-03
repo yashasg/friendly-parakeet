@@ -28,3 +28,10 @@ struct ScorePopupRequest {
 struct ScorePopupRequestQueue {
     std::vector<ScorePopupRequest> requests;
 };
+
+// Event component emplaced on the player entity by collision_system when a
+// LanePush obstacle is in range. Consumed (and removed) by
+// lane_push_response_system in the same frame.
+struct PendingLanePush {
+    int8_t delta = 0;
+};

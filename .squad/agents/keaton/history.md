@@ -269,4 +269,51 @@ Keaton identified two bench fixtures degrading silently due to archetype evoluti
 
 Merged to `.squad/decisions.md` under "2026-05-03 — Ralph Round 4" section.
 
+---
+
+## 2026-05-03 — Ralph Round 5: NonScorableTag Refactor
+
+**Loop:** Ralph Round 5 (perf + SOLID continuous iteration)  
+**Task:** Implement Keyser-r4's 🔴 finding — replace LanePushLeft/Right inline scoring exclusion with NonScorableTag  
+**Verdict:** ✅ MERGED
+
+### Execution Summary
+
+Per Keyser's R4 audit (🔴 `scoring_system.cpp:159–160` OCP violation), Keaton implemented tag-based exclusion pattern: added `NonScorableTag` component, emplaced on lane-push obstacles at spawn in `obstacle_entity.cpp:76–82`, excluded from scoring views via `entt::exclude<NonScorableTag>`, and added `NonScorable cleanup` pass. Also added migration-bridge comment in `motion_system.cpp:17–19` per Keyser's discovery.
+
+### Work Completed
+
+1. **Added `NonScorableTag` component** to `app/components/obstacle.h`
+2. **Emplaced on LanePush obstacles** at spawn in `obstacle_entity.cpp:76–82`
+3. **Updated scoring views** — excluded NonScorableTag from `hit_view` and `model_hit_view`
+4. **Added cleanup pass** — dedicated loop to strip `ScoredTag`/`Obstacle` from excluded entities post-hit-processing
+5. **Updated test factories** — `make_lane_push` now emplaces tag; manually-constructed test entities (:176, :209) added tag
+6. **Added new test** — `[scoring][nonscorable]` verifies tag-based exclusion works regardless of kind
+7. **Added motion_system bridge comment** — migration note at `:17–19` per Keyser's finding
+
+### Build & Test
+
+- **Build:** Zero warnings (clang -Wall -Wextra -Werror)
+- **Tests:** 773 test cases / 2216 assertions — all pass (+1 new [scoring][nonscorable])
+
+### OCP Win
+
+Adding a new non-scorable obstacle kind now requires **zero edits to scoring_system**: only a single `reg.emplace<NonScorableTag>(e)` in `obstacle_entity.cpp`'s factory. This is the Open/Closed principle fully satisfied.
+
+### Behavior Preservation
+
+- The `NonScorable cleanup` pass (8 lines) replicates the old inline guard's two-step behavior: (1) skip scoring, (2) strip components for next-frame idempotence.
+- Existing `[lane_push]` regression tests continue to pass.
+- miss_view unchanged: LanePush miss-path behavior preserved.
+
+### Pattern Note for Future Reference
+
+**Tag-replacement of enum-kind branches preserves behavior via either an exclude-view + cleanup-pass or via inclusive routing — pick the formulation that keeps frame-order observable invariants intact.**
+
+The cleanup pass was required because a naive exclude-view alone leaves ScoredTag dangling (entities re-checked every frame). The pattern: (1) define the tag at spawn site in factory (locality), (2) exclude from main query in consumer system (visibility), (3) add cleanup pass if component removal is semantically necessary (idempotence).
+
+### Decision
+
+Merged to `.squad/decisions.md` under "Keaton R5 — NonScorableTag Refactor" section.
+
 
