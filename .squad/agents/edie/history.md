@@ -68,3 +68,4 @@ Comments:
 - #185/#188/#201: Created `docs/testflight-readiness.md` (TestFlight prerequisites, app icons, signing, capabilities, device matrix)
 - Documented 5 user-provided blockers (Team ID, bundle ID confirmation, app icons, program type, build number bump)
 - Comments posted to all three issues
+- 2026-05-02: Completed TestFlight wave work; decision merged to decisions.md

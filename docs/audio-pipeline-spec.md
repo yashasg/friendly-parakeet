@@ -60,6 +60,18 @@ FALLBACK (no MusicContext): song_time += dt  (silent / test mode)
 
 ---
 
+## Local benchmark audio (aubio tuning only)
+
+Use `benchmarks/audio-local/` for public-domain songs used to tune/evaluate aubio detection.
+That folder is intentionally git-ignored and is local-only; do not commit files from it.
+
+For Ballroom benchmark-based tuning, use:
+- local dataset root: `benchmarks/ballroom-local/` (git-ignored)
+- machine-readable metrics: `benchmarks/ballroom-eval/results/`
+- default rhythm pipeline params: `tools/config/rhythm_aubio_params.json`
+
+---
+
 ## Change 1: CMake Content Copy Rules
 
 ### Data

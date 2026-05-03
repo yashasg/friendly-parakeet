@@ -2,7 +2,7 @@
 
 **Owner:** Edie (PM)
 **Milestone:** `test-flight`
-**Status:** v1.0 — initial decisions for issues #185, #188, #201
+**Status:** v1.1 — includes accessibility baseline for issue #75
 **Audience:** Engineering, Design, QA, Release
 
 This document is the source of truth for the TestFlight beta program: what we
@@ -278,8 +278,9 @@ of soak time:
 | Open Sev-2 bugs                       | ≤ 3, each with documented workaround | Issue tracker                |
 | Audio-interrupt recovery              | 100 % manual test pass on 3 devices  | Manual test matrix           |
 | Cold-start time (iPhone 12-class)     | ≤ 2.0 s                              | MetricKit launch metric      |
+| Accessibility baseline (A11Y-01..09)  | 100 % pass, 0 open accessibility Sev-1 | `docs/testflight-accessibility-baseline.md` |
 | Privacy label & ATT                   | Locked (#189, #194)                  | App Store Connect            |
-| Build signing & version bump          | Locked (#183, #184)                  | Release checklist            |
+| Build signing & version bump          | #183 closed (preflight gate live); #184 requires one successful signed archive+IPA with confirmed Apple account metadata | Release checklist + CI |
 
 Failing any gate → fix, ship a new TF build, restart 7-day soak. The
 go/no-go review is owned by Edie (PM) with sign-off from Kobayashi (release)
@@ -296,13 +297,45 @@ and Verbal (QA). Decision is recorded in `.squad/decisions.md`.
 
 ---
 
-## 4. Cross-cutting dependencies
+## 4. Accessibility Baseline (issue #75)
+
+### 4.1 Decision
+
+TestFlight release-readiness now includes an explicit accessibility baseline
+artifact: `docs/testflight-accessibility-baseline.md`.
+
+The baseline defines measurable pass/fail checks for:
+- colorblind-safe shape readability (not color-only),
+- audio-off playability,
+- haptics behavior,
+- reduced-motion behavior,
+- readable labels and contrast.
+
+### 4.2 Enforcement
+
+- Every closed/open beta cohort run includes the A11Y checklist.
+- A build cannot be promoted if any A11Y check is failing.
+- Accessibility regressions are triaged with the same SLA as gameplay bugs
+  (Sev-1 if core playability is blocked).
+
+### 4.3 Acceptance for #75
+
+- [x] Colorblind-safe shape/label rules documented.
+- [x] Audio-off and haptics behavior documented.
+- [x] Accessibility checks added to release readiness gates.
+- [x] Baseline artifact created for implementation + QA execution.
+
+---
+
+## 5. Cross-cutting dependencies
 
 | This doc decides | Depends on / blocks                                       |
 | ---------------- | --------------------------------------------------------- |
 | §1 Telemetry     | #189 (privacy labels), #194 (ATT), #182 (lifecycle), #180 (audio session) |
 | §2 Audio         | `tools/rhythm_pipeline.py`, `docs/audio-pipeline-spec.md`, raylib audio support on iOS |
 | §3 Beta program  | #183 (versioning), #184 (signing), every Sev-1 issue file |
+| §4 Accessibility | `docs/testflight-accessibility-baseline.md`, settings toggles (`haptics_enabled`, `reduce_motion`) |
 
-## 5. Revision log
+## 6. Revision log
+- **v1.1 (2026-05-02)** — Added TestFlight accessibility baseline and go/no-go gate for issue #75. — Redfoot
 - **v1.0 (2026-04-28)** — Initial decisions for #185, #188, #201. — Edie

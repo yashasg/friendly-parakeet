@@ -26,6 +26,7 @@ from pathlib import Path
 
 import numpy as np
 
+DEFAULT_AUBIO_CONFIG_PATH = Path(__file__).parent / "config" / "rhythm_aubio_params.json"
 
 # ---------------------------------------------------------------------------
 # ONSET DETECTION PASSES
@@ -92,9 +93,32 @@ def parse_timestamps(output: str) -> list[float]:
     return times
 
 
-def get_tempo(filepath: str) -> float:
+def _aubio_common_args(config: dict, section: str) -> list[str]:
+    args = []
+    section_cfg = config.get(section, {}) if config else {}
+    bufsize = section_cfg.get("bufsize")
+    hopsize = section_cfg.get("hopsize")
+    if bufsize is not None:
+        args.extend(["-B", str(int(bufsize))])
+    if hopsize is not None:
+        args.extend(["-H", str(int(hopsize))])
+    return args
+
+
+def load_aubio_config(path: str | None) -> dict:
+    if path is None:
+        return {}
+    cfg_path = Path(path)
+    if not cfg_path.exists():
+        print(f"Warning: aubio config not found: {cfg_path}; using built-in defaults", file=sys.stderr)
+        return {}
+    with cfg_path.open("r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def get_tempo(filepath: str, config: dict | None = None) -> float:
     """Get BPM via aubio tempo."""
-    out = run_aubio("tempo", filepath)
+    out = run_aubio("tempo", filepath, _aubio_common_args(config or {}, "tempo"))
     for line in out.splitlines():
         try:
             return float(line.strip().split()[0])
@@ -103,15 +127,16 @@ def get_tempo(filepath: str) -> float:
     return 120.0
 
 
-def get_beats(filepath: str) -> list[float]:
+def get_beats(filepath: str, config: dict | None = None) -> list[float]:
     """Get beat timestamps via aubio beat."""
-    out = run_aubio("beat", filepath)
+    out = run_aubio("beat", filepath, _aubio_common_args(config or {}, "beat"))
     return parse_timestamps(out)
 
 
-def get_onsets(filepath: str, method: str, threshold: float = 0.3) -> list[float]:
+def get_onsets(filepath: str, method: str, threshold: float = 0.3, config: dict | None = None) -> list[float]:
     """Get onset timestamps for a given aubio onset method."""
-    out = run_aubio("onset", filepath, ["-m", method, "-t", str(threshold)])
+    args = _aubio_common_args(config or {}, "onset")
+    out = run_aubio("onset", filepath, args + ["-m", method, "-t", str(threshold)])
     return parse_timestamps(out)
 
 
@@ -186,18 +211,18 @@ def get_mfcc(filepath: str) -> tuple[np.ndarray, np.ndarray]:
 # STEP 1 - EXTRACT ALL FEATURES
 # ---------------------------------------------------------------------------
 
-def extract_features(filepath: str, onset_threshold: float) -> dict:
+def extract_features(filepath: str, onset_threshold: float, aubio_config: dict | None = None) -> dict:
     print(f"\n[1] Extracting features from: {filepath}")
 
     print("    tempo + beats...")
-    bpm   = get_tempo(filepath)
-    beats = get_beats(filepath)
+    bpm   = get_tempo(filepath, config=aubio_config)
+    beats = get_beats(filepath, config=aubio_config)
     print(f"    BPM: {bpm:.1f}  |  beats: {len(beats)}")
 
     print("    onsets per method...")
     onsets = {}
     for p in ONSET_PASSES:
-        o = get_onsets(filepath, p["method"], threshold=onset_threshold)
+        o = get_onsets(filepath, p["method"], threshold=onset_threshold, config=aubio_config)
         onsets[p["name"]] = o
         print(f"      {p['name']:8s} ({p['method']:8s}): {len(o)} onsets")
 
@@ -636,8 +661,13 @@ def main():
     parser.add_argument(
         "--onset-threshold", "-t",
         type=float,
-        default=0.3,
-        help="aubio onset detection threshold 0.1-0.9 (default: 0.3, lower=more sensitive)"
+        default=None,
+        help="aubio onset detection threshold 0.1-0.9 (default: from config, fallback 0.3)"
+    )
+    parser.add_argument(
+        "--aubio-config",
+        default=str(DEFAULT_AUBIO_CONFIG_PATH),
+        help="JSON config for aubio beat/tempo/onset params (default: tools/config/rhythm_aubio_params.json)"
     )
     args = parser.parse_args()
 
@@ -646,8 +676,13 @@ def main():
         print(f"Error: file not found: {filepath}", file=sys.stderr)
         sys.exit(1)
 
-    if not (0.01 <= args.onset_threshold <= 1.0):
-        print(f"Error: onset-threshold must be between 0.01 and 1.0, got {args.onset_threshold}",
+    aubio_config = load_aubio_config(args.aubio_config)
+    onset_threshold = args.onset_threshold
+    if onset_threshold is None:
+        onset_threshold = float(aubio_config.get("onset", {}).get("threshold", 0.3))
+
+    if not (0.01 <= onset_threshold <= 1.0):
+        print(f"Error: onset-threshold must be between 0.01 and 1.0, got {onset_threshold}",
               file=sys.stderr)
         sys.exit(1)
 
@@ -656,8 +691,17 @@ def main():
     print("  mel spectrogram -> onset detection -> flux -> intensity")
     print("=" * 60)
 
-    features = extract_features(filepath, args.onset_threshold)
-    analysis = build_analysis(filepath, features, args.onset_threshold)
+    features = extract_features(filepath, onset_threshold, aubio_config=aubio_config)
+    analysis = build_analysis(filepath, features, onset_threshold)
+    analysis["aubio_params"] = {
+        "config_path": str(args.aubio_config),
+        "tempo": aubio_config.get("tempo", {}),
+        "beat": aubio_config.get("beat", {}),
+        "onset": {
+            **aubio_config.get("onset", {}),
+            "threshold": onset_threshold,
+        },
+    }
 
     out_path = args.output or f"{Path(filepath).stem}_analysis.json"
     with open(out_path, "w") as f:
