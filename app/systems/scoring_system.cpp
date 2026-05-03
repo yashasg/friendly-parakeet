@@ -102,10 +102,8 @@ void scoring_system(entt::registry& reg, float dt) {
             if (results) results->miss_count++;
             score.chain_count = 0;
             score.chain_timer = 0.0f;
-            const auto kind = miss_view.get<Obstacle>(e).kind;
             if (gos && gos->cause == DeathCause::None) {
-                const bool is_bar = (kind == ObstacleKind::LowBar || kind == ObstacleKind::HighBar);
-                gos->cause = is_bar ? DeathCause::HitABar : DeathCause::MissedABeat;
+                gos->cause = reg.any_of<BarObstacleTag>(e) ? DeathCause::HitABar : DeathCause::MissedABeat;
             }
             miss_buf.push_back({e, reg.any_of<TimingGrade>(e)});
         }

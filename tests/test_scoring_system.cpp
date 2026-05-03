@@ -253,7 +253,7 @@ TEST_CASE("scoring: NonScorableTag entity cleared without scoring", "[scoring][n
     auto e = reg.create();
     reg.emplace<ObstacleTag>(e);
     reg.emplace<Position>(e, 300.0f, constants::PLAYER_Y);
-    reg.emplace<Obstacle>(e, ObstacleKind::LanePushLeft, int16_t{999});
+    reg.emplace<Obstacle>(e, ObstacleKind::ShapeGate, int16_t{999});
     reg.emplace<NonScorableTag>(e);
     reg.emplace<ScoredTag>(e);
 
@@ -268,4 +268,42 @@ TEST_CASE("scoring: NonScorableTag entity cleared without scoring", "[scoring][n
     // ScoredTag and Obstacle cleaned up — entity won't be re-processed.
     CHECK_FALSE(reg.all_of<ScoredTag>(e));
     CHECK_FALSE(reg.all_of<Obstacle>(e));
+}
+
+TEST_CASE("scoring: BarObstacleTag sets DeathCause::HitABar regardless of kind", "[scoring][bartag]") {
+    // Verifies OCP: any entity with BarObstacleTag triggers HitABar death cause.
+    // Uses a synthetic ShapeGate kind (not LowBar/HighBar) to prove kind-independence.
+    auto reg = make_registry();
+    auto& gos = reg.ctx().get<GameOverState>();
+    REQUIRE(gos.cause == DeathCause::None);
+
+    auto e = reg.create();
+    reg.emplace<ObstacleTag>(e);
+    reg.emplace<Position>(e, 300.0f, constants::PLAYER_Y);
+    reg.emplace<Obstacle>(e, ObstacleKind::ShapeGate, int16_t{200});
+    reg.emplace<BarObstacleTag>(e);
+    reg.emplace<ScoredTag>(e);
+    reg.emplace<MissTag>(e);
+
+    scoring_system(reg, 0.0f);
+
+    CHECK(gos.cause == DeathCause::HitABar);
+}
+
+TEST_CASE("scoring: missing bar sets DeathCause::MissedABeat when no BarObstacleTag", "[scoring][bartag]") {
+    // Confirms the else-branch: a missed ShapeGate without BarObstacleTag → MissedABeat.
+    auto reg = make_registry();
+    auto& gos = reg.ctx().get<GameOverState>();
+    REQUIRE(gos.cause == DeathCause::None);
+
+    auto e = reg.create();
+    reg.emplace<ObstacleTag>(e);
+    reg.emplace<Position>(e, 300.0f, constants::PLAYER_Y);
+    reg.emplace<Obstacle>(e, ObstacleKind::ShapeGate, int16_t{200});
+    reg.emplace<ScoredTag>(e);
+    reg.emplace<MissTag>(e);
+
+    scoring_system(reg, 0.0f);
+
+    CHECK(gos.cause == DeathCause::MissedABeat);
 }

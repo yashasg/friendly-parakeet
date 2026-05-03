@@ -16,6 +16,32 @@
 
 ## Learnings
 
+### 2026-05-XX — Ralph Round 8: BarObstacleTag Audit + Phase-Guard Design B Scope
+
+**Loop:** Ralph performance + SOLID iteration  
+**Task:** Audit BarObstacleTag refactor (R7 Keaton); detailed scope for Design B phase-guard runner (R9)  
+**Status:** ✅ Audit complete; Design B scope documented; no 🔴 blockers  
+**Findings:** BarObstacleTag behavior preserved (3-test suite confirms kind-independence + else-branch); scoring_system 🟢 confirmed kind-free; Design B recommends 11-system runner
+
+**BarObstacleTag Audit:**
+- Behavior preservation: ✅ spawn-time emplacement (obstacle_entity.cpp:48,57) matches pre-refactor kind checks exactly
+- Test thoroughness: ✅ synthetic kind proof (ShapeGate+tag) + else-branch test (ShapeGate, no tag)
+- scoring_system module health: 🟢 zero `ObstacleKind::` refs remain
+- Pattern codification: Third tag-replacement (NonScorableTag R5, LanePushDelta R6, BarObstacleTag R7) — recipe is stable and repeatable
+
+**Phase-Guard Design B:**
+- 11 systems affected (not 12 — obstacle_despawn_system has no guard)
+- Recommended runner: hand-written `tick_playing_systems(reg, dt)` inline `if` block
+- Rationale: only option that removes duplication (not just renames it); matches existing `tick_fixed_systems` aesthetic
+- Diff estimate: +3 net lines (~28 lines touched across 14 files)
+- Risks: No new risks introduced; transition-tick behavior preserved; player_input_system becomes double-guarded (safe, clean up in R10)
+
+**Pattern Codification:** Tag-replacement of enum-kind branches is now a ratified pattern with 3 successful applications (NonScorableTag, BarObstacleTag, LanePushDelta). Recommend adding playbook entry `.squad/playbooks/tag-replace-inline-enum-branch.md` with recipe for future applications.
+
+**Decision:** `.squad/decisions.md` (merged from inbox, Round 8)
+
+---
+
 ### 2026-05-XX — Ralph Round 7: LanePush Refactor Audit + 🔴 Critical Production Bug Discovery
 
 **Loop:** Ralph performance + SOLID iteration  

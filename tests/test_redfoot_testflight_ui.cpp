@@ -101,6 +101,7 @@ entt::entity spawn_obstacle(entt::registry& reg, ObstacleKind kind, float y) {
     if (kind == ObstacleKind::LowBar || kind == ObstacleKind::HighBar) {
         reg.emplace<ObstacleScrollZ>(e, y);
         reg.emplace<WorldTransform>(e, WorldTransform{{constants::SCREEN_W_F * 0.5f, y}});
+        reg.emplace<BarObstacleTag>(e);
     } else {
         reg.emplace<Position>(e, constants::LANE_X[1], y);
         reg.emplace<WorldTransform>(e, WorldTransform{{constants::LANE_X[1], y}});

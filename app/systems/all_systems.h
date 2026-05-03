@@ -29,6 +29,7 @@ void player_movement_system(entt::registry& reg, float dt);
 void scroll_system(entt::registry& reg, float dt);
 void motion_system(entt::registry& reg, float dt);
 void collision_system(entt::registry& reg, float dt);
+void lane_push_response_system(entt::registry& reg, float dt);
 void miss_detection_system(entt::registry& reg, float dt);
 void scoring_system(entt::registry& reg, float dt);
 void popup_feedback_system(entt::registry& reg, float dt);

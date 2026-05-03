@@ -65,3 +65,30 @@
 | **Files authorized to read** | `.squad/decisions/inbox/keaton-r7-bartag-and-test-fix.md`, `.squad/decisions/inbox/keyser-r7-lanepush-and-phase-design.md`, `.squad/decisions.md`, `.squad/agents/keaton/history.md`, `.squad/agents/keyser/history.md`, `.squad/SCRIBE_SESSION_REPORT.txt` |
 | **File(s) agent must produce** | Merged decisions.md (r7 sections with 🔴 prominence); keaton/history.md (r7 + WARNING); keyser/history.md (r7 + WARNING); SCRIBE_SESSION_REPORT.txt (r7 round snapshot); git commit |
 | **Outcome** | ✅ Completed — decisions.md merged with prominent 🔴 section; agent histories updated with r7 + WARNING patterns; module health snapshot captured (scoring_system 🟢, collision_system 🟡, lane_push_response_system 🔴); git commit created; inbox files preserved for r8 reference |
+
+### 2026-05-XX — Ralph Round 8: Keaton Lane Push Wire Fix
+
+| Field | Value |
+|-------|-------|
+| **Agent routed** | Keaton (C++ Performance Engineer) |
+| **Why chosen** | 🔴 critical production bug fix from R7 discovery; straightforward wiring + integration test |
+| **Mode** | sync |
+| **Why this mode** | Self-contained wiring fix; production call is a one-liner; no architecture decisions pending |
+| **Files authorized to read** | `app/game_loop.cpp`, `tests/test_collision_system.cpp` |
+| **File(s) agent must produce** | Modified `app/game_loop.cpp` (insert lane_push_response_system call); modified `tests/test_collision_system.cpp` (add integration + multi-obstacle tests) |
+| **Outcome** | ✅ Completed — lane_push_response_system wired at game_loop.cpp:192; two new integration tests added; 795 test cases (was 793), 2233 assertions (was 2227); zero warnings; module health lane_push_response_system: 🔴 unwired → 🟢 WIRED |
+
+---
+
+### 2026-05-XX — Ralph Round 8: Keyser BarObstacleTag Audit + Phase-Guard Design B Scope
+
+| Field | Value |
+|-------|-------|
+| **Agent routed** | Keyser (Lead Architect) |
+| **Why chosen** | Post-Keaton-r7 tag-replacement audit + phase-guard consolidation design scope for R9 |
+| **Mode** | sync |
+| **Why this mode** | Analysis + design recommendation (Design B); no implementation in R8 |
+| **Files authorized to read** | `app/components/obstacle.h`, `app/entities/obstacle_entity.cpp`, `app/systems/scoring_system.cpp`, `tests/test_scoring_system.cpp`, all 11 affected system files for phase-guard count/location |
+| **File(s) agent must produce** | Analysis decision document for decisions.md merge |
+| **Outcome** | ✅ Completed — BarObstacleTag audit confirms behavior preservation + test thoroughness + scoring_system 🟢 kind-free; Design B phase-guard runner scope detailed (11 systems, +3 net lines, no new risks); pattern codification recommended for playbooks |
+

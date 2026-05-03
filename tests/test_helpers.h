@@ -18,6 +18,7 @@
 #include "util/rhythm_math.h"
 #include "components/high_score.h"
 #include "components/rng.h"
+#include "components/gameplay_intents.h"
 #include "constants.h"
 #include "entities/obstacle_render_entity.h"
 #include "systems/all_systems.h"
@@ -267,6 +268,7 @@ inline entt::entity make_lane_push(entt::registry& reg, ObstacleKind kind, float
     reg.emplace<TagWorldPass>(obs);
     reg.emplace<Color>(obs, Color{0, 200, 200, 255});
     reg.emplace<NonScorableTag>(obs);
+    reg.emplace<LanePushDelta>(obs, kind == ObstacleKind::LanePushLeft ? int8_t{-1} : int8_t{1});
     return obs;
 }
 

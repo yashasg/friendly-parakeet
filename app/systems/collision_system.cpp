@@ -7,8 +7,8 @@
 #include "../components/rhythm.h"
 #include "../util/rhythm_math.h"
 #include "../components/song_state.h"
+#include "../components/gameplay_intents.h"
 #include "../constants.h"
-#include <raylib.h>
 #include <cmath>
 
 namespace {
@@ -37,9 +37,9 @@ void collision_system(entt::registry& reg, float /*dt*/) {
     auto player_view = reg.view<PlayerTag, WorldTransform, PlayerShape, ShapeWindow, Lane, VerticalState>();
     if (player_view.begin() == player_view.end()) return;
 
-    auto player_it = player_view.begin();
+    auto player_entity = *player_view.begin();
     auto [p_transform, p_shape, p_window, p_lane, p_vstate] =
-        player_view.get<WorldTransform, PlayerShape, ShapeWindow, Lane, VerticalState>(*player_it);
+        player_view.get<WorldTransform, PlayerShape, ShapeWindow, Lane, VerticalState>(player_entity);
 
     auto* song    = reg.ctx().find<SongState>();
     auto* results = reg.ctx().find<SongResults>();
@@ -172,21 +172,15 @@ void collision_system(entt::registry& reg, float /*dt*/) {
         }
     }
 
-    // LanePushLeft / LanePushRight: no data components (structural negative).
-    // Passive: auto-pushes player when in the same lane; always scores.
+    // LanePush: positive discriminant via LanePushDelta component.
+    // Emplaces PendingLanePush on the player; lane_push_response_system
+    // applies it to p_lane in the same frame (after collision, before render).
     {
-        auto view = reg.view<ObstacleTag, Position, Obstacle>(
-            entt::exclude<ScoredTag, RequiredShape, BlockedLanes, RequiredLane, RequiredVAction>);
-        for (auto [e, pos, obs] : view.each()) {
+        auto view = reg.view<ObstacleTag, Position, LanePushDelta>(entt::exclude<ScoredTag>);
+        for (auto [e, pos, lpd] : view.each()) {
             if (pos.y < player_timing_y) continue;
-            bool on_same_lane = lane_overlaps(pos);
-            if (on_same_lane && p_lane.target < 0) {
-                int8_t delta = (obs.kind == ObstacleKind::LanePushLeft) ? -1 : 1;
-                int8_t dest  = static_cast<int8_t>(p_lane.current + delta);
-                if (dest >= 0 && dest < constants::LANE_COUNT) {
-                    p_lane.target = dest;
-                    p_lane.lerp_t = 0.0f;
-                }
+            if (lane_overlaps(pos) && !reg.all_of<PendingLanePush>(player_entity)) {
+                reg.emplace<PendingLanePush>(player_entity, lpd.delta);
             }
             reg.emplace<ScoredTag>(e);
         }

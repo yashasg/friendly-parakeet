@@ -45,6 +45,7 @@ entt::entity spawn_obstacle(entt::registry& reg, const ObstacleSpawnParams& para
             reg.emplace<RequiredVAction>(e, VMode::Jumping);
             reg.emplace<DrawSize>(e, constants::SCREEN_W_F, 40.0f);
             reg.emplace<Color>(e, Color{255, 180, 0, 255});
+            reg.emplace<BarObstacleTag>(e);
             break;
         }
         case ObstacleKind::HighBar: {
@@ -53,6 +54,7 @@ entt::entity spawn_obstacle(entt::registry& reg, const ObstacleSpawnParams& para
             reg.emplace<RequiredVAction>(e, VMode::Sliding);
             reg.emplace<DrawSize>(e, constants::SCREEN_W_F, 40.0f);
             reg.emplace<Color>(e, Color{180, 0, 255, 255});
+            reg.emplace<BarObstacleTag>(e);
             break;
         }
         case ObstacleKind::ComboGate: {

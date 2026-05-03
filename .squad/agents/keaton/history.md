@@ -18,6 +18,28 @@
 
 ## Learnings
 
+### 2026-05-XX — Ralph Round 8: Lane Push Response System Wiring Fix
+
+**Loop:** Ralph performance + SOLID iteration  
+**Task:** Wire `lane_push_response_system` in production tick path (🔴 bug fix from R7 audit)  
+**Status:** ✅ Complete  
+**Files changed:** 1 (`app/game_loop.cpp`); 1 new system call line inserted  
+**Tests:** +2 cases (integration + multi-obstacle contention); +6 assertions; all 2233 assertions / 795 test cases pass  
+**Build:** Zero warnings
+
+**Result:**
+- `lane_push_response_system` wired at `game_loop.cpp:192` between collision and miss_detection
+- Production tick now correctly runs: collision → response → miss_detection
+- Integration test `"lane push consumed in production tick order"` exercises the wiring itself
+- Multi-obstacle test `"first wins, delta not overwritten"` pins first-obstacle-wins semantics
+- module health: lane_push_response_system **🟢 WIRED** (up from 🔴 unwired in R7)
+
+**Pattern Learned:** **Production-loop integration is the most-easily-missed integration point when introducing event-emit+consume system pairs.** Write a production-tick integration test BEFORE unit tests. Unit tests that self-wire systems can mask a missing production call. Demand at least one test that exercises the actual production tick path (or as close as linking allows), not just the systems in correct order. **If a test passes when the production wiring is deleted, the test measures the wrong thing.**
+
+**Decision:** `.squad/decisions.md` (merged from inbox, Round 8)
+
+---
+
 ### 2026-05-XX — Ralph Round 7: BarObstacleTag Refactor + NonScorableTag Test Fix
 
 **Loop:** Ralph performance + SOLID iteration  

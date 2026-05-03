@@ -30,6 +30,10 @@ struct ScoredTag {};
 // obstacles such as LanePushLeft and LanePushRight.
 struct NonScorableTag {};
 
+// Existential tag: obstacle is a bar-type (LowBar or HighBar).
+// Emplaced at spawn; consumed by scoring_system to set DeathCause::HitABar.
+struct BarObstacleTag {};
+
 // Existential tag: scored obstacle was failed/missed and should not award points.
 struct MissTag {};
 
