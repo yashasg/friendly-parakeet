@@ -13,27 +13,6 @@
 
 namespace {
 
-Rectangle centered_rect(float cx, float cy, float w, float h) {
-    return {cx - w * 0.5f, cy - h * 0.5f, w, h};
-}
-
-Vector2 player_timing_point(const WorldTransform& transform, const VerticalState& vstate) {
-    return {0.0f, transform.position.y + vstate.y_offset};
-}
-
-bool player_in_timing_window(const WorldTransform& player_transform,
-                              const VerticalState& vstate,
-                              float obstacle_z) {
-    return obstacle_z >= player_timing_point(player_transform, vstate).y;
-}
-
-bool player_overlaps_lane(const WorldTransform& player_transform, const Position& obstacle_pos) {
-    Rectangle player_lane = centered_rect(player_transform.position.x, 0.0f,
-                                          constants::PLAYER_SIZE, 1.0f);
-    Rectangle obstacle_lane = centered_rect(obstacle_pos.x, 0.0f, constants::PLAYER_SIZE, 1.0f);
-    return CheckCollisionRecs(player_lane, obstacle_lane);
-}
-
 bool player_matches_required_shape(const PlayerShape& p_shape,
                                    const ShapeWindow& p_window,
                                    Shape required) {
@@ -66,11 +45,17 @@ void collision_system(entt::registry& reg, float /*dt*/) {
     auto* results = reg.ctx().find<SongResults>();
     bool rhythm_mode = (song != nullptr);
 
+    // Frame-constant precomputes — both values are invariant across all obstacle
+    // loops since player transform and vertical state don't change mid-frame.
+    // Precomputing here avoids redundant addition + Vector2 construction per obstacle.
+    const float player_timing_y = p_transform.position.y + p_vstate.y_offset;
+    const float player_x        = p_transform.position.x;
+
     // resolve: tag entity as scored (cleared) or missed.
     // kind is passed by the caller — no try_get needed since each per-kind
     // loop already holds the Obstacle component.
     auto resolve = [&](entt::entity entity, float obs_z, bool cleared) {
-        if (!player_in_timing_window(p_transform, p_vstate, obs_z)) return;
+        if (obs_z < player_timing_y) return;
 
         if (!cleared) {
             // MISS — tag only; scoring_system owns energy drain and death-cause attribution.
@@ -124,6 +109,15 @@ void collision_system(entt::registry& reg, float /*dt*/) {
         reg.emplace<ScoredTag>(entity);
     };
 
+    // Inline 1D lane-overlap check — equivalent to the two-rect CheckCollisionRecs
+    // call (y-axis always overlaps since both rects use y=0,h=1; reduces to x-axis
+    // interval: |obs_x - player_x| < PLAYER_SIZE). Saves 2× centered_rect + 1×
+    // CheckCollisionRecs per obstacle.
+    auto lane_overlaps = [player_x](const Position& obstacle_pos) -> bool {
+        float dx = obstacle_pos.x - player_x;
+        return (dx > -constants::PLAYER_SIZE) && (dx < constants::PLAYER_SIZE);
+    };
+
     // Per-kind structural views — each loop touches only entities that actually
     // carry the required components, eliminating per-entity try_get branches.
 
@@ -133,7 +127,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
             entt::exclude<ScoredTag, BlockedLanes, RequiredLane>);
         for (auto [e, pos, req] : view.each()) {
             bool shape_match = player_matches_required_shape(p_shape, p_window, req.shape);
-            bool lane_match  = player_overlaps_lane(p_transform, pos);
+            bool lane_match  = lane_overlaps(pos);
             resolve(e, pos.y, shape_match && lane_match);
         }
     }
@@ -184,8 +178,8 @@ void collision_system(entt::registry& reg, float /*dt*/) {
         auto view = reg.view<ObstacleTag, Position, Obstacle>(
             entt::exclude<ScoredTag, RequiredShape, BlockedLanes, RequiredLane, RequiredVAction>);
         for (auto [e, pos, obs] : view.each()) {
-            if (!player_in_timing_window(p_transform, p_vstate, pos.y)) continue;
-            bool on_same_lane = player_overlaps_lane(p_transform, pos);
+            if (pos.y < player_timing_y) continue;
+            bool on_same_lane = lane_overlaps(pos);
             if (on_same_lane && p_lane.target < 0) {
                 int8_t delta = (obs.kind == ObstacleKind::LanePushLeft) ? -1 : 1;
                 int8_t dest  = static_cast<int8_t>(p_lane.current + delta);

@@ -38,7 +38,9 @@ static entt::entity make_bench_player(entt::registry& reg) {
     auto p = reg.create();
     reg.emplace<PlayerTag>(p);
     reg.emplace<Position>(p, constants::LANE_X[1], constants::PLAYER_Y);
+    reg.emplace<WorldTransform>(p, Vector2{constants::LANE_X[1], constants::PLAYER_Y});
     reg.emplace<PlayerShape>(p);
+    reg.emplace<ShapeWindow>(p);
     reg.emplace<Lane>(p);
     reg.emplace<VerticalState>(p);
     reg.emplace<Color>(p, Color{80, 180, 255, 255});
@@ -64,6 +66,22 @@ static void spawn_obstacles(entt::registry& reg, int count) {
     }
 }
 
+// Spawns obstacles with the production scroll_system archetype:
+// ObstacleScrollZ + Velocity (freeplay non-beat path, exclude BeatInfo).
+// These enter scroll_system's model_view, NOT motion_system's vel_view.
+static void spawn_scroll_obstacles(entt::registry& reg, int count) {
+    const auto& song = reg.ctx().get<SongState>();
+    for (int i = 0; i < count; ++i) {
+        auto obs = reg.create();
+        reg.emplace<ObstacleTag>(obs);
+        float z = constants::SPAWN_Y + static_cast<float>(i) * 80.0f;
+        reg.emplace<ObstacleScrollZ>(obs, z);
+        reg.emplace<Velocity>(obs, 0.0f, song.scroll_speed);
+        reg.emplace<Obstacle>(obs, ObstacleKind::ShapeGate, int16_t{200});
+        reg.emplace<DrawLayer>(obs, Layer::Game);
+    }
+}
+
 static void spawn_particles(entt::registry& reg, int count) {
     for (int i = 0; i < count; ++i) {
         auto p = reg.create();
@@ -83,17 +101,17 @@ constexpr float DT = 1.0f / 60.0f;
 TEST_CASE("Bench: scroll_system", "[bench]") {
     BENCHMARK_ADVANCED("10 entities")(Catch::Benchmark::Chronometer meter) {
         auto reg = make_bench_registry();
-        spawn_obstacles(reg, 10);
+        spawn_scroll_obstacles(reg, 10);
         meter.measure([&] { scroll_system(reg, DT); });
     };
     BENCHMARK_ADVANCED("100 entities")(Catch::Benchmark::Chronometer meter) {
         auto reg = make_bench_registry();
-        spawn_obstacles(reg, 100);
+        spawn_scroll_obstacles(reg, 100);
         meter.measure([&] { scroll_system(reg, DT); });
     };
     BENCHMARK_ADVANCED("1000 entities")(Catch::Benchmark::Chronometer meter) {
         auto reg = make_bench_registry();
-        spawn_obstacles(reg, 1000);
+        spawn_scroll_obstacles(reg, 1000);
         meter.measure([&] { scroll_system(reg, DT); });
     };
 }
