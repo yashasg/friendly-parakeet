@@ -12291,3 +12291,164 @@ Updated Orchestration Log: r12 rows marked ✅ Merged. Added two new heuristics 
 
 ---
 
+
+## Round 13: Keaton — Chain-Bonus SRP Retraction + Motion System Migration; Keyser — R12 Forensic + Module Health Reclassification
+
+### Keaton R13 Decision
+
+**Date:** 2026-05-05
+
+**Pre-change metrics:**
+```
+All tests passed (2251 assertions in 784 test cases)
+```
+
+**Post-change metrics:**
+```
+All tests passed (2255 assertions in 786 test cases)
+```
+
+**Test delta:** +2 cases, +4 assertions. No regressions.
+
+#### Part 1: Chain-Bonus SRP Retraction
+
+**Claim (r12 follow-up):** chain_count/chain_timer state is mutated directly in scoring_system rather than dispatched as events.
+
+**Evidence (grep):**
+```
+grep -rn "chain_count\|chain_timer" app/
+```
+
+Results: ALL reads and writes are inside `app/systems/scoring_system.cpp` only. Zero references in any other system (HUD, popup_feedback, energy, particle, UI). Tests access only to assert post-tick state.
+
+**Verdict: RETRACTED.** chain_count/chain_timer is internal state of scoring subsystem. Timing chain bonuses is one cohesive concern. No cross-system coupling detected. No event dispatch needed.
+
+#### Part 2: Motion System vel_view Migration Step (Option C)
+
+**Background:** motion_system has two views:
+- `vel_view`: `Position + Velocity + !BeatInfo` — legacy path with `#349` migration bridge
+- `motion_view`: `WorldTransform + MotionVelocity + !BeatInfo` — modern path
+
+**Changes made:**
+
+1. **`app/systems/motion_system.cpp` (comment):**
+   - Updated vel_view comment to document "freeplay obstacles only (issue #349)"
+   - Documents that popups and particles have already migrated to motion_view
+
+2. **`benchmarks/bench_systems.cpp` (bug fix):**
+   - `spawn_particles` was creating `Position + Velocity` particles (wrong legacy path)
+   - Corrected to `WorldTransform + MotionVelocity` (production archetype)
+   - Added explanatory comment
+   - **Implication:** Prior round bench claims involving particles measured wrong path
+
+3. **`tests/test_world_systems.cpp` (new unit tests, +2 cases):**
+   - `"motion: WorldTransform+MotionVelocity entity moves by velocity * dt"` — covers motion_view path
+   - `"motion: WorldTransform+MotionVelocity entity with BeatInfo is excluded"` — documents BeatInfo exclusion
+
+**Build:** Zero warnings, zero errors. Werror clean on all targets.
+
+**Bench delta:** None for production logic. spawn_particles now correctly hits motion_view instead of vel_view — slight speedup expected for benchmark only.
+
+---
+
+### Keyser R13 Decision
+
+**Canonical test command:**
+```
+./build/shapeshifter_tests '~[bench]' --reporter compact 2>&1 | tail -5
+```
+```
+All tests passed (2251 assertions in 784 test cases)
+```
+
+#### 1. Behavior-Preservation Audit (R12 SRP Move)
+
+**Verdict:** ✅ Behavior preserved — with 🟡 process anomaly.
+
+**Git forensic finding:** The r12 commit (`7db518b`) contains **only tests** (30-line addition to test_collision_extended.cpp). The actual source code move (collision_system.cpp: −10, scoring_system.cpp: +8) happened in Scribe's r11 commit (`e2ca118`). This is a commit-message attribution error — r12's message describes the state of the world but the diff shows only the test.
+
+**Guard semantics:** collision_system pre-move and scoring_system post-move both use `reg.ctx().find<SongResults>()` (nullable). New `if (r.has_timing)` guard is strictly stronger (only true when TimingGrade emplaced). Miss path cannot reach counters. ✅
+
+**Negative test (added in r12):** Calls collision_system alone, verifies SongResults counters remain zero. Structure is sound. ✅
+
+#### 2. Keaton R13 Work — Parallel Chain-Bonus Investigation
+
+**Grep result (independent verification):** All chain_count/chain_timer reads/writes inside scoring_system.cpp only. Zero cross-system references. **RETRACT verdict matches Keaton.**
+
+#### 3. Process Finding: Scribe Protocol Bug
+
+**Root cause:** When Scribe commits, it runs in parallel with Keaton. If Keaton has working-tree edits when Scribe commits using `git add -A`, those edits get swept into Scribe's commit, breaking forensic git blame.
+
+**Impact:** R12 commits misattributed source changes to Scribe when they were in-flight Keaton edits.
+
+**Fix:** Scribe MUST use explicit `git add` paths only. Never `git add -A`. For R13+, Scribe adds only `.squad/` paths and explicitly avoids `app/`, `tests/`, `benchmarks/`.
+
+#### 4. player_input_system Reclassification (🟡 → 🟢)
+
+**Finding:** R12 labeled guards at lines 22, 43 as "redundant but safe." **Incorrect.**
+
+`playing_systems_runner.cpp` documents that callbacks registered with the ECS dispatcher are invoked by `game_state_system`'s `disp.update<...>()` calls **before** the runner phase check. Guards protect these callback paths from executing in non-Playing phases (Paused, GameOver).
+
+**These guards are load-bearing.** Removing them introduces a bug.
+
+**Reclassification:** player_input_system: 🟡 → 🟢. Add comment: "// load-bearing: dispatcher can invoke callback in non-Playing phases".
+
+#### 5. Module Health Snapshot (Post-R13)
+
+| Module | Status | Notes |
+|--------|--------|-------|
+| collision_system | 🟢 | SRP closed; zero SongResults/ObstacleKind refs; emits TimingGrade only |
+| scoring_system | 🟢 | Owns SongResults mutations; chain_count/chain_timer fully encapsulated |
+| motion_system | 🟡 | Migration bridge at :16 (#349); vel_view path still exists for freeplay obstacles |
+| scroll_system | 🟢 | No issues |
+| lane_push_response_system | 🟢 | Event-driven; no issues |
+| playing_systems_runner | 🟢 | 11 systems; phase gate at top; order correct |
+| fixed_tick_runner | 🟢 | Order: game_state→song_playback→tick_playing_systems→obstacle_despawn→popup_feedback→popup_display→energy→particle |
+| popup_feedback_system | 🟢 | Phase guard at :9; post-despawn position confirmed |
+| energy_system | 🟢 | Phase guard at :9; post-display position confirmed |
+| particle_system | 🟢 | No issues |
+| player_input_system | 🟢 | Guards at :22/:43 load-bearing for dispatcher callbacks; reclassified from 🟡 |
+| beat_log_system | 🟢 | No issues |
+| popup_display_system | 🟢 | No issues |
+| miss_detection_system | 🟢 | No issues |
+
+#### 6. R14 Scope Recommendation
+
+| Priority | Target | Type | Justification |
+|----------|--------|------|---------------|
+| 1 | **motion_system bridge** (#349) | Technical debt | Explicit deletion comment; Position+Velocity path may shadow WorldTransform |
+| 2 | **player_input_system reclassification** | Documentation/🟡→🟢 | Add comment at :22/:43; update health table |
+| 3 | **Ordering test strengthening** | Test coverage | Current [order_regression] test doesn't catch wrong ordering; gap cited since r11 |
+| 4 | **CI grep convention** | Process | ⚠️ **PENDING USER APPROVAL — DO NOT IMPLEMENT without explicit authorization** |
+
+---
+
+
+## Heuristics Added (Post-R13)
+
+### Scribe Protocol Fix (post-r13)
+
+**Problem:** Scribe runs in parallel with Keaton. When Scribe commits using `git add -A`, in-flight Keaton edits in `app/`, `tests/`, `benchmarks/` are swept into Scribe's commit, breaking forensic git blame and creating false attribution.
+
+**Pattern:** Scribe MUST use explicit `git add` paths only. Never `git add -A`. For squad artifact merges, add only:
+- `.squad/decisions.md`
+- `.squad/agents/keaton/history.md` and `.squad/agents/keyser/history.md`
+- `.squad/ROUND*_HEALTH_REPORT.txt`
+- `.squad/decisions/inbox/*.md` when staging deletions
+
+**Evidence:** R12/R13 commit forensic showed source moves misattributed to Scribe's R11 commit when they were Keaton's working-tree edits.
+
+**Action:** For R14+, Scribe verifies `git diff --staged --stat` contains only `.squad/` paths before committing.
+
+### Bench Archetype Gotcha (post-r13)
+
+**Problem:** When auditing or adding a bench, the entity archetype created must match the production code path being measured. R13 found `benchmarks/bench_systems.cpp::spawn_particles` creating `Position + Velocity` (legacy vel_view path) while production particles use `WorldTransform + MotionVelocity` (motion_view path). Bench measured wrong path for ~12 rounds before catching.
+
+**Pattern:** When adding a bench, verify the entity archetype matches production. When auditing bench history, confirm the archetype matches what production now uses. If wrong, fix it and note that prior "no delta" claims need revisiting.
+
+**Evidence:** R13 found bench creating legacy archetype. Changing to production archetype means particles now hit motion_view instead of vel_view — prior benchmark claims about particle workloads measured the wrong system.
+
+**Action:** For R14+, when reviewing any bench commit, cross-check entity archetypes against production code (grep for which components are emplaced in production).
+
+---
+

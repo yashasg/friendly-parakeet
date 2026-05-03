@@ -622,3 +622,23 @@ Merged to `.squad/decisions.md` under "Round 9: Keyser — Wirefix Audit + Self-
 
 **Decision:** Merged to `.squad/decisions.md` under "Round 12 Decision Drop — Collision System SRP + Order/Count Forensic" section.
 
+
+---
+
+### Round 13 — SRP Audit (Keaton R13) + R12 Forensic + Module Health Reclassification
+
+**Date:** 2026-05-05
+
+**Work:**
+1. **Parallel chain-bonus investigation:** Independent grep confirmed Keaton's RETRACT verdict. Chain_count/chain_timer writes isolated inside scoring_system.cpp. No cross-system coupling. **Independent agreement strengthens retraction evidence.**
+2. **R12 forensic:** Found Scribe protocol bug via commit history analysis. R12 commit (7db518b) contains only tests; actual source move (collision_system −10, scoring_system +8) happened in Scribe's R11 commit (e2ca118). Root cause: Scribe likely used `git add -A` and swept up Keaton's working-tree edits. Commit-message attribution error breaks git blame.
+3. **player_input_system reclassification:** R12 labeled guards as "redundant but safe." Audit traced all invocation paths: dispatcher callbacks invoked via game_state_system's disp.update<>() calls OUTSIDE the runner. Guards protect these callback paths from executing in non-Playing phases. **Guards are load-bearing, not redundant. Reclassified 🟡 → 🟢.**
+4. **Module health snapshot:** Updated post-R13 with motion_system 🟡 (vel_view path #349 still open) and player_input_system 🟢 (guards load-bearing with added comment).
+
+**Process findings:**
+- Scribe must use explicit `git add` paths, never `git add -A`. Parallel agent edits are swept up.
+- When auditing a refactor, check WHICH commit landed the diff, not just that it landed. Commit-message attribution can be wrong.
+
+**Pattern Learned:** Parallel-investigated chain-bonus and reached same RETRACT verdict. Independent agreement is strong evidence. Audit findings labeled 'redundant' must trace ALL invocation paths, including indirect dispatcher paths, before declaring guards redundant.
+
+**Decision:** Merged to `.squad/decisions.md` under "Round 13: Keaton — Chain-Bonus SRP Retraction + Motion System Migration; Keyser — R12 Forensic + Module Health Reclassification" section.

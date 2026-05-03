@@ -521,3 +521,22 @@ Merged to `.squad/decisions.md` under "Round 9: Keaton — Phase-Guard Design B 
 
 **Decision:** Merged to `.squad/decisions.md` under "Round 12 Decision Drop — Collision System SRP + Order/Count Forensic" section.
 
+
+---
+
+### Round 13 — Chain-Bonus SRP Retraction + Motion System Migration
+
+**Date:** 2026-05-05
+
+**Work:**
+1. Investigated chain-bonus SRP coupling claim (r12 follow-up): grep showed chain_count/chain_timer writes ONLY inside scoring_system.cpp. State is fully encapsulated in scoring's concern. Co-location is intentional, not a smell. **Retracted the SRP recipe.**
+2. Moved motion_system migration forward (Option C): Updated vel_view comment to document "freeplay obstacles only (issue #349)". Found and fixed bench archetype mismatch: spawn_particles was creating Position+Velocity (legacy path) instead of WorldTransform+MotionVelocity (production). Added two new unit tests for motion_view path.
+3. Tests: 784/2251 → 786/2255 (+2 cases, +4 assertions). Zero warnings.
+
+**Metrics:** Pre/post test count: 784 → 786 non-bench cases. Bench archetype fix means particles now correctly hit motion_view.
+
+**Process note:** When you find a wrong bench, prior "no delta" claims need revisiting. Bench measured the legacy path, not production.
+
+**Pattern Learned:** Retract recipes when grep falsifies them. Don't ship the wrong refactor to look productive. Independent agreement (Keyser reached same RETRACT verdict) is strong evidence.
+
+**Decision:** Merged to `.squad/decisions.md` under "Round 13: Keaton — Chain-Bonus SRP Retraction + Motion System Migration" section.
