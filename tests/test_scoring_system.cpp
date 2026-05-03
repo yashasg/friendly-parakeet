@@ -115,9 +115,7 @@ TEST_CASE("scoring: not in Playing phase skips processing", "[scoring]") {
     auto reg = make_registry();
     reg.ctx().get<GameState>().phase = GamePhase::GameOver;
 
-    scoring_system(reg, 1.0f);
-    popup_feedback_system(reg, 1.0f);
-    energy_system(reg, 1.0f);
+    tick_playing_systems(reg, 1.0f);
 
     CHECK(reg.ctx().get<ScoreState>().score == 0);
 }

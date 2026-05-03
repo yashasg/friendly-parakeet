@@ -487,6 +487,7 @@ set_source_files_properties(
 
 add_executable(shapeshifter_tests
     ${TEST_SOURCES}
+    app/game_loop.cpp
     app/util/file_logger.cpp
     app/systems/camera_system.cpp
     app/systems/song_playback_system.cpp

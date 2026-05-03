@@ -92,3 +92,34 @@
 | **File(s) agent must produce** | Analysis decision document for decisions.md merge |
 | **Outcome** | ✅ Completed — BarObstacleTag audit confirms behavior preservation + test thoroughness + scoring_system 🟢 kind-free; Design B phase-guard runner scope detailed (11 systems, +3 net lines, no new risks); pattern codification recommended for playbooks |
 
+
+---
+
+### 2026-05-04 — Ralph Round 9: Keaton — Phase-Guard Design B (tick_playing_systems)
+
+| Field | Value |
+|-------|-------|
+| **Agent routed** | Keaton (C++ Performance Engineer) |
+| **Why chosen** | Phase-guard consolidation fits Keaton's system-architecture + refactoring mandate |
+| **Mode** | sync |
+| **Why this mode** | Self-contained runner extraction; design & scope pre-specified by Keyser-r8 |
+| **Files authorized to read** | `app/systems/*.cpp` (11 systems with guards), `app/systems/all_systems.h`, `app/game_loop.cpp`, `tests/test_*.cpp` (8 affected tests) |
+| **File(s) agent must produce** | New `app/systems/playing_systems_runner.cpp`, updated `all_systems.h`, 8 test migrations, new `tests/test_phase_runner.cpp`, updated `app/game_loop.cpp` call site |
+| **Outcome** | ✅ Completed — playing_systems_runner shipped; 11 per-system guards dropped; 8 tests migrated to runner entry point; 2 new runner-level phase-skip tests added; 781 test cases / 2238 assertions all pass; zero warnings; zero bench regression |
+
+---
+
+### 2026-05-04 — Ralph Round 9: Keyser — r8 Wirefix Audit + Self-Wiring Meta-Scan
+
+| Field | Value |
+|-------|-------|
+| **Agent routed** | Keyser (SOLID auditor) |
+| **Why chosen** | Post-r8 wiring verification + codebase-wide self-wiring risk scan requires lead architect oversight |
+| **Mode** | sync |
+| **Why this mode** | Audit + analysis; no implementation; findings handed to Keaton-r10 for fix |
+| **Files authorized to read** | `app/game_loop.cpp`, `app/systems/all_systems.h`, `app/systems/*.cpp` (all 29), `tests/test_collision_system.cpp` (r8 integration test) |
+| **File(s) agent must produce** | Audit findings (merged to decisions.md); 1 flag for Keaton-r10 (integration test rewrite); recommendation for user approval (CI check) |
+| **Outcome** | ✅ Completed — Keaton-r8 wiring verified correct; self-wiring meta-scan: 29 systems (27 🟢 / 2 🟡 / 0 🔴); r8 integration test comment flagged as false-positive (test calls systems directly, not via tick_fixed_systems); CI grep check recommended (pending user approval); all findings merged to decisions.md; Keaton-r10 queue updated |
+
+---
+

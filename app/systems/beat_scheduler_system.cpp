@@ -10,8 +10,6 @@
 #include "../constants.h"
 
 void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
-    if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
-
     auto* song = reg.ctx().find<SongState>();
     auto* map  = reg.ctx().find<BeatMap>();
     if (!song || !map || !song->playing) return;

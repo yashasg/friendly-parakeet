@@ -405,3 +405,79 @@ Per Keyser's R5 audit (SRP violation: LanePush loop directly mutates player Lane
 
 Merged to `.squad/decisions.md` under "Round 6 Decision Drop — LanePushDelta + PendingLanePush Event Refactor" section.
 
+
+---
+
+## 2026-05-04 — Ralph Round 9: Phase-Guard Design B (tick_playing_systems)
+
+**Loop:** Ralph Round 9 (Phase-runner extraction)  
+**Task:** Extract `tick_playing_systems` runner to centralize 11 per-system phase guards; drop individual guards; fix affected tests; add runner-level phase-skip test.  
+**Verdict:** ✅ MERGED
+
+### Execution Summary
+
+Per Keyser-r8 Design B spec, extracted a new `tick_playing_systems(reg, dt)` runner in `app/systems/playing_systems_runner.cpp` that acts as a single phase gate for 11 production systems. Dropped all 11 per-system `if (phase != Playing) return;` guards from their individual `.cpp` files. Updated 8 existing tests that relied on dropped guards to call the runner instead. Added 2 new runner-level phase-skip tests (Paused, GameOver).
+
+### Work Completed
+
+1. **Created `playing_systems_runner.cpp`** — new file with `tick_playing_systems(reg, dt)` function
+   - Declared in `all_systems.h` (Phase runner section)
+   - Guard: `if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;` at entry
+   - Calls 12 systems in order: beat_log, beat_scheduler, player_input, shape_window, player_movement, scroll, motion, collision, lane_push_response (R8), miss_detection, scoring, popup_feedback, energy
+   - `lane_push_response_system` included per R8 insertion (no new guard to drop); count remains 11 guards dropped
+
+2. **Dropped 11 per-system guards**:
+   - beat_log_system.cpp:12
+   - beat_scheduler_system.cpp:13
+   - collision_system.cpp:35
+   - energy_system.cpp:9
+   - miss_detection_system.cpp:11
+   - motion_system.cpp:7
+   - player_movement_system.cpp:11
+   - popup_feedback_system.cpp:9
+   - scoring_system.cpp:65
+   - scroll_system.cpp:9
+   - shape_window_system.cpp:15
+
+3. **Migrated 8 tests** from direct system calls to `tick_playing_systems` entry:
+   - beat_log_system.cpp:64 (no-op when not Playing)
+   - beat_scheduler_system.cpp:7 (no spawn when not Playing)
+   - scoring_system.cpp:116 (skip processing when not Playing)
+   - shape_window_system.cpp:212 + test_shape_window_extended.cpp:141 (no processing / no phase transitions)
+   - player_movement_system.cpp:252 (no processing when not Playing)
+   - miss_detection_regression.cpp:142 (no-op when game phase not Playing)
+   - world_systems.cpp:285 (no movement when not Playing)
+
+4. **Added new `test_phase_runner.cpp`** with 2 runner-level tests:
+   - "tick_playing_systems: no-op when phase is Paused" [phase_guard]
+   - "tick_playing_systems: no-op when phase is GameOver" [phase_guard]
+   - Both validate observer state unchanged after runner call (ScoreState, EnergyState, obstacle tags)
+
+5. **Wired into production** — `tick_fixed_systems` in `game_loop.cpp:221` now calls `tick_playing_systems(reg, dt)` in place of all 12 individual system calls
+
+### Build & Test
+
+- **Build:** Zero warnings (clang -Wall -Wextra -Werror)
+- **Tests:** 781 test cases / 2238 assertions — all pass (−14 cases, +5 assertions vs R8 per test consolidation)
+- **Bench:** Zero measurable regression vs R8 (per-system guards never hit hot path; runner guard equivalent cost)
+
+### Behavior Preservation
+
+- Transition-tick semantics unchanged: on phase-change tick, all 11 systems are skipped (same as before)
+- Queued components (ScoredTag, MissTag, PendingLanePush) survive transition tick (pre-existing, unchanged)
+- Resume timing: queued components fire on first Playing tick after resume (pre-existing, unchanged)
+
+### Follow-up for R10
+
+- **player_input_system double-guard cleanup** — runner guarantees `phase == Playing` before call, but callbacks at lines 22, 43 re-check phase (redundant but safe)
+- **collision_system SongResults mutation** — runs even in test contexts; low risk (null-checked), but worth R10 audit
+
+### Pattern Note for Future Reference
+
+**When extracting a system runner, add the runner's tests via the runner entry point, not via the now-dropped per-system guards. Otherwise the new tests test what's gone, not what's there.**
+
+When per-system guards are dropped and a runner is introduced, migrating old per-system tests to call the runner is correct. Ensuring new runner-level tests (Paused, GameOver edge cases) are written against the runner entry point, not against individual systems, is essential: testing individual systems with the runner in place creates a false contract that the per-system behavior is still verified in production — it isn't. The runner is the new entry point; test it.
+
+### Decision
+
+Merged to `.squad/decisions.md` under "Round 9: Keaton — Phase-Guard Design B (tick_playing_systems)" section.

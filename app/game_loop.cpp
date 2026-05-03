@@ -171,7 +171,7 @@ void game_loop_init(entt::registry& reg,
 
 // ── Run ─────────────────────────────────────────────────────────────────────
 
-static void tick_fixed_systems(entt::registry& reg, float dt) {
+void tick_fixed_systems(entt::registry& reg, float dt) {
     // game_state_system runs FIRST and owns the authoritative GoEvent /
     // ButtonPressEvent drain for this tick (calls disp.update<GoEvent>() and
     // disp.update<ButtonPressEvent>() at its top).  All pre-tick enqueues from
@@ -181,25 +181,13 @@ static void tick_fixed_systems(entt::registry& reg, float dt) {
     // player_input_system) will find an empty queue and execute as no-ops.
     game_state_system(reg, dt);
     song_playback_system(reg, dt);
-    beat_log_system(reg, dt);
-    beat_scheduler_system(reg, dt);
-    player_input_system(reg, dt);
-    shape_window_system(reg, dt);
-    player_movement_system(reg, dt);
-    scroll_system(reg, dt);
-    motion_system(reg, dt);
-    collision_system(reg, dt);
-    lane_push_response_system(reg, dt);
-    miss_detection_system(reg, dt);
-    scoring_system(reg, dt);
+    tick_playing_systems(reg, dt);
     // Keep obstacle lifecycle systems contiguous while obstacle component pools
     // are still hot in cache from scroll/collision/miss/scoring passes.
     obstacle_despawn_system(reg, dt);
     // Keep score-feedback chain contiguous (queue -> popup spawn -> popup state)
     // while popup/score pools are warm.
-    popup_feedback_system(reg, dt);
     popup_display_system(reg, dt);
-    energy_system(reg, dt);
     particle_system(reg, dt);
 }
 

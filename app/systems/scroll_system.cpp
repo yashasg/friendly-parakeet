@@ -6,8 +6,6 @@
 #include "../constants.h"
 
 void scroll_system(entt::registry& reg, float dt) {
-    if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
-
     auto* song = reg.ctx().find<SongState>();
 
     // Rhythm obstacles: position derived from song_time, not accumulated dt.

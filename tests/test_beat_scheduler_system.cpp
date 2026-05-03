@@ -14,7 +14,7 @@ TEST_CASE("beat_scheduler: no spawn when not Playing", "[beat_scheduler]") {
     auto& song = reg.ctx().get<SongState>();
     song.song_time = 10.0f;
 
-    beat_scheduler_system(reg, 0.016f);
+    tick_playing_systems(reg, 0.016f);
 
     int count = 0;
     for (auto e : reg.view<ObstacleTag>()) { ++count; (void)e; }

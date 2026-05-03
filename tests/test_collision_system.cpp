@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
+#include "game_loop.h"
 
 TEST_CASE("collision: shape gate cleared with matching shape", "[collision]") {
     auto reg = make_registry();
@@ -487,26 +488,48 @@ TEST_CASE("collision: lane push right emplaces PendingLanePush with delta +1", "
 }
 
 // ── Integration test: production tick path ───────────────────────────────────
-// Exercises the canonical production system order as documented in
-// tick_fixed_systems (app/game_loop.cpp): collision → lane_push_response →
-// miss_detection.  The existing unit tests self-wire only collision +
-// lane_push_response, which masked the production wiring bug (r6 regression).
-// This test would have FAILED before lane_push_response_system was wired in
-// game_loop.cpp between collision_system and miss_detection_system.
+// Calls tick_fixed_systems (the real production fixed-step tick) to verify that
+// lane_push_response_system is wired between collision_system and
+// miss_detection_system in the production loop.  This test CANNOT be satisfied
+// by self-wiring the three systems in order — it only passes when
+// lane_push_response_system is present in tick_playing_systems (which is called
+// from tick_fixed_systems).  Remove it from playing_systems_runner.cpp and this
+// test fails; the unit test below would still pass.
 TEST_CASE("integration: lane push consumed in production tick order", "[collision][lane_push][integration]") {
     auto reg = make_registry();
     auto p = make_player(reg);
     // Player starts in lane 1 (center); push left → lane 0
     make_lane_push(reg, ObstacleKind::LanePushLeft, constants::PLAYER_Y);
 
-    // Run in the exact order specified in tick_fixed_systems (game_loop.cpp:191-193):
-    //   collision_system → lane_push_response_system → miss_detection_system
+    // Single call to the real production fixed-step tick.
+    // scroll_system runs before collision_system within tick_playing_systems, but
+    // COLLISION_MARGIN (40 px) >> scroll displacement (400 px/s × 0.016 s = 6.4 px),
+    // so the obstacle remains within the collision window.
+    tick_fixed_systems(reg, 0.016f);
+
+    // PendingLanePush must be consumed — proves lane_push_response_system ran
+    // between collision_system and miss_detection_system in the production loop.
+    CHECK_FALSE(reg.all_of<PendingLanePush>(p));
+    // Lane target reflects the push applied by lane_push_response_system.
+    CHECK(reg.get<Lane>(p).target == 0);
+}
+
+// ── Unit test: canonical three-system ordering ────────────────────────────────
+// Directly exercises collision → lane_push_response → miss_detection in isolation.
+// Useful for diagnosing which step broke if the integration test above fails,
+// but cannot catch production-wiring omissions on its own.
+TEST_CASE("unit: lane push consumed when collision → response → miss called in order", "[collision][lane_push]") {
+    auto reg = make_registry();
+    auto p = make_player(reg);
+    // Player starts in lane 1 (center); push left → lane 0
+    make_lane_push(reg, ObstacleKind::LanePushLeft, constants::PLAYER_Y);
+
+    // Self-wired in documented production order — unit scope only.
     collision_system(reg, 0.016f);
     lane_push_response_system(reg, 0.016f);
     miss_detection_system(reg, 0.016f);
 
-    // PendingLanePush must be consumed (not accumulating) — proves lane_push_response
-    // ran in production order before miss_detection could observe stale state
+    // PendingLanePush must be consumed (not accumulating)
     CHECK_FALSE(reg.all_of<PendingLanePush>(p));
     // Lane target reflects the push
     CHECK(reg.get<Lane>(p).target == 0);

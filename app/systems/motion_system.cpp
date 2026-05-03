@@ -4,8 +4,6 @@
 #include "../components/rhythm.h"
 
 void motion_system(entt::registry& reg, float dt) {
-    if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
-
     // Legacy Position+Velocity entities (particles, popups, freeplay entities
     // not yet migrated to WorldTransform+MotionVelocity). Excludes BeatInfo
     // entities whose positions are derived from song_time in scroll_system.

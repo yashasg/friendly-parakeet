@@ -289,7 +289,7 @@ TEST_CASE("motion: no movement when not in Playing phase", "[motion]") {
     reg.emplace<Position>(e, 100.0f, 200.0f);
     reg.emplace<Velocity>(e, 10.0f, 20.0f);
 
-    motion_system(reg, 1.0f);
+    tick_playing_systems(reg, 1.0f);
 
     CHECK(reg.get<Position>(e).x == 100.0f);
     CHECK(reg.get<Position>(e).y == 200.0f);

@@ -62,8 +62,6 @@ ScorePopupRequestQueue& popup_queue_for(entt::registry& reg) {
 }  // namespace
 
 void scoring_system(entt::registry& reg, float dt) {
-    if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
-
     auto& score   = reg.ctx().get<ScoreState>();
     auto* song    = reg.ctx().find<SongState>();
     const float scroll_speed = song ? song->scroll_speed : constants::BASE_SCROLL_SPEED;

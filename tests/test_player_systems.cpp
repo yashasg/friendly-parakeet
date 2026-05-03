@@ -253,7 +253,7 @@ TEST_CASE("player_movement: not in Playing phase skips processing", "[player]") 
     auto p = make_player(reg);
     reg.get<PlayerShape>(p).morph_t = 0.0f;
 
-    player_movement_system(reg, 0.016f);
+    tick_playing_systems(reg, 0.016f);
 
     CHECK(reg.get<PlayerShape>(p).morph_t == 0.0f);
 }

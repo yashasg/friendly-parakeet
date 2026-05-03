@@ -32,8 +32,6 @@ bool player_matches_required_shape(const PlayerShape& p_shape,
 }  // namespace
 
 void collision_system(entt::registry& reg, float /*dt*/) {
-    if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
-
     auto player_view = reg.view<PlayerTag, WorldTransform, PlayerShape, ShapeWindow, Lane, VerticalState>();
     if (player_view.begin() == player_view.end()) return;
 

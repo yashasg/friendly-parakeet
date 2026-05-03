@@ -1,0 +1,191 @@
+═══════════════════════════════════════════════════════════════════════════════
+ROUND 9 HEALTH REPORT — Keaton Phase-Guard Design B + Keyser Wirefix Audit
+═══════════════════════════════════════════════════════════════════════════════
+
+ROUND COMPOSITION:
+  • Keaton: Phase-guard runner extraction (tick_playing_systems)
+  • Keyser: Keaton-r8 wirefix audit + codebase-wide self-wiring meta-scan
+
+═══════════════════════════════════════════════════════════════════════════════
+KEATON R9 — PHASE-GUARD DESIGN B (tick_playing_systems)
+═══════════════════════════════════════════════════════════════════════════════
+
+DELIVERABLE:
+  ✅ Extracted tick_playing_systems(reg, dt) runner
+     → Centralizes 11 per-system GamePhase::Playing guards
+     → New file: app/systems/playing_systems_runner.cpp
+     → Declared: all_systems.h (Phase runner section)
+
+GUARD ELIMINATION:
+  ✅ 11 guards dropped from individual system .cpp files:
+     beat_log_system.cpp:12
+     beat_scheduler_system.cpp:13
+     collision_system.cpp:35
+     energy_system.cpp:9
+     miss_detection_system.cpp:11
+     motion_system.cpp:7
+     player_movement_system.cpp:11
+     popup_feedback_system.cpp:9
+     scoring_system.cpp:65
+     scroll_system.cpp:9
+     shape_window_system.cpp:15
+
+RUNNER SIGNATURE:
+  void tick_playing_systems(entt::registry& reg, float dt) {
+    if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
+    [12 system calls in production order]
+  }
+
+  Lane_push_response_system included (no new guard to drop; count remains 11).
+
+PRODUCTION WIRING:
+  ✅ game_loop.cpp:221 now calls tick_playing_systems(reg, FIXED_DT)
+     Replaces 12 individual system calls previously at lines ~184–202
+
+TEST CHANGES:
+  ✅ 8 tests migrated from individual system calls to runner entry:
+     beat_log_system.cpp:64
+     beat_scheduler_system.cpp:7
+     scoring_system.cpp:116
+     shape_window_system.cpp:212 + extended.cpp:141
+     player_movement_system.cpp:252
+     miss_detection_regression.cpp:142
+     world_systems.cpp:285
+
+  ✅ 2 new runner-level phase-skip tests added (tests/test_phase_runner.cpp):
+     "tick_playing_systems: no-op when phase is Paused" [phase_guard]
+     "tick_playing_systems: no-op when phase is GameOver" [phase_guard]
+
+BUILD & TEST:
+  ✅ Build: Zero warnings (clang -Wall -Wextra -Werror)
+  ✅ Tests: 781 test cases / 2238 assertions — all pass
+     (vs R8: 795/2233, −14 cases, +5 assertions per consolidation)
+  ✅ Benchmarks: Zero measurable regression
+     (per-system guards never on hot path; runner guard cost negligible)
+
+BEHAVIOR PRESERVATION:
+  ✅ Transition-tick semantics: All 11 systems skipped (identical to per-system guards)
+  ✅ Queued components survive transition: ScoredTag, MissTag, PendingLanePush (unchanged)
+  ✅ Resume timing: Queued components fire on first Playing tick (unchanged)
+
+R10 FOLLOW-UP (delegated):
+  • player_input_system: double-guard cleanup (redundant but safe internal checks)
+  • collision_system: SongResults mutation in test contexts (low risk; worth audit)
+
+═══════════════════════════════════════════════════════════════════════════════
+KEYSER R9 — WIREFIX AUDIT + SELF-WIRING META-SCAN
+═══════════════════════════════════════════════════════════════════════════════
+
+PART 1: R8 WIREFIX VERIFICATION
+  ✅ lane_push_response_system wiring confirmed at game_loop.cpp:192
+     → Inside tick_fixed_systems (lines 174–204)
+     → Sole fixed-step production entry point
+     → Called at game_loop.cpp:221 in deterministic while (accumulator >= FIXED_DT)
+     → Same loop for native + Emscripten (platform_run_loop wrapper)
+
+  ⚠️  FINDING: r8 integration test comment is vibes claim
+     Test: "integration: lane push consumed in production tick order" (test_collision_system.cpp:496)
+     Comment claims: "Would have FAILED before r8 fix"
+     Reality: Test calls systems individually (504–506), NOT via tick_fixed_systems
+     Truth: Test would pass even if wiring reverted (calls lane_push_response_system directly)
+     Impact: Identical to r6→r7 failure mode — test green, production broken
+     Fix: Keaton-r10 to rewrite as true integration test (call tick_fixed_systems or wrap game_loop_frame)
+
+  ✅ Multi-obstacle test (two-LanePush collision) verified correct
+     → Does NOT pin which side wins (EnTT iteration order not guaranteed)
+     → Correctly contracts: one winner, consumed once, target updated
+     → No false contracts introduced
+
+PART 2: SELF-WIRING META-SCAN (29 SYSTEMS)
+
+  RESULTS:
+    🟢 27 systems: Wired in production + tested
+    🟡 2 systems: Wired via delegation (not test-direct)
+       game_state_enter_terminal_phase (called from game_state_system.cpp:54,57)
+       game_state_end_screen_system (called from game_state_system.cpp:116)
+    🔴 0 systems: Called from tests but not wired in production
+
+  RISK ASSESSMENT:
+    → 🟡 is a different risk class than r6→r7
+    → r6→r7: tested directly, never wired in production
+    → 🟡 here: wired in production (delegated), never tested directly
+    → If game_state_system.cpp silently stops calling 🟡 items, tests don't detect
+    → Verdict: Coverage gap (not false-negative); worth noting for R10+ backlog
+
+  VERDICT: ✅ No 🔴 found. Codebase wiring is clean.
+
+PART 3: CONVENTION RECOMMENDATION (PENDING USER APPROVAL)
+
+  RECOMMENDED: Add CI grep check to prevent r6→r7 class regressions
+
+  SCRIPT PATTERN:
+    for fn in [list of all top-level systems]; do
+      grep -q "$fn" app/game_loop.cpp || { echo "WIRING MISSING: $fn"; exit 1; }
+    done
+
+  EXCEPTIONS (documented sub-systems, one-time init):
+    game_state_enter_terminal_phase
+    game_state_end_screen_system
+    input_system_init
+
+  STATUS: ⏳ Awaiting user (yashasg) decision on adding new CI infrastructure
+          Recommendation logged in decisions.md under "Pending User Approval"
+
+═══════════════════════════════════════════════════════════════════════════════
+MODULE HEALTH SNAPSHOT
+═══════════════════════════════════════════════════════════════════════════════
+
+scoring_system              🟢  Kind-free; full OCP (R8 verified)
+collision_system            🟡  SongResults mutation in tests (low risk, nil-checked); flagged for R10
+motion_system               🟡  Migration-bridge pattern established (R4); verified correct
+lane_push_response_system   🟢  Event-based (R6); insertion order preserved (R8); runner-level (R9)
+playing_systems_runner      🟢  NEW (R9); phase-gated entry; 12 systems; 10 tests total (8+2)
+
+═══════════════════════════════════════════════════════════════════════════════
+KEY DECISIONS & PATTERNS CODIFIED
+═══════════════════════════════════════════════════════════════════════════════
+
+KEATON PATTERN (R9):
+  When extracting a system runner, add the runner's tests via the runner entry
+  point, not via the now-dropped per-system guards. Otherwise the new tests test
+  what's gone, not what's there.
+
+  → Applied: test_phase_runner.cpp tests call tick_playing_systems directly
+  → NOT testing individual systems (their guards are gone)
+
+KEYSER PATTERN (R9):
+  Audit the test, not the test description — a comment claiming "would have failed
+  before the fix" is a vibes claim until verified. Demand a fail-then-fix run as
+  evidence.
+
+  → Applied: r8 integration test comment flagged as unverified claim
+  → Test passes even if production fix reverted (calls system directly)
+
+═══════════════════════════════════════════════════════════════════════════════
+R10 PARALLEL WORK (CONFIRMED IN-FLIGHT)
+═══════════════════════════════════════════════════════════════════════════════
+
+KEATON-R10 (keaton-r10-testfix-and-input):
+  • Rewrite r8 integration test as true integration (call tick_fixed_systems)
+  • player_input_system double-guard cleanup (remove redundant internal checks)
+  • collision_system SongResults mutation audit
+
+KEYSER-R10 (keyser-r10-phase-audit):
+  • Parallel audit of phase runner (Keaton-r9 work)
+  • No blocking dependencies on Scribe logging
+
+SCRIBE CONSTRAINTS SATISFIED:
+  ✅ Do NOT block R10
+  ✅ Do NOT touch R10 inbox files (keaton-r10-testfix-and-input.md, keyser-r10-phase-audit.md)
+  ✅ Inbox merge complete (both r9 files merged to decisions.md)
+  ✅ decisions.md size check: 11,273 lines (R8) → 12,587 lines (R9, post-merge)
+     Below archive threshold (12K–15K)
+  ✅ History updated (Keaton + Keyser R9 entries + patterns)
+  ✅ Module health snapshot added
+  ✅ Convention recommendation tracked (pending user approval)
+  ✅ Orchestration log updated
+  ✅ This report created
+
+═══════════════════════════════════════════════════════════════════════════════
+STATUS: ✅ ROUND 9 LOGGING COMPLETE
+═══════════════════════════════════════════════════════════════════════════════

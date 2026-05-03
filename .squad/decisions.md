@@ -11271,3 +11271,380 @@ After Design B, `player_input_system` is called from `tick_playing_systems` but 
 | Runner signature picked | **Hand-written `tick_playing_systems` inline `if` block** — matches existing `tick_fixed_systems` flat-call aesthetic |
 | Biggest risk | **None introduced by the refactor itself.** Existing behavior on transition tick (playing systems skipped, queued components survive to resume) is preserved unchanged. Secondary risk: `player_input_system` becomes double-guarded; redundant but safe — clean up in R10. |
 
+
+---
+
+## Round 9: Keaton — Phase-Guard Design B (tick_playing_systems) + Keyser — Wirefix Audit + Meta-Scan
+
+### Keaton R9 — Phase-Guard Design B (tick_playing_systems)
+
+**Author:** Keaton  
+**Round:** 9  
+**Scope:** Extract `tick_playing_systems` runner; drop per-system phase guards; fix affected tests; add runner-level phase-skip test.
+
+#### 11-System Audit
+
+Confirmed Keyser-r8's count: **11 systems have their guards dropped**. The runner makes **12 system calls** (lane_push_response_system is included without a guard to drop — see discrepancy note below).
+
+| # | System | Guard removed | Location |
+|---|--------|--------------|----------|
+| 1 | `beat_log_system` | `if (phase != Playing) return;` | `beat_log_system.cpp:12` (was) |
+| 2 | `beat_scheduler_system` | same | `beat_scheduler_system.cpp:13` (was) |
+| 3 | `collision_system` | same | `collision_system.cpp:35` (was) |
+| 4 | `energy_system` | same | `energy_system.cpp:9` (was) |
+| 5 | `miss_detection_system` | same | `miss_detection_system.cpp:11` (was) |
+| 6 | `motion_system` | same | `motion_system.cpp:7` (was) |
+| 7 | `player_movement_system` | same | `player_movement_system.cpp:11` (was) |
+| 8 | `popup_feedback_system` | same | `popup_feedback_system.cpp:9` (was) |
+| 9 | `scoring_system` | same | `scoring_system.cpp:65` (was) |
+| 10 | `scroll_system` | same | `scroll_system.cpp:9` (was) |
+| 11 | `shape_window_system` | same | `shape_window_system.cpp:15` (was) |
+
+**Systems remaining outside runner (unchanged):**
+- `game_state_system` — owns phase transitions; always-run
+- `song_playback_system` — multi-branch (Playing/Paused/GameOver/SongComplete)
+- `obstacle_despawn_system` — no guard; runs unconditionally
+- `popup_display_system` — no guard; animates popups that outlive Playing phase
+- `particle_system` — no guard; particles may continue after phase transition
+- `player_input_system` — in runner but retains internal callback guards at lines 22, 43 (R10 cleanup)
+
+**Guard logic audit (none did more than simple early return):**  
+All 11 guards were simple `if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;` with no side effects, logging, or counter increments. No behavior beyond early-exit was dropped.
+
+#### Discrepancy with Keyser's Spec
+
+**`lane_push_response_system` omitted from Keyser's runner signature.**
+
+Keyser's R8 decision drop was authored concurrently with the R8 production-wiring fix that inserted `lane_push_response_system` between `collision_system` and `miss_detection_system` in `tick_fixed_systems`. Keyser's proposed runner signature (decision drop §2.2) did not include it because the R8 fix post-dated the spec.
+
+**Resolution applied in R9:** `lane_push_response_system` is included in `tick_playing_systems` between `collision_system` and `miss_detection_system`, preserving the R8 ordering invariant. It has no Playing guard (and never did), so the 11-guard-dropped count remains accurate. The runner makes 12 system calls; 11 have their guards removed.
+
+#### Runner Signature
+
+**File:** `app/systems/playing_systems_runner.cpp` (new file, auto-included in `shapeshifter_lib` via `file(GLOB SYSTEM_SOURCES)`)  
+**Declaration:** `all_systems.h` (Phase runner section)
+
+```cpp
+// app/systems/playing_systems_runner.cpp:1–19
+void tick_playing_systems(entt::registry& reg, float dt) {
+    if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
+    beat_log_system(reg, dt);
+    beat_scheduler_system(reg, dt);
+    player_input_system(reg, dt);         // retains internal callback guards (R10)
+    shape_window_system(reg, dt);
+    player_movement_system(reg, dt);
+    scroll_system(reg, dt);
+    motion_system(reg, dt);
+    collision_system(reg, dt);
+    lane_push_response_system(reg, dt);   // must run between collision and miss_detection (R8)
+    miss_detection_system(reg, dt);
+    scoring_system(reg, dt);
+    popup_feedback_system(reg, dt);
+    energy_system(reg, dt);
+}
+```
+
+`tick_fixed_systems` in `game_loop.cpp` now calls `tick_playing_systems(reg, dt)` in place of all 12 individual calls.
+
+#### Test Infrastructure Changes
+
+##### Tests that required updating (8 total)
+
+Removing per-system guards exposed 8 existing tests that relied on the dropped guard for no-op behavior. All were updated to call `tick_playing_systems` instead of the individual system — semantically correct since phase gating is now the runner's responsibility:
+
+| Test | File | Reason for update |
+|------|------|------------------|
+| `beat_log: no-op when not in Playing phase` | `test_beat_log_system.cpp:64` | `song.playing=true` via `make_rhythm_registry` — system would log without guard |
+| `beat_scheduler: no spawn when not Playing` | `test_beat_scheduler_system.cpp:7` | `song.playing=true` — system would spawn obstacle |
+| `scoring: not in Playing phase skips processing` | `test_scoring_system.cpp:116` | Distance bonus accrues each tick (PTS_PER_SECOND * dt) |
+| `shape_window: no processing when not Playing` | `test_shape_window_system.cpp:212` | `window_timer` would advance |
+| `shape_window: not in Playing phase skips processing` | `test_shape_window_extended.cpp:141` | `sw.phase` would transition from MorphIn |
+| `player_movement: not in Playing phase skips processing` | `test_player_systems.cpp:252` | `morph_t` would advance in freeplay mode |
+| `miss_detection: no-op when game phase is not Playing` | `test_miss_detection_regression.cpp:142` | MissTag/ScoredTag would be emplaced on expired obstacle |
+| `motion: no movement when not in Playing phase` | `test_world_systems.cpp:285` | `Position` would advance by `Velocity * dt` |
+
+##### New phase-skip test
+
+**File:** `tests/test_phase_runner.cpp` (new)
+
+```
+"tick_playing_systems: no-op when phase is Paused"  [phase_guard]
+  - make_rhythm_registry(), phase = Paused
+  - Observes: ScoreState::score (scoring_system), EnergyState::energy (energy_system),
+    MissTag/ScoredTag on an expired obstacle (miss_detection_system)
+  - Asserts: all unchanged after tick_playing_systems(reg, 0.016f)
+
+"tick_playing_systems: no-op when phase is GameOver"  [phase_guard]
+  - Same runner gate tested against GameOver phase
+```
+
+#### Build / Test / Bench
+
+- **Build:** `cmake --build build --target shapeshifter shapeshifter_tests` — zero warnings (`-Wall -Wextra -Werror`)
+- **Tests:** `./build/shapeshifter_tests '~[bench]'` — **781 test cases / 2238 assertions, all pass** (−14 cases, +5 assertions from R8's 795/2233 per test consolidation)
+- **Bench:** All benchmarks run in Playing-phase setups. Per-system guards were never hit on the hot path. Delta vs R8: **zero measurable change** — confirmed by identical mean ± noise across full frame (typical: ~556ns, full frame (stress): ~924ns), scoring_system, collision_system, motion_system, scroll_system.
+
+#### Follow-up for R10
+
+**Primary:** `player_input_system` double-guard cleanup. The runner guarantees `phase == Playing` before calling `player_input_system`, but the internal callback guards at lines 22 and 43 of `player_input_handle_go` / `player_input_handle_press` re-check the phase. These are now redundant (safe, not wrong). R10 can remove them after verifying no other caller can reach those callbacks outside the runner.
+
+**Secondary:** `collision_system`'s `SongResults` mutation (timing grade accumulation) runs even when called from tests that don't set up a full song context. Low risk since `results` is checked for null before use, but worth auditing in R10.
+
+#### Keaton R9 Pattern
+
+**When extracting a system runner, add the runner's tests via the runner entry point, not via the now-dropped per-system guards. Otherwise the new tests test what's gone, not what's there.**
+
+This pattern is now codified in Keaton's history per Round 9 learning.
+
+---
+
+### Keyser R9 — Wirefix Audit + Self-Wiring Meta-Scan
+
+**Auditor:** Keyser (SOLID auditor)  
+**Date:** Round 9  
+**Scope:** (1) Audit Keaton r8 wirefix; (2) codebase-wide self-wiring meta-scan
+
+#### Section 1: r8 Wirefix Audit
+
+##### Wiring location
+
+`lane_push_response_system(reg, dt)` is confirmed at **`app/game_loop.cpp:192`**, inside the function **`tick_fixed_systems`** (defined at line 174, closing brace at line 204):
+
+```
+174: static void tick_fixed_systems(entt::registry& reg, float dt) {
+...
+191:     collision_system(reg, dt);
+192:     lane_push_response_system(reg, dt);   ← r8 insertion
+193:     miss_detection_system(reg, dt);
+...
+204: }
+```
+
+`tick_fixed_systems` is the **sole** fixed-step production entry point. It is called at exactly one site:
+
+```
+game_loop.cpp:221:     tick_fixed_systems(reg, FIXED_DT);
+```
+
+This call is inside the deterministic `while (accumulator >= FIXED_DT)` loop in `game_loop_frame`. There is no `tick_render`, `tick_paused`, or separate paused/web-only tick path; `game_loop_frame` is the single frame function for both native (line 278: `game_loop_frame(reg, accumulator)`) and Emscripten (via `platform_run_loop` which calls the same frame function). **Wiring is correct and not test-only.** ✅
+
+##### Integration test correctness — ⚠️ Finding
+
+**Verdict: NOT a true integration test. Still self-wiring.**
+
+The test `"integration: lane push consumed in production tick order"` (test_collision_system.cpp:496) calls systems **individually in manually-specified order**, not via `tick_fixed_systems`:
+
+```cpp
+// test_collision_system.cpp:504-506
+collision_system(reg, 0.016f);
+lane_push_response_system(reg, 0.016f);
+miss_detection_system(reg, 0.016f);
+```
+
+The comment at lines 491–495 claims:
+
+> *"This test would have FAILED before lane_push_response_system was wired in game_loop.cpp"*
+
+**This claim is incorrect.** Because the test calls `lane_push_response_system` directly, it would pass regardless of whether the system is wired in `game_loop.cpp` or not. If someone reverted the r8 fix (removing line 192 from game_loop.cpp), the test would still go green while production would silently break — identical to the original r6→r7 failure mode.
+
+What the test *does* correctly validate:
+- The relative ordering semantics: `collision_system` produces `PendingLanePush`; `lane_push_response_system` consumes it before `miss_detection_system` runs.
+- That `PendingLanePush` is consumed (line 510: `CHECK_FALSE(reg.all_of<PendingLanePush>(p))`) and `Lane.target` updated (line 512).
+
+What it **does not** validate:
+- That `lane_push_response_system` is wired anywhere in the production loop.
+- That `tick_fixed_systems` calls it at all.
+
+**Classification:** Slightly-better self-wiring (documents intended order, but does not guard production wiring). Bug-prevention value of the r6→r7 regression class is **not** realized. A true integration test would call `tick_fixed_systems` directly or wrap `game_loop_frame` in a headless harness.
+
+**→ Keaton-r10 is fixing this in parallel.**
+
+##### Multi-obstacle test correctness
+
+**Verdict: Correct. "Pinned but not contracted" is the right call.** ✅
+
+Test `"collision: two lane pushes in same tick — first wins, delta not overwritten"` (test_collision_system.cpp:518):
+
+```cpp
+REQUIRE(reg.all_of<PendingLanePush>(p));
+const int8_t winning_delta = reg.get<PendingLanePush>(p).delta;
+CHECK((winning_delta == -1 || winning_delta == 1));   // either side OK
+```
+
+The test does NOT pin which obstacle wins (Left vs. Right). It asserts:
+1. Exactly one `PendingLanePush` exists after `collision_system` (the guard `!reg.all_of<PendingLanePush>` in `collision_system` blocks the second).
+2. The winning delta is one of `{-1, +1}` (structurally valid, not specifying direction).
+3. After `lane_push_response_system`, the component is consumed and `Lane.target` reflects `1 + winning_delta`.
+
+This is correct: the design spec does not define which side wins when two LanePush obstacles fire simultaneously (EnTT entity iteration order is not guaranteed). Pinning Left-wins or Right-wins would over-constrain and create a false contract. The test correctly contracts the *invariants* (one winner, consumed exactly once, target updated) without asserting iteration-order-dependent behaviour. **No issue here.** ✅
+
+##### Test discoverability / tagging
+
+| Test | Tags | Discoverable via `[lane_push]` | Discoverable via `[integration]` |
+|---|---|---|---|
+| `"integration: lane push consumed in production tick order"` | `[collision][lane_push][integration]` | ✅ | ✅ |
+| `"collision: two lane pushes in same tick…"` | `[collision][lane_push]` | ✅ | ❌ (intentionally absent — it's not an integration test) |
+
+Tagging is appropriate. No concern. ✅
+
+#### Section 2: Self-Wiring Meta-Scan
+
+**Scan method:** Cross-reference every symbol declared in `app/systems/all_systems.h` against:
+- Production call sites in `app/game_loop.cpp` (direct) or within another production system's `.cpp` (indirect).
+- Test call sites (grep across `tests/`).
+
+**Notation:**
+- �� Wired in production + tested (or not testable headlessly — render/camera).
+- 🟡 Wired in production via indirect path (called from inside another system, not from game_loop.cpp directly).
+- 🔴 Called from tests but NOT wired anywhere in production.
+
+##### Full table
+
+| System | `all_systems.h` phase | Production call site | Test call site(s) | Status |
+|---|---|---|---|---|
+| `input_system_init` | Phase 0 | game_loop.cpp:103 (one-time init) | — | 🟢 |
+| `input_system` | Phase 0 | game_loop.cpp:214 | — (wraps raylib; not unit-testable) | 🟢 |
+| `test_player_system` | Phase 0.5 | game_loop.cpp:218 | test_test_player_system.cpp | 🟢 |
+| `game_state_system` | Phase 2 | game_loop.cpp:182 (tick_fixed) | test_game_state_extended.cpp | 🟢 |
+| `game_state_enter_terminal_phase` | Phase 2 helper | game_state_system.cpp:54,57 | — | 🟡 (indirect) |
+| `game_state_end_screen_system` | Phase 2 helper | game_state_system.cpp:116 | — | 🟡 (indirect) |
+| `song_playback_system` | Phase 3 | game_loop.cpp:183 (tick_fixed) | test_song_playback_system.cpp | 🟢 |
+| `beat_log_system` | Phase 3 | game_loop.cpp:184 (tick_fixed) | test_beat_log_system.cpp | 🟢 |
+| `beat_scheduler_system` | Phase 3 | game_loop.cpp:185 (tick_fixed) | test_beat_scheduler_system.cpp | 🟢 |
+| `player_input_system` | Phase 4 | game_loop.cpp:186 (tick_fixed) | test_player_systems.cpp, test_player_action_rhythm.cpp, test_rhythm_system.cpp et al. | 🟢 |
+| `shape_window_system` | Phase 4 | game_loop.cpp:187 (tick_fixed) | test_shape_window_system.cpp, test_shape_window_extended.cpp | 🟢 |
+| `player_movement_system` | Phase 4 | game_loop.cpp:188 (tick_fixed) | test_world_systems.cpp | 🟢 |
+| `scroll_system` | Phase 5 | game_loop.cpp:189 (tick_fixed) | test_scroll_rhythm.cpp | 🟢 |
+| `motion_system` | Phase 5 | game_loop.cpp:190 (tick_fixed) | test_world_systems.cpp | 🟢 |
+| `collision_system` | Phase 5 | game_loop.cpp:191 (tick_fixed) | test_collision_system.cpp, test_collision_extended.cpp | 🟢 |
+| `lane_push_response_system` | Phase 5 | game_loop.cpp:192 (tick_fixed) ← r8 | test_collision_system.cpp | 🟢 |
+| `miss_detection_system` | Phase 5 | game_loop.cpp:193 (tick_fixed) | test_miss_detection_regression.cpp | 🟢 |
+| `scoring_system` | Phase 5 | game_loop.cpp:194 (tick_fixed) | test_scoring_system.cpp, test_scoring_extended.cpp | 🟢 |
+| `obstacle_despawn_system` | Phase 6 | game_loop.cpp:197 (tick_fixed) | test_collision_extended.cpp | 🟢 |
+| `popup_feedback_system` | Phase 5 | game_loop.cpp:200 (tick_fixed) | test_popup_display_system.cpp | 🟢 |
+| `popup_display_system` | Phase 6.5 | game_loop.cpp:201 (tick_fixed) | test_popup_display_system.cpp | 🟢 |
+| `energy_system` | Phase 5.5 | game_loop.cpp:202 (tick_fixed) | test_energy_system.cpp | 🟢 |
+| `particle_system` | Phase 6 | game_loop.cpp:203 (tick_fixed) | test_particle_system.cpp | 🟢 |
+| `game_camera_system` | Phase 7 | game_loop.cpp:226 | — (not unit-testable headlessly) | 🟢 |
+| `ui_camera_system` | Phase 7 | game_loop.cpp:227 | — | 🟢 |
+| `game_render_system` | Phase 8 | game_loop.cpp:233 | test_pr43_regression.cpp (source-file static analysis only, not called) | 🟢 |
+| `ui_render_system` | Phase 8 | game_loop.cpp:238 | test_pr43_regression.cpp (source-file static analysis only, not called) | 🟢 |
+| `audio_system` | — | game_loop.cpp:257 | test_audio_system.cpp | 🟢 |
+| `haptic_system` | — | game_loop.cpp:258 | test_haptic_system.cpp | 🟢 |
+
+**Totals: 29 symbols — 0 🔴 / 2 🟡 / 27 🟢**
+
+##### 🟡 items — details
+
+Both 🟡 items (`game_state_enter_terminal_phase`, `game_state_end_screen_system`) share the same pattern: declared in `all_systems.h` as public API, but called **only from within `game_state_system.cpp`** (not from `game_loop.cpp`). They are sub-systems, not top-level loop-wired systems.
+
+This is a different risk class from r6→r7:
+- r6→r7: system tested directly, **never wired in production at all**.
+- 🟡 here: system wired in production (via delegation), **never tested directly**.
+
+If `game_state_system.cpp` silently stops calling `game_state_end_screen_system`, no test would detect it today. Not a self-wiring false-negative; a coverage gap. No immediate action required, but worth noting for the test coverage backlog.
+
+**No 🔴 items were found in the current codebase.** ✅
+
+#### Convention Recommendation — PENDING USER APPROVAL
+
+**Recommendation:** Add a CI grep check to prevent future self-wiring regressions (r6→r7 class).
+
+##### The pattern to prevent
+
+A system is added to `all_systems.h`, unit tests are written calling it directly, but it is never inserted into the production tick loop. Tests stay green; production silently skips the system.
+
+##### Recommended CI grep check
+
+Add to CI (or a `tests/test_production_wiring.cpp` static test file):
+
+```bash
+# CONVENTION: Every top-level system listed in TOP_LEVEL_SYSTEMS must appear
+# in app/game_loop.cpp. Sub-systems (called from within another system, not
+# directly from the loop) are excluded and documented in ALL_SYSTEMS_EXCEPTIONS.
+#
+# Run from repo root:
+for fn in game_state_system song_playback_system beat_log_system \
+           beat_scheduler_system player_input_system shape_window_system \
+           player_movement_system scroll_system motion_system collision_system \
+           lane_push_response_system miss_detection_system scoring_system \
+           obstacle_despawn_system popup_feedback_system popup_display_system \
+           energy_system particle_system game_camera_system ui_camera_system \
+           game_render_system ui_render_system audio_system haptic_system \
+           input_system test_player_system; do
+  grep -q "$fn" app/game_loop.cpp || { echo "WIRING MISSING: $fn"; exit 1; }
+done
+echo "All top-level systems wired in game_loop.cpp."
+```
+
+**Documented exceptions** (sub-systems called from within other systems — exempt from the grep):
+- `game_state_enter_terminal_phase` — called from `game_state_system.cpp`
+- `game_state_end_screen_system` — called from `game_state_system.cpp`
+- `input_system_init` — one-time initialiser, not a per-tick system
+
+##### Longer-term: static assertion approach
+
+Alternatively, maintain a `constexpr` list of top-level system pointers in a header and add a `static_assert` that the list is non-empty / structurally validates. This is heavier but compiler-enforced. For now, the CI grep is sufficient and low-cost to maintain.
+
+##### Where to document the convention
+
+Add a comment block immediately above `tick_fixed_systems` in `game_loop.cpp`:
+
+```cpp
+// AUDIT CONTRACT: every system declared in systems/all_systems.h as a top-level
+// per-tick system MUST appear in this function.  Sub-systems called from within
+// another system body (e.g. game_state_end_screen_system) are exempt.
+// CI enforcement: .github/scripts/check_wiring.sh
+```
+
+**Status:** Recommendation logged. Awaiting user (yashasg) decision on whether to add new CI checks at this time.
+
+#### Keyser R9 Pattern
+
+**Audit the test, not the test description — a comment claiming "would have failed before the fix" is a vibes claim until verified. Demand a fail-then-fix run as evidence.**
+
+This pattern is now codified in Keyser's history per Round 9 learning.
+
+#### Summary
+
+| Finding | Detail |
+|---|---|
+| Wiring confirmed in `tick_fixed_systems` | ✅ game_loop.cpp:192, sole fixed-step entry |
+| Integration test calls production tick path | ❌ Calls 3 systems individually (lines 504–506). Self-wiring, not true integration. Comment claiming "would have failed before fix" is incorrect. Fix story is in Keaton-r10 queue. |
+| Multi-obstacle test pins correct contract | ✅ Does not pin which side wins (correct per spec). Contracts: one winner, consumed once, target updated. |
+| Meta-scan totals | 29 systems: 0 🔴 / 2 🟡 / 27 🟢 |
+| 🔴 for Keaton's queue | None — clean scan |
+| 🟡 for awareness | `game_state_end_screen_system` + `game_state_enter_terminal_phase`: called inside `game_state_system.cpp`, not directly tested; coverage gap if delegation is silently removed |
+| Convention check recommendation | ⏳ PENDING USER APPROVAL: CI grep to ensure every top-level system name from `all_systems.h` is wired in `game_loop.cpp`. Sub-system exceptions documented. |
+
+
+---
+
+## Round 9 Module Health Snapshot
+
+| Module | Status | Notes | Audit Ref |
+|--------|--------|-------|-----------|
+| **scoring_system** | 🟢 | Kind-free; full OCP (R8 verified) | Keyser-r8 |
+| **collision_system** | 🟡 | SongResults mutation in test contexts (low risk, nil-checked); flagged for R10 audit | Keaton-r9 |
+| **motion_system** | 🟡 | Migration-bridge pattern established (R4); bridge comment in place; verified correct | Keyser-r4 |
+| **lane_push_response_system** | 🟢 | New (R6); event-consumed; insertion order preserved (R8); runner-level (R9) | Keaton-r6,r8; Keyser-r9 |
+| **playing_systems_runner** | 🟢 | New (R9); phase-gated at entry; 12 systems called; 8 tests migrated; 2 runner-level tests added | Keaton-r9 |
+
+---
+
+## Pending User Approval
+
+### Convention Check: CI Grep for System Wiring
+
+**Recommended by:** Keyser-r9  
+**Scope:** Add CI check to prevent r6→r7 class self-wiring regressions  
+**Status:** ⏳ Awaiting yashasg decision  
+
+**Recommendation:** Every top-level system name in `app/systems/all_systems.h` must appear in `app/game_loop.cpp` production tick loop (with documented sub-system exceptions: `game_state_enter_terminal_phase`, `game_state_end_screen_system`, `input_system_init`).
+
+**Implementation:** Add `.github/scripts/check_wiring.sh` CI job or inline check in existing lint step.
+
+**Low-cost:** Grep-based, no code change required; simple append to CI.
+
+---
+

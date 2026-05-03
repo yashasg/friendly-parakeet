@@ -484,3 +484,96 @@ Keyser conducted behavior-preservation audit of Keaton-r5's NonScorableTag refac
 
 Merged to `.squad/decisions.md` under "Keyser R6 — NonScorableTag Verification + Tag-vs-Kind Pattern Audit" section.
 
+
+---
+
+## 2026-05-04 — Ralph Round 9: Wirefix Audit + Self-Wiring Meta-Scan
+
+**Loop:** Ralph Round 9 (Keaton-r8 wirefix verification + codebase-wide self-wiring risk scan)  
+**Task:** (1) Verify Keaton-r8 wiring of `lane_push_response_system` in production loop; (2) meta-scan all 29 systems in `all_systems.h` to detect any called-but-not-wired (r6→r7 failure mode); (3) recommend CI convention check for future regression prevention.  
+**Verdict:** ✅ COMPLETED — 1 finding flagged for Keaton-r10
+
+### Execution Summary
+
+Audited Keaton-r8's production wiring fix and performed a comprehensive codebase-wide scan of all 29 systems to prevent silent self-wiring failures. Found wiring confirmed, but identified a false-positive in the r8 integration test comment. Recommended a CI grep check for future detection, pending user approval.
+
+### Work Completed
+
+#### Part 1: r8 Wirefix Verification ✅
+
+1. **Wiring location confirmed** — `lane_push_response_system(reg, dt)` at `game_loop.cpp:192`
+   - Inside `tick_fixed_systems` (lines 174–204)
+   - Sole fixed-step production entry point; called at `game_loop.cpp:221` in deterministic `while (accumulator >= FIXED_DT)` loop
+   - Same entry point for native + Emscripten (wrapped via `platform_run_loop`)
+   - **Verdict:** ✅ Production wiring correct and not test-only
+
+2. **Integration test discrepancy flagged** — 🔴 **FINDING FOR KEATON-R10**
+   - Test `"integration: lane push consumed in production tick order"` (test_collision_system.cpp:496) calls systems individually (lines 504–506), NOT via `tick_fixed_systems`
+   - Comment claims: *"This test would have FAILED before lane_push_response_system was wired in game_loop.cpp"*
+   - **Truth:** Test would pass regardless (it calls `lane_push_response_system` directly). If production wiring were reverted, the test would still green while production broke — identical r6→r7 failure mode.
+   - **Correct validation:** Test validates relative ordering + component lifecycle (PendingLanePush emplaced, then consumed) — valuable. But does NOT validate production wiring.
+   - **Fix:** Keaton-r10 to rewrite as true integration test calling `tick_fixed_systems` or wrapping `game_loop_frame` headless harness.
+
+3. **Multi-obstacle test verified correct** — ✅ Two-LanePush test (test_collision_system.cpp:518)
+   - Correctly does NOT pin which side wins (Left vs. Right) — EnTT iteration order not guaranteed
+   - Contracts: exactly one PendingLanePush after collision_system, delta is ±1, consumed and Lane.target updated after response_system
+   - No false contracts introduced
+   - **Verdict:** ✅ Correct design
+
+#### Part 2: Self-Wiring Meta-Scan (29 systems)
+
+Scanned every symbol in `app/systems/all_systems.h` against production wiring in `game_loop.cpp` and inter-system delegation patterns.
+
+**Results:**
+- 🟢 **27 systems:** Wired in production + tested
+- 🟡 **2 systems:** Wired via delegation (indirect)
+  - `game_state_enter_terminal_phase` — called from `game_state_system.cpp:54,57`, not from game_loop.cpp directly
+  - `game_state_end_screen_system` — called from `game_state_system.cpp:116`, not from game_loop.cpp directly
+- 🔴 **0 systems:** Called from tests but not wired anywhere in production
+
+**Risk assessment:** 🟡 items are a different risk class than r6→r7:
+- r6→r7 pattern: tested directly, never wired in production
+- 🟡 here: wired in production (via delegation), never tested directly
+- If `game_state_system.cpp` silently stops calling these, no test detects it — coverage gap, not self-wiring false-negative
+- **Verdict:** No immediate action. Worth noting for test coverage backlog.
+
+#### Part 3: Convention Recommendation (PENDING USER APPROVAL)
+
+**Recommended:** Add CI grep check to detect future self-wiring regressions (r6→r7 class).
+
+**Script to add:**
+```bash
+# Every top-level system name from all_systems.h must appear in game_loop.cpp
+# (Exceptions: game_state_enter_terminal_phase, game_state_end_screen_system,
+#  input_system_init — documented sub-systems or one-time initializers)
+for fn in [list of all top-level systems]; do
+  grep -q "$fn" app/game_loop.cpp || { echo "WIRING MISSING: $fn"; exit 1; }
+done
+```
+
+**Status:** Recommendation logged in decisions.md under "Pending User Approval" section. Awaiting yashasg decision on adding new CI infrastructure.
+
+### Build & Test
+
+- **Validation:** Source audits + grep patterns (no code changes; no build/test run needed)
+- **Analysis tool:** ripgrep across app/systems/*.cpp and tests/test_*.cpp
+
+### Findings Summary
+
+| Finding | Severity | Action | Owner |
+|---------|----------|--------|-------|
+| Wiring confirmed in production | ✅ Clean | None | — |
+| Integration test comment is vibes claim | 🔴 Fix | Rewrite test as true integration (call `tick_fixed_systems`) | Keaton-r10 |
+| Multi-obstacle test contracts correct | ✅ Clean | None | — |
+| Meta-scan: 2 🟡 (delegation), 0 🔴 | 🟡 Note | Coverage gap tracking (R10+ backlog) | — |
+| CI grep check recommended | ⏳ Awaiting | Add to CI pipeline if approved | User (yashasg) |
+
+### Pattern Note for Future Reference
+
+**Audit the test, not the test description — a comment claiming "would have failed before the fix" is a vibes claim until verified. Demand a fail-then-fix run as evidence.**
+
+When a test includes a comment asserting pre-fix failure, don't trust the prose. Run the test against the pre-fix code (git stash production changes, run tests, git unstash) to verify the claim. In this case, the test calls `lane_push_response_system` directly; reverting the production wiring does not cause it to fail. The test is actually validating local semantics (ordering + consumption), not production wiring. These are different contracts. Call them out separately.
+
+### Decision
+
+Merged to `.squad/decisions.md` under "Round 9: Keyser — Wirefix Audit + Self-Wiring Meta-Scan" section.

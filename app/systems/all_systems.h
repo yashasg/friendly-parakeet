@@ -37,6 +37,10 @@ void popup_feedback_system(entt::registry& reg, float dt);
 // Phase 5.5: Energy
 void energy_system(entt::registry& reg, float dt);
 
+// Phase runner: all Playing-only systems behind a single phase gate.
+// Call from tick_fixed_systems in place of the 13 individual Playing-gated calls.
+void tick_playing_systems(entt::registry& reg, float dt);
+
 // Phase 6: Cleanup
 void particle_system(entt::registry& reg, float dt);
 // Destroys obstacle entities that have scrolled past the camera's far-Z boundary.

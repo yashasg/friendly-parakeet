@@ -143,7 +143,7 @@ TEST_CASE("miss_detection: no-op when game phase is not Playing",
 
     auto obs = make_expired_obstacle(reg);
 
-    miss_detection_system(reg, 0.016f);
+    tick_playing_systems(reg, 0.016f);
 
     CHECK_FALSE(reg.all_of<MissTag>(obs));
     CHECK_FALSE(reg.all_of<ScoredTag>(obs));
