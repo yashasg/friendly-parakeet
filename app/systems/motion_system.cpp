@@ -15,6 +15,7 @@ void motion_system(entt::registry& reg, float dt) {
         pos.x += vel.dx * dt;
         pos.y += vel.dy * dt;
         if (auto* wt = reg.try_get<WorldTransform>(entity)) {
+            // migration bridge for issue #349 — delete when obstacles fully migrate to WorldTransform+MotionVelocity
             wt->position.x = pos.x;
             wt->position.y = pos.y;
         }

@@ -186,6 +186,7 @@ TEST_CASE("scoring: LanePush excluded from chain and popup", "[scoring][lane_pus
     reg.emplace<DrawSize>(lp, float(constants::PLAYER_SIZE), 80.0f);
     reg.emplace<DrawLayer>(lp, Layer::Game);
     reg.emplace<Color>(lp, Color{100, 200, 100, 255});
+    reg.emplace<NonScorableTag>(lp);
     reg.emplace<ScoredTag>(lp);
 
     auto& score = reg.ctx().get<ScoreState>();
@@ -219,6 +220,7 @@ TEST_CASE("scoring: LanePushRight excluded from chain and popup", "[scoring][lan
     reg.emplace<DrawSize>(lp, float(constants::PLAYER_SIZE), 80.0f);
     reg.emplace<DrawLayer>(lp, Layer::Game);
     reg.emplace<Color>(lp, Color{100, 200, 100, 255});
+    reg.emplace<NonScorableTag>(lp);
     reg.emplace<ScoredTag>(lp);
 
     auto& score = reg.ctx().get<ScoreState>();

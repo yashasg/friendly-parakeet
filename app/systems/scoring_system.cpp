@@ -128,7 +128,7 @@ void scoring_system(entt::registry& reg, float dt) {
         hit_buf.clear();
 
         auto hit_view = reg.view<ObstacleTag, ScoredTag, Obstacle, Position>(
-            entt::exclude<MissTag>);
+            entt::exclude<MissTag, NonScorableTag>);
         for (auto [e, obs, pos] : hit_view.each()) {
             HitRecord r;
             r.e   = e;
@@ -140,7 +140,7 @@ void scoring_system(entt::registry& reg, float dt) {
         }
 
         auto model_hit_view = reg.view<ObstacleTag, ScoredTag, Obstacle, ObstacleScrollZ>(
-            entt::exclude<MissTag, Position>);
+            entt::exclude<MissTag, Position, NonScorableTag>);
         for (auto [e, obs, oz] : model_hit_view.each()) {
             HitRecord r;
             r.e   = e;
@@ -154,15 +154,6 @@ void scoring_system(entt::registry& reg, float dt) {
         if (!hit_buf.empty()) {
         auto& popup_queue = popup_queue_for(reg);
         for (auto& r : hit_buf) {
-            // LanePush is passive scenery — excluded from the scoring ladder:
-            // no score popup, no chain contribution.
-            if (r.obs.kind == ObstacleKind::LanePushLeft ||
-                r.obs.kind == ObstacleKind::LanePushRight) {
-                reg.remove<Obstacle>(r.e);
-                reg.remove<ScoredTag>(r.e);
-                continue;
-            }
-
             float timing_mult  = r.has_timing ? timing_multiplier(r.timing.tier) : 1.0f;
 
             // Energy adjustment based on timing
@@ -212,6 +203,29 @@ void scoring_system(entt::registry& reg, float dt) {
             if (r.has_timing) reg.remove<TimingGrade>(r.e);
         }
         } // !hit_buf.empty()
+    }
+
+    // ── NonScorable cleanup ───────────────────────────────────────────────────
+    // Entities excluded from the hit pass via NonScorableTag still need their
+    // ScoredTag and Obstacle stripped after collision resolution so they are not
+    // re-processed on the next frame. Collect-then-remove follows the same EnTT
+    // safety pattern as the hit/miss passes above. (#315)
+    {
+        // Re-use hit_buf (already cleared above) as a scratch collect buffer.
+        auto& cleanup_buf = scratch.hit_buf;
+        cleanup_buf.clear();
+
+        auto ns_view = reg.view<ObstacleTag, ScoredTag, NonScorableTag>(
+            entt::exclude<MissTag>);
+        for (auto e : ns_view) {
+            HitRecord r;
+            r.e = e;
+            cleanup_buf.push_back(r);
+        }
+        for (auto& r : cleanup_buf) {
+            reg.remove<Obstacle>(r.e);
+            reg.remove<ScoredTag>(r.e);
+        }
     }
 
     // Smooth score display

@@ -225,7 +225,48 @@ motion_system: 🟢 Green (new, clean)
 
 **Synthetic benchmarks must be re-validated after archetype refactors — splitting a system can drop a fixture's matching entity count to zero, leaving the bench measuring nothing.** The scroll_system 10-entity bench fixture spawns ObstacleTag+Position+Velocity (no ObstacleScrollZ or BeatInfo), which was processed by vel_view in the old code but now matches zero scroll_system views post-extraction. The "empty system" measurement is correct but misleading for perf analysis; a proper fixture should include ObstacleScrollZ entities to stress the actual scrolling loops.
 
+### Pattern Note for Future Reference
+
+**Synthetic benchmarks must be re-validated after archetype refactors — splitting a system can drop a fixture's matching entity count to zero, leaving the bench measuring nothing.** The scroll_system 10-entity bench fixture spawns ObstacleTag+Position+Velocity (no ObstacleScrollZ or BeatInfo), which was processed by vel_view in the old code but now matches zero scroll_system views post-extraction. The "empty system" measurement is correct but misleading for perf analysis; a proper fixture should include ObstacleScrollZ entities to stress the actual scrolling loops.
+
 ### Decision
 
 Merged to `.squad/decisions.md` under "2026-05-03 — Ralph Round 3" section.
+
+---
+
+## 2026-05-03 — Ralph Round 4: Bench Fixtures + collision_system Optimization
+
+**Loop:** Ralph Round 4 (perf + SOLID continuous iteration)  
+**Task:** Fix broken bench fixtures (scroll_system + collision_system) and optimize collision_system hot path  
+**Verdict:** ✅ MERGED
+
+### Execution Summary
+
+Keaton identified two bench fixtures degrading silently due to archetype evolution and fixed them to accurately measure real entity work. Additionally optimized collision_system's hot path by precomputing frame-constant values and collapsing a redundant 2D geometric check to 1D.
+
+### Work Completed
+
+1. **scroll_system bench:** Added `spawn_scroll_obstacles` helper creating proper freeplay archetype (ObstacleScrollZ+Velocity)
+2. **collision_system bench:** Fixed `make_bench_player` with missing WorldTransform+ShapeWindow components
+3. **collision_system perf:** Precomputed `player_timing_y` and `player_x` outside loops; replaced `player_overlaps_lane(centered_rect)` calls with 1D `|obs_x - player_x| < SIZE` check; removed 4 dead helpers
+
+### Results
+
+- scroll_system: 11.6 ns (broken) → 38.6 ns/10 (real work); 289.9 ns/100; 2.48 μs/1000 (~2.7 ns/entity)
+- collision_system: 16 ns (broken) → 165 ns/1 collision (real work); 283 ns/10 scattered
+
+### Build & Test
+
+- Build: zero warnings
+- Tests: 2211 assertions / 772 test cases — all pass
+
+### Pattern Learning
+
+**Bench fixtures degrade silently when archetypes evolve.** When a system refactor changes which components a view requires, ALL benches that touch that system must be revalidated for matching-entity count. The scroll_system refactor (motion_system extraction in R3) changed the ObstacleScrollZ requirement; the bench fixture never updated to match. Result: 11 ns of pure overhead being measured as "system perf." This is a forward-looking guard: any future system restructures must trigger bench audits, not just code reviews.
+
+### Decision
+
+Merged to `.squad/decisions.md` under "2026-05-03 — Ralph Round 4" section.
+
 

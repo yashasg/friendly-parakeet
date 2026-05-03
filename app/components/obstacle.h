@@ -25,6 +25,11 @@ struct Obstacle {
 // Existential tag: presence means the obstacle has been cleared and awaits scoring.
 struct ScoredTag {};
 
+// Existential tag: obstacle does not participate in the scoring ladder
+// (no score popup, no chain contribution). Emplaced at spawn for passive
+// obstacles such as LanePushLeft and LanePushRight.
+struct NonScorableTag {};
+
 // Existential tag: scored obstacle was failed/missed and should not award points.
 struct MissTag {};
 

@@ -266,6 +266,7 @@ inline entt::entity make_lane_push(entt::registry& reg, ObstacleKind kind, float
     reg.emplace<DrawLayer>(obs, Layer::Game);
     reg.emplace<TagWorldPass>(obs);
     reg.emplace<Color>(obs, Color{0, 200, 200, 255});
+    reg.emplace<NonScorableTag>(obs);
     return obs;
 }
 

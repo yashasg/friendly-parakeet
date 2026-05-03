@@ -333,3 +333,113 @@ There is **no near-miss visual feedback** through the popup path for misses. The
 ### Module Health: 🟡 Yellow
 
 Two actionable 🟡 items: SRP (popup queue + display interpolation in scoring body) and OCP (hardcoded obstacle-kind exclusion and chain ladder). No 🔴. Tests pass, warnings zero, Keaton's behavior claim holds.
+
+---
+
+## 2026-05-03 — Ralph Round 4: Keaton Perf (Bench Fixtures + collision_system Optimization)
+
+**Author:** Keaton  
+**Task:** Fix broken bench fixtures and optimize collision_system hot path  
+**Verdict:** ✅ MERGED
+
+### Part 1 — scroll_system Bench Fixture Fix
+
+**Root cause:** `spawn_obstacles` creates `ObstacleTag + Position + Velocity` entities without `ObstacleScrollZ`. All three scroll_system views require `ObstacleScrollZ`, so spawned obstacles never matched. Measured 11 ns was pure `GameState` check + `ctx.find<SongState>()` overhead — zero entity work.
+
+**Fix:** Added `spawn_scroll_obstacles` helper spawning freeplay archetype (`ObstacleTag + ObstacleScrollZ + Velocity`, no BeatInfo). Updated "Bench: scroll_system" to use it.
+
+**Before → after:**
+| entities | before (broken) | after (real work) |
+|----------|-----------------|-------------------|
+| 10       | 11.6 ns         | 38.6 ns           |
+| 100      | 11.4 ns         | 289.9 ns          |
+| 1000     | 11.5 ns         | 2.48 μs           |
+
+Per-entity cost: ~2.7 ns/entity (linear). Base overhead ~11 ns remains.
+
+### Part 2 — collision_system Bench Fixture Fix + Optimization
+
+**Bench fixture broken:** `make_bench_player` lacked `WorldTransform` and `ShapeWindow`. Early return (16 ns) instead of collision work.
+
+**Fix:** Added both components to `make_bench_player`.
+
+**Optimization:** Precomputed frame-constants (`player_timing_y`, `player_x`) outside loops; replaced `player_overlaps_lane` calls with 1D lane check (`|obs_x - player_x| < SIZE`). Removed dead helpers: `centered_rect`, `player_timing_point`, `player_in_timing_window`, `player_overlaps_lane`.
+
+**Before → after bench:**
+| scenario | before (broken) | after (fixed + opt) |
+|----------|-----------------|-------------------|
+| 1 obstacle at player | 16 ns | 165 ns |
+| 10 obstacles scattered | 27 ns | 283 ns |
+
+### Build & Test Status
+
+- Build: zero warnings, zero errors
+- Tests: 2211 assertions, 772 test cases, all passed
+
+### Module Health: 🟢 Green
+
+Bench fixtures now validate actual entity counts; collision_system optimization is transparent and measurable.
+
+---
+
+## 2026-05-03 — Ralph Round 4: Keyser SOLID Audit (motion_system + ObstacleKind)
+
+**Author:** Keyser  
+**Task:** SOLID audit of motion_system + codebase-wide ObstacleKind dispatch pattern  
+**Verdict:** ✅ MERGED
+
+### motion_system SOLID Audit
+
+**Module Health: 🟡 Yellow**
+
+| Principle | Status | Finding |
+|---|---|---|
+| **S** | 🟡 | Two integration loops + bridge/sync side-effect inside loop 1 (`:17–19`). The bridge syncs `Position` → `WorldTransform` (migration plumbing). Not integration math. Should be labelled `// migration bridge — remove once Position is retired` or extracted as transient pass. |
+| **O** | 🟢 | No per-archetype dispatch; new integrable types handled automatically by new views. |
+| **L** | 🟢 | No inheritance/polymorphism. N/A. |
+| **I** | 🟡 | Views appropriately narrow; shared header `all_systems.h` is carry-forward 🟡 from prior audits. |
+| **D** | 🟢 | Clean inward dependency profile. |
+
+**Recommendation:** Rename responsibilities explicitly: (a) `legacy_velocity_integration`, (b) `motion_integration`. Extinguish bridge once migration complete.
+
+**Phase Guard Pattern:** Three systems (`scroll_system`, `scoring_system`, `motion_system`) independently repeat `if (phase != Playing) return`. This is a cross-cutting pattern flagged for architectural backlog (not immediate action).
+
+### ObstacleKind Dispatch — Codebase-Wide Audit
+
+**13 branch sites across 7 files identified. Summary:**
+
+| Site | Severity | Reason |
+|---|---|---|
+| `enum_names.h:13` | 🟢 | Debug utility; enumeration is the responsibility |
+| `beat_map_loader.cpp:42–50` | 🟢 | Canonical deserialization point |
+| `beat_map_loader.cpp:54–55` | 🟡 | Temporary workaround (LowBar/HighBar skip) |
+| `beat_map_loader.cpp:307–327` | 🟡 | Archetype routing at parse time (necessary validation) |
+| `obstacle_entity.cpp:21–79` | 🟢 | **Correct factory pattern.** Single switch at entity creation keeps all archetypes in one place. |
+| `obstacle_render_entity.cpp:135–142` | 🟡 | Two-variant helper. Height data should be component. |
+| `obstacle_render_entity.cpp:156–` | 🟡 | Render factory mirrors spawn factory (acceptable). Height refactor pending. |
+| `beat_scheduler_system.cpp:21` | 🟡 | Temporary workaround (LowBar/HighBar skip) |
+| `beat_scheduler_system.cpp:58–63` | 🟡 | Spawn-time x_pos computation; tightly coupled |
+| `camera_system.cpp:235–237` | 🟡 | Small (2 cases); could use existential `SlabModelTag` instead |
+| `collision_system.cpp:190` | 🟡 | `LanePushLeft/Right` push direction as ternary; could be component |
+| `scoring_system.cpp:107` | 🟡 | Kind → `DeathCause` mapping; could be component |
+| **`scoring_system.cpp:159–160`** | **🔴** | **OCP violation.** LanePushLeft/Right excluded from scoring inline. Adding new non-scoring kind requires editing scoring_system. |
+
+### Recommended First Refactor Target: scoring_system.cpp:159–160
+
+**Why first:** It is the only 🔴 site. scoring_system is an inner-loop gameplay system that should not know obstacle taxonomy.
+
+**Fix:** Add `struct NonScorableTag {};` to `app/components/obstacle.h`. Emplace on LanePushLeft/LanePushRight in `obstacle_entity.cpp:76–79`. Replace inline guard in scoring_system with `entt::exclude<NonScorableTag>`.
+
+**Impact:** Branch disappears entirely. Adding future non-scoring obstacle kind becomes a single emplace call — no scoring_system edit required.
+
+### Pattern Discovery
+
+Cross-system audits surface 🔴 findings that single-module audits miss. The `LanePushLeft/Right` scoring exemption at `:159–160` is the same smell as R3 audit site (`:158–163`) — a leading indicator of OCP debt.
+
+**Generalized Anti-Pattern:** Codebase-wide cross-cutting audits surface repeated `<EnumKind>::Variant` switches across systems as a leading indicator of OCP debt.
+
+### Module Health: 🟡 Yellow
+
+One actionable 🔴 item (NonScorableTag refactor in scoring_system). No forbidden dependencies. Phase guard is correctly placed.
+
+---

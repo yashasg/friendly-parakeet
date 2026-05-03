@@ -241,4 +241,50 @@ Merged to `.squad/decisions.md` under "2026-05-03 — Ralph Round 3" section.
 Keaton R4 (perf focus): Fix bench fixture to include ObstacleScrollZ entities; audit ObstacleTag filtering on motion_system views.  
 Keyser R4 (audit focus): Cross-system "hardcoded kind-check" pattern refactor design.
 
+---
+
+## 2026-05-03 — Ralph Round 4: Audit motion_system + ObstacleKind Pattern
+
+**Loop:** Ralph Round 4 (perf + SOLID continuous iteration)  
+**Task:** SOLID audit of motion_system + codebase-wide cross-cutting ObstacleKind dispatch audit  
+**Verdict:** ✅ MERGED
+
+### Execution Summary
+
+Keyser conducted comprehensive audits of motion_system (post-Keaton's R3 extraction) and performed a codebase-wide cross-cutting audit of ObstacleKind branching across all 7 files. The audit surfaced a single 🔴 OCP violation in scoring_system and recommended it as the first refactor target.
+
+### Work Completed
+
+1. **motion_system SOLID audit:** Classified SRP 🟡 (migration bridge embedded in loop), other principles 🟢
+2. **Codebase-wide ObstacleKind audit:** 13 branch sites across 7 files; 1 🔴, 11 🟡, 1 🟢
+3. **First refactor design:** NonScorableTag pattern for scoring_system.cpp:159–160
+
+### Findings Summary
+
+**motion_system:** 🟡 yellow. The try_get → WorldTransform sync at `:17–19` is migration plumbing (Position → WorldTransform copy) living inside integration logic. Should be extracted or labelled as transient. No functionality risk; SRP smell only.
+
+**ObstacleKind Dispatch:**
+- 🟢 sites (3): Debug utility (enum_names), canonical deserialization (beat_map_loader), factory pattern (obstacle_entity)
+- 🟡 sites (10): Temporary workarounds (2), parse-time routing (1), render factory (2), scheduler compute (2), camera/collision/scoring data mappings (3)
+- 🔴 site (1): **scoring_system.cpp:159–160** — inline LanePushLeft/Right exclusion from scoring violates OCP. Adding future non-scoring kinds requires editing scoring_system.
+
+### Recommended First Action
+
+**NonScorableTag pattern for scoring_system.cpp:159–160:**
+1. Add `struct NonScorableTag {};` to `app/components/obstacle.h`
+2. Emplace on LanePushLeft/Right in `obstacle_entity.cpp:76–79`
+3. Replace inline guard with `entt::exclude<NonScorableTag>` on hit_view
+4. Delete the kind check
+
+**Impact:** Branch disappears entirely. Future non-scoring obstacle kinds need only an emplace call in the factory — no gameplay system edits required.
+
+### Pattern Discovery
+
+**Codebase-wide cross-cutting audits surface 🔴 findings that single-module audits miss.** The inline kind-check at scoring_system:159–160 is the same smell as R3 audit site `:158–163`. When multiple systems show hardcoded enum branching, a unified data-driven refactor is more valuable than point fixes.
+
+### Decision
+
+Merged to `.squad/decisions.md` under "2026-05-03 — Ralph Round 4" section.
+
+
 

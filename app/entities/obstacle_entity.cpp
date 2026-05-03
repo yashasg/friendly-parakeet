@@ -79,6 +79,7 @@ entt::entity spawn_obstacle(entt::registry& reg, const ObstacleSpawnParams& para
             reg.emplace<Obstacle>(e, params.kind, int16_t{constants::PTS_LANE_PUSH});
             reg.emplace<DrawSize>(e, static_cast<float>(constants::SCREEN_W / 3), 60.0f);
             reg.emplace<Color>(e, Color{255, 138, 101, 255});
+            reg.emplace<NonScorableTag>(e);
             break;
         }
     }

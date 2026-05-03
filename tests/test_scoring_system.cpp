@@ -240,3 +240,32 @@ TEST_CASE("scoring: LanePush emits no popup", "[scoring][lane_push]") {
 
     CHECK(reg.view<ScorePopup>().size() == 0);
 }
+
+TEST_CASE("scoring: NonScorableTag entity cleared without scoring", "[scoring][nonscorable]") {
+    // Verifies OCP: any entity with NonScorableTag is excluded from the scoring
+    // ladder regardless of its ObstacleKind. Adding a new non-scorable obstacle
+    // kind requires zero changes to scoring_system.
+    auto reg = make_registry();
+    auto& score = reg.ctx().get<ScoreState>();
+    const int score_before = score.score;
+    const int chain_before = score.chain_count;
+
+    auto e = reg.create();
+    reg.emplace<ObstacleTag>(e);
+    reg.emplace<Position>(e, 300.0f, constants::PLAYER_Y);
+    reg.emplace<Obstacle>(e, ObstacleKind::LanePushLeft, int16_t{999});
+    reg.emplace<NonScorableTag>(e);
+    reg.emplace<ScoredTag>(e);
+
+    scoring_system(reg, 0.0f);
+
+    // No score delta from obstacle points.
+    CHECK(score.score == score_before);
+    // Chain not incremented.
+    CHECK(score.chain_count == chain_before);
+    // No popup spawned.
+    CHECK(reg.view<ScorePopup>().size() == 0);
+    // ScoredTag and Obstacle cleaned up — entity won't be re-processed.
+    CHECK_FALSE(reg.all_of<ScoredTag>(e));
+    CHECK_FALSE(reg.all_of<Obstacle>(e));
+}
