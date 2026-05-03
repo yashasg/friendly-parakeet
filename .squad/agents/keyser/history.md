@@ -664,3 +664,19 @@ Merged to `.squad/decisions.md` under "Round 9: Keyser — Wirefix Audit + Self-
 **Pattern Learned:** Parallel-investigated chain-bonus and reached same RETRACT verdict. Independent agreement is strong evidence. Audit findings labeled 'redundant' must trace ALL invocation paths, including indirect dispatcher paths, before declaring guards redundant.
 
 **Decision:** Merged to `.squad/decisions.md` under "Round 13: Keaton — Chain-Bonus SRP Retraction + Motion System Migration; Keyser — R12 Forensic + Module Health Reclassification" section.
+
+---
+
+### Round 15 — Fixed-Tick-Runner Demotion Reconciliation + r15 Migration Pre-Audit
+
+**Date:** 2026-05-06
+
+**Work:**
+1. **fixed_tick_runner demotion reversal:** Independently verified Keaton-r14's commutativity proof. Traced obstacle_despawn_system and popup_feedback_system source code: data surfaces are completely disjoint (despawn reads ObstacleScrollZ/Position; popup_feedback reads only ctx ScorePopupRequestQueue). No ordering invariant exists. Queue is fully populated and ScoredTag is stripped before both systems run. **Revoked r14 demotion. fixed_tick_runner 🟡 → 🟢.**
+2. **Keaton-r15 migration pre-audit:** As of r15 start, Keaton-r15 was not yet landed. Documented pre-r15 baseline: 8 Position read-sites across scoring/collision/camera/despawn systems will need evaluation when r15 ships. Recommended r16 scope as "complete or audit #349 migration" — audit whether readers can migrate to WorldTransform/ObstacleScrollZ.
+3. **Module health snapshot (pre-r15):** 11 🟢 / 1 🟡 (motion_system #349 pending). fixed_tick_runner revoked to 🟢.
+4. **(Post-r15 confirmation):** Keaton-r15 landed. Position bridge added to motion_view as compatibility layer. motion_system remains 🟡 pending Position bridge audit for r16 (whether readers can migrate).
+
+**Pattern Learned:** When implementation hasn't landed, audit only what exists — don't speculate. Pre-document baselines for post-implementation comparison.
+
+**Decision:** Merged to `.squad/decisions.md` under "Round 15: Keyser r14 Demotion Reconciliation + r15 Audit Pending" section.

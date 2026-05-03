@@ -561,3 +561,22 @@ Merged to `.squad/decisions.md` under "Round 9: Keaton — Phase-Guard Design B 
 **Pattern Learned:** Retract recipes when grep falsifies them. Don't ship the wrong refactor to look productive. Independent agreement (Keyser reached same RETRACT verdict) is strong evidence.
 
 **Decision:** Merged to `.squad/decisions.md` under "Round 13: Keaton — Chain-Bonus SRP Retraction + Motion System Migration" section.
+
+---
+
+### Round 15 — Velocity Struct Deletion + vel_view Elimination
+
+**Date:** 2026-05-06
+
+**Work:**
+1. **Full Velocity migration:** Deleted `Velocity` struct from `app/components/transform.h` entirely. Migrated `spawn_obstacle` to `MotionVelocity{{0, speed}}`. Migrated `scroll_system` model_view from `Velocity` to `MotionVelocity` with `.value.y` accessor.
+2. **vel_view → motion_view:** Deleted the 11-line `vel_view` loop from `motion_system.cpp`. Added `Position` bridge in motion_view to sync Position from WorldTransform when both present (legacy compatibility for collision/scoring/camera that still read Position).
+3. **Test migration (13 files):** Updated 6 factory functions in `test_helpers.h`. Updated 8 archetype assertions in `test_obstacle_archetypes.cpp`. Rewrote 3 motion_view tests (one covering Position bridge). Updated 5 other test files. Removed 1 obsolete Velocity assertion. Updated 4 bench sites.
+4. **Metrics:** 19 files touched. Pre: 786/2255. Post: 786/2256 (+1 assertion from Position bridge test). Zero warnings.
+5. **Benchmarks:** motion_system slightly higher due to `try_get<Position>` bridge cost (~30–90 ns at 10–100 entities); particle_system and full-frame within r14 baseline.
+
+**Metrics:** Bridge overhead ~30–90 ns; justified by elimination of legacy `Velocity` type and the fragmented vel_view loop.
+
+**Pattern Learned:** When a migration touches 19 files, do them in lockstep with continuous test-passing. The bridge approach (motion_view writes Position) lets readers migrate independently in a future round. This decouples writer migration from reader migration.
+
+**Decision:** Merged to `.squad/decisions.md` under "Round 15: Keaton vel_view → motion_view Migration (Issue #349)" section. Commit: `70f6436`.
