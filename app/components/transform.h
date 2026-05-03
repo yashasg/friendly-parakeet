@@ -23,9 +23,4 @@ struct UIPosition {
     Vector2 value = {0.0f, 0.0f};
 };
 
-// Legacy spatial data kept temporarily while systems migrate to WorldTransform,
-// MotionVelocity, and UIPosition.
-struct Position {
-    float x = 0.0f;
-    float y = 0.0f;
-};
+

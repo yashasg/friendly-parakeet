@@ -22,7 +22,7 @@ struct MissRecord {
 
 struct HitRecord {
     entt::entity e;
-    Position     pos;
+    Vector2      popup_xy = {0.0f, 0.0f};
     Obstacle     obs;
     bool         has_timing = false;
     TimingGrade  timing{};
@@ -123,24 +123,24 @@ void scoring_system(entt::registry& reg, float dt) {
         auto& hit_buf = scratch.hit_buf;
         hit_buf.clear();
 
-        auto hit_view = reg.view<ObstacleTag, ScoredTag, Obstacle, Position>(
-            entt::exclude<MissTag, NonScorableTag>);
-        for (auto [e, obs, pos] : hit_view.each()) {
+        auto hit_view = reg.view<ObstacleTag, ScoredTag, Obstacle, WorldTransform>(
+            entt::exclude<MissTag, NonScorableTag, ObstacleScrollZ>);
+        for (auto [e, obs, wt] : hit_view.each()) {
             HitRecord r;
-            r.e   = e;
-            r.pos = pos;
-            r.obs = obs;
+            r.e        = e;
+            r.popup_xy = wt.position;
+            r.obs      = obs;
             auto* tg = reg.try_get<TimingGrade>(e);
             if (tg) { r.has_timing = true; r.timing = *tg; }
             hit_buf.push_back(r);
         }
 
         auto model_hit_view = reg.view<ObstacleTag, ScoredTag, Obstacle, ObstacleScrollZ>(
-            entt::exclude<MissTag, Position, NonScorableTag>);
+            entt::exclude<MissTag, NonScorableTag>);
         for (auto [e, obs, oz] : model_hit_view.each()) {
             HitRecord r;
-            r.e   = e;
-            r.pos = Position{constants::SCREEN_W_F * 0.5f, oz.z};
+            r.e        = e;
+            r.popup_xy = {constants::SCREEN_W_F * 0.5f, oz.z};
             r.obs = obs;
             auto* tg = reg.try_get<TimingGrade>(e);
             if (tg) { r.has_timing = true; r.timing = *tg; }
@@ -199,7 +199,7 @@ void scoring_system(entt::registry& reg, float dt) {
             // Queue timing/score popup; popup_feedback_system owns spawn/SFX.
             std::optional<TimingTier> tt = r.has_timing
                 ? std::make_optional(r.timing.tier) : std::nullopt;
-            popup_queue.requests.push_back({r.pos.x, r.pos.y, points, tt});
+            popup_queue.requests.push_back({r.popup_xy.x, r.popup_xy.y, points, tt});
 
             // Structural removals after all reads — safe.
             reg.remove<Obstacle>(r.e);

@@ -230,13 +230,13 @@ void game_camera_system(entt::registry& reg, float /*dt*/) {
 
     // 1. Single-slab obstacle transforms
     {
-        auto view = reg.view<ObstacleTag, Position, Obstacle, Color, DrawSize>();
-        for (auto [entity, pos, obs, col, dsz] : view.each()) {
+        auto view = reg.view<ObstacleTag, WorldTransform, Obstacle, Color, DrawSize>();
+        for (auto [entity, wt, obs, col, dsz] : view.each()) {
             switch (obs.kind) {
                 case ObstacleKind::LanePushLeft:
                 case ObstacleKind::LanePushRight:
                     reg.get_or_emplace<ModelTransform>(entity) =
-                        ModelTransform{slab_matrix(pos.x-dsz.w/2, pos.y, dsz.w, constants::OBSTACLE_3D_HEIGHT, dsz.h),
+                        ModelTransform{slab_matrix(wt.position.x-dsz.w/2, wt.position.y, dsz.w, constants::OBSTACLE_3D_HEIGHT, dsz.h),
                                        col, 0, MeshType::Slab};
                     break;
                 default:
@@ -260,8 +260,8 @@ void game_camera_system(entt::registry& reg, float /*dt*/) {
     {
         auto view = reg.view<MeshChild>();
         for (auto [entity, mc] : view.each()) {
-            auto& parent_pos = reg.get<Position>(mc.parent);
-            float z = parent_pos.y + mc.z_offset;
+            auto& parent_wt = reg.get<WorldTransform>(mc.parent);
+            float z = parent_wt.position.y + mc.z_offset;
 
             if (mc.mesh_type == MeshType::Slab) {
                 reg.get_or_emplace<ModelTransform>(entity) =

@@ -78,7 +78,6 @@ TEST_CASE("scoring: popup entity spawned on score", "[scoring]") {
         CHECK(reg.all_of<WorldTransform>(e));
         CHECK(reg.all_of<MotionVelocity>(e));
         CHECK(reg.all_of<TagHUDPass>(e));
-        CHECK_FALSE(reg.all_of<Position>(e));
         ++popup_count;
     }
     CHECK(popup_count == 1);
@@ -249,7 +248,7 @@ TEST_CASE("scoring: NonScorableTag entity cleared without scoring", "[scoring][n
 
     auto e = reg.create();
     reg.emplace<ObstacleTag>(e);
-    reg.emplace<Position>(e, 300.0f, constants::PLAYER_Y);
+    reg.emplace<WorldTransform>(e, WorldTransform{{300.0f, constants::PLAYER_Y}});
     reg.emplace<Obstacle>(e, ObstacleKind::ShapeGate, int16_t{999});
     reg.emplace<NonScorableTag>(e);
     reg.emplace<ScoredTag>(e);
@@ -276,7 +275,7 @@ TEST_CASE("scoring: BarObstacleTag sets DeathCause::HitABar regardless of kind",
 
     auto e = reg.create();
     reg.emplace<ObstacleTag>(e);
-    reg.emplace<Position>(e, 300.0f, constants::PLAYER_Y);
+    reg.emplace<WorldTransform>(e, WorldTransform{{300.0f, constants::PLAYER_Y}});
     reg.emplace<Obstacle>(e, ObstacleKind::ShapeGate, int16_t{200});
     reg.emplace<BarObstacleTag>(e);
     reg.emplace<ScoredTag>(e);
@@ -295,7 +294,7 @@ TEST_CASE("scoring: missing bar sets DeathCause::MissedABeat when no BarObstacle
 
     auto e = reg.create();
     reg.emplace<ObstacleTag>(e);
-    reg.emplace<Position>(e, 300.0f, constants::PLAYER_Y);
+    reg.emplace<WorldTransform>(e, WorldTransform{{300.0f, constants::PLAYER_Y}});
     reg.emplace<Obstacle>(e, ObstacleKind::ShapeGate, int16_t{200});
     reg.emplace<ScoredTag>(e);
     reg.emplace<MissTag>(e);

@@ -50,9 +50,9 @@ void obstacle_despawn_system(entt::registry& reg, float /*dt*/) {
     for (auto e : to_destroy) reg.destroy(e);
     to_destroy.clear();
 
-    auto view = reg.view<ObstacleTag, Position>();
-    for (auto [entity, pos] : view.each()) {
-        if (pos.y > constants::DESTROY_Y)
+    auto view = reg.view<ObstacleTag, WorldTransform>(entt::exclude<ObstacleScrollZ>);
+    for (auto [entity, wt] : view.each()) {
+        if (wt.position.y > constants::DESTROY_Y)
             to_destroy.push_back(entity);
     }
 

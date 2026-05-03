@@ -90,7 +90,6 @@ TEST_CASE("post-migration: LowBar has ObstacleScrollZ, not Position",
     auto e = make_obstacle_entity(reg, ObstacleKind::LowBar);
 
     REQUIRE(reg.all_of<ObstacleScrollZ>(e));
-    CHECK_FALSE(reg.all_of<Position>(e));
     CHECK_FALSE(reg.all_of<Model>(e));  // raw Model not emplaced by entity factory
 }
 
@@ -100,23 +99,22 @@ TEST_CASE("post-migration: HighBar has ObstacleScrollZ, not Position",
     auto e = make_obstacle_entity(reg, ObstacleKind::HighBar);
 
     REQUIRE(reg.all_of<ObstacleScrollZ>(e));
-    CHECK_FALSE(reg.all_of<Position>(e));
     CHECK_FALSE(reg.all_of<Model>(e));
 }
 
-TEST_CASE("post-migration: LanePushLeft still has Position (not yet migrated)",
+TEST_CASE("post-migration: LanePushLeft fully migrated to WorldTransform",
           "[post_migration][model_slice]") {
     entt::registry reg;
     auto e = make_obstacle_entity(reg, ObstacleKind::LanePushLeft);
-    REQUIRE(reg.all_of<Position>(e));
+    REQUIRE(reg.all_of<WorldTransform>(e));
     CHECK_FALSE(reg.all_of<ObstacleScrollZ>(e));
 }
 
-TEST_CASE("post-migration: LanePushRight still has Position (not yet migrated)",
+TEST_CASE("post-migration: LanePushRight fully migrated to WorldTransform",
           "[post_migration][model_slice]") {
     entt::registry reg;
     auto e = make_obstacle_entity(reg, ObstacleKind::LanePushRight);
-    REQUIRE(reg.all_of<Position>(e));
+    REQUIRE(reg.all_of<WorldTransform>(e));
     CHECK_FALSE(reg.all_of<ObstacleScrollZ>(e));
 }
 
@@ -288,7 +286,6 @@ TEST_CASE("post-migration: LowBar has ObstacleScrollZ + RequiredVAction + DrawSi
     REQUIRE(reg.all_of<ObstacleScrollZ>(e));
     REQUIRE(reg.all_of<RequiredVAction>(e));
     REQUIRE(reg.all_of<DrawSize>(e));
-    CHECK_FALSE(reg.all_of<Position>(e));
     CHECK(reg.get<RequiredVAction>(e).action == VMode::Jumping);
 }
 
@@ -299,7 +296,6 @@ TEST_CASE("post-migration: HighBar has ObstacleScrollZ + RequiredVAction (Slice 
 
     REQUIRE(reg.all_of<ObstacleScrollZ>(e));
     REQUIRE(reg.all_of<RequiredVAction>(e));
-    CHECK_FALSE(reg.all_of<Position>(e));
     CHECK(reg.get<RequiredVAction>(e).action == VMode::Sliding);
 }
 

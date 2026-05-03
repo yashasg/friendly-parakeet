@@ -132,11 +132,11 @@ void render_shape_buttons(const entt::registry& reg,
 
     std::array<float, 4> nearest_dist = {-1.0f, -1.0f, -1.0f, -1.0f};
     for (auto [entity, obstacle_pos, required_shape] :
-         reg.view<ObstacleTag, Position, RequiredShape>(entt::exclude<ScoredTag>).each()) {
+         reg.view<ObstacleTag, WorldTransform, RequiredShape>(entt::exclude<ScoredTag>).each()) {
         (void)entity;
         int shape_index = static_cast<int>(required_shape.shape);
         if (shape_index < 0 || shape_index >= static_cast<int>(nearest_dist.size())) continue;
-        float dist = constants::PLAYER_Y - obstacle_pos.y;
+        float dist = constants::PLAYER_Y - obstacle_pos.position.y;
         if (dist > 0.0f && (nearest_dist[shape_index] < 0.0f || dist < nearest_dist[shape_index])) {
             nearest_dist[shape_index] = dist;
         }

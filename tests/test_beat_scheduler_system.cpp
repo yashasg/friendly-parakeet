@@ -282,9 +282,9 @@ TEST_CASE("beat_scheduler: obstacles spawn with overshoot compensation", "[beat_
 
     // Obstacle should spawn below SPAWN_Y to compensate for late spawn.
     // start_y = SPAWN_Y + overshoot * scroll_speed
-    auto view = reg.view<ObstacleTag, Position>();
-    for (auto [e, pos] : view.each()) {
-        CHECK(pos.y > constants::SPAWN_Y);
+    auto view = reg.view<ObstacleTag, WorldTransform>();
+    for (auto [e, wt] : view.each()) {
+        CHECK(wt.position.y > constants::SPAWN_Y);
     }
 }
 
@@ -385,9 +385,9 @@ TEST_CASE("beat_scheduler: clamped late-spawn stores adjusted spawn_time in Beat
     float max_start_y = constants::PLAYER_Y;
 
     // Position must be clamped
-    auto pview = reg.view<ObstacleTag, Position>();
-    for (auto [e, pos] : pview.each()) {
-        CHECK_THAT(pos.y, Catch::Matchers::WithinAbs(max_start_y, 0.01f));
+    auto pview = reg.view<ObstacleTag, WorldTransform>();
+    for (auto [e, wt] : pview.each()) {
+        CHECK_THAT(wt.position.y, Catch::Matchers::WithinAbs(max_start_y, 0.01f));
     }
 
     // BeatInfo.spawn_time must reflect the adjusted value so scroll_system

@@ -17,7 +17,7 @@ static entt::registry make_test_player_registry(TestPlayerSkill skill = TestPlay
 
 static entt::entity make_shape_gate_at_lane(entt::registry& reg, Shape shape, int8_t lane, float y) {
     auto obs = make_shape_gate(reg, shape, y);
-    reg.get<Position>(obs).x = constants::LANE_X[lane];
+    reg.get<WorldTransform>(obs).position.x = constants::LANE_X[lane];
     auto& song = reg.ctx().get<SongState>();
     float spawn_time = song.song_time - (y - constants::SPAWN_Y) / song.scroll_speed;
     float arrival = spawn_time + (constants::PLAYER_Y - constants::SPAWN_Y) / song.scroll_speed;

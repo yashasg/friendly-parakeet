@@ -11,14 +11,12 @@ TEST_CASE("scroll: rhythm obstacles positioned from song_time and BeatInfo", "[s
 
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
-    reg.emplace<Position>(obs, 0.0f, 0.0f);
     reg.emplace<WorldTransform>(obs, WorldTransform{{0.0f, 0.0f}});
     reg.emplace<BeatInfo>(obs, 0, 4.0f, 0.0f);
 
     scroll_system(reg, 0.016f);
 
     float expected_y = constants::SPAWN_Y + (song.song_time - 0.0f) * song.scroll_speed;
-    CHECK_THAT(reg.get<Position>(obs).y, Catch::Matchers::WithinAbs(expected_y, 0.1f));
     CHECK_THAT(reg.get<WorldTransform>(obs).position.y, Catch::Matchers::WithinAbs(expected_y, 0.1f));
 }
 
@@ -29,7 +27,6 @@ TEST_CASE("scroll: rhythm obstacles ignore MotionVelocity component", "[scroll][
 
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
-    reg.emplace<Position>(obs, 100.0f, 0.0f);
     reg.emplace<WorldTransform>(obs, WorldTransform{{100.0f, 0.0f}});
     reg.emplace<MotionVelocity>(obs, MotionVelocity{{999.0f, 999.0f}});
     reg.emplace<BeatInfo>(obs, 0, 3.0f, 0.0f);
@@ -38,7 +35,6 @@ TEST_CASE("scroll: rhythm obstacles ignore MotionVelocity component", "[scroll][
 
     // X should not change (MotionVelocity is irrelevant for BeatInfo entities in rhythm mode)
     float expected_y = constants::SPAWN_Y + (1.0f - 0.0f) * song.scroll_speed;
-    CHECK_THAT(reg.get<Position>(obs).y, Catch::Matchers::WithinAbs(expected_y, 0.1f));
     CHECK_THAT(reg.get<WorldTransform>(obs).position.x, Catch::Matchers::WithinAbs(100.0f, 0.01f));
     CHECK_THAT(reg.get<WorldTransform>(obs).position.y, Catch::Matchers::WithinAbs(expected_y, 0.1f));
 }
@@ -63,18 +59,18 @@ TEST_CASE("scroll: BeatInfo position tracks song_time progression", "[scroll][rh
 
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
-    reg.emplace<Position>(obs, 0.0f, 0.0f);
+    reg.emplace<WorldTransform>(obs, WorldTransform{{0.0f, 0.0f}});
     reg.emplace<BeatInfo>(obs, 0, 4.0f, 1.0f);
 
     // Time 1: song_time=1.0
     song.song_time = 1.0f;
     scroll_system(reg, 0.016f);
-    float y1 = reg.get<Position>(obs).y;
+    float y1 = reg.get<WorldTransform>(obs).position.y;
 
     // Time 2: song_time=2.0
     song.song_time = 2.0f;
     scroll_system(reg, 0.016f);
-    float y2 = reg.get<Position>(obs).y;
+    float y2 = reg.get<WorldTransform>(obs).position.y;
 
     CHECK(y2 > y1);
     float delta = y2 - y1;

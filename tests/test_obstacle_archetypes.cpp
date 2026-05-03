@@ -32,7 +32,7 @@ int count_mesh_children(entt::registry& reg) {
 
 entt::entity make_mesh_factory_obstacle(entt::registry& reg, ObstacleKind kind) {
     auto parent = reg.create();
-    reg.emplace<Position>(parent, constants::LANE_X[1], -120.0f);
+    reg.emplace<WorldTransform>(parent, WorldTransform{{constants::LANE_X[1], -120.0f}});
     reg.emplace<Obstacle>(parent, kind, int16_t{0});
     reg.emplace<DrawSize>(parent, constants::SCREEN_W_F, 80.0f);
     reg.emplace<Color>(parent, Color{255, 255, 255, 255});
@@ -51,7 +51,7 @@ TEST_CASE("entity: ShapeGate Circle - correct components and color", "[archetype
     entt::registry reg;
     auto e = spawn_obstacle(reg, {ObstacleKind::ShapeGate, 360.0f, -120.0f, Shape::Circle});
 
-    REQUIRE(reg.all_of<ObstacleTag, MotionVelocity, DrawLayer, Position, WorldTransform, Obstacle, RequiredShape, DrawSize, Color>(e));
+    REQUIRE(reg.all_of<ObstacleTag, MotionVelocity, DrawLayer, WorldTransform, Obstacle, RequiredShape, DrawSize, Color>(e));
     CHECK(!reg.all_of<RequiredVAction>(e));
     CHECK(!reg.all_of<BlockedLanes>(e));
     CHECK(!reg.all_of<RequiredLane>(e));
@@ -59,8 +59,6 @@ TEST_CASE("entity: ShapeGate Circle - correct components and color", "[archetype
     CHECK(reg.get<Obstacle>(e).kind == ObstacleKind::ShapeGate);
     CHECK(reg.get<Obstacle>(e).base_points == int16_t{constants::PTS_SHAPE_GATE});
     CHECK(reg.get<RequiredShape>(e).shape == Shape::Circle);
-    CHECK(reg.get<Position>(e).x == 360.0f);
-    CHECK(reg.get<Position>(e).y == -120.0f);
     CHECK(reg.get<WorldTransform>(e).position.x == 360.0f);
     CHECK(reg.get<WorldTransform>(e).position.y == -120.0f);
 
@@ -103,7 +101,7 @@ TEST_CASE("entity: obstacle mesh overflow does not create orphan MeshChild", "[a
     wire_obstacle_mesh_lifetime(reg);
 
     auto parent = reg.create();
-    reg.emplace<Position>(parent, 360.0f, -120.0f);
+    reg.emplace<WorldTransform>(parent, WorldTransform{{360.0f, -120.0f}});
     reg.emplace<Obstacle>(parent, ObstacleKind::ShapeGate, int16_t{constants::PTS_SHAPE_GATE});
     reg.emplace<DrawSize>(parent, constants::SCREEN_W_F, 80.0f);
     reg.emplace<Color>(parent, Color{80, 200, 255, 255});
@@ -231,7 +229,7 @@ TEST_CASE("entity: LaneBlock - blocked lanes and no shape components", "[archety
     auto e = spawn_obstacle(reg, {ObstacleKind::LaneBlock, 60.0f, -120.0f,
                                    Shape::Circle, uint8_t{0b010}});
 
-    REQUIRE(reg.all_of<ObstacleTag, MotionVelocity, DrawLayer, Position, Obstacle, BlockedLanes, DrawSize, Color>(e));
+    REQUIRE(reg.all_of<ObstacleTag, MotionVelocity, DrawLayer, WorldTransform, Obstacle, BlockedLanes, DrawSize, Color>(e));
     CHECK(!reg.all_of<RequiredShape>(e));
     CHECK(!reg.all_of<RequiredVAction>(e));
     CHECK(!reg.all_of<RequiredLane>(e));
@@ -246,7 +244,6 @@ TEST_CASE("entity: LowBar - RequiredVAction Jumping", "[archetype]") {
     auto e = spawn_obstacle(reg, {ObstacleKind::LowBar, 360.0f, -120.0f});
 
     REQUIRE(reg.all_of<ObstacleTag, MotionVelocity, DrawLayer, ObstacleScrollZ, WorldTransform, Obstacle, RequiredVAction, DrawSize, Color>(e));
-    CHECK_FALSE(reg.all_of<Position>(e));
     CHECK(!reg.all_of<RequiredShape>(e));
     CHECK(!reg.all_of<BlockedLanes>(e));
     CHECK(!reg.all_of<RequiredLane>(e));
@@ -268,7 +265,6 @@ TEST_CASE("entity: HighBar - RequiredVAction Sliding", "[archetype]") {
     auto e = spawn_obstacle(reg, {ObstacleKind::HighBar, 360.0f, -120.0f});
 
     REQUIRE(reg.all_of<ObstacleTag, MotionVelocity, DrawLayer, ObstacleScrollZ, WorldTransform, Obstacle, RequiredVAction, DrawSize, Color>(e));
-    CHECK_FALSE(reg.all_of<Position>(e));
     CHECK(reg.get<Obstacle>(e).kind == ObstacleKind::HighBar);
     CHECK(reg.get<Obstacle>(e).base_points == int16_t{constants::PTS_HIGH_BAR});
     CHECK(reg.get<ObstacleScrollZ>(e).z == -120.0f);
@@ -286,7 +282,7 @@ TEST_CASE("entity: ComboGate - RequiredShape and BlockedLanes", "[archetype]") {
     auto e = spawn_obstacle(reg, {ObstacleKind::ComboGate, 360.0f, -120.0f,
                                    Shape::Triangle, uint8_t{0b101}});
 
-    REQUIRE(reg.all_of<ObstacleTag, MotionVelocity, DrawLayer, Position, Obstacle, RequiredShape, BlockedLanes, DrawSize, Color>(e));
+    REQUIRE(reg.all_of<ObstacleTag, MotionVelocity, DrawLayer, WorldTransform, Obstacle, RequiredShape, BlockedLanes, DrawSize, Color>(e));
     CHECK(!reg.all_of<RequiredVAction>(e));
     CHECK(!reg.all_of<RequiredLane>(e));
 
@@ -301,7 +297,7 @@ TEST_CASE("entity: SplitPath - RequiredShape and RequiredLane", "[archetype]") {
     auto e = spawn_obstacle(reg, {ObstacleKind::SplitPath, 360.0f, -120.0f,
                                    Shape::Square, uint8_t{0}, int8_t{2}});
 
-    REQUIRE(reg.all_of<ObstacleTag, MotionVelocity, DrawLayer, Position, Obstacle, RequiredShape, RequiredLane, DrawSize, Color>(e));
+    REQUIRE(reg.all_of<ObstacleTag, MotionVelocity, DrawLayer, WorldTransform, Obstacle, RequiredShape, RequiredLane, DrawSize, Color>(e));
     CHECK(!reg.all_of<RequiredVAction>(e));
     CHECK(!reg.all_of<BlockedLanes>(e));
 
@@ -315,7 +311,7 @@ TEST_CASE("entity: LanePushLeft - passive, no shape components", "[archetype]") 
     entt::registry reg;
     auto e = spawn_obstacle(reg, {ObstacleKind::LanePushLeft, 60.0f, -120.0f});
 
-    REQUIRE(reg.all_of<ObstacleTag, MotionVelocity, DrawLayer, Position, Obstacle, DrawSize, Color>(e));
+    REQUIRE(reg.all_of<ObstacleTag, MotionVelocity, DrawLayer, WorldTransform, Obstacle, DrawSize, Color>(e));
     CHECK(!reg.all_of<RequiredShape>(e));
     CHECK(!reg.all_of<RequiredVAction>(e));
     CHECK(!reg.all_of<BlockedLanes>(e));
@@ -329,7 +325,7 @@ TEST_CASE("entity: LanePushRight - passive, no shape components", "[archetype]")
     entt::registry reg;
     auto e = spawn_obstacle(reg, {ObstacleKind::LanePushRight, 660.0f, -120.0f});
 
-    REQUIRE(reg.all_of<ObstacleTag, MotionVelocity, DrawLayer, Position, Obstacle, DrawSize, Color>(e));
+    REQUIRE(reg.all_of<ObstacleTag, MotionVelocity, DrawLayer, WorldTransform, Obstacle, DrawSize, Color>(e));
     CHECK(reg.get<Obstacle>(e).kind == ObstacleKind::LanePushRight);
     CHECK(reg.get<Obstacle>(e).base_points == int16_t{constants::PTS_LANE_PUSH});
 }
@@ -339,7 +335,6 @@ TEST_CASE("entity: LowBar ObstacleScrollZ z propagated from input", "[archetype]
     auto e = spawn_obstacle(reg, {ObstacleKind::LowBar, 123.5f, 456.7f});
 
     REQUIRE(reg.all_of<ObstacleScrollZ>(e));
-    CHECK_FALSE(reg.all_of<Position>(e));
     CHECK(reg.get<ObstacleScrollZ>(e).z == 456.7f);
 }
 
@@ -347,10 +342,7 @@ TEST_CASE("entity: ShapeGate position x/y propagated from input", "[archetype]")
     entt::registry reg;
     auto e = spawn_obstacle(reg, {ObstacleKind::ShapeGate, 123.5f, 456.7f});
 
-    auto& pos = reg.get<Position>(e);
     auto& transform = reg.get<WorldTransform>(e);
-    CHECK(pos.x == 123.5f);
-    CHECK(pos.y == 456.7f);
     CHECK(transform.position.x == 123.5f);
     CHECK(transform.position.y == 456.7f);
 }

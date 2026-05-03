@@ -79,12 +79,12 @@ static TestPlayerAction determine_action(
         action.arrival_time = beat->arrival_time;
     } else {
         // Estimate from position + velocity
-        auto* pos = reg.try_get<Position>(entity);
-        auto* oz = reg.try_get<ObstacleScrollZ>(entity);
+        auto* wt  = reg.try_get<WorldTransform>(entity);
+        auto* oz  = reg.try_get<ObstacleScrollZ>(entity);
         auto* vel = reg.try_get<MotionVelocity>(entity);
-        if (pos && vel && vel->value.y > 0.0f) {
+        if (wt && vel && vel->value.y > 0.0f) {
             action.arrival_time = song.song_time +
-                (constants::PLAYER_Y - pos->y) / vel->value.y;
+                (constants::PLAYER_Y - wt->position.y) / vel->value.y;
         } else if (oz && vel && vel->value.y > 0.0f) {
             action.arrival_time = song.song_time +
                 (constants::PLAYER_Y - oz->z) / vel->value.y;
@@ -98,10 +98,10 @@ static TestPlayerAction determine_action(
 
         // ShapeGate: player must also be in the lane where the shape hole is.
         // The hole is at obs_pos.x — find which lane that corresponds to.
-        auto* obs_pos = reg.try_get<Position>(entity);
-        if (obs_pos && !reg.all_of<BlockedLanes>(entity) && !reg.all_of<RequiredLane>(entity)) {
+        auto* obs_wt = reg.try_get<WorldTransform>(entity);
+        if (obs_wt && !reg.all_of<BlockedLanes>(entity) && !reg.all_of<RequiredLane>(entity)) {
             for (int i = 0; i < constants::LANE_COUNT; ++i) {
-                if (!lane_centers_overlap(obs_pos->x, constants::LANE_X[i])) continue;
+                if (!lane_centers_overlap(obs_wt->position.x, constants::LANE_X[i])) continue;
                 if (i != player_lane) {
                     action.target_lane = static_cast<int8_t>(i);
                 }
@@ -231,9 +231,9 @@ void test_player_system(entt::registry& reg, float dt) {
         }
     }
 
-    auto obs_view = reg.view<ObstacleTag, Position, Obstacle>(entt::exclude<ScoredTag>);
-    for (auto [entity, obs_pos, obs] : obs_view.each()) {
-        float dist = p_transform.position.y - obs_pos.y;
+    auto obs_view = reg.view<ObstacleTag, WorldTransform, Obstacle>(entt::exclude<ScoredTag>);
+    for (auto [entity, obs_wt, obs] : obs_view.each()) {
+        float dist = p_transform.position.y - obs_wt.position.y;
         if (dist <= 0.0f || dist > cfg.vision_range) continue;
         if (test_player_is_planned(*state, entity)) continue;
 
@@ -417,10 +417,10 @@ void test_player_system(entt::registry& reg, float dt) {
                                  && pending_shape_obstacle != action.obstacle);
         bool zone_blocked = false;
         {
-            auto zone_view = reg.view<ObstacleTag, Position>(entt::exclude<ScoredTag>);
-            for (auto [ze, zpos] : zone_view.each()) {
+            auto zone_view = reg.view<ObstacleTag, WorldTransform>(entt::exclude<ScoredTag>);
+            for (auto [ze, zwt] : zone_view.each()) {
                 if (ze == action.obstacle) continue; // don't self-block
-                float zdist = p_transform.position.y - zpos.y + p_vstate.y_offset;
+                float zdist = p_transform.position.y - zwt.position.y + p_vstate.y_offset;
                 if (zdist >= -constants::COLLISION_MARGIN && zdist <= constants::COLLISION_MARGIN * 3.0f) {
                     zone_blocked = true;
                     break;
@@ -448,10 +448,10 @@ void test_player_system(entt::registry& reg, float dt) {
             if (action.target_lane < next_lane) next_lane--;
             else if (action.target_lane > next_lane) next_lane++;
 
-            auto closer_view = reg.view<ObstacleTag, Position>(entt::exclude<ScoredTag>);
-            for (auto [oe, opos] : closer_view.each()) {
+            auto closer_view = reg.view<ObstacleTag, WorldTransform>(entt::exclude<ScoredTag>);
+            for (auto [oe, owt] : closer_view.each()) {
                 if (oe == action.obstacle) continue;
-                float odist = p_transform.position.y - opos.y + p_vstate.y_offset;
+                float odist = p_transform.position.y - owt.position.y + p_vstate.y_offset;
                 if (odist <= 0.0f) continue;
 
                 auto* obeat = reg.try_get<BeatInfo>(oe);
@@ -468,7 +468,7 @@ void test_player_system(entt::registry& reg, float dt) {
                 auto* oshape = reg.try_get<RequiredShape>(oe);
                 if (oshape) {
                     float lane_x = constants::LANE_X[next_lane];
-                    if (!lane_centers_overlap(opos.x, lane_x)) {
+                    if (!lane_centers_overlap(owt.position.x, lane_x)) {
                         move_would_fail_closer = true;
                         break;
                     }
@@ -508,10 +508,10 @@ void test_player_system(entt::registry& reg, float dt) {
                                       && pending_shape_obstacle != action.obstacle);
         bool vert_zone_blocked = false;
         {
-            auto zone_view = reg.view<ObstacleTag, Position>(entt::exclude<ScoredTag>);
-            for (auto [ze, zpos] : zone_view.each()) {
+            auto zone_view = reg.view<ObstacleTag, WorldTransform>(entt::exclude<ScoredTag>);
+            for (auto [ze, zwt] : zone_view.each()) {
                 if (ze == action.obstacle) continue;
-                float zdist = p_transform.position.y - zpos.y + p_vstate.y_offset;
+                float zdist = p_transform.position.y - zwt.position.y + p_vstate.y_offset;
                 if (zdist >= -constants::COLLISION_MARGIN && zdist <= constants::COLLISION_MARGIN * 3.0f) {
                     vert_zone_blocked = true;
                     break;

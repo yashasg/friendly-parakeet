@@ -16,9 +16,9 @@ void miss_detection_system(entt::registry& reg, float /*dt*/) {
         reg.emplace<ScoredTag>(entity);
     }
 
-    auto view = reg.view<ObstacleTag, Position>(entt::exclude<ScoredTag>);
-    for (auto [entity, pos] : view.each()) {
-        if (pos.y <= constants::DESTROY_Y) continue;
+    auto view = reg.view<ObstacleTag, WorldTransform>(entt::exclude<ScoredTag, ObstacleScrollZ>);
+    for (auto [entity, wt] : view.each()) {
+        if (wt.position.y <= constants::DESTROY_Y) continue;
 
         reg.emplace<MissTag>(entity);
         reg.emplace<ScoredTag>(entity);

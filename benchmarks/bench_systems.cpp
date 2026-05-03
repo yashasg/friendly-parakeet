@@ -37,7 +37,7 @@ static entt::registry make_bench_registry() {
 static entt::entity make_bench_player(entt::registry& reg) {
     auto p = reg.create();
     reg.emplace<PlayerTag>(p);
-    reg.emplace<Position>(p, constants::LANE_X[1], constants::PLAYER_Y);
+    reg.emplace<WorldTransform>(p, WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y}});
     reg.emplace<WorldTransform>(p, Vector2{constants::LANE_X[1], constants::PLAYER_Y});
     reg.emplace<PlayerShape>(p);
     reg.emplace<ShapeWindow>(p);
@@ -55,7 +55,7 @@ static void spawn_obstacles(entt::registry& reg, int count) {
         auto obs = reg.create();
         reg.emplace<ObstacleTag>(obs);
         float y = constants::SPAWN_Y + static_cast<float>(i) * 80.0f;
-        reg.emplace<Position>(obs, constants::LANE_X[i % 3], y);
+        reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[i % 3], y}});
         reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[i % 3], y}});
         reg.emplace<MotionVelocity>(obs, MotionVelocity{{0.0f, song.scroll_speed}});
         auto shape = static_cast<Shape>(i % 3);
@@ -127,7 +127,7 @@ TEST_CASE("Bench: collision_system", "[bench]") {
         make_bench_player(reg);
         auto obs = reg.create();
         reg.emplace<ObstacleTag>(obs);
-        reg.emplace<Position>(obs, constants::LANE_X[1], constants::PLAYER_Y);
+        reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y}});
         reg.emplace<MotionVelocity>(obs, MotionVelocity{{0.0f, 400.0f}});
         reg.emplace<Obstacle>(obs, ObstacleKind::ShapeGate, int16_t{200});
         reg.emplace<RequiredShape>(obs, Shape::Circle);
@@ -161,7 +161,7 @@ TEST_CASE("Bench: scoring_system", "[bench]") {
         for (int i = 0; i < 5; ++i) {
             auto obs = reg.create();
             reg.emplace<ObstacleTag>(obs);
-            reg.emplace<Position>(obs, constants::LANE_X[1], constants::PLAYER_Y);
+            reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y}});
             reg.emplace<MotionVelocity>(obs, MotionVelocity{{0.0f, 400.0f}});
             reg.emplace<Obstacle>(obs, ObstacleKind::ShapeGate, int16_t{200});
             reg.emplace<ScoredTag>(obs);

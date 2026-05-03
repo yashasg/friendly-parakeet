@@ -14,7 +14,6 @@ TEST_CASE("player_entity: canonical component set present", "[archetype][player]
 
     CHECK(reg.all_of<PlayerTag>(p));
     CHECK(reg.all_of<WorldTransform>(p));
-    CHECK_FALSE(reg.all_of<Position>(p));
     CHECK(reg.all_of<PlayerShape>(p));
     CHECK(reg.all_of<ShapeWindow>(p));
     CHECK(reg.all_of<Lane>(p));

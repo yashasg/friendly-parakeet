@@ -170,7 +170,6 @@ inline entt::entity make_shape_gate(entt::registry& reg, Shape shape, float y) {
     const auto& song = reg.ctx().get<SongState>();
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
-    reg.emplace<Position>(obs, constants::LANE_X[1], y);
     reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], y}});
     reg.emplace<MotionVelocity>(obs, MotionVelocity{{0.0f, song.scroll_speed}});
     reg.emplace<Obstacle>(obs, ObstacleKind::ShapeGate, int16_t{constants::PTS_SHAPE_GATE});
@@ -187,7 +186,6 @@ inline entt::entity make_lane_block(entt::registry& reg, uint8_t mask, float y) 
     const auto& song = reg.ctx().get<SongState>();
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
-    reg.emplace<Position>(obs, constants::LANE_X[1], y);
     reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], y}});
     reg.emplace<MotionVelocity>(obs, MotionVelocity{{0.0f, song.scroll_speed}});
     reg.emplace<Obstacle>(obs, ObstacleKind::LaneBlock, int16_t{constants::PTS_LANE_BLOCK});
@@ -223,7 +221,6 @@ inline entt::entity make_combo_gate(entt::registry& reg, Shape shape, uint8_t bl
     const auto& song = reg.ctx().get<SongState>();
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
-    reg.emplace<Position>(obs, constants::LANE_X[1], y);
     reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], y}});
     reg.emplace<MotionVelocity>(obs, MotionVelocity{{0.0f, song.scroll_speed}});
     reg.emplace<Obstacle>(obs, ObstacleKind::ComboGate, int16_t{constants::PTS_COMBO_GATE});
@@ -241,7 +238,6 @@ inline entt::entity make_split_path(entt::registry& reg, Shape shape, int8_t lan
     const auto& song = reg.ctx().get<SongState>();
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
-    reg.emplace<Position>(obs, constants::LANE_X[1], y);
     reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], y}});
     reg.emplace<MotionVelocity>(obs, MotionVelocity{{0.0f, song.scroll_speed}});
     reg.emplace<Obstacle>(obs, ObstacleKind::SplitPath, int16_t{constants::PTS_SPLIT_PATH});
@@ -259,7 +255,6 @@ inline entt::entity make_lane_push(entt::registry& reg, ObstacleKind kind, float
     const auto& song = reg.ctx().get<SongState>();
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
-    reg.emplace<Position>(obs, constants::LANE_X[1], y);
     reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], y}});
     reg.emplace<MotionVelocity>(obs, MotionVelocity{{0.0f, song.scroll_speed}});
     reg.emplace<Obstacle>(obs, kind, int16_t{0});

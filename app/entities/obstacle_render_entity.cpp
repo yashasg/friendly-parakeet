@@ -149,14 +149,14 @@ void spawn_obstacle_meshes(entt::registry& reg, entt::entity logical) {
     wire_obstacle_mesh_lifetime(reg);
 
     auto& obs = reg.get<Obstacle>(logical);
-    const auto* pos_ptr = reg.try_get<Position>(logical);
+    const auto* wt_ptr = reg.try_get<WorldTransform>(logical);
     auto& col = reg.get<Color>(logical);
     auto& dsz = reg.get<DrawSize>(logical);
 
     switch (obs.kind) {
         case ObstacleKind::ShapeGate: {
-            if (!pos_ptr) break;
-            const auto& pos = *pos_ptr;
+            if (!wt_ptr) break;
+            const auto& wt = *wt_ptr;
             auto* req = reg.try_get<RequiredShape>(logical);
             uint8_t mesh_index = 0;
             if (req) {
@@ -164,7 +164,7 @@ void spawn_obstacle_meshes(entt::registry& reg, entt::entity logical) {
             }
             // Shape gates now render as shape-only prompts (no side walls/slabs).
             if (req)
-                add_shape_child(reg, logical, mesh_index, pos.x, 0.0f,
+                add_shape_child(reg, logical, mesh_index, wt.position.x, 0.0f,
                                 40, col);
             break;
         }

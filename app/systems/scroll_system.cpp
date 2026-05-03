@@ -22,15 +22,11 @@ void scroll_system(entt::registry& reg, float dt) {
             }
         }
 
-        auto beat_view = reg.view<ObstacleTag, Position, BeatInfo>();
-        for (auto [entity, pos, info] : beat_view.each()) {
+        auto beat_view = reg.view<ObstacleTag, WorldTransform, BeatInfo>(entt::exclude<ObstacleScrollZ>);
+        for (auto [entity, wt, info] : beat_view.each()) {
             (void)entity;
-            pos.y = constants::SPAWN_Y
-                  + (song->song_time - info.spawn_time) * song->scroll_speed;
-            if (auto* wt = reg.try_get<WorldTransform>(entity)) {
-                wt->position.x = pos.x;
-                wt->position.y = pos.y;
-            }
+            wt.position.y = constants::SPAWN_Y
+                          + (song->song_time - info.spawn_time) * song->scroll_speed;
         }
     }
 

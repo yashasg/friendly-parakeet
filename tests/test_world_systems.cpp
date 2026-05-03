@@ -31,25 +31,6 @@ TEST_CASE("motion: zero MotionVelocity means no movement", "[motion]") {
     CHECK(reg.get<WorldTransform>(e).position.y == 200.0f);
 }
 
-TEST_CASE("motion: Position bridge syncs when WorldTransform+MotionVelocity+Position present", "[motion]") {
-    auto reg = make_registry();
-    auto e1 = reg.create();
-    reg.emplace<WorldTransform>(e1, WorldTransform{{0.0f, 0.0f}});
-    reg.emplace<MotionVelocity>(e1, MotionVelocity{{1.0f, 0.0f}});
-    reg.emplace<Position>(e1, 0.0f, 0.0f);
-    auto e2 = reg.create();
-    reg.emplace<WorldTransform>(e2, WorldTransform{{0.0f, 0.0f}});
-    reg.emplace<MotionVelocity>(e2, MotionVelocity{{0.0f, 1.0f}});
-    reg.emplace<Position>(e2, 0.0f, 0.0f);
-
-    motion_system(reg, 10.0f);
-
-    CHECK(reg.get<WorldTransform>(e1).position.x == 10.0f);
-    CHECK(reg.get<Position>(e1).x == 10.0f);
-    CHECK(reg.get<WorldTransform>(e2).position.y == 10.0f);
-    CHECK(reg.get<Position>(e2).y == 10.0f);
-}
-
 // ── motion_system: WorldTransform+MotionVelocity path (modern, issue #349 target) ──
 
 TEST_CASE("motion: WorldTransform+MotionVelocity entity moves by velocity * dt", "[motion]") {
@@ -87,7 +68,7 @@ TEST_CASE("cleanup: destroys obstacles past DESTROY_Y", "[cleanup]") {
     auto reg = make_registry();
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
-    reg.emplace<Position>(obs, 0.0f, constants::DESTROY_Y + 10.0f);
+    reg.emplace<WorldTransform>(obs, WorldTransform{{0.0f, constants::DESTROY_Y + 10.0f}});
 
     obstacle_despawn_system(reg, 0.016f);
 
@@ -98,7 +79,7 @@ TEST_CASE("cleanup: keeps obstacles above DESTROY_Y", "[cleanup]") {
     auto reg = make_registry();
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
-    reg.emplace<Position>(obs, 0.0f, constants::DESTROY_Y - 10.0f);
+    reg.emplace<WorldTransform>(obs, WorldTransform{{0.0f, constants::DESTROY_Y - 10.0f}});
 
     obstacle_despawn_system(reg, 0.016f);
 
@@ -108,7 +89,7 @@ TEST_CASE("cleanup: keeps obstacles above DESTROY_Y", "[cleanup]") {
 TEST_CASE("cleanup: non-obstacle entities are untouched", "[cleanup]") {
     auto reg = make_registry();
     auto e = reg.create();
-    reg.emplace<Position>(e, 0.0f, constants::DESTROY_Y + 100.0f);
+    reg.emplace<WorldTransform>(e, WorldTransform{{0.0f, constants::DESTROY_Y + 100.0f}});
     // No ObstacleTag
 
     obstacle_despawn_system(reg, 0.016f);
@@ -175,7 +156,7 @@ TEST_CASE("game_state: enter_playing clears entities and creates player", "[game
     // Create some entities that should be cleared
     auto junk = reg.create();
     reg.emplace<ObstacleTag>(junk);
-    reg.emplace<Position>(junk, 0.0f, 0.0f);
+    reg.emplace<WorldTransform>(junk, WorldTransform{{0.0f, 0.0f}});
 
     auto& gs = reg.ctx().get<GameState>();
     gs.transition_pending = true;
@@ -340,7 +321,7 @@ TEST_CASE("cleanup: obstacle at exactly DESTROY_Y is kept", "[cleanup]") {
     auto reg = make_registry();
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
-    reg.emplace<Position>(obs, 0.0f, constants::DESTROY_Y);
+    reg.emplace<WorldTransform>(obs, WorldTransform{{0.0f, constants::DESTROY_Y}});
 
     obstacle_despawn_system(reg, 0.016f);
 
@@ -356,7 +337,7 @@ TEST_CASE("cleanup: destroys multiple obstacles past DESTROY_Y in one pass", "[c
     for (int i = 0; i < N; ++i) {
         obs[i] = reg.create();
         reg.emplace<ObstacleTag>(obs[i]);
-        reg.emplace<Position>(obs[i], 0.0f, constants::DESTROY_Y + static_cast<float>(i + 1) * 10.0f);
+        reg.emplace<WorldTransform>(obs[i], WorldTransform{{0.0f, constants::DESTROY_Y + static_cast<float>(i + 1) * 10.0f}});
     }
 
     obstacle_despawn_system(reg, 0.016f);
@@ -371,7 +352,7 @@ TEST_CASE("cleanup: does not emplace MissTag or ScoredTag on surviving obstacles
 
     auto survivor = reg.create();
     reg.emplace<ObstacleTag>(survivor);
-    reg.emplace<Position>(survivor, 0.0f, constants::DESTROY_Y - 1.0f);
+    reg.emplace<WorldTransform>(survivor, WorldTransform{{0.0f, constants::DESTROY_Y - 1.0f}});
 
     obstacle_despawn_system(reg, 0.016f);
 

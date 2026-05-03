@@ -19,7 +19,6 @@ entt::entity spawn_obstacle(entt::registry& reg, const ObstacleSpawnParams& para
 
     switch (params.kind) {
         case ObstacleKind::ShapeGate: {
-            reg.emplace<Position>(e, params.x, params.y);
             reg.emplace<Obstacle>(e, ObstacleKind::ShapeGate, int16_t{constants::PTS_SHAPE_GATE});
             reg.emplace<RequiredShape>(e, params.shape);
             reg.emplace<DrawSize>(e, constants::SCREEN_W_F, 80.0f);
@@ -32,7 +31,6 @@ entt::entity spawn_obstacle(entt::registry& reg, const ObstacleSpawnParams& para
             break;
         }
         case ObstacleKind::LaneBlock: {
-            reg.emplace<Position>(e, params.x, params.y);
             reg.emplace<Obstacle>(e, ObstacleKind::LaneBlock, int16_t{constants::PTS_LANE_BLOCK});
             reg.emplace<BlockedLanes>(e, params.mask);
             reg.emplace<DrawSize>(e, static_cast<float>(constants::SCREEN_W / 3), 80.0f);
@@ -58,7 +56,6 @@ entt::entity spawn_obstacle(entt::registry& reg, const ObstacleSpawnParams& para
             break;
         }
         case ObstacleKind::ComboGate: {
-            reg.emplace<Position>(e, params.x, params.y);
             reg.emplace<Obstacle>(e, ObstacleKind::ComboGate, int16_t{constants::PTS_COMBO_GATE});
             reg.emplace<RequiredShape>(e, params.shape);
             reg.emplace<BlockedLanes>(e, params.mask);
@@ -67,7 +64,6 @@ entt::entity spawn_obstacle(entt::registry& reg, const ObstacleSpawnParams& para
             break;
         }
         case ObstacleKind::SplitPath: {
-            reg.emplace<Position>(e, params.x, params.y);
             reg.emplace<Obstacle>(e, ObstacleKind::SplitPath, int16_t{constants::PTS_SPLIT_PATH});
             reg.emplace<RequiredShape>(e, params.shape);
             reg.emplace<RequiredLane>(e, params.req_lane);
@@ -77,7 +73,6 @@ entt::entity spawn_obstacle(entt::registry& reg, const ObstacleSpawnParams& para
         }
         case ObstacleKind::LanePushLeft:
         case ObstacleKind::LanePushRight: {
-            reg.emplace<Position>(e, params.x, params.y);
             reg.emplace<Obstacle>(e, params.kind, int16_t{constants::PTS_LANE_PUSH});
             reg.emplace<DrawSize>(e, static_cast<float>(constants::SCREEN_W / 3), 60.0f);
             reg.emplace<Color>(e, Color{255, 138, 101, 255});

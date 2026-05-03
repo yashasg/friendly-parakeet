@@ -40,11 +40,6 @@ void player_movement_system(entt::registry& reg, float dt) {
             }
         }
 
-        if (auto* pos = reg.try_get<Position>(entity)) {
-            pos->x = transform.position.x;
-            pos->y = transform.position.y;
-        }
-
         // Vertical movement
         if (vstate.mode != VMode::Grounded) {
             vstate.timer -= dt;

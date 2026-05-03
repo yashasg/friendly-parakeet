@@ -32,7 +32,7 @@ TEST_CASE("collision: Hexagon fails even when matching gate shape", "[collision]
     // Note: make_shape_gate with Hexagon isn't typical, but tests the guard
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
-    reg.emplace<Position>(obs, constants::LANE_X[1], constants::PLAYER_Y);
+    reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y}});
     reg.emplace<MotionVelocity>(obs, MotionVelocity{{0.0f, 400.0f}});
     reg.emplace<Obstacle>(obs, ObstacleKind::ShapeGate, int16_t{200});
     reg.emplace<RequiredShape>(obs, Shape::Hexagon);

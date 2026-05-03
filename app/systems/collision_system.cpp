@@ -101,8 +101,8 @@ void collision_system(entt::registry& reg, float /*dt*/) {
     // call (y-axis always overlaps since both rects use y=0,h=1; reduces to x-axis
     // interval: |obs_x - player_x| < PLAYER_SIZE). Saves 2× centered_rect + 1×
     // CheckCollisionRecs per obstacle.
-    auto lane_overlaps = [player_x](const Position& obstacle_pos) -> bool {
-        float dx = obstacle_pos.x - player_x;
+    auto lane_overlaps = [player_x](float obstacle_x) -> bool {
+        float dx = obstacle_x - player_x;
         return (dx > -constants::PLAYER_SIZE) && (dx < constants::PLAYER_SIZE);
     };
 
@@ -111,21 +111,21 @@ void collision_system(entt::registry& reg, float /*dt*/) {
 
     // ShapeGate: RequiredShape only (no BlockedLanes, no RequiredLane)
     {
-        auto view = reg.view<ObstacleTag, Position, RequiredShape>(
+        auto view = reg.view<ObstacleTag, WorldTransform, RequiredShape>(
             entt::exclude<ScoredTag, BlockedLanes, RequiredLane>);
-        for (auto [e, pos, req] : view.each()) {
+        for (auto [e, wt, req] : view.each()) {
             bool shape_match = player_matches_required_shape(p_shape, p_window, req.shape);
-            bool lane_match  = lane_overlaps(pos);
-            resolve(e, pos.y, shape_match && lane_match);
+            bool lane_match  = lane_overlaps(wt.position.x);
+            resolve(e, wt.position.y, shape_match && lane_match);
         }
     }
 
     // LaneBlock: BlockedLanes only (no RequiredShape)
     {
-        auto view = reg.view<ObstacleTag, Position, BlockedLanes>(
+        auto view = reg.view<ObstacleTag, WorldTransform, BlockedLanes>(
             entt::exclude<ScoredTag, RequiredShape>);
-        for (auto [e, pos, blocked] : view.each()) {
-            resolve(e, pos.y, !((blocked.mask >> p_lane.current) & 1));
+        for (auto [e, wt, blocked] : view.each()) {
+            resolve(e, wt.position.y, !((blocked.mask >> p_lane.current) & 1));
         }
     }
 
@@ -140,23 +140,23 @@ void collision_system(entt::registry& reg, float /*dt*/) {
 
     // ComboGate: RequiredShape + BlockedLanes (no RequiredLane)
     {
-        auto view = reg.view<ObstacleTag, Position, RequiredShape, BlockedLanes>(
+        auto view = reg.view<ObstacleTag, WorldTransform, RequiredShape, BlockedLanes>(
             entt::exclude<ScoredTag, RequiredLane>);
-        for (auto [e, pos, req, blocked] : view.each()) {
+        for (auto [e, wt, req, blocked] : view.each()) {
             bool shape_ok = player_matches_required_shape(p_shape, p_window, req.shape);
             bool lane_ok  = !((blocked.mask >> p_lane.current) & 1);
-            resolve(e, pos.y, shape_ok && lane_ok);
+            resolve(e, wt.position.y, shape_ok && lane_ok);
         }
     }
 
     // SplitPath: RequiredShape + RequiredLane
     {
-        auto view = reg.view<ObstacleTag, Position, RequiredShape, RequiredLane>(
+        auto view = reg.view<ObstacleTag, WorldTransform, RequiredShape, RequiredLane>(
             entt::exclude<ScoredTag>);
-        for (auto [e, pos, req, rlane] : view.each()) {
+        for (auto [e, wt, req, rlane] : view.each()) {
             bool shape_ok = player_matches_required_shape(p_shape, p_window, req.shape);
             bool lane_ok  = (p_lane.current == rlane.lane);
-            resolve(e, pos.y, shape_ok && lane_ok);
+            resolve(e, wt.position.y, shape_ok && lane_ok);
         }
     }
 
@@ -164,10 +164,10 @@ void collision_system(entt::registry& reg, float /*dt*/) {
     // Emplaces PendingLanePush on the player; lane_push_response_system
     // applies it to p_lane in the same frame (after collision, before render).
     {
-        auto view = reg.view<ObstacleTag, Position, LanePushDelta>(entt::exclude<ScoredTag>);
-        for (auto [e, pos, lpd] : view.each()) {
-            if (pos.y < player_timing_y) continue;
-            if (lane_overlaps(pos) && !reg.all_of<PendingLanePush>(player_entity)) {
+        auto view = reg.view<ObstacleTag, WorldTransform, LanePushDelta>(entt::exclude<ScoredTag>);
+        for (auto [e, wt, lpd] : view.each()) {
+            if (wt.position.y < player_timing_y) continue;
+            if (lane_overlaps(wt.position.x) && !reg.all_of<PendingLanePush>(player_entity)) {
                 reg.emplace<PendingLanePush>(player_entity, lpd.delta);
             }
             reg.emplace<ScoredTag>(e);
