@@ -56,7 +56,6 @@ static void spawn_obstacles(entt::registry& reg, int count) {
         reg.emplace<ObstacleTag>(obs);
         float y = constants::SPAWN_Y + static_cast<float>(i) * 80.0f;
         reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[i % 3], y}});
-        reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[i % 3], y}});
         reg.emplace<MotionVelocity>(obs, MotionVelocity{{0.0f, song.scroll_speed}});
         auto shape = static_cast<Shape>(i % 3);
         reg.emplace<Obstacle>(obs, ObstacleKind::ShapeGate, int16_t{200});
