@@ -10238,3 +10238,70 @@ Scratch-pad ctx objects (e.g., `ObstacleDespawnScratch`, `ScoringSystemScratch`)
 ## Web Build Note
 
 The `#ifdef PLATFORM_WEB && __EMSCRIPTEN__` branch in `input_system_init` compiles cleanly on native (the else branch sets nothing; `(void)policy` suppresses the unused-variable warning). Web WASM build was not verified locally — recommend Hockney sanity-check on next web CI run.
+
+---
+
+# Decision: scroll_system View Consolidation
+
+**Author:** Keaton  
+**Date:** 2026-05-03  
+**Status:** Implemented
+
+## Context
+
+The `scroll_system` 10-entity benchmark had regressed from ~52 ns to ~75 ns since the original baseline. Investigation traced this to commit `43c6b39` ("ECS refactor: event-driven input + DoD codebase reorganization"), which changed the view iteration strategy from a `try_get<WorldTransform>` pattern to a split-view pattern, doubling the number of view constructions per call.
+
+## Root Cause: Redundant Split Views
+
+`43c6b39` replaced 2 try_get–based views (outside the song block) with 4 split views. Same pattern inside `if (song && song->playing)`: 2 views → 4 views. Total: **9 view constructions per call** (was 5). Each construction touches the registry's type-indexed sparse-set map, adding fixed overhead regardless of entity count.
+
+## Dead-Code Finding
+
+The `_no_transform` split views (entities with `Velocity`/`ObstacleScrollZ` but without `WorldTransform`) are **dead code in production**. There is exactly one `emplace<Velocity>` call in the entire codebase (`obstacle_entity.cpp:11`), and it is always immediately followed by `emplace<WorldTransform>` (line 12). No production entity ever has `Velocity` without `WorldTransform`.
+
+## Fix Applied
+
+Reverted to the `try_get<WorldTransform>` pattern, collapsing the 4 split pairs back into 2 consolidated views. View count: 9 → 5 per call (4 eliminated).
+
+## Measured Results
+
+| Benchmark | Before | After | Delta |
+|---|---|---|---|
+| scroll_system 10 entities | ~75 ns | ~48 ns | **−36%** ✅ |
+| full frame typical (6 obs + 20 particles) | ~289 ns | ~272 ns | −6% ✅ |
+
+**Note on larger entity counts:** The benchmark uses a legacy entity archetype (`Position + Velocity + ObstacleTag`, no `WorldTransform`) that does not exist in real gameplay. In production, `try_get<WorldTransform>` always succeeds; overhead is a single bounds check per entity.
+
+## Behavioral Correctness
+
+- All 2209 test assertions pass.
+- Entities with `WorldTransform` continue to have their transform updated identically.
+- Entities without `WorldTransform` have their position updated identically.
+
+## Recommendation
+
+Update `spawn_obstacles()` in `benchmarks/bench_systems.cpp` to add `WorldTransform` (matching production), so the benchmark reflects real entity archetypes.
+
+---
+
+# Directive: Ralph Performance + SOLID Loop (User-Activated)
+
+**Date:** 2026-05-03  
+**By:** yashasg (via Copilot)  
+**Type:** Work Loop Directive
+
+## Directive
+
+When Ralph is active in this session, the work loop is:
+1. Profile a hot system
+2. Optimize where measurable
+3. Build + run tests once satisfied with the change
+4. Do a full SOLID-principles audit on the code touched
+5. Repeat without pausing for user input
+
+Continue the loop until the user says "stop ralph".
+
+## Rationale
+
+User wants continuous performance + architecture quality work without per-iteration approval. Keaton owns profiling/optimization; Keyser owns SOLID audits. Coordinator chains the next iteration immediately on completion.
+
