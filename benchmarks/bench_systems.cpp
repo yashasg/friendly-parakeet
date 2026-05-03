@@ -82,12 +82,17 @@ static void spawn_scroll_obstacles(entt::registry& reg, int count) {
     }
 }
 
+// Spawns particles using the production archetype: WorldTransform+MotionVelocity.
+// These are processed by motion_system's motion_view (not vel_view) and rendered
+// by camera_system via ParticleTag+WorldTransform.  The legacy Position+Velocity
+// archetype was incorrect and would have measured motion_system's vel_view path
+// instead of the modern particle path.
 static void spawn_particles(entt::registry& reg, int count) {
     for (int i = 0; i < count; ++i) {
         auto p = reg.create();
         reg.emplace<ParticleTag>(p);
-        reg.emplace<Position>(p, 360.0f, 500.0f);
-        reg.emplace<Velocity>(p, static_cast<float>(i % 50 - 25), -100.0f);
+        reg.emplace<WorldTransform>(p, WorldTransform{{360.0f, 500.0f}});
+        reg.emplace<MotionVelocity>(p, MotionVelocity{{static_cast<float>(i % 50 - 25), -100.0f}});
         reg.emplace<ParticleData>(p, 4.0f, 0.6f, 0.6f);
         reg.emplace<Color>(p, Color{255, 100, 50, 255});
         reg.emplace<DrawLayer>(p, Layer::Effects);

@@ -4,8 +4,10 @@
 #include "../components/rhythm.h"
 
 void motion_system(entt::registry& reg, float dt) {
-    // Legacy Position+Velocity entities (particles, popups, freeplay entities
-    // not yet migrated to WorldTransform+MotionVelocity). Excludes BeatInfo
+    // Legacy Position+Velocity entities (freeplay obstacles not yet migrated
+    // to ObstacleScrollZ+MotionVelocity, issue #349).  Popups and particles
+    // have already migrated to WorldTransform+MotionVelocity; this view is now
+    // exclusive to freeplay (non-BeatInfo) obstacles.  Excludes BeatInfo
     // entities whose positions are derived from song_time in scroll_system.
     auto vel_view = reg.view<Position, Velocity>(entt::exclude<BeatInfo>);
     for (auto [entity, pos, vel] : vel_view.each()) {

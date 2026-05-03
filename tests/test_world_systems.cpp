@@ -2,6 +2,10 @@
 #include "test_helpers.h"
 
 // ── motion_system ────────────────────────────────────────────
+//
+// Two paths:
+//   vel_view   — legacy Position+Velocity (freeplay obstacles, issue #349 migration bridge)
+//   motion_view — modern WorldTransform+MotionVelocity (popups, particles, player)
 
 TEST_CASE("motion: entities move by velocity * dt", "[motion]") {
     auto reg = make_registry();
@@ -40,6 +44,37 @@ TEST_CASE("motion: multiple entities updated", "[motion]") {
 
     CHECK(reg.get<Position>(e1).x == 10.0f);
     CHECK(reg.get<Position>(e2).y == 10.0f);
+}
+
+// ── motion_system: WorldTransform+MotionVelocity path (modern, issue #349 target) ──
+
+TEST_CASE("motion: WorldTransform+MotionVelocity entity moves by velocity * dt", "[motion]") {
+    auto reg = make_registry();
+    auto e = reg.create();
+    reg.emplace<WorldTransform>(e, WorldTransform{{100.0f, 200.0f}});
+    reg.emplace<MotionVelocity>(e, MotionVelocity{{10.0f, 20.0f}});
+
+    motion_system(reg, 1.0f);
+
+    const auto& wt = reg.get<WorldTransform>(e);
+    CHECK(wt.position.x == 110.0f);
+    CHECK(wt.position.y == 220.0f);
+}
+
+TEST_CASE("motion: WorldTransform+MotionVelocity entity with BeatInfo is excluded", "[motion]") {
+    // BeatInfo entities have their position derived from song_time in scroll_system;
+    // motion_system must not double-integrate their position.
+    auto reg = make_registry();
+    auto e = reg.create();
+    reg.emplace<WorldTransform>(e, WorldTransform{{100.0f, 200.0f}});
+    reg.emplace<MotionVelocity>(e, MotionVelocity{{10.0f, 20.0f}});
+    reg.emplace<BeatInfo>(e, BeatInfo{0, 0.0f, 0.0f});  // marks entity as beat-authoritative
+
+    motion_system(reg, 1.0f);
+
+    const auto& wt = reg.get<WorldTransform>(e);
+    CHECK(wt.position.x == 100.0f);  // unchanged — motion_system skips BeatInfo entities
+    CHECK(wt.position.y == 200.0f);
 }
 
 // ── obstacle_despawn_system ───────────────────────────────────────────
