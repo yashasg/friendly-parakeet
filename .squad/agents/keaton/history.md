@@ -186,3 +186,46 @@ When a system was refactored to split views (e.g., `_with_transform` / `_no_tran
 Ralph loop will profile next hot system. Keaton to profile, Keyser to SOLID-audit the changes. No approval gate between iterations.
 
 ---
+
+## 2026-05-03 — Ralph Round 3: motion_system Extraction
+
+**Loop:** Ralph Round 3 (perf + SOLID continuous iteration)  
+**Task:** Extract motion_system per Keyser's R2 SOLID audit recommendation  
+**Verdict:** ✅ EXTRACTED & APPROVED
+
+### Execution Summary
+
+Per Keyser's Round 2 SOLID audit, `scroll_system` mixed rhythm obstacle scrolling with general entity motion (vel_view + motion_view). Keaton extracted vel_view (Position+Velocity) and motion_view (WorldTransform+MotionVelocity) into a new motion_system, narrowing scroll_system to obstacle-only concerns.
+
+### Work Completed
+
+1. **Created `app/systems/motion_system.cpp`** — new system with phase guard matching scroll_system's
+2. **Stripped `app/systems/scroll_system.cpp`** — removed vel_view and motion_view, leaving 3 obstacle-only views
+3. **Updated `app/systems/all_systems.h`** — added motion_system declaration under Phase 5
+4. **Updated `app/game_loop.cpp`** — added motion_system call immediately after scroll_system
+5. **Test consolidation:** Renamed scroll→motion tests; added phase-guard test for motion_system
+6. **Bench updates:** Added motion_system benchmarks (10/100/1000 entity tiers)
+
+### Build & Test Results
+
+- **Build:** Zero warnings (clang -Wall -Wextra -Werror)
+- **Tests:** 2211 assertions / 772 test cases — all pass (+2 assertions from new motion phase-guard test)
+- **Bench:** See decisions.md for full breakdown. 10-entity combined cost +27% (61 ns vs 48 ns baseline); architectural split overhead, not per-entity regression
+
+### Phase Guard Coupling Discovery
+
+Original scroll_system's phase guard silently gated vel_view and motion_view too. When extracted without the guard, 3 tests failed (position-integration assumed no movement in non-Playing). Fixed by adding identical guard to motion_system. No behavioral regression; coupling was implicit until extraction exposed it.
+
+### Module Health
+
+scroll_system: 🟢 Green (obstacle-only, SRP resolved)  
+motion_system: 🟢 Green (new, clean)
+
+### Pattern Note for Future Reference
+
+**Synthetic benchmarks must be re-validated after archetype refactors — splitting a system can drop a fixture's matching entity count to zero, leaving the bench measuring nothing.** The scroll_system 10-entity bench fixture spawns ObstacleTag+Position+Velocity (no ObstacleScrollZ or BeatInfo), which was processed by vel_view in the old code but now matches zero scroll_system views post-extraction. The "empty system" measurement is correct but misleading for perf analysis; a proper fixture should include ObstacleScrollZ entities to stress the actual scrolling loops.
+
+### Decision
+
+Merged to `.squad/decisions.md` under "2026-05-03 — Ralph Round 3" section.
+

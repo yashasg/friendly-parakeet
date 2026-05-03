@@ -184,3 +184,61 @@ Audited remaining ECS `ActiveTag` + `hit_test_handle_input` code paths to determ
 **See:** `.squad/orchestration-log/2026-04-29T22-03-09Z-keyser.md`
 
 - 2026-04-29: Post-HUD migration audit confirms ActiveTag/HitBox/HitCircle/UIActiveCache path is runtime-dead; gameplay input now flows via raygui HUD direct ButtonPressEvent dispatch + keyboard semantic events.
+
+## 2026-05-03 — Ralph Round 3: scoring_system SOLID Audit
+
+**Loop:** Ralph Round 3 (perf + SOLID continuous iteration)  
+**Task:** Comprehensive SOLID audit of scoring_system post-Keaton-optimization  
+**Verdict:** 🟡 Yellow (two actionable 🟡 items: SRP, OCP; no 🔴)
+
+### Execution Summary
+
+Keyser conducted a full SOLID audit of `app/systems/scoring_system.cpp` to identify architectural improvements and module quality post-Keaton's Round 2 optimization. The system passed most principles but revealed two actionable violations related to mixed concerns and hardcoded branching.
+
+### Audit Results
+
+| Principle | Status | Finding |
+|---|---|---|
+| **S (Single Responsibility)** | 🟡 | Mixes four concerns: (1) score/chain computation, (2) miss processing, (3) hit processing, (4) `displayed_score` animation interpolation. Popup queue writes (`:207`) are presentation concerns; `displayed_score` smoothing (`:218–223`) is rendering—its only consumer is `gameplay_hud_screen_controller.cpp:339`. |
+| **O (Open/Closed)** | 🟡 | New obstacle kinds need hardcoded `LanePushLeft`/`LanePushRight` guard edits (`:158–163`); new combo rules need edits to chain-bonus ladder (`:192–196`); energy tier→delta mapping is inline switch (`:170–184`). Design docs call for data-driven patterns. |
+| **L (Liskov Substitution)** | 🟢 | No inheritance/polymorphism. Clean. |
+| **I (Interface Segregation)** | 🟢 | All views claim exactly what they use. miss_view correctly filters for ObstacleTag+ScoredTag+MissTag+Obstacle; hit_view uses Obstacle+Position; model_hit_view uses Obstacle+ObstacleScrollZ. |
+| **D (Dependency Inversion)** | 🟡 | Direct coupling to `popup_queue_for(reg)` (`:55–60`, `:155`) and `enqueue_energy_effect` (`:50–53`). Scoring computation tightly bound to presentation message queue. |
+
+### Key Finding: Behavior Preservation Verified ✅
+
+Keaton's Round 2 claim (deferring popup_queue_for lookup behind `!hit_buf.empty()` guard) was verified:
+- Miss pass never calls popup_queue_for; deferral is safe
+- Guard skips lookup on zero-hit frames; identical behavior on frames with hits
+- popup_feedback_system has null-check guard; no functional regression
+
+### Top Improvement Priority
+
+**Extract `displayed_score` interpolation (`:218–223`) to a dedicated `score_display_system`.** This is pure rendering/UI concern with one consumer (HUD controller) — clearest SRP violation with zero downside.
+
+### Cross-System Pattern Surfaced
+
+**Hardcoded kind-checks vs data-driven dispatch:**
+- scroll_system: structural over-breadth (swept all moving entities)
+- scoring_system: hardcoded obstacle-kind exclusions inline (`:158–163`)
+
+Both systems prefer branching over tag/flag-driven dispatch. This pattern was invisible at the scroll_system or scoring_system level alone but emerges clearly in cross-system audit.
+
+### Module Health: 🟡 Yellow
+
+Two actionable improvements (SRP, OCP); no blockers. Tests pass, warnings zero, Keaton's behavior preservation holds.
+
+### Pattern Note for Future Reference
+
+**Cross-system audits surface refactor candidates faster than per-module audits — `ObstacleKind` hardcoded branches were invisible at the scroll_system or scoring_system level alone.** When multiple systems show the same hardcoding anti-pattern (kind-checks, tier mappings), a unified data-driven refactor across systems is more valuable than point fixes in individual systems. Consider a "Bullet Pattern Registry" or "Obstacle Metadata" singleton that all systems query (read-only, pre-baked at startup) instead of embedding branching logic.
+
+### Decision
+
+Merged to `.squad/decisions.md` under "2026-05-03 — Ralph Round 3" section.
+
+### Next: Round 4 Planning
+
+Keaton R4 (perf focus): Fix bench fixture to include ObstacleScrollZ entities; audit ObstacleTag filtering on motion_system views.  
+Keyser R4 (audit focus): Cross-system "hardcoded kind-check" pattern refactor design.
+
+

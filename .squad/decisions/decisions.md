@@ -208,3 +208,128 @@ Implemented screen-controller runtime overrides that:
 ### Impact
 
 Visual consistency fully restored. UI no longer exhibits regression from rguilayout integration. Ready for merge.
+
+---
+
+## 2026-05-03 — Ralph Round 3: motion_system Extraction & scoring_system SOLID Audit
+
+### Decision: motion_system Extraction (Keaton Implementation)
+
+**Owner:** Keaton  
+**Date:** 2026-05-03  
+**Status:** ✅ APPROVED  
+**Trigger:** Ralph Round 3 (perf + SOLID continuous loop)
+
+### Problem
+
+Per Keyser's Round 2 SOLID audit recommendation, `scroll_system` mixed two concerns:
+- Rhythm obstacle scrolling (model_beat_view, beat_view)
+- General entity motion (vel_view + motion_view without ObstacleTag constraint)
+
+The `vel_view` (Position+Velocity) and `motion_view` (WorldTransform+MotionVelocity) loops were independent of rhythm logic and should be owned by a dedicated system.
+
+### Decision
+
+Extract `vel_view` and `motion_view` into a new `motion_system`, narrowing `scroll_system` to obstacle-only concerns.
+
+### What Shipped
+
+Extracted `vel_view` (Position+Velocity) and `motion_view` (WorldTransform+MotionVelocity) loops from `scroll_system` into a new `motion_system`, per Keyser's R2 SOLID audit recommendation.
+
+#### Files Added
+- `app/systems/motion_system.cpp` — new system with phase guard matching scroll_system's
+
+#### Files Modified
+- `app/systems/scroll_system.cpp` — stripped to obstacle-only loops (3 views: model_beat_view, beat_view, model_view, all ObstacleTag-bearing)
+- `app/systems/all_systems.h` — added `void motion_system(entt::registry& reg, float dt)` declaration under Phase 5
+- `app/game_loop.cpp` — added `motion_system(reg, dt)` immediately after `scroll_system(reg, dt)`
+- `tests/test_world_systems.cpp` — renamed 3 "scroll:" test cases to "motion:" and updated calls to `motion_system`; added "motion: no movement when not in Playing phase" phase guard test
+- `tests/test_scroll_rhythm.cpp` — renamed "scroll: non-rhythm entities use dt-based movement even in rhythm mode" to "motion: non-rhythm entities use dt-based movement"; updated call to `motion_system`
+- `benchmarks/bench_systems.cpp` — added "Bench: motion_system" (10/100/1000 entity tiers); added `motion_system(reg, DT)` to full-frame typical + stress benches
+
+### Build Result
+
+Zero warnings. `-Wall -Wextra -Werror` clang. CMake reconfigured cleanly (new file picked up via GLOB CONFIGURE_DEPENDS).
+
+### Test Result
+
+**2211 assertions in 772 test cases — all passed.**  
+(Up from 2209/771 in R2; the +2 assertions are the new motion phase-guard test.)
+
+### Bench Delta
+
+The `Bench: scroll_system` fixture uses `spawn_obstacles` which creates `ObstacleTag + Position + Velocity` (no `ObstacleScrollZ`, no `BeatInfo`). In the old code, these entities were processed by `vel_view` inside `scroll_system`. Post-extraction, `scroll_system` touches 0 of them (all three remaining views require `ObstacleScrollZ` or `BeatInfo`); `motion_system` now owns them.
+
+| Metric | R2 baseline | R3 scroll_system | R3 motion_system | R3 combined |
+|---|---|---|---|---|
+| 10 entities (mean) | 48 ns | 11.3 ns (empty — 0 matching entities) | 50 ns | ~61 ns |
+| 100 entities | N/A | 11.3 ns | 214 ns | ~225 ns |
+| 1000 entities | N/A | 11.5 ns | 1923 ns | ~1935 ns |
+
+**Combined 10-entity cost vs R2 baseline: 61 ns vs 48 ns (+27%).** This overhead is the cost of the architectural split: one extra function call, one extra phase guard check, one extra view construction. The per-entity work is identical.
+
+The scroll_system 11 ns floor is the cost of three empty EnTT view iterations + one `ctx().get<GameState>()` + one `ctx().find<SongState>()` — it will only shrink further once real `ObstacleScrollZ` entities are present in a rhythm game bench fixture.
+
+### Surprises / Coupling Discovered
+
+**Phase guard coupling (handled):** The original `scroll_system` phase guard (`if phase != Playing return`) was silently gating `vel_view` and `motion_view` too. When first extracted without the guard, 3 existing tests failed (position-integration tests assumed no movement in non-Playing phase). Fixed by adding an identical phase guard to `motion_system`. No behavioral change.
+
+**No other coupling found.** The two loops had zero shared state with the obstacle-scroll loops. Split was clean.
+
+### Follow-ups for R4
+
+1. **Add ObstacleScrollZ to bench fixture** — the `Bench: scroll_system` fixture should spawn entities with `ObstacleScrollZ` to actually stress the obstacle loops. Currently the fixture measures an empty scroll_system.
+2. **ObstacleTag filter on vel_view/motion_view** — now that motion_system is isolated, adding an `ObstacleTag` exclude (or a dedicated non-obstacle tag) could tighten its loops further if obstacle entities shouldn't be processed there. Audit which entity types actually carry Position+Velocity in production.
+3. **Legacy Position+Velocity migration** — with the migration path now cleanly owned by `motion_system`, continue the #349 migration: move obstacle entities to `WorldTransform + MotionVelocity`, then vel_view can be deleted.
+
+### Module Health: 🟢 Green
+
+SRP violation resolved. scroll_system now obstacle-only. motion_system owns motion. No regressions; tests pass; warnings zero.
+
+---
+
+### Decision: scoring_system SOLID Audit (Keyser Audit)
+
+**Owner:** Keyser (SOLID Auditor)  
+**Date:** 2026-05-03  
+**Status:** ✅ AUDITED  
+**Files audited:** `app/systems/scoring_system.cpp` (224 lines), `app/components/scoring.h`, `app/components/gameplay_intents.h`, `app/components/obstacle.h`, `app/components/rhythm.h`, `app/systems/popup_feedback_system.cpp`  
+**Prior change reviewed:** `keaton-scoring-system-optimization.md`
+
+### SOLID Table
+
+| | State | Evidence | Recommendation |
+|---|---|---|---|
+| **S** | 🟡 | `scoring_system` mixes four distinct concerns in one function: (1) score/chain computation (`:72–79`), (2) miss processing — energy drain + death cause assignment (`:96–119`), (3) hit processing — energy recovery + chain bonus + popup queue filling (`:127–214`), (4) `displayed_score` animation interpolation (`:218–223`). The popup queue write (`:207`) is a **presentation concern** living inside a scoring function. `displayed_score` smoothing (`:218–223`) is a **rendering concern** — its only consumer is `gameplay_hud_screen_controller.cpp:339`. | Extract `displayed_score` interpolation to a lightweight `score_display_system`. Consider moving popup queue writes to `popup_feedback_system` by having `scoring_system` only emit a `ScoredHitEvent` list — `popup_feedback_system` already owns spawn + SFX. |
+| **O** | 🟡 | New obstacle kinds that should be scoring-exempt require editing the hardcoded `LanePushLeft`/`LanePushRight` guard at `:158–163`. New combo rules require editing the hardcoded chain-bonus ladder at `:192–196`. The energy tier→delta mapping is an inline switch at `:170–184`. Design docs mandate data-driven patterns ("Bullet patterns should be data-driven where possible"). | Move the "no-score obstacle kinds" to a flag in `ObstacleKind` metadata or a `ScoringExemptTag`. Chain bonus table is already a `constexpr` array (`constants.h:47`) — extend the pattern to the tier→energy mapping. |
+| **L** | 🟢 | No inheritance or polymorphism in this module. N/A. | — |
+| **I** | 🟢 | Both views narrow correctly: `miss_view` (`:99`) requests `ObstacleTag, ScoredTag, MissTag, Obstacle` — `Obstacle` is the only readable component (`.kind` at `:105`), the rest are existential structural filters, which is appropriate. `hit_view` (`:130`) requests `Obstacle, Position` and uses both (`:132`). `model_hit_view` (`:142`) requests `Obstacle, ObstacleScrollZ` and uses both (`:144`). No view pulls a component it doesn't actually read. | — |
+| **D** | 🟡 | `scoring_system` directly calls `popup_queue_for(reg)` (`:55–60`, `:155`) — a concrete find-or-emplace of `ScorePopupRequestQueue`. This couples scoring computation directly to a presentation message queue. `enqueue_energy_effect` (`:50–53`) similarly injects into `PendingEnergyEffects` — a lighter coupling since energy IS gameplay, but still a direct concrete call. Neither abstraction exists behind a boundary. | The popup coupling is the sharper violation. Scoring should express *what happened* (point values, positions, timing tiers); `popup_feedback_system` should decide *what to display*. One path: `scoring_system` writes to a plain `std::vector<ScoredHitRecord>` ctx singleton (no popup semantics), and `popup_feedback_system` reads it. |
+
+### Cross-Check: Keaton's Behavior-Preservation Claim
+
+**Claim:** Moving `popup_queue_for(reg)` inside `if (!hit_buf.empty())` (`:154`) is a pure perf optimization with no behavior change.
+
+**Verdict: ✅ Preserved.**
+
+Audit trace:
+- The miss pass (`:96–119`) contains **zero calls** to `popup_queue_for` or any push to `ScorePopupRequestQueue`. Miss events only call `enqueue_energy_effect` and mutate `score.chain_count`/`gos->cause`.
+- `popup_queue_for` was never reachable from the miss path, before or after the change.
+- The `!hit_buf.empty()` guard (`:154`) ensures the lookup is skipped on frames with no scored hits. On frames with hits, behavior is identical: all hit records are iterated and requests pushed (`:207`) exactly as before.
+- `popup_feedback_system.cpp:11–12` uses `find<ScorePopupRequestQueue>()` with an early-return null check — so if the queue was never emplaced (e.g. in a zero-hit test registry), it safely returns. No functional regression.
+
+There is **no near-miss visual feedback** through the popup path for misses. The concern raised in the audit brief does not apply to this codebase.
+
+### Single Most-Impactful Improvement
+
+**Extract the `displayed_score` interpolation** (`:218–223`) into a dedicated `score_display_system` — it is a pure rendering/UI concern with one consumer (`gameplay_hud_screen_controller.cpp:339`), and its presence in `scoring_system` is the clearest SRP violation with zero downside to splitting.
+
+### Patterns Shared with scroll_system (Round 1)
+
+- **Hardcoded kind-checks vs data-driven design:** `scroll_system` swept all moving entities (structural over-breadth); `scoring_system` hard-codes obstacle kind exclusions inline (`:158–163`). Both reflect a preference for branching over tag/flag-driven dispatch.
+- **No lazy-init regressions here:** Keaton's note that `ScoringSystemScratch`, `PendingEnergyEffects`, and `ScorePopupRequestQueue` remain lazy (find-or-emplace) is consistent with the established pattern for inter-system scratch/queue types. No eager-init violation.
+- **No dead branches:** No unreachable `_with_X`/`_without_X` view splits found. The `hit_view`/`model_hit_view` split (`:130`, `:142`) is live — `model_hit_view` handles entities lacking `Position` (Model-authority bars with `ObstacleScrollZ`), a real production path.
+
+### Module Health: 🟡 Yellow
+
+Two actionable 🟡 items: SRP (popup queue + display interpolation in scoring body) and OCP (hardcoded obstacle-kind exclusion and chain ladder). No 🔴. Tests pass, warnings zero, Keaton's behavior claim holds.
