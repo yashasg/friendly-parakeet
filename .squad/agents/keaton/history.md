@@ -580,3 +580,16 @@ Merged to `.squad/decisions.md` under "Round 9: Keaton — Phase-Guard Design B 
 **Pattern Learned:** When a migration touches 19 files, do them in lockstep with continuous test-passing. The bridge approach (motion_view writes Position) lets readers migrate independently in a future round. This decouples writer migration from reader migration.
 
 **Decision:** Merged to `.squad/decisions.md` under "Round 15: Keaton vel_view → motion_view Migration (Issue #349)" section. Commit: `70f6436`.
+
+### R16: Large Position Deletion Migration (35 files, 491 deletions / 145 insertions)
+
+**Date:** 2026-05-03  
+**Completion:** ✅ SHIPPED  
+**Tests:** 784 cases / 2234 assertions (−2 cases / −22 assertions vs r15)
+
+**Pattern:** When migrating away from a legacy type (Position), delete the type and migrate all readers in lockstep with continuous test-passing. Motion-system bridge eliminated; latent double-integration path (LowBar/HighBar) also eliminated.
+
+**Compliance note:** Missed verbatim tail-5 paste protocol in decision drop. Keaton-r16 drop omitted full `tail -5` from test run. Strict adherence to tail-5 protocol from r17 onwards.
+
+**Process:** 15+ production files + tests + benchmarks migrated atomically. Build green, zero warnings. Module health: motion_system 🟡 → 🟢.
+

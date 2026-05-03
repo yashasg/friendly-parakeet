@@ -680,3 +680,24 @@ Merged to `.squad/decisions.md` under "Round 9: Keyser — Wirefix Audit + Self-
 **Pattern Learned:** When implementation hasn't landed, audit only what exists — don't speculate. Pre-document baselines for post-implementation comparison.
 
 **Decision:** Merged to `.squad/decisions.md` under "Round 15: Keyser r14 Demotion Reconciliation + r15 Audit Pending" section.
+
+### R16: Audit of R15 Migration + Keaton-r16 WIP Caught In-Flight
+
+**Date:** 2026-05-03  
+**Scope:** Full r15 (Velocity → MotionVelocity) audit; mid-flight r16 Position deletion catch  
+**Status:** ✅ R15 Merged / 🔴 R16 In-Flight (recommended completion)
+
+**R15 Audit:**
+- Scope honesty ✅ — Velocity struct deleted, vel_view deleted, particle_system rename (name reuse sloppy, no defect)
+- Behavior preservation ✅ — spawn_obstacle, scroll_system, motion_system math identical
+- Latent regression 🟡 — LowBar/HighBar freeplay double-integration (dead code path, saved by beat_scheduler skip)
+- Test parity ✅ — 786 / 2256 (pre-r15 baseline), +1 assertion intentional
+- Bench impact — motion_system 2× regression at 10 entities (migration debt; bridge will be deleted in r16)
+
+**R16 Catch:**
+- Keaton-r16 WIP uncommitted mid-flight; builds broken at audit time
+- Pattern: When audit catches in-flight work, defer migration verdict; audit only stable commits
+- Recommended: r17 = complete Position deletion + verify test count drop (784 / 2234)
+
+**Verdict:** R15 behavior preserved ✅. R16 completion pending ✅. All latent issues eliminated once r16 ships.
+
