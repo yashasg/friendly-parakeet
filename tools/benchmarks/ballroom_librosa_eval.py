@@ -48,13 +48,24 @@ def discover_tracks(dataset_root: Path) -> list[tuple[Path, Path]]:
     return tracks
 
 
-def spectral_flux_onset_envelope(y: np.ndarray, hop_length: int, n_fft: int) -> np.ndarray:
+def spectral_flux_onset_envelope(
+    y: np.ndarray,
+    hop_length: int,
+    n_fft: int,
+    reduce: str = "mean",
+) -> np.ndarray:
     mag = np.abs(librosa.stft(y=y, n_fft=n_fft, hop_length=hop_length))
     flux = np.diff(mag, axis=1)
     flux = np.maximum(flux, 0.0)
     if flux.shape[1] == 0:
         return np.zeros((1,), dtype=np.float32)
-    onset_env = flux.mean(axis=0)
+    reducer = reduce.lower()
+    if reducer == "median":
+        onset_env = np.median(flux, axis=0)
+    elif reducer == "max":
+        onset_env = np.max(flux, axis=0)
+    else:
+        onset_env = np.mean(flux, axis=0)
     return np.concatenate([np.zeros((1,), dtype=onset_env.dtype), onset_env], axis=0)
 
 
@@ -63,16 +74,42 @@ def build_onset_envelope(y: np.ndarray, sr: int, cfg: dict) -> np.ndarray:
     onset_kind = str(cfg.get("onset_envelope", "librosa_default"))
     if onset_kind == "stft_flux":
         n_fft = int(cfg.get("n_fft", 2048))
-        return spectral_flux_onset_envelope(y=y, hop_length=hop_length, n_fft=n_fft)
+        return spectral_flux_onset_envelope(
+            y=y,
+            hop_length=hop_length,
+            n_fft=n_fft,
+            reduce=str(cfg.get("flux_reduce", "mean")),
+        )
     return librosa.onset.onset_strength(y=y, sr=sr, hop_length=hop_length)
 
 
-def tempo_from_tempogram(onset_envelope: np.ndarray, sr: int, hop_length: int) -> np.ndarray:
+def tempo_from_tempogram(
+    onset_envelope: np.ndarray,
+    sr: int,
+    hop_length: int,
+    win_length: int | None = None,
+    norm: float | None = None,
+) -> np.ndarray:
+    tempo_kwargs: dict = {
+        "onset_envelope": onset_envelope,
+        "sr": sr,
+        "hop_length": hop_length,
+        "aggregate": None,
+    }
+    if win_length is not None or norm is not None:
+        tg_kwargs: dict = {
+            "onset_envelope": onset_envelope,
+            "sr": sr,
+            "hop_length": hop_length,
+        }
+        if win_length is not None:
+            tg_kwargs["win_length"] = int(win_length)
+        if norm is not None:
+            tg_kwargs["norm"] = norm
+        tempo_kwargs["tg"] = librosa.feature.tempogram(**tg_kwargs)
+        tempo_kwargs.pop("onset_envelope", None)
     return librosa.feature.tempo(
-        onset_envelope=onset_envelope,
-        sr=sr,
-        hop_length=hop_length,
-        aggregate=None,
+        **tempo_kwargs,
     )
 
 
@@ -82,6 +119,10 @@ def extract_beats(y: np.ndarray, sr: int, cfg: dict) -> list[float]:
     trim = bool(cfg.get("trim", True))
     onset_envelope = build_onset_envelope(y=y, sr=sr, cfg=cfg)
     tempo_source = str(cfg.get("tempo_source", "fixed_start_bpm"))
+    tempo_stat = str(cfg.get("tempo_stat", "median")).lower()
+    tempogram_win_length = cfg.get("tempogram_win_length")
+    tempogram_norm_raw = cfg.get("tempogram_norm")
+    tempogram_norm = None if tempogram_norm_raw is None else float(tempogram_norm_raw)
 
     kwargs: dict = {
         "onset_envelope": onset_envelope,
@@ -99,11 +140,17 @@ def extract_beats(y: np.ndarray, sr: int, cfg: dict) -> list[float]:
             onset_envelope=onset_envelope,
             sr=sr,
             hop_length=hop_length,
+            win_length=int(tempogram_win_length) if tempogram_win_length is not None else None,
+            norm=tempogram_norm,
         )
         if tempo_source == "tempogram_dynamic":
             kwargs["bpm"] = tempo_series
         else:
-            kwargs["start_bpm"] = float(np.median(tempo_series))
+            tempo_series_arr = np.asarray(tempo_series)
+            if tempo_stat == "mean":
+                kwargs["start_bpm"] = float(np.mean(tempo_series_arr))
+            else:
+                kwargs["start_bpm"] = float(np.median(tempo_series_arr))
 
     try:
         _, beat_frames = librosa.beat.beat_track(**kwargs)
