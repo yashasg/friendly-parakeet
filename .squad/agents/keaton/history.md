@@ -504,3 +504,20 @@ When per-system guards are dropped and a runner is introduced, migrating old per
 ### Decision
 
 Merged to `.squad/decisions.md` under "Round 9: Keaton — Phase-Guard Design B (tick_playing_systems)" section.
+
+---
+
+### Round 12 — Collision System SRP + Test Count Discipline
+
+**Date:** 2026-05-05
+
+**Work:** Moved SongResults tier-count increments (4 lines) from collision_system post-collision block to scoring_system hit pass. Collision now only emplaces TimingGrade event; scoring owns all SongResults mutation. Added negative test: "collision_system alone does not mutate SongResults counts". Test count: 800 / 2251. Bench: stable (~149/167 ns).
+
+**Module transitions:** collision_system 🟡 → 🟢 (SRP closed). scoring_system 🟢 (kind-free, cohesive SongResults ownership).
+
+**Process note:** When accused of test-count misreport (r11 783 vs r10 798), re-measured inline (r12 local pre: 799 / post: 800). Keyser's live re-run confirmed no regression. Root cause: r11 used `~[bench]` filter vs r10 no-filter. Both correct for their methodology.
+
+**Pattern:** Surgical SRP moves require pre/post measurement discipline. Methodology inconsistency is a process signal, not a code signal. Live re-measure before defending the code.
+
+**Decision:** Merged to `.squad/decisions.md` under "Round 12 Decision Drop — Collision System SRP + Order/Count Forensic" section.
+

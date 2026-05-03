@@ -601,3 +601,24 @@ When a test includes a comment asserting pre-fix failure, don't trust the prose.
 ### Decision
 
 Merged to `.squad/decisions.md` under "Round 9: Keyser — Wirefix Audit + Self-Wiring Meta-Scan" section.
+
+---
+
+### Round 12 — R11 Order-Fix Audit + Test Count Forensic
+
+**Date:** 2026-05-05
+
+**Work:** 
+1. Audited r11 order-fix: verified fixed_tick_runner.cpp:17,20,27–30 matches pre-r9 form (e32dc82) byte-for-byte. Verified popup_feedback_system.cpp:9 and energy_system.cpp:9 guards are character-identical to pre-r9 source.
+2. Diagnosed test count anomaly (783 vs 798): Root cause is methodology drift (r10 used no-filter → 798 total; r11 used `~[bench]` → 783 non-bench). No tests deleted. Reconciliation: r9 797 total, r10 798 (+1), r11 799 (+1), r12 800 (+1, SRP test). All consistent.
+3. Established canonical test command: `./build/shapeshifter_tests '~[bench]' --reporter compact 2>&1 | tail -5`. Every future decision drop must use this exact command and include verbatim `tail -5` snippet.
+4. Flagged r13 cleanup: test_phase_runner.cpp:80 catches wiring (systems present) but not ordering (systems in wrong order). Recommend fail-then-fix verification for order invariant.
+
+**Module transitions:** playing_systems_runner 🟡 → 🟢 (order verified, guards correct, 11 calls).
+
+**Pattern:** Forensic via live re-run. Don't trust a reported number without re-running with the canonical command. Filter-flag asymmetry is the most insidious source of false alarms. Check methodology before declaring regression.
+
+**Meta-lesson:** Methodology inconsistency generates false alarms that consume auditor bandwidth. Canonical commands + verbatim output enforce discipline and prevent future drift.
+
+**Decision:** Merged to `.squad/decisions.md` under "Round 12 Decision Drop — Collision System SRP + Order/Count Forensic" section.
+
