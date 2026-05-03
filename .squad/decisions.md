@@ -10143,3 +10143,95 @@ Implement `tools/ios/preflight_cfbundle_version.sh` as the release gate for buil
 
 ## Rationale
 This gives a deterministic, automation-enforced check in the release path without introducing a fake repo build-number file. It supports both tagged-release and manually-dispatched release workflows while keeping the policy compatible with real upload state when operators provide the previous uploaded build number.
+
+---
+
+# Edie Final Decision — Ralph Loop TestFlight Disposition (#183, #184)
+
+**Date:** 2026-05-02  
+**Owner:** Edie (PM)
+
+## Decision
+
+- **#183: Close (resolved).**  
+  Remaining acceptance criteria were completed by commit `1079eb7`:
+  CFBundleVersion monotonic preflight gate, release-path wiring, and pass/fail validation evidence.
+
+- **#184: Keep open.**  
+  Policy/scaffolding is in place (commit `93afd60`), but closure now requires:
+  1. One successful signed TestFlight archive + IPA end-to-end,
+  2. confirmed Apple account metadata (Team ID/program ownership) and final registered bundle ID in docs,
+  3. raylib iOS overlay/platform configure blocker resolved.
+
+## Owners / Next Action
+
+- **yashasg:** provide/confirm Apple account values and registered bundle ID.
+- **Hockney:** unblock raylib iOS configure path, then run archive/export flow and post evidence on #184.
+
+Next action sequence: `ios/testflight_archive.sh configure` → `archive` → `export` using real owner-provided values after platform unblock.
+
+---
+
+# Hockney Decision — #184 raylib iOS overlay unblock
+
+**Date:** 2026-05-02  
+**Owner:** Hockney (Platform)
+
+## Decision
+
+For iOS triplets in the repo raylib overlay, switch raylib CMake platform selection from `PLATFORM=Desktop` to `PLATFORM=SDL` with `OPENGL_VERSION=ES 2.0`, add an iOS-only `sdl2` dependency in the overlay port metadata, and patch raylib CMake to compile `raudio.c` as Objective-C under iOS (`enable_language(OBJC)` + source language override).
+
+## Why
+
+`PLATFORM=Desktop` in the iOS triplet drove raylib into macOS OpenGL/GLFW wiring, which failed configuration with `OPENGL_LIBRARY` unresolved and blocked `ios/testflight_archive.sh configure`. The SDL+ES2 path avoids the Desktop/OpenGL framework probe and produces a valid iOS raylib static library in the overlay build.
+
+## Validation Evidence
+
+- Reproduced blocker before fix: `TEAM_ID=ABCDE12345 BUILD_NUMBER=1 ios/testflight_archive.sh configure` failed in overlay raylib configure with `PLATFORM=PLATFORM_DESKTOP` and `OPENGL_LIBRARY` not found.
+- After fix: `TEAM_ID=ABCDE12345 BUILD_NUMBER=1 ios/testflight_archive.sh configure` completed CMake generation for the iOS build tree (raylib overlay install succeeded).
+- Remaining failures are owner-account signing/provisioning metadata only during archive/export.
+
+---
+
+# Decision: Eager-Init for EnTT ctx Singletons
+
+**Date:** 2026-05-03  
+**Author:** Keaton (C++ Performance Engineer)  
+**Status:** Implemented
+
+## Context
+
+A benchmark sweep showed per-frame `find<T>()` regressions for two ctx singletons that were being lazily emplaced inside hot systems:
+
+- `ShapeMeshConfig` — lazy find-or-emplace in `game_camera_system` (+27.7% scroll-10 regression)
+- `WebInputPolicy` — lazy find-or-emplace + `initialized` flag in `input_system` (+4.7% player_input+movement regression)
+
+## Decision
+
+**Rule:** All ctx singletons are emplaced exactly once at startup. Systems use `reg.ctx().get<T>()` — no `find<T>()` fallback, no lazy init, no defensive emplace inside per-frame system bodies.
+
+## What Changed
+
+### ShapeMeshConfig
+- **Before:** `game_camera_system` did `find<ShapeMeshConfig>()` and fell back to `emplace<>()` on every frame.
+- **After:** `ShapeMeshConfig` was already emplaced eagerly in `camera::init` (called from `game_loop_init`). Removed the find/fallback from `game_camera_system`; replaced with `reg.ctx().get<ShapeMeshConfig>()`.
+- **Owner:** `camera::init` — called unconditionally from `game_loop_init`.
+
+### WebInputPolicy
+- **Before:** Anonymous-namespace struct with `prefers_touch` + `initialized` flags; per-frame find-or-emplace + lazy platform-detection branch in `input_system`.
+- **After:** Removed `initialized` flag; added `input_system_init(entt::registry&)` free function in `input_system.cpp` that emplaces `WebInputPolicy` and runs the `EM_ASM_INT` platform detection once. `input_system` calls `reg.ctx().get<WebInputPolicy>()` — no fallback.
+- **Owner:** `game_loop_init` calls `input_system_init(reg)` immediately after `wire_input_dispatcher`.
+
+## Placement Choice: camera::init vs game_loop_init
+
+`ShapeMeshConfig` stays emplaced in `camera::init` because `camera::init` is always called from `game_loop_init` and is the natural home for GPU-resource-adjacent config. The rule is that `game_loop_init` is the *single call site* that guarantees "all singletons exist" — whether it does so by direct emplace or by calling a subsystem init function (like `camera::init` or `input_system_init`) is an implementation detail.
+
+## Forward Rule
+
+> **All ctx singletons are emplaced at startup** (in `game_loop_init` directly, or in a subsystem init called unconditionally from it). Systems call `reg.ctx().get<T>()` — never `find<T>()` followed by conditional `emplace<T>()`.
+
+Scratch-pad ctx objects (e.g., `ObstacleDespawnScratch`, `ScoringSystemScratch`) that are intentionally optional per-frame accumulators are exempt — they use find/emplace by design and are not part of the "always-present singleton" contract.
+
+## Web Build Note
+
+The `#ifdef PLATFORM_WEB && __EMSCRIPTEN__` branch in `input_system_init` compiles cleanly on native (the else branch sets nothing; `(void)policy` suppresses the unused-variable warning). Web WASM build was not verified locally — recommend Hockney sanity-check on next web CI run.

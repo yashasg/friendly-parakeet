@@ -51,3 +51,10 @@ Merged 3 inbox decisions:
 - verbal-wasm-click-regression-guard.md
 
 **Hockney Task:** Reproduce click failure → fix release-edge miss → validate native+WASM+browser smoke pass.
+
+## 2026-05-03T10:34:36Z — Cross-Agent Note: Singleton Eager-Init WASM Follow-Up
+
+**From:** Scribe (decision merge session)  
+**For:** Hockney
+
+Keaton completed singleton eager-init refactor (2026-05-03). Clang native build compiles warning-free; 2209 assertions / 771 cases pass. **WASM build sanity-check recommended** on next CI run — the `#ifdef PLATFORM_WEB && __EMSCRIPTEN__` branch in `input_system_init` compiles cleanly on native but was not verified on Emscripten locally. Recommendation: run web CI build-test suite to confirm no regression.
