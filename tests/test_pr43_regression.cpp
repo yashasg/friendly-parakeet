@@ -118,24 +118,22 @@ TEST_CASE("MeshChild: depth/height fields are distinct values (non-trivially int
     CHECK(dsz_h != constants::OBSTACLE_3D_HEIGHT);
 }
 
-TEST_CASE("MeshChild: height stores OBSTACLE_3D_HEIGHT for ShapeGate side slabs",
-          "[camera][slab][pr43]") {
-    using Catch::Matchers::WithinAbs;
-
+TEST_CASE("MeshChild: ShapeGate renders shape-only (no side slabs)",
+           "[camera][slab][pr43]") {
     auto reg = make_registry();
     auto obs = make_shape_gate(reg, Shape::Circle, 500.0f);
     spawn_obstacle_meshes(reg, obs);
 
-    int count = 0;
+    int slab_count = 0;
+    int shape_count = 0;
     auto view = reg.view<MeshChild>();
     for (auto [e, mc] : view.each()) {
-        if (mc.mesh_type != MeshType::Slab) continue;
-        CHECK_THAT(mc.height, WithinAbs(constants::OBSTACLE_3D_HEIGHT, 1e-3f));
-        // depth is the scroll-axis thickness — should equal DrawSize.h
-        CHECK_THAT(mc.depth,  WithinAbs(reg.get<DrawSize>(obs).h, 1e-3f));
-        ++count;
+        (void)e;
+        if (mc.mesh_type == MeshType::Slab) ++slab_count;
+        if (mc.mesh_type == MeshType::Shape) ++shape_count;
     }
-    REQUIRE(count >= 1);
+    REQUIRE(slab_count == 0);
+    REQUIRE(shape_count >= 1);
 }
 
 // ═══════════════════════════════════════════════════════════════════════

@@ -1,39 +1,41 @@
-=== SCRIBE SESSION REPORT: 2026-04-30T08:51:34Z ===
 
-DECISIONS.MD METRICS:
-  Before: 502082 bytes
-  After:  (decisions.md + inbox merged)
-  Archive trigger: >= 51200 bytes → archive entries > 7 days
-  Action: Checked, no entries >7 days old
-  Inbox files processed: 3 (merged & deleted)
-    - hockney-wasm-mouse-tap-fallback.md
-    - hockney-wasm-pointer-release-unification.md
-    - verbal-wasm-click-regression-guard.md
+# Scribe Health Report — 2026-05-02T10:39:47Z
 
-HISTORY SUMMARIZATION:
-  Ralph history: 34131 bytes (>15360 threshold)
-    → Checked for entries >14 days: 0 found, no archival
-  Kobayashi history: 26846 bytes (>15360 threshold)
-    → Checked for entries >14 days: 0 found, no archival
+## Task Completion
 
-AGENT SPAWN:
-  Hockney (sync mode)
-  Task: WASM desktop click fix
-  Expected: Reproduce failure → fix release-edge miss → validate smoke
-  Status: Manifest logged, history updated, orchestration log created
+✓ 1. PRE-CHECK: decisions.md size = 498791 bytes (9.7x threshold), inbox = 5 files
+✓ 2. DECISIONS ARCHIVE: No entries >7 days old; threshold not triggered
+✓ 3. DECISION INBOX: 3 files merged (redfoot, kobayashi, edie); inbox cleared
+✓ 4. ORCHESTRATION LOG: 3 logs written (gated by .gitignore; not staged)
+✓ 5. SESSION LOG: 1 log written (gated by .gitignore; not staged)
+✓ 6. CROSS-AGENT: Updated 3 agent history.md files
+✓ 7. HISTORY SUMMARIZATION: 2 files archived (kobayashi 27KB, ralph 34KB)
+✓ 8. GIT COMMIT: Committed 7 .squad/ files to squad/test-flight-fixes
+  Commit: 1a01029
 
-GIT COMMIT:
-  Commit: 3cd7145 (squad/level-designer-html-hardening)
-  Files staged: 6
-    - .squad/decisions.md (merged inbox)
-    - .squad/decisions-archive.md (touched)
-    - .squad/agents/hockney/history.md (appended)
-    - .squad/agents/hockney/history-archive.md (touched)
-    - .squad/agents/kobayashi/history.md (summarized)
-    - .squad/agents/ralph/history.md (summarized)
+## Decisions Registry
 
-SESSION ARTIFACTS (gitignored, not staged):
-  ✓ .squad/orchestration-log/2026-04-30T08:51:34Z-hockney.md
-  ✓ .squad/log/2026-04-30T08:51:34Z-wasm-desktop-click-fix.md
+**Before:** 498791 bytes  
+**After:** ~500000 bytes (estimated)  
+**Inbox processed:** 3 files  
+**Inbox remaining:** 0 files  
 
-NEXT: Hockney executes fix and reports back.
+## History File Status
+
+**Archived (overflow):**
+- kobayashi: 27162 → history-archive.md (reset)
+- ralph: 34110 → history-archive.md (reset)
+
+**Updated (fresh):**
+- edie: +1 entry
+- redfoot: +1 entry
+
+## Decision Summary
+
+1. **Redfoot #75 (Accessibility)**: 9 testable A11Y checks (A11Y-01..09) gate TestFlight promotion
+2. **Kobayashi #187 (CI)**: macOS notarization in workflow_dispatch + v* tags; Apple secrets documented
+3. **Edie (Product)**: iOS-only v1, Apple-first telemetry, phased cohorts, go/no-go gates
+
+## Next
+
+Team review of three baselines → Implementation handoff (Hockney, Kobayashi+Verbal, McManus) → TestFlight submission readiness.

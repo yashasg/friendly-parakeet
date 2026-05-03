@@ -37,6 +37,15 @@ export VCPKG_ROOT=/path/to/vcpkg
 ./run.sh test        # Build + run tests
 ```
 
+### iOS TestFlight Archive (owner-driven signing)
+
+```bash
+chmod +x ios/testflight_archive.sh
+TEAM_ID=<TEAM_ID> BUILD_NUMBER=<INT> ios/testflight_archive.sh all
+```
+
+See `ios/README.md` for blocker checklist and full command modes.
+
 ### Difficulty Selection
 
 ```bash
@@ -123,6 +132,29 @@ python3 tools/rhythm_pipeline.py content/audio/song.flac \
 python3 tools/level_designer.py content/beatmaps/song_analysis.json \
     --output content/beatmaps/song_beatmap.json
 ```
+
+`rhythm_pipeline.py` now reads aubio parameters from `tools/config/rhythm_aubio_params.json` by default (override with `--aubio-config`).
+
+### Ballroom aubio tuning loop
+
+```bash
+# 1) Prepare local benchmark subset (downloads annotations + optional audio)
+python3 tools/benchmarks/setup_ballroom_subset.py \
+  --dataset-root benchmarks/ballroom-local \
+  --download-audio --max-tracks 8 --genres Jive Quickstep Waltz
+
+# 2) Run baseline + sweep evaluation
+python3 tools/benchmarks/ballroom_aubio_eval.py \
+  --dataset-root benchmarks/ballroom-local \
+  --output-root benchmarks/ballroom-eval/results
+
+# Scale toward full Ballroom extraction from downloaded archive
+# (large local storage + long extract time):
+#   --max-tracks 698 --genres Jive Quickstep Waltz Tango VienneseWaltz \
+#   Rumba-American Rumba-International Rumba-Misc Samba ChaChaCha Slowwaltz
+```
+
+Metrics are written to `benchmarks/ballroom-eval/results/<run_id>/` and `latest_summary.json`.
 
 The level designer uses song structure (intro/verse/chorus/bridge) to control density and obstacle variety. Shapes are assigned for flow — short gaps repeat shapes, long gaps alternate.
 

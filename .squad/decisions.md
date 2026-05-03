@@ -1,6 +1,99 @@
 # Decisions Registry
 
-*Last merged: 2026-04-30T10:12:30Z*
+P26-05-02T03:39:47Z*
+
+
+### Redfoot Decision Inbox — TestFlight Accessibility Baseline (#75)
+
+**Date:** 2026-05-02  
+**Owner:** Redfoot (UI/UX)  
+**Issue:** #75
+
+## Decision
+
+Adopt `docs/testflight-accessibility-baseline.md` as the canonical TestFlight
+accessibility gate, with 9 measurable checks (A11Y-01..A11Y-09) covering:
+- colorblind-safe shape readability + labels,
+- audio-off playability,
+- haptics opt-out/fallback,
+- reduced-motion behavior,
+- readable labels/contrast and settings persistence.
+
+## Release impact
+
+- `docs/testflight-readiness.md` now includes accessibility as a hard
+  go/no-go criterion.
+- `docs/ios-testflight-readiness.md` now requires executing AX-01..AX-09 on
+  the required iPhone matrix before promotion.
+
+## Why this matters
+
+This closes issue #75 acceptance criteria with concrete, testable thresholds
+instead of general intent. It gives engineering and QA one shared baseline to
+implement against and prevents accessibility regressions from slipping through
+TestFlight promotion.
+
+### Kobayashi Decision — macOS notarization gating and secrets
+
+- **Date:** 2026-05-02
+- **Issue:** #187
+
+Implemented notarization in `.github/workflows/ci-macos.yml` as a dedicated `notarize` job that depends on the existing macOS build job and is gated to `workflow_dispatch` and `v*` tag pushes only. This prevents consuming Apple notarization quota on every commit while still making release runs deterministic.
+
+The workflow now requires `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_ID`, `APPLE_TEAM_ID`, and `NOTARIZATION_PASSWORD`; these were documented in `README.md` under CI/CD so release setup is explicit and reproducible.
+
+### Edie Decision Inbox — TestFlight Product Baseline
+
+Date: 2026-05-02  
+Owner: Edie (PM)
+
+## Decision
+
+For the current TestFlight wave, issues #68, #183, #184, #185, and #201 are
+consolidated into one execution baseline:
+
+1. TestFlight release scope is iOS-only (iPhone portrait, touch-first).
+2. Version/build policy is locked (`CFBundleShortVersionString` from CMake
+   project version; monotonic `CFBundleVersion` per upload).
+3. Signing posture is locked (automatic Xcode signing for v1; no extra
+   Apple-service entitlements in v1).
+4. Telemetry/crash policy is Apple-first (MetricKit + TestFlight, zero
+   third-party SDK, no PII).
+5. Beta operations policy is locked (phased cohorts, defined feedback channels,
+   SLA, and go/no-go thresholds).
+
+## Follow-up Owners
+
+- Account metadata confirmation (Team ID, final App ID): `yashasg`
+- iOS archive/signing implementation: Hockney
+- Telemetry wiring implementation: Hockney + McManus
+- TF cohort operations and release gate execution: Kobayashi + Verbal
+- Build-number preflight gate automation: Kobayashi
+
+## Artifacts
+
+- `docs/testflight-product-baseline.md`
+- `ios/README.md`
+- `CHANGELOG.md`
+
+### Shape Selection — Deterministic Cycle with Bounded Randomness
+
+**Date:** 2026-05-02  
+**Owner:** Rabin (Level Designer)  
+**Scope:** `tools/level_designer.py` shape gate assignment
+
+**Decision:** Use deterministic cycle-first shape selection with bounded randomness:
+1. Base selection follows a section-local cycle
+2. Subdivision and short-gap groove can bias selection
+3. A deterministic jitter lane is occasionally allowed
+4. Hard cap prevents long single-shape runs (`max_same_shape_run = 2`)
+
+**Rationale:** Pure random shape picks reduce readability; pure cyclic behavior becomes repetitive. This hybrid keeps musical intent and learnability while avoiding long monotonous shape streaks.
+
+**Implementation notes:**
+- Deterministic seed per song+difficulty via SHA-256 (`deterministic_seed`)
+- Random source controlled (`random.Random(seed)`) in `assign_obstacles`
+- Shape run tracking state lives in `shape_state`, enforced in `assign_obstacle`
 
 ### Guardrails for Future Dispatcher Work
 
@@ -9922,3 +10015,131 @@ The previous single before/after check (`click` + `Enter`) masked mouse regressi
 ## Impact
 CI now detects desktop mouse click regressions independently of keyboard fallback behavior.
 
+
+# Decision: Center gameplay HUD shape buttons
+
+**Date:** 2026-05-02T01:27:43.700-07:00  
+**Owner:** Keaton  
+**Scope:** Gameplay HUD button slot positioning
+
+## Decision
+
+Center the three gameplay shape button slots in the 720px HUD layout by using:
+
+- Circle: `x = 130`
+- Square: `x = 290`
+- Triangle: `x = 450`
+
+Each slot remains `140x100` at `y = 1140`, preserving existing size and spacing while removing the previous left shift.
+
+## Rationale
+
+The prior positions (`60/220/380`) centered the row at `x = 290`, noticeably left of the viewport center (`x = 360`). The new positions center the row at `x = 360` while keeping button dimensions and relative spacing unchanged for input/render stability.
+
+# Decision: Non-destructive main sync with dirty worktree
+
+**Date:** 2026-05-02T01:27:43.700-07:00  
+**Owner:** Kobayashi  
+**Scope:** Local git sync operations when branch switching is blocked
+
+## Decision
+
+When `git switch main` is blocked by local modifications, do not stash or reset by default. Instead:
+
+1. `git fetch origin --prune`
+2. Verify fast-forward safety: `git merge-base --is-ancestor main origin/main`
+3. If safe, fast-forward local `main` ref non-destructively: `git branch -f main origin/main`
+
+## Rationale
+
+This updates local `main` to remote latest while preserving all in-progress working tree changes on the current branch. It avoids accidental conflicts or context loss from temporary stashes during quick sync-and-inventory tasks.
+
+
+# Edie Decision Inbox — Ralph Round 2 TestFlight Disposition (#68, #183, #184, #185, #201)
+
+**Date:** 2026-05-02  
+**Owner:** Edie (PM)
+
+## Disposition
+
+- **Close now:** #68, #185, #201  
+  Product acceptance criteria are fully documented and locked in
+  `docs/testflight-product-baseline.md` with supporting detail in
+  `docs/testflight-readiness.md` / `docs/ios-testflight-readiness.md`.
+- **Keep open:** #183, #184  
+  These remain open for concrete owner-driven completion items below.
+
+## Remaining Acceptance Criteria (Open Issues)
+
+### #183 — iOS app version/build scheme
+- Implement a preflight gate that fails TestFlight upload if `CFBundleVersion` did not increase versus the previous uploaded/tagged build.
+- Validate the gate in release workflow and document invocation path in release docs.
+- **Owner:** Kobayashi (Release)
+
+### #184 — bundle/team/signing lock
+- Confirm and record final Apple Developer Team ID/program metadata in repository docs (replace placeholder-only state).
+- Confirm final registered bundle identifier in Apple Developer account and keep docs aligned.
+- Produce one signed TestFlight archive using the documented v1 signing path to prove the lock is executable.
+- **Owners:** yashasg (account metadata + bundle confirmation), Hockney (signed archive path)
+
+## Notes
+
+- This disposition intentionally closes product-decision tickets once policy acceptance criteria are met, while keeping execution-coupled tickets open only where unresolved criteria remain.
+
+
+# Hockney Decision — TestFlight archive path automation
+
+**Date:** 2026-05-02  
+**Owner:** Hockney (Platform)  
+**Issue:** #184
+
+## Decision
+
+Adopt a repo-owned iOS archive automation path via `ios/testflight_archive.sh` with explicit modes:
+
+- `preflight` (tool + blocker checks),
+- `configure` (CMake iOS Xcode generation),
+- `archive` (signed `.xcarchive`),
+- `export` (IPA export),
+- `all` (end-to-end).
+
+Also wire iOS bundle metadata in CMake (`MACOSX_BUNDLE`, `Info.plist`, entitlements) so archive steps run against a concrete app bundle target rather than policy-only docs.
+
+## Remaining external blockers
+
+To execute signed archive/export fully, owner-provided Apple account inputs are still required:
+`TEAM_ID`, monotonic `BUILD_NUMBER`, registered bundle identifier, Xcode Apple account sign-in, and automatic-signing certificate/profile resolution.
+Additionally, the build machine must provide a valid `VCPKG_ROOT` toolchain with iOS triplet support (`arm64-ios`) for dependency resolution.
+
+
+# Kobayashi Decision — TestFlight PR routing for squad/test-flight-fixes
+
+Date: 2026-05-02
+
+## Decision
+For PR from `squad/test-flight-fixes` into `main`, treat issues as follows:
+
+- Fully resolved by this branch: #68, #75, #184, #185, #187, #201
+- Partially resolved by this branch: #183 (missing preflight `CFBundleVersion` bump guard automation)
+
+## Rationale
+- Commits `07009bb`, `aecaa27`, and `b529233` lock the accessibility, notarization CI, and TestFlight product baseline docs.
+- #183 still tracks one explicit engineering follow-up: implement automated preflight bump validation.
+
+
+# Kobayashi Decision — TestFlight CFBundleVersion Preflight Gate (#183)
+
+Date: 2026-05-02
+
+## Decision
+Implement `tools/ios/preflight_cfbundle_version.sh` as the release gate for build-number monotonicity, and wire it into `.github/workflows/ci-macos.yml` `notarize` job before any signing/notarization/upload steps.
+
+## Rule
+- Gate fails unless `current CFBundleVersion > previous`.
+- Previous build source precedence:
+  1. `workflow_dispatch` input `previous_uploaded_cfbundle_version` (for App Store Connect-known latest upload).
+  2. Latest `ios-build-<n>` git tag in the repo.
+  3. Baseline `0` if neither exists yet.
+
+## Rationale
+This gives a deterministic, automation-enforced check in the release path without introducing a fake repo build-number file. It supports both tagged-release and manually-dispatched release workflows while keeping the policy compatible with real upload state when operators provide the previous uploaded build number.

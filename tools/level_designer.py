@@ -25,10 +25,13 @@ Usage:
     python level_designer.py analysis.json
     python level_designer.py analysis.json --output my_beatmap.json
     python level_designer.py analysis.json --difficulty easy
+    python level_designer.py analysis.json --no-cleanup
 """
 
 import argparse
+import hashlib
 import json
+import random
 import sys
 from pathlib import Path
 from collections import Counter
@@ -41,13 +44,26 @@ from collections import Counter
 SHAPE_TO_LANE = {"circle": 0, "square": 1, "triangle": 2}
 LANE_TO_SHAPE = {0: "circle", 1: "square", 2: "triangle"}
 ALL_SHAPES = ["circle", "square", "triangle"]
+SUBDIVISION_FRACTIONS = [
+    (0.0, "downbeat"),
+    (1.0 / 3.0, "triplet"),
+    (0.5, "eighth"),
+    (2.0 / 3.0, "triplet"),
+    (1.0, "downbeat"),
+]
+SUBDIVISION_TO_LANE = {
+    "downbeat": 1,  # square (center lane)
+    "eighth": 0,    # circle (left lane)
+    "triplet": 2,   # triangle (right lane)
+    "offgrid": 1,   # fallback
+}
 
 # Section role determines density and allowed obstacle types.
 # Chorus/drop = densest but most CONSISTENT (nori-nori).
 # Bridge = sparse, breathing room.
 # Final section = hardest patterns (the "final fortress").
 SECTION_ROLE = {
-    "intro":      {"density": 0.30, "types": ["shape_gate"], "consistent": True},
+    "intro":      {"density": 0.45, "types": ["shape_gate"], "consistent": True},
     "verse":      {"density": 0.65, "types": ["shape_gate", "low_bar", "high_bar"], "consistent": False},
     "pre-chorus": {"density": 0.80, "types": ["shape_gate", "low_bar", "high_bar"], "consistent": False},
     "drop":       {"density": 0.90, "types": ["shape_gate", "low_bar", "high_bar"], "consistent": True},
@@ -80,11 +96,11 @@ MEDIUM_SHAPE_TARGETS = {
 }
 
 # Shape palette per section: controls how many shapes are in play.
-# Intro/bridge = 1 shape (center lane, player learns/rests).
+# Intro uses all lanes for early variety; bridge stays centered for a breather.
 # Verse = 2 shapes (alternating, player grooves).
 # Pre-chorus/drop = all 3 (full variety, player is warmed up).
 SECTION_SHAPE_PALETTE = {
-    "intro":      [1],
+    "intro":      [0, 1, 2],
     "verse":      [0, 1],
     "pre-chorus": [0, 1, 2],
     "drop":       [0, 1, 2],
@@ -108,10 +124,42 @@ def snap_events_to_beats(events, beats, tolerance=0.08):
             if beats[mid] < ev["t"]: lo = mid+1
             else: hi = mid-1
         if best is not None and best_d <= tolerance and best not in used:
+            subdivision, lane_hint = classify_subdivision(ev["t"], beats, best)
             used.add(best)
-            snapped.append({**ev, "beat_idx": best, "beat_time": beats[best]})
+            snapped.append({
+                **ev,
+                "beat_idx": best,
+                "beat_time": beats[best],
+                "subdivision": subdivision,
+                "subdivision_lane": lane_hint,
+            })
     snapped.sort(key=lambda e: e["beat_idx"])
     return snapped
+
+
+def classify_subdivision(event_time, beats, beat_idx):
+    """Classify event position inside a beat interval and map it to a lane."""
+    if len(beats) < 2:
+        return "downbeat", SUBDIVISION_TO_LANE["downbeat"]
+
+    left_idx = max(0, beat_idx - 1)
+    right_idx = min(len(beats) - 1, beat_idx + 1)
+
+    if beat_idx < len(beats) - 1 and event_time >= beats[beat_idx]:
+        left, right = beats[beat_idx], beats[beat_idx + 1]
+    else:
+        left, right = beats[left_idx], beats[beat_idx]
+
+    span = max(1e-6, right - left)
+    phase = min(max((event_time - left) / span, 0.0), 1.0)
+
+    closest_frac, closest_label = min(
+        SUBDIVISION_FRACTIONS, key=lambda item: abs(item[0] - phase)
+    )
+    if abs(closest_frac - phase) > 0.22:
+        closest_label = "offgrid"
+
+    return closest_label, SUBDIVISION_TO_LANE.get(closest_label, 1)
 
 
 def flux_threshold(stats, pct):
@@ -126,6 +174,20 @@ def flux_threshold(stats, pct):
             f = (pct-pts[i][0])/(pts[i+1][0]-pts[i][0]) if pts[i+1][0]>pts[i][0] else 0
             return pts[i][1] + f*(pts[i+1][1]-pts[i][1])
     return stats["p50"]
+
+
+def deterministic_seed(analysis, difficulty):
+    """Stable per-song/per-difficulty seed for bounded random choices."""
+    beats = analysis.get("beats") or []
+    seed_material = "|".join([
+        str(analysis.get("song_id", analysis.get("title", "unknown"))),
+        str(difficulty),
+        str(analysis.get("bpm", "")),
+        str(len(beats)),
+        f"{float(beats[0]):.6f}" if beats else "0.000000",
+    ])
+    digest = hashlib.sha256(seed_material.encode("utf-8")).digest()
+    return int.from_bytes(digest[:8], "big")
 
 
 def lane_of(obs, fallback=1):
@@ -294,39 +356,13 @@ def select_beats(analysis, difficulty):
 # ═══════════════════════════════════════════════════════════════
 
 def assign_obstacle(beat_idx, event, gap_to_prev, section_name, difficulty,
-                    prev_lane, prev_shapes, allowed_kinds):
-    """Assign obstacle type based on musical content and context.
-
-    Key insight from research: onset passes determine type, not rotation.
-      - kick-only → high_bar (bass thump → slide down)
-      - hihat-only → low_bar (percussive pop → jump up)
-      - snare-only or snare+kick → alternating bars (transient → dodge)
-      - melody or multi-pass → shape_gate (harmonic → match shape)
-
-    Gap context (from Liang et al.): short gaps favor same-type obstacles.
-    """
-    passes = set(event.get("passes", ["flux"])) if event else {"flux"}
-    passes.discard("flux")  # flux is catch-all, ignore for type decision
-    if not passes:
-        passes = {"flux"}
-
-    # Determine natural type from passes
-    has_kick = "kick" in passes
-    has_snare = "snare" in passes
-    has_hihat = "hihat" in passes
-    has_melody = "melody" in passes
-    multi = len(passes) >= 3
-
-    if multi or has_melody:
-        natural_kind = "shape_gate"
-    elif has_kick and not has_snare and not has_hihat:
-        natural_kind = "high_bar"
-    elif has_hihat and not has_kick and not has_snare:
-        natural_kind = "low_bar"
-    elif has_snare:
+                    prev_lane, prev_shapes, allowed_kinds, rng, shape_state):
+    """Assign obstacle type from beat-local context only (no onset pass mapping)."""
+    del difficulty
+    natural_kind = "shape_gate"
+    non_shape = [k for k in ("low_bar", "high_bar") if k in allowed_kinds]
+    if non_shape and gap_to_prev is not None and gap_to_prev >= 3 and beat_idx % 8 == 0:
         natural_kind = "low_bar" if beat_idx % 2 == 0 else "high_bar"
-    else:
-        natural_kind = "shape_gate"
 
     # Respect difficulty restrictions
     if natural_kind not in allowed_kinds:
@@ -341,42 +377,44 @@ def assign_obstacle(beat_idx, event, gap_to_prev, section_name, difficulty,
     obs = {"beat": beat_idx, "kind": natural_kind}
 
     if natural_kind == "shape_gate":
-        # Flow-based shape picker:
-        # 1. Section palette limits which shapes are available
-        # 2. Short gaps → stay on same shape (groove / "L1 kick" principle)
-        # 3. Longer gaps → alternate shape (variety)
-        # 4. Anti-triple built in (never 3 of same shape in a row)
+        # Flow-based shape picker with bounded randomness:
+        # 1. Follow section-local cycling as the baseline
+        # 2. Blend in subdivision / groove hints with small deterministic jitter
+        # 3. Cap repeated same-shape runs for readability
         palette = SECTION_SHAPE_PALETTE.get(section_name, [0, 1, 2])
+        subdivision_lane = event.get("subdivision_lane") if event else None
+        prev_shape_lane = SHAPE_TO_LANE.get(prev_shapes[-1], prev_lane) if prev_shapes else prev_lane
+        max_same_shape_run = 2
 
         if len(palette) == 1:
-            # Single-shape section (intro/bridge): always center
             lane = palette[0]
-            shape = LANE_TO_SHAPE[lane]
-        elif gap_to_prev is not None and gap_to_prev <= 2 and prev_shapes:
-            # Short gap: stay on same shape for groove
-            shape = prev_shapes[-1]
-            lane = SHAPE_TO_LANE[shape]
-            # But check anti-triple
-            if (lane not in palette or
-                    (len(prev_shapes) >= 2 and prev_shapes[-1] == prev_shapes[-2] == shape)):
-                idx = palette.index(lane) if lane in palette else 0
-                lane = palette[(idx + 1) % len(palette)]
-                shape = LANE_TO_SHAPE[lane]
-        elif prev_shapes:
-            # Longer gap: pick a different shape
-            prev_lane_s = SHAPE_TO_LANE[prev_shapes[-1]]
-            candidates = [l for l in palette if l != prev_lane_s]
-            if candidates:
-                adjacent = [l for l in candidates if abs(l - prev_lane) <= 1]
-                pool = adjacent if adjacent else candidates
-                lane = pool[beat_idx % len(pool)]
-            else:
-                lane = palette[beat_idx % len(palette)]
-            shape = LANE_TO_SHAPE[lane]
         else:
-            # First note: start center if available
-            lane = 1 if 1 in palette else palette[0]
-            shape = LANE_TO_SHAPE[lane]
+            cycle_idx = shape_state.get("cycle_idx", 0)
+            cycle_lane = palette[cycle_idx % len(palette)]
+            candidates = [cycle_lane]
+
+            if subdivision_lane in palette and (gap_to_prev is None or gap_to_prev >= 2):
+                candidates.append(subdivision_lane)
+
+            if prev_shapes and gap_to_prev is not None and gap_to_prev <= 2:
+                hold_weight = 0.75 if gap_to_prev <= 1 else 0.35
+                if rng.random() < hold_weight:
+                    candidates.insert(0, prev_shape_lane)
+
+            if len(palette) > 1 and rng.random() < 0.25:
+                candidates.append(palette[(cycle_idx + 1) % len(palette)])
+
+            deduped = []
+            for candidate in candidates:
+                if candidate in palette and candidate not in deduped:
+                    deduped.append(candidate)
+            lane = deduped[0] if deduped else cycle_lane
+
+            same_shape_run = shape_state.get("same_shape_run", 0)
+            if prev_shapes and lane == prev_shape_lane and same_shape_run >= max_same_shape_run:
+                lane = next((p for p in palette if p != prev_shape_lane), cycle_lane)
+
+            shape_state["cycle_idx"] = (cycle_idx + 1) % len(palette)
 
         # Keep lane adjacent to previous (no 2-lane jumps)
         if abs(lane - prev_lane) > 1:
@@ -384,7 +422,12 @@ def assign_obstacle(beat_idx, event, gap_to_prev, section_name, difficulty,
                 lane = prev_lane + 1
             else:
                 lane = prev_lane - 1
-            shape = LANE_TO_SHAPE[lane]
+        shape = LANE_TO_SHAPE[lane]
+
+        if prev_shapes and shape == prev_shapes[-1]:
+            shape_state["same_shape_run"] = shape_state.get("same_shape_run", 0) + 1
+        else:
+            shape_state["same_shape_run"] = 1
 
         obs["shape"] = shape
         obs["lane"] = lane
@@ -396,14 +439,9 @@ def assign_obstacle(beat_idx, event, gap_to_prev, section_name, difficulty,
 
 def assign_obstacles(selected_beats, event_map, analysis, difficulty):
     """Assign obstacle types to all selected beats."""
+    del event_map
     structure = analysis["structure"]
     allowed = DIFFICULTY_KINDS[difficulty]
-
-    # Variety targets: force non-shape_gate after consecutive runs
-    # This ensures obstacle variety without fighting the onset-based type picker.
-    # The consecutive threshold varies by section — drops are more consistent.
-    variety_threshold = {"easy": 999, "medium": 3, "hard": 2}
-    max_consecutive = variety_threshold[difficulty]
 
     # Build section lookup
     def section_at(beat_idx):
@@ -417,7 +455,8 @@ def assign_obstacles(selected_beats, event_map, analysis, difficulty):
     obstacles = []
     prev_lane = 1
     prev_shapes = []
-    consecutive_shapes = 0
+    rng = random.Random(deterministic_seed(analysis, difficulty))
+    shape_state = {"cycle_idx": 0, "same_shape_run": 0}
 
     for i, bi in enumerate(sorted_beats):
         event = selected_beats[bi]
@@ -428,35 +467,26 @@ def assign_obstacles(selected_beats, event_map, analysis, difficulty):
         role = SECTION_ROLE.get(sec, SECTION_ROLE["verse"])
         sec_kinds = set(role["types"]) & allowed
 
-        # Variety injection: after N consecutive shape_gates, force a different type
-        # BUT only if the section allows it and gap is large enough for a type switch
-        force_variety = False
-        if consecutive_shapes >= max_consecutive and gap is not None and gap >= 2:
-            non_shape = sec_kinds - {"shape_gate"}
-            if non_shape:
-                force_variety = True
-
-        obs = assign_obstacle(bi, event, gap, sec, difficulty,
-                              prev_lane, prev_shapes, sec_kinds)
-
-        if force_variety and obs["kind"] == "shape_gate":
-            # Override to a non-shape type based on passes
-            non_shape = sec_kinds - {"shape_gate"}
-            if "low_bar" in non_shape and "high_bar" in non_shape:
-                obs = {"beat": bi, "kind": "low_bar" if bi % 2 == 0 else "high_bar"}
-            elif "low_bar" in non_shape:
-                obs = {"beat": bi, "kind": "low_bar"}
-            elif "high_bar" in non_shape:
-                obs = {"beat": bi, "kind": "high_bar"}
+        obs = assign_obstacle(
+            bi,
+            event,
+            gap,
+            sec,
+            difficulty,
+            prev_lane,
+            prev_shapes,
+            sec_kinds,
+            rng,
+            shape_state,
+        )
 
         obstacles.append(obs)
         prev_lane = lane_of(obs, prev_lane)
         if obs["kind"] == "shape_gate":
             prev_shapes.append(obs.get("shape", "square"))
-            consecutive_shapes += 1
         else:
             prev_shapes = []
-            consecutive_shapes = 0
+            shape_state["same_shape_run"] = 0
 
     return obstacles
 
@@ -960,10 +990,12 @@ def rebalance_medium_shapes(obstacles, difficulty):
 # PIPELINE: SELECT → ASSIGN → CLEAN
 # ═══════════════════════════════════════════════════════════════
 
-def design_level(analysis, difficulty):
+def design_level(analysis, difficulty, cleanup_enabled=True):
     """Full pipeline: select beats, assign obstacles, clean violations."""
     selected, event_map = select_beats(analysis, difficulty)
     obstacles = assign_obstacles(selected, event_map, analysis, difficulty)
+    if not cleanup_enabled:
+        return obstacles
     boundary_beats = get_section_boundary_beats(analysis)
     obstacles = clean_level(obstacles, difficulty, boundary_beats)
     # Issue #175 — guarantee per-difficulty first-collision reaction floor.
@@ -1017,7 +1049,7 @@ def enforce_first_collision_floor(obstacles, difficulty, analysis):
     return obstacles
 
 
-def build_beatmap(analysis, difficulties):
+def build_beatmap(analysis, difficulties, cleanup_enabled=True):
     """Build the full beatmap JSON."""
     beats = analysis["beats"]
     if not beats:
@@ -1051,7 +1083,7 @@ def build_beatmap(analysis, difficulties):
 
     diff_data = {}
     for diff in difficulties:
-        obs = design_level(analysis, diff)
+        obs = design_level(analysis, diff, cleanup_enabled=cleanup_enabled)
         timed = attach_and_validate_timing(obs, diff)
         diff_data[diff] = {"beats": timed, "count": len(timed)}
     return {
@@ -1112,6 +1144,11 @@ def main():
     parser.add_argument("input", help="Path to analysis JSON")
     parser.add_argument("--output", "-o", default=None)
     parser.add_argument("--difficulty", "-d", choices=["easy","medium","hard","all"], default="all")
+    parser.add_argument(
+        "--no-cleanup",
+        action="store_true",
+        help="Disable cleanup and post-processing passes (raw generation only).",
+    )
     args = parser.parse_args()
 
     if not Path(args.input).exists():
@@ -1127,7 +1164,7 @@ def main():
     print(f"  LEVEL DESIGNER | {analysis.get('title','?')} | BPM {analysis['bpm']}")
     print("=" * 60)
 
-    beatmap = build_beatmap(analysis, diffs)
+    beatmap = build_beatmap(analysis, diffs, cleanup_enabled=not args.no_cleanup)
 
     for diff in diffs:
         print_stats(beatmap["difficulties"][diff]["beats"], diff)

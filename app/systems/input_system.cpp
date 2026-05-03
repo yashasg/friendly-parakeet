@@ -7,6 +7,9 @@
 #include "../components/game_state.h"
 #include "../constants.h"
 #include <raylib.h>
+#ifdef __EMSCRIPTEN__
+#include <emscripten/emscripten.h>
+#endif
 
 void input_system(entt::registry& reg, float raw_dt) {
     auto& input = reg.ctx().get<InputState>();
@@ -27,38 +30,36 @@ void input_system(entt::registry& reg, float raw_dt) {
     auto to_vx = [&](float wx) { return (wx - st.offset_x) / st.scale; };
     auto to_vy = [&](float wy) { return (wy - st.offset_y) / st.scale; };
 
-    // ── Mouse (desktop) — only when no touch gesture is active ─
-    if (input.active_source != InputSource::Touch &&
-        IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-        input.touch_down = true;
-        input.touching   = true;
-        input.active_source = InputSource::Mouse;
-        Vector2 pos = GetMousePosition();
-        input.start_x = input.curr_x = to_vx(pos.x);
-        input.start_y = input.curr_y = to_vy(pos.y);
-        input.duration = 0.0f;
-    }
-    const bool mouse_left_down = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
-    if (input.active_source != InputSource::Touch &&
-        input.active_source == InputSource::Mouse &&
-        (IsMouseButtonReleased(MOUSE_BUTTON_LEFT) || (!mouse_left_down && input.touching))) {
-        input.touch_up  = true;
-        input.touching  = false;
+#if defined(PLATFORM_WEB) && defined(__EMSCRIPTEN__)
+    static const bool web_prefers_touch = (EM_ASM_INT({
+        const ua = navigator.userAgent || "";
+        const mobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+        const touchCapable = (navigator.maxTouchPoints || 0) > 0;
+        return mobile && touchCapable ? 1 : 0;
+    }) != 0);
+    const bool allow_mouse_input = !web_prefers_touch;
+    const bool allow_touch_input = web_prefers_touch;
+#else
+    const bool allow_mouse_input = true;
+    const bool allow_touch_input = true;
+#endif
+
+    // ── Mouse (desktop) — click-only semantics ─
+    if (allow_mouse_input &&
+        input.active_source != InputSource::Touch &&
+        IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+        input.click      = true;
+        input.touching   = false;
         input.active_source = InputSource::None;
         Vector2 pos = GetMousePosition();
-        input.end_x = to_vx(pos.x);
-        input.end_y = to_vy(pos.y);
-    }
-    if (input.active_source != InputSource::Touch &&
-        mouse_left_down && input.touching &&
-        input.active_source == InputSource::Mouse) {
-        Vector2 pos = GetMousePosition();
-        input.curr_x = to_vx(pos.x);
-        input.curr_y = to_vy(pos.y);
+        input.start_x = input.curr_x = input.end_x = to_vx(pos.x);
+        input.start_y = input.curr_y = input.end_y = to_vy(pos.y);
+        input.duration = 0.0f;
     }
 
     // ── Touch (mobile / web) — only when no mouse gesture is active ─
-    if (input.active_source != InputSource::Mouse &&
+    if (allow_touch_input &&
+        input.active_source != InputSource::Mouse &&
         GetTouchPointCount() > 0) {
         Vector2 tp = GetTouchPosition(0);
         if (!input.touching) {
@@ -72,7 +73,8 @@ void input_system(entt::registry& reg, float raw_dt) {
             input.curr_x = to_vx(tp.x);
             input.curr_y = to_vy(tp.y);
         }
-    } else if (input.active_source != InputSource::Mouse &&
+    } else if (allow_touch_input &&
+               input.active_source != InputSource::Mouse &&
                input.touching && input.active_source == InputSource::Touch) {
         input.touch_up  = true;
         input.touching  = false;
@@ -128,7 +130,10 @@ void input_system(entt::registry& reg, float raw_dt) {
     // Touch/mouse gesture → InputEvent enqueued to dispatcher; delivered to
     // gesture_routing_handle_input via
     // disp.update<InputEvent>() in game_loop_frame (#333).
-    if (input.touch_up) {
+    if (input.click) {
+        disp.enqueue<InputEvent>(InputEvent{InputType::Tap, Direction::Up,
+                                            input.end_x, input.end_y});
+    } else if (input.touch_up) {
         const InputEvent event = input_event_from_raylib_gesture(
             read_detected_raylib_gesture(),
             input.start_y,

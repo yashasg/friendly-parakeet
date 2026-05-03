@@ -186,6 +186,16 @@ add_executable(shapeshifter
     app/main.cpp
     ${SHAPESHIFTER_RUNTIME_SOURCES}
 )
+if(SHAPESHIFTER_IOS)
+    set_target_properties(shapeshifter PROPERTIES
+        MACOSX_BUNDLE TRUE
+        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_SOURCE_DIR}/ios/Info.plist"
+        XCODE_ATTRIBUTE_CODE_SIGN_ENTITLEMENTS "${CMAKE_SOURCE_DIR}/ios/Entitlements.plist"
+        XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "1"
+        XCODE_ATTRIBUTE_IPHONEOS_DEPLOYMENT_TARGET "16.0"
+        XCODE_ATTRIBUTE_INFOPLIST_KEY_UISupportedInterfaceOrientations "UIInterfaceOrientationPortrait"
+    )
+endif()
 target_include_directories(shapeshifter PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/app
 )
@@ -543,6 +553,8 @@ else()
     add_test(
         NAME shapeshifter_tests_wasm
         COMMAND ${_wasm_test_runner} $<TARGET_FILE:shapeshifter_tests> "~[bench]"
-        WORKING_DIRECTORY $<TARGET_FILE_DIR:shapeshifter_tests>
+        # Match native CI execution context (repo root) so tests that validate
+        # source-managed UI layout assets resolve the same relative paths.
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     )
 endif()

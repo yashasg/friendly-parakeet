@@ -15,6 +15,7 @@
 - Pause screen (`app/ui/generated/paused_layout.h`) had the same default `GuiLabel` failure mode as pre-fix Song Complete (small, not centered labels); using a local centered-label helper with scoped `TEXT_SIZE` + `LABEL/TEXT_ALIGNMENT` fixes readability without touching button dispatch.
 - Keep pause layout source and export aligned when text bounds change: update both `content/ui/screens/paused.rgl` and `app/ui/generated/paused_layout.h` together so future regen does not regress sizing.
 - `app/archetypes/` is now legacy for player creation; canonical player factory lives in `app/entities/player_entity.{h,cpp}` and tests should include `entities/player_entity.h` directly (no shim header).
+- Gameplay HUD shape buttons are centered in the 720-wide viewport at x = 130/290/450 (140px width each, 20px gaps); keep `content/ui/screens/gameplay.rgl`, `app/ui/generated/gameplay_hud_layout.h`, and geometry tests aligned to these slots.
 
 ### 2026-04-29 — Title Screen UI Fix (first implementation, rejected)
 

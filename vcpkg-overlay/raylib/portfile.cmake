@@ -20,6 +20,7 @@ vcpkg_from_github(
     PATCHES
         android.diff
         fix-link-path.patch
+        ios-sdl-audio.patch
 )
 
 file(GLOB vendored_headers RELATIVE "${SOURCE_PATH}/src/external"
@@ -60,6 +61,8 @@ if(VCPKG_TARGET_IS_ANDROID)
     list(APPEND PLATFORM_OPTIONS -DPLATFORM=Android -DUSE_EXTERNAL_GLFW=OFF)
 elseif(VCPKG_TARGET_IS_EMSCRIPTEN)
     list(APPEND PLATFORM_OPTIONS -DPLATFORM=Web -DUSE_EXTERNAL_GLFW=OFF)
+elseif(VCPKG_TARGET_IS_IOS)
+    list(APPEND PLATFORM_OPTIONS -DPLATFORM=SDL -DOPENGL_VERSION=ES\ 2.0)
 else()
     list(APPEND PLATFORM_OPTIONS -DPLATFORM=Desktop -DUSE_EXTERNAL_GLFW=OFF)
 endif()

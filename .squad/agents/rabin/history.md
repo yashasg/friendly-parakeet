@@ -107,3 +107,30 @@ Re-audited shipped beatmaps (`content/beatmaps/*_beatmap.json`) against `decisio
 **Lesson — branch reality vs squad-decision history:** `decisions.md` references `clean_shape_change_gap`, `apply_lanepush_ramp`, `ensure_bar_coverage`, `fill_large_gaps` etc. as landed work, but the actual `tools/level_designer.py` on `user/yashasg/ecs_refactor` is the simpler 693-line version without those passes. Many `tests/test_shipped_beatmap_*.cpp` exist only as `.bak` files. When acceptance criteria say "verify #125/#134/#135/#138 gates remain green", the gates aren't green at baseline on this branch — best you can do is "no new failure introduced". Confirm baseline by stashing your edits and re-running validators before claiming "regression-free".
 
 **Lesson — non-destructive content fix beats full regen:** Issue let me choose generator-pass *or* content cleanup. Cleanup-only on the single violating song is safer when the surrounding pipeline doesn't carry the cleaners that newer validators expect; full regen would have produced wider deltas (different first beats on stomper/drama) without buying anything for #175. Keep the generator pass for future regens, but don't re-run the whole pipeline just because you can.
+
+## 2026-05-02 — Root-Cause Analysis: Early Beats as Center Obstacles
+
+**Request:** Explain why early beats become center obstacles despite multiple onset passes.
+
+**Scope:** Diagnostic analysis of `rhythm_pipeline.py` onset detection and `level_designer.py` obstacle placement logic.
+
+**Root Causes (3-layer):**
+
+1. **Primary:** `get_center_obstacle_for_beat()` has no beat-time validation. It reuses obstacles matching shape target without confirming their beat timing aligns with current beat processing. Early transients from aubio multi-onset clustering trigger false reuse.
+
+2. **Secondary:** Multiple aubio onset passes detect same physical beat event as clusters (e.g., 2.27s, 2.28s, 2.29s from instrument overlap). Beat-grid normalization merges to single grid beat, but obstacles placed on intermediate onsets pre-normalization may not match post-normalization beat grid exactly.
+
+3. **Tertiary:** Early song beats occur during intro/fade-in where musical content is sparse. Aubio spectral-change detection flags amplitude ramps and instrument entries as beats. Obstacles on pre-beat transients get reused if shape matches target.
+
+**Evidence:**
+- Rabin's prior audit (#137): shipped beatmaps timing-correct to ±1ms under uniform grid semantics.
+- `beatmap_from_analysis.py` pipeline relies on `level_designer.py` placement logic.
+- No beat-time matching constraint in obstacle-reuse function.
+
+**Recommendations (design-owned by Fenster/Baer):**
+1. Tighten `get_center_obstacle_for_beat()` to validate beat-time ±0.05s tolerance.
+2. Post-process aubio onsets: merge clusters within 50–100ms before beat-grid extraction.
+3. Filter low-energy onsets or skip intro region (pre-4.0s).
+4. Regenerate all 3 shipped beatmaps post-fix; re-validate #125/#134/#135/#138 gates.
+
+**Status:** ✅ Analysis complete, no code changes per charter. Orchestration log: `.squad/orchestration-log/2026-05-02T07-26-41Z-rabin.md`. Session log: `.squad/log/2026-05-02T07-26-41Z-scribe-session.md`.

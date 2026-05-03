@@ -3,6 +3,8 @@ name: CI (macOS)
 on:
   push:
     branches: [main]
+    tags:
+      - "v*"
   pull_request:
     branches: [main]
     paths-ignore:
@@ -11,6 +13,16 @@ on:
       - "design-docs/**"
       - "*.md"
       - "*.log"
+  workflow_dispatch:
+    inputs:
+      ios_cfbundle_version:
+        description: "iOS/TestFlight CFBundleVersion for release preflight (integer)"
+        required: false
+        type: string
+      previous_uploaded_cfbundle_version:
+        description: "Optional previous uploaded CFBundleVersion override (integer)"
+        required: false
+        type: string
 
 jobs:
   build:
@@ -99,3 +111,163 @@ jobs:
           upload-artifact: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  notarize:
+    name: Sign and notarize (macOS)
+    needs: build
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')
+    runs-on: macos-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Download macOS binary artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: shapeshifter-macos
+          path: build
+
+      - name: Validate notarization secrets
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          NOTARIZATION_PASSWORD: ${{ secrets.NOTARIZATION_PASSWORD }}
+        run: |
+          missing=0
+          for var in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_ID APPLE_TEAM_ID NOTARIZATION_PASSWORD; do
+            if [ -z "${!var:-}" ]; then
+              echo "::error::Missing required secret: $var"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+
+      - name: Preflight CFBundleVersion monotonicity (TestFlight/release gate)
+        env:
+          IOS_CFBUNDLE_VERSION: ${{ inputs.ios_cfbundle_version || github.run_number }}
+          PREVIOUS_UPLOADED_CFBUNDLE_VERSION: ${{ inputs.previous_uploaded_cfbundle_version }}
+        run: |
+          chmod +x tools/ios/preflight_cfbundle_version.sh
+          if [ -n "${PREVIOUS_UPLOADED_CFBUNDLE_VERSION:-}" ]; then
+            tools/ios/preflight_cfbundle_version.sh \
+              --current "$IOS_CFBUNDLE_VERSION" \
+              --previous "$PREVIOUS_UPLOADED_CFBUNDLE_VERSION"
+          else
+            tools/ios/preflight_cfbundle_version.sh \
+              --current "$IOS_CFBUNDLE_VERSION"
+          fi
+
+      - name: Import Apple signing certificate
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          CERT_PATH="$RUNNER_TEMP/apple-cert.p12"
+          KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -base64 24)"
+          export CERT_PATH
+
+          python3 - <<'PY'
+          import base64
+          import os
+          from pathlib import Path
+          Path(os.environ["CERT_PATH"]).write_bytes(base64.b64decode(os.environ["APPLE_CERTIFICATE"]))
+          PY
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERT_PATH" -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | tr -d '"')
+
+          DEVELOPER_ID="$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" | awk -F\" '/Developer ID Application|Apple Distribution/{print $2; exit}')"
+          if [ -z "$DEVELOPER_ID" ]; then
+            echo "::error::No Developer ID Application/Apple Distribution identity found in imported certificate"
+            exit 1
+          fi
+
+          echo "CERT_PATH=$CERT_PATH" >> "$GITHUB_ENV"
+          echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> "$GITHUB_ENV"
+          echo "KEYCHAIN_PASSWORD=$KEYCHAIN_PASSWORD" >> "$GITHUB_ENV"
+          echo "DEVELOPER_ID=$DEVELOPER_ID" >> "$GITHUB_ENV"
+
+      - name: Build .app bundle
+        run: |
+          APP_BUNDLE="build/SHAPESHIFTER.app"
+          mkdir -p "$APP_BUNDLE/Contents/MacOS" "$APP_BUNDLE/Contents/Resources"
+          mv build/shapeshifter "$APP_BUNDLE/Contents/MacOS/SHAPESHIFTER"
+          chmod +x "$APP_BUNDLE/Contents/MacOS/SHAPESHIFTER"
+
+          cat > "$APP_BUNDLE/Contents/Info.plist" <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleDevelopmentRegion</key>
+            <string>en</string>
+            <key>CFBundleExecutable</key>
+            <string>SHAPESHIFTER</string>
+            <key>CFBundleIdentifier</key>
+            <string>io.github.yashasg.shapeshifter</string>
+            <key>CFBundleInfoDictionaryVersion</key>
+            <string>6.0</string>
+            <key>CFBundleName</key>
+            <string>SHAPESHIFTER</string>
+            <key>CFBundlePackageType</key>
+            <string>APPL</string>
+            <key>CFBundleShortVersionString</key>
+            <string>${GITHUB_REF_NAME}</string>
+            <key>CFBundleVersion</key>
+            <string>${GITHUB_RUN_NUMBER}</string>
+            <key>LSMinimumSystemVersion</key>
+            <string>13.0</string>
+          </dict>
+          </plist>
+          PLIST
+
+      - name: Sign app bundle
+        run: |
+          APP_BUNDLE="build/SHAPESHIFTER.app"
+          codesign --deep --force --options runtime --timestamp --sign "$DEVELOPER_ID" "$APP_BUNDLE"
+          codesign --verify --deep --strict --verbose=2 "$APP_BUNDLE"
+
+      - name: Submit for notarization
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          NOTARIZATION_PASSWORD: ${{ secrets.NOTARIZATION_PASSWORD }}
+        run: |
+          APP_BUNDLE="build/SHAPESHIFTER.app"
+          ZIP_PATH="build/SHAPESHIFTER-macos-unsigned.zip"
+          ditto -c -k --keepParent "$APP_BUNDLE" "$ZIP_PATH"
+          xcrun notarytool submit "$ZIP_PATH" \
+            --apple-id "$APPLE_ID" \
+            --team-id "$APPLE_TEAM_ID" \
+            --password "$NOTARIZATION_PASSWORD" \
+            --wait
+
+      - name: Staple notarization ticket
+        run: |
+          APP_BUNDLE="build/SHAPESHIFTER.app"
+          xcrun stapler staple "$APP_BUNDLE"
+          xcrun stapler validate "$APP_BUNDLE"
+          rm -f build/SHAPESHIFTER-macos-unsigned.zip
+          ditto -c -k --keepParent "$APP_BUNDLE" "build/SHAPESHIFTER-macos.zip"
+
+      - name: Upload notarized macOS app
+        uses: actions/upload-artifact@v5
+        with:
+          name: shapeshifter-macos-notarized
+          path: |
+            build/SHAPESHIFTER.app
+            build/SHAPESHIFTER-macos.zip
+
+      - name: Cleanup temporary keychain
+        if: always()
+        run: |
+          security delete-keychain "$KEYCHAIN_PATH" || true
+          rm -f "$CERT_PATH"

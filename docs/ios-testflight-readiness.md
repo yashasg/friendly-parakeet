@@ -14,6 +14,7 @@
 3. [Version and Build Number Scheme (#183)](#3-version-and-build-number-scheme-183)
 4. [Bundle Identifier, Team, and Code Signing (#184)](#4-bundle-identifier-team-and-code-signing-184)
 5. [Device and OS Support Matrix (#186)](#5-device-and-os-support-matrix-186)
+6. [Accessibility Baseline Execution (#75)](#6-accessibility-baseline-execution-75)
 
 ---
 
@@ -202,7 +203,7 @@ The runtime version propagates to `generated/version.h` via CMake `configure_fil
 
 **Update cadence:** Every TestFlight/App Store upload that bumps `CFBundleVersion` should include a CHANGELOG entry. This is a team convention, not a CI gate for v1 (add CI gate post-TF).
 
-`CHANGELOG.md` does not yet exist — it must be created before the first TestFlight submission. Template:
+`CHANGELOG.md` exists at repo root and should be updated for each TestFlight/App Store upload. Template:
 
 ```markdown
 # Changelog
@@ -276,7 +277,7 @@ Entitlements file (`ios/Entitlements.plist`) will be minimal:
 4. Set target device to your registered iPhone (or use generic iOS device for archive).
 5. Product → Archive → Distribute App → TestFlight.
 
-> The iOS CMake toolchain integration requires additional work not yet in the repo (raylib iOS build config, asset bundling into `.app`, `Info.plist` template). This document specifies the decisions; implementation tracking is a separate issue.
+> iOS CMake integration now uses the repo vcpkg overlay raylib path (`PLATFORM=SDL`, `OPENGL ES 2.0`, ObjC audio compile for `raudio.c`) so `ios/testflight_archive.sh configure` can complete on iOS toolchains.
 
 ### 4.4 Info.plist Template (Minimum Required Keys)
 
@@ -320,19 +321,21 @@ Entitlements file (`ios/Entitlements.plist`) will be minimal:
 
 `$(MARKETING_VERSION)` and `$(CURRENT_PROJECT_VERSION)` are Xcode build settings; set them to match `CFBundleShortVersionString` and `CFBundleVersion` from §3.
 
-### 4.5 `ios/` Directory Structure (to be created)
+### 4.5 `ios/` Directory Structure
 
 ```
 ios/
-  README.md                  ← Build + signing instructions (this doc summarises)
-  Info.plist                 ← Template (above)
-  Entitlements.plist         ← Minimal (above)
+  README.md                  ← Build + signing instructions + blocker list
+  testflight_archive.sh      ← Preflight/configure/archive/export automation
+  Info.plist                 ← Template + CMake wired
+  Entitlements.plist         ← Minimal + CMake wired
   LaunchScreen.storyboard    ← Required by App Store (solid color + logo)
   Assets.xcassets/
     AppIcon.appiconset/      ← Required icons (1024×1024 + all sizes)
 ```
 
-> None of these files exist yet. Creating them is required before first TestFlight upload.
+`Info.plist`, `Entitlements.plist`, and `testflight_archive.sh` now exist in-repo.
+`LaunchScreen.storyboard` and full App Icon assets are still required before first TestFlight upload.
 
 ---
 
@@ -402,6 +405,26 @@ All three required devices must pass the full interruption (§1.4) and lifecycle
 
 ---
 
+## 6. Accessibility Baseline Execution (#75)
+
+iOS candidate builds must also pass the accessibility baseline in:
+
+- `docs/testflight-accessibility-baseline.md` (A11Y-01..A11Y-09)
+
+### 6.1 Required execution scope
+
+- Run AX-01..AX-09 on the required iPhone set from §5.5.
+- Include at least one run with device audio muted and one run with reduced
+  motion enabled.
+- Verify haptics opt-out (`haptics_enabled`) and persistence behavior.
+
+### 6.2 Promotion rule
+
+Any failed A11Y check blocks TestFlight promotion to App Store submission until
+resolved or explicitly deferred with PM + QA + Design sign-off.
+
+---
+
 ## Appendix: User-Provided Values Summary
 
 The following values are **not squad decisions** — they must be supplied by `yashasg` before the first TestFlight build can be submitted:
@@ -412,7 +435,8 @@ The following values are **not squad decisions** — they must be supplied by `y
 | 2 | Apple Developer Program type (individual/org) | Documentation only | _(unset)_ |
 | 3 | Confirm bundle ID `com.yashasg.shapeshifter` | `Info.plist`, App ID registration | Proposed; may change |
 | 4 | App icons (1024×1024 + all sizes) | `Assets.xcassets/AppIcon.appiconset/` | None |
-| 5 | Set initial `CFBundleVersion` in Xcode/CI before first upload (no repo build-number file) | Release/archive configuration | _(unset)_ |
+| 5 | Set initial `CFBundleVersion` (`BUILD_NUMBER`) before first upload | `ios/testflight_archive.sh` env / archive configuration | _(unset)_ |
+| 6 | iOS raylib overlay path (`PLATFORM=SDL`, ES2 + ObjC raudio compile) | `vcpkg-overlay/raylib/*` + `ios/testflight_archive.sh configure` | Landed in repo; rerun configure on owner machine |
 
 ---
 
