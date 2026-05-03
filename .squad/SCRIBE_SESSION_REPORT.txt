@@ -39,3 +39,36 @@
 ## Next
 
 Team review of three baselines → Implementation handoff (Hockney, Kobayashi+Verbal, McManus) → TestFlight submission readiness.
+
+---
+## Round 6 Logging — Module Health Update
+
+**Date:** 2026-05-04
+**Scribe:** Ralph (logging agent)
+
+### Module Health Status
+
+| Module | Status | Change | Note |
+|--------|--------|--------|------|
+| `scoring_system` | 🟢 | 🟡 → 🟢 | OCP violation resolved (NonScorableTag + cleanup pass); is_bar dispatch acceptable |
+| `collision_system` | 🟡 | stable | Pending Keaton-r6 LanePushDelta + lane_push_response_system audit (r7) |
+| `motion_system` | 🟡 | stable | Still has migration bridge for #349; will close when obstacles fully migrate |
+| `lane_push_response_system` | 🟢 | NEW | New system; clean SRP; wired into game_loop post-collision |
+
+### Test Coverage
+
+- scoring_system: 🟡 gap (test uses LanePushLeft; recommend ShapeGate variant for OCP proof)
+- collision_system: 4 existing [lane_push] tests + 2 new separation tests ✅ pass
+- All 775 test cases / 2223 assertions pass; zero warnings
+
+### Build Status
+
+- Zero warnings across all files (clang -Wall -Wextra -Werror)
+- CMake build clean, no deprecations or diagnostics
+
+### Recommendations for Round 7
+
+1. **Keaton-r7-bartag:** Implement BarObstacleTag for scoring_system.cpp:107 (optional, low priority)
+2. **Keyser-r7-lanepush-and-phase:** Phase-guard pattern refactor (13+ sites repeat GamePhase::Playing check)
+3. Consider test thoroughness fix: [scoring][nonscorable] should use ShapeGate, not LanePushLeft
+

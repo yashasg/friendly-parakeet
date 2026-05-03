@@ -10487,3 +10487,236 @@ Helpers removed: `centered_rect`, `player_timing_point`, `player_in_timing_windo
 
 Carry-forward: `LanePushDelta` component pattern (emplace at spawn, read at response) is the same factory-locality pattern as the NonScorableTag refactor from Keaton R5.
 
+# Round 6 Decision Drop — LanePushDelta + PendingLanePush Event Refactor
+
+**Date:** 2026-05-04
+**Author:** Keaton (perf+systems)
+**Scope:** Combined delivery of Keaton-r6 lead + Keyser-r5 SRP finding on `collision_system`
+
+---
+
+## Files Modified
+
+| File | Change |
+|---|---|
+| `app/components/obstacle.h` | Added `LanePushDelta { int8_t delta }` component |
+| `app/components/gameplay_intents.h` | Added `PendingLanePush { int8_t delta }` event component |
+| `app/entities/obstacle_entity.cpp` | Emplaced `LanePushDelta` at LanePushLeft/Right spawn (±1) |
+| `app/systems/collision_system.cpp` | New LanePush loop: queries `LanePushDelta`, emplaces `PendingLanePush` on player; removed ternary + direct `p_lane` writes; removed dead `#include <raylib.h>` |
+| `app/systems/all_systems.h` | Declared `lane_push_response_system` |
+| `app/game_loop.cpp` | Wired `lane_push_response_system` after `collision_system`, before `miss_detection_system` |
+| `tests/test_helpers.h` | `make_lane_push` now emplaces `LanePushDelta`; added `gameplay_intents.h` include |
+| `tests/test_collision_system.cpp` | Existing `[lane_push]` tests updated to call `lane_push_response_system`; 2 new separation tests added |
+
+## Files Added
+
+| File | Purpose |
+|---|---|
+| `app/systems/lane_push_response_system.h` | Declaration |
+| `app/systems/lane_push_response_system.cpp` | Consumes `PendingLanePush`, writes `p_lane.target/lerp_t`, removes event |
+
+---
+
+## Architecture (3-line ASCII)
+
+```
+obstacle_entity.cpp:  spawn → emplace LanePushDelta{±1} on obstacle
+collision_system:     detect overlap → emplace PendingLanePush{delta} on player
+lane_push_response:   consume PendingLanePush → write Lane.target/lerp_t → remove
+```
+
+---
+
+## Frame-Order: Same-Frame Response
+
+`lane_push_response_system` is wired immediately after `collision_system` in `game_loop.cpp`:
+
+```cpp
+collision_system(reg, dt);
+lane_push_response_system(reg, dt);
+miss_detection_system(reg, dt);
+```
+
+The push is **not deferred** — it applies in the same fixed timestep tick, before `player_movement_system` runs on the next frame. This matches the pre-refactor behavior exactly: old code wrote `p_lane.target` during collision, new code writes it one function call later in the same frame.
+
+---
+
+## Behavior-Preservation Evidence
+
+- All 4 existing `[lane_push]` regression tests pass after adding `lane_push_response_system` call.
+- `lane.target < 0` guard preserved in response system — no double-push during active transitions.
+- Boundary check `dest >= 0 && dest < LANE_COUNT` preserved.
+- Obstacle always gets `ScoredTag` regardless of lane overlap (unchanged).
+- `!reg.all_of<PendingLanePush>(player_entity)` check ensures first obstacle wins if multiple LanePush obstacles are in range simultaneously (matches old behavior where first push set `target >= 0` blocking subsequent pushes).
+
+---
+
+## Bench Delta on collision_system
+
+Bench fixture is ShapeGate-only; no LanePush obstacles in fixture.
+
+| Scenario | Mean |
+|---|---|
+| 1 obstacle at player | ~128 ns |
+| 10 obstacles scattered | ~171 ns |
+
+**No regression** observed. The new LanePush loop is a separate view query (`LanePushDelta`) — it's a no-op on the bench fixture (empty view, zero iterations). The ternary removal and `p_lane` write removal are net wins when LanePush obstacles are present.
+
+**Fixture follow-up:** The bench doesn't exercise LanePush paths. A dedicated bench with LanePush obstacles would show the perf gain from the positive-discriminant view (`LanePushDelta`) vs the old structural-negative approach. Defer to a future round.
+
+---
+
+## Build/Test Status
+
+- **Build:** Zero warnings, `-Wall -Wextra -Werror` clean.
+- **Tests:** `775 test cases / 2223 assertions — All tests passed`
+  - 4 existing `[lane_push]` tests: ✅ behavior preserved
+  - 2 new separation tests: ✅ `PendingLanePush` event/consume verified
+
+---
+
+## Surprises
+
+1. **`edit` tool silently no-ops** on `collision_system.cpp` for this session — all edits to that file required direct bash writes. Unrelated to the refactor but worth noting for Scribe.
+2. **Dead `#include <raylib.h>`** (Keyser-r5 finding) removed as part of this pass — no separate cleanup needed.
+
+---
+
+## Top Follow-up for Round 7
+
+🟡 **Phase-guard proliferation**: `collision_system:35`, `motion_system:7`, `scroll_system:7`, `scoring_system:64`, and now `lane_push_response_system` (implicitly guarded via empty view) all repeat the same `GamePhase::Playing` guard pattern. A shared `phase_gate` helper or system-execution group would eliminate this. Keyser flagged this as a cross-cutting pattern in R4/R5 audits.
+
+# Keyser R6 — NonScorableTag Verification + Tag-vs-Kind Pattern Audit
+
+**Date:** 2026-05-03
+**Author:** Keyser (SOLID Auditor)
+**Scope:** (1) Verify Keaton r5 NonScorableTag refactor correctness; (2) classify remaining ObstacleKind branch sites codebase-wide.
+**Git baseline:** HEAD `0bca3aa` (Ralph Round 4 logging); pre-refactor ref `29e3ab8` (Ralph Round 3 merge).
+
+---
+
+## Section 1 — NonScorableTag Refactor Verification
+
+### 1.1 Behavior Preservation Table
+
+| Claim | Verified | Evidence |
+|---|---|---|
+| Old path removed both `ScoredTag` AND `Obstacle` | ✅ Yes | `29e3ab8:scoring_system.cpp:161–162`: `reg.remove<Obstacle>(r.e)` + `reg.remove<ScoredTag>(r.e)`. New cleanup pass (current `scoring_system.cpp:228–236`) also removes both. |
+| Old path did NOT run scoring logic for LanePush | ✅ Yes | `29e3ab8:scoring_system.cpp:159–163`: `continue` jumped over all scoring math after the two removes. |
+| New path correctly excludes from scoring | ✅ Yes | `scoring_system.cpp:131`: `entt::exclude<MissTag, NonScorableTag>` on `hit_view`; `:143`: same on `model_hit_view`. No LanePush entity enters `hit_buf`. |
+| Cleanup happens in same tick, no inter-system window | ✅ Yes | Both hit processing and NonScorable cleanup pass are sequential within a single `scoring_system()` call. No yielding between passes; no other system can observe stale `ScoredTag` on a NonScorable entity. |
+| `!hit_buf.empty()` guard equivalence | ✅ Yes | Old: LanePush entities entered `hit_buf` (included in pre-refactor `hit_view`), so guard was false only when truly nothing had ScoredTag. New: LanePush excluded from `hit_view`, cleanup is unconditional. Semantically identical — only "real" scored obstacles trigger the popup/chain block. |
+| MissTag path unchanged for NonScorable | ✅ Yes | `miss_view` (`scoring_system.cpp:94`) has no `NonScorableTag` exclusion — unchanged from pre-refactor. A LanePush entity receiving `MissTag` goes through the miss path in both old and new code. `ns_view` at `:218` already excludes `MissTag`, preventing double-processing. |
+| `NonScorableTag` emplaced at spawn | ✅ Yes | `obstacle_entity.cpp:82`: `reg.emplace<NonScorableTag>(e)` for both `LanePushLeft` and `LanePushRight` cases. |
+
+**Verdict: Behavior preservation CONFIRMED.** The only structural difference is that cleanup moved from inline-in-hit-loop to a dedicated pass — both execute within the same function frame, no ordering hazard.
+
+---
+
+### 1.2 One Subtle Structural Difference (Non-Breaking)
+
+In the old code, `hit_buf` contained LanePush records during hit processing. In the new code, `hit_buf` is empty for LanePush entities; cleanup re-uses `scratch.hit_buf` as `cleanup_buf` (`scoring_system.cpp:223`). This is safe: the hit pass is fully exhausted before the cleanup pass accesses the buffer. Documented with the `// Re-use hit_buf` comment at `:222`. No concern.
+
+---
+
+### 1.3 Test Thoroughness
+
+| Test | Tag | Evidence | Gap |
+|---|---|---|---|
+| `[scoring][nonscorable]` (`test_scoring_system.cpp:244`) | ✅ Uses `NonScorableTag` as mechanism | `test_scoring_system.cpp:257`: `reg.emplace<NonScorableTag>(e)`. Verifies score unchanged, chain unchanged, no popup, `ScoredTag`+`Obstacle` stripped. | 🟡 Entity uses `ObstacleKind::LanePushLeft` (`:255`). The test COMMENT states "regardless of its ObstacleKind" but the test body doesn't instantiate a non-LanePush kind. A test with `ObstacleKind::ShapeGate` + `NonScorableTag` would prove tag-independence from kind and make it impossible to regress by reintroducing an inline kind guard without breaking the OCP test. |
+| `[scoring][lane_push]` tests (`test_scoring_extended.cpp:176, 210`) | ✅ Correctly retrofitted | Both entities gained `reg.emplace<NonScorableTag>(lp)` at `:189` and `:223`. These are **regression** tests for LanePush behavior, not OCP proofs. Their coupling to `LanePushLeft/Right` kind is intentional and correct. |
+
+**Verdict: Test thoroughness PARTIAL.** The new `[nonscorable]` test validates the right behavior but uses `LanePushLeft` as the obstacle kind, coupling the test body to the legacy mechanism it replaced. True OCP proof requires a non-LanePush kind (e.g., `ObstacleKind::ShapeGate`) with `NonScorableTag` to demonstrate kind-independence.
+
+**Recommended fix for `[scoring][nonscorable]`:** Change entity kind from `LanePushLeft` to `ObstacleKind::ShapeGate` (or `ComboGate`). The test then cannot possibly pass if someone reintroduces an inline `if (kind == LanePushLeft)` guard. One-line change; no behavior impact since scoring_system operates purely on tags now.
+
+---
+
+### 1.4 Migration-Bridge Comment (`motion_system.cpp:17–21`)
+
+| Claim | Verified | Evidence |
+|---|---|---|
+| Comment accurately describes block purpose | ✅ Yes | `motion_system.cpp:18`: "migration bridge for issue #349 — delete when obstacles fully migrate to WorldTransform+MotionVelocity". Keyser r4 named the block and issue (`keyser-r4-motion-and-obstaclekind.md:SRP finding`); the comment reproduces the exact issue number and the migration endpoint. |
+| Comment is positioned at the right block | ✅ Yes | The comment is at line 18, inside the `if (auto* wt = reg.try_get<WorldTransform>(entity))` block at `:17–21`. Keyser r4 specifically flagged lines 17–19 (`try_get<WorldTransform>` sync). Exact placement. |
+
+**Verdict: Migration-bridge comment CORRECT.** 🟢
+
+---
+
+### 1.5 scoring_system Module Health Update
+
+**Was: 🟡** (r4: OCP violation — inline `LanePushLeft/Right` kind guard in hit processing loop)
+
+| Item | Status | Note |
+|---|---|---|
+| OCP violation (inline kind guard) | ✅ Resolved | `entt::exclude<NonScorableTag>` + cleanup pass replaces kind branch. Zero kind references remain in `scoring_system.cpp` (confirmed: `grep -n "LanePushLeft\|LanePushRight" scoring_system.cpp` → no output). |
+| `is_bar` check (`scoring_system.cpp:107`) | ✅ Acceptable | `kind == LowBar || kind == HighBar` sets `gos->cause = DeathCause::HitABar` vs `MissedABeat`. This is **semantic dispatch** (two different death-cause enum values based on kind), NOT a "skip this entity" exclusion. OCP is not at risk here — adding new ObstacleKind does not require editing this line unless the new kind is also a bar. Low-priority tag candidate (see Section 2). |
+| Phase guard repeat | 🟡 Carry-forward | Not addressed; already in backlog. Not a blocker for 🟢. |
+
+**New: 🟢.** The primary OCP violation is eliminated. The remaining `is_bar` dispatch is semantically appropriate and falls below the 🟡 threshold.
+
+---
+
+## Section 2 — Tag-vs-Kind Opportunity Table (Codebase-Wide)
+
+### Methodology
+
+Searched `app/` for `kind ==`, `switch (kind)`, and `if (kind ==`. Located 13 branch sites across 5 files. Classified each as: **Tag** (skip/include exclusion — tag pattern applies), **Component** (dispatch to different data at spawn), **Data table** (kind→value map, no runtime branch needed), **Factory/Keep** (spawning dispatch, legitimately kind-specific), or **Data pipeline** (operates on BeatMap structs, not ECS entities — tag pattern inapplicable).
+
+---
+
+### Site Table
+
+| # | File | Line(s) | Pattern | Current Code | Recommended Fix | Priority |
+|---|---|---|---|---|---|---|
+| 1 | `app/systems/collision_system.cpp` | 184 | **Component** | `int8_t delta = (obs.kind == ObstacleKind::LanePushLeft) ? -1 : 1;` Derives lane-push direction at collision time from kind. | `struct LanePushDelta { int8_t delta; };` emplaced at spawn (`obstacle_entity.cpp:76–83`) with `-1`/`+1`. Collision reads component; no kind branch. Same factory-locality pattern as `NonScorableTag`. | 🟡 (planned Keaton r6) |
+| 2 | `app/systems/scoring_system.cpp` | 107 | **Component** | `const bool is_bar = (kind == LowBar \|\| kind == HighBar); gos->cause = is_bar ? HitABar : MissedABeat;` | `struct BarObstacleTag {};` emplaced at spawn for LowBar+HighBar. Scoring reads `reg.all_of<BarObstacleTag>(e)`. Eliminates the only remaining kind branch in scoring_system. | 🟢 (low priority; single-site, binary dispatch) |
+| 3 | `app/systems/beat_scheduler_system.cpp` | 21–24 | **Data pipeline — Keep as-is** | `if (entry.kind == LowBar \|\| entry.kind == HighBar) { ++idx; continue; }` Skips bar entries in the beat scheduler (bars use model-authority spawning). Operates on `BeatMap::Entry` structs, not ECS entities. | The `BeatMapEntry` struct could gain a `bool uses_model_authority` field, but this would be a data-schema change with wider impact than a single ECS tag. The named helper `is_temporarily_disabled_kind()` in `beat_map_loader.cpp:55` already encapsulates the same classification. **Keep as-is.** | 🟢 / no action |
+| 4 | `app/systems/beat_scheduler_system.cpp` | 58–63 | **Data pipeline — Keep as-is** | Kind-based x_pos selection: LanePush/ShapeGate use `LANE_X[lane]`; LaneBlock derives from `blocked_mask`; others default to center. Spawning-time dispatch on BeatMap entries. | Per-kind x_pos strategy could live in a small `ObstacleKind → x_pos_strategy` lookup table, but this is spawning factory logic with access to all spawn parameters. **Keep as-is.** | 🟢 / no action |
+| 5 | `app/util/beat_map_loader.cpp` | 55 | **Data pipeline — Keep as-is** | `is_temporarily_disabled_kind(kind)` helper checks LowBar/HighBar. Data validation. | Already a named function. Consider replacing with an `ObstacleKind` attribute table when the "temporarily disabled" state is formalized (issue #349 migration endpoint). No action now. | 🟢 / no action |
+| 6 | `app/util/beat_map_loader.cpp` | 307–327 | **Data pipeline — Keep as-is** | Validation rules: lane range for ShapeGate/SplitPath, blocked_mask for ComboGate, shape-gap for shape-having kinds. Data integrity checks on deserialized JSON. | These are schema validation rules — they belong close to the parser. A kind-attribute table could reduce the `has_shape` multi-condition, but the gain is marginal vs. the complexity of a runtime attribute table. **Keep as-is.** | 🟢 / no action |
+| 7 | `app/entities/obstacle_render_entity.cpp` | 136–148 | **Data table candidate** | `bar_height_for(kind)` does `switch (kind) { case LowBar: height = LOWBAR_3D_HEIGHT; case HighBar: height = HIGHBAR_3D_HEIGHT; }` Kind → float constant. | Static `ObstacleKind → float` lookup table (`std::array` indexed by kind value, or `std::unordered_map`). Eliminates the switch in this helper. However, this is a rendering helper, not a hot path, and involves only 2 cases. | 🟢 (trivial, deferred) |
+| 8 | `app/entities/obstacle_render_entity.cpp` | 159+ | **Factory/Keep as-is** | `switch (obs.kind)` in `spawn_obstacle_meshes` dispatches different mesh-creation logic per kind. | This is a **factory dispatch** — each kind creates a structurally different mesh hierarchy. This is the canonical correct use of `switch(kind)`: different behavior, not "skip or include." **Keep as-is.** | 🟢 / no action |
+
+---
+
+### GamePhase::Playing Guard (17 sites)
+
+`if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;` appears in 13+ system functions (`beat_log_system`, `beat_scheduler_system`, `collision_system`, `energy_system`, `miss_detection_system`, `motion_system`, `player_input_system` ×2, `player_movement_system`, `popup_feedback_system`, `scoring_system`, `scroll_system`, `shape_window_system`, `song_playback_system`).
+
+**Assessment: Overengineering to tag-replace.** A `PhasePlayingTag` on registry context would require:
+- Lifecycle management: emplace on `Playing` transition, remove on exit.
+- Each system replaces a 1-line guard with a different 1-line guard.
+- Net complexity: +1 component lifecycle + same number of lines.
+
+The existing pattern is correct, idiomatic, and O(1). The repeat is documentation of system intent, not duplication of logic. **Keep as-is.**
+
+---
+
+## Recommendation — Round 7 Target
+
+**After Keaton r6 completes** (`LanePushDelta` component + `PendingLanePush` combined refactor at `collision_system.cpp:184`):
+
+**Round 7 target: `BarObstacleTag` for `scoring_system.cpp:107`.**
+
+- Adds `struct BarObstacleTag {};` to `obstacle.h`.
+- Emplaces it in `obstacle_entity.cpp` for `LowBar` and `HighBar`.
+- Replaces the `is_bar` kind check in `scoring_system.cpp:107` with `reg.all_of<BarObstacleTag>(e)`.
+- Eliminates the **only remaining kind branch in scoring_system**, completing the module's transition from kind-at-runtime to tag-at-spawn.
+- Small, contained, same factory-locality pattern as `NonScorableTag` and `LanePushDelta`.
+- scoring_system becomes kind-branch-free.
+
+Estimated scope: 4 files, ~8 lines changed. Low risk.
+
+The `bar_height_for(kind)` switch in `obstacle_render_entity.cpp:136` can be folded into the same round as a secondary task (add `float bar_height` to `DrawSize` or a new `BarHeight` component at spawn, read it in the render entity instead of switching on kind). Optional — the render helper is not a hot path.
+
+---
+
+## Ralph Decision Log
+
+- scoring_system: **🟡 → 🟢** (OCP resolved; `is_bar` dispatch is acceptable, not a violation).
+- motion_system bridge comment: **✅ correct and well-positioned** per Keyser r4 spec.
+- `[scoring][nonscorable]` test: **🟡 gap** — entity kind should be `ShapeGate` not `LanePushLeft` to fully prove OCP. Recommend Keaton address in the same PR as any r7 work (one-line fix).
+- `LanePushDelta` component: confirmed as round 7 target after Keaton r6 lands.
+- `BarObstacleTag`: confirmed as round 7 secondary target (completes scoring_system kind-branch elimination).
+

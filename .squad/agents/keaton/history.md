@@ -317,3 +317,49 @@ The cleanup pass was required because a naive exclude-view alone leaves ScoredTa
 Merged to `.squad/decisions.md` under "Keaton R5 — NonScorableTag Refactor" section.
 
 
+
+---
+
+## 2026-05-04 — Ralph Round 6: LanePushDelta + PendingLanePush Event Refactor
+
+**Loop:** Ralph Round 6 (SOLID + ECS patterns)  
+**Task:** Implement Keyser-r5 finding — extract SRP violation (LanePush loop direct Lane mutation) from collision_system via component-event-system pattern  
+**Verdict:** ✅ MERGED
+
+### Execution Summary
+
+Per Keyser's R5 audit (SRP violation: LanePush loop directly mutates player Lane in collision_system), Keaton implemented component-event-system pattern: added `LanePushDelta` component emplaced at spawn, collision_system emplaces `PendingLanePush` event on player, and new `lane_push_response_system` consumes event and applies Lane mutation. Combined delivery with Keyser's accompanying NonScorableTag verification (R6 parallel work).
+
+### Work Completed
+
+1. **Added `LanePushDelta` component** to `app/components/obstacle.h` — carries lane-push direction (±1)
+2. **Emplaced at spawn** in `obstacle_entity.cpp:76–83` with correct sign (−1 for LanePushLeft, +1 for LanePushRight)
+3. **Updated collision_system** — new LanePush loop queries `LanePushDelta`, emplaces `PendingLanePush{delta}` on player; removed ternary + direct Lane writes
+4. **Added PendingLanePush event** to `app/components/gameplay_intents.h`
+5. **Implemented lane_push_response_system** — consumes `PendingLanePush`, writes `Lane.target` and `Lane.lerp_t`, removes event
+6. **Wired execution order** — response system runs immediately after collision_system in `game_loop.cpp` (same-frame response, preserves pre-refactor timing)
+7. **Updated test factories** — `make_lane_push` emplaces `LanePushDelta`; added 2 new separation tests verifying event consumption
+8. **Updated 4 existing [lane_push] tests** — retrofitted to call `lane_push_response_system` post-collision
+
+### Build & Test
+
+- **Build:** Zero warnings (clang -Wall -Wextra -Werror)
+- **Tests:** 775 test cases / 2223 assertions — all pass (+2 new separation tests)
+- **Bench:** collision_system 128–171 ns range (no regression; ternary removal is perf win when LanePush obstacles present)
+
+### Behavior Preservation
+
+- Same-frame execution order preserved (response runs after collision in the same `game_loop` tick)
+- Lane target guard (`< 0` check) preserved in response system — no double-push during active transitions
+- Boundary check preserved — no out-of-range lane assignments
+- Obstacle scoring unchanged — all obstacles receive `ScoredTag` regardless of lane overlap
+- First-win priority preserved — `!reg.all_of<PendingLanePush>(player_entity)` ensures first LanePush win if multiple obstacles in range simultaneously
+
+### Pattern Note for Future Reference
+
+**Combined refactors are cheaper to audit than sequential ones when two findings touch the same neighborhood — fuse them when the audits overlap.** Keaton-r6 combined the LanePushDelta component pattern (from Keyser-r5's SRP finding) with Keyser-r6's NonScorableTag verification work. Reviewing both in parallel from the same decision inbox is faster and higher-confidence than merging them sequentially: overlapping context reduces re-audit cycles.
+
+### Decision
+
+Merged to `.squad/decisions.md` under "Round 6 Decision Drop — LanePushDelta + PendingLanePush Event Refactor" section.
+

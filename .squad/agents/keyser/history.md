@@ -365,3 +365,65 @@ Merged to `.squad/decisions.md` under "Keyser R5 — collision_system SOLID Audi
 
 
 
+
+---
+
+## 2026-05-04 — Ralph Round 6: NonScorableTag Verification + Tag-vs-Kind Audit
+
+**Loop:** Ralph Round 6 (SOLID + ECS patterns)  
+**Task:** Verify Keaton-r5's NonScorableTag refactor for behavior preservation; classify all remaining ObstacleKind branch sites codebase-wide  
+**Verdict:** ✅ MERGED — scoring_system: 🟡 → 🟢
+
+### Execution Summary
+
+Keyser conducted behavior-preservation audit of Keaton-r5's NonScorableTag refactor by diffing pre-refactor (git ref `29e3ab8`) vs. post-refactor code path. Verified cleanup pass removes identical components (ScoredTag + Obstacle) as old inline continue. Classified all 13 kind-branch sites codebase-wide: 2 actionable (tag patterns), 6 keep-as-is (factory dispatch, data pipeline), 5 deferred (minor helpers). Updated module health.
+
+### Work Completed
+
+1. **Behavior-Preservation Audit**
+   - Compared `29e3ab8:scoring_system.cpp:159–163` (old inline continue removing ScoredTag+Obstacle) vs. `scoring_system.cpp:218–236` (new cleanup pass)
+   - Verified cleanup happens in same function frame (no inter-system window)
+   - Verified miss_view path unchanged for NonScorableTag entities
+   - Verified LanePush entities no longer enter hit_buf (excluded from hit_view)
+   - **Result:** Behavior preservation CONFIRMED
+
+2. **Test Thoroughness Gap Identified**
+   - Test `[scoring][nonscorable]` validates correctness but uses ObstacleKind::LanePushLeft
+   - Gap: test couples to legacy mechanism; cannot regress by reintroducing kind guard
+   - Fix: change entity kind from LanePushLeft to ShapeGate; one-line change
+   - Severity: 🟡 (test is correct, but OCP proof incomplete)
+
+3. **Kind-vs-Tag Classification** — 13 sites across 5 files:
+   - **🔴 (actionable tag refactors):** None remaining in scoring_system (OCP resolved)
+   - **🟡 (secondary targets, single-site, low priority):** 1 site
+     - scoring_system.cpp:107 — `is_bar` dispatch → recommend `BarObstacleTag` (Round 7 optional)
+   - **🟢 (keep-as-is, design-correct):** 6 sites
+     - beat_scheduler_system (data pipeline — BeatMap, not ECS)
+     - beat_map_loader (data validation — parser, not runtime)
+     - obstacle_render_entity (factory dispatch — different mesh hierarchies per kind)
+     - bar_height_for helper (trivial render-time constant lookup, deferred)
+   - **Deferred:** 5 sites (GamePhase::Playing guard, temporary workarounds, etc.)
+
+4. **Module Health Update**
+   - **scoring_system:** �� → 🟢 (OCP violation resolved; remaining is_bar dispatch is acceptable)
+   - **motion_system bridge:** ✅ verified correct per Keyser-r4 spec
+   - **collision_system:** Pending Keaton-r6 LanePushDelta + PendingLanePush delivery
+
+5. **Round 7 Target Recommendation**
+   - **BarObstacleTag** for scoring_system.cpp:107 (same factory-locality pattern as NonScorableTag)
+   - 4 files, ~8 lines changed, low risk
+   - Eliminates only remaining kind branch in scoring_system
+
+### Build & Test
+
+- **Validation:** git diff + codebase-wide grep audit (no test regressions)
+- **Pattern confirmation:** Migration-bridge comment in motion_system.cpp:17–21 correct and well-positioned
+
+### Pattern Note for Future Reference
+
+**Cleanup-pass refactors of inline `continue` paths preserve behavior iff the components removed AND the side effects (popup queue, score events) match; verify both via git diff before approving.** When extracting an exclusion from a hot loop to a dedicated cleanup pass, confirm: (1) old path's component removals are replicated in new pass, (2) old path's queues/events are guarded consistently (e.g., hit_buf emptiness), (3) cleanup and hit processing execute in same function frame. This tri-part verification transforms a risky refactor into a provable equivalence.
+
+### Decision
+
+Merged to `.squad/decisions.md` under "Keyser R6 — NonScorableTag Verification + Tag-vs-Kind Pattern Audit" section.
+
