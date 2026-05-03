@@ -42,6 +42,7 @@ void game_state_system(entt::registry& reg, float dt) {
         if (auto* input = reg.ctx().find<InputState>()) {
             input->touch_down = false;
             input->touch_up = false;
+            input->click = false;
             input->touching = false;
             input->active_source = InputSource::None;
             input->duration = 0.0f;

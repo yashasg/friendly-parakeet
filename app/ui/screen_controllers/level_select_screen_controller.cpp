@@ -61,16 +61,10 @@ Rectangle difficulty_button_rect(int index, int selected_level) {
     };
 }
 
-void handle_level_card_pointer_input(entt::registry& reg, LevelSelectState& lss, const InputState& input) {
+void handle_level_card_pointer_input(LevelSelectState& lss, const InputState& input) {
     Vector2 pointer = {};
     const bool released = pointer_release_position(input, pointer);
-    if (!released && !IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) return;
-
-    if (!released) {
-        const Vector2 raw = GetMousePosition();
-        const auto& st = reg.ctx().get<ScreenTransform>();
-        pointer = {(raw.x - st.offset_x) / st.scale, (raw.y - st.offset_y) / st.scale};
-    }
+    if (!released) return;
 
     for (int i = 0; i < LevelSelectState::LEVEL_COUNT; ++i) {
         if (CheckCollisionPointRec(pointer, level_card_rect(i))) {
@@ -91,7 +85,7 @@ void render_level_select_screen_ui(entt::registry& reg) {
     const auto& input = reg.ctx().get<InputState>();
     auto& state = level_select_controller.state();
     auto& gs = reg.ctx().get<GameState>();
-    handle_level_card_pointer_input(reg, lss, input);
+    handle_level_card_pointer_input(lss, input);
     
     int saved_text_size = GuiGetStyle(DEFAULT, TEXT_SIZE);
     
