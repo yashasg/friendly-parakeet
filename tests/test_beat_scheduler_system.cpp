@@ -299,10 +299,10 @@ TEST_CASE("beat_scheduler: obstacles have velocity matching scroll_speed", "[bea
 
     beat_scheduler_system(reg, 0.016f);
 
-    auto view = reg.view<ObstacleTag, Velocity>();
+    auto view = reg.view<ObstacleTag, MotionVelocity>();
     for (auto [e, vel] : view.each()) {
-        CHECK(vel.dy == song.scroll_speed);
-        CHECK(vel.dx == 0.0f);
+        CHECK(vel.value.y == song.scroll_speed);
+        CHECK(vel.value.x == 0.0f);
     }
 }
 

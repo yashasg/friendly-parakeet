@@ -18,7 +18,7 @@ struct ObstacleSpawnParams {
 };
 
 // Creates and fully configures an obstacle entity:
-//   ObstacleTag + Velocity + DrawLayer + kind-specific components
+//   ObstacleTag + MotionVelocity + DrawLayer + kind-specific components
 //   + BeatInfo (if beat_info != nullptr) + mesh child entities.
 // Owns the complete component bundle contract for obstacles.
 entt::entity spawn_obstacle(entt::registry& reg, const ObstacleSpawnParams& params,

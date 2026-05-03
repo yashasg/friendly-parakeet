@@ -306,10 +306,10 @@ TEST_CASE("beat_scheduler: scroll speed matches song state", "[rhythm][scheduler
     map.beats.push_back({4, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
     song.playing = true; song.song_time = 0.1f;
     beat_scheduler_system(reg, 0.016f);
-    auto obs_view = reg.view<ObstacleTag, Velocity>();
+    auto obs_view = reg.view<ObstacleTag, MotionVelocity>();
     REQUIRE(std::distance(obs_view.begin(), obs_view.end()) == 1);
     for (auto [e, vel] : obs_view.each()) {
-        CHECK_THAT(vel.dy, WithinAbs(song.scroll_speed, 0.1f));
+        CHECK_THAT(vel.value.y, WithinAbs(song.scroll_speed, 0.1f));
     }
 }
 

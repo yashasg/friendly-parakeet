@@ -229,10 +229,10 @@ TEST_CASE("ecs: make_player creates proper entity", "[ecs]") {
     CHECK(reg.all_of<TagWorldPass>(p));
 }
 
-TEST_CASE("components: Velocity default is zero", "[components]") {
-    Velocity v{};
-    CHECK(v.dx == 0.0f);
-    CHECK(v.dy == 0.0f);
+TEST_CASE("components: MotionVelocity explicit construction", "[components][transform]") {
+    MotionVelocity mv{{5.0f, 10.0f}};
+    CHECK(mv.value.x == 5.0f);
+    CHECK(mv.value.y == 10.0f);
 }
 
 TEST_CASE("components: Color construction", "[components]") {

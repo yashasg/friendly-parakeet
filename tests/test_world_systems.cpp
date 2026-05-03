@@ -3,46 +3,50 @@
 
 // ── motion_system ────────────────────────────────────────────
 //
-// Two paths:
-//   vel_view   — legacy Position+Velocity (freeplay obstacles, issue #349 migration bridge)
-//   motion_view — modern WorldTransform+MotionVelocity (popups, particles, player)
+// Single path after #349 migration:
+//   motion_view — WorldTransform+MotionVelocity (obstacles, popups, particles, player)
+//                 also bridges to Position when both components are present.
 
-TEST_CASE("motion: entities move by velocity * dt", "[motion]") {
+TEST_CASE("motion: WorldTransform+MotionVelocity moves by velocity * dt", "[motion]") {
     auto reg = make_registry();
     auto e = reg.create();
-    reg.emplace<Position>(e, 100.0f, 200.0f);
-    reg.emplace<Velocity>(e, 10.0f, 20.0f);
+    reg.emplace<WorldTransform>(e, WorldTransform{{100.0f, 200.0f}});
+    reg.emplace<MotionVelocity>(e, MotionVelocity{{10.0f, 20.0f}});
 
     motion_system(reg, 1.0f);
 
-    CHECK(reg.get<Position>(e).x == 110.0f);
-    CHECK(reg.get<Position>(e).y == 220.0f);
+    CHECK(reg.get<WorldTransform>(e).position.x == 110.0f);
+    CHECK(reg.get<WorldTransform>(e).position.y == 220.0f);
 }
 
-TEST_CASE("motion: zero velocity means no movement", "[motion]") {
+TEST_CASE("motion: zero MotionVelocity means no movement", "[motion]") {
     auto reg = make_registry();
     auto e = reg.create();
-    reg.emplace<Position>(e, 100.0f, 200.0f);
-    reg.emplace<Velocity>(e, 0.0f, 0.0f);
+    reg.emplace<WorldTransform>(e, WorldTransform{{100.0f, 200.0f}});
+    reg.emplace<MotionVelocity>(e, MotionVelocity{{0.0f, 0.0f}});
 
     motion_system(reg, 1.0f);
 
-    CHECK(reg.get<Position>(e).x == 100.0f);
-    CHECK(reg.get<Position>(e).y == 200.0f);
+    CHECK(reg.get<WorldTransform>(e).position.x == 100.0f);
+    CHECK(reg.get<WorldTransform>(e).position.y == 200.0f);
 }
 
-TEST_CASE("motion: multiple entities updated", "[motion]") {
+TEST_CASE("motion: Position bridge syncs when WorldTransform+MotionVelocity+Position present", "[motion]") {
     auto reg = make_registry();
     auto e1 = reg.create();
+    reg.emplace<WorldTransform>(e1, WorldTransform{{0.0f, 0.0f}});
+    reg.emplace<MotionVelocity>(e1, MotionVelocity{{1.0f, 0.0f}});
     reg.emplace<Position>(e1, 0.0f, 0.0f);
-    reg.emplace<Velocity>(e1, 1.0f, 0.0f);
     auto e2 = reg.create();
+    reg.emplace<WorldTransform>(e2, WorldTransform{{0.0f, 0.0f}});
+    reg.emplace<MotionVelocity>(e2, MotionVelocity{{0.0f, 1.0f}});
     reg.emplace<Position>(e2, 0.0f, 0.0f);
-    reg.emplace<Velocity>(e2, 0.0f, 1.0f);
 
     motion_system(reg, 10.0f);
 
+    CHECK(reg.get<WorldTransform>(e1).position.x == 10.0f);
     CHECK(reg.get<Position>(e1).x == 10.0f);
+    CHECK(reg.get<WorldTransform>(e2).position.y == 10.0f);
     CHECK(reg.get<Position>(e2).y == 10.0f);
 }
 
@@ -308,26 +312,26 @@ TEST_CASE("scroll: no movement when not in Playing phase", "[scroll]") {
     auto reg = make_registry();
     reg.ctx().get<GameState>().phase = GamePhase::Title;
     auto e = reg.create();
-    reg.emplace<Position>(e, 100.0f, 200.0f);
-    reg.emplace<Velocity>(e, 10.0f, 20.0f);
+    reg.emplace<WorldTransform>(e, WorldTransform{{100.0f, 200.0f}});
+    reg.emplace<MotionVelocity>(e, MotionVelocity{{10.0f, 20.0f}});
 
     scroll_system(reg, 1.0f);
 
-    CHECK(reg.get<Position>(e).x == 100.0f);
-    CHECK(reg.get<Position>(e).y == 200.0f);
+    CHECK(reg.get<WorldTransform>(e).position.x == 100.0f);
+    CHECK(reg.get<WorldTransform>(e).position.y == 200.0f);
 }
 
 TEST_CASE("motion: no movement when not in Playing phase", "[motion]") {
     auto reg = make_registry();
     reg.ctx().get<GameState>().phase = GamePhase::Title;
     auto e = reg.create();
-    reg.emplace<Position>(e, 100.0f, 200.0f);
-    reg.emplace<Velocity>(e, 10.0f, 20.0f);
+    reg.emplace<WorldTransform>(e, WorldTransform{{100.0f, 200.0f}});
+    reg.emplace<MotionVelocity>(e, MotionVelocity{{10.0f, 20.0f}});
 
     tick_playing_systems(reg, 1.0f);
 
-    CHECK(reg.get<Position>(e).x == 100.0f);
-    CHECK(reg.get<Position>(e).y == 200.0f);
+    CHECK(reg.get<WorldTransform>(e).position.x == 100.0f);
+    CHECK(reg.get<WorldTransform>(e).position.y == 200.0f);
 }
 
 // ── cleanup: edge cases ─────────────────────────────────────

@@ -36,10 +36,10 @@ void scroll_system(entt::registry& reg, float dt) {
 
     // Non-rhythm entities (freeplay obstacles): dt-based
     auto model_view =
-        reg.view<ObstacleTag, ObstacleScrollZ, Velocity>(entt::exclude<BeatInfo>);
+        reg.view<ObstacleTag, ObstacleScrollZ, MotionVelocity>(entt::exclude<BeatInfo>);
     for (auto [entity, oz, vel] : model_view.each()) {
         (void)entity;
-        oz.z += vel.dy * dt;
+        oz.z += vel.value.y * dt;
         if (auto* wt = reg.try_get<WorldTransform>(entity)) {
             wt->position.y = oz.z;
         }

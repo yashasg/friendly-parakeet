@@ -181,7 +181,7 @@ TEST_CASE("scoring: LanePush excluded from chain and popup", "[scoring][lane_pus
     auto lp = reg.create();
     reg.emplace<ObstacleTag>(lp);
     reg.emplace<Position>(lp, constants::LANE_X[1], constants::PLAYER_Y);
-    reg.emplace<Velocity>(lp, 0.0f, song.scroll_speed);
+    reg.emplace<MotionVelocity>(lp, MotionVelocity{{0.0f, song.scroll_speed}});
     reg.emplace<Obstacle>(lp, ObstacleKind::LanePushLeft, int16_t{constants::PTS_LANE_PUSH});
     reg.emplace<DrawSize>(lp, float(constants::PLAYER_SIZE), 80.0f);
     reg.emplace<DrawLayer>(lp, Layer::Game);
@@ -215,7 +215,7 @@ TEST_CASE("scoring: LanePushRight excluded from chain and popup", "[scoring][lan
     auto lp = reg.create();
     reg.emplace<ObstacleTag>(lp);
     reg.emplace<Position>(lp, constants::LANE_X[1], constants::PLAYER_Y);
-    reg.emplace<Velocity>(lp, 0.0f, song.scroll_speed);
+    reg.emplace<MotionVelocity>(lp, MotionVelocity{{0.0f, song.scroll_speed}});
     reg.emplace<Obstacle>(lp, ObstacleKind::LanePushRight, int16_t{constants::PTS_LANE_PUSH});
     reg.emplace<DrawSize>(lp, float(constants::PLAYER_SIZE), 80.0f);
     reg.emplace<DrawLayer>(lp, Layer::Game);

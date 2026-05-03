@@ -81,13 +81,13 @@ static TestPlayerAction determine_action(
         // Estimate from position + velocity
         auto* pos = reg.try_get<Position>(entity);
         auto* oz = reg.try_get<ObstacleScrollZ>(entity);
-        auto* vel = reg.try_get<Velocity>(entity);
-        if (pos && vel && vel->dy > 0.0f) {
+        auto* vel = reg.try_get<MotionVelocity>(entity);
+        if (pos && vel && vel->value.y > 0.0f) {
             action.arrival_time = song.song_time +
-                (constants::PLAYER_Y - pos->y) / vel->dy;
-        } else if (oz && vel && vel->dy > 0.0f) {
+                (constants::PLAYER_Y - pos->y) / vel->value.y;
+        } else if (oz && vel && vel->value.y > 0.0f) {
             action.arrival_time = song.song_time +
-                (constants::PLAYER_Y - oz->z) / vel->dy;
+                (constants::PLAYER_Y - oz->z) / vel->value.y;
         }
     }
 
