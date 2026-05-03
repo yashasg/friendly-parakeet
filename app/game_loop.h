@@ -16,10 +16,6 @@ void game_loop_run(entt::registry& reg);
 // Single frame tick (used by Emscripten main loop callback).
 void game_loop_frame(entt::registry& reg, float& accumulator);
 
-// Fixed-timestep logic tick: game_state → song_playback → playing systems →
-// obstacle_despawn → popup_display → particle.  Exposed for integration tests.
-void tick_fixed_systems(entt::registry& reg, float dt);
-
 // Shutdown: unload GPU resources, close logs, release audio, close window.
 void game_loop_shutdown(entt::registry& reg);
 

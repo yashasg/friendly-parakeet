@@ -19,6 +19,7 @@ static int8_t lane_for_shape_button(Shape shape) {
 }
 
 void player_input_handle_go(entt::registry& reg, const GoEvent& evt) {
+    if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
     auto view = reg.view<PlayerTag, PlayerShape, ShapeWindow, Lane>();
     for (auto [entity, pshape, swindow, lane] : view.each()) {
         int8_t delta = 0;
@@ -39,6 +40,7 @@ void player_input_handle_go(entt::registry& reg, const GoEvent& evt) {
 
 void player_input_handle_press(entt::registry& reg, const ButtonPressEvent& evt) {
     if (evt.kind != ButtonPressKind::Shape) return;  // ignore menu-button events
+    if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
     auto* song = reg.ctx().find<SongState>();
     bool rhythm_mode = (song != nullptr && song->playing);
 

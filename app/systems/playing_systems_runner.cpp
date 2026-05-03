@@ -7,7 +7,7 @@ void tick_playing_systems(entt::registry& reg, float dt) {
     if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
     beat_log_system(reg, dt);
     beat_scheduler_system(reg, dt);
-    player_input_system(reg, dt);         // phase-gated by this runner; internal callbacks carry no redundant guard
+    player_input_system(reg, dt);         // callbacks retain phase guard: dispatcher drain in game_state_system can invoke them in non-Playing phases
     shape_window_system(reg, dt);
     player_movement_system(reg, dt);
     scroll_system(reg, dt);

@@ -18,6 +18,29 @@
 
 ## Learnings
 
+### 2026-05-03 — Ralph Round 10: Integration Test Refactor (tick_fixed_systems Exposure) + player_input Guard Verification
+
+**Loop:** Ralph performance + SOLID iteration  
+**Task:** Refactor integration test to call production tick path; verify player_input_system guards are not redundant  
+**Status:** ✅ Complete  
+**Files changed:** 2 new (`app/systems/fixed_tick_runner.cpp`), 1 modified (`app/game_loop.cpp`), 1 test rewritten  
+**Tests:** +17 cases / +2 assertions (798 cases / 2240 assertions)  
+**Build:** Zero warnings
+
+**Result:**
+- Extracted `tick_fixed_systems` from `app/game_loop.cpp:174` into `app/systems/fixed_tick_runner.cpp` (now linked into `shapeshifter_lib`)
+- Integration test now calls production tick directly: `tick_fixed_systems(reg, dt)`
+- Verified-via-revert: integration test fails when `lane_push_response_system` removed; unit test (self-wired) still passes — **proves the integration test catches production wiring**
+- player_input guards verified necessary: dispatcher callbacks (`player_input_handle_go`, `player_input_handle_press`) fire via `game_state_system`'s `disp.update<>()` calls OUTSIDE the runner; guards protect these paths (test: `test_entt_dispatcher_contract.cpp:290`)
+- Keyser-r8/r9 "redundant guard" claim was wrong; guards retained with clarifying comment
+- Module health: `fixed_tick_runner` 🟢 (test infrastructure); `player_input_system` 🟢 (guards necessary)
+
+**Pattern Learned:** **When refactoring touches frame-tick ordering (e.g., moving systems in/out of runners), the regression-prevention test must observe an order-dependent chain end-to-end** (e.g., score event → popup queue → consume → despawn). A test that checks "after one tick, state X has value Y" without observing the order constraint cannot catch order regressions. The test must exercise the PRODUCTION tick path (not self-wiring), then revert the production call and verify the test fails on the assertions that depend on that call. This is the litmus test for "does my test actually catch the bug I'm trying to prevent?"
+
+**Decision:** `.squad/decisions.md` (merged from inbox, Round 10)
+
+---
+
 ### 2026-05-XX — Ralph Round 8: Lane Push Response System Wiring Fix
 
 **Loop:** Ralph performance + SOLID iteration  

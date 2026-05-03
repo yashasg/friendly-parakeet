@@ -41,6 +41,11 @@ void energy_system(entt::registry& reg, float dt);
 // Call from tick_fixed_systems in place of the 13 individual Playing-gated calls.
 void tick_playing_systems(entt::registry& reg, float dt);
 
+// Fixed-step tick: game_state → song_playback → Playing systems →
+// obstacle_despawn → popup_display → particle.
+// Exposed for integration tests; implementation in fixed_tick_runner.cpp.
+void tick_fixed_systems(entt::registry& reg, float dt);
+
 // Phase 6: Cleanup
 void particle_system(entt::registry& reg, float dt);
 // Destroys obstacle entities that have scrolled past the camera's far-Z boundary.

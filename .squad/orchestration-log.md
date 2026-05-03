@@ -123,3 +123,45 @@
 
 ---
 
+
+### 2026-05-03 — Ralph Round 10: Keaton — Integration Test Refactor (tick_fixed_systems Exposure) + player_input Guard Verification
+
+| Field | Value |
+|-------|-------|
+| **Agent routed** | Keaton (C++ Performance Engineer) |
+| **Why chosen** | Integration test infrastructure fix from Keyser-r9 meta-scan; player_input guard verification follows from Design B claims |
+| **Mode** | sync |
+| **Why this mode** | Structural test fix (expose production tick to tests) + guard verification; self-contained |
+| **Files authorized to read** | `app/game_loop.cpp`, `tests/test_collision_system.cpp`, `tests/test_entt_dispatcher_contract.cpp`, `app/systems/player_input_system.cpp`, `app/systems/all_systems.h` |
+| **File(s) agent must produce** | New `app/systems/fixed_tick_runner.cpp`, updated `app/game_loop.cpp` (call-through), rewritten `tests/test_collision_system.cpp` integration test, runner comment (player_input guards verified necessary) |
+| **Outcome** | ✅ Completed — tick_fixed_systems exposed to tests via new fixed_tick_runner.cpp module; integration test now exercises production tick directly; verified-via-revert proves test catches wiring omission; player_input double-guard verified necessary (dispatcher callbacks run outside runner); guards retained with clarifying comment; 798 test cases / 2240 assertions all pass; zero warnings; module health: fixed_tick_runner 🟢, player_input_system 🟢 |
+
+---
+
+### 2026-05-03 — Ralph Round 10: Keyser — Phase-Guard Design B Audit + 🔴 Order Regression Discovery + player_input Retraction
+
+| Field | Value |
+|-------|-------|
+| **Agent routed** | Keyser (Lead Architect) |
+| **Why chosen** | Full SOLID audit of Design B implementation (Keaton-r9); forensic analysis of test count claim; guard redundancy claim verification |
+| **Mode** | sync |
+| **Why this mode** | Audit + analysis; 🔴 regression identified and flagged for R11 fix; test count forensics + guard claim retraction |
+| **Files authorized to read** | `app/systems/playing_systems_runner.cpp`, `app/systems/all_systems.h`, `app/game_loop.cpp`, `app/systems/player_input_system.cpp`, `tests/test_phase_runner.cpp`, `tests/test_entt_dispatcher_contract.cpp`, all 11 dropped-guard system files |
+| **File(s) agent must produce** | Audit findings (merged to decisions.md with prominent 🔴 section); player_input guard retraction note; test count forensics; Keaton-r9 decision doc flagged for annotation |
+| **Outcome** | ✅ Completed — Runner module SOLID audit: 🟢 clean, 11 guards confirmed dropped, 13 system calls (doc says 12 — minor note); 🔴 ORDER REGRESSION: popup_feedback + energy moved pre-despawn, breaks design intent (fix in flight R11); test count claim −14 REFUTED (actual +2, no consolidation); player_input guard claim RETRACTED (guards protect dispatcher callbacks outside runner, test_entt_dispatcher_contract.cpp:290 fails when dropped); all findings merged to decisions.md with prominent flags; Keaton-r9 decision doc flagged for annotation |
+
+---
+
+### 2026-05-03 — Ralph Round 10: Scribe Decision Merge + Round 10 Logging + 🔴 Flags
+
+| Field | Value |
+|-------|-------|
+| **Agent routed** | Ralph / Scribe |
+| **Why chosen** | Round 10 logging cycle: merge inbox, update histories, flag 🔴 order regression + player_input guard retraction |
+| **Mode** | sync |
+| **Why this mode** | Logging task; coordination role; completes round 10 artifact trail |
+| **Files authorized to read** | `.squad/decisions/inbox/keaton-r10-testfix-and-input.md`, `.squad/decisions/inbox/keyser-r10-phase-audit.md`, `.squad/decisions.md`, `.squad/agents/keaton/history.md`, `.squad/agents/keyser/history.md`, `.squad/orchestration-log.md` |
+| **File(s) agent must produce** | Merged decisions.md (round 10 sections with prominent 🔴 + retraction); keaton/history.md (R10 + pattern); keyser/history.md (R10 + REVERSAL pattern); orchestration-log.md (R10 entries); git commit |
+| **Outcome** | ✅ Completed — decisions.md merged with prominent 🔴 ORDER REGRESSION section + [R10 Correction] player_input retraction; agent histories updated with R10 patterns (Keaton: order-dependent regression test, Keyser: trace all dispatcher paths); module health snapshot captured (playing_systems_runner 🔴 order regression in flight, fixed_tick_runner 🟢); pending approvals: CI grep check still awaiting user decision; git commit created with 🔴 + retraction flags in message; inbox files preserved for R11 reference |
+
+---

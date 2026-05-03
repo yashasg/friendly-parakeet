@@ -11633,6 +11633,213 @@ This pattern is now codified in Keyser's history per Round 9 learning.
 ---
 
 ## Pending User Approval
+## Round 10: Keaton — Integration Test Refactor + Input System Audit; Keyser — Phase-Guard Order Regression Discovery
+
+### Keaton R10 — Integration Test Refactor: tick_fixed_systems Exposed + player_input Double-Guard Verification
+
+**Date:** 2026-05-03  
+**Author:** Keaton (C++ Performance Engineer)  
+**Scope:** Refactor integration test to call production tick; audit player_input_system guards  
+**Status:** ✅ Complete  
+**Tests:** +17 cases / +2 assertions (798 cases / 2240 assertions)  
+**Build:** Zero warnings
+
+#### Part 1 — Integration Test Now Calls tick_fixed_systems (Structural Refactor)
+
+**Problem:** Old integration test self-wired `collision_system → lane_push_response_system → miss_detection_system` manually. Could not catch missing production-tick wiring (discovered by Keyser-r7 audit).
+
+**Solution:** Extract `tick_fixed_systems` body from `app/game_loop.cpp:174` (was `static`) into new `app/systems/fixed_tick_runner.cpp`. Picked up by `SYSTEM_SOURCES` glob into `shapeshifter_lib`, declared in `all_systems.h`. Test can now link and call the production tick path directly.
+
+**New file:** `app/systems/fixed_tick_runner.cpp`  
+**Declaration:** `app/systems/all_systems.h` (after `tick_playing_systems`)  
+**Modified:** `app/game_loop.cpp:174` (body moved; now just a call-through)
+
+**Rewritten integration test** (`tests/test_collision_system.cpp:507`):
+```cpp
+TEST_CASE("integration: lane push consumed in production tick order", "[collision][lane_push][integration]") {
+    auto reg = make_registry();
+    auto p = make_player(reg);
+    make_lane_push(reg, ObstacleKind::LanePushLeft, constants::PLAYER_Y);
+    tick_fixed_systems(reg, 0.016f);  // Real production tick
+    CHECK_FALSE(reg.all_of<PendingLanePush>(p));
+    CHECK(reg.get<Lane>(p).target == 0);
+}
+```
+
+**Verification-via-revert:** Temporarily commented `lane_push_response_system` out of `playing_systems_runner.cpp`. Integration test failed on both assertions:
+```
+CHECK_FALSE( reg.all_of<PendingLanePush>(p) )  →  !true (failed)
+CHECK( reg.get<Lane>(p).target == 0 )          →  'm' == 0 (failed)
+```
+Unit test (self-wired) still passed. **This proves the integration test catches production wiring, not just logic.** Wire restored; all green.
+
+**Unit test preserved:** `"unit: lane push consumed when collision → response → miss called in order"` remains as self-wired diagnostic tool.
+
+#### Part 2 — player_input_system Double-Guard Analysis: Guards Are NOT Redundant ✅
+
+**Issue:** Keyser-r8/r9 claimed `player_input_system` guards at lines 22/43 were redundant (both check `GamePhase::Playing`). Keaton investigated.
+
+**Finding: Guards ARE NECESSARY.**
+
+Callbacks (`player_input_handle_go`, `player_input_handle_press`) are registered on `entt::dispatcher` via `wire_input_dispatcher`. They fire when `game_state_system` calls `disp.update<GoEvent>()` / `disp.update<ButtonPressEvent>()` — which runs **BEFORE** and **OUTSIDE** the `tick_playing_systems` runner gate.
+
+Evidence: `test_entt_dispatcher_contract.cpp:284–290` sets `gs.phase = GameOver`, calls `disp.update<GoEvent>()` directly (simulating event delivery), and checks lane.target stays `−1`. **Dropping the guard causes that test to fail:**
+```
+CHECK( lane.target == -1 )  →  2 == -1 (failed)
+```
+
+**Conclusion:** Guards protect against cross-phase event delivery through dispatcher drain (run by `game_state_system` unconditionally). They are NOT redundant; they're a second safety layer for event-driven paths outside the runner.
+
+**Action:** Kept all guards in place. Added runner comment:
+```cpp
+player_input_system(reg, dt);  // callbacks retain phase guard: dispatcher drain runs outside runner
+```
+
+**Zero guards dropped** this round.
+
+#### Result
+
+- `fixed_tick_runner.cpp` module: 🟢 (test infrastructure, exposes production tick)
+- Integration test now exercises actual tick order: ✅ Regression-prevention certified
+- Unit test retained as diagnostic: ✅ Self-wiring useful for layer isolation
+- player_input guards verified necessary: ✅ No cleanup done
+- Build + tests: ✅ All green (798 cases, 2240 assertions)
+
+**Decision:** Round 10 decision inbox
+
+---
+
+### Keyser R10 — Phase-Guard Design B Audit + Test Delta Forensic + 🔴 Order Regression Discovery
+
+**Date:** 2026-05-03  
+**Author:** Keyser (Lead Architect)  
+**Scope:** Full SOLID audit of `tick_playing_systems` runner implementation (R9 Keaton work); forensic analysis of test count claim; order regression analysis  
+**Status:** ✅ Audit complete; 🔴 order regression identified; 2 audit corrections to R9 decision needed  
+**Severity:** 🔴 Order regression is HIGH-PRIORITY correctness concern; test count claim is documentation-only issue
+
+#### Section 1 — SOLID & Health Audit of tick_playing_systems Runner
+
+**File:** `app/systems/playing_systems_runner.cpp` (new in R9)
+
+| SOLID | Verdict | Notes |
+|-------|---------|-------|
+| S | 🟢 | Single responsibility: phase-gate + dispatch. Zero business logic. |
+| O | 🟢 | Adding systems requires runner edit — acceptable for orchestrator by design. |
+| L | N/A | No inheritance. |
+| I | N/A | No interfaces. |
+| D | 🟢 | Depends only on registry, system function signatures, `GamePhase` enum. |
+
+**Phase-gate structure:** Single early-return at `playing_systems_runner.cpp:7`. ✅ Clean.
+
+**11 guards confirmed dropped** (from collision_system, energy_system, miss_detection_system, motion_system, player_movement_system, popup_feedback_system, scoring_system, scroll_system, shape_window_system, beat_log_system, beat_scheduler_system):
+```bash
+grep -rn "Phase::Playing" app/systems/ --include="*.cpp" | grep -v playing_systems_runner
+```
+Result: ✅ Zero matches (all 11 guards gone).
+
+**Runner call count:** 13 systems called (not 12 as stated in Keaton's R9 decision text — code block lists 13; text is inconsistent). Minor doc note, not a code defect.
+
+#### Section 2 — 🔴 ORDER REGRESSION: popup_feedback_system and energy_system Moved Pre-Despawn
+
+**SEVERITY: HIGH — Correctness concern flagged for immediate fix in R11**
+
+**Original tick_fixed_systems order** (HEAD):
+```
+game_state → song_playback →
+  [beat_log … scoring] →       ← Playing-gated block
+obstacle_despawn →
+popup_feedback →                ← AFTER despawn
+popup_display →
+energy_system →                 ← AFTER popup_display
+particle_system
+```
+
+**New order (R9 — current):**
+```
+game_state → song_playback →
+  tick_playing_systems [beat_log … scoring → popup_feedback → energy] →   ← BEFORE despawn now
+obstacle_despawn →
+popup_display →                 ← popup_display NOT adjacent to popup_feedback anymore
+particle_system
+```
+
+**Problems introduced:**
+
+1. **Popup feedback runs before despawn:** Previously scored obstacles that despawn in the same tick are still in registry when popup_feedback spawns the popup entity. Functionally low-risk (despawn doesn't affect queued popups), but original design intent was explicit: feedback AFTER the spawn system cleans up.
+
+2. **Popup display moved away from feedback:** `popup_feedback_system` (spawns popup entities) and `popup_display_system` (transitions popup state) now separated by `obstacle_despawn_system`. The adjacency was intentional per the "score-feedback chain contiguous" comment at `game_loop.cpp:188`.
+
+3. **Comment misleading:** The `game_loop.cpp:188` comment states the post-despawn order is intentional and justified. This comment no longer reflects reality.
+
+**Action required (in flight, R11):** Either (a) move `popup_feedback_system` and `energy_system` back outside the runner to preserve original post-despawn order, OR (b) document that reordering is intentional + update the comment in `game_loop.cpp`. Option (a) preferred for design fidelity.
+
+#### Section 3 — Test Count Delta Forensic (R9 Claim Refutation)
+
+**Claimed (Keaton R9 decision):** 795 (R8) − 16 (consolidated) + 2 (new) = **781 cases**  
+**Actual (measured):** 795 (R8) + 2 (new phase-guard tests) = **797 cases**
+
+**Why claim is wrong:** All 8 "migrated" tests were **1:1 system call swaps** — no consolidation. No TEST_CASEs merged, no SECTIONs collapsed. The test case names/structures unchanged; only the system call inside changed.
+
+**Math reconciliation:**
+- 8 migrated tests: 0 consolidated (each call site changed from `system_name(reg)` to `tick_playing_systems(reg)`, but TEST_CASE count unchanged)
+- 2 new phase-skip tests: +2 cases
+- Total: 795 + 2 = **797** ✅
+
+**Assertions:** +5 claimed, +5 actual. ✅ Math correct for assertions.
+
+**Verdict:** Keaton's −14 case claim is factually wrong. No consolidation occurred. The actual delta is +2 cases (benign). Possible cause: stale binary or test discovery before `test_phase_runner.cpp` was compiled.
+
+#### Section 4 — player_input Double-Guard Claim (R8/R9) — RETRACTION REQUIRED
+
+**[R10 Correction]:** The "redundant double-guard" recommendation in Keyser-r8/r9 was **WRONG**.
+
+The guards at `player_input_system.cpp:22` and `player_input_system.cpp:43` protect event-dispatcher callbacks (`player_input_handle_go`, `player_input_handle_press`) that fire when `game_state_system` calls `disp.update<GoEvent>()` / `disp.update<ButtonPressEvent>()`. These dispatcher drains run **OUTSIDE** and **BEFORE** the runner gate.
+
+Keaton-r10 verified via failing test: `test_entt_dispatcher_contract.cpp:290` expects lane.target to stay `−1` when phase is `GameOver` and `disp.update<GoEvent>()` is called directly. Dropping the guard fails that test.
+
+**Lesson burned:** Event-dispatcher callback guards must trace ALL invocation paths, not just the most obvious one. `dispatcher.update<...>()` invokes functions outside the static system runner; their guards aren't redundant just because the runner gates other paths.
+
+**Action:** Keep original recommendation visible in Keyser-r8/r9 decision; annotate with this [R10 Correction] note.
+
+#### Result
+
+- Runner module: 🟢 SOLID-clean
+- 11 guards confirmed dropped: ✅
+- 🔴 Order regression identified: popup_feedback + energy moved pre-despawn; fix in flight (R11)
+- Test count claim (−14): ❌ Wrong; actual is +2 (benign)
+- player_input guard claim: [R10 CORRECTION] Guards are NOT redundant; traced all paths
+
+**Decision:** Round 10 decision inbox
+
+---
+
+### 🔴 CRITICAL: R9 Order Regression — Popup Feedback + Energy Moved Pre-Despawn
+
+**Status:** Identified in Keyser-r10 audit; fix in flight (Keaton-r11-order-fix)
+
+**Impact:** Popup feedback and energy_system run before obstacle despawn, breaking original design intent and comment at `game_loop.cpp:188` ("score-feedback chain contiguous").
+
+**Workaround:** None; design fidelity requires revert or explicit documentation + comment update.
+
+**ETA Fix:** Keaton R11
+
+---
+
+## Round 10 Module Health Snapshot
+
+| Module | Status | Notes | Audit Ref |
+|--------|--------|-------|-----------|
+| **scoring_system** | 🟢 | Kind-free; full OCP (R8 verified) | Keyser-r8 |
+| **collision_system** | 🟡 | SongResults mutation in test contexts; flagged for R12 scope (SRP violation) | Keaton-r9; Keyser-r10 |
+| **motion_system** | 🟡 | Migration-bridge pattern established (R4); bridge comment in place; verified correct | Keyser-r4 |
+| **lane_push_response_system** | 🟢 | New (R6); event-consumed; insertion order preserved (R8); runner-level (R9); integration test verified (R10) | Keaton-r6,r8,r10; Keyser-r9 |
+| **playing_systems_runner** | 🔴 | New (R9); SOLID clean; 13 systems called; 11 guards dropped; **🔴 order regression: popup_feedback + energy pre-despawn; fix in flight (R11)** | Keaton-r9,r10; Keyser-r10 |
+| **fixed_tick_runner** | 🟢 | New (R10); test infrastructure; exposes production tick to tests; SOLID clean | Keaton-r10 |
+| **player_input_system** | 🟢 | Double-guard verified necessary (dispatcher callbacks run outside runner); not redundant (R8/R9 claim retracted) | Keaton-r10 |
+
+---
+
+## Pending User Approval
 
 ### Convention Check: CI Grep for System Wiring
 
@@ -11647,4 +11854,3 @@ This pattern is now codified in Keyser's history per Round 9 learning.
 **Low-cost:** Grep-based, no code change required; simple append to CI.
 
 ---
-

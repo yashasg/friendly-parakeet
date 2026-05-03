@@ -16,6 +16,30 @@
 
 ## Learnings
 
+### 2026-05-03 — Ralph Round 10: Phase-Guard Design B Audit + 🔴 Order Regression Discovery + player_input Retraction
+
+**Loop:** Ralph performance + SOLID iteration  
+**Task:** Full SOLID audit of `tick_playing_systems` runner (R9 Keaton); forensic analysis of test count claim; verify player_input double-guard claim  
+**Status:** ✅ Audit complete; 🔴 order regression identified (fix in flight, R11); test count claim refuted; player_input guard claim retracted  
+**Severity:** 🔴 High (order regression); 🟡 Medium (test count documentation error); 🟡 Low (guard claim retraction)
+
+**Result:**
+- Runner module SOLID audit: 🟢 SRP clean, phase-gate single early-return, 11 guards confirmed dropped (grep verified zero remaining), DIP clean
+- **🔴 ORDER REGRESSION found:** `popup_feedback_system` and `energy_system` moved from post-despawn into runner (R9); now run BEFORE `obstacle_despawn_system`, breaking "score-feedback chain contiguous" design intent and comment at `game_loop.cpp:188`
+  - Original order: despawn → popup_feedback → popup_display → energy_system
+  - New order: runner contains [... popup_feedback ... energy ...] → despawn → popup_display
+  - Impact: Low behavioral risk; high design-fidelity concern
+  - Action: Revert or document intentional (preferred: revert); in flight R11
+- **Test count claim (−14 cases) WRONG:** Keaton claimed 795 − 16 (consolidated) + 2 = 781. Actual: 795 + 2 (new phase-guard tests) = 797. All 8 "migrated" tests were 1:1 call swaps (no consolidation). Math error in Keaton's decision doc; code is correct.
+- **player_input guard claim [R10 CORRECTION]:** Keyser-r8/r9 claimed double-guard was redundant. Keaton-r10 proved wrong: guards protect event-dispatcher callbacks that fire via `game_state_system`'s `disp.update<>()` calls OUTSIDE runner. Test `test_entt_dispatcher_contract.cpp:290` fails when guards dropped.
+- Module health: playing_systems_runner 🔴 (order regression in flight); fixed_tick_runner 🟢 (new test infrastructure)
+
+**Pattern Learned (REVERSAL):** **Audit findings labeled 'redundant' must trace ALL invocation paths, not just the most obvious one.** Event-dispatcher callbacks invoke functions outside the static system runner; their guards aren't redundant just because the runner gates other paths. Burn the lesson: trace `dispatcher.update<...>()` before declaring a guard redundant. Redundancy claims on guards require either (a) proof that all calling sites are gated (including indirect dispatcher paths), or (b) a failing test when the guard is removed.
+
+**Decision:** `.squad/decisions.md` (merged from inbox, Round 10); Keaton-r9 decision doc requires annotation with order regression note and test count correction
+
+---
+
 ### 2026-05-XX — Ralph Round 8: BarObstacleTag Audit + Phase-Guard Design B Scope
 
 **Loop:** Ralph performance + SOLID iteration  
