@@ -280,3 +280,33 @@ TEST_CASE("collision: high bar fails when jumping", "[collision]") {
     CHECK(energy.energy < 1.0f);
     CHECK(energy.flash_timer > 0.0f);
 }
+
+// ── SRP observation: collision_system must NOT mutate SongResults ──────────
+// After this move, perfect_count is owned by scoring_system.
+// Running collision but withholding scoring must leave all counts at zero.
+TEST_CASE("scoring: collision_system alone does not mutate SongResults counts", "[scoring][collision]") {
+    auto reg = make_rhythm_registry();
+    auto player = make_rhythm_player(reg);
+    auto& ps = reg.get<PlayerShape>(player);
+    auto& sw = reg.get<ShapeWindow>(player);
+    auto& song = reg.ctx().get<SongState>();
+
+    ps.current = Shape::Circle;
+    sw.phase = WindowPhase::Active;
+    sw.graded = false;
+    sw.press_time = song.song_time;
+
+    auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
+    reg.emplace<BeatInfo>(obs, 0, song.song_time, song.song_time - song.lead_time);
+
+    // Run collision only — scoring_system intentionally NOT called.
+    collision_system(reg, 0.016f);
+
+    // TimingGrade IS emplaced by collision (event component), but SongResults
+    // counters must remain zero until scoring_system processes it.
+    auto& results = reg.ctx().get<SongResults>();
+    CHECK(results.perfect_count == 0);
+    CHECK(results.good_count    == 0);
+    CHECK(results.ok_count      == 0);
+    CHECK(results.bad_count     == 0);
+}
