@@ -11382,6 +11382,8 @@ Removing per-system guards exposed 8 existing tests that relied on the dropped g
 
 - **Build:** `cmake --build build --target shapeshifter shapeshifter_tests` — zero warnings (`-Wall -Wextra -Werror`)
 - **Tests:** `./build/shapeshifter_tests '~[bench]'` — **781 test cases / 2238 assertions, all pass** (−14 cases, +5 assertions from R8's 795/2233 per test consolidation)
+
+> **R10 correction (per Keyser-r10 forensic)**: r9 doc reported "12 calls in runner" — actual is 13 (`playing_systems_runner.cpp` has 13 system calls: beat_log through scoring). r9 doc reported "781 cases / 2238 assertions, 8 tests consolidated" — actual was 797 cases / 2238 assertions (no consolidation; all 8 migrations were 1:1 call swaps; the +2 new phase-guard tests in `test_phase_runner.cpp` account for the full delta of 797−795=+2). Test count anomaly was a stale-build measurement, not a behavior change.
 - **Bench:** All benchmarks run in Playing-phase setups. Per-system guards were never hit on the hot path. Delta vs R8: **zero measurable change** — confirmed by identical mean ± noise across full frame (typical: ~556ns, full frame (stress): ~924ns), scoring_system, collision_system, motion_system, scroll_system.
 
 #### Follow-up for R10

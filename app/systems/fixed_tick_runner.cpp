@@ -19,7 +19,13 @@ void tick_fixed_systems(entt::registry& reg, float dt) {
     // are still hot in cache from scroll/collision/miss/scoring passes.
     obstacle_despawn_system(reg, dt);
     // Keep score-feedback chain contiguous (queue -> popup spawn -> popup state)
-    // while popup/score pools are warm.
+    // while popup/score pools are warm.  popup_feedback and energy run here —
+    // AFTER obstacle_despawn — so popup spawning observes post-despawn world
+    // state (invariant: scoring settled, dead obstacles cleared, then feedback).
+    // DO NOT move popup_feedback_system or energy_system into tick_playing_systems;
+    // doing so reverses this ordering (see Keyser-r10 order-regression audit).
+    popup_feedback_system(reg, dt);
     popup_display_system(reg, dt);
+    energy_system(reg, dt);
     particle_system(reg, dt);
 }
