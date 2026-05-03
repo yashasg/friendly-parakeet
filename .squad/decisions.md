@@ -1,5 +1,34 @@
 # Decisions Registry
 
+
+### Keaton Singleton Eager-Init Refactor — Benchmark Verification
+
+**Date:** 2026-05-03  
+**Owner:** Keaton (C++ Engineer, Performance)  
+**Task:** Verify singleton eager-init refactor reclaimed small-N benchmark regressions
+
+## Finding
+
+Full bench sweep confirms refactor is **correct** and **introduces no new regressions**. However, the originally-attributed performance gains were not reclaimed:
+
+- **scroll_system +27.7% regression (small-N)**: NOT reclaimed — root cause is structural growth (more view loops since 51.86 ns baseline), not lookup cost
+- **full-frame +9.3% regression (small-N)**: NOT reclaimed — same structural origin  
+- **player_input/movement 18.69 ns**: No prior baseline; first measurement
+
+## Implications
+
+The singleton eager-init pattern is **canonical and correct**. The scroll_system regression is **real but structural** — it stems from system growth, not initialization overhead. This is open for future investigation but does not block adoption of the refactor.
+
+## Evidence
+
+- Ran full bench sweep + 2 extra scroll_system re-runs
+- Canonical singleton pattern confirmed sound
+- No regression introduced by refactor itself
+
+## Next Steps
+
+scroll_system structural regression remains open for investigation (separate from singleton initialization pattern).
+
 P26-05-02T03:39:47Z*
 
 
@@ -536,15 +565,7 @@ Existing tests verified `score.high_score` is updated on transition and that all
 | `song_complete.json: high_score element declares source ScoreState.high_score` | JSON source field rename or typo |
 | `ScoreState.score source formats to decimal string` | Resolver returning empty/nullopt for non-zero values |
 
-### copilot-directive-20260427T162547-ecs-refactor-testflight
-
-### copilot-directive-20260427T211713Z-lane-push-removal
-
-### copilot-directive-20260427T212049Z-ecs-refactor-source
-
-### copilot-directive-20260427T231658Z-archetypes-folder
-
-### hockney-magic-enum-commit-gap
+### copilot-directive-20260427T162547-ecs-refactor-testflight### copilot-directive-20260427T211713Z-lane-push-removal### copilot-directive-20260427T212049Z-ecs-refactor-source### copilot-directive-20260427T231658Z-archetypes-folder### hockney-magic-enum-commit-gap
 
 # Decision: magic_enum Build Wiring Must Co-Land With Include Usage
 
@@ -3067,9 +3088,7 @@ The duplicate archetype concern is resolved. Safe to integrate. No follow-up rem
 
 The include root is `app/` (set via `target_include_directories ... PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/app`). All include paths below are relative to `app/`.
 
-### Batch A — Header-only moves (no CMake changes, no reconfigure needed)
-
-#### `audio_types.h` → `app/util/audio_types.h`
+### Batch A — Header-only moves (no CMake changes, no reconfigure needed)#### `audio_types.h` → `app/util/audio_types.h`
 
 Includes `<raylib.h>` (for `Sound` in SFXBank). Moving to util/ is safe.
 
@@ -3155,9 +3174,7 @@ Include path changes: `"systems/ui_loader.h"` → `"util/ui_loader.h"`.
 
 ---
 
-### Batch C — Risky moves (require CMake edits)
-
-#### `text_renderer.*`
+### Batch C — Risky moves (require CMake edits)#### `text_renderer.*`
 
 **Risk level: HIGH without CMake changes.**
 
@@ -3184,9 +3201,7 @@ No `.h` file for sfx_bank — all declarations are in `all_systems.h`. Moving `.
 
 ---
 
-### Do Not Move
-
-#### `play_session.*`
+### Do Not Move#### `play_session.*`
 
 `play_session.cpp` includes `"all_systems.h"` (the systems aggregator), `"obstacle_counter_system.h"`, `"audio_types.h"`, `"music_context.h"`, and calls raylib directly (LoadMusicStream, StopMusicStream, UnloadMusicStream). It is a session orchestrator, not a utility.
 
@@ -4806,9 +4821,7 @@ This audit identifies **~650–700 LOC of removable code** across 14 files when 
 
 ---
 
-### DELETE AFTER ENTITY MIGRATION (Prerequisite: Transform consolidation, first-class entities)
-
-#### 1. **rendering.h → Renderpass tags** (77 LOC → ~20 LOC)
+### DELETE AFTER ENTITY MIGRATION (Prerequisite: Transform consolidation, first-class entities)#### 1. **rendering.h → Renderpass tags** (77 LOC → ~20 LOC)
 
 **Current issue:** Component-boundary violation — `rendering.h` is a "bucket" header mixing visual concerns (Layer, DrawSize, DrawLayer, ModelTransform, MeshChild, ScreenPosition, ScreenTransform, ObstacleChildren).
 
@@ -4877,9 +4890,7 @@ This audit identifies **~650–700 LOC of removable code** across 14 files when 
 
 ---
 
-### DELETE AFTER ENTITY MIGRATION (Prerequisite: UI/Text refactoring)
-
-#### 4. **ui_layout_cache.h → Inline HUD layout computation** (73 LOC → 20 LOC)
+### DELETE AFTER ENTITY MIGRATION (Prerequisite: UI/Text refactoring)#### 4. **ui_layout_cache.h → Inline HUD layout computation** (73 LOC → 20 LOC)
 
 **Current issue:** Pre-computed layout cache (HudLayout, OverlayLayout, LevelSelectLayout) stored in ctx. User suspects cache is overkill — UI elements are created once, never re-rendered from scratch.
 
@@ -5287,9 +5298,7 @@ These are hard blockers. Removing Position before any one of these is addressed 
 ### Section A (4 pre-migration tests) — Delete when Slice 2 lands
 `[pre_migration][model_slice]` tests assert `reg.all_of<Position>(e)` and `CHECK_FALSE(reg.all_of<Model>(e))`. They will fail once Position is removed. **This is the designed signal.** Delete them (or mark `[!shouldfail]`) — do not merely `#if 0` them, as they'll accumulate dead code.
 
-### Section B — Keep, no changes needed
-
-### Section C — Must be rewritten before enabling
+### Section B — Keep, no changes needed### Section C — Must be rewritten before enabling
 The current Section C guards reference wrong types from the pre-RAII design. Concrete changes required:
 
 | Section C reference | Actual type in codebase | Fix |
@@ -5798,9 +5807,7 @@ inline void translate_2d(Matrix& m, float dx, float dz) {
 
 ---
 
-### 3.3 Phase-by-Phase Implementation Sequence
-
-#### Phase 1 — Component definition (transform.h)
+### 3.3 Phase-by-Phase Implementation Sequence#### Phase 1 — Component definition (transform.h)
 1. Replace `struct Position` with `struct Transform` in `app/components/transform.h`.
 2. Add `#include <raymath.h>`.
 3. `Velocity` is unchanged; stays in the same file.
@@ -6511,9 +6518,7 @@ Keaton's working-tree changes (uncommitted against HEAD `f8a694b`):
 
 **Evidence:** `obstacle_archetypes.cpp` switch reviewed. No missing case.
 
-### AC4 — Player archetype correctness ⚠️ BLOCKER — see below
-
-### AC5 — CMake wiring ✅ PASS
+### AC4 — Player archetype correctness ⚠️ BLOCKER — see below### AC5 — CMake wiring ✅ PASS
 - `file(GLOB ARCHETYPE_SOURCES app/archetypes/*.cpp)` added
 - `${ARCHETYPE_SOURCES}` added to `shapeshifter_lib` static library
 - `app/` is PUBLIC include root on `shapeshifter_lib` — all consumers resolve paths correctly
@@ -8073,9 +8078,7 @@ RingZone was intended to track timing zone transitions for obstacles with proxim
 2. `app/systems/ring_zone_log_system.cpp` — Zone transition logging system
 3. Design doc references (informational only; don't block removal)
 
-### Files to EDIT (4 files)
-
-#### 1. `app/systems/all_systems.h:73`
+### Files to EDIT (4 files)#### 1. `app/systems/all_systems.h:73`
 **Remove:**
 ```cpp
 void ring_zone_log_system(entt::registry& reg, float dt);

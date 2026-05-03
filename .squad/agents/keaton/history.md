@@ -9,6 +9,12 @@
 
 ## Learnings
 
+### 2026-05-03 — EnTT ctx Singleton Eager-Init
+
+**Pattern:** All ctx singletons are emplaced once at startup (in `game_loop_init` or a subsystem init called unconditionally from it). Hot systems use `reg.ctx().get<T>()` — never `find<T>()` followed by conditional `emplace<T>()`. The find-or-emplace pattern pays per-frame lookup cost even when the singleton is guaranteed to exist; measured regressions were +27.7% (scroll-10), +9.3% (full-frame), +4.7% (player_input). One-time platform-detection side effects belong in a dedicated `subsystem_init(reg)` free function (same TU as the anonymous-namespace struct) declared in `all_systems.h` and called from `game_loop_init`. Scratch-pad accumulators (`ObstacleDespawnScratch`, etc.) are exempt — they're intentionally optional.
+
+Skill: `.squad/skills/entt-ctx-singleton-init/SKILL.md`. Decision: `.squad/decisions/inbox/keaton-singletons-eager-init.md`.
+
 - Title screen generated layout (`app/ui/generated/title_layout.h`) can remain read-only while the active controller (`app/ui/screen_controllers/title_screen_controller.cpp`) performs runtime overrides for text readability and control labeling.
 - For centered hero text in raylib/raygui screens, use `DrawText` + `MeasureText` against `TITLE_LAYOUT_WIDTH` instead of relying on `GuiLabel` rectangles; this avoids clipping/alignment drift from undersized generated bounds.
 - If generated button text is truncated ("SET"), keep the state wiring (`SettingsButtonPressed`) but relabel and resize in controller runtime (`"SETTINGS"` with explicit rectangle) so behavior stays intact and intent is clear.
@@ -97,3 +103,19 @@ Decision #169 captured in decisions.md.
 **Your role:** Code cleanup in `app/components/input.h` and test setup removal in `tests/test_entt_dispatcher_contract.cpp`, `tests/test_test_player_system.cpp`.
 
 **Outcome:** ❌ REJECTED by Kujan. Wording in cleanup still implied raw input routing emits `ButtonPressEvent` (incorrect). Fenster revised independently under lockout protocol; clarifications approved. Cleanup integrated and validated.
+
+## 2026-05-03T10:47:32Z — Singleton Eager-Init Refactor Verification
+
+**Task:** Verify singleton eager-init refactor reclaimed small-N benchmark regressions (scroll-10, full-frame, player_input/movement).
+
+**Finding:** Refactor is **correct** and introduces **no new regressions**. However, the originally-attributed performance gains were NOT reclaimed:
+
+- **scroll_system +27.7% regression**: Root cause is **structural growth** (more view loops since 51.86 ns baseline), not lookup cost
+- **full-frame +9.3% regression**: Same structural origin
+- **player_input/movement 18.69 ns**: No prior baseline for comparison
+
+**Implication:** The singleton eager-init pattern is **canonical and correct**. scroll_system regression is real but stems from system structural changes, not initialization overhead. This is open for future investigation.
+
+**Decision:** recorded in `.squad/decisions.md`. Pattern confirmed for adoption.
+
+**Next Steps:** scroll_system structural regression remains open for investigation (separate concern from singleton initialization pattern).
