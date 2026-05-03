@@ -16,6 +16,37 @@
 
 ## Learnings
 
+### 2026-05-XX — Ralph Round 7: LanePush Refactor Audit + 🔴 Critical Production Bug Discovery
+
+**Loop:** Ralph performance + SOLID iteration  
+**Task:** Post-Keaton-r6 SOLID audit of lane_push refactor + phase-guard consolidation design  
+**Status:** ✅ Audit complete; 🔴 critical bug found; Design B recommended for r8  
+**Findings:** SOLID clean except pre-existing SRP mix in collision_system (`TimingGrade`/`SongResults` mutations in `resolve` lambda)
+
+**🔴 CRITICAL FINDING:**
+- `lane_push_response_system` declared in `all_systems.h:32` but **NEVER CALLED in `game_loop.cpp`** between `collision_system` and `miss_detection_system`
+- `PendingLanePush` events accumulate indefinitely; first-obstacle-wins guard fires on every frame after first contact, permanently blocking future LanePush events
+- Lane.target never updated in production; mechanic fully broken
+- **Root cause:** Tests self-wired the system, masking the missing production call
+
+**Phase-Guard Consolidation Design (Design B):**
+- 13+ systems each check `GamePhase::Playing` independently (14 guard sites total)
+- Design B: central phase-gated runner in `game_loop.cpp` removes guards from ~12 system bodies
+- Only option that actually removes duplication (not just renames it)
+- Design A (helper fn) and C (ctx tag) only reduce boilerplate, keep scatter across systems
+- Estimated impact: +6 net lines, ~27 lines touched across 14 files
+
+**Generalized Anti-Pattern:** **Self-wiring tests can mask production bugs by short-circuiting the very integration the test is meant to verify.** When a refactor introduces a new system, demand at least one test that calls the production tick path, not the system directly. This is the litmus test for "is the system actually wired?" — if the test passes when the production call is deleted, the test was measuring the wrong thing.
+
+**Test Coverage Gap (noted but not blocking):**
+- Multi-obstacle delta-overwrite test missing (first-obstacle-wins guard semantic untested)
+- Recommend as follow-up, not part of r7 scope
+
+**Decision:** `.squad/decisions.md` (merged from inbox, Round 7)  
+**Follow-up:** Keaton-r8-wirefix (in flight) adds missing `lane_push_response_system` call; Keyser-r8-bartag-and-scope scoping Design B refactor for round 9
+
+---
+
 ### 2026-05-03 — Ralph Round 2: scroll_system Post-Refactor SOLID Audit
 
 **Loop:** Ralph perf+SOLID iteration (Round 2)  

@@ -18,6 +18,26 @@
 
 ## Learnings
 
+### 2026-05-XX — Ralph Round 7: BarObstacleTag Refactor + NonScorableTag Test Fix
+
+**Loop:** Ralph performance + SOLID iteration  
+**Task:** Complete scoring_system kind-branch elimination; test thoroughness fix  
+**Status:** ✅ Complete  
+**Files changed:** 5 (`obstacle.h`, `obstacle_entity.cpp`, `scoring_system.cpp`, `test_redfoot_testflight_ui.cpp`, `test_scoring_system.cpp`)  
+**Tests:** +18 cases / +4 assertions; all 2227 assertions / 793 test cases pass  
+**Build:** Zero warnings
+
+**Result:**
+- scoring_system: **fully kind-free** (grep -n 'ObstacleKind::' returns zero matches)
+- BarObstacleTag dispatches `DeathCause::HitABar` vs `DeathCause::MissedABeat` at spawn-time, not runtime
+- NonScorableTag test kind changed from `LanePushLeft` → `ShapeGate` (proves genuine kind-independence, not LanePush-coupled)
+
+**Generalized Finding:** **When extracting an event-emplace + consume-system pair, the consume-system's wiring in `game_loop.cpp` is the most-easily-missed integration point.** This became a critical lesson when Keyser found `lane_push_response_system` unwired in r7. **Write the production-loop integration test BEFORE the unit test, not after.** Unit tests that directly call the consumer system can mask a missing production call. The wiring itself is the first test.
+
+**Decision:** `.squad/decisions.md` (merged from inbox, Round 7)
+
+---
+
 ### 2026-05-03 — Ralph Round 2: scoring_system ctx Lookup Deduplication
 
 **Loop:** Ralph perf+SOLID iteration (Round 2)  

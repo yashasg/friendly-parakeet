@@ -10720,3 +10720,262 @@ The `bar_height_for(kind)` switch in `obstacle_render_entity.cpp:136` can be fol
 - `LanePushDelta` component: confirmed as round 7 target after Keaton r6 lands.
 - `BarObstacleTag`: confirmed as round 7 secondary target (completes scoring_system kind-branch elimination).
 
+---
+
+## 🔴 CRITICAL PRODUCTION BUG — Round 7 Discovery
+
+**Keyser-r7-lanepush-and-phase audit FOUND:** `lane_push_response_system` **declared in `all_systems.h:32` but NEVER CALLED in `game_loop.cpp`** between `collision_system` and `miss_detection_system`. Tests self-wired the system, masking the bug.
+
+**Consequences in production:**
+1. `PendingLanePush` events emplaced by `collision_system` accumulate indefinitely across frames.
+2. First-obstacle-wins guard (`!reg.all_of<PendingLanePush>(player_entity)`) fires on every frame after first contact, permanently blocking all future LanePush events.
+3. `Lane.target` never updated by LanePush obstacles in the live game. **Mechanic fully broken.**
+
+**Fix:** Insert `lane_push_response_system(reg, dt);` at `game_loop.cpp:192` (between collision and miss_detection).
+
+**Wiring status:** Keaton-r8-wirefix is fixing this now (concurrent). Keyser-r8-bartag-and-scope auditing r7 + scoping Design B phase-guard refactor.
+
+---
+
+### Keaton R7 — BarObstacleTag Refactor + NonScorableTag Test Fix
+
+**Date:** 2026-05-XX  
+**Author:** Keaton (C++ Performance Engineer)  
+**Scope:** Ralph round 7
+
+#### Files Modified
+
+**Part 1 — BarObstacleTag:**
+- `app/components/obstacle.h` — added `struct BarObstacleTag {};`
+- `app/entities/obstacle_entity.cpp` — emplaced `BarObstacleTag` on `LowBar` and `HighBar` cases
+- `app/systems/scoring_system.cpp` — replaced `is_bar` ternary with `reg.any_of<BarObstacleTag>(e)`; removed now-unused `kind` local
+- `tests/test_redfoot_testflight_ui.cpp` — local `spawn_obstacle` helper: added `BarObstacleTag` emplace for bar kinds (restores pre-existing redfoot test correctness)
+- `tests/test_scoring_system.cpp` — added 2 new `[scoring][bartag]` tests
+
+**Part 2 — NonScorableTag test fix:**
+- `tests/test_scoring_system.cpp:256` — changed entity kind from `LanePushLeft` to `ShapeGate`
+
+#### Scoring System Now Kind-Free
+
+```
+$ grep -n 'ObstacleKind::' app/systems/scoring_system.cpp
+(no output)
+```
+
+Zero `ObstacleKind::` references remain. scoring_system is now fully tag-driven.
+
+#### Tests Added / Updated
+
+**Added (Part 1):**
+- `"scoring: BarObstacleTag sets DeathCause::HitABar regardless of kind" [scoring][bartag]`  
+  Uses `ObstacleKind::ShapeGate` + `BarObstacleTag` + `MissTag` → proves `DeathCause::HitABar` fires based on tag, not kind.
+- `"scoring: missing bar sets DeathCause::MissedABeat when no BarObstacleTag" [scoring][bartag]`  
+  Confirms else-branch: `ShapeGate` without `BarObstacleTag` + `MissTag` → `DeathCause::MissedABeat`.
+
+**Updated (Part 2):**
+- `"scoring: NonScorableTag entity cleared without scoring" [scoring][nonscorable]` — kind changed from `LanePushLeft` to `ShapeGate` to prove kind-independence (was coupled to LanePush mechanism, now genuinely generic).
+
+#### Build + Test Status
+
+```
+cmake --build build   → zero warnings (-Wall -Wextra -Werror)
+./build/shapeshifter_tests → All tests passed (2227 assertions in 793 test cases)
+```
+
+Previous: 775 cases / 2223 assertions (r6). Delta: +18 cases / +4 assertions.
+
+#### Module Health
+
+**scoring_system:** 🟢 (fully kind-free; tag-driven dispatch only)  
+**collision_system:** 🟡 (lane-push delegation correct; TimingGrade/SongResults mixing remains)  
+**motion_system:** 🟡 (migration bridge; will close when obstacles fully migrate)
+
+#### Follow-Up for Round 8
+
+Phase-guard consolidation: multiple systems check `phase == GamePhase::Playing` independently. Keyser's pending architecture pass should define a central phase-gate mechanism (e.g., a `PlayingPhaseTag` context singleton or a shared phase-guard utility) to eliminate scattered per-system phase checks and make pausing/phase transitions a single edit-site.
+
+---
+
+### Keyser R7 — LanePush Refactor Audit + Phase-Guard Consolidation Design
+
+**Date:** 2026-05-XX  
+**Auditor:** Keyser (Lead Architect)  
+**Scope:** Ralph round 7
+
+#### Section 1 — LanePush Refactor Audit (Keaton R6 Review)
+
+##### SOLID Table
+
+| Principle | Finding | Verdict |
+|-----------|---------|---------|
+| **SRP — `lane_push_response_system`** | Reads `PendingLanePush` (delta), writes `Lane.target`, removes `PendingLanePush`. Nothing else — no audio, no scoring, no animation. Textbook single-responsibility. | ✅ |
+| **SRP — `collision_system` post-refactor** | Lane-push application is correctly delegated. However the `resolve` lambda (collision_system.cpp:46–107) still mixes three concerns: (1) miss/clear detection, (2) `TimingGrade` emplacement with window scaling mutation (`p_window.window_scale`, `p_window.window_start`, `p_window.graded`), and (3) `SongResults` counter increments. The timing-grade concern belongs closer to `scoring_system` or a dedicated `timing_grade_system`. Pre-existing issue, not introduced by R6, but the refactor did not shrink it. | 🟡 |
+| **OCP — new push direction** | Adding a "backward push" (or any directional variant) requires only a new spawn-time `LanePushDelta` value in `obstacle_entity.cpp`. Neither `collision_system` nor `lane_push_response_system` require edits — the delta flows through unchanged. Fully open for extension, closed for modification on the push path. | ✅ |
+| **LSP / ISP — view claims** | `lane_push_response_system`: `reg.view<PlayerTag, Lane, PendingLanePush>()` — minimal, all three components are read or written. `collision_system` player view fetches `WorldTransform, PlayerShape, ShapeWindow, Lane, VerticalState` — all consumed in the body. No over-fetching observed. | ✅ |
+| **DIP — `lane_push_response_system` dependencies** | No raylib, no file I/O, no game-state singleton. Depends only on `entt::registry`, `PlayerTag`, `Lane`, `PendingLanePush`, and `constants::LANE_COUNT`. Pure ECS. | ✅ |
+
+##### 🔴 CRITICAL BUG: `lane_push_response_system` is NEVER CALLED in production
+
+Evidence:
+
+- `all_systems.h:32` declares `lane_push_response_system` between `collision_system` (line 30) and `miss_detection_system` (line 33) — correctly documenting the intended phase order.
+- `game_loop.cpp:174–203` (`tick_fixed_systems`) lists:
+
+```
+191:    collision_system(reg, dt);
+192:    miss_detection_system(reg, dt);   // ← lane_push_response_system is MISSING here
+193:    scoring_system(reg, dt);
+```
+
+No call to `lane_push_response_system` appears anywhere in `tick_fixed_systems` or elsewhere in `game_loop.cpp`.
+
+**Consequences in production:**
+1. `PendingLanePush` events emplaced by `collision_system` are **never consumed**. They accumulate on the player entity indefinitely across frames.
+2. The first-obstacle-wins guard (`!reg.all_of<PendingLanePush>(player_entity)`, collision_system.cpp:182) fires **on every subsequent frame** after the first LanePush contact, permanently blocking all future LanePush obstacles from emplacing a new event.
+3. `Lane.target` is never updated by a LanePush obstacle in the live game. The mechanic is **fully broken** in production.
+
+**Why tests pass:** Each test manually calls `lane_push_response_system(reg, 0.016f)` after `collision_system(reg, 0.016f)`. The tests correctly model the *intended* wiring but mask the missing production call.
+
+**Fix required:** Insert `lane_push_response_system(reg, dt);` at `game_loop.cpp:192` (between `collision_system` and `miss_detection_system`).
+
+##### PendingLanePush Removal
+
+`lane_push_response_system.cpp:18`: `reg.remove<PendingLanePush>(entity)` is called unconditionally inside the view loop — the component is removed regardless of whether the push was applied (e.g., clamped at lane boundary). This is correct: the event is consumed either way; no stale events survive to next frame *when the system actually runs*.
+
+Note: Because the system is unwired (§1.2), the removal never executes in production.
+
+##### First-Obstacle-Wins Guard Semantics
+
+Guard location: `collision_system.cpp:182`:
+```cpp
+if (lane_overlaps(pos) && !reg.all_of<PendingLanePush>(player_entity)) {
+```
+
+**The guard is on the player entity. This is semantically correct.** The invariant being enforced is "the player can only be pushed once per frame," not "only one obstacle fires." All overlapping LanePush obstacles still receive `ScoredTag` (collision_system.cpp:185) — they are cleared regardless. Only the push effect on the player is deduped. This matches first-obstacle-wins semantics correctly: first spatial overlap in iteration order wins the push; subsequent obstacles are scored but do not compound the push. ✅
+
+##### Test Coverage Assessment
+
+| Test | What it asserts | Coverage quality |
+|------|----------------|-----------------|
+| Line 384: "push left scores and pushes player left" | End-state: `lane.target == 0` | End-state only |
+| Line 398: "push right scores and pushes player right" | End-state: `lane.target == 2` | End-state only |
+| Line 412: "push out of range does not move player off edge" | Boundary clamp: target stays `< 0` | End-state only |
+| Line 430: "too far away is ignored" | Distance filter: target unchanged | End-state only |
+| **Line 441: "emplaces PendingLanePush before response runs"** | `PendingLanePush` emplaced after collision (delta=−1); removed after response; `lane.target` updated | **Event lifecycle ✅** |
+| **Line 463: "right emplaces PendingLanePush with delta +1"** | `PendingLanePush.delta == 1` post-collision | **Intermediate state ✅** |
+
+**Verdict: Adequate but one gap remains.**
+
+The two lifecycle tests (441, 463) correctly exercise the emplace-then-consume path and assert intermediate state. What is missing:
+
+- **First-obstacle-wins test**: No test verifies that a second simultaneous LanePush obstacle does NOT overwrite `PendingLanePush.delta`. This is the only invariant the `!reg.all_of<PendingLanePush>` guard enforces and it is untested.
+- **No-push guard test**: No test asserts that `Lane.target` remains unchanged when `PendingLanePush` was never emplaced (out-of-lane LanePush). Line 430 covers distance, but not lateral miss.
+
+##### Module Health Verdicts
+
+| Module | R6 Status | R7 Verdict | Rationale |
+|--------|-----------|-----------|-----------|
+| `collision_system` | 🟡 | 🟡 (no change) | Lane-push delegation is a genuine improvement. TimingGrade + SongResults mutation in `resolve` lambda remain mixed concerns. Net: still 🟡 for SRP; further reduction requires extracting timing classification. |
+| `lane_push_response_system` | (new) | 🟢 design, 🔴 wired | The system itself is clean ECS. But it is never called in `game_loop.cpp`. Module health is effectively 🔴 until the missing call is added. |
+
+#### Section 2 — Phase-Guard Consolidation Design
+
+##### Current State — Phase Guard Duplication
+
+Phase guard count (all `GamePhase::Playing` early-return guards):
+
+| System file | Guard line(s) |
+|-------------|--------------|
+| `collision_system.cpp` | 35 |
+| `miss_detection_system.cpp` | 11 |
+| `scoring_system.cpp` | 65 |
+| `scroll_system.cpp` | 9 |
+| `motion_system.cpp` | 7 |
+| `player_movement_system.cpp` | 11 |
+| `player_input_system.cpp` | 22, 43 |
+| `shape_window_system.cpp` | 15 |
+| `beat_scheduler_system.cpp` | 13 |
+| `beat_log_system.cpp` | 12 |
+| `energy_system.cpp` | 9 |
+| `popup_feedback_system.cpp` | 9 |
+| `song_playback_system.cpp` | 49 (full gate); 32 (partial, inside branch) |
+| `test_player_system.cpp` | 203 |
+
+**13 systems** with at least one Playing guard; **14 total guard sites**.
+
+##### Options Analysis
+
+| Criterion | A — `is_playing(reg)` helper | B — Phase-gated runner in game_loop | C — `PhasePlayingTag` ctx singleton |
+|-----------|------------------------------|--------------------------------------|--------------------------------------|
+| **Removes duplication** | No — every system still calls it; same count of call sites | Yes — guards removed from ~12 system bodies; `game_loop.cpp` is single source of truth | No — every system still calls `ctx().contains<PhasePlayingTag>()`; same count of call sites |
+| **Fits ECS-first / no global state** | Neutral — thin wrapper over ctx access | Yes — aligns with "wiring is game_loop's job" | Marginally — ECS-idiomatic but adding a ctx tag for what is already in `GameState.phase` duplicates state |
+| **Testability** | Same as current — test must simulate Playing manually | Best — test can call the playing-runner with a non-Playing phase and assert no system ran | Same as current — test must set the ctx tag manually |
+| **Future phases (Paused, Tutorial)** | Easy to add `is_paused(reg)` helper alongside | Easy to add `run_if_paused(...)` runner or per-phase runner overloads | Requires a tag per phase; tag set management grows with phase count |
+| **Partially-gated systems (song_playback, player_input)** | No help — must remain internally guarded | No help — these systems can't simply move into the runner without internal refactor | No help — same |
+| **Lines changed per system** | 0 changed + 1 renamed call site | −1 guard line per fully-gated system (~12 lines removed) | 0 changed + 1 renamed call site |
+| **game_loop.cpp change** | ~0 | Moderate: restructure `tick_fixed_systems` into playing vs. always-run blocks | ~0 |
+| **New abstraction cost** | Minimal (1 helper fn) | Low (1 runner fn + `using SystemFn`) | Low (1 empty struct tag) |
+
+##### Recommendation: **Option B — Phase-gated runner**
+
+**Pick: B.**
+
+**Justification:**
+
+A and C both reduce boilerplate syntactically (`is_playing(reg)` vs `ctx().contains<PhasePlayingTag>()`) but do not remove duplication — every system still has a guard call site, still needs to remember to add the guard, and still requires per-system testing to verify correct phase behavior. They rename the smell, they don't fix it.
+
+B is the only option that actually centralizes the invariant. The codebase already treats `game_loop.cpp` as the authoritative sequence definition (`all_systems.h` phase comments mirror the tick order). Grouping phase-gated systems into a runner is consistent with that existing convention. The runner signature is trivial — all systems share `void(entt::registry&, float)` — and `game_loop.cpp` already manages execution order as a flat call list. A `run_if_playing` helper fits naturally alongside that list.
+
+B also provides the clearest test surface: a unit test can call `run_if_playing(reg, dt, {collision_system})` with `GamePhase::Title` and assert no collision processing occurred, with zero mock infrastructure needed.
+
+The partially-gated systems (`song_playback_system`, `player_input_system`) stay internally guarded for their non-Playing sub-paths and remain outside the runner. This is not a cost; it correctly separates "always runs, has Playing-conditional branches" from "only runs in Playing."
+
+Option C introduces a duplicate state (the tag mirrors `GameState.phase`) that must be kept synchronized — a correctness risk.
+
+##### Affected Systems for Round 8
+
+Systems that **remove their internal guard and move into the runner** (~12):
+
+1. `collision_system.cpp:35`
+2. `miss_detection_system.cpp:11`
+3. `scoring_system.cpp:65`
+4. `scroll_system.cpp:9`
+5. `motion_system.cpp:7`
+6. `player_movement_system.cpp:11`
+7. `shape_window_system.cpp:15`
+8. `beat_scheduler_system.cpp:13`
+9. `beat_log_system.cpp:12`
+10. `energy_system.cpp:9`
+11. `popup_feedback_system.cpp:9`
+12. `obstacle_despawn_system` (check for existing guard)
+
+Systems that **stay internally guarded** (partial phase logic):
+
+- `song_playback_system.cpp` (two-branch structure; refactoring out of scope for R8 unless Keaton elects to)
+- `player_input_system.cpp` (dual guard at lines 22 + 43; can be replaced with a single guard at function entry if all behavior is Playing-only — Keaton to verify)
+- `test_player_system.cpp` (line 203; test-only system, low priority)
+
+##### Diff-Size Estimate
+
+| Location | Δ lines |
+|----------|---------|
+| `game_loop.cpp` restructure + runner | +15, −0 |
+| 12 systems × (remove 1 guard line) | −12 |
+| `all_systems.h` runner declaration (optional) | +3 |
+| **Net** | **≈ +6 lines** |
+
+Total churn: ~27 lines touched across 14 files. Low-risk, high-clarity improvement.
+
+#### Summary
+
+| Item | Verdict |
+|------|---------|
+| `lane_push_response_system` health | 🟢 design / 🔴 **UNWIRED** — never called in `game_loop.cpp` |
+| `collision_system` health | 🟡 (unchanged from R5; lane-push delegation is an improvement, TimingGrade mixing remains) |
+| Frame-ordering correct | **NO** — `lane_push_response_system` absent from `tick_fixed_systems` (game_loop.cpp:191–192) |
+| First-obstacle-wins guard | **Correct side** — player-entity guard is the right semantic; all obstacles are still scored |
+| `PendingLanePush` removal | Correct in the system body; moot until system is wired |
+| Test coverage | **Adequate with one gap** — event lifecycle tested; first-obstacle-wins multi-obstacle case untested |
+| Phase-guard consolidation | **Design B** — phase-gated runner in `game_loop.cpp`; only option that removes duplication, not just renames it |
+| Round 8 affected systems | 12 systems lose internal guard + `game_loop.cpp` restructure + optional `all_systems.h` |
+

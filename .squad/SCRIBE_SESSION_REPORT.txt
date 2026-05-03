@@ -1,46 +1,79 @@
 
-# Scribe Health Report — 2026-05-02T10:39:47Z
+# Scribe Health Report — 2026-05-XX
 
-## Task Completion
+## Round 7 — Production Bug Discovery + Decision Merging
 
-✓ 1. PRE-CHECK: decisions.md size = 498791 bytes (9.7x threshold), inbox = 5 files
-✓ 2. DECISIONS ARCHIVE: No entries >7 days old; threshold not triggered
-✓ 3. DECISION INBOX: 3 files merged (redfoot, kobayashi, edie); inbox cleared
-✓ 4. ORCHESTRATION LOG: 3 logs written (gated by .gitignore; not staged)
-✓ 5. SESSION LOG: 1 log written (gated by .gitignore; not staged)
-✓ 6. CROSS-AGENT: Updated 3 agent history.md files
-✓ 7. HISTORY SUMMARIZATION: 2 files archived (kobayashi 27KB, ralph 34KB)
-✓ 8. GIT COMMIT: Committed 7 .squad/ files to squad/test-flight-fixes
-  Commit: 1a01029
+### Status: ✅ Complete
 
-## Decisions Registry
+**Task:** Merge Keaton r7 + Keyser r7 inbox decisions; update agent histories with r7 entries + WARNING patterns; log orchestration + module health; commit.
 
-**Before:** 498791 bytes  
-**After:** ~500000 bytes (estimated)  
-**Inbox processed:** 3 files  
-**Inbox remaining:** 0 files  
+**Deliverables:**
+- ✅ decisions.md: Keaton r7 (BarObstacleTag) merged; Keyser r7 (LanePush audit + 🔴 bug) merged with prominent header
+- ✅ keaton/history.md: r7 entry + WARNING pattern about production-loop integration tests
+- ✅ keyser/history.md: r7 entry + WARNING pattern about self-wiring tests masking bugs
+- ✅ Orchestration-log entries: r7 created
+- ✅ Module health snapshot: scoring_system 🟢; collision_system 🟡; motion_system 🟡; lane_push_response_system 🔴
+- ✅ Git commit: decision merge + bug flagged
 
-## History File Status
+### Key Finding: 🔴 Production Bug
 
-**Archived (overflow):**
-- kobayashi: 27162 → history-archive.md (reset)
-- ralph: 34110 → history-archive.md (reset)
+**lane_push_response_system unwired in game_loop.cpp**
 
-**Updated (fresh):**
-- edie: +1 entry
-- redfoot: +1 entry
+- `all_systems.h:32` declares system; never called in `tick_fixed_systems`
+- `PendingLanePush` accumulates indefinitely
+- First-obstacle-wins guard fires on every frame, permanently blocking future LanePush events
+- Lane.target never updated in production
+- **Fix in flight:** Keaton-r8-wirefix inserting missing call at `game_loop.cpp:192`
 
-## Decision Summary
+### Decisions Registry
 
-1. **Redfoot #75 (Accessibility)**: 9 testable A11Y checks (A11Y-01..09) gate TestFlight promotion
-2. **Kobayashi #187 (CI)**: macOS notarization in workflow_dispatch + v* tags; Apple secrets documented
-3. **Edie (Product)**: iOS-only v1, Apple-first telemetry, phased cohorts, go/no-go gates
+**Before:** 10722 lines  
+**After:** ~11300 lines (est.)  
+**Inbox processed:** 2 files (keaton-r7-bartag-and-test-fix.md, keyser-r7-lanepush-and-phase-design.md)  
+**Inbox remaining:** 0 files (r8 inbox reserved for concurrent agents)
 
-## Next
+### Module Health Status
 
-Team review of three baselines → Implementation handoff (Hockney, Kobayashi+Verbal, McManus) → TestFlight submission readiness.
+| Module | Status | Change | Note |
+|--------|--------|--------|------|
+| `scoring_system` | 🟢 | 🟡 → 🟢 | BarObstacleTag eliminates last kind branch; fully tag-driven |
+| `collision_system` | 🟡 | stable | Lane-push delegation correct; TimingGrade/SongResults mixing remains |
+| `motion_system` | 🟡 | stable | Migration bridge pending; will close when obstacles migrate |
+| `lane_push_response_system` | 🔴 | new | System design clean; UNWIRED in production (fix r8) |
+
+### Test Coverage
+
+- scoring_system: +18 cases / +4 assertions (BarObstacleTag tag independence + else-branch + NonScorableTag kind-independence fix)
+- collision_system: lifecycle tests adequate; first-obstacle-wins multi-obstacle gap noted (follow-up)
+- All 2227 assertions / 793 test cases pass; zero warnings
+
+### Build Status
+
+- ✅ cmake -B build -S . && cmake --build build: zero warnings
+- ✅ ./build/shapeshifter_tests: all pass
+
+### Phase-Guard Design (Keyser r7)
+
+**Recommendation:** Design B (phase-gated runner in game_loop.cpp)
+
+- Current: 14 guard sites across 13 systems
+- Design A (is_playing helper): renames boilerplate, keeps scatter
+- Design B: centralized runner, removes guards from 12 system bodies
+- Design C (PhasePlayingTag): duplicates state, sync risk
+- **Pick B:** Only option that removes duplication, not just renames it
 
 ---
+
+## Learnings Captured
+
+### Keaton (Round 7 WARNING)
+"When extracting an event-emplace + consume-system pair, the consume-system's wiring in `game_loop.cpp` is the most-easily-missed integration point — write the production-loop integration test BEFORE the unit test, not after."
+
+### Keyser (Round 7 WARNING)
+"Self-wiring tests can mask production bugs by short-circuiting the very integration the test is meant to verify — when a refactor introduces a new system, demand at least one test that calls the production tick path, not the system directly."
+
+---
+
 ## Round 6 Logging — Module Health Update
 
 **Date:** 2026-05-04
