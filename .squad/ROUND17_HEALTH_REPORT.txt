@@ -1,0 +1,125 @@
+ROUND 17 HEALTH REPORT
+======================
+
+Date: 2026-05-03
+Focus: Latent double-integration fix + module health confirmation
+
+## OUTCOME
+
+✅ Latent double-integration fixed (Keaton-r17 Option A: mutually exclusive views)
+✅ All 18 modules at 🟢
+✅ Test count improved: 784 → 785 cases (+1), 2234 → 2235 assertions (+1)
+✅ motion_system bench improved: 26.6 ns / 10 ents (r14 baseline: 34-38 ns) — 30% faster
+✅ Fail-then-fix test verified fix: pre-fix 200.0f == 150.0f (double-integration), post-fix passes
+✅ Protocol restored: pre/post tail-5 paste format compliant (after r16 lapse)
+
+## MODULE HEALTH TABLE
+
+| Module                    | Post-r15 | Post-r16 | Post-r17 | Status  |
+|---------------------------|----------|----------|----------|---------|
+| collision_system          | 🟢       | 🟢       | 🟢       | stable  |
+| scoring_system            | 🟢       | 🟢       | 🟢       | stable  |
+| motion_system             | 🟡       | 🟢       | 🟢       | FIXED   |
+| scroll_system             | 🟢       | 🟢       | 🟢       | stable  |
+| lane_push_response_system | 🟢       | 🟢       | 🟢       | stable  |
+| playing_systems_runner    | 🟢       | 🟢       | 🟢       | stable  |
+| fixed_tick_runner         | 🟢       | 🟢       | 🟢       | stable  |
+| popup_feedback_system     | 🟢       | 🟢       | 🟢       | stable  |
+| popup_display_system      | 🟢       | 🟢       | 🟢       | stable  |
+| energy_system             | 🟢       | 🟢       | 🟢       | stable  |
+| particle_system           | 🟢       | 🟢       | 🟢       | stable  |
+| player_input_system       | 🟢       | 🟢       | 🟢       | stable  |
+| beat_scheduler_system     | 🟢       | 🟢       | 🟢       | stable  |
+| obstacle_entity           | 🟢       | 🟢       | 🟢       | stable  |
+| camera_system             | 🟢       | 🟢       | 🟢       | stable  |
+| collision_detection       | 🟢       | 🟢       | 🟢       | stable  |
+| menu_system               | 🟢       | 🟢       | 🟢       | stable  |
+| audio_system              | 🟢       | 🟢       | 🟢       | stable  |
+
+**Post-r17 Summary: 18 🟢 / 0 🟡**
+
+## LATENT FIX DETAILS
+
+**Problem:** Keaton-r16 migrated motion_view from `Position+Velocity` to `WorldTransform+MotionVelocity`.
+This exposed a latent path: freeplay LowBar/HighBar (no BeatInfo, has WorldTransform+MotionVelocity+ObstacleScrollZ)
+now matched both scroll_system's model_view AND motion_system's motion_view, risking double-integration:
+- scroll_system: oz.z += vel.y*dt; wt->position.y = oz.z
+- motion_system: wt->position.y += vel.y*dt  ← wrong!
+
+**Solution (r17):** Option A — Structural Exclusion
+  motion_view now excludes ObstacleScrollZ: `entt::exclude<BeatInfo, ObstacleScrollZ>`
+  Result: scroll_system and motion_system views are mutually exclusive on the discriminator component.
+  All production paths match exactly one integrator.
+
+**Verification:**
+  - Fail-then-fix test: pre-fix produced 200.0f (2× integration); post-fix passes (150.0f single integration)
+  - Archetype table verified: all entity types route correctly to exactly one integrator
+  - No regressions: all 18 modules green
+
+## BENCH RE-BASELINE (r17 vs r14)
+
+| Metric                | r14 Baseline | r17 (Post-r16 Bridge Delete) | Delta       |
+|-----------------------|--------------|------------------------------|-------------|
+| motion_system 10ents  | 34-38 ns     | 26.6 ns                      | **+30%**    |
+| motion_system 100ents | ~191 ns      | 161 ns                       | **+15%**    |
+| motion_system 1000ent | ~1.81 µs     | 1.56 µs                      | **+13%**    |
+| particle_system 50    | 32-34 ns     | 33.6 ns                      | neutral     |
+| full-frame typical    | —            | 483.9 ns                     | baseline    |
+| full-frame stress     | ~926ns-1µs   | 1.66 µs                      | +63% vs r14 |
+
+**Interpretation:** motion_system is FASTER than r14 across all entity counts. r16's Position bridge deletion
+removed `reg.try_get<Position>()` overhead per entity. Full-frame stress is higher due to additional system
+complexity since r14 (not attributable to motion_system regression).
+
+## SCRIBE CORRECTIONS (R17)
+
+✅ F1: Attribution misattribution corrected
+  - decisions.md:13256-13258 / 13404: changed to credit r17 (not r16) with eliminating latent
+  - Updated wording to clarify r16 EXPOSED latent; r17 FIX via Option A
+
+✅ F2: Workflow clarification added
+  - Verified inbox is gitignored (git check-ignore)
+  - Added heuristic to decisions.md: "Inbox file lifecycle — drops are gitignored intentionally; NEVER committed as files"
+  - Verdict: F2 was workflow misread, not a real process miss
+
+## DIMINISHING RETURNS MARKER
+
+**After r17: ALL MODULES 🟢. LOOP AT NATURAL DIMINISHING RETURNS.**
+
+- 18 consecutive modules at full health
+- Latent double-integration fixed
+- Bench improvements sustained
+- Test coverage robust (+1 new regression test)
+- Next improvements likely require new feature or system design, not incremental hardening
+
+**Recommendation:** Surface to Coordinator. Loop can continue by user directive, but natural stopping point
+has been reached. No known bugs, all systems stable, architecture sound.
+
+## DECISIONS.MD ARCHIVAL STATUS
+
+**Pre-r17 size:** 13,599 lines (over 13K threshold)
+**Post-r17 size:** 14,293 lines (inbox merged)
+**Status:** Over threshold; archival deferred pending round-end review
+
+**Note:** Archival is safe but non-critical. Content is well-organized within single file.
+If desired in future rounds, archive Rounds 1-5 (~4K lines) or Issue #137 section to archive/.
+
+## FILES COMMITTED
+
+Staged for commit:
+- .squad/decisions.md (appended r17 inbox + corrections)
+- .squad/agents/keaton/history.md (r17 entry added)
+- .squad/agents/keyser/history.md (r17 entry added)
+- .squad/agents/scribe/history.md (r17 corrections logged)
+- .squad/ROUND17_HEALTH_REPORT.txt (this file)
+
+Deleted from working tree:
+- .squad/decisions/inbox/keaton-r17-double-integration-fix.md
+- .squad/decisions/inbox/keyser-r17-position-deletion-audit.md
+
+## SIGN-OFF
+
+Round 17 complete. All systems 🟢. Diminishing returns reached. Await Coordinator directive.
+
+---
+END ROUND17_HEALTH_REPORT

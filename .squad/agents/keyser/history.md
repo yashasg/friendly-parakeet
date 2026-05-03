@@ -701,3 +701,18 @@ Merged to `.squad/decisions.md` under "Round 9: Keyser — Wirefix Audit + Self-
 
 **Verdict:** R15 behavior preserved ✅. R16 completion pending ✅. All latent issues eliminated once r16 ships.
 
+### R17: End-to-End Position Deletion Audit + r17 WIP Audit + Module Health
+
+**Date:** 2026-05-03  
+**Audit scope:** r16 committed Position deletion (7ae9659) + Keaton-r17 working tree (latent fix)
+
+**Findings:**
+- F1: decisions.md:13256-13258 incorrectly credited r16 with eliminating latent; fix was r17 (Option A: mutually exclusive views). Corrected via surgical edit.
+- F2: Flagged r16 inbox file absence as 🔴 — BUT inbox is gitignored by design. NOT a process miss. Verified with `git check-ignore`.
+- Position deletion in r16: all 4+ critical sites (collision_system, scoring_system, camera_system, scroll_system) migrated correctly; math identical; behavior preserved ✅.
+- Test count drop (786→784, 2256→2234): all -2 cases / -22 assertions correctly attributed to Position component deletion ✅.
+
+**Pattern:** When flagging 🔴 about commit absence, verify gitignore status first.
+
+**Verdict:** All modules 🟢. Motion system latent fixed in r17 via Option A (exclude<ObstacleScrollZ>). Loop at natural diminishing returns. Recommend surfacing to user.
+

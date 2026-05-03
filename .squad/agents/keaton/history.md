@@ -593,3 +593,21 @@ Merged to `.squad/decisions.md` under "Round 9: Keaton — Phase-Guard Design B 
 
 **Process:** 15+ production files + tests + benchmarks migrated atomically. Build green, zero warnings. Module health: motion_system 🟡 → 🟢.
 
+### R17: Double-Integration Fix + Bench Re-baseline
+
+**Date:** 2026-05-03  
+**Completion:** ✅ SHIPPED  
+**Tests:** 785 cases / 2235 assertions (+1 case / +1 assertion: new double-integration regression test)
+
+**Pattern:** Structural exclusion via `entt::exclude<...>` > runtime checks for double-integration prevention.
+
+**Latent fix applied:** `motion_view` now excludes `ObstacleScrollZ`, making scroll_system's `model_view` and motion_system's `motion_view` mutually exclusive on the discriminator component.
+
+**Correctness verified:** Fail-then-fix test added: pre-fix produced `200.0f == 150.0f` (2× integration); post-fix passes.
+
+**Bench win:** motion_system **26.6 ns / 10 ents** (vs r14 baseline 34-38 ns), ~30% improvement post-r16 Position bridge deletion.
+
+**Protocol:** Pre/post tail-5 paste protocol restored after r16 lapse. ✅
+
+**Verdict:** motion_system 🟢 (latent fixed). All 18 modules 🟢. Loop at natural diminishing returns per Keyser-r17.
+

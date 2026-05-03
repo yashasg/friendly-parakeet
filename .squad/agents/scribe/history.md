@@ -50,3 +50,13 @@ Three heuristics added to decisions.md canonical log to prevent recurrence:
 **Archival considered:** Archive folder exists but is empty. No archival triggered (post-merge size 13,530 < 14K+ threshold; further growth before next archive pass).
 
 ---
+
+## Round 17
+
+**R17 corrections applied:**
+- F1: surgical edit at decisions.md:13256-13258 and 13404 to correct latent-fix attribution (r17, not r16; Option A: structurally exclusive views).
+- F2: added inbox-lifecycle heuristic to decisions.md clarifying that inbox/*.md files are gitignored intentionally and NEVER committed as files.
+- Inbox content (keaton-r17 + keyser-r17) appended to canonical decisions.md; both files deleted from working tree.
+- Decisions.md size post-merge: 14,293 lines (over 13K threshold; archival deferred pending round-end review).
+
+---
