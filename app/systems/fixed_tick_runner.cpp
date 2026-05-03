@@ -19,11 +19,16 @@ void tick_fixed_systems(entt::registry& reg, float dt) {
     // are still hot in cache from scroll/collision/miss/scoring passes.
     obstacle_despawn_system(reg, dt);
     // Keep score-feedback chain contiguous (queue -> popup spawn -> popup state)
-    // while popup/score pools are warm.  popup_feedback and energy run here —
-    // AFTER obstacle_despawn — so popup spawning observes post-despawn world
-    // state (invariant: scoring settled, dead obstacles cleared, then feedback).
-    // DO NOT move popup_feedback_system or energy_system into tick_playing_systems;
-    // doing so reverses this ordering (see Keyser-r10 order-regression audit).
+    // while popup/score pools are warm.  popup_feedback and energy run here
+    // after obstacle_despawn as a cache-locality preference, NOT as a semantic
+    // invariant.  These two systems are commutative: obstacle_despawn reads
+    // ObstacleTag+ObstacleScrollZ/Position and destroys entities; popup_feedback
+    // reads ScorePopupRequestQueue (a ctx variable populated by scoring_system
+    // inside tick_playing_systems) and creates popup entities.  Their data
+    // surfaces are disjoint — swapping them produces no observable state diff
+    // (Keaton-r14 analysis).  DO NOT move popup_feedback_system or energy_system
+    // INTO tick_playing_systems; that would run them before scoring_system
+    // populates the queue, silently dropping all popups.
     popup_feedback_system(reg, dt);
     popup_display_system(reg, dt);
     energy_system(reg, dt);

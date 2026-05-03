@@ -55,28 +55,28 @@ TEST_CASE("tick_playing_systems: no-op when phase is GameOver", "[phase_guard]")
     CHECK_FALSE(reg.all_of<ScoredTag>(obs));
 }
 
-// ── tick_fixed_systems: score-feedback chain order regression guard ──────────
+// ── tick_fixed_systems: score-feedback chain wiring guard ────────────────────
 //
 // Verifies that popup_feedback_system and energy_system are wired in
-// tick_fixed_systems (NOT inside tick_playing_systems / the runner) and that
-// they execute AFTER obstacle_despawn_system.
+// tick_fixed_systems (NOT inside tick_playing_systems / the runner).
 //
-// Why ordering matters (Keyser-r10 invariant, fixed_tick_runner.cpp:21-26):
-//   scoring_system queues ScorePopupRequests → obstacle_despawn removes scored
-//   obstacles → popup_feedback_system consumes the queue and spawns popup
-//   entities → popup_display_system and energy_system advance feedback state.
-//   Moving popup_feedback or energy INTO the runner breaks this ordering:
-//   they would run before obstacle_despawn, violating the post-despawn
-//   invariant documented in the comment block in tick_fixed_systems.
+// Why placement matters: scoring_system (inside tick_playing_systems) populates
+// ScorePopupRequestQueue; popup_feedback_system must run AFTER tick_playing_systems
+// so the queue is already filled when popup_feedback consumes it.  Moving them
+// INTO tick_playing_systems would run them before scoring_system, silently
+// dropping all popups.
 //
-// Note on behavioral equivalence: because popup_feedback reads from a
-// pre-populated queue (not live obstacle entities), wrong ordering does not
-// produce a visible crash. The correct ordering is a design contract, not
-// a runtime invariant detectable per-tick.  This test therefore guards
-// against the systems being silently DROPPED from tick_fixed_systems (the
-// primary wiring regression risk) rather than against wrong call sequence
-// directly.  The comment in fixed_tick_runner.cpp is the primary ordering
-// guard for code review.
+// Why relative ordering between obstacle_despawn and popup_feedback does NOT
+// matter (Keaton-r14 finding): these two systems are commutative.
+//   obstacle_despawn reads ObstacleTag+ObstacleScrollZ/Position → destroys entities
+//   popup_feedback  reads ScorePopupRequestQueue (ctx) → creates popup entities
+// Their data surfaces are disjoint; no observable state diff results from
+// swapping them.  The relative call order in fixed_tick_runner.cpp is a
+// cache-locality preference, not a semantic invariant.
+//
+// This test guards against systems being silently DROPPED from tick_fixed_systems
+// (the primary wiring regression risk).  The call-order comment in
+// fixed_tick_runner.cpp is the documentation anchor for cache-locality rationale.
 TEST_CASE("tick_fixed_systems: popup_feedback and energy run in score-feedback chain", "[phase_guard][integration][order_regression]") {
     auto reg = make_rhythm_registry();
     // Phase must be Playing for popup_feedback and energy guards to pass.
