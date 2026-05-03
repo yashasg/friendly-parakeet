@@ -12,6 +12,7 @@ enum class InputSource : uint8_t { None, Mouse, Touch };
 struct InputState {
     bool  touch_down     = false;
     bool  touch_up       = false;
+    bool  click          = false;
     bool  touching       = false;
     bool  quit_requested = false;
 
