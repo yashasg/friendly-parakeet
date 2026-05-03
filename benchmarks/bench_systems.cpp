@@ -38,7 +38,6 @@ static entt::entity make_bench_player(entt::registry& reg) {
     auto p = reg.create();
     reg.emplace<PlayerTag>(p);
     reg.emplace<WorldTransform>(p, WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y}});
-    reg.emplace<WorldTransform>(p, Vector2{constants::LANE_X[1], constants::PLAYER_Y});
     reg.emplace<PlayerShape>(p);
     reg.emplace<ShapeWindow>(p);
     reg.emplace<Lane>(p);

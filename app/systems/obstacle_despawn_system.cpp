@@ -27,8 +27,8 @@ ObstacleDespawnScratch& despawn_scratch_for(entt::registry& reg) {
 //      game camera's position.z (read live from the registry).  In headless tests
 //      where no GameCamera entity exists, falls back to constants::DESTROY_Y so
 //      tests can construct minimal registries.
-//   2. Legacy position-authority obstacles tracked via Position.y — threshold is
-//      constants::DESTROY_Y.
+//   2. WorldTransform-authority obstacles (entities without ObstacleScrollZ) —
+//      threshold is constants::DESTROY_Y on WorldTransform.position.y.
 void obstacle_despawn_system(entt::registry& reg, float /*dt*/) {
     // Per-registry scratch retains capacity across frames without sharing mutable
     // state between registries.

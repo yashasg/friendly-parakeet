@@ -22,13 +22,16 @@ void tick_fixed_systems(entt::registry& reg, float dt) {
     // while popup/score pools are warm.  popup_feedback and energy run here
     // after obstacle_despawn as a cache-locality preference, NOT as a semantic
     // invariant.  These two systems are commutative: obstacle_despawn reads
-    // ObstacleTag+ObstacleScrollZ/Position and destroys entities; popup_feedback
+    // ObstacleTag+ObstacleScrollZ and destroys entities; popup_feedback
     // reads ScorePopupRequestQueue (a ctx variable populated by scoring_system
     // inside tick_playing_systems) and creates popup entities.  Their data
     // surfaces are disjoint — swapping them produces no observable state diff
     // (Keaton-r14 analysis).  DO NOT move popup_feedback_system or energy_system
     // INTO tick_playing_systems; that would run them before scoring_system
     // populates the queue, silently dropping all popups.
+    //
+    // Note: the obstacle_despawn read set is ObstacleTag+ObstacleScrollZ
+    // (Position component was deleted in r16 — see decisions.md Round 16).
     popup_feedback_system(reg, dt);
     popup_display_system(reg, dt);
     energy_system(reg, dt);

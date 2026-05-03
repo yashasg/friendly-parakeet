@@ -14291,3 +14291,160 @@ If result is not "OK", Scribe MUST stop immediately and surface the error to Coo
 - `.squad/decisions.md:13540` — incorrect "eliminated" claim
 - `.squad/decisions.md:13562-13565` — Scribe path check heuristic
 - `git show 7ae9659 --name-status` — confirms no keaton-r16-position-deletion.md committed
+
+---
+
+## Round 18: Keaton — Bench Double-Emplace Fix; Keyser — Final Audit & Loop-Exhaustion Verdict; Coordinator — Residual Cleanup
+
+### Keaton-r18 — `bench_systems.cpp` double-emplace UB fix
+
+**Commit:** `0c7f3c1 fix: remove duplicate WorldTransform emplace in spawn_obstacles bench helper`
+
+**Pre tail-5 (verbatim):**
+```
+INFO: Loaded beatmap: /Users/yashasgujjar/dev/bullethell/build/content/beatmaps/3_mental_corruption_beatmap.json (189 beats, difficulty=hard)
+INFO: Loaded beatmap: /Users/yashasgujjar/dev/bullethell/build/content/beatmaps/1_stomper_beatmap.json (190 beats, difficulty=medium)
+All tests passed (2235 assertions in 785 test cases)
+```
+
+**Investigation:** `benchmarks/bench_systems.cpp:55-67::spawn_obstacles` had two byte-for-byte identical `reg.emplace<WorldTransform>(obs, ...)` calls (lines 58-59). EnTT v3.x emplacing an existing component is undefined behavior; non-crashing here only because the dense-set storage degenerated to `replace` and values were identical.
+
+**Diff:** `benchmarks/bench_systems.cpp` — 1 line deleted (the duplicate at :59).
+
+**Post tail-5 (verbatim):**
+```
+INFO: Loaded beatmap: /Users/yashasgujjar/dev/bullethell/build/content/beatmaps/3_mental_corruption_beatmap.json (157 beats, difficulty=medium)
+INFO: Loaded beatmap: /Users/yashasgujjar/dev/bullethell/build/content/beatmaps/3_mental_corruption_beatmap.json (189 beats, difficulty=hard)
+All tests passed (2235 assertions in 785 test cases)
+```
+
+**Bench (motion_system, post-fix):**
+```
+10 entities      26.3817 ns   (low 26.3035 ns, high 26.4745 ns)
+100 entities    178.708 ns   (low 175.582 ns, high 181.985 ns)
+```
+
+Within noise of r17 baseline (26.6 ns / 10 ents). Duplicate emplace had no measurable effect — consistent with "non-crashing" characterization.
+
+**Self-assessment (Keaton-r18, verbatim):**
+> "Honest assessment: this is busy work. Removing one duplicate line in a benchmark helper has zero gameplay impact, zero perf impact, and zero test coverage gained. It is a correctness hygiene fix — the codebase is marginally cleaner. The loop is genuinely at diminishing returns; r18's value is 'we didn't leave a known bug documented but unfixed.' That's maintenance discipline, not forward progress. If r19 has no higher-leverage target from Keyser's audit, the loop should conclude."
+
+### Keyser-r18 — Final Audit
+
+**Independent test run (verbatim):**
+```
+All tests passed (2235 assertions in 785 test cases)
+```
+Cross-check with Keaton-r18: ✅ matches.
+
+#### F2 — RETRACTED
+
+r17's F2 ("r16 decision drop file never committed — 🔴 protocol violation") was a workflow misread: `.squad/decisions/inbox/` is **gitignored by design** (`.gitignore:20`). Inbox drops are ephemeral artifacts read by Scribe and merged into canonical `.squad/decisions.md`; they are never meant to be committed. F2 fully retracted.
+
+**Heuristic added:** Before flagging a missing commit as 🔴, verify whether the artifact path is gitignored by design.
+
+#### F1 — STANDS, ALREADY LOGGED
+
+The "Post-Round 16" health table at `.squad/decisions.md:13549` claims `motion_system` 🟡→🟢 with "latent double-integration path eliminated", but the actual `entt::exclude<ObstacleScrollZ>` fix shipped in r17 (commit `5c9cf27`), not r16. The F1 finding is logged at `.squad/decisions.md:13943` and the table row was footnoted by Scribe-25 ("…fixed in r17 via exclude<ObstacleScrollZ>").
+
+#### NEW FINDING 🟡 — `make_bench_player:40-41` double-emplace miss
+
+Keaton-r18 fixed `spawn_obstacles` only. `make_bench_player` had the same UB pattern:
+```cpp
+reg.emplace<WorldTransform>(p, WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y}});
+reg.emplace<WorldTransform>(p, Vector2{constants::LANE_X[1], constants::PLAYER_Y});
+```
+Severity: 🟡 (bench-only, non-production; same category as the r18 fix).
+
+#### Commit-protocol note 🟡 — Keaton force-tracked an inbox drop
+
+Commit `0c7f3c1 --stat`:
+```
+.squad/decisions/inbox/keaton-r18-double-emplace-fix.md | 66 ++++++
+benchmarks/bench_systems.cpp                            |  1 -
+```
+Keaton bypassed gitignore + Scribe append workflow. The inbox folder is intentionally untracked. Recommend coordinator `git rm --cached` the drop file to restore inbox to untracked state.
+
+#### Fresh module health scan (independent)
+
+Scanned `app/` for stale `Position`/`Velocity` references in source/header logic:
+- Zero remaining usages of the deleted components.
+- Surviving `Position`-named identifiers (`MotionVelocity`, `ScreenPosition`, `UIPosition`, `WorldTransform.position`) are all legitimate.
+
+Stale comment references (documentation drift, severity 🟡):
+
+| File | Line | Stale text | Correct text |
+|---|---|---|---|
+| `obstacle_despawn_system.cpp` | 30 | "Legacy position-authority obstacles tracked via **Position.y**" | "WorldTransform-authority obstacles tracked via **WorldTransform.position.y**" |
+| `fixed_tick_runner.cpp` | 25 | "ObstacleTag+ObstacleScrollZ/**Position**" | "ObstacleTag+ObstacleScrollZ" |
+
+#### Perf hotspot check
+
+motion_system bench (100 ents): 178 ns ≈ 1.78 ns/entity. Below the 100 ns/op-per-entity threshold. No hotspot requiring action.
+
+#### Diminishing-returns final verdict
+
+> "The loop has exhausted all meaningful production targets. The single remaining 🟡 is bench-infrastructure hygiene, 30 seconds to fix. There are two stale comments. These do not justify a full round — they can be done as a coordinator micro-commit. **The loop is complete.**"
+
+— Keyser-r18, verbatim.
+
+### Coordinator — Residual cleanup commit (this commit)
+
+Items shipped in this single coordinator commit (no further Keaton/Keyser/Scribe round):
+
+| # | Action | File | Result |
+|---|---|---|---|
+| 1 | Delete duplicate `WorldTransform` emplace on player | `benchmarks/bench_systems.cpp:41` | -1 line; closes Keyser-r18 NEW FINDING |
+| 2 | Restore correct two-path comment block (path 2 reads `WorldTransform.position.y`, not deleted `Position.y`) | `app/systems/obstacle_despawn_system.cpp:24-31` | comment now matches code |
+| 3 | Strip stale `/Position` reference; add r16-deletion note | `app/systems/fixed_tick_runner.cpp:25,32-34` | comment now matches code |
+| 4 | `git rm --cached` force-tracked Keaton-r18 inbox drop | `.squad/decisions/inbox/keaton-r18-double-emplace-fix.md` | back to untracked-and-gitignored |
+| 5 | `git rm --cached` already-deleted r17 inbox drop | `.squad/decisions/inbox/keaton-r17-double-integration-fix.md` | index now consistent with working tree |
+| 6 | Append Round 18 section to canonical decisions log | `.squad/decisions.md` | this section |
+| ⏭ | decisions.md archival (Ralph rounds 1–12 → archive) | deferred — archival is a structural rewrite better done as a standalone session, not a "micro-fix" |
+
+**Build:** zero warnings (`-Wall -Wextra -Werror`). ✅
+**Tests pre/post:** 2235 assertions / 785 test cases — unchanged. ✅
+
+### Module Health Post-Round 18 (final)
+
+| Module | Post-r17 | Post-r18 | Notes |
+|---|---|---|---|
+| collision_system | 🟢 | 🟢 | No change |
+| scoring_system | 🟢 | 🟢 | No change |
+| motion_system | 🟢 | 🟢 | exclude<BeatInfo, ObstacleScrollZ>; clean |
+| scroll_system | 🟢 | 🟢 | No change |
+| lane_push_response_system | 🟢 | 🟢 | No change |
+| playing_systems_runner | 🟢 | 🟢 | No change |
+| fixed_tick_runner | 🟢 | 🟢 | r18 stale comment corrected |
+| popup_feedback_system | 🟢 | 🟢 | No change |
+| popup_display_system | 🟢 | 🟢 | No change |
+| energy_system | 🟢 | 🟢 | No change |
+| particle_system | 🟢 | 🟢 | No change |
+| player_input_system | 🟢 | 🟢 | No change |
+| player_movement_system | 🟢 | 🟢 | No change |
+| camera_system | 🟢 | 🟢 | No change |
+| obstacle_despawn_system | 🟢 | 🟢 | r18 stale comment corrected |
+| miss_detection_system | 🟢 | 🟢 | No change |
+| test_player_system | 🟢 | 🟢 | No change |
+| gameplay_hud_screen_controller | 🟢 | 🟢 | No change |
+| beat_scheduler_system | 🟢 | 🟢 | No change |
+| benchmarks (helpers) | 🟡 | 🟢 | r18: spawn_obstacles fixed (Keaton); coord-r18: make_bench_player fixed |
+
+**Summary post-r18: 20 🟢 / 0 🟡 / 0 🔴.**
+
+### Ralph Loop — Final State
+
+- **Total rounds:** 18.
+- **🔴 caught & fixed during the loop:** 4 (lane_push_response_system unwired r6→r8; popup_feedback/energy ordering r9→r11; F1 motion_system attribution; F2 retracted r18).
+- **Process violations recorded:** 5 (Scribe-19 git-add-A; Scribe-23 path misfile; r16 tail-5 format; r16 missing decision drop; Keaton-r18 force-tracked inbox drop).
+- **Final test suite:** 785 cases / 2235 assertions, zero warnings.
+- **Final perf:** motion_system 26.6 ns / 10 ents (≈30% improvement vs r14 baseline 34–38 ns).
+- **Loop terminated by:** explicit user direction after Keyser-r18's "loop is exhausted, no productive r19 scope" verdict.
+
+### Heuristics adopted in r18
+
+1. **Inbox is gitignored by design.** Inbox files are ephemeral; they live in working tree only. Never `git add -f` them; Scribe is responsible for merging content into canonical `.squad/decisions.md`, then deleting the inbox file from working tree.
+2. **Diminishing-returns gate.** When Keaton honestly reports "this is busy work" + Keyser confirms "no productive next-round scope", the coordinator must surface to the user rather than dispatching another round.
+3. **Coordinator-micro-commits are not Ralph rounds.** Sub-line stale-comment fixes, one-line UB closures, and inbox housekeeping are coordinator-level cleanup, not Keaton/Keyser/Scribe scope.
+4. **F1 footnote pattern.** When a prior round's table claim is later corrected, footnote the original row in-place AND log the correction as a `Finding` paragraph downstream — both stay searchable.
+
