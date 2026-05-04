@@ -71,7 +71,11 @@ InputHandler& raylib_input_handler() {
 }
 
 InputHandler& input_handler() {
+#if defined(SHAPESHIFTER_BACKEND_SDL2)
+    return sdl2_input_handler();
+#else
     return raylib_input_handler();
+#endif
 }
 
 }  // namespace platform::input

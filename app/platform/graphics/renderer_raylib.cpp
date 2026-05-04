@@ -56,7 +56,11 @@ Renderer& raylib_renderer() {
 }
 
 Renderer& renderer() {
+#if defined(SHAPESHIFTER_BACKEND_SDL2)
+    return sdl2_renderer();
+#else
     return raylib_renderer();
+#endif
 }
 
 }  // namespace platform::graphics

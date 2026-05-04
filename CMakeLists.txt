@@ -15,6 +15,21 @@ endif()
 
 project(shapeshifter VERSION 0.1 LANGUAGES CXX)
 
+set(SHAPESHIFTER_BACKEND "raylib" CACHE STRING "Runtime backend (raylib or sdl2)")
+set_property(CACHE SHAPESHIFTER_BACKEND PROPERTY STRINGS raylib sdl2)
+string(TOLOWER "${SHAPESHIFTER_BACKEND}" SHAPESHIFTER_BACKEND)
+if(NOT SHAPESHIFTER_BACKEND STREQUAL "raylib" AND NOT SHAPESHIFTER_BACKEND STREQUAL "sdl2")
+    message(FATAL_ERROR "SHAPESHIFTER_BACKEND must be one of: raylib, sdl2")
+endif()
+if(EMSCRIPTEN AND SHAPESHIFTER_BACKEND STREQUAL "sdl2")
+    message(FATAL_ERROR "SHAPESHIFTER_BACKEND=sdl2 is native-only in phase 2")
+endif()
+if(SHAPESHIFTER_BACKEND STREQUAL "sdl2")
+    set(SHAPESHIFTER_BACKEND_DEFINE SHAPESHIFTER_BACKEND_SDL2)
+else()
+    set(SHAPESHIFTER_BACKEND_DEFINE SHAPESHIFTER_BACKEND_RAYLIB)
+endif()
+
 # C++20 required: designated initializers are used throughout the codebase
 # (MSVC rejects them in C++17 mode with error C7555)
 set(CMAKE_CXX_STANDARD 20)
@@ -58,6 +73,9 @@ find_package(EnTT CONFIG REQUIRED)
 find_package(magic_enum CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(raylib CONFIG REQUIRED)
+if(NOT EMSCRIPTEN)
+    find_package(SDL2 CONFIG REQUIRED)
+endif()
 find_path(RAYGUI_INCLUDE_DIR raygui.h REQUIRED)
 
 find_package(Catch2 3 CONFIG REQUIRED)
@@ -76,6 +94,9 @@ target_compile_options(shapeshifter_warnings INTERFACE
 # Mark third-party include directories as SYSTEM so warnings from their
 # headers are suppressed and cannot be promoted to errors by -Werror.
 set(_system_deps EnTT::EnTT magic_enum::magic_enum raylib nlohmann_json::nlohmann_json Catch2::Catch2 Catch2::Catch2WithMain)
+if(TARGET SDL2::SDL2)
+    list(APPEND _system_deps SDL2::SDL2)
+endif()
 foreach(_dep ${_system_deps})
     if(TARGET ${_dep})
         # Resolve alias targets — set_target_properties doesn't work on aliases
@@ -100,6 +121,7 @@ file(GLOB PLATFORM_SOURCES CONFIGURE_DEPENDS
     app/platform/ios/*.cpp
     app/platform/graphics/*.cpp
     app/platform/input/*.cpp
+    app/platform/sdl2/*.cpp
     app/platform/window/*.cpp
 )
 file(GLOB UI_SOURCES CONFIGURE_DEPENDS app/ui/*.cpp)
@@ -147,12 +169,16 @@ target_link_libraries(shapeshifter_lib PUBLIC
     nlohmann_json::nlohmann_json
     raylib
 )
+if(TARGET SDL2::SDL2)
+    target_link_libraries(shapeshifter_lib PUBLIC SDL2::SDL2)
+endif()
 if(SHAPESHIFTER_IOS)
     target_link_libraries(shapeshifter_lib PUBLIC
         "-framework Foundation"
         "-framework UIKit"
     )
 endif()
+target_compile_definitions(shapeshifter_lib PUBLIC ${SHAPESHIFTER_BACKEND_DEFINE})
 target_link_libraries(shapeshifter_lib PRIVATE shapeshifter_warnings)
 
 # ── Platform capability flags ────────────────────────────────

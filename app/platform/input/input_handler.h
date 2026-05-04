@@ -42,6 +42,6 @@ public:
 
 InputHandler& input_handler();
 InputHandler& raylib_input_handler();
-InputHandler& sdl2_input_handler_stub();
+InputHandler& sdl2_input_handler();
 
 }  // namespace platform::input

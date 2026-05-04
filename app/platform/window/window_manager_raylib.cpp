@@ -65,7 +65,11 @@ WindowManager& raylib_window_manager() {
 }
 
 WindowManager& window_manager() {
+#if defined(SHAPESHIFTER_BACKEND_SDL2)
+    return sdl2_window_manager();
+#else
     return raylib_window_manager();
+#endif
 }
 
 }  // namespace platform::window

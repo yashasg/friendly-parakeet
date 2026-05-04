@@ -235,3 +235,40 @@ Keaton identified two bench fixtures degrading silently due to archetype evoluti
 - Result: `All tests passed (2176 assertions in 782 test cases)` with no warning/error lines reported.
 
 **Learning:** Keep interfaces intentionally narrow and route only high-churn API boundaries first (timing, frame begin/end, window/input polling). This preserves behavior parity while creating a low-risk seam for later SDL2 functional implementation phases.
+
+## 2026-05-04 — SDL2 Migration Phase 2: Native Window + GL Context Bring-up
+
+**Issue:** #372 (Raylib -> SDL2 phased migration)  
+**Branch:** `feature/sdl2-migration-phase-1-abstraction-layer`  
+**Base:** Phase 1 commit `5b46969`
+
+### Work Completed
+
+1. Added native SDL2 platform scaffolding in `app/platform/sdl2/`:
+   - `sdl2_headers.h` (portable SDL2 include shim)
+   - `sdl2_init.h/.cpp` (SDL init/shutdown lifecycle)
+   - `sdl2_graphics_context.h/.cpp` (window + OpenGL context + event pump + frame timing)
+2. Replaced SDL2 stubs with real Phase-2 bring-up wiring:
+   - `window_manager_sdl2.cpp` now creates/destroys SDL2 GL window and polls close events.
+   - `renderer_sdl2.cpp` now clears via OpenGL and swaps window buffers.
+3. Added compile-time backend selection plumbing:
+   - `SHAPESHIFTER_BACKEND` CMake cache option (`raylib` default, `sdl2` optional).
+   - Compile definitions: `SHAPESHIFTER_BACKEND_RAYLIB` / `SHAPESHIFTER_BACKEND_SDL2`.
+   - Runtime selectors in abstraction entry points now dispatch by compile-time backend.
+4. Added native dependency wiring:
+   - CMake: `find_package(SDL2 CONFIG REQUIRED)` for non-Emscripten.
+   - Manifest: added `sdl2` in `vcpkg.json` for native platforms.
+5. Added behavior-safe bring-up path in `game_loop.cpp` for SDL2 backend:
+   - SDL2 backend now runs blank-screen bootstrap loop and clean shutdown.
+   - Default raylib path remains unchanged and functional.
+
+### Validation
+
+- Baseline (raylib backend): configure + build + full tests passed.
+- SDL2 backend toggle (`-DSHAPESHIFTER_BACKEND=sdl2`): configure + build + full tests passed.
+- Zero-warning policy preserved (build succeeded with existing `-Werror` policy).
+
+### Notes
+
+- Phase 2 target (native SDL2 window + GL context bring-up) is implemented.
+- Rendering/gameplay parity migration is intentionally deferred to later phases.

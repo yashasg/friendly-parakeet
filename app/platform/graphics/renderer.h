@@ -26,6 +26,6 @@ public:
 
 Renderer& renderer();
 Renderer& raylib_renderer();
-Renderer& sdl2_renderer_stub();
+Renderer& sdl2_renderer();
 
 }  // namespace platform::graphics

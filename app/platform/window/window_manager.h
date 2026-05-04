@@ -22,6 +22,6 @@ public:
 
 WindowManager& window_manager();
 WindowManager& raylib_window_manager();
-WindowManager& sdl2_window_manager_stub();
+WindowManager& sdl2_window_manager();
 
 }  // namespace platform::window

@@ -4,7 +4,7 @@ namespace platform::input {
 
 namespace {
 
-class Sdl2InputHandlerStub final : public InputHandler {
+class Sdl2InputHandler final : public InputHandler {
 public:
     void configure_gameplay_gestures() override {}
     [[nodiscard]] bool is_mouse_left_released() const override { return false; }
@@ -18,8 +18,8 @@ public:
 
 }  // namespace
 
-InputHandler& sdl2_input_handler_stub() {
-    static Sdl2InputHandlerStub instance;
+InputHandler& sdl2_input_handler() {
+    static Sdl2InputHandler instance;
     return instance;
 }
 

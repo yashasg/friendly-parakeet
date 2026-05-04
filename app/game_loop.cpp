@@ -88,6 +88,16 @@ void game_loop_init(entt::registry& reg,
             (mon_h - win_h) / 2);
     }
     window.set_target_fps(60);
+
+#if defined(SHAPESHIFTER_BACKEND_SDL2)
+    (void)reg;
+    (void)test_player_mode;
+    (void)test_skill;
+    (void)difficulty;
+    TraceLog(LOG_INFO, "SHAPESHIFTER v%s (SDL2 backend bring-up)", SHAPESHIFTER_VERSION);
+    return;
+#endif
+
     InitAudioDevice();
     sfx_bank_init(reg);
     sfx_playback_backend_init(reg);
@@ -180,6 +190,15 @@ void game_loop_init(entt::registry& reg,
 // One frame: input → fixed timestep → render → blit → audio.
 // Not in header — called by game_loop_run and platform_run_loop (Emscripten).
 void game_loop_frame(entt::registry& reg, float& accumulator) {
+#if defined(SHAPESHIFTER_BACKEND_SDL2)
+    (void)reg;
+    (void)accumulator;
+    auto& renderer = platform::graphics::renderer();
+    renderer.begin_drawing();
+    renderer.clear_background(BLACK);
+    renderer.end_drawing();
+    return;
+#else
     auto& renderer = platform::graphics::renderer();
     float raw_dt = renderer.frame_time();
     accumulator += raw_dt;
@@ -234,6 +253,7 @@ void game_loop_frame(entt::registry& reg, float& accumulator) {
 
     auto* session_log = reg.ctx().find<SessionLog>();
     if (session_log) session_log_flush(*session_log);
+#endif
 }
 
 bool game_loop_should_quit(entt::registry& reg) {
@@ -258,6 +278,11 @@ void game_loop_run(entt::registry& reg) {
 // ── Shutdown ────────────────────────────────────────────────────────────────
 
 void game_loop_shutdown(entt::registry& reg) {
+#if defined(SHAPESHIFTER_BACKEND_SDL2)
+    (void)reg;
+    platform::window::window_manager().close_window();
+    return;
+#else
     // Disconnect all destroy/construct listeners before clearing entities
     unwire_input_dispatcher(reg);
     unwire_obstacle_mesh_lifetime(reg);
@@ -285,4 +310,5 @@ void game_loop_shutdown(entt::registry& reg) {
     sfx_bank_unload(reg);
     CloseAudioDevice();
     platform::window::window_manager().close_window();
+#endif
 }
