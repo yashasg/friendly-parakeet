@@ -1,8 +1,5 @@
 # Decisions Registry
 
-
-### Keaton scoring_system ctx Lookup Deduplication — Ralph Round 2
-
 **Date:** 2026-05-03  
 **Author:** Keaton (C++ Performance Engineer)  
 **File changed:** `app/systems/scoring_system.cpp`  
@@ -518,23 +515,6 @@ Beat logging is extracted from `song_playback_system` into a new `beat_log_syste
 # Decision: SFX Enum Test Contract After magic_enum Refactor
 
 **Author:** Baer
-**Date:** 2026-04-26
-**Status:** RECOMMENDED — no approval needed (test-only change)
-
----
-
-## Context
-
-Keaton's magic_enum refactor removed the `SFX::COUNT` sentinel from the `SFX` enum.
-The `test_audio_system.cpp` file was previously excluded from the build via a CMakeLists regex.
-The queue-capacity test used `static_cast<SFX>(i % static_cast<int>(SFX::COUNT))` — now invalid.
-
----
-
-## Decision
-
-**`test_audio_system.cpp` is re-enabled in the build.** The `kAllSfx[]` explicit array pattern replaces the COUNT-based cycle.
-
 ### Pattern (in `test_audio_system.cpp`)
 
 ```cpp
@@ -618,18 +598,6 @@ All five C++ review themes from PR #43 have deterministic regression tests that 
 # Decision: PR #43 regression test suite + pool-priming fix
 
 **Author:** Baer
-**Date:** 2026-04-26
-**Commit:** 31bc2d8
-
-## Summary
-
-Added regression tests for all 6 PR #43 review themes and fixed a real production bug discovered during investigation.
-
-## New test files
-
-- `tests/test_pr43_regression.cpp` — 14 test cases covering all 6 themes
-- 3 new test cases appended to `tests/test_level_select_system.cpp`
-
 ### baer-song-complete-score-tests
 
 # Decision: Song-Complete Score/High-Score Render Regression Tests
@@ -8163,15 +8131,6 @@ This is a pure relocation. The function signature, implementation, and component
 # Decision: Remove RingZone code
 
 **Author:** McManus
-**Date:** 2026-04-26
-**Status:** Proposed
-
-## Context
-
-RingZone was intended to track timing zone transitions for obstacles with proximity rings (ShapeGate, ComboGate, SplitPath). User directive: "ringzone is not a component either, we should just remove the ringzone code for now, it is broken."
-
-## READ-ONLY Audit: Removal Surface
-
 ### Files to DELETE (3 files)
 1. `app/components/ring_zone.h` — RingZoneTracker component definition
 2. `app/systems/ring_zone_log_system.cpp` — Zone transition logging system
@@ -13058,65 +13017,6 @@ When migrating from a legacy type (e.g., `Velocity`) to a new type (e.g., `Motio
 
 # Decision: Delete `Position` Component (Keaton Round 16)
 
-**Date:** 2025-07-28  
-**Author:** Keaton (Copilot agent)  
-**Status:** SHIPPED
-
-## Decision
-
-**Delete `Position` entirely.** Migrate all readers to `WorldTransform.position.{x,y}`.
-
-## Rationale
-
-- `Position` had zero independent authority. It was either a 3-line bridge
-  written from `WorldTransform` (motion_system) or a redundant emplace in
-  obstacle factories alongside `WorldTransform`.
-- Every read site was a mechanical `.x` → `.position.x`, `.y` → `.position.y`
-  swap — no logic changed.
-- Keeping the bridge would mean every frame paying a registry write + extra
-  memory for a component that added no information.
-
-## Files Changed
-
-**Production (app/):**
-- `components/transform.h` — removed `Position` struct
-- `systems/motion_system.cpp` — deleted bridge
-- `systems/player_movement_system.cpp` — deleted bridge
-- `systems/scroll_system.cpp` — beat_view: `WorldTransform+BeatInfo+exclude<ObstacleScrollZ>`
-- `entities/obstacle_entity.cpp` — 5 `emplace<Position>` removed
-- `systems/collision_system.cpp` — 5 views → WorldTransform; lane_overlaps takes `float`
-- `systems/scoring_system.cpp` — `HitRecord.pos` → `Vector2 popup_xy`; hit_view discriminator → `exclude<ObstacleScrollZ>`
-- `systems/camera_system.cpp` — `get<Position>(mc.parent)` → `get<WorldTransform>`
-- `systems/obstacle_despawn_system.cpp` — view → WorldTransform + `exclude<ObstacleScrollZ>`
-- `systems/miss_detection_system.cpp` — same
-- `systems/test_player_system.cpp` — 5 reads → WorldTransform
-- `entities/obstacle_render_entity.cpp` — `try_get<Position>` → `try_get<WorldTransform>`
-- `ui/screen_controllers/gameplay_hud_screen_controller.cpp` — view → WorldTransform
-
-**Tests / Benchmarks:**
-- All test helpers, archetype tests, component tests, scoring tests, scroll
-  tests, collision tests, miss-detection tests, rhythm tests, model-authority
-  tests, obstacle-model-slice tests, beat-scheduler tests, test-player-system
-  tests, and benchmarks migrated.
-
-## Post-Ship Baseline
-
-```
-All tests passed (2234 assertions in 784 test cases)
-```
-Zero warnings. Zero remaining code-level `Position` type references in `app/` or `tests/`.
-
-# Keyser Round 16 — Audit Drop
-
-Date: 2026-05-03
-Author: Keyser (audit)
-Commit under audit: `70f6436` (r15 migration), `7ca8f63` (keaton-r15 decision drop)
-Working tree at audit time: Keaton-r16 uncommitted WIP present (details below)
-
----
-
-## 1. Full Audit of Keaton-r15 Migration
-
 ### Commit identity
 `70f6436` — "issue #349: migrate obstacles from Velocity to MotionVelocity, delete vel_view"
 19 files changed, 88 insertions(+), 103 deletions(-)
@@ -14448,3 +14348,37 @@ Items shipped in this single coordinator commit (no further Keaton/Keyser/Scribe
 3. **Coordinator-micro-commits are not Ralph rounds.** Sub-line stale-comment fixes, one-line UB closures, and inbox housekeeping are coordinator-level cleanup, not Keaton/Keyser/Scribe scope.
 4. **F1 footnote pattern.** When a prior round's table claim is later corrected, footnote the original row in-place AND log the correction as a `Finding` paragraph downstream — both stay searchable.
 
+
+
+### 2026-05-03T17:24:22.659-07:00: User directive
+**By:** yashasg (via Copilot)
+**What:** Everything in the game should use song_time as the authority.
+**Why:** User request — captured for team memory
+
+# Keaton Decision Note — Hot Path Dispatch in collision_system
+
+## Context
+User requested reducing branch/code-switching in hot runtime systems using event/dispatch or pre-dispatch-by-type, with gameplay behavior unchanged and perf validated.
+
+## Decision
+Adopted **pre-dispatch by archetype** inside `collision_system` for shape-bearing obstacle paths when rhythm timing grading is active.
+
+- Introduced `can_grade_shape` frame gate.
+- When `can_grade_shape == true`, process shape obstacles in two structural passes:
+  - `... + BeatInfo` (grade timing with arrival time)
+  - same archetype excluding `BeatInfo` (no timing-grade write)
+- When `can_grade_shape == false`, keep a single-pass loop per archetype to avoid overhead from extra empty views.
+- Kept lane-block and vertical-bar paths unchanged.
+
+## Why this over event dispatch
+A dispatcher/event split for per-obstacle collision resolution would add enqueue/drain overhead and extra indirection in the hottest per-entity loop. Measurements favored keeping direct iteration with archetype pre-dispatch.
+
+## Verification
+- Build: success, zero warnings.
+- Tests: full suite passed (`2179 assertions in 784 test cases`), collision suite passed (`112 assertions in 51 test cases`).
+- Bench (`bench_systems`):
+  - collision 1 obstacle: 127.07 ns → 126.94 ns
+  - collision 10 obstacles: 153.28 ns → 140.64 ns (~8% faster)
+
+## Scope
+Only `app/systems/collision_system.cpp` was changed for this task.

@@ -2463,3 +2463,100 @@ Current shipped beatmap JSON still contains bar kinds, but runtime gameplay stri
 - `./build/shapeshifter_tests "[beat_scheduler]"`
 - `./build/shapeshifter_tests "~[bench]"`
 
+**Date:** 2026-04-26
+**Status:** RECOMMENDED — no approval needed (test-only change)
+
+---
+
+## Context
+
+Keaton's magic_enum refactor removed the `SFX::COUNT` sentinel from the `SFX` enum.
+The `test_audio_system.cpp` file was previously excluded from the build via a CMakeLists regex.
+The queue-capacity test used `static_cast<SFX>(i % static_cast<int>(SFX::COUNT))` — now invalid.
+
+---
+
+## Decision
+
+**`test_audio_system.cpp` is re-enabled in the build.** The `kAllSfx[]` explicit array pattern replaces the COUNT-based cycle.
+
+**Date:** 2026-04-26
+**Commit:** 31bc2d8
+
+## Summary
+
+Added regression tests for all 6 PR #43 review themes and fixed a real production bug discovered during investigation.
+
+## New test files
+
+- `tests/test_pr43_regression.cpp` — 14 test cases covering all 6 themes
+- 3 new test cases appended to `tests/test_level_select_system.cpp`
+
+**Date:** 2026-04-26
+**Status:** Proposed
+
+## Context
+
+RingZone was intended to track timing zone transitions for obstacles with proximity rings (ShapeGate, ComboGate, SplitPath). User directive: "ringzone is not a component either, we should just remove the ringzone code for now, it is broken."
+
+## READ-ONLY Audit: Removal Surface
+
+**Date:** 2025-07-28  
+**Author:** Keaton (Copilot agent)  
+**Status:** SHIPPED
+
+## Decision
+
+**Delete `Position` entirely.** Migrate all readers to `WorldTransform.position.{x,y}`.
+
+## Rationale
+
+- `Position` had zero independent authority. It was either a 3-line bridge
+  written from `WorldTransform` (motion_system) or a redundant emplace in
+  obstacle factories alongside `WorldTransform`.
+- Every read site was a mechanical `.x` → `.position.x`, `.y` → `.position.y`
+  swap — no logic changed.
+- Keeping the bridge would mean every frame paying a registry write + extra
+  memory for a component that added no information.
+
+## Files Changed
+
+**Production (app/):**
+- `components/transform.h` — removed `Position` struct
+- `systems/motion_system.cpp` — deleted bridge
+- `systems/player_movement_system.cpp` — deleted bridge
+- `systems/scroll_system.cpp` — beat_view: `WorldTransform+BeatInfo+exclude<ObstacleScrollZ>`
+- `entities/obstacle_entity.cpp` — 5 `emplace<Position>` removed
+- `systems/collision_system.cpp` — 5 views → WorldTransform; lane_overlaps takes `float`
+- `systems/scoring_system.cpp` — `HitRecord.pos` → `Vector2 popup_xy`; hit_view discriminator → `exclude<ObstacleScrollZ>`
+- `systems/camera_system.cpp` — `get<Position>(mc.parent)` → `get<WorldTransform>`
+- `systems/obstacle_despawn_system.cpp` — view → WorldTransform + `exclude<ObstacleScrollZ>`
+- `systems/miss_detection_system.cpp` — same
+- `systems/test_player_system.cpp` — 5 reads → WorldTransform
+- `entities/obstacle_render_entity.cpp` — `try_get<Position>` → `try_get<WorldTransform>`
+- `ui/screen_controllers/gameplay_hud_screen_controller.cpp` — view → WorldTransform
+
+**Tests / Benchmarks:**
+- All test helpers, archetype tests, component tests, scoring tests, scroll
+  tests, collision tests, miss-detection tests, rhythm tests, model-authority
+  tests, obstacle-model-slice tests, beat-scheduler tests, test-player-system
+  tests, and benchmarks migrated.
+
+## Post-Ship Baseline
+
+```
+All tests passed (2234 assertions in 784 test cases)
+```
+Zero warnings. Zero remaining code-level `Position` type references in `app/` or `tests/`.
+
+# Keyser Round 16 — Audit Drop
+
+Date: 2026-05-03
+Author: Keyser (audit)
+Commit under audit: `70f6436` (r15 migration), `7ca8f63` (keaton-r15 decision drop)
+Working tree at audit time: Keaton-r16 uncommitted WIP present (details below)
+
+---
+
+## 1. Full Audit of Keaton-r15 Migration
+
