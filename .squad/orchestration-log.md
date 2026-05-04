@@ -386,3 +386,17 @@ Residual: raylib API dependencies remain in non-backend modules (font, text util
 - Full SDL2 migration Phase accepted with zero new regressions
 - Test parity matrix complete across all affected subsystems
 - Migration architecture stable for production deployment
+
+---
+
+### 2026-05-04T00:00:00Z — Scribe: Kujan Full Criteria Audit Logged
+
+**Batch:** kujan-1  
+**Origin:** Spawn manifest (spawn-request kujan-1)  
+**Scope:** Full criteria audit after latest fixes (audio duplication, strict codec/device init policy, init failure contract)  
+**Status:** ✅ COMPLETED
+
+**Finding:** Audio duplication resolved (✅). Strict fail-fast init contract still incomplete in game_loop/main path (🔴). Single priority fix documented: explicit `bool` return from `init_audio_device()` with fail-fast contract enforcement in `game_loop_init()`.
+
+**Decision:** Kujan audit filed to `.squad/decisions.md`. Inbox cleared.
+

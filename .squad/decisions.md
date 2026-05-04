@@ -4439,3 +4439,55 @@ Added minimal `workflow_dispatch` triggers to `ci-linux.yml` and `ci-wasm.yml` s
 - Backend matrix behavior is explicit and validated on GitHub runners (Linux + WASM).
 - CI evidence captured with successful run URLs above.
 - Migration-coupled failures identified and fixed; infra-coupled dependency issue identified and fixed.
+
+---
+
+## Session: kujan-1 (Reviewer)
+
+**Date:** 2026-05-04T00:00:00Z  
+**Agent:** Kujan (Reviewer)  
+**Scope:** Full criteria audit after latest fixes (audio duplication, strict codec/device init policy, init failure contract)  
+**Status:** ✅ AUDIT COMPLETED
+
+### Audit Scope
+- `app/`
+- `tests/`
+- `CMakeLists.txt`
+- `README.md`
+
+### Findings Summary
+
+#### ✅ Resolved Issues
+1. **Direct SDL_mixer duplication eliminated**
+   - `app/audio/music_backend.cpp` now calls runtime API functions only (`LoadMusicStream`, `PlayMusicStream`, `GetMusicTimePlayed`)
+   - No `Mix_*` direct calls in music_backend; all delegated to runtime abstraction
+   - `app/runtime/runtime_compat.cpp` retains sole authority for `Mix_*` orchestration (`Mix_Init`, `Mix_OpenAudio`, `Mix_PlayMusic`, `Mix_CloseAudio`)
+
+2. **Codec/device init strictness verified**
+   - Explicit codec requirements enforced: `MIX_INIT_OGG | MIX_INIT_MP3 | MIX_INIT_FLAC` with failure teardown in `app/runtime/runtime_compat.cpp`
+   - Boot contract properly gated in `app/main.cpp` behind `game_loop_init(...)` success
+
+#### ⚠️ Still Violating Criteria
+1. **Wrapper surface remains broad**
+   - `app/runtime/runtime_types.h` redefines engine-style types/APIs
+   - `app/runtime/runtime_api.h` re-exports facade
+
+2. **Virtual renderer indirection still present**
+   - `app/rendering/renderer_backend.h` defines abstract `Renderer` with virtual methods
+
+3. **Runtime state outside registry**
+   - `app/runtime/runtime_compat.cpp` uses static `RuntimeMusicState` / `RuntimeAudioState` singletons
+
+4. **Collision system duplication gap**
+   - `app/systems/collision_system.cpp` repeats similar branch bodies across ShapeGate/ComboGate/SplitPath paths
+
+#### 🔴 Priority Remaining Fix
+**Enforce explicit fail-fast init contract for audio init result propagation**
+- Files: `app/audio/music_backend.h`, `app/audio/music_backend.cpp`, `app/game_loop.cpp`
+- Action: Change `platform::audio::init_audio_device()` to return `bool`; in `game_loop_init`, fail immediately on false before downstream setup
+- Rationale: `app/audio/music_backend.cpp::init_audio_device()` currently discards `InitAudioDevice()` result with `(void)` cast; boot relies on indirect readiness check in `app/game_loop.cpp`
+- Impact: Eliminates ambiguous implicit state propagation; enforces contract at callsite
+
+### Outcome
+Audio duplication resolved and init strictness verified. Strict fail-fast audio init contract remains incomplete in game_loop/main path; blocking fix documented above.
+
