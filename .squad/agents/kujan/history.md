@@ -35,8 +35,22 @@ Reviewed Hockney's asset root removal decision summary. Rejected Verbal's initia
 
 ## Learnings
 
+- 2026-05-04T11:08:09Z: Consolidating Mix_* calls into one file is not sufficient; runtime init must fail fast and gameplay-visible timing authority cannot live in hidden static runtime state.
 - 2026-05-04T10:56:32Z: When architecture contracts declare "No globals. No virtuals." and "use engine APIs directly," treat compatibility facades (type redefinitions + backend interfaces) as first-class gate failures, not stylistic preferences.
 
 ## 2026-05-04T10:56:32Z — Scribe: Team spawn manifest completion
 
 Scribe orchestrated team spawn completion. Your audit findings have been merged to decisions.md.
+
+## 2026-05-04T11:08:09Z — Re-Audit: Audio/Runtime Refactor Gate
+
+**Session:** Kujan + Fenster parallel re-audits on SDL2 migration.
+
+**Your finding:** REJECT for revision. Mixed delta from prior audit:
+- ✓ Fixed: SDL_mixer lifecycle/timing no longer duplicated in `app/audio/music_backend.cpp`; Mix_* ownership centralized to `app/runtime/runtime_compat.cpp`.
+- ✗ Still open: wrapper abstraction stack (`runtime_types/runtime_compat`, virtual renderer interface), non-ECS runtime static state affecting gameplay time, collision-system duplication.
+- ⚠️ New blocker: runtime init not strict; audio init failure ignored in boot path.
+
+**Reassignment guidance:** Route to different implementation agent (not reviewer). Require patch plan removing/narrowing wrappers, relocating gameplay-relevant mutable state into registry context/components, deduplicating collision branches.
+
+**Related:** Fenster audit confirms SDL_mixer consolidation achieved; init contract and shutdown guards remain open.

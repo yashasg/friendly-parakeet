@@ -1,3 +1,28 @@
+# 2026-05-04T11:08:09Z — Kujan Re-Audit: Audio/Runtime Refactor Gate
+
+## Decision
+REJECT for revision.
+
+## Delta vs prior Kujan audit
+- Fixed: direct SDL_mixer lifecycle/timing orchestration no longer duplicated inside `app/audio/music_backend.cpp`; Mix_* ownership is centralized in `app/runtime/runtime_compat.cpp`.
+- Still open: wrapper abstraction stack (`runtime_types/runtime_compat`, virtual renderer interface), non-ECS runtime static state affecting gameplay time, and collision-system duplication.
+- New blocker surfaced in this pass: runtime init is not strict because audio init failure is ignored in boot path.
+
+## Required next revision owners (not reviewer)
+1. Runtime/audio owner: enforce fail-fast init contract and single authority for music time.
+2. Platform/architecture owner: remove or sharply narrow engine compatibility wrappers and virtual renderer abstraction.
+3. Gameplay systems owner: dedupe `collision_system` shape-gate/combo/split branches with reusable evaluator helpers.
+
+---
+
+## 2026-05-04T11:08:09Z — Fenster re-audit: audio/runtime enforcement priorities
+
+- Duplicate SDL_mixer orchestration has been reduced at the wrapper layer (`app/audio/music_backend.cpp` now forwards), but authoritative lifecycle/timing still lives in `app/runtime/runtime_compat.cpp` and remains a high-risk runtime singleton surface.
+- Runtime init policy is not strict enough: `game_loop_init` can early-return on failure without an init status contract, while `main.cpp` still unconditionally runs and shuts down.
+- Next implementation should prioritize (1) explicit init success contract, (2) partial-init-safe shutdown guards, and (3) continued wrapper thinning so only one module owns audio state transitions.
+
+---
+
 ## 2026-05-04T10:56:32Z — Audio audit priority decision
 
 From Fenster (Tools Engineer):
