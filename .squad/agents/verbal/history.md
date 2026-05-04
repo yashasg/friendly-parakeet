@@ -8,6 +8,12 @@
 
 ## Learnings
 
+### 2026-05-04T10:56:32Z — QA audit: validator/test parity and brittle contract checks
+
+- **Cross-surface policy parity matters:** when a rule exists in both C++ regression tests and Python validators, drift appears fast and causes contradictory release signals (example surfaced: medium max-gap threshold mismatch and bar-policy conflict between `tests/test_shipped_beatmap_*` and `tools/validate_*.py`).
+- **Brittle source-text assertions are high-maintenance:** tests that grep `.cpp` source strings (`test_pr43_regression.cpp`) are easy to break by refactors/formatting while missing semantic regressions; behavior-level assertions tied to ECS outputs are more durable.
+- **Helper duplication is an ECS drift vector:** replicated entity construction in test helpers (`tests/test_helpers.h`) diverges from canonical factories (`app/entities/*_entity.cpp`) unless helpers delegate directly to production factories.
+
 ### 2026-04-30 — Assets root removal QA audit
 
 - **Validation sweep pattern:** For root-folder migrations, run both textual sweeps and path sweeps: `rg "assets/|\bassets\b"` across code/docs/workflows plus `find . -type d -name '*assets*'`. Text-only sweeps miss directory-state regressions; path-only sweeps miss stale string literals.
@@ -113,3 +119,7 @@ Decision #170 merged to registry. Team session log: `.squad/log/2026-04-30T08-30
 - **Orchestration log written:** `.squad/orchestration-log/2026-05-04T04:55:12Z-verbal.md`
 - **Inbox deduplication:** Retained cleared entry; removed initial rejection (superseded)
 - **Status in registry:** Approved (AC satisfied, gate clear comment posted on GitHub)
+
+## 2026-05-04T10:56:32Z — Scribe: Team spawn manifest completion
+
+Scribe orchestrated team spawn completion. Your audit findings have been merged to decisions.md.

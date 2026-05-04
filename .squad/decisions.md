@@ -1,3 +1,40 @@
+## 2026-05-04T10:56:32Z — Audio audit priority decision
+
+From Fenster (Tools Engineer):
+
+- Prioritize consolidating SDL_mixer runtime ownership into one module before additional audio features.
+- Current split between `app/audio/music_backend.cpp` and `app/runtime/runtime_compat.cpp` duplicates music timing/state and creates drift risk.
+- Follow-up work should enforce one authority for device init/shutdown, playback state, and elapsed-time reporting, with other layers forwarding into it.
+
+---
+
+# Kujan Review Decision — ECS + Engine Wrapper Audit
+
+**Date:** 2026-05-04T10:56:32Z  
+**Reviewer:** Kujan  
+**Scope:** `app/`, `tests/`, `tools/`
+
+## Gate Decision
+
+**REJECT for revision** on material architecture/quality criteria.
+
+## Blocking Findings (owner: implementation agent, not review author)
+
+1. Engine-wrapper abstraction stack violates direct-engine criteria and project architecture contract:
+   - `app/runtime/runtime_types.h` (engine type/API shadowing)
+   - `app/runtime/runtime_compat.cpp` (compat facade implementation)
+   - `app/rendering/renderer_backend.h` + `app/rendering/renderer_backend_sdl2.cpp` (virtual renderer indirection)
+2. ECS single-source-of-truth drift via backend static mutable runtime state influencing gameplay timing:
+   - `app/audio/music_backend.cpp` (`SdlMixerState`, override/timing state statics)
+3. Significant duplication/SRP erosion in collision resolution matrix:
+   - `app/systems/collision_system.cpp` (branched duplicate loops for graded/ungraded shape obstacles)
+
+## Reassignment Guidance
+
+Route revision to a different implementation agent with ECS architecture authority (not this reviewer). Require a patch plan that removes or narrows wrapper layers, relocates gameplay-relevant mutable state into registry context/components, and deduplicates collision branch logic through shared helpers.
+
+---
+
 ## 2026-05-04 — Kobayashi Phase 6 Completion — CI Runner Confirmation (Issue #372)
 
 **Date:** 2026-05-04  

@@ -32,3 +32,11 @@ Reviewed Hockney's asset root removal decision summary. Rejected Verbal's initia
 - Baer regression tests guard latching/phase-transition behavior across two ticks.
 - All changes isolated; no collateral surface.
 - **Decision logged:** #176 in `.squad/decisions.md` (2026-04-30T07:15:10Z)
+
+## Learnings
+
+- 2026-05-04T10:56:32Z: When architecture contracts declare "No globals. No virtuals." and "use engine APIs directly," treat compatibility facades (type redefinitions + backend interfaces) as first-class gate failures, not stylistic preferences.
+
+## 2026-05-04T10:56:32Z — Scribe: Team spawn manifest completion
+
+Scribe orchestrated team spawn completion. Your audit findings have been merged to decisions.md.

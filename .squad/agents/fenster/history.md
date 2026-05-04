@@ -82,6 +82,7 @@ Ported the removed HUD behavior (shape buttons, approach-ring affordance, colorf
 - Beatmap editor help UX can reuse a single `bindModal({ trigger, modal, close })` helper in `tools/beatmap-editor/js/main.js` to keep settings/help dialog behavior consistent (open, overlay click dismiss, Escape dismiss, `aria-hidden` toggling).
 - Static, dependency-free UI regression coverage is practical in Node by asserting shell/wiring invariants from source files (`tools/beatmap-editor/test/help-modal-ui.test.js`) when DOM execution seams are unavailable.
 - Validation evidence for the help-modal change set: `node --check tools/beatmap-editor/js/main.js`, `node --check tools/beatmap-editor/test/help-modal-ui.test.js`, `node --test tools/beatmap-editor/test/*.test.js` (22/22 pass), and `git --no-pager diff --check` all passed.
+- Audio backend ownership must have one source of truth: keep SDL_mixer device/music lifecycle + playback timing in a single runtime module, then make wrappers thin forwarders to avoid drift between `app/audio/music_backend.cpp` and `app/runtime/runtime_compat.cpp`.
 
 ## 2026-04-29T09:55:21Z — Pause Screen Text Fix (Approved)
 
@@ -180,3 +181,7 @@ Completed the remaining Phase 5 scope for issue #372 on `feature/sdl2-migration-
   - `[audio],[music_backend],[song_playback],[timing],[clock]`
   - `[audio],[music_backend],[song_playback],[timing],[clock],[rhythm],[beat_scheduler],[test_player]`
 - All above validations passed.
+
+## 2026-05-04T10:56:32Z — Scribe: Team spawn manifest completion
+
+Scribe orchestrated team spawn completion. Your audit findings have been merged to decisions.md.
