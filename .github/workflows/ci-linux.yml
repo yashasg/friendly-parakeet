@@ -49,13 +49,18 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
             clang-20 \
+            autoconf \
+            autoconf-archive \
+            automake \
             libgl1-mesa-dev \
+            libtool \
             libx11-dev \
             libxrandr-dev \
             libxinerama-dev \
             libxcursor-dev \
             libxi-dev \
             libpulse-dev \
+            pkg-config \
             catch2
 
       - name: Setup vcpkg

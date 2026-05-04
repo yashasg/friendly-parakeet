@@ -610,6 +610,7 @@ if(EMSCRIPTEN)
     # C++ exceptions; enable that runtime support for the test binary only.
     target_compile_options(shapeshifter_tests PRIVATE -fexceptions)
     target_link_options(shapeshifter_tests PRIVATE
+        ${_emscripten_backend_link_flag}
         -fexceptions
         -sALLOW_MEMORY_GROWTH=1
         -sDYNAMIC_EXECUTION=0
