@@ -155,3 +155,28 @@ Ready for integration. Phase 2 SDL2 abstraction layer established with validated
 - Deterministic timing framework enables per-system perf validation
 - Manual checklist staged for final Phase 3 cross-platform validation
 
+
+---
+
+## Session: hockney-2
+
+**Agent:** Hockney (Platform Engineer)  
+**Scope:** Phase 4 Input Migration Slice (SDL2)  
+**Status:** ✅ COMPLETED
+
+### Deliverables
+- Narrow Phase 4 starter slice: SDL2 event pumping through input abstraction
+- Keyboard + basic mouse behavior enabled (WASD/arrows/1-3/ZXC/Enter/Space)
+- Mouse-left release + position tracking
+- Window focus reporting
+- Touch/gesture APIs deferred to explicit TODO stubs
+
+### Validation
+- Both backends (SDL2, raylib) build warning-free
+- All input tests pass: generic + backend-specific
+- Gameplay/input pipeline integration unblocked
+
+### Next
+- SDL2 touch + multitouch tracking (Phase 4 completion)
+- Gesture recognition parity
+- Timing/latency parity checks (SDL2 vs raylib)
