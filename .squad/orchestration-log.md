@@ -97,3 +97,61 @@
 ### Status
 Ready for integration. Phase 2 SDL2 abstraction layer established with validated compile-time backend selection. Raylib default preserved; SDL2 path live and tested.
 
+
+---
+
+## Session: keaton-9
+
+**Agent:** Keaton (C++ Performance Engineer)  
+**Scope:** Phase 3 Rendering Core Port — SDL2 Floor Path  
+**Status:** ✅ COMPLETED
+
+### Deliverables
+
+- Ported playfield floor/lane-guide geometry rendering to abstraction-layer primitives
+- Updated SDL2 Phase-3 runtime wiring with minimal GameState/GameCamera/FloorParams bootstrap
+- Adjusted SDL2 GL context attributes for compatibility-friendly profile
+- Validated build and test green on both raylib and SDL2 backends
+- Zero warnings maintained across both platform configurations
+
+### Validation Results
+
+- Raylib backend: ✅ Build clean, all tests pass
+- SDL2 backend: ✅ Build clean, all tests pass  
+- Compile-time backend selection verified working
+- Raylib behavior and parity preserved
+
+### Phase 3 Checkpoint
+
+**Completed:** Core floor/playfield rendering path (highest priority)  
+**Next:** Port obstacle mesh rendering, particle geometry, UI composite path
+
+---
+
+## Session: baer-3
+
+**Agent:** Baer (Test Engineer)  
+**Scope:** Phase 3 Rendering Validation Prep — SDL2 Parity Framework  
+**Status:** ✅ COMPLETED
+
+### Deliverables
+
+- Designed deterministic, non-snapshot validation strategy for SDL2 rendering parity
+- Command-counter harness for backend wiring verification (no live GL captures needed)
+- Frame-time override hooks for deterministic perf assertions
+- Test suite for hook integration (`test_renderer_sdl2_validation.cpp`)
+- Cross-platform manual verification checklist (`sdl2-phase3-rendering-parity-checklist.md`)
+
+### Validation Strategy
+
+- **Automation:** Renderer command counters + timing hooks ✅
+- **Determinism:** Frame-time overrides enable repeatable assertions ✅
+- **Maintainability:** Manual checklist avoids brittle pixel-snapshot debt ✅
+- **Coverage:** Covers structural contracts + visual handoff for Phase 3 completion
+
+### Handoff to Keaton
+
+- SDL2 backend command-path harness ready for Keaton's Phase 3 obstacle/particle ports
+- Deterministic timing framework enables per-system perf validation
+- Manual checklist staged for final Phase 3 cross-platform validation
+
