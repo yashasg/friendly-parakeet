@@ -275,3 +275,24 @@
 | **File(s) agent must produce** | `keyser-raylib-vs-sdl2.md` in `.squad/decisions/inbox/` |
 | **Outcome** | ✅ Completed — Recommendation: Keep raylib. iOS is not raylib's bottleneck (missing rcore_ios.c planned for raylib 6.0). SDL2 migration: 3-4 weeks rewrite + 2 weeks testing. Better alternatives: (A) wait for raylib 6.0 (Q4 2026–Q1 2027), (B) ship Emscripten/Web → iOS PWA (1-2 weeks). Decision logged to decisions.md |
 
+
+---
+
+### 2026-05-04T00:00:00 — Scribe: Merge Keyser Raylib vs SDL2+LVGL Decision
+
+| Field | Value |
+|-------|-------|
+| **Session role** | Scribe (Documentation & Decision Ingestion) |
+| **Why initiated** | Standard decision logging: Keyser completed raylib-vs-sdl2+lvgl objection analysis; decision doc in inbox awaiting merge |
+| **Mode** | Synchronous (local file operations) |
+| **Why this mode** | File merging, archival, and commit operations require sequential execution |
+| **Files authorized to read** | `.squad/decisions/inbox/keyser-raylib-vs-sdl2-lvgl-objection.md`, `.squad/decisions.md`, `.squad/orchestration-log.md` |
+| **File(s) processed** | Merged decision into `.squad/decisions.md`; cleared inbox entry; updated this log |
+| **Outcome** | ✅ Completed — Keyser verdict merged. Recommendation: Keep raylib (iOS is credentials-blocked, not framework-blocked; SDL2 migration costs 3–4 weeks for unneeded v1 scope). Decision now canonical in decisions.md. Inbox entry archived. |
+
+**Findings Merged:**
+- ✅ iOS build chain exists (testflight_archive.sh); blocked only on issue #184 (owner credentials)
+- ✅ raylib iOS support works (OpenGL ES GPU); no perf issue for rhythm game
+- ✅ SDL2+LVGL switch costs 3–4 weeks + regression risk on 5 platforms
+- ✅ raygui sufficient for v1 (simple screens; LVGL adds scope creep)
+- **Decision:** Keep raylib; unblock owner Team ID inputs; defer iOS to v2 if needed

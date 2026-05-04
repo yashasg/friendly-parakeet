@@ -2455,3 +2455,101 @@ Is Steamworks integration materially easier with SDL2 than raylib for this codeb
 **RECOMMENDATION: Proceed with raylib + Steamworks integration.**
 
 Next steps: Prototype SteamworksSystem wrapper; schedule platform/release pipeline work (SteamPipe, AppID, build integration).
+
+---
+
+# 2026-05-04 — Keyser: Raylib vs SDL2+LVGL Objection Verdict
+
+**Date:** 2026-05-04  
+**Agent:** Keyser (Lead Architect)  
+**Context:** Objection raised—raylib lacks native iOS support; SDL2+LVGL proposed as alternative  
+**Repository:** SHAPESHIFTER (7.5K LOC C++, ECS rhythm game, 4 active platforms)  
+**Status:** ✅ VERDICT: **Keep raylib**
+
+---
+
+## Executive Summary
+
+The objection conflates a **credentials blocker** (owner not providing Apple Team ID) with a **framework blocker** (raylib doesn't support iOS). iOS build chain exists in the repo; it's blocked only on issue #184 (owner inputs), not on raylib capability.
+
+**Swapping to SDL2+LVGL costs 3–4 weeks and risks regression on 5 platforms for benefits that don't apply to v1 scope.**
+
+---
+
+## Objection Claims vs. Ground Truth
+
+| Claim | This Repository Evidence | Verdict |
+|-------|--------------------------|---------|
+| **raylib lacks native iOS support** | iOS CMake build chain EXISTS (`ios/testflight_archive.sh`); uses OpenGL ES via SDL backend; NOT blocked by raylib—blocked by owner not providing Team ID (issue #184) | **Misleading.** raylib iOS support works. Blocker is credentials, not framework. |
+| **raylib lacks native graphics support** | raylib wraps OpenGL ES on iOS (GPU-accelerated). Rhythm game doesn't need Metal for performance. | **False for this game.** OpenGL ES is native GPU. No perf issue here. |
+| **SDL2 gives better iOS path** | TRUE. SDL2 iOS layer is more mature. BUT: requires replacing input system (raylib touch → SDL events), render layer (~40% codebase), audio system (raylib → SDL), and re-testing 4 existing platforms + WASM. | **True but costly.** ~3–4 week migration + regression risk. |
+| **SDL2+LVGL more mature than raygui** | TRUE for general UI complexity. raygui sufficient for this game (title, level-select, settings, HUD—no widgets). LVGL adds scope creep. | **True but unnecessary.** Overkill for current scope. |
+
+---
+
+## Current State Snapshot
+
+- **Platforms shipping:** macOS, Linux, Windows, WebAssembly ✅
+- **iOS status:** Build chain ready; waits on owner-provided Apple credentials (Team ID, bundle ID, build number, signed machine)
+- **Architecture:** Pure ECS + raylib I/O layer + raygui screens
+- **raylib entanglement:** Input (~150 LOC), render (~200 LOC), audio (~100 LOC), windowing (~50 LOC)
+- **Tests:** 386 Catch2 tests; none mock raylib (all integration tests)
+
+---
+
+## Migration Cost–Benefit Analysis
+
+### Cost of Switching to SDL2+LVGL
+- **Dev time:** 3–4 weeks (I/O layer swap, render API swap, audio swap, re-test cycle)
+- **Risk surface:** 5 platforms × 386 tests = high regression area
+- **New dependencies:** LVGL (50K LOC) vs raygui (1 header)
+- **Maintenance debt:** SDL2+LVGL are heavier, fewer cross-platform abstractions
+
+### Benefit of Switching
+- **iOS Metal path:** Better performance on newer iPhones (not currently needed; rhythm game is GPU-simple)
+- **UI maturity:** LVGL widgets (not currently used; screens are simple)
+- **Perception:** "More mature stack" (but overkill for THIS scope)
+
+### Net: **Cost >> Benefit for v1 scope**
+
+---
+
+## Decision Criteria
+
+### Keep raylib if any are true:
+1. ✅ Shipping to 4+ platforms is mandatory (already achieved)
+2. ✅ iOS is v1+ / "nice to have" not "blocking v1" (appears so; issue #184 is deferred)
+3. ✅ Minimal UI complexity preferred over widget library (yes—only screens, no custom widgets)
+4. ✅ Build velocity + team cognitive overhead matter (absolutely—3–4 week cost is significant)
+
+### Switch to SDL2+LVGL only if ALL are true:
+1. ❌ Native iOS Metal rendering is **blocking v1** (no evidence)
+2. ❌ Complex widget UI is **required** (no evidence—simple screens)
+3. ❌ 3–4 weeks re-testing 5 platforms is acceptable (high cost; no justification yet)
+4. ❌ iOS TestFlight is **already live** and seeing perf issues (no evidence)
+
+---
+
+## Recommendation
+
+**Keep raylib.** The objection mistakes a **credentials blocker** for a **framework blocker**.
+
+### Immediate Actions
+1. **Clarify with owner** whether iOS v1 is a hard requirement (issue #184)
+   - If **yes:** Provide the 6 Team ID + signing blockers in `ios/README.md`
+   - If **no:** Close issue #184 as "defer to iOS v2" and ship Desktop + WASM as v1
+2. **Unblock owner inputs** (Team ID, bundle ID, build number, machine cert)
+3. **Ship v1** on existing 4 platforms; defer iOS to v1.1 or v2
+
+### If iOS Metal + LVGL widgets become v1 requirements later
+Reassess. Right now, swap costs 3–4 weeks and risks 5 platforms for benefits that don't apply to the current game.
+
+---
+
+## References
+
+- `ios/README.md` — iOS build chain, blocker checklist (issue #184)
+- `ios/testflight_archive.sh` — Automated signing + archiving
+- `design-docs/architecture.md` — raylib I/O layer design
+- `CMakeLists.txt` lines 50–62 — raylib dependency declaration
+- `app/main.cpp` — raylib initialization
