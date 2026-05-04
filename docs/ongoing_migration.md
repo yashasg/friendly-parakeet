@@ -11,7 +11,7 @@
 | 3 | Rendering parity core | ✅ Done | SDL2 validation counters + parity checklist in place |
 | 4 | Input parity | ✅ Done | SDL2 touch tracker + input bridge landed |
 | 5 | Audio/timing abstraction slice | ✅ In progress | Slice started at `47eebc4` |
-| 6 | Active migration implementation | 🚧 In progress | Keep both backends behavior-safe |
+| 6 | Active migration implementation | ✅ Done | GitHub workflow_dispatch confirmation complete: Linux `25309909229`, WASM `25309910455` |
 | 7 | Cleanup + deprecation prep | 🚧 Prep started | This slice removes safe dead scaffolding and adds final-removal checklists |
 
 ## Current backend policy

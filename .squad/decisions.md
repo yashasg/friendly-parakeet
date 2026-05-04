@@ -3794,6 +3794,58 @@ Phase 6 slice started and shippable: backend selection/plumbing and CI validatio
 
 ---
 
+## 2026-05-04 — Kobayashi Phase 6 Completion — GitHub Runner CI Confirmation (Issue #372)
+
+**Author:** Kobayashi (Build/Infrastructure Engineer)  
+**Issue:** #372  
+**Branch:** `feature/sdl2-migration-phase-1-abstraction-layer`  
+**Verdict:** ✅ COMPLETED
+
+### Context
+- Phase 6 slice commit `153d969` left one explicit closure item: confirm Linux + WASM CI behavior on GitHub-hosted runners for both backend paths.
+- Branch had no open PR, so default `push/pull_request` triggers did not produce direct evidence for this migration branch.
+
+### Decision
+1. Add minimal `workflow_dispatch` triggers to `ci-linux.yml` and `ci-wasm.yml` to allow direct branch verification.
+2. Execute runner confirmation from branch head and resolve only failures coupled to Phase 6 backend hardening.
+3. Preserve no-warning policy and avoid unrelated CI churn.
+
+### Evidence (GitHub runners)
+- ✅ Linux workflow success: https://github.com/yashasg/friendly-parakeet/actions/runs/25309909229
+  - Includes both native backend paths:
+    - `Build` (raylib/default)
+    - `Build SDL2 backend (Linux hardening)`
+  - Tests pass in run (`Run tests` step green).
+- ✅ WASM workflow success: https://github.com/yashasg/friendly-parakeet/actions/runs/25309910455
+  - Includes both wasm backend paths:
+    - `Build (Emscripten)` (raylib/default)
+    - `Build SDL2 backend (WASM compatibility)`
+  - `Verify WASM runtime flags` step green for both build trees.
+  - `Run WASM tests (via CTest + Node)` step green.
+
+### Failure classification during confirmation
+- **Migration-coupled failures (fixed):**
+  1. WASM raylib tests link failure (`glfwGetTime` unresolved) because backend-specific emscripten flag was not propagated to `shapeshifter_tests`.
+  2. WASM SDL2 compatibility build failure copying `content/ui/routes.json` into `build-web-sdl2` because target directory creation was missing.
+- **Pre-existing/infra-coupled failure (fixed while validating):**
+  1. Linux fresh-runner vcpkg path failed on `libxcrypt` missing system `libltdl-dev` (cache-miss latent dependency).
+
+### Minimal changes made for closure
+- `.github/workflows/ci-linux.yml`
+  - Added `workflow_dispatch`
+  - Added Linux host dependencies: autotools chain + `libltdl-dev` for reliable vcpkg rebuilds.
+- `.github/workflows/ci-wasm.yml`
+  - Added `workflow_dispatch`
+  - Made build job condition robust for non-PR dispatch events.
+- `CMakeLists.txt`
+  - Propagated backend emscripten linker flag to `shapeshifter_tests`.
+  - Ensured `content/ui` directory creation before copying root UI JSON during post-build.
+
+### Outcome
+Phase 6 is fully closed: backend validation is explicit, repeatable on GitHub runners, and green for Linux + WASM across raylib and SDL2 paths.
+
+---
+
 ## 2026-05-04 — Fenster Phase 5 Audio/Timing Slice — SDL2 Music Backend (Issue #372)
 
 **Author:** Fenster (Audio/Timing Engineer)  
