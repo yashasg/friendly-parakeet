@@ -448,6 +448,39 @@ if(SHADER_FILES)
     )
 endif()
 
+# Export third-party notices next to the runtime binary.
+set(_third_party_notices_dir "$<TARGET_FILE_DIR:shapeshifter>/THIRD_PARTY_NOTICES/Licenses")
+add_custom_command(TARGET shapeshifter POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${_third_party_notices_dir}"
+    COMMENT "Preparing third-party notices directory"
+)
+
+if(DEFINED VCPKG_INSTALLED_DIR AND DEFINED VCPKG_TARGET_TRIPLET)
+    set(_vcpkg_share_dir "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/share")
+    if(EXISTS "${_vcpkg_share_dir}")
+        file(GLOB _vcpkg_copyright_files CONFIGURE_DEPENDS
+            "${_vcpkg_share_dir}/*/copyright"
+        )
+        foreach(_copyright IN LISTS _vcpkg_copyright_files)
+            get_filename_component(_copyright_dir "${_copyright}" DIRECTORY)
+            get_filename_component(_port_name "${_copyright_dir}" NAME)
+            add_custom_command(TARGET shapeshifter POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "${_copyright}"
+                    "${_third_party_notices_dir}/${_port_name}.txt"
+                COMMENT "Copying ${_port_name} license"
+            )
+        endforeach()
+    endif()
+endif()
+
+add_custom_command(TARGET shapeshifter POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_SOURCE_DIR}/content/fonts/LICENSE-SIL-OFL.txt"
+        "${_third_party_notices_dir}/font-sil-ofl.txt"
+    COMMENT "Copying bundled font license"
+)
+
 # ── Tests + Benchmarks ──────────────────────────────────────
 enable_testing()
 

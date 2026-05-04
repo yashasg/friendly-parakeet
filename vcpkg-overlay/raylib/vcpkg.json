@@ -11,10 +11,6 @@
     "dirent",
     "stb",
     {
-      "name": "sdl2",
-      "platform": "ios"
-    },
-    {
       "name": "vcpkg-cmake",
       "host": true
     },
