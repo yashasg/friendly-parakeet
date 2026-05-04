@@ -3911,3 +3911,65 @@ Migration gate now has an explicit parity matrix and a baseline failure ledger, 
 - Final acceptance command set for local and CI lanes
 
 **Next Phase:** Ready for Phase 6 parity validation completion and final Phase 7 SDL2/raylib cleanup execution.
+# Baer — Final Migration Gate Parity Matrix + Baseline Failure Ledger (Issue #372)
+
+## Context
+- Branch: `feature/sdl2-migration-phase-1-abstraction-layer`
+- Migration state: phases 1-4 complete, phase 3 complete, phase 5/6 closing.
+- Need: a final validation gate that separates true migration regressions from known/pre-existing failures.
+
+## Decision
+Use `docs/sdl2-migration-runbook.md` as the single source of truth for migration acceptance by adding:
+1. A concise backend × platform lane × test category parity matrix.
+2. A baseline pre-existing failure ledger with reproducible commands.
+3. A repeatable final acceptance command set for local and CI lanes.
+
+## Implemented
+1. **Parity matrix added** in `docs/sdl2-migration-runbook.md`
+   - Backends: `raylib`, `sdl2`
+   - Lanes: macOS local + Linux/Windows CI
+   - Categories: configure/build, core regression suite, render parity slice, known-failure sentinel
+2. **Baseline failure ledger added**
+   - Pre-existing functional failure:
+     - `redfoot/#168: existing game_over buttons keep their original positions`
+   - Pre-existing SDL2 ctest harness issue:
+     - full `ctest --test-dir build-sdl2 --output-on-failure` produces Not Run cascade after executable resolution failure
+3. **Final acceptance command set added**
+   - build both backends,
+   - run non-benchmark suites,
+   - run render-parity deterministic checks,
+   - run known-failure sentinel checks.
+
+## Validation run (local evidence)
+- `./build-raylib/shapeshifter_tests --skip-benchmarks -v quiet` → ✅ pass (2224 assertions / 797 cases)
+- `./build-sdl2/shapeshifter_tests --skip-benchmarks -v quiet` → ✅ pass (2244 assertions / 799 cases)
+- `ctest --test-dir build-raylib --output-on-failure -R "redfoot/#168: existing game_over buttons keep their original positions"` → ❗ expected fail
+- `ctest --test-dir build-sdl2 --output-on-failure -R "redfoot/#168: existing game_over buttons keep their original positions"` → ❗ expected fail
+- `ctest --test-dir build-sdl2 --output-on-failure` → ❗ expected pre-existing Not Run cascade (`Unable to find executable .../build-sdl2/shapeshifter_tests`)
+
+## Outcome
+Migration gate now has an explicit parity matrix and a baseline failure ledger, so phase 5/6 closure can classify failures correctly as:
+- **known/pre-existing**, or
+- **new migration regressions** requiring rollback/fix.
+---
+
+###  — Scribe: baer-1 Parity Matrix Final Gate Logged
+
+**Batch:** baer-final-parity-matrix
+**Origin:** .squad/decisions/inbox/
+**Action:** Merged decision into .squad/decisions.md
+**Cleared:** inbox files
+**Status:** ✅ COMPLETE
+
+**Baer-1 Deliverable:**
+- Migration parity matrix (backends × platforms × test categories) in `docs/sdl2-migration-runbook.md`
+- Baseline failure ledger: redfoot/#168 (pre-existing) + SDL2 ctest harness quirk
+- Final acceptance command set validated with both raylib and SDL2 backends
+- Gate classification framework: known/pre-existing vs. new migration regressions
+
+**Evidence:**
+- raylib backend: ✅ pass (2224 assertions / 797 cases)
+- SDL2 backend: ✅ pass (2244 assertions / 799 cases)
+- Known-failure sentinels: ❗ as expected
+
+**Next:** Phase 5/6 closure can now classify test failures correctly against parity matrix.
