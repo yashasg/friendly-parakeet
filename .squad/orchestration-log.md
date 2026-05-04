@@ -245,3 +245,33 @@
 
 ---
 
+
+---
+
+### 2026-05-03T23:40:56 — Kobayashi Spawn: Steamworks Integration Tradeoff Analysis
+
+| Field | Value |
+|-------|-------|
+| **Agent routed** | Kobayashi (CI/CD Release Engineer) |
+| **Why chosen** | Engine choice (raylib vs SDL2) affects Steamworks integration pathway; Kobayashi owns release infrastructure and platform/build decisions |
+| **Mode** | sync |
+| **Why this mode** | Decision analysis with recommendations; no implementation; requires documentation of findings |
+| **Files authorized to read** | `app/systems/input_system.cpp`, `app/systems/game_render_system.cpp`, `app/systems/ui_render_system.cpp`, `app/components/`, CMakeLists.txt, architecture docs |
+| **File(s) agent must produce** | `kobayashi-steam-integration-decision.md` in `.squad/decisions/inbox/` |
+| **Outcome** | ✅ Completed — Recommendation: Keep raylib; integrate Steamworks directly; avoid engine switch. Steamworks SDK is orthogonal to graphics/input library. SDL2 migration risk (6-12 weeks) far exceeds Steamworks integration scope (2-4 weeks). Decision logged to decisions.md |
+
+
+---
+
+### 2026-05-03T23:40:56 — Keyser Spawn: Raylib vs SDL2 Migration Justification Analysis
+
+| Field | Value |
+|-------|-------|
+| **Agent routed** | Keyser (Lead Architect) |
+| **Why chosen** | Engine migration analysis requires architectural review of feasibility, cost/benefit, and alternative paths (iOS support strategy) |
+| **Mode** | sync |
+| **Why this mode** | Decision analysis with strategic recommendations; architectural implications for codebase; requires documented rationale |
+| **Files authorized to read** | Commit history (1fab9d2, db34425), `app/systems/input_system.cpp`, `app/systems/game_render_system.cpp`, `app/systems/ui_render_system.cpp`, `app/systems/camera_system.cpp`, platform-specific code, architecture docs |
+| **File(s) agent must produce** | `keyser-raylib-vs-sdl2.md` in `.squad/decisions/inbox/` |
+| **Outcome** | ✅ Completed — Recommendation: Keep raylib. iOS is not raylib's bottleneck (missing rcore_ios.c planned for raylib 6.0). SDL2 migration: 3-4 weeks rewrite + 2 weeks testing. Better alternatives: (A) wait for raylib 6.0 (Q4 2026–Q1 2027), (B) ship Emscripten/Web → iOS PWA (1-2 weeks). Decision logged to decisions.md |
+
