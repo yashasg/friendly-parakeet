@@ -10,7 +10,7 @@
 #include "../components/rhythm.h"
 #include "../components/song_state.h"
 #include "../audio/music_context.h"
-#include "../audio/music_stream.h"
+#include "../platform/audio/music_backend.h"
 #include "../components/high_score.h"
 #include "../util/high_score_persistence.h"
 #include "../components/rng.h"
@@ -118,21 +118,14 @@ void setup_play_session(entt::registry& reg) {
     // Load music (only if MusicContext exists — not in test mode)
     auto* music = reg.ctx().find<MusicContext>();
     if (music && music->loaded) {
-        StopMusicStream(music->stream);
-        UnloadMusicStream(music->stream);
-        music->loaded = false;
-        music->started = false;
+        platform::audio::unload_music_stream(*music);
     }
     if (music && !beatmap.song_path.empty()) {
         std::string exe_audio = std::string(GetApplicationDirectory()) + beatmap.song_path;
         const char* audio_paths[] = { exe_audio.c_str(), beatmap.song_path.c_str() };
         for (const char* path : audio_paths) {
-            Music stream = load_music_stream(path, false);
-            if (stream.frameCount > 0) {
-                music->stream  = stream;
-                music->loaded  = true;
-                music->started = false;
-                SetMusicVolume(music->stream, music->volume);
+            if (platform::audio::load_music_stream(*music, path, false)) {
+                platform::audio::set_music_volume(*music, music->volume);
                 TraceLog(LOG_INFO, "Loaded music: %s", path);
                 break;
             }

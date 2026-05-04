@@ -2,7 +2,7 @@
 #include "../components/game_state.h"
 #include "../components/rhythm.h"
 #include "../audio/music_context.h"
-#include <raylib.h>
+#include "../platform/audio/music_backend.h"
 
 void song_playback_system(entt::registry& reg, float dt) {
     const auto& gs = reg.ctx().get<GameState>();
@@ -15,34 +15,31 @@ void song_playback_system(entt::registry& reg, float dt) {
     // Must pump the stream buffer every frame to prevent audio underruns,
     // even when the game is paused.
     if (music_loaded && music->started) {
-        UpdateMusicStream(music->stream);
+        platform::audio::update_music_stream(*music);
     }
 
     // ── Music restart request (from enter_playing) ────────────
     if (song && song->restart_music) {
         song->restart_music = false;
         if (music_loaded) {
-            StopMusicStream(music->stream);
-            PlayMusicStream(music->stream);
-            music->started = true;
+            platform::audio::stop_music_stream(*music);
+            platform::audio::play_music_stream(*music);
         }
     }
 
     // ── Music lifecycle: start / pause / resume / stop ────────
     if (music_loaded && gs.phase == GamePhase::Playing && song && song->playing) {
         if (!music->started) {
-            PlayMusicStream(music->stream);
-            music->started = true;
+            platform::audio::play_music_stream(*music);
         } else if (gs.previous_phase == GamePhase::Paused) {
-            ResumeMusicStream(music->stream);
+            platform::audio::resume_music_stream(*music);
         }
     } else if (music_loaded && gs.phase == GamePhase::Paused && music->started) {
-        PauseMusicStream(music->stream);
+        platform::audio::pause_music_stream(*music);
     } else if (music_loaded &&
                (gs.phase == GamePhase::GameOver || gs.phase == GamePhase::SongComplete) &&
                music->started) {
-        StopMusicStream(music->stream);
-        music->started = false;
+        platform::audio::stop_music_stream(*music);
     }
 
     // ── Song time / beat advancement (Playing phase only) ─────
@@ -52,7 +49,7 @@ void song_playback_system(entt::registry& reg, float dt) {
     // Authoritative clock from audio stream; fall back to dt accumulation
     // when running in silent/test mode (no music loaded).
     if (music_loaded && music->started) {
-        song->song_time = GetMusicTimePlayed(music->stream);
+        song->song_time = platform::audio::get_music_time_played(*music);
     } else {
         song->song_time += dt;
     }
@@ -76,8 +73,7 @@ void song_playback_system(entt::registry& reg, float dt) {
         song->finished = true;
         song->playing  = false;
         if (music_loaded && music->started) {
-            StopMusicStream(music->stream);
-            music->started = false;
+            platform::audio::stop_music_stream(*music);
         }
     }
 }

@@ -21,9 +21,6 @@ string(TOLOWER "${SHAPESHIFTER_BACKEND}" SHAPESHIFTER_BACKEND)
 if(NOT SHAPESHIFTER_BACKEND STREQUAL "raylib" AND NOT SHAPESHIFTER_BACKEND STREQUAL "sdl2")
     message(FATAL_ERROR "SHAPESHIFTER_BACKEND must be one of: raylib, sdl2")
 endif()
-if(EMSCRIPTEN AND SHAPESHIFTER_BACKEND STREQUAL "sdl2")
-    message(FATAL_ERROR "SHAPESHIFTER_BACKEND=sdl2 is native-only in phase 2")
-endif()
 if(SHAPESHIFTER_BACKEND STREQUAL "sdl2")
     set(SHAPESHIFTER_BACKEND_DEFINE SHAPESHIFTER_BACKEND_SDL2)
 else()
@@ -73,7 +70,7 @@ find_package(EnTT CONFIG REQUIRED)
 find_package(magic_enum CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(raylib CONFIG REQUIRED)
-if(NOT EMSCRIPTEN)
+if(SHAPESHIFTER_BACKEND STREQUAL "sdl2" AND NOT EMSCRIPTEN)
     find_package(SDL2 CONFIG REQUIRED)
 endif()
 find_path(RAYGUI_INCLUDE_DIR raygui.h REQUIRED)
@@ -118,10 +115,12 @@ file(GLOB AUDIO_SOURCES CONFIGURE_DEPENDS app/audio/*.cpp)
 file(GLOB UTIL_SOURCES CONFIGURE_DEPENDS app/util/*.cpp)
 file(GLOB PLATFORM_SOURCES CONFIGURE_DEPENDS
     app/platform/*.cpp
+    app/platform/audio/*.cpp
     app/platform/ios/*.cpp
     app/platform/graphics/*.cpp
     app/platform/input/*.cpp
     app/platform/sdl2/*.cpp
+    app/platform/timing/*.cpp
     app/platform/window/*.cpp
 )
 file(GLOB UI_SOURCES CONFIGURE_DEPENDS app/ui/*.cpp)
@@ -335,8 +334,13 @@ if(EMSCRIPTEN)
 </body>
 </html>]=])
 
+    set(_emscripten_backend_link_flag "-sUSE_GLFW=3")
+    if(SHAPESHIFTER_BACKEND STREQUAL "sdl2")
+        set(_emscripten_backend_link_flag "-sUSE_SDL=2")
+    endif()
+
     target_link_options(shapeshifter PRIVATE
-        -sUSE_GLFW=3
+        ${_emscripten_backend_link_flag}
         -fexceptions
         # Runtime uses async operations (e.g. emscripten_sleep); enable stack
         # unwinding/rewinding support so browser preview does not abort.

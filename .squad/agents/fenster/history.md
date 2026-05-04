@@ -148,3 +148,18 @@ Ported the removed HUD behavior (shape buttons, approach-ring affordance, colorf
 - Semantic UI dispatcher: raygui/controller → emits `ButtonPressEvent` (no raw input involvement)
 
 **Outcome:** ✓ APPROVED by Kujan (re-review). Rework integrated into cleanup session. Full test validation passed.
+
+## 2026-05-04 — Phase 5 Audio + Timing Migration Slice (SDL2 abstraction-first)
+
+Implemented the first Phase 5 abstraction slice to decouple timing/music control from direct raylib calls while keeping behavior parity:
+
+- Added `platform::audio::music_backend` wrapper API for music device lifecycle + stream operations.
+- Migrated `song_playback_system`, `play_session`, `game_loop` shutdown path, and `sfx_bank` audio-device checks to the wrapper.
+- Added `platform::timing::clock` with SDL2-backed monotonic time (`SDL_GetPerformanceCounter/Frequency`) and deterministic test override hooks.
+- Migrated gameplay HUD critical-pulse fallback from `GetTime()` to `platform::timing::now_seconds()`.
+- Added non-flaky invariants tests: `test_music_backend.cpp` and `test_platform_timing_clock.cpp`.
+
+Validation:
+- Raylib backend: configure/build `shapeshifter_tests` passes; targeted `[audio],[song_playback],[timing],[clock]` tests pass.
+- SDL2 backend: configure/build `shapeshifter_tests` passes; targeted `[audio],[song_playback],[timing],[clock]` tests pass.
+- Full-suite and app-target builds currently hit pre-existing branch issues unrelated to this slice (`content/ui/routes.json` copy step missing; existing `test_test_player_system` abort in full run).

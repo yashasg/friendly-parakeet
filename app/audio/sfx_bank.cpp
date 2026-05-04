@@ -1,5 +1,6 @@
 #include "sfx_bank.h"
 #include "audio_types.h"
+#include "../platform/audio/music_backend.h"
 
 #include <raylib.h>
 
@@ -111,7 +112,7 @@ Sound make_procedural_sound(const SfxSpec& spec) {
 }
 
 void play_sfx_from_bank(entt::registry& reg, SFX sfx) {
-    if (!IsAudioDeviceReady()) return;
+    if (!platform::audio::is_audio_device_ready()) return;
 
     auto* bank = reg.ctx().find<SFXBank>();
     if (!bank || !bank->loaded) return;
@@ -131,7 +132,7 @@ void sfx_bank_init(entt::registry& reg) {
         bank = &reg.ctx().emplace<SFXBank>();
     }
 
-    if (bank->loaded || !IsAudioDeviceReady()) return;
+    if (bank->loaded || !platform::audio::is_audio_device_ready()) return;
 
     bool any_loaded = false;
     for (int idx = 0; idx < SFX_COUNT; ++idx) {

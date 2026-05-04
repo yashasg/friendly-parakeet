@@ -9,6 +9,7 @@
 #include "../../components/transform.h"
 #include "../../components/ui_layout_cache.h"
 #include "../../constants.h"
+#include "../../platform/timing/clock.h"
 #include "screen_controller_base.h"
 #include "gameplay_hud_screen_controller.h"
 #include <entt/entt.hpp>
@@ -205,7 +206,9 @@ void render_energy_bar(const entt::registry& reg, const EnergyState& energy) {
             / constants::ENERGY_CRITICAL_THRESH, 0.0f, 1.0f);
     }
 
-    float pulse_time = (song && song->playing) ? song->song_time : static_cast<float>(GetTime());
+    float pulse_time = (song && song->playing)
+        ? song->song_time
+        : static_cast<float>(platform::timing::now_seconds());
     float critical_pulse = 0.5f + 0.5f * std::sin(pulse_time * 10.0f);
     float critical_intensity = critical_ratio * (0.35f + 0.65f * critical_pulse);
     float visible_level = std::min(fill + bounce * (5.0f / SEG_COUNT), 1.0f);

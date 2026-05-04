@@ -25,6 +25,7 @@
 #include "platform_display.h"
 #include "platform/graphics/renderer.h"
 #include "platform/window/window_manager.h"
+#include "platform/audio/music_backend.h"
 #include "util/persistence_policy.h"
 #include "util/settings_persistence.h"
 #include "components/high_score.h"
@@ -117,7 +118,7 @@ void game_loop_init(entt::registry& reg,
     return;
 #endif
 
-    InitAudioDevice();
+    platform::audio::init_audio_device();
     sfx_bank_init(reg);
     sfx_playback_backend_init(reg);
     TraceLog(LOG_INFO, "SHAPESHIFTER v%s", SHAPESHIFTER_VERSION);
@@ -338,15 +339,13 @@ void game_loop_shutdown(entt::registry& reg) {
     {
         auto* music = reg.ctx().find<MusicContext>();
         if (music && music->loaded) {
-            StopMusicStream(music->stream);
-            UnloadMusicStream(music->stream);
-            music->loaded = false;
+            platform::audio::unload_music_stream(*music);
         }
     }
     camera::shutdown(reg);
     text_shutdown(reg.ctx().get<TextContext>());
     sfx_bank_unload(reg);
-    CloseAudioDevice();
+    platform::audio::shutdown_audio_device();
     platform::window::window_manager().close_window();
 #endif
 }
