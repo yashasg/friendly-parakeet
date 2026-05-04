@@ -163,3 +163,20 @@ Validation:
 - Raylib backend: configure/build `shapeshifter_tests` passes; targeted `[audio],[song_playback],[timing],[clock]` tests pass.
 - SDL2 backend: configure/build `shapeshifter_tests` passes; targeted `[audio],[song_playback],[timing],[clock]` tests pass.
 - Full-suite and app-target builds currently hit pre-existing branch issues unrelated to this slice (`content/ui/routes.json` copy step missing; existing `test_test_player_system` abort in full run).
+
+## 2026-05-04 — Phase 5 completion: SDL2-native music backend + sync validation
+
+Completed the remaining Phase 5 scope for issue #372 on `feature/sdl2-migration-phase-1-abstraction-layer`.
+
+### What shipped
+- Implemented an SDL2-native music backend path in `platform::audio::music_backend` for SDL2 desktop builds (audio device init/shutdown, decoded wave load, queue-based play/pause/resume/stop, playback-time reporting, repeat handling).
+- Preserved raylib as fallback/default backend behavior with compile-time backend routing.
+- Added deterministic music-time override hooks for non-flaky end-to-end sync tests.
+- Expanded song playback and music backend tests to validate authoritative audio clock usage and restart/sync invariants.
+
+### Validation
+- Built `shapeshifter` and `shapeshifter_tests` for both raylib and SDL2 backends.
+- Ran targeted and expanded audio/timing/song/system test tags on both backends:
+  - `[audio],[music_backend],[song_playback],[timing],[clock]`
+  - `[audio],[music_backend],[song_playback],[timing],[clock],[rhythm],[beat_scheduler],[test_player]`
+- All above validations passed.

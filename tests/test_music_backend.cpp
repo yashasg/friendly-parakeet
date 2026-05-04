@@ -4,6 +4,16 @@
 #include "audio/music_context.h"
 #include "platform/audio/music_backend.h"
 
+namespace {
+
+struct MusicTimeOverrideGuard {
+    ~MusicTimeOverrideGuard() {
+        platform::audio::clear_music_time_played_override();
+    }
+};
+
+}  // namespace
+
 TEST_CASE("music_backend: unloaded stream operations are no-ops", "[audio][music_backend]") {
     MusicContext music{};
 
@@ -35,4 +45,17 @@ TEST_CASE("music_backend: missing file load fails cleanly", "[audio][music_backe
     CHECK_FALSE(loaded);
     CHECK_FALSE(music.loaded);
     CHECK_FALSE(music.started);
+}
+
+TEST_CASE("music_backend: time override enables deterministic sync validation",
+          "[audio][music_backend][timing]") {
+    MusicTimeOverrideGuard guard;
+    MusicContext music{};
+    music.loaded = true;
+    music.started = true;
+
+    platform::audio::set_music_time_played_override(12.5f);
+
+    CHECK_THAT(platform::audio::get_music_time_played(music),
+               Catch::Matchers::WithinAbs(12.5f, 0.0001f));
 }
