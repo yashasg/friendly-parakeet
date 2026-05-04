@@ -123,6 +123,12 @@ file(GLOB PLATFORM_SOURCES CONFIGURE_DEPENDS
     app/platform/timing/*.cpp
     app/platform/window/*.cpp
 )
+if(SHAPESHIFTER_BACKEND STREQUAL "raylib")
+    list(FILTER PLATFORM_SOURCES EXCLUDE REGEX "(^|/)sdl2/.*\\.cpp$")
+    list(FILTER PLATFORM_SOURCES EXCLUDE REGEX "(^|/)renderer_sdl2\\.cpp$")
+    list(FILTER PLATFORM_SOURCES EXCLUDE REGEX "(^|/)window_manager_sdl2\\.cpp$")
+    list(FILTER PLATFORM_SOURCES EXCLUDE REGEX "(^|/)input_handler_sdl2\\.cpp$")
+endif()
 file(GLOB UI_SOURCES CONFIGURE_DEPENDS app/ui/*.cpp)
 file(GLOB UI_SCREEN_CONTROLLER_SOURCES CONFIGURE_DEPENDS app/ui/screen_controllers/*.cpp)
 file(GLOB INPUT_SOURCES CONFIGURE_DEPENDS app/input/*.cpp)
@@ -526,6 +532,9 @@ file(GLOB TEST_SOURCES CONFIGURE_DEPENDS tests/*.cpp benchmarks/*.cpp)
 list(FILTER TEST_SOURCES EXCLUDE REGEX
     ".*(test_safe_area_layout|test_ui_redfoot_pass|test_lifecycle)\\.cpp$"
 )
+if(NOT SHAPESHIFTER_BACKEND STREQUAL "sdl2")
+    list(FILTER TEST_SOURCES EXCLUDE REGEX ".*test_renderer_sdl2_validation\\.cpp$")
+endif()
 
 # Unity build hazard exclusions (Keaton audit). These test files define
 # duplicate symbols in anonymous namespaces or as static functions; merging them

@@ -37,6 +37,37 @@ export VCPKG_ROOT=/path/to/vcpkg
 ./run.sh test        # Build + run tests
 ```
 
+### Backend Builds (raylib / SDL2)
+
+```bash
+# Native raylib (default)
+./build.sh
+./build/shapeshifter_tests
+
+# Native SDL2 backend
+SHAPESHIFTER_BACKEND=sdl2 SHAPESHIFTER_BUILD_DIR=build-sdl2 ./build.sh
+./build-sdl2/shapeshifter_tests
+
+# WebAssembly raylib backend
+emcmake cmake -B build-web -S . -DSHAPESHIFTER_BACKEND=raylib \
+  "-DCMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" \
+  "-DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=${EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake" \
+  -DVCPKG_TARGET_TRIPLET=wasm32-emscripten
+cmake --build build-web
+
+# WebAssembly SDL2 backend compatibility build
+emcmake cmake -B build-web-sdl2 -S . -DSHAPESHIFTER_BACKEND=sdl2 \
+  "-DCMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" \
+  "-DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=${EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake" \
+  -DVCPKG_TARGET_TRIPLET=wasm32-emscripten
+cmake --build build-web-sdl2 --target shapeshifter
+```
+
+Migration status + backend validation runbook:
+- `docs/ongoing_migration.md`
+- `docs/sdl2-migration-runbook.md`
+- `docs/raylib-removal-checklist.md`
+
 ### iOS TestFlight Archive (owner-driven signing)
 
 ```bash

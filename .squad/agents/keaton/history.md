@@ -342,3 +342,28 @@ All commands passed (zero-warning build policy preserved).
 
 - Raylib backend-specific mesh path remains unchanged and still selected unless backend flag is SDL2.
 - SDL2 phase-3 remaining scope from prior report is now implemented in shipping code paths for this migration phase.
+
+## 2026-05-04 — Phase 7 Prep Slice (safe cleanup before phase 6 completion)
+
+**Issue:** #372  
+**Branch:** `feature/sdl2-migration-phase-1-abstraction-layer`
+
+### Work Completed
+
+1. **Backend-scoped source cleanup in CMake:** raylib builds now exclude SDL2-only platform implementation TUs (`app/platform/sdl2/*.cpp`, `renderer_sdl2.cpp`, `window_manager_sdl2.cpp`, `input_handler_sdl2.cpp`) so inactive migration scaffolding is not compiled into raylib artifacts.
+2. **Backend-scoped test cleanup:** raylib builds now exclude `tests/test_renderer_sdl2_validation.cpp` (SDL2-only validation harness).
+3. **Migration docs refresh:** rewrote `docs/ongoing_migration.md` to match real status (phase 6 in progress, phase 7 prep started), and added explicit dual-backend build/test runbook in `docs/sdl2-migration-runbook.md`.
+4. **Final deprecation prep artifact:** added `docs/raylib-removal-checklist.md` with preconditions, code-removal plan, build/dependency cleanup, and docs/ops closure gates.
+5. **README update:** backend build section now includes both backend test commands and links to runbook/checklist docs.
+
+### Validation
+
+- raylib backend: configure/build/tests pass.
+- SDL2 backend: configure/build/tests pass.
+- Zero-warning policy preserved under project `-Werror` settings.
+
+### Remaining Work for Final Phase 7
+
+- Complete phase 6 parity gates (audio/timing/input/render edge cases).
+- Convert remaining backend conditionals from dual-path to SDL2-only once approved.
+- Remove raylib dependency + implementation files only after checklist preconditions are checked and signed off.
