@@ -231,3 +231,17 @@
 
 ---
 
+### 2026-05-03T23:39:19-07:00 — Hockney: raylib Cheatsheet vs. iOS Platform Support Clarification
+
+| Field | Value |
+|-------|-------|
+| **Agent routed** | Hockney (Platform Engineer) |
+| **Why chosen** | User Q: "Does the raylib v4.2 cheatsheet prove iOS support?" — Platform tooling & API semantics require engineer expertise |
+| **Mode** | sync |
+| **Why this mode** | Quick clarification task; investigates documentation vs. source semantics; no implementation needed |
+| **Files authorized to read** | raylib v4.2 cheatsheet (reference), `vcpkg/buildtrees/raylib/src/5.5-*/src/platforms/`, `.squad/decisions.md` (rcore_ios entry) |
+| **File(s) agent must produce** | Decision document in `.squad/decisions/inbox/hockney-cheatsheet-ios-clarification.md` |
+| **Outcome** | ✅ Completed — **Cheatsheet does NOT prove iOS support.** Key finding: Cheatsheet documents public API surface (version-agnostic), NOT platform backends (version-specific). A function in the cheatsheet ≠ platform implementation. raylib 5.5 CMake enum confirms: `Desktop;Web;Android;Raspberry Pi;DRM;SDL` — iOS absent. ROADMAP lists iOS as planned [ ]. Unmerged PR #3880 provides actual `rcore_ios.c`. **Outcome:** Clarification merged into decisions.md; cheatsheet-specific response template documented for future user questions. |
+
+---
+

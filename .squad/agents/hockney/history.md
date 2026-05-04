@@ -147,3 +147,19 @@ Keaton completed singleton eager-init refactor (2026-05-03). Clang native build 
 - raylib architecture: rcore.c conditionally includes platform backends at compile-time (lines 540-550)
 
 **Implication for bullethell:** iOS builds will use GLFW/Desktop event loop until custom iOS platform backend is implemented.
+
+## 2026-05-03T23:39:19-07:00 — Cheatsheet PDF iOS Clarification
+
+**Task:** Determine whether raylib v4.2 cheatsheet PDF proves iOS support or conflicts with finding that `rcore_ios.c` is missing.
+
+**Finding:** Cheatsheet is NOT evidence for iOS platform support.
+
+**Reasoning:**
+- Cheatsheet documents public API surface (function signatures, capabilities)
+- Platform backends (`rcore_*.c`) are internal implementation, not exposed in API docs
+- v4.2 cheatsheet would contain identical function signatures whether iOS backend exists or not
+- Official CMakeOptions enum still has no iOS platform in v5.5
+
+**Conclusion:** No conflict. Cheatsheet is orthogonal to platform backend question. Prior findings confirmed: iOS not in current source, unmerged PR #3880 needed for support.
+
+Decision document: `.squad/decisions/inbox/hockney-cheatsheet-ios-clarification.md`

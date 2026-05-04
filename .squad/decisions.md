@@ -2164,3 +2164,52 @@ For this project:
   3. **Use alternative approach** (SDL2 wrapper, Emscripten + WebView)
 
 ---
+
+## 2026-05-03 — Hockney: raylib Cheatsheet vs. iOS rcore_ios Clarification
+
+**Date:** 2026-05-03T23:39:19-07:00  
+**Analyst:** Hockney (Platform Engineer)  
+**Status:** Complete — Clarification documented
+
+### Analysis Summary
+
+The raylib v4.2 cheatsheet PDF **does NOT prove iOS support exists** and **does not conflict** with the conclusion that current raylib 5.5 source lacks `src/platforms/rcore_ios.c`.
+
+### Key Finding: Cheatsheet ≠ Platform Support
+
+**What the cheatsheet documents:**
+- Public API surface (function signatures, basic usage)
+- Available raylib functions and their parameters
+- High-level capability overview (input, graphics, audio, etc.)
+
+**What the cheatsheet does NOT document:**
+- Internal platform backend implementations (`rcore_*.c` files)
+- Which platforms are actually supported in the binary distribution
+- Build system options or CMake platform choices
+- Compiler conditionals or platform-specific code paths
+
+### Evidence
+
+**Platform Backend Status (raylib 5.5):**
+- ✅ Confirmed: No `rcore_ios.c` exists in official raylib 5.5 source
+- ✅ Confirmed: CMake platform enum is `Desktop;Web;Android;Raspberry Pi;DRM;SDL` — iOS not listed
+- ✅ Confirmed: Official ROADMAP.md lists iOS as [ ] planned, not implemented
+- ✅ Confirmed: Unmerged PR #3880 provides the actual `rcore_ios.c` implementation
+
+**Cheatsheet Semantics:**
+A function like `GetScreenWidth()` appearing in the cheatsheet proves:
+- The function signature was documented ✅
+- NOT that iOS platform layer was implemented ❌
+
+### Coordinator Response Template
+
+> **User Q:** Does the raylib v4.2 cheatsheet prove iOS is supported?  
+> **Answer:** No. The cheatsheet documents the public API surface, not internal platform implementations. Actual iOS support requires `rcore_ios.c` (platform layer), which does not exist in raylib 5.5. Official ROADMAP confirms iOS is planned but unmerged. Our rcore_ios findings stand.
+
+### Key Takeaway
+
+**Cheatsheet = API reference (version-agnostic)**  
+**Platform support = build-time backend choice (version-specific)**  
+**These are orthogonal concerns.**
+
+---
