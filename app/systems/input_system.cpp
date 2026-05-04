@@ -1,5 +1,6 @@
 #include "all_systems.h"
 #include "../input/raylib_gesture_input.h"
+#include "../input/input_latency_probe.h"
 #include "../input/input_state.h"
 #include "../components/input.h"
 #include "../components/input_events.h"
@@ -20,6 +21,9 @@ struct WebInputPolicy {
 } // namespace
 
 void input_system_init(entt::registry& reg) {
+    if (!reg.ctx().find<InputLatencyProbe>()) {
+        reg.ctx().emplace<InputLatencyProbe>();
+    }
     auto& policy = reg.ctx().emplace<WebInputPolicy>();
 #if defined(PLATFORM_WEB) && defined(__EMSCRIPTEN__)
     policy.prefers_touch = (EM_ASM_INT({
@@ -34,6 +38,7 @@ void input_system_init(entt::registry& reg) {
 }
 
 void input_system(entt::registry& reg, float raw_dt) {
+    input_latency_begin_frame(reg);
     auto& input = reg.ctx().get<InputState>();
     auto& st    = reg.ctx().get<ScreenTransform>();
     auto& disp  = reg.ctx().get<entt::dispatcher>();
@@ -155,14 +160,24 @@ void input_system(entt::registry& reg, float raw_dt) {
     // gesture_routing_handle_input via
     // disp.update<InputEvent>() in game_loop_frame (#333).
     if (input.click) {
-        disp.enqueue<InputEvent>(InputEvent{InputType::Tap, Direction::Up,
-                                            input.end_x, input.end_y});
+        const InputEvent event{
+            InputType::Tap, Direction::Up, input.end_x, input.end_y
+        };
+        disp.enqueue<InputEvent>(event);
+        input_latency_note_input_event_enqueued(reg, event.type, event.dir, 0);
     } else if (input.touch_up) {
+        const std::uint32_t source_timestamp_ms = platform_input.read_last_touch_timestamp_ms();
         const InputEvent event = input_event_from_raylib_gesture(
             platform_input.read_detected_gesture(),
             input.start_y,
             input.end_x,
             input.end_y);
         disp.enqueue<InputEvent>(event);
+        input_latency_note_input_event_enqueued(
+            reg,
+            event.type,
+            event.dir,
+            source_timestamp_ms
+        );
     }
 }

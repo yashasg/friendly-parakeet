@@ -41,7 +41,7 @@ public:
     }
 
     void configure_gameplay_gestures() override {
-        // TODO(phase4): gesture/touch migration requires a safe SDL2 recognizer.
+        platform::sdl2::input_configure_gameplay_gestures();
     }
 
     [[nodiscard]] bool is_mouse_left_released() const override {
@@ -56,13 +56,14 @@ public:
     }
 
     [[nodiscard]] int touch_point_count() const override {
-        // TODO(phase4): wire SDL touch events (SDL_FINGER*) into InputState.
-        return 0;
+        return platform::sdl2::input_touch_point_count();
     }
 
-    [[nodiscard]] PointerPosition touch_position(int /*index*/) const override {
-        // TODO(phase4): return tracked SDL touch points.
-        return PointerPosition{};
+    [[nodiscard]] PointerPosition touch_position(int index) const override {
+        return PointerPosition{
+            platform::sdl2::input_touch_x(index),
+            platform::sdl2::input_touch_y(index)
+        };
     }
 
     [[nodiscard]] bool is_key_pressed(KeyCode key) const override {
@@ -79,8 +80,11 @@ public:
     }
 
     [[nodiscard]] int read_detected_gesture() const override {
-        // TODO(phase4): map SDL2 touch traces to gesture IDs.
-        return 0;
+        return platform::sdl2::input_read_detected_gesture();
+    }
+
+    [[nodiscard]] std::uint32_t read_last_touch_timestamp_ms() const override {
+        return platform::sdl2::input_last_gesture_timestamp_ms();
     }
 };
 

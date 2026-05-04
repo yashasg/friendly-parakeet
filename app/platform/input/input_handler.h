@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 namespace platform::input {
 
 struct PointerPosition {
@@ -39,6 +41,7 @@ public:
     [[nodiscard]] virtual bool is_key_pressed(KeyCode key) const = 0;
     [[nodiscard]] virtual bool is_window_focused() const = 0;
     [[nodiscard]] virtual int read_detected_gesture() const = 0;
+    [[nodiscard]] virtual std::uint32_t read_last_touch_timestamp_ms() const = 0;
 };
 
 InputHandler& input_handler();

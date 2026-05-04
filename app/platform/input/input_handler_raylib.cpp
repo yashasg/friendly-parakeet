@@ -63,6 +63,10 @@ public:
     [[nodiscard]] int read_detected_gesture() const override {
         return read_detected_raylib_gesture();
     }
+
+    [[nodiscard]] std::uint32_t read_last_touch_timestamp_ms() const override {
+        return 0;
+    }
 };
 
 }  // namespace

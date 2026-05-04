@@ -1,9 +1,11 @@
 #include "sdl2_graphics_context.h"
+#include "../input/sdl2_touch_tracker.h"
+#include "../../constants.h"
 
 #if !defined(__EMSCRIPTEN__)
 #include "sdl2_headers.h"
-#include <array>
 #include <algorithm>
+#include <array>
 #endif
 
 namespace platform::sdl2 {
@@ -20,6 +22,7 @@ struct GraphicsState {
     int mouse_x = 0;
     int mouse_y = 0;
     std::array<bool, SDL_NUM_SCANCODES> key_pressed{};
+    platform::input::Sdl2TouchTracker touch_tracker{};
     int screen_width = 0;
     int screen_height = 0;
     int target_fps = 60;
@@ -77,6 +80,7 @@ bool create_window_and_gl_context(const WindowConfig& config) {
     s.mouse_x = 0;
     s.mouse_y = 0;
     std::fill(s.key_pressed.begin(), s.key_pressed.end(), false);
+    s.touch_tracker.reset();
     s.screen_width = config.width;
     s.screen_height = config.height;
     s.last_counter = SDL_GetPerformanceCounter();
@@ -101,6 +105,7 @@ void destroy_window_and_gl_context() {
     s.mouse_x = 0;
     s.mouse_y = 0;
     std::fill(s.key_pressed.begin(), s.key_pressed.end(), false);
+    s.touch_tracker.reset();
     s.screen_width = 0;
     s.screen_height = 0;
     s.last_counter = 0;
@@ -153,6 +158,25 @@ void poll_events() {
         if (event.type == SDL_MOUSEBUTTONDOWN) {
             s.mouse_x = event.button.x;
             s.mouse_y = event.button.y;
+            continue;
+        }
+        if (event.type == SDL_FINGERDOWN ||
+            event.type == SDL_FINGERMOTION ||
+            event.type == SDL_FINGERUP) {
+            const int width = (s.screen_width > 0) ? s.screen_width : constants::SCREEN_W;
+            const int height = (s.screen_height > 0) ? s.screen_height : constants::SCREEN_H;
+            const float px = event.tfinger.x * static_cast<float>(width);
+            const float py = event.tfinger.y * static_cast<float>(height);
+            const auto finger_id = static_cast<std::int64_t>(event.tfinger.fingerId);
+            const auto ts_ms = static_cast<std::uint32_t>(event.tfinger.timestamp);
+
+            if (event.type == SDL_FINGERDOWN) {
+                s.touch_tracker.on_finger_down(finger_id, px, py, ts_ms);
+            } else if (event.type == SDL_FINGERMOTION) {
+                s.touch_tracker.on_finger_motion(finger_id, px, py, ts_ms);
+            } else {
+                s.touch_tracker.on_finger_up(finger_id, px, py, ts_ms);
+            }
         }
     }
     SDL_GetMouseState(&s.mouse_x, &s.mouse_y);
@@ -214,6 +238,60 @@ void request_close() noexcept {
     return true;
 #else
     return state().window_focused;
+#endif
+}
+
+[[nodiscard]] int input_touch_point_count() noexcept {
+#if defined(__EMSCRIPTEN__)
+    return 0;
+#else
+    return state().touch_tracker.touch_point_count();
+#endif
+}
+
+[[nodiscard]] float input_touch_x(int index) noexcept {
+#if defined(__EMSCRIPTEN__)
+    (void)index;
+    return 0.0f;
+#else
+    float x = 0.0f;
+    float y = 0.0f;
+    if (!state().touch_tracker.touch_position(index, x, y)) return 0.0f;
+    return x;
+#endif
+}
+
+[[nodiscard]] float input_touch_y(int index) noexcept {
+#if defined(__EMSCRIPTEN__)
+    (void)index;
+    return 0.0f;
+#else
+    float x = 0.0f;
+    float y = 0.0f;
+    if (!state().touch_tracker.touch_position(index, x, y)) return 0.0f;
+    return y;
+#endif
+}
+
+[[nodiscard]] int input_read_detected_gesture() noexcept {
+#if defined(__EMSCRIPTEN__)
+    return 0;
+#else
+    return state().touch_tracker.consume_detected_gesture();
+#endif
+}
+
+[[nodiscard]] std::uint32_t input_last_gesture_timestamp_ms() noexcept {
+#if defined(__EMSCRIPTEN__)
+    return 0;
+#else
+    return state().touch_tracker.last_gesture_timestamp_ms();
+#endif
+}
+
+void input_configure_gameplay_gestures() noexcept {
+#if !defined(__EMSCRIPTEN__)
+    state().touch_tracker.configure_gameplay_gestures();
 #endif
 }
 

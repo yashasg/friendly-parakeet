@@ -1,4 +1,5 @@
 #include "input_routing.h"
+#include "input_latency_probe.h"
 #include "../components/input_events.h"
 
 // Routes Swipe InputEvents into GoEvents.  Tap and other input types are
@@ -10,4 +11,5 @@
 void gesture_routing_handle_input(entt::registry& reg, const InputEvent& evt) {
     if (evt.type != InputType::Swipe) return;
     reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({evt.dir});
+    input_latency_note_go_event_enqueued(reg, evt.dir);
 }

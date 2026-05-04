@@ -184,3 +184,19 @@ Decision document: `.squad/decisions/inbox/hockney-cheatsheet-ios-clarification.
 - SDL2 touch point tracking (`SDL_FINGERDOWN/UP/MOTION`) + multitouch policy.
 - SDL2 gesture recognizer parity with raylib gesture semantics.
 - Latency instrumentation/comparison between raylib and SDL2 input event-to-dispatch timing.
+
+## 2026-05-04T00:32:05.528-07:00 — Phase 4 SDL2 input completion (#372)
+
+Completed the remaining Phase 4 input abstraction scope on `feature/sdl2-migration-phase-1-abstraction-layer`.
+
+### Delivered
+- Implemented SDL2 touch + multitouch tracking (up to 2 active fingers) via `SDL_FINGERDOWN/MOTION/UP` in `sdl2_graphics_context`.
+- Added SDL2 gesture recognition parity for required gameplay gestures (Tap + swipe left/right/up/down) with `MIN_SWIPE_DIST` / `MAX_SWIPE_TIME` thresholds.
+- Wired SDL2 input abstraction methods (`touch_point_count`, `touch_position`, `read_detected_gesture`) and touch-event timestamp exposure for latency sampling.
+- Added non-invasive, opt-in input latency instrumentation hooks (`InputLatencyProbe`) across input enqueue → gesture routing → GoEvent handling.
+- Preserved raylib behavior and backend selection path.
+
+### Validation
+- Raylib backend: `shapeshifter_tests [input]`, `[gesture]`, `[latency]` pass.
+- SDL2 backend: `shapeshifter_tests [input]`, `[gesture]`, `[latency]` pass.
+- Full `~[bench]` suite currently aborts in pre-existing `test_test_player_system` EnTT sparse_set assertion on both backends (not introduced by this change).

@@ -6,6 +6,7 @@
 #include "../audio/audio_queue.h"
 #include "../util/haptic_queue.h"
 #include "../components/rhythm.h"
+#include "../input/input_latency_probe.h"
 #include "../constants.h"
 
 static int8_t lane_for_shape_button(Shape shape) {
@@ -19,6 +20,7 @@ static int8_t lane_for_shape_button(Shape shape) {
 }
 
 void player_input_handle_go(entt::registry& reg, const GoEvent& evt) {
+    input_latency_note_go_event_handled(reg, evt.dir);
     if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
     auto view = reg.view<PlayerTag, PlayerShape, ShapeWindow, Lane>();
     for (auto [entity, pshape, swindow, lane] : view.each()) {

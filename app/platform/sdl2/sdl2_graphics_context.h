@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 namespace platform::sdl2 {
 
 struct WindowConfig {
@@ -19,6 +21,12 @@ void request_close() noexcept;
 [[nodiscard]] int input_mouse_y() noexcept;
 [[nodiscard]] bool input_key_pressed(int scancode) noexcept;
 [[nodiscard]] bool input_window_focused() noexcept;
+[[nodiscard]] int input_touch_point_count() noexcept;
+[[nodiscard]] float input_touch_x(int index) noexcept;
+[[nodiscard]] float input_touch_y(int index) noexcept;
+[[nodiscard]] int input_read_detected_gesture() noexcept;
+[[nodiscard]] std::uint32_t input_last_gesture_timestamp_ms() noexcept;
+void input_configure_gameplay_gestures() noexcept;
 
 void set_window_size(int width, int height);
 void set_window_position(int x, int y);
