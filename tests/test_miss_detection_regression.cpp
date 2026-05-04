@@ -13,14 +13,14 @@
 
 // ── helpers ─────────────────────────────────────────────────────────────────
 
-// Create a minimal expired obstacle: has ObstacleTag + Obstacle + Position past
+// Create a minimal expired obstacle: has ObstacleTag + Obstacle + WorldTransform past
 // DESTROY_Y, but no ScoredTag (miss_detection_system's precondition).
 static entt::entity make_expired_obstacle(entt::registry& reg) {
     auto e = reg.create();
     reg.emplace<ObstacleTag>(e);
     reg.emplace<Obstacle>(e, ObstacleKind::ShapeGate,
                           static_cast<int16_t>(constants::PTS_SHAPE_GATE));
-    reg.emplace<Position>(e, 0.0f, constants::DESTROY_Y + 10.0f);
+    reg.emplace<WorldTransform>(e, WorldTransform{{0.0f, constants::DESTROY_Y + 10.0f}});
     return e;
 }
 
@@ -104,7 +104,7 @@ TEST_CASE("miss_detection: obstacles above DESTROY_Y are not tagged",
     reg.emplace<ObstacleTag>(active);
     reg.emplace<Obstacle>(active, ObstacleKind::ShapeGate,
                           static_cast<int16_t>(constants::PTS_SHAPE_GATE));
-    reg.emplace<Position>(active, 0.0f, constants::PLAYER_Y - 100.0f);
+    reg.emplace<WorldTransform>(active, WorldTransform{{0.0f, constants::PLAYER_Y - 100.0f}});
 
     miss_detection_system(reg, 0.016f);
 
@@ -143,7 +143,7 @@ TEST_CASE("miss_detection: no-op when game phase is not Playing",
 
     auto obs = make_expired_obstacle(reg);
 
-    miss_detection_system(reg, 0.016f);
+    tick_playing_systems(reg, 0.016f);
 
     CHECK_FALSE(reg.all_of<MissTag>(obs));
     CHECK_FALSE(reg.all_of<ScoredTag>(obs));

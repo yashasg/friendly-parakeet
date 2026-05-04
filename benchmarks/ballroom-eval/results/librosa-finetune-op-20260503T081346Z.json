@@ -1,0 +1,48 @@
+{
+  "run_id": "librosa-finetune-op-20260503T081346Z",
+  "tracks_total": 698,
+  "dataset_root": "benchmarks/ballroom-local",
+  "config_path": "benchmarks/ballroom-eval/tmp_level_finetuned_eval_config.json",
+  "ranked": [
+    {
+      "config": {
+        "name": "level-finetuned-no-start-bpm",
+        "hop_length": 384,
+        "n_fft": 2048,
+        "tightness": 150.0,
+        "trim": false,
+        "tempo_source": "fixed_start_bpm"
+      },
+      "f1_20": 0.5515138059570688,
+      "rec_20": 0.5418082468546239,
+      "prec_20": 0.561573424077291,
+      "f1_35": 0.622816345131399,
+      "rec_35": 0.6118560014693728,
+      "prec_35": 0.6341765223806011,
+      "f1_70": 0.6667056170322158,
+      "rec_70": 0.6549729084397098,
+      "prec_70": 0.678866335102206,
+      "gate": 0.5871650755442339
+    }
+  ],
+  "best": {
+    "config": {
+      "name": "level-finetuned-no-start-bpm",
+      "hop_length": 384,
+      "n_fft": 2048,
+      "tightness": 150.0,
+      "trim": false,
+      "tempo_source": "fixed_start_bpm"
+    },
+    "f1_20": 0.5515138059570688,
+    "rec_20": 0.5418082468546239,
+    "prec_20": 0.561573424077291,
+    "f1_35": 0.622816345131399,
+    "rec_35": 0.6118560014693728,
+    "prec_35": 0.6341765223806011,
+    "f1_70": 0.6667056170322158,
+    "rec_70": 0.6549729084397098,
+    "prec_70": 0.678866335102206,
+    "gate": 0.5871650755442339
+  }
+}

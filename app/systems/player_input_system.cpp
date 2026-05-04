@@ -4,9 +4,7 @@
 #include "../components/rendering.h"
 #include "../components/input_events.h"
 #include "../audio/audio_queue.h"
-#include "../components/haptics.h"
 #include "../util/haptic_queue.h"
-#include "../util/settings.h"
 #include "../components/rhythm.h"
 #include "../constants.h"
 
@@ -32,9 +30,7 @@ void player_input_handle_go(entt::registry& reg, const GoEvent& evt) {
         if (delta != 0) {
             lane.target = lane.current + delta;
             lane.lerp_t = 0.0f;
-            auto* hq = reg.ctx().find<HapticQueue>();
-            auto* st = reg.ctx().find<SettingsState>();
-            if (hq) haptic_push(*hq, !st || st->haptics_enabled, HapticEvent::LaneSwitch);
+            haptic_feedback(reg, HapticEvent::LaneSwitch);
         }
         (void)entity;
         (void)pshape;
@@ -68,11 +64,7 @@ void player_input_handle_press(entt::registry& reg, const ButtonPressEvent& evt)
         auto& sc = constants::SHAPE_COLORS[si];
         reg.replace<Color>(entity, sc);
         audio_push(reg.ctx().get<AudioQueue>(), SFX::ShapeShift);
-        {
-            auto* hq = reg.ctx().find<HapticQueue>();
-            auto* st = reg.ctx().find<SettingsState>();
-            if (hq) haptic_push(*hq, !st || st->haptics_enabled, HapticEvent::ShapeShift);
-        }
+        haptic_feedback(reg, HapticEvent::ShapeShift);
     };
 
     auto view = reg.view<PlayerTag, PlayerShape, ShapeWindow, Lane>();
@@ -80,9 +72,7 @@ void player_input_handle_press(entt::registry& reg, const ButtonPressEvent& evt)
         if (shape_lane >= 0 && lane.current != shape_lane && lane.target != shape_lane) {
             lane.target = shape_lane;
             lane.lerp_t = 0.0f;
-            auto* hq = reg.ctx().find<HapticQueue>();
-            auto* st = reg.ctx().find<SettingsState>();
-            if (hq) haptic_push(*hq, !st || st->haptics_enabled, HapticEvent::LaneSwitch);
+            haptic_feedback(reg, HapticEvent::LaneSwitch);
         }
         if (rhythm_mode) {
             auto phase = swindow.phase;
@@ -109,11 +99,7 @@ void player_input_handle_press(entt::registry& reg, const ButtonPressEvent& evt)
                 auto& sc = constants::SHAPE_COLORS[si];
                 reg.replace<Color>(entity, sc);
                 audio_push(reg.ctx().get<AudioQueue>(), SFX::ShapeShift);
-                {
-                    auto* hq = reg.ctx().find<HapticQueue>();
-                    auto* st = reg.ctx().find<SettingsState>();
-                    if (hq) haptic_push(*hq, !st || st->haptics_enabled, HapticEvent::ShapeShift);
-                }
+                haptic_feedback(reg, HapticEvent::ShapeShift);
             }
         }
     }

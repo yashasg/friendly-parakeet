@@ -11,6 +11,28 @@
 #include <emscripten/emscripten.h>
 #endif
 
+namespace {
+
+struct WebInputPolicy {
+    bool prefers_touch = false;
+};
+
+} // namespace
+
+void input_system_init(entt::registry& reg) {
+    auto& policy = reg.ctx().emplace<WebInputPolicy>();
+#if defined(PLATFORM_WEB) && defined(__EMSCRIPTEN__)
+    policy.prefers_touch = (EM_ASM_INT({
+        const ua = navigator.userAgent || "";
+        const mobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+        const touchCapable = (navigator.maxTouchPoints || 0) > 0;
+        return mobile && touchCapable ? 1 : 0;
+    }) != 0);
+#else
+    (void)policy;
+#endif
+}
+
 void input_system(entt::registry& reg, float raw_dt) {
     auto& input = reg.ctx().get<InputState>();
     auto& st    = reg.ctx().get<ScreenTransform>();
@@ -24,21 +46,10 @@ void input_system(entt::registry& reg, float raw_dt) {
     disp.clear<InputEvent>();
     clear_input_events(input);
 
-    // Convert a raw window pixel coordinate to virtual world space.
-    // At the initial 720×1280 window (scale=1, offset=0) this is a no-op;
-    // when the window is resized the letterbox offsets and scale are applied.
-    auto to_vx = [&](float wx) { return (wx - st.offset_x) / st.scale; };
-    auto to_vy = [&](float wy) { return (wy - st.offset_y) / st.scale; };
-
 #if defined(PLATFORM_WEB) && defined(__EMSCRIPTEN__)
-    static const bool web_prefers_touch = (EM_ASM_INT({
-        const ua = navigator.userAgent || "";
-        const mobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua);
-        const touchCapable = (navigator.maxTouchPoints || 0) > 0;
-        return mobile && touchCapable ? 1 : 0;
-    }) != 0);
-    const bool allow_mouse_input = !web_prefers_touch;
-    const bool allow_touch_input = web_prefers_touch;
+    const auto& web_policy = reg.ctx().get<WebInputPolicy>();
+    const bool allow_mouse_input = !web_policy.prefers_touch;
+    const bool allow_touch_input = web_policy.prefers_touch;
 #else
     const bool allow_mouse_input = true;
     const bool allow_touch_input = true;
@@ -51,9 +62,9 @@ void input_system(entt::registry& reg, float raw_dt) {
         input.click      = true;
         input.touching   = false;
         input.active_source = InputSource::None;
-        Vector2 pos = GetMousePosition();
-        input.start_x = input.curr_x = input.end_x = to_vx(pos.x);
-        input.start_y = input.curr_y = input.end_y = to_vy(pos.y);
+        const Vector2 pos = screen_to_virtual(GetMousePosition(), st);
+        input.start_x = input.curr_x = input.end_x = pos.x;
+        input.start_y = input.curr_y = input.end_y = pos.y;
         input.duration = 0.0f;
     }
 
@@ -61,17 +72,17 @@ void input_system(entt::registry& reg, float raw_dt) {
     if (allow_touch_input &&
         input.active_source != InputSource::Mouse &&
         GetTouchPointCount() > 0) {
-        Vector2 tp = GetTouchPosition(0);
+        const Vector2 tp = screen_to_virtual(GetTouchPosition(0), st);
         if (!input.touching) {
             input.touch_down = true;
             input.touching   = true;
             input.active_source = InputSource::Touch;
-            input.start_x = input.curr_x = to_vx(tp.x);
-            input.start_y = input.curr_y = to_vy(tp.y);
+            input.start_x = input.curr_x = tp.x;
+            input.start_y = input.curr_y = tp.y;
             input.duration = 0.0f;
         } else if (input.active_source == InputSource::Touch) {
-            input.curr_x = to_vx(tp.x);
-            input.curr_y = to_vy(tp.y);
+            input.curr_x = tp.x;
+            input.curr_y = tp.y;
         }
     } else if (allow_touch_input &&
                input.active_source != InputSource::Mouse &&

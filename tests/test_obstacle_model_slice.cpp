@@ -14,7 +14,7 @@
 //                after render_tags.h is committed.
 //
 //   Section C  — GUARDED (#if 0).  Requires Slice 1 deliverables:
-//                  · LowBar / HighBar / LanePushLeft / LanePushRight obstacle
+//                  · LowBar / HighBar obstacle
 //                    entity construction updated to emplace Model + TagWorldPass,
 //                    NOT Position.
 //                  · app/util/render_matrix_helpers.h with slab_matrix() exposed.
@@ -90,7 +90,6 @@ TEST_CASE("post-migration: LowBar has ObstacleScrollZ, not Position",
     auto e = make_obstacle_entity(reg, ObstacleKind::LowBar);
 
     REQUIRE(reg.all_of<ObstacleScrollZ>(e));
-    CHECK_FALSE(reg.all_of<Position>(e));
     CHECK_FALSE(reg.all_of<Model>(e));  // raw Model not emplaced by entity factory
 }
 
@@ -100,24 +99,7 @@ TEST_CASE("post-migration: HighBar has ObstacleScrollZ, not Position",
     auto e = make_obstacle_entity(reg, ObstacleKind::HighBar);
 
     REQUIRE(reg.all_of<ObstacleScrollZ>(e));
-    CHECK_FALSE(reg.all_of<Position>(e));
     CHECK_FALSE(reg.all_of<Model>(e));
-}
-
-TEST_CASE("post-migration: LanePushLeft still has Position (not yet migrated)",
-          "[post_migration][model_slice]") {
-    entt::registry reg;
-    auto e = make_obstacle_entity(reg, ObstacleKind::LanePushLeft);
-    REQUIRE(reg.all_of<Position>(e));
-    CHECK_FALSE(reg.all_of<ObstacleScrollZ>(e));
-}
-
-TEST_CASE("post-migration: LanePushRight still has Position (not yet migrated)",
-          "[post_migration][model_slice]") {
-    entt::registry reg;
-    auto e = make_obstacle_entity(reg, ObstacleKind::LanePushRight);
-    REQUIRE(reg.all_of<Position>(e));
-    CHECK_FALSE(reg.all_of<ObstacleScrollZ>(e));
 }
 
 TEST_CASE("post-migration: spawn_obstacle does not emplace Model on any kind",
@@ -132,8 +114,6 @@ TEST_CASE("post-migration: spawn_obstacle does not emplace Model on any kind",
         ObstacleKind::HighBar,
         ObstacleKind::ComboGate,
         ObstacleKind::SplitPath,
-        ObstacleKind::LanePushLeft,
-        ObstacleKind::LanePushRight,
     };
     for (auto kind : all_kinds) {
         entt::registry reg;
@@ -288,7 +268,6 @@ TEST_CASE("post-migration: LowBar has ObstacleScrollZ + RequiredVAction + DrawSi
     REQUIRE(reg.all_of<ObstacleScrollZ>(e));
     REQUIRE(reg.all_of<RequiredVAction>(e));
     REQUIRE(reg.all_of<DrawSize>(e));
-    CHECK_FALSE(reg.all_of<Position>(e));
     CHECK(reg.get<RequiredVAction>(e).action == VMode::Jumping);
 }
 
@@ -299,7 +278,6 @@ TEST_CASE("post-migration: HighBar has ObstacleScrollZ + RequiredVAction (Slice 
 
     REQUIRE(reg.all_of<ObstacleScrollZ>(e));
     REQUIRE(reg.all_of<RequiredVAction>(e));
-    CHECK_FALSE(reg.all_of<Position>(e));
     CHECK(reg.get<RequiredVAction>(e).action == VMode::Sliding);
 }
 

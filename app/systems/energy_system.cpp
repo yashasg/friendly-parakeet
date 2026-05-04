@@ -7,7 +7,6 @@
 
 void energy_system(entt::registry& reg, float dt) {
     if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
-
     auto* energy = reg.ctx().find<EnergyState>();
     if (!energy) return;
 

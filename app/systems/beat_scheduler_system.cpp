@@ -10,18 +10,12 @@
 #include "../constants.h"
 
 void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
-    if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
-
     auto* song = reg.ctx().find<SongState>();
     auto* map  = reg.ctx().find<BeatMap>();
     if (!song || !map || !song->playing) return;
 
     while (song->next_spawn_idx < map->beats.size()) {
         const auto& entry = map->beats[song->next_spawn_idx];
-        if (entry.kind == ObstacleKind::LowBar || entry.kind == ObstacleKind::HighBar) {
-            ++song->next_spawn_idx;
-            continue;
-        }
 
         float beat_time  = song->offset + entry.beat_index * song->beat_period;
         if (!map->beat_times.empty()) {
@@ -55,9 +49,7 @@ void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
         // Compute x: LaneBlock derives it from blocked_mask; lane-based kinds
         // use entry.lane directly; bar/gate types default to center lane.
         float x_pos = constants::LANE_X[1];
-        if (entry.kind == ObstacleKind::ShapeGate ||
-            entry.kind == ObstacleKind::LanePushLeft ||
-            entry.kind == ObstacleKind::LanePushRight) {
+        if (entry.kind == ObstacleKind::ShapeGate) {
             x_pos = constants::LANE_X[static_cast<int>(entry.lane)];
         } else if (entry.kind == ObstacleKind::LaneBlock) {
             int display_lane = 1;

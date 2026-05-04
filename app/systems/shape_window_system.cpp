@@ -12,8 +12,6 @@ static void apply_shape_color(entt::registry& reg, entt::entity entity, Shape sh
 }
 
 void shape_window_system(entt::registry& reg, float /*dt*/) {
-    if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
-
     auto* song = reg.ctx().find<SongState>();
     if (!song) return;
 

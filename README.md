@@ -110,7 +110,7 @@ app/
     all_systems.h         #   declarations + pipeline order
     play_session.cpp      #   entity setup on game start
 tools/
-  rhythm_pipeline.py      # Audio analysis (aubio -> analysis JSON)
+  rhythm_pipeline.py      # Audio analysis (librosa -> analysis JSON)
   level_designer.py       # Beatmap generation (analysis -> beatmap JSON)
 content/
   audio/                  # Source audio files (.flac)
@@ -133,9 +133,9 @@ python3 tools/level_designer.py content/beatmaps/song_analysis.json \
     --output content/beatmaps/song_beatmap.json
 ```
 
-`rhythm_pipeline.py` now reads aubio parameters from `tools/config/rhythm_aubio_params.json` by default (override with `--aubio-config`).
+`rhythm_pipeline.py` now reads librosa parameters from `tools/config/rhythm_librosa_params.json` by default (override with `--librosa-config`).
 
-### Ballroom aubio tuning loop
+### Ballroom librosa tuning loop
 
 ```bash
 # 1) Prepare local benchmark subset (downloads annotations + optional audio)
@@ -143,9 +143,10 @@ python3 tools/benchmarks/setup_ballroom_subset.py \
   --dataset-root benchmarks/ballroom-local \
   --download-audio --max-tracks 8 --genres Jive Quickstep Waltz
 
-# 2) Run baseline + sweep evaluation
-python3 tools/benchmarks/ballroom_aubio_eval.py \
+# 2) Run librosa config evaluation
+python3 tools/benchmarks/ballroom_librosa_eval.py \
   --dataset-root benchmarks/ballroom-local \
+  --config benchmarks/ballroom-eval/librosa_fine_tuning_config.json \
   --output-root benchmarks/ballroom-eval/results
 
 # Scale toward full Ballroom extraction from downloaded archive

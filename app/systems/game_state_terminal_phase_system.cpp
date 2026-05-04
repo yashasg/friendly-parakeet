@@ -7,7 +7,6 @@
 #include "../components/scoring.h"
 #include "../util/haptic_queue.h"
 #include "../util/high_score_persistence.h"
-#include "../util/settings.h"
 
 namespace {
 
@@ -37,16 +36,11 @@ void emit_terminal_feedback(entt::registry& reg, GamePhase phase, bool is_new_hi
         audio_push(reg.ctx().get<AudioQueue>(), SFX::Crash);
     }
 
-    auto* hq = reg.ctx().find<HapticQueue>();
-    auto* st = reg.ctx().find<SettingsState>();
-    if (!hq) return;
-
-    const bool haptics_on = !st || st->haptics_enabled;
     if (phase == GamePhase::GameOver) {
-        haptic_push(*hq, haptics_on, HapticEvent::DeathCrash);
+        haptic_feedback(reg, HapticEvent::DeathCrash);
     }
     if (is_new_high_score) {
-        haptic_push(*hq, haptics_on, HapticEvent::NewHighScore);
+        haptic_feedback(reg, HapticEvent::NewHighScore);
     }
 }
 
@@ -57,9 +51,7 @@ void game_state_enter_terminal_phase(entt::registry& reg, GamePhase phase) {
     emit_terminal_feedback(reg, phase, is_new_high_score);
 
     auto& gs = reg.ctx().get<GameState>();
-    gs.previous_phase = gs.phase;
-    gs.phase = phase;
-    gs.phase_timer = 0.0f;
+    enter_phase(gs, phase);
 
     if (phase != GamePhase::GameOver) return;
 

@@ -1,0 +1,130 @@
+================================================================================
+                        SHAPESHIFTER ROUND 12 HEALTH REPORT
+                              2026-05-05
+================================================================================
+
+PROJECT STATUS:        🟢 GREEN (all critical paths clear)
+TEST SUITE:            800 / 2251 assertions ✅
+BENCH STABILITY:       ~149/167 ns (no regression)
+BUILD:                 zero warnings (-Wall -Wextra -Werror)
+
+================================================================================
+
+ROUND 12 OUTCOMES:
+
+1. COLLISION SYSTEM SRP — CLOSED ✅
+   ├─ Moved SongResults tier-count increments to scoring_system
+   ├─ Collision now emits TimingGrade only; scoring owns SongResults mutation
+   ├─ Added negative test: "collision_system alone does not mutate SongResults counts"
+   ├─ New test case added: 1 (800 total, up from 799)
+   ├─ New assertions: +4 (2251 total, up from 2247)
+   └─ Status: 🟢 collision_system SRP closed
+
+2. ORDER REGRESSION AUDIT — VERIFIED ✅
+   ├─ Verified r11 order-fix matches pre-r9 form (e32dc82) byte-for-byte
+   ├─ fixed_tick_runner.cpp wiring: obstacle_despawn → popup_feedback → energy → particle
+   ├─ Guards on popup_feedback_system and energy_system re-added correctly
+   ├─ playing_systems_runner: 11 systems (down from 13 in r9)
+   └─ Status: 🟢 playing_systems_runner order regression resolved
+
+3. TEST COUNT ANOMALY — RESOLVED ✅
+   ├─ Root cause: methodology drift (r10 no-filter vs r11 `~[bench]`)
+   ├─ r10: 798 total (782 non-bench + 16 bench with 0 assertions)
+   ├─ r11: 783 non-bench (`~[bench]` filter)
+   ├─ r12: 784 non-bench (includes new SRP test)
+   ├─ Trajectory (no-filter): 797 → 798 → 799 → 800 ✓ all consistent
+   ├─ No tests deleted; process anomaly, not code regression
+   ├─ Canonical command established: `./build/shapeshifter_tests '~[bench]' --reporter compact 2>&1 | tail -5`
+   └─ Status: 🟢 anomaly resolved; process discipline established
+
+================================================================================
+
+MODULE HEALTH SNAPSHOT:
+
+🟢 GREEN (9 modules):
+   • collision_system              [SRP closed; emits TimingGrade]
+   • scoring_system                [kind-free; owns SongResults mutations]
+   • playing_systems_runner        [11 systems; order verified; pre-r9 form]
+   • obstacle_despawn_system       [correctly ordered]
+   • popup_feedback_system         [phase guard restored; post-despawn]
+   • popup_display_system          [post-feedback]
+   • energy_system                 [phase guard restored; post-display]
+   • particle_system               [post-energy]
+   • beat_log_system, motion_system, scroll_system, lane_push_response_system, miss_detection_system
+
+🟡 YELLOW (1 module):
+   • player_input_system           [double-guard at lines 22,43 redundant but safe; deferred cleanup]
+
+🔴 CRITICAL:
+   • (none — all critical paths clear)
+
+================================================================================
+
+PENDING / DEFERRED:
+
+R13 CANDIDATE: scoring_system chain-bonus coupling
+   └─ chain_count, chain_timer, popup-request creation logically belong to
+      dedicated chain/combo system or should be documented as intentional co-location.
+      Priority: 🟡 Nice-to-have. Defer to r13+ if code review doesn't flag.
+
+R13 CANDIDATE: Test ordering regression test improvement
+   └─ test_phase_runner.cpp:80 catches wiring (systems present) but not
+      ordering (systems in wrong order). Recommend fail-then-fix verification
+      for order invariant. Priority: 🟡 Nice-to-have.
+
+R13 CANDIDATE: player_input_system double-guard cleanup
+   └─ Phase guard at lines 22,43 redundant (runner guarantees phase==Playing
+      before call). Safe but worth cleanup. Priority: 🟡 Nice-to-have.
+
+================================================================================
+
+DECISIONS.MD SIZE:
+
+Pre-R12:   11,960 lines
+Post-R12:  ~12,700 lines (estimated +740 lines for two decision files + process notes)
+Threshold: 13,000 lines (no archival required yet)
+
+Status: ✅ Within limits; monitor for archival at next round if exceeds 13K
+
+================================================================================
+
+PROCESS IMPROVEMENTS (R12):
+
+1. Canonical test command established (mandatory for future rounds):
+   `./build/shapeshifter_tests '~[bench]' --reporter compact 2>&1 | tail -5`
+
+2. Decision drops must include verbatim `tail -5` snippet (not paraphrased counts)
+
+3. If a third consecutive test-count anomaly occurs in R13, mandatory pair-measurement
+   (Keaton runs, Keyser verifies before filing decision)
+
+4. All heuristics updated:
+   • Keaton R12: Surgical SRP moves require pre/post measurement discipline
+   • Keyser R12: Live re-run before declaring regression; audit methodology first
+   • Shared: Canonical commands enforce process hygiene
+
+================================================================================
+
+SUMMARY:
+
+Round 12 successfully closed the collision_system SRP smell and resolved the
+test-count anomaly. Module health is 🟢 across all critical systems. The order
+regression fix from r11 is verified and byte-identical to pre-r9 form.
+
+Process discipline has been tightened: canonical test command established,
+methodology inconsistency patterns documented, and future measurement discipline
+enforced via decision-drop requirements.
+
+All 800 test cases pass (2251 assertions). Bench shows no performance regression.
+Build remains zero-warning compliant.
+
+Next round candidates: chain-bonus decoupling (r13+), test ordering improvement
+(r13+), and double-guard cleanup (r13+). All are nice-to-have; no blockers.
+
+Status: ✅ READY FOR PRODUCTION
+
+================================================================================
+End of Round 12 Health Report
+Generated: 2026-05-05
+Scribe: Scribe (logging cycle)
+================================================================================

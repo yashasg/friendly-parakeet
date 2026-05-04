@@ -13,8 +13,6 @@ enum class ObstacleKind : uint8_t {
     HighBar,
     ComboGate,
     SplitPath,
-    LanePushLeft,
-    LanePushRight,
 };
 
 struct Obstacle {
@@ -24,6 +22,14 @@ struct Obstacle {
 
 // Existential tag: presence means the obstacle has been cleared and awaits scoring.
 struct ScoredTag {};
+
+// Existential tag: obstacle does not participate in the scoring ladder
+// (no score popup, no chain contribution).
+struct NonScorableTag {};
+
+// Existential tag: obstacle is a bar-type (LowBar or HighBar).
+// Emplaced at spawn; consumed by scoring_system to set DeathCause::HitABar.
+struct BarObstacleTag {};
 
 // Existential tag: scored obstacle was failed/missed and should not award points.
 struct MissTag {};

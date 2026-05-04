@@ -144,9 +144,9 @@ TEST_CASE("shape_window: not in Playing phase skips processing", "[shape_window]
     sw.window_start = song.song_time;
 
     song.song_time += song.morph_duration + 0.1f;
-    shape_window_system(reg, 0.016f);
+    tick_playing_systems(reg, 0.016f);
 
-    // Should still be MorphIn (paused)
+    // Runner skips all systems when not Playing — MorphIn must not advance.
     CHECK(sw.phase == WindowPhase::MorphIn);
 }
 

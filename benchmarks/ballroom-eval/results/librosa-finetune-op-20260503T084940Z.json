@@ -1,0 +1,60 @@
+{
+  "run_id": "librosa-finetune-op-20260503T084940Z",
+  "tracks_total": 698,
+  "dataset_root": "benchmarks/ballroom-local",
+  "config_path": "benchmarks/ballroom-eval/_runtime_single_eval.json",
+  "ranked": [
+    {
+      "config": {
+        "n_fft": 3072,
+        "hop_length": 320,
+        "start_bpm": 120.0,
+        "tightness": 165.0,
+        "trim": false,
+        "onset_envelope": "stft_flux",
+        "tempo_source": "tempogram_median",
+        "flux_reduce": "mean",
+        "tempogram_win_length": 320,
+        "tempogram_norm": "inf",
+        "tempo_stat": "mean",
+        "name": "runtime-finetuned-p2-3072-320"
+      },
+      "f1_20": 0.6649376337141243,
+      "rec_20": 0.7563825879327762,
+      "prec_20": 0.5932188130221838,
+      "f1_35": 0.7342671456827998,
+      "rec_35": 0.8352465791165397,
+      "prec_35": 0.6550705848458658,
+      "f1_70": 0.7826666128446292,
+      "rec_70": 0.8903021397740839,
+      "prec_70": 0.6982497839239412,
+      "gate": 0.699602389698462
+    }
+  ],
+  "best": {
+    "config": {
+      "n_fft": 3072,
+      "hop_length": 320,
+      "start_bpm": 120.0,
+      "tightness": 165.0,
+      "trim": false,
+      "onset_envelope": "stft_flux",
+      "tempo_source": "tempogram_median",
+      "flux_reduce": "mean",
+      "tempogram_win_length": 320,
+      "tempogram_norm": "inf",
+      "tempo_stat": "mean",
+      "name": "runtime-finetuned-p2-3072-320"
+    },
+    "f1_20": 0.6649376337141243,
+    "rec_20": 0.7563825879327762,
+    "prec_20": 0.5932188130221838,
+    "f1_35": 0.7342671456827998,
+    "rec_35": 0.8352465791165397,
+    "prec_35": 0.6550705848458658,
+    "f1_70": 0.7826666128446292,
+    "rec_70": 0.8903021397740839,
+    "prec_70": 0.6982497839239412,
+    "gate": 0.699602389698462
+  }
+}

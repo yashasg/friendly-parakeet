@@ -306,10 +306,10 @@ TEST_CASE("beat_scheduler: scroll speed matches song state", "[rhythm][scheduler
     map.beats.push_back({4, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
     song.playing = true; song.song_time = 0.1f;
     beat_scheduler_system(reg, 0.016f);
-    auto obs_view = reg.view<ObstacleTag, Velocity>();
+    auto obs_view = reg.view<ObstacleTag, MotionVelocity>();
     REQUIRE(std::distance(obs_view.begin(), obs_view.end()) == 1);
     for (auto [e, vel] : obs_view.each()) {
-        CHECK_THAT(vel.dy, WithinAbs(song.scroll_speed, 0.1f));
+        CHECK_THAT(vel.value.y, WithinAbs(song.scroll_speed, 0.1f));
     }
 }
 
@@ -635,6 +635,7 @@ TEST_CASE("collision: SongResults updated", "[rhythm][collision]") {
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<BeatInfo>(obs, 0, 5.0f, 5.0f - song.lead_time);
     collision_system(reg, 0.016f);
+    scoring_system(reg, 0.016f);
     CHECK(reg.ctx().get<SongResults>().perfect_count == 1);
 }
 
@@ -674,7 +675,7 @@ TEST_CASE("scoring: timing_mult applied to scored obstacle", "[rhythm][scoring]"
     score.score = 0; score.chain_count = 0;
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
-    reg.emplace<Position>(obs, constants::LANE_X[1], constants::PLAYER_Y);
+    reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y}});
     reg.emplace<Obstacle>(obs, ObstacleKind::ShapeGate, int16_t{200});
     reg.emplace<ScoredTag>(obs);
     reg.emplace<TimingGrade>(obs, TimingTier::Perfect, 1.0f);
@@ -899,9 +900,9 @@ TEST_CASE("integration: obstacle arrives on-beat within 1 frame", "[rhythm][inte
         beat_scheduler_system(reg, dt);
         scroll_system(reg, dt);
         frames++;
-        auto view = reg.view<ObstacleTag, Position>();
-        for (auto [e, pos] : view.each()) {
-            if (pos.y >= constants::PLAYER_Y) {
+        auto view = reg.view<ObstacleTag, WorldTransform>();
+        for (auto [e, wt] : view.each()) {
+            if (wt.position.y >= constants::PLAYER_Y) {
                 obstacle_at_player = true;
                 float beat_time = song.offset + 4 * song.beat_period;
                 CHECK_THAT(song.song_time, WithinAbs(beat_time, dt + 0.001f));

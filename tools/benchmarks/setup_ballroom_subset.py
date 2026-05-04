@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prepare local Ballroom subset for aubio benchmarking."""
+"""Prepare local Ballroom subset for librosa benchmarking."""
 
 from __future__ import annotations
 
@@ -81,7 +81,7 @@ def extract_audio_subset(archive_path: Path, audio_dir: Path, genres: list[str],
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Setup local Ballroom subset for aubio benchmark")
+    parser = argparse.ArgumentParser(description="Setup local Ballroom subset for librosa benchmark")
     parser.add_argument("--dataset-root", default="benchmarks/ballroom-local", help="Local Ballroom dataset root")
     parser.add_argument("--download-audio", action="store_true", help="Download 1.45GB audio archive")
     parser.add_argument("--audio-archive", default=None, help="Existing data1.tar.gz path (optional)")

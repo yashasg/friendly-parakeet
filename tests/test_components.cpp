@@ -6,12 +6,6 @@
 
 // Verify component defaults and basic ECS operations
 
-TEST_CASE("components: Position default is zero", "[components]") {
-    Position p{};
-    CHECK(p.x == 0.0f);
-    CHECK(p.y == 0.0f);
-}
-
 TEST_CASE("components: WorldTransform defaults to identity world transform", "[components][transform]") {
     WorldTransform transform{};
     CHECK(transform.position.x == 0.0f);
@@ -218,7 +212,6 @@ TEST_CASE("ecs: make_player creates proper entity", "[ecs]") {
 
     CHECK(reg.all_of<PlayerTag>(p));
     CHECK(reg.all_of<WorldTransform>(p));
-    CHECK_FALSE(reg.all_of<Position>(p));
     CHECK(reg.all_of<PlayerShape>(p));
     CHECK(reg.all_of<ShapeWindow>(p));
     CHECK(reg.all_of<Lane>(p));
@@ -229,10 +222,10 @@ TEST_CASE("ecs: make_player creates proper entity", "[ecs]") {
     CHECK(reg.all_of<TagWorldPass>(p));
 }
 
-TEST_CASE("components: Velocity default is zero", "[components]") {
-    Velocity v{};
-    CHECK(v.dx == 0.0f);
-    CHECK(v.dy == 0.0f);
+TEST_CASE("components: MotionVelocity explicit construction", "[components][transform]") {
+    MotionVelocity mv{{5.0f, 10.0f}};
+    CHECK(mv.value.x == 5.0f);
+    CHECK(mv.value.y == 10.0f);
 }
 
 TEST_CASE("components: Color construction", "[components]") {
@@ -265,7 +258,7 @@ TEST_CASE("ecs: make_combo_gate creates proper entity", "[ecs]") {
     auto obs = make_combo_gate(reg, Shape::Circle, 0b101, 500.0f);
 
     CHECK(reg.all_of<ObstacleTag>(obs));
-    CHECK(reg.all_of<Position>(obs));
+    CHECK(reg.all_of<WorldTransform>(obs));
     CHECK(reg.all_of<Obstacle>(obs));
     CHECK(reg.all_of<RequiredShape>(obs));
     CHECK(reg.all_of<BlockedLanes>(obs));

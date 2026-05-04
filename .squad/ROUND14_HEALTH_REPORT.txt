@@ -1,0 +1,111 @@
+ROUND 14 HEALTH REPORT
+======================
+
+Date: 2026-05-03
+Status: ✅ COMPLETE
+
+ROUND OUTCOME
+=============
+
+**Keaton R14:** Ordering commutativity analysis. Investigated obstacle_despawn ↔ popup_feedback dependency. Verdict: FULLY COMMUTATIVE (disjoint data surfaces). Updated misleading comments from "semantic invariant" to "cache-locality preference". No logic changes. Comment-only edits, same test count.
+
+**Keyser R14:** Bench re-baseline post-r13 archetype fix. Discovered R13 corrected spawn_particles from legacy Position+Velocity to production WorldTransform+MotionVelocity. Captured corrected baseline. Flagged 3 prior-round bench claims as questionable. Verified motion_view tests are real coverage (fail-sensitive). Tentatively demoted fixed_tick_runner to 🟡 pending Keaton verdict; commutativity proof reversed this → 🟢.
+
+MODULE HEALTH SNAPSHOT
+======================
+
+🟢 GREEN (12):
+  - collision_system: SRP closed r12; no new changes
+  - scoring_system: Internal state scoring-only; no cross-system coupling
+  - scroll_system: No issues
+  - lane_push_response_system: No issues
+  - playing_systems_runner: 11 systems; order correct
+  - fixed_tick_runner: Commutativity proof removes ordering concern
+  - popup_feedback_system: No issues
+  - energy_system: No issues
+  - particle_system: Production archetype confirmed; bench corrected
+  - player_input_system: Guards load-bearing (r13 finding)
+  - beat_log_system: No issues
+  - popup_display_system: No issues
+  - miss_detection_system: No issues
+
+🟡 YELLOW (1):
+  - motion_system: vel_view legacy path for freeplay (#349 pending); motion_view has 2 unit tests
+
+🔴 RED (0): None
+
+STALE INBOX CLEANUP
+===================
+
+Verified 12 files from prior rounds (r4/r5/r7-r10 Keaton/Keyser):
+
+✅ MERGED & DELETED (8):
+  - keaton-r5-nonscorable-tag.md (phrase: NonScorableTag)
+  - keaton-r7-bartag-and-test-fix.md (phrase: BarObstacleTag)
+  - keaton-r8-wirefix.md (phrase: lane_push_response_system)
+  - keaton-r9-phase-runner.md (phrase: tick_playing_systems)
+  - keaton-r10-testfix-and-input.md (phrase: fixed_tick_runner)
+  - keyser-r5-collision-system-audit.md (phrase: collision_system.*SRP)
+  - keyser-r8-bartag-and-phase-scope.md (phrase: Design B)
+  - keyser-r9-wirefix-and-meta-scan.md (phrase: ORDER REGRESSION)
+
+⚠️  NOT MERGED — PRESERVED FOR MANUAL REVIEW (4):
+  - keaton-round-4-perf.md (phrase: "motion_system: already tight" — NOT found)
+  - keyser-r4-motion-and-obstaclekind.md (phrase: "Velocity.*ObstacleKind" — NOT found)
+  - keyser-r7-lanepush-and-phase-design.md (phrase: "Design A" — NOT found)
+  - keyser-r10-phase-audit.md (phrase: "Keyser.*Round 10" — NOT found)
+
+PENDING ITEMS
+=============
+
+1. **Motion #349 migration:** vel_view bridge still in place. Next round should pick simplest obstacle kind and migrate to motion_view path. Keaton-r15 recommended.
+2. **R15 scope:** Keaton-r15 target = begin obstacle migration for issue #349 (e.g., ComboGate or SplitPath). Include fail-then-fix + corrected bench + verbatim tail-5.
+3. **player_input_system double guard:** Lines 22/43 — redundant but safe (guards load-bearing per r13, so no action needed). Noise only; deferred since r12.
+4. **CI grep convention:** Pending user approval. Do not implement without explicit flag.
+
+HEURISTICS ADDED
+================
+
+1. "Commutativity > forced ordering tests": When two systems have disjoint data surfaces, no ordering test can fail-on-swap. Update misleading comments to match reality; don't fabricate false dependencies.
+
+2. "Stale inbox files indicate Scribe protocol gap": New rule — Scribe MUST delete inbox files after appending to decisions.md (verified by ls .squad/decisions/inbox/ returning empty except in-flight files).
+
+METRICS
+=======
+
+decisions.md before: 12454 lines
+decisions.md after:  ~15100 lines (Round 14 + heuristics added)
+Stale files deleted:  8
+Stale files preserved: 4 (NOT MERGED — flagged for review)
+Tests: 2255 assertions / 786 cases (unchanged)
+Build: Zero warnings
+git add verification: Only .squad/ paths staged
+
+COMMIT DETAILS
+==============
+
+Selective git add (explicit paths only):
+  - .squad/decisions.md
+  - .squad/agents/keaton/history.md
+  - .squad/agents/keyser/history.md
+  - .squad/ROUND14_HEALTH_REPORT.txt
+  - .squad/decisions/inbox/ deletions (8 files)
+
+Message: chore(squad): merge round 14 + stale inbox cleanup + module health
+Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+
+VERIFICATION
+============
+
+✅ R14 inbox files merged to decisions.md
+✅ R14 inbox files deleted from inbox/
+✅ 8 stale files verified merged and deleted
+✅ 4 stale files not merged; preserved for review; flagged in report
+✅ Module health table updated (fixed_tick_runner 🟢)
+✅ Keaton/Keyser history.md updated
+✅ Heuristics added to decisions.md
+✅ Health report created
+✅ Commit staged with selective git add (no app/tests/ paths)
+
+---
+End Report

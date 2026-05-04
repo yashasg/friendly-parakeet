@@ -32,8 +32,8 @@ TEST_CASE("collision: Hexagon fails even when matching gate shape", "[collision]
     // Note: make_shape_gate with Hexagon isn't typical, but tests the guard
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
-    reg.emplace<Position>(obs, constants::LANE_X[1], constants::PLAYER_Y);
-    reg.emplace<Velocity>(obs, 0.0f, 400.0f);
+    reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y}});
+    reg.emplace<MotionVelocity>(obs, MotionVelocity{{0.0f, 400.0f}});
     reg.emplace<Obstacle>(obs, ObstacleKind::ShapeGate, int16_t{200});
     reg.emplace<RequiredShape>(obs, Shape::Hexagon);
     reg.emplace<DrawSize>(obs, float(constants::SCREEN_W), 80.0f);
@@ -132,6 +132,7 @@ TEST_CASE("collision: rhythm perfect increments perfect_count in SongResults", "
     reg.emplace<BeatInfo>(obs, 0, song.song_time, song.song_time - song.lead_time);
 
     collision_system(reg, 0.016f);
+    scoring_system(reg, 0.016f);
 
     auto& results = reg.ctx().get<SongResults>();
     CHECK(results.perfect_count == 1);
@@ -278,4 +279,34 @@ TEST_CASE("collision: high bar fails when jumping", "[collision]") {
     auto& energy = reg.ctx().get<EnergyState>();
     CHECK(energy.energy < 1.0f);
     CHECK(energy.flash_timer > 0.0f);
+}
+
+// ── SRP observation: collision_system must NOT mutate SongResults ──────────
+// After this move, perfect_count is owned by scoring_system.
+// Running collision but withholding scoring must leave all counts at zero.
+TEST_CASE("scoring: collision_system alone does not mutate SongResults counts", "[scoring][collision]") {
+    auto reg = make_rhythm_registry();
+    auto player = make_rhythm_player(reg);
+    auto& ps = reg.get<PlayerShape>(player);
+    auto& sw = reg.get<ShapeWindow>(player);
+    auto& song = reg.ctx().get<SongState>();
+
+    ps.current = Shape::Circle;
+    sw.phase = WindowPhase::Active;
+    sw.graded = false;
+    sw.press_time = song.song_time;
+
+    auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
+    reg.emplace<BeatInfo>(obs, 0, song.song_time, song.song_time - song.lead_time);
+
+    // Run collision only — scoring_system intentionally NOT called.
+    collision_system(reg, 0.016f);
+
+    // TimingGrade IS emplaced by collision (event component), but SongResults
+    // counters must remain zero until scoring_system processes it.
+    auto& results = reg.ctx().get<SongResults>();
+    CHECK(results.perfect_count == 0);
+    CHECK(results.good_count    == 0);
+    CHECK(results.ok_count      == 0);
+    CHECK(results.bad_count     == 0);
 }

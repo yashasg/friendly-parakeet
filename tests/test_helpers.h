@@ -18,6 +18,7 @@
 #include "util/rhythm_math.h"
 #include "components/high_score.h"
 #include "components/rng.h"
+#include "components/gameplay_intents.h"
 #include "constants.h"
 #include "entities/obstacle_render_entity.h"
 #include "systems/all_systems.h"
@@ -169,9 +170,8 @@ inline entt::entity make_shape_gate(entt::registry& reg, Shape shape, float y) {
     const auto& song = reg.ctx().get<SongState>();
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
-    reg.emplace<Position>(obs, constants::LANE_X[1], y);
     reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], y}});
-    reg.emplace<Velocity>(obs, 0.0f, song.scroll_speed);
+    reg.emplace<MotionVelocity>(obs, MotionVelocity{{0.0f, song.scroll_speed}});
     reg.emplace<Obstacle>(obs, ObstacleKind::ShapeGate, int16_t{constants::PTS_SHAPE_GATE});
     reg.emplace<RequiredShape>(obs, shape);
     reg.emplace<DrawSize>(obs, float(constants::SCREEN_W), 80.0f);
@@ -186,9 +186,8 @@ inline entt::entity make_lane_block(entt::registry& reg, uint8_t mask, float y) 
     const auto& song = reg.ctx().get<SongState>();
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
-    reg.emplace<Position>(obs, constants::LANE_X[1], y);
     reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], y}});
-    reg.emplace<Velocity>(obs, 0.0f, song.scroll_speed);
+    reg.emplace<MotionVelocity>(obs, MotionVelocity{{0.0f, song.scroll_speed}});
     reg.emplace<Obstacle>(obs, ObstacleKind::LaneBlock, int16_t{constants::PTS_LANE_BLOCK});
     reg.emplace<BlockedLanes>(obs, mask);
     reg.emplace<DrawSize>(obs, float(constants::SCREEN_W / 3), 80.0f);
@@ -205,7 +204,7 @@ inline entt::entity make_vertical_bar(entt::registry& reg, ObstacleKind kind, fl
     reg.emplace<ObstacleTag>(obs);
     reg.emplace<ObstacleScrollZ>(obs, y);
     reg.emplace<WorldTransform>(obs, WorldTransform{{constants::SCREEN_W_F * 0.5f, y}});
-    reg.emplace<Velocity>(obs, 0.0f, song.scroll_speed);
+    reg.emplace<MotionVelocity>(obs, MotionVelocity{{0.0f, song.scroll_speed}});
     int16_t pts = (kind == ObstacleKind::LowBar) ? constants::PTS_LOW_BAR : constants::PTS_HIGH_BAR;
     reg.emplace<Obstacle>(obs, kind, pts);
     VMode action = (kind == ObstacleKind::LowBar) ? VMode::Jumping : VMode::Sliding;
@@ -222,9 +221,8 @@ inline entt::entity make_combo_gate(entt::registry& reg, Shape shape, uint8_t bl
     const auto& song = reg.ctx().get<SongState>();
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
-    reg.emplace<Position>(obs, constants::LANE_X[1], y);
     reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], y}});
-    reg.emplace<Velocity>(obs, 0.0f, song.scroll_speed);
+    reg.emplace<MotionVelocity>(obs, MotionVelocity{{0.0f, song.scroll_speed}});
     reg.emplace<Obstacle>(obs, ObstacleKind::ComboGate, int16_t{constants::PTS_COMBO_GATE});
     reg.emplace<RequiredShape>(obs, shape);
     reg.emplace<BlockedLanes>(obs, blocked_mask);
@@ -240,9 +238,8 @@ inline entt::entity make_split_path(entt::registry& reg, Shape shape, int8_t lan
     const auto& song = reg.ctx().get<SongState>();
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
-    reg.emplace<Position>(obs, constants::LANE_X[1], y);
     reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], y}});
-    reg.emplace<Velocity>(obs, 0.0f, song.scroll_speed);
+    reg.emplace<MotionVelocity>(obs, MotionVelocity{{0.0f, song.scroll_speed}});
     reg.emplace<Obstacle>(obs, ObstacleKind::SplitPath, int16_t{constants::PTS_SPLIT_PATH});
     reg.emplace<RequiredShape>(obs, shape);
     reg.emplace<RequiredLane>(obs, lane);
@@ -250,22 +247,6 @@ inline entt::entity make_split_path(entt::registry& reg, Shape shape, int8_t lan
     reg.emplace<DrawLayer>(obs, Layer::Game);
     reg.emplace<TagWorldPass>(obs);
     reg.emplace<Color>(obs, Color{255, 215, 0, 255});
-    return obs;
-}
-
-// Creates a LanePushLeft or LanePushRight obstacle (no data components)
-inline entt::entity make_lane_push(entt::registry& reg, ObstacleKind kind, float y) {
-    const auto& song = reg.ctx().get<SongState>();
-    auto obs = reg.create();
-    reg.emplace<ObstacleTag>(obs);
-    reg.emplace<Position>(obs, constants::LANE_X[1], y);
-    reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], y}});
-    reg.emplace<Velocity>(obs, 0.0f, song.scroll_speed);
-    reg.emplace<Obstacle>(obs, kind, int16_t{0});
-    reg.emplace<DrawSize>(obs, float(constants::SCREEN_W / 3), 80.0f);
-    reg.emplace<DrawLayer>(obs, Layer::Game);
-    reg.emplace<TagWorldPass>(obs);
-    reg.emplace<Color>(obs, Color{0, 200, 200, 255});
     return obs;
 }
 

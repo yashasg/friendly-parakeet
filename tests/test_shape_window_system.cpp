@@ -217,7 +217,7 @@ TEST_CASE("shape_window: no processing when not Playing", "[shape_window]") {
     sw.window_start = reg.ctx().get<SongState>().song_time;
 
     reg.ctx().get<SongState>().song_time += 0.1f;
-    shape_window_system(reg, 0.1f);
+    tick_playing_systems(reg, 0.1f);
 
     CHECK(sw.window_timer == 0.0f);
 }

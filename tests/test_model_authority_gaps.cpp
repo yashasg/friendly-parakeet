@@ -75,23 +75,23 @@ TEST_CASE("bridge: scroll_system writes ObstacleScrollZ.z for BeatInfo+ObstacleS
                Catch::Matchers::WithinAbs(expected_z, 0.1f));
 }
 
-TEST_CASE("bridge: scroll_system legacy Position path unchanged after ObstacleScrollZ addition",
+TEST_CASE("bridge: scroll_system WorldTransform beat_view updated after ObstacleScrollZ addition",
           "[model_authority][scroll]") {
-    // Regression guard: the new ObstacleScrollZ view must not break existing
-    // Position+BeatInfo obstacles (ShapeGate, LaneBlock, ComboGate, SplitPath).
+    // Regression guard: the ObstacleScrollZ view must not break existing
+    // WorldTransform+BeatInfo obstacles (ShapeGate, LaneBlock, ComboGate, SplitPath).
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
     song.song_time = 2.0f;
 
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
-    reg.emplace<Position>(obs, 0.0f, 0.0f);
+    reg.emplace<WorldTransform>(obs, WorldTransform{{0.0f, 0.0f}});
     reg.emplace<BeatInfo>(obs, 0, 4.0f, 0.0f);
 
     scroll_system(reg, 0.016f);
 
     float expected_y = constants::SPAWN_Y + (song.song_time - 0.0f) * song.scroll_speed;
-    CHECK_THAT(reg.get<Position>(obs).y, Catch::Matchers::WithinAbs(expected_y, 0.1f));
+    CHECK_THAT(reg.get<WorldTransform>(obs).position.y, Catch::Matchers::WithinAbs(expected_y, 0.1f));
 }
 
 TEST_CASE("bridge: entity with ObstacleModel only (no ObstacleScrollZ, no Position) is ignored by scroll",
@@ -126,10 +126,10 @@ TEST_CASE("bridge: obstacle_despawn_system destroys ObstacleScrollZ entities pas
     reg.emplace<ObstacleTag>(model_obs);
     reg.emplace<ObstacleScrollZ>(model_obs, ObstacleScrollZ{constants::DESTROY_Y + 10.0f});
 
-    // Legacy entity: Position past DESTROY_Y — also destroyed (regression guard).
+    // WorldTransform entity past DESTROY_Y — also destroyed (regression guard).
     auto pos_obs = reg.create();
     reg.emplace<ObstacleTag>(pos_obs);
-    reg.emplace<Position>(pos_obs, 0.0f, constants::DESTROY_Y + 10.0f);
+    reg.emplace<WorldTransform>(pos_obs, WorldTransform{{0.0f, constants::DESTROY_Y + 10.0f}});
 
     // Still-live entity: ObstacleScrollZ below DESTROY_Y — must NOT be destroyed.
     auto live_obs = reg.create();
@@ -139,7 +139,7 @@ TEST_CASE("bridge: obstacle_despawn_system destroys ObstacleScrollZ entities pas
     obstacle_despawn_system(reg, 0.016f);
 
     CHECK_FALSE(reg.valid(model_obs));  // bridge-state path: destroyed
-    CHECK_FALSE(reg.valid(pos_obs));    // legacy path: destroyed (no regression)
+    CHECK_FALSE(reg.valid(pos_obs));    // WorldTransform path: destroyed (no regression)
     CHECK(reg.valid(live_obs));         // not past DESTROY_Y: survives
 }
 
@@ -179,12 +179,12 @@ TEST_CASE("bridge: miss_detection tags ObstacleScrollZ entities past DESTROY_Y",
                           static_cast<int16_t>(constants::PTS_LOW_BAR));
     reg.emplace<ObstacleScrollZ>(model_obs, ObstacleScrollZ{constants::DESTROY_Y + 10.0f});
 
-    // Legacy entity: Position past DESTROY_Y — also tagged missed (regression guard).
+    // WorldTransform entity past DESTROY_Y — also tagged missed (regression guard).
     auto pos_obs = reg.create();
     reg.emplace<ObstacleTag>(pos_obs);
     reg.emplace<Obstacle>(pos_obs, ObstacleKind::ShapeGate,
                           static_cast<int16_t>(constants::PTS_SHAPE_GATE));
-    reg.emplace<Position>(pos_obs, 0.0f, constants::DESTROY_Y + 10.0f);
+    reg.emplace<WorldTransform>(pos_obs, WorldTransform{{0.0f, constants::DESTROY_Y + 10.0f}});
 
     // Still-live entity: ObstacleScrollZ before DESTROY_Y — must NOT be tagged.
     auto live_obs = reg.create();
@@ -198,7 +198,7 @@ TEST_CASE("bridge: miss_detection tags ObstacleScrollZ entities past DESTROY_Y",
     // Bridge-state path: tagged
     CHECK(reg.all_of<MissTag>(model_obs));
     CHECK(reg.all_of<ScoredTag>(model_obs));
-    // Legacy path: tagged (no regression)
+    // WorldTransform path: tagged (no regression)
     CHECK(reg.all_of<MissTag>(pos_obs));
     CHECK(reg.all_of<ScoredTag>(pos_obs));
     // Live entity: untouched
@@ -243,6 +243,7 @@ TEST_CASE("bridge: scoring_system hit_view2 processes ObstacleScrollZ scored obs
                           static_cast<int16_t>(constants::PTS_LOW_BAR));
     reg.emplace<ObstacleScrollZ>(obs, ObstacleScrollZ{constants::PLAYER_Y});
     reg.emplace<ScoredTag>(obs);  // emplace manually (collision_system would do this)
+    reg.emplace<TimingGrade>(obs, TimingTier::Good, 0.5f);
 
     scoring_system(reg, 0.016f);
 
@@ -251,7 +252,7 @@ TEST_CASE("bridge: scoring_system hit_view2 processes ObstacleScrollZ scored obs
     CHECK_FALSE(reg.all_of<ScoredTag>(obs));
 }
 
-TEST_CASE("bridge: scoring_system legacy Position hit-pass unchanged (no regression)",
+TEST_CASE("bridge: scoring_system WorldTransform hit-pass (no regression)",
           "[model_authority][scoring]") {
     auto reg = make_registry();
 
@@ -259,8 +260,9 @@ TEST_CASE("bridge: scoring_system legacy Position hit-pass unchanged (no regress
     reg.emplace<ObstacleTag>(obs);
     reg.emplace<Obstacle>(obs, ObstacleKind::ShapeGate,
                           static_cast<int16_t>(constants::PTS_SHAPE_GATE));
-    reg.emplace<Position>(obs, 0.0f, constants::PLAYER_Y);
+    reg.emplace<WorldTransform>(obs, WorldTransform{{0.0f, constants::PLAYER_Y}});
     reg.emplace<ScoredTag>(obs);
+    reg.emplace<TimingGrade>(obs, TimingTier::Good, 0.5f);
 
     scoring_system(reg, 0.016f);
 
@@ -284,7 +286,7 @@ TEST_CASE("bridge: entity with ObstacleModel only (no ObstacleScrollZ) is skippe
 
     scoring_system(reg, 0.016f);
 
-    // Neither hit_view (needs Position) nor hit_view2 (needs ObstacleScrollZ) sees it.
+    // Neither hit_view (needs WorldTransform, excludes ObstacleScrollZ) nor model_hit_view (needs ObstacleScrollZ) sees it.
     CHECK(reg.all_of<ScoredTag>(obs));  // ScoredTag not removed (skipped)
     CHECK(reg.all_of<Obstacle>(obs));   // Obstacle not removed (skipped)
 }

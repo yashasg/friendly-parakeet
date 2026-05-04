@@ -70,7 +70,7 @@ TEST_CASE("beat_log: no-op when not in Playing phase", "[beat_log]") {
     auto slog = make_open_log();
     reg.ctx().emplace<SessionLog>(std::move(slog));
 
-    beat_log_system(reg, 0.0f);
+    tick_playing_systems(reg, 0.0f);
     CHECK(reg.ctx().get<SessionLog>().last_logged_beat == -1);
 }
 

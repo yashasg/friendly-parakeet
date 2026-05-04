@@ -56,6 +56,7 @@ TEST_CASE("scoring: SongResults tracks max_chain", "[scoring]") {
     for (int i = 0; i < 4; ++i) {
         auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y + float(i));
         reg.emplace<ScoredTag>(obs);
+        reg.emplace<TimingGrade>(obs, TimingTier::Good, 0.5f);
         scoring_system(reg, 0.016f);
     popup_feedback_system(reg, 0.016f);
     energy_system(reg, 0.016f);
@@ -115,8 +116,10 @@ TEST_CASE("scoring: multiple obstacles scored in single frame", "[scoring]") {
 
     auto obs1 = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<ScoredTag>(obs1);
+    reg.emplace<TimingGrade>(obs1, TimingTier::Good, 0.5f);
     auto obs2 = make_lane_block(reg, 0b001, constants::PLAYER_Y + 1.0f);
     reg.emplace<ScoredTag>(obs2);
+    reg.emplace<TimingGrade>(obs2, TimingTier::Good, 0.5f);
 
     scoring_system(reg, 0.016f);
     popup_feedback_system(reg, 0.016f);
@@ -169,72 +172,4 @@ TEST_CASE("scoring: mixed miss and perfect at zero preserves per-event clamp ord
     energy_system(reg, 0.016f);
 
     CHECK_THAT(energy.energy, Catch::Matchers::WithinAbs(constants::ENERGY_RECOVER_PERFECT, 0.0001f));
-}
-
-// ── LanePush exclusion from chain and popup ──────────────────────────────────
-
-TEST_CASE("scoring: LanePush excluded from chain and popup", "[scoring][lane_push]") {
-    auto reg = make_registry();
-    make_player(reg);
-
-    const auto& song = reg.ctx().get<SongState>();
-    auto lp = reg.create();
-    reg.emplace<ObstacleTag>(lp);
-    reg.emplace<Position>(lp, constants::LANE_X[1], constants::PLAYER_Y);
-    reg.emplace<Velocity>(lp, 0.0f, song.scroll_speed);
-    reg.emplace<Obstacle>(lp, ObstacleKind::LanePushLeft, int16_t{constants::PTS_LANE_PUSH});
-    reg.emplace<DrawSize>(lp, float(constants::PLAYER_SIZE), 80.0f);
-    reg.emplace<DrawLayer>(lp, Layer::Game);
-    reg.emplace<Color>(lp, Color{100, 200, 100, 255});
-    reg.emplace<ScoredTag>(lp);
-
-    auto& score = reg.ctx().get<ScoreState>();
-    int chain_before = score.chain_count;
-
-    scoring_system(reg, 0.016f);
-    popup_feedback_system(reg, 0.016f);
-    energy_system(reg, 0.016f);
-
-    CHECK(score.chain_count == chain_before);
-
-    auto popup_view = reg.view<ScorePopup>();
-    int popup_count = 0;
-    for (auto e : popup_view) { ++popup_count; (void)e; }
-    CHECK(popup_count == 0);
-
-    CHECK_FALSE(reg.all_of<Obstacle>(lp));
-    CHECK_FALSE(reg.all_of<ScoredTag>(lp));
-}
-
-TEST_CASE("scoring: LanePushRight excluded from chain and popup", "[scoring][lane_push]") {
-    auto reg = make_registry();
-    make_player(reg);
-
-    const auto& song = reg.ctx().get<SongState>();
-    auto lp = reg.create();
-    reg.emplace<ObstacleTag>(lp);
-    reg.emplace<Position>(lp, constants::LANE_X[1], constants::PLAYER_Y);
-    reg.emplace<Velocity>(lp, 0.0f, song.scroll_speed);
-    reg.emplace<Obstacle>(lp, ObstacleKind::LanePushRight, int16_t{constants::PTS_LANE_PUSH});
-    reg.emplace<DrawSize>(lp, float(constants::PLAYER_SIZE), 80.0f);
-    reg.emplace<DrawLayer>(lp, Layer::Game);
-    reg.emplace<Color>(lp, Color{100, 200, 100, 255});
-    reg.emplace<ScoredTag>(lp);
-
-    auto& score = reg.ctx().get<ScoreState>();
-    int chain_before = score.chain_count;
-
-    scoring_system(reg, 0.016f);
-    popup_feedback_system(reg, 0.016f);
-    energy_system(reg, 0.016f);
-
-    CHECK(score.chain_count == chain_before);
-
-    auto popup_view = reg.view<ScorePopup>();
-    int popup_count = 0;
-    for (auto e : popup_view) { ++popup_count; (void)e; }
-    CHECK(popup_count == 0);
-
-    CHECK_FALSE(reg.all_of<Obstacle>(lp));
-    CHECK_FALSE(reg.all_of<ScoredTag>(lp));
 }

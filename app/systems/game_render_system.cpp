@@ -2,10 +2,14 @@
 #include "../util/shape_vertices.h"
 #include "../components/rendering.h"
 #include "../components/game_state.h"
+#include "../components/beat_map.h"
+#include "../components/song_state.h"
 #include "../constants.h"
 #include "camera_system.h"
 #include <raylib.h>
 #include <rlgl.h>
+#include <algorithm>
+#include <cmath>
 
 // ═════════════════════════════════════════════════════════════════════════════
 // 3D world draw passes — floor, obstacles, particles, shapes
@@ -128,6 +132,57 @@ static void draw_floor_rings(const FloorParams& fp) {
     rlEnd();
 }
 
+static void draw_floor_beat_lines(const SongState* song, const BeatMap* map) {
+    if (!song || !song->playing || song->scroll_speed <= 0.0f) return;
+
+    constexpr float z_min = 0.0f;
+    constexpr float z_max = static_cast<float>(constants::SCREEN_H);
+    constexpr float x_min = 0.0f;
+    constexpr float x_max = static_cast<float>(constants::SCREEN_W);
+
+    const float visible_time_min = song->song_time
+        - (z_max - constants::PLAYER_Y) / song->scroll_speed;
+    const float visible_time_max = song->song_time
+        + (constants::PLAYER_Y - z_min) / song->scroll_speed;
+
+    auto draw_line_at_time = [&](float beat_time) {
+        const float z = constants::PLAYER_Y + (song->song_time - beat_time) * song->scroll_speed;
+        if (z < z_min || z > z_max) return;
+
+        const float dist_to_player = constants::PLAYER_Y - z;
+        // Highlight only while approaching the player timing plane.
+        // Once a line has moved behind the player (z > PLAYER_Y), stop glowing.
+        const bool on_beat_line = dist_to_player >= 0.0f && dist_to_player <= 4.0f;
+        const uint8_t alpha = on_beat_line ? 220 : 120;
+        const uint8_t red = on_beat_line ? 220 : 120;
+        const uint8_t green = on_beat_line ? 245 : 170;
+        const uint8_t blue = on_beat_line ? 255 : 210;
+
+        rlColor4ub(red, green, blue, alpha);
+        rlVertex3f(x_min, 0.0f, z);
+        rlVertex3f(x_max, 0.0f, z);
+    };
+
+    rlBegin(RL_LINES);
+    if (map && !map->beat_times.empty()) {
+        const auto& beats = map->beat_times;
+        auto it = std::lower_bound(beats.begin(), beats.end(), visible_time_min);
+        for (; it != beats.end() && *it <= visible_time_max; ++it) {
+            draw_line_at_time(*it);
+        }
+    } else if (song->beat_period > 0.0f) {
+        int beat_index = static_cast<int>(
+            std::ceil((visible_time_min - song->offset) / song->beat_period));
+        if (beat_index < 0) beat_index = 0;
+        for (;; ++beat_index) {
+            const float beat_time = song->offset + beat_index * song->beat_period;
+            if (beat_time > visible_time_max) break;
+            draw_line_at_time(beat_time);
+        }
+    }
+    rlEnd();
+}
+
 static void draw_model_transform(const camera::ShapeMeshes& sm, const ModelTransform& mt) {
     // Use a per-draw local copy so the shared material is never mutated.
     Material mat = sm.material;
@@ -190,9 +245,12 @@ void game_render_system(const entt::registry& reg, float /*alpha*/) {
     BeginMode3D(camera);
 
     const auto& floor_params = reg.ctx().get<FloorParams>();
+    const auto* song = reg.ctx().find<SongState>();
+    const auto* map = reg.ctx().find<BeatMap>();
 
     // ── Render passes ──────────────────────────────────────────
     draw_floor_lines(floor_params);
+    draw_floor_beat_lines(song, map);
     draw_floor_rings(floor_params);
 
     if (gs.phase != GamePhase::Title) {

@@ -100,6 +100,7 @@ void game_loop_init(entt::registry& reg,
     reg.ctx().emplace<InputState>();
     reg.ctx().emplace<entt::dispatcher>();
     wire_input_dispatcher(reg);
+    input_system_init(reg);
     reg.ctx().emplace<GameState>(GameState{
         .phase = GamePhase::Title, .previous_phase = GamePhase::Title,
         .phase_timer = 0.0f, .transition_pending = false,
@@ -170,32 +171,8 @@ void game_loop_init(entt::registry& reg,
 
 // ── Run ─────────────────────────────────────────────────────────────────────
 
-static void tick_fixed_systems(entt::registry& reg, float dt) {
-    // game_state_system runs FIRST and owns the authoritative GoEvent /
-    // ButtonPressEvent drain for this tick (calls disp.update<GoEvent>() and
-    // disp.update<ButtonPressEvent>() at its top).  All pre-tick enqueues from
-    // input_system and gesture_routing are delivered
-    // here to listeners in registration order (see wire_input_dispatcher).
-    // Systems later in this list that also call disp.update<T>() (e.g.,
-    // player_input_system) will find an empty queue and execute as no-ops.
-    game_state_system(reg, dt);
-    song_playback_system(reg, dt);
-    beat_log_system(reg, dt);
-    beat_scheduler_system(reg, dt);
-    player_input_system(reg, dt);
-    shape_window_system(reg, dt);
-    player_movement_system(reg, dt);
-    scroll_system(reg, dt);
-    collision_system(reg, dt);
-    miss_detection_system(reg, dt);
-    scoring_system(reg, dt);
-    // Scoring enqueues popup intents; popup_feedback_system owns popup spawn/SFX.
-    popup_feedback_system(reg, dt);
-    energy_system(reg, dt);
-    particle_system(reg, dt);
-    obstacle_despawn_system(reg, dt);
-    popup_display_system(reg, dt);
-}
+// tick_fixed_systems is defined in systems/fixed_tick_runner.cpp (shapeshifter_lib)
+// so integration tests can call it without the full render/input graph.
 
 // One frame: input → fixed timestep → render → blit → audio.
 // Not in header — called by game_loop_run and platform_run_loop (Emscripten).

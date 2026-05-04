@@ -57,33 +57,23 @@ void game_state_system(entt::registry& reg, float dt) {
                 game_state_enter_terminal_phase(reg, GamePhase::SongComplete);
                 break;
             case GamePhase::Paused:
-                gs.previous_phase = gs.phase;
-                gs.phase = GamePhase::Paused;
-                gs.phase_timer = 0.0f;
+                enter_phase(gs, GamePhase::Paused);
                 break;
             case GamePhase::Title:
-                gs.previous_phase = gs.phase;
-                gs.phase = GamePhase::Title;
-                gs.phase_timer = 0.0f;
+                enter_phase(gs, GamePhase::Title);
                 break;
             case GamePhase::LevelSelect:
-                gs.previous_phase = gs.phase;
-                gs.phase = GamePhase::LevelSelect;
-                gs.phase_timer = 0.0f;
+                enter_phase(gs, GamePhase::LevelSelect);
                 {
                     auto& lss = reg.ctx().get<LevelSelectState>();
                     lss.confirmed = false;
                 }
                 break;
             case GamePhase::Settings:
-                gs.previous_phase = gs.phase;
-                gs.phase = GamePhase::Settings;
-                gs.phase_timer = 0.0f;
+                enter_phase(gs, GamePhase::Settings);
                 break;
             case GamePhase::Tutorial:
-                gs.previous_phase = gs.phase;
-                gs.phase = GamePhase::Tutorial;
-                gs.phase_timer = 0.0f;
+                enter_phase(gs, GamePhase::Tutorial);
                 break;
         }
         return;

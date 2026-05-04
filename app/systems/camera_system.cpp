@@ -18,14 +18,6 @@
 #include <cmath>
 #include <tuple>
 
-// Shape properties: radius_scale, height_ratio (height / radius)
-const ShapeProps SHAPE_PROPS[4] = {
-    { 0.5f, 0.6f },  // Circle:   cylinder
-    { 0.5f, 0.6f },  // Square:   cube
-    { 0.5f, 0.6f },  // Triangle: cone
-    { 0.6f, 1.17f }, // Hexagon:  cylinder (6 slices)
-};
-
 namespace camera {
 
 // GLSL 330 (desktop OpenGL 3.3) vs GLSL 100 (WebGL / OpenGL ES 2.0)
@@ -77,13 +69,13 @@ static const char* MESH_FS =
     "}\n";
 #endif
 
-static ShapeMeshes build_shape_meshes() {
+static ShapeMeshes build_shape_meshes(const ShapeMeshConfig& config) {
     ShapeMeshes sm = {};
 
-    sm.shapes[0] = GenMeshCylinder(1.0f, SHAPE_PROPS[0].height_ratio, 12);
-    sm.shapes[1] = GenMeshCube(2.0f, SHAPE_PROPS[1].height_ratio, 2.0f);
-    sm.shapes[2] = GenMeshCylinder(1.0f, SHAPE_PROPS[2].height_ratio, 3);
-    sm.shapes[3] = GenMeshCylinder(1.0f, SHAPE_PROPS[3].height_ratio, 6);
+    sm.shapes[0] = GenMeshCylinder(1.0f, config.props[0].height_ratio, 12);
+    sm.shapes[1] = GenMeshCube(2.0f, config.props[1].height_ratio, 2.0f);
+    sm.shapes[2] = GenMeshCylinder(1.0f, config.props[2].height_ratio, 3);
+    sm.shapes[3] = GenMeshCylinder(1.0f, config.props[3].height_ratio, 6);
     sm.slab = GenMeshCube(1.0f, 1.0f, 1.0f);
     sm.quad = GenMeshPlane(1.0f, 1.0f, 1, 1);
 
@@ -154,7 +146,8 @@ void init(entt::registry& reg) {
 
     reg.ctx().emplace<ScreenTransform>();
     reg.ctx().emplace<FloorParams>();
-    reg.ctx().emplace<ShapeMeshes>(build_shape_meshes());
+    const auto& mesh_config = reg.ctx().emplace<ShapeMeshConfig>();
+    reg.ctx().emplace<ShapeMeshes>(build_shape_meshes(mesh_config));
 }
 
 void shutdown(entt::registry& reg) {
@@ -202,10 +195,10 @@ RenderTargets& RenderTargets::operator=(RenderTargets&& o) noexcept {
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 // GenMeshCube is centered at origin. Translate to position the slab's
-// bottom-left corner at (x, 0, z) with the given dimensions.
+// bottom-left corner at (x, 0) and center depth on z so z is the beat/timing plane.
 static Matrix slab_matrix(float x, float z, float w, float h, float d) {
     return MatrixMultiply(MatrixScale(w, h, d),
-                          MatrixTranslate(x + w/2, h/2, z + d/2));
+                          MatrixTranslate(x + w/2, h/2, z));
 }
 
 static Matrix shape_matrix(float cx, float y_3d, float cz, float sz, float radius_scale) {
@@ -223,9 +216,9 @@ static Matrix prism_matrix(float cx, float y_3d, float cz, float sz, float radiu
 }
 
 // Pick the correct matrix for a shape mesh (triangle prism needs rotation)
-static Matrix make_shape_matrix(int mesh_index, float cx, float y_3d, float cz,
+static Matrix make_shape_matrix(uint8_t mesh_index, float cx, float y_3d, float cz,
                                 float sz, float radius_scale) {
-    if (mesh_index == static_cast<int>(Shape::Triangle))
+    if (mesh_index == static_cast<uint8_t>(Shape::Triangle))
         return prism_matrix(cx, y_3d, cz, sz, radius_scale);
     return shape_matrix(cx, y_3d, cz, sz, radius_scale);
 }
@@ -233,24 +226,9 @@ static Matrix make_shape_matrix(int mesh_index, float cx, float y_3d, float cz,
 // ── game_camera_system: model-to-world transforms for all 3D renderables ────
 
 void game_camera_system(entt::registry& reg, float /*dt*/) {
-    // 1. Single-slab obstacle transforms
-    {
-        auto view = reg.view<ObstacleTag, Position, Obstacle, Color, DrawSize>();
-        for (auto [entity, pos, obs, col, dsz] : view.each()) {
-            switch (obs.kind) {
-                case ObstacleKind::LanePushLeft:
-                case ObstacleKind::LanePushRight:
-                    reg.get_or_emplace<ModelTransform>(entity) =
-                        ModelTransform{slab_matrix(pos.x-dsz.w/2, pos.y, dsz.w, constants::OBSTACLE_3D_HEIGHT, dsz.h),
-                                       col, MeshType::Slab, 0};
-                    break;
-                default:
-                    break;
-            }
-        }
-    }
+    const auto& mesh_config = reg.ctx().get<ShapeMeshConfig>();
 
-    // 1b. Model-authority vertical bars: write scroll transform directly into
+    // 1. Model-authority vertical bars: write scroll transform directly into
     //     ObstacleModel.model.transform. Do NOT emit ModelTransform for these —
     //     game_render_system draws them via the ObstacleModel + TagWorldPass path.
     {
@@ -265,18 +243,18 @@ void game_camera_system(entt::registry& reg, float /*dt*/) {
     {
         auto view = reg.view<MeshChild>();
         for (auto [entity, mc] : view.each()) {
-            auto& parent_pos = reg.get<Position>(mc.parent);
-            float z = parent_pos.y + mc.z_offset;
+            auto& parent_wt = reg.get<WorldTransform>(mc.parent);
+            float z = parent_wt.position.y + mc.z_offset;
 
             if (mc.mesh_type == MeshType::Slab) {
                 reg.get_or_emplace<ModelTransform>(entity) =
                     ModelTransform{slab_matrix(mc.x, z, mc.width, mc.height, mc.depth),
-                                   mc.tint, MeshType::Slab, 0};
+                                   mc.tint, 0, MeshType::Slab};
             } else {
-                const auto& props = SHAPE_PROPS[mc.mesh_index];
+                const auto& props = mesh_config.props[mc.mesh_index];
                 reg.get_or_emplace<ModelTransform>(entity) =
                     ModelTransform{make_shape_matrix(mc.mesh_index, mc.x, 0.0f, z, mc.width, props.radius_scale),
-                                   mc.tint, MeshType::Shape, mc.mesh_index};
+                                   mc.tint, mc.mesh_index, MeshType::Shape};
             }
         }
     }
@@ -288,12 +266,12 @@ void game_camera_system(entt::registry& reg, float /*dt*/) {
             float y_3d = -vstate.y_offset;
             float sz = constants::PLAYER_SIZE;
             if (vstate.mode == VMode::Sliding) sz *= 0.5f;
-            int shape_idx = static_cast<int>(pshape.current);
-            const auto& props = SHAPE_PROPS[shape_idx];
+            uint8_t shape_idx = static_cast<uint8_t>(pshape.current);
+            const auto& props = mesh_config.props[shape_idx];
             reg.get_or_emplace<ModelTransform>(entity) =
                 ModelTransform{make_shape_matrix(shape_idx, transform.position.x, y_3d,
                                                  transform.position.y, sz, props.radius_scale),
-                               col, MeshType::Shape, shape_idx};
+                               col, shape_idx, MeshType::Shape};
         }
     }
 
@@ -308,7 +286,7 @@ void game_camera_system(entt::registry& reg, float /*dt*/) {
                 MatrixScale(sz, 1, sz),
                 MatrixTranslate(transform.position.x - half, 0, transform.position.y - half));
             reg.get_or_emplace<ModelTransform>(entity) =
-                ModelTransform{mat, col, MeshType::Quad, 0};
+                ModelTransform{mat, col, 0, MeshType::Quad};
         }
     }
 

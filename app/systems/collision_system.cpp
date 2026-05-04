@@ -8,31 +8,9 @@
 #include "../util/rhythm_math.h"
 #include "../components/song_state.h"
 #include "../constants.h"
-#include <raylib.h>
 #include <cmath>
 
 namespace {
-
-Rectangle centered_rect(float cx, float cy, float w, float h) {
-    return {cx - w * 0.5f, cy - h * 0.5f, w, h};
-}
-
-Vector2 player_timing_point(const WorldTransform& transform, const VerticalState& vstate) {
-    return {0.0f, transform.position.y + vstate.y_offset};
-}
-
-bool player_in_timing_window(const WorldTransform& player_transform,
-                              const VerticalState& vstate,
-                              float obstacle_z) {
-    return obstacle_z >= player_timing_point(player_transform, vstate).y;
-}
-
-bool player_overlaps_lane(const WorldTransform& player_transform, const Position& obstacle_pos) {
-    Rectangle player_lane = centered_rect(player_transform.position.x, 0.0f,
-                                          constants::PLAYER_SIZE, 1.0f);
-    Rectangle obstacle_lane = centered_rect(obstacle_pos.x, 0.0f, constants::PLAYER_SIZE, 1.0f);
-    return CheckCollisionRecs(player_lane, obstacle_lane);
-}
 
 bool player_matches_required_shape(const PlayerShape& p_shape,
                                    const ShapeWindow& p_window,
@@ -53,24 +31,30 @@ bool player_matches_required_shape(const PlayerShape& p_shape,
 }  // namespace
 
 void collision_system(entt::registry& reg, float /*dt*/) {
-    if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
-
     auto player_view = reg.view<PlayerTag, WorldTransform, PlayerShape, ShapeWindow, Lane, VerticalState>();
     if (player_view.begin() == player_view.end()) return;
 
-    auto player_it = player_view.begin();
+    auto player_entity = *player_view.begin();
     auto [p_transform, p_shape, p_window, p_lane, p_vstate] =
-        player_view.get<WorldTransform, PlayerShape, ShapeWindow, Lane, VerticalState>(*player_it);
+        player_view.get<WorldTransform, PlayerShape, ShapeWindow, Lane, VerticalState>(player_entity);
 
-    auto* song    = reg.ctx().find<SongState>();
-    auto* results = reg.ctx().find<SongResults>();
-    bool rhythm_mode = (song != nullptr);
+    auto* song_ptr = reg.ctx().find<SongState>();
+    if (!song_ptr) {
+        song_ptr = &reg.ctx().emplace<SongState>();
+    }
+    auto& song = *song_ptr;
+
+    // Frame-constant precomputes — both values are invariant across all obstacle
+    // loops since player transform and vertical state don't change mid-frame.
+    // Precomputing here avoids redundant addition + Vector2 construction per obstacle.
+    const float player_timing_y = p_transform.position.y + p_vstate.y_offset;
+    const float player_x        = p_transform.position.x;
 
     // resolve: tag entity as scored (cleared) or missed.
     // kind is passed by the caller — no try_get needed since each per-kind
     // loop already holds the Obstacle component.
     auto resolve = [&](entt::entity entity, float obs_z, bool cleared) {
-        if (!player_in_timing_window(p_transform, p_vstate, obs_z)) return;
+        if (obs_z < player_timing_y) return;
 
         if (!cleared) {
             // MISS — tag only; scoring_system owns energy drain and death-cause attribution.
@@ -79,71 +63,53 @@ void collision_system(entt::registry& reg, float /*dt*/) {
             return;
         }
 
-        // In rhythm mode, compute timing grade from press time for shape-based
-        // obstacles. This must not depend on window phase because collision can
-        // resolve a frame after input dispatch.
-        const bool shape_obstacle = reg.any_of<RequiredShape>(entity);
-        if (rhythm_mode && shape_obstacle && song->half_window > 0.0f && p_window.press_time >= 0.0f) {
-            // Grade timing by comparing button-press timestamp against
-            // the obstacle's scheduled arrival.
-            auto* beat_info = reg.try_get<BeatInfo>(entity);
-            float reference_time = beat_info ? beat_info->arrival_time
-                                             : p_window.press_time;
-            float delta_seconds = std::abs(p_window.press_time - reference_time);
-            TimingTier tier = compute_timing_tier_from_delta(delta_seconds);
-            float precision = 1.0f - (delta_seconds / kTimingOkSeconds);
-            if (precision < 0.0f) precision = 0.0f;
-            if (precision > 1.0f) precision = 1.0f;
-            reg.emplace<TimingGrade>(entity, tier, precision);
-
-            if (results) {
-                switch (tier) {
-                    case TimingTier::Perfect: results->perfect_count++; break;
-                    case TimingTier::Good:    results->good_count++;    break;
-                    case TimingTier::Ok:      results->ok_count++;      break;
-                    case TimingTier::Bad:     results->bad_count++;     break;
-                }
-            }
-
-            if (!p_window.graded) {
-                float scale = window_scale_for_tier(tier);
-                float remaining = song->window_duration - p_window.window_timer;
-                if (remaining > 0.0f && scale < 1.0f) {
-                    // Adjust window_start backward so the song-time-derived
-                    // elapsed time is naturally larger on subsequent ticks,
-                    // causing the Active phase to expire earlier.  Mutating
-                    // window_timer directly would be overwritten by
-                    // shape_window_system on the next frame.
-                    p_window.window_start -= remaining * (1.0f - scale);
-                }
-                p_window.window_scale = scale;
-                p_window.graded = true;
-            }
-        }
-
         reg.emplace<ScoredTag>(entity);
+    };
+
+    const bool can_grade_shape =
+        song.half_window > 0.0f && p_window.press_time >= 0.0f;
+    auto grade_shape_timing = [&](entt::entity entity, float arrival_time) {
+        float delta_seconds = std::abs(p_window.press_time - arrival_time);
+        TimingTier tier = compute_timing_tier_from_delta(delta_seconds);
+        float precision = 1.0f - (delta_seconds / kTimingOkSeconds);
+        if (precision < 0.0f) precision = 0.0f;
+        if (precision > 1.0f) precision = 1.0f;
+        reg.emplace<TimingGrade>(entity, tier, precision);
+
+        if (!p_window.graded) {
+            float scale = window_scale_for_tier(tier);
+            float remaining = song.window_duration - p_window.window_timer;
+            if (remaining > 0.0f && scale < 1.0f) {
+                // Adjust window_start backward so the song-time-derived
+                // elapsed time is naturally larger on subsequent ticks,
+                // causing the Active phase to expire earlier.  Mutating
+                // window_timer directly would be overwritten by
+                // shape_window_system on the next frame.
+                p_window.window_start -= remaining * (1.0f - scale);
+            }
+            p_window.window_scale = scale;
+            p_window.graded = true;
+        }
+    };
+
+    // Inline 1D lane-overlap check — equivalent to the two-rect CheckCollisionRecs
+    // call (y-axis always overlaps since both rects use y=0,h=1; reduces to x-axis
+    // interval: |obs_x - player_x| < PLAYER_SIZE). Saves 2× centered_rect + 1×
+    // CheckCollisionRecs per obstacle.
+    auto lane_overlaps = [player_x](float obstacle_x) -> bool {
+        float dx = obstacle_x - player_x;
+        return (dx > -constants::PLAYER_SIZE) && (dx < constants::PLAYER_SIZE);
     };
 
     // Per-kind structural views — each loop touches only entities that actually
     // carry the required components, eliminating per-entity try_get branches.
 
-    // ShapeGate: RequiredShape only (no BlockedLanes, no RequiredLane)
-    {
-        auto view = reg.view<ObstacleTag, Position, RequiredShape>(
-            entt::exclude<ScoredTag, BlockedLanes, RequiredLane>);
-        for (auto [e, pos, req] : view.each()) {
-            bool shape_match = player_matches_required_shape(p_shape, p_window, req.shape);
-            bool lane_match  = player_overlaps_lane(p_transform, pos);
-            resolve(e, pos.y, shape_match && lane_match);
-        }
-    }
-
     // LaneBlock: BlockedLanes only (no RequiredShape)
     {
-        auto view = reg.view<ObstacleTag, Position, BlockedLanes>(
+        auto view = reg.view<ObstacleTag, WorldTransform, BlockedLanes>(
             entt::exclude<ScoredTag, RequiredShape>);
-        for (auto [e, pos, blocked] : view.each()) {
-            resolve(e, pos.y, !((blocked.mask >> p_lane.current) & 1));
+        for (auto [e, wt, blocked] : view.each()) {
+            resolve(e, wt.position.y, !((blocked.mask >> p_lane.current) & 1));
         }
     }
 
@@ -156,45 +122,138 @@ void collision_system(entt::registry& reg, float /*dt*/) {
         }
     }
 
-    // ComboGate: RequiredShape + BlockedLanes (no RequiredLane)
-    {
-        auto view = reg.view<ObstacleTag, Position, RequiredShape, BlockedLanes>(
-            entt::exclude<ScoredTag, RequiredLane>);
-        for (auto [e, pos, req, blocked] : view.each()) {
-            bool shape_ok = player_matches_required_shape(p_shape, p_window, req.shape);
-            bool lane_ok  = !((blocked.mask >> p_lane.current) & 1);
-            resolve(e, pos.y, shape_ok && lane_ok);
-        }
-    }
-
-    // SplitPath: RequiredShape + RequiredLane
-    {
-        auto view = reg.view<ObstacleTag, Position, RequiredShape, RequiredLane>(
-            entt::exclude<ScoredTag>);
-        for (auto [e, pos, req, rlane] : view.each()) {
-            bool shape_ok = player_matches_required_shape(p_shape, p_window, req.shape);
-            bool lane_ok  = (p_lane.current == rlane.lane);
-            resolve(e, pos.y, shape_ok && lane_ok);
-        }
-    }
-
-    // LanePushLeft / LanePushRight: no data components (structural negative).
-    // Passive: auto-pushes player when in the same lane; always scores.
-    {
-        auto view = reg.view<ObstacleTag, Position, Obstacle>(
-            entt::exclude<ScoredTag, RequiredShape, BlockedLanes, RequiredLane, RequiredVAction>);
-        for (auto [e, pos, obs] : view.each()) {
-            if (!player_in_timing_window(p_transform, p_vstate, pos.y)) continue;
-            bool on_same_lane = player_overlaps_lane(p_transform, pos);
-            if (on_same_lane && p_lane.target < 0) {
-                int8_t delta = (obs.kind == ObstacleKind::LanePushLeft) ? -1 : 1;
-                int8_t dest  = static_cast<int8_t>(p_lane.current + delta);
-                if (dest >= 0 && dest < constants::LANE_COUNT) {
-                    p_lane.target = dest;
-                    p_lane.lerp_t = 0.0f;
+    if (can_grade_shape) {
+        // ShapeGate: RequiredShape only (no BlockedLanes, no RequiredLane)
+        {
+            auto rhythm_view = reg.view<ObstacleTag, WorldTransform, RequiredShape, BeatInfo>(
+                entt::exclude<ScoredTag, BlockedLanes, RequiredLane>);
+            for (auto [e, wt, req, info] : rhythm_view.each()) {
+                bool lane_match  = lane_overlaps(wt.position.x);
+                if (!lane_match) {
+                    resolve(e, wt.position.y, false);
+                    continue;
                 }
+                bool shape_match = player_matches_required_shape(p_shape, p_window, req.shape);
+                bool cleared = shape_match;
+                if (cleared) grade_shape_timing(e, info.arrival_time);
+                resolve(e, wt.position.y, cleared);
             }
-            reg.emplace<ScoredTag>(e);
+
+            auto view = reg.view<ObstacleTag, WorldTransform, RequiredShape>(
+                entt::exclude<ScoredTag, BlockedLanes, RequiredLane, BeatInfo>);
+            for (auto [e, wt, req] : view.each()) {
+                bool lane_match  = lane_overlaps(wt.position.x);
+                if (!lane_match) {
+                    resolve(e, wt.position.y, false);
+                    continue;
+                }
+                bool shape_match = player_matches_required_shape(p_shape, p_window, req.shape);
+                resolve(e, wt.position.y, shape_match);
+            }
+        }
+
+        // ComboGate: RequiredShape + BlockedLanes (no RequiredLane)
+        {
+            auto rhythm_view = reg.view<ObstacleTag, WorldTransform, RequiredShape, BlockedLanes, BeatInfo>(
+                entt::exclude<ScoredTag, RequiredLane>);
+            for (auto [e, wt, req, blocked, info] : rhythm_view.each()) {
+                bool lane_ok  = !((blocked.mask >> p_lane.current) & 1);
+                if (!lane_ok) {
+                    resolve(e, wt.position.y, false);
+                    continue;
+                }
+                bool shape_ok = player_matches_required_shape(p_shape, p_window, req.shape);
+                bool cleared = shape_ok;
+                if (cleared) grade_shape_timing(e, info.arrival_time);
+                resolve(e, wt.position.y, cleared);
+            }
+
+            auto view = reg.view<ObstacleTag, WorldTransform, RequiredShape, BlockedLanes>(
+                entt::exclude<ScoredTag, RequiredLane, BeatInfo>);
+            for (auto [e, wt, req, blocked] : view.each()) {
+                bool lane_ok  = !((blocked.mask >> p_lane.current) & 1);
+                if (!lane_ok) {
+                    resolve(e, wt.position.y, false);
+                    continue;
+                }
+                bool shape_ok = player_matches_required_shape(p_shape, p_window, req.shape);
+                resolve(e, wt.position.y, shape_ok);
+            }
+        }
+
+        // SplitPath: RequiredShape + RequiredLane
+        {
+            auto rhythm_view = reg.view<ObstacleTag, WorldTransform, RequiredShape, RequiredLane, BeatInfo>(
+                entt::exclude<ScoredTag>);
+            for (auto [e, wt, req, rlane, info] : rhythm_view.each()) {
+                bool lane_ok  = (p_lane.current == rlane.lane);
+                if (!lane_ok) {
+                    resolve(e, wt.position.y, false);
+                    continue;
+                }
+                bool shape_ok = player_matches_required_shape(p_shape, p_window, req.shape);
+                bool cleared = shape_ok;
+                if (cleared) grade_shape_timing(e, info.arrival_time);
+                resolve(e, wt.position.y, cleared);
+            }
+
+            auto view = reg.view<ObstacleTag, WorldTransform, RequiredShape, RequiredLane>(
+                entt::exclude<ScoredTag, BeatInfo>);
+            for (auto [e, wt, req, rlane] : view.each()) {
+                bool lane_ok  = (p_lane.current == rlane.lane);
+                if (!lane_ok) {
+                    resolve(e, wt.position.y, false);
+                    continue;
+                }
+                bool shape_ok = player_matches_required_shape(p_shape, p_window, req.shape);
+                resolve(e, wt.position.y, shape_ok);
+            }
+        }
+    } else {
+        // ShapeGate: RequiredShape only (no BlockedLanes, no RequiredLane)
+        {
+            auto view = reg.view<ObstacleTag, WorldTransform, RequiredShape>(
+                entt::exclude<ScoredTag, BlockedLanes, RequiredLane>);
+            for (auto [e, wt, req] : view.each()) {
+                bool lane_match  = lane_overlaps(wt.position.x);
+                if (!lane_match) {
+                    resolve(e, wt.position.y, false);
+                    continue;
+                }
+                bool shape_match = player_matches_required_shape(p_shape, p_window, req.shape);
+                resolve(e, wt.position.y, shape_match);
+            }
+        }
+
+        // ComboGate: RequiredShape + BlockedLanes (no RequiredLane)
+        {
+            auto view = reg.view<ObstacleTag, WorldTransform, RequiredShape, BlockedLanes>(
+                entt::exclude<ScoredTag, RequiredLane>);
+            for (auto [e, wt, req, blocked] : view.each()) {
+                bool lane_ok  = !((blocked.mask >> p_lane.current) & 1);
+                if (!lane_ok) {
+                    resolve(e, wt.position.y, false);
+                    continue;
+                }
+                bool shape_ok = player_matches_required_shape(p_shape, p_window, req.shape);
+                resolve(e, wt.position.y, shape_ok);
+            }
+        }
+
+        // SplitPath: RequiredShape + RequiredLane
+        {
+            auto view = reg.view<ObstacleTag, WorldTransform, RequiredShape, RequiredLane>(
+                entt::exclude<ScoredTag>);
+            for (auto [e, wt, req, rlane] : view.each()) {
+                bool lane_ok  = (p_lane.current == rlane.lane);
+                if (!lane_ok) {
+                    resolve(e, wt.position.y, false);
+                    continue;
+                }
+                bool shape_ok = player_matches_required_shape(p_shape, p_window, req.shape);
+                resolve(e, wt.position.y, shape_ok);
+            }
         }
     }
+
 }

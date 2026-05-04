@@ -9,5 +9,13 @@ struct ShapeProps {
     float  height_ratio;
 };
 
-// Shape properties table indexed by Shape enum (Circle, Square, Triangle, Hexagon).
-extern const ShapeProps SHAPE_PROPS[4];
+// Registry singleton config for mesh generation and transform scaling.
+// Indexed by Shape enum (Circle, Square, Triangle, Hexagon).
+struct ShapeMeshConfig {
+    ShapeProps props[4] = {
+        {0.5f, 0.6f},   // Circle:   cylinder
+        {0.5f, 0.6f},   // Square:   cube
+        {0.5f, 0.6f},   // Triangle: cone
+        {0.6f, 1.17f},  // Hexagon:  cylinder (6 slices)
+    };
+};

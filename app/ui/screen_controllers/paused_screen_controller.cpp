@@ -27,9 +27,7 @@ void render_paused_screen_ui(entt::registry& reg) {
     auto& gs = reg.ctx().get<GameState>();
 
     if (paused_controller.state().ResumeButtonPressed) {
-        gs.previous_phase = gs.phase;
-        gs.phase = GamePhase::Playing;
-        gs.phase_timer = 0.0f;
+        enter_phase(gs, GamePhase::Playing);
     }
 
     if (paused_controller.state().MenuButtonPressed) {

@@ -9,8 +9,6 @@ void beat_log_system(entt::registry& reg, float /*dt*/) {
     auto* log = reg.ctx().find<SessionLog>();
     if (!log || !log->file) return;
 
-    if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
-
     auto* song = reg.ctx().find<SongState>();
     auto* map = reg.ctx().find<BeatMap>();
     if (!song || !song->playing || song->finished) return;

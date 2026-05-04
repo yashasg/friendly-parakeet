@@ -4,6 +4,7 @@
 #include "../components/game_state.h"
 
 // Phase 0: Raw input (polls raylib input)
+void input_system_init(entt::registry& reg);  // one-time: emplace WebInputPolicy + platform detection
 void input_system(entt::registry& reg, float raw_dt);
 
 // Phase 0.5: Test player AI (enqueues synthetic input actions)
@@ -26,6 +27,7 @@ void player_movement_system(entt::registry& reg, float dt);
 
 // Phase 5: World
 void scroll_system(entt::registry& reg, float dt);
+void motion_system(entt::registry& reg, float dt);
 void collision_system(entt::registry& reg, float dt);
 void miss_detection_system(entt::registry& reg, float dt);
 void scoring_system(entt::registry& reg, float dt);
@@ -33,6 +35,15 @@ void popup_feedback_system(entt::registry& reg, float dt);
 
 // Phase 5.5: Energy
 void energy_system(entt::registry& reg, float dt);
+
+// Phase runner: all Playing-only systems behind a single phase gate.
+// Call from tick_fixed_systems in place of the 13 individual Playing-gated calls.
+void tick_playing_systems(entt::registry& reg, float dt);
+
+// Fixed-step tick: game_state → song_playback → Playing systems →
+// obstacle_despawn → popup_display → particle.
+// Exposed for integration tests; implementation in fixed_tick_runner.cpp.
+void tick_fixed_systems(entt::registry& reg, float dt);
 
 // Phase 6: Cleanup
 void particle_system(entt::registry& reg, float dt);

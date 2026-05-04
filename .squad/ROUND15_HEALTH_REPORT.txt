@@ -1,0 +1,101 @@
+== ROUND 15 HEALTH REPORT ==
+Generated: 2026-05-06
+
+## Round 15 Outcome
+
+**Keaton-r15: vel_view → motion_view migration (issue #349)**
+- Deleted: Velocity struct from app/components/transform.h
+- Deleted: vel_view loop from app/systems/motion_system.cpp (11 lines)
+- Migrated: spawn_obstacle to MotionVelocity{{0, speed}}
+- Migrated: scroll_system model_view to ObstacleScrollZ + MotionVelocity (.value.y accessor)
+- Added: Position bridge in motion_view for collision/scoring/camera legacy compatibility
+- Files touched: 19 total (production + tests + benchmarks)
+- Test count: 786 → 786 test cases (same); 2255 → 2256 assertions (+1 from Position bridge test)
+- Warnings: Zero
+
+**Keyser-r15: Commutativity verification + pre-r16 guidance**
+- Revoked: fixed_tick_runner 🟡 demotion from r14 (commutativity proof independently verified)
+- Confirmed: Data surfaces between obstacle_despawn and popup_feedback are fully disjoint
+- Module health: 12 🟢 / 1 🟡 (motion_system pending Position bridge audit)
+- Verdict: Pre-r16 recommendation is to audit whether motion_system Position bridge can be deleted after readers migrate to WorldTransform/ObstacleScrollZ
+
+## Module Health Snapshot (Post-R15)
+
+| Module | Status | Notes |
+|--------|--------|-------|
+| collision_system | 🟢 | No change |
+| scoring_system | 🟢 | No change |
+| motion_system | 🟡 | Velocity deleted; vel_view deleted; Position bridge added (pending r16 evaluation) |
+| scroll_system | 🟢 | Migrated to MotionVelocity; BeatInfo path correct; freeplay path working |
+| lane_push_response_system | 🟢 | No change |
+| playing_systems_runner | 🟢 | No change |
+| fixed_tick_runner | 🟢 | Demotion revoked; commutativity verified |
+| popup_feedback_system | 🟢 | No change |
+| popup_display_system | 🟢 | No change |
+| energy_system | 🟢 | No change |
+| particle_system | 🟢 | No change |
+| player_input_system | 🟢 | No change |
+
+**Summary: 12 🟢 / 1 🟡**
+
+## Stale Inbox Resolution (4 Preserved Files from r4/r7/r10)
+
+### File: keaton-round-4-perf.md
+- Distinctive phrase: "scroll_system bench fixture fix"
+- Status in decisions.md: ALREADY MERGED
+- Content verified: "Part 1 — scroll_system Bench Fixture Fix" found at line 345
+- Section: "Ralph Round 4: Keaton Perf"
+- Action: Deleted from inbox (already merged; grep detected merge after append)
+
+### File: keyser-r4-motion-and-obstaclekind.md
+- Distinctive phrase: "NonScorableTag"
+- Status in decisions.md: ALREADY MERGED
+- Content verified: "NonScorableTag refactor target" found in "Ralph Round 4: Keyser SOLID Audit" section (line 385)
+- Action: Deleted from inbox (already merged)
+
+### File: keyser-r7-lanepush-and-phase-design.md
+- Distinctive phrase: "lane_push_response_system is never called"
+- Status in decisions.md: NOT MERGED
+- Content verified: Grep returned no match
+- Action: Appended to decisions.md under "Round 7: Keyser LanePush Refactor Audit + Phase-Guard Design"
+- Deleted from inbox after append
+
+### File: keyser-r10-phase-audit.md
+- Distinctive phrase: "Confirmed-Dropped Guards (11)"
+- Status in decisions.md: NOT MERGED
+- Content verified: Grep returned no match
+- Action: Appended to decisions.md under "Round 10: Keyser Phase-Guard Design B Audit + Test Delta Forensic"
+- Deleted from inbox after append
+
+**Resolution Summary:** 2 files were already merged (deleted); 2 files were truly missing from decisions.md (appended + deleted).
+
+## Inbox Status (Post-Cleanup)
+
+Inbox directory: /Users/yashasgujjar/dev/bullethell/.squad/decisions/inbox/
+Status: EMPTY (all 6 files processed and deleted)
+
+## Decisions.md Metrics
+
+- Pre-R15 merge: 445 lines
+- Post-R15 merge: ~1100+ lines (added Round 7, Round 10, Round 15 Keaton, Round 15 Keyser, heuristic section)
+- Sections added: 4 (R7, R10, R15-Keaton, R15-Keyser) + heuristics
+
+## Pending Items
+
+1. **motion_system Position bridge (🟡):** Awaits Keyser-r16 evaluation
+   - Decision needed: Can collision/scoring/camera/despawn migrate to WorldTransform/ObstacleScrollZ?
+   - If yes, bridge can be deleted and motion_system becomes 🟢
+   - If no, bridge remains as permanent legacy compat layer
+
+2. **R16 scope recommendation:** Complete or audit #349 migration
+   - After motion_system reaches 🟢, all tracked modules will be 🟢
+   - At that point, Ralph loop has achieved sweep objectives
+   - User guidance recommended: continue with new audit target or pause
+
+## Commit Summary
+
+- Staged files: .squad/decisions.md, .squad/agents/keaton/history.md, .squad/agents/keyser/history.md, .squad/ROUND15_HEALTH_REPORT.txt
+- Inbox deletions: keaton-r4, keyser-r4, keyser-r7, keyser-r10, keaton-r15, keyser-r15 (6 files)
+- Verification: `git add` selective to .squad/ paths only; no app/, tests/, or benchmarks/ files staged
+
+== END REPORT ==

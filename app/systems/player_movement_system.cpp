@@ -3,15 +3,11 @@
 #include "../components/player.h"
 #include "../components/rhythm.h"
 #include "../components/transform.h"
-#include "../components/haptics.h"
 #include "../util/haptic_queue.h"
-#include "../util/settings.h"
 #include "../constants.h"
 #include <raymath.h>
 
 void player_movement_system(entt::registry& reg, float dt) {
-    if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
-
     auto* song = reg.ctx().find<SongState>();
     bool rhythm_mode = (song != nullptr && song->playing);
 
@@ -44,11 +40,6 @@ void player_movement_system(entt::registry& reg, float dt) {
             }
         }
 
-        if (auto* pos = reg.try_get<Position>(entity)) {
-            pos->x = transform.position.x;
-            pos->y = transform.position.y;
-        }
-
         // Vertical movement
         if (vstate.mode != VMode::Grounded) {
             vstate.timer -= dt;
@@ -67,9 +58,7 @@ void player_movement_system(entt::registry& reg, float dt) {
                 const bool was_jumping = (vstate.mode == VMode::Jumping);
                 if (was_jumping) {
                     // Haptic on landing (spec: "Jump (land)" not takeoff)
-                    auto* hq = reg.ctx().find<HapticQueue>();
-                    auto* st = reg.ctx().find<SettingsState>();
-                    if (hq) haptic_push(*hq, !st || st->haptics_enabled, HapticEvent::JumpLand);
+                    haptic_feedback(reg, HapticEvent::JumpLand);
                 }
                 vstate.mode     = VMode::Grounded;
                 vstate.timer    = 0.0f;

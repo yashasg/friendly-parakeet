@@ -1,0 +1,176 @@
+================================================================================
+RALPH ROUND 11 — HEALTH REPORT
+================================================================================
+
+REPORTING PERIOD: 2026-05-04
+AGENTS: Keaton (C++ Performance Engineer), Keyser (Lead Architect), Scribe (Logging)
+SCOPE: Order regression fix + audit verification + decision logging
+STATUS: ✅ ALL TASKS COMPLETE
+
+================================================================================
+CRITICAL UPDATES
+================================================================================
+
+🟢 ORDER REGRESSION RESOLVED
+   Location: app/systems/playing_systems_runner.cpp + fixed_tick_runner.cpp
+   Fix: Conservative revert (option a) — moved popup_feedback_system + energy_system
+        back OUT of runner; restored post-despawn order
+   Original design (restored): despawn → popup_feedback → popup_display → energy_system
+   Guards: Re-added at both systems (phase-check at lines 9)
+   Integration test: New [order_regression] in test_phase_runner.cpp
+   Status: ✅ Verified; design fidelity restored
+
+🟢 AUDIT RETRACTION DOCUMENTED
+   Finding: Keyser-r8/r9 "double-guard redundancy" claim was WRONG
+   Evidence: test_entt_dispatcher_contract.cpp:290 fails when guard dropped
+   Lesson: Event-dispatcher callbacks (game_state_system.disp.update<>()) fire
+           OUTSIDE runner gate; guards are necessary
+   Process: Retracting audit findings honestly with evidence builds trust
+   Status: ✅ Retraction documented in decisions.md with full trace path
+
+================================================================================
+MODULE HEALTH SNAPSHOT (End of Round 11)
+================================================================================
+
+scoring_system
+   Status: 🟢 GREEN
+   Notes: Kind-free (R7); full OCP (R8); TimingGrade consumer (R11 prep)
+   
+collision_system
+   Status: 🟡 YELLOW
+   Notes: SongResults count mutation; R12 scope identified (7-line move to scoring_system)
+   
+motion_system
+   Status: 🟡 YELLOW
+   Notes: Bridge pattern established (R4); verified correct
+   
+lane_push_response_system
+   Status: 🟢 GREEN
+   Notes: Event-consumed; insertion order preserved; integration verified
+   
+playing_systems_runner
+   Status: 🟢 GREEN (upgraded from 🔴)
+   Notes: 11 systems called (reduced from 13); order regression fixed
+   
+fixed_tick_runner
+   Status: 🟢 GREEN
+   Notes: Test infrastructure; new [order_regression] integration test
+   
+popup_feedback_system
+   Status: 🟢 GREEN
+   Notes: Guard restored (phase-check); post-despawn order confirmed
+   
+energy_system
+   Status: 🟢 GREEN
+   Notes: Guard restored (phase-check); post-despawn order confirmed
+   
+player_input_system
+   Status: 🟢 GREEN
+   Notes: Double-guard verified necessary; dispatcher callbacks traced
+
+================================================================================
+TESTS & BUILD STATUS
+================================================================================
+
+Test count: 783 cases / 2247 assertions (per Keaton-r11 measurement)
+   Note: Keyser-r12 forensic in flight; r10 measure was 798/2240
+   Delta tracking: R9→R10 (+2 cases), R10→R11 status under verification
+
+Build: ZERO WARNINGS
+   All targets: ✅ Clean
+   CMake + clang: ✅ No diagnostics
+
+New tests (Round 11):
+   1. "tick_fixed_systems: popup_feedback and energy run in score-feedback chain"
+      [phase_guard][integration][order_regression]
+      ✅ Verifies systems consume queues; asserts post-despawn behavior
+   
+   2. GameOver phase-skip test expanded (from R10 thin coverage)
+      Added: expired obstacle + MissTag + ScoredTag + energy assertions
+      ✅ Matches Paused phase coverage (per Keyser-r10 concern)
+
+================================================================================
+DECISIONS & APPROVALS
+================================================================================
+
+✅ COMPLETED IN ROUND 11:
+   - Keaton-r11: Order regression fixed (popup_feedback + energy back to post-despawn)
+   - Keyser-r11: r10 audit verified; retracted double-guard claim; r12 collision scope identified
+   - Scribe-r11: Merge decisions; resolve 🔴 → 🟢; add heuristics logs + anomaly tracking
+
+⏳ PENDING USER APPROVAL (REFRESHED):
+   - CI Grep check for system wiring (since Keyser-r9)
+   - Status: Awaiting yashasg decision
+   - Scope: .github/scripts/check_wiring.sh (grep-based, no code change)
+
+🔄 IN FLIGHT (Round 12):
+   - Keaton-r12: collision_system SongResults count refactor (SRP fix)
+   - Keyser-r12: Forensic test count verification; order invariant split visibility
+
+📋 DECISION ARTIFACTS:
+   - Inbox merged: keaton-r11-order-fix.md, keyser-r11-testfix-audit-and-collision-scope.md
+   - decisions.md: 11858 → 11960 lines (+102 from R10)
+   - Prominent sections: 🟢 RESOLVED (order regression), audit retraction note, heuristics logs
+
+================================================================================
+PATTERNS CODIFIED THIS ROUND
+================================================================================
+
+KEATON (R11 PATTERN):
+   "When restoring ordering after a refactor regression, the simpler path is
+    conservative revert (option a in Keaton-r11) rather than restructuring.
+    Re-add per-system guards even if it feels like undoing prior cleanup —
+    they protect correctness when the system is no longer runner-gated.
+    
+    Cost: +2 guards, −2 runner systems. Benefit: design intent + correctness.
+    Code review load increases slightly (guards split across files), but
+    correctness > cognitive load (per Keyser-r10 reasoning)."
+
+KEYSER (R11 RETRACTION PATTERN):
+   "Retracting an audit finding when proven wrong is a virtue, not a fault.
+    Cite the contradicting evidence (test_entt_dispatcher_contract.cpp:290)
+    and document the corrected understanding (event-dispatcher callbacks fire
+    OUTSIDE the runner). Future audits should trace dispatcher.update<>()
+    before declaring guards redundant.
+    
+    Meta-lesson: Audits are hypotheses. Honest retraction on disproof builds
+    trust. The fact that an incorrect audit finding was caught and corrected
+    is a sign the process is working, not that it failed."
+
+PROCESS NOTE — Test Count Anomaly:
+   R9: Reported 781 cases; actual 797 (stale binary)
+   R11: Reported 783 cases; Keyser-r12 verifying (possible stale build again)
+   
+   If this pattern continues → surface to user as CI/measurement hygiene issue.
+   For now: data point tracked; Keyser-r12 forensic will clarify.
+
+================================================================================
+HEALTH TRANSITIONS
+================================================================================
+
+Module         R10 Status    R11 Status    Notes
+─────────────────────────────────────────────────────
+playing_systems_runner    🔴            🟢           Order regression fixed
+popup_feedback_system     (implicit)     🟢           Guard explicitly restored
+energy_system             (implicit)     🟢           Guard explicitly restored
+
+All other modules: No regression; status maintained from R10
+
+================================================================================
+ROUND 12 OUTLOOK
+================================================================================
+
+Keaton-r12: Refactor collision_system SongResults count updates (SRP violation)
+            Move 7 lines (82–89) from collision → scoring_system hit pass
+            Scope: No new event type (TimingGrade IS the event); minimal wiring change
+
+Keyser-r12: Forensic test count verification (783 vs 798 discrepancy)
+            Order invariant split visibility (notes for future readers)
+
+Scribe-r12: Log Round 12 decisions
+
+No 🔴 blockers; ready for concurrent r12 agents.
+
+================================================================================
+END OF ROUND 11 HEALTH REPORT
+================================================================================

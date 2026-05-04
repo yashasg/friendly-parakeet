@@ -1,45 +1,96 @@
 #include <catch2/catch_test_macros.hpp>
 #include "test_helpers.h"
 
-// ── scroll_system ────────────────────────────────────────────
+// ── motion_system ────────────────────────────────────────────
+//
+// Single path after #349 migration:
+//   motion_view — WorldTransform+MotionVelocity (obstacles, popups, particles, player)
+//                 also bridges to Position when both components are present.
 
-TEST_CASE("scroll: entities move by velocity * dt", "[scroll]") {
+TEST_CASE("motion: WorldTransform+MotionVelocity moves by velocity * dt", "[motion]") {
     auto reg = make_registry();
     auto e = reg.create();
-    reg.emplace<Position>(e, 100.0f, 200.0f);
-    reg.emplace<Velocity>(e, 10.0f, 20.0f);
+    reg.emplace<WorldTransform>(e, WorldTransform{{100.0f, 200.0f}});
+    reg.emplace<MotionVelocity>(e, MotionVelocity{{10.0f, 20.0f}});
 
-    scroll_system(reg, 1.0f);
+    motion_system(reg, 1.0f);
 
-    CHECK(reg.get<Position>(e).x == 110.0f);
-    CHECK(reg.get<Position>(e).y == 220.0f);
+    CHECK(reg.get<WorldTransform>(e).position.x == 110.0f);
+    CHECK(reg.get<WorldTransform>(e).position.y == 220.0f);
 }
 
-TEST_CASE("scroll: zero velocity means no movement", "[scroll]") {
+TEST_CASE("motion: zero MotionVelocity means no movement", "[motion]") {
     auto reg = make_registry();
     auto e = reg.create();
-    reg.emplace<Position>(e, 100.0f, 200.0f);
-    reg.emplace<Velocity>(e, 0.0f, 0.0f);
+    reg.emplace<WorldTransform>(e, WorldTransform{{100.0f, 200.0f}});
+    reg.emplace<MotionVelocity>(e, MotionVelocity{{0.0f, 0.0f}});
 
-    scroll_system(reg, 1.0f);
+    motion_system(reg, 1.0f);
 
-    CHECK(reg.get<Position>(e).x == 100.0f);
-    CHECK(reg.get<Position>(e).y == 200.0f);
+    CHECK(reg.get<WorldTransform>(e).position.x == 100.0f);
+    CHECK(reg.get<WorldTransform>(e).position.y == 200.0f);
 }
 
-TEST_CASE("scroll: multiple entities updated", "[scroll]") {
+// ── motion_system: WorldTransform+MotionVelocity path (modern, issue #349 target) ──
+
+TEST_CASE("motion: WorldTransform+MotionVelocity entity moves by velocity * dt", "[motion]") {
     auto reg = make_registry();
-    auto e1 = reg.create();
-    reg.emplace<Position>(e1, 0.0f, 0.0f);
-    reg.emplace<Velocity>(e1, 1.0f, 0.0f);
-    auto e2 = reg.create();
-    reg.emplace<Position>(e2, 0.0f, 0.0f);
-    reg.emplace<Velocity>(e2, 0.0f, 1.0f);
+    auto e = reg.create();
+    reg.emplace<WorldTransform>(e, WorldTransform{{100.0f, 200.0f}});
+    reg.emplace<MotionVelocity>(e, MotionVelocity{{10.0f, 20.0f}});
 
-    scroll_system(reg, 10.0f);
+    motion_system(reg, 1.0f);
 
-    CHECK(reg.get<Position>(e1).x == 10.0f);
-    CHECK(reg.get<Position>(e2).y == 10.0f);
+    const auto& wt = reg.get<WorldTransform>(e);
+    CHECK(wt.position.x == 110.0f);
+    CHECK(wt.position.y == 220.0f);
+}
+
+TEST_CASE("motion: WorldTransform+MotionVelocity entity with BeatInfo is excluded", "[motion]") {
+    // BeatInfo entities have their position derived from song_time in scroll_system;
+    // motion_system must not double-integrate their position.
+    auto reg = make_registry();
+    auto e = reg.create();
+    reg.emplace<WorldTransform>(e, WorldTransform{{100.0f, 200.0f}});
+    reg.emplace<MotionVelocity>(e, MotionVelocity{{10.0f, 20.0f}});
+    reg.emplace<BeatInfo>(e, BeatInfo{0, 0.0f, 0.0f});  // marks entity as beat-authoritative
+
+    motion_system(reg, 1.0f);
+
+    const auto& wt = reg.get<WorldTransform>(e);
+    CHECK(wt.position.x == 100.0f);  // unchanged — motion_system skips BeatInfo entities
+    CHECK(wt.position.y == 200.0f);
+}
+
+TEST_CASE("motion: ObstacleScrollZ entity uses model-only scroll authority", "[motion]") {
+    // Defense-in-depth for freeplay LowBar/HighBar: these entities carry BOTH
+    // MotionVelocity (always emplaced in spawn_obstacle) AND ObstacleScrollZ
+    // (emplaced for LowBar/HighBar kinds).  scroll_system's model_view owns
+    // their dt-based integration via oz.z.  motion_system must NOT also
+    // advance position.y, or the entity moves 2× per frame.
+    //
+    // Production order (playing_systems_runner.cpp):
+    //   scroll_system → motion_system
+    //
+    // This test fails if motion_system lacks entt::exclude<ObstacleScrollZ>.
+    auto reg = make_registry();
+    auto e = reg.create();
+    reg.emplace<ObstacleTag>(e);
+    reg.emplace<WorldTransform>(e, WorldTransform{{0.0f, 100.0f}});
+    reg.emplace<MotionVelocity>(e, MotionVelocity{{0.0f, 50.0f}});
+    reg.emplace<ObstacleScrollZ>(e, ObstacleScrollZ{100.0f});
+    // No BeatInfo — freeplay archetype.
+
+    // Step 1: scroll_system advances oz.z only (model-authority path)
+    scroll_system(reg, 1.0f);
+    // Step 2: motion_system must NOT advance world transform either
+    motion_system(reg, 1.0f);
+
+    const auto& wt = reg.get<WorldTransform>(e);
+    const auto& oz = reg.get<ObstacleScrollZ>(e);
+    // Model path owns scroll via oz.z; world transform stays unchanged.
+    CHECK(oz.z == 150.0f);
+    CHECK(wt.position.y == 100.0f);
 }
 
 // ── obstacle_despawn_system ───────────────────────────────────────────
@@ -48,7 +99,7 @@ TEST_CASE("cleanup: destroys obstacles past DESTROY_Y", "[cleanup]") {
     auto reg = make_registry();
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
-    reg.emplace<Position>(obs, 0.0f, constants::DESTROY_Y + 10.0f);
+    reg.emplace<WorldTransform>(obs, WorldTransform{{0.0f, constants::DESTROY_Y + 10.0f}});
 
     obstacle_despawn_system(reg, 0.016f);
 
@@ -59,7 +110,7 @@ TEST_CASE("cleanup: keeps obstacles above DESTROY_Y", "[cleanup]") {
     auto reg = make_registry();
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
-    reg.emplace<Position>(obs, 0.0f, constants::DESTROY_Y - 10.0f);
+    reg.emplace<WorldTransform>(obs, WorldTransform{{0.0f, constants::DESTROY_Y - 10.0f}});
 
     obstacle_despawn_system(reg, 0.016f);
 
@@ -69,7 +120,7 @@ TEST_CASE("cleanup: keeps obstacles above DESTROY_Y", "[cleanup]") {
 TEST_CASE("cleanup: non-obstacle entities are untouched", "[cleanup]") {
     auto reg = make_registry();
     auto e = reg.create();
-    reg.emplace<Position>(e, 0.0f, constants::DESTROY_Y + 100.0f);
+    reg.emplace<WorldTransform>(e, WorldTransform{{0.0f, constants::DESTROY_Y + 100.0f}});
     // No ObstacleTag
 
     obstacle_despawn_system(reg, 0.016f);
@@ -136,7 +187,7 @@ TEST_CASE("game_state: enter_playing clears entities and creates player", "[game
     // Create some entities that should be cleared
     auto junk = reg.create();
     reg.emplace<ObstacleTag>(junk);
-    reg.emplace<Position>(junk, 0.0f, 0.0f);
+    reg.emplace<WorldTransform>(junk, WorldTransform{{0.0f, 0.0f}});
 
     auto& gs = reg.ctx().get<GameState>();
     gs.transition_pending = true;
@@ -273,13 +324,26 @@ TEST_CASE("scroll: no movement when not in Playing phase", "[scroll]") {
     auto reg = make_registry();
     reg.ctx().get<GameState>().phase = GamePhase::Title;
     auto e = reg.create();
-    reg.emplace<Position>(e, 100.0f, 200.0f);
-    reg.emplace<Velocity>(e, 10.0f, 20.0f);
+    reg.emplace<WorldTransform>(e, WorldTransform{{100.0f, 200.0f}});
+    reg.emplace<MotionVelocity>(e, MotionVelocity{{10.0f, 20.0f}});
 
     scroll_system(reg, 1.0f);
 
-    CHECK(reg.get<Position>(e).x == 100.0f);
-    CHECK(reg.get<Position>(e).y == 200.0f);
+    CHECK(reg.get<WorldTransform>(e).position.x == 100.0f);
+    CHECK(reg.get<WorldTransform>(e).position.y == 200.0f);
+}
+
+TEST_CASE("motion: no movement when not in Playing phase", "[motion]") {
+    auto reg = make_registry();
+    reg.ctx().get<GameState>().phase = GamePhase::Title;
+    auto e = reg.create();
+    reg.emplace<WorldTransform>(e, WorldTransform{{100.0f, 200.0f}});
+    reg.emplace<MotionVelocity>(e, MotionVelocity{{10.0f, 20.0f}});
+
+    tick_playing_systems(reg, 1.0f);
+
+    CHECK(reg.get<WorldTransform>(e).position.x == 100.0f);
+    CHECK(reg.get<WorldTransform>(e).position.y == 200.0f);
 }
 
 // ── cleanup: edge cases ─────────────────────────────────────
@@ -288,7 +352,7 @@ TEST_CASE("cleanup: obstacle at exactly DESTROY_Y is kept", "[cleanup]") {
     auto reg = make_registry();
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
-    reg.emplace<Position>(obs, 0.0f, constants::DESTROY_Y);
+    reg.emplace<WorldTransform>(obs, WorldTransform{{0.0f, constants::DESTROY_Y}});
 
     obstacle_despawn_system(reg, 0.016f);
 
@@ -304,7 +368,7 @@ TEST_CASE("cleanup: destroys multiple obstacles past DESTROY_Y in one pass", "[c
     for (int i = 0; i < N; ++i) {
         obs[i] = reg.create();
         reg.emplace<ObstacleTag>(obs[i]);
-        reg.emplace<Position>(obs[i], 0.0f, constants::DESTROY_Y + static_cast<float>(i + 1) * 10.0f);
+        reg.emplace<WorldTransform>(obs[i], WorldTransform{{0.0f, constants::DESTROY_Y + static_cast<float>(i + 1) * 10.0f}});
     }
 
     obstacle_despawn_system(reg, 0.016f);
@@ -319,7 +383,7 @@ TEST_CASE("cleanup: does not emplace MissTag or ScoredTag on surviving obstacles
 
     auto survivor = reg.create();
     reg.emplace<ObstacleTag>(survivor);
-    reg.emplace<Position>(survivor, 0.0f, constants::DESTROY_Y - 1.0f);
+    reg.emplace<WorldTransform>(survivor, WorldTransform{{0.0f, constants::DESTROY_Y - 1.0f}});
 
     obstacle_despawn_system(reg, 0.016f);
 

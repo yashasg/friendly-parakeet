@@ -37,8 +37,9 @@ static entt::registry make_bench_registry() {
 static entt::entity make_bench_player(entt::registry& reg) {
     auto p = reg.create();
     reg.emplace<PlayerTag>(p);
-    reg.emplace<Position>(p, constants::LANE_X[1], constants::PLAYER_Y);
+    reg.emplace<WorldTransform>(p, WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y}});
     reg.emplace<PlayerShape>(p);
+    reg.emplace<ShapeWindow>(p);
     reg.emplace<Lane>(p);
     reg.emplace<VerticalState>(p);
     reg.emplace<Color>(p, Color{80, 180, 255, 255});
@@ -53,8 +54,8 @@ static void spawn_obstacles(entt::registry& reg, int count) {
         auto obs = reg.create();
         reg.emplace<ObstacleTag>(obs);
         float y = constants::SPAWN_Y + static_cast<float>(i) * 80.0f;
-        reg.emplace<Position>(obs, constants::LANE_X[i % 3], y);
-        reg.emplace<Velocity>(obs, 0.0f, song.scroll_speed);
+        reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[i % 3], y}});
+        reg.emplace<MotionVelocity>(obs, MotionVelocity{{0.0f, song.scroll_speed}});
         auto shape = static_cast<Shape>(i % 3);
         reg.emplace<Obstacle>(obs, ObstacleKind::ShapeGate, int16_t{200});
         reg.emplace<RequiredShape>(obs, shape);
@@ -64,12 +65,32 @@ static void spawn_obstacles(entt::registry& reg, int count) {
     }
 }
 
+// Spawns obstacles with the production scroll_system archetype:
+// ObstacleScrollZ + MotionVelocity (freeplay non-beat path, exclude BeatInfo).
+// These enter scroll_system's model_view.
+static void spawn_scroll_obstacles(entt::registry& reg, int count) {
+    const auto& song = reg.ctx().get<SongState>();
+    for (int i = 0; i < count; ++i) {
+        auto obs = reg.create();
+        reg.emplace<ObstacleTag>(obs);
+        float z = constants::SPAWN_Y + static_cast<float>(i) * 80.0f;
+        reg.emplace<ObstacleScrollZ>(obs, z);
+        reg.emplace<WorldTransform>(obs, WorldTransform{{0.0f, z}});
+        reg.emplace<MotionVelocity>(obs, MotionVelocity{{0.0f, song.scroll_speed}});
+        reg.emplace<Obstacle>(obs, ObstacleKind::ShapeGate, int16_t{200});
+        reg.emplace<DrawLayer>(obs, Layer::Game);
+    }
+}
+
+// Spawns particles using the production archetype: WorldTransform+MotionVelocity.
+// These are processed by motion_system's motion_view and rendered
+// by camera_system via ParticleTag+WorldTransform.
 static void spawn_particles(entt::registry& reg, int count) {
     for (int i = 0; i < count; ++i) {
         auto p = reg.create();
         reg.emplace<ParticleTag>(p);
-        reg.emplace<Position>(p, 360.0f, 500.0f);
-        reg.emplace<Velocity>(p, static_cast<float>(i % 50 - 25), -100.0f);
+        reg.emplace<WorldTransform>(p, WorldTransform{{360.0f, 500.0f}});
+        reg.emplace<MotionVelocity>(p, MotionVelocity{{static_cast<float>(i % 50 - 25), -100.0f}});
         reg.emplace<ParticleData>(p, 4.0f, 0.6f, 0.6f);
         reg.emplace<Color>(p, Color{255, 100, 50, 255});
         reg.emplace<DrawLayer>(p, Layer::Effects);
@@ -83,17 +104,17 @@ constexpr float DT = 1.0f / 60.0f;
 TEST_CASE("Bench: scroll_system", "[bench]") {
     BENCHMARK_ADVANCED("10 entities")(Catch::Benchmark::Chronometer meter) {
         auto reg = make_bench_registry();
-        spawn_obstacles(reg, 10);
+        spawn_scroll_obstacles(reg, 10);
         meter.measure([&] { scroll_system(reg, DT); });
     };
     BENCHMARK_ADVANCED("100 entities")(Catch::Benchmark::Chronometer meter) {
         auto reg = make_bench_registry();
-        spawn_obstacles(reg, 100);
+        spawn_scroll_obstacles(reg, 100);
         meter.measure([&] { scroll_system(reg, DT); });
     };
     BENCHMARK_ADVANCED("1000 entities")(Catch::Benchmark::Chronometer meter) {
         auto reg = make_bench_registry();
-        spawn_obstacles(reg, 1000);
+        spawn_scroll_obstacles(reg, 1000);
         meter.measure([&] { scroll_system(reg, DT); });
     };
 }
@@ -104,8 +125,8 @@ TEST_CASE("Bench: collision_system", "[bench]") {
         make_bench_player(reg);
         auto obs = reg.create();
         reg.emplace<ObstacleTag>(obs);
-        reg.emplace<Position>(obs, constants::LANE_X[1], constants::PLAYER_Y);
-        reg.emplace<Velocity>(obs, 0.0f, 400.0f);
+        reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y}});
+        reg.emplace<MotionVelocity>(obs, MotionVelocity{{0.0f, 400.0f}});
         reg.emplace<Obstacle>(obs, ObstacleKind::ShapeGate, int16_t{200});
         reg.emplace<RequiredShape>(obs, Shape::Circle);
         meter.measure([&] {
@@ -138,8 +159,8 @@ TEST_CASE("Bench: scoring_system", "[bench]") {
         for (int i = 0; i < 5; ++i) {
             auto obs = reg.create();
             reg.emplace<ObstacleTag>(obs);
-            reg.emplace<Position>(obs, constants::LANE_X[1], constants::PLAYER_Y);
-            reg.emplace<Velocity>(obs, 0.0f, 400.0f);
+            reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y}});
+            reg.emplace<MotionVelocity>(obs, MotionVelocity{{0.0f, 400.0f}});
             reg.emplace<Obstacle>(obs, ObstacleKind::ShapeGate, int16_t{200});
             reg.emplace<ScoredTag>(obs);
             reg.emplace<DrawLayer>(obs, Layer::Game);
@@ -180,6 +201,24 @@ TEST_CASE("Bench: obstacle_despawn_system", "[bench]") {
     };
 }
 
+TEST_CASE("Bench: motion_system", "[bench]") {
+    BENCHMARK_ADVANCED("10 entities")(Catch::Benchmark::Chronometer meter) {
+        auto reg = make_bench_registry();
+        spawn_obstacles(reg, 10);
+        meter.measure([&] { motion_system(reg, DT); });
+    };
+    BENCHMARK_ADVANCED("100 entities")(Catch::Benchmark::Chronometer meter) {
+        auto reg = make_bench_registry();
+        spawn_obstacles(reg, 100);
+        meter.measure([&] { motion_system(reg, DT); });
+    };
+    BENCHMARK_ADVANCED("1000 entities")(Catch::Benchmark::Chronometer meter) {
+        auto reg = make_bench_registry();
+        spawn_obstacles(reg, 1000);
+        meter.measure([&] { motion_system(reg, DT); });
+    };
+}
+
 TEST_CASE("Bench: full frame (typical)", "[bench]") {
     BENCHMARK_ADVANCED("6 obstacles + 20 particles")(Catch::Benchmark::Chronometer meter) {
         auto reg = make_bench_registry();
@@ -191,6 +230,7 @@ TEST_CASE("Bench: full frame (typical)", "[bench]") {
             player_input_system(reg, DT);
             player_movement_system(reg, DT);
             scroll_system(reg, DT);
+            motion_system(reg, DT);
             collision_system(reg, DT);
             scoring_system(reg, DT);
             particle_system(reg, DT);
@@ -210,6 +250,7 @@ TEST_CASE("Bench: full frame (stress)", "[bench]") {
             player_input_system(reg, DT);
             player_movement_system(reg, DT);
             scroll_system(reg, DT);
+            motion_system(reg, DT);
             collision_system(reg, DT);
             scoring_system(reg, DT);
             particle_system(reg, DT);

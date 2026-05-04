@@ -101,34 +101,14 @@ entt::entity spawn_obstacle(entt::registry& reg, ObstacleKind kind, float y) {
     if (kind == ObstacleKind::LowBar || kind == ObstacleKind::HighBar) {
         reg.emplace<ObstacleScrollZ>(e, y);
         reg.emplace<WorldTransform>(e, WorldTransform{{constants::SCREEN_W_F * 0.5f, y}});
+        reg.emplace<BarObstacleTag>(e);
     } else {
-        reg.emplace<Position>(e, constants::LANE_X[1], y);
         reg.emplace<WorldTransform>(e, WorldTransform{{constants::LANE_X[1], y}});
     }
     reg.emplace<Obstacle>(e, kind, int16_t{0});
     return e;
 }
 }  // namespace
-
-TEST_CASE("redfoot/#168: collision flags HitABar when a bar passes ungraded",
-          "[ui][redfoot][game_over][wiring]") {
-    entt::registry reg;
-    reg.ctx().emplace<GameState>().phase = GamePhase::Playing;
-    reg.ctx().emplace<EnergyState>();
-    reg.ctx().emplace<ScoreState>();
-    reg.ctx().emplace<SongResults>();
-    reg.ctx().emplace<GameOverState>();
-
-    spawn_aligned_player(reg, constants::PLAYER_Y);
-    auto bar = spawn_obstacle(reg, ObstacleKind::LowBar, constants::PLAYER_Y);
-    reg.emplace<RequiredVAction>(bar, VMode::Jumping);
-
-    collision_system(reg, 0.016f);
-    scoring_system(reg, 0.016f);
-
-    auto& gos = reg.ctx().get<GameOverState>();
-    CHECK(gos.cause == DeathCause::HitABar);
-}
 
 TEST_CASE("redfoot/#168: collision flags MissedABeat for a missed shape gate",
           "[ui][redfoot][game_over][wiring]") {

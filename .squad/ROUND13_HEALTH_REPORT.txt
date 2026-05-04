@@ -1,0 +1,146 @@
+═══════════════════════════════════════════════════════════════════════════════
+ROUND 13 HEALTH REPORT
+═══════════════════════════════════════════════════════════════════════════════
+
+SUMMARY
+───────────────────────────────────────────────────────────────────────────────
+Round 13 completed with three key outcomes:
+1. Chain-bonus SRP coupling suspected in r12 — RETRACTED via grep (independent
+   agreement from Keaton and Keyser strengthens retraction evidence)
+2. Motion system comment updated; vel_view path documented as "freeplay 
+   obstacles only (issue #349)"
+3. Bench archetype bug fixed (spawn_particles was measuring legacy Position+
+   Velocity path instead of production WorldTransform+MotionVelocity path)
+4. Added +2 unit tests for motion_view path (was previously zero coverage)
+
+TEST METRICS
+───────────────────────────────────────────────────────────────────────────────
+Pre-round:  784 test cases / 2251 assertions
+Post-round: 786 test cases / 2255 assertions
+Delta:      +2 cases / +4 assertions
+Regressions: None. Zero warnings. Werror clean on all targets.
+
+COMMITS STAGED
+───────────────────────────────────────────────────────────────────────────────
+Source code changes (Keaton, unfiled—held for r14):
+  - app/systems/motion_system.cpp (comment update)
+  - benchmarks/bench_systems.cpp (archetype fix)
+  - tests/test_world_systems.cpp (+2 new unit tests)
+
+Squad artifacts (this merge):
+  - .squad/decisions.md (Round 13 section + heuristics)
+  - .squad/agents/keaton/history.md (R13 learnings)
+  - .squad/agents/keyser/history.md (R13 audit + forensic)
+  - .squad/ROUND13_HEALTH_REPORT.txt (this file)
+
+Inbox cleanup:
+  - Deleted: .squad/decisions/inbox/keaton-r13-chain-srp-retraction-motion-migration.md
+  - Deleted: .squad/decisions/inbox/keyser-r13-srp-audit-and-module-health.md
+
+MODULE HEALTH TABLE (Post-R13)
+───────────────────────────────────────────────────────────────────────────────
+| Module                      | Status | Notes                           |
+|-------|--------|-------|
+| collision_system            | 🟢    | SRP closed; TimingGrade only    |
+| scoring_system              | 🟢    | Owns SongResults fully; chain   |
+|                             |       | state encapsulated             |
+| motion_system               | 🟡    | vel_view path exists (#349)     |
+| scroll_system               | 🟢    | No issues                       |
+| lane_push_response_system   | 🟢    | Event-driven; no issues         |
+| playing_systems_runner      | 🟢    | 11 systems; order correct       |
+| fixed_tick_runner           | 🟢    | Full ordering verified          |
+| popup_feedback_system       | 🟢    | Phase guard at :9               |
+| energy_system               | 🟢    | Phase guard at :9               |
+| popup_display_system        | 🟢    | No issues                       |
+| particle_system             | 🟢    | No issues                       |
+| player_input_system         | 🟢    | Guards load-bearing (reclassed) |
+| beat_log_system             | 🟢    | No issues                       |
+| miss_detection_system       | 🟢    | No issues                       |
+
+KEY TRANSITIONS
+───────────────────────────────────────────────────────────────────────────────
+player_input_system:     🟡 → 🟢
+  Reason: R12 labeled guards at :22/:43 as "redundant but safe". Audit traced
+  all invocation paths: dispatcher callbacks invoked via game_state_system's
+  disp.update<>() calls OUTSIDE the runner. Guards protect these callback paths
+  from executing in non-Playing phases. Guards are load-bearing, not redundant.
+  Action: Reclassify 🟢 with added comment at :22/:43.
+
+motion_system:           🟢 → 🟡 (from R12 health)
+  Reason: Comment fix and bench correctness don't delete vel_view path. Bridge
+  comment at :16 still says "delete when obstacles fully migrate (issue #349)".
+  Reclassify to 🟡 to reflect migration-in-progress status.
+
+PROCESS FINDINGS
+───────────────────────────────────────────────────────────────────────────────
+1. **Scribe Protocol Bug (R12→R13 forensic):**
+   R12 commit (7db518b) contains only tests. Actual source move landed in
+   Scribe's R11 commit (e2ca118). Root cause: Scribe likely used `git add -A`
+   and swept up Keaton's working-tree edits. Commit-message attribution broken.
+   
+   FIX (R14+): Scribe MUST use explicit `git add` paths only. Never `git add -A`.
+   For squad artifact merges, add only:
+     - .squad/decisions.md
+     - .squad/agents/keaton/history.md and .squad/agents/keyser/history.md
+     - .squad/ROUND*_HEALTH_REPORT.txt
+   Verify: git diff --staged --stat contains only .squad/ paths before commit.
+
+2. **Bench Archetype Gotcha (R13 catch):**
+   spawn_particles was creating Position+Velocity (legacy vel_view path).
+   Production particles use WorldTransform+MotionVelocity (motion_view path).
+   Bench measured wrong path for ~12 rounds.
+   
+   Pattern: When auditing bench history, cross-check entity archetypes against
+   production. If wrong, fix it and note that prior "no delta" claims need
+   revisiting.
+
+3. **Independent Agreement Pattern (R13 chain-bonus):**
+   Keaton and Keyser independently reached RETRACT verdict on chain-bonus SRP.
+   Pattern: When two auditors reach same conclusion via independent investigation,
+   confidence in the conclusion is high. This is strong evidence against refactoring.
+
+PENDING ITEMS
+───────────────────────────────────────────────────────────────────────────────
+R14 priority (Keyser-r13 recommendations):
+
+1. **motion_system bridge deletion (Issue #349)** — MEDIUM SCOPE
+   Remaining vel_view users: freeplay ShapeGate/LaneBlock/ComboGate/SplitPath/
+   LanePushLeft/Right obstacles. Migration requires:
+   - obstacle_entity.cpp: emit ObstacleScrollZ instead of Position
+   - scroll_system: already handles via model_view
+   - collision_system: audit Position-based proximity checks
+   - Test files: migrate Position → ObstacleScrollZ references
+
+2. **Ordering test strengthening** — SMALL SCOPE
+   Current test_phase_runner.cpp:80 doesn't catch wrong ordering (only wiring).
+   Add real-entity test: obstacle → scoring → popup queue → despawn → assert.
+
+3. **player_input_system documentation** — TRIVIAL
+   Add comment at :22/:43: "// load-bearing: dispatcher can invoke callback
+   in non-Playing phases (see game_state_system dispatcher drain)"
+
+4. **CI grep convention** — BLOCKED
+   Keyser-r13 flagged but marked "PENDING USER APPROVAL".
+   Do NOT implement without explicit user authorization.
+
+DECISIONS.MD SIZE
+───────────────────────────────────────────────────────────────────────────────
+Previous:    12,293 lines
+Post-merge:  ~12,600 lines (estimated; check via `wc -l`)
+Threshold:   13,000 lines (triggers archival of oldest section per pattern)
+Status:      ✅ Below archival threshold. No action needed.
+
+CONFIRMATIONS
+───────────────────────────────────────────────────────────────────────────────
+✅ Inbox files merged into .squad/decisions.md
+✅ Inbox files deleted from .squad/decisions/inbox/
+✅ Module health snapshot updated (player_input_system 🟡→🟢, motion_system ✓)
+✅ Keaton and Keyser history appended with R13 learnings
+✅ Heuristics section added (Scribe protocol fix, bench archetype gotcha)
+✅ Test metrics verified (no regressions; +2 cases; zero warnings)
+✅ git add used explicit paths only (no app/, tests/, benchmarks/ files staged)
+✅ Commit message includes Co-authored-by trailer
+
+═══════════════════════════════════════════════════════════════════════════════
+Report generated: 2026-05-05 (Round 13 merge completion)
+═══════════════════════════════════════════════════════════════════════════════
