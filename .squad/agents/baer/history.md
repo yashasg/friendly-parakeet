@@ -110,3 +110,22 @@ Team ready for next phase.
 
 **Validation intent:**
 - Give Keaton immediate, low-flake parity guardrails for Phase 3 render-path work without brittle image snapshot debt.
+
+## 2026-05-04 — Final migration gate parity matrix + pre-existing failure ledger
+
+**Status:** COMPLETE (docs + validation evidence)
+
+**What changed:**
+- Updated `docs/sdl2-migration-runbook.md` with:
+  - final backend/platform/category parity matrix,
+  - baseline pre-existing failure ledger with reproducible commands,
+  - repeatable final migration acceptance command set.
+- Added decision artifact:
+  - `.squad/decisions/inbox/baer-final-parity-matrix.md`
+
+**Validation evidence (local):**
+- `./build-raylib/shapeshifter_tests --skip-benchmarks -v quiet` ✅
+- `./build-sdl2/shapeshifter_tests --skip-benchmarks -v quiet` ✅
+- `ctest --test-dir build-raylib --output-on-failure -R "redfoot/#168: existing game_over buttons keep their original positions"` ❗ expected pre-existing fail
+- `ctest --test-dir build-sdl2 --output-on-failure -R "redfoot/#168: existing game_over buttons keep their original positions"` ❗ expected pre-existing fail
+- `ctest --test-dir build-sdl2 --output-on-failure` ❗ known pre-existing Not Run cascade (`Unable to find executable .../build-sdl2/shapeshifter_tests`)

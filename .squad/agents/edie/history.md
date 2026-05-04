@@ -69,3 +69,25 @@ Comments:
 - Documented 5 user-provided blockers (Team ID, bundle ID confirmation, app icons, program type, build number bump)
 - Comments posted to all three issues
 - 2026-05-02: Completed TestFlight wave work; decision merged to decisions.md
+
+### 2026-05-04 — SDL2 Migration Issue Created (#372)
+
+Opened strategic rendering library migration GitHub issue: **yashasg/friendly-parakeet#372 - "Rendering Migration: Raylib → SDL2 → SDL3 (Phased Strategy)"**
+
+**Why:** Documented plan to migrate from raylib → SDL2 (interim) → SDL3 (final target) while intentionally waiting for SDL3 to mature. Strategy de-couples SHAPESHIFTER from SDL3's release schedule and positions team for modern graphics pipelines (Vulkan/Metal/DX12).
+
+**Content:**
+- Decision context: SDL3 is the future, SDL2 is proven interim, abstraction layers minimize re-engineering
+- Goals/non-goals: Abstraction-first (not graphics upgrades); maintain playability throughout
+- 7-phase plan: Rendering abstraction (Phase 1, immediate) → Input/Audio abstraction (Phases 2–3) → SDL2 impl (Phase 4) → Platform validation (Phases 5–6) → Raylib sunsetting (Phase 7)
+- Timeline: 8–11 weeks (parallel work possible)
+- Risks + rollback: SDL2 event loop timing (medium risk); fallback to raylib if Phase 4 fails; Emscripten/iOS complexity flagged
+- Acceptance criteria: Interface-driven testing; 142-test suite must pass zero-warnings on all platforms; desktop/web/iOS parity
+
+**Immediate action:** Execute Phase 1 - Rendering Abstraction Layer this week (Keaton lead, Keyser architecture review)
+
+**Assignment:** @yashasg (Edie, PM)  
+**Labels:** squad, squad:keaton  
+**Comment:** Posted kickoff note linking implementation start
+
+**URL:** https://github.com/yashasg/friendly-parakeet/issues/372

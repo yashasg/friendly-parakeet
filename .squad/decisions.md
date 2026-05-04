@@ -3791,3 +3791,123 @@ Implement an incremental, shippable Phase 6 slice focused on build/config harden
 
 ### Outcome
 Phase 6 slice started and shippable: backend selection/plumbing and CI validation are now expanded for native + wasm backend coverage.
+
+---
+
+## 2026-05-04 — Fenster Phase 5 Audio/Timing Slice — SDL2 Music Backend (Issue #372)
+
+**Author:** Fenster (Audio/Timing Engineer)  
+**Issue:** #372  
+**Branch:** `feature/sdl2-migration-phase-1-abstraction-layer`  
+**Verdict:** ✅ COMPLETED
+
+### Context
+- Prior state: abstraction-first slice landed; SDL2-native music playback backend and broader sync validation remained
+- Task: Complete Phase 5 scope by implementing SDL2-native music playback under existing platform audio abstraction
+
+### Decision
+Implement SDL2-native music playback backend while retaining raylib parity fallback/default behavior. Preserve all public call-site APIs, add deterministic validation hooks for backend-agnostic sync assertions.
+
+### Implemented
+1. **SDL2-native music path** (`app/platform/audio/music_backend.cpp`)
+   - SDL audio subsystem/device lifecycle for SDL2 desktop builds
+   - Music decode via raylib `Wave` loading/sampling, conversion to SDL device format, queue-based playback
+   - Backend operations: load/unload, play/pause/resume/stop, update loop handling, playback-time query
+   - Repeat/loop re-queue behavior implemented in `update_music_stream`
+
+2. **Parity-safe abstraction wiring**
+   - Existing raylib behavior preserved in non-SDL2 paths
+   - No public call-site API break in `music_backend.h`
+
+3. **Validation hooks + tests**
+   - Added deterministic music-time override hooks for backend-agnostic sync assertions
+   - Added/updated tests:
+     - `tests/test_music_backend.cpp`
+     - `tests/test_song_playback_system.cpp`
+   - New assertions cover authoritative clock sync and restart-time resynchronization invariants
+
+4. **Migration-coupled fix handled**
+   - Avoided duplicate-symbol collisions against raylib's internal dr_* decoders by removing direct dr_* implementation embedding and using raylib Wave decode path
+
+### Validation
+- Build targets for both backends:
+  - `cmake --build build-raylib --target shapeshifter shapeshifter_tests -- -j8` ✅
+  - `cmake --build build-sdl2 --target shapeshifter shapeshifter_tests -- -j8` ✅
+- Tests (both backends):
+  - `./build-*/shapeshifter_tests "[audio],[music_backend],[song_playback],[timing],[clock]"` ✅ pass
+- Result: Phase 5 scope fully complete for SDL2 migration slice requirements
+
+### Outcome
+Phase 5 scope is now fully complete for SDL2 migration slice requirements (music backend implementation + abstraction wiring + sync/timing validation).
+
+---
+
+## 2026-05-04 — Baer Phase 5/6 Gating — Migration Parity Matrix + Baseline Ledger (Issue #372)
+
+**Author:** Baer (Test Engineer)  
+**Issue:** #372  
+**Branch:** `feature/sdl2-migration-phase-1-abstraction-layer`  
+**Verdict:** ✅ COMPLETED
+
+### Context
+- Migration state: phases 1-4 complete, phase 3 complete, phase 5/6 closing
+- Need: a final validation gate that separates true migration regressions from known/pre-existing failures
+
+### Decision
+Use `docs/sdl2-migration-runbook.md` as the single source of truth for migration acceptance by adding:
+1. A concise backend × platform lane × test category parity matrix
+2. A baseline pre-existing failure ledger with reproducible commands
+3. A repeatable final acceptance command set for local and CI lanes
+
+### Implemented
+1. **Parity matrix added** in `docs/sdl2-migration-runbook.md`
+   - Backends: `raylib`, `sdl2`
+   - Lanes: macOS local + Linux/Windows CI
+   - Categories: configure/build, core regression suite, render parity slice, known-failure sentinel
+
+2. **Baseline failure ledger added**
+   - Pre-existing functional failure:
+     - `redfoot/#168: existing game_over buttons keep their original positions`
+   - Pre-existing SDL2 ctest harness issue:
+     - full `ctest --test-dir build-sdl2 --output-on-failure` produces Not Run cascade after executable resolution failure
+
+3. **Final acceptance command set added**
+   - build both backends
+   - run non-benchmark suites
+   - run render-parity deterministic checks
+   - run known-failure sentinel checks
+
+### Validation (local evidence)
+- `./build-raylib/shapeshifter_tests --skip-benchmarks -v quiet` → ✅ pass (2224 assertions / 797 cases)
+- `./build-sdl2/shapeshifter_tests --skip-benchmarks -v quiet` → ✅ pass (2244 assertions / 799 cases)
+- `ctest --test-dir build-raylib --output-on-failure -R "redfoot/#168"` → ❗ expected fail
+- `ctest --test-dir build-sdl2 --output-on-failure -R "redfoot/#168"` → ❗ expected fail
+- `ctest --test-dir build-sdl2 --output-on-failure` → ❗ expected pre-existing Not Run cascade
+
+### Outcome
+Migration gate now has an explicit parity matrix and a baseline failure ledger, so phase 5/6 closure can classify failures correctly as:
+- **known/pre-existing**, or
+- **new migration regressions** requiring rollback/fix
+
+---
+
+### 2026-05-04T00:32:05Z — Scribe: fenster-1 Phase 5 Completion + Baer Parity Matrix Logged
+
+**Batch:** fenster-phase5-completion + baer-final-parity-matrix  
+**Origin:** .squad/decisions/inbox/  
+**Action:** Merged both decisions into .squad/decisions.md  
+**Cleared:** inbox files  
+**Status:** ✅ COMPLETE
+
+**Fenster-1 Deliverable:**
+- SDL2-native music backend implementation with abstraction parity
+- Deterministic timing validation hooks for backend-agnostic sync
+- Full test coverage for music stream decode, playback, and timing invariants
+- Raylib fallback behavior preserved, zero public API breaks
+
+**Baer Deliverable:**
+- Migration parity matrix (backends × platforms × test categories)
+- Baseline failure ledger (pre-existing failures + SDL2 ctest quirks)
+- Final acceptance command set for local and CI lanes
+
+**Next Phase:** Ready for Phase 6 parity validation completion and final Phase 7 SDL2/raylib cleanup execution.

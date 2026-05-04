@@ -1,0 +1,557 @@
+==SUMMARY==
+INCLUDE_TOTAL 60
+INCLUDE_FILES 55
+INCLUDE_BY_HEADER {'raylib.h': 44, 'raymath.h': 7, 'raygui.h': 9}
+CALLSITE_TOTAL 315
+CALLSITE_FILES 37
+BUILD_HITS 30
+
+==TOP_CALL_FILES==
+45 app/ui/screen_controllers/gameplay_hud_screen_controller.cpp
+36 app/systems/camera_system.cpp
+30 app/game_loop.cpp
+22 app/systems/input_system.cpp
+21 app/ui/screen_controllers/level_select_screen_controller.cpp
+18 app/ui/text_renderer.cpp
+10 app/ui/generated/song_complete_layout.h
+10 app/ui/generated/tutorial_layout.h
+9 app/systems/song_playback_system.cpp
+9 app/ui/generated/paused_layout.h
+8 app/audio/sfx_bank.cpp
+8 app/systems/ui_render_system.cpp
+8 app/session/play_session.cpp
+8 app/ui/screen_controllers/title_screen_controller.cpp
+8 benchmarks/bench_file_logger.cpp
+7 app/systems/game_render_system.cpp
+6 app/input/raylib_gesture_input.h
+6 app/ui/generated/gameplay_hud_layout.h
+5 app/entities/obstacle_render_entity.cpp
+5 app/ui/generated/settings_layout.h
+4 app/ui/generated/game_over_layout.h
+4 app/ui/generated/title_layout.h
+3 app/session/test_player_session.cpp
+3 app/ui/screen_controllers/settings_screen_controller.cpp
+3 tests/test_input_pipeline_behavior.cpp
+3 tests/test_obstacle_model_slice.cpp
+2 app/platform_display.cpp
+2 app/platform/haptics_backend.cpp
+2 app/systems/energy_system.cpp
+2 app/systems/player_movement_system.cpp
+2 app/ui/generated/level_select_screen_layout.h
+1 app/util/beat_map_loader.cpp
+1 app/util/file_logger.cpp
+1 app/components/rendering.h
+1 app/audio/music_stream.h
+1 app/systems/test_player_system.cpp
+1 tests/smoke/startup_shutdown_smoke.cpp
+
+==TOP_CALL_FUNCS==
+25 GuiSetStyle
+24 GuiLabel
+23 TraceLog
+21 GuiButton
+16 IsKeyPressed
+11 Clamp
+9 GuiGetStyle
+8 DrawRectangleRec
+8 GuiSetAlpha
+7 Lerp
+6 MatrixMultiply
+6 CheckCollisionPointRec
+5 StopMusicStream
+5 SetTextureFilter
+5 IsGestureDetected
+5 MatrixScale
+5 MatrixTranslate
+4 GetApplicationDirectory
+4 DrawMesh
+4 Fade
+3 ClearBackground
+3 LoadFontEx
+3 UnloadFont
+3 IsSoundValid
+3 GenMeshCylinder
+3 GenMeshCube
+3 UnloadMesh
+3 DrawCircleLinesV
+3 SetTraceLogLevel
+2 BeginTextureMode
+2 EndTextureMode
+2 DrawTexturePro
+2 UnloadMusicStream
+2 MeasureTextEx
+2 SetTraceLogCallback
+2 UnloadModel
+2 IsAudioDeviceReady
+2 PlayMusicStream
+2 SetMouseOffset
+2 SetMouseScale
+2 LoadMaterialDefault
+2 LoadRenderTexture
+2 UnloadRenderTexture
+2 DrawRectangleRounded
+2 DrawRectangleRoundedLinesEx
+2 DrawCircleV
+2 DrawTriangle
+1 GetScreenWidth
+1 GetScreenHeight
+1 SetConfigFlags
+1 InitWindow
+1 GetCurrentMonitor
+1 GetMonitorHeight
+1 SetWindowSize
+1 SetWindowPosition
+1 GetMonitorWidth
+1 SetTargetFPS
+1 InitAudioDevice
+1 GetFrameTime
+1 BeginDrawing
+1 EndDrawing
+1 WindowShouldClose
+1 CloseAudioDevice
+1 CloseWindow
+1 FileExists
+1 DrawTextEx
+1 GetGestureDetected
+1 LoadMusicStream
+1 LoadSoundFromWave
+1 PlaySound
+1 UnloadSound
+1 UpdateMusicStream
+1 ResumeMusicStream
+1 PauseMusicStream
+1 GetMusicTimePlayed
+1 SetGesturesEnabled
+1 IsMouseButtonReleased
+1 GetMousePosition
+1 GetTouchPointCount
+1 GetTouchPosition
+1 IsWindowFocused
+1 CheckCollisionRecs
+1 BeginMode3D
+1 EndMode3D
+1 BeginMode2D
+1 EndMode2D
+1 GenMeshPlane
+1 LoadShaderFromMemory
+1 UnloadMaterial
+1 MatrixRotateY
+1 GetWorldToScreenEx
+1 IsWindowReady
+1 MatrixIdentity
+1 SetMusicVolume
+1 ColorToInt
+1 GetTime
+1 DrawRectangleLinesEx
+1 DrawLineV
+
+==INCLUDE_HITS==
+app/constants.h:4:raylib.h
+app/platform_display.h:3:raylib.h
+app/game_loop.cpp:32:raylib.h
+app/ui/text_renderer.cpp:2:raylib.h
+app/util/beat_map_loader.cpp:8:raylib.h
+app/util/file_logger.cpp:3:raylib.h
+app/input/pointer_input.h:4:raylib.h
+app/input/raylib_gesture_input.h:5:raylib.h
+app/platform/haptics_backend.cpp:6:raylib.h
+app/components/text.h:3:raylib.h
+app/components/rendering.h:4:raylib.h
+app/components/transform.h:3:raylib.h
+app/components/ui_layout_cache.h:2:raylib.h
+app/audio/music_context.h:3:raylib.h
+app/audio/audio_types.h:6:raylib.h
+app/audio/music_stream.h:3:raylib.h
+app/audio/sfx_bank.cpp:4:raylib.h
+app/rendering/camera_resources.h:3:raylib.h
+app/systems/song_playback_system.cpp:5:raylib.h
+app/systems/camera_system.h:4:raylib.h
+app/systems/energy_system.cpp:6:raymath.h
+app/systems/input_system.cpp:9:raylib.h
+app/systems/test_player_system.cpp:16:raylib.h
+app/systems/player_movement_system.cpp:8:raymath.h
+app/systems/game_render_system.cpp:9:raylib.h
+app/systems/ui_render_system.cpp:22:raylib.h
+app/systems/ui_render_system.cpp:23:raymath.h
+app/systems/camera_system.cpp:14:raylib.h
+app/systems/camera_system.cpp:15:raymath.h
+app/entities/camera_entity.h:2:raylib.h
+app/entities/obstacle_render_entity.cpp:6:raymath.h
+app/session/test_player_session.cpp:8:raylib.h
+app/session/play_session.cpp:23:raylib.h
+app/ui/generated/game_over_layout.h:19:raylib.h
+app/ui/generated/song_complete_layout.h:19:raylib.h
+app/ui/generated/paused_layout.h:19:raylib.h
+app/ui/generated/tutorial_layout.h:19:raylib.h
+app/ui/generated/title_layout.h:21:raygui.h
+app/ui/generated/title_layout.h:41:raylib.h
+app/ui/generated/gameplay_hud_layout.h:19:raylib.h
+app/ui/generated/level_select_screen_layout.h:19:raylib.h
+app/ui/generated/settings_layout.h:23:raylib.h
+app/ui/screen_controllers/level_select_screen_controller.cpp:12:raygui.h
+app/ui/screen_controllers/settings_screen_controller.cpp:13:raygui.h
+app/ui/screen_controllers/song_complete_screen_controller.cpp:9:raygui.h
+app/ui/screen_controllers/screen_controller_base.h:8:raylib.h
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:19:raygui.h
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:21:raymath.h
+app/ui/screen_controllers/title_screen_controller.cpp:10:raygui.h
+app/ui/screen_controllers/game_over_screen_controller.cpp:7:raygui.h
+app/ui/screen_controllers/paused_screen_controller.cpp:8:raygui.h
+app/ui/screen_controllers/gameplay_hud_screen_controller.h:3:raylib.h
+app/ui/screen_controllers/tutorial_screen_controller.cpp:7:raygui.h
+tests/test_model_component_traits.cpp:22:raylib.h
+tests/test_pr43_regression.cpp:16:raylib.h
+tests/test_perspective.cpp:5:raylib.h
+tests/test_obstacle_model_slice.cpp:59:raylib.h
+tests/test_obstacle_model_slice.cpp:60:raymath.h
+tests/smoke/startup_shutdown_smoke.cpp:4:raylib.h
+benchmarks/bench_file_logger.cpp:3:raylib.h
+
+==CALL_HITS==
+app/platform_display.cpp:84:GetScreenWidth
+app/platform_display.cpp:85:GetScreenHeight
+app/game_loop.cpp:44:TraceLog
+app/game_loop.cpp:47:TraceLog
+app/game_loop.cpp:50:TraceLog
+app/game_loop.cpp:54:TraceLog
+app/game_loop.cpp:58:TraceLog
+app/game_loop.cpp:75:SetConfigFlags
+app/game_loop.cpp:76:InitWindow
+app/game_loop.cpp:78:GetCurrentMonitor
+app/game_loop.cpp:79:GetMonitorHeight
+app/game_loop.cpp:82:SetWindowSize
+app/game_loop.cpp:83:SetWindowPosition
+app/game_loop.cpp:84:GetMonitorWidth
+app/game_loop.cpp:87:SetTargetFPS
+app/game_loop.cpp:88:InitAudioDevice
+app/game_loop.cpp:91:TraceLog
+app/game_loop.cpp:180:GetFrameTime
+app/game_loop.cpp:203:BeginTextureMode
+app/game_loop.cpp:205:EndTextureMode
+app/game_loop.cpp:208:BeginTextureMode
+app/game_loop.cpp:210:EndTextureMode
+app/game_loop.cpp:222:BeginDrawing
+app/game_loop.cpp:223:ClearBackground
+app/game_loop.cpp:224:DrawTexturePro
+app/game_loop.cpp:225:DrawTexturePro
+app/game_loop.cpp:226:EndDrawing
+app/game_loop.cpp:237:WindowShouldClose
+app/game_loop.cpp:274:StopMusicStream
+app/game_loop.cpp:275:UnloadMusicStream
+app/game_loop.cpp:282:CloseAudioDevice
+app/game_loop.cpp:283:CloseWindow
+app/ui/text_renderer.cpp:18:FileExists
+app/ui/text_renderer.cpp:19:TraceLog
+app/ui/text_renderer.cpp:23:LoadFontEx
+app/ui/text_renderer.cpp:24:LoadFontEx
+app/ui/text_renderer.cpp:25:LoadFontEx
+app/ui/text_renderer.cpp:31:TraceLog
+app/ui/text_renderer.cpp:37:SetTextureFilter
+app/ui/text_renderer.cpp:38:SetTextureFilter
+app/ui/text_renderer.cpp:39:SetTextureFilter
+app/ui/text_renderer.cpp:46:GetApplicationDirectory
+app/ui/text_renderer.cpp:56:TraceLog
+app/ui/text_renderer.cpp:60:TraceLog
+app/ui/text_renderer.cpp:66:UnloadFont
+app/ui/text_renderer.cpp:67:UnloadFont
+app/ui/text_renderer.cpp:68:UnloadFont
+app/ui/text_renderer.cpp:85:MeasureTextEx
+app/ui/text_renderer.cpp:94:DrawTextEx
+app/ui/text_renderer.cpp:115:MeasureTextEx
+app/util/beat_map_loader.cpp:184:TraceLog
+app/util/file_logger.cpp:63:SetTraceLogCallback
+app/input/raylib_gesture_input.h:15:IsGestureDetected
+app/input/raylib_gesture_input.h:16:IsGestureDetected
+app/input/raylib_gesture_input.h:17:IsGestureDetected
+app/input/raylib_gesture_input.h:18:IsGestureDetected
+app/input/raylib_gesture_input.h:19:IsGestureDetected
+app/input/raylib_gesture_input.h:20:GetGestureDetected
+app/platform/haptics_backend.cpp:14:TraceLog
+app/platform/haptics_backend.cpp:17:TraceLog
+app/components/rendering.h:100:UnloadModel
+app/audio/music_stream.h:6:LoadMusicStream
+app/audio/sfx_bank.cpp:110:LoadSoundFromWave
+app/audio/sfx_bank.cpp:114:IsAudioDeviceReady
+app/audio/sfx_bank.cpp:121:IsSoundValid
+app/audio/sfx_bank.cpp:123:PlaySound
+app/audio/sfx_bank.cpp:134:IsAudioDeviceReady
+app/audio/sfx_bank.cpp:139:IsSoundValid
+app/audio/sfx_bank.cpp:156:IsSoundValid
+app/audio/sfx_bank.cpp:157:UnloadSound
+app/systems/song_playback_system.cpp:18:UpdateMusicStream
+app/systems/song_playback_system.cpp:25:StopMusicStream
+app/systems/song_playback_system.cpp:26:PlayMusicStream
+app/systems/song_playback_system.cpp:34:PlayMusicStream
+app/systems/song_playback_system.cpp:37:ResumeMusicStream
+app/systems/song_playback_system.cpp:40:PauseMusicStream
+app/systems/song_playback_system.cpp:44:StopMusicStream
+app/systems/song_playback_system.cpp:55:GetMusicTimePlayed
+app/systems/song_playback_system.cpp:79:StopMusicStream
+app/systems/energy_system.cpp:14:Clamp
+app/systems/energy_system.cpp:43:Clamp
+app/systems/input_system.cpp:41:SetGesturesEnabled
+app/systems/input_system.cpp:61:IsMouseButtonReleased
+app/systems/input_system.cpp:65:GetMousePosition
+app/systems/input_system.cpp:74:GetTouchPointCount
+app/systems/input_system.cpp:75:GetTouchPosition
+app/systems/input_system.cpp:99:IsKeyPressed
+app/systems/input_system.cpp:99:IsKeyPressed
+app/systems/input_system.cpp:100:IsKeyPressed
+app/systems/input_system.cpp:100:IsKeyPressed
+app/systems/input_system.cpp:101:IsKeyPressed
+app/systems/input_system.cpp:101:IsKeyPressed
+app/systems/input_system.cpp:102:IsKeyPressed
+app/systems/input_system.cpp:102:IsKeyPressed
+app/systems/input_system.cpp:106:IsKeyPressed
+app/systems/input_system.cpp:106:IsKeyPressed
+app/systems/input_system.cpp:110:IsKeyPressed
+app/systems/input_system.cpp:110:IsKeyPressed
+app/systems/input_system.cpp:114:IsKeyPressed
+app/systems/input_system.cpp:114:IsKeyPressed
+app/systems/input_system.cpp:118:IsKeyPressed
+app/systems/input_system.cpp:118:IsKeyPressed
+app/systems/input_system.cpp:127:IsWindowFocused
+app/systems/test_player_system.cpp:30:CheckCollisionRecs
+app/systems/player_movement_system.cpp:21:Clamp
+app/systems/player_movement_system.cpp:33:Lerp
+app/systems/game_render_system.cpp:192:DrawMesh
+app/systems/game_render_system.cpp:195:DrawMesh
+app/systems/game_render_system.cpp:198:DrawMesh
+app/systems/game_render_system.cpp:231:DrawMesh
+app/systems/game_render_system.cpp:242:ClearBackground
+app/systems/game_render_system.cpp:245:BeginMode3D
+app/systems/game_render_system.cpp:265:EndMode3D
+app/systems/ui_render_system.cpp:40:ClearBackground
+app/systems/ui_render_system.cpp:41:BeginMode2D
+app/systems/ui_render_system.cpp:54:DrawRectangleRec
+app/systems/ui_render_system.cpp:63:SetMouseOffset
+app/systems/ui_render_system.cpp:66:SetMouseScale
+app/systems/ui_render_system.cpp:106:SetMouseOffset
+app/systems/ui_render_system.cpp:107:SetMouseScale
+app/systems/ui_render_system.cpp:109:EndMode2D
+app/systems/camera_system.cpp:75:GenMeshCylinder
+app/systems/camera_system.cpp:76:GenMeshCube
+app/systems/camera_system.cpp:77:GenMeshCylinder
+app/systems/camera_system.cpp:78:GenMeshCylinder
+app/systems/camera_system.cpp:79:GenMeshCube
+app/systems/camera_system.cpp:80:GenMeshPlane
+app/systems/camera_system.cpp:82:LoadShaderFromMemory
+app/systems/camera_system.cpp:83:LoadMaterialDefault
+app/systems/camera_system.cpp:92:UnloadMesh
+app/systems/camera_system.cpp:93:UnloadMesh
+app/systems/camera_system.cpp:94:UnloadMesh
+app/systems/camera_system.cpp:97:UnloadMaterial
+app/systems/camera_system.cpp:138:LoadRenderTexture
+app/systems/camera_system.cpp:140:SetTextureFilter
+app/systems/camera_system.cpp:141:LoadRenderTexture
+app/systems/camera_system.cpp:143:SetTextureFilter
+app/systems/camera_system.cpp:171:UnloadRenderTexture
+app/systems/camera_system.cpp:172:UnloadRenderTexture
+app/systems/camera_system.cpp:200:MatrixMultiply
+app/systems/camera_system.cpp:200:MatrixScale
+app/systems/camera_system.cpp:201:MatrixTranslate
+app/systems/camera_system.cpp:206:MatrixMultiply
+app/systems/camera_system.cpp:206:MatrixScale
+app/systems/camera_system.cpp:206:MatrixTranslate
+app/systems/camera_system.cpp:212:MatrixScale
+app/systems/camera_system.cpp:213:MatrixRotateY
+app/systems/camera_system.cpp:214:MatrixTranslate
+app/systems/camera_system.cpp:215:MatrixMultiply
+app/systems/camera_system.cpp:215:MatrixMultiply
+app/systems/camera_system.cpp:285:MatrixMultiply
+app/systems/camera_system.cpp:286:MatrixScale
+app/systems/camera_system.cpp:287:MatrixTranslate
+app/systems/camera_system.cpp:305:Clamp
+app/systems/camera_system.cpp:309:Lerp
+app/systems/camera_system.cpp:310:Lerp
+app/systems/camera_system.cpp:347:GetWorldToScreenEx
+app/entities/obstacle_render_entity.cpp:229:IsWindowReady
+app/entities/obstacle_render_entity.cpp:244:MatrixIdentity
+app/entities/obstacle_render_entity.cpp:247:GenMeshCube
+app/entities/obstacle_render_entity.cpp:250:LoadMaterialDefault
+app/entities/obstacle_render_entity.cpp:278:UnloadModel
+app/session/test_player_session.cpp:38:TraceLog
+app/session/test_player_session.cpp:55:GetApplicationDirectory
+app/session/test_player_session.cpp:60:TraceLog
+app/session/play_session.cpp:73:GetApplicationDirectory
+app/session/play_session.cpp:80:TraceLog
+app/session/play_session.cpp:87:TraceLog
+app/session/play_session.cpp:121:StopMusicStream
+app/session/play_session.cpp:122:UnloadMusicStream
+app/session/play_session.cpp:127:GetApplicationDirectory
+app/session/play_session.cpp:135:SetMusicVolume
+app/session/play_session.cpp:136:TraceLog
+app/ui/generated/game_over_layout.h:46:GuiLabel
+app/ui/generated/game_over_layout.h:47:GuiButton
+app/ui/generated/game_over_layout.h:48:GuiButton
+app/ui/generated/game_over_layout.h:49:GuiButton
+app/ui/generated/song_complete_layout.h:45:GuiGetStyle
+app/ui/generated/song_complete_layout.h:46:GuiGetStyle
+app/ui/generated/song_complete_layout.h:48:GuiSetStyle
+app/ui/generated/song_complete_layout.h:49:GuiSetStyle
+app/ui/generated/song_complete_layout.h:50:GuiLabel
+app/ui/generated/song_complete_layout.h:52:GuiSetStyle
+app/ui/generated/song_complete_layout.h:53:GuiSetStyle
+app/ui/generated/song_complete_layout.h:61:GuiButton
+app/ui/generated/song_complete_layout.h:62:GuiButton
+app/ui/generated/song_complete_layout.h:63:GuiButton
+app/ui/generated/paused_layout.h:43:GuiGetStyle
+app/ui/generated/paused_layout.h:44:GuiGetStyle
+app/ui/generated/paused_layout.h:46:GuiSetStyle
+app/ui/generated/paused_layout.h:47:GuiSetStyle
+app/ui/generated/paused_layout.h:48:GuiLabel
+app/ui/generated/paused_layout.h:50:GuiSetStyle
+app/ui/generated/paused_layout.h:51:GuiSetStyle
+app/ui/generated/paused_layout.h:58:GuiButton
+app/ui/generated/paused_layout.h:60:GuiButton
+app/ui/generated/tutorial_layout.h:42:GuiLabel
+app/ui/generated/tutorial_layout.h:43:GuiLabel
+app/ui/generated/tutorial_layout.h:44:GuiLabel
+app/ui/generated/tutorial_layout.h:45:GuiLabel
+app/ui/generated/tutorial_layout.h:47:GuiLabel
+app/ui/generated/tutorial_layout.h:49:GuiLabel
+app/ui/generated/tutorial_layout.h:51:GuiLabel
+app/ui/generated/tutorial_layout.h:52:GuiLabel
+app/ui/generated/tutorial_layout.h:53:GuiLabel
+app/ui/generated/tutorial_layout.h:54:GuiButton
+app/ui/generated/title_layout.h:87:GuiLabel
+app/ui/generated/title_layout.h:88:GuiLabel
+app/ui/generated/title_layout.h:89:GuiButton
+app/ui/generated/title_layout.h:90:GuiButton
+app/ui/generated/gameplay_hud_layout.h:70:ColorToInt
+app/ui/generated/gameplay_hud_layout.h:73:GuiGetStyle
+app/ui/generated/gameplay_hud_layout.h:74:GuiSetStyle
+app/ui/generated/gameplay_hud_layout.h:77:GuiButton
+app/ui/generated/gameplay_hud_layout.h:80:GuiSetStyle
+app/ui/generated/gameplay_hud_layout.h:88:GuiButton
+app/ui/generated/level_select_screen_layout.h:42:GuiLabel
+app/ui/generated/level_select_screen_layout.h:43:GuiButton
+app/ui/generated/settings_layout.h:56:GuiLabel
+app/ui/generated/settings_layout.h:57:GuiLabel
+app/ui/generated/settings_layout.h:58:GuiButton
+app/ui/generated/settings_layout.h:59:GuiButton
+app/ui/generated/settings_layout.h:60:GuiButton
+app/ui/screen_controllers/level_select_screen_controller.cpp:70:CheckCollisionPointRec
+app/ui/screen_controllers/level_select_screen_controller.cpp:90:GuiGetStyle
+app/ui/screen_controllers/level_select_screen_controller.cpp:93:GuiSetStyle
+app/ui/screen_controllers/level_select_screen_controller.cpp:94:GuiLabel
+app/ui/screen_controllers/level_select_screen_controller.cpp:103:DrawRectangleRounded
+app/ui/screen_controllers/level_select_screen_controller.cpp:106:DrawRectangleRoundedLinesEx
+app/ui/screen_controllers/level_select_screen_controller.cpp:111:GuiSetStyle
+app/ui/screen_controllers/level_select_screen_controller.cpp:112:GuiSetAlpha
+app/ui/screen_controllers/level_select_screen_controller.cpp:113:GuiLabel
+app/ui/screen_controllers/level_select_screen_controller.cpp:115:GuiSetAlpha
+app/ui/screen_controllers/level_select_screen_controller.cpp:120:GuiSetStyle
+app/ui/screen_controllers/level_select_screen_controller.cpp:121:GuiSetAlpha
+app/ui/screen_controllers/level_select_screen_controller.cpp:122:GuiLabel
+app/ui/screen_controllers/level_select_screen_controller.cpp:123:GuiSetAlpha
+app/ui/screen_controllers/level_select_screen_controller.cpp:127:GuiSetStyle
+app/ui/screen_controllers/level_select_screen_controller.cpp:134:DrawRectangleRounded
+app/ui/screen_controllers/level_select_screen_controller.cpp:135:DrawRectangleRoundedLinesEx
+app/ui/screen_controllers/level_select_screen_controller.cpp:137:GuiButton
+app/ui/screen_controllers/level_select_screen_controller.cpp:145:GuiSetStyle
+app/ui/screen_controllers/level_select_screen_controller.cpp:146:GuiButton
+app/ui/screen_controllers/level_select_screen_controller.cpp:149:GuiSetStyle
+app/ui/screen_controllers/settings_screen_controller.cpp:40:GuiLabel
+app/ui/screen_controllers/settings_screen_controller.cpp:49:GuiButton
+app/ui/screen_controllers/settings_screen_controller.cpp:56:GuiButton
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:33:DrawCircleV
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:38:DrawRectangleRec
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:43:DrawTriangle
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:54:DrawTriangle
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:157:DrawCircleV
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:158:DrawCircleLinesV
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:165:Clamp
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:166:Lerp
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:170:Fade
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:171:DrawCircleLinesV
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:172:DrawCircleLinesV
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:187:Clamp
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:199:Clamp
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:204:Clamp
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:208:GetTime
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:218:DrawRectangleRec
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:219:Fade
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:222:DrawRectangleRec
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:252:Clamp
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:252:Lerp
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:254:Clamp
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:254:Lerp
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:256:Clamp
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:256:Lerp
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:257:DrawRectangleRec
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:261:DrawRectangleRec
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:261:Fade
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:263:DrawRectangleRec
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:268:DrawRectangleRec
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:269:Fade
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:277:DrawRectangleLinesEx
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:333:GuiGetStyle
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:337:GuiSetStyle
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:340:GuiLabel
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:343:GuiSetStyle
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:346:GuiSetAlpha
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:347:GuiLabel
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:348:GuiSetAlpha
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:354:GuiSetStyle
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:355:GuiSetAlpha
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:356:GuiLabel
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:357:GuiSetAlpha
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:360:DrawLineV
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:366:GuiSetStyle
+app/ui/screen_controllers/gameplay_hud_screen_controller.cpp:369:GuiSetStyle
+app/ui/screen_controllers/title_screen_controller.cpp:32:CheckCollisionPointRec
+app/ui/screen_controllers/title_screen_controller.cpp:34:CheckCollisionPointRec
+app/ui/screen_controllers/title_screen_controller.cpp:46:GuiGetStyle
+app/ui/screen_controllers/title_screen_controller.cpp:47:GuiGetStyle
+app/ui/screen_controllers/title_screen_controller.cpp:49:GuiSetStyle
+app/ui/screen_controllers/title_screen_controller.cpp:50:GuiSetStyle
+app/ui/screen_controllers/title_screen_controller.cpp:52:GuiSetStyle
+app/ui/screen_controllers/title_screen_controller.cpp:53:GuiSetStyle
+tests/test_input_pipeline_behavior.cpp:150:CheckCollisionPointRec
+tests/test_input_pipeline_behavior.cpp:151:CheckCollisionPointRec
+tests/test_input_pipeline_behavior.cpp:152:CheckCollisionPointRec
+tests/test_obstacle_model_slice.cpp:445:MatrixMultiply
+tests/test_obstacle_model_slice.cpp:446:MatrixScale
+tests/test_obstacle_model_slice.cpp:447:MatrixTranslate
+tests/smoke/startup_shutdown_smoke.cpp:37:SetTraceLogLevel
+benchmarks/bench_file_logger.cpp:20:TraceLog
+benchmarks/bench_file_logger.cpp:32:TraceLog
+benchmarks/bench_file_logger.cpp:45:TraceLog
+benchmarks/bench_file_logger.cpp:55:SetTraceLogCallback
+benchmarks/bench_file_logger.cpp:56:SetTraceLogLevel
+benchmarks/bench_file_logger.cpp:59:TraceLog
+benchmarks/bench_file_logger.cpp:63:SetTraceLogLevel
+benchmarks/bench_file_logger.cpp:67:TraceLog
+
+==BUILD_HITS==
+CMakeLists.txt:51:# raylib: rendering, windowing, input, audio (vcpkg on all platforms, including
+CMakeLists.txt:53:# raygui: immediate-mode UI header (vcpkg on all platforms, header-only package).
+CMakeLists.txt:60:find_package(raylib CONFIG REQUIRED)
+CMakeLists.txt:61:find_path(RAYGUI_INCLUDE_DIR raygui.h REQUIRED)
+CMakeLists.txt:78:set(_system_deps EnTT::EnTT magic_enum::magic_enum raylib nlohmann_json::nlohmann_json Catch2::Catch2 Catch2::Catch2WithMain)
+CMakeLists.txt:98:file(GLOB PLATFORM_SOURCES CONFIGURE_DEPENDS app/platform/*.cpp app/platform/ios/*.cpp)
+CMakeLists.txt:104:# Exclude files requiring a live raylib context from the library. They are
+CMakeLists.txt:126:    list(FILTER PLATFORM_SOURCES EXCLUDE REGEX "(^|/)haptics_ios_bridge_stub\\.cpp$")
+CMakeLists.txt:127:    list(APPEND PLATFORM_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/app/platform/ios/haptics_ios_bridge_ios.mm")
+CMakeLists.txt:130:add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES} ${AUDIO_SOURCES} ${UTIL_SOURCES} ${PLATFORM_SOURCES} ${UI_SOURCES} ${UI_SCREEN_CONTROLLER_SOURCES} ${INPUT_SOURCES} ${SESSION_SOURCES} ${ENTITY_SOURCES})
+CMakeLists.txt:136:    ${RAYGUI_INCLUDE_DIR}
+CMakeLists.txt:142:    raylib
+CMakeLists.txt:153:# PLATFORM_DESKTOP is set for Windows / macOS / Linux builds.
+CMakeLists.txt:154:# PLATFORM_WEB is set for Emscripten builds.
+CMakeLists.txt:155:# PLATFORM_HAS_KEYBOARD is set for platforms with keyboard input.
+CMakeLists.txt:158:    target_compile_definitions(shapeshifter_lib PUBLIC PLATFORM_DESKTOP PLATFORM_HAS_KEYBOARD)
+CMakeLists.txt:160:    target_compile_definitions(shapeshifter_lib PUBLIC PLATFORM_WEB PLATFORM_HAS_KEYBOARD)
+CMakeLists.txt:164:    target_compile_definitions(shapeshifter_lib PUBLIC PLATFORM_IOS)
+CMakeLists.txt:204:    raylib
+CMakeLists.txt:208:# ── Platform link dependencies for raylib (RGFW backend) ─────
+CMakeLists.txt:209:# RGFW uses native platform APIs directly — no GLFW.
+CMakeLists.txt:227:    target_compile_definitions(shapeshifter PRIVATE PLATFORM_WEB)
+CMakeLists.txt:337:# build/test path because it opens a real raylib window; build and run it
+CMakeLists.txt:348:    raylib
+CMakeLists.txt:511:# raygui is header-only and requires one implementation owner TU.
+CMakeLists.txt:533:    raylib
+CMakeLists.txt:540:    target_compile_definitions(shapeshifter_tests PRIVATE PLATFORM_DESKTOP PLATFORM_HAS_KEYBOARD)
+CMakeLists.txt:542:    target_compile_definitions(shapeshifter_tests PRIVATE PLATFORM_WEB PLATFORM_HAS_KEYBOARD)
+vcpkg.json:9:    "raylib",
+vcpkg.json:10:    "raygui",
