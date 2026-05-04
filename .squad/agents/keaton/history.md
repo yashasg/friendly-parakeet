@@ -272,3 +272,42 @@ Keaton identified two bench fixtures degrading silently due to archetype evoluti
 
 - Phase 2 target (native SDL2 window + GL context bring-up) is implemented.
 - Rendering/gameplay parity migration is intentionally deferred to later phases.
+
+## 2026-05-04 — SDL2 Migration Phase 3: Rendering Core Port (floor/playfield path)
+
+**Issue:** #372  
+**Branch:** `feature/sdl2-migration-phase-1-abstraction-layer`
+
+### Work Completed
+
+1. Ported high-priority floor/playfield draw path in `game_render_system.cpp` from direct `rlBegin/rlVertex3f` usage to abstraction-layer primitive calls.
+2. Guarded raylib-specific mesh draw path in `game_render_system.cpp` so SDL2 backend executes the floor geometry slice safely while keeping raylib behavior intact.
+3. Updated SDL2 bring-up flow in `game_loop.cpp` to run the Phase-3 world render path instead of black-screen-only bootstrap:
+   - seed minimal render state (`GameState`, `GameCamera`, `FloorParams`)
+   - execute `game_render_system(...)` each frame on SDL2 backend.
+4. Updated SDL2 GL context attributes (`sdl2_graphics_context.cpp`) to use compatibility profile-friendly settings required by fixed-function floor rendering path.
+
+### Validation
+
+- `cmake -B build -S . -Wno-dev -DSHAPESHIFTER_BACKEND=raylib`
+- `cmake --build build`
+- `./build/shapeshifter_tests --reporter compact`
+- `cmake -B build -S . -Wno-dev -DSHAPESHIFTER_BACKEND=sdl2`
+- `cmake --build build`
+- `./build/shapeshifter_tests --reporter compact`
+- restored default config: `cmake -B build -S . -Wno-dev -DSHAPESHIFTER_BACKEND=raylib && cmake --build build`
+
+All commands passed (zero-warning build policy preserved).
+
+### Phase 3 Status (done vs remaining)
+
+**Done now (Phase-3 core priority):**
+- SDL2 backend renders playfield core floor geometry path (corridor edges, lane guides, floor connectors, ring fill, beat lines)
+- Render path routed through abstraction layer (raylib + SDL2 implementations)
+- Raylib backend kept healthy with parity-preserving abstraction implementation
+
+**Remaining in Phase 3 (next incremental slices):**
+- Port obstacle mesh/model path (`DrawMesh`/owned model draws) to SDL2 backend
+- Port particle 3D geometry path to SDL2 backend
+- Port UI render compositing path for SDL2 backend (currently world floor path focus)
+- Add screenshot/pixel-diff regression checks for raylib vs SDL2 floor parity

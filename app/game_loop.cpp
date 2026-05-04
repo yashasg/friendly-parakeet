@@ -90,11 +90,22 @@ void game_loop_init(entt::registry& reg,
     window.set_target_fps(60);
 
 #if defined(SHAPESHIFTER_BACKEND_SDL2)
-    (void)reg;
     (void)test_player_mode;
     (void)test_skill;
     (void)difficulty;
-    TraceLog(LOG_INFO, "SHAPESHIFTER v%s (SDL2 backend bring-up)", SHAPESHIFTER_VERSION);
+    reg.ctx().emplace<GameState>(GameState{
+        .phase = GamePhase::Playing, .previous_phase = GamePhase::Playing,
+        .phase_timer = 0.0f, .transition_pending = false,
+        .next_phase = GamePhase::Playing, .transition_alpha = 0.0f
+    });
+    spawn_game_camera(reg);
+    FloorParams floor{};
+    floor.size = constants::FLOOR_SHAPE_SIZE * constants::FLOOR_SCALE_REST;
+    floor.half = floor.size * 0.5f;
+    floor.thick = constants::FLOOR_OUTLINE_THICK;
+    floor.alpha = static_cast<uint8_t>(constants::FLOOR_ALPHA_REST);
+    reg.ctx().emplace<FloorParams>(floor);
+    TraceLog(LOG_INFO, "SHAPESHIFTER v%s (SDL2 backend phase-3 floor path)", SHAPESHIFTER_VERSION);
     return;
 #endif
 
@@ -191,11 +202,10 @@ void game_loop_init(entt::registry& reg,
 // Not in header — called by game_loop_run and platform_run_loop (Emscripten).
 void game_loop_frame(entt::registry& reg, float& accumulator) {
 #if defined(SHAPESHIFTER_BACKEND_SDL2)
-    (void)reg;
     (void)accumulator;
     auto& renderer = platform::graphics::renderer();
     renderer.begin_drawing();
-    renderer.clear_background(BLACK);
+    game_render_system(reg, 0.0f);
     renderer.end_drawing();
     return;
 #else

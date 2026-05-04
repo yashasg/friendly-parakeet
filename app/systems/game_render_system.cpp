@@ -8,7 +8,9 @@
 #include "../platform/graphics/renderer.h"
 #include "camera_system.h"
 #include <raylib.h>
+#if !defined(SHAPESHIFTER_BACKEND_SDL2)
 #include <rlgl.h>
+#endif
 #include <algorithm>
 #include <cmath>
 
@@ -27,16 +29,14 @@ static Color floor_lane_color(int lane, uint8_t alpha) {
     return c;
 }
 
-static void draw_floor_lines(const FloorParams& fp) {
-    rlBegin(RL_LINES);
-
+static void draw_floor_lines(platform::graphics::Renderer& renderer, const FloorParams& fp) {
     // Corridor edges
     {
         constexpr float sw = static_cast<float>(constants::SCREEN_W);
         constexpr float sh = static_cast<float>(constants::SCREEN_H);
-        rlColor4ub(40, 40, 60, 120);
-        rlVertex3f(0.0f, 0.0f, 0.0f);  rlVertex3f(0.0f, 0.0f, sh);
-        rlVertex3f(sw,   0.0f, 0.0f);  rlVertex3f(sw,   0.0f, sh);
+        const Color corridor = {40, 40, 60, 120};
+        renderer.draw_line_3d({0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, sh}, corridor);
+        renderer.draw_line_3d({sw, 0.0f, 0.0f}, {sw, 0.0f, sh}, corridor);
     }
 
     // Lane guide lines
@@ -46,11 +46,12 @@ static void draw_floor_lines(const FloorParams& fp) {
         for (int lane = 0; lane < constants::LANE_COUNT; ++lane) {
             float cx = constants::LANE_X[lane];
             Color c = floor_lane_color(lane, 50);
-            rlColor4ub(c.r, c.g, c.b, c.a);
-            rlVertex3f(cx - lane_half, 0.0f, 0.0f);
-            rlVertex3f(cx - lane_half, 0.0f, sh);
-            rlVertex3f(cx + lane_half, 0.0f, 0.0f);
-            rlVertex3f(cx + lane_half, 0.0f, sh);
+            renderer.draw_line_3d({cx - lane_half, 0.0f, 0.0f},
+                                  {cx - lane_half, 0.0f, sh},
+                                  c);
+            renderer.draw_line_3d({cx + lane_half, 0.0f, 0.0f},
+                                  {cx + lane_half, 0.0f, sh},
+                                  c);
         }
     }
 
@@ -65,40 +66,34 @@ static void draw_floor_lines(const FloorParams& fp) {
 
             if (j < constants::FLOOR_SHAPE_COUNT - 1) {
                 float next_cz = cz + constants::FLOOR_SHAPE_SPACING;
-                rlColor4ub(c.r, c.g, c.b, c.a);
-                rlVertex3f(cx, 0.0f, cz + fp.half);
-                rlVertex3f(cx, 0.0f, next_cz - fp.half);
+                renderer.draw_line_3d({cx, 0.0f, cz + fp.half},
+                                      {cx, 0.0f, next_cz - fp.half},
+                                      c);
             }
 
             if (lane == 1) {
                 float l = cx - fp.half, r = cx + fp.half;
                 float t = cz - fp.half, b = cz + fp.half;
-                rlColor4ub(c.r, c.g, c.b, c.a);
-                rlVertex3f(l, 0.0f, t); rlVertex3f(r, 0.0f, t);
-                rlVertex3f(r, 0.0f, t); rlVertex3f(r, 0.0f, b);
-                rlVertex3f(r, 0.0f, b); rlVertex3f(l, 0.0f, b);
-                rlVertex3f(l, 0.0f, b); rlVertex3f(l, 0.0f, t);
+                renderer.draw_line_3d({l, 0.0f, t}, {r, 0.0f, t}, c);
+                renderer.draw_line_3d({r, 0.0f, t}, {r, 0.0f, b}, c);
+                renderer.draw_line_3d({r, 0.0f, b}, {l, 0.0f, b}, c);
+                renderer.draw_line_3d({l, 0.0f, b}, {l, 0.0f, t}, c);
             }
 
             if (lane == 2) {
                 float apex_x = cx, apex_z = cz - fp.half;
                 float bl_x = cx - fp.half, bl_z = cz + fp.half;
                 float br_x = cx + fp.half, br_z = cz + fp.half;
-                rlColor4ub(c.r, c.g, c.b, c.a);
-                rlVertex3f(apex_x, 0.0f, apex_z); rlVertex3f(br_x, 0.0f, br_z);
-                rlVertex3f(br_x, 0.0f, br_z);     rlVertex3f(bl_x, 0.0f, bl_z);
-                rlVertex3f(bl_x, 0.0f, bl_z);     rlVertex3f(apex_x, 0.0f, apex_z);
+                renderer.draw_line_3d({apex_x, 0.0f, apex_z}, {br_x, 0.0f, br_z}, c);
+                renderer.draw_line_3d({br_x, 0.0f, br_z}, {bl_x, 0.0f, bl_z}, c);
+                renderer.draw_line_3d({bl_x, 0.0f, bl_z}, {apex_x, 0.0f, apex_z}, c);
             }
         }
     }
-
-    rlEnd();
 }
 
-static void draw_floor_rings(const FloorParams& fp) {
+static void draw_floor_rings(platform::graphics::Renderer& renderer, const FloorParams& fp) {
     Color c = floor_lane_color(0, fp.alpha);
-
-    rlBegin(RL_TRIANGLES);
     for (int j = 0; j < constants::FLOOR_SHAPE_COUNT; ++j) {
         float cz = constants::FLOOR_Y_START
             + static_cast<float>(j) * constants::FLOOR_SHAPE_SPACING;
@@ -121,19 +116,21 @@ static void draw_floor_rings(const FloorParams& fp) {
             float ix2 = cx + shape_verts::CIRCLE[next_idx].x * inner_r;
             float iz2 = cz + shape_verts::CIRCLE[next_idx].y * inner_r;
 
-            rlColor4ub(c.r, c.g, c.b, c.a);
-            rlVertex3f(ox1, 0.0f, oz1);
-            rlVertex3f(ix1, 0.0f, iz1);
-            rlVertex3f(ox2, 0.0f, oz2);
-            rlVertex3f(ix1, 0.0f, iz1);
-            rlVertex3f(ix2, 0.0f, iz2);
-            rlVertex3f(ox2, 0.0f, oz2);
+            renderer.draw_triangle_3d({ox1, 0.0f, oz1},
+                                      {ix1, 0.0f, iz1},
+                                      {ox2, 0.0f, oz2},
+                                      c);
+            renderer.draw_triangle_3d({ix1, 0.0f, iz1},
+                                      {ix2, 0.0f, iz2},
+                                      {ox2, 0.0f, oz2},
+                                      c);
         }
     }
-    rlEnd();
 }
 
-static void draw_floor_beat_lines(const SongState* song, const BeatMap* map) {
+static void draw_floor_beat_lines(platform::graphics::Renderer& renderer,
+                                  const SongState* song,
+                                  const BeatMap* map) {
     if (!song || !song->playing || song->scroll_speed <= 0.0f) return;
 
     constexpr float z_min = 0.0f;
@@ -159,12 +156,11 @@ static void draw_floor_beat_lines(const SongState* song, const BeatMap* map) {
         const uint8_t green = on_beat_line ? 245 : 170;
         const uint8_t blue = on_beat_line ? 255 : 210;
 
-        rlColor4ub(red, green, blue, alpha);
-        rlVertex3f(x_min, 0.0f, z);
-        rlVertex3f(x_max, 0.0f, z);
+        renderer.draw_line_3d({x_min, 0.0f, z},
+                              {x_max, 0.0f, z},
+                              {red, green, blue, alpha});
     };
 
-    rlBegin(RL_LINES);
     if (map && !map->beat_times.empty()) {
         const auto& beats = map->beat_times;
         auto it = std::lower_bound(beats.begin(), beats.end(), visible_time_min);
@@ -181,9 +177,9 @@ static void draw_floor_beat_lines(const SongState* song, const BeatMap* map) {
             draw_line_at_time(beat_time);
         }
     }
-    rlEnd();
 }
 
+#if !defined(SHAPESHIFTER_BACKEND_SDL2)
 static void draw_model_transform(const camera::ShapeMeshes& sm, const ModelTransform& mt) {
     // Use a per-draw local copy so the shared material is never mutated.
     Material mat = sm.material;
@@ -235,15 +231,17 @@ static void draw_owned_models(const entt::registry& reg) {
         }
     }
 }
+#endif
 
 void game_render_system(const entt::registry& reg, float /*alpha*/) {
+    [[maybe_unused]]
     auto& gs = reg.ctx().get<GameState>();
     auto& camera = game_camera(reg).cam;
     auto& renderer = platform::graphics::renderer();
 
     renderer.clear_background({15, 15, 25, 255});
 
-    rlSetClipPlanes(1.0, 5000.0);
+    renderer.set_clip_planes(1.0, 5000.0);
     renderer.begin_mode_3d(camera);
 
     const auto& floor_params = reg.ctx().get<FloorParams>();
@@ -251,10 +249,11 @@ void game_render_system(const entt::registry& reg, float /*alpha*/) {
     const auto* map = reg.ctx().find<BeatMap>();
 
     // ── Render passes ──────────────────────────────────────────
-    draw_floor_lines(floor_params);
-    draw_floor_beat_lines(song, map);
-    draw_floor_rings(floor_params);
+    draw_floor_lines(renderer, floor_params);
+    draw_floor_beat_lines(renderer, song, map);
+    draw_floor_rings(renderer, floor_params);
 
+#if !defined(SHAPESHIFTER_BACKEND_SDL2)
     if (gs.phase != GamePhase::Title) {
         rlDrawRenderBatchActive();
         rlDisableDepthTest();
@@ -263,6 +262,7 @@ void game_render_system(const entt::registry& reg, float /*alpha*/) {
         rlDrawRenderBatchActive();
         rlEnableDepthTest();
     }
+#endif
 
     renderer.end_mode_3d();
 }
