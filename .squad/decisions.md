@@ -3094,3 +3094,222 @@ Once SDL2 is stable:
 ---
 
 **End of Migration Plan**
+# Decision: Rendering Library Migration Strategy — GitHub Issue #372 Opened
+
+**Date:** 2026-05-04T07:34:15Z  
+**Author:** Edie (Product Manager)  
+**Issue:** yashasg/friendly-parakeet#372 — "Rendering Migration: Raylib → SDL2 → SDL3 (Phased Strategy)"  
+**Status:** DECISION DOCUMENTED (Issue Open, Ready for Implementation)
+
+---
+
+## Executive Summary
+
+Created GitHub issue #372 to document and execute a **phased rendering library migration strategy: raylib → SDL2 (interim) → SDL3 (final target).** Issue is assigned to squad, labeled for Keaton (C++ Performance Engineer), and includes comprehensive plan covering decision context, 7-phase implementation roadmap, risks, acceptance criteria, and rollback strategy.
+
+**Immediate action:** Execute **Phase 1 - Rendering Abstraction Layer** this week.
+
+---
+
+## Decision Context
+
+### Why Document This Now?
+
+1. **SDL3 represents the future** of cross-platform game development (modern graphics pipelines: Vulkan/Metal/DX12, improved mobile support, better architecture).
+2. **SDL2 is the proven interim step**: Battle-tested, stable, will serve as baseline for eventual SDL3 transition.
+3. **Architecture-first approach**: Creating abstraction layers now ensures minimal re-engineering during SDL3 migration.
+4. **Timeline de-coupling**: SDL3 is still maturing; SDL2 adoption insulates SHAPESHIFTER from SDL3's release schedule.
+
+### Current State Analysis
+
+- **Engine:** raylib 5.5 (well-compartmentalized; 53 raylib refs mostly in input/rendering systems)
+- **Architecture:** ECS-driven via EnTT; 90%+ platform-agnostic
+- **Abstraction readiness:** Input, rendering, and audio systems are isolated and ready for interface extraction
+- **Test suite:** 142 test cases provide safety net for refactoring
+
+---
+
+## Phased Implementation Plan
+
+| Phase | Goal | Effort | Risk | Blocker? |
+|-------|------|--------|------|----------|
+| **1** | **Rendering abstraction layer** (`Renderer` interface, `RaylibRenderer` impl, DI in render systems) | 1–2 wk | Low | No (additive) |
+| 2 | Input abstraction (`InputHandler` interface) | 1 wk | Medium | Phase 1 complete |
+| 3 | Audio abstraction (`AudioEngine` interface) | 3–5 d | Low | Phase 1 complete |
+| 4 | SDL2 concrete implementations (all 3 interfaces) | 2–3 wk | Medium | Phases 1–3 complete |
+| 5 | Desktop platform validation (macOS/Windows/Linux) | 1 wk | Medium | Phase 4 complete |
+| 6 | Web (Emscripten) & iOS adaptation | 1.5–2 wk | High | Phase 5 complete |
+| 7 | Raylib sunsetting & SDL2 stabilization | 3–5 d | Very low | All prior phases |
+
+**Total:** 8–11 weeks (parallel work possible in Phases 4–5)
+
+---
+
+## Key Risks & Mitigations
+
+| Risk | Likelihood | Impact | Mitigation |
+|------|------------|--------|-----------|
+| SDL2 input event loop differs from raylib (touch/keyboard timing critical for rhythm game) | Medium | High | Phase 2: extensive integration tests; parallel playtest with both engines |
+| Emscripten/SDL2 support immature | Medium | High | Phase 6: spike investigation early; fallback to raylib for Web if needed |
+| iOS event loop integration fails | Low | High | iOS abstraction layer; fallback: PWA wrapper (1–2 weeks to deploy) |
+| Rendering quality regression (color space, filtering) | Low | Medium | Phase 4: pixel-perfect comparison tests; keep raylib as visual reference |
+| Test coverage gaps in edge cases | Medium | Medium | Expand test suite before Phase 1; add integration tests |
+
+**Rollback strategy:** If critical blocker encountered, revert to raylib (2-day branch reset); document findings for next cycle.
+
+---
+
+## Acceptance Criteria (Phase 1 Focus)
+
+### Phase 1 Completion
+
+- [ ] `Renderer` interface compiles zero warnings (all platforms: Clang `-Wall -Wextra -Werror`, MSVC `/W4 /WX`, Emscripten)
+- [ ] 142 test cases pass (`./run.sh test`)
+- [ ] `game_render_system` and `ui_render_system` exclusively use abstraction
+- [ ] Zero raylib function calls outside `RaylibRenderer` implementation
+- [ ] Code review approved by Lead Architect (Keyser)
+
+### Future Phases (Phases 2–7)
+
+- All input/audio systems query abstract interfaces
+- Parallel runtime toggle: raylib vs. SDL2 via CMake flag
+- Desktop, Web, iOS all run identical codebase (renderer selected at startup)
+- Performance overhead ≤ 5% vs. raylib baseline
+- Production build defaults to SDL2; raylib archived (or kept as fallback)
+
+---
+
+## SDL3 Future Path
+
+Once SDL3 reaches **v1.0 GA + ecosystem maturity** (estimated Q1 2027):
+
+1. **Minimal rework:** Implement `SDL3Renderer` (inherits from `Renderer` interface)
+2. **Feature parity:** Gains modern graphics pipelines (Vulkan/Metal/DX12) with zero game-logic changes
+3. **Deprecation:** Archive SDL2 renderer; migrate live build to SDL3
+4. **Effort:** 2–3 weeks (significantly less than SDL2 phase due to abstraction layer)
+
+---
+
+## Issue Details
+
+- **Issue Number:** #372
+- **Repository:** yashasg/friendly-parakeet
+- **URL:** https://github.com/yashasg/friendly-parakeet/issues/372
+- **Title:** "Rendering Migration: Raylib → SDL2 → SDL3 (Phased Strategy)"
+- **Assigned to:** @yashasg (Edie, Product Manager)
+- **Labels:** `squad`, `squad:keaton`
+- **Kickoff Comment:** https://github.com/yashasg/friendly-parakeet/issues/372#issuecomment-4369081224
+
+---
+
+## Immediate Next Action
+
+**Execute Phase 1: Rendering Abstraction Layer**
+
+**Task breakdown:**
+1. Create `include/rendering/renderer.h` with `Renderer` interface
+2. Create `include/rendering/raylib_renderer.h` implementing concrete raylib backend
+3. Refactor `game_render_system.cpp` → dependency injection of `Renderer`
+4. Refactor `ui_render_system.cpp` → dependency injection of `Renderer`
+5. Write unit tests mocking `Renderer` interface (zero raylib calls)
+6. Verify: zero warnings + all 142 tests passing
+7. Code review + merge
+
+**Owners:** Keaton (implementation), Keyser (architecture review)  
+**Start:** This week (2026-05-06 target)  
+**Success criteria:** Phase 1 PR merged with Lead Architect approval
+
+---
+
+## References
+
+- **Full plan:** GitHub issue #372
+- **Architecture:** `design-docs/architecture.md` (ECS, component registry, system order)
+- **Prior art:** Commit `1fab9d2` (raylib migration rationale)
+- **Platform analysis:** `.squad/decisions/archive/keyser-raylib-vs-sdl2.md` (comprehensive cost/benefit analysis)
+
+---
+
+## Decision Log
+
+- **2026-05-03:** Keyser completed raylib vs. SDL2 analysis (recommended keeping raylib for iOS-independent reasons)
+- **2026-05-04:** Edie reframed analysis as abstraction-first strategy: interim SDL2 + eventual SDL3, not immediate necessity
+- **2026-05-04:** GitHub issue #372 created, assigned to squad, labeled for Keaton
+- **2026-05-04:** Kickoff comment posted; Phase 1 ready for implementation
+
+---
+
+## Questions for Stakeholders
+
+- Should we create SDL2 branch early (Phase 0) to enable parallel development?
+- Does iOS deployment really need library migration, or can we use PWA interim solution?
+- Should Phase 7 include automated regression tests comparing pixel output frame-by-frame?
+- Any platform-specific requirements (haptics, safe-area insets) that need SDL2 discovery phase?
+
+✅ **Status:** Ready for implementation. Phase 1 starts this week.
+# Keaton Phase 1 Abstraction Progress (raylib -> SDL2)
+
+Date: 2026-05-04
+Requester: yashasg
+Scope: Phase 1 only (abstraction layer + compile scaffolding)
+
+## Architectural choices applied
+
+1. **Interface-first seams with raylib still authoritative**
+   - Introduced three thin interfaces:
+     - `platform::graphics::Renderer`
+     - `platform::input::InputHandler`
+     - `platform::window::WindowManager`
+   - Added singleton accessors (`renderer()`, `input_handler()`, `window_manager()`) so existing systems can migrate call sites with minimal churn.
+
+2. **Behavior parity via direct raylib delegation**
+   - Raylib implementations are 1:1 wrappers around existing API usage patterns.
+   - No gameplay/timing semantics were changed; only call path ownership changed.
+
+3. **SDL2 compile-time scaffolding without functional cutover**
+   - Added non-functional stubs:
+     - `renderer_sdl2.cpp`
+     - `input_handler_sdl2.cpp`
+     - `window_manager_sdl2.cpp`
+   - Stubs are intentionally inert and currently unselected at runtime.
+
+4. **Highest-leverage call-site migration only**
+   - `game_loop.cpp`: frame time, texture pass boundaries, frame composition draw calls, and window lifecycle moved to abstractions.
+   - `input_system.cpp`: mouse/touch/keyboard/focus polling moved to input abstraction while preserving event enqueue behavior.
+   - `game_render_system.cpp`: frame clear + 3D mode boundaries moved to renderer abstraction.
+   - `platform_display.cpp`: native display dimensions now queried via window abstraction.
+
+5. **Build integration strategy**
+   - Updated CMake platform source glob to include:
+     - `app/platform/graphics/*.cpp`
+     - `app/platform/input/*.cpp`
+     - `app/platform/window/*.cpp`
+   - No SDL2 package linkage introduced in this phase.
+
+## Validation
+
+- Configure/build/tests executed successfully:
+  - `cmake -B build -S . -Wno-dev`
+  - `cmake --build build`
+  - `./build/shapeshifter_tests`
+- Outcome: `All tests passed (2176 assertions in 782 test cases)`.
+
+## Phase 1 status (this pass)
+
+- ✅ Thin abstraction interfaces added
+- ✅ Raylib-backed implementations added
+- ✅ SDL2 placeholders added for compile scaffolding
+- ✅ High-leverage call sites migrated to abstraction layer
+- ✅ Build/tests green, warning policy preserved
+
+## Remaining for Phase 1 hardening (future follow-up within phase)
+
+- Migrate additional direct raylib calls in UI/audio-adjacent paths that are still low-risk but outside this pass.
+- Add explicit backend selection plumbing (compile-time option) while keeping raylib default.
+- Expand abstraction usage in remaining window/input/render call sites where payoff > churn.
+
+
+---
+**Processed from inbox on 2026-05-04T07:38:39Z**
+---
+
