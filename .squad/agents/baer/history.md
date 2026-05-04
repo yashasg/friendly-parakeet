@@ -129,3 +129,23 @@ Team ready for next phase.
 - `ctest --test-dir build-raylib --output-on-failure -R "redfoot/#168: existing game_over buttons keep their original positions"` ❗ expected pre-existing fail
 - `ctest --test-dir build-sdl2 --output-on-failure -R "redfoot/#168: existing game_over buttons keep their original positions"` ❗ expected pre-existing fail
 - `ctest --test-dir build-sdl2 --output-on-failure` ❗ known pre-existing Not Run cascade (`Unable to find executable .../build-sdl2/shapeshifter_tests`)
+
+## 2026-05-04 — Final migration acceptance gate execution (Issue #372)
+
+**Status:** PASS (no new migration regressions)
+
+**Scope executed (current branch reality):**
+- `cmake -B build -S . -DSHAPESHIFTER_BACKEND=sdl2 -DCMAKE_BUILD_TYPE=Release -Wno-dev`
+- `cmake --build build --target shapeshifter_tests`
+- `./build/shapeshifter_tests --skip-benchmarks -v quiet` (backend-relevant path: full regression)
+- `./build/shapeshifter_tests "[render][sdl2][validation]" -v quiet` (backend-relevant path: deterministic render validation)
+- `ctest --test-dir build --output-on-failure -R "redfoot/#168: existing game_over buttons keep their original positions"` (baseline sentinel)
+
+**Classification vs baseline ledger:**
+- Core regression suite: ✅ pass
+- SDL2 render validation slice: ✅ pass
+- Sentinel `redfoot/#168`: ⚠️ fails as expected (pre-existing baseline)
+
+**Gate verdict:**
+- ✅ PASS for migration acceptance gate on this branch state.
+- Residual non-gating note unchanged: direct `raylib` dependency eviction outside backend dispatch remains a follow-up slice.
