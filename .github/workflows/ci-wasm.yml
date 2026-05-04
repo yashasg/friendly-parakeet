@@ -11,11 +11,12 @@ on:
       - "design-docs/**"
       - "*.md"
       - "*.log"
+  workflow_dispatch:
 
 jobs:
   build-web:
     name: Build (WebAssembly)
-    if: github.event.action != 'closed'
+    if: github.event_name != 'pull_request' || github.event.action != 'closed'
     runs-on: ubuntu-latest
     permissions:
       contents: read
