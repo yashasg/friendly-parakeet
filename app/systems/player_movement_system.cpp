@@ -5,7 +5,7 @@
 #include "../components/transform.h"
 #include "../util/haptic_queue.h"
 #include "../constants.h"
-#include <raymath.h>
+#include "platform/runtime_api.h"
 
 void player_movement_system(entt::registry& reg, float dt) {
     auto* song = reg.ctx().find<SongState>();

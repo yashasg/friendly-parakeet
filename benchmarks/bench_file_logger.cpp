@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/benchmark/catch_benchmark.hpp>
-#include <raylib.h>
+#include "platform/runtime_api.h"
 
 #include "util/file_logger.h"
 

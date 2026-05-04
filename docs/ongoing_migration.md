@@ -12,12 +12,13 @@
 | 4 | Input parity | ✅ Done |
 | 5 | Audio/timing abstraction slice | ✅ Done |
 | 6 | Active migration implementation + CI proof | ✅ Done |
-| 7 | Deprecation/removal execution | ✅ Done (SDL2 sole backend path) |
+| 7 | Deprecation/removal execution | ✅ Done (SDL2 sole backend path, external raylib dependency removed) |
 
 ## Backend policy
 
 - SDL2 is the only supported backend.
 - `SHAPESHIFTER_BACKEND=sdl2` is the only accepted backend selection.
+- Runtime/build graph no longer links or installs raylib.
 
 ## Build + test (native)
 

@@ -7,7 +7,7 @@
 #include "../constants.h"
 #include "../platform/graphics/renderer.h"
 #include "camera_system.h"
-#include <raylib.h>
+#include "platform/runtime_api.h"
 #include <algorithm>
 #include <cmath>
 

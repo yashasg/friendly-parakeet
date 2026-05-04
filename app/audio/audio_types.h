@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <entt/entt.hpp>
 #include <magic_enum/magic_enum.hpp>
-#include <raylib.h>
+#include "platform/runtime_api.h"
 
 enum class SFX : uint8_t {
     ShapeShift = 0,

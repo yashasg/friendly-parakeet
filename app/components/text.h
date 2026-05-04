@@ -1,6 +1,6 @@
 #pragma once
 
-#include <raylib.h>
+#include "platform/runtime_api.h"
 #include <cstdint>
 
 // ── TextAlign ────────────────────────────────────────────────
@@ -12,7 +12,7 @@ enum class FontSize : int { Small = 0, Medium = 1, Large = 2 };
 
 // ── TextContext ──────────────────────────────────────────────
 // Plain data struct stored in the ECS registry context.
-// Holds pre-loaded raylib Font objects at different point sizes.
+// Holds pre-loaded runtime Font objects at different point sizes.
 // No logic, no methods beyond default construction.
 struct TextContext {
     Font font_small{};    // ~16pt  — labels, small HUD text

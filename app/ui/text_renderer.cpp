@@ -1,5 +1,5 @@
 #include "text_renderer.h"
-#include <raylib.h>
+#include "platform/runtime_api.h"
 #include <cstdio>
 #include <string>
 

@@ -2,7 +2,7 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "util/shape_vertices.h"
 #include "constants.h"
-#include <raylib.h>
+#include "platform/runtime_api.h"
 #include <cmath>
 
 using Catch::Matchers::WithinAbs;

@@ -2,7 +2,7 @@
 
 #include "../components/input_events.h"
 #include "../constants.h"
-#include <raylib.h>
+#include "platform/runtime_api.h"
 
 constexpr unsigned int kGameplayGestureFlags =
     GESTURE_TAP

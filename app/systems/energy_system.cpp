@@ -3,7 +3,7 @@
 #include "../components/gameplay_intents.h"
 #include "../components/rhythm.h"
 #include "../constants.h"
-#include <raymath.h>
+#include "platform/runtime_api.h"
 
 void energy_system(entt::registry& reg, float dt) {
     if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;

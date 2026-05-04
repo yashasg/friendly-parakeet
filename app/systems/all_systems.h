@@ -3,7 +3,7 @@
 #include <entt/entt.hpp>
 #include "../components/game_state.h"
 
-// Phase 0: Raw input (polls raylib input)
+// Phase 0: Raw input polling
 void input_system_init(entt::registry& reg);  // one-time: emplace WebInputPolicy + platform detection
 void input_system(entt::registry& reg, float raw_dt);
 

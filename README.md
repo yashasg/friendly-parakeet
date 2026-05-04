@@ -187,7 +187,7 @@ The level designer uses song structure (intro/verse/chorus/bridge) to control de
 | Library | Version | Purpose |
 |---------|---------|---------|
 | [SDL2](https://www.libsdl.org/) | 2.x | Windowing, input, rendering backend |
-| [raylib](https://www.raylib.com/) | 5.5 | Legacy math/types + remaining runtime utilities (deprecation cleanup ongoing) |
+| Internal runtime compatibility layer (`app/platform/runtime_*`) | n/a | Project-owned legacy API compatibility shims (no external raylib dependency) |
 | [EnTT](https://github.com/skypjack/entt) | 3.16.0 | Entity Component System |
 | [nlohmann-json](https://github.com/nlohmann/json) | 3.12+ | Beatmap JSON parsing |
 | [Catch2](https://github.com/catchorg/Catch2) | 3.13+ | Testing framework |

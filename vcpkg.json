@@ -6,9 +6,8 @@
   "dependencies": [
     "entt",
     "magic-enum",
-    "raylib",
+    "miniaudio",
     { "name": "sdl2", "platform": "!emscripten" },
-    "raygui",
     "nlohmann-json",
     { "name": "catch2", "platform": "!linux" }
   ]

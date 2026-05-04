@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <vector>
-#include <raylib.h>
+#include "platform/runtime_api.h"
 
 #if defined(SHAPESHIFTER_BACKEND_SDL2) && !defined(__EMSCRIPTEN__)
 #include "../sdl2/sdl2_headers.h"

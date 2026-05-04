@@ -4242,3 +4242,10 @@ Results:
 
 - **Backend migration complete:** Yes (SDL2-only active backend path).
 - **Total raylib dependency eradication:** Not fully complete; residual direct API dependencies remain outside backend dispatch surfaces.
+
+## 2026-05-04 — Keaton: Final external raylib eviction (Issue #372)
+
+- Removed external raylib from CMake linkage and vcpkg manifest.
+- Introduced project-owned runtime compatibility surface (`platform/runtime_api.h`) and compatibility implementation (`runtime_types.h`, `runtime_compat.cpp`, `raygui_compat.cpp`).
+- Rewired runtime include usage to project API surface; SDL2 remains sole backend.
+- Validation passed: full non-bench suite + render/input/audio validation slices.

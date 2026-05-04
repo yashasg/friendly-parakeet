@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cstdint>
-#include <raylib.h>
+#include "platform/runtime_api.h"
 #include <entt/entt.hpp>
 
 struct DrawSize {

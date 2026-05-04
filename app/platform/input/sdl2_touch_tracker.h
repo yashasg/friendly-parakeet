@@ -6,7 +6,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
-#include <raylib.h>
+#include "platform/runtime_api.h"
 
 namespace platform::input {
 

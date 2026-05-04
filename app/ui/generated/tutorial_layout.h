@@ -16,7 +16,7 @@
 #ifndef TUTORIAL_LAYOUT_H
 #define TUTORIAL_LAYOUT_H
 
-#include "raylib.h"
+#include "platform/runtime_api.h"
 
 #ifdef __cplusplus
 extern "C" {

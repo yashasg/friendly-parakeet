@@ -3,7 +3,7 @@
 #if defined(SHAPESHIFTER_BACKEND_SDL2) && !defined(__EMSCRIPTEN__)
 #include "../sdl2/sdl2_headers.h"
 #else
-#include <raylib.h>
+#include "platform/runtime_api.h"
 #endif
 
 namespace platform::timing {

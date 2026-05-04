@@ -16,7 +16,7 @@
 #ifndef PAUSED_LAYOUT_H
 #define PAUSED_LAYOUT_H
 
-#include "raylib.h"
+#include "platform/runtime_api.h"
 
 #ifdef __cplusplus
 extern "C" {

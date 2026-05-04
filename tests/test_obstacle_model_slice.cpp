@@ -56,8 +56,8 @@
 
 #include <catch2/catch_test_macros.hpp>
 #include <type_traits>
-#include <raylib.h>
-#include <raymath.h>
+#include "platform/runtime_api.h"
+#include "platform/runtime_api.h"
 #include <entt/entt.hpp>
 
 #include "test_helpers.h"

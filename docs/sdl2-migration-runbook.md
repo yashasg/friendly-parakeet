@@ -1,6 +1,6 @@
 # SDL2 Migration Runbook (Issue #372)
 
-Phase 7 finalization is complete: SDL2 is now the only active backend path.
+Phase 7 finalization is complete: SDL2 is now the only active backend path and raylib is no longer a runtime dependency.
 
 ## Migration-complete validation matrix
 

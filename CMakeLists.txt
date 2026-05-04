@@ -56,8 +56,7 @@ configure_file(
 
 # ── Dependencies ─────────────────────────────────────────────
 # EnTT: header-only ECS framework (vcpkg on all platforms).
-# raylib: legacy runtime utility dependency (math/types/audio glue paths still
-#         present while final direct API cleanup is in progress).
+# miniaudio: header-only decode backend used by SDL2 audio implementation.
 # raygui: immediate-mode UI header (vcpkg on all platforms, header-only package).
 # Catch2: test framework (vcpkg on all platforms).
 # nlohmann-json: JSON parsing for beat map loading (vcpkg on all platforms).
@@ -65,11 +64,10 @@ configure_file(
 find_package(EnTT CONFIG REQUIRED)
 find_package(magic_enum CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
-find_package(raylib CONFIG REQUIRED)
 if(NOT EMSCRIPTEN)
     find_package(SDL2 CONFIG REQUIRED)
 endif()
-find_path(RAYGUI_INCLUDE_DIR raygui.h REQUIRED)
+find_path(MINIAUDIO_INCLUDE_DIR miniaudio.h REQUIRED)
 
 find_package(Catch2 3 CONFIG REQUIRED)
 
@@ -86,7 +84,7 @@ target_compile_options(shapeshifter_warnings INTERFACE
 
 # Mark third-party include directories as SYSTEM so warnings from their
 # headers are suppressed and cannot be promoted to errors by -Werror.
-set(_system_deps EnTT::EnTT magic_enum::magic_enum raylib nlohmann_json::nlohmann_json Catch2::Catch2 Catch2::Catch2WithMain)
+set(_system_deps EnTT::EnTT magic_enum::magic_enum nlohmann_json::nlohmann_json Catch2::Catch2 Catch2::Catch2WithMain)
 if(TARGET SDL2::SDL2)
     list(APPEND _system_deps SDL2::SDL2)
 endif()
@@ -127,7 +125,7 @@ file(GLOB UI_SCREEN_CONTROLLER_SOURCES CONFIGURE_DEPENDS app/ui/screen_controlle
 file(GLOB INPUT_SOURCES CONFIGURE_DEPENDS app/input/*.cpp)
 file(GLOB SESSION_SOURCES CONFIGURE_DEPENDS app/session/*.cpp)
 file(GLOB ENTITY_SOURCES CONFIGURE_DEPENDS app/entities/*.cpp)
-# Exclude files requiring a live raylib context from the library. They are
+# Exclude files requiring a live graphics/input context from the library. They are
 # compiled directly into the executable targets.
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "(^|/)game_render_system\\.cpp$")
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "(^|/)ui_render_system\\.cpp$")
@@ -159,13 +157,12 @@ target_include_directories(shapeshifter_lib PUBLIC
     ${CMAKE_BINARY_DIR}/generated
 )
 target_include_directories(shapeshifter_lib SYSTEM PUBLIC
-    ${RAYGUI_INCLUDE_DIR}
+    ${MINIAUDIO_INCLUDE_DIR}
 )
 target_link_libraries(shapeshifter_lib PUBLIC
     EnTT::EnTT
     magic_enum::magic_enum
     nlohmann_json::nlohmann_json
-    raylib
 )
 if(TARGET SDL2::SDL2)
     target_link_libraries(shapeshifter_lib PUBLIC SDL2::SDL2)
@@ -231,7 +228,6 @@ target_include_directories(shapeshifter PRIVATE
 )
 target_link_libraries(shapeshifter PRIVATE
     shapeshifter_lib
-    raylib
     shapeshifter_warnings
 )
 
@@ -376,7 +372,6 @@ target_include_directories(shapeshifter_startup_shutdown_smoke PRIVATE
 )
 target_link_libraries(shapeshifter_startup_shutdown_smoke PRIVATE
     shapeshifter_lib
-    raylib
     shapeshifter_warnings
 )
 add_dependencies(shapeshifter_startup_shutdown_smoke shapeshifter)
@@ -541,16 +536,6 @@ set_source_files_properties(
     PROPERTIES SKIP_UNITY_BUILD_INCLUSION TRUE
 )
 
-# raygui is header-only and requires one implementation owner TU.
-# Under unity builds we force that TU out of unity batching so
-# RAYGUI_IMPLEMENTATION is scoped to exactly one translation unit.
-set_source_files_properties(
-    app/ui/screen_controllers/title_screen_controller.cpp
-    PROPERTIES
-        COMPILE_DEFINITIONS RAYGUI_IMPLEMENTATION
-        SKIP_UNITY_BUILD_INCLUSION TRUE
-)
-
 add_executable(shapeshifter_tests
     ${TEST_SOURCES}
     app/util/file_logger.cpp
@@ -563,7 +548,6 @@ target_include_directories(shapeshifter_tests PRIVATE
 )
 target_link_libraries(shapeshifter_tests PRIVATE
     shapeshifter_lib
-    raylib
     Catch2::Catch2WithMain
     shapeshifter_warnings
 )

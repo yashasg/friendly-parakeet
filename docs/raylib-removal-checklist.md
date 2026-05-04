@@ -11,17 +11,23 @@
 - [x] Remove raylib backend implementations from `app/platform/*/*_raylib.cpp`.
 - [x] Remove `SHAPESHIFTER_BACKEND_RAYLIB` compile-path conditionals and selection wiring.
 - [x] Remove stale migration shims/comments tied to dual-backend selection.
-- [ ] Remove all remaining raylib API usage from non-backend runtime utilities.
+- [x] Remove all remaining direct external raylib API usage from non-backend runtime utilities.
 
 ## Build system + dependency cleanup
 
 - [x] Remove raylib backend selection from CMake/build scripts.
 - [x] Delete raylib-specific CI backend validation lanes.
 - [x] Re-verify macOS/Linux/Windows SDL2-only link paths.
-- [ ] Drop raylib package dependency from `CMakeLists.txt` and `vcpkg.json` (blocked by remaining direct API usage in shared runtime modules).
+- [x] Drop raylib package dependency from `CMakeLists.txt` and `vcpkg.json`.
 
 ## Documentation + ops cleanup
 
 - [x] Update `README.md` backend section to SDL2-only commands.
 - [x] Update migration runbook to post-migration SDL2-only state.
-- [ ] Record final rollback plan in `.squad/decisions.md`.
+- [x] Record final rollback plan in `.squad/decisions.md`.
+
+## Completion record
+
+- ✅ Completed on 2026-05-04: runtime now builds/tests against SDL2 + local runtime compatibility shims only.
+- ✅ `find_package(raylib)` removed.
+- ✅ `vcpkg.json` raylib dependency removed.

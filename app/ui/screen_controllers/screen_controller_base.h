@@ -5,7 +5,7 @@
 #define SCREEN_CONTROLLER_BASE_H
 
 #include <entt/entt.hpp>
-#include <raylib.h>
+#include "platform/runtime_api.h"
 
 #include "../../components/game_state.h"
 

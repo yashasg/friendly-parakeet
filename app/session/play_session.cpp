@@ -20,7 +20,7 @@
 #include "../entities/player_entity.h"
 #include "../constants.h"
 #include <filesystem>
-#include <raylib.h>
+#include "platform/runtime_api.h"
 
 namespace {
 

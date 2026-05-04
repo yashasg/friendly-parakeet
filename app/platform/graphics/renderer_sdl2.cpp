@@ -3,7 +3,7 @@
 
 #if !defined(__EMSCRIPTEN__)
 #include "../sdl2/sdl2_headers.h"
-#include <raymath.h>
+#include "platform/runtime_api.h"
 #endif
 
 namespace platform::graphics {

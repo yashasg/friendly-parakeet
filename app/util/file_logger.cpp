@@ -1,6 +1,6 @@
 #include "file_logger.h"
 #include "safe_localtime.h"
-#include <raylib.h>
+#include "platform/runtime_api.h"
 #include <cstdio>
 #include <cstdarg>
 #include <ctime>

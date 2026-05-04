@@ -19,7 +19,7 @@
 
 #include <raygui.h>
 #include "../generated/gameplay_hud_layout.h"
-#include <raymath.h>
+#include "platform/runtime_api.h"
 
 namespace {
 

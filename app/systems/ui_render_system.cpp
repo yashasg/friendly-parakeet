@@ -19,8 +19,8 @@
 #include "../ui/screen_controllers/tutorial_screen_controller.h"
 #include "../ui/screen_controllers/level_select_screen_controller.h"
 #include "../ui/screen_controllers/gameplay_hud_screen_controller.h"
-#include <raylib.h>
-#include <raymath.h>
+#include "platform/runtime_api.h"
+#include "platform/runtime_api.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>

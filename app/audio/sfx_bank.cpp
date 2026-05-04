@@ -2,7 +2,7 @@
 #include "audio_types.h"
 #include "../platform/audio/music_backend.h"
 
-#include <raylib.h>
+#include "platform/runtime_api.h"
 
 #include <algorithm>
 #include <array>

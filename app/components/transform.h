@@ -1,10 +1,10 @@
 #pragma once
 
-#include <raylib.h>
+#include "platform/runtime_api.h"
 
 // Authoritative world-space spatial state for moving/rendered world entities.
 // New entity contracts should use this instead of adding new position structs.
-// Named WorldTransform to avoid colliding with raylib's global Transform type.
+// Named WorldTransform to avoid colliding with legacy global Transform names.
 struct WorldTransform {
     Vector2 position = {0.0f, 0.0f};
     float   rotation = 0.0f;
@@ -22,5 +22,4 @@ struct MotionVelocity {
 struct UIPosition {
     Vector2 value = {0.0f, 0.0f};
 };
-
 

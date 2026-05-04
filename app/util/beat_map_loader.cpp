@@ -5,7 +5,7 @@
 #include <cmath>
 #include <algorithm>
 #include <optional>
-#include <raylib.h>
+#include "platform/runtime_api.h"
 
 using json = nlohmann::json;
 

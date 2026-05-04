@@ -3,7 +3,7 @@
 #include "../components/transform.h"
 #include "../components/rendering.h"
 #include "../constants.h"
-#include <raymath.h>
+#include "platform/runtime_api.h"
 #include <cstdint>
 #include <stdexcept>
 
@@ -239,7 +239,7 @@ void build_obstacle_model(entt::registry& reg, entt::entity logical) {
     }
 
     // Manual model construction — never use LoadModelFromMesh (opaque + GPU-implicit).
-    // raylib 5.5: GenMeshCube already returns an uploaded mesh; no UploadMesh needed.
+    // Runtime mesh generator returns upload-ready mesh data; no explicit UploadMesh step.
     Model model = {};
     model.transform     = MatrixIdentity();
     model.meshCount     = 1;

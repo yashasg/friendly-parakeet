@@ -5,7 +5,7 @@
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
-#include <rlgl.h>
+#include "platform/runtime_api.h"
 #include <algorithm>
 
 void platform_get_display_size(float& out_w, float& out_h) {
@@ -24,7 +24,7 @@ void platform_get_display_size(float& out_w, float& out_h) {
 }
 
 void platform_pre_blit() {
-    // After canvas buffer resize, raylib's viewport may not reflect the new
+    // After canvas buffer resize, the viewport may not reflect the new
     // dimensions.  Explicitly set viewport + ortho to match the buffer.
     int buf_w = 0, buf_h = 0;
     emscripten_get_canvas_element_size("#canvas", &buf_w, &buf_h);
@@ -88,7 +88,7 @@ void platform_get_display_size(float& out_w, float& out_h) {
 }
 
 void platform_pre_blit() {
-    // No-op on native — raylib manages the viewport.
+    // No-op on native — renderer manages the viewport.
 }
 
 #endif

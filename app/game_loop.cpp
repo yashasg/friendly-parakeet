@@ -32,7 +32,7 @@
 #include "util/high_score_persistence.h"
 #include "platform/haptics_backend.h"
 
-#include <raylib.h>
+#include "platform/runtime_api.h"
 #include <algorithm>
 #include <string>
 

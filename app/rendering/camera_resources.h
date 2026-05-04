@@ -1,6 +1,6 @@
 #pragma once
 
-#include <raylib.h>
+#include "platform/runtime_api.h"
 #include <cstdint>
 
 // Per-frame render parameters computed from SongState beat pulse.

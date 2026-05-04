@@ -375,3 +375,16 @@ All commands passed (zero-warning build policy preserved).
 - Removed dual-backend CMake/build/CI selection paths; `SHAPESHIFTER_BACKEND` now accepts only `sdl2`, and WASM/link verification now validates SDL2 flags directly.
 - Updated migration docs (`README`, ongoing migration status, runbook, checklists) to reflect migration completion state.
 - Validation: `cmake -B build -S . -DSHAPESHIFTER_BACKEND=sdl2 -DCMAKE_BUILD_TYPE=Release -Wno-dev`, `cmake --build build --target shapeshifter_tests`, `./build/shapeshifter_tests --skip-benchmarks -v quiet`, `./build/shapeshifter_tests "[render][sdl2][validation]" -v quiet`, plus known-failure sentinel (`redfoot/#168`) still failing as expected.
+
+## 2026-05-04 — Issue #372 Final Raylib Eviction Closure
+
+- Removed external raylib dependency from build graph (`CMakeLists.txt`, `vcpkg.json`).
+- Replaced direct external include paths with internal runtime abstraction (`app/platform/runtime_api.h`) across runtime modules.
+- Added local runtime compatibility layer (`app/platform/runtime_types.h`, `app/platform/runtime_compat.cpp`) and lightweight UI shim (`app/raygui.h`, `app/platform/raygui_compat.cpp`) to preserve existing call surfaces while fully decoupling from raylib package linkage.
+- Validation completed:
+  - `cmake -B build -S . -Wno-dev && cmake --build build -j4`
+  - `./build/shapeshifter_tests "~[bench]"`
+  - `./build/shapeshifter_tests "[render]"`
+  - `./build/shapeshifter_tests "[input]"`
+  - `./build/shapeshifter_tests "[audio]"`
+- Result: all suites pass, zero-warning policy preserved, SDL2-only runtime remains active.

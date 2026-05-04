@@ -11,9 +11,9 @@
 #include "../components/song_state.h"
 #include "../constants.h"
 #include "../platform_display.h"
-#include <raylib.h>
-#include <raymath.h>
-#include <rlgl.h>
+#include "platform/runtime_api.h"
+#include "platform/runtime_api.h"
+#include "platform/runtime_api.h"
 #include <algorithm>
 #include <cmath>
 #include <tuple>
@@ -92,7 +92,7 @@ static void unload_shape_meshes(ShapeMeshes& sm) {
         UnloadMesh(sm.shapes[i]);
     UnloadMesh(sm.slab);
     UnloadMesh(sm.quad);
-    // raylib's UnloadMaterial() owns material.shader; unloading it separately
+    // Runtime UnloadMaterial() owns material.shader; unloading it separately
     // double-frees the shader's location array.
     UnloadMaterial(sm.material);
 }
