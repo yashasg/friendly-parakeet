@@ -1,6 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
 #include <cmath>
-
 #include "platform/graphics/renderer.h"
 
 TEST_CASE("sdl2 renderer validation counters capture render command stream",
@@ -11,22 +10,34 @@ TEST_CASE("sdl2 renderer validation counters capture render command stream",
     clear_renderer_frame_time_override();
 
     auto& renderer = sdl2_renderer();
-    renderer.begin_texture_mode(RenderTexture2D{});
+    renderer.begin_texture_mode(RenderTexture2D{});  // world pass
+    renderer.end_texture_mode();
+    renderer.begin_texture_mode(RenderTexture2D{});  // ui pass
     renderer.end_texture_mode();
     renderer.begin_drawing();
     renderer.clear_background(Color{10, 20, 30, 255});
-    renderer.draw_texture_pro(Texture2D{}, Rectangle{}, Rectangle{}, Vector2{}, 0.0f, WHITE);
+    renderer.draw_texture_pro(Texture2D{}, Rectangle{}, Rectangle{}, Vector2{}, 0.0f, WHITE);  // world composite
+    renderer.draw_texture_pro(Texture2D{}, Rectangle{}, Rectangle{}, Vector2{}, 0.0f, WHITE);  // ui composite
     renderer.begin_mode_3d(Camera3D{});
+    renderer.draw_triangle_3d({0.0f, 0.0f, 0.0f},
+                              {1.0f, 0.0f, 0.0f},
+                              {0.0f, 0.0f, 1.0f},
+                              RED);  // obstacle
+    renderer.draw_triangle_3d({2.0f, 0.0f, 2.0f},
+                              {2.5f, 0.0f, 2.0f},
+                              {2.0f, 0.0f, 2.5f},
+                              SKYBLUE);  // particle
     renderer.end_mode_3d();
     renderer.end_drawing();
 
     const auto counters = renderer_validation_counters();
-    CHECK(counters.begin_texture_mode_calls == 1);
-    CHECK(counters.end_texture_mode_calls == 1);
+    CHECK(counters.begin_texture_mode_calls == 2);
+    CHECK(counters.end_texture_mode_calls == 2);
     CHECK(counters.begin_drawing_calls == 1);
     CHECK(counters.clear_background_calls == 1);
-    CHECK(counters.draw_texture_pro_calls == 1);
+    CHECK(counters.draw_texture_pro_calls == 2);
     CHECK(counters.begin_mode_3d_calls == 1);
+    CHECK(counters.draw_triangle_3d_calls == 2);
     CHECK(counters.end_mode_3d_calls == 1);
     CHECK(counters.end_drawing_calls == 1);
     CHECK(counters.swap_window_calls == 1);

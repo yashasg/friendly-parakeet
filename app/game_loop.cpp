@@ -104,6 +104,8 @@ void game_loop_init(entt::registry& reg,
         .next_phase = GamePhase::Playing, .transition_alpha = 0.0f
     });
     spawn_game_camera(reg);
+    spawn_ui_camera(reg);
+    reg.ctx().emplace<RenderTargets>();
     FloorParams floor{};
     floor.size = constants::FLOOR_SHAPE_SIZE * constants::FLOOR_SCALE_REST;
     floor.half = floor.size * 0.5f;
@@ -213,8 +215,25 @@ void game_loop_frame(entt::registry& reg, float& accumulator) {
     input_system(reg, 0.0f);
     reg.ctx().get<entt::dispatcher>().update<InputEvent>();
     auto& renderer = platform::graphics::renderer();
-    renderer.begin_drawing();
+    auto& targets = reg.ctx().get<RenderTargets>();
+    renderer.begin_texture_mode(targets.world);
     game_render_system(reg, 0.0f);
+    renderer.end_texture_mode();
+    renderer.begin_texture_mode(targets.ui);
+    ui_render_system(reg, 0.0f);
+    renderer.end_texture_mode();
+
+    const auto& st = reg.ctx().get<ScreenTransform>();
+    float dst_w = constants::SCREEN_W * st.scale;
+    float dst_h = constants::SCREEN_H * st.scale;
+    Rectangle src = {0, 0, static_cast<float>(constants::SCREEN_W), -static_cast<float>(constants::SCREEN_H)};
+    Rectangle dst = {st.offset_x, st.offset_y, dst_w, dst_h};
+
+    platform_pre_blit();
+    renderer.begin_drawing();
+    renderer.clear_background(BLACK);
+    renderer.draw_texture_pro(targets.world.texture, src, dst, {0, 0}, 0.0f, WHITE);
+    renderer.draw_texture_pro(targets.ui.texture, src, dst, {0, 0}, 0.0f, WHITE);
     renderer.end_drawing();
     return;
 #else

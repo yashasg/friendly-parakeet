@@ -196,7 +196,9 @@ static void draw_model_transform(const camera::ShapeMeshes& sm, const ModelTrans
             break;
     }
 }
+#endif
 
+#if !defined(SHAPESHIFTER_BACKEND_SDL2)
 static void draw_meshes(const entt::registry& reg) {
     const auto* sm = reg.ctx().find<camera::ShapeMeshes>();
     if (!sm) return;
@@ -215,10 +217,155 @@ static void draw_meshes(const entt::registry& reg) {
         }
     }
 }
+#endif
 
-// Draw Model-authority entities (LowBar, HighBar) that own their mesh arrays.
-// These entities carry ObstacleModel + TagWorldPass and are NOT in the ModelTransform pool.
 static void draw_owned_models(const entt::registry& reg) {
+#if defined(SHAPESHIFTER_BACKEND_SDL2)
+    auto& renderer = platform::graphics::renderer();
+    constexpr float kTwoPi = 2.0f * PI;
+
+    auto transformed = [](const Matrix& mat, float x, float y, float z) {
+        return Vector3Transform(Vector3{x, y, z}, mat);
+    };
+    auto draw_triangles_from_mesh = [&](const Mesh& mesh, const Matrix& mat, Color tint) {
+        if (!mesh.vertices || mesh.vertexCount <= 0 || mesh.triangleCount <= 0) return;
+
+        const auto read_vertex = [&](int vertex_index) -> Vector3 {
+            const int i = vertex_index * 3;
+            return transformed(mat, mesh.vertices[i], mesh.vertices[i + 1], mesh.vertices[i + 2]);
+        };
+
+        if (mesh.indices) {
+            const int index_count = mesh.triangleCount * 3;
+            for (int i = 0; i + 2 < index_count; i += 3) {
+                const int ia = static_cast<int>(mesh.indices[i]);
+                const int ib = static_cast<int>(mesh.indices[i + 1]);
+                const int ic = static_cast<int>(mesh.indices[i + 2]);
+                if (ia < 0 || ib < 0 || ic < 0 || ia >= mesh.vertexCount || ib >= mesh.vertexCount
+                    || ic >= mesh.vertexCount) {
+                    continue;
+                }
+                renderer.draw_triangle_3d(read_vertex(ia), read_vertex(ib), read_vertex(ic), tint);
+            }
+            return;
+        }
+
+        const int vertex_count = std::min(mesh.vertexCount, mesh.triangleCount * 3);
+        for (int i = 0; i + 2 < vertex_count; i += 3) {
+            renderer.draw_triangle_3d(read_vertex(i), read_vertex(i + 1), read_vertex(i + 2), tint);
+        }
+    };
+
+    auto draw_box = [&](const Matrix& mat, Color tint, float half_x, float half_y, float half_z) {
+        const Vector3 corners[8] = {
+            transformed(mat, -half_x, -half_y, -half_z),
+            transformed(mat, half_x, -half_y, -half_z),
+            transformed(mat, half_x, half_y, -half_z),
+            transformed(mat, -half_x, half_y, -half_z),
+            transformed(mat, -half_x, -half_y, half_z),
+            transformed(mat, half_x, -half_y, half_z),
+            transformed(mat, half_x, half_y, half_z),
+            transformed(mat, -half_x, half_y, half_z),
+        };
+        const int faces[12][3] = {
+            {0, 1, 2}, {0, 2, 3}, {1, 5, 6}, {1, 6, 2}, {5, 4, 7}, {5, 7, 6},
+            {4, 0, 3}, {4, 3, 7}, {3, 2, 6}, {3, 6, 7}, {4, 5, 1}, {4, 1, 0},
+        };
+        for (const auto& face : faces) {
+            renderer.draw_triangle_3d(corners[face[0]], corners[face[1]], corners[face[2]], tint);
+        }
+    };
+
+    auto draw_prism = [&](const Matrix& mat, Color tint, int sides, float half_height) {
+        if (sides < 3) return;
+        for (int i = 0; i < sides; ++i) {
+            const float a0 = kTwoPi * static_cast<float>(i) / static_cast<float>(sides);
+            const float a1 = kTwoPi * static_cast<float>(i + 1) / static_cast<float>(sides);
+
+            const Vector3 top_center = transformed(mat, 0.0f, half_height, 0.0f);
+            const Vector3 bot_center = transformed(mat, 0.0f, -half_height, 0.0f);
+            const Vector3 top0 = transformed(mat, std::cos(a0), half_height, std::sin(a0));
+            const Vector3 top1 = transformed(mat, std::cos(a1), half_height, std::sin(a1));
+            const Vector3 bot0 = transformed(mat, std::cos(a0), -half_height, std::sin(a0));
+            const Vector3 bot1 = transformed(mat, std::cos(a1), -half_height, std::sin(a1));
+
+            renderer.draw_triangle_3d(top_center, top0, top1, tint);
+            renderer.draw_triangle_3d(bot_center, bot1, bot0, tint);
+            renderer.draw_triangle_3d(top0, bot0, top1, tint);
+            renderer.draw_triangle_3d(top1, bot0, bot1, tint);
+        }
+    };
+
+    auto draw_quad = [&](const Matrix& mat, Color tint) {
+        const Vector3 a = transformed(mat, -0.5f, 0.0f, -0.5f);
+        const Vector3 b = transformed(mat, 0.5f, 0.0f, -0.5f);
+        const Vector3 c = transformed(mat, 0.5f, 0.0f, 0.5f);
+        const Vector3 d = transformed(mat, -0.5f, 0.0f, 0.5f);
+        renderer.draw_triangle_3d(a, b, c, tint);
+        renderer.draw_triangle_3d(a, c, d, tint);
+    };
+
+    auto draw_model_transform_sdl2 = [&](const ModelTransform& mt, const camera::ShapeMeshes* sm) {
+        if (sm) {
+            switch (mt.mesh_type) {
+                case MeshType::Slab:
+                    draw_triangles_from_mesh(sm->slab, mt.mat, mt.tint);
+                    return;
+                case MeshType::Shape:
+                    if (mt.mesh_index < 4) {
+                        draw_triangles_from_mesh(sm->shapes[mt.mesh_index], mt.mat, mt.tint);
+                    }
+                    return;
+                case MeshType::Quad:
+                    draw_triangles_from_mesh(sm->quad, mt.mat, mt.tint);
+                    return;
+            }
+        }
+
+        switch (mt.mesh_type) {
+            case MeshType::Slab:
+                draw_box(mt.mat, mt.tint, 0.5f, 0.5f, 0.5f);
+                break;
+            case MeshType::Shape:
+                switch (mt.mesh_index) {
+                    case 0: draw_prism(mt.mat, mt.tint, 12, 0.3f); break;
+                    case 1: draw_box(mt.mat, mt.tint, 1.0f, 0.3f, 1.0f); break;
+                    case 2: draw_prism(mt.mat, mt.tint, 3, 0.3f); break;
+                    case 3: draw_prism(mt.mat, mt.tint, 6, 0.585f); break;
+                    default: break;
+                }
+                break;
+            case MeshType::Quad:
+                draw_quad(mt.mat, mt.tint);
+                break;
+        }
+    };
+
+    const auto* sm = reg.ctx().find<camera::ShapeMeshes>();
+    {
+        auto view = reg.view<const ModelTransform, const TagWorldPass>();
+        for (auto [entity, mt] : view.each()) {
+            (void)entity;
+            draw_model_transform_sdl2(mt, sm);
+        }
+    }
+    {
+        auto view = reg.view<const ModelTransform, const TagEffectsPass>();
+        for (auto [entity, mt] : view.each()) {
+            (void)entity;
+            draw_model_transform_sdl2(mt, sm);
+        }
+    }
+
+    auto view = reg.view<const ObstacleModel, const Color, const TagWorldPass>();
+    for (auto [entity, om, tint] : view.each()) {
+        (void)entity;
+        if (!om.owned || !om.model.meshes || om.model.meshCount <= 0) continue;
+        for (int i = 0; i < om.model.meshCount; ++i) {
+            draw_triangles_from_mesh(om.model.meshes[i], om.model.transform, tint);
+        }
+    }
+#else
     auto view = reg.view<const ObstacleModel, const Color, const TagWorldPass>();
     for (auto [entity, om, tint] : view.each()) {
         if (!om.owned || !om.model.meshes) continue;
@@ -230,8 +377,8 @@ static void draw_owned_models(const entt::registry& reg) {
                      om.model.transform);
         }
     }
-}
 #endif
+}
 
 void game_render_system(const entt::registry& reg, float /*alpha*/) {
     [[maybe_unused]]
@@ -253,16 +400,16 @@ void game_render_system(const entt::registry& reg, float /*alpha*/) {
     draw_floor_beat_lines(renderer, song, map);
     draw_floor_rings(renderer, floor_params);
 
-#if !defined(SHAPESHIFTER_BACKEND_SDL2)
     if (gs.phase != GamePhase::Title) {
+#if !defined(SHAPESHIFTER_BACKEND_SDL2)
         rlDrawRenderBatchActive();
         rlDisableDepthTest();
         draw_meshes(reg);
-        draw_owned_models(reg);
         rlDrawRenderBatchActive();
         rlEnableDepthTest();
-    }
 #endif
+        draw_owned_models(reg);
+    }
 
     renderer.end_mode_3d();
 }

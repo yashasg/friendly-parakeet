@@ -311,3 +311,34 @@ All commands passed (zero-warning build policy preserved).
 - Port particle 3D geometry path to SDL2 backend
 - Port UI render compositing path for SDL2 backend (currently world floor path focus)
 - Add screenshot/pixel-diff regression checks for raylib vs SDL2 floor parity
+
+## 2026-05-04 — SDL2 Migration Phase 3 Completion (remaining scope)
+
+**Issue:** #372  
+**Branch:** `feature/sdl2-migration-phase-1-abstraction-layer`
+
+### Completed in this pass
+
+1. **SDL2 obstacle/particle render paths completed in `game_render_system`:**
+   - Added SDL2 draw path for `ModelTransform` world/effects entities (slab/shape/quad), using triangle primitives and mesh data when available.
+   - Added SDL2 draw path for `ObstacleModel` owned meshes in world pass.
+2. **SDL2 UI compositing parity path in `game_loop_frame`:**
+   - SDL2 now follows world pass → UI pass → composite flow (texture-mode boundaries + dual blit) matching current architecture.
+   - SDL2 init now seeds `UICamera` + `RenderTargets` context needed for that path.
+   - SDL2 `ui_render_system` branch is now safe/no-op (avoids raylib-only immediate-mode calls in SDL2 runtime) while preserving the pass boundary.
+3. **Parity checks expanded (Baer hooks):**
+   - `tests/test_renderer_sdl2_validation.cpp` now asserts two-pass compositing counters and 3D triangle primitive counter usage.
+   - `docs/sdl2-phase3-rendering-parity-checklist.md` updated to include these checks explicitly.
+
+### Validation results
+
+- `cmake --build build-raylib --target shapeshifter_tests` ✅
+- `ctest --test-dir build-raylib --output-on-failure` ⚠️ 7 pre-existing failures (same known test-player/UI regressions)
+- `cmake --build build-sdl2 --target shapeshifter_tests` ✅
+- `ctest --test-dir build-sdl2 --output-on-failure` ⚠️ 23 pre-existing failures (content-path + known test-player/UI regressions)
+- `./build-sdl2/shapeshifter_tests "[render][sdl2][validation]"` ✅ (20 assertions / 2 cases)
+
+### Notes
+
+- Raylib backend-specific mesh path remains unchanged and still selected unless backend flag is SDL2.
+- SDL2 phase-3 remaining scope from prior report is now implemented in shipping code paths for this migration phase.

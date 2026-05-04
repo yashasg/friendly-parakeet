@@ -37,4 +37,6 @@ Use this checklist after each Phase 3 rendering change to validate SDL2 parity a
   - `./build-sdl2/shapeshifter_tests "[render][sdl2][validation]"`
 - These tests assert:
   - render command-path counters are wired and stable
+  - world/UI two-pass compositing commands are emitted (texture mode + dual blit)
+  - 3D primitive command hooks used by SDL2 obstacle/particle draw paths are counted
   - deterministic frame-time override hook works for backend timing checks
