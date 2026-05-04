@@ -3492,3 +3492,97 @@ All passed.
 - Add SDL2 touch + multitouch tracking.
 - Implement gesture recognition parity.
 - Add timing/latency parity checks for SDL2 vs raylib input path.
+
+---
+
+## 2026-05-04 — Keaton Round 3: SDL2 Phase 3 Rendering Parity Completion
+
+**Author:** Keaton  
+**Branch:** `feature/sdl2-migration-phase-1-abstraction-layer`  
+**Issue:** #372  
+**Status:** ✅ COMPLETED
+
+### Summary
+Completed Phase 3 remaining scope: obstacle meshes, particle paths, and UI compositing parity in SDL2 backend while preserving raylib behavior.
+
+### Changes
+1. **Obstacle + particle rendering on SDL2 backend**
+   - `app/systems/game_render_system.cpp`
+   - SDL2 draw path for `ModelTransform` entities (world pass, effects pass)
+   - SDL2 draw path for `ObstacleModel` owned geometry
+   - Triangle primitives + mesh-backed emission with procedural fallback
+
+2. **UI compositing parity for SDL2**
+   - `app/game_loop.cpp`
+   - SDL2 frame path: world pass + UI pass + composite blit (mirrors architecture)
+   - SDL2 init: `UICamera` + `RenderTargets` context seeding
+
+3. **SDL2-safe UI render handling**
+   - `app/systems/ui_render_system.cpp`
+   - SDL2-safe branch prevents raylib-only UI calls while preserving pass flow
+
+4. **Parity validation**
+   - `tests/test_renderer_sdl2_validation.cpp` — texture-mode, compositing blits, 3D triangle counters
+   - `docs/sdl2-phase3-rendering-parity-checklist.md` — explicit checklist for deterministic checks
+
+### Validation
+- **Raylib:** `shapeshifter_tests` ✅; `ctest` shows 7 pre-existing failures
+- **SDL2:** `shapeshifter_tests` ✅; `ctest` shows 23 pre-existing failures
+- **SDL2 render validation:** All 20 assertions passed across 2 test cases ✅
+
+### Risk/Compatibility
+- No raylib path behavior change
+- SDL2 runtime executes parity orchestration without raylib-only calls in SDL2 UI pass
+- Phase 3 scope intentionally limited
+
+---
+
+## 2026-05-04 — Hockney Round 4: SDL2 Phase 4 Input Abstraction Completion
+
+**Author:** Hockney  
+**Branch:** `feature/sdl2-migration-phase-1-abstraction-layer`  
+**Issue:** #372  
+**Status:** ✅ COMPLETED
+
+### Summary
+Phase 4 remaining scope complete: SDL2 input abstraction, touch/multitouch, gesture parity, and latency instrumentation.
+
+### Changes
+1. **SDL2 touch/multitouch tracking**
+   - 2-touch cap (extra fingers ignored)
+   - Live in input abstraction path
+
+2. **SDL2 gesture recognition parity**
+   - Tap + swipe (Left/Right/Up/Down) with existing input constants
+   - Parity with raylib gesture behavior
+
+3. **Input latency instrumentation**
+   - Optional `InputLatencyProbe`
+   - Hooks:
+     - InputEvent enqueue
+     - GoEvent enqueue (gesture routing)
+     - GoEvent handling (player input)
+
+4. **Backend preservation**
+   - Raylib path intact
+   - Backend selection logic unchanged
+
+### Changed Areas
+- `app/platform/sdl2/sdl2_graphics_context.*`
+- `app/platform/input/input_handler_*`
+- `app/platform/input/sdl2_touch_tracker.h` (new)
+- `app/input/input_latency_probe.h` (new)
+- `app/systems/input_system.cpp`
+- `app/input/gesture_routing.cpp`
+- `app/systems/player_input_system.cpp`
+- SDL2 touch tracker + latency probe parity tests
+
+### Validation
+- **Raylib + SDL2:** `shapeshifter_tests` built ✅
+- **Input tests:** `[input]` ✅
+- **Gesture tests:** `[gesture]` ✅
+- **Latency tests:** `[latency]` ✅
+- **Full suite:** Pre-existing `test_test_player_system` assertion abort on both backends
+
+### Phase 4 Status
+✅ SDL2 input abstraction complete with parity across both backends.

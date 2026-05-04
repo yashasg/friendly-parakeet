@@ -180,3 +180,39 @@ Ready for integration. Phase 2 SDL2 abstraction layer established with validated
 - SDL2 touch + multitouch tracking (Phase 4 completion)
 - Gesture recognition parity
 - Timing/latency parity checks (SDL2 vs raylib)
+
+---
+
+## Session: hockney-3
+
+**Agent:** Hockney (Platform Engineer)  
+**Scope:** Phase 4 Input Abstraction Completion (SDL2)  
+**Status:** ✅ COMPLETED
+
+### Deliverables
+- SDL2 touch/multitouch tracking (2-touch cap, extra fingers ignored)
+- SDL2 gesture recognition parity (Tap, swipe Left/Right/Up/Down)
+- Input latency instrumentation with optional probe hooks
+- Raylib backend preservation (no behavioral changes)
+
+### Instrumentation
+- `InputLatencyProbe` (opt-in)
+- Hooks at:
+  - InputEvent enqueue
+  - GoEvent enqueue (gesture routing)
+  - GoEvent handling (player input)
+
+### Validation
+- **Raylib + SDL2:** Both backends build ✅
+- **Input tests:** `[input]` ✅
+- **Gesture tests:** `[gesture]` ✅
+- **Latency tests:** `[latency]` ✅
+- **Integration:** Full suite shows pre-existing `test_test_player_system` assertion
+
+### Phase 4 Status
+✅ **Complete** — SDL2 input abstraction fully parity with raylib across all input modalities
+
+### Archive Status
+Decisions merged:
+- `hockney-phase4-completion.md` → `.squad/decisions.md`
+- `keaton-phase3-completion.md` → `.squad/decisions.md`
