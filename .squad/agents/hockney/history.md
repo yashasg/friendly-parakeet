@@ -163,3 +163,24 @@ Keaton completed singleton eager-init refactor (2026-05-03). Clang native build 
 **Conclusion:** No conflict. Cheatsheet is orthogonal to platform backend question. Prior findings confirmed: iOS not in current source, unmerged PR #3880 needed for support.
 
 Decision document: `.squad/decisions/inbox/hockney-cheatsheet-ios-clarification.md`
+
+## 2026-05-04T08:10:23Z — Phase 4 Input Migration Slice (SDL2)
+
+**Scope delivered:** first functional SDL2 input slice via abstraction layer.
+
+### Shipped
+- Routed SDL2 event pumping through `platform::input::InputHandler` (`pump_events()`), called by `input_system`.
+- Implemented SDL2 keyboard edge-press mapping and mouse-left-release + pointer position in `input_handler_sdl2` backed by SDL event snapshot state.
+- Kept touch/gesture as explicit TODO hooks in SDL2 handler (`touch_point_count`, `touch_position`, `read_detected_gesture`, `configure_gameplay_gestures`).
+- Preserved input routing contract: `input_system` still populates `InputState` and dispatcher events the same way.
+- Updated SDL2 game-loop path to initialize input contexts and run `compute_screen_transform -> input_system -> update<InputEvent>` before render.
+- Kept raylib path unchanged as default/fallback.
+
+### Validation
+- Raylib backend: configure/build + `shapeshifter_tests "~[bench]"` + `shapeshifter_tests "[input]"` passed.
+- SDL2 backend: configure/build + `shapeshifter_tests "~[bench]"` + `shapeshifter_tests "[input]"` passed.
+
+### Remaining for full Phase 4
+- SDL2 touch point tracking (`SDL_FINGERDOWN/UP/MOTION`) + multitouch policy.
+- SDL2 gesture recognizer parity with raylib gesture semantics.
+- Latency instrumentation/comparison between raylib and SDL2 input event-to-dispatch timing.

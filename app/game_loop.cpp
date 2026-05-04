@@ -93,6 +93,11 @@ void game_loop_init(entt::registry& reg,
     (void)test_player_mode;
     (void)test_skill;
     (void)difficulty;
+    reg.ctx().emplace<InputState>();
+    reg.ctx().emplace<entt::dispatcher>();
+    wire_input_dispatcher(reg);
+    input_system_init(reg);
+    reg.ctx().emplace<ScreenTransform>();
     reg.ctx().emplace<GameState>(GameState{
         .phase = GamePhase::Playing, .previous_phase = GamePhase::Playing,
         .phase_timer = 0.0f, .transition_pending = false,
@@ -105,7 +110,8 @@ void game_loop_init(entt::registry& reg,
     floor.thick = constants::FLOOR_OUTLINE_THICK;
     floor.alpha = static_cast<uint8_t>(constants::FLOOR_ALPHA_REST);
     reg.ctx().emplace<FloorParams>(floor);
-    TraceLog(LOG_INFO, "SHAPESHIFTER v%s (SDL2 backend phase-3 floor path)", SHAPESHIFTER_VERSION);
+    TraceLog(LOG_INFO, "SHAPESHIFTER v%s (SDL2 backend phase-4 input slice)",
+             SHAPESHIFTER_VERSION);
     return;
 #endif
 
@@ -203,6 +209,9 @@ void game_loop_init(entt::registry& reg,
 void game_loop_frame(entt::registry& reg, float& accumulator) {
 #if defined(SHAPESHIFTER_BACKEND_SDL2)
     (void)accumulator;
+    compute_screen_transform(reg);
+    input_system(reg, 0.0f);
+    reg.ctx().get<entt::dispatcher>().update<InputEvent>();
     auto& renderer = platform::graphics::renderer();
     renderer.begin_drawing();
     game_render_system(reg, 0.0f);

@@ -2,6 +2,7 @@
 
 #if !defined(__EMSCRIPTEN__)
 #include "sdl2_headers.h"
+#include <array>
 #include <algorithm>
 #endif
 
@@ -14,6 +15,11 @@ struct GraphicsState {
     SDL_Window* window = nullptr;
     SDL_GLContext context = nullptr;
     bool should_close = false;
+    bool window_focused = true;
+    bool mouse_left_released = false;
+    int mouse_x = 0;
+    int mouse_y = 0;
+    std::array<bool, SDL_NUM_SCANCODES> key_pressed{};
     int screen_width = 0;
     int screen_height = 0;
     int target_fps = 60;
@@ -66,6 +72,11 @@ bool create_window_and_gl_context(const WindowConfig& config) {
     SDL_GL_SetSwapInterval(1);
 
     s.should_close = false;
+    s.window_focused = true;
+    s.mouse_left_released = false;
+    s.mouse_x = 0;
+    s.mouse_y = 0;
+    std::fill(s.key_pressed.begin(), s.key_pressed.end(), false);
     s.screen_width = config.width;
     s.screen_height = config.height;
     s.last_counter = SDL_GetPerformanceCounter();
@@ -85,6 +96,11 @@ void destroy_window_and_gl_context() {
         s.window = nullptr;
     }
     s.should_close = false;
+    s.window_focused = true;
+    s.mouse_left_released = false;
+    s.mouse_x = 0;
+    s.mouse_y = 0;
+    std::fill(s.key_pressed.begin(), s.key_pressed.end(), false);
     s.screen_width = 0;
     s.screen_height = 0;
     s.last_counter = 0;
@@ -94,6 +110,9 @@ void destroy_window_and_gl_context() {
 void poll_events() {
 #if !defined(__EMSCRIPTEN__)
     auto& s = state();
+    std::fill(s.key_pressed.begin(), s.key_pressed.end(), false);
+    s.mouse_left_released = false;
+
     SDL_Event event{};
     while (SDL_PollEvent(&event) != 0) {
         if (event.type == SDL_QUIT) {
@@ -106,9 +125,37 @@ void poll_events() {
             } else if (event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
                 s.screen_width = event.window.data1;
                 s.screen_height = event.window.data2;
+            } else if (event.window.event == SDL_WINDOWEVENT_FOCUS_GAINED) {
+                s.window_focused = true;
+            } else if (event.window.event == SDL_WINDOWEVENT_FOCUS_LOST) {
+                s.window_focused = false;
             }
+            continue;
+        }
+        if (event.type == SDL_KEYDOWN && event.key.repeat == 0) {
+            const int scancode = static_cast<int>(event.key.keysym.scancode);
+            if (scancode >= 0 && scancode < static_cast<int>(s.key_pressed.size())) {
+                s.key_pressed[static_cast<size_t>(scancode)] = true;
+            }
+            continue;
+        }
+        if (event.type == SDL_MOUSEBUTTONUP && event.button.button == SDL_BUTTON_LEFT) {
+            s.mouse_left_released = true;
+            s.mouse_x = event.button.x;
+            s.mouse_y = event.button.y;
+            continue;
+        }
+        if (event.type == SDL_MOUSEMOTION) {
+            s.mouse_x = event.motion.x;
+            s.mouse_y = event.motion.y;
+            continue;
+        }
+        if (event.type == SDL_MOUSEBUTTONDOWN) {
+            s.mouse_x = event.button.x;
+            s.mouse_y = event.button.y;
         }
     }
+    SDL_GetMouseState(&s.mouse_x, &s.mouse_y);
 #endif
 }
 
@@ -123,6 +170,50 @@ void poll_events() {
 void request_close() noexcept {
 #if !defined(__EMSCRIPTEN__)
     state().should_close = true;
+#endif
+}
+
+[[nodiscard]] bool input_mouse_left_released() noexcept {
+#if defined(__EMSCRIPTEN__)
+    return false;
+#else
+    return state().mouse_left_released;
+#endif
+}
+
+[[nodiscard]] int input_mouse_x() noexcept {
+#if defined(__EMSCRIPTEN__)
+    return 0;
+#else
+    return state().mouse_x;
+#endif
+}
+
+[[nodiscard]] int input_mouse_y() noexcept {
+#if defined(__EMSCRIPTEN__)
+    return 0;
+#else
+    return state().mouse_y;
+#endif
+}
+
+[[nodiscard]] bool input_key_pressed(int scancode) noexcept {
+#if defined(__EMSCRIPTEN__)
+    (void)scancode;
+    return false;
+#else
+    if (scancode < 0 || scancode >= static_cast<int>(state().key_pressed.size())) {
+        return false;
+    }
+    return state().key_pressed[static_cast<size_t>(scancode)];
+#endif
+}
+
+[[nodiscard]] bool input_window_focused() noexcept {
+#if defined(__EMSCRIPTEN__)
+    return true;
+#else
+    return state().window_focused;
 #endif
 }
 

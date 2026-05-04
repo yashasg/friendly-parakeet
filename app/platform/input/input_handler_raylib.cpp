@@ -10,6 +10,8 @@ namespace {
 
 class RaylibInputHandler final : public InputHandler {
 public:
+    void pump_events() override {}
+
     void configure_gameplay_gestures() override {
         SetGesturesEnabled(kGameplayGestureFlags);
     }

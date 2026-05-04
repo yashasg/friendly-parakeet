@@ -30,6 +30,7 @@ class InputHandler {
 public:
     virtual ~InputHandler() = default;
 
+    virtual void pump_events() = 0;
     virtual void configure_gameplay_gestures() = 0;
     [[nodiscard]] virtual bool is_mouse_left_released() const = 0;
     [[nodiscard]] virtual PointerPosition mouse_position() const = 0;

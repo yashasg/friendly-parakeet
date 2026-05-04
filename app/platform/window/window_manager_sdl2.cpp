@@ -61,7 +61,6 @@ public:
     }
 
     [[nodiscard]] bool should_close() const override {
-        platform::sdl2::poll_events();
         return platform::sdl2::should_close();
     }
 

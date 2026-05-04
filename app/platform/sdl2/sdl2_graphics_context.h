@@ -14,6 +14,11 @@ void destroy_window_and_gl_context();
 void poll_events();
 [[nodiscard]] bool should_close() noexcept;
 void request_close() noexcept;
+[[nodiscard]] bool input_mouse_left_released() noexcept;
+[[nodiscard]] int input_mouse_x() noexcept;
+[[nodiscard]] int input_mouse_y() noexcept;
+[[nodiscard]] bool input_key_pressed(int scancode) noexcept;
+[[nodiscard]] bool input_window_focused() noexcept;
 
 void set_window_size(int width, int height);
 void set_window_position(int x, int y);

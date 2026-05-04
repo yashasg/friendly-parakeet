@@ -38,6 +38,7 @@ void input_system(entt::registry& reg, float raw_dt) {
     auto& st    = reg.ctx().get<ScreenTransform>();
     auto& disp  = reg.ctx().get<entt::dispatcher>();
     auto& platform_input = platform::input::input_handler();
+    platform_input.pump_events();
     if (!input.gestures_configured) {
         platform_input.configure_gameplay_gestures();
         input.gestures_configured = true;
