@@ -92,3 +92,21 @@ PR #357 WASM regression coverage work finalized and logged:
 - Inbox cleared: 5 decision entries processed
 
 Team ready for next phase.
+
+## 2026-05-04 — Phase 3 rendering parity validation prep (SDL2)
+
+**Status:** PREPARED (tests + hooks + checklist)
+
+**What was added:**
+- Deterministic SDL2 renderer validation hooks:
+  - command-path counters (begin/end drawing, texture mode, clear, 3D mode, draw texture, swap)
+  - frame-time override hook for stable timing assertions
+- New non-snapshot test coverage:
+  - `tests/test_renderer_sdl2_validation.cpp`
+  - validates command-path counter wiring and deterministic frame-time override behavior
+- Manual cross-platform parity checklist:
+  - `docs/sdl2-phase3-rendering-parity-checklist.md`
+  - includes raylib vs SDL2 build/test flow plus visual parity checks for macOS/Linux/Windows
+
+**Validation intent:**
+- Give Keaton immediate, low-flake parity guardrails for Phase 3 render-path work without brittle image snapshot debt.

@@ -1,4 +1,5 @@
 #include "renderer.h"
+#include <rlgl.h>
 
 namespace platform::graphics {
 
@@ -8,6 +9,10 @@ class RaylibRenderer final : public Renderer {
 public:
     [[nodiscard]] float frame_time() const noexcept override {
         return GetFrameTime();
+    }
+
+    void set_clip_planes(double near_plane, double far_plane) override {
+        rlSetClipPlanes(near_plane, far_plane);
     }
 
     void begin_texture_mode(RenderTexture2D target) override {
@@ -46,6 +51,18 @@ public:
     void end_mode_3d() override {
         EndMode3D();
     }
+
+    void draw_line_3d(const Vector3& start, const Vector3& end, Color color) override {
+        DrawLine3D(start, end, color);
+    }
+
+    void draw_triangle_3d(const Vector3& a,
+                          const Vector3& b,
+                          const Vector3& c,
+                          Color color) override {
+        DrawTriangle3D(a, b, c, color);
+    }
+
 };
 
 }  // namespace
