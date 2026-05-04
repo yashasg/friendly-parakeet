@@ -5,6 +5,13 @@ cd "$(dirname "$0")"
 SCRIPT_DIR="$(pwd)"
 
 BUILD_TYPE="${1:-Release}"
+BACKEND="${SHAPESHIFTER_BACKEND:-raylib}"
+BUILD_DIR="${SHAPESHIFTER_BUILD_DIR:-build}"
+
+if [[ "$BACKEND" != "raylib" && "$BACKEND" != "sdl2" ]]; then
+    echo "Error: SHAPESHIFTER_BACKEND must be 'raylib' or 'sdl2' (got '$BACKEND')." >&2
+    exit 1
+fi
 
 if [[ -z "${VCPKG_ROOT:-}" ]]; then
     echo "Error: VCPKG_ROOT is not set. vcpkg is required to build." >&2
@@ -25,26 +32,27 @@ fi
 # cmake cannot activate the toolchain, and find_package() cannot see manifest
 # packages such as EnTT.  Drop just the CMake configure cache while preserving
 # any vcpkg_installed payload that may have been restored from cache.
-if [[ -f build/CMakeCache.txt ]]; then
+if [[ -f "$BUILD_DIR/CMakeCache.txt" ]]; then
     _reset_cmake_cache=false
 
-    if ! grep -q '^CMAKE_TOOLCHAIN_FILE:' build/CMakeCache.txt; then
+    if ! grep -q '^CMAKE_TOOLCHAIN_FILE:' "$BUILD_DIR/CMakeCache.txt"; then
         _reset_cmake_cache=true
-    elif ! grep -q '^VCPKG_INSTALLED_DIR:' build/CMakeCache.txt; then
+    elif ! grep -q '^VCPKG_INSTALLED_DIR:' "$BUILD_DIR/CMakeCache.txt"; then
         _reset_cmake_cache=true
     fi
 
     if [[ "$_reset_cmake_cache" == "true" ]]; then
-        echo "Existing build cache was not configured with a vcpkg toolchain; regenerating CMake cache."
-        rm -f build/CMakeCache.txt
-        rm -rf build/CMakeFiles
+        echo "Existing $BUILD_DIR cache was not configured with a vcpkg toolchain; regenerating CMake cache."
+        rm -f "$BUILD_DIR/CMakeCache.txt"
+        rm -rf "$BUILD_DIR/CMakeFiles"
     fi
 fi
 
 CMAKE_ARGS=(
-    -B build
+    -B "$BUILD_DIR"
     -S .
     -DCMAKE_BUILD_TYPE="$BUILD_TYPE"
+    "-DSHAPESHIFTER_BACKEND=${BACKEND}"
     "-DCMAKE_TOOLCHAIN_FILE=${VCPKG_TOOLCHAIN_FILE}"
     "-DVCPKG_OVERLAY_PORTS=${SCRIPT_DIR}/vcpkg-overlay"
 )
@@ -80,14 +88,14 @@ esac
 # vcpkg-overlay contents as a stamp file inside the build directory; the stamp
 # travels with the cached build/ tree.  A stale restore (e.g. after adding
 # magic-enum) has no stamp or a mismatched hash, so vcpkg runs normally.
-_VCPKG_STAMP="build/.vcpkg_manifest_stamp"
+_VCPKG_STAMP="${BUILD_DIR}/.vcpkg_manifest_stamp"
 _MANIFEST_HASH=$(
     { cat vcpkg.json; find vcpkg-overlay -type f 2>/dev/null | sort | xargs cat 2>/dev/null || true; } \
     | (sha256sum 2>/dev/null || shasum -a 256 2>/dev/null) \
     | cut -d' ' -f1
 )
 
-if [[ "${CI:-}" == "true" ]] && [[ -d build/vcpkg_installed ]] && [[ -f build/CMakeCache.txt ]]; then
+if [[ "${CI:-}" == "true" ]] && [[ -d "${BUILD_DIR}/vcpkg_installed" ]] && [[ -f "${BUILD_DIR}/CMakeCache.txt" ]]; then
     if [[ -f "$_VCPKG_STAMP" ]] && [[ "$(cat "$_VCPKG_STAMP")" == "$_MANIFEST_HASH" ]]; then
         CMAKE_ARGS+=("-DVCPKG_MANIFEST_INSTALL=OFF")
         echo "vcpkg packages found in cache and manifest unchanged, skipping vcpkg install."
@@ -101,6 +109,6 @@ fi
 
 cmake "${CMAKE_ARGS[@]}"
 # Write/refresh the stamp so the next cached run can safely skip install.
-mkdir -p build
+mkdir -p "$BUILD_DIR"
 echo "$_MANIFEST_HASH" > "$_VCPKG_STAMP"
-cmake --build build --config "$BUILD_TYPE" -j "$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)"
+cmake --build "$BUILD_DIR" --config "$BUILD_TYPE" -j "$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)"
