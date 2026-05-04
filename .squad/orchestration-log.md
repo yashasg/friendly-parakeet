@@ -296,3 +296,20 @@
 - ✅ SDL2+LVGL switch costs 3–4 weeks + regression risk on 5 platforms
 - ✅ raygui sufficient for v1 (simple screens; LVGL adds scope creep)
 - **Decision:** Keep raylib; unblock owner Team ID inputs; defer iOS to v2 if needed
+
+---
+
+### 2026-05-04T00:15:13.980-07:00 — SDL2 vs SDL3 Comparison & Architecture Review
+
+| Field | Value |
+|-------|-------|
+| **Agent routed** | Keyser (Lead Architect) |
+| **Why chosen** | Tech stack evaluation and long-term rendering strategy requires architectural oversight |
+| **Mode** | background |
+| **Why this mode** | Analysis task with no hard implementation dependencies; async processing |
+| **Files authorized to read** | design-docs/architecture.md, CMakeLists.txt, app/main.cpp |
+| **File(s) agent must produce** | .squad/decisions/inbox/keyser-sdl2-vs-sdl3-comparison.md |
+| **Outcome** | ✅ Completed — SDL2 vs SDL3 comparison documented; recommendation: maintain raylib; re-evaluate Q4 2026 |
+
+---
+

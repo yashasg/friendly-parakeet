@@ -2553,3 +2553,4 @@ Reassess. Right now, swap costs 3–4 weeks and risks 5 platforms for benefits t
 - `design-docs/architecture.md` — raylib I/O layer design
 - `CMakeLists.txt` lines 50–62 — raylib dependency declaration
 - `app/main.cpp` — raylib initialization
+
