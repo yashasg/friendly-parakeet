@@ -165,3 +165,16 @@
 | **Outcome** | ✅ Completed — decisions.md merged with prominent 🔴 ORDER REGRESSION section + [R10 Correction] player_input retraction; agent histories updated with R10 patterns (Keaton: order-dependent regression test, Keyser: trace all dispatcher paths); module health snapshot captured (playing_systems_runner 🔴 order regression in flight, fixed_tick_runner 🟢); pending approvals: CI grep check still awaiting user decision; git commit created with 🔴 + retraction flags in message; inbox files preserved for R11 reference |
 
 ---
+
+### 2026-05-03T23:24:56-07:00 — Hockney: CMake→Xcode iOS Viability Analysis
+
+| Field | Value |
+|-------|-------|
+| **Agent routed** | Hockney (Platform Engineer) |
+| **Why chosen** | User Q&A: "CMake can call Xcode build, that should still work right?" — iOS platform/build system expertise required |
+| **Mode** | sync |
+| **Why this mode** | Factual investigation + decision (no implementation); user seeks quick answer |
+| **Files authorized to read** | `vcpkg/buildtrees/raylib/src/5.5-*/src/platforms/`, `CMakeOptions.txt`, `vcpkg-overlay/raylib/portfile.cmake`, upstream PR #3880, raylib ROADMAP.md |
+| **File(s) agent must produce** | Decision document in `.squad/decisions/inbox/hockney-cmake-xcode-ios-viability.md` |
+| **Outcome** | ✅ Completed — **CMake→Xcode call works ✅; iOS runtime fails ❌.** Evidence: raylib 5.5 has no `rcore_ios.c`; upstream PR #3880 unmerged; vcpkg iOS workaround configures Desktop+GLFW (incompatible with iOS UIKit). Three options identified: A (adopt PR #3880, 6–8 weeks), B (SDL2 wrapper, 4 weeks), C (Emscripten WebView, 3 weeks). **Recommendation:** HOLD until raylib 6.0 or explicit team scope/timeline approval. User directive captured: willing to accept iOS implementation path. |
+

@@ -2079,3 +2079,19 @@ Determine exactly how raylib iOS is supported today if not via CMake PLATFORM op
 ---
 
 **Decision:** **HOLD.** Do not integrate iOS until raylib 6.0+ provides official support or team explicitly requests iOS with timeline/resources.
+
+---
+
+# Directive: User Acceptance of iOS Implementation Approach
+
+**Date:** 2026-05-03T23:24:56.270-07:00  
+**Captured by:** Copilot  
+**User:** yashasg
+
+## Directive
+
+User has explicitly stated willingness to accept an iOS implementation path that uses `rcore_ios` and `UIApplicationMain`.
+
+**Implication for team:** User accepts implementation effort (Options A, B, or C outlined above) and is not blocked by iOS being missing from raylib 5.5. This resolves the scope question: iOS is in-scope if team prioritizes it.
+
+**Next step:** If iOS is prioritized in future sprint, refer back to this directive when planning Option A (adopt PR #3880), Option B (SDL2 wrapper), or Option C (Emscripten + WebView).

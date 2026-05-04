@@ -112,3 +112,25 @@ Keaton completed singleton eager-init refactor (2026-05-03). Clang native build 
 **Decision:** Merged to `.squad/decisions.md` (lines 147–266).
 
 **Next Monitor:** Raylib 6.0 release roadmap.
+
+## 2026-05-03T23:24:56Z — CMake-Xcode-iOS Viability Clarification
+
+**Question from yashasg:** "CMake can call xcode build, that should still work right? I am fine with the rcore_ios and UIApplicationMain"
+
+**Answer:** NO. CMake → Xcode invocation works, but the generated app **will NOT run on iOS**.
+
+**Findings:**
+1. **CMake CAN generate Xcode projects** — this works. Existing `ios/testflight_archive.sh` does this.
+2. **raylib 5.5 has NO iOS platform code** — no `rcore_ios.c`, no `PLATFORM=iOS` CMake enum option.
+3. **vcpkg-overlay forces iOS to use Desktop+GLFW** — GLFW is desktop-only; will crash/hang at runtime on iOS hardware.
+4. **Upstream iOS support exists but unmerged** — PR #3880 (blueloveTH) uses ANGLE framework + Xcode integration, but PR is on-hold, not merged into 5.5.
+5. **No fast path** — "Just add UIApplicationMain" is necessary but not sufficient; still need `rcore_ios.c` platform layer + ANGLE xcframeworks.
+
+**Options:**
+- Option A (6–8 weeks): Adopt PR #3880 fork + maintain iOS support in this repo
+- Option B (unknown timeline): Wait for raylib 6.0 roadmap release
+- Option C (short term): Use Godot/Unity wrapper if iOS is hard requirement
+
+**Recommendation:** DO NOT pursue iOS with raylib 5.5. Status quo is correct.
+
+**Decision:** Inbox entry written to `.squad/decisions/inbox/hockney-cmake-xcode-ios-viability.md`.

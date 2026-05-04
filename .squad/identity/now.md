@@ -1,3 +1,3 @@
 # Current Focus
 
-Full-team diagnostics for Friendly Parakeet: create GitHub issues for discovered bugs, triage them into `test-flight` or `AppStore`, then have Ralph work through test-flight issues.
+Investigate and implement a pure raylib iOS build path (non-SDL), including clarifying upstream non-CMake iOS support routes and aligning this repo's build flow accordingly.
