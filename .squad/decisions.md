@@ -14445,3 +14445,87 @@ Implemented branch-reduction refactors using EnTT structural partitioning:
 - `app/systems/scroll_system.cpp` (structural split, reverted)
 - `app/systems/scoring_system.cpp` (structural split + helper, reverted)
 
+
+---
+
+# Decision: Keep `magic_enum`; do not replace with EnTT meta for enum names/counts (Issue #350)
+
+**Author:** Keaton  
+**Date:** 2026-05-03  
+**Status:** Recommended
+
+## Summary
+
+Do **not** replace `magic_enum` with EnTT v3.16.0 meta/reflection for current enum value-name/count use-cases.  
+EnTT meta can model enum metadata only via manual runtime registration, which reintroduces duplication and cannot provide the current compile-time count contracts.
+
+## Evidence
+
+### Current `magic_enum` behaviors in this repo
+
+- `app/util/enum_names.h`: `magic_enum::enum_name` powers `ToString()` returning `const char*` with `"???"` fallback.
+- `app/platform/haptics_backend.cpp`: `magic_enum::enum_name(HapticEvent)` for debug trace output.
+- `app/audio/audio_types.h`: compile-time `static_assert(magic_enum::enum_count<SFX>() == 9)` and SFXBank sizing.
+- `app/audio/sfx_bank.cpp`: compile-time `SFX_COUNT` and `static_assert(SFX_SPECS.size() == enum_count<SFX>())`.
+- `tests/test_audio_system.cpp`: compile-time parity guard against explicit `kAllSfx[]`.
+
+### EnTT v3.16.0 constraints (from local installed headers)
+
+- Version is `3.16.0` (`build/vcpkg_installed/arm64-osx/include/entt/config/version.h`).
+- Meta registration is explicit/manual (`meta_factory<Type>::data(...)` in `entt/meta/factory.hpp`).
+- Metadata keys are IDs/hashed strings and runtime vectors (`meta_type_descriptor::data` in `entt/meta/node.hpp`).
+- Discovery is runtime iteration (`meta_type::data()` range in `entt/meta/meta.hpp`), not constexpr compile-time enum introspection.
+
+## Parity gaps vs current contract
+
+1. **No compile-time enum member count parity**  
+   EnTT meta exposes runtime ranges; it does not auto-derive or constexpr-expose enum enumerator count for `static_assert` checks.
+2. **Manual registration duplication/drift risk**  
+   Every enum value name must be re-listed in registration code, duplicating the enum definition.
+3. **Initialization-order/runtime dependency**  
+   Reflection data exists only after registration runs; current `magic_enum` calls are header-only and require no startup phase.
+4. **No net simplification for logging contract**  
+   `const char*` can be produced via EnTT names, but only after manual registration and lookup infrastructure.
+
+## Option comparison
+
+- **Keep `magic_enum` (recommended):** preserves compile-time guarantees and low boilerplate; already wired in vcpkg/CMake.
+- **EnTT-only replacement:** feasible technically, but weaker compile-time safety + higher boilerplate + runtime setup hazards.
+- **Project-owned descriptor tables:** removes dependency but duplicates enum lists and drifts unless tightly maintained.
+- **Hybrid (`magic_enum` for names/counts, EnTT meta for tooling):** viable if future runtime inspection needs emerge.
+
+## Follow-up plan
+
+1. Keep Issue #350 outcome as **no-migration**.
+2. Retain existing compile-time guards (`audio_types.h`, `sfx_bank.cpp`, `test_audio_system.cpp`).
+3. If future editor/runtime tooling needs reflection, add a separate scoped issue for opt-in EnTT meta registration without removing `magic_enum`.
+
+---
+
+# Decision: Issue #350 QA Gate Cleared
+
+**Author:** Verbal (QA Engineer)  
+**Date:** 2026-05-04  
+**Status:** Approved
+
+## Verdict
+
+Issue #350 now meets acceptance criteria. QA gate is cleared.
+
+## Basis
+
+- Required substantive recommendation is now posted on issue #350:
+  - https://github.com/yashasg/friendly-parakeet/issues/350#issuecomment-4368370941
+- Recommendation explicitly addresses required parity points:
+  - enum count behavior/contracts
+  - invalid enum handling
+  - static-assert coverage
+  - `ToString()` `const char*` call-site expectations
+- Recommendation includes clear outcome and rationale:
+  - keep `magic_enum` now; EnTT meta not a better fit for current compile-time safety/boilerplate constraints
+
+## QA Action Logged
+
+- Gate-cleared comment posted on issue #350:
+  - https://github.com/yashasg/friendly-parakeet/issues/350#issuecomment-4368380355
+
