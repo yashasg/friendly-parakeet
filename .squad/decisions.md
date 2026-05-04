@@ -4249,3 +4249,131 @@ Results:
 - Introduced project-owned runtime compatibility surface (`platform/runtime_api.h`) and compatibility implementation (`runtime_types.h`, `runtime_compat.cpp`, `raygui_compat.cpp`).
 - Rewired runtime include usage to project API surface; SDL2 remains sole backend.
 - Validation passed: full non-bench suite + render/input/audio validation slices.
+# Decision: Final external raylib eviction complete (Issue #372)
+
+## Context
+Branch: `feature/sdl2-migration-phase-1-abstraction-layer`
+
+Phase 7 left residual direct external raylib coupling in shared runtime modules. Migration acceptance required complete runtime/build graph decoupling while preserving SDL2-only backend behavior.
+
+## Decision
+Complete eviction by removing external raylib from dependency management and replacing legacy include/call surfaces with project-owned runtime compatibility abstractions.
+
+## Implemented
+1. Build/dependency removal
+   - Removed `find_package(raylib)` and all `raylib` target linkage from `CMakeLists.txt`.
+   - Removed `raylib` from `vcpkg.json` dependencies.
+
+2. Runtime abstraction consolidation
+   - Added `app/platform/runtime_api.h` as the single runtime API include surface.
+   - Added `app/platform/runtime_types.h` + `app/platform/runtime_compat.cpp` to provide project-owned math/types/logging/draw/input/audio helper symbols required by existing runtime modules.
+   - Added `app/raygui.h` + `app/platform/raygui_compat.cpp` lightweight UI compatibility layer to avoid external raygui/raylib coupling.
+
+3. Codebase cleanup
+   - Rewired runtime/test/benchmark include sites away from direct `<raylib.h>/<raymath.h>/<rlgl.h>` style includes to `platform/runtime_api.h`.
+   - Updated migration docs/checklists to reflect completed state.
+
+## Validation
+- `cmake -B build -S . -Wno-dev && cmake --build build -j4`
+- `./build/shapeshifter_tests "~[bench]"`
+- `./build/shapeshifter_tests "[render]"`
+- `./build/shapeshifter_tests "[input]"`
+- `./build/shapeshifter_tests "[audio]"`
+
+All commands passed.
+
+## Consequences
+- Runtime/build graph no longer requires external raylib package.
+- SDL2 remains the only active backend path.
+- Remaining "raylib" references are legacy comments/test/doc nomenclature only, not external dependency linkage.
+# 2026-05-04 — Baer Final Migration Acceptance Gate Verdict (Issue #372)
+
+**Author:** Baer (Test Engineer)  
+**Issue:** #372  
+**Branch:** `feature/sdl2-migration-phase-1-abstraction-layer`  
+**Requested by:** yashasg
+
+## Command execution
+
+Executed parity matrix command set for current backend-relevant paths:
+
+```bash
+cmake -B build -S . -DSHAPESHIFTER_BACKEND=sdl2 -DCMAKE_BUILD_TYPE=Release -Wno-dev
+cmake --build build --target shapeshifter_tests
+./build/shapeshifter_tests --skip-benchmarks -v quiet
+./build/shapeshifter_tests "[render][sdl2][validation]" -v quiet
+ctest --test-dir build --output-on-failure -R "redfoot/#168: existing game_over buttons keep their original positions"
+```
+
+## Result classification vs baseline failure ledger
+
+1. `./build/shapeshifter_tests --skip-benchmarks -v quiet` → ✅ PASS (2244 assertions / 799 cases)
+2. `./build/shapeshifter_tests "[render][sdl2][validation]" -v quiet` → ✅ PASS (20 assertions / 2 cases)
+3. `ctest ... -R "redfoot/#168: existing game_over buttons keep their original positions"` → ⚠️ FAIL as expected (baseline pre-existing failure at `tests/test_redfoot_testflight_ui.cpp:67`)
+
+## Regression decision
+
+- **No new migration regressions detected.**
+- All observed failures map to baseline ledger only.
+
+## Final gate verdict
+
+- **PASS** ✅
+
+## Blockers
+
+- None for migration acceptance gate.
+- Follow-up (non-gating): complete residual direct raylib dependency eviction in non-backend modules.
+# Kobayashi Phase 6 Completion — CI Runner Confirmation (Issue #372)
+
+**Date:** 2026-05-04  
+**Branch:** `feature/sdl2-migration-phase-1-abstraction-layer`  
+**Requested by:** yashasg  
+**Phase 6 slice base:** `153d969`
+
+## Summary
+
+Phase 6 closure work is complete. Linux + WASM workflows touched in the Phase 6 slice have been explicitly validated on GitHub-hosted runners for this migration branch, with both raylib and SDL2 backend paths exercised.
+
+## GitHub CI Evidence
+
+- Linux workflow (workflow_dispatch):  
+  https://github.com/yashasg/friendly-parakeet/actions/runs/25309909229 ✅
+  - `Build` (raylib/default) ✅
+  - `Build SDL2 backend (Linux hardening)` ✅
+  - `Run tests` ✅
+
+- WebAssembly workflow (workflow_dispatch):  
+  https://github.com/yashasg/friendly-parakeet/actions/runs/25309910455 ✅
+  - `Build (Emscripten)` (raylib/default) ✅
+  - `Build SDL2 backend (WASM compatibility)` ✅
+  - `Verify WASM runtime flags` ✅
+  - `Run WASM tests (via CTest + Node)` ✅
+
+## Failure Classification During Confirmation
+
+### Migration-coupled failures (resolved)
+1. **WASM raylib test linking (`glfwGetTime` unresolved)**  
+   Root cause: backend-specific emscripten linker flag was not applied to `shapeshifter_tests`.
+   - Fix: propagate `${_emscripten_backend_link_flag}` to `shapeshifter_tests` link options.
+
+2. **WASM SDL2 compatibility build file-copy failure**  
+   Root cause: second build tree (`build-web-sdl2`) lacked `content/ui` directory before root UI JSON copy.
+   - Fix: add explicit `make_directory "$<TARGET_FILE_DIR:shapeshifter>/content/ui"` before copy step.
+
+### Pre-existing/infra-coupled failure (resolved)
+1. **Linux fresh-runner vcpkg install failed on `libxcrypt`**  
+   Root cause: missing host package `libltdl-dev` (and exposed autotools chain expectations on cache-miss runs).
+   - Fix: install required Linux host deps in CI dependency step (`autoconf`, `autoconf-archive`, `automake`, `libtool`, `pkg-config`, `libltdl-dev`).
+
+## Workflow Reliability Change
+
+Added minimal `workflow_dispatch` triggers to `ci-linux.yml` and `ci-wasm.yml` so backend validation can be run directly on migration branches without requiring PR event setup.
+
+## Final Phase 6 Status
+
+**✅ Phase 6 fully complete**
+
+- Backend matrix behavior is explicit and validated on GitHub runners (Linux + WASM).
+- CI evidence captured with successful run URLs above.
+- Migration-coupled failures identified and fixed; infra-coupled dependency issue identified and fixed.

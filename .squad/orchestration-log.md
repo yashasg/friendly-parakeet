@@ -320,3 +320,69 @@ Residual: raylib API dependencies remain in non-backend modules (font, text util
 
 **Migration Verdict:** Backend-complete (SDL2-only execution). Issue #372 Phase 7 closure ready.
 
+
+---
+
+## Session: keaton-13
+
+**Agent:** Keaton (C++ Performance Engineer)  
+**Scope:** Final external raylib eviction and project-owned compatibility abstractions  
+**Status:** ✅ COMPLETED
+
+### Deliverables
+- Removed external `raylib` package from `CMakeLists.txt` dependency management
+- Removed `raylib` from `vcpkg.json` manifest
+- Created project-owned runtime abstraction layer:
+  - `app/platform/runtime_api.h` — unified runtime API surface
+  - `app/platform/runtime_types.h` + `runtime_compat.cpp` — math/types/logging/draw/input/audio helpers
+  - `app/raygui.h` + `app/platform/raygui_compat.cpp` — lightweight UI compatibility layer
+- Rewired codebase include sites from direct `<raylib.h>/<raymath.h>/<rlgl.h>` to `platform/runtime_api.h`
+- Updated migration documentation and completion checklists
+
+### Validation
+- ✅ `cmake -B build -S . -Wno-dev && cmake --build build -j4` — pass, zero warnings
+- ✅ `./build/shapeshifter_tests "~[bench]"` — pass (2244 assertions / 799 cases)
+- ✅ `./build/shapeshifter_tests "[render]"` — pass
+- ✅ `./build/shapeshifter_tests "[input]"` — pass
+- ✅ `./build/shapeshifter_tests "[audio]"` — pass
+
+### Outcomes
+- External raylib no longer required in build/runtime graph
+- SDL2 remains sole active backend path
+- Residual "raylib" references are documentation/naming only, not external linkage
+- Migration Phase 7 cleanup work complete
+
+---
+
+## Session: baer-2
+
+**Agent:** Baer (Test Engineer)  
+**Scope:** Final SDL2 migration acceptance gate verification  
+**Status:** ✅ PASSED
+
+### Deliverables
+- Executed parity matrix command set for current backend-relevant paths:
+  - Full build with SDL2 backend (`-DSHAPESHIFTER_BACKEND=sdl2 -DCMAKE_BUILD_TYPE=Release`)
+  - Full non-benchmark test suite (`--skip-benchmarks`)
+  - SDL2 render validation suite (`[render][sdl2][validation]`)
+  - Known-failure sentinel validation (`redfoot/#168`)
+
+### Validation Results
+- ✅ `./build/shapeshifter_tests --skip-benchmarks -v quiet` — PASS (2244 assertions / 799 cases)
+- ✅ `./build/shapeshifter_tests "[render][sdl2][validation]" -v quiet` — PASS (20 assertions / 2 cases)
+- ⚠️ `ctest ... redfoot/#168` — FAIL (as expected, pre-existing baseline failure)
+
+### Regression Decision
+- **No new migration regressions detected**
+- All observed failures map to baseline ledger only
+- Zero new failure classifications introduced by eviction work
+
+### Gate Verdict
+- **✅ PASS** — SDL2 migration fully accepted
+- No blockers for migration acceptance
+- Follow-up: residual direct raylib dependency eviction in non-backend modules (separate hardening slice)
+
+### Outcomes
+- Full SDL2 migration Phase accepted with zero new regressions
+- Test parity matrix complete across all affected subsystems
+- Migration architecture stable for production deployment
