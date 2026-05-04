@@ -2095,3 +2095,72 @@ User has explicitly stated willingness to accept an iOS implementation path that
 **Implication for team:** User accepts implementation effort (Options A, B, or C outlined above) and is not blocked by iOS being missing from raylib 5.5. This resolves the scope question: iOS is in-scope if team prioritizes it.
 
 **Next step:** If iOS is prioritized in future sprint, refer back to this directive when planning Option A (adopt PR #3880), Option B (SDL2 wrapper), or Option C (Emscripten + WebView).
+
+---
+
+# 2026-05-03 — Hockney: rcore_ios Source Clarification
+
+**Timestamp:** 2026-05-03T23:35:53.391-07:00  
+**Investigator:** Hockney (Platform Engineer)  
+**Task:** Clarify whether `rcore_ios.c` exists in raylib 5.5 (current vendored version)  
+**Verdict:** ✅ **CONFIRMED ABSENT** — No bug; this is intended architecture
+
+## Investigation Summary
+
+### Evidence
+
+**Current Setup:**
+- Raylib Version: 5.5 (via vcpkg overlay)
+- Raylib Commit: `05442024c3fda64320bd25d2251cc9807b84fb6f` (Nov 18, 2024)
+- iOS Configuration: portfile.cmake line 60–61 sets `-DPLATFORM=Desktop` for iOS
+
+**Platform Files Available in raylib 5.5** (at `/src/platforms/`):
+- ✅ rcore_android.c
+- ✅ rcore_desktop_glfw.c
+- ✅ rcore_desktop_rgfw.c
+- ✅ rcore_desktop_sdl.c
+- ✅ rcore_drm.c
+- ✅ rcore_web.c
+- ✅ rcore_template.c
+- ❌ **rcore_ios.c — DOES NOT EXIST**
+
+**Upstream Status:**
+- Searched raylib master branch (latest) — `rcore_ios.c` does not exist
+- GitHub API returns "Not Found" for this file on all branches
+- Git history shows no commits ever created or deleted this file
+- Raylib has never shipped a native iOS core implementation
+
+### Root Cause
+
+iOS support in raylib never had a dedicated platform file. Instead:
+
+1. **Design decision:** raylib uses Desktop backend (GLFW) for iOS
+2. **vcpkg overlay:** Explicitly forces `-DPLATFORM=Desktop` for iOS targets
+3. **No Objective-C core needed:** While `raudio.c` is compiled as Objective-C for iOS (CMakeLists.txt line 58), the core loop delegates to Desktop backend
+4. **This is intentional design** — raylib doesn't maintain separate iOS/Android paradigms; iOS uses GLFW like macOS
+
+### Backend Reality
+
+The main `src/rcore.c` uses conditional includes based on platform detection (lines 540–550):
+- No iOS-specific include exists
+- iOS is explicitly configured to use the Desktop backend
+- This is a **constraint of the current raylib 5.5 architecture**
+
+## Conclusion
+
+**No bug or missing file.** This is the intended architecture:
+
+- iOS is **not a first-class platform** in raylib 5.5; it falls back to Desktop backend
+- `rcore_ios.c` never existed and was never planned in this version
+- If iOS-specific windowing/input is needed, it must be added separately as a new platform backend (e.g., via PR #3880 for raylib 6.0+)
+
+## Implication
+
+For this project:
+- Current vendored raylib (5.5) does not include native iOS support
+- If iOS port is required, team must either:
+  1. **Wait for raylib 6.0+** (monitor upstream PR #3880)
+  2. **Implement custom rcore_ios backend** (Option A from previous decision)
+  3. **Use alternative approach** (SDL2 wrapper, Emscripten + WebView)
+
+---

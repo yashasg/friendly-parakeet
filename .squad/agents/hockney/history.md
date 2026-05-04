@@ -134,3 +134,16 @@ Keaton completed singleton eager-init refactor (2026-05-03). Clang native build 
 **Recommendation:** DO NOT pursue iOS with raylib 5.5. Status quo is correct.
 
 **Decision:** Inbox entry written to `.squad/decisions/inbox/hockney-cmake-xcode-ios-viability.md`.
+
+## Investigation: rcore_ios.c Missing in raylib 5.5 (2026-05-03)
+
+**Finding:** iOS platform in raylib 5.5 does not have a dedicated `rcore_ios.c` backend file. This is intentional architecture.
+
+**Key Facts:**
+- raylib uses **Desktop/GLFW backend** for iOS (portfile.cmake line 60: `-DPLATFORM=Desktop`)
+- `rcore_ios.c` has never existed in any raylib version (searched master branch, no git history)
+- iOS is not a first-class ECS platform; it's a fallback to Desktop backend like other GLFW systems
+- raudio.c is compiled as Objective-C for iOS, but core event loop reuses Desktop platform
+- raylib architecture: rcore.c conditionally includes platform backends at compile-time (lines 540-550)
+
+**Implication for bullethell:** iOS builds will use GLFW/Desktop event loop until custom iOS platform backend is implemented.

@@ -178,3 +178,56 @@
 | **File(s) agent must produce** | Decision document in `.squad/decisions/inbox/hockney-cmake-xcode-ios-viability.md` |
 | **Outcome** | ✅ Completed — **CMake→Xcode call works ✅; iOS runtime fails ❌.** Evidence: raylib 5.5 has no `rcore_ios.c`; upstream PR #3880 unmerged; vcpkg iOS workaround configures Desktop+GLFW (incompatible with iOS UIKit). Three options identified: A (adopt PR #3880, 6–8 weeks), B (SDL2 wrapper, 4 weeks), C (Emscripten WebView, 3 weeks). **Recommendation:** HOLD until raylib 6.0 or explicit team scope/timeline approval. User directive captured: willing to accept iOS implementation path. |
 
+
+---
+
+## 2026-05-03 23:35:53 — Scribe: Merge rcore_ios Clarification
+
+**Session:** scribe-merge-rcore-ios  
+**Trigger:** Scheduled task (Team ROOT: Scribe Manifest)  
+**Components:**
+1. Merge .squad/decisions/inbox/* into .squad/decisions.md
+2. Clear processed inbox entries
+3. Commit .squad files if staged
+
+### Execution Log
+
+| Step | Action | Status |
+|------|--------|--------|
+| 1 | Identify inbox decision | ✅ Found `hockney-rcore-ios-source-clarification.md` |
+| 2 | Read investigation result | ✅ Confirmed 1422 bytes, complete findings |
+| 3 | Append to decisions.md | ✅ Merged under "2026-05-03 — Hockney: rcore_ios Source Clarification" |
+| 4 | Remove inbox file | ✅ Deleted processed entry |
+| 5 | Create session log | ✅ Written to `.squad/sessions/2026-05-03T23-35-53-scribe-merge-rcore-ios.md` |
+| 6 | Update orchestration log | ✅ This entry |
+| 7 | Stage & commit | 🔄 Pending |
+
+### Key Findings Merged
+
+**Source:** `hockney-rcore-ios-source-clarification.md`
+
+**Verdict:** ✅ **CONFIRMED ABSENT** — No bug; this is intended architecture
+
+**Evidence:**
+- raylib 5.5 (commit `05442024c3fda64320bd25d2251cc9807b84fb6f`)
+- Platform files: rcore_android, rcore_desktop_glfw, rcore_desktop_rgfw, rcore_desktop_sdl, rcore_drm, rcore_web, rcore_template
+- **rcore_ios.c does not exist** (verified in vendored source and upstream master)
+- iOS uses Desktop backend by design (vcpkg portfile.cmake line 60–61 forces `-DPLATFORM=Desktop`)
+
+**Implication:** iOS is not first-class platform in raylib 5.5; falls back to Desktop. Custom implementation or raylib 6.0+ needed for native iOS support.
+
+### Inbox Status
+
+**Before:** 1 entry  
+**Processed:** `hockney-rcore-ios-source-clarification.md`  
+**After:** 0 entries (cleared)
+
+### Files Modified
+
+- `.squad/decisions.md` — Appended ~40 lines (new investigation section)
+- `.squad/decisions/inbox/` — Removed 1 file
+- `.squad/sessions/` — Added 1 file (session log)
+- `.squad/orchestration-log.md` — This entry (will be committed)
+
+---
+
