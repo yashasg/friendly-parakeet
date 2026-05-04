@@ -1,3 +1,139 @@
+# 2026-05-04T11:29:38Z — Fenster: Issue #374 audio runtime state status
+
+## Decision
+Issue #374 objective is still open.
+
+## Evidence
+- `app/runtime/runtime_compat.cpp:28-50` defines mutable static-backed `RuntimeMusicState` and `RuntimeAudioState` via `runtime_music_state()` / `runtime_audio_state()`.
+- `app/runtime/runtime_compat.cpp:1195-1278` mutates and reads that static music state for play/pause/resume/stop/time.
+- `app/audio/music_backend.cpp:14-23` defines mutable static `MusicTimeOverride` used by tests/runtime timing path.
+- `app/audio/music_context.h:7-12` shows ECS `MusicContext` only stores stream handle + loaded/started/volume, not backend clock/device state.
+
+## Team-relevant implementation direction
+1. Add ECS context structs for audio device lifecycle + music runtime clock/override.
+2. Change audio backend API to accept registry-owned runtime state references (instead of hidden statics).
+3. Update `game_loop.cpp`, `play_session.cpp`, `song_playback_system.cpp`, and audio tests to route through ECS-owned runtime state.
+4. Remove static mutable runtime audio state from `runtime_compat.cpp` and `music_backend.cpp` after callsites migrate.
+# 2026-05-04T11:29:38Z — Keyser: Full audit decision + Issue #374 blueprint
+
+## Decision
+- Audit verdict: **REJECT for architecture completion** against requested criteria.
+- Issue #374 objective remains **OPEN**.
+
+## Prioritized findings
+1. **P0 — ECS authority breach (Issue #374):** mutable audio runtime state still lives in static globals.
+   - `app/runtime/runtime_compat.cpp` static `RuntimeMusicState` / `RuntimeAudioState`
+   - `app/audio/music_backend.cpp` static `MusicTimeOverride`
+2. **P1 — No-wrapper / direct-engine criteria still violated:** broad runtime compatibility facade and virtual renderer interface remain central.
+   - `app/runtime/runtime_types.h`, `app/runtime/runtime_compat.cpp`
+   - `app/rendering/renderer_backend.h`, `app/rendering/renderer_backend_sdl2.cpp`
+3. **P1 — SOLID + dedupe gap:** collision resolution matrix duplication persists.
+   - `app/systems/collision_system.cpp` graded/ungraded × gate-type branches duplicate logic.
+4. **P2 — EnTT init-contract drift:** hot-path lazy singleton fallback persists.
+   - `app/systems/collision_system.cpp` uses `ctx().find<SongState>()` then fallback `emplace`.
+
+## Exact implementation blueprint for #374 (safe completion path)
+
+### 1) Data structures (new ECS-owned runtime state)
+- Add `app/audio/audio_runtime_state.h`:
+  - `struct AudioDeviceRuntimeState { bool subsystem_started; bool mixer_ready; int mix_init_flags; };`
+  - `struct MusicClockState { bool playing; bool paused; uint32_t started_at_ms; uint32_t paused_at_ms; uint32_t paused_total_ms; bool override_enabled; float override_seconds; };`
+
+### 2) Startup/shutdown ownership
+- `app/game_loop.cpp`
+  - In `game_loop_init`: `reg.ctx().emplace<AudioDeviceRuntimeState>(); reg.ctx().emplace<MusicClockState>();`
+  - In shutdown: clear both via context lifecycle (no static teardown state needed).
+
+### 3) API migration (remove hidden globals)
+- `app/audio/music_backend.h/.cpp`
+  - Change signatures to accept ECS state explicitly:
+    - `init_audio_device(AudioDeviceRuntimeState&)`
+    - `shutdown_audio_device(AudioDeviceRuntimeState&, MusicClockState&)`
+    - `play/pause/resume/stop/update/get_time(..., MusicClockState&)`
+    - `set/clear music time override(MusicClockState&, ...)`
+  - Keep `MusicContext` as handle/loaded/start flags only.
+
+### 4) Runtime compat thinning (stateless glue only)
+- `app/runtime/runtime_compat.cpp`
+  - Delete `RuntimeMusicState`, `RuntimeAudioState`, and helper accessors.
+  - Keep only direct SDL_mixer calls and return values.
+  - `GetMusicTimePlayed` becomes thin/non-authoritative (or removed from gameplay path).
+
+### 5) Callsite updates
+- `app/game_loop.cpp`: pass ctx runtime states into init/shutdown.
+- `app/session/play_session.cpp`: no static override assumptions.
+- `app/systems/song_playback_system.cpp`: read clock through `MusicClockState`-backed backend calls.
+- `tests/test_music_backend.cpp`, `tests/test_song_playback_system.cpp`: replace global override helpers with registry-owned `MusicClockState` mutation helpers.
+- `tests/test_helpers.h`: emplace `AudioDeviceRuntimeState` + `MusicClockState` in `make_registry()`.
+
+### 6) Safety/ordering constraints
+- Preserve fail-fast boot: if init fails, teardown only what was started.
+- Ensure `play -> pause -> resume -> stop` updates `MusicClockState` deterministically.
+- Keep deterministic test path by setting `override_enabled/override_seconds` in ctx (no static/global test state).
+
+### 7) Done criteria
+- Zero mutable static/global audio runtime state in gameplay-relevant code paths.
+- `song_playback_system` authoritative time sourced via ECS-owned state.
+- Full build + tests pass with current suite.
+# 2026-05-04T11:29:38Z — Kujan audit gate: wrappers/SOLID/EnTT + issue #374
+
+## Decision
+Gate status: **REJECT**.  
+Issue #374 objective is **still unresolved**.
+
+## Evidence (blocking)
+1. **Issue #374 remains open in behavior and implementation**
+   - Tracker: `#374 Audio: Move mutable audio runtime state into ECS context` is OPEN.
+   - `app/runtime/runtime_compat.cpp:28-50` retains mutable static-backed `RuntimeMusicState` / `RuntimeAudioState`.
+   - `app/runtime/runtime_compat.cpp:1080-1120,1195-1278` uses those statics for audio device readiness and authoritative music time.
+   - `app/audio/music_backend.cpp:14-23,114-124` retains static `MusicTimeOverride`.
+2. **No-wrapper / use-engine-APIs criterion still violated**
+   - `app/runtime/runtime_types.h` redefines broad engine-facing type/API surface.
+   - `app/runtime/runtime_api.h` re-exports that surface; include fan-out remains high (55 include callsites in `app/` + `tests/`).
+3. **Architecture/SOLID/EnTT constraints still violated**
+   - Architecture contract says: “No globals. No virtuals. registry is source of truth.”
+   - `app/rendering/renderer_backend.h:8-32` still defines a virtual renderer interface.
+   - Runtime singleton state still lives outside `entt::registry` context.
+4. **Dedupe/reuse incomplete**
+   - `app/systems/collision_system.cpp` still duplicates nearly identical branch bodies for ShapeGate/ComboGate/SplitPath across graded and non-graded flows.
+
+## Blueprint completeness check (required because #374 unresolved)
+Current direction docs are **partial** (high-level only). A complete implementation blueprint must include all of the following:
+
+### A) Files to change (explicit)
+- `app/audio/music_context.h` (or new audio runtime component header)  
+- `app/audio/music_backend.h/.cpp`  
+- `app/runtime/runtime_compat.cpp`  
+- `app/game_loop.cpp`  
+- `app/session/play_session.cpp`  
+- `app/systems/song_playback_system.cpp`  
+- `tests/test_music_backend.cpp`  
+- `tests/test_song_playback_system.cpp`  
+- `tests/smoke/startup_shutdown_smoke.cpp` (if lifecycle assertions are added)
+
+### B) Structs/state contract (explicit)
+- Add ECS-owned runtime structs (names may vary), minimally covering:
+  - audio device lifecycle/readiness flags
+  - music clock state (`playing`, `paused`, `started_at`, pause accumulation)
+  - test override timing value/enable bit
+- Keep `MusicContext` for handle/load/start/volume unless merged intentionally with clear migration notes.
+
+### C) Callsites contract (explicit)
+- All `init/shutdown/is_ready`, `play/pause/resume/stop/update`, and `get_music_time_played` callsites must route through ECS-owned state.
+- Remove all mutable function-static state from audio/runtime path after migration.
+
+### D) Safe-order migration steps (explicit)
+1. Add new ECS runtime structs + registry init in `game_loop_init`.
+2. Thread runtime-state references through backend API and callsites.
+3. Move runtime_compat timekeeping/device flags to ECS-backed path.
+4. Update tests to set/read override via ECS state (not hidden static helpers).
+5. Delete old static state and cleanup helpers; run full build+tests.
+
+Without these A/B/C/D details in one owned implementation plan, execution risk remains high.
+
+## Validation note
+Local baseline run completed: configure/build succeeded; full tests report one pre-existing unrelated failure (`redfoot/#168` positioning regression).
+
 # 2026-05-04T11:08:09Z — Kujan Re-Audit: Audio/Runtime Refactor Gate
 
 ## Decision

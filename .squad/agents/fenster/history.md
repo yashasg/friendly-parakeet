@@ -60,3 +60,28 @@ Scribe orchestrated team spawn completion. Your audit findings have been merged 
 **Related:** Kujan audit confirms same SDL_mixer consolidation progress; wrappers/static state/collision duplication remain open blockers.
 
 **See:** `.squad/agents/fenster/history-archive.md` for UI/rendering/testing work (2026-05-20, 2026-04-29, 2026-04-30).
+
+## 2026-05-04T11:29:38Z — Audio audit pass for Issue #374 objective
+
+Ran a fresh audio-focused audit over `app/` and `tests/` plus rebuild/test validation (`cmake -B build -S . -Wno-dev`, `cmake --build build`, `./build/shapeshifter_tests "[audio]"`, `./build/shapeshifter_tests "[song_playback][audio][timing]"`; all passed).
+
+Findings:
+- Issue #374 objective remains open: mutable runtime audio state still lives in static globals (`RuntimeMusicState`, `RuntimeAudioState`) inside `app/runtime/runtime_compat.cpp`.
+- Additional mutable static remains in wrapper layer: `MusicTimeOverride` singleton in `app/audio/music_backend.cpp`.
+- ECS currently carries only partial music runtime state (`MusicContext` stream/loaded/started/volume), not backend timing/device lifecycle state.
+
+Blueprint direction recorded for team: move backend-mutated music clock + audio device lifecycle state into registry context components and thread those through audio backend API/callsites, then remove static singleton state from runtime compatibility layer.
+
+## 2026-05-04T11:29:38Z — Scribe Session: Decision Merge + Audit Orchestration
+
+**Cross-agent update:** Fenster audio audit decisions merged into decisions.md (1 inbox file). Orchestration log created.
+
+**Team-relevant outcomes:**
+- Audio-specific audit completed; Issue #374 objective still open.
+- Identified mutable static-backed `RuntimeMusicState` and `RuntimeAudioState` in runtime layer; `MusicTimeOverride` in audio layer.
+- ECS `MusicContext` incomplete; only stores handle/flags, not backend clock/device state.
+- Duplicate SDL_mixer orchestration creates drift risk between wrapper and runtime.
+
+**Team direction:** Add ECS context structs for audio device lifecycle + music runtime clock; change backend API to accept registry-owned state references; update callsites to route through ECS-owned runtime state.
+
+**Next phase:** Implementation agent will thread runtime-state references through backend API.

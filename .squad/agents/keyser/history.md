@@ -84,3 +84,22 @@ Created comprehensive, execution-ready migration plan (22K+ characters).
 Scribe orchestrated team spawn completion. Your audit findings have been merged to decisions.md.
 
 **See:** `.squad/agents/keyser/history-archive.md` for Ralph Rounds 3–4, phase-guard design details, and detailed SOLID analyses (2026-05-03 through 2026-04-29).
+
+## 2026-05-04T11:29:38Z — Fresh full audit (post-fix) on wrappers/SOLID/ECS
+
+- Issue #374 remains open: mutable audio runtime state is still held in static globals (`RuntimeMusicState`, `RuntimeAudioState`, `MusicTimeOverride`) rather than ECS context.
+- Wrapper criteria still fail at architecture level: `runtime_types/runtime_compat` facade + virtual renderer indirection remain broad and gameplay-adjacent.
+- Major dedupe/SOLID gap still in `collision_system.cpp` (ShapeGate/ComboGate/SplitPath branch matrix duplicated across graded/ungraded paths).
+- EnTT eager-init policy drift persists in hot path: `collision_system` still does `ctx().find<SongState>()` + fallback `emplace` despite startup singleton init contract.
+
+## 2026-05-04T11:29:38Z — Scribe Session: Decision Merge + Audit Orchestration
+
+**Cross-agent update:** Keyser audit decisions merged into decisions.md (3 inbox files). Orchestration log created. 
+
+**Team-relevant outcomes:**
+- Full architecture audit completed; verdict REJECT for architecture completion.
+- Issue #374 remains OPEN blocker; ECS authority breach (audio runtime state in statics) + wrapper criterion violations + collision dedupe gap.
+- Provided complete implementation blueprint for #374 safe completion path (8-point detailed specification).
+- Baseline: build + tests passed.
+
+**Next phase:** Route revision to different implementation agent (not reviewer). Require patch plan addressing blueprint specifics.
