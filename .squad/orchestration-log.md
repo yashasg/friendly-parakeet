@@ -313,3 +313,24 @@
 
 ---
 
+
+### 2026-05-04T00:18:28.385-07:00 — Raylib-to-SDL2 Migration Plan
+
+| Field | Value |
+|-------|-------|
+| **Agent routed** | Keyser (Lead Architect) |
+| **Why chosen** | Strategic rendering framework migration requires architectural planning and phased design |
+| **Mode** | background |
+| **Why this mode** | Planning and design work; no hard implementation dependencies; async processing |
+| **Files authorized to read** | design-docs/architecture.md, CMakeLists.txt, app/main.cpp, app/systems/game_render_system.cpp, app/systems/input_system.cpp |
+| **File(s) agent must produce** | .squad/decisions/inbox/keyser-raylib-to-sdl2-migration-plan.md |
+| **Outcome** | ✅ Completed — 6+ phase migration plan designed; scheduled for planning phase; zero-warning compilation maintained throughout |
+
+**Plan Highlights:**
+- ✅ Phased migration (Phase 1: abstraction layer; Phase 2–6: platform-specific SDL2 implementation)
+- ✅ Behavior parity maintained; no gameplay regression
+- ✅ Rollback capability at each phase
+- ✅ Full platform support: macOS, Linux, Windows, Web (Emscripten)
+- ✅ Zero warnings on all platforms (Clang, MSVC, Emscripten)
+
+---

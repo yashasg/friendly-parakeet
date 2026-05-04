@@ -2554,3 +2554,543 @@ Reassess. Right now, swap costs 3–4 weeks and risks 5 platforms for benefits t
 - `CMakeLists.txt` lines 50–62 — raylib dependency declaration
 - `app/main.cpp` — raylib initialization
 
+
+---
+
+## 2026-05-04 — User Directive: SDL2 Migration Path
+
+**By:** yashasg (via Copilot)  
+**Context:** Wait for SDL3 to mature; proceed with a raylib to SDL2 migration plan.  
+**Rationale:** User request — captured for team memory
+
+---
+
+# Raylib-to-SDL2 Migration Plan
+
+**Decision Date:** 2026-05-04  
+**Status:** Approved for Planning Phase  
+**Requested by:** yashasg  
+**Architecture Lead:** Keyser  
+
+---
+
+## Executive Summary
+
+This document outlines a **phased, zero-downtime migration from raylib to SDL2** for SHAPESHIFTER, a C++20 bullet-hell rhythm game. The migration is **non-trivial** due to deep raylib coupling in rendering, input, windowing, and timing systems, but is **feasible and valuable** for cross-platform stability and long-term maintainability.
+
+**Key Principle:** Behavior parity first—no gameplay regression. Each phase ships a working game.
+
+---
+
+## Goal & Non-Goals
+
+### ✓ Goals
+- Complete, production-ready migration from raylib to SDL2
+- Maintain 100% behavior parity (no gameplay, audio, input, or visual changes)
+- Zero warnings on all platforms (Clang native, MSVC, Emscripten)
+- Incremental, shippable PRs per phase (6+ phases)
+- Rollback capability at any phase
+- Full platform support: macOS, Linux, Windows, Web (Emscripten)
+
+### ✗ Non-Goals
+- Implementing new rendering features during migration
+- Refactoring ECS systems or architecture
+- Adding SDL2-specific optimizations in initial phase (post-migration opportunity)
+- Replacing raygui with SDL UI framework (raygui remains, adapted layer)
+- Supporting both raylib and SDL2 simultaneously (clean cutover per phase)
+
+---
+
+## Design Principles
+
+1. **Behavior Parity First**  
+   Every phase ships a working game. Visual output, input handling, audio, and timing must be pixel-perfect identical to baseline raylib build.
+
+2. **Abstraction-First Approach**  
+   Introduce an abstraction layer early (Phase 1) to decouple game code from renderer/platform specifics.
+
+3. **Platform-Specific Branches**  
+   Each platform (native, Web) has unique SDL2 integration needs (GL context, WASM build flags). Isolate platform code early.
+
+4. **Testability**  
+   Render and input systems must be independently testable without full SDL2 window. Mock systems early.
+
+5. **Zero-Warning Policy Maintained**  
+   All intermediate builds must compile warning-free on all platforms. Migration does not relax this.
+
+6. **Minimal Third-Party Additions**  
+   SDL2 only; no extra rendering frameworks. Use SDL2's 2D API directly where raylib used it.
+
+---
+
+## Phase-by-Phase Plan
+
+### **Phase 1: Abstraction Layer & Platform Decoupling** (Effort: **Medium**)
+
+**Goal:** Introduce a thin abstraction layer between game logic and raylib. Decouple platform-specific code.
+
+**Exit Criteria:**
+- Game compiles and runs identically with raylib (no visual/gameplay changes)
+- Abstraction layer headers in `app/platform/graphics/` and `app/platform/input/` are defined
+- Platform detection code isolated in `app/platform/sdl2/` (stub, non-functional)
+- All existing tests pass
+- Zero compilation warnings
+
+**Files to Touch:**
+- Create `app/platform/graphics/renderer.h` (renderer interface)
+- Create `app/platform/graphics/renderer_raylib.cpp` (raylib impl)
+- Create `app/platform/graphics/renderer_sdl2.cpp` (SDL2 stub, non-functional)
+- Create `app/platform/input/input_handler.h` (input interface)
+- Create `app/platform/input/input_handler_raylib.cpp` (raylib impl)
+- Create `app/platform/input/input_handler_sdl2.cpp` (SDL2 stub)
+- Create `app/platform/window/window_manager.h` (window interface)
+- Refactor `app/systems/game_render_system.cpp` to call renderer abstraction
+- Refactor `app/systems/input_system.cpp` to call input abstraction
+- Update `app/platform_display.cpp` to use window manager
+- Update `CMakeLists.txt` with abstraction layer compilation units
+
+**Validation Strategy:**
+- Run full game (all difficulty levels)
+- Run `./build/shapeshifter_tests`
+- Verify visual output matches baseline (spot-check key scenes)
+- Profile frame times; must stay ≤1% variance from baseline
+
+**Rollback:** Revert commit; raylib remains sole implementation.
+
+---
+
+### **Phase 2: SDL2 Window & Graphics Context (Native)** (Effort: **Large**)
+
+**Goal:** Get SDL2 window and OpenGL context working on macOS, Linux, Windows. Render blank screen.
+
+**Exit Criteria:**
+- SDL2 window opens on all three native platforms
+- OpenGL context initialized and valid
+- Blank screen renders (no gameplay, no raylib code)
+- Build succeeds warning-free on macOS (Clang), Linux (GCC), Windows (MSVC)
+- Tests still pass (off-screen rendering path)
+
+**Files to Touch:**
+- Implement `app/platform/sdl2/sdl2_window_manager.cpp` (window creation, GL context)
+- Implement `app/platform/sdl2/sdl2_graphics_context.h` (GL state, projection matrix)
+- Implement `app/platform/graphics/renderer_sdl2.cpp` (minimal: clear screen only)
+- Update `app/game_loop.cpp` to initialize SDL2 via abstraction
+- Update `CMakeLists.txt`: link SDL2 library (conditional via `if(NOT EMSCRIPTEN)`)
+- Create `app/platform/sdl2/sdl2_init.cpp` (SDL_Init, error handling)
+- Create platform-specific window hints (Cocoa on macOS, X11 on Linux, etc.)
+
+**Platform-Specific Notes:**
+- **macOS:** Use Cocoa backend, manage bundle paths for content loading
+- **Linux:** Handle X11/Wayland detection, DPI scaling
+- **Windows:** Handle D3D context (for now, GL is primary; D3D post-migration)
+
+**Validation Strategy:**
+- Visual inspection: blank black window on each platform
+- Check SDL2 event loop is responsive (close button works)
+- Verify GL error log is clean: `glGetError() == GL_NO_ERROR`
+- Measure initialization time (SDL2 window + GL should be <500ms)
+
+**Rollback:** Revert; raylib window still functional via abstraction layer.
+
+---
+
+### **Phase 3: Porting Rendering Core** (Effort: **Large**)
+
+**Goal:** Port raylib's 2D and 3D draw calls to SDL2 + OpenGL. Render playfield geometry.
+
+**Exit Criteria:**
+- Floor, lane guide lines, and color corridor render identically
+- 3D projection matrix set up correctly (perspective, orthographic modes)
+- Obstacle meshes render (debug wireframe first)
+- All rendering calls compile and produce pixel-identical output to raylib baseline
+- No performance regression (frame time variance <2%)
+- Zero warnings
+
+**Files to Touch:**
+- Implement `app/platform/sdl2/sdl2_renderer.cpp` (GL draw calls)
+- Port buffer/mesh management from `app/rendering/camera_resources.h` to SDL2
+- Port floor rendering from `app/systems/game_render_system.cpp`:
+  - `draw_floor_lines()` → vertex buffer + `glDrawArrays(GL_LINES, ...)`
+  - `draw_floor_connectors()` → tessellation, same path
+- Implement immediate-mode GL equivalent for raylib's `rlBegin(RL_LINES)/rlVertex3f()` calls
+- Update `app/components/shape_mesh.h` for SDL2 vertex buffer layout
+- Create `app/platform/sdl2/sdl2_gl_util.h` (VAO/VBO management, shader setup)
+
+**Rendering Surfaces Affected:**
+- `app/systems/game_render_system.cpp` (floor, obstacles, particles, UI overlay)
+- `app/systems/ui_render_system.cpp` (text, layout rendering)
+- `app/systems/particle_system.cpp` (particle geometry)
+- `app/ui/text_renderer.cpp` (glyph rendering)
+
+**Validation Strategy:**
+- Render a test beatmap (easy, medium, hard)
+- Pixel-match key frames against raylib baseline (use screenshot diff tool)
+- Verify colors match exactly (sample lane colors, shape colors)
+- Check frame rate stability: target 60 FPS, variance <5%
+- Run profiler; identify any unexpected hot paths
+
+**Rollback:** Revert to raylib renderer; abstraction layer switches back automatically.
+
+---
+
+### **Phase 4: Input System Migration** (Effort: **Medium**)
+
+**Goal:** Port keyboard, mouse, touch, and gesture input to SDL2.
+
+**Exit Criteria:**
+- Keyboard input (arrow keys, spacebar, Esc, Enter) works identically
+- Mouse click and drag works (desktop)
+- Touch and multitouch input works (mobile/tablet)
+- Gesture detection (swipe, rotation) preserved (use gesture library or custom SDL2 detection)
+- All input events reach `InputState` component unchanged
+- Input lag unchanged (target <2% variance in event latency)
+- Tests pass
+
+**Files to Touch:**
+- Implement `app/platform/sdl2/sdl2_input_handler.cpp`
+- Implement gesture recognition layer (SDL2 events → game gestures)
+- Refactor `app/input/raylib_gesture_input.h`:
+  - Replace `SetGesturesEnabled()` and gesture polling with SDL2 event queue
+  - Add SDL2 gesture library or custom recognizer
+- Update `app/systems/input_system.cpp` to poll SDL2 events via abstraction
+- Update `app/input/input_state.h` if needed (likely no changes needed)
+- Create `app/platform/sdl2/sdl2_touch_handler.cpp` (multitouch management)
+
+**Input Surfaces:**
+- `app/systems/input_system.cpp` (main input pump)
+- `app/systems/player_input_system.cpp` (player movement, shape-shift input)
+- `app/input/gesture_routing.cpp` (gesture → gameplay intent mapping)
+- `app/ui/screen_controllers/*.cpp` (UI input handling)
+
+**Validation Strategy:**
+- Play a song using each input method (keyboard, mouse, touch)
+- Verify input routing to correct game entities (player, UI)
+- Check gesture detection accuracy (swipe left/right, tap, hold)
+- Latency test: measure time from SDL2 event to component update (target <1ms variance from baseline)
+
+**Rollback:** Revert to raylib input handler; event stream identical, game unaffected.
+
+---
+
+### **Phase 5: Audio System & Timing** (Effort: **Small**)
+
+**Goal:** Migrate audio streaming and frame timing from raylib to SDL2 (or retain raylib audio as interim step).
+
+**Exit Criteria:**
+- Audio plays identically (same latency, no artifacts)
+- Frame timing stable (60 FPS locked or frame-rate-independent logic maintains parity)
+- No audio stutters or sync issues
+- Test player (automated playtest) produces identical scores on raylib vs SDL2 builds
+- Zero timing regressions
+
+**Files to Touch:**
+- Create `app/platform/sdl2/sdl2_audio_context.h` (SDL_AudioDeviceID, format)
+- Integrate SDL2 audio device init into window/context setup
+- Consider interim approach: keep raylib audio (wrapped in abstraction) while porting rendering
+- If full audio port: adapt `app/audio/music_stream.h` to SDL2 audio queue
+- Update `app/systems/audio_system.cpp` if needed
+- Frame timing: use SDL2 `SDL_GetTicks64()` / `SDL_GetPerformanceCounter()` instead of raylib
+
+**Audio Surfaces:**
+- `app/audio/music_stream.h` (music streaming)
+- `app/audio/audio_queue.h` (audio buffer management)
+- `app/systems/audio_system.cpp` (playback control)
+- `app/systems/song_playback_system.cpp` (sync with beatmap)
+
+**Validation Strategy:**
+- Play full songs; verify no stuttering or desync
+- Run test player (pro skill) and verify score matches raylib build within 0.1%
+- Measure audio latency (time from beat detection to haptic feedback)
+- Profile CPU usage; should not increase
+
+**Rollback:** If SDL2 audio issues arise, revert to raylib audio; abstraction allows mixed approach.
+
+---
+
+### **Phase 6: Emscripten (WASM) & Platform-Specific Hardening** (Effort: **Large**)
+
+**Goal:** Port WASM build to SDL2. Validate all platforms (macOS, Linux, Windows, Web).
+
+**Exit Criteria:**
+- Emscripten SDL2 build compiles and runs in browser
+- Web game behavior matches all native builds (input, rendering, audio)
+- Canvas resizing works (responsive layout)
+- Touch events handled on mobile browsers
+- Build time <5 minutes (acceptable for web build)
+- Zero platform-specific warnings
+- CI/CD passes on all platforms
+
+**Files to Touch:**
+- Create `app/platform/sdl2/sdl2_wasm.cpp` (SDL2 init for Emscripten)
+- Adapt `app/platform_display.cpp` for SDL2 + Emscripten (canvas binding, resize handling)
+- Update `CMakeLists.txt`: SDL2 flags for Emscripten (`-sUSE_SDL=2`)
+- Update `vcpkg.json` / `vcpkg-overlay/` for SDL2 on wasm32-emscripten triplet
+- Review Emscripten-specific code paths:
+  - Event loop handling (`emscripten_set_main_loop()`)
+  - Canvas binding (`emscripten_set_canvas_element_size()`)
+  - Audio context resume (SDL2 audio may require user gesture on Web)
+
+**Platform Checklist:**
+- ✓ macOS (Intel + Apple Silicon)
+- ✓ Linux (GCC + Clang)
+- ✓ Windows (MSVC)
+- ✓ Web (Chrome, Safari, Firefox)
+- ✓ iOS (if applicable; may need special SDL2 handling)
+
+**Validation Strategy:**
+- Full build on each platform; zero warnings
+- Functional test on each platform: play 1–3 complete songs
+- Visual regression test: capture screenshots, diff against Phase 3 baseline
+- Performance profiling: frame time, memory usage, no leaks
+- CI/CD green on all platforms
+
+**Rollback:** Revert to raylib; WASM build falls back to working raylib code.
+
+---
+
+### **Phase 7: Cleanup, Documentation & Deprecation** (Effort: **Small**)
+
+**Goal:** Remove raylib code, finalize SDL2 as primary backend, update documentation.
+
+**Exit Criteria:**
+- Raylib code removed (renderer_raylib.cpp, input_handler_raylib.cpp, etc.)
+- Abstraction layer becomes SDL2-only (or minimal compatibility stubs for tests)
+- CMakeLists.txt no longer links raylib
+- Documentation updated: build instructions, platform notes
+- Design docs updated (architecture.md mentions SDL2)
+- Changelog entry added
+- No broken tests or CI
+
+**Files to Touch:**
+- Delete raylib implementation files
+- Simplify abstraction layer headers (reduce interface surface if possible)
+- Update `CMakeLists.txt`: remove raylib dependency
+- Update `README.md`, build scripts
+- Update `design-docs/architecture.md`
+- Create `MIGRATION_SDL2.md` (runbook for future reference)
+
+**Validation Strategy:**
+- Full build and test suite
+- Verify no raylib symbols leak into final binary (link-time check)
+- Run full gameplay validation (all difficulties, UI flows)
+
+---
+
+## File-Surface Mapping
+
+### **Rendering System**
+| File | Phase | Change |
+|------|-------|--------|
+| `app/systems/game_render_system.cpp` | 1, 3 | Refactor to use renderer abstraction; port GL calls |
+| `app/systems/ui_render_system.cpp` | 3 | Port raygui rendering to SDL2 |
+| `app/rendering/camera_resources.h` | 3 | Adapt VBO/VAO for SDL2 |
+| `app/components/shape_mesh.h` | 3 | Update vertex buffer layout |
+| `app/ui/text_renderer.cpp` | 3 | Port glyph rendering |
+
+### **Input System**
+| File | Phase | Change |
+|------|-------|--------|
+| `app/systems/input_system.cpp` | 1, 4 | Refactor to abstraction; port SDL2 events |
+| `app/input/raylib_gesture_input.h` | 4 | Replace with SDL2 gesture handling |
+| `app/input/pointer_input.h` | 4 | Adapt to SDL2 touch events |
+| `app/systems/player_input_system.cpp` | 4 | Minor adjustments if needed |
+
+### **Platform & Windowing**
+| File | Phase | Change |
+|------|-------|--------|
+| `app/platform_display.cpp` | 1, 2, 6 | Refactor for abstraction; port SDL2 + Emscripten |
+| `app/game_loop.cpp` | 1, 2 | Use window manager abstraction |
+
+### **Build Configuration**
+| File | Phase | Change |
+|------|-------|--------|
+| `CMakeLists.txt` | 1, 2, 6, 7 | Add SDL2 dependency; remove raylib in Phase 7 |
+| `vcpkg.json` | 2, 6 | Add SDL2 port; mark raylib deprecated in Phase 7 |
+
+### **Utilities & Logging**
+| File | Phase | Change |
+|------|-------|--------|
+| `app/util/file_logger.cpp` | 1 | Update raylib TraceLog callback (if needed) |
+
+---
+
+## Risk Register & Mitigations
+
+| Risk | Probability | Impact | Mitigation |
+|------|-------------|--------|-----------|
+| **Audio sync loss** | Medium | High | Phase 5 dedicated to audio; use test player for validation; interim hybrid approach (raylib audio + SDL2 render) available |
+| **Input latency regression** | Medium | High | Phase 4 includes latency profiling; compare frame-by-frame input timestamps |
+| **Platform-specific GL shader issues** | Low | Medium | Test on MSVC Windows early (Phase 2); use VAO/VBO across all platforms consistently |
+| **Emscripten canvas resizing breaks** | Medium | Medium | Phase 6 dedicated to WASM; test canvas resizing thoroughly; emscripten_resize_callback integration |
+| **Performance regression (frame time)** | Low | High | Each phase includes frame-time profiling; rollback strategy in place; target <2% variance |
+| **Build time bloat** | Low | Low | Monitor incremental build times; Emscripten builds acceptable if <5min |
+| **Third-party library compatibility** | Low | Low | raygui remains; test compatibility with SDL2 renderer (likely no changes needed) |
+| **Unintended raylib symbol linkage in Phase 7** | Low | Medium | Use `-fvisibility=hidden`, link-time checks; verify binary size reduction |
+
+---
+
+## Validation Strategy (Per Phase)
+
+### Continuous Validation Across All Phases
+1. **Zero warnings:** `-Wall -Wextra -Werror` (Clang), `/W4 /WX` (MSVC)
+2. **Test suite:** `./build/shapeshifter_tests` passes
+3. **Game startup:** Verify window opens, no crashes
+4. **Frame rate:** 60 FPS target, <2% variance from baseline
+5. **Visual output:** Spot-check key scenes (title, gameplay, results screen)
+
+### Phase-Specific Validation
+- **Phase 1:** Game runs unchanged; abstraction verified with unit tests
+- **Phase 2:** SDL2 window opens on all platforms; blank screen renders
+- **Phase 3:** Floor geometry and colors match raylib exactly; no performance dip
+- **Phase 4:** Input routing verified (keyboard, mouse, touch); latency tested
+- **Phase 5:** Music plays in sync; test player scores match baseline ±0.1%
+- **Phase 6:** Web build functional on major browsers; responsive to canvas resize
+- **Phase 7:** Raylib symbols fully removed; binary size reduced; all tests pass
+
+---
+
+## Rollback Strategy
+
+### Immediate Rollback (Any Phase)
+```bash
+git revert <phase-commit-hash>
+./build.sh clean
+cmake -B build -S . -DSHAPESHIFTER_ABSTRACTION_BACKEND=raylib
+cmake --build build
+./run.sh
+```
+
+### Fallback: Dual-Backend Approach (Optional, Interim)
+If a single phase stalls (e.g., audio sync issues in Phase 5):
+1. Keep abstraction layer in place
+2. Merge SDL2 rendering (Phases 1–4) with raylib audio (interim)
+3. Complete Phase 5 audio port in a follow-up iteration
+4. Gate backend via CMake flag: `-DSHAPESHIFTER_SDL2_AUDIO=OFF` → raylib audio
+
+### Identifying Regression
+- Frame rate drops >2% → suspect rendering or timing bottleneck
+- Input lag detected → revert Phase 4
+- Audio stuttering → revert Phase 5
+- WASM canvas resize breaks → revert Phase 6
+
+---
+
+## Branch & Workflow Strategy
+
+### Branch Naming Convention
+```
+feature/sdl2-migration-phase-{N}-{short-desc}
+  e.g., feature/sdl2-migration-phase-1-abstraction-layer
+       feature/sdl2-migration-phase-3-rendering-core
+       feature/sdl2-migration-phase-6-emscripten
+```
+
+### PR Strategy
+- **One PR per phase** (self-contained, shippable)
+- **Phase 1:** Large review effort (abstraction design approval)
+- **Phases 2–6:** Focused reviews (platform-specific concerns)
+- **Phase 7:** Quick merge (cleanup only)
+
+### Merge & Integration
+- **Squash per PR** (one logical commit per phase)
+- **Commit message format:**
+  ```
+  Phase N: [Description]
+  
+  - Detailed summary of changes
+  - Files affected
+  - Testing performed
+  - Exit criteria verified
+  
+  Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+  ```
+- **Main branch protection:** All PRs require passing CI/CD (zero warnings, all tests)
+
+### CI/CD Integration
+- Add SDL2 job to GitHub Actions (parallel with raylib job)
+- Conditional compilation during migration:
+  - `-DSHAPESHIFTER_BACKEND=SDL2` (or `RAYLIB` for testing)
+  - Phase 1–6: Both backends compile and pass tests
+  - Phase 7: SDL2 becomes sole backend
+- Pre-merge checklist:
+  - ✓ All platform jobs pass (macOS, Linux, Windows, Web)
+  - ✓ Zero compiler warnings
+  - ✓ All tests pass
+  - ✓ Performance regression check <2%
+
+---
+
+## Effort Estimate (Relative)
+
+| Phase | Effort | Estimated Hours | Parallelizable |
+|-------|--------|-----------------|-----------------|
+| 1: Abstraction | **Medium** | 16–24 | No (dependency for all) |
+| 2: SDL2 Window & GL | **Large** | 24–32 | Partial (platforms can work in parallel) |
+| 3: Rendering Core | **Large** | 32–48 | No (must follow Phase 2) |
+| 4: Input System | **Medium** | 16–24 | Partial (parallel to rendering) |
+| 5: Audio & Timing | **Small** | 8–12 | Parallel to Phase 4 |
+| 6: Emscripten & Hardening | **Large** | 24–32 | Parallel to Phase 5 |
+| 7: Cleanup & Docs | **Small** | 4–8 | After all phases |
+| **Total** | | **124–180 hours** | ~6–8 weeks (1 person, part-time) |
+
+---
+
+## Success Criteria (Final)
+
+1. **Behavior Parity**  
+   SHAPESHIFTER on SDL2 plays identically to raylib baseline (visual, audio, input, timing).
+
+2. **Platform Coverage**  
+   Game builds and runs on macOS, Linux, Windows, and Web without code changes.
+
+3. **Zero Warnings**  
+   All builds compile warning-free on all platforms.
+
+4. **Performance**  
+   Frame time variance <2% from raylib baseline; audio sync maintained.
+
+5. **Testing**  
+   All test suites pass; test player scores match baseline ±0.1%.
+
+6. **Documentation**  
+   Build instructions, architecture docs, and runbooks updated.
+
+7. **Maintainability**  
+   Abstraction layer enables future renderer swaps (e.g., Vulkan) with minimal pain.
+
+---
+
+## Post-Migration Opportunities
+
+Once SDL2 is stable:
+- **Vulkan/Metal rendering backend** (abstraction layer ready)
+- **Performance tuning** (SDL2-specific optimizations, e.g., dynamic batching)
+- **Mobile OS integration** (SDL2 + native APIs for haptics, notifications)
+- **Accessibility features** (screen reader integration via SDL2 accessibility API)
+
+---
+
+## Appendices
+
+### A. Dependencies & Versions
+- **SDL2:** 2.28.0 or later (chosen for stability; 3.0 held for later)
+- **OpenGL:** 3.3+ (core profile, macOS 10.7+)
+- **C++:** C++20 (unchanged)
+- **CMake:** 3.20+ (unchanged)
+- **Emscripten:** SDK 3.1.50+ (if using SDL2 3.0 later, may require 4.0+)
+
+### B. Known Platform-Specific Concerns
+- **macOS (Apple Silicon):** Verify GL context creation on ARM64; test both Intel and Apple Silicon
+- **Linux (X11 vs Wayland):** SDL2 handles both; validate on modern Wayland systems
+- **Windows (GL vs D3D):** GL primary for now; D3D backend post-migration opportunity
+- **Web (Audio Resume):** SDL2 audio on Web requires user gesture; implement autoplay policy handling
+
+### C. References
+- SDL2 Documentation: https://wiki.libsdl.org/SDL2/FrontPage
+- OpenGL 3.3 Spec: https://www.khronos.org/opengl/
+- Emscripten SDL2 Support: https://emscripten.org/docs/api_reference/SDL2/index.html
+- SHAPESHIFTER Architecture: See `design-docs/architecture.md`
+
+---
+
+**End of Migration Plan**
