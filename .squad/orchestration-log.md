@@ -286,3 +286,15 @@ Decisions merged:
 - `keaton-phase7-prep-slice.md` → `.squad/decisions.md`
 - `kobayashi-phase6-wasm-slice.md` → `.squad/decisions.md`
 
+
+---
+
+### 2026-05-04T00:32:05Z — Scribe: Kobayashi Phase 6 Completion Logged
+
+**Batch:** kobayashi-phase6-completion  
+**Origin:** .squad/decisions/inbox  
+**Action:** Merged decision into .squad/decisions.md  
+**Status:** ✅ COMPLETE
+
+Phase 6 CI runner confirmation and validation closure documented. Linux + WASM workflows validated with both backend paths exercised. Migration-coupled failures (WASM linker flags, SDL2 file-copy) identified and fixed; infra-coupled vcpkg dependency issue resolved. GitHub CI evidence captured and logged.
+
