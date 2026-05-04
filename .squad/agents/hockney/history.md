@@ -58,3 +58,57 @@ Merged 3 inbox decisions:
 **For:** Hockney
 
 Keaton completed singleton eager-init refactor (2026-05-03). Clang native build compiles warning-free; 2209 assertions / 771 cases pass. **WASM build sanity-check recommended** on next CI run — the `#ifdef PLATFORM_WEB && __EMSCRIPTEN__` branch in `input_system_init` compiles cleanly on native but was not verified on Emscripten locally. Recommendation: run web CI build-test suite to confirm no regression.
+
+## 2026-05-03T23:13:31-07:00 — iOS Build Path Investigation
+
+**Scope:** Determined how raylib iOS is supported when CMake PLATFORM option doesn't include iOS.
+
+**Finding 1: raylib 5.5 does NOT have native iOS support**
+- Evidence: No `rcore_ios.c` in `/Users/yashasgujjar/vcpkg/buildtrees/raylib/src/5.5-3d7ad3c5f1.clean/src/platforms/` (only `rcore_android.c`, `rcore_desktop_glfw.c`, `rcore_desktop_rgfw.c`, `rcore_desktop_sdl.c`, `rcore_drm.c`, `rcore_web.c`)
+- Evidence: `ROADMAP.md` lists iOS as planned feature: `[ ] rcore: Support additional platforms: iOS, Xbox Series S|X`
+- Evidence: CMakeOptions.txt enum for PLATFORM is `Desktop;Web;Android;Raspberry Pi;DRM;SDL` — **no iOS option**
+
+**Finding 2: vcpkg portfile iOS workaround is broken**
+- Location: `/Users/yashasgujjar/dev/bullethell/vcpkg-overlay/raylib/portfile.cmake` lines 60-61
+- Current: `if(VCPKG_TARGET_IS_IOS) list(APPEND PLATFORM_OPTIONS -DPLATFORM=Desktop -DUSE_EXTERNAL_GLFW=OFF -DOPENGL_VERSION=ES\ 2.0)`
+- Problem: Forces iOS to use `PLATFORM=Desktop` + GLFW. GLFW is windowing library for *desktop*, not iOS. This will compile but not run on iOS devices.
+
+**Finding 3: Upstream iOS path exists but unmerged**
+- **Location:** PR #3880 (https://github.com/raysan5/raylib/pull/3880) — "[rcore] Porting raylib to iOS and implement `rcore_ios.c`"
+- **Author:** @blueloveTH (blueloveTH, GitHub ID 28104173)
+- **Status:** Closed on 2025-07-27T19:25:40Z, **NOT merged** (merged_at=null); labeled "on hold" and "help needed - please!"
+- **Implementation:** 
+  - Creates `rcore_ios.c` with iOS-specific platform layer (PollInputEvents, InitPlatform, ClosePlatform)
+  - Uses **ANGLE framework** (Google's OpenGL ES → Metal translator for iOS)
+  - Requires prebuilt xcframeworks: `libEGL.xcframework`, `libGLESv2.xcframework` (downloadable from PR files)
+  - Requires Xcode project integration (not pure CMake)
+  - Demonstrated working: iPhone 8 demo video attached to PR
+- **Build system:** Hybrid: CMake generates, but final linking done in Xcode + ANGLE xcframeworks (native iOS approach)
+
+**Finding 4: iOS officially uses Xcode + native frameworks**
+- Apple's standard: iOS apps built with Xcode, not CMake alone
+- raylib `projects/` directory contains no iOS project (only CMake, VS2022, VSCode, CodeBlocks, etc.)
+- The rcore_ios.c approach aligns with Apple's native tooling: Xcode + system frameworks + ANGLE for GL translation
+
+**Recommendation for this repo:**
+**Status quo: DO NOT pursue iOS right now.** Reasons:
+1. raylib 5.5 has no iOS support; the unmerged PR is a work-in-progress (labeled "on hold")
+2. iOS path requires Xcode + native framework integration, incompatible with vcpkg+CMake-only build model
+3. vcpkg-managed iOS build would need: (a) custom iOS CMake cross-compile toolchain, (b) pre-built ANGLE xcframeworks in vcpkg, (c) Xcode integration layer — non-trivial
+4. **Better path:** Wait for raylib 6.0 (roadmap item) or fork PR #3880, or use alternative (Unity, Unreal, SDL-based iOS wrapper)
+
+**If iOS is required in future:**
+- Option A: Adopt the @blueloveTH PR #3880 + maintain fork with ANGLE + Xcode integration (6-8 week effort for team)
+- Option B: Wrap raylib in SDL or Godot (established mobile SDKs)
+- Option C: Use Emscripten (Web) as iOS bridge via WebView (limited, not native)
+
+
+---
+
+## Session: 2026-05-03 — iOS Non-CMake Analysis → DECISION ARCHIVE
+
+**Outcome:** Raylib 5.5 has no iOS support. vcpkg iOS config is non-functional (Desktop+GLFW on iOS). Upstream PR #3880 provides ANGLE-based path (unmerged, on hold). **Recommendation: DO NOT PURSUE.**
+
+**Decision:** Merged to `.squad/decisions.md` (lines 147–266).
+
+**Next Monitor:** Raylib 6.0 release roadmap.
