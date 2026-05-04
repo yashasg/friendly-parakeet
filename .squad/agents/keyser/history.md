@@ -103,3 +103,15 @@ Scribe orchestrated team spawn completion. Your audit findings have been merged 
 - Baseline: build + tests passed.
 
 **Next phase:** Route revision to different implementation agent (not reviewer). Require patch plan addressing blueprint specifics.
+
+## 2026-05-04 — Fresh full audit after latest audio-state migration
+
+- Issue #374 is **not fully satisfied**: music timing/override state is now ECS-owned in `MusicContext` (`app/audio/music_context.h`, `app/audio/music_backend.cpp`), but mutable audio device lifecycle state remains process-global in `app/runtime/runtime_compat.cpp` (`RuntimeAudioState` + `runtime_audio_state()`).
+- Wrapper criterion still fails: broad engine-compat and virtual renderer indirection remain active in gameplay paths (`app/runtime/runtime_types.h`, `app/runtime/runtime_api.h`, `app/rendering/renderer_backend.h`, `app/rendering/renderer_backend_sdl2.cpp`).
+- SOLID/dedupe hotspot remains in `app/systems/collision_system.cpp` (graded/ungraded ShapeGate/ComboGate/SplitPath branch duplication; lazy `SongState` `find()+emplace()` fallback in hot path).
+- Fresh validation baseline: build succeeds; tests show one pre-existing unrelated failure (`build/ctest-latest.log`: test 668, `redfoot/#168: existing game_over buttons keep their original positions`).
+
+## 2026-05-04 — Scribe: Audio audit outcomes logged
+- Audit gate gate REJECT: Issue #374 remains OPEN
+- Audio device runtime state must move into ECS context (next priority)
+- Orchestration logs written; decisions.md merged

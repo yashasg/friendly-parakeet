@@ -4627,3 +4627,34 @@ Added minimal `workflow_dispatch` triggers to `ci-linux.yml` and `ci-wasm.yml` s
 ### Outcome
 Audio duplication resolved and init strictness verified. Strict fail-fast audio init contract remains incomplete in game_loop/main path; blocking fix documented above.
 
+## 2026-05-04 — Fenster fresh audit decision (#374 + criteria)
+
+### Decision
+Issue #374 is **not yet satisfied** after the latest audio state migration.
+
+### Evidence
+- `app/audio/music_context.h` now holds mutable music runtime timing + override state in ECS (`started_ticks_ms`, `paused_ticks_ms`, `paused_accumulated_ms`, `time_override_enabled`, `time_override_seconds`).
+- `app/runtime/runtime_compat.cpp` still keeps mutable static audio device lifecycle state (`RuntimeAudioState` via `runtime_audio_state()`), and `InitAudioDevice` / `CloseAudioDevice` / `IsAudioDeviceReady` mutate/read it.
+- `app/audio/music_backend.cpp` still routes through compatibility-layer audio APIs (`InitAudioDevice`, `LoadMusicStream`, etc.) from `runtime/runtime_api.h`, so wrapper indirection remains in the audio path.
+
+### Priority direction
+Next highest-priority fix is to complete #374 by moving **audio device lifecycle runtime state** into ECS context and threading it through `platform::audio` backend signatures/callsites, then removing static `RuntimeAudioState` from `runtime_compat.cpp`.
+# 2026-05-04 — Keyser: Issue #374 closure audit after latest migration
+
+## Decision
+Issue #374 remains **OPEN**.
+
+## Why
+- Migration completed the music-clock portion (override/timekeeping now stored on `MusicContext` in ECS context).
+- Remaining mutable audio runtime state still exists outside ECS context in `app/runtime/runtime_compat.cpp`:
+  - `RuntimeAudioState`
+  - `runtime_audio_state()` function-static singleton
+- Therefore the issue objective (“move mutable audio runtime state into ECS context”) is not fully met.
+
+## Priority fix (next highest-impact)
+Introduce an ECS-owned audio device runtime context struct and thread it through audio init/shutdown/readiness calls:
+- `game_loop_init` / `game_loop_shutdown` own lifecycle via `reg.ctx()`
+- backend calls consume explicit state references
+- remove `RuntimeAudioState` function-static storage from `runtime_compat.cpp`
+
+This closes #374 fully and removes a remaining EnTT authority breach before tackling larger wrapper and collision dedupe refactors.

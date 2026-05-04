@@ -84,3 +84,8 @@ Scribe orchestrated team spawn completion. Your audit findings have been merged 
 **Team direction:** Require complete implementation blueprint with A/B/C/D details before resubmission. Route to different implementation agent (not reviewer).
 
 **Next phase:** Different agent will revise against blueprint specification and resubmit.
+
+## 2026-05-04 — Scribe: Audio audit outcomes logged
+- Audit gate gate REJECT: Issue #374 remains OPEN
+- Audio device runtime state must move into ECS context (next priority)
+- Orchestration logs written; decisions.md merged

@@ -15,6 +15,9 @@ Core learnings from audio/timing/UI migrations:
 - When migrating UI systems, watch for layered rendering where old+new execute sequentially; check for both data dependencies AND visual render functions.
 - Screen controllers can mix generated (static) + custom (dynamic) rendering; generated layout for chrome, controller adds dynamic content via raylib/raygui primitives.
 - Migration cleanup can hide regression scope; always grep for screen-specific draw/render functions.
+- Fresh post-migration #374 check: `MusicContext` now owns mutable music clock + override fields in ECS (`app/audio/music_context.h`), but audio device lifecycle flags are still static globals in `app/runtime/runtime_compat.cpp` (`RuntimeAudioState`), so migration is partial.
+- Persistent architecture hotspot paths for direct-engine/no-wrapper criteria: `app/runtime/runtime_types.h`, `app/runtime/runtime_api.h`, `app/runtime/runtime_compat.cpp`, and `app/rendering/renderer_backend.h`.
+- Ongoing dedupe/EnTT cleanup priority remains `app/systems/collision_system.cpp` (graded/ungraded branch duplication and `ctx().find` + `emplace` fallback for `SongState` in hot path).
 
 ## 2026-05-04 — Phase 5 Audio + Timing Migration Slice (SDL2 abstraction-first)
 
@@ -85,3 +88,8 @@ Blueprint direction recorded for team: move backend-mutated music clock + audio 
 **Team direction:** Add ECS context structs for audio device lifecycle + music runtime clock; change backend API to accept registry-owned state references; update callsites to route through ECS-owned runtime state.
 
 **Next phase:** Implementation agent will thread runtime-state references through backend API.
+
+## 2026-05-04 — Scribe: Audio audit outcomes logged
+- Audit gate gate REJECT: Issue #374 remains OPEN
+- Audio device runtime state must move into ECS context (next priority)
+- Orchestration logs written; decisions.md merged
