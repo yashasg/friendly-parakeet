@@ -1,3 +1,29 @@
+# 2026-05-04T11:55:54Z — Kujan: Post-audio audit gate — two remaining blockers
+
+## Decision
+Issues 373/374/375 confirmed CLOSED and verified in code. Two new highest-impact blockers identified for next patch cycle.
+
+## Evidence
+
+### Blocker 1 (P0) — Virtual renderer wrapper violates architecture contract
+- **Files:** `app/rendering/renderer_backend.h`, `app/rendering/renderer_backend_sdl2.cpp`, `app/systems/game_render_system.cpp`, `app/game_loop.cpp`
+- `class Renderer` defines 12 pure virtual methods; single concrete impl `Sdl2Renderer final` provides them all.
+- Architecture contract states: "No virtuals. No globals. registry is source of truth." — this violates both the no-virtuals rule and the no-wrappers-around-engine-code criterion.
+- `renderer()` free function returns `Renderer&` (virtual dispatch into singleton) at every render callsite.
+- No polymorphism benefit exists (one impl, one compile path); the abstraction is purely architectural overhead.
+- **Patch target:** Remove `class Renderer` ABC; replace with free functions in `platform::graphics` namespace (or expose `Sdl2Renderer` directly for test overrides). Update `game_render_system.cpp` and `game_loop.cpp` callsites. Keep `RendererValidationCounters` and override helpers as free-function API.
+
+### Blocker 2 (P1) — Collision system: lazy ECS ctx init + dedupe failure
+- **File:** `app/systems/collision_system.cpp:41-43` and lines 126–258
+- `ctx().find<SongState>()` with fallback `ctx().emplace<SongState>()` inside the hot-path system violates the EnTT init contract (singletons must be emplaced deterministically at game start, not lazily in a running system).
+- `can_grade_shape` true/false branches each contain the full ShapeGate/ComboGate/SplitPath loop bodies — 3 gate types duplicated with only `grade_shape_timing()` calls differing. The `else` branch is ~50 lines of structural duplication.
+- **Patch target:** (a) Move `SongState` emplace to `game_loop_init`; (b) merge `if/else can_grade_shape` by unifying each gate type into a single loop — call `grade_shape_timing` only when `can_grade_shape && has<BeatInfo>`. Eliminates duplicated block entirely.
+
+## Routing
+Blocker 1 owns a broader callsite surface — route to implementation agent with rendering/platform expertise.
+Blocker 2 is self-contained in one file — any implementation agent can own it.
+Both can be executed in a single pass.
+
 # 2026-05-04T11:29:38Z — Fenster: Issue #374 audio runtime state status
 
 ## Decision

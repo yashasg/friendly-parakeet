@@ -89,3 +89,22 @@ Scribe orchestrated team spawn completion. Your audit findings have been merged 
 - Audit gate gate REJECT: Issue #374 remains OPEN
 - Audio device runtime state must move into ECS context (next priority)
 - Orchestration logs written; decisions.md merged
+
+## Learnings
+
+- 2026-05-04T11:55:54Z: Issues 373/374/375 are CLOSED and confirmed resolved in code — no RuntimeMusicState/RuntimeAudioState/MusicTimeOverride statics remain; music_backend takes AudioDeviceRuntimeState& by reference; strict codec init enforced.
+- 2026-05-04T11:55:54Z: Post-audio cleanup, the two remaining highest-impact blockers are: (1) virtual Renderer ABC in app/rendering/renderer_backend.h — architecture contract explicitly bans virtuals, single concrete impl exists; (2) collision_system.cpp lazy ctx().emplace<SongState>() fallback + duplicated gate-type branches in can_grade_shape true/false paths.
+- 2026-05-04T11:55:54Z: Baseline after audio fix: 799 test cases, 2244 assertions, zero warnings.
+
+## 2026-05-04T11:55:54Z — Scribe Session: Post-audit blockers logged
+
+**Session:** Scribe merge of kujan post-audio audit findings.
+
+**Outcome:**
+- Kujan's two-blocker summary merged into decisions.md as P0 and P1 items.
+- **Blocker 1 (P0):** Virtual renderer wrapper violates no-virtuals contract; route to rendering/platform implementation agent.
+- **Blocker 2 (P1):** Collision system lazy ctx init + dedupe; route to any implementation agent.
+- Both blockers documented with exact files and patch targets for one-pass implementation.
+- Orchestration log created.
+
+**Status:** Complete. Ready for implementation routing.
