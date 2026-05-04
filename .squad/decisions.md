@@ -3680,3 +3680,114 @@ Phase 5 incremental delivery: platform abstraction layers for music and timing i
 - Expand backend parity tests to include pause/resume/restart semantics under SDL2-native path.
 - Route additional direct raylib audio touchpoints (if any remain) into platform audio.
 
+---
+
+## 2026-05-04 — Keaton Phase 7 Preparation Slice (Issue #372)
+
+**Author:** Keaton (C++ Performance Engineer)  
+**Branch:** `feature/sdl2-migration-phase-1-abstraction-layer`  
+**Issue:** #372  
+**Verdict:** ✅ COMPLETED
+
+### Decision Summary
+
+Proceed with a **safe cleanup prep slice** before full phase 6 completion:
+- remove only inactive backend scaffolding from active raylib build graph,
+- refresh migration runbook/docs for dual-backend operation,
+- stage a concrete deprecation checklist for eventual raylib removal,
+- keep raylib fallback intact for now.
+
+### Changes Included
+
+#### 1) Safe scaffolding cleanup (no fallback deletion)
+
+- `CMakeLists.txt`
+  - For `SHAPESHIFTER_BACKEND=raylib`, exclude SDL2-only platform implementation units:
+    - `app/platform/sdl2/*.cpp`
+    - `app/platform/graphics/renderer_sdl2.cpp`
+    - `app/platform/window/window_manager_sdl2.cpp`
+    - `app/platform/input/input_handler_sdl2.cpp`
+  - For non-SDL2 backend builds, exclude SDL2-only render validation test:
+    - `tests/test_renderer_sdl2_validation.cpp`
+
+Rationale: these units are migration scaffolding for the SDL2 path and are dead in raylib artifacts; removing them from the raylib build graph lowers risk and prevents cross-backend link coupling.
+
+#### 2) Docs/runbook status refresh
+
+- Updated `docs/ongoing_migration.md` with actual status (phase 6 in progress, phase 7 prep started).
+- Added `docs/sdl2-migration-runbook.md` with exact build/test commands for both backends.
+- Updated `README.md` backend section to include test commands and links to migration docs.
+
+#### 3) Raylib removal preparation artifact
+
+- Added `docs/raylib-removal-checklist.md` capturing:
+  - preconditions/sign-off gates,
+  - code removal plan,
+  - dependency/CI cleanup,
+  - docs/ops closure tasks.
+
+### Validation Evidence
+
+Executed:
+
+```bash
+cmake -B build-raylib -S . -DSHAPESHIFTER_BACKEND=raylib -DCMAKE_BUILD_TYPE=Release -Wno-dev
+cmake --build build-raylib
+./build-raylib/shapeshifter_tests
+
+cmake -B build-sdl2 -S . -DSHAPESHIFTER_BACKEND=sdl2 -DCMAKE_BUILD_TYPE=Release -Wno-dev
+cmake --build build-sdl2
+./build-sdl2/shapeshifter_tests
+```
+
+Result: both backend builds and tests pass for this slice.
+
+### Explicit Non-Goals (held)
+
+- No raylib implementation deletion.
+- No fallback-path removal.
+- No final deprecation execution.
+
+### Remaining Work Toward Final Phase 7
+
+1. Finish phase 6 parity work and regression closure.
+2. Run final dual-backend parity validation pass (including backend-targeted tests/CI).
+3. Execute `docs/raylib-removal-checklist.md` in a dedicated final-removal PR after owner sign-off.
+
+---
+
+## 2026-05-04 — Kobayashi Phase 6 Slice — WASM + Platform Hardening (Issue #372)
+
+**Author:** Kobayashi (Build/Infrastructure Engineer)  
+**Issue:** #372  
+**Verdict:** ✅ COMPLETED
+
+### Context
+- Issue: #372 (SDL2 migration)
+- Branch: `feature/sdl2-migration-phase-1-abstraction-layer`
+- Requested: start Phase 6 slice without blocking on Phase 5
+
+### Decision
+Implement an incremental, shippable Phase 6 slice focused on build/config hardening:
+1. Verify current CMake backend compatibility for Emscripten (`SHAPESHIFTER_BACKEND=raylib|sdl2`).
+2. Verify backend-specific wasm linker plumbing:
+   - raylib backend: `-sUSE_GLFW=3`
+   - SDL2 backend: `-sUSE_SDL=2`
+   - both retain `-sASYNCIFY` + `-sNO_EXIT_RUNTIME=1`
+3. Harden CI to validate both backends where feasible:
+   - Linux CI builds raylib + SDL2 native backends.
+   - WASM CI builds raylib + SDL2 backends and validates link flags for both.
+4. Keep raylib path intact and documented.
+
+### Validation performed locally
+- Native raylib: `./build.sh` + `./build/shapeshifter_tests "~[bench]"` ✅
+- Native SDL2: `SHAPESHIFTER_BACKEND=sdl2 SHAPESHIFTER_BUILD_DIR=build-sdl2 ./build.sh` ✅
+- WASM raylib (app): configure + build `shapeshifter` ✅
+- WASM SDL2 (app): configure + build `shapeshifter` ✅
+- Verified link flags in both wasm link commands ✅
+
+### Known environment caveat
+- Local attempt to build `shapeshifter_tests` for wasm failed on unresolved `glfwGetTime` from raylib in this host toolchain setup; Phase 6 slice keeps CI test path as-is and focuses this slice on backend build hardening.
+
+### Outcome
+Phase 6 slice started and shippable: backend selection/plumbing and CI validation are now expanded for native + wasm backend coverage.
