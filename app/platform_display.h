@@ -1,6 +1,5 @@
 #pragma once
 #include <entt/entt.hpp>
-#include <raylib.h>
 
 // Platform-specific display functions.
 // Native and Emscripten provide different implementations.

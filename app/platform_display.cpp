@@ -1,5 +1,6 @@
 #include "platform_display.h"
 #include "game_loop.h"
+#include "platform/window/window_manager.h"
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
@@ -81,8 +82,9 @@ void platform_run_loop(entt::registry& reg) {
 #else // Native
 
 void platform_get_display_size(float& out_w, float& out_h) {
-    out_w = static_cast<float>(GetScreenWidth());
-    out_h = static_cast<float>(GetScreenHeight());
+    auto& window = platform::window::window_manager();
+    out_w = static_cast<float>(window.screen_width());
+    out_h = static_cast<float>(window.screen_height());
 }
 
 void platform_pre_blit() {

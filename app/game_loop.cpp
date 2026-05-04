@@ -23,6 +23,8 @@
 #include "systems/camera_system.h"
 #include "entities/obstacle_render_entity.h"
 #include "platform_display.h"
+#include "platform/graphics/renderer.h"
+#include "platform/window/window_manager.h"
 #include "util/persistence_policy.h"
 #include "util/settings_persistence.h"
 #include "components/high_score.h"
@@ -72,19 +74,20 @@ void game_loop_init(entt::registry& reg,
                     const char* difficulty) {
     // Platform: window + audio
     std::string window_title = std::string("SHAPESHIFTER v") + SHAPESHIFTER_VERSION;
-    SetConfigFlags(FLAG_WINDOW_RESIZABLE);
-    InitWindow(constants::SCREEN_W, constants::SCREEN_H, window_title.c_str());
+    auto& window = platform::window::window_manager();
+    window.set_resizable_flag();
+    window.init_window(constants::SCREEN_W, constants::SCREEN_H, window_title.c_str());
     {
-        int mon = GetCurrentMonitor();
-        int mon_h = GetMonitorHeight(mon);
+        int mon = window.current_monitor();
+        int mon_h = window.monitor_height(mon);
         int win_h = static_cast<int>(mon_h * 0.85f);
         int win_w = win_h * constants::SCREEN_W / constants::SCREEN_H;
-        SetWindowSize(win_w, win_h);
-        SetWindowPosition(
-            (GetMonitorWidth(mon) - win_w) / 2,
+        window.set_window_size(win_w, win_h);
+        window.set_window_position(
+            (window.monitor_width(mon) - win_w) / 2,
             (mon_h - win_h) / 2);
     }
-    SetTargetFPS(60);
+    window.set_target_fps(60);
     InitAudioDevice();
     sfx_bank_init(reg);
     sfx_playback_backend_init(reg);
@@ -177,7 +180,8 @@ void game_loop_init(entt::registry& reg,
 // One frame: input → fixed timestep → render → blit → audio.
 // Not in header — called by game_loop_run and platform_run_loop (Emscripten).
 void game_loop_frame(entt::registry& reg, float& accumulator) {
-    float raw_dt = GetFrameTime();
+    auto& renderer = platform::graphics::renderer();
+    float raw_dt = renderer.frame_time();
     accumulator += raw_dt;
     if (accumulator > MAX_ACCUM) accumulator = MAX_ACCUM;
 
@@ -200,14 +204,14 @@ void game_loop_frame(entt::registry& reg, float& accumulator) {
     auto& targets = reg.ctx().get<RenderTargets>();
 
     // Pass 1: World (3D)
-    BeginTextureMode(targets.world);
+    renderer.begin_texture_mode(targets.world);
         game_render_system(reg, 0.0f);
-    EndTextureMode();
+    renderer.end_texture_mode();
 
     // Pass 2: UI (2D)
-    BeginTextureMode(targets.ui);
+    renderer.begin_texture_mode(targets.ui);
         ui_render_system(reg, 0.0f);
-    EndTextureMode();
+    renderer.end_texture_mode();
 
     // Composite: blit world, then UI (alpha-blended) onto window
     const auto& st = reg.ctx().get<ScreenTransform>();
@@ -219,11 +223,11 @@ void game_loop_frame(entt::registry& reg, float& accumulator) {
     Rectangle dst = { st.offset_x, st.offset_y, dst_w, dst_h };
 
     platform_pre_blit();
-    BeginDrawing();
-        ClearBackground(BLACK);
-        DrawTexturePro(targets.world.texture, src, dst, {0, 0}, 0.0f, WHITE);
-        DrawTexturePro(targets.ui.texture, src, dst, {0, 0}, 0.0f, WHITE);
-    EndDrawing();
+    renderer.begin_drawing();
+        renderer.clear_background(BLACK);
+        renderer.draw_texture_pro(targets.world.texture, src, dst, {0, 0}, 0.0f, WHITE);
+        renderer.draw_texture_pro(targets.ui.texture, src, dst, {0, 0}, 0.0f, WHITE);
+    renderer.end_drawing();
 
     audio_system(reg);
     haptic_system(reg);
@@ -234,7 +238,7 @@ void game_loop_frame(entt::registry& reg, float& accumulator) {
 
 bool game_loop_should_quit(entt::registry& reg) {
 #ifndef __EMSCRIPTEN__
-    if (WindowShouldClose()) return true;
+    if (platform::window::window_manager().should_close()) return true;
 #endif
     auto* input = reg.ctx().find<InputState>();
     return input && input->quit_requested;
@@ -280,5 +284,5 @@ void game_loop_shutdown(entt::registry& reg) {
     text_shutdown(reg.ctx().get<TextContext>());
     sfx_bank_unload(reg);
     CloseAudioDevice();
-    CloseWindow();
+    platform::window::window_manager().close_window();
 }

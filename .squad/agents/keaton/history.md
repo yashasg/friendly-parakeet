@@ -213,3 +213,25 @@ Keaton identified two bench fixtures degrading silently due to archetype evoluti
 - **Scribe action:** Merged inbox decision file to `.squad/decisions.md` (`# Decision: Keep magic_enum...`)
 - **Orchestration log written:** `.squad/orchestration-log/2026-05-04T04:55:12Z-keaton.md`
 - **Status in registry:** Recommended (GitHub issue #350 comment posted, gate cleared by Verbal)
+
+## 2026-05-04 — Phase 1 SDL2 Migration Abstraction Layer
+
+**Task:** Begin approved raylib -> SDL2 migration by introducing platform abstraction seams without gameplay changes.
+
+**Work completed:**
+1. Added thin platform interfaces in `app/platform/graphics/renderer.h`, `app/platform/input/input_handler.h`, and `app/platform/window/window_manager.h`.
+2. Added raylib-backed implementations and SDL2 placeholder stubs for compile-time scaffolding in corresponding `*_raylib.cpp` and `*_sdl2.cpp` files.
+3. Refactored high-leverage call sites to use abstractions:
+   - `app/game_loop.cpp` now routes frame timing, render pass orchestration, and window lifecycle through renderer/window managers.
+   - `app/systems/input_system.cpp` now polls through input handler interface while preserving gesture/keyboard/focus behavior.
+   - `app/systems/game_render_system.cpp` now uses renderer interface for frame clear and 3D mode boundaries.
+   - `app/platform_display.cpp` native display size now comes from window manager abstraction.
+4. Updated CMake platform source globbing to compile abstraction layer directories.
+
+**Validation:**
+- `cmake -B build -S . -Wno-dev`
+- `cmake --build build`
+- `./build/shapeshifter_tests`
+- Result: `All tests passed (2176 assertions in 782 test cases)` with no warning/error lines reported.
+
+**Learning:** Keep interfaces intentionally narrow and route only high-churn API boundaries first (timing, frame begin/end, window/input polling). This preserves behavior parity while creating a low-risk seam for later SDL2 functional implementation phases.

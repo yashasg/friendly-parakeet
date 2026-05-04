@@ -5,6 +5,7 @@
 #include "../components/beat_map.h"
 #include "../components/song_state.h"
 #include "../constants.h"
+#include "../platform/graphics/renderer.h"
 #include "camera_system.h"
 #include <raylib.h>
 #include <rlgl.h>
@@ -238,11 +239,12 @@ static void draw_owned_models(const entt::registry& reg) {
 void game_render_system(const entt::registry& reg, float /*alpha*/) {
     auto& gs = reg.ctx().get<GameState>();
     auto& camera = game_camera(reg).cam;
+    auto& renderer = platform::graphics::renderer();
 
-    ClearBackground({15, 15, 25, 255});
+    renderer.clear_background({15, 15, 25, 255});
 
     rlSetClipPlanes(1.0, 5000.0);
-    BeginMode3D(camera);
+    renderer.begin_mode_3d(camera);
 
     const auto& floor_params = reg.ctx().get<FloorParams>();
     const auto* song = reg.ctx().find<SongState>();
@@ -262,5 +264,5 @@ void game_render_system(const entt::registry& reg, float /*alpha*/) {
         rlEnableDepthTest();
     }
 
-    EndMode3D();
+    renderer.end_mode_3d();
 }

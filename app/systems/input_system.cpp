@@ -6,7 +6,7 @@
 #include "../components/rendering.h"
 #include "../components/game_state.h"
 #include "../constants.h"
-#include <raylib.h>
+#include "../platform/input/input_handler.h"
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
 #endif
@@ -37,8 +37,9 @@ void input_system(entt::registry& reg, float raw_dt) {
     auto& input = reg.ctx().get<InputState>();
     auto& st    = reg.ctx().get<ScreenTransform>();
     auto& disp  = reg.ctx().get<entt::dispatcher>();
+    auto& platform_input = platform::input::input_handler();
     if (!input.gestures_configured) {
-        SetGesturesEnabled(kGameplayGestureFlags);
+        platform_input.configure_gameplay_gestures();
         input.gestures_configured = true;
     }
     // Discard any InputEvents that were not consumed before this frame
@@ -58,11 +59,12 @@ void input_system(entt::registry& reg, float raw_dt) {
     // ── Mouse (desktop) — click-only semantics ─
     if (allow_mouse_input &&
         input.active_source != InputSource::Touch &&
-        IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+        platform_input.is_mouse_left_released()) {
         input.click      = true;
         input.touching   = false;
         input.active_source = InputSource::None;
-        const Vector2 pos = screen_to_virtual(GetMousePosition(), st);
+        const auto mouse_position = platform_input.mouse_position();
+        const Vector2 pos = screen_to_virtual({mouse_position.x, mouse_position.y}, st);
         input.start_x = input.curr_x = input.end_x = pos.x;
         input.start_y = input.curr_y = input.end_y = pos.y;
         input.duration = 0.0f;
@@ -71,8 +73,9 @@ void input_system(entt::registry& reg, float raw_dt) {
     // ── Touch (mobile / web) — only when no mouse gesture is active ─
     if (allow_touch_input &&
         input.active_source != InputSource::Mouse &&
-        GetTouchPointCount() > 0) {
-        const Vector2 tp = screen_to_virtual(GetTouchPosition(0), st);
+        platform_input.touch_point_count() > 0) {
+        const auto touch_position = platform_input.touch_position(0);
+        const Vector2 tp = screen_to_virtual({touch_position.x, touch_position.y}, st);
         if (!input.touching) {
             input.touch_down = true;
             input.touching   = true;
@@ -96,26 +99,35 @@ void input_system(entt::registry& reg, float raw_dt) {
 
 #ifdef PLATFORM_HAS_KEYBOARD
     // ── Keyboard — IsKeyPressed fires once per press (no repeat) ──
-    if (IsKeyPressed(KEY_W) || IsKeyPressed(KEY_UP))    { disp.enqueue<GoEvent>({Direction::Up}); }
-    if (IsKeyPressed(KEY_S) || IsKeyPressed(KEY_DOWN))  { disp.enqueue<GoEvent>({Direction::Down}); }
-    if (IsKeyPressed(KEY_A) || IsKeyPressed(KEY_LEFT))  { disp.enqueue<GoEvent>({Direction::Left}); }
-    if (IsKeyPressed(KEY_D) || IsKeyPressed(KEY_RIGHT)) { disp.enqueue<GoEvent>({Direction::Right}); }
+    using platform::input::KeyCode;
+    if (platform_input.is_key_pressed(KeyCode::W) || platform_input.is_key_pressed(KeyCode::Up)) {
+        disp.enqueue<GoEvent>({Direction::Up});
+    }
+    if (platform_input.is_key_pressed(KeyCode::S) || platform_input.is_key_pressed(KeyCode::Down)) {
+        disp.enqueue<GoEvent>({Direction::Down});
+    }
+    if (platform_input.is_key_pressed(KeyCode::A) || platform_input.is_key_pressed(KeyCode::Left)) {
+        disp.enqueue<GoEvent>({Direction::Left});
+    }
+    if (platform_input.is_key_pressed(KeyCode::D) || platform_input.is_key_pressed(KeyCode::Right)) {
+        disp.enqueue<GoEvent>({Direction::Right});
+    }
 
     // Keyboard shape-button presses: encode semantic payload directly — no
     // entity lookup needed (#273).
-    if (IsKeyPressed(KEY_ONE) || IsKeyPressed(KEY_Z)) {
+    if (platform_input.is_key_pressed(KeyCode::One) || platform_input.is_key_pressed(KeyCode::Z)) {
         disp.enqueue<ButtonPressEvent>({ButtonPressKind::Shape, Shape::Circle,
                                        MenuActionKind::Confirm, 0});
     }
-    if (IsKeyPressed(KEY_TWO) || IsKeyPressed(KEY_X)) {
+    if (platform_input.is_key_pressed(KeyCode::Two) || platform_input.is_key_pressed(KeyCode::X)) {
         disp.enqueue<ButtonPressEvent>({ButtonPressKind::Shape, Shape::Square,
                                        MenuActionKind::Confirm, 0});
     }
-    if (IsKeyPressed(KEY_THREE) || IsKeyPressed(KEY_C)) {
+    if (platform_input.is_key_pressed(KeyCode::Three) || platform_input.is_key_pressed(KeyCode::C)) {
         disp.enqueue<ButtonPressEvent>({ButtonPressKind::Shape, Shape::Triangle,
                                        MenuActionKind::Confirm, 0});
     }
-    if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
+    if (platform_input.is_key_pressed(KeyCode::Enter) || platform_input.is_key_pressed(KeyCode::Space)) {
         disp.enqueue<ButtonPressEvent>({ButtonPressKind::Menu, Shape::Circle,
                                        MenuActionKind::Confirm, 0});
     }
@@ -124,7 +136,7 @@ void input_system(entt::registry& reg, float raw_dt) {
     // ── Background / suspend (edge-triggered) ─────────────
     // Pause only on the frame focus is *lost*, not every frame while unfocused.
     {
-        bool focused = IsWindowFocused();
+        bool focused = platform_input.is_window_focused();
         if (input.was_focused && !focused &&
             reg.ctx().get<GameState>().phase == GamePhase::Playing) {
             auto& gs = reg.ctx().get<GameState>();
@@ -146,7 +158,7 @@ void input_system(entt::registry& reg, float raw_dt) {
                                             input.end_x, input.end_y});
     } else if (input.touch_up) {
         const InputEvent event = input_event_from_raylib_gesture(
-            read_detected_raylib_gesture(),
+            platform_input.read_detected_gesture(),
             input.start_y,
             input.end_x,
             input.end_y);
