@@ -108,3 +108,13 @@ Scribe orchestrated team spawn completion. Your audit findings have been merged 
 - Orchestration log created.
 
 **Status:** Complete. Ready for implementation routing.
+
+---
+
+## 2026-05-04T12:10:27Z — Scribe: Session closed on audit outcome
+
+**From:** Scribe (session archiver)  
+**Status:** Kujan audit work recorded
+
+Kujan's P0 renderer blocker finding ("virtual wrapper violates no-virtuals + no-wrappers") and P1 collision blocker finding (lazy SongState init + gate loop duplication) have been logged to orchestration-log and decisions.md. Both blockers have concrete patch steps documented. Ready for implementation assignment.
+
