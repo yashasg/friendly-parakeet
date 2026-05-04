@@ -25,9 +25,6 @@ vcpkg_from_github(
 
 file(GLOB vendored_headers RELATIVE "${SOURCE_PATH}/src/external"
     "${SOURCE_PATH}/src/external/cgltf.h"
-    "${SOURCE_PATH}/src/external/nanosvg*.h"
-    "${SOURCE_PATH}/src/external/qoi.h"
-    "${SOURCE_PATH}/src/external/s*fl.h"  # from mmx
     "${SOURCE_PATH}/src/external/stb_*"
 )
 file(GLOB vendored_audio_headers RELATIVE "${SOURCE_PATH}/src/external"
@@ -39,7 +36,7 @@ set(optional_vendored_headers
 )
 foreach(header IN LISTS vendored_headers vendored_audio_headers)
     unset(vcpkg_file)
-    find_file(vcpkg_file NAMES "${header}" PATHS "${CURRENT_INSTALLED_DIR}/include" PATH_SUFFIXES mmx nanosvg NO_DEFAULT_PATH NO_CACHE)
+    find_file(vcpkg_file NAMES "${header}" PATHS "${CURRENT_INSTALLED_DIR}/include" NO_DEFAULT_PATH NO_CACHE)
     if(header IN_LIST vendored_audio_headers AND NOT "audio" IN_LIST FEATURES)
         message(STATUS "Emptying '${header}' (audio disabled)")
         file(WRITE "${SOURCE_PATH}/src/external/${vcpkg_file}" "# audio disabled")

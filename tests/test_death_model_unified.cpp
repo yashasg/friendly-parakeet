@@ -236,27 +236,3 @@ TEST_CASE("death_model: scroll-past miss does not double-drain", "[death_model]"
                Catch::Matchers::WithinAbs(constants::ENERGY_MAX - constants::ENERGY_DRAIN_MISS,
                                           0.0001f));
 }
-
-// Regression: a LanePush that scrolls past DESTROY_Y must not produce a MissTag
-// or any energy delta (ScoredTag from collision is the guard).
-TEST_CASE("death_model: LanePush scroll-past does not produce MissTag", "[death_model]") {
-    auto reg = make_rhythm_registry();
-    make_player(reg);
-
-    auto& energy = reg.ctx().get<EnergyState>();
-    const float initial_energy = energy.energy;
-
-    auto obstacle = reg.create();
-    reg.emplace<ObstacleTag>(obstacle);
-    reg.emplace<WorldTransform>(obstacle, WorldTransform{{0.0f, constants::DESTROY_Y + 10.0f}});
-    reg.emplace<Obstacle>(obstacle, ObstacleKind::LanePushLeft, int16_t{0});
-    reg.emplace<ScoredTag>(obstacle);  // collision_system stamps ScoredTag for LanePush at pass-through
-
-    miss_detection_system(reg, 0.016f);
-    scoring_system(reg, 0.016f);
-    energy_system(reg, 0.016f);
-
-    CHECK_FALSE(reg.all_of<MissTag>(obstacle));
-    CHECK_THAT(energy.energy, Catch::Matchers::WithinAbs(initial_energy, 0.0001f));
-    CHECK(reg.ctx().get<SongResults>().miss_count == 0);
-}

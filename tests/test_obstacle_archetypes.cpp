@@ -307,29 +307,6 @@ TEST_CASE("entity: SplitPath - RequiredShape and RequiredLane", "[archetype]") {
     CHECK(reg.get<RequiredLane>(e).lane == int8_t{2});
 }
 
-TEST_CASE("entity: LanePushLeft - passive, no shape components", "[archetype]") {
-    entt::registry reg;
-    auto e = spawn_obstacle(reg, {ObstacleKind::LanePushLeft, 60.0f, -120.0f});
-
-    REQUIRE(reg.all_of<ObstacleTag, MotionVelocity, DrawLayer, WorldTransform, Obstacle, DrawSize, Color>(e));
-    CHECK(!reg.all_of<RequiredShape>(e));
-    CHECK(!reg.all_of<RequiredVAction>(e));
-    CHECK(!reg.all_of<BlockedLanes>(e));
-    CHECK(!reg.all_of<RequiredLane>(e));
-
-    CHECK(reg.get<Obstacle>(e).kind == ObstacleKind::LanePushLeft);
-    CHECK(reg.get<Obstacle>(e).base_points == int16_t{constants::PTS_LANE_PUSH});
-}
-
-TEST_CASE("entity: LanePushRight - passive, no shape components", "[archetype]") {
-    entt::registry reg;
-    auto e = spawn_obstacle(reg, {ObstacleKind::LanePushRight, 660.0f, -120.0f});
-
-    REQUIRE(reg.all_of<ObstacleTag, MotionVelocity, DrawLayer, WorldTransform, Obstacle, DrawSize, Color>(e));
-    CHECK(reg.get<Obstacle>(e).kind == ObstacleKind::LanePushRight);
-    CHECK(reg.get<Obstacle>(e).base_points == int16_t{constants::PTS_LANE_PUSH});
-}
-
 TEST_CASE("entity: LowBar ObstacleScrollZ z propagated from input", "[archetype]") {
     entt::registry reg;
     auto e = spawn_obstacle(reg, {ObstacleKind::LowBar, 123.5f, 456.7f});

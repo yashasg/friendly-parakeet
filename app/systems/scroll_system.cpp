@@ -17,9 +17,6 @@ void scroll_system(entt::registry& reg, float dt) {
             (void)entity;
             oz.z = constants::SPAWN_Y
                  + (song->song_time - info.spawn_time) * song->scroll_speed;
-            if (auto* wt = reg.try_get<WorldTransform>(entity)) {
-                wt->position.y = oz.z;
-            }
         }
 
         auto beat_view = reg.view<ObstacleTag, WorldTransform, BeatInfo>(entt::exclude<ObstacleScrollZ>);
@@ -36,8 +33,5 @@ void scroll_system(entt::registry& reg, float dt) {
     for (auto [entity, oz, vel] : model_view.each()) {
         (void)entity;
         oz.z += vel.value.y * dt;
-        if (auto* wt = reg.try_get<WorldTransform>(entity)) {
-            wt->position.y = oz.z;
-        }
     }
 }

@@ -243,6 +243,7 @@ TEST_CASE("bridge: scoring_system hit_view2 processes ObstacleScrollZ scored obs
                           static_cast<int16_t>(constants::PTS_LOW_BAR));
     reg.emplace<ObstacleScrollZ>(obs, ObstacleScrollZ{constants::PLAYER_Y});
     reg.emplace<ScoredTag>(obs);  // emplace manually (collision_system would do this)
+    reg.emplace<TimingGrade>(obs, TimingTier::Good, 0.5f);
 
     scoring_system(reg, 0.016f);
 
@@ -261,6 +262,7 @@ TEST_CASE("bridge: scoring_system WorldTransform hit-pass (no regression)",
                           static_cast<int16_t>(constants::PTS_SHAPE_GATE));
     reg.emplace<WorldTransform>(obs, WorldTransform{{0.0f, constants::PLAYER_Y}});
     reg.emplace<ScoredTag>(obs);
+    reg.emplace<TimingGrade>(obs, TimingTier::Good, 0.5f);
 
     scoring_system(reg, 0.016f);
 

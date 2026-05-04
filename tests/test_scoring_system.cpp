@@ -17,6 +17,7 @@ TEST_CASE("scoring: scored obstacle awards points", "[scoring]") {
     auto reg = make_registry();
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<ScoredTag>(obs);
+    reg.emplace<TimingGrade>(obs, TimingTier::Good, 0.5f);
 
     scoring_system(reg, 0.016f);
     popup_feedback_system(reg, 0.016f);
@@ -33,6 +34,7 @@ TEST_CASE("scoring: chain bonus increases points", "[scoring]") {
     for (int i = 0; i < 3; ++i) {
         auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y + float(i));
         reg.emplace<ScoredTag>(obs);
+        reg.emplace<TimingGrade>(obs, TimingTier::Good, 0.5f);
         scoring_system(reg, 0.016f);
     popup_feedback_system(reg, 0.016f);
     energy_system(reg, 0.016f);
@@ -50,6 +52,7 @@ TEST_CASE("scoring: chain resets after timeout", "[scoring]") {
 
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<ScoredTag>(obs);
+    reg.emplace<TimingGrade>(obs, TimingTier::Good, 0.5f);
     scoring_system(reg, 0.016f);
     popup_feedback_system(reg, 0.016f);
     energy_system(reg, 0.016f);
@@ -67,6 +70,7 @@ TEST_CASE("scoring: popup entity spawned on score", "[scoring]") {
     auto reg = make_registry();
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<ScoredTag>(obs);
+    reg.emplace<TimingGrade>(obs, TimingTier::Good, 0.5f);
 
     scoring_system(reg, 0.016f);
     popup_feedback_system(reg, 0.016f);
@@ -87,6 +91,7 @@ TEST_CASE("scoring: SFX pushed on score", "[scoring]") {
     auto reg = make_registry();
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<ScoredTag>(obs);
+    reg.emplace<TimingGrade>(obs, TimingTier::Good, 0.5f);
 
     scoring_system(reg, 0.016f);
     popup_feedback_system(reg, 0.016f);
@@ -125,6 +130,7 @@ TEST_CASE("scoring: chain bonus 5+ gives extended bonus", "[scoring]") {
     for (int i = 0; i < 5; ++i) {
         auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y + float(i));
         reg.emplace<ScoredTag>(obs);
+        reg.emplace<TimingGrade>(obs, TimingTier::Good, 0.5f);
         scoring_system(reg, 0.016f);
     popup_feedback_system(reg, 0.016f);
     energy_system(reg, 0.016f);
@@ -141,6 +147,7 @@ TEST_CASE("scoring: obstacle entity cleaned up after scoring", "[scoring]") {
     auto reg = make_registry();
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<ScoredTag>(obs);
+    reg.emplace<TimingGrade>(obs, TimingTier::Good, 0.5f);
 
     scoring_system(reg, 0.016f);
     popup_feedback_system(reg, 0.016f);
@@ -186,6 +193,7 @@ TEST_CASE("scoring: no-penalty — on-beat gate scores at base points", "[scorin
     auto reg = make_registry();
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<ScoredTag>(obs);
+    reg.emplace<TimingGrade>(obs, TimingTier::Good, 0.5f);
 
     scoring_system(reg, 0.0f);
     popup_feedback_system(reg, 0.0f);
@@ -199,6 +207,7 @@ TEST_CASE("scoring: popup entity has full factory contract", "[scoring][popup_en
     auto reg = make_registry();
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<ScoredTag>(obs);
+    reg.emplace<TimingGrade>(obs, TimingTier::Good, 0.5f);
 
     scoring_system(reg, 0.016f);
     popup_feedback_system(reg, 0.016f);
@@ -223,18 +232,6 @@ TEST_CASE("scoring: popup entity has full factory contract", "[scoring][popup_en
         CHECK(dl.layer == Layer::Effects);
     }
     CHECK(count == 1);
-}
-
-TEST_CASE("scoring: LanePush emits no popup", "[scoring][lane_push]") {
-    auto reg = make_registry();
-    auto lp = make_lane_push(reg, ObstacleKind::LanePushLeft, constants::PLAYER_Y);
-    reg.emplace<ScoredTag>(lp);
-
-    scoring_system(reg, 0.016f);
-    popup_feedback_system(reg, 0.016f);
-    energy_system(reg, 0.016f);
-
-    CHECK(reg.view<ScorePopup>().size() == 0);
 }
 
 TEST_CASE("scoring: NonScorableTag entity cleared without scoring", "[scoring][nonscorable]") {
@@ -266,28 +263,7 @@ TEST_CASE("scoring: NonScorableTag entity cleared without scoring", "[scoring][n
     CHECK_FALSE(reg.all_of<Obstacle>(e));
 }
 
-TEST_CASE("scoring: BarObstacleTag sets DeathCause::HitABar regardless of kind", "[scoring][bartag]") {
-    // Verifies OCP: any entity with BarObstacleTag triggers HitABar death cause.
-    // Uses a synthetic ShapeGate kind (not LowBar/HighBar) to prove kind-independence.
-    auto reg = make_registry();
-    auto& gos = reg.ctx().get<GameOverState>();
-    REQUIRE(gos.cause == DeathCause::None);
-
-    auto e = reg.create();
-    reg.emplace<ObstacleTag>(e);
-    reg.emplace<WorldTransform>(e, WorldTransform{{300.0f, constants::PLAYER_Y}});
-    reg.emplace<Obstacle>(e, ObstacleKind::ShapeGate, int16_t{200});
-    reg.emplace<BarObstacleTag>(e);
-    reg.emplace<ScoredTag>(e);
-    reg.emplace<MissTag>(e);
-
-    scoring_system(reg, 0.0f);
-
-    CHECK(gos.cause == DeathCause::HitABar);
-}
-
-TEST_CASE("scoring: missing bar sets DeathCause::MissedABeat when no BarObstacleTag", "[scoring][bartag]") {
-    // Confirms the else-branch: a missed ShapeGate without BarObstacleTag → MissedABeat.
+TEST_CASE("scoring: missed obstacle sets DeathCause::MissedABeat", "[scoring]") {
     auto reg = make_registry();
     auto& gos = reg.ctx().get<GameOverState>();
     REQUIRE(gos.cause == DeathCause::None);

@@ -46,8 +46,6 @@ static std::optional<ObstacleKind> parse_kind(const std::string& s) {
     if (s == "high_bar")         return ObstacleKind::HighBar;
     if (s == "combo_gate")       return ObstacleKind::ComboGate;
     if (s == "split_path")       return ObstacleKind::SplitPath;
-    if (s == "lane_push_left")   return ObstacleKind::LanePushLeft;
-    if (s == "lane_push_right")  return ObstacleKind::LanePushRight;
     return std::nullopt;
 }
 

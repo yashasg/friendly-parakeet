@@ -148,8 +148,8 @@ TEST_CASE("beat_scheduler: spawns multiple beats when time is past all", "[beat_
     auto& map = reg.ctx().get<BeatMap>();
 
     map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
-    map.beats.push_back({2, ObstacleKind::LowBar, Shape::Circle, 1, 0});
-    map.beats.push_back({4, ObstacleKind::HighBar, Shape::Circle, 1, 0});
+    map.beats.push_back({2, ObstacleKind::LaneBlock, Shape::Circle, 1, 0b001});
+    map.beats.push_back({4, ObstacleKind::ComboGate, Shape::Square, 1, 0b100});
 
     song.song_time = 30.0f;  // Well past all spawn times
     song.next_spawn_idx = 0;
@@ -158,7 +158,7 @@ TEST_CASE("beat_scheduler: spawns multiple beats when time is past all", "[beat_
 
     int count = 0;
     for (auto e : reg.view<ObstacleTag>()) { ++count; (void)e; }
-    CHECK(count == 1);
+    CHECK(count == 3);
     CHECK(song.next_spawn_idx == 3);
 }
 
@@ -182,13 +182,13 @@ TEST_CASE("beat_scheduler: spawns LaneBlock with blocked_mask", "[beat_scheduler
     }
 }
 
-TEST_CASE("beat_scheduler: skips low/high bars when bars are disabled", "[beat_scheduler]") {
+TEST_CASE("beat_scheduler: spawns all queued beats from BeatMap entries", "[beat_scheduler]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
     auto& map = reg.ctx().get<BeatMap>();
 
-    map.beats.push_back({0, ObstacleKind::LowBar, Shape::Circle, 1, 0});
-    map.beats.push_back({0, ObstacleKind::HighBar, Shape::Circle, 1, 0});
+    map.beats.push_back({0, ObstacleKind::LaneBlock, Shape::Circle, 1, 0b010});
+    map.beats.push_back({0, ObstacleKind::ComboGate, Shape::Triangle, 1, 0b001});
     map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Square, 1, 0});
     song.song_time = 10.0f;
     song.next_spawn_idx = 0;
@@ -197,16 +197,13 @@ TEST_CASE("beat_scheduler: skips low/high bars when bars are disabled", "[beat_s
 
     auto obstacle_view = reg.view<ObstacleTag, Obstacle>();
     int obstacle_count = 0;
-    int bar_count = 0;
     int shape_gate_count = 0;
     for (auto [e, obs] : obstacle_view.each()) {
         ++obstacle_count;
-        if (obs.kind == ObstacleKind::LowBar || obs.kind == ObstacleKind::HighBar) ++bar_count;
         if (obs.kind == ObstacleKind::ShapeGate) ++shape_gate_count;
     }
-    CHECK(obstacle_count == 1);
+    CHECK(obstacle_count == 3);
     CHECK(shape_gate_count == 1);
-    CHECK(bar_count == 0);
     CHECK(song.next_spawn_idx == 3);
 }
 
