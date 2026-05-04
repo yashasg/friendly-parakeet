@@ -77,3 +77,23 @@
 3. **Squad:** Monitor GitHub issue #372 for Phase 2 kickoff readiness
 4. **Timeline:** Phase 1 PR target: this week (2026-05-06)
 
+
+---
+
+## Session: keaton-8 — Phase 2 SDL2 Window Bring-up (2026-05-04T00:32:05Z)
+
+**Scribe:** Processing phase2 artifacts inbox
+
+### Processed Decisions
+- ✅ `keaton-phase2-sdl2-window-progress.md` — Phase 2 native SDL2 bring-up with compile-time backend selection
+- ✅ `keyser-raylib-dependency-pass.md` (queued, ready for archive)
+- ✅ `keyser-sdl2-vs-sdl3-comparison.md` (queued, ready for archive)
+
+### Action Items
+1. ✅ Merged phase2 SDL2 decision into `.squad/decisions.md`
+2. ✅ Cleared decision inbox (3 files processed)
+3. ⏳ Commit pending (.squad changes only)
+
+### Status
+Ready for integration. Phase 2 SDL2 abstraction layer established with validated compile-time backend selection. Raylib default preserved; SDL2 path live and tested.
+
