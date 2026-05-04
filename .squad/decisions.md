@@ -4081,3 +4081,164 @@ Migration gate now has an explicit parity matrix and a baseline failure ledger, 
 - Known-failure sentinels: ❗ as expected
 
 **Next:** Phase 5/6 closure can now classify test failures correctly against parity matrix.
+---
+
+### 2026-05-04T02:15:00Z — Scribe: Kobayashi Phase 6 + Keaton Phase 7 Batch Logged
+
+**Batch:** kobayashi-phase6-completion + keaton-phase7-final-completion  
+**Origin:** .squad/decisions/inbox/  
+**Action:** Merged both completions into .squad/decisions.md  
+**Cleared:** inbox files  
+**Status:** ✅ COMPLETE
+
+**Kobayashi-1 (Phase 6) Deliverable:**
+- CI runner validation on Linux + WASM workflows for migration branch
+- Migration-coupled failures fixed: glfwGetTime linkage, file-copy directory creation
+- Infra-coupled failure fixed: Linux vcpkg libltdl-dev dependency
+- Both raylib and SDL2 backend paths explicitly validated on GitHub-hosted runners
+- Evidence: https://github.com/yashasg/friendly-parakeet/actions/runs/25309909229 (Linux), 25309910455 (WASM)
+
+**Keaton-12 (Phase 7) Deliverable:**
+- Backend migration to SDL2-only active path complete
+- Raylib backend implementations removed (renderer, window_manager, input_handler)
+- SDL2-only dispatch factories active in platform interfaces
+- Build system updated to SDL2-only backend policy
+- CI dual-backend steps removed; WASM validation now SDL2-focused
+- Documentation updated to post-migration state
+- Validation: build + test targets ✅, core regression suite ✅, SDL2 render validation ✅
+- Residual: raylib API dependencies remain in non-backend modules (font, text utilities) — separate hardening slice
+
+**Migration Status:** Backend-complete (SDL2-only execution). Full raylib dependency eviction remains as Phase 8 future work.
+
+**Next:** Issue #372 Phase 7 closure; residual dependency eradication planned separately.
+
+---
+
+## 2026-05-04 — Kobayashi Phase 6 Completion — CI Runner Confirmation (Issue #372)
+
+**Date:** 2026-05-04  
+**Branch:** `feature/sdl2-migration-phase-1-abstraction-layer`  
+**Requested by:** yashasg  
+**Phase 6 slice base:** `153d969`
+
+### Summary
+
+Phase 6 closure work is complete. Linux + WASM workflows touched in the Phase 6 slice have been explicitly validated on GitHub-hosted runners for this migration branch, with both raylib and SDL2 backend paths exercised.
+
+### GitHub CI Evidence
+
+- Linux workflow (workflow_dispatch):  
+  https://github.com/yashasg/friendly-parakeet/actions/runs/25309909229 ✅
+  - `Build` (raylib/default) ✅
+  - `Build SDL2 backend (Linux hardening)` ✅
+  - `Run tests` ✅
+
+- WebAssembly workflow (workflow_dispatch):  
+  https://github.com/yashasg/friendly-parakeet/actions/runs/25309910455 ✅
+  - `Build (Emscripten)` (raylib/default) ✅
+  - `Build SDL2 backend (WASM compatibility)` ✅
+  - `Verify WASM runtime flags` ✅
+  - `Run WASM tests (via CTest + Node)` ✅
+
+### Failure Classification During Confirmation
+
+#### Migration-coupled failures (resolved)
+1. **WASM raylib test linking (`glfwGetTime` unresolved)**  
+   Root cause: backend-specific emscripten linker flag was not applied to `shapeshifter_tests`.
+   - Fix: propagate `${_emscripten_backend_link_flag}` to `shapeshifter_tests` link options.
+
+2. **WASM SDL2 compatibility build file-copy failure**  
+   Root cause: second build tree (`build-web-sdl2`) lacked `content/ui` directory before root UI JSON copy.
+   - Fix: add explicit `make_directory "$<TARGET_FILE_DIR:shapeshifter>/content/ui"` before copy step.
+
+#### Pre-existing/infra-coupled failure (resolved)
+1. **Linux fresh-runner vcpkg install failed on `libxcrypt`**  
+   Root cause: missing host package `libltdl-dev` (and exposed autotools chain expectations on cache-miss runs).
+   - Fix: install required Linux host deps in CI dependency step (`autoconf`, `autoconf-archive`, `automake`, `libtool`, `pkg-config`, `libltdl-dev`).
+
+### Workflow Reliability Change
+
+Added minimal `workflow_dispatch` triggers to `ci-linux.yml` and `ci-wasm.yml` so backend validation can be run directly on migration branches without requiring PR event setup.
+
+### Final Phase 6 Status
+
+**✅ Phase 6 fully complete**
+
+- Backend matrix behavior is explicit and validated on GitHub runners (Linux + WASM).
+- CI evidence captured with successful run URLs above.
+- Migration-coupled failures identified and fixed; infra-coupled dependency issue identified and fixed.
+
+---
+
+## 2026-05-04 — Keaton Phase 7 Final Completion (Issue #372)
+
+**Branch:** `feature/sdl2-migration-phase-1-abstraction-layer`  
+**Requested by:** yashasg  
+**Phase 7 slice base:** keaton-12
+
+### Summary
+
+Executed final Phase 7 deprecation/removal work to make SDL2 the sole active backend path for migrated surfaces.
+
+### Implemented
+
+1. **Backend removal/scaffolding cleanup**
+   - Deleted raylib backend platform implementations:
+     - `app/platform/graphics/renderer_raylib.cpp`
+     - `app/platform/window/window_manager_raylib.cpp`
+     - `app/platform/input/input_handler_raylib.cpp`
+   - Removed raylib backend dispatch declarations and switched active dispatch to SDL2-only factories in:
+     - `renderer.h` + `renderer_sdl2.cpp`
+     - `window_manager.h` + `window_manager_sdl2.cpp`
+     - `input_handler.h` + `input_handler_sdl2.cpp`
+
+2. **Sole-backend runtime behavior**
+   - Removed SDL2 temporary short-circuit initialization/frame/shutdown paths from `app/game_loop.cpp`.
+   - Removed SDL2 no-op UI branch in `app/systems/ui_render_system.cpp`.
+   - Removed non-SDL2 rendering branches in `app/systems/game_render_system.cpp` and kept SDL2 model/triangle authority path.
+
+3. **Build + CI deprecation execution**
+   - Updated `CMakeLists.txt` backend policy to SDL2-only (`SHAPESHIFTER_BACKEND=sdl2` required).
+   - Removed dual-backend source/test gating and raylib backend linker toggle logic.
+   - Updated `build.sh` to SDL2-only backend validation/default.
+   - Removed redundant dual-backend CI steps from `.github/workflows/ci-linux.yml` and `.github/workflows/ci-wasm.yml`; WASM flag checks now validate SDL2 flags directly.
+
+4. **Documentation closure updates**
+   - Updated `README.md` backend/build section for SDL2-only command path.
+   - Rewrote migration tracking docs to post-migration state:
+     - `docs/ongoing_migration.md`
+     - `docs/sdl2-migration-runbook.md`
+     - `docs/sdl2-phase3-rendering-parity-checklist.md`
+     - `docs/raylib-removal-checklist.md`
+
+5. **Regression alignment**
+   - Updated source-shape regression expectation in `tests/test_pr43_regression.cpp` to assert SDL2 tint-preserving draw path.
+
+### Validation
+
+Executed:
+
+```bash
+cmake -B build -S . -DSHAPESHIFTER_BACKEND=sdl2 -DCMAKE_BUILD_TYPE=Release -Wno-dev
+cmake --build build --target shapeshifter_tests
+cmake --build build --target shapeshifter
+./build/shapeshifter_tests --skip-benchmarks -v quiet
+./build/shapeshifter_tests "[render][sdl2][validation]" -v quiet
+ctest --test-dir build --output-on-failure -R "redfoot/#168: existing game_over buttons keep their original positions"
+```
+
+Results:
+- Build + test targets: ✅ pass
+- Core regression suite (`--skip-benchmarks`): ✅ pass
+- SDL2 migration-specific render validation suite: ✅ pass
+- Known-failure sentinel (`redfoot/#168`): ⚠️ still fails as expected (pre-existing)
+
+### Residual blockers / follow-up
+
+- Full removal of the `raylib` package dependency from `CMakeLists.txt` and `vcpkg.json` is **not yet safe** because non-backend runtime modules still directly include/use raylib APIs/types (font/text, some utility/runtime paths).
+- Migration is backend-complete (SDL2-only execution path) but dependency eviction remains a separate hardening slice.
+
+### Engineering verdict for Issue #372
+
+- **Backend migration complete:** Yes (SDL2-only active backend path).
+- **Total raylib dependency eradication:** Not fully complete; residual direct API dependencies remain outside backend dispatch surfaces.
