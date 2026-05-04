@@ -7,7 +7,7 @@
 
 A rhythm game where obstacles ARE the beats. Match shapes and dodge lane blocks in time with the music — the closer to the beat, the higher your score.
 
-Built with **C++20**, **raylib**, and **EnTT** using Data-Oriented Design.
+Built with **C++20**, **SDL2**, and **EnTT** using Data-Oriented Design.
 
 **[Play in browser](https://yashasg.github.io/friendly-parakeet/)** (WebAssembly)
 
@@ -37,34 +37,26 @@ export VCPKG_ROOT=/path/to/vcpkg
 ./run.sh test        # Build + run tests
 ```
 
-### Backend Builds (raylib / SDL2)
+### Build Targets (SDL2)
 
 ```bash
-# Native raylib (default)
+# Native SDL2 (default)
 ./build.sh
 ./build/shapeshifter_tests
 
-# Native SDL2 backend
-SHAPESHIFTER_BACKEND=sdl2 SHAPESHIFTER_BUILD_DIR=build-sdl2 ./build.sh
+# Optional separate native build tree
+SHAPESHIFTER_BUILD_DIR=build-sdl2 ./build.sh
 ./build-sdl2/shapeshifter_tests
 
-# WebAssembly raylib backend
-emcmake cmake -B build-web -S . -DSHAPESHIFTER_BACKEND=raylib \
+# WebAssembly SDL2 backend
+emcmake cmake -B build-web -S . -DSHAPESHIFTER_BACKEND=sdl2 \
   "-DCMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" \
   "-DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=${EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake" \
   -DVCPKG_TARGET_TRIPLET=wasm32-emscripten
-cmake --build build-web
-
-# WebAssembly SDL2 backend compatibility build
-emcmake cmake -B build-web-sdl2 -S . -DSHAPESHIFTER_BACKEND=sdl2 \
-  "-DCMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" \
-  "-DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=${EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake" \
-  -DVCPKG_TARGET_TRIPLET=wasm32-emscripten
-cmake --build build-web-sdl2 --target shapeshifter
+cmake --build build-web --target shapeshifter
 ```
 
-Migration status + backend validation runbook:
-- `docs/ongoing_migration.md`
+Migration completion + validation runbook:
 - `docs/sdl2-migration-runbook.md`
 - `docs/raylib-removal-checklist.md`
 
@@ -127,7 +119,7 @@ hp -> lifetime -> particle -> cleanup -> render -> audio
 
 ```
 app/
-  main.cpp                # raylib init, game loop, Emscripten support
+  main.cpp                # SDL2 init, game loop, Emscripten support
   constants.h             # All tuning values
   platform.h              # PLATFORM_HAS_KEYBOARD macro
   platform_utils.h        # Portable localtime/fopen wrappers
@@ -194,7 +186,8 @@ The level designer uses song structure (intro/verse/chorus/bridge) to control de
 
 | Library | Version | Purpose |
 |---------|---------|---------|
-| [raylib](https://www.raylib.com/) | 5.5 | Rendering, input, audio |
+| [SDL2](https://www.libsdl.org/) | 2.x | Windowing, input, rendering backend |
+| [raylib](https://www.raylib.com/) | 5.5 | Legacy math/types + remaining runtime utilities (deprecation cleanup ongoing) |
 | [EnTT](https://github.com/skypjack/entt) | 3.16.0 | Entity Component System |
 | [nlohmann-json](https://github.com/nlohmann/json) | 3.12+ | Beatmap JSON parsing |
 | [Catch2](https://github.com/catchorg/Catch2) | 3.13+ | Testing framework |

@@ -80,4 +80,8 @@ WindowManager& sdl2_window_manager() {
     return instance;
 }
 
+WindowManager& window_manager() {
+    return sdl2_window_manager();
+}
+
 }  // namespace platform::window

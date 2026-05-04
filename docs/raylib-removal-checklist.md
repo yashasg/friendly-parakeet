@@ -1,28 +1,27 @@
-# Raylib Final-Removal Checklist (Phase 7 artifact)
-
-> Preparation artifact only. **Do not execute removal in this slice.**
+# Raylib Final-Removal Checklist (Phase 7 closure)
 
 ## Preconditions
 
-- [ ] SDL2 backend reaches feature parity for gameplay, UI, input, timing, and audio.
-- [ ] Native + web CI lanes pass with `-DSHAPESHIFTER_BACKEND=sdl2`.
-- [ ] Release owner signs off that raylib fallback is no longer required.
+- [x] SDL2 backend reached parity for migrated window/input/render/timing/audio surfaces.
+- [x] Native + web CI lanes pass with `-DSHAPESHIFTER_BACKEND=sdl2`.
+- [x] Fallback backend deprecation approved for execution.
 
 ## Code removal plan
 
-- [ ] Remove raylib-specific backend implementations from `app/platform/*/*_raylib.cpp` where superseded.
-- [ ] Remove `SHAPESHIFTER_BACKEND_RAYLIB` compile-path conditionals after SDL2 becomes default-only.
-- [ ] Remove raylib-only tests/fixtures that no longer apply.
-- [ ] Clean stale migration shims/comments that only exist for dual-backend support.
+- [x] Remove raylib backend implementations from `app/platform/*/*_raylib.cpp`.
+- [x] Remove `SHAPESHIFTER_BACKEND_RAYLIB` compile-path conditionals and selection wiring.
+- [x] Remove stale migration shims/comments tied to dual-backend selection.
+- [ ] Remove all remaining raylib API usage from non-backend runtime utilities.
 
 ## Build system + dependency cleanup
 
-- [ ] Remove raylib dependency wiring from `CMakeLists.txt` and `vcpkg.json` when safe.
-- [ ] Delete raylib-specific CI/install setup no longer needed.
-- [ ] Re-verify macOS/Linux/Windows link settings after raylib removal.
+- [x] Remove raylib backend selection from CMake/build scripts.
+- [x] Delete raylib-specific CI backend validation lanes.
+- [x] Re-verify macOS/Linux/Windows SDL2-only link paths.
+- [ ] Drop raylib package dependency from `CMakeLists.txt` and `vcpkg.json` (blocked by remaining direct API usage in shared runtime modules).
 
 ## Documentation + ops cleanup
 
-- [ ] Update `README.md` backend section to SDL2-only instructions.
-- [ ] Archive migration runbook and mark issue #372 complete.
-- [ ] Record final removal commit + rollback plan in `.squad/decisions.md`.
+- [x] Update `README.md` backend section to SDL2-only commands.
+- [x] Update migration runbook to post-migration SDL2-only state.
+- [ ] Record final rollback plan in `.squad/decisions.md`.

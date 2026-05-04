@@ -95,4 +95,8 @@ InputHandler& sdl2_input_handler() {
     return instance;
 }
 
+InputHandler& input_handler() {
+    return sdl2_input_handler();
+}
+
 }  // namespace platform::input

@@ -15,17 +15,13 @@ endif()
 
 project(shapeshifter VERSION 0.1 LANGUAGES CXX)
 
-set(SHAPESHIFTER_BACKEND "raylib" CACHE STRING "Runtime backend (raylib or sdl2)")
-set_property(CACHE SHAPESHIFTER_BACKEND PROPERTY STRINGS raylib sdl2)
+set(SHAPESHIFTER_BACKEND "sdl2" CACHE STRING "Runtime backend (sdl2)")
+set_property(CACHE SHAPESHIFTER_BACKEND PROPERTY STRINGS sdl2)
 string(TOLOWER "${SHAPESHIFTER_BACKEND}" SHAPESHIFTER_BACKEND)
-if(NOT SHAPESHIFTER_BACKEND STREQUAL "raylib" AND NOT SHAPESHIFTER_BACKEND STREQUAL "sdl2")
-    message(FATAL_ERROR "SHAPESHIFTER_BACKEND must be one of: raylib, sdl2")
+if(NOT SHAPESHIFTER_BACKEND STREQUAL "sdl2")
+    message(FATAL_ERROR "SHAPESHIFTER_BACKEND must be: sdl2")
 endif()
-if(SHAPESHIFTER_BACKEND STREQUAL "sdl2")
-    set(SHAPESHIFTER_BACKEND_DEFINE SHAPESHIFTER_BACKEND_SDL2)
-else()
-    set(SHAPESHIFTER_BACKEND_DEFINE SHAPESHIFTER_BACKEND_RAYLIB)
-endif()
+set(SHAPESHIFTER_BACKEND_DEFINE SHAPESHIFTER_BACKEND_SDL2)
 
 # C++20 required: designated initializers are used throughout the codebase
 # (MSVC rejects them in C++17 mode with error C7555)
@@ -60,8 +56,8 @@ configure_file(
 
 # ── Dependencies ─────────────────────────────────────────────
 # EnTT: header-only ECS framework (vcpkg on all platforms).
-# raylib: rendering, windowing, input, audio (vcpkg on all platforms, including
-#         wasm32-emscripten via the vcpkg-overlay portfile).
+# raylib: legacy runtime utility dependency (math/types/audio glue paths still
+#         present while final direct API cleanup is in progress).
 # raygui: immediate-mode UI header (vcpkg on all platforms, header-only package).
 # Catch2: test framework (vcpkg on all platforms).
 # nlohmann-json: JSON parsing for beat map loading (vcpkg on all platforms).
@@ -70,7 +66,7 @@ find_package(EnTT CONFIG REQUIRED)
 find_package(magic_enum CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(raylib CONFIG REQUIRED)
-if(SHAPESHIFTER_BACKEND STREQUAL "sdl2" AND NOT EMSCRIPTEN)
+if(NOT EMSCRIPTEN)
     find_package(SDL2 CONFIG REQUIRED)
 endif()
 find_path(RAYGUI_INCLUDE_DIR raygui.h REQUIRED)
@@ -123,12 +119,9 @@ file(GLOB PLATFORM_SOURCES CONFIGURE_DEPENDS
     app/platform/timing/*.cpp
     app/platform/window/*.cpp
 )
-if(SHAPESHIFTER_BACKEND STREQUAL "raylib")
-    list(FILTER PLATFORM_SOURCES EXCLUDE REGEX "(^|/)sdl2/.*\\.cpp$")
-    list(FILTER PLATFORM_SOURCES EXCLUDE REGEX "(^|/)renderer_sdl2\\.cpp$")
-    list(FILTER PLATFORM_SOURCES EXCLUDE REGEX "(^|/)window_manager_sdl2\\.cpp$")
-    list(FILTER PLATFORM_SOURCES EXCLUDE REGEX "(^|/)input_handler_sdl2\\.cpp$")
-endif()
+list(FILTER PLATFORM_SOURCES EXCLUDE REGEX "(^|/)renderer_raylib\\.cpp$")
+list(FILTER PLATFORM_SOURCES EXCLUDE REGEX "(^|/)window_manager_raylib\\.cpp$")
+list(FILTER PLATFORM_SOURCES EXCLUDE REGEX "(^|/)input_handler_raylib\\.cpp$")
 file(GLOB UI_SOURCES CONFIGURE_DEPENDS app/ui/*.cpp)
 file(GLOB UI_SCREEN_CONTROLLER_SOURCES CONFIGURE_DEPENDS app/ui/screen_controllers/*.cpp)
 file(GLOB INPUT_SOURCES CONFIGURE_DEPENDS app/input/*.cpp)
@@ -242,8 +235,7 @@ target_link_libraries(shapeshifter PRIVATE
     shapeshifter_warnings
 )
 
-# ── Platform link dependencies for raylib (RGFW backend) ─────
-# RGFW uses native platform APIs directly — no GLFW.
+# ── Platform OpenGL link dependencies ─────────────────────────
 if(APPLE)
     target_link_options(shapeshifter PRIVATE "LINKER:-no_warn_duplicate_libraries")
     target_link_libraries(shapeshifter PRIVATE
@@ -340,10 +332,7 @@ if(EMSCRIPTEN)
 </body>
 </html>]=])
 
-    set(_emscripten_backend_link_flag "-sUSE_GLFW=3")
-    if(SHAPESHIFTER_BACKEND STREQUAL "sdl2")
-        set(_emscripten_backend_link_flag "-sUSE_SDL=2")
-    endif()
+    set(_emscripten_backend_link_flag "-sUSE_SDL=2")
 
     target_link_options(shapeshifter PRIVATE
         ${_emscripten_backend_link_flag}
@@ -376,7 +365,7 @@ if(EMSCRIPTEN)
 endif()
 
 # Optional desktop smoke harness. It is intentionally excluded from the default
-# build/test path because it opens a real raylib window; build and run it
+# build/test path because it opens a real SDL2 window; build and run it
 # explicitly when validating platform startup/shutdown resource lifetimes.
 add_executable(shapeshifter_startup_shutdown_smoke EXCLUDE_FROM_ALL
     tests/smoke/startup_shutdown_smoke.cpp
@@ -534,9 +523,6 @@ file(GLOB TEST_SOURCES CONFIGURE_DEPENDS tests/*.cpp benchmarks/*.cpp)
 list(FILTER TEST_SOURCES EXCLUDE REGEX
     ".*(test_safe_area_layout|test_ui_redfoot_pass|test_lifecycle)\\.cpp$"
 )
-if(NOT SHAPESHIFTER_BACKEND STREQUAL "sdl2")
-    list(FILTER TEST_SOURCES EXCLUDE REGEX ".*test_renderer_sdl2_validation\\.cpp$")
-endif()
 
 # Unity build hazard exclusions (Keaton audit). These test files define
 # duplicate symbols in anonymous namespaces or as static functions; merging them

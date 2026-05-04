@@ -266,5 +266,6 @@ TEST_CASE("game_render_system: model-authority obstacles preserve ECS tint overr
 
     CHECK(source.find("reg.view<const ObstacleModel, const Color, const TagWorldPass>()")
           != std::string::npos);
-    CHECK(source.find("mat.maps[MATERIAL_MAP_DIFFUSE].color = tint;") != std::string::npos);
+    CHECK(source.find("draw_triangles_from_mesh(om.model.meshes[i], om.model.transform, tint);")
+          != std::string::npos);
 }

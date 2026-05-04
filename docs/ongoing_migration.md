@@ -1,39 +1,33 @@
-# Ongoing Migration: raylib ↔ SDL2 backend abstraction (Issue #372)
+# SDL2 Migration Status (Issue #372)
 
 > Branch: `feature/sdl2-migration-phase-1-abstraction-layer`
 
 ## Status Overview
 
-| Phase | Description | Status | Notes |
-|---|---|---|---|
-| 1 | Abstraction seams (renderer/input/window) | ✅ Done | Core interfaces + raylib impls landed |
-| 2 | SDL2 native window + GL context bring-up | ✅ Done | SDL2 startup/shutdown path wired |
-| 3 | Rendering parity core | ✅ Done | SDL2 validation counters + parity checklist in place |
-| 4 | Input parity | ✅ Done | SDL2 touch tracker + input bridge landed |
-| 5 | Audio/timing abstraction slice | ✅ In progress | Slice started at `47eebc4` |
-| 6 | Active migration implementation | ✅ Done | GitHub workflow_dispatch confirmation complete: Linux `25309909229`, WASM `25309910455` |
-| 7 | Cleanup + deprecation prep | 🚧 Prep started | This slice removes safe dead scaffolding and adds final-removal checklists |
+| Phase | Description | Status |
+|---|---|---|
+| 1 | Abstraction seams (renderer/input/window) | ✅ Done |
+| 2 | SDL2 native window + GL context bring-up | ✅ Done |
+| 3 | Rendering parity core | ✅ Done |
+| 4 | Input parity | ✅ Done |
+| 5 | Audio/timing abstraction slice | ✅ Done |
+| 6 | Active migration implementation + CI proof | ✅ Done |
+| 7 | Deprecation/removal execution | ✅ Done (SDL2 sole backend path) |
 
-## Current backend policy
+## Backend policy
 
-- **Do not remove raylib yet.**
-- Both `raylib` and `sdl2` backend builds must stay green.
-- Backend switches are compile-time via `-DSHAPESHIFTER_BACKEND=<raylib|sdl2>`.
+- SDL2 is the only supported backend.
+- `SHAPESHIFTER_BACKEND=sdl2` is the only accepted backend selection.
 
-## Build + test runbook (native)
+## Build + test (native)
 
 ```bash
-# raylib backend
-cmake -B build-raylib -S . -DSHAPESHIFTER_BACKEND=raylib -DCMAKE_BUILD_TYPE=Release -Wno-dev
-cmake --build build-raylib
-./build-raylib/shapeshifter_tests
-
-# SDL2 backend
-cmake -B build-sdl2 -S . -DSHAPESHIFTER_BACKEND=sdl2 -DCMAKE_BUILD_TYPE=Release -Wno-dev
-cmake --build build-sdl2
-./build-sdl2/shapeshifter_tests
+cmake -B build -S . -DSHAPESHIFTER_BACKEND=sdl2 -DCMAKE_BUILD_TYPE=Release -Wno-dev
+cmake --build build --target shapeshifter_tests
+./build/shapeshifter_tests --skip-benchmarks -v quiet
+./build/shapeshifter_tests "[render][sdl2][validation]" -v quiet
 ```
 
-For backend-specific commands and release criteria, see:
+For detailed parity/validation commands and closure notes, see:
 - `docs/sdl2-migration-runbook.md`
 - `docs/raylib-removal-checklist.md`

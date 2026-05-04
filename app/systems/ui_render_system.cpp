@@ -32,13 +32,6 @@
 // ═════════════════════════════════════════════════════════════════════════════
 
 void ui_render_system(entt::registry& reg, float /*alpha*/) {
-#if defined(SHAPESHIFTER_BACKEND_SDL2)
-    const auto& gs = reg.ctx().get<GameState>();
-    [[maybe_unused]] const auto& st = reg.ctx().get<ScreenTransform>();
-    [[maybe_unused]] auto popups = reg.view<PopupDisplay, ScreenPosition, TagHUDPass>();
-    [[maybe_unused]] const bool overlay_active = (gs.phase == GamePhase::Paused);
-    return;
-#else
     auto& text_ctx = reg.ctx().get<TextContext>();
     const auto& gs = reg.ctx().get<GameState>();
     const auto& st = reg.ctx().get<ScreenTransform>();
@@ -114,5 +107,4 @@ void ui_render_system(entt::registry& reg, float /*alpha*/) {
     SetMouseScale(1.0f, 1.0f);
 
     EndMode2D();
-#endif
 }

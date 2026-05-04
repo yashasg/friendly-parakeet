@@ -8,9 +8,6 @@
 #include "../platform/graphics/renderer.h"
 #include "camera_system.h"
 #include <raylib.h>
-#if !defined(SHAPESHIFTER_BACKEND_SDL2)
-#include <rlgl.h>
-#endif
 #include <algorithm>
 #include <cmath>
 
@@ -179,48 +176,7 @@ static void draw_floor_beat_lines(platform::graphics::Renderer& renderer,
     }
 }
 
-#if !defined(SHAPESHIFTER_BACKEND_SDL2)
-static void draw_model_transform(const camera::ShapeMeshes& sm, const ModelTransform& mt) {
-    // Use a per-draw local copy so the shared material is never mutated.
-    Material mat = sm.material;
-    mat.maps[MATERIAL_MAP_DIFFUSE].color = mt.tint;
-    switch (mt.mesh_type) {
-        case MeshType::Slab:
-            DrawMesh(sm.slab, mat, mt.mat);
-            break;
-        case MeshType::Shape:
-            DrawMesh(sm.shapes[mt.mesh_index], mat, mt.mat);
-            break;
-        case MeshType::Quad:
-            DrawMesh(sm.quad, mat, mt.mat);
-            break;
-    }
-}
-#endif
-
-#if !defined(SHAPESHIFTER_BACKEND_SDL2)
-static void draw_meshes(const entt::registry& reg) {
-    const auto* sm = reg.ctx().find<camera::ShapeMeshes>();
-    if (!sm) return;
-
-    {
-        auto view = reg.view<const ModelTransform, const TagWorldPass>();
-        for (auto [entity, mt] : view.each()) {
-            draw_model_transform(*sm, mt);
-        }
-    }
-
-    {
-        auto view = reg.view<const ModelTransform, const TagEffectsPass>();
-        for (auto [entity, mt] : view.each()) {
-            draw_model_transform(*sm, mt);
-        }
-    }
-}
-#endif
-
 static void draw_owned_models(const entt::registry& reg) {
-#if defined(SHAPESHIFTER_BACKEND_SDL2)
     auto& renderer = platform::graphics::renderer();
     constexpr float kTwoPi = 2.0f * PI;
 
@@ -365,23 +321,9 @@ static void draw_owned_models(const entt::registry& reg) {
             draw_triangles_from_mesh(om.model.meshes[i], om.model.transform, tint);
         }
     }
-#else
-    auto view = reg.view<const ObstacleModel, const Color, const TagWorldPass>();
-    for (auto [entity, om, tint] : view.each()) {
-        if (!om.owned || !om.model.meshes) continue;
-        for (int i = 0; i < om.model.meshCount; ++i) {
-            Material mat = om.model.materials[om.model.meshMaterial[i]];
-            mat.maps[MATERIAL_MAP_DIFFUSE].color = tint;
-            DrawMesh(om.model.meshes[i],
-                     mat,
-                     om.model.transform);
-        }
-    }
-#endif
 }
 
 void game_render_system(const entt::registry& reg, float /*alpha*/) {
-    [[maybe_unused]]
     auto& gs = reg.ctx().get<GameState>();
     auto& camera = game_camera(reg).cam;
     auto& renderer = platform::graphics::renderer();
@@ -401,13 +343,6 @@ void game_render_system(const entt::registry& reg, float /*alpha*/) {
     draw_floor_rings(renderer, floor_params);
 
     if (gs.phase != GamePhase::Title) {
-#if !defined(SHAPESHIFTER_BACKEND_SDL2)
-        rlDrawRenderBatchActive();
-        rlDisableDepthTest();
-        draw_meshes(reg);
-        rlDrawRenderBatchActive();
-        rlEnableDepthTest();
-#endif
         draw_owned_models(reg);
     }
 

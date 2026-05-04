@@ -367,3 +367,11 @@ All commands passed (zero-warning build policy preserved).
 - Complete phase 6 parity gates (audio/timing/input/render edge cases).
 - Convert remaining backend conditionals from dual-path to SDL2-only once approved.
 - Remove raylib dependency + implementation files only after checklist preconditions are checked and signed off.
+
+## 2026-05-04 — Phase 7 Final Deprecation/Removal Execution (Issue #372)
+
+- Removed raylib backend implementation units (`renderer_raylib.cpp`, `window_manager_raylib.cpp`, `input_handler_raylib.cpp`) and switched backend dispatch to SDL2-only factories.
+- Promoted full runtime flow for SDL2 by removing temporary SDL2 short-circuit scaffolding in `game_loop.cpp` and restoring unified gameplay/UI/render/audio lifecycle.
+- Removed dual-backend CMake/build/CI selection paths; `SHAPESHIFTER_BACKEND` now accepts only `sdl2`, and WASM/link verification now validates SDL2 flags directly.
+- Updated migration docs (`README`, ongoing migration status, runbook, checklists) to reflect migration completion state.
+- Validation: `cmake -B build -S . -DSHAPESHIFTER_BACKEND=sdl2 -DCMAKE_BUILD_TYPE=Release -Wno-dev`, `cmake --build build --target shapeshifter_tests`, `./build/shapeshifter_tests --skip-benchmarks -v quiet`, `./build/shapeshifter_tests "[render][sdl2][validation]" -v quiet`, plus known-failure sentinel (`redfoot/#168`) still failing as expected.

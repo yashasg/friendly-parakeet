@@ -85,11 +85,6 @@ jobs:
           chmod +x build.sh
           ./build.sh
 
-      - name: Build SDL2 backend (Linux hardening)
-        run: |
-          chmod +x build.sh
-          SHAPESHIFTER_BACKEND=sdl2 SHAPESHIFTER_BUILD_DIR=build-sdl2 ./build.sh
-
       - name: Run tests
         if: always()
         id: run-tests

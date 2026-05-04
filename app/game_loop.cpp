@@ -90,34 +90,6 @@ void game_loop_init(entt::registry& reg,
     }
     window.set_target_fps(60);
 
-#if defined(SHAPESHIFTER_BACKEND_SDL2)
-    (void)test_player_mode;
-    (void)test_skill;
-    (void)difficulty;
-    reg.ctx().emplace<InputState>();
-    reg.ctx().emplace<entt::dispatcher>();
-    wire_input_dispatcher(reg);
-    input_system_init(reg);
-    reg.ctx().emplace<ScreenTransform>();
-    reg.ctx().emplace<GameState>(GameState{
-        .phase = GamePhase::Playing, .previous_phase = GamePhase::Playing,
-        .phase_timer = 0.0f, .transition_pending = false,
-        .next_phase = GamePhase::Playing, .transition_alpha = 0.0f
-    });
-    spawn_game_camera(reg);
-    spawn_ui_camera(reg);
-    reg.ctx().emplace<RenderTargets>();
-    FloorParams floor{};
-    floor.size = constants::FLOOR_SHAPE_SIZE * constants::FLOOR_SCALE_REST;
-    floor.half = floor.size * 0.5f;
-    floor.thick = constants::FLOOR_OUTLINE_THICK;
-    floor.alpha = static_cast<uint8_t>(constants::FLOOR_ALPHA_REST);
-    reg.ctx().emplace<FloorParams>(floor);
-    TraceLog(LOG_INFO, "SHAPESHIFTER v%s (SDL2 backend phase-4 input slice)",
-             SHAPESHIFTER_VERSION);
-    return;
-#endif
-
     platform::audio::init_audio_device();
     sfx_bank_init(reg);
     sfx_playback_backend_init(reg);
@@ -210,34 +182,6 @@ void game_loop_init(entt::registry& reg,
 // One frame: input → fixed timestep → render → blit → audio.
 // Not in header — called by game_loop_run and platform_run_loop (Emscripten).
 void game_loop_frame(entt::registry& reg, float& accumulator) {
-#if defined(SHAPESHIFTER_BACKEND_SDL2)
-    (void)accumulator;
-    compute_screen_transform(reg);
-    input_system(reg, 0.0f);
-    reg.ctx().get<entt::dispatcher>().update<InputEvent>();
-    auto& renderer = platform::graphics::renderer();
-    auto& targets = reg.ctx().get<RenderTargets>();
-    renderer.begin_texture_mode(targets.world);
-    game_render_system(reg, 0.0f);
-    renderer.end_texture_mode();
-    renderer.begin_texture_mode(targets.ui);
-    ui_render_system(reg, 0.0f);
-    renderer.end_texture_mode();
-
-    const auto& st = reg.ctx().get<ScreenTransform>();
-    float dst_w = constants::SCREEN_W * st.scale;
-    float dst_h = constants::SCREEN_H * st.scale;
-    Rectangle src = {0, 0, static_cast<float>(constants::SCREEN_W), -static_cast<float>(constants::SCREEN_H)};
-    Rectangle dst = {st.offset_x, st.offset_y, dst_w, dst_h};
-
-    platform_pre_blit();
-    renderer.begin_drawing();
-    renderer.clear_background(BLACK);
-    renderer.draw_texture_pro(targets.world.texture, src, dst, {0, 0}, 0.0f, WHITE);
-    renderer.draw_texture_pro(targets.ui.texture, src, dst, {0, 0}, 0.0f, WHITE);
-    renderer.end_drawing();
-    return;
-#else
     auto& renderer = platform::graphics::renderer();
     float raw_dt = renderer.frame_time();
     accumulator += raw_dt;
@@ -292,7 +236,6 @@ void game_loop_frame(entt::registry& reg, float& accumulator) {
 
     auto* session_log = reg.ctx().find<SessionLog>();
     if (session_log) session_log_flush(*session_log);
-#endif
 }
 
 bool game_loop_should_quit(entt::registry& reg) {
@@ -317,11 +260,6 @@ void game_loop_run(entt::registry& reg) {
 // ── Shutdown ────────────────────────────────────────────────────────────────
 
 void game_loop_shutdown(entt::registry& reg) {
-#if defined(SHAPESHIFTER_BACKEND_SDL2)
-    (void)reg;
-    platform::window::window_manager().close_window();
-    return;
-#else
     // Disconnect all destroy/construct listeners before clearing entities
     unwire_input_dispatcher(reg);
     unwire_obstacle_mesh_lifetime(reg);
@@ -347,5 +285,4 @@ void game_loop_shutdown(entt::registry& reg) {
     sfx_bank_unload(reg);
     platform::audio::shutdown_audio_device();
     platform::window::window_manager().close_window();
-#endif
 }

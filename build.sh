@@ -5,11 +5,11 @@ cd "$(dirname "$0")"
 SCRIPT_DIR="$(pwd)"
 
 BUILD_TYPE="${1:-Release}"
-BACKEND="${SHAPESHIFTER_BACKEND:-raylib}"
+BACKEND="${SHAPESHIFTER_BACKEND:-sdl2}"
 BUILD_DIR="${SHAPESHIFTER_BUILD_DIR:-build}"
 
-if [[ "$BACKEND" != "raylib" && "$BACKEND" != "sdl2" ]]; then
-    echo "Error: SHAPESHIFTER_BACKEND must be 'raylib' or 'sdl2' (got '$BACKEND')." >&2
+if [[ "$BACKEND" != "sdl2" ]]; then
+    echo "Error: SHAPESHIFTER_BACKEND must be 'sdl2' (got '$BACKEND')." >&2
     exit 1
 fi
 

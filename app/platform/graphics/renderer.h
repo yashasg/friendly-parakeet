@@ -32,7 +32,6 @@ public:
 };
 
 Renderer& renderer();
-Renderer& raylib_renderer();
 Renderer& sdl2_renderer();
 struct RendererValidationCounters {
     uint32_t frame_time_calls = 0;

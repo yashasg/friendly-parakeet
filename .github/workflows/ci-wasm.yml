@@ -69,18 +69,6 @@ jobs:
             -DVCPKG_TARGET_TRIPLET=wasm32-emscripten
           cmake --build build-web -- -j$(nproc)
 
-      - name: Build SDL2 backend (WASM compatibility)
-        run: |
-          emcmake cmake -B build-web-sdl2 -S . \
-            -DCMAKE_BUILD_TYPE=Release \
-            -Wno-dev \
-            -DSHAPESHIFTER_BACKEND=sdl2 \
-            "-DCMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" \
-            "-DVCPKG_OVERLAY_PORTS=$(pwd)/vcpkg-overlay" \
-            "-DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=${EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake" \
-            -DVCPKG_TARGET_TRIPLET=wasm32-emscripten
-          cmake --build build-web-sdl2 --target shapeshifter -- -j$(nproc)
-
       - name: Verify WASM runtime flags
         run: |
           verify_flag() {
@@ -93,21 +81,15 @@ jobs:
             fi
           }
 
-          RAYLIB_LINK_FILE="build-web/CMakeFiles/shapeshifter.dir/link.txt"
-          SDL2_LINK_FILE="build-web-sdl2/CMakeFiles/shapeshifter.dir/link.txt"
-
-          for file in "$RAYLIB_LINK_FILE" "$SDL2_LINK_FILE"; do
-            if [ ! -f "$file" ]; then
-              echo "::error title=Missing linker command::$file not found"
-              exit 1
-            fi
-            verify_flag "$file" "-sASYNCIFY" "Missing async support flag"
-            verify_flag "$file" "-sNO_EXIT_RUNTIME=1" "Missing runtime lifecycle flag"
-          done
-
-          verify_flag "$RAYLIB_LINK_FILE" "-sUSE_GLFW=3" "Raylib backend linker flag regression"
-          verify_flag "$SDL2_LINK_FILE" "-sUSE_SDL=2" "SDL2 backend linker flag regression"
-          echo "Verified backend-specific and shared WASM linker flags for raylib + SDL2 builds"
+          LINK_FILE="build-web/CMakeFiles/shapeshifter.dir/link.txt"
+          if [ ! -f "$LINK_FILE" ]; then
+            echo "::error title=Missing linker command::$LINK_FILE not found"
+            exit 1
+          fi
+          verify_flag "$LINK_FILE" "-sASYNCIFY" "Missing async support flag"
+          verify_flag "$LINK_FILE" "-sNO_EXIT_RUNTIME=1" "Missing runtime lifecycle flag"
+          verify_flag "$LINK_FILE" "-sUSE_SDL=2" "SDL2 backend linker flag regression"
+          echo "Verified SDL2 WASM linker/runtime flags"
 
       - name: Run WASM tests (via CTest + Node)
         run: |

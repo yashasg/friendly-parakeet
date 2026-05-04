@@ -188,6 +188,10 @@ Renderer& sdl2_renderer() {
     return instance;
 }
 
+Renderer& renderer() {
+    return sdl2_renderer();
+}
+
 void reset_renderer_validation_counters() noexcept {
     auto& state = validation_state();
     state.counters = RendererValidationCounters{};
