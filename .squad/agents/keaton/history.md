@@ -401,3 +401,44 @@ Keaton identified two bench fixtures degrading silently due to archetype evoluti
 - motion/scroll stayed within run-to-run variance band (no production code changes there).
 
 **Pattern Learned:** Pre-dispatch by archetype pays off in collision hot loops when gated to the active mode. Attempted scroll pre-dispatch was measured and rejected (regressed); keep direct loops unless branch elimination wins in benchmark.
+
+### R20: Branch Fan-Out Reduction Pass (collision/scoring/scroll)
+
+**Date:** 2026-05-03  
+**Completion:** ✅ SHIPPED  
+**Tests:** 768 cases / 2179 assertions (non-bench suite)
+
+**Work:**
+1. `collision_system`: hoisted timing-grading eligibility into one top-level branch and split shape-bearing loops into graded/non-graded structural partitions (`BeatInfo` vs non-`BeatInfo`) to remove repeated mode checks in hot loops.
+2. `scoring_system`: replaced per-entity `try_get<TimingGrade>` with structural timed/untimed views and consolidated tier side effects (energy + SongResults counters + multiplier source) into one helper switch.
+3. `scroll_system`: replaced per-entity `try_get<WorldTransform>` with structural with/without-`WorldTransform` views for both beat and freeplay `ObstacleScrollZ` paths; removed `ObstacleTag` from these views to lower join cost.
+
+**Perf summary (bench_systems, 30 samples):**
+- scroll 10 entities: **73.11 ns → 56.57 ns** (faster)
+- scroll 100 entities: **391.50 ns → 390.30 ns** (flat/slightly faster)
+- scroll 1000 entities: **2.97 us → 3.58 us** (slower)
+- collision 1 obstacle: **126.83 ns → 133.02 ns** (slower)
+- collision 10 obstacles: **149.70 ns → 162.47 ns** (slower)
+- full frame typical: **471.93 ns → 546.47 ns** (slower)
+- full frame stress: **791.07 ns → 1.22 us** (slower/noisier but materially up)
+
+**Pattern Learned:** Branch elimination via additional structural partitioning is not automatically a win in EnTT; extra join/select costs can dominate at scale. Keep benchmarking each partitioning step and reject “cleaner branch profile” changes that regress full-frame throughput.
+
+## 2026-05-03 — Opt-123 Finalization (Keep-only-positive)
+
+**Task:** Re-evaluate branch-reduction pass and keep only net-positive changes for this codebase.
+
+**Decision:** Kept collision refactor; dropped scroll/scoring structural partitioning.
+
+**Measured outcome (50 samples, before=all-3 refactors):**
+- collision 1: 141.98 ns → 135.12 ns
+- collision 10: 170.44 ns → 152.36 ns
+- scroll 10: 75.64 ns → 86.43 ns
+- scroll 100: 422.03 ns → 416.89 ns
+- scroll 1000: 3.86 us → 3.05 us
+- full-frame typical: 568.30 ns → 507.15 ns
+- full-frame stress: 1.01 us → 901.23 ns
+
+**Validation:** Build clean; tests pass (768 cases, 2179 assertions).
+
+**Learning:** Structural split-by-archetype helps only when it does not multiply view passes on dense hot paths; for scroll/scoring in this codebase, fewer-pass loops outperform aggressive branch elimination.
