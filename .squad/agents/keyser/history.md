@@ -115,3 +115,21 @@ Scribe orchestrated team spawn completion. Your audit findings have been merged 
 - Audit gate gate REJECT: Issue #374 remains OPEN
 - Audio device runtime state must move into ECS context (next priority)
 - Orchestration logs written; decisions.md merged
+
+## 2026-05-04T11:55:54Z — Kujan post-audio criteria audit complete
+
+Kujan completed full post-audio architecture audit against criteria (no-wrappers, SOLID, dedupe, EnTT principles).
+
+**Audit verdict: PASS on Issues #373/374/375 (confirmed CLOSED); 2 new blockers identified for next cycle.**
+
+**Top findings:**
+1. Blocker 1 (P0): Virtual renderer wrapper violates no-virtuals + no-wrappers-around-engine criteria
+   - Evidence: `class Renderer` ABC with single impl `Sdl2Renderer` (no polymorphism benefit)
+   - Patch target: Remove ABC; replace with free functions in `platform::graphics` namespace
+2. Blocker 2 (P1): Collision system violates EnTT init contract + duplicates gate logic
+   - Evidence: `collision_system.cpp` lazy `ctx().find<SongState>()` + fallback `emplace`; can_grade_shape branches duplicate ShapeGate/ComboGate/SplitPath loops
+   - Patch target: Move `SongState` emplace to `game_loop_init`; unify gate branches into single loop
+
+**Routing:** Blocker 1 to rendering specialist (broader callsite surface); Blocker 2 to any implementation agent (self-contained). Both can execute in single pass.
+
+**Status:** Findings merged to decisions.md; orchestration logged. Ready for implementation handoff.

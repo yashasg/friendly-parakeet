@@ -4684,3 +4684,16 @@ Introduce an ECS-owned audio device runtime context struct and thread it through
 - remove `RuntimeAudioState` function-static storage from `runtime_compat.cpp`
 
 This closes #374 fully and removes a remaining EnTT authority breach before tackling larger wrapper and collision dedupe refactors.
+# 2026-05-04 — Kujan audit: top remaining blockers
+
+Reviewed `app/`, `tests/`, and `tools/` against criteria (no wrappers around engine code, SOLID, dedupe/reuse, use engine APIs, EnTT principles).
+
+## Blocker 1 (P0): Runtime/graphics compatibility facade still wraps engine APIs
+- Evidence: `app/runtime/runtime_types.h`, `app/runtime/runtime_compat.cpp`, `app/rendering/renderer_backend.h`, callsites in `app/systems/game_render_system.cpp` and `app/game_loop.cpp`.
+- Impact: Violates no-wrapper + use-engine-APIs criteria; leaves a broad compatibility seam instead of direct engine usage.
+
+## Blocker 2 (P1): collision_system violates EnTT init contract and duplicates gate logic
+- Evidence: `app/systems/collision_system.cpp` uses lazy `ctx().emplace<SongState>()` fallback and duplicates shape/combo/split evaluation across `can_grade_shape` true/false branches.
+- Impact: Violates EnTT singleton initialization discipline and dedupe/SOLID expectations.
+
+Reassignment guidance: route to implementation owner (not reviewer) to perform architectural simplification + collision refactor in one pass.

@@ -93,3 +93,20 @@ Blueprint direction recorded for team: move backend-mutated music clock + audio 
 - Audit gate gate REJECT: Issue #374 remains OPEN
 - Audio device runtime state must move into ECS context (next priority)
 - Orchestration logs written; decisions.md merged
+
+## 2026-05-04T11:55:54Z — Kujan post-audio criteria audit complete
+
+Kujan completed full post-audio architecture audit against criteria (no-wrappers, SOLID, dedupe, EnTT principles).
+
+**Top findings (audit pass: 2 blockers identified for next cycle):**
+1. Issue #373, #374, #375 confirmed CLOSED and verified in code
+2. Blocker 1 (P0): Virtual renderer wrapper violates architecture contract
+   - Files: `app/rendering/renderer_backend.h`, `app/rendering/renderer_backend_sdl2.cpp`, `app/systems/game_render_system.cpp`, `app/game_loop.cpp`
+   - Patch: Remove `class Renderer` ABC; replace with free functions in `platform::graphics` namespace
+3. Blocker 2 (P1): Collision system lazy ECS ctx init + dedupe failure  
+   - File: `app/systems/collision_system.cpp:41-43` + 126–258
+   - Patch: Move `SongState` emplace to `game_loop_init`; unify `can_grade_shape` branches
+
+**Team-relevant:** Renderer blocker owns broader callsite surface (routes to rendering/platform specialist). Collision blocker self-contained (any implementation agent). Both can execute in single pass.
+
+**Status:** Findings merged to decisions.md; orchestration logged. Ready for implementation handoff.
