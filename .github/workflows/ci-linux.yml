@@ -53,6 +53,7 @@ jobs:
             autoconf-archive \
             automake \
             libgl1-mesa-dev \
+            libltdl-dev \
             libtool \
             libx11-dev \
             libxrandr-dev \

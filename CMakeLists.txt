@@ -461,6 +461,8 @@ if(UI_SCREEN_FILES)
 endif()
 if(UI_ROOT_FILES)
     add_custom_command(TARGET shapeshifter POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+            "$<TARGET_FILE_DIR:shapeshifter>/content/ui"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             ${UI_ROOT_FILES}
             "$<TARGET_FILE_DIR:shapeshifter>/content/ui/"
