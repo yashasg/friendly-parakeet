@@ -1,6 +1,7 @@
 #include "renderer_backend.h"
 #include "../platform/sdl2/sdl2_graphics_context.h"
 #include <cmath>
+#include <utility>
 
 #include "../platform/sdl2/sdl2_headers.h"
 #include "runtime/runtime_api.h"
@@ -101,10 +102,29 @@ void draw_texture_pro(Texture2D texture,
 
     const float inv_w = 1.0f / static_cast<float>(texture.width);
     const float inv_h = 1.0f / static_cast<float>(texture.height);
-    const float u0 = source.x * inv_w;
-    const float v0 = source.y * inv_h;
-    const float u1 = (source.x + source.width) * inv_w;
-    const float v1 = (source.y + source.height) * inv_h;
+
+    float src_x = source.x;
+    float src_y = source.y;
+    float src_w = source.width;
+    float src_h = source.height;
+    bool flip_x = false;
+    bool flip_y = false;
+
+    if (src_w < 0.0f) {
+        src_w = -src_w;
+        flip_x = true;
+    }
+    if (src_h < 0.0f) {
+        src_h = -src_h;
+        flip_y = true;
+    }
+
+    float u0 = src_x * inv_w;
+    float v0 = src_y * inv_h;
+    float u1 = (src_x + src_w) * inv_w;
+    float v1 = (src_y + src_h) * inv_h;
+    if (flip_x) std::swap(u0, u1);
+    if (flip_y) std::swap(v0, v1);
 
     const float rad = rotation * DEG2RAD;
     const float c = std::cos(rad);
