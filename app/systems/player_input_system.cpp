@@ -110,7 +110,7 @@ void player_input_handle_press(entt::registry& reg, const ButtonPressEvent& evt)
 // ── EventQueue consumption contract ──────────────────────────────────────────
 // player_input_handle_go and player_input_handle_press are connected as
 // listeners in wire_input_dispatcher().  GoEvent and ButtonPressEvent are
-// enqueued by input_system, gesture_routing, and raygui HUD controllers, then
+// enqueued by input_system and gesture_routing, then
 // dispatched once per logical frame by the first consumer system that calls
 // disp.update<T>() (game_state_system in the production tick order).
 //

@@ -54,7 +54,7 @@ jobs:
         with:
           path: build-web
           # v3: unity builds enabled — old non-unity object files are incompatible
-          key: cmake-web-emscripten-v3-${{ hashFiles('CMakeLists.txt', 'vcpkg.json', 'vcpkg-overlay/**') }}
+          key: cmake-web-emscripten-v3-${{ hashFiles('CMakeLists.txt', 'vcpkg.json') }}
           restore-keys: |
             cmake-web-emscripten-v3-
 
@@ -64,7 +64,6 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release \
             -Wno-dev \
             "-DCMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" \
-            "-DVCPKG_OVERLAY_PORTS=$(pwd)/vcpkg-overlay" \
             "-DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=${EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake" \
             -DVCPKG_TARGET_TRIPLET=wasm32-emscripten
           cmake --build build-web -- -j$(nproc)

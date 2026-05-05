@@ -1,6 +1,6 @@
 #include "file_logger.h"
 #include "safe_localtime.h"
-#include "platform/runtime_api.h"
+#include "runtime/runtime_api.h"
 #include <cstdio>
 #include <cstdarg>
 #include <ctime>

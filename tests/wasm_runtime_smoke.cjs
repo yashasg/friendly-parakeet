@@ -2,9 +2,18 @@
 
 const { chromium } = require('playwright-core');
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 
 function sha256(buf) {
   return crypto.createHash('sha256').update(buf).digest('hex');
+}
+
+function maybeWriteScreenshot(name, buf) {
+  const outDir = process.env.WASM_SMOKE_SCREENSHOT_DIR;
+  if (!outDir) return;
+  fs.mkdirSync(outDir, { recursive: true });
+  fs.writeFileSync(path.join(outDir, name), buf);
 }
 
 async function main() {
@@ -63,17 +72,20 @@ async function main() {
     }, undefined, { timeout: 30000 });
 
     const beforeInput = await page.screenshot();
+    maybeWriteScreenshot('before-input.png', beforeInput);
     const beforeHash = sha256(beforeInput);
 
     // Some browser stacks can consume the first click as focus acquisition.
     await page.click('#canvas', { position: { x: 360, y: 640 } });
     await page.waitForTimeout(600);
     let afterStart = await page.screenshot();
+    maybeWriteScreenshot('after-start-click.png', afterStart);
     let afterStartHash = sha256(afterStart);
     if (beforeHash === afterStartHash) {
       await page.click('#canvas', { position: { x: 360, y: 640 } });
       await page.waitForTimeout(600);
       afterStart = await page.screenshot();
+      maybeWriteScreenshot('after-second-start-click.png', afterStart);
       afterStartHash = sha256(afterStart);
     }
     if (beforeHash === afterStartHash) {
@@ -84,6 +96,7 @@ async function main() {
     await page.click('#canvas', { position: { x: 360, y: 500 } });
     await page.waitForTimeout(600);
     const afterLevelSelectClick = await page.screenshot();
+    maybeWriteScreenshot('after-level-select-click.png', afterLevelSelectClick);
     const afterLevelSelectClickHash = sha256(afterLevelSelectClick);
     if (afterStartHash === afterLevelSelectClickHash) {
       fatal.push('no-visual-response-after-level-select-click');
@@ -92,6 +105,7 @@ async function main() {
     await page.keyboard.press('Enter');
     await page.waitForTimeout(1000);
     const afterInput = await page.screenshot();
+    maybeWriteScreenshot('after-enter.png', afterInput);
     const afterHash = sha256(afterInput);
     if (afterLevelSelectClickHash === afterHash) {
       fatal.push('no-visual-response-after-enter');

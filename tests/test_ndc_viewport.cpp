@@ -87,11 +87,11 @@ TEST_CASE("ndc: button NDC constants round-trip to pixel constants", "[ndc]") {
 // ─────────────────────────────────────────────────────────────────────────────
 // ScreenTransform coordinate conversion math
 // These mirror the to_vx / to_vy lambdas in input_system.cpp so that the
-// coordinate mapping is tested independently of raylib.
+// coordinate mapping is tested independently of the runtime backend.
 // ─────────────────────────────────────────────────────────────────────────────
 
 namespace {
-// Mirror of the lambda inside input_system — pure math, no raylib.
+// Mirror of the lambda inside input_system — pure math, no runtime calls.
 float to_vx(const ScreenTransform& st, float wx) { return (wx - st.offset_x) / st.scale; }
 float to_vy(const ScreenTransform& st, float wy) { return (wy - st.offset_y) / st.scale; }
 }  // anonymous namespace
@@ -162,7 +162,7 @@ TEST_CASE("screen_transform: full letterbox (offset + scale)", "[screen_transfor
 // NDC-derived button positions
 // Verify that the button centres computed from NDC constants match the
 // raw pixel constants. Gesture classification is now internal to input_system
-// (which calls raylib and can't be unit-tested), so we only verify the
+// (which relies on runtime input and can't be unit-tested), so we only verify the
 // math here.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -214,7 +214,7 @@ TEST_CASE("ndc: zone boundary constant is 0.80", "[ndc]") {
 // compute_screen_transform idempotency (#241)
 // The letterbox formula must be pure (depends only on win/virtual dims).
 // Calling it once or twice with the same window size yields identical results.
-// This mirrors the math inside compute_screen_transform without raylib.
+// This mirrors the math inside compute_screen_transform without runtime API calls.
 // ─────────────────────────────────────────────────────────────────────────────
 
 namespace {

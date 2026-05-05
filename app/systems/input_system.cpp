@@ -1,5 +1,5 @@
 #include "all_systems.h"
-#include "../input/raylib_gesture_input.h"
+#include "../input/gesture_input.h"
 #include "../input/input_latency_probe.h"
 #include "../input/input_state.h"
 #include "../components/input.h"
@@ -7,7 +7,8 @@
 #include "../components/rendering.h"
 #include "../components/game_state.h"
 #include "../constants.h"
-#include "../platform/input/input_handler.h"
+#include "../platform/sdl2/sdl2_graphics_context.h"
+#include "../platform/sdl2/sdl2_headers.h"
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
 #endif
@@ -17,6 +18,22 @@ namespace {
 struct WebInputPolicy {
     bool prefers_touch = false;
 };
+
+bool is_menu_phase(GamePhase phase) {
+    switch (phase) {
+        case GamePhase::Title:
+        case GamePhase::LevelSelect:
+        case GamePhase::Paused:
+        case GamePhase::GameOver:
+        case GamePhase::SongComplete:
+        case GamePhase::Settings:
+        case GamePhase::Tutorial:
+            return true;
+        case GamePhase::Playing:
+            return false;
+    }
+    return false;
+}
 
 } // namespace
 
@@ -42,10 +59,9 @@ void input_system(entt::registry& reg, float raw_dt) {
     auto& input = reg.ctx().get<InputState>();
     auto& st    = reg.ctx().get<ScreenTransform>();
     auto& disp  = reg.ctx().get<entt::dispatcher>();
-    auto& platform_input = platform::input::input_handler();
-    platform_input.pump_events();
+    platform::sdl2::poll_events();
     if (!input.gestures_configured) {
-        platform_input.configure_gameplay_gestures();
+        platform::sdl2::input_configure_gameplay_gestures();
         input.gestures_configured = true;
     }
     // Discard any InputEvents that were not consumed before this frame
@@ -65,11 +81,14 @@ void input_system(entt::registry& reg, float raw_dt) {
     // ── Mouse (desktop) — click-only semantics ─
     if (allow_mouse_input &&
         input.active_source != InputSource::Touch &&
-        platform_input.is_mouse_left_released()) {
+        platform::sdl2::input_mouse_left_released()) {
         input.click      = true;
         input.touching   = false;
         input.active_source = InputSource::None;
-        const auto mouse_position = platform_input.mouse_position();
+        const Vector2 mouse_position{
+            static_cast<float>(platform::sdl2::input_mouse_x()),
+            static_cast<float>(platform::sdl2::input_mouse_y())
+        };
         const Vector2 pos = screen_to_virtual({mouse_position.x, mouse_position.y}, st);
         input.start_x = input.curr_x = input.end_x = pos.x;
         input.start_y = input.curr_y = input.end_y = pos.y;
@@ -79,8 +98,11 @@ void input_system(entt::registry& reg, float raw_dt) {
     // ── Touch (mobile / web) — only when no mouse gesture is active ─
     if (allow_touch_input &&
         input.active_source != InputSource::Mouse &&
-        platform_input.touch_point_count() > 0) {
-        const auto touch_position = platform_input.touch_position(0);
+        platform::sdl2::input_touch_point_count() > 0) {
+        const Vector2 touch_position{
+            platform::sdl2::input_touch_x(0),
+            platform::sdl2::input_touch_y(0)
+        };
         const Vector2 tp = screen_to_virtual({touch_position.x, touch_position.y}, st);
         if (!input.touching) {
             input.touch_down = true;
@@ -105,35 +127,42 @@ void input_system(entt::registry& reg, float raw_dt) {
 
 #ifdef PLATFORM_HAS_KEYBOARD
     // ── Keyboard — IsKeyPressed fires once per press (no repeat) ──
-    using platform::input::KeyCode;
-    if (platform_input.is_key_pressed(KeyCode::W) || platform_input.is_key_pressed(KeyCode::Up)) {
+    if (platform::sdl2::input_key_pressed(SDL_SCANCODE_W) ||
+        platform::sdl2::input_key_pressed(SDL_SCANCODE_UP)) {
         disp.enqueue<GoEvent>({Direction::Up});
     }
-    if (platform_input.is_key_pressed(KeyCode::S) || platform_input.is_key_pressed(KeyCode::Down)) {
+    if (platform::sdl2::input_key_pressed(SDL_SCANCODE_S) ||
+        platform::sdl2::input_key_pressed(SDL_SCANCODE_DOWN)) {
         disp.enqueue<GoEvent>({Direction::Down});
     }
-    if (platform_input.is_key_pressed(KeyCode::A) || platform_input.is_key_pressed(KeyCode::Left)) {
+    if (platform::sdl2::input_key_pressed(SDL_SCANCODE_A) ||
+        platform::sdl2::input_key_pressed(SDL_SCANCODE_LEFT)) {
         disp.enqueue<GoEvent>({Direction::Left});
     }
-    if (platform_input.is_key_pressed(KeyCode::D) || platform_input.is_key_pressed(KeyCode::Right)) {
+    if (platform::sdl2::input_key_pressed(SDL_SCANCODE_D) ||
+        platform::sdl2::input_key_pressed(SDL_SCANCODE_RIGHT)) {
         disp.enqueue<GoEvent>({Direction::Right});
     }
 
     // Keyboard shape-button presses: encode semantic payload directly — no
     // entity lookup needed (#273).
-    if (platform_input.is_key_pressed(KeyCode::One) || platform_input.is_key_pressed(KeyCode::Z)) {
+    if (platform::sdl2::input_key_pressed(SDL_SCANCODE_1) ||
+        platform::sdl2::input_key_pressed(SDL_SCANCODE_Z)) {
         disp.enqueue<ButtonPressEvent>({ButtonPressKind::Shape, Shape::Circle,
                                        MenuActionKind::Confirm, 0});
     }
-    if (platform_input.is_key_pressed(KeyCode::Two) || platform_input.is_key_pressed(KeyCode::X)) {
+    if (platform::sdl2::input_key_pressed(SDL_SCANCODE_2) ||
+        platform::sdl2::input_key_pressed(SDL_SCANCODE_X)) {
         disp.enqueue<ButtonPressEvent>({ButtonPressKind::Shape, Shape::Square,
                                        MenuActionKind::Confirm, 0});
     }
-    if (platform_input.is_key_pressed(KeyCode::Three) || platform_input.is_key_pressed(KeyCode::C)) {
+    if (platform::sdl2::input_key_pressed(SDL_SCANCODE_3) ||
+        platform::sdl2::input_key_pressed(SDL_SCANCODE_C)) {
         disp.enqueue<ButtonPressEvent>({ButtonPressKind::Shape, Shape::Triangle,
                                        MenuActionKind::Confirm, 0});
     }
-    if (platform_input.is_key_pressed(KeyCode::Enter) || platform_input.is_key_pressed(KeyCode::Space)) {
+    if (platform::sdl2::input_key_pressed(SDL_SCANCODE_RETURN) ||
+        platform::sdl2::input_key_pressed(SDL_SCANCODE_SPACE)) {
         disp.enqueue<ButtonPressEvent>({ButtonPressKind::Menu, Shape::Circle,
                                        MenuActionKind::Confirm, 0});
     }
@@ -142,7 +171,7 @@ void input_system(entt::registry& reg, float raw_dt) {
     // ── Background / suspend (edge-triggered) ─────────────
     // Pause only on the frame focus is *lost*, not every frame while unfocused.
     {
-        bool focused = platform_input.is_window_focused();
+        bool focused = platform::sdl2::input_window_focused();
         if (input.was_focused && !focused &&
             reg.ctx().get<GameState>().phase == GamePhase::Playing) {
             auto& gs = reg.ctx().get<GameState>();
@@ -160,15 +189,20 @@ void input_system(entt::registry& reg, float raw_dt) {
     // gesture_routing_handle_input via
     // disp.update<InputEvent>() in game_loop_frame (#333).
     if (input.click) {
+        const auto& gs = reg.ctx().get<GameState>();
+        if (is_menu_phase(gs.phase)) {
+            disp.enqueue<ButtonPressEvent>({ButtonPressKind::Menu, Shape::Circle,
+                                            MenuActionKind::Confirm, 0});
+        }
         const InputEvent event{
             InputType::Tap, Direction::Up, input.end_x, input.end_y
         };
         disp.enqueue<InputEvent>(event);
         input_latency_note_input_event_enqueued(reg, event.type, event.dir, 0);
     } else if (input.touch_up) {
-        const std::uint32_t source_timestamp_ms = platform_input.read_last_touch_timestamp_ms();
-        const InputEvent event = input_event_from_raylib_gesture(
-            platform_input.read_detected_gesture(),
+        const std::uint32_t source_timestamp_ms = platform::sdl2::input_last_gesture_timestamp_ms();
+        const InputEvent event = input_event_from_detected_gesture(
+            platform::sdl2::input_read_detected_gesture(),
             input.start_y,
             input.end_x,
             input.end_y);

@@ -23,17 +23,19 @@
 #include "systems/camera_system.h"
 #include "entities/obstacle_render_entity.h"
 #include "platform_display.h"
-#include "platform/graphics/renderer.h"
-#include "platform/window/window_manager.h"
-#include "platform/audio/music_backend.h"
+#include "rendering/renderer_backend.h"
+#include "audio/music_backend.h"
+#include "platform/sdl2/sdl2_graphics_context.h"
+#include "platform/sdl2/sdl2_init.h"
 #include "util/persistence_policy.h"
 #include "util/settings_persistence.h"
 #include "components/high_score.h"
 #include "util/high_score_persistence.h"
 #include "platform/haptics_backend.h"
 
-#include "platform/runtime_api.h"
+#include "runtime/runtime_api.h"
 #include <algorithm>
+#include <cstdio>
 #include <string>
 
 static constexpr float FIXED_DT  = 1.0f / 60.0f;
@@ -69,28 +71,46 @@ void log_persistence_result(const char* operation, const persistence::Result& re
 
 // ── Init ────────────────────────────────────────────────────────────────────
 
-void game_loop_init(entt::registry& reg,
+bool game_loop_init(entt::registry& reg,
                     bool test_player_mode,
                     TestPlayerSkill test_skill,
                     const char* difficulty) {
     // Platform: window + audio
     std::string window_title = std::string("SHAPESHIFTER v") + SHAPESHIFTER_VERSION;
-    auto& window = platform::window::window_manager();
-    window.set_resizable_flag();
-    window.init_window(constants::SCREEN_W, constants::SCREEN_H, window_title.c_str());
+    if (!platform::sdl2::initialize()) {
+        std::fprintf(stderr, "game_loop_init failed: SDL init failed (%s)\n",
+                     platform::sdl2::last_error());
+        platform::sdl2::request_close();
+        return false;
+    }
+    const platform::sdl2::WindowConfig window_config{
+        .width = constants::SCREEN_W,
+        .height = constants::SCREEN_H,
+        .title = window_title.c_str(),
+        .resizable = true,
+    };
+    if (!platform::sdl2::create_window_and_gl_context(window_config)) {
+        std::fprintf(stderr, "game_loop_init failed: window/context creation failed\n");
+        platform::sdl2::shutdown();
+        platform::sdl2::request_close();
+        return false;
+    }
     {
-        int mon = window.current_monitor();
-        int mon_h = window.monitor_height(mon);
+        int mon = platform::sdl2::current_monitor();
+        int mon_h = platform::sdl2::monitor_height(mon);
         int win_h = static_cast<int>(mon_h * 0.85f);
         int win_w = win_h * constants::SCREEN_W / constants::SCREEN_H;
-        window.set_window_size(win_w, win_h);
-        window.set_window_position(
-            (window.monitor_width(mon) - win_w) / 2,
+        platform::sdl2::set_window_size(win_w, win_h);
+        platform::sdl2::set_window_position(
+            (platform::sdl2::monitor_width(mon) - win_w) / 2,
             (mon_h - win_h) / 2);
     }
-    window.set_target_fps(60);
+    platform::sdl2::set_target_fps(60);
 
-    platform::audio::init_audio_device();
+    auto& audio_device = reg.ctx().emplace<AudioDeviceRuntimeState>();
+    if (!platform::audio::init_audio_device(audio_device)) {
+        TraceLog(LOG_WARNING, "Audio initialization failed; continuing with audio disabled");
+    }
     sfx_bank_init(reg);
     sfx_playback_backend_init(reg);
     TraceLog(LOG_INFO, "SHAPESHIFTER v%s", SHAPESHIFTER_VERSION);
@@ -98,7 +118,18 @@ void game_loop_init(entt::registry& reg,
     // Text rendering
     {
         auto& text_ctx = reg.ctx().emplace<TextContext>();
-        text_init_default(text_ctx);
+        if (!text_init_default(text_ctx)) {
+#if defined(__EMSCRIPTEN__)
+            TraceLog(LOG_WARNING, "text_init_default failed on web build; continuing without text rendering");
+#else
+            std::fprintf(stderr, "game_loop_init failed: text_init_default failed\n");
+            platform::audio::shutdown_audio_device(audio_device);
+            platform::sdl2::destroy_window_and_gl_context();
+            platform::sdl2::shutdown();
+            platform::sdl2::request_close();
+            return false;
+#endif
+        }
     }
 
     // Core singletons
@@ -172,6 +203,7 @@ void game_loop_init(entt::registry& reg,
     if (test_player_mode) {
         test_player_init(reg, test_skill, difficulty);
     }
+    return true;
 }
 
 // ── Run ─────────────────────────────────────────────────────────────────────
@@ -182,8 +214,7 @@ void game_loop_init(entt::registry& reg,
 // One frame: input → fixed timestep → render → blit → audio.
 // Not in header — called by game_loop_run and platform_run_loop (Emscripten).
 void game_loop_frame(entt::registry& reg, float& accumulator) {
-    auto& renderer = platform::graphics::renderer();
-    float raw_dt = renderer.frame_time();
+    float raw_dt = platform::graphics::frame_time();
     accumulator += raw_dt;
     if (accumulator > MAX_ACCUM) accumulator = MAX_ACCUM;
 
@@ -205,31 +236,44 @@ void game_loop_frame(entt::registry& reg, float& accumulator) {
 
     auto& targets = reg.ctx().get<RenderTargets>();
 
-    // Pass 1: World (3D)
-    renderer.begin_texture_mode(targets.world);
-        game_render_system(reg, 0.0f);
-    renderer.end_texture_mode();
+    const bool render_targets_ready =
+        targets.world.texture.id != 0u && targets.ui.texture.id != 0u;
 
-    // Pass 2: UI (2D)
-    renderer.begin_texture_mode(targets.ui);
-        ui_render_system(reg, 0.0f);
-    renderer.end_texture_mode();
+    if (render_targets_ready) {
+        // Pass 1: World (3D)
+        platform::graphics::begin_texture_mode(targets.world);
+            game_render_system(reg, 0.0f);
+        platform::graphics::end_texture_mode();
 
-    // Composite: blit world, then UI (alpha-blended) onto window
-    const auto& st = reg.ctx().get<ScreenTransform>();
-    float dst_w = constants::SCREEN_W * st.scale;
-    float dst_h = constants::SCREEN_H * st.scale;
-    Rectangle src = { 0, 0,
-        static_cast<float>(constants::SCREEN_W),
-        -static_cast<float>(constants::SCREEN_H) };
-    Rectangle dst = { st.offset_x, st.offset_y, dst_w, dst_h };
+        // Pass 2: UI (2D)
+        platform::graphics::begin_texture_mode(targets.ui);
+            ui_render_system(reg, 0.0f);
+        platform::graphics::end_texture_mode();
 
-    platform_pre_blit();
-    renderer.begin_drawing();
-        renderer.clear_background(BLACK);
-        renderer.draw_texture_pro(targets.world.texture, src, dst, {0, 0}, 0.0f, WHITE);
-        renderer.draw_texture_pro(targets.ui.texture, src, dst, {0, 0}, 0.0f, WHITE);
-    renderer.end_drawing();
+        // Composite: blit world, then UI (alpha-blended) onto window
+        const auto& st = reg.ctx().get<ScreenTransform>();
+        float dst_w = constants::SCREEN_W * st.scale;
+        float dst_h = constants::SCREEN_H * st.scale;
+        Rectangle src = { 0, 0,
+            static_cast<float>(constants::SCREEN_W),
+            -static_cast<float>(constants::SCREEN_H) };
+        Rectangle dst = { st.offset_x, st.offset_y, dst_w, dst_h };
+
+        platform_pre_blit();
+        platform::graphics::begin_drawing();
+            platform::graphics::clear_background(BLACK);
+            platform::graphics::draw_texture_pro(targets.world.texture, src, dst, {0, 0}, 0.0f, WHITE);
+            platform::graphics::draw_texture_pro(targets.ui.texture, src, dst, {0, 0}, 0.0f, WHITE);
+        platform::graphics::end_drawing();
+    } else {
+        // Fallback path for backends without render-target support yet:
+        // draw world + UI directly to the window.
+        platform_pre_blit();
+        platform::graphics::begin_drawing();
+            game_render_system(reg, 0.0f);
+            ui_render_system(reg, 0.0f);
+        platform::graphics::end_drawing();
+    }
 
     audio_system(reg);
     haptic_system(reg);
@@ -240,7 +284,7 @@ void game_loop_frame(entt::registry& reg, float& accumulator) {
 
 bool game_loop_should_quit(entt::registry& reg) {
 #ifndef __EMSCRIPTEN__
-    if (platform::window::window_manager().should_close()) return true;
+    if (platform::sdl2::should_close()) return true;
 #endif
     auto* input = reg.ctx().find<InputState>();
     return input && input->quit_requested;
@@ -280,9 +324,16 @@ void game_loop_shutdown(entt::registry& reg) {
             platform::audio::unload_music_stream(*music);
         }
     }
-    camera::shutdown(reg);
-    text_shutdown(reg.ctx().get<TextContext>());
+    if (reg.ctx().find<RenderTargets>()) {
+        camera::shutdown(reg);
+    }
+    if (auto* text = reg.ctx().find<TextContext>()) {
+        text_shutdown(*text);
+    }
     sfx_bank_unload(reg);
-    platform::audio::shutdown_audio_device();
-    platform::window::window_manager().close_window();
+    if (auto* audio_device = reg.ctx().find<AudioDeviceRuntimeState>()) {
+        platform::audio::shutdown_audio_device(*audio_device);
+    }
+    platform::sdl2::destroy_window_and_gl_context();
+    platform::sdl2::shutdown();
 }

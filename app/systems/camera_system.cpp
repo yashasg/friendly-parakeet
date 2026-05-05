@@ -11,9 +11,9 @@
 #include "../components/song_state.h"
 #include "../constants.h"
 #include "../platform_display.h"
-#include "platform/runtime_api.h"
-#include "platform/runtime_api.h"
-#include "platform/runtime_api.h"
+#include "runtime/runtime_api.h"
+#include "runtime/runtime_api.h"
+#include "runtime/runtime_api.h"
 #include <algorithm>
 #include <cmath>
 #include <tuple>

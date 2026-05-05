@@ -13,7 +13,7 @@
 #include "components/rendering.h"
 #include "constants.h"
 #include <fstream>
-#include "platform/runtime_api.h"
+#include "runtime/runtime_api.h"
 #include <sstream>
 #include <string>
 

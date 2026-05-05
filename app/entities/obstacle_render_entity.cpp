@@ -3,7 +3,7 @@
 #include "../components/transform.h"
 #include "../components/rendering.h"
 #include "../constants.h"
-#include "platform/runtime_api.h"
+#include "runtime/runtime_api.h"
 #include <cstdint>
 #include <stdexcept>
 

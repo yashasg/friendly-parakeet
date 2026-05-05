@@ -3,14 +3,9 @@ cmake_minimum_required(VERSION 3.20)
 # Auto-detect vcpkg toolchain from VCPKG_ROOT when no toolchain is specified.
 # Referencing CMAKE_TOOLCHAIN_FILE here also prevents the CMake warning
 # "Manually-specified variables were not used" on reconfigure.
-if(DEFINED ENV{VCPKG_ROOT} AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
+if(DEFINED ENV{VCPKG_ROOT} AND (NOT DEFINED CMAKE_TOOLCHAIN_FILE OR CMAKE_TOOLCHAIN_FILE STREQUAL ""))
     set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
         CACHE STRING "Vcpkg toolchain file")
-endif()
-
-if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/vcpkg-overlay" AND NOT DEFINED VCPKG_OVERLAY_PORTS)
-    set(VCPKG_OVERLAY_PORTS "${CMAKE_CURRENT_LIST_DIR}/vcpkg-overlay"
-        CACHE STRING "Vcpkg overlay ports")
 endif()
 
 project(shapeshifter VERSION 0.1 LANGUAGES CXX)
@@ -56,8 +51,8 @@ configure_file(
 
 # ── Dependencies ─────────────────────────────────────────────
 # EnTT: header-only ECS framework (vcpkg on all platforms).
-# miniaudio: header-only decode backend used by SDL2 audio implementation.
-# raygui: immediate-mode UI header (vcpkg on all platforms, header-only package).
+# SDL2_mixer: music + sound effects backend.
+# SDL2_ttf: TrueType text backend.
 # Catch2: test framework (vcpkg on all platforms).
 # nlohmann-json: JSON parsing for beat map loading (vcpkg on all platforms).
 
@@ -66,8 +61,9 @@ find_package(magic_enum CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 if(NOT EMSCRIPTEN)
     find_package(SDL2 CONFIG REQUIRED)
+    find_package(SDL2_mixer CONFIG REQUIRED)
+    find_package(SDL2_ttf CONFIG REQUIRED)
 endif()
-find_path(MINIAUDIO_INCLUDE_DIR miniaudio.h REQUIRED)
 
 find_package(Catch2 3 CONFIG REQUIRED)
 
@@ -88,6 +84,14 @@ set(_system_deps EnTT::EnTT magic_enum::magic_enum nlohmann_json::nlohmann_json 
 if(TARGET SDL2::SDL2)
     list(APPEND _system_deps SDL2::SDL2)
 endif()
+if(TARGET SDL2_mixer::SDL2_mixer OR TARGET SDL2_mixer::SDL2_mixer-static)
+    list(APPEND _system_deps
+        "$<IF:$<TARGET_EXISTS:SDL2_mixer::SDL2_mixer>,SDL2_mixer::SDL2_mixer,SDL2_mixer::SDL2_mixer-static>")
+endif()
+if(TARGET SDL2_ttf::SDL2_ttf OR TARGET SDL2_ttf::SDL2_ttf-static)
+    list(APPEND _system_deps
+        "$<IF:$<TARGET_EXISTS:SDL2_ttf::SDL2_ttf>,SDL2_ttf::SDL2_ttf,SDL2_ttf::SDL2_ttf-static>")
+endif()
 foreach(_dep ${_system_deps})
     if(TARGET ${_dep})
         # Resolve alias targets — set_target_properties doesn't work on aliases
@@ -106,22 +110,17 @@ endforeach()
 # ── Game library (shared between exe and tests) ──────────────
 file(GLOB SYSTEM_SOURCES CONFIGURE_DEPENDS app/systems/*.cpp)
 file(GLOB AUDIO_SOURCES CONFIGURE_DEPENDS app/audio/*.cpp)
+file(GLOB RENDERING_SOURCES CONFIGURE_DEPENDS app/rendering/*.cpp)
+file(GLOB RUNTIME_SOURCES CONFIGURE_DEPENDS app/runtime/*.cpp)
+file(GLOB TIMING_SOURCES CONFIGURE_DEPENDS app/timing/*.cpp)
 file(GLOB UTIL_SOURCES CONFIGURE_DEPENDS app/util/*.cpp)
 file(GLOB PLATFORM_SOURCES CONFIGURE_DEPENDS
     app/platform/*.cpp
-    app/platform/audio/*.cpp
     app/platform/ios/*.cpp
-    app/platform/graphics/*.cpp
     app/platform/input/*.cpp
     app/platform/sdl2/*.cpp
-    app/platform/timing/*.cpp
-    app/platform/window/*.cpp
 )
-list(FILTER PLATFORM_SOURCES EXCLUDE REGEX "(^|/)renderer_raylib\\.cpp$")
-list(FILTER PLATFORM_SOURCES EXCLUDE REGEX "(^|/)window_manager_raylib\\.cpp$")
-list(FILTER PLATFORM_SOURCES EXCLUDE REGEX "(^|/)input_handler_raylib\\.cpp$")
 file(GLOB UI_SOURCES CONFIGURE_DEPENDS app/ui/*.cpp)
-file(GLOB UI_SCREEN_CONTROLLER_SOURCES CONFIGURE_DEPENDS app/ui/screen_controllers/*.cpp)
 file(GLOB INPUT_SOURCES CONFIGURE_DEPENDS app/input/*.cpp)
 file(GLOB SESSION_SOURCES CONFIGURE_DEPENDS app/session/*.cpp)
 file(GLOB ENTITY_SOURCES CONFIGURE_DEPENDS app/entities/*.cpp)
@@ -133,7 +132,6 @@ list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "(^|/)input_system\\.cpp$")
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "(^|/)song_playback_system\\.cpp$")
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "(^|/)camera_system\\.cpp$")
 list(FILTER UI_SOURCES EXCLUDE REGEX "(^|/)text_renderer\\.cpp$")
-list(FILTER UI_SOURCES EXCLUDE REGEX "(^|/)raygui_impl\\.cpp$")
 list(FILTER UTIL_SOURCES EXCLUDE REGEX "(^|/)file_logger\\.cpp$")
 
 set(SHAPESHIFTER_IOS FALSE)
@@ -151,13 +149,10 @@ if(SHAPESHIFTER_IOS)
     list(APPEND PLATFORM_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/app/platform/ios/haptics_ios_bridge_ios.mm")
 endif()
 
-add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES} ${AUDIO_SOURCES} ${UTIL_SOURCES} ${PLATFORM_SOURCES} ${UI_SOURCES} ${UI_SCREEN_CONTROLLER_SOURCES} ${INPUT_SOURCES} ${SESSION_SOURCES} ${ENTITY_SOURCES})
+add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES} ${AUDIO_SOURCES} ${RENDERING_SOURCES} ${RUNTIME_SOURCES} ${TIMING_SOURCES} ${UTIL_SOURCES} ${PLATFORM_SOURCES} ${UI_SOURCES} ${INPUT_SOURCES} ${SESSION_SOURCES} ${ENTITY_SOURCES})
 target_include_directories(shapeshifter_lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/app
     ${CMAKE_BINARY_DIR}/generated
-)
-target_include_directories(shapeshifter_lib SYSTEM PUBLIC
-    ${MINIAUDIO_INCLUDE_DIR}
 )
 target_link_libraries(shapeshifter_lib PUBLIC
     EnTT::EnTT
@@ -166,6 +161,14 @@ target_link_libraries(shapeshifter_lib PUBLIC
 )
 if(TARGET SDL2::SDL2)
     target_link_libraries(shapeshifter_lib PUBLIC SDL2::SDL2)
+endif()
+if(TARGET SDL2_mixer::SDL2_mixer OR TARGET SDL2_mixer::SDL2_mixer-static)
+    target_link_libraries(shapeshifter_lib PUBLIC
+        "$<IF:$<TARGET_EXISTS:SDL2_mixer::SDL2_mixer>,SDL2_mixer::SDL2_mixer,SDL2_mixer::SDL2_mixer-static>")
+endif()
+if(TARGET SDL2_ttf::SDL2_ttf OR TARGET SDL2_ttf::SDL2_ttf-static)
+    target_link_libraries(shapeshifter_lib PUBLIC
+        "$<IF:$<TARGET_EXISTS:SDL2_ttf::SDL2_ttf>,SDL2_ttf::SDL2_ttf,SDL2_ttf::SDL2_ttf-static>")
 endif()
 if(SHAPESHIFTER_IOS)
     target_link_libraries(shapeshifter_lib PUBLIC
@@ -333,6 +336,9 @@ if(EMSCRIPTEN)
     target_link_options(shapeshifter PRIVATE
         ${_emscripten_backend_link_flag}
         -fexceptions
+        # Runtime compatibility layer still uses immediate-mode GL calls.
+        # Enable Emscripten's legacy emulation so those symbols resolve on WebGL.
+        -sLEGACY_GL_EMULATION=1
         # Runtime uses async operations (e.g. emscripten_sleep); enable stack
         # unwinding/rewinding support so browser preview does not abort.
         -sASYNCIFY
@@ -584,6 +590,7 @@ if(EMSCRIPTEN)
     target_link_options(shapeshifter_tests PRIVATE
         ${_emscripten_backend_link_flag}
         -fexceptions
+        -sLEGACY_GL_EMULATION=1
         -sALLOW_MEMORY_GROWTH=1
         -sDYNAMIC_EXECUTION=0
         -sNODERAWFS=1

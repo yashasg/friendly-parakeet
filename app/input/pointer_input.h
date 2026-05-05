@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../components/input.h"
-#include "platform/runtime_api.h"
+#include "runtime/runtime_api.h"
 
 // Unified pointer-release surface used by UI click handlers.
 // InputState is already normalized to virtual-space coordinates by input_system.

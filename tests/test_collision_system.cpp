@@ -44,6 +44,18 @@ TEST_CASE("collision: lane block cleared when player in unblocked lane", "[colli
     CHECK(reg.all_of<ScoredTag>(obs));
 }
 
+TEST_CASE("collision: does not lazily emplace SongState", "[collision][lifecycle]") {
+    auto reg = make_registry();
+    make_player(reg);
+    make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
+    reg.ctx().erase<SongState>();
+    REQUIRE_FALSE(reg.ctx().contains<SongState>());
+
+    collision_system(reg, 0.016f);
+
+    CHECK_FALSE(reg.ctx().contains<SongState>());
+}
+
 TEST_CASE("collision: lane block drains energy when player in blocked lane", "[collision]") {
     auto reg = make_registry();
     make_player(reg);

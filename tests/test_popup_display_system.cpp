@@ -22,7 +22,7 @@
 #include <optional>
 
 #include "components/scoring.h"   // ScorePopup, PopupDisplay
-#include "components/rendering.h" // ScreenPosition, Color (via raylib)
+#include "components/rendering.h" // ScreenPosition, Color
 #include "components/text.h"      // FontSize
 #include "components/rhythm.h"    // TimingTier
 #include "components/transform.h" // WorldTransform, MotionVelocity

@@ -2,13 +2,14 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
 #include "audio/music_context.h"
-#include "platform/audio/music_backend.h"
+#include "audio/music_backend.h"
 
 namespace {
 
 struct MusicTimeOverrideGuard {
+    MusicContext& music;
     ~MusicTimeOverrideGuard() {
-        platform::audio::clear_music_time_played_override();
+        platform::audio::clear_music_time_played_override(music);
     }
 };
 
@@ -49,13 +50,29 @@ TEST_CASE("music_backend: missing file load fails cleanly", "[audio][music_backe
 
 TEST_CASE("music_backend: time override enables deterministic sync validation",
           "[audio][music_backend][timing]") {
-    MusicTimeOverrideGuard guard;
     MusicContext music{};
+    MusicTimeOverrideGuard guard{music};
     music.loaded = true;
     music.started = true;
 
-    platform::audio::set_music_time_played_override(12.5f);
+    platform::audio::set_music_time_played_override(music, 12.5f);
 
     CHECK_THAT(platform::audio::get_music_time_played(music),
                Catch::Matchers::WithinAbs(12.5f, 0.0001f));
+}
+
+TEST_CASE("music_backend: playback confirmation follows override playback state",
+          "[audio][music_backend][timing]") {
+    MusicContext music{};
+    MusicTimeOverrideGuard guard{music};
+    music.loaded = true;
+
+    CHECK_FALSE(platform::audio::is_music_playing(music));
+
+    platform::audio::set_music_time_played_override(music, 1.0f);
+    platform::audio::play_music_stream(music);
+    CHECK(platform::audio::is_music_playing(music));
+
+    platform::audio::pause_music_stream(music);
+    CHECK_FALSE(platform::audio::is_music_playing(music));
 }

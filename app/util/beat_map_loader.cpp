@@ -5,7 +5,7 @@
 #include <cmath>
 #include <algorithm>
 #include <optional>
-#include "platform/runtime_api.h"
+#include "runtime/runtime_api.h"
 
 using json = nlohmann::json;
 

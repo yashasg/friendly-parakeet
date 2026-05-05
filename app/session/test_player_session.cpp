@@ -5,7 +5,7 @@
 #include "../util/session_logger.h"
 #include "../util/safe_localtime.h"
 
-#include "platform/runtime_api.h"
+#include "runtime/runtime_api.h"
 #include <ctime>
 #include <cstdio>
 #include <cstring>

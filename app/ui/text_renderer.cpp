@@ -1,5 +1,5 @@
 #include "text_renderer.h"
-#include "platform/runtime_api.h"
+#include "runtime/runtime_api.h"
 #include <cstdio>
 #include <string>
 

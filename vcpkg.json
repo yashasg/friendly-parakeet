@@ -6,8 +6,9 @@
   "dependencies": [
     "entt",
     "magic-enum",
-    "miniaudio",
     { "name": "sdl2", "platform": "!emscripten" },
+    { "name": "sdl2-mixer", "platform": "!emscripten", "features": ["libflac"] },
+    { "name": "sdl2-ttf", "platform": "!emscripten" },
     "nlohmann-json",
     { "name": "catch2", "platform": "!linux" }
   ]

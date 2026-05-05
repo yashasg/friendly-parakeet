@@ -1,6 +1,6 @@
 #pragma once
 
-#include "platform/runtime_api.h"
+#include "runtime/runtime_api.h"
 #include <cstdint>
 
 // Per-frame render parameters computed from SongState beat pulse.

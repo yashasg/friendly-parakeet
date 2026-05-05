@@ -58,6 +58,17 @@ Declare in `all_systems.h`, call once from `game_loop_init`.
 
 Scratch-pad ctx objects (e.g., `ObstacleDespawnScratch`, `ScoringSystemScratch`) used as per-frame accumulators are intentionally optional — they legitimately use find/emplace and are not "always-present singletons."
 
+## Runtime-State Migration Addendum (Issue #374 pattern)
+
+When replacing static mutable backend/runtime globals (audio clock, init flags, test overrides), use the same eager-init contract:
+
+1. Define explicit ctx state structs (for example `AudioDeviceRuntimeState`, `MusicClockState`).
+2. Emplace both in `game_loop_init` (or equivalent canonical startup path).
+3. Pass references into backend functions (`foo(state, ...)`) rather than hiding state in anonymous-namespace statics.
+4. Update tests to mutate/read ctx state, never process-global static overrides.
+
+This keeps gameplay-authoritative state in ECS, preserves deterministic testing, and removes cross-test contamination risks from globals.
+
 ## Measured Impact
 
 | Benchmark | Before | After |

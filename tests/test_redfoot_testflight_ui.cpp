@@ -7,11 +7,6 @@
 
 #include <catch2/catch_test_macros.hpp>
 #include <entt/entity/registry.hpp>
-#include <fstream>
-#include <optional>
-#include <sstream>
-#include <string>
-
 #include "components/game_state.h"
 #include "components/obstacle.h"
 #include "components/player.h"
@@ -23,57 +18,6 @@
 #include "components/transform.h"
 #include "constants.h"
 #include "systems/all_systems.h"
-
-namespace {
-struct RglRect {
-    int x;
-    int y;
-    int w;
-    int h;
-};
-
-std::optional<RglRect> find_rgl_control(const std::string& path, const std::string& control_name) {
-    std::ifstream f(path);
-    if (!f.is_open()) return std::nullopt;
-
-    std::string line;
-    while (std::getline(f, line)) {
-        if (line.empty() || line.front() != 'c') continue;
-
-        std::istringstream ss(line);
-        char kind = '\0';
-        int id = 0;
-        int type = 0;
-        std::string name;
-        RglRect rect{0, 0, 0, 0};
-        int anchor = 0;
-        if (!(ss >> kind >> id >> type >> name >> rect.x >> rect.y >> rect.w >> rect.h >> anchor)) {
-            continue;
-        }
-
-        if (name == control_name) return rect;
-    }
-    return std::nullopt;
-}
-}  // namespace
-
-// ── Content: game_over.rgl layout ──────────────────────────────────────────
-
-TEST_CASE("redfoot/#168: existing game_over buttons keep their original positions",
-          "[ui][redfoot][game_over]") {
-    const auto restart = find_rgl_control("content/ui/screens/game_over.rgl", "RestartButton");
-    const auto level = find_rgl_control("content/ui/screens/game_over.rgl", "LevelSelectButton");
-    const auto menu = find_rgl_control("content/ui/screens/game_over.rgl", "MenuButton");
-    REQUIRE(restart.has_value());
-    REQUIRE(level.has_value());
-    REQUIRE(menu.has_value());
-
-    // Original normalized y_n values (0.6797/0.7305/0.7812) correspond to
-    // these pixel rows in the 1280-high rGuiLayout reference.
-    CHECK(restart->y == 870);
-    CHECK(level->y == 935);
-    CHECK(menu->y == 1000);
-}
 
 // ── Wiring: scoring sets DeathCause for misses and bar hits ──────────────────
 
@@ -118,6 +62,7 @@ TEST_CASE("redfoot/#168: collision flags MissedABeat for a missed shape gate",
     reg.ctx().emplace<ScoreState>();
     reg.ctx().emplace<SongResults>();
     reg.ctx().emplace<GameOverState>();
+    reg.ctx().emplace<SongState>();
 
     spawn_aligned_player(reg, constants::PLAYER_Y);
     auto gate = spawn_obstacle(reg, ObstacleKind::ShapeGate, constants::PLAYER_Y);

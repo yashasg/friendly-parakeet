@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/benchmark/catch_benchmark.hpp>
-#include "platform/runtime_api.h"
+#include "runtime/runtime_api.h"
 
 #include "util/file_logger.h"
 
@@ -51,7 +51,7 @@ TEST_CASE("Bench: file_logger burst (100 calls)", "[bench]") {
 }
 
 TEST_CASE("Bench: file_logger vs no-op baseline", "[bench]") {
-    // Baseline: raylib default logging (stdout only)
+    // Baseline: runtime default logging (stdout only)
     SetTraceLogCallback(nullptr);
     SetTraceLogLevel(LOG_NONE);
 

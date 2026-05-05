@@ -1,8 +1,8 @@
 #include "sfx_bank.h"
 #include "audio_types.h"
-#include "../platform/audio/music_backend.h"
+#include "music_backend.h"
 
-#include "platform/runtime_api.h"
+#include "runtime/runtime_api.h"
 
 #include <algorithm>
 #include <array>
@@ -112,7 +112,8 @@ Sound make_procedural_sound(const SfxSpec& spec) {
 }
 
 void play_sfx_from_bank(entt::registry& reg, SFX sfx) {
-    if (!platform::audio::is_audio_device_ready()) return;
+    const auto* audio_device = reg.ctx().find<AudioDeviceRuntimeState>();
+    if (!audio_device || !platform::audio::is_audio_device_ready(*audio_device)) return;
 
     auto* bank = reg.ctx().find<SFXBank>();
     if (!bank || !bank->loaded) return;
@@ -132,7 +133,8 @@ void sfx_bank_init(entt::registry& reg) {
         bank = &reg.ctx().emplace<SFXBank>();
     }
 
-    if (bank->loaded || !platform::audio::is_audio_device_ready()) return;
+    const auto* audio_device = reg.ctx().find<AudioDeviceRuntimeState>();
+    if (bank->loaded || !audio_device || !platform::audio::is_audio_device_ready(*audio_device)) return;
 
     bool any_loaded = false;
     for (int idx = 0; idx < SFX_COUNT; ++idx) {

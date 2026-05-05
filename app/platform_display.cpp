@@ -1,11 +1,12 @@
 #include "platform_display.h"
 #include "game_loop.h"
-#include "platform/window/window_manager.h"
+#include "platform/sdl2/sdl2_graphics_context.h"
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
-#include "platform/runtime_api.h"
+#include "runtime/runtime_api.h"
+#include "platform/sdl2/sdl2_headers.h"
 #include <algorithm>
 
 void platform_get_display_size(float& out_w, float& out_h) {
@@ -24,17 +25,11 @@ void platform_get_display_size(float& out_w, float& out_h) {
 }
 
 void platform_pre_blit() {
-    // After canvas buffer resize, the viewport may not reflect the new
-    // dimensions.  Explicitly set viewport + ortho to match the buffer.
+    // After canvas buffer resize, ensure the GL viewport matches the drawing
+    // buffer size. Projection is managed by the active renderer.
     int buf_w = 0, buf_h = 0;
     emscripten_get_canvas_element_size("#canvas", &buf_w, &buf_h);
-    rlViewport(0, 0, buf_w, buf_h);
-    rlMatrixMode(RL_PROJECTION);
-    rlLoadIdentity();
-    rlOrtho(0.0, static_cast<double>(buf_w),
-            static_cast<double>(buf_h), 0.0, 0.0, 1.0);
-    rlMatrixMode(RL_MODELVIEW);
-    rlLoadIdentity();
+    glViewport(0, 0, buf_w, buf_h);
 }
 
 static struct {
@@ -82,9 +77,8 @@ void platform_run_loop(entt::registry& reg) {
 #else // Native
 
 void platform_get_display_size(float& out_w, float& out_h) {
-    auto& window = platform::window::window_manager();
-    out_w = static_cast<float>(window.screen_width());
-    out_h = static_cast<float>(window.screen_height());
+    out_w = static_cast<float>(platform::sdl2::screen_width());
+    out_h = static_cast<float>(platform::sdl2::screen_height());
 }
 
 void platform_pre_blit() {

@@ -54,7 +54,6 @@ CMAKE_ARGS=(
     -DCMAKE_BUILD_TYPE="$BUILD_TYPE"
     "-DSHAPESHIFTER_BACKEND=${BACKEND}"
     "-DCMAKE_TOOLCHAIN_FILE=${VCPKG_TOOLCHAIN_FILE}"
-    "-DVCPKG_OVERLAY_PORTS=${SCRIPT_DIR}/vcpkg-overlay"
 )
 
 # Honour CC/CXX env vars when set on all platforms.
@@ -84,13 +83,13 @@ case "$(uname -s)" in
 esac
 
 # In CI, skip vcpkg manifest install only when the cached install is known to
-# match the current manifest inputs.  We store a hash of vcpkg.json +
-# vcpkg-overlay contents as a stamp file inside the build directory; the stamp
-# travels with the cached build/ tree.  A stale restore (e.g. after adding
-# magic-enum) has no stamp or a mismatched hash, so vcpkg runs normally.
+# match the current manifest input. We store a hash of vcpkg.json as a stamp
+# file inside the build directory; the stamp travels with the cached build/
+# tree. A stale restore (e.g. after adding magic-enum) has no stamp or a
+# mismatched hash, so vcpkg runs normally.
 _VCPKG_STAMP="${BUILD_DIR}/.vcpkg_manifest_stamp"
 _MANIFEST_HASH=$(
-    { cat vcpkg.json; find vcpkg-overlay -type f 2>/dev/null | sort | xargs cat 2>/dev/null || true; } \
+    cat vcpkg.json \
     | (sha256sum 2>/dev/null || shasum -a 256 2>/dev/null) \
     | cut -d' ' -f1
 )

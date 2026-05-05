@@ -18,9 +18,8 @@ void game_state_system(entt::registry& reg, float dt) {
     // order: game_state → level_select → player_input
     // (see wire_input_dispatcher in input/input_dispatcher.cpp).
     //
-    // Events are enqueued earlier in the same frame by input_system (keyboard),
-    // gesture_routing (swipes), and raygui HUD controllers (buttons) before
-    // the fixed-step loop.
+    // Events are enqueued earlier in the same frame by input_system (keyboard)
+    // and gesture_routing (swipes) before the fixed-step loop.
     //
     // ⚠ Do NOT call disp.clear<GoEvent/ButtonPressEvent>() before this point
     //   within a frame.  Those pre-tick systems enqueue same-frame events that

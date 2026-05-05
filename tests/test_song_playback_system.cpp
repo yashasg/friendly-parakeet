@@ -2,17 +2,7 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
 #include "audio/music_context.h"
-#include "platform/audio/music_backend.h"
-
-namespace {
-
-struct MusicTimeOverrideGuard {
-    ~MusicTimeOverrideGuard() {
-        platform::audio::clear_music_time_played_override();
-    }
-};
-
-}  // namespace
+#include "audio/music_backend.h"
 
 // ── song_playback_system: time advancement ───────────────────
 
@@ -28,7 +18,6 @@ TEST_CASE("song_playback: song_time advances by dt", "[song_playback]") {
 
 TEST_CASE("song_playback: authoritative backend clock overrides dt accumulation",
           "[song_playback][audio][timing]") {
-    MusicTimeOverrideGuard guard;
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
     song.song_time = 1.0f;
@@ -36,16 +25,16 @@ TEST_CASE("song_playback: authoritative backend clock overrides dt accumulation"
     auto& music = reg.ctx().emplace<MusicContext>();
     music.loaded = true;
     music.started = true;
-    platform::audio::set_music_time_played_override(2.75f);
+    platform::audio::set_music_time_played_override(music, 2.75f);
 
     song_playback_system(reg, 0.5f);
 
     CHECK_THAT(song.song_time, Catch::Matchers::WithinAbs(2.75f, 0.0001f));
+    platform::audio::clear_music_time_played_override(music);
 }
 
 TEST_CASE("song_playback: restart consumes flag and re-syncs song_time from backend clock",
           "[song_playback][audio][timing]") {
-    MusicTimeOverrideGuard guard;
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
     song.restart_music = true;
@@ -54,13 +43,14 @@ TEST_CASE("song_playback: restart consumes flag and re-syncs song_time from back
     auto& music = reg.ctx().emplace<MusicContext>();
     music.loaded = true;
     music.started = true;
-    platform::audio::set_music_time_played_override(0.25f);
+    platform::audio::set_music_time_played_override(music, 0.25f);
 
     song_playback_system(reg, 0.1f);
 
     CHECK_FALSE(song.restart_music);
     CHECK(music.started);
     CHECK_THAT(song.song_time, Catch::Matchers::WithinAbs(0.25f, 0.0001f));
+    platform::audio::clear_music_time_played_override(music);
 }
 
 TEST_CASE("song_playback: no advancement when not Playing", "[song_playback]") {

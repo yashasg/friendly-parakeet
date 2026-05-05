@@ -110,7 +110,6 @@ ensure_ios_triplet_dependencies() {
         cd "$ROOT_DIR"
         "$vcpkg_exe" install \
             --triplet "$VCPKG_TRIPLET" \
-            --overlay-ports="$ROOT_DIR/vcpkg-overlay" \
             --allow-unsupported
     )
 }
@@ -142,7 +141,6 @@ configure_ios() {
             -DCMAKE_SYSTEM_NAME=iOS \
             -DCMAKE_OSX_DEPLOYMENT_TARGET=16.0 \
             -DCMAKE_TOOLCHAIN_FILE="$vcpkg_toolchain" \
-            -DVCPKG_OVERLAY_PORTS="$ROOT_DIR/vcpkg-overlay" \
             -DVCPKG_TARGET_TRIPLET="$VCPKG_TRIPLET" \
             -DVCPKG_MANIFEST_INSTALL=ON \
             -DCMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM="$TEAM_ID" \

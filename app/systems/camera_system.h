@@ -1,7 +1,7 @@
 #pragma once
 #include "../entities/camera_entity.h"
 #include "../rendering/camera_resources.h"
-#include "platform/runtime_api.h"
+#include "runtime/runtime_api.h"
 #include <entt/entt.hpp>
 
 namespace camera {

@@ -22,7 +22,6 @@
 
 #include <catch2/catch_test_macros.hpp>
 #include "test_helpers.h"
-#include "ui/screen_controllers/gameplay_hud_screen_controller.h"
 
 // Runs Tier-1 input dispatch and then player_input_system drain.
 // Mirrors production order: update<InputEvent>() fires gesture_routing;
@@ -122,67 +121,6 @@ TEST_CASE("pipeline: semantic shape press remaps lane target to shape lane",
     run_pipeline(reg);
 
     CHECK(lane.target == 0);
-}
-
-TEST_CASE("pipeline: gameplay HUD raygui shape press triggers player shape input",
-          "[input_pipeline][hud]") {
-    auto reg = make_rhythm_registry();
-    auto player = make_rhythm_player(reg);
-    auto& sw = reg.get<ShapeWindow>(player);
-    REQUIRE(sw.phase == WindowPhase::Idle);
-    gameplay_hud_apply_button_presses(reg,
-                                      false,
-                                      false,
-                                      true,
-                                      false);
-
-    CHECK(sw.phase == WindowPhase::Active);
-    CHECK(sw.target_shape == Shape::Square);
-}
-
-TEST_CASE("pipeline: gameplay HUD shape tap uses slot rectangle bounds",
-          "[input_pipeline][hud]") {
-    const auto circle_input_bounds = gameplay_hud_shape_input_bounds(GameplayHudShapeSlot::Circle);
-    const Vector2 tap_center = {200.0f, 1190.0f};
-    const Vector2 tap_plus_49 = {200.0f, 1239.0f};
-    const Vector2 tap_plus_51 = {200.0f, 1241.0f};
-
-    CHECK(CheckCollisionPointRec(tap_center, circle_input_bounds));
-    CHECK(CheckCollisionPointRec(tap_plus_49, circle_input_bounds));
-    CHECK_FALSE(CheckCollisionPointRec(tap_plus_51, circle_input_bounds));
-}
-
-TEST_CASE("pipeline: gameplay HUD shape geometry matches gameplay.rgl slots",
-          "[input_pipeline][hud]") {
-    const auto circle_bounds = gameplay_hud_shape_input_bounds(GameplayHudShapeSlot::Circle);
-    const auto square_bounds = gameplay_hud_shape_input_bounds(GameplayHudShapeSlot::Square);
-    const auto triangle_bounds = gameplay_hud_shape_input_bounds(GameplayHudShapeSlot::Triangle);
-
-    CHECK(circle_bounds.x == 130.0f);
-    CHECK(square_bounds.x == 290.0f);
-    CHECK(triangle_bounds.x == 450.0f);
-    CHECK(circle_bounds.y == 1140.0f);
-    CHECK(square_bounds.y == 1140.0f);
-    CHECK(triangle_bounds.y == 1140.0f);
-
-    CHECK(circle_bounds.width == 140.0f);
-    CHECK(circle_bounds.height == 100.0f);
-}
-
-TEST_CASE("pipeline: gameplay HUD raygui shape presses ignored outside Playing",
-          "[input_pipeline][hud]") {
-    auto reg = make_rhythm_registry();
-    reg.ctx().get<GameState>().phase = GamePhase::Paused;
-    auto player = make_rhythm_player(reg);
-    auto& sw = reg.get<ShapeWindow>(player);
-    REQUIRE(sw.phase == WindowPhase::Idle);
-    gameplay_hud_apply_button_presses(reg,
-                                      false,
-                                      false,
-                                      true,
-                                      false);
-
-    CHECK(sw.phase == WindowPhase::Idle);
 }
 
 // ── Mixed swipe + tap in same frame ───────────────────────────────────────

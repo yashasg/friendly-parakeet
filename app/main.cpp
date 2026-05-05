@@ -37,7 +37,9 @@ int main(int argc, char* argv[]) {
 
     // ── Init → Run → Shutdown ────────────────────────────────
     entt::registry reg;
-    game_loop_init(reg, test_player_mode, test_skill, difficulty);
+    if (!game_loop_init(reg, test_player_mode, test_skill, difficulty)) {
+        return 1;
+    }
     game_loop_run(reg);
 #ifndef __EMSCRIPTEN__
     game_loop_shutdown(reg);

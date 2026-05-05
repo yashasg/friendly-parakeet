@@ -10,7 +10,7 @@
 #include "../components/rhythm.h"
 #include "../components/song_state.h"
 #include "../audio/music_context.h"
-#include "../platform/audio/music_backend.h"
+#include "../audio/music_backend.h"
 #include "../components/high_score.h"
 #include "../util/high_score_persistence.h"
 #include "../components/rng.h"
@@ -20,7 +20,7 @@
 #include "../entities/player_entity.h"
 #include "../constants.h"
 #include <filesystem>
-#include "platform/runtime_api.h"
+#include "runtime/runtime_api.h"
 
 namespace {
 

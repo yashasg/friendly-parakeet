@@ -56,8 +56,8 @@
 
 #include <catch2/catch_test_macros.hpp>
 #include <type_traits>
-#include "platform/runtime_api.h"
-#include "platform/runtime_api.h"
+#include "runtime/runtime_api.h"
+#include "runtime/runtime_api.h"
 #include <entt/entt.hpp>
 
 #include "test_helpers.h"
@@ -430,7 +430,7 @@ TEST_CASE("BF-2: slab_matrix scale diagonal equals world dimensions (unit-cube c
     //
     // Formula (matches camera_system.cpp static slab_matrix):
     //   MatrixMultiply(MatrixScale(w, h, d), MatrixTranslate(cx+w/2, h/2, z+d/2))
-    // After multiply, scale diagonal: m0=w, m5=h, m10=d (column-major, raylib layout).
+    // After multiply, scale diagonal: m0=w, m5=h, m10=d (column-major matrix layout).
     // Translation in m12=cx+w/2, m13=h/2, m14=z+d/2.
     // GPU-free: MatrixMultiply / MatrixScale / MatrixTranslate are pure math.
 
@@ -460,7 +460,7 @@ TEST_CASE("BF-2: slab_matrix scale diagonal equals world dimensions (unit-cube c
 
 TEST_CASE("BF-1: ObstacleModel owns separate mesh + material arrays (struct layout)",
           "[model_slice][bf1_regression]") {
-    // Validate that ObstacleModel uses the raylib Model struct which
+    // Validate that ObstacleModel uses the runtime Model struct which
     // requires separate meshes/materials/meshMaterial pointer arrays,
     // matching the manual construction pattern (RL_MALLOC each array).
     // If LoadModelFromMesh were used, meshes would not be a separately

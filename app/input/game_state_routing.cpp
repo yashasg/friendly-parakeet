@@ -32,6 +32,14 @@ void game_state_handle_press(entt::registry& reg, const ButtonPressEvent& evt) {
         return;
     }
 
+    if (gs.phase == GamePhase::Settings || gs.phase == GamePhase::Tutorial) {
+        if (evt.menu_action == MenuActionKind::Confirm) {
+            gs.transition_pending = true;
+            gs.next_phase = GamePhase::Title;
+        }
+        return;
+    }
+
     if (gs.phase == GamePhase::Paused) {
         enter_phase(gs, GamePhase::Playing);
         return;

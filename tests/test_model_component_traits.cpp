@@ -19,7 +19,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 #include <type_traits>
-#include "platform/runtime_api.h"
+#include "runtime/runtime_api.h"
 #include <entt/entt.hpp>
 
 // ── 1. Type-trait static assertions ──────────────────────────────────────────
@@ -32,7 +32,7 @@ static_assert(std::is_trivially_copyable_v<Model>,
 
 static_assert(std::is_standard_layout_v<Model>,
     "Model must be standard layout: required for predictable C-struct field "
-    "access and C-interop with raylib GPU functions.");
+    "access and C-interop with runtime GPU functions.");
 
 // ── 2. Zero-initialisation guarantees ────────────────────────────────────────
 

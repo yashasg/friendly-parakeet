@@ -1,5 +1,5 @@
 #pragma once
-#include "platform/runtime_api.h"
+#include "runtime/runtime_api.h"
 
 // Pre-computed, pixel-space layout data for the Gameplay HUD.
 // Populated by gameplay_hud_screen_controller fallback constants when no

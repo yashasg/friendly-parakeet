@@ -39,9 +39,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
         player_view.get<WorldTransform, PlayerShape, ShapeWindow, Lane, VerticalState>(player_entity);
 
     auto* song_ptr = reg.ctx().find<SongState>();
-    if (!song_ptr) {
-        song_ptr = &reg.ctx().emplace<SongState>();
-    }
+    if (!song_ptr) return;
     auto& song = *song_ptr;
 
     // Frame-constant precomputes — both values are invariant across all obstacle

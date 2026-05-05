@@ -32,7 +32,7 @@
 //   - gesture_routing_handle_input listens to InputEvent and enqueues GoEvent
 //     for swipes.
 //   - ButtonPressEvent originates from semantic UI/controller emitters
-//     (raygui screen controllers + HUD controls), not raw InputEvent routing.
+//     (menu/HUD controls), not raw InputEvent routing.
 
 #include <catch2/catch_test_macros.hpp>
 #include <entt/entt.hpp>

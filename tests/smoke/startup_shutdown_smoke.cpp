@@ -1,7 +1,7 @@
 #include "components/test_player.h"
 #include "game_loop.h"
 
-#include "platform/runtime_api.h"
+#include "runtime/runtime_api.h"
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -37,7 +37,10 @@ int main(int argc, char** argv) {
     SetTraceLogLevel(LOG_WARNING);
 
     entt::registry reg;
-    game_loop_init(reg, false, TestPlayerSkill::Pro, "medium");
+    if (!game_loop_init(reg, false, TestPlayerSkill::Pro, "medium")) {
+        std::fprintf(stderr, "game_loop_init failed\n");
+        return 1;
+    }
 
     float accumulator = 0.0f;
     for (int i = 0; i < frames; ++i) {

@@ -2560,3 +2560,174 @@ Working tree at audit time: Keaton-r16 uncommitted WIP present (details below)
 
 ## 1. Full Audit of Keaton-r15 Migration
 
+### 2026-05-04T00:32:05Z — Scribe: fenster-1 Phase 5 Completion + Baer Parity Matrix Logged
+
+**Batch:** fenster-phase5-completion + baer-final-parity-matrix  
+**Origin:** .squad/decisions/inbox/  
+**Action:** Merged both decisions into .squad/decisions.md  
+**Cleared:** inbox files  
+**Status:** ✅ COMPLETE
+
+**Fenster-1 Deliverable:**
+- SDL2-native music backend implementation with abstraction parity
+- Deterministic timing validation hooks for backend-agnostic sync
+- Full test coverage for music stream decode, playback, and timing invariants
+- Raylib fallback behavior preserved, zero public API breaks
+
+**Baer Deliverable:**
+- Migration parity matrix (backends × platforms × test categories)
+- Baseline failure ledger (pre-existing failures + SDL2 ctest quirks)
+- Final acceptance command set for local and CI lanes
+
+**Next Phase:** Ready for Phase 6 parity validation completion and final Phase 7 SDL2/raylib cleanup execution.
+# Baer — Final Migration Gate Parity Matrix + Baseline Failure Ledger (Issue #372)
+
+## Context
+- Branch: `feature/sdl2-migration-phase-1-abstraction-layer`
+- Migration state: phases 1-4 complete, phase 3 complete, phase 5/6 closing.
+- Need: a final validation gate that separates true migration regressions from known/pre-existing failures.
+
+## Decision
+Use `docs/sdl2-migration-runbook.md` as the single source of truth for migration acceptance by adding:
+1. A concise backend × platform lane × test category parity matrix.
+2. A baseline pre-existing failure ledger with reproducible commands.
+3. A repeatable final acceptance command set for local and CI lanes.
+
+## Implemented
+1. **Parity matrix added** in `docs/sdl2-migration-runbook.md`
+   - Backends: `raylib`, `sdl2`
+   - Lanes: macOS local + Linux/Windows CI
+   - Categories: configure/build, core regression suite, render parity slice, known-failure sentinel
+2. **Baseline failure ledger added**
+   - Pre-existing functional failure:
+     - `redfoot/#168: existing game_over buttons keep their original positions`
+   - Pre-existing SDL2 ctest harness issue:
+     - full `ctest --test-dir build-sdl2 --output-on-failure` produces Not Run cascade after executable resolution failure
+3. **Final acceptance command set added**
+   - build both backends,
+   - run non-benchmark suites,
+   - run render-parity deterministic checks,
+   - run known-failure sentinel checks.
+
+## Validation run (local evidence)
+- `./build-raylib/shapeshifter_tests --skip-benchmarks -v quiet` → ✅ pass (2224 assertions / 797 cases)
+- `./build-sdl2/shapeshifter_tests --skip-benchmarks -v quiet` → ✅ pass (2244 assertions / 799 cases)
+- `ctest --test-dir build-raylib --output-on-failure -R "redfoot/#168: existing game_over buttons keep their original positions"` → ❗ expected fail
+- `ctest --test-dir build-sdl2 --output-on-failure -R "redfoot/#168: existing game_over buttons keep their original positions"` → ❗ expected fail
+- `ctest --test-dir build-sdl2 --output-on-failure` → ❗ expected pre-existing Not Run cascade (`Unable to find executable .../build-sdl2/shapeshifter_tests`)
+
+## Outcome
+Migration gate now has an explicit parity matrix and a baseline failure ledger, so phase 5/6 closure can classify failures correctly as:
+- **known/pre-existing**, or
+- **new migration regressions** requiring rollback/fix.
+---
+
+### 2026-05-04T02:15:00Z — Scribe: Kobayashi Phase 6 + Keaton Phase 7 Batch Logged
+
+**Batch:** kobayashi-phase6-completion + keaton-phase7-final-completion  
+**Origin:** .squad/decisions/inbox/  
+**Action:** Merged both completions into .squad/decisions.md  
+**Cleared:** inbox files  
+**Status:** ✅ COMPLETE
+
+**Kobayashi-1 (Phase 6) Deliverable:**
+- CI runner validation on Linux + WASM workflows for migration branch
+- Migration-coupled failures fixed: glfwGetTime linkage, file-copy directory creation
+- Infra-coupled failure fixed: Linux vcpkg libltdl-dev dependency
+- Both raylib and SDL2 backend paths explicitly validated on GitHub-hosted runners
+- Evidence: https://github.com/yashasg/friendly-parakeet/actions/runs/25309909229 (Linux), 25309910455 (WASM)
+
+**Keaton-12 (Phase 7) Deliverable:**
+- Backend migration to SDL2-only active path complete
+- Raylib backend implementations removed (renderer, window_manager, input_handler)
+- SDL2-only dispatch factories active in platform interfaces
+- Build system updated to SDL2-only backend policy
+- CI dual-backend steps removed; WASM validation now SDL2-focused
+- Documentation updated to post-migration state
+- Validation: build + test targets ✅, core regression suite ✅, SDL2 render validation ✅
+- Residual: raylib API dependencies remain in non-backend modules (font, text utilities) — separate hardening slice
+
+**Migration Status:** Backend-complete (SDL2-only execution). Full raylib dependency eviction remains as Phase 8 future work.
+
+**Next:** Issue #372 Phase 7 closure; residual dependency eradication planned separately.
+
+---
+
+## 2026-05-04 — Kobayashi Phase 6 Completion — CI Runner Confirmation (Issue #372)
+
+**Date:** 2026-05-04  
+**Branch:** `feature/sdl2-migration-phase-1-abstraction-layer`  
+**Requested by:** yashasg  
+**Phase 6 slice base:** `153d969`
+
+### 2026-05-03T17:24:22.659-07:00: User directive
+**By:** yashasg (via Copilot)
+**What:** Everything in the game should use song_time as the authority.
+**Why:** User request — captured for team memory
+
+# Keaton Decision Note — Hot Path Dispatch in collision_system
+
+## Context
+User requested reducing branch/code-switching in hot runtime systems using event/dispatch or pre-dispatch-by-type, with gameplay behavior unchanged and perf validated.
+
+## Decision
+Adopted **pre-dispatch by archetype** inside `collision_system` for shape-bearing obstacle paths when rhythm timing grading is active.
+
+- Introduced `can_grade_shape` frame gate.
+- When `can_grade_shape == true`, process shape obstacles in two structural passes:
+  - `... + BeatInfo` (grade timing with arrival time)
+  - same archetype excluding `BeatInfo` (no timing-grade write)
+- When `can_grade_shape == false`, keep a single-pass loop per archetype to avoid overhead from extra empty views.
+- Kept lane-block and vertical-bar paths unchanged.
+
+## Why this over event dispatch
+A dispatcher/event split for per-obstacle collision resolution would add enqueue/drain overhead and extra indirection in the hottest per-entity loop. Measurements favored keeping direct iteration with archetype pre-dispatch.
+
+## Verification
+- Build: success, zero warnings.
+- Tests: full suite passed (`2179 assertions in 784 test cases`), collision suite passed (`112 assertions in 51 test cases`).
+- Bench (`bench_systems`):
+  - collision 1 obstacle: 127.07 ns → 126.94 ns
+  - collision 10 obstacles: 153.28 ns → 140.64 ns (~8% faster)
+
+## Scope
+Only `app/systems/collision_system.cpp` was changed for this task.
+---
+
+# Keaton Decision — Optimization Pass 1/2/3 (Final, net-positive only)
+
+**Date:** 2026-05-03  
+**Scope:** `collision_system`, `scroll_system`, `scoring_system`  
+**Context:** User requested branch-reduction optimizations on three hot-path systems. Keaton implemented refactors for all three, then re-evaluated—keeping only net-positive changes.
+
+## Initial Pass (All Three Refactors)
+
+Implemented branch-reduction refactors using EnTT structural partitioning:
+
+1. **collision_system** — gated all shape-timing logic behind a single `can_grade_shape` branch, ran graded/non-graded shape loops in separate archetype views.
+2. **scoring_system** — used timed/untimed structural hit views (no per-entity `try_get<TimingGrade>`), single tier-side-effect helper to avoid duplicated tier switches.
+3. **scroll_system** — partitioned `ObstacleScrollZ` updates into with/without `WorldTransform` views for beat and freeplay paths, removing per-entity null-guard branching.
+
+**Initial Results (all three in place):**
+- collision 1 obstacle: 126.83 ns → 133.02 ns (**-4.9% regression**)
+- collision 10 obstacles: 149.70 ns → 162.47 ns (**-8.5% regression**)
+- scroll 10: 73.11 ns → 56.57 ns (**+22.7% improvement**)
+- scroll 100: 391.50 ns → 390.30 ns (**+0.3% improvement**)
+- scroll 1000: 2.97 us → 3.58 us (**-20.5% regression**)
+- full frame typical: 471.93 ns → 546.47 ns (**-15.8% regression**)
+- full frame stress: 791.07 ns → 1.22 us (**-54.2% regression**)
+
+**Verdict:** Mixed results; full-frame profile net-negative. Reverted scroll and scoring to baseline; kept collision.
+
+## Final State (Keep-Only-Positive)
+
+### Current iOS Status (Per Hockney's 2026-05-03 Platform Analysis)
+
+- **raylib 5.5 has NO native iOS implementation** (`rcore_ios.c` does not exist in source tree)
+- **vcpkg's iOS "support" is fake:** configures raylib as Desktop + GLFW, which cannot run on iOS
+- **Upstream PR #3880** provides `rcore_ios.c` using ANGLE (OpenGL ES→Metal translation layer), but:
+  - PR is **closed without merge** ("on hold" label, waiting for raylib 6.0+)
+  - Requires prebuilt ANGLE xcframeworks (not vcpkg-managed)
+  - Needs Xcode project integration, not CMake-only
+  - No official raylib support
+

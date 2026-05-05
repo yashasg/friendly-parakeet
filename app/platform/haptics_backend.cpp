@@ -3,7 +3,7 @@
 #include "ios/haptics_ios_bridge.h"
 
 #include <magic_enum/magic_enum.hpp>
-#include "platform/runtime_api.h"
+#include "runtime/runtime_api.h"
 
 namespace platform::haptics {
 namespace {

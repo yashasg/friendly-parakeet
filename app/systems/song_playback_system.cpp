@@ -2,7 +2,7 @@
 #include "../components/game_state.h"
 #include "../components/rhythm.h"
 #include "../audio/music_context.h"
-#include "../platform/audio/music_backend.h"
+#include "../audio/music_backend.h"
 
 void song_playback_system(entt::registry& reg, float dt) {
     const auto& gs = reg.ctx().get<GameState>();

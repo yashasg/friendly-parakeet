@@ -6,7 +6,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
-#include "platform/runtime_api.h"
+#include "runtime/runtime_api.h"
 
 namespace platform::input {
 

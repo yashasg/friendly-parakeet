@@ -3,8 +3,8 @@
 #include <optional>
 #include <entt/entt.hpp>
 #include "../components/rhythm.h"  // TimingTier
+#include "runtime/runtime_api.h"
 
-struct Color;
 struct PopupDisplay;
 struct ScorePopup;
 

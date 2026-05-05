@@ -20,6 +20,7 @@ void request_close() noexcept;
 [[nodiscard]] int input_mouse_x() noexcept;
 [[nodiscard]] int input_mouse_y() noexcept;
 [[nodiscard]] bool input_key_pressed(int scancode) noexcept;
+[[nodiscard]] int input_consume_char_pressed() noexcept;
 [[nodiscard]] bool input_window_focused() noexcept;
 [[nodiscard]] int input_touch_point_count() noexcept;
 [[nodiscard]] float input_touch_x(int index) noexcept;

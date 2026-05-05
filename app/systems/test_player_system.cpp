@@ -13,7 +13,7 @@
 #include "../util/test_player_helpers.h"
 #include "../constants.h"
 
-#include "platform/runtime_api.h"
+#include "runtime/runtime_api.h"
 #include <random>
 
 // Keep pro presses slightly ahead of beat arrival so the press is guaranteed

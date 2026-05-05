@@ -1,6 +1,6 @@
 #pragma once
 
-#include "platform/runtime_api.h"
+#include "runtime/runtime_api.h"
 
 // Authoritative world-space spatial state for moving/rendered world entities.
 // New entity contracts should use this instead of adding new position structs.
