@@ -200,3 +200,16 @@ Completed the remaining Phase 4 input abstraction scope on `feature/sdl2-migrati
 - Raylib backend: `shapeshifter_tests [input]`, `[gesture]`, `[latency]` pass.
 - SDL2 backend: `shapeshifter_tests [input]`, `[gesture]`, `[latency]` pass.
 - Full `~[bench]` suite currently aborts in pre-existing `test_test_player_system` EnTT sparse_set assertion on both backends (not introduced by this change).
+
+## 2026-05-05T17:24:17-07:00 — Logging dependency migration (TraceLog -> SDL_Log)
+
+- Replaced runtime `TraceLog(LOG_INFO/LOG_WARNING/LOG_ERROR, ...)` callsites with direct SDL logging APIs (`SDL_LogInfo`, `SDL_LogWarn`, `SDL_LogError`) in gameplay/session/audio/text/beatmap loader code.
+- Removed `#include "runtime/runtime_compat.h"` from files where it was only present to support TraceLog symbols; switched those files to direct `<SDL.h>` includes.
+- Updated smoke test log-level setup from `SetTraceLogLevel(LOG_WARNING)` to `SDL_LogSetAllPriority(SDL_LOG_PRIORITY_WARN)`.
+- Build remains blocked by unrelated parallel migration fallout (`components/rendering.h` missing and raylib-style audio symbol migration gaps); logging replacement itself no longer references `TraceLog`/`LOG_*` in runtime code touched by this slice.
+## 2026-05-06: SDL/glm cross-agent migration team
+
+**Orchestration Log:** .squad/orchestration-log/2026-05-06T00-38-50Z-hockney.md
+**Session Log:** .squad/log/2026-05-06T00-38-50Z-direct-sdl-rewire.md
+
+Collaborated on rendering/audio decoupling. All team work merged to decisions.md (2026-05-06).

@@ -110,3 +110,15 @@ Kujan completed full post-audio architecture audit against criteria (no-wrappers
 **Team-relevant:** Renderer blocker owns broader callsite surface (routes to rendering/platform specialist). Collision blocker self-contained (any implementation agent). Both can execute in single pass.
 
 **Status:** Findings merged to decisions.md; orchestration logged. Ready for implementation handoff.
+
+## 2026-05-05T17:24:56.671-07:00 — SDL_mixer direct audio runtime migration
+
+- Replaced raylib music runtime calls in `app/systems/audio_runtime.cpp` with direct SDL_mixer API (`Mix_LoadMUS`, `Mix_PlayMusic`, `Mix_HaltMusic`, `Mix_FreeMusic`, `Mix_PauseMusic`, `Mix_ResumeMusic`, `Mix_VolumeMusic`).
+- Added `MusicContext::repeat` in `app/components/audio.h` so loop behavior remains data-owned and explicit for SDL_mixer playback.
+- Confirmed no raylib `Music`/`*MusicStream` calls remain in `audio_runtime.cpp`; build is currently blocked by unrelated rendering/runtime include fallout.
+## 2026-05-06: SDL/glm cross-agent migration team
+
+**Orchestration Log:** .squad/orchestration-log/2026-05-06T00-38-50Z-fenster.md
+**Session Log:** .squad/log/2026-05-06T00-38-50Z-direct-sdl-rewire.md
+
+Collaborated on rendering/audio decoupling. All team work merged to decisions.md (2026-05-06).

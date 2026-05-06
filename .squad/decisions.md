@@ -4627,3 +4627,101 @@ Align with architecture directive to avoid restoring deleted compatibility layer
 - `benchmarks/bench_perspective.cpp` includes missing `util/shape_vertices.h`
 
 These are cross-cutting backend wiring decisions (render API, text backend, procedural SFX backend contract, geometry utility source-of-truth) that need owner-level direction or replacement modules to finish safely.
+
+
+# Decision: audio_runtime must call SDL_mixer directly
+
+**Date:** 2026-05-05T17:24:56.671-07:00  
+**Owner:** Fenster (Tools/Audio Engineer)  
+**Status:** APPLIED
+
+## Decision
+`app/systems/audio_runtime.cpp` now uses direct SDL2/SDL_mixer music APIs and does not route through raylib music stream symbols or wrapper compatibility layers.
+
+## Implementation notes
+- Keep `MusicContext` as plain ECS data with `Mix_Music*` handle and explicit `repeat` loop flag.
+- Runtime functions own load/play/pause/resume/stop/free via SDL_mixer and maintain timing fields already stored in `MusicContext`.
+- Logging in this file uses SDL logging macros.
+
+## Scope guard
+This decision is limited to audio runtime/music lifecycle and intentionally excludes rendering/GLM migration fallout work.
+
+# Keaton decision drop — render/math type location
+
+Moved direct math/render-coordinate primitives into `app/components/transform.h` (not a wrapper):
+- `ScreenPosition` is `glm::vec2`
+- `ScreenTransform` is plain `{offset_x, offset_y, scale}` data
+- `CameraClipPlanes` is plain `{near_plane, far_plane}` data with direct defaults
+- `ModelTransform` stores `glm::mat4` plus SDL color + mesh metadata
+
+Rationale: unblock deleted `app/components/rendering.h` users for the simple coordinate/matrix slice without reintroducing compatibility surfaces.
+
+# Decision Needed — Post-include-purge rendering/runtime ownership
+
+## Context
+After deleting stale deleted-header includes, build failures now expose genuine unresolved APIs/types instead of include-not-found noise.
+
+## Decision asks
+1. **Render API ownership:** choose whether `render_api::*` becomes SDL/OpenGL direct calls in-place, or a new direct (non-compat) module with explicit ownership.
+2. **Render resource types:** define canonical home for `RenderTargets` / `camera::ShapeMeshes` now that `rendering/camera_resources.h` is gone.
+3. **Runtime core types:** decide canonical replacements for legacy `Model/Matrix/Mesh/Material/Vector2/Vector3/Sound/Wave` usages (migrate to glm+SDL types vs keep raylib-native types with explicit includes).
+
+## Why now
+These unresolved symbols are the next hard blockers after stale include-path cleanup.
+
+# Marquez: rendering.h purge complete — remaining render/ObstacleModel decisions needed
+
+**Date:** 2026-05-05T17:22  
+**By:** marquez
+
+## What was done
+
+All 14 `#include "components/rendering.h"` references removed (app + tests). Created `app/components/render_tags.h` to re-home trivially-plain ECS data from the deleted file: `TagWorldPass`, `TagEffectsPass`, `TagHUDPass`, `DrawSize`, `Layer`, `DrawLayer`, `FloorParams`, `ObstacleParts`, `MeshChild`, `ObstacleChildren`. All have zero GPU dependencies.
+
+Keaton's `transform.h` already had ScreenPosition/CameraClipPlanes/ModelTransform/ScreenTransform — no duplication. Also fixed pre-existing `Vector2` → `glm::vec2` in `scoring_system.cpp`.
+
+## Remaining decisions needed (blocking build)
+
+### 1. ObstacleModel — GPU model ownership
+`ObstacleModel` (RAII wrapper around a `Model` GPU resource) has no header home. Files broken:
+- `app/entities/obstacle_render_entity.cpp` — creates/destroys ObstacleModel
+- `tests/test_model_authority_gaps.cpp`, `tests/test_model_component_traits.cpp` — verify traits
+
+**Question:** What type replaces `Model` in the SDL2 world? Does ObstacleModel stay RAII or become an index/handle into a GPU resource manager?
+
+### 2. Render API (render_api namespace + RenderTargets)
+`rendering/render_api.h` and `rendering/camera_resources.h` are deleted. Files broken:
+- `app/game_loop.cpp` — `render_api::*`, `RenderTargets`, `RenderTexture2D`, `Rectangle`, `WHITE`
+- `app/entities/obstacle_render_entity.cpp` — `render_api::*`, `Model`, `Mesh`, `Material`
+- `app/systems/camera_system.cpp` — `Matrix` type used in `to_runtime_matrix()` + slab/shape matrix builders
+
+**Question:** Is the new render API a namespace over SDL2+OpenGL calls? Where does `RenderTargets` live?
+
+### 3. Matrix type in camera_system.cpp
+`camera_system.cpp` has `to_runtime_matrix(glm::mat4 → Matrix)` conversion plus `slab_matrix`/`shape_matrix` helpers that return `Matrix`. With `ModelTransform.mat = glm::mat4` these conversions are now dead. Should `to_runtime_matrix` be deleted and the helpers return `glm::mat4` directly?
+
+### 4. Audio backend (pre-existing — confirming still blocked)
+`app/systems/sfx_bank_system.cpp` — `Sound`, `Wave`, `PlaySound`, `IsSoundValid`, `UnloadSound` — no include provides these after runtime_compat.h deletion.
+
+### 5. util/shape_vertices.h (pre-existing)
+`benchmarks/bench_perspective.cpp` still needs this missing geometry utility.
+
+### 2026-05-05T17:11:16.509-07:00: Added C++ load-balancer
+**By:** yashasg (via Copilot)
+**What:** Added Marquez as a C++ Performance Engineer to load-balance Keaton on direct SDL/glm migration and compile-error cleanup. Marquez uses `claude-sonnet-4.6` by persistent model override.
+**Why:** User request — increase parallel implementation capacity with same skills and seeded project knowledge.
+
+### 2026-05-05T17:24:56.671-07:00: User directive
+**By:** yashasg (via Copilot)
+**What:** For `audio_runtime.cpp`, replace raylib-style audio runtime calls with direct SDL2_mixer API calls.
+**Why:** User request — captured for team memory
+
+### 2026-05-05T17:25:53.643-07:00: User directive
+**By:** yashasg (via Copilot)
+**What:** Replace `Color` dependencies from the deleted rendering/component layer with direct SDL2 `SDL_Color` usage.
+**Why:** User request — captured for team memory
+
+### 2026-05-05T17:31:22.482-07:00: User directive
+**By:** yashasg (via Copilot)
+**What:** If a build issue is only a missing include from deleted headers, delete the stale include and rebuild so remaining reports show genuine symbol/type issues.
+**Why:** User request — captured for team memory
