@@ -4527,3 +4527,103 @@ Reviewed `app/`, `tests/`, and `tools/` against criteria (no wrappers around eng
 
 Reassignment guidance: route to implementation owner (not reviewer) to perform architectural simplification + collision refactor in one pass.
 
+
+# 2026-05-04T23:50:52.767-07:00 — Hockney: Raylib-compat dead code cleanup
+
+## Decision
+Removed dead raylib-compat gesture/runtime shims that are no longer referenced by the SDL2 runtime path, and removed stale CMake excludes for deleted raylib backend files.
+
+## Why
+The symbols had zero active callsites in `app/` and `tests/` and only preserved obsolete raylib compatibility surface area, adding maintenance noise and confusion during SDL2-only migration.
+
+## Changes
+- Renamed stale gesture adapter naming from raylib-specific to backend-agnostic:
+  - `app/input/raylib_gesture_input.h` -> `app/input/gesture_input.h`
+  - `tests/test_raylib_gesture_input.cpp` -> `tests/test_gesture_input.cpp`
+  - API rename: `input_event_from_raylib_gesture(...)` -> `input_event_from_detected_gesture(...)`
+- Removed unused runtime shim declarations/definitions:
+  - `SetMouseCursor`, `GetTouchPointCount`, `GetTouchPosition`, `GetGestureDetected`, `IsGestureDetected`, `GetGestureDragVector`
+  - Files touched: `app/runtime/runtime_types.h`, `app/runtime/runtime_compat.cpp`
+- Removed stale CMake dead exclusions for already-removed raylib sources:
+  - `renderer_raylib.cpp`, `window_manager_raylib.cpp`, `input_handler_raylib.cpp`
+  - File: `CMakeLists.txt`
+
+## Validation
+- `cmake -B build -S . -Wno-dev`
+- `cmake --build build`
+- `./build/shapeshifter_tests`
+- Result: **All tests passed (2249 assertions in 801 test cases)**
+
+# Hockney Decision — Remove raylib overlay wiring
+
+Date: 2026-05-05
+
+## Decision
+Removed repository-local `vcpkg-overlay/raylib` usage and all `VCPKG_OVERLAY_PORTS` wiring from CMake/build/CI scripts.
+
+## Rationale
+The runtime path is SDL2-only. Keeping a raylib overlay port in active build wiring creates stale cache failures and unnecessary dependency surface.
+
+## Additional compatibility hardening
+Updated root `CMakeLists.txt` toolchain autodetect guard to also set `CMAKE_TOOLCHAIN_FILE` when it is defined but empty. This preserves `cmake -B build -S . -Wno-dev` behavior when only `VCPKG_ROOT` is exported.
+
+# Verbal policy note — raylib residual audit (2026-05-05)
+
+## Team-relevant policy confirmed
+- SDL2 is the only supported backend.
+- `SHAPESHIFTER_BACKEND=sdl2` is the only accepted backend selection.
+- Runtime/build graph no longer links or installs raylib.
+
+## Evidence
+- `docs/ongoing_migration.md:15,19-22`
+- `docs/raylib-removal-checklist.md:11-14,18-22,31-33`
+- `vcpkg.json:6-13` (no raylib dependency)
+- `CMakeLists.txt:13-20,59-66` (backend constrained to sdl2; SDL deps only)
+
+---
+
+## 2026-05-05T16:58:08.874-07:00 — User Directive: Direct SDL2/GLM/SDL_mixer Usage
+
+**By:** yashasg (via Copilot)
+
+### Decision
+
+Prefer direct SDL2, SDL_mixer, SDL_ttf, and glm usage over compatibility/wrapper abstractions.
+
+### Direction
+
+- Do NOT recreate `core_types.h`, SDL include umbrellas, `runtime_compat`, `audio_backend`, `text_backend`, `alloc_api`, or `render_api`
+- Components/systems should include what they use directly
+- Math should come from glm
+- Colors from SDL_Color
+- Allocation from platform/SDL ownership
+- Treat `WindowPhase` as a utility enum for now, not a component dependency
+- Reconsider camera/floor/shape mesh ownership: floor is an entity, camera resources may belong under components/context, shape vertices/meshes may be deduplicated
+
+### Rationale
+
+User request — captured for team memory. The reason for rejecting `core_types.h`, SDL include umbrellas, runtime compatibility APIs, render/audio/text backends, and allocation wrappers is architectural: the project should expose actual dependencies directly at the file that uses them. New layers should not be introduced merely to preserve deleted raylib-style compatibility surfaces.
+
+---
+
+## 2026-05-05T17:00:55.413-07:00 — Keaton: Direct-Include Rewire Pass Started
+
+**By:** keaton
+
+### Decision
+
+Introduced `app/util/window_phase.h` for `WindowPhase` ownership and rewired component includes to it; removed deleted runtime SDL umbrella usage by switching to direct SDL2 includes in platform/input/audio runtime paths; added `app/util/gesture.h` for gesture flags used by SDL input path.
+
+### Evidence
+
+Align with architecture directive to avoid restoring deleted compatibility layers (`core_types`, `runtime_compat`, SDL umbrella headers) and move file-local dependencies to direct SDL/glm usage.
+
+### Blockers Requiring Owner Wiring Decisions
+
+**Status:** Build blocked by unresolved migration surfaces:
+- `app/components/rendering.h` still depends on deleted `../runtime/core_types.h`
+- `sfx_bank_system.cpp` and `play_session.cpp` include deleted `runtime/runtime_compat.h`
+- `audio_runtime.cpp` still has raylib-style LoadMusicStream/StopMusicStream/UnloadMusicStream/TraceLog/LOG_WARNING
+- `benchmarks/bench_perspective.cpp` includes missing `util/shape_vertices.h`
+
+These are cross-cutting backend wiring decisions (render API, text backend, procedural SFX backend contract, geometry utility source-of-truth) that need owner-level direction or replacement modules to finish safely.
