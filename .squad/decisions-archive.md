@@ -2731,3 +2731,26 @@ Implemented branch-reduction refactors using EnTT structural partitioning:
   - Needs Xcode project integration, not CMake-only
   - No official raylib support
 
+### Fact 3: Upstream iOS Build Path (Unmerged, Community-Contributed)
+
+**Evidence:**
+- PR #3880 on raysan5/raylib: "[rcore] Porting raylib to iOS and implement `rcore_ios.c`"
+  - Author: @blueloveTH
+  - Opened: 2024-03-22T12:20:33Z
+  - Closed: 2025-07-27T19:25:40Z
+  - Status: **CLOSED WITHOUT MERGE** (`merged_at: null`)
+  - Labels: "help needed - please!", "on hold"
+
+- **What the PR provides:**
+  - Implements `rcore_ios.c` (iOS platform core: window, input, graphics initialization)
+  - Functions implemented: `PollInputEvents()`, `InitPlatform()`, `ClosePlatform()`
+  - Graphics approach: Uses **ANGLE framework** (Google's translation layer: OpenGL ES API → Metal GPU backend)
+  - Requires prebuilt xcframeworks: `libEGL.xcframework`, `libGLESv2.xcframework` (provided as downloadable .zip in PR comments)
+  - Demo: Working iPhone 8 video in PR
+
+- **Build system for iOS:**
+  - **Primary:** Apple Xcode (native IDE for iOS development)
+  - **Graphics:** ANGLE (prebuilt xcframeworks linked in Xcode)
+  - **CMake role:** Minimal — CMake generates source structure, but final app target built in Xcode
+  - **Not vcpkg-driven:** No CMake FIND_PACKAGE workflow; Xcode project directly links ANGLE xcframeworks
+

@@ -2250,29 +2250,6 @@ Determine exactly how raylib iOS is supported today if not via CMake PLATFORM op
   - iOS does not have a desktop windowing layer — it uses UIKit or SwiftUI
   - **Result:** Builds but will not run on iOS devices
 
-### Fact 3: Upstream iOS Build Path (Unmerged, Community-Contributed)
-
-**Evidence:**
-- PR #3880 on raysan5/raylib: "[rcore] Porting raylib to iOS and implement `rcore_ios.c`"
-  - Author: @blueloveTH
-  - Opened: 2024-03-22T12:20:33Z
-  - Closed: 2025-07-27T19:25:40Z
-  - Status: **CLOSED WITHOUT MERGE** (`merged_at: null`)
-  - Labels: "help needed - please!", "on hold"
-
-- **What the PR provides:**
-  - Implements `rcore_ios.c` (iOS platform core: window, input, graphics initialization)
-  - Functions implemented: `PollInputEvents()`, `InitPlatform()`, `ClosePlatform()`
-  - Graphics approach: Uses **ANGLE framework** (Google's translation layer: OpenGL ES API → Metal GPU backend)
-  - Requires prebuilt xcframeworks: `libEGL.xcframework`, `libGLESv2.xcframework` (provided as downloadable .zip in PR comments)
-  - Demo: Working iPhone 8 video in PR
-
-- **Build system for iOS:**
-  - **Primary:** Apple Xcode (native IDE for iOS development)
-  - **Graphics:** ANGLE (prebuilt xcframeworks linked in Xcode)
-  - **CMake role:** Minimal — CMake generates source structure, but final app target built in Xcode
-  - **Not vcpkg-driven:** No CMake FIND_PACKAGE workflow; Xcode project directly links ANGLE xcframeworks
-
 ### Fact 4: Why This Path Was Not Merged
 
 - PR is "on hold" — roadmap suggests waiting for raylib 6.0 or later
@@ -4725,3 +4702,75 @@ Keaton's `transform.h` already had ScreenPosition/CameraClipPlanes/ModelTransfor
 **By:** yashasg (via Copilot)
 **What:** If a build issue is only a missing include from deleted headers, delete the stale include and rebuild so remaining reports show genuine symbol/type issues.
 **Why:** User request — captured for team memory
+## DECISION from copilot-directive-2026-05-05T17-44-00-833-07-00-sfx-bank-sdl-mixer.md
+
+### 2026-05-05T17:44:00.833-07:00: SFX bank uses direct SDL_mixer chunk API
+**By:** Fenster (Tools/Audio)
+**Scope:** `app/systems/sfx_bank_system.cpp`
+
+Decision:
+- Remove raylib-style SFX path (`Sound`, `Wave`, `LoadSoundFromWave`, `PlaySound`, `IsSoundValid`, `UnloadSound`) from sfx bank runtime.
+- Use direct SDL_mixer chunk lifecycle: procedural generation -> in-memory WAV -> `Mix_LoadWAV_RW` -> playback with `Mix_PlayChannel` -> cleanup via `Mix_FreeChunk`.
+
+Rationale:
+- Keeps dependency direction aligned with project migration rule (no wrapper/runtime compatibility audio abstractions for SFX).
+- Preserves procedural SFX behavior while allowing SDL_mixer to parse/convert sample data to the active mixer format.
+
+## DECISION from keaton-compile-unblock.md
+
+# 2026-05-05T18:01:06.882-07:00 — Keaton compile-unblock slice update
+
+## Implemented in this pass
+- Added missing direct include for `MotionVelocity` users (`app/systems/particle_system.cpp` now includes `components/transform.h`).
+- Completed glm-native camera/projection cleanup in scoped files:
+  - `app/systems/camera_system.cpp` now uses `glm::mat4` / `glm::vec2` / `glm::vec3` directly for model and popup transforms.
+  - Removed matrix field-conversion assumptions (`m0..m15`) in this slice.
+  - Added explicit `render_api.h` include where mesh generation symbols are used.
+- Hardened SDL render-target ownership fallback in camera init by gating target allocation on `SDL_RenderTargetSupported(renderer)` and logging fallback behavior.
+- Updated scoped matrix regression test usage in `tests/test_obstacle_model_slice.cpp` to glm indexing (`mat[col][row]`) for compile compatibility.
+- Updated `app/systems/game_render_system.cpp` transform math to glm-native matrix-vector multiplication in model draw helpers.
+
+## Current genuine blockers after `./build.sh`
+Build still fails outside this slice due to remaining migration blockers, including:
+1. `app/systems/render_api.cpp` uses `SDL_FColor` and float-init path incompatible with current SDL2 headers.
+2. `app/util/shape_vertices.h` constexpr circle generation uses non-constexpr trig on this toolchain.
+3. Legacy matrix-field accesses remain in tests outside this scope (`tests/test_model_authority_gaps.cpp` uses `.m14`).
+4. Text/font runtime migration blockers persist (`app/ui/text_renderer.cpp` uses unresolved `Font`/`LoadFontEx` symbols).
+5. Contract mismatch in existing tests (`tests/test_obstacle_model_slice.cpp` static asserts expecting non-copyable `ObstacleModel`).
+
+These blockers are independent of the scoped camera/particle/render-target changes above and need dedicated owner passes.
+
+## DECISION from kujan-architecture-review.md
+
+### 2026-05-05T18:04:29.992-07:00 — Kujan architecture review verdict
+
+**Verdict:** REJECT
+
+**Scope reviewed:**
+- `app/util/render_types.h`
+- `app/systems/render_api.h`
+- `app/systems/render_api.cpp`
+- integration callsites (`app/systems/game_render_system.cpp`, `app/systems/camera_system.cpp`, `app/entities/obstacle_render_entity.cpp`, `app/components/render_tags.h`)
+
+**Blocking findings (material):**
+1. **Compatibility-layer resurrection (forbidden):** `app/util/render_types.h` recreates Raylib-shaped surface (`Vector2`, `Vector3`, `Matrix`, `Texture2D`, `RenderTexture2D`, `Rectangle`, `TextureFilter`, `Model`, `Mesh`, `Material`, `Shader`, `PI`, color constants). This is a wrapper/compatibility layer, not direct SDL2/glm usage.
+2. **Render abstraction shim (forbidden):** `app/systems/render_api.h/.cpp` wraps SDL calls behind an engine-style API (`begin_mode_3d`, `end_mode_3d`, `draw_triangle_3d`, `draw_line_3d`, `draw_texture_pro`, `begin_texture_mode`, mesh/model helper APIs, no-op shader/material loaders). User directive explicitly disallows new runtime/render abstraction shims unless approved.
+3. **Assumption made instead of escalation:** SDL2 has no native `Model/Material/Shader` concept, but code invented substitute API/types (`load_material_default`, `load_shader_from_memory`, CPU mesh/model ownership contract) instead of asking the user for the intended direct implementation seam when API mapping was unclear.
+
+**Required revision owner:** **Keaton** (must not be Marquez).
+
+**Exact files/symbols to revise:**
+- `app/util/render_types.h`
+  - Remove compatibility aliases/types/constants: `Vector2`, `Vector3`, `Matrix`, `Texture2D`, `RenderTexture2D`, `Rectangle`, `TextureFilter`, `TEXTURE_FILTER_*`, `Model`, `Mesh`, `Material`, `Shader`, `PI`, `WHITE`, `BLANK`, `RED`, `SKYBLUE`.
+- `app/systems/render_api.h`
+  - Remove wrapper API surface and no-op compatibility helpers: `RendererValidationCounters` wrappers if tied to shim, `begin_texture_mode`, `end_texture_mode`, `begin_drawing`, `end_drawing`, `clear_background`, `draw_texture_pro`, `draw_rectangle_rec`, `set_texture_filter`, `begin_mode_3d`, `end_mode_3d`, `draw_triangle_3d`, `draw_line_3d`, `gen_mesh_*`, `load_material_default`, `load_shader_from_memory`, `unload_model`.
+- `app/systems/render_api.cpp`
+  - Remove shim implementation, especially static global shim state and projected-3D compatibility pipeline (`GlobalState`, `project_to_screen`, software mesh/model emulation).
+- Replace callsites to use direct SDL/glm APIs in place, starting with:
+  - `app/systems/game_render_system.cpp`
+  - `app/systems/camera_system.cpp`
+  - `app/entities/obstacle_render_entity.cpp`
+  - `app/components/render_tags.h` (eliminate wrapper-defined model/mesh ownership coupling).
+
+**Validation note:** `./build.sh` currently fails in this environment because `VCPKG_ROOT` is unset; compile status could not be revalidated in this review session.
+

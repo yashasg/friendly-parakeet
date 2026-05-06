@@ -52,3 +52,28 @@ Introduced `render_tags.h` as the home for trivially-plain ECS render-metadata c
 **Session Log:** .squad/log/2026-05-06T00-38-50Z-direct-sdl-rewire.md
 
 Collaborated on rendering/audio decoupling. All team work merged to decisions.md (2026-05-06).
+
+## 2026-05-06T02:01:56Z — Model/Shape Compile Pass Complete + Architecture Review (REJECTION)
+
+**Orchestration Log:** .squad/orchestration-log/2026-05-06T02-01-56Z-marquez.md
+
+### Status
+- ✅ Model and shape architecture pass completed
+- ✅ All tests passing: 2148 assertions in 766 test cases
+- ✅ Clean build via `VCPKG_ROOT=/Users/yashasgujjar/vcpkg ./build.sh && ./build/shapeshifter_tests`
+- ⚠️  Introduced `app/util/render_types.h` and `app/systems/render_api.*`
+
+### Architecture Review Result (Kujan)
+- **REJECTION:** Kujan reviewed render surfaces and rejected `app/systems/render_api.*` + `app/util/render_types.h` as violating no-wrapper and no-compat-layer directives
+- **ACTION:** Revision ownership **transferred to Keaton** (if/when resumed)
+- **CONSTRAINT:** Marquez locked out from revising this artifact in the next revision cycle
+- **PRIORITY:** Parked until after user tuning work completes
+
+### User Decision (Coordinator)
+- "Let's leave this as the last thing to fix, I have a few things we should tune."
+- SDL2 model/mesh/material implementation deferred to end-of-cycle
+
+### Next Steps
+- Await user tuning cycle
+- Keaton to revise rejected render surfaces per Kujan's architecture requirements
+- Final cleanup held as lower priority
