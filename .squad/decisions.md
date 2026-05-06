@@ -1,3 +1,71 @@
+# 2026-05-06T02:14:44Z — Keyser: Handedness contract across backends [RECOMMENDATION PENDING]
+
+## Decision
+Adopt a single engine-wide world/camera handedness invariant and keep backend-specific clip-space adjustments isolated to renderer/shader upload code.
+
+## Contract (practical)
+1. **Engine-wide invariant (required):**
+   - Gameplay/world/camera math is always one handedness (keep current behavior: right-handed world, `glm::lookAt`, `glm::perspective/ortho`).
+   - ECS components (`WorldTransform`, `Camera3D`, `ModelTransform`) never branch by platform/backend for handedness.
+
+2. **Backend variation (allowed only at render boundary):**
+   - If a backend (future SDL_GPU path, Metal/Vulkan/D3D style clip depth/Y rules) differs, convert only in one boundary layer:
+     - CPU path: final view-projection build/upload function.
+     - GPU path: projection fixup matrix or shader constant transform.
+   - No handedness conditionals in gameplay systems.
+
+3. **GLM definitions policy (no source-level `#define`):**
+   - Set GLM policy macros only through CMake `target_compile_definitions` on project targets (lib + tests), never in `.cpp/.h` files.
+   - Keep one centralized CMake block for math-policy defines so all translation units and tests share the same contract.
+   - If backend-specific clip behavior is needed, use backend compile defs in CMake and boundary code paths, not per-file defines.
+
+4. **Testing required to prevent regressions:**
+   - **Pure math unit tests** for camera forward direction and projection expectations (points in front/behind, NDC sign expectations).
+   - **Boundary tests** for backend projection fixup (same world point gives same screen-space result across SDL2 and SDL_GPU path).
+   - **Golden transform tests** for representative entities (player, slab, shape) asserting stable matrix/sign conventions.
+   - **Cross-platform CI matrix** must run these tests on all supported platform builds.
+
+5. **Implementation location:**
+   - ECS/domain: invariant only.
+   - Renderer: one explicit `backend_projection_policy` seam that owns clip-space depth/Y differences and any handedness conversions.
+
+## Open questions needing owner input before implementation
+1. Confirm the four release targets to lock CI gates (e.g., macOS/Linux/Windows/WASM or includes iOS).
+2. Confirm depth range target for SDL_GPU pipeline (`0..1` vs `-1..1`) so projection fixup is finalized once.
+3. Confirm whether Y-flip should be handled in projection matrix or render-target/view transform for the SDL_GPU path.
+
+# 2026-05-06T02:14:44Z — Hockney: GLM handedness/depth convention centralization [RECOMMENDATION PENDING]
+
+## Decision
+Use one project-wide GLM convention source in `CMakeLists.txt` (shared interface target or one canonical compile-definitions block on `shapeshifter_lib` with PUBLIC propagation), and do not allow per-platform overrides in workflows/scripts.
+
+Recommended convention for multi-backend future (`SDL_GPU` + Metal/D3D12/Vulkan/Web):  
+- `GLM_FORCE_RIGHT_HANDED`  
+- `GLM_FORCE_DEPTH_ZERO_TO_ONE`
+
+## Why this matters
+The repo builds native Linux/macOS/Windows plus WASM. If handedness/depth flags drift by platform or target, matrix math and clip-space assumptions diverge silently and create backend-specific rendering bugs.
+
+## Practical guardrails
+1. **Single source of truth in CMake**
+   - Define GLM convention once and propagate to all in-repo targets (runtime/tests/smoke) through target linkage.
+2. **No workflow-level macro injection**
+   - Avoid `CXXFLAGS`/toolchain-only ad hoc `-DGLM_*` in CI jobs.
+3. **CI verification**
+   - Add a post-configure check that compile commands for native + wasm include required GLM macros and do not include opposite ones.
+4. **No per-platform convention flips**
+   - Do not toggle handedness/depth based on OS or graphics API.
+
+## Open questions for owner
+1. Confirm canonical convention: **RH+ZO** (recommended for modern APIs) vs alternate legacy requirement.
+2. Confirm whether any legacy OpenGL-only path must remain authoritative; if yes, document how projection helpers/shaders will stay aligned without per-platform macro changes.
+
+# 2026-05-06T02:12:25Z — User directive: GLM compiler defines must be centralized [CONFIRMED]
+
+**By:** yashasg (via Copilot)  
+**What:** GLM configuration defines must be passed as compiler flags/compile definitions; do not put those `#define` directives in source files or project headers.  
+**Why:** User request — captured for team memory.
+
 # 2026-05-04T11:55:54Z — Kujan: Post-audio audit gate — two remaining blockers
 
 ## Decision

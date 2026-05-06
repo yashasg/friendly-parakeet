@@ -1623,3 +1623,21 @@ Removed top-level `assets/` directory. Moved fonts to `content/fonts/`. Updated 
 **Manifested:** Decision #172 merged to `.squad/decisions.md`
 
 
+
+---
+
+## Session 2026-05-06 Archive (summarized from main history)
+
+Hockney's active history grew to 16233 bytes. Archived earlier work and condensed main history to recent focus areas:
+
+**Archived items (pre-2026-05-04):**
+- WASM responsiveness fixes (lifecycle hardening, async flag enforcement)
+- iOS viability investigation (conclusion: DO NOT pursue with raylib 5.5)
+- Phase 4 SDL2 input abstraction development + multitouch/gesture implementation
+- Logging migration from TraceLog to SDL direct logging
+
+**Retained in main history:**
+- Recent team collaborations (SDL/GLM cross-agent work)
+- Active recommendations (platform build consistency, pending owner approval)
+
+Total archived: ~6500 chars of early exploration/learning work.

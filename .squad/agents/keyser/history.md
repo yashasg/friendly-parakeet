@@ -133,3 +133,29 @@ Kujan completed full post-audio architecture audit against criteria (no-wrappers
 **Routing:** Blocker 1 to rendering specialist (broader callsite surface); Blocker 2 to any implementation agent (self-contained). Both can execute in single pass.
 
 **Status:** Findings merged to decisions.md; orchestration logged. Ready for implementation handoff.
+
+### 2026-05-05T19:14:44.272-07:00 — Handedness contract learning
+- Cross-platform renderer work is safer when handedness is an ECS/domain invariant and backend variance is constrained to one projection/upload seam.
+- GLM policy must be build-system-owned (`target_compile_definitions`) so gameplay, renderer, and tests compile under one consistent math contract.
+- Regression safety depends on math-level projection tests plus backend-boundary parity tests, not visual/manual verification.
+
+## 2026-05-06T02:14:44Z — Handedness Contract Architecture Recommendation
+
+Completed deliverable: engine-wide handedness invariant with backend-specific clip-space adjustments isolated at renderer upload seam.
+
+**Output:**
+- `.squad/decisions/inbox/keyser-handedness-contract.md` → merged to decisions.md [RECOMMENDATION PENDING]
+- `.squad/orchestration-log/2026-05-06T02-14-44Z-keyser.md`
+
+**Key design:**
+1. ECS/domain math uses single handedness (right-handed world, glm::lookAt, perspective/ortho)
+2. Backend variation (SDL_GPU, Metal/Vulkan/D3D) handled only in boundary layer
+3. GLM definitions via CMake `target_compile_definitions`, not source #define
+4. Testing: pure math unit tests, boundary tests, golden transforms, cross-platform CI validation
+
+**Open questions requiring owner input:**
+- Release target platforms (macOS/Linux/Windows/WASM or includes iOS)
+- Depth range for SDL_GPU (`0..1` vs `-1..1`)
+- Y-flip strategy (projection matrix vs render-target/view transform)
+
+**Next:** Await owner confirmation before implementation phase.
