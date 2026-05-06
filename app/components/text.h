@@ -1,7 +1,7 @@
 #pragma once
 
-#include "runtime/runtime_api.h"
 #include <cstdint>
+#include <SDL_ttf.h>
 
 // ── TextAlign ────────────────────────────────────────────────
 enum class TextAlign : uint8_t { Left, Center, Right };
@@ -15,8 +15,8 @@ enum class FontSize : int { Small = 0, Medium = 1, Large = 2 };
 // Holds pre-loaded runtime Font objects at different point sizes.
 // No logic, no methods beyond default construction.
 struct TextContext {
-    Font font_small{};    // ~16pt  — labels, small HUD text
-    Font font_medium{};   // ~28pt  — HUD scores
-    Font font_large{};    // ~48pt  — titles, GAME OVER
+    TTF_Font* font_small = nullptr;   // ~16pt  — labels, small HUD text
+    TTF_Font* font_medium = nullptr;  // ~28pt  — HUD scores
+    TTF_Font* font_large = nullptr;   // ~48pt  — titles, GAME OVER
     bool loaded = false;  // true once fonts are successfully loaded
 };

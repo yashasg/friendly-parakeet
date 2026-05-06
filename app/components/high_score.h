@@ -2,7 +2,6 @@
 
 #include <array>
 #include <cstdint>
-#include <string>
 #include <entt/entt.hpp>
 
 #include "../util/persistence_policy.h"
@@ -30,9 +29,4 @@ struct HighScoreState {
     entt::hashed_string::hash_type current_key_hash{0};
 };
 
-struct HighScorePersistence {
-    std::string path;
-    persistence::Result last_load{};
-    persistence::Result last_save{};
-    bool dirty{false};
-};
+using HighScorePersistence = persistence::DirtyPersistenceState;

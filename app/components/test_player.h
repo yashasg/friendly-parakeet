@@ -4,6 +4,7 @@
 #include <entt/entity/entity.hpp>
 #include <entt/core/enum.hpp>
 #include <cstdint>
+#include <cstring>
 #include <random>
 
 // ── Skill levels ─────────────────────────────────────────────
@@ -21,6 +22,29 @@ inline constexpr SkillConfig SKILL_TABLE[] = {
     { 600.0f, 0.500f, 0.800f, false },   // Good
     { 400.0f, 0.800f, 1.200f, false },   // Bad
 };
+
+inline constexpr const char* TEST_PLAYER_SKILL_NAMES[] = {"pro", "good", "bad"};
+
+[[nodiscard]] inline const char* test_player_skill_name(TestPlayerSkill skill) noexcept {
+    return TEST_PLAYER_SKILL_NAMES[static_cast<std::size_t>(skill)];
+}
+
+inline bool try_parse_test_player_skill(const char* value, TestPlayerSkill& skill) noexcept {
+    if (!value) return false;
+    if (std::strcmp(value, TEST_PLAYER_SKILL_NAMES[static_cast<std::size_t>(TestPlayerSkill::Pro)]) == 0) {
+        skill = TestPlayerSkill::Pro;
+        return true;
+    }
+    if (std::strcmp(value, TEST_PLAYER_SKILL_NAMES[static_cast<std::size_t>(TestPlayerSkill::Good)]) == 0) {
+        skill = TestPlayerSkill::Good;
+        return true;
+    }
+    if (std::strcmp(value, TEST_PLAYER_SKILL_NAMES[static_cast<std::size_t>(TestPlayerSkill::Bad)]) == 0) {
+        skill = TestPlayerSkill::Bad;
+        return true;
+    }
+    return false;
+}
 
 // ── Done-flag bits for TestPlayerAction ──────────────────────
 // Power-of-two values + _entt_enum_as_bitmask activates EnTT's

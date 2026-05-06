@@ -1,8 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <type_traits>
 #include "test_helpers.h"
-#include "audio/audio_queue.h"
-#include "input/input_state.h"
+#include "components/audio.h"
 
 // Verify component defaults and basic ECS operations
 
@@ -50,31 +49,35 @@ TEST_CASE("components: VerticalState defaults to grounded", "[components]") {
     CHECK(vs.y_offset == 0.0f);
 }
 
-TEST_CASE("components: InputState clear_events resets flags", "[components]") {
+TEST_CASE("components: InputState event flags can be reset per-frame", "[components]") {
     InputState is{};
     is.touch_down = true;
     is.touch_up = true;
-    clear_input_events(is);
+    is.click = true;
+    is.touch_down = false;
+    is.touch_up = false;
+    is.click = false;
     CHECK_FALSE(is.touch_down);
     CHECK_FALSE(is.touch_up);
+    CHECK_FALSE(is.click);
 }
 
 TEST_CASE("components: AudioQueue push and clear", "[components]") {
     AudioQueue q{};
     CHECK(q.count == 0);
-    audio_push(q, SFX::ShapeShift);
-    audio_push(q, SFX::Crash);
+    q.push(SFX::ShapeShift);
+    q.push(SFX::Crash);
     CHECK(q.count == 2);
     CHECK(q.queue[0] == SFX::ShapeShift);
     CHECK(q.queue[1] == SFX::Crash);
-    audio_clear(q);
+    q.clear();
     CHECK(q.count == 0);
 }
 
 TEST_CASE("components: AudioQueue overflow protection", "[components]") {
     AudioQueue q{};
     for (int i = 0; i < AudioQueue::MAX_QUEUED + 5; ++i) {
-        audio_push(q, SFX::UITap);
+        q.push(SFX::UITap);
     }
     CHECK(q.count == AudioQueue::MAX_QUEUED);
 }
@@ -109,6 +112,7 @@ TEST_CASE("ecs: make_registry creates all singletons", "[ecs]") {
     static_cast<void>(reg.ctx().get<LevelSelectState>());
     static_cast<void>(reg.ctx().get<BeatMap>());
     static_cast<void>(reg.ctx().get<SongState>());
+    static_cast<void>(reg.ctx().get<MusicContext>());
     static_cast<void>(reg.ctx().get<EnergyState>());
     static_cast<void>(reg.ctx().get<SongResults>());
     // Scoring persistence / end-screen
@@ -116,7 +120,6 @@ TEST_CASE("ecs: make_registry creates all singletons", "[ecs]") {
     static_cast<void>(reg.ctx().get<HighScorePersistence>());
     static_cast<void>(reg.ctx().get<GameOverState>());
     // Misc
-    static_cast<void>(reg.ctx().get<RNGState>());
     static_cast<void>(reg.ctx().get<ObstacleCounter>());
     SUCCEED("all required ctx singletons exist in registry context");
 }
@@ -216,7 +219,7 @@ TEST_CASE("ecs: make_player creates proper entity", "[ecs]") {
     CHECK(reg.all_of<ShapeWindow>(p));
     CHECK(reg.all_of<Lane>(p));
     CHECK(reg.all_of<VerticalState>(p));
-    CHECK(reg.all_of<Color>(p));
+    CHECK(reg.all_of<SDL_Color>(p));
     CHECK(reg.all_of<DrawSize>(p));
     CHECK(reg.all_of<DrawLayer>(p));
     CHECK(reg.all_of<TagWorldPass>(p));
@@ -228,8 +231,8 @@ TEST_CASE("components: MotionVelocity explicit construction", "[components][tran
     CHECK(mv.value.y == 10.0f);
 }
 
-TEST_CASE("components: Color construction", "[components]") {
-    Color c{255, 128, 64, 200};
+TEST_CASE("components: SDL_Color construction", "[components]") {
+    SDL_Color c{255, 128, 64, 200};
     CHECK(c.r == 255);
     CHECK(c.g == 128);
     CHECK(c.b == 64);

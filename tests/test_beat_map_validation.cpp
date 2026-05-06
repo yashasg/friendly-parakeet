@@ -1,5 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
+#include <filesystem>
+#include <fstream>
 #include "test_helpers.h"
 #include "util/beat_map_loader.h"
 #include "util/rhythm_math.h"
@@ -493,6 +495,26 @@ TEST_CASE("load_validation_constants: bad app_dir falls back to CWD path silentl
     // Defaults must still be intact.
     CHECK(vc.bpm_min == 60.0f);
     CHECK(vc.bpm_max == 300.0f);
+}
+
+TEST_CASE("load_validation_constants: app_dir path join works without trailing slash", "[validate][constants]") {
+    const auto root = std::filesystem::current_path() / "build" / "test_validation_constants";
+    std::error_code ec;
+    std::filesystem::remove_all(root, ec);
+    std::filesystem::create_directories(root / "content", ec);
+    REQUIRE_FALSE(ec);
+
+    std::ofstream file(root / "content" / "constants.json");
+    REQUIRE(file.is_open());
+    file << R"({"validation":{"bpm_min":77.0,"lead_beats_max":6}})";
+    file.close();
+
+    const ValidationConstants vc = load_validation_constants(root.string());
+    CHECK(vc.bpm_min == 77.0f);
+    CHECK(vc.lead_beats_max == 6);
+    CHECK(vc.bpm_max == 300.0f);
+
+    std::filesystem::remove_all(root, ec);
 }
 
 TEST_CASE("validate_beat_map explicit constants: custom BPM range is respected", "[validate][constants]") {

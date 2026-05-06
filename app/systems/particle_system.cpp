@@ -1,7 +1,7 @@
 #include "all_systems.h"
 #include "../components/particle.h"
 #include "../components/transform.h"
-#include "../components/rendering.h"
+#include "../components/registry_context.h"
 #include "../constants.h"
 #include <vector>
 
@@ -11,17 +11,11 @@ struct ParticleSystemScratch {
     std::vector<entt::entity> expired;
 };
 
-ParticleSystemScratch& particle_scratch_for(entt::registry& reg) {
-    if (auto* scratch = reg.ctx().find<ParticleSystemScratch>()) {
-        return *scratch;
-    }
-    return reg.ctx().emplace<ParticleSystemScratch>();
-}
-
 }  // namespace
 
 void particle_system(entt::registry& reg, float dt) {
-    auto& expired = particle_scratch_for(reg).expired;
+    auto& scratch = registry_ctx_get_or_emplace<ParticleSystemScratch>(reg);
+    auto& expired = scratch.expired;
     expired.clear();
 
     auto view = reg.view<ParticleTag, ParticleData>();

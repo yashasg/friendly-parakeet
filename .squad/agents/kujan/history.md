@@ -118,3 +118,8 @@ Scribe orchestrated team spawn completion. Your audit findings have been merged 
 
 Kujan's P0 renderer blocker finding ("virtual wrapper violates no-virtuals + no-wrappers") and P1 collision blocker finding (lazy SongState init + gate loop duplication) have been logged to orchestration-log and decisions.md. Both blockers have concrete patch steps documented. Ready for implementation assignment.
 
+
+## Learnings
+
+- 2026-05-05T18:04:29.992-07:00: New files `app/util/render_types.h` and `app/systems/render_api.*` are architecture-gate blockers when they reintroduce Raylib-shaped aliases/types (`Vector2`, `Matrix`, `Texture2D`, `Model`) and wrapper draw APIs (`begin_mode_3d`, `draw_triangle_3d`) instead of direct SDL/glm usage at callsites.
+- 2026-05-05T18:04:29.992-07:00: If SDL lacks a one-to-one API for legacy engine concepts (Model/Material/Shader), the team must escalate with user questions rather than inventing compatibility surfaces or no-op placeholders.

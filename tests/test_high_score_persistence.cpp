@@ -268,7 +268,10 @@ TEST_CASE("High score helper: file path resolution reports failure without CWD f
     }
 
     std::filesystem::path file_path = "seed_should_clear.json";
-    const auto result = high_score::get_high_scores_file_path(file_path, blocked_root);
+    const auto result = persistence::resolve_file_path(
+        file_path,
+        persistence::FileKind::HighScores,
+        blocked_root);
     CHECK(result.status == persistence::Status::DirectoryCreateFailed);
     CHECK(file_path.empty());
 

@@ -2,6 +2,7 @@
 
 #include <entt/entt.hpp>
 #include "components/transform.h"
+#include "components/render_tags.h"
 #include "components/player.h"
 #include "components/obstacle.h"
 #include "util/obstacle_counter.h"
@@ -9,20 +10,18 @@
 #include "components/input_events.h"
 #include "components/game_state.h"
 #include "components/scoring.h"
-#include "components/rendering.h"
 #include "components/particle.h"
-#include "audio/audio_types.h"
+#include "components/audio.h"
 #include "components/haptics.h"
 #include "util/settings.h"
 #include "components/rhythm.h"
 #include "util/rhythm_math.h"
 #include "components/high_score.h"
-#include "components/rng.h"
 #include "components/gameplay_intents.h"
 #include "constants.h"
 #include "entities/obstacle_render_entity.h"
 #include "systems/all_systems.h"
-#include "input/input_routing.h"
+#include "systems/input_routing.h"
 
 // Sets up a registry with all singletons in their default state
 inline entt::registry make_registry() {
@@ -32,7 +31,12 @@ inline entt::registry make_registry() {
     reg.ctx().emplace<entt::dispatcher>();
     wire_input_dispatcher(reg);
     reg.ctx().emplace<GameState>(GameState{
-        GamePhase::Playing, GamePhase::Playing, 0.0f, false, GamePhase::Playing, 0.0f
+        .phase = GamePhase::Playing,
+        .previous_phase = GamePhase::Playing,
+        .phase_timer = 0.0f,
+        .transition_pending = false,
+        .next_phase = GamePhase::Playing,
+        .end_choice = EndScreenChoice::None
     });
     reg.ctx().emplace<ScoreState>();
     reg.ctx().emplace<AudioQueue>();
@@ -41,12 +45,12 @@ inline entt::registry make_registry() {
     reg.ctx().emplace<LevelSelectState>();
     reg.ctx().emplace<BeatMap>();
     reg.ctx().emplace<SongState>();
+    reg.ctx().emplace<MusicContext>();
     reg.ctx().emplace<EnergyState>();
     reg.ctx().emplace<SongResults>();
     reg.ctx().emplace<HighScoreState>();
     reg.ctx().emplace<HighScorePersistence>();
     reg.ctx().emplace<GameOverState>();
-    reg.ctx().emplace<RNGState>();
     reg.ctx().emplace<ObstacleCounter>();
     wire_obstacle_counter(reg);
     return reg;
@@ -146,7 +150,7 @@ inline entt::entity make_player(entt::registry& reg) {
     reg.emplace<ShapeWindow>(player);
     reg.emplace<Lane>(player);
     reg.emplace<VerticalState>(player);
-    reg.emplace<Color>(player, Color{80, 180, 255, 255});
+    reg.emplace<SDL_Color>(player, SDL_Color{80, 180, 255, 255});
     reg.emplace<DrawSize>(player, constants::PLAYER_SIZE, constants::PLAYER_SIZE);
     reg.emplace<DrawLayer>(player, Layer::Game);
     reg.emplace<TagWorldPass>(player);
@@ -177,7 +181,7 @@ inline entt::entity make_shape_gate(entt::registry& reg, Shape shape, float y) {
     reg.emplace<DrawSize>(obs, float(constants::SCREEN_W), 80.0f);
     reg.emplace<DrawLayer>(obs, Layer::Game);
     reg.emplace<TagWorldPass>(obs);
-    reg.emplace<Color>(obs, Color{255, 255, 255, 255});
+    reg.emplace<SDL_Color>(obs, SDL_Color{255, 255, 255, 255});
     return obs;
 }
 
@@ -193,7 +197,7 @@ inline entt::entity make_lane_block(entt::registry& reg, uint8_t mask, float y) 
     reg.emplace<DrawSize>(obs, float(constants::SCREEN_W / 3), 80.0f);
     reg.emplace<DrawLayer>(obs, Layer::Game);
     reg.emplace<TagWorldPass>(obs);
-    reg.emplace<Color>(obs, Color{255, 60, 60, 255});
+    reg.emplace<SDL_Color>(obs, SDL_Color{255, 60, 60, 255});
     return obs;
 }
 
@@ -212,7 +216,7 @@ inline entt::entity make_vertical_bar(entt::registry& reg, ObstacleKind kind, fl
     reg.emplace<DrawSize>(obs, float(constants::SCREEN_W), 40.0f);
     reg.emplace<DrawLayer>(obs, Layer::Game);
     reg.emplace<TagWorldPass>(obs);
-    reg.emplace<Color>(obs, Color{255, 180, 0, 255});
+    reg.emplace<SDL_Color>(obs, SDL_Color{255, 180, 0, 255});
     return obs;
 }
 
@@ -229,7 +233,7 @@ inline entt::entity make_combo_gate(entt::registry& reg, Shape shape, uint8_t bl
     reg.emplace<DrawSize>(obs, float(constants::SCREEN_W), 80.0f);
     reg.emplace<DrawLayer>(obs, Layer::Game);
     reg.emplace<TagWorldPass>(obs);
-    reg.emplace<Color>(obs, Color{200, 100, 255, 255});
+    reg.emplace<SDL_Color>(obs, SDL_Color{200, 100, 255, 255});
     return obs;
 }
 
@@ -246,7 +250,7 @@ inline entt::entity make_split_path(entt::registry& reg, Shape shape, int8_t lan
     reg.emplace<DrawSize>(obs, float(constants::SCREEN_W), 80.0f);
     reg.emplace<DrawLayer>(obs, Layer::Game);
     reg.emplace<TagWorldPass>(obs);
-    reg.emplace<Color>(obs, Color{255, 215, 0, 255});
+    reg.emplace<SDL_Color>(obs, SDL_Color{255, 215, 0, 255});
     return obs;
 }
 

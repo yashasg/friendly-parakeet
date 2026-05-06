@@ -1,15 +1,13 @@
-#include "all_systems.h"
-#include "../components/game_state.h"
 #include "../components/scoring.h"
 #include "../components/obstacle.h"
 #include "../components/gameplay_intents.h"
+#include "../components/registry_context.h"
 #include "../components/transform.h"
-#include "../components/rendering.h"
-#include "../components/haptics.h"
-#include "../util/settings.h"
+#include <glm/vec2.hpp>
 #include "../components/rhythm.h"
 #include "../util/rhythm_math.h"
 #include "../constants.h"
+#include <entt/entt.hpp>
 #include <cmath>
 #include <vector>
 
@@ -22,7 +20,7 @@ struct MissRecord {
 
 struct HitRecord {
     entt::entity e;
-    Vector2      popup_xy = {0.0f, 0.0f};
+    glm::vec2    popup_xy = {0.0f, 0.0f};
     Obstacle     obs;
     bool         has_timing = false;
     TimingGrade  timing{};
@@ -31,39 +29,56 @@ struct HitRecord {
 struct ScoringSystemScratch {
     std::vector<MissRecord> miss_buf;
     std::vector<HitRecord>  hit_buf;
+    std::vector<entt::entity> cleanup_buf;
 };
 
-ScoringSystemScratch& scoring_scratch_for(entt::registry& reg) {
-    if (auto* scratch = reg.ctx().find<ScoringSystemScratch>()) {
-        return *scratch;
+void enqueue_energy_effect(entt::registry& reg, float delta, bool flash = false);
+
+void register_miss(entt::registry& reg,
+                   entt::entity entity,
+                   ScoreState& score,
+                   SongResults* results,
+                   GameOverState* gos,
+                   std::vector<MissRecord>& miss_buf,
+                   bool has_timing) {
+    enqueue_energy_effect(reg, -constants::ENERGY_DRAIN_MISS, true);
+    if (results) {
+        results->miss_count++;
     }
-    return reg.ctx().emplace<ScoringSystemScratch>();
+    score.chain_count = 0;
+    score.chain_timer = 0.0f;
+    if (gos && gos->cause == DeathCause::None) {
+        gos->cause = reg.any_of<BarObstacleTag>(entity) ? DeathCause::HitABar : DeathCause::MissedABeat;
+    }
+    miss_buf.push_back({entity, has_timing});
 }
 
-PendingEnergyEffects& pending_energy_for(entt::registry& reg) {
-    if (auto* pending = reg.ctx().find<PendingEnergyEffects>()) {
-        return *pending;
+void push_hit_record(std::vector<HitRecord>& hit_buf,
+                     entt::entity entity,
+                     const Obstacle& obstacle,
+                     glm::vec2 popup_xy,
+                     const TimingGrade* timing) {
+    HitRecord record{};
+    record.e = entity;
+    record.obs = obstacle;
+    record.popup_xy = popup_xy;
+    record.has_timing = (timing != nullptr);
+    if (timing) {
+        record.timing = *timing;
     }
-    return reg.ctx().emplace<PendingEnergyEffects>();
+    hit_buf.push_back(record);
 }
 
-void enqueue_energy_effect(entt::registry& reg, float delta, bool flash = false) {
-    auto& pending = pending_energy_for(reg);
+void enqueue_energy_effect(entt::registry& reg, float delta, bool flash) {
+    auto& pending = registry_ctx_get_or_emplace<PendingEnergyEffects>(reg);
     pending.events.push_back(PendingEnergyEffects::Event{delta, flash});
-}
-
-ScorePopupRequestQueue& popup_queue_for(entt::registry& reg) {
-    if (auto* queue = reg.ctx().find<ScorePopupRequestQueue>()) {
-        return *queue;
-    }
-    return reg.ctx().emplace<ScorePopupRequestQueue>();
 }
 
 }  // namespace
 
 void scoring_system(entt::registry& reg, float dt) {
-    auto& score   = reg.ctx().get<ScoreState>();
-    auto* song    = reg.ctx().find<SongState>();
+    auto& score   = registry_ctx_get<ScoreState>(reg);
+    auto* song    = registry_ctx_find<SongState>(reg);
     const float scroll_speed = song ? song->scroll_speed : constants::BASE_SCROLL_SPEED;
 
     // Distance bonus
@@ -76,11 +91,11 @@ void scoring_system(entt::registry& reg, float dt) {
         score.chain_count = 0;
     }
 
-    auto* results = reg.ctx().find<SongResults>();   // #309: hoisted above loop
-    auto* gos     = reg.ctx().find<GameOverState>();
+    auto* results = registry_ctx_find<SongResults>(reg);   // #309: hoisted above loop
+    auto* gos     = registry_ctx_find<GameOverState>(reg);
 
     // Hoist single scratch lookup — miss_buf and hit_buf share the same struct.
-    auto& scratch = scoring_scratch_for(reg);
+    auto& scratch = registry_ctx_get_or_emplace<ScoringSystemScratch>(reg);
 
     // ── Miss pass ────────────────────────────────────────────────────────────
     // Structural view: only entities carrying MissTag.
@@ -96,27 +111,13 @@ void scoring_system(entt::registry& reg, float dt) {
 
         auto miss_view_graded = reg.view<ObstacleTag, ScoredTag, MissTag, Obstacle, TimingGrade>();
         for (auto e : miss_view_graded) {
-            enqueue_energy_effect(reg, -constants::ENERGY_DRAIN_MISS, true);
-            if (results) results->miss_count++;
-            score.chain_count = 0;
-            score.chain_timer = 0.0f;
-            if (gos && gos->cause == DeathCause::None) {
-                gos->cause = reg.any_of<BarObstacleTag>(e) ? DeathCause::HitABar : DeathCause::MissedABeat;
-            }
-            miss_buf.push_back({e, true});
+            register_miss(reg, e, score, results, gos, miss_buf, true);
         }
 
         auto miss_view_ungraded = reg.view<ObstacleTag, ScoredTag, MissTag, Obstacle>(
             entt::exclude<TimingGrade>);
         for (auto e : miss_view_ungraded) {
-            enqueue_energy_effect(reg, -constants::ENERGY_DRAIN_MISS, true);
-            if (results) results->miss_count++;
-            score.chain_count = 0;
-            score.chain_timer = 0.0f;
-            if (gos && gos->cause == DeathCause::None) {
-                gos->cause = reg.any_of<BarObstacleTag>(e) ? DeathCause::HitABar : DeathCause::MissedABeat;
-            }
-            miss_buf.push_back({e, false});
+            register_miss(reg, e, score, results, gos, miss_buf, false);
         }
         // Apply structural removals after iteration — safe.
         for (auto& r : miss_buf) {
@@ -139,108 +140,86 @@ void scoring_system(entt::registry& reg, float dt) {
         auto hit_view_graded = reg.view<ObstacleTag, ScoredTag, Obstacle, WorldTransform, TimingGrade>(
             entt::exclude<MissTag, NonScorableTag, ObstacleScrollZ>);
         for (auto [e, obs, wt, tg] : hit_view_graded.each()) {
-            HitRecord r;
-            r.e        = e;
-            r.popup_xy = wt.position;
-            r.obs      = obs;
-            r.has_timing = true;
-            r.timing = tg;
-            hit_buf.push_back(r);
+            push_hit_record(hit_buf, e, obs, wt.position, &tg);
         }
 
         auto hit_view_ungraded = reg.view<ObstacleTag, ScoredTag, Obstacle, WorldTransform>(
             entt::exclude<MissTag, NonScorableTag, ObstacleScrollZ, TimingGrade>);
         for (auto [e, obs, wt] : hit_view_ungraded.each()) {
-            HitRecord r;
-            r.e        = e;
-            r.popup_xy = wt.position;
-            r.obs      = obs;
-            r.has_timing = false;
-            hit_buf.push_back(r);
+            push_hit_record(hit_buf, e, obs, wt.position, nullptr);
         }
 
         auto model_hit_view_graded = reg.view<ObstacleTag, ScoredTag, Obstacle, ObstacleScrollZ, TimingGrade>(
             entt::exclude<MissTag, NonScorableTag>);
         for (auto [e, obs, oz, tg] : model_hit_view_graded.each()) {
-            HitRecord r;
-            r.e        = e;
-            r.popup_xy = {constants::SCREEN_W_F * 0.5f, oz.z};
-            r.obs = obs;
-            r.has_timing = true;
-            r.timing = tg;
-            hit_buf.push_back(r);
+            push_hit_record(hit_buf, e, obs, {constants::SCREEN_W_F * 0.5f, oz.z}, &tg);
         }
 
         auto model_hit_view_ungraded = reg.view<ObstacleTag, ScoredTag, Obstacle, ObstacleScrollZ>(
             entt::exclude<MissTag, NonScorableTag, TimingGrade>);
         for (auto [e, obs, oz] : model_hit_view_ungraded.each()) {
-            HitRecord r;
-            r.e        = e;
-            r.popup_xy = {constants::SCREEN_W_F * 0.5f, oz.z};
-            r.obs = obs;
-            r.has_timing = false;
-            hit_buf.push_back(r);
+            push_hit_record(hit_buf, e, obs, {constants::SCREEN_W_F * 0.5f, oz.z}, nullptr);
         }
 
         if (!hit_buf.empty()) {
-        auto& popup_queue = popup_queue_for(reg);
-        for (auto& r : hit_buf) {
-            float timing_mult  = r.has_timing ? timing_multiplier(r.timing.tier) : 1.0f;
+            auto& popup_queue = registry_ctx_get_or_emplace<ScorePopupRequestQueue>(reg);
+            for (auto& r : hit_buf) {
+                float timing_mult  = r.has_timing ? timing_multiplier(r.timing.tier) : 1.0f;
 
-            // Energy adjustment based on timing
-            if (r.has_timing) {
-                switch (r.timing.tier) {
-                    case TimingTier::Perfect:
-                        enqueue_energy_effect(reg, constants::ENERGY_RECOVER_PERFECT);
-                        break;
-                    case TimingTier::Good:
-                        enqueue_energy_effect(reg, constants::ENERGY_RECOVER_GOOD);
-                        break;
-                    case TimingTier::Ok:
-                        enqueue_energy_effect(reg, constants::ENERGY_RECOVER_OK);
-                        break;
-                    case TimingTier::Bad:
-                        enqueue_energy_effect(reg, -constants::ENERGY_DRAIN_BAD, true);
-                        break;
-                }
-                if (results) {
+                // Energy adjustment based on timing
+                if (r.has_timing) {
                     switch (r.timing.tier) {
-                        case TimingTier::Perfect: results->perfect_count++; break;
-                        case TimingTier::Good:    results->good_count++;    break;
-                        case TimingTier::Ok:      results->ok_count++;      break;
-                        case TimingTier::Bad:     results->bad_count++;     break;
+                        case TimingTier::Perfect:
+                            enqueue_energy_effect(reg, constants::ENERGY_RECOVER_PERFECT);
+                            break;
+                        case TimingTier::Good:
+                            enqueue_energy_effect(reg, constants::ENERGY_RECOVER_GOOD);
+                            break;
+                        case TimingTier::Ok:
+                            enqueue_energy_effect(reg, constants::ENERGY_RECOVER_OK);
+                            break;
+                        case TimingTier::Bad:
+                            enqueue_energy_effect(reg, -constants::ENERGY_DRAIN_BAD, true);
+                            break;
+                    }
+                    if (results) {
+                        switch (r.timing.tier) {
+                            case TimingTier::Perfect: results->perfect_count++; break;
+                            case TimingTier::Good:    results->good_count++;    break;
+                            case TimingTier::Ok:      results->ok_count++;      break;
+                            case TimingTier::Bad:     results->bad_count++;     break;
+                        }
                     }
                 }
+
+                int points = static_cast<int>(
+                    std::floor(r.obs.base_points * timing_mult));
+
+                // Chain bonus
+                score.chain_count++;
+                score.chain_timer = 0.0f;
+                if (score.chain_count >= 2 && score.chain_count <= 4) {
+                    points += constants::CHAIN_BONUS[score.chain_count];
+                } else if (score.chain_count >= 5) {
+                    points += constants::CHAIN_BONUS[4] + (score.chain_count - 4) * 100;
+                }
+
+                if (results && score.chain_count > results->max_chain) {
+                    results->max_chain = score.chain_count;
+                }
+
+                score.score += points;
+
+                // Queue timing/score popup; popup_feedback_system owns spawn/SFX.
+                std::optional<TimingTier> tt = r.has_timing
+                    ? std::make_optional(r.timing.tier) : std::nullopt;
+                popup_queue.requests.push_back({r.popup_xy.x, r.popup_xy.y, points, tt});
+
+                // Structural removals after all reads — safe.
+                reg.remove<Obstacle>(r.e);
+                reg.remove<ScoredTag>(r.e);
+                if (r.has_timing) reg.remove<TimingGrade>(r.e);
             }
-
-            int points = static_cast<int>(
-                std::floor(r.obs.base_points * timing_mult));
-
-            // Chain bonus
-            score.chain_count++;
-            score.chain_timer = 0.0f;
-            if (score.chain_count >= 2 && score.chain_count <= 4) {
-                points += constants::CHAIN_BONUS[score.chain_count];
-            } else if (score.chain_count >= 5) {
-                points += constants::CHAIN_BONUS[4] + (score.chain_count - 4) * 100;
-            }
-
-            if (results && score.chain_count > results->max_chain) {
-                results->max_chain = score.chain_count;
-            }
-
-            score.score += points;
-
-            // Queue timing/score popup; popup_feedback_system owns spawn/SFX.
-            std::optional<TimingTier> tt = r.has_timing
-                ? std::make_optional(r.timing.tier) : std::nullopt;
-            popup_queue.requests.push_back({r.popup_xy.x, r.popup_xy.y, points, tt});
-
-            // Structural removals after all reads — safe.
-            reg.remove<Obstacle>(r.e);
-            reg.remove<ScoredTag>(r.e);
-            if (r.has_timing) reg.remove<TimingGrade>(r.e);
-        }
         } // !hit_buf.empty()
     }
 
@@ -250,20 +229,17 @@ void scoring_system(entt::registry& reg, float dt) {
     // re-processed on the next frame. Collect-then-remove follows the same EnTT
     // safety pattern as the hit/miss passes above. (#315)
     {
-        // Re-use hit_buf (already cleared above) as a scratch collect buffer.
-        auto& cleanup_buf = scratch.hit_buf;
+        auto& cleanup_buf = scratch.cleanup_buf;
         cleanup_buf.clear();
 
         auto ns_view = reg.view<ObstacleTag, ScoredTag, NonScorableTag>(
             entt::exclude<MissTag>);
         for (auto e : ns_view) {
-            HitRecord r;
-            r.e = e;
-            cleanup_buf.push_back(r);
+            cleanup_buf.push_back(e);
         }
-        for (auto& r : cleanup_buf) {
-            reg.remove<Obstacle>(r.e);
-            reg.remove<ScoredTag>(r.e);
+        for (const auto e : cleanup_buf) {
+            reg.remove<Obstacle>(e);
+            reg.remove<ScoredTag>(e);
         }
     }
 

@@ -111,8 +111,8 @@ TEST_CASE("bridge: entity with ObstacleModel only (no ObstacleScrollZ, no Positi
 
     scroll_system(reg, 0.016f);
 
-    // Model.transform.m14 must remain at zero-init (scroll_system skipped it).
-    CHECK(reg.get<ObstacleModel>(obs).model.transform.m14 == 0.0f);
+    // Model.transform[3][2] (Z translation) must remain at zero-init (scroll_system skipped it).
+    CHECK(reg.get<ObstacleModel>(obs).model.transform[3][2] == 0.0f);
 }
 
 // ── A2. obstacle_despawn_system: ObstacleScrollZ path ─────────────────────────────────
@@ -157,7 +157,7 @@ TEST_CASE("bridge: entity with ObstacleModel only (no ObstacleScrollZ) is not de
     reg.emplace<ObstacleModel>(obs);  // owned=false, no bridge-state
     // Simulate being "past" DESTROY_Y via a sentinel transform.
     auto& om = reg.get<ObstacleModel>(obs);
-    om.model.transform.m14 = constants::DESTROY_Y + 100.0f;  // cleanup won't see this
+    om.model.transform[3][2] = constants::DESTROY_Y + 100.0f;  // cleanup won't see this
 
     obstacle_despawn_system(reg, 0.016f);
 

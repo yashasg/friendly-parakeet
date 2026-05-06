@@ -1,14 +1,14 @@
 #include "all_systems.h"
-#include "../components/game_state.h"
 #include "../components/player.h"
 #include "../components/rhythm.h"
 #include "../components/transform.h"
+#include "../components/registry_context.h"
 #include "../util/haptic_queue.h"
 #include "../constants.h"
-#include "runtime/runtime_api.h"
+#include <algorithm>
 
 void player_movement_system(entt::registry& reg, float dt) {
-    auto* song = reg.ctx().find<SongState>();
+    auto* song = registry_ctx_find<SongState>(reg);
     bool rhythm_mode = (song != nullptr && song->playing);
 
     auto view = reg.view<PlayerTag, WorldTransform, PlayerShape, Lane, VerticalState>();
@@ -18,7 +18,7 @@ void player_movement_system(entt::registry& reg, float dt) {
         // In rhythm mode shape_window_system owns morph_t (derives from song_time);
         // writing it here too would double-update it every tick. (#207)
         if (!rhythm_mode && pshape.morph_t < 1.0f) {
-            pshape.morph_t = Clamp(pshape.morph_t + dt / constants::MORPH_DURATION, 0.0f, 1.0f);
+            pshape.morph_t = std::clamp(pshape.morph_t + dt / constants::MORPH_DURATION, 0.0f, 1.0f);
         }
 
         // Lane transition
@@ -30,7 +30,7 @@ void player_movement_system(entt::registry& reg, float dt) {
             lane.lerp_t += dt * constants::LANE_SWITCH_SPEED;
             float from_x = constants::LANE_X[lane.current];
             float to_x   = constants::LANE_X[lane.target];
-            transform.position.x = Lerp(from_x, to_x, lane.lerp_t);
+            transform.position.x = from_x + (to_x - from_x) * lane.lerp_t;
 
             if (lane.lerp_t >= 1.0f) {
                 lane.current = lane.target;

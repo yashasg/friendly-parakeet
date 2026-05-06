@@ -1,15 +1,15 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
-#include "audio/music_context.h"
-#include "audio/music_backend.h"
+#include "components/audio.h"
+#include "systems/audio_runtime.h"
 
 namespace {
 
 struct MusicTimeOverrideGuard {
     MusicContext& music;
     ~MusicTimeOverrideGuard() {
-        platform::audio::clear_music_time_played_override(music);
+        audio_runtime::clear_music_time_played_override(music);
     }
 };
 
@@ -18,31 +18,31 @@ struct MusicTimeOverrideGuard {
 TEST_CASE("music_backend: unloaded stream operations are no-ops", "[audio][music_backend]") {
     MusicContext music{};
 
-    platform::audio::update_music_stream(music);
-    platform::audio::play_music_stream(music);
-    platform::audio::pause_music_stream(music);
-    platform::audio::resume_music_stream(music);
-    platform::audio::stop_music_stream(music);
+    audio_runtime::update_music_stream(music);
+    audio_runtime::play_music_stream(music);
+    audio_runtime::pause_music_stream(music);
+    audio_runtime::resume_music_stream(music);
+    audio_runtime::stop_music_stream(music);
 
     CHECK_FALSE(music.loaded);
     CHECK_FALSE(music.started);
-    CHECK_THAT(platform::audio::get_music_time_played(music),
+    CHECK_THAT(audio_runtime::get_music_time_played(music),
                Catch::Matchers::WithinAbs(0.0f, 0.0001f));
 }
 
 TEST_CASE("music_backend: volume is clamped for context stability", "[audio][music_backend]") {
     MusicContext music{};
 
-    platform::audio::set_music_volume(music, 1.5f);
+    audio_runtime::set_music_volume(music, 1.5f);
     CHECK_THAT(music.volume, Catch::Matchers::WithinAbs(1.0f, 0.0001f));
 
-    platform::audio::set_music_volume(music, -0.2f);
+    audio_runtime::set_music_volume(music, -0.2f);
     CHECK_THAT(music.volume, Catch::Matchers::WithinAbs(0.0f, 0.0001f));
 }
 
 TEST_CASE("music_backend: missing file load fails cleanly", "[audio][music_backend]") {
     MusicContext music{};
-    const bool loaded = platform::audio::load_music_stream(music, "content/audio/__missing__.flac", false);
+    const bool loaded = audio_runtime::load_music_stream(music, "content/audio/__missing__.flac", false);
     CHECK_FALSE(loaded);
     CHECK_FALSE(music.loaded);
     CHECK_FALSE(music.started);
@@ -55,9 +55,9 @@ TEST_CASE("music_backend: time override enables deterministic sync validation",
     music.loaded = true;
     music.started = true;
 
-    platform::audio::set_music_time_played_override(music, 12.5f);
+    audio_runtime::set_music_time_played_override(music, 12.5f);
 
-    CHECK_THAT(platform::audio::get_music_time_played(music),
+    CHECK_THAT(audio_runtime::get_music_time_played(music),
                Catch::Matchers::WithinAbs(12.5f, 0.0001f));
 }
 
@@ -67,12 +67,12 @@ TEST_CASE("music_backend: playback confirmation follows override playback state"
     MusicTimeOverrideGuard guard{music};
     music.loaded = true;
 
-    CHECK_FALSE(platform::audio::is_music_playing(music));
+    CHECK_FALSE(audio_runtime::is_music_playing(music));
 
-    platform::audio::set_music_time_played_override(music, 1.0f);
-    platform::audio::play_music_stream(music);
-    CHECK(platform::audio::is_music_playing(music));
+    audio_runtime::set_music_time_played_override(music, 1.0f);
+    audio_runtime::play_music_stream(music);
+    CHECK(audio_runtime::is_music_playing(music));
 
-    platform::audio::pause_music_stream(music);
-    CHECK_FALSE(platform::audio::is_music_playing(music));
+    audio_runtime::pause_music_stream(music);
+    CHECK_FALSE(audio_runtime::is_music_playing(music));
 }

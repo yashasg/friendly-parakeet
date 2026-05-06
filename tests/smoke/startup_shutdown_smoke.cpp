@@ -1,7 +1,7 @@
 #include "components/test_player.h"
 #include "game_loop.h"
 
-#include "runtime/runtime_api.h"
+#include <SDL.h>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -34,7 +34,7 @@ int main(int argc, char** argv) {
         }
     }
 
-    SetTraceLogLevel(LOG_WARNING);
+    SDL_LogSetAllPriority(SDL_LOG_PRIORITY_WARN);
 
     entt::registry reg;
     if (!game_loop_init(reg, false, TestPlayerSkill::Pro, "medium")) {

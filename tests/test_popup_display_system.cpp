@@ -22,7 +22,6 @@
 #include <optional>
 
 #include "components/scoring.h"   // ScorePopup, PopupDisplay
-#include "components/rendering.h" // ScreenPosition, Color
 #include "components/text.h"      // FontSize
 #include "components/rhythm.h"    // TimingTier
 #include "components/transform.h" // WorldTransform, MotionVelocity
@@ -49,12 +48,12 @@ static entt::entity make_popup_entity(entt::registry& reg,
     reg.emplace<ScorePopup>(e, sp);
 
     reg.emplace<ScreenPosition>(e, 0.0f, 0.0f);
-    reg.emplace<Color>(e, Color{255, 255, 255, 255});
+    reg.emplace<SDL_Color>(e, SDL_Color{255, 255, 255, 255});
 
     // #251: PopupDisplay's static fields (text, font size, base RGB) are
     // initialized once at spawn — popup_display_system only fades alpha.
     PopupDisplay pd{};
-    init_popup_display(pd, sp, Color{255, 255, 255, 255});
+    init_popup_display(pd, sp, SDL_Color{255, 255, 255, 255});
     reg.emplace<PopupDisplay>(e, pd);
 
     return e;
@@ -233,7 +232,7 @@ TEST_CASE("init_popup_display: formats grade text + font size from ScorePopup (#
     sp.timing_tier = TimingTier::Perfect;
 
     PopupDisplay pd{};
-    init_popup_display(pd, sp, Color{10, 20, 30, 200});
+    init_popup_display(pd, sp, SDL_Color{10, 20, 30, 200});
 
     CHECK(std::strcmp(pd.text, "PERFECT") == 0);
     CHECK(pd.font_size == FontSize::Medium);
@@ -250,7 +249,7 @@ TEST_CASE("init_popup_display: nullopt tier formats numeric value (#251)",
     sp.value       = 4242;
 
     PopupDisplay pd{};
-    init_popup_display(pd, sp, Color{255, 255, 255, 255});
+    init_popup_display(pd, sp, SDL_Color{255, 255, 255, 255});
 
     CHECK(std::strcmp(pd.text, "4242") == 0);
     CHECK(pd.font_size == FontSize::Small);
@@ -283,7 +282,7 @@ TEST_CASE("spawn_score_popup: entity has MotionVelocity {0, -80}",
     CHECK(mv.value.y == -80.0f);
 }
 
-TEST_CASE("spawn_score_popup: ScorePopup has correct points, tier=0, duration",
+TEST_CASE("spawn_score_popup: ScorePopup has correct points, timing tier, duration",
           "[popup_entity][issue349]") {
     entt::registry reg;
     auto e = spawn_score_popup(reg, {0.0f, 0.0f, 350, TimingTier::Good});
@@ -291,7 +290,7 @@ TEST_CASE("spawn_score_popup: ScorePopup has correct points, tier=0, duration",
     REQUIRE(reg.all_of<ScorePopup>(e));
     const auto& sp = reg.get<ScorePopup>(e);
     CHECK(sp.value == 350);
-    CHECK(sp.tier == uint8_t{0});
+    REQUIRE(sp.timing_tier.has_value());
     CHECK(sp.timing_tier == TimingTier::Good);
     CHECK(sp.remaining == constants::POPUP_DURATION);
     CHECK(sp.max_time  == constants::POPUP_DURATION);
@@ -302,8 +301,8 @@ TEST_CASE("spawn_score_popup: color is green for Perfect tier",
     entt::registry reg;
     auto e = spawn_score_popup(reg, {0.0f, 0.0f, 300, TimingTier::Perfect});
 
-    REQUIRE(reg.all_of<Color>(e));
-    const auto& c = reg.get<Color>(e);
+    REQUIRE(reg.all_of<SDL_Color>(e));
+    const auto& c = reg.get<SDL_Color>(e);
     CHECK(c.r == 100);
     CHECK(c.g == 255);
     CHECK(c.b == 100);
@@ -315,8 +314,8 @@ TEST_CASE("spawn_score_popup: color is orange for Bad tier",
     entt::registry reg;
     auto e = spawn_score_popup(reg, {0.0f, 0.0f, 50, TimingTier::Bad});
 
-    REQUIRE(reg.all_of<Color>(e));
-    const auto& c = reg.get<Color>(e);
+    REQUIRE(reg.all_of<SDL_Color>(e));
+    const auto& c = reg.get<SDL_Color>(e);
     CHECK(c.r == 255);
     CHECK(c.g == 150);
     CHECK(c.b == 100);
@@ -327,8 +326,8 @@ TEST_CASE("spawn_score_popup: default color when no timing tier",
     entt::registry reg;
     auto e = spawn_score_popup(reg, {0.0f, 0.0f, 200, std::nullopt});
 
-    REQUIRE(reg.all_of<Color>(e));
-    const auto& c = reg.get<Color>(e);
+    REQUIRE(reg.all_of<SDL_Color>(e));
+    const auto& c = reg.get<SDL_Color>(e);
     CHECK(c.r == 255);
     CHECK(c.g == 255);
     CHECK(c.b == 50);

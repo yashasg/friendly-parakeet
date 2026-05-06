@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "input/input_latency_probe.h"
+#include "systems/input_latency_probe.h"
 #include "test_helpers.h"
 
 namespace {

@@ -1,18 +1,37 @@
 #include "popup_entity.h"
 #include "../components/scoring.h"
-#include "../components/rendering.h"
 #include "../components/transform.h"
+#include "../components/render_tags.h"
 #include "../constants.h"
 
 #include <cstdio>
+#include <optional>
 
-void init_popup_display(PopupDisplay& pd,
-                        const ScorePopup& sp,
-                        const Color& base) {
+namespace {
+
+SDL_Color popup_color_for(const std::optional<TimingTier> timing_tier) {
+    if (!timing_tier.has_value()) {
+        return SDL_Color{255, 255, 50, 255};
+    }
+
+    switch (*timing_tier) {
+        case TimingTier::Perfect: return SDL_Color{100, 255, 100, 255};  // green
+        case TimingTier::Good:    return SDL_Color{180, 255, 100, 255};  // yellow-green
+        case TimingTier::Ok:      return SDL_Color{255, 255, 100, 255};  // yellow
+        case TimingTier::Bad:     return SDL_Color{255, 150, 100, 255};  // orange
+    }
+
+    return SDL_Color{255, 255, 50, 255};
+}
+
+}  // namespace
+
+void init_popup_display(PopupDisplay& pd, const ScorePopup& sp, const SDL_Color& base) {
     pd.r = base.r;
     pd.g = base.g;
     pd.b = base.b;
     pd.a = base.a;
+    pd.base_a = base.a;
 
     if (sp.timing_tier.has_value()) {
         const char* grade = "BAD";
@@ -32,29 +51,24 @@ void init_popup_display(PopupDisplay& pd,
 
 entt::entity spawn_score_popup(entt::registry& reg, const PopupSpawnParams& params) {
     auto popup = reg.create();
+    const ScorePopup score_popup{
+        params.points,
+        params.timing_tier,
+        constants::POPUP_DURATION,
+        constants::POPUP_DURATION
+    };
 
     reg.emplace<WorldTransform>(popup, WorldTransform{{params.x, params.y - 40.0f}});
     reg.emplace<MotionVelocity>(popup, MotionVelocity{{0.0f, -80.0f}});
-    reg.emplace<ScorePopup>(popup, params.points, uint8_t{0}, params.timing_tier,
-                            constants::POPUP_DURATION, constants::POPUP_DURATION);
+    reg.emplace<ScorePopup>(popup, score_popup);
 
-    // Color by timing tier (no timing → default yellow-white)
-    uint8_t pr = 255, pg = 255, pb = 50;
-    if (params.timing_tier.has_value()) {
-        switch (*params.timing_tier) {
-            case TimingTier::Perfect: pr = 100; pg = 255; pb = 100; break; // green
-            case TimingTier::Good:    pr = 180; pg = 255; pb = 100; break; // yellow-green
-            case TimingTier::Ok:      pr = 255; pg = 255; pb = 100; break; // yellow
-            case TimingTier::Bad:     pr = 255; pg = 150; pb = 100; break; // orange
-        }
-    }
-    Color color{pr, pg, pb, 255};
-    reg.emplace<Color>(popup, color);
+    const auto color = popup_color_for(params.timing_tier);
+    reg.emplace<SDL_Color>(popup, color);
     reg.emplace<DrawLayer>(popup, Layer::Effects);
     reg.emplace<TagHUDPass>(popup);
 
     PopupDisplay pd{};
-    init_popup_display(pd, reg.get<ScorePopup>(popup), color);
+    init_popup_display(pd, score_popup, color);
     reg.emplace<PopupDisplay>(popup, pd);
 
     return popup;

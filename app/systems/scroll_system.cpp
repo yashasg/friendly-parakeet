@@ -1,12 +1,13 @@
-#include "all_systems.h"
-#include "../components/game_state.h"
 #include "../components/transform.h"
 #include "../components/rhythm.h"
 #include "../components/obstacle.h"
+#include "../components/registry_context.h"
+#include "../components/song_state.h"
 #include "../constants.h"
+#include <entt/entt.hpp>
 
 void scroll_system(entt::registry& reg, float dt) {
-    auto* song = reg.ctx().find<SongState>();
+    auto* song = registry_ctx_find<SongState>(reg);
 
     // Rhythm obstacles: position derived from song_time, not accumulated dt.
     // This prevents floating-point drift from desynchronizing collisions

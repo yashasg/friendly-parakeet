@@ -1,25 +1,20 @@
 #include "obstacle_render_entity.h"
 #include "../components/obstacle.h"
 #include "../components/transform.h"
-#include "../components/rendering.h"
+#include "../components/render_tags.h"
+#include "../components/registry_context.h"
 #include "../constants.h"
-#include "runtime/runtime_api.h"
+#include "../systems/platform_state.h"
+#include "../systems/render_api.h"
 #include <cstdint>
+#include <cstdlib>
 #include <stdexcept>
 
 namespace {
-struct ObstacleMeshLifetimeState {
-    bool wired = false;
+struct ObstacleLifecycleWiringState {
+    bool mesh_connected = false;
+    bool model_connected = false;
 };
-
-struct ObstacleModelLifecycleState {
-    bool wired = false;
-};
-
-bool obstacle_model_lifecycle_wired(entt::registry& reg) {
-    auto* state = reg.ctx().find<ObstacleModelLifecycleState>();
-    return state && state->wired;
-}
 
 uint8_t checked_shape_mesh_index(Shape shape) {
     switch (shape) {
@@ -65,27 +60,42 @@ struct PendingEntity {
         active = false;
     }
 };
+
+void on_obstacle_destroy(entt::registry& reg, entt::entity parent) {
+    auto* oc = reg.try_get<ObstacleChildren>(parent);
+    if (!oc) return;
+    for (int i = 0; i < oc->count; ++i) {
+        if (reg.valid(oc->children[i])) {
+            reg.destroy(oc->children[i]);
+        }
+    }
 }
 
-void on_obstacle_destroy(entt::registry& reg, entt::entity parent);
+void on_obstacle_model_destroy(entt::registry& reg, entt::entity entity) {
+    auto* om = reg.try_get<ObstacleModel>(entity);
+    if (!om || !om->owned) return;
+
+    if (om->model.meshes) {
+        render_api::unload_model(om->model);
+    }
+    om->model = Model{};
+    om->owned = false;
+}
+}  // namespace
 
 void wire_obstacle_mesh_lifetime(entt::registry& reg) {
-    auto* state = reg.ctx().find<ObstacleMeshLifetimeState>();
-    if (!state) {
-        state = &reg.ctx().emplace<ObstacleMeshLifetimeState>();
-    }
-    if (state->wired) return;
-
+    auto& wiring = registry_ctx_get_or_emplace<ObstacleLifecycleWiringState>(reg);
+    if (wiring.mesh_connected) return;
     reg.storage<ObstacleChildren>();
     reg.on_destroy<ObstacleChildren>().connect<&on_obstacle_destroy>();
-    state->wired = true;
+    wiring.mesh_connected = true;
 }
 
 void unwire_obstacle_mesh_lifetime(entt::registry& reg) {
+    auto* wiring = registry_ctx_find<ObstacleLifecycleWiringState>(reg);
+    if (!wiring || !wiring->mesh_connected) return;
     reg.on_destroy<ObstacleChildren>().disconnect<&on_obstacle_destroy>();
-    if (auto* state = reg.ctx().find<ObstacleMeshLifetimeState>()) {
-        state->wired = false;
-    }
+    wiring->mesh_connected = false;
 }
 
 static void append_child(entt::registry& reg, entt::entity parent, entt::entity child) {
@@ -96,32 +106,19 @@ static void append_child(entt::registry& reg, entt::entity parent, entt::entity 
     children.children[children.count++] = child;
 }
 
-// ObstacleChildren::MAX is the hard cap for mesh children owned by one
-// logical obstacle. Factory helpers reserve a slot before reg.create() so an
-// overflow cannot leave an unregistered MeshChild entity behind.
-static void require_child_capacity(entt::registry& reg, entt::entity parent) {
-    auto& children = reg.get_or_emplace<ObstacleChildren>(parent);
-    if (children.count >= ObstacleChildren::MAX) {
-        throw std::logic_error("ObstacleChildren capacity exceeded");
-    }
-}
-
-static entt::entity add_slab_child(entt::registry& reg, entt::entity parent,
-                                    float x, float w, float d, float h, Color tint) {
-    require_child_capacity(reg, parent);
+static void add_slab_child(entt::registry& reg, entt::entity parent,
+                           float x, float w, float d, float h, SDL_Color tint) {
     auto e = reg.create();
     PendingEntity pending{reg, e};
     reg.emplace<MeshChild>(e, MeshChild{parent, x, 0.0f, w, d, h, tint, 0, MeshType::Slab});
     reg.emplace<TagWorldPass>(e);
     append_child(reg, parent, e);
     pending.release();
-    return e;
 }
 
-static entt::entity add_shape_child(entt::registry& reg, entt::entity parent,
-                                     uint8_t mesh_index, float cx, float z_offset,
-                                     float size, Color tint) {
-    require_child_capacity(reg, parent);
+static void add_shape_child(entt::registry& reg, entt::entity parent,
+                            uint8_t mesh_index, float cx, float z_offset,
+                            float size, SDL_Color tint) {
     auto e = reg.create();
     PendingEntity pending{reg, e};
     reg.emplace<MeshChild>(e, MeshChild{parent, cx, z_offset, size, 0.0f, 0.0f, tint,
@@ -129,7 +126,6 @@ static entt::entity add_shape_child(entt::registry& reg, entt::entity parent,
     reg.emplace<TagWorldPass>(e);
     append_child(reg, parent, e);
     pending.release();
-    return e;
 }
 
 static bool bar_height_for(ObstacleKind kind, float& height) {
@@ -150,7 +146,7 @@ void spawn_obstacle_meshes(entt::registry& reg, entt::entity logical) {
 
     auto& obs = reg.get<Obstacle>(logical);
     const auto* wt_ptr = reg.try_get<WorldTransform>(logical);
-    auto& col = reg.get<Color>(logical);
+    auto& col = reg.get<SDL_Color>(logical);
     auto& dsz = reg.get<DrawSize>(logical);
 
     switch (obs.kind) {
@@ -226,7 +222,7 @@ void spawn_obstacle_meshes(entt::registry& reg, entt::entity logical) {
 }
 
 void build_obstacle_model(entt::registry& reg, entt::entity logical) {
-    if (!IsWindowReady()) return;
+    if (!platform_state::is_ready()) return;
 
     auto* obs = reg.try_get<Obstacle>(logical);
     auto* dsz = reg.try_get<DrawSize>(logical);
@@ -234,22 +230,20 @@ void build_obstacle_model(entt::registry& reg, entt::entity logical) {
 
     float height = 0.0f;
     if (!bar_height_for(obs->kind, height)) return;
-    if (!obstacle_model_lifecycle_wired(reg)) {
-        throw std::logic_error("build_obstacle_model requires wire_obstacle_model_lifecycle() first");
-    }
+    wire_obstacle_model_lifecycle(reg);
 
     // Manual model construction — never use LoadModelFromMesh (opaque + GPU-implicit).
     // Runtime mesh generator returns upload-ready mesh data; no explicit UploadMesh step.
     Model model = {};
-    model.transform     = MatrixIdentity();
+    model.transform     = glm::mat4{1.0f};
     model.meshCount     = 1;
-    model.meshes        = static_cast<Mesh*>(RL_MALLOC(sizeof(Mesh)));
-    model.meshes[0]     = GenMeshCube(1.0f, 1.0f, 1.0f);  // unit cube; slab_matrix scales to world dims
+    model.meshes        = static_cast<Mesh*>(std::malloc(sizeof(Mesh)));
+    model.meshes[0]     = render_api::gen_mesh_cube(1.0f, 1.0f, 1.0f);  // unit cube; slab_matrix scales to world dims
     model.materialCount = 1;
-    model.materials     = static_cast<Material*>(RL_MALLOC(sizeof(Material)));
-    model.materials[0]  = LoadMaterialDefault();
-    model.meshMaterial  = static_cast<int*>(RL_CALLOC(model.meshCount, sizeof(int)));
-    // meshMaterial[0] == 0 via RL_CALLOC
+    model.materials     = static_cast<Material*>(std::malloc(sizeof(Material)));
+    model.materials[0]  = render_api::load_material_default();
+    model.meshMaterial  = static_cast<int*>(std::calloc(static_cast<std::size_t>(model.meshCount), sizeof(int)));
+    // meshMaterial[0] == 0 via calloc
 
     if (reg.all_of<ObstacleModel>(logical)) {
         on_obstacle_model_destroy(reg, logical);
@@ -270,42 +264,16 @@ void build_obstacle_model(entt::registry& reg, entt::entity logical) {
     reg.get_or_emplace<TagWorldPass>(logical);
 }
 
-void on_obstacle_model_destroy(entt::registry& reg, entt::entity entity) {
-    auto* om = reg.try_get<ObstacleModel>(entity);
-    if (!om || !om->owned) return;
-
-    if (om->model.meshes) {
-        UnloadModel(om->model);
-    }
-    om->model = Model{};
-    om->owned = false;
-}
-
 void wire_obstacle_model_lifecycle(entt::registry& reg) {
-    auto* state = reg.ctx().find<ObstacleModelLifecycleState>();
-    if (!state) {
-        state = &reg.ctx().emplace<ObstacleModelLifecycleState>();
-    }
-    if (state->wired) return;
-
+    auto& wiring = registry_ctx_get_or_emplace<ObstacleLifecycleWiringState>(reg);
+    if (wiring.model_connected) return;
     reg.on_destroy<ObstacleModel>().connect<&on_obstacle_model_destroy>();
-    state->wired = true;
+    wiring.model_connected = true;
 }
 
 void unwire_obstacle_model_lifecycle(entt::registry& reg) {
+    auto* wiring = registry_ctx_find<ObstacleLifecycleWiringState>(reg);
+    if (!wiring || !wiring->model_connected) return;
     reg.on_destroy<ObstacleModel>().disconnect<&on_obstacle_model_destroy>();
-    if (auto* state = reg.ctx().find<ObstacleModelLifecycleState>()) {
-        state->wired = false;
-    }
-}
-
-// on_destroy listener: destroy MeshChild entities owned by this parent.
-// Uses ObstacleChildren for O(N) lookup instead of scanning the full pool.
-void on_obstacle_destroy(entt::registry& reg, entt::entity parent) {
-    auto* oc = reg.try_get<ObstacleChildren>(parent);
-    if (!oc) return;
-    for (int i = 0; i < oc->count; ++i) {
-        if (reg.valid(oc->children[i]))
-            reg.destroy(oc->children[i]);
-    }
+    wiring->model_connected = false;
 }

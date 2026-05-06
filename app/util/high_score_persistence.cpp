@@ -1,8 +1,6 @@
 #include "high_score_persistence.h"
-#include "fs_utils.h"
-#include "persistence_policy.h"
+#include "json_file_io.h"
 #include <nlohmann/json.hpp>
-#include <fstream>
 #include <filesystem>
 #include <cstdint>
 #include <cstdio>
@@ -11,98 +9,99 @@
 
 namespace high_score {
 
-std::filesystem::path get_high_scores_dir() {
-    persistence::Paths paths;
-    const auto result = persistence::resolve_paths(paths);
-    return result.ok() ? paths.root_dir : std::filesystem::path{};
+namespace {
+
+inline entt::hashed_string::hash_type hash_key(const char* key) {
+    return entt::hashed_string::value(key, std::strlen(key));
 }
 
-persistence::Result get_high_scores_file_path(
-    std::filesystem::path& out_path,
-    const std::filesystem::path& root_override) {
-    persistence::Paths paths;
-    const auto result = persistence::resolve_paths(paths, root_override);
-    if (!result.ok()) {
-        out_path.clear();
-        return result;
+inline bool is_key_valid(const char* key) {
+    return key && key[0] != '\0';
+}
+
+template <typename Predicate>
+int32_t find_entry_index_if(const HighScoreState& state, Predicate&& predicate) {
+    for (int32_t i = 0; i < state.entry_count; ++i) {
+        if (predicate(state.entries[i])) {
+            return i;
+        }
     }
-
-    out_path = paths.high_scores_file;
-    return persistence::Result{};
+    return -1;
 }
+
+int32_t find_entry_index_by_key(const HighScoreState& state, const char* key) {
+    return find_entry_index_if(state, [key](const HighScoreState::Entry& entry) {
+        return std::strncmp(entry.key, key, HighScoreState::KEY_CAP) == 0;
+    });
+}
+
+int32_t find_entry_index_by_hash(const HighScoreState& state, entt::hashed_string::hash_type hash) {
+    return find_entry_index_if(state, [hash](const HighScoreState::Entry& entry) {
+        return hash_key(entry.key) == hash;
+    });
+}
+
+template <typename State>
+auto* find_entry_by_hash(State& state, entt::hashed_string::hash_type hash) {
+    const int32_t idx = find_entry_index_by_hash(state, hash);
+    return idx >= 0 ? &state.entries[idx] : nullptr;
+}
+
+bool append_entry(HighScoreState& state, const char* key, int32_t score) {
+    if (state.entry_count >= HighScoreState::MAX_ENTRIES) return false;
+    auto& entry = state.entries[state.entry_count++];
+    std::strncpy(entry.key, key, HighScoreState::KEY_CAP - 1);
+    entry.key[HighScoreState::KEY_CAP - 1] = '\0';
+    entry.score = score;
+    return true;
+}
+
+}  // namespace
 
 int32_t make_key_str(char* buf, int32_t cap, const char* song_id, const char* difficulty) {
+    if (!buf || cap <= 0 || !song_id || !difficulty) {
+        return 0;
+    }
     return std::snprintf(buf, static_cast<std::size_t>(cap), "%s|%s", song_id, difficulty);
 }
 
 entt::hashed_string::hash_type make_key_hash(const char* song_id, const char* difficulty) {
     char buf[HighScoreState::KEY_CAP]{};
-    make_key_str(buf, HighScoreState::KEY_CAP, song_id, difficulty);
-    // Cast to const char* to select the const_wrapper (runtime) overload of
-    // hashed_string::value(), not the consteval array-literal overload.
-    return entt::hashed_string::value(static_cast<const char*>(buf));
+    if (make_key_str(buf, HighScoreState::KEY_CAP, song_id, difficulty) <= 0) {
+        return 0;
+    }
+    return hash_key(buf);
 }
 
 int32_t get_score(const HighScoreState& state, const char* key) {
-    for (int32_t i = 0; i < state.entry_count; ++i) {
-        if (std::strncmp(state.entries[i].key, key, HighScoreState::KEY_CAP) == 0) {
-            return state.entries[i].score;
-        }
-    }
-    return 0;
-}
-
-int32_t get_score_by_hash(const HighScoreState& state, entt::hashed_string::hash_type hash) {
-    for (int32_t i = 0; i < state.entry_count; ++i) {
-        if (entt::hashed_string::value(static_cast<const char*>(state.entries[i].key)) == hash) {
-            return state.entries[i].score;
-        }
-    }
-    return 0;
+    if (!is_key_valid(key)) return 0;
+    const int32_t idx = find_entry_index_by_key(state, key);
+    return idx >= 0 ? state.entries[idx].score : 0;
 }
 
 void set_score(HighScoreState& state, const char* key, int32_t score) {
-    for (int32_t i = 0; i < state.entry_count; ++i) {
-        if (std::strncmp(state.entries[i].key, key, HighScoreState::KEY_CAP) == 0) {
-            state.entries[i].score = score;
-            return;
-        }
+    if (!is_key_valid(key)) return;
+    const int32_t idx = find_entry_index_by_key(state, key);
+    if (idx >= 0) {
+        state.entries[idx].score = score;
+        return;
     }
-    if (state.entry_count < HighScoreState::MAX_ENTRIES) {
-        std::strncpy(state.entries[state.entry_count].key, key, HighScoreState::KEY_CAP - 1);
-        state.entries[state.entry_count].key[HighScoreState::KEY_CAP - 1] = '\0';
-        state.entries[state.entry_count].score = score;
-        ++state.entry_count;
-    }
-}
-
-void set_score_by_hash(HighScoreState& state, entt::hashed_string::hash_type hash, int32_t score) {
-    for (int32_t i = 0; i < state.entry_count; ++i) {
-        if (entt::hashed_string::value(static_cast<const char*>(state.entries[i].key)) == hash) {
-            state.entries[i].score = score;
-            return;
-        }
-    }
+    append_entry(state, key, score);
 }
 
 void ensure_entry(HighScoreState& state, const char* key) {
-    for (int32_t i = 0; i < state.entry_count; ++i) {
-        if (std::strncmp(state.entries[i].key, key, HighScoreState::KEY_CAP) == 0) return;
-    }
-    if (state.entry_count < HighScoreState::MAX_ENTRIES) {
-        std::strncpy(state.entries[state.entry_count].key, key, HighScoreState::KEY_CAP - 1);
-        state.entries[state.entry_count].key[HighScoreState::KEY_CAP - 1] = '\0';
-        state.entries[state.entry_count].score = 0;
-        ++state.entry_count;
-    }
+    if (!is_key_valid(key)) return;
+    if (find_entry_index_by_key(state, key) >= 0) return;
+    append_entry(state, key, 0);
 }
 
 int32_t get_current_high_score(const HighScoreState& state) {
     if (state.current_key_hash == 0) return 0;
-    return get_score_by_hash(state, state.current_key_hash);
+    if (const auto* entry = find_entry_by_hash(state, state.current_key_hash)) {
+        return entry->score;
+    }
+    return 0;
 }
-
-namespace {
 
 nlohmann::json high_score_state_to_json(const HighScoreState& state) {
     nlohmann::json result;
@@ -134,19 +133,8 @@ bool high_score_state_from_json(const nlohmann::json& obj, HighScoreState& state
             const auto& key = it.key();
             const auto& value = it.value();
 
-            if (!value.is_number_integer()) {
-                return false;
-            }
-
             std::int64_t raw = 0;
-            if (value.is_number_unsigned()) {
-                const auto unsigned_raw = value.get<std::uint64_t>();
-                raw = unsigned_raw > static_cast<std::uint64_t>(std::numeric_limits<std::int64_t>::max())
-                    ? std::numeric_limits<std::int64_t>::max()
-                    : static_cast<std::int64_t>(unsigned_raw);
-            } else {
-                raw = value.get<std::int64_t>();
-            }
+            if (!persistence::json_integer_to_i64(value, raw)) return false;
 
             // Clamp negative scores to 0, cap at max int32
             if (raw < 0) {
@@ -163,65 +151,26 @@ bool high_score_state_from_json(const nlohmann::json& obj, HighScoreState& state
     return true;
 }
 
-}  // namespace
-
 persistence::Result load_high_scores(HighScoreState& state, const std::filesystem::path& path) {
-    std::error_code ec;
-    const bool exists = std::filesystem::exists(path, ec);
-    if (ec) {
-        return persistence::Result{persistence::Status::FileReadFailed, ec};
-    }
-    if (!exists) {
-        return persistence::Result{persistence::Status::MissingFile, {}};
-    }
-
-    try {
-        std::ifstream file(path);
-        if (!file.is_open()) {
-            return persistence::Result{persistence::Status::FileOpenFailed, {}};
-        }
-
-        nlohmann::json obj;
-        file >> obj;
-        if (file.bad()) {
-            return persistence::Result{persistence::Status::FileReadFailed, {}};
-        }
-        if (!high_score_state_from_json(obj, state)) {
-            return persistence::Result{persistence::Status::CorruptData, {}};
-        }
-        return persistence::Result{};
-    } catch (const nlohmann::json::exception&) {
-        return persistence::Result{persistence::Status::CorruptData, {}};
-    }
+    return persistence::load_state_file(state, path, high_score_state_from_json);
 }
 
 persistence::Result save_high_scores(const HighScoreState& state, const std::filesystem::path& path) {
-    const auto ensure = fs_utils::ensure_directory_result(path.parent_path());
-    if (!ensure.ok) {
-        return persistence::Result{persistence::Status::DirectoryCreateFailed, ensure.error};
-    }
+    return persistence::save_state_file(state, path, high_score_state_to_json);
+}
 
-    std::ofstream file(path);
-    if (!file.is_open()) {
-        return persistence::Result{persistence::Status::FileOpenFailed, {}};
-    }
-
-    nlohmann::json obj = high_score_state_to_json(state);
-    file << obj.dump(2);
-    file.flush();
-    if (!file.good()) {
-        return persistence::Result{persistence::Status::FileWriteFailed, {}};
-    }
-    file.close();
-    return persistence::Result{};
+void mark_dirty_and_save(HighScorePersistence& persistence_state, const HighScoreState& state) {
+    persistence::mark_dirty_and_save(
+        persistence_state,
+        [&state](const std::filesystem::path& path) { return save_high_scores(state, path); });
 }
 
 void update_if_higher(HighScoreState& state, int32_t new_score) {
     if (state.current_key_hash == 0) return;
     if (new_score < 0) new_score = 0;
-    int32_t stored = get_score_by_hash(state, state.current_key_hash);
-    if (new_score > stored) {
-        set_score_by_hash(state, state.current_key_hash, new_score);
+    if (auto* entry = find_entry_by_hash(state, state.current_key_hash);
+        entry && new_score > entry->score) {
+        entry->score = new_score;
     }
 }
 

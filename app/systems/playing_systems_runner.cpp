@@ -1,13 +1,14 @@
 #include "all_systems.h"
 #include "../components/game_state.h"
+#include "../components/registry_context.h"
 
 // Runs all systems that should execute only during GamePhase::Playing.
 // Single phase-gate at the runner boundary; individual systems carry no guard.
 void tick_playing_systems(entt::registry& reg, float dt) {
-    if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
+    const auto* game_state = registry_ctx_find<GameState>(reg);
+    if (!game_state || !is_playing_phase(game_state->phase)) return;
     beat_log_system(reg, dt);
     beat_scheduler_system(reg, dt);
-    player_input_system(reg, dt);         // callbacks retain phase guard: dispatcher drain in game_state_system can invoke them in non-Playing phases
     shape_window_system(reg, dt);
     player_movement_system(reg, dt);
     scroll_system(reg, dt);

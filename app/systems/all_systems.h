@@ -1,7 +1,6 @@
 #pragma once
 
 #include <entt/entt.hpp>
-#include "../components/game_state.h"
 
 // Phase 0: Raw input polling
 void input_system_init(entt::registry& reg);  // one-time: emplace WebInputPolicy + platform detection
@@ -12,9 +11,6 @@ void test_player_system(entt::registry& reg, float dt);
 
 // Phase 2: Game State
 void game_state_system(entt::registry& reg, float dt);
-void game_state_enter_terminal_phase(entt::registry& reg, GamePhase phase);
-void game_state_end_screen_system(entt::registry& reg, float dt);
-
 // Phase 3: Rhythm Engine
 void song_playback_system(entt::registry& reg, float dt);
 void beat_log_system(entt::registry& reg, float dt);
@@ -37,7 +33,7 @@ void popup_feedback_system(entt::registry& reg, float dt);
 void energy_system(entt::registry& reg, float dt);
 
 // Phase runner: all Playing-only systems behind a single phase gate.
-// Call from tick_fixed_systems in place of the 13 individual Playing-gated calls.
+// Call from tick_fixed_systems in place of individual Playing-gated calls.
 void tick_playing_systems(entt::registry& reg, float dt);
 
 // Fixed-step tick: game_state → song_playback → Playing systems →
@@ -60,6 +56,7 @@ void ui_camera_system(entt::registry& reg, float dt);    // screen-space transfo
 // Phase 8: Render — world pass (3D) + UI pass (2D)
 void game_render_system(const entt::registry& reg, float alpha);
 void ui_render_system(entt::registry& reg, float alpha);
+void frame_render_system(entt::registry& reg);
 
 void audio_system(entt::registry& reg);
 

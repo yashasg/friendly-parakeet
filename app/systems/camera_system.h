@@ -1,12 +1,11 @@
 #pragma once
-#include "../entities/camera_entity.h"
-#include "../rendering/camera_resources.h"
-#include "runtime/runtime_api.h"
 #include <entt/entt.hpp>
 
 namespace camera {
 
 // Initialize camera, screen transform, and GPU meshes into registry.
+// Safe to call more than once on the same registry; context singletons are
+// inserted-or-assigned.
 void init(entt::registry& reg);
 
 // Unload GPU meshes and shader.

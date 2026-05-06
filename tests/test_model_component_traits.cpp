@@ -19,7 +19,6 @@
 
 #include <catch2/catch_test_macros.hpp>
 #include <type_traits>
-#include "runtime/runtime_api.h"
 #include <entt/entt.hpp>
 
 // ── 1. Type-trait static assertions ──────────────────────────────────────────

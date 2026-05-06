@@ -1,67 +1,57 @@
 #include <catch2/catch_test_macros.hpp>
-#include <cmath>
-#include "rendering/renderer_backend.h"
 
-TEST_CASE("sdl2 renderer validation counters capture render command stream",
+#include <SDL.h>
+
+TEST_CASE("sdl2 render target compositing loop is available",
           "[render][sdl2][validation]") {
-    using namespace platform::graphics;
+    REQUIRE(SDL_Init(SDL_INIT_VIDEO) == 0);
 
-    reset_renderer_validation_counters();
-    clear_renderer_frame_time_override();
+    SDL_Surface* surface = SDL_CreateRGBSurfaceWithFormat(0, 64, 64, 32, SDL_PIXELFORMAT_RGBA32);
+    REQUIRE(surface != nullptr);
 
-    begin_texture_mode(RenderTexture2D{});  // world pass
-    end_texture_mode();
-    begin_texture_mode(RenderTexture2D{});  // ui pass
-    end_texture_mode();
-    begin_drawing();
-    clear_background(Color{10, 20, 30, 255});
-    draw_texture_pro(Texture2D{}, Rectangle{}, Rectangle{}, Vector2{}, 0.0f, WHITE);  // world composite
-    draw_texture_pro(Texture2D{}, Rectangle{}, Rectangle{}, Vector2{}, 0.0f, WHITE);  // ui composite
-    begin_mode_3d(Camera3D{});
-    draw_triangle_3d({0.0f, 0.0f, 0.0f},
-                     {1.0f, 0.0f, 0.0f},
-                     {0.0f, 0.0f, 1.0f},
-                     RED);  // obstacle
-    draw_triangle_3d({2.0f, 0.0f, 2.0f},
-                     {2.5f, 0.0f, 2.0f},
-                     {2.0f, 0.0f, 2.5f},
-                     SKYBLUE);  // particle
-    end_mode_3d();
-    end_drawing();
+    SDL_Renderer* renderer = SDL_CreateSoftwareRenderer(surface);
+    REQUIRE(renderer != nullptr);
+    if (!SDL_RenderTargetSupported(renderer)) {
+        SDL_DestroyRenderer(renderer);
+        SDL_FreeSurface(surface);
+        SDL_Quit();
+        SKIP("SDL renderer does not support target textures on this platform");
+    }
 
-    const auto counters = renderer_validation_counters();
-    CHECK(counters.begin_texture_mode_calls == 2);
-    CHECK(counters.end_texture_mode_calls == 2);
-    CHECK(counters.begin_drawing_calls == 1);
-    CHECK(counters.clear_background_calls == 1);
-    CHECK(counters.draw_texture_pro_calls == 2);
-    CHECK(counters.begin_mode_3d_calls == 1);
-    CHECK(counters.draw_triangle_3d_calls == 2);
-    CHECK(counters.end_mode_3d_calls == 1);
-    CHECK(counters.end_drawing_calls == 1);
-    CHECK(counters.swap_window_calls == 1);
-    CHECK(counters.begin_drawing_skipped_not_ready <= counters.begin_drawing_calls);
-    CHECK(counters.clear_background_skipped_not_ready <= counters.clear_background_calls);
-    CHECK(counters.last_clear_background.r == 10);
-    CHECK(counters.last_clear_background.g == 20);
-    CHECK(counters.last_clear_background.b == 30);
-    CHECK(counters.last_clear_background.a == 255);
-}
+    SDL_Texture* world = SDL_CreateTexture(renderer,
+                                           SDL_PIXELFORMAT_RGBA8888,
+                                           SDL_TEXTUREACCESS_TARGET,
+                                           64,
+                                           64);
+    SDL_Texture* ui = SDL_CreateTexture(renderer,
+                                        SDL_PIXELFORMAT_RGBA8888,
+                                        SDL_TEXTUREACCESS_TARGET,
+                                        64,
+                                        64);
+    REQUIRE(world != nullptr);
+    REQUIRE(ui != nullptr);
 
-TEST_CASE("sdl2 renderer frame-time override is deterministic",
-          "[render][sdl2][validation][timing]") {
-    using namespace platform::graphics;
+    SDL_SetTextureBlendMode(world, SDL_BLENDMODE_BLEND);
+    SDL_SetTextureBlendMode(ui, SDL_BLENDMODE_BLEND);
 
-    reset_renderer_validation_counters();
-    set_renderer_frame_time_override(1.0f / 120.0f);
+    REQUIRE(SDL_SetRenderTarget(renderer, world) == 0);
+    SDL_SetRenderDrawColor(renderer, 10, 20, 30, 255);
+    REQUIRE(SDL_RenderClear(renderer) == 0);
 
-    CHECK(std::fabs(frame_time() - (1.0f / 120.0f)) < 0.00001f);
+    REQUIRE(SDL_SetRenderTarget(renderer, ui) == 0);
+    SDL_SetRenderDrawColor(renderer, 200, 120, 20, 120);
+    REQUIRE(SDL_RenderClear(renderer) == 0);
 
-    clear_renderer_frame_time_override();
-    const float dt = frame_time();
-    CHECK(std::isfinite(dt));
-    CHECK(dt >= 0.0f);
+    REQUIRE(SDL_SetRenderTarget(renderer, nullptr) == 0);
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    REQUIRE(SDL_RenderClear(renderer) == 0);
+    REQUIRE(SDL_RenderCopy(renderer, world, nullptr, nullptr) == 0);
+    REQUIRE(SDL_RenderCopy(renderer, ui, nullptr, nullptr) == 0);
+    SDL_RenderPresent(renderer);
 
-    const auto counters = renderer_validation_counters();
-    CHECK(counters.frame_time_calls == 2);
+    SDL_DestroyTexture(ui);
+    SDL_DestroyTexture(world);
+    SDL_DestroyRenderer(renderer);
+    SDL_FreeSurface(surface);
+    SDL_Quit();
 }

@@ -1,9 +1,10 @@
-#include "all_systems.h"
 #include "../components/obstacle.h"
+#include "../components/registry_context.h"
 #include "../components/transform.h"
 #include "../constants.h"
 #include "../entities/camera_entity.h"
 
+#include <entt/entt.hpp>
 #include <vector>
 
 namespace {
@@ -11,13 +12,6 @@ namespace {
 struct ObstacleDespawnScratch {
     std::vector<entt::entity> to_destroy;
 };
-
-ObstacleDespawnScratch& despawn_scratch_for(entt::registry& reg) {
-    if (auto* scratch = reg.ctx().find<ObstacleDespawnScratch>()) {
-        return *scratch;
-    }
-    return reg.ctx().emplace<ObstacleDespawnScratch>();
-}
 
 }  // namespace
 
@@ -32,14 +26,15 @@ ObstacleDespawnScratch& despawn_scratch_for(entt::registry& reg) {
 void obstacle_despawn_system(entt::registry& reg, float /*dt*/) {
     // Per-registry scratch retains capacity across frames without sharing mutable
     // state between registries.
-    auto& to_destroy = despawn_scratch_for(reg).to_destroy;
+    auto& scratch = registry_ctx_get_or_emplace<ObstacleDespawnScratch>(reg);
+    auto& to_destroy = scratch.to_destroy;
     to_destroy.clear();
 
     // Resolve the camera-Z despawn threshold for model-authority obstacles.
-    auto cam_view = reg.view<GameCamera>();
-    const float camera_despawn_z = cam_view.empty()
-        ? constants::DESTROY_Y
-        : cam_view.get<GameCamera>(cam_view.front()).cam.position.z;
+    const auto* camera = try_game_camera(reg);
+    const float camera_despawn_z = camera
+        ? camera->cam.position.z
+        : constants::DESTROY_Y;
 
     auto model_view = reg.view<ObstacleTag, ObstacleScrollZ>();
     for (auto [entity, oz] : model_view.each()) {

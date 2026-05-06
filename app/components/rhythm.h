@@ -13,7 +13,7 @@
 
 // ── Window Phase ────────────────────────────────────
 // Defined in window_phase.h; re-exported here for consumers of rhythm.h.
-#include "window_phase.h"
+#include "../util/window_phase.h"
 
 // ── Timing Grade (emplaced on obstacle at collision) ─
 enum class TimingTier : uint8_t {

@@ -1,8 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "util/shape_vertices.h"
+#include "entities/camera_entity.h"
 #include "constants.h"
-#include "runtime/runtime_api.h"
 #include <cmath>
 
 using Catch::Matchers::WithinAbs;
@@ -133,80 +133,6 @@ TEST_CASE("shape_verts::CIRCLE — CCW ordering", "[shape_verts]") {
         CAPTURE(i, j, k, cross_z);
         CHECK(cross_z > 0.0f);  // positive ⇒ CCW turn
     }
-}
-
-// ── Hexagon table ───────────────────────────────────────────────────────────
-
-TEST_CASE("shape_verts::HEXAGON — table size is 6", "[shape_verts]") {
-    CHECK(shape_verts::HEX_SEGMENTS == 6);
-    static_assert(sizeof(shape_verts::HEXAGON) / sizeof(shape_verts::V2) == 6);
-}
-
-TEST_CASE("shape_verts::HEXAGON — pointy-top (vertex 0 at top)", "[shape_verts]") {
-    CHECK_THAT(shape_verts::HEXAGON[0].x, WithinAbs( 0.0, 1e-5));
-    CHECK_THAT(shape_verts::HEXAGON[0].y, WithinAbs(-1.0, 1e-5));
-}
-
-TEST_CASE("shape_verts::HEXAGON — unit magnitude for all vertices", "[shape_verts]") {
-    for (int i = 0; i < shape_verts::HEX_SEGMENTS; ++i) {
-        CAPTURE(i);
-        float mag_sq = shape_verts::HEXAGON[i].x * shape_verts::HEXAGON[i].x
-                     + shape_verts::HEXAGON[i].y * shape_verts::HEXAGON[i].y;
-        CHECK_THAT(mag_sq, WithinAbs(1.0, 1e-5));
-    }
-}
-
-TEST_CASE("shape_verts::HEXAGON — top-bottom symmetry", "[shape_verts]") {
-    // Vertex 0 is (0, −1), vertex 3 is (0, +1): mirror about x-axis.
-    CHECK_THAT(shape_verts::HEXAGON[0].x, WithinAbs( shape_verts::HEXAGON[3].x, 1e-5));
-    CHECK_THAT(shape_verts::HEXAGON[0].y, WithinAbs(-shape_verts::HEXAGON[3].y, 1e-5));
-
-    // Vertex 1 (top-right) mirrors vertex 5 (top-left) in x only
-    CHECK_THAT(shape_verts::HEXAGON[1].x, WithinAbs(-shape_verts::HEXAGON[5].x, 1e-5));
-    CHECK_THAT(shape_verts::HEXAGON[1].y, WithinAbs( shape_verts::HEXAGON[5].y, 1e-5));
-
-    // Vertex 2 (bot-right) mirrors vertex 4 (bot-left)
-    CHECK_THAT(shape_verts::HEXAGON[2].x, WithinAbs(-shape_verts::HEXAGON[4].x, 1e-5));
-    CHECK_THAT(shape_verts::HEXAGON[2].y, WithinAbs( shape_verts::HEXAGON[4].y, 1e-5));
-}
-
-// ── Square table ────────────────────────────────────────────────────────────
-
-TEST_CASE("shape_verts::SQUARE — exact corners", "[shape_verts]") {
-    // Expected order: TL, TR, BR, BL
-    CHECK(shape_verts::SQUARE[0].x == -1.0f);
-    CHECK(shape_verts::SQUARE[0].y == -1.0f);
-
-    CHECK(shape_verts::SQUARE[1].x ==  1.0f);
-    CHECK(shape_verts::SQUARE[1].y == -1.0f);
-
-    CHECK(shape_verts::SQUARE[2].x ==  1.0f);
-    CHECK(shape_verts::SQUARE[2].y ==  1.0f);
-
-    CHECK(shape_verts::SQUARE[3].x == -1.0f);
-    CHECK(shape_verts::SQUARE[3].y ==  1.0f);
-}
-
-TEST_CASE("shape_verts::SQUARE — table size is 4", "[shape_verts]") {
-    static_assert(sizeof(shape_verts::SQUARE) / sizeof(shape_verts::V2) == 4);
-}
-
-// ── Triangle table ──────────────────────────────────────────────────────────
-
-TEST_CASE("shape_verts::TRIANGLE — exact vertices", "[shape_verts]") {
-    // CCW order: base-right, base-left, apex
-    CHECK(shape_verts::TRIANGLE[0].x ==  1.0f);
-    CHECK(shape_verts::TRIANGLE[0].y ==  1.0f);
-
-    CHECK(shape_verts::TRIANGLE[1].x == -1.0f);
-    CHECK(shape_verts::TRIANGLE[1].y ==  1.0f);
-
-    CHECK(shape_verts::TRIANGLE[2].x ==  0.0f);
-    CHECK(shape_verts::TRIANGLE[2].y == -1.0f);
-}
-
-TEST_CASE("shape_verts::TRIANGLE — table size is 3", "[shape_verts]") {
-    static_assert(sizeof(shape_verts::TRIANGLE) / sizeof(shape_verts::V2) == 3);
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

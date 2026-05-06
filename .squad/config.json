@@ -14,6 +14,7 @@
     "Saul": "claude-opus-4.7",
     "Rabin": "claude-opus-4.7",
     "Baer": "gpt-5.3-codex",
+    "Marquez": "claude-sonnet-4.6",
     "Scribe": "claude-haiku-4.5",
     "Ralph": "claude-haiku-4.5"
   }

@@ -34,6 +34,7 @@ How to decide who handles what.
 2. **Scribe always runs** after substantial work, always as `mode: "background"`. Never blocks.
 3. **Quick facts → coordinator answers directly.** Don't spawn an agent for "what port does the server run on?"
 4. **When two agents could handle it**, pick the one whose domain is the primary concern.
+   Exception: C++ compile-error rewires, dependency migration, and direct SDL/glm migration work should fan out to **Keaton and Marquez in parallel** with roughly equal ownership slices.
 5. **"Team, ..." → fan-out.** Spawn all relevant agents in parallel as `mode: "background"`.
 6. **Anticipate downstream work.** If a feature is being built, spawn the tester to write test cases from requirements simultaneously.
 7. **Issue-labeled work** — when a `squad:{member}` label is applied to an issue, route to that member. The Lead handles all `squad` (base label) triage.
@@ -47,7 +48,8 @@ How to decide who handles what.
 | Audio, beatmap pipeline | Fenster | — |
 | CMake, CI, WebAssembly | Hockney | — |
 | Tests, edge cases | Verbal | — |
-| C++20, performance, implementation | Keaton | Keyser |
+| C++20, performance, implementation | Keaton + Marquez | Split by file/module and run in parallel |
+| C++ load-balancing, compile-error rewires, direct SDL/glm migration | Keaton + Marquez | Split equally; both inspect/build/report or implement their assigned slices |
 | CI/CD, release automation, multi-platform builds | Kobayashi | Hockney |
 | Product strategy, roadmap, scope, acceptance criteria | Edie | Keyser |
 | UI/UX, player flows, accessibility, HUD/menu interaction | Redfoot | Edie |

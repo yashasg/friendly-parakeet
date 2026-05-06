@@ -1,21 +1,20 @@
 #include "all_systems.h"
-#include "../components/game_state.h"
 #include "../components/player.h"
-#include "../components/rendering.h"
 #include "../components/rhythm.h"
+#include "../components/registry_context.h"
 #include "../constants.h"
 
 static void apply_shape_color(entt::registry& reg, entt::entity entity, Shape shape) {
     auto si = static_cast<int>(shape);
     auto& sc = constants::SHAPE_COLORS[si];
-    reg.replace<Color>(entity, sc);
+    reg.replace<SDL_Color>(entity, sc);
 }
 
 void shape_window_system(entt::registry& reg, float /*dt*/) {
-    auto* song = reg.ctx().find<SongState>();
+    auto* song = registry_ctx_find<SongState>(reg);
     if (!song) return;
 
-    auto view = reg.view<PlayerTag, PlayerShape, ShapeWindow, Color>();
+    auto view = reg.view<PlayerTag, PlayerShape, ShapeWindow, SDL_Color>();
     for (auto [entity, pshape, swindow, col] : view.each()) {
         // Derive window_timer from song_time instead of accumulating dt.
         // This keeps shape windows frame-rate independent and perfectly

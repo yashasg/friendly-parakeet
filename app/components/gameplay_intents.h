@@ -12,10 +12,6 @@ struct PendingEnergyEffects {
     };
 
     std::vector<Event> events;
-
-    // Legacy compatibility for direct test setup; new gameplay writes events.
-    float delta = 0.0f;
-    bool  flash = false;
 };
 
 struct ScorePopupRequest {

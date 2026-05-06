@@ -31,12 +31,13 @@ inline float timing_multiplier(TimingTier tier) {
     return 0.25f;
 }
 
-inline TimingTier compute_timing_tier(float pct_from_peak) {
-    // Normalized against kTimingOkSeconds:
-    // Perfect <= 50ms, Good <= 100ms, Ok <= 150ms, otherwise Bad.
-    if (pct_from_peak <= (kTimingPerfectSeconds / kTimingOkSeconds)) return TimingTier::Perfect;
-    if (pct_from_peak <= (kTimingGoodSeconds / kTimingOkSeconds)) return TimingTier::Good;
-    if (pct_from_peak <= 1.0f) return TimingTier::Ok;
+// Back-compat helper for existing tests and ratio-based call sites.
+// ratio = |timing_delta| / half_window where:
+//   <= 1/3 => Perfect, <= 2/3 => Good, <= 1 => Ok, else Bad.
+inline TimingTier compute_timing_tier(float timing_error_ratio) {
+    if (timing_error_ratio <= (1.0f / 3.0f)) return TimingTier::Perfect;
+    if (timing_error_ratio <= (2.0f / 3.0f)) return TimingTier::Good;
+    if (timing_error_ratio <= 1.0f) return TimingTier::Ok;
     return TimingTier::Bad;
 }
 

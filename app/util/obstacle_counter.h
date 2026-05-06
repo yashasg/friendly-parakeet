@@ -8,7 +8,7 @@
 // Decremented via on_destroy<ObstacleTag>  signal.
 // game_state_system reads count == 0 to detect "all obstacles drained".
 struct ObstacleCounter {
-    int  count = 0;
+    int count = 0;
     bool wired = false;
 };
 

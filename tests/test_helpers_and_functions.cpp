@@ -165,27 +165,27 @@ TEST_CASE("song_state_derived: fixed window independent of song BPM", "[song_sta
 
 // ── enum name helpers ────────────────────────────────────────
 
-TEST_CASE("ToString: Shape covers all shapes", "[ToString]") {
-    CHECK(std::string(ToString(Shape::Circle))   == "Circle");
-    CHECK(std::string(ToString(Shape::Square))    == "Square");
-    CHECK(std::string(ToString(Shape::Triangle))  == "Triangle");
-    CHECK(std::string(ToString(Shape::Hexagon))   == "Hexagon");
+TEST_CASE("enum_name_or_unknown: Shape covers all shapes", "[enum_names]") {
+    CHECK(std::string(enum_name_or_unknown(Shape::Circle))   == "Circle");
+    CHECK(std::string(enum_name_or_unknown(Shape::Square))    == "Square");
+    CHECK(std::string(enum_name_or_unknown(Shape::Triangle))  == "Triangle");
+    CHECK(std::string(enum_name_or_unknown(Shape::Hexagon))   == "Hexagon");
 }
 
-TEST_CASE("ToString: ObstacleKind covers all kinds", "[ToString]") {
-    CHECK(std::string(ToString(ObstacleKind::ShapeGate))     == "ShapeGate");
-    CHECK(std::string(ToString(ObstacleKind::LaneBlock))     == "LaneBlock");
-    CHECK(std::string(ToString(ObstacleKind::LowBar))        == "LowBar");
-    CHECK(std::string(ToString(ObstacleKind::HighBar))       == "HighBar");
-    CHECK(std::string(ToString(ObstacleKind::ComboGate))     == "ComboGate");
-    CHECK(std::string(ToString(ObstacleKind::SplitPath))     == "SplitPath");
+TEST_CASE("enum_name_or_unknown: ObstacleKind covers all kinds", "[enum_names]") {
+    CHECK(std::string(enum_name_or_unknown(ObstacleKind::ShapeGate))     == "ShapeGate");
+    CHECK(std::string(enum_name_or_unknown(ObstacleKind::LaneBlock))     == "LaneBlock");
+    CHECK(std::string(enum_name_or_unknown(ObstacleKind::LowBar))        == "LowBar");
+    CHECK(std::string(enum_name_or_unknown(ObstacleKind::HighBar))       == "HighBar");
+    CHECK(std::string(enum_name_or_unknown(ObstacleKind::ComboGate))     == "ComboGate");
+    CHECK(std::string(enum_name_or_unknown(ObstacleKind::SplitPath))     == "SplitPath");
 }
 
-TEST_CASE("ToString: TimingTier covers all tiers", "[ToString]") {
-    CHECK(std::string(ToString(TimingTier::Bad))     == "Bad");
-    CHECK(std::string(ToString(TimingTier::Ok))      == "Ok");
-    CHECK(std::string(ToString(TimingTier::Good))    == "Good");
-    CHECK(std::string(ToString(TimingTier::Perfect)) == "Perfect");
+TEST_CASE("enum_name_or_unknown: TimingTier covers all tiers", "[enum_names]") {
+    CHECK(std::string(enum_name_or_unknown(TimingTier::Bad))     == "Bad");
+    CHECK(std::string(enum_name_or_unknown(TimingTier::Ok))      == "Ok");
+    CHECK(std::string(enum_name_or_unknown(TimingTier::Good))    == "Good");
+    CHECK(std::string(enum_name_or_unknown(TimingTier::Perfect)) == "Perfect");
 }
 
 // ── dispatcher helpers ───────────────────────────────────────

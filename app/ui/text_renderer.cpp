@@ -1,71 +1,95 @@
 #include "text_renderer.h"
-#include "runtime/runtime_api.h"
-#include <cstdio>
+#include "../systems/platform_state.h"
+#include <SDL.h>
+#include <SDL_ttf.h>
+#include <array>
+#include <filesystem>
 #include <string>
 
-// ── Helper: pick font by size index ─────────────────────────
-static const Font& pick_font(const TextContext& ctx, FontSize font_size) {
-    switch (font_size) {
-        case FontSize::Small:  return ctx.font_small;
-        case FontSize::Medium: return ctx.font_medium;
-        case FontSize::Large:  return ctx.font_large;
-        default:               return ctx.font_medium;
+namespace {
+
+struct FontSlot {
+    TTF_Font* TextContext::*font_member;
+    int size;
+};
+
+constexpr std::array<FontSlot, 3> kFontSlots{{
+    {&TextContext::font_small, 16},
+    {&TextContext::font_medium, 28},
+    {&TextContext::font_large, 48},
+}};
+
+template <typename Context, typename Fn>
+void for_each_font(Context& ctx, Fn&& fn) {
+    for (const auto& slot : kFontSlots) {
+        fn(ctx.*slot.font_member, slot);
     }
 }
 
-// ── text_init ───────────────────────────────────────────────
-bool text_init(TextContext& ctx, const char* font_path) {
-    if (!FileExists(font_path)) {
-        TraceLog(LOG_WARNING, "Font file not found: %s", font_path);
-        return false;
+TTF_Font* pick_font(const TextContext& ctx, FontSize font_size) {
+    constexpr std::size_t kDefaultFontIndex = static_cast<std::size_t>(FontSize::Medium);
+    const int font_index = static_cast<int>(font_size);
+    if (font_index < 0 || static_cast<std::size_t>(font_index) >= kFontSlots.size()) {
+        return ctx.*kFontSlots[kDefaultFontIndex].font_member;
+    }
+    return ctx.*kFontSlots[static_cast<std::size_t>(font_index)].font_member;
+}
+
+bool is_font_loaded(TTF_Font* const& font) {
+    return font != nullptr;
+}
+
+bool text_init_from_path(TextContext& ctx, const char* font_path) {
+    if (!font_path) return false;
+    if (ctx.loaded) {
+        text_shutdown(ctx);
     }
 
-    ctx.font_small  = LoadFontEx(font_path, 16, nullptr, 0);
-    ctx.font_medium = LoadFontEx(font_path, 28, nullptr, 0);
-    ctx.font_large  = LoadFontEx(font_path, 48, nullptr, 0);
+    bool loaded_all_fonts = true;
+    for_each_font(ctx, [font_path, &loaded_all_fonts](TTF_Font*& font, const FontSlot& slot) {
+        font = TTF_OpenFont(font_path, slot.size);
+        loaded_all_fonts = loaded_all_fonts && is_font_loaded(font);
+    });
 
-    // Check if any font failed to load (baseSize will be 0)
-    if (ctx.font_small.baseSize == 0 ||
-        ctx.font_medium.baseSize == 0 ||
-        ctx.font_large.baseSize == 0) {
-        TraceLog(LOG_WARNING, "Failed to load font: %s", font_path);
+    if (!loaded_all_fonts) {
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "Failed to load font: %s", font_path);
         text_shutdown(ctx);
         return false;
     }
-
-    // Enable bilinear filtering for smoother text at non-native sizes
-    SetTextureFilter(ctx.font_small.texture,  TEXTURE_FILTER_BILINEAR);
-    SetTextureFilter(ctx.font_medium.texture, TEXTURE_FILTER_BILINEAR);
-    SetTextureFilter(ctx.font_large.texture,  TEXTURE_FILTER_BILINEAR);
 
     ctx.loaded = true;
     return true;
 }
 
+}  // namespace
+
 bool text_init_default(TextContext& ctx) {
-    std::string exe_font = std::string(GetApplicationDirectory())
-                         + "content/fonts/LiberationMono-Regular.ttf";
-    const char* font_paths[] = {
-        exe_font.c_str(),
+    const std::array<std::filesystem::path, 6> font_paths = {{
+        std::filesystem::current_path() / "content/fonts/LiberationMono-Regular.ttf",
         "content/fonts/LiberationMono-Regular.ttf",
+        "/System/Library/Fonts/Supplemental/Menlo.ttc",
+        "/System/Library/Fonts/Monaco.ttf",
         "/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf",
         "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
-    };
-    for (const char* path : font_paths) {
-        if (text_init(ctx, path)) {
-            TraceLog(LOG_INFO, "Loaded font: %s", path);
+    }};
+    for (const auto& path : font_paths) {
+        const std::string utf8_path = path.string();
+        if (text_init_from_path(ctx, utf8_path.c_str())) {
+            SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Loaded font: %s", utf8_path.c_str());
             return true;
         }
     }
-    TraceLog(LOG_ERROR, "Could not load any TTF font");
+    SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Could not load any TTF font");
     return false;
 }
 
-// ── text_shutdown ───────────────────────────────────────────
 void text_shutdown(TextContext& ctx) {
-    if (ctx.font_large.baseSize > 0)  UnloadFont(ctx.font_large);
-    if (ctx.font_medium.baseSize > 0) UnloadFont(ctx.font_medium);
-    if (ctx.font_small.baseSize > 0)  UnloadFont(ctx.font_small);
+    for_each_font(ctx, [](TTF_Font*& font, const FontSlot&) {
+        if (is_font_loaded(font)) {
+            TTF_CloseFont(font);
+            font = nullptr;
+        }
+    });
     ctx.loaded = false;
 }
 
@@ -78,40 +102,32 @@ void text_draw(const TextContext& ctx,
                TextAlign align) {
     if (!text || !text[0] || !ctx.loaded) return;
 
-    const Font& font = pick_font(ctx, font_size);
-    float fontSize = static_cast<float>(font.baseSize);
-    float spacing = 1.0f;
+    TTF_Font* font = pick_font(ctx, font_size);
+    if (!font) return;
 
-    Vector2 size = MeasureTextEx(font, text, fontSize, spacing);
+    int text_w = 0, text_h = 0;
+    TTF_SizeUTF8(font, text, &text_w, &text_h);
 
     float draw_x = x;
     switch (align) {
-        case TextAlign::Left:                            break;
-        case TextAlign::Center: draw_x = x - size.x / 2; break;
-        case TextAlign::Right:  draw_x = x - size.x;      break;
+        case TextAlign::Left:                                             break;
+        case TextAlign::Center: draw_x = x - static_cast<float>(text_w) * 0.5f; break;
+        case TextAlign::Right:  draw_x = x - static_cast<float>(text_w);        break;
     }
 
-    DrawTextEx(font, text, {draw_x, y}, fontSize, spacing,
-               {r, g, b, a});
-}
+    SDL_Renderer* renderer = platform_state::renderer();
+    if (!renderer) return;
 
-// ── text_draw_number ────────────────────────────────────────
-void text_draw_number(const TextContext& ctx,
-                      int number,
-                      float x, float y,
-                      FontSize font_size,
-                      uint8_t r, uint8_t g, uint8_t b, uint8_t a,
-                      TextAlign align) {
-    char buf[16];
-    std::snprintf(buf, sizeof(buf), "%d", number);
-    text_draw(ctx, buf, x, y, font_size, r, g, b, a, align);
-}
+    SDL_Color color{r, g, b, a};
+    SDL_Surface* surface = TTF_RenderUTF8_Blended(font, text, color);
+    if (!surface) return;
 
-// ── text_width ──────────────────────────────────────────────
-int text_width(const TextContext& ctx, const char* text, FontSize font_size) {
-    if (!text || !ctx.loaded) return 0;
-    const Font& font = pick_font(ctx, font_size);
-    float fontSize = static_cast<float>(font.baseSize);
-    Vector2 size = MeasureTextEx(font, text, fontSize, 1.0f);
-    return static_cast<int>(size.x);
+    SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
+    SDL_FreeSurface(surface);
+    if (!texture) return;
+
+    const SDL_FRect dst{draw_x, y,
+                        static_cast<float>(text_w), static_cast<float>(text_h)};
+    SDL_RenderCopyF(renderer, texture, nullptr, &dst);
+    SDL_DestroyTexture(texture);
 }

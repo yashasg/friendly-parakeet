@@ -1,26 +1,31 @@
-#include "all_systems.h"
 #include "../entities/obstacle_entity.h"
 #include "../components/beat_map.h"
-#include "../components/game_state.h"
+#include "../components/registry_context.h"
 #include "../components/rhythm.h"
 #include "../components/song_state.h"
-#include "../components/obstacle.h"
-#include "../components/transform.h"
-#include "../components/rendering.h"
 #include "../constants.h"
+#include <entt/entt.hpp>
+
+namespace {
+
+float scheduled_beat_time(const SongState& song, const BeatMap& map, int beat_index) {
+    if (beat_index >= 0 && static_cast<size_t>(beat_index) < map.beat_times.size()) {
+        return map.beat_times[static_cast<size_t>(beat_index)];
+    }
+    return song.offset + beat_index * song.beat_period;
+}
+
+}  // namespace
 
 void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
-    auto* song = reg.ctx().find<SongState>();
-    auto* map  = reg.ctx().find<BeatMap>();
+    auto* song = registry_ctx_find<SongState>(reg);
+    auto* map  = registry_ctx_find<BeatMap>(reg);
     if (!song || !map || !song->playing) return;
 
     while (song->next_spawn_idx < map->beats.size()) {
         const auto& entry = map->beats[song->next_spawn_idx];
 
-        float beat_time  = song->offset + entry.beat_index * song->beat_period;
-        if (!map->beat_times.empty()) {
-            beat_time = map->beat_times[static_cast<size_t>(entry.beat_index)];
-        }
+        const float beat_time = scheduled_beat_time(*song, *map, entry.beat_index);
         // Beat line is the collision point: beat_time maps to crossing PLAYER_Y.
         float spawn_time = beat_time - song->lead_time;
 

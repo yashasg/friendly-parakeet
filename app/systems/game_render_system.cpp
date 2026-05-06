@@ -1,15 +1,26 @@
 #include "all_systems.h"
+#include "render_api.h"
 #include "../util/shape_vertices.h"
-#include "../components/rendering.h"
+#include "../components/transform.h"
+#include "../components/render_tags.h"
 #include "../components/game_state.h"
 #include "../components/beat_map.h"
 #include "../components/song_state.h"
+#include "../components/registry_context.h"
 #include "../constants.h"
-#include "../rendering/renderer_backend.h"
-#include "camera_system.h"
-#include "runtime/runtime_api.h"
+#include "../entities/camera_entity.h"
 #include <algorithm>
 #include <cmath>
+#include <glm/glm.hpp>
+
+namespace {
+
+glm::vec3 transform_point(const glm::mat4& matrix, const glm::vec3& point) {
+    const glm::vec4 transformed = matrix * glm::vec4(point, 1.0f);
+    return {transformed.x, transformed.y, transformed.z};
+}
+
+}  // namespace
 
 // ═════════════════════════════════════════════════════════════════════════════
 // 3D world draw passes — floor, obstacles, particles, shapes
@@ -20,8 +31,8 @@ static constexpr int SHAPE_COLOR_COUNT =
 static_assert(constants::LANE_COUNT <= SHAPE_COLOR_COUNT,
               "Lane rendering expects one canonical shape color per lane");
 
-static Color floor_lane_color(int lane, uint8_t alpha) {
-    Color c = constants::SHAPE_COLORS[lane];
+static SDL_Color floor_lane_color(int lane, uint8_t alpha) {
+    SDL_Color c = constants::SHAPE_COLORS[lane];
     c.a = alpha;
     return c;
 }
@@ -31,9 +42,9 @@ static void draw_floor_lines(const FloorParams& fp) {
     {
         constexpr float sw = static_cast<float>(constants::SCREEN_W);
         constexpr float sh = static_cast<float>(constants::SCREEN_H);
-        const Color corridor = {40, 40, 60, 120};
-        platform::graphics::draw_line_3d({0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, sh}, corridor);
-        platform::graphics::draw_line_3d({sw, 0.0f, 0.0f}, {sw, 0.0f, sh}, corridor);
+        const SDL_Color corridor = {40, 40, 60, 120};
+        render_api::draw_line_3d({0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, sh}, corridor);
+        render_api::draw_line_3d({sw, 0.0f, 0.0f}, {sw, 0.0f, sh}, corridor);
     }
 
     // Lane guide lines
@@ -42,11 +53,11 @@ static void draw_floor_lines(const FloorParams& fp) {
         constexpr float lane_half = 120.0f;
         for (int lane = 0; lane < constants::LANE_COUNT; ++lane) {
             float cx = constants::LANE_X[lane];
-            Color c = floor_lane_color(lane, 50);
-            platform::graphics::draw_line_3d({cx - lane_half, 0.0f, 0.0f},
+            SDL_Color c = floor_lane_color(lane, 50);
+            render_api::draw_line_3d({cx - lane_half, 0.0f, 0.0f},
                                              {cx - lane_half, 0.0f, sh},
                                              c);
-            platform::graphics::draw_line_3d({cx + lane_half, 0.0f, 0.0f},
+            render_api::draw_line_3d({cx + lane_half, 0.0f, 0.0f},
                                              {cx + lane_half, 0.0f, sh},
                                              c);
         }
@@ -55,7 +66,7 @@ static void draw_floor_lines(const FloorParams& fp) {
     // Floor connectors + shape outlines
     for (int lane = 0; lane < constants::LANE_COUNT; ++lane) {
         float cx = constants::LANE_X[lane];
-        Color c = floor_lane_color(lane, fp.alpha);
+        SDL_Color c = floor_lane_color(lane, fp.alpha);
 
         for (int j = 0; j < constants::FLOOR_SHAPE_COUNT; ++j) {
             float cz = constants::FLOOR_Y_START
@@ -63,7 +74,7 @@ static void draw_floor_lines(const FloorParams& fp) {
 
             if (j < constants::FLOOR_SHAPE_COUNT - 1) {
                 float next_cz = cz + constants::FLOOR_SHAPE_SPACING;
-                platform::graphics::draw_line_3d({cx, 0.0f, cz + fp.half},
+                render_api::draw_line_3d({cx, 0.0f, cz + fp.half},
                                                  {cx, 0.0f, next_cz - fp.half},
                                                  c);
             }
@@ -71,26 +82,26 @@ static void draw_floor_lines(const FloorParams& fp) {
             if (lane == 1) {
                 float l = cx - fp.half, r = cx + fp.half;
                 float t = cz - fp.half, b = cz + fp.half;
-                platform::graphics::draw_line_3d({l, 0.0f, t}, {r, 0.0f, t}, c);
-                platform::graphics::draw_line_3d({r, 0.0f, t}, {r, 0.0f, b}, c);
-                platform::graphics::draw_line_3d({r, 0.0f, b}, {l, 0.0f, b}, c);
-                platform::graphics::draw_line_3d({l, 0.0f, b}, {l, 0.0f, t}, c);
+                render_api::draw_line_3d({l, 0.0f, t}, {r, 0.0f, t}, c);
+                render_api::draw_line_3d({r, 0.0f, t}, {r, 0.0f, b}, c);
+                render_api::draw_line_3d({r, 0.0f, b}, {l, 0.0f, b}, c);
+                render_api::draw_line_3d({l, 0.0f, b}, {l, 0.0f, t}, c);
             }
 
             if (lane == 2) {
                 float apex_x = cx, apex_z = cz - fp.half;
                 float bl_x = cx - fp.half, bl_z = cz + fp.half;
                 float br_x = cx + fp.half, br_z = cz + fp.half;
-                platform::graphics::draw_line_3d({apex_x, 0.0f, apex_z}, {br_x, 0.0f, br_z}, c);
-                platform::graphics::draw_line_3d({br_x, 0.0f, br_z}, {bl_x, 0.0f, bl_z}, c);
-                platform::graphics::draw_line_3d({bl_x, 0.0f, bl_z}, {apex_x, 0.0f, apex_z}, c);
+                render_api::draw_line_3d({apex_x, 0.0f, apex_z}, {br_x, 0.0f, br_z}, c);
+                render_api::draw_line_3d({br_x, 0.0f, br_z}, {bl_x, 0.0f, bl_z}, c);
+                render_api::draw_line_3d({bl_x, 0.0f, bl_z}, {apex_x, 0.0f, apex_z}, c);
             }
         }
     }
 }
 
 static void draw_floor_rings(const FloorParams& fp) {
-    Color c = floor_lane_color(0, fp.alpha);
+    SDL_Color c = floor_lane_color(0, fp.alpha);
     for (int j = 0; j < constants::FLOOR_SHAPE_COUNT; ++j) {
         float cz = constants::FLOOR_Y_START
             + static_cast<float>(j) * constants::FLOOR_SHAPE_SPACING;
@@ -113,11 +124,11 @@ static void draw_floor_rings(const FloorParams& fp) {
             float ix2 = cx + shape_verts::CIRCLE[next_idx].x * inner_r;
             float iz2 = cz + shape_verts::CIRCLE[next_idx].y * inner_r;
 
-            platform::graphics::draw_triangle_3d({ox1, 0.0f, oz1},
+            render_api::draw_triangle_3d({ox1, 0.0f, oz1},
                                                  {ix1, 0.0f, iz1},
                                                  {ox2, 0.0f, oz2},
                                                  c);
-            platform::graphics::draw_triangle_3d({ix1, 0.0f, iz1},
+            render_api::draw_triangle_3d({ix1, 0.0f, iz1},
                                                  {ix2, 0.0f, iz2},
                                                  {ox2, 0.0f, oz2},
                                                  c);
@@ -152,7 +163,7 @@ static void draw_floor_beat_lines(const SongState* song,
         const uint8_t green = on_beat_line ? 245 : 170;
         const uint8_t blue = on_beat_line ? 255 : 210;
 
-        platform::graphics::draw_line_3d({x_min, 0.0f, z},
+        render_api::draw_line_3d({x_min, 0.0f, z},
                                          {x_max, 0.0f, z},
                                          {red, green, blue, alpha});
     };
@@ -178,13 +189,13 @@ static void draw_floor_beat_lines(const SongState* song,
 static void draw_owned_models(const entt::registry& reg) {
     constexpr float kTwoPi = 2.0f * PI;
 
-    auto transformed = [](const Matrix& mat, float x, float y, float z) {
-        return Vector3Transform(Vector3{x, y, z}, mat);
+    auto transformed = [](const glm::mat4& mat, float x, float y, float z) {
+        return transform_point(mat, glm::vec3{x, y, z});
     };
-    auto draw_triangles_from_mesh = [&](const Mesh& mesh, const Matrix& mat, Color tint) -> bool {
+    auto draw_triangles_from_mesh = [&](const Mesh& mesh, const glm::mat4& mat, SDL_Color tint) -> bool {
         if (!mesh.vertices || mesh.vertexCount <= 0 || mesh.triangleCount <= 0) return false;
 
-        const auto read_vertex = [&](int vertex_index) -> Vector3 {
+        const auto read_vertex = [&](int vertex_index) -> glm::vec3 {
             const int i = vertex_index * 3;
             return transformed(mat, mesh.vertices[i], mesh.vertices[i + 1], mesh.vertices[i + 2]);
         };
@@ -200,7 +211,7 @@ static void draw_owned_models(const entt::registry& reg) {
                     || ic >= mesh.vertexCount) {
                     continue;
                 }
-                platform::graphics::draw_triangle_3d(read_vertex(ia), read_vertex(ib), read_vertex(ic), tint);
+                render_api::draw_triangle_3d(read_vertex(ia), read_vertex(ib), read_vertex(ic), tint);
                 drew_any = true;
             }
             return drew_any;
@@ -209,14 +220,14 @@ static void draw_owned_models(const entt::registry& reg) {
         bool drew_any = false;
         const int vertex_count = std::min(mesh.vertexCount, mesh.triangleCount * 3);
         for (int i = 0; i + 2 < vertex_count; i += 3) {
-            platform::graphics::draw_triangle_3d(read_vertex(i), read_vertex(i + 1), read_vertex(i + 2), tint);
+            render_api::draw_triangle_3d(read_vertex(i), read_vertex(i + 1), read_vertex(i + 2), tint);
             drew_any = true;
         }
         return drew_any;
     };
 
-    auto draw_box = [&](const Matrix& mat, Color tint, float half_x, float half_y, float half_z) {
-        const Vector3 corners[8] = {
+    auto draw_box = [&](const glm::mat4& mat, SDL_Color tint, float half_x, float half_y, float half_z) {
+        const glm::vec3 corners[8] = {
             transformed(mat, -half_x, -half_y, -half_z),
             transformed(mat, half_x, -half_y, -half_z),
             transformed(mat, half_x, half_y, -half_z),
@@ -231,37 +242,37 @@ static void draw_owned_models(const entt::registry& reg) {
             {4, 0, 3}, {4, 3, 7}, {3, 2, 6}, {3, 6, 7}, {4, 5, 1}, {4, 1, 0},
         };
         for (const auto& face : faces) {
-            platform::graphics::draw_triangle_3d(corners[face[0]], corners[face[1]], corners[face[2]], tint);
+            render_api::draw_triangle_3d(corners[face[0]], corners[face[1]], corners[face[2]], tint);
         }
     };
 
-    auto draw_prism = [&](const Matrix& mat, Color tint, int sides, float half_height) {
+    auto draw_prism = [&](const glm::mat4& mat, SDL_Color tint, int sides, float half_height) {
         if (sides < 3) return;
         for (int i = 0; i < sides; ++i) {
             const float a0 = kTwoPi * static_cast<float>(i) / static_cast<float>(sides);
             const float a1 = kTwoPi * static_cast<float>(i + 1) / static_cast<float>(sides);
 
-            const Vector3 top_center = transformed(mat, 0.0f, half_height, 0.0f);
-            const Vector3 bot_center = transformed(mat, 0.0f, -half_height, 0.0f);
-            const Vector3 top0 = transformed(mat, std::cos(a0), half_height, std::sin(a0));
-            const Vector3 top1 = transformed(mat, std::cos(a1), half_height, std::sin(a1));
-            const Vector3 bot0 = transformed(mat, std::cos(a0), -half_height, std::sin(a0));
-            const Vector3 bot1 = transformed(mat, std::cos(a1), -half_height, std::sin(a1));
+            const glm::vec3 top_center = transformed(mat, 0.0f, half_height, 0.0f);
+            const glm::vec3 bot_center = transformed(mat, 0.0f, -half_height, 0.0f);
+            const glm::vec3 top0 = transformed(mat, std::cos(a0), half_height, std::sin(a0));
+            const glm::vec3 top1 = transformed(mat, std::cos(a1), half_height, std::sin(a1));
+            const glm::vec3 bot0 = transformed(mat, std::cos(a0), -half_height, std::sin(a0));
+            const glm::vec3 bot1 = transformed(mat, std::cos(a1), -half_height, std::sin(a1));
 
-            platform::graphics::draw_triangle_3d(top_center, top0, top1, tint);
-            platform::graphics::draw_triangle_3d(bot_center, bot1, bot0, tint);
-            platform::graphics::draw_triangle_3d(top0, bot0, top1, tint);
-            platform::graphics::draw_triangle_3d(top1, bot0, bot1, tint);
+            render_api::draw_triangle_3d(top_center, top0, top1, tint);
+            render_api::draw_triangle_3d(bot_center, bot1, bot0, tint);
+            render_api::draw_triangle_3d(top0, bot0, top1, tint);
+            render_api::draw_triangle_3d(top1, bot0, bot1, tint);
         }
     };
 
-    auto draw_quad = [&](const Matrix& mat, Color tint) {
-        const Vector3 a = transformed(mat, -0.5f, 0.0f, -0.5f);
-        const Vector3 b = transformed(mat, 0.5f, 0.0f, -0.5f);
-        const Vector3 c = transformed(mat, 0.5f, 0.0f, 0.5f);
-        const Vector3 d = transformed(mat, -0.5f, 0.0f, 0.5f);
-        platform::graphics::draw_triangle_3d(a, b, c, tint);
-        platform::graphics::draw_triangle_3d(a, c, d, tint);
+    auto draw_quad = [&](const glm::mat4& mat, SDL_Color tint) {
+        const glm::vec3 a = transformed(mat, -0.5f, 0.0f, -0.5f);
+        const glm::vec3 b = transformed(mat, 0.5f, 0.0f, -0.5f);
+        const glm::vec3 c = transformed(mat, 0.5f, 0.0f, 0.5f);
+        const glm::vec3 d = transformed(mat, -0.5f, 0.0f, 0.5f);
+        render_api::draw_triangle_3d(a, b, c, tint);
+        render_api::draw_triangle_3d(a, c, d, tint);
     };
 
     auto draw_model_transform_sdl2 = [&](const ModelTransform& mt, const camera::ShapeMeshes* sm) {
@@ -300,23 +311,17 @@ static void draw_owned_models(const entt::registry& reg) {
         }
     };
 
-    const auto* sm = reg.ctx().find<camera::ShapeMeshes>();
-    {
-        auto view = reg.view<const ModelTransform, const TagWorldPass>();
+    const auto* sm = registry_ctx_find<camera::ShapeMeshes>(reg);
+    auto draw_model_transform_view = [&](auto view) {
         for (auto [entity, mt] : view.each()) {
             (void)entity;
             draw_model_transform_sdl2(mt, sm);
         }
-    }
-    {
-        auto view = reg.view<const ModelTransform, const TagEffectsPass>();
-        for (auto [entity, mt] : view.each()) {
-            (void)entity;
-            draw_model_transform_sdl2(mt, sm);
-        }
-    }
+    };
+    draw_model_transform_view(reg.view<const ModelTransform, const TagWorldPass>());
+    draw_model_transform_view(reg.view<const ModelTransform, const TagEffectsPass>());
 
-    auto view = reg.view<const ObstacleModel, const Color, const TagWorldPass>();
+    auto view = reg.view<const ObstacleModel, const SDL_Color, const TagWorldPass>();
     for (auto [entity, om, tint] : view.each()) {
         (void)entity;
         if (!om.owned || !om.model.meshes || om.model.meshCount <= 0) continue;
@@ -333,17 +338,19 @@ static void draw_owned_models(const entt::registry& reg) {
 }
 
 void game_render_system(const entt::registry& reg, float /*alpha*/) {
-    auto& gs = reg.ctx().get<GameState>();
+    const auto& gs = registry_ctx_get<GameState>(reg);
     auto& camera = game_camera(reg).cam;
+    const auto* clip_planes = registry_ctx_find<CameraClipPlanes>(reg);
+    constexpr CameraClipPlanes kDefaultClipPlanes{};
 
-    platform::graphics::clear_background({15, 15, 25, 255});
+    render_api::clear_background({15, 15, 25, 255});
 
-    platform::graphics::set_clip_planes(1.0, 5000.0);
-    platform::graphics::begin_mode_3d(camera);
+    const CameraClipPlanes& active_clip_planes = clip_planes ? *clip_planes : kDefaultClipPlanes;
+    render_api::begin_mode_3d(camera, active_clip_planes);
 
-    const auto& floor_params = reg.ctx().get<FloorParams>();
-    const auto* song = reg.ctx().find<SongState>();
-    const auto* map = reg.ctx().find<BeatMap>();
+    const auto& floor_params = registry_ctx_get<FloorParams>(reg);
+    const auto* song = registry_ctx_find<SongState>(reg);
+    const auto* map = registry_ctx_find<BeatMap>(reg);
 
     // ── Render passes ──────────────────────────────────────────
     draw_floor_lines(floor_params);
@@ -354,5 +361,5 @@ void game_render_system(const entt::registry& reg, float /*alpha*/) {
         draw_owned_models(reg);
     }
 
-    platform::graphics::end_mode_3d();
+    render_api::end_mode_3d();
 }

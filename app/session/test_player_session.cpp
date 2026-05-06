@@ -1,71 +1,67 @@
 #include "test_player_session.h"
 #include "../components/game_state.h"
 #include "../components/obstacle.h"
-#include "../components/scoring.h"
+#include "../components/test_player.h"
+#include "../components/registry_context.h"
 #include "../util/session_logger.h"
-#include "../util/safe_localtime.h"
+#include <SDL.h>
 
-#include "runtime/runtime_api.h"
 #include <ctime>
 #include <cstdio>
-#include <cstring>
 
 namespace {
-struct TestPlayerSessionSignals {
-    bool wired = false;
-};
+
+void set_test_player_session_logging(entt::registry& reg, bool enabled) {
+    reg.on_construct<ObstacleTag>().disconnect<&session_log_on_obstacle_spawn>();
+    reg.on_construct<ScoredTag>().disconnect<&session_log_on_scored>();
+    if (!enabled) return;
+    reg.on_construct<ObstacleTag>().connect<&session_log_on_obstacle_spawn>();
+    reg.on_construct<ScoredTag>().connect<&session_log_on_scored>();
 }
+
+}  // namespace
 
 void test_player_init(entt::registry& reg, TestPlayerSkill skill,
                       const char* difficulty) {
-    auto& lss = reg.ctx().get<LevelSelectState>();
-    lss.selected_level = 1;
-    for (int d = 0; d < 3; ++d)
-        if (std::strcmp(LevelSelectState::DIFFICULTY_KEYS[d], difficulty) == 0)
-            { lss.selected_difficulty = d; break; }
-
-    auto* tp_state_ptr = reg.ctx().find<TestPlayerState>();
-    if (!tp_state_ptr) {
-        tp_state_ptr = &reg.ctx().emplace<TestPlayerState>();
+    auto& lss = registry_ctx_get<LevelSelectState>(reg);
+    lss.selected_level = clamp_level_index(1);
+    const int difficulty_index = find_difficulty_index(difficulty);
+    if (difficulty_index >= 0) {
+        lss.selected_difficulty = clamp_difficulty_index(difficulty_index);
     }
-    *tp_state_ptr = TestPlayerState{};
-    auto& tp_state = *tp_state_ptr;
-    tp_state.skill  = skill;
-    tp_state.active = true;
-    tp_state.rng.seed(static_cast<unsigned>(std::time(nullptr)));
 
-    static const char* skill_names[] = { "pro", "good", "bad" };
-    TraceLog(LOG_INFO, "TEST PLAYER: skill=%s",
-             skill_names[static_cast<int>(skill)]);
+    auto& state = registry_ctx_insert_or_assign(reg, TestPlayerState{});
+    state.skill  = skill;
+    state.active = true;
+    state.rng.seed(static_cast<unsigned>(std::time(nullptr)));
 
-    auto* slog_ptr = reg.ctx().find<SessionLog>();
-    if (!slog_ptr) {
-        slog_ptr = &reg.ctx().emplace<SessionLog>();
-    } else {
-        session_log_close(*slog_ptr);
-        *slog_ptr = SessionLog{};
-    }
-    auto& slog = *slog_ptr;
-    std::time_t now = std::time(nullptr);
-    std::tm tm{};
-    safe_localtime(&now, &tm);
+    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "TEST PLAYER: skill=%s",
+                test_player_skill_name(skill));
+
+    auto& slog = registry_ctx_get_or_emplace<SessionLog>(reg);
+    session_log_close(slog);
+    slog.frame = 0;
+    slog.last_logged_beat = -1;
+    slog.buffer.clear();
+    const std::time_t now = std::time(nullptr);
     char log_filename[256];
     std::snprintf(log_filename, sizeof(log_filename),
-        "%ssession_%s_%04d%02d%02d_%02d%02d%02d.log",
-        GetApplicationDirectory(),
-        skill_names[static_cast<int>(skill)],
-        tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
-        tm.tm_hour, tm.tm_min, tm.tm_sec);
+        "session_%s_%lld.log",
+        test_player_skill_name(skill),
+        static_cast<long long>(now));
     session_log_open(slog, log_filename);
-    TraceLog(LOG_INFO, "SESSION LOG: %s", log_filename);
+    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "SESSION LOG: %s", log_filename);
 
-    auto* signals = reg.ctx().find<TestPlayerSessionSignals>();
-    if (!signals) {
-        signals = &reg.ctx().emplace<TestPlayerSessionSignals>();
-    }
-    if (!signals->wired) {
-        reg.on_construct<ObstacleTag>().connect<&session_log_on_obstacle_spawn>();
-        reg.on_construct<ScoredTag>().connect<&session_log_on_scored>();
-        signals->wired = true;
-    }
+    set_test_player_session_logging(reg, true);
+}
+
+void test_player_shutdown(entt::registry& reg) {
+    set_test_player_session_logging(reg, false);
+    registry_ctx_if<TestPlayerState>(reg, [](TestPlayerState& state) {
+        state.active = false;
+        state.frame_count = 0;
+        state.swipe_cooldown_timer = 0.0f;
+        state.action_count = 0;
+        state.planned_count = 0;
+    });
 }

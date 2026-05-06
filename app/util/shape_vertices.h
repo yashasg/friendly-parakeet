@@ -1,51 +1,33 @@
 #pragma once
-#include <cstdint>
+// Pre-computed shape vertex lookup tables backed by glm::vec2.
+// Used by game_render_system for floor ring geometry.
+
+#include <glm/vec2.hpp>
+#include <array>
+#include <cmath>
 
 namespace shape_verts {
 
-struct V2 { float x, y; };
+// Element type alias (used in sizeof checks).
+using V2 = glm::vec2;
 
-// Circle: 24 perimeter points, unit radius, starting at 0° going CCW
+// Number of segments used to approximate circle outlines.
 constexpr int CIRCLE_SEGMENTS = 24;
-constexpr V2 CIRCLE[CIRCLE_SEGMENTS] = {
-    { 1.000000f,  0.000000f}, { 0.965926f,  0.258819f},
-    { 0.866025f,  0.500000f}, { 0.707107f,  0.707107f},
-    { 0.500000f,  0.866025f}, { 0.258819f,  0.965926f},
-    { 0.000000f,  1.000000f}, {-0.258819f,  0.965926f},
-    {-0.500000f,  0.866025f}, {-0.707107f,  0.707107f},
-    {-0.866025f,  0.500000f}, {-0.965926f,  0.258819f},
-    {-1.000000f,  0.000000f}, {-0.965926f, -0.258819f},
-    {-0.866025f, -0.500000f}, {-0.707107f, -0.707107f},
-    {-0.500000f, -0.866025f}, {-0.258819f, -0.965926f},
-    { 0.000000f, -1.000000f}, { 0.258819f, -0.965926f},
-    { 0.500000f, -0.866025f}, { 0.707107f, -0.707107f},
-    { 0.866025f, -0.500000f}, { 0.965926f, -0.258819f},
-};
 
-// Hexagon: 6 perimeter points, pointy-top (-90° offset), unit radius
-constexpr int HEX_SEGMENTS = 6;
-constexpr V2 HEXAGON[HEX_SEGMENTS] = {
-    { 0.000000f, -1.000000f},
-    { 0.866025f, -0.500000f},
-    { 0.866025f,  0.500000f},
-    { 0.000000f,  1.000000f},
-    {-0.866025f,  0.500000f},
-    {-0.866025f, -0.500000f},
-};
+namespace detail {
+inline std::array<V2, CIRCLE_SEGMENTS> make_circle() noexcept {
+    std::array<V2, CIRCLE_SEGMENTS> result{};
+    for (int i = 0; i < CIRCLE_SEGMENTS; ++i) {
+        const float angle =
+            6.28318530717958647692f * static_cast<float>(i) / static_cast<float>(CIRCLE_SEGMENTS);
+        result[static_cast<std::size_t>(i)] = {std::cos(angle), std::sin(angle)};
+    }
+    return result;
+}
+}  // namespace detail
 
-// Square: 4 corners, unit half-extent
-constexpr V2 SQUARE[4] = {
-    {-1.0f, -1.0f},  // top-left
-    { 1.0f, -1.0f},  // top-right
-    { 1.0f,  1.0f},  // bot-right
-    {-1.0f,  1.0f},  // bot-left
-};
+// Pre-computed unit-circle vertices: CIRCLE[i] = { cos(2π*i/CIRCLE_SEGMENTS),
+//                                                   sin(2π*i/CIRCLE_SEGMENTS) }
+inline const std::array<V2, CIRCLE_SEGMENTS> CIRCLE = detail::make_circle();
 
-// Triangle: 3 vertices, unit half-extent, CCW in XZ (matching OpenGL convention)
-constexpr V2 TRIANGLE[3] = {
-    { 1.0f,  1.0f},  // base-right
-    {-1.0f,  1.0f},  // base-left
-    { 0.0f, -1.0f},  // apex
-};
-
-} // namespace shape_verts
+}  // namespace shape_verts

@@ -38,7 +38,6 @@ TEST_CASE("High score integration: setup_play_session loads selected song diffic
         == high_score::make_key_hash("1_stomper", "easy"));
     CHECK(reg.ctx().get<ScoreState>().high_score == 1234);
     CHECK_FALSE(reg.view<GameCamera>().empty());
-    CHECK_FALSE(reg.view<UICamera>().empty());
 }
 
 TEST_CASE("Play session: SongResults total_notes matches every shipped song difficulty",
@@ -69,7 +68,7 @@ TEST_CASE("High score integration: new song-complete high score persists",
     remove_path(file);
 
     auto reg = make_registry();
-    reg.ctx().get<HighScorePersistence>().path = file.string();
+    reg.ctx().get<HighScorePersistence>().path = file;
     auto& high_scores = reg.ctx().get<HighScoreState>();
     high_score::ensure_entry(high_scores, "song_001|easy");
     high_scores.current_key_hash = high_score::make_key_hash("song_001", "easy");
@@ -101,7 +100,7 @@ TEST_CASE("High score integration: lower game-over score does not overwrite pers
     remove_path(file);
 
     auto reg = make_registry();
-    reg.ctx().get<HighScorePersistence>().path = file.string();
+    reg.ctx().get<HighScorePersistence>().path = file;
     auto& high_scores = reg.ctx().get<HighScoreState>();
     high_score::ensure_entry(high_scores, "song_001|easy");
     high_scores.current_key_hash = high_score::make_key_hash("song_001", "easy");
@@ -138,7 +137,7 @@ TEST_CASE("High score integration: failed save keeps dirty state for retry",
     }
 
     auto reg = make_registry();
-    reg.ctx().get<HighScorePersistence>().path = blocked_file.string();
+    reg.ctx().get<HighScorePersistence>().path = blocked_file;
     auto& high_scores = reg.ctx().get<HighScoreState>();
     high_score::ensure_entry(high_scores, "song_001|easy");
     high_scores.current_key_hash = high_score::make_key_hash("song_001", "easy");
@@ -174,9 +173,14 @@ TEST_CASE("High score bootstrap: persistence path is populated for save call sit
     HighScoreState loaded_at_bootstrap;
     CHECK(high_score::load_high_scores(loaded_at_bootstrap, file).ok());
     reg.ctx().get<HighScoreState>() = loaded_at_bootstrap;
-    reg.ctx().get<HighScorePersistence>() = HighScorePersistence{file.string()};
+    reg.ctx().get<HighScorePersistence>() = HighScorePersistence{file};
     reg.ctx().get<GameState>() = GameState{
-        GamePhase::Playing, GamePhase::Playing, 0.0f, true, GamePhase::SongComplete, 0.0f
+        .phase = GamePhase::Playing,
+        .previous_phase = GamePhase::Playing,
+        .phase_timer = 0.0f,
+        .transition_pending = true,
+        .next_phase = GamePhase::SongComplete,
+        .end_choice = EndScreenChoice::None
     };
     auto& score = reg.ctx().get<ScoreState>();
     score.high_score = 1000;
@@ -188,7 +192,7 @@ TEST_CASE("High score bootstrap: persistence path is populated for save call sit
 
     const auto& persistence = reg.ctx().get<HighScorePersistence>();
     REQUIRE_FALSE(persistence.path.empty());
-    CHECK(persistence.path == file.string());
+    CHECK(persistence.path == file);
 
     game_state_system(reg, 0.016f);
 

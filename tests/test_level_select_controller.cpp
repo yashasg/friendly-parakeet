@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include "test_helpers.h"
-#include "ui/level_select_controller.h"
+#include "systems/input_routing.h"
 
 TEST_CASE("level_select_controller: select difficulty press updates state", "[level_select][ui]") {
     auto reg = make_registry();

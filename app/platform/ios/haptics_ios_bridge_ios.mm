@@ -1,39 +1,39 @@
 #import "haptics_ios_bridge.h"
 
-#import "../haptics_backend.h"
+#import "../../systems/haptics_runtime.h"
 
 #import <UIKit/UIKit.h>
 
 namespace platform::ios {
 namespace {
 
-UIImpactFeedbackStyle to_ios_style(platform::haptics::ImpactStyle style) {
+UIImpactFeedbackStyle to_ios_style(haptics_runtime::ImpactStyle style) {
     switch (style) {
-        case platform::haptics::ImpactStyle::Light:
+        case haptics_runtime::ImpactStyle::Light:
             return UIImpactFeedbackStyleLight;
-        case platform::haptics::ImpactStyle::Medium:
+        case haptics_runtime::ImpactStyle::Medium:
             return UIImpactFeedbackStyleMedium;
-        case platform::haptics::ImpactStyle::Heavy:
+        case haptics_runtime::ImpactStyle::Heavy:
             return UIImpactFeedbackStyleHeavy;
         default:
             return UIImpactFeedbackStyleLight;
     }
 }
 
-UIImpactFeedbackGenerator* generator_for_style(platform::haptics::ImpactStyle style) {
+UIImpactFeedbackGenerator* generator_for_style(haptics_runtime::ImpactStyle style) {
     static UIImpactFeedbackGenerator* light = nil;
     static UIImpactFeedbackGenerator* medium = nil;
     static UIImpactFeedbackGenerator* heavy = nil;
 
     UIImpactFeedbackGenerator** slot = nullptr;
     switch (style) {
-        case platform::haptics::ImpactStyle::Light:
+        case haptics_runtime::ImpactStyle::Light:
             slot = &light;
             break;
-        case platform::haptics::ImpactStyle::Medium:
+        case haptics_runtime::ImpactStyle::Medium:
             slot = &medium;
             break;
-        case platform::haptics::ImpactStyle::Heavy:
+        case haptics_runtime::ImpactStyle::Heavy:
             slot = &heavy;
             break;
         default:
@@ -55,9 +55,9 @@ bool haptics_ios_available() noexcept {
 
 void haptics_ios_warmup() noexcept {
     @autoreleasepool {
-        UIImpactFeedbackGenerator* light = generator_for_style(platform::haptics::ImpactStyle::Light);
-        UIImpactFeedbackGenerator* medium = generator_for_style(platform::haptics::ImpactStyle::Medium);
-        UIImpactFeedbackGenerator* heavy = generator_for_style(platform::haptics::ImpactStyle::Heavy);
+        UIImpactFeedbackGenerator* light = generator_for_style(haptics_runtime::ImpactStyle::Light);
+        UIImpactFeedbackGenerator* medium = generator_for_style(haptics_runtime::ImpactStyle::Medium);
+        UIImpactFeedbackGenerator* heavy = generator_for_style(haptics_runtime::ImpactStyle::Heavy);
         [light prepare];
         [medium prepare];
         [heavy prepare];
@@ -66,7 +66,7 @@ void haptics_ios_warmup() noexcept {
 
 void haptics_ios_trigger(HapticEvent event) noexcept {
     @autoreleasepool {
-        const auto pattern = platform::haptics::pattern_for_event(event);
+        const auto pattern = haptics_runtime::pattern_for_event(event);
         const int pulses = (pattern.pulse_count > 0) ? pattern.pulse_count : 1;
         for (int i = 0; i < pulses; ++i) {
             UIImpactFeedbackGenerator* generator = generator_for_style(pattern.style);

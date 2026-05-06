@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<screen id="title">
+  <label id="game_title" x="360" y="120" align="center" text="SHAPESHIFTER" />
+  <label id="prompt" x="360" y="180" align="center" text="ENTER / TAP TO START" />
+</screen>

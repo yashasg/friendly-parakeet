@@ -42,16 +42,3 @@ TEST_CASE("Bench: floor position computation (3 lanes × 21 positions)", "[bench
         return sum;
     };
 }
-
-TEST_CASE("Bench: hexagon vertex table iteration", "[bench][rendering]") {
-    BENCHMARK("6-segment hexagon vertices") {
-        float sum = 0.0f;
-        float cx = 360.0f, cz = 500.0f, r = 38.4f;
-        for (int i = 0; i < shape_verts::HEX_SEGMENTS; ++i) {
-            sum += cx + shape_verts::HEXAGON[i].x * r;
-            sum += cz + shape_verts::HEXAGON[i].y * r;
-        }
-        Catch::Benchmark::deoptimize_value(sum);
-        return sum;
-    };
-}

@@ -26,8 +26,9 @@ struct SongState {
     // ── Per-frame mutable fields ─────────────────────────────────────────────
     float  song_time     = 0.0f;   // mutated every frame by song_playback_system
     int    current_beat  = -1;     // mutated every frame by song_playback_system
+    float  current_beat_time = 0.0f; // absolute song-time of current_beat (authoritative for beat pulse consumers)
     bool   playing       = false;  // set true by setup_play_session; cleared by
-                                   //   song_playback_system (end-of-song) or energy_system (death)
+                                    //   song_playback_system (end-of-song) or energy_system (death)
     bool   finished      = false;  // set true by song_playback_system or energy_system
     bool   restart_music = false;  // set true by setup_play_session; consumed/cleared
                                    //   on the next tick by song_playback_system

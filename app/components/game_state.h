@@ -1,8 +1,7 @@
 #pragma once
 
 #include <cstdint>
-#include <string>
-#include <entt/entt.hpp>
+#include <cstring>
 
 enum class GamePhase : uint8_t {
     Title        = 0,
@@ -42,13 +41,36 @@ enum class GamePhaseBit : uint8_t {
 
 enum class EndScreenChoice : uint8_t { None = 0, Restart = 1, LevelSelect = 2, MainMenu = 3 };
 
+[[nodiscard]] constexpr bool is_end_screen_phase(GamePhase phase) noexcept {
+    return phase == GamePhase::GameOver || phase == GamePhase::SongComplete;
+}
+
+[[nodiscard]] constexpr bool is_playing_phase(GamePhase phase) noexcept {
+    return phase == GamePhase::Playing;
+}
+
+[[nodiscard]] constexpr bool is_menu_phase(GamePhase phase) noexcept {
+    return phase == GamePhase::Title ||
+           phase == GamePhase::LevelSelect ||
+           phase == GamePhase::Paused ||
+           is_end_screen_phase(phase) ||
+           phase == GamePhase::Settings ||
+           phase == GamePhase::Tutorial;
+}
+
+namespace game_phase_timing {
+constexpr float END_SCREEN_INPUT_DELAY_SEC = 0.4f;
+constexpr float SONG_COMPLETE_TRANSITION_DELAY_SEC = 0.5f;
+constexpr float LEVEL_SELECT_INPUT_DELAY_SEC = 0.05f;
+constexpr float LEVEL_SELECT_CONFIRM_DELAY_SEC = 0.2f;
+}  // namespace game_phase_timing
+
 struct GameState {
     GamePhase phase            = GamePhase::Title;
     GamePhase previous_phase   = GamePhase::Title;
     float     phase_timer      = 0.0f;
     bool      transition_pending = false;
     GamePhase next_phase       = GamePhase::Title;
-    float     transition_alpha = 0.0f;
     EndScreenChoice end_choice = EndScreenChoice::None;
 };
 
@@ -56,6 +78,11 @@ inline void enter_phase(GameState& gs, GamePhase next_phase) {
     gs.previous_phase = gs.phase;
     gs.phase = next_phase;
     gs.phase_timer = 0.0f;
+}
+
+inline void request_phase_transition(GameState& gs, GamePhase target_phase) {
+    gs.transition_pending = true;
+    gs.next_phase = target_phase;
 }
 
 struct LevelInfo {
@@ -78,3 +105,43 @@ struct LevelSelectState {
     int selected_difficulty  = 1;  // default medium
     bool confirmed          = false;
 };
+
+[[nodiscard]] constexpr int clamp_level_index(int level_index) noexcept {
+    if (level_index < 0) return 0;
+    if (level_index >= LevelSelectState::LEVEL_COUNT) return LevelSelectState::LEVEL_COUNT - 1;
+    return level_index;
+}
+
+[[nodiscard]] constexpr int clamp_difficulty_index(int difficulty_index) noexcept {
+    if (difficulty_index < 0) return 0;
+    if (difficulty_index >= LevelSelectState::DIFFICULTY_COUNT) {
+        return LevelSelectState::DIFFICULTY_COUNT - 1;
+    }
+    return difficulty_index;
+}
+
+[[nodiscard]] inline const LevelInfo& selected_level_info(const LevelSelectState& state) noexcept {
+    return LevelSelectState::LEVELS[clamp_level_index(state.selected_level)];
+}
+
+[[nodiscard]] inline const char* selected_difficulty_name(const LevelSelectState& state) noexcept {
+    return LevelSelectState::DIFFICULTY_NAMES[clamp_difficulty_index(state.selected_difficulty)];
+}
+
+[[nodiscard]] inline const char* selected_difficulty_key(const LevelSelectState& state) noexcept {
+    return LevelSelectState::DIFFICULTY_KEYS[clamp_difficulty_index(state.selected_difficulty)];
+}
+
+[[nodiscard]] inline int find_difficulty_index(const char* difficulty_key) noexcept {
+    if (!difficulty_key) return -1;
+    for (int i = 0; i < LevelSelectState::DIFFICULTY_COUNT; ++i) {
+        if (std::strcmp(LevelSelectState::DIFFICULTY_KEYS[i], difficulty_key) == 0) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+[[nodiscard]] inline bool is_supported_difficulty_key(const char* difficulty_key) noexcept {
+    return find_difficulty_index(difficulty_key) >= 0;
+}

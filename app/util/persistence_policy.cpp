@@ -1,7 +1,5 @@
 #include "persistence_policy.h"
 
-#include "fs_utils.h"
-
 #include <cstdlib>
 
 #ifndef _WIN32
@@ -51,15 +49,38 @@ Result resolve_paths(Paths& out_paths, const std::filesystem::path& root_overrid
         return Result{Status::PathUnavailable, {}};
     }
 
-    const auto ensure = fs_utils::ensure_directory_result(root_dir);
-    if (!ensure.ok) {
-        return Result{Status::DirectoryCreateFailed, ensure.error};
+    std::error_code ec;
+    std::filesystem::create_directories(root_dir, ec);
+    if (ec) {
+        return Result{Status::DirectoryCreateFailed, ec};
     }
 
     out_paths.root_dir = root_dir;
     out_paths.settings_file = root_dir / "settings.json";
     out_paths.high_scores_file = root_dir / "high_scores.json";
     return Result{};
+}
+
+Result resolve_file_path(std::filesystem::path& out_path,
+                         const FileKind file_kind,
+                         const std::filesystem::path& root_override) {
+    Paths paths;
+    const Result result = resolve_paths(paths, root_override);
+    if (!result.ok()) {
+        out_path.clear();
+        return result;
+    }
+
+    switch (file_kind) {
+        case FileKind::Settings:
+            out_path = paths.settings_file;
+            return Result{};
+        case FileKind::HighScores:
+            out_path = paths.high_scores_file;
+            return Result{};
+    }
+    out_path.clear();
+    return Result{Status::PathUnavailable, {}};
 }
 
 const char* status_name(const Status status) {

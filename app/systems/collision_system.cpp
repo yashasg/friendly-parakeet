@@ -2,9 +2,9 @@
 #include "../components/obstacle.h"
 #include "../components/player.h"
 #include "../components/transform.h"
-#include "../components/rendering.h"
 #include "../components/game_state.h"
 #include "../components/rhythm.h"
+#include "../components/registry_context.h"
 #include "../util/rhythm_math.h"
 #include "../components/song_state.h"
 #include "../constants.h"
@@ -38,7 +38,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
     auto [p_transform, p_shape, p_window, p_lane, p_vstate] =
         player_view.get<WorldTransform, PlayerShape, ShapeWindow, Lane, VerticalState>(player_entity);
 
-    auto* song_ptr = reg.ctx().find<SongState>();
+    auto* song_ptr = registry_ctx_find<SongState>(reg);
     if (!song_ptr) return;
     auto& song = *song_ptr;
 
@@ -56,12 +56,12 @@ void collision_system(entt::registry& reg, float /*dt*/) {
 
         if (!cleared) {
             // MISS — tag only; scoring_system owns energy drain and death-cause attribution.
-            reg.emplace<MissTag>(entity);
-            reg.emplace<ScoredTag>(entity);
+            reg.get_or_emplace<MissTag>(entity);
+            reg.get_or_emplace<ScoredTag>(entity);
             return;
         }
 
-        reg.emplace<ScoredTag>(entity);
+        reg.get_or_emplace<ScoredTag>(entity);
     };
 
     const bool can_grade_shape =
@@ -72,7 +72,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
         float precision = 1.0f - (delta_seconds / kTimingOkSeconds);
         if (precision < 0.0f) precision = 0.0f;
         if (precision > 1.0f) precision = 1.0f;
-        reg.emplace<TimingGrade>(entity, tier, precision);
+        reg.emplace_or_replace<TimingGrade>(entity, tier, precision);
 
         if (!p_window.graded) {
             float scale = window_scale_for_tier(tier);
@@ -133,7 +133,9 @@ void collision_system(entt::registry& reg, float /*dt*/) {
                 }
                 bool shape_match = player_matches_required_shape(p_shape, p_window, req.shape);
                 bool cleared = shape_match;
-                if (cleared) grade_shape_timing(e, info.arrival_time);
+                if (cleared && wt.position.y >= player_timing_y) {
+                    grade_shape_timing(e, info.arrival_time);
+                }
                 resolve(e, wt.position.y, cleared);
             }
 
@@ -162,7 +164,9 @@ void collision_system(entt::registry& reg, float /*dt*/) {
                 }
                 bool shape_ok = player_matches_required_shape(p_shape, p_window, req.shape);
                 bool cleared = shape_ok;
-                if (cleared) grade_shape_timing(e, info.arrival_time);
+                if (cleared && wt.position.y >= player_timing_y) {
+                    grade_shape_timing(e, info.arrival_time);
+                }
                 resolve(e, wt.position.y, cleared);
             }
 
@@ -191,7 +195,9 @@ void collision_system(entt::registry& reg, float /*dt*/) {
                 }
                 bool shape_ok = player_matches_required_shape(p_shape, p_window, req.shape);
                 bool cleared = shape_ok;
-                if (cleared) grade_shape_timing(e, info.arrival_time);
+                if (cleared && wt.position.y >= player_timing_y) {
+                    grade_shape_timing(e, info.arrival_time);
+                }
                 resolve(e, wt.position.y, cleared);
             }
 

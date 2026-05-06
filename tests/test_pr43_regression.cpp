@@ -10,10 +10,10 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
 #include "entities/obstacle_render_entity.h"
-#include "components/rendering.h"
+#include "components/transform.h"
+#include "components/render_tags.h"
 #include "constants.h"
 #include <fstream>
-#include "runtime/runtime_api.h"
 #include <sstream>
 #include <string>
 
@@ -264,7 +264,7 @@ TEST_CASE("game_render_system: model-authority obstacles preserve ECS tint overr
         SKIP("game_render_system.cpp not accessible from test working directory");
     }
 
-    CHECK(source.find("reg.view<const ObstacleModel, const Color, const TagWorldPass>()")
+    CHECK(source.find("reg.view<const ObstacleModel, const SDL_Color, const TagWorldPass>()")
           != std::string::npos);
     CHECK(source.find("draw_triangles_from_mesh(om.model.meshes[i], om.model.transform, tint);")
           != std::string::npos);

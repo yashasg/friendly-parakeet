@@ -20,8 +20,8 @@ struct BeatEntry {
 // BPM is fixed for the entire song — no mid-song tempo changes.
 //
 // Ownership / lifecycle:
-//   - Emplaced once into the registry context in game_loop.cpp:
-//       reg.ctx().emplace<BeatMap>();
+//   - Inserted once into the registry context in game_loop.cpp via
+//     reg.ctx().emplace<BeatMap>().
 //   - Populated (and reset) at the start of each play session in
 //     setup_play_session() via reg.ctx().get<BeatMap>().
 //   - Read-only during active gameplay by all systems that need beat timing.

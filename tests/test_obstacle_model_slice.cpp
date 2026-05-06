@@ -56,16 +56,15 @@
 
 #include <catch2/catch_test_macros.hpp>
 #include <type_traits>
-#include "runtime/runtime_api.h"
-#include "runtime/runtime_api.h"
 #include <entt/entt.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 #include "test_helpers.h"
 #include "util/enum_names.h"
 #include "entities/obstacle_entity.h"
 #include "components/obstacle.h"
 #include "components/transform.h"
-#include "components/rendering.h"
+#include "components/render_tags.h"
 #include "constants.h"
 #include "entities/obstacle_render_entity.h"
 #include "systems/all_systems.h"
@@ -118,7 +117,7 @@ TEST_CASE("post-migration: spawn_obstacle does not emplace Model on any kind",
     for (auto kind : all_kinds) {
         entt::registry reg;
         auto e = make_obstacle_entity(reg, kind);
-        INFO("Kind: " << ToString(kind));
+        INFO("Kind: " << enum_name_or_unknown(kind));
         CHECK_FALSE(reg.all_of<Model>(e));
     }
 }
@@ -223,7 +222,7 @@ TEST_CASE("build_obstacle_model: no-op when window not ready (headless safe)",
     reg.emplace<ObstacleTag>(e);
     reg.emplace<Obstacle>(e, ObstacleKind::LowBar, static_cast<int16_t>(constants::PTS_LOW_BAR));
     reg.emplace<DrawSize>(e, static_cast<float>(constants::SCREEN_W), 40.0f);
-    reg.emplace<Color>(e, Color{255, 180, 0, 255});
+    reg.emplace<SDL_Color>(e, SDL_Color{255, 180, 0, 255});
 
     build_obstacle_model(reg, e);  // IsWindowReady() == false in test environment
 
@@ -233,7 +232,7 @@ TEST_CASE("build_obstacle_model: no-op when window not ready (headless safe)",
     CHECK_FALSE(reg.all_of<TagWorldPass>(e));
 }
 
-TEST_CASE("on_obstacle_model_destroy: safe on unowned ObstacleModel (headless)",
+TEST_CASE("ObstacleModel on_destroy lifecycle: safe on unowned model (headless)",
           "[model_slice][headless_guard]") {
     // Validates the on_destroy listener path that fires when an obstacle entity
     // carrying ObstacleModel (owned=false) is destroyed. Must not crash or make
@@ -244,10 +243,11 @@ TEST_CASE("on_obstacle_model_destroy: safe on unowned ObstacleModel (headless)",
     auto e = reg.create();
     reg.emplace<ObstacleModel>(e);  // default-constructed: owned=false
 
-    // Manually invoke what the on_destroy<ObstacleModel> listener does.
-    on_obstacle_model_destroy(reg, e);  // must not crash (no GPU calls)
+    // Exercise the public lifecycle path: wire listener, then destroy entity.
+    wire_obstacle_model_lifecycle(reg);
+    REQUIRE_NOTHROW(reg.destroy(e));  // must not crash (no GPU calls)
 
-    SUCCEED("on_obstacle_model_destroy is safe on unowned ObstacleModel");
+    SUCCEED("ObstacleModel lifecycle destroy is safe on unowned ObstacleModel");
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -429,10 +429,10 @@ TEST_CASE("BF-2: slab_matrix scale diagonal equals world dimensions (unit-cube c
     // apply the dimensions a second time and the rendered bar would be w²×h²×d².
     //
     // Formula (matches camera_system.cpp static slab_matrix):
-    //   MatrixMultiply(MatrixScale(w, h, d), MatrixTranslate(cx+w/2, h/2, z+d/2))
+    //   scale(w, h, d) * translate(cx+w/2, h/2, z+d/2)
     // After multiply, scale diagonal: m0=w, m5=h, m10=d (column-major matrix layout).
     // Translation in m12=cx+w/2, m13=h/2, m14=z+d/2.
-    // GPU-free: MatrixMultiply / MatrixScale / MatrixTranslate are pure math.
+    // GPU-free: GLM transform composition + runtime matrix conversion is pure math.
 
     const float oz_z   = constants::PLAYER_Y;   // typical in-window Z
     const float cx     = 0.0f;
@@ -442,20 +442,20 @@ TEST_CASE("BF-2: slab_matrix scale diagonal equals world dimensions (unit-cube c
     const float d      = 40.0f;  // DrawSize.h for LowBar obstacle entity
 
     const float z = oz_z + cz;
-    const Matrix mat = MatrixMultiply(
-        MatrixScale(w, h, d),
-        MatrixTranslate(cx + w / 2.0f, h / 2.0f, z + d / 2.0f));
+    const glm::mat4 mat =
+        glm::scale(glm::mat4(1.0f), glm::vec3{w, h, d}) *
+        glm::translate(glm::mat4(1.0f), glm::vec3{cx + w / 2.0f, h / 2.0f, z + d / 2.0f});
 
     // Scale diagonal must equal the intended world dimensions exactly once.
-    CHECK(mat.m0  == w);
-    CHECK(mat.m5  == h);
-    CHECK(mat.m10 == d);
+    CHECK(mat[0][0] == w);
+    CHECK(mat[1][1] == h);
+    CHECK(mat[2][2] == d);
 
     // Translation is scaled: mat.m12 = cx+w/2, mat.m13 = h/2, mat.m14 = z+d/2.
     // All non-zero, confirming a non-identity transform.
-    CHECK(mat.m12 != 0.0f);
-    CHECK(mat.m13 != 0.0f);
-    CHECK(mat.m14 != 0.0f);
+    CHECK(mat[3][0] != 0.0f);
+    CHECK(mat[3][1] != 0.0f);
+    CHECK(mat[3][2] != 0.0f);
 }
 
 TEST_CASE("BF-1: ObstacleModel owns separate mesh + material arrays (struct layout)",

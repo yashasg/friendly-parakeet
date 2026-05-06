@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <string>
 
 #include "persistence_policy.h"
 
@@ -28,9 +27,4 @@ struct SettingsState {
     uint8_t ftue_run_count = 0;
 };
 
-struct SettingsPersistence {
-    std::string path;
-    persistence::Result last_load{};
-    persistence::Result last_save{};
-    bool dirty{false};
-};
+using SettingsPersistence = persistence::DirtyPersistenceState;

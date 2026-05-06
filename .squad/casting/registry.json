@@ -97,6 +97,13 @@
       "universe": "The Usual Suspects",
       "legacy_named": false,
       "status": "active"
+    },
+    "marquez": {
+      "created_at": "2026-05-05T17:11:16.509-07:00",
+      "persistent_name": "Marquez",
+      "universe": "The Usual Suspects",
+      "legacy_named": false,
+      "status": "active"
     }
   }
 }

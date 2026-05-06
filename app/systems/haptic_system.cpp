@@ -1,15 +1,15 @@
 #include "all_systems.h"
 #include "../components/haptics.h"
-#include "../platform/haptics_backend.h"
-#include "../util/haptic_queue.h"
+#include "../components/registry_context.h"
+#include "../systems/haptics_runtime.h"
 
 void haptic_system(entt::registry& reg) {
-    auto* hq = reg.ctx().find<HapticQueue>();
+    auto* hq = registry_ctx_find<HapticQueue>(reg);
     if (!hq || hq->count == 0) return;
 
     for (int i = 0; i < hq->count; ++i) {
-        platform::haptics::trigger(hq->queue[i]);
+        haptics_runtime::trigger(hq->queue[i]);
     }
 
-    haptic_clear(*hq);
+    hq->clear();
 }

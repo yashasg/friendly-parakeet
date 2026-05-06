@@ -15,6 +15,17 @@ enum class ObstacleKind : uint8_t {
     SplitPath,
 };
 
+constexpr bool is_bar_obstacle_kind(const ObstacleKind kind) {
+    return kind == ObstacleKind::LowBar || kind == ObstacleKind::HighBar;
+}
+
+constexpr bool has_mesh_children(const ObstacleKind kind) {
+    return kind == ObstacleKind::ShapeGate ||
+           kind == ObstacleKind::LaneBlock ||
+           kind == ObstacleKind::ComboGate ||
+           kind == ObstacleKind::SplitPath;
+}
+
 struct Obstacle {
     ObstacleKind kind       = ObstacleKind::ShapeGate;
     int16_t      base_points = 200;

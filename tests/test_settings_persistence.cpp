@@ -263,7 +263,7 @@ TEST_CASE("Settings persistence runtime: mark_dirty_and_save persists and clears
     state.ftue_run_count = 1;
 
     SettingsPersistence persistence_state;
-    persistence_state.path = file.string();
+    persistence_state.path = file;
 
     settings::mark_dirty_and_save(persistence_state, state);
     CHECK_FALSE(persistence_state.dirty);
@@ -312,7 +312,10 @@ TEST_CASE("Settings persistence helper: file path resolution reports failure wit
     }
 
     std::filesystem::path file_path = "seed_should_clear.json";
-    const auto result = settings::get_settings_file_path(file_path, blocked_root);
+    const auto result = persistence::resolve_file_path(
+        file_path,
+        persistence::FileKind::Settings,
+        blocked_root);
     CHECK(result.status == persistence::Status::DirectoryCreateFailed);
     CHECK(file_path.empty());
 

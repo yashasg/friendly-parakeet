@@ -1,16 +1,33 @@
 #include "session_logger.h"
 #include "../components/obstacle.h"
 #include "../components/rhythm.h"
-#include "../components/transform.h"
 #include "../components/scoring.h"
-#include "../components/game_state.h"
 #include "enum_names.h"
-#include "../constants.h"
 
 #include <cstdarg>
-#include <cmath>
 #include <ctime>
-#include "safe_localtime.h"
+
+namespace {
+
+bool try_localtime(const std::time_t now, std::tm& tm) {
+#ifdef _WIN32
+    return localtime_s(&tm, &now) == 0;
+#else
+    return localtime_r(&now, &tm) != nullptr;
+#endif
+}
+
+SessionLog* active_session_log(entt::registry& reg) {
+    auto* log = reg.ctx().find<SessionLog>();
+    return (log && log->file) ? log : nullptr;
+}
+
+float current_song_time(entt::registry& reg) {
+    const auto* song = reg.ctx().find<SongState>();
+    return song ? song->song_time : 0.0f;
+}
+
+}  // namespace
 
 // ── Core log function ────────────────────────────────────────
 
@@ -20,7 +37,9 @@ void session_log_open(SessionLog& log, const char* path) {
     if (log.file) {
         std::time_t now = std::time(nullptr);
         std::tm tm{};
-        safe_localtime(&now, &tm);
+        if (!try_localtime(now, tm)) {
+            tm = {};
+        }
         char ts[32];
         std::strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M", &tm);
         std::fprintf(log.file, "══════ Test Session started %s ══════\n\n", ts);
@@ -55,6 +74,10 @@ void session_log_write(SessionLog& log, float song_time,
     va_end(args);
     log.buffer.append(msg);
     log.buffer.push_back('\n');
+
+    if (log.buffer.size() >= SessionLog::kMaxLogBufferBytes) {
+        session_log_flush(log);
+    }
 }
 
 void session_log_flush(SessionLog& log) {
@@ -67,11 +90,9 @@ void session_log_flush(SessionLog& log) {
 // ── EnTT signal: obstacle spawned ────────────────────────────
 
 void session_log_on_obstacle_spawn(entt::registry& reg, entt::entity entity) {
-    auto* log = reg.ctx().find<SessionLog>();
-    if (!log || !log->file) return;
-
-    auto* song = reg.ctx().find<SongState>();
-    float t = song ? song->song_time : 0.0f;
+    auto* log = active_session_log(reg);
+    if (!log) return;
+    const float t = current_song_time(reg);
 
     auto* obs = reg.try_get<Obstacle>(entity);
     if (!obs) return;
@@ -89,18 +110,16 @@ void session_log_on_obstacle_spawn(entt::registry& reg, entt::entity entity) {
 
     session_log_write(*log, t, "GAME",
         "OBSTACLE_SPAWN beat=%d arrival=%.3f kind=%s shape=%s lane=%d",
-        beat_idx, arrival, ToString(obs->kind),
-        req ? ToString(req->shape) : "-", lane);
+        beat_idx, arrival, enum_name_or_unknown(obs->kind),
+        req ? enum_name_or_unknown(req->shape) : "-", lane);
 }
 
 // ── EnTT signal: obstacle scored (collision resolved) ────────
 
 void session_log_on_scored(entt::registry& reg, entt::entity entity) {
-    auto* log = reg.ctx().find<SessionLog>();
-    if (!log || !log->file) return;
-
-    auto* song = reg.ctx().find<SongState>();
-    float t = song ? song->song_time : 0.0f;
+    auto* log = active_session_log(reg);
+    if (!log) return;
+    const float t = current_song_time(reg);
 
     auto* obs = reg.try_get<Obstacle>(entity);
     if (!obs) return;
@@ -117,17 +136,17 @@ void session_log_on_scored(entt::registry& reg, entt::entity entity) {
         session_log_write(*log, t, "GAME",
             "COLLISION obstacle=%u beat=%d expected=%.3f drift=%+.3fs kind=%s result=MISS",
             static_cast<unsigned>(entt::to_integral(entity)),
-            beat_num, expected_t, drift, ToString(obs->kind));
+            beat_num, expected_t, drift, enum_name_or_unknown(obs->kind));
     } else if (grade) {
         session_log_write(*log, t, "GAME",
             "COLLISION obstacle=%u beat=%d expected=%.3f drift=%+.3fs kind=%s result=CLEAR timing=%s(%.2f)",
             static_cast<unsigned>(entt::to_integral(entity)),
-            beat_num, expected_t, drift, ToString(obs->kind),
-            ToString(grade->tier), grade->precision);
+            beat_num, expected_t, drift, enum_name_or_unknown(obs->kind),
+            enum_name_or_unknown(grade->tier), grade->precision);
     } else {
         session_log_write(*log, t, "GAME",
             "COLLISION obstacle=%u beat=%d expected=%.3f drift=%+.3fs kind=%s result=CLEAR",
             static_cast<unsigned>(entt::to_integral(entity)),
-            beat_num, expected_t, drift, ToString(obs->kind));
+            beat_num, expected_t, drift, enum_name_or_unknown(obs->kind));
     }
 }

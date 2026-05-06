@@ -1,5 +1,6 @@
 #pragma once
 #include <entt/entt.hpp>
+#include <cstdint>
 
 // Forward-declare to avoid including test_player.h in the header.
 enum class TestPlayerSkill : uint8_t;
@@ -21,4 +22,4 @@ void game_loop_shutdown(entt::registry& reg);
 
 // Returns true when the game loop should exit (quit requested or window closed).
 // Used by both native and Emscripten paths to detect shutdown conditions.
-bool game_loop_should_quit(entt::registry& reg);
+bool game_loop_should_quit(const entt::registry& reg);

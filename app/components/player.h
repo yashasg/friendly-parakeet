@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cstdint>
-#include "window_phase.h"
+#include "../util/window_phase.h"
 
 enum class Shape : uint8_t {
     Circle,

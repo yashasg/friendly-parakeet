@@ -45,7 +45,7 @@ bool validate_beat_map(const BeatMap& map, std::vector<BeatMapError>& errors,
 
 // Validate a loaded beat map, loading constants from CWD-relative path.
 // Prefer the three-argument overload when the application directory is available
-// (e.g. pass GetApplicationDirectory() to load_validation_constants first).
+// (e.g. pass std::filesystem::current_path().string() to load_validation_constants first).
 bool validate_beat_map(const BeatMap& map, std::vector<BeatMapError>& errors);
 
 // Initialize SongState from a loaded BeatMap.

@@ -2,8 +2,8 @@
 
 #include <vector>
 
-#include "audio/audio_queue.h"
-#include "audio/sfx_bank.h"
+#include "components/audio.h"
+#include "systems/sfx_bank_system.h"
 #include "test_helpers.h"
 
 // ── SFX contiguity guard ─────────────────────────────────────────────────────
@@ -57,9 +57,9 @@ TEST_CASE("audio_system: dispatches queued SFX to backend in order", "[audio]") 
     reg.ctx().emplace<SFXPlaybackBackend>(backend_for());
 
     auto& queue = reg.ctx().get<AudioQueue>();
-    audio_push(queue, SFX::ShapeShift);
-    audio_push(queue, SFX::Crash);
-    audio_push(queue, SFX::UITap);
+    queue.push(SFX::ShapeShift);
+    queue.push(SFX::Crash);
+    queue.push(SFX::UITap);
 
     audio_system(reg);
 
@@ -78,9 +78,9 @@ TEST_CASE("audio_system: dispatches every queued SFX up to queue capacity", "[au
 
     auto& queue = reg.ctx().get<AudioQueue>();
     for (int i = 0; i < AudioQueue::MAX_QUEUED; ++i) {
-        audio_push(queue, kAllSfx[i % kSfxCount]);
+        queue.push(kAllSfx[i % kSfxCount]);
     }
-    audio_push(queue, SFX::Crash);
+    queue.push(SFX::Crash);
 
     audio_system(reg);
 
@@ -92,8 +92,8 @@ TEST_CASE("audio_system: clears queue without backend in headless mode", "[audio
     auto reg = make_registry();
 
     auto& queue = reg.ctx().get<AudioQueue>();
-    audio_push(queue, SFX::ShapeShift);
-    audio_push(queue, SFX::Crash);
+    queue.push(SFX::ShapeShift);
+    queue.push(SFX::Crash);
 
     audio_system(reg);
 
@@ -104,7 +104,6 @@ TEST_CASE("sfx lifecycle: production backend is callable without audio hardware"
     auto reg = make_registry();
 
     sfx_bank_init(reg);
-    sfx_playback_backend_init(reg);
 
     auto* bank = reg.ctx().find<SFXBank>();
     auto* backend = reg.ctx().find<SFXPlaybackBackend>();
@@ -113,7 +112,7 @@ TEST_CASE("sfx lifecycle: production backend is callable without audio hardware"
     REQUIRE(backend->dispatch != nullptr);
 
     auto& queue = reg.ctx().get<AudioQueue>();
-    audio_push(queue, SFX::GameStart);
+    queue.push(SFX::GameStart);
     audio_system(reg);
 
     CHECK(queue.count == 0);
@@ -127,10 +126,10 @@ TEST_CASE("sfx lifecycle: injected playback backend is preserved", "[audio]") {
     reg.ctx().emplace<BackendRecorder>();
     reg.ctx().emplace<SFXPlaybackBackend>(backend_for());
 
-    sfx_playback_backend_init(reg);
+    sfx_bank_init(reg);
 
     auto& queue = reg.ctx().get<AudioQueue>();
-    audio_push(queue, SFX::Crash);
+    queue.push(SFX::Crash);
     audio_system(reg);
 
     auto& recorder = reg.ctx().get<BackendRecorder>();

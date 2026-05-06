@@ -1,11 +1,28 @@
 cmake_minimum_required(VERSION 3.20)
 
-# Auto-detect vcpkg toolchain from VCPKG_ROOT when no toolchain is specified.
+# Auto-detect vcpkg toolchain when no toolchain is specified.
 # Referencing CMAKE_TOOLCHAIN_FILE here also prevents the CMake warning
 # "Manually-specified variables were not used" on reconfigure.
-if(DEFINED ENV{VCPKG_ROOT} AND (NOT DEFINED CMAKE_TOOLCHAIN_FILE OR CMAKE_TOOLCHAIN_FILE STREQUAL ""))
-    set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
-        CACHE STRING "Vcpkg toolchain file")
+if(NOT DEFINED CMAKE_TOOLCHAIN_FILE OR CMAKE_TOOLCHAIN_FILE STREQUAL "")
+    set(_vcpkg_root_candidates "")
+    if(DEFINED ENV{VCPKG_ROOT} AND NOT "$ENV{VCPKG_ROOT}" STREQUAL "")
+        list(APPEND _vcpkg_root_candidates "$ENV{VCPKG_ROOT}")
+    endif()
+    if(DEFINED ENV{HOME} AND NOT "$ENV{HOME}" STREQUAL "")
+        list(APPEND _vcpkg_root_candidates "$ENV{HOME}/vcpkg")
+    endif()
+    list(APPEND _vcpkg_root_candidates
+        "${CMAKE_SOURCE_DIR}/vcpkg"
+        "${CMAKE_SOURCE_DIR}/../vcpkg"
+    )
+
+    foreach(_vcpkg_root IN LISTS _vcpkg_root_candidates)
+        if(EXISTS "${_vcpkg_root}/scripts/buildsystems/vcpkg.cmake")
+            set(CMAKE_TOOLCHAIN_FILE "${_vcpkg_root}/scripts/buildsystems/vcpkg.cmake"
+                CACHE STRING "Vcpkg toolchain file")
+            break()
+        endif()
+    endforeach()
 endif()
 
 project(shapeshifter VERSION 0.1 LANGUAGES CXX)
@@ -51,12 +68,14 @@ configure_file(
 
 # ── Dependencies ─────────────────────────────────────────────
 # EnTT: header-only ECS framework (vcpkg on all platforms).
+# GLM: header-only math library used by rendering/runtime compatibility code.
 # SDL2_mixer: music + sound effects backend.
 # SDL2_ttf: TrueType text backend.
 # Catch2: test framework (vcpkg on all platforms).
 # nlohmann-json: JSON parsing for beat map loading (vcpkg on all platforms).
 
 find_package(EnTT CONFIG REQUIRED)
+find_package(glm CONFIG REQUIRED)
 find_package(magic_enum CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 if(NOT EMSCRIPTEN)
@@ -80,7 +99,7 @@ target_compile_options(shapeshifter_warnings INTERFACE
 
 # Mark third-party include directories as SYSTEM so warnings from their
 # headers are suppressed and cannot be promoted to errors by -Werror.
-set(_system_deps EnTT::EnTT magic_enum::magic_enum nlohmann_json::nlohmann_json Catch2::Catch2 Catch2::Catch2WithMain)
+set(_system_deps EnTT::EnTT glm::glm magic_enum::magic_enum nlohmann_json::nlohmann_json Catch2::Catch2 Catch2::Catch2WithMain)
 if(TARGET SDL2::SDL2)
     list(APPEND _system_deps SDL2::SDL2)
 endif()
@@ -109,19 +128,15 @@ endforeach()
 
 # ── Game library (shared between exe and tests) ──────────────
 file(GLOB SYSTEM_SOURCES CONFIGURE_DEPENDS app/systems/*.cpp)
-file(GLOB AUDIO_SOURCES CONFIGURE_DEPENDS app/audio/*.cpp)
 file(GLOB RENDERING_SOURCES CONFIGURE_DEPENDS app/rendering/*.cpp)
 file(GLOB RUNTIME_SOURCES CONFIGURE_DEPENDS app/runtime/*.cpp)
-file(GLOB TIMING_SOURCES CONFIGURE_DEPENDS app/timing/*.cpp)
 file(GLOB UTIL_SOURCES CONFIGURE_DEPENDS app/util/*.cpp)
 file(GLOB PLATFORM_SOURCES CONFIGURE_DEPENDS
     app/platform/*.cpp
     app/platform/ios/*.cpp
     app/platform/input/*.cpp
-    app/platform/sdl2/*.cpp
 )
 file(GLOB UI_SOURCES CONFIGURE_DEPENDS app/ui/*.cpp)
-file(GLOB INPUT_SOURCES CONFIGURE_DEPENDS app/input/*.cpp)
 file(GLOB SESSION_SOURCES CONFIGURE_DEPENDS app/session/*.cpp)
 file(GLOB ENTITY_SOURCES CONFIGURE_DEPENDS app/entities/*.cpp)
 # Exclude files requiring a live graphics/input context from the library. They are
@@ -132,7 +147,6 @@ list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "(^|/)input_system\\.cpp$")
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "(^|/)song_playback_system\\.cpp$")
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "(^|/)camera_system\\.cpp$")
 list(FILTER UI_SOURCES EXCLUDE REGEX "(^|/)text_renderer\\.cpp$")
-list(FILTER UTIL_SOURCES EXCLUDE REGEX "(^|/)file_logger\\.cpp$")
 
 set(SHAPESHIFTER_IOS FALSE)
 if(APPLE)
@@ -149,13 +163,14 @@ if(SHAPESHIFTER_IOS)
     list(APPEND PLATFORM_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/app/platform/ios/haptics_ios_bridge_ios.mm")
 endif()
 
-add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES} ${AUDIO_SOURCES} ${RENDERING_SOURCES} ${RUNTIME_SOURCES} ${TIMING_SOURCES} ${UTIL_SOURCES} ${PLATFORM_SOURCES} ${UI_SOURCES} ${INPUT_SOURCES} ${SESSION_SOURCES} ${ENTITY_SOURCES})
+add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES} ${RENDERING_SOURCES} ${RUNTIME_SOURCES} ${UTIL_SOURCES} ${PLATFORM_SOURCES} ${UI_SOURCES} ${SESSION_SOURCES} ${ENTITY_SOURCES})
 target_include_directories(shapeshifter_lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/app
     ${CMAKE_BINARY_DIR}/generated
 )
 target_link_libraries(shapeshifter_lib PUBLIC
     EnTT::EnTT
+    glm::glm
     magic_enum::magic_enum
     nlohmann_json::nlohmann_json
 )
@@ -202,14 +217,12 @@ endif()
 # ── Main executable ──────────────────────────────────────────
 set(SHAPESHIFTER_RUNTIME_SOURCES
     app/game_loop.cpp
-    app/platform_display.cpp
     app/systems/camera_system.cpp
     app/systems/game_render_system.cpp
     app/systems/ui_render_system.cpp
     app/systems/input_system.cpp
     app/systems/song_playback_system.cpp
     app/ui/text_renderer.cpp
-    app/util/file_logger.cpp
 )
 
 add_executable(shapeshifter
@@ -544,10 +557,12 @@ set_source_files_properties(
 
 add_executable(shapeshifter_tests
     ${TEST_SOURCES}
-    app/util/file_logger.cpp
     app/systems/camera_system.cpp
+    app/systems/game_render_system.cpp
+    app/systems/ui_render_system.cpp
+    app/systems/input_system.cpp
     app/systems/song_playback_system.cpp
-    app/platform_display.cpp
+    app/ui/text_renderer.cpp
 )
 target_include_directories(shapeshifter_tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/app
@@ -600,7 +615,9 @@ endif()
 if(NOT EMSCRIPTEN)
     include(CTest)
     include(Catch)
-    catch_discover_tests(shapeshifter_tests)
+    # Use PRE_TEST discovery so a transient failure in test enumeration does
+    # not block compilation/linking of the test target itself.
+    catch_discover_tests(shapeshifter_tests DISCOVERY_MODE PRE_TEST)
 else()
     # Run the Emscripten Catch2 binary under Node. NODERAWFS lets tests read
     # repository/build content files directly instead of preloading game assets.

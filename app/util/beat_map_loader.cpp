@@ -1,52 +1,79 @@
 #include "beat_map_loader.h"
+#include "json_file_io.h"
 #include "rhythm_math.h"
 #include <nlohmann/json.hpp>
-#include <fstream>
 #include <cmath>
 #include <algorithm>
+#include <array>
+#include <filesystem>
 #include <optional>
-#include "runtime/runtime_api.h"
+#include <SDL.h>
 
 using json = nlohmann::json;
 
-static bool try_load_constants_from(const std::string& path, ValidationConstants& vc) {
-    std::ifstream file(path);
-    if (!file.is_open()) return false;
-    try {
-        json j = json::parse(file);
-        if (j.contains("validation")) {
-            const auto& v = j["validation"];
-            vc.bpm_min              = v.value("bpm_min",              vc.bpm_min);
-            vc.bpm_max              = v.value("bpm_max",              vc.bpm_max);
-            vc.offset_min           = v.value("offset_min",           vc.offset_min);
-            vc.offset_max           = v.value("offset_max",           vc.offset_max);
-            vc.lead_beats_min       = v.value("lead_beats_min",       vc.lead_beats_min);
-            vc.lead_beats_max       = v.value("lead_beats_max",       vc.lead_beats_max);
-            vc.min_shape_change_gap = v.value("min_shape_change_gap", vc.min_shape_change_gap);
+namespace {
+
+template <typename EnumType>
+struct ParseMapEntry {
+    const char* key;
+    EnumType value;
+};
+
+template <typename EnumType, std::size_t N>
+std::optional<EnumType> parse_enum_token(
+    const std::string& token,
+    const std::array<ParseMapEntry<EnumType>, N>& entries
+) {
+    for (const auto& entry : entries) {
+        if (token == entry.key) {
+            return entry.value;
         }
-    } catch (...) {
+    }
+    return std::nullopt;
+}
+
+}  // namespace
+
+static bool try_load_constants_from(const std::filesystem::path& path, ValidationConstants& vc) {
+    json j;
+    if (!persistence::load_json_file(j, path).ok()) {
         return false;
     }
+
+    if (j.contains("validation")) {
+        const auto& v = j["validation"];
+        vc.bpm_min              = v.value("bpm_min",              vc.bpm_min);
+        vc.bpm_max              = v.value("bpm_max",              vc.bpm_max);
+        vc.offset_min           = v.value("offset_min",           vc.offset_min);
+        vc.offset_max           = v.value("offset_max",           vc.offset_max);
+        vc.lead_beats_min       = v.value("lead_beats_min",       vc.lead_beats_min);
+        vc.lead_beats_max       = v.value("lead_beats_max",       vc.lead_beats_max);
+        vc.min_shape_change_gap = v.value("min_shape_change_gap", vc.min_shape_change_gap);
+    }
+
     return true;
 }
 
 ValidationConstants load_validation_constants(const std::string& app_dir) {
     ValidationConstants vc;
-    if (!app_dir.empty() && try_load_constants_from(app_dir + "content/constants.json", vc)) {
+    if (!app_dir.empty() &&
+        try_load_constants_from(std::filesystem::path(app_dir) / "content" / "constants.json", vc)) {
         return vc;
     }
-    try_load_constants_from("content/constants.json", vc);
+    try_load_constants_from(std::filesystem::path("content") / "constants.json", vc);
     return vc;
 }
 
 static std::optional<ObstacleKind> parse_kind(const std::string& s) {
-    if (s == "shape_gate")       return ObstacleKind::ShapeGate;
-    if (s == "lane_block")       return ObstacleKind::LaneBlock;
-    if (s == "low_bar")          return ObstacleKind::LowBar;
-    if (s == "high_bar")         return ObstacleKind::HighBar;
-    if (s == "combo_gate")       return ObstacleKind::ComboGate;
-    if (s == "split_path")       return ObstacleKind::SplitPath;
-    return std::nullopt;
+    static constexpr std::array kKindMap = {
+        ParseMapEntry<ObstacleKind>{"shape_gate", ObstacleKind::ShapeGate},
+        ParseMapEntry<ObstacleKind>{"lane_block", ObstacleKind::LaneBlock},
+        ParseMapEntry<ObstacleKind>{"low_bar", ObstacleKind::LowBar},
+        ParseMapEntry<ObstacleKind>{"high_bar", ObstacleKind::HighBar},
+        ParseMapEntry<ObstacleKind>{"combo_gate", ObstacleKind::ComboGate},
+        ParseMapEntry<ObstacleKind>{"split_path", ObstacleKind::SplitPath},
+    };
+    return parse_enum_token(s, kKindMap);
 }
 
 static bool is_temporarily_disabled_kind(const ObstacleKind kind) {
@@ -54,23 +81,18 @@ static bool is_temporarily_disabled_kind(const ObstacleKind kind) {
 }
 
 static std::optional<Shape> parse_shape(const std::string& s) {
-    if (s == "circle")   return Shape::Circle;
-    if (s == "square")   return Shape::Square;
-    if (s == "triangle") return Shape::Triangle;
-    return std::nullopt;
+    static constexpr std::array kShapeMap = {
+        ParseMapEntry<Shape>{"circle", Shape::Circle},
+        ParseMapEntry<Shape>{"square", Shape::Square},
+        ParseMapEntry<Shape>{"triangle", Shape::Triangle},
+    };
+    return parse_enum_token(s, kShapeMap);
 }
 
-bool parse_beat_map(const std::string& json_str, BeatMap& out,
-                    std::vector<BeatMapError>& errors,
-                    const std::string& difficulty) {
-    json j;
-    try {
-        j = json::parse(json_str);
-    } catch (const json::parse_error& e) {
-        errors.push_back({-1, std::string("JSON parse error: ") + e.what()});
-        return false;
-    }
-
+static bool parse_beat_map_json(const json& j,
+                                BeatMap& out,
+                                std::vector<BeatMapError>& errors,
+                                const std::string& difficulty) {
     // ── Metadata ─────────────────────────────────────────────
     out.beats.clear();  // reset before every parse to prevent stale entries on reuse
     out.beat_times.clear();
@@ -181,9 +203,9 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
             static_cast<size_t>(entry.beat_index) < out.beat_times.size()) {
             constexpr float kBeatTimeMismatchWarnSec = 0.010f;
             if (std::fabs(entry.time_sec - beat_time) > kBeatTimeMismatchWarnSec) {
-                TraceLog(LOG_WARNING,
-                         "Beat time mismatch at beat=%d: time_sec=%.6f, beat_times[%d]=%.6f",
-                         entry.beat_index, entry.time_sec, entry.beat_index, beat_time);
+                SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                            "Beat time mismatch at beat=%d: time_sec=%.6f, beat_times[%d]=%.6f",
+                            entry.beat_index, entry.time_sec, entry.beat_index, beat_time);
             }
         }
 
@@ -222,17 +244,30 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
     return true;
 }
 
+bool parse_beat_map(const std::string& json_str, BeatMap& out,
+                    std::vector<BeatMapError>& errors,
+                    const std::string& difficulty) {
+    json j;
+    try {
+        j = json::parse(json_str);
+    } catch (const json::parse_error& e) {
+        errors.push_back({-1, std::string("JSON parse error: ") + e.what()});
+        return false;
+    }
+    return parse_beat_map_json(j, out, errors, difficulty);
+}
+
 bool load_beat_map(const std::string& json_path, BeatMap& out,
                    std::vector<BeatMapError>& errors,
                    const std::string& difficulty) {
-    std::ifstream file(json_path);
-    if (!file.is_open()) {
-        errors.push_back({-1, "Could not open file: " + json_path});
+    json root;
+    const persistence::Result load_result = persistence::load_json_file(root, json_path);
+    if (!load_result.ok()) {
+        errors.push_back({-1, "Could not load file: " + json_path + " (" +
+                               persistence::status_name(load_result.status) + ")"});
         return false;
     }
-    std::string content((std::istreambuf_iterator<char>(file)),
-                         std::istreambuf_iterator<char>());
-    return parse_beat_map(content, out, errors, difficulty);
+    return parse_beat_map_json(root, out, errors, difficulty);
 }
 
 bool validate_beat_map(const BeatMap& map, std::vector<BeatMapError>& errors) {

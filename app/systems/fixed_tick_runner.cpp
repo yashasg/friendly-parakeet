@@ -6,12 +6,10 @@
 // without pulling in the full render/input/audio graph.
 void tick_fixed_systems(entt::registry& reg, float dt) {
     // game_state_system runs FIRST and owns the authoritative GoEvent /
-    // ButtonPressEvent drain for this tick (calls disp.update<GoEvent>() and
-    // disp.update<ButtonPressEvent>() at its top).  All pre-tick enqueues from
-    // input_system and gesture_routing are delivered
+    // ButtonPressEvent drain for this tick (via drain_semantic_input_events()).
+    // All pre-tick enqueues from input_system and swipe routing are delivered
     // here to listeners in registration order (see wire_input_dispatcher).
-    // Systems later in this list that also call disp.update<T>() (e.g.,
-    // player_input_system) will find an empty queue and execute as no-ops.
+    // Systems later in this list consume state produced by those listeners.
     game_state_system(reg, dt);
     song_playback_system(reg, dt);
     tick_playing_systems(reg, dt);

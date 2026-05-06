@@ -122,3 +122,9 @@ Kujan completed full post-audio architecture audit against criteria (no-wrappers
 **Session Log:** .squad/log/2026-05-06T00-38-50Z-direct-sdl-rewire.md
 
 Collaborated on rendering/audio decoupling. All team work merged to decisions.md (2026-05-06).
+
+## 2026-05-05T17:44:00.833-07:00 — SFX bank SDL_mixer migration
+
+- Migrated `app/systems/sfx_bank_system.cpp` off raylib SFX APIs to direct `SDL_mixer` chunk playback and ownership (`Mix_Chunk*`, `Mix_PlayChannel`, `Mix_FreeChunk`).
+- Preserved procedural SFX generation by serializing generated PCM16 mono samples to in-memory WAV bytes and loading them with `Mix_LoadWAV_RW(SDL_RWFromConstMem(...))`.
+- `sfx_bank` validity checks now use pointer/null checks and SDL_mixer error logs (`Mix_GetError`) instead of raylib `IsSoundValid`.

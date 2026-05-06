@@ -4,40 +4,62 @@
 #include <cstdio>
 #include <cstring>
 
-int main(int argc, char* argv[]) {
+namespace {
 
-    // ── Parse CLI args ───────────────────────────────────────
-    TestPlayerSkill test_skill = TestPlayerSkill::Pro;
+struct CliOptions {
     bool test_player_mode = false;
+    TestPlayerSkill test_skill = TestPlayerSkill::Pro;
     const char* difficulty = "medium";
+};
+
+bool is_cli_difficulty_supported(const char* difficulty) {
+    return difficulty &&
+           (std::strcmp(difficulty, "easy") == 0 ||
+            std::strcmp(difficulty, "medium") == 0 ||
+            std::strcmp(difficulty, "hard") == 0);
+}
+
+bool parse_cli_options(int argc, char* argv[], CliOptions& options) {
     for (int i = 1; i < argc; ++i) {
-        if (std::strcmp(argv[i], "--test-player") == 0 && i + 1 < argc) {
-            test_player_mode = true;
-            ++i;
-            if (std::strcmp(argv[i], "pro") == 0)       test_skill = TestPlayerSkill::Pro;
-            else if (std::strcmp(argv[i], "good") == 0)  test_skill = TestPlayerSkill::Good;
-            else if (std::strcmp(argv[i], "bad") == 0)   test_skill = TestPlayerSkill::Bad;
-            else {
-                std::fprintf(stderr, "Unknown skill: %s (use pro|good|bad)\n", argv[i]);
-                return 1;
+        if (std::strcmp(argv[i], "--test-player") == 0) {
+            if (i + 1 >= argc) {
+                std::fprintf(stderr, "Missing skill after --test-player (use pro|good|bad)\n");
+                return false;
             }
-        }
-        if (std::strcmp(argv[i], "--difficulty") == 0 && i + 1 < argc) {
+            options.test_player_mode = true;
             ++i;
-            if (std::strcmp(argv[i], "easy") == 0 ||
-                std::strcmp(argv[i], "medium") == 0 ||
-                std::strcmp(argv[i], "hard") == 0) {
-                difficulty = argv[i];
+            if (!try_parse_test_player_skill(argv[i], options.test_skill)) {
+                std::fprintf(stderr, "Unknown skill: %s (use pro|good|bad)\n", argv[i]);
+                return false;
+            }
+        } else if (std::strcmp(argv[i], "--difficulty") == 0) {
+            if (i + 1 >= argc) {
+                std::fprintf(stderr, "Missing value after --difficulty (use easy|medium|hard)\n");
+                return false;
+            }
+            ++i;
+            if (is_cli_difficulty_supported(argv[i])) {
+                options.difficulty = argv[i];
             } else {
                 std::fprintf(stderr, "Unknown difficulty: %s (use easy|medium|hard)\n", argv[i]);
-                return 1;
+                return false;
             }
         }
+    }
+    return true;
+}
+
+}  // namespace
+
+int main(int argc, char* argv[]) {
+    CliOptions options{};
+    if (!parse_cli_options(argc, argv, options)) {
+        return 1;
     }
 
     // ── Init → Run → Shutdown ────────────────────────────────
     entt::registry reg;
-    if (!game_loop_init(reg, test_player_mode, test_skill, difficulty)) {
+    if (!game_loop_init(reg, options.test_player_mode, options.test_skill, options.difficulty)) {
         return 1;
     }
     game_loop_run(reg);

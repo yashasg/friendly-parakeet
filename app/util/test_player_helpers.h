@@ -2,49 +2,28 @@
 
 #include "../components/test_player.h"
 
-inline bool test_player_shape_done(const TestPlayerAction& action) {
-    return !!(action.done_flags & ActionDoneBit::Shape);
-}
-
-inline bool test_player_lane_done(const TestPlayerAction& action) {
-    return !!(action.done_flags & ActionDoneBit::Lane);
-}
-
-inline bool test_player_vertical_done(const TestPlayerAction& action) {
-    return !!(action.done_flags & ActionDoneBit::Vertical);
-}
-
-inline void test_player_mark_shape_done(TestPlayerAction& action) {
-    action.done_flags |= ActionDoneBit::Shape;
-}
-
-inline void test_player_mark_lane_done(TestPlayerAction& action) {
-    action.done_flags |= ActionDoneBit::Lane;
-}
-
-inline void test_player_mark_vertical_done(TestPlayerAction& action) {
-    action.done_flags |= ActionDoneBit::Vertical;
-}
-
 inline bool test_player_needs_shape(const TestPlayerAction& action) {
-    return action.target_shape != Shape::Hexagon && !test_player_shape_done(action);
+    return action.target_shape != Shape::Hexagon &&
+           static_cast<int>(action.done_flags & ActionDoneBit::Shape) == 0;
 }
 
 inline bool test_player_needs_lane(const TestPlayerAction& action) {
-    return action.target_lane >= 0 && !test_player_lane_done(action);
+    return action.target_lane >= 0 &&
+           static_cast<int>(action.done_flags & ActionDoneBit::Lane) == 0;
 }
 
 inline bool test_player_needs_vertical(const TestPlayerAction& action) {
-    return action.target_vertical != VMode::Grounded && !test_player_vertical_done(action);
+    return action.target_vertical != VMode::Grounded &&
+           static_cast<int>(action.done_flags & ActionDoneBit::Vertical) == 0;
 }
 
 inline bool test_player_action_done(const TestPlayerAction& action) {
     const bool shape_done = (action.target_shape == Shape::Hexagon) ||
-                            test_player_shape_done(action);
+                            (static_cast<int>(action.done_flags & ActionDoneBit::Shape) != 0);
     const bool lane_done = (action.target_lane < 0) ||
-                           test_player_lane_done(action);
+                           (static_cast<int>(action.done_flags & ActionDoneBit::Lane) != 0);
     const bool vertical_done = (action.target_vertical == VMode::Grounded) ||
-                               test_player_vertical_done(action);
+                               (static_cast<int>(action.done_flags & ActionDoneBit::Vertical) != 0);
     return shape_done && lane_done && vertical_done;
 }
 

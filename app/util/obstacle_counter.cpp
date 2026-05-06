@@ -2,28 +2,32 @@
 #include "../components/obstacle.h"
 #include <entt/entt.hpp>
 
+namespace {
+
 // ── Signal listeners ─────────────────────────────────────────────────────────
 // These are wired once per registry lifetime by wire_obstacle_counter().
 // Keeping them out of the header ensures ObstacleCounter remains plain data.
 
-static void on_obstacle_tag_constructed(entt::registry& reg, entt::entity /*e*/) {
+void on_obstacle_tag_constructed(entt::registry& reg, entt::entity /*e*/) {
     if (auto* oc = reg.ctx().find<ObstacleCounter>()) {
         ++oc->count;
     }
 }
 
-static void on_obstacle_tag_destroyed(entt::registry& reg, entt::entity /*e*/) {
+void on_obstacle_tag_destroyed(entt::registry& reg, entt::entity /*e*/) {
     auto* oc = reg.ctx().find<ObstacleCounter>();
     if (!oc || oc->count <= 0) return;
     --oc->count;
 }
 
+}  // namespace
+
 // Call once per registry lifetime to wire the signals.
 // Safe to call multiple times — subsequent calls are no-ops (guarded by wired flag).
 void wire_obstacle_counter(entt::registry& reg) {
-    auto* oc = reg.ctx().find<ObstacleCounter>();
-    if (!oc || oc->wired) return;
+    auto* counter = reg.ctx().find<ObstacleCounter>();
+    if (!counter || counter->wired) return;
     reg.on_construct<ObstacleTag>().connect<&on_obstacle_tag_constructed>();
     reg.on_destroy<ObstacleTag>().connect<&on_obstacle_tag_destroyed>();
-    oc->wired = true;
+    counter->wired = true;
 }

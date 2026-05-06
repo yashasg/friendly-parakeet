@@ -32,4 +32,12 @@ struct HapticQueue {
     static constexpr int MAX_QUEUED = 8;
     HapticEvent queue[MAX_QUEUED] = {};
     int count = 0;
+
+    void push(HapticEvent event) noexcept {
+        if (count < MAX_QUEUED) {
+            queue[count++] = event;
+        }
+    }
+
+    void clear() noexcept { count = 0; }
 };

@@ -1,16 +1,17 @@
 #include "all_systems.h"
-#include "../audio/audio_queue.h"
+#include "../components/audio.h"
+#include "../components/registry_context.h"
 
 void audio_system(entt::registry& reg) {
-    auto* audio = reg.ctx().find<AudioQueue>();
+    auto* audio = registry_ctx_find<AudioQueue>(reg);
     if (!audio) return;
 
-    auto* backend = reg.ctx().find<SFXPlaybackBackend>();
+    auto* backend = registry_ctx_find<SFXPlaybackBackend>(reg);
     if (backend && backend->dispatch) {
         for (int i = 0; i < audio->count; ++i) {
             backend->dispatch(reg, audio->queue[i]);
         }
     }
 
-    audio_clear(*audio);
+    audio->clear();
 }

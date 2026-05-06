@@ -1,6 +1,5 @@
 #pragma once
 
-#include "player.h"
 #include <cstdint>
 
 // ── Raw input state (internal to input_system) ──────────────────────────────
@@ -24,6 +23,19 @@ struct InputState {
     bool was_focused = true;
     bool gestures_configured = false;
 };
+
+inline void clear_transient_input_flags(InputState& input) noexcept {
+    input.touch_down = false;
+    input.touch_up = false;
+    input.click = false;
+}
+
+inline void reset_pointer_capture(InputState& input) noexcept {
+    clear_transient_input_flags(input);
+    input.touching = false;
+    input.active_source = InputSource::None;
+    input.duration = 0.0f;
+}
 
 // ── Directions ──────────────────────────────────────────────────────────────
 // Shared by InputEvent routing and consumer systems.

@@ -1,8 +1,7 @@
-#include "all_systems.h"
 #include "../components/obstacle.h"
 #include "../components/transform.h"
-#include "../components/game_state.h"
 #include "../constants.h"
+#include <entt/entt.hpp>
 
 // Pure tagger: marks unscored obstacles that have scrolled past DESTROY_Y.
 // Runs before scoring_system so that the MissTag is processed the same frame.
