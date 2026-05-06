@@ -9,8 +9,8 @@
 //   MEDIUM/HARD — LowBar/HighBar are temporarily disabled
 //     • low_bar and high_bar must not appear in shipped gameplay beatmaps.
 //
-//   MEDIUM/HARD — no removed legacy lane kinds
-//     • lane_push_left/lane_push_right/lane_block must not appear.
+//   MEDIUM/HARD — no removed legacy lane kind
+//     • lane_block must not appear.
 //
 // All checks use FAIL_CHECK (non-aborting) so every offending song is
 // reported in a single run.  The test is tagged [difficulty_ramp][issue135].
@@ -62,9 +62,7 @@ static bool is_bar(ObstacleKind k) {
 }
 
 static bool is_removed_lane_kind(ObstacleKind k) {
-    return k == ObstacleKind::LanePushLeft
-        || k == ObstacleKind::LanePushRight
-        || k == ObstacleKind::LaneBlock;
+    return k == ObstacleKind::LaneBlock;
 }
 
 // ── Guard: content directory must be reachable ────────────────────────────

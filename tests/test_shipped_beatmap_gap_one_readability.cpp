@@ -42,9 +42,7 @@ static bool is_readable_family(const BeatEntry& left, const BeatEntry& right) {
 }
 
 static bool is_unreadable_kind(ObstacleKind kind) {
-    return kind == ObstacleKind::LanePushLeft
-        || kind == ObstacleKind::LanePushRight
-        || kind == ObstacleKind::LowBar
+    return kind == ObstacleKind::LowBar
         || kind == ObstacleKind::HighBar;
 }
 

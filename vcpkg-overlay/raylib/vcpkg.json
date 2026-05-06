@@ -9,9 +9,6 @@
   "dependencies": [
     "cgltf",
     "dirent",
-    "mmx",
-    "nanosvg",
-    "qoi",
     "stb",
     {
       "name": "sdl2",

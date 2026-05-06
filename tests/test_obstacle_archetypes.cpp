@@ -364,3 +364,10 @@ TEST_CASE("entity: no BeatInfo when not provided", "[archetype]") {
 
     CHECK_FALSE(reg.all_of<BeatInfo>(e));
 }
+
+TEST_CASE("entity: no BeatInfo when not provided", "[archetype]") {
+    entt::registry reg;
+    auto e = spawn_obstacle(reg, {ObstacleKind::ShapeGate, 360.0f, -120.0f});
+
+    CHECK_FALSE(reg.all_of<BeatInfo>(e));
+}

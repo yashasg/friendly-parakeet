@@ -94,8 +94,8 @@ void scoring_system(entt::registry& reg, float dt) {
         auto& miss_buf = scratch.miss_buf;
         miss_buf.clear();
 
-        auto miss_view = reg.view<ObstacleTag, ScoredTag, MissTag, Obstacle>();
-        for (auto e : miss_view) {
+        auto miss_view_graded = reg.view<ObstacleTag, ScoredTag, MissTag, Obstacle, TimingGrade>();
+        for (auto e : miss_view_graded) {
             enqueue_energy_effect(reg, -constants::ENERGY_DRAIN_MISS, true);
             if (results) results->miss_count++;
             score.chain_count = 0;
@@ -103,7 +103,20 @@ void scoring_system(entt::registry& reg, float dt) {
             if (gos && gos->cause == DeathCause::None) {
                 gos->cause = reg.any_of<BarObstacleTag>(e) ? DeathCause::HitABar : DeathCause::MissedABeat;
             }
-            miss_buf.push_back({e, reg.any_of<TimingGrade>(e)});
+            miss_buf.push_back({e, true});
+        }
+
+        auto miss_view_ungraded = reg.view<ObstacleTag, ScoredTag, MissTag, Obstacle>(
+            entt::exclude<TimingGrade>);
+        for (auto e : miss_view_ungraded) {
+            enqueue_energy_effect(reg, -constants::ENERGY_DRAIN_MISS, true);
+            if (results) results->miss_count++;
+            score.chain_count = 0;
+            score.chain_timer = 0.0f;
+            if (gos && gos->cause == DeathCause::None) {
+                gos->cause = reg.any_of<BarObstacleTag>(e) ? DeathCause::HitABar : DeathCause::MissedABeat;
+            }
+            miss_buf.push_back({e, false});
         }
         // Apply structural removals after iteration — safe.
         for (auto& r : miss_buf) {
@@ -123,27 +136,49 @@ void scoring_system(entt::registry& reg, float dt) {
         auto& hit_buf = scratch.hit_buf;
         hit_buf.clear();
 
-        auto hit_view = reg.view<ObstacleTag, ScoredTag, Obstacle, WorldTransform>(
+        auto hit_view_graded = reg.view<ObstacleTag, ScoredTag, Obstacle, WorldTransform, TimingGrade>(
             entt::exclude<MissTag, NonScorableTag, ObstacleScrollZ>);
-        for (auto [e, obs, wt] : hit_view.each()) {
+        for (auto [e, obs, wt, tg] : hit_view_graded.each()) {
             HitRecord r;
             r.e        = e;
             r.popup_xy = wt.position;
             r.obs      = obs;
-            auto* tg = reg.try_get<TimingGrade>(e);
-            if (tg) { r.has_timing = true; r.timing = *tg; }
+            r.has_timing = true;
+            r.timing = tg;
             hit_buf.push_back(r);
         }
 
-        auto model_hit_view = reg.view<ObstacleTag, ScoredTag, Obstacle, ObstacleScrollZ>(
+        auto hit_view_ungraded = reg.view<ObstacleTag, ScoredTag, Obstacle, WorldTransform>(
+            entt::exclude<MissTag, NonScorableTag, ObstacleScrollZ, TimingGrade>);
+        for (auto [e, obs, wt] : hit_view_ungraded.each()) {
+            HitRecord r;
+            r.e        = e;
+            r.popup_xy = wt.position;
+            r.obs      = obs;
+            r.has_timing = false;
+            hit_buf.push_back(r);
+        }
+
+        auto model_hit_view_graded = reg.view<ObstacleTag, ScoredTag, Obstacle, ObstacleScrollZ, TimingGrade>(
             entt::exclude<MissTag, NonScorableTag>);
-        for (auto [e, obs, oz] : model_hit_view.each()) {
+        for (auto [e, obs, oz, tg] : model_hit_view_graded.each()) {
             HitRecord r;
             r.e        = e;
             r.popup_xy = {constants::SCREEN_W_F * 0.5f, oz.z};
             r.obs = obs;
-            auto* tg = reg.try_get<TimingGrade>(e);
-            if (tg) { r.has_timing = true; r.timing = *tg; }
+            r.has_timing = true;
+            r.timing = tg;
+            hit_buf.push_back(r);
+        }
+
+        auto model_hit_view_ungraded = reg.view<ObstacleTag, ScoredTag, Obstacle, ObstacleScrollZ>(
+            entt::exclude<MissTag, NonScorableTag, TimingGrade>);
+        for (auto [e, obs, oz] : model_hit_view_ungraded.each()) {
+            HitRecord r;
+            r.e        = e;
+            r.popup_xy = {constants::SCREEN_W_F * 0.5f, oz.z};
+            r.obs = obs;
+            r.has_timing = false;
             hit_buf.push_back(r);
         }
 

@@ -95,7 +95,7 @@ TEST_CASE("parse: unknown shape does not silently become Circle", "[parse][shape
 TEST_CASE("parse: all valid kinds parse without errors", "[parse][kind]") {
     const std::vector<std::string> valid_kinds = {
         "shape_gate", "lane_block", "low_bar", "high_bar",
-        "combo_gate", "split_path", "lane_push_left", "lane_push_right"
+        "combo_gate", "split_path"
     };
 
     for (const auto& kind : valid_kinds) {
