@@ -50,3 +50,7 @@ bench_logger.log
 # Local-only benchmark tracks for aubio tuning/evaluation (never commit)
 /benchmarks/audio-local/
 /benchmarks/ballroom-local/
+
+
+node_modules/
+test-results/
