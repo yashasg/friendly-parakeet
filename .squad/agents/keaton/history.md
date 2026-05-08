@@ -188,3 +188,58 @@ Keaton's push-lane obstacle removal work was reviewed and approved by Kujan. All
 #### Status
 ✅ Architecture clean. No immediate action. Codebase ready for feature development.
 
+### 2026-05-08T11:14:33.527-07:00 — Circle floor ring implementation: 2D verification
+
+**Task:** Read actual code for circle floor ring implementation and correct prior audit if needed.
+
+**Findings: CORRECTION CONFIRMED**
+
+**The circle floor ring IS already 2D, not 3D.** Prior audit notes mentioning "3D world" were misleading—that refers to the camera context (BeginMode3D), not the geometry structure.
+
+**Implementation Details:**
+- **Location:** `app/systems/game_render_system.cpp`, lines 97-133 (`draw_floor_rings()`)
+- **Coordinate plane:** XZ plane (horizontal), with Y always = 0.0f
+- **Rendering method:** RL_TRIANGLES via rlgl (lines 100–132)
+- **Geometry source:** `app/util/shape_vertices.h`, CIRCLE array (24 unit-radius vertices, lines 10-23)
+- **Triangulation:** 12 segments per ring, each segment is a quad (2 triangles) forming an annulus
+- **Usage:** Maps CIRCLE[i].x → world X, CIRCLE[i].y → world Z (lines 114–121)
+
+**Code evidence:**
+- All `rlVertex3f` calls hardcode Y=0.0f (lines 124, 125, 127, 128, 129)
+- X and Z vary with circle geometry; Y is constant floor plane
+- V2 struct contains only 2D data (float x, y)
+
+**shape_vertices.h cleanup analysis:**
+- CIRCLE: **REQUIRED** — actively used by floor ring rendering
+- HEXAGON, SQUARE, TRIANGLE: **UNUSED in game code** — only referenced in tests (`test_perspective.cpp`) and benchmarks (`bench_perspective.cpp`), safe to remove with test cleanup
+
+**Cleanup candidates:**
+1. HEXAGON array (line 27–34) — dead code, tests only
+2. SQUARE array (line 37–42) — dead code, tests only
+3. TRIANGLE array (line 45–49) — dead code, tests only
+4. Optionally: V2 struct (line 6) can remain; replace with raylib Vector2 only if full constexpr rewrite is planned
+
+**Prior conclusion correction:** The audit conclusion stating shape_vertices.h should be "held for architecture review" was correct in principle but lacked code-level verification. The CIRCLE table is indispensable; only the unused shape variants are safe for cleanup.
+
+**Status:** ✅ 2D implementation verified. CIRCLE retention confirmed. Cleanup scope narrowed to test-only geometry.
+
+
+### 2026-05-08T11:17:28.150-07:00 — shape_vertices cleanup recommendation (read-only analysis)
+
+- `app/util/shape_vertices.h` is not removable yet: `app/systems/game_render_system.cpp` consumes `shape_verts::CIRCLE` in `draw_floor_rings()` to emit annulus triangles on the XZ plane (`rlVertex3f(x, 0, z)`).
+- Runtime-dead tables confirmed: `HEXAGON`, `SQUARE`, and `TRIANGLE` are referenced only by `tests/test_perspective.cpp` and `benchmarks/bench_perspective.cpp`, not by app runtime systems.
+- Raylib `DrawRing` is a 2D API (screen-space `Vector2`) and is not a drop-in replacement for the existing BeginMode3D + XZ-plane floor pass; keep an explicit circle source (tiny table or equivalent trig path).
+- Key file paths for cleanup execution: `app/util/shape_vertices.h`, `app/systems/game_render_system.cpp`, `tests/test_perspective.cpp`, `benchmarks/bench_perspective.cpp`, `CMakeLists.txt`.
+
+### 2026-05-08T18:20:43.000Z — Keaton inspection completed, decisions recorded
+
+**Summary:** Shape vertices audit concluded. Two decisions written to `.squad/decisions.md`:
+
+1. **Circle Floor Ring Implementation is 2D (Correction & Cleanup Scope)** — Full code analysis confirming production-critical CIRCLE array and test-only HEXAGON/SQUARE/TRIANGLE removal candidates.
+2. **shape_vertices cleanup sequencing** — Recommended action plan: keep CIRCLE, remove test-only shapes, re-validate build/tests.
+
+**Artifacts:**
+- Orchestration log: `.squad/orchestration-log/2026-05-08T18-20-43-000Z-keaton.md`
+- Session log: `.squad/log/2026-05-08T18-20-43-000Z-shape-vertices-cleanup.md`
+
+**Status:** ✅ Ready for team review and handoff to cleanup pass.

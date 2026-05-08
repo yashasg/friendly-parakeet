@@ -4585,3 +4585,104 @@ Floor-shape cleanup remains a separate future task; no `shape_vertices` / floor-
 
 - `git diff --check` blank-line-at-EOF warnings in `app/components/gameplay_intents.h` and `app/components/obstacle.h` — style-only, not a blocker.
 
+
+---
+
+# Decision: Circle Floor Ring Implementation is 2D (Correction & Cleanup Scope)
+
+**Date:** 2026-05-08T11:14:33.527-07:00  
+**Owner:** Keaton (C++ Performance Engineer)  
+**Status:** Review-ready  
+**Priority:** Low (documentation/cleanup scope clarification)
+
+## Correction
+
+**Prior assumption:** Circle floor ring rendering was possibly 3D or required 3D-specific refactoring.
+
+**Actual implementation:** ✅ **Already 2D**
+
+The floor rings are rendered as circles in the **XZ plane** with **Y always = 0.0f**. This is a clean 2D annulus (ring) geometry rendered in rlgl immediate mode within a 3D camera context.
+
+### Code Evidence
+
+**File:** `app/systems/game_render_system.cpp`, lines 97–133
+
+```cpp
+static void draw_floor_rings(const FloorParams& fp) {
+    // ... loop over floor positions ...
+    for (int i = 0; i < seg; ++i) {
+        // Map CIRCLE unit vertices to world XZ positions
+        float ox1 = cx + shape_verts::CIRCLE[idx].x      * outer_r;
+        float oz1 = cz + shape_verts::CIRCLE[idx].y      * outer_r;
+        // ... similar for inner ring ...
+        
+        // ALL vertices emitted with Y=0.0f (flat floor plane)
+        rlVertex3f(ox1, 0.0f, oz1);  // Always Y=0
+        rlVertex3f(ix1, 0.0f, iz1);  // Always Y=0
+        rlVertex3f(ox2, 0.0f, oz2);  // Always Y=0
+    }
+}
+```
+
+- **X coordinate:** Varies (circle geometry)
+- **Y coordinate:** **Hardcoded 0.0f** (floor plane)
+- **Z coordinate:** Varies (circle geometry)
+
+Result: Perfect 2D annulus in horizontal XZ plane.
+
+## Cleanup Scope Refined
+
+### Keep (Production-Critical)
+- **`shape_verts::CIRCLE`** (24 unit-radius points, line 10–23)  
+  Active use: floor ring annulus triangulation via `draw_floor_rings()`
+
+### Can Remove (Test-Only)
+- **`shape_verts::HEXAGON`** (line 27–34) — used only in `tests/test_perspective.cpp`
+- **`shape_verts::SQUARE`** (line 37–42) — used only in `tests/test_perspective.cpp`
+- **`shape_verts::TRIANGLE`** (line 45–49) — used only in `tests/test_perspective.cpp`
+
+### Optional Future Work
+- **`V2` struct** (line 6) — can remain as-is (8 bytes); replace with `raylib::Vector2` only if full constexpr rewrite is prioritized
+
+## Recommendation
+
+1. ✅ **No action needed for game code.** `shape_vertices.h` CIRCLE array is correctly implemented and production-critical.
+2. 📋 **Schedule test cleanup** (separate task): Remove HEXAGON, SQUARE, TRIANGLE arrays and associated test cases in `tests/test_perspective.cpp` if codebase cleanup iteration is planned.
+3. ✅ **Architecture is stable.** Floor rendering is performant 2D annulus geometry; no refactoring required.
+
+## Team Communication
+
+This decision clarifies that prior audit uncertainty about shape_vertices.h can now be resolved:
+- **CIRCLE → KEEP** (production)
+- **HEXAGON/SQUARE/TRIANGLE → REMOVE in test cleanup pass** (future)
+- **No 3D-to-2D migration needed.** The implementation is already correctly 2D.
+
+---
+
+**Related Artifacts:**
+- Keaton history: `.squad/agents/keaton/history.md` (2026-05-08 learnings entry)
+- Code reference: `app/systems/game_render_system.cpp` (lines 97–133)
+- Shape data: `app/util/shape_vertices.h` (CIRCLE table, lines 10–23)
+
+---
+
+# Decision: shape_vertices cleanup sequencing
+
+**Date:** 2026-05-08T11:17:28.150-07:00
+**Owner:** Keaton
+**Status:** Recommended
+
+## Decision
+Do not delete `app/util/shape_vertices.h` outright yet. First narrow it to circle-only data (or equivalent inline circle generation in `game_render_system.cpp`) because floor ring rendering still requires circle coordinates in XZ within the 3D render pass.
+
+## Evidence
+- Runtime usage: `app/systems/game_render_system.cpp` uses `shape_verts::CIRCLE` to build annulus triangles (`draw_floor_rings`).
+- Non-runtime usage: `HEXAGON`, `SQUARE`, `TRIANGLE` are only used in `tests/test_perspective.cpp` and `benchmarks/bench_perspective.cpp`.
+- API fit: `DrawRing` is a 2D helper and not a direct replacement for the current `BeginMode3D` floor geometry path.
+
+## Follow-up Plan
+1. Remove `HEXAGON`, `SQUARE`, `TRIANGLE` and `HEX_SEGMENTS` from `shape_vertices.h`.
+2. Delete/update tests and benchmark cases that validate/benchmark removed tables.
+3. Keep/replace only the circle source used by floor annulus rendering.
+4. Re-run build and test suite after cleanup.
+
