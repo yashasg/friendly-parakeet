@@ -4686,3 +4686,35 @@ Do not delete `app/util/shape_vertices.h` outright yet. First narrow it to circl
 3. Keep/replace only the circle source used by floor annulus rendering.
 4. Re-run build and test suite after cleanup.
 
+### 2026-05-08T11:21:16.041-07:00: User directive
+**By:** yashasg (via Copilot)
+**What:** Raylib provides built-in draw circle, draw square, and draw triangle functions; cleanup decisions should consider direct raylib primitive APIs before keeping custom shape vertex data.
+**Why:** User correction — captured for team memory
+# Keaton recommendation: raylib primitives and `shape_vertices` cleanup
+
+**Date:** 2026-05-08T11:21:16.041-07:00  
+**Owner:** Keaton  
+**Status:** Recommended
+
+## Findings
+
+1. Runtime app usage of `shape_verts` is only `shape_verts::CIRCLE` in `app/systems/game_render_system.cpp` (`draw_floor_rings()`).
+2. Raylib 2D primitive APIs exist (`DrawCircle`, `DrawCircleV`, `DrawRing`, `DrawRectangle`, `DrawTriangle`) but operate on `Vector2` centers/points (screen-space style APIs).
+3. Raylib 3D primitive APIs also exist (`DrawCircle3D`, `DrawTriangle3D`, `DrawTriangleStrip3D`).
+4. There is no single raylib API that directly draws a filled annulus on the world floor XZ plane with inner+outer radius in one call.
+
+## Recommendation
+
+- Do **not** replace `draw_floor_rings()` with 2D `DrawRing`/`DrawCircle`.
+- If cleanup proceeds, delete `app/util/shape_vertices.h` by moving circle source local to `game_render_system.cpp` and emit triangles using either:
+  - existing `rlBegin(RL_TRIANGLES)` path (lowest risk), or
+  - `DrawTriangle3D` per annulus wedge (clearer API, slightly higher call overhead).
+- Keep app behavior identical (same segment count and winding).
+
+## Green-light implementation plan
+
+1. In `draw_floor_rings()`, replace `shape_verts::CIRCLE` dependency with local `constexpr` unit circle points (24 samples) or deterministic `cosf/sinf` generation.
+2. Remove `#include "../util/shape_vertices.h"` from `game_render_system.cpp`.
+3. Delete `app/util/shape_vertices.h`.
+4. Update `tests/test_perspective.cpp` and `benchmarks/bench_perspective.cpp` to remove `shape_verts::*` table assertions/bench loops or migrate them to the new local/helper geometry source.
+5. Rebuild and run tests/bench targets used by repo workflow; verify no visual regression in floor rings.
