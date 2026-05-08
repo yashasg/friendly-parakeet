@@ -92,3 +92,23 @@ PR #357 WASM regression coverage work finalized and logged:
 - Inbox cleared: 5 decision entries processed
 
 Team ready for next phase.
+
+## 2026-05-08T13:15:08.642-07:00 — Raylib replacement cleanup validation
+
+**Learning**
+- For deletion-heavy raylib cleanup, the highest-signal regression check is a targeted stale-reference sweep in `app/`, `tests/`, `benchmarks/`, and `CMakeLists.txt`, followed by full build + test execution to confirm no orphaned compile/link references remain.
+
+---
+
+## 2026-05-08 Session: Raylib API Replacements Validation
+
+**Task:** Validation coverage and stale reference checks.
+
+**Findings:**
+- Scoped grep against `app/`, `tests/`, `benchmarks/`, CMakeLists.txt.
+- No orphaned references for HUD hex, file I/O, or floor line replacements.
+- Full build + test validation: all pass (2063 assertions, 758 test cases).
+
+**Pattern:** Established reusable stale-reference validation approach for future cleanup passes (recorded in decisions.md).
+
+**Verdict:** All systems clear.

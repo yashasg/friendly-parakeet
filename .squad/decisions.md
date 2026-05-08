@@ -130,3 +130,46 @@
 1. Replace HUD hexagon with `DrawPoly`.
 2. Replace beatmap file text ingestion with `LoadFileText`.
 3. Decide floor rendering target architecture before touching rlgl floor primitives.
+### 2026-05-08T13:15:08.642-07:00: Raylib cleanup stale-reference validation pattern
+
+**By:** Baer  
+**Requested by:** yashasg
+
+**Pattern**
+- When removing raylib-replacement leftovers (helpers/includes/files), run a scoped stale-reference grep against only `app/`, `tests/`, `benchmarks/`, and `CMakeLists.txt` for deleted symbols/paths, then run full build + test validation.
+
+**Why it matters**
+- Most regressions in cleanup passes are orphaned references in build wiring or test/benchmark includes, not runtime behavior changes.
+- This catches dead-surface linkage failures quickly without widening noise to docs or archive files.
+
+### 2026-05-08T13:15:08.642-07:00: Safe raylib API replacements for HUD/file I/O/floor lines
+
+**By:** Keaton  
+**Requested by:** yashasg
+
+**Decision**
+- Replace HUD hexagon fan triangulation with `DrawPoly(..., 6, radius, -90.0f, ...)`.
+- Replace beatmap/constants full-file ingestion from `std::ifstream` iterators with `LoadFileText`/`UnloadFileText`.
+- Replace floor lane/grid/beat `RL_LINES` emission with `DrawLine3D`, but keep floor ring annulus geometry on existing `RL_TRIANGLES` path (design-gated).
+
+**Why**
+- These substitutions reduce custom rendering/file-loading code while preserving behavior and diagnostics.
+- They stay inside the approved cleanup surface and avoid touching design-gated rendering architecture.
+
+### 2026-05-08T13:15:08.642-07:00: Kujan review: safe raylib API replacements (Keaton)
+
+**Requested by:** yashasg  
+**Revision owner:** Keaton  
+**Verdict:** APPROVE
+
+**Findings**
+- Scope matches the approved replacement set and does not cross into design-gated floor annulus architecture changes.
+- HUD hexagon fill replacement is correct and warning-safe: `DrawPoly(..., 6, radius, -90.0f, ...)`.
+- Beatmap/constants loading correctly uses `LoadFileText`/`UnloadFileText`; constants parse failures now emit useful `TraceLog(LOG_WARNING, ...)` details without suppressing fallback behavior.
+- Floor lane/grid/beat-line emission uses `DrawLine3D`; annulus ring geometry remains on the existing `RL_TRIANGLES` path (untouched by this review scope).
+- No stale app/tests/bench/CMake references were found for removed helper surfaces relevant to this change set.
+
+**Validation**
+- Reproduced: `VCPKG_ROOT=/Users/yashasgujjar/vcpkg ./build.sh`
+- Reproduced: `./build/shapeshifter_tests`
+- Result: all tests passed (2063 assertions in 758 test cases).

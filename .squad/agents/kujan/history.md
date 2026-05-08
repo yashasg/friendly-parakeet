@@ -67,3 +67,35 @@ APPROVE — Keaton's work ready to merge.
 ### Next
 - Monitor for pointer input cleanup task
 - Track floor-shape 2D model work (non-blocking follow-up)
+
+### 2026-05-08T11:53:19.588-07:00 — shape_vertices removal review
+
+Approved cleanup when floor rings are locally generated with trig and full-segment sweep remains complete. Verified no app/tests/bench/CMake references to `shape_vertices`, and build+tests passed after deletion. Non-blocking: unrelated `.squad` history/health-report artifacts were present in working tree and should stay out of product commits.
+
+### 2026-05-08T11:59:39.840-07:00 — floor render split review
+
+Approved. Floor-only helpers and orchestration now live in `floor_render_system.cpp` behind `floor_render_system(const entt::registry&)`, while `game_render_system.cpp` keeps clear pass sequencing responsibility. Verified no app/tests/bench references to `shape_vertices`, and local validation passed (`VCPKG_ROOT=/Users/yashasgujjar/vcpkg ./build.sh` and `./build/shapeshifter_tests`).
+
+### 2026-05-08T13:03:11.140-07:00 — file/session logger cleanup review
+
+Approved Keaton's cleanup: `file_logger` module, `components/camera.h`, and `bench_file_logger.cpp` were removed cleanly with no remaining app/tests/bench/CMake references. Deferring `session_logger` migration to raylib `SetTraceLogCallback` is correct because callback scope is process-global and would mix unrelated logs without extra filtering/forwarding infrastructure.
+
+### 2026-05-08T13:15:08.642-07:00 — safe raylib API replacement review
+
+Approved Keaton's raylib replacement pass: HUD hexagon fill correctly uses `DrawPoly`, beatmap/constants loading now uses `LoadFileText`/`UnloadFileText` with constants parse warnings preserved, and floor lane/grid/beat-line emission uses `DrawLine3D` while annulus triangles remain on the rlgl path. Reproduced validation with `VCPKG_ROOT=/Users/yashasgujjar/vcpkg ./build.sh` and `./build/shapeshifter_tests` (all tests passed).
+
+---
+
+## 2026-05-08 Session: Raylib API Replacements Review
+
+**Task:** Review Keaton's safe raylib API replacements.
+
+**Review Notes:**
+- Scope matches approved replacement set; design-gated floor annulus untouched.
+- HUD hexagon `DrawPoly` correct and warning-safe.
+- File I/O `LoadFileText`/`UnloadFileText` correct; parse errors emit useful diagnostics.
+- Floor lines use `DrawLine3D`; annulus remains on `RL_TRIANGLES`.
+- No stale references found.
+- Full validation reproduced: build + tests all pass (2063 assertions, 758 test cases).
+
+**Verdict:** APPROVE.
