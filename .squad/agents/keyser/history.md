@@ -124,3 +124,49 @@ No. Rendering occurs inside `BeginMode3D()/EndMode3D()` (3D camera context). Ray
 - Codebase ready for feature development
 - Floor rendering refactor (if planned): schedule V2→Vector2 migration as low-priority follow-up
 - Dead shape cleanup: schedule in next cleanup iteration when floor rendering changes are planned
+
+### 2026-05-08T13:08:46.440-07:00: Raylib cleanup audit learning
+
+- High-value cleanup is concentrated in low-level rlgl callsites that re-implement primitives raylib already exposes (notably floor lane/beat line emission and HUD hex icon triangulation).
+- Preserve ECS-owned runtime state and GPU-lifecycle wrappers where they enforce ownership/testability; replacing those with "simpler" direct helpers risks regressions and hidden resource bugs.
+
+### 2026-05-08T13:23:49.542-07:00: EnTT architecture audit learning
+
+- Highest-leverage EnTT cleanup is eliminating manual singleton bookkeeping (signal-maintained counters, singleton-entity lookups, lazy ctx scratch init) before touching performance-tuned view topology.
+- Keep explicit fixed-tick ordering and collect-then-remove safety patterns; EnTT organizer/groups are valuable only when profiling proves a bottleneck and ordering invariants are externalized.
+
+### 2026-05-08T13:57:50.741-07:00: Systems-wide raylib rewire audit synthesis
+
+- Across 31 system files, only 4 items are truly safe first-pass rewires: gesture poll collapse (`GetGestureDetected`), two `Clamp` substitutions (collision precision + popup alpha), and floor ring `DrawTriangle3D` swap (with perf gate on that last one).
+- The `lane_overlaps` → `CheckCollisionRecs` swap is medium-risk because raylib uses a closed interval while the current lambda is open; boundary tests must be written and confirmed before proceeding.
+- The overwhelming majority of ECS systems have no useful raylib equivalent — game-domain logic (song time, beat scheduling, scoring, particle/despawn/game-state) is not a raylib concern and must stay ECS-owned.
+- Design-gated blockers (textured floor ring, letterbox coordinate ownership, audio/haptic queue inlining) each require a design decision first; never conflate "raylib has the API" with "it's safe to substitute."
+
+### 2026-05-08T21:49:55Z: EnTT Lifecycle/API Audit Decision
+
+**Date:** 2026-05-08T21:49:55Z  
+**Scope:** Read-only EnTT architecture audit (lifecycle APIs, plumbing reduction opportunities)
+
+**Decision:** Use EnTT APIs to remove orchestration/plumbing (signal wiring state, lazy ctx scratch setup, queue handoff boilerplate), but do NOT move gameplay rules into component/entity callbacks.
+
+**Rationale:**
+- Project architecture depends on strict fixed-step ordering and unidirectional writes
+- Callback-heavy gameplay would make order, replayability, and tests harder to reason about
+- EnTT lifecycle hooks are best for ownership/lifetime side-effects, not core game decisions
+
+**Safe EnTT moves:**
+- Replace ad-hoc `wired` bool state with owned EnTT connection objects in context (~5-10 LOC cleanup)
+- Eager-init ctx scratch/queue holders in session/init and use `ctx().get<T>()` in hot loops (~7-10 LOC cleanup)
+- Consider dispatcher unification for intent queues if fixed-tick drain boundaries remain explicit (~70-150 LOC, design-gated)
+
+**Do NOT move:**
+- Collision/scoring/energy/game-state transitions into callbacks
+- Fixed tick ordering into implicit signal chains
+- External resource ownership (raylib model/audio/window) into generic ECS callbacks
+
+**Expected impact:**
+- Plumbing reduction: tens to low-hundreds LOC
+- Gameplay logic reduction inside systems: low and intentionally capped (~45-80 LOC safe, ~35-90 LOC medium/design-gated)
+- Determinism/testability risk: low only if gameplay remains in explicit phase-run systems
+
+**Status:** Audit complete. Approved for safe-move implementation. Medium/design-gated moves await Coordinator signal.

@@ -14,6 +14,12 @@
 
 ## Learnings
 
+- 2026-05-08T13:57:50.741-07:00: Full `app/systems/` raylib audit found safe direct-API trims only around gesture collapse and optional XZ ring triangle emission; most lifecycle queues, floor texture work, display sizing, and owned-model drawing remain design-gated by ECS ordering, web canvas behavior, or GPU ownership contracts.
+
+- 2026-05-08T13:57:50.741-07:00: Input-system raylib cleanup has two safe trims (gesture detection via `GetGestureDetected`, and dropping unused transient `InputState` fields after UI pointer release is preserved) while letterbox coordinate conversion remains design-gated because current UI hit-testing relies on explicit virtual-space release coordinates.
+
+- 2026-05-08T13:44:53.252-07:00: Utility dead-surface cleanup is safest when ownership is explicit: obstacle-drain checks should query `reg.view<ObstacleTag>().empty()`, enum-name formatting should use `magic_enum::enum_name` at callsites, and test-player action/planned helpers should stay local to `test_player_system.cpp`.
+- 2026-05-08T13:32:04.383-07:00: `app/util/` still has high-confidence dead-surface cleanup wins (`obstacle_counter`, `fs_utils`, `enum_names`) and narrow helpers (`safe_localtime`, `test_player_helpers`) that should move into owning systems/session modules after targeted test rewiring.
 - 2026-05-08T13:03:11.140-07:00: Replacing `session_logger` with raylib `SetTraceLogCallback` is not a safe drop-in because the callback is process-global and would capture unrelated engine/app logs unless we add explicit filtering/forwarding behavior.
 - 2026-05-08T11:47:09.246-07:00: If floor rings move to a texture-on-quad path (draw 2D in XY into a RenderTexture, then place/rotate that quad into floor XZ), `shape_vertices.h` becomes removable from runtime; the migration risk shifts to render-target lifetime/UV orientation and shader texture-sampling support.
 - 2026-05-08T11:53:19.588-07:00: Replacing floor-ring lookup-table sampling with local trig generation in `game_render_system.cpp` removes shared shape vertex data and keeps ring rendering directly in the floor path.
@@ -40,6 +46,8 @@ See `.squad/agents/keaton/history-archive.md` for earlier work:
 - 2026-05-08T13:08:46.440-07:00: Highest-confidence raylib cleanup wins are replacing HUD hexagon manual triangulation with `DrawPoly` and file-text ingestion in beatmap loader with `LoadFileText`; floor/world-XZ geometry and model ownership paths should remain design-gated.
 - 2026-05-08T13:15:08.642-07:00: `DrawLine3D` is a safe replacement for floor lane/grid/beat `RL_LINES` emission in world-space XZ, while annulus ring geometry should remain on the existing `RL_TRIANGLES` path until design-gated ring architecture changes land.
 
+- 2026-05-08T13:23:49.542-07:00: EnTT audit pass: safest near-term wins are removing the `ObstacleCounter` signal counter in favor of `reg.view<ObstacleTag>().empty()` checks, replacing test-player planned arrays with a `TestPlayerPlannedTag`, and tightening popup fade iteration to `view<ScorePopup, PopupDisplay, Color>`; dispatcher migration for scoring/FX queues remains design-gated due to ordering semantics.
+
 ---
 
 ## 2026-05-08 Session: Raylib API Replacements
@@ -55,3 +63,36 @@ See `.squad/agents/keaton/history-archive.md` for earlier work:
 **Validation:** 2063 assertions, 758 test cases, zero warnings. APPROVED by Kujan.
 
 **No follow-up work:** Scope complete.
+
+- 2026-05-08T14:14:30.000-07:00: Edge-inclusive collision cleanup now uses raylib `CheckCollisionRecs` with centered hitbox rectangles; audio playback no longer needs an injectable backend because `audio_system` drains queues while directly guarding `PlaySound` behind `IsAudioDeviceReady`, bank loaded state, and `IsSoundValid`.
+
+- 2026-05-08T14:25:19.068-07:00: Cleanup regression tests should prove boundary behavior with compact table/loop cases and rely on existing component/static guards instead of reintroducing broad helper/backend surfaces.
+
+### 2026-05-08T21:49:55Z: EnTT Cleanup LOC Audit Decision
+
+**Date:** 2026-05-08T21:49:55Z  
+**Scope:** Read-only LOC estimate for EnTT architecture optimization (plumbing reduction, safe candidates, design-gated moves)
+
+**Baseline:** ./run.sh test passed. Current codebase healthy.
+
+**Safe candidates (~45–80 LOC net reduction):**
+1. `test_player_system.cpp` + `test_player.h`: Replace manual `planned[]/planned_count` + `reg.valid` cleanup with existential `TestPlayerPlannedTag` on obstacles. Est. -30 to -55 LOC.
+2. `popup_display_system.cpp`: Use structural view `<ScorePopup, PopupDisplay, Color>` instead of `view<ScorePopup> + try_get` checks. Est. -8 to -15 LOC.
+3. Scratch singleton helpers (particle_system, obstacle_despawn_system, popup_display_system, scoring_system parts): Eager-init in setup, use `ctx().get<T>()` in hot loops. Est. -7 to -10 LOC (mostly helper deletion; setup adds few lines).
+
+**Medium/design-gated (~35–90 LOC, mostly moved not removed):**
+1. Signal wiring flags in session/input/obstacle lifecycle → `entt::scoped_connection` owners. Est. -5 to +10 LOC (cleanup/readability win, minimal LOC).
+2. `PendingEnergyEffects` / `ScorePopupRequestQueue` → dispatcher events. Est. -10 to +25 LOC (often code moves, not shrinks).
+3. Camera singleton entity pattern → context singleton. Est. -20 to -55 LOC across accessors/checks, but touches many tests/assumptions.
+
+**Not worth for LOC (keep in systems):**
+- `scoring_system` collect-then-remove passes
+- `collision_system` per-kind structural loops
+- `particle_system` / `obstacle_despawn_system` collect-then-destroy safety pattern
+
+**Rationale:**
+- EnTT helps best where we currently emulate entity state in manual arrays or repeated lookup helpers
+- For phase-sensitive gameplay rules, moving logic out of systems would mostly hide behavior and increase coupling without meaningful code reduction
+
+**Verdict:** Safe moves are net-positive. Medium moves are architecturally sound but neutral on LOC. No breaking changes to baseline. Approved for safe implementation; medium moves await design green signal.
+

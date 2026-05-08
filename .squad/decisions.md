@@ -676,3 +676,525 @@ After cleanup lands, require:
 4. Floor rendering architecture pass for `DrawRing()` on a floor texture (high visual regression risk).
 5. Screen-to-virtual coordinate system as raylib `Camera2D` + `GetScreenToWorld2D()` (affects input/UI hit-testing).
 
+### 2026-05-08T14:25:19.068-07:00: Edge/audio cleanup validation gate
+**By:** Baer
+**What:** For cleanup passes, validation should include scoped added/deleted/net LOC by product vs tests, live-code stale-reference sweeps, and targeted behavior checks before accepting “slim” as complete.
+**Why:** This keeps cleanup accountable to the line-reduction goal while preserving edge collision and audio safety coverage.
+**Evidence:** Edge/audio slice validated at app -23 LOC, tests +11 LOC, total -12 LOC; live stale refs for `SFXPlaybackBackend`, `sfx_playback_backend_init`, and `lane_overlaps` were zero; full build and tests passed.
+# 2026-05-08T14:14:30.000-07:00: Baer edge collision/audio validation
+
+**Decision/learning:** Edge-inclusive lane collision must be locked by tests whenever using raylib `CheckCollisionRecs`. Raylib's rectangle check excludes exact edge contact by default, so this cleanup keeps the raylib API path while minimally inflating the centered hitbox to make touching edges count as collisions.
+
+**Validation:**
+- Added/confirmed edge tests for exact touch and just-beyond-edge miss.
+- Confirmed `SFXPlaybackBackend`, `sfx_playback_backend_init`, and `lane_overlaps` are absent from `app/`, `tests/`, `benchmarks/`, and `CMakeLists.txt`.
+- Confirmed audio tests cover headless queue draining, capacity drain, no bank, invalid SFX, unloaded sounds, and no-audio-device bank lifecycle safety.
+- Full validation passed: `VCPKG_ROOT=/Users/yashasgujjar/vcpkg ./build.sh && ./build/shapeshifter_tests`.
+### 2026-05-08T14:25:19.068-07:00: User directive
+**By:** yashasg (via Copilot)
+**What:** Cleanup passes should reduce total lines of code where possible; adding large test/API surface during cleanup defeats the purpose unless clearly justified.
+**Why:** User request — captured for team memory
+### 2026-05-08T14:45:31.166-07:00: Keaton EnTT cleanup LOC audit
+
+Scope: read-only scan of `app/systems`, `app/components`, and session wiring touchpoints.
+
+Decision summary:
+- EnTT can remove some bookkeeping, but most gameplay logic should remain in systems.
+- Largest practical code reduction is in test-player planning state and small hot-path cleanup in popup/scratch helpers.
+- Signal/dispatcher rewires are mostly architecture changes that move code rather than shrink it.
+
+Quantitative estimate (net LOC):
+- Safe now: ~45–80 LOC reduction.
+- Medium (design-gated): ~35–90 LOC reduction, mostly moved/restructured.
+- Not worth for LOC: <20 LOC or neutral; keep in systems.
+
+Key safe candidates:
+1. `app/systems/test_player_system.cpp` + `app/components/test_player.h`
+   - Replace `planned[]/planned_count` + `reg.valid` cleanup with existential planned tag on obstacle entities.
+   - Estimated net: -30 to -55 LOC.
+2. `app/systems/popup_display_system.cpp`
+   - Use structural view `<ScorePopup, PopupDisplay, Color>` instead of `view<ScorePopup> + try_get` checks.
+   - Estimated net: -8 to -15 LOC.
+3. Scratch singleton helpers (`particle_system`, `obstacle_despawn_system`, `popup_display_system`, parts of `scoring_system`)
+   - Eager-init in setup and use `ctx().get<T>()` in systems.
+   - Estimated net: -7 to -10 LOC (mostly helper deletion; some setup additions).
+
+Medium candidates (mostly moves/restructure):
+1. Signal wiring flags in session/input/obstacle lifecycle to `entt::scoped_connection` owners.
+   - Estimated net: -5 to +10 LOC (cleanup/readability win, minimal LOC win).
+2. `PendingEnergyEffects` / `ScorePopupRequestQueue` to dispatcher events.
+   - Estimated net: -10 to +25 LOC (often code moves, not shrinks).
+3. Camera singleton entity pattern to context singleton.
+   - Estimated net: -20 to -55 LOC across camera accessors and checks, but touches many tests/assumptions.
+
+Not-worth for LOC (keep in systems):
+- `scoring_system` collect-then-remove passes.
+- `collision_system` per-kind structural loops.
+- `particle_system` / `obstacle_despawn_system` collect-then-destroy safety pattern.
+
+Rationale:
+- EnTT helps best where we currently emulate entity state in manual arrays or repeated lookup helpers.
+- For phase-sensitive gameplay rules, moving logic out of systems would mostly hide behavior and increase coupling without meaningful code reduction.
+# Keyser — EnTT lifecycle audit decision (read-only)
+
+Date: 2026-05-08T14:45:31.166-07:00  
+Requested by: yashasg
+
+## Decision
+
+Use EnTT APIs to remove orchestration/plumbing from systems (signal wiring state, lazy ctx scratch setup, queue handoff boilerplate), but **do not** move gameplay rules into component/entity callbacks. Keep components plain data and systems as deterministic free-function phase steps.
+
+## Why
+
+- Project architecture explicitly depends on strict fixed-step ordering and unidirectional writes.
+- Callback-heavy gameplay (on_update/on_construct-driven rule evaluation) would make order, replayability, and tests harder to reason about.
+- EnTT lifecycle hooks are best for ownership/lifetime side-effects, not core game decisions.
+
+## Scope guidance
+
+1. **Good EnTT moves**
+   - Replace ad-hoc `wired` bool state with owned EnTT connection objects in context.
+   - Eager-init ctx scratch/queue holders in session/init and use `ctx().get<T>()` in hot loops.
+   - Consider dispatcher unification for intent queues if fixed-tick drain boundaries remain explicit.
+   - Keep using storage/view helpers for structural checks (`view<...>().empty()`, `storage<T>()`).
+
+2. **Do not move**
+   - Collision/scoring/energy/game-state transitions into callbacks (`on_construct/on_update/on_destroy`).
+   - Fixed tick ordering into implicit signal chains or observer-triggered state transitions.
+   - External resource ownership (raylib model/audio/window lifetime) into generic ECS callback paths.
+
+## Expected impact (high-level)
+
+- Plumbing reduction in systems/input/session glue: moderate (tens to low-hundreds LOC).
+- Gameplay logic reduction inside systems: low and intentionally capped.
+- Determinism/testability risk: low only if gameplay remains in explicit phase-run systems.
+# Keyser — Systems-Wide Raylib Rewire/Removal Plan
+
+**Date:** 2026-05-08T13:57:50.741-07:00  
+**By:** Keyser (Lead Architect)  
+**Requested by:** yashasg  
+**Status:** Plan only — no implementation. Awaiting green signal.  
+**Sources:** keaton-systems-raylib-audit.md, mcmanus-systems-raylib-audit.md, fenster-systems-raylib-audit.md, baer-systems-raylib-audit-tests.md + spot-checked `app/systems/` against `docs/raylib/cheatsheet.md`.
+
+---
+
+## 1. Safe First-Pass Rewires
+
+These are low-risk, self-contained substitutions. Zero design decisions required. Order within this group is flexible.
+
+### 1a. `input_system.cpp` — Collapse repeated `IsGestureDetected()` fan-out to one `GetGestureDetected()` read
+
+- **File:** `app/systems/input_system.cpp` lines 155–168  
+- **Symbol:** Five `IsGestureDetected(GESTURE_SWIPE_*)` / `IsGestureDetected(GESTURE_TAP)` calls → redundant per-frame polling  
+- **Raylib API:** `int GetGestureDetected(void)` (cheatsheet)  
+- **Steps:**
+  1. Read `const int gesture = GetGestureDetected();` once inside the touch-release block.
+  2. Replace the five `if (IsGestureDetected(...))` branches with `if (gesture == GESTURE_SWIPE_RIGHT)` etc.
+  3. Remove the fallback `gesture = GetGestureDetected()` line (now redundant).
+  4. Keep `SetGesturesEnabled(...)` and `InputState::gestures_configured` — these are still needed.
+- **Stale-reference sweep:** `rg IsGestureDetected app/systems/input_system.cpp` must return zero hits after.
+- **Tests:** `test_input_pipeline_behavior.cpp`, `test_player_action_rhythm.cpp`, `test_event_queue.cpp`; manual web/mobile gesture smoke for swipe and tap.
+
+### 1b. `collision_system.cpp` — Replace manual precision clamp with `Clamp`
+
+- **File:** `app/systems/collision_system.cpp` lines 76–77  
+- **Symbol:** `if (precision < 0.0f) precision = 0.0f; if (precision > 1.0f) precision = 1.0f;` inside `grade_shape_timing` lambda  
+- **Raylib API:** `float Clamp(float value, float min, float max)` from `<raymath.h>`  
+- **Steps:**
+  1. Ensure `#include <raymath.h>` is present (already likely via raylib).
+  2. Replace the two `if` clamp branches with `precision = Clamp(precision, 0.0f, 1.0f);`.
+  3. Remove now-deleted branches; leave surrounding code untouched.
+- **Tests:** `test_collision_system.cpp`, `test_collision_extended.cpp`, `test_scoring_system.cpp`; confirm timing-tier assignment unchanged.
+
+### 1c. `popup_display_system.cpp` — Replace manual alpha clamp with `Clamp`
+
+- **File:** `app/systems/popup_display_system.cpp` lines 38–39  
+- **Symbol:** `if (alpha_ratio < 0.0f) alpha_ratio = 0.0f; if (alpha_ratio > 1.0f) alpha_ratio = 1.0f;`  
+- **Raylib API:** `float Clamp(float value, float min, float max)` from `<raymath.h>`  
+- **Steps:**
+  1. Replace the two manual branches with `alpha_ratio = Clamp(alpha_ratio, 0.0f, 1.0f);`.
+  2. The `pd->a` write stays as-is.
+- **Tests:** `test_popup_display_system.cpp`, `test_scoring_extended.cpp`; test alpha at full life, mid-life, expired (negative remaining), and `max_time <= 0`.
+
+### 1d. `floor_render_system.cpp` — Replace rlgl immediate-mode ring emission with `DrawTriangle3D` (pending perf check)
+
+- **File:** `app/systems/floor_render_system.cpp` lines 93–128  
+- **Symbol:** `rlBegin(RL_TRIANGLES)` / `rlColor4ub` / `rlVertex3f` / `rlEnd()`  
+- **Raylib API:** `void DrawTriangle3D(Vector3 v1, Vector3 v2, Vector3 v3, Color color)` (cheatsheet)  
+- **Steps:**
+  1. For each annulus segment (currently 6 vertices = 2 triangles), emit two `DrawTriangle3D(...)` calls using the same XZ-plane vertex coordinates.
+  2. After the loop, `rlEnd()` and `rlBegin` wrappers disappear.
+  3. Remove `#include <rlgl.h>` from `floor_render_system.cpp` if no other rlgl calls remain in that file.
+  4. Measure: if `DrawTriangle3D` call-overhead exceeds batched immediate-mode by a measurable frame budget, revert to rlgl.
+- **Behavior gate:** Visual parity — ring thickness, winding, culling, alpha, zero new compiler warnings (no unused-variable from removed rlgl calls).
+- **Tests:** `test_perspective.cpp` (floor-ring angular sweep), full suite; manual render smoke on native + WASM.
+
+---
+
+## 2. Medium-Risk Rewires
+
+These require design confirmation or additional tests before proceeding.
+
+### 2a. `collision_system.cpp` — Replace inline `lane_overlaps` lambda with `CheckCollisionRecs`
+
+- **File:** `app/systems/collision_system.cpp` line 100 lambda  
+- **Symbol:** `lane_overlaps` — `(dx > -PLAYER_SIZE) && (dx < PLAYER_SIZE)` open-interval  
+- **Raylib API:** `bool CheckCollisionRecs(Rectangle rec1, Rectangle rec2)` — **uses closed interval (`<=`)**  
+- **What must be preserved:** Current lambda uses strict open-interval (`<`, not `≤`). `CheckCollisionRecs` uses `rec1.x + rec1.width >= rec2.x`, i.e., touching edges collide. A same-result border case change is gameplay-visible (hit becomes miss at exact edge).
+- **Steps:**
+  1. Add boundary tests: `just_inside`, `exactly_at_edge` (currently a miss), `just_outside` for all shape gates.
+  2. If tests confirm `CheckCollisionRecs` closed-interval produces the same gameplay outcome (edge is still a miss because player/obstacle sizes prevent exact touching in practice), then replace.
+  3. Delete the lambda comment and `lane_overlaps` local after swap.
+  4. Align with `test_player_system.cpp` `lane_overlap_rect()` for shared semantics.
+- **Tests:** `test_collision_system.cpp`, `test_collision_extended.cpp`, plus newly written boundary edge tests.
+
+### 2b. `audio_system.cpp` — Remove `SFXPlaybackBackend` callback seam, call `PlaySound` directly
+
+- **File:** `app/systems/audio_system.cpp` + `app/audio/audio_types.h` + `app/audio/sfx_bank.h/.cpp`  
+- **Symbol:** `SFXPlaybackBackend::dispatch`, `sfx_playback_backend_init()`  
+- **Raylib API:** `void PlaySound(Sound sound)`, `bool IsAudioDeviceReady(void)`, `bool IsSoundValid(Sound sound)`  
+- **What must be preserved:** Headless/test injection seam. Removing the callback eliminates the mock path that tests use to observe SFX delivery.
+- **Steps:**
+  1. Replace `SFXPlaybackBackend::dispatch` call with: guard `IsAudioDeviceReady()` + `IsSoundValid(bank.sounds[idx])` → `PlaySound(...)`.
+  2. Delete `SFXPlaybackBackend` struct from `audio_types.h`.
+  3. Delete `sfx_playback_backend_init()` from `sfx_bank.h/.cpp`.
+  4. Update game-loop and test wiring that currently sets the callback.
+  5. Provide a compile-time or headless guard for no-audio context (WASM audio unlock, headless test builds) via `IsAudioDeviceReady()` check.
+- **Tests:** `test_audio_system.cpp`; update/replace callback-capture tests with `IsSoundValid`/`IsAudioDeviceReady` guarded assertions; manual native + WASM audio smoke.
+
+### 2c. `song_playback_system.cpp` — Evaluate `IsMusicStreamPlaying` to replace `MusicContext::started`
+
+- **File:** `app/systems/song_playback_system.cpp` + `app/audio/music_context.h`  
+- **Symbol:** `MusicContext::started`  
+- **Raylib API:** `bool IsMusicStreamPlaying(Music music)`  
+- **What must be preserved:** `started` means "stream has been started and may be paused" — NOT "currently playing." `IsMusicStreamPlaying` returns false while paused, which would break the pause-resume-terminal latch sequence.
+- **Steps:**
+  1. Audit every use of `started` flag across `song_playback_system.cpp` and `setup_play_session()`.
+  2. If the flag only gates `UpdateMusicStream` pumping (must pump even while paused), keep an explicit ECS-owned playback-state enum (`Idle | Started | Paused | Stopped`) instead of `started` bool, so `IsMusicStreamPlaying` is not misused.
+  3. Only delete `started` if all sites provably only need "currently playing" semantics.
+- **Tests:** `test_song_playback_system.cpp`, `test_song_playback_extended.cpp`, terminal-phase regression; manual: start → pause → resume → song complete; verify no restart.
+
+---
+
+## 3. Design-Gated / No-Go Items
+
+Do NOT implement until explicit design decision is made.
+
+### 3a. Floor rings via `DrawRing` + textured floor plane
+
+- **What it would touch:** `floor_render_system.cpp` (remove rlgl path entirely), `camera_system.cpp` + `camera_resources.h` (new floor `RenderTexture` lifecycle), possibly `game_render_system.cpp` (texture pass ordering), floor-sampling shader/material, `tests/test_gpu_resource_lifecycle.cpp`.
+- **Why gated:** Requires: (a) shader/material changes to sample texture diffuse (current shader only uses `colDiffuse`), (b) new RAII floor texture ownership and lifecycle, (c) UV/Y-flip validation (RenderTexture is flipped Y vs screen convention), (d) render-target headless guard. This is a feature refactor, not cleanup. The safe `DrawTriangle3D` swap in §1d is the near-term substitute.
+
+### 3b. `screen_to_virtual` removal via `GetScreenToWorld2D` + `Camera2D`
+
+- **Why gated:** `ScreenTransform` is used by the blit path in `game_loop.cpp`, UI mouse offset/scale in `ui_render_system.cpp`, and gameplay tap hit testing in `input_system.cpp`. Moving ownership to a `Camera2D` changes the input/camera/blit contract across three systems simultaneously. Risk of letterbox hit-testing regression is high.
+
+### 3c. `platform_get_display_size` removal via `GetScreenWidth/Height`
+
+- **Why gated:** Web path owns CSS canvas synchronization and HiDPI buffer sizing. Native-only inlining is safe but changes only `platform_display.cpp`, not a system. Requires web canvas redesign before the seam can be deleted.
+
+### 3d. Audio/haptic queue inlining to direct raylib
+
+- `haptic_system.cpp` / platform haptics bridge: `SetGamepadVibration` is gamepad-only; not equivalent to iOS/phone haptic engines. Keep platform bridge. Gamepad rumble is an *additive* backend in `platform::haptics::trigger`, not a replacement.
+- `beat_log_system.cpp` / `SetTraceLogCallback`: callback is process-global; not equivalent to per-session structured BEAT telemetry. Keep scoped logger.
+
+### 3e. `DrawModel/DrawModelEx` to replace owned-model `DrawMesh` paths
+
+- **Why gated:** `game_render_system.cpp` uses local material copies for per-entity tint and shared-mesh safety. `DrawModel/DrawModelEx` semantics do not map cleanly without first proving transform, tint, and shared-material ownership equivalence.
+
+### 3f. `SeekMusicStream` for restart / `GetMusicTimeLength` for duration authority
+
+- **Why gated:** Beatmap and music file durations may intentionally differ; changing authority shifts `SongComplete` timing. `SeekMusicStream` behavior at stream end needs explicit validation in non-looping mode.
+
+---
+
+## 4. Files/Systems With No Useful Raylib Equivalent
+
+These systems are pure ECS/game-domain logic. No rewiring is warranted from this audit.
+
+| File | Why no useful replacement |
+|---|---|
+| `beat_scheduler_system.cpp` | Beatmap spawn timing, overshoot compensation, lane masking — no raylib equivalent |
+| `scroll_system.cpp` | Song-time-derived obstacle position math; `GetFrameTime` is wrong here |
+| `shape_window_system.cpp` | Song-time state machine |
+| `motion_system.cpp` | ECS integration; component math doesn't benefit from raylib helpers |
+| `miss_detection_system.cpp` | Threshold tag logic |
+| `particle_system.cpp` | Particle lifetime/gravity ECS state |
+| `obstacle_despawn_system.cpp` | Collect-then-remove ECS destruction |
+| `player_movement_system.cpp` | Already uses raymath `Clamp`/`Lerp`; jump trajectory is custom |
+| `energy_system.cpp` | Already uses raymath `Clamp`; flash timer is ECS |
+| `scoring_system.cpp` | Score/combo/multiplier accounting; `std::floor` for point conversion is correct |
+| `player_input_system.cpp` | Dispatcher-event consumption; downstream of raylib input |
+| `game_state_system.cpp` | Phase transitions, dispatcher drains, terminal check |
+| `game_state_end_screen_system.cpp` | End-screen phase resolution |
+| `game_state_terminal_phase_system.cpp` | High-score persistence trigger; not a raylib API concern |
+| `playing_systems_runner.cpp` | Phase gate and system order |
+| `fixed_tick_runner.cpp` | Fixed-step contract |
+| `popup_feedback_system.cpp` | Score-popup spawn queue and SFX enqueue |
+| `test_player_system.cpp` | Automation AI; `CheckCollisionRecs` already used for lane rects |
+| `input_system.cpp` (WebInputPolicy) | Platform device detection; `GetTouchPointCount` doesn't replace user-agent/maxTouchPoints |
+| `camera_system.cpp` (matrix work, RAII, world-to-screen) | Already uses direct raylib/raymath; remaining code is resource ownership |
+| `ui_render_system.cpp` | Already uses direct raylib; `SetMouseOffset/Scale` scoped pattern is the correct approach |
+| `song_playback_system.cpp` (beat/phase logic) | MusicContext state ownership, beat advancement, and SongComplete latch are game policy |
+| `audio_system.cpp` (queue semantics) | Bounded ECS audio queue, drop policy, and SFX enum→bank mapping are game architecture |
+| `haptic_system.cpp` | Platform haptics bridge; no full raylib equivalent |
+| `beat_log_system.cpp` | Scoped session telemetry; `TraceLog` is not a substitute |
+| `all_systems.h`, `camera_system.h`, `floor_render_system.h` | Declarations only |
+
+---
+
+## 5. Recommended Implementation Order (after green signal)
+
+### Wave 1 — Pure substitutions, full suite green before Wave 2
+
+1. **`popup_display_system.cpp`** — `Clamp` alpha (§1c). Smallest changeset, easy to verify.
+2. **`collision_system.cpp`** — `Clamp` precision (§1b). Same `<raymath.h>` include touch.
+3. **`input_system.cpp`** — `GetGestureDetected()` collapse (§1a). Requires manual gesture smoke.
+4. **`floor_render_system.cpp`** — `DrawTriangle3D` ring path (§1d). Measure frame budget before committing; remove `<rlgl.h>` after.
+
+**Between waves:** Run stale-reference sweeps:
+```
+rg "IsGestureDetected" app/systems/
+rg "rlBegin|rlVertex3f|rlColor4ub|rlEnd|<rlgl.h>" app/systems/floor_render_system.cpp
+```
+Both must return zero. Run `./run.sh test` for full pass confirmation.
+
+### Wave 2 — Boundary-confirmed medium risk
+
+5. **`collision_system.cpp`** — `CheckCollisionRecs` lane overlap (§2a). **Only** after boundary edge tests are written and confirmed.
+6. **`audio_system.cpp`** — Direct `PlaySound` path (§2b). Needs updated headless SFX tests.
+
+**Between waves:** Stale-reference sweep:
+```
+rg "SFXPlaybackBackend\|sfx_playback_backend_init\|lane_overlaps" app/
+```
+Must return zero. Full suite + WASM build.
+
+### Wave 3 — Design-decision-required items (schedule separately)
+
+7. **`song_playback_system.cpp`** — `MusicContext::started` audit (§2c). Requires terminal latch regression and real audio manual validation.
+8. **Floor texture architecture** (§3a) — Treat as a feature task. New GPU lifecycle tests, visual/UV validation, shader/material changes; full separate spec before implementation.
+9. **Haptics gamepad branch** (§3d partial) — Additive only; keep iOS bridge intact.
+
+### Post-implementation deletion sweeps
+
+After each wave, run targeted sweeps to catch stale includes and dead helpers:
+- `rg "<rlgl.h>" app/` — should only survive in files that still directly need it (game_render_system, camera_system)
+- `rg "screen_to_virtual\|ScreenTransform" app/` — must remain until design decision (§3b)
+- `rg "SFXPlaybackBackend\|sfx_playback_backend_init" app/` — must be zero after Wave 2 item 6
+- `rg "IsGestureDetected" app/systems/input_system.cpp` — must be zero after Wave 1 item 3
+- Full suite: `./run.sh test`; native build: `cmake --build build`; WASM: `./run.sh wasm` if available
+
+---
+
+## Invariants That Must Survive Every Wave
+
+1. **Collect-then-remove:** no structural EnTT mutations during iteration.
+2. **Song-time authority:** scroll, shape windows, spawning, and collision timing derive from audio/song position — never `GetFrameTime`.
+3. **Letterbox coordinate:** input and raygui hit testing stay in virtual 720×1280 space; `SetMouseOffset/Scale` scoped in `ui_render_system` is not removed.
+4. **GPU headless safety:** all resource load/unload stays RAII-guarded for no-GPU test context.
+5. **Audio stream pumping:** `UpdateMusicStream` runs every frame after stream start, including while paused.
+6. **Render pass ordering:** floor first → flush → disable depth for effects → flush → re-enable → `EndMode3D`.
+7. **Bounded queues:** audio/haptic queues intentionally drop when full and drain once per frame.
+8. **Zero warnings:** all changes compile with `-Wall -Wextra -Werror`; check for unused vars after removing rlgl calls.
+# Decision: Add test-results/ to .gitignore
+
+**Author:** Kobayashi (CI/CD Release Engineer)  
+**Date:** 2026-05-08T14:37:19.336-07:00  
+**Status:** Completed
+
+## Summary
+
+Added `/test-results/` directory to `.gitignore` to prevent CI/CD test artifacts from being committed to the repository.
+
+## Rationale
+
+- The `test-results/` directory is a local artifact directory used for storing test execution reports and outputs
+- This directory should never be committed to source control — only shipped/committed artifacts belong in the repo
+- Placement: Grouped with other "Local run/test artifacts" in the `.gitignore` file for consistency and discoverability
+
+## Change Made
+
+Added single line to `.gitignore` (line 33):
+```
+/test-results/
+```
+
+**No duplicates found** — the directory was not previously ignored.
+
+## Files Modified
+
+- `.gitignore` — added one line entry
+
+## Verification
+
+✅ Entry added at the correct location (Local run/test artifacts section)  
+✅ No equivalent entries already present  
+✅ Follows existing `.gitignore` format conventions  
+✅ Git status confirms change applied
+# Kujan Final Pre-Commit Review — Edge/Audio/Floor/Util Consolidation
+
+**Reviewer:** Kujan  
+**Date:** 2026-05-08T14:36:36.423-07:00  
+**Requested by:** yashasg  
+
+## Scope
+
+Consolidated cleanup across multiple prior sessions:
+- Removed: `file_logger`, `camera.h`, `shape_vertices`, `obstacle_counter`, `fs_utils`, `enum_names`, `safe_localtime`, `test_player_helpers`, `SFXPlaybackBackend`
+- Added: `floor_render_system` (split from `game_render_system`)
+- Replaced: HUD/beatmap/floor raylib APIs; audio direct guarded playback; collision `CheckCollisionRecs` closed-edge semantics
+
+## Review Findings
+
+| Area | Finding | Status |
+|------|---------|--------|
+| Stale symbol references | None found in app/, tests/, benchmarks/, CMakeLists.txt | ✓ Clean |
+| `audio_system.cpp` queue drain | `audio->count = 0` is unconditional — drains even without audio device | ✓ Correct |
+| `game_state_system.cpp` obstacle wait | `reg.view<ObstacleTag>().empty()` replaces ObstacleCounter — ECS-idiomatic | ✓ Correct |
+| `beat_map_loader.cpp` memory | `file_text` nulled before `json::parse`; catch block guards correctly | ✓ Sound |
+| Collision edge semantics | `CheckCollisionRecs` + `kHitboxEdgePadding=1.0e-4f`; edge test added | ✓ Approved |
+| CMakeLists.txt | `file_logger.cpp` removed from all three target lists | ✓ Clean |
+| Unrelated deletions | None identified | ✓ Clean |
+
+## Commit-Scope Caveat (Required Action Before Push)
+
+`app/systems/floor_render_system.cpp` and `app/systems/floor_render_system.h` are **untracked new files**. They are `#include`d by `game_render_system.cpp` and declared in `all_systems.h`. They **must** be explicitly staged:
+
+```
+git add app/systems/floor_render_system.cpp app/systems/floor_render_system.h
+```
+
+Without this, the commit is broken at checkout (missing header and missing CMake glob source).
+
+## Files to Exclude From Product Commit
+
+The following untracked squad/process artifacts should NOT be committed:
+- `.squad/health-report-2026-05-08-scribe-session.txt`
+- `.squad/health-report-2026-05-08-scribe.txt`
+- `.squad/health-report-scribe-session.txt`
+- `.squad/scribe-health-report-2026-05-08T20-57-50Z.md`
+- `.squad/skills/raylib-3d-floor-annulus/`
+
+## Verdict
+
+**APPROVED** — all code changes are sound. Commit must include the two new `floor_render_system` files and must exclude the squad health-report artifacts listed above.
+# McManus collision early-out audit
+
+**When:** 2026-05-08T14:27:31.641-07:00  
+**Requested by:** yashasg  
+**Scope:** Read-only audit of `app/systems/collision_system.cpp`; referenced `tests/test_collision_system.cpp` and `tests/test_collision_extended.cpp`.  
+**Implementation status:** No product code changes made.
+
+## Bottom line
+
+There are safe indentation/line-count wins, but keep the existing per-kind structural views and the current collect/defer ownership model. Do not merge BeatInfo and non-BeatInfo passes casually: collision order is behavior, because the first cleared rhythm obstacle can mutate `ShapeWindow::graded`, `window_scale`, and `window_start`.
+
+The approved lane-overlap direction is already reflected in the current code via `CheckCollisionRecs(...)` in `hitboxes_overlap`. Any cleanup must preserve that closed-edge hitbox behavior and the existing edge-padding shim unless edge tests are deliberately updated.
+
+## Safe mechanical candidates
+
+### 1) `grade_shape_timing` guard-return for already-graded windows
+
+- **Current area:** `app/systems/collision_system.cpp:78-100`.
+- **Current shape:** `TimingGrade` is always emplaced, then window mutation is nested under `if (!p_window.graded)`.
+- **Proposed early-out shape:** keep `reg.emplace<TimingGrade>(...)` first, then:
+  ```cpp
+  if (p_window.graded) return;
+
+  const float scale = window_scale_for_tier(tier);
+  const float remaining = song.window_duration - p_window.window_timer;
+  if (remaining > 0.0f && scale < 1.0f) {
+      p_window.window_start -= remaining * (1.0f - scale);
+  }
+  p_window.window_scale = scale;
+  p_window.graded = true;
+  ```
+- **Behavior risk:** Low if `TimingGrade` remains before the guard. Medium if someone returns before emplacing `TimingGrade`, because later cleared obstacles still need their own grade component even when the player window was already graded.
+- **Tests to guard:** existing rhythm grade tests in `tests/test_collision_extended.cpp` lines 58-103 and window-start tests in `tests/test_collision_system.cpp` lines 335-400. Add/keep a multi-obstacle rhythm test if this function is touched.
+- **Keaton pass?** Safe only if Keaton is already touching collision timing cleanup; otherwise separate follow-up.
+
+### 2) Extract a local `resolve_shape_result` helper with an internal miss guard
+
+- **Current area:** repeated shape match + optional grade + resolve sequences at `collision_system.cpp:139-142`, `153-154`, `168-171`, `182-183`, `197-200`, `211-212`, `226-227`, `241-242`, `256-257`.
+- **Current shape:** each loop computes `shape_ok`/`shape_match`, conditionally grades in rhythm loops, then calls `resolve`.
+- **Proposed early-out shape:** local helper after `grade_shape_timing`:
+  ```cpp
+  auto resolve_shape_result = [&](entt::entity e, float y, Shape required, const BeatInfo* beat) {
+      const bool cleared = player_matches_required_shape(p_shape, p_window, required);
+      if (!cleared) {
+          resolve(e, y, false);
+          return;
+      }
+      if (beat) grade_shape_timing(e, beat->arrival_time);
+      resolve(e, y, true);
+  };
+  ```
+  Then each lane-passing branch calls the helper.
+- **Behavior risk:** Low if calls happen in the same loops and same order. Medium if helper is combined with view merging or if `resolve` happens before grading, because current behavior grades before tagging `ScoredTag`.
+- **Tests to guard:** shape gate pass/fail (`test_collision_system.cpp:5-34`), combo and split pass/fail (`175-280`), Hexagon rejection (`test_collision_extended.cpp:7-54`), rhythm grade tests (`58-139`).
+- **Keaton pass?** Good separate follow-up; compact enough for a focused collision-only slimming PR.
+
+### 3) Extract lane-fail guards per obstacle kind without changing miss semantics
+
+- **Current area:** lane/hitbox guards at `collision_system.cpp:134-138`, `148-152`, `163-167`, `177-181`, `192-196`, `206-210`, `221-225`, `236-240`, `251-255`.
+- **Current shape:** compute lane condition, miss+continue on failure, then shape logic.
+- **Proposed early-out shape:** keep the same `resolve(e, y, false); continue;` semantics, but hide repeated boilerplate behind tiny local helpers, e.g. `miss_if_no_hitbox(e, y, wt.position.x)` or `lane_blocked(blocked)` plus direct guard.
+- **Behavior risk:** Low if failing lane/hitbox still tags `MissTag` + `ScoredTag` through `resolve`; high if cleanup changes failure to a pure `continue`, because that stops energy/scoring miss processing.
+- **Tests to guard:** shape gate hitbox edge handling (`test_collision_system.cpp:36-53`), combo lane fail (`222-236` and `test_collision_extended.cpp:187-218`), split wrong lane (`266-280`).
+- **Keaton pass?** Separate follow-up unless current slimming work already owns this file.
+
+### 4) Invert the `can_grade_shape` branch to reduce one indentation level
+
+- **Current area:** `collision_system.cpp:128-260`.
+- **Current shape:** `if (can_grade_shape) { rhythm views + non-BeatInfo views } else { all shape views without grading }`.
+- **Proposed early-out shape:** after lane blocks and vertical bars:
+  ```cpp
+  if (!can_grade_shape) {
+      // existing no-grade ShapeGate / ComboGate / SplitPath loops
+      return;
+  }
+
+  // existing graded BeatInfo loops plus non-BeatInfo loops
+  ```
+- **Behavior risk:** Low mechanically if all pre-return work remains before the guard. Watch for future code after the branch; an early `return` would skip it.
+- **Tests to guard:** no-player/no-phase smoke tests (`test_collision_system.cpp:282-301`), plus all collision obstacle tests. No new behavior coverage required if the branch body is moved unchanged.
+- **Keaton pass?** Could be in Keaton's slimming pass if he is intentionally reducing this file; otherwise better as follow-up because it touches a large range.
+
+## Behavior-sensitive candidates to avoid in a casual cleanup
+
+### A) Hoisting `obs_z < player_timing_y` as an early loop `continue`
+
+- **Current area:** `resolve` guard at `collision_system.cpp:63-65`, called after lane/shape checks in rhythm loops.
+- **Why tempting:** avoids shape/lane work for obstacles behind the player.
+- **Risk:** Current rhythm BeatInfo loops can call `grade_shape_timing(...)` before `resolve(...)` decides the obstacle is behind the timing line. Moving the Y guard earlier may remove a `TimingGrade` side effect for behind-line matching obstacles. That may be desirable, but it is behavior, not mechanical cleanup.
+- **Tests needed before changing:** explicit behind-line BeatInfo tests for scored/missed/tagged/graded state; keep beat-line crossing test (`test_collision_system.cpp:145-162`).
+- **Recommendation:** Separate follow-up only.
+
+### B) Merging BeatInfo and non-BeatInfo loops with `try_get<BeatInfo>`
+
+- **Current area:** split rhythm/non-rhythm views under ShapeGate, ComboGate, SplitPath (`collision_system.cpp:131-155`, `160-184`, `189-213`).
+- **Why tempting:** removes duplicate loops.
+- **Risk:** View iteration order can change. Since `grade_shape_timing` mutates `ShapeWindow::graded/window_start` only for the first cleared rhythm obstacle, order is player-visible timing behavior. Structural views were previously approved as a keep pattern in decisions.
+- **Tests needed before changing:** multi-obstacle same-frame tests with multiple BeatInfo obstacles and mixed BeatInfo/non-BeatInfo obstacles, asserting `TimingGrade`, `window_start`, and miss/scored tags.
+- **Recommendation:** Do not include in Keaton's current slimming pass.
+
+### C) Replacing lane-overlap math or removing hitbox padding
+
+- **Current area:** `centered_hitbox_rect` and `hitboxes_overlap` (`collision_system.cpp:16-20`, `102-105`).
+- **Why tempting:** current helper looks small and custom.
+- **Risk:** Recent approved collision direction is to use raylib `CheckCollisionRecs` closed-edge semantics. Removing the helper/padding or returning to manual interval checks risks edge regressions.
+- **Tests needed before changing:** current edge test (`test_collision_system.cpp:36-53`) plus exact touch-on-edge cases for both sides of player/obstacle hitboxes.
+- **Recommendation:** Leave as-is during early-out cleanup.
+
+## Mutation safety notes
+
+- Current loops emplace `MissTag`, `ScoredTag`, and `TimingGrade` on the current entity while iterating structural views. Do not introduce `remove` or `destroy` inside these loops.
+- Any future cleanup that removes components or destroys obstacles should use collect-then-remove after the active view is exhausted.
+- Keep `resolve` as the single tag-writing seam or an equivalent helper; scattering direct tag writes increases the chance of structural mutation drift.
+
+## Recommended staging
+
+1. **Keaton current pass:** only take the tiny `grade_shape_timing` guard-return if collision timing is already in scope. Otherwise do not broaden the edge/audio cleanup.
+2. **Separate collision follow-up:** helper extraction for repeated lane/shape/grade/resolve branches, preserving the same view split and order.
+3. **Design/test follow-up:** only then consider Y-guard hoisting or BeatInfo/non-BeatInfo loop merging, after adding explicit ordering and behind-line rhythm tests.
