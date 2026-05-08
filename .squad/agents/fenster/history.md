@@ -1,3 +1,14 @@
+
+## 2026-05-08: Input Dead Code Cleanup (Scribe Log)
+
+Team session: dead code elimination in input routing.
+- Keaton: Deleted game_state_end_screen_routing.cpp, inlined routing helper
+- Baer: Audited test/benchmark code
+- Fenster: Removed duplicate GoEvent test, unused GamePhase param
+- Kujan: Reviewed and approved all changes
+
+Status: COMPLETE. All validation/build tests passed.
+
 # Fenster — History
 
 ## Core Context
@@ -75,6 +86,7 @@ Ported the removed HUD behavior (shape buttons, approach-ring affordance, colorf
 
 ## Learnings
 
+- 2026-05-08T13:57:50.741-07:00 — Raylib systems audits should separate three buckets: direct safe swaps (e.g. `CheckCollisionRecs`, `Clamp`/`Fade`), design-gated substitutions that change state/test seams (`IsMusicStreamPlaying`, `SetGamepadVibration`, direct `PlaySound`), and domain timing/beat logic where raylib has no replacement.
 - Pause screen text parity fix requires updating both generated call-site values in `app/ui/generated/paused_layout.h` and source geometry in `content/ui/screens/paused.rgl`; changing only one side risks regeneration drift.
 - For centered-label readability fixes, preserve existing helper pattern and change only label rectangle/size arguments; keep pause button rectangles/actions untouched.
 - Focused validation for this UI artifact path can be done with `cmake --build build --target shapeshifter_tests` followed by `./build/shapeshifter_tests` to confirm no regressions.
@@ -148,3 +160,7 @@ Ported the removed HUD behavior (shape buttons, approach-ring affordance, colorf
 - Semantic UI dispatcher: raygui/controller → emits `ButtonPressEvent` (no raw input involvement)
 
 **Outcome:** ✓ APPROVED by Kujan (re-review). Rework integrated into cleanup session. Full test validation passed.
+
+## 2026-05-08T13:32:04.383-07:00 — app/util cleanup audit learning
+
+For util cleanup passes, classify each helper by owning runtime surface first (beatmap/session/game-state/persistence) before proposing deletions. Most safe removals are single-consumer headers (`test_player_helpers`, `safe_localtime`, `enum_names`) that can be inlined into their owning systems; persistence and beatmap loaders need staged migration because tests explicitly assert structured failure statuses.

@@ -1,3 +1,14 @@
+
+## 2026-05-08: Input Dead Code Cleanup (Scribe Log)
+
+Team session: dead code elimination in input routing.
+- Keaton: Deleted game_state_end_screen_routing.cpp, inlined routing helper
+- Baer: Audited test/benchmark code
+- Fenster: Removed duplicate GoEvent test, unused GamePhase param
+- Kujan: Reviewed and approved all changes
+
+Status: COMPLETE. All validation/build tests passed.
+
 # Keaton — History
 
 ## Core Context
@@ -13,6 +24,8 @@
 - `shape_vertices.h` can still be deleted if circle generation is localized in `game_render_system.cpp` (constexpr circle table or `cos/sin` per segment) and test/benchmark references are updated.
 
 ## Learnings
+
+- 2026-05-08T14:50:05.765-07:00: Replacing manual entity-tracking arrays with an existential EnTT tag (`TestPlayerPlannedTag`) safely removes stale-handle cleanup code and keeps planning state attached to obstacle lifetime without callback coupling.
 
 - 2026-05-08T13:57:50.741-07:00: Full `app/systems/` raylib audit found safe direct-API trims only around gesture collapse and optional XZ ring triangle emission; most lifecycle queues, floor texture work, display sizing, and owned-model drawing remain design-gated by ECS ordering, web canvas behavior, or GPU ownership contracts.
 
@@ -95,4 +108,6 @@ See `.squad/agents/keaton/history-archive.md` for earlier work:
 - For phase-sensitive gameplay rules, moving logic out of systems would mostly hide behavior and increase coupling without meaningful code reduction
 
 **Verdict:** Safe moves are net-positive. Medium moves are architecturally sound but neutral on LOC. No breaking changes to baseline. Approved for safe implementation; medium moves await design green signal.
-
+- 2026-05-08T15:09:47.770-07:00: For EnTT v3.16 in this codebase, replacing ad-hoc wiring bools with `entt::scoped_connection` owners plus explicit owner-identity guards keeps connect/unwire idempotent while preserving external listener isolation.
+- 2026-05-08: Redfoot segfault came from test fixture missing SongState; collision_system now requires SongState in ctx. Add it in focused test setups that call collision_system directly.
+- 2026-05-08T15:52:28.945-07:00: Collapsed input dispatch to semantic-only events (input_system emits GoEvent directly; game_state_system is the sole dispatcher drain; player_input_system drain removed).

@@ -1,3 +1,14 @@
+
+## 2026-05-08: Input Dead Code Cleanup (Scribe Log)
+
+Team session: dead code elimination in input routing.
+- Keaton: Deleted game_state_end_screen_routing.cpp, inlined routing helper
+- Baer: Audited test/benchmark code
+- Fenster: Removed duplicate GoEvent test, unused GamePhase param
+- Kujan: Reviewed and approved all changes
+
+Status: COMPLETE. All validation/build tests passed.
+
 # Kujan — History
 
 ## Core Context
@@ -99,3 +110,20 @@ Approved Keaton's raylib replacement pass: HUD hexagon fill correctly uses `Draw
 - Full validation reproduced: build + tests all pass (2063 assertions, 758 test cases).
 
 **Verdict:** APPROVE.
+
+### 2026-05-08T14:36:36.423-07:00 — Final pre-commit review (edge/audio/floor/util consolidation)
+
+**Scope reviewed:** file_logger, camera.h, shape_vertices, obstacle_counter, fs_utils, enum_names, safe_localtime, test_player_helpers removals; floor render split; HUD/beatmap/floor raylib API replacements; collision CheckCollisionRecs closed-edge; audio direct guarded playback (SFXPlaybackBackend removed).
+
+**Findings:**
+- No stale deleted-symbol references remain in app/, tests/, benchmarks/, or CMakeLists.txt. ✓
+- `audio_system.cpp`: `audio->count = 0` is unconditional — queue always drains even if audio device is not ready. Correct. ✓
+- `game_state_system.cpp`: `reg.view<ObstacleTag>().empty()` correctly replaces O(1) `ObstacleCounter` — semantically equivalent and ECS-idiomatic. ✓
+- `beat_map_loader.cpp`: `LoadFileText`/`UnloadFileText` + defensive null on `file_text` before `json::parse` — memory management is sound. ✓
+- `collision_system.cpp`: `CheckCollisionRecs` closed-edge with `kHitboxEdgePadding = 1.0e-4f` — matches user-approved semantics; edge test added. ✓
+
+**Commit-scope caveat (required):** `app/systems/floor_render_system.cpp` and `app/systems/floor_render_system.h` are untracked new files that are directly `#include`d by `game_render_system.cpp`. They **must** be explicitly staged (`git add app/systems/floor_render_system.*`) or the commit is broken at checkout. CMake GLOB will pick them up once staged.
+
+**Exclude from product commit:** `.squad/health-report-*`, `.squad/scribe-health-report-*`, `.squad/skills/raylib-3d-floor-annulus/` — squad process artifacts.
+
+**Verdict:** APPROVED with mandatory commit-scope caveat above.
