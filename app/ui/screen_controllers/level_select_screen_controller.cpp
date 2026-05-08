@@ -4,7 +4,6 @@
 #include "../../components/game_state.h"
 #include "../../components/input.h"
 #include "../../components/rendering.h"
-#include "../../input/pointer_input.h"
 #include "screen_controller_base.h"
 #include <entt/entt.hpp>
 #include <cstdio>
@@ -63,8 +62,8 @@ Rectangle difficulty_button_rect(int index, int selected_level) {
 
 void handle_level_card_pointer_input(LevelSelectState& lss, const InputState& input) {
     Vector2 pointer = {};
-    const bool released = pointer_release_position(input, pointer);
-    if (!released) return;
+    if (!(input.click || input.touch_up)) return;
+    pointer = {input.end_x, input.end_y};
 
     for (int i = 0; i < LevelSelectState::LEVEL_COUNT; ++i) {
         if (CheckCollisionPointRec(pointer, level_card_rect(i))) {

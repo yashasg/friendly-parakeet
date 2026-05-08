@@ -3,10 +3,25 @@
 #include "../components/player.h"
 #include "../components/rendering.h"
 #include "../components/input_events.h"
-#include "../audio/audio_queue.h"
-#include "../util/haptic_queue.h"
+#include "../audio/audio_types.h"
+#include "../components/haptics.h"
 #include "../components/rhythm.h"
+#include "../util/settings.h"
 #include "../constants.h"
+
+namespace {
+
+void push_haptic(entt::registry& reg, HapticEvent event) {
+    auto* haptics = reg.ctx().find<HapticQueue>();
+    auto* settings = reg.ctx().find<SettingsState>();
+    if (!haptics || (settings && !settings->haptics_enabled) ||
+        haptics->count >= HapticQueue::MAX_QUEUED) {
+        return;
+    }
+    haptics->queue[haptics->count++] = event;
+}
+
+}  // namespace
 
 static int8_t lane_for_shape_button(Shape shape) {
     switch (shape) {
@@ -30,7 +45,7 @@ void player_input_handle_go(entt::registry& reg, const GoEvent& evt) {
         if (delta != 0) {
             lane.target = lane.current + delta;
             lane.lerp_t = 0.0f;
-            haptic_feedback(reg, HapticEvent::LaneSwitch);
+            push_haptic(reg, HapticEvent::LaneSwitch);
         }
         (void)entity;
         (void)pshape;
@@ -63,8 +78,11 @@ void player_input_handle_press(entt::registry& reg, const ButtonPressEvent& evt)
         auto si = static_cast<int>(pressed_shape);
         auto& sc = constants::SHAPE_COLORS[si];
         reg.replace<Color>(entity, sc);
-        audio_push(reg.ctx().get<AudioQueue>(), SFX::ShapeShift);
-        haptic_feedback(reg, HapticEvent::ShapeShift);
+        auto& audio = reg.ctx().get<AudioQueue>();
+        if (audio.count < AudioQueue::MAX_QUEUED) {
+            audio.queue[audio.count++] = SFX::ShapeShift;
+        }
+        push_haptic(reg, HapticEvent::ShapeShift);
     };
 
     auto view = reg.view<PlayerTag, PlayerShape, ShapeWindow, Lane>();
@@ -72,7 +90,7 @@ void player_input_handle_press(entt::registry& reg, const ButtonPressEvent& evt)
         if (shape_lane >= 0 && lane.current != shape_lane && lane.target != shape_lane) {
             lane.target = shape_lane;
             lane.lerp_t = 0.0f;
-            haptic_feedback(reg, HapticEvent::LaneSwitch);
+            push_haptic(reg, HapticEvent::LaneSwitch);
         }
         if (rhythm_mode) {
             auto phase = swindow.phase;
@@ -98,36 +116,12 @@ void player_input_handle_press(entt::registry& reg, const ButtonPressEvent& evt)
                 auto si = static_cast<int>(pressed_shape);
                 auto& sc = constants::SHAPE_COLORS[si];
                 reg.replace<Color>(entity, sc);
-                audio_push(reg.ctx().get<AudioQueue>(), SFX::ShapeShift);
-                haptic_feedback(reg, HapticEvent::ShapeShift);
+                auto& audio = reg.ctx().get<AudioQueue>();
+                if (audio.count < AudioQueue::MAX_QUEUED) {
+                    audio.queue[audio.count++] = SFX::ShapeShift;
+                }
+                push_haptic(reg, HapticEvent::ShapeShift);
             }
         }
     }
-}
-
-// ── EventQueue consumption contract ──────────────────────────────────────────
-// player_input_handle_go and player_input_handle_press are connected as
-// listeners in wire_input_dispatcher().  GoEvent and ButtonPressEvent are
-// enqueued by input_system, gesture_routing, and raygui HUD controllers, then
-// dispatched once per logical frame by the first consumer system that calls
-// disp.update<T>() (game_state_system in the production tick order).
-//
-// In production the queue is already empty by the time this function runs, so
-// the two update<T>() calls below are no-ops — enforcing the #213 no-replay
-// invariant without extra bookkeeping.
-//
-// In isolated test scenarios where only player_input_system is invoked (no
-// preceding game_state_system call), these update<T>() calls are the sole
-// drain — they fire the listeners and deliver the enqueued events.  This dual
-// role is intentional: update() on an empty queue is a defined no-op in EnTT,
-// so the production path is never harmed by the defensive drain below.
-//
-// ⚠ Do NOT replace these update() calls with clear<T>() calls here.
-//   clear() skips listeners entirely (EnTT R3), which would silently drop
-//   events in the isolated-test path and mask regressions.
-// ─────────────────────────────────────────────────────────────────────────────
-void player_input_system(entt::registry& reg, float /*dt*/) {
-    auto& disp = reg.ctx().get<entt::dispatcher>();
-    disp.update<GoEvent>();
-    disp.update<ButtonPressEvent>();
 }

@@ -2,24 +2,27 @@
 #include <catch2/benchmark/catch_benchmark.hpp>
 #include <catch2/benchmark/catch_optimizer.hpp>
 
-#include "util/shape_vertices.h"
 #include "constants.h"
+#include <cmath>
 
 // ── Camera3D rendering benchmarks ───────────────────────────
 // With Camera3D, the CPU-side projection math (project/depth) is gone.
 // Vertex positions are emitted directly in world space; the GPU handles
 // perspective projection via the view-projection matrix.
 //
-// The remaining CPU cost is iterating the vertex tables (shape_verts)
-// to compute world-space vertex positions for rlVertex3f calls.
+// The remaining CPU cost is generating world-space vertex positions for
+// rlVertex3f calls.
 
-TEST_CASE("Bench: circle vertex table iteration (world-space)", "[bench][rendering]") {
-    BENCHMARK("24-segment circle vertices") {
+TEST_CASE("Bench: circle ring vertex generation (world-space)", "[bench][rendering]") {
+    BENCHMARK("24-segment circle trig vertices") {
+        constexpr int ring_segments = 24;
+        constexpr float tau = 6.28318530717958647692f;
         float sum = 0.0f;
         float cx = 360.0f, cz = 500.0f, r = 32.0f;
-        for (int i = 0; i < shape_verts::CIRCLE_SEGMENTS; ++i) {
-            sum += cx + shape_verts::CIRCLE[i].x * r;
-            sum += cz + shape_verts::CIRCLE[i].y * r;
+        for (int i = 0; i < ring_segments; ++i) {
+            float angle = (static_cast<float>(i) / static_cast<float>(ring_segments)) * tau;
+            sum += cx + std::cos(angle) * r;
+            sum += cz + std::sin(angle) * r;
         }
         Catch::Benchmark::deoptimize_value(sum);
         return sum;
@@ -43,13 +46,16 @@ TEST_CASE("Bench: floor position computation (3 lanes × 21 positions)", "[bench
     };
 }
 
-TEST_CASE("Bench: hexagon vertex table iteration", "[bench][rendering]") {
-    BENCHMARK("6-segment hexagon vertices") {
+TEST_CASE("Bench: polygon vertex generation", "[bench][rendering]") {
+    BENCHMARK("6-segment polygon trig vertices") {
+        constexpr int sides = 6;
+        constexpr float tau = 6.28318530717958647692f;
         float sum = 0.0f;
         float cx = 360.0f, cz = 500.0f, r = 38.4f;
-        for (int i = 0; i < shape_verts::HEX_SEGMENTS; ++i) {
-            sum += cx + shape_verts::HEXAGON[i].x * r;
-            sum += cz + shape_verts::HEXAGON[i].y * r;
+        for (int i = 0; i < sides; ++i) {
+            float angle = (static_cast<float>(i) / static_cast<float>(sides)) * tau;
+            sum += cx + std::cos(angle) * r;
+            sum += cz + std::sin(angle) * r;
         }
         Catch::Benchmark::deoptimize_value(sum);
         return sum;

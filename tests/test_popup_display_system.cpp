@@ -217,6 +217,36 @@ TEST_CASE("popup_display_system: ScorePopup expires without render components",
     CHECK_FALSE(reg.valid(e));
 }
 
+TEST_CASE("popup_display_system: ScorePopup+PopupDisplay expires without Color",
+          "[popup_display]") {
+    entt::registry reg;
+    auto e = reg.create();
+    ScorePopup popup{};
+    popup.remaining = 0.01f;
+    popup.max_time = 1.0f;
+    reg.emplace<ScorePopup>(e, popup);
+    reg.emplace<PopupDisplay>(e);
+
+    popup_display_system(reg, 0.02f);
+
+    CHECK_FALSE(reg.valid(e));
+}
+
+TEST_CASE("popup_display_system: ScorePopup+Color expires without PopupDisplay",
+          "[popup_display]") {
+    entt::registry reg;
+    auto e = reg.create();
+    ScorePopup popup{};
+    popup.remaining = 0.01f;
+    popup.max_time = 1.0f;
+    reg.emplace<ScorePopup>(e, popup);
+    reg.emplace<Color>(e, Color{255, 255, 255, 255});
+
+    popup_display_system(reg, 0.02f);
+
+    CHECK_FALSE(reg.valid(e));
+}
+
 TEST_CASE("popup_display_system: expired popups are destroyed",
           "[popup_display]") {
     entt::registry reg;

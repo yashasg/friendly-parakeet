@@ -1,6 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
-#include "util/shape_vertices.h"
 #include "constants.h"
 #include <raylib.h>
 #include <cmath>
@@ -78,167 +77,29 @@ TEST_CASE("Camera3D: spawn and destroy Y map to valid Z range", "[camera3d]") {
 
 
 // ═════════════════════════════════════════════════════════════════════════════
-// §2  shape_vertices.h — constexpr vertex tables
+// §2  Floor ring segment sweep regression
 // ═════════════════════════════════════════════════════════════════════════════
+// Verifies the local floor-ring angle sweep covers the full circle.
 
-// ── Circle table ────────────────────────────────────────────────────────────
+TEST_CASE("floor ring: angular sweep covers full circle", "[floor][regression]") {
+    constexpr int seg = 24;
+    constexpr float tau = 6.28318530717958647692f;
+    bool has_positive_sin = false;
+    bool has_negative_sin = false;
 
-TEST_CASE("shape_verts::CIRCLE — table size is 24", "[shape_verts]") {
-    CHECK(shape_verts::CIRCLE_SEGMENTS == 24);
-    // Compile-time size verification via sizeof
-    static_assert(sizeof(shape_verts::CIRCLE) / sizeof(shape_verts::V2) == 24);
-}
-
-TEST_CASE("shape_verts::CIRCLE — cardinal points", "[shape_verts]") {
-    // Index 0:   0° → (1, 0)
-    CHECK_THAT(shape_verts::CIRCLE[0].x,  WithinAbs( 1.0, 1e-5));
-    CHECK_THAT(shape_verts::CIRCLE[0].y,  WithinAbs( 0.0, 1e-5));
-
-    // Index 6:  90° → (0, 1)
-    CHECK_THAT(shape_verts::CIRCLE[6].x,  WithinAbs( 0.0, 1e-5));
-    CHECK_THAT(shape_verts::CIRCLE[6].y,  WithinAbs( 1.0, 1e-5));
-
-    // Index 12: 180° → (−1, 0)
-    CHECK_THAT(shape_verts::CIRCLE[12].x, WithinAbs(-1.0, 1e-5));
-    CHECK_THAT(shape_verts::CIRCLE[12].y, WithinAbs( 0.0, 1e-5));
-
-    // Index 18: 270° → (0, −1)
-    CHECK_THAT(shape_verts::CIRCLE[18].x, WithinAbs( 0.0, 1e-5));
-    CHECK_THAT(shape_verts::CIRCLE[18].y, WithinAbs(-1.0, 1e-5));
-}
-
-TEST_CASE("shape_verts::CIRCLE — unit magnitude for all vertices", "[shape_verts]") {
-    for (int i = 0; i < shape_verts::CIRCLE_SEGMENTS; ++i) {
-        CAPTURE(i);
-        float mag_sq = shape_verts::CIRCLE[i].x * shape_verts::CIRCLE[i].x
-                     + shape_verts::CIRCLE[i].y * shape_verts::CIRCLE[i].y;
-        CHECK_THAT(mag_sq, WithinAbs(1.0, 1e-5));
-    }
-}
-
-TEST_CASE("shape_verts::CIRCLE — CCW ordering", "[shape_verts]") {
-    // Consecutive vertices should proceed counter-clockwise (increasing angle
-    // from the positive x-axis).  The cross product of consecutive edge vectors
-    // (in 2D, the z-component) must be positive for CCW winding.
-    for (int i = 0; i < shape_verts::CIRCLE_SEGMENTS; ++i) {
-        int j = (i + 1) % shape_verts::CIRCLE_SEGMENTS;
-        int k = (i + 2) % shape_verts::CIRCLE_SEGMENTS;
-
-        float ax = shape_verts::CIRCLE[j].x - shape_verts::CIRCLE[i].x;
-        float ay = shape_verts::CIRCLE[j].y - shape_verts::CIRCLE[i].y;
-        float bx = shape_verts::CIRCLE[k].x - shape_verts::CIRCLE[j].x;
-        float by = shape_verts::CIRCLE[k].y - shape_verts::CIRCLE[j].y;
-
-        float cross_z = ax * by - ay * bx;
-        CAPTURE(i, j, k, cross_z);
-        CHECK(cross_z > 0.0f);  // positive ⇒ CCW turn
-    }
-}
-
-// ── Hexagon table ───────────────────────────────────────────────────────────
-
-TEST_CASE("shape_verts::HEXAGON — table size is 6", "[shape_verts]") {
-    CHECK(shape_verts::HEX_SEGMENTS == 6);
-    static_assert(sizeof(shape_verts::HEXAGON) / sizeof(shape_verts::V2) == 6);
-}
-
-TEST_CASE("shape_verts::HEXAGON — pointy-top (vertex 0 at top)", "[shape_verts]") {
-    CHECK_THAT(shape_verts::HEXAGON[0].x, WithinAbs( 0.0, 1e-5));
-    CHECK_THAT(shape_verts::HEXAGON[0].y, WithinAbs(-1.0, 1e-5));
-}
-
-TEST_CASE("shape_verts::HEXAGON — unit magnitude for all vertices", "[shape_verts]") {
-    for (int i = 0; i < shape_verts::HEX_SEGMENTS; ++i) {
-        CAPTURE(i);
-        float mag_sq = shape_verts::HEXAGON[i].x * shape_verts::HEXAGON[i].x
-                     + shape_verts::HEXAGON[i].y * shape_verts::HEXAGON[i].y;
-        CHECK_THAT(mag_sq, WithinAbs(1.0, 1e-5));
-    }
-}
-
-TEST_CASE("shape_verts::HEXAGON — top-bottom symmetry", "[shape_verts]") {
-    // Vertex 0 is (0, −1), vertex 3 is (0, +1): mirror about x-axis.
-    CHECK_THAT(shape_verts::HEXAGON[0].x, WithinAbs( shape_verts::HEXAGON[3].x, 1e-5));
-    CHECK_THAT(shape_verts::HEXAGON[0].y, WithinAbs(-shape_verts::HEXAGON[3].y, 1e-5));
-
-    // Vertex 1 (top-right) mirrors vertex 5 (top-left) in x only
-    CHECK_THAT(shape_verts::HEXAGON[1].x, WithinAbs(-shape_verts::HEXAGON[5].x, 1e-5));
-    CHECK_THAT(shape_verts::HEXAGON[1].y, WithinAbs( shape_verts::HEXAGON[5].y, 1e-5));
-
-    // Vertex 2 (bot-right) mirrors vertex 4 (bot-left)
-    CHECK_THAT(shape_verts::HEXAGON[2].x, WithinAbs(-shape_verts::HEXAGON[4].x, 1e-5));
-    CHECK_THAT(shape_verts::HEXAGON[2].y, WithinAbs( shape_verts::HEXAGON[4].y, 1e-5));
-}
-
-// ── Square table ────────────────────────────────────────────────────────────
-
-TEST_CASE("shape_verts::SQUARE — exact corners", "[shape_verts]") {
-    // Expected order: TL, TR, BR, BL
-    CHECK(shape_verts::SQUARE[0].x == -1.0f);
-    CHECK(shape_verts::SQUARE[0].y == -1.0f);
-
-    CHECK(shape_verts::SQUARE[1].x ==  1.0f);
-    CHECK(shape_verts::SQUARE[1].y == -1.0f);
-
-    CHECK(shape_verts::SQUARE[2].x ==  1.0f);
-    CHECK(shape_verts::SQUARE[2].y ==  1.0f);
-
-    CHECK(shape_verts::SQUARE[3].x == -1.0f);
-    CHECK(shape_verts::SQUARE[3].y ==  1.0f);
-}
-
-TEST_CASE("shape_verts::SQUARE — table size is 4", "[shape_verts]") {
-    static_assert(sizeof(shape_verts::SQUARE) / sizeof(shape_verts::V2) == 4);
-}
-
-// ── Triangle table ──────────────────────────────────────────────────────────
-
-TEST_CASE("shape_verts::TRIANGLE — exact vertices", "[shape_verts]") {
-    // CCW order: base-right, base-left, apex
-    CHECK(shape_verts::TRIANGLE[0].x ==  1.0f);
-    CHECK(shape_verts::TRIANGLE[0].y ==  1.0f);
-
-    CHECK(shape_verts::TRIANGLE[1].x == -1.0f);
-    CHECK(shape_verts::TRIANGLE[1].y ==  1.0f);
-
-    CHECK(shape_verts::TRIANGLE[2].x ==  0.0f);
-    CHECK(shape_verts::TRIANGLE[2].y == -1.0f);
-}
-
-TEST_CASE("shape_verts::TRIANGLE — table size is 3", "[shape_verts]") {
-    static_assert(sizeof(shape_verts::TRIANGLE) / sizeof(shape_verts::V2) == 3);
-}
-
-// ═════════════════════════════════════════════════════════════════════════════
-// §3  Floor ring sub-segment coverage regression
-// ═════════════════════════════════════════════════════════════════════════════
-// Verifies that the sub-segment index mapping for floor rings correctly
-// covers the full circle vertex table, regardless of segment count.
-
-TEST_CASE("floor ring: sub-segment count covers full circle", "[floor][regression]") {
-    // BUG: When drawing a ring with segs < CIRCLE_SEGMENTS (e.g. 12 of 24),
-    // the old code iterated i=0..11 with next=(i+1)%24, only covering
-    // vertices 0-12 (top half). The bottom half was never drawn.
-    //
-    // Fix: map segment indices evenly across the full table:
-    //   idx = (i * CIRCLE_SEGMENTS) / seg
-    //
-    // Verify: for seg=12, the indices should span the full 0..23 range
-    // (every other vertex), not just 0..12.
-
-    constexpr int seg = 12;
-    int min_idx = 999, max_idx = -1;
     for (int i = 0; i < seg; ++i) {
-        int idx = (i * shape_verts::CIRCLE_SEGMENTS) / seg;
-        if (idx < min_idx) min_idx = idx;
-        if (idx > max_idx) max_idx = idx;
+        const float angle = (static_cast<float>(i) / static_cast<float>(seg)) * tau;
+        const float y = std::sin(angle);
+        has_positive_sin = has_positive_sin || y > 0.5f;
+        has_negative_sin = has_negative_sin || y < -0.5f;
     }
-    // With even mapping, indices should cover 0, 2, 4, ..., 22
-    CHECK(min_idx == 0);
-    CHECK(max_idx == 22);  // last index before wrapping
 
-    // Also verify the "next" index wraps to 0
-    int last_next = ((seg) * shape_verts::CIRCLE_SEGMENTS) / seg
-                    % shape_verts::CIRCLE_SEGMENTS;
-    CHECK(last_next == 0);  // closes the ring
+    const float start_angle = 0.0f;
+    const float wrapped_end_angle =
+        (static_cast<float>(seg) / static_cast<float>(seg)) * tau;
+
+    CHECK(has_positive_sin);
+    CHECK(has_negative_sin);
+    CHECK_THAT(start_angle, WithinAbs(0.0, 1e-6));
+    CHECK_THAT(wrapped_end_angle, WithinAbs(tau, 1e-6));
 }

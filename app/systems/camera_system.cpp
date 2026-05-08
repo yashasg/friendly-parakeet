@@ -228,7 +228,7 @@ static Matrix make_shape_matrix(uint8_t mesh_index, float cx, float y_3d, float 
 void game_camera_system(entt::registry& reg, float /*dt*/) {
     const auto& mesh_config = reg.ctx().get<ShapeMeshConfig>();
 
-    // 1. Model-authority vertical bars: write scroll transform directly into
+    // 1b. Model-authority vertical bars: write scroll transform directly into
     //     ObstacleModel.model.transform. Do NOT emit ModelTransform for these —
     //     game_render_system draws them via the ObstacleModel + TagWorldPass path.
     {

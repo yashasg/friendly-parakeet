@@ -3,7 +3,8 @@
 #include "../components/player.h"
 #include "../components/rhythm.h"
 #include "../components/transform.h"
-#include "../util/haptic_queue.h"
+#include "../components/haptics.h"
+#include "../util/settings.h"
 #include "../constants.h"
 #include <raymath.h>
 
@@ -57,8 +58,12 @@ void player_movement_system(entt::registry& reg, float dt) {
             if (vstate.timer <= 0.0f) {
                 const bool was_jumping = (vstate.mode == VMode::Jumping);
                 if (was_jumping) {
-                    // Haptic on landing (spec: "Jump (land)" not takeoff)
-                    haptic_feedback(reg, HapticEvent::JumpLand);
+                    auto* haptics = reg.ctx().find<HapticQueue>();
+                    auto* settings = reg.ctx().find<SettingsState>();
+                    if (haptics && (!settings || settings->haptics_enabled) &&
+                        haptics->count < HapticQueue::MAX_QUEUED) {
+                        haptics->queue[haptics->count++] = HapticEvent::JumpLand;
+                    }
                 }
                 vstate.mode     = VMode::Grounded;
                 vstate.timer    = 0.0f;

@@ -9,16 +9,18 @@
 
 namespace {
 struct ObstacleMeshLifetimeState {
-    bool wired = false;
+    entt::registry* owner = nullptr;
+    entt::scoped_connection connection;
 };
 
 struct ObstacleModelLifecycleState {
-    bool wired = false;
+    entt::registry* owner = nullptr;
+    entt::scoped_connection connection;
 };
 
 bool obstacle_model_lifecycle_wired(entt::registry& reg) {
     auto* state = reg.ctx().find<ObstacleModelLifecycleState>();
-    return state && state->wired;
+    return state && state->owner == &reg;
 }
 
 uint8_t checked_shape_mesh_index(Shape shape) {
@@ -74,17 +76,17 @@ void wire_obstacle_mesh_lifetime(entt::registry& reg) {
     if (!state) {
         state = &reg.ctx().emplace<ObstacleMeshLifetimeState>();
     }
-    if (state->wired) return;
+    if (state->owner == &reg) return;
 
     reg.storage<ObstacleChildren>();
-    reg.on_destroy<ObstacleChildren>().connect<&on_obstacle_destroy>();
-    state->wired = true;
+    state->connection = entt::scoped_connection{
+        reg.on_destroy<ObstacleChildren>().connect<&on_obstacle_destroy>()};
+    state->owner = &reg;
 }
 
 void unwire_obstacle_mesh_lifetime(entt::registry& reg) {
-    reg.on_destroy<ObstacleChildren>().disconnect<&on_obstacle_destroy>();
     if (auto* state = reg.ctx().find<ObstacleMeshLifetimeState>()) {
-        state->wired = false;
+        *state = ObstacleMeshLifetimeState{};
     }
 }
 
@@ -286,16 +288,16 @@ void wire_obstacle_model_lifecycle(entt::registry& reg) {
     if (!state) {
         state = &reg.ctx().emplace<ObstacleModelLifecycleState>();
     }
-    if (state->wired) return;
+    if (state->owner == &reg) return;
 
-    reg.on_destroy<ObstacleModel>().connect<&on_obstacle_model_destroy>();
-    state->wired = true;
+    state->connection = entt::scoped_connection{
+        reg.on_destroy<ObstacleModel>().connect<&on_obstacle_model_destroy>()};
+    state->owner = &reg;
 }
 
 void unwire_obstacle_model_lifecycle(entt::registry& reg) {
-    reg.on_destroy<ObstacleModel>().disconnect<&on_obstacle_model_destroy>();
     if (auto* state = reg.ctx().find<ObstacleModelLifecycleState>()) {
-        state->wired = false;
+        *state = ObstacleModelLifecycleState{};
     }
 }
 

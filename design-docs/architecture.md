@@ -106,7 +106,6 @@ namespace constants {
     constexpr int   PTS_HIGH_BAR      = 100;
     constexpr int   PTS_COMBO_GATE    = 200;
     constexpr int   PTS_SPLIT_PATH    = 300;
-    constexpr int   PTS_LANE_PUSH     = 0;     // passive — no score
     constexpr int   PTS_PER_SECOND    = 10;       // distance bonus
     constexpr int   CHAIN_BONUS[5]    = { 0, 0, 50, 100, 200 };
     //               chain:             0  1   2    3     4  (5+ = +100/ea)
@@ -215,13 +214,10 @@ struct ObstacleTag {};
 enum class ObstacleKind : uint8_t {
     ShapeGate     = 0,   // must match shape
     LaneBlock     = 1,   // legacy value kept for backward compat;
-                         // spawner converts to LanePushLeft/Right at runtime
     LowBar        = 2,   // must jump
     HighBar       = 3,   // must slide
     ComboGate     = 4,   // shape + lane
     SplitPath     = 5,   // shape + specific lane
-    LanePushLeft  = 6,   // passive: auto-pushes player one lane left
-    LanePushRight = 7    // passive: auto-pushes player one lane right
 };
 
 struct Obstacle {
@@ -242,7 +238,6 @@ struct RequiredShape {
     Shape shape;
 };
 
-/// For LanePushLeft/LanePushRight: push direction component. 1 byte.
 /// The push direction is implicit in the ObstacleKind, so this struct
 /// is no longer needed. (Legacy BlockedLanes removed with LaneBlock.)
 
@@ -835,14 +830,11 @@ Total: ~73 bytes per entity (1 entity)
 Total: ~42 bytes per entity (5–15 active)
 ```
 
-### 5.3 Lane Push Entity (replaces legacy Lane Block)
 
 ```
-┌─ Lane Push ───────────────────────────────────────────────┐
 │ ObstacleTag        (tag, 0 bytes)                         │
 │ Position           { x: 360.0, y: -120.0 }               │
 │ Velocity           { dx: 0.0, dy: 400.0 }                │
-│ Obstacle           { kind: LanePushLeft, base_pts: 0,     │
 │                      scored: false }                       │
 │ Color              { r: 255, g: 60, b: 60, a: 255 }      │
 │ DrawSize           { w: 720, h: 80 }                       │
@@ -850,10 +842,7 @@ Total: ~42 bytes per entity (5–15 active)
 └───────────────────────────────────────────────────────────┘
 Total: ~40 bytes per entity
 
-Lane Push is passive — it auto-pushes the player one lane in the
 obstacle's direction on beat arrival. No player action required.
-- LanePushLeft:  pushes player one lane left  (no-op on Lane 0)
-- LanePushRight: pushes player one lane right (no-op on Lane 2)
 - Only affects player if they are on the SAME lane as the obstacle.
 - Awards 0 points (it's not a challenge).
 ```
@@ -1285,7 +1274,6 @@ int main(int argc, char* argv[]) {
     │   bool threat = false;                                                                │
     │   if (obs.kind == ShapeGate && has<RequiredShape>(entity))                             │
     │       threat = (player_shape.current != get<RequiredShape>(entity).shape);             │
-    │   else if (obs.kind == LanePushLeft || obs.kind == LanePushRight)                       │
     │       threat = false;   // passive — never a threat, auto-pushes player on arrival     │
     │   else if (obs.kind == LowBar)                                                        │
     │       threat = (player_vstate.mode != Jumping);                                       │
@@ -1502,8 +1490,6 @@ bool check_obstacle_cleared(entt::registry& reg, entt::entity e,
         case ObstacleKind::ShapeGate:
             return shape.current == reg.get<RequiredShape>(e).shape;
 
-        case ObstacleKind::LanePushLeft:
-        case ObstacleKind::LanePushRight:
             return true;   // passive — always "cleared", push applied automatically
 
         case ObstacleKind::LowBar:

@@ -143,7 +143,7 @@ TEST_CASE("gap=1 readability: shipped beatmaps obey difficulty policy",
 
                 if (!has_readable_neighbors(beats, index - 1)) {
                     FAIL_CHECK(path << " [" << difficulty
-                               << "] gap=1 too close to LanePush/bar at beat "
+                               << "] gap=1 too close to bar at beat "
                                << left.beat_index);
                 }
 

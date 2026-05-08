@@ -2,7 +2,7 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
 
-// ── player_input_system: rhythm mode window management ───────
+// ── semantic input pipeline: rhythm mode window management ───────
 
 TEST_CASE("player_input_rhythm: shape press in Idle begins Active window", "[player][rhythm]") {
     auto reg = make_rhythm_registry();
@@ -15,7 +15,7 @@ TEST_CASE("player_input_rhythm: shape press in Idle begins Active window", "[pla
     auto btn = make_shape_button(reg, Shape::Circle);
     press_button(reg, btn);
 
-    player_input_system(reg, 0.016f);
+    run_semantic_input_tick(reg);
 
     CHECK(sw.phase == WindowPhase::Active);
     CHECK(sw.target_shape == Shape::Circle);
@@ -37,7 +37,7 @@ TEST_CASE("player_input_rhythm: different shape in Active restarts window", "[pl
     auto btn = make_shape_button(reg, Shape::Square);
     press_button(reg, btn);
 
-    player_input_system(reg, 0.016f);
+    run_semantic_input_tick(reg);
 
     // Should restart as Active for Square
     CHECK(sw.phase == WindowPhase::Active);
@@ -59,7 +59,7 @@ TEST_CASE("player_input_rhythm: same shape in Active re-extends window", "[playe
     auto btn = make_shape_button(reg, Shape::Circle);
     press_button(reg, btn);
 
-    player_input_system(reg, 0.016f);
+    run_semantic_input_tick(reg);
 
     // Should remain Active and reset timing
     CHECK(sw.phase == WindowPhase::Active);
@@ -75,7 +75,7 @@ TEST_CASE("player_input_rhythm: shape change pushes ShapeShift SFX", "[player][r
     auto btn = make_shape_button(reg, Shape::Circle);
     press_button(reg, btn);
 
-    player_input_system(reg, 0.016f);
+    run_semantic_input_tick(reg);
 
     auto& audio = reg.ctx().get<AudioQueue>();
     CHECK(audio.count > 0);
@@ -90,7 +90,7 @@ TEST_CASE("player_input_rhythm: shape press also remaps lane target", "[player][
 
     auto btn = make_shape_button(reg, Shape::Triangle);
     press_button(reg, btn);
-    player_input_system(reg, 0.016f);
+    run_semantic_input_tick(reg);
 
     CHECK(lane.target == 2);
 }
@@ -105,7 +105,7 @@ TEST_CASE("player_input_rhythm: shape press does not set stale target when alrea
 
     auto btn = make_shape_button(reg, Shape::Circle);
     press_button(reg, btn);
-    player_input_system(reg, 0.016f);
+    run_semantic_input_tick(reg);
 
     CHECK(lane.target == -1);
 }
@@ -116,7 +116,7 @@ TEST_CASE("player_input_rhythm: lane change works in rhythm mode", "[player][rhy
 
     reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Left});
 
-    player_input_system(reg, 0.016f);
+    run_semantic_input_tick(reg);
 
     auto& lane = reg.get<Lane>(player);
     CHECK(lane.target == 0);
@@ -130,7 +130,7 @@ TEST_CASE("player_input: non-rhythm shape press changes immediately", "[player]"
     auto btn = make_shape_button(reg, Shape::Square);
     press_button(reg, btn);
 
-    player_input_system(reg, 0.016f);
+    run_semantic_input_tick(reg);
 
     auto view = reg.view<PlayerTag, PlayerShape>();
     for (auto [e, ps] : view.each()) {
@@ -151,7 +151,7 @@ TEST_CASE("player_input: non-rhythm same shape press does nothing", "[player]") 
     auto btn = make_shape_button(reg, Shape::Circle);
     press_button(reg, btn);
 
-    player_input_system(reg, 0.016f);
+    run_semantic_input_tick(reg);
 
     auto view = reg.view<PlayerTag, PlayerShape>();
     for (auto [e, ps] : view.each()) {
@@ -167,7 +167,7 @@ TEST_CASE("player_input: non-rhythm shape press updates Color", "[player]") {
     auto btn = make_shape_button(reg, Shape::Square);
     press_button(reg, btn);
 
-    player_input_system(reg, 0.016f);
+    run_semantic_input_tick(reg);
 
     auto& col = reg.get<Color>(p);
     // Square color: { 255, 100, 100, 255 }

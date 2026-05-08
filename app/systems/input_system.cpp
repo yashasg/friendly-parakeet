@@ -1,6 +1,4 @@
 #include "all_systems.h"
-#include "../input/raylib_gesture_input.h"
-#include "../input/input_state.h"
 #include "../components/input.h"
 #include "../components/input_events.h"
 #include "../components/rendering.h"
@@ -12,6 +10,13 @@
 #endif
 
 namespace {
+
+constexpr unsigned int kGameplayGestureFlags =
+    GESTURE_TAP
+    | GESTURE_SWIPE_RIGHT
+    | GESTURE_SWIPE_LEFT
+    | GESTURE_SWIPE_UP
+    | GESTURE_SWIPE_DOWN;
 
 struct WebInputPolicy {
     bool prefers_touch = false;
@@ -41,10 +46,9 @@ void input_system(entt::registry& reg, float raw_dt) {
         SetGesturesEnabled(kGameplayGestureFlags);
         input.gestures_configured = true;
     }
-    // Discard any InputEvents that were not consumed before this frame
-    // (defensive guard — R7: phase transitions can leave events queued).
-    disp.clear<InputEvent>();
-    clear_input_events(input);
+    input.touch_down = false;
+    input.touch_up   = false;
+    input.click      = false;
 
 #if defined(PLATFORM_WEB) && defined(__EMSCRIPTEN__)
     const auto& web_policy = reg.ctx().get<WebInputPolicy>();
@@ -138,18 +142,34 @@ void input_system(entt::registry& reg, float raw_dt) {
         input.duration += raw_dt;
     }
 
-    // Touch/mouse gesture → InputEvent enqueued to dispatcher; delivered to
-    // gesture_routing_handle_input via
-    // disp.update<InputEvent>() in game_loop_frame (#333).
-    if (input.click) {
-        disp.enqueue<InputEvent>(InputEvent{InputType::Tap, Direction::Up,
-                                            input.end_x, input.end_y});
-    } else if (input.touch_up) {
-        const InputEvent event = input_event_from_raylib_gesture(
-            read_detected_raylib_gesture(),
-            input.start_y,
-            input.end_x,
-            input.end_y);
-        disp.enqueue<InputEvent>(event);
+    // Touch swipe gestures enqueue semantic GoEvent directly.
+    if (input.touch_up) {
+        int gesture = GESTURE_NONE;
+        if (IsGestureDetected(GESTURE_SWIPE_RIGHT)) {
+            gesture = GESTURE_SWIPE_RIGHT;
+        } else if (IsGestureDetected(GESTURE_SWIPE_LEFT)) {
+            gesture = GESTURE_SWIPE_LEFT;
+        } else if (IsGestureDetected(GESTURE_SWIPE_UP)) {
+            gesture = GESTURE_SWIPE_UP;
+        } else if (IsGestureDetected(GESTURE_SWIPE_DOWN)) {
+            gesture = GESTURE_SWIPE_DOWN;
+        } else if (IsGestureDetected(GESTURE_TAP)) {
+            gesture = GESTURE_TAP;
+        } else {
+            gesture = GetGestureDetected();
+        }
+
+        const float zone_y = constants::SCREEN_H * constants::SWIPE_ZONE_SPLIT;
+        if (input.start_y < zone_y) {
+            if ((gesture & GESTURE_SWIPE_RIGHT) != 0) {
+                disp.enqueue<GoEvent>(GoEvent{Direction::Right});
+            } else if ((gesture & GESTURE_SWIPE_LEFT) != 0) {
+                disp.enqueue<GoEvent>(GoEvent{Direction::Left});
+            } else if ((gesture & GESTURE_SWIPE_UP) != 0) {
+                disp.enqueue<GoEvent>(GoEvent{Direction::Up});
+            } else if ((gesture & GESTURE_SWIPE_DOWN) != 0) {
+                disp.enqueue<GoEvent>(GoEvent{Direction::Down});
+            }
+        }
     }
 }

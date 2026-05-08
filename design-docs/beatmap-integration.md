@@ -85,11 +85,7 @@
 // high_bar — slide under
 { "beat": 366, "kind": "high_bar" }
 
-// lane_push_left — passive push, player auto-shifts left
-{ "beat": 42, "kind": "lane_push_left", "lane": 1 }
 
-// lane_push_right — passive push, player auto-shifts right
-{ "beat": 44, "kind": "lane_push_right", "lane": 0 }
 ```
 
 **Key field: `beat` is an INDEX, not a timestamp.** The game resolves `beat` → time via: `offset + beat × (60.0 / bpm)`.
@@ -184,8 +180,6 @@ The current obstacle components already match the beatmap schema:
   ObstacleKind::LaneBlock      → "lane_block"       ✓  legacy/backward-compatible support
   ObstacleKind::LowBar         → "low_bar"          ✓  already exists
   ObstacleKind::HighBar        → "high_bar"         ✓  already exists
-  ObstacleKind::LanePushLeft   → "lane_push_left"   ✓  already exists
-  ObstacleKind::LanePushRight  → "lane_push_right"  ✓  already exists
 
   RequiredShape { shape }    → beatmap "shape" field    ✓
   RequiredVAction { action } → low_bar/high_bar         ✓

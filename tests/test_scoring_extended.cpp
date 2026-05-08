@@ -56,7 +56,6 @@ TEST_CASE("scoring: SongResults tracks max_chain", "[scoring]") {
     for (int i = 0; i < 4; ++i) {
         auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y + float(i));
         reg.emplace<ScoredTag>(obs);
-        reg.emplace<TimingGrade>(obs, TimingTier::Good, 0.5f);
         scoring_system(reg, 0.016f);
     popup_feedback_system(reg, 0.016f);
     energy_system(reg, 0.016f);
@@ -116,10 +115,8 @@ TEST_CASE("scoring: multiple obstacles scored in single frame", "[scoring]") {
 
     auto obs1 = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<ScoredTag>(obs1);
-    reg.emplace<TimingGrade>(obs1, TimingTier::Good, 0.5f);
     auto obs2 = make_lane_block(reg, 0b001, constants::PLAYER_Y + 1.0f);
     reg.emplace<ScoredTag>(obs2);
-    reg.emplace<TimingGrade>(obs2, TimingTier::Good, 0.5f);
 
     scoring_system(reg, 0.016f);
     popup_feedback_system(reg, 0.016f);

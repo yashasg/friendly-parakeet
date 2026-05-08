@@ -51,11 +51,12 @@ struct TestPlayerAction {
 
 };
 
+struct TestPlayerPlannedTag {};
+
 // ── Test player state (context singleton) ────────────────────
 // Hot state (accessed every frame): active, frame_count, swipe_cooldown_timer,
 //   action_count, actions[].
 // Warm state (accessed during perception): skill, rng.
-// Cold state (accessed during scan + stale-entity cleanup): planned[], planned_count.
 struct TestPlayerState {
     // ── Hot ──────────────────────────────────────────────────
     TestPlayerSkill skill   = TestPlayerSkill::Pro;
@@ -72,23 +73,4 @@ struct TestPlayerState {
 
     // ── Warm ─────────────────────────────────────────────────
     std::mt19937     rng;
-
-    // ── Cold ─────────────────────────────────────────────────
-    // LIFETIME CONTRACT: planned[] stores raw entt::entity handles for obstacles
-    // that have already been queued for action processing. These handles can
-    // become stale between ticks if an obstacle is destroyed (e.g., scored,
-    // culled, or registry cleared on session restart).
-    //
-    // Invariant upheld by the system:
-    //   - test_player_clean_planned() is called at the START of every system
-    //     tick and removes any entry for which reg.valid(e) is false.
-    //   - After cleanup, all entries in planned[0..planned_count) are valid
-    //     handles for that tick only. Do not cache the validity result across
-    //     tick boundaries.
-    //   - Actions that reference an obstacle via TestPlayerAction::obstacle
-    //     also guard with reg.valid() before any component access.
-    static constexpr int MAX_PLANNED = 256;
-    entt::entity     planned[MAX_PLANNED] = {};
-    int              planned_count = 0;
-
 };

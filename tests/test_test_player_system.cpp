@@ -2,7 +2,6 @@
 #include "test_helpers.h"
 #include "components/test_player.h"
 #include "util/session_logger.h"
-#include "util/test_player_helpers.h"
 
 #ifdef PLATFORM_DESKTOP
 
@@ -40,16 +39,13 @@ static void tick_systems(entt::registry& reg, int frames, float dt = 1.0f / 60.0
         if (song && song->playing) song->song_time += dt;
 
         test_player_system(reg, dt);
-        player_input_system(reg, dt);
+        game_state_system(reg, dt);
         shape_window_system(reg, dt);
         player_movement_system(reg, dt);
         scroll_system(reg, dt);
         collision_system(reg, dt);
         scoring_system(reg, dt);
         obstacle_despawn_system(reg, dt);
-        auto& disp = reg.ctx().get<entt::dispatcher>();
-        disp.clear<InputEvent>();
-
         // Stop early if game over
         if (reg.ctx().get<GameState>().transition_pending) break;
     }
@@ -177,7 +173,7 @@ TEST_CASE("test_player: auto-starts from title screen", "[test_player]") {
     gs.phase_timer = 1.0f;
 
     // Create a Confirm menu button (as title screen would have)
-    make_menu_button(reg, MenuActionKind::Confirm, GamePhase::Title);
+    make_menu_button(reg, MenuActionKind::Confirm);
 
     test_player_system(reg, 0.016f);
     bool has_confirm = false;
@@ -206,8 +202,10 @@ TEST_CASE("test_player: swipe cooldown blocks immediate second swipe", "[test_pl
     action.timer = -1.0f;
     action.target_lane = 0;
     action.arrival_time = reg.ctx().get<SongState>().song_time + 1.0f;
-    test_player_push_action(tp, action);
-    test_player_mark_planned(tp, obs);
+    if (tp.action_count < TestPlayerState::MAX_ACTIONS) {
+        tp.actions[tp.action_count++] = action;
+    }
+    reg.emplace<TestPlayerPlannedTag>(obs);
 
     test_player_system(reg, 0.016f);
     bool has_go = drain_go_events(reg).count > 0;
@@ -251,61 +249,6 @@ TEST_CASE("test_player: shape gate then lane block requiring opposite direction"
 
     tick_systems(reg, 800);
     CHECK(survived(reg));
-}
-
-// ── LIFECYCLE: stale planned entities are safely removed ──────
-// Confirms the planned[] validity contract: entities destroyed between ticks
-// are pruned by test_player_clean_planned() at the next system tick and do
-// not cause a use-after-free or persistent ghost entry.
-
-TEST_CASE("test_player: stale planned entity is removed on next tick", "[test_player]") {
-    auto reg = make_test_player_registry();
-    make_rhythm_player(reg);
-
-    // Manually insert an entity into planned[] and then destroy it.
-    auto& tp = reg.ctx().get<TestPlayerState>();
-    auto ghost = reg.create();
-    test_player_mark_planned(tp, ghost);
-    REQUIRE(tp.planned_count == 1);
-    REQUIRE(test_player_is_planned(tp, ghost));
-
-    reg.destroy(ghost);
-    REQUIRE_FALSE(reg.valid(ghost));
-
-    // One system tick should clean the stale entry.
-    test_player_system(reg, 1.0f / 60.0f);
-
-    CHECK(tp.planned_count == 0);
-    CHECK_FALSE(test_player_is_planned(tp, ghost));
-}
-
-TEST_CASE("test_player: valid planned entities are retained after stale cleanup", "[test_player]") {
-    auto reg = make_test_player_registry();
-    make_rhythm_player(reg);
-
-    auto& tp = reg.ctx().get<TestPlayerState>();
-
-    // Two live entities and one that will be destroyed.
-    auto live1  = reg.create();
-    auto ghost  = reg.create();
-    auto live2  = reg.create();
-    test_player_mark_planned(tp, live1);
-    test_player_mark_planned(tp, ghost);
-    test_player_mark_planned(tp, live2);
-    REQUIRE(tp.planned_count == 3);
-
-    reg.destroy(ghost);
-
-    test_player_system(reg, 1.0f / 60.0f);
-
-    // Stale entry removed; live entries retained.
-    CHECK(tp.planned_count == 2);
-    CHECK(test_player_is_planned(tp, live1));
-    CHECK(test_player_is_planned(tp, live2));
-    CHECK_FALSE(test_player_is_planned(tp, ghost));
-
-    reg.destroy(live1);
-    reg.destroy(live2);
 }
 
 #endif

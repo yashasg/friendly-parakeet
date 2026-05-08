@@ -1,7 +1,6 @@
 #include "beat_map_loader.h"
 #include "rhythm_math.h"
 #include <nlohmann/json.hpp>
-#include <fstream>
 #include <cmath>
 #include <algorithm>
 #include <optional>
@@ -10,10 +9,14 @@
 using json = nlohmann::json;
 
 static bool try_load_constants_from(const std::string& path, ValidationConstants& vc) {
-    std::ifstream file(path);
-    if (!file.is_open()) return false;
+    char* file_text = LoadFileText(path.c_str());
+    if (file_text == nullptr) return false;
+
     try {
-        json j = json::parse(file);
+        const std::string content(file_text);
+        UnloadFileText(file_text);
+        file_text = nullptr;
+        json j = json::parse(content);
         if (j.contains("validation")) {
             const auto& v = j["validation"];
             vc.bpm_min              = v.value("bpm_min",              vc.bpm_min);
@@ -24,9 +27,14 @@ static bool try_load_constants_from(const std::string& path, ValidationConstants
             vc.lead_beats_max       = v.value("lead_beats_max",       vc.lead_beats_max);
             vc.min_shape_change_gap = v.value("min_shape_change_gap", vc.min_shape_change_gap);
         }
-    } catch (...) {
+    } catch (const json::exception& e) {
+        TraceLog(LOG_WARNING, "Failed to parse constants file '%s': %s", path.c_str(), e.what());
+        if (file_text != nullptr) {
+            UnloadFileText(file_text);
+        }
         return false;
     }
+
     return true;
 }
 
@@ -225,13 +233,14 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
 bool load_beat_map(const std::string& json_path, BeatMap& out,
                    std::vector<BeatMapError>& errors,
                    const std::string& difficulty) {
-    std::ifstream file(json_path);
-    if (!file.is_open()) {
+    char* file_text = LoadFileText(json_path.c_str());
+    if (file_text == nullptr) {
         errors.push_back({-1, "Could not open file: " + json_path});
         return false;
     }
-    std::string content((std::istreambuf_iterator<char>(file)),
-                         std::istreambuf_iterator<char>());
+
+    const std::string content(file_text);
+    UnloadFileText(file_text);
     return parse_beat_map(content, out, errors, difficulty);
 }
 

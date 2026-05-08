@@ -5,7 +5,7 @@
 
 // ── Raw input state (internal to input_system) ──────────────────────────────
 // Tracks touch/mouse hardware state. Downstream systems should read
-// EventQueue, not this struct — except for quit_requested.
+// semantic events, not this struct — except for quit_requested.
 
 enum class InputSource : uint8_t { None, Mouse, Touch };
 
@@ -26,6 +26,6 @@ struct InputState {
 };
 
 // ── Directions ──────────────────────────────────────────────────────────────
-// Shared by InputEvent routing and consumer systems.
+// Shared by semantic input producers and consumers.
 
 enum class Direction : uint8_t { Left, Right, Up, Down };

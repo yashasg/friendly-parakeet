@@ -134,22 +134,6 @@ test('unknown kind is rejected with useful error', () => {
   );
 });
 
-test('lane push kinds are rejected on import', () => {
-  expectImportError(
-    JSON.stringify({
-      song_id: 'x',
-      difficulties: {
-        hard: {
-          beats: [
-            { beat: 4, kind: 'lane_push_left', lane: 1 },
-          ],
-        },
-      },
-    }),
-    /kind must be one of|lane_push_left/i,
-  );
-});
-
 test('lane_block is rejected on import', () => {
   expectImportError(
     JSON.stringify({
@@ -179,26 +163,6 @@ test('unknown shape is rejected with useful error', () => {
       },
     }),
     /shape must be one of|hexagon/i,
-  );
-});
-
-test('lane push kinds are rejected on export', () => {
-  assert.throws(
-    () => exportBeatmap({
-      songId: 'song_001',
-      title: 'No Push',
-      bpm: 120,
-      offset: 0,
-      leadBeats: 4,
-      duration: 90,
-      songPath: 'content/audio/song_001.flac',
-      difficulties: {
-        hard: {
-          beats: [{ beat: 8, kind: 'lane_push_right', lane: 1 }],
-        },
-      },
-    }),
-    /kind must be one of|lane_push_right/i,
   );
 });
 

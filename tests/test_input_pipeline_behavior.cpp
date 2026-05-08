@@ -2,15 +2,15 @@
 //
 // End-to-end input pipeline behavioral tests.
 //
-// The pipeline: gesture_routing_handle_input + HUD shape/menu dispatch →
-// player_input_system.
+// The pipeline: semantic GoEvent/ButtonPressEvent producers →
+// game_state_system drain (authoritative) → player_input listeners.
 //
 // All assertions are on player component state (Lane::target, ShapeWindow::phase,
 // PlayerShape::current) — never on raw event queues.
-// This makes the tests implementation-agnostic: push_input(reg,...) injects
-// a raw InputEvent; run_input_tier1(reg) fires gesture_routing listeners;
-// player_input_system drains the resulting GoEvent/ButtonPressEvent
-// queues.  The observable player-state outcomes are the stable contract.
+// This makes the tests implementation-agnostic: helpers enqueue semantic
+// events directly; game_state_system drains the queues and listeners mutate
+// player state in the same fixed tick. The observable outcomes are the
+// stable contract.
 //
 // Failure modes these tests guard against:
 //   - One-frame latency: swipe arrives but lane.target unchanged until next tick
@@ -24,12 +24,9 @@
 #include "test_helpers.h"
 #include "ui/screen_controllers/gameplay_hud_screen_controller.h"
 
-// Runs Tier-1 input dispatch and then player_input_system drain.
-// Mirrors production order: update<InputEvent>() fires gesture_routing;
-// player_input_system calls update<GoEvent/ButtonPressEvent>().
+// Runs the fixed-tick input path.
 static void run_pipeline(entt::registry& reg, float dt = 0.016f) {
-    run_input_tier1(reg);
-    player_input_system(reg, dt);
+    game_state_system(reg, dt);
 }
 
 // ── Swipe → lane change ───────────────────────────────────────────────────
@@ -41,10 +38,10 @@ TEST_CASE("pipeline: swipe right produces lane change in same pipeline call — 
     auto& lane = reg.get<Lane>(player);
     REQUIRE(lane.current == 1);
 
-    push_input(reg, InputType::Swipe, 0.f, 0.f, Direction::Right);
+    push_go(reg, Direction::Right);
     run_pipeline(reg);
 
-    CHECK(lane.target == 2);   // same-frame: no latency between InputEvent and lane.target
+    CHECK(lane.target == 2);
 }
 
 TEST_CASE("pipeline: swipe left produces lane change in same pipeline call — no latency",
@@ -54,7 +51,7 @@ TEST_CASE("pipeline: swipe left produces lane change in same pipeline call — n
     auto& lane = reg.get<Lane>(player);
     REQUIRE(lane.current == 1);
 
-    push_input(reg, InputType::Swipe, 0.f, 0.f, Direction::Left);
+    push_go(reg, Direction::Left);
     run_pipeline(reg);
 
     CHECK(lane.target == 0);
@@ -69,8 +66,8 @@ TEST_CASE("pipeline: swipe Up/Down has no lane effect",
     // Settle lane.target to current so we have a clear baseline.
     lane.target = lane.current;   // both == 1
 
-    push_input(reg, InputType::Swipe, 0.f, 0.f, Direction::Up);
-    push_input(reg, InputType::Swipe, 0.f, 0.f, Direction::Down);
+    push_go(reg, Direction::Up);
+    push_go(reg, Direction::Down);
     run_pipeline(reg);
 
     CHECK(lane.target == 1);   // unchanged: Up/Down produce no lane delta
@@ -86,10 +83,10 @@ TEST_CASE("pipeline: swipe right at right boundary does not wrap lane",
     lane.current = static_cast<int8_t>(constants::LANE_COUNT - 1);
     lane.target  = lane.current;
 
-    push_input(reg, InputType::Swipe, 0.f, 0.f, Direction::Right);
+    push_go(reg, Direction::Right);
     run_pipeline(reg);
 
-    // At boundary delta==0: player_input_system skips the assignment block.
+    // At boundary delta==0: the go-event handler skips the assignment block.
     CHECK(lane.target == constants::LANE_COUNT - 1);
 }
 
@@ -135,6 +132,7 @@ TEST_CASE("pipeline: gameplay HUD raygui shape press triggers player shape input
                                       false,
                                       true,
                                       false);
+    run_pipeline(reg);
 
     CHECK(sw.phase == WindowPhase::Active);
     CHECK(sw.target_shape == Shape::Square);
@@ -196,7 +194,7 @@ TEST_CASE("pipeline: mixed swipe and tap both take effect within a single pipeli
     REQUIRE(lane.current == 1);
     REQUIRE(sw.phase == WindowPhase::Idle);
 
-    push_input(reg, InputType::Swipe, 0.f,   0.f,   Direction::Right);  // lane +1
+    push_go(reg, Direction::Right);
     reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>(
         {ButtonPressKind::Shape, Shape::Triangle, MenuActionKind::Confirm, 0});
 
@@ -210,7 +208,7 @@ TEST_CASE("pipeline: mixed swipe and tap both take effect within a single pipeli
 // ── No-latency regression ─────────────────────────────────────────────────
 //
 // If the refactor introduces a one-frame latency (e.g., GoEvent enqueued but
-// update() not called before player_input_system runs), lane.target will still
+// the authoritative game_state_system drain does not run), lane.target will still
 // equal lane.current after this call.  The check "lane.target != lane.current"
 // is the regression signal.
 
@@ -221,7 +219,7 @@ TEST_CASE("pipeline: swipe effect visible immediately — lane.target differs fr
     auto& lane = reg.get<Lane>(player);
     REQUIRE(lane.current == 1);
 
-    push_input(reg, InputType::Swipe, 0.f, 0.f, Direction::Left);
+    push_go(reg, Direction::Left);
     run_pipeline(reg);
 
     CHECK(lane.target != lane.current);  // must differ: effect is immediate, not deferred
@@ -234,9 +232,8 @@ TEST_CASE("pipeline: swipe effect visible immediately — lane.target differs fr
 // render frame.  After the first sub-tick consumes a swipe, subsequent
 // sub-ticks must NOT replay it and must not reset lane.lerp_t.
 //
-// After update<InputEvent>() drains the Tier-1 queue, the queue is empty.
-// Subsequent calls to run_input_tier1 are no-ops.  GoEvent/ButtonPressEvent
-// queues are also drained by player_input_system, so no replay occurs.
+// After game_state_system drains semantic queues, a second sub-tick with no
+// new events is a no-op and must not replay.
 
 TEST_CASE("pipeline: swipe consumed after first sub-tick — second sub-tick does not reset lane.lerp_t (#213 behavior)",
           "[input_pipeline]") {
@@ -245,7 +242,7 @@ TEST_CASE("pipeline: swipe consumed after first sub-tick — second sub-tick doe
     auto& lane = reg.get<Lane>(player);
 
     // Sub-tick 1: inject swipe and run pipeline.
-    push_input(reg, InputType::Swipe, 0.f, 0.f, Direction::Right);
+    push_go(reg, Direction::Right);
     run_pipeline(reg);
     CHECK(lane.target  == 2);
     CHECK(lane.lerp_t  == 0.0f);
@@ -253,8 +250,7 @@ TEST_CASE("pipeline: swipe consumed after first sub-tick — second sub-tick doe
     // Simulate partial lerp (as player_movement_system would produce).
     lane.lerp_t = 0.4f;
 
-    // Sub-tick 2: InputEvent queue already drained by sub-tick 1's update.
-    // No new inputs pushed — run_pipeline is a no-op for lane changes.
+    // Sub-tick 2: no new semantic inputs pushed — run_pipeline is a no-op.
     run_pipeline(reg);
 
     CHECK(lane.lerp_t == 0.4f);  // not reset: swipe was consumed on sub-tick 1
@@ -279,7 +275,7 @@ TEST_CASE("pipeline: tap consumed after first sub-tick — second sub-tick does 
     // Advance song time so a replayed window would produce a different window_start.
     song.song_time = 6.0f;
 
-    // Sub-tick 2: InputEvent queue already drained — run_pipeline is a no-op.
+    // Sub-tick 2: no new semantic events — run_pipeline is a no-op.
     run_pipeline(reg);
 
     CHECK(sw.window_start == start1);  // window_start unchanged: event not replayed

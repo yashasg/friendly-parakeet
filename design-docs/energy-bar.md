@@ -164,7 +164,6 @@ switch (timing->tier) {
 energy.energy = clamp(energy.energy, 0.0f, ENERGY_MAX);
 ```
 
-Non-timed obstacles (LanePush, LaneBlock) do NOT affect energy.
 
 ---
 

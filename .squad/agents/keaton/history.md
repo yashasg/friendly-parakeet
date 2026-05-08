@@ -1,215 +1,113 @@
+
+## 2026-05-08: Input Dead Code Cleanup (Scribe Log)
+
+Team session: dead code elimination in input routing.
+- Keaton: Deleted game_state_end_screen_routing.cpp, inlined routing helper
+- Baer: Audited test/benchmark code
+- Fenster: Removed duplicate GoEvent test, unused GamePhase param
+- Kujan: Reviewed and approved all changes
+
+Status: COMPLETE. All validation/build tests passed.
+
 # Keaton — History
 
 ## Core Context
 
 - **Owner:** yashasg
-- **Project:** A C++20 raylib/EnTT rhythm bullet hell game with song-driven obstacles and shape matching synced to music.
-- **Role:** C++ Performance Engineer
-- **Joined:** 2026-04-26T02:09:15.781Z
 
-# Keaton — History
+## Current Phase: Raylib Primitives & Shape Vertices Cleanup
 
-## Core Context
+### 2026-05-08T11:21:16.041-07:00 — Raylib primitives vs shape_vertices cleanup
 
-- **Owner:** yashasg
-- **Project:** A C++20 raylib/EnTT rhythm bullet hell game with song-driven obstacles and shape matching synced to music.
+- Verified available raylib APIs in this repo's header (`vcpkg_installed/arm64-ios/include/raylib.h`): 2D helpers (`DrawCircle*`, `DrawRing*`, `DrawRectangle*`, `DrawTriangle`) and 3D helpers (`DrawCircle3D`, `DrawTriangle3D`, `DrawTriangleStrip3D`).
+- `draw_floor_rings()` renders annulus geometry in world XZ with `rlVertex3f(x, 0, z)` inside `BeginMode3D`; 2D `DrawRing`/`DrawCircle` use `Vector2` screen-space semantics and are not direct replacements.
+- `shape_vertices.h` can still be deleted if circle generation is localized in `game_render_system.cpp` (constexpr circle table or `cos/sin` per segment) and test/benchmark references are updated.
 
-### Work Completed
+## Learnings
 
-1. **Created `app/systems/motion_system.cpp`** — new system with phase guard matching scroll_system's
-2. **Stripped `app/systems/scroll_system.cpp`** — removed vel_view and motion_view, leaving 3 obstacle-only views
-3. **Updated `app/systems/all_systems.h`** — added motion_system declaration under Phase 5
-4. **Updated `app/game_loop.cpp`** — added motion_system call immediately after scroll_system
-5. **Test consolidation:** Renamed scroll→motion tests; added phase-guard test for motion_system
-6. **Bench updates:** Added motion_system benchmarks (10/100/1000 entity tiers)
+- 2026-05-08T14:50:05.765-07:00: Replacing manual entity-tracking arrays with an existential EnTT tag (`TestPlayerPlannedTag`) safely removes stale-handle cleanup code and keeps planning state attached to obstacle lifetime without callback coupling.
 
-### Build & Test Results
+- 2026-05-08T13:57:50.741-07:00: Full `app/systems/` raylib audit found safe direct-API trims only around gesture collapse and optional XZ ring triangle emission; most lifecycle queues, floor texture work, display sizing, and owned-model drawing remain design-gated by ECS ordering, web canvas behavior, or GPU ownership contracts.
 
-- **Build:** Zero warnings (clang -Wall -Wextra -Werror)
-- **Tests:** 2211 assertions / 772 test cases — all pass (+2 assertions from new motion phase-guard test)
-- **Bench:** See decisions.md for full breakdown. 10-entity combined cost +27% (61 ns vs 48 ns baseline); architectural split overhead, not per-entity regression
+- 2026-05-08T13:57:50.741-07:00: Input-system raylib cleanup has two safe trims (gesture detection via `GetGestureDetected`, and dropping unused transient `InputState` fields after UI pointer release is preserved) while letterbox coordinate conversion remains design-gated because current UI hit-testing relies on explicit virtual-space release coordinates.
 
-### Phase Guard Coupling Discovery
+- 2026-05-08T13:44:53.252-07:00: Utility dead-surface cleanup is safest when ownership is explicit: obstacle-drain checks should query `reg.view<ObstacleTag>().empty()`, enum-name formatting should use `magic_enum::enum_name` at callsites, and test-player action/planned helpers should stay local to `test_player_system.cpp`.
+- 2026-05-08T13:32:04.383-07:00: `app/util/` still has high-confidence dead-surface cleanup wins (`obstacle_counter`, `fs_utils`, `enum_names`) and narrow helpers (`safe_localtime`, `test_player_helpers`) that should move into owning systems/session modules after targeted test rewiring.
+- 2026-05-08T13:03:11.140-07:00: Replacing `session_logger` with raylib `SetTraceLogCallback` is not a safe drop-in because the callback is process-global and would capture unrelated engine/app logs unless we add explicit filtering/forwarding behavior.
+- 2026-05-08T11:47:09.246-07:00: If floor rings move to a texture-on-quad path (draw 2D in XY into a RenderTexture, then place/rotate that quad into floor XZ), `shape_vertices.h` becomes removable from runtime; the migration risk shifts to render-target lifetime/UV orientation and shader texture-sampling support.
+- 2026-05-08T11:53:19.588-07:00: Replacing floor-ring lookup-table sampling with local trig generation in `game_render_system.cpp` removes shared shape vertex data and keeps ring rendering directly in the floor path.
+- 2026-05-08T11:59:39.840-07:00: Keeping floor draws in a dedicated `floor_render_system.cpp` preserves behavior while reducing coupling/noise in `game_render_system.cpp`, and lets floor-only includes stay localized.
 
-Original scroll_system's phase guard silently gated vel_view and motion_view too. When extracted without the guard, 3 tests failed (position-integration assumed no movement in non-Playing). Fixed by adding identical guard to motion_system. No behavioral regression; coupling was implicit until extraction exposed it.
+## 2026-05-08T18:53:19Z — Shape Vertices Removal COMPLETE
 
-### Module Health
+**Status:** ✓ DONE. Approved by Kujan.
 
-scroll_system: 🟢 Green (obstacle-only, SRP resolved)  
-motion_system: 🟢 Green (new, clean)
+Floor rings now generate locally in `app/systems/game_render_system.cpp` using cos/sin per segment. Deleted `app/util/shape_vertices.h` and updated all references in tests/benchmarks. Build clean, tests pass.
 
-### Pattern Note for Future Reference
+**Scope closed:** shape_vertices.h removal task complete.
 
-**Synthetic benchmarks must be re-validated after archetype refactors — splitting a system can drop a fixture's matching entity count to zero, leaving the bench measuring nothing.** The scroll_system 10-entity bench fixture spawns ObstacleTag+Position+Velocity (no ObstacleScrollZ or BeatInfo), which was processed by vel_view in the old code but now matches zero scroll_system views post-extraction. The "empty system" measurement is correct but misleading for perf analysis; a proper fixture should include ObstacleScrollZ entities to stress the actual scrolling loops.
+## Previous Phases Summary
 
-### Pattern Note for Future Reference
+See `.squad/agents/keaton/history-archive.md` for earlier work:
+- Motion system refactors (May 3)
+- Push-lane obstacle removal (May 8)
+- Raylib wrapper cleanup (text_renderer, raylib_gesture_input)
+- Post-cleanup audit: shape_vertices.h analysis
+- Team audit: architecture validation
+- Circle floor ring 2D verification (May 8)
+- Shape vertices removal (May 8 → 18:53:19Z, COMPLETE)
+- 2026-05-08T13:08:46.440-07:00: Highest-confidence raylib cleanup wins are replacing HUD hexagon manual triangulation with `DrawPoly` and file-text ingestion in beatmap loader with `LoadFileText`; floor/world-XZ geometry and model ownership paths should remain design-gated.
+- 2026-05-08T13:15:08.642-07:00: `DrawLine3D` is a safe replacement for floor lane/grid/beat `RL_LINES` emission in world-space XZ, while annulus ring geometry should remain on the existing `RL_TRIANGLES` path until design-gated ring architecture changes land.
 
-**Synthetic benchmarks must be re-validated after archetype refactors — splitting a system can drop a fixture's matching entity count to zero, leaving the bench measuring nothing.** The scroll_system 10-entity bench fixture spawns ObstacleTag+Position+Velocity (no ObstacleScrollZ or BeatInfo), which was processed by vel_view in the old code but now matches zero scroll_system views post-extraction. The "empty system" measurement is correct but misleading for perf analysis; a proper fixture should include ObstacleScrollZ entities to stress the actual scrolling loops.
-
-### Decision
-
-Merged to `.squad/decisions.md` under "2026-05-03 — Ralph Round 3" section.
-
----
-
-## 2026-05-03 — Ralph Round 4: Bench Fixtures + collision_system Optimization
-
-**Loop:** Ralph Round 4 (perf + SOLID continuous iteration)  
-**Task:** Fix broken bench fixtures (scroll_system + collision_system) and optimize collision_system hot path  
-**Verdict:** ✅ MERGED
-
-### Execution Summary
-
-Keaton identified two bench fixtures degrading silently due to archetype evolution and fixed them to accurately measure real entity work. Additionally optimized collision_system's hot path by precomputing frame-constant values and collapsing a redundant 2D geometric check to 1D.
-
-### Work Completed
-
-1. **scroll_system bench:** Added `spawn_scroll_obstacles` helper creating proper freeplay archetype (ObstacleScrollZ+Velocity)
-2. **collision_system bench:** Fixed `make_bench_player` with missing WorldTransform+ShapeWindow components
-3. **collision_system perf:** Precomputed `player_timing_y` and `player_x` outside loops; replaced `player_overlaps_lane(centered_rect)` calls with 1D `|obs_x - player_x| < SIZE` check; removed 4 dead helpers
-
-### Round 13 — Chain-Bonus SRP Retraction + Motion System Migration
-
-**Date:** 2026-05-05
-
-**Work:**
-1. Investigated chain-bonus SRP coupling claim (r12 follow-up): grep showed chain_count/chain_timer writes ONLY inside scoring_system.cpp. State is fully encapsulated in scoring's concern. Co-location is intentional, not a smell. **Retracted the SRP recipe.**
-2. Moved motion_system migration forward (Option C): Updated vel_view comment to document "freeplay obstacles only (issue #349)". Found and fixed bench archetype mismatch: spawn_particles was creating Position+Velocity (legacy path) instead of WorldTransform+MotionVelocity (production). Added two new unit tests for motion_view path.
-3. Tests: 784/2251 → 786/2255 (+2 cases, +4 assertions). Zero warnings.
-
-**Metrics:** Pre/post test count: 784 → 786 non-bench cases. Bench archetype fix means particles now correctly hit motion_view.
-
-**Process note:** When you find a wrong bench, prior "no delta" claims need revisiting. Bench measured the legacy path, not production.
-
-**Pattern Learned:** Retract recipes when grep falsifies them. Don't ship the wrong refactor to look productive. Independent agreement (Keyser reached same RETRACT verdict) is strong evidence.
-
-**Decision:** Merged to `.squad/decisions.md` under "Round 13: Keaton — Chain-Bonus SRP Retraction + Motion System Migration" section.
+- 2026-05-08T13:23:49.542-07:00: EnTT audit pass: safest near-term wins are removing the `ObstacleCounter` signal counter in favor of `reg.view<ObstacleTag>().empty()` checks, replacing test-player planned arrays with a `TestPlayerPlannedTag`, and tightening popup fade iteration to `view<ScorePopup, PopupDisplay, Color>`; dispatcher migration for scoring/FX queues remains design-gated due to ordering semantics.
 
 ---
 
-### Round 15 — Velocity Struct Deletion + vel_view Elimination
+## 2026-05-08 Session: Raylib API Replacements
 
-**Date:** 2026-05-06
+**Task:** Implement safe raylib API replacements for HUD hex fill, beatmap/constants file loading, and floor lines.
 
-**Work:**
-1. **Full Velocity migration:** Deleted `Velocity` struct from `app/components/transform.h` entirely. Migrated `spawn_obstacle` to `MotionVelocity{{0, speed}}`. Migrated `scroll_system` model_view from `Velocity` to `MotionVelocity` with `.value.y` accessor.
-2. **vel_view → motion_view:** Deleted the 11-line `vel_view` loop from `motion_system.cpp`. Added `Position` bridge in motion_view to sync Position from WorldTransform when both present (legacy compatibility for collision/scoring/camera that still read Position).
-3. **Test migration (13 files):** Updated 6 factory functions in `test_helpers.h`. Updated 8 archetype assertions in `test_obstacle_archetypes.cpp`. Rewrote 3 motion_view tests (one covering Position bridge). Updated 5 other test files. Removed 1 obsolete Velocity assertion. Updated 4 bench sites.
-4. **Metrics:** 19 files touched. Pre: 786/2255. Post: 786/2256 (+1 assertion from Position bridge test). Zero warnings.
-5. **Benchmarks:** motion_system slightly higher due to `try_get<Position>` bridge cost (~30–90 ns at 10–100 entities); particle_system and full-frame within r14 baseline.
+**Deliverables:**
+- HUD hexagon: replaced manual trig + 6 `DrawTriangle` with `DrawPoly(..., 6, radius, -90.0f, ...)`.
+- Beatmap/constants: replaced `std::ifstream` with `LoadFileText`/`UnloadFileText`.
+- Floor lines: replaced `RL_LINES` with `DrawLine3D`.
+- Floor rings: remains on `RL_TRIANGLES` (design-gated).
 
-**Metrics:** Bridge overhead ~30–90 ns; justified by elimination of legacy `Velocity` type and the fragmented vel_view loop.
+**Validation:** 2063 assertions, 758 test cases, zero warnings. APPROVED by Kujan.
 
-**Pattern Learned:** When a migration touches 19 files, do them in lockstep with continuous test-passing. The bridge approach (motion_view writes Position) lets readers migrate independently in a future round. This decouples writer migration from reader migration.
+**No follow-up work:** Scope complete.
 
-**Decision:** Merged to `.squad/decisions.md` under "Round 15: Keaton vel_view → motion_view Migration (Issue #349)" section. Commit: `70f6436`.
+- 2026-05-08T14:14:30.000-07:00: Edge-inclusive collision cleanup now uses raylib `CheckCollisionRecs` with centered hitbox rectangles; audio playback no longer needs an injectable backend because `audio_system` drains queues while directly guarding `PlaySound` behind `IsAudioDeviceReady`, bank loaded state, and `IsSoundValid`.
 
-### R16: Large Position Deletion Migration (35 files, 491 deletions / 145 insertions)
+- 2026-05-08T14:25:19.068-07:00: Cleanup regression tests should prove boundary behavior with compact table/loop cases and rely on existing component/static guards instead of reintroducing broad helper/backend surfaces.
 
-**Date:** 2026-05-03  
-**Completion:** ✅ SHIPPED  
-**Tests:** 784 cases / 2234 assertions (−2 cases / −22 assertions vs r15)
+### 2026-05-08T21:49:55Z: EnTT Cleanup LOC Audit Decision
 
-**Pattern:** When migrating away from a legacy type (Position), delete the type and migrate all readers in lockstep with continuous test-passing. Motion-system bridge eliminated; latent double-integration path (LowBar/HighBar) also eliminated.
+**Date:** 2026-05-08T21:49:55Z  
+**Scope:** Read-only LOC estimate for EnTT architecture optimization (plumbing reduction, safe candidates, design-gated moves)
 
-**Compliance note:** Missed verbatim tail-5 paste protocol in decision drop. Keaton-r16 drop omitted full `tail -5` from test run. Strict adherence to tail-5 protocol from r17 onwards.
+**Baseline:** ./run.sh test passed. Current codebase healthy.
 
-**Process:** 15+ production files + tests + benchmarks migrated atomically. Build green, zero warnings. Module health: motion_system 🟡 → 🟢.
+**Safe candidates (~45–80 LOC net reduction):**
+1. `test_player_system.cpp` + `test_player.h`: Replace manual `planned[]/planned_count` + `reg.valid` cleanup with existential `TestPlayerPlannedTag` on obstacles. Est. -30 to -55 LOC.
+2. `popup_display_system.cpp`: Use structural view `<ScorePopup, PopupDisplay, Color>` instead of `view<ScorePopup> + try_get` checks. Est. -8 to -15 LOC.
+3. Scratch singleton helpers (particle_system, obstacle_despawn_system, popup_display_system, scoring_system parts): Eager-init in setup, use `ctx().get<T>()` in hot loops. Est. -7 to -10 LOC (mostly helper deletion; setup adds few lines).
 
-### R17: Double-Integration Fix + Bench Re-baseline
+**Medium/design-gated (~35–90 LOC, mostly moved not removed):**
+1. Signal wiring flags in session/input/obstacle lifecycle → `entt::scoped_connection` owners. Est. -5 to +10 LOC (cleanup/readability win, minimal LOC).
+2. `PendingEnergyEffects` / `ScorePopupRequestQueue` → dispatcher events. Est. -10 to +25 LOC (often code moves, not shrinks).
+3. Camera singleton entity pattern → context singleton. Est. -20 to -55 LOC across accessors/checks, but touches many tests/assumptions.
 
-**Date:** 2026-05-03  
-**Completion:** ✅ SHIPPED  
-**Tests:** 785 cases / 2235 assertions (+1 case / +1 assertion: new double-integration regression test)
+**Not worth for LOC (keep in systems):**
+- `scoring_system` collect-then-remove passes
+- `collision_system` per-kind structural loops
+- `particle_system` / `obstacle_despawn_system` collect-then-destroy safety pattern
 
-**Pattern:** Structural exclusion via `entt::exclude<...>` > runtime checks for double-integration prevention.
+**Rationale:**
+- EnTT helps best where we currently emulate entity state in manual arrays or repeated lookup helpers
+- For phase-sensitive gameplay rules, moving logic out of systems would mostly hide behavior and increase coupling without meaningful code reduction
 
-**Latent fix applied:** `motion_view` now excludes `ObstacleScrollZ`, making scroll_system's `model_view` and motion_system's `motion_view` mutually exclusive on the discriminator component.
-
-**Correctness verified:** Fail-then-fix test added: pre-fix produced `200.0f == 150.0f` (2× integration); post-fix passes.
-
-**Bench win:** motion_system **26.6 ns / 10 ents** (vs r14 baseline 34-38 ns), ~30% improvement post-r16 Position bridge deletion.
-
-**Protocol:** Pre/post tail-5 paste protocol restored after r16 lapse. ✅
-
-**Verdict:** motion_system 🟢 (latent fixed). All 18 modules 🟢. Loop at natural diminishing returns per Keyser-r17.
-
-
-### R19: Hot-Path Dispatch Refactor (Collision)
-
-**Date:** 2026-05-03  
-**Completion:** ✅ SHIPPED  
-**Tests:** 784 cases / 2179 assertions (full suite), plus 51 collision cases / 112 assertions
-
-**Work:**
-1. Profiled hot-path benches (`Bench: collision_system`, `Bench: scroll_system`, `Bench: motion_system`) as baseline.
-2. Refactored `collision_system` shape-bearing paths to pre-dispatch by archetype when timing grading is active (`BeatInfo` vs non-`BeatInfo`) and moved timing-grade work into a dedicated shape-grade lambda.
-3. Added a `can_grade_shape` gate so freeplay/non-press frames stay on a single fast path (no extra empty-view iteration cost).
-4. Kept gameplay behavior unchanged; no test expectation updates required.
-
-**Perf summary (bench_systems):**
-- collision 1 obstacle: **127.07 ns → 126.94 ns** (flat/slightly better)
-- collision 10 obstacles: **153.28 ns → 140.64 ns** (~8% faster)
-- motion/scroll stayed within run-to-run variance band (no production code changes there).
-
-**Pattern Learned:** Pre-dispatch by archetype pays off in collision hot loops when gated to the active mode. Attempted scroll pre-dispatch was measured and rejected (regressed); keep direct loops unless branch elimination wins in benchmark.
-
-### R20: Branch Fan-Out Reduction Pass (collision/scoring/scroll)
-
-**Date:** 2026-05-03  
-**Completion:** ✅ SHIPPED  
-**Tests:** 768 cases / 2179 assertions (non-bench suite)
-
-**Work:**
-1. `collision_system`: hoisted timing-grading eligibility into one top-level branch and split shape-bearing loops into graded/non-graded structural partitions (`BeatInfo` vs non-`BeatInfo`) to remove repeated mode checks in hot loops.
-2. `scoring_system`: replaced per-entity `try_get<TimingGrade>` with structural timed/untimed views and consolidated tier side effects (energy + SongResults counters + multiplier source) into one helper switch.
-3. `scroll_system`: replaced per-entity `try_get<WorldTransform>` with structural with/without-`WorldTransform` views for both beat and freeplay `ObstacleScrollZ` paths; removed `ObstacleTag` from these views to lower join cost.
-
-**Perf summary (bench_systems, 30 samples):**
-- scroll 10 entities: **73.11 ns → 56.57 ns** (faster)
-- scroll 100 entities: **391.50 ns → 390.30 ns** (flat/slightly faster)
-- scroll 1000 entities: **2.97 us → 3.58 us** (slower)
-- collision 1 obstacle: **126.83 ns → 133.02 ns** (slower)
-- collision 10 obstacles: **149.70 ns → 162.47 ns** (slower)
-- full frame typical: **471.93 ns → 546.47 ns** (slower)
-- full frame stress: **791.07 ns → 1.22 us** (slower/noisier but materially up)
-
-**Pattern Learned:** Branch elimination via additional structural partitioning is not automatically a win in EnTT; extra join/select costs can dominate at scale. Keep benchmarking each partitioning step and reject “cleaner branch profile” changes that regress full-frame throughput.
-
-## 2026-05-03 — Opt-123 Finalization (Keep-only-positive)
-
-**Task:** Re-evaluate branch-reduction pass and keep only net-positive changes for this codebase.
-
-**Decision:** Kept collision refactor; dropped scroll/scoring structural partitioning.
-
-**Measured outcome (50 samples, before=all-3 refactors):**
-- collision 1: 141.98 ns → 135.12 ns
-- collision 10: 170.44 ns → 152.36 ns
-- scroll 10: 75.64 ns → 86.43 ns
-- scroll 100: 422.03 ns → 416.89 ns
-- scroll 1000: 3.86 us → 3.05 us
-- full-frame typical: 568.30 ns → 507.15 ns
-- full-frame stress: 1.01 us → 901.23 ns
-
-**Validation:** Build clean; tests pass (768 cases, 2179 assertions).
-
-**Learning:** Structural split-by-archetype helps only when it does not multiply view passes on dense hot paths; for scroll/scoring in this codebase, fewer-pass loops outperform aggressive branch elimination.
-
-## 2026-05-03 — Issue #350 Research: magic_enum vs EnTT meta
-
-**Task:** Determine whether EnTT v3.16.0 reflection can replace `magic_enum` for enum names/count contracts without sentinel/macros/duplication drift.
-
-**Outcome:** Keep `magic_enum`; no migration recommended.
-
-**Why:**
-- Current code depends on compile-time `enum_count` for `static_assert`-guarded array sizing and test parity.
-- EnTT meta requires manual registration (`meta_factory::data`) and runtime iteration (`meta_type::data`) and does not provide auto enum member reflection with constexpr count.
-- Replacing `magic_enum` would reintroduce duplicated enum lists and startup-order coupling.
-
-**Pattern Learned:** For enum-name/count infrastructure, a replacement must preserve compile-time guarantees first; runtime reflection parity is insufficient when array bounds and test contracts are compile-time assertions.
-
-### 2026-05-04T04:55:12Z — Decision Registry: Issue #350 recommendation merged
-
-- **Scribe action:** Merged inbox decision file to `.squad/decisions.md` (`# Decision: Keep magic_enum...`)
-- **Orchestration log written:** `.squad/orchestration-log/2026-05-04T04:55:12Z-keaton.md`
-- **Status in registry:** Recommended (GitHub issue #350 comment posted, gate cleared by Verbal)
+**Verdict:** Safe moves are net-positive. Medium moves are architecturally sound but neutral on LOC. No breaking changes to baseline. Approved for safe implementation; medium moves await design green signal.
+- 2026-05-08T15:09:47.770-07:00: For EnTT v3.16 in this codebase, replacing ad-hoc wiring bools with `entt::scoped_connection` owners plus explicit owner-identity guards keeps connect/unwire idempotent while preserving external listener isolation.
+- 2026-05-08: Redfoot segfault came from test fixture missing SongState; collision_system now requires SongState in ctx. Add it in focused test setups that call collision_system directly.
+- 2026-05-08T15:52:28.945-07:00: Collapsed input dispatch to semantic-only events (input_system emits GoEvent directly; game_state_system is the sole dispatcher drain; player_input_system drain removed).

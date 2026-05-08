@@ -57,3 +57,4 @@ struct RequiredLane {
 struct RequiredVAction {
     VMode action = VMode::Jumping;
 };
+

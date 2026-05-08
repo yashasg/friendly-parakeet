@@ -696,24 +696,19 @@ to `GamePhase::Playing`.
 
 ### TUTORIAL RUN 3 — "Dodge!"
 
-**Goal:** Introduce lane pushes. Lane push obstacles appear. All 3 shape buttons now visible.
 
 ```
   WHAT'S DIFFERENT:
   ─────────────────
-  • Shape gates (●, ■, ▲) + LANE PUSHES appear
   • All 3 shape buttons visible
-  • Brief hint explains lane push on first occurrence
   • Speed: ×0.8
   • Burnout meter still hidden
 
   WHAT PLAYER LEARNS:
   ───────────────────
   "Some obstacles push me to a different lane automatically"
-  "I need shape matching AND awareness of lane pushes"
 ```
 
-#### Run 3 — Frame 1: First lane push ever
 
 ```
   ╔══════════════════════════════════════╗
@@ -740,7 +735,6 @@ to `GamePhase::Playing`.
   ╚══════════════════════════════════════╝
 ```
 
-#### Run 3 — Frame 2: Lane push fires — player auto-moved!
 
 ```
   ╔══════════════════════════════════════╗
@@ -891,7 +885,6 @@ shape closer to the beat gives a higher grade (Perfect > Good > Ok > Bad).
   ╠═══════╬════════════════╬═════════════════════════╣
   ║   1   ║ Match shape    ║ ■ gates, 1 button       ║
   ║   2   ║ Switch shapes  ║ ●■ gates, 2 buttons     ║
-  ║   3   ║ Lane pushes    ║ ●■▲ gates + lane pushes ║
   ║   4   ║ Burnout intro  ║ + burnout meter visible  ║
   ║   5+  ║ FULL GAME      ║ Everything               ║
   ╚═══════╩════════════════╩═════════════════════════╝

@@ -297,7 +297,7 @@ TEST_CASE("game_state: title position tap triggers level_select", "[gamestate]")
     auto& gs = reg.ctx().get<GameState>();
     gs.phase = GamePhase::Title;
     // Simulate a tap → Confirm menu button press (title screen has full-screen confirm)
-    auto btn = make_menu_button(reg, MenuActionKind::Confirm, GamePhase::Title);
+    auto btn = make_menu_button(reg, MenuActionKind::Confirm);
     press_button(reg, btn);
 
     game_state_system(reg, 0.016f);

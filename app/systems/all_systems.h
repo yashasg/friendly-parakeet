@@ -21,7 +21,6 @@ void beat_log_system(entt::registry& reg, float dt);
 void beat_scheduler_system(entt::registry& reg, float dt);
 
 // Phase 4: Player
-void player_input_system(entt::registry& reg, float dt);
 void shape_window_system(entt::registry& reg, float dt);
 void player_movement_system(entt::registry& reg, float dt);
 
@@ -58,6 +57,7 @@ void game_camera_system(entt::registry& reg, float dt);  // model-to-world trans
 void ui_camera_system(entt::registry& reg, float dt);    // screen-space transforms
 
 // Phase 8: Render — world pass (3D) + UI pass (2D)
+void floor_render_system(const entt::registry& reg);
 void game_render_system(const entt::registry& reg, float alpha);
 void ui_render_system(entt::registry& reg, float alpha);
 

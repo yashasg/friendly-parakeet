@@ -1,3 +1,14 @@
+
+## 2026-05-08: Input Dead Code Cleanup (Scribe Log)
+
+Team session: dead code elimination in input routing.
+- Keaton: Deleted game_state_end_screen_routing.cpp, inlined routing helper
+- Baer: Audited test/benchmark code
+- Fenster: Removed duplicate GoEvent test, unused GamePhase param
+- Kujan: Reviewed and approved all changes
+
+Status: COMPLETE. All validation/build tests passed.
+
 # Baer — History
 
 ## Core Context
@@ -92,3 +103,66 @@ PR #357 WASM regression coverage work finalized and logged:
 - Inbox cleared: 5 decision entries processed
 
 Team ready for next phase.
+
+## 2026-05-08T13:15:08.642-07:00 — Raylib replacement cleanup validation
+
+**Learning**
+- For deletion-heavy raylib cleanup, the highest-signal regression check is a targeted stale-reference sweep in `app/`, `tests/`, `benchmarks/`, and `CMakeLists.txt`, followed by full build + test execution to confirm no orphaned compile/link references remain.
+
+---
+
+## 2026-05-08 Session: Raylib API Replacements Validation
+
+**Task:** Validation coverage and stale reference checks.
+
+**Findings:**
+- Scoped grep against `app/`, `tests/`, `benchmarks/`, CMakeLists.txt.
+- No orphaned references for HUD hex, file I/O, or floor line replacements.
+- Full build + test validation: all pass (2063 assertions, 758 test cases).
+
+**Pattern:** Established reusable stale-reference validation approach for future cleanup passes (recorded in decisions.md).
+
+**Verdict:** All systems clear.
+
+## 2026-05-08T13:44:53.252-07:00 — Utility cleanup validation preflight
+
+**Learning**
+- For deletion/rewire cleanups, run stale-reference sweeps first and explicitly classify findings as “cleanup not landed yet” versus “cleanup regressed” before requesting test realignment; this prevents accidental test churn against moving product ownership.
+
+## 2026-05-08T13:57:50.741-07:00 — Systems raylib cleanup test audit
+
+**Learning**
+- System-wide raylib cleanup needs two gates: API equivalence from the cheatsheet and behavior equivalence from tests/manual validation; floor rings, haptics, global TraceLog, display sizing, collision edges, and real audio timing should not move on stale-reference checks alone.
+
+## 2026-05-08T14:14:30.000-07:00 — Edge collision/audio cleanup validation
+
+**Learning**
+- For `CheckCollisionRecs` lane-overlap migrations, executable edge tests are mandatory: raylib uses strict rectangle comparisons, so intentional edge-inclusive gameplay needs an explicit minimal hitbox inflation plus boundary coverage.
+
+## 2026-05-08T14:25:19.068-07:00 — Edge/audio slim cleanup validation
+
+**Learning**
+- Cleanup validation should report scoped added/deleted/net LOC separately for app and tests; here the edge/audio slice was app -23 LOC, tests +11 LOC, total -12 LOC, so behavior coverage was retained without net growth.
+- Stale-symbol sweeps should be scoped to executable code paths (`app/`, `tests/`, `benchmarks/`, `CMakeLists.txt`) to avoid confusing archived squad notes with live references.
+
+**Validation evidence**
+- Scoped diff: 96 insertions, 108 deletions, net -12 across requested files.
+- Live stale references for `SFXPlaybackBackend`, `sfx_playback_backend_init`, and `lane_overlaps`: zero.
+- Coverage remains for exact-edge collision, just-beyond miss, audio queue drain, invalid SFX, unloaded SFX, and no-audio/headless safety.
+- `VCPKG_ROOT=/Users/yashasgujjar/vcpkg ./build.sh && ./build/shapeshifter_tests` passed.
+
+## 2026-05-08T14:50:05.765-07:00 — Popup partial-bundle expiry regression
+
+**Learning**
+- When splitting EnTT processing into structural views, enumerate every component-combination partition (full, partial, absent) or add explicit partial-bundle tests; otherwise entities can silently fall through and skip lifecycle updates.
+
+## 2026-05-08T15:09 — EnTT round-2 regression coverage learning
+
+- For EnTT wiring cleanups, compact regression tests in `test_components.cpp` can lock rewire/idempotent-disconnect behavior without touching product code, while direct `test_player_init` coverage should be moved to desktop integration paths because of hard raylib runtime dependencies in headless unit runs.
+- Redfoot wiring tests that call `collision_system` must initialize `SongState`; missing ctx singletons can surface as intermittent SIGSEGV due to `reg.ctx().get<T>()` preconditions.
+
+## 2026-05-08T15:52 — Semantic input collapse test adaptation
+
+**Learning**
+- After collapsing raw input tiers, unit tests should drive semantic `GoEvent`/`ButtonPressEvent` and execute `game_state_system` as the authoritative dispatcher drain; calling `player_input_system` directly no longer exercises event delivery.
+- EnTT sink callback order is currently last-connected-first in this codepath; keep an explicit contract test so wiring-order changes are caught immediately.

@@ -7,8 +7,8 @@
 // These tests define and verify the expected contract for the post-cleanup
 // entity model against the already-landed camera_entity.h factories.
 //
-// components/camera.h is a compatibility forwarding header only. New code
-// should include entities/camera_entity.h or rendering/camera_resources.h.
+// New code should include entities/camera_entity.h or
+// rendering/camera_resources.h.
 
 #include <catch2/catch_test_macros.hpp>
 #include <type_traits>
@@ -18,7 +18,7 @@
 #include "entities/camera_entity.h"  // GameCamera, UICamera, spawn_*
 
 // ── Type-trait gates ─────────────────────────────────────────────────────────
-// These fire at compile time; no camera.h include required after cleanup.
+// These fire at compile time.
 
 static_assert(std::is_standard_layout_v<GameCamera>,
     "camera-cleanup gate: GameCamera must be standard-layout for EnTT pool.");

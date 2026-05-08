@@ -2,7 +2,7 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
 
-// ── player_input_system ─────────────────────────────────────
+// ── semantic input drain ─────────────────────────────────────
 
 TEST_CASE("player_action: shape change on button press", "[player]") {
     auto reg = make_registry();
@@ -11,7 +11,7 @@ TEST_CASE("player_action: shape change on button press", "[player]") {
     auto btn = make_shape_button(reg, Shape::Triangle);
     press_button(reg, btn);
 
-    player_input_system(reg, 0.016f);
+    run_semantic_input_tick(reg, 0.016f);
 
     auto view = reg.view<PlayerTag, PlayerShape>();
     for (auto [e, ps] : view.each()) {
@@ -31,7 +31,7 @@ TEST_CASE("player_action: no shape change when same shape pressed", "[player]") 
     auto btn = make_shape_button(reg, Shape::Circle);
     press_button(reg, btn);
 
-    player_input_system(reg, 0.016f);
+    run_semantic_input_tick(reg, 0.016f);
 
     auto view = reg.view<PlayerTag, PlayerShape>();
     for (auto [e, ps] : view.each()) {
@@ -47,7 +47,7 @@ TEST_CASE("player_action: swipe left changes lane", "[player]") {
 
     reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Left});
 
-    player_input_system(reg, 0.016f);
+    run_semantic_input_tick(reg, 0.016f);
 
     auto view = reg.view<PlayerTag, Lane>();
     for (auto [e, lane] : view.each()) {
@@ -62,7 +62,7 @@ TEST_CASE("player_action: swipe right changes lane", "[player]") {
 
     reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Right});
 
-    player_input_system(reg, 0.016f);
+    run_semantic_input_tick(reg, 0.016f);
 
     auto view = reg.view<PlayerTag, Lane>();
     for (auto [e, lane] : view.each()) {
@@ -77,7 +77,7 @@ TEST_CASE("player_action: swipe left at lane 0 is clamped", "[player]") {
 
     reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Left});
 
-    player_input_system(reg, 0.016f);
+    run_semantic_input_tick(reg, 0.016f);
 
     CHECK(reg.get<Lane>(p).target == -1);  // no transition started
 }
@@ -89,7 +89,7 @@ TEST_CASE("player_action: swipe right at lane 2 is clamped", "[player]") {
 
     reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Right});
 
-    player_input_system(reg, 0.016f);
+    run_semantic_input_tick(reg, 0.016f);
 
     CHECK(reg.get<Lane>(p).target == -1);
 }
@@ -100,7 +100,7 @@ TEST_CASE("player_action: swipe up does not jump (disabled)", "[player]") {
 
     reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Up});
 
-    player_input_system(reg, 0.016f);
+    run_semantic_input_tick(reg, 0.016f);
 
     auto view = reg.view<PlayerTag, VerticalState>();
     for (auto [e, vs] : view.each()) {
@@ -114,7 +114,7 @@ TEST_CASE("player_action: swipe down does not slide (disabled)", "[player]") {
 
     reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Down});
 
-    player_input_system(reg, 0.016f);
+    run_semantic_input_tick(reg, 0.016f);
 
     auto view = reg.view<PlayerTag, VerticalState>();
     for (auto [e, vs] : view.each()) {
@@ -130,7 +130,7 @@ TEST_CASE("player_action: cannot jump while already jumping", "[player]") {
 
     reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Up});
 
-    player_input_system(reg, 0.016f);
+    run_semantic_input_tick(reg, 0.016f);
 
     // Timer should not reset
     CHECK(reg.get<VerticalState>(p).timer == 0.2f);
@@ -239,7 +239,7 @@ TEST_CASE("player_action: not in Playing phase skips processing", "[player]") {
 
     reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Up});
 
-    player_input_system(reg, 0.016f);
+    run_semantic_input_tick(reg, 0.016f);
 
     auto view = reg.view<PlayerTag, VerticalState>();
     for (auto [e, vs] : view.each()) {
@@ -266,7 +266,7 @@ TEST_CASE("player_action: cannot slide while already sliding", "[player]") {
 
     reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Down});
 
-    player_input_system(reg, 0.016f);
+    run_semantic_input_tick(reg, 0.016f);
 
     // Timer should not reset
     CHECK(reg.get<VerticalState>(p).timer == 0.3f);
@@ -280,7 +280,7 @@ TEST_CASE("player_action: cannot slide while jumping", "[player]") {
 
     reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Down});
 
-    player_input_system(reg, 0.016f);
+    run_semantic_input_tick(reg, 0.016f);
 
     CHECK(reg.get<VerticalState>(p).mode == VMode::Jumping);
     CHECK(reg.get<VerticalState>(p).timer == 0.2f);
@@ -294,7 +294,7 @@ TEST_CASE("player_action: cannot jump while sliding", "[player]") {
 
     reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Up});
 
-    player_input_system(reg, 0.016f);
+    run_semantic_input_tick(reg, 0.016f);
 
     CHECK(reg.get<VerticalState>(p).mode == VMode::Sliding);
     CHECK(reg.get<VerticalState>(p).timer == 0.3f);

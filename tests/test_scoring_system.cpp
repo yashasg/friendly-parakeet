@@ -279,3 +279,41 @@ TEST_CASE("scoring: missed obstacle sets DeathCause::MissedABeat", "[scoring]") 
 
     CHECK(gos.cause == DeathCause::MissedABeat);
 }
+
+TEST_CASE("scoring: BarObstacleTag sets DeathCause::HitABar regardless of kind", "[scoring][bartag]") {
+    // Verifies OCP: any entity with BarObstacleTag triggers HitABar death cause.
+    // Uses a synthetic ShapeGate kind (not LowBar/HighBar) to prove kind-independence.
+    auto reg = make_registry();
+    auto& gos = reg.ctx().get<GameOverState>();
+    REQUIRE(gos.cause == DeathCause::None);
+
+    auto e = reg.create();
+    reg.emplace<ObstacleTag>(e);
+    reg.emplace<WorldTransform>(e, WorldTransform{{300.0f, constants::PLAYER_Y}});
+    reg.emplace<Obstacle>(e, ObstacleKind::ShapeGate, int16_t{200});
+    reg.emplace<BarObstacleTag>(e);
+    reg.emplace<ScoredTag>(e);
+    reg.emplace<MissTag>(e);
+
+    scoring_system(reg, 0.0f);
+
+    CHECK(gos.cause == DeathCause::HitABar);
+}
+
+TEST_CASE("scoring: missing bar sets DeathCause::MissedABeat when no BarObstacleTag", "[scoring][bartag]") {
+    // Confirms the else-branch: a missed ShapeGate without BarObstacleTag → MissedABeat.
+    auto reg = make_registry();
+    auto& gos = reg.ctx().get<GameOverState>();
+    REQUIRE(gos.cause == DeathCause::None);
+
+    auto e = reg.create();
+    reg.emplace<ObstacleTag>(e);
+    reg.emplace<WorldTransform>(e, WorldTransform{{300.0f, constants::PLAYER_Y}});
+    reg.emplace<Obstacle>(e, ObstacleKind::ShapeGate, int16_t{200});
+    reg.emplace<ScoredTag>(e);
+    reg.emplace<MissTag>(e);
+
+    scoring_system(reg, 0.0f);
+
+    CHECK(gos.cause == DeathCause::MissedABeat);
+}

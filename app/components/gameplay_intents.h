@@ -28,3 +28,4 @@ struct ScorePopupRequest {
 struct ScorePopupRequestQueue {
     std::vector<ScorePopupRequest> requests;
 };
+

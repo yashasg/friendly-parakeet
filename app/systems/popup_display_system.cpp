@@ -26,19 +26,41 @@ void popup_display_system(entt::registry& reg, float dt) {
     auto& expired = popup_scratch_for(reg).expired;
     expired.clear();
 
-    auto view = reg.view<ScorePopup>();
-    for (auto [entity, popup] : view.each()) {
+    auto fade_view = reg.view<ScorePopup, PopupDisplay, Color>();
+    for (auto [entity, popup, pd, col] : fade_view.each()) {
         popup.remaining -= dt;
-        auto* pd = reg.try_get<PopupDisplay>(entity);
-        auto* col = reg.try_get<Color>(entity);
-        if (pd && col) {
-            float alpha_ratio = (popup.max_time > 0.0f)
-                                    ? (popup.remaining / popup.max_time)
-                                    : 0.0f;
-            if (alpha_ratio < 0.0f) alpha_ratio = 0.0f;
-            if (alpha_ratio > 1.0f) alpha_ratio = 1.0f;
-            pd->a = static_cast<uint8_t>(static_cast<float>(col->a) * alpha_ratio);
+        float alpha_ratio = (popup.max_time > 0.0f)
+                                ? (popup.remaining / popup.max_time)
+                                : 0.0f;
+        if (alpha_ratio < 0.0f) alpha_ratio = 0.0f;
+        if (alpha_ratio > 1.0f) alpha_ratio = 1.0f;
+        pd.a = static_cast<uint8_t>(static_cast<float>(col.a) * alpha_ratio);
+        if (popup.remaining <= 0.0f) {
+            expired.push_back(entity);
         }
+    }
+
+    auto expire_only_view = reg.view<ScorePopup>(entt::exclude<PopupDisplay, Color>);
+    for (auto [entity, popup] : expire_only_view.each()) {
+        popup.remaining -= dt;
+        if (popup.remaining <= 0.0f) {
+            expired.push_back(entity);
+        }
+    }
+
+    auto popup_only_view = reg.view<ScorePopup, PopupDisplay>(entt::exclude<Color>);
+    for (auto [entity, popup, pd] : popup_only_view.each()) {
+        (void)pd;
+        popup.remaining -= dt;
+        if (popup.remaining <= 0.0f) {
+            expired.push_back(entity);
+        }
+    }
+
+    auto color_only_view = reg.view<ScorePopup, Color>(entt::exclude<PopupDisplay>);
+    for (auto [entity, popup, col] : color_only_view.each()) {
+        (void)col;
+        popup.remaining -= dt;
         if (popup.remaining <= 0.0f) {
             expired.push_back(entity);
         }

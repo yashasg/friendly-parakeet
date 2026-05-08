@@ -33,6 +33,25 @@ TEST_CASE("collision: shape gate drains energy with wrong shape", "[collision]")
     CHECK(energy.flash_timer > 0.0f);
 }
 
+TEST_CASE("collision: shape gate hitbox edge handling", "[collision][edge]") {
+    constexpr struct {
+        float offset;
+        bool missed;
+    } cases[] = {{constants::PLAYER_SIZE, false}, {constants::PLAYER_SIZE + 0.01f, true}};
+
+    for (const auto& tc : cases) {
+        auto reg = make_registry();
+        auto player = make_player(reg);
+        auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
+
+        reg.get<WorldTransform>(obs).position.x = reg.get<WorldTransform>(player).position.x + tc.offset;
+        collision_system(reg, 0.016f);
+
+        CHECK(reg.all_of<ScoredTag>(obs));
+        CHECK(reg.all_of<MissTag>(obs) == tc.missed);
+    }
+}
+
 TEST_CASE("collision: lane block cleared when player in unblocked lane", "[collision]") {
     auto reg = make_registry();
     make_player(reg);

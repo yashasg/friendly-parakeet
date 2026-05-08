@@ -1,8 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
 #include <type_traits>
 #include "test_helpers.h"
-#include "audio/audio_queue.h"
-#include "input/input_state.h"
+#include "audio/audio_types.h"
+#include "entities/obstacle_entity.h"
+#include "entities/obstacle_render_entity.h"
 
 // Verify component defaults and basic ECS operations
 
@@ -50,33 +51,27 @@ TEST_CASE("components: VerticalState defaults to grounded", "[components]") {
     CHECK(vs.y_offset == 0.0f);
 }
 
-TEST_CASE("components: InputState clear_events resets flags", "[components]") {
+TEST_CASE("components: InputState stores transient input flags", "[components]") {
     InputState is{};
     is.touch_down = true;
     is.touch_up = true;
-    clear_input_events(is);
-    CHECK_FALSE(is.touch_down);
-    CHECK_FALSE(is.touch_up);
+    CHECK(is.touch_down);
+    CHECK(is.touch_up);
 }
 
-TEST_CASE("components: AudioQueue push and clear", "[components]") {
+TEST_CASE("components: AudioQueue stores queued sounds", "[components]") {
     AudioQueue q{};
     CHECK(q.count == 0);
-    audio_push(q, SFX::ShapeShift);
-    audio_push(q, SFX::Crash);
+    q.queue[q.count++] = SFX::ShapeShift;
+    q.queue[q.count++] = SFX::Crash;
     CHECK(q.count == 2);
     CHECK(q.queue[0] == SFX::ShapeShift);
     CHECK(q.queue[1] == SFX::Crash);
-    audio_clear(q);
-    CHECK(q.count == 0);
 }
 
-TEST_CASE("components: AudioQueue overflow protection", "[components]") {
+TEST_CASE("components: AudioQueue exposes fixed capacity", "[components]") {
     AudioQueue q{};
-    for (int i = 0; i < AudioQueue::MAX_QUEUED + 5; ++i) {
-        audio_push(q, SFX::UITap);
-    }
-    CHECK(q.count == AudioQueue::MAX_QUEUED);
+    CHECK(q.MAX_QUEUED == 16);
 }
 
 TEST_CASE("components: ScoreState defaults to zero", "[components]") {
@@ -117,7 +112,6 @@ TEST_CASE("ecs: make_registry creates all singletons", "[ecs]") {
     static_cast<void>(reg.ctx().get<GameOverState>());
     // Misc
     static_cast<void>(reg.ctx().get<RNGState>());
-    static_cast<void>(reg.ctx().get<ObstacleCounter>());
     SUCCEED("all required ctx singletons exist in registry context");
 }
 
@@ -335,4 +329,117 @@ TEST_CASE("GamePhaseBit: zero mask has no phase bits set", "[phase_mask]") {
     CHECK((mask & GamePhaseBit::Title) != GamePhaseBit::Title);
     CHECK((mask & GamePhaseBit::Playing) != GamePhaseBit::Playing);
     CHECK((mask & GamePhaseBit::GameOver) != GamePhaseBit::GameOver);
+}
+
+namespace {
+
+int mesh_child_count(entt::registry& reg) {
+    int count = 0;
+    for ([[maybe_unused]] auto entity : reg.view<MeshChild>()) {
+        ++count;
+    }
+    return count;
+}
+
+struct ObstacleModelDestroyProbe {
+    int count = 0;
+    void on_destroy(entt::registry&, entt::entity) { ++count; }
+};
+
+}  // namespace
+
+TEST_CASE("ecs: dispatcher rewire-after-unwire does not duplicate semantic delivery",
+          "[ecs][dispatcher][regression]") {
+    auto reg = make_rhythm_registry();
+    auto player = make_rhythm_player(reg);
+    auto button = make_shape_button(reg, Shape::Square);
+
+    unwire_input_dispatcher(reg);
+    wire_input_dispatcher(reg);
+
+    auto& sw = reg.get<ShapeWindow>(player);
+    REQUIRE(sw.phase == WindowPhase::Idle);
+
+    press_button(reg, button);
+    reg.ctx().get<entt::dispatcher>().update<ButtonPressEvent>();
+
+    CHECK(sw.phase == WindowPhase::Active);
+    CHECK(sw.target_shape == Shape::Square);
+    CHECK(reg.ctx().get<AudioQueue>().count == 1);
+}
+
+TEST_CASE("ecs: repeated unwire_input_dispatcher is idempotent before rewire",
+          "[ecs][dispatcher][shutdown]") {
+    auto reg = make_rhythm_registry();
+    auto player = make_rhythm_player(reg);
+    auto button = make_shape_button(reg, Shape::Triangle);
+
+    unwire_input_dispatcher(reg);
+    unwire_input_dispatcher(reg);
+    wire_input_dispatcher(reg);
+
+    auto& sw = reg.get<ShapeWindow>(player);
+    REQUIRE(sw.phase == WindowPhase::Idle);
+
+    press_button(reg, button);
+    reg.ctx().get<entt::dispatcher>().update<ButtonPressEvent>();
+
+    CHECK(sw.phase == WindowPhase::Active);
+    CHECK(sw.target_shape == Shape::Triangle);
+    CHECK(reg.ctx().get<AudioQueue>().count == 1);
+}
+
+TEST_CASE("collision: SongState ctx singleton identity is stable across collision ticks",
+          "[collision][song_state][regression]") {
+    auto reg = make_registry();
+    make_player(reg);
+
+    auto& song = reg.ctx().get<SongState>();
+    song.song_time = 12.5f;
+    song.scroll_speed = 321.0f;
+    SongState* const initial_song = &song;
+
+    collision_system(reg, 0.016f);
+    collision_system(reg, 0.016f);
+
+    CHECK(&reg.ctx().get<SongState>() == initial_song);
+    CHECK(song.song_time == 12.5f);
+    CHECK(song.scroll_speed == 321.0f);
+}
+
+TEST_CASE("ecs: obstacle mesh lifecycle unwire disconnect is idempotent",
+          "[ecs][obstacle][lifecycle]") {
+    entt::registry reg;
+    wire_obstacle_mesh_lifetime(reg);
+
+    unwire_obstacle_mesh_lifetime(reg);
+    unwire_obstacle_mesh_lifetime(reg);
+    wire_obstacle_mesh_lifetime(reg);
+
+    auto parent = spawn_obstacle(reg, {ObstacleKind::ShapeGate, 360.0f, -120.0f, Shape::Circle});
+    REQUIRE(mesh_child_count(reg) > 0);
+
+    reg.destroy(parent);
+
+    CHECK(mesh_child_count(reg) == 0);
+}
+
+TEST_CASE("ecs: obstacle model lifecycle unwire disconnect is idempotent",
+          "[ecs][obstacle][lifecycle]") {
+    entt::registry reg;
+    ObstacleModelDestroyProbe probe;
+    reg.on_destroy<ObstacleModel>().connect<&ObstacleModelDestroyProbe::on_destroy>(probe);
+
+    wire_obstacle_model_lifecycle(reg);
+    unwire_obstacle_model_lifecycle(reg);
+    unwire_obstacle_model_lifecycle(reg);
+    wire_obstacle_model_lifecycle(reg);
+
+    auto entity = reg.create();
+    reg.emplace<ObstacleModel>(entity);
+    reg.destroy(entity);
+
+    CHECK(probe.count == 1);
+
+    reg.on_destroy<ObstacleModel>().disconnect<&ObstacleModelDestroyProbe::on_destroy>(probe);
 }

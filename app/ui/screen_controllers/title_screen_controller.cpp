@@ -3,7 +3,6 @@
 #include "../../components/game_state.h"
 #include "../../components/input.h"
 #include "../../components/rendering.h"
-#include "../../input/pointer_input.h"
 #include "screen_controller_base.h"
 #include <entt/entt.hpp>
 
@@ -19,8 +18,9 @@ TitleController title_controller;
 
 bool read_title_pointer_release(const entt::registry& reg, Vector2& pointer) {
     const auto& input = reg.ctx().get<InputState>();
-    if (pointer_release_position(input, pointer)) return true;
-    return false;
+    if (!(input.click || input.touch_up)) return false;
+    pointer = {input.end_x, input.end_y};
+    return true;
 }
 
 bool is_start_tap(const entt::registry& reg, const TitleLayoutState& state) {

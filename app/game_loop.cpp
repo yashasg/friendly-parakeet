@@ -2,7 +2,6 @@
 #include "version.h"
 #include "constants.h"
 #include "components/input.h"
-#include "components/input_events.h"
 #include "components/game_state.h"
 #include "components/scoring.h"
 #include "audio/audio_types.h"
@@ -18,7 +17,7 @@
 #include "systems/all_systems.h"
 #include "session/test_player_session.h"
 #include "input/input_routing.h"
-#include "ui/text_renderer.h"
+#include "components/text.h"
 #include "util/session_logger.h"
 #include "systems/camera_system.h"
 #include "entities/obstacle_render_entity.h"
@@ -37,6 +36,67 @@ static constexpr float FIXED_DT  = 1.0f / 60.0f;
 static constexpr float MAX_ACCUM = 0.1f;
 
 namespace {
+
+bool load_text_fonts(TextContext& ctx, const char* font_path) {
+    if (!FileExists(font_path)) {
+        TraceLog(LOG_WARNING, "Font file not found: %s", font_path);
+        return false;
+    }
+
+    ctx.font_small  = LoadFontEx(font_path, 16, nullptr, 0);
+    ctx.font_medium = LoadFontEx(font_path, 28, nullptr, 0);
+    ctx.font_large  = LoadFontEx(font_path, 48, nullptr, 0);
+
+    if (ctx.font_small.baseSize == 0 ||
+        ctx.font_medium.baseSize == 0 ||
+        ctx.font_large.baseSize == 0) {
+        TraceLog(LOG_WARNING, "Failed to load font: %s", font_path);
+        if (ctx.font_large.baseSize > 0)  UnloadFont(ctx.font_large);
+        if (ctx.font_medium.baseSize > 0) UnloadFont(ctx.font_medium);
+        if (ctx.font_small.baseSize > 0)  UnloadFont(ctx.font_small);
+        ctx.font_large = {};
+        ctx.font_medium = {};
+        ctx.font_small = {};
+        ctx.loaded = false;
+        return false;
+    }
+
+    SetTextureFilter(ctx.font_small.texture, TEXTURE_FILTER_BILINEAR);
+    SetTextureFilter(ctx.font_medium.texture, TEXTURE_FILTER_BILINEAR);
+    SetTextureFilter(ctx.font_large.texture, TEXTURE_FILTER_BILINEAR);
+
+    ctx.loaded = true;
+    return true;
+}
+
+bool load_default_text_fonts(TextContext& ctx) {
+    std::string exe_font = std::string(GetApplicationDirectory())
+                         + "content/fonts/LiberationMono-Regular.ttf";
+    const char* font_paths[] = {
+        exe_font.c_str(),
+        "content/fonts/LiberationMono-Regular.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
+    };
+    for (const char* path : font_paths) {
+        if (load_text_fonts(ctx, path)) {
+            TraceLog(LOG_INFO, "Loaded font: %s", path);
+            return true;
+        }
+    }
+    TraceLog(LOG_ERROR, "Could not load any TTF font");
+    return false;
+}
+
+void unload_text_fonts(TextContext& ctx) {
+    if (ctx.font_large.baseSize > 0)  UnloadFont(ctx.font_large);
+    if (ctx.font_medium.baseSize > 0) UnloadFont(ctx.font_medium);
+    if (ctx.font_small.baseSize > 0)  UnloadFont(ctx.font_small);
+    ctx.font_large = {};
+    ctx.font_medium = {};
+    ctx.font_small = {};
+    ctx.loaded = false;
+}
 
 void log_persistence_result(const char* operation, const persistence::Result& result) {
     switch (result.status) {
@@ -87,13 +147,12 @@ void game_loop_init(entt::registry& reg,
     SetTargetFPS(60);
     InitAudioDevice();
     sfx_bank_init(reg);
-    sfx_playback_backend_init(reg);
     TraceLog(LOG_INFO, "SHAPESHIFTER v%s", SHAPESHIFTER_VERSION);
 
     // Text rendering
     {
         auto& text_ctx = reg.ctx().emplace<TextContext>();
-        text_init_default(text_ctx);
+        load_default_text_fonts(text_ctx);
     }
 
     // Core singletons
@@ -114,6 +173,8 @@ void game_loop_init(entt::registry& reg,
     reg.ctx().emplace<GameOverState>();
     reg.ctx().emplace<SongResults>();
     reg.ctx().emplace<RNGState>();
+    reg.ctx().emplace<TestPlayerState>();
+    reg.ctx().emplace<SessionLog>();
 
     persistence::Paths persistence_paths;
     const auto path_result = persistence::resolve_paths(persistence_paths);
@@ -183,9 +244,6 @@ void game_loop_frame(entt::registry& reg, float& accumulator) {
 
     compute_screen_transform(reg);
     input_system(reg, raw_dt);
-    // Deliver Tier-1 InputEvents: fires gesture_routing_handle_input and
-    // enqueues GoEvent into the Tier-2 queue for fixed-step delivery.
-    reg.ctx().get<entt::dispatcher>().update<InputEvent>();
     test_player_system(reg, raw_dt);
 
     while (accumulator >= FIXED_DT) {
@@ -277,7 +335,9 @@ void game_loop_shutdown(entt::registry& reg) {
         }
     }
     camera::shutdown(reg);
-    text_shutdown(reg.ctx().get<TextContext>());
+    if (auto* text_ctx = reg.ctx().find<TextContext>()) {
+        unload_text_fonts(*text_ctx);
+    }
     sfx_bank_unload(reg);
     CloseAudioDevice();
     CloseWindow();
