@@ -21,3 +21,17 @@
 - `app/systems/camera_system.cpp` + `app/rendering/camera_resources.h` (resource creation/ownership for floor texture and possibly floor material/shader)
 - `tests/test_perspective.cpp`, `benchmarks/bench_perspective.cpp` (remove `shape_verts::*` dependencies)
 - Optional: `tests/test_gpu_resource_lifecycle.cpp` (new RAII type-trait/idempotent-release checks for floor texture resource)
+
+### 2026-05-08T11:53:19.588-07:00: **COMPLETED** shape_vertices.h removal
+
+**Decision:** Floor ring geometry now generates circle points locally in `app/systems/game_render_system.cpp` using trig per segment. `app/util/shape_vertices.h` is deleted.
+
+**Rationale:** Floor rings are a floor-rendering concern (2D ring logic on XZ plane), not shared reusable shape data. Removes stale custom vertex-table maintenance.
+
+**Implementation:** 
+- Rewired `draw_floor_rings()` off `shape_verts::CIRCLE` to local trig-based generation.
+- Deleted `app/util/shape_vertices.h` and all references.
+- Updated `tests/test_perspective.cpp` and `benchmarks/bench_perspective.cpp` to remove shape_vertices dependency.
+- Verified: `./build.sh` + `./build/shapeshifter_tests` all pass (APPROVED by Kujan).
+
+**Scope owned by:** Keaton (implementation) + Kujan (review, APPROVED).
