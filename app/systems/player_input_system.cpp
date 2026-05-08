@@ -3,10 +3,25 @@
 #include "../components/player.h"
 #include "../components/rendering.h"
 #include "../components/input_events.h"
-#include "../audio/audio_queue.h"
-#include "../util/haptic_queue.h"
+#include "../audio/audio_types.h"
+#include "../components/haptics.h"
 #include "../components/rhythm.h"
+#include "../util/settings.h"
 #include "../constants.h"
+
+namespace {
+
+void push_haptic(entt::registry& reg, HapticEvent event) {
+    auto* haptics = reg.ctx().find<HapticQueue>();
+    auto* settings = reg.ctx().find<SettingsState>();
+    if (!haptics || (settings && !settings->haptics_enabled) ||
+        haptics->count >= HapticQueue::MAX_QUEUED) {
+        return;
+    }
+    haptics->queue[haptics->count++] = event;
+}
+
+}  // namespace
 
 static int8_t lane_for_shape_button(Shape shape) {
     switch (shape) {
@@ -30,7 +45,7 @@ void player_input_handle_go(entt::registry& reg, const GoEvent& evt) {
         if (delta != 0) {
             lane.target = lane.current + delta;
             lane.lerp_t = 0.0f;
-            haptic_feedback(reg, HapticEvent::LaneSwitch);
+            push_haptic(reg, HapticEvent::LaneSwitch);
         }
         (void)entity;
         (void)pshape;
@@ -63,8 +78,11 @@ void player_input_handle_press(entt::registry& reg, const ButtonPressEvent& evt)
         auto si = static_cast<int>(pressed_shape);
         auto& sc = constants::SHAPE_COLORS[si];
         reg.replace<Color>(entity, sc);
-        audio_push(reg.ctx().get<AudioQueue>(), SFX::ShapeShift);
-        haptic_feedback(reg, HapticEvent::ShapeShift);
+        auto& audio = reg.ctx().get<AudioQueue>();
+        if (audio.count < AudioQueue::MAX_QUEUED) {
+            audio.queue[audio.count++] = SFX::ShapeShift;
+        }
+        push_haptic(reg, HapticEvent::ShapeShift);
     };
 
     auto view = reg.view<PlayerTag, PlayerShape, ShapeWindow, Lane>();
@@ -72,7 +90,7 @@ void player_input_handle_press(entt::registry& reg, const ButtonPressEvent& evt)
         if (shape_lane >= 0 && lane.current != shape_lane && lane.target != shape_lane) {
             lane.target = shape_lane;
             lane.lerp_t = 0.0f;
-            haptic_feedback(reg, HapticEvent::LaneSwitch);
+            push_haptic(reg, HapticEvent::LaneSwitch);
         }
         if (rhythm_mode) {
             auto phase = swindow.phase;
@@ -98,8 +116,11 @@ void player_input_handle_press(entt::registry& reg, const ButtonPressEvent& evt)
                 auto si = static_cast<int>(pressed_shape);
                 auto& sc = constants::SHAPE_COLORS[si];
                 reg.replace<Color>(entity, sc);
-                audio_push(reg.ctx().get<AudioQueue>(), SFX::ShapeShift);
-                haptic_feedback(reg, HapticEvent::ShapeShift);
+                auto& audio = reg.ctx().get<AudioQueue>();
+                if (audio.count < AudioQueue::MAX_QUEUED) {
+                    audio.queue[audio.count++] = SFX::ShapeShift;
+                }
+                push_haptic(reg, HapticEvent::ShapeShift);
             }
         }
     }

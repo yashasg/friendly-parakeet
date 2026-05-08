@@ -257,18 +257,4 @@ void collision_system(entt::registry& reg, float /*dt*/) {
         }
     }
 
-    // LanePush: positive discriminant via LanePushDelta component.
-    // Emplaces PendingLanePush on the player; lane_push_response_system
-    // applies it to p_lane in the same frame (after collision, before render).
-    {
-        auto view = reg.view<ObstacleTag, WorldTransform, LanePushDelta>(entt::exclude<ScoredTag>);
-        for (auto [e, wt, lpd] : view.each()) {
-            if (wt.position.y < player_timing_y) continue;
-            if (lane_overlaps(wt.position.x) && !reg.all_of<PendingLanePush>(player_entity)) {
-                reg.emplace<PendingLanePush>(player_entity, lpd.delta);
-            }
-            reg.emplace<ScoredTag>(e);
-        }
-    }
-
 }

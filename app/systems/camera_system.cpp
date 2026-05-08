@@ -228,23 +228,6 @@ static Matrix make_shape_matrix(uint8_t mesh_index, float cx, float y_3d, float 
 void game_camera_system(entt::registry& reg, float /*dt*/) {
     const auto& mesh_config = reg.ctx().get<ShapeMeshConfig>();
 
-    // 1. Single-slab obstacle transforms
-    {
-        auto view = reg.view<ObstacleTag, WorldTransform, Obstacle, Color, DrawSize>();
-        for (auto [entity, wt, obs, col, dsz] : view.each()) {
-            switch (obs.kind) {
-                case ObstacleKind::LanePushLeft:
-                case ObstacleKind::LanePushRight:
-                    reg.get_or_emplace<ModelTransform>(entity) =
-                        ModelTransform{slab_matrix(wt.position.x-dsz.w/2, wt.position.y, dsz.w, constants::OBSTACLE_3D_HEIGHT, dsz.h),
-                                       col, 0, MeshType::Slab};
-                    break;
-                default:
-                    break;
-            }
-        }
-    }
-
     // 1b. Model-authority vertical bars: write scroll transform directly into
     //     ObstacleModel.model.transform. Do NOT emit ModelTransform for these —
     //     game_render_system draws them via the ObstacleModel + TagWorldPass path.

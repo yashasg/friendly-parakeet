@@ -8,8 +8,8 @@
 #include "../components/rhythm.h"
 #include "../components/game_state.h"
 #include "../components/song_state.h"
+#include "../components/text.h"
 #include "../constants.h"
-#include "../ui/text_renderer.h"
 
 #include "../ui/screen_controllers/title_screen_controller.h"
 #include "../ui/screen_controllers/paused_screen_controller.h"
@@ -31,6 +31,19 @@
 // UI render system — 2D overlay pass
 // ═════════════════════════════════════════════════════════════════════════════
 
+namespace {
+
+const Font& popup_font_for_size(const TextContext& ctx, FontSize font_size) {
+    switch (font_size) {
+        case FontSize::Small:  return ctx.font_small;
+        case FontSize::Medium: return ctx.font_medium;
+        case FontSize::Large:  return ctx.font_large;
+    }
+    return ctx.font_medium;
+}
+
+} // namespace
+
 void ui_render_system(entt::registry& reg, float /*alpha*/) {
     auto& text_ctx = reg.ctx().get<TextContext>();
     const auto& gs = reg.ctx().get<GameState>();
@@ -44,8 +57,17 @@ void ui_render_system(entt::registry& reg, float /*alpha*/) {
     {
         auto view = reg.view<PopupDisplay, ScreenPosition, TagHUDPass>();
         for (auto [entity, pd, sp] : view.each()) {
-            text_draw(text_ctx, pd.text, sp.x, sp.y, pd.font_size,
-                      pd.r, pd.g, pd.b, pd.a, TextAlign::Center);
+            (void)entity;
+            if (!text_ctx.loaded || pd.text[0] == '\0') {
+                continue;
+            }
+
+            const Font& font = popup_font_for_size(text_ctx, pd.font_size);
+            const float font_size = static_cast<float>(font.baseSize);
+            const float spacing = 1.0f;
+            const Vector2 size = MeasureTextEx(font, pd.text, font_size, spacing);
+            DrawTextEx(font, pd.text, {sp.x - size.x / 2.0f, sp.y},
+                       font_size, spacing, {pd.r, pd.g, pd.b, pd.a});
         }
     }
 

@@ -250,22 +250,6 @@ inline entt::entity make_split_path(entt::registry& reg, Shape shape, int8_t lan
     return obs;
 }
 
-// Creates a LanePushLeft or LanePushRight obstacle (no data components)
-inline entt::entity make_lane_push(entt::registry& reg, ObstacleKind kind, float y) {
-    const auto& song = reg.ctx().get<SongState>();
-    auto obs = reg.create();
-    reg.emplace<ObstacleTag>(obs);
-    reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], y}});
-    reg.emplace<MotionVelocity>(obs, MotionVelocity{{0.0f, song.scroll_speed}});
-    reg.emplace<Obstacle>(obs, kind, int16_t{0});
-    reg.emplace<DrawSize>(obs, float(constants::SCREEN_W / 3), 80.0f);
-    reg.emplace<DrawLayer>(obs, Layer::Game);
-    reg.emplace<TagWorldPass>(obs);
-    reg.emplace<Color>(obs, Color{0, 200, 200, 255});
-    reg.emplace<NonScorableTag>(obs);
-    reg.emplace<LanePushDelta>(obs, kind == ObstacleKind::LanePushLeft ? int8_t{-1} : int8_t{1});
-    return obs;
-}
 
 // ── UI Button helpers for tests ──────────────────────────────────────────────
 

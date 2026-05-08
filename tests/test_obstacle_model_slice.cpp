@@ -14,8 +14,8 @@
 //                after render_tags.h is committed.
 //
 //   Section C  — GUARDED (#if 0).  Requires Slice 1 deliverables:
-//                  · LowBar / HighBar / LanePushLeft / LanePushRight obstacle
-//                    entity construction updated to emplace Model + TagWorldPass,
+//                  · LowBar / HighBar obstacle entity construction updated to
+//                    emplace Model + TagWorldPass,
 //                    NOT Position.
 //                  · app/util/render_matrix_helpers.h with slab_matrix() exposed.
 //                  · ObstaclePartDescriptor emplaced on obstacle entities.
@@ -102,22 +102,6 @@ TEST_CASE("post-migration: HighBar has ObstacleScrollZ, not Position",
     CHECK_FALSE(reg.all_of<Model>(e));
 }
 
-TEST_CASE("post-migration: LanePushLeft fully migrated to WorldTransform",
-          "[post_migration][model_slice]") {
-    entt::registry reg;
-    auto e = make_obstacle_entity(reg, ObstacleKind::LanePushLeft);
-    REQUIRE(reg.all_of<WorldTransform>(e));
-    CHECK_FALSE(reg.all_of<ObstacleScrollZ>(e));
-}
-
-TEST_CASE("post-migration: LanePushRight fully migrated to WorldTransform",
-          "[post_migration][model_slice]") {
-    entt::registry reg;
-    auto e = make_obstacle_entity(reg, ObstacleKind::LanePushRight);
-    REQUIRE(reg.all_of<WorldTransform>(e));
-    CHECK_FALSE(reg.all_of<ObstacleScrollZ>(e));
-}
-
 TEST_CASE("post-migration: spawn_obstacle does not emplace Model on any kind",
           "[post_migration][model_slice]") {
     // Exhaustive: confirm NO obstacle entity factory directly emplaces raw Model.
@@ -130,8 +114,6 @@ TEST_CASE("post-migration: spawn_obstacle does not emplace Model on any kind",
         ObstacleKind::HighBar,
         ObstacleKind::ComboGate,
         ObstacleKind::SplitPath,
-        ObstacleKind::LanePushLeft,
-        ObstacleKind::LanePushRight,
     };
     for (auto kind : all_kinds) {
         entt::registry reg;

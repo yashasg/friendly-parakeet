@@ -11,7 +11,6 @@
 > Treat the BURNOUT meters and ×1→×5 multiplier popups in the ASCII frames
 > below as **archival illustration only** — they do not reflect current
 > scoring, current HUD, or current player incentives. The scenario flow
-> (shape gates, lane pushes, combos) and screen layout are still useful
 > as a paper-prototype reference; the burnout-specific narration is not.
 
 ---
@@ -343,7 +342,6 @@ This is the CORE of the game. Here's how it works:
 ║  TYPE         ║  ACTION       ║  BURNOUT APPLIES?     ║
 ╠═══════════════╬═══════════════╬═══════════════════════╣
 ║  Shape Gate   ║  Tap shape    ║  YES — delay switch   ║
-║  Lane Push    ║  None (auto)  ║  NO — passive         ║
 ║  Low Bar      ║  Swipe UP     ║  YES — delay jump     ║
 ║  High Bar     ║  Swipe DOWN   ║  YES — delay slide    ║
 ║  Combo Gate   ║  Shape + L/R  ║  YES — both timers!   ║
@@ -363,10 +361,8 @@ SHAPE GATE — Wall with cutout, must match shape
 ██████████║    ║██████████
 ══════════╝    ╚══════════
 
-LANE PUSH — Auto-pushes player one lane on beat arrival
     │         │         │
     │       ╔═╧═╗       │
-    │       ║ ▶ ║       │       ← pushes player right (lane_push_right)
     │       ╚═╤═╝       │
     │         │         │
   (Replaces legacy Lane Block. Player takes no action — passive.
@@ -948,7 +944,6 @@ WHAT CHANGES OVER TIME:
  0-30s       ×1.0     Single shape gates  Very generous
                       spread far apart     (easy to burn)
 
- 30-60s      ×1.3     + Lane pushes        Generous
                       + Low bars
 
  60-90s      ×1.6     + High bars          Moderate

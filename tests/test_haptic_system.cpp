@@ -1,7 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include "test_helpers.h"
 #include "components/haptics.h"
-#include "util/haptic_queue.h"
 #include "util/settings.h"
 #include "components/player.h"
 #include "components/transform.h"
@@ -11,32 +10,21 @@
 
 // ── HapticQueue unit tests ────────────────────────────────────────────────────
 
-TEST_CASE("haptic_push: emits event when haptics_enabled=true", "[haptic]") {
+TEST_CASE("HapticQueue: stores events", "[haptic]") {
     HapticQueue hq;
-    haptic_push(hq, true, HapticEvent::ShapeShift);
+    hq.queue[hq.count++] = HapticEvent::ShapeShift;
     CHECK(hq.count == 1);
     CHECK(hq.queue[0] == HapticEvent::ShapeShift);
 }
 
-TEST_CASE("haptic_push: suppresses event when haptics_enabled=false", "[haptic]") {
+TEST_CASE("HapticQueue: starts empty", "[haptic]") {
     HapticQueue hq;
-    haptic_push(hq, false, HapticEvent::ShapeShift);
     CHECK(hq.count == 0);
 }
 
-TEST_CASE("haptic_push: does not overflow beyond MAX_QUEUED", "[haptic]") {
+TEST_CASE("HapticQueue: exposes fixed capacity", "[haptic]") {
     HapticQueue hq;
-    for (int i = 0; i < HapticQueue::MAX_QUEUED + 4; ++i)
-        haptic_push(hq, true, HapticEvent::UIButtonTap);
-    CHECK(hq.count == HapticQueue::MAX_QUEUED);
-}
-
-TEST_CASE("haptic_clear: resets count to zero", "[haptic]") {
-    HapticQueue hq;
-    haptic_push(hq, true, HapticEvent::DeathCrash);
-    haptic_push(hq, true, HapticEvent::NewHighScore);
-    haptic_clear(hq);
-    CHECK(hq.count == 0);
+    CHECK(hq.MAX_QUEUED == 8);
 }
 
 // ── haptic_system integration tests ──────────────────────────────────────────
@@ -44,8 +32,8 @@ TEST_CASE("haptic_clear: resets count to zero", "[haptic]") {
 TEST_CASE("haptic_system: drains queue each frame", "[haptic]") {
     auto reg = make_registry();
     auto& hq = reg.ctx().get<HapticQueue>();
-    haptic_push(hq, true, HapticEvent::DeathCrash);
-    haptic_push(hq, true, HapticEvent::RetryTap);
+    hq.queue[hq.count++] = HapticEvent::DeathCrash;
+    hq.queue[hq.count++] = HapticEvent::RetryTap;
     CHECK(hq.count == 2);
 
     haptic_system(reg);

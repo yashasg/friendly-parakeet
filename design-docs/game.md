@@ -91,16 +91,12 @@ See `rhythm-design.md` for the full timing-window grading table and `rhythm-spec
 | Obstacle        | Player Action Required    | Timed? | Base Points |
 |-----------------|---------------------------|--------|-------------|
 | Shape Gate      | Tap correct shape button  | YES    | 200         |
-| Lane Push Left  | None (auto-pushes player) | NO     | 0           |
-| Lane Push Right | None (auto-pushes player) | NO     | 0           |
 | Low Bar         | Swipe up (jump)           | YES    | 100         |
 | High Bar        | Swipe down (slide)        | YES    | 100         |
 | Combo Gate      | Shape + swipe (2 actions) | YES    | 200 (×2)    |
 | Split Path      | Shape + correct lane      | YES    | 300 (×2)    |
 
-> **Note:** Lane Push is a passive obstacle that auto-pushes the player one lane
 > in the indicated direction on beat arrival. Edge pushes (left on Lane 0, right
-> on Lane 2) are no-ops. Lane Pushes do not contribute to chain or score.
 
 ### Combo Obstacles
 
@@ -140,7 +136,6 @@ Difficulty is selected per song (easy / medium / hard) and is expressed primaril
 | Difficulty | Obstacles Introduced                 | Density           | Timing Window |
 |------------|--------------------------------------|-------------------|---------------|
 | Easy       | Shape gates only                     | Low               | Generous      |
-| Medium     | + Lane pushes (taught after intro)   | Medium            | Standard      |
 | Hard       | + Low/high bars, combos, split paths | High              | Standard      |
 
 ### Player Emotion Arc

@@ -1,7 +1,8 @@
 #include "input_routing.h"
 #include "../components/game_state.h"
 #include "../components/input_events.h"
-#include "../util/haptic_queue.h"
+#include "../components/haptics.h"
+#include "../util/settings.h"
 
 bool game_state_handle_end_screen_press(entt::registry& reg, const ButtonPressEvent& evt) {
     auto& gs = reg.ctx().get<GameState>();
@@ -10,9 +11,14 @@ bool game_state_handle_end_screen_press(entt::registry& reg, const ButtonPressEv
         return false;
     }
 
-    haptic_feedback(reg, evt.menu_action == MenuActionKind::Restart
-                             ? HapticEvent::RetryTap
-                             : HapticEvent::UIButtonTap);
+    auto* haptics = reg.ctx().find<HapticQueue>();
+    auto* settings = reg.ctx().find<SettingsState>();
+    if (haptics && (!settings || settings->haptics_enabled) &&
+        haptics->count < HapticQueue::MAX_QUEUED) {
+        haptics->queue[haptics->count++] = evt.menu_action == MenuActionKind::Restart
+                                            ? HapticEvent::RetryTap
+                                            : HapticEvent::UIButtonTap;
+    }
 
     if (evt.menu_action == MenuActionKind::Restart) {
         gs.end_choice = EndScreenChoice::Restart;

@@ -1,5 +1,5 @@
 #include "all_systems.h"
-#include "../audio/audio_queue.h"
+#include "../audio/audio_types.h"
 
 void audio_system(entt::registry& reg) {
     auto* audio = reg.ctx().find<AudioQueue>();
@@ -12,5 +12,5 @@ void audio_system(entt::registry& reg) {
         }
     }
 
-    audio_clear(*audio);
+    audio->count = 0;
 }

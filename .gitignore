@@ -10,6 +10,7 @@ session_*.log
 tools/__pycache__/
 content/audio-web/
 .cache/
+node_modules/
 .copilot/
 excalidraw.log
 tasks/

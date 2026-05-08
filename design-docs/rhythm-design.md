@@ -141,7 +141,6 @@ The player can hear the beat coming. The timing is legible. What the player cann
   │  On the same beat, the designer chose:                         │
   │                                                                │
   │    shape_gate  →  player must morph to the right shape        │
-  │    lane_push   →  player is auto-pushed one lane (passive)    │
   │    low_bar     →  player must duck under                      │
   │    high_bar    →  player must jump over                       │
   │                                                                │
@@ -438,7 +437,6 @@ The player can hear the beat coming. The timing is legible. What the player cann
   │  • Timing outside BAD window (> 75% off peak) → MISS → END      │
   │  • Pressing shape but in wrong lane          → MISS → END      │
   │                                                                 │
-  │  • lane_push: never causes a miss (passive, auto-fires on beat) │
   │  • low_bar / high_bar: no dodge action       → MISS → END      │
   │                                                                 │
   └─────────────────────────────────────────────────────────────────┘
@@ -469,7 +467,6 @@ The player can hear the beat coming. The timing is legible. What the player cann
   │  Lane comes from same band: low=0, mid=1, high=2.            │
   │                                                              │
   ├──────────────────────────────────────────────────────────────┤
-  │  lane_push_left / lane_push_right                             │
   │  ─────────────────────────────────────────────────────────   │
   │                                                              │
   │     ▲         ▼                                              │
@@ -509,9 +506,7 @@ The player can hear the beat coming. The timing is legible. What the player cann
   EASY:    shape_gate only. Sparse. 2-beat minimum gap.
            Low/mid onsets only. Learning the shape mechanic.
 
-  MEDIUM:  shape_gate + lane_push introduced.
            Density scales with song intensity section.
-           High onsets trigger lane_pushes.
 
   HARD:    All four types active. Dense.
            DROP sections: every beat, streams of shape_gates,
@@ -587,7 +582,6 @@ The player can hear the beat coming. The timing is legible. What the player cann
 
   Shape gate   Obstacle requiring the player to match its shape in its lane.
 
-  Lane push    Passive obstacle that auto-pushes the player one lane
                in a direction on beat arrival (replaces legacy Lane Block).
 
   Proximity    Ring around a shape button that shrinks as the matching

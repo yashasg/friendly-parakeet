@@ -108,7 +108,6 @@ list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "(^|/)ui_render_system\\.cpp$")
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "(^|/)input_system\\.cpp$")
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "(^|/)song_playback_system\\.cpp$")
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "(^|/)camera_system\\.cpp$")
-list(FILTER UI_SOURCES EXCLUDE REGEX "(^|/)text_renderer\\.cpp$")
 list(FILTER UI_SOURCES EXCLUDE REGEX "(^|/)raygui_impl\\.cpp$")
 list(FILTER UTIL_SOURCES EXCLUDE REGEX "(^|/)file_logger\\.cpp$")
 
@@ -178,7 +177,6 @@ set(SHAPESHIFTER_RUNTIME_SOURCES
     app/systems/ui_render_system.cpp
     app/systems/input_system.cpp
     app/systems/song_playback_system.cpp
-    app/ui/text_renderer.cpp
     app/util/file_logger.cpp
 )
 
@@ -365,7 +363,7 @@ elseif(UNIX AND NOT EMSCRIPTEN)
     target_link_libraries(shapeshifter_startup_shutdown_smoke PRIVATE GL X11 Xrandr m pthread dl)
 endif()
 
-# Copy font files next to the executable so text_init() can find them
+# Copy font files next to the executable so runtime font loading can find them
 file(GLOB FONT_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/content/fonts/*.ttf)
 if(FONT_FILES)
     add_custom_command(TARGET shapeshifter POST_BUILD

@@ -34,7 +34,6 @@
 //   collision_system.cpp has partial WIP errors:
 //     - resolve() lambda takes float obs_z but ShapeGate/LaneBlock/ComboGate/
 //       SplitPath call sites still pass Position struct instead of pos.y.
-//     - player_in_timing_window() signature updated but LanePush call site not.
 //   Owner: Keaton.  Fix remaining call sites then enable Part B.
 //
 // See also:
@@ -297,7 +296,6 @@ TEST_CASE("bridge: entity with ObstacleModel only (no ObstacleScrollZ) is skippe
 // ENABLE AFTER: Keaton fixes remaining collision_system.cpp WIP errors:
 //   1. resolve() lambda callers for ShapeGate/LaneBlock/ComboGate/SplitPath
 //      must pass pos.y (float) instead of pos (Position struct).
-//   2. LanePush player_in_timing_window() call must pass pos.y.
 //   Once those call sites are updated, the build will stabilise and these
 //   tests can be activated.
 //

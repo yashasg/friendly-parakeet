@@ -13,8 +13,6 @@ enum class ObstacleKind : uint8_t {
     HighBar,
     ComboGate,
     SplitPath,
-    LanePushLeft,
-    LanePushRight,
 };
 
 struct Obstacle {
@@ -26,8 +24,7 @@ struct Obstacle {
 struct ScoredTag {};
 
 // Existential tag: obstacle does not participate in the scoring ladder
-// (no score popup, no chain contribution). Emplaced at spawn for passive
-// obstacles such as LanePushLeft and LanePushRight.
+// (no score popup, no chain contribution).
 struct NonScorableTag {};
 
 // Existential tag: obstacle is a bar-type (LowBar or HighBar).
@@ -61,9 +58,3 @@ struct RequiredVAction {
     VMode action = VMode::Jumping;
 };
 
-// Spawn-time component on LanePush obstacles: direction encoded as ±1.
-// -1 = LanePushLeft, +1 = LanePushRight. Emplaced in obstacle_entity.cpp;
-// consumed by collision_system to populate PendingLanePush.
-struct LanePushDelta {
-    int8_t delta = 0;
-};

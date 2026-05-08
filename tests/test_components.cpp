@@ -1,8 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <type_traits>
 #include "test_helpers.h"
-#include "audio/audio_queue.h"
-#include "input/input_state.h"
+#include "audio/audio_types.h"
 
 // Verify component defaults and basic ECS operations
 
@@ -50,33 +49,27 @@ TEST_CASE("components: VerticalState defaults to grounded", "[components]") {
     CHECK(vs.y_offset == 0.0f);
 }
 
-TEST_CASE("components: InputState clear_events resets flags", "[components]") {
+TEST_CASE("components: InputState stores transient input flags", "[components]") {
     InputState is{};
     is.touch_down = true;
     is.touch_up = true;
-    clear_input_events(is);
-    CHECK_FALSE(is.touch_down);
-    CHECK_FALSE(is.touch_up);
+    CHECK(is.touch_down);
+    CHECK(is.touch_up);
 }
 
-TEST_CASE("components: AudioQueue push and clear", "[components]") {
+TEST_CASE("components: AudioQueue stores queued sounds", "[components]") {
     AudioQueue q{};
     CHECK(q.count == 0);
-    audio_push(q, SFX::ShapeShift);
-    audio_push(q, SFX::Crash);
+    q.queue[q.count++] = SFX::ShapeShift;
+    q.queue[q.count++] = SFX::Crash;
     CHECK(q.count == 2);
     CHECK(q.queue[0] == SFX::ShapeShift);
     CHECK(q.queue[1] == SFX::Crash);
-    audio_clear(q);
-    CHECK(q.count == 0);
 }
 
-TEST_CASE("components: AudioQueue overflow protection", "[components]") {
+TEST_CASE("components: AudioQueue exposes fixed capacity", "[components]") {
     AudioQueue q{};
-    for (int i = 0; i < AudioQueue::MAX_QUEUED + 5; ++i) {
-        audio_push(q, SFX::UITap);
-    }
-    CHECK(q.count == AudioQueue::MAX_QUEUED);
+    CHECK(q.MAX_QUEUED == 16);
 }
 
 TEST_CASE("components: ScoreState defaults to zero", "[components]") {

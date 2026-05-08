@@ -13,7 +13,6 @@ void tick_playing_systems(entt::registry& reg, float dt) {
     scroll_system(reg, dt);
     motion_system(reg, dt);
     collision_system(reg, dt);
-    lane_push_response_system(reg, dt);   // must run between collision and miss_detection (R8)
     miss_detection_system(reg, dt);
     scoring_system(reg, dt);
 }

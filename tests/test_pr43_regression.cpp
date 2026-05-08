@@ -1,7 +1,7 @@
 // PR #43 regression tests — Baer
 // Covers the six unresolved review threads:
 //   1. ScreenTransform stale on first/resize frame before input_system
-//   2. camera_system slab_matrix Y/Z dimension swap (LowBar, HighBar, LanePush)
+//   2. camera_system slab_matrix Y/Z dimension swap (LowBar, HighBar)
 //   3. camera_system MeshChild slab Y/Z dimension swap
 //   4. title/controller input routing remains outside legacy ECS hitbox plumbing
 //   6. shape_obstacle child destruction must not touch other parents' children

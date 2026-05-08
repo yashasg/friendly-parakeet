@@ -81,7 +81,7 @@ def _check_beats(file_label: str, diff_label: str, beats: list, failures: list) 
         "shape_gate",
         "low_bar", "high_bar", "combo_gate", "split_path",
     }
-    deprecated = kind_set & {"lane_block", "lane_push_left", "lane_push_right"}
+    deprecated = kind_set & {"lane_block"}
     if deprecated:
         failures.append(
             f"{file_label} [{diff_label}]: deprecated/non-shipping obstacle kinds: "

@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include "audio/audio_queue.h"
+#include "audio/audio_types.h"
 #include "audio/sfx_bank.h"
 #include "test_helpers.h"
 
@@ -57,9 +57,9 @@ TEST_CASE("audio_system: dispatches queued SFX to backend in order", "[audio]") 
     reg.ctx().emplace<SFXPlaybackBackend>(backend_for());
 
     auto& queue = reg.ctx().get<AudioQueue>();
-    audio_push(queue, SFX::ShapeShift);
-    audio_push(queue, SFX::Crash);
-    audio_push(queue, SFX::UITap);
+    queue.queue[queue.count++] = SFX::ShapeShift;
+    queue.queue[queue.count++] = SFX::Crash;
+    queue.queue[queue.count++] = SFX::UITap;
 
     audio_system(reg);
 
@@ -78,9 +78,8 @@ TEST_CASE("audio_system: dispatches every queued SFX up to queue capacity", "[au
 
     auto& queue = reg.ctx().get<AudioQueue>();
     for (int i = 0; i < AudioQueue::MAX_QUEUED; ++i) {
-        audio_push(queue, kAllSfx[i % kSfxCount]);
+        queue.queue[queue.count++] = kAllSfx[i % kSfxCount];
     }
-    audio_push(queue, SFX::Crash);
 
     audio_system(reg);
 
@@ -92,8 +91,8 @@ TEST_CASE("audio_system: clears queue without backend in headless mode", "[audio
     auto reg = make_registry();
 
     auto& queue = reg.ctx().get<AudioQueue>();
-    audio_push(queue, SFX::ShapeShift);
-    audio_push(queue, SFX::Crash);
+    queue.queue[queue.count++] = SFX::ShapeShift;
+    queue.queue[queue.count++] = SFX::Crash;
 
     audio_system(reg);
 
@@ -113,7 +112,7 @@ TEST_CASE("sfx lifecycle: production backend is callable without audio hardware"
     REQUIRE(backend->dispatch != nullptr);
 
     auto& queue = reg.ctx().get<AudioQueue>();
-    audio_push(queue, SFX::GameStart);
+    queue.queue[queue.count++] = SFX::GameStart;
     audio_system(reg);
 
     CHECK(queue.count == 0);
@@ -130,7 +129,7 @@ TEST_CASE("sfx lifecycle: injected playback backend is preserved", "[audio]") {
     sfx_playback_backend_init(reg);
 
     auto& queue = reg.ctx().get<AudioQueue>();
-    audio_push(queue, SFX::Crash);
+    queue.queue[queue.count++] = SFX::Crash;
     audio_system(reg);
 
     auto& recorder = reg.ctx().get<BackendRecorder>();
