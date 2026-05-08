@@ -35,3 +35,39 @@
 - Verified: `./build.sh` + `./build/shapeshifter_tests` all pass (APPROVED by Kujan).
 
 **Scope owned by:** Keaton (implementation) + Kujan (review, APPROVED).
+
+### 2026-05-08T11:59:39.840-07:00: Floor render system split
+
+**By:** Keaton  
+**Requested by:** yashasg
+
+**Decision**
+- Move floor-only rendering helpers and draw orchestration from `app/systems/game_render_system.cpp` into `app/systems/floor_render_system.cpp`.
+- Keep `game_render_system.cpp` responsible for pass flow (camera setup, floor pass call, world/effects meshes) while floor geometry/details live in the dedicated system.
+
+**Why**
+- Reduces file complexity and keeps floor rendering concerns isolated.
+- Preserves ECS/raylib flow and behavior with a narrow interface: `floor_render_system(const entt::registry&)`.
+
+**Implementation Notes**
+- Added `app/systems/floor_render_system.cpp` and `app/systems/floor_render_system.h`.
+- `game_render_system.cpp` now calls `floor_render_system(reg)` and no longer contains floor helper code.
+- Added declaration in `app/systems/all_systems.h`.
+
+### 2026-05-08T11:59:39.840-07:00: Kujan review — floor render split (approved)
+
+**By:** Kujan  
+**Requested by:** yashasg
+
+**Decision**
+- Approve Keaton's floor render split.
+
+**Review outcome**
+- `game_render_system.cpp` is materially cleaner and remains coherent as the world-pass orchestrator.
+- Floor-specific drawing logic is isolated in `app/systems/floor_render_system.cpp` with a narrow ECS-facing entrypoint declared in headers.
+- Build wiring is intact via existing systems glob; no CMake drift detected.
+- No stale `shape_vertices` references remain in `app/`, `tests/`, or `benchmarks/`.
+- Validation reproduced successfully: `VCPKG_ROOT=/Users/yashasgujjar/vcpkg ./build.sh` and `./build/shapeshifter_tests`.
+
+**Non-blocking note**
+- Unrelated `.squad` churn (health reports/history updates) is present in working tree; keep product commit scope focused.
