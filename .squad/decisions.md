@@ -4496,3 +4496,92 @@ Yes — SDL2-created graphics contexts are viable across the project's four ship
 
 **Why:** User request — captured for team memory
 
+
+
+---
+
+# Coordinator Directive: Pointer input cleanup
+
+**Date:** 2026-05-08T10:34:28.374-07:00
+**By:** yashasg (via Copilot)
+**Topic:** Input state wrapper cleanup
+
+## Directive
+
+Remove input state wrapper layers:
+- `music_stream` wrapper
+- `input_state` wrapper
+- `audio_queue` wrapper
+- `haptic_queue` wrapper
+- Delete `pointer_input.h` — pointer-release functionality has been broken and input now uses raylib click on desktop vs. touch on mobile.
+
+## Rationale
+
+User feedback — simplify wrapper architecture, consolidate to raylib-native input handling.
+
+---
+
+# Coordinator Directive: Push lanes & floor shapes clarification
+
+**Date:** 2026-05-08T10:47:42.149-07:00
+**By:** yashasg (via Copilot)
+**Topic:** Obstacle archetype & collision model
+
+## Directive
+
+- **Push lanes:** No longer used in gameplay. Remove push-lane obstacles and related scoring tests.
+- **Floor shapes:** Are 2D.
+
+## Rationale
+
+User clarification — guides obstacle archetype and collision subsystem design.
+
+---
+
+# Decision: Remove push-lane obstacle support
+
+**Date:** 2026-05-08T10:47:42.149-07:00
+**Owner:** Keaton
+**Status:** COMPLETED
+
+## Summary
+
+Push-lane obstacles are no longer part of gameplay. Removed:
+- Active C++ obstacle enum value
+- Spawn factory branch
+- Collision path
+- Playing-system execution order
+- Archetype / collision / scoring test coverage
+- Beatmap tooling support
+- Active design doc references
+
+The scoring failure around `constants::PTS_LANE_PUSH` was resolved by deleting obsolete push-lane references rather than reintroducing the constant.
+
+## Non-blocking follow-up
+
+Floor-shape cleanup remains a separate future task; no `shape_vertices` / floor-shape implementation changes were made here.
+
+## Validation
+
+- `VCPKG_ROOT=/Users/yashasgujjar/vcpkg ./build.sh` — passed
+- `./build/shapeshifter_tests` — 2148 assertions / 774 tests — passed
+
+---
+
+# Review Decision: Push-lane cleanup APPROVED
+
+**Date:** 2026-05-08T10:47:42.149-07:00
+**Reviewer:** Kujan
+**Verdict:** APPROVE
+
+## Evidence
+
+- Runtime push-lane obstacle behavior is removed: enum values, spawn branch, collision loop, pending event component, response system, and production tick wiring are gone.
+- Obsolete `constants::PTS_LANE_PUSH` references are removed; constant not reintroduced.
+- Push-lane-specific collision / archetype / scoring / helper / model-slice test coverage removed; generic `NonScorableTag` scoring coverage retained.
+- Validation: 2148 assertions in 774 test cases passed.
+
+## Non-blocking notes
+
+- `git diff --check` blank-line-at-EOF warnings in `app/components/gameplay_intents.h` and `app/components/obstacle.h` — style-only, not a blocker.
+

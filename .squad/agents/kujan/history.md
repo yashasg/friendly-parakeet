@@ -32,3 +32,38 @@ Reviewed Hockney's asset root removal decision summary. Rejected Verbal's initia
 - Baer regression tests guard latching/phase-transition behavior across two ticks.
 - All changes isolated; no collateral surface.
 - **Decision logged:** #176 in `.squad/decisions.md` (2026-04-30T07:15:10Z)
+
+## Learnings
+
+### 2026-05-08T10:47:42.149-07:00 — Push-lane cleanup review
+
+Verdict: APPROVE. Runtime push-lane behavior is gone: `LanePushLeft/Right`, `LanePushDelta`, `PendingLanePush`, `lane_push_response_system`, and the collision loop were removed, and no `PTS_LANE_PUSH` references remain. Build and full test suite passed (`VCPKG_ROOT=/Users/yashasgujjar/vcpkg ./build.sh`; `./build/shapeshifter_tests` → 2148 assertions / 774 test cases). Noted non-blocking hygiene: `git diff --check` reports blank-line-at-EOF warnings in two edited headers, but this is style-only and not a rejection basis.
+
+## Session 2026-05-08: Push-lane cleanup review approved
+
+**Timestamp:** 2026-05-08T17:57:30Z
+
+Kujan's review of Keaton's push-lane obstacle removal work has been completed and approved. All decisions and orchestration events have been logged.
+
+### Review summary
+- Runtime push-lane behavior verified removed: enum, spawn, collision, response wiring ✓
+- Obsolete constant references verified removed ✓
+- Test coverage generics verified retained ✓
+- Build & test validation: PASSED ✓
+
+### Verdict
+APPROVE — Keaton's work ready to merge.
+
+### Non-blocking notes
+- Two headers have blank-line-at-EOF style warnings (low priority):
+  - `app/components/gameplay_intents.h`
+  - `app/components/obstacle.h`
+
+### Team decisions logged
+- Review decision merged to decisions.md
+- Orchestration log written
+- Session closed by Scribe
+
+### Next
+- Monitor for pointer input cleanup task
+- Track floor-shape 2D model work (non-blocking follow-up)

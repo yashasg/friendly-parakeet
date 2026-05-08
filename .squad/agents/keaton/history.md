@@ -68,3 +68,36 @@ Key patterns learned: phantom bench fixtures, structural view optimization dange
 - Build verification: blocked by pre-existing undefined constant `constants::PTS_LANE_PUSH` in `app/entities/obstacle_entity.cpp` (out of scope for cleanup task)
 
 **Status:** Implementation complete. Awaiting constants fix (routing to Coordinator for assignment).
+
+## Learnings
+
+### 2026-05-08T10:47:42.149-07:00 — Removed push-lane obstacle support
+
+- Push-lane obstacles are retired; do not reintroduce `constants::PTS_LANE_PUSH` to satisfy stale tests.
+- Active removal touched `app/components/obstacle.h`, `app/entities/obstacle_entity.cpp`, `app/systems/collision_system.cpp`, `app/systems/playing_systems_runner.cpp`, `app/components/gameplay_intents.h`, and the related obstacle/scoring/collision tests.
+- `NonScorableTag` remains as a generic scoring escape hatch and is covered by `tests/test_scoring_system.cpp`; it is no longer tied to push-lane obstacles.
+- User confirmed floor shapes are 2D, but floor-shape/`shape_vertices` cleanup was intentionally deferred.
+- Validation path for this task: `VCPKG_ROOT=/Users/yashasgujjar/vcpkg ./build.sh`, then `./build/shapeshifter_tests`.
+
+## Session 2026-05-08: Push-lane removal approved & logged
+
+**Timestamp:** 2026-05-08T17:57:30Z
+
+Keaton's push-lane obstacle removal work was reviewed and approved by Kujan. All decisions and orchestration events have been logged to team artifacts.
+
+### Work summary
+- Push-lane enum value, spawn branch, collision path, execution order removed
+- Obsolete constant `PTS_LANE_PUSH` references deleted
+- Push-lane-specific tests removed; generic `NonScorableTag` coverage retained
+- Validation: build + 2148 assertions / 774 tests — PASSED
+- Floor-shape cleanup deferred as separate task
+
+### Team decisions logged
+- `keaton-remove-push-lanes.md` → decisions.md
+- `kujan-push-lane-cleanup-approved.md` → decisions.md
+- Orchestration logs written
+- Session closed by Scribe
+
+### Next
+- Pointer input cleanup work available
+- Coordinate with Kujan if additional cleanup scope expands
