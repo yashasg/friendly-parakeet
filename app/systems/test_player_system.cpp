@@ -95,19 +95,6 @@ static const SkillConfig& test_player_config(const TestPlayerState& state) {
     return SKILL_TABLE[static_cast<int>(state.skill)];
 }
 
-static bool test_player_is_planned(const TestPlayerState& state, entt::entity e) {
-    for (int i = 0; i < state.planned_count; ++i) {
-        if (state.planned[i] == e) return true;
-    }
-    return false;
-}
-
-static void test_player_mark_planned(TestPlayerState& state, entt::entity e) {
-    if (state.planned_count < TestPlayerState::MAX_PLANNED) {
-        state.planned[state.planned_count++] = e;
-    }
-}
-
 static void test_player_push_action(TestPlayerState& state, const TestPlayerAction& action) {
     if (state.action_count < TestPlayerState::MAX_ACTIONS) {
         state.actions[state.action_count++] = action;
@@ -119,17 +106,6 @@ static void test_player_remove_action(TestPlayerState& state, int idx) {
         state.actions[idx] = state.actions[state.action_count - 1];
         --state.action_count;
     }
-}
-
-// Remove stale entries from the planned set (destroyed/scored entities).
-static void test_player_clean_planned(TestPlayerState& state, entt::registry& reg) {
-    int write = 0;
-    for (int i = 0; i < state.planned_count; ++i) {
-        if (reg.valid(state.planned[i])) {
-            state.planned[write++] = state.planned[i];
-        }
-    }
-    state.planned_count = write;
 }
 
 // Find nearest unblocked lane to current position.
@@ -223,7 +199,6 @@ void test_player_system(entt::registry& reg, float dt) {
     if (!state || !state->active) return;
 
     state->frame_count++;
-    test_player_clean_planned(*state, reg);
 
     auto& gs    = reg.ctx().get<GameState>();
     auto& disp  = reg.ctx().get<entt::dispatcher>();
@@ -289,7 +264,6 @@ void test_player_system(entt::registry& reg, float dt) {
     // calls reg.clear(), all old entity IDs are invalid).
     if (song->song_time < 0.01f && state->action_count > 0) {
         state->action_count = 0;
-        state->planned_count = 0;
     }
 
     const auto& cfg = test_player_config(*state);
@@ -317,7 +291,7 @@ void test_player_system(entt::registry& reg, float dt) {
     for (auto [entity, obs_wt, obs] : obs_view.each()) {
         float dist = p_transform.position.y - obs_wt.position.y;
         if (dist <= 0.0f || dist > cfg.vision_range) continue;
-        if (test_player_is_planned(*state, entity)) continue;
+        if (reg.any_of<TestPlayerPlannedTag>(entity)) continue;
 
         TestPlayerAction action = determine_action(reg, entity, effective_lane, *song);
 
@@ -349,7 +323,7 @@ void test_player_system(entt::registry& reg, float dt) {
         }
 
         test_player_push_action(*state, action);
-        test_player_mark_planned(*state, entity);
+        reg.emplace<TestPlayerPlannedTag>(entity);
 
         if (log) {
             auto* beat_info = reg.try_get<BeatInfo>(entity);
@@ -381,7 +355,7 @@ void test_player_system(entt::registry& reg, float dt) {
     for (auto [entity, oz, obs] : model_obs_view.each()) {
         float dist = p_transform.position.y - oz.z;
         if (dist <= 0.0f || dist > cfg.vision_range) continue;
-        if (test_player_is_planned(*state, entity)) continue;
+        if (reg.any_of<TestPlayerPlannedTag>(entity)) continue;
 
         TestPlayerAction action = determine_action(reg, entity, effective_lane, *song);
 
@@ -389,7 +363,7 @@ void test_player_system(entt::registry& reg, float dt) {
         action.timer = reaction_dist(state->rng);
 
         test_player_push_action(*state, action);
-        test_player_mark_planned(*state, entity);
+        reg.emplace<TestPlayerPlannedTag>(entity);
 
         if (log) {
             auto* beat_info = reg.try_get<BeatInfo>(entity);
