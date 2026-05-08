@@ -14529,3 +14529,40 @@ Issue #350 now meets acceptance criteria. QA gate is cleared.
 - Gate-cleared comment posted on issue #350:
   - https://github.com/yashasg/friendly-parakeet/issues/350#issuecomment-4368380355
 
+
+### 2026-05-05T19:28:46.120-07:00: User directive — OpenGL handedness
+
+**By:** yashasg (via Copilot)
+**What:** Use OpenGL's default handedness/conventions across platforms as the rendering/math baseline.
+**Why:** User request — captured for team memory
+
+### 2026-05-05T19:25:14.472-07:00 — Hockney: SDL2 OpenGL context across shipping platforms
+
+**Status:** Pending owner decision.
+
+**Finding**
+
+Yes — SDL2-created graphics contexts are viable across the project's four shipping targets, with platform-specific profile constraints:
+- macOS: OpenGL context creation works (deprecated API, still available; practical ceiling is legacy Apple OpenGL stack).
+- Windows: OpenGL context creation works via WGL (`opengl32`).
+- Linux: OpenGL context creation works via GLX/EGL drivers (`GL`, X11 stack linked today).
+- WebAssembly/Emscripten: not desktop OpenGL; SDL2 maps to WebGL/OpenGL ES semantics in browser.
+
+**Required caveats**
+
+1. **WASM profile mismatch**: Web target must use GLES/WebGL-safe shader + API subset; desktop GL-only features will not be portable.
+2. **macOS deprecation**: OpenGL is deprecated but still functional; avoid depending on unsupported modern extensions.
+3. **Shader/profile split**: Expect separate shader variants or strict common-denominator GLSL strategy (desktop core vs WebGL/GLES).
+4. **Build implications**:
+   - Current CMake already links desktop OpenGL frameworks/libs for macOS/Windows/Linux.
+   - Current Emscripten path uses `-sUSE_SDL=2` (+ legacy GL emulation today); explicit WebGL version pinning is not yet configured.
+5. **Renderer migration cost**: Current runtime is SDL_Renderer-based (`SDL_CreateRenderer`, `SDL_Render*`); moving to explicit SDL_GL context requires replacing large render path surface (render_api/frame composition/material/shader expectations).
+6. **Handedness**: Using SDL2 GL context does **not** change handedness policy; keep one engine-space convention and isolate API clip/projection differences at render boundary.
+
+**Evidence pointers**
+- `app/systems/platform_state.cpp` (window+renderer creation currently via `SDL_CreateRenderer`)
+- `app/systems/render_api.cpp` (SDL_Renderer-driven draw path)
+- `CMakeLists.txt` (desktop OpenGL link blocks + Emscripten SDL flags)
+- `.github/workflows/ci-{macos,windows,linux,wasm}.yml` (active 4-platform CI)
+- `.squad/decisions.md` (shipping target snapshot and handedness contract)
+

@@ -213,3 +213,22 @@ Keaton identified two bench fixtures degrading silently due to archetype evoluti
 - **Scribe action:** Merged inbox decision file to `.squad/decisions.md` (`# Decision: Keep magic_enum...`)
 - **Orchestration log written:** `.squad/orchestration-log/2026-05-04T04:55:12Z-keaton.md`
 - **Status in registry:** Recommended (GitHub issue #350 comment posted, gate cleared by Verbal)
+
+### 2026-05-08T07:08:55.899Z — Raylib branch read-only cleanup audit
+
+**Task:** Audit current raylib branch for cleanup candidates: raylib wrappers, raylib type duplicates, unnecessary abstraction layers, project duplicate implementations.
+
+**Audit Results**
+
+**Definite cleanup candidates (high priority):**
+1. `app/util/shape_vertices.h` — custom V2 duplicate; replace with raylib Vector2
+2. `app/input/raylib_gesture_input.h` — thin gesture adapter layer; consolidate into caller or remove
+3. `app/ui/text_renderer.h/cpp` — text measurement/render wrapper; likely duplicates raylib functionality
+
+**Retention decisions (keep as-is):**
+- `app/systems/camera_resources.h` — RAII safety pattern required; no raylib equivalent
+- Domain ECS components — essential to architecture; not raylib duplicates
+
+**Cleanup impact:** 3 files (V2, gesture, text); estimated 200–300 lines of dead weight.
+
+**Next steps:** Schedule cleanup task with engineering team for prioritization and batch execution.
