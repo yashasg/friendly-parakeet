@@ -71,3 +71,62 @@
 
 **Non-blocking note**
 - Unrelated `.squad` churn (health reports/history updates) is present in working tree; keep product commit scope focused.
+
+### 2026-05-08T13:03:11.140-07:00: Keaton cleanup — file_logger removal + session_logger scope decision
+
+**By:** Keaton  
+**Requested by:** yashasg
+
+**Decision**
+- Deleted dead `file_logger` module (`app/util/file_logger.h/.cpp`) and CMake entries.
+- Deleted legacy forwarding header `app/components/camera.h`.
+- Deleted obsolete `benchmarks/bench_file_logger.cpp`.
+- Deferred raylib callback migration for `session_logger` to future work.
+
+**Rationale for deferral**
+- raylib `SetTraceLogCallback` is global process state; would capture unrelated TraceLog traffic.
+- `session_logger` is scoped, structured, and ECS-driven (test-player telemetry only).
+- Safe migration requires custom filtering/prefixing and callback lifecycle control (revisit later if needed).
+
+**Implementation validated**
+- Removed CMake source entries; stale references eliminated from `tests/test_camera_entity_contracts.cpp`.
+- No build regressions or warnings.
+
+### 2026-05-08T13:03:11.140-07:00: Kujan review — file_logger cleanup + session_logger deferral (APPROVED)
+
+**By:** Kujan  
+**Requested by:** yashasg
+**Revision owner:** Keaton
+
+**Findings**
+- High-confidence removals were complete and safe. No stale references in app/tests/bench/CMake.
+- CMake wiring correct after cleanup.
+- Benchmark deletion appropriate; coverage maintained by other benchmark files.
+- TraceLog callback deferral justified: callback is global state, current code emits many unrelated logs.
+- No warnings or regression hazards.
+- Validation: `VCPKG_ROOT=/Users/yashasgujjar/vcpkg ./build.sh` and `./build/shapeshifter_tests` (2063 assertions, 758 test cases).
+
+**Verdict:** APPROVE
+
+### 2026-05-08T13:08:46.440-07:00: Keaton implementation audit — raylib replacement candidates
+
+**By:** Keaton  
+**Requested by:** yashasg  
+**Scope:** Read-only audit of `app/` for homegrown implementations replaceable with direct raylib APIs.
+
+**High-confidence replacements (replace-with-raylib)**
+1. HUD hexagon path: replace manual trig + 6 `DrawTriangle` with `DrawPoly({cx, cy}, 6, radius, -90.0f, color)`.
+2. Beatmap file loading: replace `std::ifstream` with `LoadFileText()` / `UnloadFileText()`.
+
+**Medium-confidence needs design decision**
+1. Floor geometry (`draw_floor_lines`/`draw_floor_rings`): immediate-mode `rlBegin`/`rlVertex3f` → possible `DrawLine3D`/`DrawTriangle3D`/textured-floor.
+2. Input/display: `screen_to_virtual()` letterbox mapping and `Camera2D` alternatives.
+3. Persistence: `settings_persistence.cpp` + `high_score_persistence.cpp` file I/O.
+
+**Keep (do not replace)**
+- Obstacle model assembly, session logger, platform display glue, procedural SFX, font loading, song playback logic, collision/timing math, haptics bridge.
+
+**Proposed cleanup order**
+1. Replace HUD hexagon with `DrawPoly`.
+2. Replace beatmap file text ingestion with `LoadFileText`.
+3. Decide floor rendering target architecture before touching rlgl floor primitives.
