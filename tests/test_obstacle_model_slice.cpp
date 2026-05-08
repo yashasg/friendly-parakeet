@@ -59,9 +59,10 @@
 #include <raylib.h>
 #include <raymath.h>
 #include <entt/entt.hpp>
+#include <magic_enum/magic_enum.hpp>
+#include <string_view>
 
 #include "test_helpers.h"
-#include "util/enum_names.h"
 #include "entities/obstacle_entity.h"
 #include "components/obstacle.h"
 #include "components/transform.h"
@@ -74,6 +75,11 @@
 
 static entt::entity make_obstacle_entity(entt::registry& reg, ObstacleKind kind) {
     return spawn_obstacle(reg, {.kind = kind, .x = 360.0f, .y = constants::SPAWN_Y});
+}
+
+static std::string_view enum_name_or_unknown(ObstacleKind kind) {
+    const std::string_view name = magic_enum::enum_name(kind);
+    return name.empty() ? std::string_view{"???"} : name;
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -118,7 +124,7 @@ TEST_CASE("post-migration: spawn_obstacle does not emplace Model on any kind",
     for (auto kind : all_kinds) {
         entt::registry reg;
         auto e = make_obstacle_entity(reg, kind);
-        INFO("Kind: " << ToString(kind));
+        INFO("Kind: " << enum_name_or_unknown(kind));
         CHECK_FALSE(reg.all_of<Model>(e));
     }
 }

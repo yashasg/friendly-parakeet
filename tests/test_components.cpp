@@ -110,7 +110,6 @@ TEST_CASE("ecs: make_registry creates all singletons", "[ecs]") {
     static_cast<void>(reg.ctx().get<GameOverState>());
     // Misc
     static_cast<void>(reg.ctx().get<RNGState>());
-    static_cast<void>(reg.ctx().get<ObstacleCounter>());
     SUCCEED("all required ctx singletons exist in registry context");
 }
 

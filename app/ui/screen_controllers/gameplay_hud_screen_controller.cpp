@@ -45,14 +45,7 @@ void draw_shape_flat(Shape shape, float cx, float cy, float size, Color color) {
         }
         case Shape::Hexagon: {
             float radius = size * 0.6f;
-            constexpr float angle_offset = -90.0f * DEG2RAD;
-            for (int i = 0; i < 6; ++i) {
-                float a1 = angle_offset + static_cast<float>(i) * 60.0f * DEG2RAD;
-                float a2 = angle_offset + static_cast<float>(i + 1) * 60.0f * DEG2RAD;
-                Vector2 v1h = {cx + radius * std::cos(a1), cy + radius * std::sin(a1)};
-                Vector2 v2h = {cx + radius * std::cos(a2), cy + radius * std::sin(a2)};
-                DrawTriangle({cx, cy}, v2h, v1h, color);
-            }
+            DrawPoly({cx, cy}, 6, radius, -90.0f, color);
             break;
         }
     }

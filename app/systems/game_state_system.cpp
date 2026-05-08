@@ -2,7 +2,7 @@
 #include "../session/play_session.h"
 #include "../components/game_state.h"
 #include "../components/input.h"
-#include "../util/obstacle_counter.h"
+#include "../components/obstacle.h"
 #include "../components/input_events.h"
 #include "../components/rhythm.h"
 
@@ -104,9 +104,8 @@ void game_state_system(entt::registry& reg, float dt) {
         }
 
         if (song && song->finished) {
-            // Wait until all obstacle entities have been destroyed (O(1) counter).
-            auto* oc = reg.ctx().find<ObstacleCounter>();
-            if (!oc || oc->count == 0) {
+            // Wait until all obstacle entities have been destroyed.
+            if (reg.view<ObstacleTag>().empty()) {
                 gs.transition_pending = true;
                 gs.next_phase = GamePhase::SongComplete;
             }

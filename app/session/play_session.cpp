@@ -1,6 +1,5 @@
 #include "play_session.h"
 #include "../components/game_state.h"
-#include "../util/obstacle_counter.h"
 #include "../components/player.h"
 #include "../components/transform.h"
 #include "../components/rendering.h"
@@ -40,17 +39,6 @@ void setup_play_session(entt::registry& reg) {
     reg.clear();
     spawn_game_camera(reg);
     spawn_ui_camera(reg);
-
-    // Initialise (first session) or reset (subsequent sessions) the obstacle counter.
-    // reg.clear() above fires on_destroy<ObstacleTag> for any leftover entities, which
-    // decrements the counter; reset to 0 here unconditionally so it is always clean.
-    // Signals are wired once and survive reg.clear().
-    if (!reg.ctx().find<ObstacleCounter>()) {
-        reg.ctx().emplace<ObstacleCounter>();
-        wire_obstacle_counter(reg);
-    } else {
-        reg.ctx().get<ObstacleCounter>().count = 0;
-    }
 
     // Reset singletons
     reg.ctx().insert_or_assign(RNGState{});

@@ -110,19 +110,6 @@ Sound make_procedural_sound(const SfxSpec& spec) {
     return LoadSoundFromWave(wave);
 }
 
-void play_sfx_from_bank(entt::registry& reg, SFX sfx) {
-    if (!IsAudioDeviceReady()) return;
-
-    auto* bank = reg.ctx().find<SFXBank>();
-    if (!bank || !bank->loaded) return;
-
-    const int idx = static_cast<int>(sfx);
-    if (idx >= SFX_COUNT) return;
-    if (!bank->sound_loaded[idx] || !IsSoundValid(bank->sounds[idx])) return;
-
-    PlaySound(bank->sounds[idx]);
-}
-
 }  // namespace
 
 void sfx_bank_init(entt::registry& reg) {
@@ -140,12 +127,6 @@ void sfx_bank_init(entt::registry& reg) {
         any_loaded = any_loaded || bank->sound_loaded[idx];
     }
     bank->loaded = any_loaded;
-}
-
-void sfx_playback_backend_init(entt::registry& reg) {
-    if (reg.ctx().find<SFXPlaybackBackend>()) return;
-
-    reg.ctx().emplace<SFXPlaybackBackend>(SFXPlaybackBackend{play_sfx_from_bank});
 }
 
 void sfx_bank_unload(entt::registry& reg) {

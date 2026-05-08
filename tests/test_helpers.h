@@ -4,7 +4,6 @@
 #include "components/transform.h"
 #include "components/player.h"
 #include "components/obstacle.h"
-#include "util/obstacle_counter.h"
 #include "components/input.h"
 #include "components/input_events.h"
 #include "components/game_state.h"
@@ -47,8 +46,6 @@ inline entt::registry make_registry() {
     reg.ctx().emplace<HighScorePersistence>();
     reg.ctx().emplace<GameOverState>();
     reg.ctx().emplace<RNGState>();
-    reg.ctx().emplace<ObstacleCounter>();
-    wire_obstacle_counter(reg);
     return reg;
 }
 

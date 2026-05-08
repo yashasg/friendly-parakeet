@@ -109,7 +109,6 @@ list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "(^|/)input_system\\.cpp$")
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "(^|/)song_playback_system\\.cpp$")
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "(^|/)camera_system\\.cpp$")
 list(FILTER UI_SOURCES EXCLUDE REGEX "(^|/)raygui_impl\\.cpp$")
-list(FILTER UTIL_SOURCES EXCLUDE REGEX "(^|/)file_logger\\.cpp$")
 
 set(SHAPESHIFTER_IOS FALSE)
 if(APPLE)
@@ -177,7 +176,6 @@ set(SHAPESHIFTER_RUNTIME_SOURCES
     app/systems/ui_render_system.cpp
     app/systems/input_system.cpp
     app/systems/song_playback_system.cpp
-    app/util/file_logger.cpp
 )
 
 add_executable(shapeshifter
@@ -485,7 +483,6 @@ set_source_files_properties(
 
 add_executable(shapeshifter_tests
     ${TEST_SOURCES}
-    app/util/file_logger.cpp
     app/systems/camera_system.cpp
     app/systems/song_playback_system.cpp
     app/platform_display.cpp

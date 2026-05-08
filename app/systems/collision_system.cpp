@@ -13,9 +13,15 @@
 
 namespace {
 
+Rectangle centered_hitbox_rect(float x) {
+    constexpr float kHitboxEdgePadding = 1.0e-4f;
+    const float size = constants::PLAYER_SIZE + kHitboxEdgePadding;
+    return {x - size * 0.5f, 0.0f, size, 1.0f};
+}
+
 bool player_matches_required_shape(const PlayerShape& p_shape,
-                                   const ShapeWindow& p_window,
-                                   Shape required) {
+                                    const ShapeWindow& p_window,
+                                    Shape required) {
     if (p_shape.current == required && p_shape.current != Shape::Hexagon) {
         return true;
     }
@@ -93,13 +99,9 @@ void collision_system(entt::registry& reg, float /*dt*/) {
         }
     };
 
-    // Inline 1D lane-overlap check — equivalent to the two-rect CheckCollisionRecs
-    // call (y-axis always overlaps since both rects use y=0,h=1; reduces to x-axis
-    // interval: |obs_x - player_x| < PLAYER_SIZE). Saves 2× centered_rect + 1×
-    // CheckCollisionRecs per obstacle.
-    auto lane_overlaps = [player_x](float obstacle_x) -> bool {
-        float dx = obstacle_x - player_x;
-        return (dx > -constants::PLAYER_SIZE) && (dx < constants::PLAYER_SIZE);
+    const Rectangle player_hitbox = centered_hitbox_rect(player_x);
+    auto hitboxes_overlap = [player_hitbox](float obstacle_x) -> bool {
+        return CheckCollisionRecs(player_hitbox, centered_hitbox_rect(obstacle_x));
     };
 
     // Per-kind structural views — each loop touches only entities that actually
@@ -129,7 +131,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
             auto rhythm_view = reg.view<ObstacleTag, WorldTransform, RequiredShape, BeatInfo>(
                 entt::exclude<ScoredTag, BlockedLanes, RequiredLane>);
             for (auto [e, wt, req, info] : rhythm_view.each()) {
-                bool lane_match  = lane_overlaps(wt.position.x);
+                bool lane_match  = hitboxes_overlap(wt.position.x);
                 if (!lane_match) {
                     resolve(e, wt.position.y, false);
                     continue;
@@ -143,7 +145,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
             auto view = reg.view<ObstacleTag, WorldTransform, RequiredShape>(
                 entt::exclude<ScoredTag, BlockedLanes, RequiredLane, BeatInfo>);
             for (auto [e, wt, req] : view.each()) {
-                bool lane_match  = lane_overlaps(wt.position.x);
+                bool lane_match  = hitboxes_overlap(wt.position.x);
                 if (!lane_match) {
                     resolve(e, wt.position.y, false);
                     continue;
@@ -216,7 +218,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
             auto view = reg.view<ObstacleTag, WorldTransform, RequiredShape>(
                 entt::exclude<ScoredTag, BlockedLanes, RequiredLane>);
             for (auto [e, wt, req] : view.each()) {
-                bool lane_match  = lane_overlaps(wt.position.x);
+                bool lane_match  = hitboxes_overlap(wt.position.x);
                 if (!lane_match) {
                     resolve(e, wt.position.y, false);
                     continue;

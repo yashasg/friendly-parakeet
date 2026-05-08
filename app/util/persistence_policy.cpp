@@ -1,8 +1,9 @@
 #include "persistence_policy.h"
 
-#include "fs_utils.h"
-
 #include <cstdlib>
+#include <system_error>
+
+#include <raylib.h>
 
 #ifndef _WIN32
     #include <pwd.h>
@@ -15,6 +16,14 @@
 
 namespace persistence {
 namespace {
+
+std::error_code ensure_directory_exists(const std::filesystem::path& dir) {
+    if (dir.empty()) return {};
+    const std::string dir_path = dir.string();
+    if (DirectoryExists(dir_path.c_str())) return {};
+    if (MakeDirectory(dir_path.c_str()) == 0 && DirectoryExists(dir_path.c_str())) return {};
+    return std::make_error_code(std::errc::io_error);
+}
 
 std::filesystem::path resolve_root_dir(const std::filesystem::path& root_override) {
     if (!root_override.empty()) {
@@ -51,9 +60,9 @@ Result resolve_paths(Paths& out_paths, const std::filesystem::path& root_overrid
         return Result{Status::PathUnavailable, {}};
     }
 
-    const auto ensure = fs_utils::ensure_directory_result(root_dir);
-    if (!ensure.ok) {
-        return Result{Status::DirectoryCreateFailed, ensure.error};
+    const auto ensure_error = ensure_directory_exists(root_dir);
+    if (ensure_error) {
+        return Result{Status::DirectoryCreateFailed, ensure_error};
     }
 
     out_paths.root_dir = root_dir;

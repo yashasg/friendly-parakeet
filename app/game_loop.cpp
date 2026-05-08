@@ -148,7 +148,6 @@ void game_loop_init(entt::registry& reg,
     SetTargetFPS(60);
     InitAudioDevice();
     sfx_bank_init(reg);
-    sfx_playback_backend_init(reg);
     TraceLog(LOG_INFO, "SHAPESHIFTER v%s", SHAPESHIFTER_VERSION);
 
     // Text rendering

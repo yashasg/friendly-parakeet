@@ -8,13 +8,13 @@
 #include "../components/obstacle.h"
 #include "../components/rhythm.h"
 #include "../components/scoring.h"
-#include "../util/enum_names.h"
 #include "../util/session_logger.h"
-#include "../util/test_player_helpers.h"
 #include "../constants.h"
 
 #include <raylib.h>
+#include <magic_enum/magic_enum.hpp>
 #include <random>
+#include <string_view>
 
 // Keep pro presses slightly ahead of beat arrival so the press is guaranteed
 // to land before collision resolution in fixed-step ordering.
@@ -36,6 +36,88 @@ static const char* shape_key_name(Shape s) {
         case Shape::Square:   return "key_2(Square)";
         case Shape::Triangle: return "key_3(Triangle)";
         default:              return "key_?(?)";
+    }
+}
+
+template <typename E>
+std::string_view enum_name_or_unknown(E value) {
+    const std::string_view name = magic_enum::enum_name(value);
+    return name.empty() ? std::string_view{"???"} : name;
+}
+
+static bool test_player_shape_done(const TestPlayerAction& action) {
+    return !!(action.done_flags & ActionDoneBit::Shape);
+}
+
+static bool test_player_lane_done(const TestPlayerAction& action) {
+    return !!(action.done_flags & ActionDoneBit::Lane);
+}
+
+static bool test_player_vertical_done(const TestPlayerAction& action) {
+    return !!(action.done_flags & ActionDoneBit::Vertical);
+}
+
+static void test_player_mark_shape_done(TestPlayerAction& action) {
+    action.done_flags |= ActionDoneBit::Shape;
+}
+
+static void test_player_mark_lane_done(TestPlayerAction& action) {
+    action.done_flags |= ActionDoneBit::Lane;
+}
+
+static void test_player_mark_vertical_done(TestPlayerAction& action) {
+    action.done_flags |= ActionDoneBit::Vertical;
+}
+
+static bool test_player_needs_shape(const TestPlayerAction& action) {
+    return action.target_shape != Shape::Hexagon && !test_player_shape_done(action);
+}
+
+static bool test_player_needs_lane(const TestPlayerAction& action) {
+    return action.target_lane >= 0 && !test_player_lane_done(action);
+}
+
+static bool test_player_needs_vertical(const TestPlayerAction& action) {
+    return action.target_vertical != VMode::Grounded && !test_player_vertical_done(action);
+}
+
+static bool test_player_action_done(const TestPlayerAction& action) {
+    const bool shape_done = (action.target_shape == Shape::Hexagon) ||
+                            test_player_shape_done(action);
+    const bool lane_done = (action.target_lane < 0) ||
+                           test_player_lane_done(action);
+    const bool vertical_done = (action.target_vertical == VMode::Grounded) ||
+                               test_player_vertical_done(action);
+    return shape_done && lane_done && vertical_done;
+}
+
+static const SkillConfig& test_player_config(const TestPlayerState& state) {
+    return SKILL_TABLE[static_cast<int>(state.skill)];
+}
+
+static bool test_player_is_planned(const TestPlayerState& state, entt::entity e) {
+    for (int i = 0; i < state.planned_count; ++i) {
+        if (state.planned[i] == e) return true;
+    }
+    return false;
+}
+
+static void test_player_mark_planned(TestPlayerState& state, entt::entity e) {
+    if (state.planned_count < TestPlayerState::MAX_PLANNED) {
+        state.planned[state.planned_count++] = e;
+    }
+}
+
+static void test_player_push_action(TestPlayerState& state, const TestPlayerAction& action) {
+    if (state.action_count < TestPlayerState::MAX_ACTIONS) {
+        state.actions[state.action_count++] = action;
+    }
+}
+
+static void test_player_remove_action(TestPlayerState& state, int idx) {
+    if (idx >= 0 && idx < state.action_count) {
+        state.actions[idx] = state.actions[state.action_count - 1];
+        --state.action_count;
     }
 }
 
@@ -272,18 +354,22 @@ void test_player_system(entt::registry& reg, float dt) {
         if (log) {
             auto* beat_info = reg.try_get<BeatInfo>(entity);
             int beat_num = beat_info ? beat_info->beat_index : -1;
+            const std::string_view kind_name = enum_name_or_unknown(obs.kind);
+            const std::string_view shape_name = enum_name_or_unknown(action.target_shape);
 
             session_log_write(*log, song_time, "PLAYER",
-                "PERCEIVE obstacle=%u beat=%d kind=%s shape=%s lane=%d dist=%.0fpx",
+                "PERCEIVE obstacle=%u beat=%d kind=%.*s shape=%.*s lane=%d dist=%.0fpx",
                 static_cast<unsigned>(entt::to_integral(entity)),
                 beat_num,
-                ToString(obs.kind),
-                ToString(action.target_shape),
+                static_cast<int>(kind_name.size()), kind_name.data(),
+                static_cast<int>(shape_name.size()), shape_name.data(),
                 action.target_lane, dist);
 
+            const std::string_view action_shape_name =
+                action.target_shape != Shape::Hexagon ? shape_name : std::string_view{};
             session_log_write(*log, song_time, "PLAYER",
-                "PLAN action=%s%s%s react=%.3fs arrival=%.3fs",
-                action.target_shape != Shape::Hexagon ? ToString(action.target_shape) : "",
+                "PLAN action=%.*s%s%s react=%.3fs arrival=%.3fs",
+                static_cast<int>(action_shape_name.size()), action_shape_name.data(),
                 action.target_lane >= 0 ? "+lane" : "",
                 action.target_vertical != VMode::Grounded ?
                     (action.target_vertical == VMode::Jumping ? "+jump" : "+slide") : "",
@@ -308,18 +394,22 @@ void test_player_system(entt::registry& reg, float dt) {
         if (log) {
             auto* beat_info = reg.try_get<BeatInfo>(entity);
             int beat_num = beat_info ? beat_info->beat_index : -1;
+            const std::string_view kind_name = enum_name_or_unknown(obs.kind);
+            const std::string_view shape_name = enum_name_or_unknown(action.target_shape);
 
             session_log_write(*log, song_time, "PLAYER",
-                "PERCEIVE obstacle=%u beat=%d kind=%s shape=%s lane=%d dist=%.0fpx",
+                "PERCEIVE obstacle=%u beat=%d kind=%.*s shape=%.*s lane=%d dist=%.0fpx",
                 static_cast<unsigned>(entt::to_integral(entity)),
                 beat_num,
-                ToString(obs.kind),
-                ToString(action.target_shape),
+                static_cast<int>(kind_name.size()), kind_name.data(),
+                static_cast<int>(shape_name.size()), shape_name.data(),
                 action.target_lane, dist);
 
+            const std::string_view action_shape_name =
+                action.target_shape != Shape::Hexagon ? shape_name : std::string_view{};
             session_log_write(*log, song_time, "PLAYER",
-                "PLAN action=%s%s%s react=%.3fs arrival=%.3fs",
-                action.target_shape != Shape::Hexagon ? ToString(action.target_shape) : "",
+                "PLAN action=%.*s%s%s react=%.3fs arrival=%.3fs",
+                static_cast<int>(action_shape_name.size()), action_shape_name.data(),
                 action.target_lane >= 0 ? "+lane" : "",
                 action.target_vertical != VMode::Grounded ?
                     (action.target_vertical == VMode::Jumping ? "+jump" : "+slide") : "",

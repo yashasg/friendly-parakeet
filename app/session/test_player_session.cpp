@@ -3,17 +3,19 @@
 #include "../components/obstacle.h"
 #include "../components/scoring.h"
 #include "../util/session_logger.h"
-#include "../util/safe_localtime.h"
 
 #include <raylib.h>
 #include <ctime>
 #include <cstdio>
 #include <cstring>
+#include <cstdint>
 
 namespace {
 struct TestPlayerSessionSignals {
     bool wired = false;
 };
+
+uint32_t g_test_player_log_sequence = 0;
 }
 
 void test_player_init(entt::registry& reg, TestPlayerSkill skill,
@@ -46,16 +48,15 @@ void test_player_init(entt::registry& reg, TestPlayerSkill skill,
         *slog_ptr = SessionLog{};
     }
     auto& slog = *slog_ptr;
-    std::time_t now = std::time(nullptr);
-    std::tm tm{};
-    safe_localtime(&now, &tm);
+    const double runtime_seconds = GetTime();
+    const auto runtime_millis = static_cast<unsigned long long>(runtime_seconds * 1000.0);
+    const uint32_t sequence = ++g_test_player_log_sequence;
     char log_filename[256];
     std::snprintf(log_filename, sizeof(log_filename),
-        "%ssession_%s_%04d%02d%02d_%02d%02d%02d.log",
+        "%ssession_%s_rt%010llu_n%04u.log",
         GetApplicationDirectory(),
         skill_names[static_cast<int>(skill)],
-        tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
-        tm.tm_hour, tm.tm_min, tm.tm_sec);
+        runtime_millis, sequence);
     session_log_open(slog, log_filename);
     TraceLog(LOG_INFO, "SESSION LOG: %s", log_filename);
 

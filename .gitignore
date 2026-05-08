@@ -30,6 +30,7 @@ bench_logger.log
 /test_empty_hs.cpp
 /high_scores.json
 /haptics_enabled*
+/test-results/
 
 # Generated diagnostics and one-off delivery notes
 /BOARD_CLEANUP_REPORT.md
