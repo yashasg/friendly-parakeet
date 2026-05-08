@@ -1,49 +1,18 @@
 #include <catch2/catch_test_macros.hpp>
 #include "test_helpers.h"
 
-// ── Raw InputEvent dispatcher tests (#333) ────────────────────────────────
-// EventQueue has been removed.  Raw touch/mouse gestures are now enqueued as
-// InputEvent objects into the entt::dispatcher and delivered to
-// gesture_routing_handle_input via update<InputEvent>().
-
-TEST_CASE("dispatcher: InputEvent enqueue/update fires listeners", "[events]") {
-    entt::registry reg;
-    reg.ctx().emplace<entt::dispatcher>();
-
-    struct InputCapture {
-        InputEvent buf[8]{};
-        int        count{0};
-        void capture(const InputEvent& e) { if (count < 8) buf[count++] = e; }
-    } cap;
-
-    auto& disp = reg.ctx().get<entt::dispatcher>();
-    disp.sink<InputEvent>().connect<&InputCapture::capture>(cap);
-
-    disp.enqueue<InputEvent>({InputType::Swipe, Direction::Left,  0.f, 0.f});
-    disp.enqueue<InputEvent>({InputType::Tap,   Direction::Up,   100.f, 200.f});
-    disp.update<InputEvent>();
-    disp.sink<InputEvent>().disconnect<&InputCapture::capture>(cap);
-
-    REQUIRE(cap.count == 2);
-    CHECK(cap.buf[0].type == InputType::Swipe);
-    CHECK(cap.buf[0].dir  == Direction::Left);
-    CHECK(cap.buf[1].type == InputType::Tap);
-    CHECK(cap.buf[1].x    == 100.f);
-    CHECK(cap.buf[1].y    == 200.f);
-}
-
-TEST_CASE("dispatcher: InputEvent clear discards without firing listeners", "[events]") {
+TEST_CASE("dispatcher: GoEvent clear discards without firing listeners", "[events]") {
     entt::registry reg;
     reg.ctx().emplace<entt::dispatcher>();
 
     int fired = 0;
-    struct Counter { int* count; void on_evt(const InputEvent&) { ++(*count); } } c{&fired};
+    struct Counter { int* count; void on_evt(const GoEvent&) { ++(*count); } } c{&fired};
 
     auto& disp = reg.ctx().get<entt::dispatcher>();
-    disp.sink<InputEvent>().connect<&Counter::on_evt>(c);
-    disp.enqueue<InputEvent>({InputType::Tap, Direction::Up, 0.f, 0.f});
-    disp.clear<InputEvent>();  // R7: defensive discard, must not fire listener
-    disp.sink<InputEvent>().disconnect<&Counter::on_evt>(c);
+    disp.sink<GoEvent>().connect<&Counter::on_evt>(c);
+    disp.enqueue<GoEvent>({Direction::Up});
+    disp.clear<GoEvent>();
+    disp.sink<GoEvent>().disconnect<&Counter::on_evt>(c);
 
     CHECK(fired == 0);
 }

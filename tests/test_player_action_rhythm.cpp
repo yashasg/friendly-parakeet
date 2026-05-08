@@ -2,7 +2,7 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
 
-// ── player_input_system: rhythm mode ───────────────────────────────
+// ── semantic input pipeline: rhythm mode ───────────────────────────────
 
 TEST_CASE("player_action: rhythm mode starts window on button press from Idle", "[player_rhythm]") {
     auto reg = make_rhythm_registry();
@@ -15,7 +15,7 @@ TEST_CASE("player_action: rhythm mode starts window on button press from Idle", 
     auto btn = make_shape_button(reg, Shape::Circle);
     press_button(reg, btn);
 
-    player_input_system(reg, 0.016f);
+    run_semantic_input_tick(reg, 0.016f);
 
     CHECK(sw.target_shape == Shape::Circle);
     CHECK(sw.phase == WindowPhase::Active);
@@ -38,7 +38,7 @@ TEST_CASE("player_action: rhythm mode calculates peak_time correctly", "[player_
     auto btn = make_shape_button(reg, Shape::Triangle);
     press_button(reg, btn);
 
-    player_input_system(reg, 0.016f);
+    run_semantic_input_tick(reg, 0.016f);
 
     auto& sw = reg.get<ShapeWindow>(player);
     float expected_peak = 10.0f + song.half_window;
@@ -57,7 +57,7 @@ TEST_CASE("player_action: rhythm mode ignores same shape during Active (spam pro
     auto btn = make_shape_button(reg, Shape::Square);
     press_button(reg, btn);
 
-    player_input_system(reg, 0.016f);
+    run_semantic_input_tick(reg, 0.016f);
 
     // Same shape re-press: window timer resets for next obstacle
     CHECK(sw.phase == WindowPhase::Active);
@@ -79,7 +79,7 @@ TEST_CASE("player_action: rhythm mode interrupts Active with different shape", "
     auto btn = make_shape_button(reg, Shape::Triangle);
     press_button(reg, btn);
 
-    player_input_system(reg, 0.016f);
+    run_semantic_input_tick(reg, 0.016f);
 
     CHECK(sw.target_shape == Shape::Triangle);
     CHECK(sw.phase == WindowPhase::Active);
@@ -95,7 +95,7 @@ TEST_CASE("player_action: rhythm mode no action when no tap in queue", "[player_
     auto& sw = reg.get<ShapeWindow>(player);
 
     // No ButtonPressEvent in queue
-    player_input_system(reg, 0.016f);
+    run_semantic_input_tick(reg, 0.016f);
 
     CHECK(sw.phase == WindowPhase::Idle);
 }
@@ -111,7 +111,7 @@ TEST_CASE("player_action: rhythm mode does not interrupt MorphIn phase", "[playe
     auto btn = make_shape_button(reg, Shape::Square);
     press_button(reg, btn);
 
-    player_input_system(reg, 0.016f);
+    run_semantic_input_tick(reg, 0.016f);
 
     // MorphIn should not be interrupted (only Active can be interrupted)
     CHECK(sw.phase == WindowPhase::MorphIn);
@@ -135,7 +135,7 @@ TEST_CASE("player_action: rhythm mode ACCEPTS button press during MorphOut (#209
     auto btn = make_shape_button(reg, Shape::Triangle);
     press_button(reg, btn);
 
-    player_input_system(reg, 0.016f);
+    run_semantic_input_tick(reg, 0.016f);
 
     // MorphOut interrupted: new Active window started for Triangle
     CHECK(sw.target_shape == Shape::Triangle);
@@ -147,7 +147,7 @@ TEST_CASE("player_action: rhythm mode ACCEPTS button press during MorphOut (#209
     CHECK(reg.ctx().get<AudioQueue>().count > 0);
 }
 
-// ── player_input_system: legacy mode (no SongState) ────────────────
+// ── semantic input pipeline: legacy mode (no SongState) ────────────────
 
 TEST_CASE("player_action: legacy mode instant shape change", "[player_legacy]") {
     auto reg = make_registry();
@@ -156,7 +156,7 @@ TEST_CASE("player_action: legacy mode instant shape change", "[player_legacy]") 
     auto btn = make_shape_button(reg, Shape::Triangle);
     press_button(reg, btn);
 
-    player_input_system(reg, 0.016f);
+    run_semantic_input_tick(reg, 0.016f);
 
     auto& ps = reg.get<PlayerShape>(player);
     CHECK(ps.current == Shape::Triangle);
@@ -172,14 +172,14 @@ TEST_CASE("player_action: legacy mode no change for same shape", "[player_legacy
     auto btn = make_shape_button(reg, Shape::Circle);
     press_button(reg, btn);
 
-    player_input_system(reg, 0.016f);
+    run_semantic_input_tick(reg, 0.016f);
 
     auto& ps = reg.get<PlayerShape>(player);
     CHECK(ps.current == Shape::Circle);
     CHECK(reg.ctx().get<AudioQueue>().count == 0);
 }
 
-// ── player_input_system: swipe actions still work in rhythm mode ───
+// ── semantic input pipeline: swipe actions still work in rhythm mode ───
 
 TEST_CASE("player_action: swipe left works in rhythm mode", "[player_rhythm]") {
     auto reg = make_rhythm_registry();
@@ -187,7 +187,7 @@ TEST_CASE("player_action: swipe left works in rhythm mode", "[player_rhythm]") {
 
     reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Left});
 
-    player_input_system(reg, 0.016f);
+    run_semantic_input_tick(reg, 0.016f);
 
     CHECK(reg.get<Lane>(player).target == 0);
 }
@@ -198,7 +198,7 @@ TEST_CASE("player_action: jump disabled in rhythm mode", "[player_rhythm]") {
 
     reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Up});
 
-    player_input_system(reg, 0.016f);
+    run_semantic_input_tick(reg, 0.016f);
 
     CHECK(reg.get<VerticalState>(player).mode == VMode::Grounded);
 }
@@ -215,7 +215,7 @@ TEST_CASE("player_input: GoEvents consumed after first tick, lane lerp_t not res
     reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Left});
 
     // First tick: starts lane transition, consumes the event.
-    player_input_system(reg, 1.0f / 60.0f);
+    run_semantic_input_tick(reg, 1.0f / 60.0f);
     CHECK(lane.target == 0);
     CHECK(lane.lerp_t == 0.0f);
 
@@ -223,7 +223,7 @@ TEST_CASE("player_input: GoEvents consumed after first tick, lane lerp_t not res
     lane.lerp_t = 0.3f;
 
     // Second tick: GoEvent must NOT be replayed — lerp_t must not reset.
-    player_input_system(reg, 1.0f / 60.0f);
+    run_semantic_input_tick(reg, 1.0f / 60.0f);
     CHECK(lane.lerp_t == 0.3f);  // unchanged: event was consumed on tick 1
     CHECK(lane.target == 0);
 }
@@ -239,7 +239,7 @@ TEST_CASE("player_input: ButtonPressEvents consumed after first tick (#213)", "[
     press_button(reg, btn);
 
     // First tick: starts an Active window, consumes the event.
-    player_input_system(reg, 1.0f / 60.0f);
+    run_semantic_input_tick(reg, 1.0f / 60.0f);
     CHECK(sw.phase == WindowPhase::Active);
 
     // Record state after first tick.
@@ -249,7 +249,7 @@ TEST_CASE("player_input: ButtonPressEvents consumed after first tick (#213)", "[
     song.song_time = 6.0f;
 
     // Second tick: ButtonPressEvent must NOT be replayed — window_start must not change.
-    player_input_system(reg, 1.0f / 60.0f);
+    run_semantic_input_tick(reg, 1.0f / 60.0f);
     CHECK(sw.window_start == start_after_tick1);  // unchanged
 }
 

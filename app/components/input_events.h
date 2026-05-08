@@ -5,17 +5,6 @@
 #include "player.h"      // Shape
 #include <cstdint>
 
-// ── Raw Input Events (produced by input_system) ──────────────────────
-
-enum class InputType : uint8_t { Tap, Swipe };
-
-struct InputEvent {
-    InputType type   = InputType::Tap;
-    Direction dir    = Direction::Up;   // only meaningful for Swipe
-    float     x      = 0.0f;           // virtual-space coordinates
-    float     y      = 0.0f;
-};
-
 enum class MenuActionKind : uint8_t {
     Confirm       = 0,
     Restart       = 1,

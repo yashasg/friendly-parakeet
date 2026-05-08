@@ -2,7 +2,6 @@
 #include "version.h"
 #include "constants.h"
 #include "components/input.h"
-#include "components/input_events.h"
 #include "components/game_state.h"
 #include "components/scoring.h"
 #include "audio/audio_types.h"
@@ -174,6 +173,8 @@ void game_loop_init(entt::registry& reg,
     reg.ctx().emplace<GameOverState>();
     reg.ctx().emplace<SongResults>();
     reg.ctx().emplace<RNGState>();
+    reg.ctx().emplace<TestPlayerState>();
+    reg.ctx().emplace<SessionLog>();
 
     persistence::Paths persistence_paths;
     const auto path_result = persistence::resolve_paths(persistence_paths);
@@ -243,9 +244,6 @@ void game_loop_frame(entt::registry& reg, float& accumulator) {
 
     compute_screen_transform(reg);
     input_system(reg, raw_dt);
-    // Deliver Tier-1 InputEvents: fires gesture_routing_handle_input and
-    // enqueues GoEvent into the Tier-2 queue for fixed-step delivery.
-    reg.ctx().get<entt::dispatcher>().update<InputEvent>();
     test_player_system(reg, raw_dt);
 
     while (accumulator >= FIXED_DT) {

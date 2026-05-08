@@ -291,24 +291,17 @@ void gameplay_hud_apply_button_presses(entt::registry& reg,
     if (gs.phase != GamePhase::Playing) return;
 
     auto& disp = reg.ctx().get<entt::dispatcher>();
-    bool any_shape_press = false;
     if (circle_pressed) {
         disp.enqueue<ButtonPressEvent>(
             {ButtonPressKind::Shape, Shape::Circle, MenuActionKind::Confirm, 0});
-        any_shape_press = true;
     }
     if (square_pressed) {
         disp.enqueue<ButtonPressEvent>(
             {ButtonPressKind::Shape, Shape::Square, MenuActionKind::Confirm, 0});
-        any_shape_press = true;
     }
     if (triangle_pressed) {
         disp.enqueue<ButtonPressEvent>(
             {ButtonPressKind::Shape, Shape::Triangle, MenuActionKind::Confirm, 0});
-        any_shape_press = true;
-    }
-    if (any_shape_press) {
-        disp.update<ButtonPressEvent>();
     }
 
     if (pause_pressed) {

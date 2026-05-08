@@ -39,16 +39,13 @@ static void tick_systems(entt::registry& reg, int frames, float dt = 1.0f / 60.0
         if (song && song->playing) song->song_time += dt;
 
         test_player_system(reg, dt);
-        player_input_system(reg, dt);
+        game_state_system(reg, dt);
         shape_window_system(reg, dt);
         player_movement_system(reg, dt);
         scroll_system(reg, dt);
         collision_system(reg, dt);
         scoring_system(reg, dt);
         obstacle_despawn_system(reg, dt);
-        auto& disp = reg.ctx().get<entt::dispatcher>();
-        disp.clear<InputEvent>();
-
         // Stop early if game over
         if (reg.ctx().get<GameState>().transition_pending) break;
     }
@@ -176,7 +173,7 @@ TEST_CASE("test_player: auto-starts from title screen", "[test_player]") {
     gs.phase_timer = 1.0f;
 
     // Create a Confirm menu button (as title screen would have)
-    make_menu_button(reg, MenuActionKind::Confirm, GamePhase::Title);
+    make_menu_button(reg, MenuActionKind::Confirm);
 
     test_player_system(reg, 0.016f);
     bool has_confirm = false;

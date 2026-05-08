@@ -18,18 +18,15 @@ void game_state_system(entt::registry& reg, float dt) {
     // order: game_state → level_select → player_input
     // (see wire_input_dispatcher in input/input_dispatcher.cpp).
     //
-    // Events are enqueued earlier in the same frame by input_system (keyboard),
-    // gesture_routing (swipes), and raygui HUD controllers (buttons) before
-    // the fixed-step loop.
+    // Events are enqueued earlier in the same frame by input_system
+    // (keyboard/swipes) and raygui HUD controllers (buttons) before the
+    // fixed-step loop.
     //
     // ⚠ Do NOT call disp.clear<GoEvent/ButtonPressEvent>() before this point
     //   within a frame.  Those pre-tick systems enqueue same-frame events that
     //   must reach player_input_handle_go / player_input_handle_press through
     //   this update() call.  clear() would silently drop them before delivery.
     //
-    // player_input_system also calls update<GoEvent/ButtonPressEvent>() later
-    // in the same tick, but the queue is already empty after this drain, so
-    // those calls are no-ops — preserving the #213 no-replay invariant.
     auto& disp = reg.ctx().get<entt::dispatcher>();
     disp.update<GoEvent>();
     disp.update<ButtonPressEvent>();

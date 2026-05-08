@@ -5,7 +5,6 @@
 #include "components/transform.h"
 #include "components/player.h"
 #include "components/obstacle.h"
-#include "components/obstacle.h"
 #include "components/input.h"
 #include "components/input_events.h"
 #include "components/game_state.h"
@@ -179,7 +178,7 @@ TEST_CASE("Bench: player_input + movement", "[bench]") {
         disp.enqueue<ButtonPressEvent>({ButtonPressKind::Shape, Shape::Triangle});
         disp.enqueue<GoEvent>({Direction::Right});
         meter.measure([&] {
-            player_input_system(reg, DT);
+            game_state_system(reg, DT);
             player_movement_system(reg, DT);
         });
     };
@@ -227,7 +226,6 @@ TEST_CASE("Bench: full frame (typical)", "[bench]") {
         spawn_particles(reg, 20);
         meter.measure([&] {
             game_state_system(reg, DT);
-            player_input_system(reg, DT);
             player_movement_system(reg, DT);
             scroll_system(reg, DT);
             motion_system(reg, DT);
@@ -247,7 +245,6 @@ TEST_CASE("Bench: full frame (stress)", "[bench]") {
         spawn_particles(reg, 50);
         meter.measure([&] {
             game_state_system(reg, DT);
-            player_input_system(reg, DT);
             player_movement_system(reg, DT);
             scroll_system(reg, DT);
             motion_system(reg, DT);

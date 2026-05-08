@@ -79,19 +79,9 @@ inline PressCapture drain_press_events(entt::registry& reg) {
     return cap;
 }
 
-// ── Input injection helpers (#333) ──────────────────────────────────────────
-// Enqueue a raw InputEvent to the dispatcher for testing.  Callers must then
-// call disp.update<InputEvent>() (or run_input_tier1) to fire the listeners.
-inline void push_input(entt::registry& reg, InputType type,
-                       float x = 0.f, float y = 0.f,
-                       Direction dir = Direction::Up) {
-    reg.ctx().get<entt::dispatcher>().enqueue<InputEvent>({type, dir, x, y});
-}
-
-// Fire the Tier-1 InputEvent listeners (gesture_routing).
-// Equivalent to what game_loop_frame does after input_system.
-inline void run_input_tier1(entt::registry& reg) {
-    reg.ctx().get<entt::dispatcher>().update<InputEvent>();
+// ── Semantic input injection helpers ─────────────────────────────────────────
+inline void push_go(entt::registry& reg, Direction dir) {
+    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({dir});
 }
 
 struct TestShapeButtonData {
@@ -117,6 +107,10 @@ inline void press_button(entt::registry& reg, entt::entity btn) {
         disp.enqueue<ButtonPressEvent>({ButtonPressKind::Menu, Shape::Circle,
                                         ma.kind, ma.index});
     }
+}
+
+inline void run_semantic_input_tick(entt::registry& reg, float dt = 0.016f) {
+    game_state_system(reg, dt);
 }
 
 // Sets up a registry with rhythm singletons included
@@ -257,8 +251,7 @@ inline entt::entity make_shape_button(entt::registry& reg, Shape shape) {
 }
 
 inline entt::entity make_menu_button(entt::registry& reg, MenuActionKind kind,
-                                      GamePhase phase, uint8_t index = 0) {
-    (void)phase;
+                                      uint8_t index = 0) {
     auto btn = reg.create();
     reg.emplace<TestMenuButtonData>(btn, kind, index);
     return btn;

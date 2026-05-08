@@ -26,12 +26,8 @@ void test_player_init(entt::registry& reg, TestPlayerSkill skill,
         if (std::strcmp(LevelSelectState::DIFFICULTY_KEYS[d], difficulty) == 0)
             { lss.selected_difficulty = d; break; }
 
-    auto* tp_state_ptr = reg.ctx().find<TestPlayerState>();
-    if (!tp_state_ptr) {
-        tp_state_ptr = &reg.ctx().emplace<TestPlayerState>();
-    }
-    *tp_state_ptr = TestPlayerState{};
-    auto& tp_state = *tp_state_ptr;
+    auto& tp_state = reg.ctx().get<TestPlayerState>();
+    tp_state = TestPlayerState{};
     tp_state.skill  = skill;
     tp_state.active = true;
     tp_state.rng.seed(static_cast<unsigned>(std::time(nullptr)));
@@ -40,14 +36,9 @@ void test_player_init(entt::registry& reg, TestPlayerSkill skill,
     TraceLog(LOG_INFO, "TEST PLAYER: skill=%s",
              skill_names[static_cast<int>(skill)]);
 
-    auto* slog_ptr = reg.ctx().find<SessionLog>();
-    if (!slog_ptr) {
-        slog_ptr = &reg.ctx().emplace<SessionLog>();
-    } else {
-        session_log_close(*slog_ptr);
-        *slog_ptr = SessionLog{};
-    }
-    auto& slog = *slog_ptr;
+    auto& slog = reg.ctx().get<SessionLog>();
+    session_log_close(slog);
+    slog = SessionLog{};
     const double runtime_seconds = GetTime();
     const auto runtime_millis = static_cast<unsigned long long>(runtime_seconds * 1000.0);
     const uint32_t sequence = ++g_test_player_log_sequence;

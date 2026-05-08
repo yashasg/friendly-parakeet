@@ -46,9 +46,6 @@ void input_system(entt::registry& reg, float raw_dt) {
         SetGesturesEnabled(kGameplayGestureFlags);
         input.gestures_configured = true;
     }
-    // Discard any InputEvents that were not consumed before this frame
-    // (defensive guard — R7: phase transitions can leave events queued).
-    disp.clear<InputEvent>();
     input.touch_down = false;
     input.touch_up   = false;
     input.click      = false;
@@ -145,13 +142,8 @@ void input_system(entt::registry& reg, float raw_dt) {
         input.duration += raw_dt;
     }
 
-    // Touch/mouse gesture → InputEvent enqueued to dispatcher; delivered to
-    // gesture_routing_handle_input via
-    // disp.update<InputEvent>() in game_loop_frame (#333).
-    if (input.click) {
-        disp.enqueue<InputEvent>(InputEvent{InputType::Tap, Direction::Up,
-                                            input.end_x, input.end_y});
-    } else if (input.touch_up) {
+    // Touch swipe gestures enqueue semantic GoEvent directly.
+    if (input.touch_up) {
         int gesture = GESTURE_NONE;
         if (IsGestureDetected(GESTURE_SWIPE_RIGHT)) {
             gesture = GESTURE_SWIPE_RIGHT;
@@ -167,23 +159,17 @@ void input_system(entt::registry& reg, float raw_dt) {
             gesture = GetGestureDetected();
         }
 
-        InputEvent event{InputType::Tap, Direction::Up, input.end_x, input.end_y};
         const float zone_y = constants::SCREEN_H * constants::SWIPE_ZONE_SPLIT;
         if (input.start_y < zone_y) {
             if ((gesture & GESTURE_SWIPE_RIGHT) != 0) {
-                event = InputEvent{InputType::Swipe, Direction::Right,
-                                   input.end_x, input.end_y};
+                disp.enqueue<GoEvent>(GoEvent{Direction::Right});
             } else if ((gesture & GESTURE_SWIPE_LEFT) != 0) {
-                event = InputEvent{InputType::Swipe, Direction::Left,
-                                   input.end_x, input.end_y};
+                disp.enqueue<GoEvent>(GoEvent{Direction::Left});
             } else if ((gesture & GESTURE_SWIPE_UP) != 0) {
-                event = InputEvent{InputType::Swipe, Direction::Up,
-                                   input.end_x, input.end_y};
+                disp.enqueue<GoEvent>(GoEvent{Direction::Up});
             } else if ((gesture & GESTURE_SWIPE_DOWN) != 0) {
-                event = InputEvent{InputType::Swipe, Direction::Down,
-                                   input.end_x, input.end_y};
+                disp.enqueue<GoEvent>(GoEvent{Direction::Down});
             }
         }
-        disp.enqueue<InputEvent>(event);
     }
 }

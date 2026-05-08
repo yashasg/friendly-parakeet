@@ -117,6 +117,7 @@ TEST_CASE("redfoot/#168: collision flags MissedABeat for a missed shape gate",
     reg.ctx().emplace<EnergyState>();
     reg.ctx().emplace<ScoreState>();
     reg.ctx().emplace<SongResults>();
+    reg.ctx().emplace<SongState>();
     reg.ctx().emplace<GameOverState>();
 
     spawn_aligned_player(reg, constants::PLAYER_Y);

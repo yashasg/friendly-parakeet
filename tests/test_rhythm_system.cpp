@@ -411,7 +411,7 @@ TEST_CASE("player_action: button press starts window in rhythm mode", "[rhythm][
     auto player = make_rhythm_player(reg);
     auto btn = make_shape_button(reg, Shape::Triangle);
     press_button(reg, btn);
-    player_input_system(reg, 0.016f);
+    run_semantic_input_tick(reg, 0.016f);
     auto& sw = reg.get<ShapeWindow>(player);
     CHECK(sw.phase == WindowPhase::Active);
     CHECK(sw.target_shape == Shape::Triangle);
@@ -424,7 +424,7 @@ TEST_CASE("player_action: press_time recorded correctly", "[rhythm][action]") {
     song.song_time = 5.0f;
     auto btn = make_shape_button(reg, Shape::Circle);
     press_button(reg, btn);
-    player_input_system(reg, 0.016f);
+    run_semantic_input_tick(reg, 0.016f);
     auto& sw = reg.get<ShapeWindow>(player);
     CHECK_THAT(sw.press_time, WithinAbs(5.0f, 0.001f));
 }
@@ -438,7 +438,7 @@ TEST_CASE("player_action: same shape during active is ignored", "[rhythm][action
     ps.current = Shape::Triangle; sw.target_shape = Shape::Triangle;
     auto btn = make_shape_button(reg, Shape::Triangle);
     press_button(reg, btn);
-    player_input_system(reg, 0.016f);
+    run_semantic_input_tick(reg, 0.016f);
     CHECK(sw.phase == WindowPhase::Active);
 }
 
@@ -451,7 +451,7 @@ TEST_CASE("player_action: different shape mid-window restarts", "[rhythm][action
     ps.current = Shape::Triangle; sw.target_shape = Shape::Triangle;
     auto btn = make_shape_button(reg, Shape::Circle);
     press_button(reg, btn);
-    player_input_system(reg, 0.016f);
+    run_semantic_input_tick(reg, 0.016f);
     CHECK(sw.phase == WindowPhase::Active);
     CHECK(sw.target_shape == Shape::Circle);
 }
@@ -459,7 +459,7 @@ TEST_CASE("player_action: different shape mid-window restarts", "[rhythm][action
 TEST_CASE("player_action: no action with empty queue", "[rhythm][action]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
-    player_input_system(reg, 0.016f);
+    run_semantic_input_tick(reg, 0.016f);
     auto& sw = reg.get<ShapeWindow>(player);
     CHECK(sw.phase == WindowPhase::Idle);
 }
@@ -469,7 +469,7 @@ TEST_CASE("player_action: legacy mode instant shape change", "[rhythm][action]")
     auto player = make_player(reg);
     auto btn = make_shape_button(reg, Shape::Triangle);
     press_button(reg, btn);
-    player_input_system(reg, 0.016f);
+    run_semantic_input_tick(reg, 0.016f);
     auto& ps = reg.get<PlayerShape>(player);
     auto& sw = reg.get<ShapeWindow>(player);
     CHECK(ps.current == Shape::Triangle);
@@ -872,11 +872,11 @@ TEST_CASE("window_scaling: graded resets on new window", "[rhythm][window_scalin
     sw.graded = true;
     sw.window_scale = 0.5f;
 
-    // Start a new window via player_input_system
+    // Start a new window via semantic input drain
     auto btn = make_shape_button(reg, Shape::Triangle);
     press_button(reg, btn);
     sw.phase = WindowPhase::Idle;
-    player_input_system(reg, 0.016f);
+    run_semantic_input_tick(reg, 0.016f);
 
     CHECK_FALSE(sw.graded);
     CHECK(sw.window_scale == 1.0f);

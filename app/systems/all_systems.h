@@ -21,7 +21,6 @@ void beat_log_system(entt::registry& reg, float dt);
 void beat_scheduler_system(entt::registry& reg, float dt);
 
 // Phase 4: Player
-void player_input_system(entt::registry& reg, float dt);
 void shape_window_system(entt::registry& reg, float dt);
 void player_movement_system(entt::registry& reg, float dt);
 

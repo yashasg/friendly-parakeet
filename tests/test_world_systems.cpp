@@ -133,7 +133,7 @@ TEST_CASE("cleanup: non-obstacle entities are untouched", "[cleanup]") {
 TEST_CASE("game_state: title to level select on touch", "[gamestate]") {
     auto reg = make_registry();
     reg.ctx().get<GameState>().phase = GamePhase::Title;
-    auto btn = make_menu_button(reg, MenuActionKind::Confirm, GamePhase::Title);
+    auto btn = make_menu_button(reg, MenuActionKind::Confirm);
     press_button(reg, btn);
 
     game_state_system(reg, 0.016f);
@@ -148,7 +148,7 @@ TEST_CASE("game_state: game over button choice after delay", "[gamestate]") {
     auto& gs = reg.ctx().get<GameState>();
     gs.phase = GamePhase::GameOver;
     gs.phase_timer = 0.5f;
-    auto btn = make_menu_button(reg, MenuActionKind::GoLevelSelect, GamePhase::GameOver);
+    auto btn = make_menu_button(reg, MenuActionKind::GoLevelSelect);
     press_button(reg, btn);
 
     game_state_system(reg, 0.016f);
@@ -163,7 +163,7 @@ TEST_CASE("game_state: game over ignores touch during delay", "[gamestate]") {
     auto& gs = reg.ctx().get<GameState>();
     gs.phase = GamePhase::GameOver;
     gs.phase_timer = 0.2f;  // within 0.4s delay
-    auto btn = make_menu_button(reg, MenuActionKind::Confirm, GamePhase::GameOver);
+    auto btn = make_menu_button(reg, MenuActionKind::Confirm);
     press_button(reg, btn);
 
     game_state_system(reg, 0.016f);
@@ -256,7 +256,7 @@ TEST_CASE("game_state: paused to playing on touch", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
     gs.phase = GamePhase::Paused;
-    auto btn = make_menu_button(reg, MenuActionKind::Confirm, GamePhase::Paused);
+    auto btn = make_menu_button(reg, MenuActionKind::Confirm);
     press_button(reg, btn);
 
     game_state_system(reg, 0.016f);
