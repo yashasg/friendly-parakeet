@@ -57,3 +57,14 @@ Key patterns learned: phantom bench fixtures, structural view optimization dange
 - ECS components & resource RAII — KEEP (core architecture)
 
 **Status:** Ready for implementation phase on text_renderer and raylib_gesture_input. Architecture team to review shape_vertices before any deletion decision.
+
+### 2026-05-08T17:25:41Z — Raylib wrapper deletion (sync implementation)
+
+**Task:** Delete approved raylib wrappers `text_renderer` and `raylib_gesture_input`; update direct raylib call sites; rebuild and validate.
+
+**Scope Completed**
+- Deleted: `app/ui/text_renderer.h/cpp`, `app/input/raylib_gesture_input.h`, `tests/test_raylib_gesture_input.cpp`
+- Updated call sites: `app/game_loop.cpp`, `app/systems/ui_render_system.cpp`, `app/systems/input_system.cpp`, `CMakeLists.txt`
+- Build verification: blocked by pre-existing undefined constant `constants::PTS_LANE_PUSH` in `app/entities/obstacle_entity.cpp` (out of scope for cleanup task)
+
+**Status:** Implementation complete. Awaiting constants fix (routing to Coordinator for assignment).
