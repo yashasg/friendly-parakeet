@@ -529,3 +529,150 @@ No implementation performed in this pass.
 
 ## Parallel review convergence note
 Parallel C++ and architecture passes converged on: (a) obstacle counter cleanup, (b) singleton management cleanup, (c) preserving explicit ordering and collect-then-remove safety, and (d) treating organizer/group migrations as design-gated rather than immediate cleanup.
+
+### 2026-05-08T13:41:05.026-07:00: User directive
+**By:** yashasg (via Copilot)
+**What:** Do not preserve local wall-clock time helpers for logging; prefer song time or time since game start, using values already provided by raylib/game runtime APIs.
+**Why:** User request — captured for team memory
+
+### 2026-05-08T13:43:06.866-07:00: User directive
+**By:** yashasg (via Copilot)
+**What:** Use `docs/raylib/cheatsheet.md` as the local reference for available raylib APIs when evaluating raylib-based cleanup and replacements.
+**Why:** User request — captured for team memory
+
+### 2026-05-08T13:44:53.252-07:00: Keaton utility cleanup implementation
+
+---
+date: 2026-05-08T13:44:53.252-07:00
+author: keaton
+topic: utility-cleanup-implementation
+---
+
+## Context
+Approved utility cleanup required deleting dead `app/util` surfaces while preserving behavior in session flow, persistence status handling, and runtime game-state transitions.
+
+## Decision
+- Replaced `ObstacleCounter` signal bookkeeping with direct `reg.view<ObstacleTag>().empty()` checks in `game_state_system`, and removed counter wiring from session/test setup.
+- Replaced `fs_utils` wrappers with raylib `DirectoryExists`/`MakeDirectory` checks at persistence callsites, returning `DirectoryCreateFailed` with a concrete `std::errc::io_error` on failure.
+- Removed `enum_names` and `test_player_helpers` by inlining owner-local helpers in `test_player_system.cpp` and switching tests to direct `magic_enum::enum_name(...)` usage.
+- Removed local wall-clock timestamping (`safe_localtime`) from session/test logging; log headers now use runtime seconds and test-player log filenames use runtime milliseconds + monotonic sequence to avoid collisions without wall-clock time.
+
+## Validation
+- Stale-reference sweep over `app/`, `tests/`, `benchmarks/`, and `CMakeLists.txt` found no remaining includes/symbol references to deleted utility files.
+- Full validation passed: `VCPKG_ROOT=/Users/yashasgujjar/vcpkg ./build.sh && ./build/shapeshifter_tests` (`2052 assertions`, `754 test cases`).
+
+### 2026-05-08T13:44:53.252-07:00: Baer utility cleanup validation gate
+
+---
+date: 2026-05-08T13:44:53.252-07:00
+author: baer
+topic: utility-cleanup-validation-gate
+---
+
+## Context
+Validation for utility cleanup was requested while cleanup targets are still present in-tree.
+
+## Observation
+- Cleanup targets still exist: `app/util/obstacle_counter.*`, `fs_utils.h`, `enum_names.h`, `safe_localtime.h`, `test_player_helpers.h`.
+- Stale-reference sweep shows active dependencies in `app/` and `tests/` for all five surfaces.
+- Full validation currently passes (`2063 assertions`, `758 test cases`), so this is pre-cleanup baseline, not post-cleanup verification.
+
+## Decision
+Treat this run as **preflight baseline**. Post-cleanup validation must be rerun after Keaton lands production rewires/deletions.
+
+## Next Validation Gate
+After cleanup lands, require:
+1. Zero references/includes for deleted headers/symbols across `app/`, `tests/`, `benchmarks/`, `CMakeLists.txt`.
+2. Focused checks for signal lifecycle, test-player helper coupling removal, persistence directory-status paths, enum-name output replacement, and session/test logging time-source behavior.
+3. Full build+tests green.
+
+### 2026-05-08T13:57:50.741-07:00: Keaton systems raylib audit
+
+**When:** 2026-05-08T13:57:50.741-07:00  
+**Requested by:** yashasg  
+**Scope:** Read-only audit of all `app/systems/` files against `docs/raylib/cheatsheet.md`  
+**Implementation status:** No product code changes made
+
+[Full audit findings attached as separate decision entries below]
+
+**Safe candidates to consider after green signal**
+1. Collapse gesture detection in `input_system.cpp` to one `GetGestureDetected()` read.
+2. Replace `popup_display_system.cpp` manual alpha clamp with raymath `Clamp`.
+3. Replace `collision_system.cpp` manual precision clamp with raymath `Clamp`.
+4. Optionally replace floor ring rlgl vertex emission with two `DrawTriangle3D(...)` calls per segment, after measuring.
+
+**Design-gated candidates**
+1. Textured floor-ring architecture using `LoadRenderTexture` + `DrawRing` + textured floor mesh.
+2. Removing `screen_to_virtual(...)` in favor of raylib mouse scale/camera mapping across all input.
+3. Replacing `platform_get_display_size(...)` with raylib size APIs after web canvas behavior is redesigned.
+4. Replacing audio/haptic/session-log queues with direct raylib APIs; current queue/lifecycle/testability contracts block direct substitution.
+5. Replacing owned-model `DrawMesh(...)` paths with `DrawModel/DrawModelEx`; tint, transform, and ownership semantics must be proven first.
+
+### 2026-05-08T13:57:50.741-07:00: Baer systems raylib audit test plan
+
+**Date:** 2026-05-08T13:57:50.741-07:00  
+**By:** Baer  
+**Requested by:** yashasg  
+**Scope:** Read-only regression/test audit for raylib replacement candidates across `app/systems/`, using `docs/raylib/cheatsheet.md` as the API reference. No product implementation performed.
+
+**Executive verdict:** Proceed only in phases. The already-approved direct substitutions (`DrawLine3D`, `DrawPoly`, `LoadFileText`) are testable with stale-reference sweeps plus build/tests, but the remaining systems cleanup is not uniformly safe.
+
+[Comprehensive coverage matrix and validation gates in separate decision log]
+
+**Key high-risk behavior that must be preserved**
+1. Input event timing must be delivered once per frame; no replay.
+2. Touch/mouse source isolation on web/mobile.
+3. Letterbox mapping must preserve virtual 720x1280 coordinate space.
+4. Focus-loss pause uses edge-triggered `IsWindowFocused()`.
+5. GPU headless safety for render targets/meshes.
+6. Render pass ordering: floor → flush → disable depth → world/effects → flush → re-enable depth → EndMode3D.
+7. Floor ring annuli live in world XZ space, not screen-space 2D.
+8. Audio stream pumping `UpdateMusicStream()` runs every frame after music starts.
+9. Song-time authority for scroll, shape windows, beat spawning, collision timing (not frame-accumulated time).
+10. Terminal phase latch: finished songs must not restart or loop.
+11. Bounded side-effect queues: audio/haptic drop when full, drain once per frame.
+12. Collect-then-remove for scoring/despawn/popup/particle mutations (no active-iteration mutation).
+13. Strict collision edges for lane overlap and beat-line crossing (raylib helpers may differ at touching boundaries).
+14. High-score persistence semantics: terminal phase owns update/save/dirty behavior.
+
+### 2026-05-08T13:57:50.741-07:00: McManus systems raylib audit
+
+**When:** 2026-05-08T13:57:50.741-07:00  
+**Requested by:** yashasg  
+**Scope:** `app/systems/*` gameplay/rhythm/scoring/obstacle audit against `docs/raylib/cheatsheet.md`  
+**Implementation status:** No code changes made.
+
+[Audit findings cover collision/scoring/audio/haptic/coordinate systems; no implementation performed]
+
+**Safe direct replacements identified:**
+- Lane overlap: Replace `lane_overlaps` manual x-interval with `CheckCollisionRecs(Rectangle, Rectangle)` after boundary-parity testing.
+- Precision clamp: Replace manual `if` clamps in `collision_system.cpp::grade_shape_timing` with raymath `Clamp(precision, 0.0f, 1.0f)`.
+- Alpha clamp: Replace manual `if` clamps in `popup_display_system.cpp` with raymath `Clamp(alpha_ratio, 0.0f, 1.0f)`.
+
+**Design-gated candidates:**
+- Audio SFX dispatch callback removal (requires test injection architecture review).
+- Song playback state duplication (`MusicContext::started` vs `IsMusicStreamPlaying()`; design-gated because pause/resume semantics).
+- Display-size helper seam (`platform_get_display_size` → raylib `GetScreenWidth/Height`; web canvas sizing blocks this).
+- Gamepad rumble as additive haptic backend (not replacement for iOS/phone haptics).
+
+### 2026-05-08T13:57:50.741-07:00: Fenster systems raylib audit
+
+**When:** 2026-05-08T13:57:50.741-07:00  
+**By:** Fenster  
+**Requested by:** yashasg  
+**Scope:** `app/systems/` with extra focus on audio, song playback, beat scheduling/logging, haptics, and directly referenced audio/platform helpers.  
+**Implementation status:** No product code changes made.
+
+[Audit findings cover audio queue dispatch, song stream playback state, haptic platform bridge, collision lane overlap, popup alpha, floor ring rendering, and screen-to-virtual coordinate mapping]
+
+**Safe cleanup candidates:**
+1. Popup alpha `Clamp`/`Fade` (raylib API).
+2. Collision lane overlap via `CheckCollisionRecs()` with edge tests.
+
+**Design-gated review required before implementation:**
+1. Audio callback removal/direct `PlaySound()` path (removes test injection seam).
+2. Song playback state/duration authority (`IsMusicStreamPlaying`, `SeekMusicStream`, `GetMusicTimeLength`; pause/resume semantics block this).
+3. Gamepad rumble as additive non-iOS haptic path.
+4. Floor rendering architecture pass for `DrawRing()` on a floor texture (high visual regression risk).
+5. Screen-to-virtual coordinate system as raylib `Camera2D` + `GetScreenToWorld2D()` (affects input/UI hit-testing).
+
