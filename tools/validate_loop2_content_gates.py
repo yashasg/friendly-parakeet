@@ -18,6 +18,8 @@ DEFAULT_DIR = REPO_ROOT / "content" / "beatmaps"
 
 GAP_MONOTONY_CAP = {"medium": 0.40, "hard": 0.35}
 SAME_SHAPE_RUN_CAP = {"medium": 3, "hard": 3}
+SHAPE_CLUSTER_GAP = 3
+DENSE_CLUSTER_WARN_SIZE = {"medium": 3, "hard": 3}
 GAP_ONE_MAX_RUN = {"easy": 0, "medium": 2, "hard": 3}
 GAP_ONE_SHARE_CAP = {"medium": 0.20, "hard": 0.20}
 MIN_IOI_MS = {"easy": 700.0, "medium": 380.0, "hard": 300.0}
@@ -45,6 +47,43 @@ def _longest_same_shape_run(ordered: list[dict]) -> int:
     return longest
 
 
+def _shape_gate_clusters(ordered: list[dict], min_gap: int = SHAPE_CLUSTER_GAP) -> list[list[dict]]:
+    clusters: list[list[dict]] = []
+    current: list[dict] = []
+    prev_beat: int | None = None
+    for beat in ordered:
+        if beat.get("kind") != "shape_gate":
+            continue
+        beat_idx = beat.get("beat")
+        if not isinstance(beat_idx, int):
+            continue
+        if prev_beat is None or beat_idx - prev_beat >= min_gap:
+            if current:
+                clusters.append(current)
+            current = [beat]
+        else:
+            current.append(beat)
+        prev_beat = beat_idx
+    if current:
+        clusters.append(current)
+    return clusters
+
+
+def _longest_same_shape_cluster_run(clusters: list[list[dict]]) -> int:
+    longest = 0
+    current = 0
+    prev_shape = None
+    for cluster in clusters:
+        shape = cluster[0].get("shape")
+        if shape == prev_shape:
+            current += 1
+        else:
+            current = 1
+            prev_shape = shape
+        longest = max(longest, current)
+    return longest
+
+
 def _longest_gap_one_run(gaps: list[int]) -> int:
     longest = 0
     current = 0
@@ -61,6 +100,8 @@ def calculate_content_metrics(
     beats: list[dict], beat_times: list[float] | None = None, expected_count: int | None = None
 ) -> dict[str, float | int | bool | None]:
     ordered = _ordered_valid_beats(beats)
+    shape_clusters = _shape_gate_clusters(ordered)
+    cluster_sizes = [len(cluster) for cluster in shape_clusters]
     beat_indices = [beat["beat"] for beat in ordered]
     gaps = [beat_indices[i] - beat_indices[i - 1] for i in range(1, len(beat_indices))]
     gap_counts = Counter(gaps)
@@ -100,6 +141,10 @@ def calculate_content_metrics(
         "gap_one_share": (gap_counts.get(1, 0) / len(gaps)) if gaps else 0.0,
         "gap_one_run": _longest_gap_one_run(gaps),
         "longest_same_shape_run": _longest_same_shape_run(ordered) if ordered else 0,
+        "longest_same_shape_cluster_run": _longest_same_shape_cluster_run(shape_clusters) if shape_clusters else 0,
+        "shape_cluster_count": len(shape_clusters),
+        "max_shape_cluster_size": max(cluster_sizes) if cluster_sizes else 0,
+        "shape_clusters_over_warn": 0,
         "triangle_share": (shape_counts.get("triangle", 0) / total_shape_gates) if total_shape_gates else 0.0,
         "circle_share": (shape_counts.get("circle", 0) / total_shape_gates) if total_shape_gates else 0.0,
         "min_ioi_ms": min_ioi_ms,
@@ -128,9 +173,14 @@ def evaluate_content_gates(metrics: dict[str, float | int | bool | None], diffic
         )
 
     run_cap = SAME_SHAPE_RUN_CAP.get(difficulty)
-    if run_cap is not None and int(metrics["longest_same_shape_run"]) > run_cap:
+    cluster_run = int(metrics.get("longest_same_shape_cluster_run", metrics.get("longest_same_shape_run", 0)))
+    warn_size = DENSE_CLUSTER_WARN_SIZE.get(difficulty)
+    oversized_cluster_present = (
+        warn_size is not None and int(metrics.get("max_shape_cluster_size", 0)) > warn_size
+    )
+    if run_cap is not None and not oversized_cluster_present and cluster_run > run_cap:
         findings.append(
-            f"same-shape contiguous run {int(metrics['longest_same_shape_run'])} exceeds cap {run_cap}"
+            f"same-shape cluster-chain run {cluster_run} exceeds cap {run_cap}"
         )
 
     gap_one_run_cap = GAP_ONE_MAX_RUN.get(difficulty)
@@ -163,11 +213,31 @@ def evaluate_content_gates(metrics: dict[str, float | int | bool | None], diffic
     return findings
 
 
-def validate_beatmap(path: Path) -> list[tuple[str, dict[str, float | int | bool | None], list[str]]]:
+def evaluate_cluster_advisories(
+    metrics: dict[str, float | int | bool | None], difficulty: str
+) -> list[str]:
+    advisories: list[str] = []
+    warn_size = DENSE_CLUSTER_WARN_SIZE.get(difficulty)
+    if warn_size is None:
+        return advisories
+    max_cluster = int(metrics.get("max_shape_cluster_size", 0))
+    if max_cluster > warn_size:
+        advisories.append(
+            f"dense readability cluster size={max_cluster} (> {warn_size}) may inflate raw shape_run={int(metrics.get('longest_same_shape_run', 0))}"
+        )
+        advisories.append(
+            "same-shape cluster-chain gate treated as advisory while oversized dense clusters are present"
+        )
+    return advisories
+
+
+def validate_beatmap(
+    path: Path,
+) -> list[tuple[str, dict[str, float | int | bool | None], list[str], list[str]]]:
     beatmap = json.loads(path.read_text())
     difficulties = beatmap.get("difficulties", {})
     beat_times = beatmap.get("beat_times", [])
-    results: list[tuple[str, dict[str, float | int | bool | None], list[str]]] = []
+    results: list[tuple[str, dict[str, float | int | bool | None], list[str], list[str]]] = []
 
     for difficulty in ("easy", "medium", "hard"):
         if difficulty not in difficulties:
@@ -176,8 +246,14 @@ def validate_beatmap(path: Path) -> list[tuple[str, dict[str, float | int | bool
         beats = payload.get("beats", [])
         expected_count = payload.get("count")
         metrics = calculate_content_metrics(beats, beat_times=beat_times, expected_count=expected_count)
+        warn_size = DENSE_CLUSTER_WARN_SIZE.get(difficulty)
+        if warn_size is not None:
+            metrics["shape_clusters_over_warn"] = sum(
+                1 for cluster in _shape_gate_clusters(_ordered_valid_beats(beats)) if len(cluster) > warn_size
+            )
         findings = evaluate_content_gates(metrics, difficulty)
-        results.append((difficulty, metrics, findings))
+        advisories = evaluate_cluster_advisories(metrics, difficulty)
+        results.append((difficulty, metrics, findings, advisories))
 
     return results
 
@@ -203,7 +279,7 @@ def main(argv: list[str] | None = None) -> int:
 
     for path in paths:
         print(f"\n== {path.name} ==")
-        for difficulty, metrics, findings in validate_beatmap(path):
+        for difficulty, metrics, findings, advisories in validate_beatmap(path):
             status = "PASS" if not findings else f"FAIL ({len(findings)})"
             print(
                 f"  [{difficulty:6s}] {status} "
@@ -212,11 +288,16 @@ def main(argv: list[str] | None = None) -> int:
                 f"gap1={float(metrics['gap_one_share']):.1%} "
                 f"gap1_run={int(metrics['gap_one_run'])} "
                 f"shape_run={int(metrics['longest_same_shape_run'])} "
+                f"shape_cluster_run={int(metrics['longest_same_shape_cluster_run'])} "
+                f"max_shape_cluster={int(metrics['max_shape_cluster_size'])} "
+                f"dense_clusters={int(metrics['shape_clusters_over_warn'])} "
                 f"tri={float(metrics['triangle_share']):.1%} "
                 f"cir={float(metrics['circle_share']):.1%}"
             )
             for finding in findings:
                 print(f"      - {finding}")
+            for advisory in advisories:
+                print(f"      ~ {advisory}")
             total_findings += len(findings)
 
     if total_findings == 0:
