@@ -17,7 +17,6 @@ struct ScoreState {
 
 struct ScorePopup {
     int32_t                    value       = 0;
-    uint8_t                    tier        = 0;    // burnout tier (legacy)
     std::optional<TimingTier>  timing_tier = std::nullopt;
     float                      remaining   = 0.0f;
     float                      max_time    = 0.0f;

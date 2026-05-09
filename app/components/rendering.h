@@ -36,7 +36,7 @@ struct ScreenTransform {
 }
 
 // ── Model-to-world transform ────────────────────────────────────────────────
-// Computed by game_camera_system each frame from Position/Size/Shape.
+// Computed by game_camera_system each frame from WorldTransform/DrawSize/Shape.
 // Consumed by game_render_system for DrawMesh calls.
 // MeshType tells the render system which GPU mesh to draw.
 enum class MeshType : uint8_t { Shape, Slab, Quad };
@@ -50,11 +50,11 @@ struct ModelTransform {
 
 // Visual mesh child of a logical entity (e.g., obstacle slabs, ghost shapes).
 // Created at spawn time by game object factories. game_camera_system reads
-// parent Position + child offsets to compute ModelTransform each frame.
+// parent WorldTransform + child offsets to compute ModelTransform each frame.
 struct MeshChild {
     entt::entity parent;
     float x;             // absolute X position in game coords
-    float z_offset;      // offset from parent Position.y (scroll axis)
+    float z_offset;      // offset from parent WorldTransform.position.y (scroll axis)
     float width;         // slab width (game coords)
     float depth;         // slab depth (game coords)
     float height;        // slab height (game coords)

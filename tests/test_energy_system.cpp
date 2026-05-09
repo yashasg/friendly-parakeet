@@ -34,16 +34,14 @@ TEST_CASE("energy: pending miss drain is applied by energy_system", "[energy]") 
     auto& energy = reg.ctx().get<EnergyState>();
     energy.energy = 0.8f;
     auto& pending = reg.ctx().emplace<PendingEnergyEffects>();
-    pending.delta = -constants::ENERGY_DRAIN_MISS;
-    pending.flash = true;
+    pending.events.push_back({-constants::ENERGY_DRAIN_MISS, true});
 
     energy_system(reg, 0.016f);
 
     CHECK_THAT(energy.energy, Catch::Matchers::WithinAbs(0.8f - constants::ENERGY_DRAIN_MISS, 0.0001f));
     CHECK(energy.flash_timer > 0.0f);
     CHECK(energy.flash_timer < constants::ENERGY_FLASH_DURATION);
-    CHECK(pending.delta == 0.0f);
-    CHECK_FALSE(pending.flash);
+    CHECK(pending.events.empty());
 }
 
 TEST_CASE("energy: pending perfect recovery is applied by energy_system", "[energy]") {
@@ -51,13 +49,13 @@ TEST_CASE("energy: pending perfect recovery is applied by energy_system", "[ener
     auto& energy = reg.ctx().get<EnergyState>();
     energy.energy = 0.2f;
     auto& pending = reg.ctx().emplace<PendingEnergyEffects>();
-    pending.delta = constants::ENERGY_RECOVER_PERFECT;
+    pending.events.push_back({constants::ENERGY_RECOVER_PERFECT, false});
 
     energy_system(reg, 0.016f);
 
     CHECK_THAT(energy.energy,
                Catch::Matchers::WithinAbs(0.2f + constants::ENERGY_RECOVER_PERFECT, 0.0001f));
-    CHECK(pending.delta == 0.0f);
+    CHECK(pending.events.empty());
 }
 
 TEST_CASE("energy: pending events clamp each step in order", "[energy]") {

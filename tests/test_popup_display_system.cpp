@@ -313,7 +313,7 @@ TEST_CASE("spawn_score_popup: entity has MotionVelocity {0, -80}",
     CHECK(mv.value.y == -80.0f);
 }
 
-TEST_CASE("spawn_score_popup: ScorePopup has correct points, tier=0, duration",
+TEST_CASE("spawn_score_popup: ScorePopup has correct points and duration",
           "[popup_entity][issue349]") {
     entt::registry reg;
     auto e = spawn_score_popup(reg, {0.0f, 0.0f, 350, TimingTier::Good});
@@ -321,7 +321,6 @@ TEST_CASE("spawn_score_popup: ScorePopup has correct points, tier=0, duration",
     REQUIRE(reg.all_of<ScorePopup>(e));
     const auto& sp = reg.get<ScorePopup>(e);
     CHECK(sp.value == 350);
-    CHECK(sp.tier == uint8_t{0});
     CHECK(sp.timing_tier == TimingTier::Good);
     CHECK(sp.remaining == constants::POPUP_DURATION);
     CHECK(sp.max_time  == constants::POPUP_DURATION);

@@ -35,7 +35,7 @@ struct BarObstacleTag {};
 struct MissTag {};
 
 // Bridge-state component for Model-authority obstacles (LowBar, HighBar).
-// Holds the scroll-axis Z coordinate in lieu of Position.y.
+// Holds the scroll-axis Z coordinate in lieu of WorldTransform.position.y.
 // Updated each frame by scroll_system; consumed by collision_system,
 // obstacle_despawn_system, miss_detection_system, and scoring_system.
 struct ObstacleScrollZ {
