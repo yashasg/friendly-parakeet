@@ -17,7 +17,7 @@ void energy_system(entt::registry& reg, float dt) {
 
     // Apply deferred gameplay energy effects (single writer boundary).
     if (auto* pending = reg.ctx().find<PendingEnergyEffects>()) {
-        // Preserve per-event clamp semantics (legacy scoring order: misses first, then hits).
+        // Preserve per-event clamp semantics (misses first, then hits).
         for (const auto& effect : pending->events) {
             apply_clamped_delta(effect.delta);
             if (effect.flash) {
@@ -25,16 +25,6 @@ void energy_system(entt::registry& reg, float dt) {
             }
         }
         pending->events.clear();
-
-        // Compatibility path for direct tests still setting aggregate fields.
-        if (pending->delta != 0.0f) {
-            apply_clamped_delta(pending->delta);
-            pending->delta = 0.0f;
-        }
-        if (pending->flash) {
-            energy->flash_timer = constants::ENERGY_FLASH_DURATION;
-            pending->flash = false;
-        }
     }
 
     // Smooth display toward actual energy

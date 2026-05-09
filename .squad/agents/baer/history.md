@@ -166,3 +166,12 @@ Team ready for next phase.
 **Learning**
 - After collapsing raw input tiers, unit tests should drive semantic `GoEvent`/`ButtonPressEvent` and execute `game_state_system` as the authoritative dispatcher drain; calling `player_input_system` directly no longer exercises event delivery.
 - EnTT sink callback order is currently last-connected-first in this codepath; keep an explicit contract test so wiring-order changes are caught immediately.
+
+## 2026-05-09T00:16:15.582-07:00 — Timing drift experiment verification
+
+## Learnings
+- Timing-drift acceptance should use two gates: freshness (new log hash + clean run) and quantization shape (non-negative, mean near frame/2, p95 near one frame).
+- Verified artifact paths for this check:
+  - `/Users/yashasgujjar/.copilot/session-state/c0ddd445-5e34-4aa9-bc53-563866a0574f/files/test-player-pro-2026-05-08T23-49-24/session_pro_rt0000000345_n0001.log`
+  - `/Users/yashasgujjar/.copilot/session-state/c0ddd445-5e34-4aa9-bc53-563866a0574f/files/timing-drift-experiment-2026-05-09/session_pro_rt0000000345_n0001.log`
+  - `/Users/yashasgujjar/.copilot/session-state/c0ddd445-5e34-4aa9-bc53-563866a0574f/files/timing-drift-experiment-2026-05-09/baer-verification.md`

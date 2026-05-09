@@ -9,3 +9,7 @@
 ## Learnings
 
 - Pending first assignment.
+
+- 2026-05-09T00:16:15.582-07:00 — Timing-drift experiment on `2_drama` medium/pro confirmed collision drift is primarily fixed-frame quantization: fresh combined runs mean `actual - expected` = 8.94 ms over 159 collisions versus 8.33 ms half-frame at 60 Hz; provided full log matched at 8.59 ms over 151 collisions. Artifacts: `/Users/yashasgujjar/.copilot/session-state/c0ddd445-5e34-4aa9-bc53-563866a0574f/files/timing-drift-experiment-2026-05-09/fenton-timing-drift-report.md`, `timing_drift_analysis.json`, `collision_drifts.csv`, and fresh run logs `run2_session_pro_rt0000000364_n0001.log` / `run3_session_pro_rt0000000322_n0001.log`.
+
+- 2026-05-09T00:29:44.825-07:00 — Compared Reddit OP's STFT/onset/tempogram/subdivision pipeline against our 2_drama path. Key learning: our current pipeline already uses STFT flux plus tempogram-derived tempo, but still uses `librosa.beat.beat_track` for authoritative beat timestamps; naive PLP is not a drop-in replacement on 2_drama and should be evaluated as an augmenting candidate grid. Artifact: `/Users/yashasgujjar/.copilot/session-state/c0ddd445-5e34-4aa9-bc53-563866a0574f/files/beat-grid-tempogram-review-2026-05-09/fenton-op-pipeline-comparison.md`.

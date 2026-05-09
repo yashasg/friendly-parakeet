@@ -23,7 +23,7 @@ TEST_CASE("tick_playing_systems: no-op when phase is Paused", "[phase_guard]") {
     // Expired obstacle that miss_detection would stamp if it ran.
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
-    reg.emplace<ObstacleScrollZ>(obs, constants::DESTROY_Y + 1.0f);
+    reg.emplace<WorldTransform>(obs, WorldTransform{{0.0f, constants::DESTROY_Y + 1.0f}});
 
     tick_playing_systems(reg, 0.016f);
 
@@ -40,7 +40,7 @@ TEST_CASE("tick_playing_systems: no-op when phase is GameOver", "[phase_guard]")
     // Expired obstacle to match Paused coverage (MissTag / ScoredTag guard).
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
-    reg.emplace<ObstacleScrollZ>(obs, constants::DESTROY_Y + 1.0f);
+    reg.emplace<WorldTransform>(obs, WorldTransform{{0.0f, constants::DESTROY_Y + 1.0f}});
 
     auto& score = reg.ctx().get<ScoreState>();
     auto& energy = reg.ctx().get<EnergyState>();
@@ -68,7 +68,7 @@ TEST_CASE("tick_playing_systems: no-op when phase is GameOver", "[phase_guard]")
 //
 // Why relative ordering between obstacle_despawn and popup_feedback does NOT
 // matter (Keaton-r14 finding): these two systems are commutative.
-//   obstacle_despawn reads ObstacleTag+ObstacleScrollZ/Position → destroys entities
+//   obstacle_despawn reads ObstacleTag+WorldTransform → destroys entities
 //   popup_feedback  reads ScorePopupRequestQueue (ctx) → creates popup entities
 // Their data surfaces are disjoint; no observable state diff results from
 // swapping them.  The relative call order in fixed_tick_runner.cpp is a

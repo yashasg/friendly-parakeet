@@ -12,6 +12,8 @@
 #include "components/particle.h"
 #include "audio/audio_types.h"
 #include "components/haptics.h"
+#include "components/audio_events.h"
+#include "audio/audio_routing.h"
 #include "util/settings.h"
 #include "components/rhythm.h"
 #include "util/rhythm_math.h"
@@ -30,12 +32,11 @@ inline entt::registry make_registry() {
     reg.ctx().emplace<InputState>();
     reg.ctx().emplace<entt::dispatcher>();
     wire_input_dispatcher(reg);
+    wire_audio_haptic_dispatcher(reg);
     reg.ctx().emplace<GameState>(GameState{
         GamePhase::Playing, GamePhase::Playing, 0.0f, false, GamePhase::Playing, 0.0f
     });
     reg.ctx().emplace<ScoreState>();
-    reg.ctx().emplace<AudioQueue>();
-    reg.ctx().emplace<HapticQueue>();
     reg.ctx().emplace<SettingsState>();  // defaults: haptics_enabled=true
     reg.ctx().emplace<LevelSelectState>();
     reg.ctx().emplace<BeatMap>();
@@ -61,6 +62,18 @@ struct PressCapture {
     void capture(const ButtonPressEvent& e) { if (count < 8) buf[count++] = e; }
 };
 
+struct SfxCapture {
+    SFX buf[16] = {};
+    int count   = 0;
+    void capture(const PlaySfxEvent& e) { if (count < 16) buf[count++] = e.clip; }
+};
+
+struct HapticCapture {
+    HapticEvent buf[8] = {};
+    int         count  = 0;
+    void capture(const PlayHapticEvent& e) { if (count < 8) buf[count++] = e.evt; }
+};
+
 inline GoCapture drain_go_events(entt::registry& reg) {
     GoCapture cap;
     auto& disp = reg.ctx().get<entt::dispatcher>();
@@ -76,6 +89,28 @@ inline PressCapture drain_press_events(entt::registry& reg) {
     disp.sink<ButtonPressEvent>().connect<&PressCapture::capture>(cap);
     disp.update<ButtonPressEvent>();
     disp.sink<ButtonPressEvent>().disconnect<&PressCapture::capture>(cap);
+    return cap;
+}
+
+// Flush the dispatcher PlaySfxEvent queue and return all events that were pending.
+// NOTE: This calls disp.update<PlaySfxEvent>() which also invokes audio_handle_play_sfx.
+inline SfxCapture drain_sfx_events(entt::registry& reg) {
+    SfxCapture cap;
+    auto& disp = reg.ctx().get<entt::dispatcher>();
+    disp.sink<PlaySfxEvent>().connect<&SfxCapture::capture>(cap);
+    disp.update<PlaySfxEvent>();
+    disp.sink<PlaySfxEvent>().disconnect<&SfxCapture::capture>(cap);
+    return cap;
+}
+
+// Peek at (and flush) pending PlayHapticEvent events without invoking hardware.
+// Useful for assertions about what events were enqueued before delivery.
+inline HapticCapture drain_haptic_events(entt::registry& reg) {
+    HapticCapture cap;
+    auto& disp = reg.ctx().get<entt::dispatcher>();
+    disp.sink<PlayHapticEvent>().connect<&HapticCapture::capture>(cap);
+    disp.update<PlayHapticEvent>();
+    disp.sink<PlayHapticEvent>().disconnect<&HapticCapture::capture>(cap);
     return cap;
 }
 
@@ -188,24 +223,6 @@ inline entt::entity make_lane_block(entt::registry& reg, uint8_t mask, float y) 
     return obs;
 }
 
-// Creates a low bar (must jump) or high bar (must slide) obstacle
-inline entt::entity make_vertical_bar(entt::registry& reg, ObstacleKind kind, float y) {
-    const auto& song = reg.ctx().get<SongState>();
-    auto obs = reg.create();
-    reg.emplace<ObstacleTag>(obs);
-    reg.emplace<ObstacleScrollZ>(obs, y);
-    reg.emplace<WorldTransform>(obs, WorldTransform{{constants::SCREEN_W_F * 0.5f, y}});
-    reg.emplace<MotionVelocity>(obs, MotionVelocity{{0.0f, song.scroll_speed}});
-    int16_t pts = (kind == ObstacleKind::LowBar) ? constants::PTS_LOW_BAR : constants::PTS_HIGH_BAR;
-    reg.emplace<Obstacle>(obs, kind, pts);
-    VMode action = (kind == ObstacleKind::LowBar) ? VMode::Jumping : VMode::Sliding;
-    reg.emplace<RequiredVAction>(obs, action);
-    reg.emplace<DrawSize>(obs, float(constants::SCREEN_W), 40.0f);
-    reg.emplace<DrawLayer>(obs, Layer::Game);
-    reg.emplace<TagWorldPass>(obs);
-    reg.emplace<Color>(obs, Color{255, 180, 0, 255});
-    return obs;
-}
 
 // Creates a combo gate requiring shape AND lane not blocked
 inline entt::entity make_combo_gate(entt::registry& reg, Shape shape, uint8_t blocked_mask, float y) {

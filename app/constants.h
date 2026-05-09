@@ -30,27 +30,16 @@ constexpr float SPAWN_Y           = -120.0f;
 constexpr float DESTROY_Y         = 1400.0f;
 constexpr float BASE_SCROLL_SPEED = 400.0f;
 
-// 3D slab heights for obstacle rendering (model-to-world Y scale)
+// 3D slab height for obstacle rendering (model-to-world Y scale)
 constexpr float OBSTACLE_3D_HEIGHT = 20.0f;
-constexpr float LOWBAR_3D_HEIGHT   = 30.0f;
-constexpr float HIGHBAR_3D_HEIGHT  = 10.0f;
 
 // ── Scoring ───────────────────────────────────────
 constexpr int   PTS_SHAPE_GATE    = 200;
 constexpr int   PTS_LANE_BLOCK    = 100;
-constexpr int   PTS_LOW_BAR       = 100;
-constexpr int   PTS_HIGH_BAR      = 100;
 constexpr int   PTS_COMBO_GATE    = 200;
 constexpr int   PTS_SPLIT_PATH    = 300;
 constexpr int   PTS_PER_SECOND    = 10;
 constexpr int   CHAIN_BONUS[5]    = { 0, 0, 50, 100, 200 };
-
-// ── Difficulty Timeline ───────────────────────────
-// Retained for legacy random-spawn mode
-constexpr float SPEED_RAMP_RATE   = 0.011f;
-constexpr float SPAWN_RAMP_RATE   = 0.003f;
-constexpr float INITIAL_SPAWN_INT = 1.8f;
-constexpr float MIN_SPAWN_INT     = 0.5f;
 
 // ── Rhythm Constants ──────────────────────────────
 constexpr float APPROACH_DIST      = 1040.0f;  // |PLAYER_Y - SPAWN_Y|

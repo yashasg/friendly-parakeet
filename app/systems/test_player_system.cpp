@@ -138,14 +138,10 @@ static TestPlayerAction determine_action(
     } else {
         // Estimate from position + velocity
         auto* wt  = reg.try_get<WorldTransform>(entity);
-        auto* oz  = reg.try_get<ObstacleScrollZ>(entity);
         auto* vel = reg.try_get<MotionVelocity>(entity);
         if (wt && vel && vel->value.y > 0.0f) {
             action.arrival_time = song.song_time +
                 (constants::PLAYER_Y - wt->position.y) / vel->value.y;
-        } else if (oz && vel && vel->value.y > 0.0f) {
-            action.arrival_time = song.song_time +
-                (constants::PLAYER_Y - oz->z) / vel->value.y;
         }
     }
 
@@ -181,12 +177,6 @@ static TestPlayerAction determine_action(
     auto* req_lane = reg.try_get<RequiredLane>(entity);
     if (req_lane && req_lane->lane != player_lane) {
         action.target_lane = req_lane->lane;
-    }
-
-    // Vertical requirement
-    auto* req_v = reg.try_get<RequiredVAction>(entity);
-    if (req_v) {
-        action.target_vertical = req_v->action;
     }
 
     return action;
@@ -351,46 +341,6 @@ void test_player_system(entt::registry& reg, float dt) {
         }
     }
 
-    auto model_obs_view = reg.view<ObstacleTag, ObstacleScrollZ, Obstacle>(entt::exclude<ScoredTag>);
-    for (auto [entity, oz, obs] : model_obs_view.each()) {
-        float dist = p_transform.position.y - oz.z;
-        if (dist <= 0.0f || dist > cfg.vision_range) continue;
-        if (reg.any_of<TestPlayerPlannedTag>(entity)) continue;
-
-        TestPlayerAction action = determine_action(reg, entity, effective_lane, *song);
-
-        std::uniform_real_distribution<float> reaction_dist(cfg.reaction_min, cfg.reaction_max);
-        action.timer = reaction_dist(state->rng);
-
-        test_player_push_action(*state, action);
-        reg.emplace<TestPlayerPlannedTag>(entity);
-
-        if (log) {
-            auto* beat_info = reg.try_get<BeatInfo>(entity);
-            int beat_num = beat_info ? beat_info->beat_index : -1;
-            const std::string_view kind_name = enum_name_or_unknown(obs.kind);
-            const std::string_view shape_name = enum_name_or_unknown(action.target_shape);
-
-            session_log_write(*log, song_time, "PLAYER",
-                "PERCEIVE obstacle=%u beat=%d kind=%.*s shape=%.*s lane=%d dist=%.0fpx",
-                static_cast<unsigned>(entt::to_integral(entity)),
-                beat_num,
-                static_cast<int>(kind_name.size()), kind_name.data(),
-                static_cast<int>(shape_name.size()), shape_name.data(),
-                action.target_lane, dist);
-
-            const std::string_view action_shape_name =
-                action.target_shape != Shape::Hexagon ? shape_name : std::string_view{};
-            session_log_write(*log, song_time, "PLAYER",
-                "PLAN action=%.*s%s%s react=%.3fs arrival=%.3fs",
-                static_cast<int>(action_shape_name.size()), action_shape_name.data(),
-                action.target_lane >= 0 ? "+lane" : "",
-                action.target_vertical != VMode::Grounded ?
-                    (action.target_vertical == VMode::Jumping ? "+jump" : "+slide") : "",
-                action.timer, action.arrival_time);
-        }
-    }
-
     // ── TICK timers ──────────────────────────────────────────
     for (int i = 0; i < state->action_count; ++i) {
         state->actions[i].timer -= dt;
@@ -490,17 +440,6 @@ void test_player_system(entt::registry& reg, float dt) {
                     break;
                 }
             }
-            if (!zone_blocked) {
-                auto model_zone_view = reg.view<ObstacleTag, ObstacleScrollZ>(entt::exclude<ScoredTag>);
-                for (auto [ze, oz] : model_zone_view.each()) {
-                    if (ze == action.obstacle) continue; // don't self-block
-                    float zdist = p_transform.position.y - oz.z + p_vstate.y_offset;
-                    if (zdist >= -constants::COLLISION_MARGIN && zdist <= constants::COLLISION_MARGIN * 3.0f) {
-                        zone_blocked = true;
-                        break;
-                    }
-                }
-            }
         }
 
         // Would moving to target_lane cause a MISS on any CLOSER unresolved
@@ -579,17 +518,6 @@ void test_player_system(entt::registry& reg, float dt) {
                 if (zdist >= -constants::COLLISION_MARGIN && zdist <= constants::COLLISION_MARGIN * 3.0f) {
                     vert_zone_blocked = true;
                     break;
-                }
-            }
-            if (!vert_zone_blocked) {
-                auto model_zone_view = reg.view<ObstacleTag, ObstacleScrollZ>(entt::exclude<ScoredTag>);
-                for (auto [ze, oz] : model_zone_view.each()) {
-                    if (ze == action.obstacle) continue;
-                    float zdist = p_transform.position.y - oz.z + p_vstate.y_offset;
-                    if (zdist >= -constants::COLLISION_MARGIN && zdist <= constants::COLLISION_MARGIN * 3.0f) {
-                        vert_zone_blocked = true;
-                        break;
-                    }
                 }
             }
         }

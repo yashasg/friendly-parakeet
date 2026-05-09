@@ -4,8 +4,7 @@
 Policy:
   EASY   - gap=1 is never allowed.
   MEDIUM - gap=1 is allowed only after 30% authored beat progress, only
-           between identical shape gates, away from nearby bar
-           obstacles, and never in back-to-back runs.
+           between identical shape gates, and never in back-to-back runs.
   HARD   - gap=1 is allowed after beat 10 under the same readability guard,
            with at most two consecutive one-beat gaps.
 """
@@ -22,9 +21,6 @@ DEFAULT_DIR = REPO / "content" / "beatmaps"
 GAP_ONE_MEDIUM_START_PROGRESS = 0.30
 GAP_ONE_HARD_MIN_BEAT = 11
 GAP_ONE_MAX_RUN = {"medium": 1, "hard": 2}
-UNREADABLE_KINDS = {"low_bar", "high_bar"}
-
-
 def is_readable_family(left: dict, right: dict) -> bool:
     return (
         left.get("kind") == "shape_gate"
@@ -33,22 +29,6 @@ def is_readable_family(left: dict, right: dict) -> bool:
         and left.get("lane") == right.get("lane")
     )
 
-
-def has_readable_neighbors(beats: list[dict], left_index: int) -> bool:
-    left = beats[left_index]
-    right = beats[left_index + 1]
-
-    if left_index > 0:
-        previous = beats[left_index - 1]
-        if left["beat"] - previous["beat"] <= 2 and previous.get("kind") in UNREADABLE_KINDS:
-            return False
-
-    if left_index + 2 < len(beats):
-        following = beats[left_index + 2]
-        if following["beat"] - right["beat"] <= 2 and following.get("kind") in UNREADABLE_KINDS:
-            return False
-
-    return True
 
 
 def validate_gap_one(beats: list[dict], difficulty: str) -> list[tuple[int, str]]:
@@ -91,9 +71,6 @@ def validate_gap_one(beats: list[dict], difficulty: str) -> list[tuple[int, str]
 
         if not is_readable_family(left, right):
             violations.append((left["beat"], "gap=1 pair is not identical shape_gate family"))
-
-        if not has_readable_neighbors(beats, index - 1):
-            violations.append((left["beat"], "gap=1 pair is too close to bar obstacle"))
 
         gap_one_run += 1
 

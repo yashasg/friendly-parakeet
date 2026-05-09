@@ -35,7 +35,7 @@ entt::entity spawn_score_popup(entt::registry& reg, const PopupSpawnParams& para
 
     reg.emplace<WorldTransform>(popup, WorldTransform{{params.x, params.y - 40.0f}});
     reg.emplace<MotionVelocity>(popup, MotionVelocity{{0.0f, -80.0f}});
-    reg.emplace<ScorePopup>(popup, params.points, uint8_t{0}, params.timing_tier,
+    reg.emplace<ScorePopup>(popup, params.points, params.timing_tier,
                             constants::POPUP_DURATION, constants::POPUP_DURATION);
 
     // Color by timing tier (no timing → default yellow-white)

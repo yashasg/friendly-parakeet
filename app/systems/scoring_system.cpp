@@ -101,7 +101,7 @@ void scoring_system(entt::registry& reg, float dt) {
             score.chain_count = 0;
             score.chain_timer = 0.0f;
             if (gos && gos->cause == DeathCause::None) {
-                gos->cause = reg.any_of<BarObstacleTag>(e) ? DeathCause::HitABar : DeathCause::MissedABeat;
+                gos->cause = DeathCause::MissedABeat;
             }
             miss_buf.push_back({e, true});
         }
@@ -114,7 +114,7 @@ void scoring_system(entt::registry& reg, float dt) {
             score.chain_count = 0;
             score.chain_timer = 0.0f;
             if (gos && gos->cause == DeathCause::None) {
-                gos->cause = reg.any_of<BarObstacleTag>(e) ? DeathCause::HitABar : DeathCause::MissedABeat;
+                gos->cause = DeathCause::MissedABeat;
             }
             miss_buf.push_back({e, false});
         }
@@ -137,7 +137,7 @@ void scoring_system(entt::registry& reg, float dt) {
         hit_buf.clear();
 
         auto hit_view_graded = reg.view<ObstacleTag, ScoredTag, Obstacle, WorldTransform, TimingGrade>(
-            entt::exclude<MissTag, NonScorableTag, ObstacleScrollZ>);
+            entt::exclude<MissTag, NonScorableTag>);
         for (auto [e, obs, wt, tg] : hit_view_graded.each()) {
             HitRecord r;
             r.e        = e;
@@ -149,7 +149,7 @@ void scoring_system(entt::registry& reg, float dt) {
         }
 
         auto hit_view_ungraded = reg.view<ObstacleTag, ScoredTag, Obstacle, WorldTransform>(
-            entt::exclude<MissTag, NonScorableTag, ObstacleScrollZ, TimingGrade>);
+            entt::exclude<MissTag, NonScorableTag, TimingGrade>);
         for (auto [e, obs, wt] : hit_view_ungraded.each()) {
             HitRecord r;
             r.e        = e;
@@ -159,28 +159,6 @@ void scoring_system(entt::registry& reg, float dt) {
             hit_buf.push_back(r);
         }
 
-        auto model_hit_view_graded = reg.view<ObstacleTag, ScoredTag, Obstacle, ObstacleScrollZ, TimingGrade>(
-            entt::exclude<MissTag, NonScorableTag>);
-        for (auto [e, obs, oz, tg] : model_hit_view_graded.each()) {
-            HitRecord r;
-            r.e        = e;
-            r.popup_xy = {constants::SCREEN_W_F * 0.5f, oz.z};
-            r.obs = obs;
-            r.has_timing = true;
-            r.timing = tg;
-            hit_buf.push_back(r);
-        }
-
-        auto model_hit_view_ungraded = reg.view<ObstacleTag, ScoredTag, Obstacle, ObstacleScrollZ>(
-            entt::exclude<MissTag, NonScorableTag, TimingGrade>);
-        for (auto [e, obs, oz] : model_hit_view_ungraded.each()) {
-            HitRecord r;
-            r.e        = e;
-            r.popup_xy = {constants::SCREEN_W_F * 0.5f, oz.z};
-            r.obs = obs;
-            r.has_timing = false;
-            hit_buf.push_back(r);
-        }
 
         if (!hit_buf.empty()) {
         auto& popup_queue = popup_queue_for(reg);

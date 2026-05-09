@@ -29,11 +29,9 @@ TriggerPattern pattern_for_event(HapticEvent event) noexcept {
         case HapticEvent::Burnout1_5x:
         case HapticEvent::RetryTap:
             return {ImpactStyle::Light, 1};
-        case HapticEvent::Burnout2_0x:
         case HapticEvent::Burnout3_0x:
         case HapticEvent::NewHighScore:
             return {ImpactStyle::Medium, 1};
-        case HapticEvent::Burnout4_0x:
         case HapticEvent::NearMiss:
             return {ImpactStyle::Heavy, 1};
         case HapticEvent::Burnout5_0x:

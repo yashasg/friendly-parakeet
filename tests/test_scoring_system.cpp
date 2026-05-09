@@ -97,7 +97,7 @@ TEST_CASE("scoring: SFX pushed on score", "[scoring]") {
     popup_feedback_system(reg, 0.016f);
     energy_system(reg, 0.016f);
 
-    CHECK(reg.ctx().get<AudioQueue>().count > 0);
+    CHECK(drain_sfx_events(reg).count > 0);
 }
 
 TEST_CASE("scoring: displayed_score rolls up toward score", "[scoring]") {
@@ -264,44 +264,6 @@ TEST_CASE("scoring: NonScorableTag entity cleared without scoring", "[scoring][n
 }
 
 TEST_CASE("scoring: missed obstacle sets DeathCause::MissedABeat", "[scoring]") {
-    auto reg = make_registry();
-    auto& gos = reg.ctx().get<GameOverState>();
-    REQUIRE(gos.cause == DeathCause::None);
-
-    auto e = reg.create();
-    reg.emplace<ObstacleTag>(e);
-    reg.emplace<WorldTransform>(e, WorldTransform{{300.0f, constants::PLAYER_Y}});
-    reg.emplace<Obstacle>(e, ObstacleKind::ShapeGate, int16_t{200});
-    reg.emplace<ScoredTag>(e);
-    reg.emplace<MissTag>(e);
-
-    scoring_system(reg, 0.0f);
-
-    CHECK(gos.cause == DeathCause::MissedABeat);
-}
-
-TEST_CASE("scoring: BarObstacleTag sets DeathCause::HitABar regardless of kind", "[scoring][bartag]") {
-    // Verifies OCP: any entity with BarObstacleTag triggers HitABar death cause.
-    // Uses a synthetic ShapeGate kind (not LowBar/HighBar) to prove kind-independence.
-    auto reg = make_registry();
-    auto& gos = reg.ctx().get<GameOverState>();
-    REQUIRE(gos.cause == DeathCause::None);
-
-    auto e = reg.create();
-    reg.emplace<ObstacleTag>(e);
-    reg.emplace<WorldTransform>(e, WorldTransform{{300.0f, constants::PLAYER_Y}});
-    reg.emplace<Obstacle>(e, ObstacleKind::ShapeGate, int16_t{200});
-    reg.emplace<BarObstacleTag>(e);
-    reg.emplace<ScoredTag>(e);
-    reg.emplace<MissTag>(e);
-
-    scoring_system(reg, 0.0f);
-
-    CHECK(gos.cause == DeathCause::HitABar);
-}
-
-TEST_CASE("scoring: missing bar sets DeathCause::MissedABeat when no BarObstacleTag", "[scoring][bartag]") {
-    // Confirms the else-branch: a missed ShapeGate without BarObstacleTag → MissedABeat.
     auto reg = make_registry();
     auto& gos = reg.ctx().get<GameOverState>();
     REQUIRE(gos.cause == DeathCause::None);

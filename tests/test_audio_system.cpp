@@ -8,19 +8,23 @@
 
 TEST_CASE("audio_system: drains queued SFX safely without playable sounds", "[audio]") {
     auto reg = make_registry();
-    auto& queue = reg.ctx().get<AudioQueue>();
+    auto& disp = reg.ctx().get<entt::dispatcher>();
     auto& bank = reg.ctx().emplace<SFXBank>(SFXBank{});
     bank.loaded = true;
 
-    queue.queue[queue.count++] = SFX::Crash;            // unloaded sound
-    queue.queue[queue.count++] = static_cast<SFX>(255); // invalid enum payload
-    for (int i = queue.count; i < AudioQueue::MAX_QUEUED; ++i) {
-        queue.queue[queue.count++] = static_cast<SFX>(i % SFXBank::SFX_COUNT);
+    // Enqueue sounds the same way production code does.
+    disp.enqueue<PlaySfxEvent>({SFX::Crash});            // unloaded sound
+    disp.enqueue<PlaySfxEvent>({static_cast<SFX>(255)}); // invalid enum payload
+    for (int i = 0; i < SFXBank::SFX_COUNT; ++i) {
+        disp.enqueue<PlaySfxEvent>({static_cast<SFX>(i % SFXBank::SFX_COUNT)});
     }
 
+    // audio_system must drain without crashing.
     audio_system(reg);
 
-    CHECK(queue.count == 0);
+    // After drain, no events remain (a second drain captures nothing).
+    auto cap = drain_sfx_events(reg);
+    CHECK(cap.count == 0);
 }
 
 TEST_CASE("sfx lifecycle: bank init and playback are headless-safe", "[audio]") {
@@ -34,11 +38,12 @@ TEST_CASE("sfx lifecycle: bank init and playback are headless-safe", "[audio]") 
         CHECK_FALSE(bank->loaded);
     }
 
-    auto& queue = reg.ctx().get<AudioQueue>();
-    queue.queue[queue.count++] = SFX::GameStart;
+    reg.ctx().get<entt::dispatcher>().enqueue<PlaySfxEvent>({SFX::GameStart});
     audio_system(reg);
 
-    CHECK(queue.count == 0);
+    // After drain, queue is empty.
+    auto cap = drain_sfx_events(reg);
+    CHECK(cap.count == 0);
 
     sfx_bank_unload(reg);
     CHECK_FALSE(bank->loaded);

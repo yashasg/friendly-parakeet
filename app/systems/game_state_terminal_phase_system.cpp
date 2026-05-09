@@ -1,11 +1,10 @@
 #include "all_systems.h"
-#include "../audio/audio_types.h"
+#include "../components/audio_events.h"
 #include "../components/haptics.h"
 #include "../components/high_score.h"
 #include "../components/rhythm.h"
 #include "../components/scoring.h"
 #include "../util/high_score_persistence.h"
-#include "../util/settings.h"
 
 namespace {
 
@@ -31,23 +30,15 @@ bool update_and_persist_high_score(entt::registry& reg) {
 }
 
 void emit_terminal_feedback(entt::registry& reg, GamePhase phase, bool is_new_high_score) {
-    if (phase == GamePhase::GameOver) {
-        auto& audio = reg.ctx().get<AudioQueue>();
-        if (audio.count < AudioQueue::MAX_QUEUED) {
-            audio.queue[audio.count++] = SFX::Crash;
-        }
-    }
+    auto* disp = reg.ctx().find<entt::dispatcher>();
+    if (!disp) return;
 
-    auto* haptics = reg.ctx().find<HapticQueue>();
-    auto* settings = reg.ctx().find<SettingsState>();
-    if (!haptics || (settings && !settings->haptics_enabled)) {
-        return;
+    if (phase == GamePhase::GameOver) {
+        disp->enqueue<PlaySfxEvent>({SFX::Crash});
+        disp->enqueue<PlayHapticEvent>({HapticEvent::DeathCrash});
     }
-    if (phase == GamePhase::GameOver && haptics->count < HapticQueue::MAX_QUEUED) {
-        haptics->queue[haptics->count++] = HapticEvent::DeathCrash;
-    }
-    if (is_new_high_score && haptics->count < HapticQueue::MAX_QUEUED) {
-        haptics->queue[haptics->count++] = HapticEvent::NewHighScore;
+    if (is_new_high_score) {
+        disp->enqueue<PlayHapticEvent>({HapticEvent::NewHighScore});
     }
 }
 

@@ -4,7 +4,6 @@
 #include "../components/transform.h"
 #include "../components/rendering.h"
 #include "../components/scoring.h"
-#include "../audio/audio_types.h"
 #include "../components/beat_map.h"
 #include "../components/rhythm.h"
 #include "../components/song_state.h"
@@ -43,7 +42,6 @@ void setup_play_session(entt::registry& reg) {
     // Reset singletons
     reg.ctx().insert_or_assign(RNGState{});
     reg.ctx().insert_or_assign(ScoreState{});
-    reg.ctx().insert_or_assign(AudioQueue{});
 
     // Load beatmap from level selection.
     // BeatMap is a context singleton (cold asset). It is reset here via move

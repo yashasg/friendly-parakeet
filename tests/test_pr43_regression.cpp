@@ -1,7 +1,7 @@
 // PR #43 regression tests — Baer
 // Covers the six unresolved review threads:
 //   1. ScreenTransform stale on first/resize frame before input_system
-//   2. camera_system slab_matrix Y/Z dimension swap (LowBar, HighBar)
+//   2. camera_system slab_matrix Y/Z dimension swap
 //   3. camera_system MeshChild slab Y/Z dimension swap
 //   4. title/controller input routing remains outside legacy ECS hitbox plumbing
 //   6. shape_obstacle child destruction must not touch other parents' children
@@ -224,23 +224,6 @@ static std::string load_ui_render_source() {
     return {};
 }
 
-static std::string load_game_render_source() {
-    const char* paths[] = {
-        "app/systems/game_render_system.cpp",
-        "../app/systems/game_render_system.cpp"
-    };
-
-    for (const char* path : paths) {
-        std::ifstream file(path);
-        if (!file.is_open()) continue;
-
-        std::ostringstream buffer;
-        buffer << file.rdbuf();
-        return buffer.str();
-    }
-
-    return {};
-}
 
 TEST_CASE("ui_render_system: ECS is the only generic UI element render path",
           "[ui][render][issue259]") {
@@ -255,16 +238,4 @@ TEST_CASE("ui_render_system: ECS is the only generic UI element render path",
     CHECK(source.find("render_shape(") == std::string::npos);
     CHECK(source.find("find_el(screen, \"score\")") == std::string::npos);
     CHECK(source.find("find_el(screen, \"high_score\")") == std::string::npos);
-}
-
-TEST_CASE("game_render_system: model-authority obstacles preserve ECS tint override",
-          "[render][obstacle][regression]") {
-    const std::string source = load_game_render_source();
-    if (source.empty()) {
-        SKIP("game_render_system.cpp not accessible from test working directory");
-    }
-
-    CHECK(source.find("reg.view<const ObstacleModel, const Color, const TagWorldPass>()")
-          != std::string::npos);
-    CHECK(source.find("mat.maps[MATERIAL_MAP_DIFFUSE].color = tint;") != std::string::npos);
 }

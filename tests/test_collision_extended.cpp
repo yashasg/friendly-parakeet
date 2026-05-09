@@ -163,24 +163,6 @@ TEST_CASE("collision: multiple misses accumulate in miss_count", "[collision][rh
     CHECK(results.miss_count == 2);
 }
 
-TEST_CASE("collision: first miss cause is preserved across later misses", "[collision][issue282]") {
-    auto reg = make_rhythm_registry();
-    make_rhythm_player(reg);
-    auto& gos = reg.ctx().get<GameOverState>();
-
-    make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
-    collision_system(reg, 0.016f);
-    scoring_system(reg, 0.016f);
-    energy_system(reg, 0.016f);
-    REQUIRE(gos.cause == DeathCause::MissedABeat);
-
-    make_vertical_bar(reg, ObstacleKind::LowBar, constants::PLAYER_Y);
-    collision_system(reg, 0.016f);
-    scoring_system(reg, 0.016f);
-    energy_system(reg, 0.016f);
-
-    CHECK(gos.cause == DeathCause::MissedABeat);
-}
 
 // ── collision_system: combo gate edge cases ──────────────────
 
@@ -234,51 +216,6 @@ TEST_CASE("collision: split path succeeds with correct shape and lane", "[collis
     collision_system(reg, 0.016f);
 
     CHECK(reg.all_of<ScoredTag>(obs));
-}
-
-// ── collision_system: vertical bar combinations ──────────────
-
-TEST_CASE("collision: high bar cleared only when sliding", "[collision]") {
-    auto reg = make_registry();
-    auto p = make_player(reg);
-    reg.get<VerticalState>(p).mode = VMode::Sliding;
-    auto obs = make_vertical_bar(reg, ObstacleKind::HighBar, constants::PLAYER_Y);
-
-    collision_system(reg, 0.016f);
-
-    CHECK(reg.all_of<ScoredTag>(obs));
-}
-
-TEST_CASE("collision: low bar fails when sliding", "[collision]") {
-    auto reg = make_registry();
-    auto p = make_player(reg);
-    reg.get<VerticalState>(p).mode = VMode::Sliding;
-    make_vertical_bar(reg, ObstacleKind::LowBar, constants::PLAYER_Y);
-
-    collision_system(reg, 0.016f);
-    scoring_system(reg, 0.016f);
-    energy_system(reg, 0.016f);
-
-    CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
-    auto& energy = reg.ctx().get<EnergyState>();
-    CHECK(energy.energy < 1.0f);
-    CHECK(energy.flash_timer > 0.0f);
-}
-
-TEST_CASE("collision: high bar fails when jumping", "[collision]") {
-    auto reg = make_registry();
-    auto p = make_player(reg);
-    reg.get<VerticalState>(p).mode = VMode::Jumping;
-    make_vertical_bar(reg, ObstacleKind::HighBar, constants::PLAYER_Y);
-
-    collision_system(reg, 0.016f);
-    scoring_system(reg, 0.016f);
-    energy_system(reg, 0.016f);
-
-    CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
-    auto& energy = reg.ctx().get<EnergyState>();
-    CHECK(energy.energy < 1.0f);
-    CHECK(energy.flash_timer > 0.0f);
 }
 
 // ── SRP observation: collision_system must NOT mutate SongResults ──────────

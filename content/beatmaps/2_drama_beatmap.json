@@ -1504,11 +1504,6 @@
           "time_sec": 50.54
         },
         {
-          "beat": 112,
-          "kind": "low_bar",
-          "time_sec": 51.926
-        },
-        {
           "beat": 115,
           "kind": "shape_gate",
           "shape": "circle",
@@ -2272,11 +2267,6 @@
           "time_sec": 216.693
         },
         {
-          "beat": 472,
-          "kind": "low_bar",
-          "time_sec": 218.086
-        },
-        {
           "beat": 475,
           "kind": "shape_gate",
           "shape": "circle",
@@ -2338,11 +2328,6 @@
           "shape": "triangle",
           "lane": 2,
           "time_sec": 227.628
-        },
-        {
-          "beat": 496,
-          "kind": "low_bar",
-          "time_sec": 228.912
         },
         {
           "beat": 499,

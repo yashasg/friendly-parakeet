@@ -52,7 +52,6 @@ TEST_CASE("entity: ShapeGate Circle - correct components and color", "[archetype
     auto e = spawn_obstacle(reg, {ObstacleKind::ShapeGate, 360.0f, -120.0f, Shape::Circle});
 
     REQUIRE(reg.all_of<ObstacleTag, MotionVelocity, DrawLayer, WorldTransform, Obstacle, RequiredShape, DrawSize, Color>(e));
-    CHECK(!reg.all_of<RequiredVAction>(e));
     CHECK(!reg.all_of<BlockedLanes>(e));
     CHECK(!reg.all_of<RequiredLane>(e));
 
@@ -90,10 +89,6 @@ TEST_CASE("entity: obstacle roots and mesh children declare world render pass", 
         CHECK(reg.all_of<MeshChild>(children.children[i]));
         CHECK(reg.all_of<TagWorldPass>(children.children[i]));
     }
-
-    auto low_bar = spawn_obstacle(reg, {ObstacleKind::LowBar, 360.0f, -120.0f});
-    CHECK(reg.all_of<TagWorldPass>(low_bar));
-    CHECK(reg.all_of<WorldTransform>(low_bar));
 }
 
 TEST_CASE("entity: obstacle mesh overflow does not create orphan MeshChild", "[archetype][render][cleanup]") {
@@ -231,7 +226,6 @@ TEST_CASE("entity: LaneBlock - blocked lanes and no shape components", "[archety
 
     REQUIRE(reg.all_of<ObstacleTag, MotionVelocity, DrawLayer, WorldTransform, Obstacle, BlockedLanes, DrawSize, Color>(e));
     CHECK(!reg.all_of<RequiredShape>(e));
-    CHECK(!reg.all_of<RequiredVAction>(e));
     CHECK(!reg.all_of<RequiredLane>(e));
 
     CHECK(reg.get<Obstacle>(e).kind == ObstacleKind::LaneBlock);
@@ -239,43 +233,7 @@ TEST_CASE("entity: LaneBlock - blocked lanes and no shape components", "[archety
     CHECK(reg.get<BlockedLanes>(e).mask == uint8_t{0b010});
 }
 
-TEST_CASE("entity: LowBar - RequiredVAction Jumping", "[archetype]") {
-    entt::registry reg;
-    auto e = spawn_obstacle(reg, {ObstacleKind::LowBar, 360.0f, -120.0f});
 
-    REQUIRE(reg.all_of<ObstacleTag, MotionVelocity, DrawLayer, ObstacleScrollZ, WorldTransform, Obstacle, RequiredVAction, DrawSize, Color>(e));
-    CHECK(!reg.all_of<RequiredShape>(e));
-    CHECK(!reg.all_of<BlockedLanes>(e));
-    CHECK(!reg.all_of<RequiredLane>(e));
-
-    CHECK(reg.get<Obstacle>(e).kind == ObstacleKind::LowBar);
-    CHECK(reg.get<Obstacle>(e).base_points == int16_t{constants::PTS_LOW_BAR});
-    CHECK(reg.get<ObstacleScrollZ>(e).z == -120.0f);
-    CHECK(reg.get<WorldTransform>(e).position.y == -120.0f);
-    CHECK(reg.get<RequiredVAction>(e).action == VMode::Jumping);
-    CHECK(reg.get<DrawSize>(e).h == 40.0f);
-    const auto& c = reg.get<Color>(e);
-    CHECK(c.r == 255);
-    CHECK(c.g == 180);
-    CHECK(c.b == 0);
-}
-
-TEST_CASE("entity: HighBar - RequiredVAction Sliding", "[archetype]") {
-    entt::registry reg;
-    auto e = spawn_obstacle(reg, {ObstacleKind::HighBar, 360.0f, -120.0f});
-
-    REQUIRE(reg.all_of<ObstacleTag, MotionVelocity, DrawLayer, ObstacleScrollZ, WorldTransform, Obstacle, RequiredVAction, DrawSize, Color>(e));
-    CHECK(reg.get<Obstacle>(e).kind == ObstacleKind::HighBar);
-    CHECK(reg.get<Obstacle>(e).base_points == int16_t{constants::PTS_HIGH_BAR});
-    CHECK(reg.get<ObstacleScrollZ>(e).z == -120.0f);
-    CHECK(reg.get<WorldTransform>(e).position.y == -120.0f);
-    CHECK(reg.get<RequiredVAction>(e).action == VMode::Sliding);
-    CHECK(reg.get<DrawSize>(e).h == 40.0f);
-    const auto& c = reg.get<Color>(e);
-    CHECK(c.r == 180);
-    CHECK(c.g == 0);
-    CHECK(c.b == 255);
-}
 
 TEST_CASE("entity: ComboGate - RequiredShape and BlockedLanes", "[archetype]") {
     entt::registry reg;
@@ -283,7 +241,6 @@ TEST_CASE("entity: ComboGate - RequiredShape and BlockedLanes", "[archetype]") {
                                    Shape::Triangle, uint8_t{0b101}});
 
     REQUIRE(reg.all_of<ObstacleTag, MotionVelocity, DrawLayer, WorldTransform, Obstacle, RequiredShape, BlockedLanes, DrawSize, Color>(e));
-    CHECK(!reg.all_of<RequiredVAction>(e));
     CHECK(!reg.all_of<RequiredLane>(e));
 
     CHECK(reg.get<Obstacle>(e).kind == ObstacleKind::ComboGate);
@@ -298,7 +255,6 @@ TEST_CASE("entity: SplitPath - RequiredShape and RequiredLane", "[archetype]") {
                                    Shape::Square, uint8_t{0}, int8_t{2}});
 
     REQUIRE(reg.all_of<ObstacleTag, MotionVelocity, DrawLayer, WorldTransform, Obstacle, RequiredShape, RequiredLane, DrawSize, Color>(e));
-    CHECK(!reg.all_of<RequiredVAction>(e));
     CHECK(!reg.all_of<BlockedLanes>(e));
 
     CHECK(reg.get<Obstacle>(e).kind == ObstacleKind::SplitPath);
@@ -307,13 +263,6 @@ TEST_CASE("entity: SplitPath - RequiredShape and RequiredLane", "[archetype]") {
     CHECK(reg.get<RequiredLane>(e).lane == int8_t{2});
 }
 
-TEST_CASE("entity: LowBar ObstacleScrollZ z propagated from input", "[archetype]") {
-    entt::registry reg;
-    auto e = spawn_obstacle(reg, {ObstacleKind::LowBar, 123.5f, 456.7f});
-
-    REQUIRE(reg.all_of<ObstacleScrollZ>(e));
-    CHECK(reg.get<ObstacleScrollZ>(e).z == 456.7f);
-}
 
 TEST_CASE("entity: ShapeGate position x/y propagated from input", "[archetype]") {
     entt::registry reg;

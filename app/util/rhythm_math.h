@@ -31,14 +31,6 @@ inline float timing_multiplier(TimingTier tier) {
     return 0.25f;
 }
 
-inline TimingTier compute_timing_tier(float pct_from_peak) {
-    // Normalized against kTimingOkSeconds:
-    // Perfect <= 50ms, Good <= 100ms, Ok <= 150ms, otherwise Bad.
-    if (pct_from_peak <= (kTimingPerfectSeconds / kTimingOkSeconds)) return TimingTier::Perfect;
-    if (pct_from_peak <= (kTimingGoodSeconds / kTimingOkSeconds)) return TimingTier::Good;
-    if (pct_from_peak <= 1.0f) return TimingTier::Ok;
-    return TimingTier::Bad;
-}
 
 inline TimingTier compute_timing_tier_from_delta(float delta_seconds_abs) {
     if (delta_seconds_abs <= kTimingPerfectSeconds) return TimingTier::Perfect;

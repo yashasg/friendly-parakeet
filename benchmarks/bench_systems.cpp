@@ -13,6 +13,7 @@
 #include "components/particle.h"
 #include "components/rhythm.h"
 #include "audio/audio_types.h"
+#include "audio/audio_routing.h"
 #include "constants.h"
 #include "systems/all_systems.h"
 #include "input/input_routing.h"
@@ -24,12 +25,12 @@ static entt::registry make_bench_registry() {
     reg.ctx().emplace<InputState>();
     reg.ctx().emplace<entt::dispatcher>();
     wire_input_dispatcher(reg);
+    wire_audio_haptic_dispatcher(reg);
     reg.ctx().emplace<GameState>(GameState{
         GamePhase::Playing, GamePhase::Playing, 0.0f, false, GamePhase::Playing, 0.0f
     });
     reg.ctx().emplace<ScoreState>();
     reg.ctx().emplace<SongState>();
-    reg.ctx().emplace<AudioQueue>();
     return reg;
 }
 
@@ -65,16 +66,14 @@ static void spawn_obstacles(entt::registry& reg, int count) {
 }
 
 // Spawns obstacles with the production scroll_system archetype:
-// ObstacleScrollZ + MotionVelocity (freeplay non-beat path, exclude BeatInfo).
-// These enter scroll_system's model_view.
+// WorldTransform + MotionVelocity (freeplay non-beat path, exclude BeatInfo).
 static void spawn_scroll_obstacles(entt::registry& reg, int count) {
     const auto& song = reg.ctx().get<SongState>();
     for (int i = 0; i < count; ++i) {
         auto obs = reg.create();
         reg.emplace<ObstacleTag>(obs);
-        float z = constants::SPAWN_Y + static_cast<float>(i) * 80.0f;
-        reg.emplace<ObstacleScrollZ>(obs, z);
-        reg.emplace<WorldTransform>(obs, WorldTransform{{0.0f, z}});
+        float y = constants::SPAWN_Y + static_cast<float>(i) * 80.0f;
+        reg.emplace<WorldTransform>(obs, WorldTransform{{0.0f, y}});
         reg.emplace<MotionVelocity>(obs, MotionVelocity{{0.0f, song.scroll_speed}});
         reg.emplace<Obstacle>(obs, ObstacleKind::ShapeGate, int16_t{200});
         reg.emplace<DrawLayer>(obs, Layer::Game);

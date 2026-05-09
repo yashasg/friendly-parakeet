@@ -112,14 +112,6 @@ void collision_system(entt::registry& reg, float /*dt*/) {
         }
     }
 
-    // LowBar / HighBar: RequiredVAction
-    {
-        auto view = reg.view<ObstacleTag, ObstacleScrollZ, RequiredVAction>(
-            entt::exclude<ScoredTag>);
-        for (auto [e, oz, req_v] : view.each()) {
-            resolve(e, oz.z, p_vstate.mode == req_v.action);
-        }
-    }
 
     if (can_grade_shape) {
         // ShapeGate: RequiredShape only (no BlockedLanes, no RequiredLane)

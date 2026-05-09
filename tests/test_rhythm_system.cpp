@@ -45,9 +45,7 @@ TEST_CASE("beatmap: parse all obstacle kinds", "[rhythm][beatmap]") {
         "beats": [
             { "beat": 4,  "kind": "shape_gate",  "shape": "circle",   "lane": 1 },
             { "beat": 8,  "kind": "lane_block",   "blocked": [0, 2] },
-            { "beat": 12, "kind": "low_bar" },
-            { "beat": 16, "kind": "high_bar" },
-            { "beat": 20, "kind": "combo_gate",  "shape": "square", "blocked": [0, 1] },
+                    { "beat": 20, "kind": "combo_gate",  "shape": "square", "blocked": [0, 1] },
             { "beat": 24, "kind": "split_path",  "shape": "triangle", "lane": 2 }
         ]
     })";
@@ -688,16 +686,6 @@ TEST_CASE("scoring: timing_mult applied to scored obstacle", "[rhythm][scoring]"
 
 // Timing Helpers
 
-TEST_CASE("timing: compute_timing_tier thresholds", "[rhythm][timing]") {
-    CHECK(compute_timing_tier(0.0f) == TimingTier::Perfect);
-    CHECK(compute_timing_tier(0.20f) == TimingTier::Perfect);
-    CHECK(compute_timing_tier(0.333f) == TimingTier::Perfect);
-    CHECK(compute_timing_tier(0.34f) == TimingTier::Good);
-    CHECK(compute_timing_tier(0.666f) == TimingTier::Good);
-    CHECK(compute_timing_tier(0.67f) == TimingTier::Ok);
-    CHECK(compute_timing_tier(1.0f) == TimingTier::Ok);
-    CHECK(compute_timing_tier(1.1f) == TimingTier::Bad);
-}
 
 TEST_CASE("timing: timing_multiplier values", "[rhythm][timing]") {
     CHECK(timing_multiplier(TimingTier::Perfect) == 1.50f);

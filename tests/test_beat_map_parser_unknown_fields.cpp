@@ -94,7 +94,7 @@ TEST_CASE("parse: unknown shape does not silently become Circle", "[parse][shape
 
 TEST_CASE("parse: all valid kinds parse without errors", "[parse][kind]") {
     const std::vector<std::string> valid_kinds = {
-        "shape_gate", "lane_block", "low_bar", "high_bar",
+        "shape_gate", "lane_block",
         "combo_gate", "split_path"
     };
 
@@ -109,11 +109,7 @@ TEST_CASE("parse: all valid kinds parse without errors", "[parse][kind]") {
         })";
         INFO("Testing kind: " << kind);
         CHECK(parse_beat_map(json, map, errors));
-        if (kind == "low_bar" || kind == "high_bar") {
-            CHECK(map.beats.empty());
-        } else {
-            CHECK(map.beats.size() == 1);
-        }
+        CHECK(map.beats.size() == 1);
     }
 }
 

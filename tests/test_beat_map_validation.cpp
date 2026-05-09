@@ -383,26 +383,6 @@ TEST_CASE("init_song_state: computes derived fields", "[init_song]") {
 
 // ── rhythm helper functions ──────────────────────────────────
 
-TEST_CASE("compute_timing_tier: Perfect for <= 0.333", "[rhythm_helpers]") {
-    CHECK(compute_timing_tier(0.0f) == TimingTier::Perfect);
-    CHECK(compute_timing_tier(0.333f) == TimingTier::Perfect);
-}
-
-TEST_CASE("compute_timing_tier: Good for <= 0.666", "[rhythm_helpers]") {
-    CHECK(compute_timing_tier(0.34f) == TimingTier::Good);
-    CHECK(compute_timing_tier(0.666f) == TimingTier::Good);
-}
-
-TEST_CASE("compute_timing_tier: Ok for <= 1.0", "[rhythm_helpers]") {
-    CHECK(compute_timing_tier(0.67f) == TimingTier::Ok);
-    CHECK(compute_timing_tier(1.0f) == TimingTier::Ok);
-}
-
-TEST_CASE("compute_timing_tier: Bad for > 1.0", "[rhythm_helpers]") {
-    CHECK(compute_timing_tier(1.01f) == TimingTier::Bad);
-    CHECK(compute_timing_tier(1.5f) == TimingTier::Bad);
-}
-
 TEST_CASE("timing_multiplier: returns correct values", "[rhythm_helpers]") {
     CHECK(timing_multiplier(TimingTier::Perfect) == 1.50f);
     CHECK(timing_multiplier(TimingTier::Good) == 1.00f);

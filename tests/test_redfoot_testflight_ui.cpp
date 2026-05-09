@@ -80,7 +80,7 @@ TEST_CASE("redfoot/#168: existing game_over buttons keep their original position
 namespace {
 // Spawn a player aligned with an obstacle so the collision system's
 // distance gate is satisfied; force a miss by leaving the player as
-// Hexagon (matches no required shape, fails LowBar/HighBar action checks).
+// Hexagon (matches no required shape).
 void spawn_aligned_player(entt::registry& reg, float y) {
     auto p = reg.create();
     reg.emplace<PlayerTag>(p);
@@ -98,13 +98,7 @@ void spawn_aligned_player(entt::registry& reg, float y) {
 entt::entity spawn_obstacle(entt::registry& reg, ObstacleKind kind, float y) {
     auto e = reg.create();
     reg.emplace<ObstacleTag>(e);
-    if (kind == ObstacleKind::LowBar || kind == ObstacleKind::HighBar) {
-        reg.emplace<ObstacleScrollZ>(e, y);
-        reg.emplace<WorldTransform>(e, WorldTransform{{constants::SCREEN_W_F * 0.5f, y}});
-        reg.emplace<BarObstacleTag>(e);
-    } else {
-        reg.emplace<WorldTransform>(e, WorldTransform{{constants::LANE_X[1], y}});
-    }
+    reg.emplace<WorldTransform>(e, WorldTransform{{constants::LANE_X[1], y}});
     reg.emplace<Obstacle>(e, kind, int16_t{0});
     return e;
 }
@@ -157,10 +151,10 @@ TEST_CASE("redfoot/#168: energy depletion does not overwrite a specific cause",
     auto& song = reg.ctx().emplace<SongState>();
     song.playing = true;
     auto& gos = reg.ctx().emplace<GameOverState>();
-    gos.cause = DeathCause::HitABar;
+    gos.cause = DeathCause::MissedABeat;
     energy.energy = 0.0f;
 
     game_state_system(reg, 0.016f);
 
-    CHECK(gos.cause == DeathCause::HitABar);  // preserved, not clobbered
+    CHECK(gos.cause == DeathCause::MissedABeat);  // preserved, not clobbered
 }
