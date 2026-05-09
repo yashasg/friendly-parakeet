@@ -2,6 +2,7 @@
 #include <type_traits>
 #include "test_helpers.h"
 #include "audio/audio_types.h"
+#include "components/audio_events.h"
 #include "entities/obstacle_entity.h"
 #include "entities/obstacle_render_entity.h"
 
@@ -59,19 +60,14 @@ TEST_CASE("components: InputState stores transient input flags", "[components]")
     CHECK(is.touch_up);
 }
 
-TEST_CASE("components: AudioQueue stores queued sounds", "[components]") {
-    AudioQueue q{};
-    CHECK(q.count == 0);
-    q.queue[q.count++] = SFX::ShapeShift;
-    q.queue[q.count++] = SFX::Crash;
-    CHECK(q.count == 2);
-    CHECK(q.queue[0] == SFX::ShapeShift);
-    CHECK(q.queue[1] == SFX::Crash);
+TEST_CASE("components: PlaySfxEvent wraps SFX clip", "[components]") {
+    PlaySfxEvent e{SFX::ShapeShift};
+    CHECK(e.clip == SFX::ShapeShift);
 }
 
-TEST_CASE("components: AudioQueue exposes fixed capacity", "[components]") {
-    AudioQueue q{};
-    CHECK(q.MAX_QUEUED == 16);
+TEST_CASE("components: PlayHapticEvent wraps HapticEvent", "[components]") {
+    PlayHapticEvent e{HapticEvent::DeathCrash};
+    CHECK(e.evt == HapticEvent::DeathCrash);
 }
 
 TEST_CASE("components: ScoreState defaults to zero", "[components]") {
@@ -96,9 +92,7 @@ TEST_CASE("ecs: make_registry creates all singletons", "[ecs]") {
     // Gameplay state
     static_cast<void>(reg.ctx().get<GameState>());
     static_cast<void>(reg.ctx().get<ScoreState>());
-    // Audio / haptics / settings
-    static_cast<void>(reg.ctx().get<AudioQueue>());
-    static_cast<void>(reg.ctx().get<HapticQueue>());
+    // Audio / haptics / settings (queues replaced by dispatcher events)
     static_cast<void>(reg.ctx().get<SettingsState>());
     // Level / song / rhythm
     static_cast<void>(reg.ctx().get<LevelSelectState>());
@@ -180,7 +174,7 @@ TEST_CASE("ecs: wire_input_dispatcher is idempotent", "[ecs][dispatcher]") {
     reg.ctx().get<entt::dispatcher>().update<ButtonPressEvent>();
 
     CHECK(reg.get<ShapeWindow>(player).phase == WindowPhase::Active);
-    CHECK(reg.ctx().get<AudioQueue>().count == 1);
+    CHECK(drain_sfx_events(reg).count == 1);
 }
 
 struct ExternalGoListener {
@@ -365,7 +359,7 @@ TEST_CASE("ecs: dispatcher rewire-after-unwire does not duplicate semantic deliv
 
     CHECK(sw.phase == WindowPhase::Active);
     CHECK(sw.target_shape == Shape::Square);
-    CHECK(reg.ctx().get<AudioQueue>().count == 1);
+    CHECK(drain_sfx_events(reg).count == 1);
 }
 
 TEST_CASE("ecs: repeated unwire_input_dispatcher is idempotent before rewire",
@@ -386,7 +380,7 @@ TEST_CASE("ecs: repeated unwire_input_dispatcher is idempotent before rewire",
 
     CHECK(sw.phase == WindowPhase::Active);
     CHECK(sw.target_shape == Shape::Triangle);
-    CHECK(reg.ctx().get<AudioQueue>().count == 1);
+    CHECK(drain_sfx_events(reg).count == 1);
 }
 
 TEST_CASE("collision: SongState ctx singleton identity is stable across collision ticks",

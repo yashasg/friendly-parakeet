@@ -27,9 +27,3 @@ enum class HapticEvent : uint8_t {
     RetryTap,         // Crisp tap       — end-screen Restart pressed
     UIButtonTap,      // Ultra-light tap — any UI menu button pressed
 };
-
-struct HapticQueue {
-    static constexpr int MAX_QUEUED = 8;
-    HapticEvent queue[MAX_QUEUED] = {};
-    int count = 0;
-};

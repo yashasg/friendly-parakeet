@@ -20,7 +20,7 @@ TEST_CASE("player_action: shape change on button press", "[player]") {
         CHECK(ps.morph_t  == 1.0f);
     }
     // Should have pushed ShapeShift SFX
-    CHECK(reg.ctx().get<AudioQueue>().count > 0);
+    CHECK(drain_sfx_events(reg).count > 0);
 }
 
 TEST_CASE("player_action: no shape change when same shape pressed", "[player]") {
@@ -38,7 +38,7 @@ TEST_CASE("player_action: no shape change when same shape pressed", "[player]") 
         CHECK(ps.current == Shape::Circle);
         CHECK(ps.morph_t == 1.0f);  // unchanged
     }
-    CHECK(reg.ctx().get<AudioQueue>().count == 0);
+    CHECK(drain_sfx_events(reg).count == 0);
 }
 
 TEST_CASE("player_action: swipe left changes lane", "[player]") {

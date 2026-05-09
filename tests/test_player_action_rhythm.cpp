@@ -26,7 +26,7 @@ TEST_CASE("player_action: rhythm mode starts window on button press from Idle", 
     CHECK(sw.window_scale == 1.0f);
 
     // SFX should be pushed
-    CHECK(reg.ctx().get<AudioQueue>().count > 0);
+    CHECK(drain_sfx_events(reg).count > 0);
 }
 
 TEST_CASE("player_action: rhythm mode calculates peak_time correctly", "[player_rhythm]") {
@@ -144,7 +144,7 @@ TEST_CASE("player_action: rhythm mode ACCEPTS button press during MorphOut (#209
     CHECK(ps.morph_t == 1.0f);
     CHECK(sw.window_start == 15.0f);
     CHECK(sw.graded == false);
-    CHECK(reg.ctx().get<AudioQueue>().count > 0);
+    CHECK(drain_sfx_events(reg).count > 0);
 }
 
 // ── semantic input pipeline: legacy mode (no SongState) ────────────────
@@ -162,7 +162,7 @@ TEST_CASE("player_action: legacy mode instant shape change", "[player_legacy]") 
     CHECK(ps.current == Shape::Triangle);
     CHECK(ps.previous == Shape::Circle);
     CHECK(ps.morph_t == 1.0f);
-    CHECK(reg.ctx().get<AudioQueue>().count > 0);
+    CHECK(drain_sfx_events(reg).count > 0);
 }
 
 TEST_CASE("player_action: legacy mode no change for same shape", "[player_legacy]") {
@@ -176,7 +176,7 @@ TEST_CASE("player_action: legacy mode no change for same shape", "[player_legacy
 
     auto& ps = reg.get<PlayerShape>(player);
     CHECK(ps.current == Shape::Circle);
-    CHECK(reg.ctx().get<AudioQueue>().count == 0);
+    CHECK(drain_sfx_events(reg).count == 0);
 }
 
 // ── semantic input pipeline: swipe actions still work in rhythm mode ───

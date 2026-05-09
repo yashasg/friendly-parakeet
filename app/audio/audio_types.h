@@ -23,12 +23,6 @@ static_assert(magic_enum::enum_count<SFX>() == 9,
 static_assert(static_cast<int>(SFX::ShapeShift) == 0,
               "SFX enum must be zero-based for array indexing");
 
-struct AudioQueue {
-    static constexpr int MAX_QUEUED = 16;
-    SFX queue[MAX_QUEUED] = {};
-    int count = 0;
-};
-
 // Resident sound bank initialised by sfx_bank_init (app/audio/sfx_bank.cpp).
 struct SFXBank {
     static constexpr int SFX_COUNT = static_cast<int>(magic_enum::enum_count<SFX>());

@@ -97,7 +97,7 @@ TEST_CASE("scoring: SFX pushed on score", "[scoring]") {
     popup_feedback_system(reg, 0.016f);
     energy_system(reg, 0.016f);
 
-    CHECK(reg.ctx().get<AudioQueue>().count > 0);
+    CHECK(drain_sfx_events(reg).count > 0);
 }
 
 TEST_CASE("scoring: displayed_score rolls up toward score", "[scoring]") {

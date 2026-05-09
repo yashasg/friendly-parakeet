@@ -232,9 +232,11 @@ TEST_CASE("game_state: enter_game_over pushes Crash SFX", "[gamestate]") {
 
     game_state_system(reg, 0.016f);
 
-    auto& audio = reg.ctx().get<AudioQueue>();
-    CHECK(audio.count > 0);
-    CHECK(audio.queue[0] == SFX::Crash);
+    auto cap = drain_sfx_events(reg);
+    bool found_crash = false;
+    for (int i = 0; i < cap.count; ++i)
+        if (cap.buf[i] == SFX::Crash) found_crash = true;
+    CHECK(found_crash);
 }
 
 TEST_CASE("game_state: enter_game_over preserves high score if lower", "[gamestate]") {

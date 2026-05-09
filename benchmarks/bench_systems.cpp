@@ -13,6 +13,7 @@
 #include "components/particle.h"
 #include "components/rhythm.h"
 #include "audio/audio_types.h"
+#include "audio/audio_routing.h"
 #include "constants.h"
 #include "systems/all_systems.h"
 #include "input/input_routing.h"
@@ -24,12 +25,12 @@ static entt::registry make_bench_registry() {
     reg.ctx().emplace<InputState>();
     reg.ctx().emplace<entt::dispatcher>();
     wire_input_dispatcher(reg);
+    wire_audio_haptic_dispatcher(reg);
     reg.ctx().emplace<GameState>(GameState{
         GamePhase::Playing, GamePhase::Playing, 0.0f, false, GamePhase::Playing, 0.0f
     });
     reg.ctx().emplace<ScoreState>();
     reg.ctx().emplace<SongState>();
-    reg.ctx().emplace<AudioQueue>();
     return reg;
 }
 

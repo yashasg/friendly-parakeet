@@ -6,7 +6,7 @@
 #include "components/scoring.h"
 #include "audio/audio_types.h"
 #include "audio/sfx_bank.h"
-#include "components/haptics.h"
+#include "audio/audio_routing.h"
 #include "util/settings.h"
 #include "components/rhythm.h"
 #include "audio/music_context.h"
@@ -159,6 +159,7 @@ void game_loop_init(entt::registry& reg,
     reg.ctx().emplace<InputState>();
     reg.ctx().emplace<entt::dispatcher>();
     wire_input_dispatcher(reg);
+    wire_audio_haptic_dispatcher(reg);
     input_system_init(reg);
     reg.ctx().emplace<GameState>(GameState{
         .phase = GamePhase::Title, .previous_phase = GamePhase::Title,
@@ -166,8 +167,6 @@ void game_loop_init(entt::registry& reg,
         .next_phase = GamePhase::Title, .transition_alpha = 0.0f
     });
     reg.ctx().emplace<ScoreState>();
-    reg.ctx().emplace<AudioQueue>();
-    reg.ctx().emplace<HapticQueue>();
     reg.ctx().emplace<LevelSelectState>();
     reg.ctx().emplace<EnergyState>();
     reg.ctx().emplace<GameOverState>();
@@ -314,6 +313,7 @@ void game_loop_run(entt::registry& reg) {
 void game_loop_shutdown(entt::registry& reg) {
     // Disconnect all destroy/construct listeners before clearing entities
     unwire_input_dispatcher(reg);
+    unwire_audio_haptic_dispatcher(reg);
     unwire_obstacle_mesh_lifetime(reg);
     reg.on_construct<ObstacleTag>().disconnect<&session_log_on_obstacle_spawn>();
     reg.on_construct<ScoredTag>().disconnect<&session_log_on_scored>();

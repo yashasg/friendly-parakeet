@@ -3,7 +3,7 @@
 #include "../components/player.h"
 #include "../components/rendering.h"
 #include "../components/input_events.h"
-#include "../audio/audio_types.h"
+#include "../components/audio_events.h"
 #include "../components/haptics.h"
 #include "../components/rhythm.h"
 #include "../util/settings.h"
@@ -12,13 +12,8 @@
 namespace {
 
 void push_haptic(entt::registry& reg, HapticEvent event) {
-    auto* haptics = reg.ctx().find<HapticQueue>();
-    auto* settings = reg.ctx().find<SettingsState>();
-    if (!haptics || (settings && !settings->haptics_enabled) ||
-        haptics->count >= HapticQueue::MAX_QUEUED) {
-        return;
-    }
-    haptics->queue[haptics->count++] = event;
+    auto* disp = reg.ctx().find<entt::dispatcher>();
+    if (disp) disp->enqueue<PlayHapticEvent>({event});
 }
 
 }  // namespace
@@ -78,9 +73,8 @@ void player_input_handle_press(entt::registry& reg, const ButtonPressEvent& evt)
         auto si = static_cast<int>(pressed_shape);
         auto& sc = constants::SHAPE_COLORS[si];
         reg.replace<Color>(entity, sc);
-        auto& audio = reg.ctx().get<AudioQueue>();
-        if (audio.count < AudioQueue::MAX_QUEUED) {
-            audio.queue[audio.count++] = SFX::ShapeShift;
+        if (auto* disp = reg.ctx().find<entt::dispatcher>()) {
+            disp->enqueue<PlaySfxEvent>({SFX::ShapeShift});
         }
         push_haptic(reg, HapticEvent::ShapeShift);
     };
@@ -116,9 +110,8 @@ void player_input_handle_press(entt::registry& reg, const ButtonPressEvent& evt)
                 auto si = static_cast<int>(pressed_shape);
                 auto& sc = constants::SHAPE_COLORS[si];
                 reg.replace<Color>(entity, sc);
-                auto& audio = reg.ctx().get<AudioQueue>();
-                if (audio.count < AudioQueue::MAX_QUEUED) {
-                    audio.queue[audio.count++] = SFX::ShapeShift;
+                if (auto* disp = reg.ctx().find<entt::dispatcher>()) {
+                    disp->enqueue<PlaySfxEvent>({SFX::ShapeShift});
                 }
                 push_haptic(reg, HapticEvent::ShapeShift);
             }

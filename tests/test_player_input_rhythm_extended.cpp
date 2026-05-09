@@ -77,9 +77,9 @@ TEST_CASE("player_input_rhythm: shape change pushes ShapeShift SFX", "[player][r
 
     run_semantic_input_tick(reg);
 
-    auto& audio = reg.ctx().get<AudioQueue>();
-    CHECK(audio.count > 0);
-    CHECK(audio.queue[0] == SFX::ShapeShift);
+    auto sfx_cap = drain_sfx_events(reg);
+    CHECK(sfx_cap.count > 0);
+    CHECK(sfx_cap.buf[0] == SFX::ShapeShift);
 }
 
 TEST_CASE("player_input_rhythm: shape press also remaps lane target", "[player][rhythm]") {
@@ -157,7 +157,7 @@ TEST_CASE("player_input: non-rhythm same shape press does nothing", "[player]") 
     for (auto [e, ps] : view.each()) {
         CHECK(ps.morph_t == 1.0f);  // unchanged
     }
-    CHECK(reg.ctx().get<AudioQueue>().count == 0);
+    CHECK(drain_sfx_events(reg).count == 0);
 }
 
 TEST_CASE("player_input: non-rhythm shape press updates Color", "[player]") {
