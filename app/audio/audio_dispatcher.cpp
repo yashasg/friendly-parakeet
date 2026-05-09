@@ -11,7 +11,7 @@ struct AudioHapticDispatcherConnections {
     entt::scoped_connection haptic;
 };
 
-void warm_audio_haptic_queues(entt::dispatcher& disp) {
+void warm_audio_haptic_dispatcher(entt::dispatcher& disp) {
     // Move first vector allocation out of the first gameplay audio frame.
     disp.enqueue<PlaySfxEvent>(PlaySfxEvent{});
     disp.enqueue<PlayHapticEvent>(PlayHapticEvent{});
@@ -24,8 +24,7 @@ void warm_audio_haptic_queues(entt::dispatcher& disp) {
 // ── Drain-ownership model ────────────────────────────────────────────────────
 // audio_system owns the PlaySfxEvent drain  (disp.update<PlaySfxEvent>())
 // haptic_system owns the PlayHapticEvent drain (disp.update<PlayHapticEvent>())
-// Both are called in game_loop_frame after rendering, matching the old
-// AudioQueue / HapticQueue drain timing.
+// Both drains are called in game_loop_frame after rendering.
 void wire_audio_haptic_dispatcher(entt::registry& reg) {
     auto* disp = reg.ctx().find<entt::dispatcher>();
     if (!disp) {
@@ -48,7 +47,7 @@ void wire_audio_haptic_dispatcher(entt::registry& reg) {
     state->haptic = entt::scoped_connection{
         disp->sink<PlayHapticEvent>().connect<&haptic_handle_play>(reg)};
 
-    warm_audio_haptic_queues(*disp);
+    warm_audio_haptic_dispatcher(*disp);
 }
 
 void unwire_audio_haptic_dispatcher(entt::registry& reg) {
