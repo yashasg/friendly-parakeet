@@ -26,15 +26,18 @@ Usage:
     python level_designer.py analysis.json --output my_beatmap.json
     python level_designer.py analysis.json --difficulty easy
     python level_designer.py analysis.json --no-cleanup
+    python level_designer.py analysis.json --diagnostics-out tools/diagnostics/song_loop1 --diagnostics-only
 """
 
 import argparse
+import csv
 import hashlib
 import json
 import random
 import sys
 from pathlib import Path
-from collections import Counter
+from bisect import bisect_right
+from collections import Counter, defaultdict
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -82,6 +85,7 @@ DIFFICULTY_KINDS = {
     "medium": {"shape_gate"},
     "hard":   {"shape_gate"},
 }
+UNREADABLE_KINDS = {"low_bar", "high_bar"}
 MAX_EMPTY_GAP = {"easy": 40, "medium": 32, "hard": 30}
 MAX_BEAT_DIFF = {diff: gap + 1 for diff, gap in MAX_EMPTY_GAP.items()}
 MIN_SHAPE_CHANGE_GAP = 3
@@ -114,7 +118,7 @@ SECTION_SHAPE_PALETTE = {
 def snap_events_to_beats(events, beats, tolerance=0.08):
     """Snap each event to nearest beat. One event per beat."""
     snapped, used = [], set()
-    for ev in events:
+    for idx, ev in enumerate(events):
         lo, hi, best, best_d = 0, len(beats)-1, None, tolerance+1
         while lo <= hi:
             mid = (lo+hi)//2
@@ -127,6 +131,7 @@ def snap_events_to_beats(events, beats, tolerance=0.08):
             used.add(best)
             snapped.append({
                 **ev,
+                "source_event_idx": idx,
                 "beat_idx": best,
                 "beat_time": beats[best],
                 "subdivision": subdivision,
@@ -159,6 +164,228 @@ def classify_subdivision(event_time, beats, beat_idx):
         closest_label = "offgrid"
 
     return closest_label, SUBDIVISION_TO_LANE.get(closest_label, 1)
+
+
+def _percentile(sorted_values, q):
+    if not sorted_values:
+        return 0.0
+    if len(sorted_values) == 1:
+        return float(sorted_values[0])
+    pos = (len(sorted_values) - 1) * q
+    lo = int(pos)
+    hi = min(lo + 1, len(sorted_values) - 1)
+    frac = pos - lo
+    return float(sorted_values[lo] + (sorted_values[hi] - sorted_values[lo]) * frac)
+
+
+def _intensity_confidence(intensity):
+    return {"low": 0.33, "medium": 0.66, "high": 1.0}.get(str(intensity), None)
+
+
+def _candidate_fraction_labels(mode):
+    if mode == "quarter":
+        return [(0.0, "downbeat"), (1.0, "downbeat")]
+    if mode == "eighth":
+        return [(0.0, "downbeat"), (0.5, "eighth"), (1.0, "downbeat")]
+    if mode == "triplet":
+        return [(0.0, "downbeat"), (1.0 / 3.0, "triplet"), (2.0 / 3.0, "triplet"), (1.0, "downbeat")]
+    raise ValueError(f"Unsupported candidate mode: {mode}")
+
+
+def snap_events_to_grid_candidates(events, beats, mode):
+    """Snap each event to the nearest grid point on quarter/eighth/triplet grids."""
+    if len(beats) < 2:
+        return []
+
+    snapped = []
+    fractions = _candidate_fraction_labels(mode)
+
+    for event_idx, ev in enumerate(events):
+        event_time = float(ev.get("t", 0.0))
+        beat_idx = bisect_right(beats, event_time) - 1
+        beat_idx = min(max(beat_idx, 0), len(beats) - 2)
+        left = float(beats[beat_idx])
+        right = float(beats[beat_idx + 1])
+        span = max(1e-6, right - left)
+
+        best_fraction, subdivision = min(
+            fractions,
+            key=lambda item: abs((left + (span * item[0])) - event_time),
+        )
+        grid_time = left + (span * best_fraction)
+        residual_ms = (event_time - grid_time) * 1000.0
+
+        snapped.append({
+            "candidate": mode,
+            "event_idx": event_idx,
+            "event_time": round(event_time, 6),
+            "beat_idx": int(beat_idx),
+            "grid_time": round(grid_time, 6),
+            "subdivision": subdivision,
+            "residual_ms": round(residual_ms, 3),
+            "abs_residual_ms": round(abs(residual_ms), 3),
+            "flux": ev.get("flux"),
+            "intensity": ev.get("intensity"),
+            "intensity_confidence": _intensity_confidence(ev.get("intensity")),
+            "pass_count": len(ev.get("passes", [])) if isinstance(ev.get("passes"), list) else None,
+        })
+
+    return snapped
+
+
+def _residual_summary(snapped_rows):
+    abs_residuals = sorted(float(row["abs_residual_ms"]) for row in snapped_rows)
+    if not abs_residuals:
+        return {
+            "count": 0,
+            "median_abs_ms": 0.0,
+            "p90_abs_ms": 0.0,
+            "mean_abs_ms": 0.0,
+            "within_20ms": 0,
+            "within_35ms": 0,
+            "within_50ms": 0,
+            "within_80ms": 0,
+        }
+
+    return {
+        "count": len(abs_residuals),
+        "median_abs_ms": round(_percentile(abs_residuals, 0.5), 3),
+        "p90_abs_ms": round(_percentile(abs_residuals, 0.9), 3),
+        "mean_abs_ms": round(sum(abs_residuals) / len(abs_residuals), 3),
+        "within_20ms": sum(1 for x in abs_residuals if x <= 20.0),
+        "within_35ms": sum(1 for x in abs_residuals if x <= 35.0),
+        "within_50ms": sum(1 for x in abs_residuals if x <= 50.0),
+        "within_80ms": sum(1 for x in abs_residuals if x <= 80.0),
+    }
+
+
+def _gap_histogram(snapped_rows):
+    if not snapped_rows:
+        return {}
+    times = sorted(float(row["grid_time"]) for row in snapped_rows)
+    if len(times) < 2:
+        return {}
+    buckets = defaultdict(int)
+    for i in range(1, len(times)):
+        gap_ms = (times[i] - times[i - 1]) * 1000.0
+        bucket_floor = int(gap_ms // 50) * 50
+        bucket = f"{bucket_floor:04d}-{bucket_floor + 49:04d}"
+        buckets[bucket] += 1
+    return dict(sorted(buckets.items()))
+
+
+def _same_shape_run_metrics(obstacles):
+    longest = 0
+    runs_ge_3 = 0
+    current_shape = None
+    current_len = 0
+    for obs in sorted(obstacles, key=lambda x: x["beat"]):
+        if obs.get("kind") != "shape_gate":
+            current_shape = None
+            current_len = 0
+            continue
+        shape = obs.get("shape")
+        if shape == current_shape:
+            current_len += 1
+        else:
+            current_shape = shape
+            current_len = 1
+        if current_len >= 3:
+            runs_ge_3 += 1
+        longest = max(longest, current_len)
+    return {"longest_run": longest, "run_steps_ge_3": runs_ge_3}
+
+
+def _baseline_same_shape_metrics(analysis):
+    metrics = {}
+    for diff in ("easy", "medium", "hard"):
+        obstacles = design_level(analysis, diff, cleanup_enabled=True)
+        metrics[diff] = _same_shape_run_metrics(obstacles)
+    return metrics
+
+
+def write_snap_diagnostics(analysis, diagnostics_out_dir):
+    """Emit subdivision-aware diagnostics artifacts without changing generation."""
+    out_dir = Path(diagnostics_out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    events = analysis.get("events", [])
+    beats = analysis.get("beats", [])
+    if not events or not beats:
+        raise ValueError("analysis must include non-empty events and beats for diagnostics")
+
+    current_snap = snap_events_to_beats(events, beats)
+    current_rows = []
+    for i, row in enumerate(current_snap):
+        event_time = float(row.get("t", 0.0))
+        beat_time = float(row.get("beat_time", 0.0))
+        residual_ms = (event_time - beat_time) * 1000.0
+        current_rows.append({
+            "candidate": "current_quarter_snap",
+            "event_idx": int(row.get("source_event_idx", i)),
+            "event_time": round(event_time, 6),
+            "beat_idx": int(row.get("beat_idx", 0)),
+            "grid_time": round(beat_time, 6),
+            "subdivision": row.get("subdivision", "downbeat"),
+            "residual_ms": round(residual_ms, 3),
+            "abs_residual_ms": round(abs(residual_ms), 3),
+            "flux": row.get("flux"),
+            "intensity": row.get("intensity"),
+            "intensity_confidence": _intensity_confidence(row.get("intensity")),
+            "pass_count": len(row.get("passes", [])) if isinstance(row.get("passes"), list) else None,
+        })
+
+    candidate_rows = {
+        "current_quarter_snap": current_rows,
+        "quarter_grid": snap_events_to_grid_candidates(events, beats, "quarter"),
+        "eighth_grid": snap_events_to_grid_candidates(events, beats, "eighth"),
+        "triplet_grid": snap_events_to_grid_candidates(events, beats, "triplet"),
+    }
+
+    flat_rows = []
+    for rows in candidate_rows.values():
+        flat_rows.extend(rows)
+    fields = [
+        "candidate",
+        "event_idx",
+        "event_time",
+        "beat_idx",
+        "grid_time",
+        "subdivision",
+        "residual_ms",
+        "abs_residual_ms",
+        "flux",
+        "intensity",
+        "intensity_confidence",
+        "pass_count",
+    ]
+    with (out_dir / "snap_candidate_events.csv").open("w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=fields)
+        writer.writeheader()
+        writer.writerows(flat_rows)
+
+    residual_summary = {}
+    subdivision_histogram = {}
+    gap_histogram = {}
+    for candidate, rows in candidate_rows.items():
+        residual_summary[candidate] = _residual_summary(rows)
+        subdivision_histogram[candidate] = dict(
+            sorted(Counter(row["subdivision"] for row in rows).items())
+        )
+        gap_histogram[candidate] = _gap_histogram(rows)
+
+    summary = {
+        "song_id": analysis.get("title", "unknown"),
+        "residual_summary": residual_summary,
+        "subdivision_histogram": subdivision_histogram,
+        "gap_histogram_50ms_bins": gap_histogram,
+        "same_shape_run_metrics": _baseline_same_shape_metrics(analysis),
+    }
+
+    with (out_dir / "snap_diagnostics_summary.json").open("w", encoding="utf-8") as f:
+        json.dump(summary, f, indent=2)
+
+    return out_dir
 
 
 def flux_threshold(stats, pct):
@@ -1138,6 +1365,16 @@ def main():
     parser.add_argument("--output", "-o", default=None)
     parser.add_argument("--difficulty", "-d", choices=["easy","medium","hard","all"], default="all")
     parser.add_argument(
+        "--diagnostics-out",
+        default=None,
+        help="If set, write subdivision snap diagnostics artifacts to this directory.",
+    )
+    parser.add_argument(
+        "--diagnostics-only",
+        action="store_true",
+        help="Run diagnostics only (skip beatmap generation). Requires --diagnostics-out.",
+    )
+    parser.add_argument(
         "--no-cleanup",
         action="store_true",
         help="Disable cleanup and post-processing passes (raw generation only).",
@@ -1150,6 +1387,16 @@ def main():
 
     with open(args.input) as f:
         analysis = json.load(f)
+
+    if args.diagnostics_only and not args.diagnostics_out:
+        print("Error: --diagnostics-only requires --diagnostics-out", file=sys.stderr)
+        sys.exit(1)
+
+    if args.diagnostics_out:
+        out_dir = write_snap_diagnostics(analysis, args.diagnostics_out)
+        print(f"✓ diagnostics: {out_dir}")
+        if args.diagnostics_only:
+            return
 
     diffs = ["easy","medium","hard"] if args.difficulty == "all" else [args.difficulty]
 

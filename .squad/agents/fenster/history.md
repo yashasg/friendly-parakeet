@@ -144,6 +144,41 @@ Ported the removed HUD behavior (shape buttons, approach-ring affordance, colorf
 
 ---
 
+## 2026-05-09T00:41:48.960-07:00 — Beatmap Quality Loop 1 (Diagnostics-First)
+
+Implemented a subdivision-aware diagnostics path in `tools/level_designer.py` behind opt-in CLI flags:
+
+- `--diagnostics-out <dir>` writes diagnostics artifacts.
+- `--diagnostics-only` runs diagnostics without generating/updating beatmap output.
+
+Added candidate snap analysis for:
+
+- current quarter-only snap (`snap_events_to_beats`, 80ms tolerance, one event per beat),
+- quarter grid,
+- eighth grid,
+- triplet grid.
+
+Each diagnostic row now includes candidate label, source event index, beat index, grid time, subdivision label, residual (ms), abs residual (ms), flux, intensity, derived intensity confidence, and pass count.
+
+Loop 1 output artifacts generated for `2_drama` in `tools/diagnostics/2_drama_loop1/`:
+
+- `snap_candidate_events.csv`
+- `snap_diagnostics_summary.json`
+
+Summary signal on `2_drama`:
+
+- Current snap keeps 60/216 events.
+- Eighth grid captures much more usable off-beat material (170 events within 20ms).
+- Triplet grid shows broader but still quantifiable alignment (216 within 80ms).
+- Same-shape run metrics were added as baseline diagnostics from generated difficulties.
+
+Validation run:
+
+- `python3 -m py_compile tools/level_designer.py`
+- `python3 tools/level_designer.py content/beatmaps/2_drama_analysis.json --diagnostics-out tools/diagnostics/2_drama_loop1 --diagnostics-only`
+- `cmake -B build -S . -Wno-dev && cmake --build build && ./build/shapeshifter_tests`
+- Result: all tests passed (1840 assertions in 686 test cases).
+
 ## 2026-04-30T02:04:27Z — Dead Code Prune — Input Routing Doc Revision
 
 **Session:** Multi-agent dead code cleanup; independent revision under reviewer lockout.
