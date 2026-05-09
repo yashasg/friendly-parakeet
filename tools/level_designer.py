@@ -95,6 +95,7 @@ GAP_ONE_MAX_RUN = {"medium": 1, "hard": 2}
 GAP_ONE_SHARE_CAP = {"medium": 0.20, "hard": 0.20}
 GAP_MONOTONY_CAP = {"medium": 0.40, "hard": 0.35}
 MIN_IOI_MS = {"easy": 700.0, "medium": 380.0, "hard": 300.0}
+DENSE_CLUSTER_SOFT_CAP = {"medium": 6, "hard": 10}
 MEDIUM_SHAPE_TARGETS = {
     0: (10, 20),  # Circle / lane 0
     1: (45, 60),  # Square / lane 1
@@ -1045,6 +1046,43 @@ def clean_gap_one_share(obstacles, difficulty):
     return result
 
 
+def thin_oversized_shape_clusters(obstacles, difficulty):
+    """Trim the minimum obstacles needed to cap dense cluster size per difficulty."""
+    cap = DENSE_CLUSTER_SOFT_CAP.get(difficulty)
+    max_diff = MAX_BEAT_DIFF.get(difficulty, 999)
+    if cap is None or len(obstacles) < cap + 1:
+        return obstacles
+
+    result = list(obstacles)
+    for _ in range(len(result)):
+        clusters = shape_gate_clusters(result)
+        oversized = next((cluster for cluster in clusters if len(cluster) > cap), None)
+        if oversized is None:
+            break
+
+        target_idx = None
+        best_key = None
+        midpoint = (len(oversized) - 1) / 2.0
+        for pos in range(1, len(oversized) - 1):
+            idx = oversized[pos]
+            left_gap = result[idx]["beat"] - result[idx - 1]["beat"]
+            right_gap = result[idx + 1]["beat"] - result[idx]["beat"]
+            merged_gap = result[idx + 1]["beat"] - result[idx - 1]["beat"]
+            if merged_gap > max_diff:
+                continue
+            gap_one_relief = int(left_gap == 1) + int(right_gap == 1)
+            key = (-gap_one_relief, merged_gap, abs(pos - midpoint), idx)
+            if best_key is None or key < best_key:
+                best_key = key
+                target_idx = idx
+
+        if target_idx is None:
+            target_idx = oversized[len(oversized) // 2]
+        del result[target_idx]
+
+    return result
+
+
 def get_section_boundary_beats(analysis):
     """Map structure section boundaries to beat indices."""
     beats = analysis.get("beats", [])
@@ -1430,6 +1468,15 @@ def design_level(analysis, difficulty, cleanup_enabled=True):
     obstacles = clean_shape_change_gap(obstacles)
     obstacles = clean_gap_one_early(obstacles, difficulty)
     obstacles = rebalance_easy_shapes(obstacles, difficulty)
+    obstacles = rebalance_medium_shapes(obstacles, difficulty)
+    obstacles = rebalance_hard_shapes(obstacles, difficulty)
+    obstacles = clean_min_ioi(obstacles, difficulty, analysis)
+    obstacles = clean_gap_monotony(obstacles, difficulty)
+    obstacles = clean_shape_change_gap(obstacles)
+    obstacles = clean_gap_one_early(obstacles, difficulty)
+    obstacles = clean_gap_one_share(obstacles, difficulty)
+    obstacles = clean_gap_monotony(obstacles, difficulty)
+    obstacles = thin_oversized_shape_clusters(obstacles, difficulty)
     obstacles = rebalance_medium_shapes(obstacles, difficulty)
     obstacles = rebalance_hard_shapes(obstacles, difficulty)
     obstacles = clean_min_ioi(obstacles, difficulty, analysis)

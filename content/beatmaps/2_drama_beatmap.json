@@ -1854,13 +1854,6 @@
           "time_sec": 79.615
         },
         {
-          "beat": 173,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2,
-          "time_sec": 80.073
-        },
-        {
           "beat": 175,
           "kind": "shape_gate",
           "shape": "triangle",
@@ -1996,29 +1989,29 @@
         {
           "beat": 243,
           "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1,
+          "shape": "triangle",
+          "lane": 2,
           "time_sec": 112.377
         },
         {
           "beat": 244,
           "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1,
+          "shape": "triangle",
+          "lane": 2,
           "time_sec": 112.842
         },
         {
           "beat": 246,
           "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1,
+          "shape": "triangle",
+          "lane": 2,
           "time_sec": 113.771
         },
         {
           "beat": 248,
           "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1,
+          "shape": "triangle",
+          "lane": 2,
           "time_sec": 114.692
         },
         {
@@ -2125,13 +2118,6 @@
           "shape": "circle",
           "lane": 0,
           "time_sec": 135.452
-        },
-        {
-          "beat": 294,
-          "kind": "shape_gate",
-          "shape": "circle",
-          "lane": 0,
-          "time_sec": 135.924
         },
         {
           "beat": 296,
@@ -2267,13 +2253,6 @@
           "time_sec": 168.686
         },
         {
-          "beat": 366,
-          "kind": "shape_gate",
-          "shape": "circle",
-          "lane": 0,
-          "time_sec": 169.15
-        },
-        {
           "beat": 368,
           "kind": "shape_gate",
           "shape": "circle",
@@ -2342,13 +2321,6 @@
           "shape": "triangle",
           "lane": 2,
           "time_sec": 183.459
-        },
-        {
-          "beat": 399,
-          "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2,
-          "time_sec": 184.381
         },
         {
           "beat": 400,
@@ -2589,7 +2561,7 @@
           "time_sec": 235.385
         }
       ],
-      "count": 149
+      "count": 145
     },
     "hard": {
       "beats": [
