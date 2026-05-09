@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import sys
 import unittest
+from unittest import mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -124,10 +125,24 @@ class TestLoop2GateEvaluation(unittest.TestCase):
         self.assertEqual(rc, 0)
 
     def test_strict_mode_fails_on_findings(self):
-        rc = gates.main([
-            "--strict",
-            "content/beatmaps/1_stomper_beatmap.json",
-        ])
+        fake_metrics = {
+            "total_obstacles": 3,
+            "dominant_gap_share": 0.5,
+            "gap_one_share": 0.0,
+            "gap_one_run": 0,
+            "longest_same_shape_run": 1,
+            "longest_same_shape_cluster_run": 1,
+            "max_shape_cluster_size": 1,
+            "shape_clusters_over_warn": 0,
+            "triangle_share": 0.3,
+            "circle_share": 0.2,
+        }
+        fake_results = [("hard", fake_metrics, ["synthetic finding"], [])]
+        with mock.patch.object(gates, "validate_beatmap", return_value=fake_results):
+            rc = gates.main([
+                "--strict",
+                "content/beatmaps/1_stomper_beatmap.json",
+            ])
         self.assertEqual(rc, 1)
 
 

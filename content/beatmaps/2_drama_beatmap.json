@@ -619,23 +619,30 @@
         {
           "beat": 57,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2,
+          "shape": "circle",
+          "lane": 0,
           "time_sec": 26.529
         },
         {
           "beat": 59,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2,
+          "shape": "circle",
+          "lane": 0,
           "time_sec": 27.458
         },
         {
           "beat": 61,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2,
+          "shape": "circle",
+          "lane": 0,
           "time_sec": 28.379
+        },
+        {
+          "beat": 63,
+          "kind": "shape_gate",
+          "shape": "circle",
+          "lane": 0,
+          "time_sec": 29.301
         },
         {
           "beat": 65,
@@ -780,22 +787,22 @@
         {
           "beat": 139,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2,
+          "shape": "square",
+          "lane": 1,
           "time_sec": 64.377
         },
         {
           "beat": 141,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2,
+          "shape": "square",
+          "lane": 1,
           "time_sec": 65.299
         },
         {
           "beat": 143,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2,
+          "shape": "square",
+          "lane": 1,
           "time_sec": 66.228
         },
         {
@@ -815,106 +822,127 @@
         {
           "beat": 154,
           "kind": "shape_gate",
-          "shape": "circle",
-          "lane": 0,
+          "shape": "square",
+          "lane": 1,
           "time_sec": 71.307
         },
         {
           "beat": 156,
           "kind": "shape_gate",
-          "shape": "circle",
-          "lane": 0,
+          "shape": "square",
+          "lane": 1,
           "time_sec": 72.229
         },
         {
           "beat": 158,
           "kind": "shape_gate",
-          "shape": "circle",
-          "lane": 0,
+          "shape": "square",
+          "lane": 1,
           "time_sec": 73.15
+        },
+        {
+          "beat": 160,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1,
+          "time_sec": 74.079
         },
         {
           "beat": 162,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2,
+          "shape": "square",
+          "lane": 1,
           "time_sec": 75.0
         },
         {
           "beat": 164,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2,
+          "shape": "square",
+          "lane": 1,
           "time_sec": 75.922
         },
         {
           "beat": 166,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2,
+          "shape": "square",
+          "lane": 1,
           "time_sec": 76.844
         },
         {
           "beat": 172,
           "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1,
+          "shape": "triangle",
+          "lane": 2,
           "time_sec": 79.615
         },
         {
           "beat": 174,
           "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1,
+          "shape": "triangle",
+          "lane": 2,
           "time_sec": 80.537
         },
         {
           "beat": 176,
           "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1,
+          "shape": "triangle",
+          "lane": 2,
           "time_sec": 81.459
+        },
+        {
+          "beat": 178,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2,
+          "time_sec": 82.38
         },
         {
           "beat": 180,
           "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1,
+          "shape": "triangle",
+          "lane": 2,
           "time_sec": 83.309
         },
         {
           "beat": 182,
           "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1,
+          "shape": "triangle",
+          "lane": 2,
           "time_sec": 84.23
         },
         {
           "beat": 184,
           "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1,
+          "shape": "triangle",
+          "lane": 2,
           "time_sec": 85.152
+        },
+        {
+          "beat": 186,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2,
+          "time_sec": 86.073
         },
         {
           "beat": 188,
           "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1,
+          "shape": "triangle",
+          "lane": 2,
           "time_sec": 86.995
         },
         {
           "beat": 190,
           "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1,
+          "shape": "triangle",
+          "lane": 2,
           "time_sec": 87.924
         },
         {
           "beat": 192,
           "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1,
+          "shape": "triangle",
+          "lane": 2,
           "time_sec": 88.845
         },
         {
@@ -1049,6 +1077,13 @@
           "shape": "square",
           "lane": 1,
           "time_sec": 125.301
+        },
+        {
+          "beat": 273,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1,
+          "time_sec": 126.222
         },
         {
           "beat": 276,
@@ -1401,6 +1436,13 @@
           "time_sec": 207.456
         },
         {
+          "beat": 451,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1,
+          "time_sec": 208.385
+        },
+        {
           "beat": 454,
           "kind": "shape_gate",
           "shape": "triangle",
@@ -1499,7 +1541,7 @@
           "time_sec": 236.299
         }
       ],
-      "count": 137
+      "count": 143
     },
     "medium": {
       "beats": [
@@ -1511,11 +1553,11 @@
           "time_sec": 2.765
         },
         {
-          "beat": 8,
+          "beat": 9,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 3.715
+          "time_sec": 4.151
         },
         {
           "beat": 15,
@@ -1602,11 +1644,11 @@
           "time_sec": 28.844
         },
         {
-          "beat": 64,
+          "beat": 65,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 29.765
+          "time_sec": 30.222
         },
         {
           "beat": 74,
@@ -1644,11 +1686,11 @@
           "time_sec": 40.374
         },
         {
-          "beat": 99,
+          "beat": 98,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 45.917
+          "time_sec": 45.46
         },
         {
           "beat": 101,
@@ -1665,11 +1707,18 @@
           "time_sec": 47.768
         },
         {
-          "beat": 107,
+          "beat": 105,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 49.611
+          "time_sec": 48.682
+        },
+        {
+          "beat": 108,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1,
+          "time_sec": 50.054
         },
         {
           "beat": 111,
@@ -1693,11 +1742,18 @@
           "time_sec": 53.304
         },
         {
-          "beat": 119,
+          "beat": 117,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2,
-          "time_sec": 55.147
+          "shape": "circle",
+          "lane": 0,
+          "time_sec": 54.233
+        },
+        {
+          "beat": 120,
+          "kind": "shape_gate",
+          "shape": "circle",
+          "lane": 0,
+          "time_sec": 55.59
         },
         {
           "beat": 123,
@@ -1714,11 +1770,11 @@
           "time_sec": 58.391
         },
         {
-          "beat": 135,
+          "beat": 134,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 62.534
+          "time_sec": 62.077
         },
         {
           "beat": 137,
@@ -1735,11 +1791,18 @@
           "time_sec": 64.377
         },
         {
-          "beat": 143,
+          "beat": 141,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 66.228
+          "time_sec": 65.299
+        },
+        {
+          "beat": 144,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1,
+          "time_sec": 66.692
         },
         {
           "beat": 154,
@@ -1777,67 +1840,81 @@
           "time_sec": 74.079
         },
         {
-          "beat": 162,
+          "beat": 163,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 75.0
+          "time_sec": 75.458
         },
         {
           "beat": 172,
           "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1,
+          "shape": "triangle",
+          "lane": 2,
           "time_sec": 79.615
         },
         {
           "beat": 173,
           "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1,
+          "shape": "triangle",
+          "lane": 2,
           "time_sec": 80.073
         },
         {
           "beat": 175,
           "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1,
+          "shape": "triangle",
+          "lane": 2,
           "time_sec": 80.994
         },
         {
           "beat": 177,
           "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1,
+          "shape": "triangle",
+          "lane": 2,
           "time_sec": 81.916
+        },
+        {
+          "beat": 179,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2,
+          "time_sec": 82.837
         },
         {
           "beat": 181,
           "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1,
+          "shape": "triangle",
+          "lane": 2,
           "time_sec": 83.766
         },
         {
           "beat": 183,
           "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1,
+          "shape": "triangle",
+          "lane": 2,
           "time_sec": 84.688
         },
         {
           "beat": 185,
           "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1,
+          "shape": "triangle",
+          "lane": 2,
           "time_sec": 85.609
         },
         {
-          "beat": 207,
+          "beat": 188,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1,
+          "time_sec": 86.995
+        },
+        {
+          "beat": 206,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 95.746
+          "time_sec": 95.282
         },
         {
           "beat": 209,
@@ -1966,6 +2043,13 @@
           "time_sec": 119.764
         },
         {
+          "beat": 261,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1,
+          "time_sec": 120.686
+        },
+        {
           "beat": 266,
           "kind": "shape_gate",
           "shape": "square",
@@ -1985,6 +2069,13 @@
           "shape": "square",
           "lane": 1,
           "time_sec": 124.844
+        },
+        {
+          "beat": 272,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1,
+          "time_sec": 125.765
         },
         {
           "beat": 275,
@@ -2024,37 +2115,44 @@
         {
           "beat": 291,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2,
+          "shape": "circle",
+          "lane": 0,
           "time_sec": 134.531
         },
         {
           "beat": 293,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2,
+          "shape": "circle",
+          "lane": 0,
           "time_sec": 135.452
         },
         {
           "beat": 294,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2,
+          "shape": "circle",
+          "lane": 0,
           "time_sec": 135.924
         },
         {
           "beat": 296,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2,
+          "shape": "circle",
+          "lane": 0,
           "time_sec": 136.853
         },
         {
           "beat": 298,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2,
+          "shape": "circle",
+          "lane": 0,
           "time_sec": 137.767
+        },
+        {
+          "beat": 300,
+          "kind": "shape_gate",
+          "shape": "circle",
+          "lane": 0,
+          "time_sec": 138.688
         },
         {
           "beat": 302,
@@ -2157,37 +2255,44 @@
         {
           "beat": 363,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2,
+          "shape": "circle",
+          "lane": 0,
           "time_sec": 167.764
         },
         {
           "beat": 365,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2,
+          "shape": "circle",
+          "lane": 0,
           "time_sec": 168.686
         },
         {
           "beat": 366,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2,
+          "shape": "circle",
+          "lane": 0,
           "time_sec": 169.15
         },
         {
           "beat": 368,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2,
+          "shape": "circle",
+          "lane": 0,
           "time_sec": 170.079
         },
         {
           "beat": 370,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2,
+          "shape": "circle",
+          "lane": 0,
           "time_sec": 171.0
+        },
+        {
+          "beat": 372,
+          "kind": "shape_gate",
+          "shape": "circle",
+          "lane": 0,
+          "time_sec": 171.922
         },
         {
           "beat": 374,
@@ -2206,57 +2311,64 @@
         {
           "beat": 390,
           "kind": "shape_gate",
-          "shape": "circle",
-          "lane": 0,
+          "shape": "triangle",
+          "lane": 2,
           "time_sec": 180.23
         },
         {
           "beat": 391,
           "kind": "shape_gate",
-          "shape": "circle",
-          "lane": 0,
+          "shape": "triangle",
+          "lane": 2,
           "time_sec": 180.688
         },
         {
           "beat": 393,
           "kind": "shape_gate",
-          "shape": "circle",
-          "lane": 0,
+          "shape": "triangle",
+          "lane": 2,
           "time_sec": 181.609
         },
         {
           "beat": 395,
           "kind": "shape_gate",
-          "shape": "circle",
-          "lane": 0,
+          "shape": "triangle",
+          "lane": 2,
           "time_sec": 182.531
+        },
+        {
+          "beat": 397,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2,
+          "time_sec": 183.459
         },
         {
           "beat": 399,
           "kind": "shape_gate",
-          "shape": "circle",
-          "lane": 0,
+          "shape": "triangle",
+          "lane": 2,
           "time_sec": 184.381
         },
         {
           "beat": 400,
           "kind": "shape_gate",
-          "shape": "circle",
-          "lane": 0,
+          "shape": "triangle",
+          "lane": 2,
           "time_sec": 184.845
         },
         {
           "beat": 402,
           "kind": "shape_gate",
-          "shape": "circle",
-          "lane": 0,
+          "shape": "triangle",
+          "lane": 2,
           "time_sec": 185.767
         },
         {
           "beat": 403,
           "kind": "shape_gate",
-          "shape": "circle",
-          "lane": 0,
+          "shape": "triangle",
+          "lane": 2,
           "time_sec": 186.224
         },
         {
@@ -2276,43 +2388,43 @@
         {
           "beat": 426,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2,
+          "shape": "square",
+          "lane": 1,
           "time_sec": 196.847
         },
         {
           "beat": 428,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2,
+          "shape": "square",
+          "lane": 1,
           "time_sec": 197.769
         },
         {
           "beat": 430,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2,
+          "shape": "square",
+          "lane": 1,
           "time_sec": 198.69
         },
         {
           "beat": 431,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2,
+          "shape": "square",
+          "lane": 1,
           "time_sec": 199.147
         },
         {
           "beat": 433,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2,
+          "shape": "square",
+          "lane": 1,
           "time_sec": 200.076
         },
         {
           "beat": 434,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2,
+          "shape": "square",
+          "lane": 1,
           "time_sec": 200.541
         },
         {
@@ -2335,6 +2447,13 @@
           "shape": "square",
           "lane": 1,
           "time_sec": 206.999
+        },
+        {
+          "beat": 450,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1,
+          "time_sec": 207.92
         },
         {
           "beat": 453,
@@ -2360,22 +2479,22 @@
         {
           "beat": 468,
           "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1,
+          "shape": "triangle",
+          "lane": 2,
           "time_sec": 216.207
         },
         {
           "beat": 469,
           "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1,
+          "shape": "triangle",
+          "lane": 2,
           "time_sec": 216.686
         },
         {
           "beat": 471,
           "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1,
+          "shape": "triangle",
+          "lane": 2,
           "time_sec": 217.622
         },
         {
@@ -2470,7 +2589,7 @@
           "time_sec": 235.385
         }
       ],
-      "count": 138
+      "count": 149
     },
     "hard": {
       "beats": [
@@ -2494,13 +2613,6 @@
           "shape": "square",
           "lane": 1,
           "time_sec": 6.698
-        },
-        {
-          "beat": 17,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1,
-          "time_sec": 8.062
         },
         {
           "beat": 20,
@@ -2545,11 +2657,11 @@
           "time_sec": 16.842
         },
         {
-          "beat": 41,
+          "beat": 40,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 19.149
+          "time_sec": 18.692
         },
         {
           "beat": 43,
@@ -2559,11 +2671,11 @@
           "time_sec": 20.071
         },
         {
-          "beat": 45,
+          "beat": 46,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 20.992
+          "time_sec": 21.457
         },
         {
           "beat": 49,
@@ -2580,18 +2692,18 @@
           "time_sec": 23.764
         },
         {
-          "beat": 53,
+          "beat": 54,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 24.686
+          "time_sec": 25.15
         },
         {
-          "beat": 58,
+          "beat": 57,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 27.0
+          "time_sec": 26.529
         },
         {
           "beat": 60,
@@ -2601,11 +2713,11 @@
           "time_sec": 27.922
         },
         {
-          "beat": 62,
+          "beat": 63,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 28.844
+          "time_sec": 29.301
         },
         {
           "beat": 66,
@@ -2613,13 +2725,6 @@
           "shape": "square",
           "lane": 1,
           "time_sec": 30.694
-        },
-        {
-          "beat": 68,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1,
-          "time_sec": 31.615
         },
         {
           "beat": 70,
@@ -2638,43 +2743,43 @@
         {
           "beat": 74,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2,
+          "shape": "square",
+          "lane": 1,
           "time_sec": 34.387
         },
         {
           "beat": 75,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2,
+          "shape": "square",
+          "lane": 1,
           "time_sec": 34.837
         },
         {
           "beat": 77,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2,
+          "shape": "square",
+          "lane": 1,
           "time_sec": 35.766
         },
         {
           "beat": 78,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2,
+          "shape": "square",
+          "lane": 1,
           "time_sec": 36.23
         },
         {
           "beat": 80,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2,
+          "shape": "square",
+          "lane": 1,
           "time_sec": 37.152
         },
         {
           "beat": 81,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2,
+          "shape": "square",
+          "lane": 1,
           "time_sec": 37.609
         },
         {
@@ -2741,25 +2846,25 @@
           "time_sec": 46.382
         },
         {
-          "beat": 102,
+          "beat": 103,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 47.303
+          "time_sec": 47.768
         },
         {
-          "beat": 104,
+          "beat": 106,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 48.232
+          "time_sec": 49.154
         },
         {
-          "beat": 111,
+          "beat": 110,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 51.461
+          "time_sec": 51.004
         },
         {
           "beat": 113,
@@ -2769,11 +2874,18 @@
           "time_sec": 52.383
         },
         {
-          "beat": 115,
+          "beat": 116,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 53.304
+          "time_sec": 53.769
+        },
+        {
+          "beat": 119,
+          "kind": "shape_gate",
+          "shape": "circle",
+          "lane": 0,
+          "time_sec": 55.147
         },
         {
           "beat": 123,
@@ -2797,11 +2909,11 @@
           "time_sec": 58.391
         },
         {
-          "beat": 128,
+          "beat": 129,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 59.312
+          "time_sec": 59.77
         },
         {
           "beat": 133,
@@ -2839,18 +2951,18 @@
           "time_sec": 64.842
         },
         {
-          "beat": 142,
+          "beat": 143,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 65.771
+          "time_sec": 66.228
         },
         {
-          "beat": 144,
+          "beat": 146,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 66.692
+          "time_sec": 67.614
         },
         {
           "beat": 147,
@@ -2860,11 +2972,11 @@
           "time_sec": 68.071
         },
         {
-          "beat": 149,
+          "beat": 150,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 68.992
+          "time_sec": 69.457
         },
         {
           "beat": 153,
@@ -2881,32 +2993,25 @@
           "time_sec": 71.307
         },
         {
-          "beat": 156,
+          "beat": 157,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 72.229
+          "time_sec": 72.693
         },
         {
-          "beat": 158,
+          "beat": 160,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 73.15
+          "time_sec": 74.079
         },
         {
-          "beat": 162,
+          "beat": 163,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 75.0
-        },
-        {
-          "beat": 164,
-          "kind": "shape_gate",
-          "shape": "circle",
-          "lane": 0,
-          "time_sec": 75.922
+          "time_sec": 75.458
         },
         {
           "beat": 166,
@@ -2916,6 +3021,13 @@
           "time_sec": 76.844
         },
         {
+          "beat": 168,
+          "kind": "shape_gate",
+          "shape": "circle",
+          "lane": 0,
+          "time_sec": 77.765
+        },
+        {
           "beat": 171,
           "kind": "shape_gate",
           "shape": "square",
@@ -2923,18 +3035,18 @@
           "time_sec": 79.144
         },
         {
-          "beat": 173,
+          "beat": 174,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 80.073
+          "time_sec": 80.537
         },
         {
-          "beat": 175,
+          "beat": 177,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 80.994
+          "time_sec": 81.916
         },
         {
           "beat": 179,
@@ -2951,32 +3063,25 @@
           "time_sec": 83.309
         },
         {
-          "beat": 182,
+          "beat": 183,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 84.23
+          "time_sec": 84.688
         },
         {
-          "beat": 184,
+          "beat": 186,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 85.152
+          "time_sec": 86.073
         },
         {
-          "beat": 188,
+          "beat": 189,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 86.995
-        },
-        {
-          "beat": 190,
-          "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1,
-          "time_sec": 87.924
+          "time_sec": 87.452
         },
         {
           "beat": 192,
@@ -2986,6 +3091,13 @@
           "time_sec": 88.845
         },
         {
+          "beat": 194,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1,
+          "time_sec": 89.767
+        },
+        {
           "beat": 195,
           "kind": "shape_gate",
           "shape": "square",
@@ -2993,11 +3105,11 @@
           "time_sec": 90.224
         },
         {
-          "beat": 206,
+          "beat": 204,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 95.282
+          "time_sec": 94.389
         },
         {
           "beat": 208,
@@ -3007,11 +3119,11 @@
           "time_sec": 96.225
         },
         {
-          "beat": 210,
+          "beat": 212,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 97.154
+          "time_sec": 98.046
         },
         {
           "beat": 213,
@@ -3021,11 +3133,11 @@
           "time_sec": 98.503
         },
         {
-          "beat": 219,
+          "beat": 217,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 101.297
+          "time_sec": 100.383
         },
         {
           "beat": 221,
@@ -3049,11 +3161,11 @@
           "time_sec": 103.612
         },
         {
-          "beat": 226,
+          "beat": 227,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 104.533
+          "time_sec": 104.99
         },
         {
           "beat": 230,
@@ -3098,11 +3210,11 @@
           "time_sec": 109.584
         },
         {
-          "beat": 239,
+          "beat": 240,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 110.534
+          "time_sec": 110.999
         },
         {
           "beat": 243,
@@ -3119,18 +3231,18 @@
           "time_sec": 112.842
         },
         {
-          "beat": 246,
+          "beat": 247,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 113.771
+          "time_sec": 114.228
         },
         {
-          "beat": 248,
+          "beat": 250,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 114.692
+          "time_sec": 115.614
         },
         {
           "beat": 252,
@@ -3142,43 +3254,43 @@
         {
           "beat": 255,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2,
+          "shape": "square",
+          "lane": 1,
           "time_sec": 117.914
         },
         {
           "beat": 257,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2,
+          "shape": "square",
+          "lane": 1,
           "time_sec": 118.843
         },
         {
           "beat": 258,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2,
+          "shape": "square",
+          "lane": 1,
           "time_sec": 119.307
         },
         {
           "beat": 260,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2,
+          "shape": "square",
+          "lane": 1,
           "time_sec": 120.229
         },
         {
           "beat": 262,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2,
+          "shape": "square",
+          "lane": 1,
           "time_sec": 121.15
         },
         {
           "beat": 263,
           "kind": "shape_gate",
-          "shape": "triangle",
-          "lane": 2,
+          "shape": "square",
+          "lane": 1,
           "time_sec": 121.607
         },
         {
@@ -3238,6 +3350,13 @@
           "time_sec": 129.459
         },
         {
+          "beat": 282,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1,
+          "time_sec": 130.38
+        },
+        {
           "beat": 285,
           "kind": "shape_gate",
           "shape": "square",
@@ -3282,43 +3401,50 @@
         {
           "beat": 298,
           "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1,
+          "shape": "triangle",
+          "lane": 2,
           "time_sec": 137.767
         },
         {
           "beat": 300,
           "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1,
+          "shape": "triangle",
+          "lane": 2,
           "time_sec": 138.688
         },
         {
           "beat": 302,
           "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1,
+          "shape": "triangle",
+          "lane": 2,
           "time_sec": 139.617
+        },
+        {
+          "beat": 304,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2,
+          "time_sec": 140.539
         },
         {
           "beat": 305,
           "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1,
+          "shape": "triangle",
+          "lane": 2,
           "time_sec": 140.996
         },
         {
           "beat": 307,
           "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1,
+          "shape": "triangle",
+          "lane": 2,
           "time_sec": 141.925
         },
         {
           "beat": 308,
           "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1,
+          "shape": "triangle",
+          "lane": 2,
           "time_sec": 142.396
         },
         {
@@ -3336,25 +3462,25 @@
           "time_sec": 144.232
         },
         {
-          "beat": 314,
+          "beat": 316,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 145.161
+          "time_sec": 146.075
         },
         {
-          "beat": 325,
+          "beat": 322,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 150.226
+          "time_sec": 148.847
         },
         {
-          "beat": 327,
+          "beat": 326,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 151.147
+          "time_sec": 150.69
         },
         {
           "beat": 329,
@@ -3364,11 +3490,18 @@
           "time_sec": 152.069
         },
         {
-          "beat": 333,
+          "beat": 331,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 153.919
+          "time_sec": 152.998
+        },
+        {
+          "beat": 334,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1,
+          "time_sec": 154.384
         },
         {
           "beat": 337,
@@ -3413,11 +3546,11 @@
           "time_sec": 160.377
         },
         {
-          "beat": 351,
+          "beat": 350,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 162.22
+          "time_sec": 161.771
         },
         {
           "beat": 353,
@@ -3434,11 +3567,18 @@
           "time_sec": 164.071
         },
         {
-          "beat": 359,
+          "beat": 357,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 165.914
+          "time_sec": 164.992
+        },
+        {
+          "beat": 360,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1,
+          "time_sec": 166.385
         },
         {
           "beat": 363,
@@ -3469,6 +3609,13 @@
           "time_sec": 170.079
         },
         {
+          "beat": 370,
+          "kind": "shape_gate",
+          "shape": "circle",
+          "lane": 0,
+          "time_sec": 171.0
+        },
+        {
           "beat": 372,
           "kind": "shape_gate",
           "shape": "circle",
@@ -3490,95 +3637,116 @@
           "time_sec": 173.765
         },
         {
-          "beat": 380,
+          "beat": 378,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 175.615
+          "time_sec": 174.694
         },
         {
-          "beat": 382,
+          "beat": 381,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 176.537
+          "time_sec": 176.073
         },
         {
-          "beat": 390,
+          "beat": 384,
+          "kind": "shape_gate",
+          "shape": "circle",
+          "lane": 0,
+          "time_sec": 177.459
+        },
+        {
+          "beat": 388,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 180.23
+          "time_sec": 179.309
         },
         {
           "beat": 392,
           "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1,
+          "shape": "triangle",
+          "lane": 2,
           "time_sec": 181.152
         },
         {
           "beat": 393,
           "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1,
+          "shape": "triangle",
+          "lane": 2,
           "time_sec": 181.609
         },
         {
           "beat": 395,
           "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1,
+          "shape": "triangle",
+          "lane": 2,
           "time_sec": 182.531
         },
         {
           "beat": 397,
           "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1,
+          "shape": "triangle",
+          "lane": 2,
           "time_sec": 183.459
+        },
+        {
+          "beat": 399,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2,
+          "time_sec": 184.381
         },
         {
           "beat": 401,
           "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1,
+          "shape": "triangle",
+          "lane": 2,
           "time_sec": 185.302
         },
         {
           "beat": 403,
           "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1,
+          "shape": "triangle",
+          "lane": 2,
           "time_sec": 186.224
         },
         {
           "beat": 405,
           "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1,
+          "shape": "triangle",
+          "lane": 2,
           "time_sec": 187.146
         },
         {
-          "beat": 409,
+          "beat": 407,
           "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1,
-          "time_sec": 188.996
+          "shape": "triangle",
+          "lane": 2,
+          "time_sec": 188.067
         },
         {
-          "beat": 411,
+          "beat": 410,
           "kind": "shape_gate",
-          "shape": "square",
-          "lane": 1,
-          "time_sec": 189.917
+          "shape": "triangle",
+          "lane": 2,
+          "time_sec": 189.46
         },
         {
-          "beat": 420,
+          "beat": 414,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 194.075
+          "time_sec": 191.303
+        },
+        {
+          "beat": 419,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1,
+          "time_sec": 193.611
         },
         {
           "beat": 423,
@@ -3637,11 +3805,11 @@
           "time_sec": 202.384
         },
         {
-          "beat": 440,
+          "beat": 441,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 203.305
+          "time_sec": 203.762
         },
         {
           "beat": 444,
@@ -3663,6 +3831,13 @@
           "shape": "circle",
           "lane": 0,
           "time_sec": 206.999
+        },
+        {
+          "beat": 450,
+          "kind": "shape_gate",
+          "shape": "circle",
+          "lane": 0,
+          "time_sec": 207.92
         },
         {
           "beat": 451,
@@ -3698,6 +3873,13 @@
           "shape": "circle",
           "lane": 0,
           "time_sec": 211.614
+        },
+        {
+          "beat": 461,
+          "kind": "shape_gate",
+          "shape": "circle",
+          "lane": 0,
+          "time_sec": 212.992
         },
         {
           "beat": 464,
@@ -3749,6 +3931,13 @@
           "time_sec": 219.937
         },
         {
+          "beat": 478,
+          "kind": "shape_gate",
+          "shape": "triangle",
+          "lane": 2,
+          "time_sec": 220.851
+        },
+        {
           "beat": 480,
           "kind": "shape_gate",
           "shape": "triangle",
@@ -3782,6 +3971,13 @@
           "shape": "square",
           "lane": 1,
           "time_sec": 225.459
+        },
+        {
+          "beat": 490,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1,
+          "time_sec": 226.38
         },
         {
           "beat": 492,
@@ -3826,6 +4022,13 @@
           "time_sec": 231.699
         },
         {
+          "beat": 504,
+          "kind": "shape_gate",
+          "shape": "square",
+          "lane": 1,
+          "time_sec": 232.62
+        },
+        {
           "beat": 506,
           "kind": "shape_gate",
           "shape": "square",
@@ -3847,7 +4050,7 @@
           "time_sec": 235.385
         }
       ],
-      "count": 196
+      "count": 208
     }
   },
   "structure": [

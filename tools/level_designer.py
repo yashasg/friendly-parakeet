@@ -92,6 +92,9 @@ MIN_SHAPE_CHANGE_GAP = 3
 GAP_ONE_MEDIUM_START_PROGRESS = 0.30
 GAP_ONE_HARD_MIN_BEAT = 11
 GAP_ONE_MAX_RUN = {"medium": 1, "hard": 2}
+GAP_ONE_SHARE_CAP = {"medium": 0.20, "hard": 0.20}
+GAP_MONOTONY_CAP = {"medium": 0.40, "hard": 0.35}
+MIN_IOI_MS = {"easy": 700.0, "medium": 380.0, "hard": 300.0}
 MEDIUM_SHAPE_TARGETS = {
     0: (10, 20),  # Circle / lane 0
     1: (45, 60),  # Square / lane 1
@@ -920,13 +923,17 @@ def clean_breathing_room(obstacles, boundary_beats, difficulty):
     return [obs for obs in obstacles if obs["beat"] not in protected]
 
 
-def clean_gap_monotony(obstacles):
-    """RULE: No single gap value > 40% of all gaps.
-    Thin the most common gap by removing every 3rd occurrence."""
+def clean_gap_monotony(obstacles, difficulty):
+    """Reduce dominant-gap monotony with deterministic local redistribution."""
     if len(obstacles) < 5:
         return obstacles
 
-    for _ in range(3):  # iterate until stable
+    cap = GAP_MONOTONY_CAP.get(difficulty)
+    if cap is None:
+        return obstacles
+
+    max_diff = MAX_BEAT_DIFF.get(difficulty, 999)
+    for _ in range(len(obstacles) * 3):
         gaps = []
         for i in range(1, len(obstacles)):
             gaps.append(obstacles[i]["beat"] - obstacles[i-1]["beat"])
@@ -936,24 +943,106 @@ def clean_gap_monotony(obstacles):
         gap_counts = Counter(gaps)
         total = len(gaps)
         worst_gap, worst_count = gap_counts.most_common(1)[0]
-        if worst_count / total <= 0.40:
-            break  # passes
+        if worst_count / total < cap:
+            break
 
-        # Remove every 3rd obstacle that creates this gap
-        result = [obstacles[0]]
-        consecutive = 0
-        for i in range(1, len(obstacles)):
-            g = obstacles[i]["beat"] - result[-1]["beat"]
-            if g == worst_gap:
-                consecutive += 1
-                if consecutive % 3 == 0:
-                    continue  # skip to thin
-            else:
-                consecutive = 0
-            result.append(obstacles[i])
-        obstacles = result
+        changed = False
+
+        # First prefer beat shifts that keep obstacle count unchanged.
+        for i in range(1, len(obstacles) - 1):
+            left = obstacles[i]["beat"] - obstacles[i - 1]["beat"]
+            right = obstacles[i + 1]["beat"] - obstacles[i]["beat"]
+            if left == worst_gap and right >= worst_gap + 2:
+                candidate = obstacles[i]["beat"] + 1
+                if candidate < obstacles[i + 1]["beat"] and (right - 1) != worst_gap:
+                    obstacles[i]["beat"] = candidate
+                    changed = True
+                    break
+            if right == worst_gap and left >= worst_gap + 2:
+                candidate = obstacles[i]["beat"] - 1
+                if candidate > obstacles[i - 1]["beat"] and (left - 1) != worst_gap:
+                    obstacles[i]["beat"] = candidate
+                    changed = True
+                    break
+
+        if changed:
+            continue
+
+        # Fallback: remove only the center of worst_gap + worst_gap pairs.
+        for i in range(1, len(obstacles) - 1):
+            left = obstacles[i]["beat"] - obstacles[i - 1]["beat"]
+            right = obstacles[i + 1]["beat"] - obstacles[i]["beat"]
+            if left == worst_gap and right == worst_gap:
+                merged = obstacles[i + 1]["beat"] - obstacles[i - 1]["beat"]
+                if merged > max_diff:
+                    continue
+                if merged <= max_diff:
+                    del obstacles[i]
+                    changed = True
+                    break
+
+        if not changed:
+            break
 
     return obstacles
+
+
+def clean_min_ioi(obstacles, difficulty, analysis):
+    """Ensure authored inter-onset intervals clear per-difficulty floor."""
+    floor = MIN_IOI_MS.get(difficulty)
+    beats = analysis.get("beats", [])
+    if floor is None or len(obstacles) < 2 or not beats:
+        return obstacles
+
+    result = list(obstacles)
+    while len(result) >= 2:
+        changed = False
+        for i in range(1, len(result)):
+            left = result[i - 1]["beat"]
+            right = result[i]["beat"]
+            if left < 0 or right < 0 or left >= len(beats) or right >= len(beats):
+                continue
+            dt_ms = (float(beats[right]) - float(beats[left])) * 1000.0
+            if dt_ms < floor:
+                del result[i]
+                changed = True
+                break
+        if not changed:
+            break
+    return result
+
+
+def clean_gap_one_share(obstacles, difficulty):
+    """Trim excess gap=1 usage while preserving beat-grid semantics."""
+    cap = GAP_ONE_SHARE_CAP.get(difficulty)
+    max_diff = MAX_BEAT_DIFF.get(difficulty, 999)
+    if cap is None or len(obstacles) < 3:
+        return obstacles
+
+    result = list(obstacles)
+    for _ in range(len(result)):
+        beats = [obs["beat"] for obs in result]
+        gaps = [beats[i] - beats[i - 1] for i in range(1, len(beats))]
+        if not gaps:
+            break
+        gap_counts = Counter(gaps)
+        if (gap_counts.get(1, 0) / len(gaps)) <= cap:
+            break
+
+        changed = False
+        for i in range(1, len(result) - 1):
+            left = result[i]["beat"] - result[i - 1]["beat"]
+            if left != 1:
+                continue
+            merged = result[i + 1]["beat"] - result[i - 1]["beat"]
+            if merged <= max_diff:
+                del result[i]
+                changed = True
+                break
+        if not changed:
+            break
+
+    return result
 
 
 def get_section_boundary_beats(analysis):
@@ -988,7 +1077,7 @@ def clean_level(obstacles, difficulty, boundary_beats):
     obstacles = clean_type_transition(obstacles)
     obstacles = clean_shape_change_gap(obstacles)
     obstacles = clean_gap_one_early(obstacles, difficulty)
-    obstacles = clean_gap_monotony(obstacles)
+    obstacles = clean_gap_monotony(obstacles, difficulty)
     return obstacles
 
 
@@ -1343,6 +1432,14 @@ def design_level(analysis, difficulty, cleanup_enabled=True):
     obstacles = rebalance_easy_shapes(obstacles, difficulty)
     obstacles = rebalance_medium_shapes(obstacles, difficulty)
     obstacles = rebalance_hard_shapes(obstacles, difficulty)
+    obstacles = clean_min_ioi(obstacles, difficulty, analysis)
+    obstacles = clean_gap_monotony(obstacles, difficulty)
+    obstacles = clean_shape_change_gap(obstacles)
+    obstacles = clean_gap_one_early(obstacles, difficulty)
+    obstacles = clean_gap_one_share(obstacles, difficulty)
+    obstacles = clean_gap_monotony(obstacles, difficulty)
+    obstacles = clean_shape_change_gap(obstacles)
+    obstacles = clean_gap_one_early(obstacles, difficulty)
     return obstacles
 
 
