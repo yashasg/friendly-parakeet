@@ -20,40 +20,54 @@ class TestLoop2MetricCalculations(unittest.TestCase):
             {"beat": 2, "kind": "shape_gate", "shape": "square", "lane": 1},
             {"beat": 5, "kind": "shape_gate", "shape": "square", "lane": 1},
             {"beat": 7, "kind": "shape_gate", "shape": "square", "lane": 1},
-            {"beat": 9, "kind": "combo_gate", "shape": "triangle", "lane": 2},
             {"beat": 10, "kind": "shape_gate", "shape": "triangle", "lane": 2},
         ]
+        beat_times = [i * 0.5 for i in range(20)]
 
-        metrics = gates.calculate_content_metrics(beats)
+        metrics = gates.calculate_content_metrics(beats, beat_times=beat_times, expected_count=6)
 
-        self.assertEqual(metrics["total_obstacles"], 7)
-        self.assertEqual(metrics["shape_gate_count"], 6)
-        self.assertEqual(metrics["distinct_shapes"], 3)
-        self.assertAlmostEqual(metrics["dominant_shape_pct"], 50.0)
-        self.assertAlmostEqual(metrics["max_gap_dominance_pct"], 50.0)
+        self.assertEqual(metrics["total_obstacles"], 6)
+        self.assertTrue(metrics["count_matches"])
+        self.assertTrue(metrics["strictly_increasing"])
+        self.assertAlmostEqual(metrics["dominant_gap_share"], 2 / 5)
+        self.assertAlmostEqual(metrics["gap_one_share"], 2 / 5)
+        self.assertEqual(metrics["gap_one_run"], 2)
         self.assertEqual(metrics["longest_same_shape_run"], 3)
-        self.assertEqual(metrics["run_steps_ge_3"], 1)
-        self.assertEqual(metrics["gap_one_pairs"], 3)
-        self.assertEqual(metrics["unreadable_gap_one_pairs"], 2)
+        self.assertAlmostEqual(metrics["triangle_share"], 1 / 6)
+        self.assertAlmostEqual(metrics["circle_share"], 2 / 6)
+        self.assertIsNotNone(metrics["min_ioi_ms"])
 
 
 class TestLoop2GateEvaluation(unittest.TestCase):
     def test_evaluate_content_gates_flags_expected_issues(self):
         metrics = {
-            "shape_gate_count": 10,
-            "distinct_shapes": 2,
-            "dominant_shape_pct": 76.0,
-            "max_gap_dominance_pct": 55.0,
-            "unreadable_gap_one_pairs": 1,
+            "expected_count": 5,
+            "total_obstacles": 4,
+            "count_matches": False,
+            "strictly_increasing": False,
+            "all_shape_gate": False,
+            "lane_range_ok": False,
+            "dominant_gap": 2,
+            "dominant_gap_share": 0.50,
+            "gap_one_share": 0.30,
+            "gap_one_run": 4,
+            "longest_same_shape_run": 6,
+            "triangle_share": 0.1,
+            "circle_share": 0.5,
+            "min_ioi_ms": 250.0,
+            "ioi_index_error": True,
         }
 
         findings = gates.evaluate_content_gates(metrics, "hard")
 
-        self.assertEqual(len(findings), 4)
-        self.assertTrue(any("distinct_shapes" in finding for finding in findings))
-        self.assertTrue(any("dominant_shape_pct" in finding for finding in findings))
-        self.assertTrue(any("max_gap_dominance_pct" in finding for finding in findings))
-        self.assertTrue(any("unreadable_gap_one_pairs" in finding for finding in findings))
+        self.assertGreaterEqual(len(findings), 9)
+        self.assertTrue(any("count mismatch" in finding for finding in findings))
+        self.assertTrue(any("not strictly increasing" in finding for finding in findings))
+        self.assertTrue(any("dominant gap" in finding for finding in findings))
+        self.assertTrue(any("same-shape contiguous run" in finding for finding in findings))
+        self.assertTrue(any("hard triangle share" in finding for finding in findings))
+        self.assertTrue(any("hard circle share" in finding for finding in findings))
+        self.assertTrue(any("min IOI" in finding for finding in findings))
 
     def test_non_strict_mode_is_non_blocking(self):
         rc = gates.main([

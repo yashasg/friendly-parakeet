@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Validate Loop 2 content-gate metrics for current beatmap schema.
+"""Validate Loop 2 hard content gates for current beatmap schema.
 
-This validator is advisory by default to avoid destabilizing baseline validation.
-Use --strict to turn findings into a failing exit code.
+Default mode is advisory (exit 0 even with findings) so baseline failures can be
+reported without breaking existing validation flows. Use --strict to fail.
 """
 
 from __future__ import annotations
@@ -16,152 +16,166 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_DIR = REPO_ROOT / "content" / "beatmaps"
 
-GATE_RULES = {
-    "easy": {
-        "min_distinct_shapes": 3,
-        "max_dominant_shape_pct": 65.0,
-        "max_gap_dominance_pct": 40.0,
-    },
-    "medium": {
-        "min_distinct_shapes": 3,
-        "max_dominant_shape_pct": 65.0,
-        "max_gap_dominance_pct": 40.0,
-    },
-    "hard": {
-        "min_distinct_shapes": 3,
-        "max_dominant_shape_pct": 70.0,
-        "max_gap_dominance_pct": 40.0,
-    },
-}
+GAP_MONOTONY_CAP = {"medium": 0.40, "hard": 0.35}
+SAME_SHAPE_RUN_CAP = {"medium": 3, "hard": 3}
+GAP_ONE_MAX_RUN = {"easy": 0, "medium": 2, "hard": 3}
+GAP_ONE_SHARE_CAP = {"medium": 0.20, "hard": 0.20}
+MIN_IOI_MS = {"easy": 700.0, "medium": 380.0, "hard": 300.0}
 
 
-def _is_gap_one_readable_pair(left: dict, right: dict) -> bool:
-    return (
-        left.get("kind") == "shape_gate"
-        and right.get("kind") == "shape_gate"
-        and left.get("shape") == right.get("shape")
-        and left.get("lane") == right.get("lane")
-    )
-
-
-def calculate_content_metrics(beats: list[dict]) -> dict[str, float | int]:
-    ordered = sorted(
+def _ordered_valid_beats(beats: list[dict]) -> list[dict]:
+    return sorted(
         [beat for beat in beats if isinstance(beat.get("beat"), int)],
         key=lambda beat: beat["beat"],
     )
 
-    shape_gates = [beat for beat in ordered if beat.get("kind") == "shape_gate"]
-    shape_counts = Counter(
-        beat.get("shape", "")
-        for beat in shape_gates
-        if isinstance(beat.get("shape"), str) and beat.get("shape")
-    )
 
-    dominant_shape_pct = (
-        100.0 * max(shape_counts.values()) / len(shape_gates)
-        if shape_gates and shape_counts
-        else 0.0
-    )
-
-    gap_values = [
-        ordered[index]["beat"] - ordered[index - 1]["beat"]
-        for index in range(1, len(ordered))
-    ]
-    gap_counts = Counter(gap_values)
-    gap_dominance_pct = (
-        100.0 * gap_counts.most_common(1)[0][1] / len(gap_values)
-        if gap_values
-        else 0.0
-    )
-
-    longest_same_shape_run = 0
-    run_steps_ge_3 = 0
-    current_shape: str | None = None
-    current_len = 0
+def _longest_same_shape_run(ordered: list[dict]) -> int:
+    longest = 0
+    current = 0
+    prev_shape = None
     for beat in ordered:
-        if beat.get("kind") != "shape_gate":
-            current_shape = None
-            current_len = 0
-            continue
         shape = beat.get("shape")
-        if shape == current_shape:
-            current_len += 1
+        if shape == prev_shape:
+            current += 1
         else:
-            current_shape = shape if isinstance(shape, str) else None
-            current_len = 1
-        if current_len >= 3:
-            run_steps_ge_3 += 1
-        longest_same_shape_run = max(longest_same_shape_run, current_len)
+            current = 1
+            prev_shape = shape
+        longest = max(longest, current)
+    return longest
 
-    gap_one_pairs = 0
-    unreadable_gap_one_pairs = 0
-    for index in range(1, len(ordered)):
-        left = ordered[index - 1]
-        right = ordered[index]
-        if right["beat"] - left["beat"] != 1:
-            continue
-        gap_one_pairs += 1
-        if not _is_gap_one_readable_pair(left, right):
-            unreadable_gap_one_pairs += 1
+
+def _longest_gap_one_run(gaps: list[int]) -> int:
+    longest = 0
+    current = 0
+    for gap in gaps:
+        if gap == 1:
+            current += 1
+            longest = max(longest, current)
+        else:
+            current = 0
+    return longest
+
+
+def calculate_content_metrics(
+    beats: list[dict], beat_times: list[float] | None = None, expected_count: int | None = None
+) -> dict[str, float | int | bool | None]:
+    ordered = _ordered_valid_beats(beats)
+    beat_indices = [beat["beat"] for beat in ordered]
+    gaps = [beat_indices[i] - beat_indices[i - 1] for i in range(1, len(beat_indices))]
+    gap_counts = Counter(gaps)
+
+    dominant_gap_share = (
+        gap_counts.most_common(1)[0][1] / len(gaps)
+        if gaps
+        else 0.0
+    )
+    dominant_gap = gap_counts.most_common(1)[0][0] if gap_counts else None
+
+    shape_counts = Counter(beat.get("shape") for beat in ordered if beat.get("kind") == "shape_gate")
+    total_shape_gates = sum(shape_counts.values())
+
+    min_ioi_ms: float | None = None
+    ioi_index_error = False
+    if beat_times and len(ordered) >= 2:
+        for left, right in zip(beat_indices, beat_indices[1:]):
+            if left < 0 or right < 0 or left >= len(beat_times) or right >= len(beat_times):
+                ioi_index_error = True
+                break
+            dt_ms = (float(beat_times[right]) - float(beat_times[left])) * 1000.0
+            min_ioi_ms = dt_ms if min_ioi_ms is None else min(min_ioi_ms, dt_ms)
 
     return {
         "total_obstacles": len(ordered),
-        "shape_gate_count": len(shape_gates),
-        "distinct_shapes": len(shape_counts),
-        "dominant_shape_pct": round(dominant_shape_pct, 3),
-        "max_gap_dominance_pct": round(gap_dominance_pct, 3),
-        "longest_same_shape_run": longest_same_shape_run,
-        "run_steps_ge_3": run_steps_ge_3,
-        "gap_one_pairs": gap_one_pairs,
-        "unreadable_gap_one_pairs": unreadable_gap_one_pairs,
+        "valid_beat_count": len(ordered),
+        "expected_count": expected_count,
+        "count_matches": expected_count is None or expected_count == len(beats),
+        "strictly_increasing": all(
+            beat_indices[i] > beat_indices[i - 1] for i in range(1, len(beat_indices))
+        ),
+        "all_shape_gate": all(beat.get("kind") == "shape_gate" for beat in ordered),
+        "lane_range_ok": all(beat.get("lane") in (0, 1, 2) for beat in ordered),
+        "dominant_gap": dominant_gap,
+        "dominant_gap_share": dominant_gap_share,
+        "gap_one_share": (gap_counts.get(1, 0) / len(gaps)) if gaps else 0.0,
+        "gap_one_run": _longest_gap_one_run(gaps),
+        "longest_same_shape_run": _longest_same_shape_run(ordered) if ordered else 0,
+        "triangle_share": (shape_counts.get("triangle", 0) / total_shape_gates) if total_shape_gates else 0.0,
+        "circle_share": (shape_counts.get("circle", 0) / total_shape_gates) if total_shape_gates else 0.0,
+        "min_ioi_ms": min_ioi_ms,
+        "ioi_index_error": ioi_index_error,
     }
 
 
-def evaluate_content_gates(metrics: dict[str, float | int], difficulty: str) -> list[str]:
-    rules = GATE_RULES.get(difficulty, {})
+def evaluate_content_gates(metrics: dict[str, float | int | bool | None], difficulty: str) -> list[str]:
     findings: list[str] = []
 
-    shape_gate_count = int(metrics["shape_gate_count"])
-    if shape_gate_count <= 0:
-        findings.append("shape_gate_count=0")
-        return findings
-
-    distinct_shapes = int(metrics["distinct_shapes"])
-    min_shapes = int(rules.get("min_distinct_shapes", 0))
-    if distinct_shapes < min_shapes:
-        findings.append(f"distinct_shapes={distinct_shapes} < {min_shapes}")
-
-    dominant_shape_pct = float(metrics["dominant_shape_pct"])
-    max_dominant = float(rules.get("max_dominant_shape_pct", 100.0))
-    if dominant_shape_pct > max_dominant:
+    if not bool(metrics["count_matches"]):
         findings.append(
-            f"dominant_shape_pct={dominant_shape_pct:.1f}% > {max_dominant:.1f}%"
+            f"count mismatch: count={metrics['expected_count']} len(beats)={metrics['total_obstacles']}"
+        )
+    if not bool(metrics["strictly_increasing"]):
+        findings.append("beat indices are not strictly increasing")
+    if not bool(metrics["lane_range_ok"]):
+        findings.append("lane outside {0,1,2}")
+    if not bool(metrics["all_shape_gate"]):
+        findings.append("non-shape_gate obstacle present")
+
+    monotony_cap = GAP_MONOTONY_CAP.get(difficulty)
+    if monotony_cap is not None and float(metrics["dominant_gap_share"]) >= monotony_cap:
+        findings.append(
+            f"gap monotony: dominant gap={metrics['dominant_gap']} share={float(metrics['dominant_gap_share']):.1%} (must be < {monotony_cap:.0%})"
         )
 
-    gap_dominance_pct = float(metrics["max_gap_dominance_pct"])
-    max_gap_dominance = float(rules.get("max_gap_dominance_pct", 100.0))
-    if gap_dominance_pct > max_gap_dominance:
+    run_cap = SAME_SHAPE_RUN_CAP.get(difficulty)
+    if run_cap is not None and int(metrics["longest_same_shape_run"]) > run_cap:
         findings.append(
-            f"max_gap_dominance_pct={gap_dominance_pct:.1f}% > {max_gap_dominance:.1f}%"
+            f"same-shape contiguous run {int(metrics['longest_same_shape_run'])} exceeds cap {run_cap}"
         )
 
-    unreadable_gap_one_pairs = int(metrics["unreadable_gap_one_pairs"])
-    if unreadable_gap_one_pairs > 0:
-        findings.append(f"unreadable_gap_one_pairs={unreadable_gap_one_pairs}")
+    gap_one_run_cap = GAP_ONE_MAX_RUN.get(difficulty)
+    if gap_one_run_cap is not None and int(metrics["gap_one_run"]) > gap_one_run_cap:
+        findings.append(
+            f"gap=1 burst run={int(metrics['gap_one_run'])} exceeds cap {gap_one_run_cap}"
+        )
+
+    gap_one_share_cap = GAP_ONE_SHARE_CAP.get(difficulty)
+    if gap_one_share_cap is not None and float(metrics["gap_one_share"]) > gap_one_share_cap:
+        findings.append(
+            f"gap=1 share {float(metrics['gap_one_share']):.1%} exceeds cap {gap_one_share_cap:.0%}"
+        )
+
+    if difficulty == "hard":
+        if float(metrics["triangle_share"]) < 0.25:
+            findings.append(f"hard triangle share {float(metrics['triangle_share']):.1%} below floor 25%")
+        if float(metrics["circle_share"]) > 0.40:
+            findings.append(f"hard circle share {float(metrics['circle_share']):.1%} above ceiling 40%")
+
+    min_ioi_ms = metrics.get("min_ioi_ms")
+    if min_ioi_ms is not None:
+        floor = MIN_IOI_MS.get(difficulty)
+        if floor is not None and float(min_ioi_ms) < floor:
+            findings.append(f"min IOI {float(min_ioi_ms):.1f}ms below floor {floor:.0f}ms")
+
+    if bool(metrics.get("ioi_index_error")):
+        findings.append("beat index out of range for beat_times array")
 
     return findings
 
 
-def validate_beatmap(path: Path) -> list[tuple[str, dict[str, float | int], list[str]]]:
+def validate_beatmap(path: Path) -> list[tuple[str, dict[str, float | int | bool | None], list[str]]]:
     beatmap = json.loads(path.read_text())
     difficulties = beatmap.get("difficulties", {})
-    results: list[tuple[str, dict[str, float | int], list[str]]] = []
+    beat_times = beatmap.get("beat_times", [])
+    results: list[tuple[str, dict[str, float | int | bool | None], list[str]]] = []
 
     for difficulty in ("easy", "medium", "hard"):
         if difficulty not in difficulties:
             continue
-        beats = difficulties[difficulty].get("beats", [])
-        metrics = calculate_content_metrics(beats)
+        payload = difficulties[difficulty]
+        beats = payload.get("beats", [])
+        expected_count = payload.get("count")
+        metrics = calculate_content_metrics(beats, beat_times=beat_times, expected_count=expected_count)
         findings = evaluate_content_gates(metrics, difficulty)
         results.append((difficulty, metrics, findings))
 
@@ -174,7 +188,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--strict",
         action="store_true",
-        help="Return non-zero exit code when content-gate findings are present.",
+        help="Return non-zero exit code when gate findings are present.",
     )
     args = parser.parse_args(argv)
 
@@ -184,33 +198,37 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     total_findings = 0
+    print_mode = "STRICT" if args.strict else "REPORT"
+    print(f"Loop 2 content-gate mode: {print_mode} (use --strict to gate).")
+
     for path in paths:
+        print(f"\n== {path.name} ==")
         for difficulty, metrics, findings in validate_beatmap(path):
-            status = "OK" if not findings else f"FINDINGS ({len(findings)})"
+            status = "PASS" if not findings else f"FAIL ({len(findings)})"
             print(
-                f"{path.name:40s} [{difficulty:6s}] {status} "
-                f"shapes={metrics['distinct_shapes']} "
-                f"dominant={metrics['dominant_shape_pct']:.1f}% "
-                f"gap_dom={metrics['max_gap_dominance_pct']:.1f}% "
-                f"gap1_unreadable={metrics['unreadable_gap_one_pairs']}"
+                f"  [{difficulty:6s}] {status} "
+                f"obs={metrics['total_obstacles']} "
+                f"dom_gap={float(metrics['dominant_gap_share']):.1%} "
+                f"gap1={float(metrics['gap_one_share']):.1%} "
+                f"gap1_run={int(metrics['gap_one_run'])} "
+                f"shape_run={int(metrics['longest_same_shape_run'])} "
+                f"tri={float(metrics['triangle_share']):.1%} "
+                f"cir={float(metrics['circle_share']):.1%}"
             )
-            total_findings += len(findings)
             for finding in findings:
-                print(f"  - {path.name} [{difficulty}] {finding}", file=sys.stderr)
+                print(f"      - {finding}")
+            total_findings += len(findings)
 
     if total_findings == 0:
-        print("PASS: Loop 2 content-gate metrics satisfy configured thresholds.")
+        print("\nPASS: all checked beatmaps satisfy Loop 2 hard gates.")
         return 0
 
     if args.strict:
-        print(
-            f"FAIL: {total_findings} Loop 2 content-gate finding(s) under --strict.",
-            file=sys.stderr,
-        )
+        print(f"\nFAIL: {total_findings} hard-gate finding(s) under --strict.", file=sys.stderr)
         return 1
 
     print(
-        f"WARN: {total_findings} Loop 2 content-gate finding(s) (advisory mode; use --strict to fail).",
+        f"\nWARN: {total_findings} hard-gate finding(s) (report-only mode, exit 0).",
         file=sys.stderr,
     )
     return 0
