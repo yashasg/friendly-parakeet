@@ -548,1246 +548,1788 @@
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 4.492
+          "time_sec": 4.492,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 4.492
         },
         {
           "beat": 20,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 7.488
+          "time_sec": 7.488,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 7.488
         },
         {
           "beat": 24,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 8.983
+          "time_sec": 8.983,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 8.983
         },
         {
           "beat": 27,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 10.115
+          "time_sec": 10.115,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 10.115
         },
         {
           "beat": 31,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 11.617
+          "time_sec": 11.617,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 11.617
         },
         {
           "beat": 34,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 12.742
+          "time_sec": 12.742,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 12.742
         },
         {
           "beat": 38,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 14.244
+          "time_sec": 14.244,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 14.244
         },
         {
           "beat": 41,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 15.361
+          "time_sec": 15.361,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 15.361
         },
         {
           "beat": 48,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 18.003
+          "time_sec": 18.003,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 18.003
         },
         {
           "beat": 50,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 18.743
+          "time_sec": 18.743,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 18.743
         },
         {
           "beat": 52,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 19.49
+          "time_sec": 19.49,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 19.49
         },
         {
           "beat": 54,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 20.245
+          "time_sec": 20.245,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 20.245
         },
         {
           "beat": 56,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 20.978
+          "time_sec": 20.978,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 20.978
         },
         {
           "beat": 58,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 21.74
+          "time_sec": 21.74,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 21.74
         },
         {
           "beat": 60,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 22.494
+          "time_sec": 22.494,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 22.494
         },
         {
           "beat": 62,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 23.242
+          "time_sec": 23.242,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 23.242
         },
         {
           "beat": 64,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 23.989
+          "time_sec": 23.989,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 23.989
         },
         {
           "beat": 66,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 24.744
+          "time_sec": 24.744,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 24.744
         },
         {
           "beat": 68,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 25.491
+          "time_sec": 25.491,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 25.491
         },
         {
           "beat": 70,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 26.246
+          "time_sec": 26.246,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 26.246
         },
         {
           "beat": 72,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 26.979
+          "time_sec": 26.979,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 26.979
         },
         {
           "beat": 74,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 27.741
+          "time_sec": 27.741,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 27.741
         },
         {
           "beat": 79,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 29.62
+          "time_sec": 29.62,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 29.62
         },
         {
           "beat": 81,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 30.375
+          "time_sec": 30.375,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 30.375
         },
         {
           "beat": 83,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 31.151
+          "time_sec": 31.151,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 31.151
         },
         {
           "beat": 85,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 31.913
+          "time_sec": 31.913,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 31.913
         },
         {
           "beat": 87,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 32.66
+          "time_sec": 32.66,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 32.66
         },
         {
           "beat": 96,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 35.998
+          "time_sec": 35.988,
+          "timing_source": "onset",
+          "onset_time_sec": 35.988,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 35.998
         },
         {
           "beat": 98,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 36.782
+          "time_sec": 36.782,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 36.782
         },
         {
           "beat": 100,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 37.537
+          "time_sec": 37.537,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 37.537
         },
         {
           "beat": 102,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 38.291
+          "time_sec": 38.291,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 38.291
         },
         {
           "beat": 104,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 39.039
+          "time_sec": 39.039,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 39.039
         },
         {
           "beat": 106,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 39.793
+          "time_sec": 39.793,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 39.793
         },
         {
           "beat": 112,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 42.188
+          "time_sec": 42.188,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 42.188
         },
         {
           "beat": 114,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 42.942
+          "time_sec": 42.942,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 42.942
         },
         {
           "beat": 116,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 43.69
+          "time_sec": 43.69,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 43.69
         },
         {
           "beat": 118,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 44.444
+          "time_sec": 44.444,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 44.444
         },
         {
           "beat": 120,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 45.192
+          "time_sec": 45.192,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 45.192
         },
         {
           "beat": 122,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 45.939
+          "time_sec": 45.939,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 45.939
         },
         {
           "beat": 124,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 46.694
+          "time_sec": 46.694,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 46.694
         },
         {
           "beat": 127,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 47.811
+          "time_sec": 47.811,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 47.811
         },
         {
           "beat": 129,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 48.566
+          "time_sec": 48.566,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 48.566
         },
         {
           "beat": 131,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 49.313
+          "time_sec": 49.313,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 49.313
         },
         {
           "beat": 133,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 50.068
+          "time_sec": 50.068,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 50.068
         },
         {
           "beat": 135,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 50.815
+          "time_sec": 50.815,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 50.815
         },
         {
           "beat": 137,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 51.57
+          "time_sec": 51.57,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 51.57
         },
         {
           "beat": 139,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 52.31
+          "time_sec": 52.31,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 52.31
         },
         {
           "beat": 144,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 54.001
+          "time_sec": 53.986,
+          "timing_source": "onset",
+          "onset_time_sec": 53.986,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 54.001
         },
         {
           "beat": 146,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 54.741
+          "time_sec": 54.741,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 54.741
         },
         {
           "beat": 148,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 55.488
+          "time_sec": 55.488,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 55.488
         },
         {
           "beat": 150,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 56.243
+          "time_sec": 56.243,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 56.243
         },
         {
           "beat": 152,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 56.99
+          "time_sec": 56.99,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 56.99
         },
         {
           "beat": 154,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 57.745
+          "time_sec": 57.745,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 57.745
         },
         {
           "beat": 156,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 58.493
+          "time_sec": 58.493,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 58.493
         },
         {
           "beat": 158,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 59.247
+          "time_sec": 59.247,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 59.247
         },
         {
           "beat": 160,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 59.987
+          "time_sec": 59.987,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 59.987
         },
         {
           "beat": 162,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 60.742
+          "time_sec": 60.742,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 60.742
         },
         {
           "beat": 164,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 61.489
+          "time_sec": 61.489,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 61.489
         },
         {
           "beat": 166,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 62.244
+          "time_sec": 62.244,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 62.244
         },
         {
           "beat": 168,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 62.984
+          "time_sec": 62.984,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 62.984
         },
         {
           "beat": 170,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 63.746
+          "time_sec": 63.746,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 63.746
         },
         {
           "beat": 175,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 65.618
+          "time_sec": 65.618,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 65.618
         },
         {
           "beat": 177,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 66.366
+          "time_sec": 66.366,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 66.366
         },
         {
           "beat": 179,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 67.113
+          "time_sec": 67.113,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 67.113
         },
         {
           "beat": 181,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 67.868
+          "time_sec": 67.868,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 67.868
         },
         {
           "beat": 183,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 68.615
+          "time_sec": 68.615,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 68.615
         },
         {
           "beat": 185,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 69.362
+          "time_sec": 69.362,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 69.362
         },
         {
           "beat": 187,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 70.117
+          "time_sec": 70.117,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 70.117
         },
         {
           "beat": 190,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 71.242
+          "time_sec": 71.242,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 71.242
         },
         {
           "beat": 192,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 71.989
+          "time_sec": 71.989,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 71.989
         },
         {
           "beat": 194,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 72.744
+          "time_sec": 72.744,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 72.744
         },
         {
           "beat": 196,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 73.491
+          "time_sec": 73.491,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 73.491
         },
         {
           "beat": 198,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 74.246
+          "time_sec": 74.246,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 74.246
         },
         {
           "beat": 200,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 74.979
+          "time_sec": 74.979,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 74.979
         },
         {
           "beat": 202,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 75.741
+          "time_sec": 75.741,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 75.741
         },
         {
           "beat": 207,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 77.62
+          "time_sec": 77.62,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 77.62
         },
         {
           "beat": 209,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 78.375
+          "time_sec": 78.375,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 78.375
         },
         {
           "beat": 211,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 79.158
+          "time_sec": 79.158,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 79.158
         },
         {
           "beat": 213,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 79.92
+          "time_sec": 79.92,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 79.92
         },
         {
           "beat": 215,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 80.668
+          "time_sec": 80.668,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 80.668
         },
         {
           "beat": 224,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 83.998
+          "time_sec": 83.984,
+          "timing_source": "onset",
+          "onset_time_sec": 83.984,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 83.998
         },
         {
           "beat": 226,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 84.789
+          "time_sec": 84.789,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 84.789
         },
         {
           "beat": 228,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 85.537
+          "time_sec": 85.537,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 85.537
         },
         {
           "beat": 230,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 86.284
+          "time_sec": 86.284,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 86.284
         },
         {
           "beat": 232,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 87.039
+          "time_sec": 87.039,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 87.039
         },
         {
           "beat": 234,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 87.815
+          "time_sec": 87.815,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 87.815
         },
         {
           "beat": 240,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 90.188
+          "time_sec": 90.188,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 90.188
         },
         {
           "beat": 242,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 90.942
+          "time_sec": 90.942,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 90.942
         },
         {
           "beat": 244,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 91.69
+          "time_sec": 91.69,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 91.69
         },
         {
           "beat": 246,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 92.437
+          "time_sec": 92.437,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 92.437
         },
         {
           "beat": 248,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 93.192
+          "time_sec": 93.192,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 93.192
         },
         {
           "beat": 250,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 93.939
+          "time_sec": 93.939,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 93.939
         },
         {
           "beat": 252,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 94.694
+          "time_sec": 94.694,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 94.694
         },
         {
           "beat": 254,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 95.441
+          "time_sec": 95.441,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 95.441
         },
         {
           "beat": 256,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 96.189
+          "time_sec": 96.189,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 96.189
         },
         {
           "beat": 258,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 96.943
+          "time_sec": 96.943,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 96.943
         },
         {
           "beat": 260,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 97.691
+          "time_sec": 97.691,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 97.691
         },
         {
           "beat": 262,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 98.445
+          "time_sec": 98.445,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 98.445
         },
         {
           "beat": 264,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 99.193
+          "time_sec": 99.193,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 99.193
         },
         {
           "beat": 266,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 99.94
+          "time_sec": 99.94,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 99.94
         },
         {
           "beat": 272,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 102.001
+          "time_sec": 101.991,
+          "timing_source": "onset",
+          "onset_time_sec": 101.991,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 102.001
         },
         {
           "beat": 275,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 103.118
+          "time_sec": 103.118,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 103.118
         },
         {
           "beat": 278,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 104.243
+          "time_sec": 104.243,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 104.243
         },
         {
           "beat": 281,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 105.375
+          "time_sec": 105.375,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 105.375
         },
         {
           "beat": 284,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 106.493
+          "time_sec": 106.493,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 106.493
         },
         {
           "beat": 287,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 107.617
+          "time_sec": 107.617,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 107.617
         },
         {
           "beat": 290,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 108.749
+          "time_sec": 108.749,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 108.749
         },
         {
           "beat": 293,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 109.867
+          "time_sec": 109.867,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 109.867
         },
         {
           "beat": 296,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 110.999
+          "time_sec": 110.999,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 110.999
         },
         {
           "beat": 299,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 112.116
+          "time_sec": 112.116,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 112.116
         },
         {
           "beat": 302,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 113.241
+          "time_sec": 113.241,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 113.241
         },
         {
           "beat": 308,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 115.49
+          "time_sec": 115.49,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 115.49
         },
         {
           "beat": 311,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 116.615
+          "time_sec": 116.611,
+          "timing_source": "onset",
+          "onset_time_sec": 116.611,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 116.615
         },
         {
           "beat": 314,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 117.74
+          "time_sec": 117.74,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 117.74
         },
         {
           "beat": 318,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 119.242
+          "time_sec": 119.242,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 119.242
         },
         {
           "beat": 321,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 120.374
+          "time_sec": 120.374,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 120.374
         },
         {
           "beat": 324,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 121.498
+          "time_sec": 121.498,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 121.498
         },
         {
           "beat": 328,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 123.0
+          "time_sec": 123.0,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 123.0
         },
         {
           "beat": 331,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 124.125
+          "time_sec": 124.125,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 124.125
         },
         {
           "beat": 334,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 125.25
+          "time_sec": 125.25,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 125.25
         },
         {
           "beat": 338,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 126.752
+          "time_sec": 126.752,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 126.752
         },
         {
           "beat": 341,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 127.869
+          "time_sec": 127.869,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 127.869
         },
         {
           "beat": 343,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 128.624
+          "time_sec": 128.624,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 128.624
         },
         {
           "beat": 346,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 129.749
+          "time_sec": 129.749,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 129.749
         },
         {
           "beat": 349,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 130.866
+          "time_sec": 130.866,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 130.866
         },
         {
           "beat": 352,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 131.998
+          "time_sec": 131.998,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 131.998
         },
         {
           "beat": 356,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 133.5
+          "time_sec": 133.5,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 133.5
         },
         {
           "beat": 359,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 134.625
+          "time_sec": 134.625,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 134.625
         },
         {
           "beat": 362,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 135.75
+          "time_sec": 135.75,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 135.75
         },
         {
           "beat": 366,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 137.252
+          "time_sec": 137.252,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 137.252
         },
         {
           "beat": 369,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 138.376
+          "time_sec": 138.376,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 138.376
         },
         {
           "beat": 372,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 139.501
+          "time_sec": 139.501,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 139.501
         },
         {
           "beat": 376,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 140.996
+          "time_sec": 140.996,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 140.996
         },
         {
           "beat": 379,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 142.121
+          "time_sec": 142.121,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 142.121
         },
         {
           "beat": 384,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 144.0
+          "time_sec": 143.987,
+          "timing_source": "onset",
+          "onset_time_sec": 143.987,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 144.0
         },
         {
           "beat": 386,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 144.747
+          "time_sec": 144.747,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 144.747
         },
         {
           "beat": 388,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 145.502
+          "time_sec": 145.502,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 145.502
         },
         {
           "beat": 390,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 146.249
+          "time_sec": 146.249,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 146.249
         },
         {
           "beat": 392,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 146.997
+          "time_sec": 146.997,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 146.997
         },
         {
           "beat": 398,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 149.246
+          "time_sec": 149.246,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 149.246
         },
         {
           "beat": 400,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 150.001
+          "time_sec": 150.001,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 150.001
         },
         {
           "beat": 402,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 150.748
+          "time_sec": 150.748,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 150.748
         },
         {
           "beat": 404,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 151.496
+          "time_sec": 151.496,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 151.496
         },
         {
           "beat": 406,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 152.25
+          "time_sec": 152.25,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 152.25
         },
         {
           "beat": 408,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 152.998
+          "time_sec": 152.998,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 152.998
         },
         {
           "beat": 416,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 155.995
+          "time_sec": 155.986,
+          "timing_source": "onset",
+          "onset_time_sec": 155.986,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 155.995
         },
         {
           "beat": 418,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 156.749
+          "time_sec": 156.749,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 156.749
         },
         {
           "beat": 420,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 157.497
+          "time_sec": 157.497,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 157.497
         },
         {
           "beat": 422,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 158.251
+          "time_sec": 158.251,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 158.251
         },
         {
           "beat": 424,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 158.999
+          "time_sec": 158.999,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 158.999
         },
         {
           "beat": 426,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 159.746
+          "time_sec": 159.746,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 159.746
         },
         {
           "beat": 428,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 160.501
+          "time_sec": 160.501,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 160.501
         },
         {
           "beat": 430,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 161.248
+          "time_sec": 161.248,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 161.248
         },
         {
           "beat": 432,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 162.003
+          "time_sec": 162.003,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 162.003
         },
         {
           "beat": 434,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 162.75
+          "time_sec": 162.75,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 162.75
         },
         {
           "beat": 436,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 163.498
+          "time_sec": 163.498,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 163.498
         },
         {
           "beat": 438,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 164.245
+          "time_sec": 164.245,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 164.245
         },
         {
           "beat": 440,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 164.992
+          "time_sec": 164.992,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 164.992
         },
         {
           "beat": 442,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 165.754
+          "time_sec": 165.754,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 165.754
         },
         {
           "beat": 447,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 167.619
+          "time_sec": 167.619,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 167.619
         },
         {
           "beat": 450,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 168.657
+          "time_sec": 168.657,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 168.657
         },
         {
           "beat": 453,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 169.781
+          "time_sec": 169.781,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 169.781
         },
         {
           "beat": 455,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 170.529
+          "time_sec": 170.529,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 170.529
         },
         {
           "beat": 458,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 171.654
+          "time_sec": 171.654,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 171.654
         },
         {
           "beat": 461,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 172.778
+          "time_sec": 172.778,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 172.778
         },
         {
           "beat": 464,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 173.896
+          "time_sec": 173.896,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 173.896
         },
         {
           "beat": 466,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 174.65
+          "time_sec": 174.65,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 174.65
         },
         {
           "beat": 469,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 175.775
+          "time_sec": 175.775,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 175.775
         },
         {
           "beat": 472,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 176.9
+          "time_sec": 176.9,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 176.9
         },
         {
           "beat": 480,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 179.998
+          "time_sec": 179.986,
+          "timing_source": "onset",
+          "onset_time_sec": 179.986,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 179.998
         },
         {
           "beat": 482,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 180.738
+          "time_sec": 180.738,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 180.738
         },
         {
           "beat": 487,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 182.618
+          "time_sec": 182.618,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 182.618
         },
         {
           "beat": 492,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 184.49
+          "time_sec": 184.49,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 184.49
         },
         {
           "beat": 497,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 186.369
+          "time_sec": 186.369,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 186.369
         },
         {
           "beat": 502,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 188.241
+          "time_sec": 188.241,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 188.241
         },
         {
           "beat": 507,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 190.121
+          "time_sec": 190.121,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 190.121
         },
         {
           "beat": 512,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 192.0
+          "time_sec": 192.0,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 192.0
         },
         {
           "beat": 517,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 193.879
+          "time_sec": 193.879,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 193.879
         }
       ],
       "count": 178
@@ -1799,1078 +2341,1550 @@
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 2.62
+          "time_sec": 2.62,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 2.62
         },
         {
           "beat": 12,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 4.492
+          "time_sec": 4.492,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 4.492
         },
         {
           "beat": 16,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 6.001
+          "time_sec": 5.991,
+          "timing_source": "onset",
+          "onset_time_sec": 5.991,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 6.001
         },
         {
           "beat": 20,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 7.488
+          "time_sec": 7.488,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 7.488
         },
         {
           "beat": 27,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 10.115
+          "time_sec": 10.115,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 10.115
         },
         {
           "beat": 31,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 11.617
+          "time_sec": 11.617,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 11.617
         },
         {
           "beat": 35,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 13.112
+          "time_sec": 13.112,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 13.112
         },
         {
           "beat": 41,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 15.361
+          "time_sec": 15.361,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 15.361
         },
         {
           "beat": 45,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 16.849
+          "time_sec": 16.849,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 16.849
         },
         {
           "beat": 49,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 18.366
+          "time_sec": 18.366,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 18.366
         },
         {
           "beat": 52,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 19.49
+          "time_sec": 19.49,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 19.49
         },
         {
           "beat": 55,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 20.615
+          "time_sec": 20.615,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 20.615
         },
         {
           "beat": 58,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 21.74
+          "time_sec": 21.74,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 21.74
         },
         {
           "beat": 61,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 22.864
+          "time_sec": 22.864,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 22.864
         },
         {
           "beat": 65,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 24.366
+          "time_sec": 24.366,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 24.366
         },
         {
           "beat": 68,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 25.491
+          "time_sec": 25.491,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 25.491
         },
         {
           "beat": 79,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 29.62
+          "time_sec": 29.62,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 29.62
         },
         {
           "beat": 82,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 30.752
+          "time_sec": 30.752,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 30.752
         },
         {
           "beat": 85,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 31.913
+          "time_sec": 31.913,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 31.913
         },
         {
           "beat": 96,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 35.998
+          "time_sec": 35.988,
+          "timing_source": "onset",
+          "onset_time_sec": 35.988,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 35.998
         },
         {
           "beat": 99,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 37.159
+          "time_sec": 37.159,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 37.159
         },
         {
           "beat": 102,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 38.291
+          "time_sec": 38.291,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 38.291
         },
         {
           "beat": 105,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 39.416
+          "time_sec": 39.416,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 39.416
         },
         {
           "beat": 110,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 41.419
+          "time_sec": 41.419,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 41.419
         },
         {
           "beat": 113,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 42.565
+          "time_sec": 42.565,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 42.565
         },
         {
           "beat": 117,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 44.067
+          "time_sec": 44.067,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 44.067
         },
         {
           "beat": 120,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 45.192
+          "time_sec": 45.192,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 45.192
         },
         {
           "beat": 123,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 46.317
+          "time_sec": 46.317,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 46.317
         },
         {
           "beat": 126,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 47.441
+          "time_sec": 47.441,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 47.441
         },
         {
           "beat": 130,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 48.943
+          "time_sec": 48.943,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 48.943
         },
         {
           "beat": 133,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 50.068
+          "time_sec": 50.068,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 50.068
         },
         {
           "beat": 144,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 54.001
+          "time_sec": 53.986,
+          "timing_source": "onset",
+          "onset_time_sec": 53.986,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 54.001
         },
         {
           "beat": 147,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 55.118
+          "time_sec": 55.118,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 55.118
         },
         {
           "beat": 151,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 56.62
+          "time_sec": 56.62,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 56.62
         },
         {
           "beat": 154,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 57.745
+          "time_sec": 57.745,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 57.745
         },
         {
           "beat": 157,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 58.87
+          "time_sec": 58.87,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 58.87
         },
         {
           "beat": 159,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 59.617
+          "time_sec": 59.617,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 59.617
         },
         {
           "beat": 161,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 60.365
+          "time_sec": 60.365,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 60.365
         },
         {
           "beat": 164,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 61.489
+          "time_sec": 61.489,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 61.489
         },
         {
           "beat": 174,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 65.241
+          "time_sec": 65.241,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 65.241
         },
         {
           "beat": 177,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 66.366
+          "time_sec": 66.366,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 66.366
         },
         {
           "beat": 179,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 67.113
+          "time_sec": 67.113,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 67.113
         },
         {
           "beat": 181,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 67.868
+          "time_sec": 67.868,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 67.868
         },
         {
           "beat": 185,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 69.362
+          "time_sec": 69.362,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 69.362
         },
         {
           "beat": 187,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 70.117
+          "time_sec": 70.117,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 70.117
         },
         {
           "beat": 189,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 70.864
+          "time_sec": 70.864,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 70.864
         },
         {
           "beat": 191,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 71.619
+          "time_sec": 71.619,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 71.619
         },
         {
           "beat": 195,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 73.114
+          "time_sec": 73.114,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 73.114
         },
         {
           "beat": 208,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 77.997
+          "time_sec": 77.997,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 77.997
         },
         {
           "beat": 211,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 79.158
+          "time_sec": 79.158,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 79.158
         },
         {
           "beat": 214,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 80.29
+          "time_sec": 80.29,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 80.29
         },
         {
           "beat": 224,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 83.998
+          "time_sec": 83.984,
+          "timing_source": "onset",
+          "onset_time_sec": 83.984,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 83.998
         },
         {
           "beat": 225,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 84.383
+          "time_sec": 84.383,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 84.383
         },
         {
           "beat": 227,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 85.166
+          "time_sec": 85.166,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 85.166
         },
         {
           "beat": 230,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 86.284
+          "time_sec": 86.284,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 86.284
         },
         {
           "beat": 232,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 87.039
+          "time_sec": 87.039,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 87.039
         },
         {
           "beat": 233,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 87.423
+          "time_sec": 87.423,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 87.423
         },
         {
           "beat": 238,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 89.411
+          "time_sec": 89.411,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 89.411
         },
         {
           "beat": 241,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 90.565
+          "time_sec": 90.565,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 90.565
         },
         {
           "beat": 243,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 91.312
+          "time_sec": 91.312,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 91.312
         },
         {
           "beat": 245,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 92.067
+          "time_sec": 92.067,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 92.067
         },
         {
           "beat": 249,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 93.569
+          "time_sec": 93.569,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 93.569
         },
         {
           "beat": 251,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 94.317
+          "time_sec": 94.317,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 94.317
         },
         {
           "beat": 253,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 95.064
+          "time_sec": 95.064,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 95.064
         },
         {
           "beat": 256,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 96.189
+          "time_sec": 96.189,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 96.189
         },
         {
           "beat": 259,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 97.313
+          "time_sec": 97.313,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 97.313
         },
         {
           "beat": 271,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 101.667
+          "time_sec": 101.667,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 101.667
         },
         {
           "beat": 275,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 103.118
+          "time_sec": 103.118,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 103.118
         },
         {
           "beat": 277,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 103.866
+          "time_sec": 103.866,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 103.866
         },
         {
           "beat": 279,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 104.613
+          "time_sec": 104.613,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 104.613
         },
         {
           "beat": 281,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 105.375
+          "time_sec": 105.375,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 105.375
         },
         {
           "beat": 285,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 106.87
+          "time_sec": 106.87,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 106.87
         },
         {
           "beat": 287,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 107.617
+          "time_sec": 107.617,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 107.617
         },
         {
           "beat": 289,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 108.372
+          "time_sec": 108.372,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 108.372
         },
         {
           "beat": 291,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 109.112
+          "time_sec": 109.112,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 109.112
         },
         {
           "beat": 293,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 109.867
+          "time_sec": 109.867,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 109.867
         },
         {
           "beat": 296,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 110.999
+          "time_sec": 110.999,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 110.999
         },
         {
           "beat": 299,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 112.116
+          "time_sec": 112.118,
+          "timing_source": "onset",
+          "onset_time_sec": 112.118,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 112.116
         },
         {
           "beat": 303,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 113.618
+          "time_sec": 113.615,
+          "timing_source": "onset",
+          "onset_time_sec": 113.615,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 113.618
         },
         {
           "beat": 306,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 114.743
+          "time_sec": 114.743,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 114.743
         },
         {
           "beat": 309,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 115.868
+          "time_sec": 115.862,
+          "timing_source": "onset",
+          "onset_time_sec": 115.862,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 115.868
         },
         {
           "beat": 311,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 116.615
+          "time_sec": 116.611,
+          "timing_source": "onset",
+          "onset_time_sec": 116.611,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 116.615
         },
         {
           "beat": 313,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 117.362
+          "time_sec": 117.362,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 117.362
         },
         {
           "beat": 316,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 118.487
+          "time_sec": 118.487,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 118.487
         },
         {
           "beat": 318,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 119.242
+          "time_sec": 119.242,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 119.242
         },
         {
           "beat": 320,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 119.996
+          "time_sec": 119.996,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 119.996
         },
         {
           "beat": 322,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 120.751
+          "time_sec": 120.751,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 120.751
         },
         {
           "beat": 324,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 121.498
+          "time_sec": 121.498,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 121.498
         },
         {
           "beat": 327,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 122.623
+          "time_sec": 122.623,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 122.623
         },
         {
           "beat": 329,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 123.378
+          "time_sec": 123.378,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 123.378
         },
         {
           "beat": 331,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 124.125
+          "time_sec": 124.125,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 124.125
         },
         {
           "beat": 334,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 125.25
+          "time_sec": 125.25,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 125.25
         },
         {
           "beat": 338,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 126.752
+          "time_sec": 126.752,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 126.752
         },
         {
           "beat": 342,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 128.247
+          "time_sec": 128.247,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 128.247
         },
         {
           "beat": 345,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 129.371
+          "time_sec": 129.371,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 129.371
         },
         {
           "beat": 347,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 130.126
+          "time_sec": 130.126,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 130.126
         },
         {
           "beat": 349,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 130.866
+          "time_sec": 130.866,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 130.866
         },
         {
           "beat": 351,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 131.621
+          "time_sec": 131.621,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 131.621
         },
         {
           "beat": 354,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 132.746
+          "time_sec": 132.746,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 132.746
         },
         {
           "beat": 356,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 133.5
+          "time_sec": 133.5,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 133.5
         },
         {
           "beat": 358,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 134.248
+          "time_sec": 134.248,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 134.248
         },
         {
           "beat": 360,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 134.995
+          "time_sec": 134.995,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 134.995
         },
         {
           "beat": 362,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 135.75
+          "time_sec": 135.75,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 135.75
         },
         {
           "beat": 365,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 136.874
+          "time_sec": 136.874,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 136.874
         },
         {
           "beat": 367,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 137.622
+          "time_sec": 137.622,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 137.622
         },
         {
           "beat": 369,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 138.376
+          "time_sec": 138.376,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 138.376
         },
         {
           "beat": 372,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 139.501
+          "time_sec": 139.501,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 139.501
         },
         {
           "beat": 376,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 140.996
+          "time_sec": 140.996,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 140.996
         },
         {
           "beat": 380,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 142.505
+          "time_sec": 142.505,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 142.505
         },
         {
           "beat": 383,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 143.63
+          "time_sec": 143.63,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 143.63
         },
         {
           "beat": 385,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 144.377
+          "time_sec": 144.377,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 144.377
         },
         {
           "beat": 387,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 145.125
+          "time_sec": 145.125,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 145.125
         },
         {
           "beat": 391,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 146.627
+          "time_sec": 146.627,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 146.627
         },
         {
           "beat": 397,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 148.876
+          "time_sec": 148.876,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 148.876
         },
         {
           "beat": 400,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 150.001
+          "time_sec": 150.001,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 150.001
         },
         {
           "beat": 403,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 151.126
+          "time_sec": 151.126,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 151.126
         },
         {
           "beat": 405,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 151.873
+          "time_sec": 151.873,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 151.873
         },
         {
           "beat": 408,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 152.998
+          "time_sec": 152.998,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 152.998
         },
         {
           "beat": 414,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 155.247
+          "time_sec": 155.247,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 155.247
         },
         {
           "beat": 417,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 156.379
+          "time_sec": 156.379,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 156.379
         },
         {
           "beat": 419,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 157.127
+          "time_sec": 157.127,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 157.127
         },
         {
           "beat": 421,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 157.874
+          "time_sec": 157.874,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 157.874
         },
         {
           "beat": 423,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 158.629
+          "time_sec": 158.629,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 158.629
         },
         {
           "beat": 425,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 159.376
+          "time_sec": 159.376,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 159.376
         },
         {
           "beat": 427,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 160.123
+          "time_sec": 160.123,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 160.123
         },
         {
           "beat": 430,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 161.248
+          "time_sec": 161.248,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 161.248
         },
         {
           "beat": 433,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 162.373
+          "time_sec": 162.373,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 162.373
         },
         {
           "beat": 436,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 163.498
+          "time_sec": 163.498,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 163.498
         },
         {
           "beat": 445,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 166.872
+          "time_sec": 166.872,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 166.872
         },
         {
           "beat": 448,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 167.996
+          "time_sec": 167.985,
+          "timing_source": "onset",
+          "onset_time_sec": 167.985,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 167.996
         },
         {
           "beat": 450,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 168.657
+          "time_sec": 168.657,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 168.657
         },
         {
           "beat": 452,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 169.397
+          "time_sec": 169.397,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 169.397
         },
         {
           "beat": 454,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 170.151
+          "time_sec": 170.151,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 170.151
         },
         {
           "beat": 457,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 171.276
+          "time_sec": 171.276,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 171.276
         },
         {
           "beat": 459,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 172.031
+          "time_sec": 172.031,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 172.031
         },
         {
           "beat": 461,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 172.778
+          "time_sec": 172.778,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 172.778
         },
         {
           "beat": 463,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 173.526
+          "time_sec": 173.526,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 173.526
         },
         {
           "beat": 465,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 174.28
+          "time_sec": 174.28,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 174.28
         },
         {
           "beat": 468,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 175.398
+          "time_sec": 175.398,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 175.398
         },
         {
           "beat": 472,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 176.9
+          "time_sec": 176.9,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 176.9
         },
         {
           "beat": 480,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 179.998
+          "time_sec": 179.986,
+          "timing_source": "onset",
+          "onset_time_sec": 179.986,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 179.998
         },
         {
           "beat": 483,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 181.116
+          "time_sec": 181.116,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 181.116
         },
         {
           "beat": 486,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 182.24
+          "time_sec": 182.24,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 182.24
         },
         {
           "beat": 489,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 183.365
+          "time_sec": 183.365,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 183.365
         },
         {
           "beat": 492,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 184.49
+          "time_sec": 184.49,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 184.49
         },
         {
           "beat": 495,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 185.615
+          "time_sec": 185.615,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 185.615
         },
         {
           "beat": 498,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 186.739
+          "time_sec": 186.739,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 186.739
         },
         {
           "beat": 501,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 187.864
+          "time_sec": 187.864,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 187.864
         },
         {
           "beat": 504,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 188.989
+          "time_sec": 188.989,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 188.989
         },
         {
           "beat": 507,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 190.121
+          "time_sec": 190.121,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 190.121
         },
         {
           "beat": 510,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 191.245
+          "time_sec": 191.245,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 191.245
         },
         {
           "beat": 513,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 192.377
+          "time_sec": 192.377,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 192.377
         },
         {
           "beat": 516,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 193.509
+          "time_sec": 193.509,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 193.509
         },
         {
           "beat": 519,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 194.627
+          "time_sec": 194.627,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 194.627
         }
       ],
       "count": 154
@@ -2882,1372 +3896,1970 @@
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 2.242
+          "time_sec": 2.242,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 2.242
         },
         {
           "beat": 9,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 3.367
+          "time_sec": 3.367,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 3.367
         },
         {
           "beat": 13,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 4.869
+          "time_sec": 4.859,
+          "timing_source": "onset",
+          "onset_time_sec": 4.859,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 4.869
         },
         {
           "beat": 19,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 7.118
+          "time_sec": 7.118,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 7.118
         },
         {
           "beat": 20,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 7.488
+          "time_sec": 7.488,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 7.488
         },
         {
           "beat": 24,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 8.983
+          "time_sec": 8.983,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 8.983
         },
         {
           "beat": 28,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 10.493
+          "time_sec": 10.493,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 10.493
         },
         {
           "beat": 31,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 11.617
+          "time_sec": 11.617,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 11.617
         },
         {
           "beat": 32,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 11.987
+          "time_sec": 11.987,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 11.987
         },
         {
           "beat": 38,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 14.244
+          "time_sec": 14.244,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 14.244
         },
         {
           "beat": 42,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 15.739
+          "time_sec": 15.739,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 15.739
         },
         {
           "beat": 47,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 17.618
+          "time_sec": 17.618,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 17.618
         },
         {
           "beat": 48,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 18.003
+          "time_sec": 18.003,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 18.003
         },
         {
           "beat": 52,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 19.49
+          "time_sec": 19.49,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 19.49
         },
         {
           "beat": 53,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 19.868
+          "time_sec": 19.868,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 19.868
         },
         {
           "beat": 58,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 21.74
+          "time_sec": 21.74,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 21.74
         },
         {
           "beat": 62,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 23.242
+          "time_sec": 23.242,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 23.242
         },
         {
           "beat": 66,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 24.744
+          "time_sec": 24.744,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 24.744
         },
         {
           "beat": 70,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 26.246
+          "time_sec": 26.246,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 26.246
         },
         {
           "beat": 74,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 27.741
+          "time_sec": 27.741,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 27.741
         },
         {
           "beat": 79,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 29.62
+          "time_sec": 29.62,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 29.62
         },
         {
           "beat": 81,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 30.375
+          "time_sec": 30.375,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 30.375
         },
         {
           "beat": 82,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 30.752
+          "time_sec": 30.752,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 30.752
         },
         {
           "beat": 86,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 32.29
+          "time_sec": 32.29,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 32.29
         },
         {
           "beat": 87,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 32.66
+          "time_sec": 32.66,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 32.66
         },
         {
           "beat": 89,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 33.415
+          "time_sec": 33.415,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 33.415
         },
         {
           "beat": 95,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 35.614
+          "time_sec": 35.614,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 35.614
         },
         {
           "beat": 98,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 36.782
+          "time_sec": 36.782,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 36.782
         },
         {
           "beat": 100,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 37.537
+          "time_sec": 37.537,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 37.537
         },
         {
           "beat": 101,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 37.914
+          "time_sec": 37.914,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 37.914
         },
         {
           "beat": 105,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 39.416
+          "time_sec": 39.416,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 39.416
         },
         {
           "beat": 108,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 40.606
+          "time_sec": 40.606,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 40.606
         },
         {
           "beat": 111,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 41.803
+          "time_sec": 41.803,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 41.803
         },
         {
           "beat": 114,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 42.942
+          "time_sec": 42.942,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 42.942
         },
         {
           "beat": 117,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 44.067
+          "time_sec": 44.067,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 44.067
         },
         {
           "beat": 120,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 45.192
+          "time_sec": 45.192,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 45.192
         },
         {
           "beat": 123,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 46.317
+          "time_sec": 46.317,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 46.317
         },
         {
           "beat": 126,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 47.441
+          "time_sec": 47.441,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 47.441
         },
         {
           "beat": 127,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 47.811
+          "time_sec": 47.811,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 47.811
         },
         {
           "beat": 130,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 48.943
+          "time_sec": 48.943,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 48.943
         },
         {
           "beat": 133,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 50.068
+          "time_sec": 50.068,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 50.068
         },
         {
           "beat": 136,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 51.193
+          "time_sec": 51.193,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 51.193
         },
         {
           "beat": 139,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 52.31
+          "time_sec": 52.31,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 52.31
         },
         {
           "beat": 142,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 53.333
+          "time_sec": 53.333,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 53.333
         },
         {
           "beat": 145,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 54.364
+          "time_sec": 54.364,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 54.364
         },
         {
           "beat": 148,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 55.488
+          "time_sec": 55.488,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 55.488
         },
         {
           "beat": 151,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 56.62
+          "time_sec": 56.62,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 56.62
         },
         {
           "beat": 154,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 57.745
+          "time_sec": 57.745,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 57.745
         },
         {
           "beat": 157,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 58.87
+          "time_sec": 58.87,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 58.87
         },
         {
           "beat": 160,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 59.987
+          "time_sec": 59.987,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 59.987
         },
         {
           "beat": 163,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 61.112
+          "time_sec": 61.112,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 61.112
         },
         {
           "beat": 166,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 62.244
+          "time_sec": 62.244,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 62.244
         },
         {
           "beat": 169,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 63.369
+          "time_sec": 63.369,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 63.369
         },
         {
           "beat": 172,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 64.472
+          "time_sec": 64.472,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 64.472
         },
         {
           "beat": 175,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 65.618
+          "time_sec": 65.618,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 65.618
         },
         {
           "beat": 176,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 65.995
+          "time_sec": 65.994,
+          "timing_source": "onset",
+          "onset_time_sec": 65.994,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 65.995
         },
         {
           "beat": 179,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 67.113
+          "time_sec": 67.113,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 67.113
         },
         {
           "beat": 182,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 68.245
+          "time_sec": 68.245,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 68.245
         },
         {
           "beat": 186,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 69.74
+          "time_sec": 69.74,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 69.74
         },
         {
           "beat": 189,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 70.864
+          "time_sec": 70.864,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 70.864
         },
         {
           "beat": 192,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 71.989
+          "time_sec": 71.989,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 71.989
         },
         {
           "beat": 195,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 73.114
+          "time_sec": 73.114,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 73.114
         },
         {
           "beat": 198,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 74.246
+          "time_sec": 74.246,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 74.246
         },
         {
           "beat": 201,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 75.363
+          "time_sec": 75.363,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 75.363
         },
         {
           "beat": 204,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 76.473
+          "time_sec": 76.473,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 76.473
         },
         {
           "beat": 207,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 77.62
+          "time_sec": 77.62,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 77.62
         },
         {
           "beat": 211,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 79.158
+          "time_sec": 79.158,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 79.158
         },
         {
           "beat": 212,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 79.543
+          "time_sec": 79.543,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 79.543
         },
         {
           "beat": 215,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 80.668
+          "time_sec": 80.668,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 80.668
         },
         {
           "beat": 218,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 81.792
+          "time_sec": 81.792,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 81.792
         },
         {
           "beat": 221,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 82.866
+          "time_sec": 82.866,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 82.866
         },
         {
           "beat": 224,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 83.998
+          "time_sec": 83.984,
+          "timing_source": "onset",
+          "onset_time_sec": 83.984,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 83.998
         },
         {
           "beat": 225,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 84.383
+          "time_sec": 84.383,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 84.383
         },
         {
           "beat": 228,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 85.537
+          "time_sec": 85.537,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 85.537
         },
         {
           "beat": 231,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 86.661
+          "time_sec": 86.661,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 86.661
         },
         {
           "beat": 232,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 87.039
+          "time_sec": 87.039,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 87.039
         },
         {
           "beat": 236,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 88.591
+          "time_sec": 88.591,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 88.591
         },
         {
           "beat": 239,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 89.803
+          "time_sec": 89.803,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 89.803
         },
         {
           "beat": 240,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 90.188
+          "time_sec": 90.188,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 90.188
         },
         {
           "beat": 242,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 90.942
+          "time_sec": 90.942,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 90.942
         },
         {
           "beat": 243,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 91.312
+          "time_sec": 91.312,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 91.312
         },
         {
           "beat": 246,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 92.437
+          "time_sec": 92.437,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 92.437
         },
         {
           "beat": 249,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 93.569
+          "time_sec": 93.569,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 93.569
         },
         {
           "beat": 252,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 94.694
+          "time_sec": 94.694,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 94.694
         },
         {
           "beat": 255,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 95.811
+          "time_sec": 95.811,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 95.811
         },
         {
           "beat": 257,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 96.566
+          "time_sec": 96.566,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 96.566
         },
         {
           "beat": 258,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 96.943
+          "time_sec": 96.943,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 96.943
         },
         {
           "beat": 261,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 98.068
+          "time_sec": 98.068,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 98.068
         },
         {
           "beat": 264,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 99.193
+          "time_sec": 99.193,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 99.193
         },
         {
           "beat": 266,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 99.94
+          "time_sec": 99.94,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 99.94
         },
         {
           "beat": 267,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 100.31
+          "time_sec": 100.31,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 100.31
         },
         {
           "beat": 270,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 101.333
+          "time_sec": 101.333,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 101.333
         },
         {
           "beat": 274,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 102.741
+          "time_sec": 102.741,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 102.741
         },
         {
           "beat": 275,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 103.118
+          "time_sec": 103.118,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 103.118
         },
         {
           "beat": 279,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 104.613
+          "time_sec": 104.613,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 104.613
         },
         {
           "beat": 280,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 104.998
+          "time_sec": 104.998,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 104.998
         },
         {
           "beat": 283,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 106.122
+          "time_sec": 106.122,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 106.122
         },
         {
           "beat": 286,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 107.24
+          "time_sec": 107.24,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 107.24
         },
         {
           "beat": 289,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 108.372
+          "time_sec": 108.372,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 108.372
         },
         {
           "beat": 292,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 109.497
+          "time_sec": 109.497,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 109.497
         },
         {
           "beat": 293,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 109.867
+          "time_sec": 109.867,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 109.867
         },
         {
           "beat": 299,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 112.116
+          "time_sec": 112.118,
+          "timing_source": "onset",
+          "onset_time_sec": 112.118,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 112.116
         },
         {
           "beat": 303,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 113.618
+          "time_sec": 113.615,
+          "timing_source": "onset",
+          "onset_time_sec": 113.615,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 113.618
         },
         {
           "beat": 306,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 114.743
+          "time_sec": 114.739,
+          "timing_source": "onset",
+          "onset_time_sec": 114.739,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 114.743
         },
         {
           "beat": 309,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 115.868
+          "time_sec": 115.862,
+          "timing_source": "onset",
+          "onset_time_sec": 115.862,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 115.868
         },
         {
           "beat": 310,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 116.238
+          "time_sec": 116.236,
+          "timing_source": "onset",
+          "onset_time_sec": 116.236,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 116.238
         },
         {
           "beat": 312,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 116.992
+          "time_sec": 116.992,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 116.992
         },
         {
           "beat": 313,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 117.362
+          "time_sec": 117.362,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 117.362
         },
         {
           "beat": 316,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 118.487
+          "time_sec": 118.487,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 118.487
         },
         {
           "beat": 317,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 118.864
+          "time_sec": 118.864,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 118.864
         },
         {
           "beat": 321,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 120.374
+          "time_sec": 120.374,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 120.374
         },
         {
           "beat": 323,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 121.121
+          "time_sec": 121.121,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 121.121
         },
         {
           "beat": 325,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 121.876
+          "time_sec": 121.876,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 121.876
         },
         {
           "beat": 327,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 122.623
+          "time_sec": 122.623,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 122.623
         },
         {
           "beat": 329,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 123.378
+          "time_sec": 123.378,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 123.378
         },
         {
           "beat": 330,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 123.755
+          "time_sec": 123.755,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 123.755
         },
         {
           "beat": 338,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 126.752
+          "time_sec": 126.752,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 126.752
         },
         {
           "beat": 342,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 128.247
+          "time_sec": 128.247,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 128.247
         },
         {
           "beat": 343,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 128.624
+          "time_sec": 128.624,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 128.624
         },
         {
           "beat": 345,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 129.371
+          "time_sec": 129.371,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 129.371
         },
         {
           "beat": 347,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 130.126
+          "time_sec": 130.126,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 130.126
         },
         {
           "beat": 349,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 130.866
+          "time_sec": 130.866,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 130.866
         },
         {
           "beat": 351,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 131.621
+          "time_sec": 131.621,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 131.621
         },
         {
           "beat": 354,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 132.746
+          "time_sec": 132.746,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 132.746
         },
         {
           "beat": 356,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 133.5
+          "time_sec": 133.5,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 133.5
         },
         {
           "beat": 358,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 134.248
+          "time_sec": 134.248,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 134.248
         },
         {
           "beat": 360,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 134.995
+          "time_sec": 134.995,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 134.995
         },
         {
           "beat": 361,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 135.372
+          "time_sec": 135.372,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 135.372
         },
         {
           "beat": 363,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 136.12
+          "time_sec": 136.12,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 136.12
         },
         {
           "beat": 365,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 136.874
+          "time_sec": 136.874,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 136.874
         },
         {
           "beat": 368,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 137.999
+          "time_sec": 137.999,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 137.999
         },
         {
           "beat": 372,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 139.501
+          "time_sec": 139.501,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 139.501
         },
         {
           "beat": 376,
           "kind": "shape_gate",
           "shape": "circle",
           "lane": 0,
-          "time_sec": 140.996
+          "time_sec": 140.996,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 140.996
         },
         {
           "beat": 380,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 142.505
+          "time_sec": 142.505,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 142.505
         },
         {
           "beat": 383,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 143.63
+          "time_sec": 143.63,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 143.63
         },
         {
           "beat": 385,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 144.377
+          "time_sec": 144.377,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 144.377
         },
         {
           "beat": 387,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 145.125
+          "time_sec": 145.125,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 145.125
         },
         {
           "beat": 389,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 145.872
+          "time_sec": 145.872,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 145.872
         },
         {
           "beat": 391,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 146.627
+          "time_sec": 146.627,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 146.627
         },
         {
           "beat": 393,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 147.374
+          "time_sec": 147.374,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 147.374
         },
         {
           "beat": 396,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 148.499
+          "time_sec": 148.499,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 148.499
         },
         {
           "beat": 398,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 149.246
+          "time_sec": 149.246,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 149.246
         },
         {
           "beat": 400,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 150.001
+          "time_sec": 150.001,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 150.001
         },
         {
           "beat": 402,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 150.748
+          "time_sec": 150.748,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 150.748
         },
         {
           "beat": 403,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 151.126
+          "time_sec": 151.126,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 151.126
         },
         {
           "beat": 405,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 151.873
+          "time_sec": 151.873,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 151.873
         },
         {
           "beat": 407,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 152.62
+          "time_sec": 152.62,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 152.62
         },
         {
           "beat": 409,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 153.375
+          "time_sec": 153.375,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 153.375
         },
         {
           "beat": 412,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 154.5
+          "time_sec": 154.5,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 154.5
         },
         {
           "beat": 415,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 155.617
+          "time_sec": 155.617,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 155.617
         },
         {
           "beat": 417,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 156.379
+          "time_sec": 156.379,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 156.379
         },
         {
           "beat": 418,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 156.749
+          "time_sec": 156.749,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 156.749
         },
         {
           "beat": 420,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 157.497
+          "time_sec": 157.497,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 157.497
         },
         {
           "beat": 422,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 158.251
+          "time_sec": 158.251,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 158.251
         },
         {
           "beat": 424,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 158.999
+          "time_sec": 158.999,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 158.999
         },
         {
           "beat": 426,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 159.746
+          "time_sec": 159.746,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 159.746
         },
         {
           "beat": 428,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 160.501
+          "time_sec": 160.501,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 160.501
         },
         {
           "beat": 430,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 161.248
+          "time_sec": 161.248,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 161.248
         },
         {
           "beat": 433,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 162.373
+          "time_sec": 162.373,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 162.373
         },
         {
           "beat": 435,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 163.12
+          "time_sec": 163.12,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 163.12
         },
         {
           "beat": 437,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 163.875
+          "time_sec": 163.875,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 163.875
         },
         {
           "beat": 439,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 164.622
+          "time_sec": 164.622,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 164.622
         },
         {
           "beat": 440,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 164.992
+          "time_sec": 164.992,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 164.992
         },
         {
           "beat": 443,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 166.132
+          "time_sec": 166.132,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 166.132
         },
         {
           "beat": 446,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 167.242
+          "time_sec": 167.242,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 167.242
         },
         {
           "beat": 448,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 167.996
+          "time_sec": 167.985,
+          "timing_source": "onset",
+          "onset_time_sec": 167.985,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 167.996
         },
         {
           "beat": 450,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 168.657
+          "time_sec": 168.657,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 168.657
         },
         {
           "beat": 452,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 169.397
+          "time_sec": 169.397,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 169.397
         },
         {
           "beat": 454,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 170.151
+          "time_sec": 170.151,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 170.151
         },
         {
           "beat": 456,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 170.899
+          "time_sec": 170.899,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 170.899
         },
         {
           "beat": 458,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 171.654
+          "time_sec": 171.654,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 171.654
         },
         {
           "beat": 460,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 172.401
+          "time_sec": 172.401,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 172.401
         },
         {
           "beat": 462,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 173.148
+          "time_sec": 173.148,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 173.148
         },
         {
           "beat": 465,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 174.28
+          "time_sec": 174.28,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 174.28
         },
         {
           "beat": 468,
           "kind": "shape_gate",
           "shape": "square",
           "lane": 1,
-          "time_sec": 175.398
+          "time_sec": 175.398,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 175.398
         },
         {
           "beat": 472,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 176.9
+          "time_sec": 176.9,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 176.9
         },
         {
           "beat": 479,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 179.614
+          "time_sec": 179.614,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 179.614
         },
         {
           "beat": 480,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 179.998
+          "time_sec": 179.986,
+          "timing_source": "onset",
+          "onset_time_sec": 179.986,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 179.998
         },
         {
           "beat": 483,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 181.116
+          "time_sec": 181.116,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 181.116
         },
         {
           "beat": 485,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 181.87
+          "time_sec": 181.87,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 181.87
         },
         {
           "beat": 487,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 182.618
+          "time_sec": 182.618,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 182.618
         },
         {
           "beat": 489,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 183.365
+          "time_sec": 183.365,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 183.365
         },
         {
           "beat": 491,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 184.112
+          "time_sec": 184.112,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 184.112
         },
         {
           "beat": 493,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 184.867
+          "time_sec": 184.867,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 184.867
         },
         {
           "beat": 495,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 185.615
+          "time_sec": 185.615,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 185.615
         },
         {
           "beat": 497,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 186.369
+          "time_sec": 186.369,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 186.369
         },
         {
           "beat": 499,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 187.117
+          "time_sec": 187.117,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 187.117
         },
         {
           "beat": 503,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 188.619
+          "time_sec": 188.619,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 188.619
         },
         {
           "beat": 505,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 189.366
+          "time_sec": 189.366,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 189.366
         },
         {
           "beat": 507,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 190.121
+          "time_sec": 190.121,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 190.121
         },
         {
           "beat": 509,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 190.868
+          "time_sec": 190.868,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 190.868
         },
         {
           "beat": 511,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 191.623
+          "time_sec": 191.623,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 191.623
         },
         {
           "beat": 513,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 192.377
+          "time_sec": 192.377,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 192.377
         },
         {
           "beat": 515,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 193.139
+          "time_sec": 193.139,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 193.139
         },
         {
           "beat": 517,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 193.879
+          "time_sec": 193.879,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 193.879
         },
         {
           "beat": 519,
           "kind": "shape_gate",
           "shape": "triangle",
           "lane": 2,
-          "time_sec": 194.627
+          "time_sec": 194.627,
+          "timing_source": "beat_fallback",
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 194.627
         }
       ],
       "count": 196

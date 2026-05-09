@@ -181,3 +181,24 @@ Team ready for next phase.
 ## Learnings
 - `tools/level_designer.py` diagnostics quality can be regression-gated without touching production code by importing the generator and validating histogram shape/subdivision bins on shipped `*_analysis.json` inputs.
 - A practical Loop 1 no-regression lane is: `./build/shapeshifter_tests "[shipped_beatmaps]"` + beatmap Python validators + the new Loop 1 histogram validator; keep `validate_offset_semantics.py` out of strict-gating because it currently reports large known drift violations in shipped data.
+
+## 2026-05-09T12:47:58.529-07:00 — Onset-time spike validation gates
+
+## Learnings
+- Spike validation should target the experimental diagnostics contract (`snap_diagnostics_summary.json` + `onset_timing_events.csv`) and stay report-first by default so shipped/default beatmaps remain unaffected.
+- The onset spike gate bundle now covers: min IOI floors (easy/medium/hard = 700/380/300ms), dense-cluster limits (max len 2/3/4 and short-IOI share 2%/20%/30%), residual-to-grid caps (median ≤65ms, p90 ≤120ms), event count/density (min 20/30/40, max 120/200/260 EPM), and subdivision coverage/offgrid caps (labels ≥1/2/2, offgrid ≤15%/25%/30%).
+- Keep Loop 1 + Loop 2 validators as stable no-regression checks for shipped content while iterating spike-only thresholds in strict mode.
+
+## 2026-05-09T12:55:54.558-07:00 — Onset spike level artifact validation run
+
+## Learnings
+- If no generated spike diagnostics are present yet, a safe smoke fallback is `tools/level_designer.py ... --diagnostics-only --experimental-onset-timing` into `tools/diagnostics/<spike_dir>` so shipped beatmaps are never rewritten.
+- For the current smoke artifact (`tools/diagnostics/onset_spike_smoke` from `2_drama_analysis.json`), `validate_onset_spike_artifacts.py` report mode is non-blocking but strict mode correctly fails on medium/hard subdivision label coverage (`labels=1`, floor `2`).
+- Existing shipped-content no-regression lane still passes in this state: `validate_loop1_diagnostics.py`, `validate_loop2_content_gates.py`, and `./build/shapeshifter_tests "[shipped_beatmaps]"`.
+
+## 2026-05-09T13:00:47.473-07:00 — run.sh onset-level promotion validation
+
+## Learnings
+- Promotion can race in-flight: polling `content/beatmaps/*_beatmap.json` against `content/beatmaps/experimental/onset_spike/*_beatmap_onset_spike.json` confirmed transition from not-promoted to promoted within the same QA window, so wait/recheck before concluding failure.
+- `./run.sh test` remains the safest noninteractive confidence lane for this branch and passed after promotion (686 test cases / 1840 assertions), confirming build+tests are stable with promoted shipped beatmaps.
+- Promoted shipped beatmaps now include onset metadata at obstacle level (`timing_source=onset`, `onset_time_sec`, `subdivision_label`) while strict onset-artifact gates still fail on medium/hard label coverage; treat this as a known content-quality blocker, not a run.sh execution blocker.

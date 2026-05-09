@@ -94,6 +94,7 @@ Ported the removed HUD behavior (shape buttons, approach-ring affordance, colorf
 - Beatmap editor help UX can reuse a single `bindModal({ trigger, modal, close })` helper in `tools/beatmap-editor/js/main.js` to keep settings/help dialog behavior consistent (open, overlay click dismiss, Escape dismiss, `aria-hidden` toggling).
 - Static, dependency-free UI regression coverage is practical in Node by asserting shell/wiring invariants from source files (`tools/beatmap-editor/test/help-modal-ui.test.js`) when DOM execution seams are unavailable.
 - Validation evidence for the help-modal change set: `node --check tools/beatmap-editor/js/main.js`, `node --check tools/beatmap-editor/test/help-modal-ui.test.js`, `node --test tools/beatmap-editor/test/*.test.js` (22/22 pass), and `git --no-pager diff --check` all passed.
+- 2026-05-09T12:47:58.529-07:00 — Onset-time spike can stay low-risk by gating it behind an explicit CLI flag, preserving default beat-snapped `time_sec`, and emitting onset-vs-beat comparison diagnostics (`residuals`, `IOI`, dense-cluster, subdivision/source histograms) as artifacts.
 
 ## 2026-04-29T09:55:21Z — Pause Screen Text Fix (Approved)
 
@@ -179,6 +180,28 @@ Validation run:
 - `cmake -B build -S . -Wno-dev && cmake --build build && ./build/shapeshifter_tests`
 - Result: all tests passed (1840 assertions in 686 test cases).
 
+## 2026-05-09T12:55:54.558-07:00 — Generated Onset-Timed Spike Levels for Shipped Songs
+
+Generated experimental onset-timed beatmaps for all shipped songs using existing analysis JSON files and `tools/level_designer.py --experimental-onset-timing`, while preserving shipped defaults.
+
+- Inputs: `content/beatmaps/{1_stomper,2_drama,3_mental_corruption}_analysis.json`
+- Experimental outputs: `content/beatmaps/experimental/onset_spike/*_beatmap_onset_spike.json`
+- Diagnostics outputs: `tools/diagnostics/onset_spike/<song>/{snap_candidate_events.csv,snap_diagnostics_summary.json,onset_timing_events.csv}`
+
+Smoke check confirmed each generated JSON parses and includes onset timing metadata (`timing_source`, `beat_time_sec`, onset-backed entries) and each diagnostics bundle includes onset comparison summaries for easy/medium/hard.
+
+Validation runs:
+
+- `cmake -B build -S . -Wno-dev && cmake --build build && ./build/shapeshifter_tests`
+- generation loop for all shipped `*_analysis.json` with `--experimental-onset-timing --diagnostics-out`
+- post-generation `./build/shapeshifter_tests`
+
+Result: all tests passed (1840 assertions in 686 test cases) before and after generation.
+
+Learning: use a stable convention for non-destructive spike outputs —
+`content/beatmaps/experimental/onset_spike/<song>_beatmap_onset_spike.json` plus
+`tools/diagnostics/onset_spike/<song>/` — then selectively copy into shipped paths only when doing in-game playtests.
+
 ## 2026-04-30T02:04:27Z — Dead Code Prune — Input Routing Doc Revision
 
 **Session:** Multi-agent dead code cleanup; independent revision under reviewer lockout.
@@ -199,3 +222,4 @@ Validation run:
 ## 2026-05-08T13:32:04.383-07:00 — app/util cleanup audit learning
 
 For util cleanup passes, classify each helper by owning runtime surface first (beatmap/session/game-state/persistence) before proposing deletions. Most safe removals are single-consumer headers (`test_player_helpers`, `safe_localtime`, `enum_names`) that can be inlined into their owning systems; persistence and beatmap loaders need staged migration because tests explicitly assert structured failure statuses.
+- 2026-05-09T13:00:47.473-07:00 — For onset-timing playtest spikes, it is acceptable to intentionally overwrite shipped `content/beatmaps/*_beatmap.json` on a worktree branch so `./run.sh` exercises the new timing path without runtime flags; keep experimental copies/diagnostics for easy rollback.

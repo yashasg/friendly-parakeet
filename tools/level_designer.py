@@ -27,6 +27,7 @@ Usage:
     python level_designer.py analysis.json --difficulty easy
     python level_designer.py analysis.json --no-cleanup
     python level_designer.py analysis.json --diagnostics-out tools/diagnostics/song_loop1 --diagnostics-only
+    python level_designer.py analysis.json --experimental-onset-timing
 """
 
 import argparse
@@ -280,6 +281,83 @@ def _gap_histogram(snapped_rows):
     return dict(sorted(buckets.items()))
 
 
+def _ioi_stats_from_times(times):
+    if len(times) < 2:
+        return {
+            "count": 0,
+            "min_ms": 0.0,
+            "median_ms": 0.0,
+            "p90_ms": 0.0,
+            "mean_ms": 0.0,
+            "max_ms": 0.0,
+        }
+    iois = sorted((times[i] - times[i - 1]) * 1000.0 for i in range(1, len(times)))
+    return {
+        "count": len(iois),
+        "min_ms": round(iois[0], 3),
+        "median_ms": round(_percentile(iois, 0.5), 3),
+        "p90_ms": round(_percentile(iois, 0.9), 3),
+        "mean_ms": round(sum(iois) / len(iois), 3),
+        "max_ms": round(iois[-1], 3),
+    }
+
+
+def _dense_cluster_stats_from_times(times, threshold_ms):
+    if len(times) < 2:
+        return {
+            "threshold_ms": round(threshold_ms, 3),
+            "short_ioi_count": 0,
+            "short_ioi_share": 0.0,
+            "cluster_count": 0,
+            "max_cluster_len": 0,
+        }
+
+    iois = [(times[i] - times[i - 1]) * 1000.0 for i in range(1, len(times))]
+    short_flags = [ioi < threshold_ms for ioi in iois]
+    short_count = sum(1 for flag in short_flags if flag)
+    total = len(iois)
+    cluster_count = 0
+    max_cluster_len = 0
+    current = 0
+    for flag in short_flags:
+        if flag:
+            current += 1
+            max_cluster_len = max(max_cluster_len, current + 1)
+        else:
+            if current > 0:
+                cluster_count += 1
+                current = 0
+    if current > 0:
+        cluster_count += 1
+
+    return {
+        "threshold_ms": round(threshold_ms, 3),
+        "short_ioi_count": short_count,
+        "short_ioi_share": round((short_count / total) if total else 0.0, 4),
+        "cluster_count": cluster_count,
+        "max_cluster_len": max_cluster_len,
+    }
+
+
+def _residual_delta_summary(residuals_ms):
+    if not residuals_ms:
+        return {
+            "count": 0,
+            "median_abs_ms": 0.0,
+            "p90_abs_ms": 0.0,
+            "mean_abs_ms": 0.0,
+            "max_abs_ms": 0.0,
+        }
+    abs_residuals = sorted(abs(v) for v in residuals_ms)
+    return {
+        "count": len(abs_residuals),
+        "median_abs_ms": round(_percentile(abs_residuals, 0.5), 3),
+        "p90_abs_ms": round(_percentile(abs_residuals, 0.9), 3),
+        "mean_abs_ms": round(sum(abs_residuals) / len(abs_residuals), 3),
+        "max_abs_ms": round(abs_residuals[-1], 3),
+    }
+
+
 def _same_shape_run_metrics(obstacles):
     longest = 0
     runs_ge_3 = 0
@@ -310,7 +388,69 @@ def _baseline_same_shape_metrics(analysis):
     return metrics
 
 
-def write_snap_diagnostics(analysis, diagnostics_out_dir):
+def _build_obstacle_timing_rows(analysis, difficulty):
+    beats = analysis.get("beats", [])
+    selected, _ = select_beats(analysis, difficulty)
+    obstacles = design_level(analysis, difficulty, cleanup_enabled=True)
+    rows = []
+    for order, obs in enumerate(sorted(obstacles, key=lambda item: item["beat"])):
+        beat_idx = obs["beat"]
+        if beat_idx < 0 or beat_idx >= len(beats):
+            continue
+
+        beat_time = float(beats[beat_idx])
+        event = selected.get(beat_idx)
+        if isinstance(event, dict):
+            onset_time = float(event.get("t", beat_time))
+            source = "onset"
+            subdivision = event.get("subdivision", "downbeat")
+            source_event_idx = event.get("source_event_idx")
+        else:
+            onset_time = beat_time
+            source = "beat_fallback"
+            subdivision, _ = classify_subdivision(beat_time, beats, beat_idx)
+            source_event_idx = None
+
+        rows.append({
+            "difficulty": difficulty,
+            "event_order": order,
+            "beat_idx": beat_idx,
+            "beat_time": round(beat_time, 6),
+            "onset_time": round(onset_time, 6),
+            "residual_ms": round((onset_time - beat_time) * 1000.0, 3),
+            "timing_source": source,
+            "subdivision": subdivision,
+            "source_event_idx": source_event_idx,
+        })
+    return rows
+
+
+def _onset_timing_comparison_summary(rows, difficulty):
+    beat_times = [float(row["beat_time"]) for row in rows]
+    onset_times = [float(row["onset_time"]) for row in rows]
+    residuals = [float(row["residual_ms"]) for row in rows]
+    subdivision_hist = dict(sorted(Counter(row["subdivision"] for row in rows).items()))
+    source_hist = dict(sorted(Counter(row["timing_source"] for row in rows).items()))
+    threshold_ms = MIN_IOI_MS.get(difficulty, 350.0)
+    return {
+        "event_counts": {
+            "obstacles": len(rows),
+            "timing_source_histogram": source_hist,
+        },
+        "residuals_onset_minus_beat_ms": _residual_delta_summary(residuals),
+        "ioi_stats_ms": {
+            "beat_snap": _ioi_stats_from_times(beat_times),
+            "onset_timing": _ioi_stats_from_times(onset_times),
+        },
+        "dense_cluster_stats": {
+            "beat_snap": _dense_cluster_stats_from_times(beat_times, threshold_ms),
+            "onset_timing": _dense_cluster_stats_from_times(onset_times, threshold_ms),
+        },
+        "subdivision_label_distribution": subdivision_hist,
+    }
+
+
+def write_snap_diagnostics(analysis, diagnostics_out_dir, experimental_onset_timing=False):
     """Emit subdivision-aware diagnostics artifacts without changing generation."""
     out_dir = Path(diagnostics_out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -387,6 +527,35 @@ def write_snap_diagnostics(analysis, diagnostics_out_dir):
         "gap_histogram_50ms_bins": gap_histogram,
         "same_shape_run_metrics": _baseline_same_shape_metrics(analysis),
     }
+
+    if experimental_onset_timing:
+        onset_rows = []
+        onset_summary = {}
+        for difficulty in ("easy", "medium", "hard"):
+            rows = _build_obstacle_timing_rows(analysis, difficulty)
+            onset_rows.extend(rows)
+            onset_summary[difficulty] = _onset_timing_comparison_summary(rows, difficulty)
+
+        onset_fields = [
+            "difficulty",
+            "event_order",
+            "beat_idx",
+            "beat_time",
+            "onset_time",
+            "residual_ms",
+            "timing_source",
+            "subdivision",
+            "source_event_idx",
+        ]
+        with (out_dir / "onset_timing_events.csv").open("w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=onset_fields)
+            writer.writeheader()
+            writer.writerows(onset_rows)
+
+        summary["experimental_onset_timing"] = {
+            "enabled": True,
+            "comparison_by_difficulty": onset_summary,
+        }
 
     with (out_dir / "snap_diagnostics_summary.json").open("w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2)
@@ -1531,13 +1700,13 @@ def enforce_first_collision_floor(obstacles, difficulty, analysis):
     return obstacles
 
 
-def build_beatmap(analysis, difficulties, cleanup_enabled=True):
+def build_beatmap(analysis, difficulties, cleanup_enabled=True, experimental_onset_timing=False):
     """Build the full beatmap JSON."""
     beats = analysis["beats"]
     if not beats:
         raise ValueError("analysis.beats is required and must not be empty")
 
-    def attach_and_validate_timing(obstacles, diff_name):
+    def attach_and_validate_timing(obstacles, diff_name, selected_events):
         timed = []
         for obs in obstacles:
             beat_idx = obs.get("beat")
@@ -1547,26 +1716,45 @@ def build_beatmap(analysis, difficulties, cleanup_enabled=True):
                 raise ValueError(
                     f"{diff_name}: beat index {beat_idx} out of range for beats[{len(beats)}]"
                 )
+
+            beat_time = float(beats[beat_idx])
             timed_obs = dict(obs)
-            timed_obs["time_sec"] = round(float(beats[beat_idx]), 6)
+            if experimental_onset_timing:
+                event = selected_events.get(beat_idx)
+                if isinstance(event, dict) and "t" in event:
+                    onset_time = float(event["t"])
+                    timed_obs["time_sec"] = round(onset_time, 6)
+                    timed_obs["timing_source"] = "onset"
+                    timed_obs["onset_time_sec"] = round(onset_time, 6)
+                    timed_obs["subdivision_label"] = event.get("subdivision", "downbeat")
+                else:
+                    timed_obs["time_sec"] = round(beat_time, 6)
+                    timed_obs["timing_source"] = "beat_fallback"
+                    subdivision, _ = classify_subdivision(beat_time, beats, beat_idx)
+                    timed_obs["subdivision_label"] = subdivision
+                timed_obs["beat_time_sec"] = round(beat_time, 6)
+            else:
+                timed_obs["time_sec"] = round(beat_time, 6)
             timed.append(timed_obs)
 
-        # Internal consistency check: every authored obstacle must map back to
-        # the same timestamp used by runtime.
-        for obs in timed:
-            beat_idx = obs["beat"]
-            expected = float(beats[beat_idx])
-            if abs(obs["time_sec"] - expected) > 1e-6:
-                raise ValueError(
-                    f"{diff_name}: time_sec mismatch at beat {beat_idx} "
-                    f"(time_sec={obs['time_sec']}, expected={expected})"
-                )
+        if not experimental_onset_timing:
+            # Internal consistency check: every authored obstacle must map back to
+            # the same timestamp used by runtime.
+            for obs in timed:
+                beat_idx = obs["beat"]
+                expected = float(beats[beat_idx])
+                if abs(obs["time_sec"] - expected) > 1e-6:
+                    raise ValueError(
+                        f"{diff_name}: time_sec mismatch at beat {beat_idx} "
+                        f"(time_sec={obs['time_sec']}, expected={expected})"
+                    )
         return timed
 
     diff_data = {}
     for diff in difficulties:
+        selected_events, _ = select_beats(analysis, diff)
         obs = design_level(analysis, diff, cleanup_enabled=cleanup_enabled)
-        timed = attach_and_validate_timing(obs, diff)
+        timed = attach_and_validate_timing(obs, diff, selected_events)
         diff_data[diff] = {"beats": timed, "count": len(timed)}
     return {
         "song_id": analysis.get("title", "unknown"),
@@ -1641,6 +1829,11 @@ def main():
         action="store_true",
         help="Disable cleanup and post-processing passes (raw generation only).",
     )
+    parser.add_argument(
+        "--experimental-onset-timing",
+        action="store_true",
+        help="EXPERIMENTAL: author obstacle time_sec from selected onset timestamps (defaults unchanged).",
+    )
     args = parser.parse_args()
 
     if not Path(args.input).exists():
@@ -1655,7 +1848,11 @@ def main():
         sys.exit(1)
 
     if args.diagnostics_out:
-        out_dir = write_snap_diagnostics(analysis, args.diagnostics_out)
+        out_dir = write_snap_diagnostics(
+            analysis,
+            args.diagnostics_out,
+            experimental_onset_timing=args.experimental_onset_timing,
+        )
         print(f"✓ diagnostics: {out_dir}")
         if args.diagnostics_only:
             return
@@ -1666,7 +1863,12 @@ def main():
     print(f"  LEVEL DESIGNER | {analysis.get('title','?')} | BPM {analysis['bpm']}")
     print("=" * 60)
 
-    beatmap = build_beatmap(analysis, diffs, cleanup_enabled=not args.no_cleanup)
+    beatmap = build_beatmap(
+        analysis,
+        diffs,
+        cleanup_enabled=not args.no_cleanup,
+        experimental_onset_timing=args.experimental_onset_timing,
+    )
 
     for diff in diffs:
         print_stats(beatmap["difficulties"][diff]["beats"], diff)
