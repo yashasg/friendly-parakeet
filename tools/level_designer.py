@@ -97,6 +97,8 @@ MEDIUM_SHAPE_TARGETS = {
     1: (45, 60),  # Square / lane 1
     2: (25, 45),  # Triangle / lane 2
 }
+HARD_TRIANGLE_FLOOR_PCT = 25
+HARD_CIRCLE_CEIL_PCT = 40
 
 # Shape palette per section: controls how many shapes are in play.
 # Intro uses all lanes for early variety; bridge stays centered for a breather.
@@ -584,7 +586,6 @@ def select_beats(analysis, difficulty):
 def assign_obstacle(beat_idx, event, gap_to_prev, section_name, difficulty,
                     prev_lane, prev_shapes, allowed_kinds, rng, shape_state):
     """Assign obstacle type from beat-local context only (no onset pass mapping)."""
-    del difficulty
     natural_kind = "shape_gate"
     # Respect difficulty restrictions
     if natural_kind not in allowed_kinds:
@@ -603,7 +604,7 @@ def assign_obstacle(beat_idx, event, gap_to_prev, section_name, difficulty,
         # 1. Follow section-local cycling as the baseline
         # 2. Blend in subdivision / groove hints with small deterministic jitter
         # 3. Cap repeated same-shape runs for readability
-        palette = SECTION_SHAPE_PALETTE.get(section_name, [0, 1, 2])
+        palette = section_shape_palette_for_difficulty(section_name, difficulty)
         subdivision_lane = event.get("subdivision_lane") if event else None
         prev_shape_lane = SHAPE_TO_LANE.get(prev_shapes[-1], prev_lane) if prev_shapes else prev_lane
         max_same_shape_run = 2
@@ -644,6 +645,17 @@ def assign_obstacle(beat_idx, event, gap_to_prev, section_name, difficulty,
                 lane = prev_lane + 1
             else:
                 lane = prev_lane - 1
+
+        same_shape_run = shape_state.get("same_shape_run", 0)
+        if prev_shapes and lane == prev_shape_lane and same_shape_run >= max_same_shape_run:
+            adjacent = [p for p in palette if p != prev_shape_lane and abs(p - prev_lane) <= 1]
+            if adjacent:
+                lane = adjacent[0]
+            elif difficulty in ("medium", "hard"):
+                non_adjacent = [p for p in palette if p != prev_shape_lane]
+                if non_adjacent:
+                    lane = non_adjacent[0]
+
         shape = LANE_TO_SHAPE[lane]
 
         if prev_shapes and shape == prev_shapes[-1]:
@@ -655,6 +667,14 @@ def assign_obstacle(beat_idx, event, gap_to_prev, section_name, difficulty,
         obs["lane"] = lane
 
     return obs
+
+
+def section_shape_palette_for_difficulty(section_name, difficulty):
+    """Return section palette with minimal difficulty-aware variety safeguards."""
+    base = list(SECTION_SHAPE_PALETTE.get(section_name, [0, 1, 2]))
+    if difficulty == "hard":
+        return [0, 1, 2]
+    return base
 
 
 def assign_obstacles(selected_beats, event_map, analysis, difficulty):
@@ -1016,6 +1036,21 @@ def medium_shape_counts(obstacles):
     return counts, total
 
 
+def longest_same_shape_run_from_clusters(cluster_lanes, cluster_sizes):
+    longest = 0
+    run = 0
+    prev_lane = None
+    for lane, size in zip(cluster_lanes, cluster_sizes):
+        if lane == prev_lane:
+            run += size
+        else:
+            run = size
+            prev_lane = lane
+        if run > longest:
+            longest = run
+    return longest
+
+
 def target_count_range(shape_idx, total):
     min_pct, max_pct = MEDIUM_SHAPE_TARGETS[shape_idx]
     return (min_pct * total + 99) // 100, (max_pct * total) // 100
@@ -1174,25 +1209,107 @@ def rebalance_medium_shapes(obstacles, difficulty):
                 and counts[shape_idx] > target_count_range(shape_idx, total)[0]
             ]
 
-        current_score = shape_balance_score(counts, total)
-        best = None
-        best_score = current_score
-        best_tie = None
         clusters = shape_gate_clusters(obstacles)
+        cluster_lanes = [shape_cluster_lane(obstacles, cluster) for cluster in clusters]
+        cluster_sizes = [len(cluster) for cluster in clusters]
+        current_score = shape_balance_score(counts, total)
+        current_run = longest_same_shape_run_from_clusters(cluster_lanes, cluster_sizes)
+        best = None
+        best_obj = (current_score, current_run)
+        best_tie = None
 
         for donor in donors:
-            for cluster in clusters:
+            for cluster_idx, cluster in enumerate(clusters):
                 if shape_cluster_lane(obstacles, cluster) != donor:
                     continue
                 size = len(cluster)
                 new_counts = dict(counts)
                 new_counts[donor] -= size
                 new_counts[under] += size
-                new_score = shape_balance_score(new_counts, total)
+                candidate_lanes = list(cluster_lanes)
+                candidate_lanes[cluster_idx] = under
+                new_run = longest_same_shape_run_from_clusters(candidate_lanes, cluster_sizes)
+                new_obj = (shape_balance_score(new_counts, total), new_run)
                 tie = (abs(size - under_need), size)
-                if new_score < best_score or (new_score == best_score and best_tie and tie < best_tie):
+                if new_obj < best_obj or (new_obj == best_obj and best_tie and tie < best_tie):
                     best = (cluster, under)
-                    best_score = new_score
+                    best_obj = new_obj
+                    best_tie = tie
+
+        if best is None:
+            break
+
+        cluster, shape_idx = best
+        shape = LANE_TO_SHAPE[shape_idx]
+        for i in cluster:
+            set_shape_gate(obstacles[i], shape)
+
+    return clean_shape_change_gap(obstacles)
+
+
+def hard_shape_score(counts, total):
+    if total == 0:
+        return 0
+    triangle_min = (HARD_TRIANGLE_FLOOR_PCT * total + 99) // 100
+    circle_max = (HARD_CIRCLE_CEIL_PCT * total) // 100
+    return max(0, triangle_min - counts[2]) + max(0, counts[0] - circle_max)
+
+
+def rebalance_hard_shapes(obstacles, difficulty):
+    """Mutate hard shape clusters to satisfy triangle floor / circle ceiling."""
+    if difficulty != "hard" or not obstacles:
+        return obstacles
+
+    obstacles = clean_shape_change_gap(obstacles)
+    seen = set()
+    for _ in range(200):
+        counts, total = medium_shape_counts(obstacles)
+        if total == 0 or hard_shape_score(counts, total) == 0:
+            break
+
+        key = tuple(counts[i] for i in range(3))
+        if key in seen:
+            break
+        seen.add(key)
+
+        triangle_min = (HARD_TRIANGLE_FLOOR_PCT * total + 99) // 100
+        circle_max = (HARD_CIRCLE_CEIL_PCT * total) // 100
+        triangle_need = max(0, triangle_min - counts[2])
+        circle_excess = max(0, counts[0] - circle_max)
+
+        recipient = 2 if triangle_need > 0 else 1
+        donors = [0, 1] if circle_excess > 0 else [1, 0]
+
+        clusters = shape_gate_clusters(obstacles)
+        cluster_lanes = [shape_cluster_lane(obstacles, cluster) for cluster in clusters]
+        cluster_sizes = [len(cluster) for cluster in clusters]
+        current_score = hard_shape_score(counts, total)
+        current_run = longest_same_shape_run_from_clusters(cluster_lanes, cluster_sizes)
+        best = None
+        best_obj = (current_score, current_run)
+        best_tie = None
+
+        for donor in donors:
+            if donor == recipient:
+                continue
+            for cluster_idx, cluster in enumerate(clusters):
+                if shape_cluster_lane(obstacles, cluster) != donor:
+                    continue
+                size = len(cluster)
+                new_counts = dict(counts)
+                new_counts[donor] -= size
+                new_counts[recipient] += size
+                candidate_lanes = list(cluster_lanes)
+                candidate_lanes[cluster_idx] = recipient
+                new_run = longest_same_shape_run_from_clusters(candidate_lanes, cluster_sizes)
+                new_obj = (hard_shape_score(new_counts, total), new_run)
+                tie = (abs(size - triangle_need), size)
+                if (
+                    new_obj < best_obj
+                    or (new_obj == best_obj and (best_tie is None or tie < best_tie))
+                ):
+                    best = (cluster, recipient)
+                    best_obj = new_obj
                     best_tie = tie
 
         if best is None:
@@ -1225,6 +1342,7 @@ def design_level(analysis, difficulty, cleanup_enabled=True):
     obstacles = clean_gap_one_early(obstacles, difficulty)
     obstacles = rebalance_easy_shapes(obstacles, difficulty)
     obstacles = rebalance_medium_shapes(obstacles, difficulty)
+    obstacles = rebalance_hard_shapes(obstacles, difficulty)
     return obstacles
 
 
