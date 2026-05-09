@@ -48,6 +48,7 @@ void wire_audio_haptic_dispatcher(entt::registry& reg) {
         disp->sink<PlayHapticEvent>().connect<&haptic_handle_play>(reg)};
 
     warm_audio_haptic_dispatcher(*disp);
+    warm_audio_haptic_dispatcher(*disp);
 }
 
 void unwire_audio_haptic_dispatcher(entt::registry& reg) {
