@@ -335,10 +335,6 @@ int mesh_child_count(entt::registry& reg) {
     return count;
 }
 
-struct ObstacleModelDestroyProbe {
-    int count = 0;
-    void on_destroy(entt::registry&, entt::entity) { ++count; }
-};
 
 }  // namespace
 
@@ -416,24 +412,4 @@ TEST_CASE("ecs: obstacle mesh lifecycle unwire disconnect is idempotent",
     reg.destroy(parent);
 
     CHECK(mesh_child_count(reg) == 0);
-}
-
-TEST_CASE("ecs: obstacle model lifecycle unwire disconnect is idempotent",
-          "[ecs][obstacle][lifecycle]") {
-    entt::registry reg;
-    ObstacleModelDestroyProbe probe;
-    reg.on_destroy<ObstacleModel>().connect<&ObstacleModelDestroyProbe::on_destroy>(probe);
-
-    wire_obstacle_model_lifecycle(reg);
-    unwire_obstacle_model_lifecycle(reg);
-    unwire_obstacle_model_lifecycle(reg);
-    wire_obstacle_model_lifecycle(reg);
-
-    auto entity = reg.create();
-    reg.emplace<ObstacleModel>(entity);
-    reg.destroy(entity);
-
-    CHECK(probe.count == 1);
-
-    reg.on_destroy<ObstacleModel>().disconnect<&ObstacleModelDestroyProbe::on_destroy>(probe);
 }

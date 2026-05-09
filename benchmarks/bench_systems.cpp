@@ -66,16 +66,14 @@ static void spawn_obstacles(entt::registry& reg, int count) {
 }
 
 // Spawns obstacles with the production scroll_system archetype:
-// ObstacleScrollZ + MotionVelocity (freeplay non-beat path, exclude BeatInfo).
-// These enter scroll_system's model_view.
+// WorldTransform + MotionVelocity (freeplay non-beat path, exclude BeatInfo).
 static void spawn_scroll_obstacles(entt::registry& reg, int count) {
     const auto& song = reg.ctx().get<SongState>();
     for (int i = 0; i < count; ++i) {
         auto obs = reg.create();
         reg.emplace<ObstacleTag>(obs);
-        float z = constants::SPAWN_Y + static_cast<float>(i) * 80.0f;
-        reg.emplace<ObstacleScrollZ>(obs, z);
-        reg.emplace<WorldTransform>(obs, WorldTransform{{0.0f, z}});
+        float y = constants::SPAWN_Y + static_cast<float>(i) * 80.0f;
+        reg.emplace<WorldTransform>(obs, WorldTransform{{0.0f, y}});
         reg.emplace<MotionVelocity>(obs, MotionVelocity{{0.0f, song.scroll_speed}});
         reg.emplace<Obstacle>(obs, ObstacleKind::ShapeGate, int16_t{200});
         reg.emplace<DrawLayer>(obs, Layer::Game);

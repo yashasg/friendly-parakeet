@@ -64,9 +64,9 @@ SUBDIVISION_TO_LANE = {
 # Final section = hardest patterns (the "final fortress").
 SECTION_ROLE = {
     "intro":      {"density": 0.45, "types": ["shape_gate"], "consistent": True},
-    "verse":      {"density": 0.65, "types": ["shape_gate", "low_bar", "high_bar"], "consistent": False},
-    "pre-chorus": {"density": 0.80, "types": ["shape_gate", "low_bar", "high_bar"], "consistent": False},
-    "drop":       {"density": 0.90, "types": ["shape_gate", "low_bar", "high_bar"], "consistent": True},
+    "verse":      {"density": 0.65, "types": ["shape_gate"], "consistent": False},
+    "pre-chorus": {"density": 0.80, "types": ["shape_gate"], "consistent": False},
+    "drop":       {"density": 0.90, "types": ["shape_gate"], "consistent": True},
     "bridge":     {"density": 0.35, "types": ["shape_gate"], "consistent": False},
 }
 
@@ -79,8 +79,8 @@ DIFFICULTY_INTRO_REST = {"easy": 8, "medium": 4, "hard": 2}
 MIN_FIRST_COLLISION_SEC = {"easy": 4.0, "medium": 2.5, "hard": 2.0}
 DIFFICULTY_KINDS = {
     "easy":   {"shape_gate"},
-    "medium": {"shape_gate", "low_bar", "high_bar"},
-    "hard":   {"shape_gate", "low_bar", "high_bar"},
+    "medium": {"shape_gate"},
+    "hard":   {"shape_gate"},
 }
 MAX_EMPTY_GAP = {"easy": 40, "medium": 32, "hard": 30}
 MAX_BEAT_DIFF = {diff: gap + 1 for diff, gap in MAX_EMPTY_GAP.items()}
@@ -88,7 +88,6 @@ MIN_SHAPE_CHANGE_GAP = 3
 GAP_ONE_MEDIUM_START_PROGRESS = 0.30
 GAP_ONE_HARD_MIN_BEAT = 11
 GAP_ONE_MAX_RUN = {"medium": 1, "hard": 2}
-UNREADABLE_KINDS = {"low_bar", "high_bar"}
 MEDIUM_SHAPE_TARGETS = {
     0: (10, 20),  # Circle / lane 0
     1: (45, 60),  # Square / lane 1
@@ -360,10 +359,6 @@ def assign_obstacle(beat_idx, event, gap_to_prev, section_name, difficulty,
     """Assign obstacle type from beat-local context only (no onset pass mapping)."""
     del difficulty
     natural_kind = "shape_gate"
-    non_shape = [k for k in ("low_bar", "high_bar") if k in allowed_kinds]
-    if non_shape and gap_to_prev is not None and gap_to_prev >= 3 and beat_idx % 8 == 0:
-        natural_kind = "low_bar" if beat_idx % 2 == 0 else "high_bar"
-
     # Respect difficulty restrictions
     if natural_kind not in allowed_kinds:
         natural_kind = "shape_gate"
@@ -431,8 +426,6 @@ def assign_obstacle(beat_idx, event, gap_to_prev, section_name, difficulty,
 
         obs["shape"] = shape
         obs["lane"] = lane
-
-    # low_bar and high_bar need no extra fields
 
     return obs
 

@@ -41,32 +41,6 @@ static bool is_readable_family(const BeatEntry& left, const BeatEntry& right) {
         && left.lane == right.lane;
 }
 
-static bool is_unreadable_kind(ObstacleKind kind) {
-    return kind == ObstacleKind::LowBar
-        || kind == ObstacleKind::HighBar;
-}
-
-static bool has_readable_neighbors(const std::vector<BeatEntry>& beats, size_t left_index) {
-    const auto& left = beats[left_index];
-    const auto& right = beats[left_index + 1];
-
-    if (left_index > 0) {
-        const auto& previous = beats[left_index - 1];
-        if (left.beat_index - previous.beat_index <= 2 && is_unreadable_kind(previous.kind)) {
-            return false;
-        }
-    }
-
-    const size_t following_index = left_index + 2;
-    if (following_index < beats.size()) {
-        const auto& following = beats[following_index];
-        if (following.beat_index - right.beat_index <= 2 && is_unreadable_kind(following.kind)) {
-            return false;
-        }
-    }
-
-    return true;
-}
 
 static int max_authored_beat(const std::vector<BeatEntry>& beats) {
     int last = 1;
@@ -138,12 +112,6 @@ TEST_CASE("gap=1 readability: shipped beatmaps obey difficulty policy",
                 if (!is_readable_family(left, right)) {
                     FAIL_CHECK(path << " [" << difficulty
                                << "] gap=1 is not identical shape_gate family at beat "
-                               << left.beat_index);
-                }
-
-                if (!has_readable_neighbors(beats, index - 1)) {
-                    FAIL_CHECK(path << " [" << difficulty
-                               << "] gap=1 too close to bar at beat "
                                << left.beat_index);
                 }
 

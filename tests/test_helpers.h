@@ -223,24 +223,6 @@ inline entt::entity make_lane_block(entt::registry& reg, uint8_t mask, float y) 
     return obs;
 }
 
-// Creates a low bar (must jump) or high bar (must slide) obstacle
-inline entt::entity make_vertical_bar(entt::registry& reg, ObstacleKind kind, float y) {
-    const auto& song = reg.ctx().get<SongState>();
-    auto obs = reg.create();
-    reg.emplace<ObstacleTag>(obs);
-    reg.emplace<ObstacleScrollZ>(obs, y);
-    reg.emplace<WorldTransform>(obs, WorldTransform{{constants::SCREEN_W_F * 0.5f, y}});
-    reg.emplace<MotionVelocity>(obs, MotionVelocity{{0.0f, song.scroll_speed}});
-    int16_t pts = (kind == ObstacleKind::LowBar) ? constants::PTS_LOW_BAR : constants::PTS_HIGH_BAR;
-    reg.emplace<Obstacle>(obs, kind, pts);
-    VMode action = (kind == ObstacleKind::LowBar) ? VMode::Jumping : VMode::Sliding;
-    reg.emplace<RequiredVAction>(obs, action);
-    reg.emplace<DrawSize>(obs, float(constants::SCREEN_W), 40.0f);
-    reg.emplace<DrawLayer>(obs, Layer::Game);
-    reg.emplace<TagWorldPass>(obs);
-    reg.emplace<Color>(obs, Color{255, 180, 0, 255});
-    return obs;
-}
 
 // Creates a combo gate requiring shape AND lane not blocked
 inline entt::entity make_combo_gate(entt::registry& reg, Shape shape, uint8_t blocked_mask, float y) {

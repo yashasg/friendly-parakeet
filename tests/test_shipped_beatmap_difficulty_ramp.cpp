@@ -6,9 +6,6 @@
 //     • All 3 shapes (Circle, Square, Triangle) must appear at least once.
 //     • No single shape > 65 % of all ShapeGate obstacles.
 //
-//   MEDIUM/HARD — LowBar/HighBar are temporarily disabled
-//     • low_bar and high_bar must not appear in shipped gameplay beatmaps.
-//
 //   MEDIUM/HARD — no removed legacy lane kind
 //     • lane_block must not appear.
 //
@@ -16,8 +13,6 @@
 // reported in a single run.  The test is tagged [difficulty_ramp][issue135].
 //
 // Coexistence:
-//   - Does not conflict with [low_high_bar] tests (#125): easy/medium have no
-//     LowBar/HighBar; the shape variety check only counts ShapeGate obstacles.
 //   - Does not conflict with [shipped_beatmaps][issue134]: shape-gap violations
 //     are a separate rule checked there; this file counts kind distribution only.
 //
@@ -57,9 +52,6 @@ static std::vector<std::string> find_shipped_beatmaps() {
     return paths;
 }
 
-static bool is_bar(ObstacleKind k) {
-    return k == ObstacleKind::LowBar || k == ObstacleKind::HighBar;
-}
 
 static bool is_removed_lane_kind(ObstacleKind k) {
     return k == ObstacleKind::LaneBlock;
@@ -156,47 +148,6 @@ TEST_CASE("difficulty ramp: easy uses all 3 shapes and no single shape dominates
 
 // ── Medium/Hard: low/high bars are disabled ────────────────────────────────
 
-TEST_CASE("difficulty ramp: medium and hard have no low_bar/high_bar",
-          "[difficulty_ramp][issue135][medium][hard][bars_disabled]") {
-    const auto beatmaps = find_shipped_beatmaps();
-    REQUIRE_FALSE(beatmaps.empty());
-
-    for (const auto& path : beatmaps) {
-        for (const auto* difficulty : {"medium", "hard"}) {
-            BeatMap map;
-            std::vector<BeatMapError> errors;
-            if (!load_beat_map(path, map, errors, difficulty)) {
-                FAIL_CHECK("bars disabled: failed to load " << path
-                           << " difficulty=" << difficulty);
-                continue;
-            }
-
-            if (map.beats.empty()) {
-                FAIL_CHECK("bars disabled: " << path
-                           << " difficulty=" << difficulty
-                           << " has zero beats after loading");
-            }
-
-            int non_bar_count = 0;
-            for (const auto& beat : map.beats) {
-                if (is_bar(beat.kind)) {
-                    FAIL_CHECK("bars disabled: " << path
-                               << " difficulty=" << difficulty
-                               << " contains bar obstacle at beat "
-                               << beat.beat_index
-                               << " kind=" << static_cast<int>(beat.kind));
-                } else {
-                    ++non_bar_count;
-                }
-            }
-            if (non_bar_count == 0) {
-                FAIL_CHECK("bars disabled: " << path
-                           << " difficulty=" << difficulty
-                           << " has no remaining non-bar obstacles");
-            }
-        }
-    }
-}
 
 TEST_CASE("difficulty ramp: medium and hard contain no removed lane kinds",
           "[difficulty_ramp][issue135][medium][hard]") {

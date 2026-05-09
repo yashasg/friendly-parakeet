@@ -9,8 +9,6 @@ struct ObstacleTag {};
 enum class ObstacleKind : uint8_t {
     ShapeGate,
     LaneBlock,
-    LowBar,
-    HighBar,
     ComboGate,
     SplitPath,
 };
@@ -27,20 +25,8 @@ struct ScoredTag {};
 // (no score popup, no chain contribution).
 struct NonScorableTag {};
 
-// Existential tag: obstacle is a bar-type (LowBar or HighBar).
-// Emplaced at spawn; consumed by scoring_system to set DeathCause::HitABar.
-struct BarObstacleTag {};
-
 // Existential tag: scored obstacle was failed/missed and should not award points.
 struct MissTag {};
-
-// Bridge-state component for Model-authority obstacles (LowBar, HighBar).
-// Holds the scroll-axis Z coordinate in lieu of WorldTransform.position.y.
-// Updated each frame by scroll_system; consumed by collision_system,
-// obstacle_despawn_system, miss_detection_system, and scoring_system.
-struct ObstacleScrollZ {
-    float z = 0.0f;
-};
 
 struct RequiredShape {
     Shape shape = Shape::Circle;
@@ -52,9 +38,5 @@ struct BlockedLanes {
 
 struct RequiredLane {
     int8_t lane = 0;
-};
-
-struct RequiredVAction {
-    VMode action = VMode::Jumping;
 };
 

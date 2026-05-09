@@ -4,40 +4,6 @@
 #include "test_helpers.h"
 #include "util/rhythm_math.h"
 
-// ── compute_timing_tier ──────────────────────────────────────
-
-TEST_CASE("timing_tier: perfect zone 0.0-0.333", "[timing]") {
-    CHECK(compute_timing_tier(0.0f)  == TimingTier::Perfect);
-    CHECK(compute_timing_tier(0.333f) == TimingTier::Perfect);
-}
-
-TEST_CASE("timing_tier: good zone 0.334-0.666", "[timing]") {
-    CHECK(compute_timing_tier(0.34f) == TimingTier::Good);
-    CHECK(compute_timing_tier(0.66f) == TimingTier::Good);
-}
-
-TEST_CASE("timing_tier: ok zone 0.667-1.0", "[timing]") {
-    CHECK(compute_timing_tier(0.67f) == TimingTier::Ok);
-    CHECK(compute_timing_tier(1.0f) == TimingTier::Ok);
-}
-
-TEST_CASE("timing_tier: bad zone > 1.0", "[timing]") {
-    CHECK(compute_timing_tier(1.01f) == TimingTier::Bad);
-    CHECK(compute_timing_tier(1.5f)  == TimingTier::Bad);
-}
-
-TEST_CASE("timing_tier: boundary at exactly 0.333 is perfect", "[timing]") {
-    CHECK(compute_timing_tier(0.333f) == TimingTier::Perfect);
-}
-
-TEST_CASE("timing_tier: boundary at exactly 0.666 is good", "[timing]") {
-    CHECK(compute_timing_tier(0.666f) == TimingTier::Good);
-}
-
-TEST_CASE("timing_tier: boundary at exactly 1.0 is ok", "[timing]") {
-    CHECK(compute_timing_tier(1.0f) == TimingTier::Ok);
-}
-
 // ── timing_multiplier ────────────────────────────────────────
 
 TEST_CASE("timing_multiplier: Perfect gives 1.50x", "[timing]") {
@@ -175,8 +141,6 @@ TEST_CASE("ToString: Shape covers all shapes", "[ToString]") {
 TEST_CASE("ToString: ObstacleKind covers all kinds", "[ToString]") {
     CHECK(magic_enum::enum_name(ObstacleKind::ShapeGate) == "ShapeGate");
     CHECK(magic_enum::enum_name(ObstacleKind::LaneBlock) == "LaneBlock");
-    CHECK(magic_enum::enum_name(ObstacleKind::LowBar) == "LowBar");
-    CHECK(magic_enum::enum_name(ObstacleKind::HighBar) == "HighBar");
     CHECK(magic_enum::enum_name(ObstacleKind::ComboGate) == "ComboGate");
     CHECK(magic_enum::enum_name(ObstacleKind::SplitPath) == "SplitPath");
 }

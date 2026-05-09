@@ -30,16 +30,12 @@ constexpr float SPAWN_Y           = -120.0f;
 constexpr float DESTROY_Y         = 1400.0f;
 constexpr float BASE_SCROLL_SPEED = 400.0f;
 
-// 3D slab heights for obstacle rendering (model-to-world Y scale)
+// 3D slab height for obstacle rendering (model-to-world Y scale)
 constexpr float OBSTACLE_3D_HEIGHT = 20.0f;
-constexpr float LOWBAR_3D_HEIGHT   = 30.0f;
-constexpr float HIGHBAR_3D_HEIGHT  = 10.0f;
 
 // ── Scoring ───────────────────────────────────────
 constexpr int   PTS_SHAPE_GATE    = 200;
 constexpr int   PTS_LANE_BLOCK    = 100;
-constexpr int   PTS_LOW_BAR       = 100;
-constexpr int   PTS_HIGH_BAR      = 100;
 constexpr int   PTS_COMBO_GATE    = 200;
 constexpr int   PTS_SPLIT_PATH    = 300;
 constexpr int   PTS_PER_SECOND    = 10;

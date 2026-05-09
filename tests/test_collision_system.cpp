@@ -79,57 +79,9 @@ TEST_CASE("collision: lane block drains energy when player in blocked lane", "[c
     CHECK(energy.flash_timer > 0.0f);
 }
 
-TEST_CASE("collision: low bar cleared when jumping", "[collision]") {
-    auto reg = make_registry();
-    auto p = make_player(reg);
-    reg.get<VerticalState>(p).mode = VMode::Jumping;
-    auto obs = make_vertical_bar(reg, ObstacleKind::LowBar, constants::PLAYER_Y);
 
-    collision_system(reg, 0.016f);
 
-    CHECK(reg.all_of<ScoredTag>(obs));
-}
 
-TEST_CASE("collision: low bar drains energy when grounded", "[collision]") {
-    auto reg = make_registry();
-    make_player(reg);
-    make_vertical_bar(reg, ObstacleKind::LowBar, constants::PLAYER_Y);
-
-    collision_system(reg, 0.016f);
-    scoring_system(reg, 0.016f);
-    energy_system(reg, 0.016f);
-
-    CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
-    auto& energy = reg.ctx().get<EnergyState>();
-    CHECK(energy.energy < 1.0f);
-    CHECK(energy.flash_timer > 0.0f);
-}
-
-TEST_CASE("collision: high bar cleared when sliding", "[collision]") {
-    auto reg = make_registry();
-    auto p = make_player(reg);
-    reg.get<VerticalState>(p).mode = VMode::Sliding;
-    auto obs = make_vertical_bar(reg, ObstacleKind::HighBar, constants::PLAYER_Y);
-
-    collision_system(reg, 0.016f);
-
-    CHECK(reg.all_of<ScoredTag>(obs));
-}
-
-TEST_CASE("collision: high bar drains energy when grounded", "[collision]") {
-    auto reg = make_registry();
-    make_player(reg);
-    make_vertical_bar(reg, ObstacleKind::HighBar, constants::PLAYER_Y);
-
-    collision_system(reg, 0.016f);
-    scoring_system(reg, 0.016f);
-    energy_system(reg, 0.016f);
-
-    CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
-    auto& energy = reg.ctx().get<EnergyState>();
-    CHECK(energy.energy < 1.0f);
-    CHECK(energy.flash_timer > 0.0f);
-}
 
 TEST_CASE("collision: obstacle too far away is ignored", "[collision]") {
     auto reg = make_registry();
@@ -300,37 +252,7 @@ TEST_CASE("collision: not in Playing phase skips processing", "[collision]") {
     CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
 }
 
-TEST_CASE("collision: low bar drains energy when sliding", "[collision]") {
-    auto reg = make_registry();
-    auto p = make_player(reg);
-    reg.get<VerticalState>(p).mode = VMode::Sliding;
-    make_vertical_bar(reg, ObstacleKind::LowBar, constants::PLAYER_Y);
 
-    collision_system(reg, 0.016f);
-    scoring_system(reg, 0.016f);
-    energy_system(reg, 0.016f);
-
-    CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
-    auto& energy = reg.ctx().get<EnergyState>();
-    CHECK(energy.energy < 1.0f);
-    CHECK(energy.flash_timer > 0.0f);
-}
-
-TEST_CASE("collision: high bar drains energy when jumping", "[collision]") {
-    auto reg = make_registry();
-    auto p = make_player(reg);
-    reg.get<VerticalState>(p).mode = VMode::Jumping;
-    make_vertical_bar(reg, ObstacleKind::HighBar, constants::PLAYER_Y);
-
-    collision_system(reg, 0.016f);
-    scoring_system(reg, 0.016f);
-    energy_system(reg, 0.016f);
-
-    CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
-    auto& energy = reg.ctx().get<EnergyState>();
-    CHECK(energy.energy < 1.0f);
-    CHECK(energy.flash_timer > 0.0f);
-}
 
 TEST_CASE("collision: BAD timing does not adjust window_start", "[collision][rhythm]") {
     // Post-#223: Bad scale = 1.0 → collision_system does NOT adjust window_start.

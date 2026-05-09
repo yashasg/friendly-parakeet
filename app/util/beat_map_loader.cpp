@@ -50,15 +50,9 @@ ValidationConstants load_validation_constants(const std::string& app_dir) {
 static std::optional<ObstacleKind> parse_kind(const std::string& s) {
     if (s == "shape_gate")       return ObstacleKind::ShapeGate;
     if (s == "lane_block")       return ObstacleKind::LaneBlock;
-    if (s == "low_bar")          return ObstacleKind::LowBar;
-    if (s == "high_bar")         return ObstacleKind::HighBar;
     if (s == "combo_gate")       return ObstacleKind::ComboGate;
     if (s == "split_path")       return ObstacleKind::SplitPath;
     return std::nullopt;
-}
-
-static bool is_temporarily_disabled_kind(const ObstacleKind kind) {
-    return kind == ObstacleKind::LowBar || kind == ObstacleKind::HighBar;
 }
 
 static std::optional<Shape> parse_shape(const std::string& s) {
@@ -154,9 +148,6 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
             continue;
         }
         entry.kind = *kind_opt;
-        if (is_temporarily_disabled_kind(entry.kind)) {
-            continue;
-        }
 
         if (b.contains("shape")) {
             std::string shape_str = b["shape"].get<std::string>();

@@ -37,24 +37,6 @@ entt::entity spawn_obstacle(entt::registry& reg, const ObstacleSpawnParams& para
             reg.emplace<Color>(e, Color{255, 60, 60, 255});
             break;
         }
-        case ObstacleKind::LowBar: {
-            reg.emplace<ObstacleScrollZ>(e, params.y);
-            reg.emplace<Obstacle>(e, ObstacleKind::LowBar, int16_t{constants::PTS_LOW_BAR});
-            reg.emplace<RequiredVAction>(e, VMode::Jumping);
-            reg.emplace<DrawSize>(e, constants::SCREEN_W_F, 40.0f);
-            reg.emplace<Color>(e, Color{255, 180, 0, 255});
-            reg.emplace<BarObstacleTag>(e);
-            break;
-        }
-        case ObstacleKind::HighBar: {
-            reg.emplace<ObstacleScrollZ>(e, params.y);
-            reg.emplace<Obstacle>(e, ObstacleKind::HighBar, int16_t{constants::PTS_HIGH_BAR});
-            reg.emplace<RequiredVAction>(e, VMode::Sliding);
-            reg.emplace<DrawSize>(e, constants::SCREEN_W_F, 40.0f);
-            reg.emplace<Color>(e, Color{180, 0, 255, 255});
-            reg.emplace<BarObstacleTag>(e);
-            break;
-        }
         case ObstacleKind::ComboGate: {
             reg.emplace<Obstacle>(e, ObstacleKind::ComboGate, int16_t{constants::PTS_COMBO_GATE});
             reg.emplace<RequiredShape>(e, params.shape);
@@ -74,7 +56,6 @@ entt::entity spawn_obstacle(entt::registry& reg, const ObstacleSpawnParams& para
     }
 
     spawn_obstacle_meshes(reg, e);
-    build_obstacle_model(reg, e);
     reg.emplace<ObstacleTag>(e);
 
     return e;

@@ -62,36 +62,6 @@ TEST_CASE("motion: WorldTransform+MotionVelocity entity with BeatInfo is exclude
     CHECK(wt.position.y == 200.0f);
 }
 
-TEST_CASE("motion: ObstacleScrollZ entity uses model-only scroll authority", "[motion]") {
-    // Defense-in-depth for freeplay LowBar/HighBar: these entities carry BOTH
-    // MotionVelocity (always emplaced in spawn_obstacle) AND ObstacleScrollZ
-    // (emplaced for LowBar/HighBar kinds).  scroll_system's model_view owns
-    // their dt-based integration via oz.z.  motion_system must NOT also
-    // advance position.y, or the entity moves 2× per frame.
-    //
-    // Production order (playing_systems_runner.cpp):
-    //   scroll_system → motion_system
-    //
-    // This test fails if motion_system lacks entt::exclude<ObstacleScrollZ>.
-    auto reg = make_registry();
-    auto e = reg.create();
-    reg.emplace<ObstacleTag>(e);
-    reg.emplace<WorldTransform>(e, WorldTransform{{0.0f, 100.0f}});
-    reg.emplace<MotionVelocity>(e, MotionVelocity{{0.0f, 50.0f}});
-    reg.emplace<ObstacleScrollZ>(e, ObstacleScrollZ{100.0f});
-    // No BeatInfo — freeplay archetype.
-
-    // Step 1: scroll_system advances oz.z only (model-authority path)
-    scroll_system(reg, 1.0f);
-    // Step 2: motion_system must NOT advance world transform either
-    motion_system(reg, 1.0f);
-
-    const auto& wt = reg.get<WorldTransform>(e);
-    const auto& oz = reg.get<ObstacleScrollZ>(e);
-    // Model path owns scroll via oz.z; world transform stays unchanged.
-    CHECK(oz.z == 150.0f);
-    CHECK(wt.position.y == 100.0f);
-}
 
 // ── obstacle_despawn_system ───────────────────────────────────────────
 

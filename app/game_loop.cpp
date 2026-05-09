@@ -216,7 +216,6 @@ void game_loop_init(entt::registry& reg,
 
     // MeshChild auto-cleanup: destroy children when parent ownership is removed.
     wire_obstacle_mesh_lifetime(reg);
-    wire_obstacle_model_lifecycle(reg);
 
     // UI + beatmap + music
     reg.ctx().emplace<BeatMap>();
@@ -320,7 +319,6 @@ void game_loop_shutdown(entt::registry& reg) {
 
     // Destroy all entities while GPU context is still alive
     reg.clear();
-    unwire_obstacle_model_lifecycle(reg);
 
     {
         auto* slog = reg.ctx().find<SessionLog>();

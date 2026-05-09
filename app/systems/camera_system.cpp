@@ -228,18 +228,8 @@ static Matrix make_shape_matrix(uint8_t mesh_index, float cx, float y_3d, float 
 void game_camera_system(entt::registry& reg, float /*dt*/) {
     const auto& mesh_config = reg.ctx().get<ShapeMeshConfig>();
 
-    // 1b. Model-authority vertical bars: write scroll transform directly into
-    //     ObstacleModel.model.transform. Do NOT emit ModelTransform for these —
-    //     game_render_system draws them via the ObstacleModel + TagWorldPass path.
-    {
-        auto view = reg.view<ObstacleTag, ObstacleScrollZ, ObstacleModel, ObstacleParts>();
-        for (auto [entity, oz, om, pd] : view.each()) {
-            if (!om.owned) continue;  // headless: model not allocated, skip transform
-            om.model.transform = slab_matrix(pd.cx, oz.z + pd.cz, pd.width, pd.height, pd.depth);
-        }
-    }
 
-    // 2. MeshChild transforms (multi-slab obstacles, ghost shapes)
+    // 1. MeshChild transforms (multi-slab obstacles, ghost shapes)
     {
         auto view = reg.view<MeshChild>();
         for (auto [entity, mc] : view.each()) {

@@ -9,8 +9,6 @@
 // ("content/beatmaps/...") therefore works both when running the binary
 // directly from build/ and through `ctest`.
 //
-// Does NOT regress #125 LowBar/HighBar coverage — those kinds are
-// explicitly excluded from the shape-change check in validate_beat_map.
 
 #include <catch2/catch_test_macros.hpp>
 #include "util/beat_map_loader.h"
