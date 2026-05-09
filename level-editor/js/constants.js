@@ -5,7 +5,7 @@
 // glyphs, zoom, layout) stay here.
 
 // ── Shared constants (populated by loadSharedConstants) ──────
-export let OBSTACLE_KINDS = ["shape_gate", "low_bar", "high_bar", "combo_gate", "split_path"];
+export let OBSTACLE_KINDS = ["shape_gate", "combo_gate", "split_path"];
 export let SHAPES = ["circle", "square", "triangle"];
 export let LANES = [0, 1, 2];
 export let KINDS_WITH_SHAPE = ["shape_gate", "combo_gate", "split_path"];
@@ -99,7 +99,7 @@ export const DEFAULT_LEVELS = Object.freeze([
 ]);
 
 // Obstacle kinds available in the editor UI (authoring surfaces only)
-export const EDITOR_OBSTACLE_KINDS = Object.freeze(["shape_gate", "low_bar", "high_bar", "split_path"]);
+export const EDITOR_OBSTACLE_KINDS = Object.freeze(["shape_gate", "split_path"]);
 
 export function isEditorObstacleKind(kind) {
     return EDITOR_OBSTACLE_KINDS.includes(kind);
@@ -107,8 +107,6 @@ export function isEditorObstacleKind(kind) {
 
 export const KIND_LABELS = {
     shape_gate: "ShapeGate",
-    low_bar: "LowBar",
-    high_bar: "HighBar",
     combo_gate: "ComboGate",
     split_path: "SplitPath",
 };
@@ -140,8 +138,6 @@ export const COLORS = {
 
     kind: {
         shape_gate: "#4fc3f7",
-        low_bar: "#aed581",
-        high_bar: "#ce93d8",
         combo_gate: "#fff176",
         split_path: "#4dd0e1",
     },
@@ -155,8 +151,6 @@ export const COLORS = {
 
 export const GLYPHS = {
     shape_gate: "◆",
-    low_bar: "⌐",
-    high_bar: "¬",
     combo_gate: "◈",
     split_path: "⑂",
 };

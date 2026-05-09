@@ -6,8 +6,6 @@ import {
 
 const LOADER_KINDS = Object.freeze([
     'shape_gate',
-    'low_bar',
-    'high_bar',
     'combo_gate',
     'split_path',
 ]);
