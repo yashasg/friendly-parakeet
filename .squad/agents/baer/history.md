@@ -175,3 +175,9 @@ Team ready for next phase.
   - `/Users/yashasgujjar/.copilot/session-state/c0ddd445-5e34-4aa9-bc53-563866a0574f/files/test-player-pro-2026-05-08T23-49-24/session_pro_rt0000000345_n0001.log`
   - `/Users/yashasgujjar/.copilot/session-state/c0ddd445-5e34-4aa9-bc53-563866a0574f/files/timing-drift-experiment-2026-05-09/session_pro_rt0000000345_n0001.log`
   - `/Users/yashasgujjar/.copilot/session-state/c0ddd445-5e34-4aa9-bc53-563866a0574f/files/timing-drift-experiment-2026-05-09/baer-verification.md`
+
+## 2026-05-09T00:41:48.960-07:00 — Loop 1 beatmap diagnostics validation
+
+## Learnings
+- `tools/level_designer.py` diagnostics quality can be regression-gated without touching production code by importing the generator and validating histogram shape/subdivision bins on shipped `*_analysis.json` inputs.
+- A practical Loop 1 no-regression lane is: `./build/shapeshifter_tests "[shipped_beatmaps]"` + beatmap Python validators + the new Loop 1 histogram validator; keep `validate_offset_semantics.py` out of strict-gating because it currently reports large known drift violations in shipped data.
