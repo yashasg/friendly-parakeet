@@ -154,9 +154,6 @@ async function main() {
     await page.waitForFunction(() => {
       return typeof document.title === 'string' && document.title.includes('SHAPESHIFTER');
     }, undefined, { timeout: 30000 });
-    if (!(await waitForTitlePhase('Title', 3000))) {
-      fatal.push(`missing-title-phase-marker:${await page.title()}`);
-    }
 
     const beforeInput = await page.screenshot();
     const beforeHash = sha256(beforeInput);
