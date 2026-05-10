@@ -13,7 +13,7 @@ export const DIFFICULTY_KEYS = Object.freeze(["easy", "medium", "hard"]);
 export let VALIDATION = {
     BPM_MIN: 60,
     BPM_MAX: 300,
-    OFFSET_MIN: 0.0,
+    OFFSET_MIN: -0.1,
     OFFSET_MAX: 5.0,
     LEAD_BEATS_MIN: 2,
     LEAD_BEATS_MAX: 8,
