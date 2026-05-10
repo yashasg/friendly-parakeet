@@ -551,9 +551,12 @@ if(NOT EMSCRIPTEN)
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     )
     find_program(NODE_EXECUTABLE node REQUIRED)
+    file(GLOB _beatmap_editor_node_test_files CONFIGURE_DEPENDS
+        "${CMAKE_SOURCE_DIR}/tools/beatmap-editor/test/*.test.js"
+    )
     add_test(
         NAME beatmap_editor_node_tests
-        COMMAND ${NODE_EXECUTABLE} --test test/*.test.js
+        COMMAND ${NODE_EXECUTABLE} --test ${_beatmap_editor_node_test_files}
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/tools/beatmap-editor
     )
 else()
