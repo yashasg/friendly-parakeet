@@ -49,8 +49,7 @@ jobs:
                     libxinerama-dev \
                     libxcursor-dev \
                     libxi-dev \
-                    libpulse-dev \
-                    catch2
+                    libpulse-dev
 
             - name: Cache CMake build directory
               uses: actions/cache@v5

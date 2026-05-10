@@ -678,5 +678,102 @@ class TestLoop1DiagnosticsCoverHarmonicLayer(unittest.TestCase):
                 )
 
 
+class TestFullSpectrumFluxIndependence(unittest.TestCase):
+    """Regression for issue #491.
+
+    The ``full_spectrum_flux`` pass uses an STFT-based spectral flux envelope
+    and must NOT be a deterministic duplicate of ``percussive_broadband``,
+    which uses the mel-band flux path.
+    """
+
+    def _synth_audio(self, sr: int = 22050) -> "tuple[object, int]":
+        import numpy as np
+        rng = np.random.default_rng(0xBEA7)
+        duration = 4.0
+        t = np.arange(int(sr * duration)) / sr
+        y = 0.02 * rng.standard_normal(t.shape).astype("float32")
+        # Broadband percussive transients.
+        for onset in (0.30, 0.95, 1.62, 2.30, 3.05):
+            i = int(onset * sr)
+            n = int(0.05 * sr)
+            env = np.exp(-np.linspace(0, 6, n)).astype("float32")
+            noise = rng.standard_normal(n).astype("float32")
+            if i + n <= len(y):
+                y[i:i + n] += 0.6 * env * noise
+        # Tonal harmonic content (sustained sine bursts) — adds spectral
+        # energy redistribution that STFT flux can see but mel-band positive
+        # flux barely registers as discrete onsets.
+        for onset, freq in ((0.55, 440.0), (1.20, 660.0), (2.70, 523.0)):
+            i = int(onset * sr)
+            n = int(0.30 * sr)
+            env = np.hanning(n).astype("float32")
+            tone = np.sin(2 * np.pi * freq * np.arange(n) / sr).astype("float32")
+            if i + n <= len(y):
+                y[i:i + n] += 0.35 * env * tone
+        return y, sr
+
+    def test_dispatch_method_is_a_parameter(self):
+        import inspect
+        sig = inspect.signature(rp._detect_pass_onsets)
+        self.assertIn(
+            "method", sig.parameters,
+            "_detect_pass_onsets must accept a 'method' kwarg so detection "
+            "can dispatch on ONSET_PASSES[*].method (issue #491)",
+        )
+
+    def test_spectral_flux_envelope_differs_from_mel_band_envelope(self):
+        import numpy as np
+        y, sr = self._synth_audio()
+        n_fft, hop = 2048, 512
+        stft_env = rp._spectral_flux_onset_envelope(
+            y=y, hop_length=hop, n_fft=n_fft, reduce="mean",
+        )
+        mel_db = rp._mel_spectrogram_db(y, sr, n_fft=n_fft, hop_length=hop, n_mels=40)
+        mel_env = rp._flux_envelope(mel_db, None)
+        # Length-align for comparison.
+        n = min(len(stft_env), len(mel_env))
+        a = np.asarray(stft_env[:n], dtype=float)
+        b = np.asarray(mel_env[:n], dtype=float)
+        if a.std() > 0 and b.std() > 0:
+            corr = float(np.corrcoef(a, b)[0, 1])
+        else:
+            corr = 0.0
+        self.assertLess(
+            corr, 0.999,
+            "STFT spectral-flux envelope is essentially identical to the "
+            "mel-band flux envelope; full_spectrum_flux would be a duplicate",
+        )
+
+    def test_full_spectrum_flux_not_equal_to_percussive_broadband(self):
+        y, sr = self._synth_audio()
+        librosa_config = {
+            "onset": {
+                "n_mels": 40,
+                "peak_pick": {},
+                "zone_thresholds": {},
+                "resolutions": [{"n_fft": 2048, "hop_length": 512}],
+            },
+            "beat": {"n_fft": 2048, "hop_length": 512},
+        }
+        # Run only the onset-pass loop logic by calling _detect_pass_onsets
+        # directly for both passes — avoids needing a file on disk.
+        res = {"n_fft": 2048, "hop_length": 512}
+        broadband = rp._detect_pass_onsets(
+            y=y, sr=sr, zone=None, threshold=0.10, resolution=res,
+            n_mels=40, peak_pick_cfg={}, zone_thresholds={},
+            method="band_flux_full",
+        )
+        full_spec = rp._detect_pass_onsets(
+            y=y, sr=sr, zone=None, threshold=0.10, resolution=res,
+            n_mels=40, peak_pick_cfg={}, zone_thresholds={},
+            method="spectral_flux",
+        )
+        self.assertNotEqual(
+            broadband, full_spec,
+            "full_spectrum_flux must produce a distinct detection list from "
+            "percussive_broadband (issue #491)",
+        )
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

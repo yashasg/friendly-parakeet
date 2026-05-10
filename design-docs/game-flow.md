@@ -238,21 +238,30 @@ to `GamePhase::Playing`.
   ║┌────────────────────────────────────┐║  ← y = 0.55
   ║│            SETTINGS                │║
   ║│                                    │║
-  ║│   Sound      [■■■■■■■░░░] 70%     │║
+  ║│   Audio Offset                     │║
+  ║│        [ − ]  +12 ms  [ + ]        │║
   ║│                                    │║
-  ║│   Music      [■■■■░░░░░░] 40%     │║
+  ║│   [   HAPTICS: ON   ]              │║
   ║│                                    │║
-  ║│   Haptics    [ ON  ●│ off ]        │║
+  ║│   [   MOTION:  OFF  ]              │║
   ║│                                    │║
-  ║│   ──────────────────────────       │║
-  ║│                                    │║
-  ║│   Reset Tutorial  [ RESET ]        │║
-  ║│                                    │║
-  ║│          [ ✕ CLOSE ]               │║
+  ║│          [  BACK  ]                │║
   ║│                                    │║
   ║└────────────────────────────────────┘║
   ╚══════════════════════════════════════╝
 ```
+
+Shipped controls (source: `content/ui/screens/settings.rgl`):
+
+- **Audio Offset** — ± nudger (`AudioOffsetMinus` / `AudioOffsetDisplay` / `AudioOffsetPlus`); display shows current offset in ms, bound at render time.
+- **Haptics toggle** — single button labeled `HAPTICS: ON` / `HAPTICS: OFF` (state dynamic via `HapticsValue`).
+- **Reduce Motion toggle** — single button labeled `MOTION: ON` / `MOTION: OFF` (state dynamic via `ReduceMotionValue`).
+- **BACK** — close button (label is literally `BACK`, not `CLOSE`).
+
+Not shipped (intentionally absent from this wireframe):
+
+- **Sound / Music volume sliders** — no volume controls exist in `settings.rgl`.
+- **Reset Tutorial [ RESET ]** — `ftue_run_count` / `mark_ftue_complete` plumbing exists in `app/util/settings.h` and `app/util/settings_persistence.h`, but no UI surface ships. If this is still desired, file a separate feature issue rather than implying it ships here.
 
 ---
 

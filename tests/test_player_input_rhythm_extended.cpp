@@ -110,6 +110,23 @@ TEST_CASE("player_input_rhythm: shape press does not set stale target when alrea
     CHECK(lane.target == -1);
 }
 
+TEST_CASE("player_input_rhythm: shape press cancels conflicting in-flight lane target",
+          "[player][rhythm]") {
+    auto reg = make_rhythm_registry();
+    auto player = make_rhythm_player(reg);
+    auto& lane = reg.get<Lane>(player);
+    lane.current = 1;
+    lane.target = 2;
+    lane.lerp_t = 0.5f;
+
+    auto btn = make_shape_button(reg, Shape::Square);
+    press_button(reg, btn);
+    run_semantic_input_tick(reg);
+
+    CHECK(lane.target == 1);
+    CHECK(lane.lerp_t == 0.0f);
+}
+
 TEST_CASE("player_input_rhythm: lane change works in rhythm mode", "[player][rhythm]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);

@@ -8,7 +8,6 @@
 #include "../components/rhythm.h"
 #include "../components/game_state.h"
 #include "../components/song_state.h"
-#include "../components/text.h"
 #include "../rendering/text_resources.h"
 #include "../constants.h"
 

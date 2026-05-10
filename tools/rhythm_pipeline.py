@@ -41,6 +41,13 @@ DEFAULT_LIBROSA_CONFIG_PATH = Path(__file__).parent / "config" / "rhythm_librosa
 # hihat / melody recognition.
 # ---------------------------------------------------------------------------
 
+# The ``method`` field semantically dispatches the detection envelope:
+#   - "band_flux_*"  : mel-band positive flux envelope, optionally restricted
+#                      to a frequency zone (driven by ``zone``).
+#   - "spectral_flux": full STFT positive spectral flux envelope, computed
+#                      via ``_spectral_flux_onset_envelope``.  This is a
+#                      genuinely independent envelope from the mel-band path
+#                      and must NOT be a duplicate of any band_flux pass.
 ONSET_PASSES = [
     {"name": "percussive_bass",      "method": "band_flux_bass",     "zone": "bass"},
     {"name": "percussive_broadband", "method": "band_flux_full",     "zone": None},
@@ -370,8 +377,18 @@ def _detect_pass_onsets(
     n_mels: int,
     peak_pick_cfg: dict | None = None,
     zone_thresholds: dict | None = None,
+    method: str | None = None,
 ) -> list[float]:
     """Detect onsets for one pass/zone/resolution combination.
+
+    The ``method`` argument dispatches the envelope source:
+
+      * ``"spectral_flux"`` — full STFT positive spectral flux via
+        :func:`_spectral_flux_onset_envelope`.  This is the envelope used by
+        the ``full_spectrum_flux`` pass and is genuinely independent of the
+        mel-band path; it is NOT a duplicate of ``band_flux_full``.
+      * ``"band_flux_*"`` (default) — librosa mel-band positive flux
+        envelope, optionally restricted to a frequency ``zone``.
 
     zone_thresholds (optional): per-zone threshold overrides, e.g.
         {"bass": 0.10, "low_mid": 0.13, "high_mid": 0.15}
@@ -383,8 +400,20 @@ def _detect_pass_onsets(
 
     n_fft = int(resolution["n_fft"])
     hop_length = int(resolution["hop_length"])
-    mel_db = _mel_spectrogram_db(y, sr, n_fft=n_fft, hop_length=hop_length, n_mels=n_mels)
-    onset_env = _flux_envelope(mel_db, zone)
+
+    if method == "spectral_flux":
+        # Full-spectrum STFT flux: an envelope independent from the mel-band
+        # path so the ``full_spectrum_flux`` pass produces a distinct musical
+        # view from ``percussive_broadband`` (issue #491).
+        onset_env = _spectral_flux_onset_envelope(
+            y=y,
+            hop_length=hop_length,
+            n_fft=n_fft,
+            reduce="mean",
+        )
+    else:
+        mel_db = _mel_spectrogram_db(y, sr, n_fft=n_fft, hop_length=hop_length, n_mels=n_mels)
+        onset_env = _flux_envelope(mel_db, zone)
     return _detect_onsets_from_envelope(
         onset_env,
         sr=sr,
@@ -639,6 +668,7 @@ def extract_features(filepath: str, onset_threshold: float, librosa_config: dict
                 n_mels=n_mels,
                 peak_pick_cfg=peak_pick_cfg,
                 zone_thresholds=zone_thresholds_cfg,
+                method=p.get("method"),
             )
             per_resolution.append(
                 {

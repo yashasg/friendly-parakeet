@@ -81,7 +81,11 @@ void player_input_handle_press(entt::registry& reg, const ButtonPressEvent& evt)
 
     auto view = reg.view<PlayerTag, PlayerShape, ShapeWindow, Lane>();
     for (auto [entity, pshape, swindow, lane] : view.each()) {
-        if (shape_lane >= 0 && lane.current != shape_lane && lane.target != shape_lane) {
+        const bool not_in_shape_lane = (lane.current != shape_lane);
+        const bool conflicting_in_flight_target =
+            (lane.current == shape_lane && lane.target >= 0 && lane.target != shape_lane);
+        if (shape_lane >= 0 && lane.target != shape_lane &&
+            (not_in_shape_lane || conflicting_in_flight_target)) {
             lane.target = shape_lane;
             lane.lerp_t = 0.0f;
             push_haptic(reg, HapticEvent::LaneSwitch);

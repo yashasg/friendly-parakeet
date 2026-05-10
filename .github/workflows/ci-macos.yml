@@ -37,6 +37,11 @@ jobs:
         with:
           lfs: true
 
+      - name: Setup Node.js for native tooling tests
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
       - name: Export GitHub Actions cache variables
         uses: actions/github-script@v8
         with:
@@ -127,6 +132,36 @@ jobs:
           upload-artifact: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  ios-bridge-compile-gate:
+    name: iOS ObjC++ compile gate
+    runs-on: macos-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          lfs: true
+
+      - name: Configure iOS ObjC++ bridge compile check
+        run: |
+          cmake -B build-ios-bridge -S . \
+            -Wno-dev \
+            -DSHAPESHIFTER_IOS_BRIDGE_COMPILE_CHECK=ON \
+            -DCMAKE_SYSTEM_NAME=iOS \
+            -DCMAKE_OSX_SYSROOT=iphonesimulator \
+            -DCMAKE_OSX_ARCHITECTURES=arm64
+
+      - name: Build iOS ObjC++ bridge compile check
+        run: |
+          cmake --build build-ios-bridge --config Release --target shapeshifter_ios_bridge_compile_check_target
+
+      - name: Verify ObjC++ bridge file is in iOS build graph
+        run: |
+          if ! grep -R "haptics_ios_bridge_ios.mm" build-ios-bridge >/dev/null; then
+            echo "::error::ObjC++ haptics bridge source is missing from iOS compile graph"
+            exit 1
+          fi
 
   notarize:
     name: Sign and notarize (macOS)

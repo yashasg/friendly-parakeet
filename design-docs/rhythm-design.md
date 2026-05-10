@@ -85,7 +85,7 @@
 # SECTION 2 — MUSIC DRIVES EVERYTHING
 # ═══════════════════════════════════════════════════
 
-## Aubio Analysis Pipeline
+## Librosa Analysis Pipeline
 
 ```
   ┌─────────────────────────────────────────────────────────────────┐
@@ -93,42 +93,52 @@
   │   Audio file                                                    │
   │       │                                                         │
   │       ▼                                                         │
-  │   aubio melbands  →  40 mel bands per frame (~5ms hop)          │
+  │   librosa onset detection  →  onset events per broad layer     │
   │       │                                                         │
   │       ▼                                                         │
-  │   Split into frequency groups:                                  │
+  │   Split into three broad layer classes (PASS_TO_LAYER):         │
   │                                                                 │
-  │   ┌───────────────┬───────────────┬──────────────────┐         │
-  │   │  LOW          │  MID          │  HIGH            │         │
-  │   │  bands 0–7    │  bands 8–23   │  bands 24–39     │         │
-  │   │  20–300 Hz    │  300 Hz–3 kHz │  3 kHz–20 kHz   │         │
-  │   │  kick / bass  │  snare / gtr  │  hi-hat / cymbal │         │
-  │   └──────┬────────┴──────┬────────┴──────────┬───────┘         │
-  │          │               │                   │                  │
-  │          ▼               ▼                   ▼                  │
-  │       spectral         spectral           spectral              │
-  │         flux             flux               flux                │
-  │          │               │                   │                  │
-  │          ▼               ▼                   ▼                  │
-  │       CIRCLE           SQUARE             TRIANGLE              │
-  │       LANE 0           LANE 1             LANE 2                │
+  │   ┌────────────────┬────────────────┬───────────────────┐      │
+  │   │  PERCUSSIVE    │  FULL-SPECTRUM │  HARMONIC         │      │
+  │   │  bass /        │  spectral flux │  low-mid          │      │
+  │   │  broadband /   │  (catch-all)   │  (sustained tone) │      │
+  │   │  high-mid      │                │                   │      │
+  │   │  e.g. kick,    │  e.g. dense    │  e.g. melody,     │      │
+  │   │  hi-hat (illus)│  mix (illus)   │  pad (illus)      │      │
+  │   └──────┬─────────┴──────┬─────────┴──────────┬────────┘      │
+  │          │                │                    │                │
+  │          ▼                ▼                    ▼                │
+  │       onsets           onsets               onsets              │
+  │          │                │                    │                │
+  │          ▼                ▼                    ▼                │
+  │       TRIANGLE          SQUARE              CIRCLE              │
+  │       LANE 0            LANE 1              LANE 2              │
   │                                                                 │
-  │   Each energy spike = one obstacle spawn candidate.             │
-  │   Snap to beat grid (within 80ms). That's your note.           │
+  │   Each onset = one obstacle spawn candidate.                    │
+  │   Snap to beat grid (within 80ms). That's your note.            │
+  │                                                                 │
+  │   Note: instrument names above are illustrative only. The       │
+  │   pipeline classifies by broad layer, not by raw drum/         │
+  │   instrument identity. Legacy "kick / snare / hi-hat" aliases   │
+  │   are read-only compatibility shims and are stripped from any   │
+  │   newly serialized analysis output.                             │
   │                                                                 │
   └─────────────────────────────────────────────────────────────────┘
 ```
 
 ## The Music Encodes the Level
 
-The shape and lane of every obstacle come directly from which frequency band fired. This is not a design choice — it is a read from the audio. The music writes the level.
+The shape and lane of every obstacle come directly from which broad layer fired the onset. This is not a design choice — it is a read from the audio. The music writes the level. The mapping below is the authoritative `PASS_TO_LAYER` defined in `tools/rhythm_pipeline.py`:
 
 ```
   ┌────────────────────────────────────────────────────────────────┐
-  │  Kick drum at beat 4?   → Circle gate, lane 0 (LEFT)          │
-  │  Snare at beat 6?       → Square gate, lane 1 (CENTER)        │
-  │  Hi-hat at beat 7?      → Triangle gate, lane 2 (RIGHT)       │
-  │  All three at beat 8?   → Dominant band wins                  │
+  │  Percussive onset at beat 4?    → Triangle gate, lane 0 (LEFT) │
+  │  Full-spectrum onset at beat 6? → Square gate,   lane 1 (CTR)  │
+  │  Harmonic onset at beat 7?      → Circle gate,   lane 2 (RIGHT)│
+  │  Multiple layers at beat 8?     → Separate candidates by layer │
+  │                                                                │
+  │  (Instrument names like "kick / snare / hi-hat" are not part   │
+  │   of the public vocabulary — they are illustrative cues only.) │
   └────────────────────────────────────────────────────────────────┘
 ```
 
@@ -152,7 +162,7 @@ The player can hear the beat coming. The timing is legible. What the player cann
 
 ```
   The BPM for a song does not change.
-  aubio tempo gives one fixed value per track.
+  librosa beat tracking gives one fixed value per track.
   Scroll speed, window size, and morph duration all derive from BPM.
   There are no tempo ramps or ritardandos.
 ```
@@ -476,8 +486,8 @@ The player can hear the beat coming. The timing is legible. What the player cann
   │                                                              │
   │  Player must be the matching shape (◯/□/△) in the           │
   │  correct lane when it arrives.                               │
-  │  Shape comes from which mel band fired.                      │
-  │  Lane comes from same band: low=0, mid=1, high=2.            │
+  │  Shape/lane come from the broad layer onset:                 │
+  │  percussive=triangle/0, full-spectrum=square/1, harmonic=◯/2.│
   │                                                              │
   ├──────────────────────────────────────────────────────────────┤
   │  ─────────────────────────────────────────────────────────   │
@@ -488,9 +498,9 @@ The player can hear the beat coming. The timing is legible. What the player cann
   │                                                              │
   │  Passive obstacle — auto-pushes the player one lane in the   │
   │  indicated direction on beat arrival. No player action.      │
-  │  Triggered by HIGH band onsets (hi-hat, cymbal).             │
-  │  Edge pushes (left on Lane 0, right on Lane 2) are no-ops.  │
-  │  Awards 0 points.  (Replaces legacy lane_block.)             │
+  │  Triggered by harmonic-layer onsets (illustrative: cymbal-     │
+  │  like sustain). Edge pushes (left on Lane 0, right on Lane 2) │
+  │  are no-ops. Awards 0 points.  (Replaces legacy lane_block.)  │
   │                                                              │
   ├──────────────────────────────────────────────────────────────┤
   │  low_bar                                                     │
@@ -517,7 +527,8 @@ The player can hear the beat coming. The timing is legible. What the player cann
 
 ```
   EASY:    shape_gate only. Sparse. 2-beat minimum gap.
-           Low/mid onsets only. Learning the shape mechanic.
+           Percussive + harmonic onsets only (full-spectrum
+           catch-all suppressed). Learning the shape mechanic.
 
            Density scales with song intensity section.
 
@@ -545,12 +556,11 @@ The player can hear the beat coming. The timing is legible. What the player cann
   │   yt-dlp  →  WAV file                                       │
   │       │                                                     │
   │       ▼                                                     │
-  │   aubio tempo    →  fixed BPM                               │
-  │   aubio beat     →  beat timestamps                         │
-  │   aubio melbands →  40-band spectral energy per frame       │
+  │   librosa tempo / beat tracking → beat timestamps           │
+  │   librosa STFT + mel features  → broad-layer onset pools    │
   │       │                                                     │
   │       ▼                                                     │
-  │   spectral flux per band group  →  per-band onsets          │
+  │   percussive / harmonic / full-spectrum passes → onsets     │
   │       │                                                     │
   │       ▼                                                     │
   │   snap to beat grid (80ms tolerance)                        │
@@ -595,7 +605,8 @@ The player can hear the beat coming. The timing is legible. What the player cann
 
   Shape gate   Obstacle requiring the player to match its shape in its lane.
 
-               in a direction on beat arrival (replaces legacy Lane Block).
+  Lane push    Passive obstacle that moves the player one lane in a
+               direction on beat arrival (replaces legacy Lane Block).
 
   Proximity    Ring around a shape button that shrinks as the matching
   ring         obstacle approaches. Reaches button size at perfect timing.
@@ -619,10 +630,15 @@ The player can hear the beat coming. The timing is legible. What the player cann
   MISS         Shape mismatch, wrong lane, or late press (>75% off peak).
                Always instant game over. No HP. No second chances.
 
-  Onset        Moment of sudden energy increase in a frequency band.
-               Detected by aubio melbands + spectral flux.
-               Low band → circle. Mid band → square. High band → triangle.
+  Onset        Moment of sudden energy increase detected by librosa
+               on one of the broad layers (percussive / harmonic /
+               full-spectrum). Percussive → triangle / lane 0.
+               Full-spectrum → square / lane 1.
+               Harmonic → circle / lane 2.
 
-  Mel band     One of 40 frequency sub-bands output by aubio melbands.
-               Grouped into low/mid/high for obstacle classification.
+  Layer        One of three broad librosa layer classes used for
+               classification: percussive, harmonic, full-spectrum.
+               Replaces the legacy low/mid/high frequency-band model;
+               raw drum/instrument names (kick/snare/hi-hat) are
+               read-only legacy aliases only.
 ```

@@ -2,7 +2,8 @@
 
 #include <raylib.h>
 
-// Runtime text assets kept in registry context.
+// Authoritative runtime text asset state kept in registry context.
+// UI/domain enums remain in app/components/text.h.
 struct TextContext {
     Font font_small{};
     Font font_medium{};

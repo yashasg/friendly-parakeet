@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdint>
 #include <entt/entt.hpp>
 
 // Forward-declare to avoid including test_player.h in the header.
@@ -16,7 +17,8 @@ void game_loop_run(entt::registry& reg);
 // Single frame tick (used by Emscripten main loop callback).
 void game_loop_frame(entt::registry& reg, float& accumulator);
 
-// Shutdown: unload GPU resources, close logs, release audio, close window.
+// Shutdown: unload GPU resources, close logs, release audio, close window,
+// and reset registry context/listeners so game_loop_init can be called again.
 void game_loop_shutdown(entt::registry& reg);
 
 // Returns true when the game loop should exit (quit requested or window closed).
