@@ -15,6 +15,7 @@
 #include "components/obstacle.h"
 #include "components/rng.h"
 #include "systems/all_systems.h"
+#include "systems/runtime_systems.h"
 #include "session/test_player_session.h"
 #include "input/input_routing.h"
 #include "components/text.h"

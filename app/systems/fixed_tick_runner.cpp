@@ -1,4 +1,5 @@
 #include "all_systems.h"
+#include "runtime_systems.h"
 
 // One fixed timestep: game_state → song_playback → all Playing systems →
 // obstacle lifecycle → UI feedback → particles.
