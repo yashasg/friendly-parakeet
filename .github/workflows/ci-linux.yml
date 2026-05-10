@@ -77,7 +77,9 @@ jobs:
           ./build.sh
 
       - name: Install Python tool test dependencies
-        run: python3 -m pip install numpy librosa
+        run: |
+          PYTHON_TOOL_TEST_EXE="$(grep '^Python3_EXECUTABLE:FILEPATH=' build/CMakeCache.txt | cut -d= -f2-)"
+          "$PYTHON_TOOL_TEST_EXE" -m pip install numpy librosa
 
       - name: Run tests
         if: always()
