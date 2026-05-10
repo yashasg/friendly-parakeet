@@ -588,14 +588,14 @@ them ends the run on their own — only `energy <= 0.0f` does.
            forward design space and are not produced today.
 ```
 
-### Shipped per-difficulty obstacle counts (Round 6 audit)
+### Shipped per-difficulty obstacle counts (Round 9 audit)
 
 | Song                  | easy | medium | hard |
 |-----------------------|-----:|-------:|-----:|
-| 1_stomper             |   60 |     60 |   83 |
-| 2_drama               |  122 |    125 |  180 |
-| 3_mental_corruption   |  130 |    130 |  156 |
-| **Total (all 9 arrays)** |      |        | **1046** |
+| 1_stomper             |   59 |     62 |   71 |
+| 2_drama               |  104 |    109 |  139 |
+| 3_mental_corruption   |  106 |    107 |  133 |
+| **Total (all 9 arrays)** |      |        | **890** |
 
 Even Hard never approaches "every beat" — `1_stomper` Hard averages
 roughly one obstacle every ~2.5 musical beats. Treat these counts as

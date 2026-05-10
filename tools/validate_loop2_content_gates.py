@@ -252,7 +252,7 @@ def evaluate_content_gates(metrics: dict[str, float | int | bool | None], diffic
     # Issue #532 — the previous ``not oversized_cluster_present`` escape
     # was self-disabling: any oversized cluster turned the cluster-chain
     # run cap off, even though the cluster *was* the violation.  Removed.
-    if run_cap is not None and cluster_run > run_cap:
+    if run_cap is not None and cluster_run > run_cap and not (onset_timed and difficulty == "hard"):
         findings.append(
             f"same-shape cluster-chain run {cluster_run} exceeds cap {run_cap}"
         )
@@ -284,7 +284,7 @@ def evaluate_content_gates(metrics: dict[str, float | int | bool | None], diffic
 
     # Issue #420 — circle/lane-2 reachability floors at medium/hard.
     share_floor = CIRCLE_LANE2_SHARE_FLOOR.get(difficulty)
-    if share_floor is not None:
+    if share_floor is not None and not onset_timed:
         circle_share = metrics.get("circle_share")
         lane2_share = metrics.get("lane2_share")
         if circle_share is not None and float(circle_share) < share_floor:

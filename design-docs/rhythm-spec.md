@@ -5,7 +5,7 @@
 > **Depends on:** Input System (SPEC 1)
 >
 > **v1.1 changes vs v1.0:**
-> - HP system removed — MISS is instant game over
+> - HP system removed — MISS drains the Energy Bar; energy reaching zero is game over
 > - Shape buttons are circular, not rectangular
 > - Proximity ring replaces burnout bar and speed bar
 > - `HPState` component and `hp_system` removed from pipeline
@@ -306,7 +306,7 @@ struct SongResults {
   │   → computes TimingGrade from BeatInfo.arrival_time        │
   │     (falls back to ShapeWindow.peak_time if no BeatInfo)   │
   │   → on HIT: applies window_scale shortening if !graded     │
-  │   → on MISS: instant game over (no HP drain)               │
+  │   → on MISS: drain EnergyState; GameOver only at energy=0  │
   │   → emplaces ScoredTag on both HIT and MISS paths          │
   └────────────────────────────────────────────────────────────┘
            ↓
@@ -398,17 +398,17 @@ void shape_window_system(entt::registry& reg, float dt);
   └─────────────────────────────────────────────────────────────────────┘
 ```
 
-## Why instant game over (not HP drain)
+## Why Energy Bar drain (not instant game over)
 
 ```
   ┌─────────────────────────────────────────────────────────────────────┐
-  │  Design decision: MISS = instant end                                │
+  │  Shipped decision: MISS = energy drain                              │
   ├─────────────────────────────────────────────────────────────────────┤
   │                                                                     │
   │  This game is an arcade-style runner, not a 2–3 minute song        │
   │  endurance test. Sessions are short; restarts are expected.         │
-  │  HP drain would reduce tension — instant fail keeps every          │
-  │  obstacle meaningful.                                               │
+  │  Continuous energy creates forgiveness while every MISS still       │
+  │  matters because energy reaching 0 ends the run.                    │
   │                                                                     │
   │  The proximity ring (see §6) gives the player ample visual         │
   │  warning. Missing is a genuine error, not a surprise.              │
@@ -532,7 +532,7 @@ float ring_r = btn_radius + (max_ring_radius - btn_radius) * ratio;
 
 | Element         | Status   | Reason                                      |
 |-----------------|----------|---------------------------------------------|
-| HP bar / hearts | Removed  | MISS = instant game over; no HP mechanic    |
+| HP bar / hearts | Removed  | MISS drains Energy Bar; no HP mechanic      |
 | Burnout bar     | Removed  | Proximity ring serves the same cue          |
 | Speed bar       | Removed  | Speed information not relevant to player    |
 | Song progress   | Not yet  | Planned; requires audio playback integration|
@@ -627,14 +627,14 @@ if (!song) return;  // no rhythm context — skip
     → INTERRUPT: current window cancelled immediately
     → New MorphIn phase begins for the new shape
     → Punishes indecision
-    → If an obstacle for shape A passes during the interrupt: MISS → game over
+    → If an obstacle for shape A passes during the interrupt: MISS → energy drain
 ```
 
 ## Obstacle passes without any player action (Hexagon state)
 
 ```
   Player never pressed a button. Hexagon is not a valid shape for any
-  shape_gate obstacle. Obstacle arrives → shape mismatch → MISS → game over.
+  shape_gate obstacle. Obstacle arrives → shape mismatch → MISS → energy drain.
 
   There is no "auto-dodge" for Hexagon. The player must always react.
 ```
@@ -645,7 +645,7 @@ if (!song) return;  // no rhythm context — skip
   Beat map may have two obstacles at the same beat_time (different lanes
   or different kinds). Each is a separate entity. Collision resolves each
   independently on arrival. The player's single shape is checked against
-  each — if one mismatches, game over regardless of the other.
+  each — if one mismatches, it drains energy independently.
 ```
 
 ---

@@ -49,8 +49,8 @@ The existing `HPState` struct, `hp_system.cpp`, and related constants
 
 ```cpp
 struct EnergyState {
-    float energy      = 1.0f;   // [0.0, 1.0] — current energy
-    float display     = 1.0f;   // smoothed for rendering (lerps toward energy)
+    float energy      = constants::ENERGY_START;   // [0.0, 1.0] — current energy
+    float display     = constants::ENERGY_START;   // smoothed for rendering (lerps toward energy)
     float flash_timer = 0.0f;   // > 0 when bar should flash (drain event)
 };
 ```
@@ -58,7 +58,7 @@ struct EnergyState {
 **Why float, not int?**  Continuous bar feels juicier, allows fractional
 drain/recovery tuning, and maps directly to a 0–1 bar width.
 
-### Constants (in `constants.h`)
+### Constants (in `constants.h`, mirrored in `content/constants.json`)
 
 ```cpp
 // ── Energy Bar ────────────────────────────────────
@@ -134,11 +134,11 @@ Energy is modified in **two places** only:
 
 ### 1. collision_system.cpp — on MISS
 
-Currently a miss triggers instant GameOver.  Change to:
+Current shipped behavior:
 
 ```
-Before:  gs.next_phase = GamePhase::GameOver;
-After:   energy.energy -= ENERGY_DRAIN_MISS;
+MISS:    enqueue energy delta -ENERGY_DRAIN_MISS
+GameOver: energy_system transitions only when energy reaches 0
          energy.flash_timer = ENERGY_FLASH_DURATION;
 ```
 
@@ -286,8 +286,9 @@ The drain/recovery values are designed so that:
            = +0.82  (bar stays pinned at max)
 ```
 
-These values should be exposed in `content/constants.json` for
-runtime tuning without recompilation.
+These values are mirrored in `content/constants.json` so tools and docs can
+consume the same tuning table. Runtime C++ currently uses the matching
+`constants.h` constexpr values for zero-overhead access.
 
 ---
 

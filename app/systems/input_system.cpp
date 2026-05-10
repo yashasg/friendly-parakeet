@@ -82,10 +82,17 @@ void input_system(entt::registry& reg, float raw_dt) {
     // ── Mouse (desktop) — click-only semantics ─
     if (allow_mouse_input &&
         input.active_source != InputSource::Touch &&
+        IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+        input.active_source = InputSource::Mouse;
+        input.suppress_mouse_release = false;
+    }
+    if (allow_mouse_input &&
+        input.active_source != InputSource::Touch &&
         IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-        input.click      = true;
+        input.click      = !input.suppress_mouse_release;
         input.touching   = false;
         input.active_source = InputSource::None;
+        input.suppress_mouse_release = false;
         const Vector2 mouse_pos = GetMousePosition();
         const glm::vec2 pos = screen_to_virtual({mouse_pos.x, mouse_pos.y}, st);
         input.start_x = input.curr_x = input.end_x = pos.x;
@@ -115,6 +122,7 @@ void input_system(entt::registry& reg, float raw_dt) {
                input.touching && input.active_source == InputSource::Touch) {
         input.touch_up  = true;
         input.touching  = false;
+        input.suppress_mouse_release = true;
         input.active_source = InputSource::None;
         input.end_x = input.curr_x;
         input.end_y = input.curr_y;

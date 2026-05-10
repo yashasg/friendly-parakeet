@@ -119,6 +119,20 @@ class TestMergeEventsSameLayerCollapse(unittest.TestCase):
         # Passes should list both contributors.
         self.assertIn("kick",  merged[0]["passes"])
         self.assertIn("snare", merged[0]["passes"])
+        self.assertIn(
+            merged[0]["t"],
+            {1.000, 1.030},
+            "merged event timestamp must remain a real detected onset",
+        )
+
+    def test_same_layer_merge_does_not_interpolate_timestamp(self):
+        events = [
+            _make_event("kick", t=1.000, flux=0.6),
+            _make_event("kick", t=1.040, flux=0.9),
+        ]
+        merged = rp.merge_events(events, merge_window=0.050)
+        self.assertEqual(len(merged), 1)
+        self.assertEqual(merged[0]["t"], 1.040)
 
     def test_two_harmonic_within_50ms_collapse_to_one(self):
         events = [
@@ -743,6 +757,15 @@ class TestFullSpectrumFluxIndependence(unittest.TestCase):
             "STFT spectral-flux envelope is essentially identical to the "
             "mel-band flux envelope; full_spectrum_flux would be a duplicate",
         )
+
+    def test_spectral_flux_envelope_is_gain_normalized(self):
+        import numpy as np
+        y, _sr = self._synth_audio()
+        n_fft, hop = 2048, 512
+        loud = rp._spectral_flux_onset_envelope(y=y, hop_length=hop, n_fft=n_fft, reduce="mean")
+        quiet = rp._spectral_flux_onset_envelope(y=y * 0.1, hop_length=hop, n_fft=n_fft, reduce="mean")
+        n = min(len(loud), len(quiet))
+        np.testing.assert_allclose(loud[:n], quiet[:n], rtol=1e-4, atol=1e-4)
 
     def test_full_spectrum_flux_not_equal_to_percussive_broadband(self):
         y, sr = self._synth_audio()

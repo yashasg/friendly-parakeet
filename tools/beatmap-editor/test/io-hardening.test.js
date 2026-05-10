@@ -123,6 +123,55 @@ test('beatmap round-trip preserves timing metadata and omits missing song_path',
   assert.equal(exported.difficulties.hard.beats[0].subdivision_label, 'eighth');
 });
 
+test('state-shaped export preserves imported top-level timing metadata', () => {
+  const importedState = {
+    songId: 'song_001',
+    title: 'Timing Metadata',
+    bpm: 128,
+    offset: -0.02,
+    leadBeats: 4,
+    duration: 95,
+    songPath: '',
+    hasSongPath: false,
+    extraTopLevel: {
+      beat_times: [0.1, 0.6, 1.1],
+      playability_collapsed_pairs: { hard: [] },
+    },
+    difficulties: {
+      hard: {
+        count: 2,
+        beats: [
+          { beat: 1, kind: 'shape_gate', shape: 'circle', lane: 2, time_sec: 0.60 },
+          { beat: 1, kind: 'shape_gate', shape: 'square', lane: 1, time_sec: 0.63 },
+        ],
+      },
+    },
+  };
+
+  const exported = JSON.parse(exportBeatmap(importedState));
+
+  assert.deepEqual(exported.beat_times, importedState.extraTopLevel.beat_times);
+  assert.deepEqual(
+    exported.playability_collapsed_pairs,
+    importedState.extraTopLevel.playability_collapsed_pairs,
+  );
+  assert.equal(exported.difficulties.hard.count, 2);
+  assert.equal(Object.prototype.hasOwnProperty.call(exported, 'song_path'), false);
+});
+
+test('validation accepts C++ loader-compatible same-beat timed entries', () => {
+  const errors = validate({
+    ...makeState([
+      { beat: 4, kind: 'shape_gate', shape: 'circle', lane: 2, time_sec: 2.0 },
+      { beat: 4, kind: 'shape_gate', shape: 'square', lane: 1, time_sec: 2.04 },
+      { beat: 5, kind: 'shape_gate', shape: 'triangle', lane: 0, time_sec: 2.5 },
+    ]),
+    duration: 10,
+  });
+
+  assert.doesNotMatch(errors.map((e) => e.message).join('\n'), /monotonically/i);
+});
+
 test('analysis import preserves onset object keys in source order', () => {
   const analysis = importAnalysis(JSON.stringify({
     title: 'Demo',
@@ -302,6 +351,11 @@ test('combo_gate is absent from palette and context-menu authoring surfaces', ()
   const contextMenuJs = fs.readFileSync(path.resolve(TEST_DIR, '../js/context-menu.js'), 'utf8');
   assert.match(contextMenuJs, /AUTHORING_KINDS/);
   assert.doesNotMatch(contextMenuJs, /Place ComboGate/i);
+});
+
+test('offset input accepts shipped negative offsets', () => {
+  const indexHtml = fs.readFileSync(path.resolve(TEST_DIR, '../index.html'), 'utf8');
+  assert.match(indexHtml, /id="meta-offset"[^>]*min="-0\.1"/i);
 });
 
 test('bundled level list points at shipped beatmap and audio assets', () => {

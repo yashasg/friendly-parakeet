@@ -34,6 +34,8 @@ export const state = {
   leadBeats: 4,
   duration: 180,
   songPath: "",
+  hasSongPath: false,
+  extraTopLevel: {},
   difficulties: {
     easy:   { beats: [] },
     medium: { beats: [] },
@@ -58,13 +60,17 @@ export const state = {
 const SNAPSHOT_KEYS = [
   "songId", "title", "bpm", "offset",
   "leadBeats", "duration", "songPath",
+  "hasSongPath", "extraTopLevel",
   "activeDifficulty",
 ];
 
 function deepCloneDifficulties(diffs) {
   const clone = {};
   for (const key of Object.keys(diffs)) {
-    clone[key] = { beats: diffs[key].beats.map((b) => ({ ...b })) };
+    clone[key] = {
+      ...diffs[key],
+      beats: diffs[key].beats.map((b) => ({ ...b })),
+    };
   }
   return clone;
 }
@@ -151,6 +157,7 @@ export function copyDifficulty(from, to) {
 const METADATA_FIELDS = [
   "songId", "title", "bpm", "offset",
   "leadBeats", "duration", "songPath",
+  "hasSongPath", "extraTopLevel",
 ];
 
 export function setMetadata(fields) {

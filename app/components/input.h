@@ -23,6 +23,7 @@ struct InputState {
     bool  quit_requested = false;
     bool was_focused = true;
     bool gestures_configured = false;
+    bool suppress_mouse_release = false;
 };
 
 // ── Directions ──────────────────────────────────────────────────────────────

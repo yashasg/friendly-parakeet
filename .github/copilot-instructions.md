@@ -6,7 +6,7 @@ A bullet hell game built in C++ using raylib for rendering and EnTT (v3.16.0) fo
 
 ## Tech Stack
 
-- **Language:** C++17 (or later)
+- **Language:** C++20
 - **Build system:** CMake
 - **Rendering:** raylib
 - **ECS framework:** [EnTT](https://github.com/skypjack/entt) v3.16.0

@@ -77,6 +77,7 @@ void game_state_system(entt::registry& reg, float dt) {
             input->click = false;
             input->touching = false;
             input->active_source = InputSource::None;
+            input->suppress_mouse_release = false;
             input->duration = 0.0f;
         }
 
