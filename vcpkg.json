@@ -10,6 +10,10 @@
     "raylib",
     "raygui",
     "nlohmann-json",
-    { "name": "catch2", "platform": "!linux" }
-  ]
+    {
+      "name": "catch2",
+      "platform": "!linux"
+    }
+  ],
+  "builtin-baseline": "05442024c3fda64320bd25d2251cc9807b84fb6f"
 }
