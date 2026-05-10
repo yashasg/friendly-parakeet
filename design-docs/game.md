@@ -124,7 +124,8 @@ When an obstacle requires TWO actions (e.g., switch to ● AND swipe left), the 
 - Timing multiplier comes from the beat-distance grade (Perfect/Good/Ok/Bad). See `rhythm-design.md`.
 
 ### Chain
-- Each consecutive HIT (Perfect, Good, or Ok) grows the chain.
+- Each consecutive non-miss timing grade (Perfect, Good, Ok, or Bad) grows the chain.
+- Bad awards reduced points and drains small energy. Miss resets the chain.
 - Chain resets on any MISS.
 - Chain contributes a bounded flat bonus so consistent rhythm is rewarded over isolated hits.
 

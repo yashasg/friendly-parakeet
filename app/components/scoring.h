@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <optional>
 #include <entt/entity/entity.hpp>
 #include "../components/text.h"
 #include "../components/rhythm.h"
@@ -21,10 +20,11 @@ struct TerminalResultState {
 };
 
 struct ScorePopup {
-    int32_t                    value       = 0;
-    std::optional<TimingTier>  timing_tier = std::nullopt;
-    float                      remaining   = 0.0f;
-    float                      max_time    = 0.0f;
+    int32_t    value           = 0;
+    bool       has_timing_tier = false;
+    TimingTier timing_tier     = TimingTier::Ok;
+    float      remaining       = 0.0f;
+    float      max_time        = 0.0f;
 };
 
 // Pre-computed popup display data. Computed by popup_display_system,

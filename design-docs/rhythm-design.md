@@ -203,23 +203,17 @@ The player can hear the beat coming. The timing is legible. What the player cann
 ## Window Phase State Machine
 
 ```
-  ┌────────┐  [press]   ┌──────────┐  [timer]   ┌────────┐
-  │        │ ─────────▶ │          │ ─────────▶ │        │
-  │  IDLE  │            │ MORPH IN │            │ ACTIVE │
-  │   ⬡   │            │  ⬡→◯   │            │   ◯    │
-  │        │            │          │            │        │
-  └────────┘            └──────────┘            └────────┘
-       ▲                                             │
-       │                                          [timer]
-       │                ┌──────────┐                │
-       └─────────────── │ MORPH OUT│ ◀──────────────┘
-         [hexagon back] │  ◯→⬡   │
-                        └──────────┘
+  ┌────────┐  [press]   ┌────────┐  [timer]   ┌────────┐
+  │        │ ─────────▶ │        │ ─────────▶ │        │
+  │  IDLE  │            │ ACTIVE │            │  IDLE  │
+  │   ⬡   │            │   ◯    │            │   ⬡   │
+  │        │            │        │            │        │
+  └────────┘            └────────┘            └────────┘
 
   Durations:
-    MORPH IN:   0.150s  (visual blend from hexagon to target)
+    MORPH:      visual-only; press immediately changes the gameplay shape
     ACTIVE:     (OK window × 2) × window_scale (collapses sooner with better timing)
-    MORPH OUT:  0.150s  (visual blend back to hexagon)
+    RETURN:     automatic after the active window closes
 ```
 
 ## Window Scaling — The Perfect Press Reward
@@ -356,7 +350,9 @@ The player can hear the beat coming. The timing is legible. What the player cann
 ## Chain Multiplier
 
 ```
-  Each consecutive HIT (PERFECT, GOOD, or OK) grows the chain.
+  Each consecutive non-miss timing grade (PERFECT, GOOD, OK, or BAD)
+  grows the chain. BAD awards reduced points and drains small energy;
+  MISS resets the chain.
   Score = floor(base_pts × timing_multiplier) + chain_flat_bonus
 
   Chain resets on any MISS.

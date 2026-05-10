@@ -357,22 +357,20 @@ void shape_window_system(entt::registry& reg, float dt);
   │  CASE: Player shape matches obstacle shape at arrival               │
   ├─────────────────────────────────────────────────────────────────────┤
   │                                                                     │
-  │  // Use the obstacle's calibrated arrival_time for timing,                │
-  │  // falling back to ShapeWindow.peak_time when BeatInfo absent.     │
-  │  // Compare the window's PEAK TIME (center of active window)        │
-  │  // against the reference.  peak_time is derived from the player's  │
-  │  // press time: peak = press + morph_duration + half_window.        │
-  │  // A perfectly-timed tap gives peak_time ≈ arrival_time → pct ≈ 0. │
+  │  // Use the obstacle's calibrated arrival_time for timing,          │
+  │  // falling back to the current press_time when BeatInfo absent.    │
+  │  // Compare the player's direct PRESS TIME against the reference.   │
+  │  // A perfectly-timed tap gives press_time ≈ arrival_time.          │
   │  auto* beat_info = reg.try_get<BeatInfo>(entity);                   │
   │  float ref = beat_info ? beat_info->arrival_time                    │
-  │                        : p_window.peak_time;                        │
-  │  float pct = abs(p_window.peak_time - ref) / half_window;           │
+  │                        : p_window.press_time;                       │
+  │  float pct = abs(p_window.press_time - ref) / half_window;          │
   │  TimingGrade = compute_timing_tier(pct);                            │
   │                                                                     │
   │  The ideal press time for an obstacle is:                           │
-  │    arrival_time − morph_duration − half_window                      │
-  │  which produces peak_time = arrival_time → Perfect.                 │
-  │  A stale press from a previous beat has peak_time far from the      │
+  │    arrival_time                                                     │
+  │  which produces press_time = arrival_time → Perfect.                │
+  │  A stale press from a previous beat has press_time far from the     │
   │  current obstacle's arrival → Bad.                                  │
   │                                                                     │
   │  PERFECT  → pts=300, window_scale=0.50 (remaining window halved)   │

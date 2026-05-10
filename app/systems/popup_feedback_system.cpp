@@ -4,6 +4,7 @@
 #include "../components/game_state.h"
 #include "../components/gameplay_intents.h"
 #include "../entities/popup_entity.h"
+#include <optional>
 
 void popup_feedback_system(entt::registry& reg, float /*dt*/) {
     if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
@@ -12,7 +13,10 @@ void popup_feedback_system(entt::registry& reg, float /*dt*/) {
 
     auto* disp = reg.ctx().find<entt::dispatcher>();
     for (const auto& request : queue.requests) {
-        spawn_score_popup(reg, {request.x, request.y, request.points, request.timing_tier});
+        const std::optional<TimingTier> timing_tier = request.has_timing_tier
+            ? std::make_optional(request.timing_tier)
+            : std::nullopt;
+        spawn_score_popup(reg, {request.x, request.y, request.points, timing_tier});
         if (disp) disp->enqueue<PlaySfxEvent>({SFX::ScorePopup});
     }
     queue.requests.clear();

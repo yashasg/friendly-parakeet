@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { importAnalysis, importBeatmap, exportBeatmap, validate } from '../js/io.js';
-import { entryToX, timeToX } from '../js/timeline.js';
+import { entryRenderX, entryToX, timeToX } from '../js/timeline.js';
 import {
   DEFAULT_LEVELS,
   EDITOR_OBSTACLE_KINDS,
@@ -143,7 +143,7 @@ test('state-shaped export preserves imported top-level timing metadata', () => {
         count: 2,
         beats: [
           { beat: 1, kind: 'shape_gate', shape: 'circle', lane: 2, time_sec: 0.60 },
-          { beat: 1, kind: 'shape_gate', shape: 'square', lane: 1, time_sec: 0.63 },
+          { beat: 1, kind: 'shape_gate', shape: 'circle', lane: 1, time_sec: 0.63 },
         ],
       },
     },
@@ -210,6 +210,29 @@ test('validation rejects beat_times-incompatible beat indices', () => {
   assert.match(errors.map((e) => e.message).join('\n'), /beat_times array/i);
 });
 
+test('validation rejects negative beat_times indices', () => {
+  const errors = validate({
+    ...makeState([
+      { beat: -1, kind: 'shape_gate', shape: 'circle', lane: 1 },
+    ]),
+    duration: 10,
+    extraTopLevel: { beat_times: [0, 0.5] },
+  });
+
+  assert.match(errors.map((e) => e.message).join('\n'), /beat_times array/i);
+});
+
+test('validation treats C++ shape-change gap violations as errors', () => {
+  const errors = validate(makeState([
+    { beat: 1, kind: 'shape_gate', shape: 'circle', lane: 2 },
+    { beat: 2, kind: 'shape_gate', shape: 'square', lane: 1 },
+  ]));
+
+  const gapErrors = errors.filter((e) => /Different-shape gates/i.test(e.message));
+  assert.equal(gapErrors.length, 1);
+  assert.equal(gapErrors[0].severity, 'error');
+});
+
 test('timeline positions authored entries by time_sec or beat_times before beat grid', () => {
   const state = {
     bpm: 120,
@@ -223,6 +246,22 @@ test('timeline positions authored entries by time_sec or beat_times before beat 
 
   assert.equal(entryToX(authored, state), timeToX(3.0, state));
   assert.equal(entryToX(beatTimed, state), timeToX(4.25, state));
+});
+
+test('timeline render positions separate same-time lane stacks', () => {
+  const state = {
+    bpm: 120,
+    offset: 0,
+    zoom: 20,
+    scrollX: 0,
+  };
+  const beats = [
+    { beat: 2, kind: 'shape_gate', shape: 'circle', lane: 1 },
+    { beat: 2, kind: 'shape_gate', shape: 'square', lane: 1 },
+  ];
+
+  assert.equal(entryRenderX(beats, 0, state), entryToX(beats[0], state) - 5);
+  assert.equal(entryRenderX(beats, 1, state), entryToX(beats[1], state) + 5);
 });
 
 test('analysis import preserves onset object keys in source order', () => {

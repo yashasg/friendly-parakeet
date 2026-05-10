@@ -1,5 +1,6 @@
 #include "platform_display.h"
 #include "game_loop.h"
+#include "components/game_state.h"
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
@@ -41,6 +42,7 @@ struct WasmLoopState {
     float accumulator = 0.0f;
     bool shutting_down = false;
     bool beforeunload_armed = false;
+    bool visibilitychange_armed = false;
 };
 
 static void wasm_unset_beforeunload(WasmLoopState& state) {
@@ -49,13 +51,21 @@ static void wasm_unset_beforeunload(WasmLoopState& state) {
     state.beforeunload_armed = false;
 }
 
+static void wasm_unset_visibilitychange(WasmLoopState& state) {
+    if (!state.visibilitychange_armed) return;
+    emscripten_set_visibilitychange_callback(nullptr, false, nullptr);
+    state.visibilitychange_armed = false;
+}
+
 void platform_disarm_wasm_beforeunload(entt::registry& reg) {
     if (auto* state = reg.ctx().find<WasmLoopState>()) {
         wasm_unset_beforeunload(*state);
+        wasm_unset_visibilitychange(*state);
         state->reg = nullptr;
         state->accumulator = 0.0f;
     } else {
         emscripten_set_beforeunload_callback(nullptr, nullptr);
+        emscripten_set_visibilitychange_callback(nullptr, false, nullptr);
     }
 }
 
@@ -92,6 +102,23 @@ static const char* on_web_unload(int /*event_type*/,
     return nullptr; // empty string suppresses the browser confirmation dialog
 }
 
+static EM_BOOL on_visibility_change(int /*event_type*/,
+                                    const EmscriptenVisibilityChangeEvent* event,
+                                    void* user_data) {
+    auto* state = static_cast<WasmLoopState*>(user_data);
+    if (!state || !state->reg || !event || !event->hidden) {
+        return EM_FALSE;
+    }
+
+    if (auto* gs = state->reg->ctx().find<GameState>()) {
+        if (gs->phase == GamePhase::Playing) {
+            gs->transition_pending = true;
+            gs->next_phase = GamePhase::Paused;
+        }
+    }
+    return EM_FALSE;
+}
+
 void platform_run_loop(entt::registry& reg) {
     auto* state = reg.ctx().find<WasmLoopState>();
     if (!state) state = &reg.ctx().emplace<WasmLoopState>();
@@ -107,6 +134,8 @@ void platform_run_loop(entt::registry& reg) {
     state->shutting_down = false;
     state->beforeunload_armed = true;
     emscripten_set_beforeunload_callback(state, on_web_unload);
+    state->visibilitychange_armed = true;
+    emscripten_set_visibilitychange_callback(state, false, on_visibility_change);
     emscripten_set_main_loop_arg(frame_callback, state, 0, 1);
 }
 

@@ -1,7 +1,7 @@
 // Regression test for #513: the Tutorial "DODGE LANES" hint must vary with
 // the runtime input-capability flag, not the compile-time PLATFORM_HAS_KEYBOARD
 // macro. The previous compile-time #ifdef in app/ui/generated/tutorial_layout.h
-// shipped "USE LEFT / RIGHT ARROW KEYS" to touch-only Web browsers because the
+// shipped keyboard-only copy to touch-only Web browsers because the
 // Web build defines PLATFORM_HAS_KEYBOARD (CMakeLists.txt:198).
 
 #include <catch2/catch_test_macros.hpp>
@@ -22,7 +22,7 @@ TEST_CASE("tutorial dodge hint copy switches on touch capability (#513)",
     SECTION("keyboard-capable contexts see the keyboard copy") {
         const char* hint = tutorial_dodge_hint_text(/*prefer_touch=*/false);
         REQUIRE(hint != nullptr);
-        REQUIRE(std::strcmp(hint, "USE LEFT / RIGHT ARROW KEYS") == 0);
+        REQUIRE(std::strcmp(hint, "DODGE: A/D OR ARROWS") == 0);
     }
 
     SECTION("hint bounds match the (110, 710, 500, 32) RGL rectangle") {

@@ -69,11 +69,11 @@ See `ios/README.md` for blocker checklist and full command modes.
 
 | Action | Keyboard | Touch |
 |--------|----------|-------|
-| Shape: Circle | 1 | Tap left button |
-| Shape: Square | 2 | Tap center button |
-| Shape: Triangle | 3 | Tap right button |
-| Move left | A | Swipe left |
-| Move right | D | Swipe right |
+| Shape: Circle | 1 / Z | Tap left button |
+| Shape: Square | 2 / X | Tap center button |
+| Shape: Triangle | 3 / C | Tap right button |
+| Move left | A / ← | Swipe left |
+| Move right | D / → | Swipe right |
 
 ## Architecture
 

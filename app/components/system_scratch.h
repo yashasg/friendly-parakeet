@@ -36,3 +36,7 @@ struct PopupDisplayScratch {
 struct ParticleSystemScratch {
     std::vector<entt::entity> expired;
 };
+
+struct MeshChildCleanupScratch {
+    std::vector<entt::entity> stale_children;
+};

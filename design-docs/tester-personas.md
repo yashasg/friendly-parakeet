@@ -178,9 +178,9 @@
 - **Sees obstacles ~0.77s before collision** (at 120 BPM)
 - **Always knows the correct action** — never picks wrong shape/lane
 - **Reacts as fast as possible** but reaction takes 0.8–1.2s
-- **Often too slow** — reaction exceeds available time → miss → game over
-- At faster BPMs or shorter lead times, fails almost immediately
-- Expected outcome: **dies on medium+, barely survives easy**
+- **Often too slow** — reaction exceeds available time → misses drain energy
+- At faster BPMs or shorter lead times, energy depletes quickly
+- Expected outcome: **likely depletes energy on medium+, barely survives easy**
 
 ## Timing Budget
 
@@ -206,8 +206,8 @@
 
 - [x] Tutorial / easy sections are survivable for beginners
 - [x] Difficulty curve is appropriate (not punishing too early)
-- [x] Death feels fair ("I saw it, I was just too slow")
-- [x] HP system provides enough buffer for occasional misses
+- [x] Game Over feels fair ("I saw it, I was just too slow")
+- [x] Energy provides enough buffer for occasional misses
 
 
 ---

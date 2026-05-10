@@ -11,28 +11,25 @@
 
 ```
   ┌──────────────────────────────────────────────────────────────────┐
-  │  CURRENT STATE (main branch — raylib migration complete)         │
+  │  CURRENT STATE (main branch — audio-backed runtime shipped)      │
   │                                                                  │
   │  ✅ raylib for rendering, input, windowing                      │
   │  ✅ nlohmann-json in vcpkg.json                                 │
   │  ✅ BeatMap, SongState, SongResults in rhythm.h                 │
   │  ✅ beat_map_loader.h/.cpp — JSON → BeatMap with validation     │
-  │  ✅ song_playback_system — advances song_time via += dt         │
+  │  ✅ song_playback_system — uses GetMusicTimePlayed() when audio │
+  │     is loaded, with += dt fallback for silent/test mode         │
   │  ✅ beat_scheduler_system — spawns obstacles from BeatMap       │
   │  ✅ obstacle_spawn_system — guards on SongState.playing         │
   │  ✅ shape_window_system — timing tier grading                   │
-  │  ✅ hp_system — miss tracking                                   │
-  │  ❌ audio_system: stub (clears AudioQueue, no actual playback)  │
+  │  ✅ Energy depletion owns terminal failure                      │
+  │  ✅ InitAudioDevice / LoadMusicStream / playback code shipped   │
   │  ❌ No content/ asset copy rules in CMakeLists.txt              │
-  │  ❌ No InitAudioDevice / LoadMusicStream / playback code        │
-  │  ❌ song_playback_system uses += dt, not GetMusicTimePlayed()   │
   │                                                                  │
-  │  TARGET STATE (after this spec)                                  │
+  │  FUTURE STATE (remaining integration work)                       │
   │                                                                  │
-  │  • audio_system: streams WAV via raylib, plays SFX              │
-  │  • song_playback_system: syncs song_time to audio position      │
   │  • content/ copied to build dir by CMake                        │
-  │  • InitAudioDevice + LoadMusicStream in main.cpp                │
+  │  • future obstacle kinds remain explicitly non-shipped scope    │
   └──────────────────────────────────────────────────────────────────┘
 ```
 

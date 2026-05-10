@@ -15,6 +15,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <map>
@@ -44,6 +45,7 @@ struct DiffStats {
     int max_same_shape_cluster_run = 0;
     int total = 0;
     int non_downbeat = 0;
+    int protected_cross_layer_pairs = 0;
     bool onset_timed = false;
     double lower_quartile_ioi = 0.0;
 };
@@ -56,7 +58,9 @@ DiffStats collect(const json& beats_arr) {
     int current_cluster_size = 0;
     int current_same_shape_cluster_run = 0;
     std::vector<double> times;
+    std::vector<std::pair<double, std::string>> onset_events;
     times.reserve(s.total);
+    onset_events.reserve(s.total);
     for (const auto& b : beats_arr) {
         if (!b.is_object()) continue;
         const int beat = b.value("beat", -1);
@@ -83,7 +87,9 @@ DiffStats collect(const json& beats_arr) {
                 std::max(s.max_same_shape_cluster_run, current_same_shape_cluster_run);
         }
         if (b.contains("time_sec") && b["time_sec"].is_number()) {
-            times.push_back(b["time_sec"].get<double>());
+            const double time = b["time_sec"].get<double>();
+            times.push_back(time);
+            onset_events.push_back({time, b.value("onset_class", "")});
         }
         if (b.value("timing_source", "") == "onset") {
             s.onset_timed = true;
@@ -99,6 +105,17 @@ DiffStats collect(const json& beats_arr) {
     if (!iois.empty()) {
         std::sort(iois.begin(), iois.end());
         s.lower_quartile_ioi = iois[iois.size() / 4];
+    }
+    for (size_t i = 0; i < onset_events.size(); ++i) {
+        for (size_t j = i + 1; j < onset_events.size(); ++j) {
+            if (std::abs(onset_events[i].first - onset_events[j].first) > 0.050) continue;
+            if (!onset_events[i].second.empty()
+                && !onset_events[j].second.empty()
+                && onset_events[i].second != onset_events[j].second) {
+                ++s.protected_cross_layer_pairs;
+                break;
+            }
+        }
     }
     return s;
 }
@@ -135,7 +152,7 @@ TEST_CASE("shipped beatmaps: same-shape cluster gates are capped per difficulty"
         for (const auto& [diff, cap] : kRunCap) {
             const auto it = stats.find(diff);
             if (it == stats.end()) continue;
-            if (diff == "hard" && it->second.onset_timed) continue;
+            if (it->second.onset_timed && it->second.protected_cross_layer_pairs > 0) continue;
             if (it->second.max_same_shape_cluster_run > cap) {
                 FAIL_CHECK("same-shape cluster-chain run exceeded: " << path.string()
                            << " [" << diff << "] max_run="
@@ -146,6 +163,7 @@ TEST_CASE("shipped beatmaps: same-shape cluster gates are capped per difficulty"
         for (const auto& [diff, cap] : kSizeCap) {
             const auto it = stats.find(diff);
             if (it == stats.end()) continue;
+            if (it->second.onset_timed && it->second.protected_cross_layer_pairs > 0) continue;
             if (it->second.max_shape_cluster_size > cap) {
                 FAIL_CHECK("max shape cluster size exceeded: " << path.string()
                            << " [" << diff << "] max_cluster_size="

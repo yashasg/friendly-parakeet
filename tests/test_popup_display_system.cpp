@@ -48,7 +48,8 @@ static entt::entity make_popup_entity(entt::registry& reg,
     auto e = reg.create();
 
     ScorePopup sp{};
-    sp.timing_tier = timing_tier;
+    sp.has_timing_tier = timing_tier.has_value();
+    sp.timing_tier = timing_tier.value_or(TimingTier::Ok);
     sp.value       = value;
     sp.remaining   = remaining;
     sp.max_time    = max_time;
@@ -269,6 +270,7 @@ TEST_CASE("popup_display_system: expired popups are destroyed",
 TEST_CASE("init_popup_display: formats grade text + font size from ScorePopup (#251)",
           "[popup_display][issue251]") {
     ScorePopup sp{};
+    sp.has_timing_tier = true;
     sp.timing_tier = TimingTier::Perfect;
 
     PopupDisplay pd{};
@@ -285,7 +287,7 @@ TEST_CASE("init_popup_display: formats grade text + font size from ScorePopup (#
 TEST_CASE("init_popup_display: nullopt tier formats numeric value (#251)",
           "[popup_display][issue251]") {
     ScorePopup sp{};
-    sp.timing_tier = std::nullopt;
+    sp.has_timing_tier = false;
     sp.value       = 4242;
 
     PopupDisplay pd{};
@@ -330,6 +332,7 @@ TEST_CASE("spawn_score_popup: ScorePopup has correct points and duration",
     REQUIRE(reg.all_of<ScorePopup>(e));
     const auto& sp = reg.get<ScorePopup>(e);
     CHECK(sp.value == 350);
+    CHECK(sp.has_timing_tier);
     CHECK(sp.timing_tier == TimingTier::Good);
     CHECK(sp.remaining == constants::POPUP_DURATION);
     CHECK(sp.max_time  == constants::POPUP_DURATION);
