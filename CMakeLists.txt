@@ -245,8 +245,7 @@ target_link_libraries(shapeshifter PRIVATE
     shapeshifter_warnings
 )
 
-# ── Platform link dependencies for raylib (RGFW backend) ─────
-# RGFW uses native platform APIs directly — no GLFW.
+# ── Platform link dependencies for raylib's GLFW backend ─────
 if(APPLE)
     target_link_options(shapeshifter PRIVATE "LINKER:-no_warn_duplicate_libraries")
     target_link_libraries(shapeshifter PRIVATE
@@ -355,11 +354,7 @@ if(EMSCRIPTEN)
         # keep the Emscripten runtime alive for that long-running callback.
         -sNO_EXIT_RUNTIME=1
         --shell-file ${_shell_html}
-    )
-    # Use LINK_FLAGS (raw string) for --preload-file so CMake forwards the flag
-    # exactly as provided to the linker.
-    set_property(TARGET shapeshifter APPEND_STRING PROPERTY LINK_FLAGS
-        " --preload-file ${CMAKE_SOURCE_DIR}/content@/content"
+        "SHELL:--preload-file ${CMAKE_SOURCE_DIR}/content@/content"
     )
     set_target_properties(shapeshifter PROPERTIES
         OUTPUT_NAME "index"
