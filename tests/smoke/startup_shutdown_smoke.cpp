@@ -46,7 +46,9 @@ int main(int argc, char** argv) {
     const char* smoke_mode = std::getenv("SHAPESHIFTER_STARTUP_SHUTDOWN_SMOKE");
     if (smoke_mode && smoke_mode[0] != '\0' &&
         !(smoke_mode[0] == '0' && smoke_mode[1] == '\0')) {
+#if !defined(__APPLE__)
         SetConfigFlags(FLAG_WINDOW_HIDDEN);
+#endif
     }
 
     entt::registry reg;

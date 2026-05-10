@@ -96,11 +96,45 @@ async function main() {
         }));
       };
 
+      const dispatchTouch = (type, x, y) => {
+        if (typeof window.TouchEvent !== 'function' || typeof window.Touch !== 'function') {
+          return;
+        }
+        const touch = new window.Touch({
+          identifier: 1,
+          target: canvasEl,
+          clientX: x,
+          clientY: y,
+          screenX: x,
+          screenY: y,
+          pageX: x,
+          pageY: y,
+          radiusX: 8,
+          radiusY: 8,
+          rotationAngle: 0,
+          force: type === 'touchend' ? 0 : 1,
+        });
+        const activeTouches = type === 'touchend' ? [] : [touch];
+        canvasEl.dispatchEvent(new window.TouchEvent(type, {
+          bubbles: true,
+          cancelable: true,
+          composed: true,
+          touches: activeTouches,
+          targetTouches: activeTouches,
+          changedTouches: [touch],
+        }));
+      };
+
       dispatch('pointerdown', sx, sy, 1);
+      dispatchTouch('touchstart', sx, sy);
       for (let i = 1; i <= steps; i += 1) {
         const t = i / steps;
-        dispatch('pointermove', sx + (ex - sx) * t, sy + (ey - sy) * t, 1);
+        const x = sx + (ex - sx) * t;
+        const y = sy + (ey - sy) * t;
+        dispatch('pointermove', x, y, 1);
+        dispatchTouch('touchmove', x, y);
       }
+      dispatchTouch('touchend', ex, ey);
       dispatch('pointerup', ex, ey, 0);
     }, { sx: startX, sy: startY, ex: endX, ey: endY });
 
