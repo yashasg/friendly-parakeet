@@ -807,6 +807,25 @@ def _baseline_same_shape_metrics(analysis):
     return metrics
 
 
+def _nearest_subdivision_grid_time(event_time, beats, beat_idx):
+    if not beats:
+        return float(event_time)
+    candidates: list[float] = []
+    fractions = (0.0, 1.0 / 3.0, 0.5, 2.0 / 3.0, 1.0)
+    left_min = max(0, int(beat_idx) - 4)
+    left_max = min(len(beats) - 1, int(beat_idx) + 4)
+    for left_idx in range(left_min, left_max + 1):
+        left = float(beats[left_idx])
+        right = float(beats[left_idx + 1]) if left_idx + 1 < len(beats) else left
+        span = right - left
+        for fraction in fractions:
+            candidates.append(left + span * fraction)
+    if not candidates:
+        return float(beats[min(max(int(beat_idx), 0), len(beats) - 1)])
+    event_time = float(event_time)
+    return min(candidates, key=lambda grid_time: abs(event_time - grid_time))
+
+
 def _build_obstacle_timing_rows(analysis, difficulty, experimental_onset_timing=False):
     beats = analysis.get("beats", [])
     selection_summary = {"segments_total": 0, "events_total": 0, "events_selected": 0}
@@ -861,13 +880,15 @@ def _build_obstacle_timing_rows(analysis, difficulty, experimental_onset_timing=
                 f"{difficulty}: segment-focus diagnostics require source onset event for beat {beat_idx}"
             )
 
+        grid_time = _nearest_subdivision_grid_time(onset_time, beats, beat_idx)
+
         rows.append({
             "difficulty": difficulty,
             "event_order": order,
             "beat_idx": beat_idx,
             "beat_time": round(beat_time, 6),
             "onset_time": round(onset_time, 6),
-            "residual_ms": round((onset_time - beat_time) * 1000.0, 3),
+            "residual_ms": round((onset_time - grid_time) * 1000.0, 3),
             "timing_source": source,
             "subdivision": subdivision,
             "source_event_idx": source_event_idx,
@@ -4035,8 +4056,7 @@ def build_beatmap(analysis, difficulties, cleanup_enabled=True, experimental_ons
                 obs = rebalance_medium_shapes(obs, diff)
             # #532 — obstacle-level safety net (post-rebalance).
             obs = _thin_oversized_clusters_obstacles(obs, diff)
-            if diff != "hard":
-                obs = _enforce_cluster_chain_cap_obstacles(obs, diff)
+            obs = _enforce_cluster_chain_cap_obstacles(obs, diff)
             if diff == "medium":
                 # Thinning can drop medium back below its exact distribution
                 # floor, so rebalance once more and re-apply the same safety
@@ -4060,6 +4080,12 @@ def build_beatmap(analysis, difficulties, cleanup_enabled=True, experimental_ons
         # trim can compute the cap in seconds and refuse violating drops.
         diff_data["__bpm__"] = float(analysis.get("bpm") or 0.0)
         diff_data["__duration_sec__"] = float(analysis.get("duration") or 0.0)
+        diff_data = _enforce_difficulty_count_ramp(diff_data)
+        for diff in difficulties:
+            beats_for_diff = diff_data.get(diff, {}).get("beats", [])
+            beats_for_diff = _thin_oversized_clusters_obstacles(beats_for_diff, diff)
+            beats_for_diff = _enforce_cluster_chain_cap_obstacles(beats_for_diff, diff)
+            diff_data[diff] = {"beats": beats_for_diff, "count": len(beats_for_diff)}
         diff_data = _enforce_difficulty_count_ramp(diff_data)
         diff_data.pop("__bpm__", None)
         diff_data.pop("__duration_sec__", None)

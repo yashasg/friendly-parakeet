@@ -1,6 +1,5 @@
 #pragma once
 
-#include <optional>
 #include <vector>
 
 #include "rhythm.h"
@@ -15,13 +14,13 @@ struct PendingEnergyEffects {
 };
 
 struct ScorePopupRequest {
-    float                    x = 0.0f;
-    float                    y = 0.0f;
-    int                      points = 0;
-    std::optional<TimingTier> timing_tier = std::nullopt;
+    float      x = 0.0f;
+    float      y = 0.0f;
+    int        points = 0;
+    bool       has_timing_tier = false;
+    TimingTier timing_tier = TimingTier::Ok;
 };
 
 struct ScorePopupRequestQueue {
     std::vector<ScorePopupRequest> requests;
 };
-

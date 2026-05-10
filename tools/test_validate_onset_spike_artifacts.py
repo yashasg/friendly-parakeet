@@ -146,6 +146,10 @@ class TestOnsetSpikeGates(unittest.TestCase):
             label_hist={"offgrid": 40, "downbeat": 2},
         )
         rows = _rows_fixture()
+        rows[1]["onset_class"] = rows[0]["onset_class"]
+        rows[1]["onset_time"] = rows[0]["onset_time"]
+        rows[2]["onset_class"] = rows[0]["onset_class"]
+        rows[2]["onset_time"] = f"{float(rows[0]['onset_time']) + 0.1:.3f}"
         _, findings = spike.evaluate_spike_gates(summary, rows)
         self.assertGreaterEqual(len(findings), 8)
         self.assertTrue(any("min IOI" in finding for finding in findings))

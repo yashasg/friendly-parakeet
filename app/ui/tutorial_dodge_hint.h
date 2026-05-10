@@ -3,7 +3,7 @@
 // Issue #513: the generated tutorial_layout.h previously selected the hint
 // at compile time via #ifdef PLATFORM_HAS_KEYBOARD. PLATFORM_HAS_KEYBOARD
 // is defined for both Desktop and Web (CMakeLists.txt), so a touch-only
-// mobile browser was being told to "USE LEFT / RIGHT ARROW KEYS" even
+// mobile browser was being told keyboard-only copy even
 // though the runtime accepts swipes (#499). Selection is now done by the
 // tutorial controller using this pure helper, so the call site is unit
 // testable without an OpenGL context.
@@ -14,7 +14,7 @@
 #include <raylib.h>
 
 inline const char* tutorial_dodge_hint_text(bool prefer_touch) {
-    return prefer_touch ? "SWIPE LEFT OR RIGHT" : "USE LEFT / RIGHT ARROW KEYS";
+    return prefer_touch ? "SWIPE LEFT OR RIGHT" : "DODGE: A/D OR ARROWS";
 }
 
 // Bounds for the dodge-hint label — must match the (110, 710, 500, 32)

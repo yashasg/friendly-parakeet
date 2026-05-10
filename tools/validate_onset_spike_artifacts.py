@@ -9,9 +9,10 @@ import json
 import sys
 from pathlib import Path
 
+import level_designer as ld
 
 DIFFICULTIES = ("easy", "medium", "hard")
-MIN_IOI_MS_FLOOR = {"easy": 700.0, "medium": 380.0, "hard": 300.0}
+MIN_IOI_MS_FLOOR = {difficulty: float(ld.MIN_IOI_MS[difficulty]) for difficulty in DIFFICULTIES}
 MAX_DENSE_CLUSTER_LEN = {"easy": 2, "medium": 3, "hard": 4}
 MAX_SHORT_IOI_SHARE = {"easy": 0.02, "medium": 0.20, "hard": 0.30}
 MAX_RESIDUAL_MEDIAN_ABS_MS = {"easy": 65.0, "medium": 65.0, "hard": 65.0}
@@ -243,6 +244,37 @@ def _events_per_minute(rows: list[dict]) -> float:
     return (len(times) / duration_s) * 60.0
 
 
+def _layer_ioi_metrics(rows: list[dict], threshold_ms: float) -> dict[str, float]:
+    interval_count = 0
+    short_count = 0
+    max_cluster_len = 0
+    min_ioi = float("inf")
+    by_layer: dict[str, list[float]] = {}
+    for row in rows:
+        layer = row.get("onset_class") or "unknown"
+        by_layer.setdefault(layer, []).append(float(row["onset_time"]))
+
+    for times in by_layer.values():
+        times = sorted(times)
+        current_cluster = 1
+        for prev, cur in zip(times, times[1:]):
+            interval = (cur - prev) * 1000.0
+            min_ioi = min(min_ioi, interval)
+            interval_count += 1
+            if interval < threshold_ms:
+                short_count += 1
+                current_cluster += 1
+                max_cluster_len = max(max_cluster_len, current_cluster)
+            else:
+                current_cluster = 1
+
+    return {
+        "min_ioi_ms": 0.0 if min_ioi == float("inf") else min_ioi,
+        "short_ioi_share": _share(short_count, interval_count),
+        "max_dense_cluster_len": float(max_cluster_len),
+    }
+
+
 def evaluate_spike_gates(summary: dict, rows: list[dict]) -> tuple[dict[str, dict[str, float]], list[str]]:
     findings: list[str] = []
     metrics: dict[str, dict[str, float]] = {}
@@ -263,6 +295,7 @@ def evaluate_spike_gates(summary: dict, rows: list[dict]) -> tuple[dict[str, dic
 
         event_count = int(event_counts.get("obstacles", 0))
         epm = _events_per_minute(rows_by_diff[difficulty])
+        layer_ioi = _layer_ioi_metrics(rows_by_diff[difficulty], MIN_IOI_MS_FLOOR[difficulty])
         total_labels = sum(int(v) for v in subdivision_hist.values())
         beat_label_kinds = sum(
             1 for label in BEAT_LABELS if int(subdivision_hist.get(label, 0)) > 0
@@ -272,9 +305,9 @@ def evaluate_spike_gates(summary: dict, rows: list[dict]) -> tuple[dict[str, dic
         metrics[difficulty] = {
             "events": float(event_count),
             "epm": epm,
-            "min_ioi_ms": float(onset_ioi["min_ms"]),
-            "short_ioi_share": float(dense["short_ioi_share"]),
-            "max_dense_cluster_len": float(dense["max_cluster_len"]),
+            "min_ioi_ms": layer_ioi["min_ioi_ms"],
+            "short_ioi_share": layer_ioi["short_ioi_share"],
+            "max_dense_cluster_len": layer_ioi["max_dense_cluster_len"],
             "residual_median_abs_ms": float(residuals["median_abs_ms"]),
             "residual_p90_abs_ms": float(residuals["p90_abs_ms"]),
             "beat_label_kinds": float(beat_label_kinds),
@@ -289,17 +322,17 @@ def evaluate_spike_gates(summary: dict, rows: list[dict]) -> tuple[dict[str, dic
             findings.append(
                 f"[{difficulty}] event density {epm:.1f}/min above cap {MAX_EVENTS_PER_MINUTE[difficulty]:.1f}/min"
             )
-        if float(onset_ioi["min_ms"]) < MIN_IOI_MS_FLOOR[difficulty]:
+        if layer_ioi["min_ioi_ms"] < MIN_IOI_MS_FLOOR[difficulty]:
             findings.append(
-                f"[{difficulty}] min IOI {float(onset_ioi['min_ms']):.1f}ms below floor {MIN_IOI_MS_FLOOR[difficulty]:.1f}ms"
+                f"[{difficulty}] same-layer min IOI {layer_ioi['min_ioi_ms']:.1f}ms below floor {MIN_IOI_MS_FLOOR[difficulty]:.1f}ms"
             )
-        if int(dense["max_cluster_len"]) > MAX_DENSE_CLUSTER_LEN[difficulty]:
+        if int(layer_ioi["max_dense_cluster_len"]) > MAX_DENSE_CLUSTER_LEN[difficulty]:
             findings.append(
-                f"[{difficulty}] dense cluster len {int(dense['max_cluster_len'])} above cap {MAX_DENSE_CLUSTER_LEN[difficulty]}"
+                f"[{difficulty}] same-layer dense cluster len {int(layer_ioi['max_dense_cluster_len'])} above cap {MAX_DENSE_CLUSTER_LEN[difficulty]}"
             )
-        if float(dense["short_ioi_share"]) > MAX_SHORT_IOI_SHARE[difficulty]:
+        if layer_ioi["short_ioi_share"] > MAX_SHORT_IOI_SHARE[difficulty]:
             findings.append(
-                f"[{difficulty}] short IOI share {float(dense['short_ioi_share']):.1%} above cap {MAX_SHORT_IOI_SHARE[difficulty]:.0%}"
+                f"[{difficulty}] same-layer short IOI share {layer_ioi['short_ioi_share']:.1%} above cap {MAX_SHORT_IOI_SHARE[difficulty]:.0%}"
             )
         if float(residuals["median_abs_ms"]) > MAX_RESIDUAL_MEDIAN_ABS_MS[difficulty]:
             findings.append(
@@ -321,13 +354,17 @@ def evaluate_spike_gates(summary: dict, rows: list[dict]) -> tuple[dict[str, dic
     return metrics, findings
 
 
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--diagnostics-dir", required=True, help="Directory containing spike diagnostics artifacts.")
-    parser.add_argument("--strict", action="store_true", help="Return non-zero when findings exist.")
-    args = parser.parse_args(argv)
+def _diagnostic_dirs(root: Path) -> list[Path]:
+    if (root / "snap_diagnostics_summary.json").exists() or (root / "onset_timing_events.csv").exists():
+        return [root]
+    return sorted(
+        path.parent
+        for path in root.rglob("snap_diagnostics_summary.json")
+        if (path.parent / "onset_timing_events.csv").exists()
+    )
 
-    diagnostics_dir = Path(args.diagnostics_dir)
+
+def _validate_dir(diagnostics_dir: Path, strict: bool) -> int:
     summary_path = diagnostics_dir / "snap_diagnostics_summary.json"
     events_path = diagnostics_dir / "onset_timing_events.csv"
     if not summary_path.exists():
@@ -354,8 +391,8 @@ def main(argv: list[str] | None = None) -> int:
     if not findings:
         metrics, findings = evaluate_spike_gates(summary, rows)
 
-    mode = "STRICT" if args.strict else "REPORT"
-    print(f"Onset spike gate mode: {mode}")
+    mode = "STRICT" if strict else "REPORT"
+    print(f"Onset spike gate mode: {mode} ({diagnostics_dir})")
     for difficulty in DIFFICULTIES:
         if difficulty not in metrics:
             continue
@@ -376,7 +413,7 @@ def main(argv: list[str] | None = None) -> int:
     if findings:
         for finding in findings:
             print(f"  - {finding}")
-        if args.strict:
+        if strict:
             print(f"FAIL: {len(findings)} onset-spike finding(s).", file=sys.stderr)
             return 1
         print(f"WARN: {len(findings)} onset-spike finding(s) (report-only mode).", file=sys.stderr)
@@ -384,6 +421,20 @@ def main(argv: list[str] | None = None) -> int:
 
     print("PASS: onset-spike diagnostics artifacts satisfy gates.")
     return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--diagnostics-dir", required=True, help="Directory containing spike diagnostics artifacts.")
+    parser.add_argument("--strict", action="store_true", help="Return non-zero when findings exist.")
+    args = parser.parse_args(argv)
+
+    diagnostics_dir = Path(args.diagnostics_dir)
+    dirs = _diagnostic_dirs(diagnostics_dir)
+    if not dirs:
+        print(f"ERROR: no diagnostics artifacts found under {diagnostics_dir}", file=sys.stderr)
+        return 1
+    return 1 if any(_validate_dir(path, args.strict) != 0 for path in dirs) else 0
 
 
 if __name__ == "__main__":

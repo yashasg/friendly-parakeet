@@ -109,13 +109,14 @@ LEGACY_PASS_TO_BROAD_SUBPASS: dict[str, str] = {
 def migrate_analysis_remove_raw_instrument_names(analysis: dict) -> dict:
     """Rewrite a loaded analysis dict so public fields use only broad layers.
 
-    Touches three public surfaces:
+    Touches public serialized surfaces:
       * ``events[*].passes`` — token list per event.
+      * ``events[*].pass`` / ``events[*].layer`` — legacy scalar tokens.
       * ``onsets`` — top-level per-pass onset summary keyed by pass name.
+      * ``onsets[*].method`` — public metadata must not expose raw methods.
       * ``onset_diagnostics.raw_per_pass`` — pre-merge onset count per pass.
 
-    The migration is idempotent: public layers are left untouched.  Legacy
-    ``events[*].layer`` values are preserved when already public.
+    The migration is idempotent: public layers are left untouched.
     """
     def _remap(name: str) -> str:
         if name in PUBLIC_LAYERS:
@@ -140,6 +141,9 @@ def migrate_analysis_remove_raw_instrument_names(analysis: dict) -> dict:
         legacy_pass = ev.get("pass")
         if isinstance(legacy_pass, str):
             ev["pass"] = _remap(legacy_pass)
+        legacy_layer = ev.get("layer")
+        if isinstance(legacy_layer, str):
+            ev["layer"] = _remap(legacy_layer)
 
     # 2) onsets — keep entries that remap to the same broad subpass merged
     #    (their timestamps coexist in the broad layer pool).
@@ -155,6 +159,7 @@ def migrate_analysis_remove_raw_instrument_names(analysis: dict) -> dict:
                 merged[new_name] = dict(summary)
                 # Pass name now reflects broad subpass; method/zone retained.
                 merged[new_name].pop("legacy_alias", None)
+                merged[new_name]["method"] = "public_layer"
             else:
                 target = merged[new_name]
                 target["count"] = int(target.get("count", 0)) + int(summary.get("count", 0))
@@ -164,6 +169,7 @@ def migrate_analysis_remove_raw_instrument_names(analysis: dict) -> dict:
                 res_a = list(target.get("resolutions", []) or [])
                 res_b = list(summary.get("resolutions", []) or [])
                 target["resolutions"] = res_a + res_b
+                target["method"] = "public_layer"
         analysis["onsets"] = merged
 
     # 3) onset_diagnostics.raw_per_pass
@@ -185,13 +191,18 @@ def collapse_analysis_to_public_layers(analysis: dict) -> dict:
     def _layer(name: str) -> str:
         if name in PUBLIC_LAYERS:
             return name
-        return PASS_TO_LAYER.get(name, "full-spectrum")
+        return LEGACY_PASS_TO_BROAD_SUBPASS.get(name, PASS_TO_LAYER.get(name, "full-spectrum"))
 
     for ev in analysis.get("events", []) or []:
         layer = ev.get("layer")
         if not isinstance(layer, str) or layer not in PUBLIC_LAYERS:
             passes = ev.get("passes")
-            layer = _layer(str(passes[0])) if isinstance(passes, list) and passes else "full-spectrum"
+            if isinstance(layer, str):
+                layer = _layer(layer)
+            elif isinstance(passes, list) and passes:
+                layer = _layer(str(passes[0]))
+            else:
+                layer = "full-spectrum"
             ev["layer"] = layer
         ev["passes"] = [layer]
         ev["pass"] = layer
@@ -246,11 +257,18 @@ def _collect_pass_tokens(analysis: dict) -> list[tuple[str, str]]:
         legacy_pass = ev.get("pass")
         if isinstance(legacy_pass, str):
             found.append(("events[*].pass", legacy_pass))
+        legacy_layer = ev.get("layer")
+        if isinstance(legacy_layer, str):
+            found.append(("events[*].layer", legacy_layer))
     onsets = analysis.get("onsets")
     if isinstance(onsets, dict):
-        for name in onsets.keys():
+        for name, summary in onsets.items():
             if isinstance(name, str):
                 found.append(("onsets[*]", name))
+            if isinstance(summary, dict):
+                method = summary.get("method")
+                if isinstance(method, str):
+                    found.append(("onsets[*].method", method))
     diag = analysis.get("onset_diagnostics")
     if isinstance(diag, dict):
         raw = diag.get("raw_per_pass")
@@ -266,7 +284,7 @@ def assert_no_raw_instrument_passes(analysis: dict) -> None:
     offenders: list[tuple[str, str]] = [
         (loc, tok)
         for (loc, tok) in _collect_pass_tokens(analysis)
-        if tok not in PUBLIC_LAYERS
+        if tok not in PUBLIC_LAYERS and not (loc == "onsets[*].method" and tok == "public_layer")
     ]
     if offenders:
         sample = ", ".join(f"{loc}={tok!r}" for loc, tok in offenders[:5])

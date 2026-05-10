@@ -1,100 +1,106 @@
 #!/usr/bin/env python3
-"""Validate Loop 1 beatmap diagnostic histograms (shape + subdivision)."""
+"""Validate checked-in Loop 1 onset diagnostics.
+
+This validator intentionally reads the active diagnostics artifacts in
+``tools/diagnostics/*_loop1`` instead of regenerating levels through the legacy
+beat-selection path.
+"""
 
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import sys
 from collections import Counter
 from pathlib import Path
 
-import level_designer as ld
-
 REPO_ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_DIR = REPO_ROOT / "content" / "beatmaps"
+DEFAULT_DIR = REPO_ROOT / "tools" / "diagnostics"
 KNOWN_SUBDIVISIONS = {"downbeat", "eighth", "triplet", "offgrid"}
+PUBLIC_LAYERS = {"percussive", "harmonic", "full-spectrum"}
 
 
-def load_analysis(path: Path) -> dict:
-    with open(path) as handle:
+def load_json(path: Path) -> dict:
+    with path.open(encoding="utf-8") as handle:
         return json.load(handle)
 
 
-def summarize_difficulty(analysis: dict, difficulty: str) -> tuple[Counter, Counter]:
-    selected, _ = ld.select_beats(analysis, difficulty)
-    obstacles = ld.design_level(analysis, difficulty, cleanup_enabled=True)
+def load_rows(path: Path) -> list[dict]:
+    with path.open(newline="", encoding="utf-8") as handle:
+        return list(csv.DictReader(handle))
 
-    shape_hist = Counter(
-        obs.get("shape", "")
-        for obs in obstacles
-        if obs.get("kind") == "shape_gate"
+
+def diagnostics_dirs(paths: list[Path]) -> list[Path]:
+    if paths:
+        return paths
+    return sorted(
+        path
+        for path in DEFAULT_DIR.glob("*_loop1")
+        if (path / "snap_diagnostics_summary.json").exists()
+        and (path / "onset_timing_events.csv").exists()
     )
-    subdivision_hist = Counter(
-        event.get("subdivision", "unknown")
-        for event in selected.values()
-        if isinstance(event, dict)
-    )
-    return shape_hist, subdivision_hist
 
 
-def validate_analysis(path: Path) -> list[str]:
+def validate_diagnostics_dir(path: Path) -> list[str]:
     errors: list[str] = []
-    analysis = load_analysis(path)
-    song = analysis.get("title", path.stem.replace("_analysis", ""))
+    summary_path = path / "snap_diagnostics_summary.json"
+    rows_path = path / "onset_timing_events.csv"
+    if not summary_path.exists():
+        return [f"{path}: missing snap_diagnostics_summary.json"]
+    if not rows_path.exists():
+        return [f"{path}: missing onset_timing_events.csv"]
 
-    for difficulty in ("easy", "medium", "hard"):
-        try:
-            shape_hist, subdivision_hist = summarize_difficulty(analysis, difficulty)
-        except Exception as exc:  # pragma: no cover - defensive CLI validation
-            errors.append(f"{song} [{difficulty}] generation failed: {exc}")
-            continue
+    summary = load_json(summary_path)
+    rows = load_rows(rows_path)
+    song = str(summary.get("song_id") or path.name.replace("_loop1", ""))
 
-        shape_total = sum(shape_hist.values())
-        subdivision_total = sum(subdivision_hist.values())
+    raw_per_pass = summary.get("onset_pool_summary", {}).get("raw_per_pass", {})
+    if isinstance(raw_per_pass, dict):
+        leaked = sorted(set(raw_per_pass) - PUBLIC_LAYERS)
+        if leaked:
+            errors.append(f"{song}: raw_per_pass leaks non-public layers {leaked}")
 
-        unknown_shapes = set(shape_hist) - set(ld.ALL_SHAPES)
-        unknown_subdivisions = set(subdivision_hist) - KNOWN_SUBDIVISIONS
+    if not rows:
+        errors.append(f"{song}: onset_timing_events.csv is empty")
+        return errors
 
-        if shape_total <= 0:
-            errors.append(f"{song} [{difficulty}] empty shape histogram")
-        if subdivision_total <= 0:
-            errors.append(f"{song} [{difficulty}] empty subdivision histogram")
-        if unknown_shapes:
-            errors.append(
-                f"{song} [{difficulty}] unknown shape bins: {sorted(unknown_shapes)}"
-            )
-        if unknown_subdivisions:
-            errors.append(
-                f"{song} [{difficulty}] unknown subdivision bins: {sorted(unknown_subdivisions)}"
-            )
+    layer_hist = Counter(row.get("onset_class", "") for row in rows)
+    subdivision_hist = Counter(row.get("subdivision", "") for row in rows)
+    timing_sources = Counter(row.get("timing_source", "") for row in rows)
 
-        print(
-            f"{song:24s} [{difficulty:6s}] "
-            f"shapes={dict(sorted(shape_hist.items()))} "
-            f"subdivisions={dict(sorted(subdivision_hist.items()))}"
-        )
+    unknown_layers = sorted(set(layer_hist) - PUBLIC_LAYERS)
+    unknown_subdivisions = sorted(set(subdivision_hist) - KNOWN_SUBDIVISIONS)
+    non_onset_sources = {key: value for key, value in timing_sources.items() if key != "onset"}
 
+    if unknown_layers:
+        errors.append(f"{song}: unknown onset_class bins {unknown_layers}")
+    if unknown_subdivisions:
+        errors.append(f"{song}: unknown subdivision bins {unknown_subdivisions}")
+    if non_onset_sources:
+        errors.append(f"{song}: non-onset timing sources {non_onset_sources}")
+
+    print(
+        f"{song:24s} rows={len(rows):4d} "
+        f"layers={dict(sorted(layer_hist.items()))} "
+        f"subdivisions={dict(sorted(subdivision_hist.items()))}"
+    )
     return errors
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("files", nargs="*", help="Optional *_analysis.json paths")
-    args = parser.parse_args()
+    parser.add_argument("paths", nargs="*", type=Path, help="Optional *_loop1 diagnostics directories")
+    args = parser.parse_args(argv)
 
-    paths = (
-        [Path(raw) for raw in args.files]
-        if args.files
-        else sorted(DEFAULT_DIR.glob("*_analysis.json"))
-    )
+    paths = diagnostics_dirs(args.paths)
     if not paths:
-        print(f"ERROR: no analysis files found in {DEFAULT_DIR}", file=sys.stderr)
+        print(f"ERROR: no *_loop1 diagnostics directories found in {DEFAULT_DIR}", file=sys.stderr)
         return 1
 
     failures: list[str] = []
     for path in paths:
-        failures.extend(validate_analysis(path))
+        failures.extend(validate_diagnostics_dir(path))
 
     if failures:
         print("\nLOOP1 DIAGNOSTIC VALIDATION FAILURES:", file=sys.stderr)
@@ -102,7 +108,7 @@ def main() -> int:
             print(f"  x {failure}", file=sys.stderr)
         return 1
 
-    print(f"\nPASS: Loop 1 diagnostics histograms validated for {len(paths)} analysis file(s).")
+    print(f"\nPASS: Loop 1 checked-in diagnostics validated for {len(paths)} directory(s).")
     return 0
 
 

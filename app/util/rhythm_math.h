@@ -10,7 +10,7 @@ constexpr float kTimingOkSeconds = 0.150f;
 
 // Better timing -> smaller scale -> remaining Active window collapses sooner.
 // collision_system applies this via window_start adjustment (scale < 1.0 path).
-// Spec: rhythm-spec.md §5/§7. BAD is treated as a miss; window is left unchanged.
+// Spec: rhythm-spec.md §5/§7. BAD is a scored hit with no window-collapse reward.
 inline float window_scale_for_tier(TimingTier tier) {
     switch (tier) {
         case TimingTier::Perfect: return 0.50f;

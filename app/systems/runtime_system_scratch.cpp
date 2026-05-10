@@ -9,6 +9,7 @@ void runtime_system_scratch_init(entt::registry& reg) {
     reg.ctx().erase<ObstacleDespawnScratch>();
     reg.ctx().erase<PopupDisplayScratch>();
     reg.ctx().erase<ParticleSystemScratch>();
+    reg.ctx().erase<MeshChildCleanupScratch>();
 
     reg.ctx().emplace<ScoringSystemScratch>();
     reg.ctx().emplace<PendingEnergyEffects>();
@@ -16,4 +17,5 @@ void runtime_system_scratch_init(entt::registry& reg) {
     reg.ctx().emplace<ObstacleDespawnScratch>();
     reg.ctx().emplace<PopupDisplayScratch>();
     reg.ctx().emplace<ParticleSystemScratch>();
+    reg.ctx().emplace<MeshChildCleanupScratch>();
 }

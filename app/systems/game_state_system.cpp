@@ -16,18 +16,20 @@
 namespace {
 
 void update_web_playing_lane_marker(entt::registry& reg, const GameState& gs) {
+    static int last_lane = -1;
     if (gs.phase != GamePhase::Playing) {
+        last_lane = -1;
         return;
     }
 
     auto player_view = reg.view<PlayerTag, Lane>();
     if (player_view.begin() == player_view.end()) {
+        last_lane = -1;
         return;
     }
 
     const auto player_entity = *player_view.begin();
     const int lane = static_cast<int>(player_view.get<Lane>(player_entity).current);
-    static int last_lane = -1;
     if (lane == last_lane) {
         return;
     }
@@ -139,11 +141,11 @@ void game_state_system(entt::registry& reg, float dt) {
         }
     }
 
+#if defined(__EMSCRIPTEN__) && defined(SHAPESHIFTER_WASM_SMOKE_MARKERS)
+    update_web_playing_lane_marker(reg, gs);
+#endif
     // Playing → SongComplete when song finishes (all obstacles cleared)
     if (gs.phase == GamePhase::Playing) {
-#if defined(__EMSCRIPTEN__) && defined(SHAPESHIFTER_WASM_SMOKE_MARKERS)
-        update_web_playing_lane_marker(reg, gs);
-#endif
         auto* energy = reg.ctx().find<EnergyState>();
         auto* song = reg.ctx().find<SongState>();
         if (energy && song && song->playing && energy->energy <= 0.0f) {

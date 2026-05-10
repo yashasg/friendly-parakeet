@@ -57,3 +57,22 @@ TEST_CASE("wasm lifecycle: disarm path unregisters browser callback (#502)",
     REQUIRE(disarm_fn != std::string::npos);
     REQUIRE(unregister_call != std::string::npos);
 }
+
+TEST_CASE("wasm lifecycle: visibilitychange callback pauses active play",
+          "[lifecycle][architecture]") {
+    const fs::path root = find_repo_root();
+    const std::string platform_source = read_file(root / "app" / "platform_display.cpp");
+
+    CHECK(platform_source.find("emscripten_set_visibilitychange_callback") != std::string::npos);
+    CHECK(platform_source.find("on_visibility_change") != std::string::npos);
+    CHECK(platform_source.find("gs->next_phase = GamePhase::Paused;") != std::string::npos);
+}
+
+TEST_CASE("wasm smoke phase title markers are compile-gated",
+          "[lifecycle][architecture]") {
+    const fs::path root = find_repo_root();
+    const std::string phase_source = read_file(root / "app" / "systems" / "game_phase_transition.cpp");
+
+    CHECK(phase_source.find("SHAPESHIFTER [") != std::string::npos);
+    CHECK(phase_source.find("__EMSCRIPTEN__) && defined(SHAPESHIFTER_WASM_SMOKE_MARKERS)") != std::string::npos);
+}

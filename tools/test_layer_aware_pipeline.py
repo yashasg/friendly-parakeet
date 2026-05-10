@@ -525,7 +525,7 @@ class TestMigrateAnalysisRemoveRawInstrumentNames(unittest.TestCase):
         return {
             "events": [
                 {"t": 1.0, "passes": ["kick"], "layer": "percussive", "pass": "kick"},
-                {"t": 1.04, "passes": ["melody", "flux"], "layer": "full-spectrum"},
+                {"t": 1.04, "passes": ["melody", "flux"], "layer": "melody"},
                 {"t": 2.0, "passes": ["snare", "hihat"], "layer": "percussive"},
             ],
             "onsets": {
@@ -556,9 +556,12 @@ class TestMigrateAnalysisRemoveRawInstrumentNames(unittest.TestCase):
         self.assertTrue(
             set(out["onset_diagnostics"]["raw_per_pass"].keys()).issubset(set(rp.PUBLIC_LAYERS))
         )
-        # Layer field is preserved verbatim.
+        # Layer field is migrated to public broad layers.
         self.assertEqual([ev["layer"] for ev in out["events"]],
-                         ["percussive", "full-spectrum", "percussive"])
+                         ["percussive", "harmonic", "percussive"])
+        self.assertTrue(
+            all(summary["method"] == "public_layer" for summary in out["onsets"].values())
+        )
 
     def test_migration_is_idempotent(self):
         once = rp.migrate_analysis_remove_raw_instrument_names(self._seed())
@@ -612,12 +615,26 @@ class TestAssertNoRawInstrumentPasses(unittest.TestCase):
         with self.assertRaises(ValueError):
             rp.assert_no_raw_instrument_passes(analysis)
 
+    def test_raw_instrument_in_event_layer_field_raises(self):
+        analysis = self._clean_analysis()
+        analysis["events"][1]["layer"] = "melody"
+        with self.assertRaises(ValueError) as ctx:
+            rp.assert_no_raw_instrument_passes(analysis)
+        self.assertIn("events[*].layer", str(ctx.exception))
+
     def test_raw_instrument_in_onsets_keys_raises(self):
         analysis = self._clean_analysis()
         analysis["onsets"]["snare"] = {"count": 0, "timestamps": []}
         with self.assertRaises(ValueError) as ctx:
             rp.assert_no_raw_instrument_passes(analysis)
         self.assertIn("snare", str(ctx.exception))
+
+    def test_raw_instrument_in_onset_method_raises(self):
+        analysis = self._clean_analysis()
+        analysis["onsets"]["percussive"]["method"] = "kick"
+        with self.assertRaises(ValueError) as ctx:
+            rp.assert_no_raw_instrument_passes(analysis)
+        self.assertIn("onsets[*].method", str(ctx.exception))
 
     def test_raw_instrument_in_raw_per_pass_keys_raises(self):
         analysis = self._clean_analysis()
@@ -636,7 +653,7 @@ class TestAssertNoRawInstrumentPasses(unittest.TestCase):
     def test_migration_then_guard_clears_legacy_artifact(self):
         legacy = {
             "events": [{"t": 1.0, "passes": ["kick", "snare"], "layer": "percussive"}],
-            "onsets": {"melody": {"count": 0, "timestamps": []}},
+            "onsets": {"melody": {"method": "melody", "count": 0, "timestamps": []}},
             "onset_diagnostics": {"raw_per_pass": {"flux": 1}},
         }
         rp.migrate_analysis_remove_raw_instrument_names(legacy)

@@ -249,16 +249,17 @@ def evaluate_content_gates(metrics: dict[str, float | int | bool | None], diffic
 
     run_cap = SAME_SHAPE_RUN_CAP.get(difficulty)
     cluster_run = int(metrics.get("longest_same_shape_cluster_run", metrics.get("longest_same_shape_run", 0)))
+    protected_onset_pairs = onset_timed and int(metrics.get("cross_layer_preserved_pairs", 0) or 0) > 0
     # Issue #532 — the previous ``not oversized_cluster_present`` escape
     # was self-disabling: any oversized cluster turned the cluster-chain
     # run cap off, even though the cluster *was* the violation.  Removed.
-    if run_cap is not None and cluster_run > run_cap and not (onset_timed and difficulty == "hard"):
+    if run_cap is not None and cluster_run > run_cap and not protected_onset_pairs:
         findings.append(
             f"same-shape cluster-chain run {cluster_run} exceeds cap {run_cap}"
         )
     cluster_size_cap = MAX_SHAPE_CLUSTER_SIZE.get(difficulty)
     max_cluster = int(metrics.get("max_shape_cluster_size", 0))
-    if cluster_size_cap is not None and max_cluster > cluster_size_cap:
+    if cluster_size_cap is not None and max_cluster > cluster_size_cap and not protected_onset_pairs:
         findings.append(
             f"max shape cluster size {max_cluster} exceeds cap {cluster_size_cap} (#532)"
         )

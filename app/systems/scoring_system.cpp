@@ -179,9 +179,13 @@ void scoring_system(entt::registry& reg, float dt) {
             score.score += points;
 
             // Queue timing/score popup; popup_feedback_system owns spawn/SFX.
-            std::optional<TimingTier> tt = r.has_timing
-                ? std::make_optional(r.timing.tier) : std::nullopt;
-            popup_queue.requests.push_back({r.popup_xy.x, r.popup_xy.y, points, tt});
+            popup_queue.requests.push_back({
+                r.popup_xy.x,
+                r.popup_xy.y,
+                points,
+                r.has_timing,
+                r.has_timing ? r.timing.tier : TimingTier::Ok,
+            });
 
             // Structural removals after all reads — safe.
             reg.remove<Obstacle>(r.e);

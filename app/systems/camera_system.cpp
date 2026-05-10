@@ -9,6 +9,7 @@
 #include "../components/particle.h"
 #include "../components/scoring.h"
 #include "../components/song_state.h"
+#include "../components/system_scratch.h"
 #include "../constants.h"
 #include "../platform_display.h"
 #include <glm/mat4x4.hpp>
@@ -19,6 +20,7 @@
 #include <cmath>
 #include <tuple>
 #include <vector>
+#include <stdexcept>
 
 namespace camera {
 
@@ -130,6 +132,11 @@ ShapeMeshes& ShapeMeshes::operator=(ShapeMeshes&& o) noexcept {
 }
 
 void init(entt::registry& reg) {
+    if (reg.ctx().find<RenderTargets>() || reg.ctx().find<ShapeMeshes>()
+        || !reg.view<GameCamera>().empty() || !reg.view<UICamera>().empty()) {
+        throw std::logic_error("camera::init called while camera resources already exist");
+    }
+
     // 3D gameplay camera entity
     spawn_game_camera(reg);
 
@@ -244,7 +251,10 @@ void game_camera_system(entt::registry& reg, float /*dt*/) {
     // 1. MeshChild transforms (multi-slab obstacles, ghost shapes)
     {
         auto view = reg.view<MeshChild>();
-        std::vector<entt::entity> stale_children;
+        auto* scratch = reg.ctx().find<MeshChildCleanupScratch>();
+        if (!scratch) scratch = &reg.ctx().emplace<MeshChildCleanupScratch>();
+        auto& stale_children = scratch->stale_children;
+        stale_children.clear();
         for (auto [entity, mc] : view.each()) {
             auto* parent_wt = reg.try_get<WorldTransform>(mc.parent);
             if (!parent_wt) {
