@@ -88,6 +88,8 @@ MOTIF_MIN_REPEAT_COUNT = 2
 SEGMENT_FOCUS_DIFFICULTY_FRACTION = {"easy": 0.40, "medium": 0.65, "hard": 0.90}
 # How many consecutive identical focus-class choices before anti-repetition penalty kicks in.
 SEGMENT_FOCUS_ANTI_REPEAT_MAX = 2
+PROTECTED_CROSS_LAYER_WINDOW_MS = 50.0
+MIN_SUBDIVISION_LABEL_KINDS = {"medium": 2, "hard": 2}
 
 # Section role determines density and allowed obstacle types.
 # Chorus/drop = densest but most CONSISTENT (nori-nori).
@@ -1267,6 +1269,91 @@ def _choose_segment_focus(class_stats, prev_focuses):
     return focus, fallback_reason
 
 
+def _is_protected_cross_layer_pair(left, right):
+    """Keep near-simultaneous broad-layer onsets distinct when they share a beat."""
+    if int(left.get("beat_idx", -1)) != int(right.get("beat_idx", -2)):
+        return False
+    left_class = left.get("onset_class") or classify_onset_class(left)
+    right_class = right.get("onset_class") or classify_onset_class(right)
+    if left_class == right_class:
+        return False
+    dt_ms = abs(float(left.get("t", 0.0)) - float(right.get("t", 0.0))) * 1000.0
+    return dt_ms <= PROTECTED_CROSS_LAYER_WINDOW_MS
+
+
+def _clears_min_ioi(candidate, selected_events, difficulty):
+    floor_ms = MIN_IOI_MS.get(difficulty)
+    if floor_ms is None:
+        return True
+    candidate_time = float(candidate.get("t", 0.0))
+    for event in selected_events:
+        dt_ms = abs(candidate_time - float(event.get("t", 0.0))) * 1000.0
+        if dt_ms < floor_ms and not _is_protected_cross_layer_pair(candidate, event):
+            return False
+    return True
+
+
+def _event_key(event):
+    onset_class = event.get("onset_class") or classify_onset_class(event)
+    return (int(event["beat_idx"]), onset_class, int(event.get("source_event_idx", -1)))
+
+
+def _ranked_events_for_ioi(events):
+    return sorted(
+        events,
+        key=lambda ev: (-float(ev.get("flux", 0.0)), float(ev.get("t", 0.0))),
+    )
+
+
+def _thin_selected_events_for_min_ioi(selected_events, difficulty):
+    """Apply difficulty IOI floors during selection, not as a cleanup pass."""
+    if len(selected_events) < 2:
+        return selected_events
+
+    kept = []
+    for event in _ranked_events_for_ioi(selected_events.values()):
+        if _clears_min_ioi(event, kept, difficulty):
+            kept.append(event)
+
+    return {
+        _event_key(event): event
+        for event in sorted(kept, key=lambda ev: (int(ev.get("beat_idx", -1)), float(ev.get("t", 0.0))))
+    }
+
+
+def _promote_subdivision_coverage(selected_events, candidate_events, difficulty):
+    """Add sparse non-downbeat candidates when strict medium/hard coverage needs them."""
+    required = MIN_SUBDIVISION_LABEL_KINDS.get(difficulty)
+    if not required or len(selected_events) < 2:
+        return selected_events
+
+    present = {event.get("subdivision", "downbeat") for event in selected_events.values()}
+    if len(present) >= required:
+        return selected_events
+
+    selected_list = list(selected_events.values())
+    updated = dict(selected_events)
+    for candidate in _ranked_events_for_ioi(candidate_events):
+        label = candidate.get("subdivision", "downbeat")
+        key = _event_key(candidate)
+        if label in present or key in updated:
+            continue
+        if not _clears_min_ioi(candidate, selected_list, difficulty):
+            continue
+        updated[key] = candidate
+        selected_list.append(candidate)
+        present.add(label)
+        if len(present) >= required:
+            break
+
+    return dict(
+        sorted(
+            updated.items(),
+            key=lambda item: (int(item[1].get("beat_idx", -1)), float(item[1].get("t", 0.0))),
+        )
+    )
+
+
 def select_segment_focus_beats(analysis, difficulty):
     """Segment-level onset focus selector — the active experimental generation path.
 
@@ -1311,6 +1398,7 @@ def select_segment_focus_beats(analysis, difficulty):
     ]
 
     selected_events = {}   # (beat_idx, onset_class, source_event_idx) → enriched event dict
+    candidate_events = []  # enriched ranked focus events available for coverage promotion
     prev_focuses = []      # rolling focus history for anti-repetition
     segment_diagnostics = []
 
@@ -1397,11 +1485,10 @@ def select_segment_focus_beats(analysis, difficulty):
             "n_hard": n_hard,
         })
 
-        # Insert chosen events keyed by beat/layer/source to preserve same-beat layers.
-        for ev in chosen:
+        enriched_ranked = []
+        for ev in ranked:
             event_onset_class = classify_onset_class(ev)
-            event_key = (int(ev["beat_idx"]), event_onset_class, int(ev.get("source_event_idx", -1)))
-            selected_events[event_key] = {
+            enriched_ranked.append({
                 **ev,
                 "onset_class": event_onset_class,
                 "segment_idx": seg_idx,
@@ -1409,7 +1496,15 @@ def select_segment_focus_beats(analysis, difficulty):
                 "difficulty_inclusion": ev.get("difficulty_inclusion", difficulty),
                 # Keep source_event_idx for CSV diagnostics (snap_events_to_beats sets it).
                 "source_event_idx": ev.get("source_event_idx"),
-            }
+            })
+        candidate_events.extend(enriched_ranked)
+
+        # Insert chosen events keyed by beat/layer/source to preserve same-beat layers.
+        for event in enriched_ranked[:n_take]:
+            selected_events[_event_key(event)] = event
+
+    selected_events = _thin_selected_events_for_min_ioi(selected_events, difficulty)
+    selected_events = _promote_subdivision_coverage(selected_events, candidate_events, difficulty)
 
     diagnostics = {
         "generation_path": "segment_focus",

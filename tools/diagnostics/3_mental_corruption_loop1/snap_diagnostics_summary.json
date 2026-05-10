@@ -332,62 +332,62 @@
     "comparison_by_difficulty": {
       "easy": {
         "event_counts": {
-          "obstacles": 211,
+          "obstacles": 144,
           "timing_source_histogram": {
-            "onset": 211
+            "onset": 144
           }
         },
         "residuals_onset_minus_beat_ms": {
-          "count": 211,
+          "count": 144,
           "median_abs_ms": 3.0,
-          "p90_abs_ms": 10.0,
-          "mean_abs_ms": 4.735,
+          "p90_abs_ms": 10.7,
+          "mean_abs_ms": 5.09,
           "max_abs_ms": 73.0
         },
         "ioi_stats_ms": {
           "beat_snap": {
-            "count": 210,
-            "min_ms": 392.0,
-            "median_ms": 798.0,
-            "p90_ms": 2003.0,
-            "mean_ms": 1047.524,
+            "count": 143,
+            "min_ms": 791.0,
+            "median_ms": 1204.0,
+            "p90_ms": 2402.0,
+            "mean_ms": 1535.531,
             "max_ms": 6400.0
           },
           "onset_timing": {
-            "count": 210,
-            "min_ms": 384.0,
-            "median_ms": 798.0,
-            "p90_ms": 2004.2,
-            "mean_ms": 1047.638,
+            "count": 143,
+            "min_ms": 784.0,
+            "median_ms": 1204.0,
+            "p90_ms": 2402.8,
+            "mean_ms": 1535.678,
             "max_ms": 6397.0
           }
         },
         "dense_cluster_stats": {
           "beat_snap": {
             "threshold_ms": 700.0,
-            "short_ioi_count": 90,
-            "short_ioi_share": 0.4286,
-            "cluster_count": 53,
-            "max_cluster_len": 6
+            "short_ioi_count": 0,
+            "short_ioi_share": 0.0,
+            "cluster_count": 0,
+            "max_cluster_len": 0
           },
           "onset_timing": {
             "threshold_ms": 700.0,
-            "short_ioi_count": 90,
-            "short_ioi_share": 0.4286,
-            "cluster_count": 53,
-            "max_cluster_len": 6
+            "short_ioi_count": 0,
+            "short_ioi_share": 0.0,
+            "cluster_count": 0,
+            "max_cluster_len": 0
           }
         },
         "subdivision_label_distribution": {
-          "downbeat": 210,
+          "downbeat": 143,
           "triplet": 1
         },
         "onset_class_distribution": {
-          "full-spectrum": 73,
-          "percussive": 138
+          "full-spectrum": 53,
+          "percussive": 91
         },
         "event_role_distribution": {
-          "easy": 211
+          "easy": 144
         },
         "motif_stats": {
           "motif_ids": [],
@@ -399,33 +399,33 @@
       },
       "medium": {
         "event_counts": {
-          "obstacles": 340,
+          "obstacles": 338,
           "timing_source_histogram": {
-            "onset": 340
+            "onset": 338
           }
         },
         "residuals_onset_minus_beat_ms": {
-          "count": 340,
+          "count": 338,
           "median_abs_ms": 3.0,
           "p90_abs_ms": 9.0,
-          "mean_abs_ms": 4.912,
-          "max_abs_ms": 78.0
+          "mean_abs_ms": 4.698,
+          "max_abs_ms": 73.0
         },
         "ioi_stats_ms": {
           "beat_snap": {
-            "count": 339,
+            "count": 337,
             "min_ms": 392.0,
             "median_ms": 400.0,
             "p90_ms": 1204.0,
-            "mean_ms": 648.909,
+            "mean_ms": 652.76,
             "max_ms": 3200.0
           },
           "onset_timing": {
-            "count": 339,
-            "min_ms": 327.0,
+            "count": 337,
+            "min_ms": 383.0,
             "median_ms": 403.0,
-            "p90_ms": 1200.2,
-            "mean_ms": 648.979,
+            "p90_ms": 1200.4,
+            "mean_ms": 652.831,
             "max_ms": 3198.0
           }
         },
@@ -439,23 +439,23 @@
           },
           "onset_timing": {
             "threshold_ms": 380.0,
-            "short_ioi_count": 2,
-            "short_ioi_share": 0.0059,
-            "cluster_count": 2,
-            "max_cluster_len": 2
+            "short_ioi_count": 0,
+            "short_ioi_share": 0.0,
+            "cluster_count": 0,
+            "max_cluster_len": 0
           }
         },
         "subdivision_label_distribution": {
-          "downbeat": 337,
-          "triplet": 3
+          "downbeat": 336,
+          "triplet": 2
         },
         "onset_class_distribution": {
           "full-spectrum": 118,
-          "percussive": 222
+          "percussive": 220
         },
         "event_role_distribution": {
           "easy": 211,
-          "medium": 129
+          "medium": 127
         },
         "motif_stats": {
           "motif_ids": [],
@@ -540,7 +540,7 @@
         "generation_path": "segment_focus",
         "segments_total": 26,
         "events_total": 1423,
-        "events_selected": 211,
+        "events_selected": 144,
         "segment_details": [
           {
             "segment_idx": 0,
@@ -1198,7 +1198,7 @@
         "generation_path": "segment_focus",
         "segments_total": 26,
         "events_total": 1423,
-        "events_selected": 340,
+        "events_selected": 338,
         "segment_details": [
           {
             "segment_idx": 0,
@@ -2512,8 +2512,8 @@
       }
     },
     "obstacle_counts_by_difficulty": {
-      "easy": 211,
-      "medium": 340,
+      "easy": 144,
+      "medium": 338,
       "hard": 474
     }
   }

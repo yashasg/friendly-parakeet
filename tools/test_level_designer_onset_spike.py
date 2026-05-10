@@ -622,6 +622,17 @@ class TestDirective20260510(unittest.TestCase):
         self.assertIn("harmonic", classes)
         self.assertGreaterEqual(len(beat_2_events), 2)
 
+    def test_segment_focus_obstacles_preserve_cross_layer_same_beat(self):
+        analysis = _cross_layer_fixture()
+        with mock.patch.object(ld, "_choose_segment_focus", return_value=("ghost", "forced_for_test")):
+            obstacles, _, _ = ld.design_level_segment_focus(analysis, "hard")
+
+        beat_2_obstacles = [obs for obs in obstacles if obs.get("beat") == 2]
+        classes = {obs.get("onset_class") for obs in beat_2_obstacles}
+        self.assertIn("percussive", classes)
+        self.assertIn("harmonic", classes)
+        self.assertEqual(len(beat_2_obstacles), 2)
+
     def test_write_snap_diagnostics_clears_stale_onset_csv_when_non_experimental(self):
         repo_root = Path(__file__).resolve().parent.parent
         out_dir = repo_root / "tools" / ".test_onset_stale_cleanup"
