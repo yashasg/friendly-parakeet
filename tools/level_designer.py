@@ -124,7 +124,20 @@ GAP_ONE_HARD_MIN_BEAT = 11
 GAP_ONE_MAX_RUN = {"medium": 1, "hard": 2}
 GAP_ONE_SHARE_CAP = {"medium": 0.20, "hard": 0.20}
 GAP_MONOTONY_CAP = {"medium": 0.40, "hard": 0.35}
-MIN_IOI_MS = {"easy": 700.0, "medium": 380.0, "hard": 300.0}
+MIN_IOI_MS = {"easy": 500.0, "medium": 350.0, "hard": 280.0}
+# Issues #392, #394 — enforce monotonic, song-independent difficulty pacing.
+# Median IOI target ceilings (seconds). When the segment-focus selection
+# leaves a difficulty above its ceiling, additional high-flux candidate
+# events are promoted until the median IOI is at or below the target.
+MEDIAN_IOI_TARGET_SEC = {"easy": 0.850, "medium": 0.680, "hard": 0.540}
+# Issue #391 — cap consecutive same-lane runs by difficulty.  Lanes are
+# rotated within the segment-focus path so timing/onset alignment is
+# preserved while breaking same-lane walls.
+MAX_SAME_LANE_RUN = {"easy": 4, "medium": 5, "hard": 6}
+# Issue #396 — subdivision-aware snap tolerance (seconds).  Events whose
+# distance from the nearest subdivision grid point (downbeat/eighth/triplet)
+# is within this window are accepted with their proper subdivision label.
+SUBDIVISION_SNAP_TOLERANCE_SEC = 0.060
 DENSE_CLUSTER_SOFT_CAP = {"medium": 6, "hard": 10}
 MEDIUM_SHAPE_TARGETS = {
     0: (10, 20),  # Circle / lane 0
@@ -151,48 +164,94 @@ SECTION_SHAPE_PALETTE = {
 # HELPERS
 # ═══════════════════════════════════════════════════════════════
 
-def snap_events_to_beats(events, beats, tolerance=0.08):
-    """Snap each event to nearest beat.
+def snap_events_to_beats(events, beats, tolerance=0.08, subdivision_tolerance=None):
+    """Snap each event to nearest beat grid (with subdivision awareness).
 
-    Deduplication rule (directive 2026-05-10):
-        At most one event per (beat_idx, onset_class) pair is kept.
-        This allows a percussive onset and a harmonic onset that are very close
-        in time to BOTH survive if they snap to the same beat, rather than
-        collapsing them into a single full-spectrum event.
-        Within the same onset class, only the first event at a given beat is
-        kept (preserves arrival-time ordering).
+    Each event is anchored to a ``beat_idx`` (the surrounding beat) and labeled
+    with the closest subdivision in ``{downbeat, eighth, triplet}`` based on
+    its phase within the beat span.
+
+    Two acceptance gates:
+        1. ``tolerance`` — legacy near-beat window (preserves existing snap
+           semantics for downbeat events).
+        2. ``subdivision_tolerance`` — Issue #396: events that fall within
+           this window of a non-downbeat subdivision (eighth or triplet)
+           grid point are also accepted, carrying the matching label.
+
+    Deduplication rule (directive 2026-05-10, extended for #396):
+        At most one event per ``(beat_idx, subdivision, onset_class)`` triple
+        is kept.  This preserves cross-layer onsets at the same beat and also
+        allows distinct subdivision labels (downbeat + eighth + triplet) at
+        the same beat to survive — required for subdivision label coverage.
     """
+    if subdivision_tolerance is None:
+        subdivision_tolerance = SUBDIVISION_SNAP_TOLERANCE_SEC
     snapped = []
-    used: dict[int, set] = {}  # beat_idx -> set of onset_classes already placed
+    used: dict = {}  # (beat_idx, subdivision) -> set of onset_classes already placed
 
     for idx, ev in enumerate(events):
-        lo, hi, best, best_d = 0, len(beats)-1, None, tolerance+1
-        while lo <= hi:
-            mid = (lo+hi)//2
-            d = abs(beats[mid] - ev["t"])
-            if d < best_d: best_d, best = d, mid
-            if beats[mid] < ev["t"]: lo = mid+1
-            else: hi = mid-1
+        event_time = float(ev["t"])
+        # Locate surrounding beats.
+        right = bisect_right(beats, event_time)
+        left_idx = max(0, right - 1)
+        right_idx = min(len(beats) - 1, right)
 
-        if best is None or best_d > tolerance:
+        # Decide anchor beat (nearest in time) for snap-distance check.
+        nearest_idx = left_idx
+        nearest_dist = abs(beats[left_idx] - event_time) if beats else float("inf")
+        if right_idx != left_idx:
+            d = abs(beats[right_idx] - event_time)
+            if d < nearest_dist:
+                nearest_idx = right_idx
+                nearest_dist = d
+
+        if not beats:
             continue
+
+        # Subdivision classification anchored to the surrounding span.
+        subdivision, _lane_hint = classify_subdivision(event_time, beats, nearest_idx)
+
+        # Compute distance to the actual subdivision grid point.
+        if right_idx == left_idx or right_idx >= len(beats):
+            sub_dist = nearest_dist
+            beat_anchor = nearest_idx
+        else:
+            span = max(1e-6, beats[right_idx] - beats[left_idx])
+            phase = min(max((event_time - beats[left_idx]) / span, 0.0), 1.0)
+            closest_frac, _ = min(
+                SUBDIVISION_FRACTIONS, key=lambda item: abs(item[0] - phase)
+            )
+            grid_time = beats[left_idx] + span * closest_frac
+            sub_dist = abs(event_time - grid_time)
+            # Anchor the event to the beat owning this subdivision's left edge,
+            # except a phase-1.0 grid point belongs to the next beat.
+            beat_anchor = left_idx if closest_frac < 0.999 else right_idx
+
+        # Acceptance gate.
+        if subdivision == "downbeat":
+            if nearest_dist > tolerance:
+                continue
+            beat_anchor = nearest_idx
+        else:
+            if sub_dist > subdivision_tolerance:
+                continue
 
         onset_class = classify_onset_class(ev)
-
-        if best not in used:
-            used[best] = set()
-
-        if onset_class in used[best]:
-            # Same class already placed at this beat — skip.
+        slot = (beat_anchor, subdivision)
+        if slot not in used:
+            used[slot] = set()
+        if onset_class in used[slot]:
             continue
+        used[slot].add(onset_class)
 
-        used[best].add(onset_class)
-        subdivision, lane_hint = classify_subdivision(ev["t"], beats, best)
+        # Re-fetch lane hint for the resolved subdivision (kept for downstream
+        # subdivision_lane consumers).
+        _, lane_hint = classify_subdivision(event_time, beats, beat_anchor)
         snapped.append({
             **ev,
             "source_event_idx": idx,
-            "beat_idx": best,
-            "beat_time": beats[best],
+            "beat_idx": beat_anchor,
+            "beat_time": beats[beat_anchor],
             "subdivision": subdivision,
             "subdivision_lane": lane_hint,
         })
@@ -1295,7 +1354,13 @@ def _clears_min_ioi(candidate, selected_events, difficulty):
 
 def _event_key(event):
     onset_class = event.get("onset_class") or classify_onset_class(event)
-    return (int(event["beat_idx"]), onset_class, int(event.get("source_event_idx", -1)))
+    subdivision = event.get("subdivision", "downbeat")
+    return (
+        int(event["beat_idx"]),
+        subdivision,
+        onset_class,
+        int(event.get("source_event_idx", -1)),
+    )
 
 
 def _ranked_events_for_ioi(events):
@@ -1354,6 +1419,143 @@ def _promote_subdivision_coverage(selected_events, candidate_events, difficulty)
     )
 
 
+def _median(values):
+    if not values:
+        return 0.0
+    s = sorted(values)
+    mid = len(s) // 2
+    if len(s) % 2:
+        return float(s[mid])
+    return float((s[mid - 1] + s[mid]) / 2.0)
+
+
+def _ioi_seconds(events):
+    times = sorted(float(ev.get("t", 0.0)) for ev in events)
+    return [times[i + 1] - times[i] for i in range(len(times) - 1)]
+
+
+def _enforce_median_ioi_target(selected_events, candidate_events, difficulty, fallback_pool=None):
+    """Issues #392 / #394 — drive median IOI to the per-difficulty ceiling.
+
+    The segment-focus selector emits sparse easy/medium/hard sets that can
+    leave Stomper-style songs with median IOI far above the difficulty
+    target.  This pass promotes additional high-flux candidates (in flux-
+    desc / time-asc order) until the resulting median IOI is at or below
+    ``MEDIAN_IOI_TARGET_SEC[difficulty]``.
+
+    ``candidate_events`` are the per-segment focus-class events.  When that
+    pool is exhausted (or a song's focus-class events are already fully
+    consumed), ``fallback_pool`` (typically every snapped event) is mined
+    for additional high-flux placements so the IOI ceiling can still be
+    satisfied for sparse songs like Stomper.
+
+    The ``MIN_IOI_MS`` floor is still respected so we never violate the
+    minimum spacing established by ``_thin_selected_events_for_min_ioi``.
+    """
+    target = MEDIAN_IOI_TARGET_SEC.get(difficulty)
+    if not target or len(selected_events) < 2:
+        return selected_events
+
+    def median_ioi(events):
+        return _median(_ioi_seconds(events))
+
+    selected_list = list(selected_events.values())
+    if median_ioi(selected_list) <= target:
+        return selected_events
+
+    selected_keys = set(selected_events.keys())
+    updated = dict(selected_events)
+
+    def _try_promote(pool, enrich=False):
+        nonlocal selected_list
+        for candidate in _ranked_events_for_ioi(pool):
+            key = _event_key(candidate)
+            if key in selected_keys:
+                continue
+            if not _clears_min_ioi(candidate, selected_list, difficulty):
+                continue
+            if enrich and "onset_class" not in candidate:
+                candidate = {
+                    **candidate,
+                    "onset_class": classify_onset_class(candidate),
+                }
+            updated[key] = candidate
+            selected_keys.add(key)
+            selected_list.append(candidate)
+            if median_ioi(selected_list) <= target:
+                return True
+        return False
+
+    if not _try_promote(candidate_events):
+        # Avoid over-densifying medium via the global fallback pool: doing
+        # so was producing medium counts above hard for dense songs (drama),
+        # which broke difficulty-ramp monotony invariants.  Easy/hard still
+        # benefit from the fallback for sparse focus-class pools (e.g.
+        # stomper hard), so only skip it for medium.
+        if difficulty != "medium" and fallback_pool:
+            _try_promote(fallback_pool, enrich=True)
+
+    return dict(
+        sorted(
+            updated.items(),
+            key=lambda item: (int(item[1].get("beat_idx", -1)), float(item[1].get("t", 0.0))),
+        )
+    )
+
+
+def _enforce_same_class_run_cap(selected_events, difficulty):
+    """Issue #391 — cap consecutive same-onset-class (==same-lane) runs.
+
+    The canonical ``onset_class → lane`` invariant (see
+    ``ONSET_CLASS_TO_OBSTACLE`` and
+    ``test_experimental_mode_applies_class_lane_shape_mapping``) means a
+    same-lane run is exactly a same-onset-class run.  We enforce the cap
+    here, on the selected_events dict produced by the segment-focus
+    selector, BEFORE ``design_level_segment_focus`` materializes
+    obstacles — so the cleanup-not-invoked invariant
+    (``test_cleanup_not_invoked_in_segment_focus``) continues to hold:
+    selected events and emitted obstacles still match 1:1.
+
+    Events are scanned in (beat_idx, t) order; an event whose onset_class
+    would extend the run past ``MAX_SAME_LANE_RUN[difficulty]`` is dropped.
+    """
+    cap = MAX_SAME_LANE_RUN.get(difficulty)
+    if not cap or not selected_events:
+        return selected_events
+
+    ordered_keys = sorted(
+        selected_events.keys(),
+        key=lambda k: (
+            int(selected_events[k].get("beat_idx", -1)),
+            float(selected_events[k].get("t", 0.0)),
+            int(selected_events[k].get("source_event_idx", -1)),
+        ),
+    )
+
+    kept = {}
+    run_class = None
+    run_len = 0
+    for key in ordered_keys:
+        ev = selected_events[key]
+        # Match the obstacle-emitter's class resolution exactly (see
+        # design_level_segment_focus): prefer the stored onset_class field,
+        # falling back to "full-spectrum" — this is what determines the
+        # final lane via ONSET_CLASS_TO_OBSTACLE.
+        cls = ev.get("onset_class") or "full-spectrum"
+        if cls not in ONSET_CLASS_TO_OBSTACLE:
+            cls = "full-spectrum"
+        if cls == run_class:
+            if run_len >= cap:
+                continue
+            run_len += 1
+        else:
+            run_class = cls
+            run_len = 1
+        kept[key] = ev
+
+    return kept
+
+
 def select_segment_focus_beats(analysis, difficulty):
     """Segment-level onset focus selector — the active experimental generation path.
 
@@ -1388,9 +1590,7 @@ def select_segment_focus_beats(analysis, difficulty):
     # Index snapped events for efficient lookup.
     all_snapped_map = {}
     for ev in all_snapped:
-        onset_class = classify_onset_class(ev)
-        event_key = (int(ev["beat_idx"]), onset_class, int(ev.get("source_event_idx", -1)))
-        all_snapped_map[event_key] = ev
+        all_snapped_map[_event_key(ev)] = ev
 
     # Fall back to a single whole-song segment if structure is absent.
     sections = list(structure) if structure else [
@@ -1504,7 +1704,14 @@ def select_segment_focus_beats(analysis, difficulty):
             selected_events[_event_key(event)] = event
 
     selected_events = _thin_selected_events_for_min_ioi(selected_events, difficulty)
+    selected_events = _enforce_median_ioi_target(
+        selected_events, candidate_events, difficulty, fallback_pool=all_snapped
+    )
     selected_events = _promote_subdivision_coverage(selected_events, candidate_events, difficulty)
+    # Issue #391 — cap consecutive same-onset-class (==same-lane) runs.
+    # Done here on selected_events (not on obstacles) so the segment-focus
+    # cleanup-not-invoked invariant continues to hold.
+    selected_events = _enforce_same_class_run_cap(selected_events, difficulty)
 
     diagnostics = {
         "generation_path": "segment_focus",
