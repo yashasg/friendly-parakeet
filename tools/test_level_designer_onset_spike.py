@@ -623,15 +623,38 @@ class TestDirective20260510(unittest.TestCase):
         self.assertGreaterEqual(len(beat_2_events), 2)
 
     def test_segment_focus_obstacles_preserve_cross_layer_same_beat(self):
+        """Cross-layer onsets that originally snap to the same beat-grid index
+        must both survive into the emitted obstacles list (issue: do not
+        collapse cross-layer events within 50ms).
+
+        After issue #416 the second of any beat-grid collision is renumbered
+        to the next free integer ordinal so the shipped beats array stays
+        strictly increasing — but both events MUST still be present and
+        carry their original distinct onset_class.  The pair is therefore
+        emitted as adjacent ordinals rather than two rows sharing the same
+        ``beat`` value.
+        """
         analysis = _cross_layer_fixture()
         with mock.patch.object(ld, "_choose_segment_focus", return_value=("ghost", "forced_for_test")):
             obstacles, _, _ = ld.design_level_segment_focus(analysis, "hard")
 
-        beat_2_obstacles = [obs for obs in obstacles if obs.get("beat") == 2]
-        classes = {obs.get("onset_class") for obs in beat_2_obstacles}
+        # Pair A in the fixture (t=1.000 percussive, t=1.040 harmonic) both
+        # snap to the same beat-grid index.  Both onset_classes must be
+        # represented across the resulting obstacles, and their beat
+        # ordinals must be adjacent (renumbered for strict monotonicity).
+        # Identify Pair A by its source event indices in the fixture.
+        pair_a_obs = [
+            obs for obs in obstacles
+            if obs.get("source_event_idx") in {0, 1}
+        ]
+        classes = {obs.get("onset_class") for obs in pair_a_obs}
         self.assertIn("percussive", classes)
         self.assertIn("harmonic", classes)
-        self.assertEqual(len(beat_2_obstacles), 2)
+        self.assertEqual(len(pair_a_obs), 2)
+
+        beats_for_pair = sorted(obs["beat"] for obs in pair_a_obs)
+        # Strictly-increasing ordinals (issue #416) — adjacent integers.
+        self.assertEqual(beats_for_pair[1] - beats_for_pair[0], 1)
 
     def test_write_snap_diagnostics_clears_stale_onset_csv_when_non_experimental(self):
         repo_root = Path(__file__).resolve().parent.parent

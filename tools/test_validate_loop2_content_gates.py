@@ -161,5 +161,91 @@ class TestLoop2GateEvaluation(unittest.TestCase):
         self.assertEqual(rc, 1)
 
 
+class TestShippedBeatmapInvariants(unittest.TestCase):
+    """Regression coverage for issues #414, #416, #418 on shipped beatmaps."""
+
+    SHIPPED_DIR = Path(__file__).resolve().parent.parent / "content" / "beatmaps"
+    INCLUSION_ORDER = {"easy": 0, "medium": 1, "hard": 2}
+
+    def _shipped_beatmaps(self):
+        import json as _json
+        for path in sorted(self.SHIPPED_DIR.glob("*_beatmap.json")):
+            yield path, _json.loads(path.read_text())
+
+    def test_no_difficulty_inclusion_leaks(self):
+        """#414 — every event in a difficulty array must carry an inclusion
+        tier that is <= the array's tier (easy ⊂ medium ⊂ hard)."""
+        for path, beatmap in self._shipped_beatmaps():
+            for difficulty, payload in beatmap.get("difficulties", {}).items():
+                cap = self.INCLUSION_ORDER.get(difficulty)
+                if cap is None:
+                    continue
+                leaks = [
+                    beat for beat in payload.get("beats", [])
+                    if self.INCLUSION_ORDER.get(beat.get("difficulty_inclusion"), -1) > cap
+                ]
+                self.assertEqual(
+                    leaks, [],
+                    f"{path.name} [{difficulty}]: {len(leaks)} higher-tier "
+                    f"inclusion leaks (#414)"
+                )
+
+    def test_strictly_increasing_beat_ordinals(self):
+        """#416 — shipped beat arrays must be strictly increasing by ordinal
+        (no zero-IOI artifacts from same-grid-bin snaps)."""
+        for path, beatmap in self._shipped_beatmaps():
+            for difficulty, payload in beatmap.get("difficulties", {}).items():
+                beats = payload.get("beats", [])
+                ordered = [b["beat"] for b in beats if isinstance(b.get("beat"), int)]
+                violations = [
+                    (ordered[i - 1], ordered[i])
+                    for i in range(1, len(ordered))
+                    if ordered[i] <= ordered[i - 1]
+                ]
+                self.assertEqual(
+                    violations, [],
+                    f"{path.name} [{difficulty}]: {len(violations)} "
+                    f"non-strictly-increasing beat ordinal pairs (#416)"
+                )
+
+    def test_drama_medium_to_hard_ioi_step_is_perceptible(self):
+        """#418 — drama hard must be perceptibly denser than drama medium.
+
+        Per-gate spec: hard targets MEDIAN_IOI ≤ 0.540s.  Allow small slack
+        (≤ 50ms over the target), and require at least a 100ms step from
+        medium to hard so the ramp is felt by the player.
+        """
+        import json as _json
+        path = self.SHIPPED_DIR / "2_drama_beatmap.json"
+        if not path.exists():
+            self.skipTest("drama beatmap not present")
+        beatmap = _json.loads(path.read_text())
+        diffs = beatmap["difficulties"]
+
+        def _median_ioi(beats_payload):
+            times = sorted(float(b["time_sec"]) for b in beats_payload["beats"])
+            iois = [times[i + 1] - times[i] for i in range(len(times) - 1)]
+            if not iois:
+                return 0.0
+            s = sorted(iois)
+            mid = len(s) // 2
+            return float(s[mid] if len(s) % 2 else (s[mid - 1] + s[mid]) / 2)
+
+        medium = _median_ioi(diffs["medium"])
+        hard = _median_ioi(diffs["hard"])
+        self.assertGreater(
+            medium - hard, 0.100,
+            f"drama medium→hard median IOI step too small: "
+            f"medium={medium:.3f}s hard={hard:.3f}s (need >100ms step) (#418)"
+        )
+        # Hard target ceiling 0.540s, allow 50ms slack so song-specific
+        # density variations don't break the gate.
+        self.assertLess(
+            hard, 0.540 + 0.050,
+            f"drama hard median IOI {hard:.3f}s above target 0.540s "
+            f"(+50ms slack) (#418)"
+        )
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
