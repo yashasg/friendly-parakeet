@@ -385,3 +385,11 @@ Validation run:
   - `python3 -m unittest tools/test_validate_loop2_content_gates.py tools/test_level_designer_onset_spike.py tools/test_validate_onset_spike_artifacts.py` ✅
 - Full validation:
   - `cmake -B build -S . -Wno-dev && cmake --build build && ./build/shapeshifter_tests` ✅
+
+## 2026-05-10T02:40:52-07:00 — Autonomous Quality Loop 2 Audit (Post-PR #408)
+
+Filed follow-up tooling audit issues:
+- #409 Validators crash on malformed/non-integer beat rows (`validate_max_beat_gap.py`, `validate_gap_one_readability.py`) instead of reporting diagnostics.
+- #410 `validate_beatmap_offset.py` is cwd-dependent (`Path("content/beatmaps")`) and fails outside repo root.
+
+Learning: After hardening one validator path (#383), audit sibling validators for the same malformed-row and path-resolution assumptions; these regressions tend to exist in parallel scripts.

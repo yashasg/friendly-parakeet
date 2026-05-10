@@ -154,3 +154,68 @@ pass; `node --test test/*.test.js` in `tools/beatmap-editor/` → 29 pass.
 - `tools/beatmap-editor/index.html`
 - `tools/beatmap-editor/test/settings-modal-a11y.test.js` (new)
 - `app/ui/screen_controllers/settings_screen_controller.cpp`
+
+## 2026-05-10 — Issue #387 (game-flow.md §2b BURNOUT → ENERGY)
+- Branch: audit/autonomous-quality-loop, commit 413b3b5
+- §2b HUD diagram already showed ENERGY; only the proportional layout table still listed "Burnout meter" + 30/60/90% zone markers.
+- Renamed table row to "Energy bar" with depletion sub-rows + proximity-ring pointer (rhythm-spec). Kept edit surgical.
+- Lesson: prior to closing #239-derived doc issues, grep both the diagram AND the layout table that follows — the table is easy to miss.
+- Out-of-scope stale Burnout content remains in §4b/§4d/§5a (already marked ARCHIVED for §5a). Likely a follow-up issue worth filing.
+- Issue #387 closed with comment.
+
+## 2026-05-10 — Round 2 audit (audit/autonomous-quality-loop-2 @ cf2aa91)
+
+Fresh UI/UX/editor pass after PR #408 merge. Goal: surface remaining
+actionable items not already tracked. No file mods (audit-only).
+
+### Filed (new)
+- **#425 (documentation)** — `game-flow.md` still has unmarked stale BURNOUT
+  content beyond §2b/§5a: §3 Tutorial Flow Summary row 4 ("Burnout intro"),
+  §3a Run 1–3 "Burnout meter hidden/still hidden" phrasing, §4b BURNOUT BANK
+  feedback spec table, §4d siblings ("CLUTCH"/"LEGENDARY"/Best/Avg Burnout),
+  and §5 HUD State Machine table rows for `Burnout Meter` + `Burnout Popup`.
+  These are normative-tone sections without per-section ARCHIVED markers; the
+  global supersession banner at the doc top is not visible from deep links
+  or grep hits, so contributors implementing one section will re-introduce
+  removed mechanics. Distinct from #240 (code identifiers) and #237
+  (Game-Over UI). This was flagged in my own prior history note as "likely a
+  follow-up issue worth filing" — now filed.
+- **#426 (bug)** — Beatmap-editor toolbar buttons `#btn-undo` (↩), `#btn-redo`
+  (↪), `#btn-settings` (⚙), `#btn-zoom-in` (+), `#btn-zoom-out` (−), and
+  `#btn-add-difficulty` (+) rely on `title=` only for their accessible name.
+  Screen readers (NVDA/JAWS/VoiceOver) do not consistently expose `title`
+  on `<button>`, and emoji-only labels announce as raw glyph names. Same
+  precedent as the #389 fix on `#btn-settings-close`. Acceptance: 6 attrs
+  added + a regression test extending `settings-modal-a11y.test.js`.
+
+### Findings reviewed and *not* filed (already tracked or out of scope)
+- All §4b/§5 stale burnout doc concerns → consolidated into #425 (no
+  duplicates with #240, #237, #67, #103).
+- `HapticEvent::Burnout1_5x / 3_0x / 5_0x` enum values in
+  `app/components/haptics.h` + `app/platform/haptics_backend.cpp` →
+  in scope of existing **#240** (stale code identifiers). Skipped.
+- `feature-specs.md` SPEC 2 body still has 600 lines of stale content,
+  but the entire spec is wrapped in a "HISTORICAL — SPEC 2 superseded"
+  banner at top of file; readers cannot land on the body without seeing
+  it. Lower urgency than game-flow.md sub-sections; skipped this round.
+- **Tracking inconsistency**: #198 (Settings TOGGLE buttons hide their
+  state on a separate label) is still OPEN but was substantively resolved
+  by my own #390 work (draw_toggle helper with `[X]/[ ]` + colored border
+  + corrected MOTION inversion). Per task constraint "do not modify files
+  in audit pass" I did NOT close it; flagging here for triage to close as
+  fixed-by-#390. Not filing a new issue.
+- Modal focus-trap and focus-return-to-trigger gaps in beatmap-editor
+  modals: real but lower priority and not regressing from PR #408. Held
+  for later.
+
+### Lessons
+- Doc supersession via top-of-file banner alone is brittle: every
+  search-driven contributor lands mid-document. Per-section ARCHIVED
+  blocks (the #387/§5a pattern) are the durable form. Codifying as a
+  doc-cleanup convention.
+- For HTML a11y issues, write the regression test as DOM-attribute
+  introspection (e.g., assert every `<button>` with `textContent.length<=2`
+  has a non-empty `aria-label`). Catches the whole class, not one button.
+
+### Final output
+**Issues filed: #425, #426.**

@@ -189,3 +189,12 @@ No. Rendering occurs inside `BeginMode3D()/EndMode3D()` (3D camera context). Ray
 - Added a boundary regression test (`tests/test_system_header_boundaries.cpp`) that asserts runtime-only declarations stay out of the headless header.
 - Marked raylib migration docs as historical and set `docs/ongoing_migration.md` as the authoritative no-wrapper direct SDL2/glm direction.
 - Issue #407 implementation was blocked for this run because active parallel edits already touched files that would be part of the required component-type migration blast radius; avoided cross-agent overwrite risk.
+
+### R20: Round-2 architecture audit learning (post-PR #408)
+
+**Date:** 2026-05-10  
+**Scope:** Read-only audit of `app/`, public headers, `CMakeLists.txt`, and migration docs.
+
+- Closing a broad boundary issue can still leave a thinner residual abstraction seam: replacing backend handles with project-local proxy structs (`Vec2f`/`Mat4f`/`ColorRGBA8`) plus conversion helpers still behaves like a compatibility layer when docs explicitly ban wrappers.
+- Component headers should carry mutable state shape, not transition helpers and asset catalogs. Keeping behavior/content tables out of `app/components/*.h` reduces include-surface coupling and keeps ECS boundaries easier to evolve.
+- Filed follow-up issues: #411 and #412.
