@@ -120,13 +120,13 @@ When an obstacle requires TWO actions (e.g., switch to ● AND swipe left), the 
 ## Scoring
 
 ### Points Per Obstacle
-- `base_points × timing_multiplier × chain_bonus`
+- `floor(base_points × timing_multiplier) + chain_flat_bonus`
 - Timing multiplier comes from the beat-distance grade (Perfect/Good/Ok/Bad). See `rhythm-design.md`.
 
 ### Chain
 - Each consecutive HIT (Perfect, Good, or Ok) grows the chain.
 - Chain resets on any MISS.
-- Chain contributes a bounded multiplier so consistent rhythm is rewarded over single big hits.
+- Chain contributes a bounded flat bonus so consistent rhythm is rewarded over isolated hits.
 
 ### Distance Bonus
 - +10 points per second survived (passive income).
@@ -172,7 +172,7 @@ Difficulty is selected per song (easy / medium / hard) and is expressed primaril
    - On-beat shape changes are valid even when no obstacle is arriving.
    - When an obstacle resolves, the input's distance from the beat determines the timing grade and score multiplier.
 4. Hits feed energy and the chain. Misses drain energy. When energy hits zero → game over.
-5. Game over / song complete screen shows: final score, hit breakdown (Perfect/Good/Ok/Bad/Miss), best chain, energy remaining.
+5. Song Complete shows final score, hit breakdown (Perfect/Good/Ok/Bad/Miss), best chain, and energy remaining. Game Over ships with final score, high score, and terminal reason; the fuller stat panel is future scope.
 6. Retry (instant) or return to song select.
 
 ---

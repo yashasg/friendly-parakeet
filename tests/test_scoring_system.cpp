@@ -263,7 +263,7 @@ TEST_CASE("scoring: NonScorableTag entity cleared without scoring", "[scoring][n
     CHECK_FALSE(reg.all_of<Obstacle>(e));
 }
 
-TEST_CASE("scoring: missed obstacle sets DeathCause::MissedABeat", "[scoring]") {
+TEST_CASE("scoring: missed obstacle drains energy without setting terminal death cause", "[scoring]") {
     auto reg = make_registry();
     auto& gos = reg.ctx().get<GameOverState>();
     REQUIRE(gos.cause == DeathCause::None);
@@ -277,7 +277,7 @@ TEST_CASE("scoring: missed obstacle sets DeathCause::MissedABeat", "[scoring]") 
 
     scoring_system(reg, 0.0f);
 
-    CHECK(gos.cause == DeathCause::MissedABeat);
+    CHECK(gos.cause == DeathCause::None);
 }
 
 TEST_CASE("scoring: passive accrual stops once song playback has finished", "[scoring][issue445]") {

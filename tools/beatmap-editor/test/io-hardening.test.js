@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { importAnalysis, importBeatmap, exportBeatmap, validate } from '../js/io.js';
+import { entryToX, timeToX } from '../js/timeline.js';
 import {
   DEFAULT_LEVELS,
   EDITOR_OBSTACLE_KINDS,
@@ -170,6 +171,45 @@ test('validation accepts C++ loader-compatible same-beat timed entries', () => {
   });
 
   assert.doesNotMatch(errors.map((e) => e.message).join('\n'), /monotonically/i);
+});
+
+test('export blocks validation errors', () => {
+  assert.throws(
+    () => exportBeatmap({
+      ...makeState([
+        { beat: 99, kind: 'shape_gate', shape: 'circle', lane: 1 },
+      ]),
+      duration: 1,
+    }),
+    /Beat index exceeds song duration/i,
+  );
+});
+
+test('validation rejects beat_times-incompatible beat indices', () => {
+  const errors = validate({
+    ...makeState([
+      { beat: 2, kind: 'shape_gate', shape: 'circle', lane: 1 },
+    ]),
+    duration: 10,
+    extraTopLevel: { beat_times: [0, 0.5] },
+  });
+
+  assert.match(errors.map((e) => e.message).join('\n'), /beat_times array/i);
+});
+
+test('timeline positions authored entries by time_sec or beat_times before beat grid', () => {
+  const state = {
+    bpm: 120,
+    offset: 0,
+    zoom: 10,
+    scrollX: 0,
+    extraTopLevel: { beat_times: [0, 0.5, 4.25] },
+  };
+  const authored = { beat: 2, time_sec: 3.0 };
+  const beatTimed = { beat: 2 };
+
+  assert.equal(entryToX(authored, state), timeToX(3.0, state));
+  assert.equal(entryToX(beatTimed, state), timeToX(4.25, state));
 });
 
 test('analysis import preserves onset object keys in source order', () => {

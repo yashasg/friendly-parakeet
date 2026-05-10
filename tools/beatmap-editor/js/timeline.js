@@ -34,6 +34,17 @@ export function timeToX(seconds, state) {
     return beatToX(beat, state);
 }
 
+export function entryToX(entry, state) {
+    if (Number.isFinite(entry?.time_sec)) {
+        return timeToX(entry.time_sec, state);
+    }
+    const beatTimes = state.extraTopLevel?.beat_times;
+    if (Array.isArray(beatTimes) && Number.isFinite(beatTimes[entry?.beat])) {
+        return timeToX(beatTimes[entry.beat], state);
+    }
+    return beatToX(entry.beat, state);
+}
+
 // ─── Init ─────────────────────────────────────────────────────────
 
 export function init(canvasElement) {
@@ -83,14 +94,11 @@ export function hitTest(canvasX, canvasY) {
     if (beats) {
         for (let i = 0; i < beats.length; i++) {
             const entry = beats[i];
-            if (entry.beat === beat) {
-                // Verify click is within the glyph's horizontal bounding area
-                const cx = beatToX(entry.beat, state);
-                const halfCell = state.zoom / 2;
-                if (Math.abs(canvasX - cx) <= halfCell) {
-                    obstacleIndex = i;
-                    break;
-                }
+            const cx = entryToX(entry, state);
+            const halfCell = state.zoom / 2;
+            if (Math.abs(canvasX - cx) <= halfCell) {
+                obstacleIndex = i;
+                break;
             }
         }
     }
@@ -339,7 +347,7 @@ function renderObstacles(ctx, state, firstBeat, lastBeat) {
         const entry = beats[i];
         if (entry.beat < firstBeat || entry.beat > lastBeat) continue;
 
-        const x = beatToX(entry.beat, state);
+        const x = entryToX(entry, state);
         const y = HEADER_HEIGHT + entry.lane * LANE_HEIGHT + LANE_HEIGHT / 2;
 
         if (KINDS_WITH_SHAPE.includes(entry.kind)) {
@@ -368,7 +376,7 @@ function renderSelectionHighlights(ctx, state) {
     for (const idx of sel) {
         if (idx < 0 || idx >= beats.length) continue;
         const entry = beats[idx];
-        const x = beatToX(entry.beat, state) - state.zoom / 2;
+        const x = entryToX(entry, state) - state.zoom / 2;
         const y = HEADER_HEIGHT + entry.lane * LANE_HEIGHT;
 
         // Fill

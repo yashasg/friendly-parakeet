@@ -234,6 +234,11 @@ function normalizeBeat(b, path, errors) {
  */
 export function exportBeatmap(state) {
     const errors = [];
+    const validationErrors = collectExportValidationErrors(state)
+        .filter((err) => err.severity === 'error');
+    for (const err of validationErrors) {
+        errors.push(err.beatIndex >= 0 ? `beat ${err.beatIndex}: ${err.message}` : err.message);
+    }
     const out = {
         ...(state.extraTopLevel || {}),
         song_id: state.songId,
@@ -282,6 +287,25 @@ export function exportBeatmap(state) {
     }
 
     return JSON.stringify(out, null, 2);
+}
+
+function collectExportValidationErrors(state) {
+    const difficulties = state.difficulties || {};
+    const keys = Object.keys(difficulties).filter(isAllowedDifficultyKey);
+    if (keys.length === 0) {
+        return validate(state);
+    }
+
+    const unique = new Map();
+    for (const key of keys) {
+        for (const err of validate({ ...state, activeDifficulty: key })) {
+            const id = `${err.severity}:${err.beatIndex}:${err.message}`;
+            if (!unique.has(id)) {
+                unique.set(id, err);
+            }
+        }
+    }
+    return [...unique.values()];
 }
 
 function exportBeatEntry(b, path) {
@@ -449,6 +473,41 @@ export function validate(state) {
 
     const beatPeriod = 60.0 / state.bpm;
     const maxBeat = Math.floor(state.duration / beatPeriod);
+    const beatTimes = state.extraTopLevel?.beat_times;
+    const hasBeatTimes = beatTimes !== undefined;
+    let beatTimesValid = true;
+    if (hasBeatTimes) {
+        if (!Array.isArray(beatTimes)) {
+            beatTimesValid = false;
+            errors.push({
+                beatIndex: -1,
+                message: 'beat_times must be an array when provided',
+                severity: 'error',
+            });
+        } else {
+            for (let i = 0; i < beatTimes.length; i++) {
+                const value = beatTimes[i];
+                if (typeof value !== 'number' || !Number.isFinite(value)) {
+                    beatTimesValid = false;
+                    errors.push({
+                        beatIndex: i,
+                        message: 'beat_times entries must be finite numbers',
+                        severity: 'error',
+                    });
+                    break;
+                }
+                if (i > 0 && value < beatTimes[i - 1]) {
+                    beatTimesValid = false;
+                    errors.push({
+                        beatIndex: i,
+                        message: 'beat_times entries must be non-decreasing',
+                        severity: 'error',
+                    });
+                    break;
+                }
+            }
+        }
+    }
 
     let prevBeat = -1;
     let prevShapeBeat = -1;
@@ -512,6 +571,13 @@ export function validate(state) {
             errors.push({
                 beatIndex: entry.beat,
                 message: 'Beat index exceeds song duration',
+                severity: 'error',
+            });
+        }
+        if (hasBeatTimes && beatTimesValid && entry.beat >= beatTimes.length) {
+            errors.push({
+                beatIndex: entry.beat,
+                message: 'Beat index is out of range for beat_times array',
                 severity: 'error',
             });
         }

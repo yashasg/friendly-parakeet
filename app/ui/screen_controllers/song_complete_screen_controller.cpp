@@ -18,9 +18,9 @@ using SongCompleteController = RGuiScreenController<SongCompleteLayoutState,
                                                      &SongCompleteLayout_Render>;
 
 void draw_song_complete_value(Vector2 anchor, float x, float y, float w, float h,
-                              const char* text, int text_size) {
-    SongCompleteLayout_DrawCenteredLabel((Rectangle){anchor.x + x, anchor.y + y, w, h},
-                                         text, text_size);
+                               const char* text, int text_size) {
+    SongCompleteLayout_DrawCenteredLabel(Rectangle{anchor.x + x, anchor.y + y, w, h},
+                                          text, text_size);
 }
 
 void draw_song_complete_scoreboard(entt::registry& reg, const SongCompleteLayoutState& state) {
@@ -47,6 +47,12 @@ void draw_song_complete_scoreboard(entt::registry& reg, const SongCompleteLayout
 
     std::snprintf(line, sizeof(line), "MAX CHAIN %d", results->max_chain);
     draw_song_complete_value(state.Anchor01, 120, 718, 480, 30, line, 22);
+
+    const auto* energy = reg.ctx().find<EnergyState>();
+    if (energy) {
+        std::snprintf(line, sizeof(line), "ENERGY %.0f%%", static_cast<double>(energy->energy * 100.0f));
+        draw_song_complete_value(state.Anchor01, 120, 752, 480, 30, line, 22);
+    }
 }
 
 } // anonymous namespace

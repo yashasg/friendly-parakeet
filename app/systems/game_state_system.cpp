@@ -142,7 +142,7 @@ void game_state_system(entt::registry& reg, float dt) {
         auto* song = reg.ctx().find<SongState>();
         if (energy && song && song->playing && energy->energy <= 0.0f) {
             auto* gos = reg.ctx().find<GameOverState>();
-            if (gos && gos->cause == DeathCause::None) {
+            if (gos) {
                 gos->cause = DeathCause::EnergyDepleted;
             }
             gs.transition_pending = true;

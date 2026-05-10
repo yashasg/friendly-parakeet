@@ -1,6 +1,12 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
+#include <entt/entt.hpp>
 #include "constants.h"
+#include "components/rendering.h"
+#include "components/shape_mesh.h"
+#include "components/transform.h"
+#include "rendering/camera_resources.h"
+#include "systems/runtime_systems.h"
 #include <raylib.h>
 #include <cmath>
 
@@ -102,4 +108,24 @@ TEST_CASE("floor ring: angular sweep covers full circle", "[floor][regression]")
     CHECK(has_negative_sin);
     CHECK_THAT(start_angle, WithinAbs(0.0, 1e-6));
     CHECK_THAT(wrapped_end_angle, WithinAbs(tau, 1e-6));
+}
+
+TEST_CASE("game_camera_system drops stale MeshChild parents without crashing", "[camera3d][mesh_child]") {
+    entt::registry reg;
+    reg.ctx().emplace<ShapeMeshConfig>();
+    reg.ctx().emplace<FloorParams>();
+    auto parent = reg.create();
+    reg.emplace<WorldTransform>(parent, WorldTransform{{100.0f, 200.0f}});
+    auto child = reg.create();
+    reg.emplace<MeshChild>(
+        child,
+        MeshChild{parent, 10.0f, 0.0f, 20.0f, 30.0f, 40.0f, WHITE, 0, MeshType::Slab}
+    );
+    reg.emplace<ModelTransform>(child, ModelTransform{glm::mat4{1.0f}, WHITE, 0, MeshType::Slab});
+
+    reg.destroy(parent);
+
+    REQUIRE_NOTHROW(game_camera_system(reg, 0.0f));
+    CHECK_FALSE(reg.all_of<MeshChild>(child));
+    CHECK_FALSE(reg.all_of<ModelTransform>(child));
 }

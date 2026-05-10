@@ -910,12 +910,11 @@ def merge_events(events: list[dict], merge_window: float = 0.05) -> list[dict]:
             i = j
 
         # Second pass — same-layer adjacency floor (issue #467):
-        # The first-pass representative timestamp is the *mean* of its
-        # group, so two consecutive groups can still end up < merge_window
-        # apart on the rep stream (e.g. anchor-window groups [0, 49ms] and
-        # [70ms] yield reps 24.5ms and 70ms — only 45.5ms apart).  Sweep
-        # the rep stream and merge any neighbours still inside the window.
-        # Cross-layer events are unaffected: this loop is per-layer.
+        # First-pass representatives keep a real detected onset timestamp
+        # (highest flux, earliest-time tie-break). Sweep the representative
+        # stream and merge any neighbours still inside the window while still
+        # choosing a real onset timestamp. Cross-layer events are unaffected:
+        # this loop is per-layer.
         if first_pass:
             collapsed: list[dict] = [first_pass[0]]
             for ev in first_pass[1:]:
@@ -1382,17 +1381,6 @@ def main():
 
     features = extract_features(filepath, onset_threshold, librosa_config=librosa_config)
     analysis = build_analysis(filepath, features, onset_threshold)
-    analysis["librosa_params"] = {
-        "config_path": str(args.librosa_config),
-        "beat": _section_cfg(librosa_config, "beat"),
-        "onset": {
-            **_section_cfg(librosa_config, "onset"),
-            "threshold": onset_threshold,
-        },
-        "mel": _section_cfg(librosa_config, "mel"),
-        "mfcc": _section_cfg(librosa_config, "mfcc"),
-        "quiet": _section_cfg(librosa_config, "quiet"),
-    }
 
     out_path = args.output or f"{Path(filepath).stem}_analysis.json"
     # Issue #480 — write-time guard: refuse to serialize raw-instrument

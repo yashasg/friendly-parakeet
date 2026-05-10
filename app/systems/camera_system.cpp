@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <cmath>
 #include <tuple>
+#include <vector>
 
 namespace camera {
 
@@ -243,9 +244,14 @@ void game_camera_system(entt::registry& reg, float /*dt*/) {
     // 1. MeshChild transforms (multi-slab obstacles, ghost shapes)
     {
         auto view = reg.view<MeshChild>();
+        std::vector<entt::entity> stale_children;
         for (auto [entity, mc] : view.each()) {
-            auto& parent_wt = reg.get<WorldTransform>(mc.parent);
-            float z = parent_wt.position.y + mc.z_offset;
+            auto* parent_wt = reg.try_get<WorldTransform>(mc.parent);
+            if (!parent_wt) {
+                stale_children.push_back(entity);
+                continue;
+            }
+            float z = parent_wt->position.y + mc.z_offset;
 
             if (mc.mesh_type == MeshType::Slab) {
                 reg.get_or_emplace<ModelTransform>(entity) =
@@ -255,8 +261,14 @@ void game_camera_system(entt::registry& reg, float /*dt*/) {
                 const auto& props = mesh_config.props[mc.mesh_index];
                 reg.get_or_emplace<ModelTransform>(entity) =
                     ModelTransform{make_shape_matrix(mc.mesh_index, mc.x, 0.0f, z,
-                                                     mc.width, props.radius_scale),
-                                    mc.tint, mc.mesh_index, MeshType::Shape};
+                                                      mc.width, props.radius_scale),
+                                     mc.tint, mc.mesh_index, MeshType::Shape};
+            }
+        }
+        for (auto entity : stale_children) {
+            reg.remove<MeshChild>(entity);
+            if (reg.all_of<ModelTransform>(entity)) {
+                reg.remove<ModelTransform>(entity);
             }
         }
     }

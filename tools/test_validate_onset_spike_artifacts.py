@@ -68,9 +68,9 @@ def _summary_fixture(
         "song_id": "fixture_song",
         "onset_pool_summary": {
             "raw_per_pass": {
-                "percussive_bass": 10,
-                "harmonic_low_mid": 7,
-                "full_spectrum_flux": 6,
+                "percussive": 10,
+                "harmonic": 7,
+                "full-spectrum": 6,
             },
         },
         "experimental_onset_timing": {
@@ -126,7 +126,7 @@ class TestOnsetSpikeArtifactShape(unittest.TestCase):
         summary = _summary_fixture()
         summary["onset_pool_summary"]["raw_per_pass"]["kick"] = 3
         findings = spike.validate_artifact_shape(summary, _rows_fixture())
-        self.assertTrue(any("raw pass names" in finding for finding in findings))
+        self.assertTrue(any("non-public pass names" in finding for finding in findings))
 
 
 class TestOnsetSpikeGates(unittest.TestCase):
