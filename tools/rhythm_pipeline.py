@@ -93,6 +93,8 @@ RAW_INSTRUMENT_PASS_NAMES: frozenset[str] = frozenset({
     "kick", "snare", "hihat", "melody",
 })
 
+PUBLIC_LAYERS: tuple[str, ...] = ("percussive", "harmonic", "full-spectrum")
+
 # Migration map for legacy-named passes in shipped analysis JSONs.  Renames
 # the raw-instrument pass tokens to the equivalent broad-layer subpass IDs
 # used by the current pipeline so public fields no longer expose
@@ -178,6 +180,57 @@ def migrate_analysis_remove_raw_instrument_names(analysis: dict) -> dict:
             for name, count in raw.items():
                 new_name = _remap(name) if isinstance(name, str) else name
                 merged_counts[new_name] = merged_counts.get(new_name, 0) + int(count or 0)
+            diag["raw_per_pass"] = merged_counts
+
+    return analysis
+
+
+def collapse_analysis_to_public_layers(analysis: dict) -> dict:
+    """Rewrite public analysis surfaces to the three broad rhythm layers."""
+    def _layer(name: str) -> str:
+        if name in PUBLIC_LAYERS:
+            return name
+        return PASS_TO_LAYER.get(name, "full-spectrum")
+
+    for ev in analysis.get("events", []) or []:
+        layer = ev.get("layer")
+        if not isinstance(layer, str) or layer not in PUBLIC_LAYERS:
+            passes = ev.get("passes")
+            layer = _layer(str(passes[0])) if isinstance(passes, list) and passes else "full-spectrum"
+            ev["layer"] = layer
+        ev["passes"] = [layer]
+
+    onsets = analysis.get("onsets")
+    if isinstance(onsets, dict):
+        merged: dict[str, dict] = {
+            layer: {"method": "public_layer", "zone": None, "count": 0, "timestamps": []}
+            for layer in PUBLIC_LAYERS
+        }
+        for name, summary in onsets.items():
+            layer = _layer(str(name))
+            target = merged.setdefault(
+                layer,
+                {"method": "public_layer", "zone": None, "count": 0, "timestamps": []},
+            )
+            if isinstance(summary, dict):
+                timestamps = summary.get("timestamps", [])
+                if isinstance(timestamps, list):
+                    target["timestamps"].extend(timestamps)
+                target["count"] += int(summary.get("count", 0))
+        for summary in merged.values():
+            timestamps = sorted({round(float(t), 3) for t in summary.get("timestamps", [])})
+            summary["timestamps"] = timestamps
+            summary["count"] = len(timestamps)
+        analysis["onsets"] = merged
+
+    diag = analysis.get("onset_diagnostics")
+    if isinstance(diag, dict):
+        raw = diag.get("raw_per_pass")
+        if isinstance(raw, dict):
+            merged_counts = {layer: 0 for layer in PUBLIC_LAYERS}
+            for name, count in raw.items():
+                layer = _layer(str(name))
+                merged_counts[layer] = merged_counts.get(layer, 0) + int(count or 0)
             diag["raw_per_pass"] = merged_counts
 
     return analysis
@@ -441,6 +494,12 @@ def _spectral_flux_onset_envelope(
         onset_env = np.max(flux, axis=0)
     else:
         onset_env = np.mean(flux, axis=0)
+    onset_env = np.asarray(onset_env, dtype=np.float32)
+    positive = onset_env[onset_env > 0.0]
+    if positive.size > 0:
+        scale = float(np.max(positive))
+        if scale > 0.0:
+            onset_env = onset_env / scale
     return np.concatenate([np.zeros((1,), dtype=onset_env.dtype), onset_env], axis=0)
 
 
@@ -833,7 +892,8 @@ def merge_events(events: list[dict], merge_window: float = 0.05) -> list[dict]:
                 group.append(layer_events[j])
                 j += 1
 
-            t_rep = round(sum(e["t"] for e in group) / len(group), 3)
+            representative = max(group, key=lambda e: (float(e.get("flux", 0.0)), -float(e["t"])))
+            t_rep = round(float(representative["t"]), 3)
             passes = sorted({e["pass"] for e in group})
             max_flux = round(max(e["flux"] for e in group), 4)
 
@@ -862,7 +922,8 @@ def merge_events(events: list[dict], merge_window: float = 0.05) -> list[dict]:
                 prev = collapsed[-1]
                 if ev["t"] - prev["t"] < merge_window:
                     merged_passes = sorted(set(prev["passes"]) | set(ev["passes"]))
-                    prev["t"] = round((prev["t"] + ev["t"]) / 2.0, 3)
+                    if ev["flux"] > prev["flux"] or (ev["flux"] == prev["flux"] and ev["t"] < prev["t"]):
+                        prev["t"] = ev["t"]
                     prev["flux"] = round(max(prev["flux"], ev["flux"]), 4)
                     prev["passes"] = merged_passes
                 else:
@@ -1189,17 +1250,19 @@ def build_analysis(filepath: str, features: dict, onset_threshold: float) -> dic
           f"(empty={empty_segments}, "
           f"coverage={len(structure)-empty_segments}/{len(structure)})")
 
-    # per-pass onset summary
-    pass_summary = {}
+    pass_summary = {
+        layer: {"method": "public_layer", "zone": None, "count": 0, "timestamps": []}
+        for layer in PUBLIC_LAYERS
+    }
     for p in ONSET_PASSES:
-        timestamps = [round(t, 3) for t in features["onsets"][p["name"]]]
-        pass_summary[p["name"]] = {
-            "method": p["method"],
-            "zone": p["zone"],
-            "count": len(timestamps),
-            "resolutions": features.get("onset_breakdown", {}).get(p["name"], []),
-            "timestamps": timestamps,
-        }
+        layer = PASS_TO_LAYER[p["name"]]
+        pass_summary[layer]["timestamps"].extend(
+            round(t, 3) for t in features["onsets"][p["name"]]
+        )
+    for summary in pass_summary.values():
+        timestamps = sorted(set(summary["timestamps"]))
+        summary["timestamps"] = timestamps
+        summary["count"] = len(timestamps)
 
     # flux percentile stats for downstream consumers
     fluxes = [e["flux"] for e in events]
@@ -1231,7 +1294,10 @@ def build_analysis(filepath: str, features: dict, onset_threshold: float) -> dic
 
     # ── Structured onset diagnostics stored in JSON for comparison ───────────
     onset_diagnostics = {
-        "raw_per_pass": per_pass_raw,
+        "raw_per_pass": {
+            layer: sum(count for name, count in per_pass_raw.items() if PASS_TO_LAYER[name] == layer)
+            for layer in PUBLIC_LAYERS
+        },
         "raw_total": raw_total,
         "flat_events_pre_merge": total_raw_events_pre_merge,
         "merged_events": len(events),
@@ -1246,7 +1312,7 @@ def build_analysis(filepath: str, features: dict, onset_threshold: float) -> dic
         ],
     }
 
-    return {
+    analysis = {
         "title": Path(filepath).stem,
         "source": Path(filepath).name,
         "bpm": round(features["bpm"], 2),
@@ -1260,6 +1326,7 @@ def build_analysis(filepath: str, features: dict, onset_threshold: float) -> dic
         "quiet_regions": features["quiet"],
         "onset_diagnostics": onset_diagnostics,
     }
+    return collapse_analysis_to_public_layers(analysis)
 
 
 # ---------------------------------------------------------------------------

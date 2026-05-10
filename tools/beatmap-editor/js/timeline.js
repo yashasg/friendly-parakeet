@@ -76,8 +76,8 @@ export function hitTest(canvasX, canvasY) {
     }
 
     // Check if an existing obstacle was clicked.
-    // Beat values must be unique (validation enforces monotonic beat order with
-    // no duplicates), so we search by beat only, not by beat+lane combination.
+    // Multiple onset-timed entries can share a beat; hit testing selects the
+    // first glyph in the clicked beat cell.
     let obstacleIndex = null;
     const beats = state.beats;
     if (beats) {
@@ -346,6 +346,12 @@ function renderObstacles(ctx, state, firstBeat, lastBeat) {
             const glyph = SHAPE_GLYPHS[entry.shape] || '?';
             ctx.fillStyle = (COLORS.shape[entry.shape]) || COLORS.text;
             ctx.fillText(glyph, x, y);
+            if (entry.kind === 'split_path') {
+                ctx.font = '12px sans-serif';
+                ctx.fillStyle = COLORS.kind.split_path;
+                ctx.fillText(GLYPHS.split_path || 'S', x + 13, y - 13);
+                ctx.font = '20px sans-serif';
+            }
         } else {
             const glyph = GLYPHS[entry.kind] || '?';
             ctx.fillStyle = (COLORS.kind[entry.kind]) || COLORS.text;

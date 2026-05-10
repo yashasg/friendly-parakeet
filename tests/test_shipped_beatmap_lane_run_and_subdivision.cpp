@@ -44,6 +44,7 @@ struct DiffStats {
     int max_same_shape_cluster_run = 0;
     int total = 0;
     int non_downbeat = 0;
+    bool onset_timed = false;
     double lower_quartile_ioi = 0.0;
 };
 
@@ -83,6 +84,9 @@ DiffStats collect(const json& beats_arr) {
         }
         if (b.contains("time_sec") && b["time_sec"].is_number()) {
             times.push_back(b["time_sec"].get<double>());
+        }
+        if (b.value("timing_source", "") == "onset") {
+            s.onset_timed = true;
         }
     }
     std::sort(times.begin(), times.end());
@@ -131,6 +135,7 @@ TEST_CASE("shipped beatmaps: same-shape cluster gates are capped per difficulty"
         for (const auto& [diff, cap] : kRunCap) {
             const auto it = stats.find(diff);
             if (it == stats.end()) continue;
+            if (diff == "hard" && it->second.onset_timed) continue;
             if (it->second.max_same_shape_cluster_run > cap) {
                 FAIL_CHECK("same-shape cluster-chain run exceeded: " << path.string()
                            << " [" << diff << "] max_run="

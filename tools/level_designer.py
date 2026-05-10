@@ -222,11 +222,11 @@ def snap_events_to_beats(events, beats, tolerance=0.08, subdivision_tolerance=No
            this window of a non-downbeat subdivision (eighth or triplet)
            grid point are also accepted, carrying the matching label.
 
-    Deduplication rule (directive 2026-05-10, extended for #396):
-        At most one event per ``(beat_idx, subdivision, onset_class)`` triple
+    Deduplication rule (directive 2026-05-10, extended for #563):
+        At most one event per ``(beat_idx, subdivision phase, onset_class)`` triple
         is kept.  This preserves cross-layer onsets at the same beat and also
-        allows distinct subdivision labels (downbeat + eighth + triplet) at
-        the same beat to survive — required for subdivision label coverage.
+        allows distinct subdivision grid phases (including 1/3 and 2/3
+        triplets) at the same beat to survive.
     """
     if subdivision_tolerance is None:
         subdivision_tolerance = SUBDIVISION_SNAP_TOLERANCE_SEC
@@ -256,6 +256,7 @@ def snap_events_to_beats(events, beats, tolerance=0.08, subdivision_tolerance=No
         subdivision, _lane_hint = classify_subdivision(event_time, beats, nearest_idx)
 
         # Compute distance to the actual subdivision grid point.
+        subdivision_phase = 0.0
         if right_idx == left_idx or right_idx >= len(beats):
             sub_dist = nearest_dist
             beat_anchor = nearest_idx
@@ -267,6 +268,7 @@ def snap_events_to_beats(events, beats, tolerance=0.08, subdivision_tolerance=No
             )
             grid_time = beats[left_idx] + span * closest_frac
             sub_dist = abs(event_time - grid_time)
+            subdivision_phase = closest_frac
             # Anchor the event to the beat owning this subdivision's left edge,
             # except a phase-1.0 grid point belongs to the next beat.
             beat_anchor = left_idx if closest_frac < 0.999 else right_idx
@@ -281,7 +283,7 @@ def snap_events_to_beats(events, beats, tolerance=0.08, subdivision_tolerance=No
                 continue
 
         onset_class = classify_onset_class(ev)
-        slot = (beat_anchor, subdivision)
+        slot = (beat_anchor, subdivision, round(subdivision_phase, 3))
         if slot not in used:
             used[slot] = set()
         if onset_class in used[slot]:
@@ -297,6 +299,7 @@ def snap_events_to_beats(events, beats, tolerance=0.08, subdivision_tolerance=No
             "beat_idx": beat_anchor,
             "beat_time": beats[beat_anchor],
             "subdivision": subdivision,
+            "subdivision_phase": subdivision_phase,
             "subdivision_lane": lane_hint,
         })
 
@@ -1163,6 +1166,9 @@ def clamp_lane(lane):
 
 def set_shape_gate(obs, shape):
     """Mutate an obstacle into a canonical shape_gate."""
+    source_class = obs.get("source_onset_class", obs.get("onset_class"))
+    if source_class in ONSET_CLASS_TO_OBSTACLE:
+        shape = ONSET_CLASS_TO_OBSTACLE[source_class]["shape"]
     if shape not in SHAPE_TO_LANE:
         shape = "square"
     previous_class = obs.get("onset_class")
@@ -2189,6 +2195,80 @@ def _enforce_same_class_run_cap(selected_events, difficulty):
     return kept
 
 
+def _rebalance_medium_by_onset_selection(selected_events, all_snapped, segment_ranges=None):
+    """Select/drop real medium onsets to satisfy shipped shape-share gates."""
+    if not selected_events or len(selected_events) < 24:
+        return selected_events
+
+    def event_class(ev):
+        return ev.get("onset_class") if ev.get("onset_class") in ONSET_CLASS_TO_OBSTACLE else classify_onset_class(ev)
+
+    def counts(events):
+        c = Counter()
+        for ev in events.values():
+            c[event_class(ev)] += 1
+        return c
+
+    def pct(c, cls, total):
+        return (c.get(cls, 0) * 100.0 / total) if total else 0.0
+
+    updated = dict(selected_events)
+    selected_keys = set(updated.keys())
+
+    def promote_class(cls, floor_pct):
+        nonlocal updated, selected_keys
+        candidates = [
+            ev for ev in all_snapped
+            if event_class(ev) == cls and _event_key(ev) not in selected_keys
+        ]
+        candidates.sort(key=lambda ev: (-float(ev.get("flux", 0.0)), float(ev.get("t", 0.0))))
+        for candidate in candidates:
+            c = counts(updated)
+            total = sum(c.values())
+            if pct(c, cls, total) >= floor_pct:
+                return
+            enriched = {
+                **candidate,
+                "onset_class": cls,
+                "difficulty_inclusion": "medium",
+                "segment_focus": cls,
+            }
+            if not _candidate_respects_run_cap(enriched, list(updated.values()), "medium"):
+                continue
+            seg_idx, seg_focus = _resolve_segment_for_time(float(enriched.get("t", 0.0)), segment_ranges or [])
+            enriched["segment_idx"] = seg_idx
+            enriched["segment_focus"] = seg_focus or cls
+            key = _event_key(enriched)
+            updated[key] = enriched
+            selected_keys.add(key)
+
+    def drop_class(cls, ceiling_pct):
+        nonlocal updated, selected_keys
+        while True:
+            c = counts(updated)
+            total = sum(c.values())
+            if pct(c, cls, total) <= ceiling_pct:
+                return
+            class_items = [
+                (key, ev) for key, ev in updated.items()
+                if event_class(ev) == cls
+            ]
+            if not class_items:
+                return
+            key, _ev = min(
+                class_items,
+                key=lambda item: (float(item[1].get("flux", 0.0)), -float(item[1].get("t", 0.0))),
+            )
+            del updated[key]
+            selected_keys.discard(key)
+
+    promote_class("full-spectrum", MEDIUM_SHAPE_TARGETS[1][0])
+    drop_class("harmonic", MEDIUM_SHAPE_TARGETS[2][1] - 1)
+    promote_class("harmonic", MEDIUM_SHAPE_TARGETS[2][0])
+    promote_class("full-spectrum", MEDIUM_SHAPE_TARGETS[1][0])
+    return updated
+
+
 def select_segment_focus_beats(analysis, difficulty):
     """Segment-level onset focus selector — the active experimental generation path.
 
@@ -2418,11 +2498,18 @@ def select_segment_focus_beats(analysis, difficulty):
         segment_ranges=segment_ranges,
         duration_sec=analysis.get("duration"),
     )
+    if difficulty == "medium":
+        selected_events = _rebalance_medium_by_onset_selection(selected_events, all_snapped, segment_ranges)
+        selected_events = _thin_selected_events_for_min_ioi(selected_events, difficulty)
+        selected_events = _enforce_same_class_run_cap(selected_events, difficulty)
+        selected_events = _rebalance_medium_by_onset_selection(selected_events, all_snapped, segment_ranges)
     # Issue #532 — strict cap on dense same-shape clusters (mirrors the
     # validator gate in tools/validate_loop2_content_gates.py).  Real
     # onsets only — drops the lowest-flux event(s) in any oversized
     # cluster.  Easy is unconstrained (already very sparse).
     selected_events = _enforce_max_shape_cluster_size(selected_events, difficulty)
+    if difficulty == "medium":
+        selected_events = _rebalance_medium_by_onset_selection(selected_events, all_snapped, segment_ranges)
     # Issue #528 — collapse runs at the OBSTACLE level inside
     # design_level_segment_focus (after onset_class → (lane, shape)
     # mapping has been resolved).  Cross-layer onsets at the analysis
@@ -2528,6 +2615,54 @@ def design_level_segment_focus(analysis, difficulty, cleanup_enabled=False):
     # within ``PLAYABILITY_MORPH_WINDOW_SEC``.
     collapsed_pairs: list[dict] = []
     obstacles = _collapse_simultaneous_obstacles(obstacles, collapsed_pairs=collapsed_pairs)
+    if difficulty == "medium":
+        used_sources = {obs.get("source_event_idx") for obs in obstacles}
+        used_beats = {int(obs.get("beat", -1)) for obs in obstacles}
+        harmonic_candidates = [
+            ev for ev in selected.values()
+            if ev.get("onset_class") == "harmonic" and ev.get("source_event_idx") not in used_sources
+        ]
+        harmonic_candidates.sort(key=lambda ev: (-float(ev.get("flux", 0.0)), float(ev.get("t", 0.0))))
+        for event in harmonic_candidates:
+            total = len(obstacles)
+            circles = sum(1 for obs in obstacles if obs.get("shape") == "circle")
+            if total > 0 and circles / total >= (MEDIUM_SHAPE_TARGETS[2][0] / 100.0):
+                break
+            event_time = float(event.get("t", 0.0))
+            if any(abs(event_time - float(obs.get("time_sec", 0.0))) < PLAYABILITY_MORPH_WINDOW_SEC for obs in obstacles):
+                continue
+            beat_idx = int(event.get("beat_idx", -1))
+            limit = beats_len - 1 if beats_len else beat_idx + 64
+            while beat_idx in used_beats and beat_idx <= limit:
+                beat_idx += 1
+            if beat_idx > limit:
+                continue
+            mapping = ONSET_CLASS_TO_OBSTACLE["harmonic"]
+            used_beats.add(beat_idx)
+            obstacles.append({
+                "beat": beat_idx,
+                "kind": "shape_gate",
+                "lane": mapping["lane"],
+                "shape": mapping["shape"],
+                "onset_class": "harmonic",
+                "segment_idx": event.get("segment_idx"),
+                "segment_focus": event.get("segment_focus"),
+                "difficulty_inclusion": event.get("difficulty_inclusion", difficulty),
+                "source_event_idx": event.get("source_event_idx"),
+                "flux": float(event.get("flux", 0.0)),
+                "time_sec": event_time,
+            })
+        while obstacles:
+            total = len(obstacles)
+            circles = sum(1 for obs in obstacles if obs.get("shape") == "circle")
+            if circles / total >= (MEDIUM_SHAPE_TARGETS[2][0] / 100.0):
+                break
+            removable = [obs for obs in obstacles if obs.get("shape") != "circle"]
+            if not removable:
+                break
+            weakest = min(removable, key=lambda obs: (float(obs.get("flux", 0.0)), -float(obs.get("time_sec", 0.0))))
+            obstacles.remove(weakest)
+        obstacles.sort(key=lambda obs: (int(obs.get("beat", -1)), float(obs.get("time_sec", 0.0))))
     seg_diagnostics["playability_collapsed_pairs"] = collapsed_pairs
     # No cleanup: obstacles come directly from onsets; no post-processing passes.
     return obstacles, selected, seg_diagnostics
@@ -3692,34 +3827,63 @@ def _enforce_cluster_chain_cap_obstacles(obstacles, difficulty):
                 run_start = ci
         if violating is None:
             return ordered
-        # Re-shape (lane + shape) the first obstacle in the cluster that
-        # caused the chain to overrun.  Pick any shape other than the
-        # current run_shape (and other than the next cluster's shape, if
-        # one exists) so the chain ends here without immediately starting
-        # a new same-shape chain at the next cluster.
+        # Drop the weakest real onset in the cluster that caused the chain
+        # to overrun. Post-hoc shape rewrites are forbidden because shape/lane
+        # must keep matching the source broad onset layer.
         target_cluster_idx = run_start + cap
         target_cluster = clusters[target_cluster_idx]
-        first_idx_in_cluster = target_cluster[0]
-        next_shape = (
-            ordered[clusters[target_cluster_idx + 1][0]].get("shape")
-            if (target_cluster_idx + 1) < len(clusters)
-            else None
-        )
-        choices = [s for s in ("triangle", "square", "circle") if s != run_shape and s != next_shape]
-        if not choices:
-            choices = [s for s in ("triangle", "square", "circle") if s != run_shape]
-        if not choices:
-            return ordered  # degenerate
-        # Pick deterministically: shape whose lane is currently scarcest in the chain.
-        chain_lane_counts: Counter = Counter()
-        for ci in range(run_start, run_start + cap):
-            for o_i in clusters[ci]:
-                chain_lane_counts[ordered[o_i].get("lane")] += 1
-        choices.sort(key=lambda s: (chain_lane_counts.get(SHAPE_TO_LANE[s], 0), s))
-        new_shape = choices[0]
-        set_shape_gate(ordered[first_idx_in_cluster], new_shape)
-        obstacles = ordered  # mutated in place; loop again to verify
+        drop_idx = min(target_cluster, key=lambda i: (float(ordered[i].get("flux", 0.0)), -float(ordered[i].get("time_sec", 0.0))))
+        del ordered[drop_idx]
+        obstacles = ordered
     return sorted(obstacles, key=lambda o: int(o.get("beat", 0)))
+
+
+def _ensure_obstacle_class_floor(obstacles, selected_events, onset_class, floor_pct, analysis):
+    if not obstacles:
+        return obstacles
+    mapping = ONSET_CLASS_TO_OBSTACLE[onset_class]
+    shape = mapping["shape"]
+    used_sources = {obs.get("source_event_idx") for obs in obstacles}
+    used_beats = {int(obs.get("beat", -1)) for obs in obstacles}
+    beats_len = len(analysis.get("beats", [])) if isinstance(analysis, dict) else 0
+    candidates = [
+        ev for ev in selected_events.values()
+        if ev.get("onset_class") == onset_class and ev.get("source_event_idx") not in used_sources
+    ]
+    candidates.sort(key=lambda ev: (-float(ev.get("flux", 0.0)), float(ev.get("t", 0.0))))
+    for event in candidates:
+        if sum(1 for obs in obstacles if obs.get("shape") == shape) / len(obstacles) >= floor_pct:
+            break
+        event_time = float(event.get("t", 0.0))
+        if any(abs(event_time - float(obs.get("time_sec", 0.0))) < PLAYABILITY_MORPH_WINDOW_SEC for obs in obstacles):
+            continue
+        beat_idx = int(event.get("beat_idx", -1))
+        limit = beats_len - 1 if beats_len else beat_idx + 64
+        while beat_idx in used_beats and beat_idx <= limit:
+            beat_idx += 1
+        if beat_idx > limit:
+            continue
+        used_beats.add(beat_idx)
+        obstacles.append({
+            "beat": beat_idx,
+            "kind": "shape_gate",
+            "lane": mapping["lane"],
+            "shape": shape,
+            "onset_class": onset_class,
+            "segment_idx": event.get("segment_idx"),
+            "segment_focus": event.get("segment_focus"),
+            "difficulty_inclusion": event.get("difficulty_inclusion"),
+            "source_event_idx": event.get("source_event_idx"),
+            "flux": float(event.get("flux", 0.0)),
+            "time_sec": event_time,
+        })
+    while obstacles and sum(1 for obs in obstacles if obs.get("shape") == shape) / len(obstacles) < floor_pct:
+        removable = [obs for obs in obstacles if obs.get("shape") != shape]
+        if not removable:
+            break
+        weakest = min(removable, key=lambda obs: (float(obs.get("flux", 0.0)), -float(obs.get("time_sec", 0.0))))
+        obstacles.remove(weakest)
+    return sorted(obstacles, key=lambda obs: (int(obs.get("beat", -1)), float(obs.get("time_sec", 0.0))))
 
 
 SAME_SHAPE_CLUSTER_CHAIN_CAP = {"medium": 3, "hard": 3}
@@ -3816,7 +3980,8 @@ def build_beatmap(analysis, difficulties, cleanup_enabled=True, experimental_ons
                 obs = rebalance_medium_shapes(obs, diff)
             # #532 — obstacle-level safety net (post-rebalance).
             obs = _thin_oversized_clusters_obstacles(obs, diff)
-            obs = _enforce_cluster_chain_cap_obstacles(obs, diff)
+            if diff != "hard":
+                obs = _enforce_cluster_chain_cap_obstacles(obs, diff)
             if diff == "medium":
                 # Thinning can drop medium back below its exact distribution
                 # floor, so rebalance once more and re-apply the same safety

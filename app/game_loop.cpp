@@ -152,16 +152,19 @@ bool game_loop_init(entt::registry& reg,
     const bool startup_shutdown_smoke = smoke_mode && smoke_mode[0] != '\0' &&
         !(smoke_mode[0] == '0' && smoke_mode[1] == '\0');
     if (!startup_shutdown_smoke) {
-        int mon = GetCurrentMonitor();
-        int mon_h = GetMonitorHeight(mon);
-        int mon_w = GetMonitorWidth(mon);
-        if (mon_w > 0 && mon_h > 0) {
-            int win_h = static_cast<int>(mon_h * 0.85f);
-            int win_w = win_h * constants::SCREEN_W / constants::SCREEN_H;
-            SetWindowSize(win_w, win_h);
-            SetWindowPosition(
-                (mon_w - win_w) / 2,
-                (mon_h - win_h) / 2);
+        const int monitor_count = GetMonitorCount();
+        const int mon = monitor_count > 0 ? GetCurrentMonitor() : -1;
+        if (mon >= 0 && mon < monitor_count) {
+            int mon_h = GetMonitorHeight(mon);
+            int mon_w = GetMonitorWidth(mon);
+            if (mon_w > 0 && mon_h > 0) {
+                int win_h = static_cast<int>(mon_h * 0.85f);
+                int win_w = win_h * constants::SCREEN_W / constants::SCREEN_H;
+                SetWindowSize(win_w, win_h);
+                SetWindowPosition(
+                    (mon_w - win_w) / 2,
+                    (mon_h - win_h) / 2);
+            }
         }
     }
     SetTargetFPS(60);

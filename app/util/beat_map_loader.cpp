@@ -193,7 +193,8 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
         entry.has_time_sec = has_time_sec;
         entry.time_sec = has_time_sec ? b["time_sec"].get<float>() : beat_time;
 
-        if (has_time_sec && !out.beat_times.empty() &&
+        const std::string timing_source = b.value("timing_source", "");
+        if (has_time_sec && timing_source != "onset" && !out.beat_times.empty() &&
             entry.beat_index >= 0 &&
             static_cast<size_t>(entry.beat_index) < out.beat_times.size()) {
             constexpr float kBeatTimeMismatchWarnSec = 0.010f;

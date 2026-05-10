@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../constants.h"
+
 #include <cstddef>
 #include <cstdint>
 
@@ -38,8 +40,8 @@ struct SongState {
 
 // ── Energy State (singleton) ────────────────────────
 struct EnergyState {
-    float energy      = 1.0f;   // [0.0, 1.0] — current energy
-    float display     = 1.0f;   // smoothed for rendering (lerps toward energy)
+    float energy      = constants::ENERGY_START;   // [0.0, 1.0] — current energy
+    float display     = constants::ENERGY_START;   // smoothed for rendering (lerps toward energy)
     float flash_timer = 0.0f;   // > 0 when bar should flash (drain event)
 };
 

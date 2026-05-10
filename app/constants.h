@@ -47,6 +47,7 @@ constexpr float COLLISION_MARGIN   = 40.0f;    // half-height of timing window (
 
 // ── Energy Bar ────────────────────────────────────
 constexpr float ENERGY_MAX              = 1.0f;
+constexpr float ENERGY_START            = 1.0f;
 constexpr float ENERGY_DRAIN_MISS       = 0.20f;
 constexpr float ENERGY_DRAIN_BAD        = 0.05f;
 constexpr float ENERGY_RECOVER_OK       = 0.02f;

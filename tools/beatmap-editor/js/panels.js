@@ -181,6 +181,8 @@ function applyImportedBeatmapData(data) {
         leadBeats: data.leadBeats,
         duration:  data.duration,
         songPath:  data.songPath,
+        hasSongPath: data.hasSongPath,
+        extraTopLevel: data.extraTopLevel,
     });
 
     state.difficulties = data.difficulties;

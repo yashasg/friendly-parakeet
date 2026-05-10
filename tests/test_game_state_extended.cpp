@@ -184,6 +184,7 @@ TEST_CASE("game_state: transition clears in-flight pointer capture", "[gamestate
     input.touch_up = false;
     input.touching = true;
     input.active_source = InputSource::Mouse;
+    input.suppress_mouse_release = true;
     input.duration = 0.25f;
 
     gs.transition_pending = true;
@@ -195,6 +196,7 @@ TEST_CASE("game_state: transition clears in-flight pointer capture", "[gamestate
     CHECK_FALSE(input.touch_up);
     CHECK_FALSE(input.touching);
     CHECK(input.active_source == InputSource::None);
+    CHECK_FALSE(input.suppress_mouse_release);
     CHECK(input.duration == 0.0f);
 }
 

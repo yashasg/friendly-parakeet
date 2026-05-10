@@ -409,7 +409,7 @@ export function validate(state) {
         });
     }
 
-    // Rule 2: Offset in [0.0, 5.0]
+    // Rule 2: Offset in shared content/constants.json range.
     if (state.offset < VALIDATION.OFFSET_MIN || state.offset > VALIDATION.OFFSET_MAX) {
         errors.push({
             beatIndex: -1,
@@ -495,11 +495,13 @@ export function validate(state) {
             });
         }
 
-        // Rule 5: Beat indices monotonically increasing
-        if (entry.beat <= prevBeat && prevBeat >= 0) {
+        // Rule 5: Beat indices monotonically non-decreasing. The C++ loader
+        // allows multiple authored entries on the same beat when their
+        // resolved time_sec values are non-decreasing.
+        if (entry.beat < prevBeat && prevBeat >= 0) {
             errors.push({
                 beatIndex: entry.beat,
-                message: 'Beat indices must be monotonically increasing',
+                message: 'Beat indices must be monotonically non-decreasing',
                 severity: 'error',
             });
         }
@@ -512,6 +514,41 @@ export function validate(state) {
                 message: 'Beat index exceeds song duration',
                 severity: 'error',
             });
+        }
+
+        if (entry.time_sec !== undefined) {
+            if (!Number.isFinite(entry.time_sec)) {
+                errors.push({
+                    beatIndex: entry.beat,
+                    message: 'time_sec must be finite when provided',
+                    severity: 'error',
+                });
+            } else {
+                if (entry.time_sec < 0) {
+                    errors.push({
+                        beatIndex: entry.beat,
+                        message: 'time_sec must be >= 0 when provided',
+                        severity: 'error',
+                    });
+                }
+                if (entry.time_sec > state.duration) {
+                    errors.push({
+                        beatIndex: entry.beat,
+                        message: 'time_sec must be <= duration_sec when provided',
+                        severity: 'error',
+                    });
+                }
+                if (i > 0) {
+                    const prev = beats[i - 1];
+                    if (Number.isFinite(prev?.time_sec) && entry.time_sec < prev.time_sec) {
+                        errors.push({
+                            beatIndex: entry.beat,
+                            message: 'time_sec must be non-decreasing across authored beat entries',
+                            severity: 'error',
+                        });
+                    }
+                }
+            }
         }
 
         // Rule 7: shape_gate / split_path lane must be 0–2

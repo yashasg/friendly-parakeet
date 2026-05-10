@@ -102,10 +102,12 @@
                      │ │ GAMEOVER │ │   SONG   │ └─────────────┘
                      │ │  SCREEN  │ │ COMPLETE │
                      │ │          │ │  SCREEN  │
-                     │ │ ● score  │ │          │
-                     │ │ ● stats  │ │ ● score  │
-                     │ │[RETRY]   │ │ ● stats  │
-                     │ │[MENU]    │ │ [MENU]   │
+                      │ │ ● score  │ │          │
+                      │ │ ● reason │ │ ● score  │
+                      │ │[RESTART] │ │ ● stats  │
+                      │ │[LEVELS]  │ │[RESTART] │
+                      │ │[MAIN]    │ │[LEVELS]  │
+                      │ │          │ │[MAIN]    │
                      │ └────┬─────┘ └────┬─────┘
                      │      │            │
                      └──────┴────────────┘
@@ -152,7 +154,9 @@ Shipped transitions, by controller, as of Round 6 audit:
 - `Paused → Title` — quit action.
 - `Playing → GameOver` — energy reaches zero.
 - `Playing → SongComplete` — song reaches end.
-- `GameOver | SongComplete → Title` — menu action.
+- `GameOver | SongComplete → Playing` — restart action.
+- `GameOver | SongComplete → LevelSelect` — level-select action.
+- `GameOver | SongComplete → Title` — main-menu action.
 - `* → Tutorial` — **none today** (see #76).
 
 ---
@@ -462,9 +466,9 @@ Not shipped (intentionally absent from this wireframe):
 > Shapes Shifted / Longest Chain rows, PLAY AGAIN / MENU buttons,
 > highlight rules for Longest Chain and the SURVIVOR badge) is
 > still current. New Game Over code must not surface burnout
-> stats; replacement scoring will come from energy-bar telemetry
-> (`design-docs/energy-bar.md`) and rhythm timing (`design-docs/
-> rhythm-spec.md` §6).
+> stats. The shipped Game Over screen currently renders final score,
+> high score, and death reason with `RESTART`, `LEVEL SELECT`, and
+> `MAIN MENU` buttons; the larger stat panel below is future scope.
 
 ```
   ╔══════════════════════════════════════╗
@@ -485,26 +489,25 @@ Not shipped (intentionally absent from this wireframe):
   ║     └────────────────────────────┘   ║
   ║                                      ║
   ║     ┌────────────────────────────┐   ║  ← y = 0.42H
-  ║     │  STATS                     │   ║
+  ║     │  SHIPPED SUMMARY           │   ║
   ║     │  ─────────────────────     │   ║
   ║     │                            │   ║
-  ║     │  Distance      1,247 m     │   ║  ← stat rows
-  ║     │  Time          02:34       │   ║     slide in
-  ║     │  Obstacles     47          │   ║     sequentially
-  ║     │  Shapes Shifted 31         │   ║     0.1s apart
-  ║     │  Best Burnout   ×4.0       │   ║   ← ARCHIVED #239
-  ║     │  Longest Chain  5          │   ║
-  ║     │  Avg Burnout    ×2.3       │   ║   ← ARCHIVED #239
+  ║     │  High Score    31,420      │   ║
+  ║     │  End Reason    Energy 0    │   ║
+  ║     │  Detailed stats: future    │   ║
   ║     │                            │   ║
   ║     └────────────────────────────┘   ║
   ║                                      ║  ← y = 0.78H
   ║                                      ║
   ║     ╔════════════════════════════╗   ║  ← y = 0.82H
-  ║     ║     ▸ PLAY AGAIN          ║   ║     PRIMARY button
+  ║     ║     ▸ RESTART             ║   ║     PRIMARY button
   ║     ╚════════════════════════════╝   ║     0.80W × 0.08H
   ║                                      ║
   ║     ┌────────────────────────────┐   ║  ← y = 0.92H
-  ║     │        MENU               │   ║     secondary button
+  ║     │      LEVEL SELECT         │   ║     secondary button
+  ║     └────────────────────────────┘   ║
+  ║     ┌────────────────────────────┐   ║
+  ║     │       MAIN MENU            │   ║     secondary button
   ║     └────────────────────────────┘   ║     0.80W × 0.05H
   ║                                      ║
   ╚══════════════════════════════════════╝
@@ -514,23 +517,16 @@ Not shipped (intentionally absent from this wireframe):
 
 ```
   ╔══════════════════════════════════════════════════════╗
-  ║  STAT ROW           ║  SOURCE             ║ FORMAT  ║
+  ║  SHIPPED ROW        ║  SOURCE             ║ FORMAT  ║
   ╠══════════════════════╬══════════════════════╬═════════╣
-  ║  Distance            ║  meters traveled     ║ "1,247m"║
-  ║  Time                ║  seconds survived    ║ "02:34" ║
-  ║  Obstacles           ║  total cleared       ║ "47"    ║
-  ║  Shapes Shifted      ║  shape button taps   ║ "31"    ║
-  ║  Best Burnout        ║  highest single mult ║ "×4.0"  ║   ← ARCHIVED #239
-  ║  Longest Chain       ║  max consecutive     ║ "5"     ║
-  ║  Avg Burnout         ║  mean of all mults   ║ "×2.3"  ║   ← ARCHIVED #239
+  ║  Final Score         ║  SongResults.score   ║ "24850" ║
+  ║  High Score          ║  ScoreState.best     ║ "31420" ║
+  ║  Death Reason        ║  GameOverState.cause ║ text    ║
   ╚══════════════════════╩══════════════════════╩═════════╝
 
   HIGHLIGHT RULES:
   ─────────────────
-  • If Best Burnout ≥ ×4.0  → show in GOLD with ★ icon  ← ARCHIVED #239
-  • If Longest Chain ≥ 5    → show in GOLD with ★ icon
   • If new personal best    → "◆ NEW BEST! ◆" rainbow text
-  • If first time > 120s    → show "🔥 SURVIVOR" badge
 ```
 
 ---
@@ -553,25 +549,28 @@ Not shipped (intentionally absent from this wireframe):
   ║     │         ★ 31,420 ★         │   ║  ← FINAL SCORE
   ║     │       (rolls up to this)   │   ║
   ║     │                            │   ║
-  ║     │      CLEAR BONUS APPLIED   │   ║
+  ║     │      CLEAR BONUS APPLIED   │   ║  ← future; not yet shipped
   ║     │                            │   ║
   ║     └────────────────────────────┘   ║
   ║                                      ║
   ║     ┌────────────────────────────┐   ║
   ║     │  RESULTS                   │   ║
   ║     │  ─────────────────────     │   ║
-  ║     │  Accuracy      91%         │   ║
-  ║     │  Misses        3           │   ║
-  ║     │  Longest Chain 18          │   ║
-  ║     │  Energy Left   42%         │   ║
+  ║     │  Perfect      42           │   ║
+  ║     │  Great        18           │   ║
+  ║     │  Good          7           │   ║
+  ║     │  Miss          3           │   ║
   ║     └────────────────────────────┘   ║
   ║                                      ║
   ║     ╔════════════════════════════╗   ║
-  ║     ║     ▸ PLAY AGAIN          ║   ║
+  ║     ║     ▸ RESTART             ║   ║
   ║     ╚════════════════════════════╝   ║
   ║                                      ║
   ║     ┌────────────────────────────┐   ║
-  ║     │        MENU               │   ║
+  ║     │      LEVEL SELECT         │   ║
+  ║     └────────────────────────────┘   ║
+  ║     ┌────────────────────────────┐   ║
+  ║     │       MAIN MENU            │   ║
   ║     └────────────────────────────┘   ║
   ║                                      ║
   ╚══════════════════════════════════════╝
@@ -604,16 +603,10 @@ Terminal split:
 
 ### FTUE State Tracking
 
-```
-  Persistent storage key: "ftue_run_count" (int, starts at 0)
-
-  Run 0:  Never played before → Tutorial Run 1
-  Run 1:  Completed 1 run     → Tutorial Run 2
-  Run 2:  Completed 2 runs    → Tutorial Run 3
-  Run 3:  Completed 3 runs    → Tutorial Run 4
-  Run 4:  Completed 4 runs    → Tutorial Run 5
-  Run 5+: Full game unlocked  → No more tutorial
-```
+The shipped onboarding surface is the **Quick Start** tutorial screen
+(`content/ui/screens/tutorial.rgl`). The older five-run adaptive FTUE plan
+below is archived design intent only: `ftue_run_count` may exist in settings
+storage, but no shipped controller routes players through Tutorial Run 1-5.
 
 ---
 
@@ -1644,9 +1637,10 @@ Every player action triggers a multi-sensory response.
 > and the live timing cue is the **proximity ring** around shape buttons
 > (`design-docs/rhythm-spec.md` §6). Treat the two `Burnout *` rows as
 > historical context only; new HUD code must not add a `Burnout Meter`
-> or `Burnout Popup` element. The remaining rows (Score Counter, Speed
-> Bar, Pause Button, Shape Buttons, Lane Dividers, Player Avatar, Chain
-> Counter, etc.) are still current.
+> or `Burnout Popup` element. The shipped HUD has a vertical left-edge
+> Energy Bar, Score/Best Score, Pause Button, Shape Buttons, Lane
+> Dividers, and Player Avatar. Speed Bar and Chain Counter are not
+> currently rendered.
 
 ```
   ╔═══════════════════════╦═══════╦═════════╦════════╦═══════╦════════╗
@@ -1660,13 +1654,14 @@ Every player action triggers a multi-sensory response.
   ╠═══════════════════════╬═══════╬═════════╬════════╬═══════╬════════╣
   ║ Score Counter          ║       ║  ✓      ║  ✓ dim ║ ✓ freeze║      ║
   ║ Best Score (HUD)       ║       ║  ✓      ║  ✓ dim ║       ║        ║
-  ║ Speed Bar              ║       ║  ✓      ║  ✓ dim ║       ║        ║
+  ║ Energy Bar (left edge) ║       ║  ✓      ║  ✓ dim ║ ✓ grey║        ║
+  ║ Speed Bar              ║       ║         ║        ║       ║        ║  ← removed
   ║ Pause Button (⏸)       ║       ║  ✓      ║        ║       ║        ║
   ║ Burnout Meter          ║       ║  ✓      ║  ✓ dim ║ ✓ grey ║       ║  ← ARCHIVED #239 (removed; use Energy Bar)
   ║ Shape Buttons          ║       ║  ✓      ║  ✓ dim ║       ║        ║
   ║ Lane Dividers          ║       ║  ✓      ║  ✓ dim ║ ✓ fade ║       ║
   ║ Player Avatar          ║       ║  ✓      ║  ✓ dim ║ shatter║       ║
-  ║ Chain Counter          ║       ║  ✓*     ║  ✓ dim ║       ║        ║
+  ║ Chain Counter          ║       ║         ║        ║       ║        ║  ← not shipped
   ║ Burnout Popup          ║       ║  ✓*     ║        ║       ║        ║  ← ARCHIVED #239 (removed)
   ╠═══════════════════════╬═══════╬═════════╬════════╬═══════╬════════╣
   ║ "PAUSED" text          ║       ║         ║  ✓     ║       ║        ║

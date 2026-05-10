@@ -27,5 +27,17 @@
         "lead_beats_min": 2,
         "lead_beats_max": 8,
         "min_shape_change_gap": 3
+    },
+    "energy": {
+        "start": 1.0,
+        "max": 1.0,
+        "drain_miss": 0.20,
+        "drain_bad": 0.05,
+        "recover_ok": 0.02,
+        "recover_good": 0.05,
+        "recover_perfect": 0.10,
+        "display_speed": 3.0,
+        "flash_duration": 0.3,
+        "critical_threshold": 0.25
     }
 }
