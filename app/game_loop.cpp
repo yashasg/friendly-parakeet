@@ -15,6 +15,7 @@
 #include "components/obstacle.h"
 #include "components/rng.h"
 #include "systems/all_systems.h"
+#include "systems/game_phase_transition.h"
 #include "systems/runtime_systems.h"
 #include "session/test_player_session.h"
 #include "input/input_routing.h"
@@ -174,6 +175,7 @@ void game_loop_init(entt::registry& reg,
         .phase_timer = 0.0f, .transition_pending = false,
         .next_phase = GamePhase::Title, .transition_alpha = 0.0f
     });
+    enter_phase(reg.ctx().get<GameState>(), GamePhase::Title);
     reset_ctx_singleton<ScoreState>(reg);
     reset_ctx_singleton<LevelSelectState>(reg);
     reset_ctx_singleton<EnergyState>(reg);

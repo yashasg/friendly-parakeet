@@ -28,6 +28,29 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 option(SHAPESHIFTER_UNITY_BUILD "Enable unity builds for faster compilation" ON)
 set(CMAKE_UNITY_BUILD ${SHAPESHIFTER_UNITY_BUILD})
 
+option(SHAPESHIFTER_IOS_BRIDGE_COMPILE_CHECK "Compile-only validation of iOS ObjC++ haptics bridge" OFF)
+if(SHAPESHIFTER_IOS_BRIDGE_COMPILE_CHECK)
+    if(NOT APPLE)
+        message(FATAL_ERROR "SHAPESHIFTER_IOS_BRIDGE_COMPILE_CHECK requires an Apple toolchain")
+    endif()
+    enable_language(OBJCXX)
+    add_library(shapeshifter_ios_bridge_compile_check OBJECT
+        app/platform/ios/haptics_ios_bridge_ios.mm
+    )
+    target_include_directories(shapeshifter_ios_bridge_compile_check PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/app
+    )
+    target_compile_features(shapeshifter_ios_bridge_compile_check PRIVATE cxx_std_20)
+    target_compile_options(shapeshifter_ios_bridge_compile_check PRIVATE
+        $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wall -Wextra -Werror>
+        $<$<CXX_COMPILER_ID:MSVC>:/W4 /WX>
+    )
+    add_custom_target(shapeshifter_ios_bridge_compile_check_target
+        DEPENDS shapeshifter_ios_bridge_compile_check
+    )
+    return()
+endif()
+
 # ── Version (major.minor.githash) ────────────────────────────
 execute_process(
     COMMAND git rev-parse --short HEAD
@@ -60,8 +83,11 @@ find_package(magic_enum CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(raylib CONFIG REQUIRED)
 find_path(RAYGUI_INCLUDE_DIR raygui.h REQUIRED)
+include(CTest)
 
-find_package(Catch2 3 CONFIG REQUIRED)
+if(BUILD_TESTING)
+    find_package(Catch2 3 CONFIG REQUIRED)
+endif()
 
 # ── Warnings-as-errors (project targets only) ────────────────
 # Applied via an INTERFACE target so it never leaks into third-party code.
@@ -76,7 +102,10 @@ target_compile_options(shapeshifter_warnings INTERFACE
 
 # Mark third-party include directories as SYSTEM so warnings from their
 # headers are suppressed and cannot be promoted to errors by -Werror.
-set(_system_deps EnTT::EnTT glm::glm magic_enum::magic_enum raylib nlohmann_json::nlohmann_json Catch2::Catch2 Catch2::Catch2WithMain)
+set(_system_deps EnTT::EnTT glm::glm magic_enum::magic_enum raylib nlohmann_json::nlohmann_json)
+if(BUILD_TESTING)
+    list(APPEND _system_deps Catch2::Catch2 Catch2::Catch2WithMain)
+endif()
 foreach(_dep ${_system_deps})
     if(TARGET ${_dep})
         # Resolve alias targets — set_target_properties doesn't work on aliases
@@ -111,6 +140,14 @@ list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "(^|/)input_system\\.cpp$")
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "(^|/)song_playback_system\\.cpp$")
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "(^|/)camera_system\\.cpp$")
 list(FILTER UI_SOURCES EXCLUDE REGEX "(^|/)raygui_impl\\.cpp$")
+
+# raygui is header-only and requires one implementation owner TU.
+set_source_files_properties(
+    app/ui/screen_controllers/title_screen_controller.cpp
+    PROPERTIES
+        COMPILE_DEFINITIONS RAYGUI_IMPLEMENTATION
+        SKIP_UNITY_BUILD_INCLUSION TRUE
+)
 
 set(SHAPESHIFTER_IOS FALSE)
 if(APPLE)
@@ -450,8 +487,7 @@ if(SHADER_FILES)
 endif()
 
 # ── Tests + Benchmarks ──────────────────────────────────────
-enable_testing()
-
+if(BUILD_TESTING)
 file(GLOB TEST_SOURCES CONFIGURE_DEPENDS tests/*.cpp benchmarks/*.cpp)
 
 # Unity build hazard exclusions (Keaton audit). These test files define
@@ -471,16 +507,6 @@ set_source_files_properties(
     tests/test_shipped_beatmap_lane_run_and_subdivision.cpp
     tests/test_redfoot_testflight_ui.cpp
     PROPERTIES SKIP_UNITY_BUILD_INCLUSION TRUE
-)
-
-# raygui is header-only and requires one implementation owner TU.
-# Under unity builds we force that TU out of unity batching so
-# RAYGUI_IMPLEMENTATION is scoped to exactly one translation unit.
-set_source_files_properties(
-    app/ui/screen_controllers/title_screen_controller.cpp
-    PROPERTIES
-        COMPILE_DEFINITIONS RAYGUI_IMPLEMENTATION
-        SKIP_UNITY_BUILD_INCLUSION TRUE
 )
 
 add_executable(shapeshifter_tests
@@ -538,7 +564,6 @@ if(EMSCRIPTEN)
 endif()
 
 if(NOT EMSCRIPTEN)
-    include(CTest)
     include(Catch)
     catch_discover_tests(
         shapeshifter_tests
@@ -556,15 +581,25 @@ if(NOT EMSCRIPTEN)
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/validate_loop2_content_gates.py --strict
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     )
-    find_program(NODE_EXECUTABLE node REQUIRED)
-    file(GLOB _beatmap_editor_node_test_files CONFIGURE_DEPENDS
-        "${CMAKE_SOURCE_DIR}/tools/beatmap-editor/test/*.test.js"
-    )
-    add_test(
-        NAME beatmap_editor_node_tests
-        COMMAND ${NODE_EXECUTABLE} --test ${_beatmap_editor_node_test_files}
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/tools/beatmap-editor
-    )
+    find_program(NODE_EXECUTABLE node)
+    if(NODE_EXECUTABLE)
+        file(GLOB _beatmap_editor_node_test_files CONFIGURE_DEPENDS
+            "${CMAKE_SOURCE_DIR}/tools/beatmap-editor/test/*.test.js"
+        )
+        add_test(
+            NAME beatmap_editor_node_tests
+            COMMAND ${NODE_EXECUTABLE} --test ${_beatmap_editor_node_test_files}
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/tools/beatmap-editor
+        )
+        message(STATUS "beatmap_editor_node_tests enabled: ${NODE_EXECUTABLE}")
+    else()
+        add_test(
+            NAME beatmap_editor_node_tests
+            COMMAND ${CMAKE_COMMAND} -E echo "SKIPPED: beatmap_editor_node_tests (node executable not found)"
+        )
+        set_tests_properties(beatmap_editor_node_tests PROPERTIES DISABLED TRUE)
+        message(STATUS "beatmap_editor_node_tests disabled: node executable not found")
+    endif()
 else()
     # Run the Emscripten Catch2 binary under Node. NODERAWFS lets tests read
     # repository/build content files directly instead of preloading game assets.
@@ -579,4 +614,5 @@ else()
         # source-managed UI layout assets resolve the same relative paths.
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     )
+endif()
 endif()

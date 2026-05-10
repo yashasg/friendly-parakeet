@@ -57,6 +57,19 @@ async function main() {
     return previousHash;
   }
 
+  async function waitForTitlePhase(expectedPhase, timeoutMs) {
+    const started = Date.now();
+    const marker = `[${expectedPhase}]`;
+    while (Date.now() - started < timeoutMs) {
+      const title = await page.title();
+      if (title.includes(marker)) {
+        return true;
+      }
+      await page.waitForTimeout(100);
+    }
+    return false;
+  }
+
   page.on('console', msg => {
     const text = msg.text();
     if (/RuntimeError: Aborted|Aborted\(|abort\(|emscripten_sleep/i.test(text)) {
@@ -91,6 +104,9 @@ async function main() {
     await page.waitForFunction(() => {
       return typeof document.title === 'string' && document.title.includes('SHAPESHIFTER');
     }, undefined, { timeout: 30000 });
+    if (!(await waitForTitlePhase('Title', 3000))) {
+      fatal.push(`missing-title-phase-marker:${await page.title()}`);
+    }
 
     const beforeInput = await page.screenshot();
     const beforeHash = sha256(beforeInput);
@@ -106,6 +122,9 @@ async function main() {
     if (beforeHash === afterStartHash) {
       fatal.push('no-visual-response-after-title-clicks');
     }
+    if (!(await waitForTitlePhase('LevelSelect', 4000))) {
+      fatal.push(`missing-level-select-phase-marker:${await page.title()}`);
+    }
 
     // Once on level select, keyboard navigation should visibly update selection.
     // The title transition above covers the browser click path; using keyboard
@@ -114,6 +133,9 @@ async function main() {
     const afterLevelSelectClickHash = await waitForVisualChange(afterStartHash, 2500);
     if (afterStartHash === afterLevelSelectClickHash) {
       fatal.push('no-visual-response-after-level-select-navigation');
+    }
+    if (!(await waitForTitlePhase('LevelSelect', 1500))) {
+      fatal.push(`unexpected-phase-after-level-select-navigation:${await page.title()}`);
     }
 
     // Start the selected level. The controller intentionally ignores instant
@@ -127,6 +149,9 @@ async function main() {
     }
     if (afterLevelSelectClickHash === afterHash) {
       fatal.push('no-visual-response-after-enter');
+    }
+    if (!(await waitForTitlePhase('Playing', 4500))) {
+      fatal.push(`missing-playing-phase-marker:${await page.title()}`);
     }
   } finally {
     await browser.close();
