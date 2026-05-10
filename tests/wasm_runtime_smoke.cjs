@@ -24,8 +24,31 @@ async function main() {
     args: ['--no-sandbox', '--disable-dev-shm-usage'],
   });
 
-  const page = await browser.newPage();
+  const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
   const fatal = [];
+
+  async function clickCanvasAt(xRatio, yRatio) {
+    const box = await page.locator('#canvas').boundingBox();
+    if (!box) {
+      fatal.push('canvas-bounding-box-unavailable');
+      return;
+    }
+    const x = box.x + Math.max(4, Math.floor(box.width * xRatio));
+    const y = box.y + Math.max(4, Math.floor(box.height * yRatio));
+    await page.mouse.click(x, y);
+  }
+
+  async function waitForVisualChange(previousHash, timeoutMs) {
+    const started = Date.now();
+    while (Date.now() - started < timeoutMs) {
+      await page.waitForTimeout(300);
+      const nextHash = sha256(await page.screenshot());
+      if (nextHash !== previousHash) {
+        return nextHash;
+      }
+    }
+    return previousHash;
+  }
 
   page.on('console', msg => {
     const text = msg.text();
@@ -66,33 +89,24 @@ async function main() {
     const beforeHash = sha256(beforeInput);
 
     // Some browser stacks can consume the first click as focus acquisition.
-    await page.click('#canvas', { position: { x: 360, y: 640 } });
-    await page.waitForTimeout(600);
-    let afterStart = await page.screenshot();
-    let afterStartHash = sha256(afterStart);
-    if (beforeHash === afterStartHash) {
-      await page.click('#canvas', { position: { x: 360, y: 640 } });
-      await page.waitForTimeout(600);
-      afterStart = await page.screenshot();
-      afterStartHash = sha256(afterStart);
+    let afterStartHash = beforeHash;
+    for (let i = 0; i < 3 && beforeHash === afterStartHash; i += 1) {
+      await clickCanvasAt(0.5, 0.85);
+      afterStartHash = await waitForVisualChange(beforeHash, 2500);
     }
     if (beforeHash === afterStartHash) {
       fatal.push('no-visual-response-after-title-clicks');
     }
 
     // Once on level select, clicking a different card should visibly update selection.
-    await page.click('#canvas', { position: { x: 360, y: 500 } });
-    await page.waitForTimeout(600);
-    const afterLevelSelectClick = await page.screenshot();
-    const afterLevelSelectClickHash = sha256(afterLevelSelectClick);
+    await clickCanvasAt(0.5, 0.7);
+    const afterLevelSelectClickHash = await waitForVisualChange(afterStartHash, 2500);
     if (afterStartHash === afterLevelSelectClickHash) {
       fatal.push('no-visual-response-after-level-select-click');
     }
 
     await page.keyboard.press('Enter');
-    await page.waitForTimeout(1000);
-    const afterInput = await page.screenshot();
-    const afterHash = sha256(afterInput);
+    const afterHash = await waitForVisualChange(afterLevelSelectClickHash, 3500);
     if (afterLevelSelectClickHash === afterHash) {
       fatal.push('no-visual-response-after-enter');
     }

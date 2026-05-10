@@ -44,6 +44,9 @@ jobs:
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
             core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
+      - name: Validate CFBundleVersion preflight script
+        run: python3 -m unittest -v tools.test_preflight_cfbundle_version
+
       - name: Install LLVM 20
         run: brew install llvm@20
 
