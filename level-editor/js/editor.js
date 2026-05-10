@@ -51,7 +51,20 @@ function clampLane(lane) {
 }
 
 function clampBeat(beat) {
-  return Math.max(0, beat);
+  return Math.max(0, Math.min(getMaxBeat(), beat));
+}
+
+// Upper bound for cursor placement, derived from loaded song metadata.
+// Audio duration (seconds) × BPM / 60 yields the playable beat count; the
+// authoring lead-in beats extend the editable window before bar 1. When no
+// audio/metadata is loaded yet we fall back to the lead-in so the editor
+// remains usable, but we never let the cursor walk arbitrarily far.
+export function getMaxBeat() {
+  const bpm = state.bpm > 0 ? state.bpm : 1;
+  const playable = Math.floor((state.duration || 0) * bpm / 60);
+  const lead = Math.max(0, state.leadBeats || 0);
+  if (playable <= 0) return Math.max(0, lead);
+  return playable + lead;
 }
 
 function resolveAuthoringKind(kind) {
@@ -210,7 +223,7 @@ export function init(canvas, contextMenu, audioModule) {
 
       case 'ArrowRight':
         e.preventDefault();
-        state.cursor.beat = state.cursor.beat + (e.shiftKey ? 4 : 1);
+        state.cursor.beat = clampBeat(state.cursor.beat + (e.shiftKey ? 4 : 1));
         emit('cursor-changed');
         break;
 
@@ -244,6 +257,7 @@ export function init(canvas, contextMenu, audioModule) {
 
       // Place at cursor
       case 'Enter':
+        e.preventDefault();
         if (state.cursor.beat >= 0 && state.cursor.lane >= 0) {
           const kind = resolveAuthoringKind(state.tool.kind);
           pushUndo('Place obstacle');
@@ -254,6 +268,13 @@ export function init(canvas, contextMenu, audioModule) {
             lane: state.cursor.lane,
           });
         }
+        break;
+
+      // Help (advertised on the toolbar Help button)
+      case '?':
+      case 'F1':
+        e.preventDefault();
+        emit('help-requested');
         break;
 
       // Delete selected
