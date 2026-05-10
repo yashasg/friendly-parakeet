@@ -339,3 +339,49 @@ losing 2/3 of detection surface. Combined: only 33 events from 5 onsets/pass for
 **1_stomper obstacles**: 14/17/19 → **23/35/51** (easy/medium/hard)
 
 All 17 Python tests pass. All 1848 C++ assertions pass.
+
+## 2026-05-10 — Tools/Beatmap Audit (Issues #382-#385)
+
+Audit scope: `tools/level_designer.py`, rhythm/beatmap validators, diagnostics generation, test tools, run scripts, and the onset beatmap generation workflow. No code changes were made in this pass beyond this history note.
+
+Findings filed:
+
+1. **#385 — Onset segment-focus path collapses layer-specific events sharing a beat**
+   - `snap_events_to_beats()` preserves one event per `(beat_idx, onset_class)`, but the active segment-focus path rekeys selected events by `beat_idx` only.
+   - Learning: layer-aware preservation must be verified end-to-end, not only at merge/snap boundaries. Any necessary same-beat collision policy should be explicit and diagnosed.
+
+2. **#384 — Diagnostics output can leave stale onset spike artifacts across modes**
+   - `write_snap_diagnostics()` uses `exist_ok=True` and overwrites the summary, but only writes `onset_timing_events.csv` in experimental mode.
+   - Learning: diagnostics directories should be reproducible run outputs. Generated artifacts need cleanup, a manifest, or mode-specific output directories to prevent stale-file validation.
+
+3. **#382 — run.sh ignores caller-provided VCPKG_ROOT**
+   - `run.sh` unconditionally exports `VCPKG_ROOT="$HOME/vcpkg"` before calling `build.sh`, defeating environment-based toolchain configuration.
+   - Learning: wrapper scripts should preserve caller-provided tool paths and let lower-level scripts validate them.
+
+4. **#383 — Loop 2 content validator count check ignores invalid beat rows**
+   - The validator compares declared `count` to raw `len(beats)` while the rest of the metrics use filtered integer-beat rows.
+   - Learning: validator diagnostics should distinguish raw rows, valid authored obstacles, and declared counts so malformed rows cannot hide behind matching totals.
+
+Duplicate checks were run with `gh issue list --state all --search` for each finding before filing. Labels applied: `squad`, `squad:fenster`.
+
+## 2026-05-10 — Fixed audit issues #382, #383, #384, #385
+
+Implemented focused fixes on branch `audit/autonomous-quality-loop`.
+
+- **#382** (`run.sh`): preserved caller-provided toolchain path by defaulting only when unset:
+  - `export VCPKG_ROOT="${VCPKG_ROOT:-$HOME/vcpkg}"`
+
+- **#383** (`tools/validate_loop2_content_gates.py`): count gate now compares declared `count` against valid integer-beat obstacles (same population used by other metrics), and diagnostics now report all three numbers: declared count, valid beat count, and raw rows.
+  - Added test coverage in `tools/test_validate_loop2_content_gates.py` for invalid beat rows.
+
+- **#384** (`tools/level_designer.py`, `tools/validate_onset_spike_artifacts.py`): diagnostics writer now clears known generated artifacts in output dir before writing, preventing stale `onset_timing_events.csv` carryover across mode switches. Spike validator now hard-errors when summary is not `experimental_onset_timing.enabled=true`.
+  - Added tests for stale-artifact cleanup and non-experimental validator failure.
+
+- **#385** (`tools/level_designer.py`): segment-focus selection now keys selected/snapped events by `(beat_idx, onset_class, source_event_idx)` and preserves per-event onset class instead of collapsing by beat index. Timing attachment/diagnostics lookups now resolve events by `source_event_idx` (with safe beat fallback only when unambiguous).
+  - Added focused test proving same-beat cross-layer events remain distinct when selected.
+
+Validation run:
+- Targeted tests:
+  - `python3 -m unittest tools/test_validate_loop2_content_gates.py tools/test_level_designer_onset_spike.py tools/test_validate_onset_spike_artifacts.py` ✅
+- Full validation:
+  - `cmake -B build -S . -Wno-dev && cmake --build build && ./build/shapeshifter_tests` ✅

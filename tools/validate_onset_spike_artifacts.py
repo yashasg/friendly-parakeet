@@ -270,11 +270,20 @@ def main(argv: list[str] | None = None) -> int:
     if not summary_path.exists():
         print(f"ERROR: missing {summary_path}", file=sys.stderr)
         return 1
+
+    summary = load_summary(summary_path)
+    experimental = summary.get("experimental_onset_timing")
+    experimental_enabled = isinstance(experimental, dict) and bool(experimental.get("enabled"))
+    if not experimental_enabled:
+        print(
+            "ERROR: diagnostics summary is not experimental_onset_timing enabled; "
+            "regenerate diagnostics in experimental mode to validate onset spike artifacts.",
+            file=sys.stderr,
+        )
+        return 1
     if not events_path.exists():
         print(f"ERROR: missing {events_path}", file=sys.stderr)
         return 1
-
-    summary = load_summary(summary_path)
     rows = load_onset_rows(events_path)
 
     findings = validate_artifact_shape(summary, rows)

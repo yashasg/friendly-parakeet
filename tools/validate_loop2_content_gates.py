@@ -99,6 +99,7 @@ def _longest_gap_one_run(gaps: list[int]) -> int:
 def calculate_content_metrics(
     beats: list[dict], beat_times: list[float] | None = None, expected_count: int | None = None
 ) -> dict[str, float | int | bool | None]:
+    raw_beat_rows = len(beats)
     ordered = _ordered_valid_beats(beats)
     shape_clusters = _shape_gate_clusters(ordered)
     cluster_sizes = [len(cluster) for cluster in shape_clusters]
@@ -129,8 +130,9 @@ def calculate_content_metrics(
     return {
         "total_obstacles": len(ordered),
         "valid_beat_count": len(ordered),
+        "raw_beat_rows": raw_beat_rows,
         "expected_count": expected_count,
-        "count_matches": expected_count is None or expected_count == len(beats),
+        "count_matches": expected_count is None or expected_count == len(ordered),
         "strictly_increasing": all(
             beat_indices[i] > beat_indices[i - 1] for i in range(1, len(beat_indices))
         ),
@@ -156,8 +158,11 @@ def evaluate_content_gates(metrics: dict[str, float | int | bool | None], diffic
     findings: list[str] = []
 
     if not bool(metrics["count_matches"]):
+        expected_count = metrics.get("expected_count")
+        valid_beat_count = int(metrics.get("valid_beat_count", metrics.get("total_obstacles", 0)))
+        raw_beat_rows = int(metrics.get("raw_beat_rows", valid_beat_count))
         findings.append(
-            f"count mismatch: count={metrics['expected_count']} len(beats)={metrics['total_obstacles']}"
+            f"count mismatch: count={expected_count} valid_beats={valid_beat_count} raw_rows={raw_beat_rows}"
         )
     if not bool(metrics["strictly_increasing"]):
         findings.append("beat indices are not strictly increasing")

@@ -665,6 +665,17 @@ def _build_obstacle_timing_rows(analysis, difficulty, experimental_onset_timing=
     else:
         selected, _ = select_beats(analysis, difficulty)
         obstacles = design_level(analysis, difficulty, cleanup_enabled=True)
+    selected_by_source: dict[int, dict] = {}
+    selected_by_beat: dict[int, list[dict]] = {}
+    for event in selected.values():
+        if not isinstance(event, dict):
+            continue
+        source_event_idx = event.get("source_event_idx")
+        beat_idx = event.get("beat_idx")
+        if isinstance(source_event_idx, int):
+            selected_by_source[source_event_idx] = event
+        if isinstance(beat_idx, int):
+            selected_by_beat.setdefault(beat_idx, []).append(event)
     rows = []
     for order, obs in enumerate(sorted(obstacles, key=lambda item: item["beat"])):
         beat_idx = obs["beat"]
@@ -672,7 +683,12 @@ def _build_obstacle_timing_rows(analysis, difficulty, experimental_onset_timing=
             continue
 
         beat_time = float(beats[beat_idx])
-        event = selected.get(beat_idx)
+        source_event_idx = obs.get("source_event_idx")
+        event = selected_by_source.get(source_event_idx) if isinstance(source_event_idx, int) else None
+        if event is None:
+            beat_events = selected_by_beat.get(beat_idx, [])
+            if len(beat_events) == 1:
+                event = beat_events[0]
         if isinstance(event, dict):
             onset_time = float(event.get("t", beat_time))
             source = "onset"
@@ -752,6 +768,14 @@ def write_snap_diagnostics(analysis, diagnostics_out_dir, experimental_onset_tim
     """Emit subdivision-aware diagnostics artifacts without changing generation."""
     out_dir = Path(diagnostics_out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    for artifact_name in (
+        "snap_candidate_events.csv",
+        "onset_timing_events.csv",
+        "snap_diagnostics_summary.json",
+    ):
+        artifact_path = out_dir / artifact_name
+        if artifact_path.exists():
+            artifact_path.unlink()
 
     events = analysis.get("events", [])
     beats = analysis.get("beats", [])
@@ -1262,8 +1286,8 @@ def select_segment_focus_beats(analysis, difficulty):
     disabled — if a segment has no onset events it produces no obstacles.
 
     Returns:
-      selected_events  — {beat_idx: enriched_event_dict}
-      all_snapped_map  — {beat_idx: snapped_event} for all snapped events
+      selected_events  — {(beat_idx, onset_class, source_event_idx): enriched_event_dict}
+      all_snapped_map  — {(beat_idx, onset_class, source_event_idx): snapped_event}
       diagnostics      — dict with per-segment details
     """
     beats = analysis["beats"]
@@ -1277,14 +1301,16 @@ def select_segment_focus_beats(analysis, difficulty):
     # Index snapped events for efficient lookup.
     all_snapped_map = {}
     for ev in all_snapped:
-        all_snapped_map[ev["beat_idx"]] = ev  # last-writer wins (one event per beat)
+        onset_class = classify_onset_class(ev)
+        event_key = (int(ev["beat_idx"]), onset_class, int(ev.get("source_event_idx", -1)))
+        all_snapped_map[event_key] = ev
 
     # Fall back to a single whole-song segment if structure is absent.
     sections = list(structure) if structure else [
         {"section": "verse", "start": 0.0, "end": float(beats[-1]) + 1.0}
     ]
 
-    selected_events = {}   # beat_idx → enriched event dict
+    selected_events = {}   # (beat_idx, onset_class, source_event_idx) → enriched event dict
     prev_focuses = []      # rolling focus history for anti-repetition
     segment_diagnostics = []
 
@@ -1371,14 +1397,13 @@ def select_segment_focus_beats(analysis, difficulty):
             "n_hard": n_hard,
         })
 
-        # Insert chosen events; first segment that claims a beat_idx wins.
+        # Insert chosen events keyed by beat/layer/source to preserve same-beat layers.
         for ev in chosen:
-            beat_idx = ev["beat_idx"]
-            if beat_idx in selected_events:
-                continue
-            selected_events[beat_idx] = {
+            event_onset_class = classify_onset_class(ev)
+            event_key = (int(ev["beat_idx"]), event_onset_class, int(ev.get("source_event_idx", -1)))
+            selected_events[event_key] = {
                 **ev,
-                "onset_class": focus,        # override individual class with segment focus
+                "onset_class": event_onset_class,
                 "segment_idx": seg_idx,
                 "segment_focus": focus,
                 "difficulty_inclusion": ev.get("difficulty_inclusion", difficulty),
@@ -1416,11 +1441,18 @@ def design_level_segment_focus(analysis, difficulty, cleanup_enabled=False):
         analysis, difficulty
     )
     obstacles = []
-    for beat_idx, event in sorted(selected.items()):
+    for event in sorted(
+        selected.values(),
+        key=lambda item: (
+            int(item.get("beat_idx", -1)),
+            float(item.get("t", 0.0)),
+            int(item.get("source_event_idx", -1)),
+        ),
+    ):
         focus = event.get("onset_class", "full-spectrum")
         mapping = ONSET_CLASS_TO_OBSTACLE.get(focus, ONSET_CLASS_TO_OBSTACLE["full-spectrum"])
         obstacles.append({
-            "beat": int(beat_idx),
+            "beat": int(event.get("beat_idx", -1)),
             "kind": "shape_gate",
             "lane": mapping["lane"],
             "shape": mapping["shape"],
@@ -2418,6 +2450,18 @@ def build_beatmap(analysis, difficulties, cleanup_enabled=True, experimental_ons
         raise ValueError("analysis.beats is required and must not be empty")
 
     def attach_and_validate_timing(obstacles, diff_name, selected_events):
+        selected_events_by_source: dict[int, dict] = {}
+        selected_events_by_beat: dict[int, list[dict]] = {}
+        for event in selected_events.values():
+            if not isinstance(event, dict):
+                continue
+            source_event_idx = event.get("source_event_idx")
+            beat_idx = event.get("beat_idx")
+            if isinstance(source_event_idx, int):
+                selected_events_by_source[source_event_idx] = event
+            if isinstance(beat_idx, int):
+                selected_events_by_beat.setdefault(beat_idx, []).append(event)
+
         timed = []
         for obs in obstacles:
             beat_idx = obs.get("beat")
@@ -2431,7 +2475,12 @@ def build_beatmap(analysis, difficulties, cleanup_enabled=True, experimental_ons
             beat_time = float(beats[beat_idx])
             timed_obs = dict(obs)
             if experimental_onset_timing:
-                event = selected_events.get(beat_idx)
+                source_event_idx = obs.get("source_event_idx")
+                event = selected_events_by_source.get(source_event_idx) if isinstance(source_event_idx, int) else None
+                if event is None:
+                    beat_events = selected_events_by_beat.get(beat_idx, [])
+                    if len(beat_events) == 1:
+                        event = beat_events[0]
                 if isinstance(event, dict) and "t" in event:
                     onset_time = float(event["t"])
                     timed_obs["time_sec"] = round(onset_time, 6)

@@ -13,6 +13,7 @@ import json
 import shutil
 import sys
 import unittest
+from unittest import mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -523,9 +524,9 @@ class TestDirective20260510(unittest.TestCase):
         (no obstacles removed or shifted by cleanup).
         """
         analysis = _varied_fixture()
-        # Get raw selection (beat_idx keys).
+        # Get raw selection beats from selected event payloads.
         selected, _, _ = ld.select_segment_focus_beats(analysis, "hard")
-        raw_beats = sorted(selected.keys())
+        raw_beats = sorted(event["beat_idx"] for event in selected.values())
 
         # Get beatmap obstacles.
         obstacles, _, _ = ld.design_level_segment_focus(analysis, "hard")
@@ -602,13 +603,38 @@ class TestDirective20260510(unittest.TestCase):
         # Hard intro_rest = 2, so with the old filter beats 1 and 2 would be skipped.
         # With the fix they must be included.
         selected, _, _ = ld.select_segment_focus_beats(analysis, "easy")
-        selected_beats = sorted(selected.keys())
+        selected_beats = sorted(event["beat_idx"] for event in selected.values())
         # At least one of the early beats (1 or 2) should be present.
         self.assertTrue(
             any(b in selected_beats for b in (1, 2)),
             f"early onset beats were filtered out — intro_rest must not apply. "
             f"selected beats: {selected_beats}",
         )
+
+    def test_segment_focus_preserves_cross_layer_same_beat_when_selected(self):
+        analysis = _cross_layer_fixture()
+        with mock.patch.object(ld, "_choose_segment_focus", return_value=("ghost", "forced_for_test")):
+            selected, _, _ = ld.select_segment_focus_beats(analysis, "hard")
+
+        beat_2_events = [event for event in selected.values() if event.get("beat_idx") == 2]
+        classes = {event.get("onset_class") for event in beat_2_events}
+        self.assertIn("percussive", classes)
+        self.assertIn("harmonic", classes)
+        self.assertGreaterEqual(len(beat_2_events), 2)
+
+    def test_write_snap_diagnostics_clears_stale_onset_csv_when_non_experimental(self):
+        repo_root = Path(__file__).resolve().parent.parent
+        out_dir = repo_root / "tools" / ".test_onset_stale_cleanup"
+        if out_dir.exists():
+            shutil.rmtree(out_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        self.addCleanup(lambda: shutil.rmtree(out_dir, ignore_errors=True))
+
+        ld.write_snap_diagnostics(_analysis_fixture(), out_dir, experimental_onset_timing=True)
+        self.assertTrue((out_dir / "onset_timing_events.csv").exists())
+
+        ld.write_snap_diagnostics(_analysis_fixture(), out_dir, experimental_onset_timing=False)
+        self.assertFalse((out_dir / "onset_timing_events.csv").exists())
 
     def test_classify_onset_class_prefers_layer_field(self):
         """classify_onset_class uses the 'layer' field when present (not passes)."""

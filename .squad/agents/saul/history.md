@@ -74,3 +74,14 @@
 - **Lesson:** When a mechanic is excised from the GDD, the *first* refactor pass tends to leave behind a `{State, Bank, Zone, helpers, constants, results field}` halo that re-anchors the dead concept across six files. Sign-off issues like #324 are the right moment to enumerate the entire halo, not just the obvious system file — otherwise the next reader assumes the residue is load-bearing and writes new code against it.
 - **Lesson:** Keep one positive scoring assertion (`points == floor(base * timing_mult)`) when deleting `test_burnout_bank_on_action.cpp` — that file was the regression net for #239's "scoring is flat 1.0×" promise. Losing the regression coverage entirely would let a future contributor silently reintroduce a multiplier and pass review.
 - **Decision file:** `.squad/decisions/inbox/saul-324-burnout-signoff.md`. Implementation owner: McManus.
+
+## 2026-05-10 — Issue #393: prototype.md archived
+- Moved `design-docs/prototype.md` → `design-docs/archive/prototype.md` (Option A from triage).
+- Strengthened the in-file header: HISTORICAL → ARCHIVED with explicit "do not use" + a curated pointer list to current docs (`game.md`, `rhythm-design.md`, `rhythm-spec.md`, `game-flow.md`).
+- Updated direct cross-references that pointed at the old path:
+  - `design-docs/game.md` (footer link)
+  - `design-docs/game-flow.md` (closing cross-reference)
+  - `.github/copilot-instructions.md` (project-overview list)
+- Did NOT touch `.squad/log/*` or `.squad/orchestration-log/*` historical entries — those are dated logs and rewriting them would falsify history.
+- Did NOT touch unrelated worktree changes (Coordinator energy-tuning / #395 still owned by McManus).
+- Learning: when a doc is "marked HISTORICAL" but stays alongside live docs, readers miss the banner. Physically relocating to `archive/` + a replacement-pointer block is more effective than another warning.

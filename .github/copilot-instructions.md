@@ -12,7 +12,7 @@ A bullet hell game built in C++ using raylib for rendering and EnTT (v3.16.0) fo
 - **ECS framework:** [EnTT](https://github.com/skypjack/entt) v3.16.0
 - **Design docs:** `design-docs/` — check here before implementing any feature:
   - `game.md` — GDD: shapes, controls, burnout scoring, obstacles, difficulty
-  - `prototype.md` — ASCII art prototype with frame-by-frame gameplay scenarios
+  - `prototype.md` — *(archived to `archive/prototype.md`; legacy burnout-era paper prototype, do not use for current design — issue #393)*
   - `architecture.md` — ECS components, system execution order, entity archetypes, main loop
   - `feature-specs.md` — Input system, burnout scoring, obstacle spawning specs with C++ structs
   - `game-flow.md` — Screen flow, tutorial (FTUE), feedback/juice spec, HUD state machine, transitions
