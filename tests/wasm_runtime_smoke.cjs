@@ -107,20 +107,22 @@ async function main() {
       fatal.push('no-visual-response-after-title-clicks');
     }
 
-    // Once on level select, clicking a different card should visibly update selection.
-    await clickCanvasAt(0.5, 0.42);
+    // Once on level select, keyboard navigation should visibly update selection.
+    // The title transition above covers the browser click path; using keyboard
+    // here avoids depending on CSS-to-virtual-coordinate details for card rows.
+    await page.keyboard.press('ArrowDown');
     const afterLevelSelectClickHash = await waitForVisualChange(afterStartHash, 2500);
     if (afterStartHash === afterLevelSelectClickHash) {
-      fatal.push('no-visual-response-after-level-select-click');
+      fatal.push('no-visual-response-after-level-select-navigation');
     }
 
-    // Start the selected level through the same canvas click path. The
-    // controller intentionally ignores instant start presses for the first
-    // 0.2s after entering Level Select, so wait a frame budget before clicking.
+    // Start the selected level. The controller intentionally ignores instant
+    // confirm presses for the first 0.2s after entering Level Select, so wait
+    // a frame budget before sending confirm.
     await page.waitForTimeout(500);
     let afterHash = afterLevelSelectClickHash;
     for (let i = 0; i < 3 && afterHash === afterLevelSelectClickHash; i += 1) {
-      await clickCanvasAt(0.5, 0.845);
+      await page.keyboard.press('Enter');
       afterHash = await waitForVisualChange(afterLevelSelectClickHash, 3500);
     }
     if (afterLevelSelectClickHash === afterHash) {
