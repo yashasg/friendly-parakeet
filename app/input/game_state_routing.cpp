@@ -1,5 +1,6 @@
 #include "input_routing.h"
 #include "../components/game_state.h"
+#include "../systems/game_phase_transition.h"
 #include "../components/input.h"
 #include "../components/input_events.h"
 #include "../components/audio_events.h"

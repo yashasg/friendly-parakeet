@@ -2,6 +2,7 @@
 
 #include "../../components/game_state.h"
 #include "../../components/input.h"
+#include "../../systems/game_phase_transition.h"
 #include "screen_controller_base.h"
 #include <entt/entt.hpp>
 

@@ -1,4 +1,5 @@
 #include "all_systems.h"
+#include "game_phase_transition.h"
 #include "../session/play_session.h"
 #include "../components/game_state.h"
 #include "../components/input.h"

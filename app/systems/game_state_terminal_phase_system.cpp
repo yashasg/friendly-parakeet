@@ -1,4 +1,5 @@
 #include "all_systems.h"
+#include "game_phase_transition.h"
 #include "../components/audio_events.h"
 #include "../components/haptics.h"
 #include "../components/high_score.h"

@@ -3,6 +3,7 @@
 #include <fstream>
 
 #include "components/high_score.h"
+#include "content/level_content_config.h"
 #include "entities/camera_entity.h"
 #include "session/play_session.h"
 #include "test_helpers.h"
@@ -43,8 +44,8 @@ TEST_CASE("High score integration: setup_play_session loads selected song diffic
 
 TEST_CASE("Play session: SongResults total_notes matches every shipped song difficulty",
           "[play_session][song_results][issue-114]") {
-    for (int level = 0; level < LevelSelectState::LEVEL_COUNT; ++level) {
-        for (int difficulty = 0; difficulty < LevelSelectState::DIFFICULTY_COUNT; ++difficulty) {
+    for (int level = 0; level < content_config::LEVEL_COUNT; ++level) {
+        for (int difficulty = 0; difficulty < content_config::DIFFICULTY_COUNT; ++difficulty) {
             auto reg = make_registry();
             auto& lss = reg.ctx().get<LevelSelectState>();
             lss.selected_level = level;
@@ -56,8 +57,8 @@ TEST_CASE("Play session: SongResults total_notes matches every shipped song diff
             REQUIRE_FALSE(beatmap.beats.empty());
             const int expected_total = static_cast<int>(beatmap.beats.size());
 
-            CAPTURE(LevelSelectState::LEVELS[level].title);
-            CAPTURE(LevelSelectState::DIFFICULTY_KEYS[difficulty]);
+            CAPTURE(content_config::LEVELS[level].title);
+            CAPTURE(content_config::DIFFICULTY_KEYS[difficulty]);
             CHECK(reg.ctx().get<SongResults>().total_notes == expected_total);
         }
     }

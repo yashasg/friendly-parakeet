@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <string>
 #include <entt/entt.hpp>
 
 enum class GamePhase : uint8_t {
@@ -52,28 +51,7 @@ struct GameState {
     EndScreenChoice end_choice = EndScreenChoice::None;
 };
 
-inline void enter_phase(GameState& gs, GamePhase next_phase) {
-    gs.previous_phase = gs.phase;
-    gs.phase = next_phase;
-    gs.phase_timer = 0.0f;
-}
-
-struct LevelInfo {
-    const char* title;
-    const char* beatmap_path;
-};
-
 struct LevelSelectState {
-    static constexpr int LEVEL_COUNT = 3;
-    static constexpr int DIFFICULTY_COUNT = 3;
-    static constexpr LevelInfo LEVELS[LEVEL_COUNT] = {
-        {"STOMPER",            "content/beatmaps/1_stomper_beatmap.json"},
-        {"DRAMA",              "content/beatmaps/2_drama_beatmap.json"},
-        {"MENTAL CORRUPTION",  "content/beatmaps/3_mental_corruption_beatmap.json"},
-    };
-    static constexpr const char* DIFFICULTY_NAMES[DIFFICULTY_COUNT] = {"EASY", "MEDIUM", "HARD"};
-    static constexpr const char* DIFFICULTY_KEYS[DIFFICULTY_COUNT]  = {"easy", "medium", "hard"};
-
     int selected_level      = 0;
     int selected_difficulty  = 1;  // default medium
     bool confirmed          = false;

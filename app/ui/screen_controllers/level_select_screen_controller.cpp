@@ -2,6 +2,7 @@
 // Dynamic card/difficulty rendering to be ported to rguilayout in future work.
 
 #include "../../components/game_state.h"
+#include "../../content/level_content_config.h"
 #include "../../components/input.h"
 #include "../../components/rendering.h"
 #include "screen_controller_base.h"
@@ -65,7 +66,7 @@ void handle_level_card_pointer_input(LevelSelectState& lss, const InputState& in
     if (!(input.click || input.touch_up)) return;
     pointer = {input.end_x, input.end_y};
 
-    for (int i = 0; i < LevelSelectState::LEVEL_COUNT; ++i) {
+    for (int i = 0; i < content_config::LEVEL_COUNT; ++i) {
         if (CheckCollisionPointRec(pointer, level_card_rect(i))) {
             lss.selected_level = i;
             return;
@@ -93,7 +94,7 @@ void render_level_select_screen_ui(entt::registry& reg) {
     GuiLabel((Rectangle){ state.Anchor01.x + 180, state.Anchor01.y + 80, 360, 60 }, "SELECT LEVEL");
     
     // Draw level cards
-    for (int i = 0; i < LevelSelectState::LEVEL_COUNT; ++i) {
+    for (int i = 0; i < content_config::LEVEL_COUNT; ++i) {
         float cy = CARD_START_Y + static_cast<float>(i) * (CARD_H + CARD_GAP);
         bool selected = (i == lss.selected_level);
         Color bg = selected ? SELECTED_BG : UNSELECTED_BG;
@@ -110,7 +111,7 @@ void render_level_select_screen_ui(entt::registry& reg) {
         GuiSetStyle(DEFAULT, TEXT_SIZE, 32);
         GuiSetAlpha(selected ? 1.0f : 0.6f);
         GuiLabel((Rectangle){CARD_X + TITLE_OFFSET_X, cy + TITLE_OFFSET_Y, 400, 40}, 
-                 LevelSelectState::LEVELS[i].title);
+                 content_config::LEVELS[i].title);
         GuiSetAlpha(1.0f);
         
         // Draw track number
@@ -124,7 +125,7 @@ void render_level_select_screen_ui(entt::registry& reg) {
         // Draw difficulty buttons for selected card
         if (selected) {
             GuiSetStyle(DEFAULT, TEXT_SIZE, 20);
-            for (int dd = 0; dd < LevelSelectState::DIFFICULTY_COUNT; ++dd) {
+            for (int dd = 0; dd < content_config::DIFFICULTY_COUNT; ++dd) {
                 const Rectangle diff_rect = difficulty_button_rect(dd, lss.selected_level);
                 bool active = (dd == lss.selected_difficulty);
                 Color bbg = active ? DIFF_ACTIVE_BG : DIFF_INACTIVE_BG;
@@ -133,7 +134,7 @@ void render_level_select_screen_ui(entt::registry& reg) {
                 DrawRectangleRounded(diff_rect, 0.1f, 4, bbg);
                 DrawRectangleRoundedLinesEx(diff_rect, 0.1f, 4, 1.5f, bborder);
 
-                if (GuiButton(diff_rect, LevelSelectState::DIFFICULTY_NAMES[dd])) {
+                if (GuiButton(diff_rect, content_config::DIFFICULTY_NAMES[dd])) {
                     lss.selected_difficulty = dd;
                 }
             }

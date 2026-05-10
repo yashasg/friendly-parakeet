@@ -1,5 +1,6 @@
 #include "test_player_session.h"
 #include "../components/game_state.h"
+#include "../content/level_content_config.h"
 #include "../components/obstacle.h"
 #include "../components/scoring.h"
 #include "../util/session_logger.h"
@@ -22,8 +23,8 @@ void test_player_init(entt::registry& reg, TestPlayerSkill skill,
                       const char* difficulty) {
     auto& lss = reg.ctx().get<LevelSelectState>();
     lss.selected_level = 1;
-    for (int d = 0; d < 3; ++d)
-        if (std::strcmp(LevelSelectState::DIFFICULTY_KEYS[d], difficulty) == 0)
+    for (int d = 0; d < content_config::DIFFICULTY_COUNT; ++d)
+        if (std::strcmp(content_config::DIFFICULTY_KEYS[d], difficulty) == 0)
             { lss.selected_difficulty = d; break; }
 
     auto& tp_state = reg.ctx().get<TestPlayerState>();
