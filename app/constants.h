@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cstdint>
-#include <raylib.h>
+#include "components/plain_types.h"
 
 namespace constants {
 
@@ -135,7 +135,7 @@ constexpr float FLOOR_PULSE_DECAY    = 0.15f;   // seconds
 // ── Shape Colors ──────────────────────────────────
 // Used for both obstacles and player character.
 // Index by static_cast<int>(Shape).
-constexpr Color SHAPE_COLORS[] = {
+constexpr TintColor SHAPE_COLORS[] = {
     {  80, 200, 255, 255 },   // Circle   — cyan/blue
     { 255, 100, 100, 255 },   // Square   — red
     { 100, 255, 100, 255 },   // Triangle — green

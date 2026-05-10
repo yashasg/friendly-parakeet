@@ -9,6 +9,7 @@
 #include "../../components/transform.h"
 #include "../../components/ui_layout_cache.h"
 #include "../../constants.h"
+#include "../../rendering/raylib_conversions.h"
 #include "screen_controller_base.h"
 #include "gameplay_hud_screen_controller.h"
 #include <entt/entt.hpp>
@@ -144,9 +145,9 @@ void render_shape_buttons(const entt::registry& reg,
 
     for (const auto& button : buttons) {
         bool is_active = (active_shape == button.shape);
-        Color bg = is_active ? layout.active_bg : layout.inactive_bg;
-        Color border = is_active ? layout.active_border : layout.inactive_border;
-        Color icon = is_active ? layout.active_icon : layout.inactive_icon;
+        Color bg = to_raylib_color(is_active ? layout.active_bg : layout.inactive_bg);
+        Color border = to_raylib_color(is_active ? layout.active_border : layout.inactive_border);
+        Color icon = to_raylib_color(is_active ? layout.active_icon : layout.inactive_icon);
         DrawCircleV({button.cx, button.cy}, btn_radius, bg);
         DrawCircleLinesV({button.cx, button.cy}, btn_radius, border);
         draw_shape_flat(button.shape, button.cx, button.cy, btn_radius * 1.2f, icon);
@@ -158,8 +159,8 @@ void render_shape_buttons(const entt::registry& reg,
         ratio = Clamp(ratio, 0.0f, 1.0f);
         float ring_r = Lerp(btn_radius, max_ring_radius, ratio);
 
-        Color base = (nearest_dist[shape_index] <= perfect_dist) ? layout.ring_perfect
-                   : ((ratio < 0.3f) ? layout.ring_near : layout.ring_far);
+        Color base = to_raylib_color((nearest_dist[shape_index] <= perfect_dist) ? layout.ring_perfect
+                                  : ((ratio < 0.3f) ? layout.ring_near : layout.ring_far));
         Color ring_color = Fade(base, (200.0f / 255.0f) * (1.0f - ratio * 0.5f));
         DrawCircleLinesV({button.cx, button.cy}, ring_r, ring_color);
         DrawCircleLinesV({button.cx, button.cy}, ring_r - 1.0f,
@@ -345,7 +346,7 @@ void render_gameplay_hud_screen_ui(entt::registry& reg) {
     if (hud_layout.has_lane_divider) {
         DrawLineV({0.0f, hud_layout.lane_divider_y},
                   {constants::SCREEN_W_F, hud_layout.lane_divider_y},
-                  hud_layout.lane_divider_color);
+                  to_raylib_color(hud_layout.lane_divider_color));
     }
 
     // Render Pause button from generated layout state.

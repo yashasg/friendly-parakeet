@@ -99,7 +99,7 @@ static void require_child_capacity(entt::registry& reg, entt::entity parent) {
 }
 
 static entt::entity add_slab_child(entt::registry& reg, entt::entity parent,
-                                    float x, float w, float d, float h, Color tint) {
+                                    float x, float w, float d, float h, TintColor tint) {
     require_child_capacity(reg, parent);
     auto e = reg.create();
     PendingEntity pending{reg, e};
@@ -112,7 +112,7 @@ static entt::entity add_slab_child(entt::registry& reg, entt::entity parent,
 
 static entt::entity add_shape_child(entt::registry& reg, entt::entity parent,
                                      uint8_t mesh_index, float cx, float z_offset,
-                                     float size, Color tint) {
+                                     float size, TintColor tint) {
     require_child_capacity(reg, parent);
     auto e = reg.create();
     PendingEntity pending{reg, e};
@@ -129,7 +129,7 @@ void spawn_obstacle_meshes(entt::registry& reg, entt::entity logical) {
 
     auto& obs = reg.get<Obstacle>(logical);
     const auto* wt_ptr = reg.try_get<WorldTransform>(logical);
-    auto& col = reg.get<Color>(logical);
+    auto& col = reg.get<TintColor>(logical);
     auto& dsz = reg.get<DrawSize>(logical);
 
     switch (obs.kind) {

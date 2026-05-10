@@ -18,7 +18,7 @@ TEST_CASE("player_entity: canonical component set present", "[archetype][player]
     CHECK(reg.all_of<ShapeWindow>(p));
     CHECK(reg.all_of<Lane>(p));
     CHECK(reg.all_of<VerticalState>(p));
-    CHECK(reg.all_of<Color>(p));
+    CHECK(reg.all_of<TintColor>(p));
     CHECK(reg.all_of<DrawSize>(p));
     CHECK(reg.all_of<DrawLayer>(p));
     CHECK(reg.all_of<TagWorldPass>(p));

@@ -371,7 +371,7 @@ TEST_CASE("beat_scheduler: ShapeGate Circle has blue color", "[beat_scheduler]")
 
     beat_scheduler_system(reg, 0.016f);
 
-    auto view = reg.view<ObstacleTag, Color>();
+    auto view = reg.view<ObstacleTag, TintColor>();
     for (auto [e, dc] : view.each()) {
         CHECK(dc.r == 80);
         CHECK(dc.g == 200);
@@ -390,7 +390,7 @@ TEST_CASE("beat_scheduler: ShapeGate Square has red color", "[beat_scheduler]") 
 
     beat_scheduler_system(reg, 0.016f);
 
-    auto view = reg.view<ObstacleTag, Color>();
+    auto view = reg.view<ObstacleTag, TintColor>();
     for (auto [e, dc] : view.each()) {
         CHECK(dc.r == 255);
         CHECK(dc.g == 100);
@@ -409,7 +409,7 @@ TEST_CASE("beat_scheduler: ShapeGate Triangle has green color", "[beat_scheduler
 
     beat_scheduler_system(reg, 0.016f);
 
-    auto view = reg.view<ObstacleTag, Color>();
+    auto view = reg.view<ObstacleTag, TintColor>();
     for (auto [e, dc] : view.each()) {
         CHECK(dc.r == 100);
         CHECK(dc.g == 255);

@@ -3,22 +3,24 @@
 #include "../components/rendering.h"
 #include "../components/game_state.h"
 #include "camera_system.h"
+#include "../rendering/raylib_conversions.h"
 #include <raylib.h>
 #include <rlgl.h>
 
 static void draw_model_transform(const camera::ShapeMeshes& sm, const ModelTransform& mt) {
     // Use a per-draw local copy so the shared material is never mutated.
     Material mat = sm.material;
-    mat.maps[MATERIAL_MAP_DIFFUSE].color = mt.tint;
+    mat.maps[MATERIAL_MAP_DIFFUSE].color = to_raylib_color(mt.tint);
+    const Matrix matrix = to_raylib_matrix(mt.mat);
     switch (mt.mesh_type) {
         case MeshType::Slab:
-            DrawMesh(sm.slab, mat, mt.mat);
+            DrawMesh(sm.slab, mat, matrix);
             break;
         case MeshType::Shape:
-            DrawMesh(sm.shapes[mt.mesh_index], mat, mt.mat);
+            DrawMesh(sm.shapes[mt.mesh_index], mat, matrix);
             break;
         case MeshType::Quad:
-            DrawMesh(sm.quad, mat, mt.mat);
+            DrawMesh(sm.quad, mat, matrix);
             break;
     }
 }

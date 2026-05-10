@@ -42,7 +42,7 @@ static entt::entity make_bench_player(entt::registry& reg) {
     reg.emplace<ShapeWindow>(p);
     reg.emplace<Lane>(p);
     reg.emplace<VerticalState>(p);
-    reg.emplace<Color>(p, Color{80, 180, 255, 255});
+    reg.emplace<TintColor>(p, TintColor{80, 180, 255, 255});
     reg.emplace<DrawSize>(p, constants::PLAYER_SIZE, constants::PLAYER_SIZE);
     reg.emplace<DrawLayer>(p, Layer::Game);
     return p;
@@ -61,7 +61,7 @@ static void spawn_obstacles(entt::registry& reg, int count) {
         reg.emplace<RequiredShape>(obs, shape);
         reg.emplace<DrawSize>(obs, float(constants::SCREEN_W), 80.0f);
         reg.emplace<DrawLayer>(obs, Layer::Game);
-        reg.emplace<Color>(obs, Color{255, 255, 255, 255});
+        reg.emplace<TintColor>(obs, TintColor{255, 255, 255, 255});
     }
 }
 
@@ -90,7 +90,7 @@ static void spawn_particles(entt::registry& reg, int count) {
         reg.emplace<WorldTransform>(p, WorldTransform{{360.0f, 500.0f}});
         reg.emplace<MotionVelocity>(p, MotionVelocity{{static_cast<float>(i % 50 - 25), -100.0f}});
         reg.emplace<ParticleData>(p, 4.0f, 0.6f, 0.6f);
-        reg.emplace<Color>(p, Color{255, 100, 50, 255});
+        reg.emplace<TintColor>(p, TintColor{255, 100, 50, 255});
         reg.emplace<DrawLayer>(p, Layer::Effects);
     }
 }
@@ -162,7 +162,7 @@ TEST_CASE("Bench: scoring_system", "[bench]") {
             reg.emplace<Obstacle>(obs, ObstacleKind::ShapeGate, int16_t{200});
             reg.emplace<ScoredTag>(obs);
             reg.emplace<DrawLayer>(obs, Layer::Game);
-            reg.emplace<Color>(obs, Color{255, 255, 255, 255});
+            reg.emplace<TintColor>(obs, TintColor{255, 255, 255, 255});
         }
         meter.measure([&] { scoring_system(reg, DT); });
     };
@@ -173,11 +173,9 @@ TEST_CASE("Bench: player_input + movement", "[bench]") {
         auto reg = make_bench_registry();
         make_bench_player(reg);
 
-        auto& disp = reg.ctx().get<entt::dispatcher>();
-        disp.enqueue<ButtonPressEvent>({ButtonPressKind::Shape, Shape::Triangle});
-        disp.enqueue<GoEvent>({Direction::Right});
         meter.measure([&] {
-            game_state_system(reg, DT);
+            player_input_handle_press(reg, ButtonPressEvent{ButtonPressKind::Shape, Shape::Triangle});
+            player_input_handle_go(reg, GoEvent{Direction::Right});
             player_movement_system(reg, DT);
         });
     };

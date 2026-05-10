@@ -8,7 +8,7 @@
 
 void init_popup_display(PopupDisplay& pd,
                         const ScorePopup& sp,
-                        const Color& base) {
+                        const TintColor& base) {
     pd.r = base.r;
     pd.g = base.g;
     pd.b = base.b;
@@ -38,7 +38,7 @@ entt::entity spawn_score_popup(entt::registry& reg, const PopupSpawnParams& para
     reg.emplace<ScorePopup>(popup, params.points, params.timing_tier,
                             constants::POPUP_DURATION, constants::POPUP_DURATION);
 
-    // Color by timing tier (no timing → default yellow-white)
+    // TintColor by timing tier (no timing → default yellow-white)
     // Issue #386: differentiate timing tiers visually for accessibility/juice.
     uint8_t pr = 255, pg = 255, pb = 50;
     if (params.timing_tier.has_value()) {
@@ -49,8 +49,8 @@ entt::entity spawn_score_popup(entt::registry& reg, const PopupSpawnParams& para
             case TimingTier::Bad:     pr = 255; pg =  90; pb =  70; break; // red-orange
         }
     }
-    Color color{pr, pg, pb, 255};
-    reg.emplace<Color>(popup, color);
+    TintColor color{pr, pg, pb, 255};
+    reg.emplace<TintColor>(popup, color);
     reg.emplace<DrawLayer>(popup, Layer::Effects);
     reg.emplace<TagHUDPass>(popup);
 

@@ -137,8 +137,8 @@ target_link_libraries(shapeshifter_lib PUBLIC
     EnTT::EnTT
     magic_enum::magic_enum
     nlohmann_json::nlohmann_json
-    raylib
 )
+target_link_libraries(shapeshifter_lib PRIVATE raylib)
 if(SHAPESHIFTER_IOS)
     target_link_libraries(shapeshifter_lib PUBLIC
         "-framework Foundation"
@@ -465,6 +465,7 @@ set_source_files_properties(
     tests/test_shipped_beatmap_first_collision.cpp
     tests/test_shipped_beatmap_medium_balance.cpp
     tests/test_shipped_beatmap_onset_metadata.cpp
+    tests/test_shipped_beatmap_lane_run_and_subdivision.cpp
     tests/test_redfoot_testflight_ui.cpp
     PROPERTIES SKIP_UNITY_BUILD_INCLUSION TRUE
 )

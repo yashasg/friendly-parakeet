@@ -19,6 +19,7 @@
 #include "session/test_player_session.h"
 #include "input/input_routing.h"
 #include "components/text.h"
+#include "rendering/text_resources.h"
 #include "util/session_logger.h"
 #include "systems/camera_system.h"
 #include "entities/obstacle_render_entity.h"
