@@ -267,6 +267,52 @@ TEST_CASE("game_state: paused to playing on touch", "[gamestate]") {
     CHECK(gs.phase_timer == 0.0f);
 }
 
+TEST_CASE("game_state: paused resume preserves active play session state", "[gamestate][regression]") {
+    auto reg = make_registry();
+    auto& gs = reg.ctx().get<GameState>();
+    gs.phase = GamePhase::Paused;
+
+    auto player = make_player(reg);
+    auto obstacle = reg.create();
+    reg.emplace<ObstacleTag>(obstacle);
+    reg.emplace<WorldTransform>(obstacle, WorldTransform{{0.0f, 123.0f}});
+
+    auto& score = reg.ctx().get<ScoreState>();
+    score.score = 4321;
+
+    auto& energy = reg.ctx().get<EnergyState>();
+    energy.energy = 0.42f;
+    energy.display = 0.37f;
+
+    auto& song = reg.ctx().get<SongState>();
+    song.song_time = 12.5f;
+    song.playing = true;
+    song.restart_music = false;
+
+    auto btn = make_menu_button(reg, MenuActionKind::Confirm);
+    press_button(reg, btn);
+
+    game_state_system(reg, 0.016f);
+
+    CHECK(gs.phase == GamePhase::Playing);
+    CHECK(gs.phase_timer == 0.0f);
+    CHECK(reg.valid(player));
+    CHECK(reg.valid(obstacle));
+    CHECK(score.score == 4321);
+    CHECK(energy.energy == 0.42f);
+    CHECK(energy.display == 0.37f);
+    CHECK(song.song_time == 12.5f);
+    CHECK(song.playing);
+    CHECK_FALSE(song.restart_music);
+
+    int player_count = 0;
+    for (auto e : reg.view<PlayerTag>()) {
+        ++player_count;
+        (void)e;
+    }
+    CHECK(player_count == 1);
+}
+
 TEST_CASE("game_state: title stays title without touch", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
