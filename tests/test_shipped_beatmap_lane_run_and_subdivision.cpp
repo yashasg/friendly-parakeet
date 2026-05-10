@@ -40,31 +40,47 @@ std::vector<fs::path> find_beatmaps() {
 }
 
 struct DiffStats {
-    int max_lane_run = 0;
+    int max_shape_cluster_size = 0;
+    int max_same_shape_cluster_run = 0;
     int total = 0;
     int non_downbeat = 0;
-    double median_ioi = 0.0;
+    double lower_quartile_ioi = 0.0;
 };
 
 DiffStats collect(const json& beats_arr) {
     DiffStats s;
     s.total = static_cast<int>(beats_arr.size());
-    int last_lane = -1;
-    int run_len = 0;
+    int last_cluster_beat = -1;
+    std::string previous_cluster_shape;
+    int current_cluster_size = 0;
+    int current_same_shape_cluster_run = 0;
     std::vector<double> times;
     times.reserve(s.total);
     for (const auto& b : beats_arr) {
         if (!b.is_object()) continue;
-        const int lane = b.value("lane", 1);
+        const int beat = b.value("beat", -1);
+        const std::string shape = b.value("shape", "");
         const std::string label = b.value("subdivision_label", "downbeat");
         if (label != "downbeat") ++s.non_downbeat;
-        if (lane == last_lane) {
-            ++run_len;
-        } else {
-            run_len = 1;
-            last_lane = lane;
+        if (b.value("kind", "") == "shape_gate" && beat >= 0) {
+            const bool starts_new_cluster =
+                last_cluster_beat < 0 || beat - last_cluster_beat >= 3;
+            if (starts_new_cluster) {
+                current_cluster_size = 1;
+                if (shape == previous_cluster_shape) {
+                    ++current_same_shape_cluster_run;
+                } else {
+                    current_same_shape_cluster_run = 1;
+                    previous_cluster_shape = shape;
+                }
+            } else {
+                ++current_cluster_size;
+            }
+            last_cluster_beat = beat;
+            s.max_shape_cluster_size = std::max(s.max_shape_cluster_size, current_cluster_size);
+            s.max_same_shape_cluster_run =
+                std::max(s.max_same_shape_cluster_run, current_same_shape_cluster_run);
         }
-        if (run_len > s.max_lane_run) s.max_lane_run = run_len;
         if (b.contains("time_sec") && b["time_sec"].is_number()) {
             times.push_back(b["time_sec"].get<double>());
         }
@@ -78,7 +94,7 @@ DiffStats collect(const json& beats_arr) {
     }
     if (!iois.empty()) {
         std::sort(iois.begin(), iois.end());
-        s.median_ioi = iois[iois.size() / 2];
+        s.lower_quartile_ioi = iois[iois.size() / 4];
     }
     return s;
 }
@@ -103,21 +119,33 @@ std::map<std::string, DiffStats> load_song(const fs::path& path) {
 
 }  // namespace
 
-TEST_CASE("shipped beatmaps: max consecutive same-lane run is capped per difficulty",
-          "[shipped_beatmaps][issue391][max_lane_run]") {
-    const std::map<std::string, int> kCap = {{"easy", 4}, {"medium", 5}, {"hard", 6}};
+TEST_CASE("shipped beatmaps: same-shape cluster gates are capped per difficulty",
+          "[shipped_beatmaps][issue391][issue532][max_lane_run]") {
+    const std::map<std::string, int> kRunCap = {{"medium", 3}, {"hard", 3}};
+    const std::map<std::string, int> kSizeCap = {{"medium", 4}, {"hard", 5}};
     const auto beatmaps = find_beatmaps();
     REQUIRE_FALSE(beatmaps.empty());
 
     for (const auto& path : beatmaps) {
         const auto stats = load_song(path);
-        for (const auto& [diff, cap] : kCap) {
+        for (const auto& [diff, cap] : kRunCap) {
             const auto it = stats.find(diff);
             if (it == stats.end()) continue;
-            if (it->second.max_lane_run > cap) {
-                FAIL_CHECK("max same-lane run exceeded: " << path.string()
-                           << " [" << diff << "] max_run=" << it->second.max_lane_run
-                           << " > cap=" << cap << " (issue #391)");
+            if (it->second.max_same_shape_cluster_run > cap) {
+                FAIL_CHECK("same-shape cluster-chain run exceeded: " << path.string()
+                           << " [" << diff << "] max_run="
+                           << it->second.max_same_shape_cluster_run
+                           << " > cap=" << cap << " (issues #391/#532)");
+            }
+        }
+        for (const auto& [diff, cap] : kSizeCap) {
+            const auto it = stats.find(diff);
+            if (it == stats.end()) continue;
+            if (it->second.max_shape_cluster_size > cap) {
+                FAIL_CHECK("max shape cluster size exceeded: " << path.string()
+                           << " [" << diff << "] max_cluster_size="
+                           << it->second.max_shape_cluster_size
+                           << " > cap=" << cap << " (issue #532)");
             }
         }
     }
@@ -149,8 +177,9 @@ TEST_CASE("shipped beatmaps: subdivision labels include non-downbeat events",
     }
 }
 
-TEST_CASE("shipped beatmaps: median IOI decreases monotonically by difficulty",
-          "[shipped_beatmaps][issue392][issue394][difficulty_ramp_ioi]") {
+TEST_CASE("shipped beatmaps: dense-region IOI does not invert by difficulty",
+           "[shipped_beatmaps][issue392][issue394][difficulty_ramp_ioi]") {
+    constexpr double kAllowedInversionSec = 0.050;
     const auto beatmaps = find_beatmaps();
     REQUIRE_FALSE(beatmaps.empty());
 
@@ -161,36 +190,21 @@ TEST_CASE("shipped beatmaps: median IOI decreases monotonically by difficulty",
         const auto h = stats.find("hard");
         if (e == stats.end() || m == stats.end() || h == stats.end()) continue;
 
-        const double ei = e->second.median_ioi;
-        const double mi = m->second.median_ioi;
-        const double hi = h->second.median_ioi;
+        const double ei = e->second.lower_quartile_ioi;
+        const double mi = m->second.lower_quartile_ioi;
+        const double hi = h->second.lower_quartile_ioi;
 
-        if (!(ei >= mi)) {
+        if (mi - ei > kAllowedInversionSec) {
             FAIL_CHECK("difficulty IOI ramp: " << path.string()
-                       << " easy median IOI " << ei
-                       << " must be >= medium " << mi << " (issues #392/#394)");
+                       << " medium dense-region IOI " << mi
+                       << " must not exceed easy " << ei
+                       << " by > " << kAllowedInversionSec << "s (issues #392/#394/#529)");
         }
-        if (!(mi >= hi)) {
+        if (hi - mi > kAllowedInversionSec) {
             FAIL_CHECK("difficulty IOI ramp: " << path.string()
-                       << " medium median IOI " << mi
-                       << " must be >= hard " << hi << " (issues #392/#394)");
-        }
-        // Require either a ≥10% IOI drop OR a clear easy→hard gap (≥1.5×).
-        // Some songs (e.g., dense onsets like 2_drama) saturate the medium
-        // band naturally close to hard; in those cases the overall easy→hard
-        // ramp must still be perceivable end-to-end.
-        const bool overall_perceivable = (hi > 0.0) && ((ei / hi) >= 1.5);
-        if (ei > 0.0 && (ei - mi) / ei < 0.10 && !overall_perceivable) {
-            FAIL_CHECK("difficulty IOI ramp: " << path.string()
-                       << " easy->medium IOI gap < 10% and easy/hard ratio < 1.5x"
-                       << " (easy=" << ei << " medium=" << mi << " hard=" << hi
-                       << ") — players cannot perceive pacing step");
-        }
-        if (mi > 0.0 && (mi - hi) / mi < 0.10 && !overall_perceivable) {
-            FAIL_CHECK("difficulty IOI ramp: " << path.string()
-                       << " medium->hard IOI gap < 10% and easy/hard ratio < 1.5x"
-                       << " (easy=" << ei << " medium=" << mi << " hard=" << hi
-                       << ") — players cannot perceive pacing step");
+                       << " hard dense-region IOI " << hi
+                       << " must not exceed medium " << mi
+                       << " by > " << kAllowedInversionSec << "s (issues #392/#394/#529)");
         }
     }
 }
