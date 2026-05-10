@@ -86,8 +86,10 @@ jobs:
           ctest --test-dir build -N \
             | sed -nE 's/^ *Test *#[0-9]+: (.*)$/\1/p' \
             | grep -Ev '^Bench:|^(python_tool_tests|loop2_content_gates_strict|beatmap_editor_node_tests)$' \
+            | tr -d '\r' \
             | sort -u > build/ci/ctest-nonbench-catch.txt
           ./build/shapeshifter_tests.exe --list-tests "~[bench]" --verbosity quiet \
+            | tr -d '\r' \
             | sort -u > build/ci/catch-nonbench.txt
           diff -u build/ci/ctest-nonbench-catch.txt build/ci/catch-nonbench.txt
           ./build/shapeshifter_tests.exe "~[bench]"
