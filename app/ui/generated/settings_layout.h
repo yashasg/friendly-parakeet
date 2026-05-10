@@ -40,7 +40,7 @@ typedef struct SettingsLayoutState {
 
 static inline SettingsLayoutState SettingsLayout_Init(void) {
     SettingsLayoutState state = {};
-    state.Anchor01 = (Vector2){ 0, 0 };
+    state.Anchor01 = Vector2{ 0, 0 };
     state.AudioOffsetMinusPressed   = false;
     state.AudioOffsetPlusPressed    = false;
     state.HapticsTogglePressed      = false;
@@ -53,11 +53,11 @@ static inline SettingsLayoutState SettingsLayout_Init(void) {
 // Adapter is responsible for rendering the two toggle buttons with live labels.
 static inline void SettingsLayout_RenderStatic(SettingsLayoutState *state) {
     if (!state) return;
-    GuiLabel((Rectangle){ state->Anchor01.x + 210, state->Anchor01.y + 400, 300, 48 }, "SETTINGS");
-    GuiLabel((Rectangle){ state->Anchor01.x + 144, state->Anchor01.y + 510, 200, 40 }, "Audio Offset");
-    state->AudioOffsetMinusPressed = GuiButton((Rectangle){ state->Anchor01.x + 180, state->Anchor01.y + 560,  72, 77 }, "-");
-    state->AudioOffsetPlusPressed  = GuiButton((Rectangle){ state->Anchor01.x + 468, state->Anchor01.y + 560,  72, 77 }, "+");
-    state->CloseButtonPressed      = GuiButton((Rectangle){ state->Anchor01.x + 260, state->Anchor01.y + 1040, 200, 100 }, "BACK");
+    GuiLabel(Rectangle{ state->Anchor01.x + 210, state->Anchor01.y + 400, 300, 48 }, "SETTINGS");
+    GuiLabel(Rectangle{ state->Anchor01.x + 144, state->Anchor01.y + 510, 200, 40 }, "Audio Offset");
+    state->AudioOffsetMinusPressed = GuiButton(Rectangle{ state->Anchor01.x + 180, state->Anchor01.y + 560,  72, 77 }, "-");
+    state->AudioOffsetPlusPressed  = GuiButton(Rectangle{ state->Anchor01.x + 468, state->Anchor01.y + 560,  72, 77 }, "+");
+    state->CloseButtonPressed      = GuiButton(Rectangle{ state->Anchor01.x + 260, state->Anchor01.y + 1040, 200, 100 }, "BACK");
 }
 
 #ifdef __cplusplus

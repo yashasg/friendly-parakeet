@@ -34,7 +34,7 @@ typedef struct SongCompleteLayoutState {
 
 static inline SongCompleteLayoutState SongCompleteLayout_Init(void) {
     SongCompleteLayoutState state = {};
-    state.Anchor01 = (Vector2){ 0, 0 };
+    state.Anchor01 = Vector2{ 0, 0 };
     state.RestartButtonPressed      = false;
     state.LevelSelectButtonPressed  = false;
     state.MenuButtonPressed         = false;
@@ -55,12 +55,12 @@ static inline void SongCompleteLayout_DrawCenteredLabel(Rectangle bounds, const 
 
 static inline void SongCompleteLayout_Render(SongCompleteLayoutState *state) {
     if (!state) return;
-    SongCompleteLayout_DrawCenteredLabel((Rectangle){ state->Anchor01.x + 90, state->Anchor01.y + 315, 540, 72 }, "SONG COMPLETE", 42);
-    SongCompleteLayout_DrawCenteredLabel((Rectangle){ state->Anchor01.x + 180, state->Anchor01.y + 425, 360, 36 }, "SCORE", 24);
-    SongCompleteLayout_DrawCenteredLabel((Rectangle){ state->Anchor01.x + 180, state->Anchor01.y + 535, 360, 36 }, "HIGH SCORE", 24);
-    state->RestartButtonPressed     = GuiButton((Rectangle){ state->Anchor01.x + 220, state->Anchor01.y + 870, 280, 50 }, "RESTART");
-    state->LevelSelectButtonPressed = GuiButton((Rectangle){ state->Anchor01.x + 220, state->Anchor01.y + 935, 280, 50 }, "LEVEL SELECT");
-    state->MenuButtonPressed        = GuiButton((Rectangle){ state->Anchor01.x + 220, state->Anchor01.y + 1000, 280, 50 }, "MAIN MENU");
+    SongCompleteLayout_DrawCenteredLabel(Rectangle{ state->Anchor01.x + 90, state->Anchor01.y + 315, 540, 72 }, "SONG COMPLETE", 42);
+    SongCompleteLayout_DrawCenteredLabel(Rectangle{ state->Anchor01.x + 180, state->Anchor01.y + 425, 360, 36 }, "SCORE", 24);
+    SongCompleteLayout_DrawCenteredLabel(Rectangle{ state->Anchor01.x + 180, state->Anchor01.y + 535, 360, 36 }, "HIGH SCORE", 24);
+    state->RestartButtonPressed     = GuiButton(Rectangle{ state->Anchor01.x + 220, state->Anchor01.y + 870, 280, 50 }, "RESTART");
+    state->LevelSelectButtonPressed = GuiButton(Rectangle{ state->Anchor01.x + 220, state->Anchor01.y + 935, 280, 50 }, "LEVEL SELECT");
+    state->MenuButtonPressed        = GuiButton(Rectangle{ state->Anchor01.x + 220, state->Anchor01.y + 1000, 280, 50 }, "MAIN MENU");
 }
 
 #ifdef __cplusplus

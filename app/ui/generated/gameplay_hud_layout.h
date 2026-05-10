@@ -35,7 +35,7 @@ typedef struct GameplayHudLayoutState {
 
 static inline GameplayHudLayoutState GameplayHudLayout_Init(void) {
     GameplayHudLayoutState state = {};
-    state.Anchor01 = (Vector2){ 0, 0 };
+    state.Anchor01 = Vector2{ 0, 0 };
     state.PauseButtonPressed = false;
     state.CircleButtonPressed = false;
     state.SquareButtonPressed = false;
@@ -44,19 +44,19 @@ static inline GameplayHudLayoutState GameplayHudLayout_Init(void) {
 }
 
 static inline Rectangle GameplayHudLayout_PauseButtonBounds(const GameplayHudLayoutState *state) {
-    return (Rectangle){ state->Anchor01.x + 620, state->Anchor01.y + 10, 80, 50 };
+    return Rectangle{ state->Anchor01.x + 620, state->Anchor01.y + 10, 80, 50 };
 }
 
 static inline Rectangle GameplayHudLayout_CircleButtonBounds(const GameplayHudLayoutState *state) {
-    return (Rectangle){ state->Anchor01.x + 130, state->Anchor01.y + 1140, 140, 100 };
+    return Rectangle{ state->Anchor01.x + 130, state->Anchor01.y + 1140, 140, 100 };
 }
 
 static inline Rectangle GameplayHudLayout_SquareButtonBounds(const GameplayHudLayoutState *state) {
-    return (Rectangle){ state->Anchor01.x + 290, state->Anchor01.y + 1140, 140, 100 };
+    return Rectangle{ state->Anchor01.x + 290, state->Anchor01.y + 1140, 140, 100 };
 }
 
 static inline Rectangle GameplayHudLayout_TriangleButtonBounds(const GameplayHudLayoutState *state) {
-    return (Rectangle){ state->Anchor01.x + 450, state->Anchor01.y + 1140, 140, 100 };
+    return Rectangle{ state->Anchor01.x + 450, state->Anchor01.y + 1140, 140, 100 };
 }
 
 static inline bool GameplayHudLayout_InputOnlyButton(Rectangle bounds) {

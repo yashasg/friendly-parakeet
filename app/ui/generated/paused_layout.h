@@ -33,7 +33,7 @@ typedef struct PausedLayoutState {
 
 static inline PausedLayoutState PausedLayout_Init(void) {
     PausedLayoutState state = {};
-    state.Anchor01 = (Vector2){ 0, 0 };
+    state.Anchor01 = Vector2{ 0, 0 };
     state.ResumeButtonPressed = false;
     state.MenuButtonPressed   = false;
     return state;
@@ -53,11 +53,11 @@ static inline void PausedLayout_DrawCenteredLabel(Rectangle bounds, const char *
 
 static inline void PausedLayout_Render(PausedLayoutState *state) {
     if (!state) return;
-    PausedLayout_DrawCenteredLabel((Rectangle){ state->Anchor01.x + 90, state->Anchor01.y + 420, 540, 80 }, "PAUSED", 56);
-    PausedLayout_DrawCenteredLabel((Rectangle){ state->Anchor01.x + 90, state->Anchor01.y + 540, 540, 36 }, "TAP RESUME TO CONTINUE", 24);
-    state->ResumeButtonPressed = GuiButton((Rectangle){ state->Anchor01.x + 160, state->Anchor01.y + 620, 400, 100 }, "RESUME");
-    PausedLayout_DrawCenteredLabel((Rectangle){ state->Anchor01.x + 90, state->Anchor01.y + 760, 540, 36 }, "OR RETURN TO MAIN MENU", 24);
-    state->MenuButtonPressed   = GuiButton((Rectangle){ state->Anchor01.x + 160, state->Anchor01.y + 820, 400, 100 }, "MAIN MENU");
+    PausedLayout_DrawCenteredLabel(Rectangle{ state->Anchor01.x + 90, state->Anchor01.y + 420, 540, 80 }, "PAUSED", 56);
+    PausedLayout_DrawCenteredLabel(Rectangle{ state->Anchor01.x + 90, state->Anchor01.y + 540, 540, 36 }, "TAP RESUME TO CONTINUE", 24);
+    state->ResumeButtonPressed = GuiButton(Rectangle{ state->Anchor01.x + 160, state->Anchor01.y + 620, 400, 100 }, "RESUME");
+    PausedLayout_DrawCenteredLabel(Rectangle{ state->Anchor01.x + 90, state->Anchor01.y + 760, 540, 36 }, "OR RETURN TO MAIN MENU", 24);
+    state->MenuButtonPressed   = GuiButton(Rectangle{ state->Anchor01.x + 160, state->Anchor01.y + 820, 400, 100 }, "MAIN MENU");
 }
 
 #ifdef __cplusplus

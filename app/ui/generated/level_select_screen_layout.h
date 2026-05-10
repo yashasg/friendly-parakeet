@@ -32,15 +32,15 @@ typedef struct LevelSelectScreenLayoutState {
 
 static inline LevelSelectScreenLayoutState LevelSelectScreenLayout_Init(void) {
     LevelSelectScreenLayoutState state = {};
-    state.Anchor01 = (Vector2){ 0, 0 };
+    state.Anchor01 = Vector2{ 0, 0 };
     state.StartButtonPressed = false;
     return state;
 }
 
 static inline void LevelSelectScreenLayout_Render(LevelSelectScreenLayoutState *state) {
     if (!state) return;
-    GuiLabel((Rectangle){ state->Anchor01.x + 210, state->Anchor01.y + 80, 300, 48 }, "SELECT LEVEL");
-    state->StartButtonPressed = GuiButton((Rectangle){ state->Anchor01.x + 210, state->Anchor01.y + 1050, 300, 60 }, "START");
+    GuiLabel(Rectangle{ state->Anchor01.x + 210, state->Anchor01.y + 80, 300, 48 }, "SELECT LEVEL");
+    state->StartButtonPressed = GuiButton(Rectangle{ state->Anchor01.x + 210, state->Anchor01.y + 1050, 300, 60 }, "START");
 }
 
 #ifdef __cplusplus

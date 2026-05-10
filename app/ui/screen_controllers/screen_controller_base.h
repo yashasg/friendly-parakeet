@@ -47,7 +47,7 @@ inline Controller& screen_controller(entt::registry& reg) {
 
 // Helper: construct Rectangle with anchor-relative offsets.
 inline Rectangle offset_rect(Vector2 anchor, float x, float y, float w, float h) {
-    return (Rectangle){anchor.x + x, anchor.y + y, w, h};
+    return Rectangle{anchor.x + x, anchor.y + y, w, h};
 }
 
 // Generic end-screen choice dispatcher. Used by game_over and song_complete controllers.
