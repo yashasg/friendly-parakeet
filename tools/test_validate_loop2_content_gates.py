@@ -67,6 +67,19 @@ class TestLoop2MetricCalculations(unittest.TestCase):
         self.assertEqual(metrics["valid_beat_count"], 2)
         self.assertTrue(metrics["count_matches"])
 
+    def test_split_path_counts_as_supported_shape_obstacle(self):
+        beats = [
+            {"beat": 0, "kind": "split_path", "shape": "triangle", "lane": 0},
+            {"beat": 4, "kind": "shape_gate", "shape": "square", "lane": 1},
+            {"beat": 8, "kind": "split_path", "shape": "circle", "lane": 2},
+        ]
+        metrics = gates.calculate_content_metrics(beats, expected_count=3)
+
+        self.assertTrue(metrics["all_shape_gate"])
+        self.assertAlmostEqual(metrics["triangle_share"], 1 / 3)
+        self.assertAlmostEqual(metrics["circle_share"], 1 / 3)
+        self.assertAlmostEqual(metrics["lane2_share"], 1 / 3)
+
 
 class TestLoop2GateEvaluation(unittest.TestCase):
     def test_evaluate_content_gates_flags_expected_issues(self):

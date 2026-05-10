@@ -15,7 +15,7 @@ struct BeatMapError {
 struct ValidationConstants {
     float bpm_min               = 60.0f;
     float bpm_max               = 300.0f;
-    float offset_min            = 0.0f;
+    float offset_min            = -0.1f;
     float offset_max            = 5.0f;
     int   lead_beats_min        = 2;
     int   lead_beats_max        = 8;

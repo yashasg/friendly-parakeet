@@ -1,23 +1,16 @@
 #include "all_systems.h"
 #include "../components/particle.h"
+#include "../components/system_scratch.h"
 #include "../components/transform.h"
 #include "../components/rendering.h"
 #include "../constants.h"
 #include "../util/motion.h"
 #include "../util/settings.h"
-#include <vector>
 
 namespace {
 
-struct ParticleSystemScratch {
-    std::vector<entt::entity> expired;
-};
-
 ParticleSystemScratch& particle_scratch_for(entt::registry& reg) {
-    if (auto* scratch = reg.ctx().find<ParticleSystemScratch>()) {
-        return *scratch;
-    }
-    return reg.ctx().emplace<ParticleSystemScratch>();
+    return reg.ctx().get<ParticleSystemScratch>();
 }
 
 }  // namespace

@@ -113,6 +113,7 @@ TEST_CASE("redfoot/#168: collision flags MissedABeat for a missed shape gate",
     reg.ctx().emplace<SongResults>();
     reg.ctx().emplace<SongState>();
     reg.ctx().emplace<GameOverState>();
+    runtime_system_scratch_init(reg);
 
     spawn_aligned_player(reg, constants::PLAYER_Y);
     auto gate = spawn_obstacle(reg, ObstacleKind::ShapeGate, constants::PLAYER_Y);

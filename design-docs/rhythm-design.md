@@ -72,7 +72,7 @@
   ║  1. Music tells you WHEN something is coming (the ring shrinks). ║
   ║  2. The obstacle tells you WHAT shape to be.                     ║
   ║  3. Press the right button at the right time.                    ║
-  ║  4. Miss = instant end. No second chances.                       ║
+  ║  4. Miss = energy loss. Energy at 0 ends the run.                ║
   ║                                                                   ║
   ╚═══════════════════════════════════════════════════════════════════╝
 ```
@@ -251,7 +251,7 @@ The player can hear the beat coming. The timing is legible. What the player cann
     │  → Circle window CANCELS immediately             │
     │  → Square MorphIn begins                        │
     │  → If the circle obstacle arrives during this:  │
-    │    shape mismatch → MISS → game over            │
+    │    shape mismatch → MISS → energy drain         │
     └─────────────────────────────────────────────────┘
 
   Indecision is punished. Commit to your shape.

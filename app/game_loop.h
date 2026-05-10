@@ -6,7 +6,8 @@
 enum class TestPlayerSkill : uint8_t;
 
 // Initialize platform (window, audio), all game singletons, cameras, meshes, UI.
-void game_loop_init(entt::registry& reg,
+// Returns false when platform initialization fails and the run loop must not start.
+bool game_loop_init(entt::registry& reg,
                     bool test_player_mode = false,
                     TestPlayerSkill test_skill = {},
                     const char* difficulty = "medium");

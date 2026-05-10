@@ -79,6 +79,50 @@ test('valid beatmap import/export round-trip still works', () => {
   assert.deepEqual(imported.data.difficulties.hard.beats.map((b) => b.beat), [3, 6]);
 });
 
+test('beatmap round-trip preserves timing metadata and omits missing song_path', () => {
+  const source = {
+    song_id: 'song_001',
+    title: 'Timing Metadata',
+    bpm: 128,
+    offset: -0.02,
+    lead_beats: 4,
+    duration_sec: 95,
+    beat_times: [0.1, 0.6, 1.1],
+    playability_collapsed_pairs: { hard: [] },
+    difficulties: {
+      hard: {
+        count: 1,
+        beats: [
+          {
+            beat: 1,
+            kind: 'shape_gate',
+            shape: 'circle',
+            lane: 2,
+            time_sec: 0.63,
+            timing_source: 'onset',
+            onset_time_sec: 0.63,
+            beat_time_sec: 0.6,
+            subdivision_label: 'eighth',
+          },
+        ],
+      },
+    },
+  };
+
+  const imported = importBeatmap(JSON.stringify(source));
+  assert.deepEqual(imported.errors, []);
+  const exported = JSON.parse(exportBeatmap(imported.data));
+
+  assert.equal(Object.prototype.hasOwnProperty.call(exported, 'song_path'), false);
+  assert.deepEqual(exported.beat_times, source.beat_times);
+  assert.deepEqual(exported.playability_collapsed_pairs, source.playability_collapsed_pairs);
+  assert.equal(exported.difficulties.hard.count, 1);
+  assert.equal(exported.difficulties.hard.beats[0].timing_source, 'onset');
+  assert.equal(exported.difficulties.hard.beats[0].onset_time_sec, 0.63);
+  assert.equal(exported.difficulties.hard.beats[0].beat_time_sec, 0.6);
+  assert.equal(exported.difficulties.hard.beats[0].subdivision_label, 'eighth');
+});
+
 test('analysis import preserves onset object keys in source order', () => {
   const analysis = importAnalysis(JSON.stringify({
     title: 'Demo',

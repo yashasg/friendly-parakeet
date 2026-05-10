@@ -16,15 +16,16 @@ void energy_system(entt::registry& reg, float dt) {
     };
 
     // Apply deferred gameplay energy effects (single writer boundary).
-    if (auto* pending = reg.ctx().find<PendingEnergyEffects>()) {
+    {
+        auto& pending = reg.ctx().get<PendingEnergyEffects>();
         // Preserve per-event clamp semantics (misses first, then hits).
-        for (const auto& effect : pending->events) {
+        for (const auto& effect : pending.events) {
             apply_clamped_delta(effect.delta);
             if (effect.flash) {
                 energy->flash_timer = constants::ENERGY_FLASH_DURATION;
             }
         }
-        pending->events.clear();
+        pending.events.clear();
     }
 
     // Smooth display toward actual energy

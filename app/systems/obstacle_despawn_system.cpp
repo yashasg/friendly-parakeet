@@ -1,21 +1,13 @@
 #include "all_systems.h"
 #include "../components/obstacle.h"
+#include "../components/system_scratch.h"
 #include "../components/transform.h"
 #include "../constants.h"
 
-#include <vector>
-
 namespace {
 
-struct ObstacleDespawnScratch {
-    std::vector<entt::entity> to_destroy;
-};
-
 ObstacleDespawnScratch& despawn_scratch_for(entt::registry& reg) {
-    if (auto* scratch = reg.ctx().find<ObstacleDespawnScratch>()) {
-        return *scratch;
-    }
-    return reg.ctx().emplace<ObstacleDespawnScratch>();
+    return reg.ctx().get<ObstacleDespawnScratch>();
 }
 
 }  // namespace

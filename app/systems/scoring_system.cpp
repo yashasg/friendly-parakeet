@@ -3,6 +3,7 @@
 #include "../components/scoring.h"
 #include "../components/obstacle.h"
 #include "../components/gameplay_intents.h"
+#include "../components/system_scratch.h"
 #include "../components/transform.h"
 #include "../components/rendering.h"
 #include "../components/haptics.h"
@@ -11,40 +12,15 @@
 #include "../util/rhythm_math.h"
 #include "../constants.h"
 #include <cmath>
-#include <vector>
 
 namespace {
 
-struct MissRecord {
-    entt::entity e;
-    bool has_timing = false;
-};
-
-struct HitRecord {
-    entt::entity e;
-    glm::vec2        popup_xy = {0.0f, 0.0f};
-    Obstacle     obs;
-    bool         has_timing = false;
-    TimingGrade  timing{};
-};
-
-struct ScoringSystemScratch {
-    std::vector<MissRecord> miss_buf;
-    std::vector<HitRecord>  hit_buf;
-};
-
 ScoringSystemScratch& scoring_scratch_for(entt::registry& reg) {
-    if (auto* scratch = reg.ctx().find<ScoringSystemScratch>()) {
-        return *scratch;
-    }
-    return reg.ctx().emplace<ScoringSystemScratch>();
+    return reg.ctx().get<ScoringSystemScratch>();
 }
 
 PendingEnergyEffects& pending_energy_for(entt::registry& reg) {
-    if (auto* pending = reg.ctx().find<PendingEnergyEffects>()) {
-        return *pending;
-    }
-    return reg.ctx().emplace<PendingEnergyEffects>();
+    return reg.ctx().get<PendingEnergyEffects>();
 }
 
 void enqueue_energy_effect(entt::registry& reg, float delta, bool flash = false) {
@@ -53,10 +29,7 @@ void enqueue_energy_effect(entt::registry& reg, float delta, bool flash = false)
 }
 
 ScorePopupRequestQueue& popup_queue_for(entt::registry& reg) {
-    if (auto* queue = reg.ctx().find<ScorePopupRequestQueue>()) {
-        return *queue;
-    }
-    return reg.ctx().emplace<ScorePopupRequestQueue>();
+    return reg.ctx().get<ScorePopupRequestQueue>();
 }
 
 }  // namespace

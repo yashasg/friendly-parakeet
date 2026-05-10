@@ -66,6 +66,17 @@ ONSET_CLASS_TO_OBSTACLE = {
     "harmonic": {"lane": 2, "shape": "circle"},
     "full-spectrum": {"lane": 1, "shape": "square"},
 }
+SHAPE_TO_ONSET_CLASS = {
+    mapping["shape"]: onset_class
+    for onset_class, mapping in ONSET_CLASS_TO_OBSTACLE.items()
+}
+LEGACY_PASS_TO_SUBPASS = {
+    "kick": "percussive_bass",
+    "snare": "percussive_broadband",
+    "hihat": "percussive_high_mid",
+    "melody": "harmonic_low_mid",
+    "flux": "full_spectrum_flux",
+}
 ONSET_MOTIF_DIFFICULTY_ROLES = {
     "easy": {"skeleton"},
     "medium": {"skeleton", "motif_core"},
@@ -360,6 +371,16 @@ def classify_onset_class(event):
     if harmonic:
         return "harmonic"
     return "full-spectrum"
+
+
+def _normalize_raw_per_pass_keys(raw_per_pass):
+    normalized = {}
+    if not isinstance(raw_per_pass, dict):
+        return normalized
+    for key, value in raw_per_pass.items():
+        public_key = LEGACY_PASS_TO_SUBPASS.get(key, key)
+        normalized[public_key] = normalized.get(public_key, 0) + value
+    return normalized
 
 
 def event_grid_position(event_time, beats):
@@ -1019,7 +1040,9 @@ def write_snap_diagnostics(analysis, diagnostics_out_dir, experimental_onset_tim
         "empty_segment_count": empty_seg_count,
         "segment_coverage": seg_event_counts,
         # from analysis.onset_diagnostics if present
-        "raw_per_pass": analysis.get("onset_diagnostics", {}).get("raw_per_pass", {}),
+        "raw_per_pass": _normalize_raw_per_pass_keys(
+            analysis.get("onset_diagnostics", {}).get("raw_per_pass", {})
+        ),
         "raw_total": analysis.get("onset_diagnostics", {}).get("raw_total", None),
     }
 
@@ -1142,9 +1165,13 @@ def set_shape_gate(obs, shape):
     """Mutate an obstacle into a canonical shape_gate."""
     if shape not in SHAPE_TO_LANE:
         shape = "square"
+    previous_class = obs.get("onset_class")
+    if previous_class in ONSET_CLASS_TO_OBSTACLE and "source_onset_class" not in obs:
+        obs["source_onset_class"] = previous_class
     obs["kind"] = "shape_gate"
     obs["shape"] = shape
     obs["lane"] = SHAPE_TO_LANE[shape]
+    obs["onset_class"] = SHAPE_TO_ONSET_CLASS[shape]
 
 
 def nearest_shape_lane(obstacles, index):
@@ -1941,7 +1968,7 @@ def _collapse_simultaneous_obstacles(obstacles, collapsed_pairs=None):
                     "delta_ms": round(abs(float(dropped["time_sec"]) - float(kept["time_sec"])) * 1000.0, 3),
                     "kept_onset_class": kept.get("onset_class"),
                     "dropped_onset_class": dropped.get("onset_class"),
-                    "kept_lane_shape": list(a_ls),
+                    "kept_lane_shape": [kept.get("lane"), kept.get("shape")],
                     "dropped_lane_shape": [dropped.get("lane"), dropped.get("shape")],
                     "kept_flux": float(kept.get("flux", 0.0)),
                     "dropped_flux": float(dropped.get("flux", 0.0)),
@@ -3698,7 +3725,7 @@ def _enforce_cluster_chain_cap_obstacles(obstacles, difficulty):
 SAME_SHAPE_CLUSTER_CHAIN_CAP = {"medium": 3, "hard": 3}
 
 
-def build_beatmap(analysis, difficulties, cleanup_enabled=True, experimental_onset_timing=False):
+def build_beatmap(analysis, difficulties, cleanup_enabled=True, experimental_onset_timing=True):
     """Build the full beatmap JSON."""
     beats = analysis["beats"]
     if not beats:
@@ -3782,13 +3809,21 @@ def build_beatmap(analysis, difficulties, cleanup_enabled=True, experimental_ons
             # The onset-only path preserves beat selection from segment_focus
             # but mutates only the rendered shape/lane (via set_shape_gate)
             # so the medium tier honors validate_medium_balance.py targets
-            # (circle 10-20%, square 45-60%, triangle 25-45%). onset_class
-            # broad-layer labels and beat indices are unchanged.
+            # (circle 10-20%, square 45-60%, triangle 25-45%). Mutations keep
+            # onset_class coherent with the rendered shape/lane and preserve the
+            # original broad layer as source_onset_class for diagnostics.
             if diff == "medium":
                 obs = rebalance_medium_shapes(obs, diff)
             # #532 — obstacle-level safety net (post-rebalance).
             obs = _thin_oversized_clusters_obstacles(obs, diff)
             obs = _enforce_cluster_chain_cap_obstacles(obs, diff)
+            if diff == "medium":
+                # Thinning can drop medium back below its exact distribution
+                # floor, so rebalance once more and re-apply the same safety
+                # gates. This is not cleanup/filler: selection remains onset-only.
+                obs = rebalance_medium_shapes(obs, diff)
+                obs = _thin_oversized_clusters_obstacles(obs, diff)
+                obs = _enforce_cluster_chain_cap_obstacles(obs, diff)
         else:
             selected_events, _ = select_beats(analysis, diff)
             obs = design_level(analysis, diff, cleanup_enabled=cleanup_enabled)
@@ -4037,7 +4072,12 @@ def main():
     parser.add_argument(
         "--experimental-onset-timing",
         action="store_true",
-        help="EXPERIMENTAL: author obstacle time_sec from selected onset timestamps (defaults unchanged).",
+        help="Compatibility flag; onset event timing is the default authoring path.",
+    )
+    parser.add_argument(
+        "--legacy-beat-grid",
+        action="store_true",
+        help="Use legacy beat-grid timing for diagnostics only.",
     )
     args = parser.parse_args()
 
@@ -4056,7 +4096,7 @@ def main():
         out_dir = write_snap_diagnostics(
             analysis,
             args.diagnostics_out,
-            experimental_onset_timing=args.experimental_onset_timing,
+            experimental_onset_timing=not args.legacy_beat_grid,
         )
         print(f"✓ diagnostics: {out_dir}")
         if args.diagnostics_only:
@@ -4072,7 +4112,7 @@ def main():
         analysis,
         diffs,
         cleanup_enabled=not args.no_cleanup,
-        experimental_onset_timing=args.experimental_onset_timing,
+        experimental_onset_timing=not args.legacy_beat_grid,
     )
 
     for diff in diffs:

@@ -136,7 +136,7 @@ void log_persistence_result(const char* operation, const persistence::Result& re
 
 // ── Init ────────────────────────────────────────────────────────────────────
 
-void game_loop_init(entt::registry& reg,
+bool game_loop_init(entt::registry& reg,
                     bool test_player_mode,
                     TestPlayerSkill test_skill,
                     const char* difficulty) {
@@ -146,7 +146,7 @@ void game_loop_init(entt::registry& reg,
     InitWindow(constants::SCREEN_W, constants::SCREEN_H, window_title.c_str());
     if (!IsWindowReady()) {
         TraceLog(LOG_WARNING, "Window initialization failed; startup aborted");
-        return;
+        return false;
     }
     const char* smoke_mode = std::getenv("SHAPESHIFTER_STARTUP_SHUTDOWN_SMOKE");
     const bool startup_shutdown_smoke = smoke_mode && smoke_mode[0] != '\0' &&
@@ -195,6 +195,7 @@ void game_loop_init(entt::registry& reg,
     reset_ctx_singleton<TestPlayerState>(reg);
     reset_ctx_singleton<TestPlayerSessionState>(reg);
     reset_ctx_singleton<SessionLog>(reg);
+    runtime_system_scratch_init(reg);
 
     persistence::Paths persistence_paths;
     const auto path_result = persistence::resolve_paths(persistence_paths);
@@ -247,6 +248,7 @@ void game_loop_init(entt::registry& reg,
     if (test_player_mode) {
         test_player_init(reg, test_skill, difficulty);
     }
+    return true;
 }
 
 // ── Run ─────────────────────────────────────────────────────────────────────
@@ -318,6 +320,10 @@ bool game_loop_should_quit(entt::registry& reg) {
 }
 
 void game_loop_run(entt::registry& reg) {
+    if (!IsWindowReady()) {
+        TraceLog(LOG_WARNING, "Run loop skipped because window is not ready");
+        return;
+    }
 #ifdef __EMSCRIPTEN__
     platform_run_loop(reg);
 #else

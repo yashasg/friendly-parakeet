@@ -31,6 +31,7 @@ static entt::registry make_bench_registry() {
     });
     reg.ctx().emplace<ScoreState>();
     reg.ctx().emplace<SongState>();
+    runtime_system_scratch_init(reg);
     return reg;
 }
 

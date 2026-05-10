@@ -57,8 +57,24 @@ export function importBeatmap(jsonString) {
         leadBeats: 4,
         duration: 180,
         songPath: '',
+        hasSongPath: false,
         difficulties: {},
+        extraTopLevel: {},
     };
+    const reservedTopLevel = new Set([
+        'song_id',
+        'title',
+        'bpm',
+        'offset',
+        'lead_beats',
+        'duration_sec',
+        'song_path',
+        'difficulties',
+        'beats',
+    ]);
+    data.extraTopLevel = Object.fromEntries(
+        Object.entries(j).filter(([key]) => !reservedTopLevel.has(key)),
+    );
 
     if (j.song_id !== undefined) {
         if (typeof j.song_id !== 'string') errors.push('song_id must be a string');
@@ -86,7 +102,10 @@ export function importBeatmap(jsonString) {
     }
     if (j.song_path !== undefined) {
         if (typeof j.song_path !== 'string') errors.push('song_path must be a string');
-        else data.songPath = j.song_path;
+        else {
+            data.songPath = j.song_path;
+            data.hasSongPath = true;
+        }
     }
 
     if (j.difficulties !== undefined) {
@@ -112,7 +131,14 @@ export function importBeatmap(jsonString) {
                     const normalized = normalizeBeat(diff.beats[i], `difficulties.${name}.beats[${i}]`, errors);
                     if (normalized) beats.push(normalized);
                 }
-                data.difficulties[name] = { beats };
+                const reservedDifficulty = new Set(['beats', 'count']);
+                data.difficulties[name] = {
+                    ...Object.fromEntries(
+                        Object.entries(diff).filter(([key]) => !reservedDifficulty.has(key)),
+                    ),
+                    beats,
+                    ...(diff.count !== undefined ? { count: diff.count } : {}),
+                };
             }
         }
     } else if (Array.isArray(j.beats)) {
@@ -192,6 +218,7 @@ function normalizeBeat(b, path, errors) {
     if (!valid) return null;
 
     return {
+        ...b,
         beat,
         kind,
         shape,
@@ -208,15 +235,18 @@ function normalizeBeat(b, path, errors) {
 export function exportBeatmap(state) {
     const errors = [];
     const out = {
+        ...(state.extraTopLevel || {}),
         song_id: state.songId,
         title: state.title,
         bpm: state.bpm,
         offset: state.offset,
         lead_beats: state.leadBeats,
         duration_sec: state.duration,
-        song_path: state.songPath,
         difficulties: {},
     };
+    if (state.songPath || state.hasSongPath) {
+        out.song_path = state.songPath;
+    }
 
     for (const [name, diff] of Object.entries(state.difficulties || {})) {
         if (!isAllowedDifficultyKey(name)) {
@@ -240,6 +270,9 @@ export function exportBeatmap(state) {
             }
         }
         out.difficulties[name] = {
+            ...Object.fromEntries(
+                Object.entries(diff).filter(([key]) => key !== 'beats'),
+            ),
             beats: exportedBeats,
         };
     }
@@ -272,7 +305,7 @@ function exportBeatEntry(b, path) {
         return { error: `${path}.lane must be in range 0-2` };
     }
 
-    const entry = { beat: b.beat, kind: b.kind, lane: b.lane };
+    const entry = { ...b, beat: b.beat, kind: b.kind, lane: b.lane };
 
     if (KINDS_WITH_SHAPE.includes(b.kind)) {
         if (typeof b.shape !== 'string' || !isAllowedShape(b.shape)) {
