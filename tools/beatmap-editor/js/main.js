@@ -69,13 +69,12 @@ window.addEventListener('keydown', (e) => {
     }
 });
 
-// Open help with '?' (Shift+/) when not typing in form fields.
-window.addEventListener('keydown', (e) => {
-    if (e.key !== '?') return;
-    const tag = e.target?.tagName;
+// Open Help when the editor's keyboard handler emits 'help-requested'
+// (bound to '?' / F1; the Help toolbar button advertises the same shortcut).
+on('help-requested', () => {
+    const tag = document.activeElement?.tagName;
     if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
     if (helpModal?.classList.contains('visible')) return;
-    e.preventDefault();
     showModal(helpModal);
     document.getElementById('btn-help-close')?.focus();
 });
