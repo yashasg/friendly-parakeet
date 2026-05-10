@@ -4,7 +4,6 @@
 #include "../components/song_state.h"
 #include "../constants.h"
 #include "../rendering/camera_resources.h"
-#include "../rendering/raylib_conversions.h"
 
 #include <raylib.h>
 #include <rlgl.h>
@@ -20,7 +19,7 @@ static_assert(constants::LANE_COUNT <= SHAPE_COLOR_COUNT,
               "Lane rendering expects one canonical shape color per lane");
 
 Color floor_lane_color(int lane, uint8_t alpha) {
-    Color c = to_raylib_color(constants::SHAPE_COLORS[lane]);
+    Color c = constants::SHAPE_COLORS[lane];
     c.a = alpha;
     return c;
 }

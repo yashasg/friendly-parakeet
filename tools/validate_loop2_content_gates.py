@@ -23,6 +23,11 @@ DENSE_CLUSTER_WARN_SIZE = {"medium": 3, "hard": 3}
 GAP_ONE_MAX_RUN = {"easy": 0, "medium": 2, "hard": 3}
 GAP_ONE_SHARE_CAP = {"medium": 0.20, "hard": 0.20}
 MIN_IOI_MS = {"easy": 700.0, "medium": 380.0, "hard": 300.0}
+# Issue #420 — broad-layer/lane reachability floor at medium/hard.
+# Each shipped beatmap×difficulty must include at least this share of
+# circle (lane-2 / harmonic-mapped) obstacles so the third shape and the
+# right strafe stay reachable design space.
+CIRCLE_LANE2_SHARE_FLOOR = {"medium": 0.10, "hard": 0.10}
 
 
 def _ordered_valid_beats(beats: list[dict]) -> list[dict]:
@@ -116,6 +121,7 @@ def calculate_content_metrics(
 
     shape_counts = Counter(beat.get("shape") for beat in ordered if beat.get("kind") == "shape_gate")
     total_shape_gates = sum(shape_counts.values())
+    lane_counts = Counter(beat.get("lane") for beat in ordered if beat.get("kind") == "shape_gate")
 
     min_ioi_ms: float | None = None
     ioi_index_error = False
@@ -149,6 +155,7 @@ def calculate_content_metrics(
         "shape_clusters_over_warn": 0,
         "triangle_share": (shape_counts.get("triangle", 0) / total_shape_gates) if total_shape_gates else 0.0,
         "circle_share": (shape_counts.get("circle", 0) / total_shape_gates) if total_shape_gates else 0.0,
+        "lane2_share": (lane_counts.get(2, 0) / total_shape_gates) if total_shape_gates else 0.0,
         "min_ioi_ms": min_ioi_ms,
         "ioi_index_error": ioi_index_error,
     }
@@ -205,6 +212,22 @@ def evaluate_content_gates(metrics: dict[str, float | int | bool | None], diffic
             findings.append(f"hard triangle share {float(metrics['triangle_share']):.1%} below floor 25%")
         if float(metrics["circle_share"]) > 0.40:
             findings.append(f"hard circle share {float(metrics['circle_share']):.1%} above ceiling 40%")
+
+    # Issue #420 — circle/lane-2 reachability floors at medium/hard.
+    share_floor = CIRCLE_LANE2_SHARE_FLOOR.get(difficulty)
+    if share_floor is not None:
+        circle_share = metrics.get("circle_share")
+        lane2_share = metrics.get("lane2_share")
+        if circle_share is not None and float(circle_share) < share_floor:
+            findings.append(
+                f"circle share {float(circle_share):.1%} below floor "
+                f"{share_floor:.0%} (issue #420)"
+            )
+        if lane2_share is not None and float(lane2_share) < share_floor:
+            findings.append(
+                f"lane-2 share {float(lane2_share):.1%} below floor "
+                f"{share_floor:.0%} (issue #420)"
+            )
 
     min_ioi_ms = metrics.get("min_ioi_ms")
     if min_ioi_ms is not None:

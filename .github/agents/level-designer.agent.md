@@ -330,8 +330,10 @@ Before delivering a beatmap, verify:
   tools/rhythm_pipeline.py ← audio analysis tool
   tools/level_designer.py  ← beatmap generation tool
   design-docs/             ← game design docs (read for context)
-    beatmap-design-guidelines.md  ← detailed level design rules
-    rhythm-design.md              ← rhythm game vision
+    rhythm-design.md              ← rhythm game vision (authoritative)
+    rhythm-spec.md                ← rhythm/timing implementation spec (authoritative)
+    game.md                       ← GDD v1.2: obstacle catalog & difficulty pillars
+    archive/beatmap-design-guidelines.md  ← ARCHIVED per #422 (do not use)
     tester-personas.md            ← test player specs
 ```
 

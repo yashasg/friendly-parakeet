@@ -2,7 +2,7 @@
 ## Design & Implementation Plan · v1.0
 
 > **Format reference:** `rhythm-spec.md` §1 (Beat Map Format)
-> **Design guidelines:** `beatmap-design-guidelines.md`
+> **Design guidelines:** `archive/beatmap-design-guidelines.md` (archived per #422 — see the banner there for current authoritative sources: `rhythm-design.md`, `rhythm-spec.md`, `game.md`, `decisions.md` "#135")
 > **Existing beatmaps:** `content/beatmaps/*_beatmap.json`
 > **Analysis files:** `content/beatmaps/*_analysis.json`
 

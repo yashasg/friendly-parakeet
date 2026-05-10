@@ -1,5 +1,6 @@
 #include "level_select_controller.h"
 #include "../components/game_state.h"
+#include "../content/level_content_config.h"
 #include "../components/input_events.h"
 
 void level_select_handle_go(entt::registry& reg, const GoEvent& evt) {
@@ -8,13 +9,13 @@ void level_select_handle_go(entt::registry& reg, const GoEvent& evt) {
 
     auto& lss = reg.ctx().get<LevelSelectState>();
     if (evt.dir == Direction::Up) {
-        lss.selected_level = (lss.selected_level - 1 + LevelSelectState::LEVEL_COUNT) % LevelSelectState::LEVEL_COUNT;
+        lss.selected_level = (lss.selected_level - 1 + content_config::LEVEL_COUNT) % content_config::LEVEL_COUNT;
     } else if (evt.dir == Direction::Down) {
-        lss.selected_level = (lss.selected_level + 1) % LevelSelectState::LEVEL_COUNT;
+        lss.selected_level = (lss.selected_level + 1) % content_config::LEVEL_COUNT;
     } else if (evt.dir == Direction::Left) {
-        lss.selected_difficulty = (lss.selected_difficulty - 1 + LevelSelectState::DIFFICULTY_COUNT) % LevelSelectState::DIFFICULTY_COUNT;
+        lss.selected_difficulty = (lss.selected_difficulty - 1 + content_config::DIFFICULTY_COUNT) % content_config::DIFFICULTY_COUNT;
     } else if (evt.dir == Direction::Right) {
-        lss.selected_difficulty = (lss.selected_difficulty + 1) % LevelSelectState::DIFFICULTY_COUNT;
+        lss.selected_difficulty = (lss.selected_difficulty + 1) % content_config::DIFFICULTY_COUNT;
     }
 }
 

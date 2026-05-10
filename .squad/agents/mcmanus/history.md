@@ -111,3 +111,10 @@
 - **#395 tuning fix:** Reduced `ENERGY_DRAIN_BAD` from `0.10f` to `0.05f` to restore early-player forgiveness.
 - **Energy tuning tests:** Added explicit tests proving 5×Ok + 1×Bad is net-positive and that five Ok recoveries outweigh one Bad drain.
 - **Validation:** Targeted issue tests passed; full validation passed with `cmake -B build -S . -Wno-dev && cmake --build build && ./build/shapeshifter_tests`.
+
+## 2026-05-10T02:40:52.785-07:00 — Round 2 gameplay/runtime audit (no code changes)
+
+- Audited loop/scoring/player/collision/scheduling/beatmap-consumption paths after PR #408 with duplicate-first issue triage.
+- Filed #423: LaneBlock `blocked_mask` invariant gap (parser/validator/runtime mismatch can block invisible lanes).
+- Filed #424: Authored `time_sec` lacks monotonic/duration invariants, permitting misordered or never-spawned obstacles despite validation passing.
+- Baseline validation: `ctest --test-dir build --output-on-failure` shows one pre-existing unrelated failure (`redfoot/#168: existing game_over buttons keep their original positions`).

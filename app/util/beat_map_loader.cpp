@@ -7,6 +7,23 @@
 #include <raylib.h>
 
 using json = nlohmann::json;
+namespace {
+constexpr uint8_t kLaneBitsMask = 0x07;
+
+bool has_only_lane_bits(const uint8_t mask) {
+    return (mask & static_cast<uint8_t>(~kLaneBitsMask)) == 0;
+}
+
+int lane_bit_count(const uint8_t mask) {
+    int count = 0;
+    for (int lane = 0; lane < 3; ++lane) {
+        if (((mask >> lane) & 1U) != 0U) {
+            ++count;
+        }
+    }
+    return count;
+}
+} // namespace
 
 static bool try_load_constants_from(const std::string& path, ValidationConstants& vc) {
     char* file_text = LoadFileText(path.c_str());
@@ -187,14 +204,36 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
             }
         }
 
-        if (b.contains("blocked") && b["blocked"].is_array()) {
-            entry.blocked_mask = 0;
-            for (const auto& lane_idx : b["blocked"]) {
-                int l = lane_idx.get<int>();
-                if (l >= 0 && l < 3) {
-                    entry.blocked_mask |= static_cast<uint8_t>(1 << l);
-                }
+        if (b.contains("blocked")) {
+            if (!b["blocked"].is_array()) {
+                errors.push_back({entry.beat_index,
+                    "'blocked' must be an array at beat " + std::to_string(entry.beat_index)});
+                parse_ok = false;
+                continue;
             }
+            entry.blocked_mask = 0;
+            bool blocked_ok = true;
+            for (const auto& lane_idx : b["blocked"]) {
+                if (!lane_idx.is_number_integer()) {
+                    errors.push_back({entry.beat_index,
+                        "'blocked' entries must be integer lane indices at beat "
+                        + std::to_string(entry.beat_index)});
+                    parse_ok = false;
+                    blocked_ok = false;
+                    break;
+                }
+                const int lane = lane_idx.get<int>();
+                if (lane < 0 || lane > 2) {
+                    errors.push_back({entry.beat_index,
+                        "'blocked' lane index must be in range [0, 2] at beat "
+                        + std::to_string(entry.beat_index)});
+                    parse_ok = false;
+                    blocked_ok = false;
+                    break;
+                }
+                entry.blocked_mask |= static_cast<uint8_t>(1 << lane);
+            }
+            if (!blocked_ok) continue;
         }
 
         out.beats.push_back(entry);
@@ -278,6 +317,8 @@ bool validate_beat_map(const BeatMap& map, std::vector<BeatMapError>& errors,
     int prev_shape_beat = -1;
     Shape prev_shape = Shape::Circle;
     bool prev_had_shape = false;
+    bool has_prev_authored_time = false;
+    float prev_authored_time = 0.0f;
 
     for (size_t i = 0; i < map.beats.size(); ++i) {
         const auto& entry = map.beats[i];
@@ -309,6 +350,17 @@ bool validate_beat_map(const BeatMap& map, std::vector<BeatMapError>& errors,
             valid = false;
         }
 
+        if ((entry.kind == ObstacleKind::LaneBlock || entry.kind == ObstacleKind::ComboGate) &&
+            !has_only_lane_bits(entry.blocked_mask)) {
+            errors.push_back({entry.beat_index, "blocked_mask must only use lane bits 0..2"});
+            valid = false;
+        }
+
+        if (entry.kind == ObstacleKind::LaneBlock && lane_bit_count(entry.blocked_mask) != 1) {
+            errors.push_back({entry.beat_index, "LaneBlock blocked_mask must contain exactly one lane bit"});
+            valid = false;
+        }
+
         // Rule 5b: combo_gate blocked_mask must block at least one lane and leave at least one open
         if (entry.kind == ObstacleKind::ComboGate) {
             if (entry.blocked_mask == 0) {
@@ -317,6 +369,29 @@ bool validate_beat_map(const BeatMap& map, std::vector<BeatMapError>& errors,
             } else if (entry.blocked_mask == 0x07) {
                 errors.push_back({entry.beat_index, "ComboGate must leave at least one lane open"});
                 valid = false;
+            }
+        }
+
+        if (entry.has_time_sec) {
+            if (!std::isfinite(entry.time_sec)) {
+                errors.push_back({entry.beat_index, "time_sec must be finite when provided"});
+                valid = false;
+            } else {
+                if (entry.time_sec < 0.0f) {
+                    errors.push_back({entry.beat_index, "time_sec must be >= 0 when provided"});
+                    valid = false;
+                }
+                if (entry.time_sec > map.duration) {
+                    errors.push_back({entry.beat_index, "time_sec must be <= duration_sec when provided"});
+                    valid = false;
+                }
+                if (has_prev_authored_time && entry.time_sec < prev_authored_time) {
+                    errors.push_back({entry.beat_index,
+                        "time_sec must be non-decreasing across authored beat entries"});
+                    valid = false;
+                }
+                prev_authored_time = entry.time_sec;
+                has_prev_authored_time = true;
             }
         }
 

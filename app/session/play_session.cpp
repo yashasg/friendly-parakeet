@@ -15,6 +15,8 @@
 #include "../util/rhythm_math.h"
 #include "../entities/camera_entity.h"
 #include "../entities/player_entity.h"
+#include "../content/level_content_config.h"
+#include "../systems/game_phase_transition.h"
 #include "../constants.h"
 #include <filesystem>
 #include <raylib.h>
@@ -24,12 +26,6 @@ namespace {
 // Session setup owns when a player is spawned; player_entity owns how.
 void spawn_session_player(entt::registry& reg) {
     create_player_entity(reg);
-}
-
-void enter_playing_phase(GameState& gs) {
-    gs.previous_phase = gs.phase;
-    gs.phase = GamePhase::Playing;
-    gs.phase_timer = 0.0f;
 }
 
 } // namespace
@@ -51,8 +47,8 @@ void setup_play_session(entt::registry& reg) {
     auto& lss = reg.ctx().get<LevelSelectState>();
     auto& beatmap = reg.ctx().get<BeatMap>();
     beatmap = BeatMap{};
-    const char* beatmap_path = LevelSelectState::LEVELS[lss.selected_level].beatmap_path;
-    const char* difficulty_key = LevelSelectState::DIFFICULTY_KEYS[lss.selected_difficulty];
+    const char* beatmap_path = content_config::LEVELS[lss.selected_level].beatmap_path;
+    const char* difficulty_key = content_config::DIFFICULTY_KEYS[lss.selected_difficulty];
 
     std::vector<BeatMapError> load_errors;
     std::string exe_path = std::string(GetApplicationDirectory()) + beatmap_path;
@@ -143,5 +139,5 @@ void setup_play_session(entt::registry& reg) {
     spawn_session_player(reg);
     // Transition game state
     auto& gs = reg.ctx().get<GameState>();
-    enter_playing_phase(gs);
+    enter_phase(gs, GamePhase::Playing);
 }

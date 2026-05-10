@@ -51,6 +51,22 @@ MAX_GAP = {
 }
 
 
+def _is_valid_beat_index(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def _collect_valid_beat_indices(beats: list[object]) -> tuple[set[int], int]:
+    valid_beats: set[int] = set()
+    invalid_rows = 0
+    for row in beats:
+        beat_index = row.get("beat") if isinstance(row, dict) else None
+        if _is_valid_beat_index(beat_index):
+            valid_beats.add(beat_index)
+        else:
+            invalid_rows += 1
+    return valid_beats, invalid_rows
+
+
 def find_max_gap(beats_in_beatmap: set[int]) -> int:
     """Return the longest mid-song run of consecutive beats with no obstacle."""
     if len(beats_in_beatmap) <= 1:
@@ -63,14 +79,14 @@ def find_max_gap(beats_in_beatmap: set[int]) -> int:
     return max_gap
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     import argparse
     ap = argparse.ArgumentParser(description="Validate max beat gap per difficulty")
     ap.add_argument("files", nargs="*")
     ap.add_argument("--max-gap-easy", type=int, default=MAX_GAP["easy"])
     ap.add_argument("--max-gap-medium", type=int, default=MAX_GAP["medium"])
     ap.add_argument("--max-gap-hard", type=int, default=MAX_GAP["hard"])
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
 
     max_gaps = {
         "easy": args.max_gap_easy,
@@ -96,7 +112,14 @@ def main() -> int:
                 continue
 
             diff_data = beatmap["difficulties"][difficulty]
-            beats_in_beatmap = set(b["beat"] for b in diff_data.get("beats", []))
+            beats_in_beatmap, invalid_rows = _collect_valid_beat_indices(
+                diff_data.get("beats", [])
+            )
+            if invalid_rows:
+                print(
+                    f"  {name} [{difficulty}]: skipped {invalid_rows} invalid beat row(s)",
+                    file=sys.stderr,
+                )
 
             if not beats_in_beatmap:
                 continue

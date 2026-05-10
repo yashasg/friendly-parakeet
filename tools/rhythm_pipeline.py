@@ -32,14 +32,21 @@ DEFAULT_LIBROSA_CONFIG_PATH = Path(__file__).parent / "config" / "rhythm_librosa
 # ONSET DETECTION PASSES
 #
 # Multi-pass onset extraction over librosa mel flux envelopes.
+#
+# Pass identifiers are deliberately non-instrumental.  Each ID encodes the
+# broad layer it belongs to plus the spectral zone or method (so multiple
+# internal passes remain distinguishable in diagnostics) WITHOUT implying
+# real instrument detection.  The audio analysis only has broad librosa
+# evidence (percussive / harmonic / full-spectrum), not raw kick / snare /
+# hihat / melody recognition.
 # ---------------------------------------------------------------------------
 
 ONSET_PASSES = [
-    {"name": "kick", "method": "band_flux_bass", "zone": "bass"},
-    {"name": "snare", "method": "band_flux_full", "zone": None},
-    {"name": "melody", "method": "band_flux_low_mid", "zone": "low_mid"},
-    {"name": "hihat", "method": "band_flux_high_mid", "zone": "high_mid"},
-    {"name": "flux", "method": "spectral_flux", "zone": None},
+    {"name": "percussive_bass",      "method": "band_flux_bass",     "zone": "bass"},
+    {"name": "percussive_broadband", "method": "band_flux_full",     "zone": None},
+    {"name": "harmonic_low_mid",     "method": "band_flux_low_mid",  "zone": "low_mid"},
+    {"name": "percussive_high_mid",  "method": "band_flux_high_mid", "zone": "high_mid"},
+    {"name": "full_spectrum_flux",   "method": "spectral_flux",      "zone": None},
 ]
 
 # ---------------------------------------------------------------------------
@@ -49,18 +56,35 @@ ONSET_PASSES = [
 # used for lane/shape assignment.  These classes must NOT be merged across
 # each other even when their timestamps are very close (< 50 ms).
 #
-#   percussive   — kick, snare, hihat  → lane 0, triangle
-#   harmonic     — melody              → lane 2, circle
-#   full-spectrum — flux (catch-all)   → lane 1, square
+#   percussive    — bass / broadband / high-mid → lane 0, triangle
+#   harmonic      — low-mid                     → lane 2, circle
+#   full-spectrum — spectral flux (catch-all)   → lane 1, square
+#
+# Legacy aliases (kick / snare / hihat / melody / flux) are kept ONLY so
+# previously generated analysis JSON files still resolve to the right
+# layer when read back.  Newly generated analysis output uses the broad
+# subpass IDs above and never serializes the legacy aliases.
 # ---------------------------------------------------------------------------
 
 PASS_TO_LAYER: dict[str, str] = {
+    "percussive_bass":      "percussive",
+    "percussive_broadband": "percussive",
+    "percussive_high_mid":  "percussive",
+    "harmonic_low_mid":     "harmonic",
+    "full_spectrum_flux":   "full-spectrum",
+    # Legacy aliases (read-only fallback for older analysis JSONs).
     "kick":   "percussive",
     "snare":  "percussive",
     "hihat":  "percussive",
     "melody": "harmonic",
     "flux":   "full-spectrum",
 }
+
+# Pass-name tokens that imply real instrument detection.  Newly generated
+# analysis must NOT serialize these in any public field.
+RAW_INSTRUMENT_PASS_NAMES: frozenset[str] = frozenset({
+    "kick", "snare", "hihat", "melody",
+})
 
 
 def _event_layer(event: dict) -> str:
@@ -377,6 +401,13 @@ def get_quiet_regions(y: np.ndarray, sr: int, config: dict | None = None) -> lis
     merged: list[tuple[int, int, bool]] = []
     for run in runs:
         if merged and (run[1] - run[0]) < min_frames:
+            # Short flip absorbed into previous run (keeps prev's is_quiet).
+            prev = merged[-1]
+            merged[-1] = (prev[0], run[1], prev[2])
+        elif merged and merged[-1][2] == run[2]:
+            # Smoothing can leave the next run with the same is_quiet as the
+            # previous merged run (e.g. Q_long, N_short→absorbed into Q,
+            # Q_long).  Coalesce so canonical alternating transitions remain.
             prev = merged[-1]
             merged[-1] = (prev[0], run[1], prev[2])
         else:
@@ -642,11 +673,20 @@ def merge_events(events: list[dict], merge_window: float = 0.05) -> list[dict]:
 # STEP 4 - CLASSIFY BY INTENSITY (mel band energy -> easy/medium/hard filter)
 # ---------------------------------------------------------------------------
 
-def classify_intensity(events: list[dict], quiet_regions: list[dict]) -> list[dict]:
+def classify_intensity(
+    events: list[dict],
+    quiet_regions: list[dict],
+    duration: float | None = None,
+) -> list[dict]:
     """
     Tag each event with intensity (low / medium / high) based on:
     - Whether it falls in a quiet region (RMS-derived quiet output)
     - Its flux score relative to the overall distribution
+
+    A trailing QUIET marker with no closing NOISY transition is treated as
+    a quiet window that runs through the end of the analysis.  ``duration``
+    may be passed explicitly; otherwise a sentinel that exceeds any event
+    timestamp is used.
     """
     # build quiet time windows: a QUIET region runs from a QUIET marker
     # to the next NOISY marker
@@ -654,10 +694,18 @@ def classify_intensity(events: list[dict], quiet_regions: list[dict]) -> list[di
     quiet_start = None
     for r in quiet_regions:
         if r["type"] == "QUIET":
-            quiet_start = r["t"]
+            if quiet_start is None:
+                quiet_start = r["t"]
         elif r["type"] == "NOISY" and quiet_start is not None:
             quiet_windows.append((quiet_start, r["t"]))
             quiet_start = None
+    if quiet_start is not None:
+        if duration is None:
+            event_max = max((e["t"] for e in events), default=quiet_start)
+            close = max(event_max, quiet_start) + 1.0
+        else:
+            close = max(float(duration), quiet_start)
+        quiet_windows.append((quiet_start, close))
 
     def is_quiet(t):
         for (a, b) in quiet_windows:
@@ -911,7 +959,7 @@ def build_analysis(filepath: str, features: dict, onset_threshold: float) -> dic
     print(f"    (cross-layer events preserved separately even when < 50ms apart)")
 
     print("[4] Classifying intensity from quiet regions...")
-    events = classify_intensity(events, features["quiet"])
+    events = classify_intensity(events, features["quiet"], duration=features.get("duration"))
 
     print("[5] Building song structure...")
     structure = build_structure(features)

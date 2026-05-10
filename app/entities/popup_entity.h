@@ -2,9 +2,9 @@
 
 #include <optional>
 #include <entt/entt.hpp>
+#include <raylib.h>
 #include "../components/rhythm.h"  // TimingTier
 
-struct TintColor;
 struct PopupDisplay;
 struct ScorePopup;
 
@@ -13,7 +13,7 @@ struct ScorePopup;
 // frame.
 void init_popup_display(PopupDisplay& pd,
                         const ScorePopup& sp,
-                        const TintColor& base);
+                        const Color& base);
 
 // Parameters for spawning a score popup entity.
 struct PopupSpawnParams {
@@ -25,6 +25,6 @@ struct PopupSpawnParams {
 
 // Creates a fully-initialized score popup entity:
 //   WorldTransform at {x, y-40}, MotionVelocity {0, -80}, ScorePopup,
-//   TintColor (by timing tier), DrawLayer::Effects, TagHUDPass, PopupDisplay.
+//   Color (by timing tier), DrawLayer::Effects, TagHUDPass, PopupDisplay.
 // Audio push is the caller's responsibility.
 entt::entity spawn_score_popup(entt::registry& reg, const PopupSpawnParams& params);

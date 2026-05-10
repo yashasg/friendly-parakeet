@@ -6,8 +6,6 @@ on:
   pull_request:
     branches: [main]
     paths-ignore:
-      - "content/**"
-      - "tools/**"
       - "design-docs/**"
       - "*.md"
       - "*.log"
@@ -74,10 +72,18 @@ jobs:
         run: ./build.sh
         shell: bash
 
+      - name: Install Python tool test dependencies
+        shell: bash
+        run: |
+          PYTHON_TOOL_TEST_EXE="$(grep '^_Python3_EXECUTABLE:INTERNAL=' build/CMakeCache.txt | cut -d= -f2-)"
+          "$PYTHON_TOOL_TEST_EXE" -m pip install numpy librosa
+
       - name: Run tests
         if: always()
         id: run-tests
-        run: ./build/shapeshifter_tests.exe "~[bench]"
+        run: |
+          ./build/shapeshifter_tests.exe "~[bench]"
+          ctest --test-dir build --output-on-failure -R "^python_tool_tests$"
         shell: bash
 
       - name: Upload artifact

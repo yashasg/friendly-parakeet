@@ -197,5 +197,177 @@ class TestMergeEventsMixedScenario(unittest.TestCase):
         )
 
 
+# ---------------------------------------------------------------------------
+# #415 — quiet-region smoothing & trailing-quiet classification
+# ---------------------------------------------------------------------------
+
+
+class TestGetQuietRegionsSmoothing(unittest.TestCase):
+    """``get_quiet_regions`` must emit canonical alternating QUIET/NOISY transitions."""
+
+    def _quiet_regions(self, mask: list[bool], sr: int = 1000, hop: int = 100,
+                       min_duration_s: float = 0.5):
+        import numpy as np
+        # Build an RMS-like signal from a quiet/noisy mask: quiet-mask True
+        # frames produce a low value, False frames a high value.  A length
+        # of ``hop`` samples per frame gives reasonable times.
+        frames = np.array([0.0 if q else 1.0 for q in mask])
+        # Synthesize a waveform whose framed RMS reproduces this mask.
+        y = np.zeros(len(mask) * hop, dtype=np.float32)
+        for i, val in enumerate(frames):
+            if val > 0.5:
+                y[i * hop:(i + 1) * hop] = 0.5  # noisy
+            else:
+                y[i * hop:(i + 1) * hop] = 0.0  # quiet
+        cfg = {
+            "quiet": {
+                "frame_length": hop,
+                "hop_length": hop,
+                "quantile": 0.5,
+                "min_duration_s": min_duration_s,
+            }
+        }
+        return rp.get_quiet_regions(y, sr=sr, config=cfg)
+
+    def test_no_adjacent_duplicate_transitions(self):
+        # Pattern: long-quiet, short-noisy (absorbed), long-quiet, short-noisy
+        # (absorbed), long-noisy.  Without coalescing, the previous code emitted
+        # two QUIET markers in a row.
+        mask = (
+            [True] * 8 +    # long quiet
+            [False] * 1 +   # short noisy → absorbed
+            [True] * 8 +    # long quiet (would duplicate previous QUIET)
+            [False] * 8     # long noisy
+        )
+        regions = self._quiet_regions(mask, min_duration_s=0.3)
+        types = [r["type"] for r in regions]
+        # No two adjacent markers may share a type.
+        for i in range(1, len(types)):
+            self.assertNotEqual(
+                types[i - 1], types[i],
+                f"adjacent duplicate {types[i]} transitions at index {i}: {types}",
+            )
+
+    def test_trailing_quiet_marker_is_emitted(self):
+        mask = [False] * 10 + [True] * 10  # noisy → quiet, never closes
+        regions = self._quiet_regions(mask, min_duration_s=0.3)
+        self.assertGreaterEqual(len(regions), 2)
+        self.assertEqual(regions[-1]["type"], "QUIET")
+
+
+class TestClassifyIntensityTrailingQuiet(unittest.TestCase):
+    """Final QUIET marker must classify subsequent events as low intensity."""
+
+    def test_unclosed_trailing_quiet_classifies_event_as_low(self):
+        events = [{"t": 9.0, "flux": 10.0}]
+        regions = [{"type": "QUIET", "t": 8.0}]
+        out = rp.classify_intensity(events, regions)
+        self.assertEqual(out[0]["intensity"], "low")
+
+    def test_unclosed_trailing_quiet_with_explicit_duration(self):
+        events = [{"t": 12.0, "flux": 5.0}]
+        regions = [{"type": "QUIET", "t": 8.0}]
+        out = rp.classify_intensity(events, regions, duration=15.0)
+        self.assertEqual(out[0]["intensity"], "low")
+
+    def test_closed_quiet_window_still_works(self):
+        events = [
+            {"t": 1.0, "flux": 10.0},   # in quiet window → low
+            {"t": 5.0, "flux": 10.0},   # outside window
+        ]
+        regions = [
+            {"type": "QUIET", "t": 0.5},
+            {"type": "NOISY", "t": 2.0},
+        ]
+        out = rp.classify_intensity(events, regions, duration=10.0)
+        self.assertEqual(out[0]["intensity"], "low")
+        self.assertNotEqual(out[1]["intensity"], "low")
+
+
+# ---------------------------------------------------------------------------
+# #419 — public analysis JSON must use broad layer / non-instrumental subpass IDs
+# ---------------------------------------------------------------------------
+
+
+class TestNoRawInstrumentSemanticsInPublicFields(unittest.TestCase):
+    """Newly generated analysis must not expose kick/snare/hihat/melody."""
+
+    _RAW_NAMES = {"kick", "snare", "hihat", "melody"}
+
+    def test_onset_passes_use_non_instrumental_ids(self):
+        names = {p["name"] for p in rp.ONSET_PASSES}
+        leaked = names & self._RAW_NAMES
+        self.assertFalse(
+            leaked,
+            f"ONSET_PASSES exposes raw instrument names: {sorted(leaked)}",
+        )
+
+    def test_pass_to_layer_covers_new_ids(self):
+        for p in rp.ONSET_PASSES:
+            self.assertIn(p["name"], rp.PASS_TO_LAYER)
+            self.assertIn(
+                rp.PASS_TO_LAYER[p["name"]],
+                ("percussive", "harmonic", "full-spectrum"),
+            )
+
+    def test_legacy_aliases_still_resolve(self):
+        # Read-only fallback so existing shipped analysis JSONs continue
+        # to classify correctly.  These aliases must NOT appear in newly
+        # generated output, though — see test_build_analysis_output_below.
+        for legacy in ("kick", "snare", "hihat", "melody", "flux"):
+            self.assertIn(legacy, rp.PASS_TO_LAYER)
+
+    def test_build_analysis_output_excludes_raw_instrument_names(self):
+        """build_analysis result has no raw instrument tokens in public fields."""
+        # Synthesize a feature dict large enough for build_analysis to run.
+        import numpy as np
+        n_frames = 20
+        mel_times = np.linspace(0.0, 2.0, n_frames)
+        mel_energies = np.zeros((n_frames, 40))
+        onsets = {p["name"]: [0.5, 1.0, 1.5] for p in rp.ONSET_PASSES}
+        onset_breakdown = {p["name"]: [{"n_fft": 1024, "hop_length": 256, "count": 3,
+                                         "effective_threshold": 0.3}]
+                           for p in rp.ONSET_PASSES}
+        features = {
+            "bpm": 120.0,
+            "beats": [0.0, 0.5, 1.0, 1.5, 2.0],
+            "onsets": onsets,
+            "onset_resolutions": [{"n_fft": 1024, "hop_length": 256}],
+            "onset_breakdown": onset_breakdown,
+            "mel_times": mel_times,
+            "mel_energies": mel_energies,
+            "mfcc_times": np.array([]),
+            "mfcc_coeffs": np.array([]),
+            "quiet": [],
+            "duration": 2.0,
+        }
+        analysis = rp.build_analysis("synthetic.wav", features, onset_threshold=0.3)
+        # 1) onsets keys must use only broad / non-instrumental subpass IDs.
+        onset_keys = set(analysis["onsets"].keys())
+        leaked_keys = onset_keys & self._RAW_NAMES
+        self.assertFalse(
+            leaked_keys,
+            f"analysis['onsets'] exposes raw instrument names: {sorted(leaked_keys)}",
+        )
+        # 2) events[].passes must not include raw instrument tokens.
+        for ev in analysis["events"]:
+            leaked = set(ev.get("passes", [])) & self._RAW_NAMES
+            self.assertFalse(
+                leaked,
+                f"event passes leak raw instrument names: {leaked} in {ev}",
+            )
+            # Every event must carry the broad layer field.
+            self.assertIn(
+                ev.get("layer"), ("percussive", "harmonic", "full-spectrum"),
+            )
+        # 3) onset_diagnostics.raw_per_pass must use the broad/non-instrumental IDs.
+        raw_per_pass = analysis["onset_diagnostics"]["raw_per_pass"]
+        leaked_diag = set(raw_per_pass.keys()) & self._RAW_NAMES
+        self.assertFalse(
+            leaked_diag,
+            f"onset_diagnostics.raw_per_pass leaks raw names: {sorted(leaked_diag)}",
+        )
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

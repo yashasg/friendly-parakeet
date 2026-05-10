@@ -21,6 +21,21 @@ DEFAULT_DIR = REPO / "content" / "beatmaps"
 GAP_ONE_MEDIUM_START_PROGRESS = 0.30
 GAP_ONE_HARD_MIN_BEAT = 11
 GAP_ONE_MAX_RUN = {"medium": 1, "hard": 2}
+
+
+def _ordered_valid_beats(beats: list[object]) -> tuple[list[dict], int]:
+    ordered = sorted(
+        [
+            beat for beat in beats
+            if isinstance(beat, dict)
+            and isinstance(beat.get("beat"), int)
+            and not isinstance(beat.get("beat"), bool)
+        ],
+        key=lambda beat: beat["beat"],
+    )
+    return ordered, len(beats) - len(ordered)
+
+
 def is_readable_family(left: dict, right: dict) -> bool:
     return (
         left.get("kind") == "shape_gate"
@@ -77,10 +92,10 @@ def validate_gap_one(beats: list[dict], difficulty: str) -> list[tuple[int, str]
     return violations
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Validate gap=1 readability rules")
     parser.add_argument("files", nargs="*")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     paths = [Path(path) for path in args.files] if args.files else sorted(DEFAULT_DIR.glob("*_beatmap.json"))
     if not paths:
@@ -96,10 +111,15 @@ def main() -> int:
             if difficulty not in difficulties:
                 continue
 
-            beats = difficulties[difficulty].get("beats", [])
+            beats, invalid_rows = _ordered_valid_beats(difficulties[difficulty].get("beats", []))
             violations = validate_gap_one(beats, difficulty)
             status = "OK" if not violations else f"FAIL ({len(violations)} violations)"
             print(f"  {path.name:40s} [{difficulty:6s}]  {status}")
+            if invalid_rows:
+                print(
+                    f"      diagnostics: skipped {invalid_rows} invalid beat row(s)",
+                    file=sys.stderr,
+                )
 
             for beat_index, reason in violations[:5]:
                 print(f"      beat {beat_index}: {reason}", file=sys.stderr)

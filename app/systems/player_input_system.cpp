@@ -72,7 +72,7 @@ void player_input_handle_press(entt::registry& reg, const ButtonPressEvent& evt)
         sw.graded = false;
         auto si = static_cast<int>(pressed_shape);
         auto& sc = constants::SHAPE_COLORS[si];
-        reg.replace<TintColor>(entity, sc);
+        reg.replace<Color>(entity, sc);
         if (auto* disp = reg.ctx().find<entt::dispatcher>()) {
             disp->enqueue<PlaySfxEvent>({SFX::ShapeShift});
         }
@@ -109,7 +109,7 @@ void player_input_handle_press(entt::registry& reg, const ButtonPressEvent& evt)
                 pshape.morph_t  = 1.0f;
                 auto si = static_cast<int>(pressed_shape);
                 auto& sc = constants::SHAPE_COLORS[si];
-                reg.replace<TintColor>(entity, sc);
+                reg.replace<Color>(entity, sc);
                 if (auto* disp = reg.ctx().find<entt::dispatcher>()) {
                     disp->enqueue<PlaySfxEvent>({SFX::ShapeShift});
                 }

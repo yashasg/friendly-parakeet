@@ -55,6 +55,7 @@ configure_file(
 # nlohmann-json: JSON parsing for beat map loading (vcpkg on all platforms).
 
 find_package(EnTT CONFIG REQUIRED)
+find_package(glm CONFIG REQUIRED)
 find_package(magic_enum CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(raylib CONFIG REQUIRED)
@@ -75,7 +76,7 @@ target_compile_options(shapeshifter_warnings INTERFACE
 
 # Mark third-party include directories as SYSTEM so warnings from their
 # headers are suppressed and cannot be promoted to errors by -Werror.
-set(_system_deps EnTT::EnTT magic_enum::magic_enum raylib nlohmann_json::nlohmann_json Catch2::Catch2 Catch2::Catch2WithMain)
+set(_system_deps EnTT::EnTT glm::glm magic_enum::magic_enum raylib nlohmann_json::nlohmann_json Catch2::Catch2 Catch2::Catch2WithMain)
 foreach(_dep ${_system_deps})
     if(TARGET ${_dep})
         # Resolve alias targets — set_target_properties doesn't work on aliases
@@ -95,6 +96,7 @@ endforeach()
 file(GLOB SYSTEM_SOURCES CONFIGURE_DEPENDS app/systems/*.cpp)
 file(GLOB AUDIO_SOURCES CONFIGURE_DEPENDS app/audio/*.cpp)
 file(GLOB UTIL_SOURCES CONFIGURE_DEPENDS app/util/*.cpp)
+file(GLOB CONTENT_SOURCES CONFIGURE_DEPENDS app/content/*.cpp)
 file(GLOB PLATFORM_SOURCES CONFIGURE_DEPENDS app/platform/*.cpp app/platform/ios/*.cpp)
 file(GLOB UI_SOURCES CONFIGURE_DEPENDS app/ui/*.cpp)
 file(GLOB UI_SCREEN_CONTROLLER_SOURCES CONFIGURE_DEPENDS app/ui/screen_controllers/*.cpp)
@@ -125,7 +127,7 @@ if(SHAPESHIFTER_IOS)
     list(APPEND PLATFORM_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/app/platform/ios/haptics_ios_bridge_ios.mm")
 endif()
 
-add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES} ${AUDIO_SOURCES} ${UTIL_SOURCES} ${PLATFORM_SOURCES} ${UI_SOURCES} ${UI_SCREEN_CONTROLLER_SOURCES} ${INPUT_SOURCES} ${SESSION_SOURCES} ${ENTITY_SOURCES})
+add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES} ${AUDIO_SOURCES} ${UTIL_SOURCES} ${CONTENT_SOURCES} ${PLATFORM_SOURCES} ${UI_SOURCES} ${UI_SCREEN_CONTROLLER_SOURCES} ${INPUT_SOURCES} ${SESSION_SOURCES} ${ENTITY_SOURCES})
 target_include_directories(shapeshifter_lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/app
     ${CMAKE_BINARY_DIR}/generated
@@ -135,6 +137,7 @@ target_include_directories(shapeshifter_lib SYSTEM PUBLIC
 )
 target_link_libraries(shapeshifter_lib PUBLIC
     EnTT::EnTT
+    glm::glm
     magic_enum::magic_enum
     nlohmann_json::nlohmann_json
 )

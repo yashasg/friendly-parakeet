@@ -25,7 +25,8 @@ import sys
 from pathlib import Path
 
 
-BEATMAP_DIR = Path("content/beatmaps")
+REPO_ROOT = Path(__file__).resolve().parent.parent
+BEATMAP_DIR = REPO_ROOT / "content" / "beatmaps"
 TOLERANCE_MS_DEFAULT = 2.0  # acceptable rounding error in milliseconds
 
 
@@ -85,12 +86,12 @@ def validate_beatmap_pair(beatmap_path: Path, analysis_path: Path,
     return errors
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--tolerance-ms", type=float, default=TOLERANCE_MS_DEFAULT,
                         help=f"Max allowed offset error in ms (default: {TOLERANCE_MS_DEFAULT})")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     beatmap_dir = BEATMAP_DIR
     if not beatmap_dir.is_dir():

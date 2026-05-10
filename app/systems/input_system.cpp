@@ -67,7 +67,7 @@ void input_system(entt::registry& reg, float raw_dt) {
         input.touching   = false;
         input.active_source = InputSource::None;
         const Vector2 mouse_pos = GetMousePosition();
-        const Vec2f pos = screen_to_virtual({mouse_pos.x, mouse_pos.y}, st);
+        const glm::vec2 pos = screen_to_virtual({mouse_pos.x, mouse_pos.y}, st);
         input.start_x = input.curr_x = input.end_x = pos.x;
         input.start_y = input.curr_y = input.end_y = pos.y;
         input.duration = 0.0f;
@@ -78,7 +78,7 @@ void input_system(entt::registry& reg, float raw_dt) {
         input.active_source != InputSource::Mouse &&
         GetTouchPointCount() > 0) {
         const Vector2 touch_pos = GetTouchPosition(0);
-        const Vec2f tp = screen_to_virtual({touch_pos.x, touch_pos.y}, st);
+        const glm::vec2 tp = screen_to_virtual({touch_pos.x, touch_pos.y}, st);
         if (!input.touching) {
             input.touch_down = true;
             input.touching   = true;

@@ -23,7 +23,7 @@
 #include <tuple>
 
 #include "components/scoring.h"   // ScorePopup, PopupDisplay
-#include "components/rendering.h" // ScreenPosition, TintColor (via raylib)
+#include "components/rendering.h" // ScreenPosition, Color (via raylib)
 #include "components/text.h"      // FontSize
 #include "components/rhythm.h"    // TimingTier
 #include "components/transform.h" // WorldTransform, MotionVelocity
@@ -50,12 +50,12 @@ static entt::entity make_popup_entity(entt::registry& reg,
     reg.emplace<ScorePopup>(e, sp);
 
     reg.emplace<ScreenPosition>(e, 0.0f, 0.0f);
-    reg.emplace<TintColor>(e, TintColor{255, 255, 255, 255});
+    reg.emplace<Color>(e, Color{255, 255, 255, 255});
 
     // #251: PopupDisplay's static fields (text, font size, base RGB) are
     // initialized once at spawn — popup_display_system only fades alpha.
     PopupDisplay pd{};
-    init_popup_display(pd, sp, TintColor{255, 255, 255, 255});
+    init_popup_display(pd, sp, Color{255, 255, 255, 255});
     reg.emplace<PopupDisplay>(e, pd);
 
     return e;
@@ -218,7 +218,7 @@ TEST_CASE("popup_display_system: ScorePopup expires without render components",
     CHECK_FALSE(reg.valid(e));
 }
 
-TEST_CASE("popup_display_system: ScorePopup+PopupDisplay expires without TintColor",
+TEST_CASE("popup_display_system: ScorePopup+PopupDisplay expires without Color",
           "[popup_display]") {
     entt::registry reg;
     auto e = reg.create();
@@ -233,7 +233,7 @@ TEST_CASE("popup_display_system: ScorePopup+PopupDisplay expires without TintCol
     CHECK_FALSE(reg.valid(e));
 }
 
-TEST_CASE("popup_display_system: ScorePopup+TintColor expires without PopupDisplay",
+TEST_CASE("popup_display_system: ScorePopup+Color expires without PopupDisplay",
           "[popup_display]") {
     entt::registry reg;
     auto e = reg.create();
@@ -241,7 +241,7 @@ TEST_CASE("popup_display_system: ScorePopup+TintColor expires without PopupDispl
     popup.remaining = 0.01f;
     popup.max_time = 1.0f;
     reg.emplace<ScorePopup>(e, popup);
-    reg.emplace<TintColor>(e, TintColor{255, 255, 255, 255});
+    reg.emplace<Color>(e, Color{255, 255, 255, 255});
 
     popup_display_system(reg, 0.02f);
 
@@ -264,7 +264,7 @@ TEST_CASE("init_popup_display: formats grade text + font size from ScorePopup (#
     sp.timing_tier = TimingTier::Perfect;
 
     PopupDisplay pd{};
-    init_popup_display(pd, sp, TintColor{10, 20, 30, 200});
+    init_popup_display(pd, sp, Color{10, 20, 30, 200});
 
     CHECK(std::strcmp(pd.text, "PERFECT") == 0);
     CHECK(pd.font_size == FontSize::Medium);
@@ -281,7 +281,7 @@ TEST_CASE("init_popup_display: nullopt tier formats numeric value (#251)",
     sp.value       = 4242;
 
     PopupDisplay pd{};
-    init_popup_display(pd, sp, TintColor{255, 255, 255, 255});
+    init_popup_display(pd, sp, Color{255, 255, 255, 255});
 
     CHECK(std::strcmp(pd.text, "4242") == 0);
     CHECK(pd.font_size == FontSize::Small);
@@ -332,8 +332,8 @@ TEST_CASE("spawn_score_popup: color is bright cyan for Perfect tier",
     entt::registry reg;
     auto e = spawn_score_popup(reg, {0.0f, 0.0f, 300, TimingTier::Perfect});
 
-    REQUIRE(reg.all_of<TintColor>(e));
-    const auto& c = reg.get<TintColor>(e);
+    REQUIRE(reg.all_of<Color>(e));
+    const auto& c = reg.get<Color>(e);
     CHECK(c.r ==  80);
     CHECK(c.g == 255);
     CHECK(c.b == 220);
@@ -346,15 +346,15 @@ TEST_CASE("spawn_score_popup: Good tier is lime, Ok tier is amber, distinct from
     auto good = spawn_score_popup(reg, {0.0f, 0.0f, 200, TimingTier::Good});
     auto ok   = spawn_score_popup(reg, {0.0f, 0.0f, 100, TimingTier::Ok});
 
-    REQUIRE(reg.all_of<TintColor>(good));
-    REQUIRE(reg.all_of<TintColor>(ok));
+    REQUIRE(reg.all_of<Color>(good));
+    REQUIRE(reg.all_of<Color>(ok));
 
-    const auto& good_color = reg.get<TintColor>(good);
+    const auto& good_color = reg.get<Color>(good);
     CHECK(good_color.r == 140);
     CHECK(good_color.g == 255);
     CHECK(good_color.b ==  80);
 
-    const auto& ok_color = reg.get<TintColor>(ok);
+    const auto& ok_color = reg.get<Color>(ok);
     CHECK(ok_color.r == 255);
     CHECK(ok_color.g == 200);
     CHECK(ok_color.b ==  60);
@@ -368,8 +368,8 @@ TEST_CASE("spawn_score_popup: color is red-orange for Bad tier",
     entt::registry reg;
     auto e = spawn_score_popup(reg, {0.0f, 0.0f, 50, TimingTier::Bad});
 
-    REQUIRE(reg.all_of<TintColor>(e));
-    const auto& c = reg.get<TintColor>(e);
+    REQUIRE(reg.all_of<Color>(e));
+    const auto& c = reg.get<Color>(e);
     CHECK(c.r == 255);
     CHECK(c.g ==  90);
     CHECK(c.b ==  70);
@@ -384,7 +384,7 @@ TEST_CASE("spawn_score_popup: every timing tier maps to a distinct color",
     auto b = spawn_score_popup(reg, {0.0f, 0.0f, 0, TimingTier::Bad});
 
     auto rgb = [&](entt::entity e) {
-        const auto& c = reg.get<TintColor>(e);
+        const auto& c = reg.get<Color>(e);
         return std::tuple<uint8_t, uint8_t, uint8_t>{c.r, c.g, c.b};
     };
     auto cp = rgb(p), cg = rgb(g), co = rgb(o), cb = rgb(b);
@@ -401,8 +401,8 @@ TEST_CASE("spawn_score_popup: default color when no timing tier",
     entt::registry reg;
     auto e = spawn_score_popup(reg, {0.0f, 0.0f, 200, std::nullopt});
 
-    REQUIRE(reg.all_of<TintColor>(e));
-    const auto& c = reg.get<TintColor>(e);
+    REQUIRE(reg.all_of<Color>(e));
+    const auto& c = reg.get<Color>(e);
     CHECK(c.r == 255);
     CHECK(c.g == 255);
     CHECK(c.b == 50);

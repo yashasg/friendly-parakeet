@@ -210,5 +210,76 @@ class TestOnsetSpikeCli(unittest.TestCase):
         self.assertEqual(rc, 1)
 
 
+class TestOnsetSpikeOnsetOnlyTimingSource(unittest.TestCase):
+    """Validator must enforce the onset-only timing invariant (#417)."""
+
+    def test_csv_row_with_beat_fallback_is_flagged(self):
+        summary = _summary_fixture()
+        rows = _rows_fixture()
+        rows[0]["timing_source"] = "beat_fallback"
+        findings = spike.validate_artifact_shape(summary, rows)
+        self.assertTrue(
+            any("non-onset timing_source" in f and "beat_fallback" in f
+                for f in findings),
+            f"validator did not flag beat_fallback CSV row; findings={findings}",
+        )
+
+    def test_summary_histogram_with_nonzero_beat_fallback_is_flagged(self):
+        summary = _summary_fixture()
+        rows = _rows_fixture()
+        for payload in summary["experimental_onset_timing"][
+            "comparison_by_difficulty"
+        ].values():
+            payload["event_counts"]["timing_source_histogram"] = {
+                "onset": payload["event_counts"]["obstacles"] - 1,
+                "beat_fallback": 1,
+            }
+        findings = spike.validate_artifact_shape(summary, rows)
+        self.assertTrue(
+            any("timing_source_histogram has non-onset entry 'beat_fallback'"
+                in f for f in findings),
+            f"validator did not flag beat_fallback in histogram; findings={findings}",
+        )
+
+    def test_zero_beat_fallback_in_histogram_still_passes(self):
+        summary = _summary_fixture()
+        rows = _rows_fixture()
+        # Existing fixture already emits {"onset": N, "beat_fallback": 0}.
+        findings = spike.validate_artifact_shape(summary, rows)
+        # Original baseline: shape findings should still be empty.
+        self.assertEqual(findings, [])
+
+    def test_strict_cli_fails_with_injected_beat_fallback(self):
+        base = Path(__file__).resolve().parent / ".test_onset_spike_validator_bf"
+        if base.exists():
+            shutil.rmtree(base)
+        base.mkdir(parents=True, exist_ok=True)
+        self.addCleanup(lambda: shutil.rmtree(base, ignore_errors=True))
+
+        summary = _summary_fixture()
+        for payload in summary["experimental_onset_timing"][
+            "comparison_by_difficulty"
+        ].values():
+            payload["event_counts"]["timing_source_histogram"] = {
+                "onset": payload["event_counts"]["obstacles"] - 1,
+                "beat_fallback": 1,
+            }
+        rows = _rows_fixture()
+        rows[0]["timing_source"] = "beat_fallback"
+
+        (base / "snap_diagnostics_summary.json").write_text(
+            json.dumps(summary), encoding="utf-8"
+        )
+        with (base / "onset_timing_events.csv").open(
+            "w", newline="", encoding="utf-8"
+        ) as handle:
+            writer = csv.DictWriter(handle, fieldnames=list(rows[0].keys()))
+            writer.writeheader()
+            writer.writerows(rows)
+
+        rc = spike.main(["--diagnostics-dir", str(base), "--strict"])
+        self.assertEqual(rc, 1)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -160,7 +160,7 @@ TEST_CASE("player_input: non-rhythm same shape press does nothing", "[player]") 
     CHECK(drain_sfx_events(reg).count == 0);
 }
 
-TEST_CASE("player_input: non-rhythm shape press updates TintColor", "[player]") {
+TEST_CASE("player_input: non-rhythm shape press updates Color", "[player]") {
     auto reg = make_registry();
     auto p = make_player(reg);
 
@@ -169,7 +169,7 @@ TEST_CASE("player_input: non-rhythm shape press updates TintColor", "[player]") 
 
     run_semantic_input_tick(reg);
 
-    auto& col = reg.get<TintColor>(p);
+    auto& col = reg.get<Color>(p);
     // Square color: { 255, 100, 100, 255 }
     CHECK(col.r == 255);
     CHECK(col.g == 100);

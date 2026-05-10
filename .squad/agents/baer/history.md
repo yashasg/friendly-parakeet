@@ -243,3 +243,9 @@ Team ready for next phase.
 - Re-enabling tracked lifecycle/safe-area tests required modernizing stale assertions to current `constants.h` fields; keeping the original test names/tags preserved discoverability gates while restoring build stability.
 - A shipped-content metadata regression test is now necessary alongside structural beatmap tests: assert `timing_source=onset`, required onset metadata fields, broad `onset_class` values, and non-decreasing onset-backed counts across easy/medium/hard.
 - Python tool validation is now wired in both CTest (`python_tool_tests`) and `run.sh test`; stale ffprobe-based coverage was replaced with duration-contract tests against `rhythm_pipeline.extract_features` so `python3 -m unittest discover -s tools -p "test_*.py"` stays green.
+
+## 2026-05-10T02:40:52.785-07:00 — Round 2 CI/test wiring audit
+
+## Learnings
+- `python_tool_tests` is correctly registered in native CTest, but current native CI workflows still execute only `./build/shapeshifter_tests "~[bench]"`, so the Python `tools/test_*.py` suite is not part of blocking CI.
+- Because native PR workflows also ignore `tools/**`, regressions in tool tests can merge without any CI signal unless a dedicated tool-test lane (or CTest-based native test step) is added.

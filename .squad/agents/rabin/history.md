@@ -485,3 +485,55 @@ generator fix end-to-end on `audit/autonomous-quality-loop`.
   saturates the medium band naturally close to hard.  My regression
   test allows this when easy/hard ratio ≥1.5× (overall ramp still
   perceivable end-to-end).
+
+---
+
+## 2026-05-10 — Round 2 audit on `audit/autonomous-quality-loop-2`
+
+Read-only audit of `content/beatmaps/`, `tools/validate_*`, and shipped
+generator outputs after PR #408 (cf2aa91). No code/data modified.
+
+### Filed (all `squad`+`squad:rabin`)
+
+- **#414** — `difficulty_inclusion` leak: 13 beats in stomper easy, 13 in
+  drama easy (incl. 2 hard-tagged), 15 in drama medium are stamped with a
+  higher-tier inclusion than the array they ship in. MC is clean. Likely
+  the `_enforce_median_ioi_target` fallback-pool promotion or
+  `select_segment_focus_beats` not re-stamping `difficulty_inclusion` on
+  the receiving tier.
+- **#416** — Hard tier of drama (5x) and MC (13x) ships with
+  non-strictly-increasing `beat` ordinals. `validate_loop2_content_gates`
+  flags this plus the knock-on `min IOI 0.0ms`. Cross-layer same-beat
+  preservation (#385/#400) appears to clone the seed's `beat` ordinal
+  instead of restamping. 1_stomper is clean.
+- **#418** — Drama medium→hard median IOI step is 2 ms (0.691→0.689),
+  below human perception. Acknowledged in my prior history as a "known
+  partial miss" from the #391–#396 fix; now formally tracked. Other two
+  songs have healthy medium→hard ramps.
+
+### Verified non-issues / duplicates of existing trackers
+
+- Lane 0 + circle absence in shipped beatmaps (still 0% circle, 0% lane 2)
+  → **#136** open, no new issue.
+- MC hard first_t = 0.096s (96 ms reaction window) → **#175** open.
+- Big silent gaps still present (8–22 s, 5–10 per tier) → **#138** was
+  about 56–64 *beat* gaps and is closed; remaining 8–22 s gaps are within
+  what `validate_max_beat_gap.py` currently tolerates. Did not refile.
+- `validate_difficulty_ramp.py` still fails on "easy ≥3 distinct shapes"
+  for all three songs → **#135** open.
+- Rabin charter recommends running validators before filing; I ran:
+  `validate_loop1_diagnostics.py` (PASS), `validate_loop2_content_gates.py`
+  (FAIL — drove #416), `validate_difficulty_ramp.py` (FAIL on #135).
+
+### Useful one-liners (kept for next round)
+
+- Difficulty-inclusion leak check: see #414 body.
+- Beat-ordinal monotonicity check: see #416 body.
+- Median-IOI table per tier: trivial `statistics.median` over
+  sorted `time_sec` deltas; preferred over the validator's binned IOI
+  histogram for spec comparisons.
+
+### Did NOT touch
+
+- `.squad/agents/redfoot/history.md` (pre-existing dirty per coordinator note).
+- Generator code, beatmap JSON, tests — read-only per task brief.

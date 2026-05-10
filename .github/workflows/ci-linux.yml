@@ -6,8 +6,6 @@ on:
   pull_request:
     branches: [main]
     paths-ignore:
-      - "content/**"
-      - "tools/**"
       - "design-docs/**"
       - "*.md"
       - "*.log"
@@ -78,10 +76,17 @@ jobs:
           chmod +x build.sh
           ./build.sh
 
+      - name: Install Python tool test dependencies
+        run: |
+          PYTHON_TOOL_TEST_EXE="$(grep '^_Python3_EXECUTABLE:INTERNAL=' build/CMakeCache.txt | cut -d= -f2-)"
+          "$PYTHON_TOOL_TEST_EXE" -m pip install numpy librosa
+
       - name: Run tests
         if: always()
         id: run-tests
-        run: ./build/shapeshifter_tests "~[bench]"
+        run: |
+          ./build/shapeshifter_tests "~[bench]"
+          ctest --test-dir build --output-on-failure -R "^python_tool_tests$"
 
       - name: Upload artifact
         if: success()
@@ -109,4 +114,3 @@ jobs:
           upload-artifact: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-

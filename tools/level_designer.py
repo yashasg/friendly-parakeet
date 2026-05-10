@@ -291,18 +291,36 @@ def classify_onset_class(event):
     Checks the 'layer' field first (set by the pipeline after the 2026-05-10
     layer-aware merge fix).  Falls back to inferring from 'passes' for
     analysis files generated before that change.
+
+    Pass-name fallback supports both:
+      * the current non-instrumental subpass IDs
+        (``percussive_*``, ``harmonic_*``, ``full_spectrum_*``), and
+      * the legacy raw instrument names (``kick``/``snare``/``hihat``/``melody``/
+        ``flux``) so previously shipped ``*_analysis.json`` files keep
+        resolving correctly.
     """
     # New format: authoritative layer set by rhythm_pipeline.
     layer = event.get("layer")
     if layer in ("percussive", "harmonic", "full-spectrum"):
         return layer
 
-    # Legacy fallback: infer from named passes.
     passes = set(event.get("passes", [])) if isinstance(event.get("passes"), list) else set()
-    percussive = bool({"kick", "snare", "hihat"} & passes)
-    harmonic = "melody" in passes
 
-    if (percussive and harmonic) or "flux" in passes or not passes:
+    # Non-instrumental subpass IDs encode their layer as a prefix.
+    has_percussive_prefix = any(p.startswith("percussive_") for p in passes)
+    has_harmonic_prefix   = any(p.startswith("harmonic_")   for p in passes)
+    has_full_prefix       = any(p.startswith("full_spectrum") for p in passes)
+
+    # Legacy fallback: infer from named passes.
+    legacy_percussive = bool({"kick", "snare", "hihat"} & passes)
+    legacy_harmonic = "melody" in passes
+    legacy_full = "flux" in passes
+
+    percussive = has_percussive_prefix or legacy_percussive
+    harmonic = has_harmonic_prefix or legacy_harmonic
+    full_spectrum = has_full_prefix or legacy_full
+
+    if (percussive and harmonic) or full_spectrum or not passes:
         return "full-spectrum"
     if percussive:
         return "percussive"
@@ -1313,16 +1331,23 @@ def _choose_segment_focus(class_stats, prev_focuses):
         for cls, stats in class_stats.items()
     }
 
-    # Anti-repetition: halve score of a class that has dominated
-    # the last SEGMENT_FOCUS_ANTI_REPEAT_MAX segments.
+    # Issue #420 — force rotation across all available broad onset
+    # layers so harmonic (lane 2 / circle) and other underrepresented
+    # layers actually get picked when they have non-empty events in a
+    # segment.  Forbid up to ``SEGMENT_FOCUS_ANTI_REPEAT_MAX`` of the
+    # most recently used classes from the eligible pool whenever doing
+    # so still leaves at least one candidate; this drives a strict
+    # round-robin across the broad layers rather than the previous
+    # halving heuristic, which a high-flux class (e.g. percussive)
+    # could still dominate after the halving.
     fallback_reason = None
-    if len(prev_focuses) >= SEGMENT_FOCUS_ANTI_REPEAT_MAX:
-        recent = prev_focuses[-SEGMENT_FOCUS_ANTI_REPEAT_MAX:]
-        if len(set(recent)) == 1:
-            repeated = recent[0]
-            if repeated in scores and len(scores) > 1:
-                scores[repeated] *= 0.5
-                fallback_reason = f"anti_repeat_{repeated}"
+    if scores:
+        forbid_window = min(max(len(scores) - 1, 0), SEGMENT_FOCUS_ANTI_REPEAT_MAX)
+        forbidden = set(prev_focuses[-forbid_window:]) if forbid_window > 0 else set()
+        eligible = {c: s for c, s in scores.items() if c not in forbidden}
+        if eligible and forbidden:
+            scores = eligible
+            fallback_reason = "rotate_skip_" + ",".join(sorted(forbidden))
 
     focus = max(scores, key=lambda c: (scores[c], c))  # c as stable tiebreak
     return focus, fallback_reason
@@ -1405,6 +1430,13 @@ def _promote_subdivision_coverage(selected_events, candidate_events, difficulty)
             continue
         if not _clears_min_ioi(candidate, selected_list, difficulty):
             continue
+        # Issue #414 — when a higher-tier-tagged candidate is promoted into
+        # a lower-difficulty array for coverage, retag it so the shipped
+        # difficulty array no longer leaks a higher inclusion tier.
+        candidate = {
+            **candidate,
+            "difficulty_inclusion": difficulty,
+        }
         updated[key] = candidate
         selected_list.append(candidate)
         present.add(label)
@@ -1434,8 +1466,89 @@ def _ioi_seconds(events):
     return [times[i + 1] - times[i] for i in range(len(times) - 1)]
 
 
-def _enforce_median_ioi_target(selected_events, candidate_events, difficulty, fallback_pool=None):
-    """Issues #392 / #394 — drive median IOI to the per-difficulty ceiling.
+def _clamp_difficulty_inclusion(selected_events, difficulty):
+    """Issue #414 — ensure no event in a shipped difficulty array carries a
+    higher inclusion tier than that difficulty.
+
+    The shipped contract is: ``difficulty_inclusion`` names the *minimum*
+    difficulty at which the event is included.  An event sitting in the
+    ``easy`` array therefore must be tagged ``easy``; an event sitting in
+    ``medium`` may be ``easy`` or ``medium``; ``hard`` permits all three.
+
+    The segment-focus rank-based tagging can leave higher-tier tags on
+    events that survive into a lower-difficulty selection because of
+    segment-size rounding (e.g. ``n_take = n_easy`` may include the
+    boundary event whose rank-based tag was ``medium``).  Clamping the
+    tag to the current difficulty is correct: by virtue of being included
+    here, ``difficulty`` IS this event's minimum-inclusion tier.
+    """
+    order = {"easy": 0, "medium": 1, "hard": 2}
+    cap = order.get(difficulty)
+    if cap is None:
+        return selected_events
+    clamped = {}
+    for key, event in selected_events.items():
+        tag = event.get("difficulty_inclusion")
+        if tag in order and order[tag] > cap:
+            event = {**event, "difficulty_inclusion": difficulty}
+        clamped[key] = event
+    return clamped
+
+
+def _resolve_onset_class(event):
+    cls = event.get("onset_class") or "full-spectrum"
+    if cls not in ONSET_CLASS_TO_OBSTACLE:
+        cls = "full-spectrum"
+    return cls
+
+
+def _candidate_respects_run_cap(candidate, selected_list, difficulty):
+    """Return True if inserting ``candidate`` into the time-ordered
+    ``selected_list`` would not extend a same-onset-class run past the
+    configured ``MAX_SAME_LANE_RUN`` cap (issue #391).
+
+    The check matches the resolution used by
+    :func:`_enforce_same_class_run_cap` and the obstacle emitter so the
+    median-IOI promotion pass cannot stage events that the run-cap pass
+    must immediately remove (issue #418).
+    """
+    cap = MAX_SAME_LANE_RUN.get(difficulty)
+    if not cap:
+        return True
+    cand_t = float(candidate.get("t", 0.0))
+    cand_cls = _resolve_onset_class(candidate)
+
+    ordered = sorted(selected_list, key=lambda ev: float(ev.get("t", 0.0)))
+    insert_idx = 0
+    for ev in ordered:
+        if float(ev.get("t", 0.0)) <= cand_t:
+            insert_idx += 1
+        else:
+            break
+
+    left_run = 0
+    for ev in reversed(ordered[:insert_idx]):
+        if _resolve_onset_class(ev) == cand_cls:
+            left_run += 1
+        else:
+            break
+    right_run = 0
+    for ev in ordered[insert_idx:]:
+        if _resolve_onset_class(ev) == cand_cls:
+            right_run += 1
+        else:
+            break
+    return left_run + 1 + right_run <= cap
+
+
+def _enforce_median_ioi_target(
+    selected_events,
+    candidate_events,
+    difficulty,
+    fallback_pool=None,
+    respect_run_cap=False,
+):
+    """Issues #392 / #394 / #418 — drive median IOI to the per-difficulty ceiling.
 
     The segment-focus selector emits sparse easy/medium/hard sets that can
     leave Stomper-style songs with median IOI far above the difficulty
@@ -1451,6 +1564,16 @@ def _enforce_median_ioi_target(selected_events, candidate_events, difficulty, fa
 
     The ``MIN_IOI_MS`` floor is still respected so we never violate the
     minimum spacing established by ``_thin_selected_events_for_min_ioi``.
+
+    When ``respect_run_cap`` is True, candidates that would push a
+    same-onset-class run past ``MAX_SAME_LANE_RUN[difficulty]`` are also
+    rejected — this allows the pass to be re-run after
+    :func:`_enforce_same_class_run_cap` (which can otherwise drop the
+    median IOI gains it produced; see issue #418).
+
+    Promoted events are tagged with ``difficulty_inclusion = difficulty``
+    so they do not appear as a "higher-tier" leak in lower-difficulty
+    arrays (issue #414).
     """
     target = MEDIAN_IOI_TARGET_SEC.get(difficulty)
     if not target or len(selected_events) < 2:
@@ -1474,11 +1597,19 @@ def _enforce_median_ioi_target(selected_events, candidate_events, difficulty, fa
                 continue
             if not _clears_min_ioi(candidate, selected_list, difficulty):
                 continue
+            if respect_run_cap and not _candidate_respects_run_cap(
+                candidate, selected_list, difficulty
+            ):
+                continue
             if enrich and "onset_class" not in candidate:
                 candidate = {
                     **candidate,
                     "onset_class": classify_onset_class(candidate),
                 }
+            candidate = {
+                **candidate,
+                "difficulty_inclusion": difficulty,
+            }
             updated[key] = candidate
             selected_keys.add(key)
             selected_list.append(candidate)
@@ -1712,6 +1843,34 @@ def select_segment_focus_beats(analysis, difficulty):
     # Done here on selected_events (not on obstacles) so the segment-focus
     # cleanup-not-invoked invariant continues to hold.
     selected_events = _enforce_same_class_run_cap(selected_events, difficulty)
+    # Issue #418 — the run-cap pass can drop large numbers of events on
+    # single-class-dominant songs (e.g. drama, percussive-dominant), which
+    # inflates median IOI back above the difficulty target.  Re-run the
+    # IOI promotion pass with the run-cap respected so promoted events
+    # cannot be removed by the next run-cap call, and apply a final cap
+    # pass as a safety net.
+    selected_events = _enforce_median_ioi_target(
+        selected_events,
+        candidate_events,
+        difficulty,
+        # Only "hard" densification benefits from the fallback pool here:
+        # using the global pool a second time on easy/medium pushed easy
+        # obstacle counts above medium on dense songs (broken difficulty
+        # ramp; observed on drama).  Hard already targets the densest
+        # IOI ceiling, where the fallback is needed to clear the run-cap
+        # induced gap.
+        fallback_pool=all_snapped if difficulty == "hard" else None,
+        respect_run_cap=True,
+    )
+    selected_events = _enforce_same_class_run_cap(selected_events, difficulty)
+    # Issue #414 — clamp difficulty_inclusion so each shipped difficulty
+    # array contains only events whose inclusion tier is <= the array's
+    # tier.  Promoted/coverage events are already retagged at insertion;
+    # this final clamp also covers any focus-class events whose
+    # rank-based tag was strictly higher than the current difficulty
+    # (which only happens when n_take pulls in higher-tier ranks because
+    # of segment-size rounding).
+    selected_events = _clamp_difficulty_inclusion(selected_events, difficulty)
 
     diagnostics = {
         "generation_path": "segment_focus",
@@ -1743,6 +1902,8 @@ def design_level_segment_focus(analysis, difficulty, cleanup_enabled=False):
         analysis, difficulty
     )
     obstacles = []
+    used_beat_indices: set[int] = set()
+    beats_len = len(analysis.get("beats", [])) or 0
     for event in sorted(
         selected.values(),
         key=lambda item: (
@@ -1753,8 +1914,27 @@ def design_level_segment_focus(analysis, difficulty, cleanup_enabled=False):
     ):
         focus = event.get("onset_class", "full-spectrum")
         mapping = ONSET_CLASS_TO_OBSTACLE.get(focus, ONSET_CLASS_TO_OBSTACLE["full-spectrum"])
+        # Issue #416 — strict ordinal monotonicity.  Multiple onset
+        # events (e.g. a downbeat and a triplet ~300ms later) can snap
+        # to the same beat-grid index; emitting both with the same
+        # ``beat`` value yields a non-strictly-increasing beats array
+        # that fails the shipped beatmap quality gates with min IOI 0.
+        # Time ordering is preserved (the sort above is stable on
+        # ``t``) and the runtime drives spawn timing from
+        # ``time_sec``, not the beat ordinal.  Advance to the next
+        # free integer (still within ``beat_times`` bounds so the C++
+        # loader's beat_index lookup stays valid).
+        beat_idx = int(event.get("beat_idx", -1))
+        if beat_idx in used_beat_indices:
+            limit = beats_len - 1 if beats_len else beat_idx + 64
+            next_idx = beat_idx + 1
+            while next_idx in used_beat_indices and next_idx <= limit:
+                next_idx += 1
+            if next_idx <= limit:
+                beat_idx = next_idx
+        used_beat_indices.add(beat_idx)
         obstacles.append({
-            "beat": int(event.get("beat_idx", -1)),
+            "beat": beat_idx,
             "kind": "shape_gate",
             "lane": mapping["lane"],
             "shape": mapping["shape"],

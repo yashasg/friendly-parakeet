@@ -517,7 +517,7 @@ to `GamePhase::Playing`.
   • Only [ ■ ] button visible (● and ▲ hidden)
   • Player starts as ● (wrong shape on purpose)
   • Speed is VERY slow (×0.6)
-  • Burnout meter hidden
+  • (Burnout meter hidden — ARCHIVED #239: meter removed; no energy bar in Run 1)
   • First gate doesn't kill — it bounces player back
   • Gentle arrow pointing at the ■ button pulses
 
@@ -624,7 +624,7 @@ to `GamePhase::Playing`.
   • CIRCLE and SQUARE gates alternate
   • Two buttons visible: [ ● ] [ ■ ]
   • Speed: ×0.7
-  • Burnout meter still hidden
+  • (Burnout meter still hidden — ARCHIVED #239: meter removed)
   • No other obstacle types
 
   WHAT PLAYER LEARNS:
@@ -702,7 +702,7 @@ to `GamePhase::Playing`.
   ─────────────────
   • All 3 shape buttons visible
   • Speed: ×0.8
-  • Burnout meter still hidden
+  • (Burnout meter still hidden — ARCHIVED #239: meter removed)
 
   WHAT PLAYER LEARNS:
   ───────────────────
@@ -879,6 +879,14 @@ shape closer to the beat gives a higher grade (Perfect > Good > Ok > Bad).
 
 ### Tutorial Flow Summary
 
+> ⚠️ **PARTIAL ARCHIVED — issue #239.** The Run 4 row below ("Burnout intro
+> / + burnout meter visible") and the corresponding `Burnout` step in the
+> teaching-cadence diagram describe the removed burnout system. Run 4 has
+> been rewritten as **"Stay on the Beat"** (on-beat timing with
+> Perfect / Good / Ok / Bad grades — see the §3 Run 4 prose above and
+> `design-docs/rhythm-spec.md` §6). Treat the burnout entries here as
+> historical context only; do not implement.
+
 ```
   ╔══════════════════════════════════════════════════╗
   ║  RUN  ║ CONCEPT        ║ MECHANICS ACTIVE        ║
@@ -990,7 +998,15 @@ Every player action triggers a multi-sensory response.
 
 ---
 
-### 4b. BURNOUT BANK (Player clears obstacle with burnout multiplier)
+### 4b. BURNOUT BANK (Player clears obstacle with burnout multiplier) — ARCHIVED — issue #239
+
+> ⚠️ **ARCHIVED.** The burnout multiplier system (×1.0 / ×1.5 / ×2.0 / ×3.0
+> / ×4.0 / ×5.0 with "Nice / GREAT / CLUTCH / INSANE / LEGENDARY" popups)
+> was removed from the game design. Current scoring is the timing-grade
+> × chain model (Perfect / Good / Ok / Bad) defined in
+> `design-docs/rhythm-spec.md` §6 and `design-docs/rhythm-design.md`.
+> The popup, audio, haptic, and visual feedback table below is retained
+> only as historical context and should NOT be implemented.
 
 ```
   TRIGGER: Obstacle cleared at any burnout multiplier
@@ -1136,7 +1152,15 @@ Every player action triggers a multi-sensory response.
 
 ---
 
-### 4d. NEAR MISS (Player clears at ×4.0 or higher)
+### 4d. NEAR MISS (Player clears at ×4.0 or higher) — ARCHIVED — issue #239
+
+> ⚠️ **ARCHIVED.** The trigger condition below ("burnout multiplier ≥ ×4.0")
+> depends on the removed burnout system (see §4b ARCHIVED note and the
+> top-of-document supersession banner). Any near-miss / time-dilation
+> feedback in the current design must be re-keyed off the timing-grade
+> × chain model (`design-docs/rhythm-spec.md` §6) before implementation.
+> The visual / audio / haptic spec below is retained only as historical
+> context and should NOT be implemented as-is.
 
 ```
   TRIGGER: Burnout multiplier ≥ ×4.0 at moment of clear
@@ -1481,6 +1505,17 @@ Every player action triggers a multi-sensory response.
 
 ### Element Visibility by Game State
 
+> ⚠️ **PARTIAL ARCHIVED — issue #239.** The `Burnout Meter` and
+> `Burnout Popup` rows in the table below describe the removed burnout
+> system. The current survival meter is the **Energy Bar** (see
+> `design-docs/energy-bar.md` and `app/include/gameplay_hud_layout.h`)
+> and the live timing cue is the **proximity ring** around shape buttons
+> (`design-docs/rhythm-spec.md` §6). Treat the two `Burnout *` rows as
+> historical context only; new HUD code must not add a `Burnout Meter`
+> or `Burnout Popup` element. The remaining rows (Score Counter, Speed
+> Bar, Pause Button, Shape Buttons, Lane Dividers, Player Avatar, Chain
+> Counter, etc.) are still current.
+
 ```
   ╔═══════════════════════╦═══════╦═════════╦════════╦═══════╦════════╗
   ║  HUD ELEMENT          ║ TITLE ║ PLAYING ║ PAUSED ║ DYING ║ G.OVER ║
@@ -1495,12 +1530,12 @@ Every player action triggers a multi-sensory response.
   ║ Best Score (HUD)       ║       ║  ✓      ║  ✓ dim ║       ║        ║
   ║ Speed Bar              ║       ║  ✓      ║  ✓ dim ║       ║        ║
   ║ Pause Button (⏸)       ║       ║  ✓      ║        ║       ║        ║
-  ║ Burnout Meter          ║       ║  ✓      ║  ✓ dim ║ ✓ grey ║       ║
+  ║ Burnout Meter          ║       ║  ✓      ║  ✓ dim ║ ✓ grey ║       ║  ← ARCHIVED #239 (removed; use Energy Bar)
   ║ Shape Buttons          ║       ║  ✓      ║  ✓ dim ║       ║        ║
   ║ Lane Dividers          ║       ║  ✓      ║  ✓ dim ║ ✓ fade ║       ║
   ║ Player Avatar          ║       ║  ✓      ║  ✓ dim ║ shatter║       ║
   ║ Chain Counter          ║       ║  ✓*     ║  ✓ dim ║       ║        ║
-  ║ Burnout Popup          ║       ║  ✓*     ║        ║       ║        ║
+  ║ Burnout Popup          ║       ║  ✓*     ║        ║       ║        ║  ← ARCHIVED #239 (removed)
   ╠═══════════════════════╬═══════╬═════════╬════════╬═══════╬════════╣
   ║ "PAUSED" text          ║       ║         ║  ✓     ║       ║        ║
   ║ Resume Button          ║       ║         ║  ✓     ║       ║        ║
