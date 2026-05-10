@@ -32,8 +32,14 @@ class TestExtractFeaturesDuration(unittest.TestCase):
             features = rp.extract_features("song.wav", onset_threshold=0.1, librosa_config={})
 
         self.assertEqual(features["duration"], 120.0)
+        self.assertEqual(features["last_event_time"], 0.0)
 
-    def test_duration_extends_when_beats_or_onsets_exceed_track_duration(self):
+    def test_duration_does_not_inflate_past_true_track_length(self):
+        # Issue #477 — even when beats or onsets sit past the true audio
+        # length, ``duration`` must report the real track length, not a
+        # synthetic max(true, last_event + 1.0).  The latest event time
+        # is exposed separately as ``last_event_time`` for downstream
+        # validators that need event bounds.
         detect_returns = [[9.0]] + [[] for _ in range(len(rp.ONSET_PASSES) - 1)]
         with patch("rhythm_pipeline.librosa.load", return_value=(np.zeros(8, dtype=np.float32), 48000)), \
              patch("rhythm_pipeline.librosa.get_duration", return_value=5.0), \
@@ -45,7 +51,10 @@ class TestExtractFeaturesDuration(unittest.TestCase):
              patch("rhythm_pipeline.get_quiet_regions", return_value=[]):
             features = rp.extract_features("song.wav", onset_threshold=0.1, librosa_config={})
 
-        self.assertEqual(features["duration"], 10.0)
+        # True audio duration preserved, NOT inflated to last_event + 1.0.
+        self.assertEqual(features["duration"], 5.0)
+        # Latest event boundary surfaced separately.
+        self.assertEqual(features["last_event_time"], 9.0)
 
     def test_duration_stays_track_length_when_no_beats_or_onsets(self):
         with patch("rhythm_pipeline.librosa.load", return_value=(np.zeros(8, dtype=np.float32), 48000)), \
@@ -59,6 +68,7 @@ class TestExtractFeaturesDuration(unittest.TestCase):
             features = rp.extract_features("song.wav", onset_threshold=0.1, librosa_config={})
 
         self.assertEqual(features["duration"], 7.5)
+        self.assertEqual(features["last_event_time"], 0.0)
 
 
 if __name__ == "__main__":

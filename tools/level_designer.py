@@ -863,17 +863,49 @@ def write_snap_diagnostics(analysis, diagnostics_out_dir, experimental_onset_tim
 
     current_snap = snap_events_to_beats(events, beats)
     current_rows = []
+    # Issue #471 — residuals must be measured against the actual
+    # subdivision grid point the event was labelled with, not the bare
+    # beat anchor.  ``snap_events_to_beats`` records ``beat_time`` =
+    # beats[beat_anchor] (the surrounding beat), so for events tagged
+    # ``eighth``/``triplet`` the previous formula
+    # ``residual = event_time - beat_time`` actually reported the
+    # event's distance from the *downbeat*, not from the eighth/triplet
+    # grid line — making p90 and within_Xms numbers structurally
+    # over-count residuals for off-beat subdivisions.  Compute the true
+    # subdivision grid time here so the diagnostic semantics match the
+    # field name (``snap_residual_stats``).
+    _SUB_FRACTION = {
+        "downbeat": 0.0,
+        "eighth": 0.5,
+        "triplet": 1.0 / 3.0,  # closest-of-{1/3, 2/3}; refined below
+    }
     for i, row in enumerate(current_snap):
         event_time = float(row.get("t", 0.0))
-        beat_time = float(row.get("beat_time", 0.0))
-        residual_ms = (event_time - beat_time) * 1000.0
+        beat_idx = int(row.get("beat_idx", 0))
+        subdivision = row.get("subdivision", "downbeat")
+
+        # Resolve the surrounding beat span so triplet phase can pick
+        # between 1/3 and 2/3.
+        left = float(beats[beat_idx]) if 0 <= beat_idx < len(beats) else 0.0
+        right_idx = beat_idx + 1 if beat_idx + 1 < len(beats) else beat_idx
+        right = float(beats[right_idx]) if right_idx < len(beats) else left
+        span = max(1e-6, right - left)
+
+        if subdivision == "triplet":
+            phase = (event_time - left) / span
+            frac = (1.0 / 3.0) if abs(phase - 1.0 / 3.0) <= abs(phase - 2.0 / 3.0) else (2.0 / 3.0)
+        else:
+            frac = _SUB_FRACTION.get(subdivision, 0.0)
+        grid_time = left + span * frac
+
+        residual_ms = (event_time - grid_time) * 1000.0
         current_rows.append({
             "candidate": "current_quarter_snap",
             "event_idx": int(row.get("source_event_idx", i)),
             "event_time": round(event_time, 6),
-            "beat_idx": int(row.get("beat_idx", 0)),
-            "grid_time": round(beat_time, 6),
-            "subdivision": row.get("subdivision", "downbeat"),
+            "beat_idx": beat_idx,
+            "grid_time": round(grid_time, 6),
+            "subdivision": subdivision,
             "residual_ms": round(residual_ms, 3),
             "abs_residual_ms": round(abs(residual_ms), 3),
             "flux": row.get("flux"),

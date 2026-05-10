@@ -176,6 +176,60 @@ def migrate_analysis_remove_raw_instrument_names(analysis: dict) -> dict:
     return analysis
 
 
+def _collect_pass_tokens(analysis: dict) -> list[tuple[str, str]]:
+    """Return (location, token) pairs for every pass-name token that appears
+    in public surfaces of an analysis dict.  Used by the write-time guard
+    (issue #480) to detect raw-instrument tokens before serialization."""
+    found: list[tuple[str, str]] = []
+    for ev in analysis.get("events", []) or []:
+        passes = ev.get("passes")
+        if isinstance(passes, list):
+            for tok in passes:
+                if isinstance(tok, str):
+                    found.append(("events[*].passes", tok))
+        legacy_pass = ev.get("pass")
+        if isinstance(legacy_pass, str):
+            found.append(("events[*].pass", legacy_pass))
+    onsets = analysis.get("onsets")
+    if isinstance(onsets, dict):
+        for name in onsets.keys():
+            if isinstance(name, str):
+                found.append(("onsets[*]", name))
+    diag = analysis.get("onset_diagnostics")
+    if isinstance(diag, dict):
+        raw = diag.get("raw_per_pass")
+        if isinstance(raw, dict):
+            for name in raw.keys():
+                if isinstance(name, str):
+                    found.append(("onset_diagnostics.raw_per_pass[*]", name))
+    return found
+
+
+def assert_no_raw_instrument_passes(analysis: dict) -> None:
+    """Write-time guard (issue #480, protects #419/#448 from regressing).
+
+    Walks every public pass-name surface of an analysis dict and raises
+    ValueError if any token in :data:`RAW_INSTRUMENT_PASS_NAMES`
+    (kick/snare/hihat/melody) is present.  Public artifacts must use the
+    broad-layer subpass IDs only; if a legacy analysis is loaded, callers
+    must migrate it via :func:`migrate_analysis_remove_raw_instrument_names`
+    before writing.
+    """
+    offenders: list[tuple[str, str]] = [
+        (loc, tok)
+        for (loc, tok) in _collect_pass_tokens(analysis)
+        if tok in RAW_INSTRUMENT_PASS_NAMES
+    ]
+    if offenders:
+        sample = ", ".join(f"{loc}={tok!r}" for loc, tok in offenders[:5])
+        raise ValueError(
+            "Refusing to write analysis with raw-instrument pass names "
+            f"({len(offenders)} occurrence(s); first: {sample}).  Public "
+            "artifacts must use broad-layer subpass IDs only — call "
+            "migrate_analysis_remove_raw_instrument_names() first."
+        )
+
+
 def _event_layer(event: dict) -> str:
     """Return the broad layer class for a single pre-merge onset event."""
     return PASS_TO_LAYER.get(event.get("pass", ""), "full-spectrum")
@@ -618,9 +672,16 @@ def extract_features(filepath: str, onset_threshold: float, librosa_config: dict
     print("    quiet regions...")
     quiet = get_quiet_regions(y, sr, config=librosa_config)
 
-    # song duration = track duration if available
+    # Song duration = true audio track duration.  Older revisions inflated
+    # this with `max(true_duration, last_event_time + 1.0)`; that lied about
+    # the audio length and caused downstream timing/structure math to
+    # operate past the actual file end (issue #477).  We always report the
+    # real librosa-measured duration here.  Consumers that need the latest
+    # event boundary read it from `events[-1].t` directly; the explicit
+    # `last_event_time` field below preserves that data without overwriting
+    # the audio duration.
     all_times = beats + [t for v in onsets.values() for t in v]
-    computed_duration = max(all_times) + 1.0 if all_times else duration
+    last_event_time = max(all_times) if all_times else 0.0
 
     return {
         "bpm": bpm,
@@ -633,7 +694,8 @@ def extract_features(filepath: str, onset_threshold: float, librosa_config: dict
         "mfcc_times": mfcc_times,
         "mfcc_coeffs": mfcc_coeffs,
         "quiet": quiet,
-        "duration": max(duration, computed_duration),
+        "duration": duration,
+        "last_event_time": last_event_time,
     }
 
 
@@ -727,6 +789,9 @@ def merge_events(events: list[dict], merge_window: float = 0.05) -> list[dict]:
     merged_all: list[dict] = []
     for layer, layer_events in by_layer.items():
         layer_events = sorted(layer_events, key=lambda e: e["t"])
+        # First pass: anchor-window grouping (each anchor swallows events
+        # whose timestamp is within merge_window of the anchor itself).
+        first_pass: list[dict] = []
         i = 0
         while i < len(layer_events):
             group = [layer_events[i]]
@@ -742,7 +807,7 @@ def merge_events(events: list[dict], merge_window: float = 0.05) -> list[dict]:
             passes = sorted({e["pass"] for e in group})
             max_flux = round(max(e["flux"] for e in group), 4)
 
-            merged_all.append(
+            first_pass.append(
                 {
                     "t": t_rep,
                     "flux": max_flux,
@@ -753,6 +818,27 @@ def merge_events(events: list[dict], merge_window: float = 0.05) -> list[dict]:
                 }
             )
             i = j
+
+        # Second pass — same-layer adjacency floor (issue #467):
+        # The first-pass representative timestamp is the *mean* of its
+        # group, so two consecutive groups can still end up < merge_window
+        # apart on the rep stream (e.g. anchor-window groups [0, 49ms] and
+        # [70ms] yield reps 24.5ms and 70ms — only 45.5ms apart).  Sweep
+        # the rep stream and merge any neighbours still inside the window.
+        # Cross-layer events are unaffected: this loop is per-layer.
+        if first_pass:
+            collapsed: list[dict] = [first_pass[0]]
+            for ev in first_pass[1:]:
+                prev = collapsed[-1]
+                if ev["t"] - prev["t"] < merge_window:
+                    merged_passes = sorted(set(prev["passes"]) | set(ev["passes"]))
+                    prev["t"] = round((prev["t"] + ev["t"]) / 2.0, 3)
+                    prev["flux"] = round(max(prev["flux"], ev["flux"]), 4)
+                    prev["passes"] = merged_passes
+                else:
+                    collapsed.append(ev)
+            merged_all.extend(collapsed)
+        # If layer had zero events nothing to extend.
 
     merged_all.sort(key=lambda e: (e["t"], e["layer"]))
     return merged_all
@@ -1212,6 +1298,12 @@ def main():
     }
 
     out_path = args.output or f"{Path(filepath).stem}_analysis.json"
+    # Issue #480 — write-time guard: refuse to serialize raw-instrument
+    # pass names so #419/#448 cannot recur silently.  build_analysis
+    # already emits broad-layer subpass IDs, but this assertion is the
+    # last line of defence against future regressions in any code path
+    # that reaches this writer.
+    assert_no_raw_instrument_passes(analysis)
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(analysis, f, indent=2)
     print(f"\n✓ {out_path}  ({len(analysis['events'])} events)")

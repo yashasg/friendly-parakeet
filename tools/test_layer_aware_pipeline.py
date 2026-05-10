@@ -137,6 +137,67 @@ class TestMergeEventsSameLayerCollapse(unittest.TestCase):
         merged = rp.merge_events(events, merge_window=0.050)
         self.assertEqual(len(merged), 2, "same-layer events outside window must not merge")
 
+    def test_same_layer_adjacency_floor_after_anchor_window(self):
+        """Issue #467 — anchor-window grouping uses the *mean* of each
+        group as the rep timestamp, so consecutive groups can still end
+        up < ``merge_window`` apart on the rep stream.  The merger must
+        enforce a same-layer adjacency floor so no two same-layer reps
+        ship within 50 ms of each other.
+
+        Trio at [0, 49 ms, 70 ms]:
+          * Pure anchor-window: groups [0, 49] -> rep 24.5 ms; [70] ->
+            rep 70 ms.  Distance is 45.5 ms (< 50 ms).  REGRESSION.
+          * Fixed: second pass collapses 24.5 ms and 70 ms into one rep.
+        """
+        events = [
+            _make_event("kick",  t=0.000, flux=0.6),
+            _make_event("snare", t=0.049, flux=0.7),  # within 50 ms of 0.000
+            _make_event("kick",  t=0.070, flux=0.8),  # 21 ms past anchor; mean(0,49)=24.5
+        ]
+        merged = rp.merge_events(events, merge_window=0.050)
+        self.assertEqual(
+            len(merged), 1,
+            f"all three percussive events must collapse into one; got {[e['t'] for e in merged]}",
+        )
+        self.assertEqual(merged[0]["layer"], "percussive")
+        self.assertAlmostEqual(merged[0]["flux"], 0.8, places=4)
+        # Passes from every contributor are preserved in the merged rep.
+        self.assertIn("kick",  merged[0]["passes"])
+        self.assertIn("snare", merged[0]["passes"])
+
+    def test_same_layer_adjacency_floor_preserves_cross_layer(self):
+        """The adjacency-floor sweep is per-layer — cross-layer events
+        within 50 ms must remain distinct (directive 2026-05-10)."""
+        events = [
+            _make_event("kick",   t=0.000, flux=0.6),  # percussive
+            _make_event("snare",  t=0.049, flux=0.7),  # percussive (collapses with kick)
+            _make_event("kick",   t=0.070, flux=0.8),  # percussive (collapses via floor)
+            _make_event("melody", t=0.030, flux=0.5),  # harmonic — must survive
+            _make_event("flux",   t=0.040, flux=0.4),  # full-spectrum — must survive
+        ]
+        merged = rp.merge_events(events, merge_window=0.050)
+        layers = sorted(e["layer"] for e in merged)
+        self.assertEqual(
+            layers, ["full-spectrum", "harmonic", "percussive"],
+            "cross-layer events within 50 ms must NOT be collapsed by the same-layer floor",
+        )
+
+    def test_no_same_layer_reps_within_merge_window(self):
+        """Stress: random pre-merge events must always yield same-layer
+        reps that are >= ``merge_window`` apart in the output."""
+        # Hand-crafted dense percussive cluster spanning ~200 ms.
+        events = []
+        for i, t in enumerate([0.000, 0.030, 0.055, 0.080, 0.110, 0.135, 0.180]):
+            events.append(_make_event("kick", t=t, flux=0.5 + i * 0.05))
+        merged = rp.merge_events(events, merge_window=0.050)
+        perc = sorted(e["t"] for e in merged if e["layer"] == "percussive")
+        gaps = [perc[i + 1] - perc[i] for i in range(len(perc) - 1)]
+        for g in gaps:
+            self.assertGreaterEqual(
+                g, 0.050 - 1e-9,
+                f"adjacent same-layer reps {perc} have gap {g*1000:.1f} ms < 50 ms",
+            )
+
 
 class TestMergeEventsLayerField(unittest.TestCase):
     """Every merged event must carry the 'layer' field."""
@@ -492,6 +553,68 @@ class TestMigrateAnalysisRemoveRawInstrumentNames(unittest.TestCase):
             json_clone := __import__("json").loads(__import__("json").dumps(once))
         )
         self.assertEqual(once, twice)
+
+
+class TestAssertNoRawInstrumentPasses(unittest.TestCase):
+    """Issue #480 — write-time guard against raw-instrument pass names
+    in public artifacts.  Protects #419/#448 from recurring silently."""
+
+    def _clean_analysis(self):
+        return {
+            "events": [
+                {"t": 1.0, "passes": ["percussive_bass"], "layer": "percussive"},
+                {"t": 2.0, "passes": ["harmonic_low_mid"], "layer": "harmonic"},
+            ],
+            "onsets": {
+                "percussive_bass": {"count": 1, "timestamps": [1.0]},
+                "harmonic_low_mid": {"count": 1, "timestamps": [2.0]},
+            },
+            "onset_diagnostics": {
+                "raw_per_pass": {"percussive_bass": 1, "harmonic_low_mid": 1},
+            },
+        }
+
+    def test_clean_analysis_passes_guard(self):
+        # Should not raise.
+        rp.assert_no_raw_instrument_passes(self._clean_analysis())
+
+    def test_raw_instrument_in_event_passes_raises(self):
+        analysis = self._clean_analysis()
+        analysis["events"][0]["passes"].append("kick")
+        with self.assertRaises(ValueError) as ctx:
+            rp.assert_no_raw_instrument_passes(analysis)
+        self.assertIn("kick", str(ctx.exception))
+        self.assertIn("events[*].passes", str(ctx.exception))
+
+    def test_raw_instrument_in_legacy_pass_field_raises(self):
+        analysis = self._clean_analysis()
+        analysis["events"][1]["pass"] = "melody"
+        with self.assertRaises(ValueError):
+            rp.assert_no_raw_instrument_passes(analysis)
+
+    def test_raw_instrument_in_onsets_keys_raises(self):
+        analysis = self._clean_analysis()
+        analysis["onsets"]["snare"] = {"count": 0, "timestamps": []}
+        with self.assertRaises(ValueError) as ctx:
+            rp.assert_no_raw_instrument_passes(analysis)
+        self.assertIn("snare", str(ctx.exception))
+
+    def test_raw_instrument_in_raw_per_pass_keys_raises(self):
+        analysis = self._clean_analysis()
+        analysis["onset_diagnostics"]["raw_per_pass"]["hihat"] = 3
+        with self.assertRaises(ValueError) as ctx:
+            rp.assert_no_raw_instrument_passes(analysis)
+        self.assertIn("hihat", str(ctx.exception))
+
+    def test_migration_then_guard_clears_legacy_artifact(self):
+        legacy = {
+            "events": [{"t": 1.0, "passes": ["kick", "snare"], "layer": "percussive"}],
+            "onsets": {"melody": {"count": 0, "timestamps": []}},
+            "onset_diagnostics": {"raw_per_pass": {"flux": 1}},
+        }
+        rp.migrate_analysis_remove_raw_instrument_names(legacy)
+        # After migration the guard accepts the artifact.
+        rp.assert_no_raw_instrument_passes(legacy)
 
 
 # ---------------------------------------------------------------------------
