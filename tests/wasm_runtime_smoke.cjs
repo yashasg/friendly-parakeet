@@ -114,9 +114,15 @@ async function main() {
       fatal.push('no-visual-response-after-level-select-click');
     }
 
-    // Start the selected level through the same canvas click path.
-    await clickCanvasAt(0.5, 0.845);
-    const afterHash = await waitForVisualChange(afterLevelSelectClickHash, 3500);
+    // Start the selected level through the same canvas click path. The
+    // controller intentionally ignores instant start presses for the first
+    // 0.2s after entering Level Select, so wait a frame budget before clicking.
+    await page.waitForTimeout(500);
+    let afterHash = afterLevelSelectClickHash;
+    for (let i = 0; i < 3 && afterHash === afterLevelSelectClickHash; i += 1) {
+      await clickCanvasAt(0.5, 0.845);
+      afterHash = await waitForVisualChange(afterLevelSelectClickHash, 3500);
+    }
     if (afterLevelSelectClickHash === afterHash) {
       fatal.push('no-visual-response-after-enter');
     }
