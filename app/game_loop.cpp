@@ -18,7 +18,6 @@
 #include "systems/runtime_systems.h"
 #include "session/test_player_session.h"
 #include "input/input_routing.h"
-#include "components/text.h"
 #include "rendering/text_resources.h"
 #include "util/session_logger.h"
 #include "systems/camera_system.h"
@@ -33,11 +32,18 @@
 #include <raylib.h>
 #include <algorithm>
 #include <string>
+#include <utility>
 
 static constexpr float FIXED_DT  = 1.0f / 60.0f;
 static constexpr float MAX_ACCUM = 0.1f;
 
 namespace {
+
+template <typename T, typename... Args>
+T& reset_ctx_singleton(entt::registry& reg, Args&&... args) {
+    reg.ctx().erase<T>();
+    return reg.ctx().emplace<T>(std::forward<Args>(args)...);
+}
 
 bool load_text_fonts(TextContext& ctx, const char* font_path) {
     if (!FileExists(font_path)) {
@@ -153,30 +159,30 @@ void game_loop_init(entt::registry& reg,
 
     // Text rendering
     {
-        auto& text_ctx = reg.ctx().emplace<TextContext>();
+        auto& text_ctx = reset_ctx_singleton<TextContext>(reg);
         load_default_text_fonts(text_ctx);
     }
 
     // Core singletons
-    reg.ctx().emplace<InputState>();
-    reg.ctx().emplace<entt::dispatcher>();
+    reset_ctx_singleton<InputState>(reg);
+    reset_ctx_singleton<entt::dispatcher>(reg);
     wire_input_dispatcher(reg);
     wire_audio_haptic_dispatcher(reg);
     input_system_init(reg);
-    reg.ctx().emplace<GameState>(GameState{
+    reset_ctx_singleton<GameState>(reg, GameState{
         .phase = GamePhase::Title, .previous_phase = GamePhase::Title,
         .phase_timer = 0.0f, .transition_pending = false,
         .next_phase = GamePhase::Title, .transition_alpha = 0.0f
     });
-    reg.ctx().emplace<ScoreState>();
-    reg.ctx().emplace<LevelSelectState>();
-    reg.ctx().emplace<EnergyState>();
-    reg.ctx().emplace<GameOverState>();
-    reg.ctx().emplace<SongResults>();
-    reg.ctx().emplace<RNGState>();
-    reg.ctx().emplace<TestPlayerState>();
-    reg.ctx().emplace<TestPlayerSessionState>();
-    reg.ctx().emplace<SessionLog>();
+    reset_ctx_singleton<ScoreState>(reg);
+    reset_ctx_singleton<LevelSelectState>(reg);
+    reset_ctx_singleton<EnergyState>(reg);
+    reset_ctx_singleton<GameOverState>(reg);
+    reset_ctx_singleton<SongResults>(reg);
+    reset_ctx_singleton<RNGState>(reg);
+    reset_ctx_singleton<TestPlayerState>(reg);
+    reset_ctx_singleton<TestPlayerSessionState>(reg);
+    reset_ctx_singleton<SessionLog>(reg);
 
     persistence::Paths persistence_paths;
     const auto path_result = persistence::resolve_paths(persistence_paths);
@@ -195,8 +201,8 @@ void game_loop_init(entt::registry& reg,
         if (settings.haptics_enabled) {
             platform::haptics::warmup();
         }
-        reg.ctx().emplace<SettingsState>(settings);
-        reg.ctx().emplace<SettingsPersistence>(settings_persistence);
+        reset_ctx_singleton<SettingsState>(reg, settings);
+        reset_ctx_singleton<SettingsPersistence>(reg, settings_persistence);
     }
 
     // High scores — load from disk; defaults remain if file is missing/corrupt/path-invalid.
@@ -210,8 +216,8 @@ void game_loop_init(entt::registry& reg,
             persistence_state.last_load = path_result;
         }
         log_persistence_result("high score load", persistence_state.last_load);
-        reg.ctx().emplace<HighScoreState>(hs);
-        reg.ctx().emplace<HighScorePersistence>(persistence_state);
+        reset_ctx_singleton<HighScoreState>(reg, hs);
+        reset_ctx_singleton<HighScorePersistence>(reg, persistence_state);
     }
 
     // Cameras + render targets + GPU meshes
@@ -221,9 +227,9 @@ void game_loop_init(entt::registry& reg,
     wire_obstacle_mesh_lifetime(reg);
 
     // UI + beatmap + music
-    reg.ctx().emplace<BeatMap>();
-    reg.ctx().emplace<SongState>();
-    reg.ctx().emplace<MusicContext>();
+    reset_ctx_singleton<BeatMap>(reg);
+    reset_ctx_singleton<SongState>(reg);
+    reset_ctx_singleton<MusicContext>(reg);
 
     // Test player (optional)
     if (test_player_mode) {
@@ -343,4 +349,8 @@ void game_loop_shutdown(entt::registry& reg) {
     platform::haptics::shutdown();
     CloseAudioDevice();
     CloseWindow();
+
+    // Lifecycle contract: shutdown leaves the registry reusable for a fresh
+    // game_loop_init() on the same entt::registry instance.
+    reg = entt::registry{};
 }

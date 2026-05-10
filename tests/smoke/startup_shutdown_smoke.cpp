@@ -19,6 +19,7 @@ int parse_nonnegative_int(const char* text, bool& ok) {
 
 int main(int argc, char** argv) {
     int frames = 0;
+    int cycles = 1;
 
     for (int i = 1; i < argc; ++i) {
         if (std::strcmp(argv[i], "--frames") == 0 && i + 1 < argc) {
@@ -28,8 +29,15 @@ int main(int argc, char** argv) {
                 std::fprintf(stderr, "Invalid --frames value: %s\n", argv[i]);
                 return 2;
             }
+        } else if (std::strcmp(argv[i], "--cycles") == 0 && i + 1 < argc) {
+            bool ok = false;
+            cycles = parse_nonnegative_int(argv[++i], ok);
+            if (!ok || cycles == 0) {
+                std::fprintf(stderr, "Invalid --cycles value: %s\n", argv[i]);
+                return 2;
+            }
         } else {
-            std::fprintf(stderr, "Usage: %s [--frames N]\n", argv[0]);
+            std::fprintf(stderr, "Usage: %s [--frames N] [--cycles N]\n", argv[0]);
             return 2;
         }
     }
@@ -37,13 +45,15 @@ int main(int argc, char** argv) {
     SetTraceLogLevel(LOG_WARNING);
 
     entt::registry reg;
-    game_loop_init(reg, false, TestPlayerSkill::Pro, "medium");
+    for (int cycle = 0; cycle < cycles; ++cycle) {
+        game_loop_init(reg, false, TestPlayerSkill::Pro, "medium");
 
-    float accumulator = 0.0f;
-    for (int i = 0; i < frames; ++i) {
-        game_loop_frame(reg, accumulator);
+        float accumulator = 0.0f;
+        for (int i = 0; i < frames; ++i) {
+            game_loop_frame(reg, accumulator);
+        }
+
+        game_loop_shutdown(reg);
     }
-
-    game_loop_shutdown(reg);
     return 0;
 }

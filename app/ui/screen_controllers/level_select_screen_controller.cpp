@@ -35,17 +35,18 @@ constexpr float DIFF_BTN_H = 50.0f;
 constexpr float DIFF_BTN_GAP = 30.0f;
 constexpr float DIFF_START_X = CARD_X + 50.0f;
 
-Color SELECTED_BG = {40, 40, 60, 255};
-Color UNSELECTED_BG = {20, 20, 30, 255};
-Color SELECTED_BORDER = {100, 150, 255, 255};
-Color UNSELECTED_BORDER = {60, 60, 80, 255};
+// Keep style colors immutable to avoid hidden mutable globals.
+constexpr Color SELECTED_BG = {40, 40, 60, 255};
+constexpr Color UNSELECTED_BG = {20, 20, 30, 255};
+constexpr Color SELECTED_BORDER = {100, 150, 255, 255};
+constexpr Color UNSELECTED_BORDER = {60, 60, 80, 255};
 
 // Difficulty-button active-state emphasis (#469). The selected difficulty
 // is painted *after* GuiButton with a thick border + inset selection bar
 // because raygui's BUTTON style otherwise overdraws any background drawn
 // before GuiButton(). Two non-color cues satisfy A11Y/2.1.3.
-Color DIFF_ACTIVE_BG = {80, 120, 200, 255};
-Color DIFF_ACTIVE_BORDER = {120, 180, 255, 255};
+constexpr Color DIFF_ACTIVE_BG = {80, 120, 200, 255};
+constexpr Color DIFF_ACTIVE_BORDER = {120, 180, 255, 255};
 
 Rectangle level_card_rect(int index) {
     return {CARD_X, CARD_START_Y + static_cast<float>(index) * (CARD_H + CARD_GAP), CARD_W, CARD_H};
