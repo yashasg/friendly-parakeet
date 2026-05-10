@@ -5,17 +5,13 @@
 #include "obstacle_render_entity.h"
 #include "../constants.h"
 
-entt::entity spawn_obstacle(entt::registry& reg, const ObstacleSpawnParams& params,
-                             const BeatInfo* beat_info) {
+namespace {
+
+entt::entity spawn_obstacle_base(entt::registry& reg, const ObstacleSpawnParams& params) {
     auto e = reg.create();
-    reg.emplace<MotionVelocity>(e, MotionVelocity{{0.0f, params.speed}});
     reg.emplace<WorldTransform>(e, WorldTransform{{params.x, params.y}});
     reg.emplace<DrawLayer>(e, Layer::Game);
     reg.emplace<TagWorldPass>(e);
-
-    if (beat_info) {
-        reg.emplace<BeatInfo>(e, *beat_info);
-    }
 
     switch (params.kind) {
         case ObstacleKind::ShapeGate: {
@@ -55,8 +51,28 @@ entt::entity spawn_obstacle(entt::registry& reg, const ObstacleSpawnParams& para
         }
     }
 
+    return e;
+}
+
+void finish_obstacle(entt::registry& reg, entt::entity e) {
     spawn_obstacle_meshes(reg, e);
     reg.emplace<ObstacleTag>(e);
+}
+
+} // namespace
+
+entt::entity spawn_obstacle(entt::registry& reg, const ObstacleSpawnParams& params) {
+    auto e = spawn_obstacle_base(reg, params);
+    reg.emplace<MotionVelocity>(e, MotionVelocity{{0.0f, params.speed}});
+    finish_obstacle(reg, e);
+    return e;
+}
+
+entt::entity spawn_rhythm_obstacle(entt::registry& reg, const ObstacleSpawnParams& params,
+                                   const BeatInfo& beat_info) {
+    auto e = spawn_obstacle_base(reg, params);
+    reg.emplace<BeatInfo>(e, beat_info);
+    finish_obstacle(reg, e);
 
     return e;
 }

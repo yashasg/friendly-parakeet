@@ -210,53 +210,6 @@ TEST_CASE("popup_display_system: works without ScorePopup component (#251)",
     CHECK(std::strcmp(pd.text, "OK") == 0);
 }
 
-TEST_CASE("popup_display_system: ScorePopup expires without render components",
-          "[popup_display]") {
-    entt::registry reg;
-    runtime_system_scratch_init(reg);
-    auto e = reg.create();
-    ScorePopup popup{};
-    popup.remaining = 0.01f;
-    popup.max_time = 1.0f;
-    reg.emplace<ScorePopup>(e, popup);
-
-    popup_display_system(reg, 0.02f);
-
-    CHECK_FALSE(reg.valid(e));
-}
-
-TEST_CASE("popup_display_system: ScorePopup+PopupDisplay expires without Color",
-          "[popup_display]") {
-    entt::registry reg;
-    runtime_system_scratch_init(reg);
-    auto e = reg.create();
-    ScorePopup popup{};
-    popup.remaining = 0.01f;
-    popup.max_time = 1.0f;
-    reg.emplace<ScorePopup>(e, popup);
-    reg.emplace<PopupDisplay>(e);
-
-    popup_display_system(reg, 0.02f);
-
-    CHECK_FALSE(reg.valid(e));
-}
-
-TEST_CASE("popup_display_system: ScorePopup+Color expires without PopupDisplay",
-          "[popup_display]") {
-    entt::registry reg;
-    runtime_system_scratch_init(reg);
-    auto e = reg.create();
-    ScorePopup popup{};
-    popup.remaining = 0.01f;
-    popup.max_time = 1.0f;
-    reg.emplace<ScorePopup>(e, popup);
-    reg.emplace<Color>(e, Color{255, 255, 255, 255});
-
-    popup_display_system(reg, 0.02f);
-
-    CHECK_FALSE(reg.valid(e));
-}
-
 TEST_CASE("popup_display_system: expired popups are destroyed",
           "[popup_display]") {
     entt::registry reg;
@@ -265,6 +218,18 @@ TEST_CASE("popup_display_system: expired popups are destroyed",
     popup_display_system(reg, 0.016f);
 
     CHECK_FALSE(reg.valid(e));
+}
+
+TEST_CASE("spawn_score_popup: creates the full popup display archetype",
+          "[popup_display][archetype]") {
+    entt::registry reg;
+    auto e = spawn_score_popup(reg, {100.0f, 200.0f, 50, TimingTier::Good});
+
+    REQUIRE(reg.all_of<ScorePopup, PopupDisplay, Color, MotionVelocity,
+                       WorldTransform, DrawLayer, TagHUDPass>(e));
+    CHECK(reg.get<ScorePopup>(e).has_timing_tier);
+    CHECK(reg.get<ScorePopup>(e).timing_tier == TimingTier::Good);
+    CHECK(std::strcmp(reg.get<PopupDisplay>(e).text, "GOOD") == 0);
 }
 
 TEST_CASE("init_popup_display: formats grade text + font size from ScorePopup (#251)",

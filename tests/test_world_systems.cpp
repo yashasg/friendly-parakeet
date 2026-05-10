@@ -46,19 +46,18 @@ TEST_CASE("motion: WorldTransform+MotionVelocity entity moves by velocity * dt",
     CHECK(wt.position.y == 220.0f);
 }
 
-TEST_CASE("motion: WorldTransform+MotionVelocity entity with BeatInfo is excluded", "[motion]") {
-    // BeatInfo entities have their position derived from song_time in scroll_system;
-    // motion_system must not double-integrate their position.
+TEST_CASE("motion: BeatInfo alone does not make an entity movable", "[motion]") {
+    // Rhythm obstacles are song-time authoritative and should not carry
+    // MotionVelocity. BeatInfo by itself is ignored by motion_system.
     auto reg = make_registry();
     auto e = reg.create();
     reg.emplace<WorldTransform>(e, WorldTransform{{100.0f, 200.0f}});
-    reg.emplace<MotionVelocity>(e, MotionVelocity{{10.0f, 20.0f}});
     reg.emplace<BeatInfo>(e, BeatInfo{0, 0.0f, 0.0f});  // marks entity as beat-authoritative
 
     motion_system(reg, 1.0f);
 
     const auto& wt = reg.get<WorldTransform>(e);
-    CHECK(wt.position.x == 100.0f);  // unchanged — motion_system skips BeatInfo entities
+    CHECK(wt.position.x == 100.0f);
     CHECK(wt.position.y == 200.0f);
 }
 

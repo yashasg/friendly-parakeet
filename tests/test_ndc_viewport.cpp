@@ -2,6 +2,7 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
 #include <algorithm>
+#include <cmath>
 // ─────────────────────────────────────────────────────────────────────────────
 // NDC Viewport Constants
 // All *_N constants must lie in [0, 1] and must round-trip to the intended
@@ -220,6 +221,8 @@ TEST_CASE("ndc: zone boundary constant is 0.80", "[ndc]") {
 namespace {
 // Pure mirror of the letterbox math in compute_screen_transform.
 ScreenTransform make_screen_transform(float win_w, float win_h) {
+    win_w = std::max(1.0f, win_w);
+    win_h = std::max(1.0f, win_h);
     float scale = std::min(
         win_w / static_cast<float>(constants::SCREEN_W),
         win_h / static_cast<float>(constants::SCREEN_H));
@@ -250,7 +253,7 @@ TEST_CASE("screen_transform: letterbox math is idempotent (#241)",
 }
 
 TEST_CASE("screen_transform: letterbox math produces correct pillarbox offsets (#241)",
-          "[screen_transform][regression]") {
+           "[screen_transform][regression]") {
     // 1280×1280 window: scale = min(1280/720, 1280/1280) = 1.0;
     // dst_w = 720, offset_x = (1280-720)/2 = 280; dst_h = 1280, offset_y = 0.
     ScreenTransform st = make_screen_transform(1280.0f, 1280.0f);
@@ -258,4 +261,14 @@ TEST_CASE("screen_transform: letterbox math produces correct pillarbox offsets (
     CHECK_THAT(st.scale,    WithinAbs(1.0f,  1e-5f));
     CHECK_THAT(st.offset_x, WithinAbs(280.0f, 1e-5f));
     CHECK_THAT(st.offset_y, WithinAbs(0.0f,  1e-5f));
+}
+
+TEST_CASE("screen_transform: zero-sized display keeps finite virtual coordinates",
+          "[screen_transform][regression]") {
+    ScreenTransform st = make_screen_transform(0.0f, 0.0f);
+
+    CHECK(st.scale > 0.0f);
+    const auto pos = screen_to_virtual({10.0f, 20.0f}, st);
+    CHECK(std::isfinite(pos.x));
+    CHECK(std::isfinite(pos.y));
 }

@@ -46,26 +46,19 @@ struct ScopedGameOverHooks {
 
 } // namespace
 
-TEST_CASE("game_over: death_cause_text maps every DeathCause to a non-empty platform-neutral string",
+TEST_CASE("game_over: death_cause_text maps terminal causes to platform-neutral strings",
           "[game_over][ui]") {
     // None → empty (suppresses ReasonSlot rendering).
     CHECK(std::strlen(death_cause_text(DeathCause::None)) == 0);
 
     // Real causes must produce a non-empty, ASCII-only one-liner.
-    for (auto cause : { DeathCause::EnergyDepleted, DeathCause::MissedABeat }) {
+    for (auto cause : { DeathCause::EnergyDepleted }) {
         const char* txt = death_cause_text(cause);
         REQUIRE(txt != nullptr);
         CHECK(std::strlen(txt) > 0);
         // Stay short enough to fit ReasonSlot (500px @ 22pt) — sanity bound.
         CHECK(std::strlen(txt) < 32u);
     }
-}
-
-TEST_CASE("game_over: distinct DeathCauses produce distinct reasons (#168 coverage)",
-          "[game_over][ui]") {
-    const char* energy = death_cause_text(DeathCause::EnergyDepleted);
-    const char* miss   = death_cause_text(DeathCause::MissedABeat);
-    CHECK(std::strcmp(energy, miss) != 0);
 }
 
 TEST_CASE("game_over: score / high score / cause are visible via registry singletons "
@@ -106,7 +99,7 @@ TEST_CASE("game_over: render binds score/high-score/reason into scoreboard draw 
     score.high_score = 92653;
 
     auto& gos = reg.ctx().get<GameOverState>();
-    gos.cause = DeathCause::MissedABeat;
+    gos.cause = DeathCause::EnergyDepleted;
 
     auto& gs = reg.ctx().get<GameState>();
     gs.phase = GamePhase::GameOver;
@@ -116,7 +109,7 @@ TEST_CASE("game_over: render binds score/high-score/reason into scoreboard draw 
 
     CHECK(has_bound_text("31415"));
     CHECK(has_bound_text("92653"));
-    CHECK(has_bound_text("MISSED A BEAT"));
+    CHECK(has_bound_text("ENERGY DEPLETED"));
 }
 
 TEST_CASE("game_over: render binds new-best badge and previous score", "[game_over][ui]") {

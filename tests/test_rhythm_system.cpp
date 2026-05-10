@@ -297,18 +297,21 @@ TEST_CASE("beat_scheduler: spawns multiple when time catches up", "[rhythm][sche
     CHECK(reg.view<ObstacleTag>().size() == 2);
 }
 
-TEST_CASE("beat_scheduler: scroll speed matches song state", "[rhythm][scheduler]") {
+TEST_CASE("beat_scheduler: rhythm obstacles use BeatInfo without MotionVelocity", "[rhythm][scheduler]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
     auto& map = reg.ctx().get<BeatMap>();
     map.beats.push_back({4, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
     song.playing = true; song.song_time = 0.1f;
     beat_scheduler_system(reg, 0.016f);
-    auto obs_view = reg.view<ObstacleTag, MotionVelocity>();
+    auto obs_view = reg.view<ObstacleTag, BeatInfo>();
     REQUIRE(std::distance(obs_view.begin(), obs_view.end()) == 1);
-    for (auto [e, vel] : obs_view.each()) {
-        CHECK_THAT(vel.value.y, WithinAbs(song.scroll_speed, 0.1f));
+    for (auto [e, info] : obs_view.each()) {
+        (void)info;
+        CHECK_FALSE(reg.all_of<MotionVelocity>(e));
     }
+    auto invalid_view = reg.view<ObstacleTag, BeatInfo, MotionVelocity>();
+    CHECK(std::distance(invalid_view.begin(), invalid_view.end()) == 0);
 }
 
 TEST_CASE("beat_scheduler: spawns lane_block with blocked mask", "[rhythm][scheduler]") {

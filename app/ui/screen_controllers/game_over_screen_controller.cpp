@@ -73,7 +73,6 @@ void draw_game_over_scoreboard(entt::registry& reg, const GameOverLayoutState& s
 const char* death_cause_text(DeathCause cause) {
     switch (cause) {
         case DeathCause::EnergyDepleted: return "ENERGY DEPLETED";
-        case DeathCause::MissedABeat:    return "MISSED A BEAT";
         case DeathCause::None:
         default:                          return "";
     }

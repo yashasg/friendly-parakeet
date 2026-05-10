@@ -2,11 +2,12 @@
 #include "game_loop.h"
 #include "components/game_state.h"
 
+#include <algorithm>
+
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
 #include <rlgl.h>
-#include <algorithm>
 
 void platform_get_display_size(float& out_w, float& out_h) {
     double css_w = 0.0, css_h = 0.0;
@@ -142,8 +143,8 @@ void platform_run_loop(entt::registry& reg) {
 #else // Native
 
 void platform_get_display_size(float& out_w, float& out_h) {
-    out_w = static_cast<float>(GetScreenWidth());
-    out_h = static_cast<float>(GetScreenHeight());
+    out_w = std::max(1.0f, static_cast<float>(GetScreenWidth()));
+    out_h = std::max(1.0f, static_cast<float>(GetScreenHeight()));
 }
 
 void platform_pre_blit() {

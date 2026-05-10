@@ -52,32 +52,6 @@ void popup_display_system(entt::registry& reg, float dt) {
         }
     }
 
-    auto expire_only_view = reg.view<ScorePopup>(entt::exclude<PopupDisplay, Color>);
-    for (auto [entity, popup] : expire_only_view.each()) {
-        popup.remaining -= dt;
-        if (popup.remaining <= 0.0f) {
-            expired.push_back(entity);
-        }
-    }
-
-    auto popup_only_view = reg.view<ScorePopup, PopupDisplay>(entt::exclude<Color>);
-    for (auto [entity, popup, pd] : popup_only_view.each()) {
-        (void)pd;
-        popup.remaining -= dt;
-        if (popup.remaining <= 0.0f) {
-            expired.push_back(entity);
-        }
-    }
-
-    auto color_only_view = reg.view<ScorePopup, Color>(entt::exclude<PopupDisplay>);
-    for (auto [entity, popup, col] : color_only_view.each()) {
-        (void)col;
-        popup.remaining -= dt;
-        if (popup.remaining <= 0.0f) {
-            expired.push_back(entity);
-        }
-    }
-
     for (auto entity : expired) {
         reg.destroy(entity);
     }

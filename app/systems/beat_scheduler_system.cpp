@@ -77,7 +77,7 @@ void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
         }
 
         const BeatInfo bi{entry.beat_index, calibrated_arrival_time, effective_spawn_time};
-        spawn_obstacle(reg, {
+        spawn_rhythm_obstacle(reg, {
             entry.kind,
             x_pos,
             start_y,
@@ -85,7 +85,7 @@ void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
             entry.blocked_mask,
             entry.lane,
             song->scroll_speed
-        }, &bi);
+        }, bi);
 
         song->next_spawn_idx++;
     }
