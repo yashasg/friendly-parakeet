@@ -99,7 +99,16 @@ static inline void TitleLayout_Render(TitleLayoutState *state) {
     // Draw controls
     GuiLabel((Rectangle){ state->Anchor01.x + 40, state->Anchor01.y + 200, 640, 96 }, "SHAPESHIFTER");
     GuiLabel((Rectangle){ state->Anchor01.x + 40, state->Anchor01.y + 640, 640, 56 }, "TAP TO START");
+    // EXIT button is hand-gated to non-web platforms (#511): browsers cannot
+    // honor a "quit" action and the rendered button was being consumed by the
+    // tap-anywhere → LevelSelect handler. The bounds accessor below is still
+    // exported so title_screen_controller can keep the EXIT region as a
+    // dead-zone on every platform (defense-in-depth).
+#ifndef PLATFORM_WEB
     state->ExitButtonPressed = GuiButton(TitleLayout_ExitButtonBounds(state), "EXIT");
+#else
+    state->ExitButtonPressed = false;
+#endif
     state->SettingsButtonPressed = GuiButton(TitleLayout_SettingsButtonBounds(state), "#142#");
 }
 

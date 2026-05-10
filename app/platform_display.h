@@ -15,4 +15,8 @@ void platform_pre_blit();
 // On native this is a no-op — the caller runs its own while loop.
 #ifdef __EMSCRIPTEN__
 void platform_run_loop(entt::registry& reg);
+
+// Unregister the browser beforeunload callback and disarm any callback-owned
+// registry pointer before shutdown resets the registry context.
+void platform_disarm_wasm_beforeunload(entt::registry& reg);
 #endif

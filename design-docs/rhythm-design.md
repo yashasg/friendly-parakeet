@@ -462,9 +462,10 @@ The player can hear the beat coming. The timing is legible. What the player cann
 
 > ⚠️ **Shipped scope — only `shape_gate` ships today (issues #420, #446,
 > #328, #479).** Mirroring the caveat in `game.md` "Difficulty
-> Progression": across all 9 shipped beatmaps in `content/beatmaps/`
-> (994 obstacles total), `tools/level_designer.py` emits 100%
-> `shape_gate`. The `lane_push`, `low_bar`, and `high_bar` types
+> Progression": across all 9 shipped beatmap arrays in
+> `content/beatmaps/` (**1046 obstacles total** as of Round 6 audit;
+> see per-difficulty table in §8 "Difficulty Progression" below),
+> `tools/level_designer.py` emits 100% `shape_gate`. The `lane_push`, `low_bar`, and `high_bar` types
 > described below are **not currently produced** by the generator and
 > are not part of any shipped run; `LanePush` is additionally queued
 > for removal/rework (#328). They are retained here as forward design
@@ -525,17 +526,49 @@ The player can hear the beat coming. The timing is legible. What the player cann
 
 ## Difficulty Progression
 
-```
-  EASY:    shape_gate only. Sparse. 2-beat minimum gap.
-           Percussive + harmonic onsets only (full-spectrum
-           catch-all suppressed). Learning the shape mechanic.
+> **Onset-only invariant (directive 2026-05-10).** Under the active
+> `design_level_segment_focus` path in `tools/level_designer.py`
+> (see §9 "Pipeline Overview"), an obstacle is emitted **only at
+> beats where a real audio onset survives the flux threshold**.
+> Beats with no detected onset stay empty regardless of difficulty,
+> so phrasings like "every beat" or "streams every beat" cannot be
+> produced by the shipped generator and have been retired below.
 
-           Density scales with song intensity section.
-
-  HARD:    All four types active. Dense.
-           DROP sections: every beat, streams of shape_gates,
-           low_bar and high_bar every 4th beat.
 ```
+  EASY:    shape_gate only. Sparsest tier. Highest flux threshold,
+           so only the strongest onsets survive into the beatmap;
+           percussive + harmonic onset classes only (full-spectrum
+           catch-all suppressed). 2-beat minimum gap kept where the
+           onset density allows. Learning the shape mechanic.
+
+  MEDIUM:  shape_gate only. Moderate flux threshold; more surviving
+           onsets become obstacles. Density scales with the segment's
+           detected intensity (verse vs. chorus/drop).
+
+  HARD:    shape_gate only (in shipped content — see Section 8
+           caveat). Highest-density tier: lowest flux threshold
+           (~5%), so the largest set of detected onsets survives
+           into obstacles. Density tracks segment intensity, with
+           the densest sections appearing in the song's actual
+           drops/choruses — but never exceeds the song's onset
+           count, and any beat without a real onset remains empty.
+           lane_push / low_bar / high_bar entries shown in §8 are
+           forward design space and are not produced today.
+```
+
+### Shipped per-difficulty obstacle counts (Round 6 audit)
+
+| Song                  | easy | medium | hard |
+|-----------------------|-----:|-------:|-----:|
+| 1_stomper             |   60 |     60 |   83 |
+| 2_drama               |  122 |    125 |  180 |
+| 3_mental_corruption   |  130 |    130 |  156 |
+| **Total (all 9 arrays)** |      |        | **1046** |
+
+Even Hard never approaches "every beat" — `1_stomper` Hard averages
+roughly one obstacle every ~2.5 musical beats. Treat these counts as
+the live ceiling on shipped difficulty density; regenerate from
+`content/beatmaps/*beatmap.json` if the generator changes.
 
 ---
 ---
@@ -546,6 +579,19 @@ The player can hear the beat coming. The timing is legible. What the player cann
 # ═══════════════════════════════════════════════════
 
 ## Pipeline Overview
+
+> **Active path: onset-only (`design_level_segment_focus`,
+> directive 2026-05-10).** This is the generator that ships today.
+> See `tools/level_designer.py:125-134, :741, :1996, :3180`.
+>
+> **Invariant:** An obstacle is emitted **only at beats where a real
+> audio onset survives the flux threshold**. Beat indices without a
+> surviving onset produce no obstacle at any difficulty. Per-difficulty
+> density is therefore bounded above by the song's surviving onset
+> count, not by the beat count, and post-hoc cleanup passes are
+> intentionally disabled on this path. Any "every beat" / "streams
+> every beat" wording predates this directive and does not match the
+> shipped output.
 
 ```
   ┌─────────────────────────────────────────────────────────────┐
@@ -561,20 +607,31 @@ The player can hear the beat coming. The timing is legible. What the player cann
   │       │                                                     │
   │       ▼                                                     │
   │   percussive / harmonic / full-spectrum passes → onsets     │
+  │   (flux thresholding — only surviving onsets continue)      │
   │       │                                                     │
   │       ▼                                                     │
-  │   snap to beat grid (80ms tolerance)                        │
+  │   snap surviving onsets to beat grid (80ms tolerance)       │
+  │   ── beats without a surviving onset stay empty ──          │
   │       │                                                     │
   │       ▼                                                     │
   │   structure detection  (onset density → intensity →         │
   │                          intro/verse/chorus/drop/outro)     │
   │       │                                                     │
   │       ▼                                                     │
+  │   design_level_segment_focus (onset-only path, 2026-05-10)  │
+  │   per-difficulty flux threshold selects which surviving     │
+  │   onsets become obstacles → easy / medium / hard            │
+  │       │                                                     │
+  │       ▼                                                     │
   │   Rhythm Designer agent  →  beatmap.json                    │
-  │   (applies difficulty rules, outputs easy/medium/hard)      │
+  │   (cleanup passes intentionally DISABLED on this path)      │
   │                                                             │
   └─────────────────────────────────────────────────────────────┘
 ```
+
+For shipped per-difficulty obstacle counts, see the table in
+§8 "Difficulty Progression" above (regenerate from
+`content/beatmaps/*beatmap.json` if the generator changes).
 
 ## Beat Map File
 

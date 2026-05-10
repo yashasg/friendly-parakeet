@@ -2,7 +2,7 @@
   "song_id": "2_drama",
   "title": "2_drama",
   "bpm": 129.2,
-  "offset": 0.0,
+  "offset": -0.036,
   "lead_beats": 4,
   "beat_times": [
     0.0,
@@ -2284,6 +2284,22 @@
           "beat_time_sec": 171.0
         },
         {
+          "beat": 391,
+          "kind": "shape_gate",
+          "lane": 0,
+          "shape": "triangle",
+          "onset_class": "percussive",
+          "segment_idx": 21,
+          "segment_focus": "percussive",
+          "difficulty_inclusion": "easy",
+          "source_event_idx": 2085,
+          "time_sec": 180.679,
+          "timing_source": "onset",
+          "onset_time_sec": 180.679,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 180.688
+        },
+        {
           "beat": 419,
           "kind": "shape_gate",
           "lane": 1,
@@ -2492,7 +2508,7 @@
           "beat_time_sec": 217.157
         }
       ],
-      "count": 122
+      "count": 123
     },
     "medium": {
       "beats": [
@@ -3937,7 +3953,39 @@
           "beat_time_sec": 134.995
         },
         {
+          "beat": 300,
+          "kind": "shape_gate",
+          "lane": 0,
+          "shape": "triangle",
+          "onset_class": "percussive",
+          "segment_idx": 17,
+          "segment_focus": "harmonic",
+          "difficulty_inclusion": "medium",
+          "source_event_idx": 1519,
+          "time_sec": 138.916,
+          "timing_source": "onset",
+          "onset_time_sec": 138.916,
+          "subdivision_label": "eighth",
+          "beat_time_sec": 138.688
+        },
+        {
           "beat": 324,
+          "kind": "shape_gate",
+          "lane": 1,
+          "shape": "square",
+          "onset_class": "full-spectrum",
+          "segment_idx": 18,
+          "segment_focus": "percussive",
+          "difficulty_inclusion": "medium",
+          "source_event_idx": 1591,
+          "time_sec": 149.995,
+          "timing_source": "onset",
+          "onset_time_sec": 149.995,
+          "subdivision_label": "eighth",
+          "beat_time_sec": 149.769
+        },
+        {
+          "beat": 325,
           "kind": "shape_gate",
           "lane": 0,
           "shape": "triangle",
@@ -3950,7 +3998,7 @@
           "timing_source": "onset",
           "onset_time_sec": 149.996,
           "subdivision_label": "eighth",
-          "beat_time_sec": 149.769
+          "beat_time_sec": 150.226
         },
         {
           "beat": 326,
@@ -4257,6 +4305,22 @@
           "beat_time_sec": 169.15
         },
         {
+          "beat": 391,
+          "kind": "shape_gate",
+          "lane": 2,
+          "shape": "circle",
+          "onset_class": "harmonic",
+          "segment_idx": 21,
+          "segment_focus": "percussive",
+          "difficulty_inclusion": "medium",
+          "source_event_idx": 2083,
+          "time_sec": 180.674,
+          "timing_source": "onset",
+          "onset_time_sec": 180.674,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 180.688
+        },
+        {
           "beat": 420,
           "kind": "shape_gate",
           "lane": 1,
@@ -4497,7 +4561,7 @@
           "beat_time_sec": 215.764
         }
       ],
-      "count": 125
+      "count": 128
     },
     "hard": {
       "beats": [
@@ -6614,6 +6678,22 @@
           "beat_time_sec": 135.452
         },
         {
+          "beat": 300,
+          "kind": "shape_gate",
+          "lane": 0,
+          "shape": "triangle",
+          "onset_class": "percussive",
+          "segment_idx": 17,
+          "segment_focus": "harmonic",
+          "difficulty_inclusion": "hard",
+          "source_event_idx": 1519,
+          "time_sec": 138.916,
+          "timing_source": "onset",
+          "onset_time_sec": 138.916,
+          "subdivision_label": "eighth",
+          "beat_time_sec": 138.688
+        },
+        {
           "beat": 324,
           "kind": "shape_gate",
           "lane": 1,
@@ -7062,6 +7142,22 @@
           "beat_time_sec": 169.607
         },
         {
+          "beat": 391,
+          "kind": "shape_gate",
+          "lane": 2,
+          "shape": "circle",
+          "onset_class": "harmonic",
+          "segment_idx": 21,
+          "segment_focus": "percussive",
+          "difficulty_inclusion": "hard",
+          "source_event_idx": 2083,
+          "time_sec": 180.674,
+          "timing_source": "onset",
+          "onset_time_sec": 180.674,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 180.688
+        },
+        {
           "beat": 420,
           "kind": "shape_gate",
           "lane": 1,
@@ -7382,7 +7478,7 @@
           "beat_time_sec": 217.157
         }
       ],
-      "count": 180
+      "count": 182
     }
   },
   "structure": [

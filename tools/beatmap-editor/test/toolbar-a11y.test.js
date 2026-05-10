@@ -146,3 +146,114 @@ test('known previously-unlabeled selects now carry an accessible name (#440)', (
     '#playback-rate must carry a non-empty aria-label (#440)',
   );
 });
+
+// ── Issue #515: every editor obstacle kind must be reachable from a
+// visible toolbar control. The previous #sidebar palette was display:none,
+// hiding the split_path placement workflow entirely. We now require:
+//   1. #tool-display is a real <button> (not a passive <span>) so it can
+//      receive a click — main.js wires it to cycleToolKind().
+//   2. The Help modal lists the K shortcut so users can discover the
+//      keyboard path documented as the AC fallback.
+//   3. The legacy `#sidebar` block (display:none) is gone — leaving it
+//      around invites another accessibility regression.
+
+test('toolbar exposes a click control for cycling the tool kind (#515)', async () => {
+  const html = read('index.html');
+
+  // Match the full <button id="tool-display" ...> opening tag — the
+  // attributes may wrap onto multiple lines for readability.
+  const toolDisplayMatch = html.match(/<button\b[^>]*\bid="tool-display"[^>]*>/);
+  assert.ok(
+    toolDisplayMatch,
+    '#tool-display must be a <button> so it can receive click + keyboard activation (#515)',
+  );
+  const ariaLabel = toolDisplayMatch[0].match(/aria-label="([^"]+)"/);
+  assert.ok(
+    ariaLabel && ariaLabel[1].length > 0,
+    '#tool-display must carry an aria-label so screen readers announce its purpose (#515)',
+  );
+
+  // The hidden palette block must be removed so it cannot drift back to
+  // being the canonical source of kind selection.
+  assert.doesNotMatch(
+    html,
+    /id="sidebar"[^>]*style="display:\s*none/,
+    'legacy hidden #sidebar palette must be removed (#515)',
+  );
+  assert.doesNotMatch(
+    html,
+    /id="kind-palette"/,
+    'legacy hidden #kind-palette must be removed in favor of #tool-display (#515)',
+  );
+});
+
+test('Help modal documents the K shortcut for cycling tool kind (#515)', () => {
+  const html = read('index.html');
+  // The shortcut must appear inside the help-modal Keyboard Shortcuts list.
+  const helpModalIdx = html.indexOf('id="help-modal"');
+  assert.ok(helpModalIdx >= 0, 'help-modal must exist');
+  const helpModalSlice = html.slice(helpModalIdx);
+  assert.match(
+    helpModalSlice,
+    /<kbd>K<\/kbd>[^<]*Cycle/,
+    'Help modal must document <kbd>K</kbd> as the tool-kind cycle shortcut (#515)',
+  );
+});
+
+test('every EDITOR_OBSTACLE_KINDS value is reachable via a visible control (#515)', async () => {
+  const { EDITOR_OBSTACLE_KINDS } = await import('../js/constants.js');
+  assert.ok(EDITOR_OBSTACLE_KINDS.length >= 2,
+    'expected at least shape_gate + split_path');
+
+  const html = read('index.html');
+
+  // Reachability via #tool-display: the button cycles through every kind
+  // in EDITOR_OBSTACLE_KINDS (via main.js → editor.cycleToolKind()), and
+  // its ancestor chain has no inline display:none.
+  const toolDisplayIdx = html.indexOf('id="tool-display"');
+  assert.ok(toolDisplayIdx >= 0, '#tool-display must exist');
+  const upToToolDisplay = html.slice(0, toolDisplayIdx);
+
+  // Find every parent <div ... style="display:none"> still open at this
+  // point in the document (very approximate but sufficient for catching
+  // regressions where the kind control gets re-buried in #sidebar).
+  const openDivs = upToToolDisplay.match(/<div\b[^>]*>/g) || [];
+  const closeDivs = upToToolDisplay.match(/<\/div>/g) || [];
+  assert.ok(
+    openDivs.length >= closeDivs.length,
+    'malformed test: more </div> than <div> seen before #tool-display',
+  );
+  // Walk forward, push opens onto a stack of {tag, displayNone}; pop on close.
+  const stack = [];
+  const tagRe = /<(\/?)div\b([^>]*)>/g;
+  let m;
+  while ((m = tagRe.exec(upToToolDisplay)) !== null) {
+    if (m[1] === '/') {
+      stack.pop();
+    } else {
+      stack.push(/style="[^"]*display\s*:\s*none/i.test(m[2]));
+    }
+  }
+  assert.ok(
+    !stack.some(Boolean),
+    `#tool-display ancestor chain must not contain inline display:none (#515) — stack=${JSON.stringify(stack)}`,
+  );
+
+  // editor.js must export cycleToolKind (the shared code path between the
+  // K shortcut and the toolbar click handler). If somebody removes it,
+  // both surfaces break silently — assert on the export here.
+  const editorJs = read('js/editor.js');
+  assert.match(
+    editorJs,
+    /export\s+function\s+cycleToolKind\b/,
+    'editor.js must export cycleToolKind for the toolbar + K shortcut (#515)',
+  );
+
+  // Sanity: the cycle function references EDITOR_OBSTACLE_KINDS so adding
+  // a new kind to the constant automatically extends reachability.
+  assert.match(
+    editorJs,
+    /EDITOR_OBSTACLE_KINDS/,
+    'cycleToolKind must iterate over EDITOR_OBSTACLE_KINDS so new kinds become reachable for free (#515)',
+  );
+});

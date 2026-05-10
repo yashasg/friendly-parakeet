@@ -38,7 +38,9 @@
         <!-- Current tool indicator -->
         <div class="toolbar-group" id="tool-indicator">
             <span class="toolbar-label">Tool:</span>
-            <span id="tool-display" class="tool-badge">● ShapeGate</span>
+            <button id="tool-display" type="button" class="tool-badge"
+                    title="Cycle tool kind (K)"
+                    aria-label="Tool kind: cycle">● ShapeGate</button>
         </div>
         <div class="toolbar-separator"></div>
         <div class="toolbar-group">
@@ -165,6 +167,7 @@
                     <div><kbd>Shift</kbd>+<kbd>←</kbd>/<kbd>→</kbd> Move cursor 4 beats</div>
                     <div><kbd>1</kbd>/<kbd>2</kbd>/<kbd>3</kbd> Set lane (left/center/right)</div>
                     <div><kbd>Q</kbd>/<kbd>W</kbd>/<kbd>E</kbd> Set shape (circle/square/triangle)</div>
+                    <div><kbd>K</kbd> Cycle tool kind (ShapeGate ↔ SplitPath)</div>
                     <div><kbd>Enter</kbd> Place at cursor</div>
                     <div><kbd>Delete</kbd>/<kbd>Backspace</kbd> Delete selected</div>
                     <div><kbd>Ctrl/Cmd+Z</kbd> Undo</div>
@@ -233,23 +236,6 @@
 <input type="file" id="file-input-audio" accept=".flac,.mp3,.wav,.ogg" style="display:none">
 <input type="file" id="file-input-json" accept=".json" style="display:none">
 <input type="file" id="file-input-analysis" accept=".json" style="display:none">
-
-<!-- ── Palette (hidden, for panels.js compat) ────── -->
-<div id="sidebar" style="display:none;">
-    <div id="panel-palette">
-        <div id="kind-palette">
-            <button class="palette-btn active" data-kind="shape_gate"></button>
-            <button class="palette-btn" data-kind="split_path"></button>
-        </div>
-        <div id="shape-palette">
-            <button class="palette-btn active" data-shape="circle"></button>
-            <button class="palette-btn" data-shape="square"></button>
-            <button class="palette-btn" data-shape="triangle"></button>
-        </div>
-    </div>
-    <div id="panel-metadata"></div>
-    <div id="panel-selection"><div id="selection-info"></div></div>
-</div>
 
 <script type="module" src="js/main.js"></script>
 

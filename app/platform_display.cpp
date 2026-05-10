@@ -40,7 +40,24 @@ struct WasmLoopState {
     entt::registry* reg = nullptr;
     float accumulator = 0.0f;
     bool shutting_down = false;
+    bool beforeunload_armed = false;
 };
+
+static void wasm_unset_beforeunload(WasmLoopState& state) {
+    if (!state.beforeunload_armed) return;
+    emscripten_set_beforeunload_callback(nullptr, nullptr);
+    state.beforeunload_armed = false;
+}
+
+void platform_disarm_wasm_beforeunload(entt::registry& reg) {
+    if (auto* state = reg.ctx().find<WasmLoopState>()) {
+        wasm_unset_beforeunload(*state);
+        state->reg = nullptr;
+        state->accumulator = 0.0f;
+    } else {
+        emscripten_set_beforeunload_callback(nullptr, nullptr);
+    }
+}
 
 static void wasm_shutdown_once(WasmLoopState& state) {
     if (!state.reg || state.shutting_down) return;
@@ -78,9 +95,17 @@ static const char* on_web_unload(int /*event_type*/,
 void platform_run_loop(entt::registry& reg) {
     auto* state = reg.ctx().find<WasmLoopState>();
     if (!state) state = &reg.ctx().emplace<WasmLoopState>();
+
+    // Callback ownership contract:
+    // - beforeunload is browser/runtime-owned after registration.
+    // - WasmLoopState is registry-owned and must remain valid until callback
+    //   unregistration happens during shutdown.
+    // - game_loop_shutdown() calls platform_disarm_wasm_beforeunload() before
+    //   resetting the registry context.
     state->reg = &reg;
     state->accumulator = 0.0f;
     state->shutting_down = false;
+    state->beforeunload_armed = true;
     emscripten_set_beforeunload_callback(state, on_web_unload);
     emscripten_set_main_loop_arg(frame_callback, state, 0, 1);
 }

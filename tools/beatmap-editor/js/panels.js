@@ -321,31 +321,39 @@ function handleTapBpm() {
 // ── Palette Buttons ─────────────────────────────────
 
 function bindPalette() {
-    els.kindPalette.addEventListener('click', (e) => {
-        const btn = e.target.closest('.palette-btn[data-kind]');
-        if (!btn) return;
-        state.tool.kind = btn.dataset.kind;
-        emit('tool-changed');
-    });
+    if (els.kindPalette) {
+        els.kindPalette.addEventListener('click', (e) => {
+            const btn = e.target.closest('.palette-btn[data-kind]');
+            if (!btn) return;
+            state.tool.kind = btn.dataset.kind;
+            emit('tool-changed');
+        });
+    }
 
-    els.shapePalette.addEventListener('click', (e) => {
-        const btn = e.target.closest('.palette-btn[data-shape]');
-        if (!btn) return;
-        state.tool.shape = btn.dataset.shape;
-        emit('tool-changed');
-    });
+    if (els.shapePalette) {
+        els.shapePalette.addEventListener('click', (e) => {
+            const btn = e.target.closest('.palette-btn[data-shape]');
+            if (!btn) return;
+            state.tool.shape = btn.dataset.shape;
+            emit('tool-changed');
+        });
+    }
 
     on('tool-changed', syncPaletteToDOM);
 }
 
 function syncPaletteToDOM() {
-    // Kind buttons
-    for (const btn of els.kindPalette.querySelectorAll('.palette-btn[data-kind]')) {
-        btn.classList.toggle('active', btn.dataset.kind === state.tool.kind);
+    // Kind buttons (legacy hidden palette removed in #515 — guard for absent DOM)
+    if (els.kindPalette) {
+        for (const btn of els.kindPalette.querySelectorAll('.palette-btn[data-kind]')) {
+            btn.classList.toggle('active', btn.dataset.kind === state.tool.kind);
+        }
     }
     // Shape buttons
-    for (const btn of els.shapePalette.querySelectorAll('.palette-btn[data-shape]')) {
-        btn.classList.toggle('active', btn.dataset.shape === state.tool.shape);
+    if (els.shapePalette) {
+        for (const btn of els.shapePalette.querySelectorAll('.palette-btn[data-shape]')) {
+            btn.classList.toggle('active', btn.dataset.shape === state.tool.shape);
+        }
     }
 }
 

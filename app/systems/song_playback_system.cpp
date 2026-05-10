@@ -25,6 +25,7 @@ void song_playback_system(entt::registry& reg, float dt) {
             StopMusicStream(music->stream);
             PlayMusicStream(music->stream);
             music->started = true;
+            music->paused = false;
         }
     }
 
@@ -33,16 +34,22 @@ void song_playback_system(entt::registry& reg, float dt) {
         if (!music->started) {
             PlayMusicStream(music->stream);
             music->started = true;
-        } else if (gs.previous_phase == GamePhase::Paused) {
+            music->paused = false;
+        } else if (music->paused) {
             ResumeMusicStream(music->stream);
+            music->paused = false;
         }
     } else if (music_loaded && gs.phase == GamePhase::Paused && music->started) {
-        PauseMusicStream(music->stream);
+        if (!music->paused) {
+            PauseMusicStream(music->stream);
+            music->paused = true;
+        }
     } else if (music_loaded &&
                (gs.phase == GamePhase::GameOver || gs.phase == GamePhase::SongComplete) &&
                music->started) {
         StopMusicStream(music->stream);
         music->started = false;
+        music->paused = false;
     }
 
     // ── Song time / beat advancement (Playing phase only) ─────
@@ -86,6 +93,7 @@ void song_playback_system(entt::registry& reg, float dt) {
         if (music_loaded && music->started) {
             StopMusicStream(music->stream);
             music->started = false;
+            music->paused = false;
         }
     }
 }

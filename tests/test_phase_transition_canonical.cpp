@@ -1,16 +1,15 @@
-// Enforcement test for #482: UI screen controllers and input routing must not
-// call enter_phase() directly. They signal intent via transition_pending /
-// next_phase and let game_state_system perform the canonical swap. See
-// decisions.md → "Phase Transition Mechanism — Single Canonical Path".
-//
-// This is a build-time grep: scans the controller and input-routing source
-// directories and fails if any TU calls `enter_phase(`.
+// Enforcement tests for #482/#503:
+// direct enter_phase() calls are only allowed from the canonical allow-list
+// documented in decisions.md.
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
+#include <cctype>
 #include <filesystem>
 #include <fstream>
 #include <regex>
+#include <set>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -19,24 +18,16 @@ namespace fs = std::filesystem;
 
 namespace {
 
+struct SourceRecord {
+    std::string logical_path;
+    std::string body;
+};
+
 std::string read_file(const fs::path& p) {
     std::ifstream f(p);
     std::stringstream ss;
     ss << f.rdbuf();
     return ss.str();
-}
-
-std::vector<fs::path> sources_under(const fs::path& root) {
-    std::vector<fs::path> out;
-    if (!fs::exists(root)) return out;
-    for (const auto& entry : fs::recursive_directory_iterator(root)) {
-        if (!entry.is_regular_file()) continue;
-        const auto ext = entry.path().extension().string();
-        if (ext == ".cpp" || ext == ".h" || ext == ".hpp") {
-            out.push_back(entry.path());
-        }
-    }
-    return out;
 }
 
 std::string strip_comments_and_literals(const std::string& source) {
@@ -138,65 +129,133 @@ std::string strip_comments_and_literals(const std::string& source) {
     return sanitized;
 }
 
-bool has_direct_enter_phase_call(const std::string& source) {
-    static const std::regex kEnterPhaseCallPattern(R"(\benter_phase\s*\()");
-    return std::regex_search(strip_comments_and_literals(source), kEnterPhaseCallPattern);
+bool is_type_like_prev_char(char c) {
+    const unsigned char uc = static_cast<unsigned char>(c);
+    return std::isalnum(uc) || c == '_' || c == '*' || c == '&' || c == '>';
 }
 
-// Walk upward from CWD to locate the source root (must contain the app/
-// directory). The test runner may be invoked from build/, build-web/, etc.
+bool has_direct_enter_phase_call(const std::string& source) {
+    static const std::regex kEnterPhaseToken(R"(\benter_phase\s*\()");
+    const std::string sanitized = strip_comments_and_literals(source);
+
+    for (std::sregex_iterator it(sanitized.begin(), sanitized.end(), kEnterPhaseToken), end;
+         it != end; ++it) {
+        std::size_t pos = static_cast<std::size_t>(it->position());
+        while (pos > 0) {
+            const char prev = sanitized[pos - 1];
+            if (!std::isspace(static_cast<unsigned char>(prev))) break;
+            --pos;
+        }
+
+        if (pos > 0 && is_type_like_prev_char(sanitized[pos - 1])) {
+            continue; // declaration/definition like "void enter_phase(...)"
+        }
+        return true;
+    }
+
+    return false;
+}
+
+const std::set<std::string>& canonical_enter_phase_allowlist() {
+    static const std::set<std::string> kAllowlist = {
+        "app/session/play_session.cpp",
+        "app/systems/game_state_system.cpp",
+        "app/systems/game_state_terminal_phase_system.cpp",
+    };
+    return kAllowlist;
+}
+
+std::vector<std::string> collect_enter_phase_offenders(const std::vector<SourceRecord>& sources,
+                                                       const std::set<std::string>& allowlist) {
+    std::vector<std::string> offenders;
+    for (const auto& src : sources) {
+        if (!has_direct_enter_phase_call(src.body)) continue;
+        if (allowlist.count(src.logical_path) != 0) continue;
+        offenders.push_back(src.logical_path);
+    }
+    std::sort(offenders.begin(), offenders.end());
+    return offenders;
+}
+
+bool should_skip_source_path(const fs::path& path) {
+    for (const auto& part : path) {
+        const auto name = part.string();
+        if (name == "build" || name == "build-web" || name == "vendor" ||
+            name == "vcpkg_installed" || name == "node_modules" ||
+            name == "generated") {
+            return true;
+        }
+    }
+    return false;
+}
+
+std::vector<fs::path> production_app_sources(const fs::path& app_root) {
+    std::vector<fs::path> out;
+    if (!fs::exists(app_root)) return out;
+
+    for (const auto& entry : fs::recursive_directory_iterator(app_root)) {
+        if (!entry.is_regular_file()) continue;
+        const auto rel = fs::relative(entry.path(), app_root);
+        if (should_skip_source_path(rel)) continue;
+
+        const auto ext = entry.path().extension().string();
+        if (ext == ".cpp" || ext == ".h" || ext == ".hpp") {
+            out.push_back(entry.path());
+        }
+    }
+
+    return out;
+}
+
 fs::path find_repo_root() {
     fs::path p = fs::current_path();
     for (int i = 0; i < 8; ++i) {
-        if (fs::exists(p / "app" / "ui" / "screen_controllers")) return p;
+        if (fs::exists(p / "app")) return p;
         if (!p.has_parent_path() || p.parent_path() == p) break;
         p = p.parent_path();
     }
     return fs::current_path();
 }
 
+std::vector<SourceRecord> load_app_sources(const fs::path& root) {
+    std::vector<SourceRecord> loaded;
+    const fs::path app_root = root / "app";
+    for (const auto& abs_path : production_app_sources(app_root)) {
+        loaded.push_back(SourceRecord{
+            fs::relative(abs_path, root).generic_string(),
+            read_file(abs_path),
+        });
+    }
+    return loaded;
+}
+
 } // namespace
 
-TEST_CASE("phase_transition: screen controllers do not call enter_phase directly (#482)",
+TEST_CASE("phase_transition: app sources enforce canonical enter_phase allow-list (#482, #503)",
           "[phase_transition][architecture]") {
     const fs::path root = find_repo_root();
-    const fs::path controllers = root / "app" / "ui" / "screen_controllers";
+    REQUIRE(fs::exists(root / "app"));
 
-    REQUIRE(fs::exists(controllers));
+    const auto sources = load_app_sources(root);
+    const auto offenders = collect_enter_phase_offenders(sources, canonical_enter_phase_allowlist());
 
-    std::vector<std::string> offenders;
-    for (const auto& src : sources_under(controllers)) {
-        const std::string body = read_file(src);
-        if (has_direct_enter_phase_call(body)) {
-            offenders.push_back(src.string());
-        }
-    }
-
-    INFO("Screen controllers must signal intent via transition_pending/next_phase, "
-         "not call enter_phase() directly. See decisions.md (#482).");
+    INFO("Only canonical callers may invoke enter_phase directly: "
+         "app/systems/game_state_system.cpp, app/session/play_session.cpp, "
+         "app/systems/game_state_terminal_phase_system.cpp");
     for (const auto& f : offenders) INFO("offender: " << f);
     REQUIRE(offenders.empty());
 }
 
-TEST_CASE("phase_transition: input routing does not call enter_phase directly (#482)",
+TEST_CASE("phase_transition: enforcement catches non-UI/non-input direct callers (#503)",
           "[phase_transition][architecture]") {
-    const fs::path root = find_repo_root();
-    const fs::path input_dir = root / "app" / "input";
+    const std::vector<SourceRecord> fixtures = {
+        {"app/systems/game_state_system.cpp", "void ok(GameState& gs){ enter_phase(gs, GamePhase::Paused); }"},
+        {"app/systems/rogue_system.cpp", "void bad(GameState& gs){ enter_phase(gs, GamePhase::Title); }"},
+        {"app/ui/screen_controllers/title_screen_controller.cpp", "void ui(GameState& gs){ gs.transition_pending = true; }"},
+    };
 
-    REQUIRE(fs::exists(input_dir));
-
-    std::vector<std::string> offenders;
-    for (const auto& src : sources_under(input_dir)) {
-        const std::string body = read_file(src);
-        if (has_direct_enter_phase_call(body)) {
-            offenders.push_back(src.string());
-        }
-    }
-
-    INFO("Input routing must signal intent via transition_pending/next_phase, "
-         "not call enter_phase() directly. See decisions.md (#482).");
-    for (const auto& f : offenders) INFO("offender: " << f);
-    REQUIRE(offenders.empty());
+    const auto offenders = collect_enter_phase_offenders(fixtures, canonical_enter_phase_allowlist());
+    REQUIRE(offenders == std::vector<std::string>{"app/systems/rogue_system.cpp"});
 }
 
 TEST_CASE("phase_transition matcher catches whitespace variants and ignores strings/comments",
@@ -215,8 +274,12 @@ TEST_CASE("phase_transition matcher catches whitespace variants and ignores stri
           enter_phase ( gs, GamePhase::Title );
         */
     )cpp";
+    const std::string declaration_only = R"cpp(
+        void enter_phase(GameState&, GamePhase);
+    )cpp";
 
     CHECK(has_direct_enter_phase_call(direct_call));
     CHECK_FALSE(has_direct_enter_phase_call(string_literal_only));
     CHECK_FALSE(has_direct_enter_phase_call(comments_only));
+    CHECK_FALSE(has_direct_enter_phase_call(declaration_only));
 }

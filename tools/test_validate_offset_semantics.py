@@ -49,6 +49,9 @@ class TestValidateOffsetSemantics(unittest.TestCase):
         self.assertEqual(failures, [])
 
     def test_validate_shipped_beatmaps_flags_analysis_offset_mismatch(self):
+        # Issue #505 — offset must equal beats[anchor_idx] - anchor_idx * period.
+        # Authored beat=0 → anchor_idx=0, expected offset=1.0; actual 1.2 → 200 ms
+        # drift, far above the 2 ms tolerance.
         self._write_pair(
             "fixture",
             {
@@ -60,7 +63,10 @@ class TestValidateOffsetSemantics(unittest.TestCase):
         )
         with mock.patch.object(offset_semantics, "BEATMAP_DIR", self.base):
             failures = offset_semantics.validate_shipped_beatmaps(8.0)
-        self.assertTrue(any("pipeline contract violated" in failure for failure in failures))
+        self.assertTrue(
+            any("not anchored to beat_idx" in failure for failure in failures),
+            f"expected anchor-mismatch failure; got {failures!r}",
+        )
 
     def test_validate_shipped_beatmaps_flags_missing_onset_fields(self):
         self._write_pair(

@@ -21,10 +21,16 @@ jobs:
     env:
       VCPKG_BINARY_SOURCES: "clear;default,readwrite"
       VCPKG_FORCE_SYSTEM_BINARIES: "1"
+      PLAYWRIGHT_CORE_VERSION: "1.55.0"
     steps:
       - uses: actions/checkout@v6
         with:
           lfs: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
 
       - name: Export GitHub Actions cache variables
         uses: actions/github-script@v8
@@ -86,13 +92,9 @@ jobs:
 
       - name: Run WASM tests (via CTest + Node)
         run: |
+          node --version
           cd build-web
           ctest --verbose --output-on-failure
-
-      - name: Setup Node.js for browser smoke
-        uses: actions/setup-node@v5
-        with:
-          node-version: 22
 
       - name: Setup Chrome
         id: setup-chrome
@@ -106,7 +108,7 @@ jobs:
             echo "::error title=Missing browser::setup-chrome did not provide an executable browser path"
             exit 1
           fi
-          npm install --no-save playwright-core
+          npm install --no-save "playwright-core@${PLAYWRIGHT_CORE_VERSION}"
           python3 -m http.server 4173 --directory build-web >/dev/null 2>&1 &
           SERVER_PID=$!
           trap 'kill "$SERVER_PID"' EXIT

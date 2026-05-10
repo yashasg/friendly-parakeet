@@ -1,4 +1,5 @@
 #include "all_systems.h"
+#include "web_input_policy.h"
 #include "../components/input.h"
 #include "../components/input_events.h"
 #include "../components/rendering.h"
@@ -45,6 +46,13 @@ void input_system_init(entt::registry& reg) {
 #else
     (void)policy;
 #endif
+}
+
+bool web_input_touch_capable(const entt::registry& reg) {
+    if (const auto* policy = reg.ctx().find<WebInputPolicy>()) {
+        return policy->touch_capable;
+    }
+    return false;
 }
 
 void input_system(entt::registry& reg, float raw_dt) {

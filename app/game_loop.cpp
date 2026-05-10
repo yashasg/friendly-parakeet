@@ -175,7 +175,6 @@ void game_loop_init(entt::registry& reg,
         .phase_timer = 0.0f, .transition_pending = false,
         .next_phase = GamePhase::Title, .transition_alpha = 0.0f
     });
-    enter_phase(reg.ctx().get<GameState>(), GamePhase::Title);
     reset_ctx_singleton<ScoreState>(reg);
     reset_ctx_singleton<LevelSelectState>(reg);
     reset_ctx_singleton<EnergyState>(reg);
@@ -321,6 +320,10 @@ void game_loop_run(entt::registry& reg) {
 // ── Shutdown ────────────────────────────────────────────────────────────────
 
 void game_loop_shutdown(entt::registry& reg) {
+#ifdef __EMSCRIPTEN__
+    platform_disarm_wasm_beforeunload(reg);
+#endif
+
     // Disconnect all destroy/construct listeners before clearing entities
     unwire_input_dispatcher(reg);
     unwire_audio_haptic_dispatcher(reg);

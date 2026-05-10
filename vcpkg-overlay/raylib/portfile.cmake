@@ -11,6 +11,8 @@ These can be installed on Ubuntu systems via sudo apt install libgl1-mesa-dev li
     )
 endif()
 
+include("${CMAKE_CURRENT_LIST_DIR}/audio_stub_helpers.cmake")
+
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO raysan5/raylib
@@ -39,7 +41,7 @@ foreach(header IN LISTS vendored_headers vendored_audio_headers)
     find_file(vcpkg_file NAMES "${header}" PATHS "${CURRENT_INSTALLED_DIR}/include" NO_DEFAULT_PATH NO_CACHE)
     if(header IN_LIST vendored_audio_headers AND NOT "audio" IN_LIST FEATURES)
         message(STATUS "Emptying '${header}' (audio disabled)")
-        file(WRITE "${SOURCE_PATH}/src/external/${vcpkg_file}" "# audio disabled")
+        raylib_write_audio_disabled_stub("${SOURCE_PATH}" "${header}")
     elseif(vcpkg_file)
         message(STATUS "De-vendoring '${header}'")
         file(COPY "${vcpkg_file}" DESTINATION "${SOURCE_PATH}/src/external")

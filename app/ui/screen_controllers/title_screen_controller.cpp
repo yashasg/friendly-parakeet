@@ -4,9 +4,10 @@
 #include "../../components/input.h"
 #include "../../components/rendering.h"
 #include "screen_controller_base.h"
+#include <raygui.h>
+#include "title_screen_dead_zones.h"
 #include <entt/entt.hpp>
 
-#include <raygui.h>
 #include "../generated/title_layout.h"
 
 namespace {
@@ -25,14 +26,12 @@ bool read_title_pointer_release(const entt::registry& reg, Vector2& pointer) {
 bool is_start_tap(const entt::registry& reg, const TitleLayoutState& state) {
     Vector2 pointer = {};
     if (!read_title_pointer_release(reg, pointer)) return false;
-    // Dead-zones must be derived from the same accessors the layout uses to
-    // render GuiButton, otherwise tapping Settings/Exit would also trigger
-    // Start (#466). Do NOT duplicate the literals here.
-    if (CheckCollisionPointRec(pointer, TitleLayout_SettingsButtonBounds(&state))) return false;
-#ifndef PLATFORM_WEB
-    if (CheckCollisionPointRec(pointer, TitleLayout_ExitButtonBounds(&state))) return false;
-#endif
-    return true;
+    // Dead-zones are derived from the same accessors the layout uses to
+    // render GuiButton (see title_screen_dead_zones.h). The EXIT region is
+    // excluded on EVERY platform — on Web the EXIT button is hidden (#511),
+    // but we still treat its bounds as a dead-zone so a cached/off-by-one
+    // tap there cannot silently transition to LevelSelect.
+    return !title_tap_in_dead_zone(pointer, state);
 }
 
 } // anonymous namespace

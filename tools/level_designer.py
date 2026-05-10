@@ -135,6 +135,13 @@ GAP_ONE_MAX_RUN = {"medium": 1, "hard": 2}
 GAP_ONE_SHARE_CAP = {"medium": 0.20, "hard": 0.20}
 GAP_MONOTONY_CAP = {"medium": 0.40, "hard": 0.35}
 MIN_IOI_MS = {"easy": 500.0, "medium": 350.0, "hard": 280.0}
+# Issue #506 — bound mid-song silent stretches to the same per-difficulty
+# beat caps that ``tools/validate_max_beat_gap.py`` enforces (issue #138).
+# Values mirror ``validate_max_beat_gap.MAX_GAP`` exactly so the generator
+# and validator cannot drift apart.  Caps are converted to seconds at the
+# call site using the analysis BPM (``cap_sec = beats * 60 / bpm``) since
+# the active onset-only path measures gaps in seconds.
+MAX_SILENT_GAP_BEATS = {"easy": 40, "medium": 32, "hard": 30}
 # Issues #392, #394 — enforce monotonic, song-independent difficulty pacing.
 # Median IOI target ceilings (seconds). When the segment-focus selection
 # leaves a difficulty above its ceiling, additional high-flux candidate
@@ -1396,9 +1403,20 @@ def _choose_segment_focus(class_stats, prev_focuses):
 
 
 def _is_protected_cross_layer_pair(left, right):
-    """Keep near-simultaneous broad-layer onsets distinct when they share a beat."""
-    if int(left.get("beat_idx", -1)) != int(right.get("beat_idx", -2)):
-        return False
+    """Issue #507 — purely temporal cross-layer protection.
+
+    The 2026-05-10 directive (encoded in ``PROTECTED_CROSS_LAYER_WINDOW_MS``)
+    keeps any two broad-layer onsets distinct when their audio timestamps
+    are within 50 ms.  Earlier revisions added an extra ``beat_idx``
+    equality check, which silently flipped protection off whenever the
+    snapper landed two simultaneous onsets on opposite sides of a beat
+    boundary; ``_clears_min_ioi`` then dropped the second event under the
+    per-difficulty IOI floor.  That coupling is removed: protection is
+    determined purely by broad layer (``percussive`` / ``harmonic`` /
+    ``full-spectrum``) and ``|Δt| <= PROTECTED_CROSS_LAYER_WINDOW_MS``.
+
+    Same-layer IOI enforcement (``MIN_IOI_MS``) is unchanged.
+    """
     left_class = left.get("onset_class") or classify_onset_class(left)
     right_class = right.get("onset_class") or classify_onset_class(right)
     if left_class == right_class:
@@ -1704,6 +1722,132 @@ def _enforce_median_ioi_target(
     )
 
 
+def _fill_silent_gaps(
+    selected_events,
+    fallback_pool,
+    difficulty,
+    bpm,
+    segment_ranges=None,
+):
+    """Issue #506 — bound mid-song silent stretches by promoting real onsets.
+
+    Mirrors ``tools/validate_max_beat_gap.py`` per-difficulty caps
+    (``MAX_SILENT_GAP_BEATS``).  Mines ``fallback_pool`` (real analysis
+    onsets snapped to beats) for events that fall inside any selected
+    inter-onset gap larger than ``cap_sec = MAX_SILENT_GAP_BEATS[diff] *
+    60 / bpm``.  No filler / synthetic events are ever produced — when
+    a gap has no eligible real onset candidates (true silence in the
+    audio) it is left intact, and the gap is recorded so the loop does
+    not spin on it.
+
+    Constraints honored:
+      * Onset-only:        candidates come from ``fallback_pool``.
+      * IOI floor:         ``_clears_min_ioi`` (which now respects the
+                           cross-layer 50 ms protection from issue #507).
+      * Run cap:           ``_candidate_respects_run_cap``.
+      * Segment metadata:  ``segment_focus`` / ``segment_idx`` stamped
+                           via ``_resolve_segment_for_time`` (issue #481).
+      * Broad-layer:       ``onset_class`` filled via
+                           ``classify_onset_class`` only — no raw
+                           instrument-pass leakage.
+    """
+    cap_beats = MAX_SILENT_GAP_BEATS.get(difficulty)
+    if not cap_beats or not bpm or bpm <= 0 or len(selected_events) < 2:
+        return selected_events
+    cap_sec = cap_beats * 60.0 / float(bpm)
+
+    selected_keys = set(selected_events.keys())
+    selected_list = sorted(
+        selected_events.values(), key=lambda ev: float(ev.get("t", 0.0))
+    )
+    pool_ranked = _ranked_events_for_ioi(fallback_pool or [])
+    updated = dict(selected_events)
+
+    # (lo_t, hi_t) gap windows we have proven we cannot fill — skip on
+    # subsequent iterations so the loop terminates on true silences.
+    skipped: set[tuple[float, float]] = set()
+
+    while True:
+        gaps = []
+        for i in range(len(selected_list) - 1):
+            lo = float(selected_list[i].get("t", 0.0))
+            hi = float(selected_list[i + 1].get("t", 0.0))
+            dt = hi - lo
+            if dt <= cap_sec:
+                continue
+            key = (round(lo, 6), round(hi, 6))
+            if key in skipped:
+                continue
+            gaps.append((dt, lo, hi))
+        if not gaps:
+            break
+
+        # Attack the widest gap first.
+        gaps.sort(reverse=True)
+        _dt, lo, hi = gaps[0]
+
+        placed = False
+        for candidate in pool_ranked:
+            ct = float(candidate.get("t", 0.0))
+            if ct <= lo or ct >= hi:
+                continue
+            cand_key = _event_key(candidate)
+            if cand_key in selected_keys:
+                continue
+
+            # Stamp onset_class up-front so _clears_min_ioi /
+            # _candidate_respects_run_cap see the correct broad layer
+            # (raw fallback events carry ``layer`` but no ``onset_class``,
+            # which would otherwise resolve to "full-spectrum" and block
+            # legitimate harmonic / percussive candidates).
+            stamped = dict(candidate)
+            if "onset_class" not in stamped or stamped["onset_class"] is None:
+                stamped["onset_class"] = classify_onset_class(stamped)
+
+            if not _clears_min_ioi(stamped, selected_list, difficulty):
+                continue
+            if not _candidate_respects_run_cap(
+                stamped, selected_list, difficulty
+            ):
+                continue
+
+            if segment_ranges is not None and (
+                stamped.get("segment_focus") is None
+                or stamped.get("segment_idx") is None
+            ):
+                seg_idx, focus = _resolve_segment_for_time(ct, segment_ranges)
+                if stamped.get("segment_focus") is None and focus is not None:
+                    stamped["segment_focus"] = focus
+                if stamped.get("segment_idx") is None and seg_idx is not None:
+                    stamped["segment_idx"] = seg_idx
+            stamped["difficulty_inclusion"] = difficulty
+
+            updated[cand_key] = stamped
+            selected_keys.add(cand_key)
+            insert_at = 0
+            while (
+                insert_at < len(selected_list)
+                and float(selected_list[insert_at].get("t", 0.0)) < ct
+            ):
+                insert_at += 1
+            selected_list.insert(insert_at, stamped)
+            placed = True
+            break
+
+        if not placed:
+            skipped.add((round(lo, 6), round(hi, 6)))
+
+    return dict(
+        sorted(
+            updated.items(),
+            key=lambda item: (
+                int(item[1].get("beat_idx", -1)),
+                float(item[1].get("t", 0.0)),
+            ),
+        )
+    )
+
+
 def _enforce_same_class_run_cap(selected_events, difficulty):
     """Issue #391 — cap consecutive same-onset-class (==same-lane) runs.
 
@@ -1969,6 +2113,22 @@ def select_segment_focus_beats(analysis, difficulty):
         segment_ranges=segment_ranges,
     )
     selected_events = _enforce_same_class_run_cap(selected_events, difficulty)
+    # Issue #506 — bound mid-song silent stretches to the per-difficulty
+    # caps from validate_max_beat_gap.py.  Runs AFTER the IOI/run-cap
+    # passes (so it cannot promote events the run cap would just drop)
+    # and BEFORE _clamp_difficulty_inclusion (so promoted onsets keep
+    # their stamped difficulty_inclusion = `difficulty` and survive the
+    # clamp).  All three difficulties mine the global ``all_snapped``
+    # fallback pool: this fix is exclusively about silences, never about
+    # raising overall density.  Cross-layer 50 ms protection is preserved
+    # via the issue #507 fix to ``_is_protected_cross_layer_pair``.
+    selected_events = _fill_silent_gaps(
+        selected_events,
+        all_snapped,
+        difficulty,
+        analysis.get("bpm"),
+        segment_ranges=segment_ranges,
+    )
     # Issue #414 — clamp difficulty_inclusion so each shipped difficulty
     # array contains only events whose inclusion tier is <= the array's
     # tier.  Promoted/coverage events are already retagged at insertion;
@@ -3203,12 +3363,43 @@ def build_beatmap(analysis, difficulties, cleanup_enabled=True, experimental_ons
         # ramp invariant after the relaxed IOI promotion rules.  Trim the
         # higher tier to match the lower tier when ordering inverts; the
         # trim drops the sparsest promoted onsets only (no filler).
+        # Issue #506 — the ramp may not widen any silent stretch past the
+        # per-difficulty cap; bpm is forwarded via a sentinel key so the
+        # trim can compute the cap in seconds and refuse violating drops.
+        diff_data["__bpm__"] = float(analysis.get("bpm") or 0.0)
         diff_data = _enforce_difficulty_count_ramp(diff_data)
+        diff_data.pop("__bpm__", None)
+
+    # Issue #505 — emit ``offset`` anchored to the first authored beat,
+    # matching ``tools/validate_beatmap_offset.py`` (and beat_map.h /
+    # GitHub #137).  Runtime computes
+    #     arrival_time = offset + beat_index * beat_period
+    # so the offset must back-project the earliest authored beat to t≈0
+    # rather than parking on ``beats[0]`` (the audio's first onset
+    # detection, which is unrelated to the authored grid phase).
+    bpm_value = float(analysis.get("bpm") or 0.0)
+    offset_value = round(beats[0], 4) if beats else 0.0
+    if beats and bpm_value > 0:
+        beat_period = 60.0 / bpm_value
+        authored_beat_indices = [
+            int(o["beat"])
+            for d in diff_data.values()
+            for o in d.get("beats", [])
+            if isinstance(o, dict) and isinstance(o.get("beat"), int)
+        ]
+        if authored_beat_indices:
+            anchor_idx = min(authored_beat_indices)
+            if 0 <= anchor_idx < len(beats):
+                offset_value = round(
+                    float(beats[anchor_idx]) - anchor_idx * beat_period,
+                    4,
+                )
+
     return {
         "song_id": analysis.get("title", "unknown"),
         "title": analysis.get("title", "unknown"),
         "bpm": analysis["bpm"],
-        "offset": round(beats[0], 3) if beats else 0.0,
+        "offset": offset_value,
         "lead_beats": 4,
         "beat_times": [round(float(t), 6) for t in beats],
         "duration_sec": analysis.get("duration", 180),
@@ -3235,6 +3426,13 @@ def _enforce_difficulty_count_ramp(diff_data):
     :func:`_enforce_median_ioi_target` just achieved; removing sparse
     outliers tends to leave the dense body intact and preserves the
     median.  Onset-only is preserved — we only drop, never insert.
+
+    Issue #506 — never drop an obstacle if doing so would widen its
+    surrounding silent stretch beyond the per-difficulty silent-gap
+    cap (``MAX_SILENT_GAP_BEATS``).  The gap-fill pass and the count
+    ramp are both correctness gates; when they conflict on a song, the
+    silent-gap cap wins (the runtime contract is "no monotony invariant
+    is preserved at the cost of a 27 s void mid-song").
     """
     order = ("easy", "medium", "hard")
     available = [d for d in order if d in diff_data]
@@ -3245,27 +3443,56 @@ def _enforce_difficulty_count_ramp(diff_data):
         if len(lower) <= upper:
             continue
         sorted_by_time = sorted(lower, key=lambda o: float(o.get("time_sec", 0.0)))
-        ranked = []
-        for idx, obs in enumerate(sorted_by_time):
-            prev_dt = (
-                float(obs.get("time_sec", 0.0))
-                - float(sorted_by_time[idx - 1].get("time_sec", 0.0))
-                if idx > 0 else float("inf")
-            )
-            next_dt = (
-                float(sorted_by_time[idx + 1].get("time_sec", 0.0))
-                - float(obs.get("time_sec", 0.0))
-                if idx < len(sorted_by_time) - 1 else float("inf")
-            )
-            # Use max neighbour gap so isolated/sparse obstacles rank highest.
-            ranked.append((max(prev_dt, next_dt), idx))
-        # Drop sparsest first (largest neighbour gap).
-        ranked.sort(key=lambda pair: (-pair[0], pair[1]))
-        drop_count = len(sorted_by_time) - upper
-        drop_indices = {idx for _, idx in ranked[:drop_count]}
-        kept = [obs for idx, obs in enumerate(sorted_by_time) if idx not in drop_indices]
+        # Per-difficulty silent-gap cap (seconds).  ``bpm`` is read from
+        # any obstacle's parent context via the diff_data structure;
+        # we use the analysis BPM lifted into diff_data by the caller.
+        cap_beats = MAX_SILENT_GAP_BEATS.get(lower_name)
+        cap_sec = (
+            cap_beats * 60.0 / diff_data["__bpm__"]
+            if cap_beats and diff_data.get("__bpm__")
+            else None
+        )
+
+        # Issue #506 — iterative trim that re-evaluates gaps after every
+        # drop.  Picks the sparsest still-droppable obstacle whose
+        # removal does not push the merged neighbour gap past ``cap_sec``.
+        # Stops early when no further cap-safe drop is available, even
+        # if the ramp invariant is not fully restored.
+        kept_list = list(sorted_by_time)
+        target_drops = len(kept_list) - upper
+        dropped = 0
+        while dropped < target_drops and len(kept_list) > 1:
+            best_pos = None
+            best_score = None
+            for pos in range(len(kept_list)):
+                t_here = float(kept_list[pos].get("time_sec", 0.0))
+                t_prev = (
+                    float(kept_list[pos - 1].get("time_sec", 0.0))
+                    if pos > 0 else None
+                )
+                t_next = (
+                    float(kept_list[pos + 1].get("time_sec", 0.0))
+                    if pos < len(kept_list) - 1 else None
+                )
+                prev_dt = (t_here - t_prev) if t_prev is not None else float("inf")
+                next_dt = (t_next - t_here) if t_next is not None else float("inf")
+                merged = (
+                    (t_next - t_prev)
+                    if (t_prev is not None and t_next is not None)
+                    else 0.0
+                )
+                if cap_sec is not None and merged > cap_sec:
+                    continue
+                score = max(prev_dt, next_dt)
+                if best_score is None or score > best_score:
+                    best_score = score
+                    best_pos = pos
+            if best_pos is None:
+                break  # no cap-safe drop available
+            kept_list.pop(best_pos)
+            dropped += 1
         # Restore beat-ordinal order for downstream consumers.
-        kept.sort(key=lambda o: int(o.get("beat", 0)))
+        kept = sorted(kept_list, key=lambda o: int(o.get("beat", 0)))
         diff_data[lower_name] = {"beats": kept, "count": len(kept)}
     return diff_data
 

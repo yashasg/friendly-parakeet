@@ -1,0 +1,59 @@
+// Source-contract regression checks for #502.
+// Native tests cannot execute browser beforeunload events, so we assert the
+// shutdown ordering contract directly in source.
+
+#include <catch2/catch_test_macros.hpp>
+
+#include <filesystem>
+#include <fstream>
+#include <sstream>
+#include <string>
+
+namespace fs = std::filesystem;
+
+namespace {
+
+std::string read_file(const fs::path& p) {
+    std::ifstream f(p);
+    std::stringstream ss;
+    ss << f.rdbuf();
+    return ss.str();
+}
+
+fs::path find_repo_root() {
+    fs::path p = fs::current_path();
+    for (int i = 0; i < 8; ++i) {
+        if (fs::exists(p / "app" / "game_loop.cpp")) return p;
+        if (!p.has_parent_path() || p.parent_path() == p) break;
+        p = p.parent_path();
+    }
+    return fs::current_path();
+}
+
+} // namespace
+
+TEST_CASE("wasm lifecycle: shutdown disarms beforeunload before registry reset (#502)",
+          "[lifecycle][architecture]") {
+    const fs::path root = find_repo_root();
+    const std::string game_loop_source = read_file(root / "app" / "game_loop.cpp");
+
+    const std::size_t disarm_pos = game_loop_source.find("platform_disarm_wasm_beforeunload(reg);");
+    const std::size_t reset_pos = game_loop_source.find("reg = entt::registry{};");
+
+    REQUIRE(disarm_pos != std::string::npos);
+    REQUIRE(reset_pos != std::string::npos);
+    CHECK(disarm_pos < reset_pos);
+}
+
+TEST_CASE("wasm lifecycle: disarm path unregisters browser callback (#502)",
+          "[lifecycle][architecture]") {
+    const fs::path root = find_repo_root();
+    const std::string platform_source = read_file(root / "app" / "platform_display.cpp");
+
+    const std::size_t disarm_fn = platform_source.find("void platform_disarm_wasm_beforeunload(entt::registry& reg)");
+    const std::size_t unregister_call = platform_source.find(
+        "emscripten_set_beforeunload_callback(nullptr, nullptr);", disarm_fn);
+
+    REQUIRE(disarm_fn != std::string::npos);
+    REQUIRE(unregister_call != std::string::npos);
+}
