@@ -537,3 +537,77 @@ generator outputs after PR #408 (cf2aa91). No code/data modified.
 
 - `.squad/agents/redfoot/history.md` (pre-existing dirty per coordinator note).
 - Generator code, beatmap JSON, tests — read-only per task brief.
+
+---
+
+## 2026-05-11 — Round 3 audit on `audit/autonomous-quality-loop-3`
+
+Read-only audit of `content/beatmaps/`, `tools/validate_*`, and `tools/level_designer.py`
+output after PR #427 (Round 2 fix bundle, merged 2026-05-10). No code/data modified.
+
+### Round 2 fixes verified clean
+
+Across all 9 tier-files (stomper / drama / mental_corruption × easy / medium / hard):
+
+- `difficulty_inclusion` leakage: **0** entries above tier rank.
+- `beat` ordinal monotonicity: **0** strictly-decreasing pairs, **0** equal pairs.
+- `time_sec` monotonicity: **0** strictly-decreasing pairs.
+- `timing_source`: 100 % `"onset"` everywhere — no `"beat"` fallback.
+- `onset_class` / `segment_focus`: only broad layers `percussive | harmonic |
+  full-spectrum` (no raw instrument semantics).
+
+So #414, #416, #418 fully closed.
+
+### Filed (all `squad`+`squad:rabin`+`squad:verbal`+`go:needs-research`)
+
+- **#443** — `validate_loop2_content_gates` + `validate_gap_one_readability` are not
+  onset-aware. After PR #427 every `gap = beat[i+1]-beat[i] = 1` because `beat` is now a
+  sequential onset index, so gap-1 share/burst gates fire on what is actually correct
+  onset-only data. Min-IOI floor (700 ms) also flags the cross-layer 50 ms preservation
+  pairs (1–3 ms apart, always different `onset_class`). Ask: time-IOI gate + cross-layer
+  exemption + clear strict/report split.
+- **#447** — `validate_offset_semantics` emits 957 false-positive "drift" violations on
+  3_mental_corruption [hard] because it expects `time = offset + beat * 60/bpm`, which is
+  meaningless when `timing_source=onset` and `beat` is a sequential index. Ask: skip formula
+  check when `timing_source=onset`, validate `time_sec ≈ onset_time_sec` instead.
+- **#449** — Medium-tier shape distribution **inverted** across all 3 songs: circle
+  30.8–32.0 % (target 10–20 %), square 28.3–34.6 % (target 45–60 %), triangle / lane-0 ~36 %
+  dominant. Spec wants square / lane-1 dominant at medium pace. Different direction from #136
+  (which is about lane-0 / circle *under*-representation pre-PR-427).
+- **#452** — `validate_max_beat_gap.py` (added in PR #427) reports 6/9 tier-files violate
+  per-tier caps with gaps up to 72 beats (1_stomper all tiers; 2_drama all tiers). MC clean.
+  Ask: wire into generator self-check + CI; teach `fill_large_gaps` the per-tier limits.
+
+### Verified non-issues / duplicates of existing trackers
+
+- 1_stomper / 2_drama / 3_mental easy "≥ 3 distinct shapes" still passes (round 2 added
+  variety) — `validate_difficulty_ramp.py` PASS. #135 still relevant for the LanePush cliff
+  spec wording but variety floor is met.
+- MC hard `first_t = 0.096 s` still flagged → already #175 (open). No refile.
+- Lane-0 / circle 0 % issue from #136 is **partly** resolved — lane 0 now 34–40 % at medium,
+  21–66 across tiers; circles 17–48 across tiers. #136 not closed but the original "0 %"
+  symptom is gone. Note left in #449 cross-link.
+- `validate_difficulty_ramp.py` PASS for all 3 songs.
+- `validate_beatmap_offset.py` PASS (anchored offsets).
+- `validate_loop1_diagnostics.py` PASS (analysis histograms; not the shipped maps).
+
+### Useful one-liners (kept for next round)
+
+- Cross-layer-coincident gap=1 share (separates structural artifact from real density):
+  ```python
+  ts=[b['time_sec'] for b in beats]; gaps=[beats[i]['beat']-beats[i-1]['beat'] for i in range(1,len(beats))]
+  gap1_xlayer = sum(1 for i,g in enumerate(gaps) if g==1 and (ts[i+1]-ts[i])*1000 < 50)
+  ```
+  e.g. drama [hard] 27/128 are cross-layer (validator artifact) vs MC [hard] 0/118 (real
+  density).
+- Medium-tier shape table: `Counter(b['shape'] for b in beats)` per tier; compare to 10/55/35 %
+  spec band.
+- Onset-aware monotonicity: `beat` strictly-increasing AND `time_sec` strictly-non-decreasing
+  (cross-layer collisions allowed at same `time_sec` only with different lane / shape /
+  `onset_class`).
+
+### Did NOT touch
+
+- `.squad/agents/redfoot/history.md` and other peer histories.
+- Generator code, beatmap JSON, validator code, tests — read-only per task brief and Rabin
+  charter.
