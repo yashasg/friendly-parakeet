@@ -1,3 +1,18 @@
+# Rabin — History (SUMMARIZED)
+
+**Last Updated:** 2026-05-11  
+**Current Focus:** Level content fixes (#391, #392, #394, #396) — on audit/autonomous-quality-loop  
+**Recent:** Generator fix shipped in commit 21d0434; IOI/lane-run/subdivision targets codified.
+
+## Quick Reference
+
+- **Key Decision:** `design_level_segment_focus` must not drop/shift events; all post-passes run inside selection
+- **Constants (top of level_designer.py):** MIN_IOI_MS, MEDIAN_IOI_TARGET_SEC, MAX_SAME_LANE_RUN, SUBDIVISION_SNAP_TOLERANCE_SEC
+- **Invariants:** Canonical mapping is ONSET_CLASS_TO_OBSTACLE; dedup key is (beat_idx, subdivision, onset_class, source_event_idx)
+- **Gotchas:** `build/content/beatmaps/` is POST_BUILD copied; disable median-IOI fallback for medium; enrich fallback events with onset_class
+
+---
+
 # Rabin — History
 
 ## Core Context

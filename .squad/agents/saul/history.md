@@ -1,3 +1,18 @@
+# Saul — History (SUMMARIZED)
+
+**Last Updated:** 2026-05-10  
+**Current Focus:** Design document lifecycle and governance  
+**Status:** Proposal for archive/ convention approved; prototype.md migration in progress
+
+## Quick Reference
+
+- **Decision:** Superseded docs move to design-docs/archive/; live docs stay in design-docs/
+- **Archive Header Must Include:** ARCHIVED banner, reason (issue link), list of replacement docs
+- **Scope:** Only prototype.md moved in this pass; future archivals follow same pattern
+- **Deferred:** Archive README.md index when ≥ 3 entries
+
+---
+
 # Saul — History
 
 ## Core Context

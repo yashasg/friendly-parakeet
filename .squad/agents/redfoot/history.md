@@ -1,3 +1,17 @@
+# Redfoot — History (SUMMARIZED)
+
+**Last Updated:** 2026-05-10  
+**Current Focus:** Cross-platform audio analysis and validation  
+**Status:** Recent work on analysis robustness and onset detection
+
+## Quick Reference
+
+- **Key Area:** Audio analysis via aubio, onset spike detection, diagnostics
+- **Recent:** Validation work on onset spike artifacts and analysis pipeline
+- **Scope:** Tools and diagnostics support for rhythm pipeline
+
+---
+
 # Redfoot — History
 
 ## Core Context

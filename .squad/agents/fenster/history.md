@@ -1,3 +1,18 @@
+# Fenster — History (SUMMARIZED)
+
+**Last Updated:** 2026-05-10  
+**Current Focus:** Beatmap quality diagnostics Loop 1 (shipped)  
+**Status:** Diagnostics-only instrumentation in tools/level_designer.py via CLI flags
+
+## Quick Reference
+
+- **Loop 1 Outcome:** Shipped as read-only diagnostics; runtime/schema untouched
+- **CLI Controls:** --diagnostics-out, --diagnostics-only
+- **Key Findings:** Quarter-only snap keeps 60/216 events; eighth grid captures 170 within 20ms; triplet captures all within 80ms
+- **Next Step:** Use diagnostics as gate for Loop 2 candidate authoring; agree playtest thresholds before runtime changes
+
+---
+
 
 ## 2026-05-08: Input Dead Code Cleanup (Scribe Log)
 
