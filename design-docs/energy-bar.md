@@ -189,29 +189,28 @@ in `tick_fixed_systems()` and `all_systems.h`.
   ┌─────────────────────────────────────────────┐
   │  SCORE: 12450        ★ HI: 18200            │
   │                                              │
+  │  ┌─ ENERGY BAR                              │
+  │  │ █                                        │
+  │  │ █     (gameplay area)                    │
+  │  │ █                                        │
+  │  │ ▓                                        │
+  │  │ ░                                        │
+  │  └─░                                        │
   │                                              │
-  │         (gameplay area)                      │
-  │                                              │
-  │                                              │
-  │                                              │
-  │                                              │
-  │  ┌─────────────────────────────────────────┐ │
-  │  │▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░░░░░░░░░░░│ │  ← ENERGY BAR
-  │  └─────────────────────────────────────────┘ │
   │   [ ● ]        [ ■ ]        [ ▲ ]           │
   └─────────────────────────────────────────────┘
 
-  Energy bar color ramp (left = empty, right = full):
-  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  0%  — RED
-  ▒▒▒▒▒▒▒▒▒▒▒▒░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  25% — ORANGE (critical)
-  ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░░░░░░░░░░░░░░░░░░░  50% — YELLOW
-  ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░░░░░░░░░░  75% — YELLOW-GREEN
-  ████████████████████████████████████████████████ 100% — GREEN
+  Energy bar color ramp (bottom = empty, top = full):
+  ░  0%  — RED
+  ▒  25% — ORANGE (critical)
+  ▓  50% — YELLOW
+  ▓  75% — YELLOW-GREEN
+  █  100% — GREEN
 ```
 
-The energy bar occupies the HUD slot formerly held by the legacy
-burnout bar (top of the play area, beneath the score). The burnout
-bar has been removed; the energy bar is now the only survival meter.
+The shipped energy bar is a vertical segmented meter on the left edge
+of the play area. The burnout bar has been removed; the energy bar is
+now the only survival meter.
 
 ### Flash Effect (on drain)
 

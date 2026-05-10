@@ -53,7 +53,6 @@ void scoring_system(entt::registry& reg, float dt) {
     }
 
     auto* results = reg.ctx().find<SongResults>();   // #309: hoisted above loop
-    auto* gos     = reg.ctx().find<GameOverState>();
 
     // Hoist single scratch lookup — miss_buf and hit_buf share the same struct.
     auto& scratch = scoring_scratch_for(reg);
@@ -76,9 +75,6 @@ void scoring_system(entt::registry& reg, float dt) {
             if (results) results->miss_count++;
             score.chain_count = 0;
             score.chain_timer = 0.0f;
-            if (gos && gos->cause == DeathCause::None) {
-                gos->cause = DeathCause::MissedABeat;
-            }
             miss_buf.push_back({e, true});
         }
 
@@ -89,9 +85,6 @@ void scoring_system(entt::registry& reg, float dt) {
             if (results) results->miss_count++;
             score.chain_count = 0;
             score.chain_timer = 0.0f;
-            if (gos && gos->cause == DeathCause::None) {
-                gos->cause = DeathCause::MissedABeat;
-            }
             miss_buf.push_back({e, false});
         }
         // Apply structural removals after iteration — safe.

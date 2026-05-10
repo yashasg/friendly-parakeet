@@ -31,6 +31,7 @@ inline entt::registry make_registry() {
     entt::registry reg;
     wire_obstacle_mesh_lifetime(reg);
     reg.ctx().emplace<InputState>();
+    reg.ctx().emplace<ScreenTransform>();
     reg.ctx().emplace<entt::dispatcher>();
     wire_input_dispatcher(reg);
     wire_audio_haptic_dispatcher(reg);

@@ -340,16 +340,15 @@ The player can hear the beat coming. The timing is legible. What the player cann
   │                                                             │
   │  t_peak  =  moment the obstacle centre crosses player y     │
   │                                                             │
-  │    pct_from_peak       Grade      Multiplier  Window Scale  │
+  │    |input - t_peak|   Grade      Multiplier  Window Scale  │
   │   ─────────────────   ────────   ──────────  ────────────  │
-  │       ≤ 25%           PERFECT     × 1.50      × 1.50      │
-  │       ≤ 50%           GOOD        × 1.00      × 1.00      │
-  │       ≤ 75%           OK          × 0.50      × 0.75      │
-  │       > 75%           BAD         × 0.25      × 0.50      │
+  │       ≤ 50 ms         PERFECT     × 1.50      × 1.50       │
+  │       ≤ 100 ms        GOOD        × 1.00      × 1.00       │
+  │       ≤ 150 ms        OK          × 0.50      × 0.75       │
+  │       > 150 ms        BAD         × 0.25      × 0.50       │
   │                                                             │
-  │  Thresholds are percentage of half-window, not fixed ms.    │
-  │  They scale dynamically with BPM.                           │
-  │  Score = base_points × timing_multiplier × chain_multiplier. │
+  │  Thresholds are fixed milliseconds in shipped code.         │
+  │  Score = floor(base_points × timing_multiplier) + chain_flat_bonus. │
   │                                                             │
   └─────────────────────────────────────────────────────────────┘
 ```
@@ -358,7 +357,7 @@ The player can hear the beat coming. The timing is legible. What the player cann
 
 ```
   Each consecutive HIT (PERFECT, GOOD, or OK) grows the chain.
-  Score = base_pts × (1 + chain × CHAIN_BONUS / 100)
+  Score = floor(base_pts × timing_multiplier) + chain_flat_bonus
 
   Chain resets on any MISS.
 
@@ -495,7 +494,7 @@ them ends the run on their own — only `energy <= 0.0f` does.
 > ⚠️ **Shipped scope — only `shape_gate` ships today (issues #420, #446,
 > #328, #479).** Mirroring the caveat in `game.md` "Difficulty
 > Progression": across all 9 shipped beatmap arrays in
-> `content/beatmaps/` (**1046 obstacles total** as of Round 6 audit;
+> `content/beatmaps/` (**898 obstacles total** as of Round 10 audit;
 > see per-difficulty table in §8 "Difficulty Progression" below),
 > `tools/level_designer.py` emits 100% `shape_gate`. The `lane_push`, `low_bar`, and `high_bar` types
 > described below are **not currently produced** by the generator and
@@ -588,14 +587,14 @@ them ends the run on their own — only `energy <= 0.0f` does.
            forward design space and are not produced today.
 ```
 
-### Shipped per-difficulty obstacle counts (Round 9 audit)
+### Shipped per-difficulty obstacle counts (Round 10 audit)
 
 | Song                  | easy | medium | hard |
 |-----------------------|-----:|-------:|-----:|
-| 1_stomper             |   59 |     62 |   71 |
-| 2_drama               |  104 |    109 |  139 |
-| 3_mental_corruption   |  106 |    107 |  133 |
-| **Total (all 9 arrays)** |      |        | **890** |
+| 1_stomper             |   60 |     61 |   97 |
+| 2_drama               |   96 |     97 |  132 |
+| 3_mental_corruption   |  110 |    111 |  134 |
+| **Total (all 9 arrays)** |      |        | **898** |
 
 Even Hard never approaches "every beat" — `1_stomper` Hard averages
 roughly one obstacle every ~2.5 musical beats. Treat these counts as

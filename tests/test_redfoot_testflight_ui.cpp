@@ -3,7 +3,8 @@
 //
 // These tests now focus on runtime-live coverage only:
 //   * Schema/content checks that remain relevant to current UI flows.
-//   * Wiring checks that scoring and game_state systems set GameOverState.cause.
+//   * Wiring checks that scoring leaves non-terminal misses alone and
+//     game_state_system sets terminal GameOverState.cause.
 
 #include <catch2/catch_test_macros.hpp>
 #include <entt/entity/registry.hpp>
@@ -75,7 +76,7 @@ TEST_CASE("redfoot/#168: existing game_over buttons keep their original position
     CHECK(menu->y == 1000);
 }
 
-// ── Wiring: scoring sets DeathCause for misses and bar hits ──────────────────
+// ── Wiring: game_state_system sets terminal GameOver causes ──────────────────
 
 namespace {
 // Spawn a player aligned with an obstacle so the collision system's
@@ -104,8 +105,8 @@ entt::entity spawn_obstacle(entt::registry& reg, ObstacleKind kind, float y) {
 }
 }  // namespace
 
-TEST_CASE("redfoot/#168: collision flags MissedABeat for a missed shape gate",
-          "[ui][redfoot][game_over][wiring]") {
+TEST_CASE("redfoot/#168: collision miss is non-terminal cause context",
+           "[ui][redfoot][game_over][wiring]") {
     entt::registry reg;
     reg.ctx().emplace<GameState>().phase = GamePhase::Playing;
     reg.ctx().emplace<EnergyState>();
@@ -123,7 +124,7 @@ TEST_CASE("redfoot/#168: collision flags MissedABeat for a missed shape gate",
     scoring_system(reg, 0.016f);
 
     auto& gos = reg.ctx().get<GameOverState>();
-    CHECK(gos.cause == DeathCause::MissedABeat);
+    CHECK(gos.cause == DeathCause::None);
 }
 
 TEST_CASE("redfoot/#168: energy depletion falls back to ENERGY DEPLETED",
@@ -143,8 +144,8 @@ TEST_CASE("redfoot/#168: energy depletion falls back to ENERGY DEPLETED",
     CHECK(gos.cause == DeathCause::EnergyDepleted);
 }
 
-TEST_CASE("redfoot/#168: energy depletion does not overwrite a specific cause",
-          "[ui][redfoot][game_over][wiring]") {
+TEST_CASE("redfoot/#168: energy depletion overwrites stale non-terminal cause",
+           "[ui][redfoot][game_over][wiring]") {
     entt::registry reg;
     reg.ctx().emplace<GameState>().phase = GamePhase::Playing;
     reg.ctx().emplace<entt::dispatcher>();
@@ -157,5 +158,5 @@ TEST_CASE("redfoot/#168: energy depletion does not overwrite a specific cause",
 
     game_state_system(reg, 0.016f);
 
-    CHECK(gos.cause == DeathCause::MissedABeat);  // preserved, not clobbered
+    CHECK(gos.cause == DeathCause::EnergyDepleted);
 }

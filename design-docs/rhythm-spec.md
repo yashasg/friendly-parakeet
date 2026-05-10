@@ -41,7 +41,6 @@
   "bpm":          144.87,
   "offset":       3.142,
   "lead_beats":   4,
-  "difficulty":   "easy | medium | hard",
   "duration_sec": 97.9,
   "difficulties": {
     "easy":   { "beats": [ /* obstacle array */ ], "count": 0 },
@@ -312,7 +311,7 @@ struct SongResults {
            ↓
   ┌─ SCORING ──────────────────────────────────────────────────┐
   │ scoring_system                                 [MOD]       │
-  │   → reads TimingGrade, computes pts × chain multiplier     │
+  │   → reads TimingGrade, computes pts + flat chain bonus      │
   │   → updates SongResults counters                           │
   │   → spawns grade popup VFX                                 │
   │                                                            │

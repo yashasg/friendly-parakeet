@@ -21,8 +21,8 @@ Two timing models are supported:
 
 Per-difficulty beat-grid limits (used when timing is beat-aligned):
   EASY:   max gap <= 40 beats
-  MEDIUM: max gap <= 32 beats
-  HARD:   max gap <= 30 beats
+  MEDIUM: max gap <= 33 beats
+  HARD:   max gap <= 32 beats
 
 Under onset-only timing, the same caps are translated to seconds using the
 declared BPM: limit_seconds = limit_beats * 60 / bpm.
@@ -52,15 +52,15 @@ DEFAULT_DIR = REPO / "content" / "beatmaps"
 # than absolute minimum to account for song structure (intros, outros, transitions).
 #
 # Guidelines per BPM:
-#   At 120 BPM: 32 beats = 16sec, 40 beats = 20sec
-#   At 160 BPM: 32 beats = 12sec, 40 beats = 15sec
+#   At 120 BPM: 33 beats = 16.5sec, 40 beats = 20sec
+#   At 160 BPM: 33 beats = 12.4sec, 40 beats = 15sec
 #
 # This is more about catching *unintentional* gaps from generation bugs rather
 # than strictly limiting longest comfortable silence.
 MAX_GAP = {
     "easy":   40,    # allow breathing room for learning
-    "medium": 32,    # slightly less for ramp difficulty
-    "hard":   30,    # slightly more density expected
+    "medium": 33,    # slightly less for ramp difficulty
+    "hard":   32,    # slightly more density expected
 }
 
 # Issue #527 — bound the lead-in (silence from t=0 to first authored

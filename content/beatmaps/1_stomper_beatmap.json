@@ -716,6 +716,23 @@
           "beat_time_sec": 41.866
         },
         {
+          "beat": 113,
+          "kind": "shape_gate",
+          "lane": 1,
+          "shape": "square",
+          "onset_class": "full-spectrum",
+          "segment_idx": 5,
+          "segment_focus": "percussive",
+          "difficulty_inclusion": "easy",
+          "source_event_idx": 196,
+          "flux": 229.1716,
+          "time_sec": 41.996,
+          "timing_source": "onset",
+          "onset_time_sec": 41.996,
+          "subdivision_label": "triplet",
+          "beat_time_sec": 42.205
+        },
+        {
           "beat": 128,
           "kind": "shape_gate",
           "lane": 1,
@@ -731,6 +748,23 @@
           "onset_time_sec": 47.807,
           "subdivision_label": "downbeat",
           "beat_time_sec": 47.813
+        },
+        {
+          "beat": 129,
+          "kind": "shape_gate",
+          "lane": 0,
+          "shape": "triangle",
+          "onset_class": "percussive",
+          "segment_idx": 5,
+          "segment_focus": "percussive",
+          "difficulty_inclusion": "easy",
+          "source_event_idx": 212,
+          "flux": 118.5772,
+          "time_sec": 47.807,
+          "timing_source": "onset",
+          "onset_time_sec": 47.807,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 48.196
         },
         {
           "beat": 142,
@@ -852,6 +886,23 @@
           "beat_time_sec": 89.87
         },
         {
+          "beat": 275,
+          "kind": "shape_gate",
+          "lane": 1,
+          "shape": "square",
+          "onset_class": "full-spectrum",
+          "segment_idx": 11,
+          "segment_focus": "percussive",
+          "difficulty_inclusion": "easy",
+          "source_event_idx": 406,
+          "flux": 216.4293,
+          "time_sec": 101.997,
+          "timing_source": "onset",
+          "onset_time_sec": 101.997,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 102.374
+        },
+        {
           "beat": 276,
           "kind": "shape_gate",
           "lane": 0,
@@ -867,6 +918,23 @@
           "onset_time_sec": 102.928,
           "subdivision_label": "eighth",
           "beat_time_sec": 102.748
+        },
+        {
+          "beat": 282,
+          "kind": "shape_gate",
+          "lane": 0,
+          "shape": "triangle",
+          "onset_class": "percussive",
+          "segment_idx": 11,
+          "segment_focus": "percussive",
+          "difficulty_inclusion": "easy",
+          "source_event_idx": 412,
+          "flux": 77.2668,
+          "time_sec": 104.989,
+          "timing_source": "onset",
+          "onset_time_sec": 104.989,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 105.004
         },
         {
           "beat": 283,
@@ -920,6 +988,23 @@
           "beat_time_sec": 107.999
         },
         {
+          "beat": 301,
+          "kind": "shape_gate",
+          "lane": 2,
+          "shape": "circle",
+          "onset_class": "harmonic",
+          "segment_idx": 11,
+          "segment_focus": "percussive",
+          "difficulty_inclusion": "easy",
+          "source_event_idx": 436,
+          "flux": 196.5679,
+          "time_sec": 112.298,
+          "timing_source": "onset",
+          "onset_time_sec": 112.298,
+          "subdivision_label": "eighth",
+          "beat_time_sec": 112.126
+        },
+        {
           "beat": 302,
           "kind": "shape_gate",
           "lane": 0,
@@ -935,6 +1020,40 @@
           "onset_time_sec": 112.298,
           "subdivision_label": "eighth",
           "beat_time_sec": 112.501
+        },
+        {
+          "beat": 303,
+          "kind": "shape_gate",
+          "lane": 1,
+          "shape": "square",
+          "onset_class": "full-spectrum",
+          "segment_idx": 11,
+          "segment_focus": "percussive",
+          "difficulty_inclusion": "easy",
+          "source_event_idx": 438,
+          "flux": 182.7473,
+          "time_sec": 112.312,
+          "timing_source": "onset",
+          "onset_time_sec": 112.312,
+          "subdivision_label": "eighth",
+          "beat_time_sec": 112.875
+        },
+        {
+          "beat": 305,
+          "kind": "shape_gate",
+          "lane": 2,
+          "shape": "circle",
+          "onset_class": "harmonic",
+          "segment_idx": 11,
+          "segment_focus": "percussive",
+          "difficulty_inclusion": "easy",
+          "source_event_idx": 445,
+          "flux": 169.017,
+          "time_sec": 113.795,
+          "timing_source": "onset",
+          "onset_time_sec": 113.795,
+          "subdivision_label": "eighth",
+          "beat_time_sec": 113.624
         },
         {
           "beat": 306,
@@ -1107,21 +1226,21 @@
           "beat_time_sec": 157.127
         },
         {
-          "beat": 460,
+          "beat": 461,
           "kind": "shape_gate",
-          "lane": 1,
-          "shape": "square",
-          "onset_class": "full-spectrum",
+          "lane": 0,
+          "shape": "triangle",
+          "onset_class": "percussive",
           "segment_idx": 14,
           "segment_focus": "percussive",
           "difficulty_inclusion": "easy",
-          "source_event_idx": 588,
-          "flux": 382.8521,
-          "time_sec": 171.651,
+          "source_event_idx": 589,
+          "flux": 43.1743,
+          "time_sec": 171.654,
           "timing_source": "onset",
-          "onset_time_sec": 171.651,
+          "onset_time_sec": 171.654,
           "subdivision_label": "downbeat",
-          "beat_time_sec": 171.659
+          "beat_time_sec": 172.034
         },
         {
           "beat": 462,
@@ -1139,6 +1258,23 @@
           "onset_time_sec": 172.399,
           "subdivision_label": "downbeat",
           "beat_time_sec": 172.408
+        },
+        {
+          "beat": 463,
+          "kind": "shape_gate",
+          "lane": 0,
+          "shape": "triangle",
+          "onset_class": "percussive",
+          "segment_idx": 14,
+          "segment_focus": "percussive",
+          "difficulty_inclusion": "easy",
+          "source_event_idx": 595,
+          "flux": 89.2446,
+          "time_sec": 172.402,
+          "timing_source": "onset",
+          "onset_time_sec": 172.402,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 172.783
         },
         {
           "beat": 464,
@@ -1209,6 +1345,23 @@
           "beat_time_sec": 176.91
         },
         {
+          "beat": 475,
+          "kind": "shape_gate",
+          "lane": 0,
+          "shape": "triangle",
+          "onset_class": "percussive",
+          "segment_idx": 14,
+          "segment_focus": "percussive",
+          "difficulty_inclusion": "easy",
+          "source_event_idx": 631,
+          "flux": 462.1029,
+          "time_sec": 176.901,
+          "timing_source": "onset",
+          "onset_time_sec": 176.901,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 177.284
+        },
+        {
           "beat": 476,
           "kind": "shape_gate",
           "lane": 1,
@@ -1243,6 +1396,23 @@
           "beat_time_sec": 178.408
         },
         {
+          "beat": 479,
+          "kind": "shape_gate",
+          "lane": 0,
+          "shape": "triangle",
+          "onset_class": "percussive",
+          "segment_idx": 14,
+          "segment_focus": "percussive",
+          "difficulty_inclusion": "easy",
+          "source_event_idx": 642,
+          "flux": 204.2978,
+          "time_sec": 178.399,
+          "timing_source": "onset",
+          "onset_time_sec": 178.399,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 178.817
+        },
+        {
           "beat": 480,
           "kind": "shape_gate",
           "lane": 2,
@@ -1260,6 +1430,23 @@
           "beat_time_sec": 179.235
         },
         {
+          "beat": 482,
+          "kind": "shape_gate",
+          "lane": 2,
+          "shape": "circle",
+          "onset_class": "harmonic",
+          "segment_idx": 14,
+          "segment_focus": "percussive",
+          "difficulty_inclusion": "easy",
+          "source_event_idx": 653,
+          "flux": 402.0123,
+          "time_sec": 179.981,
+          "timing_source": "onset",
+          "onset_time_sec": 179.981,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 180.001
+        },
+        {
           "beat": 483,
           "kind": "shape_gate",
           "lane": 0,
@@ -1275,6 +1462,23 @@
           "onset_time_sec": 179.984,
           "subdivision_label": "downbeat",
           "beat_time_sec": 180.376
+        },
+        {
+          "beat": 484,
+          "kind": "shape_gate",
+          "lane": 1,
+          "shape": "square",
+          "onset_class": "full-spectrum",
+          "segment_idx": 14,
+          "segment_focus": "percussive",
+          "difficulty_inclusion": "easy",
+          "source_event_idx": 655,
+          "flux": 366.9918,
+          "time_sec": 179.995,
+          "timing_source": "onset",
+          "onset_time_sec": 179.995,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 180.75
         },
         {
           "beat": 494,
@@ -1328,6 +1532,23 @@
           "beat_time_sec": 189.745
         },
         {
+          "beat": 514,
+          "kind": "shape_gate",
+          "lane": 2,
+          "shape": "circle",
+          "onset_class": "harmonic",
+          "segment_idx": 15,
+          "segment_focus": "harmonic",
+          "difficulty_inclusion": "easy",
+          "source_event_idx": 725,
+          "flux": 186.3421,
+          "time_sec": 191.994,
+          "timing_source": "onset",
+          "onset_time_sec": 191.994,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 192.0
+        },
+        {
           "beat": 515,
           "kind": "shape_gate",
           "lane": 0,
@@ -1345,7 +1566,7 @@
           "beat_time_sec": 192.383
         }
       ],
-      "count": 47
+      "count": 60
     },
     "medium": {
       "beats": [
@@ -1440,6 +1661,24 @@
           "beat_time_sec": 6.008
         },
         {
+          "beat": 46,
+          "kind": "shape_gate",
+          "lane": 0,
+          "shape": "triangle",
+          "onset_class": "percussive",
+          "segment_idx": 2,
+          "segment_focus": "percussive",
+          "difficulty_inclusion": "medium",
+          "source_event_idx": 108,
+          "flux": 27.3787,
+          "time_sec": 17.247,
+          "source_onset_class": "percussive",
+          "timing_source": "onset",
+          "onset_time_sec": 17.247,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 17.25
+        },
+        {
           "beat": 47,
           "kind": "shape_gate",
           "lane": 0,
@@ -1530,6 +1769,60 @@
           "beat_time_sec": 36.005
         },
         {
+          "beat": 98,
+          "kind": "shape_gate",
+          "lane": 1,
+          "shape": "square",
+          "onset_class": "full-spectrum",
+          "segment_idx": 4,
+          "segment_focus": "full-spectrum",
+          "difficulty_inclusion": "medium",
+          "source_event_idx": 185,
+          "flux": 58.8493,
+          "time_sec": 37.03,
+          "source_onset_class": "full-spectrum",
+          "timing_source": "onset",
+          "onset_time_sec": 37.03,
+          "subdivision_label": "triplet",
+          "beat_time_sec": 36.789
+        },
+        {
+          "beat": 105,
+          "kind": "shape_gate",
+          "lane": 1,
+          "shape": "square",
+          "onset_class": "full-spectrum",
+          "segment_idx": 4,
+          "segment_focus": "full-spectrum",
+          "difficulty_inclusion": "easy",
+          "source_event_idx": 186,
+          "flux": 62.0421,
+          "time_sec": 39.378,
+          "source_onset_class": "full-spectrum",
+          "timing_source": "onset",
+          "onset_time_sec": 39.378,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 39.41
+        },
+        {
+          "beat": 106,
+          "kind": "shape_gate",
+          "lane": 1,
+          "shape": "square",
+          "onset_class": "full-spectrum",
+          "segment_idx": 4,
+          "segment_focus": "full-spectrum",
+          "difficulty_inclusion": "medium",
+          "source_event_idx": 187,
+          "flux": 16.7964,
+          "time_sec": 40.031,
+          "source_onset_class": "full-spectrum",
+          "timing_source": "onset",
+          "onset_time_sec": 40.031,
+          "subdivision_label": "triplet",
+          "beat_time_sec": 39.784
+        },
+        {
           "beat": 112,
           "kind": "shape_gate",
           "lane": 0,
@@ -1566,6 +1859,24 @@
           "beat_time_sec": 47.813
         },
         {
+          "beat": 142,
+          "kind": "shape_gate",
+          "lane": 0,
+          "shape": "triangle",
+          "onset_class": "percussive",
+          "segment_idx": 5,
+          "segment_focus": "percussive",
+          "difficulty_inclusion": "medium",
+          "source_event_idx": 224,
+          "flux": 23.8218,
+          "time_sec": 53.246,
+          "source_onset_class": "percussive",
+          "timing_source": "onset",
+          "onset_time_sec": 53.246,
+          "subdivision_label": "triplet",
+          "beat_time_sec": 52.994
+        },
+        {
           "beat": 144,
           "kind": "shape_gate",
           "lane": 2,
@@ -1582,24 +1893,6 @@
           "onset_time_sec": 53.806,
           "subdivision_label": "triplet",
           "beat_time_sec": 53.673
-        },
-        {
-          "beat": 176,
-          "kind": "shape_gate",
-          "lane": 0,
-          "shape": "triangle",
-          "onset_class": "percussive",
-          "segment_idx": 7,
-          "segment_focus": "full-spectrum",
-          "difficulty_inclusion": "medium",
-          "source_event_idx": 294,
-          "flux": 179.9702,
-          "time_sec": 65.62,
-          "source_onset_class": "percussive",
-          "timing_source": "onset",
-          "onset_time_sec": 65.62,
-          "subdivision_label": "downbeat",
-          "beat_time_sec": 65.628
         },
         {
           "beat": 177,
@@ -1654,6 +1947,42 @@
           "onset_time_sec": 68.246,
           "subdivision_label": "downbeat",
           "beat_time_sec": 68.249
+        },
+        {
+          "beat": 184,
+          "kind": "shape_gate",
+          "lane": 1,
+          "shape": "square",
+          "onset_class": "full-spectrum",
+          "segment_idx": 7,
+          "segment_focus": "full-spectrum",
+          "difficulty_inclusion": "easy",
+          "source_event_idx": 308,
+          "flux": 73.1928,
+          "time_sec": 68.624,
+          "source_onset_class": "full-spectrum",
+          "timing_source": "onset",
+          "onset_time_sec": 68.624,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 68.624
+        },
+        {
+          "beat": 207,
+          "kind": "shape_gate",
+          "lane": 0,
+          "shape": "triangle",
+          "onset_class": "percussive",
+          "segment_idx": 8,
+          "segment_focus": "percussive",
+          "difficulty_inclusion": "medium",
+          "source_event_idx": 340,
+          "flux": 19.4042,
+          "time_sec": 77.247,
+          "source_onset_class": "percussive",
+          "timing_source": "onset",
+          "onset_time_sec": 77.247,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 77.244
         },
         {
           "beat": 208,
@@ -1818,6 +2147,42 @@
           "beat_time_sec": 102.748
         },
         {
+          "beat": 282,
+          "kind": "shape_gate",
+          "lane": 0,
+          "shape": "triangle",
+          "onset_class": "percussive",
+          "segment_idx": 11,
+          "segment_focus": "percussive",
+          "difficulty_inclusion": "medium",
+          "source_event_idx": 412,
+          "flux": 77.2668,
+          "time_sec": 104.989,
+          "source_onset_class": "percussive",
+          "timing_source": "onset",
+          "onset_time_sec": 104.989,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 105.004
+        },
+        {
+          "beat": 285,
+          "kind": "shape_gate",
+          "lane": 0,
+          "shape": "triangle",
+          "onset_class": "percussive",
+          "segment_idx": 11,
+          "segment_focus": "percussive",
+          "difficulty_inclusion": "medium",
+          "source_event_idx": 414,
+          "flux": 73.1577,
+          "time_sec": 106.115,
+          "source_onset_class": "percussive",
+          "timing_source": "onset",
+          "onset_time_sec": 106.115,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 106.127
+        },
+        {
           "beat": 291,
           "kind": "shape_gate",
           "lane": 1,
@@ -1944,6 +2309,24 @@
           "beat_time_sec": 143.264
         },
         {
+          "beat": 386,
+          "kind": "shape_gate",
+          "lane": 2,
+          "shape": "circle",
+          "onset_class": "harmonic",
+          "segment_idx": 12,
+          "segment_focus": "harmonic",
+          "difficulty_inclusion": "easy",
+          "source_event_idx": 519,
+          "flux": 497.427,
+          "time_sec": 143.981,
+          "source_onset_class": "harmonic",
+          "timing_source": "onset",
+          "onset_time_sec": 143.981,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 144.004
+        },
+        {
           "beat": 387,
           "kind": "shape_gate",
           "lane": 1,
@@ -1998,6 +2381,24 @@
           "beat_time_sec": 156.003
         },
         {
+          "beat": 419,
+          "kind": "shape_gate",
+          "lane": 1,
+          "shape": "square",
+          "onset_class": "full-spectrum",
+          "segment_idx": 13,
+          "segment_focus": "full-spectrum",
+          "difficulty_inclusion": "easy",
+          "source_event_idx": 550,
+          "flux": 276.3275,
+          "time_sec": 155.995,
+          "source_onset_class": "full-spectrum",
+          "timing_source": "onset",
+          "onset_time_sec": 155.995,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 156.378
+        },
+        {
           "beat": 421,
           "kind": "shape_gate",
           "lane": 1,
@@ -2050,6 +2451,24 @@
           "onset_time_sec": 160.499,
           "subdivision_label": "downbeat",
           "beat_time_sec": 160.505
+        },
+        {
+          "beat": 434,
+          "kind": "shape_gate",
+          "lane": 1,
+          "shape": "square",
+          "onset_class": "full-spectrum",
+          "segment_idx": 13,
+          "segment_focus": "full-spectrum",
+          "difficulty_inclusion": "medium",
+          "source_event_idx": 555,
+          "flux": 127.4396,
+          "time_sec": 162.0,
+          "source_onset_class": "full-spectrum",
+          "timing_source": "onset",
+          "onset_time_sec": 162.0,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 162.003
         },
         {
           "beat": 456,
@@ -2160,6 +2579,24 @@
           "beat_time_sec": 176.91
         },
         {
+          "beat": 482,
+          "kind": "shape_gate",
+          "lane": 2,
+          "shape": "circle",
+          "onset_class": "harmonic",
+          "segment_idx": 14,
+          "segment_focus": "percussive",
+          "difficulty_inclusion": "medium",
+          "source_event_idx": 653,
+          "flux": 402.0123,
+          "time_sec": 179.981,
+          "source_onset_class": "harmonic",
+          "timing_source": "onset",
+          "onset_time_sec": 179.981,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 180.001
+        },
+        {
           "beat": 483,
           "kind": "shape_gate",
           "lane": 0,
@@ -2176,6 +2613,24 @@
           "onset_time_sec": 179.984,
           "subdivision_label": "downbeat",
           "beat_time_sec": 180.376
+        },
+        {
+          "beat": 484,
+          "kind": "shape_gate",
+          "lane": 1,
+          "shape": "square",
+          "onset_class": "full-spectrum",
+          "segment_idx": 14,
+          "segment_focus": "percussive",
+          "difficulty_inclusion": "medium",
+          "source_event_idx": 655,
+          "flux": 366.9918,
+          "time_sec": 179.995,
+          "source_onset_class": "full-spectrum",
+          "timing_source": "onset",
+          "onset_time_sec": 179.995,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 180.75
         },
         {
           "beat": 508,
@@ -2214,7 +2669,7 @@
           "beat_time_sec": 192.0
         }
       ],
-      "count": 48
+      "count": 61
     },
     "hard": {
       "beats": [
@@ -2423,6 +2878,23 @@
           "beat_time_sec": 29.623
         },
         {
+          "beat": 80,
+          "kind": "shape_gate",
+          "lane": 2,
+          "shape": "circle",
+          "onset_class": "harmonic",
+          "segment_idx": 3,
+          "segment_focus": "harmonic",
+          "difficulty_inclusion": "easy",
+          "source_event_idx": 171,
+          "flux": 334.6906,
+          "time_sec": 29.983,
+          "timing_source": "onset",
+          "onset_time_sec": 29.983,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 30.006
+        },
+        {
           "beat": 81,
           "kind": "shape_gate",
           "lane": 0,
@@ -2440,6 +2912,40 @@
           "beat_time_sec": 30.38
         },
         {
+          "beat": 82,
+          "kind": "shape_gate",
+          "lane": 1,
+          "shape": "square",
+          "onset_class": "full-spectrum",
+          "segment_idx": 3,
+          "segment_focus": "harmonic",
+          "difficulty_inclusion": "hard",
+          "source_event_idx": 173,
+          "flux": 419.1089,
+          "time_sec": 29.994,
+          "timing_source": "onset",
+          "onset_time_sec": 29.994,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 30.755
+        },
+        {
+          "beat": 96,
+          "kind": "shape_gate",
+          "lane": 2,
+          "shape": "circle",
+          "onset_class": "harmonic",
+          "segment_idx": 4,
+          "segment_focus": "full-spectrum",
+          "difficulty_inclusion": "hard",
+          "source_event_idx": 182,
+          "flux": 229.5518,
+          "time_sec": 35.985,
+          "timing_source": "onset",
+          "onset_time_sec": 35.985,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 36.005
+        },
+        {
           "beat": 97,
           "kind": "shape_gate",
           "lane": 0,
@@ -2455,6 +2961,23 @@
           "onset_time_sec": 35.985,
           "subdivision_label": "downbeat",
           "beat_time_sec": 36.389
+        },
+        {
+          "beat": 98,
+          "kind": "shape_gate",
+          "lane": 1,
+          "shape": "square",
+          "onset_class": "full-spectrum",
+          "segment_idx": 4,
+          "segment_focus": "full-spectrum",
+          "difficulty_inclusion": "easy",
+          "source_event_idx": 184,
+          "flux": 328.162,
+          "time_sec": 35.997,
+          "timing_source": "onset",
+          "onset_time_sec": 35.997,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 36.789
         },
         {
           "beat": 99,
@@ -2525,6 +3048,23 @@
           "beat_time_sec": 41.866
         },
         {
+          "beat": 113,
+          "kind": "shape_gate",
+          "lane": 1,
+          "shape": "square",
+          "onset_class": "full-spectrum",
+          "segment_idx": 5,
+          "segment_focus": "percussive",
+          "difficulty_inclusion": "hard",
+          "source_event_idx": 196,
+          "flux": 229.1716,
+          "time_sec": 41.996,
+          "timing_source": "onset",
+          "onset_time_sec": 41.996,
+          "subdivision_label": "triplet",
+          "beat_time_sec": 42.205
+        },
+        {
           "beat": 128,
           "kind": "shape_gate",
           "lane": 1,
@@ -2540,6 +3080,23 @@
           "onset_time_sec": 47.807,
           "subdivision_label": "downbeat",
           "beat_time_sec": 47.813
+        },
+        {
+          "beat": 129,
+          "kind": "shape_gate",
+          "lane": 0,
+          "shape": "triangle",
+          "onset_class": "percussive",
+          "segment_idx": 5,
+          "segment_focus": "percussive",
+          "difficulty_inclusion": "easy",
+          "source_event_idx": 212,
+          "flux": 118.5772,
+          "time_sec": 47.807,
+          "timing_source": "onset",
+          "onset_time_sec": 47.807,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 48.196
         },
         {
           "beat": 142,
@@ -2882,6 +3439,23 @@
           "beat_time_sec": 102.008
         },
         {
+          "beat": 275,
+          "kind": "shape_gate",
+          "lane": 1,
+          "shape": "square",
+          "onset_class": "full-spectrum",
+          "segment_idx": 11,
+          "segment_focus": "percussive",
+          "difficulty_inclusion": "hard",
+          "source_event_idx": 406,
+          "flux": 216.4293,
+          "time_sec": 101.997,
+          "timing_source": "onset",
+          "onset_time_sec": 101.997,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 102.374
+        },
+        {
           "beat": 276,
           "kind": "shape_gate",
           "lane": 0,
@@ -2914,6 +3488,23 @@
           "onset_time_sec": 104.623,
           "subdivision_label": "downbeat",
           "beat_time_sec": 104.62
+        },
+        {
+          "beat": 282,
+          "kind": "shape_gate",
+          "lane": 0,
+          "shape": "triangle",
+          "onset_class": "percussive",
+          "segment_idx": 11,
+          "segment_focus": "percussive",
+          "difficulty_inclusion": "medium",
+          "source_event_idx": 412,
+          "flux": 77.2668,
+          "time_sec": 104.989,
+          "timing_source": "onset",
+          "onset_time_sec": 104.989,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 105.004
         },
         {
           "beat": 283,
@@ -2984,21 +3575,21 @@
           "beat_time_sec": 112.126
         },
         {
-          "beat": 306,
+          "beat": 307,
           "kind": "shape_gate",
-          "lane": 0,
-          "shape": "triangle",
-          "onset_class": "percussive",
+          "lane": 1,
+          "shape": "square",
+          "onset_class": "full-spectrum",
           "segment_idx": 11,
           "segment_focus": "percussive",
           "difficulty_inclusion": "hard",
-          "source_event_idx": 449,
+          "source_event_idx": 450,
           "flux": 230.0419,
-          "time_sec": 113.995,
+          "time_sec": 113.998,
           "timing_source": "onset",
-          "onset_time_sec": 113.995,
+          "onset_time_sec": 113.998,
           "subdivision_label": "downbeat",
-          "beat_time_sec": 113.998
+          "beat_time_sec": 114.373
         },
         {
           "beat": 308,
@@ -3188,6 +3779,23 @@
           "beat_time_sec": 143.264
         },
         {
+          "beat": 386,
+          "kind": "shape_gate",
+          "lane": 2,
+          "shape": "circle",
+          "onset_class": "harmonic",
+          "segment_idx": 12,
+          "segment_focus": "harmonic",
+          "difficulty_inclusion": "easy",
+          "source_event_idx": 519,
+          "flux": 497.427,
+          "time_sec": 143.981,
+          "timing_source": "onset",
+          "onset_time_sec": 143.981,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 144.004
+        },
+        {
           "beat": 387,
           "kind": "shape_gate",
           "lane": 1,
@@ -3237,6 +3845,23 @@
           "onset_time_sec": 155.983,
           "subdivision_label": "downbeat",
           "beat_time_sec": 156.003
+        },
+        {
+          "beat": 419,
+          "kind": "shape_gate",
+          "lane": 1,
+          "shape": "square",
+          "onset_class": "full-spectrum",
+          "segment_idx": 13,
+          "segment_focus": "full-spectrum",
+          "difficulty_inclusion": "easy",
+          "source_event_idx": 550,
+          "flux": 276.3275,
+          "time_sec": 155.995,
+          "timing_source": "onset",
+          "onset_time_sec": 155.995,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 156.378
         },
         {
           "beat": 421,
@@ -3358,21 +3983,21 @@
           "beat_time_sec": 170.902
         },
         {
-          "beat": 460,
+          "beat": 459,
           "kind": "shape_gate",
-          "lane": 1,
-          "shape": "square",
-          "onset_class": "full-spectrum",
+          "lane": 0,
+          "shape": "triangle",
+          "onset_class": "percussive",
           "segment_idx": 14,
           "segment_focus": "percussive",
-          "difficulty_inclusion": "hard",
-          "source_event_idx": 586,
-          "flux": 296.2195,
-          "time_sec": 171.276,
+          "difficulty_inclusion": "easy",
+          "source_event_idx": 584,
+          "flux": 492.1424,
+          "time_sec": 170.899,
           "timing_source": "onset",
-          "onset_time_sec": 171.276,
+          "onset_time_sec": 170.899,
           "subdivision_label": "downbeat",
-          "beat_time_sec": 171.659
+          "beat_time_sec": 171.285
         },
         {
           "beat": 461,
@@ -3443,23 +4068,6 @@
           "beat_time_sec": 174.655
         },
         {
-          "beat": 471,
-          "kind": "shape_gate",
-          "lane": 1,
-          "shape": "square",
-          "onset_class": "full-spectrum",
-          "segment_idx": 14,
-          "segment_focus": "percussive",
-          "difficulty_inclusion": "hard",
-          "source_event_idx": 613,
-          "flux": 251.1289,
-          "time_sec": 175.029,
-          "timing_source": "onset",
-          "onset_time_sec": 175.029,
-          "subdivision_label": "downbeat",
-          "beat_time_sec": 175.787
-        },
-        {
           "beat": 472,
           "kind": "shape_gate",
           "lane": 1,
@@ -3511,6 +4119,23 @@
           "beat_time_sec": 177.284
         },
         {
+          "beat": 476,
+          "kind": "shape_gate",
+          "lane": 0,
+          "shape": "triangle",
+          "onset_class": "percussive",
+          "segment_idx": 14,
+          "segment_focus": "percussive",
+          "difficulty_inclusion": "hard",
+          "source_event_idx": 631,
+          "flux": 462.1029,
+          "time_sec": 176.901,
+          "timing_source": "onset",
+          "onset_time_sec": 176.901,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 177.659
+        },
+        {
           "beat": 477,
           "kind": "shape_gate",
           "lane": 1,
@@ -3528,6 +4153,23 @@
           "beat_time_sec": 178.033
         },
         {
+          "beat": 482,
+          "kind": "shape_gate",
+          "lane": 2,
+          "shape": "circle",
+          "onset_class": "harmonic",
+          "segment_idx": 14,
+          "segment_focus": "percussive",
+          "difficulty_inclusion": "hard",
+          "source_event_idx": 653,
+          "flux": 402.0123,
+          "time_sec": 179.981,
+          "timing_source": "onset",
+          "onset_time_sec": 179.981,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 180.001
+        },
+        {
           "beat": 483,
           "kind": "shape_gate",
           "lane": 0,
@@ -3543,6 +4185,23 @@
           "onset_time_sec": 179.984,
           "subdivision_label": "downbeat",
           "beat_time_sec": 180.376
+        },
+        {
+          "beat": 484,
+          "kind": "shape_gate",
+          "lane": 1,
+          "shape": "square",
+          "onset_class": "full-spectrum",
+          "segment_idx": 14,
+          "segment_focus": "percussive",
+          "difficulty_inclusion": "hard",
+          "source_event_idx": 655,
+          "flux": 366.9918,
+          "time_sec": 179.995,
+          "timing_source": "onset",
+          "onset_time_sec": 179.995,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 180.75
         },
         {
           "beat": 493,
@@ -3630,6 +4289,23 @@
           "beat_time_sec": 190.119
         },
         {
+          "beat": 514,
+          "kind": "shape_gate",
+          "lane": 2,
+          "shape": "circle",
+          "onset_class": "harmonic",
+          "segment_idx": 15,
+          "segment_focus": "harmonic",
+          "difficulty_inclusion": "easy",
+          "source_event_idx": 725,
+          "flux": 186.3421,
+          "time_sec": 191.994,
+          "timing_source": "onset",
+          "onset_time_sec": 191.994,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 192.0
+        },
+        {
           "beat": 515,
           "kind": "shape_gate",
           "lane": 0,
@@ -3647,7 +4323,7 @@
           "beat_time_sec": 192.383
         }
       ],
-      "count": 84
+      "count": 97
     }
   },
   "structure": [
@@ -3749,674 +4425,8 @@
     }
   ],
   "playability_collapsed_pairs": {
-    "easy": [
-      {
-        "t_kept": 41.985,
-        "t_dropped": 41.996,
-        "delta_ms": 11.0,
-        "kept_onset_class": "percussive",
-        "dropped_onset_class": "full-spectrum",
-        "kept_lane_shape": [
-          0,
-          "triangle"
-        ],
-        "dropped_lane_shape": [
-          1,
-          "square"
-        ],
-        "kept_flux": 715.9252,
-        "dropped_flux": 229.1716
-      },
-      {
-        "t_kept": 47.807,
-        "t_dropped": 47.807,
-        "delta_ms": 0.0,
-        "kept_onset_class": "full-spectrum",
-        "dropped_onset_class": "percussive",
-        "kept_lane_shape": [
-          1,
-          "square"
-        ],
-        "dropped_lane_shape": [
-          0,
-          "triangle"
-        ],
-        "kept_flux": 296.4388,
-        "dropped_flux": 118.5772
-      },
-      {
-        "t_kept": 101.985,
-        "t_dropped": 101.997,
-        "delta_ms": 12.0,
-        "kept_onset_class": "percussive",
-        "dropped_onset_class": "full-spectrum",
-        "kept_lane_shape": [
-          0,
-          "triangle"
-        ],
-        "dropped_lane_shape": [
-          1,
-          "square"
-        ],
-        "kept_flux": 695.6837,
-        "dropped_flux": 216.4293
-      },
-      {
-        "t_kept": 104.998,
-        "t_dropped": 104.989,
-        "delta_ms": 9.0,
-        "kept_onset_class": "full-spectrum",
-        "dropped_onset_class": "percussive",
-        "kept_lane_shape": [
-          1,
-          "square"
-        ],
-        "dropped_lane_shape": [
-          0,
-          "triangle"
-        ],
-        "kept_flux": 286.8965,
-        "dropped_flux": 77.2668
-      },
-      {
-        "t_kept": 112.298,
-        "t_dropped": 112.298,
-        "delta_ms": 0.0,
-        "kept_onset_class": "percussive",
-        "dropped_onset_class": "harmonic",
-        "kept_lane_shape": [
-          0,
-          "triangle"
-        ],
-        "dropped_lane_shape": [
-          2,
-          "circle"
-        ],
-        "kept_flux": 220.1334,
-        "dropped_flux": 196.5679
-      },
-      {
-        "t_kept": 112.298,
-        "t_dropped": 112.312,
-        "delta_ms": 14.0,
-        "kept_onset_class": "percussive",
-        "dropped_onset_class": "full-spectrum",
-        "kept_lane_shape": [
-          0,
-          "triangle"
-        ],
-        "dropped_lane_shape": [
-          1,
-          "square"
-        ],
-        "kept_flux": 220.1334,
-        "dropped_flux": 182.7473
-      },
-      {
-        "t_kept": 113.807,
-        "t_dropped": 113.795,
-        "delta_ms": 12.0,
-        "kept_onset_class": "percussive",
-        "dropped_onset_class": "harmonic",
-        "kept_lane_shape": [
-          0,
-          "triangle"
-        ],
-        "dropped_lane_shape": [
-          2,
-          "circle"
-        ],
-        "kept_flux": 214.4762,
-        "dropped_flux": 169.017
-      },
-      {
-        "t_kept": 170.899,
-        "t_dropped": 170.899,
-        "delta_ms": 0.0,
-        "kept_onset_class": "full-spectrum",
-        "dropped_onset_class": "percussive",
-        "kept_lane_shape": [
-          1,
-          "square"
-        ],
-        "dropped_lane_shape": [
-          0,
-          "triangle"
-        ],
-        "kept_flux": 492.1424,
-        "dropped_flux": 492.1424
-      },
-      {
-        "t_kept": 171.651,
-        "t_dropped": 171.654,
-        "delta_ms": 3.0,
-        "kept_onset_class": "full-spectrum",
-        "dropped_onset_class": "percussive",
-        "kept_lane_shape": [
-          1,
-          "square"
-        ],
-        "dropped_lane_shape": [
-          0,
-          "triangle"
-        ],
-        "kept_flux": 382.8521,
-        "dropped_flux": 43.1743
-      },
-      {
-        "t_kept": 172.399,
-        "t_dropped": 172.402,
-        "delta_ms": 3.0,
-        "kept_onset_class": "full-spectrum",
-        "dropped_onset_class": "percussive",
-        "kept_lane_shape": [
-          1,
-          "square"
-        ],
-        "dropped_lane_shape": [
-          0,
-          "triangle"
-        ],
-        "kept_flux": 269.6561,
-        "dropped_flux": 89.2446
-      },
-      {
-        "t_kept": 176.901,
-        "t_dropped": 176.901,
-        "delta_ms": 0.0,
-        "kept_onset_class": "full-spectrum",
-        "dropped_onset_class": "percussive",
-        "kept_lane_shape": [
-          1,
-          "square"
-        ],
-        "dropped_lane_shape": [
-          0,
-          "triangle"
-        ],
-        "kept_flux": 462.1029,
-        "dropped_flux": 462.1029
-      },
-      {
-        "t_kept": 178.399,
-        "t_dropped": 178.399,
-        "delta_ms": 0.0,
-        "kept_onset_class": "full-spectrum",
-        "dropped_onset_class": "percussive",
-        "kept_lane_shape": [
-          1,
-          "square"
-        ],
-        "dropped_lane_shape": [
-          0,
-          "triangle"
-        ],
-        "kept_flux": 204.2978,
-        "dropped_flux": 204.2978
-      },
-      {
-        "t_kept": 179.984,
-        "t_dropped": 179.981,
-        "delta_ms": 3.0,
-        "kept_onset_class": "percussive",
-        "dropped_onset_class": "harmonic",
-        "kept_lane_shape": [
-          0,
-          "triangle"
-        ],
-        "dropped_lane_shape": [
-          2,
-          "circle"
-        ],
-        "kept_flux": 1116.4299,
-        "dropped_flux": 402.0123
-      },
-      {
-        "t_kept": 179.984,
-        "t_dropped": 179.995,
-        "delta_ms": 11.0,
-        "kept_onset_class": "percussive",
-        "dropped_onset_class": "full-spectrum",
-        "kept_lane_shape": [
-          0,
-          "triangle"
-        ],
-        "dropped_lane_shape": [
-          1,
-          "square"
-        ],
-        "kept_flux": 1116.4299,
-        "dropped_flux": 366.9918
-      },
-      {
-        "t_kept": 191.994,
-        "t_dropped": 191.994,
-        "delta_ms": 0.0,
-        "kept_onset_class": "percussive",
-        "dropped_onset_class": "harmonic",
-        "kept_lane_shape": [
-          0,
-          "triangle"
-        ],
-        "dropped_lane_shape": [
-          2,
-          "circle"
-        ],
-        "kept_flux": 570.1899,
-        "dropped_flux": 186.3421
-      }
-    ],
-    "medium": [
-      {
-        "t_kept": 107.996,
-        "t_dropped": 107.987,
-        "delta_ms": 9.0,
-        "kept_onset_class": "full-spectrum",
-        "dropped_onset_class": "percussive",
-        "kept_lane_shape": [
-          1,
-          "square"
-        ],
-        "dropped_lane_shape": [
-          0,
-          "triangle"
-        ],
-        "kept_flux": 374.5303,
-        "dropped_flux": 136.0682
-      },
-      {
-        "t_kept": 143.996,
-        "t_dropped": 143.981,
-        "delta_ms": 15.0,
-        "kept_onset_class": "full-spectrum",
-        "dropped_onset_class": "harmonic",
-        "kept_lane_shape": [
-          1,
-          "square"
-        ],
-        "dropped_lane_shape": [
-          2,
-          "circle"
-        ],
-        "kept_flux": 552.4373,
-        "dropped_flux": 497.427
-      },
-      {
-        "t_kept": 155.983,
-        "t_dropped": 155.995,
-        "delta_ms": 12.0,
-        "kept_onset_class": "percussive",
-        "dropped_onset_class": "full-spectrum",
-        "kept_lane_shape": [
-          0,
-          "triangle"
-        ],
-        "dropped_lane_shape": [
-          1,
-          "square"
-        ],
-        "kept_flux": 979.7908,
-        "dropped_flux": 276.3275
-      },
-      {
-        "t_kept": 179.984,
-        "t_dropped": 179.981,
-        "delta_ms": 3.0,
-        "kept_onset_class": "percussive",
-        "dropped_onset_class": "harmonic",
-        "kept_lane_shape": [
-          0,
-          "triangle"
-        ],
-        "dropped_lane_shape": [
-          2,
-          "circle"
-        ],
-        "kept_flux": 1116.4299,
-        "dropped_flux": 402.0123
-      },
-      {
-        "t_kept": 179.984,
-        "t_dropped": 179.995,
-        "delta_ms": 11.0,
-        "kept_onset_class": "percussive",
-        "dropped_onset_class": "full-spectrum",
-        "kept_lane_shape": [
-          0,
-          "triangle"
-        ],
-        "dropped_lane_shape": [
-          1,
-          "square"
-        ],
-        "kept_flux": 1116.4299,
-        "dropped_flux": 366.9918
-      }
-    ],
-    "hard": [
-      {
-        "t_kept": 29.983,
-        "t_dropped": 29.983,
-        "delta_ms": 0.0,
-        "kept_onset_class": "percussive",
-        "dropped_onset_class": "harmonic",
-        "kept_lane_shape": [
-          0,
-          "triangle"
-        ],
-        "dropped_lane_shape": [
-          2,
-          "circle"
-        ],
-        "kept_flux": 1225.7717,
-        "dropped_flux": 334.6906
-      },
-      {
-        "t_kept": 29.983,
-        "t_dropped": 29.994,
-        "delta_ms": 11.0,
-        "kept_onset_class": "percussive",
-        "dropped_onset_class": "full-spectrum",
-        "kept_lane_shape": [
-          0,
-          "triangle"
-        ],
-        "dropped_lane_shape": [
-          1,
-          "square"
-        ],
-        "kept_flux": 1225.7717,
-        "dropped_flux": 419.1089
-      },
-      {
-        "t_kept": 35.985,
-        "t_dropped": 35.985,
-        "delta_ms": 0.0,
-        "kept_onset_class": "percussive",
-        "dropped_onset_class": "harmonic",
-        "kept_lane_shape": [
-          0,
-          "triangle"
-        ],
-        "dropped_lane_shape": [
-          2,
-          "circle"
-        ],
-        "kept_flux": 894.6726,
-        "dropped_flux": 229.5518
-      },
-      {
-        "t_kept": 35.985,
-        "t_dropped": 35.997,
-        "delta_ms": 12.0,
-        "kept_onset_class": "percussive",
-        "dropped_onset_class": "full-spectrum",
-        "kept_lane_shape": [
-          0,
-          "triangle"
-        ],
-        "dropped_lane_shape": [
-          1,
-          "square"
-        ],
-        "kept_flux": 894.6726,
-        "dropped_flux": 328.162
-      },
-      {
-        "t_kept": 41.985,
-        "t_dropped": 41.996,
-        "delta_ms": 11.0,
-        "kept_onset_class": "percussive",
-        "dropped_onset_class": "full-spectrum",
-        "kept_lane_shape": [
-          0,
-          "triangle"
-        ],
-        "dropped_lane_shape": [
-          1,
-          "square"
-        ],
-        "kept_flux": 715.9252,
-        "dropped_flux": 229.1716
-      },
-      {
-        "t_kept": 47.807,
-        "t_dropped": 47.807,
-        "delta_ms": 0.0,
-        "kept_onset_class": "full-spectrum",
-        "dropped_onset_class": "percussive",
-        "kept_lane_shape": [
-          1,
-          "square"
-        ],
-        "dropped_lane_shape": [
-          0,
-          "triangle"
-        ],
-        "kept_flux": 296.4388,
-        "dropped_flux": 118.5772
-      },
-      {
-        "t_kept": 101.985,
-        "t_dropped": 101.997,
-        "delta_ms": 12.0,
-        "kept_onset_class": "percussive",
-        "dropped_onset_class": "full-spectrum",
-        "kept_lane_shape": [
-          0,
-          "triangle"
-        ],
-        "dropped_lane_shape": [
-          1,
-          "square"
-        ],
-        "kept_flux": 695.6837,
-        "dropped_flux": 216.4293
-      },
-      {
-        "t_kept": 104.998,
-        "t_dropped": 104.989,
-        "delta_ms": 9.0,
-        "kept_onset_class": "full-spectrum",
-        "dropped_onset_class": "percussive",
-        "kept_lane_shape": [
-          1,
-          "square"
-        ],
-        "dropped_lane_shape": [
-          0,
-          "triangle"
-        ],
-        "kept_flux": 286.8965,
-        "dropped_flux": 77.2668
-      },
-      {
-        "t_kept": 113.995,
-        "t_dropped": 113.998,
-        "delta_ms": 3.0,
-        "kept_onset_class": "percussive",
-        "dropped_onset_class": "full-spectrum",
-        "kept_lane_shape": [
-          0,
-          "triangle"
-        ],
-        "dropped_lane_shape": [
-          1,
-          "square"
-        ],
-        "kept_flux": 230.0419,
-        "dropped_flux": 230.0419
-      },
-      {
-        "t_kept": 143.996,
-        "t_dropped": 143.981,
-        "delta_ms": 15.0,
-        "kept_onset_class": "full-spectrum",
-        "dropped_onset_class": "harmonic",
-        "kept_lane_shape": [
-          1,
-          "square"
-        ],
-        "dropped_lane_shape": [
-          2,
-          "circle"
-        ],
-        "kept_flux": 552.4373,
-        "dropped_flux": 497.427
-      },
-      {
-        "t_kept": 155.983,
-        "t_dropped": 155.995,
-        "delta_ms": 12.0,
-        "kept_onset_class": "percussive",
-        "dropped_onset_class": "full-spectrum",
-        "kept_lane_shape": [
-          0,
-          "triangle"
-        ],
-        "dropped_lane_shape": [
-          1,
-          "square"
-        ],
-        "kept_flux": 979.7908,
-        "dropped_flux": 276.3275
-      },
-      {
-        "t_kept": 170.899,
-        "t_dropped": 170.899,
-        "delta_ms": 0.0,
-        "kept_onset_class": "full-spectrum",
-        "dropped_onset_class": "percussive",
-        "kept_lane_shape": [
-          1,
-          "square"
-        ],
-        "dropped_lane_shape": [
-          0,
-          "triangle"
-        ],
-        "kept_flux": 492.1424,
-        "dropped_flux": 492.1424
-      },
-      {
-        "t_kept": 171.651,
-        "t_dropped": 171.654,
-        "delta_ms": 3.0,
-        "kept_onset_class": "full-spectrum",
-        "dropped_onset_class": "percussive",
-        "kept_lane_shape": [
-          1,
-          "square"
-        ],
-        "dropped_lane_shape": [
-          0,
-          "triangle"
-        ],
-        "kept_flux": 382.8521,
-        "dropped_flux": 43.1743
-      },
-      {
-        "t_kept": 172.399,
-        "t_dropped": 172.402,
-        "delta_ms": 3.0,
-        "kept_onset_class": "full-spectrum",
-        "dropped_onset_class": "percussive",
-        "kept_lane_shape": [
-          1,
-          "square"
-        ],
-        "dropped_lane_shape": [
-          0,
-          "triangle"
-        ],
-        "kept_flux": 269.6561,
-        "dropped_flux": 89.2446
-      },
-      {
-        "t_kept": 173.9,
-        "t_dropped": 173.903,
-        "delta_ms": 3.0,
-        "kept_onset_class": "full-spectrum",
-        "dropped_onset_class": "percussive",
-        "kept_lane_shape": [
-          1,
-          "square"
-        ],
-        "dropped_lane_shape": [
-          0,
-          "triangle"
-        ],
-        "kept_flux": 321.3767,
-        "dropped_flux": 126.2691
-      },
-      {
-        "t_kept": 176.901,
-        "t_dropped": 176.901,
-        "delta_ms": 0.0,
-        "kept_onset_class": "full-spectrum",
-        "dropped_onset_class": "percussive",
-        "kept_lane_shape": [
-          1,
-          "square"
-        ],
-        "dropped_lane_shape": [
-          0,
-          "triangle"
-        ],
-        "kept_flux": 462.1029,
-        "dropped_flux": 462.1029
-      },
-      {
-        "t_kept": 179.984,
-        "t_dropped": 179.981,
-        "delta_ms": 3.0,
-        "kept_onset_class": "percussive",
-        "dropped_onset_class": "harmonic",
-        "kept_lane_shape": [
-          0,
-          "triangle"
-        ],
-        "dropped_lane_shape": [
-          2,
-          "circle"
-        ],
-        "kept_flux": 1116.4299,
-        "dropped_flux": 402.0123
-      },
-      {
-        "t_kept": 179.984,
-        "t_dropped": 179.995,
-        "delta_ms": 11.0,
-        "kept_onset_class": "percussive",
-        "dropped_onset_class": "full-spectrum",
-        "kept_lane_shape": [
-          0,
-          "triangle"
-        ],
-        "dropped_lane_shape": [
-          1,
-          "square"
-        ],
-        "kept_flux": 1116.4299,
-        "dropped_flux": 366.9918
-      },
-      {
-        "t_kept": 191.994,
-        "t_dropped": 191.994,
-        "delta_ms": 0.0,
-        "kept_onset_class": "percussive",
-        "dropped_onset_class": "harmonic",
-        "kept_lane_shape": [
-          0,
-          "triangle"
-        ],
-        "dropped_lane_shape": [
-          2,
-          "circle"
-        ],
-        "kept_flux": 570.1899,
-        "dropped_flux": 186.3421
-      }
-    ]
+    "easy": [],
+    "medium": [],
+    "hard": []
   }
 }

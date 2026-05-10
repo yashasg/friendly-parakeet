@@ -659,19 +659,8 @@ class TestDirective20260510(unittest.TestCase):
         self.assertIn("harmonic", classes)
         self.assertGreaterEqual(len(beat_2_events), 2)
 
-    def test_segment_focus_obstacles_collapse_cross_layer_unplayable_pair(self):
-        """Issue #528 — obstacle-level playability collapse.
-
-        Two cross-layer onsets at t=1.000 (percussive → lane 0/triangle)
-        and t=1.040 (harmonic → lane 2/circle) are 40 ms apart.  The
-        morph + lane-cross window (``PLAYABILITY_MORPH_WINDOW_SEC``)
-        cannot accommodate both, so the lower-flux harmonic event must
-        be collapsed at the obstacle layer.  Note the SELECTION layer
-        still preserves both onsets (see
-        ``test_segment_focus_preserves_cross_layer_same_beat_when_selected``)
-        — the policy split between selection and obstacle layers is the
-        crux of the #528 fix.
-        """
+    def test_segment_focus_obstacles_preserve_protected_cross_layer_pair(self):
+        """Protected broad-layer onsets within 50 ms survive emission."""
         analysis = _cross_layer_fixture()
         with mock.patch.object(ld, "MIN_FIRST_COLLISION_SEC", {"easy": 0.0, "medium": 0.0, "hard": 0.0}), \
              mock.patch.object(ld, "_choose_segment_focus", return_value=("ghost", "forced_for_test")):
@@ -681,14 +670,15 @@ class TestDirective20260510(unittest.TestCase):
             obs for obs in obstacles
             if obs.get("source_event_idx") in {0, 1}
         ]
-        # Exactly one survivor — the higher-flux percussive event (flux 0.8).
-        self.assertEqual(len(pair_a_obs), 1, f"expected 1 surviving obstacle, got {pair_a_obs}")
-        self.assertEqual(pair_a_obs[0].get("onset_class"), "percussive")
-        # The collapse must be recorded in diagnostics for reviewer audit.
+        self.assertEqual(len(pair_a_obs), 2, f"expected both protected obstacles, got {pair_a_obs}")
+        self.assertEqual({obs.get("onset_class") for obs in pair_a_obs}, {"percussive", "harmonic"})
         collapsed = seg_diag.get("playability_collapsed_pairs", [])
-        self.assertEqual(len(collapsed), 1)
-        self.assertEqual(collapsed[0].get("kept_onset_class"), "percussive")
-        self.assertEqual(collapsed[0].get("dropped_onset_class"), "harmonic")
+        protected_collapse = [
+            pair for pair in collapsed
+            if pair.get("kept_onset_class") != pair.get("dropped_onset_class")
+            and float(pair.get("delta_ms", 999.0)) <= ld.PROTECTED_CROSS_LAYER_WINDOW_MS
+        ]
+        self.assertEqual(protected_collapse, [])
 
     def test_write_snap_diagnostics_clears_stale_onset_csv_when_non_experimental(self):
         repo_root = Path(__file__).resolve().parent.parent

@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""Validate that no two ``shape_gate`` obstacles in the same difficulty are
-authored within ``MORPH_DURATION`` (120 ms) of each other unless they share
+"""Validate that no unprotected ``shape_gate`` obstacles in the same difficulty
+are authored within ``MORPH_DURATION`` (120 ms) of each other unless they share
 ``(lane, shape)`` (issue #528).
 
 Two ``shape_gate`` obstacles at near-zero ``Δt`` with different
 ``(lane, shape)`` are physically unsatisfiable: the player can occupy only
 one lane and morphing between shapes takes 120 ms (see
-``design-docs/rhythm-spec.md`` ``MORPH_DURATION``).  The Round 6 cross-layer
-50 ms protection (issue #507) preserves cross-layer onsets *as analysis
-events*, but obstacles still need a hard playability minimum at the
-``(lane, shape)`` level.
+``design-docs/rhythm-spec.md`` ``MORPH_DURATION``).  Distinct broad-layer
+onsets within the protected 50 ms window are preserved as authored obstacles;
+outside that protected window, obstacles still need a hard playability minimum
+at the ``(lane, shape)`` level.
 
 The check is "selection-side de-conflict only" — no beat fallback, no
 synthetic filler.  Existing distinct cross-layer onsets that survive the
@@ -38,6 +38,21 @@ DEFAULT_DIR = REPO_ROOT / "content" / "beatmaps"
 # rhythm-spec.md MORPH_DURATION = 120 ms.  Pairs at exactly the same instant
 # are also caught (Δt = 0 ≤ 0.120).
 MORPH_DURATION_SEC = 0.120
+PROTECTED_CROSS_LAYER_SEC = 0.050
+PUBLIC_ONSET_CLASSES = {"percussive", "harmonic", "full-spectrum"}
+
+
+def is_protected_cross_layer_pair(a: dict, b: dict, dt: float) -> bool:
+    a_class = a.get("onset_class")
+    b_class = b.get("onset_class")
+    return (
+        isinstance(a_class, str)
+        and isinstance(b_class, str)
+        and a_class in PUBLIC_ONSET_CLASSES
+        and b_class in PUBLIC_ONSET_CLASSES
+        and a_class != b_class
+        and dt <= PROTECTED_CROSS_LAYER_SEC
+    )
 
 
 def find_simultaneous_shape_gate_pairs(
@@ -67,7 +82,7 @@ def find_simultaneous_shape_gate_pairs(
             dt = b_t - a_t
             if dt > threshold_sec:
                 break
-            if (b.get("lane"), b.get("shape")) != a_key:
+            if (b.get("lane"), b.get("shape")) != a_key and not is_protected_cross_layer_pair(a, b, dt):
                 pairs.append((a, b, dt))
     return pairs
 

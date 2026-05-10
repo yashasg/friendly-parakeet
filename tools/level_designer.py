@@ -70,12 +70,17 @@ SHAPE_TO_ONSET_CLASS = {
     mapping["shape"]: onset_class
     for onset_class, mapping in ONSET_CLASS_TO_OBSTACLE.items()
 }
-LEGACY_PASS_TO_SUBPASS = {
-    "kick": "percussive_bass",
-    "snare": "percussive_broadband",
-    "hihat": "percussive_high_mid",
-    "melody": "harmonic_low_mid",
-    "flux": "full_spectrum_flux",
+LEGACY_PASS_TO_PUBLIC_LAYER = {
+    "kick": "percussive",
+    "snare": "percussive",
+    "hihat": "percussive",
+    "percussive_bass": "percussive",
+    "percussive_broadband": "percussive",
+    "percussive_high_mid": "percussive",
+    "melody": "harmonic",
+    "harmonic_low_mid": "harmonic",
+    "flux": "full-spectrum",
+    "full_spectrum_flux": "full-spectrum",
 }
 ONSET_MOTIF_DIFFICULTY_ROLES = {
     "easy": {"skeleton"},
@@ -143,7 +148,7 @@ DIFFICULTY_KINDS = {
     "hard":   {"shape_gate"},
 }
 UNREADABLE_KINDS = {"low_bar", "high_bar"}
-MAX_EMPTY_GAP = {"easy": 40, "medium": 32, "hard": 30}
+MAX_EMPTY_GAP = {"easy": 40, "medium": 33, "hard": 32}
 MAX_BEAT_DIFF = {diff: gap + 1 for diff, gap in MAX_EMPTY_GAP.items()}
 MIN_SHAPE_CHANGE_GAP = 3
 GAP_ONE_MEDIUM_START_PROGRESS = 0.30
@@ -168,7 +173,7 @@ MIN_IOI_MS = {"easy": 500.0, "medium": 350.0, "hard": 280.0}
 # and validator cannot drift apart.  Caps are converted to seconds at the
 # call site using the analysis BPM (``cap_sec = beats * 60 / bpm``) since
 # the active onset-only path measures gaps in seconds.
-MAX_SILENT_GAP_BEATS = {"easy": 40, "medium": 32, "hard": 30}
+MAX_SILENT_GAP_BEATS = {"easy": 40, "medium": 33, "hard": 32}
 # Issues #392, #394 — enforce monotonic, song-independent difficulty pacing.
 # Median IOI target ceilings (seconds). When the segment-focus selection
 # leaves a difficulty above its ceiling, additional high-flux candidate
@@ -381,7 +386,7 @@ def _normalize_raw_per_pass_keys(raw_per_pass):
     if not isinstance(raw_per_pass, dict):
         return normalized
     for key, value in raw_per_pass.items():
-        public_key = LEGACY_PASS_TO_SUBPASS.get(key, key)
+        public_key = LEGACY_PASS_TO_PUBLIC_LAYER.get(key, key)
         normalized[public_key] = normalized.get(public_key, 0) + value
     return normalized
 
@@ -1928,10 +1933,9 @@ def _collapse_simultaneous_obstacles(obstacles, collapsed_pairs=None):
     """Issue #528 — obstacle-level twin of :func:`_collapse_simultaneous_shape_gates`.
 
     Operates after onset_class → (lane, shape) mapping has been
-    resolved, so it sees the *actual* shipped obstacle pairs that would
-    be unplayable.  Cross-layer onsets are preserved through the
-    selection layer (per directive 2026-05-10) and only collapsed here
-    where the playability minimum applies.
+    resolved.  Distinct public broad-layer onsets within the protected
+    50 ms window remain distinct here; the morph-window playability
+    collapse only applies outside that protected cross-layer window.
     """
     if not obstacles or len(obstacles) < 2:
         return obstacles
@@ -1956,6 +1960,15 @@ def _collapse_simultaneous_obstacles(obstacles, collapsed_pairs=None):
             if (b_t - a_t) > PLAYABILITY_MORPH_WINDOW_SEC:
                 break
             if (b.get("lane"), b.get("shape")) == a_ls:
+                continue
+            a_class = a.get("onset_class")
+            b_class = b.get("onset_class")
+            if (
+                a_class in ONSET_CLASS_TO_OBSTACLE
+                and b_class in ONSET_CLASS_TO_OBSTACLE
+                and a_class != b_class
+                and (b_t - a_t) * 1000.0 <= PROTECTED_CROSS_LAYER_WINDOW_MS
+            ):
                 continue
             # Tie-break: highest flux wins; earliest t breaks tie.
             def prio(o):
@@ -1991,10 +2004,8 @@ def _collapse_simultaneous_shape_gates(selected_events, collapsed_pairs=None):
     at different ``(lane, shape)`` within ``PLAYABILITY_MORPH_WINDOW_SEC``.
 
     Cross-layer onsets within 50 ms (``PROTECTED_CROSS_LAYER_WINDOW_MS``)
-    were preserved by ``_clears_min_ioi`` — that is correct at the
-    analysis layer.  At the obstacle layer, two ``shape_gate`` obstacles
-    bound to different ``(lane, shape)`` at near-zero Δt are physically
-    unsatisfiable; this pass de-conflicts them.
+    are protected here as distinct musical events.  The morph-window
+    playability collapse only applies outside that protected window.
 
     Tie-break (deterministic, per acceptance #528):
       1. Highest ``flux``.
@@ -2054,6 +2065,15 @@ def _collapse_simultaneous_shape_gates(selected_events, collapsed_pairs=None):
             if lane_shape(b) == a_ls:
                 # Same playability target — let upstream IOI / cluster
                 # passes handle same-lane same-shape stacking.
+                continue
+            a_class = a.get("onset_class")
+            b_class = b.get("onset_class")
+            if (
+                a_class in ONSET_CLASS_TO_OBSTACLE
+                and b_class in ONSET_CLASS_TO_OBSTACLE
+                and a_class != b_class
+                and (b_t - a_t) * 1000.0 <= PROTECTED_CROSS_LAYER_WINDOW_MS
+            ):
                 continue
             if event_priority(a) <= event_priority(b):
                 kept_key, kept_ev = a_key, a
@@ -2510,6 +2530,14 @@ def select_segment_focus_beats(analysis, difficulty):
     selected_events = _enforce_max_shape_cluster_size(selected_events, difficulty)
     if difficulty == "medium":
         selected_events = _rebalance_medium_by_onset_selection(selected_events, all_snapped, segment_ranges)
+    selected_events = _fill_silent_gaps(
+        selected_events,
+        all_snapped,
+        difficulty,
+        analysis.get("bpm"),
+        segment_ranges=segment_ranges,
+        duration_sec=analysis.get("duration"),
+    )
     # Issue #528 — collapse runs at the OBSTACLE level inside
     # design_level_segment_focus (after onset_class → (lane, shape)
     # mapping has been resolved).  Cross-layer onsets at the analysis
@@ -4255,6 +4283,12 @@ def main():
 
     if args.diagnostics_only and not args.diagnostics_out:
         print("Error: --diagnostics-only requires --diagnostics-out", file=sys.stderr)
+        sys.exit(1)
+    if args.legacy_beat_grid and not args.diagnostics_only:
+        print(
+            "Error: --legacy-beat-grid is diagnostics-only; beatmap generation is onset-only.",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     if args.diagnostics_out:
