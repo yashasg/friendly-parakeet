@@ -1,6 +1,5 @@
 #include "input_routing.h"
 #include "../components/game_state.h"
-#include "../systems/game_phase_transition.h"
 #include "../components/input.h"
 #include "../components/input_events.h"
 #include "../components/audio_events.h"
@@ -38,7 +37,9 @@ bool game_state_handle_end_screen_press(entt::registry& reg, const ButtonPressEv
 void game_state_handle_go(entt::registry& reg, const GoEvent& /*evt*/) {
     auto& gs = reg.ctx().get<GameState>();
     if (gs.phase != GamePhase::Paused) return;
-    enter_phase(gs, GamePhase::Playing);
+    // Deferred per #482 — let game_state_system perform the resume swap.
+    gs.transition_pending = true;
+    gs.next_phase = GamePhase::Playing;
 }
 
 void game_state_handle_press(entt::registry& reg, const ButtonPressEvent& evt) {
@@ -65,7 +66,9 @@ void game_state_handle_press(entt::registry& reg, const ButtonPressEvent& evt) {
     }
 
     if (gs.phase == GamePhase::Paused) {
-        enter_phase(gs, GamePhase::Playing);
+        // Deferred per #482 — see game_state_handle_go above.
+        gs.transition_pending = true;
+        gs.next_phase = GamePhase::Playing;
         return;
     }
 }

@@ -2,7 +2,6 @@
 
 #include "../../components/game_state.h"
 #include "../../components/input.h"
-#include "../../systems/game_phase_transition.h"
 #include "screen_controller_base.h"
 #include <entt/entt.hpp>
 
@@ -28,7 +27,10 @@ void render_paused_screen_ui(entt::registry& reg) {
     auto& gs = reg.ctx().get<GameState>();
 
     if (controller.state().ResumeButtonPressed) {
-        enter_phase(gs, GamePhase::Playing);
+        // Deferred per #482 — the canonical state-machine swap (game_state_system)
+        // routes Paused→Playing as a resume that preserves session state.
+        gs.transition_pending = true;
+        gs.next_phase = GamePhase::Playing;
     }
 
     if (controller.state().MenuButtonPressed) {
