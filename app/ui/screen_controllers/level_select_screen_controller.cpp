@@ -40,10 +40,12 @@ Color UNSELECTED_BG = {20, 20, 30, 255};
 Color SELECTED_BORDER = {100, 150, 255, 255};
 Color UNSELECTED_BORDER = {60, 60, 80, 255};
 
+// Difficulty-button active-state emphasis (#469). The selected difficulty
+// is painted *after* GuiButton with a thick border + inset selection bar
+// because raygui's BUTTON style otherwise overdraws any background drawn
+// before GuiButton(). Two non-color cues satisfy A11Y/2.1.3.
 Color DIFF_ACTIVE_BG = {80, 120, 200, 255};
-Color DIFF_INACTIVE_BG = {40, 40, 60, 255};
 Color DIFF_ACTIVE_BORDER = {120, 180, 255, 255};
-Color DIFF_INACTIVE_BORDER = {60, 80, 100, 255};
 
 Rectangle level_card_rect(int index) {
     return {CARD_X, CARD_START_Y + static_cast<float>(index) * (CARD_H + CARD_GAP), CARD_W, CARD_H};
@@ -127,15 +129,28 @@ void render_level_select_screen_ui(entt::registry& reg) {
             GuiSetStyle(DEFAULT, TEXT_SIZE, 20);
             for (int dd = 0; dd < content_config::DIFFICULTY_COUNT; ++dd) {
                 const Rectangle diff_rect = difficulty_button_rect(dd, lss.selected_level);
-                bool active = (dd == lss.selected_difficulty);
-                Color bbg = active ? DIFF_ACTIVE_BG : DIFF_INACTIVE_BG;
-                Color bborder = active ? DIFF_ACTIVE_BORDER : DIFF_INACTIVE_BORDER;
-
-                DrawRectangleRounded(diff_rect, 0.1f, 4, bbg);
-                DrawRectangleRoundedLinesEx(diff_rect, 0.1f, 4, 1.5f, bborder);
+                const bool active = (dd == lss.selected_difficulty);
 
                 if (GuiButton(diff_rect, content_config::DIFFICULTY_NAMES[dd])) {
                     lss.selected_difficulty = dd;
+                }
+
+                // Active-state emphasis painted *after* GuiButton so it is
+                // not overdrawn by raygui's BUTTON style (#469). Two
+                // non-color cues per A11Y/2.1.3: thick highlight outline
+                // and an inset bottom selection bar.
+                if (active) {
+                    DrawRectangleRoundedLinesEx(diff_rect, 0.1f, 4, 3.0f, DIFF_ACTIVE_BORDER);
+                    constexpr float bar_inset_x = 6.0f;
+                    constexpr float bar_height   = 3.0f;
+                    constexpr float bar_offset_y = 6.0f;
+                    const Rectangle sel_bar = {
+                        diff_rect.x + bar_inset_x,
+                        diff_rect.y + diff_rect.height - bar_offset_y,
+                        diff_rect.width - bar_inset_x * 2.0f,
+                        bar_height
+                    };
+                    DrawRectangleRec(sel_bar, DIFF_ACTIVE_BG);
                 }
             }
         }
