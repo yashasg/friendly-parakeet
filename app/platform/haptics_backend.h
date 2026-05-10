@@ -2,6 +2,8 @@
 
 #include "../components/haptics.h"
 
+#include <entt/entt.hpp>
+
 namespace platform::haptics {
 
 enum class ImpactStyle : unsigned char {
@@ -16,8 +18,8 @@ struct TriggerPattern {
 };
 
 TriggerPattern pattern_for_event(HapticEvent event) noexcept;
-void warmup() noexcept;
-void trigger(HapticEvent event) noexcept;
-void shutdown() noexcept;
+void warmup(entt::registry& reg) noexcept;
+void trigger(entt::registry& reg, HapticEvent event) noexcept;
+void shutdown(entt::registry& reg) noexcept;
 
 }  // namespace platform::haptics

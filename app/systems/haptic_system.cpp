@@ -8,7 +8,7 @@
 void haptic_handle_play(entt::registry& reg, const PlayHapticEvent& evt) {
     auto* settings = reg.ctx().find<SettingsState>();
     if (settings && !settings->haptics_enabled) return;
-    platform::haptics::trigger(evt.evt);
+    platform::haptics::trigger(reg, evt.evt);
 }
 
 void haptic_system(entt::registry& reg) {

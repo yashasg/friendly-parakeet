@@ -200,7 +200,7 @@ void game_loop_init(entt::registry& reg,
         }
         log_persistence_result("settings load", settings_persistence.last_load);
         if (settings.haptics_enabled) {
-            platform::haptics::warmup();
+            platform::haptics::warmup(reg);
         }
         reset_ctx_singleton<SettingsState>(reg, settings);
         reset_ctx_singleton<SettingsPersistence>(reg, settings_persistence);
@@ -351,7 +351,7 @@ void game_loop_shutdown(entt::registry& reg) {
         unload_text_fonts(*text_ctx);
     }
     sfx_bank_unload(reg);
-    platform::haptics::shutdown();
+    platform::haptics::shutdown(reg);
     CloseAudioDevice();
     CloseWindow();
 
