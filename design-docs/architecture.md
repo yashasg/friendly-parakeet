@@ -102,8 +102,6 @@ namespace constants {
     // ── Scoring ───────────────────────────────────────
     constexpr int   PTS_SHAPE_GATE    = 200;
     constexpr int   PTS_LANE_BLOCK    = 100;
-    constexpr int   PTS_LOW_BAR       = 100;
-    constexpr int   PTS_HIGH_BAR      = 100;
     constexpr int   PTS_COMBO_GATE    = 200;
     constexpr int   PTS_SPLIT_PATH    = 300;
     constexpr int   PTS_PER_SECOND    = 10;       // distance bonus
@@ -209,15 +207,14 @@ struct VerticalState {
 /// Empty tag — marks all obstacle entities. 0 bytes.
 struct ObstacleTag {};
 
-/// What action this obstacle demands and its base score. 4 bytes.
+/// What action this obstacle demands and its base score.
 /// Read by collision_system, burnout_system.
+/// LowBar/HighBar were removed from the runtime obstacle enum and remain archival only.
 enum class ObstacleKind : uint8_t {
-    ShapeGate     = 0,   // must match shape
-    LaneBlock     = 1,   // legacy value kept for backward compat;
-    LowBar        = 2,   // must jump
-    HighBar       = 3,   // must slide
-    ComboGate     = 4,   // shape + lane
-    SplitPath     = 5,   // shape + specific lane
+    ShapeGate,   // must match shape
+    LaneBlock,   // legacy value kept for backward compat
+    ComboGate,   // shape + lane
+    SplitPath,   // shape + specific lane
 };
 
 struct Obstacle {
@@ -246,10 +243,8 @@ struct RequiredLane {
     int8_t lane;    // 0, 1, or 2
 };
 
-/// For LowBar / HighBar: required vertical action. 1 byte.
-struct RequiredVAction {
-    VMode action;   // Jumping or Sliding
-};
+/// No vertical-bar action component exists in the current runtime.
+/// LowBar/HighBar authoring references are archival/future design notes only.
 ```
 
 ### 2.5 — HOT: Fixed-lifetime FX timers
@@ -494,7 +489,6 @@ Obstacle             4     WARM       collision, burnout, scoring
 RequiredShape        1     WARM       collision, burnout
 BlockedLanes         1     WARM       collision
 RequiredLane         1     WARM       collision
-RequiredVAction      1     WARM       collision
 Color                4     COLD       render
 DrawSize             8     COLD       render
 DrawLayer            1     COLD       render
@@ -847,22 +841,9 @@ obstacle's direction on beat arrival. No player action required.
 - Awards 0 points (it's not a challenge).
 ```
 
-### 5.4 Vertical Bar Entity (Low Bar / High Bar)
+### 5.4 Archived Vertical Bar Entity (Low Bar / High Bar)
 
-```
-┌─ Vertical Bar ────────────────────────────────────────────┐
-│ ObstacleTag        (tag, 0 bytes)                         │
-│ Position           { x: 360.0, y: -120.0 }               │
-│ Velocity           { dx: 0.0, dy: 400.0 }                │
-│ Obstacle           { kind: LowBar, base_pts: 100,         │
-│                      scored: false }                       │
-│ RequiredVAction    { action: Jumping }                     │
-│ Color              { r: 255, g: 180, b: 0, a: 255 }      │
-│ DrawSize           { w: 720, h: 40 }                       │
-│ DrawLayer          { layer: Game }                          │
-└───────────────────────────────────────────────────────────┘
-Total: ~41 bytes per entity
-```
+LowBar/HighBar entity archetypes are historical only. The current runtime enum, components, and beatmap editor do not expose them as authorable obstacle kinds; use archived design docs if this future design space is reconsidered.
 
 ### 5.5 Combo Gate Entity (Shape + Lane)
 
@@ -1272,12 +1253,11 @@ int main(int argc, char* argv[]) {
     │                                                                                       │
     │   // Is this obstacle a threat? (does player need to act?)                            │
     │   bool threat = false;                                                                │
-    │   if (obs.kind == ShapeGate && has<RequiredShape>(entity))                             │
+    │   if (obs.kind == ShapeGate && has<RequiredShape>(entity))                            │
     │       threat = (player_shape.current != get<RequiredShape>(entity).shape);             │
-    │       threat = false;   // passive — never a threat, auto-pushes player on arrival     │
-    │   else if (obs.kind == LowBar)                                                        │
-    │       threat = (player_vstate.mode != Jumping);                                       │
-    │   // ... etc for each ObstacleKind ...                                                │
+    │   else if (obs.kind == ComboGate || obs.kind == SplitPath)                            │
+    │       threat = !matches_required_shape_and_lane(entity, player_shape, player_lane);    │
+    │   // LaneBlock is passive; archived LowBar/HighBar are not runtime kinds.              │
     │                                                                                       │
     │   if (threat && dist < nearest_dist) {                                                │
     │       nearest_dist = dist;                                                            │
@@ -1361,7 +1341,6 @@ This entire game state fits in L1 cache (~32-64 KB).
   │
   │  ○ RequiredShape   (collision + burnout, per-obstacle, R)
   │  ○ BlockedLanes    (collision, per-obstacle, R)
-  │  ○ RequiredVAction (collision, per-obstacle, R)
   │  ○ Color           (render only, R)
   │  ○ DrawSize        (render only, R)
   │
@@ -1466,7 +1445,7 @@ void collision_system(entt::registry& reg, float dt) {
 
         // Narrow phase: per-obstacle-kind match test
         bool cleared = check_obstacle_cleared(reg, entity, obs,
-                                               p_shape, p_lane, p_vstate);
+                                               p_shape, p_lane);
         if (cleared) {
             obs.scored = true;
             // scoring_system will pick this up next
@@ -1484,19 +1463,13 @@ void collision_system(entt::registry& reg, float dt) {
 bool check_obstacle_cleared(entt::registry& reg, entt::entity e,
                              const Obstacle& obs,
                              const PlayerShape& shape,
-                             const Lane& lane,
-                             const VerticalState& vs) {
+                             const Lane& lane) {
     switch (obs.kind) {
         case ObstacleKind::ShapeGate:
             return shape.current == reg.get<RequiredShape>(e).shape;
 
-            return true;   // passive — always "cleared", push applied automatically
-
-        case ObstacleKind::LowBar:
-            return vs.mode == VMode::Jumping;
-
-        case ObstacleKind::HighBar:
-            return vs.mode == VMode::Sliding;
+        case ObstacleKind::LaneBlock:
+            return true;   // passive — push is applied automatically
 
         case ObstacleKind::ComboGate: {
             bool shape_ok = shape.current == reg.get<RequiredShape>(e).shape;

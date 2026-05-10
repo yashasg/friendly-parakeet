@@ -72,18 +72,15 @@
 
 **Obstacle object variants:**
 
+> ⚠️ **Shipped implementation — only `shape_gate` is generated and used today.**
+> Archived/future `low_bar` and `high_bar` names are not runtime-supported authoring values.
+
 ```json
-// shape_gate — most common (~85% of obstacles)
+// shape_gate — currently the only emitted type in shipped beatmaps
 { "beat": 12, "kind": "shape_gate", "shape": "circle", "lane": 0 }
-
-// low_bar — jump over
-{ "beat": 350, "kind": "low_bar" }
-
-// high_bar — slide under
-{ "beat": 366, "kind": "high_bar" }
-
-
 ```
+
+Archived/future design-space names such as `low_bar` and `high_bar` must not be emitted by current tools.
 
 **Key field: `beat` is an INDEX, not a timestamp.** The game resolves `beat` → time via: `offset + beat × (60.0 / bpm)`.
 
@@ -172,17 +169,19 @@ and playback state. Emplaced in `reg.ctx()` alongside SongState.
 
 The current obstacle components already match the beatmap schema:
 
+> ⚠️ **Shipped scope note:** Only `ShapeGate` is currently produced by `tools/level_designer.py`
+> and emitted in shipped beatmaps. LowBar/HighBar were removed from the runtime obstacle enum.
+
 ```
-  ObstacleKind::ShapeGate      → "shape_gate"       ✓  already exists
+  ObstacleKind::ShapeGate      → "shape_gate"       ✓  currently used in shipped content
   ObstacleKind::LaneBlock      → "lane_block"       ✓  legacy/backward-compatible support
-  ObstacleKind::LowBar         → "low_bar"          ✓  already exists
-  ObstacleKind::HighBar        → "high_bar"         ✓  already exists
+  ObstacleKind::ComboGate      → "combo_gate"       ✓  runtime-supported, not generated today
+  ObstacleKind::SplitPath      → "split_path"       ✓  runtime-supported, not generated today
 
-  RequiredShape { shape }    → beatmap "shape" field    ✓
-  RequiredVAction { action } → low_bar/high_bar         ✓
+  RequiredShape { shape }      → beatmap "shape" field  ✓
 ```
 
-**No new per-entity components required.** The beat_scheduler creates the same entity archetypes that obstacle_spawn_system already creates.
+**No new per-entity components required for shape_gate.** The beat_scheduler creates the same entity archetypes that obstacle_spawn_system already creates.
 
 ---
 ---

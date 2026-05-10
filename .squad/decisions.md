@@ -3397,3 +3397,125 @@ The comment `(Position component was deleted in r16 — see decisions.md Round 1
 **Status:** Validation passed (1840/1840 assertions, zero warnings)  
 **Branch:** cleanup/code-audit  
 **Commit:** 91de77f
+
+---
+
+## Round 18: Issue #125 LowBar/HighBar Docs Cleanup — Finalization
+
+**Date:** 2026-05-10T16:03:00.125-07:00
+
+### Saul's Initial Decision (2026-05-10)
+
+**Status:** Implementation complete, docs updated.
+
+**Context:** Runtime (`app/components/obstacle.h`) no longer includes `LowBar` and `HighBar` obstacle types in its enum. Shipped beatmaps use only `shape_gate` (924/924 obstacles as of Round 10 audit). Yet design docs still invited authors to create these types.
+
+**Decision:** Mark all LowBar/HighBar **authoring guidance** in design docs as **stale / future design space**. Retain design-space cataloging and code examples for future reference, but remove all user-facing invitations to create these types.
+
+### Specific Actions (Saul — Initial)
+
+1. **feature-specs.md:** Replaced `+ HighBar` with `[future types]` in difficulty bracket table
+2. **architecture.md:** Added banner to ObstacleKind enum, marked RequiredVAction as [STALE], replaced entity archetype example, added future-obstacle comments
+3. **beatmap-integration.md:** Wrapped JSON examples in comments, updated component mapping
+4. **rhythm-design.md:** Updated §1 example, replaced obstacle type section with [STALE] header, removed from MISS conditions
+5. **beatmap-editor.md:** Removed LowBar/HighBar from context menus and palette
+
+---
+
+### Edie's Editorial Decision (2026-05-10T15:45:30.046-07:00)
+
+**Owner:** Edie  
+**Decision:** Active editor/runtime authoring guidance must list only runtime-supported obstacle kinds: `shape_gate`, `lane_block`, `combo_gate`, and `split_path` where applicable. `low_bar` and `high_bar` are archival/future design-space names only and must not appear in palettes, active constants, beatmap examples, or executable-looking pseudocode.
+
+**Reason:** Runtime `app/components/obstacle.h` no longer supports LowBar/HighBar, so docs that present them as authorable values create invalid beatmaps and reviewer churn.
+
+---
+
+### Kujan's First Review Verdict (2026-05-10T15:45:30.046-07:00)
+
+**Verdict:** REJECT
+
+**Blocking Findings:**
+1. Active authoring guidance still invites removed kinds: `design-docs/beatmap-editor.md` constants still list `low_bar` and `high_bar` in `OBSTACLE_KINDS` and `EDITOR_OBSTACLE_KINDS`.
+2. Architecture examples malformed: `design-docs/architecture.md` obstacle archetype/pseudocode around stale annotations no longer readable.
+3. Diff hygiene failure: `git diff --check` reported trailing whitespace in `architecture.md`, `beatmap-integration.md`, and `rhythm-design.md`.
+
+**Required Revision Owner:** Edie for docs/product cleanup (Saul locked out as previous author).
+
+---
+
+### Kujan's Second Review Verdict — After Edie's Revision (2026-05-10T15:45:30.046-07:00)
+
+**Verdict:** REJECT
+
+**Blocking Issue:** After removing LowBar/HighBar from `design-docs/beatmap-editor.md` §3.4 Obstacle Palette, `SplitPath` now displays twice on consecutive palette lines, resulting in a malformed example.
+
+**Required Revision Owner:** Kobayashi (mechanical whitespace and list cleanup); Edie and Saul locked out.
+
+**Required Fix:** Update §3.4 Obstacle Palette ASCII example so each active authorable obstacle kind appears once.
+
+---
+
+### Kujan's Third Review Verdict — After Kobayashi's Revision (2026-05-10T15:45:30.046-07:00)
+
+**Verdict:** REJECT
+
+**Finding:** Kobayashi's mechanical duplicate-palette fix is correct; `beatmap-editor.md` §3.4 now shows single palette row. `git diff --check` passes.
+
+**Remaining Blockers:**
+- `design-docs/architecture.md` still lists `PTS_LOW_BAR` and `PTS_HIGH_BAR` in active scoring constants block.
+- `design-docs/feature-specs.md` still lists `LOW_BAR_BASE_PTS` and `HIGH_BAR_BASE_PTS` in active constants table.
+- `design-docs/architecture.md` still lists `RequiredVAction` in active component hotness/data-flow tables even though the runtime component no longer exists.
+
+**Criteria Status:**
+1. LowBar/HighBar active authoring guidance removed: PASS
+2. Remaining LowBar/HighBar references clearly archived/future-only: FAIL
+3. Beatmap-editor.md §3.4 palette not malformed: PASS
+4. Architecture examples readable: PARTIAL
+5. `git diff --check`: PASS
+
+**Revision Owner:** Marquez (escalation).
+
+---
+
+### Kujan's Escalated Review Verdict — After Marquez's Revision (2026-05-10T15:45:30.046-07:00)
+
+**Verdict:** REJECT
+
+**Finding:** Marquez's escalated cleanup passes `git diff --check` and removes live `RequiredVAction` runtime architecture from active docs. LowBar/HighBar authoring references in editor/integration/rhythm/architecture surfaces are now clearly marked archived, future-only, or not runtime-supported.
+
+**Remaining Blocker:** `design-docs/feature-specs.md` still lists `LOW_BAR_BASE_PTS` and `HIGH_BAR_BASE_PTS` as current defaults in active obstacle spawning balancing parameters table. This continues to present LowBar/HighBar scoring constants as live/current.
+
+**Required Revision:** Remove those LowBar/HighBar base-point rows from active balancing parameters table, or move them to explicitly archived/future-only section that cannot be read as current runtime scoring guidance.
+
+**Revision Owner:** Fenster.
+
+---
+
+### Kujan's Final Verdict — APPROVED (2026-05-10T16:03:00.125-07:00)
+
+**Reviewer:** Kujan  
+**Verdict:** APPROVED
+
+**Criteria Check:**
+1. Active docs must not invite LowBar/HighBar authoring as runtime-supported: **PASS**. No active doc presents LowBar/HighBar as authorable. Editor palette is `["shape_gate", "split_path"]` only.
+2. Remaining LowBar/HighBar references clearly archived/future-only: **PASS**. Every surviving mention in architecture.md, rhythm-design.md, beatmap-editor.md, beatmap-integration.md, and game.md is explicitly tagged archival, historical, or future design space.
+3. Feature specs and architecture must not present RequiredVAction, LowBar/HighBar constants as live guidance: **PASS**. `LOW_BAR_BASE_PTS`/`HIGH_BAR_BASE_PTS` removed from feature-specs.md. `PTS_LOW_BAR`/`PTS_HIGH_BAR` and `RequiredVAction` removed from active architecture tables. architecture.md §2.3–2.4 notes these are archival only.
+4. Beatmap-editor.md must not duplicate palette or expose LowBar/HighBar as authorable: **PASS**. §3.3 glyph row explicitly says "Archived LowBar/HighBar are not authorable." `constants.js` excludes them from `EDITOR_OBSTACLE_KINDS`.
+5. `git diff --check`: **PASS**. Exit code 0, no trailing-whitespace or conflict-marker issues.
+
+**Non-blocking Notes:** `design-docs/archive/` files (prototype.md, beatmap-design-guidelines.md) contain historical LowBar/HighBar references. These are correctly in the archive directory and do not constitute active guidance.
+
+**Summary:** Fenster's revision successfully removed the last active blocker (`LOW_BAR_BASE_PTS`/`HIGH_BAR_BASE_PTS` from feature-specs balancing table). All five review criteria now pass. Issue #125 docs cleanup is commit-ready.
+
+---
+
+### Kobayashi Investigation: Squad Loop Tool Permissions (2026-05-10T15:43:34.669-07:00)
+
+**Investigator:** Kobayashi (CI/CD Release Engineer)  
+**Decision:** No per-repository permission policy exists for Squad/Ralph loop filesystem operations.
+
+**Key Finding:** `.github/workflows/squad-heartbeat.yml` already has `permissions.contents: write` (granted in commit 38b0847), enabling `touch` and git persistence.
+
+**Conclusion:** No action required. The Squad loop already has GitHub Actions foundation to persist file edits.
+

@@ -81,7 +81,7 @@ what the browser provides natively.
 | Context menu | Right-click an obstacle to open an inline context menu |
 | Obstacle palette | Select active obstacle kind before placing (for new placements) |
 | Shape selector | For authored shape_gate/split_path entries: pick circle/square/triangle |
-| Obstacle glyph display | Uses per-kind glyphs/colors (LowBar, HighBar, valid imported ComboGate, SplitPath) in-lane |
+| Obstacle glyph display | Uses per-kind glyphs/colors for active editor kinds (ShapeGate, SplitPath) plus valid imported ComboGate entries. Archived LowBar/HighBar are not authorable. |
 | Drag to move | Drag an obstacle to a different beat or lane |
 | Multi-select | Shift-click or box-select, then move/delete as group |
 | Copy/paste | Select a range of beats, copy, paste at a different position |
@@ -98,8 +98,6 @@ depending on whether the click target is an existing obstacle or empty space.
   ┌─────────────────────────────┐
   │  Change Kind ►              │
   │  ├─ ShapeGate               │
-  │  ├─ LowBar                  │
-  │  ├─ HighBar                 │
   │  └─ SplitPath               │
   │─────────────────────────────│
   │  Change Shape ►             │
@@ -126,8 +124,6 @@ depending on whether the click target is an existing obstacle or empty space.
   │  ├─ ■ Square                │
   │  └─ ▲ Triangle              │
   │─────────────────────────────│
-  │  Place LowBar               │
-  │  Place HighBar              │
   │  Place SplitPath ►          │
   │  ├─ ● Circle                │
   │  ├─ ■ Square                │
@@ -148,8 +144,7 @@ depending on whether the click target is an existing obstacle or empty space.
 ```
   ┌──────────────────────────────────────────────────┐
   │  Kind:                                           │
-  │  [■ ShapeGate] [⌐ LowBar] [¬ HighBar]           │
-  │  [⑂ SplitPath]                                  │
+  │  [■ ShapeGate] [⑂ SplitPath]                   │
   │                                                  │
   │  Shape (for shape_gate/split):                   │
   │  [● Circle]  [■ Square]  [▲ Triangle]            │
@@ -424,7 +419,7 @@ export function isVisible()                                           → bool
 
 // Menu builds itself from the arguments:
 //   obstacleIndex !== null → "Change Kind / Shape / Lane / Duplicate / Delete"
-//   obstacleIndex === null → "Place ShapeGate▸ / LowBar / HighBar / SplitPath / ..."
+//   obstacleIndex === null → "Place ShapeGate▸ / SplitPath / ..."
 // Selecting a menu item calls the appropriate state.* mutation function.
 ```
 
@@ -480,8 +475,11 @@ export function downloadFile(filename, content)        → void  // triggers bro
 #### `constants.js` (Shared Constants)
 
 ```javascript
-export const OBSTACLE_KINDS = ["shape_gate","low_bar","high_bar","combo_gate","split_path"];
-export const EDITOR_OBSTACLE_KINDS = ["shape_gate","low_bar","high_bar","split_path"];
+// Active editor palette: only runtime-supported, authorable kinds.
+export const EDITOR_OBSTACLE_KINDS = ["shape_gate", "split_path"];
+// Import validation accepts runtime-supported legacy/content kinds, but does not add them to the palette.
+export const IMPORTABLE_OBSTACLE_KINDS = ["shape_gate", "lane_block", "combo_gate", "split_path"];
+// Archived/future catalog entries such as low_bar/high_bar are intentionally not constants here.
 export const SHAPES = ["circle", "square", "triangle"];
 export const LANES = [0, 1, 2];
 export const KINDS_WITH_SHAPE = ["shape_gate", "combo_gate", "split_path"];
@@ -675,7 +673,7 @@ Depends on: state.js, constants.js
 - Pure DOM component (no canvas)
 - `show(x, y, context)` — build menu items dynamically:
   - If obstacle exists at click: Change Kind ▸, Change Shape ▸, Change Lane ▸, Duplicate, Delete
-  - If empty: Place ShapeGate ▸ (circle/square/triangle), Place LowBar, Place HighBar, Place SplitPath, etc.
+  - If empty: Place ShapeGate ▸ (circle/square/triangle), Place SplitPath, etc.
 - Submenus on hover with current value checkmarked
 - Click handler calls state mutation functions
 - `hide()` on click-outside or Escape
@@ -717,10 +715,10 @@ Depends on: all modules
                               Agent 8: ██ WU 8 (main.js — integration) ██
 ```
 
-**Round 1 (sequential):** WU 0 — one agent builds the scaffold  
-**Round 2 (4 parallel agents):** WU 1 + WU 2 + WU 3 + WU 4  
-**Round 3 (3 parallel agents):** WU 5 + WU 6 + WU 7  
-**Round 4 (sequential):** WU 8 — integration + smoke test  
+**Round 1 (sequential):** WU 0 — one agent builds the scaffold
+**Round 2 (4 parallel agents):** WU 1 + WU 2 + WU 3 + WU 4
+**Round 3 (3 parallel agents):** WU 5 + WU 6 + WU 7
+**Round 4 (sequential):** WU 8 — integration + smoke test
 
 ---
 

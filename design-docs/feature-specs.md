@@ -84,8 +84,8 @@ inputs resolve deterministically.
 ## User Stories
 
 - As a player, I want to **swipe left/right** in the top zone so that my character changes lanes.
-- As a player, I want to **swipe up** so that my character jumps over low bars.
-- As a player, I want to **swipe down** so that my character slides under high bars.
+- As a player, I want to **swipe up** so that my character can jump when vertical movement is supported.
+- As a player, I want to **swipe down** so that my character can slide when vertical movement is supported.
 - As a player, I want to **tap a shape button** so that my character shifts to that shape instantly.
 - As a player, I want to **swipe AND tap nearly simultaneously** (combo obstacles) and have both actions register.
 - As a player, I want **accidental micro-touches** (jitter) to be ignored so I don't misfire.
@@ -558,12 +558,10 @@ struct Obstacle {
 
 // ── What kind of obstacle ──
 enum class ObstacleKind : uint8_t {
-    ShapeGate     = 0,   // requires correct shape
-    LaneBlock     = 1,   // legacy value kept for backward compat;
-    LowBar        = 2,   // requires jump  (swipe up)
-    HighBar       = 3,   // requires slide (swipe down)
-    ComboGate     = 4,   // requires shape + swipe
-    SplitPath     = 5,   // requires shape + correct lane
+    ShapeGate,   // requires correct shape
+    LaneBlock,   // legacy value kept for backward compat
+    ComboGate,   // requires shape + swipe
+    SplitPath,   // requires shape + correct lane
 };
 
 struct ObstacleType {
@@ -621,11 +619,11 @@ struct DifficultyState {
   │ BKT │  TIME    │ SPEED │  UNLOCKED TYPES              │ BURNOUT    │
   ├─────┼──────────┼───────┼──────────────────────────────┼────────────┤
   │  0  │  0–30s   │ x1.0  │ ShapeGate                    │ Very wide  │
-  │  2  │ 60–90s   │ x1.6  │ + HighBar                    │ Moderate   │
+  │  2  │ 60–90s   │ x1.6  │ ShapeGate                    │ Moderate   │
   │  3  │ 90–120s  │ x2.0  │ + ComboGate                  │ Tighter    │
   │  4  │ 120–150s │ x2.3  │ + SplitPath                  │ Tight      │
-  │  5  │ 150–180s │ x2.6  │ all types, rapid sequences   │ Very tight │
-  │  6  │ 180s+    │ x3.0  │ all types, full chaos        │ Razor thin │
+  │  5  │ 150–180s │ x2.6  │ active supported types       │ Very tight │
+  │  6  │ 180s+    │ x3.0  │ active supported types       │ Razor thin │
   └─────┴──────────┴───────┴──────────────────────────────┴────────────┘
 ```
 
@@ -740,8 +738,6 @@ void obstacle_despawn_system(entt::registry& reg, float dt);
   │  COMBO_MIN_GAP_BKT3         │  3        │  obstacles between   │
   │  COMBO_MIN_GAP_BKT5         │  2        │  obstacles between   │
   │  SHAPE_GATE_BASE_PTS        │  200      │                      │
-  │  LOW_BAR_BASE_PTS           │  100      │                      │
-  │  HIGH_BAR_BASE_PTS          │  100      │                      │
   │  COMBO_GATE_BASE_PTS        │  200      │                      │
   │  SPLIT_PATH_BASE_PTS        │  300      │                      │
   └───────────────────────────────────────────────────────────────┘
