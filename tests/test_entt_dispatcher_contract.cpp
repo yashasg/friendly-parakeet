@@ -6,6 +6,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <entt/entt.hpp>
 #include "components/input_events.h"
+#include "components/system_scratch.h"
 #include "test_helpers.h"
 
 struct GoCounter {
@@ -175,6 +176,18 @@ TEST_CASE("wire_input_dispatcher prewarms semantic event queues without pending 
 
     CHECK(dispatcher.size<GoEvent>() == 0);
     CHECK(dispatcher.size<ButtonPressEvent>() == 0);
+}
+
+TEST_CASE("runtime scratch queues are explicit registry context state",
+          "[ecs][scratch]") {
+    auto reg = make_registry();
+
+    CHECK(reg.ctx().contains<ScoringSystemScratch>());
+    CHECK(reg.ctx().contains<PendingEnergyEffects>());
+    CHECK(reg.ctx().contains<ScorePopupRequestQueue>());
+    CHECK(reg.ctx().contains<ObstacleDespawnScratch>());
+    CHECK(reg.ctx().contains<PopupDisplayScratch>());
+    CHECK(reg.ctx().contains<ParticleSystemScratch>());
 }
 
 TEST_CASE("R7: GoEvent delivered in GameOver phase — player_input_handle_go no-ops due to phase guard",

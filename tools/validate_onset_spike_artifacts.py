@@ -21,6 +21,7 @@ MAX_EVENTS_PER_MINUTE = {"easy": 120.0, "medium": 200.0, "hard": 260.0}
 MIN_BEAT_LABEL_KINDS = {"easy": 1, "medium": 2, "hard": 2}
 MAX_OFFGRID_SHARE = {"easy": 0.15, "medium": 0.25, "hard": 0.30}
 BEAT_LABELS = {"downbeat", "eighth", "triplet"}
+RAW_PASS_NAMES = {"kick", "snare", "hihat", "melody", "flux"}
 
 
 def _share(value: int, total: int) -> float:
@@ -91,6 +92,15 @@ def _validate_onset_only_timing(summary: dict, rows: list[dict]) -> list[str]:
 
 def validate_artifact_shape(summary: dict, rows: list[dict]) -> list[str]:
     findings: list[str] = []
+    raw_per_pass = summary.get("onset_pool_summary", {}).get("raw_per_pass", {})
+    if isinstance(raw_per_pass, dict):
+        leaked = sorted(set(raw_per_pass) & RAW_PASS_NAMES)
+        if leaked:
+            findings.append(
+                "onset_pool_summary.raw_per_pass leaks raw pass names: "
+                f"{leaked}"
+            )
+
     experimental = summary.get("experimental_onset_timing")
     if not isinstance(experimental, dict):
         return ["summary missing experimental_onset_timing block"]

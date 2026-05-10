@@ -22,7 +22,7 @@
     "validation": {
         "bpm_min": 60,
         "bpm_max": 300,
-        "offset_min": 0.0,
+        "offset_min": -0.1,
         "offset_max": 5.0,
         "lead_beats_min": 2,
         "lead_beats_max": 8,

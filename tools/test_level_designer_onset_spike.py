@@ -108,14 +108,14 @@ class TestExperimentalOnsetTiming(unittest.TestCase):
         self.assertEqual(ld.shape_balance_score(counts, total), 0)
         self.assertLessEqual(ld.max_same_lane_run(obstacles), ld.MAX_SAME_LANE_RUN["medium"])
 
-    def test_defaults_keep_beat_snapped_time(self):
+    def test_defaults_use_onset_timing(self):
         beatmap = ld.build_beatmap(_analysis_fixture(), ["easy"], cleanup_enabled=True)
         beats = beatmap["difficulties"]["easy"]["beats"]
         self.assertGreater(len(beats), 0)
         for obs in beats:
-            beat_idx = obs["beat"]
-            self.assertAlmostEqual(obs["time_sec"], beatmap["beat_times"][beat_idx], places=6)
-            self.assertNotIn("timing_source", obs)
+            self.assertEqual(obs.get("timing_source"), "onset")
+            self.assertIn("onset_time_sec", obs)
+            self.assertIn("beat_time_sec", obs)
 
     def test_experimental_mode_uses_onset_time_when_available(self):
         beatmap = ld.build_beatmap(

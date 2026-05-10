@@ -28,8 +28,8 @@ void warm_dispatcher_event_queues(entt::dispatcher& disp) {
 // game_state_system (first in tick_fixed_systems) owns the authoritative
 // fixed-step drain for GoEvent and ButtonPressEvent.
 //
-// Listener registration order IS the canonical processing order (EnTT R1).
-// Changing this order changes observable game behaviour.
+// EnTT dispatches sink listeners last-connected first. Connect in reverse so
+// the canonical semantic order remains game_state -> level_select -> player_input.
 void wire_input_dispatcher(entt::registry& reg) {
     auto* disp = reg.ctx().find<entt::dispatcher>();
     if (!disp) {
@@ -47,20 +47,20 @@ void wire_input_dispatcher(entt::registry& reg) {
     state->owner = disp;
 
     // Semantic events → handler callbacks (fixed-step)
-    // Registration order = processing order: game_state first (handles phase
-    // transitions, checks phase_timer), level_select second, player_input third.
-    state->go_game_state = entt::scoped_connection{
-        disp->sink<GoEvent>().connect<&game_state_handle_go>(reg)};
-    state->press_game_state = entt::scoped_connection{
-        disp->sink<ButtonPressEvent>().connect<&game_state_handle_press>(reg)};
-    state->go_level_select = entt::scoped_connection{
-        disp->sink<GoEvent>().connect<&level_select_handle_go>(reg)};
-    state->press_level_select = entt::scoped_connection{
-        disp->sink<ButtonPressEvent>().connect<&level_select_handle_press>(reg)};
+    // Desired processing order: game_state first (handles phase transitions,
+    // checks phase_timer), level_select second, player_input third.
     state->go_player_input = entt::scoped_connection{
         disp->sink<GoEvent>().connect<&player_input_handle_go>(reg)};
     state->press_player_input = entt::scoped_connection{
         disp->sink<ButtonPressEvent>().connect<&player_input_handle_press>(reg)};
+    state->go_level_select = entt::scoped_connection{
+        disp->sink<GoEvent>().connect<&level_select_handle_go>(reg)};
+    state->press_level_select = entt::scoped_connection{
+        disp->sink<ButtonPressEvent>().connect<&level_select_handle_press>(reg)};
+    state->go_game_state = entt::scoped_connection{
+        disp->sink<GoEvent>().connect<&game_state_handle_go>(reg)};
+    state->press_game_state = entt::scoped_connection{
+        disp->sink<ButtonPressEvent>().connect<&game_state_handle_press>(reg)};
 
     warm_dispatcher_event_queues(*disp);
 }

@@ -48,6 +48,7 @@ inline entt::registry make_registry() {
     reg.ctx().emplace<HighScorePersistence>();
     reg.ctx().emplace<GameOverState>();
     reg.ctx().emplace<RNGState>();
+    runtime_system_scratch_init(reg);
     return reg;
 }
 

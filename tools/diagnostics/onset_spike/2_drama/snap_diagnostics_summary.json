@@ -159,11 +159,11 @@
       }
     ],
     "raw_per_pass": {
-      "kick": 1616,
-      "snare": 537,
-      "melody": 794,
-      "hihat": 479,
-      "flux": 537
+      "percussive_bass": 1616,
+      "percussive_broadband": 537,
+      "harmonic_low_mid": 794,
+      "percussive_high_mid": 479,
+      "full_spectrum_flux": 537
     },
     "raw_total": 3963
   },

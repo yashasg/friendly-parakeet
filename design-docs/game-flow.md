@@ -33,6 +33,7 @@
   ║     2b. Gameplay Screen (HUD formalized)          ║
   ║     2c. Pause Screen                              ║
   ║     2d. Game Over Screen                          ║
+  ║     2e. Song Complete Screen                      ║
   ║  3. FIRST-TIME USER EXPERIENCE (FTUE)             ║
   ║     Tutorial Runs 1–5 with wireframes             ║
   ║  4. FEEDBACK & JUICE SPECIFICATION                ║
@@ -449,6 +450,10 @@ Not shipped (intentionally absent from this wireframe):
 
 ### 2d. GAME OVER SCREEN
 
+> **Trigger:** `Playing → GameOver` occurs only when energy reaches 0.
+> A MISS drains energy and resets chain, but a miss is not itself a
+> terminal transition.
+>
 > ⚠️ **PARTIAL ARCHIVED — issue #239.** The `Best Burnout` and
 > `Avg Burnout` stat rows in the Game Over wireframe and the
 > "Stats Breakdown" table below describe stats derived from the
@@ -527,6 +532,54 @@ Not shipped (intentionally absent from this wireframe):
   • If new personal best    → "◆ NEW BEST! ◆" rainbow text
   • If first time > 120s    → show "🔥 SURVIVOR" badge
 ```
+
+---
+
+### 2e. SONG COMPLETE SCREEN
+
+> **Trigger:** `Playing → SongComplete` occurs when the song reaches its
+> authored duration while the player still has energy remaining.
+
+```
+  ╔══════════════════════════════════════╗
+  ║                                      ║
+  ║                                      ║
+  ║       S O N G   C O M P L E T E      ║  ← y = 0.08H
+  ║                                      ║
+  ║         ─ ─ ─ ─ ─ ─ ─ ─ ─          ║
+  ║                                      ║
+  ║     ┌────────────────────────────┐   ║
+  ║     │                            │   ║
+  ║     │         ★ 31,420 ★         │   ║  ← FINAL SCORE
+  ║     │       (rolls up to this)   │   ║
+  ║     │                            │   ║
+  ║     │      CLEAR BONUS APPLIED   │   ║
+  ║     │                            │   ║
+  ║     └────────────────────────────┘   ║
+  ║                                      ║
+  ║     ┌────────────────────────────┐   ║
+  ║     │  RESULTS                   │   ║
+  ║     │  ─────────────────────     │   ║
+  ║     │  Accuracy      91%         │   ║
+  ║     │  Misses        3           │   ║
+  ║     │  Longest Chain 18          │   ║
+  ║     │  Energy Left   42%         │   ║
+  ║     └────────────────────────────┘   ║
+  ║                                      ║
+  ║     ╔════════════════════════════╗   ║
+  ║     ║     ▸ PLAY AGAIN          ║   ║
+  ║     ╚════════════════════════════╝   ║
+  ║                                      ║
+  ║     ┌────────────────────────────┐   ║
+  ║     │        MENU               │   ║
+  ║     └────────────────────────────┘   ║
+  ║                                      ║
+  ╚══════════════════════════════════════╝
+```
+
+Terminal split:
+- `energy <= 0` before the song ends → Game Over.
+- Song duration reached with energy remaining → Song Complete.
 
 ---
 

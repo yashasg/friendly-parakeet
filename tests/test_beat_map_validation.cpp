@@ -71,10 +71,23 @@ TEST_CASE("validate: BPM at 300 boundary passes", "[validate]") {
 
 // ── validate_beat_map: offset rules ──────────────────────────
 
-TEST_CASE("validate: negative offset fails", "[validate]") {
+TEST_CASE("validate: anchored small negative offset passes", "[validate]") {
     BeatMap map;
     map.bpm = 120.0f;
     map.offset = -0.1f;
+    map.lead_beats = 4;
+    map.duration = 60.0f;
+    map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
+
+    std::vector<BeatMapError> errors;
+    CHECK(validate_beat_map(map, errors));
+    CHECK(errors.empty());
+}
+
+TEST_CASE("validate: offset below anchored negative floor fails", "[validate]") {
+    BeatMap map;
+    map.bpm = 120.0f;
+    map.offset = -0.11f;
     map.lead_beats = 4;
     map.duration = 60.0f;
     map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
@@ -490,7 +503,7 @@ TEST_CASE("load_validation_constants: missing file returns compiled-in defaults"
     ValidationConstants vc = load_validation_constants("");
     CHECK(vc.bpm_min == 60.0f);
     CHECK(vc.bpm_max == 300.0f);
-    CHECK(vc.offset_min == 0.0f);
+    CHECK(vc.offset_min == -0.1f);
     CHECK(vc.offset_max == 5.0f);
     CHECK(vc.lead_beats_min == 2);
     CHECK(vc.lead_beats_max == 8);

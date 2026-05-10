@@ -24,6 +24,7 @@
 
 #include "components/scoring.h"   // ScorePopup, PopupDisplay
 #include "components/rendering.h" // ScreenPosition, Color (via raylib)
+#include "components/system_scratch.h"
 #include "components/text.h"      // FontSize
 #include "components/rhythm.h"    // TimingTier
 #include "components/transform.h" // WorldTransform, MotionVelocity
@@ -41,6 +42,9 @@ static entt::entity make_popup_entity(entt::registry& reg,
                                       int32_t value,
                                       float   remaining,
                                       float   max_time) {
+    if (!reg.ctx().contains<PopupDisplayScratch>()) {
+        runtime_system_scratch_init(reg);
+    }
     auto e = reg.create();
 
     ScorePopup sp{};
@@ -208,6 +212,7 @@ TEST_CASE("popup_display_system: works without ScorePopup component (#251)",
 TEST_CASE("popup_display_system: ScorePopup expires without render components",
           "[popup_display]") {
     entt::registry reg;
+    runtime_system_scratch_init(reg);
     auto e = reg.create();
     ScorePopup popup{};
     popup.remaining = 0.01f;
@@ -222,6 +227,7 @@ TEST_CASE("popup_display_system: ScorePopup expires without render components",
 TEST_CASE("popup_display_system: ScorePopup+PopupDisplay expires without Color",
           "[popup_display]") {
     entt::registry reg;
+    runtime_system_scratch_init(reg);
     auto e = reg.create();
     ScorePopup popup{};
     popup.remaining = 0.01f;
@@ -237,6 +243,7 @@ TEST_CASE("popup_display_system: ScorePopup+PopupDisplay expires without Color",
 TEST_CASE("popup_display_system: ScorePopup+Color expires without PopupDisplay",
           "[popup_display]") {
     entt::registry reg;
+    runtime_system_scratch_init(reg);
     auto e = reg.create();
     ScorePopup popup{};
     popup.remaining = 0.01f;
@@ -442,6 +449,7 @@ TEST_CASE("spawn_score_popup: PopupDisplay initialized at spawn",
 TEST_CASE("popup_display_system: reduce_motion zeroes drift velocity (#534)",
           "[popup_display][reduce_motion][issue534]") {
     entt::registry reg;
+    runtime_system_scratch_init(reg);
     reg.ctx().emplace<SettingsState>(SettingsState{}).reduce_motion = true;
 
     auto e = spawn_score_popup(reg, {100.0f, 500.0f, 200, TimingTier::Perfect});
@@ -467,6 +475,7 @@ TEST_CASE("popup_display_system: reduce_motion zeroes drift velocity (#534)",
 TEST_CASE("popup_display_system: reduce_motion=false leaves drift untouched (#534)",
           "[popup_display][reduce_motion][issue534]") {
     entt::registry reg;
+    runtime_system_scratch_init(reg);
     reg.ctx().emplace<SettingsState>();  // reduce_motion defaults to false
 
     auto e = spawn_score_popup(reg, {0.0f, 0.0f, 100, TimingTier::Good});

@@ -131,11 +131,11 @@
       }
     ],
     "raw_per_pass": {
-      "kick": 347,
-      "snare": 60,
-      "melody": 94,
-      "hihat": 51,
-      "flux": 60
+      "percussive_bass": 347,
+      "percussive_broadband": 60,
+      "harmonic_low_mid": 94,
+      "percussive_high_mid": 51,
+      "full_spectrum_flux": 60
     },
     "raw_total": 612
   },

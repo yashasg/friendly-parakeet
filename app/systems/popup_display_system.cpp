@@ -1,22 +1,15 @@
 #include "all_systems.h"
 #include "../components/scoring.h"
 #include "../components/rendering.h"
+#include "../components/system_scratch.h"
 #include "../components/transform.h"
 #include "../util/motion.h"
 #include "../util/settings.h"
-#include <vector>
 
 namespace {
 
-struct PopupDisplayScratch {
-    std::vector<entt::entity> expired;
-};
-
 PopupDisplayScratch& popup_scratch_for(entt::registry& reg) {
-    if (auto* scratch = reg.ctx().find<PopupDisplayScratch>()) {
-        return *scratch;
-    }
-    return reg.ctx().emplace<PopupDisplayScratch>();
+    return reg.ctx().get<PopupDisplayScratch>();
 }
 
 }  // namespace

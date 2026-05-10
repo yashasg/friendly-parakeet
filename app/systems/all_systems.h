@@ -4,6 +4,7 @@
 #include "../components/game_state.h"
 
 // Phase 0.5: Test player AI (enqueues synthetic input actions)
+void runtime_system_scratch_init(entt::registry& reg);
 void test_player_system(entt::registry& reg, float dt);
 
 // Phase 2: Game State

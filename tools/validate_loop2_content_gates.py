@@ -32,6 +32,7 @@ GAP_ONE_SHARE_CAP = {"medium": 0.20, "hard": 0.20}
 # level_designer.py.  Higher legacy readability floors are enforced only where
 # the generator can satisfy them without inserting non-onset filler.
 MIN_IOI_MS = {"easy": 500.0, "medium": 350.0, "hard": 280.0}
+SHAPE_OBSTACLE_KINDS = {"shape_gate", "split_path"}
 # Issue #420 — broad-layer/lane reachability floor at medium/hard.
 # Each shipped beatmap×difficulty must include at least this share of
 # circle (lane-2 / harmonic-mapped) obstacles so the third shape and the
@@ -66,7 +67,7 @@ def _shape_gate_clusters(ordered: list[dict], min_gap: int = SHAPE_CLUSTER_GAP) 
     current: list[dict] = []
     prev_beat: int | None = None
     for beat in ordered:
-        if beat.get("kind") != "shape_gate":
+        if beat.get("kind") not in SHAPE_OBSTACLE_KINDS:
             continue
         beat_idx = beat.get("beat")
         if not isinstance(beat_idx, int):
@@ -142,9 +143,9 @@ def calculate_content_metrics(
     )
     dominant_gap = gap_counts.most_common(1)[0][0] if gap_counts else None
 
-    shape_counts = Counter(beat.get("shape") for beat in ordered if beat.get("kind") == "shape_gate")
+    shape_counts = Counter(beat.get("shape") for beat in ordered if beat.get("kind") in SHAPE_OBSTACLE_KINDS)
     total_shape_gates = sum(shape_counts.values())
-    lane_counts = Counter(beat.get("lane") for beat in ordered if beat.get("kind") == "shape_gate")
+    lane_counts = Counter(beat.get("lane") for beat in ordered if beat.get("kind") in SHAPE_OBSTACLE_KINDS)
 
     onset_timed = _all_onset_timed(ordered)
 
@@ -194,7 +195,7 @@ def calculate_content_metrics(
         "strictly_increasing": all(
             beat_indices[i] > beat_indices[i - 1] for i in range(1, len(beat_indices))
         ),
-        "all_shape_gate": all(beat.get("kind") == "shape_gate" for beat in ordered),
+        "all_shape_gate": all(beat.get("kind") in SHAPE_OBSTACLE_KINDS for beat in ordered),
         "lane_range_ok": all(beat.get("lane") in (0, 1, 2) for beat in ordered),
         "dominant_gap": dominant_gap,
         "dominant_gap_share": dominant_gap_share,
@@ -231,7 +232,7 @@ def evaluate_content_gates(metrics: dict[str, float | int | bool | None], diffic
     if not bool(metrics["lane_range_ok"]):
         findings.append("lane outside {0,1,2}")
     if not bool(metrics["all_shape_gate"]):
-        findings.append("non-shape_gate obstacle present")
+        findings.append("non-shape obstacle present")
 
     # Issue #443 — beat-ordinal gap monotony / gap=1 share / gap=1 run gates
     # were designed for beat-grid timing where `beat[i+1]-beat[i]` reflects

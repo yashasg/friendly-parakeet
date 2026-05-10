@@ -37,10 +37,12 @@ int main(int argc, char* argv[]) {
 
     // ── Init → Run → Shutdown ────────────────────────────────
     entt::registry reg;
-    game_loop_init(reg, test_player_mode, test_skill, difficulty);
-    game_loop_run(reg);
+    const bool initialized = game_loop_init(reg, test_player_mode, test_skill, difficulty);
+    if (initialized) {
+        game_loop_run(reg);
+    }
 #ifndef __EMSCRIPTEN__
     game_loop_shutdown(reg);
 #endif
-    return 0;
+    return initialized ? 0 : 1;
 }

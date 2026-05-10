@@ -117,6 +117,7 @@ TEST_CASE("energy: no action when SongState not present", "[energy]") {
         GamePhase::Playing, GamePhase::Playing, 0.0f, false, GamePhase::Playing, 0.0f
     });
     bare_reg.ctx().emplace<EnergyState>(EnergyState{0.0f, 0.0f, 0.0f});
+    runtime_system_scratch_init(bare_reg);
 
     energy_system(bare_reg, 0.016f);
 
