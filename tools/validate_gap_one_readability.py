@@ -45,10 +45,34 @@ def is_readable_family(left: dict, right: dict) -> bool:
     )
 
 
+def _all_onset_timed(beats: list[dict]) -> bool:
+    saw = False
+    for beat in beats:
+        if not isinstance(beat, dict):
+            continue
+        saw = True
+        if beat.get("timing_source") != "onset":
+            return False
+    return saw
+
+
 
 def validate_gap_one(beats: list[dict], difficulty: str) -> list[tuple[int, str]]:
+    """Validate gap=1 readability.
+
+    Issue #443 — under onset-only timing the `beat` field is a sequential
+    ordinal across selected onsets, so `gap = beat[i+1] - beat[i] == 1` is
+    the natural shape of every consecutive pair, and gap-ordinal rules
+    designed for beat-grid timing produce structural false positives.
+    Skip the gap=1 ordinal rules entirely when every authored beat carries
+    `timing_source == "onset"`; readability is enforced via the time-IOI
+    gate in validate_loop2_content_gates instead.
+    """
     violations: list[tuple[int, str]] = []
     if len(beats) <= 1:
+        return violations
+
+    if _all_onset_timed(beats):
         return violations
 
     last_authored_beat = max(1, max(beat["beat"] for beat in beats))

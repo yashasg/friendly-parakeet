@@ -78,6 +78,60 @@ class TestValidateMaxBeatGap(unittest.TestCase):
         self.assertIn("skipped 1 invalid beat row(s)", stderr.getvalue())
         self.assertIn("MAX BEAT GAP VIOLATIONS", stderr.getvalue())
 
+    def test_onset_mode_uses_time_based_gap(self):
+        """When timing_source=onset on every row, gap is measured in seconds.
+
+        Beat-ordinal gap is large (39) but real time gap is tiny (0.78s) at
+        120 BPM. The beat-ordinal cap of 32 must be ignored in onset-only
+        mode (#447 / #452) so this case is not flagged.
+        """
+        path = self._write_beatmap(
+            "fixture_onset_dense_beatmap.json",
+            {
+                "bpm": 120.0,
+                "difficulties": {
+                    "medium": {
+                        "beats": [
+                            {"beat": 0,  "kind": "shape_gate", "time_sec": 0.0,
+                             "timing_source": "onset"},
+                            {"beat": 40, "kind": "shape_gate", "time_sec": 0.78,
+                             "timing_source": "onset"},
+                        ]
+                    }
+                },
+            },
+        )
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+        with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            rc = max_gap.main([str(path)])
+        self.assertEqual(rc, 0, msg=stderr.getvalue())
+
+    def test_onset_mode_flags_real_time_silence(self):
+        """A genuine multi-second silence is flagged in onset-only mode."""
+        path = self._write_beatmap(
+            "fixture_onset_silence_beatmap.json",
+            {
+                "bpm": 120.0,
+                "difficulties": {
+                    "medium": {
+                        "beats": [
+                            {"beat": 0, "kind": "shape_gate", "time_sec": 0.0,
+                             "timing_source": "onset"},
+                            {"beat": 1, "kind": "shape_gate", "time_sec": 30.0,
+                             "timing_source": "onset"},
+                        ]
+                    }
+                },
+            },
+        )
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+        with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            rc = max_gap.main([str(path)])
+        self.assertEqual(rc, 1)
+        self.assertIn("onset-mode limit", stderr.getvalue())
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

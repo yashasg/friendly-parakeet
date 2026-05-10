@@ -3,16 +3,29 @@
 
 Issue #138: Shipped songs contain 56-64 beat silent gaps.
 
-This validator checks the longest mid-song gap between authored obstacles,
-measured as consecutive beat indices with no obstacle. Leading intro rest and
-trailing outro rest are not counted as failures.
+This validator checks the longest mid-song gap between authored obstacles.
+Leading intro rest and trailing outro rest are not counted as failures.
 
-Per-difficulty limits:
+Two timing models are supported:
+
+1. Beat-grid timing (legacy): `beat` is the index into the analysis beat grid;
+   gaps are measured as consecutive missing beat indices and capped per
+   difficulty in beat units.
+
+2. Onset-only timing (issue #447 / PR #427): `beat` is a sequential ordinal
+   across selected onsets, not a musical-beat number, so a beat-ordinal cap
+   is meaningless. When every authored beat in a difficulty has
+   `timing_source == "onset"`, gaps are measured in seconds (using
+   `time_sec`) and compared against the per-difficulty time-equivalent cap
+   derived from the original beat cap and the song BPM.
+
+Per-difficulty beat-grid limits (used when timing is beat-aligned):
   EASY:   max gap <= 40 beats
   MEDIUM: max gap <= 32 beats
   HARD:   max gap <= 30 beats
 
-A "gap" is the number of consecutive beats with no obstacles.
+Under onset-only timing, the same caps are translated to seconds using the
+declared BPM: limit_seconds = limit_beats * 60 / bpm.
 
 Exit codes:
   0 - all beatmaps pass
@@ -79,6 +92,42 @@ def find_max_gap(beats_in_beatmap: set[int]) -> int:
     return max_gap
 
 
+def _all_onset_timed(rows: list[object]) -> bool:
+    """True iff every dict row in `rows` carries timing_source == 'onset'."""
+    saw_dict = False
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        saw_dict = True
+        if row.get("timing_source") != "onset":
+            return False
+    return saw_dict
+
+
+def find_max_time_gap_sec(rows: list[object]) -> float:
+    """Longest mid-song silent stretch (seconds) between consecutive obstacles.
+
+    Uses the authored `time_sec` field; rows without a numeric time_sec are
+    skipped so a single malformed row cannot collapse the gap measurement.
+    """
+    times: list[float] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        ts = row.get("time_sec")
+        if isinstance(ts, (int, float)) and not isinstance(ts, bool):
+            times.append(float(ts))
+    if len(times) <= 1:
+        return 0.0
+    times.sort()
+    longest = 0.0
+    for prev_t, next_t in zip(times, times[1:]):
+        gap = next_t - prev_t
+        if gap > longest:
+            longest = gap
+    return longest
+
+
 def main(argv: list[str] | None = None) -> int:
     import argparse
     ap = argparse.ArgumentParser(description="Validate max beat gap per difficulty")
@@ -106,15 +155,15 @@ def main(argv: list[str] | None = None) -> int:
             beatmap = json.load(f)
 
         name = path.stem.replace("_beatmap", "")
+        bpm = float(beatmap.get("bpm") or 0.0)
 
         for difficulty in ["easy", "medium", "hard"]:
             if difficulty not in beatmap.get("difficulties", {}):
                 continue
 
             diff_data = beatmap["difficulties"][difficulty]
-            beats_in_beatmap, invalid_rows = _collect_valid_beat_indices(
-                diff_data.get("beats", [])
-            )
+            raw_rows = diff_data.get("beats", []) or []
+            beats_in_beatmap, invalid_rows = _collect_valid_beat_indices(raw_rows)
             if invalid_rows:
                 print(
                     f"  {name} [{difficulty}]: skipped {invalid_rows} invalid beat row(s)",
@@ -123,13 +172,28 @@ def main(argv: list[str] | None = None) -> int:
 
             if not beats_in_beatmap:
                 continue
-            max_gap = find_max_gap(beats_in_beatmap)
 
-            max_allowed = max_gaps[difficulty]
-            if max_gap > max_allowed:
+            max_allowed_beats = max_gaps[difficulty]
+
+            # Issue #452 — onset-only mode: validate gap in seconds rather than
+            # beat ordinals (the latter is meaningless when `beat` is a
+            # sequential onset index, not a musical-beat number).
+            if bpm > 0 and _all_onset_timed(raw_rows):
+                max_allowed_sec = max_allowed_beats * 60.0 / bpm
+                max_gap_sec = find_max_time_gap_sec(raw_rows)
+                if max_gap_sec > max_allowed_sec:
+                    all_violations.append(
+                        f"{name} [{difficulty}]: max silent gap {max_gap_sec:.1f}s "
+                        f"exceeds onset-mode limit {max_allowed_sec:.1f}s "
+                        f"({max_allowed_beats} beats @ {bpm:.1f} BPM)"
+                    )
+                continue
+
+            max_gap = find_max_gap(beats_in_beatmap)
+            if max_gap > max_allowed_beats:
                 all_violations.append(
                     f"{name} [{difficulty}]: max gap {max_gap} beats "
-                    f"exceeds limit {max_allowed} beats"
+                    f"exceeds limit {max_allowed_beats} beats"
                 )
 
     if all_violations:
