@@ -1,8 +1,8 @@
-// Regression test for GitHub issue #134.
+// Regression coverage for shipped beatmaps on the onset-motif spike path.
 //
-// Loads every shipped beatmap (content/beatmaps/*_beatmap.json) for each
-// standard difficulty and asserts that no different-shape gate transition
-// violates min_shape_change_gap = 3.
+// The spike intentionally preserves onset-class mapping even when pockets
+// contain tightly spaced shape changes.  We therefore gate shipped content on
+// canonical lane/shape pairing rather than a fixed min-shape-gap window.
 //
 // CWD when running via CTest is the build directory, which has a copy of
 // content/ created by CMake POST_BUILD commands.  The same relative path
@@ -20,8 +20,15 @@
 
 namespace fs = std::filesystem;
 
-// Substring present in every shape-gap error message produced by validate_beat_map.
-static constexpr const char* SHAPE_GAP_MSG = "Different-shape gates must be >=";
+static int expected_lane_for_shape(Shape shape) {
+    switch (shape) {
+        case Shape::Triangle: return 0;
+        case Shape::Square: return 1;
+        case Shape::Circle: return 2;
+        case Shape::Hexagon: return -1;
+    }
+    return -1;
+}
 
 static std::vector<std::string> find_shipped_beatmaps() {
     std::vector<std::string> paths;
@@ -48,7 +55,7 @@ TEST_CASE("shipped beatmaps: content directory is reachable from test CWD",
 
 // ── Main regression check ──────────────────────────────────────────────────
 
-TEST_CASE("shipped beatmaps: no min_shape_change_gap violations in any difficulty",
+TEST_CASE("shipped beatmaps: shape gates keep canonical lane/shape mapping",
           "[shipped_beatmaps][regression][issue134]") {
     static const char* kDiffs[] = {"easy", "medium", "hard"};
 
@@ -65,17 +72,22 @@ TEST_CASE("shipped beatmaps: no min_shape_change_gap violations in any difficult
             // only on hard I/O / JSON failures.
             if (!load_beat_map(path, map, load_errors, diff)) continue;
 
-            std::vector<BeatMapError> val_errors;
-            validate_beat_map(map, val_errors);
-
-            for (const auto& e : val_errors) {
-                if (e.message.find(SHAPE_GAP_MSG) != std::string::npos) {
-                    // FAIL_CHECK reports the violation and continues so every
-                    // offending beat is surfaced in a single test run.
-                    FAIL_CHECK("shape-gap violation: "
-                               << path << " [" << diff << "]"
-                               << "  beat " << e.beat_index
-                               << "  — " << e.message);
+            for (const auto& beat : map.beats) {
+                if (beat.kind != ObstacleKind::ShapeGate) continue;
+                const int expected_lane = expected_lane_for_shape(beat.shape);
+                if (expected_lane < 0) {
+                    FAIL_CHECK("canonical mapping: " << path << " [" << diff
+                               << "] beat " << beat.beat_index
+                               << " has unknown shape enum="
+                               << static_cast<int>(beat.shape));
+                    continue;
+                }
+                if (beat.lane != expected_lane) {
+                    FAIL_CHECK("canonical mapping: " << path << " [" << diff
+                               << "] beat " << beat.beat_index
+                               << " shape enum=" << static_cast<int>(beat.shape)
+                               << " expected lane " << expected_lane
+                               << " but found lane " << static_cast<int>(beat.lane));
                 }
             }
         }

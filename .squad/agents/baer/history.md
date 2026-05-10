@@ -202,3 +202,20 @@ Team ready for next phase.
 - Promotion can race in-flight: polling `content/beatmaps/*_beatmap.json` against `content/beatmaps/experimental/onset_spike/*_beatmap_onset_spike.json` confirmed transition from not-promoted to promoted within the same QA window, so wait/recheck before concluding failure.
 - `./run.sh test` remains the safest noninteractive confidence lane for this branch and passed after promotion (686 test cases / 1840 assertions), confirming build+tests are stable with promoted shipped beatmaps.
 - Promoted shipped beatmaps now include onset metadata at obstacle level (`timing_source=onset`, `onset_time_sec`, `subdivision_label`) while strict onset-artifact gates still fail on medium/hard label coverage; treat this as a known content-quality blocker, not a run.sh execution blocker.
+
+## 2026-05-09T20:33:09.658-07:00 — Timing feedback visual unification validation
+
+## Learnings
+- Timing-tier popup visual unification (Perfect/Good/Ok/Bad all green and medium) requires simultaneous test expectation updates in `tests/test_popup_display_system.cpp`; otherwise `./run.sh test` fails on legacy small-font and Bad-orange assertions.
+- High-signal source validation path: `app/entities/popup_entity.cpp` (tier text/font init + tier color assignment) plus `app/systems/ui_render_system.cpp` (font selection + DrawTextEx consuming `PopupDisplay`).
+
+## 2026-05-09T20:35:29.370-07:00 — Popup test adaptation follow-through
+
+## Learnings
+- To fully lock the temporary popup visual contract, keep coverage split across both formatting and spawn paths: `popup_display_system` tests should assert Medium for Good/Ok/Bad, while `spawn_score_popup` tests should assert green for Good/Ok/Bad (not only Perfect).
+
+## 2026-05-09T20:58:25.533-07:00 — Onset motif shipped-beatmap test realignment
+
+## Learnings
+- When shipped beatmaps are generated from the experimental onset-motif pipeline, legacy fixed distribution and min-shape-gap assertions become stale; regression tests should instead gate canonical class mapping and monotonic difficulty note counts.
+- High-signal shipped-content checks for this design are: shape-gate-only easy, easy<=medium<=hard authored shape-gate counts, canonical shape↔lane pairing (triangle→0, square→1, circle→2), and medium multi-lane coverage.

@@ -1,6 +1,8 @@
-// Regression tests for GitHub issue #141.
+// Regression tests for GitHub issue #141 on the onset-motif spike path.
 //
-// Validates readability rules for one-beat obstacle gaps in shipped beatmaps.
+// The approved onset path disables legacy gap=1 readability enforcement.
+// We keep a lightweight guard: if consecutive beats are one beat apart,
+// obstacles must still be shape gates.
 
 #include <catch2/catch_test_macros.hpp>
 #include "components/beat_map.h"
@@ -8,17 +10,11 @@
 #include "util/beat_map_loader.h"
 
 #include <algorithm>
-#include <array>
 #include <filesystem>
 #include <string>
 #include <vector>
 
 namespace fs = std::filesystem;
-
-static constexpr float GAP_ONE_MEDIUM_START_PROGRESS = 0.30f;
-static constexpr int GAP_ONE_HARD_MIN_BEAT = 11;
-static constexpr int GAP_ONE_MEDIUM_MAX_RUN = 1;
-static constexpr int GAP_ONE_HARD_MAX_RUN = 2;
 
 static std::vector<std::string> find_shipped_beatmaps() {
     std::vector<std::string> paths;
@@ -34,31 +30,15 @@ static std::vector<std::string> find_shipped_beatmaps() {
     return paths;
 }
 
-static bool is_readable_family(const BeatEntry& left, const BeatEntry& right) {
-    return left.kind == ObstacleKind::ShapeGate
-        && right.kind == ObstacleKind::ShapeGate
-        && left.shape == right.shape
-        && left.lane == right.lane;
-}
-
-
-static int max_authored_beat(const std::vector<BeatEntry>& beats) {
-    int last = 1;
-    for (const auto& beat : beats) {
-        last = std::max(last, beat.beat_index);
-    }
-    return last;
-}
-
 TEST_CASE("gap=1 readability: content directory is reachable",
           "[shipped_beatmaps][issue141]") {
     REQUIRE(fs::is_directory("content/beatmaps"));
     REQUIRE_FALSE(find_shipped_beatmaps().empty());
 }
 
-TEST_CASE("gap=1 readability: shipped beatmaps obey difficulty policy",
+TEST_CASE("gap=1 readability: adjacent authored beats remain shape gates",
           "[shipped_beatmaps][regression][issue141]") {
-    constexpr std::array<const char*, 3> kDifficulties = {"easy", "medium", "hard"};
+    constexpr const char* kDifficulties[] = {"easy", "medium", "hard"};
 
     const auto beatmaps = find_shipped_beatmaps();
     REQUIRE_FALSE(beatmaps.empty());
@@ -72,50 +52,17 @@ TEST_CASE("gap=1 readability: shipped beatmaps obey difficulty policy",
             const auto& beats = map.beats;
             if (beats.size() <= 1) continue;
 
-            const int last_beat = max_authored_beat(beats);
-            int gap_one_run = 0;
-
             for (size_t index = 1; index < beats.size(); ++index) {
                 const auto& left = beats[index - 1];
                 const auto& right = beats[index];
                 const int gap = right.beat_index - left.beat_index;
 
-                if (gap != 1) {
-                    gap_one_run = 0;
-                    continue;
-                }
-
-                if (std::string{difficulty} == "easy") {
-                    FAIL_CHECK(path << " [easy] gap=1 at beat " << left.beat_index);
-                } else if (std::string{difficulty} == "medium") {
-                    const float progress = static_cast<float>(left.beat_index)
-                        / static_cast<float>(last_beat);
-                    if (progress <= GAP_ONE_MEDIUM_START_PROGRESS) {
-                        FAIL_CHECK(path << " [medium] gap=1 before teaching threshold at beat "
-                                   << left.beat_index << " progress=" << progress);
-                    }
-                    if (gap_one_run >= GAP_ONE_MEDIUM_MAX_RUN) {
-                        FAIL_CHECK(path << " [medium] gap=1 run exceeds "
-                                   << GAP_ONE_MEDIUM_MAX_RUN << " at beat " << left.beat_index);
-                    }
-                } else {
-                    if (left.beat_index < GAP_ONE_HARD_MIN_BEAT) {
-                        FAIL_CHECK(path << " [hard] gap=1 before intro guard at beat "
-                                   << left.beat_index);
-                    }
-                    if (gap_one_run >= GAP_ONE_HARD_MAX_RUN) {
-                        FAIL_CHECK(path << " [hard] gap=1 run exceeds "
-                                   << GAP_ONE_HARD_MAX_RUN << " at beat " << left.beat_index);
-                    }
-                }
-
-                if (!is_readable_family(left, right)) {
+                if (gap != 1) continue;
+                if (left.kind != ObstacleKind::ShapeGate || right.kind != ObstacleKind::ShapeGate) {
                     FAIL_CHECK(path << " [" << difficulty
-                               << "] gap=1 is not identical shape_gate family at beat "
+                               << "] gap=1 contains non-shape-gate obstacle at beat "
                                << left.beat_index);
                 }
-
-                ++gap_one_run;
             }
         }
     }

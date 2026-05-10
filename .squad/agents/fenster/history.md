@@ -84,6 +84,26 @@ Ported the removed HUD behavior (shape buttons, approach-ring affordance, colorf
 1. **Preserve dynamic HUD visuals during controller migration:** generated rguilayout output can carry only static controls, so dynamic affordances (approach rings, active-shape highlighting, beat-reactive bars) must be explicitly re-implemented in the screen controller or they silently disappear.
 2. **Keep HudLayout as style data even after JSON element rendering removal:** layout-cache structs remain a stable source of theme and spacing values for custom controller rendering; adding a small fallback prevents blank HUD when layout parsing fails.
 
+
+## 2026-05-10 — Segment-Focus Onset Generation (replaces motif n-gram selection)
+
+**Context:** Motif n-gram detection (`detect_variable_length_onset_motifs`) was making level 3 (3_mental_corruption) unreadable because n-gram driven obstacle selection over-densified patterns in a way disconnected from musical feel. The team approved moving to segment-level onset focus as the active experimental generation path.
+
+**Implementation:**
+- Added `_segment_class_stats()`, `_choose_segment_focus()`, `select_segment_focus_beats()`, and `design_level_segment_focus()` to `tools/level_designer.py`.
+- Each song structure section (segment) independently votes a focus class (percussive/harmonic/full-spectrum) based on total onset flux. Anti-repetition: if the same class dominates ≥ `SEGMENT_FOCUS_ANTI_REPEAT_MAX` (2) consecutive segments, its score is halved and another class may win.
+- Class→lane/shape mapping unchanged: percussive→lane 0+triangle, harmonic→lane 2+circle, full-spectrum→lane 1+square.
+- Difficulty is purely rank-based on flux within the chosen focus class: easy=top 40%, medium=top 65%, hard=top 90%. No random selection.
+- `design_level_onset_motif()` kept but demoted to diagnostic-only; motif n-gram code unchanged.
+- Routing: `build_beatmap(experimental_onset_timing=True)` now calls `design_level_segment_focus()` instead of `design_level_onset_motif()`.
+- `write_snap_diagnostics` now emits `generation_path: "segment_focus"` and per-segment diagnostics (start/end, focus, class counts, flux stats, difficulty thresholds, fallback reason) in `selection_summary_by_difficulty`.
+
+**Tests:** `tools/test_level_designer_onset_spike.py` rewritten — old motif_id assertions removed, new segment-focus tests added (11 tests, all pass). Game tests: 1848 assertions, all pass.
+
+**Shipped beatmaps regenerated:** `content/beatmaps/{1_stomper,2_drama,3_mental_corruption}_beatmap.json` using `--experimental-onset-timing` flag. Diagnostics updated under `tools/diagnostics/onset_spike/`.
+
+**Learning:** Motif n-gram detection is useful as a diagnostic but fragile as a primary obstacle selector — it over-privileges statistically repeated sub-sequences regardless of musical feel. Segment-level focus is more robust: it asks "what does this section of the song sound like?" and answers consistently, which means the player gets a readable musical story even when onset density is high.
+
 ## Learnings
 
 - 2026-05-08T13:57:50.741-07:00 — Raylib systems audits should separate three buckets: direct safe swaps (e.g. `CheckCollisionRecs`, `Clamp`/`Fade`), design-gated substitutions that change state/test seams (`IsMusicStreamPlaying`, `SetGamepadVibration`, direct `PlaySound`), and domain timing/beat logic where raylib has no replacement.
@@ -95,6 +115,7 @@ Ported the removed HUD behavior (shape buttons, approach-ring affordance, colorf
 - Static, dependency-free UI regression coverage is practical in Node by asserting shell/wiring invariants from source files (`tools/beatmap-editor/test/help-modal-ui.test.js`) when DOM execution seams are unavailable.
 - Validation evidence for the help-modal change set: `node --check tools/beatmap-editor/js/main.js`, `node --check tools/beatmap-editor/test/help-modal-ui.test.js`, `node --test tools/beatmap-editor/test/*.test.js` (22/22 pass), and `git --no-pager diff --check` all passed.
 - 2026-05-09T12:47:58.529-07:00 — Onset-time spike can stay low-risk by gating it behind an explicit CLI flag, preserving default beat-snapped `time_sec`, and emitting onset-vs-beat comparison diagnostics (`residuals`, `IOI`, dense-cluster, subdivision/source histograms) as artifacts.
+- 2026-05-09T20:33:09.658-07:00 — Timing popup readability hotfix: when tuning judgement text visibility, centralize grade color/size in `app/entities/popup_entity.cpp` (`init_popup_display` + timing-tier color branch) to keep gameplay scoring semantics untouched.
 
 ## 2026-04-29T09:55:21Z — Pause Screen Text Fix (Approved)
 
@@ -223,3 +244,98 @@ Learning: use a stable convention for non-destructive spike outputs —
 
 For util cleanup passes, classify each helper by owning runtime surface first (beatmap/session/game-state/persistence) before proposing deletions. Most safe removals are single-consumer headers (`test_player_helpers`, `safe_localtime`, `enum_names`) that can be inlined into their owning systems; persistence and beatmap loaders need staged migration because tests explicitly assert structured failure statuses.
 - 2026-05-09T13:00:47.473-07:00 — For onset-timing playtest spikes, it is acceptable to intentionally overwrite shipped `content/beatmaps/*_beatmap.json` on a worktree branch so `./run.sh` exercises the new timing path without runtime flags; keep experimental copies/diagnostics for easy rollback.
+
+## 2026-05-09T20:58:25.533-07:00 — Onset Motif Spike: Variable-Length Pattern Selection
+
+Implemented a new experimental onset pipeline in `tools/level_designer.py` that detects repeated variable-length onset-token motifs (class + subdivision + relative beat spacing) and drives difficulty selection by motif role rather than random/first-N onset inclusion.
+
+- Added onset class tagging (`percussive` / `harmonic` / `full-spectrum`) and fixed class→lane/shape mapping for spike output.
+- Added variable-length motif detection with repeat-count scoring and event role tagging (`skeleton`, `motif_core`, `ornament`, `fill`).
+- Experimental beatmap generation now uses motif-aware event ranking per section and difficulty, preserving onset timing metadata while authoring obstacles.
+- Added diagnostics fields in `onset_timing_events.csv` and summary metrics (`motif_stats`, role/class distributions) to prove motif behavior.
+- Updated spike-focused Python tests for new diagnostics schema + class mapping expectations.
+
+Validation executed:
+- `python3 -m py_compile tools/level_designer.py tools/validate_onset_spike_artifacts.py tools/test_level_designer_onset_spike.py tools/test_validate_onset_spike_artifacts.py`
+- `python3 -m unittest tools/test_level_designer_onset_spike.py tools/test_validate_onset_spike_artifacts.py`
+- `./run.sh test` (fails on shipped beatmap balance/shape-gap assertions after intentional onset-spike beatmap overwrite).
+
+## 2026-05-09T21:17:01.672-07:00 — Onset/Motif-Only Generation Rules Enforced
+
+Implemented the approved onset/motif-only spike rules in `tools/level_designer.py` for `--experimental-onset-timing` (used to regenerate shipped beatmaps on this branch):
+
+- Selection now derives only from onset-token motif roles (no section-density target curves, no random thinning/sampling).
+- Difficulty inclusion now follows approved motif depth rules:
+  - easy: skeleton
+  - medium: skeleton + motif_core
+  - hard: skeleton + motif_core + ornament + fill
+- Fixed onset class mapping remains authoritative:
+  - percussive → lane 0 + triangle
+  - harmonic → lane 2 + circle
+  - full-spectrum → lane 1 + square
+- Legacy cleanup/post-process influence was removed from this onset path (no first-collision floor, max-gap fill, gap-one/shape-gap/readability balancing passes in onset generation).
+- Onset path now errors if an authored obstacle lacks a source onset event (beat fallback disabled on this path).
+- Diagnostics now explicitly mark legacy influence disabled and list disabled legacy rule families.
+
+Regenerated shipped beatmaps (`content/beatmaps/*_beatmap.json`) plus onset diagnostics (`tools/diagnostics/onset_spike/*`) so `./run.sh` reads the new levels immediately.
+
+Validation:
+- `python3 -m py_compile tools/level_designer.py tools/validate_onset_spike_artifacts.py tools/test_level_designer_onset_spike.py tools/test_validate_onset_spike_artifacts.py`
+- `python3 -m unittest tools/test_level_designer_onset_spike.py tools/test_validate_onset_spike_artifacts.py`
+- `python3 tools/validate_onset_spike_artifacts.py --diagnostics-dir tools/diagnostics/onset_spike/{1_stomper,2_drama,3_mental_corruption}` (report mode)
+- `./run.sh test` ✅
+
+Test updates required due deliberate legacy-rule disablement on this path:
+- `tests/test_shipped_beatmap_max_gap.cpp`
+- `tests/test_shipped_beatmap_gap_one_readability.cpp`
+- `tests/test_shipped_beatmap_first_collision.cpp`
+- `tests/test_shipped_beatmap_medium_balance.cpp`
+
+These now validate onset-spike-compatible structural/canonical mapping invariants instead of legacy max-gap/gap-one/first-collision/lane-coverage enforcement.
+
+## 2026-05-10 — Onset extraction tuning + diagnostics
+
+**Task**: Improve onset extraction sensitivity for sparse beatmaps (especially `1_stomper`).
+
+### Root cause found
+`_detect_onsets_from_envelope` had `wait=2` hardcoded (was conserving but slightly tight) and most critically,
+`threshold=0.3` (peak_pick `delta`) on a 0→1 normalized envelope was far too aggressive.
+The finetuned config had reverted to a single resolution (`n_fft=2048, hop_length=384`) instead of 3,
+losing 2/3 of detection surface. Combined: only 33 events from 5 onsets/pass for a 200s song.
+
+### Changes made
+1. **`rhythm_pipeline.py`** — `_detect_onsets_from_envelope` and `_detect_pass_onsets`:
+   - Peak-pick params (`pre_max`, `post_max`, `pre_avg`, `post_avg`, `wait`) now read from `peak_pick` config section.
+   - Zone-specific threshold overrides (`zone_thresholds`) now applied per-pass before `peak_pick`.
+   - `build_analysis` emits `onset_diagnostics` key with raw_per_pass, merged_events, events_per_minute, segment_coverage.
+
+2. **Config files** (both `rhythm_librosa_params.json` and `rhythm_librosa_finetuned_params.json`):
+   - `threshold`: 0.30 → 0.15 (global)
+   - `zone_thresholds`: `{bass: 0.10, low_mid: 0.13, high_mid: 0.15}`
+   - `peak_pick`: `{wait: 1}` (was hardcoded 2), rest default 3/3/5/5
+   - Finetuned: restored from 1 resolution to 3 (`n_fft: 1024/2048/4096, hop_length: 256`)
+
+3. **`level_designer.py`** — `write_snap_diagnostics`:
+   - `onset_pool_summary` now always emitted (not gated on experimental flag).
+   - Fields: `total_events`, `events_per_minute`, `snapped_events`, `snap_residual_stats`,
+     `segment_count`, `empty_segment_count`, `segment_coverage`, `raw_per_pass`, `raw_total`.
+   - Experimental block now includes `obstacle_counts_by_difficulty`.
+
+4. **Tests** (`test_level_designer_onset_spike.py`) — 6 new tests added:
+   - `test_onset_pool_summary_present_in_diagnostics`
+   - `test_onset_pool_summary_experimental_adds_obstacle_counts`
+   - `test_build_beatmap_counts_scale_with_difficulty`
+   - `test_richer_onset_pool_in_varied_fixture`
+   - `test_segment_diagnostics_include_n_difficulty_fields`
+   - `test_diagnostics_deterministic_across_runs`
+
+### Results
+| Song | Events before | Events after | BPM |
+|---|---|---|---|
+| 1_stomper | 33 (5/pass) | 204 (61/min) | 160 |
+| 2_drama | (regenerated) | 1085 (266/min) | 130 |
+| 3_mental_corruption | (regenerated) | 1736 (460/min) | 150 |
+
+**1_stomper obstacles**: 14/17/19 → **23/35/51** (easy/medium/hard)
+
+All 17 Python tests pass. All 1848 C++ assertions pass.

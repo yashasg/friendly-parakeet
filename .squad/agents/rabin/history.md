@@ -199,3 +199,49 @@ defect."** HG-1 alone could be satisfied by dumping every excess
 gap=2 into gap=1, recreating mashing. HG-5's gap=1 cap is the
 regression guard. Pair every redistribution gate with a sink-side
 ceiling.
+
+---
+
+## 2026-05-09 — Onset spike playability review (`beatmap/onset-obstacle-spike` @ e80211a)
+
+**Artifact:** `tools/diagnostics/onset_spike/rabin-playability-review.md`
+**Decision:** `.squad/decisions/inbox/rabin-onset-spike-playability.md`
+
+**Headline findings**
+
+- **Shape ↔ lane is hard-coded 1:1** in every shipped beatmap
+  (`lane == shape_index`). Every "same-shape run" is also a "same-lane
+  run." This is the dominant playability bug post-spike.
+- Same-shape runs at hard: stomper **42**, mental **43**, drama **21**.
+  Stomper easy also has a run of **40** — FTUE-breaking.
+- `subdivision_label` is **100% `downbeat`** on every obstacle of every
+  chart, even though the detector resolves eighths/triplets in the
+  source events. Strict label gate failure is real, not a gate bug.
+- Stomper has a difficulty curve **inversion** — easy median IOI 755 ms
+  vs hard 1074 ms.
+- Mental has **flat 806 ms median IOI** across easy/medium/hard. Hard
+  is just "longer easy with more walls."
+- Mental easy has only **2 triangle obstacles in 110** — effectively a
+  2-lane chart that doesn't teach lane 2 before medium hits 48
+  triangles.
+- Onset source share is tiny on stomper (4–6 %) and drama (6–8 %); the
+  spike is mostly a Mental Corruption feature today (14/19/28 %).
+
+**Lessons**
+
+- *Always recompute longest same-shape runs straight off the JSON.* The
+  diagnostics summary's `same_shape_run_metrics` is correct, but seeing
+  the actual run sequence (`[38, 5, 42, 15, 13, 14, 27]` for stomper
+  hard) makes it obvious that one cap value isn't enough — the
+  distribution matters.
+- *Treat lane and shape as orthogonal even if today's authoring couples
+  them.* Same-shape gates that don't also cap same-lane runs will be
+  bypassed the moment lane assignment is decoupled, so propose both
+  ceilings together (D2).
+- *Strict label-coverage gates need an authoring fix, not a gate
+  relaxation.* The subdivision data exists upstream; it's the
+  candidate→event step that drops the label.
+- *Use `current_quarter_snap.count` vs `experimental_onset_timing.event_counts.obstacles`
+  ratio as a quick sanity check on whether a "spike" is actually
+  exercising onset timing on a given song.* On stomper that's
+  25 / (178+154+196) ≈ 5 %, matching the per-difficulty histogram.

@@ -2,9 +2,9 @@
 //
 // Validates difficulty ramp quality in every shipped beatmap:
 //
-//   EASY  — shape variety
-//     • All 3 shapes (Circle, Square, Triangle) must appear at least once.
-//     • No single shape > 65 % of all ShapeGate obstacles.
+//   EASY/MEDIUM/HARD — note-count ramp
+//     • Shape-gate note count must be non-decreasing by difficulty
+//       (easy <= medium <= hard).
 //
 //   MEDIUM/HARD — no removed legacy lane kind
 //     • lane_block must not appear.
@@ -13,8 +13,8 @@
 // reported in a single run.  The test is tagged [difficulty_ramp][issue135].
 //
 // Coexistence:
-//   - Does not conflict with [shipped_beatmaps][issue134]: shape-gap violations
-//     are a separate rule checked there; this file counts kind distribution only.
+//   - Does not conflict with [shipped_beatmaps][issue134]: that suite now checks
+//     canonical shape/lane mapping while this file checks difficulty ramp rules.
 //
 // CWD when run via CTest is the build/ directory which has a mirrored
 // content/beatmaps/ copy via CMake POST_BUILD commands.
@@ -31,11 +31,6 @@
 #include <vector>
 
 namespace fs = std::filesystem;
-
-// ── Thresholds ────────────────────────────────────────────────────────────
-
-static constexpr int   EASY_MIN_DISTINCT_SHAPES        = 3;
-static constexpr float EASY_MAX_DOMINANT_SHAPE_PCT      = 65.0f;
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -92,56 +87,43 @@ TEST_CASE("difficulty ramp: easy contains only shape_gate obstacles",
     }
 }
 
-// ── Easy: shape variety ───────────────────────────────────────────────────
+// ── Easy/Medium/Hard: non-decreasing authored note count ──────────────────
 
-TEST_CASE("difficulty ramp: easy uses all 3 shapes and no single shape dominates",
-          "[difficulty_ramp][issue135][easy]") {
+TEST_CASE("difficulty ramp: shape-gate count increases with difficulty",
+          "[difficulty_ramp][issue135][easy][medium][hard]") {
     const auto beatmaps = find_shipped_beatmaps();
     REQUIRE_FALSE(beatmaps.empty());
 
     for (const auto& path : beatmaps) {
-        BeatMap map;
-        std::vector<BeatMapError> errors;
-        if (!load_beat_map(path, map, errors, "easy")) continue;
+        int counts[3] = {0, 0, 0};  // easy, medium, hard
+        const char* diffs[3] = {"easy", "medium", "hard"};
 
-        // Count shapes across ShapeGate obstacles only.
-        int shape_counts[3] = {0, 0, 0};   // Circle=0, Square=1, Triangle=2
-        int sg_total = 0;
-
-        for (const auto& beat : map.beats) {
-            if (beat.kind != ObstacleKind::ShapeGate) continue;
-            ++sg_total;
-            const auto idx = static_cast<int>(beat.shape);
-            if (idx >= 0 && idx < 3) ++shape_counts[idx];
-        }
-
-        if (sg_total == 0) continue;  // empty difficulty — skip
-
-        // All 3 shapes must appear at least once.
-        int distinct = 0;
-        for (int c : shape_counts) {
-            if (c > 0) ++distinct;
-        }
-        if (distinct < EASY_MIN_DISTINCT_SHAPES) {
-            FAIL_CHECK("easy variety: " << path
-                       << " only uses " << distinct << " distinct shape(s) "
-                       << "(need >=" << EASY_MIN_DISTINCT_SHAPES << ")"
-                       << "  circle=" << shape_counts[0]
-                       << " square=" << shape_counts[1]
-                       << " triangle=" << shape_counts[2]);
-        }
-
-        // No single shape should dominate.
-        static const char* kShapeNames[] = {"Circle", "Square", "Triangle"};
         for (int i = 0; i < 3; ++i) {
-            const float pct = 100.0f * static_cast<float>(shape_counts[i])
-                              / static_cast<float>(sg_total);
-            if (pct > EASY_MAX_DOMINANT_SHAPE_PCT) {
-                FAIL_CHECK("easy variety: " << path
-                           << " shape '" << kShapeNames[i] << "' is "
-                           << pct << "% of shape_gates "
-                           << "(limit " << EASY_MAX_DOMINANT_SHAPE_PCT << "%)");
+            BeatMap map;
+            std::vector<BeatMapError> errors;
+            if (!load_beat_map(path, map, errors, diffs[i])) {
+                FAIL_CHECK("difficulty ramp count: failed to load " << path
+                           << " difficulty=" << diffs[i]);
+                continue;
             }
+            for (const auto& beat : map.beats) {
+                if (beat.kind == ObstacleKind::ShapeGate) ++counts[i];
+            }
+        }
+
+        if (counts[0] == 0 || counts[1] == 0 || counts[2] == 0) {
+            FAIL_CHECK("difficulty ramp count: " << path
+                       << " has empty shape-gate difficulty counts easy="
+                       << counts[0] << " medium=" << counts[1]
+                       << " hard=" << counts[2]);
+            continue;
+        }
+
+        if (counts[0] > counts[1] || counts[1] > counts[2]) {
+            FAIL_CHECK("difficulty ramp count: " << path
+                       << " expected easy<=medium<=hard but got easy="
+                       << counts[0] << " medium=" << counts[1]
+                       << " hard=" << counts[2]);
         }
     }
 }
