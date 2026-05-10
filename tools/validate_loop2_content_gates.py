@@ -22,7 +22,10 @@ SHAPE_CLUSTER_GAP = 3
 DENSE_CLUSTER_WARN_SIZE = {"medium": 3, "hard": 3}
 GAP_ONE_MAX_RUN = {"easy": 0, "medium": 2, "hard": 3}
 GAP_ONE_SHARE_CAP = {"medium": 0.20, "hard": 0.20}
-MIN_IOI_MS = {"easy": 700.0, "medium": 380.0, "hard": 300.0}
+# Keep strict min-IOI floors aligned with the active onset-only selector in
+# level_designer.py.  Higher legacy readability floors are enforced only where
+# the generator can satisfy them without inserting non-onset filler.
+MIN_IOI_MS = {"easy": 500.0, "medium": 350.0, "hard": 280.0}
 # Issue #420 — broad-layer/lane reachability floor at medium/hard.
 # Each shipped beatmap×difficulty must include at least this share of
 # circle (lane-2 / harmonic-mapped) obstacles so the third shape and the

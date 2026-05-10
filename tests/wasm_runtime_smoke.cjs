@@ -89,9 +89,11 @@ async function main() {
     const beforeHash = sha256(beforeInput);
 
     // Some browser stacks can consume the first click as focus acquisition.
+    // Click the title card body, not the lower button row, so generated
+    // Settings/Exit dead zones cannot accidentally swallow Start.
     let afterStartHash = beforeHash;
     for (let i = 0; i < 3 && beforeHash === afterStartHash; i += 1) {
-      await clickCanvasAt(0.5, 0.85);
+      await clickCanvasAt(0.5, 0.5);
       afterStartHash = await waitForVisualChange(beforeHash, 2500);
     }
     if (beforeHash === afterStartHash) {
@@ -99,13 +101,14 @@ async function main() {
     }
 
     // Once on level select, clicking a different card should visibly update selection.
-    await clickCanvasAt(0.5, 0.7);
+    await clickCanvasAt(0.5, 0.42);
     const afterLevelSelectClickHash = await waitForVisualChange(afterStartHash, 2500);
     if (afterStartHash === afterLevelSelectClickHash) {
       fatal.push('no-visual-response-after-level-select-click');
     }
 
-    await page.keyboard.press('Enter');
+    // Start the selected level through the same canvas click path.
+    await clickCanvasAt(0.5, 0.845);
     const afterHash = await waitForVisualChange(afterLevelSelectClickHash, 3500);
     if (afterLevelSelectClickHash === afterHash) {
       fatal.push('no-visual-response-after-enter');
