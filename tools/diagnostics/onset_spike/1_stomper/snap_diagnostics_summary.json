@@ -131,11 +131,9 @@
       }
     ],
     "raw_per_pass": {
-      "percussive_bass": 347,
-      "percussive_broadband": 60,
-      "harmonic_low_mid": 94,
-      "percussive_high_mid": 51,
-      "full_spectrum_flux": 60
+      "percussive": 458,
+      "harmonic": 94,
+      "full-spectrum": 60
     },
     "raw_total": 612
   },

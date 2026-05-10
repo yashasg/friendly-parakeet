@@ -79,6 +79,13 @@ void input_system(entt::registry& reg, float raw_dt) {
     const bool allow_touch_input = true;
 #endif
     const int touch_point_count = GetTouchPointCount();
+    const bool mouse_released = allow_mouse_input && IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
+    if (allow_mouse_input &&
+        input.suppress_mouse_release &&
+        touch_point_count == 0 &&
+        !mouse_released) {
+        input.suppress_mouse_release = false;
+    }
 
     // ── Mouse (desktop) — click-only semantics ─
     if (allow_mouse_input &&
@@ -91,7 +98,7 @@ void input_system(entt::registry& reg, float raw_dt) {
     }
     if (allow_mouse_input &&
         input.active_source != InputSource::Touch &&
-        IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+        mouse_released) {
         input.click      = !input.suppress_mouse_release;
         input.touching   = false;
         input.active_source = InputSource::None;

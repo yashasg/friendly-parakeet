@@ -86,19 +86,23 @@ export function hitTest(canvasX, canvasY) {
         if (lane > 2) lane = 2;
     }
 
-    // Check if an existing obstacle was clicked.
-    // Multiple onset-timed entries can share a beat; hit testing selects the
-    // first glyph in the clicked beat cell.
+    // Check if an existing obstacle was clicked. Lane must match so same-time
+    // onset entries on other lanes remain selectable.
     let obstacleIndex = null;
     const beats = state.beats;
     if (beats) {
+        let bestDistance = Infinity;
         for (let i = 0; i < beats.length; i++) {
             const entry = beats[i];
+            if (lane >= 0 && Number.isInteger(entry.lane) && entry.lane !== lane) {
+                continue;
+            }
             const cx = entryToX(entry, state);
             const halfCell = state.zoom / 2;
-            if (Math.abs(canvasX - cx) <= halfCell) {
+            const distance = Math.abs(canvasX - cx);
+            if (distance <= halfCell && distance < bestDistance) {
                 obstacleIndex = i;
-                break;
+                bestDistance = distance;
             }
         }
     }
@@ -343,11 +347,22 @@ function renderObstacles(ctx, state, firstBeat, lastBeat) {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
+    const stackTotals = new Map();
+    const stackSeen = new Map();
+    for (const entry of beats) {
+        const key = `${Math.round(entryToX(entry, state) * 10)}:${entry.lane}`;
+        stackTotals.set(key, (stackTotals.get(key) || 0) + 1);
+    }
+
     for (let i = 0; i < beats.length; i++) {
         const entry = beats[i];
         if (entry.beat < firstBeat || entry.beat > lastBeat) continue;
 
-        const x = entryToX(entry, state);
+        const stackKey = `${Math.round(entryToX(entry, state) * 10)}:${entry.lane}`;
+        const stackTotal = stackTotals.get(stackKey) || 1;
+        const stackIndex = stackSeen.get(stackKey) || 0;
+        stackSeen.set(stackKey, stackIndex + 1);
+        const x = entryToX(entry, state) + (stackIndex - (stackTotal - 1) / 2) * 10;
         const y = HEADER_HEIGHT + entry.lane * LANE_HEIGHT + LANE_HEIGHT / 2;
 
         if (KINDS_WITH_SHAPE.includes(entry.kind)) {
@@ -364,6 +379,12 @@ function renderObstacles(ctx, state, firstBeat, lastBeat) {
             const glyph = GLYPHS[entry.kind] || '?';
             ctx.fillStyle = (COLORS.kind[entry.kind]) || COLORS.text;
             ctx.fillText(glyph, x, y);
+        }
+        if (stackTotal > 1 && stackIndex === 0) {
+            ctx.font = '11px sans-serif';
+            ctx.fillStyle = COLORS.text;
+            ctx.fillText(`x${stackTotal}`, x + 16, y - 18);
+            ctx.font = '20px sans-serif';
         }
     }
 }

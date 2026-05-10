@@ -21,7 +21,7 @@ inline const char* tutorial_dodge_hint_text(bool prefer_touch) {
 // rectangle authored in content/ui/screens/tutorial.rgl for both
 // DodgeHintDesktop (id 007) and DodgeHintWeb (id 008).
 inline Rectangle tutorial_dodge_hint_bounds(Vector2 anchor) {
-    return (Rectangle){anchor.x + 110.0f, anchor.y + 710.0f, 500.0f, 32.0f};
+    return Rectangle{anchor.x + 110.0f, anchor.y + 710.0f, 500.0f, 32.0f};
 }
 
 #endif // SHAPESHIFTER_TUTORIAL_DODGE_HINT_H

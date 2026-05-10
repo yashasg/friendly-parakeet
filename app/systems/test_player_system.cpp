@@ -313,7 +313,7 @@ void test_player_system(entt::registry& reg, float dt) {
         }
 
         test_player_push_action(*state, action);
-        reg.emplace<TestPlayerPlannedTag>(entity);
+        reg.get_or_emplace<TestPlayerPlannedTag>(entity);
 
         if (log) {
             auto* beat_info = reg.try_get<BeatInfo>(entity);

@@ -11,7 +11,13 @@ namespace {
 
 bool update_and_persist_high_score(entt::registry& reg) {
     auto& score = reg.ctx().get<ScoreState>();
+    const int32_t previous_high_score = score.high_score;
     const bool is_new_high_score = (score.score > score.high_score);
+    if (auto* result = reg.ctx().find<TerminalResultState>()) {
+        *result = TerminalResultState{is_new_high_score, previous_high_score};
+    } else {
+        reg.ctx().emplace<TerminalResultState>(TerminalResultState{is_new_high_score, previous_high_score});
+    }
     if (!is_new_high_score) return false;
 
     score.high_score = score.score;

@@ -12,7 +12,7 @@ void miss_detection_system(entt::registry& reg, float /*dt*/) {
     for (auto [entity, wt] : view.each()) {
         if (wt.position.y <= constants::DESTROY_Y) continue;
 
-        reg.emplace<MissTag>(entity);
-        reg.emplace<ScoredTag>(entity);
+        reg.get_or_emplace<MissTag>(entity);
+        reg.get_or_emplace<ScoredTag>(entity);
     }
 }

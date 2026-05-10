@@ -341,14 +341,14 @@ void render_gameplay_hud_screen_ui(entt::registry& reg) {
         GuiSetStyle(DEFAULT, TEXT_SIZE, 28);
         char score_text[32];
         std::snprintf(score_text, sizeof(score_text), "%d", score->displayed_score);
-        GuiLabel((Rectangle){ 80, 20, 200, 40 }, score_text);
+        GuiLabel(Rectangle{ 80, 20, 200, 40 }, score_text);
         
         // High score below
         GuiSetStyle(DEFAULT, TEXT_SIZE, 18);
         char high_score_text[32];
         std::snprintf(high_score_text, sizeof(high_score_text), "BEST: %d", score->high_score);
         GuiSetAlpha(0.7f);
-        GuiLabel((Rectangle){ 80, 50, 200, 30 }, high_score_text);
+        GuiLabel(Rectangle{ 80, 50, 200, 30 }, high_score_text);
         GuiSetAlpha(1.0f);
     }
 
@@ -357,7 +357,7 @@ void render_gameplay_hud_screen_ui(entt::registry& reg) {
     if (energy) render_energy_bar(reg, *energy);
     GuiSetStyle(DEFAULT, TEXT_SIZE, 16);
     GuiSetAlpha(0.8f);
-    GuiLabel((Rectangle){ 10, 740, 90, 30 }, "ENERGY");
+    GuiLabel(Rectangle{ 10, 740, 90, 30 }, "ENERGY");
     GuiSetAlpha(1.0f);
 
     if (hud_layout.has_lane_divider) {

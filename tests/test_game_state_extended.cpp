@@ -90,6 +90,9 @@ TEST_CASE("game_state: enter_song_complete updates high score", "[gamestate]") {
 
     CHECK(score.high_score == 8000);
     CHECK(gs.phase == GamePhase::SongComplete);
+    const auto& terminal = reg.ctx().get<TerminalResultState>();
+    CHECK(terminal.new_best);
+    CHECK(terminal.previous_best == 5000);
 }
 
 TEST_CASE("game_state: enter_song_complete preserves higher high_score", "[gamestate]") {

@@ -94,7 +94,7 @@ void render_level_select_screen_ui(entt::registry& reg) {
     
     // Runtime override: Render heading at readable size (generated layout has 48px height)
     GuiSetStyle(DEFAULT, TEXT_SIZE, 40);
-    GuiLabel((Rectangle){ state.Anchor01.x + 180, state.Anchor01.y + 80, 360, 60 }, "SELECT LEVEL");
+    GuiLabel(Rectangle{ state.Anchor01.x + 180, state.Anchor01.y + 80, 360, 60 }, "SELECT LEVEL");
     
     // Draw level cards
     for (int i = 0; i < content_config::LEVEL_COUNT; ++i) {
@@ -113,7 +113,7 @@ void render_level_select_screen_ui(entt::registry& reg) {
         // Draw level title
         GuiSetStyle(DEFAULT, TEXT_SIZE, 32);
         GuiSetAlpha(selected ? 1.0f : 0.6f);
-        GuiLabel((Rectangle){CARD_X + TITLE_OFFSET_X, cy + TITLE_OFFSET_Y, 400, 40}, 
+        GuiLabel(Rectangle{CARD_X + TITLE_OFFSET_X, cy + TITLE_OFFSET_Y, 400, 40},
                  content_config::LEVELS[i].title);
         GuiSetAlpha(1.0f);
         
@@ -122,7 +122,7 @@ void render_level_select_screen_ui(entt::registry& reg) {
         std::snprintf(track_num, sizeof(track_num), "%d", i + 1);
         GuiSetStyle(DEFAULT, TEXT_SIZE, 32);
         GuiSetAlpha(0.4f);
-        GuiLabel((Rectangle){CARD_X + CARD_W - 60.0f, cy + TITLE_OFFSET_Y, 50, 40}, track_num);
+        GuiLabel(Rectangle{CARD_X + CARD_W - 60.0f, cy + TITLE_OFFSET_Y, 50, 40}, track_num);
         GuiSetAlpha(1.0f);
         
         // Draw difficulty buttons for selected card
@@ -160,7 +160,7 @@ void render_level_select_screen_ui(entt::registry& reg) {
     // Render Start button manually at bottom
     GuiSetStyle(DEFAULT, TEXT_SIZE, 24);
     state.StartButtonPressed = GuiButton(
-        (Rectangle){ state.Anchor01.x + 210, state.Anchor01.y + 1050, 300, 60 }, "START");
+        Rectangle{ state.Anchor01.x + 210, state.Anchor01.y + 1050, 300, 60 }, "START");
     
     GuiSetStyle(DEFAULT, TEXT_SIZE, saved_text_size);
 

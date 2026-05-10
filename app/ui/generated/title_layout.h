@@ -70,7 +70,7 @@ typedef struct TitleLayoutState {
 static inline TitleLayoutState TitleLayout_Init(void) {
     TitleLayoutState state = {};
     // Define anchors
-    state.Anchor01 = (Vector2){ 0, 0 };            // ANCHOR ID:1
+    state.Anchor01 = Vector2{ 0, 0 };            // ANCHOR ID:1
     
     // Define controls variables
     state.ExitButtonPressed = false;            // Button: ExitButton
@@ -84,11 +84,11 @@ static inline TitleLayoutState TitleLayout_Init(void) {
 // these literals; consult these helpers instead).
 //------------------------------------------------------------------------------------
 static inline Rectangle TitleLayout_ExitButtonBounds(const TitleLayoutState *state) {
-    return (Rectangle){ state->Anchor01.x + 260, state->Anchor01.y + 1080, 200, 56 };
+    return Rectangle{ state->Anchor01.x + 260, state->Anchor01.y + 1080, 200, 56 };
 }
 
 static inline Rectangle TitleLayout_SettingsButtonBounds(const TitleLayoutState *state) {
-    return (Rectangle){ state->Anchor01.x + 632, state->Anchor01.y + 1170, 64, 64 };
+    return Rectangle{ state->Anchor01.x + 632, state->Anchor01.y + 1170, 64, 64 };
 }
 
 // Render layout controls (call every frame during BeginDrawing/EndDrawing)
@@ -97,8 +97,8 @@ static inline void TitleLayout_Render(TitleLayoutState *state) {
     if (!state) return;
     
     // Draw controls
-    GuiLabel((Rectangle){ state->Anchor01.x + 40, state->Anchor01.y + 200, 640, 96 }, "SHAPESHIFTER");
-    GuiLabel((Rectangle){ state->Anchor01.x + 40, state->Anchor01.y + 640, 640, 56 }, "TAP TO START");
+    GuiLabel(Rectangle{ state->Anchor01.x + 40, state->Anchor01.y + 200, 640, 96 }, "SHAPESHIFTER");
+    GuiLabel(Rectangle{ state->Anchor01.x + 40, state->Anchor01.y + 640, 640, 56 }, "TAP TO START");
     // EXIT button is hand-gated to non-web platforms (#511): browsers cannot
     // honor a "quit" action and the rendered button was being consumed by the
     // tap-anywhere → LevelSelect handler. The bounds accessor below is still

@@ -119,6 +119,28 @@ TEST_CASE("game_over: render binds score/high-score/reason into scoreboard draw 
     CHECK(has_bound_text("MISSED A BEAT"));
 }
 
+TEST_CASE("game_over: render binds new-best badge and previous score", "[game_over][ui]") {
+    auto reg = make_registry();
+    ScopedGameOverHooks hooks;
+
+    auto& score = reg.ctx().get<ScoreState>();
+    score.score = 5000;
+    score.high_score = 5000;
+    reg.ctx().insert_or_assign(TerminalResultState{true, 3000});
+
+    auto& gos = reg.ctx().get<GameOverState>();
+    gos.cause = DeathCause::EnergyDepleted;
+
+    auto& gs = reg.ctx().get<GameState>();
+    gs.phase = GamePhase::GameOver;
+    gs.phase_timer = 0.0f;
+
+    render_game_over_screen_ui(reg);
+
+    CHECK(has_bound_text("NEW BEST!"));
+    CHECK(has_bound_text("PREV 3000"));
+}
+
 TEST_CASE("game_over: render omits empty reason binding for DeathCause::None", "[game_over][ui]") {
     auto reg = make_registry();
     ScopedGameOverHooks hooks;

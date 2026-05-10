@@ -11,7 +11,7 @@ on:
 
 jobs:
   build:
-    name: Build (Windows)
+    name: Build (Windows, Clang)
     runs-on: windows-latest
     permissions:
       contents: read
@@ -128,3 +128,42 @@ jobs:
           upload-artifact: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-msvc:
+    name: Build (Windows, MSVC)
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    env:
+      VCPKG_BINARY_SOURCES: "clear;default,readwrite"
+      VCPKG_FORCE_SYSTEM_BINARIES: "1"
+      VCPKG_DEFAULT_TRIPLET: x64-windows-static-md
+      VCPKG_DEFAULT_HOST_TRIPLET: x64-windows-static-md
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          lfs: true
+
+      - name: Setup Node.js for native tooling tests
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Setup vcpkg
+        shell: bash
+        run: |
+          if [ -z "${VCPKG_INSTALLATION_ROOT:-}" ]; then
+            echo "::error::VCPKG_INSTALLATION_ROOT is not set on this runner. Cannot configure VCPKG_ROOT for the Windows build."
+            exit 1
+          fi
+          echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> "$GITHUB_ENV"
+
+      - name: Configure
+        run: |
+          cmake -B build-msvc -S . -G "Visual Studio 17 2022" -A x64 -Wno-dev ^
+            "-DCMAKE_TOOLCHAIN_FILE=%VCPKG_ROOT%/scripts/buildsystems/vcpkg.cmake"
+        shell: cmd
+
+      - name: Build
+        run: cmake --build build-msvc --config Release
+        shell: cmd

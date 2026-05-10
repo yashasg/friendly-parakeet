@@ -122,10 +122,10 @@ TEST_CASE("game_camera_system drops stale MeshChild parents without crashing", "
         MeshChild{parent, 10.0f, 0.0f, 20.0f, 30.0f, 40.0f, WHITE, 0, MeshType::Slab}
     );
     reg.emplace<ModelTransform>(child, ModelTransform{glm::mat4{1.0f}, WHITE, 0, MeshType::Slab});
+    reg.emplace<TagWorldPass>(child);
 
     reg.destroy(parent);
 
     REQUIRE_NOTHROW(game_camera_system(reg, 0.0f));
-    CHECK_FALSE(reg.all_of<MeshChild>(child));
-    CHECK_FALSE(reg.all_of<ModelTransform>(child));
+    CHECK_FALSE(reg.valid(child));
 }

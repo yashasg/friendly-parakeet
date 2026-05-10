@@ -27,6 +27,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # -DSHAPESHIFTER_UNITY_BUILD=OFF if incremental rebuild performance is critical.
 option(SHAPESHIFTER_UNITY_BUILD "Enable unity builds for faster compilation" ON)
 set(CMAKE_UNITY_BUILD ${SHAPESHIFTER_UNITY_BUILD})
+option(SHAPESHIFTER_WASM_SMOKE_MARKERS "Expose browser title markers for WASM smoke tests" OFF)
 
 option(SHAPESHIFTER_IOS_BRIDGE_COMPILE_CHECK "Compile-only validation of iOS ObjC++ haptics bridge" OFF)
 if(SHAPESHIFTER_IOS_BRIDGE_COMPILE_CHECK)
@@ -196,6 +197,9 @@ if(CMAKE_SYSTEM_NAME MATCHES "Windows|Darwin|Linux")
     target_compile_definitions(shapeshifter_lib PUBLIC PLATFORM_DESKTOP PLATFORM_HAS_KEYBOARD)
 elseif(EMSCRIPTEN)
     target_compile_definitions(shapeshifter_lib PUBLIC PLATFORM_WEB PLATFORM_HAS_KEYBOARD)
+    if(SHAPESHIFTER_WASM_SMOKE_MARKERS)
+        target_compile_definitions(shapeshifter_lib PUBLIC SHAPESHIFTER_WASM_SMOKE_MARKERS)
+    endif()
     # JSON/settings loaders use C++ try/catch for recoverable parse failures.
     target_compile_options(shapeshifter_lib PUBLIC -fexceptions)
 elseif(SHAPESHIFTER_IOS)

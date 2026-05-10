@@ -218,7 +218,7 @@ The player can hear the beat coming. The timing is legible. What the player cann
 
   Durations:
     MORPH IN:   0.150s  (visual blend from hexagon to target)
-    ACTIVE:     (OK window × 2) × window_scale (scales UP with better timing)
+    ACTIVE:     (OK window × 2) × window_scale (collapses sooner with better timing)
     MORPH OUT:  0.150s  (visual blend back to hexagon)
 ```
 
@@ -226,16 +226,16 @@ The player can hear the beat coming. The timing is legible. What the player cann
 
 ```
   ┌──────────────────────────────────────────────────────────────┐
-  │  BAD timing  = remaining active window × 0.50               │
-  │  OK timing   = remaining active window × 0.75               │
-  │  GOOD timing = remaining active window × 1.00 (full time)   │
-  │  PERFECT     = remaining active window × 1.50               │
+  │  PERFECT     = remaining active window × 0.50               │
+  │  GOOD timing = remaining active window × 0.75               │
+  │  OK timing   = remaining active window × 1.00 (default)     │
+  │  BAD timing  = remaining active window × 1.00 (no reward)   │
   │                                                              │
-  │  A PERFECT press extends the remaining window, giving the    │
-  │  player extra time in the target shape. Better timing =      │
-  │  more generous window. This is reward, not punishment.       │
+  │  A PERFECT press shortens the remaining window, returning    │
+  │  the player cleanly back to Hexagon sooner. Better timing =  │
+  │  less exposure time in the target shape.                     │
   │                                                              │
-  │  "I nailed it — I've got breathing room for the next one."  │
+  │  "I nailed it — clean release, ready for the next one."     │
   └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -710,7 +710,7 @@ For shipped per-difficulty obstacle counts, see the table in
   MorphOut     Phase where player transitions back to ⬡ after window closes.
 
   window_scale Factor applied to remaining active window based on timing.
-               PERFECT=1.50, GOOD=1.00, OK=0.75, BAD=0.50.
+               PERFECT=0.50, GOOD=0.75, OK=1.00, BAD=1.00.
 
   Hexagon (⬡)  Default/rest state. No obstacle ever requires it.
                Any obstacle arriving while in ⬡ = MISS (energy drain).

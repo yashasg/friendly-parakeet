@@ -173,6 +173,19 @@ test('validation accepts C++ loader-compatible same-beat timed entries', () => {
   assert.doesNotMatch(errors.map((e) => e.message).join('\n'), /monotonically/i);
 });
 
+test('validation rejects authored time_sec regressions across untimed entries', () => {
+  const errors = validate({
+    ...makeState([
+      { beat: 0, kind: 'shape_gate', shape: 'circle', lane: 2, time_sec: 0.5 },
+      { beat: 1, kind: 'shape_gate', shape: 'square', lane: 1 },
+      { beat: 2, kind: 'shape_gate', shape: 'triangle', lane: 0, time_sec: 0.3 },
+    ]),
+    duration: 10,
+  });
+
+  assert.match(errors.map((e) => e.message).join('\n'), /time_sec must be non-decreasing/i);
+});
+
 test('export blocks validation errors', () => {
   assert.throws(
     () => exportBeatmap({

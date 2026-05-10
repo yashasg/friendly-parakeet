@@ -32,26 +32,26 @@ typedef struct TutorialLayoutState {
 
 static inline TutorialLayoutState TutorialLayout_Init(void) {
     TutorialLayoutState state = {};
-    state.Anchor01 = (Vector2){ 0, 0 };
+    state.Anchor01 = Vector2{ 0, 0 };
     state.ContinueButtonPressed = false;
     return state;
 }
 
 static inline void TutorialLayout_Render(TutorialLayoutState *state) {
     if (!state) return;
-    GuiLabel((Rectangle){ state->Anchor01.x + 160, state->Anchor01.y + 205, 400, 48 }, "QUICK START");
-    GuiLabel((Rectangle){ state->Anchor01.x + 160, state->Anchor01.y + 333, 400, 40 }, "1. MATCH THE SHAPE");
-    GuiLabel((Rectangle){ state->Anchor01.x + 110, state->Anchor01.y + 538, 500, 32 }, "BECOME THE SHAPE BEFORE IT HITS YOU");
-    GuiLabel((Rectangle){ state->Anchor01.x + 160, state->Anchor01.y + 640, 400, 40 }, "2. DODGE LANES");
+    GuiLabel(Rectangle{ state->Anchor01.x + 160, state->Anchor01.y + 205, 400, 48 }, "QUICK START");
+    GuiLabel(Rectangle{ state->Anchor01.x + 160, state->Anchor01.y + 333, 400, 40 }, "1. MATCH THE SHAPE");
+    GuiLabel(Rectangle{ state->Anchor01.x + 110, state->Anchor01.y + 538, 500, 32 }, "BECOME THE SHAPE BEFORE IT HITS YOU");
+    GuiLabel(Rectangle{ state->Anchor01.x + 160, state->Anchor01.y + 640, 400, 40 }, "2. DODGE LANES");
     // Dodge hint label is intentionally NOT drawn here — the previous
     // compile-time #ifdef PLATFORM_HAS_KEYBOARD selection picked the
     // keyboard string for touch-only Web browsers (#513). The tutorial
     // screen controller now draws the correct copy at runtime using
     // tutorial_dodge_hint_text() against WebInputPolicy.touch_capable.
-    GuiLabel((Rectangle){ state->Anchor01.x + 160, state->Anchor01.y + 806, 400, 40 }, "3. KEEP YOUR ENERGY");
-    GuiLabel((Rectangle){ state->Anchor01.x + 110, state->Anchor01.y + 877, 500, 32 }, "MISSES DRAIN THE BAR ON THE LEFT");
-    GuiLabel((Rectangle){ state->Anchor01.x + 110, state->Anchor01.y + 973, 500, 32 }, "CLEAR A SONG TO SET A HIGH SCORE");
-    state->ContinueButtonPressed = GuiButton((Rectangle){ state->Anchor01.x + 180, state->Anchor01.y + 1075, 360, 102 }, "START");
+    GuiLabel(Rectangle{ state->Anchor01.x + 160, state->Anchor01.y + 806, 400, 40 }, "3. KEEP YOUR ENERGY");
+    GuiLabel(Rectangle{ state->Anchor01.x + 110, state->Anchor01.y + 877, 500, 32 }, "MISSES DRAIN THE BAR ON THE LEFT");
+    GuiLabel(Rectangle{ state->Anchor01.x + 110, state->Anchor01.y + 973, 500, 32 }, "CLEAR A SONG TO SET A HIGH SCORE");
+    state->ContinueButtonPressed = GuiButton(Rectangle{ state->Anchor01.x + 180, state->Anchor01.y + 1075, 360, 102 }, "START");
 }
 
 #ifdef __cplusplus

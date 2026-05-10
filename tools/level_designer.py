@@ -123,6 +123,27 @@ MAX_SHAPE_CLUSTER_SIZE = {"medium": 4, "hard": 5}
 SHAPE_CLUSTER_GAP_BEATS = 3
 MIN_SUBDIVISION_LABEL_KINDS = {"medium": 2, "hard": 2}
 
+PUBLIC_ONSET_CLASSES = {"percussive", "harmonic", "full-spectrum"}
+
+
+def _is_protected_obstacle_pair(a, b):
+    a_cls = a.get("source_onset_class") or a.get("onset_class")
+    b_cls = b.get("source_onset_class") or b.get("onset_class")
+    if a_cls not in PUBLIC_ONSET_CLASSES or b_cls not in PUBLIC_ONSET_CLASSES:
+        return False
+    if a_cls == b_cls:
+        return False
+    try:
+        delta_ms = abs(float(a.get("time_sec", 0.0)) - float(b.get("time_sec", 0.0))) * 1000.0
+    except (TypeError, ValueError):
+        return False
+    return delta_ms <= PROTECTED_CROSS_LAYER_WINDOW_MS
+
+
+def _is_protected_by_neighbor(obstacle, obstacles):
+    return any(other is not obstacle and _is_protected_obstacle_pair(obstacle, other)
+               for other in obstacles)
+
 # Section role determines density and allowed obstacle types.
 # Chorus/drop = densest but most CONSISTENT (nori-nori).
 # Bridge = sparse, breathing room.
@@ -3792,7 +3813,10 @@ def _thin_oversized_clusters_obstacles(obstacles, difficulty):
         if not oversized:
             return ordered
         target = max(oversized, key=len)
-        worst_idx = min(target, key=lambda i: float(ordered[i].get("flux", 0.0)))
+        candidates = [i for i in target if not _is_protected_by_neighbor(ordered[i], ordered)]
+        if not candidates:
+            return ordered
+        worst_idx = min(candidates, key=lambda i: float(ordered[i].get("flux", 0.0)))
         worst_obs = ordered[worst_idx]
         obstacles = [o for o in ordered if o is not worst_obs]
 
@@ -3860,7 +3884,10 @@ def _enforce_cluster_chain_cap_obstacles(obstacles, difficulty):
         # must keep matching the source broad onset layer.
         target_cluster_idx = run_start + cap
         target_cluster = clusters[target_cluster_idx]
-        drop_idx = min(target_cluster, key=lambda i: (float(ordered[i].get("flux", 0.0)), -float(ordered[i].get("time_sec", 0.0))))
+        candidates = [i for i in target_cluster if not _is_protected_by_neighbor(ordered[i], ordered)]
+        if not candidates:
+            return ordered
+        drop_idx = min(candidates, key=lambda i: (float(ordered[i].get("flux", 0.0)), -float(ordered[i].get("time_sec", 0.0))))
         del ordered[drop_idx]
         obstacles = ordered
     return sorted(obstacles, key=lambda o: int(o.get("beat", 0)))

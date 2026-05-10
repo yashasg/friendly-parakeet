@@ -20,7 +20,7 @@ void default_game_over_layout_render(GameOverLayoutState* state) {
 
 void default_draw_game_over_value(Vector2 anchor, float x, float y, float w, float h,
                                   const char* text, int text_size) {
-    GameOverLayout_DrawCenteredLabel((Rectangle){anchor.x + x, anchor.y + y, w, h},
+    GameOverLayout_DrawCenteredLabel(Rectangle{anchor.x + x, anchor.y + y, w, h},
                                      text, text_size);
 }
 
@@ -50,10 +50,20 @@ void draw_game_over_scoreboard(entt::registry& reg, const GameOverLayoutState& s
     std::snprintf(value, sizeof(value), "%d", score.high_score);
     draw_game_over_value(state.Anchor01, 210, 634, 300, 32, value, 24);
 
+    if (const auto* result = reg.ctx().find<TerminalResultState>(); result && result->new_best) {
+        draw_game_over_value(state.Anchor01, 110, 665, 500, 28, "NEW BEST!", 24);
+        std::snprintf(value, sizeof(value), "PREV %d", result->previous_best);
+        draw_game_over_value(state.Anchor01, 110, 712, 500, 24, value, 18);
+    }
+
     if (const auto* gos = reg.ctx().find<GameOverState>()) {
         const char* reason = death_cause_text(gos->cause);
         if (reason && reason[0] != '\0') {
-            draw_game_over_value(state.Anchor01, 110, 685, 500, 40, reason, 22);
+            const float reason_y = (reg.ctx().find<TerminalResultState>() &&
+                                    reg.ctx().get<TerminalResultState>().new_best)
+                ? 742.0f
+                : 685.0f;
+            draw_game_over_value(state.Anchor01, 110, reason_y, 500, 40, reason, 22);
         }
     }
 }
