@@ -78,6 +78,19 @@ static inline TitleLayoutState TitleLayout_Init(void) {
     return state;
 }
 
+//------------------------------------------------------------------------------------
+// Control bounds accessors (single source of truth for both rendering and
+// hit-testing — e.g. title_screen_controller dead-zones must not duplicate
+// these literals; consult these helpers instead).
+//------------------------------------------------------------------------------------
+static inline Rectangle TitleLayout_ExitButtonBounds(const TitleLayoutState *state) {
+    return (Rectangle){ state->Anchor01.x + 260, state->Anchor01.y + 1080, 200, 56 };
+}
+
+static inline Rectangle TitleLayout_SettingsButtonBounds(const TitleLayoutState *state) {
+    return (Rectangle){ state->Anchor01.x + 632, state->Anchor01.y + 1170, 64, 64 };
+}
+
 // Render layout controls (call every frame during BeginDrawing/EndDrawing)
 // Returns: state updated with button press results
 static inline void TitleLayout_Render(TitleLayoutState *state) {
@@ -86,8 +99,8 @@ static inline void TitleLayout_Render(TitleLayoutState *state) {
     // Draw controls
     GuiLabel((Rectangle){ state->Anchor01.x + 40, state->Anchor01.y + 200, 640, 96 }, "SHAPESHIFTER");
     GuiLabel((Rectangle){ state->Anchor01.x + 40, state->Anchor01.y + 640, 640, 56 }, "TAP TO START");
-    state->ExitButtonPressed = GuiButton((Rectangle){ state->Anchor01.x + 260, state->Anchor01.y + 1080, 200, 56 }, "EXIT"); 
-    state->SettingsButtonPressed = GuiButton((Rectangle){ state->Anchor01.x + 632, state->Anchor01.y + 1170, 64, 64 }, "#142#"); 
+    state->ExitButtonPressed = GuiButton(TitleLayout_ExitButtonBounds(state), "EXIT");
+    state->SettingsButtonPressed = GuiButton(TitleLayout_SettingsButtonBounds(state), "#142#");
 }
 
 #ifdef __cplusplus

@@ -25,12 +25,13 @@ bool read_title_pointer_release(const entt::registry& reg, Vector2& pointer) {
 bool is_start_tap(const entt::registry& reg, const TitleLayoutState& state) {
     Vector2 pointer = {};
     if (!read_title_pointer_release(reg, pointer)) return false;
-    const Rectangle settings_button = {state.Anchor01.x + 632, state.Anchor01.y + 1170, 64, 64};
+    // Dead-zones must be derived from the same accessors the layout uses to
+    // render GuiButton, otherwise tapping Settings/Exit would also trigger
+    // Start (#466). Do NOT duplicate the literals here.
+    if (CheckCollisionPointRec(pointer, TitleLayout_SettingsButtonBounds(&state))) return false;
 #ifndef PLATFORM_WEB
-    const Rectangle exit_button = {state.Anchor01.x + 260, state.Anchor01.y + 1080, 200, 56};
-    if (CheckCollisionPointRec(pointer, exit_button)) return false;
+    if (CheckCollisionPointRec(pointer, TitleLayout_ExitButtonBounds(&state))) return false;
 #endif
-    if (CheckCollisionPointRec(pointer, settings_button)) return false;
     return true;
 }
 
