@@ -9,6 +9,8 @@
 #include "../../components/transform.h"
 #include "../../components/ui_layout_cache.h"
 #include "../../constants.h"
+#include "../../util/motion.h"
+#include "../../util/settings.h"
 #include "screen_controller_base.h"
 #include "gameplay_hud_screen_controller.h"
 #include <entt/entt.hpp>
@@ -180,18 +182,23 @@ void render_energy_bar(const entt::registry& reg, const EnergyState& energy) {
 
     float fill = Clamp(energy.display, 0.0f, 1.0f);
 
-    float bounce = 0.0f;
+    // Reduce-motion (#478) attenuates the *decorative* HUD oscillations
+    // (idle bounce, critical sine-pulse, damage flash overlay) without
+    // hiding the underlying fill colour or border state. See app/util/motion.h.
+    const auto* settings_ptr = reg.ctx().find<SettingsState>();
+    const bool reduce_motion = settings_ptr && settings_ptr->reduce_motion;
+
     auto* song = reg.ctx().find<SongState>();
-    if (song && song->playing && song->beat_period > 0.0f) {
-        float phase = std::fmod(song->song_time, song->beat_period) / song->beat_period;
-        bounce = 1.0f - phase;
-        bounce = bounce * bounce * bounce;
+    float bounce = 0.0f;
+    if (song && song->playing) {
+        bounce = motion::energy_bar_bounce(song->song_time, song->beat_period, reduce_motion);
     }
 
     float flash_ratio = 0.0f;
     if (energy.flash_timer > 0.0f && constants::ENERGY_FLASH_DURATION > 0.0f) {
         flash_ratio = Clamp(energy.flash_timer / constants::ENERGY_FLASH_DURATION, 0.0f, 1.0f);
     }
+    const float flash_overlay = motion::flash_overlay_strength(flash_ratio, reduce_motion);
 
     float critical_ratio = 0.0f;
     if (fill < constants::ENERGY_CRITICAL_THRESH && constants::ENERGY_CRITICAL_THRESH > 0.0f) {
@@ -200,7 +207,7 @@ void render_energy_bar(const entt::registry& reg, const EnergyState& energy) {
     }
 
     float pulse_time = (song && song->playing) ? song->song_time : static_cast<float>(GetTime());
-    float critical_pulse = 0.5f + 0.5f * std::sin(pulse_time * 10.0f);
+    float critical_pulse = motion::energy_critical_pulse(pulse_time, reduce_motion);
     float critical_intensity = critical_ratio * (0.35f + 0.65f * critical_pulse);
     float visible_level = std::min(fill + bounce * (5.0f / SEG_COUNT), 1.0f);
 
@@ -258,9 +265,9 @@ void render_energy_bar(const entt::registry& reg, const EnergyState& energy) {
         }
     }
 
-    if (flash_ratio > 0.0f) {
+    if (flash_overlay > 0.0f) {
         DrawRectangleRec({BAR_X - 1.0f, BAR_TOP - 1.0f, BAR_W + 2.0f, BAR_H + 2.0f},
-            Fade({255, 80, 80, 255}, flash_ratio * (140.0f / 255.0f)));
+            Fade({255, 80, 80, 255}, flash_overlay * (140.0f / 255.0f)));
     }
 
     float border_thickness = 1.0f + critical_intensity * 2.0f;

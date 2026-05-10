@@ -47,7 +47,18 @@ void game_state_system(entt::registry& reg, float dt) {
         }
 
         switch (gs.next_phase) {
-            case GamePhase::Playing:      setup_play_session(reg);  break;
+            case GamePhase::Playing:
+                // Resume from Paused must NOT re-init the play session — that
+                // would discard score/energy/obstacles. All other paths into
+                // Playing (Title/LevelSelect/etc.) bootstrap a fresh session.
+                // See #482 for the rationale that converged screen controllers
+                // and input routing on the deferred (transition_pending) path.
+                if (gs.phase == GamePhase::Paused) {
+                    enter_phase(gs, GamePhase::Playing);
+                } else {
+                    setup_play_session(reg);
+                }
+                break;
             case GamePhase::GameOver:
                 game_state_enter_terminal_phase(reg, GamePhase::GameOver);
                 break;

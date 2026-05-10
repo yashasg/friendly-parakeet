@@ -2,7 +2,7 @@
   "title": "1_stomper",
   "source": "1_stomper.flac",
   "bpm": 159.01,
-  "duration": 200.49,
+  "duration": 199.5,
   "onset_threshold": 0.15,
   "beats": [
     0.029,
@@ -4448,7 +4448,7 @@
       "intensity": "low"
     },
     {
-      "t": 118.852,
+      "t": 118.872,
       "flux": 34.8144,
       "passes": [
         "percussive_bass"
@@ -4457,26 +4457,8 @@
       "intensity": "low"
     },
     {
-      "t": 118.892,
-      "flux": 10.4191,
-      "passes": [
-        "percussive_bass"
-      ],
-      "layer": "percussive",
-      "intensity": "low"
-    },
-    {
-      "t": 119.101,
+      "t": 119.121,
       "flux": 29.3658,
-      "passes": [
-        "percussive_bass"
-      ],
-      "layer": "percussive",
-      "intensity": "low"
-    },
-    {
-      "t": 119.142,
-      "flux": 8.6187,
       "passes": [
         "percussive_bass"
       ],
@@ -7442,16 +7424,7 @@
       "intensity": "low"
     },
     {
-      "t": 195.152,
-      "flux": 0.1521,
-      "passes": [
-        "percussive_bass"
-      ],
-      "layer": "percussive",
-      "intensity": "low"
-    },
-    {
-      "t": 195.187,
+      "t": 195.169,
       "flux": 0.2504,
       "passes": [
         "percussive_bass"
@@ -7568,17 +7541,8 @@
       "intensity": "low"
     },
     {
-      "t": 195.907,
+      "t": 195.93,
       "flux": 9.8192,
-      "passes": [
-        "percussive_bass"
-      ],
-      "layer": "percussive",
-      "intensity": "low"
-    },
-    {
-      "t": 195.953,
-      "flux": 9.6952,
       "passes": [
         "percussive_bass"
       ],
@@ -7613,16 +7577,7 @@
       "intensity": "low"
     },
     {
-      "t": 196.278,
-      "flux": 11.3012,
-      "passes": [
-        "percussive_bass"
-      ],
-      "layer": "percussive",
-      "intensity": "low"
-    },
-    {
-      "t": 196.325,
+      "t": 196.301,
       "flux": 14.7825,
       "passes": [
         "percussive_bass"
@@ -8057,11 +8012,11 @@
     },
     "raw_total": 1325,
     "flat_events_pre_merge": 1325,
-    "merged_events": 609,
+    "merged_events": 604,
     "events_per_minute": 182.3,
     "beats_total": 533,
     "bpm": 159.01,
-    "duration_sec": 200.49,
+    "duration_sec": 199.5,
     "segment_count": 17,
     "empty_segment_count": 0,
     "segment_coverage": [
@@ -8249,5 +8204,6 @@
       "quantile": 0.2,
       "min_duration_s": 0.4
     }
-  }
+  },
+  "last_event_time": 197.416
 }

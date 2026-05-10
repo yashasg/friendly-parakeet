@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { init } from '../js/editor.js';
-import { state, getActiveBeats } from '../js/state.js';
+import { state, getActiveBeats, on } from '../js/state.js';
 
 function resetState() {
   state.activeDifficulty = 'easy';
@@ -15,6 +15,10 @@ function resetState() {
   state.selectedIndices = [];
   state.tool = { kind: 'shape_gate', shape: 'circle' };
   state.zoom = 1;
+  // Cursor upper bound: 60s @ 120bpm + 4 lead beats = 124 beats.
+  state.bpm = 120;
+  state.duration = 60;
+  state.leadBeats = 4;
 }
 
 function setupKeyboardHarness() {
@@ -161,6 +165,42 @@ test('shortcuts are ignored while typing in form fields', () => {
 
   harness.dispatch({ key: 'ArrowRight', target: { tagName: 'INPUT' } });
   assert.equal(state.cursor.beat, 5);
+});
+
+test('ArrowRight clamps to song-derived upper bound', () => {
+  resetState();
+  // Max beat = floor(60 * 120 / 60) + 4 = 124.
+  state.cursor.beat = 123;
+  harness.dispatch({ key: 'ArrowRight' });
+  assert.equal(state.cursor.beat, 124);
+  harness.dispatch({ key: 'ArrowRight' });
+  assert.equal(state.cursor.beat, 124, 'cursor must not advance beyond max beat');
+  harness.dispatch({ key: 'ArrowRight', shiftKey: true });
+  assert.equal(state.cursor.beat, 124, 'shift+ArrowRight respects upper bound');
+});
+
+test("'?' and F1 emit help-requested with preventDefault", () => {
+  resetState();
+  let count = 0;
+  const handler = () => { count += 1; };
+  on('help-requested', handler);
+
+  const r1 = harness.dispatch({ key: '?' });
+  assert.equal(r1.prevented, true);
+  assert.equal(count, 1);
+
+  const r2 = harness.dispatch({ key: 'F1' });
+  assert.equal(r2.prevented, true);
+  assert.equal(count, 2);
+});
+
+test('Enter calls preventDefault so focused toolbar buttons do not re-fire', () => {
+  resetState();
+  state.cursor = { beat: 2, lane: 0 };
+  const result = harness.dispatch({ key: 'Enter' });
+  assert.equal(result.prevented, true);
+  const beats = getActiveBeats();
+  assert.equal(beats.length, 1);
 });
 
 test('cleanup keyboard harness', () => {

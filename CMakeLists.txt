@@ -550,6 +550,11 @@ if(NOT EMSCRIPTEN)
         COMMAND ${Python3_EXECUTABLE} -m unittest discover -s tools -p "test_*.py"
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     )
+    add_test(
+        NAME loop2_content_gates_strict
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/validate_loop2_content_gates.py --strict
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    )
     find_program(NODE_EXECUTABLE node REQUIRED)
     file(GLOB _beatmap_editor_node_test_files CONFIGURE_DEPENDS
         "${CMAKE_SOURCE_DIR}/tools/beatmap-editor/test/*.test.js"

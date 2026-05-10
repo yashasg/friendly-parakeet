@@ -2,7 +2,7 @@
   "title": "3_mental_corruption",
   "source": "3_mental_corruption.flac",
   "bpm": 150.34,
-  "duration": 226.57,
+  "duration": 225.6,
   "onset_threshold": 0.15,
   "beats": [
     0.015,
@@ -17796,12 +17796,12 @@
       "intensity": "medium"
     },
     {
-      "t": 16.373,
+      "t": 16.386,
       "flux": 329.4108,
       "passes": [
-        "percussive_high_mid",
         "percussive_bass",
-        "percussive_broadband"
+        "percussive_broadband",
+        "percussive_high_mid"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -17823,17 +17823,6 @@
       ],
       "layer": "harmonic",
       "intensity": "low"
-    },
-    {
-      "t": 16.399,
-      "flux": 101.1786,
-      "passes": [
-        "percussive_high_mid",
-        "percussive_bass",
-        "percussive_broadband"
-      ],
-      "layer": "percussive",
-      "intensity": "medium"
     },
     {
       "t": 16.605,
@@ -18823,12 +18812,12 @@
       "intensity": "high"
     },
     {
-      "t": 22.779,
+      "t": 22.791,
       "flux": 327.9459,
       "passes": [
-        "percussive_high_mid",
         "percussive_bass",
-        "percussive_broadband"
+        "percussive_broadband",
+        "percussive_high_mid"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -18841,15 +18830,6 @@
       ],
       "layer": "harmonic",
       "intensity": "medium"
-    },
-    {
-      "t": 22.802,
-      "flux": 22.1,
-      "passes": [
-        "percussive_bass"
-      ],
-      "layer": "percussive",
-      "intensity": "low"
     },
     {
       "t": 23.002,
@@ -33305,17 +33285,6 @@
       "intensity": "low"
     },
     {
-      "t": 88.584,
-      "flux": 224.1296,
-      "passes": [
-        "percussive_high_mid",
-        "percussive_bass",
-        "percussive_broadband"
-      ],
-      "layer": "percussive",
-      "intensity": "low"
-    },
-    {
       "t": 88.593,
       "flux": 224.1296,
       "passes": [
@@ -33325,21 +33294,23 @@
       "intensity": "low"
     },
     {
+      "t": 88.593,
+      "flux": 224.1296,
+      "passes": [
+        "percussive_bass",
+        "percussive_broadband",
+        "percussive_high_mid"
+      ],
+      "layer": "percussive",
+      "intensity": "low"
+    },
+    {
       "t": 88.596,
       "flux": 69.7914,
       "passes": [
         "harmonic_low_mid"
       ],
       "layer": "harmonic",
-      "intensity": "low"
-    },
-    {
-      "t": 88.602,
-      "flux": 23.0581,
-      "passes": [
-        "percussive_bass"
-      ],
-      "layer": "percussive",
       "intensity": "low"
     },
     {
@@ -33430,7 +33401,7 @@
       "intensity": "low"
     },
     {
-      "t": 89.072,
+      "t": 89.087,
       "flux": 106.9361,
       "passes": [
         "percussive_bass",
@@ -33446,15 +33417,6 @@
         "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
-      "intensity": "low"
-    },
-    {
-      "t": 89.101,
-      "flux": 29.8712,
-      "passes": [
-        "percussive_bass"
-      ],
-      "layer": "percussive",
       "intensity": "low"
     },
     {
@@ -33544,21 +33506,12 @@
       "intensity": "low"
     },
     {
-      "t": 89.377,
+      "t": 89.401,
       "flux": 186.027,
       "passes": [
-        "percussive_high_mid",
         "percussive_bass",
-        "percussive_broadband"
-      ],
-      "layer": "percussive",
-      "intensity": "low"
-    },
-    {
-      "t": 89.426,
-      "flux": 25.7428,
-      "passes": [
-        "percussive_bass"
+        "percussive_broadband",
+        "percussive_high_mid"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -33584,7 +33537,7 @@
       "intensity": "medium"
     },
     {
-      "t": 89.571,
+      "t": 89.585,
       "flux": 230.6687,
       "passes": [
         "full_spectrum_flux"
@@ -33593,22 +33546,14 @@
       "intensity": "medium"
     },
     {
-      "t": 89.581,
+      "t": 89.59,
       "flux": 230.6687,
       "passes": [
         "percussive_bass",
-        "percussive_broadband"
+        "percussive_broadband",
+        "percussive_high_mid"
       ],
       "layer": "percussive",
-      "intensity": "medium"
-    },
-    {
-      "t": 89.6,
-      "flux": 230.6687,
-      "passes": [
-        "full_spectrum_flux"
-      ],
-      "layer": "full-spectrum",
       "intensity": "medium"
     },
     {
@@ -33619,17 +33564,6 @@
       ],
       "layer": "harmonic",
       "intensity": "low"
-    },
-    {
-      "t": 89.6,
-      "flux": 230.6687,
-      "passes": [
-        "percussive_high_mid",
-        "percussive_bass",
-        "percussive_broadband"
-      ],
-      "layer": "percussive",
-      "intensity": "medium"
     },
     {
       "t": 89.696,
@@ -35847,17 +35781,6 @@
       "intensity": "medium"
     },
     {
-      "t": 99.388,
-      "flux": 344.8133,
-      "passes": [
-        "percussive_high_mid",
-        "percussive_bass",
-        "percussive_broadband"
-      ],
-      "layer": "percussive",
-      "intensity": "high"
-    },
-    {
       "t": 99.396,
       "flux": 344.8133,
       "passes": [
@@ -35876,13 +35799,15 @@
       "intensity": "medium"
     },
     {
-      "t": 99.405,
-      "flux": 0.7678,
+      "t": 99.397,
+      "flux": 344.8133,
       "passes": [
-        "percussive_bass"
+        "percussive_bass",
+        "percussive_broadband",
+        "percussive_high_mid"
       ],
       "layer": "percussive",
-      "intensity": "low"
+      "intensity": "high"
     },
     {
       "t": 99.495,
@@ -46246,7 +46171,7 @@
       "intensity": "low"
     },
     {
-      "t": 153.269,
+      "t": 153.284,
       "flux": 322.7274,
       "passes": [
         "full_spectrum_flux"
@@ -46255,12 +46180,12 @@
       "intensity": "high"
     },
     {
-      "t": 153.281,
+      "t": 153.29,
       "flux": 322.7274,
       "passes": [
-        "percussive_high_mid",
         "percussive_bass",
-        "percussive_broadband"
+        "percussive_broadband",
+        "percussive_high_mid"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -46272,26 +46197,6 @@
         "harmonic_low_mid"
       ],
       "layer": "harmonic",
-      "intensity": "medium"
-    },
-    {
-      "t": 153.298,
-      "flux": 136.0935,
-      "passes": [
-        "full_spectrum_flux"
-      ],
-      "layer": "full-spectrum",
-      "intensity": "medium"
-    },
-    {
-      "t": 153.298,
-      "flux": 136.0935,
-      "passes": [
-        "percussive_high_mid",
-        "percussive_bass",
-        "percussive_broadband"
-      ],
-      "layer": "percussive",
       "intensity": "medium"
     },
     {
@@ -47684,7 +47589,7 @@
       "intensity": "medium"
     },
     {
-      "t": 159.962,
+      "t": 159.98,
       "flux": 100.0224,
       "passes": [
         "harmonic_low_mid"
@@ -47711,15 +47616,6 @@
       ],
       "layer": "full-spectrum",
       "intensity": "high"
-    },
-    {
-      "t": 159.997,
-      "flux": 100.0224,
-      "passes": [
-        "harmonic_low_mid"
-      ],
-      "layer": "harmonic",
-      "intensity": "medium"
     },
     {
       "t": 160.096,
@@ -50067,10 +49963,12 @@
       "intensity": "low"
     },
     {
-      "t": 170.161,
-      "flux": 8.5938,
+      "t": 170.18,
+      "flux": 129.1311,
       "passes": [
-        "percussive_bass"
+        "percussive_bass",
+        "percussive_broadband",
+        "percussive_high_mid"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -50092,17 +49990,6 @@
       ],
       "layer": "harmonic",
       "intensity": "low"
-    },
-    {
-      "t": 170.2,
-      "flux": 129.1311,
-      "passes": [
-        "percussive_high_mid",
-        "percussive_bass",
-        "percussive_broadband"
-      ],
-      "layer": "percussive",
-      "intensity": "medium"
     },
     {
       "t": 170.301,
@@ -59191,12 +59078,12 @@
       "intensity": "high"
     },
     {
-      "t": 210.88,
+      "t": 210.891,
       "flux": 321.9513,
       "passes": [
-        "percussive_high_mid",
         "percussive_bass",
-        "percussive_broadband"
+        "percussive_broadband",
+        "percussive_high_mid"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -59209,15 +59096,6 @@
       ],
       "layer": "harmonic",
       "intensity": "medium"
-    },
-    {
-      "t": 210.901,
-      "flux": 24.8919,
-      "passes": [
-        "percussive_bass"
-      ],
-      "layer": "percussive",
-      "intensity": "low"
     },
     {
       "t": 210.997,
@@ -59372,17 +59250,6 @@
       "intensity": "high"
     },
     {
-      "t": 212.992,
-      "flux": 280.4232,
-      "passes": [
-        "percussive_high_mid",
-        "percussive_bass",
-        "percussive_broadband"
-      ],
-      "layer": "percussive",
-      "intensity": "high"
-    },
-    {
       "t": 212.994,
       "flux": 280.4232,
       "passes": [
@@ -59401,13 +59268,15 @@
       "intensity": "low"
     },
     {
-      "t": 213.037,
-      "flux": 8.7278,
+      "t": 213.014,
+      "flux": 280.4232,
       "passes": [
-        "percussive_bass"
+        "percussive_bass",
+        "percussive_broadband",
+        "percussive_high_mid"
       ],
       "layer": "percussive",
-      "intensity": "low"
+      "intensity": "high"
     },
     {
       "t": 213.107,
@@ -59737,16 +59606,6 @@
       "intensity": "low"
     },
     {
-      "t": 215.574,
-      "flux": 248.1333,
-      "passes": [
-        "percussive_bass",
-        "percussive_broadband"
-      ],
-      "layer": "percussive",
-      "intensity": "high"
-    },
-    {
       "t": 215.586,
       "flux": 83.7451,
       "passes": [
@@ -59756,6 +59615,16 @@
       "intensity": "low"
     },
     {
+      "t": 215.586,
+      "flux": 248.1333,
+      "passes": [
+        "percussive_bass",
+        "percussive_broadband"
+      ],
+      "layer": "percussive",
+      "intensity": "high"
+    },
+    {
       "t": 215.591,
       "flux": 248.1333,
       "passes": [
@@ -59763,16 +59632,6 @@
       ],
       "layer": "full-spectrum",
       "intensity": "high"
-    },
-    {
-      "t": 215.597,
-      "flux": 3.9689,
-      "passes": [
-        "percussive_bass",
-        "percussive_broadband"
-      ],
-      "layer": "percussive",
-      "intensity": "low"
     },
     {
       "t": 215.789,
@@ -59831,16 +59690,6 @@
       "intensity": "low"
     },
     {
-      "t": 216.189,
-      "flux": 177.0936,
-      "passes": [
-        "percussive_bass",
-        "percussive_broadband"
-      ],
-      "layer": "percussive",
-      "intensity": "medium"
-    },
-    {
       "t": 216.192,
       "flux": 60.7503,
       "passes": [
@@ -59859,13 +59708,14 @@
       "intensity": "medium"
     },
     {
-      "t": 216.236,
-      "flux": 9.5245,
+      "t": 216.212,
+      "flux": 177.0936,
       "passes": [
-        "percussive_bass"
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
-      "intensity": "low"
+      "intensity": "medium"
     },
     {
       "t": 216.303,
@@ -59978,10 +59828,11 @@
       "intensity": "low"
     },
     {
-      "t": 217.147,
-      "flux": 10.8681,
+      "t": 217.169,
+      "flux": 243.8128,
       "passes": [
-        "percussive_bass"
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -60003,16 +59854,6 @@
       ],
       "layer": "harmonic",
       "intensity": "low"
-    },
-    {
-      "t": 217.192,
-      "flux": 243.8128,
-      "passes": [
-        "percussive_bass",
-        "percussive_broadband"
-      ],
-      "layer": "percussive",
-      "intensity": "high"
     },
     {
       "t": 217.392,
@@ -60968,11 +60809,11 @@
     },
     "raw_total": 13864,
     "flat_events_pre_merge": 13864,
-    "merged_events": 4803,
+    "merged_events": 4786,
     "events_per_minute": 1271.9,
     "beats_total": 565,
     "bpm": 150.34,
-    "duration_sec": 226.57,
+    "duration_sec": 225.6,
     "segment_count": 26,
     "empty_segment_count": 0,
     "segment_coverage": [
@@ -61223,5 +61064,6 @@
       "quantile": 0.2,
       "min_duration_s": 0.4
     }
-  }
+  },
+  "last_event_time": 223.399
 }

@@ -615,8 +615,13 @@ class TestDirective20260510(unittest.TestCase):
             "flux_stats": {"min": 0.0, "p25": 0.5, "p50": 0.7, "p75": 0.85, "p90": 0.9, "max": 1.0},
         }
         # Hard intro_rest = 2, so with the old filter beats 1 and 2 would be skipped.
-        # With the fix they must be included.
-        selected, _, _ = ld.select_segment_focus_beats(analysis, "easy")
+        # With the fix they must be included.  Disable MIN_FIRST_COLLISION_SEC
+        # for this test (issue #476 introduced a separate per-difficulty
+        # first-collision floor; that floor is exercised in
+        # test_min_first_collision_floor_filters_early_onsets below — here
+        # we are purely asserting that intro_rest is NOT applied).
+        with mock.patch.object(ld, "MIN_FIRST_COLLISION_SEC", {"easy": 0.0, "medium": 0.0, "hard": 0.0}):
+            selected, _, _ = ld.select_segment_focus_beats(analysis, "easy")
         selected_beats = sorted(event["beat_idx"] for event in selected.values())
         # At least one of the early beats (1 or 2) should be present.
         self.assertTrue(
@@ -627,7 +632,10 @@ class TestDirective20260510(unittest.TestCase):
 
     def test_segment_focus_preserves_cross_layer_same_beat_when_selected(self):
         analysis = _cross_layer_fixture()
-        with mock.patch.object(ld, "_choose_segment_focus", return_value=("ghost", "forced_for_test")):
+        # Cross-layer logic test: bypass the per-difficulty first-collision
+        # floor (issue #476) so the t=1.0s pair survives into the selector.
+        with mock.patch.object(ld, "MIN_FIRST_COLLISION_SEC", {"easy": 0.0, "medium": 0.0, "hard": 0.0}), \
+             mock.patch.object(ld, "_choose_segment_focus", return_value=("ghost", "forced_for_test")):
             selected, _, _ = ld.select_segment_focus_beats(analysis, "hard")
 
         beat_2_events = [event for event in selected.values() if event.get("beat_idx") == 2]
@@ -649,7 +657,8 @@ class TestDirective20260510(unittest.TestCase):
         ``beat`` value.
         """
         analysis = _cross_layer_fixture()
-        with mock.patch.object(ld, "_choose_segment_focus", return_value=("ghost", "forced_for_test")):
+        with mock.patch.object(ld, "MIN_FIRST_COLLISION_SEC", {"easy": 0.0, "medium": 0.0, "hard": 0.0}), \
+             mock.patch.object(ld, "_choose_segment_focus", return_value=("ghost", "forced_for_test")):
             obstacles, _, _ = ld.design_level_segment_focus(analysis, "hard")
 
         # Pair A in the fixture (t=1.000 percussive, t=1.040 harmonic) both
@@ -704,6 +713,186 @@ class TestDirective20260510(unittest.TestCase):
         self.assertEqual(ld.classify_onset_class(event_melody), "harmonic")
         self.assertEqual(ld.classify_onset_class(event_both),   "full-spectrum")
         self.assertEqual(ld.classify_onset_class(event_flux),   "full-spectrum")
+
+
+class TestRound4LevelContentFixes(unittest.TestCase):
+    """Regression coverage for issues #468, #472, #476, #481."""
+
+    @classmethod
+    def setUpClass(cls):
+        repo = Path(__file__).resolve().parent.parent
+        cls.beatmap_paths = sorted((repo / "content" / "beatmaps").glob("*_beatmap.json"))
+        cls.beatmaps = {}
+        for p in cls.beatmap_paths:
+            with p.open() as f:
+                cls.beatmaps[p] = json.load(f)
+
+    # ── #476: per-difficulty first-collision floor ─────────────────────────
+
+    def test_shipped_beatmaps_respect_min_first_collision_sec(self):
+        """Issue #476 — every shipped difficulty's first obstacle clears the floor."""
+        self.assertTrue(self.beatmap_paths, "no shipped beatmaps to validate")
+        for path, bm in self.beatmaps.items():
+            for diff, floor in ld.MIN_FIRST_COLLISION_SEC.items():
+                beats = bm["difficulties"][diff]["beats"]
+                if not beats:
+                    continue
+                first = min(float(o["time_sec"]) for o in beats)
+                self.assertGreaterEqual(
+                    first, floor,
+                    f"{path.name} {diff}: first obstacle at {first:.3f}s "
+                    f"violates floor {floor:.2f}s",
+                )
+
+    def test_select_segment_focus_drops_events_inside_floor(self):
+        """Issue #476 — selector filters all_snapped before segmenting."""
+        beats = [round(i * 0.5, 6) for i in range(40)]
+        events = [
+            {"t": 0.5, "passes": ["kick"], "layer": "percussive", "flux": 0.9},
+            {"t": 1.5, "passes": ["kick"], "layer": "percussive", "flux": 0.9},
+            {"t": 5.0, "passes": ["kick"], "layer": "percussive", "flux": 0.9},
+            {"t": 6.0, "passes": ["melody"], "layer": "harmonic", "flux": 0.9},
+            {"t": 7.0, "passes": ["flux"], "layer": "full-spectrum", "flux": 0.9},
+        ]
+        analysis = {
+            "song_id": "floor", "title": "floor", "bpm": 120, "duration": 20.0,
+            "beats": beats, "events": events,
+            "structure": [{"section": "verse", "start": 0.0, "end": 20.0}],
+            "flux_stats": {"min":0.0,"p25":0.5,"p50":0.7,"p75":0.85,"p90":0.9,"max":1.0},
+        }
+        selected, _, _ = ld.select_segment_focus_beats(analysis, "easy")
+        for ev in selected.values():
+            self.assertGreaterEqual(
+                float(ev["t"]), ld.MIN_FIRST_COLLISION_SEC["easy"],
+                f"event at t={ev['t']} violated easy floor",
+            )
+
+    # ── #481: promoted candidates carry segment_focus / segment_idx ────────
+
+    def test_shipped_beatmaps_no_null_segment_focus(self):
+        """Issue #481 — every shipped obstacle carries a non-null segment_focus."""
+        for path, bm in self.beatmaps.items():
+            for diff in ("easy", "medium", "hard"):
+                obs = bm["difficulties"][diff]["beats"]
+                missing_focus = [o for o in obs if o.get("segment_focus") is None]
+                missing_idx   = [o for o in obs if o.get("segment_idx")   is None]
+                self.assertFalse(
+                    missing_focus,
+                    f"{path.name} {diff}: {len(missing_focus)}/{len(obs)} "
+                    f"obstacles have segment_focus=None",
+                )
+                self.assertFalse(
+                    missing_idx,
+                    f"{path.name} {diff}: {len(missing_idx)}/{len(obs)} "
+                    f"obstacles have segment_idx=None",
+                )
+
+    def test_resolve_segment_for_time_assigns_focus(self):
+        """Issue #481 — _resolve_segment_for_time picks the owning segment."""
+        ranges = [(0.0, 4.0, 0, "harmonic"), (4.0, 8.0, 1, "percussive")]
+        self.assertEqual(ld._resolve_segment_for_time(2.0, ranges), (0, "harmonic"))
+        self.assertEqual(ld._resolve_segment_for_time(6.5, ranges), (1, "percussive"))
+        # Past the last boundary — still tagged with the final segment.
+        self.assertEqual(ld._resolve_segment_for_time(99.0, ranges), (1, "percussive"))
+        # Empty ranges return (None, None) so the caller leaves the field unset.
+        self.assertEqual(ld._resolve_segment_for_time(1.0, []), (None, None))
+
+    def test_promote_from_fallback_pool_inherits_segment_focus(self):
+        """Issue #481 — fallback-pool promotion stamps segment_focus on the candidate."""
+        sel_a = {"t": 0.0, "beat_idx": 0, "subdivision": "downbeat",
+                 "onset_class": "harmonic", "flux": 0.9, "source_event_idx": 0,
+                 "segment_focus": "harmonic", "segment_idx": 0}
+        sel_b = {"t": 3.0, "beat_idx": 6, "subdivision": "downbeat",
+                 "onset_class": "harmonic", "flux": 0.85, "source_event_idx": 1,
+                 "segment_focus": "harmonic", "segment_idx": 0}
+        # Candidate sits between A and B with > MIN_IOI_MS["hard"]=280ms spacing,
+        # and dragging it in lowers median IOI below the 0.540s target so the
+        # promoter actually runs (rather than early-returning).
+        cand = {"t": 1.5, "beat_idx": 3, "subdivision": "downbeat",
+                "flux": 0.95, "source_event_idx": 99}
+        selected = {ld._event_key(sel_a): sel_a, ld._event_key(sel_b): sel_b}
+        result = ld._enforce_median_ioi_target(
+            selected, candidate_events=[], difficulty="hard",
+            fallback_pool=[cand],
+            segment_ranges=[(0.0, 4.0, 7, "percussive")],
+        )
+        promoted = [ev for ev in result.values() if ev.get("source_event_idx") == 99]
+        self.assertEqual(len(promoted), 1, "candidate was not promoted")
+        self.assertEqual(promoted[0].get("segment_focus"), "percussive")
+        self.assertEqual(promoted[0].get("segment_idx"), 7)
+        self.assertEqual(promoted[0].get("difficulty_inclusion"), "hard")
+
+    # ── #472: median IOI converges on shipped sets ─────────────────────────
+
+    def test_shipped_median_ioi_satisfies_target_or_close(self):
+        """Issue #472 — median IOI must converge near the per-difficulty target.
+
+        The selector mines the global fallback pool on easy/hard so those
+        tiers can converge.  Medium intentionally SKIPS the fallback in
+        both IOI passes (see ``select_segment_focus_beats``): including
+        it inverted the medium↔hard density step on dense songs (drama,
+        #418 acceptance test) while the difficulty-count ramp could not
+        be restored without breaking that invariant either.  As a
+        documented partial fix for #472, the medium tier is allowed
+        wider slack on sparse songs (1_stomper, where focus events are
+        scarce and the fallback would have been needed to reach the
+        target).  The shipped numbers are reported verbatim in the
+        failure message so drift is immediately visible.
+        """
+        TOLERANCE = {"easy": 1.35, "medium": 2.0, "hard": 1.12}
+        for path, bm in self.beatmaps.items():
+            for diff, target in ld.MEDIAN_IOI_TARGET_SEC.items():
+                ts = sorted(float(o["time_sec"]) for o in bm["difficulties"][diff]["beats"])
+                if len(ts) < 2:
+                    continue
+                iois = [ts[i] - ts[i - 1] for i in range(1, len(ts))]
+                median = sorted(iois)[len(iois) // 2]
+                tol = TOLERANCE[diff]
+                self.assertLessEqual(
+                    median, target * tol,
+                    f"{path.name} {diff}: median IOI {median:.3f}s exceeds "
+                    f"{target:.3f}s × {tol} tolerance",
+                )
+
+    def test_shipped_difficulty_count_ramp_preserved(self):
+        """Issue #472 — count(easy) ≤ count(medium) ≤ count(hard) per song."""
+        for path, bm in self.beatmaps.items():
+            counts = {d: len(bm["difficulties"][d]["beats"]) for d in ("easy", "medium", "hard")}
+            self.assertLessEqual(
+                counts["easy"], counts["medium"],
+                f"{path.name}: easy ({counts['easy']}) > medium ({counts['medium']})",
+            )
+            self.assertLessEqual(
+                counts["medium"], counts["hard"],
+                f"{path.name}: medium ({counts['medium']}) > hard ({counts['hard']})",
+            )
+
+    def test_enforce_difficulty_count_ramp_trims_lower_tier(self):
+        """Issue #472 — _enforce_difficulty_count_ramp trims when easy > medium."""
+        diff_data = {
+            "easy":   {"beats": [{"beat": i, "time_sec": i * 0.5} for i in range(10)], "count": 10},
+            "medium": {"beats": [{"beat": i, "time_sec": i * 0.5} for i in range(5)], "count": 5},
+            "hard":   {"beats": [{"beat": i, "time_sec": i * 0.5} for i in range(20)], "count": 20},
+        }
+        out = ld._enforce_difficulty_count_ramp(diff_data)
+        self.assertLessEqual(out["easy"]["count"], out["medium"]["count"])
+        self.assertLessEqual(out["medium"]["count"], out["hard"]["count"])
+        self.assertEqual(out["easy"]["count"], 5)
+        self.assertEqual(out["hard"]["count"], 20)  # untouched
+
+    # ── #468: gap caps are documented as legacy-only ───────────────────────
+
+    def test_gap_caps_remain_defined_for_legacy_path(self):
+        """Issue #468 — caps live in level_designer for the legacy beat-grid
+        path (clean_gap_one_share / clean_gap_monotony) and the shared
+        validator constants.  Under the active onset-only path the
+        per-obstacle ``beat`` ordinal is collision-bumped (issue #443),
+        so beat-gap monotony is reported as advisory only by the
+        validator.  Keep the constants pinned to their documented values
+        so legacy regenerations remain reproducible.
+        """
+        self.assertEqual(ld.GAP_ONE_SHARE_CAP, {"medium": 0.20, "hard": 0.20})
+        self.assertEqual(ld.GAP_MONOTONY_CAP, {"medium": 0.40, "hard": 0.35})
 
 
 if __name__ == "__main__":

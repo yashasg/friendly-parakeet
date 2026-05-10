@@ -122,6 +122,16 @@ MIN_SHAPE_CHANGE_GAP = 3
 GAP_ONE_MEDIUM_START_PROGRESS = 0.30
 GAP_ONE_HARD_MIN_BEAT = 11
 GAP_ONE_MAX_RUN = {"medium": 1, "hard": 2}
+# Issue #468 — these caps apply ONLY to the legacy beat-grid path
+# (``design_level`` / ``clean_gap_one_share`` / ``clean_gap_monotony``).
+# Under the active onset-only path (``design_level_segment_focus``,
+# directive 2026-05-10) the per-obstacle ``beat`` field is the snapped
+# musical-beat index with collision-bumping, so beat-ordinal gaps no
+# longer encode the original "musical beats between hits" semantics.
+# The validator demotes these gates to advisories in onset_timed mode
+# (issue #443) — see ``tools/validate_loop2_content_gates.py``.  Keep
+# the constants here so the legacy path and shared validator constants
+# stay in lockstep.
 GAP_ONE_SHARE_CAP = {"medium": 0.20, "hard": 0.20}
 GAP_MONOTONY_CAP = {"medium": 0.40, "hard": 0.35}
 MIN_IOI_MS = {"easy": 500.0, "medium": 350.0, "hard": 280.0}
@@ -863,17 +873,49 @@ def write_snap_diagnostics(analysis, diagnostics_out_dir, experimental_onset_tim
 
     current_snap = snap_events_to_beats(events, beats)
     current_rows = []
+    # Issue #471 — residuals must be measured against the actual
+    # subdivision grid point the event was labelled with, not the bare
+    # beat anchor.  ``snap_events_to_beats`` records ``beat_time`` =
+    # beats[beat_anchor] (the surrounding beat), so for events tagged
+    # ``eighth``/``triplet`` the previous formula
+    # ``residual = event_time - beat_time`` actually reported the
+    # event's distance from the *downbeat*, not from the eighth/triplet
+    # grid line — making p90 and within_Xms numbers structurally
+    # over-count residuals for off-beat subdivisions.  Compute the true
+    # subdivision grid time here so the diagnostic semantics match the
+    # field name (``snap_residual_stats``).
+    _SUB_FRACTION = {
+        "downbeat": 0.0,
+        "eighth": 0.5,
+        "triplet": 1.0 / 3.0,  # closest-of-{1/3, 2/3}; refined below
+    }
     for i, row in enumerate(current_snap):
         event_time = float(row.get("t", 0.0))
-        beat_time = float(row.get("beat_time", 0.0))
-        residual_ms = (event_time - beat_time) * 1000.0
+        beat_idx = int(row.get("beat_idx", 0))
+        subdivision = row.get("subdivision", "downbeat")
+
+        # Resolve the surrounding beat span so triplet phase can pick
+        # between 1/3 and 2/3.
+        left = float(beats[beat_idx]) if 0 <= beat_idx < len(beats) else 0.0
+        right_idx = beat_idx + 1 if beat_idx + 1 < len(beats) else beat_idx
+        right = float(beats[right_idx]) if right_idx < len(beats) else left
+        span = max(1e-6, right - left)
+
+        if subdivision == "triplet":
+            phase = (event_time - left) / span
+            frac = (1.0 / 3.0) if abs(phase - 1.0 / 3.0) <= abs(phase - 2.0 / 3.0) else (2.0 / 3.0)
+        else:
+            frac = _SUB_FRACTION.get(subdivision, 0.0)
+        grid_time = left + span * frac
+
+        residual_ms = (event_time - grid_time) * 1000.0
         current_rows.append({
             "candidate": "current_quarter_snap",
             "event_idx": int(row.get("source_event_idx", i)),
             "event_time": round(event_time, 6),
-            "beat_idx": int(row.get("beat_idx", 0)),
-            "grid_time": round(beat_time, 6),
-            "subdivision": row.get("subdivision", "downbeat"),
+            "beat_idx": beat_idx,
+            "grid_time": round(grid_time, 6),
+            "subdivision": subdivision,
             "residual_ms": round(residual_ms, 3),
             "abs_residual_ms": round(abs(residual_ms), 3),
             "flux": row.get("flux"),
@@ -1541,39 +1583,49 @@ def _candidate_respects_run_cap(candidate, selected_list, difficulty):
     return left_run + 1 + right_run <= cap
 
 
+def _resolve_segment_for_time(t, segment_ranges):
+    """Issue #481 — return ``(segment_idx, segment_focus)`` for ``t``.
+
+    ``segment_ranges`` is a list of ``(start_t, end_t, segment_idx, focus)``
+    tuples produced by :func:`select_segment_focus_beats`.  Lookup is linear
+    (segments are O(10) per song) and falls back to the last segment for
+    times slightly past the final boundary so promoted candidates always
+    inherit a non-null focus label.
+    """
+    if not segment_ranges:
+        return None, None
+    for start_t, end_t, seg_idx, focus in segment_ranges:
+        if start_t <= t < end_t:
+            return seg_idx, focus
+    last = segment_ranges[-1]
+    return last[2], last[3]
+
+
 def _enforce_median_ioi_target(
     selected_events,
     candidate_events,
     difficulty,
     fallback_pool=None,
     respect_run_cap=False,
+    segment_ranges=None,
 ):
-    """Issues #392 / #394 / #418 — drive median IOI to the per-difficulty ceiling.
-
-    The segment-focus selector emits sparse easy/medium/hard sets that can
-    leave Stomper-style songs with median IOI far above the difficulty
-    target.  This pass promotes additional high-flux candidates (in flux-
-    desc / time-asc order) until the resulting median IOI is at or below
-    ``MEDIAN_IOI_TARGET_SEC[difficulty]``.
+    """Issues #392 / #394 / #418 / #472 / #481 — drive median IOI to the
+    per-difficulty ceiling, preserving ``segment_focus`` metadata on
+    promoted candidates.
 
     ``candidate_events`` are the per-segment focus-class events.  When that
-    pool is exhausted (or a song's focus-class events are already fully
-    consumed), ``fallback_pool`` (typically every snapped event) is mined
-    for additional high-flux placements so the IOI ceiling can still be
-    satisfied for sparse songs like Stomper.
-
-    The ``MIN_IOI_MS`` floor is still respected so we never violate the
-    minimum spacing established by ``_thin_selected_events_for_min_ioi``.
+    pool is exhausted ``fallback_pool`` (typically every snapped event) is
+    mined for additional high-flux placements.  The ``MIN_IOI_MS`` floor
+    is still respected.
 
     When ``respect_run_cap`` is True, candidates that would push a
     same-onset-class run past ``MAX_SAME_LANE_RUN[difficulty]`` are also
-    rejected — this allows the pass to be re-run after
-    :func:`_enforce_same_class_run_cap` (which can otherwise drop the
-    median IOI gains it produced; see issue #418).
+    rejected (issue #418).
 
     Promoted events are tagged with ``difficulty_inclusion = difficulty``
-    so they do not appear as a "higher-tier" leak in lower-difficulty
-    arrays (issue #414).
+    (issue #414) and stamped with the surrounding segment's
+    ``segment_focus`` / ``segment_idx`` (issue #481) so downstream
+    diagnostics can attribute them to the originating section.
     """
     target = MEDIAN_IOI_TARGET_SEC.get(difficulty)
     if not target or len(selected_events) < 2:
@@ -1606,6 +1658,23 @@ def _enforce_median_ioi_target(
                     **candidate,
                     "onset_class": classify_onset_class(candidate),
                 }
+            # Issue #481 — stamp segment_focus / segment_idx on promoted
+            # candidates whose source pool did not already carry them
+            # (specifically the global fallback pool).
+            if segment_ranges is not None and (
+                candidate.get("segment_focus") is None
+                or candidate.get("segment_idx") is None
+            ):
+                seg_idx, focus = _resolve_segment_for_time(
+                    float(candidate.get("t", 0.0)), segment_ranges
+                )
+                stamp = {}
+                if candidate.get("segment_focus") is None and focus is not None:
+                    stamp["segment_focus"] = focus
+                if candidate.get("segment_idx") is None and seg_idx is not None:
+                    stamp["segment_idx"] = seg_idx
+                if stamp:
+                    candidate = {**candidate, **stamp}
             candidate = {
                 **candidate,
                 "difficulty_inclusion": difficulty,
@@ -1618,12 +1687,13 @@ def _enforce_median_ioi_target(
         return False
 
     if not _try_promote(candidate_events):
-        # Avoid over-densifying medium via the global fallback pool: doing
-        # so was producing medium counts above hard for dense songs (drama),
-        # which broke difficulty-ramp monotony invariants.  Easy/hard still
-        # benefit from the fallback for sparse focus-class pools (e.g.
-        # stomper hard), so only skip it for medium.
-        if difficulty != "medium" and fallback_pool:
+        # Issue #472 — every difficulty (not just hard) may mine the
+        # global fallback pool here so easy/medium can converge to their
+        # IOI ceilings.  The previous easy/medium-skip caused medians of
+        # 1.0-1.5 s vs targets of 0.68-0.85 s on every shipped beatmap.
+        # Difficulty-ramp monotony is preserved post-hoc by
+        # _enforce_difficulty_count_ramp on the materialized obstacles.
+        if fallback_pool:
             _try_promote(fallback_pool, enrich=True)
 
     return dict(
@@ -1718,6 +1788,19 @@ def select_segment_focus_beats(analysis, difficulty):
     # Snap all events to the beat grid once.
     all_snapped = snap_events_to_beats(events, beats)
 
+    # Issue #476 — enforce the per-difficulty first-collision reaction
+    # floor at the SELECTOR level (pre-materialization), analogous to
+    # _enforce_same_class_run_cap.  Drop snapped onsets whose audio time
+    # falls inside the floor so no obstacle (selected or fallback-promoted)
+    # can spawn before the player has time to register the song.  This is
+    # selection, not cleanup, and uses onset events only — no filler is
+    # inserted.
+    floor_sec = MIN_FIRST_COLLISION_SEC.get(difficulty)
+    if floor_sec is not None:
+        all_snapped = [
+            ev for ev in all_snapped if float(ev.get("t", 0.0)) >= floor_sec
+        ]
+
     # Index snapped events for efficient lookup.
     all_snapped_map = {}
     for ev in all_snapped:
@@ -1732,6 +1815,10 @@ def select_segment_focus_beats(analysis, difficulty):
     candidate_events = []  # enriched ranked focus events available for coverage promotion
     prev_focuses = []      # rolling focus history for anti-repetition
     segment_diagnostics = []
+    # Issue #481 — list of (start_t, end_t, segment_idx, focus) ranges so
+    # _enforce_median_ioi_target can stamp segment metadata onto candidates
+    # promoted from the global fallback pool.
+    segment_ranges: list[tuple[float, float, int, str]] = []
 
     for seg_idx, section in enumerate(sections):
         sec_start = float(section["start"])
@@ -1750,6 +1837,10 @@ def select_segment_focus_beats(analysis, difficulty):
         # Choose focus class.
         focus, fallback_reason = _choose_segment_focus(class_stats, prev_focuses)
         prev_focuses.append(focus)
+        # Issue #481 — record this segment's resolved focus so the IOI
+        # promoter can stamp metadata onto candidates pulled from the
+        # global fallback pool.
+        segment_ranges.append((sec_start, sec_end, seg_idx, focus))
 
         # Events of the chosen focus class; fall back to all events if none.
         focus_events = class_stats.get(focus, {}).get("events", [])
@@ -1835,8 +1926,20 @@ def select_segment_focus_beats(analysis, difficulty):
             selected_events[_event_key(event)] = event
 
     selected_events = _thin_selected_events_for_min_ioi(selected_events, difficulty)
+    # Issue #472 / #418 — first IOI pass mirrors the second-pass policy:
+    # medium SKIPS the global fallback pool here.  Mining the fallback
+    # for medium on dense songs (drama) over-promotes by ~110 events,
+    # which the run-cap then cannot fully reverse, leaving medium denser
+    # than hard and inverting the difficulty ramp (acceptance test
+    # `test_drama_medium_to_hard_ioi_step_is_perceptible`).  Easy and
+    # hard still mine the fallback so sparse songs (Stomper) can
+    # converge toward their IOI ceilings.
     selected_events = _enforce_median_ioi_target(
-        selected_events, candidate_events, difficulty, fallback_pool=all_snapped
+        selected_events,
+        candidate_events,
+        difficulty,
+        fallback_pool=all_snapped if difficulty != "medium" else None,
+        segment_ranges=segment_ranges,
     )
     selected_events = _promote_subdivision_coverage(selected_events, candidate_events, difficulty)
     # Issue #391 — cap consecutive same-onset-class (==same-lane) runs.
@@ -1853,14 +1956,17 @@ def select_segment_focus_beats(analysis, difficulty):
         selected_events,
         candidate_events,
         difficulty,
-        # Only "hard" densification benefits from the fallback pool here:
-        # using the global pool a second time on easy/medium pushed easy
-        # obstacle counts above medium on dense songs (broken difficulty
-        # ramp; observed on drama).  Hard already targets the densest
-        # IOI ceiling, where the fallback is needed to clear the run-cap
-        # induced gap.
-        fallback_pool=all_snapped if difficulty == "hard" else None,
+        # Issue #472 — second-pass fallback usage:
+        # easy/hard get the global fallback so easy can converge to its
+        # IOI target after run-cap drops, and hard can recover from the
+        # single-class-dominant case (issue #418).  Medium intentionally
+        # SKIPS the fallback in the second pass — including it produced
+        # medium counts above hard for dense songs (drama), inverting
+        # the medium↔hard density step (#418 acceptance test) and
+        # breaking the difficulty-ramp monotony invariant.
+        fallback_pool=all_snapped if difficulty != "medium" else None,
         respect_run_cap=True,
+        segment_ranges=segment_ranges,
     )
     selected_events = _enforce_same_class_run_cap(selected_events, difficulty)
     # Issue #414 — clamp difficulty_inclusion so each shipped difficulty
@@ -3091,6 +3197,13 @@ def build_beatmap(analysis, difficulties, cleanup_enabled=True, experimental_ons
             obs = design_level(analysis, diff, cleanup_enabled=cleanup_enabled)
         timed = attach_and_validate_timing(obs, diff, selected_events)
         diff_data[diff] = {"beats": timed, "count": len(timed)}
+
+    if experimental_onset_timing:
+        # Issue #472 — preserve count(easy) <= count(medium) <= count(hard)
+        # ramp invariant after the relaxed IOI promotion rules.  Trim the
+        # higher tier to match the lower tier when ordering inverts; the
+        # trim drops the sparsest promoted onsets only (no filler).
+        diff_data = _enforce_difficulty_count_ramp(diff_data)
     return {
         "song_id": analysis.get("title", "unknown"),
         "title": analysis.get("title", "unknown"),
@@ -3102,6 +3215,59 @@ def build_beatmap(analysis, difficulties, cleanup_enabled=True, experimental_ons
         "difficulties": diff_data,
         "structure": analysis["structure"],
     }
+
+
+def _enforce_difficulty_count_ramp(diff_data):
+    """Issue #472 — preserve obstacle-count monotonicity across difficulties.
+
+    The relaxed easy/medium fallback-pool promotion in
+    :func:`_enforce_median_ioi_target` can occasionally produce
+    ``len(easy) > len(medium)`` or ``len(medium) > len(hard)`` on
+    songs whose harder-tier IOI ceiling is already met by sparse
+    focus-class events (so the fallback pool is never mined).  The
+    runtime contract is that easier difficulties ship at most as many
+    obstacles as harder ones; we restore that here by trimming the
+    lower-tier set to match the next-higher-tier count.
+
+    Trim strategy: drop obstacles whose **maximum** neighbour gap is
+    largest (the sparsest outliers).  Removing dense events would
+    raise the median IOI past the per-difficulty ceiling that
+    :func:`_enforce_median_ioi_target` just achieved; removing sparse
+    outliers tends to leave the dense body intact and preserves the
+    median.  Onset-only is preserved — we only drop, never insert.
+    """
+    order = ("easy", "medium", "hard")
+    available = [d for d in order if d in diff_data]
+    for i in range(len(available) - 1, 0, -1):
+        upper = diff_data[available[i]]["count"]
+        lower_name = available[i - 1]
+        lower = diff_data[lower_name]["beats"]
+        if len(lower) <= upper:
+            continue
+        sorted_by_time = sorted(lower, key=lambda o: float(o.get("time_sec", 0.0)))
+        ranked = []
+        for idx, obs in enumerate(sorted_by_time):
+            prev_dt = (
+                float(obs.get("time_sec", 0.0))
+                - float(sorted_by_time[idx - 1].get("time_sec", 0.0))
+                if idx > 0 else float("inf")
+            )
+            next_dt = (
+                float(sorted_by_time[idx + 1].get("time_sec", 0.0))
+                - float(obs.get("time_sec", 0.0))
+                if idx < len(sorted_by_time) - 1 else float("inf")
+            )
+            # Use max neighbour gap so isolated/sparse obstacles rank highest.
+            ranked.append((max(prev_dt, next_dt), idx))
+        # Drop sparsest first (largest neighbour gap).
+        ranked.sort(key=lambda pair: (-pair[0], pair[1]))
+        drop_count = len(sorted_by_time) - upper
+        drop_indices = {idx for _, idx in ranked[:drop_count]}
+        kept = [obs for idx, obs in enumerate(sorted_by_time) if idx not in drop_indices]
+        # Restore beat-ordinal order for downstream consumers.
+        kept.sort(key=lambda o: int(o.get("beat", 0)))
+        diff_data[lower_name] = {"beats": kept, "count": len(kept)}
+    return diff_data
 
 
 # ═══════════════════════════════════════════════════════════════

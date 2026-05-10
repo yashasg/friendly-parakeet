@@ -18,5 +18,6 @@ struct TriggerPattern {
 TriggerPattern pattern_for_event(HapticEvent event) noexcept;
 void warmup() noexcept;
 void trigger(HapticEvent event) noexcept;
+void shutdown() noexcept;
 
 }  // namespace platform::haptics

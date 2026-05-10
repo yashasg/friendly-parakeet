@@ -8,11 +8,20 @@
 #include "../components/transform.h"
 #include "../components/rendering.h"
 #include "../constants.h"
+#include "../util/settings.h"
+#include "../util/settings_persistence.h"
 
 void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
     auto* song = reg.ctx().find<SongState>();
     auto* map  = reg.ctx().find<BeatMap>();
     if (!song || !map || !song->playing) return;
+
+    // Player calibration (#474). Positive audio_offset_ms delays beat timing:
+    // we push spawn_time forward by the same delta so obstacles arrive at
+    // PLAYER_Y later, matching the player's perceived audio lag. Negative
+    // values advance beat timing. See settings.h and settings_persistence.h.
+    const auto* settings = reg.ctx().find<SettingsState>();
+    const float audio_offset_sec = settings ? settings::audio_offset_seconds(*settings) : 0.0f;
 
     while (song->next_spawn_idx < map->beats.size()) {
         const auto& entry = map->beats[song->next_spawn_idx];
@@ -28,7 +37,9 @@ void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
             beat_time = entry.time_sec;
         }
         // Beat line is the collision point: beat_time maps to crossing PLAYER_Y.
-        float spawn_time = beat_time - song->lead_time;
+        // audio_offset_sec shifts spawn_time uniformly so the visual schedule
+        // tracks the player-calibrated beat clock.
+        float spawn_time = beat_time - song->lead_time + audio_offset_sec;
 
         if (song->song_time < spawn_time) break;
 

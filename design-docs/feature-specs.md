@@ -454,6 +454,31 @@ void scoring_system(entt::registry& reg, float dt);
 # SPEC 3 — OBSTACLE SPAWNING & DIFFICULTY
 # ═══════════════════════════════════════════════════
 
+> ⚠️ **HISTORICAL / PARTIAL — SPEC 3 stale (issues #420, #446, #475).**
+> Major portions of SPEC 3 below describe behavior the runtime no longer
+> implements. Specifically these are **not current**:
+>
+> - **Time-based speed ramp.** The 180-second piecewise-linear `1.0×→3.0×`
+>   speed curve and the 7 difficulty brackets are gone. Scroll speed is
+>   BPM-derived and constant within a song; difficulty is selected per
+>   song (easy / medium / hard) at song-select. See `game.md` "Difficulty
+>   Progression" and `rhythm-spec.md` for the authoritative model.
+> - **Combo / Split-Path generation at brackets 4+.** No shipped beatmap
+>   emits `combo_gate` or `split_path`; `level_designer.py` produces
+>   100% `shape_gate` content across all 9 shipped beatmaps. The
+>   "combo every 3 obstacles at bracket 4" rule no longer applies.
+> - **Burnout detection-range shrink.** The burnout mechanic itself was
+>   removed (#239 — see SPEC 2 banner above). `BASE_RANGE / (1 +
+>   SHRINK_RATE * elapsed_time)` and any acceptance criterion referencing
+>   the burnout window are dead.
+>
+> Spawn-horizon, cleanup-line, lane anti-repeat, and pool-ceiling
+> concepts remain broadly relevant but the numeric values and bracket
+> tables below should not be treated as current. Cross-check against
+> `rhythm-spec.md` (BPM/window math), `game.md` (difficulty model), and
+> `tools/level_designer.py` (actual shipped generation) before relying
+> on anything in this section.
+
 ## Overview
 
 This system spawns obstacle entities ahead of the player, ramps

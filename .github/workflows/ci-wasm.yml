@@ -89,19 +89,34 @@ jobs:
           cd build-web
           ctest --verbose --output-on-failure
 
+      - name: Setup Node.js for browser smoke
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Setup Chrome
+        id: setup-chrome
+        uses: browser-actions/setup-chrome@v2
+
       - name: WASM browser responsiveness smoke
-        if: ${{ false }} # Temporarily disabled in CI due to flaky headless click behavior
+        env:
+          CHROMIUM_EXECUTABLE_PATH: ${{ steps.setup-chrome.outputs.chrome-path }}
         run: |
-          CHROME_BIN="$(command -v chromium || command -v chromium-browser || command -v google-chrome || true)"
-          if [ -z "$CHROME_BIN" ]; then
-            echo "::error title=Missing browser::No Chromium/Chrome executable found on runner"
+          if [ -z "${CHROMIUM_EXECUTABLE_PATH:-}" ] || [ ! -x "${CHROMIUM_EXECUTABLE_PATH}" ]; then
+            echo "::error title=Missing browser::setup-chrome did not provide an executable browser path"
             exit 1
           fi
-          export CHROMIUM_EXECUTABLE_PATH="$CHROME_BIN"
           npm install --no-save playwright-core
           python3 -m http.server 4173 --directory build-web >/dev/null 2>&1 &
           SERVER_PID=$!
           trap 'kill "$SERVER_PID"' EXIT
+          for i in $(seq 1 20); do
+            if curl -fsS "http://127.0.0.1:4173/index.html" >/dev/null; then
+              break
+            fi
+            sleep 0.5
+          done
+          curl -fsS "http://127.0.0.1:4173/index.html" >/dev/null
           node tests/wasm_runtime_smoke.cjs "http://127.0.0.1:4173/index.html"
 
       - name: Upload artifact

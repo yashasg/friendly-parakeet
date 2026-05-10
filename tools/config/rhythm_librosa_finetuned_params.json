@@ -1,11 +1,4 @@
 {
-  "tempo": {
-    "n_fft": 2048,
-    "hop_length": 384,
-    "start_bpm": 120.0,
-    "tightness": 150.0,
-    "trim": false
-  },
   "beat": {
     "n_fft": 3072,
     "hop_length": 320,

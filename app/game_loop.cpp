@@ -175,6 +175,7 @@ void game_loop_init(entt::registry& reg,
     reg.ctx().emplace<SongResults>();
     reg.ctx().emplace<RNGState>();
     reg.ctx().emplace<TestPlayerState>();
+    reg.ctx().emplace<TestPlayerSessionState>();
     reg.ctx().emplace<SessionLog>();
 
     persistence::Paths persistence_paths;
@@ -339,6 +340,7 @@ void game_loop_shutdown(entt::registry& reg) {
         unload_text_fonts(*text_ctx);
     }
     sfx_bank_unload(reg);
+    platform::haptics::shutdown();
     CloseAudioDevice();
     CloseWindow();
 }
