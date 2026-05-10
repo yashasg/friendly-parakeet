@@ -94,6 +94,20 @@ def _varied_fixture() -> dict:
 
 
 class TestExperimentalOnsetTiming(unittest.TestCase):
+    def test_medium_lane_run_optimizer_preserves_balance(self):
+        obstacles = []
+        for shape, count in (("triangle", 45), ("square", 60), ("circle", 20)):
+            for _ in range(count):
+                obs = {"kind": "shape_gate", "beat": len(obstacles), "time_sec": len(obstacles) * 0.5}
+                ld.set_shape_gate(obs, shape)
+                obstacles.append(obs)
+
+        ld.optimize_medium_lane_runs(obstacles, "medium")
+
+        counts, total = ld.medium_shape_counts(obstacles)
+        self.assertEqual(ld.shape_balance_score(counts, total), 0)
+        self.assertLessEqual(ld.max_same_lane_run(obstacles), ld.MAX_SAME_LANE_RUN["medium"])
+
     def test_defaults_keep_beat_snapped_time(self):
         beatmap = ld.build_beatmap(_analysis_fixture(), ["easy"], cleanup_enabled=True)
         beats = beatmap["difficulties"]["easy"]["beats"]
