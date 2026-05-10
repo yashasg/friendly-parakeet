@@ -219,3 +219,73 @@ actionable items not already tracked. No file mods (audit-only).
 
 ### Final output
 **Issues filed: #425, #426.**
+
+## 2026-05-10 — Round 3 audit (audit/autonomous-quality-loop-3 @ fd52051)
+
+UX/a11y/editor pass after PR #427 merge. Audit-only (only this history
+file modified). Round 2 #409–#426 all CLOSED; PR #427 merged.
+
+### Filed (new)
+- **#438 (documentation)** — `design-docs/game-flow.md` §6 Transition
+  Animations Frame Sequence ASCII art (L1752, L1792, L1886, L1937) and
+  **Appendix A** Complete Audio Map (L1980–L1986) + **Appendix B**
+  Complete Haptic Map (L2014–L2018) still describe the removed burnout
+  meter and ×1.0–×5.0 multiplier SFX/haptic events with no per-section
+  ARCHIVED markers. #387 fixed §2b; #425 fixed §3/§4b/§4d/§5; appendices
+  + transition frames were explicitly out of those issues' scope.
+  Highest risk because audio/haptic engineers grep the appendices when
+  wiring SFX IDs (cf. closed #236: haptics layer was previously found
+  unimplemented). Acceptance includes a grep-based regression: any
+  `burnout` hit must live inside an ARCHIVED block.
+- **#439 (editor a11y)** — Difficulty tabs (`.diff-tab` Easy/Medium/Hard
+  in `tools/beatmap-editor/index.html` L31–35) behave as a tablist but
+  use plain `<button>` semantics. No `role="tablist"`/`role="tab"`, no
+  `aria-selected` — active state is conveyed only via the `class="active"`
+  visual state in `editor.css:198`. `panels.js:384–413` rebuilds the tab
+  strip without setting any aria attrs. Confirmed via grep: zero
+  `aria-selected`/`role="tab"` occurrences in `tools/beatmap-editor/`.
+  Distinct class from #426 (icon-only button names) — this is *control
+  state*, not control name.
+- **#440 (editor a11y)** — `<select>` controls miss accessible names.
+  `#default-level-select` (L16) has only `title=` (same SR-unreliable
+  pattern fixed for buttons in #426/#389) and the adjacent "Level" text
+  is a `<span class="toolbar-label">`, not a `<label for=…>`.
+  `#playback-rate` (L81) has *no* label, aria-label, or labelledby at
+  all — SR announces "combobox, 1.0×" with zero context. Acceptance
+  includes generalizing `toolbar-a11y.test.js` to assert every form
+  control (`<button>`, `<select>`, non-hidden/file `<input>`) outside the
+  `display:none` palette-compat sidebar has an accessible name.
+
+### Findings reviewed and *not* filed
+- Settings modal `<input>` controls (L189–215) all use proper
+  `<label for=…>` — no issue.
+- `#chk-metronome` (L89) is wrapped by an implicit `<label>` — fine.
+- `#sidebar > .palette-btn` buttons (L241–247) have no name **and**
+  no text, but the parent `#sidebar` is `display:none` (panels.js
+  compat shell). Not user-reachable; explicitly noted out of scope.
+- §4b/§5a in game-flow.md already have ARCHIVED blocks (closed #425).
+- Reviewed #198 again — still OPEN, still substantively fixed by #390
+  (PR merged into #408 / now superseded by #427's editor work). Audit
+  pass; deferred to triage to close.
+- Did not audit code-identifier surface (`HapticEvent::Burnout*`,
+  `DEAD_BY_BURNOUT`, etc.) — already tracked in **#240**.
+
+### Lessons
+- The supersession banner + per-section ARCHIVED-blocks pattern needs
+  to extend to **appendices and ASCII frame art**, not just numbered
+  prose sections. ASCII frames in particular look authoritative and
+  are copied wholesale by UI implementers.
+- For HTML a11y, the next iteration of the regression test should
+  generalize across element types: `<button>` *and* `<select>` *and*
+  `<input>` all need an accessible name. A single DOM-introspection
+  test ("every form control outside the hidden palette has either
+  textContent ≥ 2 chars, aria-label, aria-labelledby, or an
+  associated `<label>`") catches the whole class instead of one
+  control type at a time. Codifying in #440's acceptance.
+- Tablist patterns are a recurring oversight in icon/badge-styled
+  toolbars — same root cause as #426 (custom button chrome hides the
+  underlying ARIA contract). Worth a future "audit all editor
+  composite widgets against WAI-ARIA APG patterns" pass.
+
+### Final output
+**Issues filed: #438, #439, #440.**
