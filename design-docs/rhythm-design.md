@@ -11,7 +11,7 @@
   │  SECTION 4:  The Proximity Ring ......................... 4 │
   │  SECTION 5:  Scoring — Timing Tiers ..................... 5 │
   │  SECTION 6:  Hexagon — The Rest Between Beats ........... 6 │
-  │  SECTION 7:  MISS = Game Over ........................... 7 │
+  │  SECTION 7:  MISS — Energy Drain ........................ 7 │
   │  SECTION 8:  Obstacle Types ............................. 8 │
   │  SECTION 9:  Beat Map Generation ........................ 9 │
   │  APPENDIX A: Glossary ................................... A │
@@ -384,8 +384,9 @@ The player can hear the beat coming. The timing is legible. What the player cann
   ║  No obstacle requires Hexagon. It has no scoring value.     ║
   ║  It is purely the REST state — the space between notes.     ║
   ║                                                             ║
-  ║  Any obstacle arriving while the player is ⬡ = MISS.       ║
-  ║  The player must ALWAYS respond. There is no neutral.       ║
+  ║  Any obstacle arriving while the player is ⬡ = MISS        ║
+  ║  (drains energy — see §7). The player must ALWAYS respond. ║
+  ║  There is no neutral.                                       ║
   ║                                                             ║
   ╚═════════════════════════════════════════════════════════════╝
 ```
@@ -409,48 +410,79 @@ The player can hear the beat coming. The timing is legible. What the player cann
 ---
 
 # ═══════════════════════════════════════════════════
-# SECTION 7 — MISS = GAME OVER
+# SECTION 7 — MISS — ENERGY DRAIN
 # ═══════════════════════════════════════════════════
+
+> **Shipped model:** SHAPESHIFTER uses the **Energy Bar** survival
+> resource (see [`energy-bar.md`](energy-bar.md) and
+> [`game.md`](game.md) §"Game Loop" / §"HUD Elements"). A MISS does
+> **not** end the run on its own — it drains energy. The run ends only
+> when energy reaches zero.
+>
+> **Legacy / superseded:** Earlier drafts of this section described an
+> instant-death "ONE miss ends the run, no HP" model. That model is
+> superseded by the energy bar shipped in `app/systems/energy_system.cpp`
+> and the game-over check in
+> [`app/systems/game_state_system.cpp:105`](../app/systems/game_state_system.cpp)
+> (`energy && song && song->playing && energy->energy <= 0.0f`). Do not
+> reintroduce instant-death framing in design docs without first
+> revisiting `energy-bar.md`.
 
 ## The Decision
 
 ```
   ┌──────────────────────────────────────────────────────────────┐
   │                                                              │
-  │  There is NO HP bar. ONE miss ends the run.                  │
+  │  Misses cost energy. Energy at 0 ends the run.               │
   │                                                              │
-  │  Why:                                                        │
+  │  Why energy, not instant death:                              │
   │                                                              │
-  │  • This is an arcade runner, not a 3-minute song test.       │
-  │    Sessions are short. Restarts are fast and expected.        │
+  │  • Forgiveness window for new players: a single mistimed     │
+  │    press doesn't terminate the song. Learning is possible    │
+  │    inside one run.                                           │
   │                                                              │
-  │  • HP drain removes tension. Every obstacle would become     │
-  │    "it's fine, I have 4 more." Instant fail means every      │
-  │    obstacle matters every time.                              │
+  │  • Every note still matters: misses cost a meaningful slice  │
+  │    of energy and break the chain (see §5). Sloppy play       │
+  │    bleeds out within a handful of misses.                    │
   │                                                              │
-  │  • The proximity ring gives ample warning. A miss is a       │
-  │    genuine error, not a surprise. The player had the cue.    │
+  │  • The proximity ring still gives ample warning. A miss is   │
+  │    a genuine error, not a surprise — but the run can         │
+  │    survive long enough for the player to recover.            │
   │                                                              │
-  │  • This mirrors the best arcade rhythm games: one mistake,  │
-  │    full restart, higher stakes, stronger memory formation.   │
+  │  • Hits feed energy back (PERFECT/GOOD/OK recover; see       │
+  │    `energy-bar.md`). Clean play sustains the run.            │
   │                                                              │
   └──────────────────────────────────────────────────────────────┘
 ```
 
 ## What Counts as a MISS
 
+Each of the following emits a `MissTag` (see
+`app/components/obstacle.h`), which `scoring_system` and
+`energy_system` consume to drain energy and reset the chain. None of
+them ends the run on their own — only `energy <= 0.0f` does.
+
 ```
   ┌─────────────────────────────────────────────────────────────────┐
   │                                                                 │
-  │  • Wrong shape when obstacle arrives         → MISS → END      │
-  │  • ⬡ Hexagon when shape_gate arrives         → MISS → END      │
-  │  • Timing outside BAD window (> 75% off peak) → MISS → END      │
-  │  • Pressing shape but in wrong lane          → MISS → END      │
+  │  • Wrong shape when obstacle arrives         → MISS → drain    │
+  │  • ⬡ Hexagon when shape_gate arrives         → MISS → drain    │
+  │  • Active window closed without a valid press → MISS → drain    │
+  │  • Pressing shape but in wrong lane          → MISS → drain    │
   │                                                                 │
-  │  • low_bar / high_bar: no dodge action       → MISS → END      │
+  │  • low_bar / high_bar: no dodge action       → MISS → drain    │
+  │    (future obstacle kinds — see §8 shipped-scope note)         │
+  │                                                                 │
+  │  Run ends only when energy reaches 0 (see `energy-bar.md`).    │
   │                                                                 │
   └─────────────────────────────────────────────────────────────────┘
 ```
+
+> **Note on timing tiers:** §5's timing table has no upper bound above
+> BAD — any press inside the active window grades as PERFECT / GOOD /
+> OK / BAD. A "late press" only becomes a MISS when the active window
+> closes with no valid press registered (i.e. it collapses into the
+> "Hexagon when shape_gate arrives" case above).
 
 ---
 ---
@@ -682,10 +714,15 @@ For shipped per-difficulty obstacle counts, see the table in
                PERFECT=1.50, GOOD=1.00, OK=0.75, BAD=0.50.
 
   Hexagon (⬡)  Default/rest state. No obstacle ever requires it.
-               Any obstacle arriving while in ⬡ = MISS = game over.
+               Any obstacle arriving while in ⬡ = MISS (energy drain).
+               See §7 and `energy-bar.md`.
 
-  MISS         Shape mismatch, wrong lane, or late press (>75% off peak).
-               Always instant game over. No HP. No second chances.
+  MISS         Shape mismatch, wrong lane, or active window closing
+               with no valid press. Drains energy and resets the chain
+               (see `energy_system.cpp` / `scoring_system.cpp`). The
+               run ends only when energy reaches 0 — see §7 and
+               `energy-bar.md`. The "instant game over, no HP" model
+               is legacy and superseded by the energy bar.
 
   Onset        Moment of sudden energy increase detected by librosa
                on one of the broad layers (percussive / harmonic /
