@@ -20,6 +20,7 @@
 #include <entt/entt.hpp>
 #include <cstring>
 #include <optional>
+#include <tuple>
 
 #include "components/scoring.h"   // ScorePopup, PopupDisplay
 #include "components/rendering.h" // ScreenPosition, Color (via raylib)
@@ -326,21 +327,21 @@ TEST_CASE("spawn_score_popup: ScorePopup has correct points and duration",
     CHECK(sp.max_time  == constants::POPUP_DURATION);
 }
 
-TEST_CASE("spawn_score_popup: color is green for Perfect tier",
-          "[popup_entity][issue349]") {
+TEST_CASE("spawn_score_popup: color is bright cyan for Perfect tier",
+          "[popup_entity][issue386]") {
     entt::registry reg;
     auto e = spawn_score_popup(reg, {0.0f, 0.0f, 300, TimingTier::Perfect});
 
     REQUIRE(reg.all_of<Color>(e));
     const auto& c = reg.get<Color>(e);
-    CHECK(c.r == 100);
+    CHECK(c.r ==  80);
     CHECK(c.g == 255);
-    CHECK(c.b == 100);
+    CHECK(c.b == 220);
     CHECK(c.a == 255);
 }
 
-TEST_CASE("spawn_score_popup: color is green for Good and Ok tiers",
-          "[popup_entity][issue349]") {
+TEST_CASE("spawn_score_popup: Good tier is lime, Ok tier is amber, distinct from Perfect",
+          "[popup_entity][issue386]") {
     entt::registry reg;
     auto good = spawn_score_popup(reg, {0.0f, 0.0f, 200, TimingTier::Good});
     auto ok   = spawn_score_popup(reg, {0.0f, 0.0f, 100, TimingTier::Ok});
@@ -349,26 +350,50 @@ TEST_CASE("spawn_score_popup: color is green for Good and Ok tiers",
     REQUIRE(reg.all_of<Color>(ok));
 
     const auto& good_color = reg.get<Color>(good);
-    CHECK(good_color.r == 100);
+    CHECK(good_color.r == 140);
     CHECK(good_color.g == 255);
-    CHECK(good_color.b == 100);
+    CHECK(good_color.b ==  80);
 
     const auto& ok_color = reg.get<Color>(ok);
-    CHECK(ok_color.r == 100);
-    CHECK(ok_color.g == 255);
-    CHECK(ok_color.b == 100);
+    CHECK(ok_color.r == 255);
+    CHECK(ok_color.g == 200);
+    CHECK(ok_color.b ==  60);
+
+    // Cross-tier distinctness (Perfect/Good/Ok must not collide).
+    CHECK_FALSE((good_color.r == ok_color.r && good_color.g == ok_color.g && good_color.b == ok_color.b));
 }
 
-TEST_CASE("spawn_score_popup: color is green for Bad tier",
-          "[popup_entity][issue349]") {
+TEST_CASE("spawn_score_popup: color is red-orange for Bad tier",
+          "[popup_entity][issue386]") {
     entt::registry reg;
     auto e = spawn_score_popup(reg, {0.0f, 0.0f, 50, TimingTier::Bad});
 
     REQUIRE(reg.all_of<Color>(e));
     const auto& c = reg.get<Color>(e);
-    CHECK(c.r == 100);
-    CHECK(c.g == 255);
-    CHECK(c.b == 100);
+    CHECK(c.r == 255);
+    CHECK(c.g ==  90);
+    CHECK(c.b ==  70);
+}
+
+TEST_CASE("spawn_score_popup: every timing tier maps to a distinct color",
+          "[popup_entity][issue386]") {
+    entt::registry reg;
+    auto p = spawn_score_popup(reg, {0.0f, 0.0f, 0, TimingTier::Perfect});
+    auto g = spawn_score_popup(reg, {0.0f, 0.0f, 0, TimingTier::Good});
+    auto o = spawn_score_popup(reg, {0.0f, 0.0f, 0, TimingTier::Ok});
+    auto b = spawn_score_popup(reg, {0.0f, 0.0f, 0, TimingTier::Bad});
+
+    auto rgb = [&](entt::entity e) {
+        const auto& c = reg.get<Color>(e);
+        return std::tuple<uint8_t, uint8_t, uint8_t>{c.r, c.g, c.b};
+    };
+    auto cp = rgb(p), cg = rgb(g), co = rgb(o), cb = rgb(b);
+    CHECK(cp != cg);
+    CHECK(cp != co);
+    CHECK(cp != cb);
+    CHECK(cg != co);
+    CHECK(cg != cb);
+    CHECK(co != cb);
 }
 
 TEST_CASE("spawn_score_popup: default color when no timing tier",

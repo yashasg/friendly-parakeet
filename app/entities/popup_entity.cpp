@@ -39,11 +39,15 @@ entt::entity spawn_score_popup(entt::registry& reg, const PopupSpawnParams& para
                             constants::POPUP_DURATION, constants::POPUP_DURATION);
 
     // Color by timing tier (no timing → default yellow-white)
+    // Issue #386: differentiate timing tiers visually for accessibility/juice.
     uint8_t pr = 255, pg = 255, pb = 50;
     if (params.timing_tier.has_value()) {
-        pr = 100;
-        pg = 255;
-        pb = 100;
+        switch (*params.timing_tier) {
+            case TimingTier::Perfect: pr =  80; pg = 255; pb = 220; break; // bright cyan
+            case TimingTier::Good:    pr = 140; pg = 255; pb =  80; break; // lime green
+            case TimingTier::Ok:      pr = 255; pg = 200; pb =  60; break; // amber
+            case TimingTier::Bad:     pr = 255; pg =  90; pb =  70; break; // red-orange
+        }
     }
     Color color{pr, pg, pb, 255};
     reg.emplace<Color>(popup, color);
