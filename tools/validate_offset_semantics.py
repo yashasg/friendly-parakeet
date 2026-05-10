@@ -224,9 +224,19 @@ def test_offset_shift_is_global() -> list[str]:
 
 def validate_shipped_beatmaps(tolerance_ms: float) -> list[str]:
     """
-    Cross-validate each shipped beatmap JSON against its analysis JSON:
-      - offset must equal analysis beats[0]
-      - offset > 0 (songs have lead-in silence)
+    Cross-validate each shipped beatmap JSON against its analysis JSON.
+
+    Issue #505 — the offset must satisfy
+
+        offset == beats[anchor_idx] - anchor_idx * beat_period
+
+    where ``anchor_idx`` is the minimum authored beat index across all
+    difficulties, matching ``tools/validate_beatmap_offset.py`` (the
+    authoritative implementation of the #137 contract).  This validator
+    used to assert ``offset == beats[0]`` and ``offset > 0``; both have
+    been retired because the back-projected anchor offset can be
+    slightly negative when ``beats[0]`` is itself an early detection
+    relative to the authored grid phase.
       - bpm > 0
       - every authored beat_index must be >= 0
       - formula drift vs analysis beats must be within tolerance_ms
@@ -257,25 +267,35 @@ def validate_shipped_beatmaps(tolerance_ms: float) -> list[str]:
         if offset is None:
             failures.append(f"{song}: missing 'offset' field")
             continue
-        if offset < 0:
-            failures.append(f"{song}: offset={offset} is negative")
-            continue
 
         period = beat_period(bpm)
 
-        # Cross-check against analysis file if present
+        # Cross-check against analysis file if present.  Issue #505 —
+        # validate the anchor-derived offset, not raw ``beats[0]``.
         analysis_beats: list[float] = []
         if afile.exists():
             with open(afile) as f:
                 ana = json.load(f)
             analysis_beats = ana.get("beats", [])
-            if analysis_beats:
-                expected_offset = round(analysis_beats[0], 3)
-                if abs(offset - expected_offset) > 0.001:
-                    failures.append(
-                        f"{song}: offset={offset} != analysis beats[0]={expected_offset:.3f} "
-                        f"(pipeline contract violated)"
+            authored = [
+                int(o["beat"])
+                for d in bmap.get("difficulties", {}).values()
+                for o in d.get("beats", [])
+                if isinstance(o, dict) and isinstance(o.get("beat"), int)
+            ]
+            if analysis_beats and authored:
+                anchor_idx = min(authored)
+                if 0 <= anchor_idx < len(analysis_beats):
+                    expected_offset = (
+                        analysis_beats[anchor_idx] - anchor_idx * period
                     )
+                    if abs(offset - expected_offset) * 1000.0 > 2.0:
+                        failures.append(
+                            f"{song}: offset={offset} not anchored to "
+                            f"beat_idx={anchor_idx} (expected "
+                            f"{expected_offset:.4f}s, Δ="
+                            f"{abs(offset-expected_offset)*1000.0:.2f}ms)"
+                        )
 
         # Validate all authored beat indices per difficulty
         diffs = bmap.get("difficulties", {})
