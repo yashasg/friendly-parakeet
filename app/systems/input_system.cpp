@@ -78,10 +78,12 @@ void input_system(entt::registry& reg, float raw_dt) {
     const bool allow_mouse_input = true;
     const bool allow_touch_input = true;
 #endif
+    const int touch_point_count = GetTouchPointCount();
 
     // ── Mouse (desktop) — click-only semantics ─
     if (allow_mouse_input &&
         input.active_source != InputSource::Touch &&
+        touch_point_count == 0 &&
         IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
         input.active_source = InputSource::Mouse;
         input.suppress_mouse_release = false;
@@ -103,7 +105,7 @@ void input_system(entt::registry& reg, float raw_dt) {
     // ── Touch (mobile / web) — only when no mouse gesture is active ─
     if (allow_touch_input &&
         input.active_source != InputSource::Mouse &&
-        GetTouchPointCount() > 0) {
+        touch_point_count > 0) {
         const Vector2 touch_pos = GetTouchPosition(0);
         const glm::vec2 tp = screen_to_virtual({touch_pos.x, touch_pos.y}, st);
         if (!input.touching) {
