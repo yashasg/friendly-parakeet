@@ -104,6 +104,7 @@ jobs:
             | sort -u > build/ci/catch-nonbench.txt
           diff -u build/ci/ctest-nonbench-catch.txt build/ci/catch-nonbench.txt
           ./build/shapeshifter_tests "~[bench]"
+          ctest --test-dir build --output-on-failure -R "^startup_shutdown_smoke$"
           ctest --test-dir build --output-on-failure -R "^(python_tool_tests|loop2_content_gates_strict|beatmap_editor_node_tests)$"
 
       - name: Upload artifact

@@ -22,6 +22,11 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
       - name: Generate dependency snapshot
         run: node .github/scripts/vcpkg-dependency-snapshot.js
         env:
@@ -42,4 +47,3 @@ jobs:
               ...snapshot
             });
             console.log('Dependency snapshot submitted successfully');
-

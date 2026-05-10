@@ -574,7 +574,10 @@ if(NOT EMSCRIPTEN)
         COMMAND $<TARGET_FILE:shapeshifter_startup_shutdown_smoke> --frames 2 --cycles 2
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     )
-    set_tests_properties(startup_shutdown_smoke PROPERTIES LABELS "smoke")
+    set_tests_properties(startup_shutdown_smoke PROPERTIES
+        LABELS "smoke"
+        ENVIRONMENT "SHAPESHIFTER_STARTUP_SHUTDOWN_SMOKE=1"
+    )
 
     find_package(Python3 COMPONENTS Interpreter REQUIRED)
     add_test(

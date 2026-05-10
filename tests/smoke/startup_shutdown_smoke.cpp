@@ -43,6 +43,11 @@ int main(int argc, char** argv) {
     }
 
     SetTraceLogLevel(LOG_WARNING);
+    const char* smoke_mode = std::getenv("SHAPESHIFTER_STARTUP_SHUTDOWN_SMOKE");
+    if (smoke_mode && smoke_mode[0] != '\0' &&
+        !(smoke_mode[0] == '0' && smoke_mode[1] == '\0')) {
+        SetConfigFlags(FLAG_WINDOW_HIDDEN);
+    }
 
     entt::registry reg;
     for (int cycle = 0; cycle < cycles; ++cycle) {

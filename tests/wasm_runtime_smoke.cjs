@@ -120,6 +120,29 @@ async function main() {
     return false;
   }
 
+  function parseLaneFromTitle(title) {
+    const match = title.match(/\[Lane:(\d+)\]/);
+    if (!match) {
+      return null;
+    }
+    return Number.parseInt(match[1], 10);
+  }
+
+  async function waitForPlayingLane(predicate, timeoutMs) {
+    const started = Date.now();
+    while (Date.now() - started < timeoutMs) {
+      const title = await page.title();
+      if (title.includes('[Playing]')) {
+        const lane = parseLaneFromTitle(title);
+        if (lane !== null && predicate(lane)) {
+          return lane;
+        }
+      }
+      await page.waitForTimeout(100);
+    }
+    return null;
+  }
+
   page.on('console', msg => {
     const text = msg.text();
     if (/RuntimeError: Aborted|Aborted\(|abort\(|emscripten_sleep/i.test(text)) {
@@ -200,6 +223,10 @@ async function main() {
     if (!(await waitForTitlePhase('Playing', 4500))) {
       fatal.push(`missing-playing-phase-marker:${await page.title()}`);
     }
+    const laneBeforeSwipe = await waitForPlayingLane(() => true, 2500);
+    if (laneBeforeSwipe === null) {
+      fatal.push(`missing-playing-lane-marker:${await page.title()}`);
+    }
 
     const beforeSwipeHash = sha256(await page.screenshot());
     await swipeCanvas(0.35, 0.25, 0.80, 0.25);
@@ -210,6 +237,13 @@ async function main() {
     if (!(await waitForTitlePhase('Playing', 1500))) {
       fatal.push(`unexpected-phase-after-playing-touch-swipe-right:${await page.title()}`);
     }
+    const laneAfterRightSwipe = await waitForPlayingLane(
+      lane => laneBeforeSwipe !== null && lane > laneBeforeSwipe,
+      2500,
+    );
+    if (laneAfterRightSwipe === null) {
+      fatal.push(`missing-lane-advance-after-playing-touch-swipe-right:${await page.title()}`);
+    }
 
     await page.waitForTimeout(250);
     await swipeCanvas(0.80, 0.25, 0.35, 0.25);
@@ -219,6 +253,13 @@ async function main() {
     }
     if (!(await waitForTitlePhase('Playing', 1500))) {
       fatal.push(`unexpected-phase-after-playing-touch-swipe-left:${await page.title()}`);
+    }
+    const laneAfterLeftSwipe = await waitForPlayingLane(
+      lane => laneAfterRightSwipe !== null && lane < laneAfterRightSwipe,
+      2500,
+    );
+    if (laneAfterLeftSwipe === null) {
+      fatal.push(`missing-lane-return-after-playing-touch-swipe-left:${await page.title()}`);
     }
   } finally {
     await context.close();
