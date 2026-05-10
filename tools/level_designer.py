@@ -291,18 +291,36 @@ def classify_onset_class(event):
     Checks the 'layer' field first (set by the pipeline after the 2026-05-10
     layer-aware merge fix).  Falls back to inferring from 'passes' for
     analysis files generated before that change.
+
+    Pass-name fallback supports both:
+      * the current non-instrumental subpass IDs
+        (``percussive_*``, ``harmonic_*``, ``full_spectrum_*``), and
+      * the legacy raw instrument names (``kick``/``snare``/``hihat``/``melody``/
+        ``flux``) so previously shipped ``*_analysis.json`` files keep
+        resolving correctly.
     """
     # New format: authoritative layer set by rhythm_pipeline.
     layer = event.get("layer")
     if layer in ("percussive", "harmonic", "full-spectrum"):
         return layer
 
-    # Legacy fallback: infer from named passes.
     passes = set(event.get("passes", [])) if isinstance(event.get("passes"), list) else set()
-    percussive = bool({"kick", "snare", "hihat"} & passes)
-    harmonic = "melody" in passes
 
-    if (percussive and harmonic) or "flux" in passes or not passes:
+    # Non-instrumental subpass IDs encode their layer as a prefix.
+    has_percussive_prefix = any(p.startswith("percussive_") for p in passes)
+    has_harmonic_prefix   = any(p.startswith("harmonic_")   for p in passes)
+    has_full_prefix       = any(p.startswith("full_spectrum") for p in passes)
+
+    # Legacy fallback: infer from named passes.
+    legacy_percussive = bool({"kick", "snare", "hihat"} & passes)
+    legacy_harmonic = "melody" in passes
+    legacy_full = "flux" in passes
+
+    percussive = has_percussive_prefix or legacy_percussive
+    harmonic = has_harmonic_prefix or legacy_harmonic
+    full_spectrum = has_full_prefix or legacy_full
+
+    if (percussive and harmonic) or full_spectrum or not passes:
         return "full-spectrum"
     if percussive:
         return "percussive"

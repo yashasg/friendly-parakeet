@@ -37,6 +37,58 @@ def load_onset_rows(path: Path) -> list[dict]:
         return list(csv.DictReader(handle))
 
 
+def _validate_onset_only_timing(summary: dict, rows: list[dict]) -> list[str]:
+    """Enforce the onset-only timing invariant.
+
+    Fails when any CSV row carries a non-onset ``timing_source`` and when any
+    difficulty's ``timing_source_histogram`` has a nonzero entry whose key is
+    not ``onset``.
+    """
+    findings: list[str] = []
+    for idx, row in enumerate(rows):
+        ts = row.get("timing_source")
+        if ts is None or ts == "":
+            findings.append(f"row {idx} ({row.get('difficulty', '?')}) missing timing_source")
+            continue
+        if ts != "onset":
+            findings.append(
+                f"row {idx} ({row.get('difficulty', '?')}) has non-onset "
+                f"timing_source={ts!r} (only 'onset' is permitted)"
+            )
+
+    experimental = summary.get("experimental_onset_timing")
+    if not isinstance(experimental, dict):
+        return findings
+    comparison = experimental.get("comparison_by_difficulty")
+    if not isinstance(comparison, dict):
+        return findings
+    for difficulty in DIFFICULTIES:
+        payload = comparison.get(difficulty)
+        if not isinstance(payload, dict):
+            continue
+        event_counts = payload.get("event_counts")
+        if not isinstance(event_counts, dict):
+            continue
+        hist = event_counts.get("timing_source_histogram")
+        if not isinstance(hist, dict):
+            findings.append(f"[{difficulty}] event_counts.timing_source_histogram must be an object")
+            continue
+        for key, value in hist.items():
+            try:
+                count = int(value)
+            except (TypeError, ValueError):
+                findings.append(
+                    f"[{difficulty}] timing_source_histogram entry {key!r} is non-integer: {value!r}"
+                )
+                continue
+            if key != "onset" and count != 0:
+                findings.append(
+                    f"[{difficulty}] timing_source_histogram has non-onset entry "
+                    f"{key!r}={count} (only 'onset' is permitted to be nonzero)"
+                )
+    return findings
+
+
 def validate_artifact_shape(summary: dict, rows: list[dict]) -> list[str]:
     findings: list[str] = []
     experimental = summary.get("experimental_onset_timing")
@@ -167,6 +219,7 @@ def validate_artifact_shape(summary: dict, rows: list[dict]) -> list[str]:
                     findings.append(f"[{difficulty}] motif_stats missing key: {key}")
                     break
 
+    findings.extend(_validate_onset_only_timing(summary, rows))
     return findings
 
 
