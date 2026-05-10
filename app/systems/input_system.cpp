@@ -83,6 +83,7 @@ void input_system(entt::registry& reg, float raw_dt) {
     // ── Mouse (desktop) — click-only semantics ─
     if (allow_mouse_input &&
         input.active_source != InputSource::Touch &&
+        !input.suppress_mouse_release &&
         touch_point_count == 0 &&
         IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
         input.active_source = InputSource::Mouse;
