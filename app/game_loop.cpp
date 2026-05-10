@@ -32,6 +32,7 @@
 
 #include <raylib.h>
 #include <algorithm>
+#include <cstdlib>
 #include <string>
 #include <utility>
 
@@ -143,15 +144,25 @@ void game_loop_init(entt::registry& reg,
     std::string window_title = std::string("SHAPESHIFTER v") + SHAPESHIFTER_VERSION;
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     InitWindow(constants::SCREEN_W, constants::SCREEN_H, window_title.c_str());
-    {
+    if (!IsWindowReady()) {
+        TraceLog(LOG_WARNING, "Window initialization failed; startup aborted");
+        return;
+    }
+    const char* smoke_mode = std::getenv("SHAPESHIFTER_STARTUP_SHUTDOWN_SMOKE");
+    const bool startup_shutdown_smoke = smoke_mode && smoke_mode[0] != '\0' &&
+        !(smoke_mode[0] == '0' && smoke_mode[1] == '\0');
+    if (!startup_shutdown_smoke) {
         int mon = GetCurrentMonitor();
         int mon_h = GetMonitorHeight(mon);
-        int win_h = static_cast<int>(mon_h * 0.85f);
-        int win_w = win_h * constants::SCREEN_W / constants::SCREEN_H;
-        SetWindowSize(win_w, win_h);
-        SetWindowPosition(
-            (GetMonitorWidth(mon) - win_w) / 2,
-            (mon_h - win_h) / 2);
+        int mon_w = GetMonitorWidth(mon);
+        if (mon_w > 0 && mon_h > 0) {
+            int win_h = static_cast<int>(mon_h * 0.85f);
+            int win_w = win_h * constants::SCREEN_W / constants::SCREEN_H;
+            SetWindowSize(win_w, win_h);
+            SetWindowPosition(
+                (mon_w - win_w) / 2,
+                (mon_h - win_h) / 2);
+        }
     }
     SetTargetFPS(60);
     InitAudioDevice();
@@ -352,8 +363,12 @@ void game_loop_shutdown(entt::registry& reg) {
     }
     sfx_bank_unload(reg);
     platform::haptics::shutdown(reg);
-    CloseAudioDevice();
-    CloseWindow();
+    if (IsAudioDeviceReady()) {
+        CloseAudioDevice();
+    }
+    if (IsWindowReady()) {
+        CloseWindow();
+    }
 
     // Lifecycle contract: shutdown leaves the registry reusable for a fresh
     // game_loop_init() on the same entt::registry instance.

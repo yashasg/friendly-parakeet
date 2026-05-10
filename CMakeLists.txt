@@ -577,6 +577,7 @@ if(NOT EMSCRIPTEN)
     set_tests_properties(startup_shutdown_smoke PROPERTIES
         LABELS "smoke"
         ENVIRONMENT "SHAPESHIFTER_STARTUP_SHUTDOWN_SMOKE=1"
+        SKIP_RETURN_CODE 77
     )
 
     find_package(Python3 COMPONENTS Interpreter REQUIRED)

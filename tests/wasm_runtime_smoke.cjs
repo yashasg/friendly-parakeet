@@ -30,6 +30,7 @@ async function main() {
     isMobile: true,
   });
   const page = await context.newPage();
+  const cdp = await context.newCDPSession(page);
   const fatal = [];
 
   async function clickCanvasAt(xRatio, yRatio) {
@@ -74,6 +75,29 @@ async function main() {
     const startY = box.y + Math.max(4, Math.floor(box.height * yStartRatio));
     const endX = box.x + Math.max(4, Math.floor(box.width * xEndRatio));
     const endY = box.y + Math.max(4, Math.floor(box.height * yEndRatio));
+
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchStart',
+      touchPoints: [{ x: startX, y: startY, radiusX: 8, radiusY: 8, force: 1, id: 1 }],
+    });
+    for (let i = 1; i <= 6; i += 1) {
+      const t = i / 6;
+      await cdp.send('Input.dispatchTouchEvent', {
+        type: 'touchMove',
+        touchPoints: [{
+          x: startX + (endX - startX) * t,
+          y: startY + (endY - startY) * t,
+          radiusX: 8,
+          radiusY: 8,
+          force: 1,
+          id: 1,
+        }],
+      });
+    }
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchEnd',
+      touchPoints: [],
+    });
 
     await page.evaluate(({ sx, sy, ex, ey }) => {
       const canvasEl = document.querySelector('#canvas');
