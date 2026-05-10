@@ -73,6 +73,29 @@ TEST_CASE("energy: pending events clamp each step in order", "[energy]") {
     CHECK(pending.events.empty());
 }
 
+TEST_CASE("energy: sloppy early-player pattern remains net-positive", "[energy][tuning][issue395]") {
+    auto reg = make_rhythm_registry();
+    auto& energy = reg.ctx().get<EnergyState>();
+    energy.energy = 0.5f;
+    auto& pending = reg.ctx().emplace<PendingEnergyEffects>();
+
+    pending.events.push_back({constants::ENERGY_RECOVER_OK, false});
+    pending.events.push_back({constants::ENERGY_RECOVER_OK, false});
+    pending.events.push_back({constants::ENERGY_RECOVER_OK, false});
+    pending.events.push_back({constants::ENERGY_RECOVER_OK, false});
+    pending.events.push_back({constants::ENERGY_RECOVER_OK, false});
+    pending.events.push_back({-constants::ENERGY_DRAIN_BAD, true});
+
+    energy_system(reg, 0.016f);
+
+    CHECK(energy.energy > 0.5f);
+}
+
+TEST_CASE("energy: bad timing no longer outweighs five ok recoveries", "[energy][tuning][issue395]") {
+    constexpr float five_ok_recovery = 5.0f * constants::ENERGY_RECOVER_OK;
+    CHECK(five_ok_recovery > constants::ENERGY_DRAIN_BAD);
+}
+
 TEST_CASE("energy: game_state triggers game over when energy reaches zero", "[energy]") {
     auto reg = make_rhythm_registry();
     auto& energy = reg.ctx().get<EnergyState>();

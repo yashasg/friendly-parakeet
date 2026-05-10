@@ -14,6 +14,7 @@ struct BeatEntry {
     int8_t       lane         = 1;
     uint8_t      blocked_mask = 0;
     float        time_sec     = 0.0f;
+    bool         has_time_sec = false;
 };
 
 // ── Beat Map (the full chart, loaded from JSON) ─────

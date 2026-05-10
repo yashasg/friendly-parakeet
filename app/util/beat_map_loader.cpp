@@ -173,6 +173,7 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
 
         const bool has_time_sec = b.contains("time_sec") &&
                                   (b["time_sec"].is_number_float() || b["time_sec"].is_number_integer());
+        entry.has_time_sec = has_time_sec;
         entry.time_sec = has_time_sec ? b["time_sec"].get<float>() : beat_time;
 
         if (has_time_sec && !out.beat_times.empty() &&

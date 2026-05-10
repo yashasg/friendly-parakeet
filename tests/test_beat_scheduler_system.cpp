@@ -130,6 +130,63 @@ TEST_CASE("beat_scheduler: uses beat_times array for arrival time when present",
     map.beat_times = {0.3f, 0.85f, 1.47f};
     map.beats.push_back({2, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
 
+    song.song_time = 0.0f;
+    song.next_spawn_idx = 0;
+    beat_scheduler_system(reg, 0.016f);
+
+    auto view = reg.view<ObstacleTag, BeatInfo>();
+    REQUIRE(view.size_hint() == 1);
+    for (auto [entity, bi] : view.each()) {
+        (void)entity;
+        CHECK_THAT(bi.arrival_time, Catch::Matchers::WithinAbs(1.47f, 0.001f));
+    }
+}
+
+TEST_CASE("beat_scheduler: uses BeatEntry time_sec for arrival time when authored",
+          "[beat_scheduler][beat_times][issue404]") {
+    auto reg = make_rhythm_registry();
+    auto& song = reg.ctx().get<SongState>();
+    auto& map = reg.ctx().get<BeatMap>();
+
+    song.offset = 0.0f;
+    song.bpm = 120.0f;
+    song_state_compute_derived(song);
+    map.beat_times = {0.3f, 0.85f, 1.47f};
+
+    BeatEntry authored_entry;
+    authored_entry.beat_index = 2;
+    authored_entry.kind = ObstacleKind::ShapeGate;
+    authored_entry.shape = Shape::Circle;
+    authored_entry.lane = 1;
+    authored_entry.time_sec = 1.33f;
+    authored_entry.has_time_sec = true;
+    map.beats.push_back(authored_entry);
+
+    song.song_time = 0.0f;
+    song.next_spawn_idx = 0;
+    beat_scheduler_system(reg, 0.016f);
+
+    auto view = reg.view<ObstacleTag, BeatInfo>();
+    REQUIRE(view.size_hint() == 1);
+    for (auto [entity, bi] : view.each()) {
+        (void)entity;
+        CHECK_THAT(bi.arrival_time, Catch::Matchers::WithinAbs(1.33f, 0.001f));
+        CHECK_THAT(bi.spawn_time, Catch::Matchers::WithinAbs(1.33f - song.lead_time, 0.001f));
+    }
+}
+
+TEST_CASE("beat_scheduler: falls back to beat_times when BeatEntry time_sec is absent",
+          "[beat_scheduler][beat_times][issue404]") {
+    auto reg = make_rhythm_registry();
+    auto& song = reg.ctx().get<SongState>();
+    auto& map = reg.ctx().get<BeatMap>();
+
+    song.offset = 0.0f;
+    song.bpm = 120.0f;
+    song_state_compute_derived(song);
+    map.beat_times = {0.3f, 0.85f, 1.47f};
+    map.beats.push_back({2, ObstacleKind::ShapeGate, Shape::Circle, 1, 0, 99.0f, false});
+
     song.song_time = 30.0f;
     song.next_spawn_idx = 0;
     beat_scheduler_system(reg, 0.016f);

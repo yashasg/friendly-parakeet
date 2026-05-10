@@ -17,9 +17,15 @@ void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
     while (song->next_spawn_idx < map->beats.size()) {
         const auto& entry = map->beats[song->next_spawn_idx];
 
-        float beat_time  = song->offset + entry.beat_index * song->beat_period;
-        if (!map->beat_times.empty()) {
+        float beat_time = song->offset + entry.beat_index * song->beat_period;
+        if (!entry.has_time_sec &&
+            !map->beat_times.empty() &&
+            entry.beat_index >= 0 &&
+            static_cast<size_t>(entry.beat_index) < map->beat_times.size()) {
             beat_time = map->beat_times[static_cast<size_t>(entry.beat_index)];
+        }
+        if (entry.has_time_sec) {
+            beat_time = entry.time_sec;
         }
         // Beat line is the collision point: beat_time maps to crossing PLAYER_Y.
         float spawn_time = beat_time - song->lead_time;
