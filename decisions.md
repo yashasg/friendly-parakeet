@@ -44,9 +44,9 @@ score/energy/obstacles).
 - Preserves ECS state-ownership: UI sets intent, the system owns the swap.
 
 ### Enforcement
-`tests/test_phase_transition_canonical.cpp` greps `app/ui/screen_controllers/`
-and `app/input/` for the substring `enter_phase(` and fails the build if any
-caller is reintroduced outside the allow-list above.
+`tests/test_phase_transition_canonical.cpp` scans all production sources under
+`app/` (excluding build/generated/vendor-style paths) and fails the build if a
+direct `enter_phase(` call appears outside the explicit allow-list above.
 
 ### Owner
 squad:redfoot (UI controllers) + squad:keaton (state machine)
