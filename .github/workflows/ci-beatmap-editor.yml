@@ -1,0 +1,24 @@
+name: CI (Beatmap Editor)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "tools/beatmap-editor/**"
+      - ".github/workflows/ci-beatmap-editor.yml"
+  push:
+    branches: [main]
+    paths:
+      - "tools/beatmap-editor/**"
+      - ".github/workflows/ci-beatmap-editor.yml"
+
+jobs:
+  test-beatmap-editor:
+    name: Test beatmap editor (Node)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+      - name: Run beatmap editor tests
+        run: npm --prefix tools/beatmap-editor test

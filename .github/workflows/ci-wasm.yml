@@ -7,7 +7,6 @@ on:
     branches: [main, dev, preview, insider]
     types: [opened, synchronize, reopened, closed]
     paths-ignore:
-      - "tools/**"
       - "design-docs/**"
       - "*.md"
       - "*.log"
