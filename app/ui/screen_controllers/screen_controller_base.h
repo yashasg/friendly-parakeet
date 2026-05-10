@@ -37,6 +37,14 @@ public:
     const LayoutState& state() const { return state_; }
 };
 
+template<typename Controller>
+inline Controller& screen_controller(entt::registry& reg) {
+    if (auto* existing = reg.ctx().find<Controller>()) return *existing;
+    auto& created = reg.ctx().emplace<Controller>();
+    created.init();
+    return created;
+}
+
 // Helper: construct Rectangle with anchor-relative offsets.
 inline Rectangle offset_rect(Vector2 anchor, float x, float y, float w, float h) {
     return (Rectangle){anchor.x + x, anchor.y + y, w, h};

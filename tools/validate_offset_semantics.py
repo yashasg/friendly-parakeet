@@ -287,7 +287,32 @@ def validate_shipped_beatmaps(tolerance_ms: float) -> list[str]:
                     failures.append(f"{song}/{diff}: beat_index={idx} is negative")
                     continue
 
-                # Formula drift vs analysis beats (if available)
+                # Issue #447 — onset-only timing: when an obstacle authors its
+                # timestamp from a selected onset, the `beat` field is a
+                # sequential ordinal across selected onsets, not a musical-beat
+                # index, and the `time = offset + beat * 60/bpm` formula no
+                # longer applies. Validate `time_sec ≈ onset_time_sec` instead
+                # (low tolerance), and skip the formula-drift check.
+                timing_source = entry.get("timing_source")
+                if timing_source == "onset":
+                    onset_time = entry.get("onset_time_sec")
+                    time_sec = entry.get("time_sec")
+                    if onset_time is None or time_sec is None:
+                        failures.append(
+                            f"{song}/{diff} beat_index={idx}: "
+                            "timing_source='onset' missing onset_time_sec/time_sec"
+                        )
+                    else:
+                        diff_ms = abs(float(time_sec) - float(onset_time)) * 1000.0
+                        if diff_ms > 1.0:
+                            failures.append(
+                                f"{song}/{diff} beat_index={idx}: "
+                                f"time_sec vs onset_time_sec drift={diff_ms:.3f}ms > 1ms"
+                            )
+                    continue
+
+                # Beat-grid timing (timing_source != "onset"): formula drift
+                # check is the strict path.
                 if analysis_beats and idx < len(analysis_beats):
                     err = drift_ms(analysis_beats, offset, period, idx)
                     if err > tolerance_ms:

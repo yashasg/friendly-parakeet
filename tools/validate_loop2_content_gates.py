@@ -101,6 +101,20 @@ def _longest_gap_one_run(gaps: list[int]) -> int:
     return longest
 
 
+CROSS_LAYER_PRESERVATION_WINDOW_MS = 50.0
+
+
+def _all_onset_timed(beats: list[dict]) -> bool:
+    saw_dict = False
+    for beat in beats:
+        if not isinstance(beat, dict):
+            continue
+        saw_dict = True
+        if beat.get("timing_source") != "onset":
+            return False
+    return saw_dict
+
+
 def calculate_content_metrics(
     beats: list[dict], beat_times: list[float] | None = None, expected_count: int | None = None
 ) -> dict[str, float | int | bool | None]:
@@ -123,9 +137,38 @@ def calculate_content_metrics(
     total_shape_gates = sum(shape_counts.values())
     lane_counts = Counter(beat.get("lane") for beat in ordered if beat.get("kind") == "shape_gate")
 
+    onset_timed = _all_onset_timed(ordered)
+
+    # Issue #443 — onset-aware min IOI:
+    #   * Under onset-only timing, drive IOI from authored time_sec/onset_time_sec
+    #     so cross-layer onsets (different broad onset_class) within the
+    #     50 ms preservation window can be exempted from the floor.
+    #   * Under beat-grid timing, retain the legacy beat_times[] lookup.
     min_ioi_ms: float | None = None
     ioi_index_error = False
-    if beat_times and len(ordered) >= 2:
+    cross_layer_preserved_pairs = 0
+    if onset_timed and len(ordered) >= 2:
+        prev = ordered[0]
+        for current in ordered[1:]:
+            prev_t = prev.get("time_sec")
+            cur_t = current.get("time_sec")
+            if not isinstance(prev_t, (int, float)) or not isinstance(cur_t, (int, float)):
+                prev = current
+                continue
+            dt_ms = (float(cur_t) - float(prev_t)) * 1000.0
+            cross_layer = (
+                prev.get("onset_class") != current.get("onset_class")
+                and prev.get("onset_class") is not None
+                and current.get("onset_class") is not None
+            )
+            if cross_layer and 0.0 <= dt_ms < CROSS_LAYER_PRESERVATION_WINDOW_MS:
+                cross_layer_preserved_pairs += 1
+                prev = current
+                continue
+            if dt_ms >= 0.0:
+                min_ioi_ms = dt_ms if min_ioi_ms is None else min(min_ioi_ms, dt_ms)
+            prev = current
+    elif beat_times and len(ordered) >= 2:
         for left, right in zip(beat_indices, beat_indices[1:]):
             if left < 0 or right < 0 or left >= len(beat_times) or right >= len(beat_times):
                 ioi_index_error = True
@@ -158,11 +201,14 @@ def calculate_content_metrics(
         "lane2_share": (lane_counts.get(2, 0) / total_shape_gates) if total_shape_gates else 0.0,
         "min_ioi_ms": min_ioi_ms,
         "ioi_index_error": ioi_index_error,
+        "onset_timed": onset_timed,
+        "cross_layer_preserved_pairs": cross_layer_preserved_pairs,
     }
 
 
 def evaluate_content_gates(metrics: dict[str, float | int | bool | None], difficulty: str) -> list[str]:
     findings: list[str] = []
+    onset_timed = bool(metrics.get("onset_timed"))
 
     if not bool(metrics["count_matches"]):
         expected_count = metrics.get("expected_count")
@@ -178,11 +224,18 @@ def evaluate_content_gates(metrics: dict[str, float | int | bool | None], diffic
     if not bool(metrics["all_shape_gate"]):
         findings.append("non-shape_gate obstacle present")
 
-    monotony_cap = GAP_MONOTONY_CAP.get(difficulty)
-    if monotony_cap is not None and float(metrics["dominant_gap_share"]) >= monotony_cap:
-        findings.append(
-            f"gap monotony: dominant gap={metrics['dominant_gap']} share={float(metrics['dominant_gap_share']):.1%} (must be < {monotony_cap:.0%})"
-        )
+    # Issue #443 — beat-ordinal gap monotony / gap=1 share / gap=1 run gates
+    # were designed for beat-grid timing where `beat[i+1]-beat[i]` reflects
+    # musical-beat distance. Under onset-only timing (PR #427) `beat` is a
+    # sequential ordinal across selected onsets, so gap==1 is the natural
+    # shape and these gates emit structural false positives. Demote them to
+    # advisories in onset-only mode; time-IOI is the strict gate via min_ioi.
+    if not onset_timed:
+        monotony_cap = GAP_MONOTONY_CAP.get(difficulty)
+        if monotony_cap is not None and float(metrics["dominant_gap_share"]) >= monotony_cap:
+            findings.append(
+                f"gap monotony: dominant gap={metrics['dominant_gap']} share={float(metrics['dominant_gap_share']):.1%} (must be < {monotony_cap:.0%})"
+            )
 
     run_cap = SAME_SHAPE_RUN_CAP.get(difficulty)
     cluster_run = int(metrics.get("longest_same_shape_cluster_run", metrics.get("longest_same_shape_run", 0)))
@@ -195,17 +248,18 @@ def evaluate_content_gates(metrics: dict[str, float | int | bool | None], diffic
             f"same-shape cluster-chain run {cluster_run} exceeds cap {run_cap}"
         )
 
-    gap_one_run_cap = GAP_ONE_MAX_RUN.get(difficulty)
-    if gap_one_run_cap is not None and int(metrics["gap_one_run"]) > gap_one_run_cap:
-        findings.append(
-            f"gap=1 burst run={int(metrics['gap_one_run'])} exceeds cap {gap_one_run_cap}"
-        )
+    if not onset_timed:
+        gap_one_run_cap = GAP_ONE_MAX_RUN.get(difficulty)
+        if gap_one_run_cap is not None and int(metrics["gap_one_run"]) > gap_one_run_cap:
+            findings.append(
+                f"gap=1 burst run={int(metrics['gap_one_run'])} exceeds cap {gap_one_run_cap}"
+            )
 
-    gap_one_share_cap = GAP_ONE_SHARE_CAP.get(difficulty)
-    if gap_one_share_cap is not None and float(metrics["gap_one_share"]) > gap_one_share_cap:
-        findings.append(
-            f"gap=1 share {float(metrics['gap_one_share']):.1%} exceeds cap {gap_one_share_cap:.0%}"
-        )
+        gap_one_share_cap = GAP_ONE_SHARE_CAP.get(difficulty)
+        if gap_one_share_cap is not None and float(metrics["gap_one_share"]) > gap_one_share_cap:
+            findings.append(
+                f"gap=1 share {float(metrics['gap_one_share']):.1%} exceeds cap {gap_one_share_cap:.0%}"
+            )
 
     if difficulty == "hard":
         if float(metrics["triangle_share"]) < 0.25:

@@ -279,3 +279,37 @@ TEST_CASE("scoring: missed obstacle sets DeathCause::MissedABeat", "[scoring]") 
 
     CHECK(gos.cause == DeathCause::MissedABeat);
 }
+
+TEST_CASE("scoring: passive accrual stops once song playback has finished", "[scoring][issue445]") {
+    auto reg = make_registry();
+    auto& song = reg.ctx().get<SongState>();
+    song.finished = true;
+    song.playing = false;
+
+    auto& score = reg.ctx().get<ScoreState>();
+    score.score = 500;
+    score.distance_traveled = 123.0f;
+
+    scoring_system(reg, 1.0f);
+
+    CHECK(score.score == 500);
+    CHECK(score.distance_traveled == 123.0f);
+}
+
+TEST_CASE("scoring: obstacle/timing points still apply after playback has finished", "[scoring][issue445]") {
+    auto reg = make_registry();
+    auto& song = reg.ctx().get<SongState>();
+    song.finished = true;
+    song.playing = false;
+
+    auto& score = reg.ctx().get<ScoreState>();
+    score.score = 0;
+
+    auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
+    reg.emplace<ScoredTag>(obs);
+    reg.emplace<TimingGrade>(obs, TimingTier::Good, 0.5f);
+
+    scoring_system(reg, 1.0f);
+
+    CHECK(score.score >= constants::PTS_SHAPE_GATE);
+}

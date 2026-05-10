@@ -118,3 +118,12 @@
 - Filed #423: LaneBlock `blocked_mask` invariant gap (parser/validator/runtime mismatch can block invisible lanes).
 - Filed #424: Authored `time_sec` lacks monotonic/duration invariants, permitting misordered or never-spawned obstacles despite validation passing.
 - Baseline validation: `ctest --test-dir build --output-on-failure` shows one pre-existing unrelated failure (`redfoot/#168: existing game_over buttons keep their original positions`).
+
+## 2026-05-10 — Round 3 gameplay/runtime audit (no code changes)
+
+- Scope: scheduler, collision, scoring, energy, session/game-loop invariants after PR #427.
+- Duplicate-first triage: searched open issues before filing for same-beat ordering, song-finish stall, and post-finish scoring drift.
+- Filed #442: unstable same-`beat_index` ordering can violate authored `time_sec` spawn semantics in scheduler consumption order.
+- Filed #444: end-of-song invariant break can soft-lock Playing if `song.playing=false` before remaining obstacles clear.
+- Filed #445: `scoring_system` continues passive distance/time accrual while `song.playing=false` in post-finish window.
+- Validation context: baseline tests currently pass (`All tests passed (1954 assertions in 720 test cases)`).

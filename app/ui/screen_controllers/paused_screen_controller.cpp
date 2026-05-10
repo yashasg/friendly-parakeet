@@ -14,24 +14,24 @@ namespace {
 using PausedController = RGuiScreenController<PausedLayoutState,
                                                &PausedLayout_Init,
                                                &PausedLayout_Render>;
-PausedController paused_controller;
 
 } // anonymous namespace
 
 void init_paused_screen_ui() {
-    paused_controller.init();
+    // Controller state is registry-owned and initialized lazily in render.
 }
 
 void render_paused_screen_ui(entt::registry& reg) {
-    paused_controller.render();
+    auto& controller = screen_controller<PausedController>(reg);
+    controller.render();
 
     auto& gs = reg.ctx().get<GameState>();
 
-    if (paused_controller.state().ResumeButtonPressed) {
+    if (controller.state().ResumeButtonPressed) {
         enter_phase(gs, GamePhase::Playing);
     }
 
-    if (paused_controller.state().MenuButtonPressed) {
+    if (controller.state().MenuButtonPressed) {
         gs.transition_pending = true;
         gs.next_phase = GamePhase::Title;
     }

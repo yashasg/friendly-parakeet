@@ -4,7 +4,6 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
     paths-ignore:
       - "design-docs/**"
       - "*.md"
@@ -79,14 +78,23 @@ jobs:
       - name: Install Python tool test dependencies
         run: |
           PYTHON_TOOL_TEST_EXE="$(grep '^_Python3_EXECUTABLE:INTERNAL=' build/CMakeCache.txt | cut -d= -f2-)"
-          "$PYTHON_TOOL_TEST_EXE" -m pip install numpy librosa
+          "$PYTHON_TOOL_TEST_EXE" -m pip install --break-system-packages -r tools/python-tool-test-requirements.txt || \
+          "$PYTHON_TOOL_TEST_EXE" -m pip install -r tools/python-tool-test-requirements.txt
 
       - name: Run tests
         if: always()
         id: run-tests
         run: |
+          mkdir -p build/ci
+          ctest --test-dir build -N \
+            | sed -nE 's/^ *Test *#[0-9]+: (.*)$/\1/p' \
+            | grep -Ev '^Bench:|^(python_tool_tests|loop2_content_gates_strict|beatmap_editor_node_tests)$' \
+            | sort -u > build/ci/ctest-nonbench-catch.txt
+          ./build/shapeshifter_tests --list-tests "~[bench]" --verbosity quiet \
+            | sort -u > build/ci/catch-nonbench.txt
+          diff -u build/ci/ctest-nonbench-catch.txt build/ci/catch-nonbench.txt
           ./build/shapeshifter_tests "~[bench]"
-          ctest --test-dir build --output-on-failure -R "^python_tool_tests$"
+          ctest --test-dir build --output-on-failure -R "^(python_tool_tests|loop2_content_gates_strict|beatmap_editor_node_tests)$"
 
       - name: Upload artifact
         if: success()

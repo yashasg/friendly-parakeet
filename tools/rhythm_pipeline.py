@@ -86,6 +86,95 @@ RAW_INSTRUMENT_PASS_NAMES: frozenset[str] = frozenset({
     "kick", "snare", "hihat", "melody",
 })
 
+# Migration map for legacy-named passes in shipped analysis JSONs.  Renames
+# the raw-instrument pass tokens to the equivalent broad-layer subpass IDs
+# used by the current pipeline so public fields no longer expose
+# kick/snare/hihat/melody/flux semantics while preserving each event's
+# broad layer (percussive / harmonic / full-spectrum).  This is strictly
+# a public-naming migration — broad layer membership, onset timings, and
+# onset_class downstream classification are unchanged.
+LEGACY_PASS_TO_BROAD_SUBPASS: dict[str, str] = {
+    "kick":   "percussive_bass",
+    "snare":  "percussive_broadband",
+    "hihat":  "percussive_high_mid",
+    "melody": "harmonic_low_mid",
+    "flux":   "full_spectrum_flux",
+}
+
+
+def migrate_analysis_remove_raw_instrument_names(analysis: dict) -> dict:
+    """Rewrite a loaded analysis dict so public fields use only broad-layer
+    subpass IDs (no kick/snare/hihat/melody/flux).
+
+    Touches three public surfaces:
+      * ``events[*].passes`` — token list per event.
+      * ``onsets`` — top-level per-pass onset summary keyed by pass name.
+      * ``onset_diagnostics.raw_per_pass`` — pre-merge onset count per pass.
+
+    The migration is idempotent: passes already using broad subpass IDs are
+    left untouched.  ``events[*].layer`` is intentionally not modified —
+    legacy JSONs already carry the correct broad layer field.
+    """
+    def _remap(name: str) -> str:
+        return LEGACY_PASS_TO_BROAD_SUBPASS.get(name, name)
+
+    # 1) events[*].passes
+    for ev in analysis.get("events", []) or []:
+        passes = ev.get("passes")
+        if isinstance(passes, list):
+            # Preserve order while deduplicating after the rename so two
+            # legacy aliases that map to the same broad subpass collapse.
+            seen: set[str] = set()
+            renamed: list[str] = []
+            for token in passes:
+                token = _remap(token) if isinstance(token, str) else token
+                if isinstance(token, str) and token in seen:
+                    continue
+                seen.add(token if isinstance(token, str) else repr(token))
+                renamed.append(token)
+            ev["passes"] = renamed
+        legacy_pass = ev.get("pass")
+        if isinstance(legacy_pass, str):
+            ev["pass"] = _remap(legacy_pass)
+
+    # 2) onsets — keep entries that remap to the same broad subpass merged
+    #    (their timestamps coexist in the broad layer pool).
+    onsets = analysis.get("onsets")
+    if isinstance(onsets, dict):
+        merged: dict[str, dict] = {}
+        for name, summary in onsets.items():
+            new_name = _remap(name) if isinstance(name, str) else name
+            if not isinstance(summary, dict):
+                merged[new_name] = summary
+                continue
+            if new_name not in merged:
+                merged[new_name] = dict(summary)
+                # Pass name now reflects broad subpass; method/zone retained.
+                merged[new_name].pop("legacy_alias", None)
+            else:
+                target = merged[new_name]
+                target["count"] = int(target.get("count", 0)) + int(summary.get("count", 0))
+                ts_a = list(target.get("timestamps", []) or [])
+                ts_b = list(summary.get("timestamps", []) or [])
+                target["timestamps"] = sorted(set(round(float(t), 3) for t in (ts_a + ts_b)))
+                res_a = list(target.get("resolutions", []) or [])
+                res_b = list(summary.get("resolutions", []) or [])
+                target["resolutions"] = res_a + res_b
+        analysis["onsets"] = merged
+
+    # 3) onset_diagnostics.raw_per_pass
+    diag = analysis.get("onset_diagnostics")
+    if isinstance(diag, dict):
+        raw = diag.get("raw_per_pass")
+        if isinstance(raw, dict):
+            merged_counts: dict[str, int] = {}
+            for name, count in raw.items():
+                new_name = _remap(name) if isinstance(name, str) else name
+                merged_counts[new_name] = merged_counts.get(new_name, 0) + int(count or 0)
+            diag["raw_per_pass"] = merged_counts
+
+    return analysis
+
 
 def _event_layer(event: dict) -> str:
     """Return the broad layer class for a single pre-merge onset event."""

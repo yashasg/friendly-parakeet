@@ -67,7 +67,7 @@ constexpr float ENERGY_START            = 1.0f;
 
 // Drain amounts (subtracted from energy)
 constexpr float ENERGY_DRAIN_MISS       = 0.20f;   // missed obstacle
-constexpr float ENERGY_DRAIN_BAD        = 0.10f;   // Bad timing tier
+constexpr float ENERGY_DRAIN_BAD        = 0.05f;   // Bad timing tier (see #395/#408 — drained from 0.10f to 0.05f to soften Bad-tier punishment)
 
 // Recovery amounts (added to energy)
 constexpr float ENERGY_RECOVER_OK       = 0.02f;   // Ok timing
@@ -95,7 +95,7 @@ constexpr float ENERGY_CRITICAL_THRESH  = 0.25f;   // below this → bar pulses 
   │       │                      ├─ Perfect ──► +0.10    │
   │       │                      ├─ Good    ──► +0.05    │
   │       │                      ├─ Ok      ──► +0.02    │
-  │       │                      └─ Bad     ──► -0.10    │
+  │       │                      └─ Bad     ──► -0.05    │
   │       │                                              │
   │       └── MISS ──────────────────────────► -0.20     │
   │                                                      │
@@ -267,16 +267,16 @@ The drain/recovery values are designed so that:
   Scenario A — "Sloppy but surviving"
   ─────────────────────────────────────
   10 notes:  2 Perfect, 3 Good, 3 Ok, 1 Bad, 1 Miss
-  Energy Δ = (2×0.10) + (3×0.05) + (3×0.02) + (1×-0.10) + (1×-0.20)
-           = 0.20 + 0.15 + 0.06 - 0.10 - 0.20
-           = +0.11  (net positive — player survives but barely)
+  Energy Δ = (2×0.10) + (3×0.05) + (3×0.02) + (1×-0.05) + (1×-0.20)
+           = 0.20 + 0.15 + 0.06 - 0.05 - 0.20
+           = +0.16  (net positive — player recovers slowly)
 
   Scenario B — "Struggling"
   ─────────────────────────────────────
   10 notes:  1 Perfect, 2 Good, 2 Ok, 3 Bad, 2 Miss
-  Energy Δ = (1×0.10) + (2×0.05) + (2×0.02) + (3×-0.10) + (2×-0.20)
-           = 0.10 + 0.10 + 0.04 - 0.30 - 0.40
-           = -0.46  (draining fast — will die in ~20 notes)
+  Energy Δ = (1×0.10) + (2×0.05) + (2×0.02) + (3×-0.05) + (2×-0.20)
+           = 0.10 + 0.10 + 0.04 - 0.15 - 0.40
+           = -0.31  (draining — Bad tier softened from -0.46 by #395/#408)
 
   Scenario C — "Pro player"
   ─────────────────────────────────────

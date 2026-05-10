@@ -16,7 +16,6 @@ namespace {
 using SongCompleteController = RGuiScreenController<SongCompleteLayoutState,
                                                      &SongCompleteLayout_Init,
                                                      &SongCompleteLayout_Render>;
-SongCompleteController song_complete_controller;
 
 void draw_song_complete_value(Vector2 anchor, float x, float y, float w, float h,
                               const char* text, int text_size) {
@@ -53,15 +52,16 @@ void draw_song_complete_scoreboard(entt::registry& reg, const SongCompleteLayout
 } // anonymous namespace
 
 void init_song_complete_screen_ui() {
-    song_complete_controller.init();
+    // Controller state is registry-owned and initialized lazily in render.
 }
 
 void render_song_complete_screen_ui(entt::registry& reg) {
-    song_complete_controller.render();
-    draw_song_complete_scoreboard(reg, song_complete_controller.state());
+    auto& controller = screen_controller<SongCompleteController>(reg);
+    controller.render();
+    draw_song_complete_scoreboard(reg, controller.state());
 
     auto& gs = reg.ctx().get<GameState>();
     if (gs.phase_timer <= 0.5f) return;
 
-    dispatch_end_screen_choice(gs, song_complete_controller.state());
+    dispatch_end_screen_choice(gs, controller.state());
 }

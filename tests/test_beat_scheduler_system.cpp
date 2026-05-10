@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
+#include "util/beat_map_loader.h"
 
 // ── beat_scheduler_system: basic spawning ────────────────────
 
@@ -196,6 +197,43 @@ TEST_CASE("beat_scheduler: falls back to beat_times when BeatEntry time_sec is a
     for (auto [entity, bi] : view.each()) {
         (void)entity;
         CHECK_THAT(bi.arrival_time, Catch::Matchers::WithinAbs(1.47f, 0.001f));
+    }
+}
+
+TEST_CASE("beat_scheduler: same beat_index honors authored time_sec ordering",
+          "[beat_scheduler][beat_times][issue442]") {
+    auto reg = make_rhythm_registry();
+    auto& song = reg.ctx().get<SongState>();
+    auto& map = reg.ctx().get<BeatMap>();
+
+    std::vector<BeatMapError> errors;
+    const std::string json = R"({
+        "song_id": "timing_test",
+        "bpm": 120,
+        "offset": 0.0,
+        "lead_beats": 4,
+        "duration_sec": 60.0,
+        "beats": [
+            { "beat": 2, "time_sec": 1.7, "kind": "shape_gate", "shape": "square", "lane": 1 },
+            { "beat": 2, "time_sec": 1.3, "kind": "shape_gate", "shape": "circle", "lane": 1 }
+        ]
+    })";
+
+    REQUIRE(parse_beat_map(json, map, errors));
+    REQUIRE(errors.empty());
+
+    // Spawn window reached for 1.3s arrival (spawn at -0.7), but not yet for
+    // 1.7s arrival (spawn at -0.3).
+    song.song_time = -0.5f;
+    song.next_spawn_idx = 0;
+    beat_scheduler_system(reg, 0.016f);
+
+    auto view = reg.view<ObstacleTag, BeatInfo, RequiredShape>();
+    REQUIRE(view.size_hint() == 1);
+    for (auto [entity, bi, rs] : view.each()) {
+        (void)entity;
+        CHECK(rs.shape == Shape::Circle);
+        CHECK_THAT(bi.arrival_time, Catch::Matchers::WithinAbs(1.3f, 0.001f));
     }
 }
 

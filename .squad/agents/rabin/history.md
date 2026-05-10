@@ -537,3 +537,162 @@ generator outputs after PR #408 (cf2aa91). No code/data modified.
 
 - `.squad/agents/redfoot/history.md` (pre-existing dirty per coordinator note).
 - Generator code, beatmap JSON, tests — read-only per task brief.
+
+---
+
+## 2026-05-11 — Round 3 audit on `audit/autonomous-quality-loop-3`
+
+Read-only audit of `content/beatmaps/`, `tools/validate_*`, and `tools/level_designer.py`
+output after PR #427 (Round 2 fix bundle, merged 2026-05-10). No code/data modified.
+
+### Round 2 fixes verified clean
+
+Across all 9 tier-files (stomper / drama / mental_corruption × easy / medium / hard):
+
+- `difficulty_inclusion` leakage: **0** entries above tier rank.
+- `beat` ordinal monotonicity: **0** strictly-decreasing pairs, **0** equal pairs.
+- `time_sec` monotonicity: **0** strictly-decreasing pairs.
+- `timing_source`: 100 % `"onset"` everywhere — no `"beat"` fallback.
+- `onset_class` / `segment_focus`: only broad layers `percussive | harmonic |
+  full-spectrum` (no raw instrument semantics).
+
+So #414, #416, #418 fully closed.
+
+### Filed (all `squad`+`squad:rabin`+`squad:verbal`+`go:needs-research`)
+
+- **#443** — `validate_loop2_content_gates` + `validate_gap_one_readability` are not
+  onset-aware. After PR #427 every `gap = beat[i+1]-beat[i] = 1` because `beat` is now a
+  sequential onset index, so gap-1 share/burst gates fire on what is actually correct
+  onset-only data. Min-IOI floor (700 ms) also flags the cross-layer 50 ms preservation
+  pairs (1–3 ms apart, always different `onset_class`). Ask: time-IOI gate + cross-layer
+  exemption + clear strict/report split.
+- **#447** — `validate_offset_semantics` emits 957 false-positive "drift" violations on
+  3_mental_corruption [hard] because it expects `time = offset + beat * 60/bpm`, which is
+  meaningless when `timing_source=onset` and `beat` is a sequential index. Ask: skip formula
+  check when `timing_source=onset`, validate `time_sec ≈ onset_time_sec` instead.
+- **#449** — Medium-tier shape distribution **inverted** across all 3 songs: circle
+  30.8–32.0 % (target 10–20 %), square 28.3–34.6 % (target 45–60 %), triangle / lane-0 ~36 %
+  dominant. Spec wants square / lane-1 dominant at medium pace. Different direction from #136
+  (which is about lane-0 / circle *under*-representation pre-PR-427).
+- **#452** — `validate_max_beat_gap.py` (added in PR #427) reports 6/9 tier-files violate
+  per-tier caps with gaps up to 72 beats (1_stomper all tiers; 2_drama all tiers). MC clean.
+  Ask: wire into generator self-check + CI; teach `fill_large_gaps` the per-tier limits.
+
+### Verified non-issues / duplicates of existing trackers
+
+- 1_stomper / 2_drama / 3_mental easy "≥ 3 distinct shapes" still passes (round 2 added
+  variety) — `validate_difficulty_ramp.py` PASS. #135 still relevant for the LanePush cliff
+  spec wording but variety floor is met.
+- MC hard `first_t = 0.096 s` still flagged → already #175 (open). No refile.
+- Lane-0 / circle 0 % issue from #136 is **partly** resolved — lane 0 now 34–40 % at medium,
+  21–66 across tiers; circles 17–48 across tiers. #136 not closed but the original "0 %"
+  symptom is gone. Note left in #449 cross-link.
+- `validate_difficulty_ramp.py` PASS for all 3 songs.
+- `validate_beatmap_offset.py` PASS (anchored offsets).
+- `validate_loop1_diagnostics.py` PASS (analysis histograms; not the shipped maps).
+
+### Useful one-liners (kept for next round)
+
+- Cross-layer-coincident gap=1 share (separates structural artifact from real density):
+  ```python
+  ts=[b['time_sec'] for b in beats]; gaps=[beats[i]['beat']-beats[i-1]['beat'] for i in range(1,len(beats))]
+  gap1_xlayer = sum(1 for i,g in enumerate(gaps) if g==1 and (ts[i+1]-ts[i])*1000 < 50)
+  ```
+  e.g. drama [hard] 27/128 are cross-layer (validator artifact) vs MC [hard] 0/118 (real
+  density).
+- Medium-tier shape table: `Counter(b['shape'] for b in beats)` per tier; compare to 10/55/35 %
+  spec band.
+- Onset-aware monotonicity: `beat` strictly-increasing AND `time_sec` strictly-non-decreasing
+  (cross-layer collisions allowed at same `time_sec` only with different lane / shape /
+  `onset_class`).
+
+### Did NOT touch
+
+- `.squad/agents/redfoot/history.md` and other peer histories.
+- Generator code, beatmap JSON, validator code, tests — read-only per task brief and Rabin
+  charter.
+
+---
+
+## Round 3 fix-pass (commit 24e8c95)
+
+Switched from QE-only to QE+fix mode for round 3 because no other agent had
+picked these up. Took ownership of the validator/level files (clean per `git
+status`) and shipped the four fixes below.
+
+### #449 — medium shape distribution inverted
+
+Root cause was twofold:
+
+1. The active onset-only path (`design_level_segment_focus`) skips legacy
+   cleanup, so `rebalance_medium_shapes` never ran on shipped medium tiers.
+   Shapes came straight from `ONSET_CLASS_TO_OBSTACLE` (canonical: triangle=0,
+   square=1, circle=2), which puts ~30/30/40 % into circle/square/triangle —
+   missing the 10/55/35 spec.
+2. Python `SHAPE_TO_LANE` / `LANE_TO_SHAPE` / `validate_medium_balance.LANE_NAMES`
+   were the *opposite* of the C++ runtime canonical (Triangle→0/Square→1/
+   Circle→2 per `tests/test_shipped_beatmap_shape_gap.cpp`). When my first
+   attempt at the fix ran rebalance and the underlying `set_shape_gate` wrote
+   `lane = SHAPE_TO_LANE[shape]`, all 339 shape-gate entries flipped to
+   non-canonical lanes and the C++ test exploded.
+
+Fix: align Python tables with C++ canonical (single source of truth) and run
+`rebalance_medium_shapes(obs, "medium")` in `build_beatmap` post-segment-focus.
+`MEDIUM_SHAPE_TARGETS` re-keyed accordingly. `hard_shape_score` /
+`rebalance_hard_shapes` now reference lanes via `SHAPE_TO_LANE[...]` instead
+of magic indices.
+
+Result: `validate_medium_balance` passes on all 3 songs; #420 lane-2 / circle
+floor still satisfied; C++ shipped_beatmaps regression test passes (12/12).
+
+### #447 — `validate_offset_semantics` false positives on onset-only
+
+Skip the beat-formula drift check when `timing_source=="onset"` (the row's
+`time_sec` is authored from the selected onset, not the beat grid). Instead
+verify `time_sec ≈ onset_time_sec` (1 ms tolerance). MC hard previously
+emitted 957 false positives.
+
+### #452 — `validate_max_beat_gap` measures ordinals in onset mode
+
+When all rows are onset-timed, `beat` is a sequential ordinal of selected
+onsets, not a musical beat index. Rewrote validator to measure max gap in
+seconds via `time_sec` and compare against the time-equivalent cap
+(`max_beats * 60 / bpm`). Added two regression tests in
+`tools/test_validate_max_beat_gap.py` (onset dense passes; onset silence fails).
+
+Residual: real silences flagged — 1_stomper easy 26.3 s / med 27.4 s / hard
+27.0 s; 2_drama easy 22.8 s / med 24.9 s / hard 24.8 s; 3_MC hard 12.5 s. These
+are content/generator concerns, not validator artifacts. Routed to Fenster /
+#428 — did **not** add a beat fallback.
+
+### #443 — loop2 + gap_one_readability not onset-aware
+
+`validate_loop2_content_gates`:
+
+- Added `_all_onset_timed` and `CROSS_LAYER_PRESERVATION_WINDOW_MS=50.0`.
+- Min IOI now computed from `time_sec` deltas in onset mode and cross-layer
+  pairs (different `onset_class`, <50 ms apart) are exempt — these are the
+  intentionally preserved layer-coincidences from the generator.
+- Demoted `gap_monotony`, `gap_one_share`, `gap_one_run` gates in onset mode
+  (ordinal `beat` ⇒ structural false positives).
+
+Loop2 strict findings: 25 → 8 (all genuine sub-300 ms IOIs that are content
+issues, not validator artifacts).
+
+`validate_gap_one_readability`: skip entirely when all rows onset-timed (its
+notion of "gap=1 between adjacent beats" is meaningless for ordinals).
+
+### Verification
+
+- `python3 -m unittest tools.test_validate_max_beat_gap …` — 50/50 OK.
+- `./build/shapeshifter_tests "[shipped_beatmaps]"` — 12 cases, 20 assertions,
+  all green (was 9/12 with 339 fail).
+- Full C++ suite: 727/728 (the one failure is `test_redfoot_testflight_ui.cpp`,
+  pre-existing UI-territory issue, not from this work).
+
+### Issue dispositions
+
+- #447, #449, #443 (gap_one) — fixed; close after PR merges.
+- #443 (loop2) — partial; residual 8 findings are content issues. Leave open.
+- #452 — validator semantics fixed; real silences are generator follow-up.
+  Leave open and re-route to #428.

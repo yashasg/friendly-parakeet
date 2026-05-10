@@ -58,6 +58,19 @@ The screen is divided into two zones:
 
 3 lanes: left, center, right. Player starts in center.
 
+> ⚠️ **Current shipped behavior — see issue #441.** Across all 9 shipped
+> beatmaps (994 obstacles total), shape and lane are fused 1:1 by
+> `tools/level_designer.py:ONSET_CLASS_TO_OBSTACLE` — every triangle is
+> on lane 0, every square on lane 1, every circle on lane 2. As a
+> result, **strafing input is currently redundant**: choosing the
+> correct shape implies the correct lane, and a player who never strafes
+> still passes 100% of shape gates. The Controls section above and the
+> Split Path entry in the Obstacle Types table reflect the intended
+> design space, not shipped content. The shape↔lane decoupling vs.
+> intentional-collapse design call is tracked in #441 and must be
+> resolved before lane-as-a-skill claims are reinstated; until then,
+> treat lane variety as a known limitation of shipped beatmaps.
+
 ---
 
 ## Core Mechanic: On-Beat Shape Matching
@@ -133,17 +146,15 @@ When an obstacle requires TWO actions (e.g., switch to ● AND swipe left), the 
 
 Difficulty is selected per song (easy / medium / hard) and is expressed primarily through obstacle density, kind variety, and lane complexity in the beatmap. Within a song, scroll speed is BPM-derived and constant — there is no in-song speed ramp.
 
-| Difficulty | Obstacles Introduced                          | Density           | Timing Window†             |
-|------------|-----------------------------------------------|-------------------|----------------------------|
-| Easy       | Shape gates only                              | Low               | BPM-derived (shared)       |
-| Medium     | Shape gates + lane_push pacing inserts‡       | Medium            | BPM-derived (shared)       |
-| Hard       | Shape gates + lane_push pacing inserts‡§      | High              | BPM-derived (shared)       |
+| Difficulty | Obstacles Introduced | Density | Timing Window† |
+|------------|----------------------|---------|----------------|
+| Easy       | Shape gates only     | Low     | BPM-derived (shared) |
+| Medium     | Shape gates only‡    | Medium  | BPM-derived (shared) |
+| Hard       | Shape gates only‡    | High    | BPM-derived (shared) |
 
 † Timing windows are not difficulty-scaled today: every difficulty uses the same BPM-derived hit window defined in `rhythm-spec.md` (`audio_offset` + BPM-derived window). The "Timing Window" column is preserved for forward compatibility if per-difficulty scaling is reintroduced.
 
-‡ Per decisions.md "#135 — Difficulty Ramp": `LANEPUSH_RAMP["easy"] = None`; medium uses lane_push share 9.3%–19.5% with `start_progress = 0.30` and `min_gap = 3`; hard uses a higher share with the same gap floor. LanePush is queued for removal/rework (#328); after that, this column will be revisited.
-
-§ The earlier "+ Low/high bars, combos, split paths" cell for Hard was aspirational. As shipped today (see #420), all 9 beatmaps are 100% `shape_gate` and no low_bar / high_bar / combo_gate / split_path content exists in any difficulty. Those obstacle kinds remain in the catalog as future design space; they are not currently produced by `level_designer.py` and are not gated by difficulty.
+‡ As shipped today (see #420, #446), all 9 beatmaps in `content/beatmaps/` are 100% `shape_gate`. Difficulty between Easy / Medium / Hard is expressed only through **obstacle density**, **shape-gate kind/lane distribution**, and **onset selection** — not through additional obstacle kinds. The earlier `lane_push` pacing-insert plan (decisions.md "#135 — Difficulty Ramp", `LANEPUSH_RAMP`) and the older "+ Low/high bars, combos, split paths" cell for Hard were aspirational; no `lane_push` / `low_bar` / `high_bar` / `combo_gate` / `split_path` content is currently produced by `level_designer.py`, and `LanePush` is queued for removal/rework (#328). Those obstacle kinds remain in the catalog as future design space; if/when a committed plan to reintroduce them lands, this table will be revised.
 
 ### Player Emotion Arc
 - **Early song** → "I'm finding the rhythm" (entrainment)
@@ -170,8 +181,7 @@ Difficulty is selected per song (easy / medium / hard) and is expressed primaril
 
 - **Top left**: Current score + best score
 - **Top**: Energy bar (drains on miss, recovers on hit)
-- **Center field**: Proximity ring around player — visualises beat timing windows
-- **Bottom**: 3 shape buttons (currently selected is highlighted)
+- **Bottom**: 3 shape buttons (currently selected is highlighted) — each button is wrapped by a **proximity ring** that shrinks toward the button as the matching obstacle approaches, providing the live timing cue (see `rhythm-spec.md` §6 / `rhythm-design.md` §4)
 
 ---
 

@@ -11,7 +11,7 @@ void scroll_system(entt::registry& reg, float /*dt*/) {
     // Rhythm obstacles: position derived from song_time, not accumulated dt.
     // This prevents floating-point drift from desynchronizing collisions
     // with the beat grid. (See: "never use anything other than song position")
-    if (song && song->playing) {
+    if (song && (song->playing || song->finished)) {
 
         auto beat_view = reg.view<ObstacleTag, WorldTransform, BeatInfo>();
         for (auto [entity, wt, info] : beat_view.each()) {

@@ -25,7 +25,6 @@ namespace {
 using GameplayHudController = RGuiScreenController<GameplayHudLayoutState,
                                                     &GameplayHudLayout_Init,
                                                     &GameplayHudLayout_Render>;
-GameplayHudController gameplay_hud_controller;
 
 void draw_shape_flat(Shape shape, float cx, float cy, float size, Color color) {
     switch (shape) {
@@ -276,7 +275,7 @@ void render_energy_bar(const entt::registry& reg, const EnergyState& energy) {
 } // anonymous namespace
 
 void init_gameplay_hud_screen_ui() {
-    gameplay_hud_controller.init();
+    // Controller state is registry-owned and initialized lazily in render.
 }
 
 Rectangle gameplay_hud_shape_input_bounds(GameplayHudShapeSlot slot) {
@@ -313,7 +312,8 @@ void gameplay_hud_apply_button_presses(entt::registry& reg,
 }
 
 void render_gameplay_hud_screen_ui(entt::registry& reg) {
-    auto& state = gameplay_hud_controller.state();
+    auto& controller = screen_controller<GameplayHudController>(reg);
+    auto& state = controller.state();
     auto* score = reg.ctx().find<ScoreState>();
     auto* energy = reg.ctx().find<EnergyState>();
     const auto& hud_layout = resolved_hud_layout(reg);
@@ -352,7 +352,7 @@ void render_gameplay_hud_screen_ui(entt::registry& reg) {
 
     // Render Pause button from generated layout state.
     GuiSetStyle(DEFAULT, TEXT_SIZE, 20);
-    gameplay_hud_controller.render();
+    controller.render();
 
     GuiSetStyle(DEFAULT, TEXT_SIZE, saved_text_size);
 

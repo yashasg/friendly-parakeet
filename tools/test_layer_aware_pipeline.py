@@ -369,5 +369,191 @@ class TestNoRawInstrumentSemanticsInPublicFields(unittest.TestCase):
         )
 
 
+# ---------------------------------------------------------------------------
+# #448 — shipped analysis JSON artifacts must not leak raw instrument names
+# ---------------------------------------------------------------------------
+
+
+class TestShippedAnalysisArtifactsHaveNoRawInstrumentNames(unittest.TestCase):
+    """Regression for issue #448.
+
+    Loads every shipped ``content/beatmaps/*_analysis.json`` and asserts the
+    public surfaces consumed by ``level_designer`` and downstream tooling
+    expose only broad-layer / non-instrumental subpass IDs (no
+    kick/snare/hihat/melody/flux).
+    """
+
+    _RAW_NAMES = {"kick", "snare", "hihat", "melody", "flux"}
+    _BROAD_LAYERS = {"percussive", "harmonic", "full-spectrum"}
+
+    def _shipped_analysis_paths(self):
+        repo_root = Path(__file__).resolve().parents[1]
+        beatmap_dir = repo_root / "content" / "beatmaps"
+        return sorted(beatmap_dir.glob("*_analysis.json"))
+
+    def test_at_least_one_shipped_analysis_present(self):
+        self.assertTrue(
+            self._shipped_analysis_paths(),
+            "expected at least one content/beatmaps/*_analysis.json fixture",
+        )
+
+    def test_shipped_analyses_have_no_raw_instrument_names(self):
+        import json
+        for path in self._shipped_analysis_paths():
+            with self.subTest(analysis=path.name):
+                with path.open() as f:
+                    analysis = json.load(f)
+
+                # 1) onsets keys must be broad subpass IDs, not raw names.
+                onset_keys = set(analysis.get("onsets", {}).keys())
+                leaked = onset_keys & self._RAW_NAMES
+                self.assertFalse(
+                    leaked,
+                    f"{path.name}: onsets exposes raw instrument names: {sorted(leaked)}",
+                )
+
+                # 2) events[*].passes tokens must not include raw names.
+                for ev in analysis.get("events", []):
+                    tokens = set(ev.get("passes", []) or [])
+                    leaked_tokens = tokens & self._RAW_NAMES
+                    self.assertFalse(
+                        leaked_tokens,
+                        f"{path.name}: event passes leak {sorted(leaked_tokens)}: {ev}",
+                    )
+                    layer = ev.get("layer")
+                    self.assertIn(
+                        layer, self._BROAD_LAYERS,
+                        f"{path.name}: event missing/invalid broad layer: {ev}",
+                    )
+
+                # 3) onset_diagnostics.raw_per_pass keys must be broad subpass IDs.
+                raw_per_pass = analysis.get("onset_diagnostics", {}).get(
+                    "raw_per_pass", {}
+                )
+                leaked_diag = set(raw_per_pass.keys()) & self._RAW_NAMES
+                self.assertFalse(
+                    leaked_diag,
+                    f"{path.name}: onset_diagnostics.raw_per_pass leaks {sorted(leaked_diag)}",
+                )
+
+
+# ---------------------------------------------------------------------------
+# Migration helper coverage (idempotency + completeness)
+# ---------------------------------------------------------------------------
+
+
+class TestMigrateAnalysisRemoveRawInstrumentNames(unittest.TestCase):
+    """Covers the public-naming migration helper used to scrub raw
+    instrument tokens from shipped analysis JSON artifacts."""
+
+    def _seed(self):
+        return {
+            "events": [
+                {"t": 1.0, "passes": ["kick"], "layer": "percussive", "pass": "kick"},
+                {"t": 1.04, "passes": ["melody", "flux"], "layer": "full-spectrum"},
+                {"t": 2.0, "passes": ["snare", "hihat"], "layer": "percussive"},
+            ],
+            "onsets": {
+                "kick":   {"method": "x", "zone": "bass",     "count": 2, "timestamps": [1.0, 3.0], "resolutions": []},
+                "snare":  {"method": "x", "zone": None,       "count": 1, "timestamps": [2.0],      "resolutions": []},
+                "hihat":  {"method": "x", "zone": "high_mid", "count": 1, "timestamps": [2.0],      "resolutions": []},
+                "melody": {"method": "x", "zone": "low_mid",  "count": 1, "timestamps": [1.04],     "resolutions": []},
+                "flux":   {"method": "x", "zone": None,       "count": 1, "timestamps": [1.04],     "resolutions": []},
+            },
+            "onset_diagnostics": {
+                "raw_per_pass": {"kick": 2, "snare": 1, "hihat": 1, "melody": 1, "flux": 1},
+            },
+        }
+
+    def test_migration_replaces_all_raw_pass_names(self):
+        out = rp.migrate_analysis_remove_raw_instrument_names(self._seed())
+        # No raw tokens anywhere in public fields.
+        for ev in out["events"]:
+            self.assertFalse(set(ev["passes"]) & rp.RAW_INSTRUMENT_PASS_NAMES)
+            self.assertNotIn(ev.get("pass"), rp.RAW_INSTRUMENT_PASS_NAMES)
+        self.assertFalse(set(out["onsets"].keys()) & rp.RAW_INSTRUMENT_PASS_NAMES)
+        self.assertFalse(
+            set(out["onset_diagnostics"]["raw_per_pass"].keys())
+            & rp.RAW_INSTRUMENT_PASS_NAMES
+        )
+        # All onset/raw_per_pass keys are broad subpass IDs from the pipeline.
+        valid_subpasses = {p["name"] for p in rp.ONSET_PASSES}
+        self.assertTrue(set(out["onsets"].keys()).issubset(valid_subpasses))
+        self.assertTrue(
+            set(out["onset_diagnostics"]["raw_per_pass"].keys()).issubset(valid_subpasses)
+        )
+        # Layer field is preserved verbatim.
+        self.assertEqual([ev["layer"] for ev in out["events"]],
+                         ["percussive", "full-spectrum", "percussive"])
+
+    def test_migration_is_idempotent(self):
+        once = rp.migrate_analysis_remove_raw_instrument_names(self._seed())
+        twice = rp.migrate_analysis_remove_raw_instrument_names(
+            json_clone := __import__("json").loads(__import__("json").dumps(once))
+        )
+        self.assertEqual(once, twice)
+
+
+# ---------------------------------------------------------------------------
+# #451 — loop1 onset diagnostics must include harmonic broad-layer events
+# when the source analysis carries any harmonic events.
+# ---------------------------------------------------------------------------
+
+
+class TestLoop1DiagnosticsCoverHarmonicLayer(unittest.TestCase):
+    """Regression for issue #451.
+
+    For every shipped ``*_loop1`` diagnostics directory whose source analysis
+    JSON contains at least one harmonic-layer event, the regenerated
+    ``onset_timing_events.csv`` must contain at least one row with
+    ``onset_class == 'harmonic'`` and the ``timing_source`` column must be
+    ``onset`` (no beat fallback)."""
+
+    def _loop1_pairs(self):
+        repo_root = Path(__file__).resolve().parents[1]
+        diag_root = repo_root / "tools" / "diagnostics"
+        beatmap_dir = repo_root / "content" / "beatmaps"
+        for csv_path in sorted(diag_root.glob("*_loop1/onset_timing_events.csv")):
+            song_id = csv_path.parent.name.removesuffix("_loop1")
+            analysis_path = beatmap_dir / f"{song_id}_analysis.json"
+            if analysis_path.exists():
+                yield analysis_path, csv_path
+
+    def test_harmonic_present_when_source_has_harmonic_events(self):
+        import csv
+        import json
+
+        pairs = list(self._loop1_pairs())
+        self.assertTrue(pairs, "expected at least one *_loop1 diagnostics fixture")
+
+        for analysis_path, csv_path in pairs:
+            with self.subTest(song=analysis_path.stem):
+                with analysis_path.open() as f:
+                    analysis = json.load(f)
+                source_has_harmonic = any(
+                    ev.get("layer") == "harmonic"
+                    for ev in analysis.get("events", [])
+                )
+                if not source_has_harmonic:
+                    continue
+
+                with csv_path.open(newline="") as f:
+                    reader = csv.DictReader(f)
+                    rows = list(reader)
+
+                self.assertTrue(rows, f"{csv_path} unexpectedly empty")
+                onset_classes = {row.get("onset_class") for row in rows}
+                self.assertIn(
+                    "harmonic", onset_classes,
+                    f"{csv_path}: harmonic broad layer missing despite source having harmonic events",
+                )
+                # Onset-only timing requirement (no beat fallback).
+                timing_sources = {row.get("timing_source") for row in rows}
+                self.assertEqual(
+                    timing_sources, {"onset"},
+                    f"{csv_path}: non-onset timing_source values: {timing_sources}",
+                )
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

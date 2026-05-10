@@ -135,17 +135,18 @@ TEST_CASE("validate: empty beats list fails", "[validate]") {
     CHECK_FALSE(validate_beat_map(map, errors));
 }
 
-TEST_CASE("validate: duplicate beat indices fail", "[validate]") {
+TEST_CASE("validate: duplicate beat indices pass when timing order is non-decreasing", "[validate]") {
     BeatMap map;
     map.bpm = 120.0f;
     map.offset = 0.0f;
     map.lead_beats = 4;
     map.duration = 60.0f;
     map.beats.push_back({4, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
-    map.beats.push_back({4, ObstacleKind::ShapeGate, Shape::Square, 1, 0});
+    map.beats.push_back({4, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
 
     std::vector<BeatMapError> errors;
-    CHECK_FALSE(validate_beat_map(map, errors));
+    CHECK(validate_beat_map(map, errors));
+    CHECK(errors.empty());
 }
 
 TEST_CASE("validate: non-monotonic beat indices fail", "[validate]") {
@@ -601,6 +602,51 @@ TEST_CASE("parse: beat without time_sec falls back to beat_times", "[parse][beat
     CHECK_THAT(map.beats[0].time_sec, Catch::Matchers::WithinAbs(1.4f, 0.001f));
 }
 
+TEST_CASE("parse: same beat_index entries are ordered by resolved time_sec", "[parse][beat_times][ordering]") {
+    BeatMap map;
+    std::vector<BeatMapError> errors;
+    std::string json = R"({
+        "song_id": "timing_test",
+        "bpm": 120,
+        "offset": 0.0,
+        "lead_beats": 4,
+        "duration_sec": 60.0,
+        "beat_times": [0.1, 0.7, 1.4],
+        "beats": [
+            { "beat": 2, "time_sec": 1.6, "kind": "shape_gate", "shape": "square", "lane": 1 },
+            { "beat": 2, "kind": "shape_gate", "shape": "triangle", "lane": 1 },
+            { "beat": 2, "time_sec": 1.3, "kind": "shape_gate", "shape": "circle", "lane": 1 }
+        ]
+    })";
+
+    REQUIRE(parse_beat_map(json, map, errors));
+    REQUIRE(map.beats.size() == 3);
+    CHECK_THAT(map.beats[0].time_sec, Catch::Matchers::WithinAbs(1.3f, 0.001f));
+    CHECK_THAT(map.beats[1].time_sec, Catch::Matchers::WithinAbs(1.4f, 0.001f));
+    CHECK_THAT(map.beats[2].time_sec, Catch::Matchers::WithinAbs(1.6f, 0.001f));
+}
+
+TEST_CASE("parse: same beat_index entries keep authored order for identical timing", "[parse][beat_times][ordering]") {
+    BeatMap map;
+    std::vector<BeatMapError> errors;
+    std::string json = R"({
+        "song_id": "timing_test",
+        "bpm": 120,
+        "offset": 0.0,
+        "lead_beats": 4,
+        "duration_sec": 60.0,
+        "beats": [
+            { "beat": 2, "time_sec": 1.4, "kind": "shape_gate", "shape": "square", "lane": 1 },
+            { "beat": 2, "time_sec": 1.4, "kind": "shape_gate", "shape": "triangle", "lane": 1 }
+        ]
+    })";
+
+    REQUIRE(parse_beat_map(json, map, errors));
+    REQUIRE(map.beats.size() == 2);
+    CHECK(map.beats[0].shape == Shape::Square);
+    CHECK(map.beats[1].shape == Shape::Triangle);
+}
+
 TEST_CASE("parse: invalid blocked lane index fails", "[parse][blocked_mask]") {
     BeatMap map;
     std::vector<BeatMapError> errors;
@@ -666,6 +712,21 @@ TEST_CASE("validate: mixed authored time_sec edge cases are checked", "[validate
     CHECK_FALSE(validate_beat_map(map, errors));
     REQUIRE_FALSE(errors.empty());
     CHECK(errors[0].message.find("finite") != std::string::npos);
+}
+
+TEST_CASE("validate: same beat_index requires non-decreasing resolved time", "[validate][beat_times][ordering]") {
+    BeatMap map;
+    map.bpm = 120.0f;
+    map.offset = 0.0f;
+    map.lead_beats = 4;
+    map.duration = 10.0f;
+    map.beats.push_back({2, ObstacleKind::ShapeGate, Shape::Circle, 1, 0, 1.5f, true});
+    map.beats.push_back({2, ObstacleKind::ShapeGate, Shape::Square, 1, 0, 1.4f, true});
+
+    std::vector<BeatMapError> errors;
+    CHECK_FALSE(validate_beat_map(map, errors));
+    REQUIRE_FALSE(errors.empty());
+    CHECK(errors[0].message.find("beat index") != std::string::npos);
 }
 
 TEST_CASE("validate: beat index out of range for beat_times fails", "[validate][beat_times]") {

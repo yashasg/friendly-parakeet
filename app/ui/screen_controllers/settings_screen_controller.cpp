@@ -18,26 +18,26 @@ namespace {
 using SettingsController = RGuiScreenController<SettingsLayoutState,
                                                  &SettingsLayout_Init,
                                                  &SettingsLayout_RenderStatic>;
-SettingsController settings_controller;
 
 } // anonymous namespace
 
 void init_settings_screen_ui() {
-    settings_controller.init();
+    // Controller state is registry-owned and initialized lazily in render.
 }
 
 void render_settings_screen_ui(entt::registry& reg) {
+    auto& controller = screen_controller<SettingsController>(reg);
     auto* st = reg.ctx().find<SettingsState>();
     auto& gs = reg.ctx().get<GameState>();
 
     // Static controls: heading, audio offset label, +/- buttons, back button
-    settings_controller.render();
+    controller.render();
 
     // Audio offset value display (centre slot between - and + buttons)
     if (st) {
         char offset_buf[16];
         std::snprintf(offset_buf, sizeof(offset_buf), "%+d ms", static_cast<int>(st->audio_offset_ms));
-        GuiLabel(offset_rect(settings_controller.state().Anchor01, 252, 560, 216, 77), offset_buf);
+        GuiLabel(offset_rect(controller.state().Anchor01, 252, 560, 216, 77), offset_buf);
     }
 
     // Dynamic toggle buttons with live labels.
@@ -84,21 +84,21 @@ void render_settings_screen_ui(entt::registry& reg) {
 
     {
         bool haptics_on = !st || st->haptics_enabled;
-        settings_controller.state().HapticsTogglePressed = draw_toggle(
-            offset_rect(settings_controller.state().Anchor01, 152, 720, 416, 100),
+        controller.state().HapticsTogglePressed = draw_toggle(
+            offset_rect(controller.state().Anchor01, 152, 720, 416, 100),
             "HAPTICS", haptics_on);
     }
     {
         // Reduce-motion semantics: the visible toggle reads "MOTION ON" when
         // motion is NOT reduced. We therefore invert reduce_motion for display.
         bool motion_on = !st || !st->reduce_motion;
-        settings_controller.state().ReduceMotionTogglePressed = draw_toggle(
-            offset_rect(settings_controller.state().Anchor01, 152, 880, 416, 100),
+        controller.state().ReduceMotionTogglePressed = draw_toggle(
+            offset_rect(controller.state().Anchor01, 152, 880, 416, 100),
             "MOTION", motion_on);
     }
 
     // Dispatch actions
-    const bool close_pressed = settings_controller.state().CloseButtonPressed;
+    const bool close_pressed = controller.state().CloseButtonPressed;
     if (!st && close_pressed) {
         gs.transition_pending = true;
         gs.next_phase = GamePhase::Title;
@@ -107,28 +107,28 @@ void render_settings_screen_ui(entt::registry& reg) {
     if (!st) return;
 
     bool settings_changed = false;
-    if (settings_controller.state().AudioOffsetMinusPressed) {
+    if (controller.state().AudioOffsetMinusPressed) {
         const auto before = st->audio_offset_ms;
         st->audio_offset_ms = static_cast<int16_t>(
             std::max(static_cast<int>(SettingsState::MIN_AUDIO_OFFSET_MS),
                      static_cast<int>(st->audio_offset_ms) - SettingsState::AUDIO_OFFSET_STEP_MS));
         settings_changed = settings_changed || (st->audio_offset_ms != before);
     }
-    if (settings_controller.state().AudioOffsetPlusPressed) {
+    if (controller.state().AudioOffsetPlusPressed) {
         const auto before = st->audio_offset_ms;
         st->audio_offset_ms = static_cast<int16_t>(
             std::min(static_cast<int>(SettingsState::MAX_AUDIO_OFFSET_MS),
                      static_cast<int>(st->audio_offset_ms) + SettingsState::AUDIO_OFFSET_STEP_MS));
         settings_changed = settings_changed || (st->audio_offset_ms != before);
     }
-    if (settings_controller.state().HapticsTogglePressed) {
+    if (controller.state().HapticsTogglePressed) {
         st->haptics_enabled = !st->haptics_enabled;
         settings_changed = true;
         if (st->haptics_enabled) {
             platform::haptics::warmup();
         }
     }
-    if (settings_controller.state().ReduceMotionTogglePressed) {
+    if (controller.state().ReduceMotionTogglePressed) {
         st->reduce_motion = !st->reduce_motion;
         settings_changed = true;
     }

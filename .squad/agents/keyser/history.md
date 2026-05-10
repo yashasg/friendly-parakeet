@@ -198,3 +198,12 @@ No. Rendering occurs inside `BeginMode3D()/EndMode3D()` (3D camera context). Ray
 - Closing a broad boundary issue can still leave a thinner residual abstraction seam: replacing backend handles with project-local proxy structs (`Vec2f`/`Mat4f`/`ColorRGBA8`) plus conversion helpers still behaves like a compatibility layer when docs explicitly ban wrappers.
 - Component headers should carry mutable state shape, not transition helpers and asset catalogs. Keeping behavior/content tables out of `app/components/*.h` reduces include-surface coupling and keeps ECS boundaries easier to evolve.
 - Filed follow-up issues: #411 and #412.
+
+### R21: Round-3 architecture boundary residuals (post-PR #427)
+
+**Date:** 2026-05-10  
+**Scope:** Read-only architecture audit focused on residual non-ECS/global-state seams in runtime/UI plumbing.
+
+- Filed #432: screen controllers retain mutable file-scope singleton state (`RGuiScreenController` instances) outside `entt::registry`.
+- Filed #433: WASM loop ownership in `platform_display.cpp` is held in file-scope global `g_state` (registry pointer + accumulator) instead of explicit registry-owned state.
+- Duplicate check completed against open issues before filing; no matching open issues covered these exact boundary seams.

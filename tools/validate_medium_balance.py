@@ -22,9 +22,9 @@ TARGET_RANGES = {
 }
 
 LANE_NAMES = {
-    0: "circle",
+    0: "triangle",
     1: "square",
-    2: "triangle",
+    2: "circle",
 }
 
 
