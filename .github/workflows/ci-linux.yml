@@ -78,7 +78,7 @@ jobs:
 
       - name: Install Python tool test dependencies
         run: |
-          PYTHON_TOOL_TEST_EXE="$(grep '^Python3_EXECUTABLE:FILEPATH=' build/CMakeCache.txt | cut -d= -f2-)"
+          PYTHON_TOOL_TEST_EXE="$(grep '^_Python3_EXECUTABLE:INTERNAL=' build/CMakeCache.txt | cut -d= -f2-)"
           "$PYTHON_TOOL_TEST_EXE" -m pip install numpy librosa
 
       - name: Run tests
