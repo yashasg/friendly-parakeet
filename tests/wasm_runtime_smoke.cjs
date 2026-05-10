@@ -28,14 +28,21 @@ async function main() {
   const fatal = [];
 
   async function clickCanvasAt(xRatio, yRatio) {
-    const box = await page.locator('#canvas').boundingBox();
+    const canvas = page.locator('#canvas');
+    const box = await canvas.boundingBox();
     if (!box) {
       fatal.push('canvas-bounding-box-unavailable');
       return;
     }
-    const x = box.x + Math.max(4, Math.floor(box.width * xRatio));
-    const y = box.y + Math.max(4, Math.floor(box.height * yRatio));
-    await page.mouse.click(x, y);
+    const x = Math.max(4, Math.floor(box.width * xRatio));
+    const y = Math.max(4, Math.floor(box.height * yRatio));
+    await canvas.focus();
+    await canvas.click({
+      position: { x, y },
+      delay: 100,
+      force: true,
+    });
+    await page.waitForTimeout(100);
   }
 
   async function waitForVisualChange(previousHash, timeoutMs) {
