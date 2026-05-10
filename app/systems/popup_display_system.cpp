@@ -1,6 +1,9 @@
 #include "all_systems.h"
 #include "../components/scoring.h"
 #include "../components/rendering.h"
+#include "../components/transform.h"
+#include "../util/motion.h"
+#include "../util/settings.h"
 #include <vector>
 
 namespace {
@@ -25,6 +28,22 @@ PopupDisplayScratch& popup_scratch_for(entt::registry& reg) {
 void popup_display_system(entt::registry& reg, float dt) {
     auto& expired = popup_scratch_for(reg).expired;
     expired.clear();
+
+    // Reduce-motion (#534): zero the kinetic envelope of decorative
+    // popup drift while leaving text/colour/value (informational
+    // channel) untouched. The alpha-fade still runs so popups expire
+    // on schedule.
+    const auto* settings_ptr = reg.ctx().find<SettingsState>();
+    const bool reduce_motion = settings_ptr && settings_ptr->reduce_motion;
+    if (reduce_motion) {
+        const float drift_scale = motion::popup_drift_scale(true);
+        auto drift_view = reg.view<ScorePopup, MotionVelocity>();
+        for (auto [entity, popup, vel] : drift_view.each()) {
+            (void)entity; (void)popup;
+            vel.value.x *= drift_scale;
+            vel.value.y *= drift_scale;
+        }
+    }
 
     auto fade_view = reg.view<ScorePopup, PopupDisplay, Color>();
     for (auto [entity, popup, pd, col] : fade_view.each()) {

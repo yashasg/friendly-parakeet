@@ -27,6 +27,7 @@
 #include "components/text.h"      // FontSize
 #include "components/rhythm.h"    // TimingTier
 #include "components/transform.h" // WorldTransform, MotionVelocity
+#include "util/settings.h"        // SettingsState (reduce_motion)
 #include "systems/all_systems.h"  // popup_display_system declaration
 #include "entities/popup_entity.h"
 #include "constants.h"
@@ -434,4 +435,43 @@ TEST_CASE("spawn_score_popup: PopupDisplay initialized at spawn",
     CHECK(std::strcmp(pd.text, "PERFECT") == 0);
     CHECK(pd.font_size == FontSize::Medium);
     CHECK(pd.a == 255);
+}
+
+// ── #534: reduce_motion attenuates kinetic envelope ─────────────────────────
+
+TEST_CASE("popup_display_system: reduce_motion zeroes drift velocity (#534)",
+          "[popup_display][reduce_motion][issue534]") {
+    entt::registry reg;
+    reg.ctx().emplace<SettingsState>(SettingsState{}).reduce_motion = true;
+
+    auto e = spawn_score_popup(reg, {100.0f, 500.0f, 200, TimingTier::Perfect});
+    REQUIRE(reg.all_of<MotionVelocity>(e));
+    REQUIRE(reg.get<MotionVelocity>(e).value.y == -80.0f);
+
+    popup_display_system(reg, 0.016f);
+
+    const auto& vel = reg.get<MotionVelocity>(e);
+    CHECK(vel.value.x == 0.0f);
+    CHECK(vel.value.y == 0.0f);
+
+    // Informational channel (text/colour/value) is unchanged.
+    const auto& pd = reg.get<PopupDisplay>(e);
+    CHECK(std::strcmp(pd.text, "PERFECT") == 0);
+    CHECK(pd.r ==  80);
+    CHECK(pd.g == 255);
+    CHECK(pd.b == 220);
+    const auto& sp = reg.get<ScorePopup>(e);
+    CHECK(sp.value == 200);
+}
+
+TEST_CASE("popup_display_system: reduce_motion=false leaves drift untouched (#534)",
+          "[popup_display][reduce_motion][issue534]") {
+    entt::registry reg;
+    reg.ctx().emplace<SettingsState>();  // reduce_motion defaults to false
+
+    auto e = spawn_score_popup(reg, {0.0f, 0.0f, 100, TimingTier::Good});
+    popup_display_system(reg, 0.016f);
+
+    const auto& vel = reg.get<MotionVelocity>(e);
+    CHECK(vel.value.y == -80.0f);  // popup_display_system never touches it
 }

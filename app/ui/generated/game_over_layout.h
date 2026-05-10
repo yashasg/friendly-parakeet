@@ -56,6 +56,8 @@ static inline void GameOverLayout_DrawCenteredLabel(Rectangle bounds, const char
 static inline void GameOverLayout_Render(GameOverLayoutState *state) {
     if (!state) return;
     GuiLabel((Rectangle){ state->Anchor01.x + 210, state->Anchor01.y + 440, 300, 60 }, "GAME OVER");
+    GameOverLayout_DrawCenteredLabel((Rectangle){ state->Anchor01.x + 210, state->Anchor01.y + 510, 300, 30 }, "SCORE", 24);
+    GameOverLayout_DrawCenteredLabel((Rectangle){ state->Anchor01.x + 210, state->Anchor01.y + 600, 300, 30 }, "HIGH SCORE", 24);
     state->RestartButtonPressed     = GuiButton((Rectangle){ state->Anchor01.x + 220, state->Anchor01.y + 870, 280, 50 }, "RESTART");
     state->LevelSelectButtonPressed = GuiButton((Rectangle){ state->Anchor01.x + 220, state->Anchor01.y + 935, 280, 50 }, "LEVEL SELECT");
     state->MenuButtonPressed        = GuiButton((Rectangle){ state->Anchor01.x + 220, state->Anchor01.y + 1000, 280, 50 }, "MAIN MENU");

@@ -46,3 +46,51 @@ TEST_CASE("motion::flash_overlay_strength suppresses decorative flash overlay (#
     // Even at full intensity, the overlay is suppressed.
     CHECK(motion::flash_overlay_strength(1.0f, /*reduce_motion=*/true)  == 0.0f);
 }
+
+// ── #534: extend reduce_motion beyond the energy bar ───────────────────────
+
+TEST_CASE("motion::approach_ring_envelope lerps radius and fades when reduce_motion is off (#534)",
+          "[motion][reduce_motion][issue534]") {
+    // ratio=0 → ring at btn_radius, full alpha; ratio=1 → max radius, half alpha.
+    const auto at_perfect = motion::approach_ring_envelope(0.0f, 10.0f, 30.0f, false);
+    CHECK_THAT(at_perfect.radius,      Catch::Matchers::WithinAbs(10.0f, 1e-4f));
+    CHECK_THAT(at_perfect.alpha_scale, Catch::Matchers::WithinAbs(1.0f,  1e-4f));
+
+    const auto at_outer = motion::approach_ring_envelope(1.0f, 10.0f, 30.0f, false);
+    CHECK_THAT(at_outer.radius,      Catch::Matchers::WithinAbs(30.0f, 1e-4f));
+    CHECK_THAT(at_outer.alpha_scale, Catch::Matchers::WithinAbs(0.5f,  1e-4f));
+
+    // Mid-window the envelope must be strictly increasing in radius and
+    // decreasing in alpha — i.e. it actually animates.
+    const auto mid = motion::approach_ring_envelope(0.5f, 10.0f, 30.0f, false);
+    CHECK(mid.radius      > at_perfect.radius);
+    CHECK(mid.radius      < at_outer.radius);
+    CHECK(mid.alpha_scale < at_perfect.alpha_scale);
+    CHECK(mid.alpha_scale > at_outer.alpha_scale);
+}
+
+TEST_CASE("motion::approach_ring_envelope snaps to a static imminent indicator with reduce_motion (#534)",
+          "[motion][reduce_motion][issue534]") {
+    // Outside the imminent window → ring is suppressed entirely.
+    const auto far = motion::approach_ring_envelope(0.6f, 10.0f, 30.0f, true);
+    CHECK(far.alpha_scale == 0.0f);
+
+    // Just inside the imminent window → ring snaps to max_ring_radius
+    // at full alpha (no continuous lerp across the window).
+    const auto near_a = motion::approach_ring_envelope(0.10f, 10.0f, 30.0f, true);
+    const auto near_b = motion::approach_ring_envelope(0.25f, 10.0f, 30.0f, true);
+    CHECK_THAT(near_a.radius, Catch::Matchers::WithinAbs(30.0f, 1e-4f));
+    CHECK_THAT(near_b.radius, Catch::Matchers::WithinAbs(30.0f, 1e-4f));
+    CHECK(near_a.alpha_scale == 1.0f);
+    CHECK(near_b.alpha_scale == 1.0f);
+    // Static: radius does not change with ratio inside the window.
+    CHECK(near_a.radius == near_b.radius);
+}
+
+TEST_CASE("motion::popup_drift_scale and particle_velocity_scale zero kinetic envelope (#534)",
+          "[motion][reduce_motion][issue534]") {
+    CHECK(motion::popup_drift_scale(false)        == 1.0f);
+    CHECK(motion::popup_drift_scale(true)         == 0.0f);
+    CHECK(motion::particle_velocity_scale(false)  == 1.0f);
+    CHECK(motion::particle_velocity_scale(true)   == 0.0f);
+}
