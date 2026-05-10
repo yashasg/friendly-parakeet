@@ -219,7 +219,7 @@ TEST_CASE("scoring: popup entity has full factory contract", "[scoring][popup_en
         ++count;
         CHECK(reg.all_of<WorldTransform>(e));
         CHECK(reg.all_of<MotionVelocity>(e));
-        CHECK(reg.all_of<TintColor>(e));
+        CHECK(reg.all_of<Color>(e));
         CHECK(reg.all_of<DrawLayer>(e));
         CHECK(reg.all_of<TagHUDPass>(e));
         CHECK(reg.all_of<PopupDisplay>(e));

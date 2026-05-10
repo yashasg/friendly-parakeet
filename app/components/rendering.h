@@ -2,7 +2,9 @@
 
 #include <cstdint>
 #include <entt/entt.hpp>
-#include "plain_types.h"
+#include <glm/mat4x4.hpp>
+#include <glm/vec2.hpp>
+#include <raylib.h>
 
 struct DrawSize {
     float w = 64.0f;
@@ -27,8 +29,8 @@ struct ScreenTransform {
     float scale    = 1.0f;
 };
 
-[[nodiscard]] inline Vec2f screen_to_virtual(Vec2f screen_pos,
-                                             const ScreenTransform& st) noexcept {
+[[nodiscard]] inline glm::vec2 screen_to_virtual(const glm::vec2& screen_pos,
+                                                 const ScreenTransform& st) noexcept {
     return {
         (screen_pos.x - st.offset_x) / st.scale,
         (screen_pos.y - st.offset_y) / st.scale
@@ -42,10 +44,10 @@ struct ScreenTransform {
 enum class MeshType : uint8_t { Shape, Slab, Quad };
 
 struct ModelTransform {
-    Mat4f mat;
-    TintColor tint;
-    uint8_t mesh_index = 0;  // index into ShapeMeshes.shapes[] for Shape type
-    MeshType mesh_type;
+    glm::mat4 mat{1.0f};
+    Color     tint{};
+    uint8_t   mesh_index = 0;  // index into ShapeMeshes.shapes[] for Shape type
+    MeshType  mesh_type;
 };
 
 // Visual mesh child of a logical entity (e.g., obstacle slabs, ghost shapes).
@@ -58,7 +60,7 @@ struct MeshChild {
     float width;         // slab width (game coords)
     float depth;         // slab depth (game coords)
     float height;        // slab height (game coords)
-    TintColor tint;
+    Color tint;
     uint8_t mesh_index = 0;  // index into ShapeMeshes.shapes[] for Shape type
     MeshType mesh_type;
 };

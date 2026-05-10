@@ -11,7 +11,7 @@
 #include "../components/song_state.h"
 #include "../constants.h"
 #include "../platform_display.h"
-#include "../rendering/raylib_conversions.h"
+#include <glm/mat4x4.hpp>
 #include <raylib.h>
 #include <raymath.h>
 #include <rlgl.h>
@@ -195,30 +195,40 @@ RenderTargets& RenderTargets::operator=(RenderTargets&& o) noexcept {
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-// GenMeshCube is centered at origin. Translate to position the slab's
-// bottom-left corner at (x, 0) and center depth on z so z is the beat/timing plane.
-static Matrix slab_matrix(float x, float z, float w, float h, float d) {
-    return MatrixMultiply(MatrixScale(w, h, d),
-                          MatrixTranslate(x + w/2, h/2, z));
+static glm::mat4 raylib_to_glm_matrix_camera(const Matrix& m) {
+    return glm::mat4{
+        m.m0, m.m1, m.m2, m.m3,
+        m.m4, m.m5, m.m6, m.m7,
+        m.m8, m.m9, m.m10, m.m11,
+        m.m12, m.m13, m.m14, m.m15
+    };
 }
 
-static Matrix shape_matrix(float cx, float y_3d, float cz, float sz, float radius_scale) {
+// GenMeshCube is centered at origin. Translate to position the slab's
+// bottom-left corner at (x, 0) and center depth on z so z is the beat/timing plane.
+static glm::mat4 slab_matrix(float x, float z, float w, float h, float d) {
+    return raylib_to_glm_matrix_camera(MatrixMultiply(MatrixScale(w, h, d),
+                                                      MatrixTranslate(x + w / 2, h / 2, z)));
+}
+
+static glm::mat4 shape_matrix(float cx, float y_3d, float cz, float sz, float radius_scale) {
     float s = sz * radius_scale;
-    return MatrixMultiply(MatrixScale(s, s, s), MatrixTranslate(cx, y_3d, cz));
+    return raylib_to_glm_matrix_camera(MatrixMultiply(MatrixScale(s, s, s),
+                                                      MatrixTranslate(cx, y_3d, cz)));
 }
 
 // Triangular prism rotated so one vertex of the cross-section points up (△)
-static Matrix prism_matrix(float cx, float y_3d, float cz, float sz, float radius_scale) {
+static glm::mat4 prism_matrix(float cx, float y_3d, float cz, float sz, float radius_scale) {
     float s = sz * radius_scale;
     Matrix scale = MatrixScale(s, s, s);
     Matrix rot = MatrixRotateY(90.0f * DEG2RAD);
     Matrix translate = MatrixTranslate(cx, y_3d, cz);
-    return MatrixMultiply(MatrixMultiply(scale, rot), translate);
+    return raylib_to_glm_matrix_camera(MatrixMultiply(MatrixMultiply(scale, rot), translate));
 }
 
 // Pick the correct matrix for a shape mesh (triangle prism needs rotation)
-static Matrix make_shape_matrix(uint8_t mesh_index, float cx, float y_3d, float cz,
-                                float sz, float radius_scale) {
+static glm::mat4 make_shape_matrix(uint8_t mesh_index, float cx, float y_3d, float cz,
+                                   float sz, float radius_scale) {
     if (mesh_index == static_cast<uint8_t>(Shape::Triangle))
         return prism_matrix(cx, y_3d, cz, sz, radius_scale);
     return shape_matrix(cx, y_3d, cz, sz, radius_scale);
@@ -239,46 +249,46 @@ void game_camera_system(entt::registry& reg, float /*dt*/) {
 
             if (mc.mesh_type == MeshType::Slab) {
                 reg.get_or_emplace<ModelTransform>(entity) =
-                    ModelTransform{to_mat4f(slab_matrix(mc.x, z, mc.width, mc.height, mc.depth)),
-                                   mc.tint, 0, MeshType::Slab};
+                    ModelTransform{slab_matrix(mc.x, z, mc.width, mc.height, mc.depth),
+                                    mc.tint, 0, MeshType::Slab};
             } else {
                 const auto& props = mesh_config.props[mc.mesh_index];
                 reg.get_or_emplace<ModelTransform>(entity) =
-                    ModelTransform{to_mat4f(make_shape_matrix(mc.mesh_index, mc.x, 0.0f, z,
-                                                              mc.width, props.radius_scale)),
-                                   mc.tint, mc.mesh_index, MeshType::Shape};
+                    ModelTransform{make_shape_matrix(mc.mesh_index, mc.x, 0.0f, z,
+                                                     mc.width, props.radius_scale),
+                                    mc.tint, mc.mesh_index, MeshType::Shape};
             }
         }
     }
 
     // 3. Player shape transform
     {
-        auto view = reg.view<PlayerTag, WorldTransform, PlayerShape, VerticalState, TintColor>();
+        auto view = reg.view<PlayerTag, WorldTransform, PlayerShape, VerticalState, Color>();
         for (auto [entity, transform, pshape, vstate, col] : view.each()) {
             float y_3d = -vstate.y_offset;
             float sz = constants::PLAYER_SIZE;
             if (vstate.mode == VMode::Sliding) sz *= 0.5f;
             uint8_t shape_idx = static_cast<uint8_t>(pshape.current);
-            const auto& props = mesh_config.props[shape_idx];
+                const auto& props = mesh_config.props[shape_idx];
                 reg.get_or_emplace<ModelTransform>(entity) =
-                    ModelTransform{to_mat4f(make_shape_matrix(shape_idx, transform.position.x, y_3d,
-                                                              transform.position.y, sz, props.radius_scale)),
-                               col, shape_idx, MeshType::Shape};
+                    ModelTransform{make_shape_matrix(shape_idx, transform.position.x, y_3d,
+                                                     transform.position.y, sz, props.radius_scale),
+                                   col, shape_idx, MeshType::Shape};
         }
     }
 
     // 4. Particle transforms
     {
-        auto view = reg.view<ParticleTag, WorldTransform, ParticleData, TintColor>();
+        auto view = reg.view<ParticleTag, WorldTransform, ParticleData, Color>();
         for (auto [entity, transform, pdata, col] : view.each()) {
             float ratio = (pdata.max_time > 0.0f) ? (pdata.remaining / pdata.max_time) : 1.0f;
             float sz = pdata.size * ratio;
             float half = sz / 2.0f;
-            Matrix mat = MatrixMultiply(
+            glm::mat4 mat = raylib_to_glm_matrix_camera(MatrixMultiply(
                 MatrixScale(sz, 1, sz),
-                MatrixTranslate(transform.position.x - half, 0, transform.position.y - half));
-                reg.get_or_emplace<ModelTransform>(entity) =
-                ModelTransform{to_mat4f(mat), col, 0, MeshType::Quad};
+                MatrixTranslate(transform.position.x - half, 0, transform.position.y - half)));
+            reg.get_or_emplace<ModelTransform>(entity) =
+                ModelTransform{mat, col, 0, MeshType::Quad};
         }
     }
 

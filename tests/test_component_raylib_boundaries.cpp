@@ -21,16 +21,20 @@ std::filesystem::path repo_header(const char* rel) {
 
 }  // namespace
 
-TEST_CASE("component headers avoid raylib backend types", "[components][boundary][issue-407]") {
+TEST_CASE("component headers use direct runtime + glm types", "[components][boundary][issue-411]") {
     const std::string transform = read_text(repo_header("app/components/transform.h"));
     const std::string rendering = read_text(repo_header("app/components/rendering.h"));
     const std::string text = read_text(repo_header("app/components/text.h"));
 
     CHECK(transform.find("#include <raylib.h>") == std::string::npos);
-    CHECK(rendering.find("#include <raylib.h>") == std::string::npos);
+    CHECK(rendering.find("#include <raylib.h>") != std::string::npos);
     CHECK(text.find("#include <raylib.h>") == std::string::npos);
 
-    CHECK(transform.find("Vector2") == std::string::npos);
-    CHECK(rendering.find("Matrix") == std::string::npos);
-    CHECK(rendering.find("TintColor") != std::string::npos);
+    CHECK(transform.find("glm::vec2") != std::string::npos);
+    CHECK(rendering.find("glm::mat4") != std::string::npos);
+    CHECK(rendering.find("glm::vec2") != std::string::npos);
+    CHECK(rendering.find("Vec2f") == std::string::npos);
+    CHECK(rendering.find("Mat4f") == std::string::npos);
+    CHECK(rendering.find("TintColor") == std::string::npos);
+    CHECK(rendering.find("Color") != std::string::npos);
 }

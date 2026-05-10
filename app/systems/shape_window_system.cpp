@@ -8,14 +8,14 @@
 static void apply_shape_color(entt::registry& reg, entt::entity entity, Shape shape) {
     auto si = static_cast<int>(shape);
     auto& sc = constants::SHAPE_COLORS[si];
-    reg.replace<TintColor>(entity, sc);
+    reg.replace<Color>(entity, sc);
 }
 
 void shape_window_system(entt::registry& reg, float /*dt*/) {
     auto* song = reg.ctx().find<SongState>();
     if (!song) return;
 
-    auto view = reg.view<PlayerTag, PlayerShape, ShapeWindow, TintColor>();
+    auto view = reg.view<PlayerTag, PlayerShape, ShapeWindow, Color>();
     for (auto [entity, pshape, swindow, col] : view.each()) {
         // Derive window_timer from song_time instead of accumulating dt.
         // This keeps shape windows frame-rate independent and perfectly

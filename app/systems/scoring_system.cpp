@@ -22,7 +22,7 @@ struct MissRecord {
 
 struct HitRecord {
     entt::entity e;
-    Vec2f        popup_xy = {0.0f, 0.0f};
+    glm::vec2        popup_xy = {0.0f, 0.0f};
     Obstacle     obs;
     bool         has_timing = false;
     TimingGrade  timing{};
