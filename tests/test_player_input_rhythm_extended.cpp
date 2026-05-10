@@ -82,7 +82,7 @@ TEST_CASE("player_input_rhythm: shape change pushes ShapeShift SFX", "[player][r
     CHECK(sfx_cap.buf[0] == SFX::ShapeShift);
 }
 
-TEST_CASE("player_input_rhythm: shape press also remaps lane target", "[player][rhythm]") {
+TEST_CASE("player_input_rhythm: shape press auto-target follows shipped mapping", "[player][rhythm][issue531]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
     auto& lane = reg.get<Lane>(player);
@@ -92,15 +92,15 @@ TEST_CASE("player_input_rhythm: shape press also remaps lane target", "[player][
     press_button(reg, btn);
     run_semantic_input_tick(reg);
 
-    CHECK(lane.target == 2);
+    CHECK(lane.target == 0);
 }
 
-TEST_CASE("player_input_rhythm: shape press does not set stale target when already in mapped lane",
-          "[player][rhythm]") {
+TEST_CASE("player_input_rhythm: shape press does not set stale target when already in shipped lane",
+          "[player][rhythm][issue531]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
     auto& lane = reg.get<Lane>(player);
-    lane.current = 0;
+    lane.current = 2;
     lane.target = -1;
 
     auto btn = make_shape_button(reg, Shape::Circle);
@@ -191,4 +191,34 @@ TEST_CASE("player_input: non-rhythm shape press updates Color", "[player]") {
     CHECK(col.r == 255);
     CHECK(col.g == 100);
     CHECK(col.b == 100);
+}
+
+
+TEST_CASE("player_input_rhythm: circle press in lane 2 does not force mismatch before collision",
+          "[player][rhythm][issue531]") {
+    auto reg = make_rhythm_registry();
+    auto player = make_rhythm_player(reg);
+    auto& lane = reg.get<Lane>(player);
+    auto& transform = reg.get<WorldTransform>(player);
+
+    lane.current = 2;
+    lane.target = -1;
+    lane.lerp_t = 1.0f;
+    transform.position.x = constants::LANE_X[2];
+
+    auto& ps = reg.get<PlayerShape>(player);
+    ps.current = Shape::Hexagon;
+
+    auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
+    reg.get<WorldTransform>(obs).position.x = constants::LANE_X[2];
+
+    auto btn = make_shape_button(reg, Shape::Circle);
+    press_button(reg, btn);
+    reg.ctx().get<entt::dispatcher>().update<ButtonPressEvent>();
+    player_movement_system(reg, 0.016f);
+    collision_system(reg, 0.016f);
+
+    CHECK(lane.target == -1);
+    CHECK(reg.all_of<ScoredTag>(obs));
+    CHECK_FALSE(reg.all_of<MissTag>(obs));
 }

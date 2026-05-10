@@ -36,16 +36,16 @@ void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
         if (entry.has_time_sec) {
             beat_time = entry.time_sec;
         }
-        // Beat line is the collision point: beat_time maps to crossing PLAYER_Y.
-        // audio_offset_sec shifts spawn_time uniformly so the visual schedule
-        // tracks the player-calibrated beat clock.
-        float spawn_time = beat_time - song->lead_time + audio_offset_sec;
+        // Beat line is the collision point: calibrated_arrival_time maps to
+        // crossing PLAYER_Y, including player audio calibration.
+        const float calibrated_arrival_time = beat_time + audio_offset_sec;
+        float spawn_time = calibrated_arrival_time - song->lead_time;
 
         if (song->song_time < spawn_time) break;
 
         // Compensate for late spawn: if song_time overshot spawn_time,
         // place the obstacle below SPAWN_Y by the overshoot distance
-        // so it arrives at the player at exactly beat_time.
+        // so it arrives at the player at exactly calibrated_arrival_time.
         // Clamp the spawn position so a large overshoot cannot place the
         // obstacle below the beat line, where it may never be scored before
         // scrolling off-screen.
@@ -76,7 +76,7 @@ void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
             x_pos = constants::LANE_X[display_lane];
         }
 
-        const BeatInfo bi{entry.beat_index, beat_time, effective_spawn_time};
+        const BeatInfo bi{entry.beat_index, calibrated_arrival_time, effective_spawn_time};
         spawn_obstacle(reg, {
             entry.kind,
             x_pos,
