@@ -574,7 +574,11 @@ if(NOT EMSCRIPTEN)
         COMMAND $<TARGET_FILE:shapeshifter_startup_shutdown_smoke> --frames 2 --cycles 2
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     )
-    set_tests_properties(startup_shutdown_smoke PROPERTIES LABELS "smoke")
+    set_tests_properties(startup_shutdown_smoke PROPERTIES
+        LABELS "smoke"
+        ENVIRONMENT "SHAPESHIFTER_STARTUP_SHUTDOWN_SMOKE=1"
+        SKIP_RETURN_CODE 77
+    )
 
     find_package(Python3 COMPONENTS Interpreter REQUIRED)
     add_test(
@@ -585,6 +589,21 @@ if(NOT EMSCRIPTEN)
     add_test(
         NAME loop2_content_gates_strict
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/validate_loop2_content_gates.py --strict
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    )
+    add_test(
+        NAME validate_max_beat_gap
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/validate_max_beat_gap.py
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    )
+    add_test(
+        NAME validate_difficulty_ramp
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/validate_difficulty_ramp.py
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    )
+    add_test(
+        NAME validate_no_simultaneous_shape_gates
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/validate_no_simultaneous_shape_gates.py
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     )
     find_program(NODE_EXECUTABLE node)

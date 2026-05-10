@@ -89,6 +89,22 @@ SEGMENT_FOCUS_DIFFICULTY_FRACTION = {"easy": 0.40, "medium": 0.65, "hard": 0.90}
 # How many consecutive identical focus-class choices before anti-repetition penalty kicks in.
 SEGMENT_FOCUS_ANTI_REPEAT_MAX = 2
 PROTECTED_CROSS_LAYER_WINDOW_MS = 50.0
+# Issue #528 — playability minimum on emitted shape_gate obstacles.  Mirrors
+# rhythm-spec.md ``MORPH_DURATION``.  Two shape_gates with different
+# (lane, shape) within this window are physically unsatisfiable; the
+# selection-side ``_collapse_simultaneous_shape_gates`` pass keeps the
+# higher-flux event (deterministic tie-break) and records the dropped
+# onset under ``playability_collapsed_pairs`` so musical fidelity loss
+# is visible.  No filler; no beat fallback.
+PLAYABILITY_MORPH_WINDOW_SEC = 0.120
+# Issue #532 — strict ceiling on dense same-shape clusters (mirrors the
+# new gate in ``tools/validate_loop2_content_gates.py``).  Same-shape
+# obstacles within ``SHAPE_CLUSTER_GAP_BEATS`` of each other form a
+# cluster; cluster size > cap is thinned by dropping the lowest-flux
+# events in the cluster (real onsets only — never reordered, never
+# replaced with filler).  Easy is unconstrained (very sparse already).
+MAX_SHAPE_CLUSTER_SIZE = {"medium": 4, "hard": 5}
+SHAPE_CLUSTER_GAP_BEATS = 3
 MIN_SUBDIVISION_LABEL_KINDS = {"medium": 2, "hard": 2}
 
 # Section role determines density and allowed obstacle types.
@@ -1728,17 +1744,19 @@ def _fill_silent_gaps(
     difficulty,
     bpm,
     segment_ranges=None,
+    duration_sec=None,
 ):
-    """Issue #506 — bound mid-song silent stretches by promoting real onsets.
+    """Issue #506 / #527 — bound silent stretches by promoting real onsets.
 
     Mirrors ``tools/validate_max_beat_gap.py`` per-difficulty caps
-    (``MAX_SILENT_GAP_BEATS``).  Mines ``fallback_pool`` (real analysis
-    onsets snapped to beats) for events that fall inside any selected
-    inter-onset gap larger than ``cap_sec = MAX_SILENT_GAP_BEATS[diff] *
-    60 / bpm``.  No filler / synthetic events are ever produced — when
-    a gap has no eligible real onset candidates (true silence in the
-    audio) it is left intact, and the gap is recorded so the loop does
-    not spin on it.
+    (``MAX_SILENT_GAP_BEATS``) for mid-song gaps, and the new lead-in /
+    trail-out caps from issue #527 for the song boundaries.  Mines
+    ``fallback_pool`` (real analysis onsets snapped to beats) for events
+    that fall inside any oversized gap — including ``0 → first_t`` and
+    ``last_t → duration_sec``.  No filler / synthetic events are ever
+    produced — when a gap has no eligible real onset candidates (true
+    silence in the audio) it is left intact and recorded so the loop
+    does not spin on it.
 
     Constraints honored:
       * Onset-only:        candidates come from ``fallback_pool``.
@@ -1755,6 +1773,12 @@ def _fill_silent_gaps(
     if not cap_beats or not bpm or bpm <= 0 or len(selected_events) < 2:
         return selected_events
     cap_sec = cap_beats * 60.0 / float(bpm)
+    # Issue #527 — lead-in / trail-out caps mirror
+    # ``validate_max_beat_gap.MAX_LEAD_IN_SEC`` / ``MAX_TRAIL_OUT_SEC``.
+    lead_caps = {"easy": 8.0, "medium": 6.0, "hard": 4.0}
+    trail_caps = {"easy": 12.0, "medium": 10.0, "hard": 8.0}
+    lead_cap = lead_caps.get(difficulty)
+    trail_cap = trail_caps.get(difficulty)
 
     selected_keys = set(selected_events.keys())
     selected_list = sorted(
@@ -1769,6 +1793,13 @@ def _fill_silent_gaps(
 
     while True:
         gaps = []
+        # Lead-in (0 → first event).
+        first_t = float(selected_list[0].get("t", 0.0)) if selected_list else 0.0
+        if lead_cap is not None and first_t > lead_cap:
+            key = (0.0, round(first_t, 6))
+            if key not in skipped:
+                gaps.append((first_t, 0.0, first_t))
+        # Mid-song.
         for i in range(len(selected_list) - 1):
             lo = float(selected_list[i].get("t", 0.0))
             hi = float(selected_list[i + 1].get("t", 0.0))
@@ -1779,6 +1810,18 @@ def _fill_silent_gaps(
             if key in skipped:
                 continue
             gaps.append((dt, lo, hi))
+        # Trail-out (last → duration_sec).
+        if (
+            trail_cap is not None
+            and duration_sec is not None
+            and selected_list
+        ):
+            last_t = float(selected_list[-1].get("t", 0.0))
+            tail_dt = float(duration_sec) - last_t
+            if tail_dt > trail_cap:
+                key = (round(last_t, 6), round(float(duration_sec), 6))
+                if key not in skipped:
+                    gaps.append((tail_dt, last_t, float(duration_sec)))
         if not gaps:
             break
 
@@ -1846,6 +1889,224 @@ def _fill_silent_gaps(
             ),
         )
     )
+
+
+def _collapse_simultaneous_obstacles(obstacles, collapsed_pairs=None):
+    """Issue #528 — obstacle-level twin of :func:`_collapse_simultaneous_shape_gates`.
+
+    Operates after onset_class → (lane, shape) mapping has been
+    resolved, so it sees the *actual* shipped obstacle pairs that would
+    be unplayable.  Cross-layer onsets are preserved through the
+    selection layer (per directive 2026-05-10) and only collapsed here
+    where the playability minimum applies.
+    """
+    if not obstacles or len(obstacles) < 2:
+        return obstacles
+    ordered = sorted(
+        ((i, o) for i, o in enumerate(obstacles)
+         if o.get("kind") == "shape_gate" and isinstance(o.get("time_sec"), (int, float))),
+        key=lambda io: float(io[1]["time_sec"]),
+    )
+    drop_idx: set = set()
+    n = len(ordered)
+    for i in range(n):
+        ai, a = ordered[i]
+        if ai in drop_idx:
+            continue
+        a_t = float(a["time_sec"])
+        a_ls = (a.get("lane"), a.get("shape"))
+        for j in range(i + 1, n):
+            bi, b = ordered[j]
+            if bi in drop_idx:
+                continue
+            b_t = float(b["time_sec"])
+            if (b_t - a_t) > PLAYABILITY_MORPH_WINDOW_SEC:
+                break
+            if (b.get("lane"), b.get("shape")) == a_ls:
+                continue
+            # Tie-break: highest flux wins; earliest t breaks tie.
+            def prio(o):
+                return (-float(o.get("flux", 0.0)),
+                        float(o.get("time_sec", 0.0)))
+            if prio(a) <= prio(b):
+                kept, dropped = a, b
+                drop_idx.add(bi)
+            else:
+                kept, dropped = b, a
+                drop_idx.add(ai)
+            if collapsed_pairs is not None:
+                collapsed_pairs.append({
+                    "t_kept": round(float(kept["time_sec"]), 6),
+                    "t_dropped": round(float(dropped["time_sec"]), 6),
+                    "delta_ms": round(abs(float(dropped["time_sec"]) - float(kept["time_sec"])) * 1000.0, 3),
+                    "kept_onset_class": kept.get("onset_class"),
+                    "dropped_onset_class": dropped.get("onset_class"),
+                    "kept_lane_shape": list(a_ls),
+                    "dropped_lane_shape": [dropped.get("lane"), dropped.get("shape")],
+                    "kept_flux": float(kept.get("flux", 0.0)),
+                    "dropped_flux": float(dropped.get("flux", 0.0)),
+                })
+            if a is dropped:
+                break
+    if not drop_idx:
+        return obstacles
+    return [o for i, o in enumerate(obstacles) if i not in drop_idx]
+
+
+def _collapse_simultaneous_shape_gates(selected_events, collapsed_pairs=None):
+    """Issue #528 — drop one event when two would emit shape_gate obstacles
+    at different ``(lane, shape)`` within ``PLAYABILITY_MORPH_WINDOW_SEC``.
+
+    Cross-layer onsets within 50 ms (``PROTECTED_CROSS_LAYER_WINDOW_MS``)
+    were preserved by ``_clears_min_ioi`` — that is correct at the
+    analysis layer.  At the obstacle layer, two ``shape_gate`` obstacles
+    bound to different ``(lane, shape)`` at near-zero Δt are physically
+    unsatisfiable; this pass de-conflicts them.
+
+    Tie-break (deterministic, per acceptance #528):
+      1. Highest ``flux``.
+      2. Earliest ``t``.
+      3. ``segment_focus`` class as final tiebreak (alphabetical) so
+         choice is reproducible across runs.
+
+    The dropped event is recorded in ``collapsed_pairs`` (caller-provided
+    list) so the analysis report can surface lost musical detail under
+    ``playability_collapsed_pairs``.
+
+    No filler / synthetic events are inserted; this is purely a
+    selection-side de-conflict between real onsets.
+    """
+    if not selected_events or len(selected_events) < 2:
+        return selected_events
+
+    def lane_shape(ev):
+        cls = ev.get("onset_class") or "full-spectrum"
+        if cls not in ONSET_CLASS_TO_OBSTACLE:
+            cls = "full-spectrum"
+        m = ONSET_CLASS_TO_OBSTACLE[cls]
+        return (m["lane"], m["shape"])
+
+    def event_priority(ev):
+        # Higher flux wins; on tie earlier t wins; on tie segment_focus
+        # alphabetical wins.  Negate flux so max() picks largest.
+        return (
+            -float(ev.get("flux", 0.0)),
+            float(ev.get("t", 0.0)),
+            str(ev.get("segment_focus") or ""),
+        )
+
+    ordered = sorted(
+        selected_events.items(),
+        key=lambda kv: (
+            float(kv[1].get("t", 0.0)),
+            int(kv[1].get("beat_idx", -1)),
+            int(kv[1].get("source_event_idx", -1)),
+        ),
+    )
+    drop_keys: set = set()
+    n = len(ordered)
+    for i in range(n):
+        if ordered[i][0] in drop_keys:
+            continue
+        a_key, a = ordered[i]
+        a_t = float(a.get("t", 0.0))
+        a_ls = lane_shape(a)
+        for j in range(i + 1, n):
+            b_key, b = ordered[j]
+            if b_key in drop_keys:
+                continue
+            b_t = float(b.get("t", 0.0))
+            if (b_t - a_t) > PLAYABILITY_MORPH_WINDOW_SEC:
+                break
+            if lane_shape(b) == a_ls:
+                # Same playability target — let upstream IOI / cluster
+                # passes handle same-lane same-shape stacking.
+                continue
+            if event_priority(a) <= event_priority(b):
+                kept_key, kept_ev = a_key, a
+                drop_key, drop_ev = b_key, b
+            else:
+                kept_key, kept_ev = b_key, b
+                drop_key, drop_ev = a_key, a
+            drop_keys.add(drop_key)
+            if collapsed_pairs is not None:
+                collapsed_pairs.append({
+                    "t_kept": round(float(kept_ev.get("t", 0.0)), 6),
+                    "t_dropped": round(float(drop_ev.get("t", 0.0)), 6),
+                    "delta_ms": round(abs(float(drop_ev.get("t", 0.0)) - float(kept_ev.get("t", 0.0))) * 1000.0, 3),
+                    "kept_onset_class": kept_ev.get("onset_class"),
+                    "dropped_onset_class": drop_ev.get("onset_class"),
+                    "kept_segment_focus": kept_ev.get("segment_focus"),
+                    "dropped_segment_focus": drop_ev.get("segment_focus"),
+                    "kept_flux": float(kept_ev.get("flux", 0.0)),
+                    "dropped_flux": float(drop_ev.get("flux", 0.0)),
+                })
+    if not drop_keys:
+        return selected_events
+    return {k: v for k, v in selected_events.items() if k not in drop_keys}
+
+
+def _enforce_max_shape_cluster_size(selected_events, difficulty):
+    """Issue #532 — thin same-(lane, shape) clusters whose size exceeds
+    ``MAX_SHAPE_CLUSTER_SIZE[difficulty]``.
+
+    A cluster is a run of consecutive events that share ``(lane, shape)``
+    AND whose neighbour ``beat_idx`` distance is ≤ ``SHAPE_CLUSTER_GAP_BEATS``.
+    Within an oversized cluster, the lowest-flux events are dropped until
+    the cluster is at the cap.  Real onsets only — no replacement, no
+    filler.
+    """
+    cap = MAX_SHAPE_CLUSTER_SIZE.get(difficulty)
+    if not cap or not selected_events:
+        return selected_events
+
+    def lane_shape(ev):
+        cls = ev.get("onset_class") or "full-spectrum"
+        if cls not in ONSET_CLASS_TO_OBSTACLE:
+            cls = "full-spectrum"
+        m = ONSET_CLASS_TO_OBSTACLE[cls]
+        return (m["lane"], m["shape"])
+
+    while True:
+        ordered = sorted(
+            selected_events.items(),
+            key=lambda kv: (
+                int(kv[1].get("beat_idx", -1)),
+                float(kv[1].get("t", 0.0)),
+            ),
+        )
+        # Build clusters: same lane/shape AND consecutive beat_idx gap ≤ cap.
+        clusters: list[list[tuple]] = []
+        current: list[tuple] = []
+        prev_key: tuple | None = None
+        prev_beat: int | None = None
+        for key, ev in ordered:
+            ls = lane_shape(ev)
+            beat_idx = int(ev.get("beat_idx", -1))
+            if (
+                prev_key is not None
+                and ls == prev_key
+                and prev_beat is not None
+                and (beat_idx - prev_beat) < SHAPE_CLUSTER_GAP_BEATS
+            ):
+                current.append((key, ev))
+            else:
+                if current:
+                    clusters.append(current)
+                current = [(key, ev)]
+            prev_key = ls
+            prev_beat = beat_idx
+        if current:
+            clusters.append(current)
+
+        oversized = [c for c in clusters if len(c) > cap]
+        if not oversized:
+            return selected_events
+        # Drop the single lowest-flux event in the largest oversized cluster
+        # then re-evaluate (cluster boundaries may shift after a drop).
+        target = max(oversized, key=len)
+        worst_key, _ = min(target, key=lambda kv: float(kv[1].get("flux", 0.0)))
+        del selected_events[worst_key]
 
 
 def _enforce_same_class_run_cap(selected_events, difficulty):
@@ -2128,7 +2389,19 @@ def select_segment_focus_beats(analysis, difficulty):
         difficulty,
         analysis.get("bpm"),
         segment_ranges=segment_ranges,
+        duration_sec=analysis.get("duration"),
     )
+    # Issue #532 — strict cap on dense same-shape clusters (mirrors the
+    # validator gate in tools/validate_loop2_content_gates.py).  Real
+    # onsets only — drops the lowest-flux event(s) in any oversized
+    # cluster.  Easy is unconstrained (already very sparse).
+    selected_events = _enforce_max_shape_cluster_size(selected_events, difficulty)
+    # Issue #528 — collapse runs at the OBSTACLE level inside
+    # design_level_segment_focus (after onset_class → (lane, shape)
+    # mapping has been resolved).  Cross-layer onsets at the analysis
+    # level are preserved here so directive 2026-05-10 invariants stay
+    # green; the playability minimum is enforced on emitted obstacles.
+    playability_collapsed_pairs: list[dict] = []
     # Issue #414 — clamp difficulty_inclusion so each shipped difficulty
     # array contains only events whose inclusion tier is <= the array's
     # tier.  Promoted/coverage events are already retagged at insertion;
@@ -2146,6 +2419,11 @@ def select_segment_focus_beats(analysis, difficulty):
         "events_selected": len(selected_events),
         "focus_fraction": fraction,
         "segments": segment_diagnostics,
+        # Issue #528 — list of cross-layer onset pairs that were collapsed
+        # to satisfy the MORPH_DURATION playability minimum.  Empty list
+        # means no near-simultaneous distinct shape_gate pair survived
+        # generation.  Raw instrument names are never included.
+        "playability_collapsed_pairs": playability_collapsed_pairs,
     }
     return selected_events, all_snapped_map, diagnostics
 
@@ -2209,7 +2487,21 @@ def design_level_segment_focus(analysis, difficulty, cleanup_enabled=False):
             "segment_focus": event.get("segment_focus"),
             "difficulty_inclusion": event.get("difficulty_inclusion", difficulty),
             "source_event_idx": event.get("source_event_idx"),
+            # #528 — flux retained on the obstacle so post-emit validators
+            # / diagnostics can audit the playability collapse decisions.
+            "flux": float(event.get("flux", 0.0)),
+            # #528 — onset time for the obstacle-level collapse pass below.
+            # Stripped before write_beatmap; build_beatmap re-derives
+            # ``time_sec`` from beat_times anyway.
+            "time_sec": float(event.get("t", 0.0)),
         })
+    # Issue #528 — obstacle-level playability collapse.  Cross-layer
+    # onsets at the analysis layer are preserved (directive 2026-05-10);
+    # here we de-conflict pairs that map to distinct (lane, shape)
+    # within ``PLAYABILITY_MORPH_WINDOW_SEC``.
+    collapsed_pairs: list[dict] = []
+    obstacles = _collapse_simultaneous_obstacles(obstacles, collapsed_pairs=collapsed_pairs)
+    seg_diagnostics["playability_collapsed_pairs"] = collapsed_pairs
     # No cleanup: obstacles come directly from onsets; no post-processing passes.
     return obstacles, selected, seg_diagnostics
 
@@ -3268,6 +3560,144 @@ def enforce_first_collision_floor(obstacles, difficulty, analysis):
     return obstacles
 
 
+def _thin_oversized_clusters_obstacles(obstacles, difficulty):
+    """Issue #532 — obstacle-level safety net for the cluster size cap.
+
+    Mirrors ``tools/validate_loop2_content_gates.py::_shape_gate_clusters``:
+    a cluster is a run of consecutive ``shape_gate`` obstacles whose
+    beat-ordinal distance to the previous obstacle is < ``SHAPE_CLUSTER_GAP``.
+    The cluster is built from any shapes/lanes (it measures local
+    density, not same-shape monotony).  Cluster size > cap is thinned by
+    dropping the lowest-flux obstacle until the cap is satisfied.  Real
+    onsets only — no replacement, no filler.
+    """
+    cap = MAX_SHAPE_CLUSTER_SIZE.get(difficulty)
+    if not cap or not obstacles:
+        return obstacles
+
+    while True:
+        ordered = sorted(obstacles, key=lambda o: int(o.get("beat", 0)))
+        clusters: list[list[int]] = []
+        current: list[int] = []
+        prev_beat = None
+        for idx, o in enumerate(ordered):
+            if o.get("kind") != "shape_gate":
+                if current:
+                    clusters.append(current)
+                    current = []
+                prev_beat = None
+                continue
+            beat = int(o.get("beat", 0))
+            if prev_beat is None or (beat - prev_beat) >= SHAPE_CLUSTER_GAP_BEATS:
+                if current:
+                    clusters.append(current)
+                current = [idx]
+            else:
+                current.append(idx)
+            prev_beat = beat
+        if current:
+            clusters.append(current)
+
+        oversized = [c for c in clusters if len(c) > cap]
+        if not oversized:
+            return ordered
+        target = max(oversized, key=len)
+        worst_idx = min(target, key=lambda i: float(ordered[i].get("flux", 0.0)))
+        worst_obs = ordered[worst_idx]
+        obstacles = [o for o in ordered if o is not worst_obs]
+
+
+def _enforce_cluster_chain_cap_obstacles(obstacles, difficulty):
+    """Issue #532 — break runs of consecutive shape_gate clusters that share
+    the same first-shape and exceed ``SAME_SHAPE_CLUSTER_CHAIN_CAP``.
+
+    Mirrors the cluster definition used by
+    ``tools/validate_loop2_content_gates.py`` (clusters are pure
+    density runs: ``beat_idx[i] - beat_idx[i-1] < SHAPE_CLUSTER_GAP``).
+    Same-shape cluster-chain runs > cap are broken by re-shaping (lane
+    + shape mutation) the first obstacle of the cluster sitting at
+    position ``cap`` of the run so the chain breaks without dropping
+    real onsets.  This preserves the IOI ramp invariant (issue #529)
+    that aggressive obstacle dropping would violate.
+
+    No obstacles are removed; no filler is inserted.
+    """
+    cap = SAME_SHAPE_CLUSTER_CHAIN_CAP.get(difficulty)
+    if not cap or not obstacles:
+        return obstacles
+
+    # Bound the iteration count so a pathological input cannot loop forever.
+    max_iters = 4 * len(obstacles) + 8
+    for _ in range(max_iters):
+        ordered = sorted(obstacles, key=lambda o: int(o.get("beat", 0)))
+        clusters: list[list[int]] = []
+        current: list[int] = []
+        prev_beat = None
+        for idx, o in enumerate(ordered):
+            if o.get("kind") != "shape_gate":
+                if current:
+                    clusters.append(current)
+                    current = []
+                prev_beat = None
+                continue
+            beat = int(o.get("beat", 0))
+            if prev_beat is None or (beat - prev_beat) >= SHAPE_CLUSTER_GAP_BEATS:
+                if current:
+                    clusters.append(current)
+                current = [idx]
+            else:
+                current.append(idx)
+            prev_beat = beat
+        if current:
+            clusters.append(current)
+
+        run_start = 0
+        run_shape = None
+        violating: tuple[int, int] | None = None
+        for ci, cluster in enumerate(clusters):
+            shape = ordered[cluster[0]].get("shape")
+            if shape == run_shape:
+                if (ci - run_start + 1) > cap:
+                    violating = (run_start, ci)
+                    break
+            else:
+                run_shape = shape
+                run_start = ci
+        if violating is None:
+            return ordered
+        # Re-shape (lane + shape) the first obstacle in the cluster that
+        # caused the chain to overrun.  Pick any shape other than the
+        # current run_shape (and other than the next cluster's shape, if
+        # one exists) so the chain ends here without immediately starting
+        # a new same-shape chain at the next cluster.
+        target_cluster_idx = run_start + cap
+        target_cluster = clusters[target_cluster_idx]
+        first_idx_in_cluster = target_cluster[0]
+        next_shape = (
+            ordered[clusters[target_cluster_idx + 1][0]].get("shape")
+            if (target_cluster_idx + 1) < len(clusters)
+            else None
+        )
+        choices = [s for s in ("triangle", "square", "circle") if s != run_shape and s != next_shape]
+        if not choices:
+            choices = [s for s in ("triangle", "square", "circle") if s != run_shape]
+        if not choices:
+            return ordered  # degenerate
+        # Pick deterministically: shape whose lane is currently scarcest in the chain.
+        chain_lane_counts: Counter = Counter()
+        for ci in range(run_start, run_start + cap):
+            for o_i in clusters[ci]:
+                chain_lane_counts[ordered[o_i].get("lane")] += 1
+        choices.sort(key=lambda s: (chain_lane_counts.get(SHAPE_TO_LANE[s], 0), s))
+        new_shape = choices[0]
+        set_shape_gate(ordered[first_idx_in_cluster], new_shape)
+        obstacles = ordered  # mutated in place; loop again to verify
+    return sorted(obstacles, key=lambda o: int(o.get("beat", 0)))
+
+
+SAME_SHAPE_CLUSTER_CHAIN_CAP = {"medium": 3, "hard": 3}
+
+
 def build_beatmap(analysis, difficulties, cleanup_enabled=True, experimental_onset_timing=False):
     """Build the full beatmap JSON."""
     beats = analysis["beats"]
@@ -3335,14 +3765,18 @@ def build_beatmap(analysis, difficulties, cleanup_enabled=True, experimental_ons
         return timed
 
     diff_data = {}
+    playability_collapsed_pairs_per_diff: dict[str, list] = {}
     for diff in difficulties:
         if experimental_onset_timing:
             # Active onset-only path: cleanup is disabled regardless of the
             # top-level cleanup_enabled flag (directive 2026-05-10).
-            obs, selected_events, _ = design_level_segment_focus(
+            obs, selected_events, seg_diag = design_level_segment_focus(
                 analysis,
                 diff,
                 cleanup_enabled=False,
+            )
+            playability_collapsed_pairs_per_diff[diff] = (
+                seg_diag.get("playability_collapsed_pairs", []) if isinstance(seg_diag, dict) else []
             )
             # Issue #449 — medium-tier shape distribution rebalance.
             # The onset-only path preserves beat selection from segment_focus
@@ -3352,6 +3786,9 @@ def build_beatmap(analysis, difficulties, cleanup_enabled=True, experimental_ons
             # broad-layer labels and beat indices are unchanged.
             if diff == "medium":
                 obs = rebalance_medium_shapes(obs, diff)
+            # #532 — obstacle-level safety net (post-rebalance).
+            obs = _thin_oversized_clusters_obstacles(obs, diff)
+            obs = _enforce_cluster_chain_cap_obstacles(obs, diff)
         else:
             selected_events, _ = select_beats(analysis, diff)
             obs = design_level(analysis, diff, cleanup_enabled=cleanup_enabled)
@@ -3367,8 +3804,10 @@ def build_beatmap(analysis, difficulties, cleanup_enabled=True, experimental_ons
         # per-difficulty cap; bpm is forwarded via a sentinel key so the
         # trim can compute the cap in seconds and refuse violating drops.
         diff_data["__bpm__"] = float(analysis.get("bpm") or 0.0)
+        diff_data["__duration_sec__"] = float(analysis.get("duration") or 0.0)
         diff_data = _enforce_difficulty_count_ramp(diff_data)
         diff_data.pop("__bpm__", None)
+        diff_data.pop("__duration_sec__", None)
 
     # Issue #505 — emit ``offset`` anchored to the first authored beat,
     # matching ``tools/validate_beatmap_offset.py`` (and beat_map.h /
@@ -3405,6 +3844,12 @@ def build_beatmap(analysis, difficulties, cleanup_enabled=True, experimental_ons
         "duration_sec": analysis.get("duration", 180),
         "difficulties": diff_data,
         "structure": analysis["structure"],
+        # Issue #528 — surfaces cross-layer onsets the playability
+        # collapse pass dropped per difficulty.  Empty lists when no
+        # collapse occurred.  Raw instrument names are intentionally not
+        # included; only broad-layer labels (percussive / harmonic /
+        # full-spectrum) and flux/segment-focus fields appear.
+        "playability_collapsed_pairs": playability_collapsed_pairs_per_diff if experimental_onset_timing else {},
     }
 
 
@@ -3436,11 +3881,23 @@ def _enforce_difficulty_count_ramp(diff_data):
     """
     order = ("easy", "medium", "hard")
     available = [d for d in order if d in diff_data]
+    bpm_value = float(diff_data.get("__bpm__") or 0.0)
+    duration_value = diff_data.get("__duration_sec__")
+    try:
+        duration_value = float(duration_value) if duration_value is not None else None
+    except (TypeError, ValueError):
+        duration_value = None
+    # Lead-in cap mirrors tools/validate_max_beat_gap.MAX_LEAD_IN_SEC (#527).
+    LEAD_IN_CAP_SEC = {"easy": 8.0, "medium": 6.0, "hard": 4.0}
+    TRAIL_OUT_CAP_SEC = {"easy": 12.0, "medium": 10.0, "hard": 8.0}
     for i in range(len(available) - 1, 0, -1):
         upper = diff_data[available[i]]["count"]
         lower_name = available[i - 1]
         lower = diff_data[lower_name]["beats"]
-        if len(lower) <= upper:
+        # Issue #529 — strict ramp easy < medium < hard.  Target the
+        # lower tier at ``upper - 1`` so equality cannot survive.
+        target_count = max(0, upper - 1)
+        if len(lower) <= target_count:
             continue
         sorted_by_time = sorted(lower, key=lambda o: float(o.get("time_sec", 0.0)))
         # Per-difficulty silent-gap cap (seconds).  ``bpm`` is read from
@@ -3448,39 +3905,59 @@ def _enforce_difficulty_count_ramp(diff_data):
         # we use the analysis BPM lifted into diff_data by the caller.
         cap_beats = MAX_SILENT_GAP_BEATS.get(lower_name)
         cap_sec = (
-            cap_beats * 60.0 / diff_data["__bpm__"]
-            if cap_beats and diff_data.get("__bpm__")
+            cap_beats * 60.0 / bpm_value
+            if cap_beats and bpm_value > 0
             else None
         )
+        lead_cap = LEAD_IN_CAP_SEC.get(lower_name)
+        trail_cap = TRAIL_OUT_CAP_SEC.get(lower_name)
 
-        # Issue #506 — iterative trim that re-evaluates gaps after every
-        # drop.  Picks the sparsest still-droppable obstacle whose
-        # removal does not push the merged neighbour gap past ``cap_sec``.
-        # Stops early when no further cap-safe drop is available, even
-        # if the ramp invariant is not fully restored.
+        # Issue #506 + #527 — iterative trim that re-evaluates gaps after
+        # every drop.  Picks the sparsest still-droppable obstacle whose
+        # removal does not push the merged neighbour gap past ``cap_sec``,
+        # and never drops a leading/trailing obstacle if doing so would
+        # widen the lead-in / trail-out past the per-difficulty caps.
+        # Boundary positions use real song bounds (t=0 for the lead-in,
+        # ``duration_sec`` for the trail-out) instead of ±inf, which
+        # previously caused the very first/last events to be picked first
+        # as the "sparsest outliers" and silently strip the intro
+        # (regression #527).
         kept_list = list(sorted_by_time)
-        target_drops = len(kept_list) - upper
+        target_drops = len(kept_list) - target_count
         dropped = 0
         while dropped < target_drops and len(kept_list) > 1:
             best_pos = None
             best_score = None
             for pos in range(len(kept_list)):
                 t_here = float(kept_list[pos].get("time_sec", 0.0))
-                t_prev = (
-                    float(kept_list[pos - 1].get("time_sec", 0.0))
-                    if pos > 0 else None
-                )
-                t_next = (
-                    float(kept_list[pos + 1].get("time_sec", 0.0))
-                    if pos < len(kept_list) - 1 else None
-                )
-                prev_dt = (t_here - t_prev) if t_prev is not None else float("inf")
-                next_dt = (t_next - t_here) if t_next is not None else float("inf")
-                merged = (
-                    (t_next - t_prev)
-                    if (t_prev is not None and t_next is not None)
-                    else 0.0
-                )
+                if pos > 0:
+                    t_prev = float(kept_list[pos - 1].get("time_sec", 0.0))
+                else:
+                    t_prev = 0.0  # bound by song start, not -inf
+                if pos < len(kept_list) - 1:
+                    t_next = float(kept_list[pos + 1].get("time_sec", 0.0))
+                elif duration_value is not None:
+                    t_next = float(duration_value)  # bound by song end
+                else:
+                    t_next = t_here
+                prev_dt = t_here - t_prev
+                next_dt = t_next - t_here
+                # When pos==0 the merged "gap" after removing it is the
+                # new lead-in == next obstacle's t.  When pos==last it is
+                # duration_sec - prev obstacle's t.
+                if pos == 0:
+                    merged = t_next  # new lead-in if dropped
+                    if lead_cap is not None and merged > lead_cap:
+                        continue
+                elif pos == len(kept_list) - 1:
+                    merged = (
+                        (duration_value - t_prev)
+                        if duration_value is not None else 0.0
+                    )
+                    if trail_cap is not None and merged > trail_cap:
+                        continue
+                else:
+                    merged = t_next - t_prev
                 if cap_sec is not None and merged > cap_sec:
                     continue
                 score = max(prev_dt, next_dt)

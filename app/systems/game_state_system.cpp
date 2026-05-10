@@ -5,7 +5,41 @@
 #include "../components/input.h"
 #include "../components/obstacle.h"
 #include "../components/input_events.h"
+#include "../components/player.h"
 #include "../components/rhythm.h"
+#if defined(__EMSCRIPTEN__)
+#include <emscripten/emscripten.h>
+#include <string>
+#endif
+
+#if defined(__EMSCRIPTEN__)
+namespace {
+
+void update_web_playing_lane_marker(entt::registry& reg, const GameState& gs) {
+    if (gs.phase != GamePhase::Playing) {
+        return;
+    }
+
+    auto player_view = reg.view<PlayerTag, Lane>();
+    if (player_view.begin() == player_view.end()) {
+        return;
+    }
+
+    const auto player_entity = *player_view.begin();
+    const int lane = static_cast<int>(player_view.get<Lane>(player_entity).current);
+    const std::string title = std::string("SHAPESHIFTER [Playing][Lane:")
+        + std::to_string(lane) + "]";
+    EM_ASM(
+        {
+            if (typeof document !== 'undefined') {
+                document.title = UTF8ToString($0);
+            }
+        },
+        title.c_str());
+}
+
+}  // namespace
+#endif
 
 void game_state_system(entt::registry& reg, float dt) {
     auto& gs = reg.ctx().get<GameState>();
@@ -100,6 +134,9 @@ void game_state_system(entt::registry& reg, float dt) {
 
     // Playing → SongComplete when song finishes (all obstacles cleared)
     if (gs.phase == GamePhase::Playing) {
+#if defined(__EMSCRIPTEN__)
+        update_web_playing_lane_marker(reg, gs);
+#endif
         auto* energy = reg.ctx().find<EnergyState>();
         auto* song = reg.ctx().find<SongState>();
         if (energy && song && song->playing && energy->energy <= 0.0f) {

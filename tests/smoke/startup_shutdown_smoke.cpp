@@ -43,10 +43,25 @@ int main(int argc, char** argv) {
     }
 
     SetTraceLogLevel(LOG_WARNING);
+    const char* smoke_mode = std::getenv("SHAPESHIFTER_STARTUP_SHUTDOWN_SMOKE");
+    if (smoke_mode && smoke_mode[0] != '\0' &&
+        !(smoke_mode[0] == '0' && smoke_mode[1] == '\0')) {
+#if defined(__APPLE__) || defined(_WIN32)
+        std::fprintf(stderr, "SKIPPED: hosted runner has no reliable OpenGL window context\n");
+        return 77;
+#endif
+#if defined(__linux__)
+        SetConfigFlags(FLAG_WINDOW_HIDDEN);
+#endif
+    }
 
     entt::registry reg;
     for (int cycle = 0; cycle < cycles; ++cycle) {
         game_loop_init(reg, false, TestPlayerSkill::Pro, "medium");
+        if (!IsWindowReady()) {
+            std::fprintf(stderr, "SKIPPED: OpenGL window context is unavailable\n");
+            return 77;
+        }
 
         float accumulator = 0.0f;
         for (int i = 0; i < frames; ++i) {

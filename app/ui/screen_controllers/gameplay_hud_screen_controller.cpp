@@ -143,6 +143,12 @@ void render_shape_buttons(const entt::registry& reg,
     float ring_appear_dist = constants::APPROACH_DIST;
     float max_ring_radius = btn_radius * layout.approach_ring_max_radius_scale;
 
+    // Reduce-motion (#534): suppress the continuous approach-ring lerp/fade
+    // and snap to a static "perfect-window-imminent" indicator so the
+    // timing cue stays informational without the size animation.
+    const auto* settings_ptr = reg.ctx().find<SettingsState>();
+    const bool reduce_motion = settings_ptr && settings_ptr->reduce_motion;
+
     for (const auto& button : buttons) {
         bool is_active = (active_shape == button.shape);
         Color bg = is_active ? layout.active_bg : layout.inactive_bg;
@@ -157,15 +163,18 @@ void render_shape_buttons(const entt::registry& reg,
         if (nearest_dist[shape_index] <= 0.0f || nearest_dist[shape_index] >= ring_appear_dist) continue;
         float ratio = (nearest_dist[shape_index] - perfect_dist) / (ring_appear_dist - perfect_dist);
         ratio = Clamp(ratio, 0.0f, 1.0f);
-        float ring_r = Lerp(btn_radius, max_ring_radius, ratio);
+
+        const auto envelope = motion::approach_ring_envelope(ratio, btn_radius,
+                                                             max_ring_radius, reduce_motion);
+        if (envelope.alpha_scale <= 0.0f) continue;
 
         Color base = (nearest_dist[shape_index] <= perfect_dist) ? layout.ring_perfect
                                                                   : ((ratio < 0.3f)
                                                                          ? layout.ring_near
                                                                          : layout.ring_far);
-        Color ring_color = Fade(base, (200.0f / 255.0f) * (1.0f - ratio * 0.5f));
-        DrawCircleLinesV({button.cx, button.cy}, ring_r, ring_color);
-        DrawCircleLinesV({button.cx, button.cy}, ring_r - 1.0f,
+        Color ring_color = Fade(base, (200.0f / 255.0f) * envelope.alpha_scale);
+        DrawCircleLinesV({button.cx, button.cy}, envelope.radius, ring_color);
+        DrawCircleLinesV({button.cx, button.cy}, envelope.radius - 1.0f,
             {base.r, base.g, base.b, static_cast<unsigned char>(ring_color.a / 2)});
     }
 }

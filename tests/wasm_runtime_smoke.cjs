@@ -30,6 +30,7 @@ async function main() {
     isMobile: true,
   });
   const page = await context.newPage();
+  const cdp = await context.newCDPSession(page);
   const fatal = [];
 
   async function clickCanvasAt(xRatio, yRatio) {
@@ -75,6 +76,29 @@ async function main() {
     const endX = box.x + Math.max(4, Math.floor(box.width * xEndRatio));
     const endY = box.y + Math.max(4, Math.floor(box.height * yEndRatio));
 
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchStart',
+      touchPoints: [{ x: startX, y: startY, radiusX: 8, radiusY: 8, force: 1, id: 1 }],
+    });
+    for (let i = 1; i <= 6; i += 1) {
+      const t = i / 6;
+      await cdp.send('Input.dispatchTouchEvent', {
+        type: 'touchMove',
+        touchPoints: [{
+          x: startX + (endX - startX) * t,
+          y: startY + (endY - startY) * t,
+          radiusX: 8,
+          radiusY: 8,
+          force: 1,
+          id: 1,
+        }],
+      });
+    }
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchEnd',
+      touchPoints: [],
+    });
+
     await page.evaluate(({ sx, sy, ex, ey }) => {
       const canvasEl = document.querySelector('#canvas');
       if (!canvasEl) return;
@@ -96,11 +120,45 @@ async function main() {
         }));
       };
 
+      const dispatchTouch = (type, x, y) => {
+        if (typeof window.TouchEvent !== 'function' || typeof window.Touch !== 'function') {
+          return;
+        }
+        const touch = new window.Touch({
+          identifier: 1,
+          target: canvasEl,
+          clientX: x,
+          clientY: y,
+          screenX: x,
+          screenY: y,
+          pageX: x,
+          pageY: y,
+          radiusX: 8,
+          radiusY: 8,
+          rotationAngle: 0,
+          force: type === 'touchend' ? 0 : 1,
+        });
+        const activeTouches = type === 'touchend' ? [] : [touch];
+        canvasEl.dispatchEvent(new window.TouchEvent(type, {
+          bubbles: true,
+          cancelable: true,
+          composed: true,
+          touches: activeTouches,
+          targetTouches: activeTouches,
+          changedTouches: [touch],
+        }));
+      };
+
       dispatch('pointerdown', sx, sy, 1);
+      dispatchTouch('touchstart', sx, sy);
       for (let i = 1; i <= steps; i += 1) {
         const t = i / steps;
-        dispatch('pointermove', sx + (ex - sx) * t, sy + (ey - sy) * t, 1);
+        const x = sx + (ex - sx) * t;
+        const y = sy + (ey - sy) * t;
+        dispatch('pointermove', x, y, 1);
+        dispatchTouch('touchmove', x, y);
       }
+      dispatchTouch('touchend', ex, ey);
       dispatch('pointerup', ex, ey, 0);
     }, { sx: startX, sy: startY, ex: endX, ey: endY });
 
@@ -118,6 +176,29 @@ async function main() {
       await page.waitForTimeout(100);
     }
     return false;
+  }
+
+  function parseLaneFromTitle(title) {
+    const match = title.match(/\[Lane:(\d+)\]/);
+    if (!match) {
+      return null;
+    }
+    return Number.parseInt(match[1], 10);
+  }
+
+  async function waitForPlayingLane(predicate, timeoutMs) {
+    const started = Date.now();
+    while (Date.now() - started < timeoutMs) {
+      const title = await page.title();
+      if (title.includes('[Playing]')) {
+        const lane = parseLaneFromTitle(title);
+        if (lane !== null && predicate(lane)) {
+          return lane;
+        }
+      }
+      await page.waitForTimeout(100);
+    }
+    return null;
   }
 
   page.on('console', msg => {
@@ -200,6 +281,10 @@ async function main() {
     if (!(await waitForTitlePhase('Playing', 4500))) {
       fatal.push(`missing-playing-phase-marker:${await page.title()}`);
     }
+    const laneBeforeSwipe = await waitForPlayingLane(() => true, 2500);
+    if (laneBeforeSwipe === null) {
+      fatal.push(`missing-playing-lane-marker:${await page.title()}`);
+    }
 
     const beforeSwipeHash = sha256(await page.screenshot());
     await swipeCanvas(0.35, 0.25, 0.80, 0.25);
@@ -210,6 +295,13 @@ async function main() {
     if (!(await waitForTitlePhase('Playing', 1500))) {
       fatal.push(`unexpected-phase-after-playing-touch-swipe-right:${await page.title()}`);
     }
+    const laneAfterRightSwipe = await waitForPlayingLane(
+      lane => laneBeforeSwipe !== null && lane > laneBeforeSwipe,
+      2500,
+    );
+    if (laneAfterRightSwipe === null) {
+      fatal.push(`missing-lane-advance-after-playing-touch-swipe-right:${await page.title()}`);
+    }
 
     await page.waitForTimeout(250);
     await swipeCanvas(0.80, 0.25, 0.35, 0.25);
@@ -219,6 +311,13 @@ async function main() {
     }
     if (!(await waitForTitlePhase('Playing', 1500))) {
       fatal.push(`unexpected-phase-after-playing-touch-swipe-left:${await page.title()}`);
+    }
+    const laneAfterLeftSwipe = await waitForPlayingLane(
+      lane => laneAfterRightSwipe !== null && lane < laneAfterRightSwipe,
+      2500,
+    );
+    if (laneAfterLeftSwipe === null) {
+      fatal.push(`missing-lane-return-after-playing-touch-swipe-left:${await page.title()}`);
     }
   } finally {
     await context.close();

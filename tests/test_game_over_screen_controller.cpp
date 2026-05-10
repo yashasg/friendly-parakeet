@@ -1,5 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <cstring>
+#include <fstream>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -138,4 +140,71 @@ TEST_CASE("game_over: render omits empty reason binding for DeathCause::None", "
     CHECK(has_bound_text("11"));
     CHECK_FALSE(has_bound_text("MISSED A BEAT"));
     CHECK_FALSE(has_bound_text("ENERGY DEPLETED"));
+}
+
+namespace {
+
+// Slurp helper for the rgl/header snapshot tests below.
+std::string read_file(const std::string& path) {
+    std::ifstream f(path);
+    if (!f.is_open()) return {};
+    std::stringstream ss;
+    ss << f.rdbuf();
+    return ss.str();
+}
+
+bool rgl_has_label(const std::string& path, const std::string& name, const std::string& text) {
+    std::ifstream f(path);
+    if (!f.is_open()) return false;
+    std::string line;
+    while (std::getline(f, line)) {
+        if (line.empty() || line.front() != 'c') continue;
+        std::istringstream ss(line);
+        char kind = '\0';
+        int id = 0, type = 0, x = 0, y = 0, w = 0, h = 0, anchor = 0;
+        std::string ctrl_name;
+        if (!(ss >> kind >> id >> type >> ctrl_name >> x >> y >> w >> h >> anchor)) continue;
+        if (ctrl_name != name) continue;
+        // Type 4 == GuiLabel in rguilayout. Trailing tokens are the label text.
+        if (type != 4) return false;
+        std::string token, joined;
+        while (ss >> token) {
+            if (!joined.empty()) joined += ' ';
+            joined += token;
+        }
+        return joined == text;
+    }
+    return false;
+}
+
+}  // namespace
+
+// Issue #533: Game Over screen must label the score / high-score numbers
+// the same way Song Complete does. The labels are authored in the .rgl
+// (so they survive a layout regeneration) and surfaced through the
+// generated layout header (so they render at runtime, not only via the
+// C++ controller).
+TEST_CASE("game_over: rgl declares SCORE and HIGH SCORE labels alongside slots (#533)",
+          "[game_over][ui][issue533]") {
+    const std::string path = "content/ui/screens/game_over.rgl";
+    REQUIRE(rgl_has_label(path, "ScoreLabel", "SCORE"));
+    REQUIRE(rgl_has_label(path, "HighScoreLabel", "HIGH SCORE"));
+}
+
+TEST_CASE("game_over: generated layout renders SCORE and HIGH SCORE labels (#533)",
+          "[game_over][ui][issue533]") {
+    const std::string header = read_file("app/ui/generated/game_over_layout.h");
+    REQUIRE_FALSE(header.empty());
+    // The labels must be drawn by the generated layout itself, not only
+    // by the screen controller — Song Complete's parallel labels are
+    // emitted from its layout header.
+    CHECK(header.find("\"SCORE\"") != std::string::npos);
+    CHECK(header.find("\"HIGH SCORE\"") != std::string::npos);
+    // Sanity: still uses the centered-label helper (consistent typography
+    // with Song Complete) rather than a bare GuiLabel for the new text.
+    const auto score_pos = header.find("\"SCORE\"");
+    REQUIRE(score_pos != std::string::npos);
+    const auto window_start = score_pos > 96 ? score_pos - 96 : 0;
+    CHECK(header.substr(window_start, score_pos - window_start)
+              .find("DrawCenteredLabel") != std::string::npos);
 }

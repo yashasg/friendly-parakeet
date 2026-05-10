@@ -3,6 +3,8 @@
 #include "components/haptics.h"
 #include "platform/haptics_backend.h"
 
+#include <entt/entt.hpp>
+
 TEST_CASE("haptics backend maps burst patterns for heavy events", "[haptic]") {
     const auto death = platform::haptics::pattern_for_event(HapticEvent::DeathCrash);
     CHECK(death.style == platform::haptics::ImpactStyle::Heavy);
@@ -24,7 +26,26 @@ TEST_CASE("haptics backend maps light and medium events deterministically", "[ha
 }
 
 TEST_CASE("haptics backend warmup is safe to call repeatedly", "[haptic]") {
-    platform::haptics::warmup();
-    platform::haptics::warmup();
+    entt::registry reg;
+    platform::haptics::warmup(reg);
+    platform::haptics::warmup(reg);
+    platform::haptics::shutdown(reg);
     SUCCEED("haptic warmup completed");
+}
+
+TEST_CASE("haptics backend lifecycle is idempotent across registry resets", "[haptic][lifecycle]") {
+    entt::registry reg;
+
+    platform::haptics::warmup(reg);
+    platform::haptics::trigger(reg, HapticEvent::RetryTap);
+    platform::haptics::shutdown(reg);
+    platform::haptics::shutdown(reg);
+
+    reg = entt::registry{};
+
+    platform::haptics::warmup(reg);
+    platform::haptics::trigger(reg, HapticEvent::DeathCrash);
+    platform::haptics::shutdown(reg);
+
+    SUCCEED("haptics lifecycle completed across two registry cycles");
 }

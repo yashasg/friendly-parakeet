@@ -45,15 +45,15 @@ void draw_game_over_scoreboard(entt::registry& reg, const GameOverLayoutState& s
 
     char value[32] = {};
     std::snprintf(value, sizeof(value), "%d", score.score);
-    draw_game_over_value(state.Anchor01, 210, 510, 300, 40, value, 36);
+    draw_game_over_value(state.Anchor01, 210, 540, 300, 46, value, 36);
 
     std::snprintf(value, sizeof(value), "%d", score.high_score);
-    draw_game_over_value(state.Anchor01, 210, 560, 300, 32, value, 24);
+    draw_game_over_value(state.Anchor01, 210, 634, 300, 32, value, 24);
 
     if (const auto* gos = reg.ctx().find<GameOverState>()) {
         const char* reason = death_cause_text(gos->cause);
         if (reason && reason[0] != '\0') {
-            draw_game_over_value(state.Anchor01, 110, 640, 500, 40, reason, 22);
+            draw_game_over_value(state.Anchor01, 110, 685, 500, 40, reason, 22);
         }
     }
 }

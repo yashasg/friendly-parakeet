@@ -106,3 +106,36 @@ TEST_CASE("particle: no particles means no crash", "[particle]") {
     particle_system(reg, 0.016f);
     SUCCEED("particle_system handles empty registry");
 }
+
+// ── #534: reduce_motion suppresses decorative kinetic envelope ──────────────
+
+TEST_CASE("particle: reduce_motion zeroes velocity and disables gravity (#534)",
+          "[particle][reduce_motion][issue534]") {
+    auto reg = make_registry();
+    reg.ctx().get<SettingsState>().reduce_motion = true;
+
+    auto e = make_particle(reg, 5.0f, 1.0f, 1.0f, 50.0f, -25.0f);
+
+    particle_system(reg, 0.1f);
+
+    // Velocity is clamped to zero — no continuous drift, no gravity
+    // accumulation. Particle still ages and despawns on its lifetime
+    // (functional state preserved).
+    const auto& vel = reg.get<MotionVelocity>(e);
+    CHECK(vel.value.x == 0.0f);
+    CHECK(vel.value.y == 0.0f);
+
+    // Lifetime still ticks down per dt.
+    CHECK(reg.get<ParticleData>(e).remaining < 1.0f);
+}
+
+TEST_CASE("particle: reduce_motion=false preserves gravity behavior (#534)",
+          "[particle][reduce_motion][issue534]") {
+    auto reg = make_registry();
+    reg.ctx().get<SettingsState>().reduce_motion = false;
+
+    auto e = make_particle(reg, 5.0f, 1.0f, 1.0f, 0.0f, 0.0f);
+    particle_system(reg, 0.1f);
+    CHECK_THAT(reg.get<MotionVelocity>(e).value.y,
+               Catch::Matchers::WithinAbs(constants::PARTICLE_GRAVITY * 0.1f, 0.01f));
+}

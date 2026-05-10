@@ -22,7 +22,7 @@ constexpr float kTimingToleranceSec = 0.001f;
 // completion. Returns BeatInfo::arrival_time and the entity's actual
 // effective_spawn_time via the second out-parameter so callers can assert
 // the *spawn_time* shift (which is the offset's observable effect on the
-// scheduling event), independent of arrival_time invariants.
+// scheduling event), alongside calibrated-arrival invariants.
 struct ScheduleResult {
     float arrival_time;
     float effective_spawn_time;
@@ -73,8 +73,8 @@ TEST_CASE("audio_offset_ms helper converts ms→seconds with documented sign", "
     CHECK_THAT(settings::audio_offset_seconds(s), Catch::Matchers::WithinAbs(-0.150f, 1e-6f));
 }
 
-TEST_CASE("beat_scheduler: positive audio_offset_ms delays spawn_time (#474)",
-          "[beat_scheduler][audio_offset][issue474]") {
+TEST_CASE("beat_scheduler: audio_offset shifts calibrated arrival and spawn_time",
+          "[beat_scheduler][audio_offset][issue530]") {
     // Same beatmap & song clock, only audio_offset_ms differs. The delta in
     // spawn_time must equal audio_offset_seconds(state). Drive the scheduler
     // far enough into the future that both runs definitely spawn the beat.
@@ -91,19 +91,128 @@ TEST_CASE("beat_scheduler: positive audio_offset_ms delays spawn_time (#474)",
     const auto delayed  = schedule_one(/*offset_ms*/+200, when_song_time, beatmap_offset, bpm, idx);
     const auto advanced = schedule_one(/*offset_ms*/-200, when_song_time, beatmap_offset, bpm, idx);
 
-    // arrival_time tracks the beatmap's beat_time which is unchanged by the
-    // calibration helper; what shifts is the spawn schedule. We therefore
-    // assert on raw arrival_time only that it stayed equal across runs.
-    CHECK(baseline.arrival_time == delayed.arrival_time);
-    CHECK(baseline.arrival_time == advanced.arrival_time);
+    const float delayed_arrival_delta  = delayed.arrival_time - baseline.arrival_time;
+    const float advanced_arrival_delta = advanced.arrival_time - baseline.arrival_time;
 
-    // The visible effect: spawn_time is pushed by exactly audio_offset_seconds.
-    // (When the scheduler "overshoots" because song_time is far ahead it
-    // clamps spawn_time to keep the obstacle at PLAYER_Y, so we measure
-    // delta against the SAME-clamp baseline by using identical song_time.)
-    const float delayed_delta  = delayed.effective_spawn_time  - baseline.effective_spawn_time;
-    const float advanced_delta = advanced.effective_spawn_time - baseline.effective_spawn_time;
+    CHECK_THAT(delayed_arrival_delta,  Catch::Matchers::WithinAbs(+0.200f, kTimingToleranceSec));
+    CHECK_THAT(advanced_arrival_delta, Catch::Matchers::WithinAbs(-0.200f, kTimingToleranceSec));
 
-    CHECK_THAT(delayed_delta,  Catch::Matchers::WithinAbs(+0.200f, kTimingToleranceSec));
-    CHECK_THAT(advanced_delta, Catch::Matchers::WithinAbs(-0.200f, kTimingToleranceSec));
+    const float delayed_spawn_delta  = delayed.effective_spawn_time  - baseline.effective_spawn_time;
+    const float advanced_spawn_delta = advanced.effective_spawn_time - baseline.effective_spawn_time;
+
+    CHECK_THAT(delayed_spawn_delta,  Catch::Matchers::WithinAbs(+0.200f, kTimingToleranceSec));
+    CHECK_THAT(advanced_spawn_delta, Catch::Matchers::WithinAbs(-0.200f, kTimingToleranceSec));
+}
+
+
+namespace {
+
+struct OffsetGameplayResult {
+    TimingTier tier = TimingTier::Bad;
+    int score = 0;
+    float energy = 0.0f;
+    int perfect_count = 0;
+    int miss_count = 0;
+    float arrival_time = 0.0f;
+    float visual_arrival_time = 0.0f;
+};
+
+OffsetGameplayResult run_calibrated_on_arrival_hit(int16_t audio_offset_ms) {
+    auto reg = make_rhythm_registry();
+
+    auto& settings = reg.ctx().get<SettingsState>();
+    settings.audio_offset_ms = audio_offset_ms;
+
+    auto player = make_rhythm_player(reg);
+    auto& ps = reg.get<PlayerShape>(player);
+    auto& sw = reg.get<ShapeWindow>(player);
+    ps.current = Shape::Circle;
+    sw.phase = WindowPhase::Active;
+    sw.graded = false;
+
+    auto& song = reg.ctx().get<SongState>();
+    song.bpm    = 120.0f;
+    song.offset = 1.0f;
+    song_state_compute_derived(song);
+
+    constexpr int kBeatIndex = 4;
+    auto& map = reg.ctx().get<BeatMap>();
+    map.beats.push_back({kBeatIndex, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
+
+    const float beat_time = song.offset + static_cast<float>(kBeatIndex) * song.beat_period;
+    const float spawn_time = beat_time - song.lead_time + settings::audio_offset_seconds(settings);
+    song.song_time = spawn_time + 0.05f;
+
+    beat_scheduler_system(reg, 0.016f);
+
+    auto view = reg.view<ObstacleTag, BeatInfo>();
+    REQUIRE(view.begin() != view.end());
+    auto obstacle = *view.begin();
+
+    auto& info = reg.get<BeatInfo>(obstacle);
+    auto& wt = reg.get<WorldTransform>(obstacle);
+    wt.position.y = constants::PLAYER_Y;
+
+    sw.press_time = info.spawn_time + song.lead_time;
+
+    collision_system(reg, 0.016f);
+    REQUIRE(reg.all_of<ScoredTag>(obstacle));
+    REQUIRE(reg.all_of<TimingGrade>(obstacle));
+
+    const auto tier = reg.get<TimingGrade>(obstacle).tier;
+
+    scoring_system(reg, 0.016f);
+    energy_system(reg, 0.016f);
+
+    const auto& score = reg.ctx().get<ScoreState>();
+    const auto& energy = reg.ctx().get<EnergyState>();
+    const auto& results = reg.ctx().get<SongResults>();
+
+    OffsetGameplayResult out;
+    out.tier = tier;
+    out.score = score.score;
+    out.energy = energy.energy;
+    out.perfect_count = results.perfect_count;
+    out.miss_count = results.miss_count;
+    out.arrival_time = info.arrival_time;
+    out.visual_arrival_time = info.spawn_time + song.lead_time;
+    return out;
+}
+
+} // namespace
+
+TEST_CASE("collision grading stays invariant for calibrated on-arrival presses",
+          "[collision][audio_offset][issue530]") {
+    const auto baseline = run_calibrated_on_arrival_hit(0);
+    const auto delayed  = run_calibrated_on_arrival_hit(+200);
+    const auto advanced = run_calibrated_on_arrival_hit(-200);
+
+    CHECK(baseline.tier == TimingTier::Perfect);
+    CHECK(delayed.tier == baseline.tier);
+    CHECK(advanced.tier == baseline.tier);
+
+    CHECK_THAT(baseline.arrival_time - baseline.visual_arrival_time,
+               Catch::Matchers::WithinAbs(0.0f, kTimingToleranceSec));
+    CHECK_THAT(delayed.arrival_time - delayed.visual_arrival_time,
+               Catch::Matchers::WithinAbs(0.0f, kTimingToleranceSec));
+    CHECK_THAT(advanced.arrival_time - advanced.visual_arrival_time,
+               Catch::Matchers::WithinAbs(0.0f, kTimingToleranceSec));
+}
+
+TEST_CASE("score and energy semantics stay aligned under signed audio offsets",
+          "[integration][audio_offset][issue530]") {
+    const auto baseline = run_calibrated_on_arrival_hit(0);
+    const auto delayed  = run_calibrated_on_arrival_hit(+200);
+    const auto advanced = run_calibrated_on_arrival_hit(-200);
+
+    CHECK(delayed.score == baseline.score);
+    CHECK(advanced.score == baseline.score);
+
+    CHECK_THAT(delayed.energy, Catch::Matchers::WithinAbs(baseline.energy, 1e-6f));
+    CHECK_THAT(advanced.energy, Catch::Matchers::WithinAbs(baseline.energy, 1e-6f));
+
+    CHECK(delayed.perfect_count == baseline.perfect_count);
+    CHECK(advanced.perfect_count == baseline.perfect_count);
+    CHECK(delayed.miss_count == baseline.miss_count);
+    CHECK(advanced.miss_count == baseline.miss_count);
 }

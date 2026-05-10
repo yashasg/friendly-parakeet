@@ -1,47 +1,57 @@
 #import "haptics_ios_bridge.h"
 
-#import "../haptics_backend.h"
-
 #import <UIKit/UIKit.h>
 
-namespace platform::ios {
-namespace {
+#include <new>
 
+namespace platform::ios {
 struct HapticsIOSState {
     UIImpactFeedbackGenerator* light = nil;
     UIImpactFeedbackGenerator* medium = nil;
     UIImpactFeedbackGenerator* heavy = nil;
 };
 
-HapticsIOSState& haptics_state() {
-    static HapticsIOSState state;
-    return state;
-}
+namespace {
 
-UIImpactFeedbackStyle to_ios_style(platform::haptics::ImpactStyle style) {
-    switch (style) {
-        case platform::haptics::ImpactStyle::Light:
-            return UIImpactFeedbackStyleLight;
-        case platform::haptics::ImpactStyle::Medium:
-            return UIImpactFeedbackStyleMedium;
-        case platform::haptics::ImpactStyle::Heavy:
-            return UIImpactFeedbackStyleHeavy;
+struct IOSPattern {
+    UIImpactFeedbackStyle style = UIImpactFeedbackStyleLight;
+    int pulse_count = 1;
+};
+
+IOSPattern ios_pattern_for_event(HapticEvent event) {
+    switch (event) {
+        case HapticEvent::LaneSwitch:
+        case HapticEvent::UIButtonTap:
+        case HapticEvent::ShapeShift:
+        case HapticEvent::JumpLand:
+        case HapticEvent::Burnout1_5x:
+        case HapticEvent::RetryTap:
+            return {UIImpactFeedbackStyleLight, 1};
+        case HapticEvent::Burnout3_0x:
+        case HapticEvent::NewHighScore:
+            return {UIImpactFeedbackStyleMedium, 1};
+        case HapticEvent::NearMiss:
+            return {UIImpactFeedbackStyleHeavy, 1};
+        case HapticEvent::Burnout5_0x:
+            return {UIImpactFeedbackStyleHeavy, 3};
+        case HapticEvent::DeathCrash:
+            return {UIImpactFeedbackStyleHeavy, 2};
         default:
-            return UIImpactFeedbackStyleLight;
+            return {UIImpactFeedbackStyleLight, 1};
     }
 }
 
 UIImpactFeedbackGenerator* generator_for_style(HapticsIOSState& state,
-                                                platform::haptics::ImpactStyle style) {
+                                                UIImpactFeedbackStyle style) {
     UIImpactFeedbackGenerator** slot = nullptr;
     switch (style) {
-        case platform::haptics::ImpactStyle::Light:
+        case UIImpactFeedbackStyleLight:
             slot = &state.light;
             break;
-        case platform::haptics::ImpactStyle::Medium:
+        case UIImpactFeedbackStyleMedium:
             slot = &state.medium;
             break;
-        case platform::haptics::ImpactStyle::Heavy:
+        case UIImpactFeedbackStyleHeavy:
             slot = &state.heavy;
             break;
         default:
@@ -50,7 +60,7 @@ UIImpactFeedbackGenerator* generator_for_style(HapticsIOSState& state,
     }
 
     if (*slot == nil) {
-        *slot = [[UIImpactFeedbackGenerator alloc] initWithStyle:to_ios_style(style)];
+        *slot = [[UIImpactFeedbackGenerator alloc] initWithStyle:style];
     }
     return *slot;
 }
@@ -71,19 +81,30 @@ bool haptics_ios_available() noexcept {
     return true;
 }
 
-void haptics_ios_warmup() noexcept {
+HapticsIOSState* haptics_ios_create_state() noexcept {
+    return new (std::nothrow) HapticsIOSState{};
+}
+
+void haptics_ios_destroy_state(HapticsIOSState*& state) noexcept {
+    if (state == nullptr) {
+        return;
+    }
+    haptics_ios_reset(*state);
+    delete state;
+    state = nullptr;
+}
+
+void haptics_ios_warmup(HapticsIOSState& state) noexcept {
     @autoreleasepool {
-        auto& state = haptics_state();
-        [generator_for_style(state, platform::haptics::ImpactStyle::Light) prepare];
-        [generator_for_style(state, platform::haptics::ImpactStyle::Medium) prepare];
-        [generator_for_style(state, platform::haptics::ImpactStyle::Heavy) prepare];
+        [generator_for_style(state, UIImpactFeedbackStyleLight) prepare];
+        [generator_for_style(state, UIImpactFeedbackStyleMedium) prepare];
+        [generator_for_style(state, UIImpactFeedbackStyleHeavy) prepare];
     }
 }
 
-void haptics_ios_trigger(HapticEvent event) noexcept {
+void haptics_ios_trigger(HapticsIOSState& state, HapticEvent event) noexcept {
     @autoreleasepool {
-        auto& state = haptics_state();
-        const auto pattern = platform::haptics::pattern_for_event(event);
+        const auto pattern = ios_pattern_for_event(event);
         const int pulses = (pattern.pulse_count > 0) ? pattern.pulse_count : 1;
         for (int i = 0; i < pulses; ++i) {
             UIImpactFeedbackGenerator* generator = generator_for_style(state, pattern.style);
@@ -93,9 +114,8 @@ void haptics_ios_trigger(HapticEvent event) noexcept {
     }
 }
 
-void haptics_ios_reset() noexcept {
+void haptics_ios_reset(HapticsIOSState& state) noexcept {
     @autoreleasepool {
-        auto& state = haptics_state();
         destroy_generator(state.light);
         destroy_generator(state.medium);
         destroy_generator(state.heavy);

@@ -12,6 +12,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 #include "util/beat_map_loader.h"
+#include "util/shape_lane_mapping.h"
 
 #include <algorithm>
 #include <filesystem>
@@ -19,16 +20,6 @@
 #include <vector>
 
 namespace fs = std::filesystem;
-
-static int expected_lane_for_shape(Shape shape) {
-    switch (shape) {
-        case Shape::Triangle: return 0;
-        case Shape::Square: return 1;
-        case Shape::Circle: return 2;
-        case Shape::Hexagon: return -1;
-    }
-    return -1;
-}
 
 static std::vector<std::string> find_shipped_beatmaps() {
     std::vector<std::string> paths;
@@ -74,7 +65,7 @@ TEST_CASE("shipped beatmaps: shape gates keep canonical lane/shape mapping",
 
             for (const auto& beat : map.beats) {
                 if (beat.kind != ObstacleKind::ShapeGate) continue;
-                const int expected_lane = expected_lane_for_shape(beat.shape);
+                const int expected_lane = lane_for_shape(beat.shape);
                 if (expected_lane < 0) {
                     FAIL_CHECK("canonical mapping: " << path << " [" << diff
                                << "] beat " << beat.beat_index

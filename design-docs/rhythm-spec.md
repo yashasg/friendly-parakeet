@@ -231,15 +231,15 @@ struct PlayerShape {
 ```cpp
 struct BeatInfo {
     int   beat_index   = 0;       // index into BeatMap::beats
-    float arrival_time = 0.0f;    // absolute song_time when obstacle should be hit
+    float arrival_time = 0.0f;    // calibrated song_time when obstacle should be hit
     float spawn_time   = 0.0f;    // song_time when the obstacle was spawned
 };
 ```
 
-`arrival_time` is the authoritative reference for collision timing grades.
-The collision system uses it (when present) instead of `ShapeWindow.peak_time`,
-so that timing evaluation is anchored to the chart's beat rather than the
-player's shape-window lifecycle.
+arrival_time is the authoritative reference for collision timing grades.
+beat_scheduler_system computes it on the same calibrated clock used for obstacle
+spawning (beat_time + audio_offset_seconds), so visual arrival and grading use
+one reference.
 
 ## SongResults (singleton)
 
@@ -358,7 +358,7 @@ void shape_window_system(entt::registry& reg, float dt);
   │  CASE: Player shape matches obstacle shape at arrival               │
   ├─────────────────────────────────────────────────────────────────────┤
   │                                                                     │
-  │  // Use the obstacle's beat arrival_time for timing,                │
+  │  // Use the obstacle's calibrated arrival_time for timing,                │
   │  // falling back to ShapeWindow.peak_time when BeatInfo absent.     │
   │  // Compare the window's PEAK TIME (center of active window)        │
   │  // against the reference.  peak_time is derived from the player's  │

@@ -8,6 +8,7 @@
 #include "../components/rhythm.h"
 #include "../util/settings.h"
 #include "../constants.h"
+#include "../util/shape_lane_mapping.h"
 
 namespace {
 
@@ -17,16 +18,6 @@ void push_haptic(entt::registry& reg, HapticEvent event) {
 }
 
 }  // namespace
-
-static int8_t lane_for_shape_button(Shape shape) {
-    switch (shape) {
-        case Shape::Circle:   return 0;
-        case Shape::Square:   return 1;
-        case Shape::Triangle: return 2;
-        case Shape::Hexagon:  return -1;
-    }
-    return -1;
-}
 
 void player_input_handle_go(entt::registry& reg, const GoEvent& evt) {
     if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
@@ -55,7 +46,7 @@ void player_input_handle_press(entt::registry& reg, const ButtonPressEvent& evt)
     bool rhythm_mode = (song != nullptr && song->playing);
 
     auto pressed_shape = evt.shape;
-    auto shape_lane = lane_for_shape_button(pressed_shape);
+    auto shape_lane = lane_for_shape(pressed_shape);
 
     auto begin_shape_window = [&](entt::entity entity, PlayerShape& ps, ShapeWindow& sw) {
         Shape previous_shape = ps.current;

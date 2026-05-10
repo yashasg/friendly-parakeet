@@ -125,7 +125,7 @@ void render_settings_screen_ui(entt::registry& reg) {
         st->haptics_enabled = !st->haptics_enabled;
         settings_changed = true;
         if (st->haptics_enabled) {
-            platform::haptics::warmup();
+            platform::haptics::warmup(reg);
         }
     }
     if (controller.state().ReduceMotionTogglePressed) {
