@@ -450,6 +450,19 @@ The player can hear the beat coming. The timing is legible. What the player cann
 # SECTION 8 — OBSTACLE TYPES
 # ═══════════════════════════════════════════════════
 
+> ⚠️ **Shipped scope — only `shape_gate` ships today (issues #420, #446,
+> #328, #479).** Mirroring the caveat in `game.md` "Difficulty
+> Progression": across all 9 shipped beatmaps in `content/beatmaps/`
+> (994 obstacles total), `tools/level_designer.py` emits 100%
+> `shape_gate`. The `lane_push`, `low_bar`, and `high_bar` types
+> described below are **not currently produced** by the generator and
+> are not part of any shipped run; `LanePush` is additionally queued
+> for removal/rework (#328). They are retained here as forward design
+> space for if/when committed plans to reintroduce them land. Treat
+> Section 8 (and the "Difficulty Progression" block that follows) as
+> the catalog of intended types, not a description of current shipped
+> content.
+
 ## The Four Types
 
 ```

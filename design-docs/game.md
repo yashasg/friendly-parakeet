@@ -22,7 +22,7 @@ Rhythm runner where the player shifts between 3 geometric shapes to pass through
 
 ---
 
-## Player Shapes (3)
+## Player Shapes (3 active + Hexagon default)
 
 | Shape    | Symbol | Passes Through       |
 |----------|--------|----------------------|
@@ -108,8 +108,6 @@ See `rhythm-design.md` for the full timing-window grading table and `rhythm-spec
 | High Bar        | Swipe down (slide)        | YES    | 100         |
 | Combo Gate      | Shape + swipe (2 actions) | YES    | 200 (×2)    |
 | Split Path      | Shape + correct lane      | YES    | 300 (×2)    |
-
-> in the indicated direction on beat arrival. Edge pushes (left on Lane 0, right
 
 ### Combo Obstacles
 

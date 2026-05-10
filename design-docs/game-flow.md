@@ -708,6 +708,18 @@ to `GamePhase::Playing`.
 
 ### TUTORIAL RUN 3 — "Dodge!"
 
+> ⚠️ **NOT SHIPPED — lane_push tutorial content (issues #328, #470).**
+> The "Dodge!" run below teaches a `lane_push` obstacle that automatically
+> shoves the player one lane on beat arrival. **No `lane_push` obstacle
+> ships in the runtime today** — `LanePush` is queued for removal/rework
+> (#328) and no shipped beatmap (`content/beatmaps/`) emits one. The
+> shipped tutorial therefore graduates from Run 2 ("Two Shapes") directly
+> to Run 4 ("Stay on the Beat"); shape_gate is the only obstacle the
+> tutorial currently teaches. The frames below are retained as
+> forward-design context for if/when a committed lane-push (or successor
+> dodge mechanic) plan lands. Do not treat them as a description of
+> current player-facing tutorial content.
+
 
 ```
   WHAT'S DIFFERENT:
@@ -716,8 +728,8 @@ to `GamePhase::Playing`.
   • Speed: ×0.8
   • (Burnout meter still hidden — ARCHIVED #239: meter removed)
 
-  WHAT PLAYER LEARNS:
-  ───────────────────
+  WHAT PLAYER LEARNS (future / not shipped):
+  ──────────────────────────────────────────
   "Some obstacles push me to a different lane automatically"
 ```
 
