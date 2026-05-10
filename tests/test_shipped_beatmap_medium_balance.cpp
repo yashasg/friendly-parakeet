@@ -9,23 +9,11 @@
 #include "util/beat_map_loader.h"
 
 #include <algorithm>
-#include <array>
 #include <filesystem>
 #include <string>
 #include <vector>
 
 namespace fs = std::filesystem;
-
-struct DistributionRange {
-    float min_pct;
-    float max_pct;
-};
-
-static constexpr std::array<DistributionRange, 3> MEDIUM_SHAPE_RANGES = {{
-    {10.0f, 20.0f}, // Circle / lane 0
-    {45.0f, 60.0f}, // Square / lane 1
-    {25.0f, 45.0f}, // Triangle / lane 2
-}};
 
 static std::vector<std::string> find_shipped_beatmaps() {
     std::vector<std::string> paths;
@@ -41,8 +29,14 @@ static std::vector<std::string> find_shipped_beatmaps() {
     return paths;
 }
 
-static int shape_index(Shape shape) {
-    return static_cast<int>(shape);
+static int expected_lane_for_shape(Shape shape) {
+    switch (shape) {
+        case Shape::Triangle: return 0;
+        case Shape::Square: return 1;
+        case Shape::Circle: return 2;
+        case Shape::Hexagon: return -1;
+    }
+    return -1;
 }
 
 TEST_CASE("medium balance: content directory is reachable",
@@ -51,12 +45,8 @@ TEST_CASE("medium balance: content directory is reachable",
     REQUIRE_FALSE(find_shipped_beatmaps().empty());
 }
 
-TEST_CASE("medium balance: shipped beatmaps have balanced shape-gate lanes",
+TEST_CASE("medium balance: shipped beatmaps keep motif lane mapping",
           "[shipped_beatmaps][regression][issue142]") {
-    static constexpr std::array<const char*, 3> kShapeNames = {
-        "Circle", "Square", "Triangle"
-    };
-
     const auto beatmaps = find_shipped_beatmaps();
     REQUIRE_FALSE(beatmaps.empty());
 
@@ -65,41 +55,27 @@ TEST_CASE("medium balance: shipped beatmaps have balanced shape-gate lanes",
         std::vector<BeatMapError> errors;
         if (!load_beat_map(path, map, errors, "medium")) continue;
 
-        int shape_counts[3] = {0, 0, 0};
-        int lane_counts[3] = {0, 0, 0};
         int total_shape_gates = 0;
 
         for (const auto& beat : map.beats) {
             if (beat.kind != ObstacleKind::ShapeGate) continue;
-
             ++total_shape_gates;
-            const int shape = shape_index(beat.shape);
-            if (shape >= 0 && shape < 3) ++shape_counts[shape];
-            if (beat.lane >= 0 && beat.lane < 3) ++lane_counts[beat.lane];
+            const int expected_lane = expected_lane_for_shape(beat.shape);
+            if (expected_lane < 0) {
+                FAIL_CHECK("medium balance: " << path
+                           << " beat " << beat.beat_index
+                           << " has unknown shape enum="
+                           << static_cast<int>(beat.shape));
+                continue;
+            }
+            if (beat.lane != expected_lane) {
+                FAIL_CHECK("medium balance: " << path
+                           << " beat " << beat.beat_index
+                           << " shape enum=" << static_cast<int>(beat.shape)
+                           << " expected lane " << expected_lane
+                           << " but found lane " << static_cast<int>(beat.lane));
+            }
         }
-
         REQUIRE(total_shape_gates > 0);
-
-        for (int i = 0; i < 3; ++i) {
-            const float shape_pct = 100.0f * static_cast<float>(shape_counts[i])
-                / static_cast<float>(total_shape_gates);
-            const float lane_pct = 100.0f * static_cast<float>(lane_counts[i])
-                / static_cast<float>(total_shape_gates);
-            const auto range = MEDIUM_SHAPE_RANGES[static_cast<size_t>(i)];
-
-            if (shape_pct < range.min_pct || shape_pct > range.max_pct) {
-                FAIL_CHECK("medium balance: " << path << " shape " << kShapeNames[i]
-                           << " is " << shape_pct << "% of shape_gates"
-                           << " (target " << range.min_pct << "%-"
-                           << range.max_pct << "%)");
-            }
-
-            if (lane_pct < range.min_pct || lane_pct > range.max_pct) {
-                FAIL_CHECK("medium balance: " << path << " lane " << i
-                           << " is " << lane_pct << "% of shape_gates"
-                           << " (target " << range.min_pct << "%-"
-                           << range.max_pct << "%)");
-            }
-        }
     }
 }

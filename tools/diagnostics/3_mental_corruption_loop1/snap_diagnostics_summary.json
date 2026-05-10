@@ -1,0 +1,2520 @@
+{
+  "song_id": "3_mental_corruption",
+  "onset_pool_summary": {
+    "total_events": 4803,
+    "events_per_minute": 1271.9,
+    "snapped_events": 1423,
+    "snap_residual_stats": {
+      "count": 1423,
+      "median_abs_ms": 3.0,
+      "p90_abs_ms": 9.0,
+      "mean_abs_ms": 4.435,
+      "within_20ms": 1404,
+      "within_35ms": 1412,
+      "within_50ms": 1413,
+      "within_80ms": 1423
+    },
+    "segment_count": 26,
+    "empty_segment_count": 0,
+    "segment_coverage": [
+      {
+        "section": "intro",
+        "start": 0.0,
+        "end": 9.8,
+        "event_count": 203,
+        "empty": false
+      },
+      {
+        "section": "intro",
+        "start": 9.8,
+        "end": 19.59,
+        "event_count": 166,
+        "empty": false
+      },
+      {
+        "section": "drop",
+        "start": 19.59,
+        "end": 29.0,
+        "event_count": 185,
+        "empty": false
+      },
+      {
+        "section": "drop",
+        "start": 29.0,
+        "end": 34.09,
+        "event_count": 124,
+        "empty": false
+      },
+      {
+        "section": "drop",
+        "start": 34.09,
+        "end": 39.18,
+        "event_count": 119,
+        "empty": false
+      },
+      {
+        "section": "drop",
+        "start": 39.18,
+        "end": 48.2,
+        "event_count": 181,
+        "empty": false
+      },
+      {
+        "section": "drop",
+        "start": 48.2,
+        "end": 53.29,
+        "event_count": 105,
+        "empty": false
+      },
+      {
+        "section": "drop",
+        "start": 53.29,
+        "end": 58.38,
+        "event_count": 130,
+        "empty": false
+      },
+      {
+        "section": "drop",
+        "start": 58.38,
+        "end": 65.83,
+        "event_count": 184,
+        "empty": false
+      },
+      {
+        "section": "drop",
+        "start": 65.83,
+        "end": 72.49,
+        "event_count": 143,
+        "empty": false
+      },
+      {
+        "section": "drop",
+        "start": 72.49,
+        "end": 86.99,
+        "event_count": 362,
+        "empty": false
+      },
+      {
+        "section": "drop",
+        "start": 86.99,
+        "end": 96.78,
+        "event_count": 248,
+        "empty": false
+      },
+      {
+        "section": "drop",
+        "start": 96.78,
+        "end": 106.19,
+        "event_count": 204,
+        "empty": false
+      },
+      {
+        "section": "drop",
+        "start": 106.19,
+        "end": 115.98,
+        "event_count": 167,
+        "empty": false
+      },
+      {
+        "section": "drop",
+        "start": 115.98,
+        "end": 125.39,
+        "event_count": 218,
+        "empty": false
+      },
+      {
+        "section": "drop",
+        "start": 125.39,
+        "end": 135.18,
+        "event_count": 178,
+        "empty": false
+      },
+      {
+        "section": "drop",
+        "start": 135.18,
+        "end": 144.2,
+        "event_count": 173,
+        "empty": false
+      },
+      {
+        "section": "drop",
+        "start": 144.2,
+        "end": 153.99,
+        "event_count": 249,
+        "empty": false
+      },
+      {
+        "section": "drop",
+        "start": 153.99,
+        "end": 163.79,
+        "event_count": 223,
+        "empty": false
+      },
+      {
+        "section": "drop",
+        "start": 163.79,
+        "end": 173.19,
+        "event_count": 221,
+        "empty": false
+      },
+      {
+        "section": "drop",
+        "start": 173.19,
+        "end": 178.29,
+        "event_count": 87,
+        "empty": false
+      },
+      {
+        "section": "drop",
+        "start": 178.29,
+        "end": 186.12,
+        "event_count": 124,
+        "empty": false
+      },
+      {
+        "section": "drop",
+        "start": 186.12,
+        "end": 192.39,
+        "event_count": 171,
+        "empty": false
+      },
+      {
+        "section": "drop",
+        "start": 192.39,
+        "end": 201.8,
+        "event_count": 260,
+        "empty": false
+      },
+      {
+        "section": "drop",
+        "start": 201.8,
+        "end": 211.59,
+        "event_count": 257,
+        "empty": false
+      },
+      {
+        "section": "outro",
+        "start": 211.59,
+        "end": 226.57,
+        "event_count": 121,
+        "empty": false
+      }
+    ],
+    "raw_per_pass": {
+      "kick": 4140,
+      "snare": 2657,
+      "melody": 2582,
+      "hihat": 1828,
+      "flux": 2657
+    },
+    "raw_total": 13864
+  },
+  "residual_summary": {
+    "current_quarter_snap": {
+      "count": 1423,
+      "median_abs_ms": 3.0,
+      "p90_abs_ms": 9.0,
+      "mean_abs_ms": 4.435,
+      "within_20ms": 1404,
+      "within_35ms": 1412,
+      "within_50ms": 1413,
+      "within_80ms": 1423
+    },
+    "quarter_grid": {
+      "count": 4803,
+      "median_abs_ms": 100.0,
+      "p90_abs_ms": 198.0,
+      "mean_abs_ms": 100.383,
+      "within_20ms": 1419,
+      "within_35ms": 1427,
+      "within_50ms": 1428,
+      "within_80ms": 1447
+    },
+    "eighth_grid": {
+      "count": 4803,
+      "median_abs_ms": 6.5,
+      "p90_abs_ms": 99.0,
+      "mean_abs_ms": 41.165,
+      "within_20ms": 2842,
+      "within_35ms": 2858,
+      "within_50ms": 2862,
+      "within_80ms": 2900
+    },
+    "triplet_grid": {
+      "count": 4803,
+      "median_abs_ms": 33.0,
+      "p90_abs_ms": 65.0,
+      "mean_abs_ms": 33.4,
+      "within_20ms": 1442,
+      "within_35ms": 2845,
+      "within_50ms": 3374,
+      "within_80ms": 4803
+    }
+  },
+  "subdivision_histogram": {
+    "current_quarter_snap": {
+      "downbeat": 1416,
+      "triplet": 7
+    },
+    "quarter_grid": {
+      "downbeat": 4803
+    },
+    "eighth_grid": {
+      "downbeat": 2263,
+      "eighth": 2540
+    },
+    "triplet_grid": {
+      "downbeat": 1436,
+      "triplet": 3367
+    }
+  },
+  "gap_histogram_50ms_bins": {
+    "current_quarter_snap": {
+      "0000-0049": 882,
+      "0350-0399": 407,
+      "0400-0449": 119,
+      "0750-0799": 10,
+      "0800-0849": 3,
+      "1150-1199": 1
+    },
+    "quarter_grid": {
+      "0000-0049": 4247,
+      "0350-0399": 428,
+      "0400-0449": 123,
+      "0750-0799": 4
+    },
+    "eighth_grid": {
+      "0000-0049": 3708,
+      "0150-0199": 835,
+      "0200-0249": 241,
+      "0350-0399": 12,
+      "0400-0449": 1,
+      "0550-0599": 4,
+      "0600-0649": 1
+    },
+    "triplet_grid": {
+      "0000-0049": 3304,
+      "0100-0149": 1341,
+      "0250-0299": 145,
+      "0350-0399": 6,
+      "0400-0449": 1,
+      "0500-0549": 1,
+      "0650-0699": 4
+    }
+  },
+  "same_shape_run_metrics": {
+    "easy": {
+      "longest_run": 20,
+      "run_steps_ge_3": 79
+    },
+    "medium": {
+      "longest_run": 14,
+      "run_steps_ge_3": 116
+    },
+    "hard": {
+      "longest_run": 43,
+      "run_steps_ge_3": 182
+    }
+  },
+  "experimental_onset_timing": {
+    "enabled": true,
+    "generation_path": "segment_focus",
+    "legacy_rule_influence_disabled": true,
+    "disabled_legacy_rules": [
+      "legacy lane balancing",
+      "legacy shape balancing",
+      "fixed beat snapping selection",
+      "random thinning",
+      "legacy difficulty curves",
+      "shape-gap enforcement",
+      "legacy obstacle selection"
+    ],
+    "comparison_by_difficulty": {
+      "easy": {
+        "event_counts": {
+          "obstacles": 211,
+          "timing_source_histogram": {
+            "onset": 211
+          }
+        },
+        "residuals_onset_minus_beat_ms": {
+          "count": 211,
+          "median_abs_ms": 3.0,
+          "p90_abs_ms": 10.0,
+          "mean_abs_ms": 4.735,
+          "max_abs_ms": 73.0
+        },
+        "ioi_stats_ms": {
+          "beat_snap": {
+            "count": 210,
+            "min_ms": 392.0,
+            "median_ms": 798.0,
+            "p90_ms": 2003.0,
+            "mean_ms": 1047.524,
+            "max_ms": 6400.0
+          },
+          "onset_timing": {
+            "count": 210,
+            "min_ms": 384.0,
+            "median_ms": 798.0,
+            "p90_ms": 2004.2,
+            "mean_ms": 1047.638,
+            "max_ms": 6397.0
+          }
+        },
+        "dense_cluster_stats": {
+          "beat_snap": {
+            "threshold_ms": 700.0,
+            "short_ioi_count": 90,
+            "short_ioi_share": 0.4286,
+            "cluster_count": 53,
+            "max_cluster_len": 6
+          },
+          "onset_timing": {
+            "threshold_ms": 700.0,
+            "short_ioi_count": 90,
+            "short_ioi_share": 0.4286,
+            "cluster_count": 53,
+            "max_cluster_len": 6
+          }
+        },
+        "subdivision_label_distribution": {
+          "downbeat": 210,
+          "triplet": 1
+        },
+        "onset_class_distribution": {
+          "full-spectrum": 73,
+          "percussive": 138
+        },
+        "event_role_distribution": {
+          "easy": 211
+        },
+        "motif_stats": {
+          "motif_ids": [],
+          "motif_count": 0,
+          "rows_with_motif": 0,
+          "max_repeat_count": 0,
+          "max_length_beats": 0.0
+        }
+      },
+      "medium": {
+        "event_counts": {
+          "obstacles": 340,
+          "timing_source_histogram": {
+            "onset": 340
+          }
+        },
+        "residuals_onset_minus_beat_ms": {
+          "count": 340,
+          "median_abs_ms": 3.0,
+          "p90_abs_ms": 9.0,
+          "mean_abs_ms": 4.912,
+          "max_abs_ms": 78.0
+        },
+        "ioi_stats_ms": {
+          "beat_snap": {
+            "count": 339,
+            "min_ms": 392.0,
+            "median_ms": 400.0,
+            "p90_ms": 1204.0,
+            "mean_ms": 648.909,
+            "max_ms": 3200.0
+          },
+          "onset_timing": {
+            "count": 339,
+            "min_ms": 327.0,
+            "median_ms": 403.0,
+            "p90_ms": 1200.2,
+            "mean_ms": 648.979,
+            "max_ms": 3198.0
+          }
+        },
+        "dense_cluster_stats": {
+          "beat_snap": {
+            "threshold_ms": 380.0,
+            "short_ioi_count": 0,
+            "short_ioi_share": 0.0,
+            "cluster_count": 0,
+            "max_cluster_len": 0
+          },
+          "onset_timing": {
+            "threshold_ms": 380.0,
+            "short_ioi_count": 2,
+            "short_ioi_share": 0.0059,
+            "cluster_count": 2,
+            "max_cluster_len": 2
+          }
+        },
+        "subdivision_label_distribution": {
+          "downbeat": 337,
+          "triplet": 3
+        },
+        "onset_class_distribution": {
+          "full-spectrum": 118,
+          "percussive": 222
+        },
+        "event_role_distribution": {
+          "easy": 211,
+          "medium": 129
+        },
+        "motif_stats": {
+          "motif_ids": [],
+          "motif_count": 0,
+          "rows_with_motif": 0,
+          "max_repeat_count": 0,
+          "max_length_beats": 0.0
+        }
+      },
+      "hard": {
+        "event_counts": {
+          "obstacles": 474,
+          "timing_source_histogram": {
+            "onset": 474
+          }
+        },
+        "residuals_onset_minus_beat_ms": {
+          "count": 474,
+          "median_abs_ms": 3.0,
+          "p90_abs_ms": 9.0,
+          "mean_abs_ms": 5.091,
+          "max_abs_ms": 78.0
+        },
+        "ioi_stats_ms": {
+          "beat_snap": {
+            "count": 473,
+            "min_ms": 392.0,
+            "median_ms": 399.0,
+            "p90_ms": 798.0,
+            "mean_ms": 467.605,
+            "max_ms": 3200.0
+          },
+          "onset_timing": {
+            "count": 473,
+            "min_ms": 327.0,
+            "median_ms": 401.0,
+            "p90_ms": 798.0,
+            "mean_ms": 467.672,
+            "max_ms": 3198.0
+          }
+        },
+        "dense_cluster_stats": {
+          "beat_snap": {
+            "threshold_ms": 300.0,
+            "short_ioi_count": 0,
+            "short_ioi_share": 0.0,
+            "cluster_count": 0,
+            "max_cluster_len": 0
+          },
+          "onset_timing": {
+            "threshold_ms": 300.0,
+            "short_ioi_count": 0,
+            "short_ioi_share": 0.0,
+            "cluster_count": 0,
+            "max_cluster_len": 0
+          }
+        },
+        "subdivision_label_distribution": {
+          "downbeat": 469,
+          "triplet": 5
+        },
+        "onset_class_distribution": {
+          "full-spectrum": 164,
+          "percussive": 310
+        },
+        "event_role_distribution": {
+          "easy": 211,
+          "hard": 134,
+          "medium": 129
+        },
+        "motif_stats": {
+          "motif_ids": [],
+          "motif_count": 0,
+          "rows_with_motif": 0,
+          "max_repeat_count": 0,
+          "max_length_beats": 0.0
+        }
+      }
+    },
+    "selection_summary_by_difficulty": {
+      "easy": {
+        "generation_path": "segment_focus",
+        "segments_total": 26,
+        "events_total": 1423,
+        "events_selected": 211,
+        "segment_details": [
+          {
+            "segment_idx": 0,
+            "section": "intro",
+            "start": 0.0,
+            "end": 9.8,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "percussive": 25,
+              "full-spectrum": 24,
+              "harmonic": 24
+            },
+            "class_flux": {
+              "percussive": 12101.4078,
+              "full-spectrum": 12069.5298,
+              "harmonic": 4116.7974
+            },
+            "focus_events_total": 25,
+            "difficulty_selected": 10,
+            "ranked_flux_p50": 505.5087,
+            "ranked_flux_max": 676.0911,
+            "n_easy": 10,
+            "n_medium": 16,
+            "n_hard": 22
+          },
+          {
+            "segment_idx": 1,
+            "section": "intro",
+            "start": 9.8,
+            "end": 19.59,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "full-spectrum": 24,
+              "percussive": 24,
+              "harmonic": 23
+            },
+            "class_flux": {
+              "full-spectrum": 10825.5763,
+              "percussive": 10825.5763,
+              "harmonic": 2994.302
+            },
+            "focus_events_total": 24,
+            "difficulty_selected": 10,
+            "ranked_flux_p50": 463.0041,
+            "ranked_flux_max": 656.6439,
+            "n_easy": 10,
+            "n_medium": 16,
+            "n_hard": 22
+          },
+          {
+            "segment_idx": 2,
+            "section": "drop",
+            "start": 19.59,
+            "end": 29.0,
+            "focus_class": "full-spectrum",
+            "fallback_reason": "anti_repeat_percussive",
+            "class_counts": {
+              "full-spectrum": 23,
+              "harmonic": 21,
+              "percussive": 24
+            },
+            "class_flux": {
+              "full-spectrum": 8945.5639,
+              "harmonic": 2423.7657,
+              "percussive": 8954.8092
+            },
+            "focus_events_total": 23,
+            "difficulty_selected": 9,
+            "ranked_flux_p50": 394.9736,
+            "ranked_flux_max": 647.3669,
+            "n_easy": 9,
+            "n_medium": 15,
+            "n_hard": 21
+          },
+          {
+            "segment_idx": 3,
+            "section": "drop",
+            "start": 29.0,
+            "end": 34.09,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "percussive": 13,
+              "full-spectrum": 13,
+              "harmonic": 13
+            },
+            "class_flux": {
+              "percussive": 3568.0657,
+              "full-spectrum": 3568.0657,
+              "harmonic": 943.8356
+            },
+            "focus_events_total": 13,
+            "difficulty_selected": 5,
+            "ranked_flux_p50": 276.5256,
+            "ranked_flux_max": 369.952,
+            "n_easy": 5,
+            "n_medium": 8,
+            "n_hard": 12
+          },
+          {
+            "segment_idx": 4,
+            "section": "drop",
+            "start": 34.09,
+            "end": 39.18,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "percussive": 12,
+              "harmonic": 12,
+              "full-spectrum": 12
+            },
+            "class_flux": {
+              "percussive": 3001.9833,
+              "harmonic": 1017.5394,
+              "full-spectrum": 3001.9833
+            },
+            "focus_events_total": 12,
+            "difficulty_selected": 5,
+            "ranked_flux_p50": 252.2472,
+            "ranked_flux_max": 406.4225,
+            "n_easy": 5,
+            "n_medium": 8,
+            "n_hard": 11
+          },
+          {
+            "segment_idx": 5,
+            "section": "drop",
+            "start": 39.18,
+            "end": 48.2,
+            "focus_class": "full-spectrum",
+            "fallback_reason": "anti_repeat_percussive",
+            "class_counts": {
+              "percussive": 23,
+              "full-spectrum": 19,
+              "harmonic": 19
+            },
+            "class_flux": {
+              "percussive": 3859.8272,
+              "full-spectrum": 3702.5595,
+              "harmonic": 1371.7699
+            },
+            "focus_events_total": 19,
+            "difficulty_selected": 8,
+            "ranked_flux_p50": 210.1151,
+            "ranked_flux_max": 347.3302,
+            "n_easy": 8,
+            "n_medium": 12,
+            "n_hard": 17
+          },
+          {
+            "segment_idx": 6,
+            "section": "drop",
+            "start": 48.2,
+            "end": 53.29,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "percussive": 13,
+              "full-spectrum": 13,
+              "harmonic": 11
+            },
+            "class_flux": {
+              "percussive": 2889.103,
+              "full-spectrum": 2883.6149,
+              "harmonic": 710.6661
+            },
+            "focus_events_total": 13,
+            "difficulty_selected": 5,
+            "ranked_flux_p50": 225.9821,
+            "ranked_flux_max": 370.0577,
+            "n_easy": 5,
+            "n_medium": 8,
+            "n_hard": 12
+          },
+          {
+            "segment_idx": 7,
+            "section": "drop",
+            "start": 53.29,
+            "end": 58.38,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "percussive": 12,
+              "full-spectrum": 12,
+              "harmonic": 12
+            },
+            "class_flux": {
+              "percussive": 3515.975,
+              "full-spectrum": 3515.975,
+              "harmonic": 1049.3896
+            },
+            "focus_events_total": 12,
+            "difficulty_selected": 5,
+            "ranked_flux_p50": 281.7293,
+            "ranked_flux_max": 406.9609,
+            "n_easy": 5,
+            "n_medium": 8,
+            "n_hard": 11
+          },
+          {
+            "segment_idx": 8,
+            "section": "drop",
+            "start": 58.38,
+            "end": 65.83,
+            "focus_class": "full-spectrum",
+            "fallback_reason": "anti_repeat_percussive",
+            "class_counts": {
+              "percussive": 19,
+              "full-spectrum": 18,
+              "harmonic": 18
+            },
+            "class_flux": {
+              "percussive": 4816.2402,
+              "full-spectrum": 4765.8732,
+              "harmonic": 1398.767
+            },
+            "focus_events_total": 18,
+            "difficulty_selected": 7,
+            "ranked_flux_p50": 266.7836,
+            "ranked_flux_max": 393.4052,
+            "n_easy": 7,
+            "n_medium": 12,
+            "n_hard": 16
+          },
+          {
+            "segment_idx": 9,
+            "section": "drop",
+            "start": 65.83,
+            "end": 72.49,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "full-spectrum": 17,
+              "harmonic": 16,
+              "percussive": 17
+            },
+            "class_flux": {
+              "full-spectrum": 3245.6999,
+              "harmonic": 1193.3288,
+              "percussive": 3245.6999
+            },
+            "focus_events_total": 17,
+            "difficulty_selected": 7,
+            "ranked_flux_p50": 176.3648,
+            "ranked_flux_max": 362.7826,
+            "n_easy": 7,
+            "n_medium": 11,
+            "n_hard": 15
+          },
+          {
+            "segment_idx": 10,
+            "section": "drop",
+            "start": 72.49,
+            "end": 86.99,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "percussive": 36,
+              "full-spectrum": 34,
+              "harmonic": 24
+            },
+            "class_flux": {
+              "percussive": 7875.6585,
+              "full-spectrum": 7745.1491,
+              "harmonic": 1625.1368
+            },
+            "focus_events_total": 36,
+            "difficulty_selected": 14,
+            "ranked_flux_p50": 216.9158,
+            "ranked_flux_max": 341.2557,
+            "n_easy": 14,
+            "n_medium": 23,
+            "n_hard": 32
+          },
+          {
+            "segment_idx": 11,
+            "section": "drop",
+            "start": 86.99,
+            "end": 96.78,
+            "focus_class": "full-spectrum",
+            "fallback_reason": "anti_repeat_percussive",
+            "class_counts": {
+              "full-spectrum": 22,
+              "percussive": 24,
+              "harmonic": 17
+            },
+            "class_flux": {
+              "full-spectrum": 4948.8539,
+              "percussive": 5041.7495,
+              "harmonic": 988.0356
+            },
+            "focus_events_total": 22,
+            "difficulty_selected": 9,
+            "ranked_flux_p50": 244.3057,
+            "ranked_flux_max": 324.1652,
+            "n_easy": 9,
+            "n_medium": 14,
+            "n_hard": 20
+          },
+          {
+            "segment_idx": 12,
+            "section": "drop",
+            "start": 96.78,
+            "end": 106.19,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "percussive": 24,
+              "full-spectrum": 20,
+              "harmonic": 17
+            },
+            "class_flux": {
+              "percussive": 4379.1911,
+              "full-spectrum": 4244.1923,
+              "harmonic": 1080.5811
+            },
+            "focus_events_total": 24,
+            "difficulty_selected": 10,
+            "ranked_flux_p50": 197.4488,
+            "ranked_flux_max": 320.4438,
+            "n_easy": 10,
+            "n_medium": 16,
+            "n_hard": 22
+          },
+          {
+            "segment_idx": 13,
+            "section": "drop",
+            "start": 106.19,
+            "end": 115.98,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "percussive": 24,
+              "full-spectrum": 16,
+              "harmonic": 10
+            },
+            "class_flux": {
+              "percussive": 3066.4228,
+              "full-spectrum": 2774.4149,
+              "harmonic": 704.4016
+            },
+            "focus_events_total": 24,
+            "difficulty_selected": 10,
+            "ranked_flux_p50": 118.9872,
+            "ranked_flux_max": 280.8027,
+            "n_easy": 10,
+            "n_medium": 16,
+            "n_hard": 22
+          },
+          {
+            "segment_idx": 14,
+            "section": "drop",
+            "start": 115.98,
+            "end": 125.39,
+            "focus_class": "full-spectrum",
+            "fallback_reason": "anti_repeat_percussive",
+            "class_counts": {
+              "percussive": 24,
+              "full-spectrum": 23,
+              "harmonic": 20
+            },
+            "class_flux": {
+              "percussive": 5133.0648,
+              "full-spectrum": 5105.0913,
+              "harmonic": 1293.8783
+            },
+            "focus_events_total": 23,
+            "difficulty_selected": 9,
+            "ranked_flux_p50": 234.7406,
+            "ranked_flux_max": 316.4614,
+            "n_easy": 9,
+            "n_medium": 15,
+            "n_hard": 21
+          },
+          {
+            "segment_idx": 15,
+            "section": "drop",
+            "start": 125.39,
+            "end": 135.18,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "percussive": 24,
+              "full-spectrum": 19,
+              "harmonic": 12
+            },
+            "class_flux": {
+              "percussive": 3346.8564,
+              "full-spectrum": 3190.6796,
+              "harmonic": 701.8392
+            },
+            "focus_events_total": 24,
+            "difficulty_selected": 10,
+            "ranked_flux_p50": 158.0847,
+            "ranked_flux_max": 300.8774,
+            "n_easy": 10,
+            "n_medium": 16,
+            "n_hard": 22
+          },
+          {
+            "segment_idx": 16,
+            "section": "drop",
+            "start": 135.18,
+            "end": 144.2,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "percussive": 23,
+              "full-spectrum": 19,
+              "harmonic": 15
+            },
+            "class_flux": {
+              "percussive": 4333.0091,
+              "full-spectrum": 4208.1816,
+              "harmonic": 885.9922
+            },
+            "focus_events_total": 23,
+            "difficulty_selected": 9,
+            "ranked_flux_p50": 186.4496,
+            "ranked_flux_max": 338.2341,
+            "n_easy": 9,
+            "n_medium": 15,
+            "n_hard": 21
+          },
+          {
+            "segment_idx": 17,
+            "section": "drop",
+            "start": 144.2,
+            "end": 153.99,
+            "focus_class": "full-spectrum",
+            "fallback_reason": "anti_repeat_percussive",
+            "class_counts": {
+              "percussive": 24,
+              "full-spectrum": 23,
+              "harmonic": 22
+            },
+            "class_flux": {
+              "percussive": 6368.8842,
+              "full-spectrum": 6354.5612,
+              "harmonic": 1554.3021
+            },
+            "focus_events_total": 23,
+            "difficulty_selected": 9,
+            "ranked_flux_p50": 265.8936,
+            "ranked_flux_max": 377.3884,
+            "n_easy": 9,
+            "n_medium": 15,
+            "n_hard": 21
+          },
+          {
+            "segment_idx": 18,
+            "section": "drop",
+            "start": 153.99,
+            "end": 163.79,
+            "focus_class": "full-spectrum",
+            "fallback_reason": null,
+            "class_counts": {
+              "full-spectrum": 22,
+              "harmonic": 18,
+              "percussive": 22
+            },
+            "class_flux": {
+              "full-spectrum": 7457.1375,
+              "harmonic": 2243.4029,
+              "percussive": 7343.5345
+            },
+            "focus_events_total": 22,
+            "difficulty_selected": 9,
+            "ranked_flux_p50": 281.5863,
+            "ranked_flux_max": 1012.2682,
+            "n_easy": 9,
+            "n_medium": 14,
+            "n_hard": 20
+          },
+          {
+            "segment_idx": 19,
+            "section": "drop",
+            "start": 163.79,
+            "end": 173.19,
+            "focus_class": "percussive",
+            "fallback_reason": "anti_repeat_full-spectrum",
+            "class_counts": {
+              "percussive": 22,
+              "full-spectrum": 17,
+              "harmonic": 12
+            },
+            "class_flux": {
+              "percussive": 4561.0822,
+              "full-spectrum": 4479.3481,
+              "harmonic": 868.1157
+            },
+            "focus_events_total": 22,
+            "difficulty_selected": 9,
+            "ranked_flux_p50": 229.0179,
+            "ranked_flux_max": 387.9473,
+            "n_easy": 9,
+            "n_medium": 14,
+            "n_hard": 20
+          },
+          {
+            "segment_idx": 20,
+            "section": "drop",
+            "start": 173.19,
+            "end": 178.29,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "percussive": 11,
+              "full-spectrum": 4,
+              "harmonic": 3
+            },
+            "class_flux": {
+              "percussive": 937.2021,
+              "full-spectrum": 806.6517,
+              "harmonic": 118.9222
+            },
+            "focus_events_total": 11,
+            "difficulty_selected": 4,
+            "ranked_flux_p50": 26.0095,
+            "ranked_flux_max": 261.7805,
+            "n_easy": 4,
+            "n_medium": 7,
+            "n_hard": 10
+          },
+          {
+            "segment_idx": 21,
+            "section": "drop",
+            "start": 178.29,
+            "end": 186.12,
+            "focus_class": "full-spectrum",
+            "fallback_reason": "anti_repeat_percussive",
+            "class_counts": {
+              "percussive": 16,
+              "full-spectrum": 7,
+              "harmonic": 7
+            },
+            "class_flux": {
+              "percussive": 2007.5417,
+              "full-spectrum": 1824.7731,
+              "harmonic": 424.4092
+            },
+            "focus_events_total": 7,
+            "difficulty_selected": 3,
+            "ranked_flux_p50": 293.9871,
+            "ranked_flux_max": 345.5432,
+            "n_easy": 3,
+            "n_medium": 5,
+            "n_hard": 6
+          },
+          {
+            "segment_idx": 22,
+            "section": "drop",
+            "start": 186.12,
+            "end": 192.39,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "percussive": 15,
+              "full-spectrum": 15,
+              "harmonic": 15
+            },
+            "class_flux": {
+              "percussive": 4564.3842,
+              "full-spectrum": 4564.3842,
+              "harmonic": 1417.9051
+            },
+            "focus_events_total": 15,
+            "difficulty_selected": 6,
+            "ranked_flux_p50": 312.2782,
+            "ranked_flux_max": 451.5491,
+            "n_easy": 6,
+            "n_medium": 10,
+            "n_hard": 14
+          },
+          {
+            "segment_idx": 23,
+            "section": "drop",
+            "start": 192.39,
+            "end": 201.8,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "full-spectrum": 24,
+              "harmonic": 24,
+              "percussive": 24
+            },
+            "class_flux": {
+              "full-spectrum": 7907.1107,
+              "harmonic": 2518.3041,
+              "percussive": 7907.1107
+            },
+            "focus_events_total": 24,
+            "difficulty_selected": 10,
+            "ranked_flux_p50": 324.774,
+            "ranked_flux_max": 503.8315,
+            "n_easy": 10,
+            "n_medium": 16,
+            "n_hard": 22
+          },
+          {
+            "segment_idx": 24,
+            "section": "drop",
+            "start": 201.8,
+            "end": 211.59,
+            "focus_class": "full-spectrum",
+            "fallback_reason": "anti_repeat_percussive",
+            "class_counts": {
+              "full-spectrum": 24,
+              "harmonic": 24,
+              "percussive": 24
+            },
+            "class_flux": {
+              "full-spectrum": 7874.8485,
+              "harmonic": 2507.3458,
+              "percussive": 7874.8485
+            },
+            "focus_events_total": 24,
+            "difficulty_selected": 10,
+            "ranked_flux_p50": 311.7251,
+            "ranked_flux_max": 479.6661,
+            "n_easy": 10,
+            "n_medium": 16,
+            "n_hard": 22
+          },
+          {
+            "segment_idx": 25,
+            "section": "outro",
+            "start": 211.59,
+            "end": 226.57,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "percussive": 22,
+              "full-spectrum": 4,
+              "harmonic": 5
+            },
+            "class_flux": {
+              "percussive": 734.5692,
+              "full-spectrum": 649.9356,
+              "harmonic": 298.1165
+            },
+            "focus_events_total": 22,
+            "difficulty_selected": 9,
+            "ranked_flux_p50": 25.7517,
+            "ranked_flux_max": 248.1333,
+            "n_easy": 9,
+            "n_medium": 14,
+            "n_hard": 20
+          }
+        ]
+      },
+      "medium": {
+        "generation_path": "segment_focus",
+        "segments_total": 26,
+        "events_total": 1423,
+        "events_selected": 340,
+        "segment_details": [
+          {
+            "segment_idx": 0,
+            "section": "intro",
+            "start": 0.0,
+            "end": 9.8,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "percussive": 25,
+              "full-spectrum": 24,
+              "harmonic": 24
+            },
+            "class_flux": {
+              "percussive": 12101.4078,
+              "full-spectrum": 12069.5298,
+              "harmonic": 4116.7974
+            },
+            "focus_events_total": 25,
+            "difficulty_selected": 16,
+            "ranked_flux_p50": 505.5087,
+            "ranked_flux_max": 676.0911,
+            "n_easy": 10,
+            "n_medium": 16,
+            "n_hard": 22
+          },
+          {
+            "segment_idx": 1,
+            "section": "intro",
+            "start": 9.8,
+            "end": 19.59,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "full-spectrum": 24,
+              "percussive": 24,
+              "harmonic": 23
+            },
+            "class_flux": {
+              "full-spectrum": 10825.5763,
+              "percussive": 10825.5763,
+              "harmonic": 2994.302
+            },
+            "focus_events_total": 24,
+            "difficulty_selected": 16,
+            "ranked_flux_p50": 463.0041,
+            "ranked_flux_max": 656.6439,
+            "n_easy": 10,
+            "n_medium": 16,
+            "n_hard": 22
+          },
+          {
+            "segment_idx": 2,
+            "section": "drop",
+            "start": 19.59,
+            "end": 29.0,
+            "focus_class": "full-spectrum",
+            "fallback_reason": "anti_repeat_percussive",
+            "class_counts": {
+              "full-spectrum": 23,
+              "harmonic": 21,
+              "percussive": 24
+            },
+            "class_flux": {
+              "full-spectrum": 8945.5639,
+              "harmonic": 2423.7657,
+              "percussive": 8954.8092
+            },
+            "focus_events_total": 23,
+            "difficulty_selected": 15,
+            "ranked_flux_p50": 394.9736,
+            "ranked_flux_max": 647.3669,
+            "n_easy": 9,
+            "n_medium": 15,
+            "n_hard": 21
+          },
+          {
+            "segment_idx": 3,
+            "section": "drop",
+            "start": 29.0,
+            "end": 34.09,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "percussive": 13,
+              "full-spectrum": 13,
+              "harmonic": 13
+            },
+            "class_flux": {
+              "percussive": 3568.0657,
+              "full-spectrum": 3568.0657,
+              "harmonic": 943.8356
+            },
+            "focus_events_total": 13,
+            "difficulty_selected": 8,
+            "ranked_flux_p50": 276.5256,
+            "ranked_flux_max": 369.952,
+            "n_easy": 5,
+            "n_medium": 8,
+            "n_hard": 12
+          },
+          {
+            "segment_idx": 4,
+            "section": "drop",
+            "start": 34.09,
+            "end": 39.18,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "percussive": 12,
+              "harmonic": 12,
+              "full-spectrum": 12
+            },
+            "class_flux": {
+              "percussive": 3001.9833,
+              "harmonic": 1017.5394,
+              "full-spectrum": 3001.9833
+            },
+            "focus_events_total": 12,
+            "difficulty_selected": 8,
+            "ranked_flux_p50": 252.2472,
+            "ranked_flux_max": 406.4225,
+            "n_easy": 5,
+            "n_medium": 8,
+            "n_hard": 11
+          },
+          {
+            "segment_idx": 5,
+            "section": "drop",
+            "start": 39.18,
+            "end": 48.2,
+            "focus_class": "full-spectrum",
+            "fallback_reason": "anti_repeat_percussive",
+            "class_counts": {
+              "percussive": 23,
+              "full-spectrum": 19,
+              "harmonic": 19
+            },
+            "class_flux": {
+              "percussive": 3859.8272,
+              "full-spectrum": 3702.5595,
+              "harmonic": 1371.7699
+            },
+            "focus_events_total": 19,
+            "difficulty_selected": 12,
+            "ranked_flux_p50": 210.1151,
+            "ranked_flux_max": 347.3302,
+            "n_easy": 8,
+            "n_medium": 12,
+            "n_hard": 17
+          },
+          {
+            "segment_idx": 6,
+            "section": "drop",
+            "start": 48.2,
+            "end": 53.29,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "percussive": 13,
+              "full-spectrum": 13,
+              "harmonic": 11
+            },
+            "class_flux": {
+              "percussive": 2889.103,
+              "full-spectrum": 2883.6149,
+              "harmonic": 710.6661
+            },
+            "focus_events_total": 13,
+            "difficulty_selected": 8,
+            "ranked_flux_p50": 225.9821,
+            "ranked_flux_max": 370.0577,
+            "n_easy": 5,
+            "n_medium": 8,
+            "n_hard": 12
+          },
+          {
+            "segment_idx": 7,
+            "section": "drop",
+            "start": 53.29,
+            "end": 58.38,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "percussive": 12,
+              "full-spectrum": 12,
+              "harmonic": 12
+            },
+            "class_flux": {
+              "percussive": 3515.975,
+              "full-spectrum": 3515.975,
+              "harmonic": 1049.3896
+            },
+            "focus_events_total": 12,
+            "difficulty_selected": 8,
+            "ranked_flux_p50": 281.7293,
+            "ranked_flux_max": 406.9609,
+            "n_easy": 5,
+            "n_medium": 8,
+            "n_hard": 11
+          },
+          {
+            "segment_idx": 8,
+            "section": "drop",
+            "start": 58.38,
+            "end": 65.83,
+            "focus_class": "full-spectrum",
+            "fallback_reason": "anti_repeat_percussive",
+            "class_counts": {
+              "percussive": 19,
+              "full-spectrum": 18,
+              "harmonic": 18
+            },
+            "class_flux": {
+              "percussive": 4816.2402,
+              "full-spectrum": 4765.8732,
+              "harmonic": 1398.767
+            },
+            "focus_events_total": 18,
+            "difficulty_selected": 12,
+            "ranked_flux_p50": 266.7836,
+            "ranked_flux_max": 393.4052,
+            "n_easy": 7,
+            "n_medium": 12,
+            "n_hard": 16
+          },
+          {
+            "segment_idx": 9,
+            "section": "drop",
+            "start": 65.83,
+            "end": 72.49,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "full-spectrum": 17,
+              "harmonic": 16,
+              "percussive": 17
+            },
+            "class_flux": {
+              "full-spectrum": 3245.6999,
+              "harmonic": 1193.3288,
+              "percussive": 3245.6999
+            },
+            "focus_events_total": 17,
+            "difficulty_selected": 11,
+            "ranked_flux_p50": 176.3648,
+            "ranked_flux_max": 362.7826,
+            "n_easy": 7,
+            "n_medium": 11,
+            "n_hard": 15
+          },
+          {
+            "segment_idx": 10,
+            "section": "drop",
+            "start": 72.49,
+            "end": 86.99,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "percussive": 36,
+              "full-spectrum": 34,
+              "harmonic": 24
+            },
+            "class_flux": {
+              "percussive": 7875.6585,
+              "full-spectrum": 7745.1491,
+              "harmonic": 1625.1368
+            },
+            "focus_events_total": 36,
+            "difficulty_selected": 23,
+            "ranked_flux_p50": 216.9158,
+            "ranked_flux_max": 341.2557,
+            "n_easy": 14,
+            "n_medium": 23,
+            "n_hard": 32
+          },
+          {
+            "segment_idx": 11,
+            "section": "drop",
+            "start": 86.99,
+            "end": 96.78,
+            "focus_class": "full-spectrum",
+            "fallback_reason": "anti_repeat_percussive",
+            "class_counts": {
+              "full-spectrum": 22,
+              "percussive": 24,
+              "harmonic": 17
+            },
+            "class_flux": {
+              "full-spectrum": 4948.8539,
+              "percussive": 5041.7495,
+              "harmonic": 988.0356
+            },
+            "focus_events_total": 22,
+            "difficulty_selected": 14,
+            "ranked_flux_p50": 244.3057,
+            "ranked_flux_max": 324.1652,
+            "n_easy": 9,
+            "n_medium": 14,
+            "n_hard": 20
+          },
+          {
+            "segment_idx": 12,
+            "section": "drop",
+            "start": 96.78,
+            "end": 106.19,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "percussive": 24,
+              "full-spectrum": 20,
+              "harmonic": 17
+            },
+            "class_flux": {
+              "percussive": 4379.1911,
+              "full-spectrum": 4244.1923,
+              "harmonic": 1080.5811
+            },
+            "focus_events_total": 24,
+            "difficulty_selected": 16,
+            "ranked_flux_p50": 197.4488,
+            "ranked_flux_max": 320.4438,
+            "n_easy": 10,
+            "n_medium": 16,
+            "n_hard": 22
+          },
+          {
+            "segment_idx": 13,
+            "section": "drop",
+            "start": 106.19,
+            "end": 115.98,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "percussive": 24,
+              "full-spectrum": 16,
+              "harmonic": 10
+            },
+            "class_flux": {
+              "percussive": 3066.4228,
+              "full-spectrum": 2774.4149,
+              "harmonic": 704.4016
+            },
+            "focus_events_total": 24,
+            "difficulty_selected": 16,
+            "ranked_flux_p50": 118.9872,
+            "ranked_flux_max": 280.8027,
+            "n_easy": 10,
+            "n_medium": 16,
+            "n_hard": 22
+          },
+          {
+            "segment_idx": 14,
+            "section": "drop",
+            "start": 115.98,
+            "end": 125.39,
+            "focus_class": "full-spectrum",
+            "fallback_reason": "anti_repeat_percussive",
+            "class_counts": {
+              "percussive": 24,
+              "full-spectrum": 23,
+              "harmonic": 20
+            },
+            "class_flux": {
+              "percussive": 5133.0648,
+              "full-spectrum": 5105.0913,
+              "harmonic": 1293.8783
+            },
+            "focus_events_total": 23,
+            "difficulty_selected": 15,
+            "ranked_flux_p50": 234.7406,
+            "ranked_flux_max": 316.4614,
+            "n_easy": 9,
+            "n_medium": 15,
+            "n_hard": 21
+          },
+          {
+            "segment_idx": 15,
+            "section": "drop",
+            "start": 125.39,
+            "end": 135.18,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "percussive": 24,
+              "full-spectrum": 19,
+              "harmonic": 12
+            },
+            "class_flux": {
+              "percussive": 3346.8564,
+              "full-spectrum": 3190.6796,
+              "harmonic": 701.8392
+            },
+            "focus_events_total": 24,
+            "difficulty_selected": 16,
+            "ranked_flux_p50": 158.0847,
+            "ranked_flux_max": 300.8774,
+            "n_easy": 10,
+            "n_medium": 16,
+            "n_hard": 22
+          },
+          {
+            "segment_idx": 16,
+            "section": "drop",
+            "start": 135.18,
+            "end": 144.2,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "percussive": 23,
+              "full-spectrum": 19,
+              "harmonic": 15
+            },
+            "class_flux": {
+              "percussive": 4333.0091,
+              "full-spectrum": 4208.1816,
+              "harmonic": 885.9922
+            },
+            "focus_events_total": 23,
+            "difficulty_selected": 15,
+            "ranked_flux_p50": 186.4496,
+            "ranked_flux_max": 338.2341,
+            "n_easy": 9,
+            "n_medium": 15,
+            "n_hard": 21
+          },
+          {
+            "segment_idx": 17,
+            "section": "drop",
+            "start": 144.2,
+            "end": 153.99,
+            "focus_class": "full-spectrum",
+            "fallback_reason": "anti_repeat_percussive",
+            "class_counts": {
+              "percussive": 24,
+              "full-spectrum": 23,
+              "harmonic": 22
+            },
+            "class_flux": {
+              "percussive": 6368.8842,
+              "full-spectrum": 6354.5612,
+              "harmonic": 1554.3021
+            },
+            "focus_events_total": 23,
+            "difficulty_selected": 15,
+            "ranked_flux_p50": 265.8936,
+            "ranked_flux_max": 377.3884,
+            "n_easy": 9,
+            "n_medium": 15,
+            "n_hard": 21
+          },
+          {
+            "segment_idx": 18,
+            "section": "drop",
+            "start": 153.99,
+            "end": 163.79,
+            "focus_class": "full-spectrum",
+            "fallback_reason": null,
+            "class_counts": {
+              "full-spectrum": 22,
+              "harmonic": 18,
+              "percussive": 22
+            },
+            "class_flux": {
+              "full-spectrum": 7457.1375,
+              "harmonic": 2243.4029,
+              "percussive": 7343.5345
+            },
+            "focus_events_total": 22,
+            "difficulty_selected": 14,
+            "ranked_flux_p50": 281.5863,
+            "ranked_flux_max": 1012.2682,
+            "n_easy": 9,
+            "n_medium": 14,
+            "n_hard": 20
+          },
+          {
+            "segment_idx": 19,
+            "section": "drop",
+            "start": 163.79,
+            "end": 173.19,
+            "focus_class": "percussive",
+            "fallback_reason": "anti_repeat_full-spectrum",
+            "class_counts": {
+              "percussive": 22,
+              "full-spectrum": 17,
+              "harmonic": 12
+            },
+            "class_flux": {
+              "percussive": 4561.0822,
+              "full-spectrum": 4479.3481,
+              "harmonic": 868.1157
+            },
+            "focus_events_total": 22,
+            "difficulty_selected": 14,
+            "ranked_flux_p50": 229.0179,
+            "ranked_flux_max": 387.9473,
+            "n_easy": 9,
+            "n_medium": 14,
+            "n_hard": 20
+          },
+          {
+            "segment_idx": 20,
+            "section": "drop",
+            "start": 173.19,
+            "end": 178.29,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "percussive": 11,
+              "full-spectrum": 4,
+              "harmonic": 3
+            },
+            "class_flux": {
+              "percussive": 937.2021,
+              "full-spectrum": 806.6517,
+              "harmonic": 118.9222
+            },
+            "focus_events_total": 11,
+            "difficulty_selected": 7,
+            "ranked_flux_p50": 26.0095,
+            "ranked_flux_max": 261.7805,
+            "n_easy": 4,
+            "n_medium": 7,
+            "n_hard": 10
+          },
+          {
+            "segment_idx": 21,
+            "section": "drop",
+            "start": 178.29,
+            "end": 186.12,
+            "focus_class": "full-spectrum",
+            "fallback_reason": "anti_repeat_percussive",
+            "class_counts": {
+              "percussive": 16,
+              "full-spectrum": 7,
+              "harmonic": 7
+            },
+            "class_flux": {
+              "percussive": 2007.5417,
+              "full-spectrum": 1824.7731,
+              "harmonic": 424.4092
+            },
+            "focus_events_total": 7,
+            "difficulty_selected": 5,
+            "ranked_flux_p50": 293.9871,
+            "ranked_flux_max": 345.5432,
+            "n_easy": 3,
+            "n_medium": 5,
+            "n_hard": 6
+          },
+          {
+            "segment_idx": 22,
+            "section": "drop",
+            "start": 186.12,
+            "end": 192.39,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "percussive": 15,
+              "full-spectrum": 15,
+              "harmonic": 15
+            },
+            "class_flux": {
+              "percussive": 4564.3842,
+              "full-spectrum": 4564.3842,
+              "harmonic": 1417.9051
+            },
+            "focus_events_total": 15,
+            "difficulty_selected": 10,
+            "ranked_flux_p50": 312.2782,
+            "ranked_flux_max": 451.5491,
+            "n_easy": 6,
+            "n_medium": 10,
+            "n_hard": 14
+          },
+          {
+            "segment_idx": 23,
+            "section": "drop",
+            "start": 192.39,
+            "end": 201.8,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "full-spectrum": 24,
+              "harmonic": 24,
+              "percussive": 24
+            },
+            "class_flux": {
+              "full-spectrum": 7907.1107,
+              "harmonic": 2518.3041,
+              "percussive": 7907.1107
+            },
+            "focus_events_total": 24,
+            "difficulty_selected": 16,
+            "ranked_flux_p50": 324.774,
+            "ranked_flux_max": 503.8315,
+            "n_easy": 10,
+            "n_medium": 16,
+            "n_hard": 22
+          },
+          {
+            "segment_idx": 24,
+            "section": "drop",
+            "start": 201.8,
+            "end": 211.59,
+            "focus_class": "full-spectrum",
+            "fallback_reason": "anti_repeat_percussive",
+            "class_counts": {
+              "full-spectrum": 24,
+              "harmonic": 24,
+              "percussive": 24
+            },
+            "class_flux": {
+              "full-spectrum": 7874.8485,
+              "harmonic": 2507.3458,
+              "percussive": 7874.8485
+            },
+            "focus_events_total": 24,
+            "difficulty_selected": 16,
+            "ranked_flux_p50": 311.7251,
+            "ranked_flux_max": 479.6661,
+            "n_easy": 10,
+            "n_medium": 16,
+            "n_hard": 22
+          },
+          {
+            "segment_idx": 25,
+            "section": "outro",
+            "start": 211.59,
+            "end": 226.57,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "percussive": 22,
+              "full-spectrum": 4,
+              "harmonic": 5
+            },
+            "class_flux": {
+              "percussive": 734.5692,
+              "full-spectrum": 649.9356,
+              "harmonic": 298.1165
+            },
+            "focus_events_total": 22,
+            "difficulty_selected": 14,
+            "ranked_flux_p50": 25.7517,
+            "ranked_flux_max": 248.1333,
+            "n_easy": 9,
+            "n_medium": 14,
+            "n_hard": 20
+          }
+        ]
+      },
+      "hard": {
+        "generation_path": "segment_focus",
+        "segments_total": 26,
+        "events_total": 1423,
+        "events_selected": 474,
+        "segment_details": [
+          {
+            "segment_idx": 0,
+            "section": "intro",
+            "start": 0.0,
+            "end": 9.8,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "percussive": 25,
+              "full-spectrum": 24,
+              "harmonic": 24
+            },
+            "class_flux": {
+              "percussive": 12101.4078,
+              "full-spectrum": 12069.5298,
+              "harmonic": 4116.7974
+            },
+            "focus_events_total": 25,
+            "difficulty_selected": 22,
+            "ranked_flux_p50": 505.5087,
+            "ranked_flux_max": 676.0911,
+            "n_easy": 10,
+            "n_medium": 16,
+            "n_hard": 22
+          },
+          {
+            "segment_idx": 1,
+            "section": "intro",
+            "start": 9.8,
+            "end": 19.59,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "full-spectrum": 24,
+              "percussive": 24,
+              "harmonic": 23
+            },
+            "class_flux": {
+              "full-spectrum": 10825.5763,
+              "percussive": 10825.5763,
+              "harmonic": 2994.302
+            },
+            "focus_events_total": 24,
+            "difficulty_selected": 22,
+            "ranked_flux_p50": 463.0041,
+            "ranked_flux_max": 656.6439,
+            "n_easy": 10,
+            "n_medium": 16,
+            "n_hard": 22
+          },
+          {
+            "segment_idx": 2,
+            "section": "drop",
+            "start": 19.59,
+            "end": 29.0,
+            "focus_class": "full-spectrum",
+            "fallback_reason": "anti_repeat_percussive",
+            "class_counts": {
+              "full-spectrum": 23,
+              "harmonic": 21,
+              "percussive": 24
+            },
+            "class_flux": {
+              "full-spectrum": 8945.5639,
+              "harmonic": 2423.7657,
+              "percussive": 8954.8092
+            },
+            "focus_events_total": 23,
+            "difficulty_selected": 21,
+            "ranked_flux_p50": 394.9736,
+            "ranked_flux_max": 647.3669,
+            "n_easy": 9,
+            "n_medium": 15,
+            "n_hard": 21
+          },
+          {
+            "segment_idx": 3,
+            "section": "drop",
+            "start": 29.0,
+            "end": 34.09,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "percussive": 13,
+              "full-spectrum": 13,
+              "harmonic": 13
+            },
+            "class_flux": {
+              "percussive": 3568.0657,
+              "full-spectrum": 3568.0657,
+              "harmonic": 943.8356
+            },
+            "focus_events_total": 13,
+            "difficulty_selected": 12,
+            "ranked_flux_p50": 276.5256,
+            "ranked_flux_max": 369.952,
+            "n_easy": 5,
+            "n_medium": 8,
+            "n_hard": 12
+          },
+          {
+            "segment_idx": 4,
+            "section": "drop",
+            "start": 34.09,
+            "end": 39.18,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "percussive": 12,
+              "harmonic": 12,
+              "full-spectrum": 12
+            },
+            "class_flux": {
+              "percussive": 3001.9833,
+              "harmonic": 1017.5394,
+              "full-spectrum": 3001.9833
+            },
+            "focus_events_total": 12,
+            "difficulty_selected": 11,
+            "ranked_flux_p50": 252.2472,
+            "ranked_flux_max": 406.4225,
+            "n_easy": 5,
+            "n_medium": 8,
+            "n_hard": 11
+          },
+          {
+            "segment_idx": 5,
+            "section": "drop",
+            "start": 39.18,
+            "end": 48.2,
+            "focus_class": "full-spectrum",
+            "fallback_reason": "anti_repeat_percussive",
+            "class_counts": {
+              "percussive": 23,
+              "full-spectrum": 19,
+              "harmonic": 19
+            },
+            "class_flux": {
+              "percussive": 3859.8272,
+              "full-spectrum": 3702.5595,
+              "harmonic": 1371.7699
+            },
+            "focus_events_total": 19,
+            "difficulty_selected": 17,
+            "ranked_flux_p50": 210.1151,
+            "ranked_flux_max": 347.3302,
+            "n_easy": 8,
+            "n_medium": 12,
+            "n_hard": 17
+          },
+          {
+            "segment_idx": 6,
+            "section": "drop",
+            "start": 48.2,
+            "end": 53.29,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "percussive": 13,
+              "full-spectrum": 13,
+              "harmonic": 11
+            },
+            "class_flux": {
+              "percussive": 2889.103,
+              "full-spectrum": 2883.6149,
+              "harmonic": 710.6661
+            },
+            "focus_events_total": 13,
+            "difficulty_selected": 12,
+            "ranked_flux_p50": 225.9821,
+            "ranked_flux_max": 370.0577,
+            "n_easy": 5,
+            "n_medium": 8,
+            "n_hard": 12
+          },
+          {
+            "segment_idx": 7,
+            "section": "drop",
+            "start": 53.29,
+            "end": 58.38,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "percussive": 12,
+              "full-spectrum": 12,
+              "harmonic": 12
+            },
+            "class_flux": {
+              "percussive": 3515.975,
+              "full-spectrum": 3515.975,
+              "harmonic": 1049.3896
+            },
+            "focus_events_total": 12,
+            "difficulty_selected": 11,
+            "ranked_flux_p50": 281.7293,
+            "ranked_flux_max": 406.9609,
+            "n_easy": 5,
+            "n_medium": 8,
+            "n_hard": 11
+          },
+          {
+            "segment_idx": 8,
+            "section": "drop",
+            "start": 58.38,
+            "end": 65.83,
+            "focus_class": "full-spectrum",
+            "fallback_reason": "anti_repeat_percussive",
+            "class_counts": {
+              "percussive": 19,
+              "full-spectrum": 18,
+              "harmonic": 18
+            },
+            "class_flux": {
+              "percussive": 4816.2402,
+              "full-spectrum": 4765.8732,
+              "harmonic": 1398.767
+            },
+            "focus_events_total": 18,
+            "difficulty_selected": 16,
+            "ranked_flux_p50": 266.7836,
+            "ranked_flux_max": 393.4052,
+            "n_easy": 7,
+            "n_medium": 12,
+            "n_hard": 16
+          },
+          {
+            "segment_idx": 9,
+            "section": "drop",
+            "start": 65.83,
+            "end": 72.49,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "full-spectrum": 17,
+              "harmonic": 16,
+              "percussive": 17
+            },
+            "class_flux": {
+              "full-spectrum": 3245.6999,
+              "harmonic": 1193.3288,
+              "percussive": 3245.6999
+            },
+            "focus_events_total": 17,
+            "difficulty_selected": 15,
+            "ranked_flux_p50": 176.3648,
+            "ranked_flux_max": 362.7826,
+            "n_easy": 7,
+            "n_medium": 11,
+            "n_hard": 15
+          },
+          {
+            "segment_idx": 10,
+            "section": "drop",
+            "start": 72.49,
+            "end": 86.99,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "percussive": 36,
+              "full-spectrum": 34,
+              "harmonic": 24
+            },
+            "class_flux": {
+              "percussive": 7875.6585,
+              "full-spectrum": 7745.1491,
+              "harmonic": 1625.1368
+            },
+            "focus_events_total": 36,
+            "difficulty_selected": 32,
+            "ranked_flux_p50": 216.9158,
+            "ranked_flux_max": 341.2557,
+            "n_easy": 14,
+            "n_medium": 23,
+            "n_hard": 32
+          },
+          {
+            "segment_idx": 11,
+            "section": "drop",
+            "start": 86.99,
+            "end": 96.78,
+            "focus_class": "full-spectrum",
+            "fallback_reason": "anti_repeat_percussive",
+            "class_counts": {
+              "full-spectrum": 22,
+              "percussive": 24,
+              "harmonic": 17
+            },
+            "class_flux": {
+              "full-spectrum": 4948.8539,
+              "percussive": 5041.7495,
+              "harmonic": 988.0356
+            },
+            "focus_events_total": 22,
+            "difficulty_selected": 20,
+            "ranked_flux_p50": 244.3057,
+            "ranked_flux_max": 324.1652,
+            "n_easy": 9,
+            "n_medium": 14,
+            "n_hard": 20
+          },
+          {
+            "segment_idx": 12,
+            "section": "drop",
+            "start": 96.78,
+            "end": 106.19,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "percussive": 24,
+              "full-spectrum": 20,
+              "harmonic": 17
+            },
+            "class_flux": {
+              "percussive": 4379.1911,
+              "full-spectrum": 4244.1923,
+              "harmonic": 1080.5811
+            },
+            "focus_events_total": 24,
+            "difficulty_selected": 22,
+            "ranked_flux_p50": 197.4488,
+            "ranked_flux_max": 320.4438,
+            "n_easy": 10,
+            "n_medium": 16,
+            "n_hard": 22
+          },
+          {
+            "segment_idx": 13,
+            "section": "drop",
+            "start": 106.19,
+            "end": 115.98,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "percussive": 24,
+              "full-spectrum": 16,
+              "harmonic": 10
+            },
+            "class_flux": {
+              "percussive": 3066.4228,
+              "full-spectrum": 2774.4149,
+              "harmonic": 704.4016
+            },
+            "focus_events_total": 24,
+            "difficulty_selected": 22,
+            "ranked_flux_p50": 118.9872,
+            "ranked_flux_max": 280.8027,
+            "n_easy": 10,
+            "n_medium": 16,
+            "n_hard": 22
+          },
+          {
+            "segment_idx": 14,
+            "section": "drop",
+            "start": 115.98,
+            "end": 125.39,
+            "focus_class": "full-spectrum",
+            "fallback_reason": "anti_repeat_percussive",
+            "class_counts": {
+              "percussive": 24,
+              "full-spectrum": 23,
+              "harmonic": 20
+            },
+            "class_flux": {
+              "percussive": 5133.0648,
+              "full-spectrum": 5105.0913,
+              "harmonic": 1293.8783
+            },
+            "focus_events_total": 23,
+            "difficulty_selected": 21,
+            "ranked_flux_p50": 234.7406,
+            "ranked_flux_max": 316.4614,
+            "n_easy": 9,
+            "n_medium": 15,
+            "n_hard": 21
+          },
+          {
+            "segment_idx": 15,
+            "section": "drop",
+            "start": 125.39,
+            "end": 135.18,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "percussive": 24,
+              "full-spectrum": 19,
+              "harmonic": 12
+            },
+            "class_flux": {
+              "percussive": 3346.8564,
+              "full-spectrum": 3190.6796,
+              "harmonic": 701.8392
+            },
+            "focus_events_total": 24,
+            "difficulty_selected": 22,
+            "ranked_flux_p50": 158.0847,
+            "ranked_flux_max": 300.8774,
+            "n_easy": 10,
+            "n_medium": 16,
+            "n_hard": 22
+          },
+          {
+            "segment_idx": 16,
+            "section": "drop",
+            "start": 135.18,
+            "end": 144.2,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "percussive": 23,
+              "full-spectrum": 19,
+              "harmonic": 15
+            },
+            "class_flux": {
+              "percussive": 4333.0091,
+              "full-spectrum": 4208.1816,
+              "harmonic": 885.9922
+            },
+            "focus_events_total": 23,
+            "difficulty_selected": 21,
+            "ranked_flux_p50": 186.4496,
+            "ranked_flux_max": 338.2341,
+            "n_easy": 9,
+            "n_medium": 15,
+            "n_hard": 21
+          },
+          {
+            "segment_idx": 17,
+            "section": "drop",
+            "start": 144.2,
+            "end": 153.99,
+            "focus_class": "full-spectrum",
+            "fallback_reason": "anti_repeat_percussive",
+            "class_counts": {
+              "percussive": 24,
+              "full-spectrum": 23,
+              "harmonic": 22
+            },
+            "class_flux": {
+              "percussive": 6368.8842,
+              "full-spectrum": 6354.5612,
+              "harmonic": 1554.3021
+            },
+            "focus_events_total": 23,
+            "difficulty_selected": 21,
+            "ranked_flux_p50": 265.8936,
+            "ranked_flux_max": 377.3884,
+            "n_easy": 9,
+            "n_medium": 15,
+            "n_hard": 21
+          },
+          {
+            "segment_idx": 18,
+            "section": "drop",
+            "start": 153.99,
+            "end": 163.79,
+            "focus_class": "full-spectrum",
+            "fallback_reason": null,
+            "class_counts": {
+              "full-spectrum": 22,
+              "harmonic": 18,
+              "percussive": 22
+            },
+            "class_flux": {
+              "full-spectrum": 7457.1375,
+              "harmonic": 2243.4029,
+              "percussive": 7343.5345
+            },
+            "focus_events_total": 22,
+            "difficulty_selected": 20,
+            "ranked_flux_p50": 281.5863,
+            "ranked_flux_max": 1012.2682,
+            "n_easy": 9,
+            "n_medium": 14,
+            "n_hard": 20
+          },
+          {
+            "segment_idx": 19,
+            "section": "drop",
+            "start": 163.79,
+            "end": 173.19,
+            "focus_class": "percussive",
+            "fallback_reason": "anti_repeat_full-spectrum",
+            "class_counts": {
+              "percussive": 22,
+              "full-spectrum": 17,
+              "harmonic": 12
+            },
+            "class_flux": {
+              "percussive": 4561.0822,
+              "full-spectrum": 4479.3481,
+              "harmonic": 868.1157
+            },
+            "focus_events_total": 22,
+            "difficulty_selected": 20,
+            "ranked_flux_p50": 229.0179,
+            "ranked_flux_max": 387.9473,
+            "n_easy": 9,
+            "n_medium": 14,
+            "n_hard": 20
+          },
+          {
+            "segment_idx": 20,
+            "section": "drop",
+            "start": 173.19,
+            "end": 178.29,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "percussive": 11,
+              "full-spectrum": 4,
+              "harmonic": 3
+            },
+            "class_flux": {
+              "percussive": 937.2021,
+              "full-spectrum": 806.6517,
+              "harmonic": 118.9222
+            },
+            "focus_events_total": 11,
+            "difficulty_selected": 10,
+            "ranked_flux_p50": 26.0095,
+            "ranked_flux_max": 261.7805,
+            "n_easy": 4,
+            "n_medium": 7,
+            "n_hard": 10
+          },
+          {
+            "segment_idx": 21,
+            "section": "drop",
+            "start": 178.29,
+            "end": 186.12,
+            "focus_class": "full-spectrum",
+            "fallback_reason": "anti_repeat_percussive",
+            "class_counts": {
+              "percussive": 16,
+              "full-spectrum": 7,
+              "harmonic": 7
+            },
+            "class_flux": {
+              "percussive": 2007.5417,
+              "full-spectrum": 1824.7731,
+              "harmonic": 424.4092
+            },
+            "focus_events_total": 7,
+            "difficulty_selected": 6,
+            "ranked_flux_p50": 293.9871,
+            "ranked_flux_max": 345.5432,
+            "n_easy": 3,
+            "n_medium": 5,
+            "n_hard": 6
+          },
+          {
+            "segment_idx": 22,
+            "section": "drop",
+            "start": 186.12,
+            "end": 192.39,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "percussive": 15,
+              "full-spectrum": 15,
+              "harmonic": 15
+            },
+            "class_flux": {
+              "percussive": 4564.3842,
+              "full-spectrum": 4564.3842,
+              "harmonic": 1417.9051
+            },
+            "focus_events_total": 15,
+            "difficulty_selected": 14,
+            "ranked_flux_p50": 312.2782,
+            "ranked_flux_max": 451.5491,
+            "n_easy": 6,
+            "n_medium": 10,
+            "n_hard": 14
+          },
+          {
+            "segment_idx": 23,
+            "section": "drop",
+            "start": 192.39,
+            "end": 201.8,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "full-spectrum": 24,
+              "harmonic": 24,
+              "percussive": 24
+            },
+            "class_flux": {
+              "full-spectrum": 7907.1107,
+              "harmonic": 2518.3041,
+              "percussive": 7907.1107
+            },
+            "focus_events_total": 24,
+            "difficulty_selected": 22,
+            "ranked_flux_p50": 324.774,
+            "ranked_flux_max": 503.8315,
+            "n_easy": 10,
+            "n_medium": 16,
+            "n_hard": 22
+          },
+          {
+            "segment_idx": 24,
+            "section": "drop",
+            "start": 201.8,
+            "end": 211.59,
+            "focus_class": "full-spectrum",
+            "fallback_reason": "anti_repeat_percussive",
+            "class_counts": {
+              "full-spectrum": 24,
+              "harmonic": 24,
+              "percussive": 24
+            },
+            "class_flux": {
+              "full-spectrum": 7874.8485,
+              "harmonic": 2507.3458,
+              "percussive": 7874.8485
+            },
+            "focus_events_total": 24,
+            "difficulty_selected": 22,
+            "ranked_flux_p50": 311.7251,
+            "ranked_flux_max": 479.6661,
+            "n_easy": 10,
+            "n_medium": 16,
+            "n_hard": 22
+          },
+          {
+            "segment_idx": 25,
+            "section": "outro",
+            "start": 211.59,
+            "end": 226.57,
+            "focus_class": "percussive",
+            "fallback_reason": null,
+            "class_counts": {
+              "percussive": 22,
+              "full-spectrum": 4,
+              "harmonic": 5
+            },
+            "class_flux": {
+              "percussive": 734.5692,
+              "full-spectrum": 649.9356,
+              "harmonic": 298.1165
+            },
+            "focus_events_total": 22,
+            "difficulty_selected": 20,
+            "ranked_flux_p50": 25.7517,
+            "ranked_flux_max": 248.1333,
+            "n_easy": 9,
+            "n_medium": 14,
+            "n_hard": 20
+          }
+        ]
+      }
+    },
+    "obstacle_counts_by_difficulty": {
+      "easy": 211,
+      "medium": 340,
+      "hard": 474
+    }
+  }
+}

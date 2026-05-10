@@ -16,7 +16,7 @@ void init_popup_display(PopupDisplay& pd,
 
     if (sp.timing_tier.has_value()) {
         const char* grade = "BAD";
-        pd.font_size = FontSize::Small;
+        pd.font_size = FontSize::Medium;
         switch (*sp.timing_tier) {
             case TimingTier::Perfect: grade = "PERFECT"; pd.font_size = FontSize::Medium; break;
             case TimingTier::Good:    grade = "GOOD";    break;
@@ -41,12 +41,9 @@ entt::entity spawn_score_popup(entt::registry& reg, const PopupSpawnParams& para
     // Color by timing tier (no timing → default yellow-white)
     uint8_t pr = 255, pg = 255, pb = 50;
     if (params.timing_tier.has_value()) {
-        switch (*params.timing_tier) {
-            case TimingTier::Perfect: pr = 100; pg = 255; pb = 100; break; // green
-            case TimingTier::Good:    pr = 180; pg = 255; pb = 100; break; // yellow-green
-            case TimingTier::Ok:      pr = 255; pg = 255; pb = 100; break; // yellow
-            case TimingTier::Bad:     pr = 255; pg = 150; pb = 100; break; // orange
-        }
+        pr = 100;
+        pg = 255;
+        pb = 100;
     }
     Color color{pr, pg, pb, 255};
     reg.emplace<Color>(popup, color);

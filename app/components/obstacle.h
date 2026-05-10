@@ -39,4 +39,3 @@ struct BlockedLanes {
 struct RequiredLane {
     int8_t lane = 0;
 };
-
