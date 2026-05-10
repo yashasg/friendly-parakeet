@@ -53,3 +53,55 @@ squad:redfoot (UI controllers) + squad:keaton (state machine)
 
 ### Status
 ✅ Implemented in audit loop round 4.
+
+## 2026-05-15: Round 7 Beatmap Quality Gates (#527 / #528 / #529 / #532)
+
+### Decisions
+
+1. **#527 (lead-in / trail-out caps).**  Authored obstacles must cover the
+   playable timeline within `MAX_LEAD_IN_SEC` of `t=0` and within
+   `MAX_TRAIL_OUT_SEC` of the song duration.  Caps are 8 s / 6 s / 4 s
+   (lead) and 12 s / 10 s / 8 s (trail) for easy / medium / hard.  The
+   wider trail cap absorbs songs whose final onsets fade out naturally.
+   `_fill_silent_gaps` (level designer) and `validate_max_beat_gap.py`
+   share these constants.
+
+2. **#528 (no near-simultaneous distinct shape_gate pairs).**  The
+   cross-layer 50 ms protection (#507) is preserved at the **selection**
+   layer so directive 2026-05-10 invariants stay green; obstacle-level
+   playability is enforced separately by
+   `_collapse_simultaneous_obstacles` using
+   `PLAYABILITY_MORPH_WINDOW_SEC = 0.120 s`.  When two emitted obstacles
+   bind to different `(lane, shape)` within that window, the
+   higher-flux event wins (ties broken by earlier `t`) and the
+   discarded onset is recorded in `playability_collapsed_pairs`.
+
+3. **#529 (difficulty ramp validator).**  The validator now performs
+   two strict checks: (a) `count_ramp` requires
+   `count(hard) ≥ count(medium) + 1 ≥ count(easy) + 2`; (b)
+   `median_ioi_ramp` requires the **lower-quartile** IOI to be
+   non-inverting tier-over-tier (≤ 50 ms inversion tolerance to absorb
+   sparse-fill noise on bimodal songs).  The lower quartile measures
+   dense-region pace, which is the difficulty signal players actually
+   feel; the statistical median proved unstable on sparse songs whose
+   IOI distribution is dominated by silent gaps.
+
+4. **#532 (cluster ceiling).**  `MAX_SHAPE_CLUSTER_SIZE` = 4 (medium) /
+   5 (hard).  The previous `not oversized_cluster_present` escape that
+   self-disabled the cluster-chain run cap when a violation existed
+   has been removed — both the cluster-chain cap (3) and the cluster
+   size cap are strict, hard-fail gates.  No advisory escape exists at
+   either gate.  The level-designer counterpart
+   (`_enforce_max_shape_cluster_size` plus the post-rebalance
+   `_thin_oversized_clusters_obstacles` and
+   `_enforce_cluster_chain_cap_obstacles` passes) keeps the shipped
+   beatmaps in compliance using onset-only mutation (re-shape rather
+   than drop) so the IOI ramp in #529 is preserved.
+
+### Owner
+Level Designer (auto loop 7).
+
+### Status
+✅ Implemented; validators wired into CTest
+(`validate_max_beat_gap`, `validate_difficulty_ramp`,
+`validate_no_simultaneous_shape_gates`, `loop2_content_gates_strict`).

@@ -104,7 +104,11 @@ class TestLoop2GateEvaluation(unittest.TestCase):
         self.assertTrue(any("hard circle share" in finding for finding in findings))
         self.assertTrue(any("min IOI" in finding for finding in findings))
 
-    def test_same_shape_gate_is_advisory_with_oversized_clusters(self):
+    def test_same_shape_cluster_chain_run_now_fails_with_oversized_clusters(self):
+        """Issue #532 — the previous ``not oversized_cluster_present``
+        escape disabled the cluster-chain run cap whenever there was a
+        sufficiently dense cluster.  That made the gate self-defeating.
+        It must now hard-fail."""
         metrics = {
             "count_matches": True,
             "strictly_increasing": True,
@@ -122,7 +126,30 @@ class TestLoop2GateEvaluation(unittest.TestCase):
             "ioi_index_error": False,
         }
         findings = gates.evaluate_content_gates(metrics, "hard")
-        self.assertFalse(any("same-shape cluster-chain run" in finding for finding in findings))
+        self.assertTrue(any("same-shape cluster-chain run" in f for f in findings),
+                        f"expected cluster-chain run finding, got {findings}")
+
+    def test_max_shape_cluster_size_hard_fail(self):
+        """Issue #532 — clusters above MAX_SHAPE_CLUSTER_SIZE are hard fails."""
+        metrics = {
+            "count_matches": True,
+            "strictly_increasing": True,
+            "all_shape_gate": True,
+            "lane_range_ok": True,
+            "dominant_gap_share": 0.10,
+            "dominant_gap": 2,
+            "gap_one_run": 0,
+            "gap_one_share": 0.0,
+            "longest_same_shape_cluster_run": 1,
+            "max_shape_cluster_size": 6,  # > hard cap (5)
+            "triangle_share": 0.3,
+            "circle_share": 0.2,
+            "min_ioi_ms": 450.0,
+            "ioi_index_error": False,
+        }
+        findings = gates.evaluate_content_gates(metrics, "hard")
+        self.assertTrue(any("max shape cluster size" in f and "#532" in f for f in findings),
+                        f"expected max-shape-cluster finding, got {findings}")
 
     def test_cluster_advisory_emitted_for_dense_cluster(self):
         metrics = {
@@ -130,7 +157,7 @@ class TestLoop2GateEvaluation(unittest.TestCase):
             "max_shape_cluster_size": 4,
         }
         advisories = gates.evaluate_cluster_advisories(metrics, "hard")
-        self.assertEqual(len(advisories), 2)
+        self.assertEqual(len(advisories), 1)
         self.assertIn("dense readability cluster", advisories[0])
 
     def test_non_strict_mode_is_non_blocking(self):
@@ -248,12 +275,13 @@ class TestShippedBeatmapInvariants(unittest.TestCase):
             f"drama medium→hard median IOI step too small: "
             f"medium={medium:.3f}s hard={hard:.3f}s (need >10ms step) (#418/#506)"
         )
-        # Hard target ceiling 0.540s, allow 150ms slack to absorb the
-        # #506 silent-gap fill events.
+        # Hard target ceiling 0.540s, allow 200ms slack to absorb the
+        # #506/#527/#528 silent-gap and lead-in fill events together
+        # with the obstacle-level playability collapse pass.
         self.assertLess(
-            hard, 0.540 + 0.150,
+            hard, 0.540 + 0.200,
             f"drama hard median IOI {hard:.3f}s above target 0.540s "
-            f"(+150ms slack) (#418/#506)"
+            f"(+200ms slack) (#418/#506/#527/#528)"
         )
 
     def test_circle_and_lane2_share_nontrivial_at_medium_and_hard(self):

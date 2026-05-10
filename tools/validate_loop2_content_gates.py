@@ -20,6 +20,12 @@ GAP_MONOTONY_CAP = {"medium": 0.40, "hard": 0.35}
 SAME_SHAPE_RUN_CAP = {"medium": 3, "hard": 3}
 SHAPE_CLUSTER_GAP = 3
 DENSE_CLUSTER_WARN_SIZE = {"medium": 3, "hard": 3}
+# Issue #532 — strict ceiling on dense same-shape clusters.  The previous
+# revision silently demoted ``SAME_SHAPE_RUN_CAP`` to advisory whenever an
+# oversized cluster was present (the symptom turned the gate off).  The
+# replacement is a hard cap on cluster *size*: medium ≤ 4, hard ≤ 5.  See
+# decisions.md for rationale.
+MAX_SHAPE_CLUSTER_SIZE = {"medium": 4, "hard": 5}
 GAP_ONE_MAX_RUN = {"easy": 0, "medium": 2, "hard": 3}
 GAP_ONE_SHARE_CAP = {"medium": 0.20, "hard": 0.20}
 # Keep strict min-IOI floors aligned with the active onset-only selector in
@@ -242,13 +248,18 @@ def evaluate_content_gates(metrics: dict[str, float | int | bool | None], diffic
 
     run_cap = SAME_SHAPE_RUN_CAP.get(difficulty)
     cluster_run = int(metrics.get("longest_same_shape_cluster_run", metrics.get("longest_same_shape_run", 0)))
-    warn_size = DENSE_CLUSTER_WARN_SIZE.get(difficulty)
-    oversized_cluster_present = (
-        warn_size is not None and int(metrics.get("max_shape_cluster_size", 0)) > warn_size
-    )
-    if run_cap is not None and not oversized_cluster_present and cluster_run > run_cap:
+    # Issue #532 — the previous ``not oversized_cluster_present`` escape
+    # was self-disabling: any oversized cluster turned the cluster-chain
+    # run cap off, even though the cluster *was* the violation.  Removed.
+    if run_cap is not None and cluster_run > run_cap:
         findings.append(
             f"same-shape cluster-chain run {cluster_run} exceeds cap {run_cap}"
+        )
+    cluster_size_cap = MAX_SHAPE_CLUSTER_SIZE.get(difficulty)
+    max_cluster = int(metrics.get("max_shape_cluster_size", 0))
+    if cluster_size_cap is not None and max_cluster > cluster_size_cap:
+        findings.append(
+            f"max shape cluster size {max_cluster} exceeds cap {cluster_size_cap} (#532)"
         )
 
     if not onset_timed:
@@ -306,12 +317,15 @@ def evaluate_cluster_advisories(
     if warn_size is None:
         return advisories
     max_cluster = int(metrics.get("max_shape_cluster_size", 0))
-    if max_cluster > warn_size:
+    cluster_size_cap = MAX_SHAPE_CLUSTER_SIZE.get(difficulty)
+    # Only emit the diagnostic note when the cluster is in the
+    # "warn but not yet hard-fail" band (warn_size < size <= cap).
+    # Sizes above the cap are handled by ``evaluate_content_gates``
+    # as a hard finding (#532); no advisory needed.
+    upper_bound = cluster_size_cap if cluster_size_cap is not None else float("inf")
+    if max_cluster > warn_size and max_cluster <= upper_bound:
         advisories.append(
             f"dense readability cluster size={max_cluster} (> {warn_size}) may inflate raw shape_run={int(metrics.get('longest_same_shape_run', 0))}"
-        )
-        advisories.append(
-            "same-shape cluster-chain gate treated as advisory while oversized dense clusters are present"
         )
     return advisories
 

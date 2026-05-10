@@ -590,6 +590,21 @@ if(NOT EMSCRIPTEN)
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/validate_loop2_content_gates.py --strict
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     )
+    add_test(
+        NAME validate_max_beat_gap
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/validate_max_beat_gap.py
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    )
+    add_test(
+        NAME validate_difficulty_ramp
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/validate_difficulty_ramp.py
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    )
+    add_test(
+        NAME validate_no_simultaneous_shape_gates
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/validate_no_simultaneous_shape_gates.py
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    )
     find_program(NODE_EXECUTABLE node)
     if(NODE_EXECUTABLE)
         file(GLOB _beatmap_editor_node_test_files CONFIGURE_DEPENDS

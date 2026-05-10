@@ -133,5 +133,78 @@ class TestValidateMaxBeatGap(unittest.TestCase):
         self.assertIn("onset-mode limit", stderr.getvalue())
 
 
+    def test_lead_in_oversize_fails(self):
+        """Issue #527 — first event later than the lead-in cap fails."""
+        path = self._write_beatmap(
+            "fixture_lead_in.json",
+            {
+                "bpm": 120.0,
+                "difficulties": {
+                    "medium": {
+                        "beats": [
+                            {"beat": 0, "kind": "shape_gate", "time_sec": 30.0,
+                             "timing_source": "onset"},
+                            {"beat": 1, "kind": "shape_gate", "time_sec": 30.5,
+                             "timing_source": "onset"},
+                        ]
+                    }
+                },
+            },
+        )
+        stdout = io.StringIO(); stderr = io.StringIO()
+        with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            rc = max_gap.main([str(path)])
+        self.assertEqual(rc, 1)
+        self.assertIn("lead-in", stderr.getvalue().lower())
+
+    def test_trail_out_oversize_fails(self):
+        """Issue #527 — last event ending well before song end fails."""
+        path = self._write_beatmap(
+            "fixture_trail_out.json",
+            {
+                "bpm": 120.0,
+                "duration_sec": 120.0,
+                "difficulties": {
+                    "medium": {
+                        "beats": [
+                            {"beat": 0, "kind": "shape_gate", "time_sec": 0.0,
+                             "timing_source": "onset"},
+                            {"beat": 1, "kind": "shape_gate", "time_sec": 30.0,
+                             "timing_source": "onset"},
+                        ]
+                    }
+                },
+            },
+        )
+        stdout = io.StringIO(); stderr = io.StringIO()
+        with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            rc = max_gap.main([str(path)])
+        self.assertEqual(rc, 1)
+        self.assertIn("trail-out", stderr.getvalue().lower())
+
+    def test_lead_in_within_cap_passes(self):
+        path = self._write_beatmap(
+            "fixture_lead_in_ok.json",
+            {
+                "bpm": 120.0,
+                "duration_sec": 10.0,
+                "difficulties": {
+                    "medium": {
+                        "beats": [
+                            {"beat": 0, "kind": "shape_gate", "time_sec": 2.0,
+                             "timing_source": "onset"},
+                            {"beat": 1, "kind": "shape_gate", "time_sec": 9.5,
+                             "timing_source": "onset"},
+                        ]
+                    }
+                },
+            },
+        )
+        stdout = io.StringIO(); stderr = io.StringIO()
+        with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            rc = max_gap.main([str(path)])
+        self.assertEqual(rc, 0, msg=stderr.getvalue())
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
