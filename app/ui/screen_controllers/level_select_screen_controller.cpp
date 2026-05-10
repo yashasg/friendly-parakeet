@@ -17,7 +17,6 @@ namespace {
 using LevelSelectController = RGuiScreenController<LevelSelectScreenLayoutState,
                                                     &LevelSelectScreenLayout_Init,
                                                     &LevelSelectScreenLayout_Render>;
-LevelSelectController level_select_controller;
 
 // Level card rendering constants
 constexpr float CARD_X = 110.0f;
@@ -77,13 +76,14 @@ void handle_level_card_pointer_input(LevelSelectState& lss, const InputState& in
 } // anonymous namespace
 
 void init_level_select_screen_ui() {
-    level_select_controller.init();
+    // Controller state is registry-owned and initialized lazily in render.
 }
 
 void render_level_select_screen_ui(entt::registry& reg) {
+    auto& controller = screen_controller<LevelSelectController>(reg);
     auto& lss = reg.ctx().get<LevelSelectState>();
     const auto& input = reg.ctx().get<InputState>();
-    auto& state = level_select_controller.state();
+    auto& state = controller.state();
     auto& gs = reg.ctx().get<GameState>();
     handle_level_card_pointer_input(lss, input);
     

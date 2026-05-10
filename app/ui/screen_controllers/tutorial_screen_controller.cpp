@@ -12,18 +12,18 @@ namespace {
 using TutorialController = RGuiScreenController<TutorialLayoutState,
                                                  &TutorialLayout_Init,
                                                  &TutorialLayout_Render>;
-TutorialController tutorial_controller;
 
 } // anonymous namespace
 
 void init_tutorial_screen_ui() {
-    tutorial_controller.init();
+    // Controller state is registry-owned and initialized lazily in render.
 }
 
 void render_tutorial_screen_ui(entt::registry& reg) {
-    tutorial_controller.render();
+    auto& controller = screen_controller<TutorialController>(reg);
+    controller.render();
 
-    if (tutorial_controller.state().ContinueButtonPressed) {
+    if (controller.state().ContinueButtonPressed) {
         auto& gs = reg.ctx().get<GameState>();
         gs.transition_pending = true;
         gs.next_phase = GamePhase::Playing;

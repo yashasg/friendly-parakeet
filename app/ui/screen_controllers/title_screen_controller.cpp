@@ -14,7 +14,6 @@ namespace {
 using TitleController = RGuiScreenController<TitleLayoutState,
                                               &TitleLayout_Init,
                                               &TitleLayout_Render>;
-TitleController title_controller;
 
 bool read_title_pointer_release(const entt::registry& reg, Vector2& pointer) {
     const auto& input = reg.ctx().get<InputState>();
@@ -38,17 +37,18 @@ bool is_start_tap(const entt::registry& reg, const TitleLayoutState& state) {
 } // anonymous namespace
 
 void init_title_screen_ui() {
-    title_controller.init();
+    // Controller state is registry-owned and initialized lazily in render.
 }
 
 void render_title_screen_ui(entt::registry& reg) {
-    auto& state = title_controller.state();
+    auto& controller = screen_controller<TitleController>(reg);
+    auto& state = controller.state();
     const int saved_text_size = GuiGetStyle(DEFAULT, TEXT_SIZE);
     const int saved_label_alignment = GuiGetStyle(LABEL, TEXT_ALIGNMENT);
 
     GuiSetStyle(DEFAULT, TEXT_SIZE, 28);
     GuiSetStyle(LABEL, TEXT_ALIGNMENT, TEXT_ALIGN_CENTER);
-    title_controller.render();
+    controller.render();
     GuiSetStyle(LABEL, TEXT_ALIGNMENT, saved_label_alignment);
     GuiSetStyle(DEFAULT, TEXT_SIZE, saved_text_size);
 

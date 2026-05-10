@@ -2,6 +2,7 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <magic_enum/magic_enum.hpp>
 #include "test_helpers.h"
+#include "ui/screen_controllers/screen_controller_base.h"
 #include "util/rhythm_math.h"
 
 // ── timing_multiplier ────────────────────────────────────────
@@ -200,4 +201,25 @@ TEST_CASE("make_rhythm_player: starts as Hexagon", "[helpers]") {
     auto& sw = reg.get<ShapeWindow>(player);
     CHECK(sw.target_shape == Shape::Hexagon);
     CHECK(sw.phase == WindowPhase::Idle);
+}
+
+namespace {
+struct DummyScreenController {
+    int init_calls = 0;
+    void init() { ++init_calls; }
+};
+}
+
+TEST_CASE("screen_controller helper keeps controller state in registry context", "[ui][architecture]") {
+    entt::registry reg_a;
+    entt::registry reg_b;
+
+    auto& a1 = screen_controller<DummyScreenController>(reg_a);
+    auto& a2 = screen_controller<DummyScreenController>(reg_a);
+    auto& b1 = screen_controller<DummyScreenController>(reg_b);
+
+    CHECK(&a1 == &a2);
+    CHECK(&a1 != &b1);
+    CHECK(a1.init_calls == 1);
+    CHECK(b1.init_calls == 1);
 }

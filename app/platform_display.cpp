@@ -36,30 +36,32 @@ void platform_pre_blit() {
     rlLoadIdentity();
 }
 
-static struct {
-    entt::registry* reg;
-    float accumulator;
-} g_state = { nullptr, 0.0f };
+struct WasmLoopState {
+    entt::registry* reg = nullptr;
+    float accumulator = 0.0f;
+    bool shutting_down = false;
+};
 
-// Idempotent WASM shutdown — guarded by g_state.reg sentinel.
-// Called either from frame_callback (graceful quit) or from the browser
-// beforeunload event (tab close / page navigate).
-static void wasm_shutdown_once() {
-    if (!g_state.reg) return;
-    entt::registry* reg = g_state.reg;
-    // Null before calling shutdown so any re-entrant call is a no-op.
-    g_state.reg = nullptr;
-    g_state.accumulator = 0.0f;
+static void wasm_shutdown_once(WasmLoopState& state) {
+    if (!state.reg || state.shutting_down) return;
+    state.shutting_down = true;
+    entt::registry* reg = state.reg;
+    state.reg = nullptr;
+    state.accumulator = 0.0f;
     game_loop_shutdown(*reg);
 }
 
-static void frame_callback() {
-    if (!g_state.reg) return;
-    game_loop_frame(*g_state.reg, g_state.accumulator);
+// Idempotent WASM shutdown — guarded by WasmLoopState::reg sentinel.
+// Called either from frame_callback (graceful quit) or from the browser
+// beforeunload event (tab close / page navigate).
+static void frame_callback(void* user_data) {
+    auto& state = *static_cast<WasmLoopState*>(user_data);
+    if (!state.reg) return;
+    game_loop_frame(*state.reg, state.accumulator);
     // Mirror the native quit conditions: window-close OR explicit quit request.
-    if (game_loop_should_quit(*g_state.reg)) {
+    if (game_loop_should_quit(*state.reg)) {
         emscripten_cancel_main_loop();
-        wasm_shutdown_once();
+        wasm_shutdown_once(state);
     }
 }
 
@@ -67,15 +69,20 @@ static void frame_callback() {
 // (tab close, navigation, refresh) while the main loop is still running.
 static const char* on_web_unload(int /*event_type*/,
                                   const void* /*reserved*/,
-                                  void* /*user_data*/) {
-    wasm_shutdown_once();
+                                  void* user_data) {
+    auto* state = static_cast<WasmLoopState*>(user_data);
+    if (state) wasm_shutdown_once(*state);
     return nullptr; // empty string suppresses the browser confirmation dialog
 }
 
 void platform_run_loop(entt::registry& reg) {
-    g_state = { &reg, 0.0f };
-    emscripten_set_beforeunload_callback(nullptr, on_web_unload);
-    emscripten_set_main_loop(frame_callback, 0, 1);
+    auto* state = reg.ctx().find<WasmLoopState>();
+    if (!state) state = &reg.ctx().emplace<WasmLoopState>();
+    state->reg = &reg;
+    state->accumulator = 0.0f;
+    state->shutting_down = false;
+    emscripten_set_beforeunload_callback(state, on_web_unload);
+    emscripten_set_main_loop_arg(frame_callback, state, 0, 1);
 }
 
 #else // Native
