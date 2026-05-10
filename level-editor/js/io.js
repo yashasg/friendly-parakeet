@@ -575,7 +575,7 @@ export function validate(state) {
                 severity: 'error',
             });
         }
-        if (hasBeatTimes && beatTimesValid && entry.beat >= beatTimes.length) {
+        if (hasBeatTimes && beatTimesValid && (entry.beat < 0 || entry.beat >= beatTimes.length)) {
             errors.push({
                 beatIndex: entry.beat,
                 message: 'Beat index is out of range for beat_times array',
@@ -677,7 +677,7 @@ export function validate(state) {
                 errors.push({
                     beatIndex: entry.beat,
                     message: 'Different-shape gates must be >= 3 beats apart',
-                    severity: 'warning',
+                    severity: 'error',
                 });
             }
         }

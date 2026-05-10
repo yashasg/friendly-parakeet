@@ -45,6 +45,25 @@ export function entryToX(entry, state) {
     return beatToX(entry.beat, state);
 }
 
+function stackKeyForEntry(entry, state) {
+    return `${Math.round(entryToX(entry, state) * 10)}:${entry.lane}`;
+}
+
+export function entryRenderX(beats, index, state) {
+    const entry = beats?.[index];
+    if (!entry) return 0;
+
+    const stackKey = stackKeyForEntry(entry, state);
+    let stackTotal = 0;
+    let stackIndex = 0;
+    for (let i = 0; i < beats.length; i++) {
+        if (stackKeyForEntry(beats[i], state) !== stackKey) continue;
+        if (i < index) stackIndex++;
+        stackTotal++;
+    }
+    return entryToX(entry, state) + (stackIndex - (stackTotal - 1) / 2) * 10;
+}
+
 // ─── Init ─────────────────────────────────────────────────────────
 
 export function init(canvasElement) {
@@ -97,7 +116,7 @@ export function hitTest(canvasX, canvasY) {
             if (lane >= 0 && Number.isInteger(entry.lane) && entry.lane !== lane) {
                 continue;
             }
-            const cx = entryToX(entry, state);
+            const cx = entryRenderX(beats, i, state);
             const halfCell = state.zoom / 2;
             const distance = Math.abs(canvasX - cx);
             if (distance <= halfCell && distance < bestDistance) {
@@ -350,7 +369,7 @@ function renderObstacles(ctx, state, firstBeat, lastBeat) {
     const stackTotals = new Map();
     const stackSeen = new Map();
     for (const entry of beats) {
-        const key = `${Math.round(entryToX(entry, state) * 10)}:${entry.lane}`;
+        const key = stackKeyForEntry(entry, state);
         stackTotals.set(key, (stackTotals.get(key) || 0) + 1);
     }
 
@@ -358,11 +377,11 @@ function renderObstacles(ctx, state, firstBeat, lastBeat) {
         const entry = beats[i];
         if (entry.beat < firstBeat || entry.beat > lastBeat) continue;
 
-        const stackKey = `${Math.round(entryToX(entry, state) * 10)}:${entry.lane}`;
+        const stackKey = stackKeyForEntry(entry, state);
         const stackTotal = stackTotals.get(stackKey) || 1;
         const stackIndex = stackSeen.get(stackKey) || 0;
         stackSeen.set(stackKey, stackIndex + 1);
-        const x = entryToX(entry, state) + (stackIndex - (stackTotal - 1) / 2) * 10;
+        const x = entryRenderX(beats, i, state);
         const y = HEADER_HEIGHT + entry.lane * LANE_HEIGHT + LANE_HEIGHT / 2;
 
         if (KINDS_WITH_SHAPE.includes(entry.kind)) {
