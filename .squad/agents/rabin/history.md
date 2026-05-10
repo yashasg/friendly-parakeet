@@ -134,3 +134,114 @@ Re-audited shipped beatmaps (`content/beatmaps/*_beatmap.json`) against `decisio
 4. Regenerate all 3 shipped beatmaps post-fix; re-validate #125/#134/#135/#138 gates.
 
 **Status:** ✅ Analysis complete, no code changes per charter. Orchestration log: `.squad/orchestration-log/2026-05-02T07-26-41Z-rabin.md`. Session log: `.squad/log/2026-05-02T07-26-41Z-scribe-session.md`.
+
+## 2026-05-09 — Loop 1 content acceptance gates (beatmap quality)
+
+**Charter:** Translate the 2_drama defects from Sr Game Designer's beat
+review (gap monotony, same-shape runs, shape distribution, off-beat
+material, density) into numeric content gates for Loop 1, separating
+hard gates (block ship) from diagnostic warnings (escalate). No
+runtime/schema changes; `tools/level_designer.py` owned by Fenster
+this loop, so the gates are written against the existing schema only.
+
+**Method:** Re-measured `content/beatmaps/2_drama_beatmap.json` at
+HEAD of `beatmap/quality-improvements` and computed gap distribution,
+same-shape runs, shape shares, longest runs, and a phase-class
+histogram of analysis events. Cross-referenced against the Sr Game
+Designer review's AC-1..AC-8 and Rabin's subdivision charting note.
+
+**Key new numbers (not in Sr Game Designer review):**
+- Hard's longest same-shape run is **circle×26** (the review tracked
+  4+ within section windows; whole-chart contiguous run is 26).
+- Of 216 detected onsets, **72.2% are sub-beat** (51.4% eighths,
+  20.8% triplets) — the off-beat material exists, the generator
+  discards it via the 80 ms snap window.
+- Medium: gap=2 41.3% (FAIL HG-1 by 1.3 pp), longest run tri×11.
+- Hard: gap=2 51.3% (FAIL HG-1 by 16.3 pp), triangle 1.5% (FAIL
+  HG-3 floor of 25%), circle 51% (FAIL HG-3 ceiling of 40%).
+
+**Gate structure delivered (artifact §2/§3):**
+- Hard gates HG-1..HG-6: gap-monotony cap, same-shape-run cap,
+  shape distribution band, absolute-time IOI floor, gap=1 burst cap,
+  internal-consistency hygiene (count == len(beats), valid indices).
+- Diagnostic warnings DW-A..DW-F: gap-distribution entropy, lane
+  monotony, 30 s shape drought, gap=2 vs neighbour skew, subdivision-
+  shape mismatch (read-only diagnostic that produces the Loop 2
+  schema-change argument), and run-cap saturation.
+
+**Loop 1 success rubric:** filled per-difficulty target columns for
+medium and hard against today's measured baseline (artifact §4).
+"All-HG-pass" required to ship; ≥2 DW trips on the same difficulty
+escalates to Sr Game Designer review.
+
+**Out-of-scope (deferred):**
+- Bar obstacles (AC-1) — branch lacks LowBar/HighBar; Loop 2+.
+- Sub-beat placement — needs schema change; Loop 2+, with DW-E
+  producing the corpus to argue for it.
+- Engine offset/drift (AC-6) — engine-side, not content.
+
+**Artifact:**
+`/Users/yashasgujjar/.copilot/session-state/c0ddd445-5e34-4aa9-bc53-563866a0574f/files/beatmap-quality-loop1-2026-05-09/rabin-content-gates.md`
+
+**Open questions logged for Sr Game Designer / Fenster** (artifact §7):
+HG-3 25% triangle floor on hard, HG-5 20% gap=1 ceiling defensiveness,
+DW-B 20% per-lane floor borrowed from Issue #169 stomper audit.
+
+**Lesson — measure the chart, don't trust review summaries verbatim.**
+The Sr Game Designer review reported "9 consecutive squares / triangle
+×11" as worst-case but used a section-window pass; a whole-chart pass
+on hard finds **circle×26**. Set HG-2 against the worst observed
+contiguous run (≤3), not the review's 4+ threshold, otherwise the
+gate ships pre-broken.
+
+**Lesson — separate "fix the defect" from "don't introduce a new
+defect."** HG-1 alone could be satisfied by dumping every excess
+gap=2 into gap=1, recreating mashing. HG-5's gap=1 cap is the
+regression guard. Pair every redistribution gate with a sink-side
+ceiling.
+
+---
+
+## 2026-05-09 — Onset spike playability review (`beatmap/onset-obstacle-spike` @ e80211a)
+
+**Artifact:** `tools/diagnostics/onset_spike/rabin-playability-review.md`
+**Decision:** `.squad/decisions/inbox/rabin-onset-spike-playability.md`
+
+**Headline findings**
+
+- **Shape ↔ lane is hard-coded 1:1** in every shipped beatmap
+  (`lane == shape_index`). Every "same-shape run" is also a "same-lane
+  run." This is the dominant playability bug post-spike.
+- Same-shape runs at hard: stomper **42**, mental **43**, drama **21**.
+  Stomper easy also has a run of **40** — FTUE-breaking.
+- `subdivision_label` is **100% `downbeat`** on every obstacle of every
+  chart, even though the detector resolves eighths/triplets in the
+  source events. Strict label gate failure is real, not a gate bug.
+- Stomper has a difficulty curve **inversion** — easy median IOI 755 ms
+  vs hard 1074 ms.
+- Mental has **flat 806 ms median IOI** across easy/medium/hard. Hard
+  is just "longer easy with more walls."
+- Mental easy has only **2 triangle obstacles in 110** — effectively a
+  2-lane chart that doesn't teach lane 2 before medium hits 48
+  triangles.
+- Onset source share is tiny on stomper (4–6 %) and drama (6–8 %); the
+  spike is mostly a Mental Corruption feature today (14/19/28 %).
+
+**Lessons**
+
+- *Always recompute longest same-shape runs straight off the JSON.* The
+  diagnostics summary's `same_shape_run_metrics` is correct, but seeing
+  the actual run sequence (`[38, 5, 42, 15, 13, 14, 27]` for stomper
+  hard) makes it obvious that one cap value isn't enough — the
+  distribution matters.
+- *Treat lane and shape as orthogonal even if today's authoring couples
+  them.* Same-shape gates that don't also cap same-lane runs will be
+  bypassed the moment lane assignment is decoupled, so propose both
+  ceilings together (D2).
+- *Strict label-coverage gates need an authoring fix, not a gate
+  relaxation.* The subdivision data exists upstream; it's the
+  candidate→event step that drops the label.
+- *Use `current_quarter_snap.count` vs `experimental_onset_timing.event_counts.obstacles`
+  ratio as a quick sanity check on whether a "spike" is actually
+  exercising onset timing on a given song.* On stomper that's
+  25 / (178+154+196) ≈ 5 %, matching the per-difficulty histogram.

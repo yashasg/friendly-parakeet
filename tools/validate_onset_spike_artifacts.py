@@ -1,0 +1,318 @@
+#!/usr/bin/env python3
+"""Validate experimental onset-timing spike diagnostics artifacts."""
+
+from __future__ import annotations
+
+import argparse
+import csv
+import json
+import sys
+from pathlib import Path
+
+
+DIFFICULTIES = ("easy", "medium", "hard")
+MIN_IOI_MS_FLOOR = {"easy": 700.0, "medium": 380.0, "hard": 300.0}
+MAX_DENSE_CLUSTER_LEN = {"easy": 2, "medium": 3, "hard": 4}
+MAX_SHORT_IOI_SHARE = {"easy": 0.02, "medium": 0.20, "hard": 0.30}
+MAX_RESIDUAL_MEDIAN_ABS_MS = {"easy": 65.0, "medium": 65.0, "hard": 65.0}
+MAX_RESIDUAL_P90_ABS_MS = {"easy": 120.0, "medium": 120.0, "hard": 120.0}
+MIN_EVENT_COUNT = {"easy": 20, "medium": 30, "hard": 40}
+MAX_EVENTS_PER_MINUTE = {"easy": 120.0, "medium": 200.0, "hard": 260.0}
+MIN_BEAT_LABEL_KINDS = {"easy": 1, "medium": 2, "hard": 2}
+MAX_OFFGRID_SHARE = {"easy": 0.15, "medium": 0.25, "hard": 0.30}
+BEAT_LABELS = {"downbeat", "eighth", "triplet"}
+
+
+def _share(value: int, total: int) -> float:
+    return (value / total) if total > 0 else 0.0
+
+
+def load_summary(path: Path) -> dict:
+    with path.open(encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def load_onset_rows(path: Path) -> list[dict]:
+    with path.open(newline="", encoding="utf-8") as handle:
+        return list(csv.DictReader(handle))
+
+
+def validate_artifact_shape(summary: dict, rows: list[dict]) -> list[str]:
+    findings: list[str] = []
+    experimental = summary.get("experimental_onset_timing")
+    if not isinstance(experimental, dict):
+        return ["summary missing experimental_onset_timing block"]
+    if not bool(experimental.get("enabled")):
+        findings.append("experimental_onset_timing.enabled must be true for spike diagnostics")
+
+    comparison = experimental.get("comparison_by_difficulty")
+    if not isinstance(comparison, dict):
+        findings.append("experimental_onset_timing.comparison_by_difficulty must be an object")
+        return findings
+
+    required_outer = {
+        "event_counts",
+        "residuals_onset_minus_beat_ms",
+        "ioi_stats_ms",
+        "dense_cluster_stats",
+        "subdivision_label_distribution",
+        "onset_class_distribution",
+        "event_role_distribution",
+        "motif_stats",
+    }
+    required_event_counts = {"obstacles", "timing_source_histogram"}
+    required_stats = {"beat_snap", "onset_timing"}
+    required_ioi_fields = {"count", "min_ms", "median_ms", "p90_ms", "mean_ms", "max_ms"}
+    required_dense_fields = {"threshold_ms", "short_ioi_count", "short_ioi_share", "cluster_count", "max_cluster_len"}
+    required_residual_fields = {"count", "median_abs_ms", "p90_abs_ms", "mean_abs_ms", "max_abs_ms"}
+
+    rows_by_diff = {difficulty: [] for difficulty in DIFFICULTIES}
+    for row in rows:
+        difficulty = row.get("difficulty")
+        if difficulty in rows_by_diff:
+            rows_by_diff[difficulty].append(row)
+
+    required_csv_fields = {
+        "difficulty",
+        "event_order",
+        "beat_idx",
+        "beat_time",
+        "onset_time",
+        "residual_ms",
+        "timing_source",
+        "subdivision",
+        "source_event_idx",
+        "onset_class",
+        "motif_id",
+        "motif_length_beats",
+        "motif_token_length",
+        "motif_repeat_count",
+        "motif_fingerprint",
+        "event_role",
+        "difficulty_inclusion",
+    }
+    if rows:
+        missing_csv = sorted(required_csv_fields - set(rows[0]))
+        if missing_csv:
+            findings.append(f"onset_timing_events.csv missing fields: {missing_csv}")
+    else:
+        findings.append("onset_timing_events.csv is empty")
+
+    for difficulty in DIFFICULTIES:
+        payload = comparison.get(difficulty)
+        if not isinstance(payload, dict):
+            findings.append(f"comparison_by_difficulty missing '{difficulty}'")
+            continue
+
+        missing_outer = sorted(required_outer - set(payload))
+        if missing_outer:
+            findings.append(f"[{difficulty}] missing summary keys: {missing_outer}")
+            continue
+
+        event_counts = payload["event_counts"]
+        if not isinstance(event_counts, dict):
+            findings.append(f"[{difficulty}] event_counts must be an object")
+            continue
+        missing_event = sorted(required_event_counts - set(event_counts))
+        if missing_event:
+            findings.append(f"[{difficulty}] event_counts missing keys: {missing_event}")
+
+        residuals = payload["residuals_onset_minus_beat_ms"]
+        if not isinstance(residuals, dict):
+            findings.append(f"[{difficulty}] residuals_onset_minus_beat_ms must be an object")
+        else:
+            missing_residual = sorted(required_residual_fields - set(residuals))
+            if missing_residual:
+                findings.append(f"[{difficulty}] residual summary missing keys: {missing_residual}")
+
+        ioi_stats = payload["ioi_stats_ms"]
+        dense_stats = payload["dense_cluster_stats"]
+        for block_name, block_payload, required_fields in (
+            ("ioi_stats_ms", ioi_stats, required_ioi_fields),
+            ("dense_cluster_stats", dense_stats, required_dense_fields),
+        ):
+            if not isinstance(block_payload, dict):
+                findings.append(f"[{difficulty}] {block_name} must be an object")
+                continue
+            missing_diff_stats = sorted(required_stats - set(block_payload))
+            if missing_diff_stats:
+                findings.append(
+                    f"[{difficulty}] {block_name} missing timing variants: {missing_diff_stats}"
+                )
+                continue
+            for variant in required_stats:
+                variant_payload = block_payload[variant]
+                if not isinstance(variant_payload, dict):
+                    findings.append(f"[{difficulty}] {block_name}.{variant} must be an object")
+                    continue
+                missing_variant = sorted(required_fields - set(variant_payload))
+                if missing_variant:
+                    findings.append(
+                        f"[{difficulty}] {block_name}.{variant} missing keys: {missing_variant}"
+                    )
+
+        expected_rows = int(event_counts.get("obstacles", -1))
+        actual_rows = len(rows_by_diff[difficulty])
+        if expected_rows >= 0 and expected_rows != actual_rows:
+            findings.append(
+                f"[{difficulty}] onset row count mismatch: summary={expected_rows} csv={actual_rows}"
+            )
+
+        motif_stats = payload["motif_stats"]
+        if not isinstance(motif_stats, dict):
+            findings.append(f"[{difficulty}] motif_stats must be an object")
+        else:
+            for key in ("motif_ids", "motif_count", "rows_with_motif", "max_repeat_count", "max_length_beats"):
+                if key not in motif_stats:
+                    findings.append(f"[{difficulty}] motif_stats missing key: {key}")
+                    break
+
+    return findings
+
+
+def _events_per_minute(rows: list[dict]) -> float:
+    if len(rows) < 2:
+        return 0.0
+    times = sorted(float(row["onset_time"]) for row in rows)
+    duration_s = times[-1] - times[0]
+    if duration_s <= 0:
+        return 0.0
+    return (len(times) / duration_s) * 60.0
+
+
+def evaluate_spike_gates(summary: dict, rows: list[dict]) -> tuple[dict[str, dict[str, float]], list[str]]:
+    findings: list[str] = []
+    metrics: dict[str, dict[str, float]] = {}
+    comparison = summary["experimental_onset_timing"]["comparison_by_difficulty"]
+    rows_by_diff = {difficulty: [] for difficulty in DIFFICULTIES}
+    for row in rows:
+        difficulty = row.get("difficulty")
+        if difficulty in rows_by_diff:
+            rows_by_diff[difficulty].append(row)
+
+    for difficulty in DIFFICULTIES:
+        payload = comparison[difficulty]
+        onset_ioi = payload["ioi_stats_ms"]["onset_timing"]
+        dense = payload["dense_cluster_stats"]["onset_timing"]
+        residuals = payload["residuals_onset_minus_beat_ms"]
+        subdivision_hist = payload["subdivision_label_distribution"]
+        event_counts = payload["event_counts"]
+
+        event_count = int(event_counts.get("obstacles", 0))
+        epm = _events_per_minute(rows_by_diff[difficulty])
+        total_labels = sum(int(v) for v in subdivision_hist.values())
+        beat_label_kinds = sum(
+            1 for label in BEAT_LABELS if int(subdivision_hist.get(label, 0)) > 0
+        )
+        offgrid_share = _share(int(subdivision_hist.get("offgrid", 0)), total_labels)
+
+        metrics[difficulty] = {
+            "events": float(event_count),
+            "epm": epm,
+            "min_ioi_ms": float(onset_ioi["min_ms"]),
+            "short_ioi_share": float(dense["short_ioi_share"]),
+            "max_dense_cluster_len": float(dense["max_cluster_len"]),
+            "residual_median_abs_ms": float(residuals["median_abs_ms"]),
+            "residual_p90_abs_ms": float(residuals["p90_abs_ms"]),
+            "beat_label_kinds": float(beat_label_kinds),
+            "offgrid_share": offgrid_share,
+        }
+
+        if event_count < MIN_EVENT_COUNT[difficulty]:
+            findings.append(
+                f"[{difficulty}] event count {event_count} below floor {MIN_EVENT_COUNT[difficulty]}"
+            )
+        if epm > MAX_EVENTS_PER_MINUTE[difficulty]:
+            findings.append(
+                f"[{difficulty}] event density {epm:.1f}/min above cap {MAX_EVENTS_PER_MINUTE[difficulty]:.1f}/min"
+            )
+        if float(onset_ioi["min_ms"]) < MIN_IOI_MS_FLOOR[difficulty]:
+            findings.append(
+                f"[{difficulty}] min IOI {float(onset_ioi['min_ms']):.1f}ms below floor {MIN_IOI_MS_FLOOR[difficulty]:.1f}ms"
+            )
+        if int(dense["max_cluster_len"]) > MAX_DENSE_CLUSTER_LEN[difficulty]:
+            findings.append(
+                f"[{difficulty}] dense cluster len {int(dense['max_cluster_len'])} above cap {MAX_DENSE_CLUSTER_LEN[difficulty]}"
+            )
+        if float(dense["short_ioi_share"]) > MAX_SHORT_IOI_SHARE[difficulty]:
+            findings.append(
+                f"[{difficulty}] short IOI share {float(dense['short_ioi_share']):.1%} above cap {MAX_SHORT_IOI_SHARE[difficulty]:.0%}"
+            )
+        if float(residuals["median_abs_ms"]) > MAX_RESIDUAL_MEDIAN_ABS_MS[difficulty]:
+            findings.append(
+                f"[{difficulty}] residual median {float(residuals['median_abs_ms']):.1f}ms above cap {MAX_RESIDUAL_MEDIAN_ABS_MS[difficulty]:.1f}ms"
+            )
+        if float(residuals["p90_abs_ms"]) > MAX_RESIDUAL_P90_ABS_MS[difficulty]:
+            findings.append(
+                f"[{difficulty}] residual p90 {float(residuals['p90_abs_ms']):.1f}ms above cap {MAX_RESIDUAL_P90_ABS_MS[difficulty]:.1f}ms"
+            )
+        if beat_label_kinds < MIN_BEAT_LABEL_KINDS[difficulty]:
+            findings.append(
+                f"[{difficulty}] beat/subdivision label coverage={beat_label_kinds} below floor {MIN_BEAT_LABEL_KINDS[difficulty]}"
+            )
+        if offgrid_share > MAX_OFFGRID_SHARE[difficulty]:
+            findings.append(
+                f"[{difficulty}] offgrid share {offgrid_share:.1%} above cap {MAX_OFFGRID_SHARE[difficulty]:.0%}"
+            )
+
+    return metrics, findings
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--diagnostics-dir", required=True, help="Directory containing spike diagnostics artifacts.")
+    parser.add_argument("--strict", action="store_true", help="Return non-zero when findings exist.")
+    args = parser.parse_args(argv)
+
+    diagnostics_dir = Path(args.diagnostics_dir)
+    summary_path = diagnostics_dir / "snap_diagnostics_summary.json"
+    events_path = diagnostics_dir / "onset_timing_events.csv"
+    if not summary_path.exists():
+        print(f"ERROR: missing {summary_path}", file=sys.stderr)
+        return 1
+    if not events_path.exists():
+        print(f"ERROR: missing {events_path}", file=sys.stderr)
+        return 1
+
+    summary = load_summary(summary_path)
+    rows = load_onset_rows(events_path)
+
+    findings = validate_artifact_shape(summary, rows)
+    metrics: dict[str, dict[str, float]] = {}
+    if not findings:
+        metrics, findings = evaluate_spike_gates(summary, rows)
+
+    mode = "STRICT" if args.strict else "REPORT"
+    print(f"Onset spike gate mode: {mode}")
+    for difficulty in DIFFICULTIES:
+        if difficulty not in metrics:
+            continue
+        metric = metrics[difficulty]
+        print(
+            f"  [{difficulty:6s}] "
+            f"events={int(metric['events'])} "
+            f"epm={metric['epm']:.1f} "
+            f"min_ioi={metric['min_ioi_ms']:.1f}ms "
+            f"dense={int(metric['max_dense_cluster_len'])} "
+            f"short_ioi={metric['short_ioi_share']:.1%} "
+            f"res_med={metric['residual_median_abs_ms']:.1f}ms "
+            f"res_p90={metric['residual_p90_abs_ms']:.1f}ms "
+            f"labels={int(metric['beat_label_kinds'])}/3 "
+            f"offgrid={metric['offgrid_share']:.1%}"
+        )
+
+    if findings:
+        for finding in findings:
+            print(f"  - {finding}")
+        if args.strict:
+            print(f"FAIL: {len(findings)} onset-spike finding(s).", file=sys.stderr)
+            return 1
+        print(f"WARN: {len(findings)} onset-spike finding(s) (report-only mode).", file=sys.stderr)
+        return 0
+
+    print("PASS: onset-spike diagnostics artifacts satisfy gates.")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

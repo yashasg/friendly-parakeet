@@ -175,3 +175,47 @@ Team ready for next phase.
   - `/Users/yashasgujjar/.copilot/session-state/c0ddd445-5e34-4aa9-bc53-563866a0574f/files/test-player-pro-2026-05-08T23-49-24/session_pro_rt0000000345_n0001.log`
   - `/Users/yashasgujjar/.copilot/session-state/c0ddd445-5e34-4aa9-bc53-563866a0574f/files/timing-drift-experiment-2026-05-09/session_pro_rt0000000345_n0001.log`
   - `/Users/yashasgujjar/.copilot/session-state/c0ddd445-5e34-4aa9-bc53-563866a0574f/files/timing-drift-experiment-2026-05-09/baer-verification.md`
+
+## 2026-05-09T00:41:48.960-07:00 — Loop 1 beatmap diagnostics validation
+
+## Learnings
+- `tools/level_designer.py` diagnostics quality can be regression-gated without touching production code by importing the generator and validating histogram shape/subdivision bins on shipped `*_analysis.json` inputs.
+- A practical Loop 1 no-regression lane is: `./build/shapeshifter_tests "[shipped_beatmaps]"` + beatmap Python validators + the new Loop 1 histogram validator; keep `validate_offset_semantics.py` out of strict-gating because it currently reports large known drift violations in shipped data.
+
+## 2026-05-09T12:47:58.529-07:00 — Onset-time spike validation gates
+
+## Learnings
+- Spike validation should target the experimental diagnostics contract (`snap_diagnostics_summary.json` + `onset_timing_events.csv`) and stay report-first by default so shipped/default beatmaps remain unaffected.
+- The onset spike gate bundle now covers: min IOI floors (easy/medium/hard = 700/380/300ms), dense-cluster limits (max len 2/3/4 and short-IOI share 2%/20%/30%), residual-to-grid caps (median ≤65ms, p90 ≤120ms), event count/density (min 20/30/40, max 120/200/260 EPM), and subdivision coverage/offgrid caps (labels ≥1/2/2, offgrid ≤15%/25%/30%).
+- Keep Loop 1 + Loop 2 validators as stable no-regression checks for shipped content while iterating spike-only thresholds in strict mode.
+
+## 2026-05-09T12:55:54.558-07:00 — Onset spike level artifact validation run
+
+## Learnings
+- If no generated spike diagnostics are present yet, a safe smoke fallback is `tools/level_designer.py ... --diagnostics-only --experimental-onset-timing` into `tools/diagnostics/<spike_dir>` so shipped beatmaps are never rewritten.
+- For the current smoke artifact (`tools/diagnostics/onset_spike_smoke` from `2_drama_analysis.json`), `validate_onset_spike_artifacts.py` report mode is non-blocking but strict mode correctly fails on medium/hard subdivision label coverage (`labels=1`, floor `2`).
+- Existing shipped-content no-regression lane still passes in this state: `validate_loop1_diagnostics.py`, `validate_loop2_content_gates.py`, and `./build/shapeshifter_tests "[shipped_beatmaps]"`.
+
+## 2026-05-09T13:00:47.473-07:00 — run.sh onset-level promotion validation
+
+## Learnings
+- Promotion can race in-flight: polling `content/beatmaps/*_beatmap.json` against `content/beatmaps/experimental/onset_spike/*_beatmap_onset_spike.json` confirmed transition from not-promoted to promoted within the same QA window, so wait/recheck before concluding failure.
+- `./run.sh test` remains the safest noninteractive confidence lane for this branch and passed after promotion (686 test cases / 1840 assertions), confirming build+tests are stable with promoted shipped beatmaps.
+- Promoted shipped beatmaps now include onset metadata at obstacle level (`timing_source=onset`, `onset_time_sec`, `subdivision_label`) while strict onset-artifact gates still fail on medium/hard label coverage; treat this as a known content-quality blocker, not a run.sh execution blocker.
+
+## 2026-05-09T20:33:09.658-07:00 — Timing feedback visual unification validation
+
+## Learnings
+- Timing-tier popup visual unification (Perfect/Good/Ok/Bad all green and medium) requires simultaneous test expectation updates in `tests/test_popup_display_system.cpp`; otherwise `./run.sh test` fails on legacy small-font and Bad-orange assertions.
+- High-signal source validation path: `app/entities/popup_entity.cpp` (tier text/font init + tier color assignment) plus `app/systems/ui_render_system.cpp` (font selection + DrawTextEx consuming `PopupDisplay`).
+
+## 2026-05-09T20:35:29.370-07:00 — Popup test adaptation follow-through
+
+## Learnings
+- To fully lock the temporary popup visual contract, keep coverage split across both formatting and spawn paths: `popup_display_system` tests should assert Medium for Good/Ok/Bad, while `spawn_score_popup` tests should assert green for Good/Ok/Bad (not only Perfect).
+
+## 2026-05-09T20:58:25.533-07:00 — Onset motif shipped-beatmap test realignment
+
+## Learnings
+- When shipped beatmaps are generated from the experimental onset-motif pipeline, legacy fixed distribution and min-shape-gap assertions become stale; regression tests should instead gate canonical class mapping and monotonic difficulty note counts.
+- High-signal shipped-content checks for this design are: shape-gate-only easy, easy<=medium<=hard authored shape-gate counts, canonical shape↔lane pairing (triangle→0, square→1, circle→2), and medium multi-lane coverage.

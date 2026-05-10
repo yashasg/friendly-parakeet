@@ -8,9 +8,9 @@
 //
 // Test matrix:
 //   timing_tier == TimingTier::Perfect → text "PERFECT",  FontSize::Medium
-//   timing_tier == TimingTier::Good    → text "GOOD",     FontSize::Small
-//   timing_tier == TimingTier::Ok      → text "OK",       FontSize::Small
-//   timing_tier == TimingTier::Bad     → text "BAD",      FontSize::Small
+//   timing_tier == TimingTier::Good    → text "GOOD",     FontSize::Medium
+//   timing_tier == TimingTier::Ok      → text "OK",       FontSize::Medium
+//   timing_tier == TimingTier::Bad     → text "BAD",      FontSize::Medium
 //   timing_tier == nullopt             → numeric score string (e.g. "150"), FontSize::Small
 //   alpha at half lifetime → ≈ 127  (50 % × 255 truncated to uint8_t)
 //
@@ -75,7 +75,7 @@ TEST_CASE("popup_display_system: TimingTier::Perfect → PERFECT, Medium font",
     CHECK(pd.font_size == FontSize::Medium);
 }
 
-TEST_CASE("popup_display_system: TimingTier::Good → GOOD, Small font",
+TEST_CASE("popup_display_system: TimingTier::Good → GOOD, Medium font",
           "[popup_display][issue208][issue288]") {
     entt::registry reg;
     auto e = make_popup_entity(reg, TimingTier::Good, 0, 1.0f, 1.0f);
@@ -85,10 +85,10 @@ TEST_CASE("popup_display_system: TimingTier::Good → GOOD, Small font",
     REQUIRE(reg.all_of<PopupDisplay>(e));
     const auto& pd = reg.get<PopupDisplay>(e);
     CHECK(std::strcmp(pd.text, "GOOD") == 0);
-    CHECK(pd.font_size == FontSize::Small);
+    CHECK(pd.font_size == FontSize::Medium);
 }
 
-TEST_CASE("popup_display_system: TimingTier::Ok → OK, Small font",
+TEST_CASE("popup_display_system: TimingTier::Ok → OK, Medium font",
           "[popup_display][issue208][issue288]") {
     entt::registry reg;
     auto e = make_popup_entity(reg, TimingTier::Ok, 0, 1.0f, 1.0f);
@@ -98,10 +98,10 @@ TEST_CASE("popup_display_system: TimingTier::Ok → OK, Small font",
     REQUIRE(reg.all_of<PopupDisplay>(e));
     const auto& pd = reg.get<PopupDisplay>(e);
     CHECK(std::strcmp(pd.text, "OK") == 0);
-    CHECK(pd.font_size == FontSize::Small);
+    CHECK(pd.font_size == FontSize::Medium);
 }
 
-TEST_CASE("popup_display_system: TimingTier::Bad → BAD, Small font",
+TEST_CASE("popup_display_system: TimingTier::Bad → BAD, Medium font",
           "[popup_display][issue208][issue288]") {
     entt::registry reg;
     auto e = make_popup_entity(reg, TimingTier::Bad, 0, 1.0f, 1.0f);
@@ -111,7 +111,7 @@ TEST_CASE("popup_display_system: TimingTier::Bad → BAD, Small font",
     REQUIRE(reg.all_of<PopupDisplay>(e));
     const auto& pd = reg.get<PopupDisplay>(e);
     CHECK(std::strcmp(pd.text, "BAD") == 0);
-    CHECK(pd.font_size == FontSize::Small);
+    CHECK(pd.font_size == FontSize::Medium);
 }
 
 // ── Numeric score path ────────────────────────────────────────────────────
@@ -339,15 +339,35 @@ TEST_CASE("spawn_score_popup: color is green for Perfect tier",
     CHECK(c.a == 255);
 }
 
-TEST_CASE("spawn_score_popup: color is orange for Bad tier",
+TEST_CASE("spawn_score_popup: color is green for Good and Ok tiers",
+          "[popup_entity][issue349]") {
+    entt::registry reg;
+    auto good = spawn_score_popup(reg, {0.0f, 0.0f, 200, TimingTier::Good});
+    auto ok   = spawn_score_popup(reg, {0.0f, 0.0f, 100, TimingTier::Ok});
+
+    REQUIRE(reg.all_of<Color>(good));
+    REQUIRE(reg.all_of<Color>(ok));
+
+    const auto& good_color = reg.get<Color>(good);
+    CHECK(good_color.r == 100);
+    CHECK(good_color.g == 255);
+    CHECK(good_color.b == 100);
+
+    const auto& ok_color = reg.get<Color>(ok);
+    CHECK(ok_color.r == 100);
+    CHECK(ok_color.g == 255);
+    CHECK(ok_color.b == 100);
+}
+
+TEST_CASE("spawn_score_popup: color is green for Bad tier",
           "[popup_entity][issue349]") {
     entt::registry reg;
     auto e = spawn_score_popup(reg, {0.0f, 0.0f, 50, TimingTier::Bad});
 
     REQUIRE(reg.all_of<Color>(e));
     const auto& c = reg.get<Color>(e);
-    CHECK(c.r == 255);
-    CHECK(c.g == 150);
+    CHECK(c.r == 100);
+    CHECK(c.g == 255);
     CHECK(c.b == 100);
 }
 

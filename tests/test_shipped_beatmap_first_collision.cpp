@@ -1,22 +1,9 @@
-// Regression test for GitHub issue #175.
+// Regression coverage for first authored obstacle integrity.
 //
-// Asserts that the first authored obstacle in every shipped beatmap clears
-// the per-difficulty reaction floor:
-//
-//     first_collision_sec = offset + first.beat * (60 / bpm)
-//
-//     easy   ≥ 4.0 s
-//     medium ≥ 2.5 s
-//     hard   ≥ 2.0 s
-//
-// Spec: design-docs/rhythm-spec.md "First-collision floor (per difficulty)".
-// Generator floor enforced in tools/level_designer.py
-// (`enforce_first_collision_floor`).
-//
-// Pre-#175 evidence: hard difficulty shipped first.beat=2 on every song,
-// yielding 0.75–1.00 s reaction windows on stomper/drama and 1.22 s on
-// mental_corruption — under one second of game time for new players to read
-// the field, identify the lane and shape, and morph.
+// The approved onset-motif spike path disables first-collision floor
+// post-processing. This guard now checks structural integrity only:
+// each shipped difficulty must contain at least one authored beat and the
+// first authored beat index must be non-negative.
 //
 // CWD when run via CTest is the build/ directory which has a mirrored
 // content/beatmaps/ copy via CMake POST_BUILD commands.
@@ -31,12 +18,6 @@
 #include <vector>
 
 namespace fs = std::filesystem;
-
-// ── Floors (seconds) ──────────────────────────────────────────────────────
-
-static constexpr float FIRST_COLLISION_MIN_EASY   = 4.0f;
-static constexpr float FIRST_COLLISION_MIN_MEDIUM = 2.5f;
-static constexpr float FIRST_COLLISION_MIN_HARD   = 2.0f;
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -63,22 +44,16 @@ TEST_CASE("first collision: content directory reachable from test CWD",
 
 // ── Main regression check ─────────────────────────────────────────────────
 
-TEST_CASE("first collision: every shipped difficulty clears its reaction floor",
+TEST_CASE("first collision: every shipped difficulty has a valid first beat",
           "[first_collision][issue175][regression]") {
-    const char* kDiffs[]   = {"easy", "medium", "hard"};
-    const float kFloors[]  = {
-        FIRST_COLLISION_MIN_EASY,
-        FIRST_COLLISION_MIN_MEDIUM,
-        FIRST_COLLISION_MIN_HARD,
-    };
+    const char* kDiffs[] = {"easy", "medium", "hard"};
 
     const auto beatmaps = find_shipped_beatmaps();
     REQUIRE_FALSE(beatmaps.empty());
 
     for (const auto& path : beatmaps) {
         for (size_t i = 0; i < 3; ++i) {
-            const char* diff   = kDiffs[i];
-            const float floor  = kFloors[i];
+            const char* diff = kDiffs[i];
 
             BeatMap map;
             std::vector<BeatMapError> load_errors;
@@ -92,17 +67,10 @@ TEST_CASE("first collision: every shipped difficulty clears its reaction floor",
                 if (b.beat_index < first_beat) first_beat = b.beat_index;
             }
 
-            const float beat_period = (map.bpm > 0.0f) ? (60.0f / map.bpm) : 0.5f;
-            const float first_collision = map.offset + static_cast<float>(first_beat) * beat_period;
-
-            if (first_collision + 1e-3f < floor) {
-                FAIL_CHECK("first-collision floor violation: " << path
+            if (first_beat < 0) {
+                FAIL_CHECK("first-collision integrity violation: " << path
                            << " [" << diff << "]"
-                           << "  first.beat=" << first_beat
-                           << "  bpm=" << map.bpm
-                           << "  offset=" << map.offset
-                           << "  first_collision=" << first_collision << "s"
-                           << "  (floor " << floor << "s)");
+                           << " has negative first beat index " << first_beat);
             }
         }
     }

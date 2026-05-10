@@ -42,6 +42,32 @@ ONSET_PASSES = [
     {"name": "flux", "method": "spectral_flux", "zone": None},
 ]
 
+# ---------------------------------------------------------------------------
+# BROAD LAYER CLASSES
+#
+# Maps the named detection passes to the three broad librosa layer classes
+# used for lane/shape assignment.  These classes must NOT be merged across
+# each other even when their timestamps are very close (< 50 ms).
+#
+#   percussive   — kick, snare, hihat  → lane 0, triangle
+#   harmonic     — melody              → lane 2, circle
+#   full-spectrum — flux (catch-all)   → lane 1, square
+# ---------------------------------------------------------------------------
+
+PASS_TO_LAYER: dict[str, str] = {
+    "kick":   "percussive",
+    "snare":  "percussive",
+    "hihat":  "percussive",
+    "melody": "harmonic",
+    "flux":   "full-spectrum",
+}
+
+
+def _event_layer(event: dict) -> str:
+    """Return the broad layer class for a single pre-merge onset event."""
+    return PASS_TO_LAYER.get(event.get("pass", ""), "full-spectrum")
+
+
 # mel band indices (out of 40) that correspond to each frequency zone
 # band 0-5   ~ bass (20-250hz)
 # band 6-18  ~ low-mid (250-2000hz)
@@ -134,14 +160,27 @@ def _detect_onsets_from_envelope(
     sr: int,
     hop_length: int,
     threshold: float,
+    peak_pick_cfg: dict | None = None,
 ) -> list[float]:
+    """Detect onset peaks in an onset envelope.
+
+    peak_pick_cfg keys (all optional, fall back to built-in defaults):
+        pre_max   int   frames before peak used for local-max check (default 3)
+        post_max  int   frames after  peak used for local-max check (default 3)
+        pre_avg   int   frames before peak used for local-mean check (default 5)
+        post_avg  int   frames after  peak used for local-mean check (default 5)
+        wait      int   min frames between peaks (default 1)
+    The ``threshold`` argument maps to librosa.util.peak_pick ``delta``
+    (min height above local mean).  Lower → more detections.
+    """
     if onset_env.size == 0:
         return []
-    pre_max = 3
-    post_max = 3
-    pre_avg = 5
-    post_avg = 5
-    wait = 2
+    cfg = peak_pick_cfg or {}
+    pre_max = int(cfg.get("pre_max", 3))
+    post_max = int(cfg.get("post_max", 3))
+    pre_avg = int(cfg.get("pre_avg", 5))
+    post_avg = int(cfg.get("post_avg", 5))
+    wait = int(cfg.get("wait", 1))
     peaks = librosa.util.peak_pick(
         onset_env,
         pre_max=pre_max,
@@ -162,12 +201,30 @@ def _detect_pass_onsets(
     threshold: float,
     resolution: dict,
     n_mels: int,
+    peak_pick_cfg: dict | None = None,
+    zone_thresholds: dict | None = None,
 ) -> list[float]:
+    """Detect onsets for one pass/zone/resolution combination.
+
+    zone_thresholds (optional): per-zone threshold overrides, e.g.
+        {"bass": 0.10, "low_mid": 0.13, "high_mid": 0.15}
+    These take precedence over the global ``threshold`` when the zone matches.
+    """
+    effective_threshold = threshold
+    if zone and zone_thresholds and zone in zone_thresholds:
+        effective_threshold = float(zone_thresholds[zone])
+
     n_fft = int(resolution["n_fft"])
     hop_length = int(resolution["hop_length"])
     mel_db = _mel_spectrogram_db(y, sr, n_fft=n_fft, hop_length=hop_length, n_mels=n_mels)
     onset_env = _flux_envelope(mel_db, zone)
-    return _detect_onsets_from_envelope(onset_env, sr=sr, hop_length=hop_length, threshold=threshold)
+    return _detect_onsets_from_envelope(
+        onset_env,
+        sr=sr,
+        hop_length=hop_length,
+        threshold=effective_threshold,
+        peak_pick_cfg=peak_pick_cfg,
+    )
 
 
 def _spectral_flux_onset_envelope(
@@ -380,26 +437,41 @@ def extract_features(filepath: str, onset_threshold: float, librosa_config: dict
     print("    onsets per method...")
     onset_cfg = _section_cfg(librosa_config, "onset")
     n_mels = int(onset_cfg.get("n_mels", 40))
+    peak_pick_cfg = dict(onset_cfg.get("peak_pick", {}))
+    zone_thresholds_cfg = {
+        str(k): float(v)
+        for k, v in onset_cfg.get("zone_thresholds", {}).items()
+    }
     onsets: dict[str, list[float]] = {}
     onset_breakdown: dict[str, list[dict]] = {}
     resolutions = onset_resolutions(librosa_config)
     for p in ONSET_PASSES:
         combined: list[float] = []
         per_resolution: list[dict] = []
+        # Determine effective threshold for this pass (zone-aware override).
+        zone = p["zone"]
+        eff_thresh = float(
+            zone_thresholds_cfg.get(zone, onset_threshold)
+            if zone
+            else onset_threshold
+        )
         for res in resolutions:
             detected = _detect_pass_onsets(
                 y=y,
                 sr=sr,
-                zone=p["zone"],
+                zone=zone,
                 threshold=onset_threshold,
                 resolution=res,
                 n_mels=n_mels,
+                peak_pick_cfg=peak_pick_cfg,
+                zone_thresholds=zone_thresholds_cfg,
             )
             per_resolution.append(
                 {
                     "n_fft": int(res["n_fft"]),
                     "hop_length": int(res["hop_length"]),
                     "count": len(detected),
+                    "effective_threshold": round(eff_thresh, 4),
                 }
             )
             combined.extend(detected)
@@ -408,8 +480,10 @@ def extract_features(filepath: str, onset_threshold: float, librosa_config: dict
         o = sorted({round(t, 6) for t in combined})
         onsets[p["name"]] = o
         onset_breakdown[p["name"]] = per_resolution
+        zone_label = f"[{zone}]" if zone else "[full] "
         print(
-            f"      {p['name']:8s} ({p['method']:16s}): {len(o)} onsets "
+            f"      {p['name']:8s} {zone_label:10s} ({p['method']:16s}): "
+            f"{len(o)} onsets  thresh={eff_thresh:.3f}  "
             f"across {len(per_resolution)} res"
         )
 
@@ -508,32 +582,60 @@ def assign_flux_to_onsets(features: dict) -> list[dict]:
 def merge_events(events: list[dict], merge_window: float = 0.05) -> list[dict]:
     """
     Collapse events within merge_window seconds into a single event.
-    When multiple passes fire together, keep the highest-flux one as primary
-    and record all contributing passes.
+
+    IMPORTANT — layer-class rule (directive 2026-05-10):
+        Events from DIFFERENT broad layer classes (percussive / harmonic /
+        full-spectrum) are NEVER merged, even when their timestamps fall within
+        the merge window.  Only events that share the same layer class may be
+        collapsed.  This prevents a percussive onset and a harmonic onset that
+        are 40 ms apart from being silently fused into a single full-spectrum
+        event, which would cause center-lane (square/lane-1) bias.
+
+    Within the same layer class the original sliding-window logic applies:
+        group anchor = first event in the class-sorted stream;
+        all same-class events within merge_window of the anchor join the group.
     """
-    merged = []
-    i = 0
-    while i < len(events):
-        group = [events[i]]
-        j = i + 1
-        while j < len(events) and events[j]["t"] - events[i]["t"] < merge_window:
-            group.append(events[j])
-            j += 1
+    if not events:
+        return []
 
-        t_rep = round(sum(e["t"] for e in group) / len(group), 3)
-        passes = sorted({e["pass"] for e in group})
-        max_flux = round(max(e["flux"] for e in group), 4)
+    # Separate pre-merge events by broad layer class.
+    by_layer: dict[str, list[dict]] = {}
+    for event in events:
+        layer = _event_layer(event)
+        by_layer.setdefault(layer, []).append(event)
 
-        merged.append(
-            {
-                "t": t_rep,
-                "flux": max_flux,
-                "passes": passes,
-            }
-        )
-        i = j
+    merged_all: list[dict] = []
+    for layer, layer_events in by_layer.items():
+        layer_events = sorted(layer_events, key=lambda e: e["t"])
+        i = 0
+        while i < len(layer_events):
+            group = [layer_events[i]]
+            j = i + 1
+            while (
+                j < len(layer_events)
+                and layer_events[j]["t"] - layer_events[i]["t"] < merge_window
+            ):
+                group.append(layer_events[j])
+                j += 1
 
-    return merged
+            t_rep = round(sum(e["t"] for e in group) / len(group), 3)
+            passes = sorted({e["pass"] for e in group})
+            max_flux = round(max(e["flux"] for e in group), 4)
+
+            merged_all.append(
+                {
+                    "t": t_rep,
+                    "flux": max_flux,
+                    "passes": passes,
+                    # 'layer' field allows level_designer to skip the passes-based
+                    # inference and directly use the authoritative class.
+                    "layer": layer,
+                }
+            )
+            i = j
+
+    merged_all.sort(key=lambda e: (e["t"], e["layer"]))
+    return merged_all
 
 
 # ---------------------------------------------------------------------------
@@ -787,17 +889,52 @@ def _build_structure_from_quiet(features: dict) -> list[dict]:
 def build_analysis(filepath: str, features: dict, onset_threshold: float) -> dict:
     print(f"\n[2] Assigning flux scores from mel bands...")
     events = assign_flux_to_onsets(features)
-    print(f"    total raw events: {len(events)}")
 
-    print("[3] Merging overlapping events (window=50ms)...")
+    # ── Onset pool diagnostics (computed before merge) ───────────────────────
+    raw_total = sum(len(features["onsets"][p["name"]]) for p in ONSET_PASSES)
+    duration_sec = max(1.0, features["duration"])
+    print(f"    raw onsets total (all passes, pre-merge): {raw_total}")
+    print(f"    per-pass/zone breakdown:")
+    per_pass_raw: dict[str, int] = {}
+    for p in ONSET_PASSES:
+        n = len(features["onsets"][p["name"]])
+        per_pass_raw[p["name"]] = n
+        zone_label = f"[{p['zone']}]" if p["zone"] else "[full] "
+        print(f"      {p['name']:8s} {zone_label:10s}: {n}")
+    total_raw_events_pre_merge = len(events)
+    print(f"    flat events (pre-merge): {total_raw_events_pre_merge}")
+
+    print("[3] Merging overlapping events (window=50ms, same-layer-class only)...")
     events = merge_events(events)
-    print(f"    after merge: {len(events)}")
+    events_per_min = round(len(events) / duration_sec * 60.0, 1)
+    print(f"    after merge: {len(events)} unique events  ({events_per_min}/min)")
+    print(f"    (cross-layer events preserved separately even when < 50ms apart)")
 
     print("[4] Classifying intensity from quiet regions...")
     events = classify_intensity(events, features["quiet"])
 
     print("[5] Building song structure...")
     structure = build_structure(features)
+
+    # ── Segment coverage (events per structure section) ───────────────────────
+    seg_event_counts: list[dict] = []
+    empty_segments = 0
+    for sec in structure:
+        t0, t1 = float(sec["start"]), float(sec["end"])
+        n_in = sum(1 for e in events if t0 <= e["t"] < t1)
+        empty = n_in == 0
+        if empty:
+            empty_segments += 1
+        seg_event_counts.append({
+            "section": sec.get("section", "?"),
+            "start": t0,
+            "end": t1,
+            "event_count": n_in,
+            "empty": empty,
+        })
+    print(f"    structure segments: {len(structure)}  "
+          f"(empty={empty_segments}, "
+          f"coverage={len(structure)-empty_segments}/{len(structure)})")
 
     # per-pass onset summary
     pass_summary = {}
@@ -830,9 +967,31 @@ def build_analysis(filepath: str, features: dict, onset_threshold: float) -> dic
     intensity_counts = {}
     for e in events:
         intensity_counts[e["intensity"]] = intensity_counts.get(e["intensity"], 0) + 1
-    print(f"\n    event summary: {len(events)} events")
+    print(f"\n    event summary: {len(events)} events  ({events_per_min}/min)")
     for k, v in sorted(intensity_counts.items()):
         print(f"      {k:8s}: {v}")
+    print(f"    beats: {len(features['beats'])}  "
+          f"BPM: {round(features['bpm'], 1)}  "
+          f"duration: {round(features['duration'], 1)}s")
+    print(f"    segment coverage: {len(structure) - empty_segments}/{len(structure)} "
+          f"({empty_segments} empty)")
+
+    # ── Structured onset diagnostics stored in JSON for comparison ───────────
+    onset_diagnostics = {
+        "raw_per_pass": per_pass_raw,
+        "raw_total": raw_total,
+        "flat_events_pre_merge": total_raw_events_pre_merge,
+        "merged_events": len(events),
+        "events_per_minute": events_per_min,
+        "beats_total": len(features["beats"]),
+        "bpm": round(features["bpm"], 2),
+        "duration_sec": round(features["duration"], 2),
+        "segment_count": len(structure),
+        "empty_segment_count": empty_segments,
+        "segment_coverage": [
+            {k: v for k, v in seg.items()} for seg in seg_event_counts
+        ],
+    }
 
     return {
         "title": Path(filepath).stem,
@@ -846,6 +1005,7 @@ def build_analysis(filepath: str, features: dict, onset_threshold: float) -> dic
         "flux_stats": flux_stats,
         "events": events,
         "quiet_regions": features["quiet"],
+        "onset_diagnostics": onset_diagnostics,
     }
 
 

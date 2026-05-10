@@ -26,15 +26,19 @@ Usage:
     python level_designer.py analysis.json --output my_beatmap.json
     python level_designer.py analysis.json --difficulty easy
     python level_designer.py analysis.json --no-cleanup
+    python level_designer.py analysis.json --diagnostics-out tools/diagnostics/song_loop1 --diagnostics-only
+    python level_designer.py analysis.json --experimental-onset-timing
 """
 
 import argparse
+import csv
 import hashlib
 import json
 import random
 import sys
 from pathlib import Path
-from collections import Counter
+from bisect import bisect_right
+from collections import Counter, defaultdict
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -57,6 +61,33 @@ SUBDIVISION_TO_LANE = {
     "triplet": 2,   # triangle (right lane)
     "offgrid": 1,   # fallback
 }
+ONSET_CLASS_TO_OBSTACLE = {
+    "percussive": {"lane": 0, "shape": "triangle"},
+    "harmonic": {"lane": 2, "shape": "circle"},
+    "full-spectrum": {"lane": 1, "shape": "square"},
+}
+ONSET_MOTIF_DIFFICULTY_ROLES = {
+    "easy": {"skeleton"},
+    "medium": {"skeleton", "motif_core"},
+    "hard": {"skeleton", "motif_core", "ornament", "fill"},
+}
+ONSET_MOTIF_DISABLED_LEGACY_RULES = [
+    "legacy lane balancing",
+    "legacy shape balancing",
+    "fixed beat snapping selection",
+    "random thinning",
+    "legacy difficulty curves",
+    "shape-gap enforcement",
+    "legacy obstacle selection",
+]
+MOTIF_MIN_TOKEN_LEN = 3
+MOTIF_MAX_TOKEN_LEN = 12
+MOTIF_MIN_REPEAT_COUNT = 2
+
+# Segment-focus selector: fraction of ranked focus-class events included per difficulty.
+SEGMENT_FOCUS_DIFFICULTY_FRACTION = {"easy": 0.40, "medium": 0.65, "hard": 0.90}
+# How many consecutive identical focus-class choices before anti-repetition penalty kicks in.
+SEGMENT_FOCUS_ANTI_REPEAT_MAX = 2
 
 # Section role determines density and allowed obstacle types.
 # Chorus/drop = densest but most CONSISTENT (nori-nori).
@@ -82,17 +113,24 @@ DIFFICULTY_KINDS = {
     "medium": {"shape_gate"},
     "hard":   {"shape_gate"},
 }
+UNREADABLE_KINDS = {"low_bar", "high_bar"}
 MAX_EMPTY_GAP = {"easy": 40, "medium": 32, "hard": 30}
 MAX_BEAT_DIFF = {diff: gap + 1 for diff, gap in MAX_EMPTY_GAP.items()}
 MIN_SHAPE_CHANGE_GAP = 3
 GAP_ONE_MEDIUM_START_PROGRESS = 0.30
 GAP_ONE_HARD_MIN_BEAT = 11
 GAP_ONE_MAX_RUN = {"medium": 1, "hard": 2}
+GAP_ONE_SHARE_CAP = {"medium": 0.20, "hard": 0.20}
+GAP_MONOTONY_CAP = {"medium": 0.40, "hard": 0.35}
+MIN_IOI_MS = {"easy": 700.0, "medium": 380.0, "hard": 300.0}
+DENSE_CLUSTER_SOFT_CAP = {"medium": 6, "hard": 10}
 MEDIUM_SHAPE_TARGETS = {
     0: (10, 20),  # Circle / lane 0
     1: (45, 60),  # Square / lane 1
     2: (25, 45),  # Triangle / lane 2
 }
+HARD_TRIANGLE_FLOOR_PCT = 25
+HARD_CIRCLE_CEIL_PCT = 40
 
 # Shape palette per section: controls how many shapes are in play.
 # Intro uses all lanes for early variety; bridge stays centered for a breather.
@@ -112,9 +150,20 @@ SECTION_SHAPE_PALETTE = {
 # ═══════════════════════════════════════════════════════════════
 
 def snap_events_to_beats(events, beats, tolerance=0.08):
-    """Snap each event to nearest beat. One event per beat."""
-    snapped, used = [], set()
-    for ev in events:
+    """Snap each event to nearest beat.
+
+    Deduplication rule (directive 2026-05-10):
+        At most one event per (beat_idx, onset_class) pair is kept.
+        This allows a percussive onset and a harmonic onset that are very close
+        in time to BOTH survive if they snap to the same beat, rather than
+        collapsing them into a single full-spectrum event.
+        Within the same onset class, only the first event at a given beat is
+        kept (preserves arrival-time ordering).
+    """
+    snapped = []
+    used: dict[int, set] = {}  # beat_idx -> set of onset_classes already placed
+
+    for idx, ev in enumerate(events):
         lo, hi, best, best_d = 0, len(beats)-1, None, tolerance+1
         while lo <= hi:
             mid = (lo+hi)//2
@@ -122,17 +171,31 @@ def snap_events_to_beats(events, beats, tolerance=0.08):
             if d < best_d: best_d, best = d, mid
             if beats[mid] < ev["t"]: lo = mid+1
             else: hi = mid-1
-        if best is not None and best_d <= tolerance and best not in used:
-            subdivision, lane_hint = classify_subdivision(ev["t"], beats, best)
-            used.add(best)
-            snapped.append({
-                **ev,
-                "beat_idx": best,
-                "beat_time": beats[best],
-                "subdivision": subdivision,
-                "subdivision_lane": lane_hint,
-            })
-    snapped.sort(key=lambda e: e["beat_idx"])
+
+        if best is None or best_d > tolerance:
+            continue
+
+        onset_class = classify_onset_class(ev)
+
+        if best not in used:
+            used[best] = set()
+
+        if onset_class in used[best]:
+            # Same class already placed at this beat — skip.
+            continue
+
+        used[best].add(onset_class)
+        subdivision, lane_hint = classify_subdivision(ev["t"], beats, best)
+        snapped.append({
+            **ev,
+            "source_event_idx": idx,
+            "beat_idx": best,
+            "beat_time": beats[best],
+            "subdivision": subdivision,
+            "subdivision_lane": lane_hint,
+        })
+
+    snapped.sort(key=lambda e: (e["beat_idx"], float(e.get("t", 0.0))))
     return snapped
 
 
@@ -159,6 +222,705 @@ def classify_subdivision(event_time, beats, beat_idx):
         closest_label = "offgrid"
 
     return closest_label, SUBDIVISION_TO_LANE.get(closest_label, 1)
+
+
+def classify_onset_class(event):
+    """Map onset layer/passes into one of the approved lane-class families.
+
+    Checks the 'layer' field first (set by the pipeline after the 2026-05-10
+    layer-aware merge fix).  Falls back to inferring from 'passes' for
+    analysis files generated before that change.
+    """
+    # New format: authoritative layer set by rhythm_pipeline.
+    layer = event.get("layer")
+    if layer in ("percussive", "harmonic", "full-spectrum"):
+        return layer
+
+    # Legacy fallback: infer from named passes.
+    passes = set(event.get("passes", [])) if isinstance(event.get("passes"), list) else set()
+    percussive = bool({"kick", "snare", "hihat"} & passes)
+    harmonic = "melody" in passes
+
+    if (percussive and harmonic) or "flux" in passes or not passes:
+        return "full-spectrum"
+    if percussive:
+        return "percussive"
+    if harmonic:
+        return "harmonic"
+    return "full-spectrum"
+
+
+def event_grid_position(event_time, beats):
+    """Project event time onto beat + subdivision coordinates."""
+    if len(beats) < 2:
+        return 0, float(event_time), 0.0, "downbeat"
+
+    left_idx = bisect_right(beats, float(event_time)) - 1
+    left_idx = min(max(left_idx, 0), len(beats) - 2)
+    left = float(beats[left_idx])
+    right = float(beats[left_idx + 1])
+    span = max(1e-6, right - left)
+    phase = min(max((float(event_time) - left) / span, 0.0), 1.0)
+    subdivision, _ = classify_subdivision(float(event_time), beats, left_idx)
+    subdivision_fraction = {
+        "downbeat": 0.0 if phase < 0.5 else 1.0,
+        "triplet": 1.0 / 3.0 if phase < 0.5 else 2.0 / 3.0,
+        "eighth": 0.5,
+        "offgrid": round(phase * 6.0) / 6.0,
+    }.get(subdivision, 0.0)
+    return left_idx, left_idx + subdivision_fraction, subdivision_fraction, subdivision
+
+
+def tokenize_onset_events(events, beats, intro_rest):
+    """Create motif tokens over beat/subdivision coordinates."""
+    token_events = []
+    for event_idx, event in enumerate(events):
+        event_time = float(event.get("t", 0.0))
+        beat_idx, beat_pos, subdivision_fraction, subdivision = event_grid_position(event_time, beats)
+        if beat_idx < intro_rest:
+            continue
+        onset_class = classify_onset_class(event)
+        token_events.append({
+            "event_idx": event_idx,
+            "t": round(event_time, 6),
+            "beat_idx": int(min(max(round(beat_idx), 0), len(beats) - 1)),
+            "beat_pos": float(beat_pos),
+            "subdivision_fraction": float(subdivision_fraction),
+            "subdivision": subdivision,
+            "onset_class": onset_class,
+            "token": f"{onset_class}:{subdivision}",
+            "flux": float(event.get("flux", 0.0)),
+            "passes": list(event.get("passes", [])) if isinstance(event.get("passes"), list) else [],
+        })
+    token_events.sort(key=lambda row: (row["t"], row["event_idx"]))
+    return token_events
+
+
+def detect_variable_length_onset_motifs(token_events):
+    """Find repeated onset-token motifs at natural repeated lengths."""
+    motifs = []
+    n = len(token_events)
+    if n < MOTIF_MIN_TOKEN_LEN:
+        return motifs
+
+    fingerprints = {}
+    max_len = min(MOTIF_MAX_TOKEN_LEN, n)
+    for length in range(MOTIF_MIN_TOKEN_LEN, max_len + 1):
+        for start in range(0, n - length + 1):
+            window = token_events[start:start + length]
+            token_seq = tuple(row["token"] for row in window)
+            rel = tuple(round(window[i + 1]["beat_pos"] - window[i]["beat_pos"], 3) for i in range(length - 1))
+            fingerprint = (length, token_seq, rel)
+            fingerprints.setdefault(fingerprint, []).append(start)
+
+    ranked = []
+    for fingerprint, starts in fingerprints.items():
+        if len(starts) < MOTIF_MIN_REPEAT_COUNT:
+            continue
+        length = fingerprint[0]
+        non_overlapping = []
+        for start in sorted(starts):
+            if non_overlapping and start < (non_overlapping[-1] + length):
+                continue
+            non_overlapping.append(start)
+        if len(non_overlapping) < MOTIF_MIN_REPEAT_COUNT:
+            continue
+        ranked.append((len(non_overlapping) * length, len(non_overlapping), length, fingerprint, non_overlapping))
+
+    ranked.sort(reverse=True)
+    used_windows = set()
+    motif_counter = 1
+    for _, repeat_count, length, fingerprint, starts in ranked:
+        fresh_starts = []
+        for start in starts:
+            key = (start, length)
+            if key in used_windows:
+                continue
+            fresh_starts.append(start)
+        if len(fresh_starts) < MOTIF_MIN_REPEAT_COUNT:
+            continue
+
+        token_seq = fingerprint[1]
+        lengths = []
+        for start in fresh_starts:
+            end = start + length - 1
+            span_beats = token_events[end]["beat_pos"] - token_events[start]["beat_pos"]
+            lengths.append(max(0.0, span_beats))
+            used_windows.add((start, length))
+
+        motif_id = f"M{motif_counter:03d}"
+        motif_counter += 1
+        motifs.append({
+            "motif_id": motif_id,
+            "token_length": int(length),
+            "repeat_count": int(len(fresh_starts)),
+            "fingerprint": "|".join(token_seq),
+            "length_beats": round(sum(lengths) / len(lengths), 3) if lengths else 0.0,
+            "starts": fresh_starts,
+        })
+    return motifs
+
+
+def annotate_motif_roles(token_events, motifs):
+    """Attach motif role metadata to tokenized events."""
+    for event in token_events:
+        event["motif_id"] = None
+        event["motif_repeat_count"] = 0
+        event["motif_token_length"] = 0
+        event["motif_length_beats"] = 0.0
+        event["motif_fingerprint"] = ""
+        event["motif_event_role"] = "ornament"
+        event["motif_support_score"] = 0.0
+
+    for motif in motifs:
+        token_length = motif["token_length"]
+        starts = motif["starts"]
+        if not starts:
+            continue
+
+        idx_flux = [0.0] * token_length
+        idx_count = [0] * token_length
+        for start in starts:
+            for local_idx in range(token_length):
+                ev = token_events[start + local_idx]
+                idx_flux[local_idx] += ev.get("flux", 0.0)
+                idx_count[local_idx] += 1
+        avg_flux = [
+            (idx_flux[i] / idx_count[i]) if idx_count[i] > 0 else 0.0
+            for i in range(token_length)
+        ]
+        skeleton_count = max(1, round(token_length * 0.4))
+        ranked_indices = sorted(
+            range(token_length),
+            key=lambda i: (avg_flux[i], -i),
+            reverse=True,
+        )
+        skeleton_indices = set(ranked_indices[:skeleton_count])
+
+        motif_strength = motif["repeat_count"] * token_length
+        for start in starts:
+            for local_idx in range(token_length):
+                event = token_events[start + local_idx]
+                role = "skeleton" if local_idx in skeleton_indices else "motif_core"
+                score = motif_strength + event.get("flux", 0.0)
+                if score >= event["motif_support_score"]:
+                    event["motif_id"] = motif["motif_id"]
+                    event["motif_repeat_count"] = motif["repeat_count"]
+                    event["motif_token_length"] = token_length
+                    event["motif_length_beats"] = motif["length_beats"]
+                    event["motif_fingerprint"] = motif["fingerprint"]
+                    event["motif_event_role"] = role
+                    event["motif_support_score"] = score
+
+    motif_positions = sorted(
+        event["beat_pos"]
+        for event in token_events
+        if event["motif_id"]
+    )
+    if motif_positions:
+        flux_values = sorted(event.get("flux", 0.0) for event in token_events)
+        flux_floor = _percentile(flux_values, 0.5)
+        for event in token_events:
+            if event["motif_id"]:
+                continue
+            nearest = min(abs(event["beat_pos"] - pos) for pos in motif_positions)
+            if nearest <= 0.75 and event.get("flux", 0.0) >= flux_floor:
+                event["motif_event_role"] = "ornament"
+            else:
+                event["motif_event_role"] = "fill"
+
+
+def _percentile(sorted_values, q):
+    if not sorted_values:
+        return 0.0
+    if len(sorted_values) == 1:
+        return float(sorted_values[0])
+    pos = (len(sorted_values) - 1) * q
+    lo = int(pos)
+    hi = min(lo + 1, len(sorted_values) - 1)
+    frac = pos - lo
+    return float(sorted_values[lo] + (sorted_values[hi] - sorted_values[lo]) * frac)
+
+
+def _intensity_confidence(intensity):
+    return {"low": 0.33, "medium": 0.66, "high": 1.0}.get(str(intensity), None)
+
+
+def _candidate_fraction_labels(mode):
+    if mode == "quarter":
+        return [(0.0, "downbeat"), (1.0, "downbeat")]
+    if mode == "eighth":
+        return [(0.0, "downbeat"), (0.5, "eighth"), (1.0, "downbeat")]
+    if mode == "triplet":
+        return [(0.0, "downbeat"), (1.0 / 3.0, "triplet"), (2.0 / 3.0, "triplet"), (1.0, "downbeat")]
+    raise ValueError(f"Unsupported candidate mode: {mode}")
+
+
+def snap_events_to_grid_candidates(events, beats, mode):
+    """Snap each event to the nearest grid point on quarter/eighth/triplet grids."""
+    if len(beats) < 2:
+        return []
+
+    snapped = []
+    fractions = _candidate_fraction_labels(mode)
+
+    for event_idx, ev in enumerate(events):
+        event_time = float(ev.get("t", 0.0))
+        beat_idx = bisect_right(beats, event_time) - 1
+        beat_idx = min(max(beat_idx, 0), len(beats) - 2)
+        left = float(beats[beat_idx])
+        right = float(beats[beat_idx + 1])
+        span = max(1e-6, right - left)
+
+        best_fraction, subdivision = min(
+            fractions,
+            key=lambda item: abs((left + (span * item[0])) - event_time),
+        )
+        grid_time = left + (span * best_fraction)
+        residual_ms = (event_time - grid_time) * 1000.0
+
+        snapped.append({
+            "candidate": mode,
+            "event_idx": event_idx,
+            "event_time": round(event_time, 6),
+            "beat_idx": int(beat_idx),
+            "grid_time": round(grid_time, 6),
+            "subdivision": subdivision,
+            "residual_ms": round(residual_ms, 3),
+            "abs_residual_ms": round(abs(residual_ms), 3),
+            "flux": ev.get("flux"),
+            "intensity": ev.get("intensity"),
+            "intensity_confidence": _intensity_confidence(ev.get("intensity")),
+            "pass_count": len(ev.get("passes", [])) if isinstance(ev.get("passes"), list) else None,
+        })
+
+    return snapped
+
+
+def _residual_summary(snapped_rows):
+    abs_residuals = sorted(float(row["abs_residual_ms"]) for row in snapped_rows)
+    if not abs_residuals:
+        return {
+            "count": 0,
+            "median_abs_ms": 0.0,
+            "p90_abs_ms": 0.0,
+            "mean_abs_ms": 0.0,
+            "within_20ms": 0,
+            "within_35ms": 0,
+            "within_50ms": 0,
+            "within_80ms": 0,
+        }
+
+    return {
+        "count": len(abs_residuals),
+        "median_abs_ms": round(_percentile(abs_residuals, 0.5), 3),
+        "p90_abs_ms": round(_percentile(abs_residuals, 0.9), 3),
+        "mean_abs_ms": round(sum(abs_residuals) / len(abs_residuals), 3),
+        "within_20ms": sum(1 for x in abs_residuals if x <= 20.0),
+        "within_35ms": sum(1 for x in abs_residuals if x <= 35.0),
+        "within_50ms": sum(1 for x in abs_residuals if x <= 50.0),
+        "within_80ms": sum(1 for x in abs_residuals if x <= 80.0),
+    }
+
+
+def _gap_histogram(snapped_rows):
+    if not snapped_rows:
+        return {}
+    times = sorted(float(row["grid_time"]) for row in snapped_rows)
+    if len(times) < 2:
+        return {}
+    buckets = defaultdict(int)
+    for i in range(1, len(times)):
+        gap_ms = (times[i] - times[i - 1]) * 1000.0
+        bucket_floor = int(gap_ms // 50) * 50
+        bucket = f"{bucket_floor:04d}-{bucket_floor + 49:04d}"
+        buckets[bucket] += 1
+    return dict(sorted(buckets.items()))
+
+
+def _ioi_stats_from_times(times):
+    if len(times) < 2:
+        return {
+            "count": 0,
+            "min_ms": 0.0,
+            "median_ms": 0.0,
+            "p90_ms": 0.0,
+            "mean_ms": 0.0,
+            "max_ms": 0.0,
+        }
+    iois = sorted((times[i] - times[i - 1]) * 1000.0 for i in range(1, len(times)))
+    return {
+        "count": len(iois),
+        "min_ms": round(iois[0], 3),
+        "median_ms": round(_percentile(iois, 0.5), 3),
+        "p90_ms": round(_percentile(iois, 0.9), 3),
+        "mean_ms": round(sum(iois) / len(iois), 3),
+        "max_ms": round(iois[-1], 3),
+    }
+
+
+def _dense_cluster_stats_from_times(times, threshold_ms):
+    if len(times) < 2:
+        return {
+            "threshold_ms": round(threshold_ms, 3),
+            "short_ioi_count": 0,
+            "short_ioi_share": 0.0,
+            "cluster_count": 0,
+            "max_cluster_len": 0,
+        }
+
+    iois = [(times[i] - times[i - 1]) * 1000.0 for i in range(1, len(times))]
+    short_flags = [ioi < threshold_ms for ioi in iois]
+    short_count = sum(1 for flag in short_flags if flag)
+    total = len(iois)
+    cluster_count = 0
+    max_cluster_len = 0
+    current = 0
+    for flag in short_flags:
+        if flag:
+            current += 1
+            max_cluster_len = max(max_cluster_len, current + 1)
+        else:
+            if current > 0:
+                cluster_count += 1
+                current = 0
+    if current > 0:
+        cluster_count += 1
+
+    return {
+        "threshold_ms": round(threshold_ms, 3),
+        "short_ioi_count": short_count,
+        "short_ioi_share": round((short_count / total) if total else 0.0, 4),
+        "cluster_count": cluster_count,
+        "max_cluster_len": max_cluster_len,
+    }
+
+
+def _residual_delta_summary(residuals_ms):
+    if not residuals_ms:
+        return {
+            "count": 0,
+            "median_abs_ms": 0.0,
+            "p90_abs_ms": 0.0,
+            "mean_abs_ms": 0.0,
+            "max_abs_ms": 0.0,
+        }
+    abs_residuals = sorted(abs(v) for v in residuals_ms)
+    return {
+        "count": len(abs_residuals),
+        "median_abs_ms": round(_percentile(abs_residuals, 0.5), 3),
+        "p90_abs_ms": round(_percentile(abs_residuals, 0.9), 3),
+        "mean_abs_ms": round(sum(abs_residuals) / len(abs_residuals), 3),
+        "max_abs_ms": round(abs_residuals[-1], 3),
+    }
+
+
+def _same_shape_run_metrics(obstacles):
+    longest = 0
+    runs_ge_3 = 0
+    current_shape = None
+    current_len = 0
+    for obs in sorted(obstacles, key=lambda x: x["beat"]):
+        if obs.get("kind") != "shape_gate":
+            current_shape = None
+            current_len = 0
+            continue
+        shape = obs.get("shape")
+        if shape == current_shape:
+            current_len += 1
+        else:
+            current_shape = shape
+            current_len = 1
+        if current_len >= 3:
+            runs_ge_3 += 1
+        longest = max(longest, current_len)
+    return {"longest_run": longest, "run_steps_ge_3": runs_ge_3}
+
+
+def _baseline_same_shape_metrics(analysis):
+    metrics = {}
+    for diff in ("easy", "medium", "hard"):
+        obstacles = design_level(analysis, diff, cleanup_enabled=True)
+        metrics[diff] = _same_shape_run_metrics(obstacles)
+    return metrics
+
+
+def _build_obstacle_timing_rows(analysis, difficulty, experimental_onset_timing=False):
+    beats = analysis.get("beats", [])
+    selection_summary = {"segments_total": 0, "events_total": 0, "events_selected": 0}
+    if experimental_onset_timing:
+        # Active onset-only path: segment-focus selection, cleanup disabled.
+        obstacles, selected, seg_diagnostics = design_level_segment_focus(
+            analysis,
+            difficulty,
+            cleanup_enabled=False,  # cleanup is always off for this path
+        )
+        selection_summary = {
+            "generation_path": seg_diagnostics.get("generation_path", "segment_focus"),
+            "segments_total": int(seg_diagnostics.get("segments_total", 0)),
+            "events_total": int(seg_diagnostics.get("events_total", 0)),
+            "events_selected": int(seg_diagnostics.get("events_selected", 0)),
+            "segment_details": seg_diagnostics.get("segments", []),
+        }
+    else:
+        selected, _ = select_beats(analysis, difficulty)
+        obstacles = design_level(analysis, difficulty, cleanup_enabled=True)
+    rows = []
+    for order, obs in enumerate(sorted(obstacles, key=lambda item: item["beat"])):
+        beat_idx = obs["beat"]
+        if beat_idx < 0 or beat_idx >= len(beats):
+            continue
+
+        beat_time = float(beats[beat_idx])
+        event = selected.get(beat_idx)
+        if isinstance(event, dict):
+            onset_time = float(event.get("t", beat_time))
+            source = "onset"
+            subdivision = event.get("subdivision", "downbeat")
+            source_event_idx = event.get("source_event_idx")
+        else:
+            raise ValueError(
+                f"{difficulty}: segment-focus diagnostics require source onset event for beat {beat_idx}"
+            )
+
+        rows.append({
+            "difficulty": difficulty,
+            "event_order": order,
+            "beat_idx": beat_idx,
+            "beat_time": round(beat_time, 6),
+            "onset_time": round(onset_time, 6),
+            "residual_ms": round((onset_time - beat_time) * 1000.0, 3),
+            "timing_source": source,
+            "subdivision": subdivision,
+            "source_event_idx": source_event_idx,
+            "onset_class": event.get("onset_class") if isinstance(event, dict) else obs.get("onset_class"),
+            "segment_idx": (event.get("segment_idx") if isinstance(event, dict) else None) or obs.get("segment_idx"),
+            "segment_focus": (event.get("segment_focus") if isinstance(event, dict) else None) or obs.get("segment_focus"),
+            # Keep motif_* fields as None for CSV schema stability.
+            "motif_id": None,
+            "motif_length_beats": None,
+            "motif_token_length": None,
+            "motif_repeat_count": None,
+            "motif_fingerprint": None,
+            "event_role": obs.get("difficulty_inclusion") or (event.get("difficulty_inclusion") if isinstance(event, dict) else None),
+            "difficulty_inclusion": obs.get("difficulty_inclusion") or (event.get("difficulty_inclusion") if isinstance(event, dict) else None),
+        })
+    return rows, selection_summary
+
+
+def _onset_timing_comparison_summary(rows, difficulty):
+    beat_times = [float(row["beat_time"]) for row in rows]
+    onset_times = [float(row["onset_time"]) for row in rows]
+    residuals = [float(row["residual_ms"]) for row in rows]
+    subdivision_hist = dict(sorted(Counter(row["subdivision"] for row in rows).items()))
+    source_hist = dict(sorted(Counter(row["timing_source"] for row in rows).items()))
+    onset_class_hist = dict(sorted(Counter((row.get("onset_class") or "unknown") for row in rows).items()))
+    role_hist = dict(sorted(Counter((row.get("event_role") or "unknown") for row in rows).items()))
+    motif_rows = [row for row in rows if row.get("motif_id")]
+    motif_ids = sorted({row.get("motif_id") for row in motif_rows if row.get("motif_id")})
+    motif_repeat_counts = [int(row.get("motif_repeat_count", 0) or 0) for row in motif_rows]
+    motif_lengths = [float(row.get("motif_length_beats", 0.0) or 0.0) for row in motif_rows]
+    threshold_ms = MIN_IOI_MS.get(difficulty, 350.0)
+    return {
+        "event_counts": {
+            "obstacles": len(rows),
+            "timing_source_histogram": source_hist,
+        },
+        "residuals_onset_minus_beat_ms": _residual_delta_summary(residuals),
+        "ioi_stats_ms": {
+            "beat_snap": _ioi_stats_from_times(beat_times),
+            "onset_timing": _ioi_stats_from_times(onset_times),
+        },
+        "dense_cluster_stats": {
+            "beat_snap": _dense_cluster_stats_from_times(beat_times, threshold_ms),
+            "onset_timing": _dense_cluster_stats_from_times(onset_times, threshold_ms),
+        },
+        "subdivision_label_distribution": subdivision_hist,
+        "onset_class_distribution": onset_class_hist,
+        "event_role_distribution": role_hist,
+        "motif_stats": {
+            "motif_ids": motif_ids,
+            "motif_count": len(motif_ids),
+            "rows_with_motif": len(motif_rows),
+            "max_repeat_count": max(motif_repeat_counts) if motif_repeat_counts else 0,
+            "max_length_beats": round(max(motif_lengths), 3) if motif_lengths else 0.0,
+        },
+    }
+
+
+def write_snap_diagnostics(analysis, diagnostics_out_dir, experimental_onset_timing=False):
+    """Emit subdivision-aware diagnostics artifacts without changing generation."""
+    out_dir = Path(diagnostics_out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    events = analysis.get("events", [])
+    beats = analysis.get("beats", [])
+    if not events or not beats:
+        raise ValueError("analysis must include non-empty events and beats for diagnostics")
+
+    current_snap = snap_events_to_beats(events, beats)
+    current_rows = []
+    for i, row in enumerate(current_snap):
+        event_time = float(row.get("t", 0.0))
+        beat_time = float(row.get("beat_time", 0.0))
+        residual_ms = (event_time - beat_time) * 1000.0
+        current_rows.append({
+            "candidate": "current_quarter_snap",
+            "event_idx": int(row.get("source_event_idx", i)),
+            "event_time": round(event_time, 6),
+            "beat_idx": int(row.get("beat_idx", 0)),
+            "grid_time": round(beat_time, 6),
+            "subdivision": row.get("subdivision", "downbeat"),
+            "residual_ms": round(residual_ms, 3),
+            "abs_residual_ms": round(abs(residual_ms), 3),
+            "flux": row.get("flux"),
+            "intensity": row.get("intensity"),
+            "intensity_confidence": _intensity_confidence(row.get("intensity")),
+            "pass_count": len(row.get("passes", [])) if isinstance(row.get("passes"), list) else None,
+        })
+
+    candidate_rows = {
+        "current_quarter_snap": current_rows,
+        "quarter_grid": snap_events_to_grid_candidates(events, beats, "quarter"),
+        "eighth_grid": snap_events_to_grid_candidates(events, beats, "eighth"),
+        "triplet_grid": snap_events_to_grid_candidates(events, beats, "triplet"),
+    }
+
+    flat_rows = []
+    for rows in candidate_rows.values():
+        flat_rows.extend(rows)
+    fields = [
+        "candidate",
+        "event_idx",
+        "event_time",
+        "beat_idx",
+        "grid_time",
+        "subdivision",
+        "residual_ms",
+        "abs_residual_ms",
+        "flux",
+        "intensity",
+        "intensity_confidence",
+        "pass_count",
+    ]
+    with (out_dir / "snap_candidate_events.csv").open("w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=fields)
+        writer.writeheader()
+        writer.writerows(flat_rows)
+
+    residual_summary = {}
+    subdivision_histogram = {}
+    gap_histogram = {}
+    for candidate, rows in candidate_rows.items():
+        residual_summary[candidate] = _residual_summary(rows)
+        subdivision_histogram[candidate] = dict(
+            sorted(Counter(row["subdivision"] for row in rows).items())
+        )
+        gap_histogram[candidate] = _gap_histogram(rows)
+
+    # ── Onset pool summary (always emitted, not gated on experimental) ────────
+    duration_sec = float(analysis.get("duration", 1.0))
+    events_per_min = round(len(events) / max(1.0, duration_sec) * 60.0, 1)
+    structure = analysis.get("structure", [])
+    seg_event_counts: list[dict] = []
+    empty_seg_count = 0
+    for sec in structure:
+        t0 = float(sec.get("start", 0.0))
+        t1 = float(sec.get("end", duration_sec))
+        n_in = sum(1 for e in events if t0 <= float(e.get("t", 0.0)) < t1)
+        empty = n_in == 0
+        if empty:
+            empty_seg_count += 1
+        seg_event_counts.append({
+            "section": sec.get("section", "?"),
+            "start": t0,
+            "end": t1,
+            "event_count": n_in,
+            "empty": empty,
+        })
+
+    snap_candidate_count = len(current_rows)
+    snap_residual_stats = _residual_summary(current_rows)
+
+    onset_pool_summary = {
+        "total_events": len(events),
+        "events_per_minute": events_per_min,
+        "snapped_events": snap_candidate_count,
+        "snap_residual_stats": snap_residual_stats,
+        "segment_count": len(structure),
+        "empty_segment_count": empty_seg_count,
+        "segment_coverage": seg_event_counts,
+        # from analysis.onset_diagnostics if present
+        "raw_per_pass": analysis.get("onset_diagnostics", {}).get("raw_per_pass", {}),
+        "raw_total": analysis.get("onset_diagnostics", {}).get("raw_total", None),
+    }
+
+    summary = {
+        "song_id": analysis.get("title", "unknown"),
+        "onset_pool_summary": onset_pool_summary,
+        "residual_summary": residual_summary,
+        "subdivision_histogram": subdivision_histogram,
+        "gap_histogram_50ms_bins": gap_histogram,
+        "same_shape_run_metrics": _baseline_same_shape_metrics(analysis),
+    }
+
+    if experimental_onset_timing:
+        onset_rows = []
+        onset_summary = {}
+        selection_rollup = {}
+        obstacle_counts: dict[str, int] = {}
+        for difficulty in ("easy", "medium", "hard"):
+            rows, selection_summary = _build_obstacle_timing_rows(
+                analysis,
+                difficulty,
+                experimental_onset_timing=True,
+            )
+            onset_rows.extend(rows)
+            onset_summary[difficulty] = _onset_timing_comparison_summary(rows, difficulty)
+            selection_rollup[difficulty] = selection_summary
+            obstacle_counts[difficulty] = len(rows)
+
+        onset_fields = [
+            "difficulty",
+            "event_order",
+            "beat_idx",
+            "beat_time",
+            "onset_time",
+            "residual_ms",
+            "timing_source",
+            "subdivision",
+            "source_event_idx",
+            "onset_class",
+            "segment_idx",
+            "segment_focus",
+            # Kept for CSV schema stability (null values).
+            "motif_id",
+            "motif_length_beats",
+            "motif_token_length",
+            "motif_repeat_count",
+            "motif_fingerprint",
+            "event_role",
+            "difficulty_inclusion",
+        ]
+        with (out_dir / "onset_timing_events.csv").open("w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=onset_fields, extrasaction="ignore")
+            writer.writeheader()
+            writer.writerows(onset_rows)
+
+        summary["experimental_onset_timing"] = {
+            "enabled": True,
+            "generation_path": "segment_focus",
+            "legacy_rule_influence_disabled": True,
+            "disabled_legacy_rules": list(ONSET_MOTIF_DISABLED_LEGACY_RULES),
+            "comparison_by_difficulty": onset_summary,
+            "selection_summary_by_difficulty": selection_rollup,
+            "obstacle_counts_by_difficulty": obstacle_counts,
+        }
+
+    with (out_dir / "snap_diagnostics_summary.json").open("w", encoding="utf-8") as f:
+        json.dump(summary, f, indent=2)
+
+    return out_dir
 
 
 def flux_threshold(stats, pct):
@@ -223,12 +985,14 @@ def nearest_shape_lane(obstacles, index):
         if is_shape_gate(obstacles[j]):
             shape = obstacles[j].get("shape", "square")
             if shape in SHAPE_TO_LANE:
-                return shape, SHAPE_TO_LANE[shape]
+                lane = clamp_lane(obstacles[j].get("lane", SHAPE_TO_LANE[shape]))
+                return shape, lane
     for j in range(index + 1, len(obstacles)):
         if is_shape_gate(obstacles[j]):
             shape = obstacles[j].get("shape", "square")
             if shape in SHAPE_TO_LANE:
-                return shape, SHAPE_TO_LANE[shape]
+                lane = clamp_lane(obstacles[j].get("lane", SHAPE_TO_LANE[shape]))
+                return shape, lane
     if 0 <= index < len(obstacles):
         lane = clamp_lane(lane_of(obstacles[index], 1))
     else:
@@ -350,6 +1114,355 @@ def select_beats(analysis, difficulty):
     return selected, event_map
 
 
+def _event_section_name(event_time, structure):
+    for section in structure:
+        if section["start"] <= event_time < section["end"]:
+            return section.get("section", "verse")
+    return "verse"
+
+
+def _motif_priority_score(event, difficulty):
+    flux_score = event.get("flux", 0.0) * 100.0
+    repeat_score = event.get("motif_repeat_count", 0) * 12.0
+    class_bias = {"full-spectrum": 18.0, "percussive": 12.0, "harmonic": 10.0}.get(
+        event.get("onset_class"),
+        0.0,
+    )
+    role_weights = {
+        "easy": {"skeleton": 400.0, "motif_core": 170.0, "ornament": 60.0, "fill": 20.0},
+        "medium": {"skeleton": 320.0, "motif_core": 250.0, "ornament": 120.0, "fill": 40.0},
+        "hard": {"skeleton": 280.0, "motif_core": 260.0, "ornament": 200.0, "fill": 120.0},
+    }
+    role_score = role_weights[difficulty].get(event.get("motif_event_role", "fill"), 0.0)
+    return role_score + flux_score + repeat_score + class_bias
+
+
+def select_onset_motif_beats(analysis, difficulty):
+    """Experimental selector: pick events from repeated onset motifs first."""
+    beats = analysis["beats"]
+    events = analysis["events"]
+    intro_rest = DIFFICULTY_INTRO_REST[difficulty]
+
+    token_events = tokenize_onset_events(events, beats, intro_rest)
+    motifs = detect_variable_length_onset_motifs(token_events)
+    annotate_motif_roles(token_events, motifs)
+    event_map = {event["event_idx"]: event for event in token_events}
+    allowed_roles = ONSET_MOTIF_DIFFICULTY_ROLES[difficulty]
+    selected_events = {}
+    diagnostics = {
+        "motifs": motifs,
+        "events_total": len(token_events),
+        "events_with_motif": sum(1 for event in token_events if event.get("motif_id")),
+        "difficulty_allowed_roles": sorted(allowed_roles),
+        "legacy_rule_influence_disabled": True,
+        "disabled_legacy_rules": list(ONSET_MOTIF_DISABLED_LEGACY_RULES),
+    }
+
+    primary_candidates = [
+        event
+        for event in token_events
+        if event.get("motif_id") and event.get("motif_event_role", "fill") in allowed_roles
+    ]
+    fallback_candidates = [
+        event for event in token_events
+        if event.get("motif_event_role", "fill") in allowed_roles
+    ]
+    chosen_events = primary_candidates or fallback_candidates
+
+    for event in chosen_events:
+        beat_idx = event["beat_idx"]
+        previous = selected_events.get(beat_idx)
+        if previous is None:
+            selected_events[beat_idx] = event
+            continue
+        previous_key = (
+            _motif_priority_score(previous, difficulty),
+            previous.get("flux", 0.0),
+            -previous.get("event_idx", 0),
+        )
+        candidate_key = (
+            _motif_priority_score(event, difficulty),
+            event.get("flux", 0.0),
+            -event.get("event_idx", 0),
+        )
+        if candidate_key > previous_key:
+            selected_events[beat_idx] = event
+
+    role_hist = Counter(event.get("motif_event_role", "fill") for event in selected_events.values())
+    diagnostics["selected_events"] = len(selected_events)
+    diagnostics["selected_role_distribution"] = dict(sorted(role_hist.items()))
+
+    return selected_events, event_map, diagnostics
+
+
+# ═══════════════════════════════════════════════════════════════
+# SEGMENT-FOCUS ONSET SELECTION
+# Replaces motif n-gram selection as the active experimental path.
+# ═══════════════════════════════════════════════════════════════
+
+def _segment_class_stats(events):
+    """Compute per-onset-class event count and total flux for a list of snapped events."""
+    stats = {}
+    for ev in events:
+        cls = classify_onset_class(ev)
+        if cls not in stats:
+            stats[cls] = {"count": 0, "total_flux": 0.0, "events": []}
+        stats[cls]["count"] += 1
+        stats[cls]["total_flux"] += float(ev.get("flux", 0.0))
+        stats[cls]["events"].append(ev)
+    return stats
+
+
+def _choose_segment_focus(class_stats, prev_focuses):
+    """Pick the dominant focus class with anti-repetition bias.
+
+    Returns (focus_class, fallback_reason_or_None).
+    focus_class is one of "percussive", "harmonic", "full-spectrum".
+    """
+    if not class_stats:
+        return "full-spectrum", "no_events_in_segment"
+
+    # Score: total_flux primary, count tiebreaker.
+    scores = {
+        cls: stats["total_flux"] + stats["count"] * 0.1
+        for cls, stats in class_stats.items()
+    }
+
+    # Anti-repetition: halve score of a class that has dominated
+    # the last SEGMENT_FOCUS_ANTI_REPEAT_MAX segments.
+    fallback_reason = None
+    if len(prev_focuses) >= SEGMENT_FOCUS_ANTI_REPEAT_MAX:
+        recent = prev_focuses[-SEGMENT_FOCUS_ANTI_REPEAT_MAX:]
+        if len(set(recent)) == 1:
+            repeated = recent[0]
+            if repeated in scores and len(scores) > 1:
+                scores[repeated] *= 0.5
+                fallback_reason = f"anti_repeat_{repeated}"
+
+    focus = max(scores, key=lambda c: (scores[c], c))  # c as stable tiebreak
+    return focus, fallback_reason
+
+
+def select_segment_focus_beats(analysis, difficulty):
+    """Segment-level onset focus selector — the active experimental generation path.
+
+    Algorithm per segment:
+      1. Classify all snapped events into percussive / harmonic / full-spectrum.
+      2. Choose dominant class (focus) based on total flux, with anti-repeat bias.
+      3. Rank focus-class events by flux descending (time ascending as tiebreak).
+      4. Take the top fraction based on difficulty:
+           easy   → top 40%  (strongest onsets only)
+           medium → top 65%
+           hard   → top 90%
+      5. Map each selected event's onset_class to the segment focus (not individual class).
+
+    NOTE (directive 2026-05-10): intro-rest skipping is NOT applied in this path.
+    Obstacles are authored only from onset events; every onset in the song is
+    eligible regardless of its beat index.  Beat-fallback placement is also
+    disabled — if a segment has no onset events it produces no obstacles.
+
+    Returns:
+      selected_events  — {beat_idx: enriched_event_dict}
+      all_snapped_map  — {beat_idx: snapped_event} for all snapped events
+      diagnostics      — dict with per-segment details
+    """
+    beats = analysis["beats"]
+    events = analysis["events"]
+    structure = analysis.get("structure", [])
+    fraction = SEGMENT_FOCUS_DIFFICULTY_FRACTION[difficulty]
+
+    # Snap all events to the beat grid once.
+    all_snapped = snap_events_to_beats(events, beats)
+
+    # Index snapped events for efficient lookup.
+    all_snapped_map = {}
+    for ev in all_snapped:
+        all_snapped_map[ev["beat_idx"]] = ev  # last-writer wins (one event per beat)
+
+    # Fall back to a single whole-song segment if structure is absent.
+    sections = list(structure) if structure else [
+        {"section": "verse", "start": 0.0, "end": float(beats[-1]) + 1.0}
+    ]
+
+    selected_events = {}   # beat_idx → enriched event dict
+    prev_focuses = []      # rolling focus history for anti-repetition
+    segment_diagnostics = []
+
+    for seg_idx, section in enumerate(sections):
+        sec_start = float(section["start"])
+        sec_end = float(section["end"])
+        sec_name = section.get("section", "verse")
+
+        # All snapped events whose beat timestamp falls in this segment.
+        # No intro-rest filter: every onset event is eligible.
+        seg_events = [
+            ev for ev in all_snapped
+            if sec_start <= float(ev["beat_time"]) < sec_end
+        ]
+
+        class_stats = _segment_class_stats(seg_events)
+
+        # Choose focus class.
+        focus, fallback_reason = _choose_segment_focus(class_stats, prev_focuses)
+        prev_focuses.append(focus)
+
+        # Events of the chosen focus class; fall back to all events if none.
+        focus_events = class_stats.get(focus, {}).get("events", [])
+        if not focus_events:
+            focus_events = seg_events
+            fallback_reason = (fallback_reason or "") + f"|no_{focus}_events_using_all"
+
+        if not focus_events:
+            segment_diagnostics.append({
+                "segment_idx": seg_idx,
+                "section": sec_name,
+                "start": sec_start,
+                "end": sec_end,
+                "focus_class": focus,
+                "fallback_reason": fallback_reason or "empty_segment",
+                "class_counts": {},
+                "class_flux": {},
+                "focus_events_total": 0,
+                "difficulty_selected": 0,
+                "ranked_flux_p50": 0.0,
+                "ranked_flux_max": 0.0,
+            })
+            continue
+
+        # Rank by flux descending, onset time ascending (deterministic).
+        ranked = sorted(
+            focus_events,
+            key=lambda ev: (-float(ev.get("flux", 0.0)), float(ev.get("t", 0.0))),
+        )
+
+        # Compute difficulty thresholds across all three levels for diagnostics.
+        n_easy = max(1, round(len(ranked) * SEGMENT_FOCUS_DIFFICULTY_FRACTION["easy"]))
+        n_medium = max(1, round(len(ranked) * SEGMENT_FOCUS_DIFFICULTY_FRACTION["medium"]))
+        n_hard = max(1, round(len(ranked) * SEGMENT_FOCUS_DIFFICULTY_FRACTION["hard"]))
+        n_take = {"easy": n_easy, "medium": n_medium, "hard": n_hard}.get(difficulty, n_hard)
+
+        # Tag each ranked event with its minimum-difficulty inclusion level.
+        for rank_i, ev in enumerate(ranked):
+            if rank_i < n_easy:
+                ev["difficulty_inclusion"] = "easy"
+            elif rank_i < n_medium:
+                ev["difficulty_inclusion"] = "medium"
+            else:
+                ev["difficulty_inclusion"] = "hard"
+
+        chosen = ranked[:n_take]
+
+        flux_vals = sorted(float(ev.get("flux", 0.0)) for ev in ranked)
+        segment_diagnostics.append({
+            "segment_idx": seg_idx,
+            "section": sec_name,
+            "start": sec_start,
+            "end": sec_end,
+            "focus_class": focus,
+            "fallback_reason": fallback_reason,
+            "class_counts": {cls: s["count"] for cls, s in class_stats.items()},
+            "class_flux": {cls: round(s["total_flux"], 4) for cls, s in class_stats.items()},
+            "focus_events_total": len(focus_events),
+            "difficulty_selected": n_take,
+            "ranked_flux_p50": round(_percentile(flux_vals, 0.5), 4),
+            "ranked_flux_max": round(flux_vals[-1], 4) if flux_vals else 0.0,
+            "n_easy": n_easy,
+            "n_medium": n_medium,
+            "n_hard": n_hard,
+        })
+
+        # Insert chosen events; first segment that claims a beat_idx wins.
+        for ev in chosen:
+            beat_idx = ev["beat_idx"]
+            if beat_idx in selected_events:
+                continue
+            selected_events[beat_idx] = {
+                **ev,
+                "onset_class": focus,        # override individual class with segment focus
+                "segment_idx": seg_idx,
+                "segment_focus": focus,
+                "difficulty_inclusion": ev.get("difficulty_inclusion", difficulty),
+                # Keep source_event_idx for CSV diagnostics (snap_events_to_beats sets it).
+                "source_event_idx": ev.get("source_event_idx"),
+            }
+
+    diagnostics = {
+        "generation_path": "segment_focus",
+        "difficulty": difficulty,
+        "segments_total": len(sections),
+        "events_total": len(all_snapped),
+        "events_selected": len(selected_events),
+        "focus_fraction": fraction,
+        "segments": segment_diagnostics,
+    }
+    return selected_events, all_snapped_map, diagnostics
+
+
+def design_level_segment_focus(analysis, difficulty, cleanup_enabled=False):
+    """Active experimental path: segment-level focus class drives lane/shape selection.
+
+    Cleanup passes are intentionally DISABLED for this onset-only path
+    (directive 2026-05-10).  The parameter is accepted for call-site
+    compatibility but its value is always ignored — passing True has no effect.
+
+    Motif n-gram detection is NOT used for obstacle selection here.
+    Class mapping: percussive→lane 0+triangle, harmonic→lane 2+circle,
+                   full-spectrum→lane 1+square.
+    Difficulty controls how many onset events per segment are included.
+    """
+    # Cleanup is explicitly disabled for this path regardless of the parameter.
+    _ = cleanup_enabled  # noqa: F841 — intentionally unused; no cleanup runs here
+    selected, all_snapped_map, seg_diagnostics = select_segment_focus_beats(
+        analysis, difficulty
+    )
+    obstacles = []
+    for beat_idx, event in sorted(selected.items()):
+        focus = event.get("onset_class", "full-spectrum")
+        mapping = ONSET_CLASS_TO_OBSTACLE.get(focus, ONSET_CLASS_TO_OBSTACLE["full-spectrum"])
+        obstacles.append({
+            "beat": int(beat_idx),
+            "kind": "shape_gate",
+            "lane": mapping["lane"],
+            "shape": mapping["shape"],
+            "onset_class": focus,
+            "segment_idx": event.get("segment_idx"),
+            "segment_focus": event.get("segment_focus"),
+            "difficulty_inclusion": event.get("difficulty_inclusion", difficulty),
+            "source_event_idx": event.get("source_event_idx"),
+        })
+    # No cleanup: obstacles come directly from onsets; no post-processing passes.
+    return obstacles, selected, seg_diagnostics
+
+
+def design_level_onset_motif(analysis, difficulty, cleanup_enabled=True):
+    """Motif-pipeline (kept for diagnostics). NOT the active generation path."""
+    selected, event_map, motif_diagnostics = select_onset_motif_beats(analysis, difficulty)
+    obstacles = []
+    for beat_idx, event in sorted(selected.items()):
+        mapping = ONSET_CLASS_TO_OBSTACLE.get(
+            event.get("onset_class"),
+            ONSET_CLASS_TO_OBSTACLE["full-spectrum"],
+        )
+        obstacles.append({
+            "beat": int(beat_idx),
+            "kind": "shape_gate",
+            "lane": mapping["lane"],
+            "shape": mapping["shape"],
+            "onset_class": event.get("onset_class", "full-spectrum"),
+            "motif_id": event.get("motif_id"),
+            "motif_length_beats": event.get("motif_length_beats", 0.0),
+            "motif_token_length": event.get("motif_token_length", 0),
+            "motif_repeat_count": event.get("motif_repeat_count", 0),
+            "motif_fingerprint": event.get("motif_fingerprint", ""),
+            "motif_event_role": event.get("motif_event_role", "fill"),
+            "difficulty_inclusion": event.get("motif_event_role", "fill"),
+            "source_event_idx": event.get("event_idx"),
+        })
+
+    del analysis, difficulty, cleanup_enabled
+    return obstacles, selected, motif_diagnostics
+
+
 # ═══════════════════════════════════════════════════════════════
 # PHASE 2: ASSIGN — what obstacle goes on each beat?
 # ═══════════════════════════════════════════════════════════════
@@ -357,7 +1470,6 @@ def select_beats(analysis, difficulty):
 def assign_obstacle(beat_idx, event, gap_to_prev, section_name, difficulty,
                     prev_lane, prev_shapes, allowed_kinds, rng, shape_state):
     """Assign obstacle type from beat-local context only (no onset pass mapping)."""
-    del difficulty
     natural_kind = "shape_gate"
     # Respect difficulty restrictions
     if natural_kind not in allowed_kinds:
@@ -376,7 +1488,7 @@ def assign_obstacle(beat_idx, event, gap_to_prev, section_name, difficulty,
         # 1. Follow section-local cycling as the baseline
         # 2. Blend in subdivision / groove hints with small deterministic jitter
         # 3. Cap repeated same-shape runs for readability
-        palette = SECTION_SHAPE_PALETTE.get(section_name, [0, 1, 2])
+        palette = section_shape_palette_for_difficulty(section_name, difficulty)
         subdivision_lane = event.get("subdivision_lane") if event else None
         prev_shape_lane = SHAPE_TO_LANE.get(prev_shapes[-1], prev_lane) if prev_shapes else prev_lane
         max_same_shape_run = 2
@@ -417,6 +1529,17 @@ def assign_obstacle(beat_idx, event, gap_to_prev, section_name, difficulty,
                 lane = prev_lane + 1
             else:
                 lane = prev_lane - 1
+
+        same_shape_run = shape_state.get("same_shape_run", 0)
+        if prev_shapes and lane == prev_shape_lane and same_shape_run >= max_same_shape_run:
+            adjacent = [p for p in palette if p != prev_shape_lane and abs(p - prev_lane) <= 1]
+            if adjacent:
+                lane = adjacent[0]
+            elif difficulty in ("medium", "hard"):
+                non_adjacent = [p for p in palette if p != prev_shape_lane]
+                if non_adjacent:
+                    lane = non_adjacent[0]
+
         shape = LANE_TO_SHAPE[lane]
 
         if prev_shapes and shape == prev_shapes[-1]:
@@ -428,6 +1551,14 @@ def assign_obstacle(beat_idx, event, gap_to_prev, section_name, difficulty,
         obs["lane"] = lane
 
     return obs
+
+
+def section_shape_palette_for_difficulty(section_name, difficulty):
+    """Return section palette with minimal difficulty-aware variety safeguards."""
+    base = list(SECTION_SHAPE_PALETTE.get(section_name, [0, 1, 2]))
+    if difficulty == "hard":
+        return [0, 1, 2]
+    return base
 
 
 def assign_obstacles(selected_beats, event_map, analysis, difficulty):
@@ -673,13 +1804,17 @@ def clean_breathing_room(obstacles, boundary_beats, difficulty):
     return [obs for obs in obstacles if obs["beat"] not in protected]
 
 
-def clean_gap_monotony(obstacles):
-    """RULE: No single gap value > 40% of all gaps.
-    Thin the most common gap by removing every 3rd occurrence."""
+def clean_gap_monotony(obstacles, difficulty):
+    """Reduce dominant-gap monotony with deterministic local redistribution."""
     if len(obstacles) < 5:
         return obstacles
 
-    for _ in range(3):  # iterate until stable
+    cap = GAP_MONOTONY_CAP.get(difficulty)
+    if cap is None:
+        return obstacles
+
+    max_diff = MAX_BEAT_DIFF.get(difficulty, 999)
+    for _ in range(len(obstacles) * 3):
         gaps = []
         for i in range(1, len(obstacles)):
             gaps.append(obstacles[i]["beat"] - obstacles[i-1]["beat"])
@@ -689,24 +1824,143 @@ def clean_gap_monotony(obstacles):
         gap_counts = Counter(gaps)
         total = len(gaps)
         worst_gap, worst_count = gap_counts.most_common(1)[0]
-        if worst_count / total <= 0.40:
-            break  # passes
+        if worst_count / total < cap:
+            break
 
-        # Remove every 3rd obstacle that creates this gap
-        result = [obstacles[0]]
-        consecutive = 0
-        for i in range(1, len(obstacles)):
-            g = obstacles[i]["beat"] - result[-1]["beat"]
-            if g == worst_gap:
-                consecutive += 1
-                if consecutive % 3 == 0:
-                    continue  # skip to thin
-            else:
-                consecutive = 0
-            result.append(obstacles[i])
-        obstacles = result
+        changed = False
+
+        # First prefer beat shifts that keep obstacle count unchanged.
+        for i in range(1, len(obstacles) - 1):
+            left = obstacles[i]["beat"] - obstacles[i - 1]["beat"]
+            right = obstacles[i + 1]["beat"] - obstacles[i]["beat"]
+            if left == worst_gap and right >= worst_gap + 2:
+                candidate = obstacles[i]["beat"] + 1
+                if candidate < obstacles[i + 1]["beat"] and (right - 1) != worst_gap:
+                    obstacles[i]["beat"] = candidate
+                    changed = True
+                    break
+            if right == worst_gap and left >= worst_gap + 2:
+                candidate = obstacles[i]["beat"] - 1
+                if candidate > obstacles[i - 1]["beat"] and (left - 1) != worst_gap:
+                    obstacles[i]["beat"] = candidate
+                    changed = True
+                    break
+
+        if changed:
+            continue
+
+        # Fallback: remove only the center of worst_gap + worst_gap pairs.
+        for i in range(1, len(obstacles) - 1):
+            left = obstacles[i]["beat"] - obstacles[i - 1]["beat"]
+            right = obstacles[i + 1]["beat"] - obstacles[i]["beat"]
+            if left == worst_gap and right == worst_gap:
+                merged = obstacles[i + 1]["beat"] - obstacles[i - 1]["beat"]
+                if merged > max_diff:
+                    continue
+                if merged <= max_diff:
+                    del obstacles[i]
+                    changed = True
+                    break
+
+        if not changed:
+            break
 
     return obstacles
+
+
+def clean_min_ioi(obstacles, difficulty, analysis):
+    """Ensure authored inter-onset intervals clear per-difficulty floor."""
+    floor = MIN_IOI_MS.get(difficulty)
+    beats = analysis.get("beats", [])
+    if floor is None or len(obstacles) < 2 or not beats:
+        return obstacles
+
+    result = list(obstacles)
+    while len(result) >= 2:
+        changed = False
+        for i in range(1, len(result)):
+            left = result[i - 1]["beat"]
+            right = result[i]["beat"]
+            if left < 0 or right < 0 or left >= len(beats) or right >= len(beats):
+                continue
+            dt_ms = (float(beats[right]) - float(beats[left])) * 1000.0
+            if dt_ms < floor:
+                del result[i]
+                changed = True
+                break
+        if not changed:
+            break
+    return result
+
+
+def clean_gap_one_share(obstacles, difficulty):
+    """Trim excess gap=1 usage while preserving beat-grid semantics."""
+    cap = GAP_ONE_SHARE_CAP.get(difficulty)
+    max_diff = MAX_BEAT_DIFF.get(difficulty, 999)
+    if cap is None or len(obstacles) < 3:
+        return obstacles
+
+    result = list(obstacles)
+    for _ in range(len(result)):
+        beats = [obs["beat"] for obs in result]
+        gaps = [beats[i] - beats[i - 1] for i in range(1, len(beats))]
+        if not gaps:
+            break
+        gap_counts = Counter(gaps)
+        if (gap_counts.get(1, 0) / len(gaps)) <= cap:
+            break
+
+        changed = False
+        for i in range(1, len(result) - 1):
+            left = result[i]["beat"] - result[i - 1]["beat"]
+            if left != 1:
+                continue
+            merged = result[i + 1]["beat"] - result[i - 1]["beat"]
+            if merged <= max_diff:
+                del result[i]
+                changed = True
+                break
+        if not changed:
+            break
+
+    return result
+
+
+def thin_oversized_shape_clusters(obstacles, difficulty):
+    """Trim the minimum obstacles needed to cap dense cluster size per difficulty."""
+    cap = DENSE_CLUSTER_SOFT_CAP.get(difficulty)
+    max_diff = MAX_BEAT_DIFF.get(difficulty, 999)
+    if cap is None or len(obstacles) < cap + 1:
+        return obstacles
+
+    result = list(obstacles)
+    for _ in range(len(result)):
+        clusters = shape_gate_clusters(result)
+        oversized = next((cluster for cluster in clusters if len(cluster) > cap), None)
+        if oversized is None:
+            break
+
+        target_idx = None
+        best_key = None
+        midpoint = (len(oversized) - 1) / 2.0
+        for pos in range(1, len(oversized) - 1):
+            idx = oversized[pos]
+            left_gap = result[idx]["beat"] - result[idx - 1]["beat"]
+            right_gap = result[idx + 1]["beat"] - result[idx]["beat"]
+            merged_gap = result[idx + 1]["beat"] - result[idx - 1]["beat"]
+            if merged_gap > max_diff:
+                continue
+            gap_one_relief = int(left_gap == 1) + int(right_gap == 1)
+            key = (-gap_one_relief, merged_gap, abs(pos - midpoint), idx)
+            if best_key is None or key < best_key:
+                best_key = key
+                target_idx = idx
+
+        if target_idx is None:
+            target_idx = oversized[len(oversized) // 2]
+        del result[target_idx]
+
+    return result
 
 
 def get_section_boundary_beats(analysis):
@@ -741,7 +1995,7 @@ def clean_level(obstacles, difficulty, boundary_beats):
     obstacles = clean_type_transition(obstacles)
     obstacles = clean_shape_change_gap(obstacles)
     obstacles = clean_gap_one_early(obstacles, difficulty)
-    obstacles = clean_gap_monotony(obstacles)
+    obstacles = clean_gap_monotony(obstacles, difficulty)
     return obstacles
 
 
@@ -787,6 +2041,21 @@ def medium_shape_counts(obstacles):
         counts[lane] += 1
     total = sum(counts.values())
     return counts, total
+
+
+def longest_same_shape_run_from_clusters(cluster_lanes, cluster_sizes):
+    longest = 0
+    run = 0
+    prev_lane = None
+    for lane, size in zip(cluster_lanes, cluster_sizes):
+        if lane == prev_lane:
+            run += size
+        else:
+            run = size
+            prev_lane = lane
+        if run > longest:
+            longest = run
+    return longest
 
 
 def target_count_range(shape_idx, total):
@@ -947,25 +2216,107 @@ def rebalance_medium_shapes(obstacles, difficulty):
                 and counts[shape_idx] > target_count_range(shape_idx, total)[0]
             ]
 
-        current_score = shape_balance_score(counts, total)
-        best = None
-        best_score = current_score
-        best_tie = None
         clusters = shape_gate_clusters(obstacles)
+        cluster_lanes = [shape_cluster_lane(obstacles, cluster) for cluster in clusters]
+        cluster_sizes = [len(cluster) for cluster in clusters]
+        current_score = shape_balance_score(counts, total)
+        current_run = longest_same_shape_run_from_clusters(cluster_lanes, cluster_sizes)
+        best = None
+        best_obj = (current_score, current_run)
+        best_tie = None
 
         for donor in donors:
-            for cluster in clusters:
+            for cluster_idx, cluster in enumerate(clusters):
                 if shape_cluster_lane(obstacles, cluster) != donor:
                     continue
                 size = len(cluster)
                 new_counts = dict(counts)
                 new_counts[donor] -= size
                 new_counts[under] += size
-                new_score = shape_balance_score(new_counts, total)
+                candidate_lanes = list(cluster_lanes)
+                candidate_lanes[cluster_idx] = under
+                new_run = longest_same_shape_run_from_clusters(candidate_lanes, cluster_sizes)
+                new_obj = (shape_balance_score(new_counts, total), new_run)
                 tie = (abs(size - under_need), size)
-                if new_score < best_score or (new_score == best_score and best_tie and tie < best_tie):
+                if new_obj < best_obj or (new_obj == best_obj and best_tie and tie < best_tie):
                     best = (cluster, under)
-                    best_score = new_score
+                    best_obj = new_obj
+                    best_tie = tie
+
+        if best is None:
+            break
+
+        cluster, shape_idx = best
+        shape = LANE_TO_SHAPE[shape_idx]
+        for i in cluster:
+            set_shape_gate(obstacles[i], shape)
+
+    return clean_shape_change_gap(obstacles)
+
+
+def hard_shape_score(counts, total):
+    if total == 0:
+        return 0
+    triangle_min = (HARD_TRIANGLE_FLOOR_PCT * total + 99) // 100
+    circle_max = (HARD_CIRCLE_CEIL_PCT * total) // 100
+    return max(0, triangle_min - counts[2]) + max(0, counts[0] - circle_max)
+
+
+def rebalance_hard_shapes(obstacles, difficulty):
+    """Mutate hard shape clusters to satisfy triangle floor / circle ceiling."""
+    if difficulty != "hard" or not obstacles:
+        return obstacles
+
+    obstacles = clean_shape_change_gap(obstacles)
+    seen = set()
+    for _ in range(200):
+        counts, total = medium_shape_counts(obstacles)
+        if total == 0 or hard_shape_score(counts, total) == 0:
+            break
+
+        key = tuple(counts[i] for i in range(3))
+        if key in seen:
+            break
+        seen.add(key)
+
+        triangle_min = (HARD_TRIANGLE_FLOOR_PCT * total + 99) // 100
+        circle_max = (HARD_CIRCLE_CEIL_PCT * total) // 100
+        triangle_need = max(0, triangle_min - counts[2])
+        circle_excess = max(0, counts[0] - circle_max)
+
+        recipient = 2 if triangle_need > 0 else 1
+        donors = [0, 1] if circle_excess > 0 else [1, 0]
+
+        clusters = shape_gate_clusters(obstacles)
+        cluster_lanes = [shape_cluster_lane(obstacles, cluster) for cluster in clusters]
+        cluster_sizes = [len(cluster) for cluster in clusters]
+        current_score = hard_shape_score(counts, total)
+        current_run = longest_same_shape_run_from_clusters(cluster_lanes, cluster_sizes)
+        best = None
+        best_obj = (current_score, current_run)
+        best_tie = None
+
+        for donor in donors:
+            if donor == recipient:
+                continue
+            for cluster_idx, cluster in enumerate(clusters):
+                if shape_cluster_lane(obstacles, cluster) != donor:
+                    continue
+                size = len(cluster)
+                new_counts = dict(counts)
+                new_counts[donor] -= size
+                new_counts[recipient] += size
+                candidate_lanes = list(cluster_lanes)
+                candidate_lanes[cluster_idx] = recipient
+                new_run = longest_same_shape_run_from_clusters(candidate_lanes, cluster_sizes)
+                new_obj = (hard_shape_score(new_counts, total), new_run)
+                tie = (abs(size - triangle_need), size)
+                if (
+                    new_obj < best_obj
+                    or (new_obj == best_obj and (best_tie is None or tie < best_tie))
+                ):
+                    best = (cluster, recipient)
+                    best_obj = new_obj
                     best_tie = tie
 
         if best is None:
@@ -998,6 +2349,24 @@ def design_level(analysis, difficulty, cleanup_enabled=True):
     obstacles = clean_gap_one_early(obstacles, difficulty)
     obstacles = rebalance_easy_shapes(obstacles, difficulty)
     obstacles = rebalance_medium_shapes(obstacles, difficulty)
+    obstacles = rebalance_hard_shapes(obstacles, difficulty)
+    obstacles = clean_min_ioi(obstacles, difficulty, analysis)
+    obstacles = clean_gap_monotony(obstacles, difficulty)
+    obstacles = clean_shape_change_gap(obstacles)
+    obstacles = clean_gap_one_early(obstacles, difficulty)
+    obstacles = clean_gap_one_share(obstacles, difficulty)
+    obstacles = clean_gap_monotony(obstacles, difficulty)
+    obstacles = thin_oversized_shape_clusters(obstacles, difficulty)
+    obstacles = rebalance_medium_shapes(obstacles, difficulty)
+    obstacles = rebalance_hard_shapes(obstacles, difficulty)
+    obstacles = clean_min_ioi(obstacles, difficulty, analysis)
+    obstacles = clean_gap_monotony(obstacles, difficulty)
+    obstacles = clean_shape_change_gap(obstacles)
+    obstacles = clean_gap_one_early(obstacles, difficulty)
+    obstacles = clean_gap_one_share(obstacles, difficulty)
+    obstacles = clean_gap_monotony(obstacles, difficulty)
+    obstacles = clean_shape_change_gap(obstacles)
+    obstacles = clean_gap_one_early(obstacles, difficulty)
     return obstacles
 
 
@@ -1042,13 +2411,13 @@ def enforce_first_collision_floor(obstacles, difficulty, analysis):
     return obstacles
 
 
-def build_beatmap(analysis, difficulties, cleanup_enabled=True):
+def build_beatmap(analysis, difficulties, cleanup_enabled=True, experimental_onset_timing=False):
     """Build the full beatmap JSON."""
     beats = analysis["beats"]
     if not beats:
         raise ValueError("analysis.beats is required and must not be empty")
 
-    def attach_and_validate_timing(obstacles, diff_name):
+    def attach_and_validate_timing(obstacles, diff_name, selected_events):
         timed = []
         for obs in obstacles:
             beat_idx = obs.get("beat")
@@ -1058,26 +2427,53 @@ def build_beatmap(analysis, difficulties, cleanup_enabled=True):
                 raise ValueError(
                     f"{diff_name}: beat index {beat_idx} out of range for beats[{len(beats)}]"
                 )
+
+            beat_time = float(beats[beat_idx])
             timed_obs = dict(obs)
-            timed_obs["time_sec"] = round(float(beats[beat_idx]), 6)
+            if experimental_onset_timing:
+                event = selected_events.get(beat_idx)
+                if isinstance(event, dict) and "t" in event:
+                    onset_time = float(event["t"])
+                    timed_obs["time_sec"] = round(onset_time, 6)
+                    timed_obs["timing_source"] = "onset"
+                    timed_obs["onset_time_sec"] = round(onset_time, 6)
+                    timed_obs["subdivision_label"] = event.get("subdivision", "downbeat")
+                else:
+                    raise ValueError(
+                        f"{diff_name}: segment-focus path requires source onset event for beat {beat_idx}"
+                    )
+                timed_obs["beat_time_sec"] = round(beat_time, 6)
+            else:
+                timed_obs["time_sec"] = round(beat_time, 6)
             timed.append(timed_obs)
 
-        # Internal consistency check: every authored obstacle must map back to
-        # the same timestamp used by runtime.
-        for obs in timed:
-            beat_idx = obs["beat"]
-            expected = float(beats[beat_idx])
-            if abs(obs["time_sec"] - expected) > 1e-6:
-                raise ValueError(
-                    f"{diff_name}: time_sec mismatch at beat {beat_idx} "
-                    f"(time_sec={obs['time_sec']}, expected={expected})"
-                )
+        if not experimental_onset_timing:
+            # Internal consistency check: every authored obstacle must map back to
+            # the same timestamp used by runtime.
+            for obs in timed:
+                beat_idx = obs["beat"]
+                expected = float(beats[beat_idx])
+                if abs(obs["time_sec"] - expected) > 1e-6:
+                    raise ValueError(
+                        f"{diff_name}: time_sec mismatch at beat {beat_idx} "
+                        f"(time_sec={obs['time_sec']}, expected={expected})"
+                    )
         return timed
 
     diff_data = {}
     for diff in difficulties:
-        obs = design_level(analysis, diff, cleanup_enabled=cleanup_enabled)
-        timed = attach_and_validate_timing(obs, diff)
+        if experimental_onset_timing:
+            # Active onset-only path: cleanup is disabled regardless of the
+            # top-level cleanup_enabled flag (directive 2026-05-10).
+            obs, selected_events, _ = design_level_segment_focus(
+                analysis,
+                diff,
+                cleanup_enabled=False,
+            )
+        else:
+            selected_events, _ = select_beats(analysis, diff)
+            obs = design_level(analysis, diff, cleanup_enabled=cleanup_enabled)
+        timed = attach_and_validate_timing(obs, diff, selected_events)
         diff_data[diff] = {"beats": timed, "count": len(timed)}
     return {
         "song_id": analysis.get("title", "unknown"),
@@ -1138,9 +2534,24 @@ def main():
     parser.add_argument("--output", "-o", default=None)
     parser.add_argument("--difficulty", "-d", choices=["easy","medium","hard","all"], default="all")
     parser.add_argument(
+        "--diagnostics-out",
+        default=None,
+        help="If set, write subdivision snap diagnostics artifacts to this directory.",
+    )
+    parser.add_argument(
+        "--diagnostics-only",
+        action="store_true",
+        help="Run diagnostics only (skip beatmap generation). Requires --diagnostics-out.",
+    )
+    parser.add_argument(
         "--no-cleanup",
         action="store_true",
         help="Disable cleanup and post-processing passes (raw generation only).",
+    )
+    parser.add_argument(
+        "--experimental-onset-timing",
+        action="store_true",
+        help="EXPERIMENTAL: author obstacle time_sec from selected onset timestamps (defaults unchanged).",
     )
     args = parser.parse_args()
 
@@ -1151,13 +2562,32 @@ def main():
     with open(args.input) as f:
         analysis = json.load(f)
 
+    if args.diagnostics_only and not args.diagnostics_out:
+        print("Error: --diagnostics-only requires --diagnostics-out", file=sys.stderr)
+        sys.exit(1)
+
+    if args.diagnostics_out:
+        out_dir = write_snap_diagnostics(
+            analysis,
+            args.diagnostics_out,
+            experimental_onset_timing=args.experimental_onset_timing,
+        )
+        print(f"✓ diagnostics: {out_dir}")
+        if args.diagnostics_only:
+            return
+
     diffs = ["easy","medium","hard"] if args.difficulty == "all" else [args.difficulty]
 
     print("=" * 60)
     print(f"  LEVEL DESIGNER | {analysis.get('title','?')} | BPM {analysis['bpm']}")
     print("=" * 60)
 
-    beatmap = build_beatmap(analysis, diffs, cleanup_enabled=not args.no_cleanup)
+    beatmap = build_beatmap(
+        analysis,
+        diffs,
+        cleanup_enabled=not args.no_cleanup,
+        experimental_onset_timing=args.experimental_onset_timing,
+    )
 
     for diff in diffs:
         print_stats(beatmap["difficulties"][diff]["beats"], diff)
