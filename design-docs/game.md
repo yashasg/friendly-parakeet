@@ -133,10 +133,17 @@ When an obstacle requires TWO actions (e.g., switch to ● AND swipe left), the 
 
 Difficulty is selected per song (easy / medium / hard) and is expressed primarily through obstacle density, kind variety, and lane complexity in the beatmap. Within a song, scroll speed is BPM-derived and constant — there is no in-song speed ramp.
 
-| Difficulty | Obstacles Introduced                 | Density           | Timing Window |
-|------------|--------------------------------------|-------------------|---------------|
-| Easy       | Shape gates only                     | Low               | Generous      |
-| Hard       | + Low/high bars, combos, split paths | High              | Standard      |
+| Difficulty | Obstacles Introduced                          | Density           | Timing Window†             |
+|------------|-----------------------------------------------|-------------------|----------------------------|
+| Easy       | Shape gates only                              | Low               | BPM-derived (shared)       |
+| Medium     | Shape gates + lane_push pacing inserts‡       | Medium            | BPM-derived (shared)       |
+| Hard       | Shape gates + lane_push pacing inserts‡§      | High              | BPM-derived (shared)       |
+
+† Timing windows are not difficulty-scaled today: every difficulty uses the same BPM-derived hit window defined in `rhythm-spec.md` (`audio_offset` + BPM-derived window). The "Timing Window" column is preserved for forward compatibility if per-difficulty scaling is reintroduced.
+
+‡ Per decisions.md "#135 — Difficulty Ramp": `LANEPUSH_RAMP["easy"] = None`; medium uses lane_push share 9.3%–19.5% with `start_progress = 0.30` and `min_gap = 3`; hard uses a higher share with the same gap floor. LanePush is queued for removal/rework (#328); after that, this column will be revisited.
+
+§ The earlier "+ Low/high bars, combos, split paths" cell for Hard was aspirational. As shipped today (see #420), all 9 beatmaps are 100% `shape_gate` and no low_bar / high_bar / combo_gate / split_path content exists in any difficulty. Those obstacle kinds remain in the catalog as future design space; they are not currently produced by `level_designer.py` and are not gated by difficulty.
 
 ### Player Emotion Arc
 - **Early song** → "I'm finding the rhythm" (entrainment)

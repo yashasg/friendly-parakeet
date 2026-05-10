@@ -1,6 +1,35 @@
-# Beatmap Design Guidelines — Lessons from Test Player Analysis
+# Beatmap Design Guidelines — Lessons from Test Player Analysis (ARCHIVED)
+## Archived 2026 per issue #422
 
-> **Source**: Analysis of `session_pro_20260410_225016.log` on `1_stomper` medium difficulty.
+> 🗄️ **ARCHIVED DOCUMENT — DO NOT USE FOR CURRENT DESIGN.**
+>
+> This file predates the rhythm-first rewrite (GDD v1.2) and the
+> #135 "Difficulty Ramp" decision. Its target obstacle mix
+> (60% shape / 20% lane / 10% jump / 10% combo), its obstacle-to-music
+> mapping (LowBar/HighBar/ComboGate cues), its 96%/4% variety target,
+> and its `offset += 0.07` calibration advice all contradict the
+> shipping game and the active design contracts. It is preserved here
+> only as historical context for the test-player-analysis methodology.
+>
+> **For current authoritative design and implementation rules, read:**
+> - `design-docs/rhythm-design.md` and `design-docs/rhythm-spec.md`
+>   — current timing model, scoring, and BPM-derived hit window
+>   (the canonical successor to the `offset += 0.07` advice below).
+> - `design-docs/game.md` v1.2 — current obstacle catalog, shape gates,
+>   and difficulty pillars.
+> - `decisions.md` "#135 — Difficulty Ramp" — current per-difficulty
+>   content rules (`LANEPUSH_RAMP`, easy = `shape_gate` only, etc.).
+> - `tools/validate_difficulty_ramp.py` and
+>   `tools/validate_loop2_content_gates.py` — the enforced contracts
+>   that the generator and content must satisfy.
+>
+> A fresh, slim replacement guideline doc may be authored as a
+> follow-up; until it exists, treat this archived file as
+> **non-authoritative** and rely on the sources above.
+
+---
+
+> **Original Source**: Analysis of `session_pro_20260410_225016.log` on `1_stomper` medium difficulty.
 
 ---
 
