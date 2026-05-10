@@ -71,7 +71,7 @@ TEST_CASE("entity: ObstacleTag is emplaced after obstacle metadata", "[archetype
     reg.on_construct<ObstacleTag>().connect<&probe_obstacle_tag_construct>();
     BeatInfo beat_info{7, 1.5f, 0.25f};
 
-    spawn_obstacle(reg, {ObstacleKind::ShapeGate, 360.0f, -120.0f, Shape::Circle}, &beat_info);
+    spawn_rhythm_obstacle(reg, {ObstacleKind::ShapeGate, 360.0f, -120.0f, Shape::Circle}, beat_info);
 
     CHECK(probe.saw_obstacle);
     CHECK(probe.saw_beat_info);
@@ -276,7 +276,7 @@ TEST_CASE("entity: ShapeGate position x/y propagated from input", "[archetype]")
 TEST_CASE("entity: BeatInfo emplaced when provided", "[archetype]") {
     entt::registry reg;
     const BeatInfo bi{5, 1.5f, 1.0f};
-    auto e = spawn_obstacle(reg, {ObstacleKind::ShapeGate, 360.0f, -120.0f}, &bi);
+    auto e = spawn_rhythm_obstacle(reg, {ObstacleKind::ShapeGate, 360.0f, -120.0f}, bi);
 
     REQUIRE(reg.all_of<BeatInfo>(e));
     CHECK_FALSE(reg.all_of<MotionVelocity>(e));

@@ -1,6 +1,8 @@
 #pragma once
 
+#include <cassert>
 #include <cstdint>
+#include <cmath>
 #include <entt/entt.hpp>
 #include <glm/mat4x4.hpp>
 #include <glm/vec2.hpp>
@@ -31,12 +33,12 @@ struct ScreenTransform {
 
 [[nodiscard]] inline glm::vec2 screen_to_virtual(const glm::vec2& screen_pos,
                                                   const ScreenTransform& st) noexcept {
-    if (st.scale <= 0.0f) {
-        return screen_pos;
-    }
+    assert(std::isfinite(st.scale));
+    assert(st.scale > 0.0f);
+    const float inv_scale = 1.0f / st.scale;
     return {
-        (screen_pos.x - st.offset_x) / st.scale,
-        (screen_pos.y - st.offset_y) / st.scale
+        (screen_pos.x - st.offset_x) * inv_scale,
+        (screen_pos.y - st.offset_y) * inv_scale
     };
 }
 

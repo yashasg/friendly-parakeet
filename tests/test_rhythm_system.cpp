@@ -310,6 +310,8 @@ TEST_CASE("beat_scheduler: rhythm obstacles use BeatInfo without MotionVelocity"
         (void)info;
         CHECK_FALSE(reg.all_of<MotionVelocity>(e));
     }
+    auto invalid_view = reg.view<ObstacleTag, BeatInfo, MotionVelocity>();
+    CHECK(std::distance(invalid_view.begin(), invalid_view.end()) == 0);
 }
 
 TEST_CASE("beat_scheduler: spawns lane_block with blocked mask", "[rhythm][scheduler]") {

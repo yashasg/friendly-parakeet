@@ -397,6 +397,8 @@ TEST_CASE("beat_scheduler: rhythm obstacles omit MotionVelocity", "[beat_schedul
         (void)info;
         CHECK_FALSE(reg.all_of<MotionVelocity>(e));
     }
+    auto invalid_view = reg.view<ObstacleTag, BeatInfo, MotionVelocity>();
+    CHECK(std::distance(invalid_view.begin(), invalid_view.end()) == 0);
 }
 
 TEST_CASE("beat_scheduler: ShapeGate Circle has blue color", "[beat_scheduler]") {
