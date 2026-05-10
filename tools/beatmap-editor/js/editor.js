@@ -10,7 +10,8 @@ import { hitTest, beatToX, xToBeat, timeToX } from './timeline.js';
 
 import {
   KINDS_WITH_SHAPE, MIN_ZOOM, MAX_ZOOM,
-  HEADER_HEIGHT, LANE_HEIGHT, isEditorObstacleKind
+  HEADER_HEIGHT, LANE_HEIGHT, isEditorObstacleKind,
+  EDITOR_OBSTACLE_KINDS,
 } from './constants.js';
 
 // ── Drag State ──────────────────────────────────────
@@ -70,6 +71,17 @@ export function getMaxBeat() {
 function resolveAuthoringKind(kind) {
   if (isEditorObstacleKind(kind)) return kind;
   return 'shape_gate';
+}
+
+// Cycle the active authoring kind through EDITOR_OBSTACLE_KINDS. Exposed
+// so both the keyboard handler (K) and the toolbar #tool-display click
+// handler in main.js can share one path (#515).
+export function cycleToolKind() {
+  const current = resolveAuthoringKind(state.tool.kind);
+  const idx = EDITOR_OBSTACLE_KINDS.indexOf(current);
+  const next = EDITOR_OBSTACLE_KINDS[(idx + 1) % EDITOR_OBSTACLE_KINDS.length];
+  state.tool.kind = next;
+  emit('tool-changed');
 }
 
 // ── Init ────────────────────────────────────────────
@@ -253,6 +265,14 @@ export function init(canvas, contextMenu, audioModule) {
       case 'e':
         state.tool.shape = 'triangle';
         emit('tool-changed');
+        break;
+
+      // Tool kind cycle (#515): without this shortcut and the
+      // toolbar #tool-display click handler, the split_path authoring
+      // kind was unreachable from the placement workflow.
+      case 'k':
+      case 'K':
+        cycleToolKind();
         break;
 
       // Place at cursor

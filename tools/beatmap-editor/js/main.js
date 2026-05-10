@@ -97,6 +97,12 @@ function updateToolDisplay() {
 on('tool-changed', updateToolDisplay);
 updateToolDisplay();
 
+// Click on the toolbar tool badge cycles the authoring kind (#515). The
+// keyboard shortcut (K) shares the same code path in editor.js.
+toolDisplay?.addEventListener('click', () => {
+    editor.cycleToolKind();
+});
+
 // ── Horizontal Scrollbar ────────────────────────────────────────────
 
 let scrollbarSuppressed = false;
