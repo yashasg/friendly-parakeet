@@ -34,7 +34,13 @@ const char* game_phase_name(GamePhase phase) {
 
 void update_web_title(GamePhase phase) {
     const std::string title = std::string("SHAPESHIFTER [") + game_phase_name(phase) + "]";
-    emscripten_set_window_title(title.c_str());
+    EM_ASM(
+        {
+            if (typeof document !== 'undefined') {
+                document.title = UTF8ToString($0);
+            }
+        },
+        title.c_str());
 }
 #endif
 
