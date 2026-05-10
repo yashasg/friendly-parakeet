@@ -1,6 +1,6 @@
 #include "game_phase_transition.h"
 
-#if defined(EMSCRIPTEN)
+#if defined(__EMSCRIPTEN__)
 #include <emscripten/emscripten.h>
 #endif
 
@@ -8,7 +8,7 @@
 
 namespace {
 
-#if defined(EMSCRIPTEN)
+#if defined(__EMSCRIPTEN__)
 const char* game_phase_name(GamePhase phase) {
     switch (phase) {
         case GamePhase::Title:
@@ -44,7 +44,7 @@ void enter_phase(GameState& gs, GamePhase next_phase) {
     gs.previous_phase = gs.phase;
     gs.phase = next_phase;
     gs.phase_timer = 0.0f;
-#if defined(EMSCRIPTEN)
+#if defined(__EMSCRIPTEN__)
     update_web_title(gs.phase);
 #endif
 }
