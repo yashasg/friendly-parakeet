@@ -3549,6 +3549,23 @@
           "beat_time_sec": 122.001
         },
         {
+          "beat": 307,
+          "kind": "shape_gate",
+          "lane": 1,
+          "shape": "square",
+          "onset_class": "full-spectrum",
+          "segment_idx": 13,
+          "segment_focus": "full-spectrum",
+          "difficulty_inclusion": "easy",
+          "source_event_idx": 2566,
+          "flux": 0.0,
+          "time_sec": 122.793,
+          "timing_source": "onset",
+          "onset_time_sec": 122.793,
+          "subdivision_label": "downbeat",
+          "beat_time_sec": 122.802
+        },
+        {
           "beat": 339,
           "kind": "shape_gate",
           "lane": 0,
@@ -4449,7 +4466,7 @@
           "beat_time_sec": 217.191
         }
       ],
-      "count": 111
+      "count": 112
     },
     "hard": {
       "beats": [
