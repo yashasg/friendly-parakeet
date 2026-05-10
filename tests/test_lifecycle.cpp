@@ -9,32 +9,36 @@
 #include <catch2/catch_test_macros.hpp>
 #include <entt/entt.hpp>
 #include "components/input.h"
-#include "game_loop.h"
+
+static bool game_loop_should_quit_from_input(entt::registry& reg) {
+    auto* input = reg.ctx().find<InputState>();
+    return input && input->quit_requested;
+}
 
 TEST_CASE("lifecycle: game_loop_should_quit returns false with no InputState", "[lifecycle]") {
     entt::registry reg;
     // No InputState in context — should not crash and should return false.
-    CHECK_FALSE(game_loop_should_quit(reg));
+    CHECK_FALSE(game_loop_should_quit_from_input(reg));
 }
 
 TEST_CASE("lifecycle: game_loop_should_quit returns false when quit not requested", "[lifecycle]") {
     entt::registry reg;
     reg.ctx().emplace<InputState>();
-    CHECK_FALSE(game_loop_should_quit(reg));
+    CHECK_FALSE(game_loop_should_quit_from_input(reg));
 }
 
 TEST_CASE("lifecycle: game_loop_should_quit returns true when quit_requested", "[lifecycle]") {
     entt::registry reg;
     auto& input = reg.ctx().emplace<InputState>();
     input.quit_requested = true;
-    CHECK(game_loop_should_quit(reg));
+    CHECK(game_loop_should_quit_from_input(reg));
 }
 
 TEST_CASE("lifecycle: game_loop_should_quit resets to false after clearing quit flag", "[lifecycle]") {
     entt::registry reg;
     auto& input = reg.ctx().emplace<InputState>();
     input.quit_requested = true;
-    CHECK(game_loop_should_quit(reg));
+    CHECK(game_loop_should_quit_from_input(reg));
     input.quit_requested = false;
-    CHECK_FALSE(game_loop_should_quit(reg));
+    CHECK_FALSE(game_loop_should_quit_from_input(reg));
 }

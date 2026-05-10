@@ -1,109 +1,65 @@
-"""
-test_get_audio_duration.py
-==========================
-Unit tests for get_audio_duration() in rhythm_pipeline.py.
+"""Unit tests for duration handling in rhythm_pipeline.extract_features()."""
 
-Covers:
-  - Happy path: ffprobe returns a valid duration float
-  - ffprobe not found (FileNotFoundError)  → None, no raise
-  - ffprobe times out (TimeoutExpired)     → None, warning on stderr, no raise
-  - ffprobe non-zero exit code             → None, no raise
-  - ffprobe returns zero / negative        → None (not a valid duration)
-  - ffprobe returns unparseable output     → None, no raise
-
-Run from repo root:
-    python tools/test_get_audio_duration.py
-"""
-
-import subprocess
 import sys
 import unittest
-from io import StringIO
-from unittest.mock import MagicMock, patch
+from pathlib import Path
+from unittest.mock import patch
+
+import numpy as np
 
 # Allow importing from the tools directory regardless of cwd
-sys.path.insert(0, str(__import__("pathlib").Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent))
 
-from rhythm_pipeline import FFPROBE_TIMEOUT, get_audio_duration  # noqa: E402
-
-
-def _make_completed(stdout: str = "", returncode: int = 0) -> MagicMock:
-    m = MagicMock(spec=subprocess.CompletedProcess)
-    m.stdout = stdout
-    m.returncode = returncode
-    return m
+import rhythm_pipeline as rp  # noqa: E402
 
 
-class TestGetAudioDurationHappyPath(unittest.TestCase):
-    def test_valid_duration_returned(self):
-        with patch("rhythm_pipeline.subprocess.run", return_value=_make_completed("183.42\n")):
-            result = get_audio_duration("song.flac")
-        self.assertAlmostEqual(result, 183.42, places=5)
+class TestExtractFeaturesDuration(unittest.TestCase):
+    def test_duration_uses_track_duration_when_larger_than_computed(self):
+        with patch("rhythm_pipeline.librosa.load", return_value=(np.zeros(8, dtype=np.float32), 48000)), \
+             patch("rhythm_pipeline.librosa.get_duration", return_value=120.0), \
+             patch("rhythm_pipeline.get_tempo_and_beats", return_value=(120.0, [])), \
+             patch("rhythm_pipeline.onset_resolutions", return_value=[{"n_fft": 2048, "hop_length": 512}]), \
+             patch("rhythm_pipeline._detect_pass_onsets", return_value=[]), \
+             patch(
+                 "rhythm_pipeline.get_melbands",
+                 return_value=(np.array([0.0], dtype=np.float64), np.zeros((1, 1), dtype=np.float32)),
+             ), \
+             patch(
+                 "rhythm_pipeline.get_mfcc",
+                 return_value=(np.array([0.0], dtype=np.float64), np.zeros((1, 1), dtype=np.float32)),
+             ), \
+             patch("rhythm_pipeline.get_quiet_regions", return_value=[]):
+            features = rp.extract_features("song.wav", onset_threshold=0.1, librosa_config={})
 
-    def test_timeout_kwarg_passed_to_subprocess(self):
-        with patch("rhythm_pipeline.subprocess.run", return_value=_make_completed("60.0\n")) as mock_run:
-            get_audio_duration("song.flac")
-        _args, kwargs = mock_run.call_args
-        self.assertIn("timeout", kwargs, "timeout must be passed to subprocess.run")
-        self.assertEqual(kwargs["timeout"], FFPROBE_TIMEOUT)
+        self.assertEqual(features["duration"], 120.0)
 
+    def test_duration_extends_when_beats_or_onsets_exceed_track_duration(self):
+        detect_returns = [[9.0]] + [[] for _ in range(len(rp.ONSET_PASSES) - 1)]
+        with patch("rhythm_pipeline.librosa.load", return_value=(np.zeros(8, dtype=np.float32), 48000)), \
+             patch("rhythm_pipeline.librosa.get_duration", return_value=5.0), \
+             patch("rhythm_pipeline.get_tempo_and_beats", return_value=(120.0, [8.0])), \
+             patch("rhythm_pipeline.onset_resolutions", return_value=[{"n_fft": 2048, "hop_length": 512}]), \
+             patch("rhythm_pipeline._detect_pass_onsets", side_effect=detect_returns), \
+             patch("rhythm_pipeline.get_melbands", return_value=(np.array([0.0], dtype=np.float64), np.zeros((1, 1), dtype=np.float32))), \
+             patch("rhythm_pipeline.get_mfcc", return_value=(np.array([0.0], dtype=np.float64), np.zeros((1, 1), dtype=np.float32))), \
+             patch("rhythm_pipeline.get_quiet_regions", return_value=[]):
+            features = rp.extract_features("song.wav", onset_threshold=0.1, librosa_config={})
 
-class TestGetAudioDurationErrorPaths(unittest.TestCase):
-    def test_returns_none_when_ffprobe_not_found(self):
-        with patch("rhythm_pipeline.subprocess.run", side_effect=FileNotFoundError):
-            result = get_audio_duration("song.flac")
-        self.assertIsNone(result)
+        self.assertEqual(features["duration"], 10.0)
 
-    def test_returns_none_and_logs_on_timeout(self):
-        with patch(
-            "rhythm_pipeline.subprocess.run",
-            side_effect=subprocess.TimeoutExpired(cmd=["ffprobe"], timeout=FFPROBE_TIMEOUT),
-        ):
-            buf = StringIO()
-            with patch("sys.stderr", buf):
-                result = get_audio_duration("song.flac")
-        self.assertIsNone(result)
-        self.assertIn("timed out", buf.getvalue().lower(),
-                      "TimeoutExpired must produce a visible warning on stderr")
+    def test_duration_stays_track_length_when_no_beats_or_onsets(self):
+        with patch("rhythm_pipeline.librosa.load", return_value=(np.zeros(8, dtype=np.float32), 48000)), \
+             patch("rhythm_pipeline.librosa.get_duration", return_value=7.5), \
+             patch("rhythm_pipeline.get_tempo_and_beats", return_value=(120.0, [])), \
+             patch("rhythm_pipeline.onset_resolutions", return_value=[{"n_fft": 2048, "hop_length": 512}]), \
+             patch("rhythm_pipeline._detect_pass_onsets", return_value=[]), \
+             patch("rhythm_pipeline.get_melbands", return_value=(np.array([0.0], dtype=np.float64), np.zeros((1, 1), dtype=np.float32))), \
+             patch("rhythm_pipeline.get_mfcc", return_value=(np.array([0.0], dtype=np.float64), np.zeros((1, 1), dtype=np.float32))), \
+             patch("rhythm_pipeline.get_quiet_regions", return_value=[]):
+            features = rp.extract_features("song.wav", onset_threshold=0.1, librosa_config={})
 
-    def test_returns_none_on_nonzero_exit(self):
-        with patch("rhythm_pipeline.subprocess.run", return_value=_make_completed("", returncode=1)):
-            result = get_audio_duration("song.flac")
-        self.assertIsNone(result)
-
-    def test_returns_none_on_zero_duration(self):
-        with patch("rhythm_pipeline.subprocess.run", return_value=_make_completed("0.0\n")):
-            result = get_audio_duration("song.flac")
-        self.assertIsNone(result)
-
-    def test_returns_none_on_negative_duration(self):
-        with patch("rhythm_pipeline.subprocess.run", return_value=_make_completed("-1.5\n")):
-            result = get_audio_duration("song.flac")
-        self.assertIsNone(result)
-
-    def test_returns_none_on_unparseable_output(self):
-        with patch("rhythm_pipeline.subprocess.run", return_value=_make_completed("N/A\n")):
-            result = get_audio_duration("song.flac")
-        self.assertIsNone(result)
-
-    def test_does_not_raise_on_timeout(self):
-        """TimeoutExpired must never propagate to callers."""
-        with patch(
-            "rhythm_pipeline.subprocess.run",
-            side_effect=subprocess.TimeoutExpired(cmd=["ffprobe"], timeout=FFPROBE_TIMEOUT),
-        ):
-            try:
-                with patch("sys.stderr", StringIO()):
-                    get_audio_duration("song.flac")
-            except subprocess.TimeoutExpired:
-                self.fail("TimeoutExpired must not propagate from get_audio_duration()")
+        self.assertEqual(features["duration"], 7.5)
 
 
 if __name__ == "__main__":
-    loader = unittest.TestLoader()
-    suite = unittest.TestSuite()
-    suite.addTests(loader.loadTestsFromTestCase(TestGetAudioDurationHappyPath))
-    suite.addTests(loader.loadTestsFromTestCase(TestGetAudioDurationErrorPaths))
-    runner = unittest.TextTestRunner(verbosity=2)
-    result = runner.run(suite)
-    sys.exit(0 if result.wasSuccessful() else 1)
+    unittest.main(verbosity=2)
