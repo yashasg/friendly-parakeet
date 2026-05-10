@@ -8,5 +8,6 @@ struct MusicContext {
     Music stream{};        // raylib Music handle (zero-initialized)
     bool  loaded  = false; // LoadMusicStream succeeded
     bool  started = false; // PlayMusicStream has been called
+    bool  paused  = false; // PauseMusicStream called; consumed by one-shot resume
     float volume  = 0.8f;  // master volume [0.0, 1.0]
 };

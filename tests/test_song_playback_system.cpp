@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
+#include "audio/music_context.h"
 
 // ── song_playback_system: time advancement ───────────────────
 
@@ -270,4 +271,29 @@ TEST_CASE("song_playback: zero beat_period handled safely", "[song_playback]") {
 
     // Just verify no crash
     CHECK(song.song_time > 1.0f);
+}
+
+TEST_CASE("song_playback: pause to playing resume guard is one-shot",
+          "[song_playback][regression][issue504]") {
+    auto reg = make_rhythm_registry();
+    auto& gs = reg.ctx().get<GameState>();
+    auto& song = reg.ctx().get<SongState>();
+
+    auto& music = reg.ctx().emplace<MusicContext>();
+    music.loaded = true;
+    music.started = true;
+    music.paused = true;
+
+    gs.phase = GamePhase::Playing;
+    gs.previous_phase = GamePhase::Paused;
+    song.playing = true;
+
+    song_playback_system(reg, 0.016f);
+    CHECK_FALSE(music.paused);
+
+    song_playback_system(reg, 0.016f);
+    CHECK_FALSE(music.paused);
+
+    song_playback_system(reg, 0.016f);
+    CHECK_FALSE(music.paused);
 }
