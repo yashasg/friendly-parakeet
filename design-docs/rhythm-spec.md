@@ -122,7 +122,7 @@ regression gate.
 constexpr float WINDOW_PERFECT   = 0.050f;  // ±50ms  → PERFECT
 constexpr float WINDOW_GOOD      = 0.100f;  // ±100ms → GOOD
 constexpr float WINDOW_OK        = 0.150f;  // ±150ms → OK
-constexpr float WINDOW_BAD       = 0.200f;  // ±200ms → BAD (counted as miss)
+constexpr float WINDOW_BAD       = 0.200f;  // ±200ms → BAD timing tier
 
 // ── Window scale factors (applied to remaining window on early hit) ──
 constexpr float WINDOW_SCALE_PERFECT = 0.50f;  // PERFECT hit → halve remaining window
@@ -378,7 +378,7 @@ void shape_window_system(entt::registry& reg, float dt);
   │  PERFECT  → pts=300, window_scale=0.50 (remaining window halved)   │
   │  GOOD     → pts=200, window_scale=0.75                             │
   │  OK       → pts=100, window_scale=1.00 (no change)                 │
-  │  BAD      → pts=0,   treated as MISS                               │
+  │  BAD      → pts=floor(base × 0.25), drains BAD energy              │
   │                                                                     │
   │  graded flag prevents re-applying scale if a second obstacle        │
   │  arrives within the same window.                                    │
@@ -389,9 +389,9 @@ void shape_window_system(entt::registry& reg, float dt);
   │  CASE: Player is wrong shape at arrival                             │
   ├─────────────────────────────────────────────────────────────────────┤
   │                                                                     │
-  │  → MISS → INSTANT GAME OVER                                        │
+  │  → MISS → MissTag path, drains MISS energy                         │
   │                                                                     │
-  │  There is no HP bar. One miss ends the run.                        │
+  │  Game Over occurs only when EnergyState.energy reaches zero.       │
   │  ScoredTag is emplaced on the obstacle (prevents re-fire).         │
   │                                                                     │
   └─────────────────────────────────────────────────────────────────────┘

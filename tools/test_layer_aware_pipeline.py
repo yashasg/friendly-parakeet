@@ -551,11 +551,10 @@ class TestMigrateAnalysisRemoveRawInstrumentNames(unittest.TestCase):
             set(out["onset_diagnostics"]["raw_per_pass"].keys())
             & rp.RAW_INSTRUMENT_PASS_NAMES
         )
-        # All onset/raw_per_pass keys are broad subpass IDs from the pipeline.
-        valid_subpasses = {p["name"] for p in rp.ONSET_PASSES}
-        self.assertTrue(set(out["onsets"].keys()).issubset(valid_subpasses))
+        # All onset/raw_per_pass keys are public broad layers.
+        self.assertTrue(set(out["onsets"].keys()).issubset(set(rp.PUBLIC_LAYERS)))
         self.assertTrue(
-            set(out["onset_diagnostics"]["raw_per_pass"].keys()).issubset(valid_subpasses)
+            set(out["onset_diagnostics"]["raw_per_pass"].keys()).issubset(set(rp.PUBLIC_LAYERS))
         )
         # Layer field is preserved verbatim.
         self.assertEqual([ev["layer"] for ev in out["events"]],
@@ -576,15 +575,15 @@ class TestAssertNoRawInstrumentPasses(unittest.TestCase):
     def _clean_analysis(self):
         return {
             "events": [
-                {"t": 1.0, "passes": ["percussive_bass"], "layer": "percussive"},
-                {"t": 2.0, "passes": ["harmonic_low_mid"], "layer": "harmonic"},
+                {"t": 1.0, "passes": ["percussive"], "layer": "percussive"},
+                {"t": 2.0, "passes": ["harmonic"], "layer": "harmonic"},
             ],
             "onsets": {
-                "percussive_bass": {"count": 1, "timestamps": [1.0]},
-                "harmonic_low_mid": {"count": 1, "timestamps": [2.0]},
+                "percussive": {"count": 1, "timestamps": [1.0]},
+                "harmonic": {"count": 1, "timestamps": [2.0]},
             },
             "onset_diagnostics": {
-                "raw_per_pass": {"percussive_bass": 1, "harmonic_low_mid": 1},
+                "raw_per_pass": {"percussive": 1, "harmonic": 1},
             },
         }
 
@@ -599,6 +598,13 @@ class TestAssertNoRawInstrumentPasses(unittest.TestCase):
             rp.assert_no_raw_instrument_passes(analysis)
         self.assertIn("kick", str(ctx.exception))
         self.assertIn("events[*].passes", str(ctx.exception))
+
+    def test_internal_subpass_in_event_passes_raises(self):
+        analysis = self._clean_analysis()
+        analysis["events"][0]["passes"].append("percussive_bass")
+        with self.assertRaises(ValueError) as ctx:
+            rp.assert_no_raw_instrument_passes(analysis)
+        self.assertIn("percussive_bass", str(ctx.exception))
 
     def test_raw_instrument_in_legacy_pass_field_raises(self):
         analysis = self._clean_analysis()
@@ -619,6 +625,13 @@ class TestAssertNoRawInstrumentPasses(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             rp.assert_no_raw_instrument_passes(analysis)
         self.assertIn("hihat", str(ctx.exception))
+
+    def test_unknown_pass_name_raises(self):
+        analysis = self._clean_analysis()
+        analysis["onsets"]["unknown_pass"] = {"count": 1, "timestamps": [1.0]}
+        with self.assertRaises(ValueError) as ctx:
+            rp.assert_no_raw_instrument_passes(analysis)
+        self.assertIn("unknown_pass", str(ctx.exception))
 
     def test_migration_then_guard_clears_legacy_artifact(self):
         legacy = {
@@ -766,6 +779,15 @@ class TestFullSpectrumFluxIndependence(unittest.TestCase):
         quiet = rp._spectral_flux_onset_envelope(y=y * 0.1, hop_length=hop, n_fft=n_fft, reduce="mean")
         n = min(len(loud), len(quiet))
         np.testing.assert_allclose(loud[:n], quiet[:n], rtol=1e-4, atol=1e-4)
+
+    def test_mel_flux_envelope_is_gain_normalized_for_quiet_audio(self):
+        import numpy as np
+        y, sr = self._synth_audio()
+        n_fft, hop = 2048, 512
+        loud = rp._flux_envelope(rp._mel_spectrogram_db(y, sr, n_fft, hop, 40), None)
+        quiet = rp._flux_envelope(rp._mel_spectrogram_db(y * 1e-6, sr, n_fft, hop, 40), None)
+        n = min(len(loud), len(quiet))
+        np.testing.assert_allclose(loud[:n], quiet[:n], rtol=1e-3, atol=1e-3)
 
     def test_full_spectrum_flux_not_equal_to_percussive_broadband(self):
         y, sr = self._synth_audio()

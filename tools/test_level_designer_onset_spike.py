@@ -192,6 +192,46 @@ class TestExperimentalOnsetTiming(unittest.TestCase):
         # segment_focus must be set (no motif_id required).
         self.assertTrue(any(obs.get("segment_focus") for obs in mapped))
 
+    def test_cluster_thinning_preserves_protected_cross_layer_obstacles(self):
+        obs = [
+            {"beat": 1, "kind": "shape_gate", "shape": "square", "lane": 1,
+             "onset_class": "full-spectrum", "time_sec": 1.000, "flux": 5.0},
+            {"beat": 2, "kind": "shape_gate", "shape": "triangle", "lane": 0,
+             "onset_class": "percussive", "time_sec": 1.010, "flux": 0.1},
+            {"beat": 3, "kind": "shape_gate", "shape": "square", "lane": 1,
+             "onset_class": "full-spectrum", "time_sec": 1.500, "flux": 5.0},
+            {"beat": 4, "kind": "shape_gate", "shape": "square", "lane": 1,
+             "onset_class": "full-spectrum", "time_sec": 2.000, "flux": 5.0},
+            {"beat": 5, "kind": "shape_gate", "shape": "square", "lane": 1,
+             "onset_class": "full-spectrum", "time_sec": 2.500, "flux": 5.0},
+        ]
+
+        out = ld._thin_oversized_clusters_obstacles([dict(o) for o in obs], "medium")
+
+        retained = {(o["onset_class"], o["time_sec"]) for o in out}
+        self.assertIn(("full-spectrum", 1.000), retained)
+        self.assertIn(("percussive", 1.010), retained)
+
+    def test_cluster_chain_cap_preserves_protected_cross_layer_obstacles(self):
+        obs = [
+            {"beat": 1, "kind": "shape_gate", "shape": "square", "lane": 1,
+             "onset_class": "full-spectrum", "time_sec": 1.000, "flux": 5.0},
+            {"beat": 4, "kind": "shape_gate", "shape": "square", "lane": 1,
+             "onset_class": "full-spectrum", "time_sec": 4.000, "flux": 5.0},
+            {"beat": 7, "kind": "shape_gate", "shape": "square", "lane": 1,
+             "onset_class": "full-spectrum", "time_sec": 7.000, "flux": 5.0},
+            {"beat": 10, "kind": "shape_gate", "shape": "square", "lane": 1,
+             "onset_class": "full-spectrum", "time_sec": 10.000, "flux": 5.0},
+            {"beat": 11, "kind": "shape_gate", "shape": "triangle", "lane": 0,
+             "onset_class": "percussive", "time_sec": 10.010, "flux": 0.1},
+        ]
+
+        out = ld._enforce_cluster_chain_cap_obstacles([dict(o) for o in obs], "medium")
+
+        retained = {(o["onset_class"], o["time_sec"]) for o in out}
+        self.assertIn(("full-spectrum", 10.000), retained)
+        self.assertIn(("percussive", 10.010), retained)
+
     # ─── New tests for segment-focus behaviour ────────────────────────────────
 
     def test_segment_focus_selector_returns_valid_structure(self):

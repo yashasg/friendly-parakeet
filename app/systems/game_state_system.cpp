@@ -7,12 +7,12 @@
 #include "../components/input_events.h"
 #include "../components/player.h"
 #include "../components/rhythm.h"
-#if defined(__EMSCRIPTEN__)
+#if defined(__EMSCRIPTEN__) && defined(SHAPESHIFTER_WASM_SMOKE_MARKERS)
 #include <emscripten/emscripten.h>
 #include <string>
 #endif
 
-#if defined(__EMSCRIPTEN__)
+#if defined(__EMSCRIPTEN__) && defined(SHAPESHIFTER_WASM_SMOKE_MARKERS)
 namespace {
 
 void update_web_playing_lane_marker(entt::registry& reg, const GameState& gs) {
@@ -27,6 +27,12 @@ void update_web_playing_lane_marker(entt::registry& reg, const GameState& gs) {
 
     const auto player_entity = *player_view.begin();
     const int lane = static_cast<int>(player_view.get<Lane>(player_entity).current);
+    static int last_lane = -1;
+    if (lane == last_lane) {
+        return;
+    }
+    last_lane = lane;
+
     const std::string title = std::string("SHAPESHIFTER [Playing][Lane:")
         + std::to_string(lane) + "]";
     EM_ASM(
@@ -135,7 +141,7 @@ void game_state_system(entt::registry& reg, float dt) {
 
     // Playing → SongComplete when song finishes (all obstacles cleared)
     if (gs.phase == GamePhase::Playing) {
-#if defined(__EMSCRIPTEN__)
+#if defined(__EMSCRIPTEN__) && defined(SHAPESHIFTER_WASM_SMOKE_MARKERS)
         update_web_playing_lane_marker(reg, gs);
 #endif
         auto* energy = reg.ctx().find<EnergyState>();

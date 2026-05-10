@@ -266,9 +266,8 @@ void game_camera_system(entt::registry& reg, float /*dt*/) {
             }
         }
         for (auto entity : stale_children) {
-            reg.remove<MeshChild>(entity);
-            if (reg.all_of<ModelTransform>(entity)) {
-                reg.remove<ModelTransform>(entity);
+            if (reg.valid(entity)) {
+                reg.destroy(entity);
             }
         }
     }

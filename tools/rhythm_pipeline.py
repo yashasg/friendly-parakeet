@@ -96,36 +96,31 @@ RAW_INSTRUMENT_PASS_NAMES: frozenset[str] = frozenset({
 PUBLIC_LAYERS: tuple[str, ...] = ("percussive", "harmonic", "full-spectrum")
 
 # Migration map for legacy-named passes in shipped analysis JSONs.  Renames
-# the raw-instrument pass tokens to the equivalent broad-layer subpass IDs
-# used by the current pipeline so public fields no longer expose
-# kick/snare/hihat/melody/flux semantics while preserving each event's
-# broad layer (percussive / harmonic / full-spectrum).  This is strictly
-# a public-naming migration — broad layer membership, onset timings, and
-# onset_class downstream classification are unchanged.
+# raw/internal tokens to the public broad layers that may be serialized.
 LEGACY_PASS_TO_BROAD_SUBPASS: dict[str, str] = {
-    "kick":   "percussive_bass",
-    "snare":  "percussive_broadband",
-    "hihat":  "percussive_high_mid",
-    "melody": "harmonic_low_mid",
-    "flux":   "full_spectrum_flux",
+    "kick":   "percussive",
+    "snare":  "percussive",
+    "hihat":  "percussive",
+    "melody": "harmonic",
+    "flux":   "full-spectrum",
 }
 
 
 def migrate_analysis_remove_raw_instrument_names(analysis: dict) -> dict:
-    """Rewrite a loaded analysis dict so public fields use only broad-layer
-    subpass IDs (no kick/snare/hihat/melody/flux).
+    """Rewrite a loaded analysis dict so public fields use only broad layers.
 
     Touches three public surfaces:
       * ``events[*].passes`` — token list per event.
       * ``onsets`` — top-level per-pass onset summary keyed by pass name.
       * ``onset_diagnostics.raw_per_pass`` — pre-merge onset count per pass.
 
-    The migration is idempotent: passes already using broad subpass IDs are
-    left untouched.  ``events[*].layer`` is intentionally not modified —
-    legacy JSONs already carry the correct broad layer field.
+    The migration is idempotent: public layers are left untouched.  Legacy
+    ``events[*].layer`` values are preserved when already public.
     """
     def _remap(name: str) -> str:
-        return LEGACY_PASS_TO_BROAD_SUBPASS.get(name, name)
+        if name in PUBLIC_LAYERS:
+            return name
+        return LEGACY_PASS_TO_BROAD_SUBPASS.get(name, PASS_TO_LAYER.get(name, "full-spectrum"))
 
     # 1) events[*].passes
     for ev in analysis.get("events", []) or []:
@@ -199,6 +194,7 @@ def collapse_analysis_to_public_layers(analysis: dict) -> dict:
             layer = _layer(str(passes[0])) if isinstance(passes, list) and passes else "full-spectrum"
             ev["layer"] = layer
         ev["passes"] = [layer]
+        ev["pass"] = layer
 
     onsets = analysis.get("onsets")
     if isinstance(onsets, dict):
@@ -266,27 +262,18 @@ def _collect_pass_tokens(analysis: dict) -> list[tuple[str, str]]:
 
 
 def assert_no_raw_instrument_passes(analysis: dict) -> None:
-    """Write-time guard (issue #480, protects #419/#448 from regressing).
-
-    Walks every public pass-name surface of an analysis dict and raises
-    ValueError if any token in :data:`RAW_INSTRUMENT_PASS_NAMES`
-    (kick/snare/hihat/melody) is present.  Public artifacts must use the
-    broad-layer subpass IDs only; if a legacy analysis is loaded, callers
-    must migrate it via :func:`migrate_analysis_remove_raw_instrument_names`
-    before writing.
-    """
+    """Write-time guard that public analysis surfaces expose only broad layers."""
     offenders: list[tuple[str, str]] = [
         (loc, tok)
         for (loc, tok) in _collect_pass_tokens(analysis)
-        if tok in RAW_INSTRUMENT_PASS_NAMES
+        if tok not in PUBLIC_LAYERS
     ]
     if offenders:
         sample = ", ".join(f"{loc}={tok!r}" for loc, tok in offenders[:5])
         raise ValueError(
-            "Refusing to write analysis with raw-instrument pass names "
+            "Refusing to write analysis with non-public pass names "
             f"({len(offenders)} occurrence(s); first: {sample}).  Public "
-            "artifacts must use broad-layer subpass IDs only — call "
-            "migrate_analysis_remove_raw_instrument_names() first."
+            "artifacts must use percussive, harmonic, or full-spectrum only."
         )
 
 
@@ -366,7 +353,12 @@ def _mel_spectrogram_db(
         n_mels=n_mels,
         power=2.0,
     )
-    return librosa.power_to_db(mel + 1e-10, ref=np.max)
+    peak = float(np.max(mel)) if mel.size else 0.0
+    if peak <= 0.0:
+        mel_norm = np.zeros_like(mel)
+    else:
+        mel_norm = mel / peak
+    return librosa.power_to_db(np.maximum(mel_norm, 1e-10), ref=1.0)
 
 
 def _flux_envelope(mel_db: np.ndarray, zone: str | None) -> np.ndarray:

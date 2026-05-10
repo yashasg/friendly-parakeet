@@ -15,6 +15,11 @@ struct ScoreState {
     float   distance_traveled = 0.0f;
 };
 
+struct TerminalResultState {
+    bool    new_best      = false;
+    int32_t previous_best = 0;
+};
+
 struct ScorePopup {
     int32_t                    value       = 0;
     std::optional<TimingTier>  timing_tier = std::nullopt;

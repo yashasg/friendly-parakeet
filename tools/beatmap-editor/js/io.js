@@ -510,6 +510,7 @@ export function validate(state) {
     }
 
     let prevBeat = -1;
+    let prevAuthoredTime = null;
     let prevShapeBeat = -1;
     let prevShape = null;
     let prevHadShape = false;
@@ -604,16 +605,14 @@ export function validate(state) {
                         severity: 'error',
                     });
                 }
-                if (i > 0) {
-                    const prev = beats[i - 1];
-                    if (Number.isFinite(prev?.time_sec) && entry.time_sec < prev.time_sec) {
-                        errors.push({
-                            beatIndex: entry.beat,
-                            message: 'time_sec must be non-decreasing across authored beat entries',
-                            severity: 'error',
-                        });
-                    }
+                if (prevAuthoredTime !== null && entry.time_sec < prevAuthoredTime) {
+                    errors.push({
+                        beatIndex: entry.beat,
+                        message: 'time_sec must be non-decreasing across authored beat entries',
+                        severity: 'error',
+                    });
                 }
+                prevAuthoredTime = entry.time_sec;
             }
         }
 

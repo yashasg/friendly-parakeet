@@ -62,12 +62,12 @@ void collision_system(entt::registry& reg, float /*dt*/) {
 
         if (!cleared) {
             // MISS — tag only; scoring_system owns energy drain and death-cause attribution.
-            reg.emplace<MissTag>(entity);
-            reg.emplace<ScoredTag>(entity);
+            reg.get_or_emplace<MissTag>(entity);
+            reg.get_or_emplace<ScoredTag>(entity);
             return;
         }
 
-        reg.emplace<ScoredTag>(entity);
+        reg.get_or_emplace<ScoredTag>(entity);
     };
 
     const bool can_grade_shape =
@@ -78,7 +78,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
         float precision = 1.0f - (delta_seconds / kTimingOkSeconds);
         if (precision < 0.0f) precision = 0.0f;
         if (precision > 1.0f) precision = 1.0f;
-        reg.emplace<TimingGrade>(entity, tier, precision);
+        reg.get_or_emplace<TimingGrade>(entity) = TimingGrade{tier, precision};
 
         if (!p_window.graded) {
             float scale = window_scale_for_tier(tier);

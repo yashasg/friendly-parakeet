@@ -70,7 +70,8 @@ jobs:
             "-DCMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" \
             "-DVCPKG_OVERLAY_PORTS=$(pwd)/vcpkg-overlay" \
             "-DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=${EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake" \
-            -DVCPKG_TARGET_TRIPLET=wasm32-emscripten
+            -DVCPKG_TARGET_TRIPLET=wasm32-emscripten \
+            -DSHAPESHIFTER_WASM_SMOKE_MARKERS=ON
           cmake --build build-web -- -j$(nproc)
 
       - name: Verify WASM runtime flags

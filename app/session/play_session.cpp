@@ -20,12 +20,22 @@
 #include "../constants.h"
 #include <filesystem>
 #include <raylib.h>
+#include <utility>
 
 namespace {
 
 // Session setup owns when a player is spawned; player_entity owns how.
 void spawn_session_player(entt::registry& reg) {
     create_player_entity(reg);
+}
+
+template <typename T>
+T& assign_or_emplace_ctx(entt::registry& reg, T value = T{}) {
+    if (auto* existing = reg.ctx().find<T>()) {
+        *existing = std::move(value);
+        return *existing;
+    }
+    return reg.ctx().emplace<T>(std::move(value));
 }
 
 } // namespace
@@ -36,8 +46,8 @@ void setup_play_session(entt::registry& reg) {
     spawn_ui_camera(reg);
 
     // Reset singletons
-    reg.ctx().insert_or_assign(RNGState{});
-    reg.ctx().insert_or_assign(ScoreState{});
+    assign_or_emplace_ctx(reg, RNGState{});
+    assign_or_emplace_ctx(reg, ScoreState{});
 
     // Load beatmap from level selection.
     // BeatMap is a context singleton (cold asset). It is reset here via move
@@ -122,13 +132,13 @@ void setup_play_session(entt::registry& reg) {
     }
 
     // Reset energy and results
-    reg.ctx().insert_or_assign(EnergyState{});
+    assign_or_emplace_ctx(reg, EnergyState{});
     {
         SongResults results{};
         results.total_notes = static_cast<int>(beatmap.beats.size());
-        reg.ctx().insert_or_assign(results);
+        assign_or_emplace_ctx(reg, results);
     }
-    reg.ctx().insert_or_assign(GameOverState{});
+    assign_or_emplace_ctx(reg, GameOverState{});
 
     // Load stored high score for this song+difficulty into ScoreState
     if (auto* hs = reg.ctx().find<HighScoreState>()) {

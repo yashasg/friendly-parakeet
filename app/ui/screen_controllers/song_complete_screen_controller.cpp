@@ -33,6 +33,12 @@ void draw_song_complete_scoreboard(entt::registry& reg, const SongCompleteLayout
     std::snprintf(value, sizeof(value), "%d", score.high_score);
     draw_song_complete_value(state.Anchor01, 160, 573, 400, 50, value, 36);
 
+    if (const auto* result = reg.ctx().find<TerminalResultState>(); result && result->new_best) {
+        char best_line[48] = {};
+        std::snprintf(best_line, sizeof(best_line), "NEW BEST! PREV %d", result->previous_best);
+        draw_song_complete_value(state.Anchor01, 120, 620, 480, 28, best_line, 22);
+    }
+
     const auto* results = reg.ctx().find<SongResults>();
     if (!results) return;
 

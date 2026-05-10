@@ -127,6 +127,37 @@ TEST_CASE("shipped beatmaps: onset metadata invariants", "[shipped_beatmaps][iss
                 if (kAllowedOnsetClasses.find(onset_class) == kAllowedOnsetClasses.end()) {
                     FAIL_CHECK("onset metadata: invalid onset_class='" << onset_class << "' for "
                                << path.string() << " [" << diff << "] idx=" << beat_idx);
+                    continue;
+                }
+
+                std::string source_class = onset_class;
+                if (const auto source_it = beat.find("source_onset_class");
+                    source_it != beat.end() && source_it->is_string()) {
+                    source_class = *source_it;
+                }
+
+                int expected_lane = -1;
+                std::string expected_shape;
+                if (source_class == "percussive") {
+                    expected_lane = 0;
+                    expected_shape = "triangle";
+                } else if (source_class == "full-spectrum") {
+                    expected_lane = 1;
+                    expected_shape = "square";
+                } else if (source_class == "harmonic") {
+                    expected_lane = 2;
+                    expected_shape = "circle";
+                }
+
+                const auto lane_it = beat.find("lane");
+                const auto shape_it = beat.find("shape");
+                if (expected_lane >= 0 &&
+                    (lane_it == beat.end() || !lane_it->is_number_integer() || lane_it->get<int>() != expected_lane ||
+                     shape_it == beat.end() || !shape_it->is_string() || shape_it->get<std::string>() != expected_shape)) {
+                    FAIL_CHECK("onset metadata: source_onset_class '" << source_class
+                               << "' must map to lane=" << expected_lane
+                               << " shape=" << expected_shape
+                               << " for " << path.string() << " [" << diff << "] idx=" << beat_idx);
                 }
             }
         }

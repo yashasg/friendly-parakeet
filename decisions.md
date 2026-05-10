@@ -77,8 +77,8 @@ squad:redfoot (UI controllers) + squad:keaton (state machine)
    discarded onset is recorded in `playability_collapsed_pairs`.
 
 3. **#529 (difficulty ramp validator).**  The validator now performs
-   two strict checks: (a) `count_ramp` requires
-   `count(hard) ≥ count(medium) + 1 ≥ count(easy) + 2`; (b)
+   two strict checks: (a) `count_ramp` requires each tier to be strictly
+   denser than the previous tier by at least one obstacle; (b)
    `median_ioi_ramp` requires the **lower-quartile** IOI to be
    non-inverting tier-over-tier (≤ 50 ms inversion tolerance to absorb
    sparse-fill noise on bimodal songs).  The lower quartile measures
