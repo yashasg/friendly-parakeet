@@ -65,7 +65,7 @@ TEST_CASE("song_playback: does nothing when song not playing", "[song_playback]"
     CHECK(song.song_time == original_time);
 }
 
-TEST_CASE("song_playback: does nothing when song finished", "[song_playback]") {
+TEST_CASE("song_playback: finished song keeps advancing post-finish timeline", "[song_playback]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
     song.finished = true;
@@ -73,7 +73,7 @@ TEST_CASE("song_playback: does nothing when song finished", "[song_playback]") {
 
     song_playback_system(reg, 1.0f);
 
-    CHECK(song.song_time == original_time);
+    CHECK(song.song_time > original_time);
 }
 
 TEST_CASE("song_playback: offset delays beat counting", "[song_playback]") {
@@ -105,4 +105,3 @@ TEST_CASE("song_playback: current_beat is non-decreasing", "[song_playback]") {
         prev_beat = song.current_beat;
     }
 }
-

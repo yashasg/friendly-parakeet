@@ -66,9 +66,12 @@ void scoring_system(entt::registry& reg, float dt) {
     auto* song    = reg.ctx().find<SongState>();
     const float scroll_speed = song ? song->scroll_speed : constants::BASE_SCROLL_SPEED;
 
-    // Distance bonus
-    score.distance_traveled += scroll_speed * dt;
-    score.score += static_cast<int>(dt * constants::PTS_PER_SECOND);
+    // Passive score accrual (distance/time) only while song playback is active.
+    const bool allow_passive_score = (song == nullptr) || !song->finished;
+    if (allow_passive_score) {
+        score.distance_traveled += scroll_speed * dt;
+        score.score += static_cast<int>(dt * constants::PTS_PER_SECOND);
+    }
 
     // Chain timer
     score.chain_timer += dt;

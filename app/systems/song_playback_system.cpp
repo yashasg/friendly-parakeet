@@ -47,7 +47,15 @@ void song_playback_system(entt::registry& reg, float dt) {
 
     // ── Song time / beat advancement (Playing phase only) ─────
     if (gs.phase != GamePhase::Playing) return;
-    if (!song || !song->playing || song->finished) return;
+    if (!song) return;
+
+    if (song->finished) {
+        // Keep song_time advancing after playback ends so remaining spawned
+        // obstacles can continue scrolling to resolution/despawn.
+        song->song_time += dt;
+        return;
+    }
+    if (!song->playing) return;
 
     // Authoritative clock from audio stream; fall back to dt accumulation
     // when running in silent/test mode (no music loaded).

@@ -36,7 +36,7 @@ TEST_CASE("song_playback: no advancement when song not playing", "[song_playback
     CHECK(song.song_time == 1.0f);
 }
 
-TEST_CASE("song_playback: no advancement when song already finished", "[song_playback]") {
+TEST_CASE("song_playback: finished songs keep post-finish timeline advancing", "[song_playback]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
     song.finished = true;
@@ -44,7 +44,7 @@ TEST_CASE("song_playback: no advancement when song already finished", "[song_pla
 
     song_playback_system(reg, 0.5f);
 
-    CHECK(song.song_time == 50.0f);
+    CHECK(song.song_time > 50.0f);
 }
 
 TEST_CASE("song_playback: no advancement when SongState absent", "[song_playback]") {
@@ -163,9 +163,40 @@ TEST_CASE("song_playback: finished song stays latched and does not restart on la
 
     CHECK(song.finished);
     CHECK_FALSE(song.playing);
-    CHECK(song.song_time == finished_time);
+    CHECK(song.song_time > finished_time);
     CHECK(song.current_beat == finished_beat);
     CHECK_FALSE(song.restart_music);
+}
+
+TEST_CASE("song_playback: obstacles can clear after playback ends without soft-lock",
+          "[song_playback][gamestate][issue444]") {
+    auto reg = make_rhythm_registry();
+    auto& gs = reg.ctx().get<GameState>();
+    gs.phase = GamePhase::Playing;
+
+    auto& song = reg.ctx().get<SongState>();
+    song.duration_sec = 1.0f;
+    song.song_time = 0.95f;
+    song.playing = true;
+    song.finished = false;
+
+    const float start_y = constants::DESTROY_Y - 5.0f;
+    const float spawn_time = song.song_time
+        - (start_y - constants::SPAWN_Y) / song.scroll_speed;
+
+    auto obstacle = reg.create();
+    reg.emplace<ObstacleTag>(obstacle);
+    reg.emplace<WorldTransform>(obstacle, WorldTransform{{constants::LANE_X[1], start_y}});
+    reg.emplace<BeatInfo>(obstacle, BeatInfo{0, song.song_time, spawn_time});
+
+    tick_fixed_systems(reg, 0.1f);
+    REQUIRE(song.finished);
+    CHECK_FALSE(song.playing);
+    CHECK(reg.view<ObstacleTag>().empty());
+
+    tick_fixed_systems(reg, 0.016f);
+    CHECK(gs.transition_pending);
+    CHECK(gs.next_phase == GamePhase::SongComplete);
 }
 
 TEST_CASE("song_playback: end-of-song transitions to SongComplete and remains stopped",

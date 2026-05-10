@@ -241,11 +241,19 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
 
     if (!parse_ok) return false;
 
-    // Sort beats by beat_index (chart may not be pre-sorted)
-    std::sort(out.beats.begin(), out.beats.end(),
-              [](const BeatEntry& a, const BeatEntry& b) {
-                  return a.beat_index < b.beat_index;
-              });
+    // Sort beats by beat_index; for ties, sort by resolved time_sec so
+    // authored timing within the same beat stays schedulable in-order.
+    // Stable sort preserves authored order when keys are identical.
+    std::stable_sort(out.beats.begin(), out.beats.end(),
+                     [](const BeatEntry& a, const BeatEntry& b) {
+                         if (a.beat_index != b.beat_index) {
+                             return a.beat_index < b.beat_index;
+                         }
+                         if (a.time_sec != b.time_sec) {
+                             return a.time_sec < b.time_sec;
+                         }
+                         return false;
+                     });
 
     if (out.beat_times.empty() && !out.beats.empty()) {
         const int max_beat = out.beats.back().beat_index;
@@ -319,16 +327,40 @@ bool validate_beat_map(const BeatMap& map, std::vector<BeatMapError>& errors,
     bool prev_had_shape = false;
     bool has_prev_authored_time = false;
     float prev_authored_time = 0.0f;
+    bool has_prev_resolved_time_for_beat = false;
+    float prev_resolved_time_for_beat = 0.0f;
 
     for (size_t i = 0; i < map.beats.size(); ++i) {
         const auto& entry = map.beats[i];
+        const float grid_time = map.offset + static_cast<float>(entry.beat_index) * beat_period;
+        float resolved_time = grid_time;
+        if (entry.has_time_sec) {
+            resolved_time = entry.time_sec;
+        } else if (!map.beat_times.empty() &&
+                   entry.beat_index >= 0 &&
+                   static_cast<size_t>(entry.beat_index) < map.beat_times.size()) {
+            resolved_time = map.beat_times[static_cast<size_t>(entry.beat_index)];
+        }
 
-        // Rule 1: beat indices monotonically increasing
-        if (entry.beat_index <= prev_beat && prev_beat >= 0) {
-            errors.push_back({entry.beat_index, "Beat indices must be monotonically increasing"});
+        // Rule 1: beat indices monotonically non-decreasing
+        if (entry.beat_index < prev_beat && prev_beat >= 0) {
+            errors.push_back({entry.beat_index, "Beat indices must be monotonically non-decreasing"});
             valid = false;
         }
-        prev_beat = entry.beat_index;
+
+        if (entry.beat_index == prev_beat) {
+            if (has_prev_resolved_time_for_beat && resolved_time < prev_resolved_time_for_beat) {
+                errors.push_back({entry.beat_index,
+                    "Entries sharing a beat index must have non-decreasing resolved time"});
+                valid = false;
+            }
+            prev_resolved_time_for_beat = resolved_time;
+            has_prev_resolved_time_for_beat = true;
+        } else {
+            prev_beat = entry.beat_index;
+            prev_resolved_time_for_beat = resolved_time;
+            has_prev_resolved_time_for_beat = true;
+        }
 
         // Rule 2: no beat index beyond song duration
         if (entry.beat_index > max_beat) {
