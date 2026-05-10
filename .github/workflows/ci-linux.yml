@@ -56,7 +56,8 @@ jobs:
             libxinerama-dev \
             libxcursor-dev \
             libxi-dev \
-            libpulse-dev
+            libpulse-dev \
+            xvfb
 
       - name: Setup vcpkg
         run: |
@@ -85,6 +86,9 @@ jobs:
           "$PYTHON_TOOL_TEST_EXE" -m pip install --break-system-packages -r tools/python-tool-test-requirements.txt || \
           "$PYTHON_TOOL_TEST_EXE" -m pip install -r tools/python-tool-test-requirements.txt
 
+      - name: Validate raylib overlay audio-disabled stub path
+        run: cmake -P tools/validate_raylib_overlay_audio_stub_path.cmake
+
       - name: Run tests
         if: always()
         id: run-tests
@@ -92,12 +96,14 @@ jobs:
           mkdir -p build/ci
           ctest --test-dir build -N \
             | sed -nE 's/^ *Test *#[0-9]+: (.*)$/\1/p' \
-            | grep -Ev '^Bench:|^(python_tool_tests|loop2_content_gates_strict|beatmap_editor_node_tests)$' \
+            | grep -Ev '^Bench:|^(python_tool_tests|loop2_content_gates_strict|beatmap_editor_node_tests|startup_shutdown_smoke)$' \
             | sort -u > build/ci/ctest-nonbench-catch.txt
           ./build/shapeshifter_tests --list-tests "~[bench]" --verbosity quiet \
             | sort -u > build/ci/catch-nonbench.txt
           diff -u build/ci/ctest-nonbench-catch.txt build/ci/catch-nonbench.txt
           ./build/shapeshifter_tests "~[bench]"
+          xvfb-run --auto-servernum --server-args="-screen 0 1280x720x24" \
+            ctest --test-dir build --output-on-failure -R "^startup_shutdown_smoke$"
           ctest --test-dir build --output-on-failure -R "^(python_tool_tests|loop2_content_gates_strict|beatmap_editor_node_tests)$"
 
       - name: Upload artifact

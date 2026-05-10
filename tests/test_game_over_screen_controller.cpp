@@ -1,21 +1,48 @@
-// Game Over screen controller tests — issue #498.
-//
-// Verifies that the Game Over screen exposes the run's final score, persisted
-// high score, and a one-line death cause through stable, render-independent
-// surfaces (DeathCause → reason text mapping; ScoreState binding pattern).
-//
-// We deliberately do NOT spin up a raygui surface here: the controller render
-// path requires an active GL context (raygui ↔ raylib). Instead we assert on
-// the values the controller binds to its layout slots, mirroring how
-// song_complete is exercised elsewhere.
-
 #include <catch2/catch_test_macros.hpp>
 #include <cstring>
+#include <string>
+#include <vector>
 
 #include "test_helpers.h"
 #include "ui/screen_controllers/game_over_screen_controller.h"
 #include "components/song_state.h"
 #include "components/scoring.h"
+
+namespace {
+
+struct CapturedValue {
+    float x = 0.0f;
+    float y = 0.0f;
+    std::string text;
+};
+
+std::vector<CapturedValue> g_captured_values;
+
+void no_op_layout_render(GameOverLayoutState* state) {
+    (void)state;
+}
+
+void capture_scoreboard_value(Vector2 anchor, float x, float y, float, float,
+                              const char* text, int) {
+    g_captured_values.push_back(CapturedValue{anchor.x + x, anchor.y + y, text ? text : ""});
+}
+
+bool has_bound_text(const char* expected) {
+    for (const auto& bound : g_captured_values) {
+        if (bound.text == expected) return true;
+    }
+    return false;
+}
+
+struct ScopedGameOverHooks {
+    ScopedGameOverHooks() {
+        g_captured_values.clear();
+        set_game_over_screen_test_hooks(&no_op_layout_render, &capture_scoreboard_value);
+    }
+    ~ScopedGameOverHooks() { reset_game_over_screen_test_hooks(); }
+};
+
+} // namespace
 
 TEST_CASE("game_over: death_cause_text maps every DeathCause to a non-empty platform-neutral string",
           "[game_over][ui]") {
@@ -65,4 +92,50 @@ TEST_CASE("game_over: score / high score / cause are visible via registry single
     const auto& g = reg.ctx().get<GameOverState>();
     CHECK(g.cause == DeathCause::EnergyDepleted);
     CHECK(std::strlen(death_cause_text(g.cause)) > 0);
+}
+
+TEST_CASE("game_over: render binds score/high-score/reason into scoreboard draw path",
+          "[game_over][ui]") {
+    auto reg = make_registry();
+    ScopedGameOverHooks hooks;
+
+    auto& score = reg.ctx().get<ScoreState>();
+    score.score = 31415;
+    score.high_score = 92653;
+
+    auto& gos = reg.ctx().get<GameOverState>();
+    gos.cause = DeathCause::MissedABeat;
+
+    auto& gs = reg.ctx().get<GameState>();
+    gs.phase = GamePhase::GameOver;
+    gs.phase_timer = 0.0f;
+
+    render_game_over_screen_ui(reg);
+
+    CHECK(has_bound_text("31415"));
+    CHECK(has_bound_text("92653"));
+    CHECK(has_bound_text("MISSED A BEAT"));
+}
+
+TEST_CASE("game_over: render omits empty reason binding for DeathCause::None", "[game_over][ui]") {
+    auto reg = make_registry();
+    ScopedGameOverHooks hooks;
+
+    auto& score = reg.ctx().get<ScoreState>();
+    score.score = 7;
+    score.high_score = 11;
+
+    auto& gos = reg.ctx().get<GameOverState>();
+    gos.cause = DeathCause::None;
+
+    auto& gs = reg.ctx().get<GameState>();
+    gs.phase = GamePhase::GameOver;
+    gs.phase_timer = 0.0f;
+
+    render_game_over_screen_ui(reg);
+
+    CHECK(has_bound_text("7"));
+    CHECK(has_bound_text("11"));
+    CHECK_FALSE(has_bound_text("MISSED A BEAT"));
+    CHECK_FALSE(has_bound_text("ENERGY DEPLETED"));
 }

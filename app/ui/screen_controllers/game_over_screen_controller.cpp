@@ -14,14 +14,30 @@
 
 namespace {
 
+void default_game_over_layout_render(GameOverLayoutState* state) {
+    GameOverLayout_Render(state);
+}
+
+void default_draw_game_over_value(Vector2 anchor, float x, float y, float w, float h,
+                                  const char* text, int text_size) {
+    GameOverLayout_DrawCenteredLabel((Rectangle){anchor.x + x, anchor.y + y, w, h},
+                                     text, text_size);
+}
+
+GameOverLayoutRenderHook g_layout_render_hook = &default_game_over_layout_render;
+GameOverValueDrawHook g_value_draw_hook = &default_draw_game_over_value;
+
+void game_over_layout_render(GameOverLayoutState* state) {
+    g_layout_render_hook(state);
+}
+
 using GameOverController = RGuiScreenController<GameOverLayoutState,
                                                  &GameOverLayout_Init,
-                                                 &GameOverLayout_Render>;
+                                                 &game_over_layout_render>;
 
 void draw_game_over_value(Vector2 anchor, float x, float y, float w, float h,
                           const char* text, int text_size) {
-    GameOverLayout_DrawCenteredLabel((Rectangle){anchor.x + x, anchor.y + y, w, h},
-                                     text, text_size);
+    g_value_draw_hook(anchor, x, y, w, h, text, text_size);
 }
 
 void draw_game_over_scoreboard(entt::registry& reg, const GameOverLayoutState& state) {
@@ -51,6 +67,17 @@ const char* death_cause_text(DeathCause cause) {
         case DeathCause::None:
         default:                          return "";
     }
+}
+
+void set_game_over_screen_test_hooks(GameOverLayoutRenderHook layout_render_hook,
+                                     GameOverValueDrawHook value_draw_hook) {
+    g_layout_render_hook = layout_render_hook ? layout_render_hook : &default_game_over_layout_render;
+    g_value_draw_hook = value_draw_hook ? value_draw_hook : &default_draw_game_over_value;
+}
+
+void reset_game_over_screen_test_hooks() {
+    g_layout_render_hook = &default_game_over_layout_render;
+    g_value_draw_hook = &default_draw_game_over_value;
 }
 
 void init_game_over_screen_ui() {

@@ -98,7 +98,7 @@ jobs:
           mkdir -p build/ci
           ctest --test-dir build -N \
             | sed -nE 's/^ *Test *#[0-9]+: (.*)$/\1/p' \
-            | grep -Ev '^Bench:|^(python_tool_tests|loop2_content_gates_strict|beatmap_editor_node_tests)$' \
+            | grep -Ev '^Bench:|^(python_tool_tests|loop2_content_gates_strict|beatmap_editor_node_tests|startup_shutdown_smoke)$' \
             | sort -u > build/ci/ctest-nonbench-catch.txt
           ./build/shapeshifter_tests --list-tests "~[bench]" --verbosity quiet \
             | sort -u > build/ci/catch-nonbench.txt

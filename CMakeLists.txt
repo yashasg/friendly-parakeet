@@ -369,10 +369,8 @@ if(EMSCRIPTEN)
     )
 endif()
 
-# Optional desktop smoke harness. It is intentionally excluded from the default
-# build/test path because it opens a real raylib window; build and run it
-# explicitly when validating platform startup/shutdown resource lifetimes.
-add_executable(shapeshifter_startup_shutdown_smoke EXCLUDE_FROM_ALL
+# Desktop startup/shutdown smoke harness used by CTest/CI lifecycle validation.
+add_executable(shapeshifter_startup_shutdown_smoke
     tests/smoke/startup_shutdown_smoke.cpp
     ${SHAPESHIFTER_RUNTIME_SOURCES}
 )
@@ -569,6 +567,12 @@ if(NOT EMSCRIPTEN)
         shapeshifter_tests
         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
     )
+    add_test(
+        NAME startup_shutdown_smoke
+        COMMAND $<TARGET_FILE:shapeshifter_startup_shutdown_smoke> --frames 2 --cycles 2
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    )
+    set_tests_properties(startup_shutdown_smoke PROPERTIES LABELS "smoke")
 
     find_package(Python3 COMPONENTS Interpreter REQUIRED)
     add_test(

@@ -24,7 +24,12 @@ async function main() {
     args: ['--no-sandbox', '--disable-dev-shm-usage'],
   });
 
-  const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+  const context = await browser.newContext({
+    viewport: { width: 1280, height: 720 },
+    hasTouch: true,
+    isMobile: true,
+  });
+  const page = await context.newPage();
   const fatal = [];
 
   async function clickCanvasAt(xRatio, yRatio) {
@@ -55,6 +60,51 @@ async function main() {
       }
     }
     return previousHash;
+  }
+
+  async function swipeCanvas(xStartRatio, yStartRatio, xEndRatio, yEndRatio) {
+    const canvas = page.locator('#canvas');
+    const box = await canvas.boundingBox();
+    if (!box) {
+      fatal.push('canvas-bounding-box-unavailable-for-swipe');
+      return;
+    }
+
+    const startX = box.x + Math.max(4, Math.floor(box.width * xStartRatio));
+    const startY = box.y + Math.max(4, Math.floor(box.height * yStartRatio));
+    const endX = box.x + Math.max(4, Math.floor(box.width * xEndRatio));
+    const endY = box.y + Math.max(4, Math.floor(box.height * yEndRatio));
+
+    await page.evaluate(({ sx, sy, ex, ey }) => {
+      const canvasEl = document.querySelector('#canvas');
+      if (!canvasEl) return;
+      const steps = 6;
+      const PointerCtor = window.PointerEvent || window.MouseEvent;
+
+      const dispatch = (type, x, y, buttons) => {
+        canvasEl.dispatchEvent(new PointerCtor(type, {
+          bubbles: true,
+          cancelable: true,
+          composed: true,
+          pointerId: 1,
+          pointerType: 'touch',
+          isPrimary: true,
+          buttons,
+          button: 0,
+          clientX: x,
+          clientY: y,
+        }));
+      };
+
+      dispatch('pointerdown', sx, sy, 1);
+      for (let i = 1; i <= steps; i += 1) {
+        const t = i / steps;
+        dispatch('pointermove', sx + (ex - sx) * t, sy + (ey - sy) * t, 1);
+      }
+      dispatch('pointerup', ex, ey, 0);
+    }, { sx: startX, sy: startY, ex: endX, ey: endY });
+
+    await page.waitForTimeout(150);
   }
 
   async function waitForTitlePhase(expectedPhase, timeoutMs) {
@@ -153,7 +203,28 @@ async function main() {
     if (!(await waitForTitlePhase('Playing', 4500))) {
       fatal.push(`missing-playing-phase-marker:${await page.title()}`);
     }
+
+    const beforeSwipeHash = sha256(await page.screenshot());
+    await swipeCanvas(0.35, 0.25, 0.80, 0.25);
+    const afterSwipeRightHash = await waitForVisualChange(beforeSwipeHash, 2000);
+    if (beforeSwipeHash === afterSwipeRightHash) {
+      fatal.push('no-visual-response-after-playing-touch-swipe-right');
+    }
+    if (!(await waitForTitlePhase('Playing', 1500))) {
+      fatal.push(`unexpected-phase-after-playing-touch-swipe-right:${await page.title()}`);
+    }
+
+    await page.waitForTimeout(250);
+    await swipeCanvas(0.80, 0.25, 0.35, 0.25);
+    const afterSwipeLeftHash = await waitForVisualChange(afterSwipeRightHash, 2000);
+    if (afterSwipeRightHash === afterSwipeLeftHash) {
+      fatal.push('no-visual-response-after-playing-touch-swipe-left');
+    }
+    if (!(await waitForTitlePhase('Playing', 1500))) {
+      fatal.push(`unexpected-phase-after-playing-touch-swipe-left:${await page.title()}`);
+    }
   } finally {
+    await context.close();
     await browser.close();
   }
 
