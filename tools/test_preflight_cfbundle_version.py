@@ -7,16 +7,21 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from shutil import which
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = REPO_ROOT / "tools" / "ios" / "preflight_cfbundle_version.sh"
+BASH = which("bash")
 
 
 class TestCFBundleVersionPreflight(unittest.TestCase):
     def _run(self, args, cwd: Path | None = None):
+        bash = BASH
+        if bash is None:
+            self.fail("bash is required to run preflight_cfbundle_version.sh")
         return subprocess.run(
-            [str(SCRIPT), *args],
+            [bash, str(SCRIPT), *args],
             cwd=str(cwd or REPO_ROOT),
             text=True,
             capture_output=True,
