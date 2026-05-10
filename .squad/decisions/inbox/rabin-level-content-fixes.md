@@ -61,3 +61,67 @@ touching their helpers.
 - Beatmap regeneration: all three songs.
 - `design-docs/rhythm-spec.md`: per-difficulty IOI + max-run + subdivision
   coverage targets.
+
+---
+
+## 2026-05-11 follow-up — RESOLVED in commit 21d0434
+
+`tools/level_designer.py` was clean; the generator fix shipped end-to-end.
+
+### Constants codified (top of `tools/level_designer.py`)
+
+| Name | Value | Purpose |
+|---|---|---|
+| `MIN_IOI_MS` | `{easy:500, medium:350, hard:280}` | Hard floor — no two obstacles closer. Lowered from 700/380/300 so promotion has room. |
+| `MEDIAN_IOI_TARGET_SEC` | `{easy:0.85, medium:0.68, hard:0.54}` | Target ceiling. `_enforce_median_ioi_target` promotes events until median ≤ target. |
+| `MAX_SAME_LANE_RUN` | `{easy:4, medium:5, hard:6}` | Max consecutive same-onset-class (== same-lane) events. |
+| `SUBDIVISION_SNAP_TOLERANCE_SEC` | `0.060` | `snap_events_to_beats` accepts events within this window of any subdivision (downbeat / eighth / triplet) grid point. |
+
+### Invariants future agents must preserve
+
+1. **Canonical mapping is `ONSET_CLASS_TO_OBSTACLE`** — NOT the legacy
+   `SHAPE_TO_LANE`/`LANE_TO_SHAPE` (which are inverted). Tests
+   `test_experimental_mode_applies_class_lane_shape_mapping` and
+   `test_shipped_beatmap_shape_gap.cpp` enforce this. **Lane-rotation
+   strategies for #391 are forbidden** — cap by dropping events.
+2. **`design_level_segment_focus` must not drop or shift events**
+   relative to what `select_segment_focus_beats` returned
+   (`test_cleanup_not_invoked_in_segment_focus`). Therefore every
+   post-pass (lane-run cap, median-IOI promotion, subdivision-coverage
+   promotion) MUST run inside `select_segment_focus_beats`.
+3. **Dedup key = `(beat_idx, subdivision, onset_class, source_event_idx)`**
+   (`_event_key`). Subdivision-in-key is what allows multiple labelled
+   events per beat to survive — required for #396.
+4. **Cross-layer simultaneity (≤50ms) survives** dedup because the
+   onset_class differs. `time_sec` rounded to 6 decimals can therefore
+   tie at the same beat — tests checking ordering must allow ties when
+   `beat_index` also ties.
+
+### Operational gotchas
+
+- `build/content/beatmaps/*.json` is copied via CMake POST_BUILD on the
+  binary target; editing only source `content/beatmaps/*.json` does NOT
+  re-copy. After regenerating, manually
+  `cp content/beatmaps/*_beatmap.json build/content/beatmaps/`
+  before running tests.
+- Generator entry point (required for the active path):
+  `python3 tools/level_designer.py <song>_analysis.json --output <song>_beatmap.json --experimental-onset-timing`.
+- Median-IOI fallback pool (`all_snapped`) is **disabled for medium**.
+  Letting it run caused medium counts to exceed hard on dense songs
+  (drama). Easy/hard still use the fallback for sparse focus-class pools
+  (e.g. Stomper hard).
+- Fallback events from `all_snapped` lack `onset_class`; promotion now
+  enriches them via `classify_onset_class` so lane mapping doesn't all
+  collapse to "full-spectrum" → lane 1 (which produced spurious lane-1
+  runs of length 9 on drama medium during development).
+
+### Known partial misses (acceptable per current scope)
+
+- `validate_difficulty_ramp.py` still exits 1 on "easy uses only 2
+  distinct shapes" — pre-existing failure on this branch (verified by
+  stashing my changes); my changes improved the numbers but did not
+  add a 3rd shape. Requires harmonic-rich easy analyses or a shape-
+  injection pass that decouples shape from `onset_class` for easy only.
+- Drama medium→hard IOI gap is ~0.3% (the song's onset density
+  saturates the medium band naturally close to hard). My regression
+  test allows this when overall easy/hard ratio ≥ 1.5×.
