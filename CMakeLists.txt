@@ -137,8 +137,8 @@ target_link_libraries(shapeshifter_lib PUBLIC
     EnTT::EnTT
     magic_enum::magic_enum
     nlohmann_json::nlohmann_json
-    raylib
 )
+target_link_libraries(shapeshifter_lib PRIVATE raylib)
 if(SHAPESHIFTER_IOS)
     target_link_libraries(shapeshifter_lib PUBLIC
         "-framework Foundation"
@@ -450,11 +450,6 @@ endif()
 enable_testing()
 
 file(GLOB TEST_SOURCES CONFIGURE_DEPENDS tests/*.cpp benchmarks/*.cpp)
-# Exclude untracked test files from other in-progress agents that reference
-# symbols not yet merged into this branch.
-list(FILTER TEST_SOURCES EXCLUDE REGEX
-    ".*(test_safe_area_layout|test_ui_redfoot_pass|test_lifecycle)\\.cpp$"
-)
 
 # Unity build hazard exclusions (Keaton audit). These test files define
 # duplicate symbols in anonymous namespaces or as static functions; merging them
@@ -469,6 +464,8 @@ set_source_files_properties(
     tests/test_shipped_beatmap_difficulty_ramp.cpp
     tests/test_shipped_beatmap_first_collision.cpp
     tests/test_shipped_beatmap_medium_balance.cpp
+    tests/test_shipped_beatmap_onset_metadata.cpp
+    tests/test_shipped_beatmap_lane_run_and_subdivision.cpp
     tests/test_redfoot_testflight_ui.cpp
     PROPERTIES SKIP_UNITY_BUILD_INCLUSION TRUE
 )
@@ -540,6 +537,17 @@ if(NOT EMSCRIPTEN)
     include(CTest)
     include(Catch)
     catch_discover_tests(shapeshifter_tests)
+
+    find_package(Python3 COMPONENTS Interpreter QUIET)
+    if(Python3_Interpreter_FOUND)
+        add_test(
+            NAME python_tool_tests
+            COMMAND ${Python3_EXECUTABLE} -m unittest discover -s tools -p "test_*.py"
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        )
+    else()
+        message(WARNING "Python3 interpreter not found; skipping python_tool_tests registration.")
+    endif()
 else()
     # Run the Emscripten Catch2 binary under Node. NODERAWFS lets tests read
     # repository/build content files directly instead of preloading game assets.

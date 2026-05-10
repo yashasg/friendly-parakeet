@@ -3,10 +3,6 @@
 #include <entt/entt.hpp>
 #include "../components/game_state.h"
 
-// Phase 0: Raw input (polls raylib input)
-void input_system_init(entt::registry& reg);  // one-time: emplace WebInputPolicy + platform detection
-void input_system(entt::registry& reg, float raw_dt);
-
 // Phase 0.5: Test player AI (enqueues synthetic input actions)
 void test_player_system(entt::registry& reg, float dt);
 
@@ -15,8 +11,7 @@ void game_state_system(entt::registry& reg, float dt);
 void game_state_enter_terminal_phase(entt::registry& reg, GamePhase phase);
 void game_state_end_screen_system(entt::registry& reg, float dt);
 
-// Phase 3: Rhythm Engine
-void song_playback_system(entt::registry& reg, float dt);
+// Phase 3: Rhythm Engine (headless)
 void beat_log_system(entt::registry& reg, float dt);
 void beat_scheduler_system(entt::registry& reg, float dt);
 
@@ -39,11 +34,6 @@ void energy_system(entt::registry& reg, float dt);
 // Call from tick_fixed_systems in place of the 13 individual Playing-gated calls.
 void tick_playing_systems(entt::registry& reg, float dt);
 
-// Fixed-step tick: game_state → song_playback → Playing systems →
-// obstacle_despawn → popup_display → particle.
-// Exposed for integration tests; implementation in fixed_tick_runner.cpp.
-void tick_fixed_systems(entt::registry& reg, float dt);
-
 // Phase 6: Cleanup
 void particle_system(entt::registry& reg, float dt);
 // Destroys obstacle entities that have scrolled past the camera's far-Z boundary.
@@ -51,17 +41,6 @@ void obstacle_despawn_system(entt::registry& reg, float dt);
 
 // Phase 6.5: UI prep
 void popup_display_system(entt::registry& reg, float dt);
-
-// Phase 7: Camera
-void game_camera_system(entt::registry& reg, float dt);  // model-to-world transforms
-void ui_camera_system(entt::registry& reg, float dt);    // screen-space transforms
-
-// Phase 8: Render — world pass (3D) + UI pass (2D)
-void floor_render_system(const entt::registry& reg);
-void game_render_system(const entt::registry& reg, float alpha);
-void ui_render_system(entt::registry& reg, float alpha);
-
-void audio_system(entt::registry& reg);
 
 // Haptics (no dt needed) — drains PlayHapticEvent via dispatcher; settings gating is in listener
 void haptic_system(entt::registry& reg);

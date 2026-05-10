@@ -55,12 +55,26 @@ class TestLoop2MetricCalculations(unittest.TestCase):
         self.assertEqual(metrics["longest_same_shape_cluster_run"], 1)
         self.assertEqual(metrics["max_shape_cluster_size"], 4)
 
+    def test_count_check_uses_valid_beats_not_raw_rows(self):
+        beats = [
+            {"beat": 0, "kind": "shape_gate", "shape": "circle", "lane": 0},
+            {"beat": 2, "kind": "shape_gate", "shape": "square", "lane": 1},
+            {"beat": "bad", "kind": "shape_gate", "shape": "triangle", "lane": 2},
+        ]
+        metrics = gates.calculate_content_metrics(beats, expected_count=2)
+
+        self.assertEqual(metrics["raw_beat_rows"], 3)
+        self.assertEqual(metrics["valid_beat_count"], 2)
+        self.assertTrue(metrics["count_matches"])
+
 
 class TestLoop2GateEvaluation(unittest.TestCase):
     def test_evaluate_content_gates_flags_expected_issues(self):
         metrics = {
             "expected_count": 5,
             "total_obstacles": 4,
+            "valid_beat_count": 4,
+            "raw_beat_rows": 5,
             "count_matches": False,
             "strictly_increasing": False,
             "all_shape_gate": False,
@@ -82,6 +96,7 @@ class TestLoop2GateEvaluation(unittest.TestCase):
 
         self.assertGreaterEqual(len(findings), 9)
         self.assertTrue(any("count mismatch" in finding for finding in findings))
+        self.assertTrue(any("valid_beats=4 raw_rows=5" in finding for finding in findings))
         self.assertTrue(any("not strictly increasing" in finding for finding in findings))
         self.assertTrue(any("dominant gap" in finding for finding in findings))
         self.assertTrue(any("same-shape cluster-chain run" in finding for finding in findings))

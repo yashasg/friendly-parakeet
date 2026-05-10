@@ -40,20 +40,61 @@ void render_settings_screen_ui(entt::registry& reg) {
         GuiLabel(offset_rect(settings_controller.state().Anchor01, 252, 560, 216, 77), offset_buf);
     }
 
-    // Dynamic toggle buttons with live labels
+    // Dynamic toggle buttons with live labels.
+    // Issue #390: encode ON/OFF state with both an icon prefix and a colored
+    // border/background so color-blind players can read state without relying
+    // on the trailing text alone.
+    auto draw_toggle = [](Rectangle bounds, const char* name, bool on) -> bool {
+        constexpr int kProps[] = {
+            BORDER_COLOR_NORMAL, BASE_COLOR_NORMAL, TEXT_COLOR_NORMAL,
+            BORDER_COLOR_FOCUSED, BASE_COLOR_FOCUSED, TEXT_COLOR_FOCUSED,
+        };
+        int saved[sizeof(kProps) / sizeof(kProps[0])] = {0};
+        for (int i = 0; i < (int)(sizeof(kProps) / sizeof(kProps[0])); ++i) {
+            saved[i] = GuiGetStyle(BUTTON, kProps[i]);
+        }
+
+        // ON  → green border + dim green fill
+        // OFF → grey border + dark fill
+        const Color on_border  = {  64, 200, 110, 255 };
+        const Color on_base    = {  20,  64,  36, 255 };
+        const Color off_border = { 130, 130, 130, 255 };
+        const Color off_base   = {  36,  36,  36, 255 };
+        const Color text_color = { 230, 230, 230, 255 };
+
+        const Color border = on ? on_border : off_border;
+        const Color base   = on ? on_base   : off_base;
+        GuiSetStyle(BUTTON, BORDER_COLOR_NORMAL,  ColorToInt(border));
+        GuiSetStyle(BUTTON, BORDER_COLOR_FOCUSED, ColorToInt(border));
+        GuiSetStyle(BUTTON, BASE_COLOR_NORMAL,    ColorToInt(base));
+        GuiSetStyle(BUTTON, BASE_COLOR_FOCUSED,   ColorToInt(base));
+        GuiSetStyle(BUTTON, TEXT_COLOR_NORMAL,    ColorToInt(text_color));
+        GuiSetStyle(BUTTON, TEXT_COLOR_FOCUSED,   ColorToInt(text_color));
+
+        char label[32];
+        std::snprintf(label, sizeof(label), "[%s] %s: %s",
+                      on ? "X" : " ", name, on ? "ON" : "OFF");
+        bool pressed = GuiButton(bounds, label);
+
+        for (int i = 0; i < (int)(sizeof(kProps) / sizeof(kProps[0])); ++i) {
+            GuiSetStyle(BUTTON, kProps[i], saved[i]);
+        }
+        return pressed;
+    };
+
     {
-        char haptics_label[24];
         bool haptics_on = !st || st->haptics_enabled;
-        std::snprintf(haptics_label, sizeof(haptics_label), "HAPTICS: %s", haptics_on ? "ON" : "OFF");
-        settings_controller.state().HapticsTogglePressed =
-            GuiButton(offset_rect(settings_controller.state().Anchor01, 152, 720, 416, 100), haptics_label);
+        settings_controller.state().HapticsTogglePressed = draw_toggle(
+            offset_rect(settings_controller.state().Anchor01, 152, 720, 416, 100),
+            "HAPTICS", haptics_on);
     }
     {
-        char motion_label[24];
-        bool reduce_on = st && st->reduce_motion;
-        std::snprintf(motion_label, sizeof(motion_label), "MOTION: %s", reduce_on ? "OFF" : "ON");
-        settings_controller.state().ReduceMotionTogglePressed =
-            GuiButton(offset_rect(settings_controller.state().Anchor01, 152, 880, 416, 100), motion_label);
+        // Reduce-motion semantics: the visible toggle reads "MOTION ON" when
+        // motion is NOT reduced. We therefore invert reduce_motion for display.
+        bool motion_on = !st || !st->reduce_motion;
+        settings_controller.state().ReduceMotionTogglePressed = draw_toggle(
+            offset_rect(settings_controller.state().Anchor01, 152, 880, 416, 100),
+            "MOTION", motion_on);
     }
 
     // Dispatch actions

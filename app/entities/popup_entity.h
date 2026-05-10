@@ -4,7 +4,7 @@
 #include <entt/entt.hpp>
 #include "../components/rhythm.h"  // TimingTier
 
-struct Color;
+struct TintColor;
 struct PopupDisplay;
 struct ScorePopup;
 
@@ -13,7 +13,7 @@ struct ScorePopup;
 // frame.
 void init_popup_display(PopupDisplay& pd,
                         const ScorePopup& sp,
-                        const Color& base);
+                        const TintColor& base);
 
 // Parameters for spawning a score popup entity.
 struct PopupSpawnParams {
@@ -25,6 +25,6 @@ struct PopupSpawnParams {
 
 // Creates a fully-initialized score popup entity:
 //   WorldTransform at {x, y-40}, MotionVelocity {0, -80}, ScorePopup,
-//   Color (by timing tier), DrawLayer::Effects, TagHUDPass, PopupDisplay.
+//   TintColor (by timing tier), DrawLayer::Effects, TagHUDPass, PopupDisplay.
 // Audio push is the caller's responsibility.
 entt::entity spawn_score_popup(entt::registry& reg, const PopupSpawnParams& params);

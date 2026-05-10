@@ -219,3 +219,27 @@ Team ready for next phase.
 ## Learnings
 - When shipped beatmaps are generated from the experimental onset-motif pipeline, legacy fixed distribution and min-shape-gap assertions become stale; regression tests should instead gate canonical class mapping and monotonic difficulty note counts.
 - High-signal shipped-content checks for this design are: shape-gate-only easy, easy<=medium<=hard authored shape-gate counts, canonical shape↔lane pairing (triangle→0, square→1, circle→2), and medium multi-lane coverage.
+
+## 2026-05-10T02:36:13.250-07:00 — Automated test coverage audit
+
+**Status:** AUDIT COMPLETE (issues filed)
+
+**Validation evidence:**
+- Full native validation command passed: `cmake -B build -S . -Wno-dev && cmake --build build && ./build/shapeshifter_tests`.
+- Python tool lane is not wired into CMake/run.sh/CI and currently fails manually: `python3 -m unittest tools/test_*.py` errors on stale `tools/test_get_audio_duration.py` import of removed `FFPROBE_TIMEOUT`/`get_audio_duration`.
+- `tests/test_lifecycle.cpp` and `tests/test_safe_area_layout.cpp` are tracked but excluded by `CMakeLists.txt`, and their named cases are absent from `shapeshifter_tests --list-tests`.
+- Shipped beatmaps currently contain onset metadata (`timing_source=onset`, broad `onset_class`, `onset_time_sec`, `subdivision_label`), but no native shipped-content test enforces those metadata invariants.
+
+**Issues filed:**
+- #397 — Re-enable tracked tests excluded from CMake discovery.
+- #398 — Add shipped beatmap regression gate for onset metadata invariants.
+- #399 — Wire Python tool tests into validation and fix stale audio-duration coverage.
+
+**Learning:** Keep generator/tool Python tests as a first-class validation lane when they own content invariants; otherwise onset-layer guarantees can silently depend on tests that the standard green build never executes.
+
+## 2026-05-10T09:49:00Z — Test coverage fixes for #397 #398 #399
+
+## Learnings
+- Re-enabling tracked lifecycle/safe-area tests required modernizing stale assertions to current `constants.h` fields; keeping the original test names/tags preserved discoverability gates while restoring build stability.
+- A shipped-content metadata regression test is now necessary alongside structural beatmap tests: assert `timing_source=onset`, required onset metadata fields, broad `onset_class` values, and non-decreasing onset-backed counts across easy/medium/hard.
+- Python tool validation is now wired in both CTest (`python_tool_tests`) and `run.sh test`; stale ffprobe-based coverage was replaced with duration-contract tests against `rhythm_pipeline.extract_features` so `python3 -m unittest discover -s tools -p "test_*.py"` stays green.

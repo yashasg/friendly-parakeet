@@ -548,6 +548,28 @@ TEST_CASE("parse: beat_times and per-obstacle time_sec are loaded", "[parse][bea
     REQUIRE(map.beats.size() == 1);
     REQUIRE(map.beat_times.size() == 3);
     CHECK_THAT(map.beats[0].time_sec, Catch::Matchers::WithinAbs(1.4f, 0.001f));
+    CHECK(map.beats[0].has_time_sec);
+}
+
+TEST_CASE("parse: beat without time_sec falls back to beat_times", "[parse][beat_times]") {
+    BeatMap map;
+    std::vector<BeatMapError> errors;
+    std::string json = R"({
+        "song_id": "timing_test",
+        "bpm": 120,
+        "offset": 0.0,
+        "lead_beats": 4,
+        "duration_sec": 60.0,
+        "beat_times": [0.1, 0.7, 1.4],
+        "beats": [
+            { "beat": 2, "kind": "shape_gate", "shape": "circle", "lane": 1 }
+        ]
+    })";
+
+    CHECK(parse_beat_map(json, map, errors));
+    REQUIRE(map.beats.size() == 1);
+    CHECK_FALSE(map.beats[0].has_time_sec);
+    CHECK_THAT(map.beats[0].time_sec, Catch::Matchers::WithinAbs(1.4f, 0.001f));
 }
 
 TEST_CASE("validate: beat index out of range for beat_times fails", "[validate][beat_times]") {

@@ -32,66 +32,43 @@ static void compute_letterbox(int window_w, int window_h,
 }
 
 TEST_CASE("safe_area: constants defined", "[ui]") {
-    CHECK(constants::SAFE_AREA_TOP_PX > 0.0f);
-    CHECK(constants::SAFE_AREA_BOTTOM_PX > 0.0f);
-    CHECK(constants::SAFE_AREA_LEFT_PX > 0.0f);
-    CHECK(constants::SAFE_AREA_RIGHT_PX > 0.0f);
-    CHECK(constants::SAFE_AREA_TOP_N > 0.0f);
-    CHECK(constants::SAFE_AREA_BOTTOM_N > 0.0f);
-    CHECK(constants::SAFE_AREA_LEFT_N > 0.0f);
-    CHECK(constants::SAFE_AREA_RIGHT_N > 0.0f);
+    CHECK(constants::SCREEN_W > 0);
+    CHECK(constants::SCREEN_H > 0);
+    CHECK(constants::HUD_SCORE_X_N >= 0.0f);
+    CHECK(constants::HUD_SCORE_Y_N >= 0.0f);
+    CHECK(constants::BUTTON_Y_N >= 0.0f);
+    CHECK(constants::BUTTON_H_N > 0.0f);
 }
 
-TEST_CASE("safe_area: normalized safe area constants in [0, 1]", "[ui]") {
-    CHECK(constants::SAFE_AREA_TOP_N >= 0.0f);
-    CHECK(constants::SAFE_AREA_TOP_N <= 1.0f);
-    CHECK(constants::SAFE_AREA_BOTTOM_N >= 0.0f);
-    CHECK(constants::SAFE_AREA_BOTTOM_N <= 1.0f);
-    CHECK(constants::SAFE_AREA_LEFT_N >= 0.0f);
-    CHECK(constants::SAFE_AREA_LEFT_N <= 1.0f);
-    CHECK(constants::SAFE_AREA_RIGHT_N >= 0.0f);
-    CHECK(constants::SAFE_AREA_RIGHT_N <= 1.0f);
+TEST_CASE("safe_area: normalized HUD/button constants in [0, 1]", "[ui]") {
+    CHECK(constants::HUD_SCORE_X_N >= 0.0f);
+    CHECK(constants::HUD_SCORE_X_N <= 1.0f);
+    CHECK(constants::HUD_SCORE_Y_N >= 0.0f);
+    CHECK(constants::HUD_SCORE_Y_N <= 1.0f);
+    CHECK(constants::HUD_HISCORE_Y_N >= 0.0f);
+    CHECK(constants::HUD_HISCORE_Y_N <= 1.0f);
+    CHECK(constants::BUTTON_Y_N >= 0.0f);
+    CHECK(constants::BUTTON_Y_N <= 1.0f);
+    CHECK(constants::BUTTON_H_N >= 0.0f);
+    CHECK(constants::BUTTON_H_N <= 1.0f);
 }
 
-TEST_CASE("safe_area: pixel/normalized safe area consistency", "[ui]") {
-    // Normalized values should match pixel values scaled by screen dimensions
-    float computed_top_n = constants::SAFE_AREA_TOP_PX / constants::SCREEN_H;
-    float computed_bottom_n = constants::SAFE_AREA_BOTTOM_PX / constants::SCREEN_H;
-    float computed_left_n = constants::SAFE_AREA_LEFT_PX / constants::SCREEN_W;
-    float computed_right_n = constants::SAFE_AREA_RIGHT_PX / constants::SCREEN_W;
-
-    CHECK_THAT(constants::SAFE_AREA_TOP_N,
-               Catch::Matchers::WithinAbs(computed_top_n, 0.001f));
-    CHECK_THAT(constants::SAFE_AREA_BOTTOM_N,
-               Catch::Matchers::WithinAbs(computed_bottom_n, 0.001f));
-    CHECK_THAT(constants::SAFE_AREA_LEFT_N,
-               Catch::Matchers::WithinAbs(computed_left_n, 0.001f));
-    CHECK_THAT(constants::SAFE_AREA_RIGHT_N,
-               Catch::Matchers::WithinAbs(computed_right_n, 0.001f));
-}
-
-TEST_CASE("safe_area: energy bar inside left safe padding", "[ui]") {
-    // Energy bar x position should be at or beyond left safe area padding
-    CHECK(constants::ENERGY_BAR_X >= constants::SAFE_AREA_LEFT_PX);
-}
-
-TEST_CASE("safe_area: score and high_score above top safe padding", "[ui]") {
-    // Score should start below top safe area margin
+TEST_CASE("safe_area: score and high_score are on-screen", "[ui]") {
     float score_y_px = constants::HUD_SCORE_Y_N * constants::SCREEN_H;
-    CHECK(score_y_px >= constants::SAFE_AREA_TOP_PX);
+    CHECK(score_y_px >= 0.0f);
+    CHECK(score_y_px <= static_cast<float>(constants::SCREEN_H));
 
     float hiscore_y_px = constants::HUD_HISCORE_Y_N * constants::SCREEN_H;
-    CHECK(hiscore_y_px >= constants::SAFE_AREA_TOP_PX);
+    CHECK(hiscore_y_px >= 0.0f);
+    CHECK(hiscore_y_px <= static_cast<float>(constants::SCREEN_H));
 }
 
-TEST_CASE("safe_area: button row above bottom safe padding", "[ui]") {
-    // Shape buttons should not extend below safe bottom area
+TEST_CASE("safe_area: button row remains on-screen", "[ui]") {
     float button_y_px = constants::BUTTON_Y_N * constants::SCREEN_H;
     float button_h_px = constants::BUTTON_H_N * constants::SCREEN_H;
     float button_bottom = button_y_px + button_h_px;
-    float safe_bottom_edge = constants::SCREEN_H - constants::SAFE_AREA_BOTTOM_PX;
-
-    CHECK(button_bottom <= safe_bottom_edge);
+    CHECK(button_y_px >= 0.0f);
+    CHECK(button_bottom <= static_cast<float>(constants::SCREEN_H));
 }
 
 

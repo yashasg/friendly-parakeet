@@ -180,6 +180,35 @@ class TestOnsetSpikeCli(unittest.TestCase):
         rc = spike.main(["--diagnostics-dir", str(base)])
         self.assertEqual(rc, 0)
 
+    def test_main_fails_when_summary_not_experimental_enabled(self):
+        base = Path(__file__).resolve().parent / ".test_onset_spike_validator_non_exp"
+        if base.exists():
+            shutil.rmtree(base)
+        base.mkdir(parents=True, exist_ok=True)
+        self.addCleanup(lambda: shutil.rmtree(base, ignore_errors=True))
+
+        summary = {"song_id": "fixture_song"}
+        (base / "snap_diagnostics_summary.json").write_text(json.dumps(summary), encoding="utf-8")
+        with (base / "onset_timing_events.csv").open("w", newline="", encoding="utf-8") as handle:
+            writer = csv.DictWriter(
+                handle,
+                fieldnames=["difficulty", "event_order", "beat_idx", "beat_time", "onset_time", "residual_ms"],
+            )
+            writer.writeheader()
+            writer.writerow(
+                {
+                    "difficulty": "easy",
+                    "event_order": "0",
+                    "beat_idx": "0",
+                    "beat_time": "0.0",
+                    "onset_time": "0.0",
+                    "residual_ms": "0.0",
+                }
+            )
+
+        rc = spike.main(["--diagnostics-dir", str(base)])
+        self.assertEqual(rc, 1)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

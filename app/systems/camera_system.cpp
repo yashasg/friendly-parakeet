@@ -11,6 +11,7 @@
 #include "../components/song_state.h"
 #include "../constants.h"
 #include "../platform_display.h"
+#include "../rendering/raylib_conversions.h"
 #include <raylib.h>
 #include <raymath.h>
 #include <rlgl.h>
@@ -238,12 +239,13 @@ void game_camera_system(entt::registry& reg, float /*dt*/) {
 
             if (mc.mesh_type == MeshType::Slab) {
                 reg.get_or_emplace<ModelTransform>(entity) =
-                    ModelTransform{slab_matrix(mc.x, z, mc.width, mc.height, mc.depth),
+                    ModelTransform{to_mat4f(slab_matrix(mc.x, z, mc.width, mc.height, mc.depth)),
                                    mc.tint, 0, MeshType::Slab};
             } else {
                 const auto& props = mesh_config.props[mc.mesh_index];
                 reg.get_or_emplace<ModelTransform>(entity) =
-                    ModelTransform{make_shape_matrix(mc.mesh_index, mc.x, 0.0f, z, mc.width, props.radius_scale),
+                    ModelTransform{to_mat4f(make_shape_matrix(mc.mesh_index, mc.x, 0.0f, z,
+                                                              mc.width, props.radius_scale)),
                                    mc.tint, mc.mesh_index, MeshType::Shape};
             }
         }
@@ -251,23 +253,23 @@ void game_camera_system(entt::registry& reg, float /*dt*/) {
 
     // 3. Player shape transform
     {
-        auto view = reg.view<PlayerTag, WorldTransform, PlayerShape, VerticalState, Color>();
+        auto view = reg.view<PlayerTag, WorldTransform, PlayerShape, VerticalState, TintColor>();
         for (auto [entity, transform, pshape, vstate, col] : view.each()) {
             float y_3d = -vstate.y_offset;
             float sz = constants::PLAYER_SIZE;
             if (vstate.mode == VMode::Sliding) sz *= 0.5f;
             uint8_t shape_idx = static_cast<uint8_t>(pshape.current);
             const auto& props = mesh_config.props[shape_idx];
-            reg.get_or_emplace<ModelTransform>(entity) =
-                ModelTransform{make_shape_matrix(shape_idx, transform.position.x, y_3d,
-                                                 transform.position.y, sz, props.radius_scale),
+                reg.get_or_emplace<ModelTransform>(entity) =
+                    ModelTransform{to_mat4f(make_shape_matrix(shape_idx, transform.position.x, y_3d,
+                                                              transform.position.y, sz, props.radius_scale)),
                                col, shape_idx, MeshType::Shape};
         }
     }
 
     // 4. Particle transforms
     {
-        auto view = reg.view<ParticleTag, WorldTransform, ParticleData, Color>();
+        auto view = reg.view<ParticleTag, WorldTransform, ParticleData, TintColor>();
         for (auto [entity, transform, pdata, col] : view.each()) {
             float ratio = (pdata.max_time > 0.0f) ? (pdata.remaining / pdata.max_time) : 1.0f;
             float sz = pdata.size * ratio;
@@ -275,8 +277,8 @@ void game_camera_system(entt::registry& reg, float /*dt*/) {
             Matrix mat = MatrixMultiply(
                 MatrixScale(sz, 1, sz),
                 MatrixTranslate(transform.position.x - half, 0, transform.position.y - half));
-            reg.get_or_emplace<ModelTransform>(entity) =
-                ModelTransform{mat, col, 0, MeshType::Quad};
+                reg.get_or_emplace<ModelTransform>(entity) =
+                ModelTransform{to_mat4f(mat), col, 0, MeshType::Quad};
         }
     }
 

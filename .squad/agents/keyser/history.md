@@ -170,3 +170,22 @@ No. Rendering occurs inside `BeginMode3D()/EndMode3D()` (3D camera context). Ray
 - Determinism/testability risk: low only if gameplay remains in explicit phase-run systems
 
 **Status:** Audit complete. Approved for safe-move implementation. Medium/design-gated moves await Coordinator signal.
+
+### R19: Architecture Boundary Audit — app/tests/CMake/docs
+
+**Date:** 2026-05-10  
+**Scope:** Read-only audit of `app/`, `tests/`, `CMakeLists.txt`, and migration/design docs against ECS/DOD, dependency-boundary, direct SDL2/glm, no-wrapper, and zero-warning expectations.
+
+**Findings filed:**
+- #406: `shapeshifter_lib` exposes `systems/all_systems.h` declarations for runtime-only systems that it deliberately does not link.
+- #407: Common ECS/component headers embed raylib platform types, making headless data and tests depend on backend handles instead of glm/direct boundary data.
+- #405: Repo docs and open migration guidance still point to raylib/wrapper abstractions, conflicting with the current direct SDL2/glm/no-wrapper direction.
+
+**Learning:** Treat public target headers as part of the architecture boundary: declarations in a PUBLIC include directory must match symbols provided by that target. Migration docs are also architecture inputs; stale wrapper-oriented docs can cause future code to violate current no-wrapper decisions even before product code changes.
+
+### 2026-05-10T02:40:52-07:00: Architecture fix execution (issues #405, #406)
+
+- Split system API surfaces: `app/systems/all_systems.h` now exposes only headless ECS/gameplay declarations, and runtime-bound functions moved to `app/systems/runtime_systems.h`.
+- Added a boundary regression test (`tests/test_system_header_boundaries.cpp`) that asserts runtime-only declarations stay out of the headless header.
+- Marked raylib migration docs as historical and set `docs/ongoing_migration.md` as the authoritative no-wrapper direct SDL2/glm direction.
+- Issue #407 implementation was blocked for this run because active parallel edits already touched files that would be part of the required component-type migration blast radius; avoided cross-agent overwrite risk.

@@ -176,4 +176,4 @@ Difficulty is selected per song (easy / medium / hard) and is expressed primaril
 
 ---
 
-*See `prototype.md` for full ASCII art prototype with frame-by-frame gameplay scenarios.*
+*For current rhythm-first scoring and gameplay, see `rhythm-design.md` and `rhythm-spec.md`. The legacy burnout-era ASCII prototype has been archived to `archive/prototype.md` (do not use for current design — see issue #393).*

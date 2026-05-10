@@ -1,8 +1,8 @@
 #pragma once
 
 #include <cstdint>
-#include <raylib.h>
 #include <entt/entt.hpp>
+#include "plain_types.h"
 
 struct DrawSize {
     float w = 64.0f;
@@ -27,8 +27,8 @@ struct ScreenTransform {
     float scale    = 1.0f;
 };
 
-[[nodiscard]] inline Vector2 screen_to_virtual(Vector2 screen_pos,
-                                               const ScreenTransform& st) noexcept {
+[[nodiscard]] inline Vec2f screen_to_virtual(Vec2f screen_pos,
+                                             const ScreenTransform& st) noexcept {
     return {
         (screen_pos.x - st.offset_x) / st.scale,
         (screen_pos.y - st.offset_y) / st.scale
@@ -42,9 +42,9 @@ struct ScreenTransform {
 enum class MeshType : uint8_t { Shape, Slab, Quad };
 
 struct ModelTransform {
-    Matrix   mat;
-    Color    tint;
-    uint8_t  mesh_index = 0;  // index into ShapeMeshes.shapes[] for Shape type
+    Mat4f mat;
+    TintColor tint;
+    uint8_t mesh_index = 0;  // index into ShapeMeshes.shapes[] for Shape type
     MeshType mesh_type;
 };
 
@@ -58,7 +58,7 @@ struct MeshChild {
     float width;         // slab width (game coords)
     float depth;         // slab depth (game coords)
     float height;        // slab height (game coords)
-    Color tint;
+    TintColor tint;
     uint8_t mesh_index = 0;  // index into ShapeMeshes.shapes[] for Shape type
     MeshType mesh_type;
 };

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cstdint>
-#include <raylib.h>
+#include "components/plain_types.h"
 
 namespace constants {
 
@@ -48,7 +48,7 @@ constexpr float COLLISION_MARGIN   = 40.0f;    // half-height of timing window (
 // ── Energy Bar ────────────────────────────────────
 constexpr float ENERGY_MAX              = 1.0f;
 constexpr float ENERGY_DRAIN_MISS       = 0.20f;
-constexpr float ENERGY_DRAIN_BAD        = 0.10f;
+constexpr float ENERGY_DRAIN_BAD        = 0.05f;
 constexpr float ENERGY_RECOVER_OK       = 0.02f;
 constexpr float ENERGY_RECOVER_GOOD     = 0.05f;
 constexpr float ENERGY_RECOVER_PERFECT  = 0.10f;
@@ -135,7 +135,7 @@ constexpr float FLOOR_PULSE_DECAY    = 0.15f;   // seconds
 // ── Shape Colors ──────────────────────────────────
 // Used for both obstacles and player character.
 // Index by static_cast<int>(Shape).
-constexpr Color SHAPE_COLORS[] = {
+constexpr TintColor SHAPE_COLORS[] = {
     {  80, 200, 255, 255 },   // Circle   — cyan/blue
     { 255, 100, 100, 255 },   // Square   — red
     { 100, 255, 100, 255 },   // Triangle — green

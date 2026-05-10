@@ -1,17 +1,23 @@
-# SHAPESHIFTER — ASCII ART PROTOTYPE
-## Paper Prototype v1.0
+# SHAPESHIFTER — ASCII ART PROTOTYPE (ARCHIVED)
+## Paper Prototype v1.0 — Archived 2026-05-10 per issue #393
 
-> ⚠️ **HISTORICAL — superseded by `rhythm-design.md` and `rhythm-spec.md` (issue #239).**
-> This prototype was authored when the game's core scoring twist was a
-> "Burnout" risk/reward meter (wait until the last frame for max points).
-> **That mechanic has been removed.** The shipping game is rhythm-first:
+> 🗄️ **ARCHIVED DOCUMENT — DO NOT USE FOR CURRENT DESIGN.**
+>
+> This file lives under `design-docs/archive/` because its core mechanic
+> (the "Burnout" risk/reward meter and ×1→×5 multipliers) **has been
+> removed from the game** (issue #239). The shipping game is rhythm-first:
 > on-beat timing grades (Perfect/Good/Ok/Bad) × chain drive the score, and
 > on-beat shape changes are valid even when no obstacle is arriving.
 >
-> Treat the BURNOUT meters and ×1→×5 multiplier popups in the ASCII frames
-> below as **archival illustration only** — they do not reflect current
-> scoring, current HUD, or current player incentives. The scenario flow
-> as a paper-prototype reference; the burnout-specific narration is not.
+> **For current design, read instead:**
+> - `design-docs/game.md` — current GDD (shapes, controls, scoring)
+> - `design-docs/rhythm-design.md` — rhythm-first scoring model
+> - `design-docs/rhythm-spec.md` — rhythm system implementation spec
+> - `design-docs/game-flow.md` — current screen flow, FTUE, HUD
+>
+> Kept here only as a historical reference for the paper-prototype
+> ASCII scenario format. **All burnout/multiplier narration below is
+> obsolete and must not be implemented.**
 
 ---
 

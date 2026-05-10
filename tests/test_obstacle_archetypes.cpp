@@ -35,7 +35,7 @@ entt::entity make_mesh_factory_obstacle(entt::registry& reg, ObstacleKind kind) 
     reg.emplace<WorldTransform>(parent, WorldTransform{{constants::LANE_X[1], -120.0f}});
     reg.emplace<Obstacle>(parent, kind, int16_t{0});
     reg.emplace<DrawSize>(parent, constants::SCREEN_W_F, 80.0f);
-    reg.emplace<Color>(parent, Color{255, 255, 255, 255});
+    reg.emplace<TintColor>(parent, TintColor{255, 255, 255, 255});
     return parent;
 }
 
@@ -51,7 +51,7 @@ TEST_CASE("entity: ShapeGate Circle - correct components and color", "[archetype
     entt::registry reg;
     auto e = spawn_obstacle(reg, {ObstacleKind::ShapeGate, 360.0f, -120.0f, Shape::Circle});
 
-    REQUIRE(reg.all_of<ObstacleTag, MotionVelocity, DrawLayer, WorldTransform, Obstacle, RequiredShape, DrawSize, Color>(e));
+    REQUIRE(reg.all_of<ObstacleTag, MotionVelocity, DrawLayer, WorldTransform, Obstacle, RequiredShape, DrawSize, TintColor>(e));
     CHECK(!reg.all_of<BlockedLanes>(e));
     CHECK(!reg.all_of<RequiredLane>(e));
 
@@ -61,7 +61,7 @@ TEST_CASE("entity: ShapeGate Circle - correct components and color", "[archetype
     CHECK(reg.get<WorldTransform>(e).position.x == 360.0f);
     CHECK(reg.get<WorldTransform>(e).position.y == -120.0f);
 
-    auto& c = reg.get<Color>(e);
+    auto& c = reg.get<TintColor>(e);
     CHECK(c.r == 80); CHECK(c.g == 200); CHECK(c.b == 255);
 }
 
@@ -99,7 +99,7 @@ TEST_CASE("entity: obstacle mesh overflow does not create orphan MeshChild", "[a
     reg.emplace<WorldTransform>(parent, WorldTransform{{360.0f, -120.0f}});
     reg.emplace<Obstacle>(parent, ObstacleKind::ShapeGate, int16_t{constants::PTS_SHAPE_GATE});
     reg.emplace<DrawSize>(parent, constants::SCREEN_W_F, 80.0f);
-    reg.emplace<Color>(parent, Color{80, 200, 255, 255});
+    reg.emplace<TintColor>(parent, TintColor{80, 200, 255, 255});
     reg.emplace<RequiredShape>(parent, Shape::Circle);
 
     auto& children = reg.emplace<ObstacleChildren>(parent);
@@ -107,7 +107,7 @@ TEST_CASE("entity: obstacle mesh overflow does not create orphan MeshChild", "[a
         auto child = reg.create();
         reg.emplace<MeshChild>(child, MeshChild{
             parent, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f,
-            Color{255, 255, 255, 255}, 0, MeshType::Slab
+            TintColor{255, 255, 255, 255}, 0, MeshType::Slab
         });
         children.children[children.count++] = child;
     }
@@ -207,7 +207,7 @@ TEST_CASE("entity: ShapeGate Square - red color", "[archetype]") {
     entt::registry reg;
     auto e = spawn_obstacle(reg, {ObstacleKind::ShapeGate, 60.0f, -120.0f, Shape::Square});
 
-    auto& c = reg.get<Color>(e);
+    auto& c = reg.get<TintColor>(e);
     CHECK(c.r == 255); CHECK(c.g == 100); CHECK(c.b == 100);
 }
 
@@ -215,7 +215,7 @@ TEST_CASE("entity: ShapeGate Triangle - green color", "[archetype]") {
     entt::registry reg;
     auto e = spawn_obstacle(reg, {ObstacleKind::ShapeGate, 60.0f, -120.0f, Shape::Triangle});
 
-    auto& c = reg.get<Color>(e);
+    auto& c = reg.get<TintColor>(e);
     CHECK(c.r == 100); CHECK(c.g == 255); CHECK(c.b == 100);
 }
 
@@ -224,7 +224,7 @@ TEST_CASE("entity: LaneBlock - blocked lanes and no shape components", "[archety
     auto e = spawn_obstacle(reg, {ObstacleKind::LaneBlock, 60.0f, -120.0f,
                                    Shape::Circle, uint8_t{0b010}});
 
-    REQUIRE(reg.all_of<ObstacleTag, MotionVelocity, DrawLayer, WorldTransform, Obstacle, BlockedLanes, DrawSize, Color>(e));
+    REQUIRE(reg.all_of<ObstacleTag, MotionVelocity, DrawLayer, WorldTransform, Obstacle, BlockedLanes, DrawSize, TintColor>(e));
     CHECK(!reg.all_of<RequiredShape>(e));
     CHECK(!reg.all_of<RequiredLane>(e));
 
@@ -240,7 +240,7 @@ TEST_CASE("entity: ComboGate - RequiredShape and BlockedLanes", "[archetype]") {
     auto e = spawn_obstacle(reg, {ObstacleKind::ComboGate, 360.0f, -120.0f,
                                    Shape::Triangle, uint8_t{0b101}});
 
-    REQUIRE(reg.all_of<ObstacleTag, MotionVelocity, DrawLayer, WorldTransform, Obstacle, RequiredShape, BlockedLanes, DrawSize, Color>(e));
+    REQUIRE(reg.all_of<ObstacleTag, MotionVelocity, DrawLayer, WorldTransform, Obstacle, RequiredShape, BlockedLanes, DrawSize, TintColor>(e));
     CHECK(!reg.all_of<RequiredLane>(e));
 
     CHECK(reg.get<Obstacle>(e).kind == ObstacleKind::ComboGate);
@@ -254,7 +254,7 @@ TEST_CASE("entity: SplitPath - RequiredShape and RequiredLane", "[archetype]") {
     auto e = spawn_obstacle(reg, {ObstacleKind::SplitPath, 360.0f, -120.0f,
                                    Shape::Square, uint8_t{0}, int8_t{2}});
 
-    REQUIRE(reg.all_of<ObstacleTag, MotionVelocity, DrawLayer, WorldTransform, Obstacle, RequiredShape, RequiredLane, DrawSize, Color>(e));
+    REQUIRE(reg.all_of<ObstacleTag, MotionVelocity, DrawLayer, WorldTransform, Obstacle, RequiredShape, RequiredLane, DrawSize, TintColor>(e));
     CHECK(!reg.all_of<BlockedLanes>(e));
 
     CHECK(reg.get<Obstacle>(e).kind == ObstacleKind::SplitPath);

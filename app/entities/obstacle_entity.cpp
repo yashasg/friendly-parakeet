@@ -23,18 +23,18 @@ entt::entity spawn_obstacle(entt::registry& reg, const ObstacleSpawnParams& para
             reg.emplace<RequiredShape>(e, params.shape);
             reg.emplace<DrawSize>(e, constants::SCREEN_W_F, 80.0f);
             if (params.shape == Shape::Circle)
-                reg.emplace<Color>(e, Color{80, 200, 255, 255});
+                reg.emplace<TintColor>(e, TintColor{80, 200, 255, 255});
             else if (params.shape == Shape::Square)
-                reg.emplace<Color>(e, Color{255, 100, 100, 255});
+                reg.emplace<TintColor>(e, TintColor{255, 100, 100, 255});
             else
-                reg.emplace<Color>(e, Color{100, 255, 100, 255});
+                reg.emplace<TintColor>(e, TintColor{100, 255, 100, 255});
             break;
         }
         case ObstacleKind::LaneBlock: {
             reg.emplace<Obstacle>(e, ObstacleKind::LaneBlock, int16_t{constants::PTS_LANE_BLOCK});
             reg.emplace<BlockedLanes>(e, params.mask);
             reg.emplace<DrawSize>(e, static_cast<float>(constants::SCREEN_W / 3), 80.0f);
-            reg.emplace<Color>(e, Color{255, 60, 60, 255});
+            reg.emplace<TintColor>(e, TintColor{255, 60, 60, 255});
             break;
         }
         case ObstacleKind::ComboGate: {
@@ -42,7 +42,7 @@ entt::entity spawn_obstacle(entt::registry& reg, const ObstacleSpawnParams& para
             reg.emplace<RequiredShape>(e, params.shape);
             reg.emplace<BlockedLanes>(e, params.mask);
             reg.emplace<DrawSize>(e, constants::SCREEN_W_F, 80.0f);
-            reg.emplace<Color>(e, Color{200, 100, 255, 255});
+            reg.emplace<TintColor>(e, TintColor{200, 100, 255, 255});
             break;
         }
         case ObstacleKind::SplitPath: {
@@ -50,7 +50,7 @@ entt::entity spawn_obstacle(entt::registry& reg, const ObstacleSpawnParams& para
             reg.emplace<RequiredShape>(e, params.shape);
             reg.emplace<RequiredLane>(e, params.req_lane);
             reg.emplace<DrawSize>(e, constants::SCREEN_W_F, 80.0f);
-            reg.emplace<Color>(e, Color{255, 215, 0, 255});
+            reg.emplace<TintColor>(e, TintColor{255, 215, 0, 255});
             break;
         }
     }

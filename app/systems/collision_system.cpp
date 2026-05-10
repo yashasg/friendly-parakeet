@@ -9,6 +9,7 @@
 #include "../components/song_state.h"
 #include "../components/gameplay_intents.h"
 #include "../constants.h"
+#include <raylib.h>
 #include <cmath>
 
 namespace {

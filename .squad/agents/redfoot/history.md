@@ -7,6 +7,45 @@
 - **Role:** UI/UX Designer
 - **Joined:** 2026-04-26T02:12:00.632Z
 
+## 2026-05-10 — UI/HUD audit pass (clarity, accessibility, feedback)
+
+**Audit scope:** app/ui, tests/test_*_ui.cpp, design-docs/game-flow.md, tools/beatmap-editor
+
+**High-confidence findings (4 issues filed):**
+
+### Issue #387: Stale BURNOUT spec in game-flow.md section 2b
+- game-flow.md lines 284-286 show old BURNOUT meter diagram (SAFE/RISKY/DANGER zones)
+- Document header (lines 8-22) already notes burnout was removed in #239
+- Current implementation uses ENERGY bar (gameplay.rgl has EnergyBarSlot)
+- Spec-code mismatch causes onboarding confusion and regression risk
+- **Fix:** Update section 2b HUD diagram to show ENERGY bar; archive section 5a (BURNOUT animation spec)
+
+### Issue #386: Score popup color lacks timing differentiation
+- app/entities/popup_entity.cpp lines 43-46: ALL timing tiers get green (100, 255, 100)
+- Perfect/Good/Ok/Bad render identically; only no-tier differs (yellow)
+- Removes visual feedback for timing quality and breaks accessibility (color-blind players)
+- Tests expect this broken behavior (test_popup_display_system.cpp lines 329-372)
+- **Fix:** Color-code tiers (Perfect=cyan, Good=yellow-green, Ok=amber, Bad=red); update test matrix
+
+### Issue #388: Beatmap editor settings modal close button inaccessible
+- tools/beatmap-editor/index.html line 187: Close button has no aria-label
+- Help modal (line 106) correctly uses aria-label="Close help"
+- Screen reader users cannot understand button purpose
+- **Fix:** Add aria-label="Close settings" to match help modal pattern
+
+### Issue #390: Settings toggles lack visual ON/OFF distinction
+- settings_screen_controller.cpp lines 43-57: Toggle state shown as text only (HAPTICS: ON/OFF)
+- No color, icon, or visual indicator; breaks accessibility for color-blind users
+- Violates toggle button UX pattern (should have icon + text + color)
+- **Fix:** Add visual indicator (icon/color) beyond text label; ensure WCAG AA contrast (4.5:1 min)
+
+**Learnings:**
+- Spec-doc drift (game-flow.md) is a persistent issue; burnout removal wasn't fully reflected in section 2b
+- Feedback/juice opportunities being left on table: timing grade colors should differentiate
+- Accessibility gaps in both C++ UI (settings toggles) and HTML editor (aria labels)
+- Test expectations may lock in broken behavior; test matrix should encode correct colors
+- Level select layout has notes about incomplete adapter migration, but not filed as issue (test coverage exists)
+
 ## 2026-05-02 — Gameplay shape buttons → raygui HUD migration (UX spec)
 
 **User request:** "the gameplay shape buttons should also be part of the hud ui that raygui handles"
@@ -69,3 +108,49 @@ Fenster had already implemented the Help button and modal in `tools/beatmap-edit
 - `tools/beatmap-editor/css/editor.css` — `.help-footnote` rule.
 - `tools/beatmap-editor/js/main.js` — `?` shortcut handler with form-field guard + close-button focus on open.
 - 2026-05-02: Completed TestFlight wave work; decision merged to decisions.md
+
+---
+
+## 2026-05-10 — UX accessibility fixes (issues #386, #387, #389, #390)
+
+Closing-loop pass on the four UI/UX issues filed during the autonomous-quality
+audit. Each one was a small, localized accessibility/clarity gap.
+
+- **#386 (Score popup colors)** — `app/entities/popup_entity.cpp` set every
+  timing tier to the same green `(100,255,100)`, so PERFECT/GOOD/OK/BAD were
+  visually indistinguishable. Mapped each tier to a distinct hue on a green→red
+  ramp: Perfect cyan `(80,255,220)`, Good lime `(140,255,80)`, Ok amber
+  `(255,200,60)`, Bad red-orange `(255,90,70)`. Yellow no-tier popup unchanged.
+  Rewrote `tests/test_popup_display_system.cpp` cases (re-tagged `[issue386]`)
+  to assert per-tier colors *and* added a cross-tier distinctness check so we
+  cannot regress to a single colour again.
+- **#387 (game-flow.md stale BURNOUT)** — Section 2b ASCII HUD diagram now
+  shows the ENERGY bar (matching `gameplay_hud_layout.h`'s `EnergyBarSlot`).
+  Section 5a left intact for historical reference but explicitly marked
+  ARCHIVED with a pointer to `energy-bar.md` and `rhythm-spec.md` §6, so
+  contributors do not implement the stale animation spec.
+- **#389 (Editor settings close a11y)** — Added `aria-label="Close settings"`
+  to `tools/beatmap-editor/index.html#btn-settings-close`, matching the help
+  modal pattern. Added `tools/beatmap-editor/test/settings-modal-a11y.test.js`
+  regression test (29 editor tests now pass).
+- **#390 (Settings toggle visual state)** — Replaced the plain text
+  `HAPTICS: ON/OFF` / `MOTION: ON/OFF` GuiButton labels with a draw_toggle
+  helper that adds (a) an `[X]`/`[ ]` glyph prefix and (b) a green
+  border+fill for ON, grey+dark for OFF, via `GuiSetStyle(BUTTON, …)` save/
+  restore (same pattern as `GameplayHudLayout_InputOnlyButton`). Color is now
+  redundant with both icon and trailing text — color-blind friendly.
+  Also fixed a long-standing display inversion: previous code wrote `MOTION: OFF`
+  when `reduce_motion == true`. New helper computes `motion_on = !reduce_motion`
+  and renders `MOTION: ON` accordingly, matching the persisted semantic.
+
+**Validation:** `cmake -B build -S . -Wno-dev && cmake --build build` clean
+(zero warnings); `./build/shapeshifter_tests` → 1855 assertions / 688 cases
+pass; `node --test test/*.test.js` in `tools/beatmap-editor/` → 29 pass.
+
+**Affected paths:**
+- `app/entities/popup_entity.cpp`
+- `tests/test_popup_display_system.cpp`
+- `design-docs/game-flow.md`
+- `tools/beatmap-editor/index.html`
+- `tools/beatmap-editor/test/settings-modal-a11y.test.js` (new)
+- `app/ui/screen_controllers/settings_screen_controller.cpp`

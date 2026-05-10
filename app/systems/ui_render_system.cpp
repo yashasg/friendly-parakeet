@@ -9,6 +9,7 @@
 #include "../components/game_state.h"
 #include "../components/song_state.h"
 #include "../components/text.h"
+#include "../rendering/text_resources.h"
 #include "../constants.h"
 
 #include "../ui/screen_controllers/title_screen_controller.h"

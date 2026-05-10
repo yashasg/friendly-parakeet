@@ -27,3 +27,24 @@
 - CodeQL scanning adds ~30s latency to PR merge workflow; consider pre-validation locally for large changes
 - Beatmap quality and onset tuning changes are data-driven (JSON configs + CSV diagnostics); changes don't affect C++ core logic
 
+
+## Audit Loop Validation — 2026-05-10
+
+- Ran full validation on `audit/autonomous-quality-loop` @ `45bcef6`:
+  - `cmake -B build -S . -Wno-dev`
+  - `cmake --build build`
+  - `./build/shapeshifter_tests`
+  - `./run.sh test`
+- Result: all validation steps passed.
+- Reconciled issues #382-#407:
+  - Closed fixed issues #382-#386, #388-#407 with commit-linked close comments.
+  - Left #387 open with explanation because `design-docs/game-flow.md` still contains Section 2b burnout-meter references.
+- Release follow-up: prepared branch for PR to `main` after issue reconciliation.
+
+## PR #408 CI Fix — 2026-05-10
+
+- **Symptom:** CI Linux/Windows/macOS build jobs failed simultaneously on branch `audit/autonomous-quality-loop` at head `413b3b5`.
+- **Root cause:** `app/systems/collision_system.cpp` used raylib `Rectangle`/`CheckCollisionRecs` without directly including `<raylib.h>`, relying on fragile transitive include behavior.
+- **Fix:** Added explicit `#include <raylib.h>` to `collision_system.cpp` (commit `a80276c`).
+- **Validation:** Targeted build (`shapeshifter_lib`) plus full validation command passed locally; tests: 1932 assertions in 714 cases.
+- **Release learning:** In this zero-warning, multi-platform pipeline, any TU using raylib value types/functions must include `<raylib.h>` directly to avoid platform/toolchain-dependent compile breaks.

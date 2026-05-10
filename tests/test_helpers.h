@@ -23,6 +23,7 @@
 #include "constants.h"
 #include "entities/obstacle_render_entity.h"
 #include "systems/all_systems.h"
+#include "systems/runtime_systems.h"
 #include "input/input_routing.h"
 
 // Sets up a registry with all singletons in their default state
@@ -172,7 +173,7 @@ inline entt::entity make_player(entt::registry& reg) {
     reg.emplace<ShapeWindow>(player);
     reg.emplace<Lane>(player);
     reg.emplace<VerticalState>(player);
-    reg.emplace<Color>(player, Color{80, 180, 255, 255});
+    reg.emplace<TintColor>(player, TintColor{80, 180, 255, 255});
     reg.emplace<DrawSize>(player, constants::PLAYER_SIZE, constants::PLAYER_SIZE);
     reg.emplace<DrawLayer>(player, Layer::Game);
     reg.emplace<TagWorldPass>(player);
@@ -203,7 +204,7 @@ inline entt::entity make_shape_gate(entt::registry& reg, Shape shape, float y) {
     reg.emplace<DrawSize>(obs, float(constants::SCREEN_W), 80.0f);
     reg.emplace<DrawLayer>(obs, Layer::Game);
     reg.emplace<TagWorldPass>(obs);
-    reg.emplace<Color>(obs, Color{255, 255, 255, 255});
+    reg.emplace<TintColor>(obs, TintColor{255, 255, 255, 255});
     return obs;
 }
 
@@ -219,7 +220,7 @@ inline entt::entity make_lane_block(entt::registry& reg, uint8_t mask, float y) 
     reg.emplace<DrawSize>(obs, float(constants::SCREEN_W / 3), 80.0f);
     reg.emplace<DrawLayer>(obs, Layer::Game);
     reg.emplace<TagWorldPass>(obs);
-    reg.emplace<Color>(obs, Color{255, 60, 60, 255});
+    reg.emplace<TintColor>(obs, TintColor{255, 60, 60, 255});
     return obs;
 }
 
@@ -237,7 +238,7 @@ inline entt::entity make_combo_gate(entt::registry& reg, Shape shape, uint8_t bl
     reg.emplace<DrawSize>(obs, float(constants::SCREEN_W), 80.0f);
     reg.emplace<DrawLayer>(obs, Layer::Game);
     reg.emplace<TagWorldPass>(obs);
-    reg.emplace<Color>(obs, Color{200, 100, 255, 255});
+    reg.emplace<TintColor>(obs, TintColor{200, 100, 255, 255});
     return obs;
 }
 
@@ -254,7 +255,7 @@ inline entt::entity make_split_path(entt::registry& reg, Shape shape, int8_t lan
     reg.emplace<DrawSize>(obs, float(constants::SCREEN_W), 80.0f);
     reg.emplace<DrawLayer>(obs, Layer::Game);
     reg.emplace<TagWorldPass>(obs);
-    reg.emplace<Color>(obs, Color{255, 215, 0, 255});
+    reg.emplace<TintColor>(obs, TintColor{255, 215, 0, 255});
     return obs;
 }
 

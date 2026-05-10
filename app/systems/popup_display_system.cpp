@@ -26,7 +26,7 @@ void popup_display_system(entt::registry& reg, float dt) {
     auto& expired = popup_scratch_for(reg).expired;
     expired.clear();
 
-    auto fade_view = reg.view<ScorePopup, PopupDisplay, Color>();
+    auto fade_view = reg.view<ScorePopup, PopupDisplay, TintColor>();
     for (auto [entity, popup, pd, col] : fade_view.each()) {
         popup.remaining -= dt;
         float alpha_ratio = (popup.max_time > 0.0f)
@@ -40,7 +40,7 @@ void popup_display_system(entt::registry& reg, float dt) {
         }
     }
 
-    auto expire_only_view = reg.view<ScorePopup>(entt::exclude<PopupDisplay, Color>);
+    auto expire_only_view = reg.view<ScorePopup>(entt::exclude<PopupDisplay, TintColor>);
     for (auto [entity, popup] : expire_only_view.each()) {
         popup.remaining -= dt;
         if (popup.remaining <= 0.0f) {
@@ -48,7 +48,7 @@ void popup_display_system(entt::registry& reg, float dt) {
         }
     }
 
-    auto popup_only_view = reg.view<ScorePopup, PopupDisplay>(entt::exclude<Color>);
+    auto popup_only_view = reg.view<ScorePopup, PopupDisplay>(entt::exclude<TintColor>);
     for (auto [entity, popup, pd] : popup_only_view.each()) {
         (void)pd;
         popup.remaining -= dt;
@@ -57,7 +57,7 @@ void popup_display_system(entt::registry& reg, float dt) {
         }
     }
 
-    auto color_only_view = reg.view<ScorePopup, Color>(entt::exclude<PopupDisplay>);
+    auto color_only_view = reg.view<ScorePopup, TintColor>(entt::exclude<PopupDisplay>);
     for (auto [entity, popup, col] : color_only_view.each()) {
         (void)col;
         popup.remaining -= dt;

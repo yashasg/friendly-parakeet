@@ -139,7 +139,7 @@ TEST_CASE("collision: combo gate requires shape AND lane", "[collision]") {
     reg.emplace<BlockedLanes>(obs, uint8_t{0b101});
     reg.emplace<DrawSize>(obs, 720.0f, 80.0f);
     reg.emplace<DrawLayer>(obs, Layer::Game);
-    reg.emplace<Color>(obs, Color{200, 100, 255, 255});
+    reg.emplace<TintColor>(obs, TintColor{200, 100, 255, 255});
 
     collision_system(reg, 0.016f);
 
@@ -159,7 +159,7 @@ TEST_CASE("collision: combo gate fails with wrong shape", "[collision]") {
     reg.emplace<BlockedLanes>(obs, uint8_t{0b101});    // lane 1 open
     reg.emplace<DrawSize>(obs, 720.0f, 80.0f);
     reg.emplace<DrawLayer>(obs, Layer::Game);
-    reg.emplace<Color>(obs, Color{200, 100, 255, 255});
+    reg.emplace<TintColor>(obs, TintColor{200, 100, 255, 255});
 
     collision_system(reg, 0.016f);
     scoring_system(reg, 0.016f);

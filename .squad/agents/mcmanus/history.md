@@ -87,3 +87,27 @@
 - **Regression coverage:** Updated parser and scheduler tests to assert bar suppression; shipped difficulty ramp test asserts no bars in medium/hard loaded maps.
 - **Follow-up balance adjustment:** Raised medium max silent-gap regression threshold from 32 to 34 beats while bars remain disabled.
 - **Validation evidence:** `cmake --build build -- -j4`; targeted tags (`[low_high_bar]`, `[rhythm][beatmap]`, `[parse][kind]`, `[beat_scheduler]`); full `./build/shapeshifter_tests "~[bench]"` all passing.
+
+---
+
+## 2026-05-10T02:36:13-07:00 — Gameplay audit: onset timing consumption
+
+**Task:** Audit gameplay loop, scoring, player/shape, collision, obstacle timing, and shipped beatmap consumption under `app/` and `tests/` without modifying code.
+
+**Findings filed:**
+- #404 — `beat_scheduler_system` ignores parsed `BeatEntry::time_sec`, so onset-authored obstacles are scheduled from `beat_times[beat]` instead of their per-entry onset time. Current shipped onset beatmaps show drift up to ~80 ms between `time_sec` and `beat_times[beat]`.
+
+**Duplicate checks / not filed:**
+- Runtime/load validation gap is already tracked by #128; CI shipped beatmap validation gap by #64.
+- Cross-layer same-beat onset preservation in generation is already tracked by #385/#400; raw shipped onset metadata regression coverage by #398.
+
+**Learning:** In the C++ runtime, `BeatEntry::time_sec` is parsed but currently not consumed by scheduling; obstacle arrival remains tied to snapped beat-grid timing unless #404 is fixed.
+
+## 2026-05-10T02:40:52.785-07:00 — Fixed #404 + #395 gameplay runtime regressions
+
+- **#404 runtime timing fix:** `beat_scheduler_system` now prioritizes authored `BeatEntry::time_sec` when metadata is explicitly present, and falls back to `beat_times[beat]`/grid timing when absent.
+- **Parser contract update:** Added `BeatEntry::has_time_sec` and set it during beatmap parse so runtime can distinguish authored onset timing from fallback timing.
+- **Regression tests:** Added scheduler tests for authored `time_sec` precedence and fallback behavior when `time_sec` is absent; parser tests assert `has_time_sec` true/false behavior.
+- **#395 tuning fix:** Reduced `ENERGY_DRAIN_BAD` from `0.10f` to `0.05f` to restore early-player forgiveness.
+- **Energy tuning tests:** Added explicit tests proving 5×Ok + 1×Bad is net-positive and that five Ok recoveries outweigh one Bad drain.
+- **Validation:** Targeted issue tests passed; full validation passed with `cmake -B build -S . -Wno-dev && cmake --build build && ./build/shapeshifter_tests`.

@@ -281,8 +281,8 @@ to `GamePhase::Playing`.
   ║ └──────────┴──────────┴──────────┘   ║
   ║                                      ║ ← y = 0.78 H
   ║ ┌──────────────────────────────────┐ ║ ← y = 0.79 H
-  ║ │ BURNOUT ░░░░░░▓▓▓▓▓████████░░░  │ ║    BURNOUT
-  ║ │         SAFE    RISKY  DANGER    │ ║    METER
+  ║ │ ENERGY ████████████████░░░░░░░░  │ ║    ENERGY
+  ║ │ (proximity ring around buttons)  │ ║    BAR
   ║ └──────────────────────────────────┘ ║    h = 0.05 H
   ║ ┌──────────────────────────────────┐ ║ ← y = 0.85 H
   ║ │                                  │ ║
@@ -318,10 +318,10 @@ to `GamePhase::Playing`.
   ║  ├─ Lane dividers     ║  x:0.34W, 0.65W  ║  0.01W (dotted)║
   ║  └─ Player position   ║  y:0.70H         ║  0.06H × 0.06H║
   ╠═══════════════════════╬══════════════════╬═══════════════╣
-  ║  Burnout meter        ║  x:0.05W y:0.79H ║  0.90W × 0.05H║
+  ║  Energy bar           ║  x:0.05W y:0.79H ║  0.90W × 0.05H║
   ║  ├─ Track background  ║  full width      ║  rounded rect  ║
-  ║  ├─ Fill bar          ║  left→right      ║  variable width║
-  ║  └─ Zone markers      ║  at 30%, 60%, 90%║  tick marks    ║
+  ║  ├─ Fill bar          ║  left→right      ║  depletes on hit║
+  ║  └─ (proximity ring)  ║  around buttons  ║  see rhythm-spec║
   ╠═══════════════════════╬══════════════════╬═══════════════╣
   ║  Shape buttons        ║  x:0.05W y:0.85H ║  0.90W × 0.13H║
   ║  ├─ ● button          ║  x:0.08W         ║  0.25W × 0.10H║
@@ -1525,7 +1525,14 @@ Every player action triggers a multi-sensory response.
 
 ---
 
-### 5a. BURNOUT METER — Animation Specification
+### 5a. BURNOUT METER — Animation Specification (ARCHIVED — issue #239)
+
+> ⚠️ **ARCHIVED.** The burnout meter was removed from the game design (see
+> the supersession note at the top of this document). The current survival
+> meter is the **energy bar** (`design-docs/energy-bar.md`); the live
+> timing cue is the **proximity ring** around shape buttons
+> (`design-docs/rhythm-spec.md` §6). The animation specification below is
+> retained only as historical context and should NOT be implemented.
 
 ```
   THE BURNOUT METER IS THE EMOTIONAL HEARTBEAT OF THE GAME.
@@ -2097,4 +2104,4 @@ Every player action triggers a multi-sensory response.
 
 ---
 
-*End of Game Flow & UX Specification. Cross-reference with `game.md` for rules and `prototype.md` for gameplay scenarios.*
+*End of Game Flow & UX Specification. Cross-reference with `game.md` for rules and `rhythm-design.md` / `rhythm-spec.md` for scoring and beat semantics. (The legacy `prototype.md` ASCII scenarios have been archived to `archive/prototype.md` and no longer reflect current design — see issue #393.)*
