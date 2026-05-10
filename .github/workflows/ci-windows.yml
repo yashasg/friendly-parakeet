@@ -6,8 +6,6 @@ on:
   pull_request:
     branches: [main]
     paths-ignore:
-      - "content/**"
-      - "tools/**"
       - "design-docs/**"
       - "*.md"
       - "*.log"
@@ -77,7 +75,9 @@ jobs:
       - name: Run tests
         if: always()
         id: run-tests
-        run: ./build/shapeshifter_tests.exe "~[bench]"
+        run: |
+          ./build/shapeshifter_tests.exe "~[bench]"
+          ctest --test-dir build --output-on-failure -R "^python_tool_tests$"
         shell: bash
 
       - name: Upload artifact
