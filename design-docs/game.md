@@ -59,7 +59,9 @@ The screen is divided into two zones:
 3 lanes: left, center, right. Player starts in center.
 
 > ⚠️ **Current shipped behavior — see issue #441.** Across all 9 shipped
-> beatmaps (994 obstacles total), shape and lane are fused 1:1 by
+> beatmap arrays (**1046 obstacles total** as of Round 6 audit; see
+> the per-difficulty table in `rhythm-design.md` §8), shape and lane
+> are fused 1:1 by
 > `tools/level_designer.py:ONSET_CLASS_TO_OBSTACLE` — every triangle is
 > on lane 0, every square on lane 1, every circle on lane 2. As a
 > result, **strafing input is currently redundant**: choosing the
@@ -177,9 +179,36 @@ Difficulty is selected per song (easy / medium / hard) and is expressed primaril
 
 ## HUD Elements
 
-- **Top left**: Current score + best score
-- **Top**: Energy bar (drains on miss, recovers on hit)
-- **Bottom**: 3 shape buttons (currently selected is highlighted) — each button is wrapped by a **proximity ring** that shrinks toward the button as the matching obstacle approaches, providing the live timing cue (see `rhythm-spec.md` §6 / `rhythm-design.md` §4)
+> **Source of truth for layout:** `content/ui/screens/gameplay.rgl`
+> (720×1280 portrait canvas). See also `design-docs/energy-bar.md`
+> for the energy-bar spec. If this list drifts from the `.rgl`, the
+> `.rgl` wins.
+
+- **Top left**: Current score (`ScoreSlot`) and best score
+  (`HighScoreSlot`), stacked vertically.
+- **Top right**: **Pause button** (`PauseButton`, glyph `||`,
+  ~80×50 px at x=620, y=10) — shipped on-screen pause affordance.
+  Tapping it transitions `Playing → Paused` (overlay); see
+  `game-flow.md` §1 "Master Screen Flow Map" / Pause Screen, and
+  the historical "no manual pause" complaint in #144 (now resolved
+  by this button).
+- **Left edge — vertical Energy bar** (`EnergyBarSlot`, ~30 px wide
+  × 200 px tall, anchored at x=10, y=790) with an **"ENERGY" text
+  label** (`EnergyLabel`) directly above it (x=10, y=745). The bar
+  drains on miss and recovers on hit. The label addresses the
+  label-less-bar complaint in #171; both are shipped today.
+- **Bottom**: 3 shape buttons (`ShapeButtonCircle`,
+  `ShapeButtonSquare`, `ShapeButtonTriangle`, each ~140×100 px on
+  the y=1140 row, separated from the play field by `LaneDividerSlot`
+  at y=1120). Currently selected button is highlighted, and each is
+  wrapped by a **proximity ring** that shrinks toward the button as
+  the matching obstacle approaches, providing the live timing cue
+  (see `rhythm-spec.md` §6 / `rhythm-design.md` §4).
+
+> Any future redesign that wants to relocate the energy bar to the
+> top of the HUD must land as an explicit change to
+> `gameplay.rgl` + this section; today the bar is vertical on the
+> left edge.
 
 ---
 

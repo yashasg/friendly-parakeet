@@ -48,6 +48,11 @@
 
 ## 1. MASTER SCREEN FLOW MAP
 
+> **Source of truth:** `app/components/game_state.h` defines the
+> `GamePhase` enum; `app/ui/screen_controllers/*` and
+> `app/systems/game_state_system.cpp` define the actual transitions.
+> The diagram below mirrors shipped routing as of Round 6 audit.
+
 ```
                           ┌─────────────────┐
                           │   APP LAUNCH     │
@@ -55,56 +60,71 @@
                           └────────┬────────┘
                                    │
                           ┌────────▼────────┐
-                     ┌───▶│  TITLE SCREEN   │◄──────────────────┐
-                     │    │                 │                    │
-                     │    │  ● logo         │                    │
-                     │    │  ● tap to start │                    │
-                     │    │  ● best score   │                    │
-                     │    │  ● settings ⚙   │                    │
-                     │    └────────┬────────┘                    │
-                     │             │                             │
-                     │        [TAP SCREEN]                       │
-                     │             │                             │
-                     │    ┌────────▼────────┐                    │
-                     │    │  FTUE CHECK     │                    │
-                     │    │  (first time?)  │                    │
-                     │    └───┬─────────┬───┘                    │
-                     │        │  YES    │ NO                     │
-                     │        ▼         ▼                        │
-                     │  ┌──────────┐ ┌──────────┐               │
-                     │  │ TUTORIAL │ │ GAMEPLAY │               │
-                     │  │ RUN 1-5  │ │  SCREEN  │◄──┐           │
-                     │  │ (guided) │ │ (full)   │   │           │
-                     │  └────┬─────┘ └────┬─────┘   │           │
-                     │       │            │          │           │
-                     │       │  on death  │  on death│           │
-                     │       ▼            ▼          │           │
-                     │  ┌─────────────────────┐      │           │
-                     │  │                     │      │           │
-                     │  │    GAME OVER        │      │           │
-                     │  │    SCREEN           │      │           │
-                     │  │                     │      │           │
-                     │  │  ● final score      │      │           │
-                     │  │  ● stats breakdown  │      │           │
-                     │  │  ● [RETRY] [MENU]   │      │           │
-                     │  │                     │      │           │
-                     │  └───┬────────────┬────┘      │           │
-                     │      │            │           │           │
-                     │ [MENU btn]   [RETRY btn]      │           │
-                     │      │            │           │           │
-                     └──────┘            └───────────┘           │
-                                                                 │
-                     ┌──────────────────────────────┐            │
-                     │         PAUSE SCREEN         │            │
-                     │  (overlay during gameplay)    │            │
-                     │                              │            │
-                     │    [RESUME] → back to game   │            │
-                     │    [RESTART] → new run ───────────────────┤
-                     │    [QUIT]   → title ──────────────────────┘
-                     └──────────────────────────────┘
+                     ┌───▶│  TITLE SCREEN   │◄────────────────────┐
+                     │    │                 │                      │
+                     │    │  ● logo         │                      │
+                     │    │  ● tap to start │                      │
+                     │    │  ● best score   │                      │
+                     │    │  ● settings ⚙   │                      │
+                     │    └──┬──────────┬───┘                      │
+                     │       │          │                          │
+                     │  [TAP BODY]  [TAP ⚙ ICON]                   │
+                     │       │          │                          │
+                     │       │          ▼                          │
+                     │       │   ┌──────────────┐                  │
+                     │       │   │  SETTINGS    │──[BACK]──────────┤
+                     │       │   │  (overlay/   │                  │
+                     │       │   │   screen)    │                  │
+                     │       │   └──────────────┘                  │
+                     │       │                                     │
+                     │       ▼                                     │
+                     │  ┌──────────────────┐                       │
+                     │  │  LEVEL SELECT    │──[BACK]───────────────┤
+                     │  │  (song + diff)   │                       │
+                     │  └────────┬─────────┘                       │
+                     │           │                                 │
+                     │      [SELECT SONG]                          │
+                     │           │                                 │
+                     │           ▼                                 │
+                     │     ┌──────────┐                            │
+                     │     │ GAMEPLAY │◄────[RESUME]───┐           │
+                     │     │  SCREEN  │                │           │
+                     │     │ (Playing)│───[PAUSE btn]──┤           │
+                     │     └────┬─────┘                │           │
+                     │          │                ┌─────┴───────┐   │
+                     │   ┌──────┴────────┐       │   PAUSED    │   │
+                     │   │               │       │  (overlay)  │   │
+                     │   │ on energy=0   │ song  │             │   │
+                     │   │               │ ends  │ [RESUME]    │   │
+                     │   ▼               ▼       │ [RESTART]───┼───┤
+                     │ ┌──────────┐ ┌──────────┐ │ [QUIT] ─────┼───┘
+                     │ │ GAMEOVER │ │   SONG   │ └─────────────┘
+                     │ │  SCREEN  │ │ COMPLETE │
+                     │ │          │ │  SCREEN  │
+                     │ │ ● score  │ │          │
+                     │ │ ● stats  │ │ ● score  │
+                     │ │[RETRY]   │ │ ● stats  │
+                     │ │[MENU]    │ │ [MENU]   │
+                     │ └────┬─────┘ └────┬─────┘
+                     │      │            │
+                     └──────┴────────────┘
+                          (back to Title)
 ```
 
+> **Tutorial phase — defined but unreachable today.** `GamePhase::Tutorial`
+> exists in `game_state.h` and is wired into render/state systems, but
+> no screen controller currently issues `next_phase = GamePhase::Tutorial`
+> (`grep -rnE "next_phase = GamePhase::Tutorial" app/` returns no hits).
+> The "FTUE CHECK" branch shown in earlier revisions of this map is
+> **not shipped**: `Settings::ftue_run_count` is persisted but never
+> read by gameplay/UI systems. The wired-up FTUE/Tutorial flow is
+> tracked in #76 (FTUE not implemented); reinstate the FTUE-check
+> decision node only once a controller transitions into Tutorial.
+
 ### State Enumeration (for ECS implementation)
+
+> **Source of truth:** `app/components/game_state.h:6-15`. If this list
+> drifts from the header, the header wins.
 
 ```
   enum class GamePhase : uint8_t {
@@ -113,9 +133,26 @@
       Playing      = 2,   // core gameplay
       Paused       = 3,   // overlay on gameplay
       GameOver     = 4,   // results screen
-      SongComplete = 5    // song finished successfully
+      SongComplete = 5,   // song finished successfully
+      Settings     = 6,   // settings screen (entered from Title gear)
+      Tutorial     = 7    // FTUE/tutorial run — defined but
+                          // currently unreachable; no controller
+                          // issues a transition into it (see #76)
   };
 ```
+
+Shipped transitions, by controller, as of Round 6 audit:
+
+- `Title → LevelSelect` — body tap (`title_screen_controller.cpp:62-72`).
+- `Title → Settings` — gear-icon tap (same controller).
+- `Settings → Title` — back action (`ui_render_system.cpp:117-122`).
+- `LevelSelect → Playing` — song selection.
+- `Playing ↔ Paused` — pause button / resume.
+- `Paused → Title` — quit action.
+- `Playing → GameOver` — energy reaches zero.
+- `Playing → SongComplete` — song reaches end.
+- `GameOver | SongComplete → Title` — menu action.
+- `* → Tutorial` — **none today** (see #76).
 
 ---
 
