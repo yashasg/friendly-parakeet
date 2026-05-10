@@ -41,6 +41,18 @@ static inline GameOverLayoutState GameOverLayout_Init(void) {
     return state;
 }
 
+static inline void GameOverLayout_DrawCenteredLabel(Rectangle bounds, const char *text, int text_size) {
+    const int saved_text_size = GuiGetStyle(DEFAULT, TEXT_SIZE);
+    const int saved_label_alignment = GuiGetStyle(LABEL, TEXT_ALIGNMENT);
+
+    GuiSetStyle(DEFAULT, TEXT_SIZE, text_size);
+    GuiSetStyle(LABEL, TEXT_ALIGNMENT, TEXT_ALIGN_CENTER);
+    GuiLabel(bounds, text);
+
+    GuiSetStyle(LABEL, TEXT_ALIGNMENT, saved_label_alignment);
+    GuiSetStyle(DEFAULT, TEXT_SIZE, saved_text_size);
+}
+
 static inline void GameOverLayout_Render(GameOverLayoutState *state) {
     if (!state) return;
     GuiLabel((Rectangle){ state->Anchor01.x + 210, state->Anchor01.y + 440, 300, 60 }, "GAME OVER");

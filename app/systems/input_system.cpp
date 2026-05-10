@@ -19,7 +19,19 @@ constexpr unsigned int kGameplayGestureFlags =
     | GESTURE_SWIPE_DOWN;
 
 struct WebInputPolicy {
-    bool prefers_touch = false;
+    // True iff the browser reports the device exposes a touch surface
+    // (navigator.maxTouchPoints > 0). This is a stable, per-session
+    // capability flag — NOT a "prefer touch over mouse" latch. Both
+    // mouse and touch input remain enabled on web so that:
+    //  • iPadOS 13+ Safari (which reports a desktop UA but
+    //    maxTouchPoints>0) still receives touch/swipe gameplay events.
+    //  • Touchscreen laptops/Chromebooks/Surface devices accept touch
+    //    regardless of UA string.
+    //  • A USB/Bluetooth mouse plugged into a touch-capable device is
+    //    not silently ignored for the rest of the session.
+    // Per-frame routing between mouse and touch is handled by the
+    // active_source guard inside input_system.
+    bool touch_capable = false;
 };
 
 } // namespace
@@ -27,11 +39,8 @@ struct WebInputPolicy {
 void input_system_init(entt::registry& reg) {
     auto& policy = reg.ctx().emplace<WebInputPolicy>();
 #if defined(PLATFORM_WEB) && defined(__EMSCRIPTEN__)
-    policy.prefers_touch = (EM_ASM_INT({
-        const ua = navigator.userAgent || "";
-        const mobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua);
-        const touchCapable = (navigator.maxTouchPoints || 0) > 0;
-        return mobile && touchCapable ? 1 : 0;
+    policy.touch_capable = (EM_ASM_INT({
+        return ((navigator.maxTouchPoints || 0) > 0) ? 1 : 0;
     }) != 0);
 #else
     (void)policy;
@@ -52,8 +61,11 @@ void input_system(entt::registry& reg, float raw_dt) {
 
 #if defined(PLATFORM_WEB) && defined(__EMSCRIPTEN__)
     const auto& web_policy = reg.ctx().get<WebInputPolicy>();
-    const bool allow_mouse_input = !web_policy.prefers_touch;
-    const bool allow_touch_input = web_policy.prefers_touch;
+    // Mouse is always allowed on web. Touch is allowed whenever the
+    // browser reports a touch surface. The active_source guard below
+    // prevents a single gesture from being routed through both paths.
+    const bool allow_mouse_input = true;
+    const bool allow_touch_input = web_policy.touch_capable;
 #else
     const bool allow_mouse_input = true;
     const bool allow_touch_input = true;

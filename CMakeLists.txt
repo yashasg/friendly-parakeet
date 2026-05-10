@@ -487,6 +487,7 @@ add_executable(shapeshifter_tests
     ${TEST_SOURCES}
     app/systems/camera_system.cpp
     app/systems/song_playback_system.cpp
+    app/systems/input_system.cpp
     app/platform_display.cpp
 )
 target_include_directories(shapeshifter_tests PRIVATE
