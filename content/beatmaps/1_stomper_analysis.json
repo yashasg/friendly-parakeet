@@ -644,7 +644,7 @@
     }
   ],
   "onsets": {
-    "kick": {
+    "percussive_bass": {
       "method": "band_flux_bass",
       "zone": "bass",
       "count": 364,
@@ -1035,7 +1035,7 @@
         197.416
       ]
     },
-    "snare": {
+    "percussive_broadband": {
       "method": "band_flux_full",
       "zone": null,
       "count": 233,
@@ -1295,7 +1295,7 @@
         191.994
       ]
     },
-    "melody": {
+    "harmonic_low_mid": {
       "method": "band_flux_low_mid",
       "zone": "low_mid",
       "count": 285,
@@ -1607,7 +1607,7 @@
         195.489
       ]
     },
-    "hihat": {
+    "percussive_high_mid": {
       "method": "band_flux_high_mid",
       "zone": "high_mid",
       "count": 210,
@@ -1844,7 +1844,7 @@
         191.994
       ]
     },
-    "flux": {
+    "full_spectrum_flux": {
       "method": "spectral_flux",
       "zone": null,
       "count": 233,
@@ -2119,7 +2119,7 @@
       "t": 0.183,
       "flux": 58.0092,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2128,7 +2128,7 @@
       "t": 0.369,
       "flux": 60.7091,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2137,7 +2137,7 @@
       "t": 0.557,
       "flux": 52.8176,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2146,7 +2146,7 @@
       "t": 0.743,
       "flux": 67.4516,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2155,7 +2155,7 @@
       "t": 0.932,
       "flux": 51.6168,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2164,7 +2164,7 @@
       "t": 1.113,
       "flux": 43.84,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2173,7 +2173,7 @@
       "t": 1.306,
       "flux": 57.7866,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2182,7 +2182,7 @@
       "t": 1.495,
       "flux": 38.6298,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2191,7 +2191,7 @@
       "t": 1.68,
       "flux": 60.3989,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2200,7 +2200,7 @@
       "t": 1.689,
       "flux": 12.5786,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -2209,7 +2209,7 @@
       "t": 1.861,
       "flux": 53.4176,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2218,7 +2218,7 @@
       "t": 2.055,
       "flux": 56.0147,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2227,7 +2227,7 @@
       "t": 2.244,
       "flux": 43.2021,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2236,7 +2236,7 @@
       "t": 2.432,
       "flux": 60.1951,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2245,7 +2245,7 @@
       "t": 2.621,
       "flux": 50.7414,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2254,7 +2254,7 @@
       "t": 2.807,
       "flux": 33.5866,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2263,7 +2263,7 @@
       "t": 2.995,
       "flux": 44.9605,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2272,7 +2272,7 @@
       "t": 3.184,
       "flux": 39.3874,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2281,7 +2281,7 @@
       "t": 3.37,
       "flux": 52.0707,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2290,7 +2290,7 @@
       "t": 3.558,
       "flux": 46.3413,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2299,7 +2299,7 @@
       "t": 3.744,
       "flux": 46.8184,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2308,7 +2308,7 @@
       "t": 3.933,
       "flux": 46.3076,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2317,7 +2317,7 @@
       "t": 4.119,
       "flux": 57.0478,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2326,7 +2326,7 @@
       "t": 4.307,
       "flux": 40.4543,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2335,7 +2335,7 @@
       "t": 4.485,
       "flux": 64.7387,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2344,7 +2344,7 @@
       "t": 4.859,
       "flux": 123.5894,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -2353,8 +2353,8 @@
       "t": 4.86,
       "flux": 253.4169,
       "passes": [
-        "kick",
-        "snare"
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2363,7 +2363,7 @@
       "t": 4.864,
       "flux": 253.4169,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -2372,8 +2372,8 @@
       "t": 5.236,
       "flux": 263.7261,
       "passes": [
-        "kick",
-        "snare"
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2382,7 +2382,7 @@
       "t": 5.242,
       "flux": 263.7261,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -2391,7 +2391,7 @@
       "t": 5.242,
       "flux": 119.396,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -2400,8 +2400,8 @@
       "t": 5.989,
       "flux": 102.4569,
       "passes": [
-        "kick",
-        "snare"
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2410,7 +2410,7 @@
       "t": 5.997,
       "flux": 81.174,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -2419,7 +2419,7 @@
       "t": 6.002,
       "flux": 93.8232,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -2428,8 +2428,8 @@
       "t": 8.247,
       "flux": 66.4853,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "medium"
@@ -2438,7 +2438,7 @@
       "t": 8.249,
       "flux": 65.3667,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "medium"
@@ -2447,7 +2447,7 @@
       "t": 17.061,
       "flux": 4.3202,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2456,7 +2456,7 @@
       "t": 17.247,
       "flux": 118.9614,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -2465,7 +2465,7 @@
       "t": 17.247,
       "flux": 43.1605,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -2474,8 +2474,8 @@
       "t": 17.247,
       "flux": 118.9614,
       "passes": [
-        "kick",
-        "snare"
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2484,7 +2484,7 @@
       "t": 17.34,
       "flux": 21.0618,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -2493,8 +2493,8 @@
       "t": 17.343,
       "flux": 25.5084,
       "passes": [
-        "hihat",
-        "kick"
+        "percussive_high_mid",
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2503,7 +2503,7 @@
       "t": 17.435,
       "flux": 9.8587,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2512,7 +2512,7 @@
       "t": 17.618,
       "flux": 359.362,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -2521,7 +2521,7 @@
       "t": 17.618,
       "flux": 103.4852,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -2530,8 +2530,8 @@
       "t": 17.618,
       "flux": 359.362,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2540,9 +2540,9 @@
       "t": 17.992,
       "flux": 102.4491,
       "passes": [
-        "hihat",
-        "kick",
-        "snare"
+        "percussive_high_mid",
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2551,7 +2551,7 @@
       "t": 18.001,
       "flux": 102.4491,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -2560,7 +2560,7 @@
       "t": 18.001,
       "flux": 27.8912,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -2569,7 +2569,7 @@
       "t": 21.751,
       "flux": 5.7229,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -2578,7 +2578,7 @@
       "t": 26.25,
       "flux": 103.7141,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "medium"
@@ -2587,7 +2587,7 @@
       "t": 26.25,
       "flux": 42.7269,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -2596,7 +2596,7 @@
       "t": 26.25,
       "flux": 103.7141,
       "passes": [
-        "snare"
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "medium"
@@ -2605,7 +2605,7 @@
       "t": 29.057,
       "flux": 35.3424,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2614,7 +2614,7 @@
       "t": 29.06,
       "flux": 18.4375,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -2623,7 +2623,7 @@
       "t": 29.246,
       "flux": 33.8368,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -2632,7 +2632,7 @@
       "t": 29.344,
       "flux": 0.0838,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2641,7 +2641,7 @@
       "t": 29.434,
       "flux": 14.9778,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2650,7 +2650,7 @@
       "t": 29.617,
       "flux": 112.3697,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -2659,9 +2659,9 @@
       "t": 29.622,
       "flux": 159.6893,
       "passes": [
-        "hihat",
-        "kick",
-        "snare"
+        "percussive_high_mid",
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2670,7 +2670,7 @@
       "t": 29.623,
       "flux": 159.6893,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -2679,7 +2679,7 @@
       "t": 29.981,
       "flux": 1013.1378,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -2688,7 +2688,7 @@
       "t": 29.981,
       "flux": 283.0441,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -2697,9 +2697,9 @@
       "t": 29.981,
       "flux": 1013.1378,
       "passes": [
-        "hihat",
-        "kick",
-        "snare"
+        "percussive_high_mid",
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2708,7 +2708,7 @@
       "t": 35.434,
       "flux": 20.8608,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -2717,7 +2717,7 @@
       "t": 35.712,
       "flux": 95.146,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -2726,8 +2726,8 @@
       "t": 35.716,
       "flux": 132.9976,
       "passes": [
-        "kick",
-        "snare"
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2736,7 +2736,7 @@
       "t": 35.718,
       "flux": 132.9976,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -2745,7 +2745,7 @@
       "t": 35.805,
       "flux": 86.9148,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -2754,8 +2754,8 @@
       "t": 35.809,
       "flux": 87.5302,
       "passes": [
-        "kick",
-        "snare"
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2764,7 +2764,7 @@
       "t": 35.811,
       "flux": 87.5302,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -2773,7 +2773,7 @@
       "t": 35.983,
       "flux": 732.9585,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -2782,7 +2782,7 @@
       "t": 35.983,
       "flux": 186.2141,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -2791,9 +2791,9 @@
       "t": 35.985,
       "flux": 732.9585,
       "passes": [
-        "hihat",
-        "kick",
-        "snare"
+        "percussive_high_mid",
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2802,7 +2802,7 @@
       "t": 41.436,
       "flux": 26.721,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -2811,7 +2811,7 @@
       "t": 41.436,
       "flux": 15.9043,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2820,7 +2820,7 @@
       "t": 41.715,
       "flux": 39.9293,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -2829,7 +2829,7 @@
       "t": 41.715,
       "flux": 30.6641,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2838,7 +2838,7 @@
       "t": 41.805,
       "flux": 95.0188,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -2847,8 +2847,8 @@
       "t": 41.806,
       "flux": 95.5074,
       "passes": [
-        "kick",
-        "snare"
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2857,7 +2857,7 @@
       "t": 41.808,
       "flux": 95.5074,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -2866,7 +2866,7 @@
       "t": 41.898,
       "flux": 70.0787,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -2875,7 +2875,7 @@
       "t": 41.901,
       "flux": 53.2788,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2884,7 +2884,7 @@
       "t": 41.981,
       "flux": 364.2439,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -2893,9 +2893,9 @@
       "t": 41.984,
       "flux": 364.2439,
       "passes": [
-        "hihat",
-        "kick",
-        "snare"
+        "percussive_high_mid",
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2904,7 +2904,7 @@
       "t": 41.985,
       "flux": 97.524,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -2913,7 +2913,7 @@
       "t": 47.438,
       "flux": 57.7215,
       "passes": [
-        "hihat"
+        "percussive_high_mid"
       ],
       "layer": "percussive",
       "intensity": "medium"
@@ -2922,7 +2922,7 @@
       "t": 47.63,
       "flux": 10.8395,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2931,7 +2931,7 @@
       "t": 47.807,
       "flux": 150.5398,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "medium"
@@ -2940,8 +2940,8 @@
       "t": 47.807,
       "flux": 150.5398,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "medium"
@@ -2950,7 +2950,7 @@
       "t": 53.246,
       "flux": 41.0858,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2959,7 +2959,7 @@
       "t": 53.522,
       "flux": 75.6658,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -2968,7 +2968,7 @@
       "t": 53.615,
       "flux": 117.2432,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -2977,7 +2977,7 @@
       "t": 53.618,
       "flux": 47.0597,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2986,7 +2986,7 @@
       "t": 53.706,
       "flux": 53.0841,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -2995,7 +2995,7 @@
       "t": 53.711,
       "flux": 107.5949,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -3004,7 +3004,7 @@
       "t": 53.797,
       "flux": 78.606,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -3013,7 +3013,7 @@
       "t": 53.803,
       "flux": 107.5166,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -3022,7 +3022,7 @@
       "t": 53.892,
       "flux": 73.8025,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -3031,7 +3031,7 @@
       "t": 53.897,
       "flux": 71.1808,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -3040,7 +3040,7 @@
       "t": 53.984,
       "flux": 383.541,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -3049,9 +3049,9 @@
       "t": 53.986,
       "flux": 383.541,
       "passes": [
-        "hihat",
-        "kick",
-        "snare"
+        "percussive_high_mid",
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -3060,7 +3060,7 @@
       "t": 53.998,
       "flux": 33.4761,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -3069,7 +3069,7 @@
       "t": 57.748,
       "flux": 59.3877,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "medium"
@@ -3078,7 +3078,7 @@
       "t": 59.252,
       "flux": 29.3805,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -3087,7 +3087,7 @@
       "t": 62.247,
       "flux": 164.4539,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -3096,7 +3096,7 @@
       "t": 62.247,
       "flux": 164.4539,
       "passes": [
-        "snare"
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -3105,7 +3105,7 @@
       "t": 63.75,
       "flux": 58.9071,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "medium"
@@ -3114,7 +3114,7 @@
       "t": 63.75,
       "flux": 23.3432,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -3123,7 +3123,7 @@
       "t": 63.75,
       "flux": 58.9071,
       "passes": [
-        "snare"
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "medium"
@@ -3132,7 +3132,7 @@
       "t": 65.062,
       "flux": 0.0,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -3141,7 +3141,7 @@
       "t": 65.248,
       "flux": 17.9403,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -3150,7 +3150,7 @@
       "t": 65.248,
       "flux": 8.121,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -3159,8 +3159,8 @@
       "t": 65.341,
       "flux": 42.0397,
       "passes": [
-        "hihat",
-        "kick"
+        "percussive_high_mid",
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -3169,7 +3169,7 @@
       "t": 65.431,
       "flux": 35.8462,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -3178,7 +3178,7 @@
       "t": 65.434,
       "flux": 39.1545,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -3187,7 +3187,7 @@
       "t": 65.608,
       "flux": 102.0415,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -3196,7 +3196,7 @@
       "t": 65.617,
       "flux": 385.222,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -3205,9 +3205,9 @@
       "t": 65.617,
       "flux": 385.222,
       "passes": [
-        "hihat",
-        "kick",
-        "snare"
+        "percussive_high_mid",
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -3216,9 +3216,9 @@
       "t": 65.991,
       "flux": 339.2761,
       "passes": [
-        "hihat",
-        "kick",
-        "snare"
+        "percussive_high_mid",
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -3227,7 +3227,7 @@
       "t": 65.994,
       "flux": 339.2761,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -3236,7 +3236,7 @@
       "t": 65.994,
       "flux": 105.8559,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -3245,7 +3245,7 @@
       "t": 66.752,
       "flux": 10.1266,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -3254,7 +3254,7 @@
       "t": 68.249,
       "flux": 33.8909,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -3263,7 +3263,7 @@
       "t": 68.249,
       "flux": 14.5795,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -3272,7 +3272,7 @@
       "t": 68.249,
       "flux": 33.8909,
       "passes": [
-        "snare"
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -3281,7 +3281,7 @@
       "t": 74.252,
       "flux": 19.9473,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -3290,7 +3290,7 @@
       "t": 77.055,
       "flux": 89.2487,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -3299,7 +3299,7 @@
       "t": 77.061,
       "flux": 21.5887,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -3308,7 +3308,7 @@
       "t": 77.247,
       "flux": 16.4124,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -3317,7 +3317,7 @@
       "t": 77.34,
       "flux": 15.2691,
       "passes": [
-        "hihat"
+        "percussive_high_mid"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -3326,7 +3326,7 @@
       "t": 77.433,
       "flux": 40.8613,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -3335,7 +3335,7 @@
       "t": 77.433,
       "flux": 35.1105,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -3344,7 +3344,7 @@
       "t": 77.618,
       "flux": 399.2505,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -3353,7 +3353,7 @@
       "t": 77.618,
       "flux": 105.6215,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -3362,9 +3362,9 @@
       "t": 77.62,
       "flux": 399.2505,
       "passes": [
-        "hihat",
-        "kick",
-        "snare"
+        "percussive_high_mid",
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -3373,9 +3373,9 @@
       "t": 77.993,
       "flux": 82.9568,
       "passes": [
-        "hihat",
-        "kick",
-        "snare"
+        "percussive_high_mid",
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -3384,7 +3384,7 @@
       "t": 78.002,
       "flux": 55.0256,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -3393,7 +3393,7 @@
       "t": 83.435,
       "flux": 44.2138,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -3402,7 +3402,7 @@
       "t": 83.435,
       "flux": 28.3236,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -3411,7 +3411,7 @@
       "t": 83.714,
       "flux": 63.1464,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -3420,7 +3420,7 @@
       "t": 83.717,
       "flux": 36.1657,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -3429,7 +3429,7 @@
       "t": 83.804,
       "flux": 107.0786,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -3438,7 +3438,7 @@
       "t": 83.806,
       "flux": 33.4785,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -3447,7 +3447,7 @@
       "t": 83.985,
       "flux": 541.1743,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -3456,7 +3456,7 @@
       "t": 83.985,
       "flux": 144.7006,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -3465,9 +3465,9 @@
       "t": 83.985,
       "flux": 541.1743,
       "passes": [
-        "hihat",
-        "kick",
-        "snare"
+        "percussive_high_mid",
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -3476,7 +3476,7 @@
       "t": 89.432,
       "flux": 41.96,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -3485,7 +3485,7 @@
       "t": 89.437,
       "flux": 3.7229,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -3494,7 +3494,7 @@
       "t": 89.716,
       "flux": 75.9641,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -3503,7 +3503,7 @@
       "t": 89.716,
       "flux": 16.1309,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -3512,9 +3512,9 @@
       "t": 89.716,
       "flux": 75.9641,
       "passes": [
-        "hihat",
-        "kick",
-        "snare"
+        "percussive_high_mid",
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -3523,8 +3523,8 @@
       "t": 89.807,
       "flux": 38.7216,
       "passes": [
-        "kick",
-        "snare"
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -3533,7 +3533,7 @@
       "t": 89.809,
       "flux": 38.7216,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -3542,7 +3542,7 @@
       "t": 89.809,
       "flux": 8.0938,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -3551,7 +3551,7 @@
       "t": 89.896,
       "flux": 119.0859,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -3560,8 +3560,8 @@
       "t": 89.9,
       "flux": 107.9508,
       "passes": [
-        "kick",
-        "snare"
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -3570,7 +3570,7 @@
       "t": 89.902,
       "flux": 107.9508,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -3579,7 +3579,7 @@
       "t": 89.983,
       "flux": 542.4587,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -3588,7 +3588,7 @@
       "t": 89.985,
       "flux": 127.2233,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -3597,9 +3597,9 @@
       "t": 89.985,
       "flux": 542.4587,
       "passes": [
-        "hihat",
-        "kick",
-        "snare"
+        "percussive_high_mid",
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -3608,7 +3608,7 @@
       "t": 95.062,
       "flux": 30.6352,
       "passes": [
-        "hihat"
+        "percussive_high_mid"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -3617,8 +3617,8 @@
       "t": 95.809,
       "flux": 97.8975,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "medium"
@@ -3627,7 +3627,7 @@
       "t": 95.811,
       "flux": 97.8975,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "medium"
@@ -3636,7 +3636,7 @@
       "t": 97.878,
       "flux": 20.64,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -3645,7 +3645,7 @@
       "t": 101.251,
       "flux": 21.4922,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -3654,7 +3654,7 @@
       "t": 101.523,
       "flux": 114.6776,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -3663,7 +3663,7 @@
       "t": 101.529,
       "flux": 3.7418,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -3672,7 +3672,7 @@
       "t": 101.617,
       "flux": 87.2319,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -3681,7 +3681,7 @@
       "t": 101.619,
       "flux": 25.3978,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -3690,8 +3690,8 @@
       "t": 101.708,
       "flux": 61.3938,
       "passes": [
-        "kick",
-        "snare"
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -3700,7 +3700,7 @@
       "t": 101.709,
       "flux": 78.4442,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -3709,7 +3709,7 @@
       "t": 101.715,
       "flux": 61.3938,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -3718,7 +3718,7 @@
       "t": 101.798,
       "flux": 48.0453,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -3727,7 +3727,7 @@
       "t": 101.805,
       "flux": 67.6783,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -3736,7 +3736,7 @@
       "t": 101.891,
       "flux": 41.4408,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -3745,7 +3745,7 @@
       "t": 101.898,
       "flux": 46.0393,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -3754,7 +3754,7 @@
       "t": 101.982,
       "flux": 584.7078,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -3763,9 +3763,9 @@
       "t": 101.983,
       "flux": 584.7078,
       "passes": [
-        "hihat",
-        "kick",
-        "snare"
+        "percussive_high_mid",
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -3774,7 +3774,7 @@
       "t": 101.999,
       "flux": 18.5419,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -3783,7 +3783,7 @@
       "t": 102.926,
       "flux": 75.577,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "medium"
@@ -3792,7 +3792,7 @@
       "t": 104.435,
       "flux": 33.3864,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -3801,7 +3801,7 @@
       "t": 104.62,
       "flux": 51.4503,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -3810,7 +3810,7 @@
       "t": 104.806,
       "flux": 66.9297,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -3819,9 +3819,9 @@
       "t": 104.994,
       "flux": 149.152,
       "passes": [
-        "hihat",
-        "kick",
-        "snare"
+        "percussive_high_mid",
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -3830,7 +3830,7 @@
       "t": 105.001,
       "flux": 149.152,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -3839,7 +3839,7 @@
       "t": 106.113,
       "flux": 82.3837,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "medium"
@@ -3848,7 +3848,7 @@
       "t": 107.425,
       "flux": 63.8309,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -3857,7 +3857,7 @@
       "t": 107.611,
       "flux": 76.1902,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -3866,7 +3866,7 @@
       "t": 107.797,
       "flux": 57.5227,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -3875,8 +3875,8 @@
       "t": 107.99,
       "flux": 258.1195,
       "passes": [
-        "kick",
-        "snare"
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -3885,7 +3885,7 @@
       "t": 107.993,
       "flux": 258.1195,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -3894,7 +3894,7 @@
       "t": 107.996,
       "flux": 53.9526,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -3903,7 +3903,7 @@
       "t": 109.215,
       "flux": 60.6722,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "medium"
@@ -3912,8 +3912,8 @@
       "t": 109.493,
       "flux": 96.1444,
       "passes": [
-        "kick",
-        "snare"
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "medium"
@@ -3922,7 +3922,7 @@
       "t": 109.5,
       "flux": 96.1444,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "medium"
@@ -3931,7 +3931,7 @@
       "t": 109.5,
       "flux": 36.8884,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -3940,7 +3940,7 @@
       "t": 110.431,
       "flux": 57.4393,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -3949,7 +3949,7 @@
       "t": 110.434,
       "flux": 32.2505,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -3958,7 +3958,7 @@
       "t": 110.61,
       "flux": 97.9812,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "medium"
@@ -3967,7 +3967,7 @@
       "t": 111.922,
       "flux": 146.713,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -3976,8 +3976,8 @@
       "t": 111.922,
       "flux": 296.684,
       "passes": [
-        "kick",
-        "snare"
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -3986,7 +3986,7 @@
       "t": 111.926,
       "flux": 296.684,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -3995,8 +3995,8 @@
       "t": 112.112,
       "flux": 266.7736,
       "passes": [
-        "kick",
-        "snare"
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -4005,7 +4005,7 @@
       "t": 112.118,
       "flux": 266.7736,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -4014,7 +4014,7 @@
       "t": 112.118,
       "flux": 114.3315,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -4023,8 +4023,8 @@
       "t": 112.299,
       "flux": 365.1815,
       "passes": [
-        "kick",
-        "snare"
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -4033,7 +4033,7 @@
       "t": 112.303,
       "flux": 365.1815,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -4042,7 +4042,7 @@
       "t": 112.303,
       "flux": 161.0357,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -4051,7 +4051,7 @@
       "t": 113.42,
       "flux": 125.3369,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -4060,8 +4060,8 @@
       "t": 113.424,
       "flux": 275.578,
       "passes": [
-        "kick",
-        "snare"
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -4070,7 +4070,7 @@
       "t": 113.43,
       "flux": 275.578,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -4079,7 +4079,7 @@
       "t": 113.607,
       "flux": 141.5868,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -4088,8 +4088,8 @@
       "t": 113.609,
       "flux": 310.9973,
       "passes": [
-        "kick",
-        "snare"
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -4098,7 +4098,7 @@
       "t": 113.615,
       "flux": 310.9973,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -4107,7 +4107,7 @@
       "t": 113.795,
       "flux": 107.5843,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -4116,8 +4116,8 @@
       "t": 113.799,
       "flux": 234.3031,
       "passes": [
-        "kick",
-        "snare"
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -4126,7 +4126,7 @@
       "t": 113.804,
       "flux": 234.3031,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -4135,7 +4135,7 @@
       "t": 113.983,
       "flux": 145.6513,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -4144,8 +4144,8 @@
       "t": 113.987,
       "flux": 312.2288,
       "passes": [
-        "kick",
-        "snare"
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -4154,7 +4154,7 @@
       "t": 113.993,
       "flux": 312.2288,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -4163,7 +4163,7 @@
       "t": 114.358,
       "flux": 57.7391,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -4172,8 +4172,8 @@
       "t": 114.361,
       "flux": 185.2276,
       "passes": [
-        "kick",
-        "snare"
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -4182,7 +4182,7 @@
       "t": 114.367,
       "flux": 144.5431,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -4191,8 +4191,8 @@
       "t": 114.736,
       "flux": 325.5447,
       "passes": [
-        "kick",
-        "snare"
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -4201,7 +4201,7 @@
       "t": 114.742,
       "flux": 325.5447,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -4210,7 +4210,7 @@
       "t": 114.742,
       "flux": 128.3688,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -4219,8 +4219,8 @@
       "t": 115.109,
       "flux": 316.3512,
       "passes": [
-        "kick",
-        "snare"
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -4229,7 +4229,7 @@
       "t": 115.113,
       "flux": 316.3512,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -4238,7 +4238,7 @@
       "t": 115.119,
       "flux": 125.0625,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -4247,8 +4247,8 @@
       "t": 115.485,
       "flux": 323.8489,
       "passes": [
-        "kick",
-        "snare"
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -4257,7 +4257,7 @@
       "t": 115.49,
       "flux": 323.8489,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -4266,7 +4266,7 @@
       "t": 115.49,
       "flux": 130.5837,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -4275,7 +4275,7 @@
       "t": 115.858,
       "flux": 88.2769,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -4284,8 +4284,8 @@
       "t": 115.862,
       "flux": 215.8901,
       "passes": [
-        "kick",
-        "snare"
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -4294,7 +4294,7 @@
       "t": 115.868,
       "flux": 215.8901,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -4303,7 +4303,7 @@
       "t": 116.231,
       "flux": 144.4261,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -4312,8 +4312,8 @@
       "t": 116.234,
       "flux": 353.6874,
       "passes": [
-        "kick",
-        "snare"
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -4322,7 +4322,7 @@
       "t": 116.239,
       "flux": 353.6874,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -4331,8 +4331,8 @@
       "t": 116.611,
       "flux": 311.7495,
       "passes": [
-        "kick",
-        "snare"
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -4341,7 +4341,7 @@
       "t": 116.617,
       "flux": 311.7495,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -4350,7 +4350,7 @@
       "t": 116.617,
       "flux": 113.0218,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -4359,7 +4359,7 @@
       "t": 116.98,
       "flux": 165.0345,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -4368,8 +4368,8 @@
       "t": 116.989,
       "flux": 225.3446,
       "passes": [
-        "kick",
-        "snare"
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -4378,7 +4378,7 @@
       "t": 116.994,
       "flux": 225.3446,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -4387,7 +4387,7 @@
       "t": 117.722,
       "flux": 42.9297,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -4396,7 +4396,7 @@
       "t": 117.733,
       "flux": 125.9355,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -4405,7 +4405,7 @@
       "t": 118.265,
       "flux": 8.9739,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -4414,7 +4414,7 @@
       "t": 118.492,
       "flux": 126.9925,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -4423,7 +4423,7 @@
       "t": 118.497,
       "flux": 102.6885,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -4432,8 +4432,8 @@
       "t": 118.506,
       "flux": 102.6885,
       "passes": [
-        "kick",
-        "snare"
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -4442,7 +4442,7 @@
       "t": 118.642,
       "flux": 12.9511,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -4451,7 +4451,7 @@
       "t": 118.852,
       "flux": 34.8144,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -4460,7 +4460,7 @@
       "t": 118.892,
       "flux": 10.4191,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -4469,7 +4469,7 @@
       "t": 119.101,
       "flux": 29.3658,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -4478,7 +4478,7 @@
       "t": 119.142,
       "flux": 8.6187,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -4487,7 +4487,7 @@
       "t": 119.234,
       "flux": 41.0454,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -4496,7 +4496,7 @@
       "t": 119.35,
       "flux": 23.5875,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -4505,7 +4505,7 @@
       "t": 119.641,
       "flux": 11.6726,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -4514,7 +4514,7 @@
       "t": 119.998,
       "flux": 86.6619,
       "passes": [
-        "hihat"
+        "percussive_high_mid"
       ],
       "layer": "percussive",
       "intensity": "medium"
@@ -4523,7 +4523,7 @@
       "t": 120.75,
       "flux": 37.541,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -4532,8 +4532,8 @@
       "t": 121.495,
       "flux": 106.7957,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "medium"
@@ -4542,7 +4542,7 @@
       "t": 121.498,
       "flux": 106.7957,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "medium"
@@ -4551,7 +4551,7 @@
       "t": 121.867,
       "flux": 274.5906,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -4560,8 +4560,8 @@
       "t": 121.867,
       "flux": 274.5906,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -4570,7 +4570,7 @@
       "t": 121.998,
       "flux": 31.8981,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -4579,7 +4579,7 @@
       "t": 122.244,
       "flux": 270.1672,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -4588,8 +4588,8 @@
       "t": 122.244,
       "flux": 270.1672,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -4598,7 +4598,7 @@
       "t": 123.739,
       "flux": 263.6816,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -4607,8 +4607,8 @@
       "t": 123.743,
       "flux": 263.6816,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -4617,8 +4617,8 @@
       "t": 124.12,
       "flux": 150.3209,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "medium"
@@ -4627,7 +4627,7 @@
       "t": 124.122,
       "flux": 150.3209,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "medium"
@@ -4636,7 +4636,7 @@
       "t": 124.497,
       "flux": 75.6215,
       "passes": [
-        "hihat"
+        "percussive_high_mid"
       ],
       "layer": "percussive",
       "intensity": "medium"
@@ -4645,8 +4645,8 @@
       "t": 124.867,
       "flux": 274.3591,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -4655,7 +4655,7 @@
       "t": 124.868,
       "flux": 274.3591,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -4664,7 +4664,7 @@
       "t": 124.871,
       "flux": 38.5758,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -4673,7 +4673,7 @@
       "t": 125.243,
       "flux": 58.0937,
       "passes": [
-        "hihat"
+        "percussive_high_mid"
       ],
       "layer": "percussive",
       "intensity": "medium"
@@ -4682,7 +4682,7 @@
       "t": 125.248,
       "flux": 43.0995,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -4691,7 +4691,7 @@
       "t": 129.248,
       "flux": 17.3169,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -4700,7 +4700,7 @@
       "t": 129.744,
       "flux": 170.2189,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -4709,8 +4709,8 @@
       "t": 129.744,
       "flux": 170.2189,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -4719,7 +4719,7 @@
       "t": 129.747,
       "flux": 33.8564,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -4728,8 +4728,8 @@
       "t": 130.123,
       "flux": 98.2422,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "medium"
@@ -4738,7 +4738,7 @@
       "t": 130.125,
       "flux": 98.2422,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "medium"
@@ -4747,7 +4747,7 @@
       "t": 130.49,
       "flux": 74.1756,
       "passes": [
-        "hihat"
+        "percussive_high_mid"
       ],
       "layer": "percussive",
       "intensity": "medium"
@@ -4756,7 +4756,7 @@
       "t": 131.373,
       "flux": 30.2891,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -4765,7 +4765,7 @@
       "t": 132.748,
       "flux": 33.4558,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -4774,7 +4774,7 @@
       "t": 133.12,
       "flux": 85.5521,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "medium"
@@ -4783,8 +4783,8 @@
       "t": 133.495,
       "flux": 146.507,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "medium"
@@ -4793,7 +4793,7 @@
       "t": 133.497,
       "flux": 146.507,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "medium"
@@ -4802,7 +4802,7 @@
       "t": 133.497,
       "flux": 32.7362,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -4811,8 +4811,8 @@
       "t": 133.873,
       "flux": 146.9366,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "medium"
@@ -4821,7 +4821,7 @@
       "t": 133.875,
       "flux": 146.9366,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "medium"
@@ -4830,7 +4830,7 @@
       "t": 134.243,
       "flux": 283.5547,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -4839,8 +4839,8 @@
       "t": 134.243,
       "flux": 283.5547,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -4849,7 +4849,7 @@
       "t": 134.246,
       "flux": 30.4795,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -4858,7 +4858,7 @@
       "t": 135.75,
       "flux": 24.4341,
       "passes": [
-        "hihat"
+        "percussive_high_mid"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -4867,7 +4867,7 @@
       "t": 136.118,
       "flux": 293.9189,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -4876,8 +4876,8 @@
       "t": 136.118,
       "flux": 293.9189,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -4886,7 +4886,7 @@
       "t": 136.121,
       "flux": 34.9073,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -4895,7 +4895,7 @@
       "t": 136.493,
       "flux": 60.3323,
       "passes": [
-        "hihat"
+        "percussive_high_mid"
       ],
       "layer": "percussive",
       "intensity": "medium"
@@ -4904,7 +4904,7 @@
       "t": 136.864,
       "flux": 203.9453,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -4913,8 +4913,8 @@
       "t": 136.868,
       "flux": 203.9453,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -4923,7 +4923,7 @@
       "t": 137.247,
       "flux": 103.7313,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "medium"
@@ -4932,7 +4932,7 @@
       "t": 137.247,
       "flux": 17.7325,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -4941,8 +4941,8 @@
       "t": 137.247,
       "flux": 103.7313,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "medium"
@@ -4951,7 +4951,7 @@
       "t": 139.5,
       "flux": 161.0655,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -4960,8 +4960,8 @@
       "t": 139.5,
       "flux": 161.0655,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -4970,7 +4970,7 @@
       "t": 139.877,
       "flux": 16.2643,
       "passes": [
-        "hihat"
+        "percussive_high_mid"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -4979,7 +4979,7 @@
       "t": 140.249,
       "flux": 161.1649,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -4988,8 +4988,8 @@
       "t": 140.249,
       "flux": 161.1649,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -4998,7 +4998,7 @@
       "t": 141.74,
       "flux": 260.1304,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -5007,8 +5007,8 @@
       "t": 141.742,
       "flux": 260.1304,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -5017,7 +5017,7 @@
       "t": 142.118,
       "flux": 200.5407,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -5026,8 +5026,8 @@
       "t": 142.12,
       "flux": 200.5407,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -5036,7 +5036,7 @@
       "t": 142.495,
       "flux": 162.8846,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -5045,7 +5045,7 @@
       "t": 142.495,
       "flux": 162.8846,
       "passes": [
-        "snare"
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -5054,9 +5054,9 @@
       "t": 143.26,
       "flux": 304.5409,
       "passes": [
-        "hihat",
-        "kick",
-        "snare"
+        "percussive_high_mid",
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -5065,7 +5065,7 @@
       "t": 143.264,
       "flux": 304.5409,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -5074,7 +5074,7 @@
       "t": 143.267,
       "flux": 72.5442,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -5083,7 +5083,7 @@
       "t": 143.979,
       "flux": 497.7242,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -5092,7 +5092,7 @@
       "t": 143.981,
       "flux": 474.0625,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -5101,9 +5101,9 @@
       "t": 143.981,
       "flux": 474.0625,
       "passes": [
-        "hihat",
-        "kick",
-        "snare"
+        "percussive_high_mid",
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -5112,7 +5112,7 @@
       "t": 144.248,
       "flux": 50.9312,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -5121,8 +5121,8 @@
       "t": 145.123,
       "flux": 146.4703,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "medium"
@@ -5131,7 +5131,7 @@
       "t": 145.125,
       "flux": 146.4703,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "medium"
@@ -5140,7 +5140,7 @@
       "t": 145.125,
       "flux": 37.1239,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -5149,7 +5149,7 @@
       "t": 145.496,
       "flux": 147.643,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "medium"
@@ -5158,8 +5158,8 @@
       "t": 145.496,
       "flux": 147.643,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "medium"
@@ -5168,7 +5168,7 @@
       "t": 145.868,
       "flux": 86.0623,
       "passes": [
-        "hihat"
+        "percussive_high_mid"
       ],
       "layer": "percussive",
       "intensity": "medium"
@@ -5177,7 +5177,7 @@
       "t": 146.242,
       "flux": 91.4021,
       "passes": [
-        "hihat"
+        "percussive_high_mid"
       ],
       "layer": "percussive",
       "intensity": "medium"
@@ -5186,7 +5186,7 @@
       "t": 147.249,
       "flux": 28.4678,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -5195,7 +5195,7 @@
       "t": 147.621,
       "flux": 31.3029,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -5204,7 +5204,7 @@
       "t": 147.746,
       "flux": 70.7856,
       "passes": [
-        "hihat"
+        "percussive_high_mid"
       ],
       "layer": "percussive",
       "intensity": "medium"
@@ -5213,7 +5213,7 @@
       "t": 148.117,
       "flux": 174.2789,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -5222,8 +5222,8 @@
       "t": 148.117,
       "flux": 174.2789,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -5232,7 +5232,7 @@
       "t": 148.495,
       "flux": 207.5675,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -5241,8 +5241,8 @@
       "t": 148.495,
       "flux": 207.5675,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -5251,7 +5251,7 @@
       "t": 148.497,
       "flux": 11.9693,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -5260,7 +5260,7 @@
       "t": 148.875,
       "flux": 105.3455,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "medium"
@@ -5269,8 +5269,8 @@
       "t": 148.875,
       "flux": 105.3455,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "medium"
@@ -5279,7 +5279,7 @@
       "t": 149.124,
       "flux": 10.6053,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -5288,7 +5288,7 @@
       "t": 149.24,
       "flux": 74.6552,
       "passes": [
-        "hihat"
+        "percussive_high_mid"
       ],
       "layer": "percussive",
       "intensity": "medium"
@@ -5297,7 +5297,7 @@
       "t": 150.251,
       "flux": 17.6092,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -5306,7 +5306,7 @@
       "t": 150.75,
       "flux": 40.6749,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -5315,7 +5315,7 @@
       "t": 151.499,
       "flux": 158.4844,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -5324,8 +5324,8 @@
       "t": 151.499,
       "flux": 158.4844,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -5334,7 +5334,7 @@
       "t": 151.876,
       "flux": 53.1275,
       "passes": [
-        "hihat"
+        "percussive_high_mid"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -5343,7 +5343,7 @@
       "t": 153.623,
       "flux": 39.8885,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -5352,7 +5352,7 @@
       "t": 153.748,
       "flux": 82.9622,
       "passes": [
-        "hihat"
+        "percussive_high_mid"
       ],
       "layer": "percussive",
       "intensity": "medium"
@@ -5361,7 +5361,7 @@
       "t": 154.001,
       "flux": 38.3007,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -5370,7 +5370,7 @@
       "t": 154.12,
       "flux": 73.4675,
       "passes": [
-        "hihat"
+        "percussive_high_mid"
       ],
       "layer": "percussive",
       "intensity": "medium"
@@ -5379,7 +5379,7 @@
       "t": 154.372,
       "flux": 39.4801,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -5388,7 +5388,7 @@
       "t": 154.494,
       "flux": 187.9531,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -5397,7 +5397,7 @@
       "t": 154.494,
       "flux": 187.9531,
       "passes": [
-        "snare"
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -5406,7 +5406,7 @@
       "t": 155.121,
       "flux": 42.688,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -5415,8 +5415,8 @@
       "t": 155.238,
       "flux": 181.0326,
       "passes": [
-        "kick",
-        "snare"
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -5425,7 +5425,7 @@
       "t": 155.243,
       "flux": 181.0326,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -5434,7 +5434,7 @@
       "t": 155.243,
       "flux": 83.0421,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -5443,8 +5443,8 @@
       "t": 155.496,
       "flux": 125.7238,
       "passes": [
-        "kick",
-        "snare"
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -5453,7 +5453,7 @@
       "t": 155.498,
       "flux": 125.7238,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -5462,7 +5462,7 @@
       "t": 155.498,
       "flux": 59.4462,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -5471,8 +5471,8 @@
       "t": 155.613,
       "flux": 193.8976,
       "passes": [
-        "kick",
-        "snare"
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -5481,7 +5481,7 @@
       "t": 155.617,
       "flux": 193.8976,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -5490,7 +5490,7 @@
       "t": 155.617,
       "flux": 89.8293,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -5499,8 +5499,8 @@
       "t": 155.746,
       "flux": 118.3779,
       "passes": [
-        "kick",
-        "snare"
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -5509,7 +5509,7 @@
       "t": 155.748,
       "flux": 118.3779,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -5518,7 +5518,7 @@
       "t": 155.748,
       "flux": 39.2863,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -5527,7 +5527,7 @@
       "t": 155.867,
       "flux": 50.6422,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -5536,8 +5536,8 @@
       "t": 155.868,
       "flux": 150.4235,
       "passes": [
-        "kick",
-        "snare"
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -5546,7 +5546,7 @@
       "t": 155.87,
       "flux": 150.4235,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -5555,7 +5555,7 @@
       "t": 155.982,
       "flux": 219.6278,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -5564,7 +5564,7 @@
       "t": 155.984,
       "flux": 738.5753,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -5573,9 +5573,9 @@
       "t": 155.985,
       "flux": 738.5753,
       "passes": [
-        "hihat",
-        "kick",
-        "snare"
+        "percussive_high_mid",
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -5584,7 +5584,7 @@
       "t": 156.247,
       "flux": 16.979,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -5593,7 +5593,7 @@
       "t": 156.624,
       "flux": 20.6285,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -5602,7 +5602,7 @@
       "t": 157.124,
       "flux": 52.5812,
       "passes": [
-        "hihat"
+        "percussive_high_mid"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -5611,7 +5611,7 @@
       "t": 157.373,
       "flux": 24.052,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -5620,7 +5620,7 @@
       "t": 157.87,
       "flux": 156.6166,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -5629,8 +5629,8 @@
       "t": 157.87,
       "flux": 156.6166,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -5639,7 +5639,7 @@
       "t": 158.238,
       "flux": 277.512,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -5648,8 +5648,8 @@
       "t": 158.242,
       "flux": 277.512,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -5658,7 +5658,7 @@
       "t": 158.499,
       "flux": 32.5902,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -5667,7 +5667,7 @@
       "t": 159.248,
       "flux": 24.0488,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -5676,8 +5676,8 @@
       "t": 159.745,
       "flux": 81.8206,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "medium"
@@ -5686,7 +5686,7 @@
       "t": 159.747,
       "flux": 81.8206,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "medium"
@@ -5695,7 +5695,7 @@
       "t": 160.119,
       "flux": 78.0812,
       "passes": [
-        "hihat"
+        "percussive_high_mid"
       ],
       "layer": "percussive",
       "intensity": "medium"
@@ -5704,8 +5704,8 @@
       "t": 160.494,
       "flux": 105.3009,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "medium"
@@ -5714,7 +5714,7 @@
       "t": 160.496,
       "flux": 105.3009,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "medium"
@@ -5723,7 +5723,7 @@
       "t": 160.874,
       "flux": 101.0817,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "medium"
@@ -5732,8 +5732,8 @@
       "t": 160.874,
       "flux": 101.0817,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "medium"
@@ -5742,7 +5742,7 @@
       "t": 161.123,
       "flux": 47.8642,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -5751,7 +5751,7 @@
       "t": 162.749,
       "flux": 44.0266,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -5760,8 +5760,8 @@
       "t": 163.495,
       "flux": 167.3286,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -5770,7 +5770,7 @@
       "t": 163.498,
       "flux": 167.3286,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -5779,7 +5779,7 @@
       "t": 164.252,
       "flux": 20.8545,
       "passes": [
-        "hihat"
+        "percussive_high_mid"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -5788,7 +5788,7 @@
       "t": 165.75,
       "flux": 104.3846,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "medium"
@@ -5797,8 +5797,8 @@
       "t": 165.75,
       "flux": 104.3846,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "medium"
@@ -5807,8 +5807,8 @@
       "t": 166.119,
       "flux": 112.0881,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "medium"
@@ -5817,7 +5817,7 @@
       "t": 166.121,
       "flux": 112.0881,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "medium"
@@ -5826,7 +5826,7 @@
       "t": 166.493,
       "flux": 163.4964,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -5835,7 +5835,7 @@
       "t": 166.493,
       "flux": 163.4964,
       "passes": [
-        "snare"
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -5844,9 +5844,9 @@
       "t": 167.245,
       "flux": 111.2727,
       "passes": [
-        "hihat",
-        "kick",
-        "snare"
+        "percussive_high_mid",
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -5855,7 +5855,7 @@
       "t": 167.248,
       "flux": 88.4201,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -5864,7 +5864,7 @@
       "t": 167.248,
       "flux": 19.7664,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -5873,7 +5873,7 @@
       "t": 167.497,
       "flux": 9.4337,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -5882,9 +5882,9 @@
       "t": 167.613,
       "flux": 97.1185,
       "passes": [
-        "hihat",
-        "kick",
-        "snare"
+        "percussive_high_mid",
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -5893,7 +5893,7 @@
       "t": 167.619,
       "flux": 97.1185,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -5902,7 +5902,7 @@
       "t": 167.619,
       "flux": 17.1987,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -5911,7 +5911,7 @@
       "t": 167.874,
       "flux": 62.1983,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -5920,7 +5920,7 @@
       "t": 167.874,
       "flux": 6.2624,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -5929,9 +5929,9 @@
       "t": 167.874,
       "flux": 62.1983,
       "passes": [
-        "hihat",
-        "kick",
-        "snare"
+        "percussive_high_mid",
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -5940,7 +5940,7 @@
       "t": 167.981,
       "flux": 539.3557,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -5949,7 +5949,7 @@
       "t": 167.981,
       "flux": 172.7436,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -5958,9 +5958,9 @@
       "t": 167.982,
       "flux": 539.3557,
       "passes": [
-        "hihat",
-        "kick",
-        "snare"
+        "percussive_high_mid",
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -5969,7 +5969,7 @@
       "t": 168.278,
       "flux": 78.6763,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "medium"
@@ -5978,7 +5978,7 @@
       "t": 168.464,
       "flux": 108.0255,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "medium"
@@ -5987,7 +5987,7 @@
       "t": 168.652,
       "flux": 85.7262,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "medium"
@@ -5996,7 +5996,7 @@
       "t": 169.03,
       "flux": 29.9633,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -6005,7 +6005,7 @@
       "t": 169.215,
       "flux": 55.7194,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -6014,7 +6014,7 @@
       "t": 169.398,
       "flux": 279.5375,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -6023,8 +6023,8 @@
       "t": 169.401,
       "flux": 279.5375,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -6033,7 +6033,7 @@
       "t": 169.5,
       "flux": 15.6532,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -6042,7 +6042,7 @@
       "t": 169.686,
       "flux": 19.2909,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -6051,7 +6051,7 @@
       "t": 169.776,
       "flux": 263.4112,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -6060,8 +6060,8 @@
       "t": 169.776,
       "flux": 263.4112,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -6070,7 +6070,7 @@
       "t": 169.967,
       "flux": 75.3413,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "medium"
@@ -6079,8 +6079,8 @@
       "t": 169.968,
       "flux": 191.004,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -6089,7 +6089,7 @@
       "t": 169.97,
       "flux": 191.004,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -6098,7 +6098,7 @@
       "t": 170.15,
       "flux": 275.2446,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -6107,8 +6107,8 @@
       "t": 170.15,
       "flux": 275.2446,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -6117,7 +6117,7 @@
       "t": 170.153,
       "flux": 96.5877,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "medium"
@@ -6126,7 +6126,7 @@
       "t": 170.524,
       "flux": 316.7946,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -6135,8 +6135,8 @@
       "t": 170.524,
       "flux": 316.7946,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -6145,7 +6145,7 @@
       "t": 170.527,
       "flux": 107.4876,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "medium"
@@ -6154,7 +6154,7 @@
       "t": 170.716,
       "flux": 79.2736,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "medium"
@@ -6163,8 +6163,8 @@
       "t": 170.717,
       "flux": 65.4322,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "medium"
@@ -6173,7 +6173,7 @@
       "t": 170.719,
       "flux": 58.2889,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "medium"
@@ -6182,7 +6182,7 @@
       "t": 170.896,
       "flux": 423.8258,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -6191,8 +6191,8 @@
       "t": 170.896,
       "flux": 423.8258,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -6201,7 +6201,7 @@
       "t": 170.902,
       "flux": 96.2763,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "medium"
@@ -6210,8 +6210,8 @@
       "t": 171.28,
       "flux": 147.4613,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "medium"
@@ -6220,7 +6220,7 @@
       "t": 171.282,
       "flux": 147.4613,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "medium"
@@ -6229,7 +6229,7 @@
       "t": 171.282,
       "flux": 45.9409,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -6238,8 +6238,8 @@
       "t": 171.466,
       "flux": 201.7985,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -6248,7 +6248,7 @@
       "t": 171.468,
       "flux": 201.7985,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -6257,7 +6257,7 @@
       "t": 171.468,
       "flux": 68.0209,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "medium"
@@ -6266,7 +6266,7 @@
       "t": 171.648,
       "flux": 314.5461,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -6275,8 +6275,8 @@
       "t": 171.649,
       "flux": 314.5461,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -6285,7 +6285,7 @@
       "t": 171.651,
       "flux": 97.6356,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "medium"
@@ -6294,7 +6294,7 @@
       "t": 172.031,
       "flux": 152.7104,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -6303,7 +6303,7 @@
       "t": 172.031,
       "flux": 53.7886,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -6312,7 +6312,7 @@
       "t": 172.031,
       "flux": 152.7104,
       "passes": [
-        "snare"
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -6321,7 +6321,7 @@
       "t": 172.217,
       "flux": 92.0971,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "medium"
@@ -6330,7 +6330,7 @@
       "t": 172.217,
       "flux": 31.0042,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -6339,7 +6339,7 @@
       "t": 172.217,
       "flux": 92.0971,
       "passes": [
-        "snare"
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "medium"
@@ -6348,7 +6348,7 @@
       "t": 172.399,
       "flux": 348.0208,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -6357,8 +6357,8 @@
       "t": 172.399,
       "flux": 348.0208,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -6367,7 +6367,7 @@
       "t": 172.408,
       "flux": 66.1016,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "medium"
@@ -6376,7 +6376,7 @@
       "t": 172.501,
       "flux": 39.4809,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -6385,7 +6385,7 @@
       "t": 172.777,
       "flux": 179.9358,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -6394,7 +6394,7 @@
       "t": 172.777,
       "flux": 64.3602,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "medium"
@@ -6403,7 +6403,7 @@
       "t": 172.777,
       "flux": 179.9358,
       "passes": [
-        "snare"
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -6412,7 +6412,7 @@
       "t": 172.965,
       "flux": 224.5409,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -6421,7 +6421,7 @@
       "t": 172.965,
       "flux": 82.7926,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "medium"
@@ -6430,7 +6430,7 @@
       "t": 172.965,
       "flux": 224.5409,
       "passes": [
-        "snare"
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -6439,7 +6439,7 @@
       "t": 173.148,
       "flux": 328.735,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -6448,8 +6448,8 @@
       "t": 173.151,
       "flux": 328.735,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -6458,7 +6458,7 @@
       "t": 173.154,
       "flux": 76.1593,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "medium"
@@ -6467,7 +6467,7 @@
       "t": 173.25,
       "flux": 41.169,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -6476,7 +6476,7 @@
       "t": 173.526,
       "flux": 292.0408,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -6485,8 +6485,8 @@
       "t": 173.526,
       "flux": 292.0408,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -6495,7 +6495,7 @@
       "t": 173.529,
       "flux": 62.4205,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "medium"
@@ -6504,7 +6504,7 @@
       "t": 173.72,
       "flux": 45.6278,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -6513,7 +6513,7 @@
       "t": 173.72,
       "flux": 37.3647,
       "passes": [
-        "hihat"
+        "percussive_high_mid"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -6522,7 +6522,7 @@
       "t": 173.9,
       "flux": 370.2435,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -6531,8 +6531,8 @@
       "t": 173.901,
       "flux": 370.2435,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -6541,7 +6541,7 @@
       "t": 173.906,
       "flux": 70.712,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "medium"
@@ -6550,7 +6550,7 @@
       "t": 174.283,
       "flux": 26.7271,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -6559,7 +6559,7 @@
       "t": 174.469,
       "flux": 52.9265,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -6568,7 +6568,7 @@
       "t": 174.655,
       "flux": 63.4763,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "medium"
@@ -6577,7 +6577,7 @@
       "t": 174.655,
       "flux": 30.9583,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -6586,7 +6586,7 @@
       "t": 174.655,
       "flux": 63.4763,
       "passes": [
-        "snare"
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "medium"
@@ -6595,7 +6595,7 @@
       "t": 175.023,
       "flux": 88.1138,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "medium"
@@ -6604,7 +6604,7 @@
       "t": 175.218,
       "flux": 161.3721,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -6613,7 +6613,7 @@
       "t": 175.218,
       "flux": 60.6536,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "medium"
@@ -6622,8 +6622,8 @@
       "t": 175.218,
       "flux": 161.3721,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -6632,7 +6632,7 @@
       "t": 175.401,
       "flux": 254.1673,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -6641,7 +6641,7 @@
       "t": 175.401,
       "flux": 80.277,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "medium"
@@ -6650,8 +6650,8 @@
       "t": 175.401,
       "flux": 254.1673,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -6660,7 +6660,7 @@
       "t": 175.778,
       "flux": 274.2888,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -6669,7 +6669,7 @@
       "t": 175.778,
       "flux": 89.374,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "medium"
@@ -6678,8 +6678,8 @@
       "t": 175.778,
       "flux": 274.2888,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -6688,7 +6688,7 @@
       "t": 175.964,
       "flux": 261.1302,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -6697,7 +6697,7 @@
       "t": 175.964,
       "flux": 91.5517,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "medium"
@@ -6706,8 +6706,8 @@
       "t": 175.964,
       "flux": 261.1302,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -6716,7 +6716,7 @@
       "t": 176.147,
       "flux": 413.931,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -6725,8 +6725,8 @@
       "t": 176.148,
       "flux": 413.931,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -6735,7 +6735,7 @@
       "t": 176.149,
       "flux": 82.7977,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "medium"
@@ -6744,7 +6744,7 @@
       "t": 176.521,
       "flux": 343.1209,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -6753,8 +6753,8 @@
       "t": 176.521,
       "flux": 343.1209,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -6763,7 +6763,7 @@
       "t": 176.53,
       "flux": 38.7269,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -6772,7 +6772,7 @@
       "t": 176.715,
       "flux": 212.8477,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -6781,7 +6781,7 @@
       "t": 176.715,
       "flux": 74.6056,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "medium"
@@ -6790,8 +6790,8 @@
       "t": 176.715,
       "flux": 212.8477,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -6800,7 +6800,7 @@
       "t": 176.898,
       "flux": 317.1239,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -6809,8 +6809,8 @@
       "t": 176.898,
       "flux": 317.1239,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -6819,7 +6819,7 @@
       "t": 176.907,
       "flux": 52.8373,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -6828,7 +6828,7 @@
       "t": 177.0,
       "flux": 31.4716,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -6837,7 +6837,7 @@
       "t": 177.273,
       "flux": 304.6935,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -6846,8 +6846,8 @@
       "t": 177.274,
       "flux": 304.6935,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -6856,7 +6856,7 @@
       "t": 177.276,
       "flux": 106.6342,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "medium"
@@ -6865,7 +6865,7 @@
       "t": 177.464,
       "flux": 228.794,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -6874,7 +6874,7 @@
       "t": 177.464,
       "flux": 77.3002,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "medium"
@@ -6883,8 +6883,8 @@
       "t": 177.466,
       "flux": 228.794,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -6893,7 +6893,7 @@
       "t": 177.647,
       "flux": 333.8787,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -6902,8 +6902,8 @@
       "t": 177.647,
       "flux": 333.8787,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -6912,7 +6912,7 @@
       "t": 177.65,
       "flux": 107.8801,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "medium"
@@ -6921,7 +6921,7 @@
       "t": 177.749,
       "flux": 35.3313,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -6930,7 +6930,7 @@
       "t": 178.024,
       "flux": 302.7471,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -6939,8 +6939,8 @@
       "t": 178.024,
       "flux": 302.7471,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -6949,7 +6949,7 @@
       "t": 178.213,
       "flux": 221.5622,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -6958,7 +6958,7 @@
       "t": 178.213,
       "flux": 79.0417,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "medium"
@@ -6967,8 +6967,8 @@
       "t": 178.213,
       "flux": 221.5622,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -6977,7 +6977,7 @@
       "t": 178.396,
       "flux": 350.934,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -6986,8 +6986,8 @@
       "t": 178.398,
       "flux": 350.934,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -6996,7 +6996,7 @@
       "t": 178.402,
       "flux": 70.532,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "medium"
@@ -7005,7 +7005,7 @@
       "t": 178.985,
       "flux": 30.4799,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -7014,7 +7014,7 @@
       "t": 179.055,
       "flux": 117.4564,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -7023,7 +7023,7 @@
       "t": 179.168,
       "flux": 38.4504,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -7032,7 +7032,7 @@
       "t": 179.246,
       "flux": 24.0235,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -7041,7 +7041,7 @@
       "t": 179.246,
       "flux": 31.3667,
       "passes": [
-        "hihat"
+        "percussive_high_mid"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -7050,7 +7050,7 @@
       "t": 179.429,
       "flux": 188.3034,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -7059,7 +7059,7 @@
       "t": 179.429,
       "flux": 69.3699,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -7068,9 +7068,9 @@
       "t": 179.431,
       "flux": 188.3034,
       "passes": [
-        "hihat",
-        "kick",
-        "snare"
+        "percussive_high_mid",
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -7079,7 +7079,7 @@
       "t": 179.522,
       "flux": 100.3267,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -7088,9 +7088,9 @@
       "t": 179.526,
       "flux": 156.2117,
       "passes": [
-        "hihat",
-        "kick",
-        "snare"
+        "percussive_high_mid",
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -7099,7 +7099,7 @@
       "t": 179.531,
       "flux": 156.2117,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -7108,7 +7108,7 @@
       "t": 179.615,
       "flux": 111.7824,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -7117,7 +7117,7 @@
       "t": 179.624,
       "flux": 80.3741,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -7126,8 +7126,8 @@
       "t": 179.624,
       "flux": 80.3741,
       "passes": [
-        "kick",
-        "snare"
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -7136,7 +7136,7 @@
       "t": 179.796,
       "flux": 203.3641,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -7145,7 +7145,7 @@
       "t": 179.804,
       "flux": 343.5156,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -7154,9 +7154,9 @@
       "t": 179.805,
       "flux": 343.5156,
       "passes": [
-        "hihat",
-        "kick",
-        "snare"
+        "percussive_high_mid",
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -7165,7 +7165,7 @@
       "t": 179.98,
       "flux": 278.4423,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -7174,7 +7174,7 @@
       "t": 179.982,
       "flux": 661.062,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "low"
@@ -7183,9 +7183,9 @@
       "t": 179.984,
       "flux": 661.062,
       "passes": [
-        "hihat",
-        "kick",
-        "snare"
+        "percussive_high_mid",
+        "percussive_bass",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -7194,7 +7194,7 @@
       "t": 183.745,
       "flux": 213.3012,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -7203,7 +7203,7 @@
       "t": 183.745,
       "flux": 213.3012,
       "passes": [
-        "snare"
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -7212,7 +7212,7 @@
       "t": 184.117,
       "flux": 259.2367,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -7221,8 +7221,8 @@
       "t": 184.118,
       "flux": 259.2367,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -7231,7 +7231,7 @@
       "t": 184.491,
       "flux": 225.498,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -7240,8 +7240,8 @@
       "t": 184.492,
       "flux": 225.498,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -7250,7 +7250,7 @@
       "t": 186.74,
       "flux": 290.2103,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -7259,8 +7259,8 @@
       "t": 186.741,
       "flux": 290.2103,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -7269,7 +7269,7 @@
       "t": 187.115,
       "flux": 341.1243,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -7278,8 +7278,8 @@
       "t": 187.117,
       "flux": 341.1243,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -7288,7 +7288,7 @@
       "t": 187.49,
       "flux": 339.2327,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -7297,8 +7297,8 @@
       "t": 187.491,
       "flux": 339.2327,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -7307,7 +7307,7 @@
       "t": 187.687,
       "flux": 36.3017,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -7316,7 +7316,7 @@
       "t": 189.742,
       "flux": 232.3135,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -7325,7 +7325,7 @@
       "t": 189.742,
       "flux": 232.3135,
       "passes": [
-        "snare"
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -7334,7 +7334,7 @@
       "t": 190.116,
       "flux": 245.287,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -7343,8 +7343,8 @@
       "t": 190.118,
       "flux": 245.287,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -7353,7 +7353,7 @@
       "t": 191.53,
       "flux": 14.3203,
       "passes": [
-        "hihat"
+        "percussive_high_mid"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -7362,8 +7362,8 @@
       "t": 191.804,
       "flux": 126.4263,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "medium"
@@ -7372,7 +7372,7 @@
       "t": 191.808,
       "flux": 126.4263,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "medium"
@@ -7381,7 +7381,7 @@
       "t": 191.808,
       "flux": 39.5291,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -7390,7 +7390,7 @@
       "t": 191.981,
       "flux": 118.368,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "medium"
@@ -7399,7 +7399,7 @@
       "t": 191.982,
       "flux": 474.0257,
       "passes": [
-        "flux"
+        "full_spectrum_flux"
       ],
       "layer": "full-spectrum",
       "intensity": "high"
@@ -7408,8 +7408,8 @@
       "t": 191.986,
       "flux": 474.0257,
       "passes": [
-        "hihat",
-        "snare"
+        "percussive_high_mid",
+        "percussive_broadband"
       ],
       "layer": "percussive",
       "intensity": "high"
@@ -7418,7 +7418,7 @@
       "t": 194.49,
       "flux": 3.0392,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -7427,7 +7427,7 @@
       "t": 194.757,
       "flux": 0.2178,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -7436,7 +7436,7 @@
       "t": 194.864,
       "flux": 0.6061,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -7445,7 +7445,7 @@
       "t": 195.152,
       "flux": 0.1521,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -7454,7 +7454,7 @@
       "t": 195.187,
       "flux": 0.2504,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -7463,7 +7463,7 @@
       "t": 195.271,
       "flux": 3.563,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -7472,7 +7472,7 @@
       "t": 195.346,
       "flux": 1.9863,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -7481,7 +7481,7 @@
       "t": 195.373,
       "flux": 2.4003,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -7490,7 +7490,7 @@
       "t": 195.422,
       "flux": 3.6933,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -7499,7 +7499,7 @@
       "t": 195.431,
       "flux": 5.8114,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -7508,7 +7508,7 @@
       "t": 195.489,
       "flux": 8.8751,
       "passes": [
-        "melody"
+        "harmonic_low_mid"
       ],
       "layer": "harmonic",
       "intensity": "low"
@@ -7517,7 +7517,7 @@
       "t": 195.492,
       "flux": 5.1065,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -7526,7 +7526,7 @@
       "t": 195.549,
       "flux": 4.5458,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -7535,7 +7535,7 @@
       "t": 195.631,
       "flux": 6.3995,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -7544,7 +7544,7 @@
       "t": 195.704,
       "flux": 7.1779,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -7553,7 +7553,7 @@
       "t": 195.767,
       "flux": 6.0349,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -7562,7 +7562,7 @@
       "t": 195.832,
       "flux": 8.6972,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -7571,7 +7571,7 @@
       "t": 195.907,
       "flux": 9.8192,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -7580,7 +7580,7 @@
       "t": 195.953,
       "flux": 9.6952,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -7589,7 +7589,7 @@
       "t": 196.04,
       "flux": 11.1674,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -7598,7 +7598,7 @@
       "t": 196.11,
       "flux": 12.1034,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -7607,7 +7607,7 @@
       "t": 196.18,
       "flux": 11.3116,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -7616,7 +7616,7 @@
       "t": 196.278,
       "flux": 11.3012,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -7625,7 +7625,7 @@
       "t": 196.325,
       "flux": 14.7825,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -7634,7 +7634,7 @@
       "t": 196.4,
       "flux": 14.0138,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -7643,7 +7643,7 @@
       "t": 196.464,
       "flux": 10.6332,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -7652,7 +7652,7 @@
       "t": 196.517,
       "flux": 13.7357,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -7661,7 +7661,7 @@
       "t": 196.569,
       "flux": 14.1486,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -7670,7 +7670,7 @@
       "t": 196.62,
       "flux": 6.6435,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -7679,7 +7679,7 @@
       "t": 196.673,
       "flux": 11.6697,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -7688,7 +7688,7 @@
       "t": 196.728,
       "flux": 18.2806,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -7697,7 +7697,7 @@
       "t": 196.784,
       "flux": 21.3704,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -7706,7 +7706,7 @@
       "t": 196.839,
       "flux": 14.0657,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -7715,7 +7715,7 @@
       "t": 196.897,
       "flux": 23.0296,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -7724,7 +7724,7 @@
       "t": 196.954,
       "flux": 17.0106,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -7733,7 +7733,7 @@
       "t": 197.215,
       "flux": 11.7147,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -7742,7 +7742,7 @@
       "t": 197.309,
       "flux": 12.8001,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -7751,7 +7751,7 @@
       "t": 197.416,
       "flux": 17.1136,
       "passes": [
-        "kick"
+        "percussive_bass"
       ],
       "layer": "percussive",
       "intensity": "low"
@@ -8049,11 +8049,11 @@
   ],
   "onset_diagnostics": {
     "raw_per_pass": {
-      "kick": 364,
-      "snare": 233,
-      "melody": 285,
-      "hihat": 210,
-      "flux": 233
+      "percussive_bass": 364,
+      "percussive_broadband": 233,
+      "harmonic_low_mid": 285,
+      "percussive_high_mid": 210,
+      "full_spectrum_flux": 233
     },
     "raw_total": 1325,
     "flat_events_pre_merge": 1325,
