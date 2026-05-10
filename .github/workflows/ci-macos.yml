@@ -78,6 +78,9 @@ jobs:
       - name: Ad-hoc code sign
         run: codesign --force --sign - build/shapeshifter
 
+      - name: Install Python tool test dependencies
+        run: python3 -m pip install numpy librosa
+
       - name: Run tests
         if: always()
         id: run-tests

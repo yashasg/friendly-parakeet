@@ -72,6 +72,9 @@ jobs:
         run: ./build.sh
         shell: bash
 
+      - name: Install Python tool test dependencies
+        run: python -m pip install numpy librosa
+
       - name: Run tests
         if: always()
         id: run-tests

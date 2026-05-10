@@ -76,6 +76,9 @@ jobs:
           chmod +x build.sh
           ./build.sh
 
+      - name: Install Python tool test dependencies
+        run: python3 -m pip install numpy librosa
+
       - name: Run tests
         if: always()
         id: run-tests
@@ -109,4 +112,3 @@ jobs:
           upload-artifact: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
