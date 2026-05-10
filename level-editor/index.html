@@ -32,7 +32,7 @@
             <button class="diff-tab active" data-diff="easy">Easy</button>
             <button class="diff-tab" data-diff="medium">Medium</button>
             <button class="diff-tab" data-diff="hard">Hard</button>
-            <button class="diff-tab-add" id="btn-add-difficulty" title="Add difficulty">+</button>
+            <button class="diff-tab-add" id="btn-add-difficulty" title="Add difficulty" aria-label="Add difficulty">+</button>
         </div>
         <div style="flex:1"></div>
         <!-- Current tool indicator -->
@@ -42,15 +42,15 @@
         </div>
         <div class="toolbar-separator"></div>
         <div class="toolbar-group">
-            <button id="btn-undo" class="btn btn-sm" title="Undo (Ctrl+Z)">↩</button>
-            <button id="btn-redo" class="btn btn-sm" title="Redo (Ctrl+Shift+Z)">↪</button>
+            <button id="btn-undo" class="btn btn-sm" title="Undo (Ctrl+Z)" aria-label="Undo">↩</button>
+            <button id="btn-redo" class="btn btn-sm" title="Redo (Ctrl+Shift+Z)" aria-label="Redo">↪</button>
         </div>
         <div class="toolbar-separator"></div>
         <span id="beat-count-display" class="toolbar-label" style="color: var(--text);">0 beats</span>
         <div class="toolbar-separator"></div>
         <button id="btn-help" class="btn btn-sm" title="How to use this editor (?)" aria-haspopup="dialog" aria-controls="help-modal">❔ Help</button>
         <div class="toolbar-separator"></div>
-        <button id="btn-settings" class="btn btn-sm" title="Song settings">⚙</button>
+        <button id="btn-settings" class="btn btn-sm" title="Song settings" aria-label="Song settings">⚙</button>
     </div>
 
     <!-- ── Main: full-width timeline ─────────────────── -->
@@ -74,9 +74,9 @@
         <span id="beat-display" style="min-width: 40px;">0</span>
         <div style="flex:1"></div>
         <span class="toolbar-label">Zoom</span>
-        <button id="btn-zoom-out" class="btn btn-sm" title="Zoom out (-)">−</button>
+        <button id="btn-zoom-out" class="btn btn-sm" title="Zoom out (-)" aria-label="Zoom out">−</button>
         <span id="zoom-display" style="min-width: 36px; text-align: center;">100%</span>
-        <button id="btn-zoom-in" class="btn btn-sm" title="Zoom in (+)">+</button>
+        <button id="btn-zoom-in" class="btn btn-sm" title="Zoom in (+)" aria-label="Zoom in">+</button>
         <div class="toolbar-separator"></div>
         <select id="playback-rate" class="btn btn-sm" style="padding: 3px 6px;">
             <option value="0.25">0.25×</option>
