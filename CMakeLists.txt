@@ -369,34 +369,36 @@ if(EMSCRIPTEN)
     )
 endif()
 
-# Desktop startup/shutdown smoke harness used by CTest/CI lifecycle validation.
-add_executable(shapeshifter_startup_shutdown_smoke
-    tests/smoke/startup_shutdown_smoke.cpp
-    ${SHAPESHIFTER_RUNTIME_SOURCES}
-)
-target_include_directories(shapeshifter_startup_shutdown_smoke PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/app
-)
-target_link_libraries(shapeshifter_startup_shutdown_smoke PRIVATE
-    shapeshifter_lib
-    raylib
-    shapeshifter_warnings
-)
-add_dependencies(shapeshifter_startup_shutdown_smoke shapeshifter)
-
-if(APPLE)
-    target_link_options(shapeshifter_startup_shutdown_smoke PRIVATE "LINKER:-no_warn_duplicate_libraries")
-    target_link_libraries(shapeshifter_startup_shutdown_smoke PRIVATE
-        "-framework Cocoa"
-        "-framework OpenGL"
-        "-framework IOKit"
-        "-framework CoreFoundation"
-        "-framework CoreVideo"
+# Desktop startup/shutdown smoke harness used by native CTest/CI lifecycle validation.
+if(NOT EMSCRIPTEN)
+    add_executable(shapeshifter_startup_shutdown_smoke
+        tests/smoke/startup_shutdown_smoke.cpp
+        ${SHAPESHIFTER_RUNTIME_SOURCES}
     )
-elseif(WIN32)
-    target_link_libraries(shapeshifter_startup_shutdown_smoke PRIVATE opengl32 gdi32 winmm)
-elseif(UNIX AND NOT EMSCRIPTEN)
-    target_link_libraries(shapeshifter_startup_shutdown_smoke PRIVATE GL X11 Xrandr m pthread dl)
+    target_include_directories(shapeshifter_startup_shutdown_smoke PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/app
+    )
+    target_link_libraries(shapeshifter_startup_shutdown_smoke PRIVATE
+        shapeshifter_lib
+        raylib
+        shapeshifter_warnings
+    )
+    add_dependencies(shapeshifter_startup_shutdown_smoke shapeshifter)
+
+    if(APPLE)
+        target_link_options(shapeshifter_startup_shutdown_smoke PRIVATE "LINKER:-no_warn_duplicate_libraries")
+        target_link_libraries(shapeshifter_startup_shutdown_smoke PRIVATE
+            "-framework Cocoa"
+            "-framework OpenGL"
+            "-framework IOKit"
+            "-framework CoreFoundation"
+            "-framework CoreVideo"
+        )
+    elseif(WIN32)
+        target_link_libraries(shapeshifter_startup_shutdown_smoke PRIVATE opengl32 gdi32 winmm)
+    elseif(UNIX)
+        target_link_libraries(shapeshifter_startup_shutdown_smoke PRIVATE GL X11 Xrandr m pthread dl)
+    endif()
 endif()
 
 # Copy font files next to the executable so runtime font loading can find them
