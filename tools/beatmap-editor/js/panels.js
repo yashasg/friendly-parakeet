@@ -392,6 +392,8 @@ function rebuildDifficultyTabs() {
         const btn = document.createElement('button');
         btn.className = 'diff-tab';
         btn.dataset.diff = name;
+        btn.setAttribute('role', 'tab');
+        btn.setAttribute('aria-selected', name === state.activeDifficulty ? 'true' : 'false');
         btn.textContent = name.charAt(0).toUpperCase() + name.slice(1);
         els.difficultyTabs.insertBefore(btn, els.btnAddDifficulty);
     }
@@ -411,7 +413,9 @@ function syncDifficultyTabsToDOM() {
 
     // Update active state
     for (const tab of els.difficultyTabs.querySelectorAll('.diff-tab[data-diff]')) {
-        tab.classList.toggle('active', tab.dataset.diff === state.activeDifficulty);
+        const isActive = tab.dataset.diff === state.activeDifficulty;
+        tab.classList.toggle('active', isActive);
+        tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
     }
 }
 

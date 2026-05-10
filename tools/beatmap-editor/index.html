@@ -12,8 +12,8 @@
     <!-- ── Top Bar: essential actions only ────────────── -->
     <div id="toolbar">
         <div class="toolbar-group">
-            <span class="toolbar-label">Level</span>
-            <select id="default-level-select" class="btn btn-sm" title="Load bundled level and audio">
+            <span class="toolbar-label" id="default-level-label">Level</span>
+            <select id="default-level-select" class="btn btn-sm" title="Load bundled level and audio" aria-labelledby="default-level-label">
                 <option value="">Custom</option>
             </select>
         </div>
@@ -28,10 +28,10 @@
             <button id="btn-import-analysis" class="btn btn-sm" title="Load analysis overlay">📊 Analysis</button>
         </div>
         <div class="toolbar-separator"></div>
-        <div id="difficulty-tabs">
-            <button class="diff-tab active" data-diff="easy">Easy</button>
-            <button class="diff-tab" data-diff="medium">Medium</button>
-            <button class="diff-tab" data-diff="hard">Hard</button>
+        <div id="difficulty-tabs" role="tablist" aria-label="Difficulty">
+            <button class="diff-tab active" data-diff="easy" role="tab" aria-selected="true">Easy</button>
+            <button class="diff-tab" data-diff="medium" role="tab" aria-selected="false">Medium</button>
+            <button class="diff-tab" data-diff="hard" role="tab" aria-selected="false">Hard</button>
             <button class="diff-tab-add" id="btn-add-difficulty" title="Add difficulty" aria-label="Add difficulty">+</button>
         </div>
         <div style="flex:1"></div>
@@ -78,7 +78,7 @@
         <span id="zoom-display" style="min-width: 36px; text-align: center;">100%</span>
         <button id="btn-zoom-in" class="btn btn-sm" title="Zoom in (+)" aria-label="Zoom in">+</button>
         <div class="toolbar-separator"></div>
-        <select id="playback-rate" class="btn btn-sm" style="padding: 3px 6px;">
+        <select id="playback-rate" class="btn btn-sm" style="padding: 3px 6px;" aria-label="Playback rate">
             <option value="0.25">0.25×</option>
             <option value="0.5">0.5×</option>
             <option value="0.75">0.75×</option>
