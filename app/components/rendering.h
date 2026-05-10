@@ -30,7 +30,10 @@ struct ScreenTransform {
 };
 
 [[nodiscard]] inline glm::vec2 screen_to_virtual(const glm::vec2& screen_pos,
-                                                 const ScreenTransform& st) noexcept {
+                                                  const ScreenTransform& st) noexcept {
+    if (st.scale <= 0.0f) {
+        return screen_pos;
+    }
     return {
         (screen_pos.x - st.offset_x) / st.scale,
         (screen_pos.y - st.offset_y) / st.scale
@@ -45,24 +48,24 @@ enum class MeshType : uint8_t { Shape, Slab, Quad };
 
 struct ModelTransform {
     glm::mat4 mat{1.0f};
-    Color     tint{};
+    Color     tint{255, 255, 255, 255};
     uint8_t   mesh_index = 0;  // index into ShapeMeshes.shapes[] for Shape type
-    MeshType  mesh_type;
+    MeshType  mesh_type = MeshType::Shape;
 };
 
 // Visual mesh child of a logical entity (e.g., obstacle slabs, ghost shapes).
 // Created at spawn time by game object factories. game_camera_system reads
 // parent WorldTransform + child offsets to compute ModelTransform each frame.
 struct MeshChild {
-    entt::entity parent;
-    float x;             // absolute X position in game coords
-    float z_offset;      // offset from parent WorldTransform.position.y (scroll axis)
-    float width;         // slab width (game coords)
-    float depth;         // slab depth (game coords)
-    float height;        // slab height (game coords)
-    Color tint;
+    entt::entity parent = entt::null;
+    float x = 0.0f;             // absolute X position in game coords
+    float z_offset = 0.0f;      // offset from parent WorldTransform.position.y (scroll axis)
+    float width = 0.0f;         // slab width (game coords)
+    float depth = 0.0f;         // slab depth (game coords)
+    float height = 0.0f;        // slab height (game coords)
+    Color tint{255, 255, 255, 255};
     uint8_t mesh_index = 0;  // index into ShapeMeshes.shapes[] for Shape type
-    MeshType mesh_type;
+    MeshType mesh_type = MeshType::Shape;
 };
 
 // ── Mesh-child ownership ─────────────────────────────────────────────────────
@@ -71,7 +74,7 @@ struct MeshChild {
 // scanning the entire MeshChild pool.
 struct ObstacleChildren {
     static constexpr int MAX = 8;
-    entt::entity children[MAX];
+    entt::entity children[MAX]{};
     int count = 0;
 };
 

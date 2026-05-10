@@ -279,6 +279,7 @@ TEST_CASE("entity: BeatInfo emplaced when provided", "[archetype]") {
     auto e = spawn_obstacle(reg, {ObstacleKind::ShapeGate, 360.0f, -120.0f}, &bi);
 
     REQUIRE(reg.all_of<BeatInfo>(e));
+    CHECK_FALSE(reg.all_of<MotionVelocity>(e));
     CHECK(reg.get<BeatInfo>(e).beat_index == 5);
     CHECK(reg.get<BeatInfo>(e).arrival_time == 1.5f);
     CHECK(reg.get<BeatInfo>(e).spawn_time == 1.0f);
@@ -289,4 +290,5 @@ TEST_CASE("entity: no BeatInfo when not provided", "[archetype]") {
     auto e = spawn_obstacle(reg, {ObstacleKind::ShapeGate, 360.0f, -120.0f});
 
     CHECK_FALSE(reg.all_of<BeatInfo>(e));
+    CHECK(reg.all_of<MotionVelocity>(e));
 }

@@ -53,7 +53,6 @@ struct EnergyState {
 enum class DeathCause : uint8_t {
     None = 0,
     EnergyDepleted = 1,
-    MissedABeat    = 2,
 };
 
 struct GameOverState {

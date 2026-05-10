@@ -8,7 +8,9 @@
 entt::entity spawn_obstacle(entt::registry& reg, const ObstacleSpawnParams& params,
                              const BeatInfo* beat_info) {
     auto e = reg.create();
-    reg.emplace<MotionVelocity>(e, MotionVelocity{{0.0f, params.speed}});
+    if (!beat_info) {
+        reg.emplace<MotionVelocity>(e, MotionVelocity{{0.0f, params.speed}});
+    }
     reg.emplace<WorldTransform>(e, WorldTransform{{params.x, params.y}});
     reg.emplace<DrawLayer>(e, Layer::Game);
     reg.emplace<TagWorldPass>(e);

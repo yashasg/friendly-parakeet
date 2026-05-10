@@ -336,12 +336,14 @@ The player can hear the beat coming. The timing is legible. What the player cann
   │                                                             │
   │    |input - t_peak|   Grade      Multiplier  Window Scale  │
   │   ─────────────────   ────────   ──────────  ────────────  │
-  │       ≤ 50 ms         PERFECT     × 1.50      × 1.50       │
-  │       ≤ 100 ms        GOOD        × 1.00      × 1.00       │
-  │       ≤ 150 ms        OK          × 0.50      × 0.75       │
-  │       > 150 ms        BAD         × 0.25      × 0.50       │
+  │       ≤ 50 ms         PERFECT     × 1.50      × 0.50       │
+  │       ≤ 100 ms        GOOD        × 1.00      × 0.75       │
+  │       ≤ 150 ms        OK          × 0.50      × 1.00       │
+  │       > 150 ms        BAD         × 0.25      × 1.00       │
   │                                                             │
   │  Thresholds are fixed milliseconds in shipped code.         │
+  │  Lower Window Scale means the active shape window collapses │
+  │  sooner after that scored press.                            │
   │  Score = floor(base_points × timing_multiplier) + chain_flat_bonus. │
   │                                                             │
   └─────────────────────────────────────────────────────────────┘

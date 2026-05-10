@@ -23,6 +23,38 @@ TEST_CASE("components: MotionVelocity defaults to zero vector", "[components][tr
     CHECK(velocity.value.y == 0.0f);
 }
 
+TEST_CASE("components: rendering components are safely default constructible",
+          "[components][rendering]") {
+    ModelTransform model{};
+    CHECK(model.tint.r == 255);
+    CHECK(model.tint.g == 255);
+    CHECK(model.tint.b == 255);
+    CHECK(model.tint.a == 255);
+    CHECK(model.mesh_index == uint8_t{0});
+    CHECK(model.mesh_type == MeshType::Shape);
+
+    MeshChild child{};
+    const bool parent_is_null = child.parent == entt::null;
+    CHECK(parent_is_null);
+    CHECK(child.x == 0.0f);
+    CHECK(child.z_offset == 0.0f);
+    CHECK(child.width == 0.0f);
+    CHECK(child.depth == 0.0f);
+    CHECK(child.height == 0.0f);
+    CHECK(child.tint.r == 255);
+    CHECK(child.tint.g == 255);
+    CHECK(child.tint.b == 255);
+    CHECK(child.tint.a == 255);
+    CHECK(child.mesh_index == uint8_t{0});
+    CHECK(child.mesh_type == MeshType::Shape);
+
+    ObstacleChildren children{};
+    CHECK(children.count == 0);
+    for (const auto entity : children.children) {
+        CHECK(entity == entt::entity{});
+    }
+}
+
 TEST_CASE("components: UIPosition is distinct screen-space placement", "[components][transform][ui]") {
     UIPosition position{};
     CHECK(position.value.x == 0.0f);

@@ -122,7 +122,8 @@ regression gate.
 constexpr float WINDOW_PERFECT   = 0.050f;  // ±50ms  → PERFECT
 constexpr float WINDOW_GOOD      = 0.100f;  // ±100ms → GOOD
 constexpr float WINDOW_OK        = 0.150f;  // ±150ms → OK
-constexpr float WINDOW_BAD       = 0.200f;  // ±200ms → BAD timing tier
+// BAD is any scored press beyond OK timing; the active shape window,
+// not a separate 200ms constant, bounds whether the hit can score.
 
 // ── Window scale factors (applied to remaining window on early hit) ──
 constexpr float WINDOW_SCALE_PERFECT = 0.50f;  // PERFECT hit → halve remaining window

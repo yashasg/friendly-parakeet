@@ -321,8 +321,9 @@ void game_camera_system(entt::registry& reg, float /*dt*/) {
         float pulse = 0.0f;
         if (song && song->playing && song->beat_period > 0.0f && song->current_beat >= 0) {
             float beat_time = song->offset + static_cast<float>(song->current_beat) * song->beat_period;
-            if (map && !map->beat_times.empty()) {
-                beat_time = map->beat_times[static_cast<size_t>(song->current_beat)];
+            const auto beat_index = static_cast<size_t>(song->current_beat);
+            if (map && beat_index < map->beat_times.size()) {
+                beat_time = map->beat_times[beat_index];
             }
             float time_since_beat = song->song_time - beat_time;
             float pulse_t = Clamp(time_since_beat / constants::FLOOR_PULSE_DECAY, 0.0f, 1.0f);

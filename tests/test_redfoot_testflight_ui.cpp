@@ -144,7 +144,7 @@ TEST_CASE("redfoot/#168: energy depletion falls back to ENERGY DEPLETED",
     CHECK(gos.cause == DeathCause::EnergyDepleted);
 }
 
-TEST_CASE("redfoot/#168: energy depletion overwrites stale non-terminal cause",
+TEST_CASE("redfoot/#168: energy depletion writes terminal cause",
            "[ui][redfoot][game_over][wiring]") {
     entt::registry reg;
     reg.ctx().emplace<GameState>().phase = GamePhase::Playing;
@@ -153,7 +153,7 @@ TEST_CASE("redfoot/#168: energy depletion overwrites stale non-terminal cause",
     auto& song = reg.ctx().emplace<SongState>();
     song.playing = true;
     auto& gos = reg.ctx().emplace<GameOverState>();
-    gos.cause = DeathCause::MissedABeat;
+    gos.cause = DeathCause::None;
     energy.energy = 0.0f;
 
     game_state_system(reg, 0.016f);

@@ -380,7 +380,7 @@ TEST_CASE("beat_scheduler: obstacles spawn with overshoot compensation", "[beat_
     }
 }
 
-TEST_CASE("beat_scheduler: obstacles have velocity matching scroll_speed", "[beat_scheduler]") {
+TEST_CASE("beat_scheduler: rhythm obstacles omit MotionVelocity", "[beat_scheduler]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
     auto& map = reg.ctx().get<BeatMap>();
@@ -391,10 +391,11 @@ TEST_CASE("beat_scheduler: obstacles have velocity matching scroll_speed", "[bea
 
     beat_scheduler_system(reg, 0.016f);
 
-    auto view = reg.view<ObstacleTag, MotionVelocity>();
-    for (auto [e, vel] : view.each()) {
-        CHECK(vel.value.y == song.scroll_speed);
-        CHECK(vel.value.x == 0.0f);
+    auto view = reg.view<ObstacleTag, BeatInfo>();
+    REQUIRE(std::distance(view.begin(), view.end()) == 1);
+    for (auto [e, info] : view.each()) {
+        (void)info;
+        CHECK_FALSE(reg.all_of<MotionVelocity>(e));
     }
 }
 
