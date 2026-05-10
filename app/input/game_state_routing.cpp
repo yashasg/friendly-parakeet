@@ -14,17 +14,21 @@ bool game_state_handle_end_screen_press(entt::registry& reg, const ButtonPressEv
         return false;
     }
 
+    const MenuActionKind action =
+        (evt.menu_action == MenuActionKind::Confirm) ? MenuActionKind::Restart
+                                                      : evt.menu_action;
+
     if (auto* disp = reg.ctx().find<entt::dispatcher>()) {
-        disp->enqueue<PlayHapticEvent>({evt.menu_action == MenuActionKind::Restart
+        disp->enqueue<PlayHapticEvent>({action == MenuActionKind::Restart
                                            ? HapticEvent::RetryTap
                                            : HapticEvent::UIButtonTap});
     }
 
-    if (evt.menu_action == MenuActionKind::Restart) {
+    if (action == MenuActionKind::Restart) {
         gs.end_choice = EndScreenChoice::Restart;
-    } else if (evt.menu_action == MenuActionKind::GoLevelSelect) {
+    } else if (action == MenuActionKind::GoLevelSelect) {
         gs.end_choice = EndScreenChoice::LevelSelect;
-    } else if (evt.menu_action == MenuActionKind::GoMainMenu) {
+    } else if (action == MenuActionKind::GoMainMenu) {
         gs.end_choice = EndScreenChoice::MainMenu;
     }
     return true;

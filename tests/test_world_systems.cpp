@@ -128,6 +128,36 @@ TEST_CASE("game_state: game over button choice after delay", "[gamestate]") {
     CHECK(gs.next_phase == GamePhase::LevelSelect);
 }
 
+TEST_CASE("game_state: game over keyboard confirm routes to restart", "[gamestate][input][regression]") {
+    auto reg = make_registry();
+    auto& gs = reg.ctx().get<GameState>();
+    gs.phase = GamePhase::GameOver;
+    gs.phase_timer = 0.5f;
+
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>(
+        {ButtonPressKind::Menu, Shape::Circle, MenuActionKind::Confirm, 0});
+
+    game_state_system(reg, 0.016f);
+
+    CHECK(gs.transition_pending);
+    CHECK(gs.next_phase == GamePhase::Playing);
+}
+
+TEST_CASE("game_state: song complete keyboard confirm routes to restart", "[gamestate][input][regression]") {
+    auto reg = make_registry();
+    auto& gs = reg.ctx().get<GameState>();
+    gs.phase = GamePhase::SongComplete;
+    gs.phase_timer = 0.6f;
+
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>(
+        {ButtonPressKind::Menu, Shape::Circle, MenuActionKind::Confirm, 0});
+
+    game_state_system(reg, 0.016f);
+
+    CHECK(gs.transition_pending);
+    CHECK(gs.next_phase == GamePhase::Playing);
+}
+
 TEST_CASE("game_state: game over ignores touch during delay", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
