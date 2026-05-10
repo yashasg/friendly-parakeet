@@ -7,5 +7,6 @@ namespace platform::ios {
 bool haptics_ios_available() noexcept;
 void haptics_ios_warmup() noexcept;
 void haptics_ios_trigger(HapticEvent event) noexcept;
+void haptics_ios_reset() noexcept;
 
 }  // namespace platform::ios

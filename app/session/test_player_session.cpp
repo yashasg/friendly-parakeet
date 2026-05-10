@@ -15,8 +15,6 @@ namespace {
 struct TestPlayerSessionSignals {
     bool wired = false;
 };
-
-uint32_t g_test_player_log_sequence = 0;
 }
 
 void test_player_init(entt::registry& reg, TestPlayerSkill skill,
@@ -27,11 +25,22 @@ void test_player_init(entt::registry& reg, TestPlayerSkill skill,
         if (std::strcmp(content_config::DIFFICULTY_KEYS[d], difficulty) == 0)
             { lss.selected_difficulty = d; break; }
 
+    auto* session_state = reg.ctx().find<TestPlayerSessionState>();
+    if (!session_state) {
+        session_state = &reg.ctx().emplace<TestPlayerSessionState>();
+    }
+
     auto& tp_state = reg.ctx().get<TestPlayerState>();
     tp_state = TestPlayerState{};
     tp_state.skill  = skill;
     tp_state.active = true;
-    tp_state.rng.seed(static_cast<unsigned>(std::time(nullptr)));
+
+    unsigned seed = session_state->rng_seed;
+    if (session_state->use_runtime_seed) {
+        seed = static_cast<unsigned>(std::time(nullptr));
+        session_state->rng_seed = seed;
+    }
+    tp_state.rng.seed(seed);
 
     static const char* skill_names[] = { "pro", "good", "bad" };
     TraceLog(LOG_INFO, "TEST PLAYER: skill=%s",
@@ -42,7 +51,7 @@ void test_player_init(entt::registry& reg, TestPlayerSkill skill,
     slog = SessionLog{};
     const double runtime_seconds = GetTime();
     const auto runtime_millis = static_cast<unsigned long long>(runtime_seconds * 1000.0);
-    const uint32_t sequence = ++g_test_player_log_sequence;
+    const uint32_t sequence = ++session_state->log_sequence;
     char log_filename[256];
     std::snprintf(log_filename, sizeof(log_filename),
         "%ssession_%s_rt%010llu_n%04u.log",
