@@ -539,7 +539,10 @@ endif()
 if(NOT EMSCRIPTEN)
     include(CTest)
     include(Catch)
-    catch_discover_tests(shapeshifter_tests)
+    catch_discover_tests(
+        shapeshifter_tests
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+    )
 
     find_package(Python3 COMPONENTS Interpreter REQUIRED)
     add_test(
