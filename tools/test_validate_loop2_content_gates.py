@@ -162,7 +162,7 @@ class TestLoop2GateEvaluation(unittest.TestCase):
 
 
 class TestShippedBeatmapInvariants(unittest.TestCase):
-    """Regression coverage for issues #414, #416, #418 on shipped beatmaps."""
+    """Regression coverage for issues #414, #416, #418, #420 on shipped beatmaps."""
 
     SHIPPED_DIR = Path(__file__).resolve().parent.parent / "content" / "beatmaps"
     INCLUSION_ORDER = {"easy": 0, "medium": 1, "hard": 2}
@@ -245,6 +245,37 @@ class TestShippedBeatmapInvariants(unittest.TestCase):
             f"drama hard median IOI {hard:.3f}s above target 0.540s "
             f"(+50ms slack) (#418)"
         )
+
+    def test_circle_and_lane2_share_nontrivial_at_medium_and_hard(self):
+        """#420 — every shipped beatmap×{medium,hard} must include a
+        non-trivial share of ``shape == "circle"`` AND ``lane == 2`` so the
+        third broad onset layer (harmonic) and the third lane are reachable
+        design space rather than dead UI.  Floor: 10% per cohort.
+        """
+        floor = 0.10
+        for path, beatmap in self._shipped_beatmaps():
+            for difficulty in ("medium", "hard"):
+                payload = beatmap.get("difficulties", {}).get(difficulty)
+                if not payload:
+                    continue
+                beats = [
+                    b for b in payload.get("beats", [])
+                    if b.get("kind") == "shape_gate"
+                ]
+                if not beats:
+                    continue
+                circle_share = sum(1 for b in beats if b.get("shape") == "circle") / len(beats)
+                lane2_share = sum(1 for b in beats if b.get("lane") == 2) / len(beats)
+                self.assertGreaterEqual(
+                    circle_share, floor,
+                    f"{path.name} [{difficulty}]: circle share "
+                    f"{circle_share:.1%} below 10% floor (#420)"
+                )
+                self.assertGreaterEqual(
+                    lane2_share, floor,
+                    f"{path.name} [{difficulty}]: lane-2 share "
+                    f"{lane2_share:.1%} below 10% floor (#420)"
+                )
 
 
 if __name__ == "__main__":
