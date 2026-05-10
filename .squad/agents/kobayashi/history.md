@@ -23,6 +23,8 @@
 **Worktree State:** Clean, on main branch (origin/main tracking updated)
 
 ## Learnings
+
+- 2026-05-10T15:35:04.939-07:00 — Granted Ralph/Squad heartbeat repository content write permission so the loop can push commits or modify repo files, while retaining existing issue write and pull-request read scopes. Touched `.github/workflows/squad-heartbeat.yml` and `.squad/templates/workflows/squad-heartbeat.yml`; referenced template paths `templates/workflows/squad-heartbeat.yml` and `packages/squad-cli/templates/workflows/squad-heartbeat.yml` are not present in this checkout.
 - Integration branches work well for multi-PR consolidation; prefer squash-merge to keep main history clean
 - CodeQL scanning adds ~30s latency to PR merge workflow; consider pre-validation locally for large changes
 - Beatmap quality and onset tuning changes are data-driven (JSON configs + CSV diagnostics); changes don't affect C++ core logic

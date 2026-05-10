@@ -22,7 +22,7 @@ on:
 
 permissions:
   issues: write
-  contents: read
+  contents: write
   pull-requests: read
 
 jobs:
