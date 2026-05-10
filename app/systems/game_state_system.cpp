@@ -21,7 +21,7 @@ void update_web_playing_lane_marker(entt::registry& reg, const GameState& gs) {
     }
 
     auto player_view = reg.view<PlayerTag, Lane>();
-    if (player_view.empty()) {
+    if (player_view.begin() == player_view.end()) {
         return;
     }
 
