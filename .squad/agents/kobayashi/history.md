@@ -27,3 +27,16 @@
 - CodeQL scanning adds ~30s latency to PR merge workflow; consider pre-validation locally for large changes
 - Beatmap quality and onset tuning changes are data-driven (JSON configs + CSV diagnostics); changes don't affect C++ core logic
 
+
+## Audit Loop Validation — 2026-05-10
+
+- Ran full validation on `audit/autonomous-quality-loop` @ `45bcef6`:
+  - `cmake -B build -S . -Wno-dev`
+  - `cmake --build build`
+  - `./build/shapeshifter_tests`
+  - `./run.sh test`
+- Result: all validation steps passed.
+- Reconciled issues #382-#407:
+  - Closed fixed issues #382-#386, #388-#407 with commit-linked close comments.
+  - Left #387 open with explanation because `design-docs/game-flow.md` still contains Section 2b burnout-meter references.
+- Release follow-up: prepared branch for PR to `main` after issue reconciliation.
