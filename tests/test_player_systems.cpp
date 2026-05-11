@@ -94,32 +94,30 @@ TEST_CASE("player_action: swipe right at lane 2 is clamped", "[player]") {
     CHECK(reg.get<Lane>(p).target == -1);
 }
 
-TEST_CASE("player_action: swipe up does not jump (disabled)", "[player]") {
+TEST_CASE("player_action: swipe up starts jump", "[player]") {
     auto reg = make_registry();
-    make_player(reg);
+    auto player = make_player(reg);
 
     reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Up});
 
     run_semantic_input_tick(reg, 0.016f);
 
-    auto view = reg.view<PlayerTag, VerticalState>();
-    for (auto [e, vs] : view.each()) {
-        CHECK(vs.mode == VMode::Grounded);
-    }
+    auto& vs = reg.get<VerticalState>(player);
+    CHECK(vs.mode == VMode::Jumping);
+    CHECK(vs.timer == constants::JUMP_DURATION);
 }
 
-TEST_CASE("player_action: swipe down does not slide (disabled)", "[player]") {
+TEST_CASE("player_action: swipe down starts slide", "[player]") {
     auto reg = make_registry();
-    make_player(reg);
+    auto player = make_player(reg);
 
     reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Down});
 
     run_semantic_input_tick(reg, 0.016f);
 
-    auto view = reg.view<PlayerTag, VerticalState>();
-    for (auto [e, vs] : view.each()) {
-        CHECK(vs.mode == VMode::Grounded);
-    }
+    auto& vs = reg.get<VerticalState>(player);
+    CHECK(vs.mode == VMode::Sliding);
+    CHECK(vs.timer == constants::SLIDE_DURATION);
 }
 
 TEST_CASE("player_action: cannot jump while already jumping", "[player]") {

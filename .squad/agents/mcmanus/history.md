@@ -127,3 +127,10 @@
 - Filed #444: end-of-song invariant break can soft-lock Playing if `song.playing=false` before remaining obstacles clear.
 - Filed #445: `scoring_system` continues passive distance/time accrual while `song.playing=false` in post-finish window.
 - Validation context: baseline tests currently pass (`All tests passed (1954 assertions in 720 test cases)`).
+
+## 2026-05-10T17:51:46.427-07:00 — Fixed #89 vertical GoEvent input
+
+- Root cause: `player_input_handle_go` only consumed Left/Right lane deltas; Up/Down `GoEvent`s from keyboard, touch swipe, or test-player AI reached the dispatcher but never mutated `VerticalState`.
+- Fix: Up now starts `VMode::Jumping` with `JUMP_DURATION`; Down now starts `VMode::Sliding` with `SLIDE_DURATION`; both are accepted only from `Grounded` so existing no-reset behavior remains intact.
+- Regression coverage: Updated obsolete disabled-input assertions and added pipeline tests proving jump/slide activate through the normal `GoEvent` drain path.
+- Validation: `VCPKG_ROOT=/Users/yashasgujjar/vcpkg ./build.sh && ./build/shapeshifter_tests "[player],[player_rhythm],[input_pipeline]"`; `./build/shapeshifter_tests && git --no-pager diff --check` passed.

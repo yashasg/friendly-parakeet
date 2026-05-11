@@ -163,3 +163,19 @@ Approved Keaton's raylib replacement pass: HUD hexagon fill correctly uses `Draw
 7. **Validation evidence:** ✓ PASS. `git diff --check` clean. Kobayashi's history confirms `cmake -B build -S . -Wno-dev` passed. Hockney's history confirms same. No dirty unrelated files staged.
 
 **Verdict:** APPROVED. All six issue criteria pass. Changes are surgical and internally consistent across squad-ci, squad-preview, squad-release, squad-insider-release, copilot-setup-steps, ci-linux, ci-macos, ci-windows, and CMakeLists.txt.
+
+### 2026-05-10T17:51:46.427-07:00 — Issue #89 jump/slide vertical input APPROVED
+
+**Scope:** `app/systems/player_input_system.cpp`, `tests/test_player_systems.cpp`, `tests/test_input_pipeline_behavior.cpp`, `tests/test_player_action_rhythm.cpp`.
+
+**Criteria check:**
+
+1. **Up/Down → VerticalState mapping correct, lane movement preserved:** ✓ PASS. `player_input_handle_go` (lines 35–43) maps `Direction::Up` to `VMode::Jumping` and `Direction::Down` to `VMode::Sliding` only when `delta == 0` (no lane change produced). Left/Right lane behavior is unaffected because any valid lane delta fires first via the `if (delta != 0)` branch.
+2. **Grounded-only constraint preserved:** ✓ PASS. Both vertical branches guard on `vstate.mode == VMode::Grounded`. Tests explicitly cover: cannot jump while jumping, cannot slide while sliding, cannot slide while jumping, and cannot jump while sliding — all assert timer is not reset and mode is unchanged.
+3. **Test coverage adequate:** ✓ PASS. 10+ new/updated assertions across three test files cover: basic jump/slide activation, grounded-only guards (4 negative cases), pipeline same-tick latency for jump and slide, Up/Down having no lane effect, rhythm-mode jump, and not-in-Playing phase skip.
+4. **No LowBar/HighBar reintroduction:** ✓ PASS. Zero matches for `LowBar`, `HighBar`, `low_bar`, or `high_bar` across all four reviewed files.
+5. **No build/warning/test risks:** ✓ PASS. Implementation uses existing `constants::JUMP_DURATION` / `constants::SLIDE_DURATION`, proper `VMode` enum comparisons, no implicit conversions. Coordinator validated: build exited 0, full test suite exited 0, `git diff --check` clean.
+
+**Non-blocking note:** Baer flagged renaming the lane-only Up/Down pipeline test for clarity. Current name ("pipeline: swipe Up/Down has no lane effect") is already descriptive; rename is low priority and non-blocking.
+
+**Verdict:** APPROVED. McManus's fix is correct, well-guarded, and adequately tested. Issue #89 acceptance criteria are met.
