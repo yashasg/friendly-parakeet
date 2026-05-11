@@ -82,6 +82,20 @@ const HudLayout& resolved_hud_layout(const entt::registry& reg) {
     return fallback;
 }
 
+Color ring_color_for_cue(GameplayHudRingCue cue, const HudLayout& layout) {
+    switch (cue) {
+        case GameplayHudRingCue::Perfect:
+            return layout.ring_perfect;
+        case GameplayHudRingCue::Near:
+            return layout.ring_near;
+        case GameplayHudRingCue::Far:
+            return layout.ring_far;
+        case GameplayHudRingCue::Hidden:
+            break;
+    }
+    return layout.ring_far;
+}
+
 Rectangle shape_slot_bounds(const GameplayHudLayoutState& state, GameplayHudShapeSlot slot) {
     switch (slot) {
         case GameplayHudShapeSlot::Circle:
@@ -137,9 +151,7 @@ void render_shape_buttons(const entt::registry& reg,
     }
 
     auto* song_state = reg.ctx().find<SongState>();
-    float perfect_dist = song_state
-        ? 0.0f
-        : constants::BASE_SCROLL_SPEED * 0.5f;
+    float perfect_dist = gameplay_hud_perfect_distance(song_state);
     float ring_appear_dist = constants::APPROACH_DIST;
     float max_ring_radius = btn_radius * layout.approach_ring_max_radius_scale;
 
@@ -160,18 +172,15 @@ void render_shape_buttons(const entt::registry& reg,
 
         int shape_index = static_cast<int>(button.shape);
         if (shape_index < 0 || shape_index >= static_cast<int>(nearest_dist.size())) continue;
-        if (nearest_dist[shape_index] <= 0.0f || nearest_dist[shape_index] >= ring_appear_dist) continue;
-        float ratio = (nearest_dist[shape_index] - perfect_dist) / (ring_appear_dist - perfect_dist);
-        ratio = Clamp(ratio, 0.0f, 1.0f);
+        const auto cue = gameplay_hud_ring_cue(nearest_dist[shape_index], perfect_dist, ring_appear_dist);
+        if (cue == GameplayHudRingCue::Hidden) continue;
+        float ratio = gameplay_hud_ring_ratio(nearest_dist[shape_index], perfect_dist, ring_appear_dist);
 
         const auto envelope = motion::approach_ring_envelope(ratio, btn_radius,
                                                              max_ring_radius, reduce_motion);
         if (envelope.alpha_scale <= 0.0f) continue;
 
-        Color base = (nearest_dist[shape_index] <= perfect_dist) ? layout.ring_perfect
-                                                                  : ((ratio < 0.3f)
-                                                                         ? layout.ring_near
-                                                                         : layout.ring_far);
+        Color base = ring_color_for_cue(cue, layout);
         Color ring_color = Fade(base, (200.0f / 255.0f) * envelope.alpha_scale);
         DrawCircleLinesV({button.cx, button.cy}, envelope.radius, ring_color);
         DrawCircleLinesV({button.cx, button.cy}, envelope.radius - 1.0f,
@@ -290,6 +299,33 @@ void render_energy_bar(const entt::registry& reg, const EnergyState& energy) {
 
 } // anonymous namespace
 
+float gameplay_hud_perfect_distance(const SongState* song_state) {
+    const float scroll_speed = (song_state && song_state->scroll_speed > 0.0f)
+        ? song_state->scroll_speed
+        : constants::BASE_SCROLL_SPEED;
+    const float morph_duration = (song_state && song_state->morph_duration > 0.0f)
+        ? song_state->morph_duration
+        : constants::MORPH_DURATION;
+    const float half_window = (song_state && song_state->half_window > 0.0f)
+        ? song_state->half_window
+        : 0.15f;
+    return scroll_speed * (morph_duration + half_window);
+}
+
+float gameplay_hud_ring_ratio(float nearest_dist, float perfect_dist, float ring_appear_dist) {
+    const float denom = ring_appear_dist - perfect_dist;
+    if (denom <= 0.0f) return 0.0f;
+    return Clamp((nearest_dist - perfect_dist) / denom, 0.0f, 1.0f);
+}
+
+GameplayHudRingCue gameplay_hud_ring_cue(float nearest_dist, float perfect_dist, float ring_appear_dist) {
+    if (nearest_dist <= 0.0f || nearest_dist >= ring_appear_dist) return GameplayHudRingCue::Hidden;
+    if (nearest_dist <= perfect_dist) return GameplayHudRingCue::Perfect;
+
+    const float ratio = gameplay_hud_ring_ratio(nearest_dist, perfect_dist, ring_appear_dist);
+    return (ratio < 0.3f) ? GameplayHudRingCue::Near : GameplayHudRingCue::Far;
+}
+
 void init_gameplay_hud_screen_ui() {
     // Controller state is registry-owned and initialized lazily in render.
 }
@@ -350,6 +386,26 @@ void render_gameplay_hud_screen_ui(entt::registry& reg) {
         GuiSetAlpha(0.7f);
         GuiLabel(Rectangle{ 80, 50, 200, 30 }, high_score_text);
         GuiSetAlpha(1.0f);
+
+        if (score->chain_count >= 2) {
+            const bool meaningful_chain = score->chain_count >= 5;
+            char chain_text[32];
+            std::snprintf(chain_text, sizeof(chain_text), meaningful_chain ? "CHAIN %d!" : "CHAIN %d",
+                          score->chain_count);
+            if (meaningful_chain) {
+                const auto* settings = reg.ctx().find<SettingsState>();
+                const bool reduce_motion = settings && settings->reduce_motion;
+                const auto* song = reg.ctx().find<SongState>();
+                const float pulse_time = (song && song->playing) ? song->song_time : static_cast<float>(GetTime());
+                const float pulse = reduce_motion ? 0.5f : (0.5f + 0.5f * std::sin(pulse_time * 8.0f));
+                DrawRectangleLinesEx(Rectangle{76, 82, 138, 28}, 2.0f,
+                                     Fade({100, 255, 180, 255}, 0.20f + 0.20f * pulse));
+            }
+            GuiSetStyle(DEFAULT, TEXT_SIZE, meaningful_chain ? 20 : 18);
+            GuiSetAlpha(meaningful_chain ? 0.95f : 0.70f);
+            GuiLabel(Rectangle{ 80, 80, 160, 32 }, chain_text);
+            GuiSetAlpha(1.0f);
+        }
     }
 
     render_shape_buttons(reg, hud_layout, state);

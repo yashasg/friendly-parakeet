@@ -1274,11 +1274,11 @@ def shape_gate_clusters(obstacles):
 # ═══════════════════════════════════════════════════════════════
 
 def select_beats(analysis, difficulty):
-    """Select which beats will have obstacles.
+    """Diagnostics-only legacy beat-grid selector.
 
-    Key insight: repeated sections reuse the same relative beat pattern.
-    The first verse defines the pattern; subsequent verses replay it.
-    This gives players the "second time = mastery" feeling.
+    Shipping beatmap generation uses segment-focus onset selection instead.
+    This legacy selector is retained for diagnostics that compare historical
+    beat-grid behavior against the onset-only authoring path.
     """
     beats = analysis["beats"]
     events = analysis["events"]
@@ -2773,7 +2773,7 @@ def design_level_onset_motif(analysis, difficulty, cleanup_enabled=True):
 
 def assign_obstacle(beat_idx, event, gap_to_prev, section_name, difficulty,
                     prev_lane, prev_shapes, allowed_kinds, rng, shape_state):
-    """Assign obstacle type from beat-local context only (no onset pass mapping)."""
+    """Diagnostics-only legacy beat-grid obstacle assignment."""
     natural_kind = "shape_gate"
     # Respect difficulty restrictions
     if natural_kind not in allowed_kinds:
@@ -3304,7 +3304,7 @@ def clean_level(obstacles, difficulty, boundary_beats):
 
 
 def fill_max_gaps(obstacles, difficulty, analysis):
-    """Insert shape gates so consecutive authored beats stay under max-gap."""
+    """Diagnostics-only legacy filler for beat-grid obstacle gaps."""
     del analysis
     max_diff = MAX_BEAT_DIFF.get(difficulty)
     if not max_diff or len(obstacles) < 2:
@@ -3965,8 +3965,21 @@ def _ensure_obstacle_class_floor(obstacles, selected_events, onset_class, floor_
 SAME_SHAPE_CLUSTER_CHAIN_CAP = {"medium": 3, "hard": 3}
 
 
-def build_beatmap(analysis, difficulties, cleanup_enabled=True, experimental_onset_timing=True):
+def build_beatmap(
+    analysis,
+    difficulties,
+    cleanup_enabled=True,
+    experimental_onset_timing=True,
+    *,
+    allow_diagnostics_legacy_grid=False,
+):
     """Build the full beatmap JSON."""
+    if not experimental_onset_timing and not allow_diagnostics_legacy_grid:
+        raise ValueError(
+            "build_beatmap legacy beat-grid generation is diagnostics-only; "
+            "pass allow_diagnostics_legacy_grid=True for explicit debug output."
+        )
+
     beats = analysis["beats"]
     if not beats:
         raise ValueError("analysis.beats is required and must not be empty")

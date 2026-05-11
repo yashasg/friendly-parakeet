@@ -133,11 +133,45 @@ void sfx_bank_unload(entt::registry& reg) {
     auto* bank = reg.ctx().find<SFXBank>();
     if (!bank) return;
 
+    bank->release();
+}
+
+void SFXBank::release() {
     for (int idx = 0; idx < SFX_COUNT; ++idx) {
-        if (bank->sound_loaded[idx] && IsSoundValid(bank->sounds[idx])) {
-            UnloadSound(bank->sounds[idx]);
-            bank->sound_loaded[idx] = false;
+        if (sound_loaded[idx] && IsSoundValid(sounds[idx])) {
+            UnloadSound(sounds[idx]);
         }
+        sounds[idx] = {};
+        sound_loaded[idx] = false;
     }
-    bank->loaded = false;
+    loaded = false;
+}
+
+SFXBank::~SFXBank() { release(); }
+
+SFXBank::SFXBank(SFXBank&& other) noexcept
+    : loaded{other.loaded}
+{
+    for (int idx = 0; idx < SFX_COUNT; ++idx) {
+        sounds[idx] = other.sounds[idx];
+        sound_loaded[idx] = other.sound_loaded[idx];
+        other.sounds[idx] = {};
+        other.sound_loaded[idx] = false;
+    }
+    other.loaded = false;
+}
+
+SFXBank& SFXBank::operator=(SFXBank&& other) noexcept {
+    if (this != &other) {
+        release();
+        for (int idx = 0; idx < SFX_COUNT; ++idx) {
+            sounds[idx] = other.sounds[idx];
+            sound_loaded[idx] = other.sound_loaded[idx];
+            other.sounds[idx] = {};
+            other.sound_loaded[idx] = false;
+        }
+        loaded = other.loaded;
+        other.loaded = false;
+    }
+    return *this;
 }

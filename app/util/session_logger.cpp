@@ -9,6 +9,7 @@
 #include <cstdarg>
 #include <cmath>
 #include <string_view>
+#include <utility>
 
 #include <magic_enum/magic_enum.hpp>
 #include <raylib.h>
@@ -25,8 +26,45 @@ std::string_view session_log_enum_name_or_unknown(E value) {
 
 // ── Core log function ────────────────────────────────────────
 
+SessionLog::SessionLog(SessionLog&& other) noexcept
+    : file{other.file},
+      frame{other.frame},
+      buffer{std::move(other.buffer)},
+      last_logged_beat{other.last_logged_beat}
+{
+    other.file = nullptr;
+    if (buffer.capacity() < kMaxLogBufferBytes) {
+        buffer.reserve(kMaxLogBufferBytes);
+    }
+}
+
+SessionLog& SessionLog::operator=(SessionLog&& other) noexcept {
+    if (this != &other) {
+        release();
+        file = other.file;
+        frame = other.frame;
+        buffer = std::move(other.buffer);
+        last_logged_beat = other.last_logged_beat;
+        other.file = nullptr;
+        if (buffer.capacity() < kMaxLogBufferBytes) {
+            buffer.reserve(kMaxLogBufferBytes);
+        }
+    }
+    return *this;
+}
+
+SessionLog::~SessionLog() { release(); }
+
+void SessionLog::release() {
+    session_log_flush(*this);
+    if (file) {
+        std::fclose(file);
+        file = nullptr;
+    }
+}
+
 void session_log_open(SessionLog& log, const char* path) {
-    if (log.file) std::fclose(log.file);
+    log.release();
     log.file = std::fopen(path, "w");
     if (log.file) {
         std::fprintf(log.file, "══════ Test Session started runtime=%.3fs ══════\n\n", GetTime());
@@ -36,11 +74,7 @@ void session_log_open(SessionLog& log, const char* path) {
 }
 
 void session_log_close(SessionLog& log) {
-    session_log_flush(log);  // flush any remaining buffered lines
-    if (log.file) {
-        std::fclose(log.file);
-        log.file = nullptr;
-    }
+    log.release();
 }
 
 void session_log_write(SessionLog& log, float song_time,
@@ -79,8 +113,7 @@ void session_log_on_obstacle_spawn(entt::registry& reg, entt::entity entity) {
     auto* song = reg.ctx().find<SongState>();
     float t = song ? song->song_time : 0.0f;
 
-    auto* obs = reg.try_get<Obstacle>(entity);
-    if (!obs) return;
+    if (!reg.all_of<Obstacle>(entity)) return;
 
     auto* beat = reg.try_get<BeatInfo>(entity);
     int beat_idx = beat ? beat->beat_index : -1;
@@ -92,7 +125,11 @@ void session_log_on_obstacle_spawn(entt::registry& reg, entt::entity entity) {
     if (rlane) lane = rlane->lane;
 
     float arrival = beat ? beat->arrival_time : 0.0f;
-    const std::string_view kind_name = session_log_enum_name_or_unknown(obs->kind);
+    const ObstacleKind kind = obstacle_kind_from_components(
+        reg.all_of<RequiredShape>(entity),
+        reg.all_of<BlockedLanes>(entity),
+        reg.all_of<RequiredLane>(entity));
+    const std::string_view kind_name = session_log_enum_name_or_unknown(kind);
     const std::string_view shape_name = req ? session_log_enum_name_or_unknown(req->shape) : std::string_view{"-"};
 
     session_log_write(*log, t, "GAME",
@@ -112,8 +149,7 @@ void session_log_on_scored(entt::registry& reg, entt::entity entity) {
     auto* song = reg.ctx().find<SongState>();
     float t = song ? song->song_time : 0.0f;
 
-    auto* obs = reg.try_get<Obstacle>(entity);
-    if (!obs) return;
+    if (!reg.all_of<Obstacle>(entity)) return;
 
     bool is_miss = reg.any_of<MissTag>(entity);
 
@@ -122,7 +158,11 @@ void session_log_on_scored(entt::registry& reg, entt::entity entity) {
     int beat_num = beat ? beat->beat_index : -1;
     float expected_t = beat ? beat->arrival_time : 0.0f;
     float drift = beat ? (t - beat->arrival_time) : 0.0f;
-    const std::string_view kind_name = session_log_enum_name_or_unknown(obs->kind);
+    const ObstacleKind kind = obstacle_kind_from_components(
+        reg.all_of<RequiredShape>(entity),
+        reg.all_of<BlockedLanes>(entity),
+        reg.all_of<RequiredLane>(entity));
+    const std::string_view kind_name = session_log_enum_name_or_unknown(kind);
 
     if (is_miss) {
         session_log_write(*log, t, "GAME",

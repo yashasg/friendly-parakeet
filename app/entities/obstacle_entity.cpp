@@ -15,7 +15,7 @@ entt::entity spawn_obstacle_base(entt::registry& reg, const ObstacleSpawnParams&
 
     switch (params.kind) {
         case ObstacleKind::ShapeGate: {
-            reg.emplace<Obstacle>(e, ObstacleKind::ShapeGate, int16_t{constants::PTS_SHAPE_GATE});
+            reg.emplace<Obstacle>(e, int16_t{constants::PTS_SHAPE_GATE});
             reg.emplace<RequiredShape>(e, params.shape);
             reg.emplace<DrawSize>(e, constants::SCREEN_W_F, 80.0f);
             if (params.shape == Shape::Circle)
@@ -27,14 +27,14 @@ entt::entity spawn_obstacle_base(entt::registry& reg, const ObstacleSpawnParams&
             break;
         }
         case ObstacleKind::LaneBlock: {
-            reg.emplace<Obstacle>(e, ObstacleKind::LaneBlock, int16_t{constants::PTS_LANE_BLOCK});
+            reg.emplace<Obstacle>(e, int16_t{constants::PTS_LANE_BLOCK});
             reg.emplace<BlockedLanes>(e, params.mask);
             reg.emplace<DrawSize>(e, static_cast<float>(constants::SCREEN_W / 3), 80.0f);
             reg.emplace<Color>(e, Color{255, 60, 60, 255});
             break;
         }
         case ObstacleKind::ComboGate: {
-            reg.emplace<Obstacle>(e, ObstacleKind::ComboGate, int16_t{constants::PTS_COMBO_GATE});
+            reg.emplace<Obstacle>(e, int16_t{constants::PTS_COMBO_GATE});
             reg.emplace<RequiredShape>(e, params.shape);
             reg.emplace<BlockedLanes>(e, params.mask);
             reg.emplace<DrawSize>(e, constants::SCREEN_W_F, 80.0f);
@@ -42,7 +42,7 @@ entt::entity spawn_obstacle_base(entt::registry& reg, const ObstacleSpawnParams&
             break;
         }
         case ObstacleKind::SplitPath: {
-            reg.emplace<Obstacle>(e, ObstacleKind::SplitPath, int16_t{constants::PTS_SPLIT_PATH});
+            reg.emplace<Obstacle>(e, int16_t{constants::PTS_SPLIT_PATH});
             reg.emplace<RequiredShape>(e, params.shape);
             reg.emplace<RequiredLane>(e, params.req_lane);
             reg.emplace<DrawSize>(e, constants::SCREEN_W_F, 80.0f);

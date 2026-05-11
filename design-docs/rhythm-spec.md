@@ -134,9 +134,10 @@ constexpr float WINDOW_SCALE_OK      = 1.00f;  // OK hit      → no change (def
 constexpr float MORPH_DURATION = 0.12f;
 
 // ── Scoring ──────────────────────────────────────────────────────────
-// Points are computed dynamically: base_points × timing_multiplier.
+// Points are computed dynamically: base_points × timing_multiplier × chain_multiplier.
 // No fixed PTS_PERFECT/PTS_GOOD/PTS_OK constants.
-constexpr int   CHAIN_BONUS[5]   = { 0, 0, 50, 100, 200 }; // indexed by chain length (clamped to 4)
+constexpr float CHAIN_MULT_STEP = 0.05f;
+constexpr int32_t CHAIN_MULT_BONUS_STEPS_CAP = 20; // caps at 2.0x from chain 21 onward
 ```
 
 ---
@@ -312,7 +313,7 @@ struct SongResults {
            ↓
   ┌─ SCORING ──────────────────────────────────────────────────┐
   │ scoring_system                                 [MOD]       │
-  │   → reads TimingGrade, computes pts + flat chain bonus      │
+  │   → reads TimingGrade, computes pts with chain multiplier   │
   │   → updates SongResults counters                           │
   │   → spawns grade popup VFX                                 │
   │                                                            │
@@ -577,6 +578,12 @@ The default (OK) timing = the full active window. Better timing shrinks the rema
   The `graded` flag on PlayerShape prevents a second obstacle
   in the same window from re-applying the scale factor.
 ```
+
+Auto-return to Hexagon is intentional and should not be balanced as a
+punishment. It is the release/readiness beat between playable notes; authored
+shape changes must preserve enough spacing for the return to read clearly. If a
+chart makes the auto-return feel punitive, fix the chart spacing or timing
+window before adding any player-facing Hexagon input.
 
 ## `shape_window_system` guard condition
 

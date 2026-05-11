@@ -258,6 +258,9 @@ void game_camera_system(entt::registry& reg, float /*dt*/) {
         for (auto [entity, mc] : view.each()) {
             auto* parent_wt = reg.try_get<WorldTransform>(mc.parent);
             if (!parent_wt) {
+                if (stale_children.size() >= stale_children.capacity()) {
+                    ++scratch->capacity_exceeded_count;
+                }
                 stale_children.push_back(entity);
                 continue;
             }

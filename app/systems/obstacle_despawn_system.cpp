@@ -21,8 +21,13 @@ void obstacle_despawn_system(entt::registry& reg, float /*dt*/) {
 
     auto view = reg.view<ObstacleTag, WorldTransform>();
     for (auto [entity, wt] : view.each()) {
-        if (wt.position.y > constants::DESTROY_Y)
+        if (wt.position.y > constants::DESTROY_Y) {
+            auto& scratch = despawn_scratch_for(reg);
+            if (to_destroy.size() >= to_destroy.capacity()) {
+                ++scratch.capacity_exceeded_count;
+            }
             to_destroy.push_back(entity);
+        }
     }
 
     for (auto e : to_destroy) reg.destroy(e);

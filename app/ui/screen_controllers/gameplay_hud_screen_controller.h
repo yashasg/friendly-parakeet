@@ -3,13 +3,24 @@
 #include <raylib.h>
 #include <entt/entt.hpp>
 
+#include "../../components/song_state.h"
+
 enum class GameplayHudShapeSlot {
     Circle = 0,
     Square = 1,
     Triangle = 2
 };
 
+enum class GameplayHudRingCue {
+    Hidden,
+    Far,
+    Near,
+    Perfect
+};
 
+float gameplay_hud_perfect_distance(const SongState* song_state);
+float gameplay_hud_ring_ratio(float nearest_dist, float perfect_dist, float ring_appear_dist);
+GameplayHudRingCue gameplay_hud_ring_cue(float nearest_dist, float perfect_dist, float ring_appear_dist);
 void init_gameplay_hud_screen_ui();
 void render_gameplay_hud_screen_ui(entt::registry& reg);
 Rectangle gameplay_hud_shape_input_bounds(GameplayHudShapeSlot slot);

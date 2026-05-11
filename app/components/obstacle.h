@@ -14,9 +14,27 @@ enum class ObstacleKind : uint8_t {
 };
 
 struct Obstacle {
-    ObstacleKind kind       = ObstacleKind::ShapeGate;
     int16_t      base_points = 200;
+
+    constexpr Obstacle() = default;
+    constexpr explicit Obstacle(int16_t points) : base_points(points) {}
+    constexpr Obstacle(ObstacleKind, int16_t points) : base_points(points) {}
 };
+
+constexpr ObstacleKind obstacle_kind_from_components(bool has_required_shape,
+                                                     bool has_blocked_lanes,
+                                                     bool has_required_lane) {
+    if (has_required_lane) {
+        return ObstacleKind::SplitPath;
+    }
+    if (has_required_shape && has_blocked_lanes) {
+        return ObstacleKind::ComboGate;
+    }
+    if (has_blocked_lanes) {
+        return ObstacleKind::LaneBlock;
+    }
+    return ObstacleKind::ShapeGate;
+}
 
 // Existential tag: presence means the obstacle has been cleared and awaits scoring.
 struct ScoredTag {};

@@ -39,10 +39,11 @@ constexpr int   PTS_LANE_BLOCK    = 100;
 constexpr int   PTS_COMBO_GATE    = 200;
 constexpr int   PTS_SPLIT_PATH    = 300;
 constexpr int   PTS_PER_SECOND    = 10;
-constexpr int   CHAIN_BONUS[5]    = { 0, 0, 50, 100, 200 };
+constexpr float CHAIN_MULT_STEP    = 0.05f;
+constexpr int32_t CHAIN_MULT_BONUS_STEPS_CAP = 20;
 
 // ── Rhythm Constants ──────────────────────────────
-constexpr float APPROACH_DIST      = 1040.0f;  // |PLAYER_Y - SPAWN_Y|
+constexpr float APPROACH_DIST      = PLAYER_Y - SPAWN_Y;
 constexpr float COLLISION_MARGIN   = 40.0f;    // half-height of timing window (px)
 
 // ── Energy Bar ────────────────────────────────────

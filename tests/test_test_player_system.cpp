@@ -2,9 +2,8 @@
 #include "test_helpers.h"
 #include "components/test_player.h"
 #include "util/session_logger.h"
-
-#ifdef PLATFORM_DESKTOP
-
+#include <cstdio>
+#include <string>
 static entt::registry make_test_player_registry(TestPlayerSkill skill = TestPlayerSkill::Pro) {
     entt::registry reg = make_rhythm_registry();
     auto& tp = reg.ctx().emplace<TestPlayerState>();
@@ -54,6 +53,25 @@ static void tick_systems(entt::registry& reg, int frames, float dt = 1.0f / 60.0
 static bool survived(entt::registry& reg) {
     auto& gs = reg.ctx().get<GameState>();
     return gs.phase == GamePhase::Playing && !gs.transition_pending;
+}
+
+static entt::entity make_loggable_obstacle(entt::registry& reg) {
+    auto obs = reg.create();
+    reg.emplace<ObstacleTag>(obs);
+    reg.emplace<Obstacle>(obs, ObstacleKind::ShapeGate, int16_t{constants::PTS_SHAPE_GATE});
+    reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y}});
+    reg.emplace<BeatInfo>(obs, 7, 2.0f, 0.0f);
+    return obs;
+}
+
+static std::string read_session_log(SessionLog& log) {
+    session_log_flush(log);
+    std::fflush(log.file);
+    std::fseek(log.file, 0, SEEK_SET);
+
+    char buffer[1024] = {};
+    const std::size_t bytes_read = std::fread(buffer, 1, sizeof(buffer) - 1, log.file);
+    return std::string(buffer, bytes_read);
 }
 
 // ── CORE: shape gate in same lane ────────────────────────────
@@ -251,4 +269,36 @@ TEST_CASE("test_player: shape gate then lane block requiring opposite direction"
     CHECK(survived(reg));
 }
 
-#endif
+TEST_CASE("session_logger: non-fatal MissTag logs result MISS (#111)",
+          "[session_logger][issue-111]") {
+    auto reg = make_rhythm_registry();
+    auto& log = reg.ctx().emplace<SessionLog>();
+    log.file = std::tmpfile();
+    REQUIRE(log.file != nullptr);
+
+    auto obs = make_loggable_obstacle(reg);
+    reg.emplace<MissTag>(obs);
+    session_log_on_scored(reg, obs);
+
+    const std::string contents = read_session_log(log);
+    CHECK(contents.find("result=MISS") != std::string::npos);
+    CHECK(contents.find("result=CLEAR") == std::string::npos);
+}
+
+TEST_CASE("session_logger: fatal MissTag logs result MISS (#111)",
+          "[session_logger][issue-111]") {
+    auto reg = make_rhythm_registry();
+    reg.ctx().get<GameState>().transition_pending = true;
+    reg.ctx().get<GameState>().next_phase = GamePhase::GameOver;
+    auto& log = reg.ctx().emplace<SessionLog>();
+    log.file = std::tmpfile();
+    REQUIRE(log.file != nullptr);
+
+    auto obs = make_loggable_obstacle(reg);
+    reg.emplace<MissTag>(obs);
+    session_log_on_scored(reg, obs);
+
+    const std::string contents = read_session_log(log);
+    CHECK(contents.find("result=MISS") != std::string::npos);
+    CHECK(contents.find("result=CLEAR") == std::string::npos);
+}

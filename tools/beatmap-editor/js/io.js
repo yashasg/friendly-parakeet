@@ -1,7 +1,7 @@
 // io.js — Beatmap file I/O and validation (pure functions, no DOM except downloadFile)
 
 import {
-    SHAPES, LANES, KINDS_WITH_SHAPE, DIFFICULTY_KEYS, VALIDATION,
+    SHAPES, LANES, KINDS_WITH_SHAPE, DIFFICULTY_KEYS, RHYTHM_LAYER_KEYS, VALIDATION,
 } from './constants.js';
 
 const LOADER_KINDS = Object.freeze([
@@ -9,6 +9,14 @@ const LOADER_KINDS = Object.freeze([
     'combo_gate',
     'split_path',
 ]);
+
+const LEGACY_ONSET_LAYER_MAP = Object.freeze({
+    kick: 'percussive',
+    snare: 'percussive',
+    hihat: 'percussive',
+    melody: 'harmonic',
+    flux: 'full-spectrum',
+});
 
 function isPlainObject(value) {
     return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -28,6 +36,39 @@ function isAllowedShape(shape) {
 
 function isAllowedDifficultyKey(key) {
     return DIFFICULTY_KEYS.includes(key);
+}
+
+function normalizeOnsetLayers(onsets) {
+    const warnings = [];
+    const normalized = {};
+    if (!isPlainObject(onsets)) {
+        return { onsets: normalized, warnings };
+    }
+
+    for (const [sourceKey, value] of Object.entries(onsets)) {
+        const layerKey = RHYTHM_LAYER_KEYS.includes(sourceKey)
+            ? sourceKey
+            : LEGACY_ONSET_LAYER_MAP[sourceKey];
+        if (!layerKey) {
+            warnings.push(`Dropped unsupported onset layer '${sourceKey}'`);
+            continue;
+        }
+        if (!isPlainObject(value)) {
+            warnings.push(`Dropped onset layer '${sourceKey}' because it must be an object`);
+            continue;
+        }
+
+        const timestamps = Array.isArray(value.timestamps) ? value.timestamps : [];
+        const target = normalized[layerKey] ?? { timestamps: [] };
+        target.timestamps.push(...timestamps);
+        normalized[layerKey] = target;
+
+        if (layerKey !== sourceKey) {
+            warnings.push(`Mapped legacy onset layer '${sourceKey}' to '${layerKey}'`);
+        }
+    }
+
+    return { onsets: normalized, warnings };
 }
 
 /**
@@ -393,6 +434,8 @@ export function importAnalysis(jsonString) {
         return null;
     }
 
+    const normalizedOnsets = normalizeOnsetLayers(j.onsets);
+
     return {
         title: j.title ?? '',
         source: j.source ?? '',
@@ -400,9 +443,10 @@ export function importAnalysis(jsonString) {
         duration: j.duration ?? 0,
         beats: Array.isArray(j.beats) ? j.beats : [],
         structure: Array.isArray(j.structure) ? j.structure : [],
-        onsets: (j.onsets && typeof j.onsets === 'object' && !Array.isArray(j.onsets)) ? j.onsets : {},
+        onsets: normalizedOnsets.onsets,
         events: Array.isArray(j.events) ? j.events : [],
         quietRegions: Array.isArray(j.quiet_regions) ? j.quiet_regions : [],
+        warnings: normalizedOnsets.warnings,
     };
 }
 

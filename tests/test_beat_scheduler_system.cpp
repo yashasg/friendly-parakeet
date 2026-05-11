@@ -82,7 +82,9 @@ TEST_CASE("beat_scheduler: spawns ShapeGate when time passes spawn_time", "[beat
     // Verify it's a ShapeGate with correct components
     auto view = reg.view<ObstacleTag, Obstacle, RequiredShape>();
     for (auto [e, obs, rs] : view.each()) {
-        CHECK(obs.kind == ObstacleKind::ShapeGate);
+        (void)obs;
+        CHECK_FALSE(reg.all_of<BlockedLanes>(e));
+        CHECK_FALSE(reg.all_of<RequiredLane>(e));
         CHECK(rs.shape == Shape::Circle);
     }
 }
@@ -272,7 +274,9 @@ TEST_CASE("beat_scheduler: spawns LaneBlock with blocked_mask", "[beat_scheduler
 
     auto view = reg.view<ObstacleTag, Obstacle, BlockedLanes>();
     for (auto [e, obs, bl] : view.each()) {
-        CHECK(obs.kind == ObstacleKind::LaneBlock);
+        (void)obs;
+        CHECK_FALSE(reg.all_of<RequiredShape>(e));
+        CHECK_FALSE(reg.all_of<RequiredLane>(e));
         CHECK(bl.mask == 0b010);
     }
 }
@@ -294,8 +298,13 @@ TEST_CASE("beat_scheduler: spawns all queued beats from BeatMap entries", "[beat
     int obstacle_count = 0;
     int shape_gate_count = 0;
     for (auto [e, obs] : obstacle_view.each()) {
+        (void)obs;
         ++obstacle_count;
-        if (obs.kind == ObstacleKind::ShapeGate) ++shape_gate_count;
+        const ObstacleKind kind = obstacle_kind_from_components(
+            reg.all_of<RequiredShape>(e),
+            reg.all_of<BlockedLanes>(e),
+            reg.all_of<RequiredLane>(e));
+        if (kind == ObstacleKind::ShapeGate) ++shape_gate_count;
     }
     CHECK(obstacle_count == 3);
     CHECK(shape_gate_count == 1);
@@ -315,7 +324,8 @@ TEST_CASE("beat_scheduler: spawns ComboGate with shape and blocked lanes", "[bea
 
     auto view = reg.view<ObstacleTag, Obstacle, RequiredShape, BlockedLanes>();
     for (auto [e, obs, rs, bl] : view.each()) {
-        CHECK(obs.kind == ObstacleKind::ComboGate);
+        (void)obs;
+        CHECK_FALSE(reg.all_of<RequiredLane>(e));
         CHECK(rs.shape == Shape::Triangle);
         CHECK(bl.mask == 0b101);
     }
@@ -334,7 +344,8 @@ TEST_CASE("beat_scheduler: spawns SplitPath with shape and required lane", "[bea
 
     auto view = reg.view<ObstacleTag, Obstacle, RequiredShape, RequiredLane>();
     for (auto [e, obs, rs, rl] : view.each()) {
-        CHECK(obs.kind == ObstacleKind::SplitPath);
+        (void)obs;
+        CHECK_FALSE(reg.all_of<BlockedLanes>(e));
         CHECK(rs.shape == Shape::Square);
         CHECK(rl.lane == 2);
     }

@@ -95,6 +95,12 @@ jobs:
         run: |
           node --version
           cd build-web
+          node ./shapeshifter_tests.js --list-tests "~[bench]" --verbosity quiet \
+            | sort -u > wasm-catch-tests.txt
+          echo "WASM Catch2 non-benchmark test count: $(wc -l < wasm-catch-tests.txt | tr -d ' ')"
+          grep -Fx "test_player: clears shape gate in same lane" wasm-catch-tests.txt
+          grep -Fx "session_logger: non-fatal MissTag logs result MISS (#111)" wasm-catch-tests.txt
+          grep -Fx "session_logger: fatal MissTag logs result MISS (#111)" wasm-catch-tests.txt
           ctest --verbose --output-on-failure
 
       - name: Setup Chrome

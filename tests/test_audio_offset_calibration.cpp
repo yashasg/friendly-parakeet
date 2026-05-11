@@ -61,6 +61,15 @@ ScheduleResult schedule_one(int16_t audio_offset_ms,
     return out;
 }
 
+int count_obstacles(entt::registry& reg) {
+    int count = 0;
+    for (auto entity : reg.view<ObstacleTag>()) {
+        (void)entity;
+        ++count;
+    }
+    return count;
+}
+
 } // namespace
 
 TEST_CASE("audio_offset_ms helper converts ms→seconds with documented sign", "[settings][audio_offset][issue474]") {
@@ -74,7 +83,7 @@ TEST_CASE("audio_offset_ms helper converts ms→seconds with documented sign", "
 }
 
 TEST_CASE("beat_scheduler: audio_offset shifts calibrated arrival and spawn_time",
-          "[beat_scheduler][audio_offset][issue530]") {
+           "[beat_scheduler][audio_offset][issue530]") {
     // Same beatmap & song clock, only audio_offset_ms differs. The delta in
     // spawn_time must equal audio_offset_seconds(state). Drive the scheduler
     // far enough into the future that both runs definitely spawn the beat.
@@ -102,6 +111,105 @@ TEST_CASE("beat_scheduler: audio_offset shifts calibrated arrival and spawn_time
 
     CHECK_THAT(delayed_spawn_delta,  Catch::Matchers::WithinAbs(+0.200f, kTimingToleranceSec));
     CHECK_THAT(advanced_spawn_delta, Catch::Matchers::WithinAbs(-0.200f, kTimingToleranceSec));
+}
+
+TEST_CASE("song_playback: positive audio_offset delays beat crossing",
+          "[song_playback][audio_offset][issue210]") {
+    auto reg = make_rhythm_registry();
+    auto& settings = reg.ctx().get<SettingsState>();
+    settings.audio_offset_ms = +200;
+
+    auto& song = reg.ctx().get<SongState>();
+    song.song_time = 0.0f;
+    song.current_beat = -1;
+
+    auto& map = reg.ctx().get<BeatMap>();
+    map.beat_times = {1.0f};
+
+    song_playback_system(reg, 1.1f);
+    CHECK(song.current_beat == -1);
+
+    song_playback_system(reg, 0.1f);
+    CHECK(song.current_beat == 0);
+}
+
+TEST_CASE("song_playback: negative audio_offset advances beat crossing",
+          "[song_playback][audio_offset][issue210]") {
+    auto reg = make_rhythm_registry();
+    auto& settings = reg.ctx().get<SettingsState>();
+    settings.audio_offset_ms = -200;
+
+    auto& song = reg.ctx().get<SongState>();
+    song.song_time = 0.0f;
+    song.current_beat = -1;
+
+    auto& map = reg.ctx().get<BeatMap>();
+    map.beat_times = {1.0f};
+
+    song_playback_system(reg, 0.85f);
+    CHECK(song.current_beat == 0);
+}
+
+TEST_CASE("beat_scheduler: audio_offset gates spawn before calibrated spawn time",
+          "[beat_scheduler][audio_offset][issue210]") {
+    auto reg = make_rhythm_registry();
+    auto& settings = reg.ctx().get<SettingsState>();
+    settings.audio_offset_ms = +200;
+
+    auto& song = reg.ctx().get<SongState>();
+    song.lead_time = 0.0f;
+    song.song_time = 0.1f;
+    song.next_spawn_idx = 0;
+
+    auto& map = reg.ctx().get<BeatMap>();
+    map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
+
+    beat_scheduler_system(reg, 0.016f);
+    CHECK(count_obstacles(reg) == 0);
+
+    song.song_time = 0.2f;
+    beat_scheduler_system(reg, 0.016f);
+    CHECK(count_obstacles(reg) == 1);
+}
+
+TEST_CASE("audio_offset: zero setting matches absent SettingsState",
+          "[song_playback][beat_scheduler][audio_offset][issue210]") {
+    auto playback_with_zero = make_rhythm_registry();
+    auto& zero_song = playback_with_zero.ctx().get<SongState>();
+    zero_song.song_time = 0.0f;
+    zero_song.current_beat = -1;
+    playback_with_zero.ctx().get<BeatMap>().beat_times = {0.4f, 0.9f, 1.6f};
+    song_playback_system(playback_with_zero, 1.0f);
+
+    auto playback_without_settings = make_rhythm_registry();
+    playback_without_settings.ctx().erase<SettingsState>();
+    auto& absent_song = playback_without_settings.ctx().get<SongState>();
+    absent_song.song_time = 0.0f;
+    absent_song.current_beat = -1;
+    playback_without_settings.ctx().get<BeatMap>().beat_times = {0.4f, 0.9f, 1.6f};
+    song_playback_system(playback_without_settings, 1.0f);
+
+    CHECK(absent_song.current_beat == zero_song.current_beat);
+
+    auto scheduler_with_zero = make_rhythm_registry();
+    auto& zero_schedule_song = scheduler_with_zero.ctx().get<SongState>();
+    zero_schedule_song.song_time = 1.0f;
+    zero_schedule_song.next_spawn_idx = 0;
+    scheduler_with_zero.ctx().get<BeatMap>().beats.push_back(
+        {2, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
+    beat_scheduler_system(scheduler_with_zero, 0.016f);
+
+    auto scheduler_without_settings = make_rhythm_registry();
+    scheduler_without_settings.ctx().erase<SettingsState>();
+    auto& absent_schedule_song = scheduler_without_settings.ctx().get<SongState>();
+    absent_schedule_song.song_time = 1.0f;
+    absent_schedule_song.next_spawn_idx = 0;
+    scheduler_without_settings.ctx().get<BeatMap>().beats.push_back(
+        {2, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
+    beat_scheduler_system(scheduler_without_settings, 0.016f);
+
+    CHECK(absent_schedule_song.next_spawn_idx == zero_schedule_song.next_spawn_idx);
+    CHECK(count_obstacles(scheduler_without_settings) == count_obstacles(scheduler_with_zero));
 }
 
 

@@ -13,6 +13,12 @@
 
 Rhythm runner where the player shifts between 3 geometric shapes to pass through matching obstacles in time with the music. **Obstacles ARE the beats.** The core skill is hitting the right shape on the beat — closer to the beat means a higher timing grade and a higher score. Stay clean, build a chain, survive the song.
 
+The playfield may use a pseudo-isometric runway effect to make beats feel like
+they are approaching the player line, but this is a readability aid rather than
+a gameplay layer.  Timing, collisions, lanes, HUD layout, and touch targets stay
+in the logical 720x1280 coordinate system.  See `isometric-perspective.md` for
+the rationale, scope, readability constraints, and art/level guidance.
+
 ---
 
 ## Platform
@@ -22,7 +28,7 @@ Rhythm runner where the player shifts between 3 geometric shapes to pass through
 
 ---
 
-## Player Shapes (3 active + Hexagon default)
+## Player Shapes (3 playable + Hexagon rest)
 
 | Shape    | Symbol | Passes Through       |
 |----------|--------|----------------------|
@@ -31,7 +37,7 @@ Rhythm runner where the player shifts between 3 geometric shapes to pass through
 | Triangle | ▲      | Triangle holes/gates |
 | Hexagon  | ⬡      | None (default/rest)  |
 
-The player is always one of these shapes. Hexagon is the default resting shape — the player returns to it between obstacles. Hexagon does not pass through any gates; any gate arriving while in Hexagon = MISS. Tap a shape button to switch instantly.
+The player is always one of these shapes, but only Circle, Square, and Triangle are playable inputs. Hexagon is the automatic rest/default state between shape windows: the player returns to it after MorphOut and cannot choose it from the HUD or keyboard. Hexagon does not pass through any gates; any gate arriving while in Hexagon = MISS. Tap a playable shape button to switch instantly.
 
 ---
 
@@ -52,7 +58,7 @@ The screen is divided into two zones:
   - `[ ■ ]` Square
   - `[ ▲ ]` Triangle
 
-  The currently active shape button is highlighted/glowing. Tapping a button immediately shifts the player to that shape.
+  The currently active playable shape button is highlighted/glowing. There is no Hexagon button: Hexagon is a visible rest silhouette only, restored automatically by the shape-window system.
 
 - **Keyboard fallback** mirrors lane layout for shipped beatmaps: `Z`/`1` selects the left-lane shape, `X`/`2` selects center, and `C`/`3` selects right.
 
@@ -122,14 +128,15 @@ When an obstacle requires TWO actions (e.g., switch to ● AND swipe left), the 
 ## Scoring
 
 ### Points Per Obstacle
-- `floor(base_points × timing_multiplier) + chain_flat_bonus`
+- `floor(base_points × timing_multiplier × chain_multiplier)`
 - Timing multiplier comes from the beat-distance grade (Perfect/Good/Ok/Bad). See `rhythm-design.md`.
 
 ### Chain
 - Each consecutive non-miss timing grade (Perfect, Good, Ok, or Bad) grows the chain.
 - Bad awards reduced points and drains small energy. Miss resets the chain.
-- Chain resets on any MISS.
-- Chain contributes a bounded flat bonus so consistent rhythm is rewarded over isolated hits.
+- Chain persists through authored musical rests; only a MISS resets it.
+- Chain contributes `chain_multiplier = 1.0 + 0.05 × min(chain_count - 1, 20)`, capped at 2.0× from chain 21 onward, so consistent rhythm scales every obstacle.
+- Good Shape Gate comparison: chain 1 = 200, chain 5 = 240, chain 10 = 290, chain 20 = 390. Perfect Shape Gate comparison: chain 1 = 300, chain 5 = 360, chain 10 = 435, chain 20 = 585.
 
 ### Distance Bonus
 - +10 points per second survived (passive income).
@@ -206,7 +213,9 @@ Difficulty is selected per song (easy / medium / hard) and is expressed primaril
   at y=1120). Currently selected button is highlighted, and each is
   wrapped by a **proximity ring** that shrinks toward the button as
   the matching obstacle approaches, providing the live timing cue
-  (see `rhythm-spec.md` §6 / `rhythm-design.md` §4).
+  (see `rhythm-spec.md` §6 / `rhythm-design.md` §4). The HUD must
+  not expose a fourth Hexagon control; rest-state feedback comes from
+  the player silhouette returning to Hexagon after MorphOut.
 
 > Any future redesign that wants to relocate the energy bar to the
 > top of the HUD must land as an explicit change to

@@ -279,6 +279,7 @@ void test_player_system(entt::registry& reg, float dt) {
 
     auto obs_view = reg.view<ObstacleTag, WorldTransform, Obstacle>(entt::exclude<ScoredTag>);
     for (auto [entity, obs_wt, obs] : obs_view.each()) {
+        (void)obs;
         float dist = p_transform.position.y - obs_wt.position.y;
         if (dist <= 0.0f || dist > cfg.vision_range) continue;
         if (reg.any_of<TestPlayerPlannedTag>(entity)) continue;
@@ -318,7 +319,11 @@ void test_player_system(entt::registry& reg, float dt) {
         if (log) {
             auto* beat_info = reg.try_get<BeatInfo>(entity);
             int beat_num = beat_info ? beat_info->beat_index : -1;
-            const std::string_view kind_name = enum_name_or_unknown(obs.kind);
+            const ObstacleKind kind = obstacle_kind_from_components(
+                reg.all_of<RequiredShape>(entity),
+                reg.all_of<BlockedLanes>(entity),
+                reg.all_of<RequiredLane>(entity));
+            const std::string_view kind_name = enum_name_or_unknown(kind);
             const std::string_view shape_name = enum_name_or_unknown(action.target_shape);
 
             session_log_write(*log, song_time, "PLAYER",
