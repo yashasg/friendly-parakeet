@@ -23,6 +23,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include "test_helpers.h"
 #include "ui/screen_controllers/gameplay_hud_screen_controller.h"
+#include "input/keyboard_shape_mapping.h"
+#include "util/shape_lane_mapping.h"
 
 // Runs the fixed-tick input path.
 static void run_pipeline(entt::registry& reg, float dt = 0.016f) {
@@ -148,6 +150,13 @@ TEST_CASE("pipeline: semantic shape press remaps lane target to shape lane",
     run_pipeline(reg);
 
     CHECK(lane.target == 2);
+}
+
+TEST_CASE("pipeline: desktop keyboard slot mapping keeps Z left and C right lanes",
+          "[input_pipeline]") {
+    CHECK(lane_for_shape(kKeyboardShapeLeft) == 0);
+    CHECK(lane_for_shape(kKeyboardShapeCenter) == 1);
+    CHECK(lane_for_shape(kKeyboardShapeRight) == 2);
 }
 
 TEST_CASE("pipeline: gameplay HUD raygui shape press triggers player shape input",
