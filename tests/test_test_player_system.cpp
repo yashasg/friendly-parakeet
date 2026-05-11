@@ -3,8 +3,6 @@
 #include "components/test_player.h"
 #include "util/session_logger.h"
 
-#ifdef PLATFORM_DESKTOP
-
 static entt::registry make_test_player_registry(TestPlayerSkill skill = TestPlayerSkill::Pro) {
     entt::registry reg = make_rhythm_registry();
     auto& tp = reg.ctx().emplace<TestPlayerState>();
@@ -250,5 +248,3 @@ TEST_CASE("test_player: shape gate then lane block requiring opposite direction"
     tick_systems(reg, 800);
     CHECK(survived(reg));
 }
-
-#endif
