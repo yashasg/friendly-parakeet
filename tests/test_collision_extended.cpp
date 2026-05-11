@@ -2,6 +2,42 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
 
+namespace {
+
+struct ScoredTimingResult {
+    TimingTier tier{};
+    SongResults results{};
+};
+
+ScoredTimingResult score_rhythm_shape_hit_at_offset(float arrival_offset_seconds) {
+    auto reg = make_rhythm_registry();
+    auto player = make_rhythm_player(reg);
+    auto& ps = reg.get<PlayerShape>(player);
+    auto& sw = reg.get<ShapeWindow>(player);
+    auto& song = reg.ctx().get<SongState>();
+
+    song.song_time = 5.0f;
+    ps.current = Shape::Circle;
+    sw.phase = WindowPhase::Active;
+    sw.graded = false;
+    sw.press_time = song.song_time;
+
+    const float arrival_time = song.song_time + arrival_offset_seconds;
+    auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
+    reg.emplace<BeatInfo>(obs, 0, arrival_time, arrival_time - song.lead_time);
+
+    collision_system(reg, 0.016f);
+
+    REQUIRE(reg.all_of<TimingGrade>(obs));
+    const auto tier = reg.get<TimingGrade>(obs).tier;
+
+    scoring_system(reg, 0.016f);
+
+    return {tier, reg.ctx().get<SongResults>()};
+}
+
+}  // namespace
+
 // ── collision_system: Hexagon rejection ──────────────────────
 
 TEST_CASE("collision: Hexagon shape never matches shape gate", "[collision]") {
@@ -136,6 +172,41 @@ TEST_CASE("collision: rhythm perfect increments perfect_count in SongResults", "
 
     auto& results = reg.ctx().get<SongResults>();
     CHECK(results.perfect_count == 1);
+}
+
+TEST_CASE("collision/scoring: rhythm Good increments SongResults good_count (#214)",
+          "[collision][rhythm][issue214]") {
+    const auto result = score_rhythm_shape_hit_at_offset(
+        (kTimingPerfectSeconds + kTimingGoodSeconds) * 0.5f);
+
+    CHECK(result.tier == TimingTier::Good);
+    CHECK(result.results.perfect_count == 0);
+    CHECK(result.results.good_count == 1);
+    CHECK(result.results.ok_count == 0);
+    CHECK(result.results.bad_count == 0);
+}
+
+TEST_CASE("collision/scoring: rhythm Ok increments SongResults ok_count (#214)",
+          "[collision][rhythm][issue214]") {
+    const auto result = score_rhythm_shape_hit_at_offset(
+        (kTimingGoodSeconds + kTimingOkSeconds) * 0.5f);
+
+    CHECK(result.tier == TimingTier::Ok);
+    CHECK(result.results.perfect_count == 0);
+    CHECK(result.results.good_count == 0);
+    CHECK(result.results.ok_count == 1);
+    CHECK(result.results.bad_count == 0);
+}
+
+TEST_CASE("collision/scoring: rhythm Bad increments SongResults bad_count (#214)",
+          "[collision][rhythm][issue214]") {
+    const auto result = score_rhythm_shape_hit_at_offset(kTimingOkSeconds + 0.001f);
+
+    CHECK(result.tier == TimingTier::Bad);
+    CHECK(result.results.perfect_count == 0);
+    CHECK(result.results.good_count == 0);
+    CHECK(result.results.ok_count == 0);
+    CHECK(result.results.bad_count == 1);
 }
 
 TEST_CASE("collision: multiple misses accumulate in miss_count", "[collision][rhythm]") {
