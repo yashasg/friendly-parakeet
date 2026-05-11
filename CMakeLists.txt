@@ -587,6 +587,11 @@ if(NOT EMSCRIPTEN AND NOT SHAPESHIFTER_IOS)
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     )
     add_test(
+        NAME validate_loop1_diagnostics
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/validate_loop1_diagnostics.py
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    )
+    add_test(
         NAME validate_max_beat_gap
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/validate_max_beat_gap.py
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}

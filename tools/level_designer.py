@@ -807,6 +807,25 @@ def _baseline_same_shape_metrics(analysis):
     return metrics
 
 
+def _final_same_shape_metrics(beatmap):
+    return {
+        diff: _same_shape_run_metrics(payload.get("beats", []))
+        for diff, payload in beatmap.get("difficulties", {}).items()
+        if isinstance(payload, dict)
+    }
+
+
+def _load_shipped_beatmap_for_analysis(analysis):
+    song_id = analysis.get("title") or analysis.get("song_id")
+    if not song_id:
+        return None
+    beatmap_path = Path(__file__).resolve().parent.parent / "content" / "beatmaps" / f"{song_id}_beatmap.json"
+    if not beatmap_path.exists():
+        return None
+    with beatmap_path.open(encoding="utf-8") as handle:
+        return json.load(handle)
+
+
 def _nearest_subdivision_grid_time(event_time, beats, beat_idx):
     if not beats:
         return float(event_time)
@@ -907,6 +926,71 @@ def _build_obstacle_timing_rows(analysis, difficulty, experimental_onset_timing=
     return rows, selection_summary
 
 
+def _build_final_obstacle_timing_rows(analysis, difficulty, beatmap):
+    beats = analysis.get("beats", [])
+    events_by_source = {
+        index: event
+        for index, event in enumerate(analysis.get("events", []))
+        if isinstance(event, dict)
+    }
+    diff_payload = beatmap.get("difficulties", {}).get(difficulty, {})
+    obstacles = diff_payload.get("beats", []) if isinstance(diff_payload, dict) else []
+    rows = []
+    for order, obs in enumerate(obstacles):
+        if not isinstance(obs, dict):
+            continue
+        beat_idx = obs.get("beat")
+        if not isinstance(beat_idx, int) or beat_idx < 0 or beat_idx >= len(beats):
+            continue
+
+        source_event_idx = obs.get("source_event_idx")
+        event = events_by_source.get(source_event_idx) if isinstance(source_event_idx, int) else None
+        beat_time = float(obs.get("beat_time_sec", beats[beat_idx]))
+        onset_time = float(obs.get("onset_time_sec", obs.get("time_sec", beat_time)))
+        grid_time = _nearest_subdivision_grid_time(onset_time, beats, beat_idx)
+        subdivision = obs.get("subdivision_label") or obs.get("subdivision")
+        if not subdivision and isinstance(event, dict):
+            subdivision = event.get("subdivision")
+        onset_class = obs.get("onset_class") or obs.get("source_onset_class")
+        if not onset_class and isinstance(event, dict):
+            onset_class = event.get("onset_class") or event.get("layer")
+
+        rows.append({
+            "difficulty": difficulty,
+            "event_order": order,
+            "beat_idx": beat_idx,
+            "beat_time": round(beat_time, 6),
+            "onset_time": round(onset_time, 6),
+            "residual_ms": round((onset_time - grid_time) * 1000.0, 3),
+            "timing_source": obs.get("timing_source", "onset"),
+            "subdivision": subdivision or "downbeat",
+            "source_event_idx": source_event_idx,
+            "onset_class": onset_class or "unknown",
+            "segment_idx": obs.get("segment_idx") if obs.get("segment_idx") is not None else (
+                event.get("segment_idx") if isinstance(event, dict) else None
+            ),
+            "segment_focus": obs.get("segment_focus") if obs.get("segment_focus") is not None else (
+                event.get("segment_focus") if isinstance(event, dict) else None
+            ),
+            "motif_id": None,
+            "motif_length_beats": None,
+            "motif_token_length": None,
+            "motif_repeat_count": None,
+            "motif_fingerprint": None,
+            "event_role": obs.get("difficulty_inclusion"),
+            "difficulty_inclusion": obs.get("difficulty_inclusion"),
+        })
+    selection_summary = {
+        "generation_path": "final_shipped_beatmap",
+        "segments_total": len(analysis.get("structure", [])),
+        "events_total": len(analysis.get("events", [])),
+        "events_selected": len(rows),
+        "final_obstacle_count": len(rows),
+        "segment_details": [],
+    }
+    return rows, selection_summary
+
+
 def _onset_timing_comparison_summary(rows, difficulty):
     beat_times = [float(row["beat_time"]) for row in rows]
     onset_times = [float(row["onset_time"]) for row in rows]
@@ -947,7 +1031,12 @@ def _onset_timing_comparison_summary(rows, difficulty):
     }
 
 
-def write_snap_diagnostics(analysis, diagnostics_out_dir, experimental_onset_timing=False):
+def write_snap_diagnostics(
+    analysis,
+    diagnostics_out_dir,
+    experimental_onset_timing=False,
+    prefer_shipped_beatmap=True,
+):
     """Emit subdivision-aware diagnostics artifacts without changing generation."""
     out_dir = Path(diagnostics_out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -1096,13 +1185,28 @@ def write_snap_diagnostics(analysis, diagnostics_out_dir, experimental_onset_tim
         "raw_total": analysis.get("onset_diagnostics", {}).get("raw_total", None),
     }
 
+    final_beatmap = None
+    if experimental_onset_timing:
+        final_beatmap = _load_shipped_beatmap_for_analysis(analysis) if prefer_shipped_beatmap else None
+        if final_beatmap is None:
+            final_beatmap = build_beatmap(
+                analysis,
+                ["easy", "medium", "hard"],
+                cleanup_enabled=True,
+                experimental_onset_timing=True,
+            )
+
     summary = {
         "song_id": analysis.get("title", "unknown"),
         "onset_pool_summary": onset_pool_summary,
         "residual_summary": residual_summary,
         "subdivision_histogram": subdivision_histogram,
         "gap_histogram_50ms_bins": gap_histogram,
-        "same_shape_run_metrics": _baseline_same_shape_metrics(analysis),
+        "same_shape_run_metrics": (
+            _final_same_shape_metrics(final_beatmap)
+            if final_beatmap is not None
+            else _baseline_same_shape_metrics(analysis)
+        ),
     }
 
     if experimental_onset_timing:
@@ -1111,10 +1215,8 @@ def write_snap_diagnostics(analysis, diagnostics_out_dir, experimental_onset_tim
         selection_rollup = {}
         obstacle_counts: dict[str, int] = {}
         for difficulty in ("easy", "medium", "hard"):
-            rows, selection_summary = _build_obstacle_timing_rows(
-                analysis,
-                difficulty,
-                experimental_onset_timing=True,
+            rows, selection_summary = _build_final_obstacle_timing_rows(
+                analysis, difficulty, final_beatmap
             )
             onset_rows.extend(rows)
             onset_summary[difficulty] = _onset_timing_comparison_summary(rows, difficulty)
@@ -4362,6 +4464,7 @@ def main():
             analysis,
             args.diagnostics_out,
             experimental_onset_timing=not args.legacy_beat_grid,
+            prefer_shipped_beatmap=args.diagnostics_only,
         )
         print(f"✓ diagnostics: {out_dir}")
         if args.diagnostics_only:

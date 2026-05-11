@@ -24,7 +24,13 @@ class TestValidateLoop1Diagnostics(unittest.TestCase):
         self.base.mkdir(parents=True, exist_ok=True)
         self.addCleanup(lambda: shutil.rmtree(self.base, ignore_errors=True))
 
-    def _write_diagnostics(self, name: str, rows: list[dict], raw_per_pass: dict | None = None) -> Path:
+    def _write_diagnostics(
+        self,
+        name: str,
+        rows: list[dict],
+        raw_per_pass: dict | None = None,
+        summary_counts: dict | None = None,
+    ) -> Path:
         path = self.base / name
         path.mkdir(parents=True, exist_ok=True)
         summary = {
@@ -36,6 +42,9 @@ class TestValidateLoop1Diagnostics(unittest.TestCase):
                     "full-spectrum": 1,
                 }
             },
+            "experimental_onset_timing": {
+                "obstacle_counts_by_difficulty": summary_counts or {"easy": len(rows)},
+            },
         }
         (path / "snap_diagnostics_summary.json").write_text(json.dumps(summary), encoding="utf-8")
         with (path / "onset_timing_events.csv").open("w", newline="", encoding="utf-8") as handle:
@@ -43,6 +52,16 @@ class TestValidateLoop1Diagnostics(unittest.TestCase):
             writer.writeheader()
             writer.writerows(rows)
         return path
+
+    def _write_beatmap(self, beatmap_dir: Path, song: str, counts: dict[str, int]) -> None:
+        beatmap_dir.mkdir(parents=True, exist_ok=True)
+        beatmap = {
+            "difficulties": {
+                difficulty: {"beats": [{} for _ in range(count)]}
+                for difficulty, count in counts.items()
+            }
+        }
+        (beatmap_dir / f"{song}_beatmap.json").write_text(json.dumps(beatmap), encoding="utf-8")
 
     def _row(self, *, onset_class: str = "percussive", subdivision: str = "downbeat", timing_source: str = "onset") -> dict:
         return {
@@ -72,6 +91,20 @@ class TestValidateLoop1Diagnostics(unittest.TestCase):
         ])
         errors = diagnostics.validate_diagnostics_dir(path)
         self.assertTrue(any("non-onset timing sources" in e for e in errors))
+
+    def test_validate_diagnostics_flags_shipped_count_drift(self):
+        path = self._write_diagnostics(
+            "fixture_loop1",
+            [self._row()],
+            summary_counts={"easy": 1},
+        )
+        beatmap_dir = self.base / "beatmaps"
+        self._write_beatmap(beatmap_dir, "Fixture", {"easy": 2})
+
+        errors = diagnostics.validate_diagnostics_dir(path, beatmap_dir)
+
+        self.assertTrue(any("CSV easy rows=1 but shipped beatmap has 2" in e for e in errors))
+        self.assertTrue(any("summary easy count=1 but shipped beatmap has 2" in e for e in errors))
 
     def test_main_returns_error_when_no_diagnostics_dirs(self):
         with mock.patch.object(diagnostics, "DEFAULT_DIR", self.base):
