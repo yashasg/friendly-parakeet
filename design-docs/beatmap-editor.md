@@ -734,6 +734,10 @@ Examples: `tasks/wu1_state.md`, `tasks/wu4_timeline.md`, `tasks/wu8_integration.
 
 ### 6.1 Task File Format
 
+The unchecked boxes below are placeholders inside the task-file template, not
+release acceptance criteria. Traceability is recorded in
+`docs/acceptance-traceability.md`.
+
 Every task file must follow this template:
 
 ```markdown

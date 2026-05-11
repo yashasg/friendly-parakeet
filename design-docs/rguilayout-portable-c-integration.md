@@ -382,6 +382,9 @@ set_source_files_properties(
 
 ## Validation Checklist
 
+Traceability for these unchecked checklist items is maintained in
+`docs/acceptance-traceability.md`.
+
 - [ ] All screen `.rgl` files are authored and committed in `content/ui/screens/`.
 - [ ] All generated `<screen>_layout.h` files are committed in `app/ui/generated/`.
 - [ ] No generated files are hand-edited; any layout change regenerates from `.rgl`.

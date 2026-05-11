@@ -20,6 +20,9 @@
 > `energy-bar.md`. SPEC 1 (Input System) and SPEC 3 (Obstacle Spawning &
 > Difficulty) are still partially relevant; cross-check against the
 > rhythm specs before relying on numeric values here.
+>
+> Acceptance/checklist traceability for the unchecked items in this historical
+> document lives in `docs/acceptance-traceability.md`.
 
 ```
   ┌─────────────────────────────────────────────────┐
