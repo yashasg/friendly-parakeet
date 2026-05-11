@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
+#include <cmath>
 #include "test_helpers.h"
 
 namespace {
@@ -126,7 +127,9 @@ TEST_CASE("scoring: zero-point passive obstacles do not extend chain", "[scoring
 
     CHECK(score.chain_count == 1);
     CHECK_THAT(score.chain_timer, Catch::Matchers::WithinAbs(1.3f, 0.0001f));
-    CHECK(score_shape_gate_with_tier(reg, TimingTier::Good) == 250);
+    const int expected_chain2_points = static_cast<int>(
+        std::floor(static_cast<float>(constants::PTS_SHAPE_GATE) * (1.0f + constants::CHAIN_MULT_STEP)));
+    CHECK(score_shape_gate_with_tier(reg, TimingTier::Good) == expected_chain2_points);
     CHECK(score.chain_count == 2);
 }
 
