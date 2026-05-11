@@ -374,18 +374,26 @@ async function main() {
 
     // Some browser stacks can consume the first click as focus acquisition.
     // Click the title card body, not the lower button row, so generated
-    // Settings/Exit dead zones cannot accidentally swallow Start.
+    // Settings/Exit dead zones cannot accidentally swallow Start. Keep
+    // retrying until the phase marker changes; title animations or focus
+    // changes can otherwise look like a successful screen transition.
     let afterStartHash = beforeHash;
-    for (let i = 0; i < 3 && beforeHash === afterStartHash; i += 1) {
+    let reachedLevelSelect = false;
+    for (let i = 0; i < 3 && !reachedLevelSelect; i += 1) {
       await clickCanvasAt(0.5, 0.5);
-      afterStartHash = await waitForVisualChange(beforeHash, 2500);
+      const nextHash = await waitForVisualChange(afterStartHash, 2500);
+      if (nextHash !== afterStartHash) {
+        afterStartHash = nextHash;
+      }
+      reachedLevelSelect = await waitForTitlePhase('LevelSelect', 4000);
     }
     if (beforeHash === afterStartHash) {
       fatal.push('no-visual-response-after-title-clicks');
     }
-    if (!(await waitForTitlePhase('LevelSelect', 4000))) {
+    if (!reachedLevelSelect) {
       fatal.push(`missing-level-select-phase-marker:${await page.title()}`);
     }
+    afterStartHash = sha256(await page.screenshot());
 
     // Once on level select, keyboard navigation should visibly update selection.
     // The title transition above covers the browser click path; using keyboard
