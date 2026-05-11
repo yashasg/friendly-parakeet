@@ -139,7 +139,8 @@ void log_persistence_result(const char* operation, const persistence::Result& re
 bool game_loop_init(entt::registry& reg,
                     bool test_player_mode,
                     TestPlayerSkill test_skill,
-                    const char* difficulty) {
+                    const char* difficulty,
+                    int selected_level) {
     // Platform: window + audio
     std::string window_title = std::string("SHAPESHIFTER v") + SHAPESHIFTER_VERSION;
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
@@ -249,7 +250,7 @@ bool game_loop_init(entt::registry& reg,
 
     // Test player (optional)
     if (test_player_mode) {
-        test_player_init(reg, test_skill, difficulty);
+        test_player_init(reg, test_skill, difficulty, selected_level);
     }
     return true;
 }
