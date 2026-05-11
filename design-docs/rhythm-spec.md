@@ -134,9 +134,10 @@ constexpr float WINDOW_SCALE_OK      = 1.00f;  // OK hit      → no change (def
 constexpr float MORPH_DURATION = 0.12f;
 
 // ── Scoring ──────────────────────────────────────────────────────────
-// Points are computed dynamically: base_points × timing_multiplier.
+// Points are computed dynamically: base_points × timing_multiplier × chain_multiplier.
 // No fixed PTS_PERFECT/PTS_GOOD/PTS_OK constants.
-constexpr int   CHAIN_BONUS[5]   = { 0, 0, 50, 100, 200 }; // indexed by chain length (clamped to 4)
+constexpr float CHAIN_MULT_STEP = 0.05f;
+constexpr int32_t CHAIN_MULT_BONUS_STEPS_CAP = 20; // caps at 2.0x from chain 21 onward
 ```
 
 ---
@@ -312,7 +313,7 @@ struct SongResults {
            ↓
   ┌─ SCORING ──────────────────────────────────────────────────┐
   │ scoring_system                                 [MOD]       │
-  │   → reads TimingGrade, computes pts + flat chain bonus      │
+  │   → reads TimingGrade, computes pts with chain multiplier   │
   │   → updates SongResults counters                           │
   │   → spawns grade popup VFX                                 │
   │                                                            │

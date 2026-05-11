@@ -350,6 +350,26 @@ void render_gameplay_hud_screen_ui(entt::registry& reg) {
         GuiSetAlpha(0.7f);
         GuiLabel(Rectangle{ 80, 50, 200, 30 }, high_score_text);
         GuiSetAlpha(1.0f);
+
+        if (score->chain_count >= 2) {
+            const bool meaningful_chain = score->chain_count >= 5;
+            char chain_text[32];
+            std::snprintf(chain_text, sizeof(chain_text), meaningful_chain ? "CHAIN %d!" : "CHAIN %d",
+                          score->chain_count);
+            if (meaningful_chain) {
+                const auto* settings = reg.ctx().find<SettingsState>();
+                const bool reduce_motion = settings && settings->reduce_motion;
+                const auto* song = reg.ctx().find<SongState>();
+                const float pulse_time = (song && song->playing) ? song->song_time : static_cast<float>(GetTime());
+                const float pulse = reduce_motion ? 0.5f : (0.5f + 0.5f * std::sin(pulse_time * 8.0f));
+                DrawRectangleLinesEx(Rectangle{76, 82, 138, 28}, 2.0f,
+                                     Fade({100, 255, 180, 255}, 0.20f + 0.20f * pulse));
+            }
+            GuiSetStyle(DEFAULT, TEXT_SIZE, meaningful_chain ? 20 : 18);
+            GuiSetAlpha(meaningful_chain ? 0.95f : 0.70f);
+            GuiLabel(Rectangle{ 80, 80, 160, 32 }, chain_text);
+            GuiSetAlpha(1.0f);
+        }
     }
 
     render_shape_buttons(reg, hud_layout, state);

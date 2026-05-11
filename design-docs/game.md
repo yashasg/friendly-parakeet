@@ -122,14 +122,15 @@ When an obstacle requires TWO actions (e.g., switch to ● AND swipe left), the 
 ## Scoring
 
 ### Points Per Obstacle
-- `floor(base_points × timing_multiplier) + chain_flat_bonus`
+- `floor(base_points × timing_multiplier × chain_multiplier)`
 - Timing multiplier comes from the beat-distance grade (Perfect/Good/Ok/Bad). See `rhythm-design.md`.
 
 ### Chain
 - Each consecutive non-miss timing grade (Perfect, Good, Ok, or Bad) grows the chain.
 - Bad awards reduced points and drains small energy. Miss resets the chain.
 - Chain resets on any MISS.
-- Chain contributes a bounded flat bonus so consistent rhythm is rewarded over isolated hits.
+- Chain contributes `chain_multiplier = 1.0 + 0.05 × min(chain_count - 1, 20)`, capped at 2.0× from chain 21 onward, so consistent rhythm scales every obstacle instead of adding a small flat bonus.
+- Good Shape Gate comparison: chain 1 = 200, chain 5 = 240, chain 10 = 290, chain 20 = 390. Perfect Shape Gate comparison: chain 1 = 300, chain 5 = 360, chain 10 = 435, chain 20 = 585.
 
 ### Distance Bonus
 - +10 points per second survived (passive income).
