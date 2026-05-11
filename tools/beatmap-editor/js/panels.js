@@ -272,6 +272,7 @@ async function loadBundledLevel(level, { recordUndo }) {
                 const analysisResponse = await fetch(getContentUrl(level.analysisPath));
                 if (analysisResponse.ok) {
                     state.analysisData = importAnalysis(await analysisResponse.text());
+                    showAnalysisWarnings(state.analysisData);
                 }
             } catch (analysisError) {
                 console.warn('Failed to auto-load bundled analysis:', analysisError);
@@ -547,6 +548,7 @@ async function handleImportAnalysis() {
         const result = importAnalysis(text);
         if (result) {
             state.analysisData = result;
+            showAnalysisWarnings(result);
             emit('analysis-loaded');
         }
     } catch (e) {
@@ -600,6 +602,15 @@ function showValidationErrors(errors) {
     }
 
     els.validationPanel.classList.toggle('has-errors', errors.length > 0);
+}
+
+function showAnalysisWarnings(analysisData) {
+    if (!analysisData?.warnings?.length) return;
+    showValidationErrors(analysisData.warnings.map(message => ({
+        message,
+        severity: 'warning',
+        beatIndex: -1,
+    })));
 }
 
 // ── Drag and Drop ───────────────────────────────────

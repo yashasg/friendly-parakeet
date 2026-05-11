@@ -9,6 +9,7 @@ import {
     WAVEFORM_HEIGHT,
     TIMELINE_PADDING_LEFT,
     LANE_LABELS,
+    normalizeOnsetLayerName,
 } from './constants.js';
 
 let canvas = null;
@@ -157,7 +158,7 @@ export function render(state, waveformData, validationErrors) {
         renderWaveform(ctx, state, waveformData, w);
     }
 
-    // 4b. Analysis onset rows (kick/snare/hihat/etc)
+    // 4b. Analysis onset rows (public rhythm layers)
     renderOnsetTracks(ctx, state, w, h);
 
     // 5. Beat grid lines
@@ -222,12 +223,14 @@ function renderAnalysisOverlay(ctx, state, w) {
     }
 }
 
-function getOnsetRows(analysisData) {
+export function getOnsetRows(analysisData) {
     const onsetMap = analysisData?.onsets;
     if (!onsetMap || typeof onsetMap !== 'object') return [];
 
-    // Preserve source order from analysis JSON; do not impose class ordering here.
+    // The import path normalizes analysis data; this guard prevents ad-hoc state
+    // from rendering raw detector names as editor-visible rhythm layers.
     return Object.entries(onsetMap)
+        .filter(([name]) => normalizeOnsetLayerName(name) === name)
         .filter(([, value]) => value && typeof value === 'object')
         .map(([name, value]) => ({
         name,

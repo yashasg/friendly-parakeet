@@ -98,6 +98,27 @@ export const DEFAULT_LEVELS = Object.freeze([
     }),
 ]);
 
+export const PUBLIC_ONSET_LAYERS = Object.freeze(["percussive", "harmonic", "full-spectrum"]);
+
+export const LEGACY_ONSET_LAYER_ALIASES = Object.freeze({
+    percussive_bass: "percussive",
+    percussive_broadband: "percussive",
+    percussive_high_mid: "percussive",
+    harmonic_low_mid: "harmonic",
+    full_spectrum: "full-spectrum",
+    full_spectrum_flux: "full-spectrum",
+    kick: "percussive",
+    snare: "percussive",
+    hihat: "percussive",
+    melody: "harmonic",
+    flux: "full-spectrum",
+});
+
+export function normalizeOnsetLayerName(name) {
+    if (PUBLIC_ONSET_LAYERS.includes(name)) return name;
+    return LEGACY_ONSET_LAYER_ALIASES[name] || null;
+}
+
 // Obstacle kinds available in the editor UI (authoring surfaces only)
 export const EDITOR_OBSTACLE_KINDS = Object.freeze(["shape_gate", "split_path"]);
 
