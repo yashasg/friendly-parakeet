@@ -23,6 +23,10 @@ void particle_system(entt::registry& reg, float dt) {
     for (auto [entity, pdata] : view.each()) {
         pdata.remaining -= dt;
         if (pdata.remaining <= 0.0f) {
+            auto& scratch = particle_scratch_for(reg);
+            if (expired.size() >= expired.capacity()) {
+                ++scratch.capacity_exceeded_count;
+            }
             expired.push_back(entity);
         }
     }

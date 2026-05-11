@@ -1,5 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
+#include <cstddef>
 #include "test_helpers.h"
+#include "components/system_scratch.h"
 
 TEST_CASE("scoring: distance bonus accumulates", "[scoring]") {
     auto reg = make_registry();
@@ -312,4 +314,34 @@ TEST_CASE("scoring: obstacle/timing points still apply after playback has finish
     scoring_system(reg, 1.0f);
 
     CHECK(score.score >= constants::PTS_SHAPE_GATE);
+}
+
+TEST_CASE("runtime scratch: dense scoring burst stays within reserved capacity", "[scoring][issue557]") {
+    auto reg = make_registry();
+    constexpr int dense_count = 6;
+    runtime_system_scratch_reserve(reg, dense_count);
+
+    auto& scratch = reg.ctx().get<ScoringSystemScratch>();
+    auto& energy = reg.ctx().get<PendingEnergyEffects>();
+    auto& popup_queue = reg.ctx().get<ScorePopupRequestQueue>();
+    const auto hit_capacity = scratch.hit_buf.capacity();
+    const auto energy_capacity = energy.events.capacity();
+    const auto popup_capacity = popup_queue.requests.capacity();
+
+    for (int i = 0; i < dense_count; ++i) {
+        auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y + static_cast<float>(i));
+        reg.emplace<ScoredTag>(obs);
+        reg.emplace<TimingGrade>(obs, TimingTier::Good, 0.5f);
+    }
+
+    scoring_system(reg, 0.0f);
+
+    CHECK(scratch.hit_buf.capacity() == hit_capacity);
+    CHECK(energy.events.capacity() == energy_capacity);
+    CHECK(popup_queue.requests.capacity() == popup_capacity);
+    CHECK(scratch.hit_capacity_exceeded_count == 0);
+    CHECK(energy.capacity_exceeded_count == 0);
+    CHECK(popup_queue.capacity_exceeded_count == 0);
+    CHECK(energy.events.size() == static_cast<std::size_t>(dense_count));
+    CHECK(popup_queue.requests.size() == static_cast<std::size_t>(dense_count));
 }

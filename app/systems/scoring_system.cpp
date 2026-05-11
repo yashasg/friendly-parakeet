@@ -25,6 +25,9 @@ PendingEnergyEffects& pending_energy_for(entt::registry& reg) {
 
 void enqueue_energy_effect(entt::registry& reg, float delta, bool flash = false) {
     auto& pending = pending_energy_for(reg);
+    if (pending.events.size() >= pending.events.capacity()) {
+        ++pending.capacity_exceeded_count;
+    }
     pending.events.push_back(PendingEnergyEffects::Event{delta, flash});
 }
 
@@ -75,6 +78,9 @@ void scoring_system(entt::registry& reg, float dt) {
             if (results) results->miss_count++;
             score.chain_count = 0;
             score.chain_timer = 0.0f;
+            if (miss_buf.size() >= miss_buf.capacity()) {
+                ++scratch.miss_capacity_exceeded_count;
+            }
             miss_buf.push_back({e, true});
         }
 
@@ -85,6 +91,9 @@ void scoring_system(entt::registry& reg, float dt) {
             if (results) results->miss_count++;
             score.chain_count = 0;
             score.chain_timer = 0.0f;
+            if (miss_buf.size() >= miss_buf.capacity()) {
+                ++scratch.miss_capacity_exceeded_count;
+            }
             miss_buf.push_back({e, false});
         }
         // Apply structural removals after iteration — safe.
@@ -114,6 +123,9 @@ void scoring_system(entt::registry& reg, float dt) {
             r.obs      = obs;
             r.has_timing = true;
             r.timing = tg;
+            if (hit_buf.size() >= hit_buf.capacity()) {
+                ++scratch.hit_capacity_exceeded_count;
+            }
             hit_buf.push_back(r);
         }
 
@@ -125,6 +137,9 @@ void scoring_system(entt::registry& reg, float dt) {
             r.popup_xy = wt.position;
             r.obs      = obs;
             r.has_timing = false;
+            if (hit_buf.size() >= hit_buf.capacity()) {
+                ++scratch.hit_capacity_exceeded_count;
+            }
             hit_buf.push_back(r);
         }
 
@@ -179,6 +194,9 @@ void scoring_system(entt::registry& reg, float dt) {
             score.score += points;
 
             // Queue timing/score popup; popup_feedback_system owns spawn/SFX.
+            if (popup_queue.requests.size() >= popup_queue.requests.capacity()) {
+                ++popup_queue.capacity_exceeded_count;
+            }
             popup_queue.requests.push_back({
                 r.popup_xy.x,
                 r.popup_xy.y,
@@ -210,6 +228,9 @@ void scoring_system(entt::registry& reg, float dt) {
         for (auto e : ns_view) {
             HitRecord r;
             r.e = e;
+            if (cleanup_buf.size() >= cleanup_buf.capacity()) {
+                ++scratch.hit_capacity_exceeded_count;
+            }
             cleanup_buf.push_back(r);
         }
         for (auto& r : cleanup_buf) {
