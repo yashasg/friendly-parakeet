@@ -17,6 +17,13 @@ struct SessionLog {
     int         last_logged_beat = -1;  // beat_log_system tracks last emitted beat
 
     SessionLog() { buffer.reserve(kMaxLogBufferBytes); }
+    SessionLog(const SessionLog&) = delete;
+    SessionLog& operator=(const SessionLog&) = delete;
+    SessionLog(SessionLog&& other) noexcept;
+    SessionLog& operator=(SessionLog&& other) noexcept;
+    ~SessionLog();
+
+    void release();
 };
 
 // ── Free functions ───────────────────────────────────────────

@@ -99,13 +99,7 @@ bool load_default_text_fonts(TextContext& ctx) {
 }
 
 void unload_text_fonts(TextContext& ctx) {
-    if (ctx.font_large.baseSize > 0)  UnloadFont(ctx.font_large);
-    if (ctx.font_medium.baseSize > 0) UnloadFont(ctx.font_medium);
-    if (ctx.font_small.baseSize > 0)  UnloadFont(ctx.font_small);
-    ctx.font_large = {};
-    ctx.font_medium = {};
-    ctx.font_small = {};
-    ctx.loaded = false;
+    ctx.release();
 }
 
 void log_persistence_result(const char* operation, const persistence::Result& result) {
@@ -361,12 +355,8 @@ void game_loop_shutdown(entt::registry& reg) {
     }
     {
         auto* music = reg.ctx().find<MusicContext>();
-        if (music && music->loaded) {
-            StopMusicStream(music->stream);
-            unload_music_stream_resources(music->stream);
-            music->loaded = false;
-            music->started = false;
-            music->paused = false;
+        if (music) {
+            music->release();
         }
     }
     camera::shutdown(reg);
