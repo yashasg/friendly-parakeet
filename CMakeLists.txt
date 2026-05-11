@@ -203,6 +203,14 @@ if(SHAPESHIFTER_IOS)
         SDL2::SDL2
         ${SHAPESHIFTER_IOS_FRAMEWORKS}
     )
+elseif(APPLE)
+    target_link_libraries(shapeshifter_lib PUBLIC
+        ${SHAPESHIFTER_MACOS_FRAMEWORKS}
+    )
+elseif(WIN32)
+    target_link_libraries(shapeshifter_lib PUBLIC opengl32 gdi32 winmm)
+elseif(UNIX AND NOT EMSCRIPTEN)
+    target_link_libraries(shapeshifter_lib PUBLIC GL X11 Xrandr m pthread dl)
 endif()
 target_link_libraries(shapeshifter_lib PRIVATE shapeshifter_warnings)
 
@@ -263,19 +271,10 @@ target_link_libraries(shapeshifter PRIVATE
 )
 
 # ── Platform link dependencies for raylib (RGFW backend) ─────
-# RGFW uses native platform APIs directly — no GLFW.
-if(SHAPESHIFTER_IOS)
-    # iOS frameworks are carried by shapeshifter_lib's public link interface.
+# RGFW uses native platform APIs directly — no GLFW. Dependencies are carried
+# by shapeshifter_lib's public link interface so they stay ordered after raylib.
+if(APPLE)
     target_link_options(shapeshifter PRIVATE "LINKER:-no_warn_duplicate_libraries")
-elseif(APPLE)
-    target_link_options(shapeshifter PRIVATE "LINKER:-no_warn_duplicate_libraries")
-    target_link_libraries(shapeshifter PRIVATE
-        ${SHAPESHIFTER_MACOS_FRAMEWORKS}
-    )
-elseif(WIN32)
-    target_link_libraries(shapeshifter PRIVATE opengl32 gdi32 winmm)
-elseif(UNIX AND NOT EMSCRIPTEN)
-    target_link_libraries(shapeshifter PRIVATE GL X11 Xrandr m pthread dl)
 endif()
 
 # ── Emscripten linker flags ──────────────────────────────────
@@ -406,13 +405,6 @@ if(NOT EMSCRIPTEN AND NOT SHAPESHIFTER_IOS)
 
     if(APPLE)
         target_link_options(shapeshifter_startup_shutdown_smoke PRIVATE "LINKER:-no_warn_duplicate_libraries")
-        target_link_libraries(shapeshifter_startup_shutdown_smoke PRIVATE
-            ${SHAPESHIFTER_MACOS_FRAMEWORKS}
-        )
-    elseif(WIN32)
-        target_link_libraries(shapeshifter_startup_shutdown_smoke PRIVATE opengl32 gdi32 winmm)
-    elseif(UNIX)
-        target_link_libraries(shapeshifter_startup_shutdown_smoke PRIVATE GL X11 Xrandr m pthread dl)
     endif()
 endif()
 
@@ -549,18 +541,8 @@ elseif(EMSCRIPTEN)
     target_compile_definitions(shapeshifter_tests PRIVATE PLATFORM_WEB PLATFORM_HAS_KEYBOARD)
 endif()
 
-if(SHAPESHIFTER_IOS)
-    # iOS frameworks are carried by shapeshifter_lib's public link interface.
+if(APPLE)
     target_link_options(shapeshifter_tests PRIVATE "LINKER:-no_warn_duplicate_libraries")
-elseif(APPLE)
-    target_link_options(shapeshifter_tests PRIVATE "LINKER:-no_warn_duplicate_libraries")
-    target_link_libraries(shapeshifter_tests PRIVATE
-        ${SHAPESHIFTER_MACOS_FRAMEWORKS}
-    )
-elseif(WIN32)
-    target_link_libraries(shapeshifter_tests PRIVATE opengl32 gdi32 winmm)
-elseif(UNIX AND NOT EMSCRIPTEN)
-    target_link_libraries(shapeshifter_tests PRIVATE GL X11 Xrandr m pthread dl)
 endif()
 
 if(EMSCRIPTEN)
