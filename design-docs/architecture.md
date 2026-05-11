@@ -42,7 +42,7 @@ Portrait mode. Logical resolution scales to device via raylib virtual resolution
     │ (0,0)              (720,0)  │
     │                             │
     │   Lane 0   Lane 1   Lane 2  │
-    │   x=180    x=360    x=540   │
+    │   x=60     x=360    x=660   │
     │                             │
     │          obstacles          │
     │          scroll ↓           │
@@ -69,7 +69,7 @@ namespace constants {
 
     // ── Lanes ─────────────────────────────────────────
     constexpr int   LANE_COUNT        = 3;
-    constexpr float LANE_X[3]         = { 180.0f, 360.0f, 540.0f };
+    constexpr float LANE_X[3]         = { 60.0f, 360.0f, 660.0f };
     constexpr float LANE_SWITCH_SPEED = 12.0f;   // lerp factor per second
 
     // ── Player ────────────────────────────────────────
