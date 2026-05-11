@@ -300,6 +300,12 @@ TEST_CASE("Persistence paths: one shared policy resolves both settings and high-
     std::filesystem::remove_all(paths.root_dir);
 }
 
+TEST_CASE("Persistence sync seams skip paths outside the web persistence root", "[settings]") {
+    const std::filesystem::path current_dir_file = "settings_current_dir_tmp.json";
+    CHECK(persistence::prepare_for_persistence_read(current_dir_file).ok());
+    CHECK(persistence::flush_persistence_writes(current_dir_file).ok());
+}
+
 TEST_CASE("Settings persistence helper: file path resolution reports failure without CWD fallback", "[settings]") {
     const auto root = std::filesystem::path("test_settings_path_resolution_failure");
     const auto blocked_root = root / "blocked_root";
