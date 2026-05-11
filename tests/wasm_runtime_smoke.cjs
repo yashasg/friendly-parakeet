@@ -2,16 +2,104 @@
 
 const { chromium } = require('playwright-core');
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
+
+const BUILD_ASSETS = ['index.js', 'index.wasm', 'index.data'];
 
 function sha256(buf) {
   return crypto.createHash('sha256').update(buf).digest('hex');
 }
 
-async function main() {
-  const url = process.argv[2];
-  if (!url) {
-    throw new Error('usage: node tests/wasm_runtime_smoke.cjs <url>');
+function parseArgs(argv) {
+  const options = {
+    buildDir: null,
+    seedStaleBuildCache: false,
+    url: null,
+  };
+
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    if (arg === '--build-dir') {
+      i += 1;
+      if (i >= argv.length) {
+        throw new Error('--build-dir requires a path');
+      }
+      options.buildDir = argv[i];
+    } else if (arg === '--seed-stale-build-cache') {
+      options.seedStaleBuildCache = true;
+    } else if (!options.url) {
+      options.url = arg;
+    } else {
+      throw new Error(`unexpected argument: ${arg}`);
+    }
   }
+
+  if (!options.url) {
+    throw new Error('usage: node tests/wasm_runtime_smoke.cjs [--build-dir <dir>] [--seed-stale-build-cache] <url>');
+  }
+  if (options.seedStaleBuildCache && !options.buildDir) {
+    throw new Error('--seed-stale-build-cache requires --build-dir');
+  }
+
+  return options;
+}
+
+function loadBuildAssetHashes(buildDir) {
+  const hashes = new Map();
+  for (const name of BUILD_ASSETS) {
+    const assetPath = path.join(buildDir, name);
+    hashes.set(name, sha256(fs.readFileSync(assetPath)));
+  }
+  return hashes;
+}
+
+function readServiceWorkerCacheName(buildDir) {
+  const swText = fs.readFileSync(path.join(buildDir, 'sw.js'), 'utf8');
+  const literalName = swText.match(/\bCACHE_NAME\s*=\s*'([^']+)'/);
+  if (literalName) {
+    return literalName[1];
+  }
+
+  const prefix = swText.match(/\bCACHE_PREFIX\s*=\s*'([^']+)'/);
+  const suffix = swText.match(/\bCACHE_NAME\s*=\s*CACHE_PREFIX\s*\+\s*'([^']+)'/);
+  if (!prefix || !suffix) {
+    throw new Error('could not determine service worker cache name from build sw.js');
+  }
+
+  return `${prefix[1]}${suffix[1]}`;
+}
+
+function buildAssetNameFromUrl(requestUrl) {
+  const filename = new URL(requestUrl).pathname.split('/').pop();
+  return BUILD_ASSETS.includes(filename) ? filename : null;
+}
+
+async function seedStaleBuildCache(context, url, buildDir) {
+  const cacheName = readServiceWorkerCacheName(buildDir);
+  const seedPage = await context.newPage();
+  try {
+    await seedPage.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await seedPage.waitForFunction(() => 'serviceWorker' in navigator, undefined, { timeout: 10000 });
+    await seedPage.waitForFunction(() => navigator.serviceWorker.ready.then(() => true), undefined, { timeout: 30000 });
+    await seedPage.evaluate(async ({ assets, cacheName: activeCacheName }) => {
+      const cache = await caches.open(activeCacheName);
+      await Promise.all(assets.map(name => cache.put(
+        new Request(new URL(name, location.href).href),
+        new Response(`stale cached ${name}`, {
+          status: 200,
+          headers: { 'content-type': 'application/octet-stream' },
+        }),
+      )));
+    }, { assets: BUILD_ASSETS, cacheName });
+  } finally {
+    await seedPage.close();
+  }
+}
+
+async function main() {
+  const options = parseArgs(process.argv.slice(2));
+  const expectedAssetHashes = options.buildDir ? loadBuildAssetHashes(options.buildDir) : new Map();
 
   const executablePath = process.env.CHROMIUM_EXECUTABLE_PATH;
   if (!executablePath) {
@@ -29,9 +117,11 @@ async function main() {
     hasTouch: true,
     isMobile: true,
   });
-  const page = await context.newPage();
-  const cdp = await context.newCDPSession(page);
   const fatal = [];
+  const responseChecks = [];
+  const validatedBuildAssets = new Set();
+  let page;
+  let cdp;
 
   async function clickCanvasAt(xRatio, yRatio) {
     const canvas = page.locator('#canvas');
@@ -201,6 +291,14 @@ async function main() {
     return null;
   }
 
+  try {
+    if (options.seedStaleBuildCache) {
+      await seedStaleBuildCache(context, options.url, options.buildDir);
+    }
+
+    page = await context.newPage();
+    cdp = await context.newCDPSession(page);
+
   page.on('console', msg => {
     const text = msg.text();
     if (/RuntimeError: Aborted|Aborted\(|abort\(|emscripten_sleep/i.test(text)) {
@@ -220,8 +318,30 @@ async function main() {
     }
   });
 
-  try {
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  page.on('response', response => {
+    const assetName = buildAssetNameFromUrl(response.url());
+    if (!assetName || !expectedAssetHashes.has(assetName)) {
+      return;
+    }
+
+    responseChecks.push((async () => {
+      if (!response.ok()) {
+        fatal.push(`build-asset-response-not-ok:${assetName}:${response.status()}`);
+        return;
+      }
+      const actual = sha256(await response.body());
+      const expected = expectedAssetHashes.get(assetName);
+      if (actual !== expected) {
+        fatal.push(`stale-build-asset-served:${assetName}:expected=${expected}:actual=${actual}`);
+        return;
+      }
+      validatedBuildAssets.add(assetName);
+    })().catch(err => {
+      fatal.push(`build-asset-hash-check-failed:${assetName}:${err.message}`);
+    }));
+  });
+
+    await page.goto(options.url, { waitUntil: 'domcontentloaded', timeout: 60000 });
     await page.waitForSelector('#canvas', { state: 'visible', timeout: 30000 });
     await page.waitForFunction(() => {
       const loader = document.querySelector('#loader');
@@ -320,8 +440,15 @@ async function main() {
       fatal.push(`missing-lane-return-after-playing-touch-swipe-left:${await page.title()}`);
     }
   } finally {
+    await Promise.all(responseChecks);
     await context.close();
     await browser.close();
+  }
+
+  for (const assetName of expectedAssetHashes.keys()) {
+    if (!validatedBuildAssets.has(assetName)) {
+      fatal.push(`build-asset-response-not-observed:${assetName}`);
+    }
   }
 
   if (fatal.length > 0) {
