@@ -22,7 +22,7 @@ Rhythm runner where the player shifts between 3 geometric shapes to pass through
 
 ---
 
-## Player Shapes (3 active + Hexagon default)
+## Player Shapes (3 playable + Hexagon rest)
 
 | Shape    | Symbol | Passes Through       |
 |----------|--------|----------------------|
@@ -31,7 +31,7 @@ Rhythm runner where the player shifts between 3 geometric shapes to pass through
 | Triangle | ▲      | Triangle holes/gates |
 | Hexagon  | ⬡      | None (default/rest)  |
 
-The player is always one of these shapes. Hexagon is the default resting shape — the player returns to it between obstacles. Hexagon does not pass through any gates; any gate arriving while in Hexagon = MISS. Tap a shape button to switch instantly.
+The player is always one of these shapes, but only Circle, Square, and Triangle are playable inputs. Hexagon is the automatic rest/default state between shape windows: the player returns to it after MorphOut and cannot choose it from the HUD or keyboard. Hexagon does not pass through any gates; any gate arriving while in Hexagon = MISS. Tap a playable shape button to switch instantly.
 
 ---
 
@@ -52,7 +52,7 @@ The screen is divided into two zones:
   - `[ ■ ]` Square
   - `[ ▲ ]` Triangle
 
-  The currently active shape button is highlighted/glowing. Tapping a button immediately shifts the player to that shape.
+  The currently active playable shape button is highlighted/glowing. There is no Hexagon button: Hexagon is a visible rest silhouette only, restored automatically by the shape-window system.
 
 - **Keyboard fallback** mirrors lane layout for shipped beatmaps: `Z`/`1` selects the left-lane shape, `X`/`2` selects center, and `C`/`3` selects right.
 
@@ -206,7 +206,9 @@ Difficulty is selected per song (easy / medium / hard) and is expressed primaril
   at y=1120). Currently selected button is highlighted, and each is
   wrapped by a **proximity ring** that shrinks toward the button as
   the matching obstacle approaches, providing the live timing cue
-  (see `rhythm-spec.md` §6 / `rhythm-design.md` §4).
+  (see `rhythm-spec.md` §6 / `rhythm-design.md` §4). The HUD must
+  not expose a fourth Hexagon control; rest-state feedback comes from
+  the player silhouette returning to Hexagon after MorphOut.
 
 > Any future redesign that wants to relocate the energy bar to the
 > top of the HUD must land as an explicit change to

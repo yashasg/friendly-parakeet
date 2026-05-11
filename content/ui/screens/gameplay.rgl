@@ -8,6 +8,7 @@
 # approach_ring data is OUT OF SCOPE per user directive and should not be
 # carried forward. Energy bar placement is data-driven. DummyRec controls
 # serve as layout slots for custom-rendered elements.
+# Hexagon is the automatic rest silhouette only; do not add a Hexagon button.
 #
 # Ref. window:    r <x> <y> <width> <height>
 # Anchor info:    a <id> <name> <posx> <posy> <enabled>
