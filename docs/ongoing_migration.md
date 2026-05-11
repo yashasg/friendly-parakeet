@@ -1,22 +1,22 @@
-# Runtime Dependency Status
+# Migration Documentation Status
 
-This file tracks the active dependency-boundary direction and supersedes older
-backend migration notes.
+This file is the authoritative index for migration-related documentation.
 
-## Decision
+## Current architecture direction
 
-1. The shipped runtime uses direct **raylib/raygui** APIs for windowing, input,
-   rendering, UI, and audio.
-2. **glm** is the math type dependency for transforms and geometry data.
-3. ECS components and gameplay systems remain plain data + free functions.
-4. No compatibility wrapper layer should be introduced.
+1. Runtime/platform calls use direct **raylib / raygui** and **glm**.
+2. ECS components and gameplay systems remain plain data + free functions.
+3. No compatibility wrapper layer should be introduced.
+
+## Historical migration docs
+
+- `docs/raylib-migration.md` is historical. The migration to raylib/raygui is complete; keep it only as context for why wrapper layers were rejected.
+- `docs/sokol-migration.md` is historical. It describes an abandoned SDL2 to Sokol plan and is not implementation guidance.
 
 ## Repository implications
 
-- There is no active SDL, Sokol, or backend-wrapper migration plan.
-- `docs/raylib-migration.md` and `docs/sokol-migration.md` are historical only.
+- New runtime work should extend the existing raylib/raygui path unless a new architecture decision supersedes this file.
 - Runtime-only systems must stay separated from the headless ECS API surface.
-- Backend handles should stay at runtime/render/audio boundaries unless a
-  component is intentionally runtime-facing.
+- Backend handle types must not leak into common ECS component headers.
 
 If any code or docs conflict with this decision, treat this file as authoritative.

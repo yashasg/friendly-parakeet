@@ -7,10 +7,9 @@
 
 A rhythm game where obstacles ARE the beats. Match shapes and dodge lane blocks in time with the music — the closer to the beat, the higher your score.
 
-Built with **C++20**, **raylib/raygui**, **EnTT**, and **glm** using
-Data-Oriented Design. The current runtime uses raylib directly for windowing,
-input, rendering, and audio at the platform boundary; older backend migration
-plans are historical only.
+Built with **C++20** and **EnTT** using Data-Oriented Design.
+Current architecture direction is direct **raylib/raygui + glm**
+at runtime boundaries, without wrapper abstraction layers.
 
 **[Play in browser](https://yashasg.github.io/friendly-parakeet/)** (WebAssembly)
 
@@ -79,6 +78,9 @@ See `ios/README.md` for blocker checklist and full command modes.
 ## Architecture
 
 **Data-Oriented Design** with EnTT ECS — components are plain structs, systems are free functions.
+
+Migration-related docs are indexed in [`docs/ongoing_migration.md`](docs/ongoing_migration.md);
+it identifies historical migration plans and the current authoritative runtime direction.
 
 ### System Pipeline (per frame)
 
@@ -167,19 +169,11 @@ The level designer uses song structure (intro/verse/chorus/bridge) to control de
 
 | Library | Version | Purpose |
 |---------|---------|---------|
-| SDL2 / SDL_mixer / SDL_ttf | planned migration target | Runtime input, rendering, text, audio |
-| glm | planned migration target | Math data and transforms |
+| raylib / raygui | vcpkg | Runtime input, rendering, text, audio, immediate-mode UI |
+| glm | vcpkg | Math data and transforms |
 | [EnTT](https://github.com/skypjack/entt) | 3.16.0 | Entity Component System |
 | [nlohmann-json](https://github.com/nlohmann/json) | 3.12+ | Beatmap JSON parsing |
 | [Catch2](https://github.com/catchorg/Catch2) | 3.13+ | Testing framework |
-
-## Documentation Status
-
-- `design-docs/` contains the authoritative gameplay and ECS architecture docs.
-- `docs/ongoing_migration.md` records the current dependency-boundary status:
-  there is no active backend migration; raylib/raygui is the shipped runtime.
-- `docs/raylib-migration.md` and `docs/sokol-migration.md` are retained as
-  historical migration notes and should not be used as implementation plans.
 
 ## CI/CD
 
