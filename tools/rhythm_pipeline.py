@@ -1167,7 +1167,7 @@ def _label_sections(
 
 
 def _build_structure_from_quiet(features: dict) -> list[dict]:
-    """Fallback: quiet-based segmentation."""
+    """Fallback: quiet-based segmentation with energy-aware noisy labels."""
     duration = features["duration"]
     quiet = features["quiet"]
 
@@ -1184,15 +1184,62 @@ def _build_structure_from_quiet(features: dict) -> list[dict]:
             state = r["type"]
     segments.append({"state": state, "start": last_t, "end": duration})
 
-    structure = []
+    mel_times = features.get("mel_times", np.array([]))
+    mel_energies = features.get("mel_energies", np.array([]))
+    segment_energies = []
     for seg in segments:
+        mask = (mel_times >= seg["start"]) & (mel_times < seg["end"])
+        if np.any(mask):
+            segment_energies.append(float(np.mean(mel_energies[mask])))
+        else:
+            segment_energies.append(0.0)
+
+    noisy_indices = [i for i, seg in enumerate(segments) if seg["state"] != "QUIET"]
+    noisy_energies = [segment_energies[i] for i in noisy_indices]
+    if noisy_energies and max(noisy_energies) > 0.0:
+        e_arr = np.array(noisy_energies)
+        if float(e_arr.max() - e_arr.min()) > 1e-10:
+            noisy_norm = (e_arr - e_arr.min()) / (e_arr.max() - e_arr.min())
+        else:
+            song_avg = float(np.mean(mel_energies)) if len(mel_energies) else float(e_arr.max())
+            denom = max(song_avg, 1e-10)
+            noisy_norm = np.clip(e_arr / denom, 0.0, 1.0)
+        energy_by_index = dict(zip(noisy_indices, (float(e) for e in noisy_norm)))
+    else:
+        energy_by_index = {}
+
+    def next_noisy_energy(index):
+        for next_index in noisy_indices:
+            if next_index > index:
+                return energy_by_index[next_index]
+        return None
+
+    structure = []
+    for i, seg in enumerate(segments):
         pos = seg["start"] / duration
         if seg["state"] == "QUIET":
             section = "intro" if pos < 0.15 else ("outro" if pos > 0.85 else "bridge")
             intensity = "low"
-        else:
+        elif i not in energy_by_index:
             section = "verse" if pos < 0.3 else "chorus"
             intensity = "medium" if pos < 0.3 else "high"
+        else:
+            energy = energy_by_index.get(i, 0.0)
+            if energy < 0.3:
+                intensity = "low"
+            elif energy < 0.7:
+                intensity = "medium"
+            else:
+                intensity = "high"
+
+            if energy >= 0.7:
+                section = "drop" if seg["end"] - seg["start"] < 15 else "chorus"
+            else:
+                next_energy = next_noisy_energy(i)
+                if energy >= 0.3 and next_energy is not None and next_energy >= 0.7:
+                    section = "pre-chorus"
+                else:
+                    section = "verse" if pos < 0.3 else "chorus"
         structure.append(
             {
                 "section": section,
