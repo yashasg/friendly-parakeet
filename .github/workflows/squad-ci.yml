@@ -20,6 +20,7 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
+            build-essential \
             libgl1-mesa-dev \
             libx11-dev \
             libxrandr-dev \
@@ -30,7 +31,7 @@ jobs:
 
       - name: Setup vcpkg
         run: |
-          git clone --depth 1 https://github.com/microsoft/vcpkg.git vcpkg
+          git clone https://github.com/microsoft/vcpkg.git vcpkg
           ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
           echo "VCPKG_ROOT=$GITHUB_WORKSPACE/vcpkg" >> "$GITHUB_ENV"
 
