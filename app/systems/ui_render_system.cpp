@@ -65,8 +65,12 @@ void ui_render_system(entt::registry& reg, float /*alpha*/) {
             const Font& font = popup_font_for_size(text_ctx, pd.font_size);
             const float font_size = static_cast<float>(font.baseSize);
             const float spacing = 1.0f;
-            const Vector2 size = MeasureTextEx(font, pd.text, font_size, spacing);
-            DrawTextEx(font, pd.text, {sp.x - size.x / 2.0f, sp.y},
+            if (pd.measured_font_base_size != font.baseSize) {
+                const Vector2 size = MeasureTextEx(font, pd.text, font_size, spacing);
+                pd.text_half_width = size.x / 2.0f;
+                pd.measured_font_base_size = font.baseSize;
+            }
+            DrawTextEx(font, pd.text, {sp.x - pd.text_half_width, sp.y},
                        font_size, spacing, {pd.r, pd.g, pd.b, pd.a});
         }
     }
