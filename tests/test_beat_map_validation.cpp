@@ -615,6 +615,49 @@ TEST_CASE("parse: beat without time_sec falls back to beat_times", "[parse][beat
     CHECK_THAT(map.beats[0].time_sec, Catch::Matchers::WithinAbs(1.4f, 0.001f));
 }
 
+TEST_CASE("parse: shape-bearing obstacles require explicit shape", "[parse][shape][issue224]") {
+    const char* shape_bearing_kinds[] = {"shape_gate", "combo_gate", "split_path"};
+
+    for (const char* kind : shape_bearing_kinds) {
+        BeatMap map;
+        std::vector<BeatMapError> errors;
+        const std::string blocked = std::string(kind) == "combo_gate" ? R"(, "blocked": [1])" : "";
+        const std::string json = std::string(R"({
+            "song_id": "missing_shape_test",
+            "bpm": 120,
+            "offset": 0.0,
+            "lead_beats": 4,
+            "duration_sec": 60.0,
+            "beats": [
+                { "beat": 2, "kind": ")") + kind + R"(")" + blocked + R"( }
+            ]
+        })";
+
+        CHECK_FALSE(parse_beat_map(json, map, errors));
+        REQUIRE_FALSE(errors.empty());
+        CHECK(errors[0].message.find("Missing required shape") != std::string::npos);
+    }
+}
+
+TEST_CASE("parse: lane_block does not require shape", "[parse][shape][issue224]") {
+    BeatMap map;
+    std::vector<BeatMapError> errors;
+    std::string json = R"({
+        "song_id": "lane_block_test",
+        "bpm": 120,
+        "offset": 0.0,
+        "lead_beats": 4,
+        "duration_sec": 60.0,
+        "beats": [
+            { "beat": 2, "kind": "lane_block", "blocked": [1] }
+        ]
+    })";
+
+    CHECK(parse_beat_map(json, map, errors));
+    REQUIRE(map.beats.size() == 1);
+    CHECK(map.beats[0].kind == ObstacleKind::LaneBlock);
+}
+
 TEST_CASE("parse: same beat_index entries are ordered by resolved time_sec", "[parse][beat_times][ordering]") {
     BeatMap map;
     std::vector<BeatMapError> errors;

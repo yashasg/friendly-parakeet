@@ -23,6 +23,12 @@ int lane_bit_count(const uint8_t mask) {
     }
     return count;
 }
+
+bool kind_requires_shape(const ObstacleKind kind) {
+    return kind == ObstacleKind::ShapeGate ||
+           kind == ObstacleKind::ComboGate ||
+           kind == ObstacleKind::SplitPath;
+}
 } // namespace
 
 static bool try_load_constants_from(const std::string& path, ValidationConstants& vc) {
@@ -176,6 +182,12 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
                 continue;
             }
             entry.shape = *shape_opt;
+        } else if (kind_requires_shape(entry.kind)) {
+            errors.push_back({entry.beat_index,
+                "Missing required shape for obstacle kind '" + kind_str + "' at beat "
+                    + std::to_string(entry.beat_index)});
+            parse_ok = false;
+            continue;
         }
 
         entry.lane = static_cast<int8_t>(b.value("lane", 1));
@@ -429,9 +441,7 @@ bool validate_beat_map(const BeatMap& map, std::vector<BeatMapError>& errors,
         }
 
         // Rule 6: different-shape gates must be >= min_shape_change_gap beats apart
-        bool has_shape = (entry.kind == ObstacleKind::ShapeGate ||
-                          entry.kind == ObstacleKind::ComboGate ||
-                          entry.kind == ObstacleKind::SplitPath);
+        bool has_shape = kind_requires_shape(entry.kind);
         if (has_shape && prev_had_shape &&
             entry.shape != prev_shape &&
             (entry.beat_index - prev_shape_beat) < vc.min_shape_change_gap) {
