@@ -1,5 +1,32 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
+
+namespace {
+
+struct ScoredTierResult {
+    int points = 0;
+    float energy_delta = 0.0f;
+};
+
+ScoredTierResult score_single_shape_gate_with_tier(TimingTier tier) {
+    auto reg = make_registry();
+    auto& score = reg.ctx().get<ScoreState>();
+    auto& energy = reg.ctx().get<EnergyState>();
+    const int score_before = score.score;
+    const float energy_before = energy.energy;
+
+    auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
+    reg.emplace<ScoredTag>(obs);
+    reg.emplace<TimingGrade>(obs, tier, 0.0f);
+
+    scoring_system(reg, 0.0f);
+    energy_system(reg, 0.0f);
+
+    return ScoredTierResult{score.score - score_before, energy.energy - energy_before};
+}
+
+}  // namespace
 
 TEST_CASE("scoring: distance bonus accumulates", "[scoring]") {
     auto reg = make_registry();
@@ -201,6 +228,18 @@ TEST_CASE("scoring: no-penalty — on-beat gate scores at base points", "[scorin
 
     auto& score = reg.ctx().get<ScoreState>();
     CHECK(score.score == constants::PTS_SHAPE_GATE);
+}
+
+TEST_CASE("scoring: timing multiplier applies end-to-end for non-perfect tiers (#221)", "[scoring][issue221]") {
+    const auto good = score_single_shape_gate_with_tier(TimingTier::Good);
+    CHECK(good.points == 200);
+
+    const auto ok = score_single_shape_gate_with_tier(TimingTier::Ok);
+    CHECK(ok.points == 100);
+
+    const auto bad = score_single_shape_gate_with_tier(TimingTier::Bad);
+    CHECK(bad.points == 50);
+    CHECK_THAT(bad.energy_delta, Catch::Matchers::WithinAbs(-constants::ENERGY_DRAIN_BAD, 0.0001f));
 }
 
 TEST_CASE("scoring: popup entity has full factory contract", "[scoring][popup_entity]") {
