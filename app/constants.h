@@ -43,7 +43,7 @@ constexpr float CHAIN_MULT_STEP    = 0.05f;
 constexpr int32_t CHAIN_MULT_BONUS_STEPS_CAP = 20;
 
 // ── Rhythm Constants ──────────────────────────────
-constexpr float APPROACH_DIST      = 1040.0f;  // |PLAYER_Y - SPAWN_Y|
+constexpr float APPROACH_DIST      = PLAYER_Y - SPAWN_Y;
 constexpr float COLLISION_MARGIN   = 40.0f;    // half-height of timing window (px)
 
 // ── Energy Bar ────────────────────────────────────
