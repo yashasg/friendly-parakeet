@@ -33,6 +33,12 @@ bool load_beat_map(const std::string& json_path, BeatMap& out,
                    std::vector<BeatMapError>& errors,
                    const std::string& difficulty = "medium");
 
+// Load and validate a beat map from a JSON file. Returns true only when both
+// parsing and validation succeed.
+bool load_and_validate_beat_map(const std::string& json_path, BeatMap& out,
+                                std::vector<BeatMapError>& errors,
+                                const std::string& difficulty = "medium");
+
 // Parse a beat map from a JSON string. Returns true on success.
 //
 bool parse_beat_map(const std::string& json_str, BeatMap& out,
