@@ -101,10 +101,12 @@ TEST_CASE("parse: all valid kinds parse without errors", "[parse][kind]") {
     for (const auto& kind : valid_kinds) {
         BeatMap map;
         std::vector<BeatMapError> errors;
+        const bool requires_shape = kind == "shape_gate" || kind == "combo_gate" || kind == "split_path";
+        const std::string shape = requires_shape ? R"(, "shape": "circle")" : "";
         std::string json = R"({
             "bpm": 120, "offset": 0.0, "lead_beats": 4, "duration_sec": 60.0,
             "beats": [
-                { "beat": 4, "kind": ")" + kind + R"(", "lane": 1 }
+                { "beat": 4, "kind": ")" + kind + R"(", "lane": 1)" + shape + R"( }
             ]
         })";
         INFO("Testing kind: " << kind);
