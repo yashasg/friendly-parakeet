@@ -177,7 +177,7 @@ TEST_CASE("song_state: derived values at 120 BPM", "[rhythm][songstate]") {
     song_state_compute_derived(state);
     CHECK_THAT(state.beat_period, WithinAbs(0.5f, 0.001f));
     CHECK_THAT(state.lead_time, WithinAbs(2.0f, 0.001f));
-    CHECK_THAT(state.scroll_speed, WithinAbs(520.0f, 1.0f));
+    CHECK_THAT(state.scroll_speed, WithinAbs(constants::APPROACH_DIST / 2.0f, 1.0f));
     CHECK_THAT(state.window_duration, WithinAbs(0.3f, 0.001f));
     CHECK_THAT(state.half_window, WithinAbs(0.15f, 0.001f));
 }
