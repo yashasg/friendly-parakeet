@@ -50,7 +50,7 @@ def _beatmap_path_for_song(song: str, beatmap_dir: Path) -> Path:
 def _validate_shipped_beatmap_counts(path: Path, song: str, summary: dict, rows: list[dict], beatmap_dir: Path) -> list[str]:
     beatmap_path = _beatmap_path_for_song(song, beatmap_dir)
     if not beatmap_path.exists():
-        return []
+        return [f"{song}: missing shipped beatmap {beatmap_path}"]
 
     beatmap = load_json(beatmap_path)
     difficulties = beatmap.get("difficulties", {})

@@ -1186,8 +1186,11 @@ def write_snap_diagnostics(
     }
 
     final_beatmap = None
+    final_beatmap_source = None
     if experimental_onset_timing:
         final_beatmap = _load_shipped_beatmap_for_analysis(analysis) if prefer_shipped_beatmap else None
+        if final_beatmap is not None:
+            final_beatmap_source = "shipped_beatmap"
         if final_beatmap is None:
             final_beatmap = build_beatmap(
                 analysis,
@@ -1195,6 +1198,7 @@ def write_snap_diagnostics(
                 cleanup_enabled=True,
                 experimental_onset_timing=True,
             )
+            final_beatmap_source = "generated_final_beatmap"
 
     summary = {
         "song_id": analysis.get("title", "unknown"),
@@ -1252,7 +1256,10 @@ def write_snap_diagnostics(
 
         summary["experimental_onset_timing"] = {
             "enabled": True,
-            "generation_path": "segment_focus",
+            "generation_path": "final_shipped_beatmap"
+            if final_beatmap_source == "shipped_beatmap"
+            else "final_generated_beatmap",
+            "diagnostics_source": final_beatmap_source,
             "legacy_rule_influence_disabled": True,
             "disabled_legacy_rules": list(ONSET_MOTIF_DISABLED_LEGACY_RULES),
             "comparison_by_difficulty": onset_summary,

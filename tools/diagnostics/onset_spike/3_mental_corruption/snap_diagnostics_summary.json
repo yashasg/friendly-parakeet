@@ -313,7 +313,8 @@
   },
   "experimental_onset_timing": {
     "enabled": true,
-    "generation_path": "segment_focus",
+    "generation_path": "final_shipped_beatmap",
+    "diagnostics_source": "shipped_beatmap",
     "legacy_rule_influence_disabled": true,
     "disabled_legacy_rules": [
       "legacy lane balancing",
