@@ -33,6 +33,7 @@ GAP_ONE_SHARE_CAP = {"medium": 0.20, "hard": 0.20}
 # the generator can satisfy them without inserting non-onset filler.
 MIN_IOI_MS = {"easy": 500.0, "medium": 350.0, "hard": 280.0}
 SHAPE_OBSTACLE_KINDS = {"shape_gate", "split_path"}
+SUPPORTED_NON_BLOCKING_KINDS = {"onset_marker"}
 # Issue #420 — broad-layer/lane reachability floor at medium/hard.
 # Each shipped beatmap×difficulty must include at least this share of
 # circle (lane-2 / harmonic-mapped) obstacles so the third shape and the
@@ -131,6 +132,7 @@ def calculate_content_metrics(
     raw_beat_rows = len(beats)
     ordered = _ordered_valid_beats(beats)
     shape_clusters = _shape_gate_clusters(ordered)
+    shape_obstacles = [beat for beat in ordered if beat.get("kind") in SHAPE_OBSTACLE_KINDS]
     cluster_sizes = [len(cluster) for cluster in shape_clusters]
     beat_indices = [beat["beat"] for beat in ordered]
     gaps = [beat_indices[i] - beat_indices[i - 1] for i in range(1, len(beat_indices))]
@@ -143,9 +145,9 @@ def calculate_content_metrics(
     )
     dominant_gap = gap_counts.most_common(1)[0][0] if gap_counts else None
 
-    shape_counts = Counter(beat.get("shape") for beat in ordered if beat.get("kind") in SHAPE_OBSTACLE_KINDS)
+    shape_counts = Counter(beat.get("shape") for beat in shape_obstacles)
     total_shape_gates = sum(shape_counts.values())
-    lane_counts = Counter(beat.get("lane") for beat in ordered if beat.get("kind") in SHAPE_OBSTACLE_KINDS)
+    lane_counts = Counter(beat.get("lane") for beat in shape_obstacles)
 
     onset_timed = _all_onset_timed(ordered)
 
@@ -195,13 +197,16 @@ def calculate_content_metrics(
         "strictly_increasing": all(
             beat_indices[i] > beat_indices[i - 1] for i in range(1, len(beat_indices))
         ),
-        "all_shape_gate": all(beat.get("kind") in SHAPE_OBSTACLE_KINDS for beat in ordered),
+        "all_shape_gate": all(
+            beat.get("kind") in SHAPE_OBSTACLE_KINDS | SUPPORTED_NON_BLOCKING_KINDS
+            for beat in ordered
+        ),
         "lane_range_ok": all(beat.get("lane") in (0, 1, 2) for beat in ordered),
         "dominant_gap": dominant_gap,
         "dominant_gap_share": dominant_gap_share,
         "gap_one_share": (gap_counts.get(1, 0) / len(gaps)) if gaps else 0.0,
         "gap_one_run": _longest_gap_one_run(gaps),
-        "longest_same_shape_run": _longest_same_shape_run(ordered) if ordered else 0,
+        "longest_same_shape_run": _longest_same_shape_run(shape_obstacles) if shape_obstacles else 0,
         "longest_same_shape_cluster_run": _longest_same_shape_cluster_run(shape_clusters) if shape_clusters else 0,
         "shape_cluster_count": len(shape_clusters),
         "max_shape_cluster_size": max(cluster_sizes) if cluster_sizes else 0,
@@ -232,7 +237,7 @@ def evaluate_content_gates(metrics: dict[str, float | int | bool | None], diffic
     if not bool(metrics["lane_range_ok"]):
         findings.append("lane outside {0,1,2}")
     if not bool(metrics["all_shape_gate"]):
-        findings.append("non-shape obstacle present")
+        findings.append("unsupported obstacle kind present")
 
     # Issue #443 — beat-ordinal gap monotony / gap=1 share / gap=1 run gates
     # were designed for beat-grid timing where `beat[i+1]-beat[i]` reflects

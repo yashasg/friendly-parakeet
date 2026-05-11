@@ -11,6 +11,7 @@ enum class ObstacleKind : uint8_t {
     LaneBlock,
     ComboGate,
     SplitPath,
+    OnsetMarker,
 };
 
 struct Obstacle {

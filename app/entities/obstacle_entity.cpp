@@ -49,6 +49,13 @@ entt::entity spawn_obstacle_base(entt::registry& reg, const ObstacleSpawnParams&
             reg.emplace<Color>(e, Color{255, 215, 0, 255});
             break;
         }
+        case ObstacleKind::OnsetMarker: {
+            reg.emplace<Obstacle>(e, int16_t{0});
+            reg.emplace<NonScorableTag>(e);
+            reg.emplace<DrawSize>(e, constants::SCREEN_W_F, 80.0f);
+            reg.emplace<Color>(e, Color{255, 255, 255, 80});
+            break;
+        }
     }
 
     return e;

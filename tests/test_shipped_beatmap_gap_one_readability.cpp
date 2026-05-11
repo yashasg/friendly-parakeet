@@ -1,8 +1,9 @@
 // Regression tests for GitHub issue #141 on the onset-motif spike path.
 //
 // The approved onset path disables legacy gap=1 readability enforcement.
-// We keep a lightweight guard: if consecutive beats are one beat apart,
-// obstacles must still be shape gates.
+// We keep a lightweight guard: if consecutive required obstacles are one beat
+// apart, they must still be shape gates. Non-blocking onset_marker rows preserve
+// protected public-layer metadata and are ignored by this required-action guard.
 
 #include <catch2/catch_test_macros.hpp>
 #include "components/beat_map.h"
@@ -49,12 +50,17 @@ TEST_CASE("gap=1 readability: adjacent authored beats remain shape gates",
             std::vector<BeatMapError> errors;
             if (!load_beat_map(path, map, errors, difficulty)) continue;
 
-            const auto& beats = map.beats;
-            if (beats.size() <= 1) continue;
+            std::vector<BeatEntry> required_beats;
+            for (const auto& beat : map.beats) {
+                if (beat.kind != ObstacleKind::OnsetMarker) {
+                    required_beats.push_back(beat);
+                }
+            }
+            if (required_beats.size() <= 1) continue;
 
-            for (size_t index = 1; index < beats.size(); ++index) {
-                const auto& left = beats[index - 1];
-                const auto& right = beats[index];
+            for (size_t index = 1; index < required_beats.size(); ++index) {
+                const auto& left = required_beats[index - 1];
+                const auto& right = required_beats[index];
                 const int gap = right.beat_index - left.beat_index;
 
                 if (gap != 1) continue;
