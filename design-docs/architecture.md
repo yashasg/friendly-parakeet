@@ -603,10 +603,10 @@ the same frame (unidirectional data flow).
  │  │                           set transition → GAME_OVER.  │
  │  │                                                        │
  │  │ 11. scoring_system        Process scored obstacles.    │
- │  │                           Apply burnout multiplier.    │
- │  │                           Update chain. Spawn popup    │
- │  │                           entity. Add distance bonus.  │
- │  │                           Push SFX::BurnoutBank.       │
+ │  │                           Apply timing multiplier and  │
+ │  │                           chain bonus. Queue popup     │
+ │  │                           requests. Add distance bonus.│
+ │  │                           Positive popups emit SFX.    │
  │  └────────────────────────────────────────────────────────┘
  │
  │  ┌─ PHASE 5: CLEANUP & FX ──────────────────────────────┐
@@ -1131,14 +1131,13 @@ int main(int argc, char* argv[]) {
            │                ▼                                  │
            │     ┌───────────────────────────────────────────┐ │
            │     │ scoring_system:                            │ │
-           │     │   reads BurnoutState.zone at time of match│◀┘
-           │     │   multiplier = zone_to_mult(Danger) = 3.0 │
-           │     │   chain_bonus = chain_to_bonus(chain=3)   │
-           │     │              = +100                        │
-           │     │   total = 200 × 3.0 + 100 = 700           │
-           │     │   ScoreState.score += 700                  │
-           │     │   spawn ScorePopup(700, tier=3)            │
-           │     │   AudioQueue.push(BurnoutBank)             │
+           │     │   reads TimingGrade at time of match       │◀┘
+           │     │   timing_multiplier(Good) = 1.0            │
+           │     │   chain_bonus(chain=3) = +100              │
+           │     │   total = 200 × 1.0 + 100 = 300           │
+           │     │   ScoreState.score += 300                  │
+           │     │   queue ScorePopupRequest(300, Good)       │
+           │     │   popup_feedback emits ScorePopup SFX      │
            │     └───────────────────────────────────────────┘
            │
            ▼

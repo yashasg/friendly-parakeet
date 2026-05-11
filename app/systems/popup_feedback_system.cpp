@@ -17,7 +17,7 @@ void popup_feedback_system(entt::registry& reg, float /*dt*/) {
             ? std::make_optional(request.timing_tier)
             : std::nullopt;
         spawn_score_popup(reg, {request.x, request.y, request.points, timing_tier});
-        if (disp) disp->enqueue<PlaySfxEvent>({SFX::ScorePopup});
+        if (disp && request.points > 0) disp->enqueue<PlaySfxEvent>({SFX::ScorePopup});
     }
     queue.requests.clear();
 }

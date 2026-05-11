@@ -181,14 +181,16 @@ void scoring_system(entt::registry& reg, float dt) {
                 }
             }
 
-            // Chain multiplier
-            score.chain_count++;
-            score.chain_timer = 0.0f;
+            const bool contributes_to_chain = r.obs.base_points > 0;
+            if (contributes_to_chain) {
+                score.chain_count++;
+                score.chain_timer = 0.0f;
+            }
             const float chain_mult = chain_multiplier_for_count(score.chain_count);
             int points = static_cast<int>(
                 std::floor(static_cast<float>(r.obs.base_points) * timing_mult * chain_mult));
 
-            if (results && score.chain_count > results->max_chain) {
+            if (contributes_to_chain && results && score.chain_count > results->max_chain) {
                 results->max_chain = score.chain_count;
             }
 
