@@ -548,8 +548,8 @@ async function handleImportAnalysis() {
         const result = importAnalysis(text);
         if (result) {
             state.analysisData = result;
-            showAnalysisWarnings(result);
             emit('analysis-loaded');
+            showAnalysisWarnings(result);
         }
     } catch (e) {
         console.error('Failed to import analysis:', e);
@@ -605,8 +605,10 @@ function showValidationErrors(errors) {
 }
 
 function showAnalysisWarnings(analysisData) {
-    if (!analysisData?.warnings?.length) return;
-    showValidationErrors(analysisData.warnings.map(message => ({
+    const warnings = Array.isArray(analysisData?.warnings) ? analysisData.warnings : [];
+    if (warnings.length === 0) return;
+
+    showValidationErrors(warnings.map((message) => ({
         message,
         severity: 'warning',
         beatIndex: -1,

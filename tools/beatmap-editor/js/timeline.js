@@ -9,7 +9,7 @@ import {
     WAVEFORM_HEIGHT,
     TIMELINE_PADDING_LEFT,
     LANE_LABELS,
-    normalizeOnsetLayerName,
+    RHYTHM_LAYER_KEYS,
 } from './constants.js';
 
 let canvas = null;
@@ -158,7 +158,7 @@ export function render(state, waveformData, validationErrors) {
         renderWaveform(ctx, state, waveformData, w);
     }
 
-    // 4b. Analysis onset rows (public rhythm layers)
+    // 4b. Analysis onset rows
     renderOnsetTracks(ctx, state, w, h);
 
     // 5. Beat grid lines
@@ -223,14 +223,13 @@ function renderAnalysisOverlay(ctx, state, w) {
     }
 }
 
-export function getOnsetRows(analysisData) {
+function getOnsetRows(analysisData) {
     const onsetMap = analysisData?.onsets;
     if (!onsetMap || typeof onsetMap !== 'object') return [];
 
-    // The import path normalizes analysis data; this guard prevents ad-hoc state
-    // from rendering raw detector names as editor-visible rhythm layers.
-    return Object.entries(onsetMap)
-        .filter(([name]) => normalizeOnsetLayerName(name) === name)
+    return RHYTHM_LAYER_KEYS
+        .filter((name) => Object.prototype.hasOwnProperty.call(onsetMap, name))
+        .map((name) => [name, onsetMap[name]])
         .filter(([, value]) => value && typeof value === 'object')
         .map(([name, value]) => ({
         name,
