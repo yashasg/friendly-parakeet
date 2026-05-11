@@ -17,6 +17,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_DIR = REPO_ROOT / "tools" / "diagnostics"
+DEFAULT_BEATMAP_DIR = REPO_ROOT / "content" / "beatmaps"
 KNOWN_SUBDIVISIONS = {"downbeat", "eighth", "triplet", "offgrid"}
 PUBLIC_LAYERS = {"percussive", "harmonic", "full-spectrum"}
 
@@ -42,7 +43,51 @@ def diagnostics_dirs(paths: list[Path]) -> list[Path]:
     )
 
 
-def validate_diagnostics_dir(path: Path) -> list[str]:
+def _beatmap_path_for_song(song: str, beatmap_dir: Path) -> Path:
+    return beatmap_dir / f"{song}_beatmap.json"
+
+
+def _validate_shipped_beatmap_counts(path: Path, song: str, summary: dict, rows: list[dict], beatmap_dir: Path) -> list[str]:
+    beatmap_path = _beatmap_path_for_song(song, beatmap_dir)
+    if not beatmap_path.exists():
+        return [f"{song}: missing shipped beatmap {beatmap_path}"]
+
+    beatmap = load_json(beatmap_path)
+    difficulties = beatmap.get("difficulties", {})
+    shipped_counts = {
+        difficulty: len(payload.get("beats", []))
+        for difficulty, payload in difficulties.items()
+        if isinstance(payload, dict)
+    }
+    csv_counts = Counter(row.get("difficulty", "") for row in rows)
+    summary_counts = (
+        summary.get("experimental_onset_timing", {})
+        .get("obstacle_counts_by_difficulty", {})
+    )
+
+    errors: list[str] = []
+    for difficulty, shipped_count in sorted(shipped_counts.items()):
+        csv_count = csv_counts.get(difficulty, 0)
+        summary_count = summary_counts.get(difficulty)
+        if csv_count != shipped_count:
+            errors.append(
+                f"{song}: {path.name} CSV {difficulty} rows={csv_count} "
+                f"but shipped beatmap has {shipped_count}"
+            )
+        if summary_count != shipped_count:
+            errors.append(
+                f"{song}: {path.name} summary {difficulty} count={summary_count} "
+                f"but shipped beatmap has {shipped_count}"
+            )
+
+    unknown_csv_difficulties = sorted(set(csv_counts) - set(shipped_counts) - {""})
+    if unknown_csv_difficulties:
+        errors.append(f"{song}: CSV contains unknown difficulties {unknown_csv_difficulties}")
+
+    return errors
+
+
+def validate_diagnostics_dir(path: Path, beatmap_dir: Path = DEFAULT_BEATMAP_DIR) -> list[str]:
     errors: list[str] = []
     summary_path = path / "snap_diagnostics_summary.json"
     rows_path = path / "onset_timing_events.csv"
@@ -79,6 +124,7 @@ def validate_diagnostics_dir(path: Path) -> list[str]:
         errors.append(f"{song}: unknown subdivision bins {unknown_subdivisions}")
     if non_onset_sources:
         errors.append(f"{song}: non-onset timing sources {non_onset_sources}")
+    errors.extend(_validate_shipped_beatmap_counts(path, song, summary, rows, beatmap_dir))
 
     print(
         f"{song:24s} rows={len(rows):4d} "
@@ -91,6 +137,12 @@ def validate_diagnostics_dir(path: Path) -> list[str]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("paths", nargs="*", type=Path, help="Optional *_loop1 diagnostics directories")
+    parser.add_argument(
+        "--beatmap-dir",
+        type=Path,
+        default=DEFAULT_BEATMAP_DIR,
+        help="Directory containing shipped *_beatmap.json files.",
+    )
     args = parser.parse_args(argv)
 
     paths = diagnostics_dirs(args.paths)
@@ -100,7 +152,7 @@ def main(argv: list[str] | None = None) -> int:
 
     failures: list[str] = []
     for path in paths:
-        failures.extend(validate_diagnostics_dir(path))
+        failures.extend(validate_diagnostics_dir(path, args.beatmap_dir))
 
     if failures:
         print("\nLOOP1 DIAGNOSTIC VALIDATION FAILURES:", file=sys.stderr)

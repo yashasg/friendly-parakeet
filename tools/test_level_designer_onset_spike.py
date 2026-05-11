@@ -196,8 +196,8 @@ class TestExperimentalOnsetTiming(unittest.TestCase):
             summary = json.load(handle)
         spike = summary.get("experimental_onset_timing", {})
         self.assertTrue(spike.get("enabled"))
-        # Must now report segment_focus, not onset_motif_only.
-        self.assertEqual(spike.get("generation_path"), "segment_focus")
+        self.assertEqual(spike.get("generation_path"), "final_generated_beatmap")
+        self.assertEqual(spike.get("diagnostics_source"), "generated_final_beatmap")
         self.assertTrue(spike.get("legacy_rule_influence_disabled"))
         self.assertIn("comparison_by_difficulty", spike)
         self.assertTrue((out_dir / "onset_timing_events.csv").exists())
