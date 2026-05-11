@@ -54,6 +54,8 @@ The screen is divided into two zones:
 
   The currently active shape button is highlighted/glowing. Tapping a button immediately shifts the player to that shape.
 
+- **Keyboard fallback** mirrors lane layout for shipped beatmaps: `Z`/`1` selects the left-lane shape, `X`/`2` selects center, and `C`/`3` selects right.
+
 ### Lanes
 
 3 lanes: left, center, right. Player starts in center.
