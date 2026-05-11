@@ -37,6 +37,62 @@ The three lanes converge toward a vanishing point above the screen:
 
 ---
 
+## Design Rationale and Scope
+
+The perspective effect exists to make the rhythm track read as a physical
+runway: upcoming beats feel like they are travelling toward the player line
+instead of sliding on a flat HUD layer.  This supports the core rhythm promise
+because distance-to-player becomes an anticipation cue that complements the
+audio and the shrinking proximity rings.
+
+The effect is intentionally **presentation-only**:
+
+- Gameplay timing, collision, lanes, and beat scheduling remain in logical
+  720x1280 coordinates.
+- The player line, button row, HUD, and touch targets stay unprojected so input
+  remains predictable on mobile.
+- No 3D camera, physics, or depth sorting system is introduced; the renderer
+  only warps world-space draw vertices before handing them to raylib.
+
+This keeps the feature inside the current raylib + EnTT architecture: ECS
+systems still operate on plain component data, and only the rendering boundary
+projects vertices.
+
+## Readability Constraints
+
+The perspective pass must never make rhythm information harder to parse:
+
+- Obstacles must remain shape-identifiable from spawn to arrival.  If a shape
+  becomes ambiguous at the top of the track, increase its screen-space size or
+  reduce convergence before shipping that tuning.
+- Each lane must keep clear horizontal separation at spawn height; do not place
+  authored simultaneous notes so close together that projected silhouettes
+  overlap.
+- The bottom button zone and HUD must not be warped, dimmed, or occluded by
+  track art.  Proximity rings and timing popups need to stay above decorative
+  perspective elements.
+- Collision and scoring debug views should be drawn in logical coordinates or
+  explicitly labelled as projected so testers can distinguish gameplay truth
+  from presentation.
+
+## Art and Level Guidance
+
+Use the perspective effect to reinforce depth, not to add new mechanics:
+
+- Track art should use converging lane rails, muted background values, and
+  low-contrast far-field details so obstacles remain the brightest readable
+  objects.
+- Beatmaps should continue to author lanes as 0/1/2 in logical space.  Level
+  tools should preview projection, but they must not bake projected x
+  positions into content.
+- Dense sections need extra silhouette spacing after projection.  If a chorus
+  clusters multiple same-beat obstacles, validate the projected view at spawn,
+  mid-track, and arrival before approving the pattern.
+- UI copy and tutorials should describe the visual as an approaching track; do
+  not imply that players need to judge true 3D depth.
+
+---
+
 ## Why Per-VERTEX, Not Per-Object Uniform Scale
 
 Transforming (centre, size) uniformly keeps shapes geometrically flat:

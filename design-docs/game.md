@@ -13,6 +13,12 @@
 
 Rhythm runner where the player shifts between 3 geometric shapes to pass through matching obstacles in time with the music. **Obstacles ARE the beats.** The core skill is hitting the right shape on the beat — closer to the beat means a higher timing grade and a higher score. Stay clean, build a chain, survive the song.
 
+The playfield may use a pseudo-isometric runway effect to make beats feel like
+they are approaching the player line, but this is a readability aid rather than
+a gameplay layer.  Timing, collisions, lanes, HUD layout, and touch targets stay
+in the logical 720x1280 coordinate system.  See `isometric-perspective.md` for
+the rationale, scope, readability constraints, and art/level guidance.
+
 ---
 
 ## Platform
