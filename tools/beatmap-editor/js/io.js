@@ -2,6 +2,7 @@
 
 import {
     SHAPES, LANES, KINDS_WITH_SHAPE, DIFFICULTY_KEYS, VALIDATION,
+    normalizeOnsetLayerName, PUBLIC_ONSET_LAYERS,
 } from './constants.js';
 
 const LOADER_KINDS = Object.freeze([
@@ -380,6 +381,38 @@ function normalizeBlockedArray(blocked, path, errors) {
     return normalized;
 }
 
+function normalizeAnalysisOnsets(rawOnsets) {
+    const normalized = {};
+    const warnings = [];
+    if (!rawOnsets || typeof rawOnsets !== 'object' || Array.isArray(rawOnsets)) {
+        return { onsets: normalized, warnings };
+    }
+
+    for (const [rawName, value] of Object.entries(rawOnsets)) {
+        const publicName = normalizeOnsetLayerName(rawName);
+        if (!publicName) {
+            warnings.push(`Analysis onset layer '${rawName}' was dropped; supported layers are ${PUBLIC_ONSET_LAYERS.join(', ')}`);
+            continue;
+        }
+        if (!value || typeof value !== 'object') {
+            warnings.push(`Analysis onset layer '${rawName}' was dropped because it is not an object`);
+            continue;
+        }
+
+        const timestamps = Array.isArray(value.timestamps)
+            ? value.timestamps.filter(Number.isFinite)
+            : [];
+        if (!normalized[publicName]) normalized[publicName] = { timestamps: [] };
+        normalized[publicName].timestamps.push(...timestamps);
+
+        if (publicName !== rawName) {
+            warnings.push(`Analysis onset layer '${rawName}' was normalized to '${publicName}'`);
+        }
+    }
+
+    return { onsets: normalized, warnings };
+}
+
 /**
  * Parse an analysis JSON string and return a normalized object.
  * @param {string} jsonString
@@ -393,6 +426,8 @@ export function importAnalysis(jsonString) {
         return null;
     }
 
+    const { onsets, warnings } = normalizeAnalysisOnsets(j.onsets);
+
     return {
         title: j.title ?? '',
         source: j.source ?? '',
@@ -400,7 +435,8 @@ export function importAnalysis(jsonString) {
         duration: j.duration ?? 0,
         beats: Array.isArray(j.beats) ? j.beats : [],
         structure: Array.isArray(j.structure) ? j.structure : [],
-        onsets: (j.onsets && typeof j.onsets === 'object' && !Array.isArray(j.onsets)) ? j.onsets : {},
+        onsets,
+        warnings,
         events: Array.isArray(j.events) ? j.events : [],
         quietRegions: Array.isArray(j.quiet_regions) ? j.quiet_regions : [],
     };
