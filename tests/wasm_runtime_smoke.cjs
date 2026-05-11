@@ -2,16 +2,138 @@
 
 const { chromium } = require('playwright-core');
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
+
+const BUILD_ASSETS = ['index.js', 'index.wasm', 'index.data'];
 
 function sha256(buf) {
   return crypto.createHash('sha256').update(buf).digest('hex');
 }
 
-async function main() {
-  const url = process.argv[2];
-  if (!url) {
-    throw new Error('usage: node tests/wasm_runtime_smoke.cjs <url>');
+function parseArgs(argv) {
+  const options = {
+    buildDir: null,
+    seedStaleBuildCache: false,
+    url: null,
+  };
+
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    if (arg === '--build-dir') {
+      i += 1;
+      if (i >= argv.length) {
+        throw new Error('--build-dir requires a path');
+      }
+      options.buildDir = argv[i];
+    } else if (arg === '--seed-stale-build-cache') {
+      options.seedStaleBuildCache = true;
+    } else if (!options.url) {
+      options.url = arg;
+    } else {
+      throw new Error(`unexpected argument: ${arg}`);
+    }
   }
+
+  if (!options.url) {
+    throw new Error('usage: node tests/wasm_runtime_smoke.cjs [--build-dir <dir>] [--seed-stale-build-cache] <url>');
+  }
+  if (options.seedStaleBuildCache && !options.buildDir) {
+    throw new Error('--seed-stale-build-cache requires --build-dir');
+  }
+
+  return options;
+}
+
+function loadBuildAssetHashes(buildDir) {
+  const hashes = new Map();
+  for (const name of BUILD_ASSETS) {
+    const assetPath = path.join(buildDir, name);
+    hashes.set(name, sha256(fs.readFileSync(assetPath)));
+  }
+  return hashes;
+}
+
+function readServiceWorkerCacheName(buildDir) {
+  const swText = fs.readFileSync(path.join(buildDir, 'sw.js'), 'utf8');
+  const literalName = swText.match(/\bCACHE_NAME\s*=\s*'([^']+)'/);
+  if (literalName) {
+    return literalName[1];
+  }
+
+  const prefix = swText.match(/\bCACHE_PREFIX\s*=\s*'([^']+)'/);
+  const suffix = swText.match(/\bCACHE_NAME\s*=\s*CACHE_PREFIX\s*\+\s*'([^']+)'/);
+  if (!prefix || !suffix) {
+    throw new Error('could not determine service worker cache name from build sw.js');
+  }
+
+  return `${prefix[1]}${suffix[1]}`;
+}
+
+async function seedStaleBuildCache(context, url, buildDir) {
+  const cacheName = readServiceWorkerCacheName(buildDir);
+  const seedPage = await context.newPage();
+  try {
+    await seedPage.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await seedPage.waitForFunction(() => 'serviceWorker' in navigator, undefined, { timeout: 10000 });
+    await seedPage.waitForFunction(() => navigator.serviceWorker.ready.then(() => true), undefined, { timeout: 30000 });
+    await seedPage.evaluate(async ({ assets, cacheName: activeCacheName }) => {
+      const cache = await caches.open(activeCacheName);
+      await Promise.all(assets.map(name => cache.put(
+        new Request(new URL(name, location.href).href),
+        new Response(`stale cached ${name}`, {
+          status: 200,
+          headers: { 'content-type': 'application/octet-stream' },
+        }),
+      )));
+    }, { assets: BUILD_ASSETS, cacheName });
+  } finally {
+    await seedPage.close();
+  }
+}
+
+async function assertBuildAssetHashes(page, expectedAssetHashes) {
+  if (expectedAssetHashes.size === 0) {
+    return [];
+  }
+
+  const expected = Object.fromEntries(expectedAssetHashes);
+  const results = await page.evaluate(async ({ assetNames }) => {
+    const toHex = buffer => Array.from(new Uint8Array(buffer))
+      .map(byte => byte.toString(16).padStart(2, '0'))
+      .join('');
+
+    return Promise.all(assetNames.map(async name => {
+      try {
+        const response = await fetch(new URL(name, location.href).href, { cache: 'no-store' });
+        if (!response.ok) {
+          return { name, status: response.status };
+        }
+        const digest = await crypto.subtle.digest('SHA-256', await response.arrayBuffer());
+        return { name, hash: toHex(digest), status: response.status };
+      } catch (err) {
+        return { name, error: err instanceof Error ? err.message : String(err) };
+      }
+    }));
+  }, { assetNames: [...expectedAssetHashes.keys()] });
+
+  const failures = [];
+  for (const result of results) {
+    if (result.error) {
+      failures.push(`build-asset-hash-check-failed:${result.name}:${result.error}`);
+    } else if (result.status !== 200) {
+      failures.push(`build-asset-response-not-ok:${result.name}:${result.status}`);
+    } else if (result.hash !== expected[result.name]) {
+      failures.push(`stale-build-asset-served:${result.name}:expected=${expected[result.name]}:actual=${result.hash}`);
+    }
+  }
+
+  return failures;
+}
+
+async function main() {
+  const options = parseArgs(process.argv.slice(2));
+  const expectedAssetHashes = options.buildDir ? loadBuildAssetHashes(options.buildDir) : new Map();
 
   const executablePath = process.env.CHROMIUM_EXECUTABLE_PATH;
   if (!executablePath) {
@@ -29,9 +151,9 @@ async function main() {
     hasTouch: true,
     isMobile: true,
   });
-  const page = await context.newPage();
-  const cdp = await context.newCDPSession(page);
   const fatal = [];
+  let page;
+  let cdp;
 
   async function clickCanvasAt(xRatio, yRatio) {
     const canvas = page.locator('#canvas');
@@ -201,6 +323,14 @@ async function main() {
     return null;
   }
 
+  try {
+    if (options.seedStaleBuildCache) {
+      await seedStaleBuildCache(context, options.url, options.buildDir);
+    }
+
+    page = await context.newPage();
+    cdp = await context.newCDPSession(page);
+
   page.on('console', msg => {
     const text = msg.text();
     if (/RuntimeError: Aborted|Aborted\(|abort\(|emscripten_sleep/i.test(text)) {
@@ -220,8 +350,10 @@ async function main() {
     }
   });
 
-  try {
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.goto(options.url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    if (options.seedStaleBuildCache) {
+      await page.waitForFunction(() => navigator.serviceWorker.controller !== null, undefined, { timeout: 10000 });
+    }
     await page.waitForSelector('#canvas', { state: 'visible', timeout: 30000 });
     await page.waitForFunction(() => {
       const loader = document.querySelector('#loader');
@@ -235,6 +367,7 @@ async function main() {
     await page.waitForFunction(() => {
       return typeof document.title === 'string' && document.title.includes('SHAPESHIFTER');
     }, undefined, { timeout: 30000 });
+    fatal.push(...await assertBuildAssetHashes(page, expectedAssetHashes));
 
     const beforeInput = await page.screenshot();
     const beforeHash = sha256(beforeInput);

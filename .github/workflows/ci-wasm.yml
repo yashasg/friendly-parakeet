@@ -126,7 +126,10 @@ jobs:
             sleep 0.5
           done
           curl -fsS "http://127.0.0.1:4173/index.html" >/dev/null
-          node tests/wasm_runtime_smoke.cjs "http://127.0.0.1:4173/index.html"
+          node tests/wasm_runtime_smoke.cjs \
+            --build-dir build-web \
+            --seed-stale-build-cache \
+            "http://127.0.0.1:4173/index.html"
 
       - name: Upload artifact
         if: success()
