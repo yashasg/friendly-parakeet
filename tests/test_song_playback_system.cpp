@@ -3,6 +3,23 @@
 #include "test_helpers.h"
 #include "audio/music_context.h"
 
+TEST_CASE("music stream helpers validate and identify unloadable rejected handles",
+          "[song_playback][music][issue651]") {
+    Music empty{};
+    CHECK_FALSE(music_stream_is_valid(empty));
+    CHECK_FALSE(music_stream_may_own_resources(empty));
+
+    Music partial_context{};
+    partial_context.ctxData = reinterpret_cast<void*>(0x1);
+    CHECK_FALSE(music_stream_is_valid(partial_context));
+    CHECK(music_stream_may_own_resources(partial_context));
+
+    Music partial_buffer{};
+    partial_buffer.stream.buffer = reinterpret_cast<rAudioBuffer*>(0x1);
+    CHECK_FALSE(music_stream_is_valid(partial_buffer));
+    CHECK(music_stream_may_own_resources(partial_buffer));
+}
+
 // ── song_playback_system: time advancement ───────────────────
 
 TEST_CASE("song_playback: song_time advances by dt", "[song_playback]") {

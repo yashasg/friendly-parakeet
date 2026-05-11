@@ -19,3 +19,18 @@ struct MusicContext {
     bool  paused  = false; // PauseMusicStream called; consumed by one-shot resume
     float volume  = 0.8f;  // master volume [0.0, 1.0]
 };
+
+inline bool music_stream_is_valid(Music stream) {
+    return IsMusicValid(stream);
+}
+
+inline bool music_stream_may_own_resources(const Music& stream) {
+    return stream.ctxData != nullptr || stream.stream.buffer != nullptr;
+}
+
+inline void unload_music_stream_resources(Music& stream) {
+    if (music_stream_may_own_resources(stream)) {
+        UnloadMusicStream(stream);
+    }
+    stream = Music{};
+}

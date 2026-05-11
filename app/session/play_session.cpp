@@ -113,27 +113,27 @@ void setup_play_session(entt::registry& reg) {
     auto* music = reg.ctx().find<MusicContext>();
     if (music && music->loaded) {
         StopMusicStream(music->stream);
-        UnloadMusicStream(music->stream);
+        unload_music_stream_resources(music->stream);
         music->loaded = false;
         music->started = false;
+        music->paused = false;
     }
     if (music && !beatmap.song_path.empty()) {
         std::string exe_audio = std::string(GetApplicationDirectory()) + beatmap.song_path;
         const char* audio_paths[] = { exe_audio.c_str(), beatmap.song_path.c_str() };
         for (const char* path : audio_paths) {
             Music stream = LoadMusicStream(path);
+            stream.looping = false;
             if (music_stream_is_playable(stream)) {
-                stream.looping = false;
                 music->stream  = stream;
                 music->loaded  = true;
                 music->started = false;
+                music->paused = false;
                 SetMusicVolume(music->stream, music->volume);
                 TraceLog(LOG_INFO, "Loaded music: %s", path);
                 break;
             }
-            if (music_stream_has_unloadable_resources(stream)) {
-                UnloadMusicStream(stream);
-            }
+            unload_music_stream_resources(stream);
         }
     }
 
