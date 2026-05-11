@@ -264,18 +264,42 @@ test('timeline render positions separate same-time lane stacks', () => {
   assert.equal(entryRenderX(beats, 1, state), entryToX(beats[1], state) + 5);
 });
 
-test('analysis import preserves onset object keys in source order', () => {
+test('analysis import normalizes public and legacy onset layers', () => {
   const analysis = importAnalysis(JSON.stringify({
     title: 'Demo',
     onsets: {
-      clap: { timestamps: [0.5] },
+      percussive: { timestamps: [0.25] },
       kick: { timestamps: [1.0] },
       snare: { timestamps: [1.5] },
+      hihat: { timestamps: [2.0] },
+      melody: { timestamps: [2.5] },
+      flux: { timestamps: [3.0] },
     },
   }));
 
   assert.ok(analysis);
-  assert.deepEqual(Object.keys(analysis.onsets), ['clap', 'kick', 'snare']);
+  assert.deepEqual(Object.keys(analysis.onsets), ['percussive', 'harmonic', 'full-spectrum']);
+  assert.deepEqual(analysis.onsets.percussive.timestamps, [0.25, 1.0, 1.5, 2.0]);
+  assert.deepEqual(analysis.onsets.harmonic.timestamps, [2.5]);
+  assert.deepEqual(analysis.onsets['full-spectrum'].timestamps, [3.0]);
+  assert.match(analysis.warnings.join('\n'), /Mapped legacy onset layer 'kick'/);
+});
+
+test('analysis import drops unsupported onset layers with warnings', () => {
+  const analysis = importAnalysis(JSON.stringify({
+    title: 'Demo',
+    onsets: {
+      clap: { timestamps: [0.5] },
+      unknown: { timestamps: [1.0] },
+      harmonic: { timestamps: [1.5] },
+    },
+  }));
+
+  assert.ok(analysis);
+  assert.deepEqual(Object.keys(analysis.onsets), ['harmonic']);
+  assert.deepEqual(analysis.onsets.harmonic.timestamps, [1.5]);
+  assert.match(analysis.warnings.join('\n'), /Dropped unsupported onset layer 'clap'/);
+  assert.match(analysis.warnings.join('\n'), /Dropped unsupported onset layer 'unknown'/);
 });
 
 test('malformed JSON import is rejected with parse error', () => {

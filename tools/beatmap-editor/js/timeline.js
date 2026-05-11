@@ -9,6 +9,7 @@ import {
     WAVEFORM_HEIGHT,
     TIMELINE_PADDING_LEFT,
     LANE_LABELS,
+    RHYTHM_LAYER_KEYS,
 } from './constants.js';
 
 let canvas = null;
@@ -157,7 +158,7 @@ export function render(state, waveformData, validationErrors) {
         renderWaveform(ctx, state, waveformData, w);
     }
 
-    // 4b. Analysis onset rows (kick/snare/hihat/etc)
+    // 4b. Analysis onset rows
     renderOnsetTracks(ctx, state, w, h);
 
     // 5. Beat grid lines
@@ -226,8 +227,9 @@ function getOnsetRows(analysisData) {
     const onsetMap = analysisData?.onsets;
     if (!onsetMap || typeof onsetMap !== 'object') return [];
 
-    // Preserve source order from analysis JSON; do not impose class ordering here.
-    return Object.entries(onsetMap)
+    return RHYTHM_LAYER_KEYS
+        .filter((name) => Object.prototype.hasOwnProperty.call(onsetMap, name))
+        .map((name) => [name, onsetMap[name]])
         .filter(([, value]) => value && typeof value === 'object')
         .map(([name, value]) => ({
         name,

@@ -10,6 +10,7 @@ export let SHAPES = ["circle", "square", "triangle"];
 export let LANES = [0, 1, 2];
 export let KINDS_WITH_SHAPE = ["shape_gate", "combo_gate", "split_path"];
 export const DIFFICULTY_KEYS = Object.freeze(["easy", "medium", "hard"]);
+export const RHYTHM_LAYER_KEYS = Object.freeze(["percussive", "harmonic", "full-spectrum"]);
 export let VALIDATION = {
     BPM_MIN: 60,
     BPM_MAX: 300,
