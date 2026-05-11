@@ -42,7 +42,7 @@ constexpr int   PTS_PER_SECOND    = 10;
 constexpr int   CHAIN_BONUS[5]    = { 0, 0, 50, 100, 200 };
 
 // ── Rhythm Constants ──────────────────────────────
-constexpr float APPROACH_DIST      = 1040.0f;  // |PLAYER_Y - SPAWN_Y|
+constexpr float APPROACH_DIST      = PLAYER_Y - SPAWN_Y;
 constexpr float COLLISION_MARGIN   = 40.0f;    // half-height of timing window (px)
 
 // ── Energy Bar ────────────────────────────────────

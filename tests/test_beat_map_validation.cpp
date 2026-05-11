@@ -492,8 +492,8 @@ TEST_CASE("song_state_compute_derived: scroll_speed calculation", "[rhythm_helpe
     s.lead_beats = 4;
     song_state_compute_derived(s);
 
-    // scroll_speed = APPROACH_DIST / lead_time = 1040 / 2.0 = 520
-    CHECK_THAT(s.scroll_speed, Catch::Matchers::WithinAbs(520.0f, 1.0f));
+    CHECK_THAT(s.scroll_speed,
+               Catch::Matchers::WithinAbs(constants::APPROACH_DIST / 2.0f, 1.0f));
 }
 
 // ── load_validation_constants: path resolution ───────────────

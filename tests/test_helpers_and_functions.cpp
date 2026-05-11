@@ -60,6 +60,11 @@ TEST_CASE("window_scale: Perfect strictly shrinks, Ok/Bad are neutral", "[timing
 
 // ── song_state_compute_derived ───────────────────────────────
 
+TEST_CASE("constants: approach distance tracks player and spawn positions", "[song_state][regression]") {
+    CHECK_THAT(constants::APPROACH_DIST,
+               Catch::Matchers::WithinAbs(constants::PLAYER_Y - constants::SPAWN_Y, 0.001f));
+}
+
 TEST_CASE("song_state_derived: beat_period from BPM", "[song_state]") {
     SongState s;
     s.bpm = 120.0f;
@@ -74,8 +79,8 @@ TEST_CASE("song_state_derived: scroll_speed = APPROACH_DIST / lead_time", "[song
     s.lead_beats = 4;
     song_state_compute_derived(s);
     // lead_time = 4 * 0.5 = 2.0s
-    // scroll_speed = 1040 / 2.0 = 520
-    CHECK_THAT(s.scroll_speed, Catch::Matchers::WithinAbs(520.0f, 0.1f));
+    CHECK_THAT(s.scroll_speed,
+               Catch::Matchers::WithinAbs(constants::APPROACH_DIST / 2.0f, 0.1f));
 }
 
 TEST_CASE("song_state_derived: lead_time = lead_beats * beat_period", "[song_state]") {
