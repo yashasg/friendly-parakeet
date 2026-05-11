@@ -276,7 +276,7 @@ struct ScoreState {
     int32_t  displayed_score;    // for smooth scroll-up animation
     int32_t  high_score;         // persisted across sessions
     int32_t  chain_count;        // consecutive obstacles cleared
-    float    chain_timer;        // seconds since last clear — chain breaks if > threshold
+    float    chain_timer;        // seconds since last clear, retained across rests
     float    distance_traveled;  // total pixels scrolled (for distance bonus)
 };
 
