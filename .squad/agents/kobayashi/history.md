@@ -24,6 +24,7 @@
 
 ## Learnings
 
+- 2026-05-10T15:43:34.669-07:00 — **Squad loop tool permissions investigation:** No project-wide configurable permission policy found for `touch` or `apply_patch` in Ralph/Squad heartbeat or Squad CLI. GitHub Actions `permissions.contents: write` (set in commit 38b0847) enables repository file modifications (git commits, pushes). `touch` is a shell operation that works in the checked-out workspace without additional GitHub Actions scope; file persistence requires git commit + push logic (already in place in heartbeat template). `apply_patch` is a Copilot tooling capability, not a GitHub Actions permission scope — no YAML configuration grants it. Skill files (e.g., `content-root-consolidation/SKILL.md`) document `apply_patch` as a tool reference for agents' domain knowledge, not as a permission grant mechanism. Casting policies and MCP configs do not define tool allowlists. Conclusion: `contents: write` is the closest already-applied fix. No code changes needed; Squad loop already has the foundation to persist file edits if triggered agents apply git commits.
 - 2026-05-10T15:35:04.939-07:00 — Granted Ralph/Squad heartbeat repository content write permission so the loop can push commits or modify repo files, while retaining existing issue write and pull-request read scopes. Touched `.github/workflows/squad-heartbeat.yml` and `.squad/templates/workflows/squad-heartbeat.yml`; referenced template paths `templates/workflows/squad-heartbeat.yml` and `packages/squad-cli/templates/workflows/squad-heartbeat.yml` are not present in this checkout.
 - Integration branches work well for multi-PR consolidation; prefer squash-merge to keep main history clean
 - CodeQL scanning adds ~30s latency to PR merge workflow; consider pre-validation locally for large changes
@@ -50,3 +51,15 @@
 - **Fix:** Added explicit `#include <raylib.h>` to `collision_system.cpp` (commit `a80276c`).
 - **Validation:** Targeted build (`shapeshifter_lib`) plus full validation command passed locally; tests: 1932 assertions in 714 cases.
 - **Release learning:** In this zero-warning, multi-platform pipeline, any TU using raylib value types/functions must include `<raylib.h>` directly to avoid platform/toolchain-dependent compile breaks.
+
+## Mechanical Cleanup — Beatmap Editor Docs Fix — 2026-05-10
+
+- **Task:** Fix malformed palette example in `design-docs/beatmap-editor.md` §3.4 with duplicated `SplitPath` entry
+- **Root cause:** Palette UI mockup had `[⑂ SplitPath]` on two consecutive lines (147–148) instead of one
+- **Fix applied:** Removed duplicate line 148; palette now correctly shows `[■ ShapeGate] [⑂ SplitPath]` once with Shape options below
+- **Validation:** `git diff --check` passed (zero trailing whitespace); no C++ changes required
+- **Status:** Not committed per task instructions; ready for final review
+
+- 2026-05-10T16:03:00.125-07:00 — Squad loop CI unblocked by replacing echo-only Squad CI/Preview workflows with real Linux native and WASM preview build/test gates, updating deprecated github-script actions to v8, and adding `vcpkg-overlay/**` to native cache hashes so overlay changes invalidate restored build directories.
+
+- 2026-05-10T16:03:00.125-07:00 — Release placeholder workflows should mirror active repo validation gates: native release builds use the Squad CI Linux build/test path, insider artifacts use the Squad Preview WASM build/test/artifact validation path, and all CMake/vcpkg caches must hash `vcpkg-overlay/**` with `vcpkg.json`.

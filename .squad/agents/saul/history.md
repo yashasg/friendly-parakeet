@@ -26,6 +26,18 @@
 
 <!-- Append learnings below -->
 
+## 2026-05-10 · Issue #125: LowBar/HighBar Docs Cleanup
+- **Status:** ✅ RESOLVED
+- **Finding:** Runtime `app/components/obstacle.h` supports only `ShapeGate`, `LaneBlock`, `ComboGate`, `SplitPath`. Shipped beatmaps use 100% `shape_gate` (924/924 obstacles). Yet five design docs still invited authoring of `LowBar`/`HighBar`.
+- **Action Taken:** Marked all authoring guidance as stale/future design space:
+  - `feature-specs.md`: Updated SPEC 3 difficulty table to mark future types
+  - `architecture.md`: Added `[STALE]` comments to enum, RequiredVAction, example entity, and collision logic
+  - `beatmap-integration.md`: Wrapped JSON examples in comments marked "future design space"
+  - `rhythm-design.md`: Updated Obstacle Types section with stale headers, removed from user-facing example
+  - `beatmap-editor.md`: Removed LowBar/HighBar from context menus and toolbar
+- **Remaining References:** Kept commented examples in `beatmap-integration.md`, explanatory text in `game.md` and `rhythm-design.md` (these explain design intent, not authoring guidance). Kept enum values in `architecture.md` for backward compat and design reference.
+- **Lesson:** Authoring UI and code samples in docs drift away from the live generator when a planned feature is shelved. Docs cleanup should remove user-facing invitations but preserve design-space cataloging and code examples for future contributors.
+
 ## 2026-04-26 · Game-Design Diagnostic Pass
 - The game has two parallel survival/scoring models that contradict each other: the legacy **Burnout** model (DEAD zone = game over, multiplier x1→x5 risk/reward) and the newer **Energy bar** model (miss → drain, 0 energy = game over). Code only honors the energy bar; the burnout DEAD zone never kills and instead silently grants the x5 multiplier. The GDD (`design-docs/game.md`) and `feature-specs.md` still describe the burnout-kill model.
 - Burnout zones are distance-based with `ZONE_DANGER_MIN = 140 px`, while collisions only resolve within `COLLISION_MARGIN = 40 px` of the player. Therefore at the moment scoring runs, the meter is *always* in `Dead`, so every successful clear receives x5. The risk/reward gradient (Safe/Risky/Danger) the GDD sells is non-functional in rhythm mode.

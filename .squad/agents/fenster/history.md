@@ -408,3 +408,15 @@ Filed follow-up tooling audit issues:
 - #410 `validate_beatmap_offset.py` is cwd-dependent (`Path("content/beatmaps")`) and fails outside repo root.
 
 Learning: After hardening one validator path (#383), audit sibling validators for the same malformed-row and path-resolution assumptions; these regressions tend to exist in parallel scripts.
+
+## 2026-05-10T15:45:30-07:00 — Issue #125 Revision: Docs Cleanup
+
+Reviewer-assigned revision owner for documentation audit (issue #125 closure consistency).
+
+- **Artifact:** `design-docs/feature-specs.md`
+- **Change:** Removed `LOW_BAR_BASE_PTS` and `HIGH_BAR_BASE_PTS` rows from active "Balancing Parameters" table (lines 741–742). These constants are no longer part of live runtime architecture and were incorrectly presented as active balancing guidance.
+- **Validation:**
+  - `git diff --check` ✅ (no whitespace issues)
+  - Grep search: no remaining references in active docs ✅
+
+Minimal docs-only fix per reviewer feedback. Not committed pending further review.

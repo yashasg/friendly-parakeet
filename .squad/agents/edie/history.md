@@ -11,6 +11,9 @@
 
 <!-- Append learnings below -->
 
+### 2026-05-10T15:45:30.046-07:00 — LowBar/HighBar docs cleanup
+- Product docs must distinguish active editor/runtime authoring values from archival obstacle catalog examples; removed runtime kinds should not appear in palettes, constants, or executable-looking pseudocode.
+
 ### 2026-04-26 — Role fit review for SHAPESHIFTER
 - Project is a C++20/raylib/EnTT rhythm bullet hell, song-driven beatmaps via Python pipeline (rhythm_pipeline.py + level_designer.py), 386 Catch2 tests, multi-platform CI (Linux/macOS/Windows + WASM), Catch2.
 - 13 active specialists; coverage spans architecture, gameplay, tools, platform, QA, perf, CI/release, product, UX, game design, level design, test eng, review.

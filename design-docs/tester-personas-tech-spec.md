@@ -41,7 +41,6 @@
   │ RequiredShape        │  1B  │ ~6 max     │ WARM: collision, decide│
   │ BlockedLanes         │  1B  │ ~3 max     │ WARM: collision, decide│
   │ RequiredLane         │  1B  │ ~2 max     │ WARM: collision, decide│
-  │ RequiredVAction      │  1B  │ ~2 max     │ WARM: collision, decide│
   │ BeatInfo             │ 12B  │ ~10 max    │ COLD: ring_zone only   │
   │ RingZoneTracker      │  2B  │ ~6 max     │ WARM: ring_zone_log    │
   ├──────────────────────┼──────┼────────────┼────────────────────────┤
@@ -390,10 +389,6 @@ multiple iterations of gesture_system within one frame. Verified safe:
   │                                                                 │
   │  Has RequiredLane?                                               │
   │    YES → target_lane = required.lane                             │
-  │                                                                 │
-  │  Has RequiredVAction?                                           │
-  │    Jumping → target_vertical = VMode::Jumping                   │
-  │    Sliding → target_vertical = VMode::Sliding                   │
   │                                                                 │
   └─────────────────────────────────────────────────────────────────┘
 ```
