@@ -46,11 +46,8 @@ void scoring_system(entt::registry& reg, float dt) {
         score.score += static_cast<int>(dt * constants::PTS_PER_SECOND);
     }
 
-    // Chain timer
+    // Track rest duration for diagnostics/feedback, but only misses break chain.
     score.chain_timer += dt;
-    if (score.chain_timer > 2.0f) {
-        score.chain_count = 0;
-    }
 
     auto* results = reg.ctx().find<SongResults>();   // #309: hoisted above loop
 

@@ -128,7 +128,7 @@ When an obstacle requires TWO actions (e.g., switch to ● AND swipe left), the 
 ### Chain
 - Each consecutive non-miss timing grade (Perfect, Good, Ok, or Bad) grows the chain.
 - Bad awards reduced points and drains small energy. Miss resets the chain.
-- Chain resets on any MISS.
+- Chain persists through authored musical rests; only a MISS resets it.
 - Chain contributes a bounded flat bonus so consistent rhythm is rewarded over isolated hits.
 
 ### Distance Bonus

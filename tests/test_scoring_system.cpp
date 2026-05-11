@@ -47,7 +47,7 @@ TEST_CASE("scoring: chain bonus increases points", "[scoring]") {
     CHECK(score.score > base_only);
 }
 
-TEST_CASE("scoring: chain resets after timeout", "[scoring]") {
+TEST_CASE("scoring: chain persists across authored rests until miss (#100)", "[scoring][issue100]") {
     auto reg = make_registry();
 
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
@@ -58,10 +58,20 @@ TEST_CASE("scoring: chain resets after timeout", "[scoring]") {
     energy_system(reg, 0.016f);
     CHECK(reg.ctx().get<ScoreState>().chain_count == 1);
 
-    // Wait > 2 seconds
+    // Musical rests should not silently break a clean chain.
     scoring_system(reg, 2.5f);
     popup_feedback_system(reg, 2.5f);
     energy_system(reg, 2.5f);
+
+    CHECK(reg.ctx().get<ScoreState>().chain_count == 1);
+
+    auto miss = make_shape_gate(reg, Shape::Square, constants::PLAYER_Y);
+    reg.emplace<ScoredTag>(miss);
+    reg.emplace<MissTag>(miss);
+
+    scoring_system(reg, 0.016f);
+    popup_feedback_system(reg, 0.016f);
+    energy_system(reg, 0.016f);
 
     CHECK(reg.ctx().get<ScoreState>().chain_count == 0);
 }
