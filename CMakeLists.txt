@@ -608,6 +608,11 @@ if(NOT EMSCRIPTEN)
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     )
     add_test(
+        NAME validate_offset_semantics
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/validate_offset_semantics.py
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    )
+    add_test(
         NAME validate_no_simultaneous_shape_gates
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/validate_no_simultaneous_shape_gates.py
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
