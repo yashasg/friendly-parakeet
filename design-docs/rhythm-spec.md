@@ -579,6 +579,12 @@ The default (OK) timing = the full active window. Better timing shrinks the rema
   in the same window from re-applying the scale factor.
 ```
 
+Auto-return to Hexagon is intentional and should not be balanced as a
+punishment. It is the release/readiness beat between playable notes; authored
+shape changes must preserve enough spacing for the return to read clearly. If a
+chart makes the auto-return feel punitive, fix the chart spacing or timing
+window before adding any player-facing Hexagon input.
+
 ## `shape_window_system` guard condition
 
 ```cpp
