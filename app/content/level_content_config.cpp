@@ -8,6 +8,7 @@ const LevelInfo LEVELS[LEVEL_COUNT] = {
     {"MENTAL CORRUPTION", "content/beatmaps/3_mental_corruption_beatmap.json"},
 };
 
+const char* const LEVEL_KEYS[LEVEL_COUNT] = {"1_stomper", "2_drama", "3_mental_corruption"};
 const char* const DIFFICULTY_NAMES[DIFFICULTY_COUNT] = {"EASY", "MEDIUM", "HARD"};
 const char* const DIFFICULTY_KEYS[DIFFICULTY_COUNT] = {"easy", "medium", "hard"};
 

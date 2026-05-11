@@ -14,4 +14,5 @@ struct TestPlayerSessionState {
 };
 
 void test_player_init(entt::registry& reg, TestPlayerSkill skill,
-                      const char* difficulty);
+                      const char* difficulty,
+                      int selected_level = 1);

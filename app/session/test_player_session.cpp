@@ -15,15 +15,30 @@ namespace {
 struct TestPlayerSessionSignals {
     bool wired = false;
 };
+
+int valid_level_or_default(int selected_level) {
+    if (selected_level >= 0 && selected_level < content_config::LEVEL_COUNT) {
+        return selected_level;
+    }
+    return 1;
+}
+
+int difficulty_index_or_default(const char* difficulty) {
+    for (int d = 0; d < content_config::DIFFICULTY_COUNT; ++d) {
+        if (std::strcmp(content_config::DIFFICULTY_KEYS[d], difficulty) == 0) {
+            return d;
+        }
+    }
+    return 1;
+}
 }
 
 void test_player_init(entt::registry& reg, TestPlayerSkill skill,
-                      const char* difficulty) {
+                      const char* difficulty,
+                      int selected_level) {
     auto& lss = reg.ctx().get<LevelSelectState>();
-    lss.selected_level = 1;
-    for (int d = 0; d < content_config::DIFFICULTY_COUNT; ++d)
-        if (std::strcmp(content_config::DIFFICULTY_KEYS[d], difficulty) == 0)
-            { lss.selected_difficulty = d; break; }
+    lss.selected_level = valid_level_or_default(selected_level);
+    lss.selected_difficulty = difficulty_index_or_default(difficulty);
 
     auto* session_state = reg.ctx().find<TestPlayerSessionState>();
     if (!session_state) {
@@ -43,8 +58,10 @@ void test_player_init(entt::registry& reg, TestPlayerSkill skill,
     tp_state.rng.seed(seed);
 
     static const char* skill_names[] = { "pro", "good", "bad" };
-    TraceLog(LOG_INFO, "TEST PLAYER: skill=%s",
-             skill_names[static_cast<int>(skill)]);
+    const char* level_key = content_config::LEVEL_KEYS[lss.selected_level];
+    const char* difficulty_key = content_config::DIFFICULTY_KEYS[lss.selected_difficulty];
+    TraceLog(LOG_INFO, "TEST PLAYER: skill=%s level=%s difficulty=%s",
+             skill_names[static_cast<int>(skill)], level_key, difficulty_key);
 
     auto& slog = reg.ctx().get<SessionLog>();
     session_log_close(slog);
@@ -54,11 +71,19 @@ void test_player_init(entt::registry& reg, TestPlayerSkill skill,
     const uint32_t sequence = ++session_state->log_sequence;
     char log_filename[256];
     std::snprintf(log_filename, sizeof(log_filename),
-        "%ssession_%s_rt%010llu_n%04u.log",
+        "%ssession_%s_%s_%s_rt%010llu_n%04u.log",
         GetApplicationDirectory(),
         skill_names[static_cast<int>(skill)],
+        level_key,
+        difficulty_key,
         runtime_millis, sequence);
     session_log_open(slog, log_filename);
+    if (slog.file) {
+        std::fprintf(slog.file, "skill=%s level=%s difficulty=%s seed=%u\n\n",
+                     skill_names[static_cast<int>(skill)], level_key,
+                     difficulty_key, seed);
+        std::fflush(slog.file);
+    }
     TraceLog(LOG_INFO, "SESSION LOG: %s", log_filename);
 
     auto* signals = reg.ctx().find<TestPlayerSessionSignals>();
