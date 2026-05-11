@@ -1,5 +1,10 @@
 # SDL2 → Sokol Migration Plan
 
+> **Historical only.** This plan is not active. The shipped runtime currently
+> uses direct raylib/raygui APIs with glm, and `docs/ongoing_migration.md`
+> records the authoritative dependency-boundary status. Do not use this file as
+> implementation guidance unless a new issue explicitly reactivates Sokol work.
+
 ## Overview
 
 Migrate the rendering, windowing, input, timing, and audio platform layer from
