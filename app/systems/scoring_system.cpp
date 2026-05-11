@@ -11,6 +11,7 @@
 #include "../components/rhythm.h"
 #include "../util/rhythm_math.h"
 #include "../constants.h"
+#include <algorithm>
 #include <cmath>
 
 namespace {
@@ -30,6 +31,14 @@ void enqueue_energy_effect(entt::registry& reg, float delta, bool flash = false)
 
 ScorePopupRequestQueue& popup_queue_for(entt::registry& reg) {
     return reg.ctx().get<ScorePopupRequestQueue>();
+}
+
+float chain_multiplier_for_count(int32_t chain_count) {
+    if (chain_count <= 1) {
+        return 1.0f;
+    }
+    const int32_t bonus_steps = std::min(chain_count - 1, constants::CHAIN_MULT_BONUS_STEPS_CAP);
+    return 1.0f + constants::CHAIN_MULT_STEP * static_cast<float>(bonus_steps);
 }
 
 }  // namespace
@@ -160,17 +169,12 @@ void scoring_system(entt::registry& reg, float dt) {
                 }
             }
 
-            int points = static_cast<int>(
-                std::floor(r.obs.base_points * timing_mult));
-
-            // Chain bonus
+            // Chain multiplier
             score.chain_count++;
             score.chain_timer = 0.0f;
-            if (score.chain_count >= 2 && score.chain_count <= 4) {
-                points += constants::CHAIN_BONUS[score.chain_count];
-            } else if (score.chain_count >= 5) {
-                points += constants::CHAIN_BONUS[4] + (score.chain_count - 4) * 100;
-            }
+            const float chain_mult = chain_multiplier_for_count(score.chain_count);
+            int points = static_cast<int>(
+                std::floor(static_cast<float>(r.obs.base_points) * timing_mult * chain_mult));
 
             if (results && score.chain_count > results->max_chain) {
                 results->max_chain = score.chain_count;

@@ -105,8 +105,8 @@ namespace constants {
     constexpr int   PTS_COMBO_GATE    = 200;
     constexpr int   PTS_SPLIT_PATH    = 300;
     constexpr int   PTS_PER_SECOND    = 10;       // distance bonus
-    constexpr int   CHAIN_BONUS[5]    = { 0, 0, 50, 100, 200 };
-    //               chain:             0  1   2    3     4  (5+ = +100/ea)
+    constexpr float CHAIN_MULT_STEP    = 0.05f;
+    constexpr int32_t CHAIN_MULT_BONUS_STEPS_CAP = 20; // caps at 2.0x
 
     // ── Difficulty Timeline ───────────────────────────
     constexpr float SPEED_RAMP_RATE   = 0.011f;   // multiplier/sec → ×3.0 at 180s

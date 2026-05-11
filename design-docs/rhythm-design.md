@@ -346,7 +346,7 @@ The player can hear the beat coming. The timing is legible. What the player cann
   │  Thresholds are fixed milliseconds in shipped code.         │
   │  Lower Window Scale means the active shape window collapses │
   │  sooner after that scored press.                            │
-  │  Score = floor(base_points × timing_multiplier) + chain_flat_bonus. │
+  │  Score = floor(base_points × timing_multiplier × chain_multiplier). │
   │                                                             │
   └─────────────────────────────────────────────────────────────┘
 ```
@@ -357,7 +357,8 @@ The player can hear the beat coming. The timing is legible. What the player cann
   Each consecutive non-miss timing grade (PERFECT, GOOD, OK, or BAD)
   grows the chain. BAD awards reduced points and drains small energy;
   MISS resets the chain.
-  Score = floor(base_pts × timing_multiplier) + chain_flat_bonus
+  Score = floor(base_pts × timing_multiplier × chain_multiplier)
+  chain_multiplier = 1.0 + 0.05 × min(chain_count - 1, 20), capped at 2.0×.
 
   Chain resets on any MISS.
 

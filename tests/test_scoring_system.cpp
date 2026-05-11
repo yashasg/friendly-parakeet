@@ -1,6 +1,22 @@
 #include <catch2/catch_test_macros.hpp>
 #include "test_helpers.h"
 
+namespace {
+
+int score_good_shape_gate(entt::registry& reg) {
+    auto& score = reg.ctx().get<ScoreState>();
+    const int before = score.score;
+
+    auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
+    reg.emplace<ScoredTag>(obs);
+    reg.emplace<TimingGrade>(obs, TimingTier::Good, 0.0f);
+    scoring_system(reg, 0.0f);
+
+    return score.score - before;
+}
+
+}  // namespace
+
 TEST_CASE("scoring: distance bonus accumulates", "[scoring]") {
     auto reg = make_registry();
 
@@ -27,7 +43,7 @@ TEST_CASE("scoring: scored obstacle awards points", "[scoring]") {
     CHECK(score.score >= constants::PTS_SHAPE_GATE);
 }
 
-TEST_CASE("scoring: chain bonus increases points", "[scoring]") {
+TEST_CASE("scoring: chain multiplier increases points", "[scoring]") {
     auto reg = make_registry();
 
     // Score 3 obstacles in a row
@@ -42,7 +58,7 @@ TEST_CASE("scoring: chain bonus increases points", "[scoring]") {
 
     auto& score = reg.ctx().get<ScoreState>();
     CHECK(score.chain_count == 3);
-    // Total should be more than 3x base due to chain bonuses
+    // Total should be more than 3x base due to the chain multiplier.
     int base_only = 3 * constants::PTS_SHAPE_GATE;
     CHECK(score.score > base_only);
 }
@@ -123,7 +139,7 @@ TEST_CASE("scoring: not in Playing phase skips processing", "[scoring]") {
     CHECK(reg.ctx().get<ScoreState>().score == 0);
 }
 
-TEST_CASE("scoring: chain bonus 5+ gives extended bonus", "[scoring]") {
+TEST_CASE("scoring: chain multiplier 5+ gives extended value", "[scoring]") {
     auto reg = make_registry();
 
     // Score 5 obstacles in a row (chain_count 1..5)
@@ -138,9 +154,54 @@ TEST_CASE("scoring: chain bonus 5+ gives extended bonus", "[scoring]") {
 
     auto& score = reg.ctx().get<ScoreState>();
     CHECK(score.chain_count == 5);
-    // 5th obstacle: base + CHAIN_BONUS[4] + (5-4)*100 = 200 + 200 + 100 = 500
-    // Total for 5 obstacles should be significantly more than 5*200
+    // Total for 5 obstacles should exceed base-only scoring due to the chain multiplier.
     CHECK(score.score > 5 * constants::PTS_SHAPE_GATE);
+}
+
+TEST_CASE("scoring: chain multiplier economy scales at design checkpoints (#206)", "[scoring]") {
+    auto reg = make_registry();
+
+    int chain_1_points = 0;
+    int chain_5_points = 0;
+    int chain_10_points = 0;
+    int chain_20_points = 0;
+
+    for (int chain = 1; chain <= 20; ++chain) {
+        const int points = score_good_shape_gate(reg);
+        if (chain == 1) chain_1_points = points;
+        if (chain == 5) chain_5_points = points;
+        if (chain == 10) chain_10_points = points;
+        if (chain == 20) chain_20_points = points;
+    }
+
+    CHECK(chain_1_points == 200);
+    CHECK(chain_5_points == 240);
+    CHECK(chain_10_points == 290);
+    CHECK(chain_20_points == 390);
+    CHECK(chain_1_points < chain_5_points);
+    CHECK(chain_5_points < chain_10_points);
+    CHECK(chain_10_points < chain_20_points);
+}
+
+TEST_CASE("scoring: breaking a 10-chain loses meaningful next-hit value (#206)", "[scoring]") {
+    auto reg = make_registry();
+
+    for (int i = 0; i < 9; ++i) {
+        (void)score_good_shape_gate(reg);
+    }
+    const int chained_tenth_hit = score_good_shape_gate(reg);
+
+    auto miss = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
+    reg.emplace<ScoredTag>(miss);
+    reg.emplace<MissTag>(miss);
+    scoring_system(reg, 0.0f);
+    REQUIRE(reg.ctx().get<ScoreState>().chain_count == 0);
+
+    const int isolated_after_break = score_good_shape_gate(reg);
+
+    CHECK(chained_tenth_hit == 290);
+    CHECK(isolated_after_break == 200);
+    CHECK(chained_tenth_hit >= isolated_after_break + 90);
 }
 
 TEST_CASE("scoring: obstacle entity cleaned up after scoring", "[scoring]") {
