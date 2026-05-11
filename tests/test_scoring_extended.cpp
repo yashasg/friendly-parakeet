@@ -4,6 +4,22 @@
 
 // ── scoring_system: timing multiplier integration ────────────
 
+namespace {
+
+int score_shape_gate_with_tier(entt::registry& reg, TimingTier tier) {
+    auto& score = reg.ctx().get<ScoreState>();
+    const int before = score.score;
+
+    auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
+    reg.emplace<ScoredTag>(obs);
+    reg.emplace<TimingGrade>(obs, tier, 0.0f);
+
+    scoring_system(reg, 0.0f);
+    return score.score - before;
+}
+
+}  // namespace
+
 TEST_CASE("scoring: perfect timing multiplier gives 1.5x base", "[scoring][rhythm]") {
     auto reg = make_registry();
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
@@ -33,6 +49,33 @@ TEST_CASE("scoring: bad timing multiplier gives 0.25x base", "[scoring][rhythm]"
     // 200 * 0.25 * 1.0 = 50, plus distance bonus
     // Should be less than a normal hit
     CHECK(score.score < constants::PTS_SHAPE_GATE + 50);
+}
+
+TEST_CASE("scoring: Good timing multiplier applies through scoring_system", "[scoring][rhythm][issue221]") {
+    auto reg = make_registry();
+
+    CHECK(score_shape_gate_with_tier(reg, TimingTier::Good) == constants::PTS_SHAPE_GATE);
+}
+
+TEST_CASE("scoring: Ok timing multiplier applies through scoring_system", "[scoring][rhythm][issue221]") {
+    auto reg = make_registry();
+
+    CHECK(score_shape_gate_with_tier(reg, TimingTier::Ok) == constants::PTS_SHAPE_GATE / 2);
+}
+
+TEST_CASE("scoring: Bad timing multiplier applies through scoring_system and drains energy",
+          "[scoring][rhythm][energy][issue221]") {
+    auto reg = make_registry();
+    auto& energy = reg.ctx().get<EnergyState>();
+    energy.energy = constants::ENERGY_MAX;
+
+    CHECK(score_shape_gate_with_tier(reg, TimingTier::Bad) == constants::PTS_SHAPE_GATE / 4);
+
+    energy_system(reg, 0.0f);
+
+    CHECK_THAT(energy.energy,
+               Catch::Matchers::WithinAbs(constants::ENERGY_MAX - constants::ENERGY_DRAIN_BAD,
+                                          0.0001f));
 }
 
 TEST_CASE("scoring: perfect timing and base points combine correctly", "[scoring][rhythm]") {
