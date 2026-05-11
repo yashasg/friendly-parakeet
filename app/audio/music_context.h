@@ -2,6 +2,14 @@
 
 #include <raylib.h>
 
+inline bool music_stream_has_unloadable_resources(const Music& music) {
+    return music.ctxData != nullptr || music.stream.buffer != nullptr;
+}
+
+inline bool music_stream_is_playable(const Music& music) {
+    return IsMusicValid(music) && music.stream.buffer != nullptr;
+}
+
 // Singleton: holds the raylib Music handle and playback state.
 // Cold data — read/written 1-2x per frame by song_playback_system only.
 struct MusicContext {
