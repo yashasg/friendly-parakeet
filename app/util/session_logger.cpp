@@ -9,6 +9,7 @@
 #include <cstdarg>
 #include <cmath>
 #include <string_view>
+#include <utility>
 
 #include <magic_enum/magic_enum.hpp>
 #include <raylib.h>
@@ -25,8 +26,45 @@ std::string_view session_log_enum_name_or_unknown(E value) {
 
 // ── Core log function ────────────────────────────────────────
 
+SessionLog::SessionLog(SessionLog&& other) noexcept
+    : file{other.file},
+      frame{other.frame},
+      buffer{std::move(other.buffer)},
+      last_logged_beat{other.last_logged_beat}
+{
+    other.file = nullptr;
+    if (buffer.capacity() < kMaxLogBufferBytes) {
+        buffer.reserve(kMaxLogBufferBytes);
+    }
+}
+
+SessionLog& SessionLog::operator=(SessionLog&& other) noexcept {
+    if (this != &other) {
+        release();
+        file = other.file;
+        frame = other.frame;
+        buffer = std::move(other.buffer);
+        last_logged_beat = other.last_logged_beat;
+        other.file = nullptr;
+        if (buffer.capacity() < kMaxLogBufferBytes) {
+            buffer.reserve(kMaxLogBufferBytes);
+        }
+    }
+    return *this;
+}
+
+SessionLog::~SessionLog() { release(); }
+
+void SessionLog::release() {
+    session_log_flush(*this);
+    if (file) {
+        std::fclose(file);
+        file = nullptr;
+    }
+}
+
 void session_log_open(SessionLog& log, const char* path) {
-    if (log.file) std::fclose(log.file);
+    log.release();
     log.file = std::fopen(path, "w");
     if (log.file) {
         std::fprintf(log.file, "══════ Test Session started runtime=%.3fs ══════\n\n", GetTime());
@@ -36,11 +74,7 @@ void session_log_open(SessionLog& log, const char* path) {
 }
 
 void session_log_close(SessionLog& log) {
-    session_log_flush(log);  // flush any remaining buffered lines
-    if (log.file) {
-        std::fclose(log.file);
-        log.file = nullptr;
-    }
+    log.release();
 }
 
 void session_log_write(SessionLog& log, float song_time,
