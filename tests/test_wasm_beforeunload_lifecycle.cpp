@@ -69,10 +69,28 @@ TEST_CASE("wasm lifecycle: visibilitychange callback pauses active play",
 }
 
 TEST_CASE("wasm smoke phase title markers are compile-gated",
-          "[lifecycle][architecture]") {
+           "[lifecycle][architecture]") {
     const fs::path root = find_repo_root();
     const std::string phase_source = read_file(root / "app" / "systems" / "game_phase_transition.cpp");
 
     CHECK(phase_source.find("SHAPESHIFTER [") != std::string::npos);
     CHECK(phase_source.find("__EMSCRIPTEN__) && defined(SHAPESHIFTER_WASM_SMOKE_MARKERS)") != std::string::npos);
+}
+
+TEST_CASE("wasm persistence uses explicit IDBFS policy and save flush hooks", "[persistence][architecture]") {
+    const fs::path root = find_repo_root();
+    const std::string cmake_source = read_file(root / "CMakeLists.txt");
+    const std::string policy_source = read_file(root / "app" / "util" / "persistence_policy.cpp");
+    const std::string settings_source = read_file(root / "app" / "util" / "settings_persistence.cpp");
+    const std::string high_score_source = read_file(root / "app" / "util" / "high_score_persistence.cpp");
+
+    CHECK(cmake_source.find("-sFORCE_FILESYSTEM=1") != std::string::npos);
+    CHECK(cmake_source.find("-lidbfs.js") != std::string::npos);
+    CHECK(policy_source.find("FS.mount(IDBFS") != std::string::npos);
+    CHECK(policy_source.find("FS.syncfs") != std::string::npos);
+    CHECK(policy_source.find("\"/persistent/shapeshifter\"") != std::string::npos);
+    CHECK(settings_source.find("persistence::prepare_for_persistence_read(path)") != std::string::npos);
+    CHECK(settings_source.find("persistence::flush_persistence_writes(path)") != std::string::npos);
+    CHECK(high_score_source.find("persistence::prepare_for_persistence_read(path)") != std::string::npos);
+    CHECK(high_score_source.find("persistence::flush_persistence_writes(path)") != std::string::npos);
 }

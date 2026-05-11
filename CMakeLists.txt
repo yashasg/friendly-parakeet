@@ -350,9 +350,11 @@ if(EMSCRIPTEN)
         -sASYNCIFY
         -sALLOW_MEMORY_GROWTH=1
         -sDYNAMIC_EXECUTION=0
+        -sFORCE_FILESYSTEM=1
         # The browser frame loop is registered with emscripten_set_main_loop();
         # keep the Emscripten runtime alive for that long-running callback.
         -sNO_EXIT_RUNTIME=1
+        -lidbfs.js
         --shell-file ${_shell_html}
         "SHELL:--preload-file ${CMAKE_SOURCE_DIR}/content@/content"
     )

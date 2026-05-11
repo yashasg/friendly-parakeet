@@ -106,6 +106,11 @@ bool settings_from_json(const nlohmann::json& obj, SettingsState& state) {
 }
 
 persistence::Result load_settings(SettingsState& state, const std::filesystem::path& path) {
+    const auto prepare_result = persistence::prepare_for_persistence_read(path);
+    if (!prepare_result.ok()) {
+        return prepare_result;
+    }
+
     std::error_code ec;
     const bool exists = std::filesystem::exists(path, ec);
     if (ec) {
@@ -152,7 +157,11 @@ persistence::Result save_settings(const SettingsState& state, const std::filesys
     if (!file.good()) {
         return persistence::Result{persistence::Status::FileWriteFailed, {}};
     }
-    return persistence::Result{};
+    file.close();
+    if (!file.good()) {
+        return persistence::Result{persistence::Status::FileWriteFailed, {}};
+    }
+    return persistence::flush_persistence_writes(path);
 }
 
 void mark_dirty_and_save(SettingsPersistence& persistence_state, const SettingsState& state) {
