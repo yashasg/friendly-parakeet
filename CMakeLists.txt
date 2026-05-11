@@ -615,6 +615,11 @@ if(NOT EMSCRIPTEN AND NOT SHAPESHIFTER_IOS)
             COMMAND ${NODE_EXECUTABLE} --test ${_beatmap_editor_node_test_files}
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/tools/beatmap-editor
         )
+        add_test(
+            NAME service_worker_cache_policy_node_tests
+            COMMAND ${NODE_EXECUTABLE} --test ${CMAKE_SOURCE_DIR}/tests/service_worker_cache_policy.test.cjs
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        )
         message(STATUS "beatmap_editor_node_tests enabled: ${NODE_EXECUTABLE}")
     else()
         add_test(
