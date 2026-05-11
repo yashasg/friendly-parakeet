@@ -70,11 +70,6 @@ function readServiceWorkerCacheName(buildDir) {
   return `${prefix[1]}${suffix[1]}`;
 }
 
-function buildAssetNameFromUrl(requestUrl) {
-  const filename = new URL(requestUrl).pathname.split('/').pop();
-  return BUILD_ASSETS.includes(filename) ? filename : null;
-}
-
 async function seedStaleBuildCache(context, url, buildDir) {
   const cacheName = readServiceWorkerCacheName(buildDir);
   const seedPage = await context.newPage();
@@ -95,6 +90,45 @@ async function seedStaleBuildCache(context, url, buildDir) {
   } finally {
     await seedPage.close();
   }
+}
+
+async function assertBuildAssetHashes(page, expectedAssetHashes) {
+  if (expectedAssetHashes.size === 0) {
+    return [];
+  }
+
+  const expected = Object.fromEntries(expectedAssetHashes);
+  const results = await page.evaluate(async ({ assetNames }) => {
+    const toHex = buffer => Array.from(new Uint8Array(buffer))
+      .map(byte => byte.toString(16).padStart(2, '0'))
+      .join('');
+
+    return Promise.all(assetNames.map(async name => {
+      try {
+        const response = await fetch(new URL(name, location.href).href, { cache: 'no-store' });
+        if (!response.ok) {
+          return { name, status: response.status };
+        }
+        const digest = await crypto.subtle.digest('SHA-256', await response.arrayBuffer());
+        return { name, hash: toHex(digest), status: response.status };
+      } catch (err) {
+        return { name, error: err instanceof Error ? err.message : String(err) };
+      }
+    }));
+  }, { assetNames: [...expectedAssetHashes.keys()] });
+
+  const failures = [];
+  for (const result of results) {
+    if (result.error) {
+      failures.push(`build-asset-hash-check-failed:${result.name}:${result.error}`);
+    } else if (result.status !== 200) {
+      failures.push(`build-asset-response-not-ok:${result.name}:${result.status}`);
+    } else if (result.hash !== expected[result.name]) {
+      failures.push(`stale-build-asset-served:${result.name}:expected=${expected[result.name]}:actual=${result.hash}`);
+    }
+  }
+
+  return failures;
 }
 
 async function main() {
@@ -118,8 +152,6 @@ async function main() {
     isMobile: true,
   });
   const fatal = [];
-  const responseChecks = [];
-  const validatedBuildAssets = new Set();
   let page;
   let cdp;
 
@@ -318,30 +350,10 @@ async function main() {
     }
   });
 
-  page.on('response', response => {
-    const assetName = buildAssetNameFromUrl(response.url());
-    if (!assetName || !expectedAssetHashes.has(assetName)) {
-      return;
-    }
-
-    responseChecks.push((async () => {
-      if (!response.ok()) {
-        fatal.push(`build-asset-response-not-ok:${assetName}:${response.status()}`);
-        return;
-      }
-      const actual = sha256(await response.body());
-      const expected = expectedAssetHashes.get(assetName);
-      if (actual !== expected) {
-        fatal.push(`stale-build-asset-served:${assetName}:expected=${expected}:actual=${actual}`);
-        return;
-      }
-      validatedBuildAssets.add(assetName);
-    })().catch(err => {
-      fatal.push(`build-asset-hash-check-failed:${assetName}:${err.message}`);
-    }));
-  });
-
     await page.goto(options.url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    if (options.seedStaleBuildCache) {
+      await page.waitForFunction(() => navigator.serviceWorker.controller !== null, undefined, { timeout: 10000 });
+    }
     await page.waitForSelector('#canvas', { state: 'visible', timeout: 30000 });
     await page.waitForFunction(() => {
       const loader = document.querySelector('#loader');
@@ -355,6 +367,7 @@ async function main() {
     await page.waitForFunction(() => {
       return typeof document.title === 'string' && document.title.includes('SHAPESHIFTER');
     }, undefined, { timeout: 30000 });
+    fatal.push(...await assertBuildAssetHashes(page, expectedAssetHashes));
 
     const beforeInput = await page.screenshot();
     const beforeHash = sha256(beforeInput);
@@ -440,15 +453,8 @@ async function main() {
       fatal.push(`missing-lane-return-after-playing-touch-swipe-left:${await page.title()}`);
     }
   } finally {
-    await Promise.all(responseChecks);
     await context.close();
     await browser.close();
-  }
-
-  for (const assetName of expectedAssetHashes.keys()) {
-    if (!validatedBuildAssets.has(assetName)) {
-      fatal.push(`build-asset-response-not-observed:${assetName}`);
-    }
   }
 
   if (fatal.length > 0) {
