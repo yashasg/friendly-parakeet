@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <vector>
 
 #include "rhythm.h"
@@ -11,6 +12,7 @@ struct PendingEnergyEffects {
     };
 
     std::vector<Event> events;
+    uint32_t capacity_exceeded_count = 0;
 };
 
 struct ScorePopupRequest {
@@ -23,4 +25,5 @@ struct ScorePopupRequest {
 
 struct ScorePopupRequestQueue {
     std::vector<ScorePopupRequest> requests;
+    uint32_t capacity_exceeded_count = 0;
 };
