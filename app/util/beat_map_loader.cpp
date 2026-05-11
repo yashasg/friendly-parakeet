@@ -4,6 +4,7 @@
 #include <cmath>
 #include <algorithm>
 #include <optional>
+#include <utility>
 #include <raylib.h>
 
 using json = nlohmann::json;
@@ -317,6 +318,20 @@ bool load_beat_map(const std::string& json_path, BeatMap& out,
     return parse_beat_map(content, out, errors, difficulty);
 }
 
+bool load_and_validate_beat_map(const std::string& json_path, BeatMap& out,
+                                std::vector<BeatMapError>& errors,
+                                const std::string& difficulty) {
+    BeatMap candidate;
+    if (!load_beat_map(json_path, candidate, errors, difficulty)) {
+        return false;
+    }
+    if (!validate_beat_map(candidate, errors)) {
+        return false;
+    }
+    out = std::move(candidate);
+    return true;
+}
+
 bool validate_beat_map(const BeatMap& map, std::vector<BeatMapError>& errors) {
     return validate_beat_map(map, errors, load_validation_constants());
 }
@@ -396,7 +411,11 @@ bool validate_beat_map(const BeatMap& map, std::vector<BeatMapError>& errors,
             has_prev_resolved_time_for_beat = true;
         }
 
-        // Rule 2: no beat index beyond song duration
+        // Rule 2: beat index must be within the playable song range
+        if (entry.beat_index < 0) {
+            errors.push_back({entry.beat_index, "Beat index must be non-negative"});
+            valid = false;
+        }
         if (entry.beat_index > max_beat) {
             errors.push_back({entry.beat_index, "Beat index exceeds song duration"});
             valid = false;

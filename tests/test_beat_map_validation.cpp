@@ -7,6 +7,26 @@
 #include "util/beat_map_loader.h"
 #include "util/rhythm_math.h"
 
+namespace {
+
+struct TempBeatMapFile {
+    explicit TempBeatMapFile(const char* name, const std::string& json)
+        : path(std::filesystem::temp_directory_path() / name) {
+        std::filesystem::remove(path);
+        std::ofstream out(path);
+        REQUIRE(out.good());
+        out << json;
+    }
+
+    ~TempBeatMapFile() {
+        std::filesystem::remove(path);
+    }
+
+    std::filesystem::path path;
+};
+
+}  // namespace
+
 // ── validate_beat_map: BPM rules ─────────────────────────────
 
 TEST_CASE("validate: valid BPM passes", "[validate]") {
@@ -137,6 +157,20 @@ TEST_CASE("validate: lead_beats above 8 fails", "[validate]") {
 }
 
 // ── validate_beat_map: beat ordering ─────────────────────────
+
+TEST_CASE("validate: negative beat index fails", "[validate][issue132]") {
+    BeatMap map;
+    map.bpm = 120.0f;
+    map.offset = 0.0f;
+    map.lead_beats = 4;
+    map.duration = 60.0f;
+    map.beats.push_back({-1, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
+
+    std::vector<BeatMapError> errors;
+    CHECK_FALSE(validate_beat_map(map, errors));
+    REQUIRE_FALSE(errors.empty());
+    CHECK(errors[0].message.find("non-negative") != std::string::npos);
+}
 
 TEST_CASE("validate: empty beats list fails", "[validate]") {
     BeatMap map;
@@ -537,6 +571,68 @@ TEST_CASE("load_validation_constants: bad app_dir falls back to CWD path", "[val
     ValidationConstants vc = load_validation_constants("/nonexistent_dir_xyz/");
     CHECK(vc.bpm_min == 60.0f);
     CHECK(vc.bpm_max == 300.0f);
+}
+
+TEST_CASE("load_and_validate_beat_map rejects invalid BPM at load time", "[load][validate][issue128]") {
+    TempBeatMapFile file("shapeshifter_invalid_bpm_beatmap.json", R"({
+        "song_id": "invalid_bpm",
+        "bpm": 30,
+        "offset": 0.0,
+        "lead_beats": 4,
+        "duration_sec": 60.0,
+        "beats": [
+            { "beat": 0, "kind": "shape_gate", "shape": "circle", "lane": 1 }
+        ]
+    })");
+
+    BeatMap map;
+    std::vector<BeatMapError> errors;
+    CHECK_FALSE(load_and_validate_beat_map(file.path.string(), map, errors));
+    REQUIRE_FALSE(errors.empty());
+    CHECK(errors[0].message.find("BPM") != std::string::npos);
+    CHECK(map.beats.empty());
+}
+
+TEST_CASE("load_and_validate_beat_map rejects negative beat_index at load time",
+          "[load][validate][issue128]") {
+    TempBeatMapFile file("shapeshifter_negative_beat_beatmap.json", R"({
+        "song_id": "negative_beat",
+        "bpm": 120,
+        "offset": 0.0,
+        "lead_beats": 4,
+        "duration_sec": 60.0,
+        "beats": [
+            { "beat": -1, "kind": "shape_gate", "shape": "circle", "lane": 1 }
+        ]
+    })");
+
+    BeatMap map;
+    std::vector<BeatMapError> errors;
+    CHECK_FALSE(load_and_validate_beat_map(file.path.string(), map, errors));
+    REQUIRE_FALSE(errors.empty());
+    CHECK(errors[0].message.find("Beat index") != std::string::npos);
+    CHECK(map.beats.empty());
+}
+
+TEST_CASE("load_and_validate_beat_map accepts valid beatmaps at load time",
+          "[load][validate][issue128]") {
+    TempBeatMapFile file("shapeshifter_valid_beatmap.json", R"({
+        "song_id": "valid_load",
+        "bpm": 120,
+        "offset": 0.0,
+        "lead_beats": 4,
+        "duration_sec": 60.0,
+        "beats": [
+            { "beat": 0, "kind": "shape_gate", "shape": "circle", "lane": 1 }
+        ]
+    })");
+
+    BeatMap map;
+    std::vector<BeatMapError> errors;
+    REQUIRE(load_and_validate_beat_map(file.path.string(), map, errors));
+    CHECK(errors.empty());
+    REQUIRE(map.beats.size() == 1);
+    CHECK(map.song_id == "valid_load");
 }
 
 TEST_CASE("validate_beat_map explicit constants: custom BPM range is respected", "[validate][constants]") {

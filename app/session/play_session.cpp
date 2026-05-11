@@ -30,6 +30,45 @@ void spawn_session_player(entt::registry& reg) {
     create_player_entity(reg);
 }
 
+bool is_runtime_allowed_validation_error(const BeatMapError& error) {
+    return error.message == "Different-shape gates must be >= 3 beats apart";
+}
+
+bool load_runtime_beat_map(const char* path,
+                           BeatMap& out,
+                           std::vector<BeatMapError>& errors,
+                           const std::string& difficulty_key) {
+    BeatMap candidate;
+    if (!load_beat_map(path, candidate, errors, difficulty_key)) {
+        return false;
+    }
+
+    std::vector<BeatMapError> validation_errors;
+    if (validate_beat_map(candidate, validation_errors)) {
+        out = std::move(candidate);
+        return true;
+    }
+
+    bool only_allowed_errors = !validation_errors.empty();
+    for (const BeatMapError& error : validation_errors) {
+        if (!is_runtime_allowed_validation_error(error)) {
+            only_allowed_errors = false;
+        }
+        errors.push_back(error);
+    }
+
+    if (!only_allowed_errors) {
+        return false;
+    }
+
+    for (const BeatMapError& error : validation_errors) {
+        TraceLog(LOG_WARNING, "Beatmap validation warning at beat %d: %s",
+                 error.beat_index, error.message.c_str());
+    }
+    out = std::move(candidate);
+    return true;
+}
+
 template <typename T>
 T& assign_or_emplace_ctx(entt::registry& reg, T value = T{}) {
     if (auto* existing = reg.ctx().find<T>()) {
@@ -52,7 +91,7 @@ void setup_play_session(entt::registry& reg) {
 
     // Load beatmap from level selection.
     // BeatMap is a context singleton (cold asset). It is reset here via move
-    // assignment and populated by load_beat_map(). It remains immutable for
+    // assignment and populated by the validated runtime loader. It remains immutable for
     // the duration of the play session. On song unload (next setup_play_session
     // call) the beat array is replaced in-place via another move assignment.
     auto& lss = reg.ctx().get<LevelSelectState>();
@@ -62,21 +101,27 @@ void setup_play_session(entt::registry& reg) {
     const char* difficulty_key = content_config::DIFFICULTY_KEYS[lss.selected_difficulty];
 
     std::vector<BeatMapError> load_errors;
+    std::vector<BeatMapError> reported_load_errors;
     std::string exe_path = std::string(GetApplicationDirectory()) + beatmap_path;
     const char* paths[] = { exe_path.c_str(), beatmap_path };
 
     bool loaded = false;
     for (const char* path : paths) {
         load_errors.clear();
-        if (load_beat_map(path, beatmap, load_errors, difficulty_key)) {
+        if (load_runtime_beat_map(path, beatmap, load_errors, difficulty_key)) {
             TraceLog(LOG_INFO, "Loaded beatmap: %s (%zu beats, difficulty=%s)",
                      path, beatmap.beats.size(), beatmap.difficulty.c_str());
             loaded = true;
             break;
         }
+        reported_load_errors.insert(reported_load_errors.end(), load_errors.begin(), load_errors.end());
     }
     if (!loaded) {
         TraceLog(LOG_WARNING, "Failed to load beatmap: %s", beatmap_path);
+        for (const BeatMapError& error : reported_load_errors) {
+            TraceLog(LOG_WARNING, "Beatmap load error at beat %d: %s",
+                     error.beat_index, error.message.c_str());
+        }
     }
     runtime_system_scratch_init(reg);
     runtime_system_scratch_reserve(reg, beatmap.beats.size());
