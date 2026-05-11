@@ -1,5 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
+#include <filesystem>
+#include <fstream>
 #include <limits>
 #include "test_helpers.h"
 #include "util/beat_map_loader.h"
@@ -497,8 +499,7 @@ TEST_CASE("song_state_compute_derived: scroll_speed calculation", "[rhythm_helpe
 
 // ── load_validation_constants: path resolution ───────────────
 
-TEST_CASE("load_validation_constants: missing file returns compiled-in defaults", "[validate][constants]") {
-    // No constants.json exists at CWD or an empty app_dir path; defaults must be returned.
+TEST_CASE("load_validation_constants: default paths load shipped defaults", "[validate][constants]") {
     ValidationConstants vc = load_validation_constants("");
     CHECK(vc.bpm_min == 60.0f);
     CHECK(vc.bpm_max == 300.0f);
@@ -509,10 +510,31 @@ TEST_CASE("load_validation_constants: missing file returns compiled-in defaults"
     CHECK(vc.min_shape_change_gap == 3);
 }
 
-TEST_CASE("load_validation_constants: bad app_dir falls back to CWD path silently", "[validate][constants]") {
+TEST_CASE("load_validation_constants: explicit app_dir takes precedence over CWD fallback", "[validate][constants]") {
+    const std::filesystem::path root = "test_validation_constants_app_dir";
+    std::filesystem::remove_all(root);
+    std::filesystem::create_directories(root / "content");
+    {
+        std::ofstream out(root / "content" / "constants.json");
+        REQUIRE(out.good());
+        out << R"({"validation":{"bpm_min":72,"bpm_max":240,"offset_max":2.5,"min_shape_change_gap":4}})";
+    }
+
+    ValidationConstants vc = load_validation_constants(root.string());
+    CHECK(vc.bpm_min == 72.0f);
+    CHECK(vc.bpm_max == 240.0f);
+    CHECK(vc.offset_min == -0.1f);
+    CHECK(vc.offset_max == 2.5f);
+    CHECK(vc.lead_beats_min == 2);
+    CHECK(vc.lead_beats_max == 8);
+    CHECK(vc.min_shape_change_gap == 4);
+
+    std::filesystem::remove_all(root);
+}
+
+TEST_CASE("load_validation_constants: bad app_dir falls back to CWD path", "[validate][constants]") {
     // A nonsense app_dir that doesn't contain a constants.json; must not throw or crash.
     ValidationConstants vc = load_validation_constants("/nonexistent_dir_xyz/");
-    // Defaults must still be intact.
     CHECK(vc.bpm_min == 60.0f);
     CHECK(vc.bpm_max == 300.0f);
 }

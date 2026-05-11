@@ -23,9 +23,9 @@ struct ValidationConstants {
 };
 
 // Load validation constants from content/constants.json.
-// If app_dir is non-empty, tries app_dir + "content/constants.json" first,
+// Tries the app-directory path first (explicit app_dir or GetApplicationDirectory()),
 // then falls back to the CWD-relative "content/constants.json".
-// Returns compiled-in defaults silently if neither file is found or parseable.
+// Returns compiled-in defaults and logs a warning if neither file is found or parseable.
 ValidationConstants load_validation_constants(const std::string& app_dir = "");
 
 // Load a beat map from a JSON file. Returns true on success.
@@ -43,9 +43,7 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
 bool validate_beat_map(const BeatMap& map, std::vector<BeatMapError>& errors,
                        const ValidationConstants& vc);
 
-// Validate a loaded beat map, loading constants from CWD-relative path.
-// Prefer the three-argument overload when the application directory is available
-// (e.g. pass GetApplicationDirectory() to load_validation_constants first).
+// Validate a loaded beat map, loading constants from app-directory/CWD paths.
 bool validate_beat_map(const BeatMap& map, std::vector<BeatMapError>& errors);
 
 // Initialize SongState from a loaded BeatMap.
