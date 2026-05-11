@@ -69,7 +69,7 @@ jobs:
         continue-on-error: true
         with:
           path: build
-          key: cmake-windows-clang20-v2-${{ hashFiles('CMakeLists.txt', 'vcpkg.json') }}
+          key: cmake-windows-clang20-v2-${{ hashFiles('CMakeLists.txt', 'vcpkg.json', 'vcpkg-overlay/**') }}
           restore-keys: |
             cmake-windows-clang20-v2-
 

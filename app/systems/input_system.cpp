@@ -100,7 +100,8 @@ void input_system(entt::registry& reg, float raw_dt) {
     if (allow_mouse_input &&
         input.active_source != InputSource::Touch &&
         mouse_released) {
-        input.click      = !input.suppress_mouse_release;
+        const bool suppress_this_release = input.suppress_mouse_release;
+        input.click      = !suppress_this_release;
         input.touching   = false;
         input.active_source = InputSource::None;
         input.suppress_mouse_release = false;

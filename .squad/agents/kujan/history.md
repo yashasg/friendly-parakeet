@@ -46,6 +46,26 @@ Reviewed Hockney's asset root removal decision summary. Rejected Verbal's initia
 
 ## Learnings
 
+### 2026-05-10T16:03:00.125-07:00 — Issue #125 LowBar/HighBar docs cleanup APPROVED
+
+APPROVED Fenster's final revision. All five review criteria pass: `LOW_BAR_BASE_PTS`/`HIGH_BAR_BASE_PTS` removed from feature-specs active table, `PTS_LOW_BAR`/`PTS_HIGH_BAR` and `RequiredVAction` removed from active architecture tables, beatmap-editor palette clean, all remaining LowBar/HighBar references explicitly archived/future-only, and `git diff --check` passes. Issue #125 docs cleanup is commit-ready.
+
+### 2026-05-10T15:45:30.046-07:00 — LowBar/HighBar docs cleanup escalated final review
+
+Rejected Marquez's escalated issue #125 docs cleanup. `git diff --check` passes and most active authoring/runtime surfaces now mark LowBar/HighBar as archived or removed, but `design-docs/feature-specs.md` still lists `LOW_BAR_BASE_PTS` and `HIGH_BAR_BASE_PTS` in the active balancing parameters table. Assigned next revision owner: Fenster.
+
+### 2026-05-10T15:45:30.046-07:00 — LowBar/HighBar docs cleanup final review
+
+Rejected final issue #125 docs cleanup. Editor palette duplication is fixed and `git diff --check` passes, but active constants/component tables still list `PTS_LOW_BAR`/`PTS_HIGH_BAR`, `LOW_BAR_BASE_PTS`/`HIGH_BAR_BASE_PTS`, and `RequiredVAction` as live architecture/runtime items. Assigned next revision owner: Marquez.
+
+### 2026-05-10T15:45:30.046-07:00 — LowBar/HighBar docs cleanup re-review
+
+Rejected revised issue #125 docs cleanup. Active LowBar/HighBar authoring guidance is removed and `git diff --check` passes, but `design-docs/beatmap-editor.md` still has a malformed Obstacle Palette example with `SplitPath` duplicated on consecutive lines. Assigned next revision owner: Kobayashi.
+
+### 2026-05-10T15:45:30.046-07:00 — LowBar/HighBar docs cleanup review
+
+Rejected Saul's issue #125 documentation cleanup. Active editor constants still advertised `low_bar`/`high_bar`, architecture pseudocode was malformed after stale annotations, and `git diff --check` failed on trailing whitespace. Issue #125 itself is closed, but the uncommitted cleanup was not acceptance-ready.
+
 ### 2026-05-08T10:47:42.149-07:00 — Push-lane cleanup review
 
 Verdict: APPROVE. Runtime push-lane behavior is gone: `LanePushLeft/Right`, `LanePushDelta`, `PendingLanePush`, `lane_push_response_system`, and the collision loop were removed, and no `PTS_LANE_PUSH` references remain. Build and full test suite passed (`VCPKG_ROOT=/Users/yashasgujjar/vcpkg ./build.sh`; `./build/shapeshifter_tests` → 2148 assertions / 774 test cases). Noted non-blocking hygiene: `git diff --check` reports blank-line-at-EOF warnings in two edited headers, but this is style-only and not a rejection basis.
@@ -127,3 +147,35 @@ Approved Keaton's raylib replacement pass: HUD hexagon fill correctly uses `Draw
 **Exclude from product commit:** `.squad/health-report-*`, `.squad/scribe-health-report-*`, `.squad/skills/raylib-3d-floor-annulus/` — squad process artifacts.
 
 **Verdict:** APPROVED with mandatory commit-scope caveat above.
+
+### 2026-05-10T16:03:00.125-07:00 — Squad loop CI/CMake unblock review
+
+**Scope:** Issues #47, #51, #56, #58, #60 — CI workflow and CMake fixes by Kobayashi and Hockney.
+
+**Criteria check:**
+
+1. **#47 (squad-ci/squad-preview must run real validation):** ✓ PASS. `squad-ci.yml` now runs a full Linux native build (`./build.sh`) + test (`shapeshifter_tests "~[bench]"`). `squad-preview.yml` now runs full WASM build (`emcmake cmake` + `cmake --build`), `ctest`, artifact size validation, and upload. No echo-only placeholders remain.
+2. **#51 (github-script@v7 → v8):** ✓ PASS. All 14 `actions/github-script` usages across all workflows are `@v8`. Zero `@v7` hits.
+3. **#56 (vcpkg-overlay in cache keys):** ✓ PASS. All 8 workflow files with CMake/vcpkg caches include `vcpkg-overlay/**` in their `hashFiles(...)` expressions. The only other `hashFiles` usage is `triage-results.json` in squad-heartbeat (unrelated).
+4. **#58 (CMake comments — no RGFW claim):** ✓ PASS. Line 248 now reads `Platform link dependencies for raylib's GLFW backend`. No RGFW references remain.
+5. **#60 (Emscripten preload — no legacy LINK_FLAGS):** ✓ PASS. Content preloading uses `target_link_options(shapeshifter PRIVATE ... "SHELL:--preload-file ${CMAKE_SOURCE_DIR}/content@/content")` inside the existing `target_link_options` block. No `LINK_FLAGS` property usage. `content@/content` mount path preserved.
+6. **Surgical scope:** ✓ PASS. No unrelated CI semantics disturbed. Release/insider workflows mirror the validated patterns. No residual `Disabled placeholder`, `No build commands configured`, or `actions/github-script@v7` strings found.
+7. **Validation evidence:** ✓ PASS. `git diff --check` clean. Kobayashi's history confirms `cmake -B build -S . -Wno-dev` passed. Hockney's history confirms same. No dirty unrelated files staged.
+
+**Verdict:** APPROVED. All six issue criteria pass. Changes are surgical and internally consistent across squad-ci, squad-preview, squad-release, squad-insider-release, copilot-setup-steps, ci-linux, ci-macos, ci-windows, and CMakeLists.txt.
+
+### 2026-05-10T17:51:46.427-07:00 — Issue #89 jump/slide vertical input APPROVED
+
+**Scope:** `app/systems/player_input_system.cpp`, `tests/test_player_systems.cpp`, `tests/test_input_pipeline_behavior.cpp`, `tests/test_player_action_rhythm.cpp`.
+
+**Criteria check:**
+
+1. **Up/Down → VerticalState mapping correct, lane movement preserved:** ✓ PASS. `player_input_handle_go` (lines 35–43) maps `Direction::Up` to `VMode::Jumping` and `Direction::Down` to `VMode::Sliding` only when `delta == 0` (no lane change produced). Left/Right lane behavior is unaffected because any valid lane delta fires first via the `if (delta != 0)` branch.
+2. **Grounded-only constraint preserved:** ✓ PASS. Both vertical branches guard on `vstate.mode == VMode::Grounded`. Tests explicitly cover: cannot jump while jumping, cannot slide while sliding, cannot slide while jumping, and cannot jump while sliding — all assert timer is not reset and mode is unchanged.
+3. **Test coverage adequate:** ✓ PASS. 10+ new/updated assertions across three test files cover: basic jump/slide activation, grounded-only guards (4 negative cases), pipeline same-tick latency for jump and slide, Up/Down having no lane effect, rhythm-mode jump, and not-in-Playing phase skip.
+4. **No LowBar/HighBar reintroduction:** ✓ PASS. Zero matches for `LowBar`, `HighBar`, `low_bar`, or `high_bar` across all four reviewed files.
+5. **No build/warning/test risks:** ✓ PASS. Implementation uses existing `constants::JUMP_DURATION` / `constants::SLIDE_DURATION`, proper `VMode` enum comparisons, no implicit conversions. Coordinator validated: build exited 0, full test suite exited 0, `git diff --check` clean.
+
+**Non-blocking note:** Baer flagged renaming the lane-only Up/Down pipeline test for clarity. Current name ("pipeline: swipe Up/Down has no lane effect") is already descriptive; rename is low priority and non-blocking.
+
+**Verdict:** APPROVED. McManus's fix is correct, well-guarded, and adequately tested. Issue #89 acceptance criteria are met.

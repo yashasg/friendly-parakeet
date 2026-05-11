@@ -1,8 +1,7 @@
 #pragma once
 
-#include "../components/player.h"
-
 #include <cstdint>
+#include "../components/player.h"
 
 enum class KeyboardShapeSlot : uint8_t {
     Left,
@@ -18,3 +17,7 @@ inline constexpr Shape shape_for_keyboard_slot(KeyboardShapeSlot slot) noexcept 
     }
     return Shape::Square;
 }
+
+inline constexpr Shape kKeyboardShapeLeft = shape_for_keyboard_slot(KeyboardShapeSlot::Left);
+inline constexpr Shape kKeyboardShapeCenter = shape_for_keyboard_slot(KeyboardShapeSlot::Center);
+inline constexpr Shape kKeyboardShapeRight = shape_for_keyboard_slot(KeyboardShapeSlot::Right);

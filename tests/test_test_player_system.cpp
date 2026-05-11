@@ -58,7 +58,7 @@ static bool survived(entt::registry& reg) {
 static entt::entity make_loggable_obstacle(entt::registry& reg) {
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
-    reg.emplace<Obstacle>(obs, ObstacleKind::ShapeGate, int16_t{constants::PTS_SHAPE_GATE});
+    reg.emplace<Obstacle>(obs, int16_t{constants::PTS_SHAPE_GATE});
     reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y}});
     reg.emplace<BeatInfo>(obs, 7, 2.0f, 0.0f);
     return obs;

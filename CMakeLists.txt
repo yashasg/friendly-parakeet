@@ -372,11 +372,7 @@ if(EMSCRIPTEN)
         -sNO_EXIT_RUNTIME=1
         -lidbfs.js
         --shell-file ${_shell_html}
-    )
-    # Use LINK_FLAGS (raw string) for --preload-file so CMake forwards the flag
-    # exactly as provided to the linker.
-    set_property(TARGET shapeshifter APPEND_STRING PROPERTY LINK_FLAGS
-        " --preload-file ${CMAKE_SOURCE_DIR}/content@/content"
+        "SHELL:--preload-file ${CMAKE_SOURCE_DIR}/content@/content"
     )
     set_target_properties(shapeshifter PROPERTIES
         OUTPUT_NAME "index"

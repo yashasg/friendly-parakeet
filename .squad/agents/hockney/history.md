@@ -58,3 +58,9 @@ Merged 3 inbox decisions:
 **For:** Hockney
 
 Keaton completed singleton eager-init refactor (2026-05-03). Clang native build compiles warning-free; 2209 assertions / 771 cases pass. **WASM build sanity-check recommended** on next CI run — the `#ifdef PLATFORM_WEB && __EMSCRIPTEN__` branch in `input_system_init` compiles cleanly on native but was not verified on Emscripten locally. Recommendation: run web CI build-test suite to confirm no regression.
+
+## 2026-05-10T16:03:00.125-07:00 — CMake complaint cleanup
+
+- Fixed stale raylib platform comments to match the GLFW-backed build path.
+- Moved Emscripten content preloading from target `LINK_FLAGS` to target-scoped `SHELL:--preload-file ${CMAKE_SOURCE_DIR}/content@/content`, preserving the `/content` mount while keeping existing web linker options intact.
+- Validation: `cmake -B build -S . -Wno-dev` and `git diff --check` passed.

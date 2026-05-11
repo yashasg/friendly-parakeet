@@ -114,10 +114,10 @@ See `rhythm-design.md` for the full timing-window grading table and `rhythm-spec
 | Obstacle        | Player Action Required    | Timed? | Base Points |
 |-----------------|---------------------------|--------|-------------|
 | Shape Gate      | Tap correct shape button  | YES    | 200         |
-| Low Bar         | Swipe up (jump)           | YES    | 100         |
-| High Bar        | Swipe down (slide)        | YES    | 100         |
 | Combo Gate      | Shape + swipe (2 actions) | YES    | 200 (×2)    |
 | Split Path      | Shape + correct lane      | YES    | 300 (×2)    |
+
+Vertical bar obstacles are archived/future-only design space and have no live base-point constants.
 
 ### Combo Obstacles
 

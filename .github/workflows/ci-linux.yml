@@ -71,7 +71,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: build
-          key: cmake-linux-clang20-v2-${{ hashFiles('CMakeLists.txt', 'vcpkg.json') }}
+          key: cmake-linux-clang20-v2-${{ hashFiles('CMakeLists.txt', 'vcpkg.json', 'vcpkg-overlay/**') }}
           restore-keys: |
             cmake-linux-clang20-v2-
 

@@ -21,8 +21,8 @@ void push_haptic(entt::registry& reg, HapticEvent event) {
 
 void player_input_handle_go(entt::registry& reg, const GoEvent& evt) {
     if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
-    auto view = reg.view<PlayerTag, PlayerShape, ShapeWindow, Lane>();
-    for (auto [entity, pshape, swindow, lane] : view.each()) {
+    auto view = reg.view<PlayerTag, PlayerShape, ShapeWindow, Lane, VerticalState>();
+    for (auto [entity, pshape, swindow, lane, vstate] : view.each()) {
         int8_t delta = 0;
         if (evt.dir == Direction::Left  && lane.current > 0)
             delta = -1;
@@ -32,6 +32,14 @@ void player_input_handle_go(entt::registry& reg, const GoEvent& evt) {
             lane.target = lane.current + delta;
             lane.lerp_t = 0.0f;
             push_haptic(reg, HapticEvent::LaneSwitch);
+        } else if (evt.dir == Direction::Up && vstate.mode == VMode::Grounded) {
+            vstate.mode = VMode::Jumping;
+            vstate.timer = constants::JUMP_DURATION;
+            vstate.y_offset = 0.0f;
+        } else if (evt.dir == Direction::Down && vstate.mode == VMode::Grounded) {
+            vstate.mode = VMode::Sliding;
+            vstate.timer = constants::SLIDE_DURATION;
+            vstate.y_offset = 0.0f;
         }
         (void)entity;
         (void)pshape;

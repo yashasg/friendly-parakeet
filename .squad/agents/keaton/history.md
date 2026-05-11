@@ -25,6 +25,8 @@ Status: COMPLETE. All validation/build tests passed.
 
 ## Learnings
 
+- 2026-05-11T01:19:23.327-07:00: Desktop shape key routing is produced in `app/systems/input_system.cpp`; keep keyboard slot-to-shape bindings centralized (now `app/input/keyboard_shape_mapping.h`) and regression-check lane alignment via `tests/test_input_pipeline_behavior.cpp` + `lane_for_shape`.
+
 - 2026-05-08T14:50:05.765-07:00: Replacing manual entity-tracking arrays with an existential EnTT tag (`TestPlayerPlannedTag`) safely removes stale-handle cleanup code and keeps planning state attached to obstacle lifetime without callback coupling.
 
 - 2026-05-08T13:57:50.741-07:00: Full `app/systems/` raylib audit found safe direct-API trims only around gesture collapse and optional XZ ring triangle emission; most lifecycle queues, floor texture work, display sizing, and owned-model drawing remain design-gated by ECS ordering, web canvas behavior, or GPU ownership contracts.

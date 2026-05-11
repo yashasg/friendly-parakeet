@@ -2560,3 +2560,1963 @@ Working tree at audit time: Keaton-r16 uncommitted WIP present (details below)
 
 ## 1. Full Audit of Keaton-r15 Migration
 
+### 2026-05-08T11:47:09.246-07:00: User directive
+**By:** yashasg (via Copilot)
+**What:** Floor rings should be drawn as 2D on the floor quad/texture in XY space, then the floor texture/quad should be rotated into the XZ floor plane; do not assume the ring must remain hand-emitted world-space geometry.
+**Why:** User correction — captured for team memory
+### 2026-05-08T11:47:09.246-07:00: Keaton re-evaluation — floor ring texture architecture
+
+**Context**
+- User clarified target architecture: draw floor ring in 2D (XY) on a floor texture/quad, then orient that textured quad onto the world floor (XZ).
+
+**Decision Input**
+- Under this architecture, `app/util/shape_vertices.h` can be deleted entirely after rewiring runtime ring rendering away from `shape_verts::CIRCLE` and updating tests/benchmarks that currently include it.
+- Preferred raylib path to evaluate: `LoadRenderTexture` + `BeginTextureMode` + `ClearBackground` + `DrawRing`/`DrawCircleLines` (2D pass), then sample that texture on a world-floor mesh (`DrawMesh`/material diffuse map or `DrawPlane` with texture-capable shader/material path).
+
+**Key Constraints**
+- Current mesh shader (`app/systems/camera_system.cpp`) does not sample textures; it shades `colDiffuse` only, so a texture floor needs shader/material changes or a separate floor draw path.
+- Current `RenderTargets` RAII (`world`, `ui`) will likely need an additional owned floor texture/render target resource and lifecycle coverage.
+- RenderTexture Y-flip and UV mapping must be validated to avoid upside-down/mirrored floor rings.
+
+**Likely rewiring scope**
+- `app/systems/game_render_system.cpp` (replace immediate-mode annulus with textured-floor draw path)
+- `app/systems/camera_system.cpp` + `app/rendering/camera_resources.h` (resource creation/ownership for floor texture and possibly floor material/shader)
+- `tests/test_perspective.cpp`, `benchmarks/bench_perspective.cpp` (remove `shape_verts::*` dependencies)
+- Optional: `tests/test_gpu_resource_lifecycle.cpp` (new RAII type-trait/idempotent-release checks for floor texture resource)
+
+### 2026-05-08T11:53:19.588-07:00: **COMPLETED** shape_vertices.h removal
+
+**Decision:** Floor ring geometry now generates circle points locally in `app/systems/game_render_system.cpp` using trig per segment. `app/util/shape_vertices.h` is deleted.
+
+**Rationale:** Floor rings are a floor-rendering concern (2D ring logic on XZ plane), not shared reusable shape data. Removes stale custom vertex-table maintenance.
+
+**Implementation:** 
+- Rewired `draw_floor_rings()` off `shape_verts::CIRCLE` to local trig-based generation.
+- Deleted `app/util/shape_vertices.h` and all references.
+- Updated `tests/test_perspective.cpp` and `benchmarks/bench_perspective.cpp` to remove shape_vertices dependency.
+- Verified: `./build.sh` + `./build/shapeshifter_tests` all pass (APPROVED by Kujan).
+
+**Scope owned by:** Keaton (implementation) + Kujan (review, APPROVED).
+
+### 2026-05-08T11:59:39.840-07:00: Floor render system split
+
+**By:** Keaton  
+**Requested by:** yashasg
+
+**Decision**
+- Move floor-only rendering helpers and draw orchestration from `app/systems/game_render_system.cpp` into `app/systems/floor_render_system.cpp`.
+- Keep `game_render_system.cpp` responsible for pass flow (camera setup, floor pass call, world/effects meshes) while floor geometry/details live in the dedicated system.
+
+**Why**
+- Reduces file complexity and keeps floor rendering concerns isolated.
+- Preserves ECS/raylib flow and behavior with a narrow interface: `floor_render_system(const entt::registry&)`.
+
+**Implementation Notes**
+- Added `app/systems/floor_render_system.cpp` and `app/systems/floor_render_system.h`.
+- `game_render_system.cpp` now calls `floor_render_system(reg)` and no longer contains floor helper code.
+- Added declaration in `app/systems/all_systems.h`.
+
+### 2026-05-08T11:59:39.840-07:00: Kujan review — floor render split (approved)
+
+**By:** Kujan  
+**Requested by:** yashasg
+
+**Decision**
+- Approve Keaton's floor render split.
+
+**Review outcome**
+- `game_render_system.cpp` is materially cleaner and remains coherent as the world-pass orchestrator.
+- Floor-specific drawing logic is isolated in `app/systems/floor_render_system.cpp` with a narrow ECS-facing entrypoint declared in headers.
+- Build wiring is intact via existing systems glob; no CMake drift detected.
+- No stale `shape_vertices` references remain in `app/`, `tests/`, or `benchmarks/`.
+- Validation reproduced successfully: `VCPKG_ROOT=/Users/yashasgujjar/vcpkg ./build.sh` and `./build/shapeshifter_tests`.
+
+**Non-blocking note**
+- Unrelated `.squad` churn (health reports/history updates) is present in working tree; keep product commit scope focused.
+
+### 2026-05-08T13:03:11.140-07:00: Keaton cleanup — file_logger removal + session_logger scope decision
+
+**By:** Keaton  
+**Requested by:** yashasg
+
+**Decision**
+- Deleted dead `file_logger` module (`app/util/file_logger.h/.cpp`) and CMake entries.
+- Deleted legacy forwarding header `app/components/camera.h`.
+- Deleted obsolete `benchmarks/bench_file_logger.cpp`.
+- Deferred raylib callback migration for `session_logger` to future work.
+
+**Rationale for deferral**
+- raylib `SetTraceLogCallback` is global process state; would capture unrelated TraceLog traffic.
+- `session_logger` is scoped, structured, and ECS-driven (test-player telemetry only).
+- Safe migration requires custom filtering/prefixing and callback lifecycle control (revisit later if needed).
+
+**Implementation validated**
+- Removed CMake source entries; stale references eliminated from `tests/test_camera_entity_contracts.cpp`.
+- No build regressions or warnings.
+
+### 2026-05-08T13:03:11.140-07:00: Kujan review — file_logger cleanup + session_logger deferral (APPROVED)
+
+**By:** Kujan  
+**Requested by:** yashasg
+**Revision owner:** Keaton
+
+**Findings**
+- High-confidence removals were complete and safe. No stale references in app/tests/bench/CMake.
+- CMake wiring correct after cleanup.
+- Benchmark deletion appropriate; coverage maintained by other benchmark files.
+- TraceLog callback deferral justified: callback is global state, current code emits many unrelated logs.
+- No warnings or regression hazards.
+- Validation: `VCPKG_ROOT=/Users/yashasgujjar/vcpkg ./build.sh` and `./build/shapeshifter_tests` (2063 assertions, 758 test cases).
+
+**Verdict:** APPROVE
+
+### 2026-05-08T13:08:46.440-07:00: Keaton implementation audit — raylib replacement candidates
+
+**By:** Keaton  
+**Requested by:** yashasg  
+**Scope:** Read-only audit of `app/` for homegrown implementations replaceable with direct raylib APIs.
+
+**High-confidence replacements (replace-with-raylib)**
+1. HUD hexagon path: replace manual trig + 6 `DrawTriangle` with `DrawPoly({cx, cy}, 6, radius, -90.0f, color)`.
+2. Beatmap file loading: replace `std::ifstream` with `LoadFileText()` / `UnloadFileText()`.
+
+**Medium-confidence needs design decision**
+1. Floor geometry (`draw_floor_lines`/`draw_floor_rings`): immediate-mode `rlBegin`/`rlVertex3f` → possible `DrawLine3D`/`DrawTriangle3D`/textured-floor.
+2. Input/display: `screen_to_virtual()` letterbox mapping and `Camera2D` alternatives.
+3. Persistence: `settings_persistence.cpp` + `high_score_persistence.cpp` file I/O.
+
+**Keep (do not replace)**
+- Obstacle model assembly, session logger, platform display glue, procedural SFX, font loading, song playback logic, collision/timing math, haptics bridge.
+
+**Proposed cleanup order**
+1. Replace HUD hexagon with `DrawPoly`.
+2. Replace beatmap file text ingestion with `LoadFileText`.
+3. Decide floor rendering target architecture before touching rlgl floor primitives.
+### 2026-05-08T13:15:08.642-07:00: Raylib cleanup stale-reference validation pattern
+
+**By:** Baer  
+**Requested by:** yashasg
+
+**Pattern**
+- When removing raylib-replacement leftovers (helpers/includes/files), run a scoped stale-reference grep against only `app/`, `tests/`, `benchmarks/`, and `CMakeLists.txt` for deleted symbols/paths, then run full build + test validation.
+
+**Why it matters**
+- Most regressions in cleanup passes are orphaned references in build wiring or test/benchmark includes, not runtime behavior changes.
+- This catches dead-surface linkage failures quickly without widening noise to docs or archive files.
+
+### 2026-05-08T13:15:08.642-07:00: Safe raylib API replacements for HUD/file I/O/floor lines
+
+**By:** Keaton  
+**Requested by:** yashasg
+
+**Decision**
+- Replace HUD hexagon fan triangulation with `DrawPoly(..., 6, radius, -90.0f, ...)`.
+- Replace beatmap/constants full-file ingestion from `std::ifstream` iterators with `LoadFileText`/`UnloadFileText`.
+- Replace floor lane/grid/beat `RL_LINES` emission with `DrawLine3D`, but keep floor ring annulus geometry on existing `RL_TRIANGLES` path (design-gated).
+
+**Why**
+- These substitutions reduce custom rendering/file-loading code while preserving behavior and diagnostics.
+- They stay inside the approved cleanup surface and avoid touching design-gated rendering architecture.
+
+### 2026-05-08T13:15:08.642-07:00: Kujan review: safe raylib API replacements (Keaton)
+
+**Requested by:** yashasg  
+**Revision owner:** Keaton  
+**Verdict:** APPROVE
+
+**Findings**
+- Scope matches the approved replacement set and does not cross into design-gated floor annulus architecture changes.
+- HUD hexagon fill replacement is correct and warning-safe: `DrawPoly(..., 6, radius, -90.0f, ...)`.
+- Beatmap/constants loading correctly uses `LoadFileText`/`UnloadFileText`; constants parse failures now emit useful `TraceLog(LOG_WARNING, ...)` details without suppressing fallback behavior.
+- Floor lane/grid/beat-line emission uses `DrawLine3D`; annulus ring geometry remains on the existing `RL_TRIANGLES` path (untouched by this review scope).
+- No stale app/tests/bench/CMake references were found for removed helper surfaces relevant to this change set.
+
+**Validation**
+- Reproduced: `VCPKG_ROOT=/Users/yashasgujjar/vcpkg ./build.sh`
+- Reproduced: `./build/shapeshifter_tests`
+- Result: all tests passed (2063 assertions in 758 test cases).
+### 2026-05-08T13:38:14.844-07:00: User directive
+**By:** yashasg (via Copilot)
+**What:** Move-into-system cleanup candidates should leave no useless `app/util/` files behind after references move, and directory creation/existence helpers should use raylib APIs such as `MakeDirectory`/`DirectoryExists` instead of `std::filesystem` wrappers.
+**Why:** User request — captured for team memory
+### 2026-05-08T13:32:04.383-07:00: Fenster app/util cleanup audit (read-only)
+
+Requested by: yashasg
+
+#### Team-relevant decisions from audit
+
+1. **Move-only candidates (low risk, no raylib dependency):**
+   - `app/util/test_player_helpers.h` → inline static helpers inside `app/systems/test_player_system.cpp` (or a local `test_player_system_helpers.h` under systems).
+   - `app/util/enum_names.h` → move into logging/test-player surface (`app/systems/test_player_system.cpp` + `app/util/session_logger.cpp` local helper scope).
+   - `app/util/safe_localtime.h` → move into `session_logger.cpp` (single logging concern) and call site in `test_player_session.cpp`.
+   - `app/util/obstacle_counter.*` → move to systems/session ownership (`app/systems/` or `app/session/`) because it is wired and consumed only in phase/session transitions.
+
+2. **Raylib-replace candidates (staged):**
+   - `app/util/settings_persistence.cpp` and `app/util/high_score_persistence.cpp` can replace stream I/O with `LoadFileText`/`UnloadFileText` and `SaveFileText`.
+   - Keep `persistence::Status` mapping behavior intact; current tests assert exact statuses for missing/corrupt/unwritable-path paths.
+
+3. **Keep/design-gated surfaces:**
+   - `app/util/beat_map_loader.*` stays (already using `LoadFileText`; parser/validator is shared runtime+tests).
+   - `app/util/rhythm_math.h`, `app/util/session_logger.*`, `app/util/settings.h`, `app/util/persistence_policy.*`, `app/util/fs_utils.h` are not straight deletions without cross-system refactors or policy changes.
+
+4. **Reference impact (must-update if moving/deleting):**
+   - test/player logging helpers: `tests/test_test_player_system.cpp`, `tests/test_beat_log_system.cpp`, `app/systems/beat_log_system.cpp`, `app/session/test_player_session.cpp`, `app/game_loop.cpp`.
+   - obstacle counter: `app/session/play_session.cpp`, `app/systems/game_state_system.cpp`, `tests/test_signal_lifecycle_nogated.cpp`, `tests/test_helpers.h`.
+   - persistence helpers: `app/game_loop.cpp`, `tests/test_settings_persistence.cpp`, `tests/test_high_score_persistence.cpp`, `tests/test_high_score_integration.cpp`.
+
+5. **Build/bench note:**
+   - No benchmark references currently depend on these util headers.
+   - `CMakeLists.txt` uses `file(GLOB UTIL_SOURCES app/util/*.cpp)`, so deleting/moving util `.cpp` files does not require manual source-list edits, but include-path call sites must be updated.
+# Keaton app/util cleanup audit (read-only)
+
+**When:** 2026-05-08T13:32:04.383-07:00  
+**Requested by:** yashasg  
+**Scope checked:** `app/`, `tests/`, `benchmarks/`, `CMakeLists.txt`  
+**Implementation status:** No code changes made
+
+## 1) Full `app/util/` inventory + classification
+
+| File | Classification | Why |
+|---|---|---|
+| `app/util/beat_map_loader.h` | keep/domain utility | Core beatmap parsing/validation API used by runtime + many tests. |
+| `app/util/beat_map_loader.cpp` | keep/domain utility | Owns parser/validator behavior and `LoadFileText` ingestion already. |
+| `app/util/enum_names.h` | delete-now candidate | Thin wrappers over `magic_enum::enum_name`; can be inlined at call sites. |
+| `app/util/fs_utils.h` | delete-now candidate | Single-use wrapper around `std::filesystem::create_directories`. |
+| `app/util/high_score_persistence.h` | keep/domain utility | Persistence API used by session startup/terminal save. |
+| `app/util/high_score_persistence.cpp` | keep/domain utility | Structured error/status handling and JSON clamping logic. |
+| `app/util/obstacle_counter.h` | delete-now candidate | Signal-based counter can be replaced by direct EnTT obstacle presence query. |
+| `app/util/obstacle_counter.cpp` | delete-now candidate | Wiring/listeners become unnecessary with direct query approach. |
+| `app/util/persistence_policy.h` | keep/domain utility | Shared path/status contract used by settings + high-score flows. |
+| `app/util/persistence_policy.cpp` | keep/domain utility | Platform path resolution used at startup and in persistence layers. |
+| `app/util/rhythm_math.h` | keep/domain utility | Shared timing math consumed by collision/scoring/session init and tests. |
+| `app/util/safe_localtime.h` | move-into-system | Extremely narrow helper only used by session logging flow. |
+| `app/util/session_logger.h` | design-gated | Could migrate to raylib global trace callback, but callback is global state. |
+| `app/util/session_logger.cpp` | design-gated | Current scoped session telemetry is safer than process-global callback. |
+| `app/util/settings.h` | keep/domain utility | Shared settings singleton definition used across systems/UI/tests. |
+| `app/util/settings_persistence.h` | keep/domain utility | Persistence API for settings and dirty-save contract. |
+| `app/util/settings_persistence.cpp` | keep/domain utility | JSON validation/clamping + structured persistence failures. |
+| `app/util/test_player_helpers.h` | move-into-system | Purely `test_player_system` action-queue helpers; narrow ownership. |
+
+---
+
+## 2) Delete/replace/move candidates (with refs, targets, steps, risks, confidence)
+
+## A) `app/util/obstacle_counter.h/.cpp` — **delete-now candidate**
+
+**Exact current references**
+- Runtime:
+  - `app/session/play_session.cpp:3,48-53`
+  - `app/systems/game_state_system.cpp:5,108-110`
+- Tests:
+  - `tests/test_helpers.h:7,50-51`
+  - `tests/test_components.cpp:113`
+  - `tests/test_signal_lifecycle_nogated.cpp:19,23-137` (dedicated signal lifecycle coverage)
+
+**Target API/system**
+- Replace with direct EnTT query in owning system:
+  - `reg.view<ObstacleTag>().begin() == reg.view<ObstacleTag>().end()` (or storage emptiness check) inside `game_state_system`.
+- Keep ownership in `game_state_system`/`play_session` (remove signal wiring from session setup).
+
+**Migration steps**
+1. In `game_state_system.cpp`, replace `ObstacleCounter` check with direct obstacle presence query.
+2. In `play_session.cpp`, remove context emplace/reset + `wire_obstacle_counter`.
+3. Delete `app/util/obstacle_counter.h/.cpp`.
+4. Update tests that assert signal-wiring semantics to assert runtime semantics (SongComplete only after obstacles drained).
+5. Run stale-reference sweep in `app/ tests/ benchmarks/ CMakeLists.txt`.
+
+**Risks**
+- Medium: removes current signal-lifecycle contract tests; must preserve terminal-phase behavior coverage.
+- Low perf risk: direct query is cheap at this scale; prior EnTT audit already flagged this as safe near-term win.
+
+**Confidence:** **High**
+
+---
+
+## B) `app/util/fs_utils.h` — **delete-now candidate**
+
+**Exact current references**
+- `app/util/persistence_policy.cpp:54`
+- `app/util/settings_persistence.cpp:129`
+- `app/util/high_score_persistence.cpp:199`
+
+**Target API/system**
+- Replace with direct `std::filesystem::create_directories(..., std::error_code&)` in each persistence owner (`persistence_policy.cpp`, `settings_persistence.cpp`, `high_score_persistence.cpp`).
+
+**Migration steps**
+1. Inline create-directories/error handling at each call site.
+2. Remove `#include "fs_utils.h"` from those files.
+3. Delete `app/util/fs_utils.h`.
+4. Verify status mapping (`DirectoryCreateFailed`) remains unchanged.
+
+**Risks**
+- Low: wrapper is purely pass-through and call sites already consume `error_code`.
+
+**Confidence:** **High**
+
+---
+
+## C) `app/util/enum_names.h` — **delete-now candidate**
+
+**Exact current references**
+- Runtime:
+  - `app/systems/test_player_system.cpp:11,280-322`
+  - `app/util/session_logger.cpp:7,92-131`
+- Tests:
+  - `tests/test_helpers_and_functions.cpp:4,169-188`
+  - `tests/test_obstacle_model_slice.cpp:64,121`
+
+**Target API/system**
+- Replace wrappers with direct `magic_enum::enum_name(...)` at each owner callsite.
+- Keep name-format behavior in logging/tests by using `std::string_view` conversion where needed.
+
+**Migration steps**
+1. Remove `ToString` helper calls in test player + session logger + tests.
+2. Include `magic_enum/magic_enum.hpp` directly where required.
+3. Delete `app/util/enum_names.h`.
+
+**Risks**
+- Low: behavior should be equivalent; must ensure fallback handling for empty names remains intentional.
+- Medium in tests: string conversion (`std::string_view` vs C-string) needs explicit normalization.
+
+**Confidence:** **Medium-High**
+
+---
+
+## D) `app/util/safe_localtime.h` — **move-into-system**
+
+**Exact current references**
+- `app/session/test_player_session.cpp:6,51`
+- `app/util/session_logger.cpp:13,23`
+
+**Target API/system**
+- Move localtime portability helper into owning logging/session implementation files (anonymous namespace static helper), not shared `util/`.
+
+**Migration steps**
+1. Copy helper into `session_logger.cpp` (and optionally `test_player_session.cpp`, or share via session module-local header).
+2. Remove include usage from both files.
+3. Delete `app/util/safe_localtime.h`.
+
+**Risks**
+- Low: tiny helper; risk is only duplicated platform `#ifdef` drift.
+
+**Confidence:** **High**
+
+---
+
+## E) `app/util/test_player_helpers.h` — **move-into-system**
+
+**Exact current references**
+- Runtime:
+  - `app/systems/test_player_system.cpp:13` + many calls (`test_player_*`)
+- Tests:
+  - `tests/test_test_player_system.cpp:5,209-210,268-305` (direct helper usage)
+
+**Target API/system**
+- Move action/planned-list helper functions into `app/systems/test_player_system.cpp` (owner).
+- For tests, either:
+  - switch to black-box system-behavior assertions, or
+  - define minimal test-local helper shims inside `test_test_player_system.cpp`.
+
+**Migration steps**
+1. Move helper implementations into anonymous namespace in `test_player_system.cpp`.
+2. Remove util header include from runtime.
+3. Refactor tests away from util header direct coupling.
+4. Delete `app/util/test_player_helpers.h`.
+
+**Risks**
+- Medium: current tests directly call these helpers; test refactor required.
+
+**Confidence:** **Medium**
+
+---
+
+## 3) Files that should **NOT** be removed (and why)
+
+- `beat_map_loader.h/.cpp`: central parser/validator contract used by runtime and broad shipped-beatmap test surface.
+- `rhythm_math.h`: shared timing constants/functions used by collision/scoring/session init + many unit tests.
+- `persistence_policy.h/.cpp`: shared platform path + status contract; removing would duplicate platform logic.
+- `settings.h`, `settings_persistence.h/.cpp`: settings state and persistence API are used across game loop, UI controller, input/systems, and tests.
+- `high_score_persistence.h/.cpp`: high-score lifecycle is wired into startup + terminal-phase save and has dedicated tests.
+- `session_logger.h/.cpp`: currently scoped telemetry with explicit lifecycle; replacing with global raylib callback remains design-gated.
+
+---
+
+## 4) Build/reference surface check (`app`, `tests`, `benchmarks`, `CMakeLists.txt`)
+
+- `CMakeLists.txt` compiles util via glob: `file(GLOB UTIL_SOURCES ... app/util/*.cpp)` at `CMakeLists.txt:97`.
+- No benchmark references to util targets/symbols found in `benchmarks/`.
+- Test surface impact:
+  - `obstacle_counter` removal would require updates in `test_helpers.h`, `test_components.cpp`, and `test_signal_lifecycle_nogated.cpp`.
+  - `test_player_helpers.h` removal would require updates in `tests/test_test_player_system.cpp`.
+  - `enum_names.h` removal would require updates in `tests/test_helpers_and_functions.cpp` and `tests/test_obstacle_model_slice.cpp`.
+
+No implementation performed in this pass.
+### 2026-05-08T13:23:49.542-07:00: EnTT functionality audit (app/ read-only)
+
+**By:** Keaton  
+**Requested by:** yashasg
+
+**Scope**
+- Read-only audit of `app/` for homegrown structures/plumbing that can be replaced or simplified with EnTT v3.16 facilities.
+- Parallel review input gathered from C++ Expert and DoD Architect passes.
+
+**High-confidence safe-next changes**
+1. Replace `ObstacleCounter` signal-based count (`app/util/obstacle_counter.*`, read in `app/systems/game_state_system.cpp`) with direct EnTT storage/view emptiness checks (`reg.view<ObstacleTag>().empty()`).
+2. Replace test-player planned bookkeeping arrays (`TestPlayerState::planned/planned_count` in `app/components/test_player.h`, helper usage in `app/util/test_player_helpers.h`, `app/systems/test_player_system.cpp`) with an existential component tag such as `TestPlayerPlannedTag`.
+3. Tighten popup fade loop from `view<ScorePopup>() + try_get` to a structural view over guaranteed components (`ScorePopup`, `PopupDisplay`, `Color`) in `app/systems/popup_display_system.cpp`.
+4. Mechanical cleanup: use context `emplace` idempotently for wiring/scratch helpers and range-based `reg.destroy(begin,end)` where validity invariants are explicit.
+
+**Design-gated items**
+1. Migrate `PendingEnergyEffects` and `ScorePopupRequestQueue` (current context vectors in `app/components/gameplay_intents.h` and `app/systems/scoring_system.cpp`) to `entt::dispatcher` events.
+2. Consider migrating audio/haptic bounded queues (`AudioQueue`, `HapticQueue`) to dispatcher-backed events only if bounded-drop policy and frame delivery ordering are explicitly preserved.
+3. Convert lane mask fields (`BlockedLanes::mask`, `BeatEntry::blocked_mask`) from raw `uint8_t` shifts to a typed EnTT bitmask enum pattern (`_entt_enum_as_bitmask`) after loader and validation boundaries are planned.
+
+**Keep (no EnTT replacement recommended)**
+- Per-kind structural collision views in `collision_system` (data access is explicit and aligned with obstacle archetypes).
+- Mesh/model lifetime ownership code in `obstacle_render_entity` (raylib GPU resource semantics dominate).
+- Collect-then-remove safety pattern in scoring/despawn-like systems.
+# EnTT Architecture Audit — app/ (Read-only)
+
+**Date:** 2026-05-08T13:23:49.542-07:00  
+**By:** Keyser  
+**Requested by:** yashasg  
+**Scope:** Identify where EnTT data structures/functionality should replace homegrown ECS-adjacent code in `app/`, and where EnTT should explicitly not be used.
+
+## High-confidence cleanup candidates
+
+### 2026-05-08T13:41:05.026-07:00: User directive
+**By:** yashasg (via Copilot)
+**What:** Do not preserve local wall-clock time helpers for logging; prefer song time or time since game start, using values already provided by raylib/game runtime APIs.
+**Why:** User request — captured for team memory
+
+### 2026-05-08T13:43:06.866-07:00: User directive
+**By:** yashasg (via Copilot)
+**What:** Use `docs/raylib/cheatsheet.md` as the local reference for available raylib APIs when evaluating raylib-based cleanup and replacements.
+**Why:** User request — captured for team memory
+
+### 2026-05-08T13:44:53.252-07:00: Keaton utility cleanup implementation
+
+---
+date: 2026-05-08T13:44:53.252-07:00
+author: keaton
+topic: utility-cleanup-implementation
+---
+
+## Context
+Approved utility cleanup required deleting dead `app/util` surfaces while preserving behavior in session flow, persistence status handling, and runtime game-state transitions.
+
+## Decision
+- Replaced `ObstacleCounter` signal bookkeeping with direct `reg.view<ObstacleTag>().empty()` checks in `game_state_system`, and removed counter wiring from session/test setup.
+- Replaced `fs_utils` wrappers with raylib `DirectoryExists`/`MakeDirectory` checks at persistence callsites, returning `DirectoryCreateFailed` with a concrete `std::errc::io_error` on failure.
+- Removed `enum_names` and `test_player_helpers` by inlining owner-local helpers in `test_player_system.cpp` and switching tests to direct `magic_enum::enum_name(...)` usage.
+- Removed local wall-clock timestamping (`safe_localtime`) from session/test logging; log headers now use runtime seconds and test-player log filenames use runtime milliseconds + monotonic sequence to avoid collisions without wall-clock time.
+
+## Validation
+- Stale-reference sweep over `app/`, `tests/`, `benchmarks/`, and `CMakeLists.txt` found no remaining includes/symbol references to deleted utility files.
+- Full validation passed: `VCPKG_ROOT=/Users/yashasgujjar/vcpkg ./build.sh && ./build/shapeshifter_tests` (`2052 assertions`, `754 test cases`).
+
+### 2026-05-08T13:44:53.252-07:00: Baer utility cleanup validation gate
+
+---
+date: 2026-05-08T13:44:53.252-07:00
+author: baer
+topic: utility-cleanup-validation-gate
+---
+
+## Context
+Validation for utility cleanup was requested while cleanup targets are still present in-tree.
+
+## Observation
+- Cleanup targets still exist: `app/util/obstacle_counter.*`, `fs_utils.h`, `enum_names.h`, `safe_localtime.h`, `test_player_helpers.h`.
+- Stale-reference sweep shows active dependencies in `app/` and `tests/` for all five surfaces.
+- Full validation currently passes (`2063 assertions`, `758 test cases`), so this is pre-cleanup baseline, not post-cleanup verification.
+
+## Decision
+Treat this run as **preflight baseline**. Post-cleanup validation must be rerun after Keaton lands production rewires/deletions.
+
+## Next Validation Gate
+After cleanup lands, require:
+1. Zero references/includes for deleted headers/symbols across `app/`, `tests/`, `benchmarks/`, `CMakeLists.txt`.
+2. Focused checks for signal lifecycle, test-player helper coupling removal, persistence directory-status paths, enum-name output replacement, and session/test logging time-source behavior.
+3. Full build+tests green.
+
+### 2026-05-08T13:57:50.741-07:00: Keaton systems raylib audit
+
+**When:** 2026-05-08T13:57:50.741-07:00  
+**Requested by:** yashasg  
+**Scope:** Read-only audit of all `app/systems/` files against `docs/raylib/cheatsheet.md`  
+**Implementation status:** No product code changes made
+
+[Full audit findings attached as separate decision entries below]
+
+**Safe candidates to consider after green signal**
+1. Collapse gesture detection in `input_system.cpp` to one `GetGestureDetected()` read.
+2. Replace `popup_display_system.cpp` manual alpha clamp with raymath `Clamp`.
+3. Replace `collision_system.cpp` manual precision clamp with raymath `Clamp`.
+4. Optionally replace floor ring rlgl vertex emission with two `DrawTriangle3D(...)` calls per segment, after measuring.
+
+**Design-gated candidates**
+1. Textured floor-ring architecture using `LoadRenderTexture` + `DrawRing` + textured floor mesh.
+2. Removing `screen_to_virtual(...)` in favor of raylib mouse scale/camera mapping across all input.
+3. Replacing `platform_get_display_size(...)` with raylib size APIs after web canvas behavior is redesigned.
+4. Replacing audio/haptic/session-log queues with direct raylib APIs; current queue/lifecycle/testability contracts block direct substitution.
+5. Replacing owned-model `DrawMesh(...)` paths with `DrawModel/DrawModelEx`; tint, transform, and ownership semantics must be proven first.
+
+### 2026-05-08T13:57:50.741-07:00: Baer systems raylib audit test plan
+
+**Date:** 2026-05-08T13:57:50.741-07:00  
+**By:** Baer  
+**Requested by:** yashasg  
+**Scope:** Read-only regression/test audit for raylib replacement candidates across `app/systems/`, using `docs/raylib/cheatsheet.md` as the API reference. No product implementation performed.
+
+**Executive verdict:** Proceed only in phases. The already-approved direct substitutions (`DrawLine3D`, `DrawPoly`, `LoadFileText`) are testable with stale-reference sweeps plus build/tests, but the remaining systems cleanup is not uniformly safe.
+
+[Comprehensive coverage matrix and validation gates in separate decision log]
+
+**Key high-risk behavior that must be preserved**
+1. Input event timing must be delivered once per frame; no replay.
+2. Touch/mouse source isolation on web/mobile.
+3. Letterbox mapping must preserve virtual 720x1280 coordinate space.
+4. Focus-loss pause uses edge-triggered `IsWindowFocused()`.
+5. GPU headless safety for render targets/meshes.
+6. Render pass ordering: floor → flush → disable depth → world/effects → flush → re-enable depth → EndMode3D.
+7. Floor ring annuli live in world XZ space, not screen-space 2D.
+8. Audio stream pumping `UpdateMusicStream()` runs every frame after music starts.
+9. Song-time authority for scroll, shape windows, beat spawning, collision timing (not frame-accumulated time).
+10. Terminal phase latch: finished songs must not restart or loop.
+11. Bounded side-effect queues: audio/haptic drop when full, drain once per frame.
+12. Collect-then-remove for scoring/despawn/popup/particle mutations (no active-iteration mutation).
+13. Strict collision edges for lane overlap and beat-line crossing (raylib helpers may differ at touching boundaries).
+14. High-score persistence semantics: terminal phase owns update/save/dirty behavior.
+
+### 2026-05-08T13:57:50.741-07:00: McManus systems raylib audit
+
+**When:** 2026-05-08T13:57:50.741-07:00  
+**Requested by:** yashasg  
+**Scope:** `app/systems/*` gameplay/rhythm/scoring/obstacle audit against `docs/raylib/cheatsheet.md`  
+**Implementation status:** No code changes made.
+
+[Audit findings cover collision/scoring/audio/haptic/coordinate systems; no implementation performed]
+
+**Safe direct replacements identified:**
+- Lane overlap: Replace `lane_overlaps` manual x-interval with `CheckCollisionRecs(Rectangle, Rectangle)` after boundary-parity testing.
+- Precision clamp: Replace manual `if` clamps in `collision_system.cpp::grade_shape_timing` with raymath `Clamp(precision, 0.0f, 1.0f)`.
+- Alpha clamp: Replace manual `if` clamps in `popup_display_system.cpp` with raymath `Clamp(alpha_ratio, 0.0f, 1.0f)`.
+
+**Design-gated candidates:**
+- Audio SFX dispatch callback removal (requires test injection architecture review).
+- Song playback state duplication (`MusicContext::started` vs `IsMusicStreamPlaying()`; design-gated because pause/resume semantics).
+- Display-size helper seam (`platform_get_display_size` → raylib `GetScreenWidth/Height`; web canvas sizing blocks this).
+- Gamepad rumble as additive haptic backend (not replacement for iOS/phone haptics).
+
+### 2026-05-08T13:57:50.741-07:00: Fenster systems raylib audit
+
+**When:** 2026-05-08T13:57:50.741-07:00  
+**By:** Fenster  
+**Requested by:** yashasg  
+**Scope:** `app/systems/` with extra focus on audio, song playback, beat scheduling/logging, haptics, and directly referenced audio/platform helpers.  
+**Implementation status:** No product code changes made.
+
+[Audit findings cover audio queue dispatch, song stream playback state, haptic platform bridge, collision lane overlap, popup alpha, floor ring rendering, and screen-to-virtual coordinate mapping]
+
+**Safe cleanup candidates:**
+1. Popup alpha `Clamp`/`Fade` (raylib API).
+2. Collision lane overlap via `CheckCollisionRecs()` with edge tests.
+
+**Design-gated review required before implementation:**
+1. Audio callback removal/direct `PlaySound()` path (removes test injection seam).
+2. Song playback state/duration authority (`IsMusicStreamPlaying`, `SeekMusicStream`, `GetMusicTimeLength`; pause/resume semantics block this).
+3. Gamepad rumble as additive non-iOS haptic path.
+4. Floor rendering architecture pass for `DrawRing()` on a floor texture (high visual regression risk).
+5. Screen-to-virtual coordinate system as raylib `Camera2D` + `GetScreenToWorld2D()` (affects input/UI hit-testing).
+
+### 2026-05-08T14:25:19.068-07:00: Edge/audio cleanup validation gate
+**By:** Baer
+**What:** For cleanup passes, validation should include scoped added/deleted/net LOC by product vs tests, live-code stale-reference sweeps, and targeted behavior checks before accepting “slim” as complete.
+**Why:** This keeps cleanup accountable to the line-reduction goal while preserving edge collision and audio safety coverage.
+**Evidence:** Edge/audio slice validated at app -23 LOC, tests +11 LOC, total -12 LOC; live stale refs for `SFXPlaybackBackend`, `sfx_playback_backend_init`, and `lane_overlaps` were zero; full build and tests passed.
+# 2026-05-08T14:14:30.000-07:00: Baer edge collision/audio validation
+
+**Decision/learning:** Edge-inclusive lane collision must be locked by tests whenever using raylib `CheckCollisionRecs`. Raylib's rectangle check excludes exact edge contact by default, so this cleanup keeps the raylib API path while minimally inflating the centered hitbox to make touching edges count as collisions.
+
+**Validation:**
+- Added/confirmed edge tests for exact touch and just-beyond-edge miss.
+- Confirmed `SFXPlaybackBackend`, `sfx_playback_backend_init`, and `lane_overlaps` are absent from `app/`, `tests/`, `benchmarks/`, and `CMakeLists.txt`.
+- Confirmed audio tests cover headless queue draining, capacity drain, no bank, invalid SFX, unloaded sounds, and no-audio-device bank lifecycle safety.
+- Full validation passed: `VCPKG_ROOT=/Users/yashasgujjar/vcpkg ./build.sh && ./build/shapeshifter_tests`.
+### 2026-05-08T14:25:19.068-07:00: User directive
+**By:** yashasg (via Copilot)
+**What:** Cleanup passes should reduce total lines of code where possible; adding large test/API surface during cleanup defeats the purpose unless clearly justified.
+**Why:** User request — captured for team memory
+### 2026-05-08T14:45:31.166-07:00: Keaton EnTT cleanup LOC audit
+
+Scope: read-only scan of `app/systems`, `app/components`, and session wiring touchpoints.
+
+Decision summary:
+- EnTT can remove some bookkeeping, but most gameplay logic should remain in systems.
+- Largest practical code reduction is in test-player planning state and small hot-path cleanup in popup/scratch helpers.
+- Signal/dispatcher rewires are mostly architecture changes that move code rather than shrink it.
+
+Quantitative estimate (net LOC):
+- Safe now: ~45–80 LOC reduction.
+- Medium (design-gated): ~35–90 LOC reduction, mostly moved/restructured.
+- Not worth for LOC: <20 LOC or neutral; keep in systems.
+
+Key safe candidates:
+1. `app/systems/test_player_system.cpp` + `app/components/test_player.h`
+   - Replace `planned[]/planned_count` + `reg.valid` cleanup with existential planned tag on obstacle entities.
+   - Estimated net: -30 to -55 LOC.
+2. `app/systems/popup_display_system.cpp`
+   - Use structural view `<ScorePopup, PopupDisplay, Color>` instead of `view<ScorePopup> + try_get` checks.
+   - Estimated net: -8 to -15 LOC.
+3. Scratch singleton helpers (`particle_system`, `obstacle_despawn_system`, `popup_display_system`, parts of `scoring_system`)
+   - Eager-init in setup and use `ctx().get<T>()` in systems.
+   - Estimated net: -7 to -10 LOC (mostly helper deletion; some setup additions).
+
+Medium candidates (mostly moves/restructure):
+1. Signal wiring flags in session/input/obstacle lifecycle to `entt::scoped_connection` owners.
+   - Estimated net: -5 to +10 LOC (cleanup/readability win, minimal LOC win).
+2. `PendingEnergyEffects` / `ScorePopupRequestQueue` to dispatcher events.
+   - Estimated net: -10 to +25 LOC (often code moves, not shrinks).
+3. Camera singleton entity pattern to context singleton.
+   - Estimated net: -20 to -55 LOC across camera accessors and checks, but touches many tests/assumptions.
+
+Not-worth for LOC (keep in systems):
+- `scoring_system` collect-then-remove passes.
+- `collision_system` per-kind structural loops.
+- `particle_system` / `obstacle_despawn_system` collect-then-destroy safety pattern.
+
+Rationale:
+- EnTT helps best where we currently emulate entity state in manual arrays or repeated lookup helpers.
+- For phase-sensitive gameplay rules, moving logic out of systems would mostly hide behavior and increase coupling without meaningful code reduction.
+# Keyser — EnTT lifecycle audit decision (read-only)
+
+Date: 2026-05-08T14:45:31.166-07:00  
+Requested by: yashasg
+
+## Decision
+
+Use EnTT APIs to remove orchestration/plumbing from systems (signal wiring state, lazy ctx scratch setup, queue handoff boilerplate), but **do not** move gameplay rules into component/entity callbacks. Keep components plain data and systems as deterministic free-function phase steps.
+
+## Why
+
+- Project architecture explicitly depends on strict fixed-step ordering and unidirectional writes.
+- Callback-heavy gameplay (on_update/on_construct-driven rule evaluation) would make order, replayability, and tests harder to reason about.
+- EnTT lifecycle hooks are best for ownership/lifetime side-effects, not core game decisions.
+
+## Scope guidance
+
+1. **Good EnTT moves**
+   - Replace ad-hoc `wired` bool state with owned EnTT connection objects in context.
+   - Eager-init ctx scratch/queue holders in session/init and use `ctx().get<T>()` in hot loops.
+   - Consider dispatcher unification for intent queues if fixed-tick drain boundaries remain explicit.
+   - Keep using storage/view helpers for structural checks (`view<...>().empty()`, `storage<T>()`).
+
+2. **Do not move**
+   - Collision/scoring/energy/game-state transitions into callbacks (`on_construct/on_update/on_destroy`).
+   - Fixed tick ordering into implicit signal chains or observer-triggered state transitions.
+   - External resource ownership (raylib model/audio/window lifetime) into generic ECS callback paths.
+
+## Expected impact (high-level)
+
+- Plumbing reduction in systems/input/session glue: moderate (tens to low-hundreds LOC).
+- Gameplay logic reduction inside systems: low and intentionally capped.
+- Determinism/testability risk: low only if gameplay remains in explicit phase-run systems.
+# Keyser — Systems-Wide Raylib Rewire/Removal Plan
+
+**Date:** 2026-05-08T13:57:50.741-07:00  
+**By:** Keyser (Lead Architect)  
+**Requested by:** yashasg  
+**Status:** Plan only — no implementation. Awaiting green signal.  
+**Sources:** keaton-systems-raylib-audit.md, mcmanus-systems-raylib-audit.md, fenster-systems-raylib-audit.md, baer-systems-raylib-audit-tests.md + spot-checked `app/systems/` against `docs/raylib/cheatsheet.md`.
+
+---
+
+## 1. Safe First-Pass Rewires
+
+These are low-risk, self-contained substitutions. Zero design decisions required. Order within this group is flexible.
+
+### 2026-05-08T15:20:16.880-07:00: User directive
+**By:** yashasg (via Copilot)
+**What:** Treat the `test_redfoot_testflight_ui.cpp:114` segfault as related to the current change stack because it worked before the recent changes and failed after them; do not dismiss it as unrelated.
+**Why:** User correction — captured for team memory and review criteria
+
+### 2026-05-08T15:46:54.355-07:00: User directive
+**By:** yashasg (via Copilot)
+**What:** If the input dispatchers are collapsed, delete the redundant dispatcher-system-style layer; target the input dispatcher surface rather than keeping a pass-through system.
+**Why:** User request — captured for team memory
+
+### 2026-05-08T15:53:09-07:00: Fenster revision — semantic input drain consolidation
+
+**By:** Fenster  
+**Requested by:** yashasg  
+**Scope:** Input pipeline + tests
+
+**Decision**
+- Keep `game_state_system` as the only production semantic dispatcher drain for `GoEvent` and `ButtonPressEvent`.
+- Remove HUD-side `disp.update<ButtonPressEvent>()`; HUD now enqueues only.
+- Remove `player_input_system` from `tick_playing_systems`; keep handler callbacks wired via dispatcher.
+- Shift affected tests to a semantic tick helper (`run_semantic_input_tick`) that models production (`game_state_system` drain).
+
+**Why**
+- Eliminates competing authoritative drains and same-frame race assumptions.
+- Aligns runtime behavior and tests to one contract, reducing future regressions from stale test plumbing.
+
+**Validation**
+- `cmake -B build -S . -Wno-dev`
+- `cmake --build build`
+- `./build/shapeshifter_tests` (all passing)
+
+# Keaton — EnTT first-pass implementation note
+
+Date: 2026-05-08T14:50:05.765-07:00
+Requested by: yashasg
+
+## Decision
+
+Implemented only the safe first-pass EnTT cleanup with clear net reduction:
+1. Replaced test-player `planned[]/planned_count` bookkeeping with existential `TestPlayerPlannedTag`.
+2. Tightened popup fade loop to structural `view<ScorePopup, PopupDisplay, Color>` and kept a separate expiry-only pass for `ScorePopup` entities lacking render components.
+
+Skipped ctx scratch helper migrations in scoring/particle/popup/despawn for now because this pass did not prove a clear net reduction without broad lifecycle setup churn.
+
+## Validation
+
+- `VCPKG_ROOT=/Users/yashasgujjar/vcpkg ./build.sh`
+- `./build/shapeshifter_tests "[test_player]"`
+- `./build/shapeshifter_tests "[popup_display]"`
+- `VCPKG_ROOT=/Users/yashasgujjar/vcpkg ./build.sh && ./build/shapeshifter_tests`
+
+# Keaton — EnTT Round 2 implementation notes
+
+Date: 2026-05-08T15:09:47.770-07:00
+
+Implemented approved round-2 scope only:
+
+1) `test_player_init` eager ctx access
+- `test_player_init` now uses eager `ctx().get<TestPlayerState>()` and `ctx().get<SessionLog>()`.
+- `game_loop_init` now eagerly emplaces `TestPlayerState` and `SessionLog`.
+
+2) `input_dispatcher` wiring-state bool removal
+- Replaced `InputDispatcherWiringState{ bool wired; }` with `InputDispatcherConnections` owning `entt::scoped_connection` handles.
+- `wire_input_dispatcher` is idempotent via owner-pointer guard.
+- `unwire_input_dispatcher` now resets owned connections only.
+
+3) `collision_system` eager SongState
+- Replaced lazy `find/emplace` with eager `reg.ctx().get<SongState>()`.
+
+4) obstacle lifecycle wiring bool removal
+- Replaced obstacle mesh/model lifecycle `wired` bool state with owner + `entt::scoped_connection` ownership in context.
+- `wire_*` remains idempotent.
+- `unwire_*` resets scoped owners.
+
+Validation performed:
+- Targeted tests passed before shared-worktree test-target conflict surfaced:
+  - `[ecs][dispatcher]`
+  - `[entt_dispatcher]`
+  - `[collision]`
+  - `[archetype][render][cleanup]`
+- Full `shapeshifter_tests` rebuild is currently blocked by unrelated shared-worktree file `tests/test_entt_round2_regression.cpp` (undeclared `spawn_obstacle`), outside this scoped change.
+- `cmake --build build --target shapeshifter_lib shapeshifter` passes warning-free.
+
+Notes for reviewer:
+- Behavior intentionally unchanged; this is lifecycle bookkeeping cleanup + eager ctx contract tightening.
+- No dispatcher/request-queue migration, audio/haptic queue migration, global scratch-init conversion, or gameplay callback migration was performed.
+
+# Keaton — Round 2 EnTT cleanup LOC audit (read-only)
+
+Date: 2026-05-08T15:02:44.235-07:00  
+Requested by: yashasg
+
+## Scope audited
+- `app/` + `tests/` only, read-only pass.
+- Tracks:
+  1) manual wired flags / signal lifetime,
+  2) custom queues/request structs → `entt::dispatcher`,
+  3) ctx lazy-init helpers → eager setup + `ctx().get<T>()`.
+
+## SAFE bucket (high deletion, bounded risk)
+
+### 2026-05-08T21:45:45.535-07:00: Keyser audit — Strict EnTT-style `app/` layout
+
+**By:** Keyser (Lead Architect)  
+**Requested by:** yashasg  
+**Status:** Architecture decision (read-only audit; implementation tracked separately)
+
+**Decision**
+
+`app/` follows strict EnTT/data-oriented layout. Only the following top-level folders are sanctioned:
+
+- `app/components/` — POD structs (entity components AND `registry.ctx()` singletons).
+- `app/systems/` — free functions that operate on registry queries / dispatcher events.
+- `app/entities/` — entity-creation factories (`create_*`, `spawn_*`).
+- `app/util/` — non-ECS resource loaders, persistence, math helpers, logging.
+- `app/platform/` — true OS abstraction with conditional compilation (iOS bridge, etc.). Not a feature folder; cannot be modeled as ECS without leaking ObjC into systems.
+- `app/ui/` — **provisional**. Screen controllers blur system/state lines; revisit after audio/input/session/rendering are absorbed.
+
+**Forbidden as feature-layer folders:** `app/audio/`, `app/input/`, `app/session/`, `app/rendering/`.
+
+**Rewire targets**
+
+| Current | Kind | Target |
+|---|---|---|
+| `app/audio/audio_types.h` | ctx singletons (`AudioQueue`, `SFXBank`) + `SFX` enum | `app/components/audio.h` |
+| `app/audio/music_context.h` | ctx singleton (`MusicContext`) | `app/components/audio.h` (merge) or `app/components/music.h` |
+| `app/audio/sfx_bank.{h,cpp}` | resource init/unload (procedural sample gen + `LoadSoundFromWave`) | `app/util/sfx_bank.{h,cpp}` (peer of `beat_map_loader`) |
+| `app/input/input_routing.h` | listener + wiring declarations | fold into `app/systems/input_dispatcher.h` |
+| `app/input/game_state_routing.cpp` | dispatcher listeners (game-state semantics) | `app/systems/game_state_input_listeners.cpp` |
+| `app/input/input_dispatcher.cpp` | one-shot wiring of `entt::dispatcher` | `app/systems/input_dispatcher.cpp` |
+| `app/session/play_session.{h,cpp}` | scene/registry init on phase enter | `app/systems/play_session_setup_system.{h,cpp}` |
+| `app/session/test_player_session.{h,cpp}` | test-player ctx + log file init | `app/systems/test_player_setup_system.{h,cpp}` (peer of `test_player_system.cpp`) |
+| `app/rendering/camera_resources.h` | RAII ctx singletons (`RenderTargets`, `camera::ShapeMeshes`, `FloorParams`) | `app/components/camera_resources.h` |
+| `app/audio/`, `app/input/`, `app/session/`, `app/rendering/` | empty | **delete folders + CMake `file(GLOB ...)` entries** |
+
+**Rationale**
+
+- Components-as-data is location-independent: ctx singletons (`MusicContext`, `RenderTargets`) are still POD structs and belong in `components/`. The "audio domain" grouping is a non-ECS habit.
+- `sfx_bank` is asset loading; it pairs with `beat_map_loader.cpp` which already lives in `util/`. Same lifecycle, same shape.
+- Dispatcher listeners are systems triggered by events instead of by frame ticks. They belong with siblings in `systems/` so processing order is visible alongside `tick_fixed_systems`.
+- `play_session.cpp` and `test_player_session.cpp` mutate the registry as setup systems; they are not factories for a single entity (so not `entities/`). They are scene/init systems.
+- `platform/` stays — ObjC++ + `#if PLATFORM_IOS` gates cannot live inside ECS systems without contaminating them. This is the one justified non-ECS folder.
+
+**Dependency surfaces affected**
+
+- `CMakeLists.txt` — drop `AUDIO_SOURCES`, `INPUT_SOURCES`, `SESSION_SOURCES` globs (already covered by `SYSTEM_SOURCES` + `UTIL_SOURCES` after the move). `app/rendering/` has no `.cpp`, header-only deletion.
+- Includes that reference `../audio/...`, `../input/...`, `../session/...`, `../rendering/...`:
+  - `app/game_loop.cpp`, `app/main.cpp`
+  - All systems pulling `audio_types.h` / `music_context.h` (audio_system, song_playback_system, popup_feedback_system, scoring_system, etc.)
+  - `app/systems/camera_system.cpp`, `app/systems/floor_render_system.cpp`, `app/systems/game_render_system.cpp` for `camera_resources.h`
+  - `tests/test_audio_system.cpp`, `tests/test_components.cpp`, `tests/test_gpu_resource_lifecycle.cpp`, `tests/test_high_score_integration.cpp`, `tests/test_helpers.h`, `benchmarks/bench_systems.cpp`
+- `app/systems/all_systems.h` — add new system declarations; remove `input_routing.h` if folded.
+
+**Implementation order (keep builds green)**
+
+1. **Rendering (smallest, header-only).** Move `camera_resources.h` → `components/`. Update 3 includes (`camera_system.{h,cpp}`, `floor_render_system.cpp`, `game_render_system.cpp`) + `tests/test_gpu_resource_lifecycle.cpp`. Delete `app/rendering/`.
+2. **Audio components.** Move `audio_types.h` + `music_context.h` → `components/audio.h` (single header). Mass-update includes. `sfx_bank.{h,cpp}` → `util/`. Delete `app/audio/` + its CMake glob.
+3. **Session.** Rename `play_session.{h,cpp}` → `systems/play_session_setup_system.{h,cpp}` and `test_player_session.{h,cpp}` → `systems/test_player_setup_system.{h,cpp}`. Update callers (`game_loop.cpp`, `main.cpp`, test-player entry points). Delete `app/session/` + its CMake glob.
+4. **Input.** Move `game_state_routing.cpp` → `systems/game_state_input_listeners.cpp`, `input_dispatcher.cpp` → `systems/input_dispatcher.cpp`, fold `input_routing.h` declarations into `systems/input_dispatcher.h` (or `all_systems.h`). Update includes in `game_loop.cpp` and any test that wires the dispatcher. Delete `app/input/` + its CMake glob.
+5. **CMake cleanup.** Remove the four obsolete `file(GLOB ...)` entries and confirm no `target_sources` lines reference deleted paths.
+6. **Build + test gate after each step** (`./build.sh && ./build/shapeshifter_tests`). Each step is independently shippable.
+
+**Out of scope (flagged, not decided here)**
+
+- `app/ui/screen_controllers/*` — controllers carry per-screen state and behave like stateful systems. Decide separately whether to (a) decompose into systems + components, or (b) accept `app/ui/` as a justified non-ECS facade. Recommend revisit once the four target folders are gone.
+- Top-level `app/game_loop.{cpp,h}`, `app/platform_display.{cpp,h}`, `app/main.cpp`, `app/constants.h` — entry/scaffolding; acceptable at `app/` root.
+
+**Revisit triggers**
+
+- New audio middleware (FMOD, Wwise) → re-evaluate whether a thin `platform/audio_backend.*` is needed (parallel to `platform/haptics_backend`).
+- UI controllers gain enough behavior to dominate the file → split per the deferred `app/ui/` decision above.
+
+**Implementation tracking:** Keaton (read-only mapping); implementation branch TBD.
+
+### 2026-05-08T21:45:45.535-07:00: User directive
+
+**By:** yashasg (via Copilot)  
+**What:** Strict EnTT-style app layout means folders like `app/audio`, `app/input`, `app/session`, and `app/rendering` should not exist as feature-layer folders; code should live under ECS-aligned homes such as components, systems, entities, resources/utilities only when justified.  
+**Why:** User request — captured for team memory
+
+### 2026-05-08T21:30:30.829-07:00: User directive
+**By:** yashasg (via Copilot)
+**What:** Ignore `/.squad` folder from the docs cleanup; Squad itself handles `.squad` state.
+**Why:** User request — captured for team memory
+
+### 2026-05-08T21:45:45.535-07:00: User directive
+**By:** yashasg (via Copilot)
+**What:** Strict EnTT-style app layout means folders like `app/audio`, `app/input`, `app/session`, and `app/rendering` should not exist as feature-layer folders; code should live under ECS-aligned homes such as components, systems, entities, resources/utilities only when justified.
+**Why:** User request — captured for team memory
+
+### 2026-05-08T21:50:29.545-07:00: User directive
+**By:** yashasg (via Copilot)
+**What:** Moving files around for the sake of folder cleanup is not acceptable; components/entities/systems must reasonably fit the EnTT paradigm before code is moved there.
+**Why:** User request — captured for team memory
+
+### 2026-05-08T21:57:02.595-07:00: User directive
+**By:** yashasg (via Copilot)
+**What:** Do not re-add input systems or layers after the input cleanup. Components must not be created or moved as ordinary C++ classes; a true component should be used by an entity and a system. If data has no real entity/system relationship, it should not be put under components just to satisfy folder cleanup.
+**Why:** User request — captured for team memory
+
+### 2026-05-08T22:01:52.833-07:00: User directive
+**By:** yashasg (via Copilot)
+**What:** Re-evaluate ctx/resource-like concepts such as audio queues and render resources as possible real ECS entities/components/systems, but only if the model makes sense semantically and can be audited against existing components and systems. Avoid leaving them as vague resources when a meaningful ECS representation exists.
+**Why:** User request — captured for team memory
+
+### 2026-05-08T21:57:02.595-07:00: User directive
+**By:** yashasg (via Copilot)
+**What:** Follow strict ECS guidelines for the app cleanup: no component unless it has a real ECS role, no system unless it operates as a real ECS system/listener/lifecycle function, and no cosmetic folder moves.
+**Why:** User request — captured for team memory
+
+# Keaton ECS Anchor Audit — Strict Migration Analysis
+
+**Requested:** 2026-05-08  
+**Author:** Keaton (C++ Performance Engineer)  
+**Scope:** read-only; no app files edited.  
+**Prior art:** `keaton-strict-ecs-usage-audit.md` — catalogued *what things are*. This document asks *what things should become*, given the directive that resource-like singletons migrate to real entities/components/systems **where it makes semantic sense**.
+
+---
+
+## Methodology
+
+For each candidate, I read the struct definition, every `reg.ctx()` call touching it, and every system that produces or consumes it. I then asked: does this thing have identity as an object in the game world, or is it a machine-room concern? Only things with genuine object identity benefit from ECS entity representation. Pure asset banks and GPU-resource RAII holders do not.
+
+---
+
+## Candidate Deep-Dives
+
+---
+
+### 2026-05-08T22:14:51.583-07:00: User directive
+**By:** yashasg (via Copilot)
+**What:** When implementing the ECS audio/haptic dispatcher migration, delete obsolete old files/structs/code paths once replacement is complete; do not leave dead code behind.
+**Why:** User request — captured for team memory
+
+---
+
+# Kujan QA Review Plan — Audio/Haptic Dispatcher-Event Migration
+_Reviewer: Kujan | Date: 2026-05-08 | Status: Pre-patch (read-only audit)_
+
+---
+
+## 1. Current-State Inventory
+
+### 2026-05-08T22:41:03.805-07:00: User directive
+**By:** yashasg (via Copilot)
+**What:** In code cleanup, keep comments concise and remove outdated comments instead of preserving stale context noise.
+**Why:** User request — captured for team memory
+
+# Keyser — Code Cleanup Audit (read-only)
+
+**Date:** 2026-05-08 22:41 PT
+**Scope:** `app/` (primary), with selective spillover into `tests/` only where it exposes dead/legacy surfaces in `app/`.
+**Mode:** Read-only. No files modified.
+**Branch checked:** `docs/cleanup-stale-markdown` (working tree only modifies docs/markdown; product code matches `main`).
+**Co-existing branch to respect:** `ecs/audio-dispatcher-events` at `/Users/yashasgujjar/dev/bullethell-audio-dispatcher` — migrates `AudioQueue`/`HapticQueue` ctx singletons to dispatcher events `PlaySfxEvent`/`PlayHapticEvent`. Touches the following files: `app/audio/{audio_types.h, music_context.h}`, `app/components/haptics.h`, `app/game_loop.cpp`, `app/input/game_state_routing.cpp`, `app/session/play_session.cpp`, `app/systems/{all_systems.h, audio_system.cpp, game_state_terminal_phase_system.cpp, haptic_system.cpp, player_input_system.cpp, player_movement_system.cpp, popup_feedback_system.cpp}`, plus new `app/audio/audio_dispatcher.{h,cpp}`, `app/audio/audio_routing.h`, `app/components/audio_events.h`. Anything we touch in those files conflicts with the in-flight branch.
+**Cross-reference:** `kujan-code-comment-cleanup-review-plan.md` already captured the high-level safe/risky split. This audit is the file-and-line manifest beneath that plan.
+
+---
+
+## 1. Prioritized Findings Table
+
+Legend — Risk: 🟢 trivial, 🟡 low, 🟠 medium, 🔴 high. `audio_dep` = blocked by audio dispatcher branch.
+
+| # | Path:line | Issue | Evidence | Proposed Action | Risk | audio_dep |
+|---|-----------|-------|----------|-----------------|------|-----------|
+| 1 | `app/components/scoring.h:20` | Misleading "(legacy)" label on `ScorePopup::tier`. The field is unused (always set to `uint8_t{0}` in `popup_entity.cpp:38`); only `timing_tier` carries info. | `grep "tier\b"` shows zero readers; only one writer hardcoded to `0`. | Delete `tier` field outright; drop the `uint8_t{0}` literal at the call site (popup_entity.cpp:38). Comment becomes obsolete. | 🟡 | no |
+| 2 | `app/components/gameplay_intents.h:8-19` & `app/systems/energy_system.cpp:29-37` | "Legacy compatibility for direct test setup" `delta`/`flash` aggregate fields on `PendingEnergyEffects`. The compat path is a real second writer to energy. | `tests/test_energy_system.cpp:37-38,53` still uses `pending.delta` / `pending.flash`. The unit tests are the only readers/writers. | Migrate the 2-3 tests to push `events.push_back({...})`, then delete `delta`/`flash` and the compat branch in `energy_system.cpp`. | 🟠 | no |
+| 3 | `app/constants.h:48-53` | "Retained for legacy random-spawn mode" — the four constants (`SPEED_RAMP_RATE`, `SPAWN_RAMP_RATE`, `INITIAL_SPAWN_INT`, `MIN_SPAWN_INT`) have **zero references** anywhere in `app/`, `tests/`, or `benchmarks/`. | `grep -rn` returns only their own definitions. | Delete all four constants and the section divider/comment. | 🟢 | no |
+| 4 | `app/components/haptics.h:13-14` | Misleading "reserved for future use" comment on `Burnout2_0x`/`Burnout4_0x` enumerators. They are emitted nowhere (`grep` confirms zero producers); only `Burnout1_5x`, `Burnout3_0x`, `Burnout5_0x` are pushed by the burnout zone path (which itself looks scaffolded — see #15). | Enum is consumed in `haptics_backend.cpp` switch tables only. | Either delete the two enumerators (and their backend cases) or shorten comment to "reserved — not currently produced." Deletion is the cleaner answer if no near-term plan to wire 2.0×/4.0× zones exists. | 🟡 | **yes** (haptics.h is edited on the audio branch) |
+| 5 | `app/util/beat_map_loader.cpp:60-62` & `app/util/beat_map_loader.h:37` | "Temporary behavior: low_bar/high_bar entries are accepted but dropped." `is_temporarily_disabled_kind` silently strips `LowBar`/`HighBar` from beat maps. The full LowBar/HighBar implementation (collision, scoring, spawning, mesh model build) is still wired up and tested. | `tests/test_obstacle_archetypes.cpp:94, 242, 263, 310` and `tests/test_collision_extended.cpp:177` test bars; `test_shipped_beatmap_shape_gap.cpp:12` notes "those kinds are [intentionally not in shipped maps]". | Decision needed: is "temporary" still true? If kept, rewrite comment to declare the policy (e.g., "Bars are validated but excluded from gameplay until #XYZ"). If permanently dropped, **delete the entire bar codepath**: enumerator + spawn cases + collision view + mesh builder + tests + `BarObstacleTag` + `LOWBAR_3D_HEIGHT/HIGHBAR_3D_HEIGHT`. Either way, surface for separate decision PR. | 🔴 | no |
+| 6 | `app/systems/fixed_tick_runner.cpp:33` | Round-number reference: "(Position component was deleted in r16 — see decisions.md Round 16)". Useful historically but `app/components/transform.h:14-17` and `rendering.h:39, 53, 57` already mention legacy `Position`. | Cross-check: `grep "Position\b" app/` shows exactly five comment-only references to a removed component. | Keep one canonical mention (in `transform.h` next to `WorldTransform`); strip the rest. Update remaining ones to drop "Round 16" reference (already fading from team memory). | 🟡 | no |
+| 7 | `app/components/transform.h:15-17` | "Replaces the deleted Velocity struct (issue #349 migration complete)" on `MotionVelocity`. Migration is finished — the historical breadcrumb has no future use. | The struct is the only velocity type in tree. | Delete the comment line; keep `MotionVelocity { Vector2 value{}; }` self-documenting. | 🟢 | no |
+| 8 | `app/components/rendering.h:39, 53, 57` | Doc strings reference `Position` (deleted) instead of `WorldTransform`. | E.g. `// Computed by game_camera_system each frame from Position/Size/Shape.` | Replace `Position` → `WorldTransform`; drop `Size` if it no longer exists (it doesn't — `DrawSize` is the live struct). | 🟢 | no |
+| 9 | `app/systems/test_player_system.cpp:19-21, 263-264, 477, 506-508, 623-624` | Verbose narrative comments restating obvious code ("Reset stale state when a new play session starts (after enter_playing calls reg.clear()…)", "A human would see the obstacle passing and wait", "Entity no longer an active obstacle…"). Useful in spec, noise in source. | See line refs. | Compress to single-line intent ("Reset action queue on session restart", "Wait for obstacle to clear collision zone before lane move"). Preserve the `enter_playing` cross-reference only if the reset condition is non-obvious. | 🟡 | no |
+| 10 | `app/systems/scoring_system.cpp:79, 90-92, 134, 251` | Inline issue-number comments (`#309`, `#315`, `(Keaton-r14 analysis)`) embedded throughout. | Direct quotes. | Per Kujan's plan §1, attribution belongs in git log. EnTT swap-and-pop *rationale* should remain (it's the safety contract); the issue numbers and personal attributions add noise. Trim to "EnTT iteration safety: collect entities then remove after view exhausted." once at top of function. | 🟡 | no |
+| 11 | `app/systems/popup_display_system.cpp:21-24` | Whole comment block describes what the *previous version* did ("The system used to re-snprintf and emplace_or_replace<PopupDisplay> every tick…"). | Direct quote at lines 22-24. | Delete past-tense rationale; replace with a one-line statement of current behaviour: "Per-frame: only fade alpha; PopupDisplay set once at spawn." | 🟡 | no |
+| 12 | `app/systems/fixed_tick_runner.cpp:21-30` | 10-line "Keaton-r14 analysis" / commutativity essay justifying the popup_feedback ordering. Important *constraint* (don't move popup_feedback into tick_playing_systems) but expressed at 4× the necessary length. | Direct quote. | Compress to: "popup_feedback / energy must run AFTER scoring populates ScorePopupRequestQueue. Do NOT move them into tick_playing_systems — that runs before scoring and silently drops popups." Drop the commutativity proof and the personal attribution. | 🟡 | no |
+| 13 | `app/audio/audio_types.h:31` and `app/components/haptics.h:31` (`AudioQueue` / `HapticQueue` structs) | These ctx singletons are the **exact surface** being deleted by `ecs/audio-dispatcher-events` (commit `c299a97` and `17fb0a7`). | `git diff main..ecs/audio-dispatcher-events` shows -94 lines spanning these structs and every push site (`player_input_system`, `player_movement_system`, `game_state_terminal_phase_system`, `popup_feedback_system`, `audio_system`, `haptic_system`, `game_loop.cpp`, `play_session.cpp`, `game_state_routing.cpp`). | **Wait for audio branch to merge.** Any cleanup of push-site comments or struct docs will collide. | 🔴 | **yes** |
+| 14 | `app/util/rhythm_math.h:34-41` | `compute_timing_tier(float pct_from_peak)` is **only used in tests** (`tests/test_rhythm_system.cpp`, `test_beat_map_validation.cpp`, `test_helpers_and_functions.cpp`). Production uses `compute_timing_tier_from_delta`. | `grep` confirms zero `app/` callers. | Either (a) delete the function and its tests if `from_delta` is the only authoritative path, or (b) annotate as test-only helper. Decision dependent on whether the percent-of-peak interpretation is still spec-canonical. Tag as cleanup but defer until owner decides. | 🟠 | no |
+| 15 | `app/components/haptics.h:9-12` | "Burnout zone → multiplier mapping (see constants.h)" — `constants.h` has no burnout zone or multiplier constants. | `grep "Burnout\|Risky\|Danger" app/constants.h` returns nothing. | The comment refers to a feature whose implementation is partial: `Burnout1_5x`/`3_0x`/`5_0x` enums exist in `haptics.h` and switch cases in `haptics_backend.cpp`, but **no producer pushes them anywhere in `app/systems/`**. Either ship the burnout zone trigger or delete the enumerators + cases (along with #4). At minimum, the cross-reference to constants.h must be deleted. | 🟠 | **yes** (haptics.h) |
+| 16 | `app/systems/all_systems.h:7, 38-44, 49, 56, 60` | `// Phase 0`…`// Phase 8` ordering comments. Per Kujan §1, these are "load-bearing". Keep as-is. | n/a | **No action.** Documenting only so future audits don't flag. | n/a | no |
+| 17 | `app/components/song_state.h:9-37` | Long-form ownership comments per field. Per Kujan §2, these are ownership contracts and should be tightened, not removed. | n/a | Optional gentle pass: collapse 2-line comments to 1 where the field name is already self-explanatory (e.g., `display`, `flash_timer`). Keep `playing`, `restart_music`, `finished` ownership notes. | 🟢 | no |
+| 18 | `app/components/text.h:14-21` | "Plain data struct stored in the ECS registry context. Holds pre-loaded raylib Font objects… No logic, no methods beyond default construction." Restates ECS conventions defined in repo guidelines. | Direct quote. | Delete the prose; the type definition is self-evident. Keep the per-field point-size comments (`~16pt` etc.) — those carry intent. | 🟢 | no |
+| 19 | `app/components/beat_map.h:22-33` | 12-line ownership/lifecycle/copy-deletion essay above `struct BeatMap`. Useful but verbose. | Direct quote. | Compress to: "Context singleton (cold). Reset+populated by `setup_play_session` via `load_beat_map`. Move-only — copy intentionally deleted to prevent accidental duplication." | 🟡 | no |
+| 20 | `app/components/rhythm.h:1-9` | Header banner explains it's a re-export shim "for backward compatibility". | Direct quote. | If no plan to delete the shim, shorten to "Re-export of beat_map.h + song_state.h + window_phase.h." If the goal is to migrate consumers off `rhythm.h`, the comment should say so explicitly. | 🟡 | no |
+| 21 | `app/components/test_player.h:25-33, 56-58` | "Power-of-two values + `_entt_enum_as_bitmask` activates EnTT's typed `|/&/^` operators, replacing raw uint8_t literal helpers." and "Hot/Warm" annotations. The bitmask explanation belongs once (e.g., `game_state.h:18-25` already explains `_entt_enum_as_bitmask`). The Hot/Warm split adds noise without enforcing layout. | Direct quotes. | Drop the bitmask paragraph (link not needed twice in tree); drop Hot/Warm annotations unless they correspond to actual cache-line splits (struct layout shows they don't). | 🟡 | no |
+| 22 | `app/systems/input_system.cpp:108-109` | "Keyboard shape-button presses: encode semantic payload directly — no entity lookup needed (#273)." | Direct quote. | Trim issue number; keep "encode semantic payload directly — no entity handle." | 🟢 | no |
+| 23 | `app/systems/player_movement_system.cpp:18-23` | "(#207)" issue-number marker on a multi-line rationale. | Direct quote. | Keep the rationale ("freeplay only — rhythm mode owns morph_t via shape_window_system"); drop the issue number. | 🟢 | no |
+| 24 | `app/systems/scroll_system.cpp:11-13` | `(See: "never use anything other than song position")` self-quoting style guide. | Direct quote. | Trim to one line: "Position derived from song_time to avoid float drift across the beat grid." | 🟢 | no |
+| 25 | `app/util/beat_map_loader.cpp:83` | `// reset before every parse to prevent stale entries on reuse` — describes the `out.beats.clear()` immediately following. | Direct quote. | Delete; the call is self-documenting. | 🟢 | no |
+| 26 | `app/audio/sfx_bank.cpp:34-44` | `// ShapeShift`, `// Crash`, etc. trailing comments next to a `constexpr std::array` whose ordering must match the `SFX` enum order in `audio_types.h`. **Keep** — they encode the enum-index contract that `static_assert` only weakly enforces. | n/a | **No action.** | n/a | **yes** (sfx specs may move during audio refactor; recheck post-merge) |
+| 27 | `app/entities/obstacle_render_entity.cpp:243-244, 254` | "raylib 5.5: GenMeshCube already returns an uploaded mesh; no UploadMesh needed." and "meshMaterial[0] == 0 via RL_CALLOC". Platform-API gotcha (Kujan §2 medium-risk). **Keep both.** | n/a | **No action.** | n/a | no |
+| 28 | `app/systems/camera_system.h:18` | "Called before input_system so coordinate transforms are never one-frame stale." Useful ordering note. **Keep.** | n/a | **No action.** | n/a | no |
+| 29 | `app/systems/game_state_system.cpp:14-29` | 16-line drain-ownership essay duplicates the one in `fixed_tick_runner.cpp:8-13` and `input_dispatcher.cpp:27-32`. Three copies of the same invariant in three files. | Direct quotes. | Keep the canonical statement in `input_dispatcher.cpp` (closest to the wiring); replace the other two with one-line pointers: `// Drain owner: see wire_input_dispatcher.` | 🟡 | no |
+| 30 | `app/components/input.h:6-8` | `// Tracks touch/mouse hardware state. Downstream systems should read semantic events, not this struct — except for quit_requested.` Genuinely informative — encodes architectural rule. **Keep.** | n/a | **No action.** | n/a | no |
+| 31 | `app/components/rendering.h:122-128` | Render-pass tag docstrings ("drawn in BeginMode3D…"). **Keep** — these are contract docs for the render system view queries. | n/a | **No action.** | n/a | no |
+| 32 | `app/util/session_logger.cpp:73-74, 106-107` | `// ── EnTT signal: obstacle spawned ────` section dividers. Acceptable structurally. **Keep.** | n/a | **No action.** | n/a | no |
+| 33 | `app/components/scoring.h:26-28` | "Pre-computed popup display data. Computed by popup_display_system, consumed by ui_render_system (just draws text at position with color)." — actually the *initial* values are set by `popup_entity.cpp::init_popup_display` at spawn (per `popup_display_system.cpp:22-24` comment); `popup_display_system` only fades alpha. | Direct quote vs. behaviour at popup_display_system.cpp:25-37. | Rewrite to: "Set once at spawn by `init_popup_display`; only `a` is mutated per-frame by `popup_display_system` (fade)." | 🟡 | no |
+
+---
+
+## 2. Safe-Now Set (comment-only cleanup, no code deletion, no audio-branch conflict)
+
+Pick from these for a single comment-only PR. None require behaviour validation beyond a clean build + test pass.
+
+- #6 — strip duplicate "Position deleted in r16" mentions; keep one in `transform.h`.
+- #7 — drop "(issue #349 migration complete)" comment in `transform.h:15`.
+- #8 — replace `Position` → `WorldTransform` in `rendering.h:39, 53, 57`.
+- #10 — collapse `#309 / #315 / (Keaton-r14 analysis)` attributions in `scoring_system.cpp` (keep the EnTT safety rationale, lose the issue numbers and names).
+- #11 — drop "The system used to…" past-tense narrative in `popup_display_system.cpp:21-24`.
+- #12 — compress 10-line popup_feedback ordering essay in `fixed_tick_runner.cpp:21-30` to 2 lines.
+- #18 — strip self-evident TextContext narrative in `text.h:14-21`.
+- #19 — compress BeatMap lifecycle essay in `beat_map.h:22-33` to ≤4 lines.
+- #20 — clarify or shorten `rhythm.h` re-export banner.
+- #21 — drop the bitmask explanation paragraph + Hot/Warm annotations in `test_player.h`.
+- #22, #23, #24 — strip `(#273)`, `(#207)`, the self-quote in `scroll_system.cpp:11-13`.
+- #25 — delete the redundant `// reset before every parse…` comment in `beat_map_loader.cpp:83`.
+- #29 — keep one canonical drain-owner comment (in `input_dispatcher.cpp`); reduce the duplicates in `game_state_system.cpp:14-29` and `fixed_tick_runner.cpp:8-13` to one-line pointers.
+- #33 — fix the misleading "Computed by popup_display_system" docstring on `PopupDisplay` (`scoring.h:26-28`).
+- #9 (partial) — only the verbose narrative blocks in `test_player_system.cpp`, not the cross-reference comments.
+
+**Estimated diff:** ~120-180 deleted lines, ~25-30 rewritten lines. Zero token-stream changes outside comments. Zero overlap with `ecs/audio-dispatcher-events`.
+
+---
+
+## 3. Needs Implementation Branch (code deletion / refactor — separate PRs)
+
+Each of these is a real code change, not just a comment trim. They need tests and CI. Some have dependencies.
+
+- **#1 ScorePopup::tier deletion** — small, isolated. Touches `components/scoring.h`, `entities/popup_entity.cpp`. Independent of audio branch.
+- **#2 PendingEnergyEffects::delta/flash deletion** — requires migrating 3 unit tests in `test_energy_system.cpp` to push `events`. Independent of audio branch.
+- **#3 Legacy random-spawn constants deletion** — pure delete in `constants.h:48-53`. Independent.
+- **#4 + #15 Burnout haptics scaffolding** — requires product decision: ship the zone-transition system (currently a no-op) or delete the unused enumerators/cases. **Touches `haptics.h` → blocked by audio dispatcher branch.** Defer until merge, then choose.
+- **#5 LowBar/HighBar policy resolution** — biggest item. Requires product decision. If "temporary" is permanent, deletion spans `components/obstacle.h` (enum + `BarObstacleTag` + `ObstacleScrollZ`?), `entities/obstacle_entity.cpp`, `entities/obstacle_render_entity.cpp` (model build path), `systems/collision_system.cpp` (RequiredVAction view + `model_zone_view`), `systems/scoring_system.cpp` (model_view variants), `systems/miss_detection_system.cpp` (model path), `systems/obstacle_despawn_system.cpp` (camera-Z path), `systems/scroll_system.cpp` (ObstacleScrollZ paths), `constants.h` (`LOWBAR_3D_HEIGHT/HIGHBAR_3D_HEIGHT`), `util/beat_map_loader.cpp` (`is_temporarily_disabled_kind`), and ~5 test files. Independent of audio branch but should be its own PR/decision.
+- **#13 AudioQueue/HapticQueue cleanup** — **already in flight** on `ecs/audio-dispatcher-events`. Do nothing. After merge, re-audit comments at the new push sites.
+- **#14 compute_timing_tier (percent-of-peak) deletion** — requires removing tests in `test_rhythm_system.cpp:691-699`, `test_beat_map_validation.cpp:386-403`, `test_helpers_and_functions.cpp:7-38`, then deleting the `inline` function in `rhythm_math.h:34-41`. Decision: confirm `from_delta` is the only spec-supported judgment input.
+- **#9 (full)** — once narrative blocks are trimmed in the safe-now pass, the structural simplification of `test_player_system.cpp` (dedup of `state` lookups, hoist of `effective_lane` into a free function) is a follow-up refactor.
+
+---
+
+## 4. Wait-for-Audio-Branch Set (do NOT touch until `ecs/audio-dispatcher-events` merges)
+
+Touching any of these will cause non-trivial merge conflicts on the audio branch.
+
+| Path | Reason |
+|------|--------|
+| `app/audio/audio_types.h` | `AudioQueue` struct deleted on branch; `audio_dispatcher.{h,cpp}` added. |
+| `app/audio/music_context.h` | Edited by branch (loaded/started flags). |
+| `app/components/haptics.h` | `HapticQueue` deleted on branch. Findings #4 and #15 sit here. |
+| `app/systems/audio_system.cpp` | Rewritten on branch as a dispatcher consumer. |
+| `app/systems/haptic_system.cpp` | Rewritten on branch. |
+| `app/systems/player_input_system.cpp` | All `push_haptic` / `audio.queue[count++]` push sites refactored on branch. |
+| `app/systems/player_movement_system.cpp` | Push sites refactored on branch. |
+| `app/systems/popup_feedback_system.cpp` | `audio.queue[count++]` push refactored. |
+| `app/systems/game_state_terminal_phase_system.cpp` | All audio/haptic pushes refactored. |
+| `app/input/game_state_routing.cpp` | Haptic push refactored. |
+| `app/session/play_session.cpp` | `AudioQueue` ctx singleton removed. |
+| `app/game_loop.cpp` | `reg.ctx().emplace<AudioQueue>()` and `<HapticQueue>` lines deleted on branch. |
+| `app/systems/all_systems.h` | Header for `audio_system` / `haptic_system` may change. |
+
+After the branch merges:
+1. Re-run this audit on the post-merge tree (new dispatcher event types may need their own one-line docs).
+2. Re-evaluate findings #4 and #15 (burnout enumerators) against the new haptic push API.
+3. Audit `audio_dispatcher.{h,cpp}` and `audio_routing.h` for first-emission comment debt (likely minimal, since they were just written).
+
+---
+
+## 5. Strict-ECS Smells (categorised by safety)
+
+| Smell | Location | Safe-cleanup category |
+|-------|----------|----------------------|
+| `PendingEnergyEffects` carries both per-event vector AND aggregate scalars, with the aggregates labelled "legacy compat" | `components/gameplay_intents.h:8-19`, `systems/energy_system.cpp:29-37` | Larger design migration (#2) — needs test rewrites. Not strict-ECS-violating in the "fake component" sense, but the dual-write is a smell. |
+| `AudioQueue` / `HapticQueue` as ctx singletons with fixed-cap arrays, instead of dispatcher events | `audio/audio_types.h`, `components/haptics.h`, all push sites | **Already being fixed** on `ecs/audio-dispatcher-events`. No additional action. |
+| `ScorePopup::tier` field that is always zero | `components/scoring.h:20` | Safe code deletion (#1). |
+| `compute_timing_tier(pct_from_peak)` exists only for tests | `util/rhythm_math.h:34` | Safe deletion if spec confirms (#14). |
+| LowBar/HighBar dead-by-policy but live-in-code | Loader drops them; everything else is wired | Big design decision (#5). Genuine strict-ECS smell: the components, tags (`BarObstacleTag`), bridge component (`ObstacleScrollZ` — only used by bars and `ComboGate`/`SplitPath` in production?), and view variants exist for entities that are never spawned. |
+| Burnout zone haptic enums with no producer | `components/haptics.h:19-23`, `platform/haptics_backend.cpp` | Decision needed (#4 + #15); blocked by audio branch. |
+| `ScorePopup::tier` placeholder zero in `popup_entity.cpp:38` | Same as #1 | Same as #1. |
+| Three duplicate copies of the "drain-ownership" doc | `fixed_tick_runner.cpp`, `game_state_system.cpp`, `input_dispatcher.cpp` | Safe-now comment cleanup (#29). |
+| Stale `// Position` references after the r16 deletion | `rendering.h`, `obstacle.h`, `transform.h`, `fixed_tick_runner.cpp` | Safe-now comment cleanup (#6, #8). |
+
+No fake-component violations were observed (no tag-only structs solely used as bool flags on inappropriate entities). The codebase generally honours the strict-ECS rule. The smells above are mostly *legacy data on real components* and *unused enumerators*, not *fake entities*.
+
+---
+
+## 6. Recommended PR Sequencing
+
+1. **PR-A (safe-now, comment-only)** — every item in §2. Single squash, ~150-200 line diff, comments only, no test impact. Mergeable now without coordination.
+2. **PR-B (small code deletes)** — #1 (`ScorePopup::tier`), #3 (legacy random-spawn constants). Both are isolated, both have no test impact. Mergeable in parallel with PR-A.
+3. **WAIT** — let `ecs/audio-dispatcher-events` (PR-?) land.
+4. **PR-C (post-audio rebase)** — re-audit & fix #4, #15 against new haptic API. Add comment cleanup at the new push sites that PR-A had to skip.
+5. **PR-D (test migration + delete)** — #2 (`PendingEnergyEffects` dual-write).
+6. **PR-E (decision-gated)** — #14 (delete `compute_timing_tier(percent)` and its three tests).
+7. **PR-F (decision-gated, large)** — #5 LowBar/HighBar policy resolution. Requires product sign-off.
+
+---
+
+## 7. Out-of-Scope / Not Touched
+
+- `app/ui/generated/*` — code-generated by rguilayout; comments there are tool output.
+- `tests/` — only inspected to validate dead-code claims in `app/`. No test cleanup proposed except where required to enable an `app/` deletion.
+- `benchmarks/` — not audited (not in primary scope).
+- `app/ui/screen_controllers/*.cpp` — sampled (`gameplay_hud_screen_controller.cpp` head 80 lines). Comments looked appropriate; no high-priority cleanup found. A second pass is warranted in a follow-up audit but unnecessary for this round.
+- `app/platform/haptics_backend.cpp` — not exhaustively audited; will need a re-look post-audio-branch alongside #4/#15.
+
+---
+
+**End of audit.**
+
+# Kujan — Code Comment Cleanup Review Plan
+**Date:** 2026-05-08 | **Reviewer:** Kujan | **Branch scope:** comment-only cleanup
+
+---
+
+## 1. Safe to Remove vs Must Preserve
+
+### 2026-05-10T15:35:04.939-07:00: Ralph heartbeat repository write permissions
+
+**When:** 2026-05-10T15:35:04.939-07:00  
+**By:** Kobayashi  
+**Requested by:** yashasg
+
+## Decision
+
+Set `permissions.contents` to `write` for the Ralph/Squad heartbeat workflow and installed heartbeat template while keeping `issues: write` and `pull-requests: read`.
+
+## Rationale
+
+Ralph needs repository content write scope to push commits or modify repo files from the heartbeat loop. Issue write alone only supports labeling/commenting, and pull-request read remains sufficient for the current workflow behavior.
+
+## Files touched
+
+- `.github/workflows/squad-heartbeat.yml`
+- `.squad/templates/workflows/squad-heartbeat.yml`
+
+## Note
+
+The synchronized template paths named in the workflow comments, `templates/workflows/squad-heartbeat.yml` and `packages/squad-cli/templates/workflows/squad-heartbeat.yml`, are not present in this checkout.
+
+### 2026-05-10T02:40:52.785-07:00: Release Decision: Autonomous Audit Loop Round 1 Validation
+
+**Date:** 2026-05-10T02:40:52.785-07:00  
+**Engineer:** Kobayashi (CI/CD Release)  
+**Branch:** `audit/autonomous-quality-loop`  
+**Head:** `45bcef6`
+
+## Decision
+
+Round 1 autonomous audit fixes are validated and mostly reconciled at the issue tracker level.
+
+## Validation Executed
+
+1. `cmake -B build -S . -Wno-dev`
+2. `cmake --build build`
+3. `./build/shapeshifter_tests`
+4. `./run.sh test`
+
+All commands completed successfully.
+
+## Issue Reconciliation Outcome (#382-#407)
+
+- **Closed as fixed:** #382-#386, #388-#407 (each closed with commit-referenced comment).
+- **Left open:** #387.
+  - Rationale: `design-docs/game-flow.md` still includes Section 2b burnout-meter references; this issue is not fully resolved yet.
+
+## Team Guidance
+
+- Proceed with follow-up doc cleanup specifically for #387 before claiming full closure of the audit loop range.
+- Keep using explicit validation command bundles in close comments for traceability.
+
+### 2026-05-10T00:00:00.000-07:00: Decision request — sequencing rabin level-content fixes around level_designer.py contention
+
+**Author:** rabin (Level Designer)
+**Date:** 2026-05-10
+**Issues:** #391, #392, #394, #396
+**Branch:** audit/autonomous-quality-loop
+**Status:** blocked (second consecutive retry)
+
+## Context
+
+All four open level-content issues require edits to `tools/level_designer.py`.
+Two consecutive Rabin runs (2026-05-10 earlier today, and this retry after
+`80660e2`) have been blocked by overlapping in-flight changes from other
+agents on the same file:
+
+- First retry blocker: Fenton's source_event_idx plumbing — now committed.
+- Current blocker: another agent's `_thin_selected_events_for_min_ioi` /
+  `_promote_subdivision_coverage` / `MIN_SUBDIVISION_LABEL_KINDS` work that
+  partially addresses #392 and #396 already.
+
+## Decision needed
+
+Pick one of:
+
+1. **Single owner per file per cycle.**  Assign rabin sole edit ownership
+   of `tools/level_designer.py` for one cycle, hold other agents off until
+   #391/#392/#394/#396 land, then unlock.  Pro: no contention.  Con: blocks
+   other in-flight selector work for ~1 cycle.
+
+2. **Hand-off the partial diff to rabin.**  Have the current dirty agent
+   commit their `_thin_selected_events_for_min_ioi` /
+   `_promote_subdivision_coverage` work in isolation (no beatmap regen),
+   then rabin layers #391 (max-run shape rotation) + #394 (Stomper-specific
+   easy-fraction tuning) + beatmap regeneration on top.  Pro: preserves
+   in-flight effort.  Con: requires explicit ordering signal.
+
+3. **Split #391/#394 onto a separate branch.**  rabin starts a sibling
+   branch with isolated edits to lane-rotation logic, then rebases when the
+   selector branch lands.  Pro: parallel.  Con: more rebase churn for
+   data-driven beatmap regen.
+
+## Rabin's recommendation
+
+Option **2**: the dirty diff is mostly orthogonal to #391's shape-rotation
+need and to #394's `SEGMENT_FOCUS_DIFFICULTY_FRACTION` tuning.  If the
+current agent commits at the next clean stopping point, rabin can take the
+next cycle and add lane-rotation + per-song fraction overrides without
+touching their helpers.
+
+## Pending rabin deliverables (gated on unblock)
+
+- `tools/level_designer.py`: post-selection shape-rotation pass capped by
+  per-difficulty `MAX_SAME_SHAPE_RUN = {"easy": 4, "medium": 5, "hard": 6}`.
+- `tools/level_designer.py`: per-song easy/medium/hard fraction overrides for
+  Stomper (#394) and Mental (#392) where the global fraction does not give
+  the IOI ramp.
+- New tests:
+  `tests/test_shipped_beatmap_max_lane_run.cpp`,
+  `tests/test_shipped_beatmap_difficulty_ramp_ioi.cpp`,
+  `tests/test_shipped_beatmap_subdivision_coverage.cpp`.
+- Beatmap regeneration: all three songs.
+- `design-docs/rhythm-spec.md`: per-difficulty IOI + max-run + subdivision
+  coverage targets.
+
+---
+
+## 2026-05-11 follow-up — RESOLVED in commit 21d0434
+
+`tools/level_designer.py` was clean; the generator fix shipped end-to-end.
+
+### 2026-05-10T00:00:00.000-07:00: Decision Proposal — Design Doc Lifecycle: `archive/` for Superseded Docs
+
+**Author:** Saul (Game Designer)
+**Date:** 2026-05-10
+**Trigger:** Issue #393 (prototype.md confusion)
+**Status:** For team review
+
+## Context
+`design-docs/prototype.md` was marked HISTORICAL in a header banner after the
+burnout mechanic was removed (#239), but the file remained in the main
+`design-docs/` directory next to the live GDD. Readers (future designers,
+contractors, contributors) repeatedly missed the banner and internalized
+obsolete burnout/multiplier mechanics. Issue #393 confirmed this is a
+recurring source of confusion.
+
+## Proposal
+Adopt a project-wide convention for design-doc lifecycle:
+
+1. **Live docs** stay in `design-docs/`.
+2. **Superseded docs** move to `design-docs/archive/<original-name>.md`.
+3. The archived file's header MUST contain:
+   - An "ARCHIVED" banner (not just "HISTORICAL")
+   - The reason (issue link)
+   - A bullet list of current replacement docs to read instead
+4. Any live doc that referenced the moved file is updated to point at the
+   replacement(s), with a parenthetical note that the legacy doc is archived.
+5. Historical logs under `.squad/log/` and `.squad/orchestration-log/` are
+   NOT rewritten — those are dated audit trails.
+
+## Rationale
+- Physical relocation is a stronger signal than an in-file banner.
+- Keeping the file (vs. deleting) preserves design history and rationale
+  for future "why did we change this?" questions.
+- A standardized location (`archive/`) is grep-friendly and tool-friendly
+  (e.g., the `copilot-instructions.md` doc-index can list it as archived
+  in one consistent way).
+
+## Scope of this PR
+Only `prototype.md` is moved. No other docs are reclassified in this pass.
+Future archivals (e.g., if `feature-specs.md` SPEC 2 is split out) should
+follow the same pattern.
+
+## Open Question for Team
+- Should `design-docs/archive/` get its own `README.md` index when it has
+  ≥ 3 entries? (Defer until that threshold is hit.)
+
+### 2026-05-10T00:00:00.000-07:00: Fenton rhythm analysis fixes
+
+## Decision
+Segment-focus onset generation applies difficulty-specific IOI gating during selection, not as a post-generation cleanup pass. Protected cross-layer same-beat pairs remain distinct when they are different broad layers and within 50 ms.
+
+## Rationale
+Strict onset-spike diagnostics require easy/medium outputs to avoid dense sub-floor IOI clusters, but the project directive requires percussive, harmonic, and full-spectrum same-beat onsets to survive. The selector now thins ranked events for readability while exempting protected cross-layer pairs and can promote a sparse subdivision candidate so medium/hard diagnostics retain at least two beat/subdivision labels.
+
+## Validation
+- `python3 tools/test_validate_onset_spike_artifacts.py`
+- `python3 tools/test_level_designer_onset_spike.py`
+- Strict validation passed for `tools/diagnostics/onset_spike_smoke` and all `tools/diagnostics/*_loop1` onset-spike artifacts.
+
+### 2026-05-10T00:00:00.000-07:00: Toolchain fixes decisions (issues #382-#385)
+
+## Decision 1: Count gates must use the same filtered population as metrics
+Loop-2 content validation now compares declared `count` to valid integer-beat rows, not raw array length. We still expose `raw_beat_rows` for diagnostics so malformed rows are visible instead of hidden.
+
+## Decision 2: Diagnostics outputs are treated as mode-specific reproducible artifacts
+`write_snap_diagnostics()` now removes known generated artifacts before each run in a target directory. This prevents stale experimental CSV files from being paired with non-experimental summaries.
+
+## Decision 3: Onset spike validator requires experimental-mode summary
+`validate_onset_spike_artifacts.py` now exits with an error if `experimental_onset_timing.enabled` is not true, rather than attempting to consume potentially stale/mismatched files.
+
+## Decision 4: Segment-focus event identity must not collapse by beat index
+Segment-focus selection now keys events by `(beat_idx, onset_class, source_event_idx)` and downstream timing joins on `source_event_idx`. This preserves layer-specific same-beat events end-to-end in onset-only generation.
+
+### Saul's Initial Decision (2026-05-10)
+
+**Status:** Implementation complete, docs updated.
+
+**Context:** Runtime (`app/components/obstacle.h`) no longer includes `LowBar` and `HighBar` obstacle types in its enum. Shipped beatmaps use only `shape_gate` (924/924 obstacles as of Round 10 audit). Yet design docs still invited authors to create these types.
+
+**Decision:** Mark all LowBar/HighBar **authoring guidance** in design docs as **stale / future design space**. Retain design-space cataloging and code examples for future reference, but remove all user-facing invitations to create these types.
+
+### Edie's Editorial Decision (2026-05-10T15:45:30.046-07:00)
+
+**Owner:** Edie  
+**Decision:** Active editor/runtime authoring guidance must list only runtime-supported obstacle kinds: `shape_gate`, `lane_block`, `combo_gate`, and `split_path` where applicable. `low_bar` and `high_bar` are archival/future design-space names only and must not appear in palettes, active constants, beatmap examples, or executable-looking pseudocode.
+
+**Reason:** Runtime `app/components/obstacle.h` no longer supports LowBar/HighBar, so docs that present them as authorable values create invalid beatmaps and reviewer churn.
+
+---
+
+### Kujan's First Review Verdict (2026-05-10T15:45:30.046-07:00)
+
+**Verdict:** REJECT
+
+**Blocking Findings:**
+1. Active authoring guidance still invites removed kinds: `design-docs/beatmap-editor.md` constants still list `low_bar` and `high_bar` in `OBSTACLE_KINDS` and `EDITOR_OBSTACLE_KINDS`.
+2. Architecture examples malformed: `design-docs/architecture.md` obstacle archetype/pseudocode around stale annotations no longer readable.
+3. Diff hygiene failure: `git diff --check` reported trailing whitespace in `architecture.md`, `beatmap-integration.md`, and `rhythm-design.md`.
+
+**Required Revision Owner:** Edie for docs/product cleanup (Saul locked out as previous author).
+
+---
+
+### Kujan's Second Review Verdict — After Edie's Revision (2026-05-10T15:45:30.046-07:00)
+
+**Verdict:** REJECT
+
+**Blocking Issue:** After removing LowBar/HighBar from `design-docs/beatmap-editor.md` §3.4 Obstacle Palette, `SplitPath` now displays twice on consecutive palette lines, resulting in a malformed example.
+
+**Required Revision Owner:** Kobayashi (mechanical whitespace and list cleanup); Edie and Saul locked out.
+
+**Required Fix:** Update §3.4 Obstacle Palette ASCII example so each active authorable obstacle kind appears once.
+
+---
+
+### Kujan's Third Review Verdict — After Kobayashi's Revision (2026-05-10T15:45:30.046-07:00)
+
+**Verdict:** REJECT
+
+**Finding:** Kobayashi's mechanical duplicate-palette fix is correct; `beatmap-editor.md` §3.4 now shows single palette row. `git diff --check` passes.
+
+**Remaining Blockers:**
+- `design-docs/architecture.md` still lists `PTS_LOW_BAR` and `PTS_HIGH_BAR` in active scoring constants block.
+- `design-docs/feature-specs.md` still lists `LOW_BAR_BASE_PTS` and `HIGH_BAR_BASE_PTS` in active constants table.
+- `design-docs/architecture.md` still lists `RequiredVAction` in active component hotness/data-flow tables even though the runtime component no longer exists.
+
+**Criteria Status:**
+1. LowBar/HighBar active authoring guidance removed: PASS
+2. Remaining LowBar/HighBar references clearly archived/future-only: FAIL
+3. Beatmap-editor.md §3.4 palette not malformed: PASS
+4. Architecture examples readable: PARTIAL
+5. `git diff --check`: PASS
+
+**Revision Owner:** Marquez (escalation).
+
+---
+
+### Kujan's Escalated Review Verdict — After Marquez's Revision (2026-05-10T15:45:30.046-07:00)
+
+**Verdict:** REJECT
+
+**Finding:** Marquez's escalated cleanup passes `git diff --check` and removes live `RequiredVAction` runtime architecture from active docs. LowBar/HighBar authoring references in editor/integration/rhythm/architecture surfaces are now clearly marked archived, future-only, or not runtime-supported.
+
+**Remaining Blocker:** `design-docs/feature-specs.md` still lists `LOW_BAR_BASE_PTS` and `HIGH_BAR_BASE_PTS` as current defaults in active obstacle spawning balancing parameters table. This continues to present LowBar/HighBar scoring constants as live/current.
+
+**Required Revision:** Remove those LowBar/HighBar base-point rows from active balancing parameters table, or move them to explicitly archived/future-only section that cannot be read as current runtime scoring guidance.
+
+**Revision Owner:** Fenster.
+
+---
+
+### Kujan's Final Verdict — APPROVED (2026-05-10T16:03:00.125-07:00)
+
+**Reviewer:** Kujan  
+**Verdict:** APPROVED
+
+**Criteria Check:**
+1. Active docs must not invite LowBar/HighBar authoring as runtime-supported: **PASS**. No active doc presents LowBar/HighBar as authorable. Editor palette is `["shape_gate", "split_path"]` only.
+2. Remaining LowBar/HighBar references clearly archived/future-only: **PASS**. Every surviving mention in architecture.md, rhythm-design.md, beatmap-editor.md, beatmap-integration.md, and game.md is explicitly tagged archival, historical, or future design space.
+3. Feature specs and architecture must not present RequiredVAction, LowBar/HighBar constants as live guidance: **PASS**. `LOW_BAR_BASE_PTS`/`HIGH_BAR_BASE_PTS` removed from feature-specs.md. `PTS_LOW_BAR`/`PTS_HIGH_BAR` and `RequiredVAction` removed from active architecture tables. architecture.md §2.3–2.4 notes these are archival only.
+4. Beatmap-editor.md must not duplicate palette or expose LowBar/HighBar as authorable: **PASS**. §3.3 glyph row explicitly says "Archived LowBar/HighBar are not authorable." `constants.js` excludes them from `EDITOR_OBSTACLE_KINDS`.
+5. `git diff --check`: **PASS**. Exit code 0, no trailing-whitespace or conflict-marker issues.
+
+**Non-blocking Notes:** `design-docs/archive/` files (prototype.md, beatmap-design-guidelines.md) contain historical LowBar/HighBar references. These are correctly in the archive directory and do not constitute active guidance.
+
+**Summary:** Fenster's revision successfully removed the last active blocker (`LOW_BAR_BASE_PTS`/`HIGH_BAR_BASE_PTS` from feature-specs balancing table). All five review criteria now pass. Issue #125 docs cleanup is commit-ready.
+
+---
+
+### Kobayashi Investigation: Squad Loop Tool Permissions (2026-05-10T15:43:34.669-07:00)
+
+**Investigator:** Kobayashi (CI/CD Release Engineer)  
+**Decision:** No per-repository permission policy exists for Squad/Ralph loop filesystem operations.
+
+**Key Finding:** `.github/workflows/squad-heartbeat.yml` already has `permissions.contents: write` (granted in commit 38b0847), enabling `touch` and git persistence.
+
+**Conclusion:** No action required. The Squad loop already has GitHub Actions foundation to persist file edits.
+
+
+### 2026-05-10T16:18:13.457-07:00: User directive
+**By:** yashasg (via Copilot)
+**What:** Prioritize unblocking Squad over anything else.
+**Why:** User request — captured for team memory
+
+# Decision Proposal — Squad loop template parity for unblock work
+
+**Author:** Kobayashi
+**Date:** 2026-05-10T18:10:33.662-07:00
+**Status:** proposed
+
+## Decision
+
+Keep installed Squad loop workflow templates in parity with active repository workflows for trigger policy, GitHub token permissions, and action major versions before diagnosing runtime-level permission denials.
+
+## Rationale
+
+Stale installed templates can reintroduce scheduled heartbeat behavior or deprecated action majors during upgrades, making the loop appear read-only or outdated even when the active workflow has been fixed. Repository workflows can define GitHub token scopes such as `contents: write`, but they cannot grant Copilot/runtime UI permissions like `apply_patch` or local shell write allowlists.
+
+## Files touched
+
+- `.squad/templates/workflows/squad-heartbeat.yml`
+- `.squad/templates/workflows/squad-triage.yml`
+- `.squad/templates/workflows/squad-issue-assign.yml`
+- `.squad/templates/workflows/sync-squad-labels.yml`
+- `.squad/templates/workflows/squad-label-enforce.yml`
+- `.squad/agents/kobayashi/history.md`
+
+### 2026-05-09T00:41:48.960-07:00: Fenster Decision Inbox — Beatmap Quality Loop 1
+
+Date: 2026-05-09T00:41:48.960-07:00
+Agent: Fenster (Tools Engineer)
+
+## Decision
+
+Ship Loop 1 as diagnostics-only instrumentation in `tools/level_designer.py` via CLI flags, without changing default beatmap generation behavior.
+
+## Why
+
+- Team asked for a low-risk loop focused on measuring quality gaps before schema/runtime changes.
+- Existing runtime/beatmap schema is integer beat-index based; sub-beat authoring changes are out of scope for this loop.
+- Diagnostics can quantify off-beat potential now and de-risk follow-up loops.
+
+## What was implemented
+
+1. Subdivision-aware candidate snapping for:
+   - current quarter-only snap,
+   - quarter grid,
+   - eighth grid,
+   - triplet grid.
+2. Internal snapped-event diagnostics rows include:
+   - beat index,
+   - grid time,
+   - subdivision label,
+   - residual ms,
+   - strength/confidence proxies (`flux`, `intensity`, derived intensity confidence, pass count).
+3. Artifacts:
+   - residual summaries,
+   - subdivision histogram,
+   - gap histogram (50ms bins),
+   - same-shape run metrics baseline from generated beatmaps.
+4. CLI controls:
+   - `--diagnostics-out`,
+   - `--diagnostics-only`.
+
+## 2_drama Loop 1 findings (headline)
+
+- Current quarter-only snap keeps 60/216 events.
+- Eighth grid captures substantially more close-alignment events (170 within 20ms).
+- Triplet grid captures additional structured off-beat material (all events within 80ms).
+
+## Follow-up recommendation
+
+Use this diagnostics path as the gate for Loop 2 candidate authoring experiments; keep runtime/schema untouched until diagnostics and playtest thresholds are agreed.
+
+### 2026-05-08T11:47:09.246-07:00: User directive
+**By:** yashasg (via Copilot)
+**What:** Floor rings should be drawn as 2D on the floor quad/texture in XY space, then the floor texture/quad should be rotated into the XZ floor plane; do not assume the ring must remain hand-emitted world-space geometry.
+**Why:** User correction — captured for team memory
+### 2026-05-08T11:47:09.246-07:00: Keaton re-evaluation — floor ring texture architecture
+
+**Context**
+- User clarified target architecture: draw floor ring in 2D (XY) on a floor texture/quad, then orient that textured quad onto the world floor (XZ).
+
+**Decision Input**
+- Under this architecture, `app/util/shape_vertices.h` can be deleted entirely after rewiring runtime ring rendering away from `shape_verts::CIRCLE` and updating tests/benchmarks that currently include it.
+- Preferred raylib path to evaluate: `LoadRenderTexture` + `BeginTextureMode` + `ClearBackground` + `DrawRing`/`DrawCircleLines` (2D pass), then sample that texture on a world-floor mesh (`DrawMesh`/material diffuse map or `DrawPlane` with texture-capable shader/material path).
+
+**Key Constraints**
+- Current mesh shader (`app/systems/camera_system.cpp`) does not sample textures; it shades `colDiffuse` only, so a texture floor needs shader/material changes or a separate floor draw path.
+- Current `RenderTargets` RAII (`world`, `ui`) will likely need an additional owned floor texture/render target resource and lifecycle coverage.
+- RenderTexture Y-flip and UV mapping must be validated to avoid upside-down/mirrored floor rings.
+
+**Likely rewiring scope**
+- `app/systems/game_render_system.cpp` (replace immediate-mode annulus with textured-floor draw path)
+- `app/systems/camera_system.cpp` + `app/rendering/camera_resources.h` (resource creation/ownership for floor texture and possibly floor material/shader)
+- `tests/test_perspective.cpp`, `benchmarks/bench_perspective.cpp` (remove `shape_verts::*` dependencies)
+- Optional: `tests/test_gpu_resource_lifecycle.cpp` (new RAII type-trait/idempotent-release checks for floor texture resource)
+
+### 2026-05-08T11:53:19.588-07:00: **COMPLETED** shape_vertices.h removal
+
+**Decision:** Floor ring geometry now generates circle points locally in `app/systems/game_render_system.cpp` using trig per segment. `app/util/shape_vertices.h` is deleted.
+
+**Rationale:** Floor rings are a floor-rendering concern (2D ring logic on XZ plane), not shared reusable shape data. Removes stale custom vertex-table maintenance.
+
+**Implementation:** 
+- Rewired `draw_floor_rings()` off `shape_verts::CIRCLE` to local trig-based generation.
+- Deleted `app/util/shape_vertices.h` and all references.
+- Updated `tests/test_perspective.cpp` and `benchmarks/bench_perspective.cpp` to remove shape_vertices dependency.
+- Verified: `./build.sh` + `./build/shapeshifter_tests` all pass (APPROVED by Kujan).
+
+**Scope owned by:** Keaton (implementation) + Kujan (review, APPROVED).
+
+### 2026-05-08T11:59:39.840-07:00: Floor render system split
+
+**By:** Keaton  
+**Requested by:** yashasg
+
+**Decision**
+- Move floor-only rendering helpers and draw orchestration from `app/systems/game_render_system.cpp` into `app/systems/floor_render_system.cpp`.
+- Keep `game_render_system.cpp` responsible for pass flow (camera setup, floor pass call, world/effects meshes) while floor geometry/details live in the dedicated system.
+
+**Why**
+- Reduces file complexity and keeps floor rendering concerns isolated.
+- Preserves ECS/raylib flow and behavior with a narrow interface: `floor_render_system(const entt::registry&)`.
+
+**Implementation Notes**
+- Added `app/systems/floor_render_system.cpp` and `app/systems/floor_render_system.h`.
+- `game_render_system.cpp` now calls `floor_render_system(reg)` and no longer contains floor helper code.
+- Added declaration in `app/systems/all_systems.h`.
+
+### 2026-05-08T11:59:39.840-07:00: Kujan review — floor render split (approved)
+
+**By:** Kujan  
+**Requested by:** yashasg
+
+**Decision**
+- Approve Keaton's floor render split.
+
+**Review outcome**
+- `game_render_system.cpp` is materially cleaner and remains coherent as the world-pass orchestrator.
+- Floor-specific drawing logic is isolated in `app/systems/floor_render_system.cpp` with a narrow ECS-facing entrypoint declared in headers.
+- Build wiring is intact via existing systems glob; no CMake drift detected.
+- No stale `shape_vertices` references remain in `app/`, `tests/`, or `benchmarks/`.
+- Validation reproduced successfully: `VCPKG_ROOT=/Users/yashasgujjar/vcpkg ./build.sh` and `./build/shapeshifter_tests`.
+
+**Non-blocking note**
+- Unrelated `.squad` churn (health reports/history updates) is present in working tree; keep product commit scope focused.
+
+### 2026-05-08T13:03:11.140-07:00: Keaton cleanup — file_logger removal + session_logger scope decision
+
+**By:** Keaton  
+**Requested by:** yashasg
+
+**Decision**
+- Deleted dead `file_logger` module (`app/util/file_logger.h/.cpp`) and CMake entries.
+- Deleted legacy forwarding header `app/components/camera.h`.
+- Deleted obsolete `benchmarks/bench_file_logger.cpp`.
+- Deferred raylib callback migration for `session_logger` to future work.
+
+**Rationale for deferral**
+- raylib `SetTraceLogCallback` is global process state; would capture unrelated TraceLog traffic.
+- `session_logger` is scoped, structured, and ECS-driven (test-player telemetry only).
+- Safe migration requires custom filtering/prefixing and callback lifecycle control (revisit later if needed).
+
+**Implementation validated**
+- Removed CMake source entries; stale references eliminated from `tests/test_camera_entity_contracts.cpp`.
+- No build regressions or warnings.
+
+### 2026-05-08T13:03:11.140-07:00: Kujan review — file_logger cleanup + session_logger deferral (APPROVED)
+
+**By:** Kujan  
+**Requested by:** yashasg
+**Revision owner:** Keaton
+
+**Findings**
+- High-confidence removals were complete and safe. No stale references in app/tests/bench/CMake.
+- CMake wiring correct after cleanup.
+- Benchmark deletion appropriate; coverage maintained by other benchmark files.
+- TraceLog callback deferral justified: callback is global state, current code emits many unrelated logs.
+- No warnings or regression hazards.
+- Validation: `VCPKG_ROOT=/Users/yashasgujjar/vcpkg ./build.sh` and `./build/shapeshifter_tests` (2063 assertions, 758 test cases).
+
+**Verdict:** APPROVE
+
+### 2026-05-08T13:08:46.440-07:00: Keaton implementation audit — raylib replacement candidates
+
+**By:** Keaton  
+**Requested by:** yashasg  
+**Scope:** Read-only audit of `app/` for homegrown implementations replaceable with direct raylib APIs.
+
+**High-confidence replacements (replace-with-raylib)**
+1. HUD hexagon path: replace manual trig + 6 `DrawTriangle` with `DrawPoly({cx, cy}, 6, radius, -90.0f, color)`.
+2. Beatmap file loading: replace `std::ifstream` with `LoadFileText()` / `UnloadFileText()`.
+
+**Medium-confidence needs design decision**
+1. Floor geometry (`draw_floor_lines`/`draw_floor_rings`): immediate-mode `rlBegin`/`rlVertex3f` → possible `DrawLine3D`/`DrawTriangle3D`/textured-floor.
+2. Input/display: `screen_to_virtual()` letterbox mapping and `Camera2D` alternatives.
+3. Persistence: `settings_persistence.cpp` + `high_score_persistence.cpp` file I/O.
+
+**Keep (do not replace)**
+- Obstacle model assembly, session logger, platform display glue, procedural SFX, font loading, song playback logic, collision/timing math, haptics bridge.
+
+**Proposed cleanup order**
+1. Replace HUD hexagon with `DrawPoly`.
+2. Replace beatmap file text ingestion with `LoadFileText`.
+3. Decide floor rendering target architecture before touching rlgl floor primitives.
+### 2026-05-08T13:15:08.642-07:00: Raylib cleanup stale-reference validation pattern
+
+**By:** Baer  
+**Requested by:** yashasg
+
+**Pattern**
+- When removing raylib-replacement leftovers (helpers/includes/files), run a scoped stale-reference grep against only `app/`, `tests/`, `benchmarks/`, and `CMakeLists.txt` for deleted symbols/paths, then run full build + test validation.
+
+**Why it matters**
+- Most regressions in cleanup passes are orphaned references in build wiring or test/benchmark includes, not runtime behavior changes.
+- This catches dead-surface linkage failures quickly without widening noise to docs or archive files.
+
+### 2026-05-08T13:15:08.642-07:00: Safe raylib API replacements for HUD/file I/O/floor lines
+
+**By:** Keaton  
+**Requested by:** yashasg
+
+**Decision**
+- Replace HUD hexagon fan triangulation with `DrawPoly(..., 6, radius, -90.0f, ...)`.
+- Replace beatmap/constants full-file ingestion from `std::ifstream` iterators with `LoadFileText`/`UnloadFileText`.
+- Replace floor lane/grid/beat `RL_LINES` emission with `DrawLine3D`, but keep floor ring annulus geometry on existing `RL_TRIANGLES` path (design-gated).
+
+**Why**
+- These substitutions reduce custom rendering/file-loading code while preserving behavior and diagnostics.
+- They stay inside the approved cleanup surface and avoid touching design-gated rendering architecture.
+
+### 2026-05-08T13:15:08.642-07:00: Kujan review: safe raylib API replacements (Keaton)
+
+**Requested by:** yashasg  
+**Revision owner:** Keaton  
+**Verdict:** APPROVE
+
+**Findings**
+- Scope matches the approved replacement set and does not cross into design-gated floor annulus architecture changes.
+- HUD hexagon fill replacement is correct and warning-safe: `DrawPoly(..., 6, radius, -90.0f, ...)`.
+- Beatmap/constants loading correctly uses `LoadFileText`/`UnloadFileText`; constants parse failures now emit useful `TraceLog(LOG_WARNING, ...)` details without suppressing fallback behavior.
+- Floor lane/grid/beat-line emission uses `DrawLine3D`; annulus ring geometry remains on the existing `RL_TRIANGLES` path (untouched by this review scope).
+- No stale app/tests/bench/CMake references were found for removed helper surfaces relevant to this change set.
+
+**Validation**
+- Reproduced: `VCPKG_ROOT=/Users/yashasgujjar/vcpkg ./build.sh`
+- Reproduced: `./build/shapeshifter_tests`
+- Result: all tests passed (2063 assertions in 758 test cases).
+### 2026-05-08T13:38:14.844-07:00: User directive
+**By:** yashasg (via Copilot)
+**What:** Move-into-system cleanup candidates should leave no useless `app/util/` files behind after references move, and directory creation/existence helpers should use raylib APIs such as `MakeDirectory`/`DirectoryExists` instead of `std::filesystem` wrappers.
+**Why:** User request — captured for team memory
+### 2026-05-08T13:32:04.383-07:00: Fenster app/util cleanup audit (read-only)
+
+Requested by: yashasg
+
+#### Team-relevant decisions from audit
+
+1. **Move-only candidates (low risk, no raylib dependency):**
+   - `app/util/test_player_helpers.h` → inline static helpers inside `app/systems/test_player_system.cpp` (or a local `test_player_system_helpers.h` under systems).
+   - `app/util/enum_names.h` → move into logging/test-player surface (`app/systems/test_player_system.cpp` + `app/util/session_logger.cpp` local helper scope).
+   - `app/util/safe_localtime.h` → move into `session_logger.cpp` (single logging concern) and call site in `test_player_session.cpp`.
+   - `app/util/obstacle_counter.*` → move to systems/session ownership (`app/systems/` or `app/session/`) because it is wired and consumed only in phase/session transitions.
+
+2. **Raylib-replace candidates (staged):**
+   - `app/util/settings_persistence.cpp` and `app/util/high_score_persistence.cpp` can replace stream I/O with `LoadFileText`/`UnloadFileText` and `SaveFileText`.
+   - Keep `persistence::Status` mapping behavior intact; current tests assert exact statuses for missing/corrupt/unwritable-path paths.
+
+3. **Keep/design-gated surfaces:**
+   - `app/util/beat_map_loader.*` stays (already using `LoadFileText`; parser/validator is shared runtime+tests).
+   - `app/util/rhythm_math.h`, `app/util/session_logger.*`, `app/util/settings.h`, `app/util/persistence_policy.*`, `app/util/fs_utils.h` are not straight deletions without cross-system refactors or policy changes.
+
+4. **Reference impact (must-update if moving/deleting):**
+   - test/player logging helpers: `tests/test_test_player_system.cpp`, `tests/test_beat_log_system.cpp`, `app/systems/beat_log_system.cpp`, `app/session/test_player_session.cpp`, `app/game_loop.cpp`.
+   - obstacle counter: `app/session/play_session.cpp`, `app/systems/game_state_system.cpp`, `tests/test_signal_lifecycle_nogated.cpp`, `tests/test_helpers.h`.
+   - persistence helpers: `app/game_loop.cpp`, `tests/test_settings_persistence.cpp`, `tests/test_high_score_persistence.cpp`, `tests/test_high_score_integration.cpp`.
+
+5. **Build/bench note:**
+   - No benchmark references currently depend on these util headers.
+   - `CMakeLists.txt` uses `file(GLOB UTIL_SOURCES app/util/*.cpp)`, so deleting/moving util `.cpp` files does not require manual source-list edits, but include-path call sites must be updated.
+# Keaton app/util cleanup audit (read-only)
+
+**When:** 2026-05-08T13:32:04.383-07:00  
+**Requested by:** yashasg  
+**Scope checked:** `app/`, `tests/`, `benchmarks/`, `CMakeLists.txt`  
+**Implementation status:** No code changes made
+
+## 1) Full `app/util/` inventory + classification
+
+| File | Classification | Why |
+|---|---|---|
+| `app/util/beat_map_loader.h` | keep/domain utility | Core beatmap parsing/validation API used by runtime + many tests. |
+| `app/util/beat_map_loader.cpp` | keep/domain utility | Owns parser/validator behavior and `LoadFileText` ingestion already. |
+| `app/util/enum_names.h` | delete-now candidate | Thin wrappers over `magic_enum::enum_name`; can be inlined at call sites. |
+| `app/util/fs_utils.h` | delete-now candidate | Single-use wrapper around `std::filesystem::create_directories`. |
+| `app/util/high_score_persistence.h` | keep/domain utility | Persistence API used by session startup/terminal save. |
+| `app/util/high_score_persistence.cpp` | keep/domain utility | Structured error/status handling and JSON clamping logic. |
+| `app/util/obstacle_counter.h` | delete-now candidate | Signal-based counter can be replaced by direct EnTT obstacle presence query. |
+| `app/util/obstacle_counter.cpp` | delete-now candidate | Wiring/listeners become unnecessary with direct query approach. |
+| `app/util/persistence_policy.h` | keep/domain utility | Shared path/status contract used by settings + high-score flows. |
+| `app/util/persistence_policy.cpp` | keep/domain utility | Platform path resolution used at startup and in persistence layers. |
+| `app/util/rhythm_math.h` | keep/domain utility | Shared timing math consumed by collision/scoring/session init and tests. |
+| `app/util/safe_localtime.h` | move-into-system | Extremely narrow helper only used by session logging flow. |
+| `app/util/session_logger.h` | design-gated | Could migrate to raylib global trace callback, but callback is global state. |
+| `app/util/session_logger.cpp` | design-gated | Current scoped session telemetry is safer than process-global callback. |
+| `app/util/settings.h` | keep/domain utility | Shared settings singleton definition used across systems/UI/tests. |
+| `app/util/settings_persistence.h` | keep/domain utility | Persistence API for settings and dirty-save contract. |
+| `app/util/settings_persistence.cpp` | keep/domain utility | JSON validation/clamping + structured persistence failures. |
+| `app/util/test_player_helpers.h` | move-into-system | Purely `test_player_system` action-queue helpers; narrow ownership. |
+
+---
+
+## 2) Delete/replace/move candidates (with refs, targets, steps, risks, confidence)
+
+## A) `app/util/obstacle_counter.h/.cpp` — **delete-now candidate**
+
+**Exact current references**
+- Runtime:
+  - `app/session/play_session.cpp:3,48-53`
+  - `app/systems/game_state_system.cpp:5,108-110`
+- Tests:
+  - `tests/test_helpers.h:7,50-51`
+  - `tests/test_components.cpp:113`
+  - `tests/test_signal_lifecycle_nogated.cpp:19,23-137` (dedicated signal lifecycle coverage)
+
+**Target API/system**
+- Replace with direct EnTT query in owning system:
+  - `reg.view<ObstacleTag>().begin() == reg.view<ObstacleTag>().end()` (or storage emptiness check) inside `game_state_system`.
+- Keep ownership in `game_state_system`/`play_session` (remove signal wiring from session setup).
+
+**Migration steps**
+1. In `game_state_system.cpp`, replace `ObstacleCounter` check with direct obstacle presence query.
+2. In `play_session.cpp`, remove context emplace/reset + `wire_obstacle_counter`.
+3. Delete `app/util/obstacle_counter.h/.cpp`.
+4. Update tests that assert signal-wiring semantics to assert runtime semantics (SongComplete only after obstacles drained).
+5. Run stale-reference sweep in `app/ tests/ benchmarks/ CMakeLists.txt`.
+
+**Risks**
+- Medium: removes current signal-lifecycle contract tests; must preserve terminal-phase behavior coverage.
+- Low perf risk: direct query is cheap at this scale; prior EnTT audit already flagged this as safe near-term win.
+
+**Confidence:** **High**
+
+---
+
+## B) `app/util/fs_utils.h` — **delete-now candidate**
+
+**Exact current references**
+- `app/util/persistence_policy.cpp:54`
+- `app/util/settings_persistence.cpp:129`
+- `app/util/high_score_persistence.cpp:199`
+
+**Target API/system**
+- Replace with direct `std::filesystem::create_directories(..., std::error_code&)` in each persistence owner (`persistence_policy.cpp`, `settings_persistence.cpp`, `high_score_persistence.cpp`).
+
+**Migration steps**
+1. Inline create-directories/error handling at each call site.
+2. Remove `#include "fs_utils.h"` from those files.
+3. Delete `app/util/fs_utils.h`.
+4. Verify status mapping (`DirectoryCreateFailed`) remains unchanged.
+
+**Risks**
+- Low: wrapper is purely pass-through and call sites already consume `error_code`.
+
+**Confidence:** **High**
+
+---
+
+## C) `app/util/enum_names.h` — **delete-now candidate**
+
+**Exact current references**
+- Runtime:
+  - `app/systems/test_player_system.cpp:11,280-322`
+  - `app/util/session_logger.cpp:7,92-131`
+- Tests:
+  - `tests/test_helpers_and_functions.cpp:4,169-188`
+  - `tests/test_obstacle_model_slice.cpp:64,121`
+
+**Target API/system**
+- Replace wrappers with direct `magic_enum::enum_name(...)` at each owner callsite.
+- Keep name-format behavior in logging/tests by using `std::string_view` conversion where needed.
+
+**Migration steps**
+1. Remove `ToString` helper calls in test player + session logger + tests.
+2. Include `magic_enum/magic_enum.hpp` directly where required.
+3. Delete `app/util/enum_names.h`.
+
+**Risks**
+- Low: behavior should be equivalent; must ensure fallback handling for empty names remains intentional.
+- Medium in tests: string conversion (`std::string_view` vs C-string) needs explicit normalization.
+
+**Confidence:** **Medium-High**
+
+---
+
+## D) `app/util/safe_localtime.h` — **move-into-system**
+
+**Exact current references**
+- `app/session/test_player_session.cpp:6,51`
+- `app/util/session_logger.cpp:13,23`
+
+**Target API/system**
+- Move localtime portability helper into owning logging/session implementation files (anonymous namespace static helper), not shared `util/`.
+
+**Migration steps**
+1. Copy helper into `session_logger.cpp` (and optionally `test_player_session.cpp`, or share via session module-local header).
+2. Remove include usage from both files.
+3. Delete `app/util/safe_localtime.h`.
+
+**Risks**
+- Low: tiny helper; risk is only duplicated platform `#ifdef` drift.
+
+**Confidence:** **High**
+
+---
+
+## E) `app/util/test_player_helpers.h` — **move-into-system**
+
+**Exact current references**
+- Runtime:
+  - `app/systems/test_player_system.cpp:13` + many calls (`test_player_*`)
+- Tests:
+  - `tests/test_test_player_system.cpp:5,209-210,268-305` (direct helper usage)
+
+**Target API/system**
+- Move action/planned-list helper functions into `app/systems/test_player_system.cpp` (owner).
+- For tests, either:
+  - switch to black-box system-behavior assertions, or
+  - define minimal test-local helper shims inside `test_test_player_system.cpp`.
+
+**Migration steps**
+1. Move helper implementations into anonymous namespace in `test_player_system.cpp`.
+2. Remove util header include from runtime.
+3. Refactor tests away from util header direct coupling.
+4. Delete `app/util/test_player_helpers.h`.
+
+**Risks**
+- Medium: current tests directly call these helpers; test refactor required.
+
+**Confidence:** **Medium**
+
+---
+
+## 3) Files that should **NOT** be removed (and why)
+
+- `beat_map_loader.h/.cpp`: central parser/validator contract used by runtime and broad shipped-beatmap test surface.
+- `rhythm_math.h`: shared timing constants/functions used by collision/scoring/session init + many unit tests.
+- `persistence_policy.h/.cpp`: shared platform path + status contract; removing would duplicate platform logic.
+- `settings.h`, `settings_persistence.h/.cpp`: settings state and persistence API are used across game loop, UI controller, input/systems, and tests.
+- `high_score_persistence.h/.cpp`: high-score lifecycle is wired into startup + terminal-phase save and has dedicated tests.
+- `session_logger.h/.cpp`: currently scoped telemetry with explicit lifecycle; replacing with global raylib callback remains design-gated.
+
+---
+
+## 4) Build/reference surface check (`app`, `tests`, `benchmarks`, `CMakeLists.txt`)
+
+- `CMakeLists.txt` compiles util via glob: `file(GLOB UTIL_SOURCES ... app/util/*.cpp)` at `CMakeLists.txt:97`.
+- No benchmark references to util targets/symbols found in `benchmarks/`.
+- Test surface impact:
+  - `obstacle_counter` removal would require updates in `test_helpers.h`, `test_components.cpp`, and `test_signal_lifecycle_nogated.cpp`.
+  - `test_player_helpers.h` removal would require updates in `tests/test_test_player_system.cpp`.
+  - `enum_names.h` removal would require updates in `tests/test_helpers_and_functions.cpp` and `tests/test_obstacle_model_slice.cpp`.
+
+No implementation performed in this pass.
+### 2026-05-08T13:23:49.542-07:00: EnTT functionality audit (app/ read-only)
+
+**By:** Keaton  
+**Requested by:** yashasg
+
+**Scope**
+- Read-only audit of `app/` for homegrown structures/plumbing that can be replaced or simplified with EnTT v3.16 facilities.
+- Parallel review input gathered from C++ Expert and DoD Architect passes.
+
+**High-confidence safe-next changes**
+1. Replace `ObstacleCounter` signal-based count (`app/util/obstacle_counter.*`, read in `app/systems/game_state_system.cpp`) with direct EnTT storage/view emptiness checks (`reg.view<ObstacleTag>().empty()`).
+2. Replace test-player planned bookkeeping arrays (`TestPlayerState::planned/planned_count` in `app/components/test_player.h`, helper usage in `app/util/test_player_helpers.h`, `app/systems/test_player_system.cpp`) with an existential component tag such as `TestPlayerPlannedTag`.
+3. Tighten popup fade loop from `view<ScorePopup>() + try_get` to a structural view over guaranteed components (`ScorePopup`, `PopupDisplay`, `Color`) in `app/systems/popup_display_system.cpp`.
+4. Mechanical cleanup: use context `emplace` idempotently for wiring/scratch helpers and range-based `reg.destroy(begin,end)` where validity invariants are explicit.
+
+**Design-gated items**
+1. Migrate `PendingEnergyEffects` and `ScorePopupRequestQueue` (current context vectors in `app/components/gameplay_intents.h` and `app/systems/scoring_system.cpp`) to `entt::dispatcher` events.
+2. Consider migrating audio/haptic bounded queues (`AudioQueue`, `HapticQueue`) to dispatcher-backed events only if bounded-drop policy and frame delivery ordering are explicitly preserved.
+3. Convert lane mask fields (`BlockedLanes::mask`, `BeatEntry::blocked_mask`) from raw `uint8_t` shifts to a typed EnTT bitmask enum pattern (`_entt_enum_as_bitmask`) after loader and validation boundaries are planned.
+
+**Keep (no EnTT replacement recommended)**
+- Per-kind structural collision views in `collision_system` (data access is explicit and aligned with obstacle archetypes).
+- Mesh/model lifetime ownership code in `obstacle_render_entity` (raylib GPU resource semantics dominate).
+- Collect-then-remove safety pattern in scoring/despawn-like systems.
+# EnTT Architecture Audit — app/ (Read-only)
+
+**Date:** 2026-05-08T13:23:49.542-07:00  
+**By:** Keyser  
+**Requested by:** yashasg  
+**Scope:** Identify where EnTT data structures/functionality should replace homegrown ECS-adjacent code in `app/`, and where EnTT should explicitly not be used.
+
+## High-confidence cleanup candidates
+
+# Rabin → Team — Subdivision Charting for 2_drama
+
+**Date:** 2026-05-09T00:29:44.825-07:00
+**Author:** Rabin (Level Designer)
+**Status:** Recommendation, awaiting Coordinator routing.
+
+## Decision summary
+
+`tools/level_designer.py` over-flattens every onset to the nearest
+quarter beat *before* shape / lane / gap decisions are made:
+
+- `snap_events_to_beats(events, beats, tolerance=0.08)` discards any
+  onset more than 80 ms from a quarter beat. At 130.56 BPM the
+  half-beat is ≈ 230 ms away — i.e., 3× outside the snap window — so
+  every 8th and triplet onset in `2_drama` is silently dropped.
+- `classify_subdivision()` runs *after* snapping, so the phase it
+  measures is always ≈ 0 or ≈ 1 → it returns `"downbeat"` for
+  essentially every surviving event.
+- `2_drama_beatmap.json` stores each obstacle as `{ "beat": <int>, ... }`,
+  an integer index into `beat_times[]`; the schema cannot represent
+  sub-beat positions even if the analyser produced them.
+
+This explains, without further investigation, the Sr Game Designer
+findings of gap=2 ≈ 51 % on hard and the triangle ×11 / square ×9 runs
+on medium/hard — both are quantisation artefacts of the quarter-only
+grid, not section-classifier failures alone.
+
+## What I'm asking the team for
+
+1. **Fenton:** when the tempogram/PLP experiment runs, please emit the
+   six per-song measurements listed in §4 of
+   `rabin-subdivision-charting.md` (subdivision histogram of onsets;
+   subdivision-of-origin per shipped obstacle; run analysis tagged by
+   subdivision; projected gap distribution under sub-beat candidates +
+   readability caps; PLP-confidence overlay vs `quiet_regions`;
+   strength-tier audit). Run them against `2_drama` first.
+2. **Decision gate:** if eighth + triplet onsets in 2_drama are
+   < 15 % of total onsets, drop the sub-beat authoring track and
+   redirect content effort to the quarter-grid issues in Sr Game
+   Designer's review (100 % ShapeGate, hard triangle inversion).
+3. **Schema discussion (deferred):** if the experiment justifies
+   sub-beat authoring, opening the integer-`beat` schema requires
+   Fenster + Marquez sign-off; routing that is a separate decision.
+
+## Readability guardrails for any future sub-beat author pass
+
+- Absolute-time minimum IOI per difficulty (not integer beats):
+  easy 350 ms, medium 230 ms, hard 180 ms.
+- No two consecutive non-quarter obstacles — every off-beat must be
+  flanked by on-beats.
+- `MIN_SHAPE_CHANGE_GAP` reformulated in seconds, not beat count, so
+  it scales correctly when half-beats appear.
+- Per-bar density cap: easy 4, medium 6, hard 8 obstacles per 4-beat
+  bar.
+
+## Out of scope
+
+- Schema change to `beat` field (deferred to follow-up).
+- New obstacle kinds (LowBar/HighBar still removed on this branch per
+  Marquez's cleanup).
+- Global offset retune (Sr Game Designer's Issue 4 — engine-side, not
+  level-design).
+
+## Artifact
+
+`/Users/yashasgujjar/.copilot/session-state/c0ddd445-5e34-4aa9-bc53-563866a0574f/files/beat-grid-tempogram-review-2026-05-09/rabin-subdivision-charting.md`

@@ -82,6 +82,35 @@ TEST_CASE("pipeline: swipe Up/Down has no lane effect",
     CHECK(lane.target == 1);   // unchanged: Up/Down produce no lane delta
 }
 
+
+TEST_CASE("pipeline: swipe up starts jump in same pipeline call",
+          "[input_pipeline]") {
+    auto reg = make_rhythm_registry();
+    auto player = make_rhythm_player(reg);
+    auto& vstate = reg.get<VerticalState>(player);
+    REQUIRE(vstate.mode == VMode::Grounded);
+
+    push_go(reg, Direction::Up);
+    run_pipeline(reg);
+
+    CHECK(vstate.mode == VMode::Jumping);
+    CHECK(vstate.timer == constants::JUMP_DURATION);
+}
+
+TEST_CASE("pipeline: swipe down starts slide in same pipeline call",
+          "[input_pipeline]") {
+    auto reg = make_rhythm_registry();
+    auto player = make_rhythm_player(reg);
+    auto& vstate = reg.get<VerticalState>(player);
+    REQUIRE(vstate.mode == VMode::Grounded);
+
+    push_go(reg, Direction::Down);
+    run_pipeline(reg);
+
+    CHECK(vstate.mode == VMode::Sliding);
+    CHECK(vstate.timer == constants::SLIDE_DURATION);
+}
+
 TEST_CASE("pipeline: swipe right at right boundary does not wrap lane",
           "[input_pipeline]") {
     auto reg = make_rhythm_registry();
@@ -128,6 +157,13 @@ TEST_CASE("pipeline: semantic shape press remaps lane target to shape lane",
     run_pipeline(reg);
 
     CHECK(lane.target == 2);
+}
+
+TEST_CASE("pipeline: desktop keyboard slot mapping keeps Z left and C right lanes",
+          "[input_pipeline]") {
+    CHECK(lane_for_shape(kKeyboardShapeLeft) == 0);
+    CHECK(lane_for_shape(kKeyboardShapeCenter) == 1);
+    CHECK(lane_for_shape(kKeyboardShapeRight) == 2);
 }
 
 TEST_CASE("pipeline: gameplay HUD raygui shape press triggers player shape input",
