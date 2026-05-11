@@ -164,15 +164,18 @@ void scoring_system(entt::registry& reg, float dt) {
                 std::floor(r.obs.base_points * timing_mult));
 
             // Chain bonus
-            score.chain_count++;
-            score.chain_timer = 0.0f;
-            if (score.chain_count >= 2 && score.chain_count <= 4) {
-                points += constants::CHAIN_BONUS[score.chain_count];
-            } else if (score.chain_count >= 5) {
-                points += constants::CHAIN_BONUS[4] + (score.chain_count - 4) * 100;
+            const bool contributes_to_chain = r.obs.base_points > 0;
+            if (contributes_to_chain) {
+                score.chain_count++;
+                score.chain_timer = 0.0f;
+                if (score.chain_count >= 2 && score.chain_count <= 4) {
+                    points += constants::CHAIN_BONUS[score.chain_count];
+                } else if (score.chain_count >= 5) {
+                    points += constants::CHAIN_BONUS[4] + (score.chain_count - 4) * 100;
+                }
             }
 
-            if (results && score.chain_count > results->max_chain) {
+            if (contributes_to_chain && results && score.chain_count > results->max_chain) {
                 results->max_chain = score.chain_count;
             }
 
