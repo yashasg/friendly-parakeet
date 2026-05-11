@@ -30,10 +30,10 @@ int count_mesh_children(entt::registry& reg) {
     return count;
 }
 
-entt::entity make_mesh_factory_obstacle(entt::registry& reg, ObstacleKind kind) {
+entt::entity make_mesh_factory_obstacle(entt::registry& reg) {
     auto parent = reg.create();
     reg.emplace<WorldTransform>(parent, WorldTransform{{constants::LANE_X[1], -120.0f}});
-    reg.emplace<Obstacle>(parent, kind, int16_t{0});
+    reg.emplace<Obstacle>(parent, int16_t{0});
     reg.emplace<DrawSize>(parent, constants::SCREEN_W_F, 80.0f);
     reg.emplace<Color>(parent, Color{255, 255, 255, 255});
     return parent;
@@ -55,7 +55,6 @@ TEST_CASE("entity: ShapeGate Circle - correct components and color", "[archetype
     CHECK(!reg.all_of<BlockedLanes>(e));
     CHECK(!reg.all_of<RequiredLane>(e));
 
-    CHECK(reg.get<Obstacle>(e).kind == ObstacleKind::ShapeGate);
     CHECK(reg.get<Obstacle>(e).base_points == int16_t{constants::PTS_SHAPE_GATE});
     CHECK(reg.get<RequiredShape>(e).shape == Shape::Circle);
     CHECK(reg.get<WorldTransform>(e).position.x == 360.0f);
@@ -97,7 +96,7 @@ TEST_CASE("entity: obstacle mesh overflow does not create orphan MeshChild", "[a
 
     auto parent = reg.create();
     reg.emplace<WorldTransform>(parent, WorldTransform{{360.0f, -120.0f}});
-    reg.emplace<Obstacle>(parent, ObstacleKind::ShapeGate, int16_t{constants::PTS_SHAPE_GATE});
+    reg.emplace<Obstacle>(parent, int16_t{constants::PTS_SHAPE_GATE});
     reg.emplace<DrawSize>(parent, constants::SCREEN_W_F, 80.0f);
     reg.emplace<Color>(parent, Color{80, 200, 255, 255});
     reg.emplace<RequiredShape>(parent, Shape::Circle);
@@ -136,7 +135,7 @@ TEST_CASE("entity: obstacle mesh lifetime is wired by the factory", "[archetype]
 
 TEST_CASE("entity: direct mesh factory cleanup does not depend on ObstacleTag order", "[archetype][render][cleanup]") {
     entt::registry reg;
-    auto parent = make_mesh_factory_obstacle(reg, ObstacleKind::ShapeGate);
+    auto parent = make_mesh_factory_obstacle(reg);
     reg.emplace<RequiredShape>(parent, Shape::Circle);
     reg.emplace<ObstacleTag>(parent);
 
@@ -153,7 +152,7 @@ TEST_CASE("entity: mesh factory rejects invalid RequiredShape before children", 
 
     SECTION("ShapeGate") {
         entt::registry reg;
-        auto parent = make_mesh_factory_obstacle(reg, ObstacleKind::ShapeGate);
+        auto parent = make_mesh_factory_obstacle(reg);
         reg.emplace<RequiredShape>(parent, invalid_shape);
 
         CHECK_THROWS_AS(spawn_obstacle_meshes(reg, parent), std::logic_error);
@@ -162,7 +161,7 @@ TEST_CASE("entity: mesh factory rejects invalid RequiredShape before children", 
 
     SECTION("ComboGate") {
         entt::registry reg;
-        auto parent = make_mesh_factory_obstacle(reg, ObstacleKind::ComboGate);
+        auto parent = make_mesh_factory_obstacle(reg);
         reg.emplace<RequiredShape>(parent, invalid_shape);
         reg.emplace<BlockedLanes>(parent, uint8_t{0b101});
 
@@ -172,7 +171,7 @@ TEST_CASE("entity: mesh factory rejects invalid RequiredShape before children", 
 
     SECTION("SplitPath") {
         entt::registry reg;
-        auto parent = make_mesh_factory_obstacle(reg, ObstacleKind::SplitPath);
+        auto parent = make_mesh_factory_obstacle(reg);
         reg.emplace<RequiredShape>(parent, invalid_shape);
         reg.emplace<RequiredLane>(parent, int8_t{1});
 
@@ -184,7 +183,7 @@ TEST_CASE("entity: mesh factory rejects invalid RequiredShape before children", 
 TEST_CASE("entity: mesh factory rejects invalid RequiredLane before children", "[archetype][render][validation]") {
     SECTION("negative lane") {
         entt::registry reg;
-        auto parent = make_mesh_factory_obstacle(reg, ObstacleKind::SplitPath);
+        auto parent = make_mesh_factory_obstacle(reg);
         reg.emplace<RequiredShape>(parent, Shape::Square);
         reg.emplace<RequiredLane>(parent, int8_t{-1});
 
@@ -194,7 +193,7 @@ TEST_CASE("entity: mesh factory rejects invalid RequiredLane before children", "
 
     SECTION("lane beyond lane table") {
         entt::registry reg;
-        auto parent = make_mesh_factory_obstacle(reg, ObstacleKind::SplitPath);
+        auto parent = make_mesh_factory_obstacle(reg);
         reg.emplace<RequiredShape>(parent, Shape::Square);
         reg.emplace<RequiredLane>(parent, int8_t{3});
 
@@ -228,7 +227,6 @@ TEST_CASE("entity: LaneBlock - blocked lanes and no shape components", "[archety
     CHECK(!reg.all_of<RequiredShape>(e));
     CHECK(!reg.all_of<RequiredLane>(e));
 
-    CHECK(reg.get<Obstacle>(e).kind == ObstacleKind::LaneBlock);
     CHECK(reg.get<Obstacle>(e).base_points == int16_t{constants::PTS_LANE_BLOCK});
     CHECK(reg.get<BlockedLanes>(e).mask == uint8_t{0b010});
 }
@@ -243,7 +241,6 @@ TEST_CASE("entity: ComboGate - RequiredShape and BlockedLanes", "[archetype]") {
     REQUIRE(reg.all_of<ObstacleTag, MotionVelocity, DrawLayer, WorldTransform, Obstacle, RequiredShape, BlockedLanes, DrawSize, Color>(e));
     CHECK(!reg.all_of<RequiredLane>(e));
 
-    CHECK(reg.get<Obstacle>(e).kind == ObstacleKind::ComboGate);
     CHECK(reg.get<Obstacle>(e).base_points == int16_t{constants::PTS_COMBO_GATE});
     CHECK(reg.get<RequiredShape>(e).shape == Shape::Triangle);
     CHECK(reg.get<BlockedLanes>(e).mask == uint8_t{0b101});
@@ -257,7 +254,6 @@ TEST_CASE("entity: SplitPath - RequiredShape and RequiredLane", "[archetype]") {
     REQUIRE(reg.all_of<ObstacleTag, MotionVelocity, DrawLayer, WorldTransform, Obstacle, RequiredShape, RequiredLane, DrawSize, Color>(e));
     CHECK(!reg.all_of<BlockedLanes>(e));
 
-    CHECK(reg.get<Obstacle>(e).kind == ObstacleKind::SplitPath);
     CHECK(reg.get<Obstacle>(e).base_points == int16_t{constants::PTS_SPLIT_PATH});
     CHECK(reg.get<RequiredShape>(e).shape == Shape::Square);
     CHECK(reg.get<RequiredLane>(e).lane == int8_t{2});

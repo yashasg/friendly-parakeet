@@ -127,12 +127,15 @@ static entt::entity add_shape_child(entt::registry& reg, entt::entity parent,
 void spawn_obstacle_meshes(entt::registry& reg, entt::entity logical) {
     wire_obstacle_mesh_lifetime(reg);
 
-    auto& obs = reg.get<Obstacle>(logical);
     const auto* wt_ptr = reg.try_get<WorldTransform>(logical);
     auto& col = reg.get<Color>(logical);
     auto& dsz = reg.get<DrawSize>(logical);
+    const ObstacleKind kind = obstacle_kind_from_components(
+        reg.all_of<RequiredShape>(logical),
+        reg.all_of<BlockedLanes>(logical),
+        reg.all_of<RequiredLane>(logical));
 
-    switch (obs.kind) {
+    switch (kind) {
         case ObstacleKind::ShapeGate: {
             if (!wt_ptr) break;
             const auto& wt = *wt_ptr;

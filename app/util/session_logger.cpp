@@ -79,8 +79,7 @@ void session_log_on_obstacle_spawn(entt::registry& reg, entt::entity entity) {
     auto* song = reg.ctx().find<SongState>();
     float t = song ? song->song_time : 0.0f;
 
-    auto* obs = reg.try_get<Obstacle>(entity);
-    if (!obs) return;
+    if (!reg.all_of<Obstacle>(entity)) return;
 
     auto* beat = reg.try_get<BeatInfo>(entity);
     int beat_idx = beat ? beat->beat_index : -1;
@@ -92,7 +91,11 @@ void session_log_on_obstacle_spawn(entt::registry& reg, entt::entity entity) {
     if (rlane) lane = rlane->lane;
 
     float arrival = beat ? beat->arrival_time : 0.0f;
-    const std::string_view kind_name = session_log_enum_name_or_unknown(obs->kind);
+    const ObstacleKind kind = obstacle_kind_from_components(
+        reg.all_of<RequiredShape>(entity),
+        reg.all_of<BlockedLanes>(entity),
+        reg.all_of<RequiredLane>(entity));
+    const std::string_view kind_name = session_log_enum_name_or_unknown(kind);
     const std::string_view shape_name = req ? session_log_enum_name_or_unknown(req->shape) : std::string_view{"-"};
 
     session_log_write(*log, t, "GAME",
@@ -112,8 +115,7 @@ void session_log_on_scored(entt::registry& reg, entt::entity entity) {
     auto* song = reg.ctx().find<SongState>();
     float t = song ? song->song_time : 0.0f;
 
-    auto* obs = reg.try_get<Obstacle>(entity);
-    if (!obs) return;
+    if (!reg.all_of<Obstacle>(entity)) return;
 
     bool is_miss = reg.any_of<MissTag>(entity);
 
@@ -122,7 +124,11 @@ void session_log_on_scored(entt::registry& reg, entt::entity entity) {
     int beat_num = beat ? beat->beat_index : -1;
     float expected_t = beat ? beat->arrival_time : 0.0f;
     float drift = beat ? (t - beat->arrival_time) : 0.0f;
-    const std::string_view kind_name = session_log_enum_name_or_unknown(obs->kind);
+    const ObstacleKind kind = obstacle_kind_from_components(
+        reg.all_of<RequiredShape>(entity),
+        reg.all_of<BlockedLanes>(entity),
+        reg.all_of<RequiredLane>(entity));
+    const std::string_view kind_name = session_log_enum_name_or_unknown(kind);
 
     if (is_miss) {
         session_log_write(*log, t, "GAME",
