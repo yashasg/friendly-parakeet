@@ -362,8 +362,10 @@ void game_loop_shutdown(entt::registry& reg) {
         auto* music = reg.ctx().find<MusicContext>();
         if (music && music->loaded) {
             StopMusicStream(music->stream);
-            UnloadMusicStream(music->stream);
+            unload_music_stream_resources(music->stream);
             music->loaded = false;
+            music->started = false;
+            music->paused = false;
         }
     }
     camera::shutdown(reg);
