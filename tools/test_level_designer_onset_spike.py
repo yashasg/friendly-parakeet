@@ -118,6 +118,48 @@ class TestExperimentalOnsetTiming(unittest.TestCase):
             self.assertIn("onset_time_sec", obs)
             self.assertIn("beat_time_sec", obs)
 
+    def test_build_beatmap_rejects_legacy_grid_without_diagnostics_flag(self):
+        with self.assertRaisesRegex(ValueError, "diagnostics-only"):
+            ld.build_beatmap(
+                _analysis_fixture(),
+                ["easy"],
+                experimental_onset_timing=False,
+            )
+
+        beatmap = ld.build_beatmap(
+            _analysis_fixture(),
+            ["easy"],
+            experimental_onset_timing=False,
+            allow_diagnostics_legacy_grid=True,
+        )
+        self.assertGreater(beatmap["difficulties"]["easy"]["count"], 0)
+
+    def test_shipped_generation_does_not_call_legacy_grid_functions(self):
+        blockers = (
+            mock.patch.object(ld, "select_beats", side_effect=AssertionError("legacy select_beats called")),
+            mock.patch.object(ld, "assign_obstacle", side_effect=AssertionError("legacy assign_obstacle called")),
+            mock.patch.object(ld, "fill_max_gaps", side_effect=AssertionError("legacy fill_max_gaps called")),
+        )
+        with blockers[0] as select_mock, blockers[1] as assign_mock, blockers[2] as fill_mock:
+            beatmap = ld.build_beatmap(_varied_fixture(), ["easy", "medium", "hard"])
+
+        self.assertGreater(beatmap["difficulties"]["easy"]["count"], 0)
+        select_mock.assert_not_called()
+        assign_mock.assert_not_called()
+        fill_mock.assert_not_called()
+
+    def test_shipped_obstacles_have_public_onset_provenance(self):
+        beatmap = ld.build_beatmap(_varied_fixture(), ["easy", "medium", "hard"])
+        public_classes = set(ld.ONSET_CLASS_TO_OBSTACLE)
+        for diff in ("easy", "medium", "hard"):
+            beats = beatmap["difficulties"][diff]["beats"]
+            self.assertGreater(len(beats), 0)
+            for obs in beats:
+                self.assertEqual(obs.get("timing_source"), "onset")
+                self.assertIsInstance(obs.get("source_event_idx"), int)
+                self.assertIsInstance(obs.get("onset_time_sec"), (int, float))
+                self.assertIn(obs.get("onset_class"), public_classes)
+
     def test_experimental_mode_uses_onset_time_when_available(self):
         beatmap = ld.build_beatmap(
             _analysis_fixture(),

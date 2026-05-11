@@ -42,7 +42,7 @@ Portrait mode. Logical resolution scales to device via raylib virtual resolution
     │ (0,0)              (720,0)  │
     │                             │
     │   Lane 0   Lane 1   Lane 2  │
-    │   x=180    x=360    x=540   │
+    │   x=60     x=360    x=660   │
     │                             │
     │          obstacles          │
     │          scroll ↓           │
@@ -69,7 +69,7 @@ namespace constants {
 
     // ── Lanes ─────────────────────────────────────────
     constexpr int   LANE_COUNT        = 3;
-    constexpr float LANE_X[3]         = { 180.0f, 360.0f, 540.0f };
+    constexpr float LANE_X[3]         = { 60.0f, 360.0f, 660.0f };
     constexpr float LANE_SWITCH_SPEED = 12.0f;   // lerp factor per second
 
     // ── Player ────────────────────────────────────────
@@ -271,7 +271,7 @@ struct ScoreState {
     int32_t  displayed_score;    // for smooth scroll-up animation
     int32_t  high_score;         // persisted across sessions
     int32_t  chain_count;        // consecutive obstacles cleared
-    float    chain_timer;        // seconds since last clear — chain breaks if > threshold
+    float    chain_timer;        // seconds since last clear, retained across rests
     float    distance_traveled;  // total pixels scrolled (for distance bonus)
 };
 
@@ -597,10 +597,10 @@ the same frame (unidirectional data flow).
  │  │                           set transition → GAME_OVER.  │
  │  │                                                        │
  │  │ 11. scoring_system        Process scored obstacles.    │
- │  │                           Apply burnout multiplier.    │
- │  │                           Update chain. Spawn popup    │
- │  │                           entity. Add distance bonus.  │
- │  │                           Push SFX::BurnoutBank.       │
+ │  │                           Apply timing multiplier and  │
+ │  │                           chain bonus. Queue popup     │
+ │  │                           requests. Add distance bonus.│
+ │  │                           Positive popups emit SFX.    │
  │  └────────────────────────────────────────────────────────┘
  │
  │  ┌─ PHASE 5: CLEANUP & FX ──────────────────────────────┐
@@ -1112,14 +1112,13 @@ int main(int argc, char* argv[]) {
            │                ▼                                  │
            │     ┌───────────────────────────────────────────┐ │
            │     │ scoring_system:                            │ │
-           │     │   reads BurnoutState.zone at time of match│◀┘
-           │     │   multiplier = zone_to_mult(Danger) = 3.0 │
-           │     │   chain_bonus = chain_to_bonus(chain=3)   │
-           │     │              = +100                        │
-           │     │   total = 200 × 3.0 + 100 = 700           │
-           │     │   ScoreState.score += 700                  │
-           │     │   spawn ScorePopup(700, tier=3)            │
-           │     │   AudioQueue.push(BurnoutBank)             │
+           │     │   reads TimingGrade at time of match       │◀┘
+           │     │   timing_multiplier(Good) = 1.0            │
+           │     │   chain_bonus(chain=3) = +100              │
+           │     │   total = 200 × 1.0 + 100 = 300           │
+           │     │   ScoreState.score += 300                  │
+           │     │   queue ScorePopupRequest(300, Good)       │
+           │     │   popup_feedback emits ScorePopup SFX      │
            │     └───────────────────────────────────────────┘
            │
            ▼

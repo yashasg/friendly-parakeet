@@ -21,14 +21,21 @@
 //   - Event replay: second pipeline tick resets lane.lerp_t (symptom: #213 bug)
 
 #include <catch2/catch_test_macros.hpp>
+#include "input/keyboard_shape_mapping.h"
 #include "test_helpers.h"
 #include "ui/screen_controllers/gameplay_hud_screen_controller.h"
-#include "input/keyboard_shape_mapping.h"
 #include "util/shape_lane_mapping.h"
 
 // Runs the fixed-tick input path.
 static void run_pipeline(entt::registry& reg, float dt = 0.016f) {
     game_state_system(reg, dt);
+}
+
+TEST_CASE("pipeline: keyboard shape shortcuts follow left-center-right lanes",
+          "[input_pipeline][keyboard][issue662]") {
+    CHECK(lane_for_shape(shape_for_keyboard_slot(KeyboardShapeSlot::Left)) == 0);
+    CHECK(lane_for_shape(shape_for_keyboard_slot(KeyboardShapeSlot::Center)) == 1);
+    CHECK(lane_for_shape(shape_for_keyboard_slot(KeyboardShapeSlot::Right)) == 2);
 }
 
 // ── Swipe → lane change ───────────────────────────────────────────────────

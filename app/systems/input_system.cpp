@@ -150,16 +150,22 @@ void input_system(entt::registry& reg, float raw_dt) {
     // Keyboard shape-button presses: encode semantic payload directly — no
     // entity lookup needed (#273).
     if (IsKeyPressed(KEY_ONE) || IsKeyPressed(KEY_Z)) {
-        disp.enqueue<ButtonPressEvent>({ButtonPressKind::Shape, kKeyboardShapeLeft,
-                                        MenuActionKind::Confirm, 0});
+        disp.enqueue<ButtonPressEvent>({ButtonPressKind::Shape,
+                                        shape_for_keyboard_slot(KeyboardShapeSlot::Left),
+                                        MenuActionKind::Confirm,
+                                        0});
     }
     if (IsKeyPressed(KEY_TWO) || IsKeyPressed(KEY_X)) {
-        disp.enqueue<ButtonPressEvent>({ButtonPressKind::Shape, kKeyboardShapeCenter,
-                                        MenuActionKind::Confirm, 0});
+        disp.enqueue<ButtonPressEvent>({ButtonPressKind::Shape,
+                                        shape_for_keyboard_slot(KeyboardShapeSlot::Center),
+                                        MenuActionKind::Confirm,
+                                        0});
     }
     if (IsKeyPressed(KEY_THREE) || IsKeyPressed(KEY_C)) {
-        disp.enqueue<ButtonPressEvent>({ButtonPressKind::Shape, kKeyboardShapeRight,
-                                        MenuActionKind::Confirm, 0});
+        disp.enqueue<ButtonPressEvent>({ButtonPressKind::Shape,
+                                        shape_for_keyboard_slot(KeyboardShapeSlot::Right),
+                                        MenuActionKind::Confirm,
+                                        0});
     }
     if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
         disp.enqueue<ButtonPressEvent>({ButtonPressKind::Menu, Shape::Circle,

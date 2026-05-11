@@ -20,7 +20,7 @@ struct SongState {
     // Recalculated from bpm/lead_beats at session init; read-only during play.
     float beat_period     = 0.5f;   // seconds per beat
     float lead_time       = 2.0f;   // total approach window in seconds
-    float scroll_speed    = 520.0f; // pixels per second (APPROACH_DIST / lead_time)
+    float scroll_speed    = constants::APPROACH_DIST / lead_time; // pixels per second
     float window_duration = 0.3f;   // hit-window width in seconds
     float half_window     = 0.15f;  // window_duration / 2
     float morph_duration  = 0.1f;   // shape-morph animation length in seconds

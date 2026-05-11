@@ -26,6 +26,9 @@ PendingEnergyEffects& pending_energy_for(entt::registry& reg) {
 
 void enqueue_energy_effect(entt::registry& reg, float delta, bool flash = false) {
     auto& pending = pending_energy_for(reg);
+    if (pending.events.size() >= pending.events.capacity()) {
+        ++pending.capacity_exceeded_count;
+    }
     pending.events.push_back(PendingEnergyEffects::Event{delta, flash});
 }
 
@@ -55,11 +58,8 @@ void scoring_system(entt::registry& reg, float dt) {
         score.score += static_cast<int>(dt * constants::PTS_PER_SECOND);
     }
 
-    // Chain timer
+    // Track rest duration for diagnostics/feedback, but only misses break chain.
     score.chain_timer += dt;
-    if (score.chain_timer > 2.0f) {
-        score.chain_count = 0;
-    }
 
     auto* results = reg.ctx().find<SongResults>();   // #309: hoisted above loop
 
@@ -84,6 +84,9 @@ void scoring_system(entt::registry& reg, float dt) {
             if (results) results->miss_count++;
             score.chain_count = 0;
             score.chain_timer = 0.0f;
+            if (miss_buf.size() >= miss_buf.capacity()) {
+                ++scratch.miss_capacity_exceeded_count;
+            }
             miss_buf.push_back({e, true});
         }
 
@@ -94,6 +97,9 @@ void scoring_system(entt::registry& reg, float dt) {
             if (results) results->miss_count++;
             score.chain_count = 0;
             score.chain_timer = 0.0f;
+            if (miss_buf.size() >= miss_buf.capacity()) {
+                ++scratch.miss_capacity_exceeded_count;
+            }
             miss_buf.push_back({e, false});
         }
         // Apply structural removals after iteration — safe.
@@ -123,6 +129,9 @@ void scoring_system(entt::registry& reg, float dt) {
             r.obs      = obs;
             r.has_timing = true;
             r.timing = tg;
+            if (hit_buf.size() >= hit_buf.capacity()) {
+                ++scratch.hit_capacity_exceeded_count;
+            }
             hit_buf.push_back(r);
         }
 
@@ -134,6 +143,9 @@ void scoring_system(entt::registry& reg, float dt) {
             r.popup_xy = wt.position;
             r.obs      = obs;
             r.has_timing = false;
+            if (hit_buf.size() >= hit_buf.capacity()) {
+                ++scratch.hit_capacity_exceeded_count;
+            }
             hit_buf.push_back(r);
         }
 
@@ -169,20 +181,25 @@ void scoring_system(entt::registry& reg, float dt) {
                 }
             }
 
-            // Chain multiplier
-            score.chain_count++;
-            score.chain_timer = 0.0f;
+            const bool contributes_to_chain = r.obs.base_points > 0;
+            if (contributes_to_chain) {
+                score.chain_count++;
+                score.chain_timer = 0.0f;
+            }
             const float chain_mult = chain_multiplier_for_count(score.chain_count);
             int points = static_cast<int>(
                 std::floor(static_cast<float>(r.obs.base_points) * timing_mult * chain_mult));
 
-            if (results && score.chain_count > results->max_chain) {
+            if (contributes_to_chain && results && score.chain_count > results->max_chain) {
                 results->max_chain = score.chain_count;
             }
 
             score.score += points;
 
             // Queue timing/score popup; popup_feedback_system owns spawn/SFX.
+            if (popup_queue.requests.size() >= popup_queue.requests.capacity()) {
+                ++popup_queue.capacity_exceeded_count;
+            }
             popup_queue.requests.push_back({
                 r.popup_xy.x,
                 r.popup_xy.y,
@@ -214,6 +231,9 @@ void scoring_system(entt::registry& reg, float dt) {
         for (auto e : ns_view) {
             HitRecord r;
             r.e = e;
+            if (cleanup_buf.size() >= cleanup_buf.capacity()) {
+                ++scratch.hit_capacity_exceeded_count;
+            }
             cleanup_buf.push_back(r);
         }
         for (auto& r : cleanup_buf) {

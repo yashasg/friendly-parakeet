@@ -48,6 +48,10 @@ void popup_display_system(entt::registry& reg, float dt) {
         if (alpha_ratio > 1.0f) alpha_ratio = 1.0f;
         pd.a = static_cast<uint8_t>(static_cast<float>(col.a) * alpha_ratio);
         if (popup.remaining <= 0.0f) {
+            auto& scratch = popup_scratch_for(reg);
+            if (expired.size() >= expired.capacity()) {
+                ++scratch.capacity_exceeded_count;
+            }
             expired.push_back(entity);
         }
     }

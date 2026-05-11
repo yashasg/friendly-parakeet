@@ -1,10 +1,12 @@
 #pragma once
 
+#include <cstddef>
 #include <entt/entt.hpp>
 #include "../components/game_state.h"
 
 // Phase 0.5: Test player AI (enqueues synthetic input actions)
 void runtime_system_scratch_init(entt::registry& reg);
+void runtime_system_scratch_reserve(entt::registry& reg, std::size_t beat_capacity);
 void test_player_system(entt::registry& reg, float dt);
 
 // Phase 2: Game State

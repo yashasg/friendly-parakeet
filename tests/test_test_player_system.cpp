@@ -2,10 +2,8 @@
 #include "test_helpers.h"
 #include "components/test_player.h"
 #include "util/session_logger.h"
-
 #include <cstdio>
 #include <string>
-
 static entt::registry make_test_player_registry(TestPlayerSkill skill = TestPlayerSkill::Pro) {
     entt::registry reg = make_rhythm_registry();
     auto& tp = reg.ctx().emplace<TestPlayerState>();

@@ -16,6 +16,7 @@
 #include "../entities/camera_entity.h"
 #include "../entities/player_entity.h"
 #include "../content/level_content_config.h"
+#include "../systems/all_systems.h"
 #include "../systems/game_phase_transition.h"
 #include "../constants.h"
 #include <filesystem>
@@ -77,6 +78,8 @@ void setup_play_session(entt::registry& reg) {
     if (!loaded) {
         TraceLog(LOG_WARNING, "Failed to load beatmap: %s", beatmap_path);
     }
+    runtime_system_scratch_init(reg);
+    runtime_system_scratch_reserve(reg, beatmap.beats.size());
 
     // Wire high score: derive song_id from beatmap filename and set current_key_hash.
     // The key string is built once in a stack buffer (no heap); ensure_entry pre-registers
@@ -117,14 +120,16 @@ void setup_play_session(entt::registry& reg) {
         for (const char* path : audio_paths) {
             Music stream = LoadMusicStream(path);
             stream.looping = false;
-            if (stream.frameCount > 0) {
+            if (music_stream_is_playable(stream)) {
                 music->stream  = stream;
                 music->loaded  = true;
                 music->started = false;
+                music->paused = false;
                 SetMusicVolume(music->stream, music->volume);
                 TraceLog(LOG_INFO, "Loaded music: %s", path);
                 break;
             }
+            unload_music_stream_resources(stream);
         }
     }
 

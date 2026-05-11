@@ -391,6 +391,14 @@ The player can hear the beat coming. The timing is legible. What the player cann
   ╚═════════════════════════════════════════════════════════════╝
 ```
 
+## Decision
+
+Hexagon remains in the game as an automatic rest state, not a fourth playable
+shape. Players perform notes with Circle, Square, or Triangle; the shape-window
+system restores Hexagon after MorphOut so the player is visually "released"
+between notes. The UI therefore exposes exactly three shape inputs and no
+Hexagon button/key.
+
 ## Hexagon Design Principles
 
 ```
@@ -403,6 +411,11 @@ The player can hear the beat coming. The timing is legible. What the player cann
 
   3.  No scoring  — Hexagon state contributes nothing to score.
       Every moment as Hexagon is an opportunity to be ready.
+
+  4.  Content must respect release  — authored shape changes must
+      leave enough beat spacing for MorphOut/rest readability.
+      If a sequence makes auto-return feel like a surprise penalty,
+      adjust the beatmap spacing rather than adding a Hexagon input.
 ```
 
 ---

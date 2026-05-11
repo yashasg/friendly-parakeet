@@ -71,5 +71,43 @@ class TestExtractFeaturesDuration(unittest.TestCase):
         self.assertEqual(features["last_event_time"], 0.0)
 
 
+class TestQuietFallbackStructure(unittest.TestCase):
+    def test_quiet_fallback_promotes_pre_chorus_before_high_energy_drop(self):
+        mel_times = np.arange(0.0, 40.0, 1.0, dtype=np.float64)
+        mel_energies = np.full_like(mel_times, 0.4, dtype=np.float64)
+        mel_energies[(mel_times >= 5.0) & (mel_times < 10.0)] = 0.05
+        mel_energies[(mel_times >= 10.0) & (mel_times < 22.0)] = 0.7
+        mel_energies[(mel_times >= 22.0) & (mel_times < 24.0)] = 0.05
+        mel_energies[(mel_times >= 24.0) & (mel_times < 32.0)] = 1.0
+
+        structure = rp._build_structure_from_quiet({
+            "duration": 40.0,
+            "quiet": [
+                {"type": "QUIET", "t": 5.0},
+                {"type": "NOISY", "t": 10.0},
+                {"type": "QUIET", "t": 22.0},
+                {"type": "NOISY", "t": 24.0},
+                {"type": "QUIET", "t": 32.0},
+            ],
+            "mel_times": mel_times,
+            "mel_energies": mel_energies,
+        })
+
+        noisy_sections = [s["section"] for s in structure if s["intensity"] != "low"]
+        self.assertIn("pre-chorus", noisy_sections)
+        self.assertIn("drop", noisy_sections)
+
+    def test_quiet_fallback_keeps_single_noisy_segment_as_verse_without_energy_context(self):
+        structure = rp._build_structure_from_quiet({
+            "duration": 20.0,
+            "quiet": [{"type": "QUIET", "t": 12.0}],
+            "mel_times": np.array([], dtype=np.float64),
+            "mel_energies": np.array([], dtype=np.float64),
+        })
+
+        self.assertEqual(structure[0]["section"], "verse")
+        self.assertEqual(structure[0]["intensity"], "medium")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
