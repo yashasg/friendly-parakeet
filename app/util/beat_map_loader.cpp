@@ -97,6 +97,7 @@ static std::optional<ObstacleKind> parse_kind(const std::string& s) {
     if (s == "lane_block")       return ObstacleKind::LaneBlock;
     if (s == "combo_gate")       return ObstacleKind::ComboGate;
     if (s == "split_path")       return ObstacleKind::SplitPath;
+    if (s == "onset_marker")     return ObstacleKind::OnsetMarker;
     return std::nullopt;
 }
 

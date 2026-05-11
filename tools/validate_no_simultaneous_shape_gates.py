@@ -1,20 +1,17 @@
 #!/usr/bin/env python3
-"""Validate that no unprotected ``shape_gate`` obstacles in the same difficulty
-are authored within ``MORPH_DURATION`` (120 ms) of each other unless they share
-``(lane, shape)`` (issue #528).
+"""Validate that no protected onset cluster contains conflicting required gates.
 
-Two ``shape_gate`` obstacles at near-zero ``Δt`` with different
-``(lane, shape)`` are physically unsatisfiable: the player can occupy only
-one lane and morphing between shapes takes 120 ms (see
-``design-docs/rhythm-spec.md`` ``MORPH_DURATION``).  Distinct broad-layer
-onsets within the protected 50 ms window are preserved as authored obstacles;
-outside that protected window, obstacles still need a hard playability minimum
-at the ``(lane, shape)`` level.
+Two required ``shape_gate`` obstacles inside the protected 50 ms public-layer
+window with different ``(lane, shape)`` are physically unsatisfiable: the
+player can occupy only one lane/shape at an instant. Distinct broad-layer
+onsets must remain in the beatmap, but only one row in a protected group may
+remain a required action; sibling public-layer rows should be non-blocking
+``onset_marker`` entries that preserve their onset metadata.
 
-The check is "selection-side de-conflict only" — no beat fallback, no
-synthetic filler.  Existing distinct cross-layer onsets that survive the
-collapse pass remain in the beatmap; only one obstacle is emitted per
-near-simultaneous distinct ``(lane, shape)`` pair.
+The check is "representation-side de-conflict only" — no beat fallback, no
+synthetic filler. Existing distinct cross-layer onsets remain in the beatmap;
+the validator only fails when more than one independent required action is
+authored in the same protected group.
 
 Exit codes:
   0 — all beatmaps pass
@@ -35,55 +32,57 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_DIR = REPO_ROOT / "content" / "beatmaps"
 
-# rhythm-spec.md MORPH_DURATION = 120 ms.  Pairs at exactly the same instant
-# are also caught (Δt = 0 ≤ 0.120).
-MORPH_DURATION_SEC = 0.120
 PROTECTED_CROSS_LAYER_SEC = 0.050
-PUBLIC_ONSET_CLASSES = {"percussive", "harmonic", "full-spectrum"}
+REQUIRED_ACTION_KINDS = {"shape_gate", "combo_gate", "split_path"}
 
 
-def is_protected_cross_layer_pair(a: dict, b: dict, dt: float) -> bool:
-    a_class = a.get("onset_class")
-    b_class = b.get("onset_class")
-    return (
-        isinstance(a_class, str)
-        and isinstance(b_class, str)
-        and a_class in PUBLIC_ONSET_CLASSES
-        and b_class in PUBLIC_ONSET_CLASSES
-        and a_class != b_class
-        and dt <= PROTECTED_CROSS_LAYER_SEC
-    )
+def required_action_key(beat: dict) -> tuple[object, object] | None:
+    kind = beat.get("kind", "shape_gate")
+    if kind not in REQUIRED_ACTION_KINDS:
+        return None
+    if kind == "combo_gate":
+        return (tuple(beat.get("blocked", ())), beat.get("shape"))
+    return (beat.get("lane"), beat.get("shape"))
 
 
-def find_simultaneous_shape_gate_pairs(
+def find_required_action_groups(
     beats: list[dict],
-    threshold_sec: float = MORPH_DURATION_SEC,
-) -> list[tuple[dict, dict, float]]:
-    """Return every ``(left, right, dt)`` pair of ``shape_gate`` obstacles
-    within ``threshold_sec`` whose ``(lane, shape)`` differ.
-    """
+    threshold_sec: float = PROTECTED_CROSS_LAYER_SEC,
+) -> list[list[dict]]:
+    """Return protected-time groups with conflicting required action keys."""
     rows = sorted(
         (b for b in beats
          if isinstance(b, dict)
-         and b.get("kind") == "shape_gate"
+         and required_action_key(b) is not None
          and isinstance(b.get("time_sec"), (int, float))
          and not isinstance(b.get("time_sec"), bool)),
         key=lambda b: float(b["time_sec"]),
     )
+    groups: list[list[dict]] = []
+    current: list[dict] = []
+    for row in rows:
+        if not current or float(row["time_sec"]) - float(current[-1]["time_sec"]) <= threshold_sec:
+            current.append(row)
+        else:
+            if len({required_action_key(item) for item in current}) > 1:
+                groups.append(current)
+            current = [row]
+    if len({required_action_key(item) for item in current}) > 1:
+        groups.append(current)
+    return groups
+
+
+def find_simultaneous_shape_gate_pairs(
+    beats: list[dict],
+    threshold_sec: float = PROTECTED_CROSS_LAYER_SEC,
+) -> list[tuple[dict, dict, float]]:
+    """Compatibility helper: expand conflicting protected groups into pairs."""
     pairs: list[tuple[dict, dict, float]] = []
-    n = len(rows)
-    for i in range(n):
-        a = rows[i]
-        a_t = float(a["time_sec"])
-        a_key = (a.get("lane"), a.get("shape"))
-        for j in range(i + 1, n):
-            b = rows[j]
-            b_t = float(b["time_sec"])
-            dt = b_t - a_t
-            if dt > threshold_sec:
-                break
-            if (b.get("lane"), b.get("shape")) != a_key and not is_protected_cross_layer_pair(a, b, dt):
-                pairs.append((a, b, dt))
+    for group in find_required_action_groups(beats, threshold_sec):
+        for i, a in enumerate(group):
+            for b in group[i + 1:]:
+                if required_action_key(a) != required_action_key(b):
+                    pairs.append((a, b, float(b["time_sec"]) - float(a["time_sec"])))
     return pairs
 
 
@@ -93,21 +92,26 @@ def validate_beatmap(path: Path) -> list[str]:
     findings: list[str] = []
     for difficulty, payload in beatmap.get("difficulties", {}).items():
         beats = payload.get("beats", []) or []
-        pairs = find_simultaneous_shape_gate_pairs(beats)
-        if not pairs:
+        groups = find_required_action_groups(beats)
+        if not groups:
             continue
         # Always show first 3 examples for actionable diagnostics.
-        sample = pairs[:3]
-        for a, b, dt in sample:
-            findings.append(
-                f"{name} [{difficulty}]: shape_gate pair Δt={dt*1000:.1f}ms "
-                f"(lane={a.get('lane')},shape={a.get('shape')}) vs "
-                f"(lane={b.get('lane')},shape={b.get('shape')}) at t≈{float(a['time_sec']):.3f}s (#528)"
+        sample = groups[:3]
+        for group in sample:
+            start = float(group[0]["time_sec"])
+            end = float(group[-1]["time_sec"])
+            keys = ", ".join(
+                f"(lane={beat.get('lane')},shape={beat.get('shape')},kind={beat.get('kind', 'shape_gate')},class={beat.get('onset_class')})"
+                for beat in group
             )
-        if len(pairs) > len(sample):
             findings.append(
-                f"{name} [{difficulty}]: total {len(pairs)} unplayable shape_gate "
-                f"pair(s) within {MORPH_DURATION_SEC*1000:.0f}ms (#528)"
+                f"{name} [{difficulty}]: protected group Δt={(end - start)*1000:.1f}ms "
+                f"has conflicting required actions at t≈{start:.3f}s: {keys} (#642)"
+            )
+        if len(groups) > len(sample):
+            findings.append(
+                f"{name} [{difficulty}]: total {len(groups)} protected group(s) "
+                f"with conflicting required actions within {PROTECTED_CROSS_LAYER_SEC*1000:.0f}ms (#642)"
             )
     return findings
 
@@ -127,12 +131,12 @@ def main(argv: list[str] | None = None) -> int:
         all_findings.extend(validate_beatmap(path))
 
     if all_findings:
-        print("SIMULTANEOUS SHAPE_GATE VIOLATIONS (#528):", file=sys.stderr)
+        print("PROTECTED REQUIRED-ACTION VIOLATIONS (#642):", file=sys.stderr)
         for finding in all_findings:
             print(f"  x {finding}", file=sys.stderr)
         return 1
 
-    print(f"OK: no near-simultaneous shape_gate pairs in {len(paths)} beatmap(s).")
+    print(f"OK: no protected required-action conflicts in {len(paths)} beatmap(s).")
     return 0
 
 

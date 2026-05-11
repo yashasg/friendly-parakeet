@@ -78,7 +78,8 @@ void scoring_system(entt::registry& reg, float dt) {
         auto& miss_buf = scratch.miss_buf;
         miss_buf.clear();
 
-        auto miss_view_graded = reg.view<ObstacleTag, ScoredTag, MissTag, Obstacle, TimingGrade>();
+        auto miss_view_graded = reg.view<ObstacleTag, ScoredTag, MissTag, Obstacle, TimingGrade>(
+            entt::exclude<NonScorableTag>);
         for (auto e : miss_view_graded) {
             enqueue_energy_effect(reg, -constants::ENERGY_DRAIN_MISS, true);
             if (results) results->miss_count++;
@@ -91,7 +92,7 @@ void scoring_system(entt::registry& reg, float dt) {
         }
 
         auto miss_view_ungraded = reg.view<ObstacleTag, ScoredTag, MissTag, Obstacle>(
-            entt::exclude<TimingGrade>);
+            entt::exclude<TimingGrade, NonScorableTag>);
         for (auto e : miss_view_ungraded) {
             enqueue_energy_effect(reg, -constants::ENERGY_DRAIN_MISS, true);
             if (results) results->miss_count++;

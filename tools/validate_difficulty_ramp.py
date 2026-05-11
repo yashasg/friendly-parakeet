@@ -29,6 +29,7 @@ EASY_MAX_DOMINANT_SHAPE_PCT = 65   # no single shape > this % of all shape_gates
 EASY_MIN_DISTINCT_SHAPES    = 3    # all three shapes must appear at least once
 
 DEPRECATED_KINDS = {"lane_block"}
+EASY_ALLOWED_KINDS = {"shape_gate", "onset_marker"}
 
 # Issue #529 — strict per-song ramp invariants.
 # Counts must strictly increase from one tier to the next (no equality);
@@ -94,10 +95,15 @@ def median_ioi_sec(beats: list[dict]) -> float:
 def check_count_ramp(name: str, easy: list, medium: list, hard: list) -> list[str]:
     """Issue #529 — strict count ramp easy < medium < hard."""
     violations: list[str] = []
-    pairs = [("easy", easy, "medium", medium), ("medium", medium, "hard", hard)]
-    for lower_name, lower, upper_name, upper in pairs:
-        n_lo = len(lower)
-        n_hi = len(upper)
+    required_counts = {
+        "easy": sum(1 for b in easy if b.get("kind") == "shape_gate"),
+        "medium": sum(1 for b in medium if b.get("kind") == "shape_gate"),
+        "hard": sum(1 for b in hard if b.get("kind") == "shape_gate"),
+    }
+    pairs = [("easy", "medium"), ("medium", "hard")]
+    for lower_name, upper_name in pairs:
+        n_lo = required_counts[lower_name]
+        n_hi = required_counts[upper_name]
         if n_lo == 0 or n_hi == 0:
             continue
         if n_hi - n_lo < RAMP_MIN_COUNT_DELTA:
@@ -139,14 +145,14 @@ def check_median_ioi_ramp(name: str, easy: list, medium: list, hard: list) -> li
 
 
 def check_easy_shape_gate_only(name: str, beats: list) -> list[str]:
-    """Return violations if easy has any non-shape obstacle kind (#125 contract)."""
+    """Return violations if easy has unsupported required obstacle kinds."""
     violations = []
     for b in beats:
         kind = b.get("kind", "")
-        if kind != "shape_gate":
+        if kind not in EASY_ALLOWED_KINDS:
             violations.append(
                 f"{name} easy: forbidden obstacle '{kind}' found "
-                f"(easy must be shape_gate only per #125)"
+                f"(easy required obstacles must be shape_gate only per #125; onset_marker is non-blocking metadata per #642)"
             )
     return violations
 

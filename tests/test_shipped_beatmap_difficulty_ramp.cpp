@@ -52,6 +52,10 @@ static bool is_removed_lane_kind(ObstacleKind k) {
     return k == ObstacleKind::LaneBlock;
 }
 
+static bool is_easy_allowed_kind(ObstacleKind k) {
+    return k == ObstacleKind::ShapeGate || k == ObstacleKind::OnsetMarker;
+}
+
 // ── Guard: content directory must be reachable ────────────────────────────
 
 TEST_CASE("difficulty ramp: content directory is reachable from test CWD",
@@ -60,12 +64,13 @@ TEST_CASE("difficulty ramp: content directory is reachable from test CWD",
     REQUIRE_FALSE(find_shipped_beatmaps().empty());
 }
 
-// ── Easy: shape_gate only ──────────────────────────────────────────────────
+// ── Easy: required shape gates plus non-blocking onset markers ──────────────
 //
-// Contract from #125: easy difficulty = shape_gate exclusively.
+// Contract from #125: easy difficulty = shape_gate required obstacles only.
+// Non-blocking onset_marker rows preserve public-layer onset metadata (#642).
 // This test is the regression guard Kujan required before merging #135.
 
-TEST_CASE("difficulty ramp: easy contains only shape_gate obstacles",
+TEST_CASE("difficulty ramp: easy contains only shape_gate obstacles or onset markers",
           "[difficulty_ramp][issue135][easy][shape_gate_only]") {
     const auto beatmaps = find_shipped_beatmaps();
     REQUIRE_FALSE(beatmaps.empty());
@@ -77,11 +82,12 @@ TEST_CASE("difficulty ramp: easy contains only shape_gate obstacles",
 
         for (const auto& beat : map.beats) {
             const auto k = beat.kind;
-            if (k != ObstacleKind::ShapeGate) {
+            if (!is_easy_allowed_kind(k)) {
                 FAIL_CHECK("easy shape_gate_only: " << path
-                           << " contains non-shape_gate obstacle kind="
+                           << " contains unsupported easy obstacle kind="
                            << static_cast<int>(k)
-                           << " (easy must be shape_gate-only per #125)");
+                           << " (easy required obstacles must be shape_gate-only per #125; "
+                              "onset_marker is non-blocking metadata per #642)");
             }
         }
     }

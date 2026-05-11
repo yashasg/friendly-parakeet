@@ -25,6 +25,10 @@ void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
 
     while (song->next_spawn_idx < map->beats.size()) {
         const auto& entry = map->beats[song->next_spawn_idx];
+        if (entry.kind == ObstacleKind::OnsetMarker) {
+            song->next_spawn_idx++;
+            continue;
+        }
 
         float beat_time = song->offset + entry.beat_index * song->beat_period;
         if (!entry.has_time_sec &&
