@@ -10,10 +10,16 @@
 // game_loop_init -> game_loop_shutdown integration run.
 
 #include <catch2/catch_test_macros.hpp>
+#include <cstdio>
+#include <entt/entt.hpp>
 #include <type_traits>
 
+#include "audio/audio_types.h"
+#include "audio/music_context.h"
 #include "rendering/camera_resources.h"
 #include "entities/camera_entity.h"  // GameCamera, UICamera
+#include "rendering/text_resources.h"
+#include "util/session_logger.h"
 
 // ── ShapeMeshes type traits ──────────────────────────────────────────────────
 
@@ -44,6 +50,60 @@ static_assert(std::is_move_constructible_v<RenderTargets>,
 
 static_assert(std::is_move_assignable_v<RenderTargets>,
     "RenderTargets must be move-assignable.");
+
+// ── Runtime context type traits ───────────────────────────────────────────────
+
+static_assert(!std::is_copy_constructible_v<TextContext>,
+    "TextContext must not be copy-constructible: copying Font handles would "
+    "cause double-unload on destruction.");
+
+static_assert(!std::is_copy_assignable_v<TextContext>,
+    "TextContext must not be copy-assignable.");
+
+static_assert(std::is_move_constructible_v<TextContext>,
+    "TextContext must be move-constructible for registry ctx emplace.");
+
+static_assert(std::is_move_assignable_v<TextContext>,
+    "TextContext must be move-assignable.");
+
+static_assert(!std::is_copy_constructible_v<SFXBank>,
+    "SFXBank must not be copy-constructible: copying Sound handles would "
+    "cause double-unload on destruction.");
+
+static_assert(!std::is_copy_assignable_v<SFXBank>,
+    "SFXBank must not be copy-assignable.");
+
+static_assert(std::is_move_constructible_v<SFXBank>,
+    "SFXBank must be move-constructible for registry ctx emplace.");
+
+static_assert(std::is_move_assignable_v<SFXBank>,
+    "SFXBank must be move-assignable.");
+
+static_assert(!std::is_copy_constructible_v<MusicContext>,
+    "MusicContext must not be copy-constructible: copying Music handles would "
+    "cause double-unload on destruction.");
+
+static_assert(!std::is_copy_assignable_v<MusicContext>,
+    "MusicContext must not be copy-assignable.");
+
+static_assert(std::is_move_constructible_v<MusicContext>,
+    "MusicContext must be move-constructible for registry ctx emplace.");
+
+static_assert(std::is_move_assignable_v<MusicContext>,
+    "MusicContext must be move-assignable.");
+
+static_assert(!std::is_copy_constructible_v<SessionLog>,
+    "SessionLog must not be copy-constructible: copying FILE* would "
+    "cause double-close on destruction.");
+
+static_assert(!std::is_copy_assignable_v<SessionLog>,
+    "SessionLog must not be copy-assignable.");
+
+static_assert(std::is_move_constructible_v<SessionLog>,
+    "SessionLog must be move-constructible for registry ctx emplace.");
+
+static_assert(std::is_move_assignable_v<SessionLog>,
+    "SessionLog must be move-assignable.");
 
 // ── Default state: owned = false, so destructor is a no-op ──────────────────
 
@@ -91,4 +151,70 @@ TEST_CASE("RenderTargets: release is idempotent when not owned", "[gpu_resource_
     rt.release();
     rt.release();
     SUCCEED("double release on unowned RenderTargets does not crash");
+}
+
+TEST_CASE("runtime contexts: registry erase releases default resources safely",
+          "[resource_lifecycle][issue648]") {
+    entt::registry reg;
+
+    reg.ctx().emplace<TextContext>();
+    reg.ctx().emplace<SFXBank>();
+    reg.ctx().emplace<MusicContext>();
+    reg.ctx().emplace<SessionLog>();
+
+    reg.ctx().erase<TextContext>();
+    reg.ctx().erase<SFXBank>();
+    reg.ctx().erase<MusicContext>();
+    reg.ctx().erase<SessionLog>();
+
+    SUCCEED("default runtime contexts are RAII-safe under registry erase");
+}
+
+TEST_CASE("runtime contexts: explicit release is idempotent without live handles",
+          "[resource_lifecycle][issue648]") {
+    TextContext text;
+    SFXBank sfx;
+    MusicContext music;
+    SessionLog log;
+
+    text.loaded = true;
+    sfx.loaded = true;
+    music.loaded = true;
+    music.started = true;
+    music.paused = true;
+
+    text.release();
+    text.release();
+    sfx.release();
+    sfx.release();
+    music.release();
+    music.release();
+    log.release();
+    log.release();
+
+    CHECK_FALSE(text.loaded);
+    CHECK_FALSE(sfx.loaded);
+    CHECK_FALSE(music.loaded);
+    CHECK_FALSE(music.started);
+    CHECK_FALSE(music.paused);
+    CHECK(log.file == nullptr);
+}
+
+TEST_CASE("SessionLog: move transfers file ownership",
+          "[resource_lifecycle][session_log][issue648]") {
+    SessionLog first;
+#ifdef _WIN32
+    first.file = std::fopen("NUL", "w");
+#else
+    first.file = std::fopen("/dev/null", "w");
+#endif
+    REQUIRE(first.file != nullptr);
+    first.buffer.append("pending\n");
+
+    SessionLog second{std::move(first)};
+
+    CHECK(first.file == nullptr);
+    CHECK(second.file != nullptr);
+    second.release();
+    CHECK(second.file == nullptr);
 }

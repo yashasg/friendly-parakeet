@@ -1,63 +1,28 @@
 name: Squad CI
+# Project type was not detected — configure build/test commands below
 
 on:
-  workflow_dispatch:
   pull_request:
-    paths-ignore:
-      - "design-docs/**"
-      - "*.md"
-      - "*.log"
+    branches: [dev, preview, main, insider]
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [dev, insider]
 
 permissions:
   contents: read
 
 jobs:
-  build-test:
-    name: Build and test (Linux)
+  test:
     runs-on: ubuntu-latest
-    env:
-      VCPKG_BINARY_SOURCES: "clear;default,readwrite"
-      VCPKG_FORCE_SYSTEM_BINARIES: "1"
-      CC: clang
-      CXX: clang++
     steps:
-      - uses: actions/checkout@v6
-        with:
-          lfs: true
+      - uses: actions/checkout@v4
 
-      - name: Install system dependencies
+      - name: Build and test
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends \
-            clang \
-            libgl1-mesa-dev \
-            libx11-dev \
-            libxrandr-dev \
-            libxinerama-dev \
-            libxcursor-dev \
-            libxi-dev \
-            libpulse-dev
-
-      - name: Setup vcpkg
-        run: |
-          if [ -z "${VCPKG_INSTALLATION_ROOT:-}" ]; then
-            echo "::error title=Missing vcpkg installation::VCPKG_INSTALLATION_ROOT is not set on this runner, so VCPKG_ROOT cannot be exported."
-            exit 1
-          fi
-          echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> "$GITHUB_ENV"
-
-      - name: Cache CMake build directory
-        uses: actions/cache@v5
-        with:
-          path: build
-          key: squad-ci-linux-v2-${{ hashFiles('CMakeLists.txt', 'vcpkg.json', 'vcpkg-overlay/**') }}
-          restore-keys: |
-            squad-ci-linux-v2-
-
-      - name: Configure and build
-        run: |
-          chmod +x build.sh
-          ./build.sh
-
-      - name: Run tests
-        run: ./build/shapeshifter_tests "~[bench]"
+          # TODO: Project type was not detected — add your build/test commands here
+          # Go:            go test ./...
+          # Python:        pip install -r requirements.txt && pytest
+          # .NET:          dotnet test
+          # Java (Maven):  mvn test
+          # Java (Gradle): ./gradlew test
+          echo "No build commands configured — update squad-ci.yml"

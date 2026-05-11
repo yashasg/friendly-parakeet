@@ -297,8 +297,7 @@ TEST_CASE("scoring: popup entity has full factory contract", "[scoring][popup_en
 
 TEST_CASE("scoring: NonScorableTag entity cleared without scoring", "[scoring][nonscorable]") {
     // Verifies OCP: any entity with NonScorableTag is excluded from the scoring
-    // ladder regardless of its ObstacleKind. Adding a new non-scorable obstacle
-    // kind requires zero changes to scoring_system.
+    // ladder regardless of its structural obstacle archetype.
     auto reg = make_registry();
     auto& score = reg.ctx().get<ScoreState>();
     const int score_before = score.score;

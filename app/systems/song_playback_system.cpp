@@ -2,6 +2,7 @@
 #include "../components/game_state.h"
 #include "../components/rhythm.h"
 #include "../audio/music_context.h"
+#include "../util/settings_persistence.h"
 #include <raylib.h>
 
 void song_playback_system(entt::registry& reg, float dt) {
@@ -72,15 +73,20 @@ void song_playback_system(entt::registry& reg, float dt) {
         song->song_time += dt;
     }
 
+    const auto* settings = reg.ctx().find<SettingsState>();
+    const float audio_offset_sec = settings ? settings::audio_offset_seconds(*settings) : 0.0f;
+
     // Current beat (non-decreasing)
     if (map && !map->beat_times.empty()) {
         while ((song->current_beat + 1) >= 0 &&
                static_cast<size_t>(song->current_beat + 1) < map->beat_times.size() &&
-               song->song_time >= map->beat_times[static_cast<size_t>(song->current_beat + 1)]) {
+               song->song_time >=
+                   map->beat_times[static_cast<size_t>(song->current_beat + 1)] + audio_offset_sec) {
             ++song->current_beat;
         }
-    } else if (song->beat_period > 0.0f && song->song_time >= song->offset) {
-        int beat = static_cast<int>((song->song_time - song->offset) / song->beat_period);
+    } else if (song->beat_period > 0.0f && song->song_time >= song->offset + audio_offset_sec) {
+        int beat = static_cast<int>(
+            (song->song_time - (song->offset + audio_offset_sec)) / song->beat_period);
         if (beat > song->current_beat) {
             song->current_beat = beat;
         }

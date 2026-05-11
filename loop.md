@@ -12,28 +12,46 @@ description: "My squad work loop"
 
 ## What to do each cycle
 
-Describe what your squad should do every time the loop wakes up. Be specific —
-the more context you give, the better your squad performs.
+1) **Triage issues**
+- Sort open issues by `P0 > P1 > P2 > P3`, then recency.
+- If unlabeled: `P0` (crash/build/data-loss/blocker), `P1` (major regression), `P2` (normal bug/refactor/docs), `P3` (nice-to-have).
+- Close as outdated only if: no repro on `main` + subsystem removed/changed + inactive >30 days. Leave evidence.
+- Monitor squad PRs; if CI/CD is green and required checks/reviews pass, **squash-merge into `main`** and delete source branch.
 
-Examples:
-- Check for new messages in a Teams channel and summarize action items
-- Review recent pull requests and flag anything needing attention
-- Run a health check on staging and report anomalies
-- Scan the inbox for anything that needs a response today
+2) **Execute**
+- Handle max 3 issues per cycle (max 1 if any `P0`).
+- Repro -> minimal fix -> build/tests -> update issue/PR.
+- Prefer raylib/EnTT APIs, ECS-first, early-outs, minimal code.
+- Use docs from `docs/entt/` and `docs/raylib_cheatsheet.md` before implementing.
+- Remove outdated code/comments while fixing issues; keep docs concise and current.
 
-go thru all the issues for this codebase on github and fix them by priority/relevent, if the issue is outdated close it. when you run out of issues, do a parallel pass with all the agents, identify and create issues on github and start the loop again.
+3) **Parallel pass (only if no actionable issues)**
+- Run agents to find bugs/tech debt/docs drift.
+- Deduplicate, open focused issues (repro + scope + acceptance criteria), restart triage.
 
-During parallel passes for finding issues and when you are fixing issues your goals are:
-- use existing API's from raylib, entt, use docs in @docs/entt and @docs/raylib_cheatsheet.md
-- follow ECS architecture using entt.
-- remember more code, more problems. We dont like problems in our code, so less code is better, we achieve less code by using API provided by raylib and ECS
-- reduce code branching, prioritize early outs.
-- apply SOLID principles.
-- prioritize cleaning up code that can be deduped, and deleting files that dont have any references.
-- delete outdated docs and clean up current docs, make it concise
+4) **End-of-cycle output**
+- `Done:` IDs + PRs
+- `In Progress:` IDs + blockers
+- `Closed as Outdated:` IDs + reason
+- `New Issues:` IDs + priority
+- `Next:` single next issue
 
+## Guardrails
 
+- No force-push to shared branches.
+- No broad refactors without linked issue.
+- Delete code files only if unreferenced and verified by search + build/tests.
+- Delete outdated comments/docs when confirmed stale; keep surviving docs concise.
+- Create new files only when absolutely necessary (prefer extending existing files).
+- Zero-warning standard required (`-Wall -Wextra -Werror`, `/W4 /WX`).
 
+## Definition of done
+
+- Repro confirmed (or documented non-repro).
+- Minimal fix merged or PR opened.
+- If PR is ready and CI/CD is green: squash-merged to `main`, source branch deleted.
+- Build/tests pass with zero warnings.
+- Issue notes include root cause + verification.
 
 ## Monitoring (optional)
 

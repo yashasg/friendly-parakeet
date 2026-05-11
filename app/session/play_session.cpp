@@ -108,11 +108,8 @@ void setup_play_session(entt::registry& reg) {
 
     // Load music (only if MusicContext exists — not in test mode)
     auto* music = reg.ctx().find<MusicContext>();
-    if (music && music->loaded) {
-        StopMusicStream(music->stream);
-        UnloadMusicStream(music->stream);
-        music->loaded = false;
-        music->started = false;
+    if (music) {
+        music->release();
     }
     if (music && !beatmap.song_path.empty()) {
         std::string exe_audio = std::string(GetApplicationDirectory()) + beatmap.song_path;

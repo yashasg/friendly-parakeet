@@ -1,84 +1,30 @@
 name: Squad Preview Validation
+# Project type was not detected — configure build, test, and validation commands below
 
 on:
   push:
     branches: [preview]
-  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  validate-preview:
-    name: Build, test, and validate preview artifacts
+  validate:
     runs-on: ubuntu-latest
-    env:
-      VCPKG_BINARY_SOURCES: "clear;default,readwrite"
-      VCPKG_FORCE_SYSTEM_BINARIES: "1"
     steps:
-      - uses: actions/checkout@v6
-        with:
-          lfs: true
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v5
-        with:
-          node-version: 22
-
-      - name: Setup Emscripten
-        uses: mymindstorm/setup-emsdk@v14
-        with:
-          version: 5.0.3
-          actions-cache-folder: emsdk-cache
-
-      - name: Setup vcpkg
+      - name: Build and test
         run: |
-          if [ -z "${VCPKG_INSTALLATION_ROOT:-}" ]; then
-            echo "::error title=Missing vcpkg installation::VCPKG_INSTALLATION_ROOT is not set on this runner, so VCPKG_ROOT cannot be exported."
-            exit 1
-          fi
-          echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> "$GITHUB_ENV"
+          # TODO: Project type was not detected — add your build/test commands here
+          # Go:            go test ./...
+          # Python:        pip install -r requirements.txt && pytest
+          # .NET:          dotnet test
+          # Java (Maven):  mvn test
+          # Java (Gradle): ./gradlew test
+          echo "No build commands configured — update squad-preview.yml"
 
-      - name: Cache preview build directory
-        uses: actions/cache@v5
-        with:
-          path: build-web
-          key: squad-preview-web-v2-${{ hashFiles('CMakeLists.txt', 'vcpkg.json', 'vcpkg-overlay/**') }}
-          restore-keys: |
-            squad-preview-web-v2-
-
-      - name: Build preview artifacts
+      - name: Validate
         run: |
-          emcmake cmake -B build-web -S . \
-            -DCMAKE_BUILD_TYPE=Release \
-            -Wno-dev \
-            "-DCMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" \
-            "-DVCPKG_OVERLAY_PORTS=$(pwd)/vcpkg-overlay" \
-            "-DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=${EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake" \
-            -DVCPKG_TARGET_TRIPLET=wasm32-emscripten \
-            -DSHAPESHIFTER_WASM_SMOKE_MARKERS=ON
-          cmake --build build-web -- -j$(nproc)
-
-      - name: Run preview tests
-        run: ctest --test-dir build-web --output-on-failure
-
-      - name: Validate preview artifacts
-        run: |
-          for file in index.html index.js index.wasm index.data sw.js; do
-            if [ ! -s "build-web/$file" ]; then
-              echo "::error title=Invalid preview artifact::build-web/$file is missing or empty"
-              exit 1
-            fi
-          done
-
-      - name: Upload preview artifacts
-        if: success()
-        uses: actions/upload-artifact@v5
-        with:
-          name: squad-preview-web
-          path: |
-            build-web/index.html
-            build-web/index.js
-            build-web/index.wasm
-            build-web/index.data
-            build-web/sw.js
+          # TODO: Add pre-release validation commands here
+          echo "No validation commands configured — update squad-preview.yml"

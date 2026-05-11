@@ -63,3 +63,5 @@
 - 2026-05-10T16:03:00.125-07:00 — Squad loop CI unblocked by replacing echo-only Squad CI/Preview workflows with real Linux native and WASM preview build/test gates, updating deprecated github-script actions to v8, and adding `vcpkg-overlay/**` to native cache hashes so overlay changes invalidate restored build directories.
 
 - 2026-05-10T16:03:00.125-07:00 — Release placeholder workflows should mirror active repo validation gates: native release builds use the Squad CI Linux build/test path, insider artifacts use the Squad Preview WASM build/test/artifact validation path, and all CMake/vcpkg caches must hash `vcpkg-overlay/**` with `vcpkg.json`.
+
+- 2026-05-10T18:10:33.662-07:00 — Reconciled Squad loop installed workflow templates with active repo automation: heartbeat template now matches event/manual trigger policy, `contents: write` parity, and `actions/github-script@v8`; related installed Squad workflow templates no longer pin stale github-script v7. Boundary confirmed: repository workflows can grant GitHub token scopes, but cannot grant Copilot/runtime UI permissions such as `apply_patch` or shell file-write tool allowlists.

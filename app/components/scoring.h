@@ -27,10 +27,13 @@ struct ScorePopup {
     float      max_time        = 0.0f;
 };
 
-// Pre-computed popup display data. Computed by popup_display_system,
-// consumed by ui_render_system (just draws text at position with color).
+// Pre-computed popup display data. Static text/color are initialized at spawn;
+// ui_render_system lazily caches the text width once the active font is known.
 struct PopupDisplay {
     char     text[16] = {};
     FontSize font_size = FontSize::Small;
     uint8_t  r = 255, g = 255, b = 255, a = 255;
+    float    text_half_width = 0.0f;
+    int      measured_font_base_size = -1;
+    unsigned int measured_font_texture_id = 0;
 };

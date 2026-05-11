@@ -9,6 +9,18 @@
 using json = nlohmann::json;
 namespace {
 constexpr uint8_t kLaneBitsMask = 0x07;
+constexpr const char* kValidationConstantsPath = "content/constants.json";
+
+std::string constants_path_for_app_dir(const std::string& app_dir) {
+    if (app_dir.empty()) {
+        return kValidationConstantsPath;
+    }
+    const char last = app_dir.back();
+    if (last == '/' || last == '\\') {
+        return app_dir + kValidationConstantsPath;
+    }
+    return app_dir + "/" + kValidationConstantsPath;
+}
 
 bool has_only_lane_bits(const uint8_t mask) {
     return (mask & static_cast<uint8_t>(~kLaneBitsMask)) == 0;
@@ -57,10 +69,19 @@ static bool try_load_constants_from(const std::string& path, ValidationConstants
 
 ValidationConstants load_validation_constants(const std::string& app_dir) {
     ValidationConstants vc;
-    if (!app_dir.empty() && try_load_constants_from(app_dir + "content/constants.json", vc)) {
+    const std::string exe_relative_path =
+        constants_path_for_app_dir(app_dir.empty() ? std::string(GetApplicationDirectory()) : app_dir);
+    if (try_load_constants_from(exe_relative_path, vc)) {
         return vc;
     }
-    try_load_constants_from("content/constants.json", vc);
+    if (exe_relative_path != kValidationConstantsPath &&
+        try_load_constants_from(kValidationConstantsPath, vc)) {
+        return vc;
+    }
+    TraceLog(LOG_WARNING,
+             "Validation constants not found; using compiled defaults (tried '%s'%s)",
+             exe_relative_path.c_str(),
+             exe_relative_path == kValidationConstantsPath ? "" : " and 'content/constants.json'");
     return vc;
 }
 

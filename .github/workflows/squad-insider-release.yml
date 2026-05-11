@@ -1,84 +1,34 @@
 name: Squad Insider Release
+# Project type was not detected — configure build, test, and insider release commands below
 
 on:
   push:
     branches: [insider]
-  workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  validate-insider:
-    name: Build, test, and validate insider artifacts
+  release:
     runs-on: ubuntu-latest
-    env:
-      VCPKG_BINARY_SOURCES: "clear;default,readwrite"
-      VCPKG_FORCE_SYSTEM_BINARIES: "1"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
         with:
-          lfs: true
+          fetch-depth: 0
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v5
-        with:
-          node-version: 22
-
-      - name: Setup Emscripten
-        uses: mymindstorm/setup-emsdk@v14
-        with:
-          version: 5.0.3
-          actions-cache-folder: emsdk-cache
-
-      - name: Setup vcpkg
+      - name: Build and test
         run: |
-          if [ -z "${VCPKG_INSTALLATION_ROOT:-}" ]; then
-            echo "::error title=Missing vcpkg installation::VCPKG_INSTALLATION_ROOT is not set on this runner, so VCPKG_ROOT cannot be exported."
-            exit 1
-          fi
-          echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> "$GITHUB_ENV"
+          # TODO: Project type was not detected — add your build/test commands here
+          # Go:            go test ./...
+          # Python:        pip install -r requirements.txt && pytest
+          # .NET:          dotnet test
+          # Java (Maven):  mvn test
+          # Java (Gradle): ./gradlew test
+          echo "No build commands configured — update squad-insider-release.yml"
 
-      - name: Cache insider build directory
-        uses: actions/cache@v5
-        with:
-          path: build-web
-          key: squad-insider-web-v2-${{ hashFiles('CMakeLists.txt', 'vcpkg.json', 'vcpkg-overlay/**') }}
-          restore-keys: |
-            squad-insider-web-v2-
-
-      - name: Build insider artifacts
+      - name: Create insider release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          emcmake cmake -B build-web -S . \
-            -DCMAKE_BUILD_TYPE=Release \
-            -Wno-dev \
-            "-DCMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" \
-            "-DVCPKG_OVERLAY_PORTS=$(pwd)/vcpkg-overlay" \
-            "-DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=${EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake" \
-            -DVCPKG_TARGET_TRIPLET=wasm32-emscripten \
-            -DSHAPESHIFTER_WASM_SMOKE_MARKERS=ON
-          cmake --build build-web -- -j$(nproc)
-
-      - name: Run insider tests
-        run: ctest --test-dir build-web --output-on-failure
-
-      - name: Validate insider artifacts
-        run: |
-          for file in index.html index.js index.wasm index.data sw.js; do
-            if [ ! -s "build-web/$file" ]; then
-              echo "::error title=Invalid insider artifact::build-web/$file is missing or empty"
-              exit 1
-            fi
-          done
-
-      - name: Upload insider artifacts
-        if: success()
-        uses: actions/upload-artifact@v5
-        with:
-          name: squad-insider-web
-          path: |
-            build-web/index.html
-            build-web/index.js
-            build-web/index.wasm
-            build-web/index.data
-            build-web/sw.js
+          # TODO: Add your insider/pre-release commands here
+          echo "No release commands configured — update squad-insider-release.yml"

@@ -29,4 +29,13 @@ struct SFXBank {
     Sound sounds[SFX_COUNT]       = {};
     bool  sound_loaded[SFX_COUNT] = {};
     bool  loaded                  = false;
+
+    SFXBank() = default;
+    SFXBank(const SFXBank&) = delete;
+    SFXBank& operator=(const SFXBank&) = delete;
+    SFXBank(SFXBank&& other) noexcept;
+    SFXBank& operator=(SFXBank&& other) noexcept;
+    ~SFXBank();
+
+    void release();
 };
