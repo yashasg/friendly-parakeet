@@ -119,14 +119,17 @@ void setup_play_session(entt::registry& reg) {
         const char* audio_paths[] = { exe_audio.c_str(), beatmap.song_path.c_str() };
         for (const char* path : audio_paths) {
             Music stream = LoadMusicStream(path);
-            stream.looping = false;
-            if (stream.frameCount > 0) {
+            if (music_stream_is_playable(stream)) {
+                stream.looping = false;
                 music->stream  = stream;
                 music->loaded  = true;
                 music->started = false;
                 SetMusicVolume(music->stream, music->volume);
                 TraceLog(LOG_INFO, "Loaded music: %s", path);
                 break;
+            }
+            if (music_stream_has_unloadable_resources(stream)) {
+                UnloadMusicStream(stream);
             }
         }
     }
