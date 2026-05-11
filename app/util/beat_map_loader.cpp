@@ -85,7 +85,7 @@ ValidationConstants load_validation_constants(const std::string& app_dir) {
         return vc;
     }
     TraceLog(LOG_WARNING,
-             "Validation constants not found; using compiled defaults (tried '%s'%s)",
+             "Validation constants not found or invalid; using compiled defaults (tried '%s'%s)",
              exe_relative_path.c_str(),
              exe_relative_path == kValidationConstantsPath ? "" : " and 'content/constants.json'");
     return vc;
