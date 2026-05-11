@@ -196,6 +196,25 @@ TEST_CASE("pipeline: gameplay HUD shape geometry matches gameplay.rgl slots",
     CHECK(circle_bounds.height == 100.0f);
 }
 
+TEST_CASE("pipeline: gameplay HUD proximity ring progresses through far near perfect",
+          "[input_pipeline][hud]") {
+    SongState song{};
+    song.scroll_speed = 400.0f;
+    song.morph_duration = 0.12f;
+    song.half_window = 0.15f;
+
+    const float perfect_dist = gameplay_hud_perfect_distance(&song);
+    CHECK(perfect_dist > 107.99f);
+    CHECK(perfect_dist < 108.01f);
+
+    const float appear_dist = constants::APPROACH_DIST;
+    const float near_dist = perfect_dist + (appear_dist - perfect_dist) * 0.2f;
+
+    CHECK(gameplay_hud_ring_cue(900.0f, perfect_dist, appear_dist) == GameplayHudRingCue::Far);
+    CHECK(gameplay_hud_ring_cue(near_dist, perfect_dist, appear_dist) == GameplayHudRingCue::Near);
+    CHECK(gameplay_hud_ring_cue(perfect_dist, perfect_dist, appear_dist) == GameplayHudRingCue::Perfect);
+}
+
 TEST_CASE("pipeline: gameplay HUD raygui shape presses ignored outside Playing",
           "[input_pipeline][hud]") {
     auto reg = make_rhythm_registry();
