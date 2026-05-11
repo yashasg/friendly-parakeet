@@ -161,9 +161,27 @@ endif()
 
 if(SHAPESHIFTER_IOS)
     enable_language(OBJCXX)
+    find_package(SDL2 CONFIG REQUIRED)
     list(FILTER PLATFORM_SOURCES EXCLUDE REGEX "(^|/)haptics_ios_bridge_stub\\.cpp$")
     list(APPEND PLATFORM_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/app/platform/ios/haptics_ios_bridge_ios.mm")
 endif()
+
+set(SHAPESHIFTER_IOS_FRAMEWORKS
+    "-framework Foundation"
+    "-framework UIKit"
+    "-framework OpenGLES"
+    "-framework QuartzCore"
+    "-framework CoreGraphics"
+    "-framework AVFoundation"
+    "-framework AudioToolbox"
+)
+set(SHAPESHIFTER_MACOS_FRAMEWORKS
+    "-framework Cocoa"
+    "-framework OpenGL"
+    "-framework IOKit"
+    "-framework CoreFoundation"
+    "-framework CoreVideo"
+)
 
 add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES} ${AUDIO_SOURCES} ${UTIL_SOURCES} ${CONTENT_SOURCES} ${PLATFORM_SOURCES} ${UI_SOURCES} ${UI_SCREEN_CONTROLLER_SOURCES} ${INPUT_SOURCES} ${SESSION_SOURCES} ${ENTITY_SOURCES})
 target_include_directories(shapeshifter_lib PUBLIC
@@ -179,11 +197,11 @@ target_link_libraries(shapeshifter_lib PUBLIC
     magic_enum::magic_enum
     nlohmann_json::nlohmann_json
 )
-target_link_libraries(shapeshifter_lib PRIVATE raylib)
+target_link_libraries(shapeshifter_lib PUBLIC raylib)
 if(SHAPESHIFTER_IOS)
     target_link_libraries(shapeshifter_lib PUBLIC
-        "-framework Foundation"
-        "-framework UIKit"
+        SDL2::SDL2
+        ${SHAPESHIFTER_IOS_FRAMEWORKS}
     )
 endif()
 target_link_libraries(shapeshifter_lib PRIVATE shapeshifter_warnings)
@@ -193,7 +211,9 @@ target_link_libraries(shapeshifter_lib PRIVATE shapeshifter_warnings)
 # PLATFORM_WEB is set for Emscripten builds.
 # PLATFORM_HAS_KEYBOARD is set for platforms with keyboard input.
 # Mobile (Android / iOS) gets no keyboard handling compiled in.
-if(CMAKE_SYSTEM_NAME MATCHES "Windows|Darwin|Linux")
+if(SHAPESHIFTER_IOS)
+    target_compile_definitions(shapeshifter_lib PUBLIC PLATFORM_IOS)
+elseif(CMAKE_SYSTEM_NAME MATCHES "Windows|Darwin|Linux")
     target_compile_definitions(shapeshifter_lib PUBLIC PLATFORM_DESKTOP PLATFORM_HAS_KEYBOARD)
 elseif(EMSCRIPTEN)
     target_compile_definitions(shapeshifter_lib PUBLIC PLATFORM_WEB PLATFORM_HAS_KEYBOARD)
@@ -202,8 +222,6 @@ elseif(EMSCRIPTEN)
     endif()
     # JSON/settings loaders use C++ try/catch for recoverable parse failures.
     target_compile_options(shapeshifter_lib PUBLIC -fexceptions)
-elseif(SHAPESHIFTER_IOS)
-    target_compile_definitions(shapeshifter_lib PUBLIC PLATFORM_IOS)
 endif()
 
 # Suppress MSVC CRT deprecation warnings for standard C functions (fopen, etc.)
@@ -241,20 +259,18 @@ target_include_directories(shapeshifter PRIVATE
 )
 target_link_libraries(shapeshifter PRIVATE
     shapeshifter_lib
-    raylib
     shapeshifter_warnings
 )
 
 # ── Platform link dependencies for raylib (RGFW backend) ─────
 # RGFW uses native platform APIs directly — no GLFW.
-if(APPLE)
+if(SHAPESHIFTER_IOS)
+    # iOS frameworks are carried by shapeshifter_lib's public link interface.
+    target_link_options(shapeshifter PRIVATE "LINKER:-no_warn_duplicate_libraries")
+elseif(APPLE)
     target_link_options(shapeshifter PRIVATE "LINKER:-no_warn_duplicate_libraries")
     target_link_libraries(shapeshifter PRIVATE
-        "-framework Cocoa"
-        "-framework OpenGL"
-        "-framework IOKit"
-        "-framework CoreFoundation"
-        "-framework CoreVideo"
+        ${SHAPESHIFTER_MACOS_FRAMEWORKS}
     )
 elseif(WIN32)
     target_link_libraries(shapeshifter PRIVATE opengl32 gdi32 winmm)
@@ -374,7 +390,7 @@ if(EMSCRIPTEN)
 endif()
 
 # Desktop startup/shutdown smoke harness used by native CTest/CI lifecycle validation.
-if(NOT EMSCRIPTEN)
+if(NOT EMSCRIPTEN AND NOT SHAPESHIFTER_IOS)
     add_executable(shapeshifter_startup_shutdown_smoke
         tests/smoke/startup_shutdown_smoke.cpp
         ${SHAPESHIFTER_RUNTIME_SOURCES}
@@ -384,7 +400,6 @@ if(NOT EMSCRIPTEN)
     )
     target_link_libraries(shapeshifter_startup_shutdown_smoke PRIVATE
         shapeshifter_lib
-        raylib
         shapeshifter_warnings
     )
     add_dependencies(shapeshifter_startup_shutdown_smoke shapeshifter)
@@ -392,11 +407,7 @@ if(NOT EMSCRIPTEN)
     if(APPLE)
         target_link_options(shapeshifter_startup_shutdown_smoke PRIVATE "LINKER:-no_warn_duplicate_libraries")
         target_link_libraries(shapeshifter_startup_shutdown_smoke PRIVATE
-            "-framework Cocoa"
-            "-framework OpenGL"
-            "-framework IOKit"
-            "-framework CoreFoundation"
-            "-framework CoreVideo"
+            ${SHAPESHIFTER_MACOS_FRAMEWORKS}
         )
     elseif(WIN32)
         target_link_libraries(shapeshifter_startup_shutdown_smoke PRIVATE opengl32 gdi32 winmm)
@@ -525,26 +536,26 @@ target_include_directories(shapeshifter_tests PRIVATE
 )
 target_link_libraries(shapeshifter_tests PRIVATE
     shapeshifter_lib
-    raylib
     Catch2::Catch2WithMain
     shapeshifter_warnings
 )
 
 # Apply platform definitions to tests (same as shapeshifter_lib)
-if(CMAKE_SYSTEM_NAME MATCHES "Windows|Darwin|Linux")
+if(SHAPESHIFTER_IOS)
+    target_compile_definitions(shapeshifter_tests PRIVATE PLATFORM_IOS)
+elseif(CMAKE_SYSTEM_NAME MATCHES "Windows|Darwin|Linux")
     target_compile_definitions(shapeshifter_tests PRIVATE PLATFORM_DESKTOP PLATFORM_HAS_KEYBOARD)
 elseif(EMSCRIPTEN)
     target_compile_definitions(shapeshifter_tests PRIVATE PLATFORM_WEB PLATFORM_HAS_KEYBOARD)
 endif()
 
-if(APPLE)
+if(SHAPESHIFTER_IOS)
+    # iOS frameworks are carried by shapeshifter_lib's public link interface.
+    target_link_options(shapeshifter_tests PRIVATE "LINKER:-no_warn_duplicate_libraries")
+elseif(APPLE)
     target_link_options(shapeshifter_tests PRIVATE "LINKER:-no_warn_duplicate_libraries")
     target_link_libraries(shapeshifter_tests PRIVATE
-        "-framework Cocoa"
-        "-framework OpenGL"
-        "-framework IOKit"
-        "-framework CoreFoundation"
-        "-framework CoreVideo"
+        ${SHAPESHIFTER_MACOS_FRAMEWORKS}
     )
 elseif(WIN32)
     target_link_libraries(shapeshifter_tests PRIVATE opengl32 gdi32 winmm)
@@ -567,7 +578,7 @@ if(EMSCRIPTEN)
     )
 endif()
 
-if(NOT EMSCRIPTEN)
+if(NOT EMSCRIPTEN AND NOT SHAPESHIFTER_IOS)
     include(Catch)
     catch_discover_tests(
         shapeshifter_tests
