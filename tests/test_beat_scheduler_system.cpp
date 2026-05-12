@@ -89,6 +89,25 @@ TEST_CASE("beat_scheduler: spawns ShapeGate when time passes spawn_time", "[beat
     }
 }
 
+TEST_CASE("beat_scheduler: defaults invalid ShapeGate lane to center lane", "[beat_scheduler]") {
+    auto reg = make_rhythm_registry();
+    auto& song = reg.ctx().get<SongState>();
+    auto& map = reg.ctx().get<BeatMap>();
+
+    map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 9, 0});
+    song.song_time = 0.0f;
+    song.next_spawn_idx = 0;
+
+    beat_scheduler_system(reg, 0.016f);
+
+    auto view = reg.view<ObstacleTag, WorldTransform>();
+    REQUIRE(view.size_hint() == 1);
+    for (auto [e, wt] : view.each()) {
+        (void)e;
+        CHECK_THAT(wt.position.x, Catch::Matchers::WithinAbs(constants::LANE_X[1], 0.01f));
+    }
+}
+
 TEST_CASE("beat_scheduler: does not spawn before spawn_time", "[beat_scheduler]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();

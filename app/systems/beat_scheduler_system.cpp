@@ -71,7 +71,12 @@ void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
         // use entry.lane directly; bar/gate types default to center lane.
         float x_pos = constants::LANE_X[1];
         if (entry.kind == ObstacleKind::ShapeGate) {
-            x_pos = constants::LANE_X[static_cast<int>(entry.lane)];
+            const int lane = static_cast<int>(entry.lane);
+            if (lane >= 0 && lane < constants::LANE_COUNT) {
+                x_pos = constants::LANE_X[lane];
+            } else {
+                TraceLog(LOG_WARNING, "Invalid ShapeGate lane %d; defaulting to center lane", lane);
+            }
         } else if (entry.kind == ObstacleKind::LaneBlock) {
             int display_lane = 1;
             for (int l = 0; l < 3; ++l) {
