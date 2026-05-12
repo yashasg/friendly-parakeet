@@ -36,9 +36,9 @@ SHAPE_OBSTACLE_KINDS = {"shape_gate", "split_path"}
 SUPPORTED_NON_BLOCKING_KINDS = {"onset_marker"}
 # Issue #420 — broad-layer/lane reachability floor at medium/hard.
 # Each shipped beatmap×difficulty must include at least this share of
-# circle (lane-2 / harmonic-mapped) obstacles so the third shape and the
-# right strafe stay reachable design space.
-CIRCLE_LANE2_SHARE_FLOOR = {"medium": 0.10, "hard": 0.10}
+# circle (lane-0 / harmonic-mapped) obstacles so the left shape lane stays
+# reachable design space.
+CIRCLE_LANE0_SHARE_FLOOR = {"medium": 0.10, "hard": 0.10}
 
 
 def _ordered_valid_beats(beats: list[dict]) -> list[dict]:
@@ -213,6 +213,7 @@ def calculate_content_metrics(
         "shape_clusters_over_warn": 0,
         "triangle_share": (shape_counts.get("triangle", 0) / total_shape_gates) if total_shape_gates else 0.0,
         "circle_share": (shape_counts.get("circle", 0) / total_shape_gates) if total_shape_gates else 0.0,
+        "lane0_share": (lane_counts.get(0, 0) / total_shape_gates) if total_shape_gates else 0.0,
         "lane2_share": (lane_counts.get(2, 0) / total_shape_gates) if total_shape_gates else 0.0,
         "min_ioi_ms": min_ioi_ms,
         "ioi_index_error": ioi_index_error,
@@ -288,19 +289,19 @@ def evaluate_content_gates(metrics: dict[str, float | int | bool | None], diffic
         if float(metrics["circle_share"]) > 0.40:
             findings.append(f"hard circle share {float(metrics['circle_share']):.1%} above ceiling 40%")
 
-    # Issue #420 — circle/lane-2 reachability floors at medium/hard.
-    share_floor = CIRCLE_LANE2_SHARE_FLOOR.get(difficulty)
+    # Issue #420 — circle/lane-0 reachability floors at medium/hard.
+    share_floor = CIRCLE_LANE0_SHARE_FLOOR.get(difficulty)
     if share_floor is not None and not onset_timed:
         circle_share = metrics.get("circle_share")
-        lane2_share = metrics.get("lane2_share")
+        lane0_share = metrics.get("lane0_share")
         if circle_share is not None and float(circle_share) < share_floor:
             findings.append(
                 f"circle share {float(circle_share):.1%} below floor "
                 f"{share_floor:.0%} (issue #420)"
             )
-        if lane2_share is not None and float(lane2_share) < share_floor:
+        if lane0_share is not None and float(lane0_share) < share_floor:
             findings.append(
-                f"lane-2 share {float(lane2_share):.1%} below floor "
+                f"lane-0 share {float(lane0_share):.1%} below floor "
                 f"{share_floor:.0%} (issue #420)"
             )
 

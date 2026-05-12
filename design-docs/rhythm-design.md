@@ -112,7 +112,7 @@
   │          │                │                    │                │
   │          ▼                ▼                    ▼                │
   │       TRIANGLE          SQUARE              CIRCLE              │
-  │       LANE 0            LANE 1              LANE 2              │
+  │       LANE 2            LANE 1              LANE 0              │
   │                                                                 │
   │   Each onset = one obstacle spawn candidate.                    │
   │   Snap to beat grid (within 80ms). That's your note.            │
@@ -132,9 +132,9 @@ The shape and lane of every obstacle come directly from which broad layer fired 
 
 ```
   ┌────────────────────────────────────────────────────────────────┐
-  │  Percussive onset at beat 4?    → Triangle gate, lane 0 (LEFT) │
+  │  Percussive onset at beat 4?    → Triangle gate, lane 2 (RIGHT)│
   │  Full-spectrum onset at beat 6? → Square gate,   lane 1 (CTR)  │
-  │  Harmonic onset at beat 7?      → Circle gate,   lane 2 (RIGHT)│
+  │  Harmonic onset at beat 7?      → Circle gate,   lane 0 (LEFT) │
   │  Multiple layers at beat 8?     → Separate candidates by layer │
   │                                                                │
   │  (Instrument names like "kick / snare / hi-hat" are not part   │
@@ -738,9 +738,9 @@ For shipped per-difficulty obstacle counts, see the table in
 
   Onset        Moment of sudden energy increase detected by librosa
                on one of the broad layers (percussive / harmonic /
-               full-spectrum). Percussive → triangle / lane 0.
+               full-spectrum). Percussive → triangle / lane 2.
                Full-spectrum → square / lane 1.
-               Harmonic → circle / lane 2.
+               Harmonic → circle / lane 0.
 
   Layer        One of three broad librosa layer classes used for
                classification: percussive, harmonic, full-spectrum.

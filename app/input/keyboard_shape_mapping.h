@@ -11,9 +11,9 @@ enum class KeyboardShapeSlot : uint8_t {
 
 inline constexpr Shape shape_for_keyboard_slot(KeyboardShapeSlot slot) noexcept {
     switch (slot) {
-        case KeyboardShapeSlot::Left:   return Shape::Triangle;
+        case KeyboardShapeSlot::Left:   return Shape::Circle;
         case KeyboardShapeSlot::Center: return Shape::Square;
-        case KeyboardShapeSlot::Right:  return Shape::Circle;
+        case KeyboardShapeSlot::Right:  return Shape::Triangle;
     }
     return Shape::Square;
 }

@@ -139,13 +139,13 @@ TEST_CASE("shipped beatmaps: onset metadata invariants", "[shipped_beatmaps][iss
                 int expected_lane = -1;
                 std::string expected_shape;
                 if (source_class == "percussive") {
-                    expected_lane = 0;
+                    expected_lane = 2;
                     expected_shape = "triangle";
                 } else if (source_class == "full-spectrum") {
                     expected_lane = 1;
                     expected_shape = "square";
                 } else if (source_class == "harmonic") {
-                    expected_lane = 2;
+                    expected_lane = 0;
                     expected_shape = "circle";
                 }
 

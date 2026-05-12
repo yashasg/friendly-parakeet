@@ -107,7 +107,7 @@ class TestExperimentalOnsetTiming(unittest.TestCase):
         self.assertEqual(obs["source_onset_class"], "percussive")
         self.assertEqual(obs["onset_class"], "percussive")
         self.assertEqual(obs["shape"], "triangle")
-        self.assertEqual(obs["lane"], 0)
+        self.assertEqual(obs["lane"], 2)
 
     def test_defaults_use_onset_timing(self):
         beatmap = ld.build_beatmap(_analysis_fixture(), ["easy"], cleanup_enabled=True)
@@ -220,10 +220,10 @@ class TestExperimentalOnsetTiming(unittest.TestCase):
         for obs in mapped:
             onset_class = obs.get("onset_class")
             if onset_class == "percussive":
-                self.assertEqual(obs["lane"], 0)
+                self.assertEqual(obs["lane"], 2)
                 self.assertEqual(obs["shape"], "triangle")
             elif onset_class == "harmonic":
-                self.assertEqual(obs["lane"], 2)
+                self.assertEqual(obs["lane"], 0)
                 self.assertEqual(obs["shape"], "circle")
             elif onset_class == "full-spectrum":
                 self.assertEqual(obs["lane"], 1)

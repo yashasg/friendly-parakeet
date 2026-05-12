@@ -616,7 +616,7 @@
         {
           "beat": 80,
           "kind": "shape_gate",
-          "lane": 2,
+          "lane": 0,
           "shape": "circle",
           "onset_class": "harmonic",
           "segment_idx": 3,
@@ -701,7 +701,7 @@
         {
           "beat": 112,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 5,
@@ -752,7 +752,7 @@
         {
           "beat": 129,
           "kind": "onset_marker",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 5,
@@ -769,7 +769,7 @@
         {
           "beat": 142,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 5,
@@ -803,7 +803,7 @@
         {
           "beat": 208,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 8,
@@ -820,7 +820,7 @@
         {
           "beat": 225,
           "kind": "shape_gate",
-          "lane": 2,
+          "lane": 0,
           "shape": "circle",
           "onset_class": "harmonic",
           "segment_idx": 9,
@@ -854,7 +854,7 @@
         {
           "beat": 276,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 11,
@@ -871,7 +871,7 @@
         {
           "beat": 282,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 11,
@@ -905,7 +905,7 @@
         {
           "beat": 285,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 11,
@@ -939,7 +939,7 @@
         {
           "beat": 301,
           "kind": "shape_gate",
-          "lane": 2,
+          "lane": 0,
           "shape": "circle",
           "onset_class": "harmonic",
           "segment_idx": 11,
@@ -956,7 +956,7 @@
         {
           "beat": 302,
           "kind": "onset_marker",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 11,
@@ -990,7 +990,7 @@
         {
           "beat": 305,
           "kind": "shape_gate",
-          "lane": 2,
+          "lane": 0,
           "shape": "circle",
           "onset_class": "harmonic",
           "segment_idx": 11,
@@ -1007,7 +1007,7 @@
         {
           "beat": 306,
           "kind": "onset_marker",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 11,
@@ -1024,7 +1024,7 @@
         {
           "beat": 307,
           "kind": "onset_marker",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 11,
@@ -1041,7 +1041,7 @@
         {
           "beat": 310,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 11,
@@ -1058,7 +1058,7 @@
         {
           "beat": 312,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 11,
@@ -1126,7 +1126,7 @@
         {
           "beat": 384,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 12,
@@ -1160,7 +1160,7 @@
         {
           "beat": 461,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 14,
@@ -1194,7 +1194,7 @@
         {
           "beat": 463,
           "kind": "onset_marker",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 14,
@@ -1279,7 +1279,7 @@
         {
           "beat": 475,
           "kind": "onset_marker",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 14,
@@ -1330,7 +1330,7 @@
         {
           "beat": 479,
           "kind": "onset_marker",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 14,
@@ -1347,7 +1347,7 @@
         {
           "beat": 480,
           "kind": "onset_marker",
-          "lane": 2,
+          "lane": 0,
           "shape": "circle",
           "onset_class": "harmonic",
           "segment_idx": 14,
@@ -1364,7 +1364,7 @@
         {
           "beat": 482,
           "kind": "shape_gate",
-          "lane": 2,
+          "lane": 0,
           "shape": "circle",
           "onset_class": "harmonic",
           "segment_idx": 14,
@@ -1381,7 +1381,7 @@
         {
           "beat": 483,
           "kind": "onset_marker",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 14,
@@ -1466,7 +1466,7 @@
         {
           "beat": 514,
           "kind": "shape_gate",
-          "lane": 2,
+          "lane": 0,
           "shape": "circle",
           "onset_class": "harmonic",
           "segment_idx": 15,
@@ -1483,7 +1483,7 @@
         {
           "beat": 515,
           "kind": "onset_marker",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 15,
@@ -1577,7 +1577,7 @@
         {
           "beat": 14,
           "kind": "onset_marker",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 0,
@@ -1595,7 +1595,7 @@
         {
           "beat": 46,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 2,
@@ -1613,7 +1613,7 @@
         {
           "beat": 47,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 2,
@@ -1631,7 +1631,7 @@
         {
           "beat": 48,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 2,
@@ -1649,7 +1649,7 @@
         {
           "beat": 79,
           "kind": "shape_gate",
-          "lane": 2,
+          "lane": 0,
           "shape": "circle",
           "onset_class": "harmonic",
           "segment_idx": 3,
@@ -1667,7 +1667,7 @@
         {
           "beat": 80,
           "kind": "shape_gate",
-          "lane": 2,
+          "lane": 0,
           "shape": "circle",
           "onset_class": "harmonic",
           "segment_idx": 3,
@@ -1757,7 +1757,7 @@
         {
           "beat": 112,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 5,
@@ -1775,7 +1775,7 @@
         {
           "beat": 128,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 5,
@@ -1793,7 +1793,7 @@
         {
           "beat": 142,
           "kind": "onset_marker",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 5,
@@ -1811,7 +1811,7 @@
         {
           "beat": 144,
           "kind": "shape_gate",
-          "lane": 2,
+          "lane": 0,
           "shape": "circle",
           "onset_class": "harmonic",
           "segment_idx": 6,
@@ -1919,7 +1919,7 @@
         {
           "beat": 207,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 8,
@@ -1937,7 +1937,7 @@
         {
           "beat": 208,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 8,
@@ -1955,7 +1955,7 @@
         {
           "beat": 209,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 8,
@@ -1973,7 +1973,7 @@
         {
           "beat": 225,
           "kind": "shape_gate",
-          "lane": 2,
+          "lane": 0,
           "shape": "circle",
           "onset_class": "harmonic",
           "segment_idx": 9,
@@ -2063,7 +2063,7 @@
         {
           "beat": 274,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 11,
@@ -2081,7 +2081,7 @@
         {
           "beat": 276,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 11,
@@ -2099,7 +2099,7 @@
         {
           "beat": 282,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 11,
@@ -2117,7 +2117,7 @@
         {
           "beat": 285,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 11,
@@ -2135,7 +2135,7 @@
         {
           "beat": 290,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 11,
@@ -2171,7 +2171,7 @@
         {
           "beat": 312,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 11,
@@ -2189,7 +2189,7 @@
         {
           "beat": 313,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 11,
@@ -2261,7 +2261,7 @@
         {
           "beat": 384,
           "kind": "onset_marker",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 12,
@@ -2279,7 +2279,7 @@
         {
           "beat": 386,
           "kind": "shape_gate",
-          "lane": 2,
+          "lane": 0,
           "shape": "circle",
           "onset_class": "harmonic",
           "segment_idx": 12,
@@ -2387,7 +2387,7 @@
         {
           "beat": 456,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 14,
@@ -2405,7 +2405,7 @@
         {
           "beat": 457,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 14,
@@ -2423,7 +2423,7 @@
         {
           "beat": 458,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 14,
@@ -2441,7 +2441,7 @@
         {
           "beat": 462,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 14,
@@ -2459,7 +2459,7 @@
         {
           "beat": 466,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 14,
@@ -2495,7 +2495,7 @@
         {
           "beat": 482,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 14,
@@ -2513,7 +2513,7 @@
         {
           "beat": 514,
           "kind": "shape_gate",
-          "lane": 2,
+          "lane": 0,
           "shape": "circle",
           "onset_class": "harmonic",
           "segment_idx": 15,
@@ -2604,7 +2604,7 @@
         {
           "beat": 14,
           "kind": "onset_marker",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 0,
@@ -2638,7 +2638,7 @@
         {
           "beat": 46,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 2,
@@ -2655,7 +2655,7 @@
         {
           "beat": 47,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 2,
@@ -2672,7 +2672,7 @@
         {
           "beat": 48,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 2,
@@ -2706,7 +2706,7 @@
         {
           "beat": 79,
           "kind": "shape_gate",
-          "lane": 2,
+          "lane": 0,
           "shape": "circle",
           "onset_class": "harmonic",
           "segment_idx": 3,
@@ -2723,7 +2723,7 @@
         {
           "beat": 80,
           "kind": "shape_gate",
-          "lane": 2,
+          "lane": 0,
           "shape": "circle",
           "onset_class": "harmonic",
           "segment_idx": 3,
@@ -2740,7 +2740,7 @@
         {
           "beat": 81,
           "kind": "onset_marker",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 3,
@@ -2774,7 +2774,7 @@
         {
           "beat": 96,
           "kind": "shape_gate",
-          "lane": 2,
+          "lane": 0,
           "shape": "circle",
           "onset_class": "harmonic",
           "segment_idx": 4,
@@ -2791,7 +2791,7 @@
         {
           "beat": 97,
           "kind": "onset_marker",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 4,
@@ -2876,7 +2876,7 @@
         {
           "beat": 112,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 5,
@@ -2927,7 +2927,7 @@
         {
           "beat": 129,
           "kind": "onset_marker",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 5,
@@ -2944,7 +2944,7 @@
         {
           "beat": 142,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 5,
@@ -2961,7 +2961,7 @@
         {
           "beat": 144,
           "kind": "onset_marker",
-          "lane": 2,
+          "lane": 0,
           "shape": "circle",
           "onset_class": "harmonic",
           "segment_idx": 6,
@@ -2978,7 +2978,7 @@
         {
           "beat": 176,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 7,
@@ -3080,7 +3080,7 @@
         {
           "beat": 207,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 8,
@@ -3097,7 +3097,7 @@
         {
           "beat": 208,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 8,
@@ -3114,7 +3114,7 @@
         {
           "beat": 209,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 8,
@@ -3131,7 +3131,7 @@
         {
           "beat": 225,
           "kind": "shape_gate",
-          "lane": 2,
+          "lane": 0,
           "shape": "circle",
           "onset_class": "harmonic",
           "segment_idx": 9,
@@ -3233,7 +3233,7 @@
         {
           "beat": 272,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 11,
@@ -3250,7 +3250,7 @@
         {
           "beat": 274,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 11,
@@ -3284,7 +3284,7 @@
         {
           "beat": 276,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 11,
@@ -3301,7 +3301,7 @@
         {
           "beat": 281,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 11,
@@ -3318,7 +3318,7 @@
         {
           "beat": 282,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 11,
@@ -3352,7 +3352,7 @@
         {
           "beat": 285,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 11,
@@ -3386,7 +3386,7 @@
         {
           "beat": 301,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 11,
@@ -3403,7 +3403,7 @@
         {
           "beat": 306,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 11,
@@ -3437,7 +3437,7 @@
         {
           "beat": 308,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 11,
@@ -3454,7 +3454,7 @@
         {
           "beat": 312,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 11,
@@ -3471,7 +3471,7 @@
         {
           "beat": 313,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 11,
@@ -3556,7 +3556,7 @@
         {
           "beat": 384,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 12,
@@ -3573,7 +3573,7 @@
         {
           "beat": 386,
           "kind": "onset_marker",
-          "lane": 2,
+          "lane": 0,
           "shape": "circle",
           "onset_class": "harmonic",
           "segment_idx": 12,
@@ -3624,7 +3624,7 @@
         {
           "beat": 418,
           "kind": "shape_gate",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 13,
@@ -3743,7 +3743,7 @@
         {
           "beat": 459,
           "kind": "onset_marker",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 14,
@@ -3777,7 +3777,7 @@
         {
           "beat": 462,
           "kind": "onset_marker",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 14,
@@ -3811,7 +3811,7 @@
         {
           "beat": 465,
           "kind": "onset_marker",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 14,
@@ -3845,7 +3845,7 @@
         {
           "beat": 469,
           "kind": "onset_marker",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 14,
@@ -3879,7 +3879,7 @@
         {
           "beat": 474,
           "kind": "onset_marker",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 14,
@@ -3913,7 +3913,7 @@
         {
           "beat": 476,
           "kind": "onset_marker",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 14,
@@ -3947,7 +3947,7 @@
         {
           "beat": 482,
           "kind": "shape_gate",
-          "lane": 2,
+          "lane": 0,
           "shape": "circle",
           "onset_class": "harmonic",
           "segment_idx": 14,
@@ -3964,7 +3964,7 @@
         {
           "beat": 483,
           "kind": "onset_marker",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 14,
@@ -4083,7 +4083,7 @@
         {
           "beat": 514,
           "kind": "shape_gate",
-          "lane": 2,
+          "lane": 0,
           "shape": "circle",
           "onset_class": "harmonic",
           "segment_idx": 15,
@@ -4100,7 +4100,7 @@
         {
           "beat": 515,
           "kind": "onset_marker",
-          "lane": 0,
+          "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
           "segment_idx": 15,
