@@ -410,24 +410,20 @@ struct DrawLayer {
 ```cpp
 // components/particle.h
 
-/// Particle-specific data (Position, Velocity, Color are separate). 12 bytes.
+/// Particle-specific data (WorldTransform, MotionVelocity, Color are separate).
 struct ParticleData {
-    float size;            // current radius in px
+    float size;            // base rendered size
     float remaining;       // seconds until destroy
     float max_time;        // original duration, for alpha/size fades
 };
 
 /// Empty tag — marks particle entities. 0 bytes.
 struct ParticleTag {};
-
-/// Attached to the player entity. Controls burst emission. 16 bytes.
-struct ParticleEmitter {
-    bool   active;
-    float  emit_rate;      // particles per second
-    float  accumulator;    // fractional particle accumulation
-    Color  color;          // particle color for this emitter
-};
 ```
+
+Score feedback particles are spawned by `scoring_system` when a scored obstacle
+is processed. `particle_system` owns lifetime/gravity and `camera_system` builds
+their effects-pass `ModelTransform` for rendering.
 
 ### 2.12 — COLD: Audio (singleton)
 
@@ -468,8 +464,8 @@ struct AudioQueue {
 ```
 COMPONENT          BYTES   ACCESS     ITERATED BY
 ─────────────────────────────────────────────────────────────
-Position             8     HOT        scroll, render, collision, despawn
-Velocity             8     HOT        scroll
+WorldTransform      20     HOT        motion, render, collision, despawn
+MotionVelocity       8     HOT        motion, particle effects
 ParticleData        12     HOT        particle expiry/render fade
 ScorePopup          16     HOT        popup expiry/render fade
 PlayerTag            0     HOT        collision/filter
@@ -487,7 +483,6 @@ DrawLayer            1     COLD       render
 ScorePopup           5     COLD       render, scoring
 ParticleData         8     COLD       render
 ParticleTag          0     COLD       render (filter)
-ParticleEmitter     16     COLD       particle_spawn
 ─────────────────────────────────────────────────────────────
 SINGLETONS (ctx)
 ─────────────────────────────────────────────────────────────
@@ -687,16 +682,10 @@ void enter_game_over(entt::registry& reg) {
     // 2. Push crash SFX
     reg.ctx().get<AudioQueue>().push(SFX::Crash);
 
-    // 3. Spawn crash particle burst at player position
-    auto view = reg.view<PlayerTag, Position>();
-    for (auto [entity, pos] : view.each()) {
-        spawn_particle_burst(reg, pos.x, pos.y, 30, Color{255, 80, 60, 255});
-    }
-
-    // 4. Do NOT destroy obstacles — they freeze in place for dramatic effect
+    // 3. Do NOT destroy obstacles — they freeze in place for dramatic effect
     //    scroll_system will skip because phase != Playing
 
-    // 5. Transition
+    // 4. Transition
     auto& gs = reg.ctx().get<GameState>();
     gs.previous_phase = gs.phase;
     gs.phase = GamePhase::GameOver;
@@ -760,7 +749,6 @@ In code, reusable construction lives in `app/entities/` factory functions
 │ Color              { r: 80, g: 180, b: 255, a: 255 }     │
 │ DrawSize           { w: 64, h: 64 }                       │
 │ DrawLayer          { layer: Game }                         │
-│ ParticleEmitter    { active: false, ... }                  │
 └───────────────────────────────────────────────────────────┘
 Total: ~73 bytes per entity (1 entity)
 ```
@@ -1208,8 +1196,8 @@ This entire game state fits in L1 cache (~32-64 KB).
   ACCESS FREQUENCY
   ▲
   │
-  │  ■ Position        (every system, every frame, R+W)
-  │  ■ Velocity        (scroll + particle, every frame, R+W)
+  │  ■ WorldTransform  (motion, render, collision, every frame, R+W)
+  │  ■ MotionVelocity  (motion + particle, every frame, R+W)
   │  ■ ParticleData    (particle sys, every frame, R+W)
   │  ■ ScorePopup      (popup sys, every frame, R+W)
   │
@@ -1225,8 +1213,6 @@ This entire game state fits in L1 cache (~32-64 KB).
   │
   │  · ParticleData    (particle sys only, R+W)
   │  · ScorePopup      (render only, R)
-  │  · ParticleEmitter (particle spawn only, R+W)
-  │
   └──────────────────────────────────────────────▶  ENTITY COUNT
      1 (player)          15 (obstacles)     50 (particles)
 ```
@@ -1415,12 +1401,13 @@ void render_system(entt::registry& reg, float alpha) {
     // ── Layer 2: Effects ──────────────────────────────
     // Particles
     {
-        auto view = reg.view<ParticleTag, Position, ParticleData, Color>();
-        for (auto [e, pos, pd, col] : view.each()) {
+        auto view = reg.view<ParticleTag, WorldTransform, ParticleData, Color>();
+        for (auto [e, transform, pd, col] : view.each()) {
             float t = pd.remaining / pd.max_time;
             uint8_t a = static_cast<uint8_t>(col.a * t);
             float size = pd.size * t;
-            draw_particle(pos.x, pos.y, size, {col.r, col.g, col.b, a});
+            draw_particle(transform.position.x, transform.position.y, size,
+                          {col.r, col.g, col.b, a});
         }
     }
 
