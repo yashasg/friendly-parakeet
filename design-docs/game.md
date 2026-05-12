@@ -71,8 +71,8 @@ The screen is divided into two zones:
 > content audit; see
 > the per-difficulty table in `rhythm-design.md` §8), shape and lane
 > are fused 1:1 by
-> `tools/level_designer.py:ONSET_CLASS_TO_OBSTACLE` — every triangle is
-> on lane 0, every square on lane 1, every circle on lane 2. As a
+> `tools/level_designer.py:ONSET_CLASS_TO_OBSTACLE` — every circle is
+> on lane 0, every square on lane 1, every triangle on lane 2. As a
 > result, **strafing input is currently redundant**: choosing the
 > correct shape implies the correct lane, and a player who never strafes
 > still passes 100% of shape gates. The Controls section above and the

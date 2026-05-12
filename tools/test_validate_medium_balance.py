@@ -30,21 +30,21 @@ class TestValidateMediumBalance(unittest.TestCase):
 
     def test_validate_beatmap_passes_within_target_ranges(self):
         beats = (
-            [{"kind": "shape_gate", "shape": "circle", "lane": 2} for _ in range(3)]
+            [{"kind": "shape_gate", "shape": "circle", "lane": 0} for _ in range(3)]
             + [{"kind": "shape_gate", "shape": "square", "lane": 1} for _ in range(10)]
-            + [{"kind": "shape_gate", "shape": "triangle", "lane": 0} for _ in range(7)]
+            + [{"kind": "shape_gate", "shape": "triangle", "lane": 2} for _ in range(7)]
         )
         path = self._write_beatmap("fixture_pass_beatmap.json", beats)
         issues = medium_balance.validate_beatmap(path)
         self.assertEqual(issues, [])
 
     def test_validate_beatmap_flags_shape_and_lane_distribution(self):
-        beats = [{"kind": "shape_gate", "shape": "circle", "lane": 2} for _ in range(10)]
+        beats = [{"kind": "shape_gate", "shape": "circle", "lane": 0} for _ in range(10)]
         path = self._write_beatmap("fixture_fail_beatmap.json", beats)
         issues = medium_balance.validate_beatmap(path)
         self.assertGreaterEqual(len(issues), 4)
         self.assertTrue(any("circle" in issue for issue in issues))
-        self.assertTrue(any("lane 2" in issue for issue in issues))
+        self.assertTrue(any("lane 0" in issue for issue in issues))
 
 
 if __name__ == "__main__":

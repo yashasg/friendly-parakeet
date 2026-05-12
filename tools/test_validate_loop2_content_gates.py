@@ -310,11 +310,11 @@ class TestShippedBeatmapInvariants(unittest.TestCase):
             f"(+200ms slack) (#418/#506/#527/#528)"
         )
 
-    def test_circle_and_lane2_share_nontrivial_at_medium(self):
+    def test_circle_and_lane0_share_nontrivial_at_medium(self):
         """#420 — every shipped beatmap×medium must include a
-        non-trivial share of ``shape == "circle"`` AND ``lane == 2`` so the
-        third broad onset layer (harmonic) and the third lane are reachable
-        design space rather than dead UI.  Floor: 10% per cohort. Hard
+        non-trivial share of ``shape == "circle"`` AND ``lane == 0`` so the
+        harmonic layer and the left shape lane are reachable design space
+        rather than dead UI.  Floor: 10% per cohort. Hard
         onset-only charts may be governed by source-layer distribution instead
         of post-hoc shape remapping.
         """
@@ -331,16 +331,16 @@ class TestShippedBeatmapInvariants(unittest.TestCase):
                 if not beats:
                     continue
                 circle_share = sum(1 for b in beats if b.get("shape") == "circle") / len(beats)
-                lane2_share = sum(1 for b in beats if b.get("lane") == 2) / len(beats)
+                lane0_share = sum(1 for b in beats if b.get("lane") == 0) / len(beats)
                 self.assertGreaterEqual(
                     circle_share, floor,
                     f"{path.name} [{difficulty}]: circle share "
                     f"{circle_share:.1%} below 10% floor (#420)"
                 )
                 self.assertGreaterEqual(
-                    lane2_share, floor,
-                    f"{path.name} [{difficulty}]: lane-2 share "
-                    f"{lane2_share:.1%} below 10% floor (#420)"
+                    lane0_share, floor,
+                    f"{path.name} [{difficulty}]: lane-0 share "
+                    f"{lane0_share:.1%} below 10% floor (#420)"
                 )
 
 

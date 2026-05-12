@@ -156,7 +156,7 @@ TEST_CASE("pipeline: semantic shape press remaps lane target to shape lane",
         {ButtonPressKind::Shape, Shape::Circle, MenuActionKind::Confirm, 0});
     run_pipeline(reg);
 
-    CHECK(lane.target == 2);
+    CHECK(lane.target == 0);
 }
 
 TEST_CASE("pipeline: desktop keyboard slot mapping keeps Z left and C right lanes",
@@ -264,7 +264,7 @@ TEST_CASE("pipeline: mixed swipe and tap both take effect within a single pipeli
 
     run_pipeline(reg);
 
-    CHECK(lane.target     == 0);                  // shape auto-target wins
+    CHECK(lane.target     == 2);                  // shape auto-target wins
     CHECK(sw.phase        == WindowPhase::Active); // tap processed
     CHECK(sw.target_shape == Shape::Triangle);
 }

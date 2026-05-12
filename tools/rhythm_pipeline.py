@@ -63,8 +63,8 @@ ONSET_PASSES = [
 # used for lane/shape assignment.  These classes must NOT be merged across
 # each other even when their timestamps are very close (< 50 ms).
 #
-#   percussive    — bass / broadband / high-mid → lane 0, triangle
-#   harmonic      — low-mid                     → lane 2, circle
+#   percussive    — bass / broadband / high-mid → lane 2, triangle
+#   harmonic      — low-mid                     → lane 0, circle
 #   full-spectrum — spectral flux (catch-all)   → lane 1, square
 #
 # Legacy aliases (kick / snare / hihat / melody / flux) are kept ONLY so

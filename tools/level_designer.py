@@ -45,8 +45,8 @@ from collections import Counter, defaultdict
 # CONSTANTS
 # ═══════════════════════════════════════════════════════════════
 
-SHAPE_TO_LANE = {"triangle": 0, "square": 1, "circle": 2}
-LANE_TO_SHAPE = {0: "triangle", 1: "square", 2: "circle"}
+SHAPE_TO_LANE = {"circle": 0, "square": 1, "triangle": 2}
+LANE_TO_SHAPE = {0: "circle", 1: "square", 2: "triangle"}
 ALL_SHAPES = ["circle", "square", "triangle"]
 SUBDIVISION_FRACTIONS = [
     (0.0, "downbeat"),
@@ -62,8 +62,8 @@ SUBDIVISION_TO_LANE = {
     "offgrid": 1,   # fallback
 }
 ONSET_CLASS_TO_OBSTACLE = {
-    "percussive": {"lane": 0, "shape": "triangle"},
-    "harmonic": {"lane": 2, "shape": "circle"},
+    "percussive": {"lane": 2, "shape": "triangle"},
+    "harmonic": {"lane": 0, "shape": "circle"},
     "full-spectrum": {"lane": 1, "shape": "square"},
 }
 SHAPE_TO_ONSET_CLASS = {
@@ -210,9 +210,9 @@ MAX_SAME_LANE_RUN = {"easy": 4, "medium": 5, "hard": 6}
 SUBDIVISION_SNAP_TOLERANCE_SEC = 0.060
 DENSE_CLUSTER_SOFT_CAP = {"medium": 6, "hard": 10}
 MEDIUM_SHAPE_TARGETS = {
-    0: (25, 45),  # Triangle / lane 0
+    0: (10, 20),  # Circle / lane 0
     1: (45, 60),  # Square / lane 1
-    2: (10, 20),  # Circle / lane 2
+    2: (25, 45),  # Triangle / lane 2
 }
 HARD_TRIANGLE_FLOOR_PCT = 25
 HARD_CIRCLE_CEIL_PCT = 40
@@ -1586,7 +1586,7 @@ def _choose_segment_focus(class_stats, prev_focuses):
     }
 
     # Issue #420 — force rotation across all available broad onset
-    # layers so harmonic (lane 2 / circle) and other underrepresented
+    # layers so harmonic (lane 0 / circle) and other underrepresented
     # layers actually get picked when they have non-empty events in a
     # segment.  Forbid up to ``SEGMENT_FOCUS_ANTI_REPEAT_MAX`` of the
     # most recently used classes from the eligible pool whenever doing
@@ -2729,7 +2729,7 @@ def design_level_segment_focus(analysis, difficulty, cleanup_enabled=False):
     compatibility but its value is always ignored — passing True has no effect.
 
     Motif n-gram detection is NOT used for obstacle selection here.
-    Class mapping: percussive→lane 0+triangle, harmonic→lane 2+circle,
+    Class mapping: percussive→lane 2+triangle, harmonic→lane 0+circle,
                    full-spectrum→lane 1+square.
     Difficulty controls how many onset events per segment are included.
     """
