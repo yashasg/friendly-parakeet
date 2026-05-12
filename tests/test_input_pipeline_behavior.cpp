@@ -183,6 +183,61 @@ TEST_CASE("pipeline: gameplay HUD raygui shape press triggers player shape input
     CHECK(sw.target_shape == Shape::Square);
 }
 
+TEST_CASE("pipeline: pending phase transition blocks queued shape input",
+          "[input_pipeline][transition][issue823]") {
+    auto reg = make_rhythm_registry();
+    auto player = make_rhythm_player(reg);
+    auto& gs = reg.ctx().get<GameState>();
+    auto& sw = reg.get<ShapeWindow>(player);
+    auto& lane = reg.get<Lane>(player);
+
+    REQUIRE(gs.phase == GamePhase::Playing);
+    REQUIRE(sw.phase == WindowPhase::Idle);
+    REQUIRE(lane.current == 1);
+    lane.target = lane.current;
+    REQUIRE(lane.target == 1);
+
+    gs.transition_pending = true;
+    gs.next_phase = GamePhase::Paused;
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>(
+        {ButtonPressKind::Shape, Shape::Circle, MenuActionKind::Confirm, 0});
+
+    run_pipeline(reg);
+
+    CHECK(gs.phase == GamePhase::Paused);
+    CHECK_FALSE(gs.transition_pending);
+    CHECK(sw.phase == WindowPhase::Idle);
+    CHECK(sw.target_shape == Shape::Hexagon);
+    CHECK(lane.target == 1);
+}
+
+TEST_CASE("pipeline: pending phase transition blocks queued go input",
+          "[input_pipeline][transition][issue823]") {
+    auto reg = make_rhythm_registry();
+    auto player = make_rhythm_player(reg);
+    auto& gs = reg.ctx().get<GameState>();
+    auto& lane = reg.get<Lane>(player);
+    auto& vstate = reg.get<VerticalState>(player);
+
+    REQUIRE(gs.phase == GamePhase::Playing);
+    REQUIRE(lane.current == 1);
+    lane.target = lane.current;
+    REQUIRE(lane.target == 1);
+    REQUIRE(vstate.mode == VMode::Grounded);
+
+    gs.transition_pending = true;
+    gs.next_phase = GamePhase::Paused;
+    push_go(reg, Direction::Right);
+    push_go(reg, Direction::Up);
+
+    run_pipeline(reg);
+
+    CHECK(gs.phase == GamePhase::Paused);
+    CHECK_FALSE(gs.transition_pending);
+    CHECK(lane.target == 1);
+    CHECK(vstate.mode == VMode::Grounded);
+}
+
 TEST_CASE("pipeline: gameplay HUD shape tap uses slot rectangle bounds",
           "[input_pipeline][hud]") {
     const auto circle_input_bounds = gameplay_hud_shape_input_bounds(GameplayHudShapeSlot::Circle);
