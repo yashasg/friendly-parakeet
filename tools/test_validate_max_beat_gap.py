@@ -132,6 +132,65 @@ class TestValidateMaxBeatGap(unittest.TestCase):
         self.assertEqual(rc, 1)
         self.assertIn("onset-mode limit", stderr.getvalue())
 
+    def test_onset_markers_do_not_hide_required_action_gap(self):
+        """Non-blocking onset_marker rows cannot mask playable silence."""
+        path = self._write_beatmap(
+            "fixture_onset_marker_gap_beatmap.json",
+            {
+                "bpm": 60.0,
+                "difficulties": {
+                    "medium": {
+                        "beats": [
+                            {"beat": 0, "kind": "shape_gate", "time_sec": 0.0,
+                             "timing_source": "onset"},
+                            {"beat": 1, "kind": "onset_marker", "time_sec": 20.0,
+                             "timing_source": "onset"},
+                            {"beat": 2, "kind": "shape_gate", "time_sec": 40.0,
+                             "timing_source": "onset"},
+                        ]
+                    }
+                },
+            },
+        )
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+        with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            rc = max_gap.main([str(path)])
+        self.assertEqual(rc, 1)
+        self.assertIn("max silent gap 40.0s", stderr.getvalue())
+
+    def test_onset_markers_do_not_hide_required_action_lead_or_trail(self):
+        """Lead/trail caps use first/last required action, not metadata rows."""
+        path = self._write_beatmap(
+            "fixture_onset_marker_edges_beatmap.json",
+            {
+                "bpm": 120.0,
+                "duration_sec": 120.0,
+                "difficulties": {
+                    "medium": {
+                        "beats": [
+                            {"beat": 0, "kind": "onset_marker", "time_sec": 1.0,
+                             "timing_source": "onset"},
+                            {"beat": 1, "kind": "shape_gate", "time_sec": 8.0,
+                             "timing_source": "onset"},
+                            {"beat": 2, "kind": "shape_gate", "time_sec": 90.0,
+                             "timing_source": "onset"},
+                            {"beat": 3, "kind": "onset_marker", "time_sec": 119.0,
+                             "timing_source": "onset"},
+                        ]
+                    }
+                },
+            },
+        )
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+        with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            rc = max_gap.main([str(path)])
+        self.assertEqual(rc, 1)
+        diagnostics = stderr.getvalue().lower()
+        self.assertIn("lead-in", diagnostics)
+        self.assertIn("trail-out", diagnostics)
+
 
     def test_lead_in_oversize_fails(self):
         """Issue #527 — first event later than the lead-in cap fails."""
