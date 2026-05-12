@@ -569,6 +569,7 @@ if(NOT EMSCRIPTEN AND NOT SHAPESHIFTER_IOS)
     include(Catch)
     catch_discover_tests(
         shapeshifter_tests
+        TEST_SPEC "~[bench]"
         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
     )
     add_test(
