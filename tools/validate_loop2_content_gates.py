@@ -113,6 +113,38 @@ def _longest_gap_one_run(gaps: list[int]) -> int:
 
 
 CROSS_LAYER_PRESERVATION_WINDOW_MS = 50.0
+PUBLIC_ONSET_CLASSES = {"percussive", "harmonic", "full-spectrum"}
+
+
+def _is_protected_obstacle_pair(left: dict, right: dict) -> bool:
+    left_class = left.get("source_onset_class") or left.get("onset_class")
+    right_class = right.get("source_onset_class") or right.get("onset_class")
+    if left_class not in PUBLIC_ONSET_CLASSES or right_class not in PUBLIC_ONSET_CLASSES:
+        return False
+    if left_class == right_class:
+        return False
+    left_time = left.get("time_sec")
+    right_time = right.get("time_sec")
+    if not isinstance(left_time, (int, float)) or not isinstance(right_time, (int, float)):
+        return False
+    delta_ms = abs(float(left_time) - float(right_time)) * 1000.0
+    return delta_ms <= CROSS_LAYER_PRESERVATION_WINDOW_MS
+
+
+def _is_protected_by_cluster_neighbor(obstacle: dict, cluster: list[dict]) -> bool:
+    return any(
+        other is not obstacle and _is_protected_obstacle_pair(obstacle, other)
+        for other in cluster
+    )
+
+
+def _max_unexempt_shape_cluster_size(clusters: list[list[dict]]) -> int:
+    sizes = [
+        len(cluster)
+        for cluster in clusters
+        if any(not _is_protected_by_cluster_neighbor(beat, cluster) for beat in cluster)
+    ]
+    return max(sizes) if sizes else 0
 
 
 def _all_onset_timed(beats: list[dict]) -> bool:
@@ -173,7 +205,7 @@ def calculate_content_metrics(
                 and prev.get("onset_class") is not None
                 and current.get("onset_class") is not None
             )
-            if cross_layer and 0.0 <= dt_ms < CROSS_LAYER_PRESERVATION_WINDOW_MS:
+            if cross_layer and 0.0 <= dt_ms <= CROSS_LAYER_PRESERVATION_WINDOW_MS:
                 cross_layer_preserved_pairs += 1
                 prev = current
                 continue
@@ -210,6 +242,7 @@ def calculate_content_metrics(
         "longest_same_shape_cluster_run": _longest_same_shape_cluster_run(shape_clusters) if shape_clusters else 0,
         "shape_cluster_count": len(shape_clusters),
         "max_shape_cluster_size": max(cluster_sizes) if cluster_sizes else 0,
+        "max_unexempt_shape_cluster_size": _max_unexempt_shape_cluster_size(shape_clusters),
         "shape_clusters_over_warn": 0,
         "triangle_share": (shape_counts.get("triangle", 0) / total_shape_gates) if total_shape_gates else 0.0,
         "circle_share": (shape_counts.get("circle", 0) / total_shape_gates) if total_shape_gates else 0.0,
@@ -265,9 +298,11 @@ def evaluate_content_gates(metrics: dict[str, float | int | bool | None], diffic
         )
     cluster_size_cap = MAX_SHAPE_CLUSTER_SIZE.get(difficulty)
     max_cluster = int(metrics.get("max_shape_cluster_size", 0))
-    if cluster_size_cap is not None and max_cluster > cluster_size_cap and not protected_onset_pairs:
+    max_unexempt_cluster = int(metrics.get("max_unexempt_shape_cluster_size", max_cluster))
+    if cluster_size_cap is not None and max_unexempt_cluster > cluster_size_cap:
         findings.append(
-            f"max shape cluster size {max_cluster} exceeds cap {cluster_size_cap} (#532)"
+            f"max unexempt shape cluster size {max_unexempt_cluster} exceeds cap {cluster_size_cap} "
+            f"(#532; raw max={max_cluster})"
         )
 
     if not onset_timed:
