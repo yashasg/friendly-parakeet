@@ -58,6 +58,20 @@ TEST_CASE("scoring: distance bonus accumulates", "[scoring]") {
     CHECK(score.distance_traveled > 0.0f);
 }
 
+TEST_CASE("scoring: distance bonus accumulates across fixed ticks", "[scoring][issue764]") {
+    auto reg = make_registry();
+
+    constexpr float fixed_dt = 1.0f / 60.0f;
+    for (int tick = 0; tick < 60; ++tick) {
+        scoring_system(reg, fixed_dt);
+    }
+
+    auto& score = reg.ctx().get<ScoreState>();
+    CHECK(score.score == constants::PTS_PER_SECOND);
+    CHECK(score.passive_score_remainder >= 0.0f);
+    CHECK(score.passive_score_remainder < 1.0f);
+}
+
 TEST_CASE("scoring: scored obstacle awards points", "[scoring]") {
     auto reg = make_registry();
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);

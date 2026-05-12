@@ -11,7 +11,8 @@ struct ScoreState {
     int32_t high_score        = 0;
     int32_t chain_count       = 0;
     float   chain_timer       = 0.0f;
-    float   distance_traveled = 0.0f;
+    float   distance_traveled       = 0.0f;
+    float   passive_score_remainder = 0.0f;
 };
 
 struct TerminalResultState {
