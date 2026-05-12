@@ -190,10 +190,11 @@ Difficulty is selected per song (easy / medium / hard) and is expressed primaril
 
 ## HUD Elements
 
-> **Source of truth for layout:** `content/ui/screens/gameplay.rgl`
-> (720×1280 portrait canvas). See also `design-docs/energy-bar.md`
-> for the energy-bar spec. If this list drifts from the `.rgl`, the
-> `.rgl` wins.
+> **Source of truth for static control layout:**
+> `content/ui/screens/gameplay.rgl` (720×1280 portrait canvas).
+> Dynamic energy-bar geometry is rendered from `EnergyBarLayout` in code;
+> see also `design-docs/energy-bar.md`. If this list drifts from those
+> implementation sources, the implementation wins.
 
 - **Top left**: Current score (`ScoreSlot`) and best score
   (`HighScoreSlot`), stacked vertically.
@@ -203,8 +204,8 @@ Difficulty is selected per song (easy / medium / hard) and is expressed primaril
   `game-flow.md` §1 "Master Screen Flow Map" / Pause Screen, and
   the historical "no manual pause" complaint in #144 (now resolved
   by this button).
-- **Left edge — vertical Energy bar** (`EnergyBarSlot`, ~30 px wide
-  × 200 px tall, anchored at x=10, y=790) with an **"ENERGY" text
+- **Left edge — vertical Energy bar** (`EnergyBarLayout`, 14 px wide
+  × 180 px tall, anchored at x=16 with bottom y=965) with an **"ENERGY" text
   label** (`EnergyLabel`) directly above it (x=10, y=745). The bar
   drains on miss and recovers on hit. The label addresses the
   label-less-bar complaint in #171; both are shipped today.

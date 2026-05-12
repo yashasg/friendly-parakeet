@@ -354,7 +354,7 @@ Not shipped (intentionally absent from this wireframe):
   ╠═══════════════════════╬══════════════════╬═══════════════╣
   ║  Score bar            ║  x:0.05W y:0.02H ║  0.90W × 0.04H║
   ║  ├─ Score text        ║  left-aligned    ║  font: 0.03H  ║
-  ║  ├─ Pause icon (⏸)    ║  x:0.50W center  ║  0.04H × 0.04H║
+  ║  ├─ Pause button      ║  x:620 y:10      ║  80px × 50px  ║
   ║  └─ Best score text   ║  right-aligned   ║  font: 0.02H  ║
   ╠═══════════════════════╬══════════════════╬═══════════════╣
   ║  Speed bar            ║  x:0.05W y:0.06H ║  0.90W × 0.03H║
@@ -557,8 +557,9 @@ Not shipped (intentionally absent from this wireframe):
   ║     │  RESULTS                   │   ║
   ║     │  ─────────────────────     │   ║
   ║     │  Perfect      42           │   ║
-  ║     │  Great        18           │   ║
-  ║     │  Good          7           │   ║
+  ║     │  Good         18           │   ║
+  ║     │  Ok            7           │   ║
+  ║     │  Bad           1           │   ║
   ║     │  Miss          3           │   ║
   ║     └────────────────────────────┘   ║
   ║                                      ║
