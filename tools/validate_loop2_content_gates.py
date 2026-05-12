@@ -291,7 +291,7 @@ def evaluate_content_gates(metrics: dict[str, float | int | bool | None], diffic
 
     # Issue #420 — circle/lane-0 reachability floors at medium/hard.
     share_floor = CIRCLE_LANE0_SHARE_FLOOR.get(difficulty)
-    if share_floor is not None and not onset_timed:
+    if share_floor is not None:
         circle_share = metrics.get("circle_share")
         lane0_share = metrics.get("lane0_share")
         if circle_share is not None and float(circle_share) < share_floor:

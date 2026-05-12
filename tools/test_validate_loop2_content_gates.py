@@ -177,6 +177,34 @@ class TestLoop2GateEvaluation(unittest.TestCase):
         self.assertTrue(any("max shape cluster size" in f and "#532" in f for f in findings),
                         f"expected max-shape-cluster finding, got {findings}")
 
+    def test_onset_timed_charts_still_enforce_circle_and_lane0_floor(self):
+        metrics = {
+            "count_matches": True,
+            "strictly_increasing": True,
+            "all_shape_gate": True,
+            "lane_range_ok": True,
+            "dominant_gap_share": 1.0,
+            "dominant_gap": 1,
+            "gap_one_run": 20,
+            "gap_one_share": 1.0,
+            "longest_same_shape_cluster_run": 1,
+            "max_shape_cluster_size": 1,
+            "triangle_share": 0.3,
+            "circle_share": 0.0,
+            "lane0_share": 0.0,
+            "min_ioi_ms": 450.0,
+            "ioi_index_error": False,
+            "onset_timed": True,
+            "cross_layer_preserved_pairs": 0,
+        }
+
+        findings = gates.evaluate_content_gates(metrics, "hard")
+
+        self.assertTrue(any("circle share" in f and "below floor" in f for f in findings),
+                        f"expected circle floor finding, got {findings}")
+        self.assertTrue(any("lane-0 share" in f and "below floor" in f for f in findings),
+                        f"expected lane-0 floor finding, got {findings}")
+
     def test_cluster_advisory_emitted_for_dense_cluster(self):
         metrics = {
             "longest_same_shape_run": 9,
@@ -314,9 +342,7 @@ class TestShippedBeatmapInvariants(unittest.TestCase):
         """#420 — every shipped beatmap×medium must include a
         non-trivial share of ``shape == "circle"`` AND ``lane == 0`` so the
         harmonic layer and the left shape lane are reachable design space
-        rather than dead UI.  Floor: 10% per cohort. Hard
-        onset-only charts may be governed by source-layer distribution instead
-        of post-hoc shape remapping.
+        rather than dead UI.  Floor: 10% per cohort.
         """
         floor = 0.10
         for path, beatmap in self._shipped_beatmaps():
