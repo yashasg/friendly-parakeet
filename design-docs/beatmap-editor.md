@@ -196,7 +196,7 @@ The editor enforces these in real-time with visual indicators:
 1. Beat indices monotonically increasing (auto-sorted)
 2. No beat index beyond song duration
 3. BPM in [60, 300]
-4. Offset in [0.0, 5.0]
+4. Offset in [-0.1, 5.0]
 5. Lead beats in [2, 8]
 6. At least 1 beat entry
 7. shape_gate / split_path lane must be 0–2
@@ -467,7 +467,7 @@ export function downloadFile(filename, content)        → void  // triggers bro
 //   1. Beat indices monotonically increasing
 //   2. No beat index beyond song duration
 //   3. BPM in [60, 300]
-//   4. Offset in [0.0, 5.0]
+//   4. Offset in [-0.1, 5.0]
 //   5. Lead beats in [2, 8]
 //   6. At least 1 beat entry
 //   7. shape_gate / split_path lane must be 0–2
@@ -479,10 +479,12 @@ export function downloadFile(filename, content)        → void  // triggers bro
 #### `constants.js` (Shared Constants)
 
 ```javascript
-// Active editor palette: only runtime-supported, authorable kinds.
+// Runtime-supported kinds imported/exported by the editor. Defaults mirror
+// content/constants.json and are refreshed by loadSharedConstants().
+export let OBSTACLE_KINDS = ["shape_gate", "combo_gate", "split_path", "onset_marker"];
+// Active editor palette: runtime-supported, authorable kinds only.
 export const EDITOR_OBSTACLE_KINDS = ["shape_gate", "split_path"];
-// Import validation accepts runtime-supported legacy/content kinds, but does not add them to the palette.
-export const IMPORTABLE_OBSTACLE_KINDS = ["shape_gate", "lane_block", "combo_gate", "split_path"];
+// onset_marker is import/export metadata for shipped beatmaps, not palette-authorable.
 // Archived/future catalog entries such as low_bar/high_bar are intentionally not constants here.
 export const SHAPES = ["circle", "square", "triangle"];
 export const LANES = [0, 1, 2];
