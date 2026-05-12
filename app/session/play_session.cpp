@@ -14,6 +14,7 @@
 #include "../util/beat_map_loader.h"
 #include "../util/rhythm_math.h"
 #include "../entities/camera_entity.h"
+#include "../entities/energy_bar_entity.h"
 #include "../entities/player_entity.h"
 #include "../content/level_content_config.h"
 #include "../systems/all_systems.h"
@@ -84,6 +85,7 @@ void setup_play_session(entt::registry& reg) {
     reg.clear();
     spawn_game_camera(reg);
     spawn_ui_camera(reg);
+    create_energy_bar_entity(reg);
 
     // Reset singletons
     assign_or_emplace_ctx(reg, RNGState{});

@@ -1,6 +1,7 @@
 // Gameplay HUD screen controller.
 
 #include "../../components/game_state.h"
+#include "../../components/energy_bar.h"
 #include "../../components/input_events.h"
 #include "../../components/obstacle.h"
 #include "../../components/player.h"
@@ -9,7 +10,6 @@
 #include "../../components/transform.h"
 #include "../../components/ui_layout_cache.h"
 #include "../../constants.h"
-#include "../../util/motion.h"
 #include "../../util/settings.h"
 #include "screen_controller_base.h"
 #include "gameplay_hud_screen_controller.h"
@@ -96,6 +96,30 @@ Color ring_color_for_cue(GameplayHudRingCue cue, const HudLayout& layout) {
     return layout.ring_far;
 }
 
+struct ApproachRingEnvelope {
+    float radius = 0.0f;
+    float alpha_scale = 0.0f;
+};
+
+ApproachRingEnvelope approach_ring_envelope(float ratio,
+                                            float btn_radius,
+                                            float max_ring_radius,
+                                            bool reduce_motion,
+                                            float near_threshold = 0.3f) {
+    ApproachRingEnvelope out{};
+    if (ratio < 0.0f) ratio = 0.0f;
+    if (ratio > 1.0f) ratio = 1.0f;
+    if (reduce_motion) {
+        if (ratio > near_threshold) return out;
+        out.radius = max_ring_radius;
+        out.alpha_scale = 1.0f;
+        return out;
+    }
+    out.radius = btn_radius + (max_ring_radius - btn_radius) * ratio;
+    out.alpha_scale = 1.0f - ratio * 0.5f;
+    return out;
+}
+
 Rectangle shape_slot_bounds(const GameplayHudLayoutState& state, GameplayHudShapeSlot slot) {
     switch (slot) {
         case GameplayHudShapeSlot::Circle:
@@ -176,8 +200,8 @@ void render_shape_buttons(const entt::registry& reg,
         if (cue == GameplayHudRingCue::Hidden) continue;
         float ratio = gameplay_hud_ring_ratio(nearest_dist[shape_index], perfect_dist, ring_appear_dist);
 
-        const auto envelope = motion::approach_ring_envelope(ratio, btn_radius,
-                                                             max_ring_radius, reduce_motion);
+        const auto envelope = approach_ring_envelope(ratio, btn_radius,
+                                                     max_ring_radius, reduce_motion);
         if (envelope.alpha_scale <= 0.0f) continue;
 
         Color base = ring_color_for_cue(cue, layout);
@@ -188,113 +212,80 @@ void render_shape_buttons(const entt::registry& reg,
     }
 }
 
-void render_energy_bar(const entt::registry& reg, const EnergyState& energy) {
-    constexpr float BAR_X = 16.0f;
-    constexpr float BAR_W = 14.0f;
-    constexpr float BAR_BOT = 965.0f;
-    constexpr float BAR_H = 180.0f;
-    constexpr float BAR_TOP = BAR_BOT - BAR_H;
-    constexpr int SEG_COUNT = 32;
-    constexpr float SEG_GAP = 1.0f;
-    constexpr float SEG_H = (BAR_H - (SEG_COUNT - 1) * SEG_GAP) / SEG_COUNT;
+void render_energy_bar(const entt::registry& reg) {
+    auto view = reg.view<EnergyBarTag, EnergyBarLayout, EnergyBarVisual>();
+    for (auto [entity, layout, visual] : view.each()) {
+        (void)entity;
 
-    float fill = Clamp(energy.display, 0.0f, 1.0f);
+        const float bar_top = layout.bottom - layout.height;
+        const float seg_h = (layout.height - (layout.segment_count - 1) * layout.segment_gap)
+            / static_cast<float>(layout.segment_count);
 
-    // Reduce-motion (#478) attenuates the *decorative* HUD oscillations
-    // (idle bounce, critical sine-pulse, damage flash overlay) without
-    // hiding the underlying fill colour or border state. See app/util/motion.h.
-    const auto* settings_ptr = reg.ctx().find<SettingsState>();
-    const bool reduce_motion = settings_ptr && settings_ptr->reduce_motion;
-
-    auto* song = reg.ctx().find<SongState>();
-    float bounce = 0.0f;
-    if (song && song->playing) {
-        bounce = motion::energy_bar_bounce(song->song_time, song->beat_period, reduce_motion);
-    }
-
-    float flash_ratio = 0.0f;
-    if (energy.flash_timer > 0.0f && constants::ENERGY_FLASH_DURATION > 0.0f) {
-        flash_ratio = Clamp(energy.flash_timer / constants::ENERGY_FLASH_DURATION, 0.0f, 1.0f);
-    }
-    const float flash_overlay = motion::flash_overlay_strength(flash_ratio, reduce_motion);
-
-    float critical_ratio = 0.0f;
-    if (fill < constants::ENERGY_CRITICAL_THRESH && constants::ENERGY_CRITICAL_THRESH > 0.0f) {
-        critical_ratio = Clamp((constants::ENERGY_CRITICAL_THRESH - fill)
-            / constants::ENERGY_CRITICAL_THRESH, 0.0f, 1.0f);
-    }
-
-    float pulse_time = (song && song->playing) ? song->song_time : static_cast<float>(GetTime());
-    float critical_pulse = motion::energy_critical_pulse(pulse_time, reduce_motion);
-    float critical_intensity = critical_ratio * (0.35f + 0.65f * critical_pulse);
-    float visible_level = std::min(fill + bounce * (5.0f / SEG_COUNT), 1.0f);
-
-    int overflow_segs = 0;
-    if (fill >= 0.99f) overflow_segs = static_cast<int>(bounce * 5.0f + 0.5f);
-    for (int i = 0; i < overflow_segs; ++i) {
-        float seg_y = BAR_TOP - (i + 1) * (SEG_H + SEG_GAP);
-        float fade = 1.0f - static_cast<float>(i) / 5.0f;
-        DrawRectangleRec({BAR_X, seg_y, BAR_W, SEG_H},
-            Fade({255, 80, 200, 255}, fade * (220.0f / 255.0f)));
-    }
-
-    DrawRectangleRec({BAR_X, BAR_TOP, BAR_W, BAR_H}, {15, 15, 25, 180});
-
-    int filled_segs = static_cast<int>(fill * SEG_COUNT + 0.5f);
-    int visible_segs = static_cast<int>(visible_level * SEG_COUNT + 0.5f);
-
-    for (int i = 0; i < SEG_COUNT; ++i) {
-        float seg_y = BAR_BOT - (i + 1) * (SEG_H + SEG_GAP) + SEG_GAP;
-        float t = static_cast<float>(i) / (SEG_COUNT - 1);
-        unsigned char cr = 0, cg = 0, cb = 0;
-        if (t < 0.33f) {
-            float s = t / 0.33f;
-            cr = 255;
-            cg = static_cast<unsigned char>(80.0f + s * 175.0f);
-            cb = static_cast<unsigned char>(30.0f + s * 30.0f);
-        } else if (t < 0.66f) {
-            float s = (t - 0.33f) / 0.33f;
-            cr = static_cast<unsigned char>(255.0f - s * 255.0f);
-            cg = 255;
-            cb = static_cast<unsigned char>(60.0f + s * 195.0f);
-        } else {
-            float s = (t - 0.66f) / 0.34f;
-            cr = static_cast<unsigned char>(40.0f + s * 120.0f);
-            cg = static_cast<unsigned char>(255.0f - s * 120.0f);
-            cb = 255;
+        for (int i = 0; i < visual.overflow_segments; ++i) {
+            float seg_y = bar_top - (i + 1) * (seg_h + layout.segment_gap);
+            float fade = 1.0f - static_cast<float>(i) / 5.0f;
+            DrawRectangleRec({layout.x, seg_y, layout.width, seg_h},
+                Fade({255, 80, 200, 255}, fade * (220.0f / 255.0f)));
         }
 
-        if (i < filled_segs) {
-            float red_boost = flash_ratio * 0.45f + critical_intensity * 0.35f;
-            float cool_dim = critical_intensity * 0.40f;
-            unsigned char rr = static_cast<unsigned char>(
-                Clamp(Lerp(static_cast<float>(cr), 255.0f, red_boost), 0.0f, 255.0f));
-            unsigned char rg = static_cast<unsigned char>(
-                Clamp(Lerp(static_cast<float>(cg), 0.0f, cool_dim), 0.0f, 255.0f));
-            unsigned char rb = static_cast<unsigned char>(
-                Clamp(Lerp(static_cast<float>(cb), 0.0f, cool_dim), 0.0f, 255.0f));
-            DrawRectangleRec({BAR_X, seg_y, BAR_W, SEG_H}, {rr, rg, rb, 255});
-        } else if (i < visible_segs) {
-            float fade = 1.0f - static_cast<float>(i - filled_segs)
-                / std::max(1.0f, static_cast<float>(visible_segs - filled_segs));
-            DrawRectangleRec({BAR_X, seg_y, BAR_W, SEG_H}, Fade({cr, cg, cb, 255}, fade * (200.0f / 255.0f)));
-        } else {
-            DrawRectangleRec({BAR_X, seg_y, BAR_W, SEG_H}, {35, 35, 50, 50});
+        DrawRectangleRec({layout.x, bar_top, layout.width, layout.height}, {15, 15, 25, 180});
+
+        int filled_segs = static_cast<int>(visual.fill * static_cast<float>(layout.segment_count) + 0.5f);
+        int visible_segs = static_cast<int>(visual.visible_level * static_cast<float>(layout.segment_count) + 0.5f);
+
+        for (int i = 0; i < layout.segment_count; ++i) {
+            float seg_y = layout.bottom - (i + 1) * (seg_h + layout.segment_gap) + layout.segment_gap;
+            float t = static_cast<float>(i) / static_cast<float>(layout.segment_count - 1);
+            unsigned char cr = 0, cg = 0, cb = 0;
+            if (t < 0.33f) {
+                float s = t / 0.33f;
+                cr = 255;
+                cg = static_cast<unsigned char>(80.0f + s * 175.0f);
+                cb = static_cast<unsigned char>(30.0f + s * 30.0f);
+            } else if (t < 0.66f) {
+                float s = (t - 0.33f) / 0.33f;
+                cr = static_cast<unsigned char>(255.0f - s * 255.0f);
+                cg = 255;
+                cb = static_cast<unsigned char>(60.0f + s * 195.0f);
+            } else {
+                float s = (t - 0.66f) / 0.34f;
+                cr = static_cast<unsigned char>(40.0f + s * 120.0f);
+                cg = static_cast<unsigned char>(255.0f - s * 120.0f);
+                cb = 255;
+            }
+
+            if (i < filled_segs) {
+                float red_boost = visual.flash_ratio * 0.45f + visual.critical_intensity * 0.35f;
+                float cool_dim = visual.critical_intensity * 0.40f;
+                unsigned char rr = static_cast<unsigned char>(
+                    Clamp(Lerp(static_cast<float>(cr), 255.0f, red_boost), 0.0f, 255.0f));
+                unsigned char rg = static_cast<unsigned char>(
+                    Clamp(Lerp(static_cast<float>(cg), 0.0f, cool_dim), 0.0f, 255.0f));
+                unsigned char rb = static_cast<unsigned char>(
+                    Clamp(Lerp(static_cast<float>(cb), 0.0f, cool_dim), 0.0f, 255.0f));
+                DrawRectangleRec({layout.x, seg_y, layout.width, seg_h}, {rr, rg, rb, 255});
+            } else if (i < visible_segs) {
+                float fade = 1.0f - static_cast<float>(i - filled_segs)
+                    / std::max(1.0f, static_cast<float>(visible_segs - filled_segs));
+                DrawRectangleRec({layout.x, seg_y, layout.width, seg_h}, Fade({cr, cg, cb, 255}, fade * (200.0f / 255.0f)));
+            } else {
+                DrawRectangleRec({layout.x, seg_y, layout.width, seg_h}, {35, 35, 50, 50});
+            }
         }
-    }
 
-    if (flash_overlay > 0.0f) {
-        DrawRectangleRec({BAR_X - 1.0f, BAR_TOP - 1.0f, BAR_W + 2.0f, BAR_H + 2.0f},
-            Fade({255, 80, 80, 255}, flash_overlay * (140.0f / 255.0f)));
-    }
+        if (visual.flash_overlay > 0.0f) {
+            DrawRectangleRec({layout.x - 1.0f, bar_top - 1.0f, layout.width + 2.0f, layout.height + 2.0f},
+                Fade({255, 80, 80, 255}, visual.flash_overlay * (140.0f / 255.0f)));
+        }
 
-    float border_thickness = 1.0f + critical_intensity * 2.0f;
-    unsigned char border_r = static_cast<unsigned char>(80.0f + critical_intensity * 175.0f);
-    unsigned char border_g = static_cast<unsigned char>(80.0f - critical_intensity * 40.0f);
-    unsigned char border_b = static_cast<unsigned char>(100.0f - critical_intensity * 60.0f);
-    unsigned char border_a = static_cast<unsigned char>(140.0f + critical_intensity * 90.0f);
-    DrawRectangleLinesEx({BAR_X, BAR_TOP, BAR_W, BAR_H}, border_thickness,
-        {border_r, border_g, border_b, border_a});
+        float border_thickness = 1.0f + visual.critical_intensity * 2.0f;
+        unsigned char border_r = static_cast<unsigned char>(80.0f + visual.critical_intensity * 175.0f);
+        unsigned char border_g = static_cast<unsigned char>(80.0f - visual.critical_intensity * 40.0f);
+        unsigned char border_b = static_cast<unsigned char>(100.0f - visual.critical_intensity * 60.0f);
+        unsigned char border_a = static_cast<unsigned char>(140.0f + visual.critical_intensity * 90.0f);
+        DrawRectangleLinesEx({layout.x, bar_top, layout.width, layout.height}, border_thickness,
+            {border_r, border_g, border_b, border_a});
+    }
 }
 
 } // anonymous namespace
@@ -367,7 +358,6 @@ void render_gameplay_hud_screen_ui(entt::registry& reg) {
     auto& controller = screen_controller<GameplayHudController>(reg);
     auto& state = controller.state();
     auto* score = reg.ctx().find<ScoreState>();
-    auto* energy = reg.ctx().find<EnergyState>();
     const auto& hud_layout = resolved_hud_layout(reg);
 
     int saved_text_size = GuiGetStyle(DEFAULT, TEXT_SIZE);
@@ -410,7 +400,7 @@ void render_gameplay_hud_screen_ui(entt::registry& reg) {
 
     render_shape_buttons(reg, hud_layout, state);
 
-    if (energy) render_energy_bar(reg, *energy);
+    render_energy_bar(reg);
     GuiSetStyle(DEFAULT, TEXT_SIZE, 16);
     GuiSetAlpha(0.8f);
     GuiLabel(Rectangle{ 10, 740, 90, 30 }, "ENERGY");

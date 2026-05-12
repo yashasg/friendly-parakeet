@@ -4,7 +4,6 @@
 #include "../components/transform.h"
 #include "../components/rendering.h"
 #include "../constants.h"
-#include "../util/motion.h"
 #include "../util/settings.h"
 
 namespace {
@@ -42,13 +41,13 @@ void particle_system(entt::registry& reg, float dt) {
     // because particles carry no gameplay payload.
     const auto* settings_ptr = reg.ctx().find<SettingsState>();
     const bool reduce_motion = settings_ptr && settings_ptr->reduce_motion;
-    const float vel_scale = motion::particle_velocity_scale(reduce_motion);
 
     auto vel_view = reg.view<ParticleTag, MotionVelocity>();
     for (auto [entity, vel] : vel_view.each()) {
+        (void)entity;
         if (reduce_motion) {
-            vel.value.x *= vel_scale;
-            vel.value.y *= vel_scale;
+            vel.value.x = 0.0f;
+            vel.value.y = 0.0f;
         } else {
             vel.value.y += constants::PARTICLE_GRAVITY * dt;
         }
