@@ -122,12 +122,12 @@ app/
   platform.h              # PLATFORM_HAS_KEYBOARD macro
   platform_utils.h        # Portable localtime/fopen wrappers
   enum_names.h            # shape_name(), obstacle_kind_name()
-  components/             # 19 POD component structs
+  components/             # POD component structs
     player.h              #   PlayerShape, ShapeWindow, Lane
     rhythm.h              #   TimingGrade, BeatInfo, WindowPhase
     beat_map.h            #   BeatEntry, BeatMap (loaded data)
     song_state.h          #   SongState, HPState, SongResults
-  systems/                # 23 system functions
+  systems/                # system functions
     all_systems.h         #   declarations + pipeline order
     play_session.cpp      #   entity setup on game start
 tools/
@@ -136,7 +136,7 @@ tools/
 content/
   audio/                  # Source audio files (.flac)
   beatmaps/               # Analysis + beatmap JSON files
-tests/                    # 386 Catch2 tests across 19 files
+tests/                    # Catch2 tests
 design-docs/              # Game design + architecture docs
 ```
 
