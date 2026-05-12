@@ -77,10 +77,10 @@
   └──────────────────────────────────────────────────────────┘
                          │
                          ▼ consumed by
-                 gesture_system (existing)
+                 semantic input event queue
                          │
                          ▼
-                 player_action_system (existing)
+                 player_input handlers (existing)
 ```
 
 
@@ -101,11 +101,9 @@ test_player_system(reg, raw_dt);    // Phase 0.5: ★ NEW — injects AI input
 
 // ── INSIDE fixed timestep loop ──────────────────────
 while (accumulator >= FIXED_DT) {
-    gesture_system(reg, FIXED_DT);       // reads InputState → GestureResult
-    game_state_system(reg, FIXED_DT);
+    game_state_system(reg, FIXED_DT);    // drains semantic input events
     song_playback_system(reg, FIXED_DT);
     beat_scheduler_system(reg, FIXED_DT);
-    player_action_system(reg, FIXED_DT);
     shape_window_system(reg, FIXED_DT);
     player_movement_system(reg, FIXED_DT);
     difficulty_system(reg, FIXED_DT);
@@ -125,12 +123,12 @@ while (accumulator >= FIXED_DT) {
 ## System Dependency Chain
 
 ```
-  input_system ──▶ test_player_system ──▶ gesture_system ──▶ player_action_system
+  input_system ──▶ test_player_system ──▶ game_state_system ──▶ player_input handlers
        │                │                      │
     clears           writes                 reads
     key_* flags      key_* flags           key_* flags
-                                            writes GestureResult /
-                                            ShapeButtonEvent
+                                            drains ButtonPressEvent /
+                                            GoEvent
 
   scroll_system ──▶ ring_zone_log_system ──▶ collision_system ──▶ scoring_system
        │                │                         │                  │
@@ -347,9 +345,9 @@ multiple iterations of gesture_system within one frame. Verified safe:
 
 ```
   Iteration 1: gesture_system reads key_1 → sets ShapeButtonEvent
-               player_action_system reads ShapeButtonEvent → MorphIn
+               player_input_handle_press reads ButtonPressEvent → MorphIn
   Iteration 2: gesture_system reads key_1 again → sets ShapeButtonEvent
-               player_action_system checks phase → now MorphIn, not Idle
+               player_input_handle_press checks phase → now MorphIn, not Idle
                → Idle branch fails → no-op ✓ (idempotent)
 ```
 
@@ -680,7 +678,7 @@ Linear iteration over contiguous storage — hardware prefetcher friendly.
   ├─────┼────────────────────────────────────────────────────────┤
   │ 🟢6 │  Key flags persist across multiple fixed-step          │
   │     │  iterations within one frame. Verified idempotent:     │
-  │     │  gesture_system re-fires but player_action_system      │
+  │     │  input event dispatch re-fires but player input        │
   │     │  phase check prevents double-processing.               │
   ├─────┼────────────────────────────────────────────────────────┤
   │ 🟢7 │  std::mt19937 is 2.5KB — large but acceptable for a   │

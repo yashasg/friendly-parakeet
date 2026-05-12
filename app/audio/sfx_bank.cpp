@@ -36,9 +36,6 @@ constexpr std::array<SfxSpec, SFX_COUNT> SFX_SPECS{{
     {180.0f, 0.220f, 0.45f, ProceduralWave::Noise, 3u},      // Crash
     {880.0f, 0.050f, 0.25f, ProceduralWave::Sine, 4u},       // UITap
     {784.0f, 0.120f, 0.35f, ProceduralWave::Sine, 5u},       // ChainBonus
-    {440.0f, 0.100f, 0.30f, ProceduralWave::Sine, 6u},       // ZoneRisky
-    {330.0f, 0.140f, 0.35f, ProceduralWave::Square, 7u},     // ZoneDanger
-    {220.0f, 0.180f, 0.40f, ProceduralWave::DownSweep, 8u},  // ZoneDead
     {988.0f, 0.060f, 0.25f, ProceduralWave::Sine, 9u},       // ScorePopup
     {587.0f, 0.180f, 0.35f, ProceduralWave::Sine, 10u},      // GameStart
 }};

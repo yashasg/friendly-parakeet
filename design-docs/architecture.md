@@ -437,9 +437,6 @@ enum class SFX : uint8_t {
     Crash,
     UITap,
     ChainBonus,
-    ZoneRisky,
-    ZoneDanger,
-    ZoneDead,
     ScorePopup,
     GameStart,
 };

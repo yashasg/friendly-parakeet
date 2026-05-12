@@ -24,16 +24,10 @@ IOSPattern ios_pattern_for_event(HapticEvent event) {
         case HapticEvent::UIButtonTap:
         case HapticEvent::ShapeShift:
         case HapticEvent::JumpLand:
-        case HapticEvent::Burnout1_5x:
         case HapticEvent::RetryTap:
             return {UIImpactFeedbackStyleLight, 1};
-        case HapticEvent::Burnout3_0x:
         case HapticEvent::NewHighScore:
             return {UIImpactFeedbackStyleMedium, 1};
-        case HapticEvent::NearMiss:
-            return {UIImpactFeedbackStyleHeavy, 1};
-        case HapticEvent::Burnout5_0x:
-            return {UIImpactFeedbackStyleHeavy, 3};
         case HapticEvent::DeathCrash:
             return {UIImpactFeedbackStyleHeavy, 2};
         default:

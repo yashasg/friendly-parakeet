@@ -161,7 +161,8 @@ constexpr int32_t CHAIN_MULT_BONUS_STEPS_CAP = 20; // caps at 2.0x from chain 21
   ┌──────────────────────────────────────────────────────────────┐
   │  PER-ENTITY COMPONENTS                                       │
   ├──────────────────────────────────────────────────────────────┤
-  │  PlayerShape       24B ← current shape + window state       │
+  │  PlayerShape       8B  ← current/previous shape + morph     │
+  │  ShapeWindow      24B  ← rhythm window timing state         │
   │  Position           8B ← world position                     │
   │  Velocity           8B ← dx, dy                             │
   │  ObstacleTag        0B ← marker                             │
@@ -215,14 +216,20 @@ struct SongState {
 enum class WindowPhase { Idle, MorphIn, Active, MorphOut };
 
 struct PlayerShape {
-    Shape        current       = Shape::Hexagon;
-    Shape        target        = Shape::Hexagon;
-    float        morph_t       = 0.0f;     // [0,1] visual interpolation
-    WindowPhase  phase         = WindowPhase::Idle;
-    float        phase_timer   = 0.0f;     // seconds in current phase
-    float        peak_time     = 0.0f;     // absolute song_time of window peak
-    float        window_scale  = 1.0f;     // shortening factor from early hit
-    bool         graded        = false;    // window already graded this cycle
+    Shape current  = Shape::Circle;  // player_entity initializes this to Hexagon
+    Shape previous = Shape::Circle;
+    float morph_t  = 1.0f;           // [0,1] visual interpolation
+};
+
+struct ShapeWindow {
+    Shape       target_shape = Shape::Circle; // player_entity initializes this to Hexagon
+    WindowPhase phase        = WindowPhase::Idle;
+    bool        graded       = false;         // window already graded this cycle
+    float       window_timer = 0.0f;          // seconds in current phase/window
+    float       window_start = 0.0f;          // absolute song_time of window start
+    float       press_time   = -1.0f;         // absolute song_time of input
+    float       peak_time    = 0.0f;          // absolute song_time of window peak
+    float       window_scale = 1.0f;          // shortening factor from early hit
 };
 ```
 
@@ -281,10 +288,10 @@ struct SongResults {
   │   → spawns obstacle entities when song_time >= beat_time   │
   │   → advances next_spawn_idx                                │
   │                                                            │
-  │ player_action_system                           [MOD]       │
-  │   → handles ShapeChangeEvent                               │
-  │   → transitions PlayerShape into MorphIn phase             │
-  │   → resets graded + window_scale on new window start       │
+  │ player_input_system handlers                  [MOD]       │
+  │   → handle ButtonPressEvent shape input                    │
+  │   → transition ShapeWindow into MorphIn phase              │
+  │   → reset graded + window_scale on new window start        │
   │                                                            │
   │ shape_window_system                           ★ NEW        │
   │   → advances WindowPhase state machine                     │
@@ -574,7 +581,7 @@ The default (OK) timing = the full active window. Better timing shrinks the rema
   Effect: a PERFECT press returns the player to Hexagon
   faster, ready for the next obstacle sooner.
 
-  The `graded` flag on PlayerShape prevents a second obstacle
+  The `graded` flag on ShapeWindow prevents a second obstacle
   in the same window from re-applying the scale factor.
 ```
 
@@ -620,8 +627,8 @@ if (!song) return;  // no rhythm context — skip
 
 ```
   Player taps the same shape button while already in that window:
-    → player_action_system sees target == current → no-op
-    → window is not restarted or extended
+    → player_input_handle_press sees target == current
+    → active window timing is refreshed for the repeated same-shape press
 ```
 
 ## Different-shape interrupt
@@ -678,8 +685,8 @@ if (!song) return;  // no rhythm context — skip
 ## Phase 3 — Shape window (DONE)
 ```
   • shape_window_system: Idle→MorphIn→Active→MorphOut→Idle
-  • player_action_system: triggers window, resets graded/window_scale
-  • PlayerShape: added window_scale + graded fields
+  • player_input_system handlers: trigger window, reset graded/window_scale
+  • ShapeWindow: owns window_scale + graded fields
   • collision_system: window scaling on GOOD/PERFECT
 ```
 
