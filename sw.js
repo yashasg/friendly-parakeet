@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'shapeshifter-';
-const CACHE_NAME = CACHE_PREFIX + '5de219f';
+const CACHE_NAME = CACHE_PREFIX + 'd27b2dd';
 const ASSETS_TO_CACHE = ['index.js', 'index.wasm', 'index.data'];
 
 function isBuildAssetRequest(request) {
