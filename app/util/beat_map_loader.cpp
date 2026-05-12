@@ -309,12 +309,12 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
             continue;
         }
 
-        int lane = entry.lane;
-        if (!read_optional_int(b, "lane", lane, errors, entry.beat_index)) {
+        int lane_value = entry.lane;
+        if (!read_optional_int(b, "lane", lane_value, errors, entry.beat_index)) {
             parse_ok = false;
             continue;
         }
-        entry.lane = static_cast<int8_t>(lane);
+        entry.lane = static_cast<int8_t>(lane_value);
 
         const float grid_time = out.offset + entry.beat_index * (60.0f / out.bpm);
         float beat_time = grid_time;
