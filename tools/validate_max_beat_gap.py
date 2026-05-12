@@ -3,8 +3,10 @@
 
 Issue #138: Shipped songs contain 56-64 beat silent gaps.
 
-This validator checks the longest mid-song gap between authored obstacles.
-Leading intro rest and trailing outro rest are not counted as failures.
+This validator checks the longest mid-song gap between authored required
+obstacles. Non-blocking `onset_marker` rows preserve analysis metadata but do
+not spawn at runtime, so they are ignored for playable-density checks.
+Leading intro rest and trailing outro rest are capped separately.
 
 Two timing models are supported:
 
@@ -96,6 +98,14 @@ def _collect_valid_beat_indices(beats: list[object]) -> tuple[set[int], int]:
         else:
             invalid_rows += 1
     return valid_beats, invalid_rows
+
+
+def _is_onset_marker_row(row: object) -> bool:
+    return isinstance(row, dict) and row.get("kind") == "onset_marker"
+
+
+def _required_action_rows(rows: list[object]) -> list[object]:
+    return [row for row in rows if not _is_onset_marker_row(row)]
 
 
 def find_max_gap(beats_in_beatmap: set[int]) -> int:
@@ -212,7 +222,8 @@ def main(argv: list[str] | None = None) -> int:
 
             diff_data = beatmap["difficulties"][difficulty]
             raw_rows = diff_data.get("beats", []) or []
-            beats_in_beatmap, invalid_rows = _collect_valid_beat_indices(raw_rows)
+            required_rows = _required_action_rows(raw_rows)
+            beats_in_beatmap, invalid_rows = _collect_valid_beat_indices(required_rows)
             if invalid_rows:
                 print(
                     f"  {name} [{difficulty}]: skipped {invalid_rows} invalid beat row(s)",
@@ -228,7 +239,7 @@ def main(argv: list[str] | None = None) -> int:
             # "silence at the edges of the song" notion is purely temporal.
             lead_cap = MAX_LEAD_IN_SEC.get(difficulty)
             if lead_cap is not None:
-                lead_in = find_lead_in_sec(raw_rows)
+                lead_in = find_lead_in_sec(required_rows)
                 if lead_in > lead_cap:
                     all_violations.append(
                         f"{name} [{difficulty}]: lead-in {lead_in:.2f}s "
@@ -236,7 +247,7 @@ def main(argv: list[str] | None = None) -> int:
                     )
             trail_cap = MAX_TRAIL_OUT_SEC.get(difficulty)
             if trail_cap is not None and duration_sec is not None:
-                trail_out = find_trail_out_sec(raw_rows, duration_sec)
+                trail_out = find_trail_out_sec(required_rows, duration_sec)
                 if trail_out > trail_cap:
                     all_violations.append(
                         f"{name} [{difficulty}]: trail-out {trail_out:.2f}s "
@@ -248,9 +259,9 @@ def main(argv: list[str] | None = None) -> int:
             # Issue #452 — onset-only mode: validate gap in seconds rather than
             # beat ordinals (the latter is meaningless when `beat` is a
             # sequential onset index, not a musical-beat number).
-            if bpm > 0 and _all_onset_timed(raw_rows):
+            if bpm > 0 and _all_onset_timed(required_rows):
                 max_allowed_sec = max_allowed_beats * 60.0 / bpm
-                max_gap_sec = find_max_time_gap_sec(raw_rows)
+                max_gap_sec = find_max_time_gap_sec(required_rows)
                 if max_gap_sec > max_allowed_sec:
                     all_violations.append(
                         f"{name} [{difficulty}]: max silent gap {max_gap_sec:.1f}s "
