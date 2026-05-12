@@ -11,9 +11,8 @@
 > for "early" shape changes. See `rhythm-design.md` and `rhythm-spec.md` for
 > the authoritative rhythm/scoring model, and `energy-bar.md` for survival HUD.
 >
-> **Historical note:** the removed Burnout risk/reward model is isolated in
-> [Appendix C](#appendix-c-obsolete-burnout-architecture). It is not active
-> runtime architecture.
+> **Historical note:** the removed Burnout risk/reward model is archived
+> history only. It is not active runtime architecture.
 
 ---
 
@@ -1597,12 +1596,10 @@ constexpr Color TIMING_TIER_COLORS[4] = {
 
 ---
 
-## Appendix C: Obsolete Burnout Architecture
+## Appendix C: Removed Burnout Model
 
-The removed Burnout model used proximity zones, `BurnoutState`, `BurnoutZone`,
-`BankedBurnout`, `burnout_system`, `BURNOUT_*` constants, and a bottom HUD
-burnout meter to award risk/reward multipliers. Those concepts were removed by
-issue #239 and must not be used for new runtime work.
+The old Burnout risk/reward loop was removed by issue #239 and must not be
+used for new runtime work.
 
 Current replacements:
 

@@ -5,21 +5,11 @@
 > the player experiences from first launch to 100th death.
 > If it's on screen, it's in here. If the player feels it, it's in here.
 
-> ⚠️ **PARTIAL SUPERSESSION (issue #239).**
-> All references in this document to a **burnout meter**, burnout zones
-> (Safe/Risky/Danger/Crit), burnout popups (×1.5 / ×3 / ×5 "CLUTCH" /
-> "LEGENDARY"), burnout-zone heartbeat audio, and the "Burnout intro"
-> tutorial run are **stale**. The burnout system has been removed from
-> the game design.
->
-> What replaces it on the HUD: the **proximity ring** around shape
-> buttons (see `rhythm-spec.md` §6) is the live timing cue, and the
-> **energy bar** (see `energy-bar.md`) is the survival meter. Scoring is
-> driven by on-beat timing grades (Perfect/Good/Ok/Bad) × chain — not by
-> a fill-the-meter risk/reward. On-beat shape changes are valid play
-> even when no obstacle is arriving, so any tutorial/FTUE language that
-> teaches "wait until the meter fills" should be ignored. See the
-> rewritten Run 4 below for the current FTUE intent.
+> **Current model:** the removed Burnout risk/reward mechanic is archived
+> history only. The HUD uses the **proximity ring** around shape buttons
+> (`rhythm-spec.md` §6) as the live timing cue and the **energy bar**
+> (`energy-bar.md`) as the survival meter. Scoring is on-beat timing grades
+> (Perfect/Good/Ok/Bad) × chain.
 
 ---
 
@@ -458,17 +448,9 @@ Not shipped (intentionally absent from this wireframe):
 > A MISS drains energy and resets chain, but a miss is not itself a
 > terminal transition.
 >
-> ⚠️ **PARTIAL ARCHIVED — issue #239.** The `Best Burnout` and
-> `Avg Burnout` stat rows in the Game Over wireframe and the
-> "Stats Breakdown" table below describe stats derived from the
-> removed burnout-multiplier system. The rest of the screen
-> (final score, NEW BEST badge, Distance / Time / Obstacles /
-> Shapes Shifted / Longest Chain rows, PLAY AGAIN / MENU buttons,
-> highlight rules for Longest Chain and the SURVIVOR badge) is
-> still current. New Game Over code must not surface burnout
-> stats. The shipped Game Over screen currently renders final score,
-> high score, and death reason with `RESTART`, `LEVEL SELECT`, and
-> `MAIN MENU` buttons; the larger stat panel below is future scope.
+> The shipped Game Over screen currently renders final score, high score,
+> and death reason with `RESTART`, `LEVEL SELECT`, and `MAIN MENU` buttons;
+> the larger stat panel below is future scope.
 
 ```
   ╔══════════════════════════════════════╗
@@ -622,7 +604,6 @@ storage, but no shipped controller routes players through Tutorial Run 1-5.
   • Only [ ■ ] button visible (● and ▲ hidden)
   • Player starts as ● (wrong shape on purpose)
   • Speed is VERY slow (×0.6)
-  • (Burnout meter hidden — ARCHIVED #239: meter removed; no energy bar in Run 1)
   • First gate doesn't kill — it bounces player back
   • Gentle arrow pointing at the ■ button pulses
 
@@ -729,7 +710,6 @@ storage, but no shipped controller routes players through Tutorial Run 1-5.
   • CIRCLE and SQUARE gates alternate
   • Two buttons visible: [ ● ] [ ■ ]
   • Speed: ×0.7
-  • (Burnout meter still hidden — ARCHIVED #239: meter removed)
   • No other obstacle types
 
   WHAT PLAYER LEARNS:
@@ -819,8 +799,6 @@ storage, but no shipped controller routes players through Tutorial Run 1-5.
   ─────────────────
   • All 3 shape buttons visible
   • Speed: ×0.8
-  • (Burnout meter still hidden — ARCHIVED #239: meter removed)
-
   WHAT PLAYER LEARNS (future / not shipped):
   ──────────────────────────────────────────
   "Some obstacles push me to a different lane automatically"
@@ -996,21 +974,13 @@ shape closer to the beat gives a higher grade (Perfect > Good > Ok > Bad).
 
 ### Tutorial Flow Summary
 
-> ⚠️ **PARTIAL ARCHIVED — issue #239.** The Run 4 row below ("Burnout intro
-> / + burnout meter visible") and the corresponding `Burnout` step in the
-> teaching-cadence diagram describe the removed burnout system. Run 4 has
-> been rewritten as **"Stay on the Beat"** (on-beat timing with
-> Perfect / Good / Ok / Bad grades — see the §3 Run 4 prose above and
-> `design-docs/rhythm-spec.md` §6). Treat the burnout entries here as
-> historical context only; do not implement.
-
 ```
   ╔══════════════════════════════════════════════════╗
   ║  RUN  ║ CONCEPT        ║ MECHANICS ACTIVE        ║
   ╠═══════╬════════════════╬═════════════════════════╣
   ║   1   ║ Match shape    ║ ■ gates, 1 button       ║
   ║   2   ║ Switch shapes  ║ ●■ gates, 2 buttons     ║
-  ║   4   ║ Burnout intro  ║ + burnout meter visible  ║
+  ║   4   ║ Stay on beat   ║ proximity ring + grades  ║
   ║   5+  ║ FULL GAME      ║ Everything               ║
   ╚═══════╩════════════════╩═════════════════════════╝
 
@@ -1021,7 +991,7 @@ shape closer to the beat gives a higher grade (Perfect > Good > Ok > Bad).
      ▲
      │                                    ┌─── Full game
      │                               ┌────┘
-     │                          ┌────┘  Burnout
+     │                          ┌────┘  Beat timing
      │                     ┌────┘  Dodging
      │                ┌────┘  2 shapes
      │           ┌────┘  1 shape
@@ -1115,122 +1085,7 @@ Every player action triggers a multi-sensory response.
 
 ---
 
-### 4b. BURNOUT BANK (Player clears obstacle with burnout multiplier) — ARCHIVED — issue #239
-
-> ⚠️ **ARCHIVED.** The burnout multiplier system (×1.0 / ×1.5 / ×2.0 / ×3.0
-> / ×4.0 / ×5.0 with "Nice / GREAT / CLUTCH / INSANE / LEGENDARY" popups)
-> was removed from the game design. Current scoring is the timing-grade
-> × chain model (Perfect / Good / Ok / Bad) defined in
-> `design-docs/rhythm-spec.md` §6 and `design-docs/rhythm-design.md`.
-> The popup, audio, haptic, and visual feedback table below is retained
-> only as historical context and should NOT be implemented.
-
-```
-  TRIGGER: Obstacle cleared at any burnout multiplier
-  RESPONSE SCALES WITH MULTIPLIER TIER:
-
-  ╔═══════════╦══════════════════════════════════════════════╗
-  ║ MULTIPLIER║  FEEDBACK RESPONSE                          ║
-  ╠═══════════╬══════════════════════════════════════════════╣
-  ║           ║                                              ║
-  ║  ×1.0     ║  VISUAL:  Tiny "+200" text, white, fades    ║
-  ║  (none)   ║  AUDIO:   Soft "ding"                       ║
-  ║           ║  HAPTIC:  None                               ║
-  ║           ║  POPUP:   (nothing)                          ║
-  ║           ║                                              ║
-  ║           ║    +200                                      ║
-  ║           ║    (small, white, fades in 0.5s)             ║
-  ║           ║                                              ║
-  ╠═══════════╬══════════════════════════════════════════════╣
-  ║           ║                                              ║
-  ║  ×1.5     ║  VISUAL:  "+300" text, light green           ║
-  ║  "Nice"   ║  AUDIO:   Bright "ding" + rising tone       ║
-  ║           ║  HAPTIC:  Light tap                          ║
-  ║           ║  POPUP:   "Nice" in small text               ║
-  ║           ║                                              ║
-  ║           ║    Nice                                      ║
-  ║           ║     +300                                     ║
-  ║           ║    (green, fades in 0.8s)                    ║
-  ║           ║                                              ║
-  ╠═══════════╬══════════════════════════════════════════════╣
-  ║           ║                                              ║
-  ║  ×2.0     ║  VISUAL:  "+400" text, YELLOW, medium size   ║
-  ║  "GREAT!" ║           4 particles burst from obstacle    ║
-  ║           ║  AUDIO:   Double-chime ascending             ║
-  ║           ║  HAPTIC:  Medium tap                         ║
-  ║           ║  POPUP:   "GREAT!" medium text, yellow       ║
-  ║           ║                                              ║
-  ║           ║     ✦ GREAT! ✦                               ║
-  ║           ║       +400                                   ║
-  ║           ║    (yellow, slight scale-up, 1.0s)           ║
-  ║           ║                                              ║
-  ╠═══════════╬══════════════════════════════════════════════╣
-  ║           ║                                              ║
-  ║  ×3.0     ║  VISUAL:  "+600" text, ORANGE, large         ║
-  ║ "CLUTCH!" ║           8 particles, screen border flash   ║
-  ║           ║           Camera micro-shake (2px, 0.1s)     ║
-  ║           ║  AUDIO:   Triple ascending chime + bass hit  ║
-  ║           ║  HAPTIC:  Medium impact                      ║
-  ║           ║  POPUP:   "CLUTCH!" large text, orange       ║
-  ║           ║                                              ║
-  ║           ║   ✦  CLUTCH!  ✦                              ║
-  ║           ║       +600                                   ║
-  ║           ║   (orange, shake, border glow, 1.2s)         ║
-  ║           ║                                              ║
-  ╠═══════════╬══════════════════════════════════════════════╣
-  ║           ║                                              ║
-  ║  ×4.0     ║  VISUAL:  "+800" text, RED, huge             ║
-  ║ "INSANE!" ║           16 particles, full screen flash    ║
-  ║           ║           Camera shake (4px, 0.15s)          ║
-  ║           ║           Speed lines appear at edges        ║
-  ║           ║  AUDIO:   Power chord + crowd "OHH!"        ║
-  ║           ║  HAPTIC:  Heavy impact                       ║
-  ║           ║  POPUP:   "INSANE!!" huge, red, screen flash ║
-  ║           ║                                              ║
-  ║           ║  ✦    INSANE!!    ✦                          ║
-  ║           ║  ✦      +800      ✦                          ║
-  ║           ║  (red, screen flash, heavy shake, 1.5s)      ║
-  ║           ║                                              ║
-  ╠═══════════╬══════════════════════════════════════════════╣
-  ║           ║                                              ║
-  ║  ×5.0     ║  VISUAL:  "+1000" text, RAINBOW cycling      ║
-  ║"LEGENDARY"║           32 particles, EXPLOSION effect     ║
-  ║           ║           Full screen white flash (0.05s)    ║
-  ║           ║           Camera shake (6px, 0.2s)           ║
-  ║           ║           Time freeze (0.1s pause on impact) ║
-  ║           ║           Screen border GOLD glow (2s fade)  ║
-  ║           ║  AUDIO:   Epic brass stinger + explosion     ║
-  ║           ║  HAPTIC:  Triple-pulse heavy                 ║
-  ║           ║  POPUP:   "LEGENDARY!!!" massive, rainbow    ║
-  ║           ║                                              ║
-  ║           ║  ★✦★  LEGENDARY!!!  ★✦★                     ║
-  ║           ║  ★✦★     +1000       ★✦★                    ║
-  ║           ║  ★✦★                 ★✦★                    ║
-  ║           ║  (rainbow cycle, explosion, time-freeze)     ║
-  ║           ║                                              ║
-  ╚═══════════╩══════════════════════════════════════════════╝
-```
-
-#### Popup Position & Lifecycle
-
-```
-  Popups spawn at obstacle collision point and float upward:
-
-  TIME        POSITION          OPACITY    SCALE
-  ─────────   ──────────────    ─────────  ─────
-  t=0.00s     y = collision     100%       0.5 → 1.2 (spring)
-  t=0.10s     y = coll - 20px   100%       1.2 → 1.0 (settle)
-  t=0.50s     y = coll - 60px   100%       1.0
-  t=0.80s     y = coll - 80px    80%       1.0
-  t=1.20s     y = coll - 120px   0%        1.0 (faded out)
-
-  Multiple popups can coexist (rapid obstacles).
-  Newer popups push older ones higher.
-```
-
----
-
-### 4c. OBSTACLE CLEAR (Passing through gate / dodging block)
+### 4b. OBSTACLE CLEAR (Passing through gate / dodging block)
 
 ```
   TRIGGER: Player passes through a gate or dodges a block
@@ -1269,60 +1124,7 @@ Every player action triggers a multi-sensory response.
 
 ---
 
-### 4d. NEAR MISS (Player clears at ×4.0 or higher) — ARCHIVED — issue #239
-
-> ⚠️ **ARCHIVED.** The trigger condition below ("burnout multiplier ≥ ×4.0")
-> depends on the removed burnout system (see §4b ARCHIVED note and the
-> top-of-document supersession banner). Any near-miss / time-dilation
-> feedback in the current design must be re-keyed off the timing-grade
-> × chain model (`design-docs/rhythm-spec.md` §6) before implementation.
-> The visual / audio / haptic spec below is retained only as historical
-> context and should NOT be implemented as-is.
-
-```
-  TRIGGER: Burnout multiplier ≥ ×4.0 at moment of clear
-  DURATION: 0.25 seconds
-
-  ┌──────────────┬──────────────────────────────────────────┐
-  │  CHANNEL     │  RESPONSE                                │
-  ├──────────────┼──────────────────────────────────────────┤
-  │  VISUAL      │  1. TIME DILATION: game slows to 50%     │
-  │              │     for 3 frames, then snaps back         │
-  │              │     (gives weight to the moment)          │
-  │              │                                          │
-  │              │  2. RADIAL BLUR: edges blur outward      │
-  │              │     from player position (0.15s)          │
-  │              │                                          │
-  │              │  3. CHROMATIC ABERRATION: brief RGB       │
-  │              │     split on screen edges (0.1s)          │
-  │              │                                          │
-  │              │  4. VIGNETTE PULSE: screen edges          │
-  │              │     darken momentarily                    │
-  │              │                                          │
-  │  AUDIO       │  Low bass "THOOM" + time-stretch effect  │
-  │              │                                          │
-  │  HAPTIC      │  Single heavy pulse                      │
-  └──────────────┴──────────────────────────────────────────┘
-
-  NEAR-MISS VISUAL SEQUENCE:
-  ──────────────────────────
-
-  NORMAL          NEAR-MISS          RECOVERY
-  ┌──────────┐    ┌──────────┐      ┌──────────┐
-  │          │    │▓▓      ▓▓│      │          │
-  │          │    │▓        ▓│      │          │
-  │    ●     │    │  ●●●●    │      │    ●     │
-  │          │    │▓  blur  ▓│      │          │
-  │          │    │▓▓      ▓▓│      │          │
-  └──────────┘    └──────────┘      └──────────┘
-   (normal)       (radial blur       (instant
-                   + vignette          recovery)
-                   + time slow)
-```
-
----
-
-### 4e. CHAIN BUILDING (Consecutive obstacle clears)
+### 4c. CHAIN BUILDING (Consecutive obstacle clears)
 
 ```
   TRIGGER: Clearing 2+ obstacles without dying
@@ -1389,16 +1191,7 @@ Every player action triggers a multi-sensory response.
 
 ---
 
-### 4f. GAME OVER — Death Sequence
-
-> ⚠️ **PARTIAL ARCHIVED — issue #239.** The "Burnout meter greys out"
-> step at t=0.050s and the "Best Burnout" row in the t=1.300s stats
-> slide-in animation describe the removed burnout-multiplier system
-> and its on-HUD meter. The death-sequence durations, camera shake,
-> particle/fade timings, and overall stats-stagger pacing are still
-> current; new code must just omit the burnout meter and burnout-
-> derived stat rows (see §2d ARCHIVED note for the replacement
-> energy-bar / rhythm-timing model).
+### 4d. GAME OVER — Death Sequence
 
 ```
   TRIGGER: Player hits obstacle with wrong shape / doesn't dodge
@@ -1422,7 +1215,6 @@ Every player action triggers a multi-sensory response.
   │  • Particles drift slowly outward from crash point
   │  • Background begins to desaturate
   │  • Score stops counting
-  │  • Burnout meter greys out  ← ARCHIVED #239 (no meter on current HUD)
   │
   t=0.650s  ──── FADE TO DARK ──────────────────────────
   │
@@ -1443,7 +1235,6 @@ Every player action triggers a multi-sensory response.
   │    Distance ─────→
   │              Time ─────→
   │                   Obstacles ─────→
-  │                              Best Burnout ─────→   ← ARCHIVED #239
   │                                            ...
   │
   t=1.800s  ──── BUTTONS APPEAR ────────────────────────
@@ -1507,7 +1298,7 @@ Every player action triggers a multi-sensory response.
 
 ---
 
-### 4g. HIGH SCORE CELEBRATION
+### 4e. HIGH SCORE CELEBRATION
 
 ```
   TRIGGER: Final score > stored best score
@@ -1551,7 +1342,7 @@ Every player action triggers a multi-sensory response.
 
 ---
 
-### 4h. LANE SWITCH (Player swipes left/right)
+### 4f. LANE SWITCH (Player swipes left/right)
 
 ```
   TRIGGER: Swipe gesture detected in gameplay area
@@ -1584,7 +1375,7 @@ Every player action triggers a multi-sensory response.
 
 ---
 
-### 4i. JUMP / SLIDE (Player swipes up/down)
+### 4g. JUMP / SLIDE (Player swipes up/down)
 
 ```
   TRIGGER: Swipe up (jump) or swipe down (slide)
@@ -1631,17 +1422,9 @@ Every player action triggers a multi-sensory response.
 
 ### Element Visibility by Game State
 
-> ⚠️ **PARTIAL ARCHIVED — issue #239.** The `Burnout Meter` and
-> `Burnout Popup` rows in the table below describe the removed burnout
-> system. The current survival meter is the **Energy Bar** (see
-> `design-docs/energy-bar.md` and `app/include/gameplay_hud_layout.h`)
-> and the live timing cue is the **proximity ring** around shape buttons
-> (`design-docs/rhythm-spec.md` §6). Treat the two `Burnout *` rows as
-> historical context only; new HUD code must not add a `Burnout Meter`
-> or `Burnout Popup` element. The shipped HUD has a vertical left-edge
-> Energy Bar, Score/Best Score, Pause Button, Shape Buttons, Lane
-> Dividers, and Player Avatar. Speed Bar and Chain Counter are not
-> currently rendered.
+> The shipped HUD has a vertical left-edge Energy Bar, Score/Best Score,
+> Pause Button, Shape Buttons, Lane Dividers, and Player Avatar. Speed Bar
+> and Chain Counter are not currently rendered.
 
 ```
   ╔═══════════════════════╦═══════╦═════════╦════════╦═══════╦════════╗
@@ -1658,12 +1441,10 @@ Every player action triggers a multi-sensory response.
   ║ Energy Bar (left edge) ║       ║  ✓      ║  ✓ dim ║ ✓ grey║        ║
   ║ Speed Bar              ║       ║         ║        ║       ║        ║  ← removed
   ║ Pause Button (⏸)       ║       ║  ✓      ║        ║       ║        ║
-  ║ Burnout Meter          ║       ║  ✓      ║  ✓ dim ║ ✓ grey ║       ║  ← ARCHIVED #239 (removed; use Energy Bar)
   ║ Shape Buttons          ║       ║  ✓      ║  ✓ dim ║       ║        ║
   ║ Lane Dividers          ║       ║  ✓      ║  ✓ dim ║ ✓ fade ║       ║
   ║ Player Avatar          ║       ║  ✓      ║  ✓ dim ║ shatter║       ║
   ║ Chain Counter          ║       ║         ║        ║       ║        ║  ← not shipped
-  ║ Burnout Popup          ║       ║  ✓*     ║        ║       ║        ║  ← ARCHIVED #239 (removed)
   ╠═══════════════════════╬═══════╬═════════╬════════╬═══════╬════════╣
   ║ "PAUSED" text          ║       ║         ║  ✓     ║       ║        ║
   ║ Resume Button          ║       ║         ║  ✓     ║       ║        ║
@@ -1688,99 +1469,7 @@ Every player action triggers a multi-sensory response.
 
 ---
 
-### 5a. BURNOUT METER — Animation Specification (ARCHIVED — issue #239)
-
-> ⚠️ **ARCHIVED.** The burnout meter was removed from the game design (see
-> the supersession note at the top of this document). The current survival
-> meter is the **energy bar** (`design-docs/energy-bar.md`); the live
-> timing cue is the **proximity ring** around shape buttons
-> (`design-docs/rhythm-spec.md` §6). The animation specification below is
-> retained only as historical context and should NOT be implemented.
-
-```
-  THE BURNOUT METER IS THE EMOTIONAL HEARTBEAT OF THE GAME.
-  It must feel ALIVE, not like a boring progress bar.
-
-  ┌───────────────────────────────────────────────────┐
-  │  BURNOUT METER ANATOMY:                           │
-  │                                                   │
-  │  ┌─ track background (dark grey, rounded) ─────┐  │
-  │  │                                             │  │
-  │  │  ████████████████████░░░░░░░░░░░░░░░░░░░░  │  │
-  │  │  ↑                                          │  │
-  │  │  fill bar (color changes by zone)           │  │
-  │  │                                             │  │
-  │  └──────────────────┬──────────┬───────────────┘  │
-  │                     │          │                   │
-  │                 zone marker  zone marker           │
-  │                 (30%)        (70%)                 │
-  └───────────────────────────────────────────────────┘
-```
-
-#### Burnout Meter Color Zones
-
-```
-  FILL PERCENTAGE    ZONE      COLOR           BEHAVIOR
-  ═════════════════  ════════  ══════════════  ═══════════════════
-  0–30%              SAFE      Cyan (#00DDFF)  Smooth fill, steady
-  30–60%             RISKY     Yellow (#FFDD00) Fill + gentle pulse
-  60–85%             DANGER    Orange (#FF8800) Fill + fast pulse
-                                               screen edge tint
-  85–95%             CRITICAL  Red (#FF2200)    INTENSE pulse
-                                               meter SHAKES (2px)
-                                               background throb
-  95–100%            DEAD ZONE Deep Red + ☠    Flash on/off
-                                               everything screams
-                                               "ACT NOW OR DIE"
-
-  PULSE ANIMATION BY ZONE:
-  ────────────────────────
-
-  SAFE (no pulse):
-  ████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░
-  ████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░  ← steady, calm
-  ████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░
-
-  RISKY (gentle pulse, 1Hz):
-  ███████████████████░░░░░░░░░░░░░░░░░░░░░  ← opacity 100%
-  ██████████████████░░░░░░░░░░░░░░░░░░░░░░  ← opacity 85%
-  ███████████████████░░░░░░░░░░░░░░░░░░░░░  ← opacity 100%
-
-  DANGER (fast pulse, 3Hz + shake):
-  █████████████████████████████░░░░░░░░░░░  ← bright + left
-   █████████████████████████████░░░░░░░░░░  ← bright + right
-  █████████████████████████████░░░░░░░░░░░  ← dim + center
-   █████████████████████████████░░░░░░░░░░  ← bright + left
-  (meter physically shakes horizontally)
-
-  CRITICAL (frantic flash, 6Hz + violent shake):
-  ████████████████████████████████████░░░☠  ← ON + shake
-  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  ← OFF
-  ████████████████████████████████████░░░☠  ← ON + shake
-  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  ← OFF
-  (screen edges throb red, audio heartbeat SFX)
-```
-
-#### Burnout Meter — Edge Glow Effect
-
-```
-  When burnout enters DANGER zone (60%+), the screen
-  edges begin to glow the meter's color:
-
-  SAFE:                    DANGER:                  CRITICAL:
-  ╔══════════════════╗     ╔══════════════════╗     ╔══════════════════╗
-  ║                  ║     ║▒                ▒║     ║█                █║
-  ║                  ║     ║                  ║     ║█                █║
-  ║    (gameplay)    ║     ║▒  (gameplay)   ▒║     ║█  (gameplay)   █║
-  ║                  ║     ║                  ║     ║█                █║
-  ║                  ║     ║▒                ▒║     ║█                █║
-  ╚══════════════════╝     ╚══════════════════╝     ╚══════════════════╝
-   (no edge glow)          (subtle orange glow)     (INTENSE red glow)
-```
-
----
-
-### 5b. SCORE COUNTER — Animation Specification
+### 5a. SCORE COUNTER — Animation Specification
 
 ```
   THE SCORE NEVER JUMPS. IT ALWAYS ROLLS.
@@ -1815,7 +1504,7 @@ Every player action triggers a multi-sensory response.
 
 ---
 
-### 5c. SPEED BAR — Animation Specification
+### 5b. SPEED BAR — Animation Specification
 
 ```
   SPEED BAR ANATOMY:
@@ -1845,18 +1534,8 @@ Every player action triggers a multi-sensory response.
 
 ## 6. TRANSITION ANIMATIONS
 
-> ⚠️ **PARTIAL ARCHIVED — issue #239.** The frame-sequence ASCII art and
-> bullet timelines in §6a (Title → Gameplay), §6c (Game Over → Retry),
-> and §6d (Pause Overlay) still depict a `BURNOUT ░░░░░░░░` bar at the
-> bottom of the playing HUD and a "Burnout meter slides up from bottom"
-> entry-animation step. The burnout meter has been removed; the current
-> survival meter is the **Energy Bar** (`design-docs/energy-bar.md`,
-> `app/include/gameplay_hud_layout.h`) and the live timing cue is the
-> **proximity ring** around shape buttons (`design-docs/rhythm-spec.md`
-> §6). Treat any `BURNOUT …` row or "burnout meter" timeline beat in
-> the diagrams below as historical context only — the surrounding
-> transition timing (durations, eases, retry budget, pause grace, etc.)
-> is still current.
+> Transition timing is current; HUD art should use the current Energy Bar and
+> proximity-ring model from `energy-bar.md` and `rhythm-spec.md` §6.
 
 ### 6a. TITLE → GAMEPLAY
 
@@ -1890,7 +1569,6 @@ Every player action triggers a multi-sensory response.
   │
   t=0.40s  BOTTOM HUD ENTERS
   │
-  │  • Burnout meter slides up from bottom (0.15s)  ← ARCHIVED #239 (removed; Energy Bar replaces it, see energy-bar.md)
   │  • Shape buttons pop in L→R (0.05s each, bounce)
   │
   t=0.60s  GAME BEGINS
@@ -1930,7 +1608,7 @@ Every player action triggers a multi-sensory response.
   ║       │  ●  │      ║    ║       │  ●  │      ║
   ║       │(you)│      ║    ║       │(you)│      ║
   ║  ─────┴─────┴──── ║    ║  ─────┴─────┴──── ║
-  ║                    ║    ║  BURNOUT ░░░░░░░░  ║  ← ARCHIVED #239 (now Energy Bar)
+  ║                    ║    ║  ENERGY █████░░░░  ║
   ║  (buttons rising)  ║    ║  [ ● ] [ ■ ] [ ▲ ] ║
   ╚════════════════════╝    ╚════════════════════╝
                               ↑ GAME IS LIVE
@@ -2024,7 +1702,7 @@ Every player action triggers a multi-sensory response.
   ║   ...             ║   ║                   ║  ║      │  ●  │      ║
   ║                   ║   ║                   ║  ║      │     │      ║
   ║  [▸PLAY AGAIN]    ║   ║                   ║  ║ ─────┴─────┴────  ║
-  ║  [ MENU ]         ║   ║                   ║  ║ BURNOUT ░░░░░░░░  ║  ← ARCHIVED #239 (now Energy Bar)
+  ║  [ MENU ]         ║   ║                   ║  ║ ENERGY █████░░░░  ║
   ║                   ║   ║                   ║  ║ [ ● ] [ ■ ] [ ▲ ] ║
   ╚═══════════════════╝   ╚═══════════════════╝  ╚═══════════════════╝
        [TAP!]               (0.1s black)           GAME IS LIVE
@@ -2075,7 +1753,7 @@ Every player action triggers a multi-sensory response.
   ║      │  ●  │      ║  ║▓▓▓(dimming)▓▓▓▓▓▓║  ║▓▓ [↺ RESTART]  ▓▓║
   ║      │     │      ║  ║▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓║  ║▓▓ [✕ QUIT]     ▓▓║
   ║ ─────┴─────┴────  ║  ║▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓║  ║▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓║
-  ║ BURNOUT ░░░░░░░░  ║  ║▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓║  ║▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓║  ← ARCHIVED #239 (now Energy Bar)
+  ║ ENERGY █████░░░░  ║  ║▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓║  ║▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓║
   ║ [ ● ] [ ■ ] [ ▲ ] ║  ║▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓║  ║▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓║
   ╚═══════════════════╝  ╚═══════════════════╝  ╚═══════════════════╝
 ```
@@ -2103,15 +1781,6 @@ Every player action triggers a multi-sensory response.
 
 ## APPENDIX A: COMPLETE AUDIO MAP
 
-> ⚠️ **PARTIAL ARCHIVED — issue #239.** The seven `Burnout ×N.N` rows
-> and the `Burnout DANGER zone` heartbeat row below describe audio cues
-> for the removed burnout-multiplier system. New audio code must not
-> implement these cues; the current scoring/feedback model is the
-> energy bar + proximity-ring timing (`design-docs/energy-bar.md`,
-> `design-docs/rhythm-spec.md` §6). All other rows (shape shifts, lane
-> switch, jump/land, gates, chains, near miss, death, UI, etc.) remain
-> current.
-
 ```
   ╔═════════════════════════╦══════════════════════════════════════╗
   ║  EVENT                  ║  SOUND DESCRIPTION                   ║
@@ -2127,13 +1796,6 @@ Every player action triggers a multi-sensory response.
   ║  Slide                  ║  Quick zip                           ║
   ║  Gate pass-through      ║  Resonant whoosh                     ║
   ║  Block dodge            ║  Quick zip                           ║
-  ║  Burnout ×1.0           ║  Soft ding                           ║  ← ARCHIVED #239
-  ║  Burnout ×1.5           ║  Bright ding + rise                  ║  ← ARCHIVED #239
-  ║  Burnout ×2.0           ║  Double chime                        ║  ← ARCHIVED #239
-  ║  Burnout ×3.0           ║  Triple chime + bass                 ║  ← ARCHIVED #239
-  ║  Burnout ×4.0           ║  Power chord + crowd                 ║  ← ARCHIVED #239
-  ║  Burnout ×5.0           ║  Epic brass + explosion              ║  ← ARCHIVED #239
-  ║  Burnout DANGER zone    ║  Heartbeat loop (BPM = fill%)        ║  ← ARCHIVED #239
   ║  Chain ×2               ║  Subtle chime                        ║
   ║  Chain ×3               ║  Rising chime                        ║
   ║  Chain ×5+              ║  Triumphant sting                    ║
@@ -2154,15 +1816,6 @@ Every player action triggers a multi-sensory response.
 
 ## APPENDIX B: COMPLETE HAPTIC MAP
 
-> ⚠️ **PARTIAL ARCHIVED — issue #239.** The five `Burnout ×N.N` rows
-> below describe haptic patterns for the removed burnout-multiplier
-> system. New haptic code must not implement these patterns; haptic
-> feedback for clears/near-misses/deaths is now driven by the energy
-> bar + proximity-ring timing model (`design-docs/energy-bar.md`,
-> `design-docs/rhythm-spec.md` §6). All other rows (shape shift, lane
-> switch, jump, near miss, death, new high score, retry, UI) remain
-> current.
-
 ```
   ╔═════════════════════════╦═══════════════════════╦══════════════╗
   ║  EVENT                  ║  HAPTIC TYPE           ║  INTENSITY   ║
@@ -2170,11 +1823,6 @@ Every player action triggers a multi-sensory response.
   ║  Shape shift            ║  Single tap            ║  Light       ║
   ║  Lane switch            ║  Single tap            ║  Ultra-light ║
   ║  Jump (land)            ║  Single tap            ║  Light       ║
-  ║  Burnout ×1.5           ║  Single tap            ║  Light       ║  ← ARCHIVED #239
-  ║  Burnout ×2.0           ║  Single tap            ║  Medium      ║  ← ARCHIVED #239
-  ║  Burnout ×3.0           ║  Single tap            ║  Medium      ║  ← ARCHIVED #239
-  ║  Burnout ×4.0           ║  Single impact         ║  Heavy       ║  ← ARCHIVED #239
-  ║  Burnout ×5.0           ║  Triple pulse          ║  Heavy       ║  ← ARCHIVED #239
   ║  Near miss              ║  Single pulse          ║  Heavy       ║
   ║  Death crash            ║  Double pulse          ║  Heavy       ║
   ║  New High Score         ║  Triple tap pattern    ║  Medium      ║
@@ -2226,15 +1874,6 @@ Every player action triggers a multi-sensory response.
       constexpr float SCORE_ROLLUP_MAX        = 0.60f;
       constexpr float TAP_TO_START_PULSE      = 2.00f;  // full cycle
 
-      // Burnout meter — ARCHIVED #239 (removed; do NOT add these
-      // constants to new code. Use the Energy Bar model in
-      // design-docs/energy-bar.md and the proximity-ring timing
-      // constants in design-docs/rhythm-spec.md §6 instead.)
-      constexpr float BURNOUT_PULSE_RISKY_HZ  = 1.0f;
-      constexpr float BURNOUT_PULSE_DANGER_HZ = 3.0f;
-      constexpr float BURNOUT_PULSE_CRIT_HZ   = 6.0f;
-      constexpr float BURNOUT_SHAKE_PX        = 2.0f;
-
       // Camera
       constexpr float SHAKE_CLUTCH_PX         = 2.0f;   // ×3
       constexpr float SHAKE_INSANE_PX         = 4.0f;   // ×4
@@ -2255,17 +1894,14 @@ Every player action triggers a multi-sensory response.
   ════════   ══════════════════════  ════════  ════════
   P0         Screen flow + states    CRITICAL  Medium
   P0         Shape shift (instant)   CRITICAL  Low
-  P0         Burnout meter (basic)   CRITICAL  Medium  ← ARCHIVED #239
   P0         Score counter (basic)   CRITICAL  Low
   P0         Retry (< 0.5s)         CRITICAL  Low
   ─────────────────────────────────────────────────────
   P1         Death sequence          HIGH      Medium
-  P1         Burnout popups          HIGH      Low     ← ARCHIVED #239
   P1         Button pop animation    HIGH      Low
   P1         Gate pass-through FX    HIGH      Medium
   P1         Lane switch animation   HIGH      Low
   ─────────────────────────────────────────────────────
-  P2         Burnout meter zones     MEDIUM    Medium  ← ARCHIVED #239
   P2         Chain counter + trail   MEDIUM    Medium
   P2         Near-miss effects       MEDIUM    Medium
   P2         Score roll-up           MEDIUM    Low
