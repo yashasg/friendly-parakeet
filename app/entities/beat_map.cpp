@@ -330,9 +330,24 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
     if (j.contains("difficulties") && j["difficulties"].is_object()) {
         const auto& diffs = j["difficulties"];
         const auto diff_it = diffs.find(difficulty);
-        if (diff_it != diffs.end() && diff_it->is_object() && diff_it->contains("beats")
-            && (*diff_it)["beats"].is_array()) {
-            beats_array = &(*diff_it)["beats"];
+        if (diff_it != diffs.end()) {
+            if (!diff_it->is_object()) {
+                errors.push_back({-1, std::string("Difficulty '") + difficulty
+                    + "' must be an object (got " + diff_it->type_name() + ")"});
+                return false;
+            }
+            const auto beats_it = diff_it->find("beats");
+            if (beats_it == diff_it->end()) {
+                errors.push_back({-1, std::string("Difficulty '") + difficulty
+                    + "' must contain a 'beats' array"});
+                return false;
+            }
+            if (!beats_it->is_array()) {
+                errors.push_back({-1, std::string("Difficulty '") + difficulty
+                    + "' field 'beats' must be an array (got " + beats_it->type_name() + ")"});
+                return false;
+            }
+            beats_array = &(*beats_it);
         } else {
             // Requested difficulty not found — try fallback order
             const char* fallbacks[] = {"medium", "easy", "hard"};
