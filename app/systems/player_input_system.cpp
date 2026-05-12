@@ -56,22 +56,18 @@ void player_input_handle_press(entt::registry& reg, const ButtonPressEvent& evt)
     auto pressed_shape = evt.shape;
     auto shape_lane = lane_for_shape(pressed_shape);
 
-    auto begin_shape_window = [&](entt::entity entity, PlayerShape& ps, ShapeWindow& sw) {
+    auto begin_shape_window = [&](PlayerShape& ps, ShapeWindow& sw) {
         Shape previous_shape = ps.current;
         sw.target_shape = pressed_shape;
         ps.previous = previous_shape;
-        ps.current = pressed_shape;  // Instant swap: no MorphIn delay
-        sw.phase = WindowPhase::Active;
+        sw.phase = WindowPhase::MorphIn;
         sw.window_timer = 0.0f;
         sw.window_start = song->song_time;
         sw.press_time = song->song_time;
         sw.peak_time = song->song_time + song->half_window;
-        ps.morph_t = 1.0f;
+        ps.morph_t = 0.0f;
         sw.window_scale = 1.0f;
         sw.graded = false;
-        auto si = static_cast<int>(pressed_shape);
-        auto& sc = constants::SHAPE_COLORS[si];
-        reg.replace<Color>(entity, sc);
         if (auto* disp = reg.ctx().find<entt::dispatcher>()) {
             disp->enqueue<PlaySfxEvent>({SFX::ShapeShift});
         }
@@ -92,9 +88,9 @@ void player_input_handle_press(entt::registry& reg, const ButtonPressEvent& evt)
         if (rhythm_mode) {
             auto phase = swindow.phase;
             if (phase == WindowPhase::Idle) {
-                begin_shape_window(entity, pshape, swindow);
+                begin_shape_window(pshape, swindow);
             } else if (phase == WindowPhase::Active && pressed_shape != pshape.current) {
-                begin_shape_window(entity, pshape, swindow);
+                begin_shape_window(pshape, swindow);
             } else if (phase == WindowPhase::Active && pressed_shape == pshape.current) {
                 swindow.window_timer = 0.0f;
                 swindow.window_start = song->song_time;
@@ -103,7 +99,7 @@ void player_input_handle_press(entt::registry& reg, const ButtonPressEvent& evt)
                 swindow.window_scale = 1.0f;
                 swindow.graded = false;
             } else if (phase == WindowPhase::MorphOut) {
-                begin_shape_window(entity, pshape, swindow);
+                begin_shape_window(pshape, swindow);
             }
         } else {
             if (pressed_shape != pshape.current) {

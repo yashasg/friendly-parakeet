@@ -174,7 +174,7 @@ TEST_CASE("ecs: make_registry dispatcher is wired — ButtonPressEvent listeners
     disp.update<ButtonPressEvent>();
 
     // If dispatcher listeners were NOT wired, sw.phase would stay Idle.
-    CHECK(sw.phase        == WindowPhase::Active);  // listener wired: handle_press fired
+    CHECK(sw.phase        == WindowPhase::MorphIn);  // listener wired: handle_press fired
     CHECK(sw.target_shape == Shape::Triangle);
 }
 
@@ -205,7 +205,7 @@ TEST_CASE("ecs: wire_input_dispatcher is idempotent", "[ecs][dispatcher]") {
     press_button(reg, btn);
     reg.ctx().get<entt::dispatcher>().update<ButtonPressEvent>();
 
-    CHECK(reg.get<ShapeWindow>(player).phase == WindowPhase::Active);
+    CHECK(reg.get<ShapeWindow>(player).phase == WindowPhase::MorphIn);
     CHECK(drain_sfx_events(reg).count == 1);
 }
 
@@ -388,7 +388,7 @@ TEST_CASE("ecs: dispatcher rewire-after-unwire does not duplicate semantic deliv
     press_button(reg, button);
     reg.ctx().get<entt::dispatcher>().update<ButtonPressEvent>();
 
-    CHECK(sw.phase == WindowPhase::Active);
+    CHECK(sw.phase == WindowPhase::MorphIn);
     CHECK(sw.target_shape == Shape::Square);
     CHECK(drain_sfx_events(reg).count == 1);
 }
@@ -409,7 +409,7 @@ TEST_CASE("ecs: repeated unwire_input_dispatcher is idempotent before rewire",
     press_button(reg, button);
     reg.ctx().get<entt::dispatcher>().update<ButtonPressEvent>();
 
-    CHECK(sw.phase == WindowPhase::Active);
+    CHECK(sw.phase == WindowPhase::MorphIn);
     CHECK(sw.target_shape == Shape::Triangle);
     CHECK(drain_sfx_events(reg).count == 1);
 }
