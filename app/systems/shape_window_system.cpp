@@ -44,9 +44,7 @@ void shape_window_system(entt::registry& reg, float /*dt*/) {
             case WindowPhase::Active: {
                 float active_elapsed = song->song_time - swindow.window_start;
                 swindow.window_timer = active_elapsed;
-                float effective_duration = (swindow.window_scale > 1.0f)
-                    ? song->window_duration * swindow.window_scale
-                    : song->window_duration;
+                float effective_duration = song->window_duration;
                 if (active_elapsed >= effective_duration) {
                     swindow.phase = WindowPhase::MorphOut;
                     swindow.window_start = swindow.window_start + effective_duration;

@@ -108,7 +108,7 @@ TEST_CASE("shape_window: Idle phase does nothing", "[shape_window][rhythm]") {
     CHECK(ps.current == original_shape);
 }
 
-TEST_CASE("shape_window: window_scale > 1 extends Active duration", "[shape_window][rhythm]") {
+TEST_CASE("shape_window: Active duration is driven by song window duration", "[shape_window][rhythm]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
     auto& ps = reg.get<PlayerShape>(player);
@@ -118,16 +118,11 @@ TEST_CASE("shape_window: window_scale > 1 extends Active duration", "[shape_wind
     ps.current = Shape::Circle;
     sw.phase = WindowPhase::Active;
     sw.window_start = song.song_time;
-    sw.window_scale = 1.50f;  // hypothetical extended scale (system-level test)
+    sw.window_scale = 1.50f;
 
-    // Advance by normal window_duration — should still be Active
+    // window_scale is recorded for grading state; collision_system applies
+    // valid shortening by shifting window_start, not by extending duration here.
     song.song_time += song.window_duration + 0.01f;
-    shape_window_system(reg, 0.016f);
-
-    CHECK(sw.phase == WindowPhase::Active);
-
-    // Now advance past the extended duration
-    song.song_time += song.window_duration * 0.6f;
     shape_window_system(reg, 0.016f);
 
     CHECK(sw.phase == WindowPhase::MorphOut);
