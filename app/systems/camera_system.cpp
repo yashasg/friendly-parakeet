@@ -11,6 +11,7 @@
 #include "../components/song_state.h"
 #include "../components/system_scratch.h"
 #include "../constants.h"
+#include "../entities/settings.h"
 #include "../platform_display.h"
 #include <glm/mat4x4.hpp>
 #include <raylib.h>
@@ -321,6 +322,8 @@ void game_camera_system(entt::registry& reg, float /*dt*/) {
         auto& fp = reg.ctx().get<FloorParams>();
         auto* song = reg.ctx().find<SongState>();
         auto* map = find_beat_map(reg);
+        const auto* settings = find_settings_state(reg);
+        const float audio_offset_sec = settings ? settings::audio_offset_seconds(*settings) : 0.0f;
         float pulse = 0.0f;
         if (song && song->playing && song->beat_period > 0.0f && song->current_beat >= 0) {
             float beat_time = song->offset + static_cast<float>(song->current_beat) * song->beat_period;
@@ -328,10 +331,7 @@ void game_camera_system(entt::registry& reg, float /*dt*/) {
             if (map && beat_index < map->beat_times.size()) {
                 beat_time = map->beat_times[beat_index];
             }
-            float time_since_beat = song->song_time - beat_time;
-            float pulse_t = Clamp(time_since_beat / constants::FLOOR_PULSE_DECAY, 0.0f, 1.0f);
-            float ease = 1.0f - (1.0f - pulse_t) * (1.0f - pulse_t);
-            pulse = 1.0f - ease;
+            pulse = floor_visuals::pulse_for_beat(song->song_time, beat_time, audio_offset_sec);
         }
         float alpha_f = Lerp(constants::FLOOR_ALPHA_REST, constants::FLOOR_ALPHA_PEAK, pulse);
         float scale = Lerp(constants::FLOOR_SCALE_REST, constants::FLOOR_SCALE_PEAK, pulse);

@@ -3,6 +3,7 @@
 #include "../entities/beat_map.h"
 #include "../components/song_state.h"
 #include "../constants.h"
+#include "../entities/settings.h"
 #include "../rendering/camera_resources.h"
 
 #include <raylib.h>
@@ -128,7 +129,7 @@ void draw_floor_rings(const FloorParams& fp) {
     rlEnd();
 }
 
-void draw_floor_beat_lines(const SongState* song, const BeatMap* map) {
+void draw_floor_beat_lines(const SongState* song, const BeatMap* map, float audio_offset_sec) {
     if (!song || !song->playing || song->scroll_speed <= 0.0f) {
         return;
     }
@@ -144,7 +145,8 @@ void draw_floor_beat_lines(const SongState* song, const BeatMap* map) {
         + (constants::PLAYER_Y - z_min) / song->scroll_speed;
 
     const auto draw_line_at_time = [&](float beat_time) {
-        const float z = constants::PLAYER_Y + (song->song_time - beat_time) * song->scroll_speed;
+        const float z = floor_visuals::beat_line_z(
+            song->song_time, beat_time, song->scroll_speed, audio_offset_sec);
         if (z < z_min || z > z_max) {
             return;
         }
@@ -160,13 +162,13 @@ void draw_floor_beat_lines(const SongState* song, const BeatMap* map) {
 
     if (map && !map->beat_times.empty()) {
         const auto& beats = map->beat_times;
-        auto it = std::lower_bound(beats.begin(), beats.end(), visible_time_min);
-        for (; it != beats.end() && *it <= visible_time_max; ++it) {
+        auto it = std::lower_bound(beats.begin(), beats.end(), visible_time_min - audio_offset_sec);
+        for (; it != beats.end() && *it <= visible_time_max - audio_offset_sec; ++it) {
             draw_line_at_time(*it);
         }
     } else if (song->beat_period > 0.0f) {
         int beat_index = static_cast<int>(
-            std::ceil((visible_time_min - song->offset) / song->beat_period));
+            std::ceil((visible_time_min - audio_offset_sec - song->offset) / song->beat_period));
         if (beat_index < 0) {
             beat_index = 0;
         }
@@ -186,8 +188,10 @@ void floor_render_system(const entt::registry& reg) {
     const auto& floor_params = reg.ctx().get<FloorParams>();
     const auto* song = reg.ctx().find<SongState>();
     const auto* map = find_beat_map(reg);
+    const auto* settings = find_settings_state(reg);
+    const float audio_offset_sec = settings ? settings::audio_offset_seconds(*settings) : 0.0f;
 
     draw_floor_lines(floor_params);
-    draw_floor_beat_lines(song, map);
+    draw_floor_beat_lines(song, map, audio_offset_sec);
     draw_floor_rings(floor_params);
 }

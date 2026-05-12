@@ -2,6 +2,9 @@
 
 #include <raylib.h>
 #include <cstdint>
+#include <algorithm>
+
+#include "../constants.h"
 
 // Per-frame render parameters computed from SongState beat pulse.
 struct FloorParams {
@@ -10,6 +13,29 @@ struct FloorParams {
     float   thick = 0.0f;
     uint8_t alpha = 0;
 };
+
+namespace floor_visuals {
+
+inline float calibrated_beat_time(float beat_time, float audio_offset_sec) {
+    return beat_time + audio_offset_sec;
+}
+
+inline float beat_line_z(float song_time, float beat_time, float scroll_speed,
+                         float audio_offset_sec) {
+    return constants::PLAYER_Y
+        + (song_time - calibrated_beat_time(beat_time, audio_offset_sec)) * scroll_speed;
+}
+
+inline float pulse_for_beat(float song_time, float beat_time, float audio_offset_sec) {
+    const float time_since_beat =
+        song_time - calibrated_beat_time(beat_time, audio_offset_sec);
+    const float pulse_t =
+        std::clamp(time_since_beat / constants::FLOOR_PULSE_DECAY, 0.0f, 1.0f);
+    const float ease = 1.0f - (1.0f - pulse_t) * (1.0f - pulse_t);
+    return 1.0f - ease;
+}
+
+} // namespace floor_visuals
 
 // Render targets for world (3D) and UI (2D) layers.
 // RAII owner: destructor calls UnloadRenderTexture only when owned == true,
