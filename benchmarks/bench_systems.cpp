@@ -100,7 +100,7 @@ static void spawn_particles(entt::registry& reg, int count) {
 
 constexpr float DT = 1.0f / 60.0f;
 
-TEST_CASE("Bench: scroll_system", "[bench]") {
+TEST_CASE("Bench: scroll_system", "[!benchmark][bench]") {
     BENCHMARK_ADVANCED("10 entities")(Catch::Benchmark::Chronometer meter) {
         auto reg = make_bench_registry();
         spawn_scroll_obstacles(reg, 10);
@@ -118,7 +118,7 @@ TEST_CASE("Bench: scroll_system", "[bench]") {
     };
 }
 
-TEST_CASE("Bench: collision_system", "[bench]") {
+TEST_CASE("Bench: collision_system", "[!benchmark][bench]") {
     BENCHMARK_ADVANCED("1 obstacle at player")(Catch::Benchmark::Chronometer meter) {
         auto reg = make_bench_registry();
         make_bench_player(reg);
@@ -145,7 +145,7 @@ TEST_CASE("Bench: collision_system", "[bench]") {
     };
 }
 
-TEST_CASE("Bench: scoring_system", "[bench]") {
+TEST_CASE("Bench: scoring_system", "[!benchmark][bench]") {
     BENCHMARK_ADVANCED("no scored obstacles")(Catch::Benchmark::Chronometer meter) {
         auto reg = make_bench_registry();
         make_bench_player(reg);
@@ -169,7 +169,7 @@ TEST_CASE("Bench: scoring_system", "[bench]") {
     };
 }
 
-TEST_CASE("Bench: player_input + movement", "[bench]") {
+TEST_CASE("Bench: player_input + movement", "[!benchmark][bench]") {
     BENCHMARK_ADVANCED("shape change + lane switch")(Catch::Benchmark::Chronometer meter) {
         auto reg = make_bench_registry();
         make_bench_player(reg);
@@ -182,7 +182,7 @@ TEST_CASE("Bench: player_input + movement", "[bench]") {
     };
 }
 
-TEST_CASE("Bench: particle_system", "[bench]") {
+TEST_CASE("Bench: particle_system", "[!benchmark][bench]") {
     BENCHMARK_ADVANCED("50 particles")(Catch::Benchmark::Chronometer meter) {
         auto reg = make_bench_registry();
         spawn_particles(reg, 50);
@@ -190,7 +190,7 @@ TEST_CASE("Bench: particle_system", "[bench]") {
     };
 }
 
-TEST_CASE("Bench: obstacle_despawn_system", "[bench]") {
+TEST_CASE("Bench: obstacle_despawn_system", "[!benchmark][bench]") {
     BENCHMARK_ADVANCED("10 obstacles (none past threshold)")(Catch::Benchmark::Chronometer meter) {
         auto reg = make_bench_registry();
         spawn_obstacles(reg, 10);
@@ -198,7 +198,7 @@ TEST_CASE("Bench: obstacle_despawn_system", "[bench]") {
     };
 }
 
-TEST_CASE("Bench: motion_system", "[bench]") {
+TEST_CASE("Bench: motion_system", "[!benchmark][bench]") {
     BENCHMARK_ADVANCED("10 entities")(Catch::Benchmark::Chronometer meter) {
         auto reg = make_bench_registry();
         spawn_obstacles(reg, 10);
@@ -216,7 +216,7 @@ TEST_CASE("Bench: motion_system", "[bench]") {
     };
 }
 
-TEST_CASE("Bench: full frame (typical)", "[bench]") {
+TEST_CASE("Bench: full frame (typical)", "[!benchmark][bench]") {
     BENCHMARK_ADVANCED("6 obstacles + 20 particles")(Catch::Benchmark::Chronometer meter) {
         auto reg = make_bench_registry();
         make_bench_player(reg);
@@ -235,7 +235,7 @@ TEST_CASE("Bench: full frame (typical)", "[bench]") {
     };
 }
 
-TEST_CASE("Bench: full frame (stress)", "[bench]") {
+TEST_CASE("Bench: full frame (stress)", "[!benchmark][bench]") {
     BENCHMARK_ADVANCED("50 obstacles + 50 particles")(Catch::Benchmark::Chronometer meter) {
         auto reg = make_bench_registry();
         make_bench_player(reg);

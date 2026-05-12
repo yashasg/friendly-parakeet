@@ -572,6 +572,12 @@ if(NOT EMSCRIPTEN AND NOT SHAPESHIFTER_IOS)
         TEST_SPEC "~[bench]"
         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
     )
+    add_custom_target(shapeshifter_benchmarks
+        COMMAND $<TARGET_FILE:shapeshifter_tests> "[bench]"
+        DEPENDS shapeshifter_tests
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+        COMMENT "Running Catch2 benchmark cases"
+    )
     add_test(
         NAME startup_shutdown_smoke
         COMMAND $<TARGET_FILE:shapeshifter_startup_shutdown_smoke> --frames 2 --cycles 2

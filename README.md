@@ -38,6 +38,7 @@ export VCPKG_ROOT=/path/to/vcpkg
 ./build.sh           # Release build
 ./run.sh             # Build + run game
 ./run.sh test        # Build + run tests
+cmake --build build --target shapeshifter_benchmarks  # Run benchmarks on demand
 ```
 
 ### iOS TestFlight Archive (owner-driven signing)
