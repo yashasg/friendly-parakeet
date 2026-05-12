@@ -1,5 +1,5 @@
-// Title layout generated from content/ui/screens/title.rgl.
-// Do not edit behavior here; regenerate from the .rgl source.
+// rguilayout embeddable header template.
+// Generated headers replace this sample metadata with screen-specific values.
 
 #ifndef TITLE_LAYOUT_H
 #define TITLE_LAYOUT_H
