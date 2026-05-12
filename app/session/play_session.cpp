@@ -89,6 +89,13 @@ T& assign_or_emplace_ctx(entt::registry& reg, T value = T{}) {
     return reg.ctx().emplace<T>(std::move(value));
 }
 
+template <typename T>
+void erase_ctx_if_exists(entt::registry& reg) {
+    if (reg.ctx().find<T>()) {
+        reg.ctx().erase<T>();
+    }
+}
+
 } // namespace
 
 void setup_play_session(entt::registry& reg) {
@@ -110,7 +117,6 @@ void setup_play_session(entt::registry& reg) {
 
     // Reset singletons
     assign_or_emplace_ctx(reg, RNGState{});
-    assign_or_emplace_ctx(reg, ScoreState{});
 
     // Load beatmap from level selection. BeatMap is an entity singleton whose
     // cold asset data remains immutable for the duration of the play session.
@@ -119,8 +125,20 @@ void setup_play_session(entt::registry& reg) {
     beatmap = BeatMap{};
     lss.selected_level = content_config::level_index_or_default(lss.selected_level);
     lss.selected_difficulty = content_config::difficulty_index_or_default(lss.selected_difficulty);
+    std::string override_beatmap_path;
+    std::string override_difficulty_key;
     const char* beatmap_path = content_config::LEVELS[lss.selected_level].beatmap_path;
     const char* difficulty_key = content_config::DIFFICULTY_KEYS[lss.selected_difficulty];
+    if (const auto* override_content = reg.ctx().find<PlaySessionContentOverride>()) {
+        override_beatmap_path = override_content->beatmap_path;
+        override_difficulty_key = override_content->difficulty_key;
+        if (!override_beatmap_path.empty()) {
+            beatmap_path = override_beatmap_path.c_str();
+        }
+        if (!override_difficulty_key.empty()) {
+            difficulty_key = override_difficulty_key.c_str();
+        }
+    }
 
     std::vector<BeatMapError> load_errors;
     std::vector<BeatMapError> reported_load_errors;
@@ -144,9 +162,27 @@ void setup_play_session(entt::registry& reg) {
             TraceLog(LOG_WARNING, "Beatmap load error at beat %d: %s",
                      error.beat_index, error.message.c_str());
         }
+        runtime_system_scratch_init(reg);
+        if (auto* music = reg.ctx().find<MusicContext>()) {
+            music->release();
+        }
+        if (auto* hs = reg.ctx().find<HighScoreState>()) {
+            hs->current_key_hash = 0;
+        }
+        erase_ctx_if_exists<ScoreState>(reg);
+        erase_ctx_if_exists<SongState>(reg);
+        erase_ctx_if_exists<EnergyState>(reg);
+        erase_ctx_if_exists<SongResults>(reg);
+        erase_ctx_if_exists<GameOverState>(reg);
+        lss.confirmed = false;
+        auto& gs = reg.ctx().get<GameState>();
+        enter_phase(gs, GamePhase::LevelSelect);
+        return;
     }
     runtime_system_scratch_init(reg);
     runtime_system_scratch_reserve(reg, beatmap.beats.size());
+
+    assign_or_emplace_ctx(reg, ScoreState{});
 
     // Wire high score: derive song_id from beatmap filename and set current_key_hash.
     // The key string is built once in a stack buffer (no heap); ensure_entry pre-registers

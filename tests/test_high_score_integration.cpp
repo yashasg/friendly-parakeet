@@ -67,6 +67,30 @@ TEST_CASE("Play session: invalid level-select indices fall back before content l
         == high_score::make_key_hash("1_stomper", "medium"));
 }
 
+TEST_CASE("Play session: missing selected beatmap returns to level select without score session",
+          "[play_session][issue835]") {
+    auto reg = make_registry();
+    auto& gs = reg.ctx().get<GameState>();
+    auto& lss = reg.ctx().get<LevelSelectState>();
+    auto& high_scores = reg.ctx().get<HighScoreState>();
+    high_score::set_score(high_scores, "1_stomper|medium", 4321);
+    high_scores.current_key_hash = high_score::make_key_hash("1_stomper", "medium");
+    lss.confirmed = true;
+
+    reg.ctx().emplace<PlaySessionContentOverride>(
+        PlaySessionContentOverride{"content/beatmaps/does_not_exist_835.json", "medium"});
+
+    setup_play_session(reg);
+
+    CHECK(gs.phase == GamePhase::LevelSelect);
+    CHECK_FALSE(lss.confirmed);
+    CHECK(beat_map(reg).beats.empty());
+    CHECK(reg.view<PlayerTag>().empty());
+    CHECK(reg.ctx().find<ScoreState>() == nullptr);
+    CHECK(high_scores.current_key_hash == 0);
+    CHECK(high_scores.entry_count == 1);
+}
+
 TEST_CASE("Play session: SongResults total_notes excludes onset marker metadata",
           "[play_session][song_results][issue-773]") {
     bool saw_onset_marker = false;
