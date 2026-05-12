@@ -4,19 +4,16 @@
 > **Guiding principle**: Data lives in flat structs. Logic lives in free functions.
 > The `entt::registry` is the single source of truth. No globals. No virtuals.
 
-> ⚠️ **HISTORICAL — partial supersession (issue #239).**
-> The "Burnout" risk/reward scoring system described in earlier sections of
-> this document has been **removed from the design**. References below to
-> `BurnoutState`, `BurnoutZone`, `BankedBurnout`, `burnout_system`,
-> `BURNOUT_*` constants, and the burnout meter HUD element are retained for
-> historical context only and are not part of the current game.
+> **Current scoring model:** SHAPESHIFTER uses **on-beat timing x chain**.
+> Timing grade (Perfect/Good/Ok/Bad) is computed from the input's distance to
+> the beat when an obstacle resolves. Shape changes that land on the beat are
+> valid play even when no obstacle is currently arriving; there is no penalty
+> for "early" shape changes. See `rhythm-design.md` and `rhythm-spec.md` for
+> the authoritative rhythm/scoring model, and `energy-bar.md` for survival HUD.
 >
-> The current scoring model is **on-beat timing × chain**: timing grade
-> (Perfect/Good/Ok/Bad) is computed from the input's distance to the beat
-> when an obstacle resolves. Shape changes that land on the beat are valid
-> play even when no obstacle is currently arriving — there is no penalty
-> for "early" shape changes. See `rhythm-design.md` and `rhythm-spec.md`
-> for the authoritative scoring and pipeline model.
+> **Historical note:** the removed Burnout risk/reward model is isolated in
+> [Appendix C](#appendix-c-obsolete-burnout-architecture). It is not active
+> runtime architecture.
 
 ---
 
@@ -50,7 +47,7 @@ Portrait mode. Logical resolution scales to device via raylib virtual resolution
     │          ● player           │
     │          y=920              │
     │─────────────────────────────│
-    │   burnout meter  y=1020     │
+    │   energy bar     y~=1010    │
     │─────────────────────────────│
     │  [ ● ]   [ ■ ]   [ ▲ ]     │
     │          y=1180              │
@@ -85,35 +82,22 @@ namespace constants {
     constexpr float DESTROY_Y         = 1400.0f;  // off-screen bottom
     constexpr float BASE_SCROLL_SPEED = 400.0f;   // pixels/sec at ×1.0
 
-    // ── Burnout Zones (distance from player, in px) ──
-    constexpr float ZONE_SAFE_MAX     = 700.0f;   // > this = no threat
-    constexpr float ZONE_SAFE_MIN     = 500.0f;
-    constexpr float ZONE_RISKY_MIN    = 300.0f;
-    constexpr float ZONE_DANGER_MIN   = 140.0f;
-    constexpr float ZONE_DEAD_MIN     = 0.0f;     // collision line
-
-    // ── Burnout Multipliers ───────────────────────────
-    constexpr float MULT_NONE         = 1.0f;
-    constexpr float MULT_SAFE         = 1.0f;
-    constexpr float MULT_RISKY        = 1.5f;
-    constexpr float MULT_DANGER       = 3.0f;
-    constexpr float MULT_CLUTCH       = 5.0f;     // last possible frames
-
     // ── Scoring ───────────────────────────────────────
     constexpr int   PTS_SHAPE_GATE    = 200;
     constexpr int   PTS_LANE_BLOCK    = 100;
     constexpr int   PTS_COMBO_GATE    = 200;
     constexpr int   PTS_SPLIT_PATH    = 300;
-    constexpr int   PTS_PER_SECOND    = 10;       // distance bonus
     constexpr float CHAIN_MULT_STEP    = 0.05f;
     constexpr int32_t CHAIN_MULT_BONUS_STEPS_CAP = 20; // caps at 2.0x
 
-    // ── Difficulty Timeline ───────────────────────────
-    constexpr float SPEED_RAMP_RATE   = 0.011f;   // multiplier/sec → ×3.0 at 180s
-    constexpr float SPAWN_RAMP_RATE   = 0.003f;   // spawn interval shrink/sec
-    constexpr float BURNOUT_SHRINK    = 0.002f;   // zone window shrink/sec
-    constexpr float INITIAL_SPAWN_INT = 1.8f;     // seconds between obstacles
-    constexpr float MIN_SPAWN_INT     = 0.5f;
+    // ── Energy Bar ────────────────────────────────────
+    constexpr float ENERGY_MAX             = 1.0f;
+    constexpr float ENERGY_START           = 1.0f;
+    constexpr float ENERGY_DRAIN_MISS      = 0.20f;
+    constexpr float ENERGY_DRAIN_BAD       = 0.05f;
+    constexpr float ENERGY_RECOVER_OK      = 0.02f;
+    constexpr float ENERGY_RECOVER_GOOD    = 0.05f;
+    constexpr float ENERGY_RECOVER_PERFECT = 0.10f;
 
     // ── Rendering ─────────────────────────────────────
     constexpr float POPUP_DURATION    = 1.2f;     // score popup lifetime
@@ -138,7 +122,7 @@ read infrequently or only by one system.
 
 /// Spatial position in logical pixels. 12 bytes.
 /// Iterated by: scroll_system, render_system, collision_system,
-///              burnout_system, obstacle_despawn_system
+///              obstacle_despawn_system
 struct Position {
     float x;
     float y;
@@ -152,7 +136,7 @@ struct Velocity {
 };
 ```
 
-### 2.2 — HOT: Player State (read every frame for burnout + collision + render)
+### 2.2 — HOT: Player State (read every frame for collision + render)
 
 ```cpp
 // components/player.h
@@ -169,7 +153,7 @@ enum class Shape : uint8_t {
 struct PlayerTag {};
 
 /// Current and transitioning shape. 4 bytes.
-/// Hot: read by burnout_system, collision_system, render_system.
+/// Hot: read by shape_window_system, collision_system, render_system.
 struct PlayerShape {
     Shape    current;      // active gameplay shape
     Shape    previous;     // for morph animation
@@ -208,7 +192,7 @@ struct VerticalState {
 struct ObstacleTag {};
 
 /// What action this obstacle demands and its base score.
-/// Read by collision_system, burnout_system.
+/// Read by collision_system, miss_detection_system, scoring_system.
 /// LowBar/HighBar were removed from the runtime obstacle enum and remain archival only.
 enum class ObstacleKind : uint8_t {
     ShapeGate,   // must match shape
@@ -225,7 +209,7 @@ struct Obstacle {
 struct ScoredTag {};
 ```
 
-### 2.4 — WARM: Obstacle Specifics (read by collision + burnout, not by scroll)
+### 2.4 — WARM: Obstacle Specifics (read by collision/scoring, not by scroll)
 
 ```cpp
 // components/obstacle_data.h
@@ -260,7 +244,7 @@ struct ParticleData {
 };
 ```
 
-### 2.6 — COLD: Scoring & Burnout (singletons via registry.ctx())
+### 2.6 — COLD: Rhythm, Scoring & Energy (singletons via registry.ctx())
 
 ```cpp
 // components/scoring.h
@@ -284,23 +268,31 @@ struct ScorePopup {
 ```
 
 ```cpp
-// components/burnout.h
+// components/song_state.h
 
-/// Burnout zone classification.
-enum class BurnoutZone : uint8_t {
-    None     = 0,   // no threat on screen
-    Safe     = 1,   // far away — ×1.0
-    Risky    = 2,   // medium  — ×1.5
-    Danger   = 3,   // close   — ×3.0
-    Dead     = 4    // contact — ×5.0 or crash
+/// Singleton: runtime song timing and beat scheduling cursor.
+struct SongState {
+    float bpm             = 120.0f;
+    float offset          = 0.0f;
+    int   lead_beats      = 4;
+    float beat_period     = 0.5f;
+    float lead_time       = 2.0f;
+    float scroll_speed    = constants::APPROACH_DIST / lead_time;
+    float window_duration = 0.3f;
+    float half_window     = 0.15f;
+    float morph_duration  = 0.1f;
+    float song_time       = 0.0f;
+    int   current_beat    = -1;
+    bool  playing         = false;
+    bool  finished        = false;
+    size_t next_spawn_idx = 0;
 };
 
-/// Singleton: burnout meter state. Recalculated each frame by burnout_system.
-struct BurnoutState {
-    float        meter           = 0.0f;   // 0.0..1.0 fill amount
-    BurnoutZone  zone            = BurnoutZone::None;
-    float        threat_distance = 0.0f;   // px to nearest unmatched obstacle
-    entt::entity nearest_threat  = entt::null;  // entity id of the nearest unmatched obstacle
+/// Singleton: survival meter displayed by the HUD energy bar.
+struct EnergyState {
+    float energy      = constants::ENERGY_START;
+    float display     = constants::ENERGY_START;
+    float flash_timer = 0.0f;
 };
 ```
 
@@ -476,17 +468,17 @@ struct AudioQueue {
 ```
 COMPONENT          BYTES   ACCESS     ITERATED BY
 ─────────────────────────────────────────────────────────────
-Position             8     HOT        scroll, render, collision, burnout, despawn
+Position             8     HOT        scroll, render, collision, despawn
 Velocity             8     HOT        scroll
 ParticleData        12     HOT        particle expiry/render fade
 ScorePopup          16     HOT        popup expiry/render fade
-PlayerTag            0     HOT        collision, burnout (filter)
-PlayerShape          4     HOT        collision, burnout, render, player_action
+PlayerTag            0     HOT        collision/filter
+PlayerShape          4     HOT        shape_window, collision, render, player_action
 Lane                 8     HOT        collision, render, player_action
 VerticalState       12     HOT        collision, render, player_action
-ObstacleTag          0     HOT        scroll, collision, burnout, cleanup
-Obstacle             4     WARM       collision, burnout, scoring
-RequiredShape        1     WARM       collision, burnout
+ObstacleTag          0     HOT        scroll, collision, cleanup
+Obstacle             4     WARM       collision, miss_detection, scoring
+RequiredShape        1     WARM       collision, scoring
 BlockedLanes         1     WARM       collision
 RequiredLane         1     WARM       collision
 Color                4     COLD       render
@@ -501,12 +493,13 @@ SINGLETONS (ctx)
 ─────────────────────────────────────────────────────────────
 InputState          36     per-frame  input_system (write), player_input (read)
 EventQueue          var    per-frame  input_system (write raw), input routing (resolve), player_input (read), test_player_system (write)
-ShapeButtonEvent     2     per-frame  input_system (write), player_action (read)
+ButtonPressEvent     var   per-frame  input/UI dispatchers (write), game_state/player_input (read)
 GameState           12     per-frame  game_state_system
-DifficultyConfig    24     per-frame  difficulty_system (write), spawn_system (read)
-BurnoutState        16     per-frame  burnout_system (write), scoring (read), render (read)
+BeatMap             var    session    setup_play_session (write), beat_scheduler (read)
+SongState           48     per-frame  song_playback/beat_scheduler
+EnergyState         12     per-frame  energy_system (write), ui_render (read)
 ScoreState          28     per-frame  scoring_system (write), render (read)
-AudioQueue          20     per-frame  many systems (write), audio_system (read+clear)
+PlaySfxEvent        var    per-frame  dispatcher events drained by audio_system
 ─────────────────────────────────────────────────────────────
 ```
 
@@ -567,39 +560,32 @@ the same frame (unidirectional data flow).
  │
  │  ┌─ PHASE 4: WORLD UPDATE ───────────────────────────────┐
  │  │                                                        │
- │  │  6. difficulty_system     Advance elapsed time.        │
- │  │                           Ramp speed_multiplier,       │
- │  │                           shrink spawn_interval,       │
- │  │                           tighten burnout_window.      │
+ │  │  6. song_playback_system Advance SongState.song_time   │
+ │  │                           and current_beat from music.  │
  │  │                                                        │
- │  │  7. obstacle_spawn_sys    Decrement spawn_timer.       │
- │  │                           When ≤ 0: create obstacle    │
- │  │                           entity, pick kind/lane/shape │
- │  │                           from weighted random table.  │
- │  │                           Reset timer from config.     │
+ │  │  7. beat_scheduler_sys   Spawn authored BeatMap notes  │
+ │  │                           whose spawn_time has arrived.│
  │  │                                                        │
  │  │  8. scroll_system         For every (Position, Vel):   │
  │  │                           pos.y += vel.dy * dt.        │
  │  │                           Simple, tight inner loop.    │
  │  │                                                        │
- │  │  9. burnout_system        Find nearest unmatched       │
- │  │                           obstacle. Calculate zone     │
- │  │                           from distance. Fill meter.   │
- │  │                           Write BurnoutState.          │
- │  │                           Push zone-change SFX.        │
+ │  │  9. motion_system         Apply model-space obstacle   │
+ │  │                           motion where active.         │
  │  │                                                        │
  │  │ 10. collision_system      For each obstacle near       │
  │  │                           PLAYER_Y: test shape match,  │
  │  │                           lane match, vertical state.  │
- │  │                           On match: mark scored, push  │
- │  │                           SFX, trigger score event.    │
- │  │                           On mismatch at y >= player:  │
- │  │                           set transition → GAME_OVER.  │
+ │  │                           On match: emplace TimingGrade│
+ │  │                           and ScoredTag.               │
  │  │                                                        │
- │  │ 11. scoring_system        Process scored obstacles.    │
+ │  │ 11. miss_detection_sys    Mark passed unresolved notes │
+ │  │                           with MissTag/ScoredTag.      │
+ │  │                                                        │
+ │  │ 12. scoring_system        Process scored obstacles.    │
  │  │                           Apply timing multiplier and  │
  │  │                           chain bonus. Queue popup     │
- │  │                           requests. Add distance bonus.│
+ │  │                           requests. Update SongResults.│
  │  │                           Positive popups emit SFX.    │
  │  └────────────────────────────────────────────────────────┘
  │
@@ -618,15 +604,15 @@ the same frame (unidirectional data flow).
  │
  │  ┌─ PHASE 6: RENDER (always runs) ──────────────────────┐
  │  │                                                        │
- │  │ 15. render_system         BeginDrawing/ClearBackground.│
+ │  │ 15. render systems        BeginDrawing/ClearBackground.│
  │  │                           Draw background.             │
  │  │                           Draw obstacles (Layer::Game).│
  │  │                           Draw player (Layer::Game).   │
  │  │                           Draw particles (Effects).    │
  │  │                           Draw popups (Effects).       │
  │  │                           Draw HUD (Layer::HUD):       │
- │  │                             score, speed, burnout bar, │
- │  │                             shape buttons.             │
+ │  │                             score, energy bar,         │
+ │  │                             proximity ring, buttons.   │
  │  │                           EndDrawing.                  │
  │  │                                                        │
  │  │ 16. audio_system          Play all SFX in AudioQueue.  │
@@ -675,39 +661,11 @@ obstacles and `Position` for legacy position-authority obstacles.
 
 ```cpp
 void enter_playing(entt::registry& reg) {
-    // 1. Destroy any lingering entities from previous run
-    reg.clear();
+    // 1. Destroy any lingering entities and spawn canonical cameras/player.
+    setup_play_session(reg); // clears registry, loads BeatMap, resets ScoreState,
+                             // SongState, EnergyState, SongResults, and player.
 
-    // 2. Initialize singletons
-    reg.ctx().emplace<ScoreState>(ScoreState{
-        .score = 0, .displayed_score = 0,
-        .high_score = load_high_score(),   // from persistent storage
-        .chain_count = 0, .chain_timer = 0.0f,
-        .distance_traveled = 0.0f
-    });
-    reg.ctx().emplace<DifficultyConfig>(DifficultyConfig{
-        .speed_multiplier = 1.0f,
-        .scroll_speed = constants::BASE_SCROLL_SPEED,
-        .spawn_interval = constants::INITIAL_SPAWN_INT,
-        .spawn_timer = 1.0f,        // first obstacle after 1 sec
-        .burnout_window_scale = 1.0f,
-        .elapsed = 0.0f
-    });
-    reg.ctx().emplace<BurnoutState>();
-    reg.ctx().emplace<AudioQueue>();
-
-    // 3. Create player entity
-    auto player = reg.create();
-    reg.emplace<PlayerTag>(player);
-    reg.emplace<Position>(player, constants::LANE_X[1], constants::PLAYER_Y);
-    reg.emplace<PlayerShape>(player, Shape::Circle, Shape::Circle, 1.0f);
-    reg.emplace<Lane>(player, int8_t{1}, int8_t{-1}, 1.0f);
-    reg.emplace<VerticalState>(player, VMode::Grounded, 0.0f, 0.0f);
-    reg.emplace<Color>(player, uint8_t{80}, uint8_t{180}, uint8_t{255}, uint8_t{255});
-    reg.emplace<DrawSize>(player, constants::PLAYER_SIZE, constants::PLAYER_SIZE);
-    reg.emplace<DrawLayer>(player, Layer::Game);
-
-    // 4. Update game state
+    // 2. Update game state. The state system owns this phase transition.
     auto& gs = reg.ctx().get<GameState>();
     gs.previous_phase = gs.phase;
     gs.phase = GamePhase::Playing;
@@ -973,40 +931,35 @@ int main(int argc, char* argv[]) {
             accumulator = MAX_ACCUM;   // prevent spiral of death
         }
 
+        compute_screen_transform(reg);
+
         // ── INPUT (once per frame, outside fixed loop) ──
         input_system(reg, raw_dt);
+        test_player_system(reg, raw_dt);
 
         // ── FIXED TIMESTEP LOOP ──────────────────────────────
         while (accumulator >= FIXED_DT) {
-
-            //  Phase 1: Input Classification
-            // (gesture_system removed; input classified in input_system)
-
             game_state_system(reg, FIXED_DT);
             song_playback_system(reg, FIXED_DT);
-            beat_log_system(reg, FIXED_DT);
-            beat_scheduler_system(reg, FIXED_DT);
-            player_input_system(reg, FIXED_DT);
-            shape_window_system(reg, FIXED_DT);
-            player_movement_system(reg, FIXED_DT);
-            scroll_system(reg, FIXED_DT);
-            collision_system(reg, FIXED_DT);
-            miss_detection_system(reg, FIXED_DT);
-            scoring_system(reg, FIXED_DT);
+            tick_playing_systems(reg, FIXED_DT);
+            obstacle_despawn_system(reg, FIXED_DT);
+            popup_feedback_system(reg, FIXED_DT);
+            popup_display_system(reg, FIXED_DT);
             energy_system(reg, FIXED_DT);
             particle_system(reg, FIXED_DT);
-            obstacle_despawn_system(reg, FIXED_DT);
-            popup_display_system(reg, FIXED_DT);
 
             accumulator -= FIXED_DT;
         }
 
         // ── RENDER (once per frame, variable rate) ────────────
-        float alpha = accumulator / FIXED_DT;   // interpolation factor
-        render_system(reg, alpha);
+        game_camera_system(reg, raw_dt);
+        ui_camera_system(reg, raw_dt);
+        game_render_system(reg, 0.0f);
+        ui_render_system(reg, 0.0f);
 
         // ── AUDIO (once per frame, after render) ──────────────
         audio_system(reg);
+        haptic_system(reg);
     }
 
     // ── SHUTDOWN ──────────────────────────────────────────────
@@ -1023,17 +976,19 @@ int main(int argc, char* argv[]) {
 │ Operation                      │ Timestep │ Why?     │
 ├────────────────────────────────┼──────────┼──────────┤
 │ raylib input polling            │ Variable │ OS events│
+│ test_player_system              │ Variable │ Automation│
 │ game_state_system              │ Fixed    │ Logic    │
 │ song_playback_system           │ Fixed    │ Timing   │
 │ beat_log_system                │ Fixed    │ Telemetry│
 │ beat_scheduler_system          │ Fixed    │ Logic    │
-│ player_input_system            │ Fixed    │ Logic    │
 │ shape_window_system            │ Fixed    │ Timing   │
 │ player_movement_system         │ Fixed    │ Physics  │
+│ motion_system                  │ Fixed    │ Physics  │
 │ scroll_system                  │ Fixed    │ Physics  │
 │ collision_system               │ Fixed    │ Physics  │
 │ miss_detection_system          │ Fixed    │ Logic    │
 │ scoring_system                 │ Fixed    │ Logic    │
+│ popup_feedback_system          │ Fixed    │ FX       │
 │ energy_system                  │ Fixed    │ Logic    │
 │ particle_system                │ Fixed    │ FX       │
 │ obstacle_despawn_system        │ Fixed    │ Cleanup  │
@@ -1047,87 +1002,51 @@ int main(int argc, char* argv[]) {
 
 ## 7. Data Flow Diagrams
 
-### 7.1 Critical Path: Obstacle Approach → Burnout → Score
+### 7.1 Critical Path: BeatMap → Timing Grade → Score/Energy
 
 ```
-    OBSTACLE ENTITY                     SINGLETONS              PLAYER ENTITY
-    ┌──────────────┐                                            ┌─────────────┐
-    │  Position.y  │                                            │ PlayerShape │
-    │  Velocity.dy │                                            │ Lane        │
-    │  Obstacle    │                                            │ VertState   │
-    │  RequiredShape│                                           │ Position    │
-    └──────┬───────┘                                            └──────┬──────┘
-           │                                                           │
-           │  scroll_system: pos.y += vel.dy × dt                      │
-           │                                                           │
-           ▼                                                           │
-    ┌──────────────┐     burnout_system:                                │
-    │ obstacle     │     for each obstacle near player,                 │
-    │ Position.y   │     check if player shape matches                  │
-    │ (updated)    │─────RequiredShape →─────────────────────┐          │
-    └──────┬───────┘                                        │          │
-           │                                                ▼          ▼
-           │                                        ┌──────────────────────┐
-           │                                        │ burnout_system:      │
-           │                                        │   distance =         │
-           │                                        │     player.y -       │
-           │                                        │     obstacle.y       │
-           │                                        │   if shapes don't    │
-           │                                        │   match → calc zone  │
-           │                                        │   map to 0..1 meter  │
-           │                                        └──────────┬───────────┘
-           │                                                   │
-           │                                                   ▼
-           │                                        ┌──────────────────────┐
-           │                                        │ BurnoutState (ctx)   │
-           │                                        │   meter: 0.73        │
-           │                                        │   zone: Danger       │
-           │                                        │   threat_dist: 185px │
-           │                                        │   nearest_threat: e4 │
-           │                                        └──────────┬───────────┘
-           │                                                   │
-           │     PLAYER TAPS SHAPE BUTTON                      │
-           │     ┌───────────────────────┐                     │
-           │     │ ShapeButtonEvent (ctx)│                     │
-           │     │   pressed: true       │                     │
-           │     │   shape: Triangle     │                     │
-           │     └──────────┬────────────┘                     │
-           │                │                                  │
-           │                ▼                                  │
-           │     ┌───────────────────────┐                     │
-           │     │ player_input_system:  │                     │
-           │     │   PlayerShape.current │                     │
-           │     │   = Triangle          │                     │
-           │     │   morph_t = 0.0       │                     │
-           │     └──────────┬────────────┘                     │
-           │                │                                  │
-           │                │   NEXT FRAME                     │
-           │                ▼                                  │
-           │     ┌───────────────────────────────────┐         │
-           │     │ collision_system:                  │         │
-           │     │   obstacle reaches player Y        │         │
-           │     │   shape matches → emplace ScoredTag│         │
-           │     └──────────┬────────────────────────┘         │
-           │                │                                  │
-           │                ▼                                  │
-           │     ┌───────────────────────────────────────────┐ │
-           │     │ scoring_system:                            │ │
-           │     │   reads TimingGrade at time of match       │◀┘
-           │     │   timing_multiplier(Good) = 1.0            │
-           │     │   chain_bonus(chain=3) = +100              │
-           │     │   total = 200 × 1.0 + 100 = 300           │
-           │     │   ScoreState.score += 300                  │
-           │     │   queue ScorePopupRequest(300, Good)       │
-           │     │   popup_feedback emits ScorePopup SFX      │
-           │     └───────────────────────────────────────────┘
-           │
-           ▼
-    ┌──────────────┐
-    │ cleanup_sys: │
-    │  pos.y >     │
-    │  DESTROY_Y → │
-    │  destroy     │
-    └──────────────┘
+    BEATMAP/SINGLET                 OBSTACLE ENTITY              PLAYER ENTITY
+    ┌──────────────┐                                             ┌─────────────┐
+    │ BeatMap      │                                             │ PlayerShape │
+    │ SongState    │                                             │ Lane        │
+    └──────┬───────┘                                             │ VertState   │
+           │ beat_scheduler_system                               │ Position    │
+           │ creates note when spawn_time arrives                └──────┬──────┘
+           ▼                                                            │
+    ┌──────────────┐                                                    │
+    │ ObstacleTag  │                                                    │
+    │ Obstacle     │                                                    │
+    │ RequiredShape│                                                    │
+    │ BeatInfo     │ arrival_time from authored beat                    │
+    └──────┬───────┘                                                    │
+           │ scroll/motion systems                                      │
+           ▼                                                            │
+    ┌──────────────┐                                                    │
+    │ obstacle     │  collision_system checks player state when note    │
+    │ approaches   │  reaches the active window. On clear:              │
+    └──────┬───────┘                                                    │
+           │                                                            │
+           ▼                                                            │
+    ┌────────────────────────────────────────────────────────────────────┐
+    │ TimingGrade { Perfect | Good | Ok | Bad } + ScoredTag             │
+    │ precision = distance from input/song time to BeatInfo.arrival_time │
+    └──────────┬─────────────────────────────────────────────────────────┘
+               │
+               ▼
+    ┌────────────────────────────────────────────────────────────────────┐
+    │ scoring_system                                                     │
+    │ - points = base_points x timing_multiplier x chain_multiplier      │
+    │ - updates ScoreState and SongResults                               │
+    │ - queues ScorePopupRequest for popup_feedback_system               │
+    └──────────┬─────────────────────────────────────────────────────────┘
+               │
+               ▼
+    ┌────────────────────────────────────────────────────────────────────┐
+    │ energy_system                                                      │
+    │ - MISS/BAD drain EnergyState                                       │
+    │ - OK/GOOD/PERFECT recover EnergyState                              │
+    │ - energy <= 0 requests GameOver                                    │
+    └────────────────────────────────────────────────────────────────────┘
 ```
 
 ### 7.2 Critical Path: Touch → Gesture → Player Action
@@ -1232,69 +1151,30 @@ int main(int argc, char* argv[]) {
     └────────────────────────────────────────────────────────┘
 ```
 
-### 7.3 Burnout Meter Calculation (detail)
+### 7.3 Proximity Ring and Energy Feedback (detail)
 
 ```
-    burnout_system(reg, dt):
+    ui_render_system(reg):
 
-    player_pos  ◀── view<PlayerTag, Position, PlayerShape, Lane>
-    player_shape ◀┘
+    SongState.song_time  ─┐
+    BeatMap.beats        ├─ find next unresolved note near the active shape
+    PlayerShape.current ─┘
 
-    nearest_dist = FLOAT_MAX
-    nearest_ent  = entt::null
+    proximity = clamp((arrival_time - song_time) / SongState.half_window)
+    draw ring around the corresponding shape button:
+        wide/faint   = outside timing window
+        tightening   = approaching beat
+        centered     = on-beat hit opportunity
 
-    ┌───────── for each (entity, pos, obs, ...) in view<ObstacleTag, Position, Obstacle> ─┐
-    │                                                                                       │
-    │   if (obs.scored) continue;                   // already banked                       │
-    │   if (pos.y > player_pos.y) continue;         // behind player                       │
-    │                                                                                       │
-    │   dist = player_pos.y - pos.y                                                         │
-    │                                                                                       │
-    │   // Is this obstacle a threat? (does player need to act?)                            │
-    │   bool threat = false;                                                                │
-    │   if (obs.kind == ShapeGate && has<RequiredShape>(entity))                            │
-    │       threat = (player_shape.current != get<RequiredShape>(entity).shape);             │
-    │   else if (obs.kind == ComboGate || obs.kind == SplitPath)                            │
-    │       threat = !matches_required_shape_and_lane(entity, player_shape, player_lane);    │
-    │   // LaneBlock is passive; archived LowBar/HighBar are not runtime kinds.              │
-    │                                                                                       │
-    │   if (threat && dist < nearest_dist) {                                                │
-    │       nearest_dist = dist;                                                            │
-    │       nearest_ent  = entity;                                                          │
-    │   }                                                                                   │
-    └───────────────────────────────────────────────────────────────────────────────────────┘
+    energy_system(reg, dt):
 
-    // Map distance to zone and meter
-    BurnoutZone zone;
-    float meter;
-    float window = burnout_window_scale;   // from DifficultyConfig
+    ScoreState/SongResults events from scoring and miss_detection
+        BAD or MISS       -> drain EnergyState.energy
+        OK/GOOD/PERFECT   -> recover EnergyState.energy
 
-    if (nearest_dist > ZONE_SAFE_MAX × window)
-        zone = None,    meter = 0.0f;
-    else if (nearest_dist > ZONE_SAFE_MIN × window)
-        zone = Safe,    meter = remap(nearest_dist, SAFE_MAX, SAFE_MIN, 0.0, 0.25);
-    else if (nearest_dist > ZONE_RISKY_MIN × window)
-        zone = Risky,   meter = remap(nearest_dist, SAFE_MIN, RISKY_MIN, 0.25, 0.55);
-    else if (nearest_dist > ZONE_DANGER_MIN × window)
-        zone = Danger,  meter = remap(nearest_dist, RISKY_MIN, DANGER_MIN, 0.55, 0.85);
-    else
-        zone = Dead,    meter = remap(nearest_dist, DANGER_MIN, 0, 0.85, 1.0);
-
-    // Write singleton
-    auto& bs = reg.ctx().get<BurnoutState>();
-    BurnoutZone old_zone = bs.zone;
-    bs.meter           = meter;
-    bs.zone            = zone;
-    bs.threat_distance = nearest_dist;
-    bs.nearest_threat  = nearest_ent;
-    bs.has_threat      = (nearest_ent != entt::null);
-
-    // SFX on zone transitions
-    if (zone != old_zone && zone > old_zone) {
-        if      (zone == Risky)  reg.ctx().get<AudioQueue>().push(SFX::ZoneRisky);
-        else if (zone == Danger) reg.ctx().get<AudioQueue>().push(SFX::ZoneDanger);
-        else if (zone == Dead)   reg.ctx().get<AudioQueue>().push(SFX::ZoneDead);
-    }
+    EnergyState.display lerps toward EnergyState.energy for the HUD bar.
+    EnergyState.flash_timer marks drain feedback. If energy <= 0,
+    energy_system requests the terminal GameOver phase.
 ```
 
 ---
@@ -1333,12 +1213,12 @@ This entire game state fits in L1 cache (~32-64 KB).
   │  ■ ParticleData    (particle sys, every frame, R+W)
   │  ■ ScorePopup      (popup sys, every frame, R+W)
   │
-  │  □ PlayerShape     (burnout + collision + render, every frame, R)
-  │  □ Lane            (burnout + collision + render, every frame, R)
+  │  □ PlayerShape     (shape window + collision + render, every frame, R)
+  │  □ Lane            (collision + render, every frame, R)
   │  □ VerticalState   (collision + render, every frame, R)
-  │  □ Obstacle        (burnout + collision, every frame, R)
+  │  □ Obstacle        (collision + scoring, every frame, R)
   │
-  │  ○ RequiredShape   (collision + burnout, per-obstacle, R)
+  │  ○ RequiredShape   (collision + scoring, per-obstacle, R)
   │  ○ BlockedLanes    (collision, per-obstacle, R)
   │  ○ Color           (render only, R)
   │  ○ DrawSize        (render only, R)
@@ -1556,9 +1436,10 @@ void render_system(entt::registry& reg, float alpha) {
     // ── Layer 3: HUD ──────────────────────────────────
     if (phase == GamePhase::Playing || phase == GamePhase::Paused) {
         auto& score  = reg.ctx().get<ScoreState>();
-        auto& burnout = reg.ctx().get<BurnoutState>();
+        auto& energy = reg.ctx().get<EnergyState>();
         draw_hud_score(score);
-        draw_burnout_meter(burnout);
+        draw_energy_bar(energy);
+        draw_proximity_ring(reg);
         draw_shape_buttons(reg);
     }
 
@@ -1635,12 +1516,12 @@ app/
 
 ```cpp
 // Write (system that produces data):
-auto& burnout = reg.ctx().get<BurnoutState>();
-burnout.meter = calculated_value;
+auto& song = reg.ctx().get<SongState>();
+song.song_time = calculated_value;
 
 // Read (system that consumes data):
-const auto& burnout = reg.ctx().get<const BurnoutState>();
-float m = burnout.meter;
+const auto& song = reg.ctx().get<const SongState>();
+float t = song.song_time;
 ```
 
 ### A.2 View Iteration (most common)
@@ -1719,14 +1600,31 @@ constexpr Color shape_color(Shape s) {
     return SHAPE_COLORS[static_cast<uint8_t>(s)];
 }
 
-constexpr Color BURNOUT_ZONE_COLORS[5] = {
-    {  80,  80,  80, 255 },  // None     — dark gray
-    {  80, 200,  80, 255 },  // Safe     — green
-    { 255, 220,  50, 255 },  // Risky    — yellow
-    { 255, 120,  30, 255 },  // Danger   — orange
-    { 255,  40,  40, 255 }   // Dead     — red
+constexpr Color TIMING_TIER_COLORS[4] = {
+    { 255,  80,  80, 255 },  // Bad
+    { 255, 220,  80, 255 },  // Ok
+    {  80, 200, 255, 255 },  // Good
+    { 255, 255, 255, 255 }   // Perfect
 };
 ```
+
+---
+
+## Appendix C: Obsolete Burnout Architecture
+
+The removed Burnout model used proximity zones, `BurnoutState`, `BurnoutZone`,
+`BankedBurnout`, `burnout_system`, `BURNOUT_*` constants, and a bottom HUD
+burnout meter to award risk/reward multipliers. Those concepts were removed by
+issue #239 and must not be used for new runtime work.
+
+Current replacements:
+
+- **Scoring:** timing grade (Perfect/Good/Ok/Bad) x chain multiplier; see
+  `rhythm-design.md` and `rhythm-spec.md`.
+- **Survival meter:** `EnergyState` rendered as the energy bar; see
+  `energy-bar.md`.
+- **Live timing cue:** proximity ring around shape buttons; see
+  `rhythm-spec.md` Section 6 and `game-flow.md`.
 
 ---
 
@@ -1735,4 +1633,4 @@ another component. No system calls a virtual method. Every game state mutation
 flows through `entt::registry`. The entire working set fits in L1 cache.*
 
 *Next step: implement `scroll_system` and `collision_system` first — they are
-the core loop. Add rendering. Add input. Then layer scoring and burnout on top.*
+the core loop. Add rendering. Add input. Then layer rhythm scoring and energy on top.*
