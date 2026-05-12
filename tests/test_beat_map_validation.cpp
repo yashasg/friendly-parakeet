@@ -732,6 +732,26 @@ TEST_CASE("parse: beat without time_sec falls back to beat_times", "[parse][beat
     CHECK_THAT(map.beats[0].time_sec, Catch::Matchers::WithinAbs(1.4f, 0.001f));
 }
 
+TEST_CASE("parse: non-numeric time_sec fails", "[parse][beat_times][time_sec]") {
+    BeatMap map;
+    std::vector<BeatMapError> errors;
+    std::string json = R"({
+        "song_id": "timing_test",
+        "bpm": 120,
+        "offset": 0.0,
+        "lead_beats": 4,
+        "duration_sec": 60.0,
+        "beat_times": [0.1, 0.7, 1.4],
+        "beats": [
+            { "beat": 2, "time_sec": "1.4", "kind": "shape_gate", "shape": "circle", "lane": 1 }
+        ]
+    })";
+
+    CHECK_FALSE(parse_beat_map(json, map, errors));
+    REQUIRE_FALSE(errors.empty());
+    CHECK(errors[0].message.find("'time_sec'") != std::string::npos);
+}
+
 TEST_CASE("parse: shape-bearing obstacles require explicit shape", "[parse][shape][issue224]") {
     const char* shape_bearing_kinds[] = {"shape_gate", "combo_gate", "split_path"};
 
@@ -837,6 +857,29 @@ TEST_CASE("parse: invalid blocked lane index fails", "[parse][blocked_mask]") {
     CHECK_FALSE(parse_beat_map(json, map, errors));
     REQUIRE_FALSE(errors.empty());
     CHECK(errors[0].message.find("range [0, 2]") != std::string::npos);
+}
+
+TEST_CASE("parse: invalid scalar lane values fail before narrowing", "[parse][lane]") {
+    const char* invalid_lanes[] = {"-1", "3", "257", "2147483648"};
+
+    for (const char* lane : invalid_lanes) {
+        BeatMap map;
+        std::vector<BeatMapError> errors;
+        const std::string json = std::string(R"({
+            "song_id": "lane_test",
+            "bpm": 120,
+            "offset": 0.0,
+            "lead_beats": 4,
+            "duration_sec": 60.0,
+            "beats": [
+                { "beat": 2, "kind": "shape_gate", "shape": "circle", "lane": )") + lane + R"( }
+            ]
+        })";
+
+        CHECK_FALSE(parse_beat_map(json, map, errors));
+        REQUIRE_FALSE(errors.empty());
+        CHECK(errors[0].message.find("'lane'") != std::string::npos);
+    }
 }
 
 TEST_CASE("validate: authored time_sec beyond duration fails", "[validate][beat_times][time_sec]") {

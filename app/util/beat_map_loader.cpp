@@ -3,6 +3,7 @@
 #include <nlohmann/json.hpp>
 #include <cmath>
 #include <algorithm>
+#include <limits>
 #include <optional>
 #include <utility>
 #include <raylib.h>
@@ -96,7 +97,23 @@ bool read_optional_int(const json& object,
         push_type_error(errors, beat_index, field, "an integer", value);
         return false;
     }
-    out = value.get<int>();
+    if (value.is_number_unsigned()) {
+        const auto raw = value.get<std::uint64_t>();
+        if (raw > static_cast<std::uint64_t>(std::numeric_limits<int>::max())) {
+            errors.push_back({beat_index, std::string("'") + field + "' must fit in a 32-bit integer"});
+            return false;
+        }
+        out = static_cast<int>(raw);
+        return true;
+    }
+
+    const auto raw = value.get<std::int64_t>();
+    if (raw < static_cast<std::int64_t>(std::numeric_limits<int>::min()) ||
+        raw > static_cast<std::int64_t>(std::numeric_limits<int>::max())) {
+        errors.push_back({beat_index, std::string("'") + field + "' must fit in a 32-bit integer"});
+        return false;
+    }
+    out = static_cast<int>(raw);
     return true;
 }
 } // namespace
@@ -314,6 +331,12 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
             parse_ok = false;
             continue;
         }
+        if (b.contains("lane") && (lane_value < 0 || lane_value > 2)) {
+            errors.push_back({entry.beat_index,
+                "'lane' must be in range [0, 2] at beat " + std::to_string(entry.beat_index)});
+            parse_ok = false;
+            continue;
+        }
         entry.lane = static_cast<int8_t>(lane_value);
 
         const float grid_time = out.offset + entry.beat_index * (60.0f / out.bpm);
@@ -324,10 +347,13 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
             beat_time = out.beat_times[static_cast<size_t>(entry.beat_index)];
         }
 
-        const bool has_time_sec = b.contains("time_sec") &&
-                                  (b["time_sec"].is_number_float() || b["time_sec"].is_number_integer());
+        const bool has_time_sec = b.contains("time_sec");
         entry.has_time_sec = has_time_sec;
-        entry.time_sec = has_time_sec ? b["time_sec"].get<float>() : beat_time;
+        entry.time_sec = beat_time;
+        if (has_time_sec && !read_optional_float(b, "time_sec", entry.time_sec, errors, entry.beat_index)) {
+            parse_ok = false;
+            continue;
+        }
 
         std::string timing_source;
         if (!read_optional_string(b, "timing_source", timing_source, errors, entry.beat_index)) {
