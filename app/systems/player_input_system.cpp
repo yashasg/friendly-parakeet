@@ -91,13 +91,6 @@ void player_input_handle_press(entt::registry& reg, const ButtonPressEvent& evt)
                 begin_shape_window(pshape, swindow);
             } else if (phase == WindowPhase::Active && pressed_shape != pshape.current) {
                 begin_shape_window(pshape, swindow);
-            } else if (phase == WindowPhase::Active && pressed_shape == pshape.current) {
-                swindow.window_timer = 0.0f;
-                swindow.window_start = song->song_time;
-                swindow.press_time = song->song_time;
-                swindow.peak_time = song->song_time + song->half_window;
-                swindow.window_scale = 1.0f;
-                swindow.graded = false;
             } else if (phase == WindowPhase::MorphOut) {
                 begin_shape_window(pshape, swindow);
             }

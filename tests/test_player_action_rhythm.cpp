@@ -52,7 +52,7 @@ TEST_CASE("player_action: rhythm mode calculates peak_time correctly", "[player_
     CHECK_THAT(sw.peak_time, Catch::Matchers::WithinAbs(expected_peak, 0.001f));
 }
 
-TEST_CASE("player_action: rhythm mode ignores same shape during Active (spam protection)", "[player_rhythm]") {
+TEST_CASE("player_action: rhythm mode treats same shape during Active as no-op", "[player_rhythm]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
     auto& ps = reg.get<PlayerShape>(player);
@@ -60,16 +60,27 @@ TEST_CASE("player_action: rhythm mode ignores same shape during Active (spam pro
     sw.phase = WindowPhase::Active;
     ps.current = Shape::Square;
     sw.window_timer = 0.1f;
+    sw.window_start = 1.0f;
+    sw.press_time = 1.0f;
+    sw.peak_time = 1.15f;
+    sw.graded = true;
+
+    const float initial_window_start = sw.window_start;
+    const float initial_window_timer = sw.window_timer;
+    const float initial_press_time = sw.press_time;
+    const float initial_peak_time = sw.peak_time;
 
     auto btn = make_shape_button(reg, Shape::Square);
     press_button(reg, btn);
 
     run_semantic_input_tick(reg, 0.016f);
 
-    // Same shape re-press: window timer resets for next obstacle
     CHECK(sw.phase == WindowPhase::Active);
-    CHECK(sw.window_timer == 0.0f);
-    CHECK_FALSE(sw.graded);
+    CHECK(sw.window_start == initial_window_start);
+    CHECK(sw.window_timer == initial_window_timer);
+    CHECK(sw.press_time == initial_press_time);
+    CHECK(sw.peak_time == initial_peak_time);
+    CHECK(sw.graded);
 }
 
 TEST_CASE("player_action: rhythm mode interrupts Active with different shape", "[player_rhythm]") {

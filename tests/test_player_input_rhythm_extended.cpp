@@ -44,7 +44,7 @@ TEST_CASE("player_input_rhythm: different shape in Active restarts window", "[pl
     CHECK(sw.target_shape == Shape::Square);
 }
 
-TEST_CASE("player_input_rhythm: same shape in Active re-extends window", "[player][rhythm]") {
+TEST_CASE("player_input_rhythm: same shape in Active is no-op", "[player][rhythm]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
     auto& ps = reg.get<PlayerShape>(player);
@@ -54,18 +54,27 @@ TEST_CASE("player_input_rhythm: same shape in Active re-extends window", "[playe
     ps.current = Shape::Circle;
     sw.phase = WindowPhase::Active;
     sw.window_start = song.song_time - 0.5f;
+    sw.window_timer = 0.5f;
+    sw.press_time = song.song_time - 0.5f;
+    sw.peak_time = song.song_time - 0.25f;
     sw.graded = true;  // was previously graded
+
+    const float initial_window_start = sw.window_start;
+    const float initial_window_timer = sw.window_timer;
+    const float initial_press_time = sw.press_time;
+    const float initial_peak_time = sw.peak_time;
 
     auto btn = make_shape_button(reg, Shape::Circle);
     press_button(reg, btn);
 
     run_semantic_input_tick(reg);
 
-    // Should remain Active and reset timing
     CHECK(sw.phase == WindowPhase::Active);
-    CHECK(sw.window_timer == 0.0f);
-    CHECK(sw.window_start == song.song_time);
-    CHECK_FALSE(sw.graded);
+    CHECK(sw.window_start == initial_window_start);
+    CHECK(sw.window_timer == initial_window_timer);
+    CHECK(sw.press_time == initial_press_time);
+    CHECK(sw.peak_time == initial_peak_time);
+    CHECK(sw.graded);
 }
 
 TEST_CASE("player_input_rhythm: shape change pushes ShapeShift SFX", "[player][rhythm]") {
