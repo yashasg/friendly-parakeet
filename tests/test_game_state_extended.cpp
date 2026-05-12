@@ -291,6 +291,46 @@ TEST_CASE("game_state: game_over main_menu button triggers title", "[gamestate]"
     CHECK(gs.next_phase == GamePhase::Title);
 }
 
+TEST_CASE("game_state: game_over level_select button triggers level_select", "[gamestate]") {
+    auto reg = make_registry();
+    auto& gs = reg.ctx().get<GameState>();
+    gs.phase = GamePhase::GameOver;
+    gs.phase_timer = 0.5f;
+    gs.end_choice = EndScreenChoice::LevelSelect;
+
+    game_state_system(reg, 0.016f);
+
+    CHECK(gs.transition_pending);
+    CHECK(gs.next_phase == GamePhase::LevelSelect);
+    CHECK(gs.end_choice == EndScreenChoice::None);
+}
+
+TEST_CASE("game_state: game_over ignores choice at readiness boundary", "[gamestate]") {
+    auto reg = make_registry();
+    auto& gs = reg.ctx().get<GameState>();
+    gs.phase = GamePhase::GameOver;
+    gs.phase_timer = 0.4f;
+    gs.end_choice = EndScreenChoice::Restart;
+
+    game_state_system(reg, 0.0f);
+
+    CHECK_FALSE(gs.transition_pending);
+    CHECK(gs.end_choice == EndScreenChoice::Restart);
+}
+
+TEST_CASE("game_state: game_over ignores missing end choice", "[gamestate]") {
+    auto reg = make_registry();
+    auto& gs = reg.ctx().get<GameState>();
+    gs.phase = GamePhase::GameOver;
+    gs.phase_timer = 0.5f;
+    gs.end_choice = EndScreenChoice::None;
+
+    game_state_system(reg, 0.016f);
+
+    CHECK_FALSE(gs.transition_pending);
+    CHECK(gs.end_choice == EndScreenChoice::None);
+}
+
 TEST_CASE("game_state: game_over restart enters fresh play session on next tick", "[gamestate][play_session]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();

@@ -199,12 +199,14 @@ enum class ObstacleKind : uint8_t {
     LaneBlock,   // legacy value kept for backward compat
     ComboGate,   // shape + lane
     SplitPath,   // shape + specific lane
+    OnsetMarker, // virtual beat marker; scheduler does not spawn an obstacle
 };
 
 struct Obstacle {
-    ObstacleKind kind       = ObstacleKind::ShapeGate;
     int16_t      base_points = 200;   // PTS_SHAPE_GATE etc.
 };
+// Runtime kind is derived from optional components (RequiredShape,
+// BlockedLanes, RequiredLane) via obstacle_kind_from_components().
 // Existential tag: presence means the obstacle has been cleared and awaits scoring.
 struct ScoredTag {};
 ```
@@ -261,9 +263,11 @@ struct ScoreState {
 
 /// Score popup entity component. 8 bytes.
 struct ScorePopup {
-    int32_t  value       = 0;    // points to display
-    uint8_t  tier        = 0;    // 0=normal, 1=nice, 2=great, 3=clutch, 4=insane, 5=legendary
-    uint8_t  timing_tier = 255;  // TimingTier value, 255 = no timing
+    int32_t    value           = 0;              // points to display
+    bool       has_timing_tier = false;          // false when no TimingGrade was present
+    TimingTier timing_tier     = TimingTier::Ok; // valid only when has_timing_tier is true
+    float      remaining       = 0.0f;           // seconds left to display
+    float      max_time        = 0.0f;           // initial lifetime for fade/scale
 };
 ```
 
@@ -1539,10 +1543,9 @@ entt::entity spawn_shape_gate(entt::registry& reg, Shape required,
                                int8_t lane, float scroll_speed) {
     auto e = reg.create();
     reg.emplace<ObstacleTag>(e);
-    reg.emplace<Position>(e, constants::LANE_X[lane], constants::SPAWN_Y);
-    reg.emplace<Velocity>(e, 0.0f, scroll_speed);
-    reg.emplace<Obstacle>(e, ObstacleKind::ShapeGate,
-                          static_cast<int16_t>(constants::PTS_SHAPE_GATE));
+    reg.emplace<WorldTransform>(e, WorldTransform{{constants::LANE_X[lane], constants::SPAWN_Y}});
+    reg.emplace<MotionVelocity>(e, MotionVelocity{{0.0f, scroll_speed}});
+    reg.emplace<Obstacle>(e, int16_t{constants::PTS_SHAPE_GATE});
     reg.emplace<RequiredShape>(e, required);
     reg.emplace<Color>(e, shape_color(required));
     reg.emplace<DrawSize>(e, static_cast<float>(constants::SCREEN_W), 80.0f);
