@@ -4865,7 +4865,7 @@
         },
         {
           "beat": 181,
-          "kind": "onset_marker",
+          "kind": "shape_gate",
           "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
@@ -4949,7 +4949,7 @@
           "beat_time_sec": 86.082
         },
         {
-          "beat": 188,
+          "beat": 189,
           "kind": "shape_gate",
           "lane": 2,
           "shape": "triangle",
@@ -4963,7 +4963,7 @@
           "timing_source": "onset",
           "onset_time_sec": 86.311,
           "subdivision_label": "eighth",
-          "beat_time_sec": 86.544
+          "beat_time_sec": 87.005
         },
         {
           "beat": 215,
