@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
+#include "ui/screen_controllers/gameplay_hud_screen_controller.h"
 #include "util/rhythm_math.h"
 #include "entities/beat_map.h"
 
@@ -522,6 +523,32 @@ TEST_CASE("collision: timing grade PERFECT on press-at-arrival", "[rhythm][colli
     // arrival_time == press_time -> Perfect
     reg.emplace<BeatInfo>(obs, 0, 5.0f, 5.0f - song.lead_time);
     collision_system(reg, 0.016f);
+    REQUIRE(reg.all_of<ScoredTag>(obs));
+    REQUIRE(reg.all_of<TimingGrade>(obs));
+    CHECK(reg.get<TimingGrade>(obs).tier == TimingTier::Perfect);
+}
+
+TEST_CASE("collision: HUD perfect cue distance maps to PERFECT timing", "[rhythm][collision][hud]") {
+    auto reg = make_rhythm_registry();
+    auto player = make_rhythm_player(reg);
+    auto& ps = reg.get<PlayerShape>(player);
+    auto& sw = reg.get<ShapeWindow>(player);
+    auto& song = reg.ctx().get<SongState>();
+
+    const float cue_dist = gameplay_hud_perfect_distance(&song);
+    const float cue_lead_seconds = cue_dist / song.scroll_speed;
+    CHECK_THAT(cue_lead_seconds, WithinAbs(kTimingPerfectSeconds, 0.0001f));
+
+    ps.current = Shape::Circle;
+    sw.phase = WindowPhase::Active;
+    sw.press_time = 5.0f;
+    song.song_time = sw.press_time + cue_lead_seconds;
+
+    auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
+    reg.emplace<BeatInfo>(obs, 0, song.song_time, song.song_time - song.lead_time);
+
+    collision_system(reg, 0.016f);
+
     REQUIRE(reg.all_of<ScoredTag>(obs));
     REQUIRE(reg.all_of<TimingGrade>(obs));
     CHECK(reg.get<TimingGrade>(obs).tier == TimingTier::Perfect);

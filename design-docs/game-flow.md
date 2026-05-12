@@ -876,7 +876,7 @@ shape closer to the beat gives a higher grade (Perfect > Good > Ok > Bad).
   WHAT PLAYER LEARNS:
   ───────────────────
   "The ring shrinks toward the button as the beat approaches"
-  "Pressing when the ring is tight = PERFECT"
+  "Pressing while the ring is tight = PERFECT"
   "Earlier or later = lower grade"
   "Changing shape on the beat is fine even if no obstacle is here"
 ```
@@ -926,7 +926,7 @@ shape closer to the beat gives a higher grade (Perfect > Good > Ok > Bad).
   ║      press NOW for PERFECT.           ║
   ╚══════════════════════════════════════╝
 
-  The ring is the live timing cue: tight = on the beat.
+  The ring is the live timing cue: tight = inside the PERFECT timing window.
   No "fill the meter" — earlier presses are not penalised
   more than later ones.
 ```
