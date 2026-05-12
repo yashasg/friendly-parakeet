@@ -112,7 +112,7 @@
   │          │                │                    │                │
   │          ▼                ▼                    ▼                │
   │       TRIANGLE          SQUARE              CIRCLE              │
-  │       LANE 0            LANE 1              LANE 2              │
+  │       LANE 2            LANE 1              LANE 0              │
   │                                                                 │
   │   Each onset = one obstacle spawn candidate.                    │
   │   Snap to beat grid (within 80ms). That's your note.            │

@@ -69,9 +69,9 @@ class TestLoop2MetricCalculations(unittest.TestCase):
 
     def test_split_path_counts_as_supported_shape_obstacle(self):
         beats = [
-            {"beat": 0, "kind": "split_path", "shape": "triangle", "lane": 0},
+            {"beat": 0, "kind": "split_path", "shape": "triangle", "lane": 2},
             {"beat": 4, "kind": "shape_gate", "shape": "square", "lane": 1},
-            {"beat": 8, "kind": "split_path", "shape": "circle", "lane": 2},
+            {"beat": 8, "kind": "split_path", "shape": "circle", "lane": 0},
         ]
         metrics = gates.calculate_content_metrics(beats, expected_count=3)
 
@@ -82,9 +82,9 @@ class TestLoop2MetricCalculations(unittest.TestCase):
 
     def test_onset_marker_is_supported_but_not_counted_as_shape_obstacle(self):
         beats = [
-            {"beat": 0, "kind": "shape_gate", "shape": "triangle", "lane": 0},
+            {"beat": 0, "kind": "shape_gate", "shape": "triangle", "lane": 2},
             {"beat": 1, "kind": "onset_marker", "shape": "square", "lane": 1},
-            {"beat": 4, "kind": "shape_gate", "shape": "circle", "lane": 2},
+            {"beat": 4, "kind": "shape_gate", "shape": "circle", "lane": 0},
         ]
         metrics = gates.calculate_content_metrics(beats, expected_count=3)
 
