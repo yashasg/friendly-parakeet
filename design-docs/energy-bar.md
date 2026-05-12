@@ -170,16 +170,21 @@ energy.energy = clamp(energy.energy, 0.0f, ENERGY_MAX);
 ## System Execution Order
 
 ```
-  ... (existing systems) ...
-  collision_system    ← modifies energy on MISS
-  scoring_system      ← modifies energy on timed obstacle clear
+  game_state_system
+  song_playback_system
+  tick_playing_systems
+    → playing systems include collision_system and scoring_system
+  obstacle_despawn_system
+  popup_feedback_system
+  popup_display_system
   energy_system       ← checks depletion → GameOver, smooths display
-  particle_system / popup_display_system
-  ...
+  particle_system
 ```
 
-The `energy_system` slot replaces the current `hp_system` slot
-in `tick_fixed_systems()` and `all_systems.h`.
+`collision_system` tags MISS/HIT outcomes and `scoring_system` applies the
+timing-grade energy drain/recovery inside `tick_playing_systems()`. The
+`energy_system` then runs after popup updates in `tick_fixed_systems()`;
+this placement is a cache-locality choice, not a semantic dependency.
 
 ---
 
@@ -302,7 +307,7 @@ consume the same tuning table. Runtime C++ currently uses the matching
 | `app/systems/collision_system.cpp` | Miss → drain energy instead of instant GameOver |
 | `app/systems/scoring_system.cpp` | Add energy recovery/drain on TimingGrade |
 | `app/session/play_session.cpp` | Init `EnergyState` instead of `HPState` |
-| `app/systems/render_system.cpp` | Draw energy bar (color ramp, flash, pulse) |
+| `app/ui/screen_controllers/gameplay_hud_screen_controller.cpp` | Draw energy bar (color ramp, flash, pulse) |
 | `app/main.cpp` | Emplace `EnergyState`, call `energy_system`, update tick order |
 | `CMakeLists.txt` | Rename source file if needed |
 | `content/constants.json` | Add energy tuning values |
