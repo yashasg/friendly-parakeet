@@ -13,7 +13,7 @@
 // The remaining CPU cost is generating world-space vertex positions for
 // rlVertex3f calls.
 
-TEST_CASE("Bench: circle ring vertex generation (world-space)", "[bench][rendering]") {
+TEST_CASE("Bench: circle ring vertex generation (world-space)", "[!benchmark][bench][rendering]") {
     BENCHMARK("24-segment circle trig vertices") {
         constexpr int ring_segments = 24;
         constexpr float tau = 6.28318530717958647692f;
@@ -29,7 +29,7 @@ TEST_CASE("Bench: circle ring vertex generation (world-space)", "[bench][renderi
     };
 }
 
-TEST_CASE("Bench: floor position computation (3 lanes × 21 positions)", "[bench][rendering]") {
+TEST_CASE("Bench: floor position computation (3 lanes × 21 positions)", "[!benchmark][bench][rendering]") {
     BENCHMARK("3 lanes × 21 floor positions (world-space)") {
         float sum = 0.0f;
         for (int lane = 0; lane < 3; ++lane) {
@@ -46,7 +46,7 @@ TEST_CASE("Bench: floor position computation (3 lanes × 21 positions)", "[bench
     };
 }
 
-TEST_CASE("Bench: polygon vertex generation", "[bench][rendering]") {
+TEST_CASE("Bench: polygon vertex generation", "[!benchmark][bench][rendering]") {
     BENCHMARK("6-segment polygon trig vertices") {
         constexpr int sides = 6;
         constexpr float tau = 6.28318530717958647692f;
