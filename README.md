@@ -85,10 +85,25 @@ it identifies historical migration plans and the current authoritative runtime d
 ### System Pipeline (per frame)
 
 ```
-input -> gesture -> game_state -> song_playback -> beat_scheduler ->
-player_action -> shape_window -> player_movement -> difficulty ->
-obstacle_spawn -> scroll -> collision -> scoring ->
-hp -> lifetime -> particle -> cleanup -> render -> audio
+compute_screen_transform -> input_system -> test_player_system ->
+fixed timestep loop -> game_camera_system -> ui_camera_system ->
+game_render_system -> ui_render_system -> audio_system -> haptic_system
+```
+
+Each fixed timestep runs `tick_fixed_systems`:
+
+```
+game_state_system -> song_playback_system -> tick_playing_systems ->
+obstacle_despawn_system -> popup_feedback_system -> popup_display_system ->
+energy_system -> particle_system
+```
+
+`tick_playing_systems` is gated to `GamePhase::Playing` and runs:
+
+```
+beat_log_system -> beat_scheduler_system -> shape_window_system ->
+player_movement_system -> scroll_system -> motion_system ->
+collision_system -> miss_detection_system -> scoring_system
 ```
 
 ### Key Design Decisions
