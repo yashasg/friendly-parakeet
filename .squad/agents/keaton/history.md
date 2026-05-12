@@ -25,6 +25,8 @@ Status: COMPLETE. All validation/build tests passed.
 
 ## Learnings
 
+- 2026-05-11T22:42:23.114-07:00: Runtime frame orchestration is split between variable-rate pre/post stages in `app/game_loop.cpp` (input/test-player, camera, render, audio/haptics) and deterministic fixed-step gameplay in `app/systems/fixed_tick_runner.cpp`; `game_state_system` is the sole semantic input-event drain (`disp.update<GoEvent/ButtonPressEvent>()`).
+
 - 2026-05-11T01:19:23.327-07:00: Desktop shape key routing is produced in `app/systems/input_system.cpp`; keep keyboard slot-to-shape bindings centralized (now `app/input/keyboard_shape_mapping.h`) and regression-check lane alignment via `tests/test_input_pipeline_behavior.cpp` + `lane_for_shape`.
 
 - 2026-05-08T14:50:05.765-07:00: Replacing manual entity-tracking arrays with an existential EnTT tag (`TestPlayerPlannedTag`) safely removes stale-handle cleanup code and keeps planning state attached to obstacle lifetime without callback coupling.
@@ -114,3 +116,18 @@ See `.squad/agents/keaton/history-archive.md` for earlier work:
 - 2026-05-08: Redfoot segfault came from test fixture missing SongState; collision_system now requires SongState in ctx. Add it in focused test setups that call collision_system directly.
 - 2026-05-08T15:52:28.945-07:00: Collapsed input dispatch to semantic-only events (input_system emits GoEvent directly; game_state_system is the sole dispatcher drain; player_input_system drain removed).
 - 2026-05-10T02:40:52.785-07:00: For issue #407, ECS-facing component headers now use plain data (`Vec2f`, `TintColor`, `Mat4f`) and runtime-only raylib conversion helpers at render/input boundaries; this keeps component contracts backend-neutral without introducing wrapper abstraction layers.
+
+## 2026-05-12T05:42:23Z — EnTT System Design Documentation (spawn session)
+
+**Session:** Parallel Keyser + Keaton analysis synthesized by Coordinator
+**Deliverable:** `.squad/log/2026-05-12T05-42-23Z-entt-system-design.md`
+
+**Task:** Produce comprehensive system design of EnTT architecture, entity/component/system boundaries, util patterns.
+
+**Keaton output:** C++ Implementation Validation
+- Concrete implementation structure (fixed-rate, variable-rate, ctx/dispatcher)
+- Component layout & data-oriented patterns
+- Safe vs. design-gated refactoring candidates
+- Performance-safe migration roadmap
+
+**Status:** Complete. System design document synthesized and ready for team review.

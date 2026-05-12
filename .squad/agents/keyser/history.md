@@ -28,3 +28,19 @@
 - Approved 9-block layered architecture visualization spec from Keyser (systems layers, boundary annotations, camera/audio notes for Coordinator).
 - Approved Excalidraw layout specification from Redfoot (5 bands, color palette, node inventory, typography, acceptance criteria).
 - Both specs merged into decisions.md; orchestration logs written; Coordinator owns canvas drawing.
+
+## 2026-05-12T05:42:23Z — EnTT System Design Documentation (spawn session)
+
+**Session:** Parallel Keyser + Keaton analysis synthesized by Coordinator
+**Deliverable:** `.squad/log/2026-05-12T05-42-23Z-entt-system-design.md`
+
+**Task:** Produce comprehensive system design of EnTT architecture, entity/component/system boundaries, util patterns.
+
+**Keyser output:** High-level architecture mapping
+- Registry ownership & lifecycle
+- Entity/component/system boundaries  
+- Event/data flow patterns
+- Safe refactoring candidates (7 HC + 4 guardrails)
+- Integration points
+
+**Status:** Complete. Document ready for team review.
