@@ -509,7 +509,8 @@ Ordered by dependency chain. Steps marked ✅ are already on `main`.
   STEP 3 — Beat Map Loader                         ✅ DONE
   ─────────────────────────────
   • beat_map_loader.h/.cpp: JSON → BeatMap with validation
-  • Handles all obstacle kinds including ComboGate, SplitPath, OnsetMarker
+  • Parser supports ComboGate and SplitPath as future content; shipped
+    beatmaps currently use ShapeGate plus onset_marker metadata.
   • init_song_state() computes derived fields from BPM
 
   STEP 4 — Song Playback + Beat Scheduler          ✅ DONE
