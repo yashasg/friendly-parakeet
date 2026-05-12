@@ -112,17 +112,19 @@ See `rhythm-design.md` for the full timing-window grading table and `rhythm-spec
 
 ## Obstacle Types
 
-| Obstacle        | Player Action Required    | Timed? | Base Points |
-|-----------------|---------------------------|--------|-------------|
-| Shape Gate      | Tap correct shape button  | YES    | 200         |
-| Combo Gate      | Shape + swipe (2 actions) | YES    | 200 (×2)    |
-| Split Path      | Shape + correct lane      | YES    | 300 (×2)    |
+| Obstacle        | Status          | Player Action Required    | Timed? | Base Points |
+|-----------------|-----------------|---------------------------|--------|-------------|
+| Shape Gate      | Shipped         | Tap correct shape button  | YES    | 200         |
+| Combo Gate      | Future design   | Shape + swipe (2 actions) | YES    | TBD         |
+| Split Path      | Future design   | Shape + correct lane      | YES    | TBD         |
 
-Vertical bar obstacles are archived/future-only design space and have no live base-point constants.
+Shipped beatmaps currently use required `shape_gate` obstacles only. They may also include non-blocking `onset_marker` rows for authored onset metadata; runtime skips those rows and they do not score, block, or count as required obstacles.
 
-### Combo Obstacles
+Vertical bars, Combo Gates, and Split Paths are archived/future-only design space and have no live base-point constants.
 
-When an obstacle requires TWO actions (e.g., switch to ● AND swipe left), the timing grade for each input is computed independently and the combo bonus stacks on top of the base points.
+### Future Combo / Split-Path Obstacles
+
+If combo or split-path obstacles return, their timing and scoring rules need a new committed design pass before content ships. Older drafts treated combo obstacles as two timed actions (for example, switch to ● and swipe left) with independent timing grades, but that is not current shipped behavior.
 
 ---
 
@@ -155,7 +157,7 @@ When an obstacle requires TWO actions (e.g., switch to ● AND swipe left), the 
 
 ## Difficulty Progression
 
-Difficulty is selected per song (easy / medium / hard) and is expressed primarily through obstacle density, kind variety, and lane complexity in the beatmap. Within a song, scroll speed is BPM-derived and constant — there is no in-song speed ramp.
+Difficulty is selected per song (easy / medium / hard) and is expressed primarily through shape-gate density, shape/lane distribution, and onset selection in the beatmap. Within a song, scroll speed is BPM-derived and constant — there is no in-song speed ramp.
 
 | Difficulty | Obstacles Introduced | Density | Timing Window† |
 |------------|----------------------|---------|----------------|
