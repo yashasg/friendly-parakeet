@@ -42,6 +42,63 @@ bool kind_requires_shape(const ObstacleKind kind) {
            kind == ObstacleKind::ComboGate ||
            kind == ObstacleKind::SplitPath;
 }
+
+std::string type_error_message(const char* field, const char* expected, const json& value) {
+    return std::string("'") + field + "' must be " + expected + " (got " + value.type_name() + ")";
+}
+
+void push_type_error(std::vector<BeatMapError>& errors,
+                     const int beat_index,
+                     const char* field,
+                     const char* expected,
+                     const json& value) {
+    errors.push_back({beat_index, type_error_message(field, expected, value)});
+}
+
+bool read_optional_string(const json& object,
+                          const char* field,
+                          std::string& out,
+                          std::vector<BeatMapError>& errors,
+                          const int beat_index) {
+    if (!object.contains(field)) return true;
+    const auto& value = object[field];
+    if (!value.is_string()) {
+        push_type_error(errors, beat_index, field, "a string", value);
+        return false;
+    }
+    out = value.get<std::string>();
+    return true;
+}
+
+bool read_optional_float(const json& object,
+                         const char* field,
+                         float& out,
+                         std::vector<BeatMapError>& errors,
+                         const int beat_index) {
+    if (!object.contains(field)) return true;
+    const auto& value = object[field];
+    if (!value.is_number()) {
+        push_type_error(errors, beat_index, field, "a number", value);
+        return false;
+    }
+    out = value.get<float>();
+    return true;
+}
+
+bool read_optional_int(const json& object,
+                       const char* field,
+                       int& out,
+                       std::vector<BeatMapError>& errors,
+                       const int beat_index) {
+    if (!object.contains(field)) return true;
+    const auto& value = object[field];
+    if (!value.is_number_integer() && !value.is_number_unsigned()) {
+        push_type_error(errors, beat_index, field, "an integer", value);
+        return false;
+    }
+    out = value.get<int>();
+    return true;
+}
 } // namespace
 
 static bool try_load_constants_from(const std::string& path, ValidationConstants& vc) {
@@ -119,28 +176,49 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
         return false;
     }
 
+    if (!j.is_object()) {
+        errors.push_back({-1, type_error_message("root", "an object", j)});
+        return false;
+    }
+
     // ── Metadata ─────────────────────────────────────────────
     out.beats.clear();  // reset before every parse to prevent stale entries on reuse
     out.beat_times.clear();
-    out.song_id    = j.value("song_id", "");
-    out.title      = j.value("title", "");
-    out.bpm        = j.value("bpm", 120.0f);
-    out.offset     = j.value("offset", 0.0f);
-    out.lead_beats = j.value("lead_beats", 4);
-    out.duration   = j.value("duration_sec", 180.0f);
+    out.song_id.clear();
+    out.title.clear();
+    out.song_path.clear();
+    out.bpm = 120.0f;
+    out.offset = 0.0f;
+    out.lead_beats = 4;
+    out.duration = 180.0f;
+    bool parse_ok = true;
+    parse_ok &= read_optional_string(j, "song_id", out.song_id, errors, -1);
+    parse_ok &= read_optional_string(j, "title", out.title, errors, -1);
+    parse_ok &= read_optional_float(j, "bpm", out.bpm, errors, -1);
+    parse_ok &= read_optional_float(j, "offset", out.offset, errors, -1);
+    parse_ok &= read_optional_int(j, "lead_beats", out.lead_beats, errors, -1);
+    parse_ok &= read_optional_float(j, "duration_sec", out.duration, errors, -1);
     out.difficulty = difficulty;
 
-    if (j.contains("beat_times") && j["beat_times"].is_array()) {
-        for (const auto& t : j["beat_times"]) {
-            if (t.is_number_float() || t.is_number_integer()) {
+    if (j.contains("beat_times")) {
+        if (!j["beat_times"].is_array()) {
+            push_type_error(errors, -1, "beat_times", "an array", j["beat_times"]);
+            parse_ok = false;
+        } else {
+            for (const auto& t : j["beat_times"]) {
+                if (!t.is_number()) {
+                    push_type_error(errors, -1, "beat_times[]", "a number", t);
+                    parse_ok = false;
+                    continue;
+                }
                 out.beat_times.push_back(t.get<float>());
             }
         }
     }
 
     // ── song_path: explicit field, or derive from song_id ────
-    if (j.contains("song_path") && j["song_path"].is_string()) {
-        out.song_path = j["song_path"].get<std::string>();
+    if (j.contains("song_path")) {
+        parse_ok &= read_optional_string(j, "song_path", out.song_path, errors, -1);
     } else if (!out.song_id.empty()) {
         out.song_path = "content/audio/" + out.song_id + ".flac";
     }
@@ -150,16 +228,18 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
 
     if (j.contains("difficulties") && j["difficulties"].is_object()) {
         const auto& diffs = j["difficulties"];
-        if (diffs.contains(difficulty) && diffs[difficulty].contains("beats")
-            && diffs[difficulty]["beats"].is_array()) {
-            beats_array = &diffs[difficulty]["beats"];
+        const auto diff_it = diffs.find(difficulty);
+        if (diff_it != diffs.end() && diff_it->is_object() && diff_it->contains("beats")
+            && (*diff_it)["beats"].is_array()) {
+            beats_array = &(*diff_it)["beats"];
         } else {
             // Requested difficulty not found — try fallback order
             const char* fallbacks[] = {"medium", "easy", "hard"};
             for (const char* fb : fallbacks) {
-                if (diffs.contains(fb) && diffs[fb].contains("beats")
-                    && diffs[fb]["beats"].is_array()) {
-                    beats_array = &diffs[fb]["beats"];
+                const auto fallback_it = diffs.find(fb);
+                if (fallback_it != diffs.end() && fallback_it->is_object()
+                    && fallback_it->contains("beats") && (*fallback_it)["beats"].is_array()) {
+                    beats_array = &(*fallback_it)["beats"];
                     out.difficulty = fb;
                     errors.push_back({-1, std::string("Difficulty '") + difficulty
                         + "' not found, falling back to '" + fb + "'"});
@@ -180,12 +260,24 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
     }
 
     // ── Parse individual beat entries ────────────────────────
-    bool parse_ok = true;
     for (const auto& b : *beats_array) {
-        BeatEntry entry;
-        entry.beat_index = b.value("beat", 0);
+        if (!b.is_object()) {
+            push_type_error(errors, -1, "beats[]", "an object", b);
+            parse_ok = false;
+            continue;
+        }
 
-        std::string kind_str = b.value("kind", "shape_gate");
+        BeatEntry entry;
+        if (!read_optional_int(b, "beat", entry.beat_index, errors, -1)) {
+            parse_ok = false;
+            continue;
+        }
+
+        std::string kind_str = "shape_gate";
+        if (!read_optional_string(b, "kind", kind_str, errors, entry.beat_index)) {
+            parse_ok = false;
+            continue;
+        }
         auto kind_opt = parse_kind(kind_str);
         if (!kind_opt) {
             errors.push_back({entry.beat_index,
@@ -196,7 +288,11 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
         entry.kind = *kind_opt;
 
         if (b.contains("shape")) {
-            std::string shape_str = b["shape"].get<std::string>();
+            std::string shape_str;
+            if (!read_optional_string(b, "shape", shape_str, errors, entry.beat_index)) {
+                parse_ok = false;
+                continue;
+            }
             auto shape_opt = parse_shape(shape_str);
             if (!shape_opt) {
                 errors.push_back({entry.beat_index,
@@ -213,7 +309,12 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
             continue;
         }
 
-        entry.lane = static_cast<int8_t>(b.value("lane", 1));
+        int lane_value = entry.lane;
+        if (!read_optional_int(b, "lane", lane_value, errors, entry.beat_index)) {
+            parse_ok = false;
+            continue;
+        }
+        entry.lane = static_cast<int8_t>(lane_value);
 
         const float grid_time = out.offset + entry.beat_index * (60.0f / out.bpm);
         float beat_time = grid_time;
@@ -228,7 +329,11 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
         entry.has_time_sec = has_time_sec;
         entry.time_sec = has_time_sec ? b["time_sec"].get<float>() : beat_time;
 
-        const std::string timing_source = b.value("timing_source", "");
+        std::string timing_source;
+        if (!read_optional_string(b, "timing_source", timing_source, errors, entry.beat_index)) {
+            parse_ok = false;
+            continue;
+        }
         if (has_time_sec && timing_source != "onset" && !out.beat_times.empty() &&
             entry.beat_index >= 0 &&
             static_cast<size_t>(entry.beat_index) < out.beat_times.size()) {

@@ -170,3 +170,79 @@ TEST_CASE("parse: bad shape in middle fails whole parse", "[parse][shape][regres
     CHECK(errors[0].beat_index == 8);
     CHECK(errors[0].message.find("pentagon") != std::string::npos);
 }
+
+// ── Wrong JSON value types ────────────────────────────────────
+
+TEST_CASE("parse: wrong kind type reports BeatMapError instead of throwing", "[parse][kind][types][regression]") {
+    BeatMap map;
+    std::vector<BeatMapError> errors;
+    std::string json = R"({
+        "bpm": 120, "offset": 0.0, "lead_beats": 4, "duration_sec": 60.0,
+        "beats": [
+            { "beat": 5, "kind": [], "shape": "circle", "lane": 1 }
+        ]
+    })";
+
+    CHECK_FALSE(parse_beat_map(json, map, errors));
+    REQUIRE_FALSE(errors.empty());
+    CHECK(errors[0].beat_index == 5);
+    CHECK(errors[0].message.find("kind") != std::string::npos);
+    CHECK(errors[0].message.find("string") != std::string::npos);
+}
+
+TEST_CASE("parse: wrong shape type reports BeatMapError instead of throwing", "[parse][shape][types][regression]") {
+    BeatMap map;
+    std::vector<BeatMapError> errors;
+    std::string json = R"({
+        "bpm": 120, "offset": 0.0, "lead_beats": 4, "duration_sec": 60.0,
+        "beats": [
+            { "beat": 7, "kind": "shape_gate", "shape": 123, "lane": 1 }
+        ]
+    })";
+
+    CHECK_FALSE(parse_beat_map(json, map, errors));
+    REQUIRE_FALSE(errors.empty());
+    CHECK(errors[0].beat_index == 7);
+    CHECK(errors[0].message.find("shape") != std::string::npos);
+    CHECK(errors[0].message.find("string") != std::string::npos);
+}
+
+TEST_CASE("parse: wrong lane type reports BeatMapError instead of throwing", "[parse][lane][types][regression]") {
+    BeatMap map;
+    std::vector<BeatMapError> errors;
+    std::string json = R"({
+        "bpm": 120, "offset": 0.0, "lead_beats": 4, "duration_sec": 60.0,
+        "beats": [
+            { "beat": 9, "kind": "shape_gate", "shape": "circle", "lane": {} }
+        ]
+    })";
+
+    CHECK_FALSE(parse_beat_map(json, map, errors));
+    REQUIRE_FALSE(errors.empty());
+    CHECK(errors[0].beat_index == 9);
+    CHECK(errors[0].message.find("lane") != std::string::npos);
+    CHECK(errors[0].message.find("integer") != std::string::npos);
+}
+
+TEST_CASE("parse: wrong metadata types report BeatMapError instead of throwing", "[parse][metadata][types][regression]") {
+    BeatMap map;
+    std::vector<BeatMapError> errors;
+    std::string json = R"({
+        "song_id": "test_song",
+        "song_path": [],
+        "bpm": "fast",
+        "offset": 0.0,
+        "lead_beats": 4,
+        "duration_sec": 60.0,
+        "beats": [
+            { "beat": 4, "kind": "shape_gate", "shape": "circle", "lane": 1 }
+        ]
+    })";
+
+    CHECK_FALSE(parse_beat_map(json, map, errors));
+    REQUIRE(errors.size() >= 2);
+    CHECK(errors[0].beat_index == -1);
+    CHECK(errors[0].message.find("bpm") != std::string::npos);
+    CHECK(errors[1].beat_index == -1);
+    CHECK(errors[1].message.find("song_path") != std::string::npos);
+}
