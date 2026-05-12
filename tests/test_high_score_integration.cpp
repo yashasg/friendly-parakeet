@@ -20,6 +20,16 @@ void remove_path(const std::filesystem::path& path) {
     std::filesystem::remove_all(path, ec);
 }
 
+int count_result_notes(const BeatMap& beatmap) {
+    int total = 0;
+    for (const BeatEntry& beat : beatmap.beats) {
+        if (beat.kind != ObstacleKind::OnsetMarker) {
+            ++total;
+        }
+    }
+    return total;
+}
+
 }  // namespace
 
 TEST_CASE("High score integration: setup_play_session loads selected song difficulty score",
@@ -57,8 +67,9 @@ TEST_CASE("Play session: invalid level-select indices fall back before content l
         == high_score::make_key_hash("1_stomper", "medium"));
 }
 
-TEST_CASE("Play session: SongResults total_notes matches every shipped song difficulty",
-          "[play_session][song_results][issue-114]") {
+TEST_CASE("Play session: SongResults total_notes excludes onset marker metadata",
+          "[play_session][song_results][issue-773]") {
+    bool saw_onset_marker = false;
     for (int level = 0; level < content_config::LEVEL_COUNT; ++level) {
         for (int difficulty = 0; difficulty < content_config::DIFFICULTY_COUNT; ++difficulty) {
             auto reg = make_registry();
@@ -70,13 +81,15 @@ TEST_CASE("Play session: SongResults total_notes matches every shipped song diff
 
             const auto& beatmap = beat_map(reg);
             REQUIRE_FALSE(beatmap.beats.empty());
-            const int expected_total = static_cast<int>(beatmap.beats.size());
+            saw_onset_marker = saw_onset_marker || (count_result_notes(beatmap)
+                != static_cast<int>(beatmap.beats.size()));
 
             CAPTURE(content_config::LEVELS[level].title);
             CAPTURE(content_config::DIFFICULTY_KEYS[difficulty]);
-            CHECK(reg.ctx().get<SongResults>().total_notes == expected_total);
+            CHECK(reg.ctx().get<SongResults>().total_notes == count_result_notes(beatmap));
         }
     }
+    CHECK(saw_onset_marker);
 }
 
 TEST_CASE("High score integration: new song-complete high score persists",
