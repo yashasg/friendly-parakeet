@@ -66,6 +66,7 @@ void shape_window_system(entt::registry& reg, float /*dt*/) {
                     swindow.target_shape = Shape::Hexagon;
                     swindow.phase = WindowPhase::Idle;
                     swindow.window_timer = 0.0f;
+                    swindow.press_time = -1.0f;
                     swindow.window_scale = 1.0f;
                     swindow.graded = false;
                     apply_shape_color(reg, entity, Shape::Hexagon);

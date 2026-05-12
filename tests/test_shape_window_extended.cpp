@@ -78,6 +78,7 @@ TEST_CASE("shape_window: MorphOut returns to Idle with Hexagon", "[shape_window]
     ps.previous = Shape::Circle;
     sw.phase = WindowPhase::MorphOut;
     sw.window_start = song.song_time;
+    sw.press_time = song.song_time - 0.25f;
     ps.morph_t = 0.0f;
 
     // Advance past morph_duration
@@ -88,6 +89,7 @@ TEST_CASE("shape_window: MorphOut returns to Idle with Hexagon", "[shape_window]
     CHECK(ps.current == Shape::Hexagon);
     CHECK(ps.previous == Shape::Hexagon);
     CHECK(sw.target_shape == Shape::Hexagon);
+    CHECK(sw.press_time == -1.0f);
     CHECK(sw.window_scale == 1.0f);
     CHECK_FALSE(sw.graded);
 }
