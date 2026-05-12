@@ -615,6 +615,11 @@ if(NOT EMSCRIPTEN AND NOT SHAPESHIFTER_IOS)
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/validate_no_simultaneous_shape_gates.py
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     )
+    add_test(
+        NAME check_shape_change_gap
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/check_shape_change_gap.py
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    )
     find_program(NODE_EXECUTABLE node)
     if(NODE_EXECUTABLE)
         file(GLOB _beatmap_editor_node_test_files CONFIGURE_DEPENDS

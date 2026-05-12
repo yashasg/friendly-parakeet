@@ -695,7 +695,7 @@
         },
         {
           "beat": 60,
-          "kind": "shape_gate",
+          "kind": "onset_marker",
           "lane": 1,
           "shape": "square",
           "onset_class": "full-spectrum",
@@ -1171,7 +1171,7 @@
         },
         {
           "beat": 274,
-          "kind": "shape_gate",
+          "kind": "onset_marker",
           "lane": 1,
           "shape": "square",
           "onset_class": "full-spectrum",
@@ -1528,7 +1528,7 @@
         },
         {
           "beat": 341,
-          "kind": "shape_gate",
+          "kind": "onset_marker",
           "lane": 1,
           "shape": "square",
           "onset_class": "full-spectrum",
@@ -1681,7 +1681,7 @@
         },
         {
           "beat": 396,
-          "kind": "shape_gate",
+          "kind": "onset_marker",
           "lane": 1,
           "shape": "square",
           "onset_class": "full-spectrum",
@@ -2197,7 +2197,7 @@
         },
         {
           "beat": 7,
-          "kind": "shape_gate",
+          "kind": "onset_marker",
           "lane": 1,
           "shape": "square",
           "onset_class": "full-spectrum",
@@ -2359,7 +2359,7 @@
         },
         {
           "beat": 55,
-          "kind": "shape_gate",
+          "kind": "onset_marker",
           "lane": 1,
           "shape": "square",
           "onset_class": "full-spectrum",
@@ -2863,7 +2863,7 @@
         },
         {
           "beat": 215,
-          "kind": "shape_gate",
+          "kind": "onset_marker",
           "lane": 2,
           "shape": "circle",
           "onset_class": "harmonic",
@@ -3295,7 +3295,7 @@
         },
         {
           "beat": 333,
-          "kind": "shape_gate",
+          "kind": "onset_marker",
           "lane": 0,
           "shape": "triangle",
           "onset_class": "percussive",
@@ -3475,7 +3475,7 @@
         },
         {
           "beat": 393,
-          "kind": "shape_gate",
+          "kind": "onset_marker",
           "lane": 2,
           "shape": "circle",
           "onset_class": "harmonic",
@@ -3964,7 +3964,7 @@
         },
         {
           "beat": 7,
-          "kind": "shape_gate",
+          "kind": "onset_marker",
           "lane": 1,
           "shape": "square",
           "onset_class": "full-spectrum",
@@ -4032,7 +4032,7 @@
         },
         {
           "beat": 11,
-          "kind": "shape_gate",
+          "kind": "onset_marker",
           "lane": 0,
           "shape": "triangle",
           "onset_class": "percussive",
@@ -5443,7 +5443,7 @@
         },
         {
           "beat": 318,
-          "kind": "shape_gate",
+          "kind": "onset_marker",
           "lane": 1,
           "shape": "square",
           "onset_class": "full-spectrum",
@@ -5511,7 +5511,7 @@
         },
         {
           "beat": 325,
-          "kind": "shape_gate",
+          "kind": "onset_marker",
           "lane": 0,
           "shape": "triangle",
           "onset_class": "percussive",
@@ -5630,7 +5630,7 @@
         },
         {
           "beat": 332,
-          "kind": "shape_gate",
+          "kind": "onset_marker",
           "lane": 0,
           "shape": "triangle",
           "onset_class": "percussive",
@@ -5970,7 +5970,7 @@
         },
         {
           "beat": 397,
-          "kind": "shape_gate",
+          "kind": "onset_marker",
           "lane": 1,
           "shape": "square",
           "onset_class": "full-spectrum",
@@ -6225,7 +6225,7 @@
         },
         {
           "beat": 418,
-          "kind": "shape_gate",
+          "kind": "onset_marker",
           "lane": 1,
           "shape": "square",
           "onset_class": "full-spectrum",
@@ -6378,7 +6378,7 @@
         },
         {
           "beat": 442,
-          "kind": "shape_gate",
+          "kind": "onset_marker",
           "lane": 0,
           "shape": "triangle",
           "onset_class": "percussive",
@@ -6480,7 +6480,7 @@
         },
         {
           "beat": 452,
-          "kind": "shape_gate",
+          "kind": "onset_marker",
           "lane": 2,
           "shape": "circle",
           "onset_class": "harmonic",
@@ -6565,7 +6565,7 @@
         },
         {
           "beat": 464,
-          "kind": "shape_gate",
+          "kind": "onset_marker",
           "lane": 0,
           "shape": "triangle",
           "onset_class": "percussive",
