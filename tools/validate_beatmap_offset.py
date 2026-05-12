@@ -62,14 +62,22 @@ def validate_beatmap_pair(beatmap_path: Path, analysis_path: Path,
         errors.append(f"{beatmap_path.name}: no authored beats in any difficulty")
         return errors
 
-    anchor_idx = min(all_authored)
-    if anchor_idx >= len(beats):
+    invalid_indices = sorted({
+        beat_index
+        for beat_index in all_authored
+        if beat_index < 0 or beat_index >= len(beats)
+    })
+    if invalid_indices:
+        sample = ", ".join(str(beat_index) for beat_index in invalid_indices[:10])
+        if len(invalid_indices) > 10:
+            sample += ", ..."
         errors.append(
-            f"{beatmap_path.name}: anchor_idx={anchor_idx} out of range "
-            f"(beats has {len(beats)} entries)"
+            f"{beatmap_path.name}: authored beat index out of range "
+            f"(valid range: 0..{len(beats) - 1}; invalid: {sample})"
         )
         return errors
 
+    anchor_idx = min(all_authored)
     anchor_time = beats[anchor_idx]
     expected_offset = anchor_time - anchor_idx * beat_period
     delta_ms = abs(offset - expected_offset) * 1000.0
