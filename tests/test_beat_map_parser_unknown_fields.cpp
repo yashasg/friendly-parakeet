@@ -224,6 +224,57 @@ TEST_CASE("parse: wrong lane type reports BeatMapError instead of throwing", "[p
     CHECK(errors[0].message.find("integer") != std::string::npos);
 }
 
+TEST_CASE("parse: missing beat is rejected", "[parse][beat][required][issue757]") {
+    BeatMap map;
+    std::vector<BeatMapError> errors;
+    std::string json = R"({
+        "bpm": 120, "offset": 0.0, "lead_beats": 4, "duration_sec": 60.0,
+        "beats": [
+            { "kind": "shape_gate", "shape": "circle", "lane": 1 }
+        ]
+    })";
+
+    CHECK_FALSE(parse_beat_map(json, map, errors));
+    REQUIRE_FALSE(errors.empty());
+    CHECK(errors[0].beat_index == -1);
+    CHECK(errors[0].message.find("beat") != std::string::npos);
+    CHECK(map.beats.empty());
+}
+
+TEST_CASE("parse: missing shape gate lane is rejected", "[parse][lane][required][issue757]") {
+    BeatMap map;
+    std::vector<BeatMapError> errors;
+    std::string json = R"({
+        "bpm": 120, "offset": 0.0, "lead_beats": 4, "duration_sec": 60.0,
+        "beats": [
+            { "beat": 4, "kind": "shape_gate", "shape": "circle" }
+        ]
+    })";
+
+    CHECK_FALSE(parse_beat_map(json, map, errors));
+    REQUIRE_FALSE(errors.empty());
+    CHECK(errors[0].beat_index == 4);
+    CHECK(errors[0].message.find("lane") != std::string::npos);
+    CHECK(map.beats.empty());
+}
+
+TEST_CASE("parse: missing split path lane is rejected", "[parse][lane][required][issue757]") {
+    BeatMap map;
+    std::vector<BeatMapError> errors;
+    std::string json = R"({
+        "bpm": 120, "offset": 0.0, "lead_beats": 4, "duration_sec": 60.0,
+        "beats": [
+            { "beat": 8, "kind": "split_path", "shape": "triangle" }
+        ]
+    })";
+
+    CHECK_FALSE(parse_beat_map(json, map, errors));
+    REQUIRE_FALSE(errors.empty());
+    CHECK(errors[0].beat_index == 8);
+    CHECK(errors[0].message.find("lane") != std::string::npos);
+    CHECK(map.beats.empty());
+}
+
 TEST_CASE("parse: wrong metadata types report BeatMapError instead of throwing", "[parse][metadata][types][regression]") {
     BeatMap map;
     std::vector<BeatMapError> errors;
