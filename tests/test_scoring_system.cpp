@@ -156,6 +156,30 @@ TEST_CASE("scoring: popup entity spawned on score", "[scoring]") {
     CHECK(popup_count == 1);
 }
 
+TEST_CASE("scoring: score feedback spawns effect particles", "[scoring][particle][issue782]") {
+    auto reg = make_registry();
+    auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
+    reg.emplace<ScoredTag>(obs);
+    reg.emplace<TimingGrade>(obs, TimingTier::Perfect, 1.0f);
+
+    scoring_system(reg, 0.016f);
+
+    int particle_count = 0;
+    auto particle_view =
+        reg.view<ParticleTag, ParticleData, WorldTransform, MotionVelocity, Color, TagEffectsPass>();
+    for (auto [entity, particle, transform, velocity, color] : particle_view.each()) {
+        CHECK(reg.valid(entity));
+        CHECK(particle.remaining > 0.0f);
+        CHECK(particle.max_time > 0.0f);
+        CHECK(transform.position.y == constants::PLAYER_Y);
+        CHECK((velocity.value.x != 0.0f || velocity.value.y != 0.0f));
+        CHECK(color.a > 0);
+        ++particle_count;
+    }
+
+    CHECK(particle_count > 0);
+}
+
 TEST_CASE("scoring: SFX pushed on score", "[scoring]") {
     auto reg = make_registry();
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);

@@ -3,6 +3,7 @@
 #include "../components/scoring.h"
 #include "../components/obstacle.h"
 #include "../components/gameplay_intents.h"
+#include "../components/particle.h"
 #include "../components/system_scratch.h"
 #include "../components/transform.h"
 #include "../components/rendering.h"
@@ -34,6 +35,49 @@ void enqueue_energy_effect(entt::registry& reg, float delta, bool flash = false)
 
 ScorePopupRequestQueue& popup_queue_for(entt::registry& reg) {
     return reg.ctx().get<ScorePopupRequestQueue>();
+}
+
+Color score_particle_color(const HitRecord& record) {
+    if (!record.has_timing) {
+        return Color{220, 220, 255, 220};
+    }
+
+    switch (record.timing.tier) {
+        case TimingTier::Perfect:
+            return Color{255, 230, 90, 240};
+        case TimingTier::Good:
+            return Color{120, 255, 160, 230};
+        case TimingTier::Ok:
+            return Color{100, 180, 255, 220};
+        case TimingTier::Bad:
+            return Color{255, 100, 100, 220};
+    }
+
+    return Color{220, 220, 255, 220};
+}
+
+void spawn_score_particles(entt::registry& reg, const glm::vec2& position, Color color) {
+    constexpr float kLifetime = 0.35f;
+    constexpr float kSize = 10.0f;
+    constexpr float kSpeed = 90.0f;
+    constexpr glm::vec2 kDirections[] = {
+        {1.0f, 0.0f},
+        {-1.0f, 0.0f},
+        {0.0f, 1.0f},
+        {0.0f, -1.0f},
+        {0.707f, 0.707f},
+        {-0.707f, 0.707f},
+    };
+
+    for (const auto& dir : kDirections) {
+        auto particle = reg.create();
+        reg.emplace<ParticleTag>(particle);
+        reg.emplace<ParticleData>(particle, kSize, kLifetime, kLifetime);
+        reg.emplace<WorldTransform>(particle, WorldTransform{position});
+        reg.emplace<MotionVelocity>(particle, MotionVelocity{dir * kSpeed});
+        reg.emplace<Color>(particle, color);
+        reg.emplace<TagEffectsPass>(particle);
+    }
 }
 
 float chain_multiplier_for_count(int32_t chain_count) {
@@ -212,6 +256,7 @@ void scoring_system(entt::registry& reg, float dt) {
                 r.has_timing,
                 r.has_timing ? r.timing.tier : TimingTier::Ok,
             });
+            spawn_score_particles(reg, r.popup_xy, score_particle_color(r));
 
             // Structural removals after all reads — safe.
             reg.remove<Obstacle>(r.e);
