@@ -56,7 +56,7 @@ void player_input_handle_press(entt::registry& reg, const ButtonPressEvent& evt)
     if (evt.kind != ButtonPressKind::Shape) return;  // ignore menu-button events
     if (!gameplay_input_enabled(reg)) return;
     auto* song = reg.ctx().find<SongState>();
-    bool rhythm_mode = (song != nullptr && song->playing);
+    const bool rhythm_mode = (song != nullptr && (song->playing || song->finished));
 
     auto pressed_shape = evt.shape;
     auto shape_lane = lane_for_shape(pressed_shape);
