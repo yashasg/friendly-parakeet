@@ -183,6 +183,44 @@ TEST_CASE("pipeline: gameplay HUD raygui shape press triggers player shape input
     CHECK(sw.target_shape == Shape::Square);
 }
 
+TEST_CASE("pipeline: gameplay HUD pointer release is collected before the fixed tick",
+          "[input_pipeline][hud][issue833]") {
+    auto reg = make_rhythm_registry();
+    auto player = make_rhythm_player(reg);
+    auto& input = reg.ctx().get<InputState>();
+    auto& sw = reg.get<ShapeWindow>(player);
+    REQUIRE(sw.phase == WindowPhase::Idle);
+
+    const auto square_bounds = gameplay_hud_shape_input_bounds(GameplayHudShapeSlot::Square);
+    input.click = true;
+    input.end_x = square_bounds.x + square_bounds.width * 0.5f;
+    input.end_y = square_bounds.y + square_bounds.height * 0.5f;
+
+    gameplay_hud_process_button_input(reg);
+    run_pipeline(reg);
+
+    CHECK(sw.phase == WindowPhase::MorphIn);
+    CHECK(sw.target_shape == Shape::Square);
+}
+
+TEST_CASE("pipeline: gameplay HUD pause release is collected before the fixed tick",
+          "[input_pipeline][hud][issue833]") {
+    auto reg = make_rhythm_registry();
+    auto& input = reg.ctx().get<InputState>();
+    auto& gs = reg.ctx().get<GameState>();
+    REQUIRE(gs.phase == GamePhase::Playing);
+
+    input.click = true;
+    input.end_x = 660.0f;
+    input.end_y = 35.0f;
+
+    gameplay_hud_process_button_input(reg);
+    run_pipeline(reg);
+
+    CHECK(gs.phase == GamePhase::Paused);
+    CHECK_FALSE(gs.transition_pending);
+}
+
 TEST_CASE("pipeline: pending phase transition blocks queued shape input",
           "[input_pipeline][transition][issue823]") {
     auto reg = make_rhythm_registry();

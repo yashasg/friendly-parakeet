@@ -62,7 +62,7 @@ void game_state_system(entt::registry& reg, float dt) {
     // (see wire_input_dispatcher in input/input_dispatcher.cpp).
     //
     // Events are enqueued earlier in the same frame by input_system
-    // (keyboard/swipes) and raygui HUD controllers (buttons) before the
+    // (keyboard/swipes) and the gameplay HUD input collector before the
     // fixed-step loop.
     //
     // ⚠ Do NOT call disp.clear<GoEvent/ButtonPressEvent>() before this point

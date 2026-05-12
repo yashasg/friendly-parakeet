@@ -2,6 +2,7 @@
 
 #include "../../components/game_state.h"
 #include "../../components/energy_bar.h"
+#include "../../components/input.h"
 #include "../../components/input_events.h"
 #include "../../components/obstacle.h"
 #include "../../components/player.h"
@@ -321,6 +322,20 @@ Rectangle gameplay_hud_shape_input_bounds(GameplayHudShapeSlot slot) {
     return shape_slot_bounds(geometry_state, slot);
 }
 
+void gameplay_hud_process_button_input(entt::registry& reg) {
+    const auto& input = reg.ctx().get<InputState>();
+    if (!(input.click || input.touch_up)) return;
+
+    static const GameplayHudLayoutState geometry_state = GameplayHudLayout_Init();
+    const Vector2 pointer = {input.end_x, input.end_y};
+    gameplay_hud_apply_button_presses(
+        reg,
+        CheckCollisionPointRec(pointer, GameplayHudLayout_PauseButtonBounds(&geometry_state)),
+        CheckCollisionPointRec(pointer, GameplayHudLayout_CircleButtonBounds(&geometry_state)),
+        CheckCollisionPointRec(pointer, GameplayHudLayout_SquareButtonBounds(&geometry_state)),
+        CheckCollisionPointRec(pointer, GameplayHudLayout_TriangleButtonBounds(&geometry_state)));
+}
+
 void gameplay_hud_apply_button_presses(entt::registry& reg,
                                        bool pause_pressed,
                                        bool circle_pressed,
@@ -413,9 +428,8 @@ void render_gameplay_hud_screen_ui(entt::registry& reg) {
 
     GuiSetStyle(DEFAULT, TEXT_SIZE, saved_text_size);
 
-    gameplay_hud_apply_button_presses(reg,
-                                      state.PauseButtonPressed,
-                                      state.CircleButtonPressed,
-                                      state.SquareButtonPressed,
-                                      state.TriangleButtonPressed);
+    state.PauseButtonPressed = false;
+    state.CircleButtonPressed = false;
+    state.SquareButtonPressed = false;
+    state.TriangleButtonPressed = false;
 }
