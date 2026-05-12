@@ -5,10 +5,27 @@
 #include "../constants.h"
 #include <raymath.h>
 
+namespace {
+
+void request_energy_depleted_game_over(entt::registry& reg) {
+    auto& gs = reg.ctx().get<GameState>();
+    if (gs.transition_pending) return;
+
+    auto* gos = reg.ctx().find<GameOverState>();
+    if (gos) {
+        gos->cause = DeathCause::EnergyDepleted;
+    }
+    gs.transition_pending = true;
+    gs.next_phase = GamePhase::GameOver;
+}
+
+}  // namespace
+
 void energy_system(entt::registry& reg, float dt) {
     if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
     auto* energy = reg.ctx().find<EnergyState>();
     if (!energy) return;
+    auto* song = reg.ctx().find<SongState>();
 
     auto apply_clamped_delta = [&](float delta) {
         energy->energy = Clamp(energy->energy + delta, 0.0f, constants::ENERGY_MAX);
@@ -26,6 +43,10 @@ void energy_system(entt::registry& reg, float dt) {
             }
         }
         pending.events.clear();
+    }
+
+    if (song && song->playing && energy->energy <= 0.0f) {
+        request_energy_depleted_game_over(reg);
     }
 
     // Smooth display toward actual energy
