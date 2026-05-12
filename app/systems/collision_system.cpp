@@ -22,18 +22,21 @@ Rectangle centered_hitbox_rect(float x) {
 
 bool player_matches_required_shape(const PlayerShape& p_shape,
                                     const ShapeWindow& p_window,
-                                    Shape required) {
-    if (p_shape.current == required && p_shape.current != Shape::Hexagon) {
+                                    Shape required,
+                                    bool rhythm_mode) {
+    if (required == Shape::Hexagon) {
+        return false;
+    }
+
+    if (rhythm_mode && p_window.phase != WindowPhase::Active) {
+        return false;
+    }
+
+    if (p_shape.current == required) {
         return true;
     }
-    // Press-time judgment: during an active/morphing window, the selected target
-    // shape should satisfy shape-gates even before visual morph completion.
-    if (p_window.phase != WindowPhase::Idle &&
-        p_window.target_shape == required &&
-        p_window.target_shape != Shape::Hexagon) {
-        return true;
-    }
-    return false;
+
+    return p_window.phase != WindowPhase::Idle && p_window.target_shape == required;
 }
 
 }  // namespace
@@ -47,6 +50,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
         player_view.get<WorldTransform, PlayerShape, ShapeWindow, Lane, VerticalState>(player_entity);
 
     auto& song = reg.ctx().get<SongState>();
+    const bool rhythm_mode = song.playing;
 
     // Frame-constant precomputes — both values are invariant across all obstacle
     // loops since player transform and vertical state don't change mid-frame.
@@ -125,7 +129,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
                     resolve(e, wt.position.y, false);
                     continue;
                 }
-                bool shape_match = player_matches_required_shape(p_shape, p_window, req.shape);
+                bool shape_match = player_matches_required_shape(p_shape, p_window, req.shape, rhythm_mode);
                 bool cleared = shape_match;
                 if (cleared) grade_shape_timing(e, info.arrival_time);
                 resolve(e, wt.position.y, cleared);
@@ -139,7 +143,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
                     resolve(e, wt.position.y, false);
                     continue;
                 }
-                bool shape_match = player_matches_required_shape(p_shape, p_window, req.shape);
+                bool shape_match = player_matches_required_shape(p_shape, p_window, req.shape, rhythm_mode);
                 resolve(e, wt.position.y, shape_match);
             }
         }
@@ -154,7 +158,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
                     resolve(e, wt.position.y, false);
                     continue;
                 }
-                bool shape_ok = player_matches_required_shape(p_shape, p_window, req.shape);
+                bool shape_ok = player_matches_required_shape(p_shape, p_window, req.shape, rhythm_mode);
                 bool cleared = shape_ok;
                 if (cleared) grade_shape_timing(e, info.arrival_time);
                 resolve(e, wt.position.y, cleared);
@@ -168,7 +172,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
                     resolve(e, wt.position.y, false);
                     continue;
                 }
-                bool shape_ok = player_matches_required_shape(p_shape, p_window, req.shape);
+                bool shape_ok = player_matches_required_shape(p_shape, p_window, req.shape, rhythm_mode);
                 resolve(e, wt.position.y, shape_ok);
             }
         }
@@ -183,7 +187,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
                     resolve(e, wt.position.y, false);
                     continue;
                 }
-                bool shape_ok = player_matches_required_shape(p_shape, p_window, req.shape);
+                bool shape_ok = player_matches_required_shape(p_shape, p_window, req.shape, rhythm_mode);
                 bool cleared = shape_ok;
                 if (cleared) grade_shape_timing(e, info.arrival_time);
                 resolve(e, wt.position.y, cleared);
@@ -197,7 +201,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
                     resolve(e, wt.position.y, false);
                     continue;
                 }
-                bool shape_ok = player_matches_required_shape(p_shape, p_window, req.shape);
+                bool shape_ok = player_matches_required_shape(p_shape, p_window, req.shape, rhythm_mode);
                 resolve(e, wt.position.y, shape_ok);
             }
         }
@@ -212,7 +216,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
                     resolve(e, wt.position.y, false);
                     continue;
                 }
-                bool shape_match = player_matches_required_shape(p_shape, p_window, req.shape);
+                bool shape_match = player_matches_required_shape(p_shape, p_window, req.shape, rhythm_mode);
                 resolve(e, wt.position.y, shape_match);
             }
         }
@@ -227,7 +231,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
                     resolve(e, wt.position.y, false);
                     continue;
                 }
-                bool shape_ok = player_matches_required_shape(p_shape, p_window, req.shape);
+                bool shape_ok = player_matches_required_shape(p_shape, p_window, req.shape, rhythm_mode);
                 resolve(e, wt.position.y, shape_ok);
             }
         }
@@ -242,7 +246,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
                     resolve(e, wt.position.y, false);
                     continue;
                 }
-                bool shape_ok = player_matches_required_shape(p_shape, p_window, req.shape);
+                bool shape_ok = player_matches_required_shape(p_shape, p_window, req.shape, rhythm_mode);
                 resolve(e, wt.position.y, shape_ok);
             }
         }
