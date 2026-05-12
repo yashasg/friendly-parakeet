@@ -275,8 +275,8 @@ TEST_CASE("pipeline: gameplay HUD proximity ring progresses through far near per
     song.half_window = 0.15f;
 
     const float perfect_dist = gameplay_hud_perfect_distance(&song);
-    CHECK(perfect_dist > 107.99f);
-    CHECK(perfect_dist < 108.01f);
+    CHECK(perfect_dist > 19.99f);
+    CHECK(perfect_dist < 20.01f);
 
     const float appear_dist = constants::APPROACH_DIST;
     const float near_dist = perfect_dist + (appear_dist - perfect_dist) * 0.2f;

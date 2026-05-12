@@ -11,6 +11,7 @@
 #include "../../components/ui_layout_cache.h"
 #include "../../constants.h"
 #include "../../entities/settings.h"
+#include "../../util/rhythm_math.h"
 #include "screen_controller_base.h"
 #include "gameplay_hud_screen_controller.h"
 #include <entt/entt.hpp>
@@ -294,13 +295,7 @@ float gameplay_hud_perfect_distance(const SongState* song_state) {
     const float scroll_speed = (song_state && song_state->scroll_speed > 0.0f)
         ? song_state->scroll_speed
         : constants::BASE_SCROLL_SPEED;
-    const float morph_duration = (song_state && song_state->morph_duration > 0.0f)
-        ? song_state->morph_duration
-        : constants::MORPH_DURATION;
-    const float half_window = (song_state && song_state->half_window > 0.0f)
-        ? song_state->half_window
-        : 0.15f;
-    return scroll_speed * (morph_duration + half_window);
+    return scroll_speed * kTimingPerfectSeconds;
 }
 
 float gameplay_hud_ring_ratio(float nearest_dist, float perfect_dist, float ring_appear_dist) {

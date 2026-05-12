@@ -7,6 +7,7 @@ constexpr float kTimingBpmCeiling = 180.0f;
 constexpr float kTimingPerfectSeconds = 0.050f;
 constexpr float kTimingGoodSeconds = 0.100f;
 constexpr float kTimingOkSeconds = 0.150f;
+constexpr float kTimingGradeEpsilonSeconds = 0.0005f;
 
 // Better timing -> smaller scale -> remaining Active window collapses sooner.
 // collision_system applies this via window_start adjustment (scale < 1.0 path).
@@ -33,9 +34,9 @@ inline float timing_multiplier(TimingTier tier) {
 
 
 inline TimingTier compute_timing_tier_from_delta(float delta_seconds_abs) {
-    if (delta_seconds_abs <= kTimingPerfectSeconds) return TimingTier::Perfect;
-    if (delta_seconds_abs <= kTimingGoodSeconds) return TimingTier::Good;
-    if (delta_seconds_abs <= kTimingOkSeconds) return TimingTier::Ok;
+    if (delta_seconds_abs <= kTimingPerfectSeconds + kTimingGradeEpsilonSeconds) return TimingTier::Perfect;
+    if (delta_seconds_abs <= kTimingGoodSeconds + kTimingGradeEpsilonSeconds) return TimingTier::Good;
+    if (delta_seconds_abs <= kTimingOkSeconds + kTimingGradeEpsilonSeconds) return TimingTier::Ok;
     return TimingTier::Bad;
 }
 

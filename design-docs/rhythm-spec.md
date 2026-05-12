@@ -507,8 +507,8 @@ The proximity ring is the core visual feedback for rhythm timing. It replaces th
   │  • Appears when an obstacle spawns (nearest_dist < APPROACH_DIST)
   │  • Starts at max_ring_radius = btn_radius * 2.0            │
   │  • Shrinks toward btn_radius as obstacle approaches         │
-  │  • Ring = btn_radius when obstacle is at "perfect press"    │
-  │    distance (morph_duration + half_window ahead)            │
+  │  • Ring = btn_radius when obstacle enters the PERFECT       │
+  │    timing window (kTimingPerfectSeconds before arrival)     │
   │                                                             │
   │  Color states:                                              │
   │    blue-grey  → obstacle is far   (ratio > 0.3)            │
