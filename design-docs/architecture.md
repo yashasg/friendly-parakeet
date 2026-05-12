@@ -591,20 +591,20 @@ the same frame (unidirectional data flow).
  │
  │  ┌─ PHASE 5: CLEANUP & FX ──────────────────────────────┐
  │  │                                                        │
- │  │ 12. particle_system       Tick ParticleData.remaining. │
+ │  │ 13. particle_system       Tick ParticleData.remaining. │
  │  │                           Destroy expired particles.   │
  │  │                           Apply gravity to survivors.  │
  │  │                                                        │
- │  │ 13. obstacle_despawn_     Destroy obstacles past the   │
+ │  │ 14. obstacle_despawn_     Destroy obstacles past the   │
  │  │     system                camera Z / DESTROY_Y limit.  │
  │  │                                                        │
- │  │ 14. popup_display_system  Tick ScorePopup.remaining.   │
+ │  │ 15. popup_display_system  Tick ScorePopup.remaining.   │
  │  │                           Fade and destroy popups.     │
  │  └────────────────────────────────────────────────────────┘
  │
  │  ┌─ PHASE 6: RENDER (always runs) ──────────────────────┐
  │  │                                                        │
- │  │ 15. render systems        BeginDrawing/ClearBackground.│
+ │  │ 16. render systems        BeginDrawing/ClearBackground.│
  │  │                           Draw background.             │
  │  │                           Draw obstacles (Layer::Game).│
  │  │                           Draw player (Layer::Game).   │
