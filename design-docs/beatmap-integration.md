@@ -7,7 +7,7 @@
 > - `content/beatmaps/<song_id>_beatmap.json` — authored obstacle timeline
 > - `content/audio/<song_id>.flac` — song audio file
 >
-> **Scope:** Load a beatmap JSON + WAV into the running game, replace random spawning with beat-driven spawning, and synchronise audio playback to `song_time`. This spec covers the data layouts, system transforms, build pipeline changes, and audio integration via raylib.
+> **Scope:** Load a beatmap JSON + FLAC into the running game, replace random spawning with beat-driven spawning, and synchronise audio playback to `song_time`. This spec covers the data layouts, system transforms, build pipeline changes, and audio integration via raylib.
 
 ```
   ┌──────────────────────────────────────────────────────────────────┐
@@ -20,15 +20,14 @@
   │  ✅ song_playback_system — uses GetMusicTimePlayed() when audio │
   │     is loaded, with += dt fallback for silent/test mode         │
   │  ✅ beat_scheduler_system — spawns obstacles from BeatMap       │
-  │  ✅ obstacle_spawn_system — guards on SongState.playing         │
+  │  ✅ beat_scheduler_system is the runtime obstacle source        │
   │  ✅ shape_window_system — timing tier grading                   │
   │  ✅ Energy depletion owns terminal failure                      │
   │  ✅ InitAudioDevice / LoadMusicStream / playback code shipped   │
-  │  ❌ No content/ asset copy rules in CMakeLists.txt              │
+  │  ✅ CMake copies fonts, beatmaps, audio, UI, constants, shaders │
   │                                                                  │
-  │  FUTURE STATE (remaining integration work)                       │
+  │  REMAINING INTEGRATION WORK                                     │
   │                                                                  │
-  │  • content/ copied to build dir by CMake                        │
   │  • future obstacle kinds remain explicitly non-shipped scope    │
   └──────────────────────────────────────────────────────────────────┘
 ```
@@ -84,7 +83,7 @@ Archived/future design-space names such as `low_bar` and `high_bar` must not be 
 
 **Key field: `beat` is an INDEX, not a timestamp.** The game resolves `beat` → time via: `offset + beat × (60.0 / bpm)`.
 
-## 1.2 Audio WAV
+## 1.2 Audio FLAC
 
 ```
   content/audio/2_drama.flac
@@ -100,19 +99,22 @@ Archived/future design-space names such as `low_bar` and `high_bar` must not be 
 # SECTION 2 — ECS DATA LAYOUT
 # ═══════════════════════════════════════════════════
 
-## 2.1 Singletons (reg.ctx()) — ALREADY IMPLEMENTED
+## 2.1 Runtime Data — ALREADY IMPLEMENTED
 
-All three are defined in `app/components/rhythm.h` on `main`. Cold data — read a few
-times per frame, not iterated in bulk.
+Beatmap data is attached to the singleton `BeatMapTag` entity. Runtime state
+singletons (`SongState`, `EnergyState`, `SongResults`) live in registry context.
+All are cold data read a few times per frame, not iterated in bulk.
 
 ```cpp
-// Already in rhythm.h — BeatEntry is 8 bytes per obstacle
+// Defined in beat_map.h and re-exported by rhythm.h
 struct BeatEntry {
     int          beat_index   = 0;       //  4B
     ObstacleKind kind         = ObstacleKind::ShapeGate;  // 1B
     Shape        shape        = Shape::Circle;            // 1B
     int8_t       lane         = 1;       //  1B
     uint8_t      blocked_mask = 0;       //  1B
+    float        time_sec     = 0.0f;    // optional authored timestamp
+    bool         has_time_sec = false;
 };
 
 struct BeatMap {
@@ -124,6 +126,7 @@ struct BeatMap {
     int         lead_beats = 4;
     float       duration   = 180.0f;
     std::string difficulty;
+    std::vector<float> beat_times;
     std::vector<BeatEntry> beats;
 };
 
@@ -145,25 +148,24 @@ struct SongResults {
 ```
 
 ```
-  Memory: BeatEntry = 8 bytes × 256 (hard) = 2 KB. Fits in L1.
-  SongState ~64 bytes. SongResults ~32 bytes. One cache line each.
+  Memory: BeatEntry is compact and stored contiguously in BeatMap.beats.
+  SongState and SongResults are small ctx singletons.
 ```
 
-### 2.1.1 NEW: MusicContext (singleton for audio state)
+### 2.1.1 MusicContext (singleton for audio state) — ✅ IMPLEMENTED
 
 ```cpp
-// ── To be added to rhythm.h or a new app/components/music.h ──
-
 struct MusicContext {
     Music  stream  = {};       // raylib Music handle (streaming)
     bool   loaded  = false;    // true if LoadMusicStream succeeded
     bool   started = false;    // true after first PlayMusicStream call
+    bool   paused  = false;    // true while paused
     float  volume  = 0.8f;    // master music volume [0.0, 1.0]
 };
 ```
 
-This is the only new data structure needed. It holds the raylib `Music` handle
-and playback state. Emplaced in `reg.ctx()` alongside SongState.
+Defined in `app/audio/music_context.h`. It owns the raylib `Music` handle and is
+emplaced in `reg.ctx()` alongside `SongState`.
 
 ## 2.2 Existing Components — No Changes Needed
 
@@ -181,7 +183,8 @@ The current obstacle components already match the beatmap schema:
   RequiredShape { shape }      → beatmap "shape" field  ✓
 ```
 
-**No new per-entity components required for shape_gate.** The beat_scheduler creates the same entity archetypes that obstacle_spawn_system already creates.
+**No new per-entity components required for shape_gate.** The beat scheduler
+creates the standard runtime obstacle archetypes via `spawn_rhythm_obstacle()`.
 
 ---
 ---
@@ -202,12 +205,11 @@ The current obstacle components already match the beatmap schema:
   │  gesture_system          (InputState → GestureResult)           │
   │  game_state_system       (phase transitions)                    │
   │  ✅ song_playback_system (advances SongState.song_time)         │
-  │  ★ beat_scheduler_system (SongState + BeatMap → spawn entities) │
+  │  ✅ beat_scheduler_system (SongState + BeatMap → spawn entities)│
   │  player_action_system    (GestureResult → PlayerShape, Lane)    │
   │  shape_window_system     (timing window morphing)               │
   │  player_movement_system  (animate Position from Lane/VState)    │
   │  difficulty_system       (elapsed → speed/spawn ramp)           │
-  │  obstacle_spawn_system   (SKIPPED when SongState.playing)       │
   │       │                                                          │
   │  scroll_system           (Position += Velocity × dt)            │
   │  collision_system        (player vs obstacles → ScoredTag)      │
@@ -218,10 +220,10 @@ The current obstacle components already match the beatmap schema:
   │  popup_display_system    (ScorePopup timer → fade/cull)         │
   │       │                                                          │
   │  render_system           (draw everything)                      │
-  │  ★ audio_system          (raylib: stream music, play SFX)      │
+  │  ✅ audio_system          (dispatcher-driven SFX playback)      │
   └──────────────────────────────────────────────────────────────────┘
 
-  ✅ = already implemented    ★ = needs audio integration
+  ✅ = already implemented
 ```
 
 ## 3.2 beat_map_loader — ✅ ALREADY IMPLEMENTED
@@ -232,16 +234,12 @@ The current obstacle components already match the beatmap schema:
   Uses nlohmann-json. Called once at startup.
 ```
 
-## 3.3 song_playback_system — ✅ IMPLEMENTED, NEEDS AUDIO SYNC
+## 3.3 song_playback_system — ✅ IMPLEMENTED
 
 ```
-  Currently: song_time += dt (pure accumulator, drifts from audio)
-  Target:    song_time = GetMusicTimePlayed(music) (authoritative)
+  Uses GetMusicTimePlayed(music) as the authoritative clock when music is
+  loaded and started. Falls back to song_time += dt for silent/test mode.
 ```
-
-**Modification needed:** When MusicContext is loaded and playing, use
-`GetMusicTimePlayed()` as the authoritative clock instead of accumulation.
-This eliminates drift between audio and gameplay.
 
 ```cpp
 void song_playback_system(entt::registry& reg, float dt) {
@@ -279,23 +277,23 @@ void song_playback_system(entt::registry& reg, float dt) {
 
 ```
   Spawns obstacle entities from BeatMap.beats[] when song_time
-  crosses spawn_time thresholds. Same entity archetypes as random
-  spawner — collision, scoring, render all work unchanged.
+  crosses spawn_time thresholds. It uses spawn_rhythm_obstacle(), so
+  collision, scoring, render, and despawn all work unchanged.
 ```
 
-## 3.5 obstacle_spawn_system — ✅ ALREADY GUARDED
+## 3.5 Runtime obstacle source — ✅ BEAT-SCHEDULED
 
 ```
-  Guards on SongState.playing — random spawning skipped when
-  beatmap is active. Falls back to random when no beatmap loaded.
+  beat_scheduler_system is the runtime obstacle source for authored levels.
+  If a beatmap fails to load, no authored obstacles are spawned for that run.
 ```
 
-## 3.6 audio_system — NEEDS IMPLEMENTATION (raylib)
+## 3.6 audio_system — ✅ IMPLEMENTED (raylib)
 
 ```
-  Input:  AudioQueue (SFX events from other systems)
-          MusicContext (singleton, loaded music stream)
-  Output: raylib audio calls (music streaming + SFX playback)
+  Input:  PlaySfxEvent events queued on entt::dispatcher
+          SFXBank resident raylib Sound handles
+  Output: raylib PlaySound calls for queued SFX
 ```
 
 ```
@@ -303,41 +301,26 @@ void song_playback_system(entt::registry& reg, float dt) {
   │  Audio Architecture (raylib)                                 │
   │                                                              │
   │  Song:  LoadMusicStream(song_path) → PlayMusicStream(music)  │
-  │         Loaded once. raylib streams from disk.               │
+  │         Loaded per play session. raylib streams from disk.   │
   │         Position sync: GetMusicTimePlayed(music)             │
-  │         Must call UpdateMusicStream(music) every frame.      │
+  │         UpdateMusicStream(music) runs every frame in         │
+  │         song_playback_system.                                │
   │                                                              │
-  │  SFX:   LoadSound(path) per SFX enum at init.               │
-  │         PlaySound(sound) per queued SFX.                     │
+  │  SFX:   sfx_bank_init loads Sound handles at startup.        │
+  │         audio_system drains PlaySfxEvent and calls PlaySound.│
   │         Channel allocation automatic.                        │
   │                                                              │
   │  Init:  InitAudioDevice()                                    │
-  │         Called once in main.cpp before main loop.            │
+  │         Called once in game_loop_init() before the loop.     │
   │                                                              │
   │  Shutdown: UnloadMusicStream + UnloadSound × N               │
   │            CloseAudioDevice()                                │
   └──────────────────────────────────────────────────────────────┘
 ```
 
-```cpp
-// ── app/systems/audio_system.cpp (rewritten) ────────────────
-
-void audio_system(entt::registry& reg) {
-    auto& queue = reg.ctx().get<AudioQueue>();
-
-    // Play queued SFX
-    // TODO: Load Sound handles at init, map SFX enum → Sound
-    // for (int i = 0; i < queue.count; ++i) {
-    //     PlaySound(sfx_sounds[static_cast<int>(queue.queue[i])]);
-    // }
-
-    audio_clear(queue);
-}
-```
-
-**Key difference from SDL_mixer:** raylib's `UpdateMusicStream()` must be called
-every frame to feed the audio buffer. This is done in `song_playback_system`
-(not audio_system) because it's tightly coupled to song_time updates.
+`MusicContext` owns the raylib `Music` handle for the active song. `audio_system`
+is intentionally SFX-only; music lifecycle, pause/resume, stream pumping, and
+time sync live in `song_playback_system`.
 
 ---
 ---
@@ -366,17 +349,17 @@ raylib includes full audio support (raudio module) — no additional audio
 library needed. `InitAudioDevice()`, `LoadMusicStream()`, `PlayMusicStream()`,
 `UpdateMusicStream()`, `GetMusicTimePlayed()` are all part of raylib.
 
-## 4.2 CMakeLists.txt — NEEDS CONTENT COPY RULES
+## 4.2 CMakeLists.txt — ✅ CONTENT COPY RULES IMPLEMENTED
 
-The existing CMakeLists.txt links raylib and nlohmann-json. The remaining piece
-is copying `content/` files to the build directory.
+`CMakeLists.txt` links raylib and nlohmann-json and copies runtime assets next
+to the executable. Native builds copy fonts, beatmaps, audio, UI configs,
+shared constants, and shaders. Emscripten builds preload `content/`.
 
-## 4.3 Content Asset Copying
+## 4.3 Content Asset Copying — ✅ IMPLEMENTED
 
-Mirror the existing font copying pattern:
+Current native asset-copy rules:
 
 ```cmake
-# ── Copy beatmap JSON + audio assets ─────────────────────────
 file(GLOB BEATMAP_FILES ${CMAKE_SOURCE_DIR}/content/beatmaps/*.json)
 file(GLOB AUDIO_FILES   ${CMAKE_SOURCE_DIR}/content/audio/*.flac)
 
@@ -411,10 +394,11 @@ endif()
   ✅ app/systems/song_playback_system.cpp — song_time advancement
   ✅ app/systems/beat_scheduler_system.cpp — obstacle spawning from BeatMap
   ✅ app/systems/shape_window_system.cpp  — timing window morphing
-  ✅ app/systems/hp_system.cpp            — miss tracking
-  ★  app/systems/audio_system.cpp         — NEEDS: raylib music streaming + SFX
-  ★  app/components/rhythm.h (or music.h) — NEEDS: MusicContext struct
-  ★  app/main.cpp                         — NEEDS: InitAudioDevice, LoadMusicStream
+  ✅ app/systems/energy_system.cpp        — miss tracking and terminal failure
+  ✅ app/systems/audio_system.cpp         — dispatcher-driven SFX playback
+  ✅ app/audio/music_context.h            — raylib Music handle + state flags
+  ✅ app/game_loop.cpp                    — InitAudioDevice + audio lifecycle
+  ✅ app/session/play_session.cpp         — LoadMusicStream per play session
 ```
 
 `audio_system.cpp` is already in `app/systems/` so it's auto-included in
@@ -425,31 +409,29 @@ endif()
 ---
 
 # ═══════════════════════════════════════════════════
-# SECTION 5 — main.cpp INTEGRATION
+# SECTION 5 — GAME LOOP / PLAY SESSION INTEGRATION
 # ═══════════════════════════════════════════════════
 
-## 5.1 Singleton Init — ✅ MOSTLY DONE
+## 5.1 Singleton Init — ✅ DONE
 
-Beat map loading is already in main.cpp on `main`. BeatMap, SongState,
-SongResults, HPState are all emplaced. Only addition needed:
+Beat map and music loading are handled by `setup_play_session()`. `game_loop_init()`
+creates the beat-map entity and emplaces `SongState`, `EnergyState`,
+`SongResults`, and `MusicContext`.
 
 ```cpp
-// After beat map loading, load the music stream:
-auto& mc = reg.ctx().emplace<MusicContext>();
-if (has_beatmap) {
-    auto& bm = reg.ctx().get<BeatMap>();
-    mc.stream = LoadMusicStream(bm.song_path.c_str());
-    if (IsMusicReady(mc.stream)) {
-        mc.loaded = true;
-        SetMusicVolume(mc.stream, mc.volume);
-        TraceLog(LOG_INFO, "Music loaded: %s", bm.song_path.c_str());
-    } else {
-        TraceLog(LOG_WARNING, "Failed to load music: %s", bm.song_path.c_str());
+auto* music = reg.ctx().find<MusicContext>();
+if (music) music->release();
+if (music && !beatmap.song_path.empty()) {
+    Music stream = LoadMusicStream(path);
+    if (music_stream_is_playable(stream)) {
+        music->stream = stream;
+        music->loaded = true;
+        SetMusicVolume(music->stream, music->volume);
     }
 }
 ```
 
-## 5.2 Audio Init — NEEDS ADDING
+## 5.2 Audio Init — ✅ DONE
 
 ```cpp
 // After InitWindow(), before main loop:
@@ -461,16 +443,19 @@ if (!IsAudioDeviceReady()) {
 }
 ```
 
-## 5.3 Music Playback Start
+## 5.3 Music Playback Start — ✅ DONE
 
-Music should start when gameplay begins (GamePhase transitions to Playing):
+Music starts or resumes from `song_playback_system` when the active phase is
+`Playing` and `SongState.playing` is true:
 
 ```cpp
-// In game_state_system or main loop, when transitioning to Playing:
-auto* mc = reg.ctx().find<MusicContext>();
-if (mc && mc->loaded && !mc->started) {
-    PlayMusicStream(mc->stream);
-    mc->started = true;
+if (music_loaded && gs.phase == GamePhase::Playing && song && song->playing) {
+    if (!music->started) {
+        PlayMusicStream(music->stream);
+        music->started = true;
+    } else if (music->paused) {
+        ResumeMusicStream(music->stream);
+    }
 }
 ```
 
@@ -485,15 +470,10 @@ beat_scheduler_system(reg, FIXED_DT);     // spawns from beatmap
 audio_system(reg);                         // SFX playback
 ```
 
-## 5.5 Shutdown
+## 5.5 Shutdown — ✅ DONE
 
 ```cpp
-// Before CloseWindow():
-auto* mc = reg.ctx().find<MusicContext>();
-if (mc && mc->loaded) {
-    StopMusicStream(mc->stream);
-    UnloadMusicStream(mc->stream);
-}
+if (auto* music = reg.ctx().find<MusicContext>()) music->release();
 CloseAudioDevice();
 ```
 
@@ -516,7 +496,7 @@ Ordered by dependency chain. Steps marked ✅ are already on `main`.
 
   STEP 2 — Data Components                         ✅ DONE
   ─────────────────────────────
-  • BeatMap, BeatEntry, SongState, SongResults, HPState in rhythm.h
+  • BeatMap, BeatEntry, SongState, SongResults, EnergyState in rhythm.h/song_state.h
   • TimingGrade, WindowPhase, BeatInfo all defined
 
   STEP 3 — Beat Map Loader                         ✅ DONE
@@ -529,31 +509,26 @@ Ordered by dependency chain. Steps marked ✅ are already on `main`.
   ──────────────────────────────
   • song_playback_system: advances song_time, detects song end
   • beat_scheduler_system: spawns obstacles from BeatMap.beats[]
-  • obstacle_spawn_system: guards on SongState.playing
+  • no separate random obstacle spawner is part of the current runtime path
 
-  STEP 5 — Content Asset Copying                    ★ TODO
+  STEP 5 — Content Asset Copying                    ✅ DONE
   ────────────────────────────────
-  • Add content/beatmaps/*.json + content/audio/*.flac copy rules
-  • Mirror existing font copy pattern in CMakeLists.txt
-  • Verify: beatmap + WAV appear next to executable after build
+  • CMake copies content/beatmaps/*.json and content/audio/*.flac next to the executable
+  • CMake also copies fonts, UI configs, constants, and shader assets
 
-  STEP 6 — Audio Playback (raylib)                  ★ TODO
+  STEP 6 — Audio Playback (raylib)                  ✅ DONE
   ──────────────────────────────────
-  • Add MusicContext struct (raylib Music handle + state flags)
-  • Add InitAudioDevice() in main.cpp (before main loop)
-  • LoadMusicStream() when beatmap is loaded
-  • PlayMusicStream() when gameplay starts (Playing phase)
-  • UpdateMusicStream() + GetMusicTimePlayed() in song_playback_system
-  • CloseAudioDevice() + UnloadMusicStream() at shutdown
-  • Verify: music plays, obstacles sync to audible beats
+  • MusicContext owns the raylib Music handle + state flags
+  • game_loop_init() calls InitAudioDevice() before play
+  • setup_play_session() loads music for the selected beatmap
+  • song_playback_system starts, pauses, resumes, stops, updates, and syncs music
+  • game_loop_shutdown() releases music and closes the audio device
 
-  STEP 7 — Validation                               ★ TODO
+  STEP 7 — Validation                               ✅ DONE
   ────────────────────
-  • Play the easy level end-to-end
-  • Verify obstacle timing matches audible beats
-  • Verify game over on miss still works
-  • Verify fallback to random spawning when no beatmap
-  • Verify game runs silently when WAV is missing
+  • Loader validates beatmap schema and timing/content invariants
+  • Shipped beatmap tests cover difficulty ramps, shape gaps, max gaps, and readability
+  • Audio offset calibration tests cover timing alignment paths
 ```
 
 ---
@@ -569,10 +544,9 @@ Ordered by dependency chain. Steps marked ✅ are already on `main`.
   │  Situation                         │  Ruling                              │
   ├────────────────────────────────────┼──────────────────────────────────────┤
   │  Beatmap JSON missing or corrupt   │  load_beat_map returns false.        │
-  │                                    │  SongState not emplaced.             │
-  │                                    │  Game falls back to random spawning. │
+  │                                    │  BeatMap remains empty for the run.  │
   ├────────────────────────────────────┼──────────────────────────────────────┤
-  │  WAV file missing                  │  IsMusicReady() returns false.       │
+  │  FLAC file missing                 │  music_stream_is_playable() fails.   │
   │                                    │  MusicContext.loaded = false.        │
   │                                    │  Game runs silently.                 │
   │                                    │  Obstacles still spawn on beat.      │
