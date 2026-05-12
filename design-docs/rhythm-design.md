@@ -505,8 +505,8 @@ them ends the run on their own — only `energy <= 0.0f` does.
 
 > ⚠️ **Shipped scope — only `shape_gate` ships today (issues #420, #446,
 > #328, #479).** Mirroring the caveat in `game.md` "Difficulty
-> Progression": across all 9 shipped beatmap arrays in
-> `content/beatmaps/` (**898 obstacles total** as of Round 10 audit;
+> Progression": across all 3 shipped beatmaps / 9 difficulty arrays in
+> `content/beatmaps/` (**924 obstacles total** as of the current content audit;
 > see per-difficulty table in §8 "Difficulty Progression" below),
 > `tools/level_designer.py` emits 100% `shape_gate`. The `lane_push`, `low_bar`, and `high_bar` names
 > described below are **not currently produced** by the generator and
@@ -599,14 +599,15 @@ them ends the run on their own — only `energy <= 0.0f` does.
            archival/future-only and are not authoring guidance.
 ```
 
-### Shipped per-difficulty obstacle counts (Round 10 audit)
+### Shipped per-difficulty obstacle counts (current content audit)
 
 | Song                  | easy | medium | hard |
 |-----------------------|-----:|-------:|-----:|
-| 1_stomper             |   60 |     61 |   97 |
-| 2_drama               |   96 |     97 |  132 |
-| 3_mental_corruption   |  110 |    111 |  134 |
-| **Total (all 9 arrays)** |      |        | **898** |
+| 1_stomper             |   56 |     57 |   93 |
+| 2_drama               |   96 |     97 |  169 |
+| 3_mental_corruption   |  110 |    112 |  134 |
+| **Total (3 beatmaps / 9 arrays)** | **262** | **266** | **396** |
+| **Grand total**       |      |        | **924** |
 
 Even Hard never approaches "every beat" — `1_stomper` Hard averages
 roughly one obstacle every ~2.5 musical beats. Treat these counts as

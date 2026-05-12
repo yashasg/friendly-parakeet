@@ -66,8 +66,9 @@ The screen is divided into two zones:
 
 3 lanes: left, center, right. Player starts in center.
 
-> ⚠️ **Current shipped behavior — see issue #441.** Across all 9 shipped
-> beatmap arrays (**1046 obstacles total** as of Round 6 audit; see
+> ⚠️ **Current shipped behavior — see issue #441.** Across all 3 shipped
+> beatmaps / 9 difficulty arrays (**924 obstacles total** as of the current
+> content audit; see
 > the per-difficulty table in `rhythm-design.md` §8), shape and lane
 > are fused 1:1 by
 > `tools/level_designer.py:ONSET_CLASS_TO_OBSTACLE` — every triangle is
@@ -164,7 +165,7 @@ Difficulty is selected per song (easy / medium / hard) and is expressed primaril
 
 † Timing windows are not difficulty-scaled today: every difficulty uses the same BPM-derived hit window defined in `rhythm-spec.md` (`audio_offset` + BPM-derived window). The "Timing Window" column is preserved for forward compatibility if per-difficulty scaling is reintroduced.
 
-‡ As shipped today (see #420, #446), all 9 beatmaps in `content/beatmaps/` are 100% `shape_gate`. Difficulty between Easy / Medium / Hard is expressed only through **obstacle density**, **shape-gate kind/lane distribution**, and **onset selection** — not through additional obstacle kinds. The earlier `lane_push` pacing-insert plan (decisions.md "#135 — Difficulty Ramp", `LANEPUSH_RAMP`) and the older "+ Low/high bars, combos, split paths" cell for Hard were aspirational; no `lane_push` / `low_bar` / `high_bar` / `combo_gate` / `split_path` content is currently produced by `level_designer.py`, and `LanePush` is queued for removal/rework (#328). Those obstacle kinds remain in the catalog as future design space; if/when a committed plan to reintroduce them lands, this table will be revised.
+‡ As shipped today (see #420, #446), all 3 beatmaps / 9 difficulty arrays in `content/beatmaps/` are 100% `shape_gate`. Difficulty between Easy / Medium / Hard is expressed only through **obstacle density**, **shape-gate kind/lane distribution**, and **onset selection** — not through additional obstacle kinds. The earlier `lane_push` pacing-insert plan (decisions.md "#135 — Difficulty Ramp", `LANEPUSH_RAMP`) and the older "+ Low/high bars, combos, split paths" cell for Hard were aspirational; no `lane_push` / `low_bar` / `high_bar` / `combo_gate` / `split_path` content is currently produced by `level_designer.py`, and `LanePush` is queued for removal/rework (#328). Those obstacle kinds remain in the catalog as future design space; if/when a committed plan to reintroduce them lands, this table will be revised.
 
 ### Player Emotion Arc
 - **Early song** → "I'm finding the rhythm" (entrainment)
