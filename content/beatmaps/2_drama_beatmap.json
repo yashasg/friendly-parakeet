@@ -1460,7 +1460,7 @@
         },
         {
           "beat": 332,
-          "kind": "shape_gate",
+          "kind": "onset_marker",
           "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
@@ -5936,7 +5936,7 @@
         },
         {
           "beat": 395,
-          "kind": "shape_gate",
+          "kind": "onset_marker",
           "lane": 0,
           "shape": "circle",
           "onset_class": "harmonic",
