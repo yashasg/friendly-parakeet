@@ -148,7 +148,7 @@ void game_state_system(entt::registry& reg, float dt) {
     if (gs.phase == GamePhase::Playing) {
         auto* energy = reg.ctx().find<EnergyState>();
         auto* song = reg.ctx().find<SongState>();
-        if (energy && song && song->playing && energy->energy <= 0.0f) {
+        if (energy && energy->energy <= 0.0f) {
             auto* gos = reg.ctx().find<GameOverState>();
             if (gos) {
                 gos->cause = DeathCause::EnergyDepleted;

@@ -19,6 +19,25 @@ TEST_CASE("game_state: song complete when song finished and no obstacles", "[gam
     CHECK(gs.next_phase == GamePhase::SongComplete);
 }
 
+TEST_CASE("game_state: energy depletion beats song complete after playback finishes",
+          "[gamestate][issue755]") {
+    auto reg = make_rhythm_registry();
+    auto& gs = reg.ctx().get<GameState>();
+    gs.phase = GamePhase::Playing;
+    auto& song = reg.ctx().get<SongState>();
+    song.finished = true;
+    song.playing = false;
+    reg.ctx().get<EnergyState>().energy = 0.0f;
+    auto& game_over = reg.ctx().get<GameOverState>();
+    game_over.cause = DeathCause::None;
+
+    game_state_system(reg, 0.016f);
+
+    CHECK(gs.transition_pending);
+    CHECK(gs.next_phase == GamePhase::GameOver);
+    CHECK(game_over.cause == DeathCause::EnergyDepleted);
+}
+
 TEST_CASE("game_state: song complete waits for obstacles to clear", "[gamestate]") {
     auto reg = make_rhythm_registry();
     auto& gs = reg.ctx().get<GameState>();

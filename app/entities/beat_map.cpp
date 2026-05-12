@@ -45,6 +45,11 @@ bool kind_requires_shape(const ObstacleKind kind) {
            kind == ObstacleKind::SplitPath;
 }
 
+bool kind_requires_lane(const ObstacleKind kind) {
+    return kind == ObstacleKind::ShapeGate ||
+           kind == ObstacleKind::SplitPath;
+}
+
 std::string type_error_message(const char* field, const char* expected, const json& value) {
     return std::string("'") + field + "' must be " + expected + " (got " + value.type_name() + ")";
 }
@@ -364,6 +369,11 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
         }
 
         BeatEntry entry;
+        if (!b.contains("beat")) {
+            errors.push_back({-1, "Missing required beat for obstacle entry"});
+            parse_ok = false;
+            continue;
+        }
         if (!read_optional_int(b, "beat", entry.beat_index, errors, -1)) {
             parse_ok = false;
             continue;
@@ -407,6 +417,13 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
 
         int lane_value = entry.lane;
         if (!read_optional_int(b, "lane", lane_value, errors, entry.beat_index)) {
+            parse_ok = false;
+            continue;
+        }
+        if (!b.contains("lane") && kind_requires_lane(entry.kind)) {
+            errors.push_back({entry.beat_index,
+                "Missing required lane for obstacle kind '" + kind_str + "' at beat "
+                    + std::to_string(entry.beat_index)});
             parse_ok = false;
             continue;
         }
