@@ -123,11 +123,12 @@ def _is_protected_obstacle_pair(left: dict, right: dict) -> bool:
         return False
     if left_class == right_class:
         return False
-    try:
-        delta_ms = abs(float(left.get("time_sec", 0.0)) - float(right.get("time_sec", 0.0))) * 1000.0
-    except (TypeError, ValueError):
+    left_time = left.get("time_sec")
+    right_time = right.get("time_sec")
+    if not isinstance(left_time, (int, float)) or not isinstance(right_time, (int, float)):
         return False
-    return delta_ms <= CROSS_LAYER_PRESERVATION_WINDOW_MS
+    delta_ms = abs(float(left_time) - float(right_time)) * 1000.0
+    return delta_ms < CROSS_LAYER_PRESERVATION_WINDOW_MS
 
 
 def _is_protected_by_cluster_neighbor(obstacle: dict, cluster: list[dict]) -> bool:
@@ -137,7 +138,7 @@ def _is_protected_by_cluster_neighbor(obstacle: dict, cluster: list[dict]) -> bo
     )
 
 
-def _max_unprotected_shape_cluster_size(clusters: list[list[dict]]) -> int:
+def _max_unexempt_shape_cluster_size(clusters: list[list[dict]]) -> int:
     sizes = [
         len(cluster)
         for cluster in clusters
@@ -241,7 +242,7 @@ def calculate_content_metrics(
         "longest_same_shape_cluster_run": _longest_same_shape_cluster_run(shape_clusters) if shape_clusters else 0,
         "shape_cluster_count": len(shape_clusters),
         "max_shape_cluster_size": max(cluster_sizes) if cluster_sizes else 0,
-        "max_unprotected_shape_cluster_size": _max_unprotected_shape_cluster_size(shape_clusters),
+        "max_unexempt_shape_cluster_size": _max_unexempt_shape_cluster_size(shape_clusters),
         "shape_clusters_over_warn": 0,
         "triangle_share": (shape_counts.get("triangle", 0) / total_shape_gates) if total_shape_gates else 0.0,
         "circle_share": (shape_counts.get("circle", 0) / total_shape_gates) if total_shape_gates else 0.0,
@@ -297,10 +298,11 @@ def evaluate_content_gates(metrics: dict[str, float | int | bool | None], diffic
         )
     cluster_size_cap = MAX_SHAPE_CLUSTER_SIZE.get(difficulty)
     max_cluster = int(metrics.get("max_shape_cluster_size", 0))
-    max_unprotected_cluster = int(metrics.get("max_unprotected_shape_cluster_size", max_cluster))
-    if cluster_size_cap is not None and max_unprotected_cluster > cluster_size_cap:
+    max_unexempt_cluster = int(metrics.get("max_unexempt_shape_cluster_size", max_cluster))
+    if cluster_size_cap is not None and max_unexempt_cluster > cluster_size_cap:
         findings.append(
-            f"max shape cluster size {max_cluster} exceeds cap {cluster_size_cap} (#532)"
+            f"max unexempt shape cluster size {max_unexempt_cluster} exceeds cap {cluster_size_cap} "
+            f"(#532; raw max={max_cluster})"
         )
 
     if not onset_timed:

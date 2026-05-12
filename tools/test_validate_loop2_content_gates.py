@@ -37,7 +37,7 @@ class TestLoop2MetricCalculations(unittest.TestCase):
         self.assertEqual(metrics["longest_same_shape_cluster_run"], 1)
         self.assertEqual(metrics["shape_cluster_count"], 3)
         self.assertEqual(metrics["max_shape_cluster_size"], 3)
-        self.assertEqual(metrics["max_unprotected_shape_cluster_size"], 3)
+        self.assertEqual(metrics["max_unexempt_shape_cluster_size"], 3)
         self.assertAlmostEqual(metrics["triangle_share"], 1 / 6)
         self.assertAlmostEqual(metrics["circle_share"], 2 / 6)
         self.assertIsNotNone(metrics["min_ioi_ms"])
@@ -175,7 +175,7 @@ class TestLoop2GateEvaluation(unittest.TestCase):
             "ioi_index_error": False,
         }
         findings = gates.evaluate_content_gates(metrics, "hard")
-        self.assertTrue(any("max shape cluster size" in f and "#532" in f for f in findings),
+        self.assertTrue(any("max unexempt shape cluster size" in f and "#532" in f for f in findings),
                         f"expected max-shape-cluster finding, got {findings}")
 
     def test_unrelated_protected_onset_pairs_do_not_exempt_cluster_size(self):
@@ -203,7 +203,7 @@ class TestLoop2GateEvaluation(unittest.TestCase):
 
         self.assertEqual(metrics["cross_layer_preserved_pairs"], 1)
         self.assertEqual(metrics["max_shape_cluster_size"], 6)
-        self.assertTrue(any("max shape cluster size 6 exceeds cap 5" in f for f in findings),
+        self.assertTrue(any("max unexempt shape cluster size 6 exceeds cap 5" in f for f in findings),
                         f"expected local max cluster finding, got {findings}")
 
     def test_onset_timed_charts_still_enforce_circle_and_lane0_floor(self):
