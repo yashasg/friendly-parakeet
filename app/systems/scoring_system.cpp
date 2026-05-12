@@ -147,6 +147,7 @@ void scoring_system(entt::registry& reg, float dt) {
         }
         // Apply structural removals after iteration — safe.
         for (auto& r : miss_buf) {
+            reg.get_or_emplace<ResolvedObstacleTag>(r.e);
             reg.remove<Obstacle>(r.e);
             reg.remove<ScoredTag>(r.e);
             reg.remove<MissTag>(r.e);
@@ -249,6 +250,7 @@ void scoring_system(entt::registry& reg, float dt) {
             spawn_score_particles(reg, r.popup_xy, score_particle_color(r));
 
             // Structural removals after all reads — safe.
+            reg.get_or_emplace<ResolvedObstacleTag>(r.e);
             reg.remove<Obstacle>(r.e);
             reg.remove<ScoredTag>(r.e);
             if (r.has_timing) reg.remove<TimingGrade>(r.e);
@@ -277,6 +279,7 @@ void scoring_system(entt::registry& reg, float dt) {
             cleanup_buf.push_back(r);
         }
         for (auto& r : cleanup_buf) {
+            reg.get_or_emplace<ResolvedObstacleTag>(r.e);
             reg.remove<Obstacle>(r.e);
             reg.remove<ScoredTag>(r.e);
         }

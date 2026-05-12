@@ -134,6 +134,25 @@ TEST_CASE("miss_detection: pre-scored obstacles are excluded from miss tagging",
     CHECK(reg.all_of<ScoredTag>(unscored));
 }
 
+TEST_CASE("miss_detection: resolved missed obstacle is not re-tagged after scoring cleanup",
+          "[miss_detection][regression][issue860]") {
+    auto reg = make_registry();
+    auto obs = make_expired_obstacle(reg);
+    reg.emplace<ScoredTag>(obs);
+    reg.emplace<MissTag>(obs);
+
+    scoring_system(reg, 0.0f);
+    REQUIRE(reg.all_of<ResolvedObstacleTag>(obs));
+    REQUIRE_FALSE(reg.all_of<Obstacle>(obs));
+    REQUIRE_FALSE(reg.all_of<ScoredTag>(obs));
+    REQUIRE_FALSE(reg.all_of<MissTag>(obs));
+
+    miss_detection_system(reg, 0.016f);
+
+    CHECK_FALSE(reg.all_of<ScoredTag>(obs));
+    CHECK_FALSE(reg.all_of<MissTag>(obs));
+}
+
 // ── Non-Playing phase: system is a no-op ────────────────────────────────────
 
 TEST_CASE("miss_detection: no-op when game phase is not Playing",

@@ -124,6 +124,27 @@ TEST_CASE("collision: already scored obstacles are skipped", "[collision]") {
     CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
 }
 
+TEST_CASE("collision: resolved hit obstacle is not re-tagged after scoring cleanup",
+          "[collision][regression][issue860]") {
+    auto reg = make_registry();
+    make_player(reg);
+    auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
+
+    collision_system(reg, 0.016f);
+    REQUIRE(reg.all_of<ScoredTag>(obs));
+
+    scoring_system(reg, 0.0f);
+    REQUIRE(reg.all_of<ResolvedObstacleTag>(obs));
+    REQUIRE_FALSE(reg.all_of<Obstacle>(obs));
+    REQUIRE_FALSE(reg.all_of<ScoredTag>(obs));
+    REQUIRE_FALSE(reg.all_of<MissTag>(obs));
+
+    collision_system(reg, 0.016f);
+
+    CHECK_FALSE(reg.all_of<ScoredTag>(obs));
+    CHECK_FALSE(reg.all_of<MissTag>(obs));
+}
+
 TEST_CASE("collision: combo gate requires shape AND lane", "[collision]") {
     auto reg = make_registry();
     make_player(reg);

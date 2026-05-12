@@ -6,6 +6,9 @@
 
 struct ObstacleTag {};
 
+// Presence means scoring has consumed the obstacle's final hit/miss result.
+struct ResolvedObstacleTag {};
+
 enum class ObstacleKind : uint8_t {
     ShapeGate,
     LaneBlock,
