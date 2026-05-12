@@ -47,10 +47,10 @@ Portrait mode. Logical resolution scales to device via raylib virtual resolution
     │          ● player           │
     │          y=920              │
     │─────────────────────────────│
-    │   energy bar     y~=1010    │
+    │   energy bar     y=790      │
     │─────────────────────────────│
     │  [ ● ]   [ ■ ]   [ ▲ ]     │
-    │          y=1180              │
+    │          y=1140             │
     │ (0,1280)          (720,1280)│
     └─────────────────────────────┘
 ```

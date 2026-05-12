@@ -35,6 +35,16 @@ bool is_runtime_allowed_validation_error(const BeatMapError& error) {
     return error.message == "Different-shape gates must be >= 3 beats apart";
 }
 
+int count_result_notes(const BeatMap& beatmap) {
+    int total = 0;
+    for (const BeatEntry& beat : beatmap.beats) {
+        if (beat.kind != ObstacleKind::OnsetMarker) {
+            ++total;
+        }
+    }
+    return total;
+}
+
 bool load_runtime_beat_map(const char* path,
                            BeatMap& out,
                            std::vector<BeatMapError>& errors,
@@ -194,7 +204,7 @@ void setup_play_session(entt::registry& reg) {
     assign_or_emplace_ctx(reg, EnergyState{});
     {
         SongResults results{};
-        results.total_notes = static_cast<int>(beatmap.beats.size());
+        results.total_notes = count_result_notes(beatmap);
         assign_or_emplace_ctx(reg, results);
     }
     assign_or_emplace_ctx(reg, GameOverState{});
