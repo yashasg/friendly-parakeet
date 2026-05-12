@@ -32,10 +32,14 @@ void level_select_handle_press(entt::registry& reg, const ButtonPressEvent& evt)
             lss.confirmed = true;
             break;
         case MenuActionKind::SelectLevel:
-            lss.selected_level = evt.menu_index;
+            if (content_config::is_valid_level_index(evt.menu_index)) {
+                lss.selected_level = evt.menu_index;
+            }
             break;
         case MenuActionKind::SelectDiff:
-            lss.selected_difficulty = evt.menu_index;
+            if (content_config::is_valid_difficulty_index(evt.menu_index)) {
+                lss.selected_difficulty = evt.menu_index;
+            }
             break;
         default: break;
     }

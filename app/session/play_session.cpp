@@ -97,6 +97,8 @@ void setup_play_session(entt::registry& reg) {
     auto& lss = reg.ctx().get<LevelSelectState>();
     auto& beatmap = reg.ctx().get<BeatMap>();
     beatmap = BeatMap{};
+    lss.selected_level = content_config::level_index_or_default(lss.selected_level);
+    lss.selected_difficulty = content_config::difficulty_index_or_default(lss.selected_difficulty);
     const char* beatmap_path = content_config::LEVELS[lss.selected_level].beatmap_path;
     const char* difficulty_key = content_config::DIFFICULTY_KEYS[lss.selected_difficulty];
 

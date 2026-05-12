@@ -42,6 +42,21 @@ TEST_CASE("High score integration: setup_play_session loads selected song diffic
     CHECK_FALSE(reg.view<UICamera>().empty());
 }
 
+TEST_CASE("Play session: invalid level-select indices fall back before content lookup",
+          "[play_session][issue738]") {
+    auto reg = make_registry();
+    auto& lss = reg.ctx().get<LevelSelectState>();
+    lss.selected_level = 99;
+    lss.selected_difficulty = 99;
+
+    setup_play_session(reg);
+
+    CHECK(lss.selected_level == content_config::DEFAULT_LEVEL_INDEX);
+    CHECK(lss.selected_difficulty == content_config::DEFAULT_DIFFICULTY_INDEX);
+    CHECK(reg.ctx().get<HighScoreState>().current_key_hash
+        == high_score::make_key_hash("1_stomper", "medium"));
+}
+
 TEST_CASE("Play session: SongResults total_notes matches every shipped song difficulty",
           "[play_session][song_results][issue-114]") {
     for (int level = 0; level < content_config::LEVEL_COUNT; ++level) {
