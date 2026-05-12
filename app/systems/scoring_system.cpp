@@ -55,7 +55,11 @@ void scoring_system(entt::registry& reg, float dt) {
     const bool allow_passive_score = (song == nullptr) || !song->finished;
     if (allow_passive_score) {
         score.distance_traveled += scroll_speed * dt;
-        score.score += static_cast<int>(dt * constants::PTS_PER_SECOND);
+        const float passive_score = score.passive_score_remainder +
+            dt * static_cast<float>(constants::PTS_PER_SECOND);
+        const int whole_points = static_cast<int>(std::floor(passive_score));
+        score.score += whole_points;
+        score.passive_score_remainder = passive_score - static_cast<float>(whole_points);
     }
 
     // Track rest duration for diagnostics/feedback, but only misses break chain.
