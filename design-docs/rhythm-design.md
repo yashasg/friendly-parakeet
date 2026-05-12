@@ -578,18 +578,18 @@ them ends the run on their own — only `energy <= 0.0f` does.
 > produced by the shipped generator and have been retired below.
 
 ```
-  EASY:    shape_gate only. Sparsest tier. Highest flux threshold,
+  EASY:    required obstacles are shape_gate only. Sparsest tier. Highest flux threshold,
            so only the strongest onsets survive into the beatmap;
            percussive + harmonic onset classes only (full-spectrum
            catch-all suppressed). 2-beat minimum gap kept where the
            onset density allows. Learning the shape mechanic.
 
-  MEDIUM:  shape_gate only. Moderate flux threshold; more surviving
+  MEDIUM:  required obstacles are shape_gate only. Moderate flux threshold; more surviving
            onsets become obstacles. Density scales with the segment's
            detected intensity (verse vs. chorus/drop).
 
-  HARD:    shape_gate only (in shipped content — see Section 8
-           caveat). Highest-density tier: lowest flux threshold
+  HARD:    required obstacles are shape_gate only (shipped content may
+           also include non-blocking onset_marker metadata). Highest-density tier: lowest flux threshold
            (~5%), so the largest set of detected onsets survives
            into obstacles. Density tracks segment intensity, with
            the densest sections appearing in the song's actual

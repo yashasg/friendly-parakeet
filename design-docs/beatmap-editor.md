@@ -81,7 +81,7 @@ what the browser provides natively.
 | Context menu | Right-click an obstacle to open an inline context menu |
 | Obstacle palette | Select active obstacle kind before placing (for new placements) |
 | Shape selector | For authored shape_gate/split_path entries: pick circle/square/triangle |
-| Obstacle glyph display | Uses per-kind glyphs/colors for active editor kinds (ShapeGate, SplitPath) plus valid imported ComboGate entries. Archived LowBar/HighBar are not authorable. |
+| Obstacle glyph display | Uses per-kind glyphs/colors for active editor kinds (ShapeGate, SplitPath) plus valid imported ComboGate and OnsetMarker entries. Archived LowBar/HighBar are not authorable. |
 | Drag to move | Drag an obstacle to a different beat or lane |
 | Multi-select | Shift-click or box-select, then move/delete as group |
 | Copy/paste | Select a range of beats, copy, paste at a different position |
@@ -201,6 +201,10 @@ The editor enforces these in real-time with visual indicators:
 6. At least 1 beat entry
 7. shape_gate / split_path lane must be 0–2
 8. Different-shape gates must be ≥ 3 beats apart
+
+`onset_marker` is a supported imported/exported obstacle kind for shipped beatmaps.
+It is non-blocking runtime metadata: the scheduler skips it, it is not counted as
+a required shape obstacle, and it is not exposed in the editor authoring palette.
 
 ### 3.9 Keyboard Shortcuts
 
