@@ -9,16 +9,13 @@ enum class SFX : uint8_t {
     Crash,
     UITap,
     ChainBonus,
-    ZoneRisky,
-    ZoneDanger,
-    ZoneDead,
     ScorePopup,
     GameStart,
 };
 
 // Compile-time guard: SFX values must be contiguous and zero-based so that
 // static arrays indexed by static_cast<int>(sfx) are always in-bounds.
-static_assert(magic_enum::enum_count<SFX>() == 9,
+static_assert(magic_enum::enum_count<SFX>() == 6,
               "SFX enum changed — update sfx_bank.cpp SFX_SPECS and this guard");
 static_assert(static_cast<int>(SFX::ShapeShift) == 0,
               "SFX enum must be zero-based for array indexing");

@@ -213,7 +213,7 @@ creates the standard runtime obstacle archetypes via `spawn_rhythm_obstacle()`.
   │  game_state_system       (phase transitions)                    │
   │  ✅ song_playback_system (advances SongState.song_time)         │
   │  ✅ beat_scheduler_system (SongState + BeatMap → spawn entities)│
-  │  player_action_system    (GestureResult → PlayerShape, Lane)    │
+  │  player_input handlers   (ButtonPressEvent/GoEvent → Player)    │
   │  shape_window_system     (timing window morphing)               │
   │  player_movement_system  (animate Position from Lane/VState)    │
   │  difficulty_system       (elapsed → speed/spawn ramp)           │

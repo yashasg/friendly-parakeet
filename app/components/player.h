@@ -20,7 +20,7 @@ struct PlayerShape {
 };
 
 // Rhythm-mode shape window timing — read by shape_window_system,
-// collision_system, player_action_system.
+// collision_system, and player input handlers.
 struct ShapeWindow {
     Shape       target_shape  = Shape::Circle;
     WindowPhase phase         = WindowPhase::Idle;

@@ -9,10 +9,6 @@ TEST_CASE("haptics backend maps burst patterns for heavy events", "[haptic]") {
     const auto death = platform::haptics::pattern_for_event(HapticEvent::DeathCrash);
     CHECK(death.style == platform::haptics::ImpactStyle::Heavy);
     CHECK(death.pulse_count == 2);
-
-    const auto burnout = platform::haptics::pattern_for_event(HapticEvent::Burnout5_0x);
-    CHECK(burnout.style == platform::haptics::ImpactStyle::Heavy);
-    CHECK(burnout.pulse_count == 3);
 }
 
 TEST_CASE("haptics backend maps light and medium events deterministically", "[haptic]") {
