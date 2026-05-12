@@ -7,7 +7,7 @@
 #include "../components/transform.h"
 #include "../components/rendering.h"
 #include "../components/haptics.h"
-#include "../util/settings.h"
+#include "../entities/settings.h"
 #include "../components/rhythm.h"
 #include "../util/rhythm_math.h"
 #include "../constants.h"

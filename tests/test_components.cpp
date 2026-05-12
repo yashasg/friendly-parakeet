@@ -125,10 +125,10 @@ TEST_CASE("ecs: make_registry creates all singletons", "[ecs]") {
     static_cast<void>(reg.ctx().get<GameState>());
     static_cast<void>(reg.ctx().get<ScoreState>());
     // Audio / haptics / settings (queues replaced by dispatcher events)
-    static_cast<void>(reg.ctx().get<SettingsState>());
+    static_cast<void>(settings_state(reg));
     // Level / song / rhythm
     static_cast<void>(reg.ctx().get<LevelSelectState>());
-    static_cast<void>(reg.ctx().get<BeatMap>());
+    static_cast<void>(beat_map(reg));
     static_cast<void>(reg.ctx().get<SongState>());
     static_cast<void>(reg.ctx().get<EnergyState>());
     static_cast<void>(reg.ctx().get<SongResults>());

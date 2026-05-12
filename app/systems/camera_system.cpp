@@ -5,7 +5,7 @@
 #include "../components/transform.h"
 #include "../components/player.h"
 #include "../components/obstacle.h"
-#include "../components/beat_map.h"
+#include "../entities/beat_map.h"
 #include "../components/particle.h"
 #include "../components/scoring.h"
 #include "../components/song_state.h"
@@ -320,7 +320,7 @@ void game_camera_system(entt::registry& reg, float /*dt*/) {
     {
         auto& fp = reg.ctx().get<FloorParams>();
         auto* song = reg.ctx().find<SongState>();
-        auto* map = reg.ctx().find<BeatMap>();
+        auto* map = find_beat_map(reg);
         float pulse = 0.0f;
         if (song && song->playing && song->beat_period > 0.0f && song->current_beat >= 0) {
             float beat_time = song->offset + static_cast<float>(song->current_beat) * song->beat_period;

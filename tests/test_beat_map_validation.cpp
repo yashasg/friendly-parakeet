@@ -4,7 +4,7 @@
 #include <fstream>
 #include <limits>
 #include "test_helpers.h"
-#include "util/beat_map_loader.h"
+#include "entities/beat_map.h"
 #include "util/rhythm_math.h"
 
 namespace {

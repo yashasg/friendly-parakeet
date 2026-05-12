@@ -4,7 +4,7 @@
 #include "../components/game_state.h"
 #include "../components/song_state.h"
 #include "../constants.h"
-#include "../util/settings.h"
+#include "../entities/settings.h"
 
 #include <cmath>
 #include <raymath.h>
@@ -37,7 +37,7 @@ void energy_bar_system(entt::registry& reg, float /*dt*/) {
     const auto* energy = reg.ctx().find<EnergyState>();
     if (!energy) return;
 
-    const auto* settings = reg.ctx().find<SettingsState>();
+    const auto* settings = find_settings_state(reg);
     const bool reduce_motion = settings && settings->reduce_motion;
     const auto* song = reg.ctx().find<SongState>();
     const bool song_playing = song && song->playing;

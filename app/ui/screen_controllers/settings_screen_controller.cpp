@@ -2,8 +2,7 @@
 // and dispatches settings mutations and back-navigation to game state.
 
 #include "../../components/game_state.h"
-#include "../../util/settings.h"
-#include "../../util/settings_persistence.h"
+#include "../../entities/settings.h"
 #include "../../platform/haptics_backend.h"
 #include "screen_controller_base.h"
 #include <algorithm>
@@ -27,7 +26,7 @@ void init_settings_screen_ui() {
 
 void render_settings_screen_ui(entt::registry& reg) {
     auto& controller = screen_controller<SettingsController>(reg);
-    auto* st = reg.ctx().find<SettingsState>();
+    auto* st = find_settings_state(reg);
     auto& gs = reg.ctx().get<GameState>();
 
     // Static controls: heading, audio offset label, +/- buttons, back button
@@ -134,7 +133,7 @@ void render_settings_screen_ui(entt::registry& reg) {
     }
 
     if (settings_changed) {
-        if (auto* persistence_state = reg.ctx().find<SettingsPersistence>()) {
+        if (auto* persistence_state = find_settings_persistence(reg)) {
             settings::mark_dirty_and_save(*persistence_state, *st);
         }
     }

@@ -10,8 +10,7 @@
 // content/beatmaps/ copy via CMake POST_BUILD commands.
 
 #include <catch2/catch_test_macros.hpp>
-#include "util/beat_map_loader.h"
-#include "components/beat_map.h"
+#include "entities/beat_map.h"
 
 #include <algorithm>
 #include <filesystem>

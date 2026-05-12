@@ -46,7 +46,7 @@ TEST_CASE("energy_bar_system: reduce_motion suppresses decorative bounce and fla
           "[energy_bar][reduce_motion][issue478][issue752]") {
     auto reg = make_registry();
     create_energy_bar_entity(reg);
-    reg.ctx().get<SettingsState>().reduce_motion = true;
+    settings_state(reg).reduce_motion = true;
     auto& song = reg.ctx().get<SongState>();
     song.playing = true;
     song.song_time = 0.10f;
@@ -68,7 +68,7 @@ TEST_CASE("energy_bar_system: reduce_motion pins critical pulse to a stable midp
           "[energy_bar][reduce_motion][issue478][issue752]") {
     auto reg = make_registry();
     create_energy_bar_entity(reg);
-    reg.ctx().get<SettingsState>().reduce_motion = true;
+    settings_state(reg).reduce_motion = true;
     auto& song = reg.ctx().get<SongState>();
     song.playing = true;
     song.song_time = 99.7f;

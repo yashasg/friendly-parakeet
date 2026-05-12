@@ -1,7 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
-#include "util/beat_map_loader.h"
+#include "entities/beat_map.h"
 
 // ── beat_scheduler_system: basic spawning ────────────────────
 
@@ -9,7 +9,7 @@ TEST_CASE("beat_scheduler: no spawn when not Playing", "[beat_scheduler]") {
     auto reg = make_rhythm_registry();
     reg.ctx().get<GameState>().phase = GamePhase::Title;
 
-    auto& map = reg.ctx().get<BeatMap>();
+    auto& map = beat_map(reg);
     map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
 
     auto& song = reg.ctx().get<SongState>();
@@ -37,7 +37,7 @@ TEST_CASE("beat_scheduler: no spawn when song not playing", "[beat_scheduler]") 
     auto reg = make_rhythm_registry();
     reg.ctx().get<SongState>().playing = false;
 
-    auto& map = reg.ctx().get<BeatMap>();
+    auto& map = beat_map(reg);
     map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
 
     beat_scheduler_system(reg, 0.016f);
@@ -62,7 +62,7 @@ TEST_CASE("beat_scheduler: no spawn when beat map is empty", "[beat_scheduler]")
 TEST_CASE("beat_scheduler: spawns ShapeGate when time passes spawn_time", "[beat_scheduler]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
-    auto& map = reg.ctx().get<BeatMap>();
+    auto& map = beat_map(reg);
 
     // Add a beat at index 0
     map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
@@ -92,7 +92,7 @@ TEST_CASE("beat_scheduler: spawns ShapeGate when time passes spawn_time", "[beat
 TEST_CASE("beat_scheduler: defaults invalid ShapeGate lane to center lane", "[beat_scheduler]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
-    auto& map = reg.ctx().get<BeatMap>();
+    auto& map = beat_map(reg);
 
     map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 9, 0});
     song.song_time = 0.0f;
@@ -111,7 +111,7 @@ TEST_CASE("beat_scheduler: defaults invalid ShapeGate lane to center lane", "[be
 TEST_CASE("beat_scheduler: does not spawn before spawn_time", "[beat_scheduler]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
-    auto& map = reg.ctx().get<BeatMap>();
+    auto& map = beat_map(reg);
 
     // Beat at index 20 — spawn_time = 0 + 20 * 0.5 - 2.0 = 8.0
     map.beats.push_back({20, ObstacleKind::ShapeGate, Shape::Square, 1, 0});
@@ -129,7 +129,7 @@ TEST_CASE("beat_scheduler: does not spawn before spawn_time", "[beat_scheduler]"
 TEST_CASE("beat_scheduler: increments next_spawn_idx after spawn", "[beat_scheduler]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
-    auto& map = reg.ctx().get<BeatMap>();
+    auto& map = beat_map(reg);
 
     map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
     song.song_time = 10.0f;
@@ -144,7 +144,7 @@ TEST_CASE("beat_scheduler: uses beat_times array for arrival time when present",
           "[beat_scheduler][beat_times]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
-    auto& map = reg.ctx().get<BeatMap>();
+    auto& map = beat_map(reg);
 
     song.offset = 0.0f;
     song.bpm = 120.0f;
@@ -168,7 +168,7 @@ TEST_CASE("beat_scheduler: uses BeatEntry time_sec for arrival time when authore
           "[beat_scheduler][beat_times][issue404]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
-    auto& map = reg.ctx().get<BeatMap>();
+    auto& map = beat_map(reg);
 
     song.offset = 0.0f;
     song.bpm = 120.0f;
@@ -201,7 +201,7 @@ TEST_CASE("beat_scheduler: falls back to beat_times when BeatEntry time_sec is a
           "[beat_scheduler][beat_times][issue404]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
-    auto& map = reg.ctx().get<BeatMap>();
+    auto& map = beat_map(reg);
 
     song.offset = 0.0f;
     song.bpm = 120.0f;
@@ -225,7 +225,7 @@ TEST_CASE("beat_scheduler: same beat_index honors authored time_sec ordering",
           "[beat_scheduler][beat_times][issue442]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
-    auto& map = reg.ctx().get<BeatMap>();
+    auto& map = beat_map(reg);
 
     std::vector<BeatMapError> errors;
     const std::string json = R"({
@@ -261,7 +261,7 @@ TEST_CASE("beat_scheduler: same beat_index honors authored time_sec ordering",
 TEST_CASE("beat_scheduler: spawns multiple beats when time is past all", "[beat_scheduler]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
-    auto& map = reg.ctx().get<BeatMap>();
+    auto& map = beat_map(reg);
 
     map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
     map.beats.push_back({2, ObstacleKind::LaneBlock, Shape::Circle, 1, 0b001});
@@ -283,7 +283,7 @@ TEST_CASE("beat_scheduler: spawns multiple beats when time is past all", "[beat_
 TEST_CASE("beat_scheduler: spawns LaneBlock with blocked_mask", "[beat_scheduler]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
-    auto& map = reg.ctx().get<BeatMap>();
+    auto& map = beat_map(reg);
 
     map.beats.push_back({0, ObstacleKind::LaneBlock, Shape::Circle, 1, 0b010});
     song.song_time = 10.0f;
@@ -303,7 +303,7 @@ TEST_CASE("beat_scheduler: spawns LaneBlock with blocked_mask", "[beat_scheduler
 TEST_CASE("beat_scheduler: spawns all queued beats from BeatMap entries", "[beat_scheduler]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
-    auto& map = reg.ctx().get<BeatMap>();
+    auto& map = beat_map(reg);
 
     map.beats.push_back({0, ObstacleKind::LaneBlock, Shape::Circle, 1, 0b010});
     map.beats.push_back({0, ObstacleKind::ComboGate, Shape::Triangle, 1, 0b001});
@@ -333,7 +333,7 @@ TEST_CASE("beat_scheduler: spawns all queued beats from BeatMap entries", "[beat
 TEST_CASE("beat_scheduler: spawns ComboGate with shape and blocked lanes", "[beat_scheduler]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
-    auto& map = reg.ctx().get<BeatMap>();
+    auto& map = beat_map(reg);
 
     map.beats.push_back({0, ObstacleKind::ComboGate, Shape::Triangle, 1, 0b101});
     song.song_time = 10.0f;
@@ -353,7 +353,7 @@ TEST_CASE("beat_scheduler: spawns ComboGate with shape and blocked lanes", "[bea
 TEST_CASE("beat_scheduler: spawns SplitPath with shape and required lane", "[beat_scheduler]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
-    auto& map = reg.ctx().get<BeatMap>();
+    auto& map = beat_map(reg);
 
     map.beats.push_back({0, ObstacleKind::SplitPath, Shape::Square, 2, 0});
     song.song_time = 10.0f;
@@ -373,7 +373,7 @@ TEST_CASE("beat_scheduler: spawns SplitPath with shape and required lane", "[bea
 TEST_CASE("beat_scheduler: all spawned obstacles have BeatInfo", "[beat_scheduler]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
-    auto& map = reg.ctx().get<BeatMap>();
+    auto& map = beat_map(reg);
 
     map.beats.push_back({4, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
     song.song_time = 30.0f;
@@ -394,7 +394,7 @@ TEST_CASE("beat_scheduler: all spawned obstacles have BeatInfo", "[beat_schedule
 TEST_CASE("beat_scheduler: obstacles spawn with overshoot compensation", "[beat_scheduler]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
-    auto& map = reg.ctx().get<BeatMap>();
+    auto& map = beat_map(reg);
 
     map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
     song.song_time = 10.0f;
@@ -413,7 +413,7 @@ TEST_CASE("beat_scheduler: obstacles spawn with overshoot compensation", "[beat_
 TEST_CASE("beat_scheduler: rhythm obstacles omit MotionVelocity", "[beat_scheduler]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
-    auto& map = reg.ctx().get<BeatMap>();
+    auto& map = beat_map(reg);
 
     map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
     song.song_time = 10.0f;
@@ -434,7 +434,7 @@ TEST_CASE("beat_scheduler: rhythm obstacles omit MotionVelocity", "[beat_schedul
 TEST_CASE("beat_scheduler: ShapeGate Circle has blue color", "[beat_scheduler]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
-    auto& map = reg.ctx().get<BeatMap>();
+    auto& map = beat_map(reg);
 
     map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
     song.song_time = 10.0f;
@@ -453,7 +453,7 @@ TEST_CASE("beat_scheduler: ShapeGate Circle has blue color", "[beat_scheduler]")
 TEST_CASE("beat_scheduler: ShapeGate Square has red color", "[beat_scheduler]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
-    auto& map = reg.ctx().get<BeatMap>();
+    auto& map = beat_map(reg);
 
     map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Square, 1, 0});
     song.song_time = 10.0f;
@@ -472,7 +472,7 @@ TEST_CASE("beat_scheduler: ShapeGate Square has red color", "[beat_scheduler]") 
 TEST_CASE("beat_scheduler: ShapeGate Triangle has green color", "[beat_scheduler]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
-    auto& map = reg.ctx().get<BeatMap>();
+    auto& map = beat_map(reg);
 
     map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Triangle, 1, 0});
     song.song_time = 10.0f;
@@ -497,7 +497,7 @@ TEST_CASE("beat_scheduler: clamped late-spawn stores adjusted spawn_time in Beat
     // snapping past the clamp on the very first tick.
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
-    auto& map = reg.ctx().get<BeatMap>();
+    auto& map = beat_map(reg);
 
     // Use beat 0 whose spawn_time is deeply in the past
     map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});

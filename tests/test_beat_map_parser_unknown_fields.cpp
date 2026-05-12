@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include "test_helpers.h"
-#include "util/beat_map_loader.h"
+#include "entities/beat_map.h"
 
 // Regression tests for #133: unknown kind/shape strings must be reported
 // with beat index and value rather than silently defaulting.

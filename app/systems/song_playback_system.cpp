@@ -2,14 +2,15 @@
 #include "../components/game_state.h"
 #include "../components/rhythm.h"
 #include "../audio/music_context.h"
-#include "../util/settings_persistence.h"
+#include "../entities/beat_map.h"
+#include "../entities/settings.h"
 #include <raylib.h>
 
 void song_playback_system(entt::registry& reg, float dt) {
     const auto& gs = reg.ctx().get<GameState>();
 
     auto* song  = reg.ctx().find<SongState>();
-    auto* map   = reg.ctx().find<BeatMap>();
+    auto* map   = find_beat_map(reg);
     auto* music = reg.ctx().find<MusicContext>();
     const bool music_loaded = music && music->loaded;
 
@@ -73,7 +74,7 @@ void song_playback_system(entt::registry& reg, float dt) {
         song->song_time += dt;
     }
 
-    const auto* settings = reg.ctx().find<SettingsState>();
+    const auto* settings = find_settings_state(reg);
     const float audio_offset_sec = settings ? settings::audio_offset_seconds(*settings) : 0.0f;
 
     // Current beat (non-decreasing)

@@ -1,10 +1,11 @@
-#include "beat_map_loader.h"
-#include "rhythm_math.h"
+#include "beat_map.h"
+#include "../util/rhythm_math.h"
 #include <nlohmann/json.hpp>
 #include <cmath>
 #include <algorithm>
 #include <limits>
 #include <optional>
+#include <stdexcept>
 #include <utility>
 #include <raylib.h>
 
@@ -143,6 +144,58 @@ std::optional<int> max_derived_beat_for_metadata(const float bpm, const float du
     return static_cast<int>(max_beat);
 }
 } // namespace
+
+entt::entity create_beat_map_entity(entt::registry& reg, BeatMap map) {
+    auto existing = reg.view<BeatMapTag>();
+    if (existing.begin() != existing.end()) {
+        throw std::logic_error("BeatMapTag entity already exists");
+    }
+
+    auto entity = reg.create();
+    reg.emplace<BeatMapTag>(entity);
+    reg.emplace<BeatMap>(entity, std::move(map));
+    return entity;
+}
+
+BeatMap* find_beat_map(entt::registry& reg) {
+    auto view = reg.view<BeatMapTag, BeatMap>();
+    auto it = view.begin();
+    if (it == view.end()) {
+        return nullptr;
+    }
+    const auto entity = *it;
+    if (++it != view.end()) {
+        throw std::logic_error("multiple BeatMap entities exist");
+    }
+    return &view.get<BeatMap>(entity);
+}
+
+const BeatMap* find_beat_map(const entt::registry& reg) {
+    auto view = reg.view<BeatMapTag, const BeatMap>();
+    auto it = view.begin();
+    if (it == view.end()) {
+        return nullptr;
+    }
+    const auto entity = *it;
+    if (++it != view.end()) {
+        throw std::logic_error("multiple BeatMap entities exist");
+    }
+    return &view.get<const BeatMap>(entity);
+}
+
+BeatMap& beat_map(entt::registry& reg) {
+    if (auto* map = find_beat_map(reg)) {
+        return *map;
+    }
+    throw std::logic_error("BeatMap entity is missing; call create_beat_map_entity() first");
+}
+
+const BeatMap& beat_map(const entt::registry& reg) {
+    if (const auto* map = find_beat_map(reg)) {
+        return *map;
+    }
+    throw std::logic_error("BeatMap entity is missing; call create_beat_map_entity() first");
+}
 
 static bool try_load_constants_from(const std::string& path, ValidationConstants& vc) {
     char* file_text = LoadFileText(path.c_str());

@@ -4,7 +4,7 @@
 #include "../components/transform.h"
 #include "../components/rendering.h"
 #include "../constants.h"
-#include "../util/settings.h"
+#include "../entities/settings.h"
 
 namespace {
 
@@ -39,7 +39,7 @@ void particle_system(entt::registry& reg, float dt) {
     // The burst still spawns, ages, and despawns on the same schedule —
     // it just visibly calms down. Functional/scoring state is untouched
     // because particles carry no gameplay payload.
-    const auto* settings_ptr = reg.ctx().find<SettingsState>();
+    const auto* settings_ptr = find_settings_state(reg);
     const bool reduce_motion = settings_ptr && settings_ptr->reduce_motion;
 
     auto vel_view = reg.view<ParticleTag, MotionVelocity>();

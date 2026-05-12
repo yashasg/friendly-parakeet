@@ -3,10 +3,10 @@
 #include "../components/audio_events.h"
 #include "../components/haptics.h"
 #include "../platform/haptics_backend.h"
-#include "../util/settings.h"
+#include "../entities/settings.h"
 
 void haptic_handle_play(entt::registry& reg, const PlayHapticEvent& evt) {
-    auto* settings = reg.ctx().find<SettingsState>();
+    auto* settings = find_settings_state(reg);
     if (settings && !settings->haptics_enabled) return;
     platform::haptics::trigger(reg, evt.evt);
 }

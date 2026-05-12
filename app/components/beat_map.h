@@ -21,16 +21,13 @@ struct BeatEntry {
 // BPM is fixed for the entire song — no mid-song tempo changes.
 //
 // Ownership / lifecycle:
-//   - Emplaced once into the registry context in game_loop.cpp:
-//       reg.ctx().emplace<BeatMap>();
-//   - Populated (and reset) at the start of each play session in
-//     setup_play_session() via reg.ctx().get<BeatMap>().
+//   - Attached to the singleton BeatMapTag entity created by create_beat_map_entity().
+//   - Populated (and reset) at the start of each play session in setup_play_session().
 //   - Read-only during active gameplay by all systems that need beat timing.
-//   - Implicitly freed when the registry is destroyed (end of process).
+//   - Implicitly freed when the registry is destroyed.
 //
-// This is a cold asset / context singleton. It MUST NOT be emplaced on
-// individual entities. Copy construction and copy assignment are deleted so
-// that accidental duplication of the heap-allocated beat array is a
+// This is a cold asset singleton. Copy construction and copy assignment are
+// deleted so accidental duplication of the heap-allocated beat array is a
 // compile-time error. Use std::move() when transferring ownership.
 struct BeatMap {
     std::string song_id;

@@ -7,12 +7,11 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
 #include "test_helpers.h"
-#include "components/beat_map.h"
+#include "entities/beat_map.h"
 #include "components/rhythm.h"
 #include "systems/all_systems.h"
 #include "util/rhythm_math.h"
-#include "util/settings.h"
-#include "util/settings_persistence.h"
+#include "entities/settings.h"
 
 namespace {
 
@@ -35,7 +34,7 @@ ScheduleResult schedule_one(int16_t audio_offset_ms,
                             int   beat_index) {
     auto reg = make_rhythm_registry();
 
-    auto& settings = reg.ctx().get<SettingsState>();
+    auto& settings = settings_state(reg);
     settings.audio_offset_ms = audio_offset_ms;
 
     auto& song = reg.ctx().get<SongState>();
@@ -44,7 +43,7 @@ ScheduleResult schedule_one(int16_t audio_offset_ms,
     song_state_compute_derived(song);
     song.song_time = song_time_when_scheduling;
 
-    auto& map = reg.ctx().get<BeatMap>();
+    auto& map = beat_map(reg);
     map.beats.push_back({beat_index, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
 
     beat_scheduler_system(reg, 0.016f);
@@ -116,14 +115,14 @@ TEST_CASE("beat_scheduler: audio_offset shifts calibrated arrival and spawn_time
 TEST_CASE("song_playback: positive audio_offset delays beat crossing",
           "[song_playback][audio_offset][issue210]") {
     auto reg = make_rhythm_registry();
-    auto& settings = reg.ctx().get<SettingsState>();
+    auto& settings = settings_state(reg);
     settings.audio_offset_ms = +200;
 
     auto& song = reg.ctx().get<SongState>();
     song.song_time = 0.0f;
     song.current_beat = -1;
 
-    auto& map = reg.ctx().get<BeatMap>();
+    auto& map = beat_map(reg);
     map.beat_times = {1.0f};
 
     song_playback_system(reg, 1.1f);
@@ -136,14 +135,14 @@ TEST_CASE("song_playback: positive audio_offset delays beat crossing",
 TEST_CASE("song_playback: negative audio_offset advances beat crossing",
           "[song_playback][audio_offset][issue210]") {
     auto reg = make_rhythm_registry();
-    auto& settings = reg.ctx().get<SettingsState>();
+    auto& settings = settings_state(reg);
     settings.audio_offset_ms = -200;
 
     auto& song = reg.ctx().get<SongState>();
     song.song_time = 0.0f;
     song.current_beat = -1;
 
-    auto& map = reg.ctx().get<BeatMap>();
+    auto& map = beat_map(reg);
     map.beat_times = {1.0f};
 
     song_playback_system(reg, 0.85f);
@@ -153,7 +152,7 @@ TEST_CASE("song_playback: negative audio_offset advances beat crossing",
 TEST_CASE("beat_scheduler: audio_offset gates spawn before calibrated spawn time",
           "[beat_scheduler][audio_offset][issue210]") {
     auto reg = make_rhythm_registry();
-    auto& settings = reg.ctx().get<SettingsState>();
+    auto& settings = settings_state(reg);
     settings.audio_offset_ms = +200;
 
     auto& song = reg.ctx().get<SongState>();
@@ -161,7 +160,7 @@ TEST_CASE("beat_scheduler: audio_offset gates spawn before calibrated spawn time
     song.song_time = 0.1f;
     song.next_spawn_idx = 0;
 
-    auto& map = reg.ctx().get<BeatMap>();
+    auto& map = beat_map(reg);
     map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
 
     beat_scheduler_system(reg, 0.016f);
@@ -178,15 +177,15 @@ TEST_CASE("audio_offset: zero setting matches absent SettingsState",
     auto& zero_song = playback_with_zero.ctx().get<SongState>();
     zero_song.song_time = 0.0f;
     zero_song.current_beat = -1;
-    playback_with_zero.ctx().get<BeatMap>().beat_times = {0.4f, 0.9f, 1.6f};
+    beat_map(playback_with_zero).beat_times = {0.4f, 0.9f, 1.6f};
     song_playback_system(playback_with_zero, 1.0f);
 
     auto playback_without_settings = make_rhythm_registry();
-    playback_without_settings.ctx().erase<SettingsState>();
+    destroy_settings_entity(playback_without_settings);
     auto& absent_song = playback_without_settings.ctx().get<SongState>();
     absent_song.song_time = 0.0f;
     absent_song.current_beat = -1;
-    playback_without_settings.ctx().get<BeatMap>().beat_times = {0.4f, 0.9f, 1.6f};
+    beat_map(playback_without_settings).beat_times = {0.4f, 0.9f, 1.6f};
     song_playback_system(playback_without_settings, 1.0f);
 
     CHECK(absent_song.current_beat == zero_song.current_beat);
@@ -195,16 +194,16 @@ TEST_CASE("audio_offset: zero setting matches absent SettingsState",
     auto& zero_schedule_song = scheduler_with_zero.ctx().get<SongState>();
     zero_schedule_song.song_time = 1.0f;
     zero_schedule_song.next_spawn_idx = 0;
-    scheduler_with_zero.ctx().get<BeatMap>().beats.push_back(
+    beat_map(scheduler_with_zero).beats.push_back(
         {2, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
     beat_scheduler_system(scheduler_with_zero, 0.016f);
 
     auto scheduler_without_settings = make_rhythm_registry();
-    scheduler_without_settings.ctx().erase<SettingsState>();
+    destroy_settings_entity(scheduler_without_settings);
     auto& absent_schedule_song = scheduler_without_settings.ctx().get<SongState>();
     absent_schedule_song.song_time = 1.0f;
     absent_schedule_song.next_spawn_idx = 0;
-    scheduler_without_settings.ctx().get<BeatMap>().beats.push_back(
+    beat_map(scheduler_without_settings).beats.push_back(
         {2, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
     beat_scheduler_system(scheduler_without_settings, 0.016f);
 
@@ -228,7 +227,7 @@ struct OffsetGameplayResult {
 OffsetGameplayResult run_calibrated_on_arrival_hit(int16_t audio_offset_ms) {
     auto reg = make_rhythm_registry();
 
-    auto& settings = reg.ctx().get<SettingsState>();
+    auto& settings = settings_state(reg);
     settings.audio_offset_ms = audio_offset_ms;
 
     auto player = make_rhythm_player(reg);
@@ -244,7 +243,7 @@ OffsetGameplayResult run_calibrated_on_arrival_hit(int16_t audio_offset_ms) {
     song_state_compute_derived(song);
 
     constexpr int kBeatIndex = 4;
-    auto& map = reg.ctx().get<BeatMap>();
+    auto& map = beat_map(reg);
     map.beats.push_back({kBeatIndex, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
 
     const float beat_time = song.offset + static_cast<float>(kBeatIndex) * song.beat_period;

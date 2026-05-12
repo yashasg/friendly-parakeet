@@ -4,14 +4,14 @@
 #include "../components/transform.h"
 #include "../components/rendering.h"
 #include "../components/scoring.h"
-#include "../components/beat_map.h"
+#include "../entities/beat_map.h"
 #include "../components/rhythm.h"
 #include "../components/song_state.h"
 #include "../audio/music_context.h"
 #include "../components/high_score.h"
 #include "../util/high_score_persistence.h"
 #include "../components/rng.h"
-#include "../util/beat_map_loader.h"
+#include "../entities/settings.h"
 #include "../util/rhythm_math.h"
 #include "../entities/camera_entity.h"
 #include "../entities/energy_bar_entity.h"
@@ -82,22 +82,30 @@ T& assign_or_emplace_ctx(entt::registry& reg, T value = T{}) {
 } // namespace
 
 void setup_play_session(entt::registry& reg) {
+    const auto* previous_settings = find_settings_state(reg);
+    const auto* previous_settings_persistence = find_settings_persistence(reg);
+    const bool restore_settings = previous_settings != nullptr && previous_settings_persistence != nullptr;
+    SettingsState settings = previous_settings ? *previous_settings : SettingsState{};
+    SettingsPersistence settings_persistence =
+        previous_settings_persistence ? *previous_settings_persistence : SettingsPersistence{};
+
     reg.clear();
     spawn_game_camera(reg);
     spawn_ui_camera(reg);
     create_energy_bar_entity(reg);
+    create_beat_map_entity(reg);
+    if (restore_settings) {
+        create_settings_entity(reg, settings, settings_persistence);
+    }
 
     // Reset singletons
     assign_or_emplace_ctx(reg, RNGState{});
     assign_or_emplace_ctx(reg, ScoreState{});
 
-    // Load beatmap from level selection.
-    // BeatMap is a context singleton (cold asset). It is reset here via move
-    // assignment and populated by the validated runtime loader. It remains immutable for
-    // the duration of the play session. On song unload (next setup_play_session
-    // call) the beat array is replaced in-place via another move assignment.
+    // Load beatmap from level selection. BeatMap is an entity singleton whose
+    // cold asset data remains immutable for the duration of the play session.
     auto& lss = reg.ctx().get<LevelSelectState>();
-    auto& beatmap = reg.ctx().get<BeatMap>();
+    auto& beatmap = beat_map(reg);
     beatmap = BeatMap{};
     lss.selected_level = content_config::level_index_or_default(lss.selected_level);
     lss.selected_difficulty = content_config::difficulty_index_or_default(lss.selected_difficulty);
