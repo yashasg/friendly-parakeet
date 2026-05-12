@@ -195,7 +195,8 @@ void setup_play_session(entt::registry& reg) {
             stem.erase(stem.size() - BEATMAP_SUFFIX.size());
         }
         char key_buf[HighScoreState::KEY_CAP]{};
-        high_score::make_key_str(key_buf, HighScoreState::KEY_CAP, stem.c_str(), difficulty_key);
+        high_score::make_key_str(key_buf, HighScoreState::KEY_CAP,
+                                 stem.c_str(), beatmap.difficulty.c_str());
         high_score::ensure_entry(*hs, key_buf);
         hs->current_key_hash = entt::hashed_string::value(static_cast<const char*>(key_buf));
     }
