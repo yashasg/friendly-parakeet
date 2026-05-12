@@ -24,7 +24,7 @@ struct DrawLayer {
     Layer layer = Layer::Game;
 };
 
-// ── Screen Transform (letterbox scale/offset: window → virtual space) ───────
+// Letterbox scale/offset: window to virtual space.
 struct ScreenTransform {
     float offset_x = 0.0f;
     float offset_y = 0.0f;
@@ -42,9 +42,7 @@ struct ScreenTransform {
     };
 }
 
-// ── Model-to-world transform ────────────────────────────────────────────────
-// Computed by game_camera_system each frame from WorldTransform/DrawSize/Shape.
-// Consumed by game_render_system for DrawMesh calls.
+// Computed by game_camera_system from WorldTransform/DrawSize/Shape.
 // MeshType tells the render system which GPU mesh to draw.
 enum class MeshType : uint8_t { Shape, Slab, Quad };
 
@@ -55,9 +53,7 @@ struct ModelTransform {
     MeshType  mesh_type = MeshType::Shape;
 };
 
-// Visual mesh child of a logical entity (e.g., obstacle slabs, ghost shapes).
-// Created at spawn time by game object factories. game_camera_system reads
-// parent WorldTransform + child offsets to compute ModelTransform each frame.
+// Visual mesh child; game_camera_system resolves parent transform + offsets.
 struct MeshChild {
     entt::entity parent = entt::null;
     float x = 0.0f;             // absolute X position in game coords
@@ -70,29 +66,21 @@ struct MeshChild {
     MeshType mesh_type = MeshType::Shape;
 };
 
-// ── Mesh-child ownership ─────────────────────────────────────────────────────
-// Emplaced on logical obstacle entities by spawn_obstacle_meshes.
-// on_obstacle_destroy reads this to destroy children in O(count) without
-// scanning the entire MeshChild pool.
+// Owned mesh children; on_obstacle_destroy cleans up in O(count).
 struct ObstacleChildren {
     static constexpr int MAX = 8;
     entt::entity children[MAX]{};
     int count = 0;
 };
 
-// ── Screen-space position ───────────────────────────────────────────────────
-// Computed by camera_system via GetWorldToScreenEx projection.
-// Used by UI render pass to draw popups at the correct screen location.
+// Screen-space position computed by camera_system for UI rendering.
 struct ScreenPosition {
     float x = 0.0f;
     float y = 0.0f;
 };
 
 
-// ── Render-pass membership tags ──────────────────────────────────────────────
-// Empty tag components that declare which render pass an entity belongs to.
-// game_render_system queries each pass view independently.
-// One tag per entity.
+// Render-pass membership tags; one per entity.
 struct TagWorldPass   {};  // drawn in BeginMode3D (3D world geometry)
 struct TagEffectsPass {};  // particles, post-process overlays
 struct TagHUDPass     {};  // screen-space UI elements

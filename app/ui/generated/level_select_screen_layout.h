@@ -1,17 +1,5 @@
-/*******************************************************************************************
-*
-*   Level Select Screen Layout - Embeddable raygui Layout (NO main, NO RAYGUI_IMPLEMENTATION)
-*
-*   Source: content/ui/screens/level_select.rgl
-*   Template: tools/rguilayout/templates/embeddable_layout.h
-*
-*   NOTE: Currently provides "SELECT LEVEL" heading and Start button only.
-*         Dynamic card/difficulty rendering to be ported to rguilayout in future work.
-*
-*   The name "LevelSelectScreenLayoutState" avoids collision with "LevelSelectLayout"
-*   in ui_layout_cache.h which is a separate ECS cache struct.
-*
-********************************************************************************************/
+// Level select layout generated from content/ui/screens/level_select.rgl.
+// Dynamic card and difficulty rendering remain in controller code.
 
 #ifndef LEVEL_SELECT_SCREEN_LAYOUT_H
 #define LEVEL_SELECT_SCREEN_LAYOUT_H

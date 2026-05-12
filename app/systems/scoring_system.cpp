@@ -114,14 +114,8 @@ void scoring_system(entt::registry& reg, float dt) {
     // Hoist single scratch lookup — miss_buf and hit_buf share the same struct.
     auto& scratch = scoring_scratch_for(reg);
 
-    // ── Miss pass ────────────────────────────────────────────────────────────
-    // Structural view: only entities carrying MissTag.
-    // Single owner of ENERGY_DRAIN_MISS and miss_count for all miss paths
-    // (collision miss and scroll-past miss both route through here).
-    //
-    // EnTT safety: Obstacle and ScoredTag are view components; removing them
-    // mid-iteration would swap-and-pop the pool (UB). Collect entities during
-    // the read pass, apply removals after the view is exhausted. (#315)
+    // Miss pass: single owner of ENERGY_DRAIN_MISS and miss_count.
+    // Collect first, then remove view components after iteration (#315).
     {
         auto& miss_buf = scratch.miss_buf;
         miss_buf.clear();
@@ -160,11 +154,7 @@ void scoring_system(entt::registry& reg, float dt) {
         }
     }
 
-    // ── Hit pass ─────────────────────────────────────────────────────────────
-    // Structural view: ScoredTag without MissTag. Collect all data needed for
-    // popup creation and scoring, then process and remove after iteration.
-    //
-    // EnTT safety: same collect-then-remove pattern as miss pass. (#315)
+    // Hit pass: collect popup/scoring data, then process and remove (#315).
     {
         auto& hit_buf = scratch.hit_buf;
         hit_buf.clear();

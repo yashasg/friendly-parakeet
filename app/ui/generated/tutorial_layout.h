@@ -1,17 +1,5 @@
-/*******************************************************************************************
-*
-*   Tutorial Layout - Embeddable raygui Layout (NO main, NO RAYGUI_IMPLEMENTATION)
-*
-*   Source: content/ui/screens/tutorial.rgl
-*   Template: tools/rguilayout/templates/embeddable_layout.h
-*
-*   USAGE:
-*      1. Include raygui.h BEFORE this header
-*      2. Call TutorialLayout_Init() once to get initial state
-*      3. Call TutorialLayout_Render() every frame
-*      4. Check state.ContinueButtonPressed after render
-*
-********************************************************************************************/
+// Tutorial layout generated from content/ui/screens/tutorial.rgl.
+// Do not edit behavior here; regenerate from the .rgl source.
 
 #ifndef TUTORIAL_LAYOUT_H
 #define TUTORIAL_LAYOUT_H

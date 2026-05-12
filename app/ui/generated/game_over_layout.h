@@ -1,17 +1,5 @@
-/*******************************************************************************************
-*
-*   Game Over Layout - Embeddable raygui Layout (NO main, NO RAYGUI_IMPLEMENTATION)
-*
-*   Source: content/ui/screens/game_over.rgl
-*   Template: tools/rguilayout/templates/embeddable_layout.h
-*
-*   USAGE:
-*      1. Include raygui.h BEFORE this header
-*      2. Call GameOverLayout_Init() once to get initial state
-*      3. Call GameOverLayout_Render() every frame
-*      4. Check RestartButtonPressed, LevelSelectButtonPressed, MenuButtonPressed
-*
-********************************************************************************************/
+// Game over layout generated from content/ui/screens/game_over.rgl.
+// Do not edit behavior here; regenerate from the .rgl source.
 
 #ifndef GAME_OVER_LAYOUT_H
 #define GAME_OVER_LAYOUT_H
