@@ -104,6 +104,10 @@ void session_log_flush(SessionLog& log) {
     log.buffer.clear();  // capacity preserved — no realloc next frame
 }
 
+void session_log_begin_frame(SessionLog& log) {
+    ++log.frame;
+}
+
 // ── EnTT signal: obstacle spawned ────────────────────────────
 
 void session_log_on_obstacle_spawn(entt::registry& reg, entt::entity entity) {

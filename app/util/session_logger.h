@@ -39,6 +39,9 @@ void session_log_write(SessionLog& log, float song_time,
 // Flush buffered log lines to disk. Call once per frame, after all systems.
 void session_log_flush(SessionLog& log);
 
+// Advance the frame counter once from the central game-loop path.
+void session_log_begin_frame(SessionLog& log);
+
 // EnTT signal handlers — connect to registry during test_player setup.
 void session_log_on_obstacle_spawn(entt::registry& reg, entt::entity entity);
 void session_log_on_scored(entt::registry& reg, entt::entity entity);

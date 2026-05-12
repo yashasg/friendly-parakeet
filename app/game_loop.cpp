@@ -257,6 +257,9 @@ bool game_loop_init(entt::registry& reg,
 // One frame: input → fixed timestep → render → blit → audio.
 // Not in header — called by game_loop_run and platform_run_loop (Emscripten).
 void game_loop_frame(entt::registry& reg, float& accumulator) {
+    auto* session_log = reg.ctx().find<SessionLog>();
+    if (session_log) session_log_begin_frame(*session_log);
+
     float raw_dt = GetFrameTime();
     accumulator += raw_dt;
     if (accumulator > MAX_ACCUM) accumulator = MAX_ACCUM;
@@ -305,7 +308,6 @@ void game_loop_frame(entt::registry& reg, float& accumulator) {
     audio_system(reg);
     haptic_system(reg);
 
-    auto* session_log = reg.ctx().find<SessionLog>();
     if (session_log) session_log_flush(*session_log);
 }
 
