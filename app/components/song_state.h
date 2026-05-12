@@ -29,8 +29,8 @@ struct SongState {
     float  song_time     = 0.0f;   // mutated every frame by song_playback_system
     int    current_beat  = -1;     // mutated every frame by song_playback_system
     bool   playing       = false;  // set true by setup_play_session; cleared by
-                                   //   song_playback_system (end-of-song) or energy_system (death)
-    bool   finished      = false;  // set true by song_playback_system or energy_system
+                                   //   song_playback_system or terminal GameOver entry
+    bool   finished      = false;  // set true by song_playback_system or terminal GameOver entry
     bool   restart_music = false;  // set true by setup_play_session; consumed/cleared
                                    //   on the next tick by song_playback_system
 

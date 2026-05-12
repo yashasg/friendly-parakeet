@@ -29,7 +29,7 @@ TEST_CASE("death_model: one miss drains energy without immediate GameOver", "[de
     CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
 }
 
-TEST_CASE("death_model: GameOver is deferred to energy depletion", "[death_model]") {
+TEST_CASE("death_model: GameOver is requested when energy depletes", "[death_model]") {
     auto reg = make_rhythm_registry();
     make_player(reg);
 
@@ -60,9 +60,9 @@ TEST_CASE("death_model: GameOver is deferred to energy depletion", "[death_model
     energy_system(reg, 0.016f);
 
     CHECK(energy.energy == 0.0f);
-    CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
+    CHECK(reg.ctx().get<GameState>().transition_pending);
+    CHECK(reg.ctx().get<GameState>().next_phase == GamePhase::GameOver);
 
-    game_state_system(reg, 0.016f);
     game_state_system(reg, 0.016f);
 
     const auto& state = reg.ctx().get<GameState>();
@@ -140,7 +140,7 @@ TEST_CASE("death_model: close miss drains energy instead of instant GameOver", "
     CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
 }
 
-TEST_CASE("death_model: collision clamps depleted energy before GameOver transition", "[death_model]") {
+TEST_CASE("death_model: collision clamps depleted energy and requests GameOver", "[death_model]") {
     auto reg = make_rhythm_registry();
     make_player(reg);
 
@@ -153,13 +153,14 @@ TEST_CASE("death_model: collision clamps depleted energy before GameOver transit
     energy_system(reg, 0.016f);
 
     CHECK(energy.energy == 0.0f);
-    CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
+    CHECK(reg.ctx().get<GameState>().transition_pending);
+    CHECK(reg.ctx().get<GameState>().next_phase == GamePhase::GameOver);
 
     game_state_system(reg, 0.016f);
-    CHECK(reg.ctx().get<GameState>().transition_pending);
+    CHECK(reg.ctx().get<GameState>().phase == GamePhase::GameOver);
 }
 
-TEST_CASE("death_model: scroll-past miss drains energy without directly requesting GameOver", "[death_model]") {
+TEST_CASE("death_model: scroll-past miss drains energy and requests GameOver", "[death_model]") {
     auto reg = make_rhythm_registry();
 
     auto& energy = reg.ctx().get<EnergyState>();
@@ -184,10 +185,11 @@ TEST_CASE("death_model: scroll-past miss drains energy without directly requesti
 
     CHECK(energy.energy == 0.0f);
     CHECK(reg.ctx().get<SongResults>().miss_count == 1);
-    CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
+    CHECK(reg.ctx().get<GameState>().transition_pending);
+    CHECK(reg.ctx().get<GameState>().next_phase == GamePhase::GameOver);
 
     game_state_system(reg, 0.016f);
-    CHECK(reg.ctx().get<GameState>().transition_pending);
+    CHECK(reg.ctx().get<GameState>().phase == GamePhase::GameOver);
 }
 
 // Regression: a scroll-past miss that depletes energy to 0 triggers GameOver
@@ -208,10 +210,11 @@ TEST_CASE("death_model: scroll-past fatal miss triggers GameOver same frame", "[
     energy_system(reg, 0.016f);
 
     CHECK(energy.energy == 0.0f);
-    CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
+    CHECK(reg.ctx().get<GameState>().transition_pending);
+    CHECK(reg.ctx().get<GameState>().next_phase == GamePhase::GameOver);
 
     game_state_system(reg, 0.016f);
-    CHECK(reg.ctx().get<GameState>().transition_pending);
+    CHECK(reg.ctx().get<GameState>().phase == GamePhase::GameOver);
 }
 
 // Regression: a scroll-past miss must not double-drain (energy delta = exactly

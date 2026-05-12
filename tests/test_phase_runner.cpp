@@ -107,3 +107,46 @@ TEST_CASE("tick_fixed_systems: popup_feedback and energy run in score-feedback c
     // Pending events must be cleared.
     CHECK(pending.events.empty());
 }
+
+TEST_CASE("tick_fixed_systems: energy depletion requests GameOver before next Playing pass",
+          "[phase_guard][energy][regression][issue781]") {
+    auto reg = make_rhythm_registry();
+    auto& gs = reg.ctx().get<GameState>();
+    auto& energy = reg.ctx().get<EnergyState>();
+    auto& pending = reg.ctx().get<PendingEnergyEffects>();
+    auto& results = reg.ctx().get<SongResults>();
+
+    energy.energy = constants::ENERGY_DRAIN_MISS;
+    pending.events.push_back({-constants::ENERGY_DRAIN_MISS, true});
+
+    tick_fixed_systems(reg, 0.016f);
+
+    REQUIRE(energy.energy == 0.0f);
+    REQUIRE(gs.transition_pending);
+    REQUIRE(gs.next_phase == GamePhase::GameOver);
+    CHECK(reg.ctx().get<GameOverState>().cause == DeathCause::EnergyDepleted);
+    CHECK(pending.events.empty());
+
+    auto late_miss = reg.create();
+    reg.emplace<ObstacleTag>(late_miss);
+    reg.emplace<ScoredTag>(late_miss);
+    reg.emplace<MissTag>(late_miss);
+    reg.emplace<Obstacle>(late_miss, ObstacleKind::ShapeGate, int16_t{constants::PTS_SHAPE_GATE});
+
+    tick_fixed_systems(reg, 0.016f);
+
+    CHECK(gs.phase == GamePhase::GameOver);
+    CHECK(results.miss_count == 0);
+
+    const auto sfx = drain_sfx_events(reg);
+    CHECK(sfx.count == 1);
+    CHECK(sfx.buf[0] == SFX::Crash);
+
+    const auto haptics = drain_haptic_events(reg);
+    REQUIRE(haptics.count >= 1);
+    CHECK(haptics.buf[0] == HapticEvent::DeathCrash);
+
+    tick_fixed_systems(reg, 0.016f);
+    CHECK(drain_sfx_events(reg).count == 0);
+    CHECK(drain_haptic_events(reg).count == 0);
+}
