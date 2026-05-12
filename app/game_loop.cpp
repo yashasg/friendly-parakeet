@@ -24,6 +24,7 @@
 #include "systems/camera_system.h"
 #include "entities/beat_map.h"
 #include "entities/obstacle_render_entity.h"
+#include "ui/screen_controllers/gameplay_hud_screen_controller.h"
 #include "platform_display.h"
 #include "util/persistence_policy.h"
 #include "components/high_score.h"
@@ -265,6 +266,7 @@ void game_loop_frame(entt::registry& reg, float& accumulator) {
 
     compute_screen_transform(reg);
     input_system(reg, raw_dt);
+    gameplay_hud_process_button_input(reg);
     test_player_system(reg, raw_dt);
 
     while (accumulator >= FIXED_DT) {
