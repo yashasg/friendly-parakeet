@@ -24,12 +24,8 @@ void warm_dispatcher_event_queues(entt::dispatcher& disp) {
 }
 }
 
-// ── Drain-ownership model ────────────────────────────────────────────────────
-// game_state_system (first in tick_fixed_systems) owns the authoritative
-// fixed-step drain for GoEvent and ButtonPressEvent.
-//
-// EnTT dispatches sink listeners last-connected first. Connect in reverse so
-// the canonical semantic order remains game_state -> level_select -> player_input.
+// game_state_system owns the fixed-step GoEvent/ButtonPressEvent drain.
+// EnTT sinks are last-connected first; connect in reverse semantic order.
 void wire_input_dispatcher(entt::registry& reg) {
     auto* disp = reg.ctx().find<entt::dispatcher>();
     if (!disp) {
@@ -46,9 +42,7 @@ void wire_input_dispatcher(entt::registry& reg) {
     *state = InputDispatcherConnections{};
     state->owner = disp;
 
-    // Semantic events → handler callbacks (fixed-step)
-    // Desired processing order: game_state first (handles phase transitions,
-    // checks phase_timer), level_select second, player_input third.
+    // Fixed-step semantic order: game_state, level_select, player_input.
     state->go_player_input = entt::scoped_connection{
         disp->sink<GoEvent>().connect<&player_input_handle_go>(reg)};
     state->press_player_input = entt::scoped_connection{

@@ -1,17 +1,5 @@
-/*******************************************************************************************
-*
-*   Paused Layout - Embeddable raygui Layout (NO main, NO RAYGUI_IMPLEMENTATION)
-*
-*   Source: content/ui/screens/paused.rgl
-*   Template: tools/rguilayout/templates/embeddable_layout.h
-*
-*   USAGE:
-*      1. Include raygui.h BEFORE this header
-*      2. Call PausedLayout_Init() once to get initial state
-*      3. Call PausedLayout_Render() every frame
-*      4. Check state.ResumeButtonPressed, state.MenuButtonPressed after render
-*
-********************************************************************************************/
+// Paused layout generated from content/ui/screens/paused.rgl.
+// Do not edit behavior here; regenerate from the .rgl source.
 
 #ifndef PAUSED_LAYOUT_H
 #define PAUSED_LAYOUT_H

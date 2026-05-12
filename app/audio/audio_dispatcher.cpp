@@ -21,10 +21,7 @@ void warm_audio_haptic_dispatcher(entt::dispatcher& disp) {
 
 }  // namespace
 
-// ── Drain-ownership model ────────────────────────────────────────────────────
-// audio_system owns the PlaySfxEvent drain  (disp.update<PlaySfxEvent>())
-// haptic_system owns the PlayHapticEvent drain (disp.update<PlayHapticEvent>())
-// Both drains are called in game_loop_frame after rendering.
+// audio_system and haptic_system own their post-render event drains.
 void wire_audio_haptic_dispatcher(entt::registry& reg) {
     auto* disp = reg.ctx().find<entt::dispatcher>();
     if (!disp) {

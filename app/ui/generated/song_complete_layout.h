@@ -1,17 +1,5 @@
-/*******************************************************************************************
-*
-*   Song Complete Layout - Embeddable raygui Layout (NO main, NO RAYGUI_IMPLEMENTATION)
-*
-*   Source: content/ui/screens/song_complete.rgl
-*   Template: tools/rguilayout/templates/embeddable_layout.h
-*
-*   USAGE:
-*      1. Include raygui.h BEFORE this header
-*      2. Call SongCompleteLayout_Init() once to get initial state
-*      3. Call SongCompleteLayout_Render() every frame
-*      4. Check RestartButtonPressed, LevelSelectButtonPressed, MenuButtonPressed
-*
-********************************************************************************************/
+// Song complete layout generated from content/ui/screens/song_complete.rgl.
+// Do not edit behavior here; regenerate from the .rgl source.
 
 #ifndef SONG_COMPLETE_LAYOUT_H
 #define SONG_COMPLETE_LAYOUT_H

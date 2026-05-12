@@ -1,17 +1,5 @@
-/*******************************************************************************************
-*
-*   Gameplay HUD Layout - Embeddable raygui Layout (NO main, NO RAYGUI_IMPLEMENTATION)
-*
-*   Source: content/ui/screens/gameplay.rgl
-*   Template: tools/rguilayout/templates/embeddable_layout.h
-*
- *   NOTE: Provides Pause + gameplay shape buttons.
- *         Dynamic energy bar and approach rings remain rendered by controller code.
-*
-*   The name "GameplayHudLayoutState" avoids collision with "HudLayout" in
-*   ui_layout_cache.h which is a separate ECS cache struct.
-*
-********************************************************************************************/
+// Gameplay HUD layout generated from content/ui/screens/gameplay.rgl.
+// Dynamic energy bar and approach rings remain in controller code.
 
 #ifndef GAMEPLAY_HUD_LAYOUT_H
 #define GAMEPLAY_HUD_LAYOUT_H
