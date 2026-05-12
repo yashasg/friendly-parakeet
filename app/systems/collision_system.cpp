@@ -130,7 +130,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
     // LaneBlock: BlockedLanes only (no RequiredShape)
     {
         auto view = reg.view<ObstacleTag, WorldTransform, BlockedLanes>(
-            entt::exclude<ScoredTag, RequiredShape>);
+            entt::exclude<ScoredTag, ResolvedObstacleTag, RequiredShape>);
         for (auto [e, wt, blocked] : view.each()) {
             resolve(e, wt.position.y, !((blocked.mask >> p_lane.current) & 1));
         }
@@ -141,7 +141,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
         // ShapeGate: RequiredShape only (no BlockedLanes, no RequiredLane)
         {
             auto rhythm_view = reg.view<ObstacleTag, WorldTransform, RequiredShape, BeatInfo>(
-                entt::exclude<ScoredTag, BlockedLanes, RequiredLane>);
+                entt::exclude<ScoredTag, ResolvedObstacleTag, BlockedLanes, RequiredLane>);
             for (auto [e, wt, req, info] : rhythm_view.each()) {
                 bool shape_match = player_matches_required_shape(p_shape, p_window, req.shape, rhythm_mode);
                 bool lane_match = shape_gate_lane_match(wt.position.x, player_x, p_lane,
@@ -156,7 +156,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
             }
 
             auto view = reg.view<ObstacleTag, WorldTransform, RequiredShape>(
-                entt::exclude<ScoredTag, BlockedLanes, RequiredLane, BeatInfo>);
+                entt::exclude<ScoredTag, ResolvedObstacleTag, BlockedLanes, RequiredLane, BeatInfo>);
             for (auto [e, wt, req] : view.each()) {
                 bool shape_match = player_matches_required_shape(p_shape, p_window, req.shape, rhythm_mode);
                 bool lane_match = shape_gate_lane_match(wt.position.x, player_x, p_lane,
@@ -172,7 +172,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
         // ComboGate: RequiredShape + BlockedLanes (no RequiredLane)
         {
             auto rhythm_view = reg.view<ObstacleTag, WorldTransform, RequiredShape, BlockedLanes, BeatInfo>(
-                entt::exclude<ScoredTag, RequiredLane>);
+                entt::exclude<ScoredTag, ResolvedObstacleTag, RequiredLane>);
             for (auto [e, wt, req, blocked, info] : rhythm_view.each()) {
                 bool lane_ok  = !((blocked.mask >> p_lane.current) & 1);
                 if (!lane_ok) {
@@ -186,7 +186,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
             }
 
             auto view = reg.view<ObstacleTag, WorldTransform, RequiredShape, BlockedLanes>(
-                entt::exclude<ScoredTag, RequiredLane, BeatInfo>);
+                entt::exclude<ScoredTag, ResolvedObstacleTag, RequiredLane, BeatInfo>);
             for (auto [e, wt, req, blocked] : view.each()) {
                 bool lane_ok  = !((blocked.mask >> p_lane.current) & 1);
                 if (!lane_ok) {
@@ -201,7 +201,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
         // SplitPath: RequiredShape + RequiredLane
         {
             auto rhythm_view = reg.view<ObstacleTag, WorldTransform, RequiredShape, RequiredLane, BeatInfo>(
-                entt::exclude<ScoredTag>);
+                entt::exclude<ScoredTag, ResolvedObstacleTag>);
             for (auto [e, wt, req, rlane, info] : rhythm_view.each()) {
                 bool lane_ok  = (p_lane.current == rlane.lane);
                 if (!lane_ok) {
@@ -215,7 +215,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
             }
 
             auto view = reg.view<ObstacleTag, WorldTransform, RequiredShape, RequiredLane>(
-                entt::exclude<ScoredTag, BeatInfo>);
+                entt::exclude<ScoredTag, ResolvedObstacleTag, BeatInfo>);
             for (auto [e, wt, req, rlane] : view.each()) {
                 bool lane_ok  = (p_lane.current == rlane.lane);
                 if (!lane_ok) {
@@ -230,7 +230,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
         // ShapeGate: RequiredShape only (no BlockedLanes, no RequiredLane)
         {
             auto view = reg.view<ObstacleTag, WorldTransform, RequiredShape>(
-                entt::exclude<ScoredTag, BlockedLanes, RequiredLane>);
+                entt::exclude<ScoredTag, ResolvedObstacleTag, BlockedLanes, RequiredLane>);
             for (auto [e, wt, req] : view.each()) {
                 bool shape_match = player_matches_required_shape(p_shape, p_window, req.shape, rhythm_mode);
                 bool lane_match = shape_gate_lane_match(wt.position.x, player_x, p_lane,
@@ -246,7 +246,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
         // ComboGate: RequiredShape + BlockedLanes (no RequiredLane)
         {
             auto view = reg.view<ObstacleTag, WorldTransform, RequiredShape, BlockedLanes>(
-                entt::exclude<ScoredTag, RequiredLane>);
+                entt::exclude<ScoredTag, ResolvedObstacleTag, RequiredLane>);
             for (auto [e, wt, req, blocked] : view.each()) {
                 bool lane_ok  = !((blocked.mask >> p_lane.current) & 1);
                 if (!lane_ok) {
@@ -261,7 +261,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
         // SplitPath: RequiredShape + RequiredLane
         {
             auto view = reg.view<ObstacleTag, WorldTransform, RequiredShape, RequiredLane>(
-                entt::exclude<ScoredTag>);
+                entt::exclude<ScoredTag, ResolvedObstacleTag>);
             for (auto [e, wt, req, rlane] : view.each()) {
                 bool lane_ok  = (p_lane.current == rlane.lane);
                 if (!lane_ok) {
