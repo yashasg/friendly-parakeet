@@ -74,6 +74,8 @@ See `ios/README.md` for blocker checklist and full command modes.
 | Shape: Triangle | 3 / C | Tap right button |
 | Move left | A / ← | Swipe left |
 | Move right | D / → | Swipe right |
+| Jump | W / ↑ | Swipe up |
+| Slide | S / ↓ | Swipe down |
 
 ## Architecture
 
@@ -126,7 +128,7 @@ app/
     player.h              #   PlayerShape, ShapeWindow, Lane
     rhythm.h              #   TimingGrade, BeatInfo, WindowPhase
     beat_map.h            #   BeatEntry, BeatMap (loaded data)
-    song_state.h          #   SongState, HPState, SongResults
+    song_state.h          #   SongState, EnergyState, SongResults
   systems/                # system functions
     all_systems.h         #   declarations + pipeline order
     play_session.cpp      #   entity setup on game start
