@@ -161,7 +161,7 @@ struct PlayerShape {
 };
 
 /// Lane occupancy and transition. 8 bytes.
-/// Hot: read by collision_system, player_input_system, render_system.
+/// Hot: read by collision_system, player input handlers, render_system.
 struct Lane {
     int8_t   current;      // 0 = left, 1 = center, 2 = right
     int8_t   target;       // where we're heading (-1 = no transition)
@@ -320,28 +320,17 @@ struct InputState {
     }
 };
 
-/// Classified gesture — produced by input_system, consumed by player_input_system.
-enum class Gesture : uint8_t {
-    None       = 0,
-    Tap        = 1,
-    SwipeLeft  = 2,
-    SwipeRight = 3,
-    SwipeUp    = 4,
-    SwipeDown  = 5
+/// Semantic input events — produced by input/UI/test-player systems and
+/// drained by game_state_system through EnTT dispatcher listeners.
+struct GoEvent {
+    Direction dir = Direction::Up;
 };
 
-/// Singleton: result of gesture classification.
-struct GestureResult {
-    Gesture  gesture;
-    float    magnitude;    // swipe length in px (0 for taps)
-    float    hit_x;        // where the tap/swipe started
-    float    hit_y;
-};
-
-/// Singleton: shape button press (from gameplay HUD control activation).
-struct ShapeButtonEvent {
-    bool     pressed;      // true if a shape button was tapped this frame
-    Shape    shape;        // which shape was tapped
+struct ButtonPressEvent {
+    ButtonPressKind kind = ButtonPressKind::Shape;
+    Shape shape = Shape::Circle;  // valid when kind == Shape
+    MenuActionKind menu_action = MenuActionKind::Confirm;  // valid when kind == Menu
+    uint8_t menu_index = 0;  // valid when kind == Menu
 };
 ```
 
@@ -486,9 +475,9 @@ ParticleTag          0     COLD       render (filter)
 ─────────────────────────────────────────────────────────────
 SINGLETONS (ctx)
 ─────────────────────────────────────────────────────────────
-InputState          36     per-frame  input_system (write), player_input (read)
-EventQueue          var    per-frame  input_system (write raw), input routing (resolve), player_input (read), test_player_system (write)
-ButtonPressEvent     var   per-frame  input/UI dispatchers (write), game_state/player_input (read)
+InputState          36     per-frame  input_system internal touch/mouse state
+entt::dispatcher    var    per-frame  input/UI/test-player enqueue semantic events, game_state drains
+ButtonPress/Go      var    per-frame  dispatcher payloads handled by game_state/player input listeners
 GameState           12     per-frame  game_state_system
 BeatMap             var    session    setup_play_session (write), beat_scheduler (read)
 SongState           48     per-frame  song_playback/beat_scheduler
@@ -502,9 +491,11 @@ PlaySfxEvent        var    per-frame  dispatcher events drained by audio_system
 
 ## 3. System Execution Order
 
-Every system is a free function: `void name(entt::registry& reg, float dt)`.
-Systems run in strict order. No system reads data written by a later system in
-the same frame (unidirectional data flow).
+Every scheduled system is a free function: `void name(entt::registry& reg, float dt)`.
+Input reactions that mutate player components are dispatcher callbacks wired by
+`wire_input_dispatcher`, not a separately scheduled `player_input_system`.
+Systems run in strict order. No scheduled system reads data written by a later
+system in the same frame (unidirectional data flow).
 
 ```
  Frame N
@@ -512,94 +503,92 @@ the same frame (unidirectional data flow).
  │
  │  ┌─ PHASE 1: INPUT CAPTURE ──────────────────────────────┐
  │  │                                                        │
- │  │  1. input_system          Read raylib input queue.  │
- │  │                           Populate InputState +        │
- │  │                           EventQueue (raw InputEvents).│
+ │  │  1. input_system          Read raylib input queue.     │
+ │  │                           Update InputState and enqueue│
+ │  │                           GoEvent/ButtonPressEvent.    │
  │  │                                                        │
- │  │  2. input routing         Route swipe InputEvents →    │
- │  │                           GoEvent via                  │
- │  │                           gesture_routing_handle_input.│
- │  │                           Semantic UI/controller       │
- │  │                           emitters enqueue             │
- │  │                           ButtonPressEvent separately. │
+ │  │  2. other producers       UI controllers and           │
+ │  │                           test_player_system enqueue   │
+ │  │                           the same semantic events.    │
  │  └────────────────────────────────────────────────────────┘
  │
  │  ┌─ PHASE 2: GAME STATE GATE ────────────────────────────┐
  │  │                                                        │
- │  │  3. game_state_system     Process transition_pending.  │
+ │  │  3. game_state_system     Drain Go/ButtonPress events;│
+ │  │                           listeners update player and  │
+ │  │                           menu state in connection     │
+ │  │                           order. Process transitions.  │
  │  │                           On TITLE→PLAYING: spawn      │
  │  │                           player, reset singletons.    │
  │  │                           On PLAYING→GAME_OVER: save   │
  │  │                           high score, spawn crash fx.  │
  │  │                           Updates phase_timer.         │
  │  │                                                        │
- │  │  ── if phase != Playing, skip to PHASE 6 (render) ──  │
+ │  │  ── if phase != Playing, tick_playing_systems skips ── │
  │  └────────────────────────────────────────────────────────┘
  │
- │  ┌─ PHASE 3: PLAYER UPDATE ──────────────────────────────┐
+ │  ┌─ PHASE 3: PLAYBACK + PLAYING TICK ────────────────────┐
  │  │                                                        │
- │  │  4. player_input_system   Consume EventQueue:          │
- │  │                           • ButtonPressEvent→PlayerShape│
- │  │                           • GoEvent → Lane             │
- │  │                           • jump/slide   → VertState   │
- │  │                           Push SFX::ShapeShift if      │
- │  │                           shape changed.               │
+ │  │  4. song_playback_system  Advance SongState.song_time  │
+ │  │                           and current_beat from music. │
  │  │                                                        │
- │  │  5. player_movement_sys   Advance Lane.lerp_t,         │
- │  │                           VerticalState.timer,         │
- │  │                           PlayerShape.morph_t.         │
- │  │                           Update player Position.x     │
- │  │                           from lane lerp. Compute      │
- │  │                           y_offset from jump parabola. │
- │  └────────────────────────────────────────────────────────┘
- │
- │  ┌─ PHASE 4: WORLD UPDATE ───────────────────────────────┐
+ │  │  5. tick_playing_systems  Runs only in Playing phase:  │
  │  │                                                        │
- │  │  6. song_playback_system Advance SongState.song_time   │
- │  │                           and current_beat from music.  │
+ │  │     a. beat_log_system    Record session beat telemetry.│
  │  │                                                        │
- │  │  7. beat_scheduler_sys   Spawn authored BeatMap notes  │
+ │  │     b. beat_scheduler_sys Spawn authored BeatMap notes │
  │  │                           whose spawn_time has arrived.│
  │  │                                                        │
- │  │  8. scroll_system         For every (Position, Vel):   │
+ │  │     c. shape_window_sys   Advance active timing windows│
+ │  │                           for shape presses.           │
+ │  │                                                        │
+ │  │     d. player_movement    Advance lane, jump/slide,    │
+ │  │                           and morph interpolation.     │
+ │  │                                                        │
+ │  │     e. scroll_system      For every (Position, Vel):   │
  │  │                           pos.y += vel.dy * dt.        │
  │  │                           Simple, tight inner loop.    │
  │  │                                                        │
- │  │  9. motion_system         Apply model-space obstacle   │
+ │  │     f. motion_system      Apply model-space obstacle   │
  │  │                           motion where active.         │
  │  │                                                        │
- │  │ 10. collision_system      For each obstacle near       │
+ │  │     g. collision_system   For each obstacle near       │
  │  │                           PLAYER_Y: test shape match,  │
  │  │                           lane match, vertical state.  │
  │  │                           On match: emplace TimingGrade│
  │  │                           and ScoredTag.               │
  │  │                                                        │
- │  │ 11. miss_detection_sys    Mark passed unresolved notes │
+ │  │     h. miss_detection     Mark passed unresolved notes │
  │  │                           with MissTag/ScoredTag.      │
  │  │                                                        │
- │  │ 12. scoring_system        Process scored obstacles.    │
+ │  │     i. scoring_system     Process scored obstacles.    │
  │  │                           Apply timing multiplier and  │
  │  │                           chain bonus. Queue popup     │
  │  │                           requests. Update SongResults.│
  │  │                           Positive popups emit SFX.    │
  │  └────────────────────────────────────────────────────────┘
  │
- │  ┌─ PHASE 5: CLEANUP & FX ──────────────────────────────┐
+ │  ┌─ PHASE 4: CLEANUP & FX ──────────────────────────────┐
  │  │                                                        │
- │  │ 13. particle_system       Tick ParticleData.remaining. │
- │  │                           Destroy expired particles.   │
- │  │                           Apply gravity to survivors.  │
- │  │                                                        │
- │  │ 14. obstacle_despawn_     Destroy obstacles past the   │
+ │  │  6. obstacle_despawn_     Destroy obstacles past the   │
  │  │     system                camera Z / DESTROY_Y limit.  │
  │  │                                                        │
- │  │ 15. popup_display_system  Tick ScorePopup.remaining.   │
+ │  │  7. popup_feedback_system Spawn score/feedback popups  │
+ │  │                           from queued requests.        │
+ │  │                                                        │
+ │  │  8. popup_display_system  Tick ScorePopup.remaining.   │
  │  │                           Fade and destroy popups.     │
+ │  │                                                        │
+ │  │  9. energy_system         Apply pending energy changes.│
+ │  │                                                        │
+ │  │ 10. particle_system       Tick ParticleData.remaining. │
+ │  │                           Destroy expired particles.   │
+ │  │                           Apply gravity to survivors.  │
  │  └────────────────────────────────────────────────────────┘
  │
- │  ┌─ PHASE 6: RENDER (always runs) ──────────────────────┐
+ │  ┌─ PHASE 5: RENDER (always runs) ──────────────────────┐
  │  │                                                        │
- │  │ 16. render systems        BeginDrawing/ClearBackground.│
+ │  │ 11. render systems        BeginDrawing/ClearBackground.│
  │  │                           Draw background.             │
  │  │                           Draw obstacles (Layer::Game).│
  │  │                           Draw player (Layer::Game).   │
@@ -886,8 +875,8 @@ int main(int argc, char* argv[]) {
 
     // Emplace all singletons with defaults
     reg.ctx().emplace<InputState>();
-    reg.ctx().emplace<GestureResult>();
-    reg.ctx().emplace<ShapeButtonEvent>();
+    reg.ctx().emplace<entt::dispatcher>();
+    wire_input_dispatcher(reg);
     reg.ctx().emplace<GameState>(GameState{
         .phase = GamePhase::Title,
         .previous_phase = GamePhase::Title,
@@ -971,16 +960,16 @@ int main(int argc, char* argv[]) {
 │ beat_scheduler_system          │ Fixed    │ Logic    │
 │ shape_window_system            │ Fixed    │ Timing   │
 │ player_movement_system         │ Fixed    │ Physics  │
-│ motion_system                  │ Fixed    │ Physics  │
 │ scroll_system                  │ Fixed    │ Physics  │
+│ motion_system                  │ Fixed    │ Physics  │
 │ collision_system               │ Fixed    │ Physics  │
 │ miss_detection_system          │ Fixed    │ Logic    │
 │ scoring_system                 │ Fixed    │ Logic    │
+│ obstacle_despawn_system        │ Fixed    │ Cleanup  │
 │ popup_feedback_system          │ Fixed    │ FX       │
+│ popup_display_system           │ Fixed    │ FX       │
 │ energy_system                  │ Fixed    │ Logic    │
 │ particle_system                │ Fixed    │ FX       │
-│ obstacle_despawn_system        │ Fixed    │ Cleanup  │
-│ popup_display_system           │ Fixed    │ FX       │
 │ render systems                 │ Variable │ Display  │
 │ audio_system                   │ Variable │ Playback │
 └────────────────────────────────┴──────────┴──────────┘
@@ -1058,9 +1047,8 @@ int main(int argc, char* argv[]) {
            │                              │
            │                              ▼
            │           ┌──────────────────────────────────────┐
-           │           │ ShapeButtonEvent (ctx)               │
-           │           │   .pressed = true                    │
-           │           │   .shape   = Square                  │
+           │           │ entt::dispatcher                     │
+           │           │   ButtonPressEvent{Shape, Square}    │
            │           └──────────────────┬───────────────────┘
            │                              │
            │                              │
@@ -1103,38 +1091,36 @@ int main(int argc, char* argv[]) {
                │                          │
                ▼                          │
     ┌──────────────────────────┐          │
-    │ EventQueue (ctx)         │          │
-    │   .goes[0] = { Left }   │          │
-    │   .go_count = 1          │          │
+    │ entt::dispatcher        │          │
+    │   GoEvent{Left}         │          │
     └──────────┬───────────────┘          │
                │                          │
                ▼                          ▼
     ┌────────────────────────────────────────────────────────┐
-    │ player_input_system:                                   │
+    │ dispatcher listeners:                                  │
     │                                                        │
     │   // 1. Process shape button                           │
-    │   if (ShapeButtonEvent.pressed) {                      │
+    │   player_input_handle_press(ButtonPressEvent) {        │
     │       PlayerShape.previous = PlayerShape.current;      │──▶ PlayerShape
-    │       PlayerShape.current  = ShapeButtonEvent.shape;   │    { current: Square,
-    │       PlayerShape.morph_t  = 0.0f;                     │      previous: Circle,
-    │       AudioQueue.push(ShapeShift);                     │      morph_t: 0.0 }
+    │       PlayerShape.current  = event.shape;              │    { current: Square,
+    │       PlayerShape.morph_t  = 1.0f;                     │      previous: Circle,
+    │       disp.enqueue(PlaySfxEvent{ShapeShift});          │      morph_t: 1.0 }
     │   }                                                    │
     │                                                        │
-    │   // 2. Process gesture                                │
-    │   switch (GestureResult.gesture) {                     │
-    │       case SwipeLeft:                                   │
+    │   // 2. Process direction                              │
+    │   player_input_handle_go(GoEvent) {                    │
+    │       if (event.dir == Left) {                         │
     │           if (Lane.current > 0) {                      │──▶ Lane
     │               Lane.target = Lane.current - 1;          │    { current: 1,
     │               Lane.lerp_t = 0.0f;                      │      target: 0,
     │           }                                            │      lerp_t: 0.0 }
-    │           break;                                       │
-    │       case SwipeUp:                                     │
+    │       } else if (event.dir == Up) {                    │
     │           if (VertState.mode == Grounded) {             │──▶ VerticalState
     │               VertState.mode  = Jumping;               │    { mode: Jumping,
     │               VertState.timer = JUMP_DURATION;         │      timer: 0.45,
     │           }                                            │      y_offset: 0.0 }
-    │           break;                                       │
-    │       // ... SwipeRight, SwipeDown ...                  │
+    │       }                                                │
+    │       // ... Right, Down ...                           │
     │   }                                                    │
     └────────────────────────────────────────────────────────┘
 ```
@@ -1458,7 +1444,7 @@ app/
 │   ├── obstacle.h               ← obstacle tags/data and requirements
 │   ├── scoring.h                ← ScoreState, ScorePopup
 │   ├── input.h                  ← InputState, Direction
-│   ├── input_events.h           ← InputEvent, ButtonPressEvent, UI button data
+│   ├── input_events.h           ← ButtonPressEvent, GoEvent, UI button data
 │   ├── game_state.h             ← GameState, GamePhase, LevelSelectState
 │   ├── rendering.h              ← DrawSize, DrawLayer, screen/model transforms
 │   ├── particle.h               ← ParticleData, ParticleTag
@@ -1467,12 +1453,12 @@ app/
 │
 ├── systems/                     ← all system free functions
 │   ├── all_systems.h            ← convenience #include for all systems
-│   ├── input_system.cpp         ← raylib polling → InputEvent
+│   ├── input_system.cpp         ← raylib polling → semantic dispatcher events
 │   ├── game_state_system.cpp    ← phase transitions
 │   ├── song_playback_system.cpp ← music stream timing
 │   ├── beat_log_system.cpp      ← session beat telemetry
-│   ├── player_input_system.cpp  ← EventQueue (ButtonPressEvent + GoEvent) → player component writes
-│   ├── test_player_system.cpp   ← automated test player (writes EventQueue)
+│   ├── player_input_system.cpp  ← ButtonPressEvent/GoEvent listener callbacks
+│   ├── test_player_system.cpp   ← automated test player (enqueues semantic events)
 │   ├── player_movement_system.cpp ← lane lerp, jump parabola, morph advance
 │   ├── beat_scheduler_system.cpp ← song-authored obstacle entities
 │   ├── scroll_system.cpp        ← pos += vel × dt
