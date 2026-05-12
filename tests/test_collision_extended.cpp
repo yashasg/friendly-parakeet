@@ -138,6 +138,53 @@ TEST_CASE("collision: rhythm mode assigns Bad for far-off hit", "[collision][rhy
     CHECK(reg.get<TimingGrade>(obs).tier == TimingTier::Bad);
 }
 
+TEST_CASE("collision: rhythm shape gate only matches during Active window",
+          "[collision][rhythm][issue765]") {
+    auto active_reg = make_rhythm_registry();
+    auto active_player = make_rhythm_player(active_reg);
+    auto& active_shape = active_reg.get<PlayerShape>(active_player);
+    auto& active_window = active_reg.get<ShapeWindow>(active_player);
+    auto& active_song = active_reg.ctx().get<SongState>();
+
+    active_song.song_time = 5.0f;
+    active_shape.current = Shape::Circle;
+    active_window.target_shape = Shape::Circle;
+    active_window.phase = WindowPhase::Active;
+    active_window.press_time = active_song.song_time;
+
+    auto active_obs = make_shape_gate(active_reg, Shape::Circle, constants::PLAYER_Y);
+    active_reg.emplace<BeatInfo>(active_obs, 0, active_song.song_time,
+                                 active_song.song_time - active_song.lead_time);
+
+    collision_system(active_reg, 0.016f);
+
+    CHECK(active_reg.all_of<ScoredTag>(active_obs));
+    CHECK_FALSE(active_reg.all_of<MissTag>(active_obs));
+    CHECK(active_reg.all_of<TimingGrade>(active_obs));
+
+    auto morphout_reg = make_rhythm_registry();
+    auto morphout_player = make_rhythm_player(morphout_reg);
+    auto& morphout_shape = morphout_reg.get<PlayerShape>(morphout_player);
+    auto& morphout_window = morphout_reg.get<ShapeWindow>(morphout_player);
+    auto& morphout_song = morphout_reg.ctx().get<SongState>();
+
+    morphout_song.song_time = 5.0f;
+    morphout_shape.current = Shape::Circle;
+    morphout_window.target_shape = Shape::Circle;
+    morphout_window.phase = WindowPhase::MorphOut;
+    morphout_window.press_time = morphout_song.song_time - morphout_song.window_duration;
+
+    auto morphout_obs = make_shape_gate(morphout_reg, Shape::Circle, constants::PLAYER_Y);
+    morphout_reg.emplace<BeatInfo>(morphout_obs, 0, morphout_song.song_time,
+                                   morphout_song.song_time - morphout_song.lead_time);
+
+    collision_system(morphout_reg, 0.016f);
+
+    CHECK(morphout_reg.all_of<ScoredTag>(morphout_obs));
+    CHECK(morphout_reg.all_of<MissTag>(morphout_obs));
+    CHECK_FALSE(morphout_reg.all_of<TimingGrade>(morphout_obs));
+}
+
 TEST_CASE("collision: rhythm miss increments miss_count in SongResults", "[collision][rhythm]") {
     auto reg = make_rhythm_registry();
     make_rhythm_player(reg);
