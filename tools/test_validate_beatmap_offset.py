@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import os
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -39,6 +40,45 @@ class TestValidateBeatmapOffset(unittest.TestCase):
             with _WorkingDirectory(Path(__file__).resolve().parent):
                 rc = offset_validator.main([])
         self.assertEqual(rc, 0)
+
+    def test_rejects_non_anchor_beat_index_outside_analysis_range(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            beatmap_path = tmp_path / "fixture_beatmap.json"
+            analysis_path = tmp_path / "fixture_analysis.json"
+            beatmap_path.write_text(
+                """{
+                    "bpm": 120.0,
+                    "offset": 0.0,
+                    "difficulties": {
+                        "easy": {
+                            "beats": [
+                                {"beat": 2},
+                                {"beat": 4},
+                                {"beat": 100}
+                            ]
+                        }
+                    }
+                }"""
+            )
+            analysis_path.write_text(
+                """{
+                    "beats": [
+                        0.0, 0.5, 1.0, 1.5, 2.0,
+                        2.5, 3.0, 3.5, 4.0, 4.5
+                    ]
+                }"""
+            )
+
+            errors = offset_validator.validate_beatmap_pair(
+                beatmap_path,
+                analysis_path,
+                offset_validator.TOLERANCE_MS_DEFAULT,
+            )
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("authored beat index out of range", errors[0])
+        self.assertIn("100", errors[0])
 
 
 if __name__ == "__main__":
