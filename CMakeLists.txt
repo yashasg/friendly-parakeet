@@ -387,6 +387,8 @@ if(EMSCRIPTEN)
 endif()
 
 # Desktop startup/shutdown smoke harness used by native CTest/CI lifecycle validation.
+# This is intentionally separate from the Catch2 test binary below because it
+# owns the full application lifecycle instead of registering Catch2 test cases.
 if(NOT EMSCRIPTEN AND NOT SHAPESHIFTER_IOS)
     add_executable(shapeshifter_startup_shutdown_smoke
         tests/smoke/startup_shutdown_smoke.cpp
@@ -493,6 +495,8 @@ endif()
 
 # ── Tests + Benchmarks ──────────────────────────────────────
 if(BUILD_TESTING)
+# Catch2 tests are kept in the root tests/ directory; tests/smoke/ contains
+# standalone lifecycle harnesses that must be added explicitly.
 file(GLOB TEST_SOURCES CONFIGURE_DEPENDS tests/*.cpp benchmarks/*.cpp)
 
 # Unity build hazard exclusions (Keaton audit). These test files define
