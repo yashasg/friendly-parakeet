@@ -128,7 +128,7 @@ def _is_protected_obstacle_pair(left: dict, right: dict) -> bool:
     if not isinstance(left_time, (int, float)) or not isinstance(right_time, (int, float)):
         return False
     delta_ms = abs(float(left_time) - float(right_time)) * 1000.0
-    return delta_ms < CROSS_LAYER_PRESERVATION_WINDOW_MS
+    return delta_ms <= CROSS_LAYER_PRESERVATION_WINDOW_MS
 
 
 def _is_protected_by_cluster_neighbor(obstacle: dict, cluster: list[dict]) -> bool:
@@ -205,7 +205,7 @@ def calculate_content_metrics(
                 and prev.get("onset_class") is not None
                 and current.get("onset_class") is not None
             )
-            if cross_layer and 0.0 <= dt_ms < CROSS_LAYER_PRESERVATION_WINDOW_MS:
+            if cross_layer and 0.0 <= dt_ms <= CROSS_LAYER_PRESERVATION_WINDOW_MS:
                 cross_layer_preserved_pairs += 1
                 prev = current
                 continue
