@@ -732,6 +732,71 @@ TEST_CASE("parse: beat without time_sec falls back to beat_times", "[parse][beat
     CHECK_THAT(map.beats[0].time_sec, Catch::Matchers::WithinAbs(1.4f, 0.001f));
 }
 
+TEST_CASE("parse: missing selected difficulty falls back to valid difficulty",
+          "[parse][difficulty][issue859]") {
+    BeatMap map;
+    std::vector<BeatMapError> errors;
+    std::string json = R"({
+        "song_id": "difficulty_fallback_test",
+        "bpm": 120,
+        "offset": 0.0,
+        "lead_beats": 4,
+        "duration_sec": 60.0,
+        "difficulties": {
+            "medium": {
+                "beats": [
+                    { "beat": 2, "kind": "shape_gate", "shape": "circle", "lane": 1 }
+                ]
+            }
+        }
+    })";
+
+    CHECK(parse_beat_map(json, map, errors, "hard"));
+    CHECK(map.difficulty == "medium");
+    REQUIRE(map.beats.size() == 1);
+    REQUIRE_FALSE(errors.empty());
+    CHECK(errors[0].message.find("falling back to 'medium'") != std::string::npos);
+}
+
+TEST_CASE("parse: malformed selected difficulty fails without fallback",
+          "[parse][difficulty][issue859]") {
+    struct Case {
+        const char* difficulty_json;
+        const char* expected_message;
+    };
+    constexpr Case cases[] = {
+        {R"("hard": 7)", "Difficulty 'hard' must be an object"},
+        {R"("hard": {})", "Difficulty 'hard' must contain a 'beats' array"},
+        {R"("hard": { "beats": {} })", "Difficulty 'hard' field 'beats' must be an array"},
+    };
+
+    for (const auto& tc : cases) {
+        BeatMap map;
+        std::vector<BeatMapError> errors;
+        const std::string json = std::string(R"({
+            "song_id": "malformed_difficulty_test",
+            "bpm": 120,
+            "offset": 0.0,
+            "lead_beats": 4,
+            "duration_sec": 60.0,
+            "difficulties": {
+                )") + tc.difficulty_json + R"(,
+                "medium": {
+                    "beats": [
+                        { "beat": 2, "kind": "shape_gate", "shape": "circle", "lane": 1 }
+                    ]
+                }
+            }
+        })";
+
+        INFO("difficulty json: " << tc.difficulty_json);
+        CHECK_FALSE(parse_beat_map(json, map, errors, "hard"));
+        CHECK(map.beats.empty());
+        REQUIRE_FALSE(errors.empty());
+        CHECK(errors[0].message.find(tc.expected_message) != std::string::npos);
+    }
+}
+
 TEST_CASE("parse: non-numeric time_sec fails", "[parse][beat_times][time_sec]") {
     BeatMap map;
     std::vector<BeatMapError> errors;
