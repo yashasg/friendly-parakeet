@@ -340,10 +340,21 @@ struct ButtonPressEvent {
 // components/game_state.h
 
 enum class GamePhase : uint8_t {
-    Title    = 0,
-    Playing  = 1,
-    Paused   = 2,
-    GameOver = 3
+    Title        = 0,
+    LevelSelect  = 1,
+    Playing      = 2,
+    Paused       = 3,
+    GameOver     = 4,
+    SongComplete = 5,
+    Settings     = 6,
+    Tutorial     = 7
+};
+
+enum class EndScreenChoice : uint8_t {
+    None = 0,
+    Restart = 1,
+    LevelSelect = 2,
+    MainMenu = 3
 };
 
 /// Singleton: governs which systems run and screen transitions.
@@ -354,6 +365,7 @@ struct GameState {
     bool       transition_pending;   // set to request a phase change
     GamePhase  next_phase;           // destination of pending transition
     float      transition_alpha;     // 0..1 for fade effects
+    EndScreenChoice end_choice;      // pending end-screen menu action
 };
 ```
 
@@ -518,7 +530,7 @@ system in the same frame (unidirectional data flow).
  │  │                           listeners update player and  │
  │  │                           menu state in connection     │
  │  │                           order. Process transitions.  │
- │  │                           On TITLE→PLAYING: spawn      │
+ │  │                           On entry to PLAYING: spawn    │
  │  │                           player, reset singletons.    │
  │  │                           On PLAYING→GAME_OVER: save   │
  │  │                           high score, spawn crash fx.  │
@@ -581,14 +593,16 @@ system in the same frame (unidirectional data flow).
  │  │                                                        │
  │  │  9. energy_system         Apply pending energy changes.│
  │  │                                                        │
- │  │ 10. particle_system       Tick ParticleData.remaining. │
+ │  │ 10. energy_bar_system     Smooth displayed energy.     │
+ │  │                                                        │
+ │  │ 11. particle_system       Tick ParticleData.remaining. │
  │  │                           Destroy expired particles.   │
  │  │                           Apply gravity to survivors.  │
  │  └────────────────────────────────────────────────────────┘
  │
  │  ┌─ PHASE 5: RENDER (always runs) ──────────────────────┐
  │  │                                                        │
- │  │ 11. render systems        BeginDrawing/ClearBackground.│
+ │  │ 12. render systems        BeginDrawing/ClearBackground.│
  │  │                           Draw background.             │
  │  │                           Draw obstacles (Layer::Game).│
  │  │                           Draw player (Layer::Game).   │
@@ -599,8 +613,8 @@ system in the same frame (unidirectional data flow).
  │  │                             proximity ring, buttons.   │
  │  │                           EndDrawing.                  │
  │  │                                                        │
- │  │ 16. audio_system          Play all SFX in AudioQueue.  │
- │  │                           Clear queue.                 │
+ │  │ 13. audio_system          Drain PlaySfxEvent dispatcher │
+ │  │                           events.                      │
  │  └────────────────────────────────────────────────────────┘
  │
  ═══════════════════════════════════════════════════════════════
@@ -612,8 +626,7 @@ system in the same frame (unidirectional data flow).
 systems. Fixed-lifetime effects no longer use a shared generic timer component:
 `particle_system` owns `ParticleData::remaining`, and `popup_display_system`
 owns `ScorePopup::remaining`. Obstacle destruction is handled by
-`obstacle_despawn_system`, which reads `ObstacleScrollZ` for model-authority
-obstacles and `Position` for legacy position-authority obstacles.
+`obstacle_despawn_system`, which reads `WorldTransform` for obstacle position.
 
 ---
 
@@ -623,25 +636,26 @@ obstacles and `Position` for legacy position-authority obstacles.
             ┌────────────────────────────────────────────────────┐
             │                                                    │
             ▼                                                    │
-     ╔═══════════╗     tap to start      ╔════════════╗         │
-     ║   TITLE   ║ ────────────────────▶ ║  PLAYING   ║         │
-     ╚═══════════╝                       ╚════════════╝         │
-            ▲                               │      │            │
-            │                    pause btn  │      │ collision  │
-            │                    or app bg  │      │ mismatch   │
-            │                               ▼      ▼            │
-            │                         ╔══════════╗ ╔══════════╗ │
-            │              resume ◀── ║  PAUSED  ║ ║ GAMEOVER ║ │
-            │                         ╚══════════╝ ╚══════════╝ │
-            │                               │            │      │
-            │            quit to title      │    retry    │      │
-            └───────────────────────────────┘            │      │
-            └────────────────────────────────────────────┘      │
-                                quit to title                   │
-            └───────────────────────────────────────────────────┘
+     ╔═══════════╗   start    ╔══════════════╗   confirm   ╔════════════╗
+     ║   TITLE   ║ ─────────▶ ║ LEVEL_SELECT ║ ──────────▶ ║  PLAYING   ║
+     ╚═══════════╝            ╚══════════════╝             ╚════════════╝
+            ▲                        ▲                       │    │    │
+            │                        │             pause/app │    │    │ song
+            │                        │                       ▼    │    ▼ done
+            │                        │                  ╔══════════╗ ╔══════════════╗
+            │                        └───────────────── ║  PAUSED  ║ ║ SONG_COMPLETE║
+            │                                           ╚══════════╝ ╚══════════════╝
+            │                                                │              │
+            │                       energy depleted          │              │
+            │                                                ▼              │
+            │                                           ╔══════════╗        │
+            └────────────────────────────────────────── ║ GAMEOVER ║ ◀──────┘
+                                                        ╚══════════╝
+     TITLE also routes to SETTINGS and TUTORIAL; end screens can restart,
+     return to LEVEL_SELECT, or return to TITLE.
 ```
 
-### Transition: TITLE → PLAYING
+### Transition: menu flow → PLAYING
 
 ```cpp
 void enter_playing(entt::registry& reg) {

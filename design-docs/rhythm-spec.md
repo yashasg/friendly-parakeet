@@ -607,13 +607,13 @@ if (!song) return;  // no rhythm context — skip
 ## Window expiry same frame as obstacle arrival
 
 ```
-  Execution order: collision_system runs BEFORE shape_window_system.
+  Execution order: shape_window_system runs BEFORE collision_system.
 
   If the window expires on the exact frame the obstacle arrives:
-    → collision resolves first → player still in Active phase → PASS
-    → shape_window_system then transitions to MorphOut
+    → shape_window_system advances the window first
+    → collision resolves against the resulting phase
 
-  No race condition. Collision always wins the tie.
+  No race condition. The current frame's shape-window phase is authoritative.
 ```
 
 ## Same-shape spam
