@@ -9,6 +9,7 @@ import { entryRenderX, entryToX, timeToX } from '../js/timeline.js';
 import {
   DEFAULT_LEVELS,
   EDITOR_OBSTACLE_KINDS,
+  OBSTACLE_KINDS,
   canAutoLoadBundledContent,
   getContentUrl,
 } from '../js/constants.js';
@@ -124,6 +125,33 @@ test('beatmap round-trip preserves timing metadata and omits missing song_path',
   assert.equal(exported.difficulties.hard.beats[0].subdivision_label, 'eighth');
 });
 
+test('shipped beatmaps import and export onset_marker metadata', () => {
+  assert.ok(OBSTACLE_KINDS.includes('onset_marker'));
+
+  const beatmapDir = path.resolve(TEST_DIR, '../../../content/beatmaps');
+  const beatmapNames = fs.readdirSync(beatmapDir)
+    .filter((name) => name.endsWith('_beatmap.json'))
+    .sort();
+  assert.ok(beatmapNames.length > 0, 'expected shipped beatmaps');
+
+  for (const name of beatmapNames) {
+    const source = fs.readFileSync(path.join(beatmapDir, name), 'utf8');
+    const sourceJson = JSON.parse(source);
+    const sourceOnsetCount = countKind(sourceJson, 'onset_marker');
+
+    const imported = importBeatmap(source);
+    assert.deepEqual(imported.errors, [], `${name} should import cleanly`);
+    assert.ok(imported.data, `${name} should produce editor data`);
+
+    const exported = JSON.parse(exportBeatmap(imported.data));
+    assert.equal(
+      countKind(exported, 'onset_marker'),
+      sourceOnsetCount,
+      `${name} should preserve onset_marker rows`,
+    );
+  }
+});
+
 test('state-shaped export preserves imported top-level timing metadata', () => {
   const importedState = {
     songId: 'song_001',
@@ -159,6 +187,16 @@ test('state-shaped export preserves imported top-level timing metadata', () => {
   assert.equal(exported.difficulties.hard.count, 2);
   assert.equal(Object.prototype.hasOwnProperty.call(exported, 'song_path'), false);
 });
+
+function countKind(beatmap, kind) {
+  let count = 0;
+  for (const diff of Object.values(beatmap.difficulties || {})) {
+    for (const beat of diff.beats || []) {
+      if (beat.kind === kind) count += 1;
+    }
+  }
+  return count;
+}
 
 test('validation accepts C++ loader-compatible same-beat timed entries', () => {
   const errors = validate({

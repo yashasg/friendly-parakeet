@@ -28,7 +28,7 @@
   │                                                                  │
   │  REMAINING INTEGRATION WORK                                     │
   │                                                                  │
-  │  • future obstacle kinds remain explicitly non-shipped scope    │
+  │    • future blocking obstacle kinds remain explicitly non-shipped scope │
   └──────────────────────────────────────────────────────────────────┘
 ```
 
@@ -71,12 +71,18 @@
 
 **Obstacle object variants:**
 
-> ⚠️ **Shipped implementation — only `shape_gate` is generated and used today.**
-> Archived/future `low_bar` and `high_bar` names are not runtime-supported authoring values.
+> ⚠️ **Shipped implementation — required obstacles are `shape_gate` entries today.**
+> Shipped beatmaps may also contain `onset_marker` entries; these preserve onset
+> metadata and are skipped by the runtime scheduler. Archived/future `low_bar`
+> and `high_bar` names are not runtime-supported authoring values.
 
 ```json
-// shape_gate — currently the only emitted type in shipped beatmaps
+// shape_gate — currently the only required obstacle type in shipped beatmaps
 { "beat": 12, "kind": "shape_gate", "shape": "circle", "lane": 0 }
+
+// onset_marker — non-blocking onset metadata, imported/exported by tools,
+// parsed by runtime, and skipped by beat_scheduler_system.
+{ "beat": 12, "kind": "onset_marker", "shape": "circle", "lane": 0 }
 ```
 
 Archived/future design-space names such as `low_bar` and `high_bar` must not be emitted by current tools.
@@ -175,10 +181,11 @@ The current obstacle components already match the beatmap schema:
 > and emitted in shipped beatmaps. LowBar/HighBar were removed from the runtime obstacle enum.
 
 ```
-  ObstacleKind::ShapeGate      → "shape_gate"       ✓  currently used in shipped content
+  ObstacleKind::ShapeGate      → "shape_gate"       ✓  required shipped obstacle
   ObstacleKind::LaneBlock      → "lane_block"       ✓  legacy/backward-compatible support
   ObstacleKind::ComboGate      → "combo_gate"       ✓  runtime-supported, not generated today
   ObstacleKind::SplitPath      → "split_path"       ✓  runtime-supported, not generated today
+  ObstacleKind::OnsetMarker    → "onset_marker"     ✓  non-blocking shipped metadata
 
   RequiredShape { shape }      → beatmap "shape" field  ✓
 ```
@@ -502,7 +509,7 @@ Ordered by dependency chain. Steps marked ✅ are already on `main`.
   STEP 3 — Beat Map Loader                         ✅ DONE
   ─────────────────────────────
   • beat_map_loader.h/.cpp: JSON → BeatMap with validation
-  • Handles all obstacle kinds including ComboGate, SplitPath
+  • Handles all obstacle kinds including ComboGate, SplitPath, OnsetMarker
   • init_song_state() computes derived fields from BPM
 
   STEP 4 — Song Playback + Beat Scheduler          ✅ DONE
