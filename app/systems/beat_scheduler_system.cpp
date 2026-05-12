@@ -69,12 +69,12 @@ void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
         // Compute x: LaneBlock derives it from blocked_mask; lane-based kinds
         // use entry.lane directly; bar/gate types default to center lane.
         float x_pos = constants::LANE_X[1];
-        if (entry.kind == ObstacleKind::ShapeGate) {
+        if (entry.kind == ObstacleKind::ShapeGate || entry.kind == ObstacleKind::SplitPath) {
             const int lane = static_cast<int>(entry.lane);
             if (lane >= 0 && lane < constants::LANE_COUNT) {
                 x_pos = constants::LANE_X[lane];
             } else {
-                TraceLog(LOG_WARNING, "Invalid ShapeGate lane %d; defaulting to center lane", lane);
+                TraceLog(LOG_WARNING, "Invalid lane-based obstacle lane %d; defaulting to center lane", lane);
             }
         } else if (entry.kind == ObstacleKind::LaneBlock) {
             int display_lane = 1;

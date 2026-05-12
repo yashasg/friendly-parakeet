@@ -361,13 +361,17 @@ TEST_CASE("beat_scheduler: spawns SplitPath with shape and required lane", "[bea
 
     beat_scheduler_system(reg, 0.016f);
 
-    auto view = reg.view<ObstacleTag, Obstacle, RequiredShape, RequiredLane>();
-    for (auto [e, obs, rs, rl] : view.each()) {
+    auto view = reg.view<ObstacleTag, Obstacle, RequiredShape, RequiredLane, WorldTransform>();
+    int count = 0;
+    for (auto [e, obs, rs, rl, wt] : view.each()) {
         (void)obs;
+        ++count;
         CHECK_FALSE(reg.all_of<BlockedLanes>(e));
         CHECK(rs.shape == Shape::Square);
         CHECK(rl.lane == 2);
+        CHECK_THAT(wt.position.x, Catch::Matchers::WithinAbs(constants::LANE_X[2], 0.01f));
     }
+    CHECK(count == 1);
 }
 
 TEST_CASE("beat_scheduler: all spawned obstacles have BeatInfo", "[beat_scheduler]") {
