@@ -11,7 +11,7 @@
 //
 
 #include <catch2/catch_test_macros.hpp>
-#include "util/beat_map_loader.h"
+#include "entities/beat_map.h"
 #include "util/shape_lane_mapping.h"
 
 #include <algorithm>

@@ -23,7 +23,7 @@
 #include "test_helpers.h"
 #include "components/rhythm.h"
 #include "util/rhythm_math.h"
-#include "components/beat_map.h"
+#include "entities/beat_map.h"
 #include "systems/all_systems.h"
 #include "constants.h"
 
@@ -58,7 +58,7 @@ static float single_arrival_time(entt::registry& reg) {
 TEST_CASE("offset_semantics: beat_index=0 arrives at exactly offset", "[beat_scheduler][offset][issue137]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
-    auto& map  = reg.ctx().get<BeatMap>();
+    auto& map  = beat_map(reg);
 
     song.offset = 1.5f;
     map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
@@ -73,7 +73,7 @@ TEST_CASE("offset_semantics: beat_index=0 arrives at exactly offset", "[beat_sch
 TEST_CASE("offset_semantics: beat_index=0 with zero offset arrives at t=0", "[beat_scheduler][offset][issue137]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
-    auto& map  = reg.ctx().get<BeatMap>();
+    auto& map  = beat_map(reg);
 
     song.offset = 0.0f;
     map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Square, 1, 0});
@@ -91,7 +91,7 @@ TEST_CASE("offset_semantics: beat_index=N arrives at offset + N*period", "[beat_
     // expected = 0.35 + 8 * 0.5 = 4.35
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
-    auto& map  = reg.ctx().get<BeatMap>();
+    auto& map  = beat_map(reg);
 
     song.bpm    = 120.0f;
     song.offset = 0.35f;
@@ -110,7 +110,7 @@ TEST_CASE("offset_semantics: two beat_indices are exactly period apart", "[beat_
     // Beat N and beat N+1 should have arrival times exactly one period apart.
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
-    auto& map  = reg.ctx().get<BeatMap>();
+    auto& map  = beat_map(reg);
 
     song.bpm    = 160.0f;
     song.offset = 2.27f;
@@ -138,7 +138,7 @@ TEST_CASE("offset_semantics: doubling offset shifts arrival by same delta", "[be
     auto measure_arrival = [](float offset_val, int beat_idx) -> float {
         auto reg = make_rhythm_registry();
         auto& song = reg.ctx().get<SongState>();
-        auto& map  = reg.ctx().get<BeatMap>();
+        auto& map  = beat_map(reg);
         song.bpm    = 120.0f;
         song.offset = offset_val;
         song_state_compute_derived(song);
@@ -165,7 +165,7 @@ TEST_CASE("offset_semantics: first authored beat_index=N>0 arrives after offset"
     // authored content (beat 0 was never in the song chart).
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
-    auto& map  = reg.ctx().get<BeatMap>();
+    auto& map  = beat_map(reg);
 
     song.bpm    = 120.0f;
     song.offset = 1.0f;
@@ -195,7 +195,7 @@ TEST_CASE("offset_semantics: offset must not be zero when pipeline sets it from 
     // real-world song means the rhythm grid starts at a positive time.
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
-    auto& map  = reg.ctx().get<BeatMap>();
+    auto& map  = beat_map(reg);
 
     // Stomper offset = 2.27s (real value from shipped beatmap)
     song.bpm    = 159.0f;
@@ -251,7 +251,7 @@ TEST_CASE("offset_semantics: uniform-beat assumption valid within per-beat toler
     // Verify scheduler applies the formula with zero internal error
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
-    auto& map  = reg.ctx().get<BeatMap>();
+    auto& map  = beat_map(reg);
 
     song.bpm    = BPM;
     song.offset = OFFSET;
@@ -280,7 +280,7 @@ TEST_CASE("offset_semantics: halving BPM doubles all collision intervals", "[bea
     auto measure_arrival = [](float bpm, int beat_idx) -> float {
         auto reg = make_rhythm_registry();
         auto& song = reg.ctx().get<SongState>();
-        auto& map  = reg.ctx().get<BeatMap>();
+        auto& map  = beat_map(reg);
         song.bpm    = bpm;
         song.offset = 0.0f;
         song_state_compute_derived(song);

@@ -14,13 +14,14 @@
 #include "components/haptics.h"
 #include "components/audio_events.h"
 #include "audio/audio_routing.h"
-#include "util/settings.h"
+#include "entities/settings.h"
 #include "components/rhythm.h"
 #include "util/rhythm_math.h"
 #include "components/high_score.h"
 #include "components/rng.h"
 #include "components/gameplay_intents.h"
 #include "constants.h"
+#include "entities/beat_map.h"
 #include "entities/obstacle_render_entity.h"
 #include "systems/all_systems.h"
 #include "systems/runtime_systems.h"
@@ -39,9 +40,9 @@ inline entt::registry make_registry() {
         GamePhase::Playing, GamePhase::Playing, 0.0f, false, GamePhase::Playing, 0.0f
     });
     reg.ctx().emplace<ScoreState>();
-    reg.ctx().emplace<SettingsState>();  // defaults: haptics_enabled=true
+    create_settings_entity(reg);  // defaults: haptics_enabled=true
     reg.ctx().emplace<LevelSelectState>();
-    reg.ctx().emplace<BeatMap>();
+    create_beat_map_entity(reg);
     reg.ctx().emplace<SongState>();
     reg.ctx().emplace<EnergyState>();
     reg.ctx().emplace<SongResults>();

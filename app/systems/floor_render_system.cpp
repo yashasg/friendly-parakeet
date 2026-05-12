@@ -1,6 +1,6 @@
 #include "floor_render_system.h"
 
-#include "../components/beat_map.h"
+#include "../entities/beat_map.h"
 #include "../components/song_state.h"
 #include "../constants.h"
 #include "../rendering/camera_resources.h"
@@ -185,7 +185,7 @@ void draw_floor_beat_lines(const SongState* song, const BeatMap* map) {
 void floor_render_system(const entt::registry& reg) {
     const auto& floor_params = reg.ctx().get<FloorParams>();
     const auto* song = reg.ctx().find<SongState>();
-    const auto* map = reg.ctx().find<BeatMap>();
+    const auto* map = find_beat_map(reg);
 
     draw_floor_lines(floor_params);
     draw_floor_beat_lines(song, map);

@@ -1,6 +1,6 @@
 #include "all_systems.h"
 #include "../entities/obstacle_entity.h"
-#include "../components/beat_map.h"
+#include "../entities/beat_map.h"
 #include "../components/game_state.h"
 #include "../components/rhythm.h"
 #include "../components/song_state.h"
@@ -8,19 +8,18 @@
 #include "../components/transform.h"
 #include "../components/rendering.h"
 #include "../constants.h"
-#include "../util/settings.h"
-#include "../util/settings_persistence.h"
+#include "../entities/settings.h"
 
 void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
     auto* song = reg.ctx().find<SongState>();
-    auto* map  = reg.ctx().find<BeatMap>();
+    auto* map  = find_beat_map(reg);
     if (!song || !map || !song->playing) return;
 
     // Player calibration (#474). Positive audio_offset_ms delays beat timing:
     // we push spawn_time forward by the same delta so obstacles arrive at
     // PLAYER_Y later, matching the player's perceived audio lag. Negative
-    // values advance beat timing. See settings.h and settings_persistence.h.
-    const auto* settings = reg.ctx().find<SettingsState>();
+    // values advance beat timing. See entities/settings.h.
+    const auto* settings = find_settings_state(reg);
     const float audio_offset_sec = settings ? settings::audio_offset_seconds(*settings) : 0.0f;
 
     while (song->next_spawn_idx < map->beats.size()) {

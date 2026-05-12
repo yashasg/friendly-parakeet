@@ -68,7 +68,7 @@ TEST_CASE("Play session: SongResults total_notes matches every shipped song diff
 
             setup_play_session(reg);
 
-            const auto& beatmap = reg.ctx().get<BeatMap>();
+            const auto& beatmap = beat_map(reg);
             REQUIRE_FALSE(beatmap.beats.empty());
             const int expected_total = static_cast<int>(beatmap.beats.size());
 

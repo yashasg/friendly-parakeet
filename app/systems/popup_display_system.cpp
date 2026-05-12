@@ -3,7 +3,7 @@
 #include "../components/rendering.h"
 #include "../components/system_scratch.h"
 #include "../components/transform.h"
-#include "../util/settings.h"
+#include "../entities/settings.h"
 
 namespace {
 
@@ -25,7 +25,7 @@ void popup_display_system(entt::registry& reg, float dt) {
     // popup drift while leaving text/colour/value (informational
     // channel) untouched. The alpha-fade still runs so popups expire
     // on schedule.
-    const auto* settings_ptr = reg.ctx().find<SettingsState>();
+    const auto* settings_ptr = find_settings_state(reg);
     const bool reduce_motion = settings_ptr && settings_ptr->reduce_motion;
     if (reduce_motion) {
         auto drift_view = reg.view<ScorePopup, MotionVelocity>();

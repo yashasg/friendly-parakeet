@@ -2,7 +2,7 @@
 #include "test_helpers.h"
 #include "components/haptics.h"
 #include "components/audio_events.h"
-#include "util/settings.h"
+#include "entities/settings.h"
 #include "components/player.h"
 #include "components/transform.h"
 #include "components/input_events.h"
@@ -92,7 +92,7 @@ TEST_CASE("game state haptic: DeathCrash still enqueued; listener gates hardware
     // This test verifies the event IS enqueued (semantic intent is recorded) and that
     // haptic_system completes without crash when the listener gates the hardware call.
     auto reg = make_registry();
-    reg.ctx().get<SettingsState>().haptics_enabled = false;
+    settings_state(reg).haptics_enabled = false;
     reg.ctx().get<GameState>().transition_pending = true;
     reg.ctx().get<GameState>().next_phase = GamePhase::GameOver;
 
@@ -145,7 +145,7 @@ TEST_CASE("game state haptic: UIButtonTap enqueued for non-Restart end screen bu
 TEST_CASE("game state haptic: haptic_system no-crash when haptics_enabled=false and RetryTap enqueued", "[haptic]") {
     // Listener gates platform call; system must complete cleanly.
     auto reg = make_registry();
-    reg.ctx().get<SettingsState>().haptics_enabled = false;
+    settings_state(reg).haptics_enabled = false;
     reg.ctx().get<GameState>().phase = GamePhase::GameOver;
     reg.ctx().get<GameState>().phase_timer = 1.0f;
 

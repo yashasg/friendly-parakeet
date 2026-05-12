@@ -19,7 +19,7 @@
 #include "components/rendering.h"
 #include "components/rhythm.h"
 #include "components/scoring.h"
-#include "util/settings.h"
+#include "entities/settings.h"
 #include "components/song_state.h"
 #include "components/transform.h"
 #include "constants.h"

@@ -1,5 +1,6 @@
 #include "all_systems.h"
 #include "../util/session_logger.h"
+#include "../entities/beat_map.h"
 #include "../components/game_state.h"
 #include "../components/rhythm.h"
 
@@ -10,7 +11,7 @@ void beat_log_system(entt::registry& reg, float /*dt*/) {
     if (!log || !log->file) return;
 
     auto* song = reg.ctx().find<SongState>();
-    auto* map = reg.ctx().find<BeatMap>();
+    auto* map = find_beat_map(reg);
     if (!song || !song->playing || song->finished) return;
 
     if (song->current_beat > log->last_logged_beat) {

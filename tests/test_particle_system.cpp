@@ -112,7 +112,7 @@ TEST_CASE("particle: no particles means no crash", "[particle]") {
 TEST_CASE("particle: reduce_motion zeroes velocity and disables gravity (#534)",
           "[particle][reduce_motion][issue534]") {
     auto reg = make_registry();
-    reg.ctx().get<SettingsState>().reduce_motion = true;
+    settings_state(reg).reduce_motion = true;
 
     auto e = make_particle(reg, 5.0f, 1.0f, 1.0f, 50.0f, -25.0f);
 
@@ -132,7 +132,7 @@ TEST_CASE("particle: reduce_motion zeroes velocity and disables gravity (#534)",
 TEST_CASE("particle: reduce_motion=false preserves gravity behavior (#534)",
           "[particle][reduce_motion][issue534]") {
     auto reg = make_registry();
-    reg.ctx().get<SettingsState>().reduce_motion = false;
+    settings_state(reg).reduce_motion = false;
 
     auto e = make_particle(reg, 5.0f, 1.0f, 1.0f, 0.0f, 0.0f);
     particle_system(reg, 0.1f);

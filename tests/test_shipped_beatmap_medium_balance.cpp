@@ -4,9 +4,8 @@
 // runtime beatmap loader path.
 
 #include <catch2/catch_test_macros.hpp>
-#include "components/beat_map.h"
+#include "entities/beat_map.h"
 #include "components/obstacle.h"
-#include "util/beat_map_loader.h"
 
 #include <algorithm>
 #include <filesystem>

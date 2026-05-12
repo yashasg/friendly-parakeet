@@ -2,8 +2,20 @@
 
 #include "components/beat_map.h"
 #include "components/song_state.h"
+#include <entt/entt.hpp>
 #include <string>
 #include <vector>
+
+struct BeatMapTag {};
+
+// Creates the singleton beat-map entity and returns its handle.
+// Throws std::logic_error if the registry already has a BeatMapTag entity.
+entt::entity create_beat_map_entity(entt::registry& reg, BeatMap map = {});
+
+BeatMap* find_beat_map(entt::registry& reg);
+const BeatMap* find_beat_map(const entt::registry& reg);
+BeatMap& beat_map(entt::registry& reg);
+const BeatMap& beat_map(const entt::registry& reg);
 
 struct BeatMapError {
     int         beat_index = -1;

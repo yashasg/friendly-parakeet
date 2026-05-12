@@ -28,7 +28,7 @@
 #include "components/text.h"      // FontSize
 #include "components/rhythm.h"    // TimingTier
 #include "components/transform.h" // WorldTransform, MotionVelocity
-#include "util/settings.h"        // SettingsState (reduce_motion)
+#include "entities/settings.h"        // SettingsState (reduce_motion)
 #include "systems/all_systems.h"  // popup_display_system declaration
 #include "entities/popup_entity.h"
 #include "constants.h"
@@ -424,7 +424,8 @@ TEST_CASE("popup_display_system: reduce_motion zeroes drift velocity (#534)",
           "[popup_display][reduce_motion][issue534]") {
     entt::registry reg;
     runtime_system_scratch_init(reg);
-    reg.ctx().emplace<SettingsState>(SettingsState{}).reduce_motion = true;
+    create_settings_entity(reg);
+    settings_state(reg).reduce_motion = true;
 
     auto e = spawn_score_popup(reg, {100.0f, 500.0f, 200, TimingTier::Perfect});
     REQUIRE(reg.all_of<MotionVelocity>(e));
@@ -450,7 +451,7 @@ TEST_CASE("popup_display_system: reduce_motion=false leaves drift untouched (#53
           "[popup_display][reduce_motion][issue534]") {
     entt::registry reg;
     runtime_system_scratch_init(reg);
-    reg.ctx().emplace<SettingsState>();  // reduce_motion defaults to false
+    create_settings_entity(reg);  // reduce_motion defaults to false
 
     auto e = spawn_score_popup(reg, {0.0f, 0.0f, 100, TimingTier::Good});
     popup_display_system(reg, 0.016f);

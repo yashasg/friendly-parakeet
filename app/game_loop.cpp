@@ -7,7 +7,7 @@
 #include "audio/audio_types.h"
 #include "audio/sfx_bank.h"
 #include "audio/audio_routing.h"
-#include "util/settings.h"
+#include "entities/settings.h"
 #include "components/rhythm.h"
 #include "audio/music_context.h"
 #include "components/rendering.h"
@@ -22,10 +22,10 @@
 #include "rendering/text_resources.h"
 #include "util/session_logger.h"
 #include "systems/camera_system.h"
+#include "entities/beat_map.h"
 #include "entities/obstacle_render_entity.h"
 #include "platform_display.h"
 #include "util/persistence_policy.h"
-#include "util/settings_persistence.h"
 #include "components/high_score.h"
 #include "util/high_score_persistence.h"
 #include "platform/haptics_backend.h"
@@ -212,8 +212,7 @@ bool game_loop_init(entt::registry& reg,
         if (settings.haptics_enabled) {
             platform::haptics::warmup(reg);
         }
-        reset_ctx_singleton<SettingsState>(reg, settings);
-        reset_ctx_singleton<SettingsPersistence>(reg, settings_persistence);
+        create_settings_entity(reg, settings, settings_persistence);
     }
 
     // High scores — load from disk; defaults remain if file is missing/corrupt/path-invalid.
@@ -238,7 +237,7 @@ bool game_loop_init(entt::registry& reg,
     wire_obstacle_mesh_lifetime(reg);
 
     // UI + beatmap + music
-    reset_ctx_singleton<BeatMap>(reg);
+    create_beat_map_entity(reg);
     reset_ctx_singleton<SongState>(reg);
     reset_ctx_singleton<MusicContext>(reg);
 

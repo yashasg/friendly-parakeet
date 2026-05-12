@@ -114,7 +114,7 @@ TEST_CASE("song_playback: current_beat advances with offset", "[song_playback]")
 TEST_CASE("song_playback: current_beat follows beat_times array when present", "[song_playback]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
-    auto& map = reg.ctx().get<BeatMap>();
+    auto& map = beat_map(reg);
     song.song_time = 0.0f;
     song.current_beat = -1;
     map.beat_times = {0.4f, 0.9f, 1.6f};

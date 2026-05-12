@@ -10,7 +10,7 @@
 #include "../../components/transform.h"
 #include "../../components/ui_layout_cache.h"
 #include "../../constants.h"
-#include "../../util/settings.h"
+#include "../../entities/settings.h"
 #include "screen_controller_base.h"
 #include "gameplay_hud_screen_controller.h"
 #include <entt/entt.hpp>
@@ -182,7 +182,7 @@ void render_shape_buttons(const entt::registry& reg,
     // Reduce-motion (#534): suppress the continuous approach-ring lerp/fade
     // and snap to a static "perfect-window-imminent" indicator so the
     // timing cue stays informational without the size animation.
-    const auto* settings_ptr = reg.ctx().find<SettingsState>();
+    const auto* settings_ptr = find_settings_state(reg);
     const bool reduce_motion = settings_ptr && settings_ptr->reduce_motion;
 
     for (const auto& button : buttons) {
@@ -383,7 +383,7 @@ void render_gameplay_hud_screen_ui(entt::registry& reg) {
             std::snprintf(chain_text, sizeof(chain_text), meaningful_chain ? "CHAIN %d!" : "CHAIN %d",
                           score->chain_count);
             if (meaningful_chain) {
-                const auto* settings = reg.ctx().find<SettingsState>();
+                const auto* settings = find_settings_state(reg);
                 const bool reduce_motion = settings && settings->reduce_motion;
                 const auto* song = reg.ctx().find<SongState>();
                 const float pulse_time = (song && song->playing) ? song->song_time : static_cast<float>(GetTime());

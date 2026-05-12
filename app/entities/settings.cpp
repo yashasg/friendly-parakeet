@@ -1,12 +1,122 @@
-#include "settings_persistence.h"
-#include "persistence_policy.h"
+#include "settings.h"
+#include "../util/persistence_policy.h"
 #include <fstream>
 #include <algorithm>
 #include <cstdint>
 #include <limits>
+#include <stdexcept>
 #include <system_error>
+#include <utility>
 
 #include <raylib.h>
+
+entt::entity create_settings_entity(entt::registry& reg,
+                                    SettingsState state,
+                                    SettingsPersistence persistence) {
+    auto existing = reg.view<SettingsTag>();
+    if (existing.begin() != existing.end()) {
+        throw std::logic_error("SettingsTag entity already exists");
+    }
+
+    auto entity = reg.create();
+    reg.emplace<SettingsTag>(entity);
+    reg.emplace<SettingsState>(entity, state);
+    reg.emplace<SettingsPersistence>(entity, std::move(persistence));
+    return entity;
+}
+
+SettingsState* find_settings_state(entt::registry& reg) {
+    auto view = reg.view<SettingsTag, SettingsState>();
+    auto it = view.begin();
+    if (it == view.end()) {
+        return nullptr;
+    }
+    const auto entity = *it;
+    if (++it != view.end()) {
+        throw std::logic_error("multiple Settings entities exist");
+    }
+    return &view.get<SettingsState>(entity);
+}
+
+const SettingsState* find_settings_state(const entt::registry& reg) {
+    auto view = reg.view<SettingsTag, const SettingsState>();
+    auto it = view.begin();
+    if (it == view.end()) {
+        return nullptr;
+    }
+    const auto entity = *it;
+    if (++it != view.end()) {
+        throw std::logic_error("multiple Settings entities exist");
+    }
+    return &view.get<const SettingsState>(entity);
+}
+
+SettingsState& settings_state(entt::registry& reg) {
+    if (auto* state = find_settings_state(reg)) {
+        return *state;
+    }
+    throw std::logic_error("Settings entity is missing; call create_settings_entity() first");
+}
+
+const SettingsState& settings_state(const entt::registry& reg) {
+    if (const auto* state = find_settings_state(reg)) {
+        return *state;
+    }
+    throw std::logic_error("Settings entity is missing; call create_settings_entity() first");
+}
+
+SettingsPersistence* find_settings_persistence(entt::registry& reg) {
+    auto view = reg.view<SettingsTag, SettingsPersistence>();
+    auto it = view.begin();
+    if (it == view.end()) {
+        return nullptr;
+    }
+    const auto entity = *it;
+    if (++it != view.end()) {
+        throw std::logic_error("multiple Settings entities exist");
+    }
+    return &view.get<SettingsPersistence>(entity);
+}
+
+const SettingsPersistence* find_settings_persistence(const entt::registry& reg) {
+    auto view = reg.view<SettingsTag, const SettingsPersistence>();
+    auto it = view.begin();
+    if (it == view.end()) {
+        return nullptr;
+    }
+    const auto entity = *it;
+    if (++it != view.end()) {
+        throw std::logic_error("multiple Settings entities exist");
+    }
+    return &view.get<const SettingsPersistence>(entity);
+}
+
+SettingsPersistence& settings_persistence(entt::registry& reg) {
+    if (auto* persistence = find_settings_persistence(reg)) {
+        return *persistence;
+    }
+    throw std::logic_error("Settings entity is missing; call create_settings_entity() first");
+}
+
+const SettingsPersistence& settings_persistence(const entt::registry& reg) {
+    if (const auto* persistence = find_settings_persistence(reg)) {
+        return *persistence;
+    }
+    throw std::logic_error("Settings entity is missing; call create_settings_entity() first");
+}
+
+void destroy_settings_entity(entt::registry& reg) {
+    auto view = reg.view<SettingsTag>();
+    auto it = view.begin();
+    if (it == view.end()) {
+        return;
+    }
+    const auto entity = *it;
+    if (++it != view.end()) {
+        throw std::logic_error("multiple Settings entities exist");
+    }
+    reg.destroy(entity);
+}
 
 namespace settings {
 
