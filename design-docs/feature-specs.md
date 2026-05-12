@@ -1,34 +1,25 @@
 # SHAPESHIFTER — Feature Specifications
 ## Mid Game Designer Deliverable · v1.0
 
-> Three implementation-ready specs for the Input System, Burnout Scoring,
-> and Obstacle Spawning & Difficulty systems.
-
-> ⚠️ **HISTORICAL — SPEC 2 superseded (issue #239).**
-> The "Burnout Scoring System" defined in SPEC 2 below has been **removed
-> from the game design**. The burnout meter, burnout zones, burnout
-> multiplier, `BurnoutState`/`BurnoutMeter` singletons, and the burnout
-> DEAD-zone game-over rule are no longer part of the game. SPEC 2 is
-> retained only for historical context.
+> Three implementation-ready specs for the Input System, Rhythm Scoring,
+> and Beatmap Scheduling systems.
 >
-> The current scoring model is rhythm-first: timing-vs-beat grade
-> (Perfect/Good/Ok/Bad) × chain. On-beat shape changes are valid play
-> regardless of obstacle proximity. The authoritative specs are
-> `rhythm-design.md` (design rationale, grade/multiplier table) and
-> `rhythm-spec.md` (BPM-derived constants, ECS components, system
-> pipeline, collision logic). Failure is owned by the energy bar — see
-> `energy-bar.md`. SPEC 1 (Input System) and SPEC 3 (Obstacle Spawning &
-> Difficulty) are still partially relevant; cross-check against the
-> rhythm specs before relying on numeric values here.
+> The removed Burnout risk/reward model and the old random/time-ramp obstacle
+> spawner are not current game design. Current scoring is rhythm-first:
+> timing-vs-beat grade (Perfect/Good/Ok/Bad) × chain, with survival owned by
+> the energy bar. Current obstacle scheduling is authored beatmap playback
+> against song time, not elapsed-time difficulty brackets.
 >
-> Acceptance/checklist traceability for the unchecked items in this historical
-> document lives in `docs/acceptance-traceability.md`.
+> See `rhythm-design.md` for design rationale, `rhythm-spec.md` for the
+> authoritative rhythm ECS pipeline, and `energy-bar.md` for survival rules.
+> Acceptance/checklist traceability for remaining unchecked items lives in
+> `docs/acceptance-traceability.md`.
 
 ```
   ┌─────────────────────────────────────────────────┐
   │  SPEC 1: Input System ..................... p.1  │
-  │  SPEC 2: Burnout Scoring System .......... p.2  │
-  │  SPEC 3: Obstacle Spawning & Difficulty .. p.3  │
+  │  SPEC 2: Rhythm Scoring System ........... p.2  │
+  │  SPEC 3: Beatmap Scheduling .............. p.3  │
   └─────────────────────────────────────────────────┘
 ```
 
@@ -252,179 +243,123 @@ void test_player_system(entt::registry& reg, float dt);
 ---
 
 # ═══════════════════════════════════════════════════
-# SPEC 2 — BURNOUT SCORING SYSTEM
+# SPEC 2 — RHYTHM SCORING SYSTEM
 # ═══════════════════════════════════════════════════
 
 ## Overview
 
-Burnout is the core risk/reward mechanic. As an obstacle approaches, a
-meter fills from 0 → 100%. The later the player acts, the higher their
-score multiplier — but cross 100% and it's game over. This spec covers
-meter fill logic, zone thresholds, multiplier banking, chain bonuses,
-and passive distance scoring.
+Scoring rewards shape changes and obstacle clears that align with the song
+beat. The player earns a timing grade when the active shape window intersects
+an obstacle's calibrated arrival time. Points are based on obstacle base
+points, timing multiplier, and chain multiplier. Misses and Bad hits affect
+the energy bar; energy reaching zero ends the run.
 
 ```
-  THE BURNOUT METER (visual model)
+  TIMING LADDER
 
-  0%                     40%       70%     95% 100%
-  ├───── SAFE ────────────┼── RISKY ─┼─ DANGER ┼─☠─┤
-  │ ░░░░░░░░░░░░░░░░░░░░ │ ▓▓▓▓▓▓▓▓ │ ████████│☠☠ │
-  │        x1.0           │   x1.5   │x2→x3→x5│DIE│
-  └───────────────────────┴──────────┴─────────┴───┘
+  beat time
+      │
+      ├── ±50ms  → PERFECT
+      ├── ±100ms → GOOD
+      ├── ±150ms → OK
+      └── active window outside OK → BAD
 
-  MULTIPLIER RAMP (linear interpolation within each zone):
-
-  mult
-  5.0 ┤                                          ╱☠
-      │                                        ╱
-  3.0 ┤                                  ····╱
-      │                            ····
-  2.0 ┤                      ····
-      │                ····
-  1.5 ┤          ····
-      │    ····
-  1.0 ┤────
-      └──────────────────────────────────────────→ %
-      0%   10%  20%  30%  40%  50%  60%  70% 95% 100%
+  score = base_points × timing_multiplier × chain_multiplier
 ```
 
 ## User Stories
 
-- As a player, I want to **see a burnout meter fill** as an obstacle approaches so I can judge my risk.
-- As a player, I want to **act (shape-shift or swipe) to bank my score** and lock in the current multiplier.
-- As a player, I want **higher multipliers the longer I wait** so there's a reason to push my luck.
-- As a player, I want to **die if I wait too long** so the tension feels real.
-- As a player, I want **chain bonuses** for clearing multiple obstacles without dying so streaks feel rewarding.
+- As a player, I want **clear timing grades** so I understand whether I hit the beat.
+- As a player, I want **higher rewards for tighter timing** so mastery feels valuable.
+- As a player, I want **chain bonuses** for consecutive successful clears so streaks feel rewarding.
+- As a player, I want **misses and late/loose hits to affect energy** so survival stays readable.
 - As a player, I want **passive distance points** so I always feel like I'm earning something.
 
 ## Acceptance Criteria
 
-- [ ] The burnout meter is driven by the **nearest relevant obstacle** — the one closest to the player that the player has not yet cleared.
-- [ ] Meter fill is **linear with inverse distance**: `fill = 1.0 - (obstacle_dist / detection_range)`, clamped to `[0, 1]`.
-- [ ] Zone thresholds: `SAFE [0.0, 0.40)`, `RISKY [0.40, 0.70)`, `DANGER [0.70, 0.95)`, `DEAD [0.95, 1.0]`.
-- [ ] Multiplier is interpolated per-zone:
-  - SAFE: `lerp(1.0, 1.5, fill / 0.40)`
-  - RISKY: `lerp(1.5, 2.0, (fill - 0.40) / 0.30)`
-  - DANGER: `lerp(2.0, 5.0, (fill - 0.70) / 0.25)`
-  - DEAD: game over triggered.
-- [ ] When player acts correctly, points are **banked**: `floor(base_points * multiplier)`.
-- [ ] After banking, the meter resets to 0 and begins tracking the next nearest obstacle.
-- [ ] Combo obstacles (2 required actions) use the **average multiplier** of both actions, then apply a x2 combo bonus: `floor(base_points * avg_mult * 2)`.
-- [ ] If multiple obstacles are on-screen, the meter tracks the **closest** one. Others queue behind.
-- [ ] Chain counter increments on each successful clear, resets to 0 on death.
-- [ ] Chain bonus is flat additive: `2→+50, 3→+100, 4→+200, 5+→+100 per extra`.
-- [ ] Distance score accumulates at `+10 points per second`, unaffected by burnout multiplier.
-- [ ] Burnout `DEAD` zone crossing triggers `GameOver` tag on the player entity.
+- [ ] PERFECT is awarded for hits within ±50 ms of calibrated beat arrival.
+- [ ] GOOD is awarded for hits within ±100 ms.
+- [ ] OK is awarded for hits within ±150 ms.
+- [ ] BAD is awarded for scored hits outside OK but still inside the active shape window.
+- [ ] Successful clears increment `ScoreState::chain_count`; misses reset it.
+- [ ] Chain multiplier increases by `CHAIN_MULT_STEP` per chain step and caps at the rhythm-spec limit.
+- [ ] Passive distance score accumulates at `PTS_PER_SECOND` while playback is active.
+- [ ] Song results track Perfect / Good / OK / Bad / Miss / Max Chain / Energy for terminal screens.
+- [ ] Energy effects are owned by the scoring/energy pipeline: PERFECT/GOOD/OK recover, BAD and MISS drain.
 
 ## Technical Requirements
 
 ### ECS Components (C++ structs)
 
 ```cpp
-// ── Zone enum for UI / feedback ──
-enum class BurnoutZone : uint8_t {
-    Safe,    // 0.00 – 0.40
-    Risky,   // 0.40 – 0.70
-    Danger,  // 0.70 – 0.95
-    Dead     // 0.95 – 1.00
+enum class TimingTier : uint8_t {
+    Perfect,
+    Good,
+    Ok,
+    Bad,
 };
 
-// ── Singleton: the burnout meter state ──
-struct BurnoutMeter {
-    float fill;                  // 0.0 → 1.0
-    float multiplier;            // computed each frame (1.0 → 5.0)
-    BurnoutZone zone;            // current zone enum
-    entt::entity tracked_obstacle; // which obstacle is driving the meter
-    bool  active;                // false if no obstacle in range
+struct TimingGrade {
+    TimingTier tier = TimingTier::Ok;
+    float offset_sec = 0.0f;
 };
 
-// ── Singleton: player's score ──
-struct Score {
-    int   total;                 // running total displayed on HUD
-    int   last_banked;           // most recent obstacle's banked points
-    float last_multiplier;       // for popup feedback text
-    float distance_accumulator;  // fractional seconds for +10/sec
+struct ScoreState {
+    int32_t score = 0;
+    int32_t displayed_score = 0;
+    int32_t high_score = 0;
+    int32_t chain_count = 0;
+    float chain_timer = 0.0f;
+    float distance_traveled = 0.0f;
+    float passive_score_remainder = 0.0f;
 };
 
-// ── Singleton: chain tracking ──
-struct ChainTracker {
-    int   current_chain;         // consecutive clears (resets on death)
-    int   best_chain;            // session best (for game-over screen)
-    int   last_chain_bonus;      // flat bonus awarded this clear
-};
-
-// ── Per-obstacle component: how close it is to the player ──
-struct ObstacleProximity {
-    float distance;              // world units to player
-    float detection_range;       // distance at which meter begins
-    bool  cleared;               // true once player successfully passes
-};
-
-// ── Tag: applied to player entity on burnout death ──
-struct GameOver {};
-
-// ── Feedback event: emitted on bank for UI popups ──
-struct BurnoutPopup {
-    float       multiplier;
-    int         points;
-    const char* text;            // "Nice", "GREAT!", "CLUTCH!", etc.
+struct ScorePopup {
+    int32_t value = 0;
+    bool has_timing_tier = false;
+    TimingTier timing_tier = TimingTier::Ok;
+    float remaining = 0.0f;
+    float max_time = 0.0f;
 };
 ```
 
 ### Systems (function signatures)
 
 ```cpp
-// Finds the nearest un-cleared obstacle, computes fill, zone & multiplier.
-// Writes BurnoutState singleton every frame.
-// If fill >= 0.95 and player hasn't acted, emplace GameOver tag.
-void burnout_system(entt::registry& reg, float dt);
-
-// On player action: reads current BurnoutState, computes banked points
-// with zone multiplier and chain bonus, updates ScoreState, emits
-// ScorePopup. Also handles distance scoring (passive pts/second).
+// Processes ScoredTag/MissTag obstacles, applies timing/chain scoring,
+// queues energy effects, emits score popups, and accrues passive score.
 void scoring_system(entt::registry& reg, float dt);
+
+// Applies queued score popup lifetime/display data.
+void popup_feedback_system(entt::registry& reg, float dt);
 ```
 
-### Burnout Fill Pipeline
+### Scoring Pipeline
 
 ```
-  EVERY FRAME:
-  ┌──────────────────────────────────────────────┐
-  │  1. burnout_system                           │
-  │     ├─ find nearest obstacle without         │
-  │     │  ScoredTag                             │
-  │     ├─ fill = 1 - (dist / detection_range)   │
-  │     ├─ clamp fill to [0, 1]                  │
-  │     ├─ compute zone + multiplier             │
-  │     └─ if fill >= 0.95 → GameOver            │
-  └──────────────┬───────────────────────────────┘
-                 │
-  ON PLAYER ACTION (obstacle cleared):
-  ┌──────────────┴───────────────────────────────┐
-  │  2. scoring_system                           │
-  │     ├─ pts = floor(base * multiplier)        │
-  │     ├─ chain bonus from CHAIN_BONUS[]        │
-  │     ├─ ScoreState.score += pts + chain_bonus │
-  │     ├─ emit ScorePopup                       │
-  │     └─ distance scoring: +10 per second      │
-  └──────────────────────────────────────────────┘
+  collision / miss systems
+          │
+          ├─ ScoredTag + TimingGrade → scoring_system hit pass
+          ├─ ScoredTag + MissTag     → scoring_system miss pass
+          │
+          ▼
+  ScoreState + SongResults + EnergyEffectQueue + ScorePopup
 ```
 
 ### Dependencies
 
-- **Obstacle Spawning & Difficulty (Spec 3)** — obstacles must exist before burnout_system can compute proximity.
-- **Input System (Spec 1)** — `scoring_system` reads `ScoredTag` entities (set by `collision_system`), not the input pipeline directly.
+- **Beatmap Scheduling (Spec 3)** — scheduled obstacles carry base points and calibrated beat arrival data.
+- **Input System (Spec 1)** — player shape changes define the active timing window; scoring reads obstacle tags emitted by collision/miss systems.
+- **Energy Bar** — scoring queues recovery/drain events; `energy_system` owns final survival state.
 
 ### Edge Cases
 
 | Case | Resolution |
 |------|------------|
-| Two obstacles same distance | Pick the one with the **lower entity ID** (deterministic). |
-| Player acts with no obstacle in range | No-op. Meter is inactive, no points banked. |
-| Obstacle passes player without action | `fill` hits 1.0 → `DEAD` zone → `GameOver`. |
-| Combo obstacle: player does action 1, then dies on action 2 | First action banks at its multiplier. Second drives a new fill; if that hits DEAD, game over. |
-| Chain resets | Only on `GameOver`. Surviving resets nothing. |
-| Multiplier exactly at zone boundary (e.g. fill = 0.40) | Belongs to the **higher** zone (RISKY). |
+| Hit exactly on a timing boundary | Use the tighter tier if `abs(offset)` is within that tier's inclusive threshold. |
+| Obstacle is `NonScorableTag` | No score popup, no chain contribution, no grade result. |
+| Obstacle passes unscored | Miss path drains energy, increments miss count, and resets chain. |
+| Multiple scored entities in one tick | Collect first, then remove structural tags after iteration for EnTT safety. |
 | Distance scoring during pause/menu | `dt` is 0 while paused; no points accumulate. |
 
 ## Balancing Parameters
@@ -433,19 +368,12 @@ void scoring_system(entt::registry& reg, float dt);
   ┌──────────────────────────────────────────────────────────────┐
   │  PARAMETER                │  DEFAULT  │  NOTES               │
   ├───────────────────────────┼───────────┼───────────────────────│
-  │  SAFE_THRESHOLD           │  0.40     │  fill %               │
-  │  RISKY_THRESHOLD          │  0.70     │  fill %               │
-  │  DANGER_THRESHOLD         │  0.95     │  fill %  (≥ = DEAD)   │
-  │  MULT_SAFE_MIN            │  1.0      │  x at fill=0          │
-  │  MULT_SAFE_MAX            │  1.5      │  x at fill=0.40       │
-  │  MULT_RISKY_MAX           │  2.0      │  x at fill=0.70       │
-  │  MULT_DANGER_MAX          │  5.0      │  x at fill=0.95       │
-  │  DETECTION_RANGE_BASE     │  12.0     │  world units          │
-  │  CHAIN_BONUS[5]             │  {0,0,   │  indexed by chain     │
-  │                             │  50,100, │  count (0..4);        │
-  │                             │  200}    │  5+ uses index 4      │
-  │  DISTANCE_PTS_PER_SEC     │  10       │  passive income       │
-  │  COMBO_MULT_BONUS         │  2.0      │  applied after avg    │
+  │  WINDOW_PERFECT           │  0.050 s  │  ± timing threshold   │
+  │  WINDOW_GOOD              │  0.100 s  │  ± timing threshold   │
+  │  WINDOW_OK                │  0.150 s  │  ± timing threshold   │
+  │  CHAIN_MULT_STEP          │  0.05     │  per chain step       │
+  │  CHAIN_MULT_CAP           │  2.0x     │  current cap          │
+  │  PTS_PER_SECOND           │  10       │  passive income       │
   └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -454,220 +382,117 @@ void scoring_system(entt::registry& reg, float dt);
 ---
 
 # ═══════════════════════════════════════════════════
-# SPEC 3 — OBSTACLE SPAWNING & DIFFICULTY
+# SPEC 3 — BEATMAP SCHEDULING
 # ═══════════════════════════════════════════════════
-
-> ⚠️ **HISTORICAL / PARTIAL — SPEC 3 stale (issues #420, #446, #475).**
-> Major portions of SPEC 3 below describe behavior the runtime no longer
-> implements. Specifically these are **not current**:
->
-> - **Time-based speed ramp.** The 180-second piecewise-linear `1.0×→3.0×`
->   speed curve and the 7 difficulty brackets are gone. Scroll speed is
->   BPM-derived and constant within a song; difficulty is selected per
->   song (easy / medium / hard) at song-select. See `game.md` "Difficulty
->   Progression" and `rhythm-spec.md` for the authoritative model.
-> - **Combo / Split-Path generation at brackets 4+.** No shipped beatmap
->   emits `combo_gate` or `split_path`; `level_designer.py` produces
->   100% `shape_gate` content across all 3 shipped beatmaps / 9 difficulty arrays. The
->   "combo every 3 obstacles at bracket 4" rule no longer applies.
-> - **Burnout detection-range shrink.** The burnout mechanic itself was
->   removed (#239 — see SPEC 2 banner above). `BASE_RANGE / (1 +
->   SHRINK_RATE * elapsed_time)` and any acceptance criterion referencing
->   the burnout window are dead.
->
-> Spawn-horizon, cleanup-line, lane anti-repeat, and pool-ceiling
-> concepts remain broadly relevant but the numeric values and bracket
-> tables below should not be treated as current. Cross-check against
-> `rhythm-spec.md` (BPM/window math), `game.md` (difficulty model), and
-> `tools/level_designer.py` (actual shipped generation) before relying
-> on anything in this section.
 
 ## Overview
 
-This system spawns obstacle entities ahead of the player, ramps
-difficulty (speed, density, type variety, burnout window) over a 180-
-second arc, and cleans up obstacles that have scrolled past the player.
+This system materializes authored beatmap entries as obstacle entities.
+Difficulty is selected at song-select (`easy`, `medium`, `hard`) and encoded
+in the chosen beat array. Runtime scheduling compares song time against each
+entry's calibrated arrival time and spawn lead time. Scroll speed is derived
+from BPM/lead-time math and stays constant within a song.
 
 ```
-  SPAWN PIPELINE (top-down view of the 3-lane track)
+  AUTHORED BEATMAP PLAYBACK
 
-                    SPAWN HORIZON  (off-screen, ahead)
-  ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─
-        │         │         │
-        │  ╔═══╗  │         │     newly spawned gate
-        │  ║ ● ║  │         │
-        │  ╚═══╝  │         │
-        │         │         │
-        │         │  ╔═══╗  │     queued obstacle
-        │         │  ║ X ║  │
-        │         │  ╚═══╝  │
-        │         │         │
-        │         │         │
-        │         │   ■     │     ← player
-        │         │ (you)   │
-  ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─
-                    CLEANUP LINE  (off-screen, behind)
-
-
-  DIFFICULTY ARC (speed multiplier over time)
-
-  speed
-  3.0x ┤                                        ╱────
-       │                                   ···╱
-  2.6x ┤                              ···
-       │                         ···
-  2.3x ┤                    ···
-       │               ···
-  2.0x ┤          ···
-       │     ···
-  1.6x ┤   ·
-  1.3x ┤ ·
-  1.0x ┤─
-       └──────────────────────────────────────────→ t
-       0s   30s  60s  90s  120s 150s 180s      ∞
+  BeatMap.difficulties[difficulty].beats
+          │
+          ├─ onset_marker → metadata only; scheduler skips spawn
+          └─ shape_gate / lane_block / combo_gate / split_path
+                    │
+                    ▼
+  calibrated_arrival_time = authored_beat_time + audio_offset_sec
+  spawn_time = calibrated_arrival_time - lead_time
+                    │
+                    ▼
+  spawn_rhythm_obstacle(... BeatInfo{beat_index, arrival, spawn})
 ```
 
 ## User Stories
 
-- As a player, I want **obstacles to appear gradually** at first so I can learn the mechanics.
-- As a player, I want **new obstacle types to unlock over time** so the game stays fresh.
-- As a player, I want **the game to get faster and denser** so I feel challenged.
-- As a player, I want **fair obstacle placement** (no impossible combos, no 3 identical blocks in one lane).
-- As a player, I want the **burnout window to shrink** as I improve so burnout stays risky at all skill levels.
+- As a player, I want **obstacles to land on musically meaningful beats** so the level feels rhythm-driven.
+- As a player, I want **difficulty to be selected before the song** so the challenge is predictable.
+- As a level designer, I want **authored beat arrays** so obstacles can follow song structure and onset analysis.
+- As a player using calibration, I want **obstacle timing to match my audio offset**.
 
 ## Acceptance Criteria
 
-- [ ] Obstacles spawn at a fixed **distance ahead** of the player (spawn horizon), not on a timer.
-- [ ] Spawn is triggered when the distance from the player to the last spawned obstacle exceeds `MIN_SPACING / speed_mult`.
-- [ ] Minimum spacing between consecutive obstacles: `MIN_SPACING_BASE / speed_multiplier` world units (tighter at higher speed).
-- [ ] Speed multiplier follows a **piecewise-linear ramp** across 7 brackets (see table below), capping at x3.0 at 180 s.
-- [ ] Each difficulty bracket unlocks new obstacle types (cumulative).
-- [ ] Lane assignment uses a **weighted random** that penalises the same lane repeating: after 2 consecutive same-lane spawns, that lane's weight drops to 0 for the next spawn.
-- [ ] Combo obstacles (Combo Gate, Split Path) are only generated at brackets 4+ (≥ 90 s).
-- [ ] Combo obstacle frequency: max 1 combo per 3 obstacles at bracket 4, max 1 per 2 at bracket 5+.
-- [ ] Burnout detection range shrinks: `detection_range = BASE_RANGE / (1 + SHRINK_RATE * elapsed_time)`.
-- [ ] Obstacles that pass `CLEANUP_DIST` behind the player are destroyed (entity destroyed, components removed).
-- [ ] At most **6 obstacle entities** exist at any time (pool ceiling for mobile perf).
+- [ ] The selected `BeatMap` difficulty is the only source of scheduled obstacles for a song.
+- [ ] `shape_gate` entries spawn with required shape, lane, base points, and calibrated `BeatInfo`.
+- [ ] `onset_marker` entries never spawn runtime obstacles and are treated as authoring metadata.
+- [ ] Explicit `time_sec` entries override beat-index lookup; otherwise beat times use `beat_times[beat_index]` when present, then `offset + beat_index * beat_period`.
+- [ ] Positive `audio_offset_ms` delays obstacle arrival; negative values advance it.
+- [ ] Late spawns compensate overshoot so the obstacle still reaches `PLAYER_Y` at the calibrated arrival time, clamped at the player line.
+- [ ] Obstacles that pass the camera-Z despawn boundary are destroyed.
+- [ ] Invalid lanes are reported through the existing logging path and default to center where runtime supports that fallback.
 
 ## Technical Requirements
 
 ### ECS Components (C++ structs)
 
 ```cpp
-// ── Identifies an entity as an obstacle ──
 struct Obstacle {
-    float spawn_time;            // seconds since game start
+    int16_t base_points = 200;
 };
 
-// ── What kind of obstacle ──
 enum class ObstacleKind : uint8_t {
-    ShapeGate,   // requires correct shape
-    LaneBlock,   // legacy value kept for backward compat
-    ComboGate,   // requires shape + swipe
-    SplitPath,   // requires shape + correct lane
+    ShapeGate,
+    LaneBlock,
+    ComboGate,
+    SplitPath,
+    OnsetMarker,
 };
 
-struct ObstacleType {
-    ObstacleKind kind;
-    ShapeID      required_shape;       // for gates / combos
-    SwipeDirection required_swipe;     // for lane/bar/combos
-    int          base_points;          // from design doc table
-    bool         is_combo;             // true if 2 actions needed
+struct RequiredShape {
+    Shape shape = Shape::Circle;
 };
 
-// ── World position (shared with rendering) ──
-struct Position {
-    float x;    // lane position (-1, 0, +1) or pixel
-    float y;    // distance along track (scrolls toward player)
+struct RequiredLane {
+    int8_t lane = 0;
 };
 
-// ── Lane slot ──
-enum class Lane : int8_t {
-    Left   = -1,
-    Center =  0,
-    Right  = +1
+struct BlockedLanes {
+    uint8_t mask = 0;
 };
 
-struct LaneSlot {
-    Lane lane;
+struct BeatInfo {
+    int beat_index = 0;
+    float arrival_time = 0.0f;
+    float spawn_time = 0.0f;
 };
 
-// ── Movement: obstacles scroll toward the player ──
-struct Velocity {
-    float vy;   // world-units per second (negative = toward player)
-};
-
-// ── Singleton: spawn bookkeeping ──
-struct SpawnTimer {
-    float distance_since_last_spawn; // accumulated dist
-    int   obstacles_alive;           // entity count guard
-    Lane  last_lane;                 // for anti-repeat rule
-    int   same_lane_streak;          // consecutive same-lane count
-    int   since_last_combo;          // obstacles since last combo
-};
-
-// ── Singleton: difficulty state ──
-struct DifficultyState {
-    float elapsed_time;          // seconds since game start
-    float speed_multiplier;      // 1.0 → 3.0
-    int   bracket;               // 0–6 index into difficulty table
-    float detection_range;       // current burnout detection range
+struct BeatMap {
+    std::vector<BeatEntry> beats;
+    std::vector<float> beat_times;
+    float bpm = 120.0f;
+    float offset = 0.0f;
+    int lead_beats = 4;
+    std::string difficulty;
 };
 ```
 
-### Difficulty Bracket Table (compiled into code)
-
-```
-  ┌─────┬──────────┬───────┬──────────────────────────────┬────────────┐
-  │ BKT │  TIME    │ SPEED │  UNLOCKED TYPES              │ BURNOUT    │
-  ├─────┼──────────┼───────┼──────────────────────────────┼────────────┤
-  │  0  │  0–30s   │ x1.0  │ ShapeGate                    │ Very wide  │
-  │  2  │ 60–90s   │ x1.6  │ ShapeGate                    │ Moderate   │
-  │  3  │ 90–120s  │ x2.0  │ + ComboGate                  │ Tighter    │
-  │  4  │ 120–150s │ x2.3  │ + SplitPath                  │ Tight      │
-  │  5  │ 150–180s │ x2.6  │ active supported types       │ Very tight │
-  │  6  │ 180s+    │ x3.0  │ active supported types       │ Razor thin │
-  └─────┴──────────┴───────┴──────────────────────────────┴────────────┘
-```
-
-### Speed Ramp Formula
+### Beat Time Resolution
 
 ```cpp
-// Piecewise linear interpolation between bracket endpoints.
-// Input:  elapsed seconds
-// Output: speed multiplier [1.0, 3.0]
-//
-// Bracket boundaries (time → speed):
-//   { 0, 1.0 }, { 30, 1.3 }, { 60, 1.6 }, { 90, 2.0 },
-//   { 120, 2.3 }, { 150, 2.6 }, { 180, 3.0 }
-//
-// After 180 s: clamped at 3.0
-```
+float beat_time = song.offset + entry.beat_index * song.beat_period;
+if (!entry.has_time_sec && beat_index_in_range(map.beat_times, entry.beat_index)) {
+    beat_time = map.beat_times[entry.beat_index];
+}
+if (entry.has_time_sec) {
+    beat_time = entry.time_sec;
+}
 
-### Burnout Window Shrink Formula
-
-```cpp
-// detection_range = BASE_RANGE / (1.0 + SHRINK_RATE * elapsed)
-//
-// At t=0:    12.0 / 1.0 = 12.0  (very generous)
-// At t=90:   12.0 / 1.9 ≈  6.3  (moderate)
-// At t=180:  12.0 / 2.8 ≈  4.3  (razor thin)
-//
-// SHRINK_RATE default: 0.01
+float calibrated_arrival_time = beat_time + audio_offset_seconds(settings);
+float spawn_time = calibrated_arrival_time - song.lead_time;
 ```
 
 ### Systems (function signatures)
 
 ```cpp
-// Updates DifficultyState: elapsed_time, speed_multiplier, bracket,
-// detection_range.  Pure computation, no side effects.
-void difficulty_ramp_system(entt::registry& reg, float dt);
-
-// Checks spawn conditions, creates obstacle entities with all
-// required components (Obstacle, ObstacleType, Position, LaneSlot,
-// Velocity, ObstacleProximity).
-// Enforces spacing, lane-repeat, combo-frequency, and pool-cap rules.
-void obstacle_spawn_system(entt::registry& reg, float dt);
+// Spawns authored beatmap entries whose spawn_time has arrived.
+// Skips OnsetMarker entries.
+void beat_scheduler_system(entt::registry& reg, float dt);
 
 // Destroys obstacle entities that have scrolled past the camera-Z
 // despawn boundary, with a legacy Position.y fallback.
@@ -678,50 +503,40 @@ void obstacle_despawn_system(entt::registry& reg, float dt);
 
 ```
   ┌────────────────────────┐
-  │ difficulty_ramp_system  │  → updates speed, bracket, det. range
+  │ song_playback_system    │  → song_time, current beat, finished state
   └───────────┬────────────┘
-              │
               ▼
   ┌────────────────────────┐
-  │ obstacle_spawn_system   │
-  │  ├─ enough spacing?     │  NO → skip
-  │  ├─ pool full (>=6)?    │  YES → skip
-  │  ├─ pick ObstacleKind   │  (weighted random, bracket-filtered)
-  │  ├─ pick lane           │  (anti-repeat weighted)
-  │  ├─ if combo: pick 2nd  │  (shape + swipe params)
-  │  ├─ create entity       │
-  │  │   ├─ Obstacle{}      │
-  │  │   ├─ ObstacleType{}  │
-  │  │   ├─ Position{}      │
-  │  │   ├─ LaneSlot{}      │
-  │  │   ├─ Velocity{ -speed }│
-  │  │   └─ ObstacleProximity{ det_range }│
-  │  └─ update SpawnTimer   │
+  │ beat_scheduler_system   │
+  │  ├─ next entry ready?   │  NO → stop
+  │  ├─ OnsetMarker?       │  YES → advance without spawn
+  │  ├─ resolve beat time   │
+  │  ├─ apply calibration   │
+  │  ├─ compensate overshoot│
+  │  └─ spawn obstacle      │
   └───────────┬────────────┘
-              │
               ▼
   ┌────────────────────────┐
-  │ obstacle_despawn_system │  → destroy entities behind player
+  │ obstacle_despawn_system │  → destroy entities past despawn boundary
   └────────────────────────┘
 ```
 
 ### Dependencies
 
 - **Input System (Spec 1)** — `ShapeID` and `SwipeDirection` enums are defined there; re-used here.
-- **Burnout Scoring (Spec 2)** — spawned obstacles are queried by `burnout_system` for proximity.
+- **Rhythm Scoring (Spec 2)** — spawned obstacles provide `BeatInfo`, `Obstacle`, and required-action components to collision/scoring.
+- **Settings** — audio calibration shifts beat arrival and spawn timing.
 
 ### Edge Cases
 
 | Case | Resolution |
 |------|------------|
-| 3 same-lane spawns in a row | Blocked. After 2 consecutive, that lane weight = 0. |
-| Combo at bracket < 3 | Cannot happen; `ComboGate` / `SplitPath` not in the type pool. |
-| Pool cap reached (6 alive) | Spawn skipped this frame. Re-checked next frame. |
-| Speed multiplier > 3.0 | Clamped to 3.0. |
-| Obstacle spawns but player is dead | `obstacle_spawn_system` early-exits if `GameOver` tag exists. |
-| Two obstacles overlap spatially | Prevented by minimum spacing rule. If spacing violated by rounding, push new obstacle forward. |
-| Combo frequency exceeded | `since_last_combo` counter enforced. If combo would violate 1-in-3 rule, downgrade to simple type. |
-| `SplitPath` needs valid lane choice | System picks a lane the player is NOT in, sets `required_shape` randomly. |
+| Entry kind is `OnsetMarker` | Advance `next_spawn_idx`; no entity is created. |
+| Beat index lacks `beat_times` entry | Fall back to `offset + beat_index * beat_period`. |
+| Entry has explicit `time_sec` | Use it as the authoritative beat time. |
+| Scheduler wakes up after spawn time | Place obstacle partway down the runway using overshoot compensation. |
+| Overshoot would spawn past player line | Clamp start position at `PLAYER_Y` and adjust stored spawn time. |
+| Song is not playing | Scheduler early-outs without mutating spawn index. |
 
 ## Balancing Parameters
 
@@ -729,20 +544,13 @@ void obstacle_despawn_system(entt::registry& reg, float dt);
   ┌───────────────────────────────────────────────────────────────┐
   │  PARAMETER                  │  DEFAULT  │  NOTES              │
   ├─────────────────────────────┼───────────┼──────────────────────│
-  │  SPAWN_HORIZON              │  20.0     │  world units ahead   │
-  │  MIN_SPACING_BASE           │  8.0      │  world units         │
-  │  CLEANUP_DIST               │ -5.0      │  behind player       │
-  │  MAX_ALIVE_OBSTACLES        │  6        │  entity pool cap     │
-  │  BASE_DETECTION_RANGE       │  12.0     │  burnout start dist  │
-  │  DETECTION_SHRINK_RATE      │  0.01     │  per second          │
-  │  SPEED_BRACKET_TIMES[]      │  see tbl  │  7 time points       │
-  │  SPEED_BRACKET_VALUES[]     │  see tbl  │  7 speed values      │
-  │  SAME_LANE_MAX_STREAK       │  2        │  then force switch   │
-  │  COMBO_MIN_GAP_BKT3         │  3        │  obstacles between   │
-  │  COMBO_MIN_GAP_BKT5         │  2        │  obstacles between   │
-  │  SHAPE_GATE_BASE_PTS        │  200      │                      │
-  │  COMBO_GATE_BASE_PTS        │  200      │                      │
-  │  SPLIT_PATH_BASE_PTS        │  300      │                      │
+  │  LEAD_BEATS                  │ beatmap   │ spawn lead distance │
+  │  BEAT_PERIOD                 │ 60 / BPM  │ per song            │
+  │  SCROLL_SPEED                │ derived   │ BPM + lead-time     │
+  │  AUDIO_OFFSET_MS            │ settings  │ calibration         │
+  │  SHAPE_GATE_BASE_PTS        │ 200       │ scoring base        │
+  │  COMBO_GATE_BASE_PTS        │ 200       │ supported kind      │
+  │  SPLIT_PATH_BASE_PTS        │ 300       │ supported kind      │
   └───────────────────────────────────────────────────────────────┘
 ```
 
@@ -763,13 +571,13 @@ void obstacle_despawn_system(entt::registry& reg, float dt);
   │  PHASE 1 — INPUT                                           │
   │    1. input_system                 (raylib input → state)   │
   │                                                             │
-  │  PHASE 2 — DIFFICULTY & SPAWNING                           │
-  │    2. difficulty_system            (time → speed/bracket)   │
-  │    3. obstacle_spawn_system        (spawn new obstacles)    │
+  │  PHASE 2 — SONG & BEATMAP SCHEDULING                       │
+  │    2. song_playback_system         (song_time/current beat) │
+  │    3. beat_scheduler_system        (spawn authored entries) │
   │                                                             │
   │  PHASE 3 — SCORING                                         │
-  │    4. burnout_system               (proximity → meter)      │
-  │    5. scoring_system               (action → bank + chain)  │
+  │    4. collision/miss systems       (tags + timing grade)    │
+  │    5. scoring_system               (grade → score/energy)   │
   │                                                             │
   │  PHASE 4 — PLAYER & PHYSICS                                │
   │    6. player_input_system          (EventQueue → player)    │
@@ -784,13 +592,13 @@ void obstacle_despawn_system(entt::registry& reg, float dt);
 ## Shared Enum/Type Dependencies
 
 ```
-  input.h                burnout/scoring.h       obstacle_spawning.h
+  input.h                rhythm/scoring.h        beatmap scheduling
   ──────────────         ─────────────────       ───────────────────
   InputState       ────→  player_input_system
   EventQueue       ────→  player_input_system
-                          BurnoutState     ←────  burnout_system
+                          TimingGrade      ←────  collision_system
                           ScoreState       ←────  scoring_system
-                          GameOver         ────→  obstacle_spawn_system
+                          BeatInfo         ←────  beat_scheduler_system
 ```
 
 ## Component Registry Summary
@@ -801,18 +609,16 @@ void obstacle_despawn_system(entt::registry& reg, float dt);
   ├─────────────────────────┼──────────┼─────────────────────────┤
   │  InputState             │ singleton│ Spec 1 — Input          │
   │  EventQueue            │ singleton│ Spec 1 — Input          │
-  │  BurnoutState           │ singleton│ Spec 2 — Burnout        │
-  │  ScoreState             │ singleton│ Spec 2 — Burnout        │
-  │  ScorePopup             │ per-ent  │ Spec 2 — Burnout        │
-  │  GameOver               │ tag      │ Spec 2 — Burnout        │
-  │  Obstacle               │ per-ent  │ Spec 3 — Spawning       │
-  │  ObstacleType           │ per-ent  │ Spec 3 — Spawning       │
-  │  ScoredTag              │ tag      │ Spec 3 — Spawning       │
-  │  Position               │ per-ent  │ Spec 3 — Spawning       │
-  │  LaneSlot               │ per-ent  │ Spec 3 — Spawning       │
-  │  Velocity               │ per-ent  │ Spec 3 — Spawning       │
-  │  SpawnTimer             │ singleton│ Spec 3 — Spawning       │
-  │  DifficultyState        │ singleton│ Spec 3 — Spawning       │
+  │  ScoreState             │ singleton│ Spec 2 — Rhythm Scoring │
+  │  ScorePopup             │ per-ent  │ Spec 2 — Rhythm Scoring │
+  │  TimingGrade            │ per-ent  │ Spec 2 — Rhythm Scoring │
+  │  Obstacle               │ per-ent  │ Spec 3 — Scheduling     │
+  │  BeatInfo               │ per-ent  │ Spec 3 — Scheduling     │
+  │  RequiredShape          │ per-ent  │ Spec 3 — Scheduling     │
+  │  RequiredLane           │ per-ent  │ Spec 3 — Scheduling     │
+  │  BlockedLanes           │ per-ent  │ Spec 3 — Scheduling     │
+  │  ScoredTag              │ tag      │ Spec 2/3 bridge         │
+  │  MissTag                │ tag      │ Spec 2/3 bridge         │
   └─────────────────────────┴──────────┴─────────────────────────┘
 ```
 
