@@ -6,6 +6,7 @@
 #include "../components/game_state.h"
 #include "../components/rhythm.h"
 #include "../util/rhythm_math.h"
+#include "../util/shape_lane_mapping.h"
 #include "../components/song_state.h"
 #include "../components/gameplay_intents.h"
 #include "../constants.h"
@@ -37,6 +38,29 @@ bool player_matches_required_shape(const PlayerShape& p_shape,
     }
 
     return p_window.phase != WindowPhase::Idle && p_window.target_shape == required;
+}
+
+bool shape_gate_lane_match(float obstacle_x,
+                           float player_x,
+                           const Lane& lane,
+                           Shape required,
+                           bool shape_match) {
+    if (CheckCollisionRecs(centered_hitbox_rect(player_x),
+                           centered_hitbox_rect(obstacle_x))) {
+        return true;
+    }
+
+    if (!shape_match) {
+        return false;
+    }
+
+    const int8_t required_lane = lane_for_shape(required);
+    if (required_lane < 0 || lane.target != required_lane) {
+        return false;
+    }
+
+    return CheckCollisionRecs(centered_hitbox_rect(constants::LANE_X[required_lane]),
+                              centered_hitbox_rect(obstacle_x));
 }
 
 }  // namespace
@@ -100,11 +124,6 @@ void collision_system(entt::registry& reg, float /*dt*/) {
         }
     };
 
-    const Rectangle player_hitbox = centered_hitbox_rect(player_x);
-    auto hitboxes_overlap = [player_hitbox](float obstacle_x) -> bool {
-        return CheckCollisionRecs(player_hitbox, centered_hitbox_rect(obstacle_x));
-    };
-
     // Per-kind structural views — each loop touches only entities that actually
     // carry the required components, eliminating per-entity try_get branches.
 
@@ -124,12 +143,13 @@ void collision_system(entt::registry& reg, float /*dt*/) {
             auto rhythm_view = reg.view<ObstacleTag, WorldTransform, RequiredShape, BeatInfo>(
                 entt::exclude<ScoredTag, BlockedLanes, RequiredLane>);
             for (auto [e, wt, req, info] : rhythm_view.each()) {
-                bool lane_match  = hitboxes_overlap(wt.position.x);
+                bool shape_match = player_matches_required_shape(p_shape, p_window, req.shape, rhythm_mode);
+                bool lane_match = shape_gate_lane_match(wt.position.x, player_x, p_lane,
+                                                        req.shape, shape_match);
                 if (!lane_match) {
                     resolve(e, wt.position.y, false);
                     continue;
                 }
-                bool shape_match = player_matches_required_shape(p_shape, p_window, req.shape, rhythm_mode);
                 bool cleared = shape_match;
                 if (cleared) grade_shape_timing(e, info.arrival_time);
                 resolve(e, wt.position.y, cleared);
@@ -138,12 +158,13 @@ void collision_system(entt::registry& reg, float /*dt*/) {
             auto view = reg.view<ObstacleTag, WorldTransform, RequiredShape>(
                 entt::exclude<ScoredTag, BlockedLanes, RequiredLane, BeatInfo>);
             for (auto [e, wt, req] : view.each()) {
-                bool lane_match  = hitboxes_overlap(wt.position.x);
+                bool shape_match = player_matches_required_shape(p_shape, p_window, req.shape, rhythm_mode);
+                bool lane_match = shape_gate_lane_match(wt.position.x, player_x, p_lane,
+                                                        req.shape, shape_match);
                 if (!lane_match) {
                     resolve(e, wt.position.y, false);
                     continue;
                 }
-                bool shape_match = player_matches_required_shape(p_shape, p_window, req.shape, rhythm_mode);
                 resolve(e, wt.position.y, shape_match);
             }
         }
@@ -211,12 +232,13 @@ void collision_system(entt::registry& reg, float /*dt*/) {
             auto view = reg.view<ObstacleTag, WorldTransform, RequiredShape>(
                 entt::exclude<ScoredTag, BlockedLanes, RequiredLane>);
             for (auto [e, wt, req] : view.each()) {
-                bool lane_match  = hitboxes_overlap(wt.position.x);
+                bool shape_match = player_matches_required_shape(p_shape, p_window, req.shape, rhythm_mode);
+                bool lane_match = shape_gate_lane_match(wt.position.x, player_x, p_lane,
+                                                        req.shape, shape_match);
                 if (!lane_match) {
                     resolve(e, wt.position.y, false);
                     continue;
                 }
-                bool shape_match = player_matches_required_shape(p_shape, p_window, req.shape, rhythm_mode);
                 resolve(e, wt.position.y, shape_match);
             }
         }
