@@ -20,6 +20,22 @@ void remove_path(const std::filesystem::path& path) {
     std::filesystem::remove_all(path, ec);
 }
 
+struct TempBeatMapFile {
+    explicit TempBeatMapFile(const char* name, const std::string& json)
+        : path(std::filesystem::temp_directory_path() / name) {
+        std::filesystem::remove(path);
+        std::ofstream out(path);
+        REQUIRE(out.good());
+        out << json;
+    }
+
+    ~TempBeatMapFile() {
+        std::filesystem::remove(path);
+    }
+
+    std::filesystem::path path;
+};
+
 int count_result_notes(const BeatMap& beatmap) {
     int total = 0;
     for (const BeatEntry& beat : beatmap.beats) {
@@ -89,6 +105,39 @@ TEST_CASE("Play session: missing selected beatmap returns to level select withou
     CHECK(reg.ctx().find<ScoreState>() == nullptr);
     CHECK(high_scores.current_key_hash == 0);
     CHECK(high_scores.entry_count == 1);
+}
+
+TEST_CASE("Play session: high score key uses loaded fallback difficulty",
+          "[play_session][high_score][issue847]") {
+    const TempBeatMapFile beatmap("shapeshifter_issue847_beatmap.json", R"json({
+        "song_id": "issue847",
+        "title": "Issue 847",
+        "bpm": 120,
+        "offset": 0,
+        "lead_beats": 4,
+        "duration": 8,
+        "difficulties": {
+            "medium": {
+                "beats": [
+                    {"beat": 4, "kind": "shape_gate", "shape": "circle", "lane": 1}
+                ]
+            }
+        }
+    })json");
+
+    auto reg = make_registry();
+    auto& high_scores = reg.ctx().get<HighScoreState>();
+    high_score::set_score(high_scores, "shapeshifter_issue847|medium", 4321);
+    high_score::set_score(high_scores, "shapeshifter_issue847|hard", 9999);
+    reg.ctx().emplace<PlaySessionContentOverride>(
+        PlaySessionContentOverride{beatmap.path.string(), "hard"});
+
+    setup_play_session(reg);
+
+    CHECK(beat_map(reg).difficulty == "medium");
+    CHECK(reg.ctx().get<HighScoreState>().current_key_hash
+        == high_score::make_key_hash("shapeshifter_issue847", "medium"));
+    CHECK(reg.ctx().get<ScoreState>().high_score == 4321);
 }
 
 TEST_CASE("Play session: SongResults total_notes excludes onset marker metadata",
