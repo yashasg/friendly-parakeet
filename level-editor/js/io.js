@@ -1,14 +1,8 @@
 // io.js — Beatmap file I/O and validation (pure functions, no DOM except downloadFile)
 
 import {
-    SHAPES, LANES, KINDS_WITH_SHAPE, DIFFICULTY_KEYS, RHYTHM_LAYER_KEYS, VALIDATION,
+    OBSTACLE_KINDS, SHAPES, LANES, KINDS_WITH_SHAPE, DIFFICULTY_KEYS, RHYTHM_LAYER_KEYS, VALIDATION,
 } from './constants.js';
-
-const LOADER_KINDS = Object.freeze([
-    'shape_gate',
-    'combo_gate',
-    'split_path',
-]);
 
 const LEGACY_ONSET_LAYER_MAP = Object.freeze({
     kick: 'percussive',
@@ -23,11 +17,11 @@ function isPlainObject(value) {
 }
 
 function getAllowedKinds() {
-    return LOADER_KINDS;
+    return OBSTACLE_KINDS;
 }
 
 function isAllowedKind(kind) {
-    return LOADER_KINDS.includes(kind);
+    return OBSTACLE_KINDS.includes(kind);
 }
 
 function isAllowedShape(shape) {

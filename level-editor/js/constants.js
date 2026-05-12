@@ -5,7 +5,7 @@
 // glyphs, zoom, layout) stay here.
 
 // ── Shared constants (populated by loadSharedConstants) ──────
-export let OBSTACLE_KINDS = ["shape_gate", "combo_gate", "split_path"];
+export let OBSTACLE_KINDS = ["shape_gate", "combo_gate", "split_path", "onset_marker"];
 export let SHAPES = ["circle", "square", "triangle"];
 export let LANES = [0, 1, 2];
 export let KINDS_WITH_SHAPE = ["shape_gate", "combo_gate", "split_path"];
@@ -162,6 +162,7 @@ export const COLORS = {
         shape_gate: "#4fc3f7",
         combo_gate: "#fff176",
         split_path: "#4dd0e1",
+        onset_marker: "#ce93d8",
     },
 
     shape: {
@@ -175,6 +176,7 @@ export const GLYPHS = {
     shape_gate: "◆",
     combo_gate: "◈",
     split_path: "⑂",
+    onset_marker: "·",
 };
 
 export const SHAPE_GLYPHS = {
