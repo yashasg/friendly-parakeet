@@ -4865,7 +4865,7 @@
         },
         {
           "beat": 181,
-          "kind": "shape_gate",
+          "kind": "onset_marker",
           "lane": 2,
           "shape": "triangle",
           "onset_class": "percussive",
