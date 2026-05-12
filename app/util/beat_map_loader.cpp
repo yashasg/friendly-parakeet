@@ -116,6 +116,25 @@ bool read_optional_int(const json& object,
     out = static_cast<int>(raw);
     return true;
 }
+
+std::optional<int> max_derived_beat_for_metadata(const float bpm, const float duration) {
+    if (!std::isfinite(bpm) || !std::isfinite(duration) || bpm <= 0.0f || duration < 0.0f) {
+        return std::nullopt;
+    }
+
+    const double beat_period = 60.0 / static_cast<double>(bpm);
+    if (!std::isfinite(beat_period) || beat_period <= 0.0) {
+        return std::nullopt;
+    }
+
+    const double max_beat = std::floor(static_cast<double>(duration) / beat_period);
+    if (!std::isfinite(max_beat) || max_beat < 0.0 ||
+        max_beat > static_cast<double>(std::numeric_limits<int>::max())) {
+        return std::nullopt;
+    }
+
+    return static_cast<int>(max_beat);
+}
 } // namespace
 
 static bool try_load_constants_from(const std::string& path, ValidationConstants& vc) {
@@ -425,7 +444,14 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
     if (out.beat_times.empty() && !out.beats.empty()) {
         const int max_beat = out.beats.back().beat_index;
         if (max_beat >= 0) {
-            out.beat_times.reserve(static_cast<size_t>(max_beat + 1));
+            const auto max_derived_beat = max_derived_beat_for_metadata(out.bpm, out.duration);
+            if (!max_derived_beat || max_beat > *max_derived_beat) {
+                errors.push_back({max_beat,
+                    "Beat index exceeds safe derived beat_times range"});
+                return false;
+            }
+
+            out.beat_times.reserve(static_cast<size_t>(max_beat) + 1U);
             const float beat_period = 60.0f / out.bpm;
             for (int i = 0; i <= max_beat; ++i) {
                 out.beat_times.push_back(out.offset + static_cast<float>(i) * beat_period);
@@ -471,19 +497,40 @@ bool validate_beat_map(const BeatMap& map, std::vector<BeatMapError>& errors) {
 bool validate_beat_map(const BeatMap& map, std::vector<BeatMapError>& errors,
                        const ValidationConstants& vc) {
     bool valid = true;
+    bool timing_metadata_valid = true;
 
     // Rule 7: BPM in range
-    if (map.bpm < vc.bpm_min || map.bpm > vc.bpm_max) {
+    if (!std::isfinite(map.bpm)) {
+        errors.push_back({-1, "BPM must be finite"});
+        valid = false;
+        timing_metadata_valid = false;
+    } else if (map.bpm < vc.bpm_min || map.bpm > vc.bpm_max) {
         errors.push_back({-1, "BPM must be in range [" + std::to_string(static_cast<int>(vc.bpm_min))
             + ", " + std::to_string(static_cast<int>(vc.bpm_max)) + "], got " + std::to_string(map.bpm)});
         valid = false;
+        timing_metadata_valid = false;
     }
 
     // Rule 8: offset in range
-    if (map.offset < vc.offset_min || map.offset > vc.offset_max) {
+    if (!std::isfinite(map.offset)) {
+        errors.push_back({-1, "Offset must be finite"});
+        valid = false;
+        timing_metadata_valid = false;
+    } else if (map.offset < vc.offset_min || map.offset > vc.offset_max) {
         errors.push_back({-1, "Offset must be in range [" + std::to_string(vc.offset_min)
             + ", " + std::to_string(vc.offset_max) + "], got " + std::to_string(map.offset)});
         valid = false;
+        timing_metadata_valid = false;
+    }
+
+    if (!std::isfinite(map.duration)) {
+        errors.push_back({-1, "duration_sec must be finite"});
+        valid = false;
+        timing_metadata_valid = false;
+    } else if (map.duration < 0.0f) {
+        errors.push_back({-1, "duration_sec must be >= 0"});
+        valid = false;
+        timing_metadata_valid = false;
     }
 
     // Rule 9: lead_beats in range
@@ -499,8 +546,19 @@ bool validate_beat_map(const BeatMap& map, std::vector<BeatMapError>& errors,
         valid = false;
     }
 
-    float beat_period = 60.0f / map.bpm;
-    int max_beat = static_cast<int>(std::floor(map.duration / beat_period));
+    float beat_period = 0.0f;
+    std::optional<int> max_beat;
+    if (timing_metadata_valid) {
+        const auto max_derived_beat = max_derived_beat_for_metadata(map.bpm, map.duration);
+        if (!max_derived_beat) {
+            errors.push_back({-1, "duration_sec produces an unsupported beat range"});
+            valid = false;
+            timing_metadata_valid = false;
+        } else {
+            beat_period = 60.0f / map.bpm;
+            max_beat = *max_derived_beat;
+        }
+    }
 
     int prev_beat = -1;
     int prev_shape_beat = -1;
@@ -513,8 +571,10 @@ bool validate_beat_map(const BeatMap& map, std::vector<BeatMapError>& errors,
 
     for (size_t i = 0; i < map.beats.size(); ++i) {
         const auto& entry = map.beats[i];
-        const float grid_time = map.offset + static_cast<float>(entry.beat_index) * beat_period;
-        float resolved_time = grid_time;
+        float resolved_time = 0.0f;
+        if (timing_metadata_valid) {
+            resolved_time = map.offset + static_cast<float>(entry.beat_index) * beat_period;
+        }
         if (entry.has_time_sec) {
             resolved_time = entry.time_sec;
         } else if (!map.beat_times.empty() &&
@@ -548,7 +608,7 @@ bool validate_beat_map(const BeatMap& map, std::vector<BeatMapError>& errors,
             errors.push_back({entry.beat_index, "Beat index must be non-negative"});
             valid = false;
         }
-        if (entry.beat_index > max_beat) {
+        if (max_beat && entry.beat_index > *max_beat) {
             errors.push_back({entry.beat_index, "Beat index exceeds song duration"});
             valid = false;
         }
@@ -598,7 +658,7 @@ bool validate_beat_map(const BeatMap& map, std::vector<BeatMapError>& errors,
                     errors.push_back({entry.beat_index, "time_sec must be >= 0 when provided"});
                     valid = false;
                 }
-                if (entry.time_sec > map.duration) {
+                if (std::isfinite(map.duration) && entry.time_sec > map.duration) {
                     errors.push_back({entry.beat_index, "time_sec must be <= duration_sec when provided"});
                     valid = false;
                 }

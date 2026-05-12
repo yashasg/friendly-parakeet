@@ -882,6 +882,40 @@ TEST_CASE("parse: invalid scalar lane values fail before narrowing", "[parse][la
     }
 }
 
+TEST_CASE("parse: huge beat index cannot expand derived beat_times", "[parse][beat_times][issue746]") {
+    BeatMap map;
+    std::vector<BeatMapError> errors;
+    std::string json = R"({
+        "song_id": "huge_beat_test",
+        "bpm": 120,
+        "offset": 0.0,
+        "lead_beats": 4,
+        "duration_sec": 60.0,
+        "beats": [
+            { "beat": 2147483647, "kind": "shape_gate", "shape": "circle", "lane": 1 }
+        ]
+    })";
+
+    CHECK_FALSE(parse_beat_map(json, map, errors));
+    REQUIRE_FALSE(errors.empty());
+    CHECK(errors[0].message.find("derived beat_times") != std::string::npos);
+    CHECK(map.beat_times.empty());
+}
+
+TEST_CASE("validate: unsupported timing range fails before beat range conversion", "[validate][beat_times]") {
+    BeatMap map;
+    map.bpm = 120.0f;
+    map.offset = 0.0f;
+    map.lead_beats = 4;
+    map.duration = std::numeric_limits<float>::max();
+    map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
+
+    std::vector<BeatMapError> errors;
+    CHECK_FALSE(validate_beat_map(map, errors));
+    REQUIRE_FALSE(errors.empty());
+    CHECK(errors[0].message.find("unsupported beat range") != std::string::npos);
+}
+
 TEST_CASE("validate: authored time_sec beyond duration fails", "[validate][beat_times][time_sec]") {
     BeatMap map;
     map.bpm = 120.0f;
