@@ -1,6 +1,12 @@
 
 # SHAPESHIFTER: Audio & Content Data Pipeline — Implementation Specification
 
+> Historical implementation plan. The current runtime uses `EnergyState`,
+> dispatcher-based `PlaySfxEvent` / `PlayHapticEvent` audio routing, and CMake
+> content copy rules; use `README.md`, `design-docs/beatmap-integration.md`,
+> and the code under `app/audio/` and `app/systems/` as the authoritative
+> implementation reference.
+
 ## Data Flow Diagram
 
 ```

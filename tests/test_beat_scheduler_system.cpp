@@ -488,6 +488,25 @@ TEST_CASE("beat_scheduler: ShapeGate Triangle has green color", "[beat_scheduler
     }
 }
 
+TEST_CASE("beat_scheduler: ShapeGate Hexagon has hexagon color", "[beat_scheduler]") {
+    auto reg = make_rhythm_registry();
+    auto& song = reg.ctx().get<SongState>();
+    auto& map = beat_map(reg);
+
+    map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Hexagon, 1, 0});
+    song.song_time = 10.0f;
+    song.next_spawn_idx = 0;
+
+    beat_scheduler_system(reg, 0.016f);
+
+    auto view = reg.view<ObstacleTag, Color>();
+    for (auto [e, dc] : view.each()) {
+        CHECK(dc.r == 80);
+        CHECK(dc.g == 180);
+        CHECK(dc.b == 255);
+    }
+}
+
 TEST_CASE("beat_scheduler: clamped late-spawn stores adjusted spawn_time in BeatInfo", "[beat_scheduler]") {
     // When song_time overshoots spawn_time by so much that start_y would exceed
     // max_start_y (PLAYER_Y), the position is clamped.

@@ -18,12 +18,8 @@ entt::entity spawn_obstacle_base(entt::registry& reg, const ObstacleSpawnParams&
             reg.emplace<Obstacle>(e, int16_t{constants::PTS_SHAPE_GATE});
             reg.emplace<RequiredShape>(e, params.shape);
             reg.emplace<DrawSize>(e, constants::SCREEN_W_F, 80.0f);
-            if (params.shape == Shape::Circle)
-                reg.emplace<Color>(e, Color{80, 200, 255, 255});
-            else if (params.shape == Shape::Square)
-                reg.emplace<Color>(e, Color{255, 100, 100, 255});
-            else
-                reg.emplace<Color>(e, Color{100, 255, 100, 255});
+            const auto shape_index = static_cast<int>(params.shape);
+            reg.emplace<Color>(e, constants::SHAPE_COLORS[shape_index]);
             break;
         }
         case ObstacleKind::LaneBlock: {
