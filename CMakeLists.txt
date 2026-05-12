@@ -636,8 +636,14 @@ if(NOT EMSCRIPTEN AND NOT SHAPESHIFTER_IOS)
             NAME beatmap_editor_node_tests
             COMMAND ${CMAKE_COMMAND} -E echo "SKIPPED: beatmap_editor_node_tests (node executable not found)"
         )
+        add_test(
+            NAME service_worker_cache_policy_node_tests
+            COMMAND ${CMAKE_COMMAND} -E echo "SKIPPED: service_worker_cache_policy_node_tests (node executable not found)"
+        )
         set_tests_properties(beatmap_editor_node_tests PROPERTIES DISABLED TRUE)
+        set_tests_properties(service_worker_cache_policy_node_tests PROPERTIES DISABLED TRUE)
         message(STATUS "beatmap_editor_node_tests disabled: node executable not found")
+        message(STATUS "service_worker_cache_policy_node_tests disabled: node executable not found")
     endif()
 else()
     # Run the Emscripten Catch2 binary under Node. NODERAWFS lets tests read
