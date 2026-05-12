@@ -86,13 +86,11 @@ bool read_optional_float(const json& object,
     return true;
 }
 
-bool read_optional_int(const json& object,
-                       const char* field,
-                       int& out,
-                       std::vector<BeatMapError>& errors,
-                       const int beat_index) {
-    if (!object.contains(field)) return true;
-    const auto& value = object[field];
+bool read_int_value(const json& value,
+                    const char* field,
+                    int& out,
+                    std::vector<BeatMapError>& errors,
+                    const int beat_index) {
     if (!value.is_number_integer() && !value.is_number_unsigned()) {
         push_type_error(errors, beat_index, field, "an integer", value);
         return false;
@@ -115,6 +113,15 @@ bool read_optional_int(const json& object,
     }
     out = static_cast<int>(raw);
     return true;
+}
+
+bool read_optional_int(const json& object,
+                       const char* field,
+                       int& out,
+                       std::vector<BeatMapError>& errors,
+                       const int beat_index) {
+    if (!object.contains(field)) return true;
+    return read_int_value(object[field], field, out, errors, beat_index);
 }
 
 std::optional<int> max_derived_beat_for_metadata(const float bpm, const float duration) {
@@ -400,15 +407,12 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
             entry.blocked_mask = 0;
             bool blocked_ok = true;
             for (const auto& lane_idx : b["blocked"]) {
-                if (!lane_idx.is_number_integer()) {
-                    errors.push_back({entry.beat_index,
-                        "'blocked' entries must be integer lane indices at beat "
-                        + std::to_string(entry.beat_index)});
+                int lane = 0;
+                if (!read_int_value(lane_idx, "blocked[]", lane, errors, entry.beat_index)) {
                     parse_ok = false;
                     blocked_ok = false;
                     break;
                 }
-                const int lane = lane_idx.get<int>();
                 if (lane < 0 || lane > 2) {
                     errors.push_back({entry.beat_index,
                         "'blocked' lane index must be in range [0, 2] at beat "

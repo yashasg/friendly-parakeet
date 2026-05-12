@@ -859,6 +859,51 @@ TEST_CASE("parse: invalid blocked lane index fails", "[parse][blocked_mask]") {
     CHECK(errors[0].message.find("range [0, 2]") != std::string::npos);
 }
 
+TEST_CASE("parse: blocked lane index must fit before narrowing", "[parse][blocked_mask]") {
+    BeatMap map;
+    std::vector<BeatMapError> errors;
+    std::string json = R"({
+        "song_id": "timing_test",
+        "bpm": 120,
+        "offset": 0.0,
+        "lead_beats": 4,
+        "duration_sec": 60.0,
+        "beats": [
+            { "beat": 2, "kind": "combo_gate", "shape": "circle", "blocked": [4294967297] }
+        ]
+    })";
+
+    CHECK_FALSE(parse_beat_map(json, map, errors));
+    REQUIRE_FALSE(errors.empty());
+    CHECK(errors[0].message.find("blocked[]") != std::string::npos);
+    CHECK(errors[0].message.find("fit") != std::string::npos);
+}
+
+TEST_CASE("parse: valid blocked lane arrays remain accepted", "[parse][blocked_mask]") {
+    const char* blocked_arrays[] = {"[0]", "[1]", "[2]", "[0, 2]"};
+
+    for (const char* blocked : blocked_arrays) {
+        BeatMap map;
+        std::vector<BeatMapError> errors;
+        const std::string json = std::string(R"({
+            "song_id": "timing_test",
+            "bpm": 120,
+            "offset": 0.0,
+            "lead_beats": 4,
+            "duration_sec": 60.0,
+            "beats": [
+                { "beat": 2, "kind": "combo_gate", "shape": "circle", "blocked": )") + blocked + R"( }
+            ]
+        })";
+
+        INFO("blocked lanes: " << blocked);
+        CHECK(parse_beat_map(json, map, errors));
+        REQUIRE(map.beats.size() == 1);
+        CHECK(map.beats[0].blocked_mask != 0);
+        CHECK((map.beats[0].blocked_mask & static_cast<uint8_t>(~0x07U)) == 0);
+    }
+}
+
 TEST_CASE("parse: invalid scalar lane values fail before narrowing", "[parse][lane]") {
     const char* invalid_lanes[] = {"-1", "3", "257", "2147483648"};
 
