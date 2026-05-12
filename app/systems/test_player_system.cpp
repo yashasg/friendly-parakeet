@@ -196,8 +196,6 @@ void test_player_system(entt::registry& reg, float dt) {
     auto* song  = reg.ctx().find<SongState>();
     float song_time = song ? song->song_time : 0.0f;
 
-    if (log) log->frame = state->frame_count;
-
     // ── AUTO-START ───────────────────────────────────────────
     if (gs.phase == GamePhase::Title || gs.phase == GamePhase::GameOver ||
         gs.phase == GamePhase::SongComplete) {
