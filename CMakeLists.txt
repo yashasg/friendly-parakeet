@@ -533,6 +533,9 @@ target_link_libraries(shapeshifter_tests PRIVATE
     Catch2::Catch2WithMain
     shapeshifter_warnings
 )
+target_compile_definitions(shapeshifter_tests PRIVATE
+    SHAPESHIFTER_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+)
 
 # Apply platform definitions to tests (same as shapeshifter_lib)
 if(SHAPESHIFTER_IOS)

@@ -12,6 +12,7 @@
 #include "entities/obstacle_render_entity.h"
 #include "components/rendering.h"
 #include "constants.h"
+#include <filesystem>
 #include <fstream>
 #include <raylib.h>
 #include <sstream>
@@ -206,31 +207,25 @@ TEST_CASE("obstacle mesh lifetime: all children of destroyed parent removed",
 // legacy generic JSON render path in ui_render_system.cpp.
 // ═══════════════════════════════════════════════════════════════════════
 
+static std::filesystem::path ui_render_source_path() {
+    return std::filesystem::path{SHAPESHIFTER_SOURCE_DIR} / "app/systems/ui_render_system.cpp";
+}
+
 static std::string load_ui_render_source() {
-    const char* paths[] = {
-        "app/systems/ui_render_system.cpp",
-        "../app/systems/ui_render_system.cpp"
-    };
+    std::ifstream file(ui_render_source_path());
+    if (!file.is_open()) return {};
 
-    for (const char* path : paths) {
-        std::ifstream file(path);
-        if (!file.is_open()) continue;
-
-        std::ostringstream buffer;
-        buffer << file.rdbuf();
-        return buffer.str();
-    }
-
-    return {};
+    std::ostringstream buffer;
+    buffer << file.rdbuf();
+    return buffer.str();
 }
 
 
 TEST_CASE("ui_render_system: ECS is the only generic UI element render path",
           "[ui][render][issue259]") {
     const std::string source = load_ui_render_source();
-    if (source.empty()) {
-        SKIP("ui_render_system.cpp not accessible from test working directory");
-    }
+    INFO("Expected ui_render_system.cpp at " << ui_render_source_path().string());
+    REQUIRE_FALSE(source.empty());
 
     CHECK(source.find("render_elements(") == std::string::npos);
     CHECK(source.find("render_text(") == std::string::npos);

@@ -101,6 +101,9 @@ jobs:
           grep -Fx "test_player: clears shape gate in same lane" wasm-catch-tests.txt
           grep -Fx "session_logger: non-fatal MissTag logs result MISS (#111)" wasm-catch-tests.txt
           grep -Fx "session_logger: fatal MissTag logs result MISS (#111)" wasm-catch-tests.txt
+          grep -Fx "difficulty ramp: shape-gate count increases with difficulty" wasm-catch-tests.txt
+          grep -Fx "shipped beatmaps: authored beats are strictly increasing" wasm-catch-tests.txt
+          grep -Fx "shipped beatmaps: subdivision labels include non-downbeat events" wasm-catch-tests.txt
           ctest --verbose --output-on-failure
 
       - name: Setup Chrome
