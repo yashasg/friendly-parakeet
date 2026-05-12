@@ -1,6 +1,7 @@
 # Normalized Coordinates — Feature Spec (Draft)
 
 > **Status**: Parked — captured for future implementation.
+> Acceptance/checklist traceability: `docs/acceptance-traceability.md`.
 
 ## Problem
 

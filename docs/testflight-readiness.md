@@ -279,6 +279,7 @@ of soak time:
 | Audio-interrupt recovery              | 100 % manual test pass on 3 devices  | Manual test matrix           |
 | Cold-start time (iPhone 12-class)     | ≤ 2.0 s                              | MetricKit launch metric      |
 | Accessibility baseline (A11Y-01..09)  | 100 % pass, 0 open accessibility Sev-1 | `docs/testflight-accessibility-baseline.md` |
+| Design-doc acceptance traceability     | 100 % of unchecked criteria mapped to tests, issues, or deferred/cut decisions | `docs/acceptance-traceability.md` |
 | Privacy label & ATT                   | Locked (#189, #194)                  | App Store Connect            |
 | Build signing & version bump          | #183 closed (preflight gate live); #184 requires one successful signed archive+IPA with confirmed Apple account metadata | Release checklist + CI |
 
