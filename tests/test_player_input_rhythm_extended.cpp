@@ -4,7 +4,7 @@
 
 // ── semantic input pipeline: rhythm mode window management ───────
 
-TEST_CASE("player_input_rhythm: shape press in Idle begins Active window", "[player][rhythm]") {
+TEST_CASE("player_input_rhythm: shape press in Idle begins MorphIn window", "[player][rhythm]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
     auto& sw = reg.get<ShapeWindow>(player);
@@ -17,7 +17,7 @@ TEST_CASE("player_input_rhythm: shape press in Idle begins Active window", "[pla
 
     run_semantic_input_tick(reg);
 
-    CHECK(sw.phase == WindowPhase::Active);
+    CHECK(sw.phase == WindowPhase::MorphIn);
     CHECK(sw.target_shape == Shape::Circle);
     CHECK(sw.window_start == song.song_time);
 }
@@ -39,8 +39,8 @@ TEST_CASE("player_input_rhythm: different shape in Active restarts window", "[pl
 
     run_semantic_input_tick(reg);
 
-    // Should restart as Active for Square
-    CHECK(sw.phase == WindowPhase::Active);
+    // Should restart as MorphIn for Square.
+    CHECK(sw.phase == WindowPhase::MorphIn);
     CHECK(sw.target_shape == Shape::Square);
 }
 
@@ -215,6 +215,9 @@ TEST_CASE("player_input_rhythm: circle press in lane 0 does not force mismatch b
     auto btn = make_shape_button(reg, Shape::Circle);
     press_button(reg, btn);
     reg.ctx().get<entt::dispatcher>().update<ButtonPressEvent>();
+    auto& song = reg.ctx().get<SongState>();
+    song.song_time += song.morph_duration + 0.01f;
+    shape_window_system(reg, song.morph_duration + 0.01f);
     player_movement_system(reg, 0.016f);
     collision_system(reg, 0.016f);
 

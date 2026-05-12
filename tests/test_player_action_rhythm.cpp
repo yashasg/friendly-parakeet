@@ -4,7 +4,7 @@
 
 // ── semantic input pipeline: rhythm mode ───────────────────────────────
 
-TEST_CASE("player_action: rhythm mode starts window on button press from Idle", "[player_rhythm]") {
+TEST_CASE("player_action: rhythm mode starts MorphIn on button press from Idle", "[player_rhythm]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
     auto& ps = reg.get<PlayerShape>(player);
@@ -12,18 +12,25 @@ TEST_CASE("player_action: rhythm mode starts window on button press from Idle", 
     auto& song = reg.ctx().get<SongState>();
     song.song_time = 5.0f;
 
-    auto btn = make_shape_button(reg, Shape::Circle);
+    auto btn = make_shape_button(reg, Shape::Triangle);
     press_button(reg, btn);
 
     run_semantic_input_tick(reg, 0.016f);
 
-    CHECK(sw.target_shape == Shape::Circle);
-    CHECK(sw.phase == WindowPhase::Active);
+    CHECK(sw.target_shape == Shape::Triangle);
+    CHECK(sw.phase == WindowPhase::MorphIn);
     CHECK(sw.window_timer == 0.0f);
-    CHECK(ps.morph_t == 1.0f);
+    CHECK(ps.current == Shape::Hexagon);
+    CHECK(ps.morph_t == 0.0f);
     CHECK(sw.window_start == 5.0f);
     CHECK(sw.graded == false);
     CHECK(sw.window_scale == 1.0f);
+
+    song.song_time += song.morph_duration + 0.01f;
+    shape_window_system(reg, song.morph_duration + 0.01f);
+    CHECK(sw.phase == WindowPhase::Active);
+    CHECK(ps.current == Shape::Triangle);
+    CHECK(ps.morph_t == 1.0f);
 
     // SFX should be pushed
     CHECK(drain_sfx_events(reg).count > 0);
@@ -82,9 +89,9 @@ TEST_CASE("player_action: rhythm mode interrupts Active with different shape", "
     run_semantic_input_tick(reg, 0.016f);
 
     CHECK(sw.target_shape == Shape::Triangle);
-    CHECK(sw.phase == WindowPhase::Active);
+    CHECK(sw.phase == WindowPhase::MorphIn);
     CHECK(sw.window_timer == 0.0f);
-    CHECK(ps.morph_t == 1.0f);
+    CHECK(ps.morph_t == 0.0f);
     CHECK(sw.window_start == 8.0f);
     CHECK(sw.graded == false);
 }
@@ -137,11 +144,11 @@ TEST_CASE("player_action: rhythm mode ACCEPTS button press during MorphOut (#209
 
     run_semantic_input_tick(reg, 0.016f);
 
-    // MorphOut interrupted: new Active window started for Triangle
+    // MorphOut interrupted: new MorphIn window started for Triangle
     CHECK(sw.target_shape == Shape::Triangle);
-    CHECK(sw.phase == WindowPhase::Active);
+    CHECK(sw.phase == WindowPhase::MorphIn);
     CHECK(sw.window_timer == 0.0f);
-    CHECK(ps.morph_t == 1.0f);
+    CHECK(ps.morph_t == 0.0f);
     CHECK(sw.window_start == 15.0f);
     CHECK(sw.graded == false);
     CHECK(drain_sfx_events(reg).count > 0);
@@ -238,9 +245,9 @@ TEST_CASE("player_input: ButtonPressEvents consumed after first tick (#213)", "[
     auto btn = make_shape_button(reg, Shape::Circle);
     press_button(reg, btn);
 
-    // First tick: starts an Active window, consumes the event.
+    // First tick: starts a MorphIn window, consumes the event.
     run_semantic_input_tick(reg, 1.0f / 60.0f);
-    CHECK(sw.phase == WindowPhase::Active);
+    CHECK(sw.phase == WindowPhase::MorphIn);
 
     // Record state after first tick.
     float start_after_tick1 = sw.window_start;
