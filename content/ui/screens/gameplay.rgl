@@ -5,9 +5,10 @@
 #
 # Note: Shape buttons at y_n 0.891 must be rendered as custom raygui-style
 # controls for circular hit testing and shape-specific drawing. The JSON's
-# approach_ring data is OUT OF SCOPE per user directive and should not be
-# carried forward. Energy bar placement is data-driven. DummyRec controls
-# serve as layout slots for custom-rendered elements.
+# approach_ring layout data is stale and should not be carried forward; active
+# proximity-ring timing feedback remains runtime-driven. Energy bar placement
+# is data-driven. DummyRec controls serve as layout slots for custom-rendered
+# elements.
 # Hexagon is the automatic rest silhouette only; do not add a Hexagon button.
 #
 # Ref. window:    r <x> <y> <width> <height>

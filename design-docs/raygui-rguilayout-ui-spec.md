@@ -6,6 +6,13 @@ Draft for `ui_layout_refactor`.
 
 This spec replaces the current JSON-driven UI layout path with raygui controls and rguilayout-authored/generated layout files. It is based on the existing `content/ui/screens/*.json`, `content/ui/routes.json`, `design-docs/game-flow.md`, and the current implementation under `app/ui/` and `app/systems/ui_render_system.cpp` (raygui screen-controller dispatch + render-pass glue).
 
+Current runtime note: proximity rings are active HUD timing feedback in
+`gameplay_hud_screen_controller.cpp` and are specified by
+`design-docs/rhythm-spec.md`. This migration must preserve equivalent runtime
+behavior unless a separate gameplay/design decision removes the feature. The
+`approach_ring` fields called out below are stale JSON layout data, not the
+active C++ proximity-ring behavior.
+
 Current directive: the rguilayout application is vendored under `tools/rguilayout/`; `.rgl` files replace the current `content/ui` JSON layout sources; exported `.c/.h` files live directly under `app/ui`; CMake/CI/build-pipeline integration is deferred.
 
 The Excalidraw tool currently returns an empty scene, so Excalidraw is not a usable source of truth for this draft. If Excalidraw is restored later, it should be used as visual reference only; rguilayout `.rgl` files remain the authoring source for eventual compiled UI layout.
@@ -21,7 +28,7 @@ The Excalidraw tool currently returns an empty scene, so Excalidraw is not a usa
 ## Non-goals
 
 - Do not change gameplay scoring, energy, input semantics, level selection rules, or song result computation.
-- Do not reintroduce approach/proximity rings. They were removed and are out of scope for this migration. Stale `approach_ring` data in `content/ui/screens/gameplay.json` should not be carried forward.
+- Do not port stale `approach_ring` layout data from `content/ui/screens/gameplay.json`. Preserve the active C++ proximity-ring HUD behavior unless a separate gameplay/design decision removes it.
 - Do not create custom ECS layout components/entities to represent rguilayout data.
 - Do not require rguilayout to be installed in CI or at runtime.
 - Do not add CMake targets, CI compile steps, cache changes, or generated-code build wiring in the near-term authoring phases.
@@ -107,7 +114,9 @@ Screen controllers and `ui_render_system` remain responsible for screen dispatch
 
 ## HUD treatment
 
-The HUD is part of this refactor. The only thing out of scope is removed approach/proximity-ring behavior.
+The HUD is part of this refactor. Stale JSON `approach_ring` layout fields are
+out of scope, but the active proximity-ring timing cue is in scope for behavior
+parity and should remain driven by gameplay state.
 
 HUD controls should be implemented as raygui or raygui-style immediate-mode functions, with layout placement supplied by generated rguilayout exports:
 
@@ -118,7 +127,7 @@ HUD controls should be implemented as raygui or raygui-style immediate-mode func
 | Energy bar | `GuiProgressBar` or project `GuiEnergyBar(...)` custom control. LOW blink/text/border behavior stays dynamic, but bounds come from generated layout. |
 | Shape buttons | Project `GuiShapeButton(...)` custom controls are acceptable for circular hit testing, colorblind glyphs, and shape-specific drawing. Placement comes from generated layout. |
 | Lane divider | Custom draw using generated layout position. |
-| Approach rings | Out of scope; do not port stale JSON `approach_ring` data. |
+| Proximity rings | Preserve active timing-cue behavior; do not port stale JSON `approach_ring` layout data. |
 
 Custom controls are not ECS entities. They are immediate-mode UI functions called during rendering. They may read game state and return clicks/commands, but they do not own persistent layout data.
 
@@ -263,7 +272,7 @@ Once all screens are generated:
 - Future WASM build remains warning-free and does not unity-merge raygui implementation or generated C.
 - No runtime path opens `content/ui/screens/*.json` after full migration.
 - Search confirms no `HudLayout`, `LevelSelectLayout`, `OverlayLayout`, or replacement layout-cache structs remain after Phase 6.
-- Search confirms no approach-ring data is referenced by migrated UI code.
+- Search confirms no stale JSON `approach_ring` data is referenced by migrated UI code; active proximity-ring rendering remains covered by the gameplay HUD adapter.
 - Screen behavior parity is verified for title, level select, pause/resume, game over, song complete, settings, and gameplay HUD controls.
 
 ## Open issues / risks
@@ -272,7 +281,7 @@ Once all screens are generated:
 2. rguilayout's exact generated API shape must be validated with the first exported screen. The no-ECS-layout-mirror rule holds regardless of API shape.
 3. Dynamic text/control slots may require a consistent rguilayout naming convention so generated headers expose stable symbols.
 4. Settings is present as JSON today but not in `routes.json`; route/state work is required before the settings screen can be fully reachable.
-5. Current `content/ui/screens/gameplay.json` contains stale `approach_ring` fields. The migration should intentionally drop them.
+5. Current `content/ui/screens/gameplay.json` contains stale `approach_ring` fields. The migration should intentionally drop those layout fields while preserving the active proximity-ring timing cue documented in `rhythm-spec.md`.
 
 ## Contributing agent inputs
 
