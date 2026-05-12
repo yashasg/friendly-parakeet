@@ -1,9 +1,10 @@
 // Regression coverage for first authored obstacle integrity.
 //
-// The approved onset-motif spike path disables first-collision floor
-// post-processing. This guard now checks structural integrity only:
-// each shipped difficulty must contain at least one authored beat and the
-// first authored beat index must be non-negative.
+// The approved onset-motif spike path enforces first-collision timing before
+// obstacle materialization rather than through shipped-content post-processing.
+// This guard checks structural integrity only: each shipped difficulty must
+// contain at least one authored beat and the first authored beat index must be
+// non-negative.
 //
 // CWD when run via CTest is the build/ directory which has a mirrored
 // content/beatmaps/ copy via CMake POST_BUILD commands.

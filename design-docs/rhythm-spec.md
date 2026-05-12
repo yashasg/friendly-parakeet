@@ -98,16 +98,15 @@ obstacle later (e.g. easy's 6.8 s drama opener). They exist to prevent a
 readability cliff at song start where the obstacle has spawned before the
 player's first reaction window opens (issue #175).
 
-**Authoring rule:** If a generated beatmap violates the floor, the level
-designer must postpone `first.beat` to the smallest beat index whose
-`offset + beat * 60/bpm` clears the floor, preserving the rhythm grid for all
-subsequent obstacles. If postponement would collide with the next authored
-obstacle (overlap or sub-`min_gap` distance), drop the offending leading
-obstacle instead and re-evaluate.
+**Authoring rule:** The active onset-motif path enforces the floor before
+obstacle materialization by dropping snapped onset candidates whose audio time
+falls inside the per-difficulty floor. Legacy cleanup-enabled generation still
+uses `enforce_first_collision_floor` to postpone or drop an already-authored
+leading obstacle while preserving the rhythm grid for subsequent obstacles.
 
-`tools/level_designer.py` enforces this rule in `enforce_first_collision_floor`,
-and `tests/test_shipped_beatmap_first_collision.cpp` is the shipped-content
-regression gate.
+`tests/test_shipped_beatmap_first_collision.cpp` is not a shipped-content floor
+gate for the onset-motif path. It is a structural integrity guard that ensures
+each shipped difficulty has authored beats and a non-negative first beat index.
 
 ---
 ---
