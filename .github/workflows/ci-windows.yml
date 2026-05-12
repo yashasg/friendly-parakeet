@@ -91,7 +91,7 @@ jobs:
           mkdir -p build/ci
           ctest --test-dir build -N \
             | sed -nE 's/^ *Test *#[0-9]+: (.*)$/\1/p' \
-            | grep -Ev '^Bench:|^(python_tool_tests|loop2_content_gates_strict|validate_loop1_diagnostics|validate_difficulty_ramp|validate_offset_semantics|validate_max_beat_gap|validate_no_simultaneous_shape_gates|check_shape_change_gap|beatmap_editor_node_tests|service_worker_cache_policy_node_tests|startup_shutdown_smoke)$' \
+            | grep -Ev '^Bench:|^(python_tool_tests|loop2_content_gates_strict|validate_loop1_diagnostics|validate_difficulty_ramp|validate_offset_semantics|validate_max_beat_gap|validate_no_simultaneous_shape_gates|validate_required_cross_lane_jump_time|check_shape_change_gap|beatmap_editor_node_tests|service_worker_cache_policy_node_tests|startup_shutdown_smoke)$' \
             | tr -d '\r' \
             | sort -u > build/ci/ctest-nonbench-catch.txt
           ./build/shapeshifter_tests.exe --list-tests "~[bench]" --verbosity quiet \
@@ -100,7 +100,7 @@ jobs:
           diff -u build/ci/ctest-nonbench-catch.txt build/ci/catch-nonbench.txt
           ./build/shapeshifter_tests.exe "~[bench]"
           ctest --test-dir build --output-on-failure -R "^startup_shutdown_smoke$"
-          ctest --test-dir build --output-on-failure -R "^(python_tool_tests|loop2_content_gates_strict|validate_loop1_diagnostics|validate_difficulty_ramp|validate_offset_semantics|validate_max_beat_gap|validate_no_simultaneous_shape_gates|check_shape_change_gap|beatmap_editor_node_tests|service_worker_cache_policy_node_tests)$"
+          ctest --test-dir build --output-on-failure -R "^(python_tool_tests|loop2_content_gates_strict|validate_loop1_diagnostics|validate_difficulty_ramp|validate_offset_semantics|validate_max_beat_gap|validate_no_simultaneous_shape_gates|validate_required_cross_lane_jump_time|check_shape_change_gap|beatmap_editor_node_tests|service_worker_cache_policy_node_tests)$"
         shell: bash
 
       - name: Upload artifact
