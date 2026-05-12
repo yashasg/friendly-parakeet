@@ -9,7 +9,10 @@
 #include "test_helpers.h"
 #include "entities/beat_map.h"
 #include "components/rhythm.h"
+#include "components/shape_mesh.h"
+#include "rendering/camera_resources.h"
 #include "systems/all_systems.h"
+#include "systems/runtime_systems.h"
 #include "util/rhythm_math.h"
 #include "entities/settings.h"
 
@@ -322,4 +325,56 @@ TEST_CASE("score and energy semantics stay aligned under signed audio offsets",
     CHECK(advanced.perfect_count == baseline.perfect_count);
     CHECK(delayed.miss_count == baseline.miss_count);
     CHECK(advanced.miss_count == baseline.miss_count);
+}
+
+TEST_CASE("floor beat visuals use calibrated beat timing",
+          "[floor_visuals][audio_offset][issue810]") {
+    constexpr float song_time = 1.25f;
+    constexpr float beat_time = 1.00f;
+    constexpr float scroll_speed = 100.0f;
+
+    const float baseline_z =
+        floor_visuals::beat_line_z(song_time, beat_time, scroll_speed, 0.0f);
+    const float delayed_z =
+        floor_visuals::beat_line_z(song_time, beat_time, scroll_speed, +0.25f);
+    const float advanced_z =
+        floor_visuals::beat_line_z(song_time, beat_time, scroll_speed, -0.25f);
+
+    CHECK_THAT(delayed_z - baseline_z, Catch::Matchers::WithinAbs(-25.0f, 1e-4f));
+    CHECK_THAT(advanced_z - baseline_z, Catch::Matchers::WithinAbs(+25.0f, 1e-4f));
+
+    CHECK_THAT(floor_visuals::pulse_for_beat(song_time, beat_time, +0.25f),
+               Catch::Matchers::WithinAbs(1.0f, 1e-6f));
+    CHECK(floor_visuals::pulse_for_beat(song_time, beat_time, 0.0f)
+          < floor_visuals::pulse_for_beat(song_time, beat_time, +0.25f));
+    CHECK_THAT(floor_visuals::calibrated_beat_time(beat_time, -0.25f),
+               Catch::Matchers::WithinAbs(0.75f, 1e-6f));
+}
+
+TEST_CASE("game camera floor pulse honors audio_offset_ms",
+          "[camera3d][floor_visuals][audio_offset][issue810]") {
+    auto reg = make_rhythm_registry();
+    reg.ctx().emplace<FloorParams>();
+    reg.ctx().emplace<ShapeMeshConfig>();
+
+    auto& settings = settings_state(reg);
+    settings.audio_offset_ms = +250;
+
+    auto& song = reg.ctx().get<SongState>();
+    song.song_time = 1.25f;
+    song.current_beat = 0;
+    song.playing = true;
+
+    auto& map = beat_map(reg);
+    map.beat_times = {1.0f};
+
+    game_camera_system(reg, 0.0f);
+    const auto delayed_alpha = reg.ctx().get<FloorParams>().alpha;
+
+    settings.audio_offset_ms = 0;
+    game_camera_system(reg, 0.0f);
+    const auto baseline_alpha = reg.ctx().get<FloorParams>().alpha;
+
+    CHECK(delayed_alpha > baseline_alpha);
+    CHECK(delayed_alpha == static_cast<uint8_t>(constants::FLOOR_ALPHA_PEAK));
 }
