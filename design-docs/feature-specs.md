@@ -468,7 +468,7 @@ void scoring_system(entt::registry& reg, float dt);
 >   Progression" and `rhythm-spec.md` for the authoritative model.
 > - **Combo / Split-Path generation at brackets 4+.** No shipped beatmap
 >   emits `combo_gate` or `split_path`; `level_designer.py` produces
->   100% `shape_gate` content across all 9 shipped beatmaps. The
+>   100% `shape_gate` content across all 3 shipped beatmaps / 9 difficulty arrays. The
 >   "combo every 3 obstacles at bracket 4" rule no longer applies.
 > - **Burnout detection-range shrink.** The burnout mechanic itself was
 >   removed (#239 — see SPEC 2 banner above). `BASE_RANGE / (1 +
