@@ -354,7 +354,7 @@ Not shipped (intentionally absent from this wireframe):
   ╠═══════════════════════╬══════════════════╬═══════════════╣
   ║  Score bar            ║  x:0.05W y:0.02H ║  0.90W × 0.04H║
   ║  ├─ Score text        ║  left-aligned    ║  font: 0.03H  ║
-  ║  ├─ Pause button      ║  x:620 y:10      ║  80px × 50px  ║
+  ║  ├─ Pause button      ║  x:0.861W y:0.008H║ 0.111W × 0.039H║
   ║  └─ Best score text   ║  right-aligned   ║  font: 0.02H  ║
   ╠═══════════════════════╬══════════════════╬═══════════════╣
   ║  Speed bar            ║  x:0.05W y:0.06H ║  0.90W × 0.03H║
