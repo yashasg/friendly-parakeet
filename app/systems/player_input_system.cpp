@@ -12,6 +12,11 @@
 
 namespace {
 
+bool gameplay_input_enabled(entt::registry& reg) {
+    const auto& gs = reg.ctx().get<GameState>();
+    return gs.phase == GamePhase::Playing && !gs.transition_pending;
+}
+
 void push_haptic(entt::registry& reg, HapticEvent event) {
     auto* disp = reg.ctx().find<entt::dispatcher>();
     if (disp) disp->enqueue<PlayHapticEvent>({event});
@@ -20,7 +25,7 @@ void push_haptic(entt::registry& reg, HapticEvent event) {
 }  // namespace
 
 void player_input_handle_go(entt::registry& reg, const GoEvent& evt) {
-    if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
+    if (!gameplay_input_enabled(reg)) return;
     auto view = reg.view<PlayerTag, PlayerShape, ShapeWindow, Lane, VerticalState>();
     for (auto [entity, pshape, swindow, lane, vstate] : view.each()) {
         int8_t delta = 0;
@@ -49,7 +54,7 @@ void player_input_handle_go(entt::registry& reg, const GoEvent& evt) {
 
 void player_input_handle_press(entt::registry& reg, const ButtonPressEvent& evt) {
     if (evt.kind != ButtonPressKind::Shape) return;  // ignore menu-button events
-    if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
+    if (!gameplay_input_enabled(reg)) return;
     auto* song = reg.ctx().find<SongState>();
     bool rhythm_mode = (song != nullptr && song->playing);
 
