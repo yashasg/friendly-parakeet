@@ -3,7 +3,6 @@
 #include "../components/rendering.h"
 #include "../components/system_scratch.h"
 #include "../components/transform.h"
-#include "../util/motion.h"
 #include "../util/settings.h"
 
 namespace {
@@ -29,12 +28,11 @@ void popup_display_system(entt::registry& reg, float dt) {
     const auto* settings_ptr = reg.ctx().find<SettingsState>();
     const bool reduce_motion = settings_ptr && settings_ptr->reduce_motion;
     if (reduce_motion) {
-        const float drift_scale = motion::popup_drift_scale(true);
         auto drift_view = reg.view<ScorePopup, MotionVelocity>();
         for (auto [entity, popup, vel] : drift_view.each()) {
             (void)entity; (void)popup;
-            vel.value.x *= drift_scale;
-            vel.value.y *= drift_scale;
+            vel.value.x = 0.0f;
+            vel.value.y = 0.0f;
         }
     }
 
