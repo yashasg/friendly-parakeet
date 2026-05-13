@@ -516,11 +516,14 @@ system in the same frame (unidirectional data flow).
  │
  │  ┌─ PHASE 1: INPUT CAPTURE ──────────────────────────────┐
  │  │                                                        │
- │  │  1. input_system          Read raylib input queue.     │
+ │  │  1. compute_screen_       Refresh logical-to-window    │
+ │  │     transform             scale and letterbox offsets. │
+ │  │                                                        │
+ │  │  2. input_system          Read raylib input queue.     │
  │  │                           Update InputState and enqueue│
  │  │                           GoEvent/ButtonPressEvent.    │
  │  │                                                        │
- │  │  2. other producers       gameplay_hud_process_button_ │
+ │  │  3. other producers       gameplay_hud_process_button_ │
  │  │                           input and test_player_system │
  │  │                           enqueue the same semantic    │
  │  │                           events.                      │
@@ -528,7 +531,7 @@ system in the same frame (unidirectional data flow).
  │
  │  ┌─ PHASE 2: GAME STATE GATE ────────────────────────────┐
  │  │                                                        │
- │  │  3. game_state_system     Drain Go/ButtonPress events;│
+ │  │  4. game_state_system     Drain Go/ButtonPress events;│
  │  │                           listeners update player and  │
  │  │                           menu state in connection     │
  │  │                           order. Process transitions.  │
@@ -543,10 +546,10 @@ system in the same frame (unidirectional data flow).
  │
  │  ┌─ PHASE 3: PLAYBACK + PLAYING TICK ────────────────────┐
  │  │                                                        │
- │  │  4. song_playback_system  Advance SongState.song_time  │
+ │  │  5. song_playback_system  Advance SongState.song_time  │
  │  │                           and current_beat from music. │
  │  │                                                        │
- │  │  5. tick_playing_systems  Runs only in Playing phase:  │
+ │  │  6. tick_playing_systems  Runs only in Playing phase:  │
  │  │                                                        │
  │  │     a. beat_log_system    Record session beat telemetry.│
  │  │                                                        │
@@ -589,36 +592,39 @@ system in the same frame (unidirectional data flow).
  │
  │  ┌─ PHASE 4: CLEANUP & FX ──────────────────────────────┐
  │  │                                                        │
- │  │  6. obstacle_despawn_     Destroy obstacles past the   │
+ │  │  7. obstacle_despawn_     Destroy obstacles past the   │
  │  │     system                camera Z / DESTROY_Y limit.  │
  │  │                                                        │
- │  │  7. popup_feedback_system Spawn score/feedback popups  │
+ │  │  8. popup_feedback_system Spawn score/feedback popups  │
  │  │                           from queued requests.        │
  │  │                                                        │
- │  │  8. popup_display_system  Tick ScorePopup.remaining.   │
+ │  │  9. popup_display_system  Tick ScorePopup.remaining.   │
  │  │                           Fade and destroy popups.     │
  │  │                                                        │
- │  │  9. energy_system         Apply pending energy changes │
+ │  │ 10. energy_system         Apply pending energy changes │
  │  │                           and smooth displayed energy. │
  │  │                                                        │
- │  │ 10. energy_bar_system     Prepare energy bar visual    │
+ │  │ 11. energy_bar_system     Prepare energy bar visual    │
  │  │                           animation state.             │
  │  │                                                        │
- │  │ 11. particle_system       Tick ParticleData.remaining. │
+ │  │ 12. particle_system       Tick ParticleData.remaining. │
  │  │                           Destroy expired particles.   │
  │  │                           Apply gravity to survivors.  │
  │  └────────────────────────────────────────────────────────┘
  │
  │  ┌─ PHASE 5: RENDER (always runs) ──────────────────────┐
  │  │                                                        │
- │  │ 12. render systems        Update cameras, draw world   │
- │  │                           and UI render targets, then  │
- │  │                           composite both to the window.│
+ │  │ 13. game_camera_system    Update gameplay camera after │
+ │  │     ui_camera_system      fixed-step transforms settle.│
  │  │                                                        │
- │  │ 13. audio_system          Drain PlaySfxEvent dispatcher│
+ │  │ 14. render systems        Draw world and UI render     │
+ │  │                           targets, then composite both │
+ │  │                           to the window.               │
+ │  │                                                        │
+ │  │ 15. audio_system          Drain PlaySfxEvent dispatcher│
  │  │                           events after rendering.      │
  │  │                                                        │
- │  │ 14. haptic_system         Play queued haptic feedback. │
+ │  │ 16. haptic_system         Play queued haptic feedback. │
  │  └────────────────────────────────────────────────────────┘
  │
  ═══════════════════════════════════════════════════════════════
