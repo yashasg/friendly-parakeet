@@ -3,6 +3,8 @@
 #include "test_helpers.h"
 #include "entities/beat_map.h"
 
+#include <limits>
+
 // ── beat_scheduler_system: basic spawning ────────────────────
 
 TEST_CASE("beat_scheduler: no spawn when not Playing", "[beat_scheduler]") {
@@ -514,6 +516,12 @@ TEST_CASE("beat_scheduler: invalid scroll_speed skips late-spawn division", "[be
     CHECK(reg.view<ObstacleTag, BeatInfo>().begin() == reg.view<ObstacleTag, BeatInfo>().end());
 
     song.scroll_speed = -1.0f;
+    beat_scheduler_system(reg, 0.016f);
+
+    CHECK(song.next_spawn_idx == 0);
+    CHECK(reg.view<ObstacleTag>().begin() == reg.view<ObstacleTag>().end());
+
+    song.scroll_speed = std::numeric_limits<float>::quiet_NaN();
     beat_scheduler_system(reg, 0.016f);
 
     CHECK(song.next_spawn_idx == 0);

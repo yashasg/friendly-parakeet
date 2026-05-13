@@ -14,6 +14,7 @@
 
 #include <raylib.h>
 #include <magic_enum/magic_enum.hpp>
+#include <cmath>
 #include <random>
 #include <string_view>
 
@@ -76,6 +77,10 @@ static bool test_player_needs_shape(const TestPlayerAction& action) {
 
 static bool test_player_needs_lane(const TestPlayerAction& action) {
     return lane_utils::is_valid(action.target_lane) && !test_player_lane_done(action);
+}
+
+static bool valid_scroll_speed(float scroll_speed) {
+    return std::isfinite(scroll_speed) && scroll_speed > 0.0f;
 }
 
 static bool test_player_needs_vertical(const TestPlayerAction& action) {
@@ -468,9 +473,12 @@ void test_player_system(entt::registry& reg, float dt) {
                 if (odist <= 0.0f) continue;
 
                 auto* obeat = reg.try_get<BeatInfo>(oe);
-                float o_arrival = obeat ? obeat->arrival_time
-                    : (song_time + odist / song->scroll_speed);
-                if (o_arrival >= action.arrival_time) continue; // farther, don't care
+                if (obeat) {
+                    if (obeat->arrival_time >= action.arrival_time) continue; // farther, don't care
+                } else if (valid_scroll_speed(song->scroll_speed)) {
+                    const float o_arrival = song_time + odist / song->scroll_speed;
+                    if (o_arrival >= action.arrival_time) continue; // farther, don't care
+                }
 
                 // Closer obstacle — check if proposed lane is safe for it
                 auto* oblocked = reg.try_get<BlockedLanes>(oe);
