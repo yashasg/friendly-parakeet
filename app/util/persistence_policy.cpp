@@ -50,10 +50,9 @@ Result sync_web_filesystem(const bool populate, const Status failure_status) {
 
 Result ensure_web_persistence_ready() {
     static bool initialized = false;
-    static Result init_result{};
 
     if (initialized) {
-        return init_result;
+        return Result{};
     }
 
     const int mount_status = EM_ASM_INT(
@@ -77,13 +76,13 @@ Result ensure_web_persistence_ready() {
         },
         kWebPersistenceMount);
     if (mount_status != 0) {
-        init_result = Result{Status::PathUnavailable, std::make_error_code(std::errc::io_error)};
-        initialized = true;
-        return init_result;
+        return Result{Status::PathUnavailable, std::make_error_code(std::errc::io_error)};
     }
 
-    init_result = sync_web_filesystem(true, Status::FileReadFailed);
-    initialized = true;
+    const auto init_result = sync_web_filesystem(true, Status::FileReadFailed);
+    if (init_result.ok()) {
+        initialized = true;
+    }
     return init_result;
 }
 
