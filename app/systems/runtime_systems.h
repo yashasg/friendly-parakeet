@@ -1,6 +1,11 @@
 #pragma once
 
 #include <entt/entt.hpp>
+#include "components/game_state.h"
+
+[[nodiscard]] constexpr bool game_render_should_draw_world_meshes(GamePhase phase) noexcept {
+    return phase != GamePhase::Title && phase != GamePhase::LevelSelect;
+}
 
 // Runtime-only systems require a live platform/audio/render context and are
 // intentionally excluded from shapeshifter_lib.

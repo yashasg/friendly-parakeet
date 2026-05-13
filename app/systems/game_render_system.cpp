@@ -1,4 +1,5 @@
 #include "all_systems.h"
+#include "runtime_systems.h"
 #include "floor_render_system.h"
 #include "../components/rendering.h"
 #include "../components/game_state.h"
@@ -66,7 +67,7 @@ void game_render_system(const entt::registry& reg, float /*alpha*/) {
     // ── Render passes ──────────────────────────────────────────
     floor_render_system(reg);
 
-    if (gs.phase != GamePhase::Title) {
+    if (game_render_should_draw_world_meshes(gs.phase)) {
         rlDrawRenderBatchActive();
         rlDisableDepthTest();
         draw_meshes(reg);
