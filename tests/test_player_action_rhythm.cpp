@@ -36,6 +36,27 @@ TEST_CASE("player_action: rhythm mode starts MorphIn on button press from Idle",
     CHECK(drain_sfx_events(reg).count > 0);
 }
 
+TEST_CASE("player_action: post-song rhythm context still starts window for trailing obstacles",
+          "[player_rhythm][issue866]") {
+    auto reg = make_rhythm_registry();
+    auto player = make_rhythm_player(reg);
+    auto& sw = reg.get<ShapeWindow>(player);
+    auto& song = reg.ctx().get<SongState>();
+    song.song_time = song.duration_sec + 0.25f;
+    song.playing = false;
+    song.finished = true;
+
+    auto btn = make_shape_button(reg, Shape::Square);
+    press_button(reg, btn);
+
+    run_semantic_input_tick(reg, 0.016f);
+
+    CHECK(sw.target_shape == Shape::Square);
+    CHECK(sw.phase == WindowPhase::MorphIn);
+    CHECK(sw.window_start == song.song_time);
+    CHECK(sw.press_time == song.song_time);
+}
+
 TEST_CASE("player_action: rhythm mode calculates peak_time correctly", "[player_rhythm]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
@@ -283,6 +304,21 @@ TEST_CASE("player_movement: morph_t not advanced in rhythm mode — shape_window
     player_movement_system(reg, 0.016f);
 
     CHECK(ps.morph_t == 0.3f);  // unchanged
+}
+
+TEST_CASE("player_movement: post-song rhythm context still leaves morph_t to shape_window_system",
+          "[player][issue866]") {
+    auto reg = make_rhythm_registry();
+    auto p = make_rhythm_player(reg);
+    auto& song = reg.ctx().get<SongState>();
+    auto& ps = reg.get<PlayerShape>(p);
+    song.playing = false;
+    song.finished = true;
+    ps.morph_t = 0.3f;
+
+    player_movement_system(reg, 0.016f);
+
+    CHECK(ps.morph_t == 0.3f);
 }
 
 TEST_CASE("player_movement: morph_t IS advanced in freeplay mode (#207 regression)", "[player]") {
