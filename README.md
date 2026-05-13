@@ -37,7 +37,7 @@ export VCPKG_ROOT=/path/to/vcpkg
 
 ./build.sh           # Release build
 ./run.sh             # Build + run game
-./run.sh test        # Build + run tests (skips optional Node tests if node/npm is unavailable)
+./run.sh test        # Build + run CTest gates (skips optional Node tests if node/npm is unavailable)
 cmake --build build --target shapeshifter_benchmarks  # Run benchmarks on demand
 ```
 
