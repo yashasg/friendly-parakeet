@@ -29,7 +29,16 @@ bool player_matches_required_shape(const PlayerShape& p_shape,
         return false;
     }
 
-    if (rhythm_mode && p_window.phase != WindowPhase::Active) {
+    if (rhythm_mode) {
+        switch (p_window.phase) {
+            case WindowPhase::MorphIn:
+                return p_window.press_time >= 0.0f && p_window.target_shape == required;
+            case WindowPhase::Active:
+                return p_shape.current == required || p_window.target_shape == required;
+            case WindowPhase::Idle:
+            case WindowPhase::MorphOut:
+                return false;
+        }
         return false;
     }
 
