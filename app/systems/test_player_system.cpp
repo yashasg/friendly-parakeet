@@ -338,7 +338,7 @@ void test_player_system(entt::registry& reg, float dt) {
                 action.target_lane, dist);
 
             const std::string_view action_shape_name =
-                action.target_shape != Shape::Hexagon ? shape_name : std::string_view{};
+                action.target_shape != Shape::Hexagon ? shape_name : std::string_view{""};
             session_log_write(*log, song_time, "PLAYER",
                 "PLAN action=%.*s%s%s react=%.3fs arrival=%.3fs",
                 static_cast<int>(action_shape_name.size()), action_shape_name.data(),

@@ -248,6 +248,22 @@ TEST_CASE("test_player: swipe cooldown blocks immediate second swipe", "[test_pl
     CHECK_FALSE(has_go);
 }
 
+TEST_CASE("test_player: session log handles lane-only planned action",
+          "[test_player][session_logger][issue-899]") {
+    auto reg = make_test_player_registry();
+    make_rhythm_player(reg);
+    auto& log = reg.ctx().emplace<SessionLog>();
+    log.file = std::tmpfile();
+    REQUIRE(log.file != nullptr);
+
+    make_lane_block_at(reg, 0b010, constants::PLAYER_Y - 300.0f);
+
+    test_player_system(reg, 0.016f);
+
+    const std::string contents = read_session_log(log);
+    CHECK(contents.find("PLAN action=+lane") != std::string::npos);
+}
+
 // ── PRIORITY: don't move for far obstacle if it fails a closer one ──
 
 TEST_CASE("test_player: won't move for far obstacle if closer one blocks that lane", "[test_player]") {
