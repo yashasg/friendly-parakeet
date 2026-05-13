@@ -278,18 +278,6 @@ TEST_CASE("validate: shape_gate invalid lane fails", "[validate]") {
     CHECK_FALSE(validate_beat_map(map, errors));
 }
 
-TEST_CASE("validate: split_path invalid lane fails", "[validate]") {
-    BeatMap map;
-    map.bpm = 120.0f;
-    map.offset = 0.0f;
-    map.lead_beats = 4;
-    map.duration = 60.0f;
-    map.beats.push_back({0, ObstacleKind::SplitPath, Shape::Circle, -1, 0});
-
-    std::vector<BeatMapError> errors;
-    CHECK_FALSE(validate_beat_map(map, errors));
-}
-
 // ── validate_beat_map: multiple errors ───────────────────────
 
 TEST_CASE("validate: multiple errors accumulated", "[validate]") {
@@ -305,101 +293,30 @@ TEST_CASE("validate: multiple errors accumulated", "[validate]") {
     CHECK(errors.size() >= 3);
 }
 
-// ── validate_beat_map: ComboGate blocked_mask rules ──────────
+// ── validate_beat_map: active obstacle kind rules ─────────────
 
-TEST_CASE("validate: combo_gate blocked_mask 0 fails", "[validate][combo_gate]") {
-    BeatMap map;
-    map.bpm = 120.0f;
-    map.offset = 0.0f;
-    map.lead_beats = 4;
-    map.duration = 60.0f;
-    map.beats.push_back({4, ObstacleKind::ComboGate, Shape::Circle, 1, 0x00});
+TEST_CASE("validate: unshipped obstacle kinds are rejected from active beatmaps",
+          "[validate][kind][issue873]") {
+    constexpr ObstacleKind kinds[] = {
+        ObstacleKind::LaneBlock,
+        ObstacleKind::ComboGate,
+        ObstacleKind::SplitPath,
+    };
 
-    std::vector<BeatMapError> errors;
-    CHECK_FALSE(validate_beat_map(map, errors));
-    REQUIRE_FALSE(errors.empty());
-    CHECK(errors[0].message.find("block at least one lane") != std::string::npos);
-}
+    for (const auto kind : kinds) {
+        BeatMap map;
+        map.bpm = 120.0f;
+        map.offset = 0.0f;
+        map.lead_beats = 4;
+        map.duration = 60.0f;
+        map.beats.push_back({4, kind, Shape::Circle, 1, 0x01});
 
-TEST_CASE("validate: combo_gate blocked_mask 0x07 fails", "[validate][combo_gate]") {
-    BeatMap map;
-    map.bpm = 120.0f;
-    map.offset = 0.0f;
-    map.lead_beats = 4;
-    map.duration = 60.0f;
-    map.beats.push_back({4, ObstacleKind::ComboGate, Shape::Circle, 1, 0x07});
-
-    std::vector<BeatMapError> errors;
-    CHECK_FALSE(validate_beat_map(map, errors));
-    REQUIRE_FALSE(errors.empty());
-    CHECK(errors[0].message.find("leave at least one lane open") != std::string::npos);
-}
-
-TEST_CASE("validate: combo_gate blocked_mask 0x01 passes", "[validate][combo_gate]") {
-    BeatMap map;
-    map.bpm = 120.0f;
-    map.offset = 0.0f;
-    map.lead_beats = 4;
-    map.duration = 60.0f;
-    map.beats.push_back({4, ObstacleKind::ComboGate, Shape::Circle, 1, 0x01});
-
-    std::vector<BeatMapError> errors;
-    CHECK(validate_beat_map(map, errors));
-    CHECK(errors.empty());
-}
-
-TEST_CASE("validate: combo_gate blocked_mask 0x06 passes", "[validate][combo_gate]") {
-    BeatMap map;
-    map.bpm = 120.0f;
-    map.offset = 0.0f;
-    map.lead_beats = 4;
-    map.duration = 60.0f;
-    map.beats.push_back({4, ObstacleKind::ComboGate, Shape::Circle, 1, 0x06});
-
-    std::vector<BeatMapError> errors;
-    CHECK(validate_beat_map(map, errors));
-    CHECK(errors.empty());
-}
-
-TEST_CASE("validate: combo_gate blocked_mask 0x05 passes", "[validate][combo_gate]") {
-    BeatMap map;
-    map.bpm = 120.0f;
-    map.offset = 0.0f;
-    map.lead_beats = 4;
-    map.duration = 60.0f;
-    map.beats.push_back({4, ObstacleKind::ComboGate, Shape::Circle, 1, 0x05});
-
-    std::vector<BeatMapError> errors;
-    CHECK(validate_beat_map(map, errors));
-    CHECK(errors.empty());
-}
-
-TEST_CASE("validate: lane_block blocked_mask must use exactly one lane bit", "[validate][lane_block]") {
-    BeatMap map;
-    map.bpm = 120.0f;
-    map.offset = 0.0f;
-    map.lead_beats = 4;
-    map.duration = 60.0f;
-    map.beats.push_back({4, ObstacleKind::LaneBlock, Shape::Circle, 1, 0x03});
-
-    std::vector<BeatMapError> errors;
-    CHECK_FALSE(validate_beat_map(map, errors));
-    REQUIRE_FALSE(errors.empty());
-    CHECK(errors[0].message.find("exactly one lane bit") != std::string::npos);
-}
-
-TEST_CASE("validate: blocked_mask lane bits outside 0..2 fail", "[validate][blocked_mask]") {
-    BeatMap map;
-    map.bpm = 120.0f;
-    map.offset = 0.0f;
-    map.lead_beats = 4;
-    map.duration = 60.0f;
-    map.beats.push_back({4, ObstacleKind::ComboGate, Shape::Circle, 1, 0x09});
-
-    std::vector<BeatMapError> errors;
-    CHECK_FALSE(validate_beat_map(map, errors));
-    REQUIRE_FALSE(errors.empty());
-    CHECK(errors[0].message.find("bits 0..2") != std::string::npos);
+        std::vector<BeatMapError> errors;
+        INFO("kind=" << static_cast<int>(kind));
+        CHECK_FALSE(validate_beat_map(map, errors));
+        REQUIRE_FALSE(errors.empty());
+        CHECK(errors[0].message.find("Unsupported active beatmap obstacle kind") != std::string::npos);
+    }
 }
 
 // ── init_song_state ──────────────────────────────────────────
@@ -817,47 +734,23 @@ TEST_CASE("parse: non-numeric time_sec fails", "[parse][beat_times][time_sec]") 
     CHECK(errors[0].message.find("'time_sec'") != std::string::npos);
 }
 
-TEST_CASE("parse: shape-bearing obstacles require explicit shape", "[parse][shape][issue224]") {
-    const char* shape_bearing_kinds[] = {"shape_gate", "combo_gate", "split_path"};
-
-    for (const char* kind : shape_bearing_kinds) {
-        BeatMap map;
-        std::vector<BeatMapError> errors;
-        const std::string blocked = std::string(kind) == "combo_gate" ? R"(, "blocked": [1])" : "";
-        const std::string json = std::string(R"({
-            "song_id": "missing_shape_test",
-            "bpm": 120,
-            "offset": 0.0,
-            "lead_beats": 4,
-            "duration_sec": 60.0,
-            "beats": [
-                { "beat": 2, "kind": ")") + kind + R"(")" + blocked + R"( }
-            ]
-        })";
-
-        CHECK_FALSE(parse_beat_map(json, map, errors));
-        REQUIRE_FALSE(errors.empty());
-        CHECK(errors[0].message.find("Missing required shape") != std::string::npos);
-    }
-}
-
-TEST_CASE("parse: lane_block does not require shape", "[parse][shape][issue224]") {
+TEST_CASE("parse: shape_gate requires explicit shape", "[parse][shape][issue224]") {
     BeatMap map;
     std::vector<BeatMapError> errors;
     std::string json = R"({
-        "song_id": "lane_block_test",
+        "song_id": "missing_shape_test",
         "bpm": 120,
         "offset": 0.0,
         "lead_beats": 4,
         "duration_sec": 60.0,
         "beats": [
-            { "beat": 2, "kind": "lane_block", "blocked": [1] }
+            { "beat": 2, "kind": "shape_gate" }
         ]
     })";
 
-    CHECK(parse_beat_map(json, map, errors));
-    REQUIRE(map.beats.size() == 1);
-    CHECK(map.beats[0].kind == ObstacleKind::LaneBlock);
+    CHECK_FALSE(parse_beat_map(json, map, errors));
+    REQUIRE_FALSE(errors.empty());
+    CHECK(errors[0].message.find("Missing required shape") != std::string::npos);
 }
 
 TEST_CASE("parse: same beat_index entries are ordered by resolved time_sec", "[parse][beat_times][ordering]") {
@@ -905,7 +798,7 @@ TEST_CASE("parse: same beat_index entries keep authored order for identical timi
     CHECK(map.beats[1].shape == Shape::Triangle);
 }
 
-TEST_CASE("parse: invalid blocked lane index fails", "[parse][blocked_mask]") {
+TEST_CASE("parse: blocked lane arrays are rejected from active beatmaps", "[parse][blocked_mask][issue873]") {
     BeatMap map;
     std::vector<BeatMapError> errors;
     std::string json = R"({
@@ -915,58 +808,13 @@ TEST_CASE("parse: invalid blocked lane index fails", "[parse][blocked_mask]") {
         "lead_beats": 4,
         "duration_sec": 60.0,
         "beats": [
-            { "beat": 2, "kind": "lane_block", "blocked": [0, 3] }
+            { "beat": 2, "kind": "shape_gate", "shape": "circle", "lane": 1, "blocked": [0] }
         ]
     })";
 
     CHECK_FALSE(parse_beat_map(json, map, errors));
     REQUIRE_FALSE(errors.empty());
-    CHECK(errors[0].message.find("range [0, 2]") != std::string::npos);
-}
-
-TEST_CASE("parse: blocked lane index must fit before narrowing", "[parse][blocked_mask]") {
-    BeatMap map;
-    std::vector<BeatMapError> errors;
-    std::string json = R"({
-        "song_id": "timing_test",
-        "bpm": 120,
-        "offset": 0.0,
-        "lead_beats": 4,
-        "duration_sec": 60.0,
-        "beats": [
-            { "beat": 2, "kind": "combo_gate", "shape": "circle", "blocked": [4294967297] }
-        ]
-    })";
-
-    CHECK_FALSE(parse_beat_map(json, map, errors));
-    REQUIRE_FALSE(errors.empty());
-    CHECK(errors[0].message.find("blocked[]") != std::string::npos);
-    CHECK(errors[0].message.find("fit") != std::string::npos);
-}
-
-TEST_CASE("parse: valid blocked lane arrays remain accepted", "[parse][blocked_mask]") {
-    const char* blocked_arrays[] = {"[0]", "[1]", "[2]", "[0, 2]"};
-
-    for (const char* blocked : blocked_arrays) {
-        BeatMap map;
-        std::vector<BeatMapError> errors;
-        const std::string json = std::string(R"({
-            "song_id": "timing_test",
-            "bpm": 120,
-            "offset": 0.0,
-            "lead_beats": 4,
-            "duration_sec": 60.0,
-            "beats": [
-                { "beat": 2, "kind": "combo_gate", "shape": "circle", "blocked": )") + blocked + R"( }
-            ]
-        })";
-
-        INFO("blocked lanes: " << blocked);
-        CHECK(parse_beat_map(json, map, errors));
-        REQUIRE(map.beats.size() == 1);
-        CHECK(map.beats[0].blocked_mask != 0);
-        CHECK((map.beats[0].blocked_mask & static_cast<uint8_t>(~0x07U)) == 0);
-    }
+    CHECK(errors[0].message.find("'blocked' is not supported") != std::string::npos);
 }
 
 TEST_CASE("parse: invalid scalar lane values fail before narrowing", "[parse][lane]") {

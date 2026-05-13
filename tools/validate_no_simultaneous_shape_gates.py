@@ -33,15 +33,13 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_DIR = REPO_ROOT / "content" / "beatmaps"
 
 PROTECTED_CROSS_LAYER_SEC = 0.050
-REQUIRED_ACTION_KINDS = {"shape_gate", "combo_gate", "split_path"}
+REQUIRED_ACTION_KINDS = {"shape_gate"}
 
 
 def required_action_key(beat: dict) -> tuple[object, object] | None:
     kind = beat.get("kind", "shape_gate")
     if kind not in REQUIRED_ACTION_KINDS:
         return None
-    if kind == "combo_gate":
-        return (tuple(beat.get("blocked", ())), beat.get("shape"))
     return (beat.get("lane"), beat.get("shape"))
 
 

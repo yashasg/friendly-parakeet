@@ -264,8 +264,9 @@ TEST_CASE("beat_scheduler: spawns multiple beats when time is past all", "[beat_
     auto& map = beat_map(reg);
 
     map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
-    map.beats.push_back({2, ObstacleKind::LaneBlock, Shape::Circle, 1, 0b001});
-    map.beats.push_back({4, ObstacleKind::ComboGate, Shape::Square, 1, 0b100});
+    map.beats.push_back({2, ObstacleKind::ShapeGate, Shape::Square, 1, 0});
+    map.beats.push_back({4, ObstacleKind::OnsetMarker, Shape::Circle, 1, 0});
+    map.beats.push_back({6, ObstacleKind::ShapeGate, Shape::Triangle, 2, 0});
 
     song.song_time = 30.0f;  // Well past all spawn times
     song.next_spawn_idx = 0;
@@ -275,12 +276,12 @@ TEST_CASE("beat_scheduler: spawns multiple beats when time is past all", "[beat_
     int count = 0;
     for (auto e : reg.view<ObstacleTag>()) { ++count; (void)e; }
     CHECK(count == 3);
-    CHECK(song.next_spawn_idx == 3);
+    CHECK(song.next_spawn_idx == 4);
 }
 
 // ── beat_scheduler: obstacle types ───────────────────────────
 
-TEST_CASE("beat_scheduler: spawns LaneBlock with blocked_mask", "[beat_scheduler]") {
+TEST_CASE("beat_scheduler: skips unsupported active beatmap obstacle kinds", "[beat_scheduler][issue873]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
     auto& map = beat_map(reg);
@@ -291,13 +292,9 @@ TEST_CASE("beat_scheduler: spawns LaneBlock with blocked_mask", "[beat_scheduler
 
     beat_scheduler_system(reg, 0.016f);
 
-    auto view = reg.view<ObstacleTag, Obstacle, BlockedLanes>();
-    for (auto [e, obs, bl] : view.each()) {
-        (void)obs;
-        CHECK_FALSE(reg.all_of<RequiredShape>(e));
-        CHECK_FALSE(reg.all_of<RequiredLane>(e));
-        CHECK(bl.mask == 0b010);
-    }
+    auto view = reg.view<ObstacleTag>();
+    CHECK(view.begin() == view.end());
+    CHECK(song.next_spawn_idx == 1);
 }
 
 TEST_CASE("beat_scheduler: spawns all queued beats from BeatMap entries", "[beat_scheduler]") {
@@ -305,9 +302,9 @@ TEST_CASE("beat_scheduler: spawns all queued beats from BeatMap entries", "[beat
     auto& song = reg.ctx().get<SongState>();
     auto& map = beat_map(reg);
 
-    map.beats.push_back({0, ObstacleKind::LaneBlock, Shape::Circle, 1, 0b010});
-    map.beats.push_back({0, ObstacleKind::ComboGate, Shape::Triangle, 1, 0b001});
     map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Square, 1, 0});
+    map.beats.push_back({0, ObstacleKind::OnsetMarker, Shape::Circle, 1, 0});
+    map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Triangle, 2, 0});
     song.song_time = 10.0f;
     song.next_spawn_idx = 0;
 
@@ -319,59 +316,11 @@ TEST_CASE("beat_scheduler: spawns all queued beats from BeatMap entries", "[beat
     for (auto [e, obs] : obstacle_view.each()) {
         (void)obs;
         ++obstacle_count;
-        const ObstacleKind kind = obstacle_kind_from_components(
-            reg.all_of<RequiredShape>(e),
-            reg.all_of<BlockedLanes>(e),
-            reg.all_of<RequiredLane>(e));
-        if (kind == ObstacleKind::ShapeGate) ++shape_gate_count;
+        if (reg.all_of<RequiredShape>(e)) ++shape_gate_count;
     }
-    CHECK(obstacle_count == 3);
-    CHECK(shape_gate_count == 1);
+    CHECK(obstacle_count == 2);
+    CHECK(shape_gate_count == 2);
     CHECK(song.next_spawn_idx == 3);
-}
-
-TEST_CASE("beat_scheduler: spawns ComboGate with shape and blocked lanes", "[beat_scheduler]") {
-    auto reg = make_rhythm_registry();
-    auto& song = reg.ctx().get<SongState>();
-    auto& map = beat_map(reg);
-
-    map.beats.push_back({0, ObstacleKind::ComboGate, Shape::Triangle, 1, 0b101});
-    song.song_time = 10.0f;
-    song.next_spawn_idx = 0;
-
-    beat_scheduler_system(reg, 0.016f);
-
-    auto view = reg.view<ObstacleTag, Obstacle, RequiredShape, BlockedLanes>();
-    for (auto [e, obs, rs, bl] : view.each()) {
-        (void)obs;
-        CHECK_FALSE(reg.all_of<RequiredLane>(e));
-        CHECK(rs.shape == Shape::Triangle);
-        CHECK(bl.mask == 0b101);
-    }
-}
-
-TEST_CASE("beat_scheduler: spawns SplitPath with shape and required lane", "[beat_scheduler]") {
-    auto reg = make_rhythm_registry();
-    auto& song = reg.ctx().get<SongState>();
-    auto& map = beat_map(reg);
-
-    map.beats.push_back({0, ObstacleKind::SplitPath, Shape::Square, 2, 0});
-    song.song_time = 10.0f;
-    song.next_spawn_idx = 0;
-
-    beat_scheduler_system(reg, 0.016f);
-
-    auto view = reg.view<ObstacleTag, Obstacle, RequiredShape, RequiredLane, WorldTransform>();
-    int count = 0;
-    for (auto [e, obs, rs, rl, wt] : view.each()) {
-        (void)obs;
-        ++count;
-        CHECK_FALSE(reg.all_of<BlockedLanes>(e));
-        CHECK(rs.shape == Shape::Square);
-        CHECK(rl.lane == 2);
-        CHECK_THAT(wt.position.x, Catch::Matchers::WithinAbs(constants::LANE_X[2], 0.01f));
-    }
-    CHECK(count == 1);
 }
 
 TEST_CASE("beat_scheduler: all spawned obstacles have BeatInfo", "[beat_scheduler]") {
