@@ -52,6 +52,27 @@ bool classify_swipe(float dx, float dy, float duration, Direction& out) {
     return true;
 }
 
+bool raylib_gesture_swipe_direction(Direction& out) {
+    const int gesture = GetGestureDetected();
+    if (IsGestureDetected(GESTURE_SWIPE_RIGHT) || (gesture & GESTURE_SWIPE_RIGHT) != 0) {
+        out = Direction::Right;
+        return true;
+    }
+    if (IsGestureDetected(GESTURE_SWIPE_LEFT) || (gesture & GESTURE_SWIPE_LEFT) != 0) {
+        out = Direction::Left;
+        return true;
+    }
+    if (IsGestureDetected(GESTURE_SWIPE_UP) || (gesture & GESTURE_SWIPE_UP) != 0) {
+        out = Direction::Up;
+        return true;
+    }
+    if (IsGestureDetected(GESTURE_SWIPE_DOWN) || (gesture & GESTURE_SWIPE_DOWN) != 0) {
+        out = Direction::Down;
+        return true;
+    }
+    return false;
+}
+
 int find_touch_slot(InputState& input, int touch_id) {
     for (int i = 0; i < InputState::MaxTrackedTouches; ++i) {
         if (input.touch_slots[i].active && input.touch_slots[i].id == touch_id) {
@@ -188,6 +209,7 @@ void input_system(entt::registry& reg, float raw_dt) {
 
         Direction latest_swipe_dir = Direction::Up;
         bool has_latest_swipe = false;
+        bool had_swipe_zone_release = false;
         for (int i = 0; i < InputState::MaxTrackedTouches; ++i) {
             if (input.touch_slots[i].active && !seen[i]) {
                 auto& slot = input.touch_slots[i];
@@ -199,6 +221,7 @@ void input_system(entt::registry& reg, float raw_dt) {
                     input.button_end_x = slot.curr_x;
                     input.button_end_y = slot.curr_y;
                 } else {
+                    had_swipe_zone_release = true;
                     if (classify_swipe(slot.curr_x - slot.start_x,
                                        slot.curr_y - slot.start_y,
                                        slot.duration,
@@ -208,6 +231,11 @@ void input_system(entt::registry& reg, float raw_dt) {
                 }
                 slot = TouchSlot{};
             }
+        }
+        if (!has_latest_swipe &&
+            had_swipe_zone_release &&
+            raylib_gesture_swipe_direction(latest_swipe_dir)) {
+            has_latest_swipe = true;
         }
         if (has_latest_swipe) {
             disp.enqueue<GoEvent>(GoEvent{latest_swipe_dir});
@@ -234,6 +262,7 @@ void input_system(entt::registry& reg, float raw_dt) {
                input.touching && input.active_source == InputSource::Touch) {
         Direction latest_swipe_dir = Direction::Up;
         bool has_latest_swipe = false;
+        bool had_swipe_zone_release = false;
         input.touch_up  = true;
         input.touching  = false;
         input.suppress_mouse_release = true;
@@ -249,13 +278,21 @@ void input_system(entt::registry& reg, float raw_dt) {
                 input.button_touch_up = true;
                 input.button_end_x = slot.curr_x;
                 input.button_end_y = slot.curr_y;
-            } else if (classify_swipe(slot.curr_x - slot.start_x,
-                                      slot.curr_y - slot.start_y,
-                                      slot.duration,
-                                      latest_swipe_dir)) {
-                has_latest_swipe = true;
+            } else {
+                had_swipe_zone_release = true;
+                if (classify_swipe(slot.curr_x - slot.start_x,
+                                   slot.curr_y - slot.start_y,
+                                   slot.duration,
+                                   latest_swipe_dir)) {
+                    has_latest_swipe = true;
+                }
             }
             slot = TouchSlot{};
+        }
+        if (!has_latest_swipe &&
+            had_swipe_zone_release &&
+            raylib_gesture_swipe_direction(latest_swipe_dir)) {
+            has_latest_swipe = true;
         }
         if (has_latest_swipe) {
             disp.enqueue<GoEvent>(GoEvent{latest_swipe_dir});
@@ -313,21 +350,7 @@ void input_system(entt::registry& reg, float raw_dt) {
         !input.touching &&
         !input.touch_up) {
         Direction gesture_dir = Direction::Up;
-        bool has_gesture_swipe = false;
-        const int gesture = GetGestureDetected();
-        if (IsGestureDetected(GESTURE_SWIPE_RIGHT) || (gesture & GESTURE_SWIPE_RIGHT) != 0) {
-            gesture_dir = Direction::Right;
-            has_gesture_swipe = true;
-        } else if (IsGestureDetected(GESTURE_SWIPE_LEFT) || (gesture & GESTURE_SWIPE_LEFT) != 0) {
-            gesture_dir = Direction::Left;
-            has_gesture_swipe = true;
-        } else if (IsGestureDetected(GESTURE_SWIPE_UP) || (gesture & GESTURE_SWIPE_UP) != 0) {
-            gesture_dir = Direction::Up;
-            has_gesture_swipe = true;
-        } else if (IsGestureDetected(GESTURE_SWIPE_DOWN) || (gesture & GESTURE_SWIPE_DOWN) != 0) {
-            gesture_dir = Direction::Down;
-            has_gesture_swipe = true;
-        }
+        const bool has_gesture_swipe = raylib_gesture_swipe_direction(gesture_dir);
 
         const Vector2 touch_pos = GetTouchPosition(0);
         const glm::vec2 tp = screen_to_virtual({touch_pos.x, touch_pos.y}, st);
