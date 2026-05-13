@@ -28,7 +28,7 @@ at runtime boundaries, without wrapper abstraction layers.
 - C++20 compiler (Clang 20 recommended)
 - CMake 3.20+
 - [vcpkg](https://vcpkg.io)
-- Node.js 22+ with npm (optional, enables beatmap editor Node test suite during `ctest` and `./run.sh test`)
+- Node.js 22+ (optional, enables JavaScript test suites during `ctest` and `./run.sh test`)
 
 ### Quick Start
 
