@@ -168,3 +168,56 @@ jobs:
       - name: Build
         run: cmake --build build-msvc --config Release
         shell: cmd
+
+      - name: Install Python tool test dependencies
+        shell: bash
+        run: |
+          PYTHON_TOOL_TEST_EXE="$(grep '^_Python3_EXECUTABLE:INTERNAL=' build-msvc/CMakeCache.txt | cut -d= -f2-)"
+          "$PYTHON_TOOL_TEST_EXE" -m pip install --break-system-packages -r tools/python-tool-test-requirements.txt || \
+          "$PYTHON_TOOL_TEST_EXE" -m pip install -r tools/python-tool-test-requirements.txt
+
+      - name: Run tests
+        run: |
+          PYTHON_TOOL_TEST_EXE="$(grep '^_Python3_EXECUTABLE:INTERNAL=' build-msvc/CMakeCache.txt | cut -d= -f2-)"
+          mkdir -p build-msvc/ci
+          ctest --test-dir build-msvc -C Release --show-only=json-v1 > build-msvc/ci/ctest-tests.json
+          "$PYTHON_TOOL_TEST_EXE" - <<'PY'
+          import json
+          import re
+
+          excluded = re.compile(
+              r"^Bench:|^(python_tool_tests|loop2_content_gates_strict|"
+              r"validate_loop1_diagnostics|validate_difficulty_ramp|"
+              r"validate_offset_semantics|validate_max_beat_gap|"
+              r"validate_no_simultaneous_shape_gates|"
+              r"validate_required_cross_lane_jump_time|check_shape_change_gap|"
+              r"beatmap_editor_node_tests|service_worker_cache_policy_node_tests|"
+              r"startup_shutdown_smoke)$"
+          )
+          def normalize_ctest_name(name):
+              try:
+                  return name.encode("cp437").decode("utf-8")
+              except UnicodeError:
+                  return name
+
+          with open("build-msvc/ci/ctest-tests.json", encoding="utf-8") as handle:
+              payload = json.load(handle)
+          names = sorted(
+              {
+                  normalize_ctest_name(test["name"])
+                  for test in payload["tests"]
+                  if not excluded.search(test["name"])
+              }
+          )
+          with open("build-msvc/ci/ctest-nonbench-catch.txt", "w", encoding="utf-8", newline="\n") as handle:
+              handle.write("\n".join(names))
+              handle.write("\n")
+          PY
+          ./build-msvc/Release/shapeshifter_tests.exe --list-tests "~[bench]" --verbosity quiet \
+            | tr -d '\r' \
+            | sort -u > build-msvc/ci/catch-nonbench.txt
+          diff -u build-msvc/ci/ctest-nonbench-catch.txt build-msvc/ci/catch-nonbench.txt
+          ./build-msvc/Release/shapeshifter_tests.exe "~[bench]"
+          ctest --test-dir build-msvc -C Release --output-on-failure -R "^startup_shutdown_smoke$"
+          ctest --test-dir build-msvc -C Release --output-on-failure -R "^(python_tool_tests|loop2_content_gates_strict|validate_loop1_diagnostics|validate_difficulty_ramp|validate_offset_semantics|validate_max_beat_gap|validate_no_simultaneous_shape_gates|validate_required_cross_lane_jump_time|check_shape_change_gap|beatmap_editor_node_tests|service_worker_cache_policy_node_tests)$"
+        shell: bash

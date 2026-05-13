@@ -421,10 +421,13 @@ if(FONT_FILES)
     )
 endif()
 
-# Copy beatmap JSON files next to the executable
-file(GLOB BEATMAP_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/content/beatmaps/*.json)
+# Copy runtime beatmap JSON files next to the executable. Analysis JSON files are
+# development/tooling artifacts and should not be bundled with the game.
+file(GLOB BEATMAP_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/content/beatmaps/*_beatmap.json)
 if(BEATMAP_FILES)
     add_custom_command(TARGET shapeshifter POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E rm -rf
+            "$<TARGET_FILE_DIR:shapeshifter>/content/beatmaps"
         COMMAND ${CMAKE_COMMAND} -E make_directory
             "$<TARGET_FILE_DIR:shapeshifter>/content/beatmaps"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
