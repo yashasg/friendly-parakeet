@@ -2,6 +2,9 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
 
+#include <cmath>
+#include <limits>
+
 // ── scroll_system: rhythm-mode BeatInfo positioning ──────────
 
 TEST_CASE("scroll: rhythm obstacles positioned from song_time and BeatInfo", "[scroll][rhythm]") {
@@ -75,4 +78,41 @@ TEST_CASE("scroll: BeatInfo position tracks song_time progression", "[scroll][rh
     CHECK(y2 > y1);
     float delta = y2 - y1;
     CHECK_THAT(delta, Catch::Matchers::WithinAbs(song.scroll_speed, 0.5f));
+}
+
+TEST_CASE("scroll: invalid scroll_speed preserves finite obstacle position", "[scroll][rhythm][issue929]") {
+    auto reg = make_rhythm_registry();
+    auto& song = reg.ctx().get<SongState>();
+    song.song_time = 2.0f;
+    song.scroll_speed = std::numeric_limits<float>::quiet_NaN();
+
+    auto obs = reg.create();
+    reg.emplace<ObstacleTag>(obs);
+    reg.emplace<WorldTransform>(obs, WorldTransform{{0.0f, 123.0f}});
+    reg.emplace<BeatInfo>(obs, 0, 4.0f, 0.0f);
+
+    scroll_system(reg, 0.016f);
+
+    const auto& transform = reg.get<WorldTransform>(obs);
+    CHECK(std::isfinite(transform.position.y));
+    CHECK_THAT(transform.position.y, Catch::Matchers::WithinAbs(123.0f, 0.001f));
+}
+
+TEST_CASE("scroll: non-positive scroll_speed skips position updates", "[scroll][rhythm][issue929]") {
+    auto reg = make_rhythm_registry();
+    auto& song = reg.ctx().get<SongState>();
+    song.song_time = 2.0f;
+    song.scroll_speed = 0.0f;
+
+    auto obs = reg.create();
+    reg.emplace<ObstacleTag>(obs);
+    reg.emplace<WorldTransform>(obs, WorldTransform{{0.0f, 234.0f}});
+    reg.emplace<BeatInfo>(obs, 0, 4.0f, 0.0f);
+
+    scroll_system(reg, 0.016f);
+    CHECK_THAT(reg.get<WorldTransform>(obs).position.y, Catch::Matchers::WithinAbs(234.0f, 0.001f));
+
+    song.scroll_speed = -100.0f;
+    scroll_system(reg, 0.016f);
+    CHECK_THAT(reg.get<WorldTransform>(obs).position.y, Catch::Matchers::WithinAbs(234.0f, 0.001f));
 }
