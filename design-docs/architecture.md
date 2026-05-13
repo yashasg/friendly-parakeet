@@ -552,26 +552,25 @@ system in the same frame (unidirectional data flow).
  │  │     b. beat_scheduler_sys Spawn authored BeatMap notes │
  │  │                           whose spawn_time has arrived.│
  │  │                                                        │
- │  │     c. player_movement    Advance lane, jump/slide,    │
+ │  │     c. shape_window_sys   Advance active timing windows│
  │  │                           and morph interpolation.     │
  │  │                                                        │
- │  │     d. scroll_system      Derive rhythm-obstacle       │
+ │  │     d. player_movement    Advance lane and jump/slide. │
+ │  │                                                        │
+ │  │     e. scroll_system      Derive rhythm-obstacle       │
  │  │                           positions from SongState     │
  │  │                           song_time + BeatInfo.        │
  │  │                                                        │
- │  │     e. motion_system      For every (WorldTransform,   │
+ │  │     f. motion_system      For every (WorldTransform,   │
  │  │                           MotionVelocity):             │
  │  │                           position += velocity * dt.   │
  │  │                           Simple, tight inner loop.    │
  │  │                                                        │
- │  │     f. collision_system   For each obstacle near       │
+ │  │     g. collision_system   For each obstacle near       │
  │  │                           PLAYER_Y: test shape match,  │
  │  │                           lane match, vertical state.  │
  │  │                           On match: emplace TimingGrade│
  │  │                           and ScoredTag.               │
- │  │                                                        │
- │  │     g. shape_window_sys   Advance active timing windows│
- │  │                           for shape presses.           │
  │  │                                                        │
  │  │     h. miss_detection     Mark passed unresolved notes │
  │  │                           with MissTag/ScoredTag.      │
@@ -1239,7 +1238,7 @@ Obstacle pool:   [obs0] [obs1] [obs2] ... [obsM]          contiguous in memory
    roughly 20 bytes × 71 = 1.4 KB. There is no cache pressure that SoA would
    alleviate.
 
-2. **Iteration patterns are simple**. The hottest loop (`scroll_system`) reads
+2. **Iteration patterns are simple**. The hottest loop (`motion_system`) reads
    `WorldTransform` + `MotionVelocity` together — two tiny pools that are in L1
    after the first iteration.
 
@@ -1247,19 +1246,14 @@ Obstacle pool:   [obs0] [obs1] [obs2] ... [obsM]          contiguous in memory
    indirection overhead and code complexity for zero performance gain at these
    entity counts. SoA becomes beneficial at 10,000+ entities — we peak at 71.
 
-**EnTT groups** can ensure co-iterated component pools are sorted identically:
+The current implementation uses an EnTT view for the small dt-integrated set:
 
 ```cpp
-// In initialization — declare a full-owning group for WorldTransform + MotionVelocity.
-// This guarantees both pools are sorted in the same entity order,
-// so iterating the group produces perfectly sequential memory access.
-auto& group = reg.group<WorldTransform, MotionVelocity>();
-
-// scroll_system uses this group:
-void scroll_system(entt::registry& reg, float dt) {
-    auto group = reg.group<WorldTransform, MotionVelocity>();
-    for (auto [entity, transform, velocity] : group.each()) {
-        transform.position += velocity.value * dt;
+void motion_system(entt::registry& reg, float dt) {
+    auto motion_view = reg.view<WorldTransform, MotionVelocity>();
+    for (auto [entity, transform, velocity] : motion_view.each()) {
+        transform.position.x += velocity.value.x * dt;
+        transform.position.y += velocity.value.y * dt;
     }
 }
 ```
@@ -1475,11 +1469,11 @@ app/
 │   ├── game_state_system.cpp    ← phase transitions
 │   ├── song_playback_system.cpp ← music stream timing
 │   ├── beat_log_system.cpp      ← session beat telemetry
-│   ├── player_input_system.cpp  ← ButtonPressEvent/GoEvent listener callbacks
+│   ├── player_input_system.cpp  ← ButtonPressEvent/GoEvent dispatcher callbacks
 │   ├── test_player_system.cpp   ← automated test player (enqueues semantic events)
-│   ├── player_movement_system.cpp ← lane lerp, jump parabola, morph advance
+│   ├── player_movement_system.cpp ← lane lerp, jump parabola
 │   ├── beat_scheduler_system.cpp ← song-authored obstacle entities
-│   ├── scroll_system.cpp        ← pos += vel × dt
+│   ├── scroll_system.cpp        ← derive rhythm positions from song_time + BeatInfo
 │   ├── collision_system.cpp     ← obstacle vs player match test
 │   ├── miss_detection_system.cpp ← missed obstacles → miss events
 │   ├── scoring_system.cpp       ← bank points, chain, spawn popup
@@ -1525,29 +1519,26 @@ for (auto [entity, pos, obs] : view.each()) {
 }
 ```
 
-### A.3 Group for Hot Path
+### A.3 View for Hot Path
 
 ```cpp
-// Declared once at startup — ensures WorldTransform and MotionVelocity pools
-// maintain identical sort order for cache-optimal co-iteration.
-reg.group<WorldTransform, MotionVelocity>();
-
-// Used in scroll_system:
-auto group = reg.group<WorldTransform, MotionVelocity>();
-for (auto [entity, transform, velocity] : group.each()) {
-    transform.position += velocity.value * dt;
+// Used in motion_system for dt-integrated entities.
+auto motion_view = reg.view<WorldTransform, MotionVelocity>();
+for (auto [entity, transform, velocity] : motion_view.each()) {
+    transform.position.x += velocity.value.x * dt;
+    transform.position.y += velocity.value.y * dt;
 }
 ```
 
 ### A.4 Entity Creation (obstacle spawn)
 
 ```cpp
-entt::entity spawn_shape_gate(entt::registry& reg, Shape required,
-                               int8_t lane, float scroll_speed) {
+entt::entity spawn_rhythm_shape_gate(entt::registry& reg, Shape required,
+                                     int8_t lane, const BeatInfo& beat_info) {
     auto e = reg.create();
     reg.emplace<ObstacleTag>(e);
     reg.emplace<WorldTransform>(e, WorldTransform{{constants::LANE_X[lane], constants::SPAWN_Y}});
-    reg.emplace<MotionVelocity>(e, MotionVelocity{{0.0f, scroll_speed}});
+    reg.emplace<BeatInfo>(e, beat_info);
     reg.emplace<Obstacle>(e, int16_t{constants::PTS_SHAPE_GATE});
     reg.emplace<RequiredShape>(e, required);
     reg.emplace<Color>(e, shape_color(required));

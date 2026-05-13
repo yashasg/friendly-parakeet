@@ -496,3 +496,26 @@ TEST_CASE("beat_scheduler: clamped late-spawn stores adjusted spawn_time in Beat
         CHECK_THAT(recomputed_y, Catch::Matchers::WithinAbs(max_start_y, 0.01f));
     }
 }
+
+TEST_CASE("beat_scheduler: invalid scroll_speed skips late-spawn division", "[beat_scheduler][issue915]") {
+    auto reg = make_rhythm_registry();
+    auto& song = reg.ctx().get<SongState>();
+    auto& map = beat_map(reg);
+
+    map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
+    song.song_time = 100.0f;
+    song.scroll_speed = 0.0f;
+    song.next_spawn_idx = 0;
+
+    beat_scheduler_system(reg, 0.016f);
+
+    CHECK(song.next_spawn_idx == 0);
+    CHECK(reg.view<ObstacleTag>().begin() == reg.view<ObstacleTag>().end());
+    CHECK(reg.view<ObstacleTag, BeatInfo>().begin() == reg.view<ObstacleTag, BeatInfo>().end());
+
+    song.scroll_speed = -1.0f;
+    beat_scheduler_system(reg, 0.016f);
+
+    CHECK(song.next_spawn_idx == 0);
+    CHECK(reg.view<ObstacleTag>().begin() == reg.view<ObstacleTag>().end());
+}

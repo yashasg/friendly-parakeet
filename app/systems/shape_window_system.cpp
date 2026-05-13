@@ -15,8 +15,11 @@ void shape_window_system(entt::registry& reg, float /*dt*/) {
     auto* song = reg.ctx().find<SongState>();
     if (!song) return;
 
+    const bool morph_duration_valid = song->morph_duration > 0.0f;
+
     auto view = reg.view<PlayerTag, PlayerShape, ShapeWindow, Color>();
     for (auto [entity, pshape, swindow, col] : view.each()) {
+        (void)col;
         // Derive window_timer from song_time instead of accumulating dt.
         // This keeps shape windows frame-rate independent and perfectly
         // synced to the audio clock, per the "only use song position" rule.
@@ -28,6 +31,17 @@ void shape_window_system(entt::registry& reg, float /*dt*/) {
 
             case WindowPhase::MorphIn: {
                 swindow.window_timer = elapsed;
+                if (!morph_duration_valid) {
+                    TraceLog(LOG_WARNING, "shape_window_system completed MorphIn immediately: invalid morph_duration %.3f",
+                             song->morph_duration);
+                    pshape.morph_t = 1.0f;
+                    swindow.phase = WindowPhase::Active;
+                    swindow.window_start = song->song_time;
+                    swindow.window_timer = 0.0f;
+                    pshape.current = swindow.target_shape;
+                    apply_shape_color(reg, entity, pshape.current);
+                    break;
+                }
                 pshape.morph_t = elapsed / song->morph_duration;
                 if (pshape.morph_t >= 1.0f) {
                     pshape.morph_t = 1.0f;
@@ -58,6 +72,21 @@ void shape_window_system(entt::registry& reg, float /*dt*/) {
             case WindowPhase::MorphOut: {
                 float morph_elapsed = song->song_time - swindow.window_start;
                 swindow.window_timer = morph_elapsed;
+                if (!morph_duration_valid) {
+                    TraceLog(LOG_WARNING, "shape_window_system completed MorphOut immediately: invalid morph_duration %.3f",
+                             song->morph_duration);
+                    pshape.morph_t = 1.0f;
+                    pshape.current = Shape::Hexagon;
+                    pshape.previous = Shape::Hexagon;
+                    swindow.target_shape = Shape::Hexagon;
+                    swindow.phase = WindowPhase::Idle;
+                    swindow.window_timer = 0.0f;
+                    swindow.press_time = -1.0f;
+                    swindow.window_scale = 1.0f;
+                    swindow.graded = false;
+                    apply_shape_color(reg, entity, Shape::Hexagon);
+                    break;
+                }
                 pshape.morph_t = morph_elapsed / song->morph_duration;
                 if (pshape.morph_t >= 1.0f) {
                     pshape.morph_t = 1.0f;
