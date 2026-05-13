@@ -349,7 +349,7 @@ void gameplay_hud_process_button_input(entt::registry& reg) {
     if (!(input.click || input.button_touch_up || input.touch_up)) return;
 
     static const GameplayHudLayoutState geometry_state = GameplayHudLayout_Init();
-    if (input.click || (input.touch_up && !input.button_touch_up)) {
+    if (input.click) {
         const Vector2 pointer = {input.end_x, input.end_y};
         gameplay_hud_apply_button_presses(
             reg,
@@ -357,6 +357,16 @@ void gameplay_hud_process_button_input(entt::registry& reg) {
             CheckCollisionPointRec(pointer, GameplayHudLayout_CircleButtonBounds(&geometry_state)),
             CheckCollisionPointRec(pointer, GameplayHudLayout_SquareButtonBounds(&geometry_state)),
             CheckCollisionPointRec(pointer, GameplayHudLayout_TriangleButtonBounds(&geometry_state)));
+    }
+
+    if (input.touch_up && !input.button_touch_up) {
+        const Vector2 pointer = {input.end_x, input.end_y};
+        gameplay_hud_apply_button_presses(
+            reg,
+            CheckCollisionPointRec(pointer, GameplayHudLayout_PauseButtonBounds(&geometry_state)),
+            false,
+            false,
+            false);
     }
 
     if (input.button_touch_up) {
