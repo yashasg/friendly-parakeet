@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
+#include "components/system_scratch.h"
 #include "test_helpers.h"
 #include "ui/screen_controllers/tutorial_screen_controller.h"
 
@@ -232,6 +233,23 @@ TEST_CASE("game_state: Settings hides stale world renderables",
     CHECK_FALSE(game_render_should_draw_world_meshes(GamePhase::LevelSelect));
     CHECK_FALSE(game_render_should_draw_world_meshes(GamePhase::Settings));
     CHECK_FALSE(game_render_should_draw_world_meshes(GamePhase::Tutorial));
+}
+
+TEST_CASE("wasm smoke lane marker state is registry-owned and reset with runtime scratch",
+          "[gamestate][wasm][regression][issue973]") {
+    auto first = make_registry();
+    auto second = make_registry();
+
+    auto& first_marker = first.ctx().get<WasmSmokeLaneMarkerState>();
+    auto& second_marker = second.ctx().get<WasmSmokeLaneMarkerState>();
+    first_marker.last_lane = 2;
+
+    CHECK(second_marker.last_lane == -1);
+
+    runtime_system_scratch_init(first);
+
+    CHECK(first.ctx().get<WasmSmokeLaneMarkerState>().last_lane == -1);
+    CHECK(second.ctx().get<WasmSmokeLaneMarkerState>().last_lane == -1);
 }
 
 TEST_CASE("game_state: transition clears in-flight pointer capture", "[gamestate][input]") {

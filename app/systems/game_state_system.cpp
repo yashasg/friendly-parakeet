@@ -7,6 +7,7 @@
 #include "../components/input_events.h"
 #include "../components/player.h"
 #include "../components/rhythm.h"
+#include "../components/system_scratch.h"
 #include "../entities/settings.h"
 #include "../constants.h"
 #if defined(__EMSCRIPTEN__) && defined(SHAPESHIFTER_WASM_SMOKE_MARKERS)
@@ -17,25 +18,36 @@
 #if defined(__EMSCRIPTEN__) && defined(SHAPESHIFTER_WASM_SMOKE_MARKERS)
 namespace {
 
+WasmSmokeLaneMarkerState& wasm_smoke_lane_marker_state(entt::registry& reg) {
+    if (auto* state = reg.ctx().find<WasmSmokeLaneMarkerState>()) {
+        return *state;
+    }
+    return reg.ctx().emplace<WasmSmokeLaneMarkerState>();
+}
+
+void reset_web_playing_lane_marker(entt::registry& reg) {
+    wasm_smoke_lane_marker_state(reg).last_lane = -1;
+}
+
 void update_web_playing_lane_marker(entt::registry& reg, const GameState& gs) {
-    static int last_lane = -1;
+    auto& marker = wasm_smoke_lane_marker_state(reg);
     if (gs.phase != GamePhase::Playing) {
-        last_lane = -1;
+        marker.last_lane = -1;
         return;
     }
 
     auto player_view = reg.view<PlayerTag, Lane>();
     if (player_view.begin() == player_view.end()) {
-        last_lane = -1;
+        marker.last_lane = -1;
         return;
     }
 
     const auto player_entity = *player_view.begin();
     const int lane = static_cast<int>(player_view.get<Lane>(player_entity).current);
-    if (lane == last_lane) {
+    if (lane == marker.last_lane) {
         return;
     }
-    last_lane = lane;
+    marker.last_lane = lane;
 
     const std::string title = std::string("SHAPESHIFTER [Playing][Lane:")
         + std::to_string(lane) + "]";
@@ -135,6 +147,11 @@ void game_state_system(entt::registry& reg, float dt) {
                 enter_phase(gs, GamePhase::Tutorial);
                 break;
         }
+#if defined(__EMSCRIPTEN__) && defined(SHAPESHIFTER_WASM_SMOKE_MARKERS)
+        if (gs.phase != GamePhase::Playing) {
+            reset_web_playing_lane_marker(reg);
+        }
+#endif
         return;
     }
 
