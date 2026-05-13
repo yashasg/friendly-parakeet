@@ -926,6 +926,7 @@ int main(int argc, char* argv[]) {
 
         // ── INPUT (once per frame, outside fixed loop) ──
         input_system(reg, raw_dt);
+        gameplay_hud_process_button_input(reg);
         test_player_system(reg, raw_dt);
 
         // ── FIXED TIMESTEP LOOP ──────────────────────────────
@@ -937,6 +938,7 @@ int main(int argc, char* argv[]) {
             popup_feedback_system(reg, FIXED_DT);
             popup_display_system(reg, FIXED_DT);
             energy_system(reg, FIXED_DT);
+            energy_bar_system(reg, FIXED_DT);
             particle_system(reg, FIXED_DT);
 
             accumulator -= FIXED_DT;
