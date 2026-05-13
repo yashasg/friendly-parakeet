@@ -555,13 +555,14 @@ system in the same frame (unidirectional data flow).
  │  │     c. player_movement    Advance lane, jump/slide,    │
  │  │                           and morph interpolation.     │
  │  │                                                        │
- │  │     d. scroll_system      For every (WorldTransform,   │
+ │  │     d. scroll_system      Derive rhythm-obstacle       │
+ │  │                           positions from SongState     │
+ │  │                           song_time + BeatInfo.        │
+ │  │                                                        │
+ │  │     e. motion_system      For every (WorldTransform,   │
  │  │                           MotionVelocity):             │
  │  │                           position += velocity * dt.   │
  │  │                           Simple, tight inner loop.    │
- │  │                                                        │
- │  │     e. motion_system      Apply model-space obstacle   │
- │  │                           motion where active.         │
  │  │                                                        │
  │  │     f. collision_system   For each obstacle near       │
  │  │                           PLAYER_Y: test shape match,  │
