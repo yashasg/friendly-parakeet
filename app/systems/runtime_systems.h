@@ -4,7 +4,19 @@
 #include "components/game_state.h"
 
 [[nodiscard]] constexpr bool game_render_should_draw_world_meshes(GamePhase phase) noexcept {
-    return phase != GamePhase::Title && phase != GamePhase::LevelSelect;
+    switch (phase) {
+        case GamePhase::Playing:
+        case GamePhase::Paused:
+        case GamePhase::GameOver:
+        case GamePhase::SongComplete:
+            return true;
+        case GamePhase::Title:
+        case GamePhase::LevelSelect:
+        case GamePhase::Settings:
+        case GamePhase::Tutorial:
+            return false;
+    }
+    return false;
 }
 
 // Runtime-only systems require a live platform/audio/render context and are
