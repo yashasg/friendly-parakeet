@@ -3,11 +3,16 @@
 #include "../components/rhythm.h"
 #include "../constants.h"
 
+#include <cmath>
+#include <raylib.h>
+
 constexpr float kTimingBpmCeiling = 180.0f;
 constexpr float kTimingPerfectSeconds = 0.050f;
 constexpr float kTimingGoodSeconds = 0.100f;
 constexpr float kTimingOkSeconds = 0.150f;
 constexpr float kTimingGradeEpsilonSeconds = 0.0005f;
+constexpr float kDefaultTimingBpm = 120.0f;
+constexpr int kDefaultTimingLeadBeats = 4;
 
 // Better timing -> smaller scale -> remaining Active window collapses sooner.
 // collision_system applies this via window_start adjustment (scale < 1.0 path).
@@ -41,8 +46,24 @@ inline TimingTier compute_timing_tier_from_delta(float delta_seconds_abs) {
 }
 
 inline void song_state_compute_derived(SongState& s) {
+    if (!std::isfinite(s.bpm) || s.bpm <= 0.0f) {
+        TraceLog(LOG_WARNING, "Invalid SongState bpm %.3f; using %.1f", s.bpm, kDefaultTimingBpm);
+        s.bpm = kDefaultTimingBpm;
+    }
+    if (s.lead_beats <= 0) {
+        TraceLog(LOG_WARNING, "Invalid SongState lead_beats %d; using %d", s.lead_beats, kDefaultTimingLeadBeats);
+        s.lead_beats = kDefaultTimingLeadBeats;
+    }
+
     s.beat_period     = 60.0f / s.bpm;
-    s.lead_time       = s.lead_beats * s.beat_period;
+    s.lead_time       = static_cast<float>(s.lead_beats) * s.beat_period;
+    if (!std::isfinite(s.lead_time) || s.lead_time <= 0.0f) {
+        TraceLog(LOG_WARNING, "Invalid derived lead_time %.3f; using default timing", s.lead_time);
+        s.bpm = kDefaultTimingBpm;
+        s.lead_beats = kDefaultTimingLeadBeats;
+        s.beat_period = 60.0f / s.bpm;
+        s.lead_time = static_cast<float>(s.lead_beats) * s.beat_period;
+    }
 
     s.scroll_speed    = constants::APPROACH_DIST / s.lead_time;
 
