@@ -28,6 +28,12 @@ void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
             song->next_spawn_idx++;
             continue;
         }
+        if (entry.kind != ObstacleKind::ShapeGate) {
+            TraceLog(LOG_WARNING, "Skipping unsupported active beatmap obstacle kind %d",
+                     static_cast<int>(entry.kind));
+            song->next_spawn_idx++;
+            continue;
+        }
 
         float beat_time = song->offset + entry.beat_index * song->beat_period;
         if (!entry.has_time_sec &&
@@ -66,22 +72,13 @@ void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
                 - (max_start_y - constants::SPAWN_Y) / song->scroll_speed;
         }
 
-        // Compute x: LaneBlock derives it from blocked_mask; lane-based kinds
-        // use entry.lane directly; bar/gate types default to center lane.
+        // Shape gates use the authored lane directly.
         float x_pos = constants::LANE_X[1];
-        if (entry.kind == ObstacleKind::ShapeGate || entry.kind == ObstacleKind::SplitPath) {
-            const int lane = static_cast<int>(entry.lane);
-            if (lane >= 0 && lane < constants::LANE_COUNT) {
-                x_pos = constants::LANE_X[lane];
-            } else {
-                TraceLog(LOG_WARNING, "Invalid lane-based obstacle lane %d; defaulting to center lane", lane);
-            }
-        } else if (entry.kind == ObstacleKind::LaneBlock) {
-            int display_lane = 1;
-            for (int l = 0; l < 3; ++l) {
-                if ((entry.blocked_mask >> l) & 1) { display_lane = l; break; }
-            }
-            x_pos = constants::LANE_X[display_lane];
+        const int lane = static_cast<int>(entry.lane);
+        if (lane >= 0 && lane < constants::LANE_COUNT) {
+            x_pos = constants::LANE_X[lane];
+        } else {
+            TraceLog(LOG_WARNING, "Invalid shape_gate lane %d; defaulting to center lane", lane);
         }
 
         const BeatInfo bi{entry.beat_index, calibrated_arrival_time, effective_spawn_time};

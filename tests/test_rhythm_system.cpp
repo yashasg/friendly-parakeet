@@ -38,28 +38,21 @@ TEST_CASE("beatmap: parse minimal valid JSON", "[rhythm][beatmap]") {
     CHECK(map.beats[1].shape == Shape::Triangle);
 }
 
-TEST_CASE("beatmap: parse all obstacle kinds", "[rhythm][beatmap]") {
+TEST_CASE("beatmap: parse active obstacle kinds", "[rhythm][beatmap][issue873]") {
     BeatMap map;
     std::vector<BeatMapError> errors;
     std::string json = R"({
         "bpm": 120, "offset": 0, "lead_beats": 4, "duration_sec": 60,
         "beats": [
             { "beat": 4,  "kind": "shape_gate",  "shape": "circle",   "lane": 1 },
-            { "beat": 8,  "kind": "lane_block",   "blocked": [0, 2] },
-                    { "beat": 20, "kind": "combo_gate",  "shape": "square", "blocked": [0, 1] },
-            { "beat": 24, "kind": "split_path",  "shape": "triangle", "lane": 2 }
+            { "beat": 8,  "kind": "onset_marker", "time_sec": 4.0 }
         ]
     })";
 
     REQUIRE(parse_beat_map(json, map, errors));
-    REQUIRE(map.beats.size() == 4);
+    REQUIRE(map.beats.size() == 2);
     CHECK(map.beats[0].kind == ObstacleKind::ShapeGate);
-    CHECK(map.beats[1].kind == ObstacleKind::LaneBlock);
-    CHECK(map.beats[1].blocked_mask == 0b101);
-    CHECK(map.beats[2].kind == ObstacleKind::ComboGate);
-    CHECK(map.beats[2].blocked_mask == 0b011);
-    CHECK(map.beats[3].kind == ObstacleKind::SplitPath);
-    CHECK(map.beats[3].lane == 2);
+    CHECK(map.beats[1].kind == ObstacleKind::OnsetMarker);
 }
 
 TEST_CASE("beatmap: tempo_changes in JSON are ignored", "[rhythm][beatmap]") {
@@ -313,19 +306,6 @@ TEST_CASE("beat_scheduler: rhythm obstacles use BeatInfo without MotionVelocity"
     }
     auto invalid_view = reg.view<ObstacleTag, BeatInfo, MotionVelocity>();
     CHECK(std::distance(invalid_view.begin(), invalid_view.end()) == 0);
-}
-
-TEST_CASE("beat_scheduler: spawns lane_block with blocked mask", "[rhythm][scheduler]") {
-    auto reg = make_rhythm_registry();
-    auto& song = reg.ctx().get<SongState>();
-    auto& map = beat_map(reg);
-    BeatEntry entry; entry.beat_index = 4; entry.kind = ObstacleKind::LaneBlock; entry.blocked_mask = 0b101;
-    map.beats.push_back(entry);
-    song.playing = true; song.song_time = 0.1f;
-    beat_scheduler_system(reg, 0.016f);
-    auto view = reg.view<ObstacleTag, BlockedLanes>();
-    REQUIRE(std::distance(view.begin(), view.end()) == 1);
-    for (auto [e, bl] : view.each()) { CHECK(bl.mask == 0b101); }
 }
 
 // Shape Window System

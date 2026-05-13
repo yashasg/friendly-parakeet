@@ -11,7 +11,6 @@
 
 using json = nlohmann::json;
 namespace {
-constexpr uint8_t kLaneBitsMask = 0x07;
 constexpr const char* kValidationConstantsPath = "content/constants.json";
 
 std::string constants_path_for_app_dir(const std::string& app_dir) {
@@ -25,29 +24,16 @@ std::string constants_path_for_app_dir(const std::string& app_dir) {
     return app_dir + "/" + kValidationConstantsPath;
 }
 
-bool has_only_lane_bits(const uint8_t mask) {
-    return (mask & static_cast<uint8_t>(~kLaneBitsMask)) == 0;
-}
-
-int lane_bit_count(const uint8_t mask) {
-    int count = 0;
-    for (int lane = 0; lane < 3; ++lane) {
-        if (((mask >> lane) & 1U) != 0U) {
-            ++count;
-        }
-    }
-    return count;
-}
-
 bool kind_requires_shape(const ObstacleKind kind) {
-    return kind == ObstacleKind::ShapeGate ||
-           kind == ObstacleKind::ComboGate ||
-           kind == ObstacleKind::SplitPath;
+    return kind == ObstacleKind::ShapeGate;
 }
 
 bool kind_requires_lane(const ObstacleKind kind) {
-    return kind == ObstacleKind::ShapeGate ||
-           kind == ObstacleKind::SplitPath;
+    return kind == ObstacleKind::ShapeGate;
+}
+
+bool is_supported_beatmap_kind(const ObstacleKind kind) {
+    return kind == ObstacleKind::ShapeGate || kind == ObstacleKind::OnsetMarker;
 }
 
 std::string type_error_message(const char* field, const char* expected, const json& value) {
@@ -252,9 +238,6 @@ ValidationConstants load_validation_constants(const std::string& app_dir) {
 
 static std::optional<ObstacleKind> parse_kind(const std::string& s) {
     if (s == "shape_gate")       return ObstacleKind::ShapeGate;
-    if (s == "lane_block")       return ObstacleKind::LaneBlock;
-    if (s == "combo_gate")       return ObstacleKind::ComboGate;
-    if (s == "split_path")       return ObstacleKind::SplitPath;
     if (s == "onset_marker")     return ObstacleKind::OnsetMarker;
     return std::nullopt;
 }
@@ -483,32 +466,11 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
         }
 
         if (b.contains("blocked")) {
-            if (!b["blocked"].is_array()) {
-                errors.push_back({entry.beat_index,
-                    "'blocked' must be an array at beat " + std::to_string(entry.beat_index)});
-                parse_ok = false;
-                continue;
-            }
-            entry.blocked_mask = 0;
-            bool blocked_ok = true;
-            for (const auto& lane_idx : b["blocked"]) {
-                int lane = 0;
-                if (!read_int_value(lane_idx, "blocked[]", lane, errors, entry.beat_index)) {
-                    parse_ok = false;
-                    blocked_ok = false;
-                    break;
-                }
-                if (lane < 0 || lane > 2) {
-                    errors.push_back({entry.beat_index,
-                        "'blocked' lane index must be in range [0, 2] at beat "
-                        + std::to_string(entry.beat_index)});
-                    parse_ok = false;
-                    blocked_ok = false;
-                    break;
-                }
-                entry.blocked_mask |= static_cast<uint8_t>(1 << lane);
-            }
-            if (!blocked_ok) continue;
+            errors.push_back({entry.beat_index,
+                "'blocked' is not supported by active beatmap obstacle kinds at beat "
+                + std::to_string(entry.beat_index)});
+            parse_ok = false;
+            continue;
         }
 
         out.beats.push_back(entry);
@@ -709,33 +671,15 @@ bool validate_beat_map(const BeatMap& map, std::vector<BeatMapError>& errors,
             valid = false;
         }
 
-        // Rule 5: shape_gate / split_path must have lane 0-2
-        if ((entry.kind == ObstacleKind::ShapeGate || entry.kind == ObstacleKind::SplitPath) &&
-            (entry.lane < 0 || entry.lane > 2)) {
+        if (!is_supported_beatmap_kind(entry.kind)) {
+            errors.push_back({entry.beat_index, "Unsupported active beatmap obstacle kind"});
+            valid = false;
+        }
+
+        // Rule 5: shape_gate must have lane 0-2
+        if (entry.kind == ObstacleKind::ShapeGate && (entry.lane < 0 || entry.lane > 2)) {
             errors.push_back({entry.beat_index, "Lane must be 0-2"});
             valid = false;
-        }
-
-        if ((entry.kind == ObstacleKind::LaneBlock || entry.kind == ObstacleKind::ComboGate) &&
-            !has_only_lane_bits(entry.blocked_mask)) {
-            errors.push_back({entry.beat_index, "blocked_mask must only use lane bits 0..2"});
-            valid = false;
-        }
-
-        if (entry.kind == ObstacleKind::LaneBlock && lane_bit_count(entry.blocked_mask) != 1) {
-            errors.push_back({entry.beat_index, "LaneBlock blocked_mask must contain exactly one lane bit"});
-            valid = false;
-        }
-
-        // Rule 5b: combo_gate blocked_mask must block at least one lane and leave at least one open
-        if (entry.kind == ObstacleKind::ComboGate) {
-            if (entry.blocked_mask == 0) {
-                errors.push_back({entry.beat_index, "ComboGate must block at least one lane"});
-                valid = false;
-            } else if (entry.blocked_mask == 0x07) {
-                errors.push_back({entry.beat_index, "ComboGate must leave at least one lane open"});
-                valid = false;
-            }
         }
 
         if (entry.has_time_sec) {

@@ -92,21 +92,22 @@ TEST_CASE("parse: unknown shape does not silently become Circle", "[parse][shape
 
 // ── Valid beatmaps remain error-free ──────────────────────────
 
-TEST_CASE("parse: all valid kinds parse without errors", "[parse][kind]") {
+TEST_CASE("parse: all active kinds parse without errors", "[parse][kind][issue873]") {
     const std::vector<std::string> valid_kinds = {
-        "shape_gate", "lane_block",
-        "combo_gate", "split_path"
+        "shape_gate", "onset_marker"
     };
 
     for (const auto& kind : valid_kinds) {
         BeatMap map;
         std::vector<BeatMapError> errors;
-        const bool requires_shape = kind == "shape_gate" || kind == "combo_gate" || kind == "split_path";
+        const bool requires_shape = kind == "shape_gate";
+        const bool requires_lane = kind == "shape_gate";
         const std::string shape = requires_shape ? R"(, "shape": "circle")" : "";
+        const std::string lane = requires_lane ? R"(, "lane": 1)" : "";
         std::string json = R"({
             "bpm": 120, "offset": 0.0, "lead_beats": 4, "duration_sec": 60.0,
             "beats": [
-                { "beat": 4, "kind": ")" + kind + R"(", "lane": 1)" + shape + R"( }
+                { "beat": 4, "kind": ")" + kind + R"(")" + shape + lane + R"( }
             ]
         })";
         INFO("Testing kind: " << kind);
@@ -258,7 +259,7 @@ TEST_CASE("parse: missing shape gate lane is rejected", "[parse][lane][required]
     CHECK(map.beats.empty());
 }
 
-TEST_CASE("parse: missing split path lane is rejected", "[parse][lane][required][issue757]") {
+TEST_CASE("parse: unshipped obstacle kinds are rejected", "[parse][kind][issue873]") {
     BeatMap map;
     std::vector<BeatMapError> errors;
     std::string json = R"({
@@ -271,7 +272,7 @@ TEST_CASE("parse: missing split path lane is rejected", "[parse][lane][required]
     CHECK_FALSE(parse_beat_map(json, map, errors));
     REQUIRE_FALSE(errors.empty());
     CHECK(errors[0].beat_index == 8);
-    CHECK(errors[0].message.find("lane") != std::string::npos);
+    CHECK(errors[0].message.find("Unknown obstacle kind") != std::string::npos);
     CHECK(map.beats.empty());
 }
 
