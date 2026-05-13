@@ -265,7 +265,7 @@ TEST_CASE("parse: unshipped obstacle kinds are rejected", "[parse][kind][issue87
     std::string json = R"({
         "bpm": 120, "offset": 0.0, "lead_beats": 4, "duration_sec": 60.0,
         "beats": [
-            { "beat": 8, "kind": "split_path", "shape": "triangle" }
+            { "beat": 8, "kind": "lane_block", "lane": 1 }
         ]
     })";
 

@@ -299,6 +299,28 @@ TEST_CASE("beat_scheduler: skips unsupported active beatmap obstacle kinds", "[b
     CHECK(song.next_spawn_idx == 1);
 }
 
+TEST_CASE("beat_scheduler: spawns SplitPath in authored lane", "[beat_scheduler][issue932]") {
+    auto reg = make_rhythm_registry();
+    auto& song = reg.ctx().get<SongState>();
+    auto& map = beat_map(reg);
+
+    map.beats.push_back({0, ObstacleKind::SplitPath, Shape::Triangle, 2, 0});
+    song.song_time = 10.0f;
+    song.next_spawn_idx = 0;
+
+    beat_scheduler_system(reg, 0.016f);
+
+    auto view = reg.view<ObstacleTag, WorldTransform, RequiredShape, RequiredLane>();
+    REQUIRE(view.size_hint() == 1);
+    for (auto [e, wt, shape, lane] : view.each()) {
+        (void)e;
+        CHECK_THAT(wt.position.x, Catch::Matchers::WithinAbs(constants::LANE_X[2], 0.01f));
+        CHECK(shape.shape == Shape::Triangle);
+        CHECK(lane.lane == 2);
+    }
+    CHECK(song.next_spawn_idx == 1);
+}
+
 TEST_CASE("beat_scheduler: spawns all queued beats from BeatMap entries", "[beat_scheduler]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();

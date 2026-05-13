@@ -278,6 +278,18 @@ TEST_CASE("validate: shape_gate invalid lane fails", "[validate]") {
     CHECK_FALSE(validate_beat_map(map, errors));
 }
 
+TEST_CASE("validate: split_path invalid lane fails", "[validate][issue932]") {
+    BeatMap map;
+    map.bpm = 120.0f;
+    map.offset = 0.0f;
+    map.lead_beats = 4;
+    map.duration = 60.0f;
+    map.beats.push_back({0, ObstacleKind::SplitPath, Shape::Circle, 5, 0});
+
+    std::vector<BeatMapError> errors;
+    CHECK_FALSE(validate_beat_map(map, errors));
+}
+
 // ── validate_beat_map: multiple errors ───────────────────────
 
 TEST_CASE("validate: multiple errors accumulated", "[validate]") {
@@ -300,7 +312,6 @@ TEST_CASE("validate: unshipped obstacle kinds are rejected from active beatmaps"
     constexpr ObstacleKind kinds[] = {
         ObstacleKind::LaneBlock,
         ObstacleKind::ComboGate,
-        ObstacleKind::SplitPath,
     };
 
     for (const auto kind : kinds) {
@@ -317,6 +328,18 @@ TEST_CASE("validate: unshipped obstacle kinds are rejected from active beatmaps"
         REQUIRE_FALSE(errors.empty());
         CHECK(errors[0].message.find("Unsupported active beatmap obstacle kind") != std::string::npos);
     }
+}
+
+TEST_CASE("validate: split_path is supported in active beatmaps", "[validate][kind][issue932]") {
+    BeatMap map;
+    map.bpm = 120.0f;
+    map.offset = 0.0f;
+    map.lead_beats = 4;
+    map.duration = 60.0f;
+    map.beats.push_back({4, ObstacleKind::SplitPath, Shape::Circle, 2, 0});
+
+    std::vector<BeatMapError> errors;
+    CHECK(validate_beat_map(map, errors));
 }
 
 // ── init_song_state ──────────────────────────────────────────
@@ -751,6 +774,27 @@ TEST_CASE("parse: shape_gate requires explicit shape", "[parse][shape][issue224]
     CHECK_FALSE(parse_beat_map(json, map, errors));
     REQUIRE_FALSE(errors.empty());
     CHECK(errors[0].message.find("Missing required shape") != std::string::npos);
+}
+
+TEST_CASE("parse: split_path loads required shape and lane", "[parse][issue932]") {
+    BeatMap map;
+    std::vector<BeatMapError> errors;
+    std::string json = R"({
+        "song_id": "split_path_test",
+        "bpm": 120,
+        "offset": 0.0,
+        "lead_beats": 4,
+        "duration_sec": 60.0,
+        "beats": [
+            { "beat": 2, "kind": "split_path", "shape": "triangle", "lane": 2 }
+        ]
+    })";
+
+    CHECK(parse_beat_map(json, map, errors));
+    REQUIRE(map.beats.size() == 1);
+    CHECK(map.beats[0].kind == ObstacleKind::SplitPath);
+    CHECK(map.beats[0].shape == Shape::Triangle);
+    CHECK(map.beats[0].lane == 2);
 }
 
 TEST_CASE("parse: same beat_index entries are ordered by resolved time_sec", "[parse][beat_times][ordering]") {
