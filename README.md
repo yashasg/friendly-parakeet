@@ -28,7 +28,7 @@ at runtime boundaries, without wrapper abstraction layers.
 - C++20 compiler (Clang 20 recommended)
 - CMake 3.20+
 - [vcpkg](https://vcpkg.io)
-- Node.js 22+ (optional, enables beatmap editor Node test suite during `ctest`)
+- Node.js 22+ with npm (optional, enables beatmap editor Node test suite during `ctest` and `./run.sh test`)
 
 ### Quick Start
 
@@ -37,7 +37,7 @@ export VCPKG_ROOT=/path/to/vcpkg
 
 ./build.sh           # Release build
 ./run.sh             # Build + run game
-./run.sh test        # Build + run tests
+./run.sh test        # Build + run tests (skips optional Node tests if node/npm is unavailable)
 cmake --build build --target shapeshifter_benchmarks  # Run benchmarks on demand
 ```
 
