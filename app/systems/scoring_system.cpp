@@ -150,7 +150,7 @@ void scoring_system(entt::registry& reg, float dt) {
             reg.get_or_emplace<ResolvedObstacleTag>(r.e);
             reg.remove<Obstacle>(r.e);
             reg.remove<ScoredTag>(r.e);
-            reg.remove<MissTag>(r.e);
+            if (reg.all_of<MissTag>(r.e)) reg.remove<MissTag>(r.e);
             if (r.has_timing) reg.remove<TimingGrade>(r.e);
         }
     }
@@ -268,11 +268,11 @@ void scoring_system(entt::registry& reg, float dt) {
         auto& cleanup_buf = scratch.hit_buf;
         cleanup_buf.clear();
 
-        auto ns_view = reg.view<ObstacleTag, ScoredTag, NonScorableTag>(
-            entt::exclude<MissTag>);
+        auto ns_view = reg.view<ObstacleTag, ScoredTag, NonScorableTag>();
         for (auto e : ns_view) {
             HitRecord r;
             r.e = e;
+            r.has_timing = reg.all_of<TimingGrade>(e);
             if (cleanup_buf.size() >= cleanup_buf.capacity()) {
                 ++scratch.hit_capacity_exceeded_count;
             }
@@ -282,6 +282,8 @@ void scoring_system(entt::registry& reg, float dt) {
             reg.get_or_emplace<ResolvedObstacleTag>(r.e);
             reg.remove<Obstacle>(r.e);
             reg.remove<ScoredTag>(r.e);
+            if (reg.all_of<MissTag>(r.e)) reg.remove<MissTag>(r.e);
+            if (r.has_timing) reg.remove<TimingGrade>(r.e);
         }
     }
 

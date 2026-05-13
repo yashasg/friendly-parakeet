@@ -222,6 +222,18 @@ TEST_CASE("game_state: terminal to LevelSelect hides stale world renderables",
     CHECK_FALSE(game_render_should_draw_world_meshes(gs.phase));
 }
 
+TEST_CASE("game_state: Settings hides stale world renderables",
+          "[gamestate][render][regression][issue966]") {
+    CHECK(game_render_should_draw_world_meshes(GamePhase::Playing));
+    CHECK(game_render_should_draw_world_meshes(GamePhase::Paused));
+    CHECK(game_render_should_draw_world_meshes(GamePhase::GameOver));
+    CHECK(game_render_should_draw_world_meshes(GamePhase::SongComplete));
+    CHECK_FALSE(game_render_should_draw_world_meshes(GamePhase::Title));
+    CHECK_FALSE(game_render_should_draw_world_meshes(GamePhase::LevelSelect));
+    CHECK_FALSE(game_render_should_draw_world_meshes(GamePhase::Settings));
+    CHECK_FALSE(game_render_should_draw_world_meshes(GamePhase::Tutorial));
+}
+
 TEST_CASE("game_state: transition clears in-flight pointer capture", "[gamestate][input]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();

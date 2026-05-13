@@ -412,6 +412,40 @@ TEST_CASE("scoring: NonScorableTag entity cleared without scoring", "[scoring][n
     CHECK_FALSE(reg.all_of<Obstacle>(e));
 }
 
+TEST_CASE("scoring: missed NonScorableTag entity is resolved without effects",
+          "[scoring][nonscorable][issue965]") {
+    auto reg = make_registry();
+    auto& score = reg.ctx().get<ScoreState>();
+    auto& energy = reg.ctx().get<EnergyState>();
+    auto& results = reg.ctx().get<SongResults>();
+    const int score_before = score.score;
+    const int chain_before = score.chain_count;
+    const float energy_before = energy.energy;
+
+    auto e = reg.create();
+    reg.emplace<ObstacleTag>(e);
+    reg.emplace<WorldTransform>(e, WorldTransform{{300.0f, constants::PLAYER_Y}});
+    reg.emplace<Obstacle>(e, ObstacleKind::OnsetMarker, int16_t{0});
+    reg.emplace<NonScorableTag>(e);
+    reg.emplace<ScoredTag>(e);
+    reg.emplace<MissTag>(e);
+    reg.emplace<TimingGrade>(e, TimingTier::Bad, 0.0f);
+
+    scoring_system(reg, 0.0f);
+    energy_system(reg, 0.0f);
+
+    CHECK(score.score == score_before);
+    CHECK(score.chain_count == chain_before);
+    CHECK(energy.energy == energy_before);
+    CHECK(results.miss_count == 0);
+    CHECK(reg.view<ScorePopup>().size() == 0);
+    CHECK(reg.all_of<ResolvedObstacleTag>(e));
+    CHECK_FALSE(reg.all_of<Obstacle>(e));
+    CHECK_FALSE(reg.all_of<ScoredTag>(e));
+    CHECK_FALSE(reg.all_of<MissTag>(e));
+    CHECK_FALSE(reg.all_of<TimingGrade>(e));
+}
+
 TEST_CASE("scoring: missed obstacle drains energy without setting terminal death cause", "[scoring]") {
     auto reg = make_registry();
     auto& gos = reg.ctx().get<GameOverState>();

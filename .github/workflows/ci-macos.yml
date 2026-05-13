@@ -112,7 +112,10 @@ jobs:
         uses: actions/upload-artifact@v5
         with:
           name: shapeshifter-macos
-          path: build/shapeshifter
+          path: |
+            build/shapeshifter
+            build/content
+          if-no-files-found: error
 
       - name: Upload CTRF report
         if: always() && steps.run-tests.outcome != 'skipped'
@@ -253,6 +256,11 @@ jobs:
           mkdir -p "$APP_BUNDLE/Contents/MacOS" "$APP_BUNDLE/Contents/Resources"
           mv build/shapeshifter "$APP_BUNDLE/Contents/MacOS/SHAPESHIFTER"
           chmod +x "$APP_BUNDLE/Contents/MacOS/SHAPESHIFTER"
+          test -f build/content/constants.json
+          test -d build/content/fonts
+          test -d build/content/beatmaps
+          test -d build/content/audio
+          cp -R build/content "$APP_BUNDLE/Contents/MacOS/content"
 
           cat > "$APP_BUNDLE/Contents/Info.plist" <<'PLIST'
           <?xml version="1.0" encoding="UTF-8"?>
