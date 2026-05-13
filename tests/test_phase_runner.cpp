@@ -206,3 +206,27 @@ TEST_CASE("tick_fixed_systems: energy depletion requests GameOver before next Pl
     CHECK(drain_sfx_events(reg).count == 0);
     CHECK(drain_haptic_events(reg).count == 0);
 }
+
+TEST_CASE("tick_fixed_systems: fatal final drain wins after song finishes",
+          "[phase_guard][energy][regression][issue961]") {
+    auto reg = make_rhythm_registry();
+    auto& gs = reg.ctx().get<GameState>();
+    auto& song = reg.ctx().get<SongState>();
+    auto& energy = reg.ctx().get<EnergyState>();
+    auto& pending = reg.ctx().get<PendingEnergyEffects>();
+
+    song.song_time = song.duration_sec;
+    song.playing = true;
+    song.finished = false;
+    energy.energy = constants::ENERGY_DRAIN_MISS;
+    pending.events.push_back({-constants::ENERGY_DRAIN_MISS, true});
+
+    tick_fixed_systems(reg, 0.016f);
+
+    CHECK(song.finished);
+    CHECK_FALSE(song.playing);
+    REQUIRE(energy.energy == 0.0f);
+    REQUIRE(gs.transition_pending);
+    CHECK(gs.next_phase == GamePhase::GameOver);
+    CHECK(reg.ctx().get<GameOverState>().cause == DeathCause::EnergyDepleted);
+}

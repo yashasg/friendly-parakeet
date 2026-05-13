@@ -45,7 +45,7 @@ void energy_system(entt::registry& reg, float dt) {
         pending.events.clear();
     }
 
-    if (song && song->playing && energy->energy <= 0.0f) {
+    if (song && energy->energy <= 0.0f) {
         request_energy_depleted_game_over(reg);
     }
 
