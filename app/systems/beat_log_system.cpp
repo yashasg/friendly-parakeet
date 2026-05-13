@@ -17,7 +17,7 @@ void beat_log_system(entt::registry& reg, float /*dt*/) {
     if (song->current_beat > log->last_logged_beat) {
         for (int b = log->last_logged_beat + 1; b <= song->current_beat; ++b) {
             float expected = song->offset + b * song->beat_period;
-            if (map && !map->beat_times.empty()) {
+            if (map && b >= 0 && static_cast<size_t>(b) < map->beat_times.size()) {
                 expected = map->beat_times[static_cast<size_t>(b)];
             }
             session_log_write(*log, song->song_time, "GAME",

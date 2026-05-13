@@ -113,6 +113,28 @@ TEST_CASE("beat_log: catches up multiple beats in one call", "[beat_log]") {
     CHECK(reg.ctx().get<SessionLog>().last_logged_beat == 5);
 }
 
+TEST_CASE("beat_log: falls back when authored beat_times are shorter than current beat", "[beat_log]") {
+    auto reg = make_rhythm_registry();
+    auto& song = reg.ctx().get<SongState>();
+    song.offset = 0.25f;
+    song.beat_period = 0.5f;
+    song.song_time = 1.75f;
+    song.current_beat = 3;
+
+    auto& map = beat_map(reg);
+    map.beat_times = {0.25f};
+
+    auto slog = make_open_log();
+    reg.ctx().emplace<SessionLog>(std::move(slog));
+
+    beat_log_system(reg, 0.0f);
+
+    auto& stored = reg.ctx().get<SessionLog>();
+    CHECK(stored.last_logged_beat == 3);
+    CHECK(stored.buffer.find("BEAT 0 expected=0.250") != std::string::npos);
+    CHECK(stored.buffer.find("BEAT 3 expected=1.750") != std::string::npos);
+}
+
 TEST_CASE("beat_log: does not re-log already-logged beats", "[beat_log]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
