@@ -399,24 +399,35 @@ async function main() {
     // The title transition above covers the browser click path; using keyboard
     // here avoids depending on CSS-to-virtual-coordinate details for card rows.
     await page.keyboard.press('ArrowDown');
-    const afterLevelSelectClickHash = await waitForVisualChange(afterStartHash, 2500);
-    if (afterStartHash === afterLevelSelectClickHash) {
+    const afterLevelSelectNavigationHash = await waitForVisualChange(afterStartHash, 2500);
+    if (afterStartHash === afterLevelSelectNavigationHash) {
       fatal.push('no-visual-response-after-level-select-navigation');
     }
     if (!(await waitForTitlePhase('LevelSelect', 1500))) {
       fatal.push(`unexpected-phase-after-level-select-navigation:${await page.title()}`);
     }
 
+    // Regression coverage for #934: selecting a difficulty before confirming
+    // must not leave the browser build in a frozen/scattered gameplay frame.
+    await page.keyboard.press('ArrowRight');
+    const afterDifficultyNavigationHash = await waitForVisualChange(afterLevelSelectNavigationHash, 2500);
+    if (afterLevelSelectNavigationHash === afterDifficultyNavigationHash) {
+      fatal.push('no-visual-response-after-difficulty-navigation');
+    }
+    if (!(await waitForTitlePhase('LevelSelect', 1500))) {
+      fatal.push(`unexpected-phase-after-difficulty-navigation:${await page.title()}`);
+    }
+
     // Start the selected level. The controller intentionally ignores instant
     // confirm presses for the first 0.2s after entering Level Select, so wait
     // a frame budget before sending confirm.
     await page.waitForTimeout(500);
-    let afterHash = afterLevelSelectClickHash;
-    for (let i = 0; i < 3 && afterHash === afterLevelSelectClickHash; i += 1) {
+    let afterHash = afterDifficultyNavigationHash;
+    for (let i = 0; i < 3 && afterHash === afterDifficultyNavigationHash; i += 1) {
       await page.keyboard.press('Enter');
-      afterHash = await waitForVisualChange(afterLevelSelectClickHash, 3500);
+      afterHash = await waitForVisualChange(afterDifficultyNavigationHash, 3500);
     }
-    if (afterLevelSelectClickHash === afterHash) {
+    if (afterDifficultyNavigationHash === afterHash) {
       fatal.push('no-visual-response-after-enter');
     }
     if (await waitForTitlePhase('Tutorial', 1500)) {
@@ -438,6 +449,11 @@ async function main() {
     const laneBeforeSwipe = await waitForPlayingLane(() => true, 2500);
     if (laneBeforeSwipe === null) {
       fatal.push(`missing-playing-lane-marker:${await page.title()}`);
+    }
+    const playingHash = sha256(await page.screenshot());
+    const afterPlayingAdvanceHash = await waitForVisualChange(playingHash, 3000);
+    if (playingHash === afterPlayingAdvanceHash) {
+      fatal.push('no-visual-response-after-playing-start');
     }
 
     const beforeSwipeHash = sha256(await page.screenshot());
