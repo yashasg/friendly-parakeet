@@ -105,12 +105,16 @@ See `rhythm-design.md` for the full timing-window grading table and `rhythm-spec
 | Obstacle        | Status          | Player Action Required    | Timed? | Base Points |
 |-----------------|-----------------|---------------------------|--------|-------------|
 | Shape Gate      | Shipped         | Tap correct shape button  | YES    | 200         |
+| Lane Block      | Legacy/back-compat | Avoid blocked lane     | NO     | 100 (unused legacy) |
 | Combo Gate      | Future design   | Shape + swipe (2 actions) | YES    | TBD         |
 | Split Path      | Future design   | Shape + correct lane      | YES    | TBD         |
 
 Shipped beatmaps currently use required `shape_gate` obstacles only. They may also include non-blocking `onset_marker` rows for authored onset metadata; runtime skips those rows and they do not score, block, or count as required obstacles.
 
-Vertical bars, Combo Gates, and Split Paths are archived/future-only design space and have no live base-point constants.
+Lane Block remains a legacy runtime enum/constant for backward compatibility
+(`PTS_LANE_BLOCK = 100`) but is not parsed from active beatmaps and is not
+current shipped content. Vertical bars, Combo Gates, and Split Paths are
+archived/future-only design space and have no live shipped content.
 
 ### Future Combo / Split-Path Obstacles
 

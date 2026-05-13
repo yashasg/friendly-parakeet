@@ -561,6 +561,11 @@ Terminal split:
 
 ## 3. FIRST-TIME USER EXPERIENCE (FTUE)
 
+> **Implementation status:** the shipped tutorial is the single-screen
+> **Quick Start** flow (`GamePhase::Tutorial`, `content/ui/screens/tutorial.rgl`).
+> The five-run adaptive FTUE design below is aspirational/archived and is not
+> routed by the current controllers.
+
 ### Design Philosophy
 
 ```
@@ -587,7 +592,7 @@ storage, but no shipped controller routes players through Tutorial Run 1-5.
 
 ---
 
-### TUTORIAL RUN 1 — "Match the Shape"
+### TUTORIAL RUN 1 — "Match the Shape" (unimplemented archived design)
 
 **Goal:** Teach shape matching. Only ■ gates appear. Only ■ button visible.
 

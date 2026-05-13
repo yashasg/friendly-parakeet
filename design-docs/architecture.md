@@ -199,7 +199,7 @@ enum class ObstacleKind : uint8_t {
     LaneBlock,   // legacy value kept for backward compat
     ComboGate,   // shape + lane
     SplitPath,   // shape + specific lane
-    OnsetMarker, // virtual beat marker; scheduler does not spawn an obstacle
+    OnsetMarker, // visual beat marker
 };
 
 struct Obstacle {
@@ -209,6 +209,10 @@ struct Obstacle {
 // BlockedLanes, RequiredLane) via obstacle_kind_from_components().
 // Existential tag: presence means the obstacle has been cleared and awaits scoring.
 struct ScoredTag {};
+
+// Existential tag: obstacle does not participate in score popups or chains.
+// OnsetMarker obstacles carry this tag so beat markers remain visual-only.
+struct NonScorableTag {};
 ```
 
 ### 2.4 — WARM: Obstacle Specifics (read by collision/scoring, not by scroll)
