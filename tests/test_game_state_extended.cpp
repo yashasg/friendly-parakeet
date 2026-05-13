@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
+#include "components/system_scratch.h"
 #include "test_helpers.h"
 #include "ui/screen_controllers/tutorial_screen_controller.h"
 
