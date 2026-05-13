@@ -271,6 +271,32 @@ TEST_CASE("High score integration: lower game-over score does not overwrite pers
     remove_path(file);
 }
 
+TEST_CASE("High score integration: missing active entry does not report new best",
+          "[high_score][gamestate][issue1004]") {
+    auto reg = make_registry();
+    auto& high_scores = reg.ctx().get<HighScoreState>();
+    for (int32_t i = 0; i < HighScoreState::MAX_ENTRIES; ++i) {
+        const std::string key = "song_" + std::to_string(i) + "|easy";
+        REQUIRE(high_score::set_score(high_scores, key.c_str(), i * 100));
+    }
+    high_scores.current_key_hash = high_score::make_key_hash("overflow", "hard");
+
+    auto& score = reg.ctx().get<ScoreState>();
+    score.high_score = 1000;
+    score.score = 2500;
+
+    auto& gs = reg.ctx().get<GameState>();
+    gs.transition_pending = true;
+    gs.next_phase = GamePhase::SongComplete;
+
+    game_state_system(reg, 0.016f);
+
+    CHECK(score.high_score == 1000);
+    CHECK_FALSE(reg.ctx().get<TerminalResultState>().new_best);
+    CHECK_FALSE(reg.ctx().get<HighScorePersistence>().dirty);
+    CHECK(high_score::get_score(high_scores, "overflow|hard") == 0);
+}
+
 TEST_CASE("High score integration: failed save keeps dirty state for retry",
           "[high_score][gamestate]") {
     const auto root = std::filesystem::path("test_high_score_retry_state");

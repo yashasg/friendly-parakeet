@@ -23,8 +23,9 @@ persistence::Result get_high_scores_file_path(
     const std::filesystem::path& root_override = {});
 
 // Update the stored score for state.current_key_hash if new_score is strictly higher.
-// Negative new_score is clamped to 0. No-op if current_key_hash is zero.
-void update_if_higher(HighScoreState& state, int32_t new_score);
+// Negative new_score is clamped to 0. Returns false when no active key exists
+// or the active key is missing from the fixed entry table.
+bool update_if_higher(HighScoreState& state, int32_t new_score);
 
 // Build "song_id|difficulty" into caller-supplied buf (no heap allocation).
 // Returns snprintf-style char count (excluding NUL), or -1 if cap is invalid.
@@ -40,14 +41,15 @@ int32_t get_score(const HighScoreState& state, const char* key);
 // Returns the stored score for a hash -- used on the session current-key path.
 int32_t get_score_by_hash(const HighScoreState& state, entt::hashed_string::hash_type hash);
 
-// Insert or update entry by string key. Silently drops if table is full.
-void set_score(HighScoreState& state, const char* key, int32_t score);
+// Insert or update entry by string key. Returns false if the table is full.
+bool set_score(HighScoreState& state, const char* key, int32_t score);
 
-// Update an existing entry's score by hash. No-op if hash is not found.
-void set_score_by_hash(HighScoreState& state, entt::hashed_string::hash_type hash, int32_t score);
+// Update an existing entry's score by hash. Returns false if hash is not found.
+bool set_score_by_hash(HighScoreState& state, entt::hashed_string::hash_type hash, int32_t score);
 
 // Ensure an entry exists for key with score 0 if not already present.
-void ensure_entry(HighScoreState& state, const char* key);
+// Returns false if the table is full.
+bool ensure_entry(HighScoreState& state, const char* key);
 
 // Returns the stored score for the current session key, or 0 if no session active.
 int32_t get_current_high_score(const HighScoreState& state);

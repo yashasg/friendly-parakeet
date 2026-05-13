@@ -26,29 +26,34 @@ void persist_dirty_high_scores(const HighScoreState& high_scores, HighScorePersi
 bool update_and_persist_high_score(entt::registry& reg) {
     auto& score = reg.ctx().get<ScoreState>();
     const int32_t previous_high_score = score.high_score;
-    const bool is_new_high_score = (score.score > score.high_score);
-    if (auto* result = reg.ctx().find<TerminalResultState>()) {
-        *result = TerminalResultState{is_new_high_score, previous_high_score};
-    } else {
-        reg.ctx().emplace<TerminalResultState>(TerminalResultState{is_new_high_score, previous_high_score});
-    }
+    const bool score_exceeds_high_score = (score.score > score.high_score);
+    bool recorded_new_high_score = score_exceeds_high_score;
 
     if (auto* hs = reg.ctx().find<HighScoreState>()) {
-        if (is_new_high_score) {
+        const bool has_active_high_score_key = (hs->current_key_hash != 0);
+        if (score_exceeds_high_score && has_active_high_score_key) {
+            recorded_new_high_score = high_score::update_if_higher(*hs, score.score);
+        }
+        if (score_exceeds_high_score && recorded_new_high_score) {
             score.high_score = score.score;
-            high_score::update_if_higher(*hs, score.score);
         }
         if (auto* hp = reg.ctx().find<HighScorePersistence>()) {
-            if (is_new_high_score) {
+            if (score_exceeds_high_score && recorded_new_high_score && has_active_high_score_key) {
                 hp->dirty = true;
             }
             persist_dirty_high_scores(*hs, *hp);
         }
-    } else if (is_new_high_score) {
+    } else if (score_exceeds_high_score) {
         score.high_score = score.score;
     }
 
-    return is_new_high_score;
+    if (auto* result = reg.ctx().find<TerminalResultState>()) {
+        *result = TerminalResultState{recorded_new_high_score, previous_high_score};
+    } else {
+        reg.ctx().emplace<TerminalResultState>(TerminalResultState{recorded_new_high_score, previous_high_score});
+    }
+
+    return recorded_new_high_score;
 }
 
 void emit_terminal_feedback(entt::registry& reg, GamePhase phase, bool is_new_high_score) {

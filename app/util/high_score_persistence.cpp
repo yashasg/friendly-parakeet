@@ -66,11 +66,11 @@ int32_t get_score_by_hash(const HighScoreState& state, entt::hashed_string::hash
     return 0;
 }
 
-void set_score(HighScoreState& state, const char* key, int32_t score) {
+bool set_score(HighScoreState& state, const char* key, int32_t score) {
     for (int32_t i = 0; i < state.entry_count; ++i) {
         if (std::strncmp(state.entries[i].key, key, HighScoreState::KEY_CAP) == 0) {
             state.entries[i].score = score;
-            return;
+            return true;
         }
     }
     if (state.entry_count < HighScoreState::MAX_ENTRIES) {
@@ -78,28 +78,37 @@ void set_score(HighScoreState& state, const char* key, int32_t score) {
         state.entries[state.entry_count].key[HighScoreState::KEY_CAP - 1] = '\0';
         state.entries[state.entry_count].score = score;
         ++state.entry_count;
+        return true;
     }
+    TraceLog(LOG_WARNING, "High score table full; dropping score for key '%s'", key);
+    return false;
 }
 
-void set_score_by_hash(HighScoreState& state, entt::hashed_string::hash_type hash, int32_t score) {
+bool set_score_by_hash(HighScoreState& state, entt::hashed_string::hash_type hash, int32_t score) {
     for (int32_t i = 0; i < state.entry_count; ++i) {
         if (entt::hashed_string::value(static_cast<const char*>(state.entries[i].key)) == hash) {
             state.entries[i].score = score;
-            return;
+            return true;
         }
     }
+    TraceLog(LOG_WARNING, "High score entry hash %u not found; score update skipped",
+             static_cast<unsigned int>(hash));
+    return false;
 }
 
-void ensure_entry(HighScoreState& state, const char* key) {
+bool ensure_entry(HighScoreState& state, const char* key) {
     for (int32_t i = 0; i < state.entry_count; ++i) {
-        if (std::strncmp(state.entries[i].key, key, HighScoreState::KEY_CAP) == 0) return;
+        if (std::strncmp(state.entries[i].key, key, HighScoreState::KEY_CAP) == 0) return true;
     }
     if (state.entry_count < HighScoreState::MAX_ENTRIES) {
         std::strncpy(state.entries[state.entry_count].key, key, HighScoreState::KEY_CAP - 1);
         state.entries[state.entry_count].key[HighScoreState::KEY_CAP - 1] = '\0';
         state.entries[state.entry_count].score = 0;
         ++state.entry_count;
+        return true;
     }
+    TraceLog(LOG_WARNING, "High score table full; cannot create entry for key '%s'", key);
+    return false;
 }
 
 int32_t get_current_high_score(const HighScoreState& state) {
@@ -168,7 +177,9 @@ bool high_score_state_from_json(const nlohmann::json& obj, HighScoreState& state
                 raw = std::numeric_limits<std::int32_t>::max();
             }
 
-            set_score(next, key.c_str(), static_cast<std::int32_t>(raw));
+            if (!set_score(next, key.c_str(), static_cast<std::int32_t>(raw))) {
+                return false;
+            }
         }
     }
 
@@ -237,13 +248,14 @@ persistence::Result save_high_scores(const HighScoreState& state, const std::fil
     return persistence::flush_persistence_writes(path);
 }
 
-void update_if_higher(HighScoreState& state, int32_t new_score) {
-    if (state.current_key_hash == 0) return;
+bool update_if_higher(HighScoreState& state, int32_t new_score) {
+    if (state.current_key_hash == 0) return false;
     if (new_score < 0) new_score = 0;
     int32_t stored = get_score_by_hash(state, state.current_key_hash);
     if (new_score > stored) {
-        set_score_by_hash(state, state.current_key_hash, new_score);
+        return set_score_by_hash(state, state.current_key_hash, new_score);
     }
+    return true;
 }
 
 }  // namespace high_score
