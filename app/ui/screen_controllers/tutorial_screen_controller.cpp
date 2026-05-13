@@ -1,6 +1,7 @@
 // Tutorial screen controller - renders raygui layout and dispatches start action.
 
 #include "../../components/game_state.h"
+#include "../../components/input.h"
 #include "../../constants.h"
 #include "../../entities/settings.h"
 #include "../../systems/web_input_policy.h"
@@ -33,6 +34,18 @@ bool tutorial_prefer_touch_hint(const entt::registry& reg) {
 #endif
 }
 
+Rectangle tutorial_continue_button_bounds(Vector2 anchor) {
+    return offset_rect(anchor, 180, 1075, 360, 102);
+}
+
+bool tutorial_continue_tapped(const entt::registry& reg, Rectangle bounds) {
+    const auto* input = reg.ctx().find<InputState>();
+    if (!input || !(input->click || input->touch_up)) {
+        return false;
+    }
+    return CheckCollisionPointRec({input->end_x, input->end_y}, bounds);
+}
+
 } // anonymous namespace
 
 void init_tutorial_screen_ui() {
@@ -62,7 +75,8 @@ void render_tutorial_screen_ui(entt::registry& reg) {
 
     auto& gs = reg.ctx().get<GameState>();
     if (gs.phase_timer <= constants::UI_ENTRY_DEBOUNCE) return;
-    if (controller.state().ContinueButtonPressed) {
+    if (controller.state().ContinueButtonPressed ||
+        tutorial_continue_tapped(reg, tutorial_continue_button_bounds(controller.state().Anchor01))) {
         tutorial_screen_continue(reg);
     }
 }
