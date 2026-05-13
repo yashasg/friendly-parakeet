@@ -672,6 +672,47 @@ TEST_CASE("parse: beat without time_sec falls back to beat_times", "[parse][beat
     CHECK_THAT(map.beats[0].time_sec, Catch::Matchers::WithinAbs(1.4f, 0.001f));
 }
 
+TEST_CASE("parse: beat_times must be finite", "[parse][beat_times][issue995]") {
+    BeatMap map;
+    std::vector<BeatMapError> errors;
+    std::string json = R"({
+        "song_id": "timing_test",
+        "bpm": 120,
+        "offset": 0.0,
+        "lead_beats": 4,
+        "duration_sec": 60.0,
+        "beat_times": [0.1, 1e39],
+        "beats": [
+            { "beat": 0, "kind": "shape_gate", "shape": "circle", "lane": 1 }
+        ]
+    })";
+
+    CHECK_FALSE(parse_beat_map(json, map, errors));
+    REQUIRE_FALSE(errors.empty());
+    CHECK(errors[0].message.find("finite") != std::string::npos);
+}
+
+TEST_CASE("parse: beat_times must be non-decreasing", "[parse][beat_times][issue995]") {
+    BeatMap map;
+    std::vector<BeatMapError> errors;
+    std::string json = R"({
+        "song_id": "timing_test",
+        "bpm": 120,
+        "offset": 0.0,
+        "lead_beats": 4,
+        "duration_sec": 60.0,
+        "beat_times": [1.0, 0.5],
+        "beats": [
+            { "beat": 0, "kind": "shape_gate", "shape": "circle", "lane": 1 },
+            { "beat": 1, "kind": "shape_gate", "shape": "circle", "lane": 1 }
+        ]
+    })";
+
+    CHECK_FALSE(parse_beat_map(json, map, errors));
+    REQUIRE_FALSE(errors.empty());
+    CHECK(errors[0].message.find("non-decreasing") != std::string::npos);
+}
+
 TEST_CASE("parse: missing selected difficulty falls back to valid difficulty",
           "[parse][difficulty][issue859]") {
     BeatMap map;
@@ -994,4 +1035,35 @@ TEST_CASE("validate: beat index out of range for beat_times fails", "[validate][
     CHECK_FALSE(validate_beat_map(map, errors));
     REQUIRE_FALSE(errors.empty());
     CHECK(errors[0].message.find("out of range for beat_times") != std::string::npos);
+}
+
+TEST_CASE("validate: beat_times must be finite", "[validate][beat_times][issue995]") {
+    BeatMap map;
+    map.bpm = 120.0f;
+    map.offset = 0.0f;
+    map.lead_beats = 4;
+    map.duration = 60.0f;
+    map.beat_times = {0.0f, std::numeric_limits<float>::infinity()};
+    map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
+
+    std::vector<BeatMapError> errors;
+    CHECK_FALSE(validate_beat_map(map, errors));
+    REQUIRE_FALSE(errors.empty());
+    CHECK(errors[0].message.find("finite") != std::string::npos);
+}
+
+TEST_CASE("validate: beat_times must be non-decreasing", "[validate][beat_times][issue995]") {
+    BeatMap map;
+    map.bpm = 120.0f;
+    map.offset = 0.0f;
+    map.lead_beats = 4;
+    map.duration = 60.0f;
+    map.beat_times = {1.0f, 0.5f};
+    map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
+    map.beats.push_back({1, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
+
+    std::vector<BeatMapError> errors;
+    CHECK_FALSE(validate_beat_map(map, errors));
+    REQUIRE_FALSE(errors.empty());
+    CHECK(errors[0].message.find("non-decreasing") != std::string::npos);
 }
