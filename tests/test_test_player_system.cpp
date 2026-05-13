@@ -248,6 +248,32 @@ TEST_CASE("test_player: swipe cooldown blocks immediate second swipe", "[test_pl
     CHECK_FALSE(has_go);
 }
 
+TEST_CASE("test_player: invalid scroll speed treats undated closer obstacles as blockers",
+          "[test_player][issue923]") {
+    auto reg = make_test_player_registry();
+    make_rhythm_player(reg);
+    auto& song = reg.ctx().get<SongState>();
+    song.scroll_speed = 0.0f;
+
+    auto closer = reg.create();
+    reg.emplace<ObstacleTag>(closer);
+    reg.emplace<Obstacle>(closer, ObstacleKind::LaneBlock, int16_t{constants::PTS_LANE_BLOCK});
+    reg.emplace<WorldTransform>(closer,
+                               WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y - 300.0f}});
+    reg.emplace<BlockedLanes>(closer, uint8_t{0b001});
+
+    auto& tp = reg.ctx().get<TestPlayerState>();
+    TestPlayerAction action;
+    action.timer = -1.0f;
+    action.arrival_time = song.song_time + 2.0f;
+    action.target_lane = 0;
+    tp.actions[tp.action_count++] = action;
+
+    test_player_system(reg, 0.016f);
+
+    CHECK(drain_go_events(reg).count == 0);
+}
+
 TEST_CASE("test_player: session log handles lane-only planned action",
           "[test_player][session_logger][issue-899]") {
     auto reg = make_test_player_registry();
