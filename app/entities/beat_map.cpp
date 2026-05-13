@@ -25,15 +25,17 @@ std::string constants_path_for_app_dir(const std::string& app_dir) {
 }
 
 bool kind_requires_shape(const ObstacleKind kind) {
-    return kind == ObstacleKind::ShapeGate;
+    return kind == ObstacleKind::ShapeGate || kind == ObstacleKind::SplitPath;
 }
 
 bool kind_requires_lane(const ObstacleKind kind) {
-    return kind == ObstacleKind::ShapeGate;
+    return kind == ObstacleKind::ShapeGate || kind == ObstacleKind::SplitPath;
 }
 
 bool is_supported_beatmap_kind(const ObstacleKind kind) {
-    return kind == ObstacleKind::ShapeGate || kind == ObstacleKind::OnsetMarker;
+    return kind == ObstacleKind::ShapeGate ||
+           kind == ObstacleKind::SplitPath ||
+           kind == ObstacleKind::OnsetMarker;
 }
 
 std::string type_error_message(const char* field, const char* expected, const json& value) {
@@ -238,6 +240,7 @@ ValidationConstants load_validation_constants(const std::string& app_dir) {
 
 static std::optional<ObstacleKind> parse_kind(const std::string& s) {
     if (s == "shape_gate")       return ObstacleKind::ShapeGate;
+    if (s == "split_path")       return ObstacleKind::SplitPath;
     if (s == "onset_marker")     return ObstacleKind::OnsetMarker;
     return std::nullopt;
 }
@@ -676,8 +679,8 @@ bool validate_beat_map(const BeatMap& map, std::vector<BeatMapError>& errors,
             valid = false;
         }
 
-        // Rule 5: shape_gate must have lane 0-2
-        if (entry.kind == ObstacleKind::ShapeGate && (entry.lane < 0 || entry.lane > 2)) {
+        // Rule 5: lane-bound obstacles must have lane 0-2
+        if (kind_requires_lane(entry.kind) && (entry.lane < 0 || entry.lane > 2)) {
             errors.push_back({entry.beat_index, "Lane must be 0-2"});
             valid = false;
         }

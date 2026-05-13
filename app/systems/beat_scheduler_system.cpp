@@ -34,7 +34,7 @@ void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
             song->next_spawn_idx++;
             continue;
         }
-        if (entry.kind != ObstacleKind::ShapeGate) {
+        if (entry.kind != ObstacleKind::ShapeGate && entry.kind != ObstacleKind::SplitPath) {
             TraceLog(LOG_WARNING, "Skipping unsupported active beatmap obstacle kind %d",
                      static_cast<int>(entry.kind));
             song->next_spawn_idx++;
@@ -78,13 +78,13 @@ void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
                 - (max_start_y - constants::SPAWN_Y) / song->scroll_speed;
         }
 
-        // Shape gates use the authored lane directly.
+        // Lane-bound obstacles use the authored lane directly.
         float x_pos = constants::LANE_X[1];
         const int lane = static_cast<int>(entry.lane);
         if (lane >= 0 && lane < constants::LANE_COUNT) {
             x_pos = constants::LANE_X[lane];
         } else {
-            TraceLog(LOG_WARNING, "Invalid shape_gate lane %d; defaulting to center lane", lane);
+            TraceLog(LOG_WARNING, "Invalid beatmap lane %d; defaulting to center lane", lane);
         }
 
         const BeatInfo bi{entry.beat_index, calibrated_arrival_time, effective_spawn_time};
