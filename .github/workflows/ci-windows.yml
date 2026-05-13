@@ -108,7 +108,10 @@ jobs:
         uses: actions/upload-artifact@v5
         with:
           name: shapeshifter-windows
-          path: build/shapeshifter.exe
+          path: |
+            build/shapeshifter.exe
+            build/content
+          if-no-files-found: error
 
       - name: Upload CTRF report
         if: always() && steps.run-tests.outcome != 'skipped'

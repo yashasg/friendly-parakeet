@@ -199,6 +199,7 @@ The level designer uses song structure (intro/verse/chorus/bridge) to control de
 | glm | vcpkg | Math data and transforms |
 | [EnTT](https://github.com/skypjack/entt) | 3.16.0 | Entity Component System |
 | [nlohmann-json](https://github.com/nlohmann/json) | 3.12+ | Beatmap JSON parsing |
+| magic_enum | vcpkg | Compile-time enum introspection and naming |
 | [Catch2](https://github.com/catchorg/Catch2) | 3.13+ | Testing framework |
 
 ## CI/CD

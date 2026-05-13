@@ -285,12 +285,12 @@ void test_player_system(entt::registry& reg, float dt) {
         }
     }
 
-    auto obs_view = reg.view<ObstacleTag, WorldTransform, Obstacle>(entt::exclude<ScoredTag>);
+    auto obs_view = reg.view<ObstacleTag, WorldTransform, Obstacle>(
+        entt::exclude<ScoredTag, TestPlayerPlannedTag>);
     for (auto [entity, obs_wt, obs] : obs_view.each()) {
         (void)obs;
         float dist = p_transform.position.y - obs_wt.position.y;
         if (dist <= 0.0f || dist > cfg.vision_range) continue;
-        if (reg.any_of<TestPlayerPlannedTag>(entity)) continue;
 
         TestPlayerAction action = determine_action(reg, entity, effective_lane, *song);
 
