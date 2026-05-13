@@ -1,6 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include "test_helpers.h"
 #include "components/test_player.h"
+#include "content/level_content_config.h"
+#include "session/test_player_session.h"
 #include "util/session_logger.h"
 #include <cstdio>
 #include <string>
@@ -48,6 +50,15 @@ static void tick_systems(entt::registry& reg, int frames, float dt = 1.0f / 60.0
         // Stop early if game over
         if (reg.ctx().get<GameState>().transition_pending) break;
     }
+}
+
+TEST_CASE("test_player: level fallback uses canonical default", "[test_player][issue-947]") {
+    CHECK(test_player_level_or_default(content_config::DEFAULT_LEVEL_INDEX)
+          == content_config::DEFAULT_LEVEL_INDEX);
+    CHECK(test_player_level_or_default(1) == 1);
+    CHECK(test_player_level_or_default(-1) == content_config::DEFAULT_LEVEL_INDEX);
+    CHECK(test_player_level_or_default(content_config::LEVEL_COUNT)
+          == content_config::DEFAULT_LEVEL_INDEX);
 }
 
 static bool survived(entt::registry& reg) {
