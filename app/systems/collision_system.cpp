@@ -55,7 +55,6 @@ void collision_system(entt::registry& reg, float /*dt*/) {
     auto [p_transform, p_shape, p_window, p_lane, p_vstate] =
         player_view.get<WorldTransform, PlayerShape, ShapeWindow, Lane, VerticalState>(player_entity);
     lane_utils::normalize(p_lane, &p_transform);
-    const int player_lane = p_lane.current;
 
     auto& song = reg.ctx().get<SongState>();
     const bool rhythm_mode = song.playing;
@@ -65,6 +64,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
     // Precomputing here avoids redundant addition + Vector2 construction per obstacle.
     const float player_timing_y = p_transform.position.y + p_vstate.y_offset;
     const float player_x        = p_transform.position.x;
+    const int player_lane       = lane_utils::nearest_lane_for_x(player_x);
 
     // resolve: tag entity as scored (cleared) or missed.
     // kind is passed by the caller — no try_get needed since each per-kind

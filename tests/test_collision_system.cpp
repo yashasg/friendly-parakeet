@@ -150,6 +150,54 @@ TEST_CASE("collision: invalid player lane is normalized before lane checks",
     CHECK(reg.all_of<MissTag>(obs));
 }
 
+TEST_CASE("collision: lane block uses interpolated player lane during transitions",
+          "[collision][issue949]") {
+    constexpr struct {
+        float lerp_t;
+        bool missed;
+    } cases[] = {
+        {0.1f, true},
+        {0.9f, false},
+    };
+
+    for (const auto& tc : cases) {
+        auto reg = make_registry();
+        auto player = make_player(reg);
+        auto& lane = reg.get<Lane>(player);
+        auto& transform = reg.get<WorldTransform>(player);
+        lane.current = 1;
+        lane.target = 2;
+        lane.lerp_t = tc.lerp_t;
+        transform.position.x = constants::LANE_X[1] +
+            (constants::LANE_X[2] - constants::LANE_X[1]) * tc.lerp_t;
+        auto obs = make_lane_block(reg, 0b010, constants::PLAYER_Y);
+
+        collision_system(reg, 0.016f);
+
+        CHECK(reg.all_of<ScoredTag>(obs));
+        CHECK(reg.all_of<MissTag>(obs) == tc.missed);
+    }
+}
+
+TEST_CASE("collision: split path uses interpolated player lane during transitions",
+          "[collision][issue949]") {
+    auto reg = make_registry();
+    auto player = make_player(reg);
+    auto& lane = reg.get<Lane>(player);
+    auto& transform = reg.get<WorldTransform>(player);
+    lane.current = 1;
+    lane.target = 2;
+    lane.lerp_t = 0.9f;
+    transform.position.x = constants::LANE_X[1] +
+        (constants::LANE_X[2] - constants::LANE_X[1]) * lane.lerp_t;
+    auto obs = make_split_path(reg, Shape::Circle, 2, constants::PLAYER_Y);
+
+    collision_system(reg, 0.016f);
+
+    CHECK(reg.all_of<ScoredTag>(obs));
+    CHECK_FALSE(reg.all_of<MissTag>(obs));
+}
+
 
 
 
