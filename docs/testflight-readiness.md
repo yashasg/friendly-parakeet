@@ -58,7 +58,7 @@ Event set (v1):
 | `ftue_abandoned`   | run_index, last_step                               | Where new players drop                 |
 | `song_started`     | song_id, difficulty                                | Content selection                      |
 | `song_completed`   | song_id, difficulty, score, accuracy_pct           | Win-rate per song/difficulty           |
-| `song_failed`      | song_id, difficulty, hp_zero_at_song_pct           | Failure point analysis                 |
+| `song_failed`      | song_id, difficulty, energy_empty_at_song_pct      | Failure point analysis                 |
 | `pause_used`       | song_id, song_pct                                  | Pause behaviour                        |
 | `audio_interrupt`  | song_id, song_pct, source (call/siri/route)        | iOS audio-session correctness (#180)   |
 | `app_background`   | song_id?, song_pct?                                | Lifecycle correctness (#182)           |

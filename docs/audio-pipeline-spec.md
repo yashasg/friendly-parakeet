@@ -426,20 +426,20 @@ Current code (lines 133–139):
     song_state.bpm = 120.0f;
     song_state.playing = true;
     song_state_compute_derived(song_state);
-    reg.ctx().emplace<BeatMap>();
-    reg.ctx().emplace<HPState>();
+    create_beat_map_entity(reg);
+    reg.ctx().emplace<EnergyState>();
     reg.ctx().emplace<SongResults>();
 ```
 
 Replace with:
 ```cpp
     // ── Rhythm singletons ────────────────────────────────────
-    reg.ctx().emplace<HPState>();
+    reg.ctx().emplace<EnergyState>();
     reg.ctx().emplace<SongResults>();
 
     // Load beatmap from disk
     {
-        auto& beatmap = reg.ctx().emplace<BeatMap>();
+        auto& beatmap = beat_map(reg);
         std::vector<BeatMapError> load_errors;
 
         // Try path relative to executable first, then CWD
@@ -493,7 +493,7 @@ Replace with:
     // ── Load music stream ────────────────────────────────────
     {
         auto& music = reg.ctx().emplace<MusicContext>();
-        auto* beatmap = reg.ctx().find<BeatMap>();
+        auto* beatmap = find_beat_map(reg);
 
         if (beatmap && !beatmap->song_path.empty()) {
             // Try relative to exe first, then CWD
@@ -706,7 +706,7 @@ void song_playback_system(entt::registry& reg, float dt) {
 The existing `enter_playing()` on line 51-60 already handles the reset:
 ```cpp
 auto* song = reg.ctx().find<SongState>();
-auto* beatmap = reg.ctx().find<BeatMap>();
+auto* beatmap = find_beat_map(reg);
 bool has_chart = beatmap && !beatmap->beats.empty();
 if (song) {
     song->song_time      = 0.0f;
@@ -717,7 +717,7 @@ if (song) {
 }
 ```
 
-**Add music reset** inside `enter_playing()` (after line 60, before the HP reset on line 61):
+**Add music reset** inside `enter_playing()` before the energy/results reset:
 ```cpp
     auto* music = reg.ctx().find<MusicContext>();
     if (music && music->loaded) {
