@@ -434,8 +434,9 @@ void test_player_system(entt::registry& reg, float dt) {
                                  && pending_shape_obstacle != action.obstacle);
         bool zone_blocked = false;
         {
-            auto zone_view = reg.view<ObstacleTag, WorldTransform>(entt::exclude<ScoredTag>);
-            for (auto [ze, zwt] : zone_view.each()) {
+            auto zone_view = reg.view<ObstacleTag, Obstacle, WorldTransform>(entt::exclude<ScoredTag>);
+            for (auto [ze, obstacle, zwt] : zone_view.each()) {
+                (void)obstacle;
                 if (ze == action.obstacle) continue; // don't self-block
                 float zdist = p_transform.position.y - zwt.position.y + p_vstate.y_offset;
                 if (zdist >= -constants::COLLISION_MARGIN && zdist <= constants::COLLISION_MARGIN * 3.0f) {
@@ -454,8 +455,9 @@ void test_player_system(entt::registry& reg, float dt) {
             if (action.target_lane < next_lane) next_lane--;
             else if (action.target_lane > next_lane) next_lane++;
 
-            auto closer_view = reg.view<ObstacleTag, WorldTransform>(entt::exclude<ScoredTag>);
-            for (auto [oe, owt] : closer_view.each()) {
+            auto closer_view = reg.view<ObstacleTag, Obstacle, WorldTransform>(entt::exclude<ScoredTag>);
+            for (auto [oe, obstacle, owt] : closer_view.each()) {
+                (void)obstacle;
                 if (oe == action.obstacle) continue;
                 float odist = p_transform.position.y - owt.position.y + p_vstate.y_offset;
                 if (odist <= 0.0f) continue;
@@ -514,8 +516,9 @@ void test_player_system(entt::registry& reg, float dt) {
                                       && pending_shape_obstacle != action.obstacle);
         bool vert_zone_blocked = false;
         {
-            auto zone_view = reg.view<ObstacleTag, WorldTransform>(entt::exclude<ScoredTag>);
-            for (auto [ze, zwt] : zone_view.each()) {
+            auto zone_view = reg.view<ObstacleTag, Obstacle, WorldTransform>(entt::exclude<ScoredTag>);
+            for (auto [ze, obstacle, zwt] : zone_view.each()) {
+                (void)obstacle;
                 if (ze == action.obstacle) continue;
                 float zdist = p_transform.position.y - zwt.position.y + p_vstate.y_offset;
                 if (zdist >= -constants::COLLISION_MARGIN && zdist <= constants::COLLISION_MARGIN * 3.0f) {

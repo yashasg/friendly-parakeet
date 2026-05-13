@@ -148,6 +148,24 @@ TEST_CASE("test_player: pro executes lane before shape for shape+lane actions", 
     CHECK_FALSE(saw_shape_first);
 }
 
+TEST_CASE("test_player: ignores visual obstacle leftovers without Obstacle payload",
+          "[test_player][regression][issue865]") {
+    auto reg = make_test_player_registry(TestPlayerSkill::Pro);
+    make_rhythm_player(reg);
+
+    auto visual_leftover = reg.create();
+    reg.emplace<ObstacleTag>(visual_leftover);
+    reg.emplace<WorldTransform>(visual_leftover,
+                                WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y - 200.0f}});
+    reg.emplace<RequiredShape>(visual_leftover, Shape::Circle);
+
+    test_player_system(reg, 0.016f);
+
+    CHECK_FALSE(reg.all_of<TestPlayerPlannedTag>(visual_leftover));
+    CHECK(drain_press_events(reg).count == 0);
+    CHECK(drain_go_events(reg).count == 0);
+}
+
 // ── KEY FIX: shape gate then lane block in sequence ──────────
 
 TEST_CASE("test_player: shape gate then lane block sequential", "[test_player]") {

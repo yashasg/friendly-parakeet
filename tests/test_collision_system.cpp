@@ -145,6 +145,22 @@ TEST_CASE("collision: resolved hit obstacle is not re-tagged after scoring clean
     CHECK_FALSE(reg.all_of<MissTag>(obs));
 }
 
+TEST_CASE("collision: visual obstacle leftovers without Obstacle payload are ignored",
+          "[collision][regression][issue865]") {
+    auto reg = make_registry();
+    make_player(reg);
+
+    auto visual_leftover = reg.create();
+    reg.emplace<ObstacleTag>(visual_leftover);
+    reg.emplace<WorldTransform>(visual_leftover, WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y}});
+    reg.emplace<RequiredShape>(visual_leftover, Shape::Triangle);
+
+    collision_system(reg, 0.016f);
+
+    CHECK_FALSE(reg.all_of<ScoredTag>(visual_leftover));
+    CHECK_FALSE(reg.all_of<MissTag>(visual_leftover));
+}
+
 TEST_CASE("collision: combo gate requires shape AND lane", "[collision]") {
     auto reg = make_registry();
     make_player(reg);

@@ -316,12 +316,18 @@ TEST_CASE("pipeline: gameplay HUD proximity ring progresses through far near per
     CHECK(perfect_dist > 19.99f);
     CHECK(perfect_dist < 20.01f);
 
-    const float appear_dist = constants::APPROACH_DIST;
-    const float near_dist = perfect_dist + (appear_dist - perfect_dist) * 0.2f;
+    const float good_dist = gameplay_hud_good_distance(&song);
+    CHECK(good_dist > 39.99f);
+    CHECK(good_dist < 40.01f);
 
-    CHECK(gameplay_hud_ring_cue(900.0f, perfect_dist, appear_dist) == GameplayHudRingCue::Far);
-    CHECK(gameplay_hud_ring_cue(near_dist, perfect_dist, appear_dist) == GameplayHudRingCue::Near);
-    CHECK(gameplay_hud_ring_cue(perfect_dist, perfect_dist, appear_dist) == GameplayHudRingCue::Perfect);
+    const float appear_dist = gameplay_hud_ok_distance(&song);
+    CHECK(appear_dist > 59.99f);
+    CHECK(appear_dist < 60.01f);
+
+    CHECK(gameplay_hud_ring_cue(900.0f, perfect_dist, good_dist, appear_dist) == GameplayHudRingCue::Hidden);
+    CHECK(gameplay_hud_ring_cue(50.0f, perfect_dist, good_dist, appear_dist) == GameplayHudRingCue::Far);
+    CHECK(gameplay_hud_ring_cue(good_dist, perfect_dist, good_dist, appear_dist) == GameplayHudRingCue::Near);
+    CHECK(gameplay_hud_ring_cue(perfect_dist, perfect_dist, good_dist, appear_dist) == GameplayHudRingCue::Perfect);
 }
 
 TEST_CASE("pipeline: gameplay HUD raygui shape presses ignored outside Playing",

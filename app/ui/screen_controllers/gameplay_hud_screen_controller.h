@@ -19,8 +19,13 @@ enum class GameplayHudRingCue {
 };
 
 float gameplay_hud_perfect_distance(const SongState* song_state);
+float gameplay_hud_good_distance(const SongState* song_state);
+float gameplay_hud_ok_distance(const SongState* song_state);
 float gameplay_hud_ring_ratio(float nearest_dist, float perfect_dist, float ring_appear_dist);
-GameplayHudRingCue gameplay_hud_ring_cue(float nearest_dist, float perfect_dist, float ring_appear_dist);
+GameplayHudRingCue gameplay_hud_ring_cue(float nearest_dist,
+                                         float perfect_dist,
+                                         float good_dist,
+                                         float ring_appear_dist);
 void init_gameplay_hud_screen_ui();
 void gameplay_hud_process_button_input(entt::registry& reg);
 void render_gameplay_hud_screen_ui(entt::registry& reg);
