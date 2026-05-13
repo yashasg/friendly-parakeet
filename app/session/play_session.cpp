@@ -202,8 +202,7 @@ void setup_play_session(entt::registry& reg) {
     }
 
     // Init song state
-    auto& song = reg.ctx().get<SongState>();
-    song = SongState{};
+    auto& song = assign_or_emplace_ctx(reg, SongState{});
     if (!beatmap.beats.empty()) {
         init_song_state(song, beatmap);
     } else {

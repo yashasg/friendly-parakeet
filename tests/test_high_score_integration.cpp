@@ -105,6 +105,17 @@ TEST_CASE("Play session: missing selected beatmap returns to level select withou
     CHECK(reg.ctx().find<ScoreState>() == nullptr);
     CHECK(high_scores.current_key_hash == 0);
     CHECK(high_scores.entry_count == 1);
+
+    reg.ctx().erase<PlaySessionContentOverride>();
+    lss.selected_level = content_config::DEFAULT_LEVEL_INDEX;
+    lss.selected_difficulty = content_config::DEFAULT_DIFFICULTY_INDEX;
+    lss.confirmed = true;
+
+    REQUIRE_NOTHROW(setup_play_session(reg));
+    CHECK(reg.ctx().find<SongState>() != nullptr);
+    CHECK(reg.ctx().find<ScoreState>() != nullptr);
+    CHECK(gs.phase == GamePhase::Playing);
+    CHECK_FALSE(reg.view<PlayerTag>().empty());
 }
 
 TEST_CASE("Play session: high score key uses loaded fallback difficulty",
