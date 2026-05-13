@@ -552,25 +552,25 @@ system in the same frame (unidirectional data flow).
  │  │     b. beat_scheduler_sys Spawn authored BeatMap notes │
  │  │                           whose spawn_time has arrived.│
  │  │                                                        │
- │  │     c. shape_window_sys   Advance active timing windows│
- │  │                           for shape presses.           │
- │  │                                                        │
- │  │     d. player_movement    Advance lane, jump/slide,    │
+ │  │     c. player_movement    Advance lane, jump/slide,    │
  │  │                           and morph interpolation.     │
  │  │                                                        │
- │  │     e. scroll_system      For every (WorldTransform,   │
+ │  │     d. scroll_system      For every (WorldTransform,   │
  │  │                           MotionVelocity):             │
  │  │                           position += velocity * dt.   │
  │  │                           Simple, tight inner loop.    │
  │  │                                                        │
- │  │     f. motion_system      Apply model-space obstacle   │
+ │  │     e. motion_system      Apply model-space obstacle   │
  │  │                           motion where active.         │
  │  │                                                        │
- │  │     g. collision_system   For each obstacle near       │
+ │  │     f. collision_system   For each obstacle near       │
  │  │                           PLAYER_Y: test shape match,  │
  │  │                           lane match, vertical state.  │
  │  │                           On match: emplace TimingGrade│
  │  │                           and ScoredTag.               │
+ │  │                                                        │
+ │  │     g. shape_window_sys   Advance active timing windows│
+ │  │                           for shape presses.           │
  │  │                                                        │
  │  │     h. miss_detection     Mark passed unresolved notes │
  │  │                           with MissTag/ScoredTag.      │
