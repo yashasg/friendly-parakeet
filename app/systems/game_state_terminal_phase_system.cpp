@@ -9,6 +9,20 @@
 
 namespace {
 
+void persist_dirty_high_scores(const HighScoreState& high_scores, HighScorePersistence& persistence) {
+    if (!persistence.dirty) return;
+
+    if (persistence.path.empty()) {
+        persistence.last_save = persistence::Result{persistence::Status::PathUnavailable, {}};
+        return;
+    }
+
+    persistence.last_save = high_score::save_high_scores(high_scores, persistence.path);
+    if (persistence.last_save.ok()) {
+        persistence.dirty = false;
+    }
+}
+
 bool update_and_persist_high_score(entt::registry& reg) {
     auto& score = reg.ctx().get<ScoreState>();
     const int32_t previous_high_score = score.high_score;
@@ -18,22 +32,23 @@ bool update_and_persist_high_score(entt::registry& reg) {
     } else {
         reg.ctx().emplace<TerminalResultState>(TerminalResultState{is_new_high_score, previous_high_score});
     }
-    if (!is_new_high_score) return false;
 
-    score.high_score = score.score;
     if (auto* hs = reg.ctx().find<HighScoreState>()) {
-        high_score::update_if_higher(*hs, score.score);
-        if (auto* hp = reg.ctx().find<HighScorePersistence>()) {
-            hp->dirty = true;
-            if (hp->path.empty()) {
-                hp->last_save = persistence::Result{persistence::Status::PathUnavailable, {}};
-            } else {
-                hp->last_save = high_score::save_high_scores(*hs, hp->path);
-                if (hp->last_save.ok()) hp->dirty = false;
-            }
+        if (is_new_high_score) {
+            score.high_score = score.score;
+            high_score::update_if_higher(*hs, score.score);
         }
+        if (auto* hp = reg.ctx().find<HighScorePersistence>()) {
+            if (is_new_high_score) {
+                hp->dirty = true;
+            }
+            persist_dirty_high_scores(*hs, *hp);
+        }
+    } else if (is_new_high_score) {
+        score.high_score = score.score;
     }
-    return true;
+
+    return is_new_high_score;
 }
 
 void emit_terminal_feedback(entt::registry& reg, GamePhase phase, bool is_new_high_score) {

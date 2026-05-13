@@ -261,6 +261,23 @@ TEST_CASE("High score integration: failed save keeps dirty state for retry",
     CHECK(persistence_state.last_save.status == persistence::Status::DirectoryCreateFailed);
 
     remove_path(root);
+    const auto retry_file = root / "high_scores.json";
+    reg.ctx().get<HighScorePersistence>().path = retry_file.string();
+    score.score = 1000;
+    gs.transition_pending = true;
+    gs.next_phase = GamePhase::GameOver;
+
+    game_state_system(reg, 0.016f);
+
+    const auto& retried_persistence = reg.ctx().get<HighScorePersistence>();
+    CHECK_FALSE(retried_persistence.dirty);
+    CHECK(retried_persistence.last_save.status == persistence::Status::Success);
+
+    HighScoreState loaded;
+    REQUIRE(high_score::load_high_scores(loaded, retry_file).ok());
+    CHECK(high_score::get_score(loaded, "song_001|easy") == 2500);
+
+    remove_path(root);
 }
 
 TEST_CASE("High score bootstrap: persistence path is populated for save call sites",
