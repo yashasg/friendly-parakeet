@@ -5,17 +5,62 @@
 #include "../components/rhythm.h"
 #include "../constants.h"
 
+namespace {
+
 static void apply_shape_color(entt::registry& reg, entt::entity entity, Shape shape) {
     auto si = static_cast<int>(shape);
     auto& sc = constants::SHAPE_COLORS[si];
     reg.replace<Color>(entity, sc);
 }
 
-void shape_window_system(entt::registry& reg, float /*dt*/) {
+void update_morph_in(entt::registry& reg,
+                     entt::entity entity,
+                     PlayerShape& pshape,
+                     ShapeWindow& swindow,
+                     const SongState& song) {
+    const float elapsed = song.song_time - swindow.window_start;
+    swindow.window_timer = elapsed;
+    if (song.morph_duration <= 0.0f) {
+        TraceLog(LOG_WARNING, "shape_window_system completed MorphIn immediately: invalid morph_duration %.3f",
+                 song.morph_duration);
+        pshape.morph_t = 1.0f;
+        swindow.phase = WindowPhase::Active;
+        swindow.window_start = song.song_time;
+        swindow.window_timer = 0.0f;
+        pshape.current = swindow.target_shape;
+        apply_shape_color(reg, entity, pshape.current);
+        return;
+    }
+
+    pshape.morph_t = elapsed / song.morph_duration;
+    if (pshape.morph_t >= 1.0f) {
+        pshape.morph_t = 1.0f;
+        swindow.phase = WindowPhase::Active;
+        swindow.window_start = swindow.window_start + song.morph_duration;
+        swindow.window_timer = 0.0f;
+        pshape.current = swindow.target_shape;
+        apply_shape_color(reg, entity, pshape.current);
+    }
+}
+
+}  // namespace
+
+void shape_window_activation_system(entt::registry& reg, float /*dt*/) {
     auto* song = reg.ctx().find<SongState>();
     if (!song) return;
 
-    const bool morph_duration_valid = song->morph_duration > 0.0f;
+    auto view = reg.view<PlayerTag, PlayerShape, ShapeWindow, Color>();
+    for (auto [entity, pshape, swindow, col] : view.each()) {
+        (void)col;
+        if (swindow.phase == WindowPhase::MorphIn) {
+            update_morph_in(reg, entity, pshape, swindow, *song);
+        }
+    }
+}
+
+void shape_window_system(entt::registry& reg, float /*dt*/) {
+    auto* song = reg.ctx().find<SongState>();
+    if (!song) return;
 
     auto view = reg.view<PlayerTag, PlayerShape, ShapeWindow, Color>();
     for (auto [entity, pshape, swindow, col] : view.each()) {
@@ -23,35 +68,12 @@ void shape_window_system(entt::registry& reg, float /*dt*/) {
         // Derive window_timer from song_time instead of accumulating dt.
         // This keeps shape windows frame-rate independent and perfectly
         // synced to the audio clock, per the "only use song position" rule.
-        float elapsed = song->song_time - swindow.window_start;
-
         switch (swindow.phase) {
             case WindowPhase::Idle:
                 break;
 
             case WindowPhase::MorphIn: {
-                swindow.window_timer = elapsed;
-                if (!morph_duration_valid) {
-                    TraceLog(LOG_WARNING, "shape_window_system completed MorphIn immediately: invalid morph_duration %.3f",
-                             song->morph_duration);
-                    pshape.morph_t = 1.0f;
-                    swindow.phase = WindowPhase::Active;
-                    swindow.window_start = song->song_time;
-                    swindow.window_timer = 0.0f;
-                    pshape.current = swindow.target_shape;
-                    apply_shape_color(reg, entity, pshape.current);
-                    break;
-                }
-                pshape.morph_t = elapsed / song->morph_duration;
-                if (pshape.morph_t >= 1.0f) {
-                    pshape.morph_t = 1.0f;
-                    swindow.phase = WindowPhase::Active;
-                    // Record the exact song_time when Active began for the next phase
-                    swindow.window_start = swindow.window_start + song->morph_duration;
-                    swindow.window_timer = 0.0f;
-                    pshape.current = swindow.target_shape;
-                    apply_shape_color(reg, entity, pshape.current);
-                }
+                update_morph_in(reg, entity, pshape, swindow, *song);
                 break;
             }
 
@@ -72,7 +94,7 @@ void shape_window_system(entt::registry& reg, float /*dt*/) {
             case WindowPhase::MorphOut: {
                 float morph_elapsed = song->song_time - swindow.window_start;
                 swindow.window_timer = morph_elapsed;
-                if (!morph_duration_valid) {
+                if (song->morph_duration <= 0.0f) {
                     TraceLog(LOG_WARNING, "shape_window_system completed MorphOut immediately: invalid morph_duration %.3f",
                              song->morph_duration);
                     pshape.morph_t = 1.0f;

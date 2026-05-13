@@ -553,30 +553,34 @@ system in the same frame (unidirectional data flow).
  │  │     b. beat_scheduler_sys Spawn authored BeatMap notes │
  │  │                           whose spawn_time has arrived.│
  │  │                                                        │
- │  │     c. player_movement    Advance lane and jump/slide. │
+ │  │     c. shape_window_activation                          │
+ │  │                           Promote completed MorphIn     │
+ │  │                           windows before collision.     │
  │  │                                                        │
- │  │     d. scroll_system      Derive rhythm-obstacle       │
+ │  │     d. player_movement    Advance lane and jump/slide. │
+ │  │                                                        │
+ │  │     e. scroll_system      Derive rhythm-obstacle       │
  │  │                           positions from SongState     │
  │  │                           song_time + BeatInfo.        │
  │  │                                                        │
- │  │     e. motion_system      For every (WorldTransform,   │
+ │  │     f. motion_system      For every (WorldTransform,   │
  │  │                           MotionVelocity):             │
  │  │                           position += velocity * dt.   │
  │  │                           Simple, tight inner loop.    │
  │  │                                                        │
- │  │     f. collision_system   For each obstacle near       │
+ │  │     g. collision_system   For each obstacle near       │
  │  │                           PLAYER_Y: test shape match,  │
  │  │                           lane match, vertical state.  │
  │  │                           On match: emplace TimingGrade│
  │  │                           and ScoredTag.               │
  │  │                                                        │
- │  │     g. shape_window_sys   Advance active timing windows│
+ │  │     h. shape_window_sys   Advance active timing windows│
  │  │                           and morph interpolation.     │
  │  │                                                        │
- │  │     h. miss_detection     Mark passed unresolved notes │
+ │  │     i. miss_detection     Mark passed unresolved notes │
  │  │                           with MissTag/ScoredTag.      │
  │  │                                                        │
- │  │     i. scoring_system     Process scored obstacles.    │
+ │  │     j. scoring_system     Process scored obstacles.    │
  │  │                           Apply timing multiplier and  │
  │  │                           chain bonus. Queue popup     │
  │  │                           requests. Update SongResults.│
@@ -975,6 +979,7 @@ int main(int argc, char* argv[]) {
 │ song_playback_system           │ Fixed    │ Timing   │
 │ beat_log_system                │ Fixed    │ Telemetry│
 │ beat_scheduler_system          │ Fixed    │ Logic    │
+│ shape_window_activation_system │ Fixed    │ Timing   │
 │ player_movement_system         │ Fixed    │ Physics  │
 │ scroll_system                  │ Fixed    │ Physics  │
 │ motion_system                  │ Fixed    │ Physics  │
