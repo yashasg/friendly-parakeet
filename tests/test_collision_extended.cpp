@@ -114,8 +114,8 @@ TEST_CASE("collision: rhythm mode assigns Perfect for on-time hit", "[collision]
     CHECK(reg.get<TimingGrade>(obs).tier == TimingTier::Perfect);
 }
 
-TEST_CASE("collision: on-beat shape press uses target lane before interpolation",
-          "[collision][rhythm][issue850]") {
+TEST_CASE("collision: on-beat shape press uses explicit target lane before interpolation",
+          "[collision][rhythm][issue850][issue874]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
     auto& song = reg.ctx().get<SongState>();
@@ -125,13 +125,16 @@ TEST_CASE("collision: on-beat shape press uses target lane before interpolation"
     reg.get<WorldTransform>(obs).position.x = constants::LANE_X[0];
     reg.emplace<BeatInfo>(obs, 0, song.song_time, song.song_time - song.lead_time);
 
+    auto& lane = reg.get<Lane>(player);
+    lane.target = 0;
+    lane.lerp_t = 0.0f;
+
     auto btn = make_shape_button(reg, Shape::Circle);
     press_button(reg, btn);
     reg.ctx().get<entt::dispatcher>().update<ButtonPressEvent>();
     song.song_time += song.morph_duration + 0.001f;
     shape_window_system(reg, song.morph_duration + 0.001f);
 
-    const auto& lane = reg.get<Lane>(player);
     const auto& transform = reg.get<WorldTransform>(player);
     REQUIRE(lane.current == 1);
     REQUIRE(lane.target == 0);

@@ -91,20 +91,21 @@ TEST_CASE("player_input_rhythm: shape change pushes ShapeShift SFX", "[player][r
     CHECK(sfx_cap.buf[0] == SFX::ShapeShift);
 }
 
-TEST_CASE("player_input_rhythm: shape press auto-target follows shipped mapping", "[player][rhythm][issue531]") {
+TEST_CASE("player_input_rhythm: shape press does not target authored motif lane", "[player][rhythm][issue874]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
     auto& lane = reg.get<Lane>(player);
     REQUIRE(lane.current == 1);
+    lane.target = lane.current;
 
     auto btn = make_shape_button(reg, Shape::Triangle);
     press_button(reg, btn);
     run_semantic_input_tick(reg);
 
-    CHECK(lane.target == 2);
+    CHECK(lane.target == 1);
 }
 
-TEST_CASE("player_input_rhythm: shape press does not set stale target when already in shipped lane",
+TEST_CASE("player_input_rhythm: shape press does not set stale target when already in authored motif lane",
           "[player][rhythm][issue531]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
@@ -119,8 +120,8 @@ TEST_CASE("player_input_rhythm: shape press does not set stale target when alrea
     CHECK(lane.target == -1);
 }
 
-TEST_CASE("player_input_rhythm: shape press cancels conflicting in-flight lane target",
-          "[player][rhythm]") {
+TEST_CASE("player_input_rhythm: shape press preserves in-flight lane target",
+          "[player][rhythm][issue874]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
     auto& lane = reg.get<Lane>(player);
@@ -132,8 +133,8 @@ TEST_CASE("player_input_rhythm: shape press cancels conflicting in-flight lane t
     press_button(reg, btn);
     run_semantic_input_tick(reg);
 
-    CHECK(lane.target == 1);
-    CHECK(lane.lerp_t == 0.0f);
+    CHECK(lane.target == 2);
+    CHECK(lane.lerp_t == 0.5f);
 }
 
 TEST_CASE("player_input_rhythm: lane change works in rhythm mode", "[player][rhythm]") {

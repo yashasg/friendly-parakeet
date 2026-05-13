@@ -8,7 +8,6 @@
 #include "../components/rhythm.h"
 #include "../entities/settings.h"
 #include "../constants.h"
-#include "../util/shape_lane_mapping.h"
 
 namespace {
 
@@ -59,7 +58,6 @@ void player_input_handle_press(entt::registry& reg, const ButtonPressEvent& evt)
     const bool rhythm_mode = (song != nullptr && (song->playing || song->finished));
 
     auto pressed_shape = evt.shape;
-    auto shape_lane = lane_for_shape(pressed_shape);
 
     auto begin_shape_window = [&](PlayerShape& ps, ShapeWindow& sw) {
         Shape previous_shape = ps.current;
@@ -81,15 +79,6 @@ void player_input_handle_press(entt::registry& reg, const ButtonPressEvent& evt)
 
     auto view = reg.view<PlayerTag, PlayerShape, ShapeWindow, Lane>();
     for (auto [entity, pshape, swindow, lane] : view.each()) {
-        const bool not_in_shape_lane = (lane.current != shape_lane);
-        const bool conflicting_in_flight_target =
-            (lane.current == shape_lane && lane.target >= 0 && lane.target != shape_lane);
-        if (shape_lane >= 0 && lane.target != shape_lane &&
-            (not_in_shape_lane || conflicting_in_flight_target)) {
-            lane.target = shape_lane;
-            lane.lerp_t = 0.0f;
-            push_haptic(reg, HapticEvent::LaneSwitch);
-        }
         if (rhythm_mode) {
             auto phase = swindow.phase;
             if (phase == WindowPhase::Idle) {
@@ -113,5 +102,6 @@ void player_input_handle_press(entt::registry& reg, const ButtonPressEvent& evt)
                 push_haptic(reg, HapticEvent::ShapeShift);
             }
         }
+        (void)lane;
     }
 }

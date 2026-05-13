@@ -24,18 +24,17 @@
 #include "input/keyboard_shape_mapping.h"
 #include "test_helpers.h"
 #include "ui/screen_controllers/gameplay_hud_screen_controller.h"
-#include "util/shape_lane_mapping.h"
 
 // Runs the fixed-tick input path.
 static void run_pipeline(entt::registry& reg, float dt = 0.016f) {
     game_state_system(reg, dt);
 }
 
-TEST_CASE("pipeline: keyboard shape shortcuts follow left-center-right lanes",
+TEST_CASE("pipeline: keyboard shape shortcuts follow left-center-right shapes",
           "[input_pipeline][keyboard][issue662]") {
-    CHECK(lane_for_shape(shape_for_keyboard_slot(KeyboardShapeSlot::Left)) == 0);
-    CHECK(lane_for_shape(shape_for_keyboard_slot(KeyboardShapeSlot::Center)) == 1);
-    CHECK(lane_for_shape(shape_for_keyboard_slot(KeyboardShapeSlot::Right)) == 2);
+    CHECK(shape_for_keyboard_slot(KeyboardShapeSlot::Left) == Shape::Circle);
+    CHECK(shape_for_keyboard_slot(KeyboardShapeSlot::Center) == Shape::Square);
+    CHECK(shape_for_keyboard_slot(KeyboardShapeSlot::Right) == Shape::Triangle);
 }
 
 // ── Swipe → lane change ───────────────────────────────────────────────────
@@ -145,25 +144,26 @@ TEST_CASE("pipeline: semantic shape press triggers shape change in same pipeline
     CHECK(sw.target_shape == Shape::Square);
 }
 
-TEST_CASE("pipeline: semantic shape press remaps lane target to shape lane",
-          "[input_pipeline]") {
+TEST_CASE("pipeline: semantic shape press does not change lane target",
+          "[input_pipeline][issue874]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
     auto& lane = reg.get<Lane>(player);
     REQUIRE(lane.current == 1);
+    lane.target = lane.current;
 
     reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>(
         {ButtonPressKind::Shape, Shape::Circle, MenuActionKind::Confirm, 0});
     run_pipeline(reg);
 
-    CHECK(lane.target == 0);
+    CHECK(lane.target == 1);
 }
 
-TEST_CASE("pipeline: desktop keyboard slot mapping keeps Z left and C right lanes",
+TEST_CASE("pipeline: desktop keyboard slot mapping keeps Z/X/C shape order",
           "[input_pipeline]") {
-    CHECK(lane_for_shape(kKeyboardShapeLeft) == 0);
-    CHECK(lane_for_shape(kKeyboardShapeCenter) == 1);
-    CHECK(lane_for_shape(kKeyboardShapeRight) == 2);
+    CHECK(kKeyboardShapeLeft == Shape::Circle);
+    CHECK(kKeyboardShapeCenter == Shape::Square);
+    CHECK(kKeyboardShapeRight == Shape::Triangle);
 }
 
 TEST_CASE("pipeline: gameplay HUD raygui shape press triggers player shape input",
@@ -171,7 +171,10 @@ TEST_CASE("pipeline: gameplay HUD raygui shape press triggers player shape input
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
     auto& sw = reg.get<ShapeWindow>(player);
+    auto& lane = reg.get<Lane>(player);
     REQUIRE(sw.phase == WindowPhase::Idle);
+    REQUIRE(lane.current == 1);
+    lane.target = lane.current;
     gameplay_hud_apply_button_presses(reg,
                                       false,
                                       false,
@@ -181,6 +184,7 @@ TEST_CASE("pipeline: gameplay HUD raygui shape press triggers player shape input
 
     CHECK(sw.phase == WindowPhase::MorphIn);
     CHECK(sw.target_shape == Shape::Square);
+    CHECK(lane.target == 1);
 }
 
 TEST_CASE("pipeline: gameplay HUD pointer release is collected before the fixed tick",
@@ -363,7 +367,7 @@ TEST_CASE("pipeline: mixed swipe and tap both take effect within a single pipeli
 
     run_pipeline(reg);
 
-    CHECK(lane.target     == 2);                  // shape auto-target wins
+    CHECK(lane.target     == 2);                  // explicit swipe moves lanes
     CHECK(sw.phase        == WindowPhase::MorphIn); // tap processed
     CHECK(sw.target_shape == Shape::Triangle);
 }
