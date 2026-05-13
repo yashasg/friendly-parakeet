@@ -60,27 +60,17 @@ The screen is divided into two zones:
 
   The currently active playable shape button is highlighted/glowing. There is no Hexagon button: Hexagon is a visible rest silhouette only, restored automatically by the shape-window system.
 
-- **Keyboard fallback** mirrors lane layout for shipped beatmaps: `Z`/`1` selects the left-lane shape, `X`/`2` selects center, and `C`/`3` selects right.
+- **Keyboard fallback** mirrors the HUD button order: `Z`/`1` selects Circle, `X`/`2` selects Square, and `C`/`3` selects Triangle. Shape keys never change lanes; use explicit left/right movement input for lane changes.
 
 ### Lanes
 
 3 lanes: left, center, right. Player starts in center.
 
-> ⚠️ **Current shipped behavior — see issue #441.** Across all 3 shipped
-> beatmaps / 9 difficulty arrays (**924 obstacles total** as of the current
-> content audit; see
-> the per-difficulty table in `rhythm-design.md` §8), shape and lane
-> are fused 1:1 by
-> `tools/level_designer.py:ONSET_CLASS_TO_OBSTACLE` — every circle is
-> on lane 0, every square on lane 1, every triangle on lane 2. As a
-> result, **strafing input is currently redundant**: choosing the
-> correct shape implies the correct lane, and a player who never strafes
-> still passes 100% of shape gates. The Controls section above and the
-> Split Path entry in the Obstacle Types table reflect the intended
-> design space, not shipped content. The shape↔lane decoupling vs.
-> intentional-collapse design call is tracked in #441 and must be
-> resolved before lane-as-a-skill claims are reinstated; until then,
-> treat lane variety as a known limitation of shipped beatmaps.
+Shipped beatmaps still use a simple readability motif where Circle gates appear
+in the left lane, Square gates in center, and Triangle gates on the right. This
+is content authoring only: shape input and lane movement are independent runtime
+skills, so the player must explicitly strafe to the gate lane and press the
+matching shape.
 
 ---
 
