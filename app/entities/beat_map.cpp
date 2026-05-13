@@ -316,6 +316,23 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
     parse_ok &= read_optional_float(j, "duration_sec", out.duration, errors, -1);
     out.difficulty = difficulty;
 
+    if (!std::isfinite(out.bpm) || out.bpm <= 0.0f) {
+        errors.push_back({-1, "BPM must be finite and > 0 before deriving beat timing"});
+        return false;
+    }
+    if (!std::isfinite(out.offset)) {
+        errors.push_back({-1, "Offset must be finite before deriving beat timing"});
+        return false;
+    }
+    if (!std::isfinite(out.duration)) {
+        errors.push_back({-1, "duration_sec must be finite before deriving beat timing"});
+        return false;
+    }
+    if (out.lead_beats <= 0) {
+        errors.push_back({-1, "lead_beats must be > 0 before deriving song timing"});
+        return false;
+    }
+
     if (j.contains("beat_times")) {
         if (!j["beat_times"].is_array()) {
             push_type_error(errors, -1, "beat_times", "an array", j["beat_times"]);

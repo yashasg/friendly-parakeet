@@ -471,6 +471,24 @@ TEST_CASE("song_state_compute_derived: scroll_speed calculation", "[rhythm_helpe
     CHECK_THAT(s.scroll_speed, Catch::Matchers::WithinAbs(constants::APPROACH_DIST / 2.0f, 1.0f));
 }
 
+TEST_CASE("song_state_compute_derived: invalid timing inputs fall back to finite defaults",
+          "[rhythm_helpers][issue1003]") {
+    SongState s;
+    s.bpm = 0.0f;
+    s.lead_beats = 0;
+
+    song_state_compute_derived(s);
+
+    CHECK(s.bpm == 120.0f);
+    CHECK(s.lead_beats == 4);
+    CHECK(std::isfinite(s.beat_period));
+    CHECK(std::isfinite(s.lead_time));
+    CHECK(std::isfinite(s.scroll_speed));
+    CHECK(s.beat_period > 0.0f);
+    CHECK(s.lead_time > 0.0f);
+    CHECK(s.scroll_speed > 0.0f);
+}
+
 // ── load_validation_constants: path resolution ───────────────
 
 TEST_CASE("load_validation_constants: default paths load shipped defaults", "[validate][constants]") {
@@ -649,6 +667,49 @@ TEST_CASE("parse: beat_times and per-obstacle time_sec are loaded", "[parse][bea
     REQUIRE(map.beat_times.size() == 3);
     CHECK_THAT(map.beats[0].time_sec, Catch::Matchers::WithinAbs(1.4f, 0.001f));
     CHECK(map.beats[0].has_time_sec);
+}
+
+TEST_CASE("parse: non-positive BPM is rejected before deriving beat timing",
+          "[parse][beat_times][issue1003]") {
+    BeatMap map;
+    std::vector<BeatMapError> errors;
+    std::string json = R"({
+        "song_id": "invalid_timing_test",
+        "bpm": 0,
+        "offset": 0.0,
+        "lead_beats": 4,
+        "duration_sec": 60.0,
+        "beat_times": [0.1],
+        "beats": [
+            { "beat": 0, "kind": "shape_gate", "shape": "circle", "lane": 1 }
+        ]
+    })";
+
+    CHECK_FALSE(parse_beat_map(json, map, errors));
+    REQUIRE_FALSE(errors.empty());
+    CHECK(errors[0].message.find("BPM") != std::string::npos);
+    CHECK(map.beats.empty());
+}
+
+TEST_CASE("parse: non-positive lead_beats is rejected before runtime timing",
+          "[parse][issue1003]") {
+    BeatMap map;
+    std::vector<BeatMapError> errors;
+    std::string json = R"({
+        "song_id": "invalid_timing_test",
+        "bpm": 120,
+        "offset": 0.0,
+        "lead_beats": 0,
+        "duration_sec": 60.0,
+        "beats": [
+            { "beat": 0, "kind": "shape_gate", "shape": "circle", "lane": 1 }
+        ]
+    })";
+
+    CHECK_FALSE(parse_beat_map(json, map, errors));
+    REQUIRE_FALSE(errors.empty());
+    CHECK(errors[0].message.find("lead_beats") != std::string::npos);
+    CHECK(map.beats.empty());
 }
 
 TEST_CASE("parse: beat without time_sec falls back to beat_times", "[parse][beat_times]") {
