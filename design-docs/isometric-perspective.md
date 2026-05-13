@@ -561,7 +561,7 @@ replaced entirely by `perspective::draw_shape()`.
 
 **No changes needed.**
 
-- Collision operates in logical space (Position components) — unaffected.
+- Collision operates in logical space (`WorldTransform::position`) — unaffected.
 - HUD buttons are in viewport space — unaffected.
 - Swipe gestures are direction-based — unaffected.
 

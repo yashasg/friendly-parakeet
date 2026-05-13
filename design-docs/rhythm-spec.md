@@ -163,8 +163,8 @@ constexpr int32_t CHAIN_MULT_BONUS_STEPS_CAP = 20; // caps at 2.0x from chain 21
   ├──────────────────────────────────────────────────────────────┤
   │  PlayerShape       8B  ← current/previous shape + morph     │
   │  ShapeWindow      24B  ← rhythm window timing state         │
-  │  Position           8B ← world position                     │
-  │  Velocity           8B ← dx, dy                             │
+  │  WorldTransform    20B ← world position/rotation/scale      │
+  │  MotionVelocity     8B ← dx, dy                             │
   │  ObstacleTag        0B ← marker                             │
   │  RequiredShape      4B ← shape + lane                       │
   │  BeatInfo          12B ← beat_index, arrival_time, spawn    │
@@ -301,7 +301,7 @@ struct SongResults {
            ↓
   ┌─ MOVEMENT ─────────────────────────────────────────────────┐
   │ scroll_system                                 [no change]  │
-  │   → moves obstacles by Velocity * dt                       │
+  │   → moves obstacles by MotionVelocity * dt                 │
   │                                                            │
   │ player_movement_system                         [MOD]       │
   │   → ticks morph_t visual interpolation                     │

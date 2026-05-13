@@ -215,10 +215,10 @@ creates the standard runtime obstacle archetypes via `spawn_rhythm_obstacle()`.
   │  ✅ beat_scheduler_system (SongState + BeatMap → spawn entities)│
   │  player_input handlers   (ButtonPressEvent/GoEvent → Player)    │
   │  shape_window_system     (timing window morphing)               │
-  │  player_movement_system  (animate Position from Lane/VState)    │
+  │  player_movement_system  (animate WorldTransform from Lane/VState)│
   │  difficulty_system       (elapsed → speed/spawn ramp)           │
   │       │                                                          │
-  │  scroll_system           (Position += Velocity × dt)            │
+  │  scroll_system           (WorldTransform += MotionVelocity × dt)│
   │  collision_system        (player vs obstacles → ScoredTag)      │
   │  scoring_system          (ScoredTag → ScoreState, popups)       │
   │  energy_system           (miss tracking → drain → game over)    │
@@ -309,7 +309,7 @@ void song_playback_system(entt::registry& reg, float dt) {
   │                                                              │
   │  Song:  LoadMusicStream(song_path) → PlayMusicStream(music)  │
   │         Loaded per play session. raylib streams from disk.   │
-  │         Position sync: GetMusicTimePlayed(music)             │
+  │         Playback sync: GetMusicTimePlayed(music)             │
   │         UpdateMusicStream(music) runs every frame in         │
   │         song_playback_system.                                │
   │                                                              │
