@@ -127,6 +127,7 @@ jobs:
           update-comment: true
           comment-tag: ctrf-windows
           upload-artifact: true
+          artifact-name: ctrf-report-windows-reporter
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -135,6 +136,8 @@ jobs:
     runs-on: windows-latest
     permissions:
       contents: read
+      checks: write
+      pull-requests: write
     env:
       VCPKG_BINARY_SOURCES: "clear;default,readwrite"
       VCPKG_FORCE_SYSTEM_BINARIES: "1"
@@ -177,6 +180,8 @@ jobs:
           "$PYTHON_TOOL_TEST_EXE" -m pip install -r tools/python-tool-test-requirements.txt
 
       - name: Run tests
+        if: always()
+        id: run-tests
         run: |
           PYTHON_TOOL_TEST_EXE="$(grep '^_Python3_EXECUTABLE:INTERNAL=' build-msvc/CMakeCache.txt | cut -d= -f2-)"
           mkdir -p build-msvc/ci
@@ -221,3 +226,24 @@ jobs:
           ctest --test-dir build-msvc -C Release --output-on-failure -R "^startup_shutdown_smoke$"
           ctest --test-dir build-msvc -C Release --output-on-failure -R "^(python_tool_tests|loop2_content_gates_strict|validate_loop1_diagnostics|validate_difficulty_ramp|validate_offset_semantics|validate_max_beat_gap|validate_no_simultaneous_shape_gates|validate_required_cross_lane_jump_time|check_shape_change_gap|beatmap_editor_node_tests|service_worker_cache_policy_node_tests)$"
         shell: bash
+
+      - name: Upload CTRF report
+        if: always() && steps.run-tests.outcome != 'skipped'
+        uses: actions/upload-artifact@v5
+        with:
+          name: ctrf-report-windows-msvc
+          path: ctrf-report.json
+
+      - name: Report test results
+        if: always() && steps.run-tests.outcome != 'skipped'
+        uses: ctrf-io/github-test-reporter@v1
+        with:
+          report-path: 'ctrf-report.json'
+          title: 'Test Results (Windows MSVC)'
+          pull-request-report: true
+          update-comment: true
+          comment-tag: ctrf-windows-msvc
+          upload-artifact: true
+          artifact-name: ctrf-report-windows-msvc-reporter
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
