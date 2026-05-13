@@ -98,7 +98,7 @@ Each fixed timestep runs `tick_fixed_systems`:
 ```
 game_state_system -> song_playback_system -> tick_playing_systems ->
 obstacle_despawn_system -> popup_feedback_system -> popup_display_system ->
-energy_system -> particle_system
+energy_system -> energy_bar_system -> particle_system
 ```
 
 `tick_playing_systems` is gated to `GamePhase::Playing` and runs:
@@ -131,7 +131,9 @@ app/
     beat_map.h            #   BeatEntry, BeatMap (loaded data)
     song_state.h          #   SongState, EnergyState, SongResults
   systems/                # system functions
-    all_systems.h         #   declarations + pipeline order
+    all_systems.h         #   headless ECS system declarations
+    runtime_systems.h     #   runtime input/audio/render system declarations
+  session/
     play_session.cpp      #   entity setup on game start
 tools/
   rhythm_pipeline.py      # Audio analysis (librosa -> analysis JSON)
