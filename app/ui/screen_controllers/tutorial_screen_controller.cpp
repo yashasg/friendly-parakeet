@@ -2,6 +2,7 @@
 
 #include "../../components/game_state.h"
 #include "../../constants.h"
+#include "../../entities/settings.h"
 #include "../../systems/web_input_policy.h"
 #include "../tutorial_dodge_hint.h"
 #include "screen_controller_base.h"
@@ -38,6 +39,19 @@ void init_tutorial_screen_ui() {
     // Controller state is registry-owned and initialized lazily in render.
 }
 
+void tutorial_screen_continue(entt::registry& reg) {
+    if (auto* settings_state = find_settings_state(reg)) {
+        settings::mark_ftue_complete(*settings_state);
+        if (auto* persistence = find_settings_persistence(reg)) {
+            settings::mark_dirty_and_save(*persistence, *settings_state);
+        }
+    }
+
+    auto& gs = reg.ctx().get<GameState>();
+    gs.transition_pending = true;
+    gs.next_phase = GamePhase::Playing;
+}
+
 void render_tutorial_screen_ui(entt::registry& reg) {
     auto& controller = screen_controller<TutorialController>(reg);
     controller.render();
@@ -48,9 +62,7 @@ void render_tutorial_screen_ui(entt::registry& reg) {
 
     auto& gs = reg.ctx().get<GameState>();
     if (gs.phase_timer <= constants::UI_ENTRY_DEBOUNCE) return;
-
     if (controller.state().ContinueButtonPressed) {
-        gs.transition_pending = true;
-        gs.next_phase = GamePhase::Playing;
+        tutorial_screen_continue(reg);
     }
 }

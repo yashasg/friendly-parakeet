@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
+#include "ui/screen_controllers/tutorial_screen_controller.h"
 
 // ── game_state_system: SongComplete transitions ──────────────
 
@@ -236,19 +237,58 @@ TEST_CASE("game_state: transition to Title sets phase and resets timer", "[games
     CHECK(gs.phase_timer == 0.0f);
 }
 
-TEST_CASE("game_state: level select confirmed triggers playing transition", "[gamestate]") {
+TEST_CASE("game_state: level select confirmed starts tutorial when FTUE is incomplete", "[gamestate][ftue][issue882]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
     gs.phase = GamePhase::LevelSelect;
     gs.phase_timer = 0.5f;  // past 0.2s guard
     auto& lss = reg.ctx().get<LevelSelectState>();
     lss.confirmed = true;
+    settings_state(reg).ftue_run_count = 0;
+
+    game_state_system(reg, 0.016f);
+
+    CHECK(gs.transition_pending);
+    CHECK(gs.next_phase == GamePhase::Tutorial);
+    CHECK_FALSE(lss.confirmed);
+}
+
+TEST_CASE("game_state: level select confirmed triggers playing when FTUE is complete",
+          "[gamestate][ftue][issue882]") {
+    auto reg = make_registry();
+    auto& gs = reg.ctx().get<GameState>();
+    gs.phase = GamePhase::LevelSelect;
+    gs.phase_timer = 0.5f;  // past 0.2s guard
+    auto& lss = reg.ctx().get<LevelSelectState>();
+    lss.confirmed = true;
+    settings_state(reg).ftue_run_count = 1;
 
     game_state_system(reg, 0.016f);
 
     CHECK(gs.transition_pending);
     CHECK(gs.next_phase == GamePhase::Playing);
     CHECK_FALSE(lss.confirmed);
+}
+
+TEST_CASE("tutorial: continue marks FTUE complete and requests gameplay",
+          "[gamestate][ftue][issue882]") {
+    auto reg = make_registry();
+    auto& gs = reg.ctx().get<GameState>();
+    gs.phase = GamePhase::Tutorial;
+
+    auto& settings = settings_state(reg);
+    settings.ftue_run_count = 0;
+    auto& persistence = settings_persistence(reg);
+    persistence.path.clear();
+    persistence.dirty = false;
+
+    tutorial_screen_continue(reg);
+
+    CHECK(settings::ftue_complete(settings));
+    CHECK(persistence.dirty);
+    CHECK(persistence.last_save.status == persistence::Status::PathUnavailable);
+    CHECK(gs.transition_pending);
+    CHECK(gs.next_phase == GamePhase::Playing);
 }
 
 TEST_CASE("game_state: level select ignores confirmed during delay", "[gamestate]") {
