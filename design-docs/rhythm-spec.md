@@ -124,6 +124,11 @@ constexpr float WINDOW_OK        = 0.150f;  // ±150ms → OK
 // BAD is any scored press beyond OK timing; the active shape window,
 // not a separate 200ms constant, bounds whether the hit can score.
 
+// ── Morph timing ──────────────────────────────────────────────────────
+constexpr float BASE_MORPH_BEATS = 0.2f;
+constexpr float MIN_MORPH        = 0.060f;
+// morph_duration = max(BASE_MORPH_BEATS * beat_period, MIN_MORPH)
+
 // ── Window scale factors (applied to remaining window on early hit) ──
 constexpr float WINDOW_SCALE_PERFECT = 0.50f;  // PERFECT hit → halve remaining window
 constexpr float WINDOW_SCALE_GOOD    = 0.75f;  // GOOD hit    → cut by 25%
@@ -204,7 +209,7 @@ struct SongState {
     float  song_time      = 0.0f;   // seconds elapsed
     int    current_beat   = 0;      // index of next unspawned obstacle
     float  scroll_speed   = 600.0f; // px/s, derived from BPM + difficulty
-    float  morph_duration = 0.150f; // seconds for MorphIn/MorphOut phases
+    float  morph_duration = 0.1f;   // seconds, derived from BPM for MorphIn/MorphOut
     float  half_window    = 0.150f; // half the OK window in seconds
     bool   playing        = false;  // true only when beats array is non-empty
 };
@@ -560,7 +565,7 @@ float ring_r = btn_radius + (max_ring_radius - btn_radius) * ratio;
   Idle ◀──[hexagon restored]── MorphOut ◀────────────────┘
 
   Durations:
-    MorphIn:  morph_duration (0.150s default)
+    MorphIn:  morph_duration = max(0.2 * beat_period, 0.060s)
     Active:   (window_ok * 2) * window_scale   ← scaled by hit grade
     MorphOut: morph_duration
 ```
