@@ -562,6 +562,7 @@ if(EMSCRIPTEN)
     target_compile_options(shapeshifter_tests PRIVATE -fexceptions)
     target_link_options(shapeshifter_tests PRIVATE
         -fexceptions
+        -sUSE_GLFW=3
         -sALLOW_MEMORY_GROWTH=1
         -sDYNAMIC_EXECUTION=0
         -sNODERAWFS=1
