@@ -129,7 +129,8 @@ struct WorldTransform {
 };
 
 /// Movement vector in pixels/second for entities that integrate position.
-/// Iterated with WorldTransform by scroll_system every frame.
+/// Iterated with WorldTransform by motion_system every frame.
+/// Rhythm obstacles use BeatInfo and are positioned by scroll_system instead.
 struct MotionVelocity {
     glm::vec2 value = {0.0f, 0.0f};
 };

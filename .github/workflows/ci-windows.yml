@@ -168,3 +168,27 @@ jobs:
       - name: Build
         run: cmake --build build-msvc --config Release
         shell: cmd
+
+      - name: Install Python tool test dependencies
+        shell: bash
+        run: |
+          PYTHON_TOOL_TEST_EXE="$(grep '^_Python3_EXECUTABLE:INTERNAL=' build-msvc/CMakeCache.txt | cut -d= -f2-)"
+          "$PYTHON_TOOL_TEST_EXE" -m pip install --break-system-packages -r tools/python-tool-test-requirements.txt || \
+          "$PYTHON_TOOL_TEST_EXE" -m pip install -r tools/python-tool-test-requirements.txt
+
+      - name: Run tests
+        run: |
+          mkdir -p build-msvc/ci
+          ctest --test-dir build-msvc -C Release -N \
+            | sed -nE 's/^ *Test *#[0-9]+: (.*)$/\1/p' \
+            | grep -Ev '^Bench:|^(python_tool_tests|loop2_content_gates_strict|validate_loop1_diagnostics|validate_difficulty_ramp|validate_offset_semantics|validate_max_beat_gap|validate_no_simultaneous_shape_gates|check_shape_change_gap|beatmap_editor_node_tests|service_worker_cache_policy_node_tests|startup_shutdown_smoke)$' \
+            | tr -d '\r' \
+            | sort -u > build-msvc/ci/ctest-nonbench-catch.txt
+          ./build-msvc/Release/shapeshifter_tests.exe --list-tests "~[bench]" --verbosity quiet \
+            | tr -d '\r' \
+            | sort -u > build-msvc/ci/catch-nonbench.txt
+          diff -u build-msvc/ci/ctest-nonbench-catch.txt build-msvc/ci/catch-nonbench.txt
+          ./build-msvc/Release/shapeshifter_tests.exe "~[bench]"
+          ctest --test-dir build-msvc -C Release --output-on-failure -R "^startup_shutdown_smoke$"
+          ctest --test-dir build-msvc -C Release --output-on-failure -R "^(python_tool_tests|loop2_content_gates_strict|validate_loop1_diagnostics|validate_difficulty_ramp|validate_offset_semantics|validate_max_beat_gap|validate_no_simultaneous_shape_gates|check_shape_change_gap|beatmap_editor_node_tests|service_worker_cache_policy_node_tests)$"
+        shell: bash
