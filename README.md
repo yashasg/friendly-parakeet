@@ -113,8 +113,8 @@ shape_window_system -> miss_detection_system -> scoring_system
 
 - **Rhythm positions derived from song_time**, not accumulated dt — prevents beat drift
 - **Shape windows** are song-time-anchored with phase transitions (MorphIn -> Active -> MorphOut -> Idle)
-- **Single-pass collision** dispatches by obstacle kind via switch, not multiple EnTT views
-- **Section pattern reuse** — verse 1 and verse 2 share the same obstacle pattern
+- **Collision dispatch** uses per-kind EnTT structural views for obstacle-specific component sets
+- **Section labels** guide beatmap structure and intensity; obstacle patterns are authored per section
 
 ### Project Layout
 
