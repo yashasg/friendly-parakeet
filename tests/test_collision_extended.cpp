@@ -114,8 +114,8 @@ TEST_CASE("collision: rhythm mode assigns Perfect for on-time hit", "[collision]
     CHECK(reg.get<TimingGrade>(obs).tier == TimingTier::Perfect);
 }
 
-TEST_CASE("collision: on-beat shape press uses explicit target lane before interpolation",
-          "[collision][rhythm][issue850][issue874]") {
+TEST_CASE("collision: on-beat shape press requires player hitbox to reach target lane",
+          "[collision][rhythm][issue892]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
     auto& song = reg.ctx().get<SongState>();
@@ -143,9 +143,8 @@ TEST_CASE("collision: on-beat shape press uses explicit target lane before inter
     collision_system(reg, 0.016f);
 
     CHECK(reg.all_of<ScoredTag>(obs));
-    CHECK_FALSE(reg.all_of<MissTag>(obs));
-    REQUIRE(reg.all_of<TimingGrade>(obs));
-    CHECK(reg.get<TimingGrade>(obs).tier == TimingTier::Perfect);
+    CHECK(reg.all_of<MissTag>(obs));
+    CHECK_FALSE(reg.all_of<TimingGrade>(obs));
 }
 
 TEST_CASE("collision: rhythm mode assigns Bad for far-off hit", "[collision][rhythm]") {
