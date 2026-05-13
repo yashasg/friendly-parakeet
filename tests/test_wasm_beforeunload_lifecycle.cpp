@@ -94,3 +94,24 @@ TEST_CASE("wasm persistence uses explicit IDBFS policy and save flush hooks", "[
     CHECK(high_score_source.find("persistence::prepare_for_persistence_read(path)") != std::string::npos);
     CHECK(high_score_source.find("persistence::flush_persistence_writes(path)") != std::string::npos);
 }
+
+TEST_CASE("wasm persistence readiness retries after initialization failure",
+          "[persistence][architecture][issue887]") {
+    const fs::path root = find_repo_root();
+    const std::string policy_source = read_file(root / "app" / "util" / "persistence_policy.cpp");
+
+    const std::size_t mount_failure_return = policy_source.find(
+        "return Result{Status::PathUnavailable, std::make_error_code(std::errc::io_error)};");
+    const std::size_t sync_result = policy_source.find(
+        "const auto init_result = sync_web_filesystem(true, Status::FileReadFailed);");
+    const std::size_t success_guard = policy_source.find("if (init_result.ok()) {", sync_result);
+    const std::size_t initialized_true = policy_source.find("initialized = true;", success_guard);
+
+    REQUIRE(mount_failure_return != std::string::npos);
+    REQUIRE(sync_result != std::string::npos);
+    REQUIRE(success_guard != std::string::npos);
+    REQUIRE(initialized_true != std::string::npos);
+    CHECK(mount_failure_return < sync_result);
+    CHECK(sync_result < success_guard);
+    CHECK(success_guard < initialized_true);
+}
