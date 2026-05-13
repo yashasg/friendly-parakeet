@@ -118,6 +118,35 @@ bool read_optional_int(const json& object,
     return read_int_value(object[field], field, out, errors, beat_index);
 }
 
+bool validate_blocked_lanes_field(const json& object,
+                                  std::vector<BeatMapError>& errors,
+                                  const int beat_index) {
+    if (!object.contains("blocked")) return true;
+
+    const auto& blocked = object["blocked"];
+    if (!blocked.is_array()) {
+        push_type_error(errors, beat_index, "blocked", "an array", blocked);
+        return false;
+    }
+
+    bool ok = true;
+    for (const auto& lane_json : blocked) {
+        int lane = 0;
+        if (!read_int_value(lane_json, "blocked[]", lane, errors, beat_index)) {
+            ok = false;
+            continue;
+        }
+        if (lane < 0 || lane > 2) {
+            errors.push_back({beat_index,
+                "'blocked[]' lane must be in range [0, 2] at beat "
+                + std::to_string(beat_index)});
+            ok = false;
+        }
+    }
+
+    return ok;
+}
+
 std::optional<int> max_derived_beat_for_metadata(const float bpm, const float duration) {
     if (!std::isfinite(bpm) || !std::isfinite(duration) || bpm <= 0.0f || duration < 0.0f) {
         return std::nullopt;
@@ -486,6 +515,10 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
             }
         }
 
+        if (!validate_blocked_lanes_field(b, errors, entry.beat_index)) {
+            parse_ok = false;
+            continue;
+        }
         if (b.contains("blocked")) {
             errors.push_back({entry.beat_index,
                 "'blocked' is not supported by active beatmap obstacle kinds at beat "
