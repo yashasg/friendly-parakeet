@@ -5,10 +5,10 @@
 // glyphs, zoom, layout) stay here.
 
 // ── Shared constants (populated by loadSharedConstants) ──────
-export let OBSTACLE_KINDS = ["shape_gate", "combo_gate", "split_path", "onset_marker"];
+export let OBSTACLE_KINDS = ["shape_gate", "split_path", "onset_marker"];
 export let SHAPES = ["circle", "square", "triangle"];
 export let LANES = [0, 1, 2];
-export let KINDS_WITH_SHAPE = ["shape_gate", "combo_gate", "split_path"];
+export let KINDS_WITH_SHAPE = ["shape_gate", "split_path"];
 export const DIFFICULTY_KEYS = Object.freeze(["easy", "medium", "hard"]);
 export const RHYTHM_LAYER_KEYS = Object.freeze(["percussive", "harmonic", "full-spectrum"]);
 export let VALIDATION = {
@@ -129,7 +129,6 @@ export function isEditorObstacleKind(kind) {
 
 export const KIND_LABELS = {
     shape_gate: "ShapeGate",
-    combo_gate: "ComboGate",
     split_path: "SplitPath",
 };
 
@@ -160,7 +159,6 @@ export const COLORS = {
 
     kind: {
         shape_gate: "#4fc3f7",
-        combo_gate: "#fff176",
         split_path: "#4dd0e1",
         onset_marker: "#ce93d8",
     },
@@ -174,7 +172,6 @@ export const COLORS = {
 
 export const GLYPHS = {
     shape_gate: "◆",
-    combo_gate: "◈",
     split_path: "⑂",
     onset_marker: "·",
 };

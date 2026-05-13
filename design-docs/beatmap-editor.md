@@ -307,7 +307,7 @@ export const state = {
 };
 
 // ── Beat Entry shape ────────────────────────────────
-// { beat: int, kind: string, shape: string, lane: int, blocked?: int[] }
+// { beat: int, kind: string, shape: string, lane: int }
 
 // ── Exported mutation functions ─────────────────────
 export function getActiveBeats()                          → BeatEntry[]
@@ -481,14 +481,14 @@ export function downloadFile(filename, content)        → void  // triggers bro
 ```javascript
 // Runtime-supported kinds imported/exported by the editor. Defaults mirror
 // content/constants.json and are refreshed by loadSharedConstants().
-export let OBSTACLE_KINDS = ["shape_gate", "combo_gate", "split_path", "onset_marker"];
+export let OBSTACLE_KINDS = ["shape_gate", "split_path", "onset_marker"];
 // Active editor palette: runtime-supported, authorable kinds only.
 export const EDITOR_OBSTACLE_KINDS = ["shape_gate", "split_path"];
 // onset_marker is import/export metadata for shipped beatmaps, not palette-authorable.
 // Archived/future catalog entries such as low_bar/high_bar are intentionally not constants here.
 export const SHAPES = ["circle", "square", "triangle"];
 export const LANES = [0, 1, 2];
-export const KINDS_WITH_SHAPE = ["shape_gate", "combo_gate", "split_path"];
+export const KINDS_WITH_SHAPE = ["shape_gate", "split_path"];
 export const COLORS = { /* per-kind and per-shape colors */ };
 export const GLYPHS = { /* unicode/emoji per obstacle kind */ };
 export const DEFAULT_BPM = 120;

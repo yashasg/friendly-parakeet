@@ -10,6 +10,7 @@ import {
   DEFAULT_LEVELS,
   EDITOR_OBSTACLE_KINDS,
   OBSTACLE_KINDS,
+  SHAPES,
   canAutoLoadBundledContent,
   getContentUrl,
 } from '../js/constants.js';
@@ -59,7 +60,7 @@ test('valid beatmap import/export round-trip still works', () => {
       },
       hard: {
         beats: [
-          { beat: 3, kind: 'combo_gate', shape: 'circle', lane: 1, blocked: [0, 2] },
+          { beat: 3, kind: 'split_path', shape: 'circle', lane: 1 },
           { beat: 6, kind: 'shape_gate', shape: 'triangle', lane: 0 },
         ],
       },
@@ -462,40 +463,26 @@ test('unexpected difficulty names are rejected', () => {
   );
 });
 
-test('combo_gate blocked mask: no blocked lanes is surfaced', () => {
-  const errors = validate(makeState([
-    { beat: 1, kind: 'combo_gate', shape: 'circle', lane: 1, blocked: [] },
-  ]));
-
-  assert.match(
-    errors.map((e) => e.message).join('\n'),
-    /combo.?gate.*block at least one lane|blocked/i,
-  );
-});
-
-test('combo_gate blocked mask: all lanes blocked is surfaced', () => {
-  const errors = validate(makeState([
-    { beat: 1, kind: 'combo_gate', shape: 'circle', lane: 1, blocked: [0, 1, 2] },
-  ]));
-
-  assert.match(
-    errors.map((e) => e.message).join('\n'),
-    /combo.?gate.*leave at least one lane open|all lanes/i,
-  );
-});
-
-test('combo_gate blocked mask: partial mask stays valid', () => {
+test('combo_gate is rejected by shared editor validation', () => {
   const errors = validate(makeState([
     { beat: 1, kind: 'combo_gate', shape: 'circle', lane: 1, blocked: [0, 2] },
   ]));
 
-  const comboErrors = errors.filter((e) => /combo.?gate|blocked lane|lane open/i.test(e.message));
-  assert.equal(comboErrors.length, 0);
+  assert.match(errors.map((e) => e.message).join('\n'), /kind must be one of|combo_gate/i);
+});
+
+test('blocked lanes are rejected for active obstacle kinds', () => {
+  const errors = validate(makeState([
+    { beat: 1, kind: 'shape_gate', shape: 'circle', lane: 1, blocked: [0, 2] },
+  ]));
+
+  assert.match(errors.map((e) => e.message).join('\n'), /blocked is not supported/i);
 });
 
 test('combo_gate is not exposed as an authoring kind', () => {
   assert.ok(Array.isArray(EDITOR_OBSTACLE_KINDS));
   assert.ok(!EDITOR_OBSTACLE_KINDS.includes('combo_gate'));
+  assert.ok(!OBSTACLE_KINDS.includes('combo_gate'));
 });
 
 test('combo_gate is absent from palette and context-menu authoring surfaces', () => {
@@ -527,4 +514,15 @@ test('bundled level list points at shipped beatmap and audio assets', () => {
   assert.ok(getContentUrl('content/constants.json').href.endsWith('/content/constants.json'));
   assert.ok(getContentUrl('content/beatmaps/1_stomper_beatmap.json').href.endsWith('/content/beatmaps/1_stomper_beatmap.json'));
   assert.equal(canAutoLoadBundledContent(), false);
+});
+
+test('shared constants expose only runtime-parseable beatmap shapes', () => {
+  assert.deepEqual(SHAPES, ['circle', 'square', 'triangle']);
+  assert.ok(!SHAPES.includes('hexagon'));
+});
+
+test('bundled shared constants mirror editor runtime defaults', () => {
+  const constants = JSON.parse(fs.readFileSync(path.resolve(TEST_DIR, '../../../content/constants.json'), 'utf8'));
+  assert.deepEqual(constants.obstacle_kinds, OBSTACLE_KINDS);
+  assert.deepEqual(constants.shapes, SHAPES);
 });

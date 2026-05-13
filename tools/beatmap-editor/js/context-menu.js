@@ -12,7 +12,7 @@ import {
 } from './constants.js';
 
 let container = null;
-const AUTHORING_KINDS = EDITOR_OBSTACLE_KINDS.filter((kind) => kind !== 'combo_gate');
+const AUTHORING_KINDS = EDITOR_OBSTACLE_KINDS;
 
 // ── Helpers ─────────────────────────────────────────
 

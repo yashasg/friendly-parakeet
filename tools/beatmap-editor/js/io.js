@@ -1,7 +1,7 @@
 // io.js — Beatmap file I/O and validation (pure functions, no DOM except downloadFile)
 
 import {
-    OBSTACLE_KINDS, SHAPES, LANES, KINDS_WITH_SHAPE, DIFFICULTY_KEYS, RHYTHM_LAYER_KEYS, VALIDATION,
+    OBSTACLE_KINDS, SHAPES, KINDS_WITH_SHAPE, DIFFICULTY_KEYS, RHYTHM_LAYER_KEYS, VALIDATION,
 } from './constants.js';
 
 const LEGACY_ONSET_LAYER_MAP = Object.freeze({
@@ -230,24 +230,9 @@ function normalizeBeat(b, path, errors) {
         valid = false;
     }
 
-    const blocked = normalizeBlockedArray(b.blocked, `${path}.blocked`, errors);
-    if (b.blocked !== undefined && blocked == null) {
+    if (b.blocked !== undefined) {
+        errors.push(`${path}.blocked is not supported by active beatmap obstacle kinds`);
         valid = false;
-    }
-    if (kind === 'combo_gate') {
-        if (!Array.isArray(blocked)) {
-            errors.push(`${path}.blocked must be an array of lane indices 0-2 for combo_gate`);
-            valid = false;
-        } else {
-            const blockedMask = blocked.reduce((mask, blockedLane) => mask | (1 << blockedLane), 0);
-            if (blockedMask === 0) {
-                errors.push(`${path}.blocked must block at least one lane for combo_gate`);
-                valid = false;
-            } else if (blockedMask === 0x07) {
-                errors.push(`${path}.blocked must leave at least one lane open for combo_gate`);
-                valid = false;
-            }
-        }
     }
 
     if (!valid) return null;
@@ -258,7 +243,6 @@ function normalizeBeat(b, path, errors) {
         kind,
         shape,
         lane,
-        blocked,
     };
 }
 
@@ -364,6 +348,10 @@ function exportBeatEntry(b, path) {
         return { error: `${path}.lane must be in range 0-2` };
     }
 
+    if (b.blocked !== undefined) {
+        return { error: `${path}.blocked is not supported by active beatmap obstacle kinds` };
+    }
+
     const entry = { ...b, beat: b.beat, kind: b.kind, lane: b.lane };
 
     if (KINDS_WITH_SHAPE.includes(b.kind)) {
@@ -373,21 +361,6 @@ function exportBeatEntry(b, path) {
         entry.shape = b.shape;
     }
 
-    if (b.kind === 'combo_gate') {
-        const blocked = normalizeBlockedArray(b.blocked, `${path}.blocked`, []);
-        if (!blocked) {
-            return { error: `${path}.blocked must be an array of lane indices 0-2 for combo_gate` };
-        }
-        const blockedMask = blocked.reduce((mask, lane) => mask | (1 << lane), 0);
-        if (blockedMask === 0) {
-            return { error: `${path}.blocked must block at least one lane for combo_gate` };
-        }
-        if (blockedMask === 0x07) {
-            return { error: `${path}.blocked must leave at least one lane open for combo_gate` };
-        }
-        entry.blocked = blocked;
-    }
-
     if (b.shape !== undefined && !KINDS_WITH_SHAPE.includes(b.kind)) {
         if (typeof b.shape !== 'string' || !isAllowedShape(b.shape)) {
             return { error: `${path}.shape must be one of: ${SHAPES.join(', ')}` };
@@ -395,24 +368,6 @@ function exportBeatEntry(b, path) {
     }
 
     return { entry };
-}
-
-function normalizeBlockedArray(blocked, path, errors) {
-    if (blocked === undefined) return undefined;
-    if (!Array.isArray(blocked)) {
-        errors.push(`${path} must be an array`);
-        return null;
-    }
-    const normalized = [];
-    for (let i = 0; i < blocked.length; i++) {
-        const lane = blocked[i];
-        if (!Number.isInteger(lane) || !LANES.includes(lane)) {
-            errors.push(`${path}[${i}] must be one of: ${LANES.join(', ')}`);
-            return null;
-        }
-        normalized.push(lane);
-    }
-    return normalized;
 }
 
 /**
@@ -665,46 +620,12 @@ export function validate(state) {
             }
         }
 
-        // Rule 7b: combo_gate blocked lanes parity with C++ validator
-        if (entry.kind === 'combo_gate') {
-            if (!Array.isArray(entry.blocked)) {
-                errors.push({
-                    beatIndex: entry.beat,
-                    message: 'ComboGate blocked must be an array of lane indices',
-                    severity: 'error',
-                });
-            } else {
-                let blockedMask = 0;
-                let blockedValid = true;
-                for (const lane of entry.blocked) {
-                    if (!Number.isInteger(lane) || lane < 0 || lane > 2) {
-                        errors.push({
-                            beatIndex: entry.beat,
-                            message: 'ComboGate blocked lanes must be in range 0-2',
-                            severity: 'error',
-                        });
-                        blockedValid = false;
-                        break;
-                    }
-                    blockedMask |= (1 << lane);
-                }
-                if (!blockedValid) {
-                    continue;
-                }
-                if (blockedMask === 0) {
-                    errors.push({
-                        beatIndex: entry.beat,
-                        message: 'ComboGate must block at least one lane',
-                        severity: 'error',
-                    });
-                } else if (blockedMask === 0x07) {
-                    errors.push({
-                        beatIndex: entry.beat,
-                        message: 'ComboGate must leave at least one lane open',
-                        severity: 'error',
-                    });
-                }
-            }
+        if (entry.blocked !== undefined) {
+            errors.push({
+                beatIndex: entry.beat,
+                message: 'blocked is not supported by active beatmap obstacle kinds',
+                severity: 'error',
+            });
         }
 
         // Rule 8: Different-shape gates must be ≥ 3 beats apart
