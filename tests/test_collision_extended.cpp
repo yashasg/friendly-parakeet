@@ -218,6 +218,53 @@ TEST_CASE("collision: rhythm shape gate only matches during Active window",
     CHECK_FALSE(morphout_reg.all_of<TimingGrade>(morphout_obs));
 }
 
+TEST_CASE("collision: finished song still requires active shape window",
+          "[collision][rhythm][issue950]") {
+    auto idle_reg = make_rhythm_registry();
+    auto idle_player = make_rhythm_player(idle_reg);
+    auto& idle_shape = idle_reg.get<PlayerShape>(idle_player);
+    auto& idle_window = idle_reg.get<ShapeWindow>(idle_player);
+    auto& idle_song = idle_reg.ctx().get<SongState>();
+
+    idle_song.playing = false;
+    idle_song.finished = true;
+    idle_shape.current = Shape::Circle;
+    idle_window.target_shape = Shape::Circle;
+    idle_window.phase = WindowPhase::Idle;
+
+    auto idle_obs = make_shape_gate(idle_reg, Shape::Circle, constants::PLAYER_Y);
+
+    collision_system(idle_reg, 0.016f);
+
+    CHECK(idle_reg.all_of<ScoredTag>(idle_obs));
+    CHECK(idle_reg.all_of<MissTag>(idle_obs));
+    CHECK_FALSE(idle_reg.all_of<TimingGrade>(idle_obs));
+
+    auto active_reg = make_rhythm_registry();
+    auto active_player = make_rhythm_player(active_reg);
+    auto& active_shape = active_reg.get<PlayerShape>(active_player);
+    auto& active_window = active_reg.get<ShapeWindow>(active_player);
+    auto& active_song = active_reg.ctx().get<SongState>();
+
+    active_song.playing = false;
+    active_song.finished = true;
+    active_song.song_time = 5.0f;
+    active_shape.current = Shape::Circle;
+    active_window.target_shape = Shape::Circle;
+    active_window.phase = WindowPhase::Active;
+    active_window.press_time = active_song.song_time;
+
+    auto active_obs = make_shape_gate(active_reg, Shape::Circle, constants::PLAYER_Y);
+    active_reg.emplace<BeatInfo>(active_obs, 0, active_song.song_time,
+                                 active_song.song_time - active_song.lead_time);
+
+    collision_system(active_reg, 0.016f);
+
+    CHECK(active_reg.all_of<ScoredTag>(active_obs));
+    CHECK_FALSE(active_reg.all_of<MissTag>(active_obs));
+    CHECK(active_reg.all_of<TimingGrade>(active_obs));
+}
+
 TEST_CASE("collision: rhythm miss increments miss_count in SongResults", "[collision][rhythm]") {
     auto reg = make_rhythm_registry();
     make_rhythm_player(reg);
