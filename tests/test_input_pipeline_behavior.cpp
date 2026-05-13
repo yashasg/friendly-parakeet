@@ -30,6 +30,23 @@ static void run_pipeline(entt::registry& reg, float dt = 0.016f) {
     game_state_system(reg, dt);
 }
 
+namespace {
+
+struct SemanticInputOrderCapture {
+    int order[2] = {0, 0};
+    int cursor = 0;
+
+    void on_press(const ButtonPressEvent&) {
+        if (cursor < 2) order[cursor++] = 1;
+    }
+
+    void on_go(const GoEvent&) {
+        if (cursor < 2) order[cursor++] = 2;
+    }
+};
+
+}
+
 TEST_CASE("pipeline: keyboard shape shortcuts follow left-center-right shapes",
           "[input_pipeline][keyboard][issue662]") {
     CHECK(shape_for_keyboard_slot(KeyboardShapeSlot::Left) == Shape::Circle);
@@ -207,6 +224,33 @@ TEST_CASE("pipeline: gameplay HUD pointer release is collected before the fixed 
     CHECK(sw.target_shape == Shape::Square);
 }
 
+TEST_CASE("pipeline: mobile button-zone touch release is collected independently of swipe release",
+          "[input_pipeline][hud][mobile][issue956]") {
+    auto reg = make_rhythm_registry();
+    auto player = make_rhythm_player(reg);
+    auto& input = reg.ctx().get<InputState>();
+    auto& lane = reg.get<Lane>(player);
+    auto& sw = reg.get<ShapeWindow>(player);
+    REQUIRE(sw.phase == WindowPhase::Idle);
+    REQUIRE(lane.current == 1);
+
+    const auto square_bounds = gameplay_hud_shape_input_bounds(GameplayHudShapeSlot::Square);
+    input.touch_up = true;
+    input.end_x = constants::SCREEN_W_F * 0.5f;
+    input.end_y = constants::SCREEN_H_F * 0.25f;
+    input.button_touch_up = true;
+    input.button_end_x = square_bounds.x + square_bounds.width * 0.5f;
+    input.button_end_y = square_bounds.y + square_bounds.height * 0.5f;
+    push_go(reg, Direction::Right);
+
+    gameplay_hud_process_button_input(reg);
+    run_pipeline(reg);
+
+    CHECK(sw.phase == WindowPhase::MorphIn);
+    CHECK(sw.target_shape == Shape::Square);
+    CHECK(lane.target == 2);
+}
+
 TEST_CASE("pipeline: gameplay HUD pause release is collected before the fixed tick",
           "[input_pipeline][hud][issue833]") {
     auto reg = make_rhythm_registry();
@@ -370,6 +414,26 @@ TEST_CASE("pipeline: mixed swipe and tap both take effect within a single pipeli
     CHECK(lane.target     == 2);                  // explicit swipe moves lanes
     CHECK(sw.phase        == WindowPhase::MorphIn); // tap processed
     CHECK(sw.target_shape == Shape::Triangle);
+}
+
+TEST_CASE("pipeline: same-frame shape tap drains before movement",
+          "[input_pipeline][issue956]") {
+    auto reg = make_rhythm_registry();
+    make_rhythm_player(reg);
+    auto& disp = reg.ctx().get<entt::dispatcher>();
+    SemanticInputOrderCapture capture;
+    disp.sink<ButtonPressEvent>().connect<&SemanticInputOrderCapture::on_press>(capture);
+    disp.sink<GoEvent>().connect<&SemanticInputOrderCapture::on_go>(capture);
+
+    push_go(reg, Direction::Right);
+    disp.enqueue<ButtonPressEvent>(
+        {ButtonPressKind::Shape, Shape::Triangle, MenuActionKind::Confirm, 0});
+
+    run_pipeline(reg);
+
+    CHECK(capture.cursor == 2);
+    CHECK(capture.order[0] == 1);
+    CHECK(capture.order[1] == 2);
 }
 
 // ── No-latency regression ─────────────────────────────────────────────────

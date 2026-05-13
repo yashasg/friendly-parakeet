@@ -63,9 +63,10 @@ void game_state_system(entt::registry& reg, float dt) {
     // order: game_state → level_select → player_input
     // (see wire_input_dispatcher in input/input_dispatcher.cpp).
     //
-    // Events are enqueued earlier in the same frame by input_system
-    // (keyboard/swipes) and the gameplay HUD input collector before the
-    // fixed-step loop.
+    // Events are enqueued earlier in the same frame by input_system and the
+    // gameplay HUD input collector before the fixed-step loop. Shape presses
+    // drain before movement so same-frame mobile tap+swipe combo obstacles
+    // resolve deterministically.
     //
     // ⚠ Do NOT call disp.clear<GoEvent/ButtonPressEvent>() before this point
     //   within a frame.  Those pre-tick systems enqueue same-frame events that
@@ -73,8 +74,8 @@ void game_state_system(entt::registry& reg, float dt) {
     //   this update() call.  clear() would silently drop them before delivery.
     //
     auto& disp = reg.ctx().get<entt::dispatcher>();
-    disp.update<GoEvent>();
     disp.update<ButtonPressEvent>();
+    disp.update<GoEvent>();
 
     if (gs.transition_pending) {
         gs.transition_pending = false;
@@ -85,10 +86,14 @@ void game_state_system(entt::registry& reg, float dt) {
             input->touch_down = false;
             input->touch_up = false;
             input->click = false;
+            input->button_touch_up = false;
             input->touching = false;
             input->active_source = InputSource::None;
             input->suppress_mouse_release = false;
             input->duration = 0.0f;
+            for (int i = 0; i < InputState::MaxTrackedTouches; ++i) {
+                input->touch_slots[i] = TouchSlot{};
+            }
         }
 
         switch (gs.next_phase) {

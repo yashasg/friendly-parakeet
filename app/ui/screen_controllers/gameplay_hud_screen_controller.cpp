@@ -346,16 +346,28 @@ Rectangle gameplay_hud_shape_input_bounds(GameplayHudShapeSlot slot) {
 
 void gameplay_hud_process_button_input(entt::registry& reg) {
     const auto& input = reg.ctx().get<InputState>();
-    if (!(input.click || input.touch_up)) return;
+    if (!(input.click || input.button_touch_up || input.touch_up)) return;
 
     static const GameplayHudLayoutState geometry_state = GameplayHudLayout_Init();
-    const Vector2 pointer = {input.end_x, input.end_y};
-    gameplay_hud_apply_button_presses(
-        reg,
-        CheckCollisionPointRec(pointer, GameplayHudLayout_PauseButtonBounds(&geometry_state)),
-        CheckCollisionPointRec(pointer, GameplayHudLayout_CircleButtonBounds(&geometry_state)),
-        CheckCollisionPointRec(pointer, GameplayHudLayout_SquareButtonBounds(&geometry_state)),
-        CheckCollisionPointRec(pointer, GameplayHudLayout_TriangleButtonBounds(&geometry_state)));
+    if (input.click || (input.touch_up && !input.button_touch_up)) {
+        const Vector2 pointer = {input.end_x, input.end_y};
+        gameplay_hud_apply_button_presses(
+            reg,
+            CheckCollisionPointRec(pointer, GameplayHudLayout_PauseButtonBounds(&geometry_state)),
+            CheckCollisionPointRec(pointer, GameplayHudLayout_CircleButtonBounds(&geometry_state)),
+            CheckCollisionPointRec(pointer, GameplayHudLayout_SquareButtonBounds(&geometry_state)),
+            CheckCollisionPointRec(pointer, GameplayHudLayout_TriangleButtonBounds(&geometry_state)));
+    }
+
+    if (input.button_touch_up) {
+        const Vector2 pointer = {input.button_end_x, input.button_end_y};
+        gameplay_hud_apply_button_presses(
+            reg,
+            false,
+            CheckCollisionPointRec(pointer, GameplayHudLayout_CircleButtonBounds(&geometry_state)),
+            CheckCollisionPointRec(pointer, GameplayHudLayout_SquareButtonBounds(&geometry_state)),
+            CheckCollisionPointRec(pointer, GameplayHudLayout_TriangleButtonBounds(&geometry_state)));
+    }
 }
 
 void gameplay_hud_apply_button_presses(entt::registry& reg,

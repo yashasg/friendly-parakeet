@@ -6,6 +6,7 @@
 #include "../components/rendering.h"
 #include "../components/game_state.h"
 #include "../constants.h"
+#include <cmath>
 #include <raylib.h>
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
@@ -35,6 +36,105 @@ struct WebInputPolicy {
     // active_source guard inside input_system.
     bool touch_capable = false;
 };
+
+bool classify_swipe(float dx, float dy, float duration, Direction& out) {
+    const float distance_sq = dx * dx + dy * dy;
+    if (distance_sq < constants::MIN_SWIPE_DIST * constants::MIN_SWIPE_DIST ||
+        duration > constants::MAX_SWIPE_TIME) {
+        return false;
+    }
+
+    if (std::fabs(dx) >= std::fabs(dy)) {
+        out = (dx >= 0.0f) ? Direction::Right : Direction::Left;
+    } else {
+        out = (dy >= 0.0f) ? Direction::Down : Direction::Up;
+    }
+    return true;
+}
+
+bool raylib_gesture_swipe_direction(Direction& out) {
+    const int gesture = GetGestureDetected();
+    if (IsGestureDetected(GESTURE_SWIPE_RIGHT) || (gesture & GESTURE_SWIPE_RIGHT) != 0) {
+        out = Direction::Right;
+        return true;
+    }
+    if (IsGestureDetected(GESTURE_SWIPE_LEFT) || (gesture & GESTURE_SWIPE_LEFT) != 0) {
+        out = Direction::Left;
+        return true;
+    }
+    if (IsGestureDetected(GESTURE_SWIPE_UP) || (gesture & GESTURE_SWIPE_UP) != 0) {
+        out = Direction::Up;
+        return true;
+    }
+    if (IsGestureDetected(GESTURE_SWIPE_DOWN) || (gesture & GESTURE_SWIPE_DOWN) != 0) {
+        out = Direction::Down;
+        return true;
+    }
+
+    const Vector2 drag = GetGestureDragVector();
+    return classify_swipe(drag.x, drag.y, GetGestureHoldDuration(), out);
+}
+
+int find_touch_slot(InputState& input, int touch_id) {
+    for (int i = 0; i < InputState::MaxTrackedTouches; ++i) {
+        if (input.touch_slots[i].active && input.touch_slots[i].id == touch_id) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+int find_free_touch_slot(InputState& input) {
+    for (int i = 0; i < InputState::MaxTrackedTouches; ++i) {
+        if (!input.touch_slots[i].active) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+bool touch_id_is_current(int touch_id, int touch_point_count) {
+    for (int touch_index = 0; touch_index < touch_point_count; ++touch_index) {
+        if (GetTouchPointId(touch_index) == touch_id) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool has_active_touch_in_zone(const InputState& input, bool button_zone) {
+    for (int i = 0; i < InputState::MaxTrackedTouches; ++i) {
+        const auto& slot = input.touch_slots[i];
+        if (slot.active && slot.started_in_button_zone == button_zone) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void release_touch_slot(TouchSlot& slot,
+                        InputState& input,
+                        Direction& latest_swipe_dir,
+                        bool& has_latest_swipe,
+                        bool& had_swipe_zone_release) {
+    input.touch_up = true;
+    input.end_x = slot.curr_x;
+    input.end_y = slot.curr_y;
+    if (slot.started_in_button_zone) {
+        input.button_touch_up = true;
+        input.button_end_x = slot.curr_x;
+        input.button_end_y = slot.curr_y;
+    } else {
+        had_swipe_zone_release = true;
+        if (classify_swipe(slot.curr_x - slot.start_x,
+                           slot.curr_y - slot.start_y,
+                           slot.duration,
+                           latest_swipe_dir)) {
+            has_latest_swipe = true;
+        }
+    }
+    slot = TouchSlot{};
+}
 
 } // namespace
 
@@ -67,6 +167,7 @@ void input_system(entt::registry& reg, float raw_dt) {
     input.touch_down = false;
     input.touch_up   = false;
     input.click      = false;
+    input.button_touch_up = false;
 
 #if defined(PLATFORM_WEB) && defined(__EMSCRIPTEN__)
     const auto& web_policy = reg.ctx().get<WebInputPolicy>();
@@ -112,32 +213,117 @@ void input_system(entt::registry& reg, float raw_dt) {
         input.duration = 0.0f;
     }
 
-    // ── Touch (mobile / web) — only when no mouse gesture is active ─
+    // ── Touch (mobile / web) — up to one swipe-zone and one button-zone contact ─
     if (allow_touch_input &&
         input.active_source != InputSource::Mouse &&
         touch_point_count > 0) {
-        const Vector2 touch_pos = GetTouchPosition(0);
-        const glm::vec2 tp = screen_to_virtual({touch_pos.x, touch_pos.y}, st);
-        if (!input.touching) {
-            input.touch_down = true;
-            input.touching   = true;
-            input.active_source = InputSource::Touch;
-            input.start_x = input.curr_x = tp.x;
-            input.start_y = input.curr_y = tp.y;
-            input.duration = 0.0f;
-        } else if (input.active_source == InputSource::Touch) {
+        const float zone_y = constants::SCREEN_H_F * constants::SWIPE_ZONE_SPLIT;
+        Direction latest_swipe_dir = Direction::Up;
+        bool has_latest_swipe = false;
+        bool had_swipe_zone_release = false;
+
+        for (int i = 0; i < InputState::MaxTrackedTouches; ++i) {
+            auto& slot = input.touch_slots[i];
+            if (slot.active && !touch_id_is_current(slot.id, touch_point_count)) {
+                release_touch_slot(slot,
+                                   input,
+                                   latest_swipe_dir,
+                                   has_latest_swipe,
+                                   had_swipe_zone_release);
+            }
+        }
+
+        const int points_to_scan = touch_point_count;
+        for (int touch_index = 0; touch_index < points_to_scan; ++touch_index) {
+            const int touch_id = GetTouchPointId(touch_index);
+            const Vector2 touch_pos = GetTouchPosition(touch_index);
+            const glm::vec2 tp = screen_to_virtual({touch_pos.x, touch_pos.y}, st);
+            int slot_index = find_touch_slot(input, touch_id);
+            if (slot_index < 0) {
+                const bool button_zone = tp.y >= zone_y;
+                if (has_active_touch_in_zone(input, button_zone)) {
+                    continue;
+                }
+                slot_index = find_free_touch_slot(input);
+            }
+            if (slot_index < 0) {
+                continue;
+            }
+
+            auto& slot = input.touch_slots[slot_index];
+            if (!slot.active) {
+                slot.id = touch_id;
+                slot.active = true;
+                slot.started_in_button_zone = tp.y >= zone_y;
+                slot.start_x = slot.curr_x = tp.x;
+                slot.start_y = slot.curr_y = tp.y;
+                slot.duration = 0.0f;
+                input.touch_down = true;
+            } else {
+                slot.curr_x = tp.x;
+                slot.curr_y = tp.y;
+            }
+            input.start_x = slot.start_x;
+            input.start_y = slot.start_y;
             input.curr_x = tp.x;
             input.curr_y = tp.y;
+        }
+
+        if (!has_latest_swipe &&
+            had_swipe_zone_release &&
+            raylib_gesture_swipe_direction(latest_swipe_dir)) {
+            has_latest_swipe = true;
+        }
+        if (has_latest_swipe) {
+            disp.enqueue<GoEvent>(GoEvent{latest_swipe_dir});
+        }
+
+        input.touching = false;
+        for (int i = 0; i < InputState::MaxTrackedTouches; ++i) {
+            if (input.touch_slots[i].active) {
+                input.touching = true;
+                input.touch_slots[i].duration += raw_dt;
+            }
+        }
+        if (input.touching) {
+            input.active_source = InputSource::Touch;
+        }
+        input.duration = 0.0f;
+        for (int i = 0; i < InputState::MaxTrackedTouches; ++i) {
+            if (input.touch_slots[i].active && input.touch_slots[i].duration > input.duration) {
+                input.duration = input.touch_slots[i].duration;
+            }
         }
     } else if (allow_touch_input &&
                input.active_source != InputSource::Mouse &&
                input.touching && input.active_source == InputSource::Touch) {
+        Direction latest_swipe_dir = Direction::Up;
+        bool has_latest_swipe = false;
+        bool had_swipe_zone_release = false;
         input.touch_up  = true;
         input.touching  = false;
         input.suppress_mouse_release = true;
         input.active_source = InputSource::None;
-        input.end_x = input.curr_x;
-        input.end_y = input.curr_y;
+        for (int i = 0; i < InputState::MaxTrackedTouches; ++i) {
+            auto& slot = input.touch_slots[i];
+            if (!slot.active) {
+                continue;
+            }
+            release_touch_slot(slot,
+                               input,
+                               latest_swipe_dir,
+                               has_latest_swipe,
+                               had_swipe_zone_release);
+        }
+        if (!has_latest_swipe &&
+            had_swipe_zone_release &&
+            raylib_gesture_swipe_direction(latest_swipe_dir)) {
+            has_latest_swipe = true;
+        }
+        if (has_latest_swipe) {
+            disp.enqueue<GoEvent>(GoEvent{latest_swipe_dir});
+        }
+        input.duration = 0.0f;
     }
 
 #ifdef PLATFORM_HAS_KEYBOARD
@@ -186,38 +372,24 @@ void input_system(entt::registry& reg, float raw_dt) {
         input.was_focused = focused;
     }
 
-    if (input.touching) {
-        input.duration += raw_dt;
-    }
+    if (input.active_source != InputSource::Mouse &&
+        !input.touching &&
+        !input.touch_up) {
+        Direction gesture_dir = Direction::Up;
+        const bool has_gesture_swipe = raylib_gesture_swipe_direction(gesture_dir);
 
-    // Touch swipe gestures enqueue semantic GoEvent directly.
-    if (input.touch_up) {
-        int gesture = GESTURE_NONE;
-        if (IsGestureDetected(GESTURE_SWIPE_RIGHT)) {
-            gesture = GESTURE_SWIPE_RIGHT;
-        } else if (IsGestureDetected(GESTURE_SWIPE_LEFT)) {
-            gesture = GESTURE_SWIPE_LEFT;
-        } else if (IsGestureDetected(GESTURE_SWIPE_UP)) {
-            gesture = GESTURE_SWIPE_UP;
-        } else if (IsGestureDetected(GESTURE_SWIPE_DOWN)) {
-            gesture = GESTURE_SWIPE_DOWN;
-        } else if (IsGestureDetected(GESTURE_TAP)) {
-            gesture = GESTURE_TAP;
+        bool gesture_started_in_swipe_zone = false;
+        if (input.click) {
+            gesture_started_in_swipe_zone = input.end_y < constants::SCREEN_H_F * constants::SWIPE_ZONE_SPLIT;
         } else {
-            gesture = GetGestureDetected();
+            const Vector2 touch_pos = GetTouchPosition(0);
+            const glm::vec2 tp = screen_to_virtual({touch_pos.x, touch_pos.y}, st);
+            gesture_started_in_swipe_zone = tp.y < constants::SCREEN_H_F * constants::SWIPE_ZONE_SPLIT;
         }
 
-        const float zone_y = constants::SCREEN_H * constants::SWIPE_ZONE_SPLIT;
-        if (input.start_y < zone_y) {
-            if ((gesture & GESTURE_SWIPE_RIGHT) != 0) {
-                disp.enqueue<GoEvent>(GoEvent{Direction::Right});
-            } else if ((gesture & GESTURE_SWIPE_LEFT) != 0) {
-                disp.enqueue<GoEvent>(GoEvent{Direction::Left});
-            } else if ((gesture & GESTURE_SWIPE_UP) != 0) {
-                disp.enqueue<GoEvent>(GoEvent{Direction::Up});
-            } else if ((gesture & GESTURE_SWIPE_DOWN) != 0) {
-                disp.enqueue<GoEvent>(GoEvent{Direction::Down});
-            }
+        if (has_gesture_swipe && gesture_started_in_swipe_zone) {
+            input.click = false;
+            disp.enqueue<GoEvent>(GoEvent{gesture_dir});
         }
     }
 }
