@@ -309,4 +309,30 @@ void input_system(entt::registry& reg, float raw_dt) {
         input.was_focused = focused;
     }
 
+    if (allow_touch_input &&
+        input.active_source != InputSource::Mouse &&
+        !input.touching &&
+        !input.touch_up) {
+        Direction gesture_dir = Direction::Up;
+        bool has_gesture_swipe = false;
+        if (IsGestureDetected(GESTURE_SWIPE_RIGHT)) {
+            gesture_dir = Direction::Right;
+            has_gesture_swipe = true;
+        } else if (IsGestureDetected(GESTURE_SWIPE_LEFT)) {
+            gesture_dir = Direction::Left;
+            has_gesture_swipe = true;
+        } else if (IsGestureDetected(GESTURE_SWIPE_UP)) {
+            gesture_dir = Direction::Up;
+            has_gesture_swipe = true;
+        } else if (IsGestureDetected(GESTURE_SWIPE_DOWN)) {
+            gesture_dir = Direction::Down;
+            has_gesture_swipe = true;
+        }
+
+        const Vector2 touch_pos = GetTouchPosition(0);
+        const glm::vec2 tp = screen_to_virtual({touch_pos.x, touch_pos.y}, st);
+        if (has_gesture_swipe && tp.y < constants::SCREEN_H_F * constants::SWIPE_ZONE_SPLIT) {
+            disp.enqueue<GoEvent>(GoEvent{gesture_dir});
+        }
+    }
 }
