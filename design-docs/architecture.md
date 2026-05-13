@@ -591,9 +591,11 @@ system in the same frame (unidirectional data flow).
  │  │  8. popup_display_system  Tick ScorePopup.remaining.   │
  │  │                           Fade and destroy popups.     │
  │  │                                                        │
- │  │  9. energy_system         Apply pending energy changes.│
+ │  │  9. energy_system         Apply pending energy changes │
+ │  │                           and smooth displayed energy. │
  │  │                                                        │
- │  │ 10. energy_bar_system     Smooth displayed energy.     │
+ │  │ 10. energy_bar_system     Prepare energy bar visual    │
+ │  │                           animation state.             │
  │  │                                                        │
  │  │ 11. particle_system       Tick ParticleData.remaining. │
  │  │                           Destroy expired particles.   │
