@@ -18,8 +18,7 @@
 static entt::entity make_expired_obstacle(entt::registry& reg) {
     auto e = reg.create();
     reg.emplace<ObstacleTag>(e);
-    reg.emplace<Obstacle>(e, ObstacleKind::ShapeGate,
-                          static_cast<int16_t>(constants::PTS_SHAPE_GATE));
+    reg.emplace<Obstacle>(e, static_cast<int16_t>(constants::PTS_SHAPE_GATE));
     reg.emplace<WorldTransform>(e, WorldTransform{{0.0f, constants::DESTROY_Y + 10.0f}});
     return e;
 }
@@ -102,8 +101,7 @@ TEST_CASE("miss_detection: obstacles above DESTROY_Y are not tagged",
     // One obstacle still on-screen that must not be tagged.
     auto active = reg.create();
     reg.emplace<ObstacleTag>(active);
-    reg.emplace<Obstacle>(active, ObstacleKind::ShapeGate,
-                          static_cast<int16_t>(constants::PTS_SHAPE_GATE));
+    reg.emplace<Obstacle>(active, static_cast<int16_t>(constants::PTS_SHAPE_GATE));
     reg.emplace<WorldTransform>(active, WorldTransform{{0.0f, constants::PLAYER_Y - 100.0f}});
 
     miss_detection_system(reg, 0.016f);

@@ -280,7 +280,7 @@ TEST_CASE("test_player: invalid scroll speed treats undated closer obstacles as 
 
     auto closer = reg.create();
     reg.emplace<ObstacleTag>(closer);
-    reg.emplace<Obstacle>(closer, ObstacleKind::LaneBlock, int16_t{constants::PTS_LANE_BLOCK});
+    reg.emplace<Obstacle>(closer, int16_t{constants::PTS_LANE_BLOCK});
     reg.emplace<WorldTransform>(closer,
                                WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y - 300.0f}});
     reg.emplace<BlockedLanes>(closer, uint8_t{0b001});
