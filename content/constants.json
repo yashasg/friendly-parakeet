@@ -1,19 +1,16 @@
 {
     "obstacle_kinds": [
         "shape_gate",
-        "combo_gate",
         "split_path",
         "onset_marker"
     ],
     "shapes": [
         "circle",
         "square",
-        "triangle",
-        "hexagon"
+        "triangle"
     ],
     "kinds_with_shape": [
         "shape_gate",
-        "combo_gate",
         "split_path"
     ],
     "lanes": [

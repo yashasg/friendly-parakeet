@@ -182,8 +182,8 @@ The current obstacle components already match the beatmap schema:
 
 ```
   ObstacleKind::ShapeGate      → "shape_gate"       ✓  required shipped obstacle
-  ObstacleKind::LaneBlock      → "lane_block"       ✓  legacy/backward-compatible support
-  ObstacleKind::ComboGate      → "combo_gate"       ✓  runtime-supported, not generated today
+  ObstacleKind::LaneBlock      → "lane_block"       ✗  ECS-only/future; parser rejects
+  ObstacleKind::ComboGate      → "combo_gate"       ✗  ECS-only/future; parser rejects
   ObstacleKind::SplitPath      → "split_path"       ✓  runtime-supported, not generated today
   ObstacleKind::OnsetMarker    → "onset_marker"     ✓  non-blocking shipped metadata
 

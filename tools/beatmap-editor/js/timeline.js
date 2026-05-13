@@ -482,7 +482,6 @@ function renderLegend(ctx, w, h) {
         { glyph: SHAPE_GLYPHS.circle,      color: COLORS.shape.circle,          label: 'Circle' },
         { glyph: SHAPE_GLYPHS.square,      color: COLORS.shape.square,          label: 'Square' },
         { glyph: SHAPE_GLYPHS.triangle,    color: COLORS.shape.triangle,        label: 'Triangle' },
-        { glyph: GLYPHS.combo_gate,        color: COLORS.kind.combo_gate,       label: 'ComboGate' },
         { glyph: GLYPHS.split_path,        color: COLORS.kind.split_path,       label: 'SplitPath' },
     ];
 
