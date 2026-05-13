@@ -114,7 +114,8 @@ shape_window_system -> miss_detection_system -> scoring_system
 
 - **Rhythm positions derived from song_time**, not accumulated dt — prevents beat drift
 - **Shape windows** are song-time-anchored with phase transitions (MorphIn -> Active -> MorphOut -> Idle)
-- **Collision dispatch** uses per-kind EnTT structural views for obstacle-specific component sets
+- **Collision resolution** uses EnTT structural views grouped by obstacle components
+  (`BlockedLanes`, `RequiredShape`, `RequiredLane`), not a switch on obstacle kind
 - **Section labels** guide beatmap structure and intensity; obstacle patterns are authored per section
 
 ### Project Layout
@@ -122,20 +123,24 @@ shape_window_system -> miss_detection_system -> scoring_system
 ```
 app/
   main.cpp                # raylib init, game loop, Emscripten support
-  constants.h             # All tuning values
-  platform.h              # PLATFORM_HAS_KEYBOARD macro
-  platform_utils.h        # Portable localtime/fopen wrappers
-  enum_names.h            # shape_name(), obstacle_kind_name()
+  game_loop.cpp/.h        # registry wiring, frame loop, shutdown
+  constants.h             # tuning values and layout constants
+  platform_display.cpp/.h # desktop/mobile display sizing helpers
+  audio/                  # SFX/music routing and dispatch
   components/             # POD component structs
     player.h              #   PlayerShape, ShapeWindow, Lane
     rhythm.h              #   TimingGrade, BeatInfo, WindowPhase
     beat_map.h            #   BeatEntry, BeatMap (loaded data)
-    song_state.h          #   SongState, EnergyState, SongResults
-  systems/                # system functions
+    song_state.h          #   SongState
+    energy_bar.h          #   EnergyState
+  entities/               # entity archetype construction helpers
+  input/                  # input routing and semantic event dispatch
+  systems/                # headless ECS system functions
     all_systems.h         #   headless ECS system declarations
     runtime_systems.h     #   runtime input/audio/render system declarations
   session/
     play_session.cpp      #   entity setup on game start
+  util/                   # persistence, rhythm math, lane/session helpers
 tools/
   rhythm_pipeline.py      # Audio analysis (librosa -> analysis JSON)
   level_designer.py       # Beatmap generation (analysis -> beatmap JSON)
