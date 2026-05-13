@@ -115,13 +115,13 @@ jobs:
         uses: actions/upload-artifact@v5
         with:
           name: ctrf-report-windows
-          path: ctrf-report.json
+          path: build/ctrf-report.json
 
       - name: Report test results
         if: always() && steps.run-tests.outcome != 'skipped'
         uses: ctrf-io/github-test-reporter@v1
         with:
-          report-path: 'ctrf-report.json'
+          report-path: 'build/ctrf-report.json'
           title: 'Test Results (Windows)'
           pull-request-report: true
           update-comment: true
@@ -237,13 +237,13 @@ jobs:
         uses: actions/upload-artifact@v5
         with:
           name: ctrf-report-windows-msvc
-          path: ctrf-report.json
+          path: build-msvc/ctrf-report.json
 
       - name: Report test results
         if: always() && steps.run-tests.outcome != 'skipped'
         uses: ctrf-io/github-test-reporter@v1
         with:
-          report-path: 'ctrf-report.json'
+          report-path: 'build-msvc/ctrf-report.json'
           title: 'Test Results (Windows MSVC)'
           pull-request-report: true
           update-comment: true

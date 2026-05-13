@@ -4,11 +4,14 @@
 #include <catch2/reporters/catch_reporter_registrars.hpp>
 #include <catch2/catch_test_case_info.hpp>
 
-#include <fstream>
-#include <string>
-#include <vector>
 #include <chrono>
 #include <cstdint>
+#include <cstdlib>
+#include <fstream>
+#include <iostream>
+#include <stdexcept>
+#include <string>
+#include <vector>
 
 static std::string ctrf_json_escape(const std::string& s) {
     std::string out;
@@ -32,6 +35,19 @@ static int64_t ctrf_now_ms() {
     ).count();
 }
 
+static std::string ctrf_report_path() {
+    if (const char* path = std::getenv("SHAPESHIFTER_CTRF_REPORT_PATH")) {
+        if (path[0] != '\0') {
+            return path;
+        }
+    }
+#ifdef SHAPESHIFTER_CTRF_REPORT_PATH
+    return SHAPESHIFTER_CTRF_REPORT_PATH;
+#else
+    return "ctrf-report.json";
+#endif
+}
+
 struct CtrfTestResult {
     std::string name;
     std::string status;
@@ -47,7 +63,7 @@ public:
     using EventListenerBase::EventListenerBase;
 
     static std::string getDescription() {
-        return "Outputs test results in CTRF JSON format to ctrf-report.json";
+        return "Outputs test results in CTRF JSON format";
     }
 
     void testRunStarting(Catch::TestRunInfo const&) override {
@@ -112,7 +128,12 @@ public:
             else                            ++other;
         }
 
-        std::ofstream out("ctrf-report.json");
+        const std::string report_path = ctrf_report_path();
+        std::ofstream out(report_path);
+        if (!out) {
+            std::cerr << "Failed to open CTRF report path: " << report_path << "\n";
+            throw std::runtime_error("failed to open CTRF report path");
+        }
         out << "{\n";
         out << "  \"reportFormat\": \"CTRF\",\n";
         out << "  \"specVersion\": \"0.0.1\",\n";

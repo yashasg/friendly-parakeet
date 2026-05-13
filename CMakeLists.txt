@@ -538,6 +538,7 @@ target_link_libraries(shapeshifter_tests PRIVATE
 )
 target_compile_definitions(shapeshifter_tests PRIVATE
     SHAPESHIFTER_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+    SHAPESHIFTER_CTRF_REPORT_PATH="${CMAKE_BINARY_DIR}/ctrf-report.json"
 )
 
 # Apply platform definitions to tests (same as shapeshifter_lib)
