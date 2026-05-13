@@ -39,19 +39,8 @@ bool player_matches_required_shape(const PlayerShape& p_shape,
     return p_window.phase != WindowPhase::Idle && p_window.target_shape == required;
 }
 
-bool shape_gate_lane_match(float obstacle_x,
-                           float player_x,
-                           const Lane& lane) {
-    if (CheckCollisionRecs(centered_hitbox_rect(player_x),
-                           centered_hitbox_rect(obstacle_x))) {
-        return true;
-    }
-
-    if (lane.target < 0 || lane.target >= constants::LANE_COUNT) {
-        return false;
-    }
-
-    return CheckCollisionRecs(centered_hitbox_rect(constants::LANE_X[lane.target]),
+bool shape_gate_lane_match(float obstacle_x, float player_x) {
+    return CheckCollisionRecs(centered_hitbox_rect(player_x),
                               centered_hitbox_rect(obstacle_x));
 }
 
@@ -139,7 +128,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
             for (auto [e, obstacle, wt, req, info] : rhythm_view.each()) {
                 (void)obstacle;
                 bool shape_match = player_matches_required_shape(p_shape, p_window, req.shape, rhythm_mode);
-                bool lane_match = shape_gate_lane_match(wt.position.x, player_x, p_lane);
+                bool lane_match = shape_gate_lane_match(wt.position.x, player_x);
                 if (!lane_match) {
                     resolve(e, wt.position.y, false);
                     continue;
@@ -154,7 +143,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
             for (auto [e, obstacle, wt, req] : view.each()) {
                 (void)obstacle;
                 bool shape_match = player_matches_required_shape(p_shape, p_window, req.shape, rhythm_mode);
-                bool lane_match = shape_gate_lane_match(wt.position.x, player_x, p_lane);
+                bool lane_match = shape_gate_lane_match(wt.position.x, player_x);
                 if (!lane_match) {
                     resolve(e, wt.position.y, false);
                     continue;
@@ -232,7 +221,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
             for (auto [e, obstacle, wt, req] : view.each()) {
                 (void)obstacle;
                 bool shape_match = player_matches_required_shape(p_shape, p_window, req.shape, rhythm_mode);
-                bool lane_match = shape_gate_lane_match(wt.position.x, player_x, p_lane);
+                bool lane_match = shape_gate_lane_match(wt.position.x, player_x);
                 if (!lane_match) {
                     resolve(e, wt.position.y, false);
                     continue;

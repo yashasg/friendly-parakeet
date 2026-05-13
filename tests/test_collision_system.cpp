@@ -52,8 +52,8 @@ TEST_CASE("collision: shape gate hitbox edge handling", "[collision][edge]") {
     }
 }
 
-TEST_CASE("collision: shape gate target-lane grace follows explicit lane target",
-          "[collision][issue874]") {
+TEST_CASE("collision: shape gate does not clear from target lane before strafe arrives",
+          "[collision][issue892]") {
     auto reg = make_registry();
     auto player = make_player(reg);
     auto& lane = reg.get<Lane>(player);
@@ -66,7 +66,7 @@ TEST_CASE("collision: shape gate target-lane grace follows explicit lane target"
     collision_system(reg, 0.016f);
 
     CHECK(reg.all_of<ScoredTag>(obs));
-    CHECK_FALSE(reg.all_of<MissTag>(obs));
+    CHECK(reg.all_of<MissTag>(obs));
 }
 
 TEST_CASE("collision: shape gate ignores shape-derived lane without explicit target",
@@ -81,6 +81,24 @@ TEST_CASE("collision: shape gate ignores shape-derived lane without explicit tar
 
     CHECK(reg.all_of<ScoredTag>(obs));
     CHECK(reg.all_of<MissTag>(obs));
+}
+
+TEST_CASE("collision: shape gate clears when interpolated player hitbox reaches lane",
+          "[collision][issue892]") {
+    auto reg = make_registry();
+    auto player = make_player(reg);
+    auto& lane = reg.get<Lane>(player);
+    auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
+
+    reg.get<WorldTransform>(obs).position.x = constants::LANE_X[0];
+    reg.get<WorldTransform>(player).position.x = constants::LANE_X[0];
+    lane.target = 0;
+    lane.lerp_t = 1.0f;
+
+    collision_system(reg, 0.016f);
+
+    CHECK(reg.all_of<ScoredTag>(obs));
+    CHECK_FALSE(reg.all_of<MissTag>(obs));
 }
 
 TEST_CASE("collision: lane block cleared when player in unblocked lane", "[collision]") {
