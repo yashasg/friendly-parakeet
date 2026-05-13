@@ -165,9 +165,10 @@ void render_shape_buttons(const entt::registry& reg,
     }
 
     std::array<float, 4> nearest_dist = {-1.0f, -1.0f, -1.0f, -1.0f};
-    for (auto [entity, obstacle_pos, required_shape] :
-         reg.view<ObstacleTag, WorldTransform, RequiredShape>(entt::exclude<ScoredTag>).each()) {
+    for (auto [entity, obstacle, obstacle_pos, required_shape] :
+         reg.view<ObstacleTag, Obstacle, WorldTransform, RequiredShape>(entt::exclude<ScoredTag>).each()) {
         (void)entity;
+        (void)obstacle;
         int shape_index = static_cast<int>(required_shape.shape);
         if (shape_index < 0 || shape_index >= static_cast<int>(nearest_dist.size())) continue;
         float dist = constants::PLAYER_Y - obstacle_pos.position.y;
@@ -178,7 +179,8 @@ void render_shape_buttons(const entt::registry& reg,
 
     auto* song_state = reg.ctx().find<SongState>();
     float perfect_dist = gameplay_hud_perfect_distance(song_state);
-    float ring_appear_dist = constants::APPROACH_DIST;
+    float good_dist = gameplay_hud_good_distance(song_state);
+    float ring_appear_dist = gameplay_hud_ok_distance(song_state);
     float max_ring_radius = btn_radius * layout.approach_ring_max_radius_scale;
 
     // Reduce-motion (#534): suppress the continuous approach-ring lerp/fade
@@ -198,7 +200,10 @@ void render_shape_buttons(const entt::registry& reg,
 
         int shape_index = static_cast<int>(button.shape);
         if (shape_index < 0 || shape_index >= static_cast<int>(nearest_dist.size())) continue;
-        const auto cue = gameplay_hud_ring_cue(nearest_dist[shape_index], perfect_dist, ring_appear_dist);
+        const auto cue = gameplay_hud_ring_cue(nearest_dist[shape_index],
+                                               perfect_dist,
+                                               good_dist,
+                                               ring_appear_dist);
         if (cue == GameplayHudRingCue::Hidden) continue;
         float ratio = gameplay_hud_ring_ratio(nearest_dist[shape_index], perfect_dist, ring_appear_dist);
 
@@ -292,11 +297,27 @@ void render_energy_bar(const entt::registry& reg) {
 
 } // anonymous namespace
 
-float gameplay_hud_perfect_distance(const SongState* song_state) {
+namespace {
+
+float gameplay_hud_timing_distance(const SongState* song_state, float timing_seconds) {
     const float scroll_speed = (song_state && song_state->scroll_speed > 0.0f)
         ? song_state->scroll_speed
         : constants::BASE_SCROLL_SPEED;
-    return scroll_speed * kTimingPerfectSeconds;
+    return scroll_speed * timing_seconds;
+}
+
+} // anonymous namespace
+
+float gameplay_hud_perfect_distance(const SongState* song_state) {
+    return gameplay_hud_timing_distance(song_state, kTimingPerfectSeconds);
+}
+
+float gameplay_hud_good_distance(const SongState* song_state) {
+    return gameplay_hud_timing_distance(song_state, kTimingGoodSeconds);
+}
+
+float gameplay_hud_ok_distance(const SongState* song_state) {
+    return gameplay_hud_timing_distance(song_state, kTimingOkSeconds);
 }
 
 float gameplay_hud_ring_ratio(float nearest_dist, float perfect_dist, float ring_appear_dist) {
@@ -305,12 +326,13 @@ float gameplay_hud_ring_ratio(float nearest_dist, float perfect_dist, float ring
     return Clamp((nearest_dist - perfect_dist) / denom, 0.0f, 1.0f);
 }
 
-GameplayHudRingCue gameplay_hud_ring_cue(float nearest_dist, float perfect_dist, float ring_appear_dist) {
+GameplayHudRingCue gameplay_hud_ring_cue(float nearest_dist,
+                                         float perfect_dist,
+                                         float good_dist,
+                                         float ring_appear_dist) {
     if (nearest_dist <= 0.0f || nearest_dist >= ring_appear_dist) return GameplayHudRingCue::Hidden;
     if (nearest_dist <= perfect_dist) return GameplayHudRingCue::Perfect;
-
-    const float ratio = gameplay_hud_ring_ratio(nearest_dist, perfect_dist, ring_appear_dist);
-    return (ratio < 0.3f) ? GameplayHudRingCue::Near : GameplayHudRingCue::Far;
+    return (nearest_dist <= good_dist) ? GameplayHudRingCue::Near : GameplayHudRingCue::Far;
 }
 
 void init_gameplay_hud_screen_ui() {

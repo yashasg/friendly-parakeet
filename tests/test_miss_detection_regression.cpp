@@ -153,6 +153,21 @@ TEST_CASE("miss_detection: resolved missed obstacle is not re-tagged after scori
     CHECK_FALSE(reg.all_of<MissTag>(obs));
 }
 
+TEST_CASE("miss_detection: visual obstacle leftovers without Obstacle payload are ignored",
+          "[miss_detection][regression][issue865]") {
+    auto reg = make_registry();
+
+    auto visual_leftover = reg.create();
+    reg.emplace<ObstacleTag>(visual_leftover);
+    reg.emplace<WorldTransform>(visual_leftover,
+                                WorldTransform{{0.0f, constants::DESTROY_Y + 10.0f}});
+
+    miss_detection_system(reg, 0.016f);
+
+    CHECK_FALSE(reg.all_of<ScoredTag>(visual_leftover));
+    CHECK_FALSE(reg.all_of<MissTag>(visual_leftover));
+}
+
 // ── Non-Playing phase: system is a no-op ────────────────────────────────────
 
 TEST_CASE("miss_detection: no-op when game phase is not Playing",

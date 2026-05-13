@@ -538,6 +538,10 @@ TEST_CASE("collision: HUD perfect cue distance maps to PERFECT timing", "[rhythm
     const float cue_dist = gameplay_hud_perfect_distance(&song);
     const float cue_lead_seconds = cue_dist / song.scroll_speed;
     CHECK_THAT(cue_lead_seconds, WithinAbs(kTimingPerfectSeconds, 0.0001f));
+    CHECK_THAT(gameplay_hud_good_distance(&song) / song.scroll_speed,
+               WithinAbs(kTimingGoodSeconds, 0.0001f));
+    CHECK_THAT(gameplay_hud_ok_distance(&song) / song.scroll_speed,
+               WithinAbs(kTimingOkSeconds, 0.0001f));
 
     ps.current = Shape::Circle;
     sw.phase = WindowPhase::Active;
