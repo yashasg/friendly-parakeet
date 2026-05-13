@@ -2,6 +2,7 @@
 #include <filesystem>
 #include <fstream>
 #include <limits>
+#include <string>
 #include <string_view>
 
 #include "components/high_score.h"
@@ -76,31 +77,51 @@ TEST_CASE("High score: current score lookup and update never lowers stored score
     CHECK(high_score::get_current_high_score(state) == 0);
 
     // ensure_entry + current_key_hash mirrors the production setup_play_session path.
-    high_score::ensure_entry(state, "song_001|easy");
+    REQUIRE(high_score::ensure_entry(state, "song_001|easy"));
     state.current_key_hash = high_score::make_key_hash("song_001", "easy");
     CHECK(high_score::get_current_high_score(state) == 0);
 
-    high_score::update_if_higher(state, 5000);
+    CHECK(high_score::update_if_higher(state, 5000));
     CHECK(high_score::get_current_high_score(state) == 5000);
 
-    high_score::update_if_higher(state, 1000);
+    CHECK(high_score::update_if_higher(state, 1000));
     CHECK(high_score::get_current_high_score(state) == 5000);
+}
+
+TEST_CASE("High score: saturated table reports insert and hash update failures", "[high_score][issue1004]") {
+    HighScoreState state;
+    for (int32_t i = 0; i < HighScoreState::MAX_ENTRIES; ++i) {
+        const std::string key = "song_" + std::to_string(i) + "|easy";
+        REQUIRE(high_score::set_score(state, key.c_str(), i * 100));
+    }
+
+    CHECK(state.entry_count == HighScoreState::MAX_ENTRIES);
+    CHECK_FALSE(high_score::set_score(state, "overflow|easy", 9000));
+    CHECK_FALSE(high_score::ensure_entry(state, "overflow|medium"));
+
+    state.current_key_hash = high_score::make_key_hash("overflow", "hard");
+    CHECK_FALSE(high_score::update_if_higher(state, 9000));
+    CHECK(high_score::get_score(state, "overflow|hard") == 0);
+
+    state.current_key_hash = high_score::make_key_hash("song_0", "easy");
+    CHECK(high_score::update_if_higher(state, 9000));
+    CHECK(high_score::get_score(state, "song_0|easy") == 9000);
 }
 
 TEST_CASE("High score: tracks songs and difficulties independently", "[high_score]") {
     HighScoreState state;
 
-    high_score::ensure_entry(state, "song_001|easy");
+    REQUIRE(high_score::ensure_entry(state, "song_001|easy"));
     state.current_key_hash = high_score::make_key_hash("song_001", "easy");
-    high_score::update_if_higher(state, 1000);
+    CHECK(high_score::update_if_higher(state, 1000));
 
-    high_score::ensure_entry(state, "song_001|hard");
+    REQUIRE(high_score::ensure_entry(state, "song_001|hard"));
     state.current_key_hash = high_score::make_key_hash("song_001", "hard");
-    high_score::update_if_higher(state, 2000);
+    CHECK(high_score::update_if_higher(state, 2000));
 
-    high_score::ensure_entry(state, "song_002|easy");
+    REQUIRE(high_score::ensure_entry(state, "song_002|easy"));
     state.current_key_hash = high_score::make_key_hash("song_002", "easy");
-    high_score::update_if_higher(state, 3000);
+    CHECK(high_score::update_if_higher(state, 3000));
 
     CHECK(high_score::get_score(state, "song_001|easy") == 1000);
     CHECK(high_score::get_score(state, "song_001|hard") == 2000);
@@ -198,6 +219,31 @@ TEST_CASE("High score persistence: invalid schema preserves state", "[high_score
         std::ofstream out(file);
         out << R"({"scores":{"song_001|easy":"not_a_number"}})";
     }
+
+    CHECK(high_score::load_high_scores(state, file).status == persistence::Status::CorruptData);
+    CHECK(high_score::get_score(state, "song_001|easy") == 500);
+
+    remove_path(dir);
+}
+
+TEST_CASE("High score persistence: oversized score map is corrupt", "[high_score][issue1004]") {
+    const auto dir = temp_high_score_path("shapeshifter_high_score_too_many_entries");
+    const auto file = dir / "too_many_scores.json";
+    remove_path(dir);
+    std::filesystem::create_directories(dir);
+
+    {
+        std::ofstream out(file);
+        out << R"({"scores":{)";
+        for (int32_t i = 0; i <= HighScoreState::MAX_ENTRIES; ++i) {
+            if (i > 0) out << ',';
+            out << R"("song_)" << i << R"(|easy":)" << i;
+        }
+        out << "}}";
+    }
+
+    HighScoreState state;
+    REQUIRE(high_score::set_score(state, "song_001|easy", 500));
 
     CHECK(high_score::load_high_scores(state, file).status == persistence::Status::CorruptData);
     CHECK(high_score::get_score(state, "song_001|easy") == 500);
