@@ -291,6 +291,32 @@ TEST_CASE("tutorial: continue marks FTUE complete and requests gameplay",
     CHECK(gs.next_phase == GamePhase::Playing);
 }
 
+TEST_CASE("tutorial: menu confirm marks FTUE complete and requests gameplay",
+          "[gamestate][ftue][input][issue882]") {
+    auto reg = make_registry();
+    auto& gs = reg.ctx().get<GameState>();
+    gs.phase = GamePhase::Tutorial;
+    gs.phase_timer = 0.5f;
+
+    auto& settings = settings_state(reg);
+    settings.ftue_run_count = 0;
+    auto& persistence = settings_persistence(reg);
+    persistence.path.clear();
+    persistence.dirty = false;
+
+    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>({
+        ButtonPressKind::Menu, Shape::Circle, MenuActionKind::Confirm, 0});
+    game_state_system(reg, 0.016f);
+
+    const auto& saved_settings = settings_state(reg);
+    const auto& saved_persistence = settings_persistence(reg);
+    CHECK(settings::ftue_complete(saved_settings));
+    CHECK(saved_persistence.dirty);
+    CHECK(saved_persistence.last_save.status == persistence::Status::PathUnavailable);
+    CHECK_FALSE(gs.transition_pending);
+    CHECK(gs.phase == GamePhase::Playing);
+}
+
 TEST_CASE("game_state: level select ignores confirmed during delay", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();

@@ -4,6 +4,7 @@
 #include "../components/input_events.h"
 #include "../components/audio_events.h"
 #include "../components/haptics.h"
+#include "../entities/settings.h"
 #include "../constants.h"
 
 namespace {
@@ -70,6 +71,20 @@ void game_state_handle_press(entt::registry& reg, const ButtonPressEvent& evt) {
     }
 
     if (game_state_handle_end_screen_press(reg, evt)) {
+        return;
+    }
+
+    if (gs.phase == GamePhase::Tutorial) {
+        if (gs.phase_timer <= constants::UI_ENTRY_DEBOUNCE) return;
+        if (evt.menu_action != MenuActionKind::Confirm) return;
+        if (auto* settings_state = find_settings_state(reg)) {
+            settings::mark_ftue_complete(*settings_state);
+            if (auto* persistence = find_settings_persistence(reg)) {
+                settings::mark_dirty_and_save(*persistence, *settings_state);
+            }
+        }
+        gs.transition_pending = true;
+        gs.next_phase = GamePhase::Playing;
         return;
     }
 

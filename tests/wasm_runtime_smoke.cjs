@@ -424,6 +424,7 @@ async function main() {
       const beforeTutorialStartHash = sha256(await page.screenshot());
       let afterTutorialStartHash = beforeTutorialStartHash;
       for (let i = 0; i < 3 && afterTutorialStartHash === beforeTutorialStartHash; i += 1) {
+        await page.keyboard.press('Enter');
         await clickCanvasAt(0.5, 0.88);
         afterTutorialStartHash = await waitForVisualChange(beforeTutorialStartHash, 3500);
       }
