@@ -211,3 +211,47 @@ file modified). Round 2 #409–#426 all CLOSED; PR #427 merged.
 
 ### Final output
 **Issues filed: #438, #439, #440.**
+
+## 2026-05-11 — High-level system design layout (Excalidraw spec)
+
+User requested a high-level system design of the game in Excalidraw. Per
+spawn-prompt charter, I produced the **layout recommendation only** (no
+drawing — Coordinator owns the canvas). Spec written to
+`.squad/decisions/inbox/redfoot-high-level-design.md`.
+
+Durable design choices worth remembering:
+
+- **5-band landscape layout** (Title / Inputs+Core+State / Render+Audio /
+  State Machine) reads top-to-bottom, left-to-right and matches the
+  frame-loop phase order in `architecture.md` §3. Don't reinvent — reuse
+  for any future "whole system" diagram.
+- **One semantic hue per role**, 5 colors total: sand=external input,
+  blue=systems, green=render, peach=audio, red=state machine. Plus
+  neutral grey for the `entt::registry` spine. Color-blind safe because
+  shape+position also encode role.
+- **Registry as a single tall rectangle on the right** with singleton
+  chips inside, connected to the systems column by **two thick
+  bidirectional arrows** — not N fine ones. This is the only honest way
+  to draw EnTT context state without arrow spaghetti.
+- **Critical nodes (collision, scoring) get a darker fill** within the
+  same hue family so the eye lands on them first without breaking the
+  palette.
+- Deliberately out of scope for a high-level canvas: per-component
+  fields, obstacle subtype taxonomy, HUD pixel layout, build/CI,
+  beatmap tooling. If asked for those, draw a *second* canvas — never
+  overload the system overview.
+
+## Learnings
+- Pattern: when delivering a "diagram spec" without drawing tools,
+  always include (a) a locked color/typography palette, (b) explicit
+  out-of-scope list, (c) acceptance checklist the canvas owner can
+  verify against. Without those three, the recipient invents details
+  and the diagram drifts.
+
+### 2026-05-12T05:13:01Z: High-level system design Excalidraw layout spec
+
+Produced comprehensive layout specification for single-canvas high-level architecture diagram:
+- 5-band structure (Inputs, Core Loop, State/Singletons, Render+Audio, Game State Machine)
+- 25+ nodes with locked 5-hue color palette
+- Acceptance checklist for Coordinator pre-share review
+- Spec merged into decisions.md; Coordinator owns canvas implementation.

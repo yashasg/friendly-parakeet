@@ -198,6 +198,30 @@ TEST_CASE("game_state: transition to LevelSelect resets confirmed", "[gamestate]
     CHECK_FALSE(lss.confirmed);
 }
 
+TEST_CASE("game_state: terminal to LevelSelect hides stale world renderables",
+          "[gamestate][render][regression][issue921]") {
+    auto reg = make_registry();
+    auto& gs = reg.ctx().get<GameState>();
+    auto& lss = reg.ctx().get<LevelSelectState>();
+    lss.confirmed = true;
+
+    auto stale = reg.create();
+    reg.emplace<ModelTransform>(stale);
+    reg.emplace<TagWorldPass>(stale);
+
+    gs.phase = GamePhase::GameOver;
+    gs.transition_pending = true;
+    gs.next_phase = GamePhase::LevelSelect;
+
+    game_state_system(reg, 0.016f);
+
+    CHECK(gs.phase == GamePhase::LevelSelect);
+    CHECK_FALSE(lss.confirmed);
+    REQUIRE(reg.valid(stale));
+    CHECK(reg.all_of<ModelTransform, TagWorldPass>(stale));
+    CHECK_FALSE(game_render_should_draw_world_meshes(gs.phase));
+}
+
 TEST_CASE("game_state: transition clears in-flight pointer capture", "[gamestate][input]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();

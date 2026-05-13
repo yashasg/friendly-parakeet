@@ -2692,3 +2692,348 @@ The comment `(Position component was deleted in r16 — see decisions.md Round 1
 - **Files:** `app/input/keyboard_shape_mapping.h`, `app/systems/input_system.cpp`, `tests/test_input_pipeline_behavior.cpp`
 - **Commit:** 30d2c1a
 
+---
+
+# Decision: Remove stale merged bundle worktree with targeted force
+
+- Date: 2026-05-11T13:34:00.133-07:00
+- Owner: Hockney
+
+## Context
+A user explicitly requested removal of the stale bundle worktree after PR #703 was squash-merged and the bundle branch was deleted. The worktree was dirty only from completed orchestration leftovers under `.squad/`.
+
+## Decision
+Use this narrow sequence for this stale-bundle pattern:
+1. Confirm worktree registration with `git worktree list --porcelain`.
+2. Confirm PR merged/closed and branch removed locally and on origin.
+3. Inspect `git -C <worktree> status --short --branch` and ensure dirt is only known `.squad` leftovers (no source changes).
+4. Attempt `git worktree remove <path>` first; if refusal is only due that known stale `.squad` dirt, run `git worktree remove --force <path>` for that exact path.
+5. Run `git worktree prune`.
+
+## Rationale
+This removes stale orchestration residue safely while preventing broad destructive cleanup and protecting active checkouts.
+
+---
+
+# Decision: Safe cleanup for user-specified stale worktrees
+
+- Date: 2026-05-11T13:31:37.347-07:00
+- Owner: Hockney
+
+## Context
+When users provide explicit stale worktree paths, cleanup must avoid accidental removal of active work and avoid destructive force operations.
+
+## Decision
+Use a fixed safety sequence:
+1. Run `git worktree list --porcelain` from repo root and verify each supplied path is registered.
+2. For each existing candidate path, run `git -C <path> status --short --branch`.
+3. Remove only with non-force `git worktree remove <path>` when clean/safe.
+4. If dirty with tracked source or `.squad` edits, leave in place and report why.
+5. Finish with `git worktree prune` and report remaining worktrees.
+
+## Rationale
+This preserves active/draft work, avoids broad destructive commands, and keeps worktree metadata consistent.
+
+---
+
+# Hockney Decision — Safe stale worktree cleanup gate
+
+- **Date:** 2026-05-11
+- **Context:** Routine `git worktree` hygiene while protecting active packaging checkout.
+- **Decision:** Use a strict gate before deletion: run `git worktree prune` first, then remove only worktrees that are non-primary, clearly stale, and clean. If stale but dirty, do not force remove; leave intact and report exact dirty paths.
+- **Rationale:** Prevents accidental data loss from uncommitted edits while still cleaning abandoned metadata and safe stale trees.
+- **Operational rule:** Never touch `/Users/yashasgujjar/dev/bullethell` during parallel PR packaging from that checkout.
+
+---
+
+# Kobayashi Decision — PR #704 Review Comment Resolution
+
+- **Date:** 2026-05-11
+- **Context:** Replacing placeholder CI workflows with real build/test steps for C++ + vcpkg projects.
+- **Decision:** Do **not** shallow-clone vcpkg in GitHub Actions when using manifest mode; clone full history (or fetch required baseline commits) so manifest baselines resolve reliably.
+- **Why:** vcpkg manifest baseline resolution may need historical commits not present in shallow clones, causing hard CI failures even when local builds pass.
+- **Applied in:** `.github/workflows/squad-ci.yml` on branch `squad/restore-stashed-squad-state`.
+
+---
+
+# Kobayashi Decision: PR #704 Conflict Resolution Process
+
+## Context
+PR #704 became dirty after `main` advanced (bundle PR #703 merged), while local checkout had unrelated in-progress edits and untracked runtime control files.
+
+## Decision
+For public squad branches, prefer **merge `origin/main` into the PR branch** over rebase to avoid rewriting published history. Before merge, stash only unrelated tracked local edits that could block/confuse conflict resolution, then reapply after merge commit is complete.
+
+## Applied Steps
+1. Verified branch/status and identified unrelated local changes.
+2. Stashed unrelated tracked edits with pathspec (kept untracked runtime control files out of git).
+3. Merged `origin/main` into `squad/restore-stashed-squad-state`.
+4. Resolved all conflicts favoring already-landed `main` behavior where superseding, while preserving PR intent.
+5. Ran full validation (`VCPKG_ROOT=/Users/yashasgujjar/vcpkg ./build.sh && ./build/shapeshifter_tests`).
+6. Fixed one merge-introduced build break discovered by validation.
+7. Committed merge with trailer and pushed branch.
+
+## Why Reusable
+This pattern preserves user WIP safely, avoids history rewrites on shared branches, and ensures conflict resolutions are verified by the repository’s canonical build/test command before push.
+
+---
+
+# Kobayashi Decision: Exclude local Ralph control files from PRs
+
+- **Context:** During branch restoration, local runtime control files appeared as untracked: `.squad/ralph-circuit-breaker.json` and `.squad/ralph-stop`.
+- **Decision:** Treat these as local operator/runtime state and exclude them from release PR commits unless a task explicitly requests operational-state versioning.
+- **Rationale:** These files are environment-specific controls and can create noisy or unsafe repo state if committed by default.
+- **Rule:** Stage all intended product/docs/workflow changes, but leave local stop/circuit-breaker files uncommitted.
+# Keyser Decision — High-Level System Design Canvas
+
+**Date:** 2026-05-11T22:13:01.838-07:00  
+**Owner:** Keyser (Lead Architect)  
+**Scope:** Single-canvas high-level architecture diagram for SHAPESHIFTER runtime
+
+## Decision
+
+Use a **9-block layered architecture** centered on one ECS registry, with explicit flow left-to-right (inputs/content) and top-to-bottom (frame execution):
+
+1. Platform Runtime (raylib/window/audio/haptics)
+2. Input & UI Intent Routing
+3. Game Phase Orchestrator
+4. Session Bootstrap & Content Loading
+5. Rhythm Timeline Core
+6. Player Simulation
+7. World Resolution (collision/miss/scoring/energy)
+8. Feedback & Lifecycle Cleanup
+9. Rendering & Presentation (world pass + UI pass)
+
+## Why this boundary set
+
+- Matches shipped execution seams in `game_loop_frame`, `tick_fixed_systems`, and `tick_playing_systems`.
+- Preserves determinism story: variable-rate shell wraps fixed-step gameplay.
+- Keeps design-readable data contracts: intents/events, BeatMap/SongState, obstacle/player entities, score/energy/results.
+
+## Coordinator diagram notes
+
+- Show one enclosing boundary: **ECS Registry + ctx singletons**.
+- Show a distinct inner boundary: **Fixed-step deterministic core (60Hz)**.
+- Highlight `game_state_system` as the **single phase gate + semantic event drain**.
+- Annotate render as two-pass composition: **3D world RT + 2D UI RT → final composite**.
+# Redfoot — High-Level System Design (Excalidraw Layout Spec)
+
+**Date:** 2026-05-11
+**Author:** Redfoot (UI/UX)
+**For:** Coordinator / Excalidraw canvas owner
+**Source artifacts:** `design-docs/architecture.md`, `design-docs/game.md`,
+`design-docs/game-flow.md`, `app/components/rendering.h`,
+`app/systems/{game_render_system,ui_render_system}.cpp`
+
+This is **layout planning only.** I am not drawing in Excalidraw; per
+charter the Coordinator owns final drawing. The intent is a **single-canvas
+high-level system design** of SHAPESHIFTER (C++20 / raylib / EnTT) that a
+new contributor can read in under 60 seconds.
+
+---
+
+## 1. Canvas frame & reading order
+
+- **Canvas:** 1 page, landscape, ~1920×1200 logical units.
+- **Reading order:** Top-to-bottom, left-to-right. Player & input enter at
+  top-left; pixels exit at bottom-right (raylib `EndDrawing`). This mirrors
+  the frame loop in `architecture.md` §3 (Phase 1 → Phase 6).
+- **Title strip (top, full width, 60u tall):**
+  `SHAPESHIFTER — High-Level System Design (raylib + EnTT, ECS)`
+  Subtitle: `Frame N · unidirectional data flow · all state in entt::registry`
+
+---
+
+## 2. Macro layout (5 horizontal bands)
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  TITLE STRIP                                                         │
+├──────────────┬──────────────────────────────────┬───────────────────┤
+│  BAND A      │  BAND B  CORE LOOP (Phases 1–5) │  BAND C           │
+│  INPUTS &    │  ECS systems pipeline            │  STATE &          │
+│  CONTENT     │  (the meat of the diagram)       │  SINGLETONS       │
+├──────────────┴──────────────────────────────────┴───────────────────┤
+│  BAND D  RENDER PIPELINE (Phase 6) + AUDIO OUT                       │
+├─────────────────────────────────────────────────────────────────────┤
+│  BAND E  GAME STATE MACHINE (Title ↔ Playing ↔ Paused ↔ GameOver)    │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+Bands are visually separated by thin grey rules, **not** boxes —
+the boxes are reserved for actual nodes so the eye doesn't fight chrome.
+
+---
+
+## 3. Node inventory (what to actually draw)
+
+### Band A — Inputs & Content (left column, ~320u wide)
+
+Stack vertically, each node ~280×80u:
+
+1. **Touch / Keyboard** (raylib input queue) — rectangle, sand `#FFE8B0`.
+2. **Audio file (.ogg)** — rectangle, sand `#FFE8B0`.
+3. **BeatMap JSON** (`content/beatmaps/*.json`) — rectangle, sand
+   `#FFE8B0`. Small label underneath: "authored by `tools/level_designer.py`".
+
+Sand = "data coming in from outside the registry."
+
+### Band B — Core Loop (center column, ~900u wide)
+
+Six **phase swimlanes** stacked vertically, each lane is a soft-rounded
+rectangle in pale blue `#E6F0FF` with the phase title as a left-anchored
+label. Inside each lane, place the systems as smaller white rectangles
+(120×50u) in left-to-right execution order. Use a **single horizontal
+arrow** through each lane connecting the systems — do not draw N arrows
+between every pair, it's noise.
+
+| Lane | Title | Systems (left→right)                                                                                              |
+|------|-------|--------------------------------------------------------------------------------------------------------------------|
+| P1   | INPUT CAPTURE | `input_system` → `gesture_routing`                                                                          |
+| P2   | STATE GATE    | `game_state_system`  *(short-circuits to P6 if not Playing)*                                                |
+| P3   | PLAYER        | `player_input_system` → `player_movement_system`                                                            |
+| P4   | WORLD         | `song_playback` → `beat_scheduler` → `scroll` → `motion` → `collision` → `miss_detection` → `scoring`      |
+| P5   | CLEANUP/FX    | `particle_system` → `obstacle_despawn_system` → `popup_display_system`                                      |
+| P6   | RENDER+AUDIO  | (drawn separately in Band D)                                                                                |
+
+Color the **collision** and **scoring** boxes a notch darker
+(`#C7DCFF`) — they are the gameplay-critical nodes a reader should
+spot first.
+
+### Band C — State & Singletons (right column, ~360u wide)
+
+The EnTT registry is the spine of the architecture. Draw it as a tall
+rectangle on the right edge, labelled **`entt::registry`**, fill
+`#F4F4F4`, stroke 2u. Inside / overlapping it, stack labelled chips
+(160×30u, rounded) for the singletons stored in `registry.ctx()`:
+
+- `SongState` · `BeatMap` · `SongResults` · `EnergyState`
+- `InputState` · `EventQueue` · `GameState` · `AudioQueue`
+- `GameCamera` · `UICamera`
+
+Below, a smaller rectangle labelled **"Entity archetypes"** with chips:
+`Player` · `ShapeGate` · `ComboGate` · `SplitPath` · `ScorePopup` ·
+`Particle`.
+
+This column is the "where does the data live" answer. Every Band B
+arrow ultimately reads/writes here — represent that with **two thick
+bidirectional arrows** from the Band B group to the registry, not
+dozens of fine ones.
+
+### Band D — Render & Audio Out (full width, ~180u tall)
+
+Left-to-right pipeline of render passes (matches
+`game_render_system.cpp` + `ui_render_system.cpp` and architecture
+§8.6):
+
+```
+BeginDrawing → ClearBackground → Background →
+  [GameCamera] Obstacles → Player → Particles → Popups →
+  [UICamera]   HUD: Score · Energy Bar · Proximity Ring · Shape Buttons →
+EndDrawing → audio_system (flush AudioQueue → SFX)
+```
+
+- Render nodes: pale green `#E6F7E0`.
+- Audio terminal node: peach `#FFD9B8`.
+- Use a single straight arrow through the chain; annotate camera
+  switches with small italic labels `[GameCamera]` / `[UICamera]`
+  above the arrow, not as separate boxes.
+
+### Band E — Game State Machine (full width, ~140u tall)
+
+Four state nodes as **diamonds** (Excalidraw `diamond` shape, this is
+where it earns its keep), centered horizontally:
+
+`TITLE` ⇄ `PLAYING` ⇄ `PAUSED`,  and  `PLAYING → GAME_OVER → PLAYING`
+
+Use slim arrows with edge labels for the trigger:
+- TITLE→PLAYING: `tap Start`
+- PLAYING→PAUSED: `pause btn`
+- PAUSED→PLAYING: `resume`
+- PLAYING→GAME_OVER: `energy ≤ 0 / song end`
+- GAME_OVER→PLAYING: `retry`
+- GAME_OVER→TITLE: `home`
+
+Diamond fill `#FFF1F1`, stroke `#C0392B` so the state machine reads
+as a distinct visual register from the system pipeline.
+
+---
+
+## 4. Color palette (locked — do not improvise)
+
+| Role                      | Fill        | Stroke    | Notes                                |
+|---------------------------|-------------|-----------|--------------------------------------|
+| External input/data       | `#FFE8B0`   | `#8A6D00` | Sand. "From outside the registry."   |
+| Phase swimlane            | `#E6F0FF`   | `#5A7FB8` | Pale blue background band.           |
+| System node (normal)      | `#FFFFFF`   | `#5A7FB8` | White on blue lane = high contrast.  |
+| System node (critical)    | `#C7DCFF`   | `#1F4F9C` | collision, scoring.                  |
+| Registry / state          | `#F4F4F4`   | `#333333` | Neutral spine.                       |
+| Singleton chip            | `#FFFFFF`   | `#666666` | Subordinate to registry frame.       |
+| Render node               | `#E6F7E0`   | `#3F8A3F` | Green = "pixels."                    |
+| Audio node                | `#FFD9B8`   | `#A8531A` | Peach = "sound."                     |
+| State machine diamond     | `#FFF1F1`   | `#C0392B` | Red family = control flow.           |
+| Arrows (data flow)        | —           | `#444444` | 2u stroke.                           |
+| Arrows (control / state)  | —           | `#C0392B` | 2u stroke, dashed.                   |
+
+Rationale: only **5 hues**, each mapped 1:1 to a semantic role, so a
+color-blind reader still gets shape + position cues. No gradients, no
+fills below 80% opacity (Excalidraw's hand-drawn style already adds
+visual noise; keep palette flat).
+
+---
+
+## 5. Typography & sizing
+
+- **Node titles:** 18px, Excalidraw default font.
+- **Lane labels:** 22px bold, left-anchored inside the lane.
+- **Edge labels (state machine):** 14px italic, on the arrow midpoint.
+- **Title strip:** 32px bold; subtitle 16px regular muted `#555`.
+- Minimum padding inside any node: 12u. Do not let text touch the
+  stroke — kills readability at zoomed-out overview, which is the
+  whole point of this canvas.
+
+---
+
+## 6. Arrow & grouping rules
+
+1. **One arrow per logical flow**, not one per coupling. The reader
+   should be able to trace any data path with their finger without
+   crossing more than 2 other arrows.
+2. **Group** each phase swimlane (lane rect + its systems + its
+   internal arrow) so the Coordinator can move/resize a phase as one
+   unit.
+3. **Group** the registry frame + singleton chips + archetype block.
+4. **Group** the state machine row.
+5. Lock the title strip and band-divider rules so they are not nudged
+   while editing.
+
+---
+
+## 7. What to deliberately leave OUT
+
+To keep this a *high-level* design (the user's ask), do **not** include:
+
+- Per-component field lists (that's `architecture.md` §2).
+- Specific obstacle subtype taxonomy (Circle/Square/Triangle/Combo/
+  Split) — covered by the single "Entity archetypes" chip.
+- The Burnout system — removed in v1.2 (see `game.md` top banner).
+- HUD pixel positions — that's `gameplay_hud_layout.h`'s job.
+- Build/CI, beatmap editor, content tooling — separate diagram if
+  ever needed; cluttering this canvas costs more than it teaches.
+
+If the user later wants a deep-dive (e.g. "show me the rhythm scoring
+data path"), draw `architecture.md` §7.1 as a *second* canvas rather
+than overloading this one.
+
+---
+
+## 8. Acceptance check (Coordinator, before sharing)
+
+- [ ] One screen-fit at 100% zoom shows all 5 bands.
+- [ ] A reader can answer "where does player input become game
+      action?" by tracing **one path** (Band A → P1 → P3 → registry).
+- [ ] A reader can answer "where do pixels come from?" by tracing
+      **one path** (registry → Band D → EndDrawing).
+- [ ] No arrow crosses more than 2 others.
+- [ ] Color legend (5 swatches) sits in bottom-left, 200×120u.
+- [ ] Diagram exports cleanly to PNG at 2× without text reflow.
