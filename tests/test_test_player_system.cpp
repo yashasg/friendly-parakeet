@@ -52,6 +52,7 @@ static void tick_systems(entt::registry& reg, int frames, float dt = 1.0f / 60.0
     }
 }
 
+#ifndef __EMSCRIPTEN__
 TEST_CASE("test_player: init level fallback uses canonical default", "[test_player][issue-947]") {
     auto reg = make_test_player_registry();
     reg.ctx().emplace<SessionLog>();
@@ -70,6 +71,7 @@ TEST_CASE("test_player: init level fallback uses canonical default", "[test_play
 
     session_log_close(reg.ctx().get<SessionLog>());
 }
+#endif
 
 static bool survived(entt::registry& reg) {
     auto& gs = reg.ctx().get<GameState>();
