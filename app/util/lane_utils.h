@@ -4,6 +4,7 @@
 #include "../components/transform.h"
 #include "../constants.h"
 
+#include <cmath>
 #include <cstdint>
 
 namespace lane_utils {
@@ -21,6 +22,21 @@ inline int8_t valid_or_default(int8_t lane) {
 
 inline void snap_to_current_lane(const Lane& lane, WorldTransform& transform) {
     transform.position.x = constants::LANE_X[lane.current];
+}
+
+inline int8_t nearest_lane_for_x(float x) {
+    int8_t nearest_lane = 0;
+    float nearest_distance = std::abs(x - constants::LANE_X[0]);
+
+    for (int lane = 1; lane < constants::LANE_COUNT; ++lane) {
+        const float distance = std::abs(x - constants::LANE_X[lane]);
+        if (distance < nearest_distance) {
+            nearest_distance = distance;
+            nearest_lane = static_cast<int8_t>(lane);
+        }
+    }
+
+    return nearest_lane;
 }
 
 inline bool normalize(Lane& lane, WorldTransform* transform = nullptr) {
