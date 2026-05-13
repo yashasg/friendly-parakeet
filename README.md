@@ -15,7 +15,7 @@ at runtime boundaries, without wrapper abstraction layers.
 
 ## Gameplay
 
-- **3 shapes** — Circle, Square, Triangle. Press shape buttons on the beat.
+- **4 shapes** — Circle, Square, Triangle, and Hexagon. Press shape buttons on the beat; Hexagon is the idle/default shape.
 - **3 lanes** — Swipe or press A/D to dodge lane blocks.
 - **Timing grades** — Perfect > Good > Ok > Bad. Closer to the beat = higher score.
 - **Rhythm windows** — Shape changes are temporary; match the shape before the window closes.
