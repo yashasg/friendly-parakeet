@@ -119,19 +119,19 @@ read infrequently or only by one system.
 ```cpp
 // components/transform.h
 
-/// Spatial position in logical pixels. 12 bytes.
+/// Authoritative world-space spatial state for moving/rendered entities.
 /// Iterated by: scroll_system, render_system, collision_system,
 ///              obstacle_despawn_system
-struct Position {
-    float x;
-    float y;
+struct WorldTransform {
+    glm::vec2 position = {0.0f, 0.0f};
+    float     rotation = 0.0f;
+    glm::vec2 scale    = {1.0f, 1.0f};
 };
 
-/// Movement vector in pixels/second. 8 bytes.
-/// Iterated with Position by scroll_system every frame.
-struct Velocity {
-    float dx;
-    float dy;
+/// Movement vector in pixels/second for entities that integrate position.
+/// Iterated with WorldTransform by scroll_system every frame.
+struct MotionVelocity {
+    glm::vec2 value = {0.0f, 0.0f};
 };
 ```
 
@@ -557,8 +557,9 @@ system in the same frame (unidirectional data flow).
  │  │     d. player_movement    Advance lane, jump/slide,    │
  │  │                           and morph interpolation.     │
  │  │                                                        │
- │  │     e. scroll_system      For every (Position, Vel):   │
- │  │                           pos.y += vel.dy * dt.        │
+ │  │     e. scroll_system      For every (WorldTransform,   │
+ │  │                           MotionVelocity):             │
+ │  │                           position += velocity * dt.   │
  │  │                           Simple, tight inner loop.    │
  │  │                                                        │
  │  │     f. motion_system      Apply model-space obstacle   │
@@ -746,7 +747,7 @@ In code, reusable construction lives in `app/entities/` factory functions
 ```
 ┌─ Player ──────────────────────────────────────────────────┐
 │ PlayerTag          (tag, 0 bytes)                         │
-│ Position           { x: 360.0, y: 920.0 }                │
+│ WorldTransform     { position: {360.0, 920.0} }          │
 │ PlayerShape        { current: Circle, prev: Circle,       │
 │                      morph_t: 1.0 }                       │
 │ Lane               { current: 1, target: -1, lerp_t: 1 } │
@@ -763,8 +764,8 @@ Total: ~73 bytes per entity (1 entity)
 ```
 ┌─ Shape Gate ──────────────────────────────────────────────┐
 │ ObstacleTag        (tag, 0 bytes)                         │
-│ Position           { x: 360.0, y: -120.0 }               │
-│ Velocity           { dx: 0.0, dy: 400.0 }                │
+│ WorldTransform     { position: {360.0, -120.0} }         │
+│ MotionVelocity     { value: {0.0, 400.0} }               │
 │ Obstacle           { kind: ShapeGate, base_pts: 200,      │
 │                      scored: false }                       │
 │ RequiredShape      { shape: Triangle }                     │
@@ -778,8 +779,8 @@ Total: ~42 bytes per entity (5–15 active)
 
 ```
 │ ObstacleTag        (tag, 0 bytes)                         │
-│ Position           { x: 360.0, y: -120.0 }               │
-│ Velocity           { dx: 0.0, dy: 400.0 }                │
+│ WorldTransform     { position: {360.0, -120.0} }         │
+│ MotionVelocity     { value: {0.0, 400.0} }               │
 │                      scored: false }                       │
 │ Color              { r: 255, g: 60, b: 60, a: 255 }      │
 │ DrawSize           { w: 720, h: 80 }                       │
@@ -801,8 +802,8 @@ LowBar/HighBar entity archetypes are historical only. The current runtime enum, 
 ```
 ┌─ Combo Gate ──────────────────────────────────────────────┐
 │ ObstacleTag        (tag, 0 bytes)                         │
-│ Position           { x: 360.0, y: -120.0 }               │
-│ Velocity           { dx: 0.0, dy: 400.0 }                │
+│ WorldTransform     { position: {360.0, -120.0} }         │
+│ MotionVelocity     { value: {0.0, 400.0} }               │
 │ Obstacle           { kind: ComboGate, base_pts: 200,      │
 │                      scored: false }                       │
 │ RequiredShape      { shape: Square }                       │
@@ -819,8 +820,8 @@ Total: ~43 bytes per entity
 ```
 ┌─ Split Path ──────────────────────────────────────────────┐
 │ ObstacleTag        (tag, 0 bytes)                         │
-│ Position           { x: 360.0, y: -120.0 }               │
-│ Velocity           { dx: 0.0, dy: 400.0 }                │
+│ WorldTransform     { position: {360.0, -120.0} }         │
+│ MotionVelocity     { value: {0.0, 400.0} }               │
 │ Obstacle           { kind: SplitPath, base_pts: 300,      │
 │                      scored: false }                       │
 │ RequiredShape      { shape: Circle }                       │
@@ -836,8 +837,8 @@ Total: ~44 bytes per entity
 
 ```
 ┌─ Score Popup ─────────────────────────────────────────────┐
-│ Position           { x: 360.0, y: 900.0 }                │
-│ Velocity           { dx: 0.0, dy: -80.0 }  (floats up)   │
+│ WorldTransform     { position: {360.0, 900.0} }          │
+│ MotionVelocity     { value: {0.0, -80.0} } (floats up)   │
 │ ScorePopup         { value: 600, tier: 3, remaining: 1.2 } │
 │ Color              { r: 255, g: 200, b: 50, a: 255 }     │
 │ DrawLayer          { layer: Effects }                      │
@@ -850,8 +851,8 @@ Total: ~33 bytes per entity (0–5 active)
 ```
 ┌─ Particle ────────────────────────────────────────────────┐
 │ ParticleTag        (tag, 0 bytes)                         │
-│ Position           { x: 360.0, y: 920.0 }                │
-│ Velocity           { dx: rand, dy: rand }  (random burst) │
+│ WorldTransform     { position: {360.0, 920.0} }          │
+│ MotionVelocity     { value: {rand, rand} } (random burst) │
 │ ParticleData       { size: 4.0, remaining: 0.6, max_time: 0.6 } │
 │ Color              { r: 255, g: 100, b: 50, a: 255 }     │
 │ DrawLayer          { layer: Effects }                      │
@@ -1003,7 +1004,7 @@ int main(int argc, char* argv[]) {
     │ BeatMap      │                                             │ PlayerShape │
     │ SongState    │                                             │ Lane        │
     └──────┬───────┘                                             │ VertState   │
-           │ beat_scheduler_system                               │ Position    │
+           │ beat_scheduler_system                               │ WorldTransform │
            │ creates note when spawn_time arrives                └──────┬──────┘
            ▼                                                            │
     ┌──────────────┐                                                    │
@@ -1225,39 +1226,38 @@ EnTT stores each component type in its own **sparse set** — effectively a
 `std::vector<T>` per component type with an indirection layer. This gives us:
 
 ```
-Position pool:   [pos0] [pos1] [pos2] [pos3] ... [posN]   contiguous in memory
-Velocity pool:   [vel0] [vel1] [vel2] [vel3] ... [velN]   contiguous in memory
+WorldTransform pool: [xf0] [xf1] [xf2] [xf3] ... [xfN]    contiguous in memory
+MotionVelocity pool: [vel0] [vel1] [vel2] ... [velN]      contiguous in memory
 Obstacle pool:   [obs0] [obs1] [obs2] ... [obsM]          contiguous in memory
 ```
 
 **For SHAPESHIFTER, AoS (EnTT default) is optimal because:**
 
-1. **Entity counts are tiny** (~71 peak). The entire Position pool fits in a
-   single cache line at 8 bytes × 71 = 568 bytes. There is no cache pressure
-   that SoA would alleviate.
+1. **Entity counts are tiny** (~71 peak). The whole `WorldTransform` pool is
+   roughly 20 bytes × 71 = 1.4 KB. There is no cache pressure that SoA would
+   alleviate.
 
 2. **Iteration patterns are simple**. The hottest loop (`scroll_system`) reads
-   Position + Velocity together — two pools that are each < 1 KB. Both will
-   be in L1 after the first iteration.
+   `WorldTransform` + `MotionVelocity` together — two tiny pools that are in L1
+   after the first iteration.
 
-3. **SoA (splitting Position into x[] and y[])** would add indirection overhead
-   and code complexity for zero performance gain at these entity counts. SoA
-   becomes beneficial at 10,000+ entities — we peak at 71.
+3. **SoA (splitting `WorldTransform::position` into x[] and y[])** would add
+   indirection overhead and code complexity for zero performance gain at these
+   entity counts. SoA becomes beneficial at 10,000+ entities — we peak at 71.
 
 **EnTT groups** can ensure co-iterated component pools are sorted identically:
 
 ```cpp
-// In initialization — declare a full-owning group for Position + Velocity.
+// In initialization — declare a full-owning group for WorldTransform + MotionVelocity.
 // This guarantees both pools are sorted in the same entity order,
 // so iterating the group produces perfectly sequential memory access.
-auto& group = reg.group<Position, Velocity>();
+auto& group = reg.group<WorldTransform, MotionVelocity>();
 
 // scroll_system uses this group:
 void scroll_system(entt::registry& reg, float dt) {
-    auto group = reg.group<Position, Velocity>();
-    for (auto [entity, pos, vel] : group.each()) {
-        pos.x += vel.dx * dt;
-        pos.y += vel.dy * dt;
+    auto group = reg.group<WorldTransform, MotionVelocity>();
+    for (auto [entity, transform, velocity] : group.each()) {
+        transform.position += velocity.value * dt;
     }
 }
 ```
@@ -1294,20 +1294,20 @@ With only 5–15 obstacles on screen and 1 player, brute-force is optimal:
 ```cpp
 void collision_system(entt::registry& reg, float dt) {
     // Get player state (single entity)
-    auto player_view = reg.view<PlayerTag, Position, PlayerShape, Lane, VerticalState>();
+    auto player_view = reg.view<PlayerTag, WorldTransform, PlayerShape, Lane, VerticalState>();
     // Early-out: exactly one player
     auto [p_ent, p_pos, p_shape, p_lane, p_vstate] = *player_view.each().begin();
 
-    float player_x = p_pos.x;
-    float player_y = p_pos.y + p_vstate.y_offset;
+    float player_x = p_pos.position.x;
+    float player_y = p_pos.position.y + p_vstate.y_offset;
 
     // Linear scan of obstacles — 15 entities max
-    auto obs_view = reg.view<ObstacleTag, Position, Obstacle>();
+    auto obs_view = reg.view<ObstacleTag, WorldTransform, Obstacle>();
     for (auto [entity, o_pos, obs] : obs_view.each()) {
         if (obs.scored) continue;
 
         // Broad phase: vertical proximity check
-        float dy = o_pos.y - player_y;
+        float dy = o_pos.position.y - player_y;
         if (dy < -40.0f || dy > 40.0f) continue;  // not overlapping vertically
 
         // Narrow phase: per-obstacle-kind match test
@@ -1380,7 +1380,7 @@ void render_system(entt::registry& reg, float alpha) {
 
         // Obstacles (5-15 entities — draw in pool order, no sort needed)
         {
-            auto view = reg.view<ObstacleTag, Position, Obstacle, Color, DrawSize>();
+            auto view = reg.view<ObstacleTag, WorldTransform, Obstacle, Color, DrawSize>();
             for (auto [e, pos, obs, col, sz] : view.each()) {
                 draw_obstacle(pos, obs, col, sz, reg, e);
             }
@@ -1388,12 +1388,12 @@ void render_system(entt::registry& reg, float alpha) {
 
         // Player (1 entity)
         {
-            auto view = reg.view<PlayerTag, Position, PlayerShape,
+            auto view = reg.view<PlayerTag, WorldTransform, PlayerShape,
                                   Lane, VerticalState, Color, DrawSize>();
             for (auto [e, pos, shape, lane, vs, col, sz] : view.each()) {
                 // Interpolate position for smooth sub-frame rendering
-                float render_x = pos.x;  // lane lerp already applied
-                float render_y = pos.y + vs.y_offset;
+                float render_x = pos.position.x;  // lane lerp already applied
+                float render_y = pos.position.y + vs.y_offset;
                 draw_player_shape(render_x, render_y,
                                   shape, col, sz);
             }
@@ -1415,10 +1415,10 @@ void render_system(entt::registry& reg, float alpha) {
 
     // Score popups
     {
-        auto view = reg.view<ScorePopup, Position>();
+        auto view = reg.view<ScorePopup, WorldTransform>();
         for (auto [e, popup, pos] : view.each()) {
             float t = popup.remaining / popup.max_time;
-            draw_score_popup(pos.x, pos.y, popup.value, popup.tier, t);
+            draw_score_popup(pos.position.x, pos.position.y, popup.value, popup.tier, t);
         }
     }
 
@@ -1455,7 +1455,7 @@ app/
 ├── constants.h                  ← all tuning knobs (§1)
 │
 ├── components/                  ← all component structs
-│   ├── transform.h              ← Position, Velocity
+│   ├── transform.h              ← WorldTransform, MotionVelocity, UIPosition
 │   ├── player.h                 ← PlayerTag, PlayerShape, Lane, VerticalState
 │   ├── obstacle.h               ← obstacle tags/data and requirements
 │   ├── scoring.h                ← ScoreState, ScorePopup
@@ -1517,7 +1517,7 @@ float t = song.song_time;
 
 ```cpp
 // Multi-component view — O(n) where n = smallest pool
-auto view = reg.view<ObstacleTag, Position, Obstacle>();
+auto view = reg.view<ObstacleTag, WorldTransform, Obstacle>();
 for (auto [entity, pos, obs] : view.each()) {
     // ...
 }
@@ -1526,14 +1526,14 @@ for (auto [entity, pos, obs] : view.each()) {
 ### A.3 Group for Hot Path
 
 ```cpp
-// Declared once at startup — ensures Position and Velocity pools
+// Declared once at startup — ensures WorldTransform and MotionVelocity pools
 // maintain identical sort order for cache-optimal co-iteration.
-reg.group<Position, Velocity>();
+reg.group<WorldTransform, MotionVelocity>();
 
 // Used in scroll_system:
-auto group = reg.group<Position, Velocity>();
-for (auto [entity, pos, vel] : group.each()) {
-    pos.y += vel.dy * dt;
+auto group = reg.group<WorldTransform, MotionVelocity>();
+for (auto [entity, transform, velocity] : group.each()) {
+    transform.position += velocity.value * dt;
 }
 ```
 
