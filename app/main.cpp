@@ -37,7 +37,7 @@ int main(int argc, char* argv[]) {
     TestPlayerSkill test_skill = TestPlayerSkill::Pro;
     bool test_player_mode = false;
     const char* difficulty = "medium";
-    int selected_level = 1;
+    int selected_level = content_config::DEFAULT_LEVEL_INDEX;
     for (int i = 1; i < argc; ++i) {
         if (std::strcmp(argv[i], "--test-player") == 0 && i + 1 < argc) {
             test_player_mode = true;

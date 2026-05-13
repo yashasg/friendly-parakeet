@@ -1,6 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include "test_helpers.h"
 #include "components/test_player.h"
+#include "content/level_content_config.h"
+#include "session/test_player_session.h"
 #include "util/session_logger.h"
 #include <cstdio>
 #include <string>
@@ -49,6 +51,27 @@ static void tick_systems(entt::registry& reg, int frames, float dt = 1.0f / 60.0
         if (reg.ctx().get<GameState>().transition_pending) break;
     }
 }
+
+#ifndef __EMSCRIPTEN__
+TEST_CASE("test_player: init level fallback uses canonical default", "[test_player][issue-947]") {
+    auto reg = make_test_player_registry();
+    reg.ctx().emplace<SessionLog>();
+
+    test_player_init(reg, TestPlayerSkill::Pro, "medium", content_config::DEFAULT_LEVEL_INDEX);
+    CHECK(reg.ctx().get<LevelSelectState>().selected_level == content_config::DEFAULT_LEVEL_INDEX);
+
+    test_player_init(reg, TestPlayerSkill::Pro, "medium", 1);
+    CHECK(reg.ctx().get<LevelSelectState>().selected_level == 1);
+
+    test_player_init(reg, TestPlayerSkill::Pro, "medium", -1);
+    CHECK(reg.ctx().get<LevelSelectState>().selected_level == content_config::DEFAULT_LEVEL_INDEX);
+
+    test_player_init(reg, TestPlayerSkill::Pro, "medium", content_config::LEVEL_COUNT);
+    CHECK(reg.ctx().get<LevelSelectState>().selected_level == content_config::DEFAULT_LEVEL_INDEX);
+
+    session_log_close(reg.ctx().get<SessionLog>());
+}
+#endif
 
 static bool survived(entt::registry& reg) {
     auto& gs = reg.ctx().get<GameState>();

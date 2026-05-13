@@ -16,11 +16,8 @@ struct TestPlayerSessionSignals {
     bool wired = false;
 };
 
-int valid_level_or_default(int selected_level) {
-    if (selected_level >= 0 && selected_level < content_config::LEVEL_COUNT) {
-        return selected_level;
-    }
-    return 1;
+int valid_level_or_default(int selected_level) noexcept {
+    return content_config::level_index_or_default(selected_level);
 }
 
 int difficulty_index_or_default(const char* difficulty) {
@@ -29,7 +26,7 @@ int difficulty_index_or_default(const char* difficulty) {
             return d;
         }
     }
-    return 1;
+    return content_config::DEFAULT_DIFFICULTY_INDEX;
 }
 }
 

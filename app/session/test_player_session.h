@@ -3,6 +3,7 @@
 #include <entt/entt.hpp>
 #include <cstdint>
 #include "../components/test_player.h"
+#include "../content/level_content_config.h"
 
 struct TestPlayerSessionState {
     // Deterministic by default; callers may opt into runtime variability.
@@ -15,4 +16,4 @@ struct TestPlayerSessionState {
 
 void test_player_init(entt::registry& reg, TestPlayerSkill skill,
                       const char* difficulty,
-                      int selected_level = 1);
+                      int selected_level = content_config::DEFAULT_LEVEL_INDEX);
