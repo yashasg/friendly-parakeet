@@ -122,13 +122,13 @@ jobs:
         uses: actions/upload-artifact@v5
         with:
           name: ctrf-report-macos
-          path: ctrf-report.json
+          path: build/ctrf-report.json
 
       - name: Report test results
         if: always() && steps.run-tests.outcome != 'skipped'
         uses: ctrf-io/github-test-reporter@v1
         with:
-          report-path: 'ctrf-report.json'
+          report-path: 'build/ctrf-report.json'
           title: 'Test Results (macOS)'
           pull-request-report: true
           update-comment: true
