@@ -902,6 +902,50 @@ TEST_CASE("parse: blocked lane arrays are rejected from active beatmaps", "[pars
     CHECK(errors[0].message.find("'blocked' is not supported") != std::string::npos);
 }
 
+TEST_CASE("parse: invalid blocked lane values fail before narrowing", "[parse][blocked_mask][issue994]") {
+    const char* invalid_blocked_lanes[] = {"-1", "3", "257", "4294967297"};
+
+    for (const char* lane : invalid_blocked_lanes) {
+        BeatMap map;
+        std::vector<BeatMapError> errors;
+        const std::string json = std::string(R"({
+            "song_id": "blocked_lane_test",
+            "bpm": 120,
+            "offset": 0.0,
+            "lead_beats": 4,
+            "duration_sec": 60.0,
+            "beats": [
+                { "beat": 2, "kind": "shape_gate", "shape": "circle", "lane": 1, "blocked": [)") + lane + R"(] }
+            ]
+        })";
+
+        INFO("blocked lane: " << lane);
+        CHECK_FALSE(parse_beat_map(json, map, errors));
+        REQUIRE_FALSE(errors.empty());
+        CHECK(errors[0].message.find("blocked[]") != std::string::npos);
+        CHECK(errors[0].message.find("'blocked' is not supported") == std::string::npos);
+    }
+}
+
+TEST_CASE("parse: valid blocked lane values reach unsupported-field rejection unchanged", "[parse][blocked_mask][issue994]") {
+    BeatMap map;
+    std::vector<BeatMapError> errors;
+    std::string json = R"({
+        "song_id": "blocked_lane_test",
+        "bpm": 120,
+        "offset": 0.0,
+        "lead_beats": 4,
+        "duration_sec": 60.0,
+        "beats": [
+            { "beat": 2, "kind": "shape_gate", "shape": "circle", "lane": 1, "blocked": [0, 1, 2] }
+        ]
+    })";
+
+    CHECK_FALSE(parse_beat_map(json, map, errors));
+    REQUIRE_FALSE(errors.empty());
+    CHECK(errors[0].message.find("'blocked' is not supported") != std::string::npos);
+}
+
 TEST_CASE("parse: invalid scalar lane values fail before narrowing", "[parse][lane]") {
     const char* invalid_lanes[] = {"-1", "3", "257", "2147483648"};
 
