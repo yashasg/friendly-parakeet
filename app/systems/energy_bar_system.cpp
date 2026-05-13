@@ -67,8 +67,9 @@ void energy_bar_system(entt::registry& reg, float /*dt*/) {
     auto view = reg.view<EnergyBarTag, EnergyBarLayout, EnergyBarVisual>();
     for (auto [entity, layout, visual] : view.each()) {
         (void)entity;
+        const int segment_count = effective_energy_bar_segment_count(layout);
         visual.fill = fill;
-        visual.visible_level = std::min(fill + bounce * (5.0f / static_cast<float>(layout.segment_count)), 1.0f);
+        visual.visible_level = std::min(fill + bounce * (5.0f / static_cast<float>(segment_count)), 1.0f);
         visual.flash_ratio = flash_ratio;
         visual.flash_overlay = flash_overlay;
         visual.critical_intensity = critical_intensity;

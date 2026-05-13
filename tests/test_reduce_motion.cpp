@@ -5,6 +5,7 @@
 #include "components/energy_bar.h"
 #include "entities/energy_bar_entity.h"
 
+#include <cmath>
 #include <stdexcept>
 
 TEST_CASE("energy bar entity: factory creates singleton HUD entity",
@@ -80,4 +81,43 @@ TEST_CASE("energy_bar_system: reduce_motion pins critical pulse to a stable midp
     const auto entity = *reg.view<EnergyBarTag>().begin();
     const auto& visual = reg.get<EnergyBarVisual>(entity);
     CHECK_THAT(visual.critical_intensity, Catch::Matchers::WithinAbs(0.675f, 1e-5f));
+}
+
+TEST_CASE("energy bar layout: invalid segment counts use a safe rendering minimum",
+          "[energy_bar][issue886]") {
+    EnergyBarLayout layout;
+
+    layout.segment_count = 0;
+    CHECK(effective_energy_bar_segment_count(layout) == 1);
+
+    layout.segment_count = 1;
+    CHECK(effective_energy_bar_segment_count(layout) == 1);
+
+    layout.segment_count = 32;
+    CHECK(effective_energy_bar_segment_count(layout) == 32);
+}
+
+TEST_CASE("energy_bar_system: invalid segment counts keep visual levels finite",
+          "[energy_bar][issue886]") {
+    auto reg = make_registry();
+    const auto entity = create_energy_bar_entity(reg);
+    auto& layout = reg.get<EnergyBarLayout>(entity);
+    auto& energy = reg.ctx().get<EnergyState>();
+    auto& song = reg.ctx().get<SongState>();
+    song.playing = true;
+    song.song_time = 0.0f;
+    song.beat_period = 0.5f;
+    energy.display = 0.25f;
+
+    layout.segment_count = 0;
+    energy_bar_system(reg, 0.016f);
+    const auto& visual_zero = reg.get<EnergyBarVisual>(entity);
+    CHECK(std::isfinite(visual_zero.fill));
+    CHECK(std::isfinite(visual_zero.visible_level));
+
+    layout.segment_count = 1;
+    energy_bar_system(reg, 0.016f);
+    const auto& visual_one = reg.get<EnergyBarVisual>(entity);
+    CHECK(std::isfinite(visual_one.fill));
+    CHECK(std::isfinite(visual_one.visible_level));
 }
