@@ -218,7 +218,6 @@ void input_system(entt::registry& reg, float raw_dt) {
         input.active_source != InputSource::Mouse &&
         touch_point_count > 0) {
         const float zone_y = constants::SCREEN_H_F * constants::SWIPE_ZONE_SPLIT;
-        bool seen[InputState::MaxTrackedTouches] = {};
         Direction latest_swipe_dir = Direction::Up;
         bool has_latest_swipe = false;
         bool had_swipe_zone_release = false;
@@ -264,7 +263,6 @@ void input_system(entt::registry& reg, float raw_dt) {
                 slot.curr_x = tp.x;
                 slot.curr_y = tp.y;
             }
-            seen[slot_index] = true;
             input.start_x = slot.start_x;
             input.start_y = slot.start_y;
             input.curr_x = tp.x;
