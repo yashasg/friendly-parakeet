@@ -47,8 +47,7 @@
   │ RequiredShape        │  1B  │ ~6 max     │ WARM: collision, decide│
   │ BlockedLanes         │  1B  │ ~3 max     │ WARM: collision, decide│
   │ RequiredLane         │  1B  │ ~2 max     │ WARM: collision, decide│
-  │ BeatInfo             │ 12B  │ ~10 max    │ COLD: ring_zone only   │
-  │ RingZoneTracker      │  2B  │ ~6 max     │ WARM: ring_zone_log    │
+  │ BeatInfo             │ 12B  │ ~10 max    │ COLD: beat scheduling  │
   ├──────────────────────┼──────┼────────────┼────────────────────────┤
   │ TestPlayerState      │~2.6KB│ 1 singleton│ COLD: once per frame   │
   │ SessionLog           │ 16B  │ 1 singleton│ COLD: on events only   │
@@ -103,25 +102,20 @@
 ```cpp
 // ── OUTSIDE fixed timestep (once per frame) ─────────
 input_system(reg, raw_dt);          // Phase 0: polls raylib
+gameplay_hud_process_button_input(reg);
 test_player_system(reg, raw_dt);    // Phase 0.5: ★ NEW — injects AI input
 
 // ── INSIDE fixed timestep loop ──────────────────────
 while (accumulator >= FIXED_DT) {
     game_state_system(reg, FIXED_DT);    // drains semantic input events
     song_playback_system(reg, FIXED_DT);
-    beat_scheduler_system(reg, FIXED_DT);
-    shape_window_system(reg, FIXED_DT);
-    player_movement_system(reg, FIXED_DT);
-    difficulty_system(reg, FIXED_DT);
-    obstacle_spawn_system(reg, FIXED_DT);
-    scroll_system(reg, FIXED_DT);
-    ring_zone_log_system(reg, FIXED_DT); // Phase 5.1: ★ NEW — after scroll
-    collision_system(reg, FIXED_DT);
-    scoring_system(reg, FIXED_DT);
-    energy_system(reg, FIXED_DT);
-    particle_system(reg, FIXED_DT);
+    tick_playing_systems(reg, FIXED_DT); // beat scheduling through scoring
     obstacle_despawn_system(reg, FIXED_DT);
+    popup_feedback_system(reg, FIXED_DT);
     popup_display_system(reg, FIXED_DT);
+    energy_system(reg, FIXED_DT);
+    energy_bar_system(reg, FIXED_DT);
+    particle_system(reg, FIXED_DT);
     accumulator -= FIXED_DT;
 }
 ```
@@ -129,17 +123,18 @@ while (accumulator >= FIXED_DT) {
 ## System Dependency Chain
 
 ```
-  input_system ──▶ test_player_system ──▶ game_state_system ──▶ player_input handlers
+  input_system ──▶ gameplay_hud_process_button_input ──▶ test_player_system ──▶ game_state_system ──▶ player input handlers
        │                │                      │
     clears           writes                 reads
     key_* flags      key_* flags           key_* flags
                                             drains ButtonPressEvent /
                                             GoEvent
 
-  scroll_system ──▶ ring_zone_log_system ──▶ collision_system ──▶ scoring_system
-       │                │                         │                  │
-    updates          reads Position             resolves           grades timing
-    Position         logs [GAME] RING_ZONE      pass/fail          Perfect/Good/Ok/Bad/Miss
+  tick_playing_systems ──▶ obstacle_despawn_system ──▶ popup/energy/particle systems
+       │                              │
+    beat scheduling, movement,       removes resolved/passed obstacles
+    collision, miss detection,
+    scoring
 ```
 
 
@@ -237,20 +232,11 @@ the upper bound (~12 on-screen obstacles). Fixed arrays avoid heap
 allocation and give deterministic memory layout. Linear scan over 16
 entries fits in a single cache line of indices.
 
-## RingZoneTracker (per-obstacle component)
+## Removed ring-zone component
 
-```cpp
-// app/components/ring_zone.h
-
-struct RingZoneTracker {
-    int8_t last_zone   = -1;     // -1=none, 1=bad, 2=ok, 3=good, 4=perfect
-    bool   past_center = false;  // true once obstacle passes Perfect center
-};
-// Size: 2 bytes. Emplaced ONLY on obstacles with RequiredShape.
-```
-
-**DoD note**: Only emplaced on shape-gated obstacles (ShapeGate, ComboGate,
-Existential processing: if the component exists, the system processes it.
+The older `RingZoneTracker` component was removed with the ring-zone logging
+pipeline. Current test-player perception reads obstacle components directly;
+runtime beat telemetry comes from `beat_log_system`.
 
 ## SessionLog (context singleton)
 
@@ -482,13 +468,11 @@ multiple iterations of gesture_system within one frame. Verified safe:
   AUTO_START  tap to start from Title/GameOver
 ```
 
-## [GAME] Events (written by EnTT signals + ring_zone_log_system)
+## [GAME] Events (written by EnTT signals and runtime systems)
 
 ```
   SONG_START       playing phase entered
   OBSTACLE_SPAWN   ObstacleTag emplaced (via on_construct signal)
-  RING_APPEAR      obstacle enters approach distance (has RequiredShape)
-  RING_ZONE        ring crosses timing zone boundary
   COLLISION        ScoredTag emplaced (via on_construct signal)
   SCORE            points awarded
   SONG_END         song finishes or player dies
@@ -507,13 +491,11 @@ multiple iterations of gesture_system within one frame. Verified safe:
       if (!log || !log->file) return;
       // read Obstacle, BeatInfo, RequiredShape from entity
       // write [GAME] OBSTACLE_SPAWN line
-      // if has RequiredShape: emplace RingZoneTracker
   }
 ```
 
-**DoD note**: on_construct for ObstacleTag is also where we emplace
-RingZoneTracker — but ONLY when RequiredShape is present. This avoids
-a separate system to do the emplacement.
+**DoD note**: `on_construct<ObstacleTag>` observes spawn metadata only. It does
+not add ring-zone tracking components in the current runtime.
 
 ## Log File Naming
 
@@ -529,14 +511,9 @@ a separate system to do the emplacement.
 
 [F:0001 T:0.000] [GAME  ] SONG_START bpm=120 beats=48 difficulty=medium
 [F:0060 T:1.000] [GAME  ] OBSTACLE_SPAWN beat=4 kind=ShapeGate shape=Circle lane=1
-[F:0060 T:1.000] [GAME  ] RING_APPEAR shape=Circle obstacle=5 dist=1040px
 [F:0090 T:1.500] [PLAYER] PERCEIVE obstacle=5 kind=ShapeGate shape=Circle lane=1 dist=520px
 [F:0090 T:1.500] [PLAYER] PLAN action=shape_circle react=0.387s ideal_press=2.600s
 [F:0090 T:1.500] [PLAYER] WAIT delaying 1.100s (aiming for Perfect)
-[F:0120 T:2.000] [GAME  ] RING_ZONE obstacle=5 zone=Bad(early) shape=Circle dist=468px
-[F:0132 T:2.200] [GAME  ] RING_ZONE obstacle=5 zone=Ok(early) shape=Circle dist=416px
-[F:0144 T:2.400] [GAME  ] RING_ZONE obstacle=5 zone=Good(early) shape=Circle dist=364px
-[F:0150 T:2.500] [GAME  ] RING_ZONE obstacle=5 zone=Perfect shape=Circle dist=312px
 [F:0156 T:2.600] [PLAYER] EXECUTE key_1(Circle) for obstacle=5
 [F:0180 T:3.000] [GAME  ] COLLISION obstacle=5 result=CLEAR timing=Perfect(0.92)
 [F:0180 T:3.000] [GAME  ] SCORE +300 (200 × 1.50timing) chain=1 total=300
@@ -579,64 +556,12 @@ a separate system to do the emplacement.
   └────────────────┴────────┴─────────────┴───────────────────┘
 ```
 
-## ring_zone_log_system
+## Removed ring-zone pipeline
 
-Runs after scroll_system, before collision_system. Iterates ONLY
-obstacles that have both Position and RingZoneTracker:
-
-```cpp
-  void ring_zone_log_system(entt::registry& reg, float /*dt*/) {
-      auto* log = reg.ctx().find<SessionLog>();
-      if (!log || !log->file) return;
-
-      auto* song = reg.ctx().find<SongState>();
-      if (!song) return;
-
-      float v = song->scroll_speed;
-      float M = song->morph_duration;
-      float H = song->half_window;
-
-      // Precompute zone boundary distances
-      float dist_bad_far  = v * (M + 1.75f * H);
-      float dist_ok_far   = v * (M + 1.50f * H);
-      float dist_good_far = v * (M + 1.25f * H);
-      float dist_perf     = v * (M + H);           // center
-      float dist_good_near= v * (M + 0.50f * H);
-      float dist_ok_near  = v * (M + 0.25f * H);
-      float dist_bad_near = v * M;
-
-      auto player_y = constants::PLAYER_Y;
-
-      auto view = reg.view<Position, RingZoneTracker, RequiredShape>(
-          entt::exclude<ScoredTag>);
-
-      for (auto [entity, pos, tracker, req] : view.each()) {
-          float dist = player_y - pos.y;
-          if (dist <= 0.0f) continue;
-
-          // Determine current zone
-          int8_t zone = compute_zone(dist, tracker.past_center,
-                                     dist_bad_far, dist_ok_far,
-                                     dist_good_far, dist_perf,
-                                     dist_good_near, dist_ok_near,
-                                     dist_bad_near);
-
-          // Log on zone transition
-          if (zone != tracker.last_zone) {
-              // ... write [GAME] RING_ZONE
-              tracker.last_zone = zone;
-          }
-
-          if (dist <= dist_perf && !tracker.past_center) {
-              tracker.past_center = true;
-          }
-      }
-  }
-```
-
-**DoD note**: View queries exactly {Position, RingZoneTracker, RequiredShape}.
-No extra components loaded. Excludes ScoredTag (already resolved obstacles).
-Linear iteration over contiguous storage — hardware prefetcher friendly.
+The older `ring_zone_log_system`/`RingZoneTracker` design is no longer part of
+the runtime pipeline. Beat telemetry is recorded by `beat_log_system`, authored
+obstacles are spawned by `beat_scheduler_system`, and collision/scoring run
+inside `tick_playing_systems`.
 
 
 ---
@@ -675,12 +600,9 @@ Linear iteration over contiguous storage — hardware prefetcher friendly.
   │     │  -1 = no lane change, Grounded = no vertical). Done    │
   │     │  flags packed into uint8_t bitmask.                    │
   ├─────┼────────────────────────────────────────────────────────┤
-  │ 🟡5 │  Original design emplaced RingZoneTracker on ALL       │
-  │     │  obstacles. Only RequiredShape obstacles have a ring    │
-  │     │  for nothing.                                          │
-  │     │  FIX: Emplace only on obstacles with RequiredShape.    │
-  │     │  ring_zone_log_system queries {Position,               │
-  │     │  RingZoneTracker, RequiredShape}.                      │
+  │ 🟢5 │  RingZoneTracker/ring_zone_log_system were removed.    │
+  │     │  Current beat telemetry uses beat_log_system and the    │
+  │     │  collision/scoring path in tick_playing_systems.        │
   ├─────┼────────────────────────────────────────────────────────┤
   │ 🟢6 │  Key flags persist across multiple fixed-step          │
   │     │  iterations within one frame. Verified idempotent:     │
@@ -692,8 +614,7 @@ Linear iteration over contiguous storage — hardware prefetcher friendly.
   ├─────┼────────────────────────────────────────────────────────┤
   │ 🟢8 │  No new hot-path components. test_player reads         │
   │     │  existing Position (8B) and Obstacle (4B).             │
-  │     │  RingZoneTracker (2B) on ~6 entities = 12B total.      │
-  │     │  Negligible cache impact.                              │
+  │     │  Removed ring-zone tracking keeps cache impact low.    │
   └─────┴────────────────────────────────────────────────────────┘
 ```
 
@@ -713,12 +634,10 @@ Linear iteration over contiguous storage — hardware prefetcher friendly.
     components/
       test_player.h            ← TestPlayerSkill, SkillConfig, TestPlayerAction,
       │                           TestPlayerState (context singleton)
-      ring_zone.h              ← RingZoneTracker (2B per-obstacle component)
     systems/
       test_player_system.cpp   ← AI: perceive, decide, wait, execute
       │                           Guarded: #ifdef PLATFORM_DESKTOP
-      ring_zone_log_system.cpp ← Zone tracking + [GAME] RING_ZONE logging
-      all_systems.h            ← Add declarations for both new systems
+      all_systems.h            ← System declarations
     session_logger.h           ← SessionLog struct, session_log() free function
     session_logger.cpp         ← File I/O, EnTT signal handlers, formatting
     main.cpp                   ← CLI arg parsing, setup, system insertion
@@ -729,7 +648,6 @@ Linear iteration over contiguous storage — hardware prefetcher friendly.
 ```cmake
   # Add to shapeshifter_lib sources:
   app/systems/test_player_system.cpp
-  app/systems/ring_zone_log_system.cpp
   app/session_logger.cpp
 ```
 
