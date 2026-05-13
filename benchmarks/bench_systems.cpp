@@ -58,7 +58,7 @@ static void spawn_obstacles(entt::registry& reg, int count) {
         reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[i % 3], y}});
         reg.emplace<MotionVelocity>(obs, MotionVelocity{{0.0f, song.scroll_speed}});
         auto shape = static_cast<Shape>(i % 3);
-        reg.emplace<Obstacle>(obs, ObstacleKind::ShapeGate, int16_t{200});
+        reg.emplace<Obstacle>(obs, int16_t{200});
         reg.emplace<RequiredShape>(obs, shape);
         reg.emplace<DrawSize>(obs, float(constants::SCREEN_W), 80.0f);
         reg.emplace<DrawLayer>(obs, Layer::Game);
@@ -76,7 +76,7 @@ static void spawn_scroll_obstacles(entt::registry& reg, int count) {
         float y = constants::SPAWN_Y + static_cast<float>(i) * 80.0f;
         reg.emplace<WorldTransform>(obs, WorldTransform{{0.0f, y}});
         reg.emplace<MotionVelocity>(obs, MotionVelocity{{0.0f, song.scroll_speed}});
-        reg.emplace<Obstacle>(obs, ObstacleKind::ShapeGate, int16_t{200});
+        reg.emplace<Obstacle>(obs, int16_t{200});
         reg.emplace<DrawLayer>(obs, Layer::Game);
     }
 }
@@ -126,7 +126,7 @@ TEST_CASE("Bench: collision_system", "[!benchmark][bench]") {
         reg.emplace<ObstacleTag>(obs);
         reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y}});
         reg.emplace<MotionVelocity>(obs, MotionVelocity{{0.0f, 400.0f}});
-        reg.emplace<Obstacle>(obs, ObstacleKind::ShapeGate, int16_t{200});
+        reg.emplace<Obstacle>(obs, int16_t{200});
         reg.emplace<RequiredShape>(obs, Shape::Circle);
         meter.measure([&] {
             if (reg.all_of<ScoredTag>(obs)) reg.remove<ScoredTag>(obs);
@@ -160,7 +160,7 @@ TEST_CASE("Bench: scoring_system", "[!benchmark][bench]") {
             reg.emplace<ObstacleTag>(obs);
             reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y}});
             reg.emplace<MotionVelocity>(obs, MotionVelocity{{0.0f, 400.0f}});
-            reg.emplace<Obstacle>(obs, ObstacleKind::ShapeGate, int16_t{200});
+            reg.emplace<Obstacle>(obs, int16_t{200});
             reg.emplace<ScoredTag>(obs);
             reg.emplace<DrawLayer>(obs, Layer::Game);
             reg.emplace<Color>(obs, Color{255, 255, 255, 255});

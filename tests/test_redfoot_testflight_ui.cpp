@@ -96,11 +96,11 @@ void spawn_aligned_player(entt::registry& reg, float y) {
     reg.emplace<VerticalState>(p);
 }
 
-entt::entity spawn_obstacle(entt::registry& reg, ObstacleKind kind, float y) {
+entt::entity spawn_obstacle(entt::registry& reg, float y) {
     auto e = reg.create();
     reg.emplace<ObstacleTag>(e);
     reg.emplace<WorldTransform>(e, WorldTransform{{constants::LANE_X[1], y}});
-    reg.emplace<Obstacle>(e, kind, int16_t{0});
+    reg.emplace<Obstacle>(e, int16_t{0});
     return e;
 }
 }  // namespace
@@ -117,7 +117,7 @@ TEST_CASE("redfoot/#168: collision miss is non-terminal cause context",
     runtime_system_scratch_init(reg);
 
     spawn_aligned_player(reg, constants::PLAYER_Y);
-    auto gate = spawn_obstacle(reg, ObstacleKind::ShapeGate, constants::PLAYER_Y);
+    auto gate = spawn_obstacle(reg, constants::PLAYER_Y);
     reg.emplace<RequiredShape>(gate, Shape::Circle);
 
     collision_system(reg, 0.016f);

@@ -70,7 +70,7 @@ TEST_CASE("collision: Hexagon fails even when matching gate shape", "[collision]
     reg.emplace<ObstacleTag>(obs);
     reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y}});
     reg.emplace<MotionVelocity>(obs, MotionVelocity{{0.0f, 400.0f}});
-    reg.emplace<Obstacle>(obs, ObstacleKind::ShapeGate, int16_t{200});
+    reg.emplace<Obstacle>(obs, int16_t{200});
     reg.emplace<RequiredShape>(obs, Shape::Hexagon);
     reg.emplace<DrawSize>(obs, float(constants::SCREEN_W), 80.0f);
     reg.emplace<DrawLayer>(obs, Layer::Game);

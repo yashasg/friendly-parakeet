@@ -187,7 +187,7 @@ TEST_CASE("tick_fixed_systems: energy depletion requests GameOver before next Pl
     reg.emplace<ObstacleTag>(late_miss);
     reg.emplace<ScoredTag>(late_miss);
     reg.emplace<MissTag>(late_miss);
-    reg.emplace<Obstacle>(late_miss, ObstacleKind::ShapeGate, int16_t{constants::PTS_SHAPE_GATE});
+    reg.emplace<Obstacle>(late_miss, int16_t{constants::PTS_SHAPE_GATE});
 
     tick_fixed_systems(reg, 0.016f);
 
