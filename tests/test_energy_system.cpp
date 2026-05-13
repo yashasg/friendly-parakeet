@@ -125,7 +125,7 @@ TEST_CASE("energy: no action when SongState not present", "[energy]") {
     CHECK_FALSE(gs.transition_pending);
 }
 
-TEST_CASE("energy: no action when song not playing", "[energy]") {
+TEST_CASE("energy: depleted energy requests game over when song is not playing", "[energy][issue961]") {
     auto reg = make_rhythm_registry();
     reg.ctx().get<SongState>().playing = false;
     auto& energy = reg.ctx().get<EnergyState>();
@@ -134,7 +134,9 @@ TEST_CASE("energy: no action when song not playing", "[energy]") {
     energy_system(reg, 0.016f);
 
     auto& gs = reg.ctx().get<GameState>();
-    CHECK_FALSE(gs.transition_pending);
+    CHECK(gs.transition_pending);
+    CHECK(gs.next_phase == GamePhase::GameOver);
+    CHECK(reg.ctx().get<GameOverState>().cause == DeathCause::EnergyDepleted);
 }
 
 TEST_CASE("energy: no action when EnergyState not present", "[energy]") {

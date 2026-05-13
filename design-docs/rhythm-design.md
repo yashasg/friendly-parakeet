@@ -435,9 +435,10 @@ Hexagon button/key.
 > **Legacy / superseded:** Earlier drafts of this section described an
 > instant-death "ONE miss ends the run, no HP" model. That model is
 > superseded by the energy bar shipped in `app/systems/energy_system.cpp`
-> and the game-over check in
-> [`app/systems/game_state_system.cpp:105`](../app/systems/game_state_system.cpp)
-> (`energy && song && song->playing && energy->energy <= 0.0f`). Do not
+> and the game-over checks in
+> [`app/systems/game_state_system.cpp`](../app/systems/game_state_system.cpp)
+> / [`app/systems/energy_system.cpp`](../app/systems/energy_system.cpp)
+> (`energy->energy <= 0.0f` while the phase is Playing). Do not
 > reintroduce instant-death framing in design docs without first
 > revisiting `energy-bar.md`.
 

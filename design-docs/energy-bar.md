@@ -167,7 +167,7 @@ switch (timing->tier) {
 ## System Execution Order
 
 ```
-  game_state_system        ← checks energy <= 0 → GameOver
+  game_state_system        ← catches pre-existing energy <= 0 → GameOver
   song_playback_system
   tick_playing_systems
     collision_system       ← tags MISS / ScoredTag
@@ -175,14 +175,17 @@ switch (timing->tier) {
   obstacle_despawn_system
   popup_feedback_system
   popup_display_system
-  energy_system            ← applies queued effects, smooths display
+  energy_system            ← applies queued effects, requests GameOver on depletion, smooths display
   particle_system
 ```
 
 `collision_system` tags MISS/HIT outcomes and `scoring_system` enqueues
 timing-grade energy drain/recovery inside `tick_playing_systems()`. The
-`energy_system` then runs after popup updates in `tick_fixed_systems()`;
-this placement is a cache-locality choice, not a semantic dependency.
+`energy_system` then runs after popup updates in `tick_fixed_systems()`.
+Energy depletion always wins over song completion while the phase is Playing,
+including when playback has already marked the song finished in the same fixed
+tick. The popup/energy placement is a cache-locality choice, not a semantic
+dependency.
 
 ---
 
