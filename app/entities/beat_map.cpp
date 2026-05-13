@@ -292,13 +292,31 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
             push_type_error(errors, -1, "beat_times", "an array", j["beat_times"]);
             parse_ok = false;
         } else {
+            bool has_prev_beat_time = false;
+            float prev_beat_time = 0.0f;
+            size_t beat_time_index = 0;
             for (const auto& t : j["beat_times"]) {
                 if (!t.is_number()) {
                     push_type_error(errors, -1, "beat_times[]", "a number", t);
                     parse_ok = false;
+                    ++beat_time_index;
                     continue;
                 }
-                out.beat_times.push_back(t.get<float>());
+                const float beat_time = t.get<float>();
+                if (!std::isfinite(beat_time)) {
+                    errors.push_back({-1, "beat_times[" + std::to_string(beat_time_index) + "] must be finite"});
+                    parse_ok = false;
+                    ++beat_time_index;
+                    continue;
+                }
+                if (has_prev_beat_time && beat_time < prev_beat_time) {
+                    errors.push_back({-1, "beat_times must be non-decreasing"});
+                    parse_ok = false;
+                }
+                out.beat_times.push_back(beat_time);
+                prev_beat_time = beat_time;
+                has_prev_beat_time = true;
+                ++beat_time_index;
             }
         }
     }
@@ -611,6 +629,19 @@ bool validate_beat_map(const BeatMap& map, std::vector<BeatMapError>& errors,
         } else {
             beat_period = 60.0f / map.bpm;
             max_beat = *max_derived_beat;
+        }
+    }
+
+    for (size_t i = 0; i < map.beat_times.size(); ++i) {
+        const float beat_time = map.beat_times[i];
+        if (!std::isfinite(beat_time)) {
+            errors.push_back({-1, "beat_times[" + std::to_string(i) + "] must be finite"});
+            valid = false;
+            continue;
+        }
+        if (i > 0 && beat_time < map.beat_times[i - 1]) {
+            errors.push_back({-1, "beat_times must be non-decreasing"});
+            valid = false;
         }
     }
 
