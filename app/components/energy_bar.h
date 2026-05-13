@@ -23,3 +23,7 @@ struct EnergyBarVisual {
     float critical_intensity = 0.0f;
     int overflow_segments = 0;
 };
+
+[[nodiscard]] inline int effective_energy_bar_segment_count(const EnergyBarLayout& layout) {
+    return layout.segment_count < 1 ? 1 : layout.segment_count;
+}

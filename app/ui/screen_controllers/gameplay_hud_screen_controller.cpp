@@ -224,9 +224,10 @@ void render_energy_bar(const entt::registry& reg) {
     for (auto [entity, layout, visual] : view.each()) {
         (void)entity;
 
+        const int segment_count = effective_energy_bar_segment_count(layout);
         const float bar_top = layout.bottom - layout.height;
-        const float seg_h = (layout.height - (layout.segment_count - 1) * layout.segment_gap)
-            / static_cast<float>(layout.segment_count);
+        const float seg_h = (layout.height - (segment_count - 1) * layout.segment_gap)
+            / static_cast<float>(segment_count);
 
         for (int i = 0; i < visual.overflow_segments; ++i) {
             float seg_y = bar_top - (i + 1) * (seg_h + layout.segment_gap);
@@ -237,12 +238,12 @@ void render_energy_bar(const entt::registry& reg) {
 
         DrawRectangleRec({layout.x, bar_top, layout.width, layout.height}, {15, 15, 25, 180});
 
-        int filled_segs = static_cast<int>(visual.fill * static_cast<float>(layout.segment_count) + 0.5f);
-        int visible_segs = static_cast<int>(visual.visible_level * static_cast<float>(layout.segment_count) + 0.5f);
+        int filled_segs = static_cast<int>(visual.fill * static_cast<float>(segment_count) + 0.5f);
+        int visible_segs = static_cast<int>(visual.visible_level * static_cast<float>(segment_count) + 0.5f);
 
-        for (int i = 0; i < layout.segment_count; ++i) {
+        for (int i = 0; i < segment_count; ++i) {
             float seg_y = layout.bottom - (i + 1) * (seg_h + layout.segment_gap) + layout.segment_gap;
-            float t = static_cast<float>(i) / static_cast<float>(layout.segment_count - 1);
+            float t = static_cast<float>(i) / static_cast<float>(segment_count > 1 ? segment_count - 1 : 1);
             unsigned char cr = 0, cg = 0, cb = 0;
             if (t < 0.33f) {
                 float s = t / 0.33f;
