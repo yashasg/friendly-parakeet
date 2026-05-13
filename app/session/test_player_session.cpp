@@ -16,25 +16,25 @@ struct TestPlayerSessionSignals {
     bool wired = false;
 };
 
+int valid_level_or_default(int selected_level) noexcept {
+    return content_config::level_index_or_default(selected_level);
+}
+
 int difficulty_index_or_default(const char* difficulty) {
     for (int d = 0; d < content_config::DIFFICULTY_COUNT; ++d) {
         if (std::strcmp(content_config::DIFFICULTY_KEYS[d], difficulty) == 0) {
             return d;
         }
     }
-    return 1;
+    return content_config::DEFAULT_DIFFICULTY_INDEX;
 }
-}
-
-int test_player_level_or_default(int selected_level) noexcept {
-    return content_config::level_index_or_default(selected_level);
 }
 
 void test_player_init(entt::registry& reg, TestPlayerSkill skill,
                       const char* difficulty,
                       int selected_level) {
     auto& lss = reg.ctx().get<LevelSelectState>();
-    lss.selected_level = test_player_level_or_default(selected_level);
+    lss.selected_level = valid_level_or_default(selected_level);
     lss.selected_difficulty = difficulty_index_or_default(difficulty);
 
     auto* session_state = reg.ctx().find<TestPlayerSessionState>();

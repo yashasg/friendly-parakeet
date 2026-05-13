@@ -52,13 +52,23 @@ static void tick_systems(entt::registry& reg, int frames, float dt = 1.0f / 60.0
     }
 }
 
-TEST_CASE("test_player: level fallback uses canonical default", "[test_player][issue-947]") {
-    CHECK(test_player_level_or_default(content_config::DEFAULT_LEVEL_INDEX)
-          == content_config::DEFAULT_LEVEL_INDEX);
-    CHECK(test_player_level_or_default(1) == 1);
-    CHECK(test_player_level_or_default(-1) == content_config::DEFAULT_LEVEL_INDEX);
-    CHECK(test_player_level_or_default(content_config::LEVEL_COUNT)
-          == content_config::DEFAULT_LEVEL_INDEX);
+TEST_CASE("test_player: init level fallback uses canonical default", "[test_player][issue-947]") {
+    auto reg = make_test_player_registry();
+    reg.ctx().emplace<SessionLog>();
+
+    test_player_init(reg, TestPlayerSkill::Pro, "medium", content_config::DEFAULT_LEVEL_INDEX);
+    CHECK(reg.ctx().get<LevelSelectState>().selected_level == content_config::DEFAULT_LEVEL_INDEX);
+
+    test_player_init(reg, TestPlayerSkill::Pro, "medium", 1);
+    CHECK(reg.ctx().get<LevelSelectState>().selected_level == 1);
+
+    test_player_init(reg, TestPlayerSkill::Pro, "medium", -1);
+    CHECK(reg.ctx().get<LevelSelectState>().selected_level == content_config::DEFAULT_LEVEL_INDEX);
+
+    test_player_init(reg, TestPlayerSkill::Pro, "medium", content_config::LEVEL_COUNT);
+    CHECK(reg.ctx().get<LevelSelectState>().selected_level == content_config::DEFAULT_LEVEL_INDEX);
+
+    session_log_close(reg.ctx().get<SessionLog>());
 }
 
 static bool survived(entt::registry& reg) {
