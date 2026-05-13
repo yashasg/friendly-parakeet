@@ -5,6 +5,7 @@
 #include "components/high_score.h"
 #include "content/level_content_config.h"
 #include "entities/camera_entity.h"
+#include "entities/obstacle_entity.h"
 #include "session/play_session.h"
 #include "test_helpers.h"
 #include "util/high_score_persistence.h"
@@ -46,6 +47,15 @@ int count_result_notes(const BeatMap& beatmap) {
     return total;
 }
 
+int count_mesh_children(entt::registry& reg) {
+    int count = 0;
+    auto view = reg.view<MeshChild>();
+    for ([[maybe_unused]] auto entity : view) {
+        ++count;
+    }
+    return count;
+}
+
 }  // namespace
 
 TEST_CASE("High score integration: setup_play_session loads selected song difficulty score",
@@ -81,6 +91,30 @@ TEST_CASE("Play session: invalid level-select indices fall back before content l
     CHECK(lss.selected_difficulty == content_config::DEFAULT_DIFFICULTY_INDEX);
     CHECK(reg.ctx().get<HighScoreState>().current_key_hash
         == high_score::make_key_hash("1_stomper", "medium"));
+}
+
+TEST_CASE("Play session: restart clears obstacle mesh children without stale listener state",
+          "[play_session][issue957]") {
+    auto reg = make_registry();
+    auto obstacle = spawn_obstacle(reg, {ObstacleKind::ShapeGate, 360.0f, -120.0f, Shape::Circle});
+    REQUIRE(reg.all_of<ObstacleChildren>(obstacle));
+    const auto children = reg.get<ObstacleChildren>(obstacle);
+    REQUIRE(children.count > 0);
+    const entt::entity first_child = children.children[0];
+    REQUIRE(reg.valid(first_child));
+
+    setup_play_session(reg);
+
+    CHECK_FALSE(reg.valid(obstacle));
+    CHECK_FALSE(reg.valid(first_child));
+    CHECK(count_mesh_children(reg) == 0);
+
+    auto next_obstacle = spawn_obstacle(reg, {ObstacleKind::ShapeGate, 360.0f, -120.0f, Shape::Square});
+    REQUIRE(count_mesh_children(reg) > 0);
+
+    reg.destroy(next_obstacle);
+
+    CHECK(count_mesh_children(reg) == 0);
 }
 
 TEST_CASE("Play session: missing selected beatmap returns to level select without score session",

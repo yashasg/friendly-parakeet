@@ -15,6 +15,7 @@
 #include "../util/rhythm_math.h"
 #include "../entities/camera_entity.h"
 #include "../entities/energy_bar_entity.h"
+#include "../entities/obstacle_render_entity.h"
 #include "../entities/player_entity.h"
 #include "../content/level_content_config.h"
 #include "../systems/all_systems.h"
@@ -106,7 +107,10 @@ void setup_play_session(entt::registry& reg) {
     SettingsPersistence settings_persistence =
         previous_settings_persistence ? *previous_settings_persistence : SettingsPersistence{};
 
+    unwire_obstacle_mesh_lifetime(reg);
     reg.clear();
+    wire_obstacle_mesh_lifetime(reg);
+
     spawn_game_camera(reg);
     spawn_ui_camera(reg);
     create_energy_bar_entity(reg);
