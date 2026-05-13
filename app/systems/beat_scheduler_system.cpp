@@ -14,6 +14,10 @@ void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
     auto* song = reg.ctx().find<SongState>();
     auto* map  = find_beat_map(reg);
     if (!song || !map || !song->playing) return;
+    if (song->scroll_speed <= 0.0f) {
+        TraceLog(LOG_WARNING, "beat_scheduler_system skipped: invalid scroll_speed %.3f", song->scroll_speed);
+        return;
+    }
 
     // Player calibration (#474). Positive audio_offset_ms delays beat timing:
     // we push spawn_time forward by the same delta so obstacles arrive at

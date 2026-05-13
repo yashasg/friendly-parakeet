@@ -2,6 +2,8 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
 
+#include <cmath>
+
 // ── shape_window_system: Idle phase ──────────────────────────
 
 TEST_CASE("shape_window: Idle phase does nothing", "[shape_window]") {
@@ -262,4 +264,49 @@ TEST_CASE("shape_window: Active stays Active if time not yet expired", "[shape_w
 
     CHECK(sw.phase == WindowPhase::Active);
     CHECK_THAT(sw.window_timer, Catch::Matchers::WithinAbs(half_window, 0.001f));
+}
+
+TEST_CASE("shape_window: invalid morph_duration completes MorphIn without non-finite progress", "[shape_window][issue915]") {
+    auto reg = make_rhythm_registry();
+    auto player = make_rhythm_player(reg);
+    auto& ps = reg.get<PlayerShape>(player);
+    auto& sw = reg.get<ShapeWindow>(player);
+    auto& song = reg.ctx().get<SongState>();
+
+    sw.phase = WindowPhase::MorphIn;
+    sw.target_shape = Shape::Square;
+    sw.window_start = song.song_time;
+    ps.morph_t = 0.0f;
+    song.morph_duration = 0.0f;
+
+    shape_window_system(reg, 0.016f);
+
+    CHECK(std::isfinite(ps.morph_t));
+    CHECK(ps.morph_t == 1.0f);
+    CHECK(sw.phase == WindowPhase::Active);
+    CHECK(ps.current == Shape::Square);
+}
+
+TEST_CASE("shape_window: invalid morph_duration completes MorphOut without non-finite progress", "[shape_window][issue915]") {
+    auto reg = make_rhythm_registry();
+    auto player = make_rhythm_player(reg);
+    auto& ps = reg.get<PlayerShape>(player);
+    auto& sw = reg.get<ShapeWindow>(player);
+    auto& song = reg.ctx().get<SongState>();
+
+    sw.phase = WindowPhase::MorphOut;
+    sw.target_shape = Shape::Triangle;
+    ps.current = Shape::Triangle;
+    ps.previous = Shape::Triangle;
+    sw.window_start = song.song_time;
+    ps.morph_t = 0.0f;
+    song.morph_duration = -0.1f;
+
+    shape_window_system(reg, 0.016f);
+
+    CHECK(std::isfinite(ps.morph_t));
+    CHECK(ps.morph_t == 1.0f);
+    CHECK(sw.phase == WindowPhase::Idle);
+    CHECK(ps.current == Shape::Hexagon);
+    CHECK(ps.previous == Shape::Hexagon);
 }
