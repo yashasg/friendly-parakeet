@@ -53,10 +53,10 @@ void init_tutorial_screen_ui() {
 }
 
 void tutorial_screen_continue(entt::registry& reg) {
-    if (auto* settings_state = find_settings_state(reg)) {
-        settings::mark_ftue_complete(*settings_state);
+    if (auto* settings_ptr = find_settings_state(reg)) {
+        settings::mark_ftue_complete(*settings_ptr);
         if (auto* persistence = find_settings_persistence(reg)) {
-            settings::mark_dirty_and_save(*persistence, *settings_state);
+            settings::mark_dirty_and_save(*persistence, *settings_ptr);
         }
     }
 

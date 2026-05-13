@@ -138,9 +138,9 @@ void game_state_system(entt::registry& reg, float dt) {
         auto& lss = reg.ctx().get<LevelSelectState>();
         if (lss.confirmed) {
             lss.confirmed = false;
-            const auto* settings_state = find_settings_state(reg);
+            const auto* settings_ptr = find_settings_state(reg);
             gs.transition_pending = true;
-            gs.next_phase = settings_state && !settings::ftue_complete(*settings_state)
+            gs.next_phase = settings_ptr && !settings::ftue_complete(*settings_ptr)
                 ? GamePhase::Tutorial
                 : GamePhase::Playing;
         }
