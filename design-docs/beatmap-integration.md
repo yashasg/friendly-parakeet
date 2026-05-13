@@ -216,8 +216,6 @@ creates the standard runtime obstacle archetypes via `spawn_rhythm_obstacle()`.
   │  player_input handlers   (ButtonPressEvent/GoEvent → Player)    │
   │  shape_window_system     (timing window morphing)               │
   │  player_movement_system  (animate WorldTransform from Lane/VState)│
-  │  difficulty_system       (elapsed → speed/spawn ramp)           │
-  │       │                                                          │
   │  scroll_system           (WorldTransform += MotionVelocity × dt)│
   │  collision_system        (player vs obstacles → ScoredTag)      │
   │  scoring_system          (ScoredTag → ScoreState, popups)       │

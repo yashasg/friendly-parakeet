@@ -679,7 +679,7 @@ if (!song) return;  // no rhythm context — skip
 ```
   • song_playback_system: advances song_time
   • beat_scheduler_system: spawns obstacles from BeatMap
-  • obstacle_spawn_system: skips when song->playing (beat map takes over)
+  • legacy obstacle_spawn_system path removed; beat maps own song-mode spawns
 ```
 
 ## Phase 3 — Shape window (DONE)

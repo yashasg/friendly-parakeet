@@ -562,31 +562,31 @@ void obstacle_despawn_system(entt::registry& reg, float dt);
 # CROSS-SPEC INTEGRATION NOTES
 # ═══════════════════════════════════════════════════
 
-## System Execution Order (per frame)
+## System Execution Order
+
+Per-frame systems outside the fixed timestep:
 
 ```
-  ┌─────────────────────────────────────────────────────────────┐
-  │                     FRAME TICK (dt)                         │
-  │                                                             │
-  │  PHASE 1 — INPUT                                           │
-  │    1. input_system                 (raylib input → state)   │
-  │                                                             │
-  │  PHASE 2 — SONG & BEATMAP SCHEDULING                       │
-  │    2. song_playback_system         (song_time/current beat) │
-  │    3. beat_scheduler_system        (spawn authored entries) │
-  │                                                             │
-  │  PHASE 3 — SCORING                                         │
-  │    4. collision/miss systems       (tags + timing grade)    │
-  │    5. scoring_system               (grade → score/energy)   │
-  │                                                             │
-  │  PHASE 4 — PLAYER & PHYSICS                                │
-  │    6. player_input_system          (EventQueue → player)    │
-  │    7. (movement systems — not in these specs)              │
-  │    8. obstacle_despawn_system      (destroy passed obs)    │
-  │                                                             │
-  │  PHASE 5 — RENDER                                          │
-  │   11. (render systems — not in these specs)                │
-  └─────────────────────────────────────────────────────────────┘
+compute_screen_transform -> input_system -> gameplay_hud_process_button_input ->
+test_player_system -> fixed timestep loop -> game_camera_system ->
+ui_camera_system -> game_render_system -> ui_render_system ->
+audio_system -> haptic_system
+```
+
+Each fixed timestep runs `tick_fixed_systems`:
+
+```
+game_state_system -> song_playback_system -> tick_playing_systems ->
+obstacle_despawn_system -> popup_feedback_system -> popup_display_system ->
+energy_system -> energy_bar_system -> particle_system
+```
+
+`tick_playing_systems` is a `GamePhase::Playing`-gated bundle:
+
+```
+beat_log_system -> beat_scheduler_system -> shape_window_activation_system ->
+player_movement_system -> scroll_system -> motion_system -> collision_system ->
+shape_window_system -> miss_detection_system -> scoring_system
 ```
 
 ## Shared Enum/Type Dependencies
