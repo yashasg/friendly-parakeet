@@ -37,6 +37,17 @@ TEST_CASE("High score: make_key_str produces correct key string", "[high_score]"
     CHECK(std::string_view{buf} == "song_001|easy");
 }
 
+TEST_CASE("High score: make_key_str rejects invalid capacity", "[high_score]") {
+    char buf[HighScoreState::KEY_CAP]{};
+    buf[0] = 'x';
+
+    CHECK(high_score::make_key_str(buf, 0, "song_001", "easy") == -1);
+    CHECK(buf[0] == 'x');
+
+    CHECK(high_score::make_key_str(buf, -1, "song_001", "easy") == -1);
+    CHECK(buf[0] == 'x');
+}
+
 TEST_CASE("High score: no hash collisions across all 9 shipped song+difficulty keys", "[high_score]") {
     // FNV-1a 32-bit collisions across exactly 9 short ASCII keys are negligible —
     // this test confirms the shipped set is collision-free and will catch any future

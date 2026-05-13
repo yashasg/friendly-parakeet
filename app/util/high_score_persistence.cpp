@@ -34,6 +34,9 @@ persistence::Result get_high_scores_file_path(
 }
 
 int32_t make_key_str(char* buf, int32_t cap, const char* song_id, const char* difficulty) {
+    if (cap <= 0) {
+        return -1;
+    }
     return std::snprintf(buf, static_cast<std::size_t>(cap), "%s|%s", song_id, difficulty);
 }
 

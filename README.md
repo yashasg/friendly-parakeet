@@ -104,9 +104,9 @@ energy_system -> energy_bar_system -> particle_system
 `tick_playing_systems` is gated to `GamePhase::Playing` and runs:
 
 ```
-beat_log_system -> beat_scheduler_system -> shape_window_system ->
-player_movement_system -> scroll_system -> motion_system ->
-collision_system -> miss_detection_system -> scoring_system
+beat_log_system -> beat_scheduler_system -> player_movement_system ->
+scroll_system -> motion_system -> collision_system -> shape_window_system ->
+miss_detection_system -> scoring_system
 ```
 
 ### Key Design Decisions

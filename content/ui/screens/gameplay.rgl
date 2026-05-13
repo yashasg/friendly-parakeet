@@ -7,8 +7,9 @@
 # controls for circular hit testing and shape-specific drawing. The JSON's
 # approach_ring layout data is stale and should not be carried forward; active
 # proximity-ring timing feedback remains runtime-driven. Energy bar placement
-# is data-driven. DummyRec controls serve as layout slots for custom-rendered
-# elements.
+# is runtime-controlled by EnergyBarLayout; EnergyBarSlot is only a legacy
+# layout placeholder. DummyRec controls serve as layout slots for
+# custom-rendered elements.
 # Hexagon is the automatic rest silhouette only; do not add a Hexagon button.
 #
 # Ref. window:    r <x> <y> <width> <height>
