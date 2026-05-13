@@ -2,6 +2,7 @@
 
 #include "../../components/game_state.h"
 #include "../../components/input.h"
+#include "../../constants.h"
 #include "screen_controller_base.h"
 #include <entt/entt.hpp>
 
@@ -25,6 +26,7 @@ void render_paused_screen_ui(entt::registry& reg) {
     controller.render();
 
     auto& gs = reg.ctx().get<GameState>();
+    if (gs.phase_timer <= constants::UI_ENTRY_DEBOUNCE) return;
 
     if (controller.state().ResumeButtonPressed) {
         // Deferred per #482 — the canonical state-machine swap (game_state_system)

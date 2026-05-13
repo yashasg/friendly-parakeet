@@ -1,6 +1,7 @@
 // Tutorial screen controller - renders raygui layout and dispatches start action.
 
 #include "../../components/game_state.h"
+#include "../../constants.h"
 #include "../../systems/web_input_policy.h"
 #include "../tutorial_dodge_hint.h"
 #include "screen_controller_base.h"
@@ -45,8 +46,10 @@ void render_tutorial_screen_ui(entt::registry& reg) {
     GuiLabel(tutorial_dodge_hint_bounds(controller.state().Anchor01),
              tutorial_dodge_hint_text(prefer_touch));
 
+    auto& gs = reg.ctx().get<GameState>();
+    if (gs.phase_timer <= constants::UI_ENTRY_DEBOUNCE) return;
+
     if (controller.state().ContinueButtonPressed) {
-        auto& gs = reg.ctx().get<GameState>();
         gs.transition_pending = true;
         gs.next_phase = GamePhase::Playing;
     }

@@ -5,6 +5,7 @@
 #include "../../content/level_content_config.h"
 #include "../../components/input.h"
 #include "../../components/rendering.h"
+#include "../../constants.h"
 #include "screen_controller_base.h"
 #include <entt/entt.hpp>
 #include <cstdio>
@@ -164,5 +165,5 @@ void render_level_select_screen_ui(entt::registry& reg) {
     
     GuiSetStyle(DEFAULT, TEXT_SIZE, saved_text_size);
 
-    if (state.StartButtonPressed && gs.phase_timer > 0.2f) lss.confirmed = true;
+    if (state.StartButtonPressed && gs.phase_timer > constants::UI_ENTRY_DEBOUNCE) lss.confirmed = true;
 }
