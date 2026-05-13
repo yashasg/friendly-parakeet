@@ -69,6 +69,12 @@ constexpr float SWIPE_ZONE_SPLIT  = 0.80f;
 constexpr float MIN_SWIPE_DIST    = 50.0f;
 constexpr float MAX_SWIPE_TIME    = 0.3f;
 
+// ── Screen input timing ───────────────────────────
+constexpr float UI_ENTRY_DEBOUNCE              = 0.2f;
+constexpr float GAME_OVER_INPUT_DELAY          = 0.4f;
+constexpr float SONG_COMPLETE_INPUT_DELAY      = 0.5f;
+constexpr float TEST_PLAYER_AUTO_START_DELAY   = 0.5f;
+
 // ── UI Layout (pixel-space; retained to derive the NDC constants below and for tests) ────
 constexpr float BUTTON_Y          = 1140.0f;
 constexpr float BUTTON_W          = 140.0f;

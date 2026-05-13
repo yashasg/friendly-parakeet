@@ -3,6 +3,7 @@
 #include "../../components/game_state.h"
 #include "../../components/scoring.h"
 #include "../../components/song_state.h"
+#include "../../constants.h"
 #include "screen_controller_base.h"
 #include <entt/entt.hpp>
 
@@ -73,7 +74,7 @@ void render_song_complete_screen_ui(entt::registry& reg) {
     draw_song_complete_scoreboard(reg, controller.state());
 
     auto& gs = reg.ctx().get<GameState>();
-    if (gs.phase_timer <= 0.5f) return;
+    if (gs.phase_timer <= constants::SONG_COMPLETE_INPUT_DELAY) return;
 
     dispatch_end_screen_choice(gs, controller.state());
 }

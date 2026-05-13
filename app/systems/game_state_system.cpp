@@ -7,6 +7,7 @@
 #include "../components/input_events.h"
 #include "../components/player.h"
 #include "../components/rhythm.h"
+#include "../constants.h"
 #if defined(__EMSCRIPTEN__) && defined(SHAPESHIFTER_WASM_SMOKE_MARKERS)
 #include <emscripten/emscripten.h>
 #include <string>
@@ -132,7 +133,7 @@ void game_state_system(entt::registry& reg, float dt) {
     }
 
     // LevelSelect input handling
-    if (gs.phase == GamePhase::LevelSelect && gs.phase_timer > 0.2f) {
+    if (gs.phase == GamePhase::LevelSelect && gs.phase_timer > constants::UI_ENTRY_DEBOUNCE) {
         auto& lss = reg.ctx().get<LevelSelectState>();
         if (lss.confirmed) {
             lss.confirmed = false;

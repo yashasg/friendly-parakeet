@@ -3,6 +3,7 @@
 #include "../../components/game_state.h"
 #include "../../components/scoring.h"
 #include "../../components/song_state.h"
+#include "../../constants.h"
 #include "screen_controller_base.h"
 #include "game_over_screen_controller.h"
 #include <entt/entt.hpp>
@@ -99,7 +100,7 @@ void render_game_over_screen_ui(entt::registry& reg) {
     draw_game_over_scoreboard(reg, controller.state());
 
     auto& gs = reg.ctx().get<GameState>();
-    if (gs.phase_timer <= 0.4f) return;
+    if (gs.phase_timer <= constants::GAME_OVER_INPUT_DELAY) return;
 
     dispatch_end_screen_choice(gs, controller.state());
 }

@@ -4,12 +4,19 @@
 #include "../components/input_events.h"
 #include "../components/audio_events.h"
 #include "../components/haptics.h"
+#include "../constants.h"
 
 namespace {
 bool game_state_handle_end_screen_press(entt::registry& reg, const ButtonPressEvent& evt) {
     auto& gs = reg.ctx().get<GameState>();
-    if ((gs.phase != GamePhase::GameOver && gs.phase != GamePhase::SongComplete) ||
-        gs.phase_timer <= 0.4f) {
+    if (gs.phase != GamePhase::GameOver && gs.phase != GamePhase::SongComplete) {
+        return false;
+    }
+
+    const float input_delay = (gs.phase == GamePhase::SongComplete)
+        ? constants::SONG_COMPLETE_INPUT_DELAY
+        : constants::GAME_OVER_INPUT_DELAY;
+    if (gs.phase_timer <= input_delay) {
         return false;
     }
 
@@ -37,6 +44,7 @@ bool game_state_handle_end_screen_press(entt::registry& reg, const ButtonPressEv
 void game_state_handle_go(entt::registry& reg, const GoEvent& /*evt*/) {
     auto& gs = reg.ctx().get<GameState>();
     if (gs.phase != GamePhase::Paused) return;
+    if (gs.phase_timer <= constants::UI_ENTRY_DEBOUNCE) return;
     // Deferred per #482 — let game_state_system perform the resume swap.
     gs.transition_pending = true;
     gs.next_phase = GamePhase::Playing;
@@ -66,6 +74,7 @@ void game_state_handle_press(entt::registry& reg, const ButtonPressEvent& evt) {
     }
 
     if (gs.phase == GamePhase::Paused) {
+        if (gs.phase_timer <= constants::UI_ENTRY_DEBOUNCE) return;
         // Deferred per #482 — see game_state_handle_go above.
         gs.transition_pending = true;
         gs.next_phase = GamePhase::Playing;

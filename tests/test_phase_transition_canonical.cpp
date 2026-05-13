@@ -258,6 +258,18 @@ TEST_CASE("phase_transition: enforcement catches non-UI/non-input direct callers
     REQUIRE(offenders == std::vector<std::string>{"app/systems/rogue_system.cpp"});
 }
 
+TEST_CASE("phase_transition: Tutorial and Paused controllers guard entry input",
+          "[phase_transition][ui]") {
+    const fs::path root = find_repo_root();
+    const std::string tutorial =
+        read_file(root / "app/ui/screen_controllers/tutorial_screen_controller.cpp");
+    const std::string paused =
+        read_file(root / "app/ui/screen_controllers/paused_screen_controller.cpp");
+
+    REQUIRE(tutorial.find("constants::UI_ENTRY_DEBOUNCE") != std::string::npos);
+    REQUIRE(paused.find("constants::UI_ENTRY_DEBOUNCE") != std::string::npos);
+}
+
 TEST_CASE("phase_transition matcher catches whitespace variants and ignores strings/comments",
           "[phase_transition][architecture]") {
     const std::string direct_call = R"cpp(

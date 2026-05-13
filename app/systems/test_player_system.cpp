@@ -199,7 +199,7 @@ void test_player_system(entt::registry& reg, float dt) {
     // ── AUTO-START ───────────────────────────────────────────
     if (gs.phase == GamePhase::Title || gs.phase == GamePhase::GameOver ||
         gs.phase == GamePhase::SongComplete) {
-        if (gs.phase_timer > 0.5f) {
+        if (gs.phase_timer > constants::TEST_PLAYER_AUTO_START_DELAY) {
             // On end screens, press Restart; on Title, press Confirm
             auto target_action = (gs.phase == GamePhase::GameOver ||
                                   gs.phase == GamePhase::SongComplete)
@@ -239,7 +239,7 @@ void test_player_system(entt::registry& reg, float dt) {
     }
 
     // Auto-confirm on LevelSelect (level/difficulty already set in main.cpp)
-    if (gs.phase == GamePhase::LevelSelect && gs.phase_timer > 0.2f) {
+    if (gs.phase == GamePhase::LevelSelect && gs.phase_timer > constants::UI_ENTRY_DEBOUNCE) {
         disp.enqueue<ButtonPressEvent>({ButtonPressKind::Menu, Shape::Circle,
                                        MenuActionKind::Confirm, 0});
         return;
