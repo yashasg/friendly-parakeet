@@ -110,7 +110,8 @@ void collision_system(entt::registry& reg, float /*dt*/) {
 
         if (!p_window.graded) {
             float scale = window_scale_for_tier(tier);
-            float remaining = song.window_duration - p_window.window_timer;
+            const float active_elapsed = song.song_time - p_window.window_start;
+            float remaining = song.window_duration - active_elapsed;
             if (remaining > 0.0f && scale < 1.0f) {
                 // Adjust window_start backward so the song-time-derived
                 // elapsed time is naturally larger on subsequent ticks,

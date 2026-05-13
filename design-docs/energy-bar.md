@@ -105,9 +105,7 @@ constexpr float ENERGY_CRITICAL_THRESH  = 0.25f;   // below this → bar pulses 
   ┌──────────────────────────────────────────────────────┐
   │                   ENERGY SYSTEM                       │
   │                                                      │
-  │  Runs after scoring_system, reads EnergyState        │
-  │                                                      │
-  │  if energy <= 0  ──► GamePhase::GameOver              │
+  │  Runs after scoring_system, applies queued effects   │
   │                                                      │
   │  Smooth display toward energy (lerp)                 │
   │  Tick flash_timer countdown                          │
@@ -130,38 +128,37 @@ constexpr float ENERGY_CRITICAL_THRESH  = 0.25f;   // below this → bar pulses 
 
 ## Energy Modification Points
 
-Energy is modified in **two places** only:
+Energy deltas are enqueued by gameplay systems and applied by
+`energy_system` through `PendingEnergyEffects`.  Gameplay systems should not
+mutate `EnergyState::energy` directly.
 
 ### 1. collision_system.cpp — on MISS
 
 Current shipped behavior:
 
 ```
-MISS:    enqueue energy delta -ENERGY_DRAIN_MISS
-GameOver: energy_system transitions only when energy reaches 0
-         energy.flash_timer = ENERGY_FLASH_DURATION;
+MISS: enqueue_energy_effect(reg, -ENERGY_DRAIN_MISS, true)
 ```
 
-The miss no longer kills the player directly.  The `energy_system`
-handles the GameOver transition when energy reaches zero.
+The miss no longer kills the player directly.  `game_state_system` owns the
+energy-depleted `GamePhase::GameOver` transition after queued effects have
+been applied by a prior fixed tick.
 
 Miss still increments `results->miss_count` and still emplaces
 `ScoredTag` (obstacle is consumed, not re-triggered).
 
 ### 2. scoring_system.cpp — on scored obstacle with TimingGrade
 
-After computing points, apply energy delta based on timing tier:
+After computing points, enqueue an energy delta based on timing tier:
 
 ```
 switch (timing->tier) {
-    case TimingTier::Perfect: energy.energy += ENERGY_RECOVER_PERFECT; break;
-    case TimingTier::Good:    energy.energy += ENERGY_RECOVER_GOOD;    break;
-    case TimingTier::Ok:      energy.energy += ENERGY_RECOVER_OK;      break;
-    case TimingTier::Bad:     energy.energy -= ENERGY_DRAIN_BAD;
-                              energy.flash_timer = ENERGY_FLASH_DURATION;
+    case TimingTier::Perfect: enqueue_energy_effect(reg, ENERGY_RECOVER_PERFECT); break;
+    case TimingTier::Good:    enqueue_energy_effect(reg, ENERGY_RECOVER_GOOD);    break;
+    case TimingTier::Ok:      enqueue_energy_effect(reg, ENERGY_RECOVER_OK);      break;
+    case TimingTier::Bad:     enqueue_energy_effect(reg, -ENERGY_DRAIN_BAD, true);
                               break;
 }
-energy.energy = clamp(energy.energy, 0.0f, ENERGY_MAX);
 ```
 
 
@@ -170,18 +167,19 @@ energy.energy = clamp(energy.energy, 0.0f, ENERGY_MAX);
 ## System Execution Order
 
 ```
-  game_state_system
+  game_state_system        ← checks energy <= 0 → GameOver
   song_playback_system
   tick_playing_systems
-    → playing systems include collision_system and scoring_system
+    collision_system       ← tags MISS / ScoredTag
+    scoring_system         ← enqueues energy effects
   obstacle_despawn_system
   popup_feedback_system
   popup_display_system
-  energy_system       ← checks depletion → GameOver, smooths display
+  energy_system            ← applies queued effects, smooths display
   particle_system
 ```
 
-`collision_system` tags MISS/HIT outcomes and `scoring_system` applies the
+`collision_system` tags MISS/HIT outcomes and `scoring_system` enqueues
 timing-grade energy drain/recovery inside `tick_playing_systems()`. The
 `energy_system` then runs after popup updates in `tick_fixed_systems()`;
 this placement is a cache-locality choice, not a semantic dependency.

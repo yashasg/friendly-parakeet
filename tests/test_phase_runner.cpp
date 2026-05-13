@@ -1,5 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
+
+using Catch::Matchers::WithinAbs;
 
 // ── tick_playing_systems: phase-gate integration ─────────────────────────────
 //
@@ -53,6 +56,32 @@ TEST_CASE("tick_playing_systems: no-op when phase is GameOver", "[phase_guard]")
     CHECK(energy.energy == energy_before);
     CHECK_FALSE(reg.all_of<MissTag>(obs));
     CHECK_FALSE(reg.all_of<ScoredTag>(obs));
+}
+
+TEST_CASE("tick_playing_systems: collision resolves before active window expiry", "[phase_guard][integration][order_regression]") {
+    auto reg = make_rhythm_registry();
+    auto player = make_rhythm_player(reg);
+    auto& ps = reg.get<PlayerShape>(player);
+    auto& sw = reg.get<ShapeWindow>(player);
+    auto& song = reg.ctx().get<SongState>();
+
+    song.song_time = 10.0f + song.window_duration;
+    ps.current = Shape::Circle;
+    sw.target_shape = Shape::Circle;
+    sw.phase = WindowPhase::Active;
+    sw.window_start = 10.0f;
+    sw.window_timer = 0.0f;
+    sw.press_time = song.song_time;
+    sw.graded = false;
+
+    auto obstacle = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
+    reg.emplace<BeatInfo>(obstacle, 0, song.song_time, song.song_time - song.lead_time);
+
+    tick_playing_systems(reg, 0.016f);
+
+    CHECK(reg.ctx().get<SongResults>().perfect_count == 1);
+    CHECK(sw.phase == WindowPhase::MorphOut);
+    CHECK_THAT(sw.window_start, WithinAbs(10.0f + song.window_duration, 0.0001f));
 }
 
 // ── tick_fixed_systems: score-feedback chain wiring guard ────────────────────
