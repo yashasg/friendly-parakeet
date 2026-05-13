@@ -196,10 +196,10 @@ struct ObstacleTag {};
 /// LowBar/HighBar were removed from the runtime obstacle enum and remain archival only.
 enum class ObstacleKind : uint8_t {
     ShapeGate,   // must match shape
-    LaneBlock,   // legacy value kept for backward compat
-    ComboGate,   // shape + lane
+    LaneBlock,   // avoid blocked lane mask
+    ComboGate,   // required shape + blocked lane mask
     SplitPath,   // shape + specific lane
-    OnsetMarker, // visual beat marker
+    OnsetMarker, // visual beat/onset marker; no collision/scoring
 };
 
 struct Obstacle {
@@ -225,8 +225,12 @@ struct RequiredShape {
     Shape shape;
 };
 
-/// The push direction is implicit in the ObstacleKind, so this struct
-/// is no longer needed. (Legacy BlockedLanes removed with LaneBlock.)
+/// For LaneBlock / ComboGate: bit mask of blocked lanes (bit 0 = left,
+/// bit 1 = center, bit 2 = right). Active runtime data used by collision,
+/// test-player, render mesh generation, and diagnostics.
+struct BlockedLanes {
+    uint8_t mask = 0;
+};
 
 /// For SplitPath: which lane has the opening. 1 byte.
 struct RequiredLane {
@@ -376,6 +380,19 @@ struct GameState {
     EndScreenChoice end_choice;      // pending end-screen menu action
 };
 ```
+
+Active phase responsibilities:
+
+| Phase | Purpose |
+| --- | --- |
+| `Title` | Default boot/menu entry point. Routes to level select, settings, tutorial, or exit. |
+| `LevelSelect` | Lets the player choose level and difficulty before `setup_play_session`. |
+| `Playing` | Runs song playback, beat scheduling, player input, collision, scoring, energy, and HUD systems. |
+| `Paused` | Freezes gameplay update while preserving the current play session for resume. |
+| `GameOver` | Terminal failure screen after energy depletion/crash; freezes world and offers restart, level select, or main menu. |
+| `SongComplete` | Terminal success/results screen after the song finishes; offers restart, level select, or main menu. |
+| `Settings` | Menu phase for runtime settings such as audio/haptics/calibration. |
+| `Tutorial` | First-time/user-training phase that teaches controls and basic rhythm rules. |
 
 ### 2.9 — Legacy: Difficulty (removed)
 
@@ -653,20 +670,21 @@ owns `ScorePopup::remaining`. Obstacle destruction is handled by
      ╔═══════════╗   start    ╔══════════════╗   confirm   ╔════════════╗
      ║   TITLE   ║ ─────────▶ ║ LEVEL_SELECT ║ ──────────▶ ║  PLAYING   ║
      ╚═══════════╝            ╚══════════════╝             ╚════════════╝
-            ▲                        ▲                       │    │    │
-            │                        │             pause/app │    │    │ song
-            │                        │                       ▼    │    ▼ done
-            │                        │                  ╔══════════╗ ╔══════════════╗
-            │                        └───────────────── ║  PAUSED  ║ ║ SONG_COMPLETE║
-            │                                           ╚══════════╝ ╚══════════════╝
-            │                                                │              │
-            │                       energy depleted          │              │
-            │                                                ▼              │
-            │                                           ╔══════════╗        │
-            └────────────────────────────────────────── ║ GAMEOVER ║ ◀──────┘
-                                                        ╚══════════╝
-     TITLE also routes to SETTINGS and TUTORIAL; end screens can restart,
-     return to LEVEL_SELECT, or return to TITLE.
+       │      ▲                      ▲                       │    │    │
+       │      │                      │             pause/app │    │    │ song
+       │      │                      │                       ▼    │    ▼ done
+       │      │                      │                  ╔══════════╗ ╔══════════════╗
+       │      │                      └───────────────── ║  PAUSED  ║ ║ SONG_COMPLETE║
+       │      │                                         ╚══════════╝ ╚══════════════╝
+       │      │                                              │              │
+       │      │                     energy depleted          │              │
+       │      │                                              ▼              │
+       │      └──────────────────────────────────────── ╔══════════╗        │
+       │                                                ║ GAMEOVER ║ ◀──────┘
+       │                                                ╚══════════╝
+       ├────────▶ SETTINGS ─────────┐
+       └────────▶ TUTORIAL ─────────┘
+     End screens can restart, return to LEVEL_SELECT, or return to TITLE.
 ```
 
 ### Transition: menu flow → PLAYING
@@ -777,8 +795,7 @@ Total: ~73 bytes per entity (1 entity)
 │ ObstacleTag        (tag, 0 bytes)                         │
 │ WorldTransform     { position: {360.0, -120.0} }         │
 │ MotionVelocity     { value: {0.0, 400.0} }               │
-│ Obstacle           { kind: ShapeGate, base_pts: 200,      │
-│                      scored: false }                       │
+│ Obstacle           { base_points: 200 }                    │
 │ RequiredShape      { shape: Triangle }                     │
 │ Color              { r: 50, g: 205, b: 50, a: 255 }      │
 │ DrawSize           { w: 720, h: 80 }                       │
@@ -787,22 +804,25 @@ Total: ~73 bytes per entity (1 entity)
 Total: ~42 bytes per entity (5–15 active)
 ```
 
+### 5.3 Lane Block Entity
 
 ```
+┌─ Lane Block ──────────────────────────────────────────────┐
 │ ObstacleTag        (tag, 0 bytes)                         │
-│ WorldTransform     { position: {360.0, -120.0} }         │
-│ MotionVelocity     { value: {0.0, 400.0} }               │
-│                      scored: false }                       │
-│ Color              { r: 255, g: 60, b: 60, a: 255 }      │
-│ DrawSize           { w: 720, h: 80 }                       │
-│ DrawLayer          { layer: Game }                          │
+│ WorldTransform     { position: {360.0, -120.0} }          │
+│ MotionVelocity     { value: {0.0, 400.0} }                │
+│ Obstacle           { base_points: 100 }                    │
+│ BlockedLanes       { mask: 0b010 }                         │
+│ Color              { r: 255, g: 60, b: 60, a: 255 }       │
+│ DrawSize           { w: 240, h: 80 }                       │
+│ DrawLayer          { layer: Game }                         │
 └───────────────────────────────────────────────────────────┘
-Total: ~40 bytes per entity
-
-obstacle's direction on beat arrival. No player action required.
-- Only affects player if they are on the SAME lane as the obstacle.
-- Awards 0 points (it's not a challenge).
+Total: ~41 bytes per entity
 ```
+
+`BlockedLanes::mask` is active runtime data: collision fails if the player is
+in a blocked lane when the obstacle resolves. `ComboGate` reuses the same mask
+with `RequiredShape`; `SplitPath` uses `RequiredLane` instead.
 
 ### 5.4 Archived Vertical Bar Entity (Low Bar / High Bar)
 
@@ -815,8 +835,7 @@ LowBar/HighBar entity archetypes are historical only. The current runtime enum, 
 │ ObstacleTag        (tag, 0 bytes)                         │
 │ WorldTransform     { position: {360.0, -120.0} }         │
 │ MotionVelocity     { value: {0.0, 400.0} }               │
-│ Obstacle           { kind: ComboGate, base_pts: 200,      │
-│                      scored: false }                       │
+│ Obstacle           { base_points: 200 }                    │
 │ RequiredShape      { shape: Square }                       │
 │ BlockedLanes       { mask: 0b110 }                         │
 │ Color              { r: 200, g: 100, b: 255, a: 255 }    │
@@ -833,8 +852,7 @@ Total: ~43 bytes per entity
 │ ObstacleTag        (tag, 0 bytes)                         │
 │ WorldTransform     { position: {360.0, -120.0} }         │
 │ MotionVelocity     { value: {0.0, 400.0} }               │
-│ Obstacle           { kind: SplitPath, base_pts: 300,      │
-│                      scored: false }                       │
+│ Obstacle           { base_points: 300 }                    │
 │ RequiredShape      { shape: Circle }                       │
 │ RequiredLane       { lane: 2 }                             │
 │ Color              { r: 255, g: 215, b: 0, a: 255 }      │
@@ -844,7 +862,29 @@ Total: ~43 bytes per entity
 Total: ~44 bytes per entity
 ```
 
-### 5.7 Score Popup Entity
+### 5.7 Onset Marker Entity
+
+```
+┌─ Onset Marker ────────────────────────────────────────────┐
+│ ObstacleTag        (tag, 0 bytes)                         │
+│ WorldTransform     { position: {360.0, -120.0} }          │
+│ MotionVelocity     { value: {0.0, 400.0} }                │
+│ Obstacle           { base_points: 0 }                      │
+│ NonScorableTag     (tag, 0 bytes)                         │
+│ Color              { r: 255, g: 255, b: 255, a: 80 }      │
+│ DrawSize           { w: 720, h: 80 }                       │
+│ DrawLayer          { layer: Game }                         │
+└───────────────────────────────────────────────────────────┘
+Total: ~40 bytes per entity
+```
+
+Onset markers are visual beat/onset aids. They have no `RequiredShape`,
+`BlockedLanes`, or `RequiredLane`, so collision views do not resolve them; the
+`NonScorableTag` excludes them from score, chain, popup, miss, and energy
+effects. The active beat scheduler currently skips `OnsetMarker` entries rather
+than spawning them during normal play.
+
+### 5.8 Score Popup Entity
 
 ```
 ┌─ Score Popup ─────────────────────────────────────────────┐
@@ -857,7 +897,7 @@ Total: ~44 bytes per entity
 Total: ~33 bytes per entity (0–5 active)
 ```
 
-### 5.8 Particle Entity
+### 5.9 Particle Entity
 
 ```
 ┌─ Particle ────────────────────────────────────────────────┐
