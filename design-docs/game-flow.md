@@ -104,15 +104,10 @@
                           (back to Title)
 ```
 
-> **Tutorial phase — defined but unreachable today.** `GamePhase::Tutorial`
-> exists in `game_state.h` and is wired into render/state systems, but
-> no screen controller currently issues `next_phase = GamePhase::Tutorial`
-> (`grep -rnE "next_phase = GamePhase::Tutorial" app/` returns no hits).
-> The "FTUE CHECK" branch shown in earlier revisions of this map is
-> **not shipped**: `Settings::ftue_run_count` is persisted but never
-> read by gameplay/UI systems. The wired-up FTUE/Tutorial flow is
-> tracked in #76 (FTUE not implemented); reinstate the FTUE-check
-> decision node only once a controller transitions into Tutorial.
+> **Tutorial phase.** `GamePhase::Tutorial` is reached from Level Select
+> when `SettingsState::ftue_run_count == 0`. Pressing START on the
+> tutorial marks FTUE complete, persists settings, and starts gameplay.
+> Completed FTUE profiles skip Tutorial and go directly to Playing.
 
 ### State Enumeration (for ECS implementation)
 
@@ -128,9 +123,7 @@
       GameOver     = 4,   // results screen
       SongComplete = 5,   // song finished successfully
       Settings     = 6,   // settings screen (entered from Title gear)
-      Tutorial     = 7    // FTUE/tutorial run — defined but
-                          // currently unreachable; no controller
-                          // issues a transition into it (see #76)
+      Tutorial     = 7    // FTUE/tutorial run before first gameplay
   };
 ```
 
@@ -139,7 +132,8 @@ Shipped transitions, by controller, as of Round 6 audit:
 - `Title → LevelSelect` — body tap (`title_screen_controller.cpp:62-72`).
 - `Title → Settings` — gear-icon tap (same controller).
 - `Settings → Title` — back action (`ui_render_system.cpp:117-122`).
-- `LevelSelect → Playing` — song selection.
+- `LevelSelect → Tutorial` — song selection when FTUE is incomplete.
+- `LevelSelect → Playing` — song selection after FTUE is complete.
 - `Playing ↔ Paused` — pause button / resume.
 - `Paused → Title` — quit action.
 - `Playing → GameOver` — energy reaches zero.
@@ -147,7 +141,7 @@ Shipped transitions, by controller, as of Round 6 audit:
 - `GameOver | SongComplete → Playing` — restart action.
 - `GameOver | SongComplete → LevelSelect` — level-select action.
 - `GameOver | SongComplete → Title` — main-menu action.
-- `* → Tutorial` — **none today** (see #76).
+- `Tutorial → Playing` — START marks FTUE complete and begins the run.
 
 ---
 

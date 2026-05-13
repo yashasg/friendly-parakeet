@@ -7,6 +7,7 @@
 #include "../components/input_events.h"
 #include "../components/player.h"
 #include "../components/rhythm.h"
+#include "../entities/settings.h"
 #include "../constants.h"
 #if defined(__EMSCRIPTEN__) && defined(SHAPESHIFTER_WASM_SMOKE_MARKERS)
 #include <emscripten/emscripten.h>
@@ -137,8 +138,11 @@ void game_state_system(entt::registry& reg, float dt) {
         auto& lss = reg.ctx().get<LevelSelectState>();
         if (lss.confirmed) {
             lss.confirmed = false;
+            const auto* settings_ptr = find_settings_state(reg);
             gs.transition_pending = true;
-            gs.next_phase = GamePhase::Playing;
+            gs.next_phase = settings_ptr && !settings::ftue_complete(*settings_ptr)
+                ? GamePhase::Tutorial
+                : GamePhase::Playing;
         }
     }
 
