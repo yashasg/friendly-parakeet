@@ -14,8 +14,13 @@ constexpr float SCREEN_H_F        = static_cast<float>(SCREEN_H);
 
 // ── Lanes ─────────────────────────────────────────
 constexpr int   LANE_COUNT        = 3;
+constexpr int   DEFAULT_LANE      = 1;
 constexpr float LANE_X[3]         = { 60.0f, 360.0f, 660.0f };
 constexpr float LANE_SWITCH_SPEED = 12.0f;
+
+constexpr bool is_valid_lane(int lane) {
+    return lane >= 0 && lane < LANE_COUNT;
+}
 
 // ── Player ────────────────────────────────────────
 constexpr float PLAYER_Y          = 920.0f;

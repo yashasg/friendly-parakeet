@@ -6,6 +6,7 @@
 #include "../components/audio_events.h"
 #include "../components/haptics.h"
 #include "../constants.h"
+#include "../util/lane_utils.h"
 #include <raymath.h>
 
 void player_movement_system(entt::registry& reg, float dt) {
@@ -14,6 +15,7 @@ void player_movement_system(entt::registry& reg, float dt) {
 
     auto view = reg.view<PlayerTag, WorldTransform, PlayerShape, Lane, VerticalState>();
     for (auto [entity, transform, pshape, lane, vstate] : view.each()) {
+        lane_utils::normalize(lane, &transform);
 
         // Morph animation — freeplay only.
         // In rhythm mode shape_window_system owns morph_t (derives from song_time);
@@ -24,11 +26,11 @@ void player_movement_system(entt::registry& reg, float dt) {
 
         // Lane transition
         if (lane.target == lane.current) {
-            lane.target = -1;
+            lane.target = lane_utils::kNoTargetLane;
             lane.lerp_t = 1.0f;
             transform.position.x = constants::LANE_X[lane.current];
         }
-        if (lane.target >= 0 && lane.target != lane.current) {
+        if (lane_utils::is_valid(lane.target) && lane.target != lane.current) {
             lane.lerp_t += dt * constants::LANE_SWITCH_SPEED;
             float from_x = constants::LANE_X[lane.current];
             float to_x   = constants::LANE_X[lane.target];
@@ -36,7 +38,7 @@ void player_movement_system(entt::registry& reg, float dt) {
 
             if (lane.lerp_t >= 1.0f) {
                 lane.current = lane.target;
-                lane.target  = -1;
+                lane.target  = lane_utils::kNoTargetLane;
                 lane.lerp_t  = 1.0f;
                 transform.position.x = constants::LANE_X[lane.current];
             }

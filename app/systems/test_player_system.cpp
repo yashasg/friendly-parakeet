@@ -9,6 +9,7 @@
 #include "../components/rhythm.h"
 #include "../components/scoring.h"
 #include "../util/session_logger.h"
+#include "../util/lane_utils.h"
 #include "../constants.h"
 
 #include <raylib.h>
@@ -74,7 +75,7 @@ static bool test_player_needs_shape(const TestPlayerAction& action) {
 }
 
 static bool test_player_needs_lane(const TestPlayerAction& action) {
-    return action.target_lane >= 0 && !test_player_lane_done(action);
+    return lane_utils::is_valid(action.target_lane) && !test_player_lane_done(action);
 }
 
 static bool test_player_needs_vertical(const TestPlayerAction& action) {
@@ -84,7 +85,7 @@ static bool test_player_needs_vertical(const TestPlayerAction& action) {
 static bool test_player_action_done(const TestPlayerAction& action) {
     const bool shape_done = (action.target_shape == Shape::Hexagon) ||
                             test_player_shape_done(action);
-    const bool lane_done = (action.target_lane < 0) ||
+    const bool lane_done = !lane_utils::is_valid(action.target_lane) ||
                            test_player_lane_done(action);
     const bool vertical_done = (action.target_vertical == VMode::Grounded) ||
                                test_player_vertical_done(action);
@@ -110,6 +111,8 @@ static void test_player_remove_action(TestPlayerState& state, int idx) {
 
 // Find nearest unblocked lane to current position.
 static int8_t nearest_unblocked_lane(uint8_t blocked_mask, int8_t current) {
+    current = lane_utils::valid_or_default(current);
+
     // Try current lane first
     if (!((blocked_mask >> current) & 1)) return current;
 
@@ -175,7 +178,7 @@ static TestPlayerAction determine_action(
 
     // Lane requirement (RequiredLane — exact lane)
     auto* req_lane = reg.try_get<RequiredLane>(entity);
-    if (req_lane && req_lane->lane != player_lane) {
+    if (req_lane && lane_utils::is_valid(req_lane->lane) && req_lane->lane != player_lane) {
         action.target_lane = req_lane->lane;
     }
 
@@ -263,14 +266,16 @@ void test_player_system(entt::registry& reg, float dt) {
     auto player_entity = *player_view.begin();
     auto [p_transform, p_shape, p_window, p_lane, p_vstate] =
         player_view.get<WorldTransform, PlayerShape, ShapeWindow, Lane, VerticalState>(player_entity);
+    lane_utils::normalize(p_lane, &p_transform);
 
     // ── PERCEIVE: scan obstacles in vision range ─────────────
     // Compute the "effective lane" — where the player will be after
     // all pending lane changes in the action queue execute.
     int8_t effective_lane = p_lane.current;
-    if (p_lane.target >= 0) effective_lane = p_lane.target;
+    if (lane_utils::is_valid(p_lane.target)) effective_lane = p_lane.target;
     for (int i = 0; i < state->action_count; ++i) {
-        if (state->actions[i].target_lane >= 0 && !test_player_lane_done(state->actions[i])) {
+        if (lane_utils::is_valid(state->actions[i].target_lane) &&
+            !test_player_lane_done(state->actions[i])) {
             effective_lane = state->actions[i].target_lane;
         }
     }
@@ -291,7 +296,7 @@ void test_player_system(entt::registry& reg, float dt) {
         // Pro player aims for Perfect timing on SHAPE PRESSES.
         // Lane dodges and vertical-only actions react ASAP — no delay.
         bool has_shape = (action.target_shape != Shape::Hexagon);
-        bool has_lane_or_vertical = (action.target_lane >= 0 ||
+        bool has_lane_or_vertical = (lane_utils::is_valid(action.target_lane) ||
                                      action.target_vertical != VMode::Grounded);
 
         if (cfg.aim_perfect && has_shape) {
@@ -337,7 +342,7 @@ void test_player_system(entt::registry& reg, float dt) {
             session_log_write(*log, song_time, "PLAYER",
                 "PLAN action=%.*s%s%s react=%.3fs arrival=%.3fs",
                 static_cast<int>(action_shape_name.size()), action_shape_name.data(),
-                action.target_lane >= 0 ? "+lane" : "",
+                lane_utils::is_valid(action.target_lane) ? "+lane" : "",
                 action.target_vertical != VMode::Grounded ?
                     (action.target_vertical == VMode::Jumping ? "+jump" : "+slide") : "",
                 action.timer, action.arrival_time);
@@ -484,7 +489,8 @@ void test_player_system(entt::registry& reg, float dt) {
             }
         }
 
-        if (test_player_needs_lane(action) && p_lane.target < 0 && state->swipe_cooldown_timer <= 0.0f
+        if (test_player_needs_lane(action) && !lane_utils::is_valid(p_lane.target) &&
+            state->swipe_cooldown_timer <= 0.0f
             && !zone_blocked && !blocked_by_shape && !move_would_fail_closer) {
             if (action.target_lane < p_lane.current) {
                 disp.enqueue<GoEvent>({Direction::Left});

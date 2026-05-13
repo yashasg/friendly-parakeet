@@ -128,6 +128,28 @@ TEST_CASE("collision: lane block drains energy when player in blocked lane", "[c
     CHECK(energy.flash_timer > 0.0f);
 }
 
+TEST_CASE("collision: invalid player lane is normalized before lane checks",
+          "[collision][issue900]") {
+    auto reg = make_registry();
+    auto player = make_player(reg);
+    auto& lane = reg.get<Lane>(player);
+    auto& transform = reg.get<WorldTransform>(player);
+    lane.current = -1;
+    lane.target = constants::LANE_COUNT;
+    lane.lerp_t = 0.0f;
+    transform.position.x = -999.0f;
+    auto obs = make_lane_block(reg, 0b010, constants::PLAYER_Y);
+
+    collision_system(reg, 0.016f);
+
+    CHECK(lane.current == constants::DEFAULT_LANE);
+    CHECK(lane.target == -1);
+    CHECK(lane.lerp_t == 1.0f);
+    CHECK(transform.position.x == constants::LANE_X[constants::DEFAULT_LANE]);
+    CHECK(reg.all_of<ScoredTag>(obs));
+    CHECK(reg.all_of<MissTag>(obs));
+}
+
 
 
 
