@@ -47,3 +47,7 @@ struct MeshChildCleanupScratch {
     std::vector<entt::entity> stale_children;
     uint32_t capacity_exceeded_count = 0;
 };
+
+struct WasmSmokeLaneMarkerState {
+    int last_lane = -1;
+};
