@@ -309,22 +309,22 @@ void input_system(entt::registry& reg, float raw_dt) {
         input.was_focused = focused;
     }
 
-    if (allow_touch_input &&
-        input.active_source != InputSource::Mouse &&
+    if (input.active_source != InputSource::Mouse &&
         !input.touching &&
         !input.touch_up) {
         Direction gesture_dir = Direction::Up;
         bool has_gesture_swipe = false;
-        if (IsGestureDetected(GESTURE_SWIPE_RIGHT)) {
+        const int gesture = GetGestureDetected();
+        if (IsGestureDetected(GESTURE_SWIPE_RIGHT) || (gesture & GESTURE_SWIPE_RIGHT) != 0) {
             gesture_dir = Direction::Right;
             has_gesture_swipe = true;
-        } else if (IsGestureDetected(GESTURE_SWIPE_LEFT)) {
+        } else if (IsGestureDetected(GESTURE_SWIPE_LEFT) || (gesture & GESTURE_SWIPE_LEFT) != 0) {
             gesture_dir = Direction::Left;
             has_gesture_swipe = true;
-        } else if (IsGestureDetected(GESTURE_SWIPE_UP)) {
+        } else if (IsGestureDetected(GESTURE_SWIPE_UP) || (gesture & GESTURE_SWIPE_UP) != 0) {
             gesture_dir = Direction::Up;
             has_gesture_swipe = true;
-        } else if (IsGestureDetected(GESTURE_SWIPE_DOWN)) {
+        } else if (IsGestureDetected(GESTURE_SWIPE_DOWN) || (gesture & GESTURE_SWIPE_DOWN) != 0) {
             gesture_dir = Direction::Down;
             has_gesture_swipe = true;
         }
