@@ -8,6 +8,7 @@
 #include "../components/rhythm.h"
 #include "../entities/settings.h"
 #include "../constants.h"
+#include "../util/lane_utils.h"
 
 namespace {
 
@@ -27,6 +28,7 @@ void player_input_handle_go(entt::registry& reg, const GoEvent& evt) {
     if (!gameplay_input_enabled(reg)) return;
     auto view = reg.view<PlayerTag, PlayerShape, ShapeWindow, Lane, VerticalState>();
     for (auto [entity, pshape, swindow, lane, vstate] : view.each()) {
+        lane_utils::normalize(lane);
         int8_t delta = 0;
         if (evt.dir == Direction::Left  && lane.current > 0)
             delta = -1;

@@ -9,6 +9,7 @@
 #include "../components/song_state.h"
 #include "../components/gameplay_intents.h"
 #include "../constants.h"
+#include "../util/lane_utils.h"
 #include <raylib.h>
 #include <cmath>
 
@@ -53,6 +54,8 @@ void collision_system(entt::registry& reg, float /*dt*/) {
     auto player_entity = *player_view.begin();
     auto [p_transform, p_shape, p_window, p_lane, p_vstate] =
         player_view.get<WorldTransform, PlayerShape, ShapeWindow, Lane, VerticalState>(player_entity);
+    lane_utils::normalize(p_lane, &p_transform);
+    const int player_lane = p_lane.current;
 
     auto& song = reg.ctx().get<SongState>();
     const bool rhythm_mode = song.playing;
@@ -115,7 +118,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
             entt::exclude<ScoredTag, ResolvedObstacleTag, RequiredShape>);
         for (auto [e, obstacle, wt, blocked] : view.each()) {
             (void)obstacle;
-            resolve(e, wt.position.y, !((blocked.mask >> p_lane.current) & 1));
+            resolve(e, wt.position.y, !((blocked.mask >> player_lane) & 1));
         }
     }
 
@@ -158,7 +161,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
                 entt::exclude<ScoredTag, ResolvedObstacleTag, RequiredLane>);
             for (auto [e, obstacle, wt, req, blocked, info] : rhythm_view.each()) {
                 (void)obstacle;
-                bool lane_ok  = !((blocked.mask >> p_lane.current) & 1);
+                bool lane_ok  = !((blocked.mask >> player_lane) & 1);
                 if (!lane_ok) {
                     resolve(e, wt.position.y, false);
                     continue;
@@ -173,7 +176,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
                 entt::exclude<ScoredTag, ResolvedObstacleTag, RequiredLane, BeatInfo>);
             for (auto [e, obstacle, wt, req, blocked] : view.each()) {
                 (void)obstacle;
-                bool lane_ok  = !((blocked.mask >> p_lane.current) & 1);
+                bool lane_ok  = !((blocked.mask >> player_lane) & 1);
                 if (!lane_ok) {
                     resolve(e, wt.position.y, false);
                     continue;
@@ -189,7 +192,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
                 entt::exclude<ScoredTag, ResolvedObstacleTag>);
             for (auto [e, obstacle, wt, req, rlane, info] : rhythm_view.each()) {
                 (void)obstacle;
-                bool lane_ok  = (p_lane.current == rlane.lane);
+                bool lane_ok  = (player_lane == rlane.lane);
                 if (!lane_ok) {
                     resolve(e, wt.position.y, false);
                     continue;
@@ -204,7 +207,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
                 entt::exclude<ScoredTag, ResolvedObstacleTag, BeatInfo>);
             for (auto [e, obstacle, wt, req, rlane] : view.each()) {
                 (void)obstacle;
-                bool lane_ok  = (p_lane.current == rlane.lane);
+                bool lane_ok  = (player_lane == rlane.lane);
                 if (!lane_ok) {
                     resolve(e, wt.position.y, false);
                     continue;
@@ -236,7 +239,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
                 entt::exclude<ScoredTag, ResolvedObstacleTag, RequiredLane>);
             for (auto [e, obstacle, wt, req, blocked] : view.each()) {
                 (void)obstacle;
-                bool lane_ok  = !((blocked.mask >> p_lane.current) & 1);
+                bool lane_ok  = !((blocked.mask >> player_lane) & 1);
                 if (!lane_ok) {
                     resolve(e, wt.position.y, false);
                     continue;
@@ -252,7 +255,7 @@ void collision_system(entt::registry& reg, float /*dt*/) {
                 entt::exclude<ScoredTag, ResolvedObstacleTag>);
             for (auto [e, obstacle, wt, req, rlane] : view.each()) {
                 (void)obstacle;
-                bool lane_ok  = (p_lane.current == rlane.lane);
+                bool lane_ok  = (player_lane == rlane.lane);
                 if (!lane_ok) {
                     resolve(e, wt.position.y, false);
                     continue;

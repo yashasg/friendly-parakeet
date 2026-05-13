@@ -192,6 +192,42 @@ TEST_CASE("player_movement: clears stale lane target when target equals current"
     CHECK(transform.position.x == constants::LANE_X[1]);
 }
 
+TEST_CASE("player_movement: normalizes invalid current lane", "[player][issue900]") {
+    auto reg = make_registry();
+    auto p = make_player(reg);
+    auto& lane = reg.get<Lane>(p);
+    auto& transform = reg.get<WorldTransform>(p);
+    lane.current = -1;
+    lane.target = 0;
+    lane.lerp_t = 0.0f;
+    transform.position.x = -999.0f;
+
+    player_movement_system(reg, 0.016f);
+
+    CHECK(lane.current == constants::DEFAULT_LANE);
+    CHECK(lane.target == -1);
+    CHECK(lane.lerp_t == 1.0f);
+    CHECK(transform.position.x == constants::LANE_X[constants::DEFAULT_LANE]);
+}
+
+TEST_CASE("player_movement: normalizes invalid target lane", "[player][issue900]") {
+    auto reg = make_registry();
+    auto p = make_player(reg);
+    auto& lane = reg.get<Lane>(p);
+    auto& transform = reg.get<WorldTransform>(p);
+    lane.current = 1;
+    lane.target = constants::LANE_COUNT;
+    lane.lerp_t = 0.0f;
+    transform.position.x = (constants::LANE_X[1] + constants::LANE_X[2]) * 0.5f;
+
+    player_movement_system(reg, 0.016f);
+
+    CHECK(lane.current == 1);
+    CHECK(lane.target == -1);
+    CHECK(lane.lerp_t == 1.0f);
+    CHECK(transform.position.x == constants::LANE_X[1]);
+}
+
 TEST_CASE("player_movement: jump creates negative y_offset", "[player]") {
     auto reg = make_registry();
     auto p = make_player(reg);
