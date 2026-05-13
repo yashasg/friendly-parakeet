@@ -520,9 +520,10 @@ system in the same frame (unidirectional data flow).
  │  │                           Update InputState and enqueue│
  │  │                           GoEvent/ButtonPressEvent.    │
  │  │                                                        │
- │  │  2. other producers       UI controllers and           │
- │  │                           test_player_system enqueue   │
- │  │                           the same semantic events.    │
+ │  │  2. other producers       gameplay_hud_process_button_ │
+ │  │                           input and test_player_system │
+ │  │                           enqueue the same semantic    │
+ │  │                           events.                      │
  │  └────────────────────────────────────────────────────────┘
  │
  │  ┌─ PHASE 2: GAME STATE GATE ────────────────────────────┐
@@ -552,25 +553,25 @@ system in the same frame (unidirectional data flow).
  │  │     b. beat_scheduler_sys Spawn authored BeatMap notes │
  │  │                           whose spawn_time has arrived.│
  │  │                                                        │
- │  │     c. shape_window_sys   Advance active timing windows│
- │  │                           and morph interpolation.     │
+ │  │     c. player_movement    Advance lane and jump/slide. │
  │  │                                                        │
- │  │     d. player_movement    Advance lane and jump/slide. │
- │  │                                                        │
- │  │     e. scroll_system      Derive rhythm-obstacle       │
+ │  │     d. scroll_system      Derive rhythm-obstacle       │
  │  │                           positions from SongState     │
  │  │                           song_time + BeatInfo.        │
  │  │                                                        │
- │  │     f. motion_system      For every (WorldTransform,   │
+ │  │     e. motion_system      For every (WorldTransform,   │
  │  │                           MotionVelocity):             │
  │  │                           position += velocity * dt.   │
  │  │                           Simple, tight inner loop.    │
  │  │                                                        │
- │  │     g. collision_system   For each obstacle near       │
+ │  │     f. collision_system   For each obstacle near       │
  │  │                           PLAYER_Y: test shape match,  │
  │  │                           lane match, vertical state.  │
  │  │                           On match: emplace TimingGrade│
  │  │                           and ScoredTag.               │
+ │  │                                                        │
+ │  │     g. shape_window_sys   Advance active timing windows│
+ │  │                           and morph interpolation.     │
  │  │                                                        │
  │  │     h. miss_detection     Mark passed unresolved notes │
  │  │                           with MissTag/ScoredTag.      │
@@ -606,19 +607,14 @@ system in the same frame (unidirectional data flow).
  │
  │  ┌─ PHASE 5: RENDER (always runs) ──────────────────────┐
  │  │                                                        │
- │  │ 12. render systems        BeginDrawing/ClearBackground.│
- │  │                           Draw background.             │
- │  │                           Draw obstacles (Layer::Game).│
- │  │                           Draw player (Layer::Game).   │
- │  │                           Draw particles (Effects).    │
- │  │                           Draw popups (Effects).       │
- │  │                           Draw HUD (Layer::HUD):       │
- │  │                             score, energy bar,         │
- │  │                             proximity ring, buttons.   │
- │  │                           EndDrawing.                  │
+ │  │ 12. render systems        Update cameras, draw world   │
+ │  │                           and UI render targets, then  │
+ │  │                           composite both to the window.│
  │  │                                                        │
- │  │ 13. audio_system          Drain PlaySfxEvent dispatcher │
- │  │                           events.                      │
+ │  │ 13. audio_system          Drain PlaySfxEvent dispatcher│
+ │  │                           events after rendering.      │
+ │  │                                                        │
+ │  │ 14. haptic_system         Play queued haptic feedback. │
  │  └────────────────────────────────────────────────────────┘
  │
  ═══════════════════════════════════════════════════════════════
@@ -971,25 +967,28 @@ int main(int argc, char* argv[]) {
 │ Operation                      │ Timestep │ Why?     │
 ├────────────────────────────────┼──────────┼──────────┤
 │ raylib input polling            │ Variable │ OS events│
+│ HUD button processing          │ Variable │ UI events│
 │ test_player_system              │ Variable │ Automation│
 │ game_state_system              │ Fixed    │ Logic    │
 │ song_playback_system           │ Fixed    │ Timing   │
 │ beat_log_system                │ Fixed    │ Telemetry│
 │ beat_scheduler_system          │ Fixed    │ Logic    │
-│ shape_window_system            │ Fixed    │ Timing   │
 │ player_movement_system         │ Fixed    │ Physics  │
 │ scroll_system                  │ Fixed    │ Physics  │
 │ motion_system                  │ Fixed    │ Physics  │
 │ collision_system               │ Fixed    │ Physics  │
+│ shape_window_system            │ Fixed    │ Timing   │
 │ miss_detection_system          │ Fixed    │ Logic    │
 │ scoring_system                 │ Fixed    │ Logic    │
 │ obstacle_despawn_system        │ Fixed    │ Cleanup  │
 │ popup_feedback_system          │ Fixed    │ FX       │
 │ popup_display_system           │ Fixed    │ FX       │
 │ energy_system                  │ Fixed    │ Logic    │
+│ energy_bar_system              │ Fixed    │ UI state │
 │ particle_system                │ Fixed    │ FX       │
 │ render systems                 │ Variable │ Display  │
 │ audio_system                   │ Variable │ Playback │
+│ haptic_system                  │ Variable │ Feedback │
 └────────────────────────────────┴──────────┴──────────┘
 ```
 
