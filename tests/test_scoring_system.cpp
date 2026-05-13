@@ -395,7 +395,7 @@ TEST_CASE("scoring: NonScorableTag entity cleared without scoring", "[scoring][n
     auto e = reg.create();
     reg.emplace<ObstacleTag>(e);
     reg.emplace<WorldTransform>(e, WorldTransform{{300.0f, constants::PLAYER_Y}});
-    reg.emplace<Obstacle>(e, ObstacleKind::ShapeGate, int16_t{999});
+    reg.emplace<Obstacle>(e, int16_t{999});
     reg.emplace<NonScorableTag>(e);
     reg.emplace<ScoredTag>(e);
 
@@ -425,7 +425,7 @@ TEST_CASE("scoring: missed NonScorableTag entity is resolved without effects",
     auto e = reg.create();
     reg.emplace<ObstacleTag>(e);
     reg.emplace<WorldTransform>(e, WorldTransform{{300.0f, constants::PLAYER_Y}});
-    reg.emplace<Obstacle>(e, ObstacleKind::OnsetMarker, int16_t{0});
+    reg.emplace<Obstacle>(e, int16_t{0});
     reg.emplace<NonScorableTag>(e);
     reg.emplace<ScoredTag>(e);
     reg.emplace<MissTag>(e);
@@ -454,7 +454,7 @@ TEST_CASE("scoring: missed obstacle drains energy without setting terminal death
     auto e = reg.create();
     reg.emplace<ObstacleTag>(e);
     reg.emplace<WorldTransform>(e, WorldTransform{{300.0f, constants::PLAYER_Y}});
-    reg.emplace<Obstacle>(e, ObstacleKind::ShapeGate, int16_t{200});
+    reg.emplace<Obstacle>(e, int16_t{200});
     reg.emplace<ScoredTag>(e);
     reg.emplace<MissTag>(e);
 

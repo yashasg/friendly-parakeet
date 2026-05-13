@@ -688,7 +688,7 @@ TEST_CASE("scoring: timing_mult applied to scored obstacle", "[rhythm][scoring]"
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
     reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y}});
-    reg.emplace<Obstacle>(obs, ObstacleKind::ShapeGate, int16_t{200});
+    reg.emplace<Obstacle>(obs, int16_t{200});
     reg.emplace<ScoredTag>(obs);
     reg.emplace<TimingGrade>(obs, TimingTier::Perfect, 1.0f);
     int prev = score.score;

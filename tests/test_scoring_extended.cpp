@@ -20,7 +20,7 @@ entt::entity make_zero_point_passive_obstacle(entt::registry& reg) {
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
     reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y}});
-    reg.emplace<Obstacle>(obs, ObstacleKind::LaneBlock, int16_t{0});
+    reg.emplace<Obstacle>(obs, int16_t{0});
     reg.emplace<ScoredTag>(obs);
     return obs;
 }

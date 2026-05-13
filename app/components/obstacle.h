@@ -22,7 +22,6 @@ struct Obstacle {
 
     constexpr Obstacle() = default;
     constexpr explicit Obstacle(int16_t points) : base_points(points) {}
-    constexpr Obstacle(ObstacleKind, int16_t points) : base_points(points) {}
 };
 
 constexpr ObstacleKind obstacle_kind_from_components(bool has_required_shape,

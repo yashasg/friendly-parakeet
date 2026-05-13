@@ -106,7 +106,7 @@ TEST_CASE("death_model: close hit banks points without instant GameOver", "[deat
     reg.emplace<ObstacleTag>(obstacle);
     reg.emplace<WorldTransform>(obstacle, WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y}});
     reg.emplace<MotionVelocity>(obstacle, MotionVelocity{{0.0f, 0.0f}});
-    reg.emplace<Obstacle>(obstacle, ObstacleKind::ShapeGate, int16_t{constants::PTS_SHAPE_GATE});
+    reg.emplace<Obstacle>(obstacle, int16_t{constants::PTS_SHAPE_GATE});
     reg.emplace<RequiredShape>(obstacle, Shape::Circle);
 
     collision_system(reg, 0.016f);
@@ -125,7 +125,7 @@ TEST_CASE("death_model: close miss drains energy instead of instant GameOver", "
     reg.emplace<ObstacleTag>(obstacle);
     reg.emplace<WorldTransform>(obstacle, WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y}});
     reg.emplace<MotionVelocity>(obstacle, MotionVelocity{{0.0f, 0.0f}});
-    reg.emplace<Obstacle>(obstacle, ObstacleKind::ShapeGate, int16_t{constants::PTS_SHAPE_GATE});
+    reg.emplace<Obstacle>(obstacle, int16_t{constants::PTS_SHAPE_GATE});
     reg.emplace<RequiredShape>(obstacle, Shape::Triangle);
 
     collision_system(reg, 0.016f);
@@ -169,7 +169,7 @@ TEST_CASE("death_model: scroll-past miss drains energy and requests GameOver", "
     auto obstacle = reg.create();
     reg.emplace<ObstacleTag>(obstacle);
     reg.emplace<WorldTransform>(obstacle, WorldTransform{{0.0f, constants::DESTROY_Y + 10.0f}});
-    reg.emplace<Obstacle>(obstacle, ObstacleKind::ShapeGate, int16_t{constants::PTS_SHAPE_GATE});
+    reg.emplace<Obstacle>(obstacle, int16_t{constants::PTS_SHAPE_GATE});
 
     // miss_detection_system tags; scoring_system drains.
     miss_detection_system(reg, 0.016f);
@@ -203,7 +203,7 @@ TEST_CASE("death_model: scroll-past fatal miss triggers GameOver same frame", "[
     auto obstacle = reg.create();
     reg.emplace<ObstacleTag>(obstacle);
     reg.emplace<WorldTransform>(obstacle, WorldTransform{{0.0f, constants::DESTROY_Y + 10.0f}});
-    reg.emplace<Obstacle>(obstacle, ObstacleKind::ShapeGate, int16_t{constants::PTS_SHAPE_GATE});
+    reg.emplace<Obstacle>(obstacle, int16_t{constants::PTS_SHAPE_GATE});
 
     miss_detection_system(reg, 0.016f);
     scoring_system(reg, 0.016f);
@@ -228,7 +228,7 @@ TEST_CASE("death_model: scroll-past miss does not double-drain", "[death_model]"
     auto obstacle = reg.create();
     reg.emplace<ObstacleTag>(obstacle);
     reg.emplace<WorldTransform>(obstacle, WorldTransform{{0.0f, constants::DESTROY_Y + 10.0f}});
-    reg.emplace<Obstacle>(obstacle, ObstacleKind::ShapeGate, int16_t{constants::PTS_SHAPE_GATE});
+    reg.emplace<Obstacle>(obstacle, int16_t{constants::PTS_SHAPE_GATE});
 
     miss_detection_system(reg, 0.016f);
     scoring_system(reg, 0.016f);
