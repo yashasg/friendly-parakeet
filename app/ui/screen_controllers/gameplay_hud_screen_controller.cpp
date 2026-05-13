@@ -9,7 +9,6 @@
 #include "../../components/scoring.h"
 #include "../../components/song_state.h"
 #include "../../components/transform.h"
-#include "../../components/ui_layout_cache.h"
 #include "../../constants.h"
 #include "../../entities/settings.h"
 #include "../../util/rhythm_math.h"
@@ -54,48 +53,48 @@ void draw_shape_flat(Shape shape, float cx, float cy, float size, Color color) {
     }
 }
 
-HudLayout fallback_hud_layout() {
-    HudLayout layout{};
-    layout.btn_w = constants::BUTTON_W_N * constants::SCREEN_W_F;
-    layout.btn_h = constants::BUTTON_H_N * constants::SCREEN_H_F;
-    layout.btn_spacing = constants::BUTTON_SPACING_N * constants::SCREEN_W_F;
-    layout.btn_y = constants::BUTTON_Y_N * constants::SCREEN_H_F;
-    layout.active_bg = {60, 60, 100, 255};
-    layout.inactive_bg = {30, 30, 50, 200};
-    layout.active_border = {120, 180, 255, 255};
-    layout.inactive_border = {60, 60, 80, 255};
-    layout.active_icon = {200, 230, 255, 255};
-    layout.inactive_icon = {100, 100, 120, 200};
-    layout.approach_ring_max_radius_scale = 2.0f;
-    layout.ring_perfect = {100, 255, 100, 255};
-    layout.ring_near = {180, 255, 100, 255};
-    layout.ring_far = {120, 120, 180, 255};
-    layout.has_lane_divider = true;
-    layout.lane_divider_y = 1120.0f;
-    layout.lane_divider_color = {40, 40, 60, 200};
-    layout.valid = true;
-    return layout;
-}
+struct GameplayHudVisualStyle {
+    Color active_bg;
+    Color inactive_bg;
+    Color active_border;
+    Color inactive_border;
+    Color active_icon;
+    Color inactive_icon;
+    float approach_ring_max_radius_scale;
+    Color ring_perfect;
+    Color ring_near;
+    Color ring_far;
+    Color lane_divider_color;
+};
 
-const HudLayout& resolved_hud_layout(const entt::registry& reg) {
-    const auto* hud = reg.ctx().find<HudLayout>();
-    if (hud && hud->valid) return *hud;
-    static const HudLayout fallback = fallback_hud_layout();
-    return fallback;
-}
+constexpr GameplayHudVisualStyle kGameplayHudVisualStyle{
+    {60, 60, 100, 255},
+    {30, 30, 50, 200},
+    {120, 180, 255, 255},
+    {60, 60, 80, 255},
+    {200, 230, 255, 255},
+    {100, 100, 120, 200},
+    2.0f,
+    {100, 255, 100, 255},
+    {180, 255, 100, 255},
+    {120, 120, 180, 255},
+    {40, 40, 60, 200},
+};
 
-Color ring_color_for_cue(GameplayHudRingCue cue, const HudLayout& layout) {
+constexpr float kLaneDividerOffsetFromShapeRow = 20.0f;
+
+Color ring_color_for_cue(GameplayHudRingCue cue, const GameplayHudVisualStyle& style) {
     switch (cue) {
         case GameplayHudRingCue::Perfect:
-            return layout.ring_perfect;
+            return style.ring_perfect;
         case GameplayHudRingCue::Near:
-            return layout.ring_near;
+            return style.ring_near;
         case GameplayHudRingCue::Far:
-            return layout.ring_far;
+            return style.ring_far;
         case GameplayHudRingCue::Hidden:
             break;
     }
-    return layout.ring_far;
+    return style.ring_far;
 }
 
 struct ApproachRingEnvelope {
@@ -135,7 +134,7 @@ Rectangle shape_slot_bounds(const GameplayHudLayoutState& state, GameplayHudShap
 }
 
 void render_shape_buttons(const entt::registry& reg,
-                          const HudLayout& layout,
+                          const GameplayHudVisualStyle& style,
                           const GameplayHudLayoutState& ui_state) {
     struct ButtonVisual {
         Shape shape;
@@ -181,7 +180,7 @@ void render_shape_buttons(const entt::registry& reg,
     float perfect_dist = gameplay_hud_perfect_distance(song_state);
     float good_dist = gameplay_hud_good_distance(song_state);
     float ring_appear_dist = gameplay_hud_ok_distance(song_state);
-    float max_ring_radius = btn_radius * layout.approach_ring_max_radius_scale;
+    float max_ring_radius = btn_radius * style.approach_ring_max_radius_scale;
 
     // Reduce-motion (#534): suppress the continuous approach-ring lerp/fade
     // and snap to a static "perfect-window-imminent" indicator so the
@@ -191,9 +190,9 @@ void render_shape_buttons(const entt::registry& reg,
 
     for (const auto& button : buttons) {
         bool is_active = (active_shape == button.shape);
-        Color bg = is_active ? layout.active_bg : layout.inactive_bg;
-        Color border = is_active ? layout.active_border : layout.inactive_border;
-        Color icon = is_active ? layout.active_icon : layout.inactive_icon;
+        Color bg = is_active ? style.active_bg : style.inactive_bg;
+        Color border = is_active ? style.active_border : style.inactive_border;
+        Color icon = is_active ? style.active_icon : style.inactive_icon;
         DrawCircleV({button.cx, button.cy}, btn_radius, bg);
         DrawCircleLinesV({button.cx, button.cy}, btn_radius, border);
         draw_shape_flat(button.shape, button.cx, button.cy, btn_radius * 1.2f, icon);
@@ -211,7 +210,7 @@ void render_shape_buttons(const entt::registry& reg,
                                                      max_ring_radius, reduce_motion);
         if (envelope.alpha_scale <= 0.0f) continue;
 
-        Color base = ring_color_for_cue(cue, layout);
+        Color base = ring_color_for_cue(cue, style);
         Color ring_color = Fade(base, (200.0f / 255.0f) * envelope.alpha_scale);
         DrawCircleLinesV({button.cx, button.cy}, envelope.radius, ring_color);
         DrawCircleLinesV({button.cx, button.cy}, envelope.radius - 1.0f,
@@ -391,7 +390,6 @@ void render_gameplay_hud_screen_ui(entt::registry& reg) {
     auto& controller = screen_controller<GameplayHudController>(reg);
     auto& state = controller.state();
     auto* score = reg.ctx().find<ScoreState>();
-    const auto& hud_layout = resolved_hud_layout(reg);
 
     int saved_text_size = GuiGetStyle(DEFAULT, TEXT_SIZE);
 
@@ -431,7 +429,7 @@ void render_gameplay_hud_screen_ui(entt::registry& reg) {
         }
     }
 
-    render_shape_buttons(reg, hud_layout, state);
+    render_shape_buttons(reg, kGameplayHudVisualStyle, state);
 
     render_energy_bar(reg);
     GuiSetStyle(DEFAULT, TEXT_SIZE, 16);
@@ -439,11 +437,11 @@ void render_gameplay_hud_screen_ui(entt::registry& reg) {
     GuiLabel(Rectangle{ 10, 740, 90, 30 }, "ENERGY");
     GuiSetAlpha(1.0f);
 
-    if (hud_layout.has_lane_divider) {
-        DrawLineV({0.0f, hud_layout.lane_divider_y},
-                  {constants::SCREEN_W_F, hud_layout.lane_divider_y},
-                  hud_layout.lane_divider_color);
-    }
+    const Rectangle circle_bounds = shape_slot_bounds(state, GameplayHudShapeSlot::Circle);
+    const float lane_divider_y = circle_bounds.y - kLaneDividerOffsetFromShapeRow;
+    DrawLineV({0.0f, lane_divider_y},
+              {constants::SCREEN_W_F, lane_divider_y},
+              kGameplayHudVisualStyle.lane_divider_color);
 
     // Render Pause button from generated layout state.
     GuiSetStyle(DEFAULT, TEXT_SIZE, 20);
