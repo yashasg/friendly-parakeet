@@ -127,7 +127,7 @@ jobs:
           update-comment: true
           comment-tag: ctrf-windows
           upload-artifact: true
-          artifact-name: ctrf-report-windows
+          artifact-name: ctrf-report-windows-reporter
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -244,6 +244,6 @@ jobs:
           update-comment: true
           comment-tag: ctrf-windows-msvc
           upload-artifact: true
-          artifact-name: ctrf-report-windows-msvc
+          artifact-name: ctrf-report-windows-msvc-reporter
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
