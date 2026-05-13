@@ -189,14 +189,25 @@ jobs:
               r"^Bench:|^(python_tool_tests|loop2_content_gates_strict|"
               r"validate_loop1_diagnostics|validate_difficulty_ramp|"
               r"validate_offset_semantics|validate_max_beat_gap|"
-              r"validate_no_simultaneous_shape_gates|check_shape_change_gap|"
+              r"validate_no_simultaneous_shape_gates|"
+              r"validate_required_cross_lane_jump_time|check_shape_change_gap|"
               r"beatmap_editor_node_tests|service_worker_cache_policy_node_tests|"
               r"startup_shutdown_smoke)$"
           )
+          def normalize_ctest_name(name):
+              try:
+                  return name.encode("cp437").decode("utf-8")
+              except UnicodeError:
+                  return name
+
           with open("build-msvc/ci/ctest-tests.json", encoding="utf-8") as handle:
               payload = json.load(handle)
           names = sorted(
-              {test["name"] for test in payload["tests"] if not excluded.search(test["name"])}
+              {
+                  normalize_ctest_name(test["name"])
+                  for test in payload["tests"]
+                  if not excluded.search(test["name"])
+              }
           )
           with open("build-msvc/ci/ctest-nonbench-catch.txt", "w", encoding="utf-8", newline="\n") as handle:
               handle.write("\n".join(names))
@@ -208,5 +219,5 @@ jobs:
           diff -u build-msvc/ci/ctest-nonbench-catch.txt build-msvc/ci/catch-nonbench.txt
           ./build-msvc/Release/shapeshifter_tests.exe "~[bench]"
           ctest --test-dir build-msvc -C Release --output-on-failure -R "^startup_shutdown_smoke$"
-          ctest --test-dir build-msvc -C Release --output-on-failure -R "^(python_tool_tests|loop2_content_gates_strict|validate_loop1_diagnostics|validate_difficulty_ramp|validate_offset_semantics|validate_max_beat_gap|validate_no_simultaneous_shape_gates|check_shape_change_gap|beatmap_editor_node_tests|service_worker_cache_policy_node_tests)$"
+          ctest --test-dir build-msvc -C Release --output-on-failure -R "^(python_tool_tests|loop2_content_gates_strict|validate_loop1_diagnostics|validate_difficulty_ramp|validate_offset_semantics|validate_max_beat_gap|validate_no_simultaneous_shape_gates|validate_required_cross_lane_jump_time|check_shape_change_gap|beatmap_editor_node_tests|service_worker_cache_policy_node_tests)$"
         shell: bash
