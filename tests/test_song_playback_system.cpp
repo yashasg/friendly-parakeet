@@ -302,7 +302,6 @@ TEST_CASE("song_playback: pause to playing resume guard is one-shot",
     music.paused = true;
 
     gs.phase = GamePhase::Playing;
-    gs.previous_phase = GamePhase::Paused;
     song.playing = true;
 
     song_playback_system(reg, 0.016f);

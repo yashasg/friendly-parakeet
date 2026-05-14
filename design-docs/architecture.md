@@ -504,7 +504,6 @@ enum class EndScreenChoice : uint8_t {
 /// Singleton: governs which systems run and screen transitions.
 struct GameState {
     GamePhase  phase;
-    GamePhase  previous_phase;
     float      phase_timer;          // seconds in current phase
     bool       transition_pending;   // set to request a phase change
     GamePhase  next_phase;           // destination of pending transition
@@ -828,8 +827,8 @@ owns `ScorePopup::remaining`. Obstacle destruction is handled by
 `GameState::transition_pending` and `next_phase` are the canonical transition
 queue. UI controllers and input handlers request a phase by setting those
 fields; `game_state_system` drains the request, clears stale pointer state, and
-then enters the requested phase. `enter_phase` updates `previous_phase`,
-`phase`, and `phase_timer`.
+then enters the requested phase. `enter_phase` updates `phase` and
+`phase_timer`.
 
 `Tutorial` is a defined phase with a controller, but current shipped screens do
 not route into it. Its continue action transitions to `Playing`.
@@ -1051,7 +1050,6 @@ int main(int argc, char* argv[]) {
     wire_input_dispatcher(reg);
     reg.ctx().emplace<GameState>(GameState{
         .phase = GamePhase::Title,
-        .previous_phase = GamePhase::Title,
         .phase_timer = 0.0f,
         .transition_pending = false,
         .next_phase = GamePhase::Title,

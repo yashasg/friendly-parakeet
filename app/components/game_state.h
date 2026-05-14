@@ -43,7 +43,6 @@ enum class EndScreenChoice : uint8_t { None = 0, Restart = 1, LevelSelect = 2, M
 
 struct GameState {
     GamePhase phase            = GamePhase::Title;
-    GamePhase previous_phase   = GamePhase::Title;
     float     phase_timer      = 0.0f;
     bool      transition_pending = false;
     GamePhase next_phase       = GamePhase::Title;

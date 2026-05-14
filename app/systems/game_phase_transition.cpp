@@ -47,7 +47,6 @@ void update_web_title(GamePhase phase) {
 }  // namespace
 
 void enter_phase(GameState& gs, GamePhase next_phase) {
-    gs.previous_phase = gs.phase;
     gs.phase = next_phase;
     gs.phase_timer = 0.0f;
 #if defined(__EMSCRIPTEN__) && defined(SHAPESHIFTER_WASM_SMOKE_MARKERS)
