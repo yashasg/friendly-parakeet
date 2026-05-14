@@ -643,8 +643,7 @@ OnsetMarkerTag       0     WARM       obstacle_render_entity, session_logger
 Color                4     COLD       render
 DrawSize             8     COLD       render
 DrawLayer            1     COLD       render
-ScorePopup           5     COLD       render, scoring
-ParticleData         8     COLD       render
+PopupDisplay        36     COLD       popup_display (fade), ui_render
 ParticleTag          0     COLD       render (filter)
 ─────────────────────────────────────────────────────────────
 SINGLETONS (ctx)
