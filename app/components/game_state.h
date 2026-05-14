@@ -47,7 +47,6 @@ struct GameState {
     float     phase_timer      = 0.0f;
     bool      transition_pending = false;
     GamePhase next_phase       = GamePhase::Title;
-    float     transition_alpha = 0.0f;
     EndScreenChoice end_choice = EndScreenChoice::None;
 };
 

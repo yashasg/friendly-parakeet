@@ -182,7 +182,7 @@ bool game_loop_init(entt::registry& reg,
     reset_ctx_singleton<GameState>(reg, GameState{
         .phase = GamePhase::Title, .previous_phase = GamePhase::Title,
         .phase_timer = 0.0f, .transition_pending = false,
-        .next_phase = GamePhase::Title, .transition_alpha = 0.0f
+        .next_phase = GamePhase::Title
     });
     reset_ctx_singleton<ScoreState>(reg);
     reset_ctx_singleton<LevelSelectState>(reg);
