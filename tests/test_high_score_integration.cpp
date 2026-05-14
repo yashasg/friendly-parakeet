@@ -367,7 +367,7 @@ TEST_CASE("High score bootstrap: persistence path is populated for save call sit
     reg.ctx().get<HighScoreState>() = loaded_at_bootstrap;
     reg.ctx().get<HighScorePersistence>() = HighScorePersistence{file.string()};
     reg.ctx().get<GameState>() = GameState{
-        GamePhase::Playing, GamePhase::Playing, 0.0f, true, GamePhase::SongComplete
+        GamePhase::Playing, 0.0f, true, GamePhase::SongComplete
     };
     auto& score = reg.ctx().get<ScoreState>();
     score.high_score = 1000;
