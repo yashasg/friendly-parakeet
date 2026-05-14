@@ -580,7 +580,7 @@ struct ParticleTag {};
 ```
 
 Score feedback particles are spawned by `scoring_system` when a scored obstacle
-is processed. `particle_system` owns lifetime/gravity and `camera_system` builds
+is processed. `particle_system` owns lifetime/gravity and `game_camera_system` builds
 their effects-pass `ModelTransform` for rendering.
 
 ### 2.12 — COLD: Audio (singleton)
