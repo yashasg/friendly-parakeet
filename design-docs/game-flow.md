@@ -131,7 +131,7 @@ Shipped transitions, by controller, as of Round 6 audit:
 
 - `Title → LevelSelect` — body tap (`title_screen_controller.cpp:62-72`).
 - `Title → Settings` — gear-icon tap (same controller).
-- `Settings → Title` — back action (`ui_render_system.cpp:117-122`).
+- `Settings → Title` — back action (`settings_screen_controller.cpp:101-104` and `:141-144`).
 - `LevelSelect → Tutorial` — song selection when FTUE is incomplete.
 - `LevelSelect → Playing` — song selection after FTUE is complete.
 - `Playing ↔ Paused` — pause button / resume.
