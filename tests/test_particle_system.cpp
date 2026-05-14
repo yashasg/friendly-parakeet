@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
+#include "components/system_scratch.h"
 #include "test_helpers.h"
 #include "constants.h"
 
@@ -138,4 +139,26 @@ TEST_CASE("particle: reduce_motion=false preserves gravity behavior (#534)",
     particle_system(reg, 0.1f);
     CHECK_THAT(reg.get<MotionVelocity>(e).value.y,
                Catch::Matchers::WithinAbs(constants::PARTICLE_GRAVITY * 0.1f, 0.01f));
+}
+
+// #1089 — ParticleSystemScratch::capacity_exceeded_count must stay at zero
+// when a dense expiry pass fits inside the reserved expired buffer.
+TEST_CASE("particle: dense expiry burst stays within reserved capacity",
+          "[particle][issue1089]") {
+    auto reg = make_registry();
+    constexpr int dense_count = 6;
+    runtime_system_scratch_reserve(reg, dense_count);
+
+    auto& scratch = reg.ctx().get<ParticleSystemScratch>();
+    const auto expired_capacity = scratch.expired.capacity();
+
+    for (int i = 0; i < dense_count; ++i) {
+        // Tiny remaining lifetime so the next tick expires every particle.
+        make_particle(reg, 5.0f, 0.001f, 1.0f);
+    }
+
+    particle_system(reg, 0.016f);
+
+    CHECK(scratch.expired.capacity() == expired_capacity);
+    CHECK(scratch.capacity_exceeded_count == 0u);
 }

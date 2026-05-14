@@ -459,3 +459,26 @@ TEST_CASE("popup_display_system: reduce_motion=false leaves drift untouched (#53
     const auto& vel = reg.get<MotionVelocity>(e);
     CHECK(vel.value.y == -80.0f);  // popup_display_system never touches it
 }
+
+// #1089 — PopupDisplayScratch::capacity_exceeded_count must stay at zero when
+// a dense expiry pass fits inside the reserved expired buffer.
+TEST_CASE("popup_display_system: dense expiry burst stays within reserved capacity",
+          "[popup_display][issue1089]") {
+    entt::registry reg;
+    runtime_system_scratch_init(reg);
+    constexpr int dense_count = 6;
+    runtime_system_scratch_reserve(reg, dense_count);
+
+    auto& scratch = reg.ctx().get<PopupDisplayScratch>();
+    const auto expired_capacity = scratch.expired.capacity();
+
+    for (int i = 0; i < dense_count; ++i) {
+        // Tiny remaining lifetime so the next tick expires every popup.
+        make_popup_entity(reg, std::nullopt, 100, 0.001f, 1.0f);
+    }
+
+    popup_display_system(reg, 0.016f);
+
+    CHECK(scratch.expired.capacity() == expired_capacity);
+    CHECK(scratch.capacity_exceeded_count == 0u);
+}

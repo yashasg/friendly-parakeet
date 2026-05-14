@@ -5,10 +5,12 @@
 #include "components/player.h"
 #include "components/rendering.h"
 #include "components/shape_mesh.h"
+#include "components/system_scratch.h"
 #include "components/transform.h"
 #include "entities/obstacle_entity.h"
 #include "rendering/camera_resources.h"
 #include "systems/runtime_systems.h"
+#include "systems/all_systems.h"
 #include <raylib.h>
 #include <cmath>
 
@@ -184,4 +186,42 @@ TEST_CASE("game_camera_system rejects invalid PlayerShape before mesh lookup", "
 
     REQUIRE_NOTHROW(game_camera_system(reg, 0.0f));
     CHECK_FALSE(reg.all_of<ModelTransform>(player));
+}
+
+// #1089 — MeshChildCleanupScratch::capacity_exceeded_count must stay at zero
+// when a dense stale-parent cleanup pass fits inside the reserved
+// stale_children buffer. runtime_system_scratch_reserve sizes the buffer at
+// `beat_capacity * ObstacleChildren::MAX`, mirroring the worst-case slab
+// fan-out per beat.
+TEST_CASE("game_camera_system: dense stale-parent cleanup stays within reserved capacity",
+          "[camera3d][mesh_child][issue1089]") {
+    entt::registry reg;
+    reg.ctx().emplace<ShapeMeshConfig>();
+    reg.ctx().emplace<FloorParams>();
+    runtime_system_scratch_init(reg);
+    constexpr int beat_capacity = 4;
+    runtime_system_scratch_reserve(reg, beat_capacity);
+
+    auto& scratch = reg.ctx().get<MeshChildCleanupScratch>();
+    const auto stale_capacity = scratch.stale_children.capacity();
+    REQUIRE(stale_capacity >= static_cast<std::size_t>(beat_capacity * ObstacleChildren::MAX));
+
+    constexpr int dense_count = beat_capacity * ObstacleChildren::MAX;
+    for (int i = 0; i < dense_count; ++i) {
+        auto parent = reg.create();
+        reg.emplace<WorldTransform>(parent, WorldTransform{{static_cast<float>(i), 0.0f}});
+        auto child = reg.create();
+        reg.emplace<MeshChild>(
+            child,
+            MeshChild{parent, static_cast<float>(i), 0.0f, 20.0f, 30.0f, 40.0f, WHITE, 0, MeshType::Slab}
+        );
+        reg.emplace<ModelTransform>(child, ModelTransform{glm::mat4{1.0f}, WHITE, 0, MeshType::Slab});
+        reg.emplace<TagWorldPass>(child);
+        reg.destroy(parent);  // make MeshChild stale so cleanup path runs
+    }
+
+    game_camera_system(reg, 0.0f);
+
+    CHECK(scratch.stale_children.capacity() == stale_capacity);
+    CHECK(scratch.capacity_exceeded_count == 0u);
 }
