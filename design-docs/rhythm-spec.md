@@ -257,13 +257,13 @@ one reference.
 
 ```cpp
 struct SongResults {
-    int  perfects = 0;
-    int  goods    = 0;
-    int  oks      = 0;
-    int  misses   = 0;
-    int  chain    = 0;
-    int  max_chain = 0;
-    int  score    = 0;
+    int   perfect_count = 0;
+    int   good_count    = 0;
+    int   ok_count      = 0;
+    int   bad_count     = 0;
+    int   miss_count    = 0;
+    int   max_chain     = 0;
+    int   total_notes   = 0;
 };
 ```
 
@@ -714,7 +714,7 @@ if (!song) return;  // no rhythm context — skip
 
 ## Phase 6 — Results screen (PLANNED)
 ```
-  • SongResults: perfects/goods/oks/misses/chain/score
+  • SongResults: perfect_count/good_count/ok_count/bad_count/miss_count/max_chain/total_notes
   • Grade calculation: S/A/B/C/D/F from accuracy %
   • Results screen: shown on song completion or MISS game-over
 ```
