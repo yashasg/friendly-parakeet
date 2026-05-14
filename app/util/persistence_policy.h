@@ -33,6 +33,8 @@ struct Paths {
 
 Result resolve_paths(Paths& out_paths, const std::filesystem::path& root_override = {});
 
+std::error_code ensure_directory_exists(const std::filesystem::path& dir);
+
 Result prepare_for_persistence_read(const std::filesystem::path& path);
 Result flush_persistence_writes(const std::filesystem::path& path);
 

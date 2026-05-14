@@ -318,6 +318,22 @@ TEST_CASE("Persistence paths: one shared policy resolves both settings and high-
     std::filesystem::remove_all(paths.root_dir);
 }
 
+TEST_CASE("Persistence paths: nested root override creates parent directories recursively",
+          "[settings][persistence][issue-1025]") {
+    const auto root = std::filesystem::path("test_persistence_policy_nested_root");
+    const auto nested_root = root / "missing" / "parent" / "shapeshifter";
+    std::filesystem::remove_all(root);
+
+    persistence::Paths paths;
+    const auto result = persistence::resolve_paths(paths, nested_root);
+    REQUIRE(result.ok());
+    CHECK(std::filesystem::is_directory(nested_root));
+    CHECK(paths.settings_file == nested_root / "settings.json");
+    CHECK(paths.high_scores_file == nested_root / "high_scores.json");
+
+    std::filesystem::remove_all(root);
+}
+
 TEST_CASE("Persistence sync seams skip paths outside the web persistence root", "[settings]") {
     const std::filesystem::path current_dir_file = "settings_current_dir_tmp.json";
     CHECK(persistence::prepare_for_persistence_read(current_dir_file).ok());
@@ -389,6 +405,24 @@ TEST_CASE("Persistence paths: directory creation failure is observable", "[setti
     persistence::Paths paths;
     const auto result = persistence::resolve_paths(paths, blocked_root);
     CHECK(result.status == persistence::Status::DirectoryCreateFailed);
+
+    std::filesystem::remove_all(root);
+}
+
+TEST_CASE("Settings persistence: save_settings creates nested parent directories",
+          "[settings][persistence][issue-1025]") {
+    const auto root = std::filesystem::path("test_settings_nested_parent");
+    const auto file = root / "missing" / "parent" / "settings.json";
+    std::filesystem::remove_all(root);
+
+    SettingsState state;
+    state.audio_offset_ms = -40;
+    REQUIRE(settings::save_settings(state, file).ok());
+    CHECK(std::filesystem::exists(file));
+
+    SettingsState loaded;
+    REQUIRE(settings::load_settings(loaded, file).ok());
+    CHECK(loaded.audio_offset_ms == state.audio_offset_ms);
 
     std::filesystem::remove_all(root);
 }

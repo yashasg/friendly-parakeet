@@ -8,8 +8,6 @@
 #include <system_error>
 #include <utility>
 
-#include <raylib.h>
-
 entt::entity create_settings_entity(entt::registry& reg,
                                     SettingsState state,
                                     SettingsPersistence persistence) {
@@ -121,14 +119,6 @@ void destroy_settings_entity(entt::registry& reg) {
 namespace settings {
 
 namespace {
-
-std::error_code ensure_directory_exists(const std::filesystem::path& dir) {
-    if (dir.empty()) return {};
-    const std::string dir_path = dir.string();
-    if (DirectoryExists(dir_path.c_str())) return {};
-    if (MakeDirectory(dir_path.c_str()) == 0 && DirectoryExists(dir_path.c_str())) return {};
-    return std::make_error_code(std::errc::io_error);
-}
 
 bool json_integer_to_i64(const nlohmann::json& value, std::int64_t& out) {
     if (!value.is_number_integer()) return false;
@@ -251,7 +241,7 @@ persistence::Result load_settings(SettingsState& state, const std::filesystem::p
 }
 
 persistence::Result save_settings(const SettingsState& state, const std::filesystem::path& path) {
-    const auto ensure_error = ensure_directory_exists(path.parent_path());
+    const auto ensure_error = persistence::ensure_directory_exists(path.parent_path());
     if (ensure_error) {
         return persistence::Result{persistence::Status::DirectoryCreateFailed, ensure_error};
     }
