@@ -12,7 +12,7 @@
 
 #include <cmath>
 
-void beat_scheduler_system(entt::registry& reg, float /*dt*/) {
+void beat_scheduler_system(entt::registry& reg, [[maybe_unused]] float dt) {
     auto* song = reg.ctx().find<SongState>();
     auto* map  = find_beat_map(reg);
     if (!song || !map || !song->playing) return;

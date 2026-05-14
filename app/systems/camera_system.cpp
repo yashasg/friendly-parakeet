@@ -245,7 +245,7 @@ static glm::mat4 make_shape_matrix(uint8_t mesh_index, float cx, float y_3d, flo
 
 // ── game_camera_system: model-to-world transforms for all 3D renderables ────
 
-void game_camera_system(entt::registry& reg, float /*dt*/) {
+void game_camera_system(entt::registry& reg, [[maybe_unused]] float dt) {
     const auto& mesh_config = reg.ctx().get<ShapeMeshConfig>();
 
 
@@ -360,7 +360,7 @@ void compute_screen_transform(entt::registry& reg) {
 
 // ── ui_camera_system: screen-space transforms for UI layer ──────────────────
 
-void ui_camera_system(entt::registry& reg, float /*dt*/) {
+void ui_camera_system(entt::registry& reg, [[maybe_unused]] float dt) {
     // ScreenTransform is computed once per frame by game_loop_frame (before
     // input_system) and stored in the registry context.  Reading it here is
     // sufficient; do NOT call compute_screen_transform again (#241).

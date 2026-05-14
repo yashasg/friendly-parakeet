@@ -31,7 +31,7 @@ float flash_overlay_strength(float flash_ratio, bool reduce_motion) {
 
 } // namespace
 
-void energy_bar_system(entt::registry& reg, float /*dt*/) {
+void energy_bar_system(entt::registry& reg, [[maybe_unused]] float dt) {
     if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
 
     const auto* energy = reg.ctx().find<EnergyState>();

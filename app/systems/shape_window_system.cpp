@@ -45,7 +45,7 @@ void update_morph_in(entt::registry& reg,
 
 }  // namespace
 
-void shape_window_activation_system(entt::registry& reg, float /*dt*/) {
+void shape_window_activation_system(entt::registry& reg, [[maybe_unused]] float dt) {
     auto* song = reg.ctx().find<SongState>();
     if (!song) return;
 
@@ -58,7 +58,7 @@ void shape_window_activation_system(entt::registry& reg, float /*dt*/) {
     }
 }
 
-void shape_window_system(entt::registry& reg, float /*dt*/) {
+void shape_window_system(entt::registry& reg, [[maybe_unused]] float dt) {
     auto* song = reg.ctx().find<SongState>();
     if (!song) return;
 

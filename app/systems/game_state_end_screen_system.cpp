@@ -12,7 +12,7 @@ GamePhase resolve_end_screen_phase(EndScreenChoice choice) {
 
 }  // namespace
 
-void game_state_end_screen_system(entt::registry& reg, float /*dt*/) {
+void game_state_end_screen_system(entt::registry& reg, [[maybe_unused]] float dt) {
     auto& gs = reg.ctx().get<GameState>();
     const bool game_over_ready =
         gs.phase == GamePhase::GameOver && gs.phase_timer > constants::GAME_OVER_INPUT_DELAY;
