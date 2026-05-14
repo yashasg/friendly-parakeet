@@ -5,6 +5,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 #include <entt/entt.hpp>
+#include "components/game_state.h"
 #include "components/input_events.h"
 #include "components/system_scratch.h"
 #include "test_helpers.h"

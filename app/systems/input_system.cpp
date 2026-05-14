@@ -3,6 +3,7 @@
 #include "../input/keyboard_shape_mapping.h"
 #include "../components/input.h"
 #include "../components/input_events.h"
+#include "../components/player.h"
 #include "../components/rendering.h"
 #include "../components/game_state.h"
 #include "../constants.h"

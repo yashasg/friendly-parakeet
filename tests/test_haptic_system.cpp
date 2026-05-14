@@ -3,6 +3,7 @@
 #include "components/haptics.h"
 #include "components/audio_events.h"
 #include "entities/settings.h"
+#include "components/game_state.h"
 #include "components/player.h"
 #include "components/transform.h"
 #include "components/input_events.h"
