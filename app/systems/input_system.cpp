@@ -378,14 +378,12 @@ void input_system(entt::registry& reg, float raw_dt) {
         Direction gesture_dir = Direction::Up;
         const bool has_gesture_swipe = raylib_gesture_swipe_direction(gesture_dir);
 
-        bool gesture_started_in_swipe_zone = false;
-        if (input.click) {
-            gesture_started_in_swipe_zone = input.end_y < constants::SCREEN_H_F * constants::SWIPE_ZONE_SPLIT;
-        } else {
-            const Vector2 touch_pos = GetTouchPosition(0);
-            const glm::vec2 tp = screen_to_virtual({touch_pos.x, touch_pos.y}, st);
-            gesture_started_in_swipe_zone = tp.y < constants::SCREEN_H_F * constants::SWIPE_ZONE_SPLIT;
-        }
+        // Gesture fired after the touch already ended: use the captured swipe
+        // start (set at touch-down) instead of GetTouchPosition(0), which would
+        // return stale data or fall back to the mouse cursor on raylib 5.x.
+        const float zone_threshold = constants::SCREEN_H_F * constants::SWIPE_ZONE_SPLIT;
+        const float gesture_origin_y = input.click ? input.end_y : input.start_y;
+        const bool gesture_started_in_swipe_zone = gesture_origin_y < zone_threshold;
 
         if (has_gesture_swipe && gesture_started_in_swipe_zone) {
             input.click = false;
