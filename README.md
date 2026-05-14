@@ -58,6 +58,17 @@ See `ios/README.md` for blocker checklist and full command modes.
 ./build/shapeshifter --difficulty hard
 ```
 
+### Level Selection
+
+```bash
+./build/shapeshifter --level 1              # optional; defaults to the configured default level
+./build/shapeshifter --level 1_stomper
+./build/shapeshifter --level "MENTAL CORRUPTION"
+```
+
+`--level <level_id>` accepts a numeric index (`1..N`), a level key, or a level title
+recognized by the runtime parser.
+
 ### Test Player (AI)
 
 ```bash
