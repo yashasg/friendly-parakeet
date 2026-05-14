@@ -279,7 +279,7 @@ TEST_CASE("beat_scheduler: spawns multiple beats when time is past all", "[beat_
 
     int count = 0;
     for (auto e : reg.view<ObstacleTag>()) { ++count; (void)e; }
-    CHECK(count == 3);
+    CHECK(count == 4);
     CHECK(song.next_spawn_idx == 4);
 }
 
@@ -298,6 +298,63 @@ TEST_CASE("beat_scheduler: skips unsupported active beatmap obstacle kinds", "[b
 
     auto view = reg.view<ObstacleTag>();
     CHECK(view.begin() == view.end());
+    CHECK(song.next_spawn_idx == 1);
+}
+
+TEST_CASE("beat_scheduler: spawns OnsetMarker as visible non-scorable cue",
+          "[beat_scheduler][onset_marker][issue1042]") {
+    auto reg = make_rhythm_registry();
+    auto& song = reg.ctx().get<SongState>();
+    auto& map = beat_map(reg);
+    auto& score = reg.ctx().get<ScoreState>();
+    auto& energy = reg.ctx().get<EnergyState>();
+    auto& results = reg.ctx().get<SongResults>();
+
+    map.beats.push_back({0, ObstacleKind::OnsetMarker, Shape::Circle, 1, 0});
+    song.song_time = 10.0f;
+    song.next_spawn_idx = 0;
+
+    beat_scheduler_system(reg, 0.016f);
+
+    auto view = reg.view<ObstacleTag, OnsetMarkerTag, NonScorableTag, Obstacle,
+                         BeatInfo, WorldTransform, ObstacleChildren>();
+    REQUIRE(view.size_hint() == 1);
+
+    entt::entity cue = entt::null;
+    for (auto [e, obstacle, beat, wt, children] : view.each()) {
+        (void)beat;
+        cue = e;
+        CHECK(obstacle.base_points == int16_t{0});
+        CHECK_FALSE(reg.all_of<RequiredShape>(e));
+        CHECK_FALSE(reg.all_of<BlockedLanes>(e));
+        CHECK_FALSE(reg.all_of<RequiredLane>(e));
+        REQUIRE(children.count == 1);
+        const auto child = children.children[0];
+        REQUIRE(reg.valid(child));
+        REQUIRE(reg.all_of<MeshChild>(child));
+        const auto& mesh = reg.get<MeshChild>(child);
+        CHECK(mesh.mesh_type == MeshType::Slab);
+        CHECK_THAT(mesh.width, Catch::Matchers::WithinAbs(constants::SCREEN_W_F, 0.01f));
+
+        wt.position.y = constants::DESTROY_Y + 10.0f;
+    }
+    REQUIRE(reg.valid(cue));
+
+    const int score_before = score.score;
+    const int chain_before = score.chain_count;
+    const float energy_before = energy.energy;
+    const int misses_before = results.miss_count;
+
+    miss_detection_system(reg, 0.0f);
+    scoring_system(reg, 0.0f);
+    energy_system(reg, 0.0f);
+
+    CHECK_FALSE(reg.all_of<MissTag>(cue));
+    CHECK_FALSE(reg.all_of<ScoredTag>(cue));
+    CHECK(score.score == score_before);
+    CHECK(score.chain_count == chain_before);
+    CHECK(energy.energy == energy_before);
+    CHECK(results.miss_count == misses_before);
     CHECK(song.next_spawn_idx == 1);
 }
 
@@ -344,7 +401,7 @@ TEST_CASE("beat_scheduler: spawns all queued beats from BeatMap entries", "[beat
         ++obstacle_count;
         if (reg.all_of<RequiredShape>(e)) ++shape_gate_count;
     }
-    CHECK(obstacle_count == 2);
+    CHECK(obstacle_count == 3);
     CHECK(shape_gate_count == 2);
     CHECK(song.next_spawn_idx == 3);
 }

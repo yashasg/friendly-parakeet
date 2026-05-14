@@ -286,7 +286,7 @@ void test_player_system(entt::registry& reg, float dt) {
     }
 
     auto obs_view = reg.view<ObstacleTag, WorldTransform, Obstacle>(
-        entt::exclude<ScoredTag, TestPlayerPlannedTag>);
+        entt::exclude<ScoredTag, TestPlayerPlannedTag, NonScorableTag>);
     for (auto [entity, obs_wt, obs] : obs_view.each()) {
         (void)obs;
         float dist = p_transform.position.y - obs_wt.position.y;
@@ -444,7 +444,8 @@ void test_player_system(entt::registry& reg, float dt) {
                                  && pending_shape_obstacle != action.obstacle);
         bool zone_blocked = false;
         {
-            auto zone_view = reg.view<ObstacleTag, Obstacle, WorldTransform>(entt::exclude<ScoredTag>);
+            auto zone_view = reg.view<ObstacleTag, Obstacle, WorldTransform>(
+                entt::exclude<ScoredTag, NonScorableTag>);
             for (auto [ze, obstacle, zwt] : zone_view.each()) {
                 (void)obstacle;
                 if (ze == action.obstacle) continue; // don't self-block
@@ -465,7 +466,8 @@ void test_player_system(entt::registry& reg, float dt) {
             if (action.target_lane < next_lane) next_lane--;
             else if (action.target_lane > next_lane) next_lane++;
 
-            auto closer_view = reg.view<ObstacleTag, Obstacle, WorldTransform>(entt::exclude<ScoredTag>);
+            auto closer_view = reg.view<ObstacleTag, Obstacle, WorldTransform>(
+                entt::exclude<ScoredTag, NonScorableTag>);
             for (auto [oe, obstacle, owt] : closer_view.each()) {
                 (void)obstacle;
                 if (oe == action.obstacle) continue;
@@ -530,7 +532,8 @@ void test_player_system(entt::registry& reg, float dt) {
                                       && pending_shape_obstacle != action.obstacle);
         bool vert_zone_blocked = false;
         {
-            auto zone_view = reg.view<ObstacleTag, Obstacle, WorldTransform>(entt::exclude<ScoredTag>);
+            auto zone_view = reg.view<ObstacleTag, Obstacle, WorldTransform>(
+                entt::exclude<ScoredTag, NonScorableTag>);
             for (auto [ze, obstacle, zwt] : zone_view.each()) {
                 (void)obstacle;
                 if (ze == action.obstacle) continue;

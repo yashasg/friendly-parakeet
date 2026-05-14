@@ -93,10 +93,12 @@ void spawn_obstacle_meshes(entt::registry& reg, entt::entity logical) {
     const auto* wt_ptr = reg.try_get<WorldTransform>(logical);
     auto& col = reg.get<Color>(logical);
     auto& dsz = reg.get<DrawSize>(logical);
-    const ObstacleKind kind = obstacle_kind_from_components(
-        reg.all_of<RequiredShape>(logical),
-        reg.all_of<BlockedLanes>(logical),
-        reg.all_of<RequiredLane>(logical));
+    const ObstacleKind kind = reg.all_of<OnsetMarkerTag>(logical)
+        ? ObstacleKind::OnsetMarker
+        : obstacle_kind_from_components(
+            reg.all_of<RequiredShape>(logical),
+            reg.all_of<BlockedLanes>(logical),
+            reg.all_of<RequiredLane>(logical));
 
     switch (kind) {
         case ObstacleKind::ShapeGate: {
@@ -169,6 +171,10 @@ void spawn_obstacle_meshes(entt::registry& reg, entt::entity logical) {
                                 0.0f, 30, {255, 255, 255, 180});
             break;
         }
+        case ObstacleKind::OnsetMarker:
+            add_slab_child(reg, logical, 0.0f, dsz.w, dsz.h,
+                           constants::OBSTACLE_3D_HEIGHT, col);
+            break;
         default:
             break;
     }

@@ -129,10 +129,12 @@ void session_log_on_obstacle_spawn(entt::registry& reg, entt::entity entity) {
     if (rlane) lane = rlane->lane;
 
     float arrival = beat ? beat->arrival_time : 0.0f;
-    const ObstacleKind kind = obstacle_kind_from_components(
-        reg.all_of<RequiredShape>(entity),
-        reg.all_of<BlockedLanes>(entity),
-        reg.all_of<RequiredLane>(entity));
+    const ObstacleKind kind = reg.all_of<OnsetMarkerTag>(entity)
+        ? ObstacleKind::OnsetMarker
+        : obstacle_kind_from_components(
+            reg.all_of<RequiredShape>(entity),
+            reg.all_of<BlockedLanes>(entity),
+            reg.all_of<RequiredLane>(entity));
     const std::string_view kind_name = session_log_enum_name_or_unknown(kind);
     const std::string_view shape_name = req ? session_log_enum_name_or_unknown(req->shape) : std::string_view{"-"};
 
