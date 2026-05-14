@@ -1531,10 +1531,27 @@ collision window — but that day will not come for an endless runner.
 
 ### 8.6 Render System Organization
 
-The render system draws in layer order to avoid sorting:
+The render layer is implemented as three free functions in
+`app/systems/runtime_systems.h`, called in this order each frame from
+`main.cpp`:
+
+- `floor_render_system(const entt::registry&)` — Layer 0 (floor / background grid)
+- `game_render_system(const entt::registry&, float alpha)` — Layers 1–2
+  (obstacles, player, particles, score popups)
+- `ui_render_system(entt::registry&, float alpha)` — Layer 3 + screen overlays
+  (HUD, title, pause, game over, settings, song-complete)
+
+Note that `ui_render_system` takes a non-const registry because UI controllers
+mutate state (e.g., button presses queue phase transitions), while the two
+game-world passes are read-only.
+
+The pseudocode below is a single-function illustration of the combined
+per-frame draw order; the real code splits these layers across the three
+functions above.
 
 ```cpp
-void render_system(entt::registry& reg, float alpha) {
+// Combined render-layer pseudocode (real implementation is split — see above).
+void render_frame_pseudocode(entt::registry& reg, float alpha) {
     ClearBackground({18, 18, 24, 255});
 
     auto phase = reg.ctx().get<GameState>().phase;
