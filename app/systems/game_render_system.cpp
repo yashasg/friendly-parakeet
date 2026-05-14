@@ -3,6 +3,7 @@
 #include "floor_render_system.h"
 #include "../components/rendering.h"
 #include "../components/game_state.h"
+#include "../util/shape_lane_mapping.h"
 #include "camera_system.h"
 #include <glm/mat4x4.hpp>
 #include <raylib.h>
@@ -27,6 +28,7 @@ static void draw_model_transform(const camera::ShapeMeshes& sm, const ModelTrans
             DrawMesh(sm.slab, mat, matrix);
             break;
         case MeshType::Shape:
+            if (mt.mesh_index >= kShapeCount) return;
             DrawMesh(sm.shapes[mt.mesh_index], mat, matrix);
             break;
         case MeshType::Quad:

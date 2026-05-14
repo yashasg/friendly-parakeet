@@ -4,10 +4,22 @@
 #include "../components/rendering.h"
 #include "obstacle_render_entity.h"
 #include "../constants.h"
+#include "../util/shape_lane_mapping.h"
+#include <stdexcept>
 
 namespace {
 
+bool obstacle_kind_requires_shape(ObstacleKind kind) {
+    return kind == ObstacleKind::ShapeGate
+        || kind == ObstacleKind::ComboGate
+        || kind == ObstacleKind::SplitPath;
+}
+
 entt::entity spawn_obstacle_base(entt::registry& reg, const ObstacleSpawnParams& params) {
+    if (obstacle_kind_requires_shape(params.kind) && !is_valid_shape(params.shape)) {
+        throw std::logic_error("Invalid obstacle shape");
+    }
+
     auto e = reg.create();
     reg.emplace<WorldTransform>(e, WorldTransform{{params.x, params.y}});
     reg.emplace<DrawLayer>(e, Layer::Game);
@@ -18,8 +30,7 @@ entt::entity spawn_obstacle_base(entt::registry& reg, const ObstacleSpawnParams&
             reg.emplace<Obstacle>(e, int16_t{constants::PTS_SHAPE_GATE});
             reg.emplace<RequiredShape>(e, params.shape);
             reg.emplace<DrawSize>(e, constants::SCREEN_W_F, 80.0f);
-            const auto shape_index = static_cast<int>(params.shape);
-            reg.emplace<Color>(e, constants::SHAPE_COLORS[shape_index]);
+            reg.emplace<Color>(e, constants::SHAPE_COLORS[shape_index(params.shape)]);
             break;
         }
         case ObstacleKind::LaneBlock: {

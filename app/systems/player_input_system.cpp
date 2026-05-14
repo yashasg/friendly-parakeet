@@ -9,6 +9,7 @@
 #include "../entities/settings.h"
 #include "../constants.h"
 #include "../util/lane_utils.h"
+#include "../util/shape_lane_mapping.h"
 
 namespace {
 
@@ -60,6 +61,12 @@ void player_input_handle_press(entt::registry& reg, const ButtonPressEvent& evt)
     const bool rhythm_mode = (song != nullptr && (song->playing || song->finished));
 
     auto pressed_shape = evt.shape;
+    const int pressed_shape_index = shape_index(pressed_shape);
+    if (pressed_shape_index < 0) {
+        TraceLog(LOG_WARNING, "player_input_system ignored invalid shape %d",
+                 static_cast<int>(pressed_shape));
+        return;
+    }
 
     auto begin_shape_window = [&](PlayerShape& ps, ShapeWindow& sw) {
         Shape previous_shape = ps.current;
@@ -95,8 +102,7 @@ void player_input_handle_press(entt::registry& reg, const ButtonPressEvent& evt)
                 pshape.previous = pshape.current;
                 pshape.current  = pressed_shape;
                 pshape.morph_t  = 1.0f;
-                auto si = static_cast<int>(pressed_shape);
-                auto& sc = constants::SHAPE_COLORS[si];
+                const auto& sc = constants::SHAPE_COLORS[pressed_shape_index];
                 reg.replace<Color>(entity, sc);
                 if (auto* disp = reg.ctx().find<entt::dispatcher>()) {
                     disp->enqueue<PlaySfxEvent>({SFX::ShapeShift});
