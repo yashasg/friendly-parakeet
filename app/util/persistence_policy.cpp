@@ -93,14 +93,6 @@ bool path_uses_web_persistence(const std::filesystem::path& path) {
 }
 #endif
 
-std::error_code ensure_directory_exists(const std::filesystem::path& dir) {
-    if (dir.empty()) return {};
-    const std::string dir_path = dir.string();
-    if (DirectoryExists(dir_path.c_str())) return {};
-    if (MakeDirectory(dir_path.c_str()) == 0 && DirectoryExists(dir_path.c_str())) return {};
-    return std::make_error_code(std::errc::io_error);
-}
-
 std::filesystem::path resolve_root_dir(const std::filesystem::path& root_override) {
     if (!root_override.empty()) {
         return root_override;
@@ -129,6 +121,25 @@ std::filesystem::path resolve_root_dir(const std::filesystem::path& root_overrid
 }
 
 }  // namespace
+
+std::error_code ensure_directory_exists(const std::filesystem::path& dir) {
+    if (dir.empty()) return {};
+
+    std::error_code ec;
+    const bool path_exists = std::filesystem::exists(dir, ec);
+    if (ec) return ec;
+    if (path_exists) {
+        if (std::filesystem::is_directory(dir, ec)) return {};
+        return ec ? ec : std::make_error_code(std::errc::not_a_directory);
+    }
+
+    if (std::filesystem::create_directories(dir, ec)) return {};
+    if (ec) return ec;
+
+    return std::filesystem::is_directory(dir, ec)
+        ? std::error_code{}
+        : (ec ? ec : std::make_error_code(std::errc::io_error));
+}
 
 Result resolve_paths(Paths& out_paths, const std::filesystem::path& root_override) {
 #if defined(__EMSCRIPTEN__)

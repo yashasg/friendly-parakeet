@@ -118,14 +118,6 @@ int32_t get_current_high_score(const HighScoreState& state) {
 
 namespace {
 
-std::error_code ensure_directory_exists(const std::filesystem::path& dir) {
-    if (dir.empty()) return {};
-    const std::string dir_path = dir.string();
-    if (DirectoryExists(dir_path.c_str())) return {};
-    if (MakeDirectory(dir_path.c_str()) == 0 && DirectoryExists(dir_path.c_str())) return {};
-    return std::make_error_code(std::errc::io_error);
-}
-
 nlohmann::json high_score_state_to_json(const HighScoreState& state) {
     nlohmann::json result;
     nlohmann::json scores_obj;
@@ -225,7 +217,7 @@ persistence::Result load_high_scores(HighScoreState& state, const std::filesyste
 }
 
 persistence::Result save_high_scores(const HighScoreState& state, const std::filesystem::path& path) {
-    const auto ensure_error = ensure_directory_exists(path.parent_path());
+    const auto ensure_error = persistence::ensure_directory_exists(path.parent_path());
     if (ensure_error) {
         return persistence::Result{persistence::Status::DirectoryCreateFailed, ensure_error};
     }

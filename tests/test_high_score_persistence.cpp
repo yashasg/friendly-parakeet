@@ -313,6 +313,24 @@ TEST_CASE("High score persistence: save reports unwritable parent path", "[high_
     remove_path(root);
 }
 
+TEST_CASE("High score persistence: save creates nested parent directories",
+          "[high_score][persistence][issue-1025]") {
+    const auto root = std::filesystem::path("test_high_score_nested_parent");
+    const auto file = root / "missing" / "parent" / "high_scores.json";
+    remove_path(root);
+
+    HighScoreState original;
+    high_score::set_score(original, "song_001|easy", 1000);
+    REQUIRE(high_score::save_high_scores(original, file).ok());
+    CHECK(std::filesystem::exists(file));
+
+    HighScoreState loaded;
+    REQUIRE(high_score::load_high_scores(loaded, file).ok());
+    CHECK(high_score::get_score(loaded, "song_001|easy") == 1000);
+
+    remove_path(root);
+}
+
 TEST_CASE("High score helper: file path resolution reports failure without CWD fallback", "[high_score]") {
     const auto root = std::filesystem::path("test_high_score_path_resolution_failure");
     const auto blocked_root = root / "blocked_root";
