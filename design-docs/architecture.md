@@ -352,12 +352,13 @@ struct ParticleData {
 
 /// Singleton: overall score state. Written by scoring_system only.
 struct ScoreState {
-    int32_t  score;              // banked score
-    int32_t  displayed_score;    // for smooth scroll-up animation
-    int32_t  high_score;         // persisted across sessions
-    int32_t  chain_count;        // consecutive obstacles cleared
-    float    chain_timer;        // seconds since last clear, retained across rests
-    float    distance_traveled;  // total pixels scrolled (for distance bonus)
+    int32_t score                   = 0;     // banked score
+    int32_t displayed_score         = 0;     // for smooth scroll-up animation
+    int32_t high_score              = 0;     // persisted across sessions
+    int32_t chain_count             = 0;     // consecutive obstacles cleared
+    float   chain_timer             = 0.0f;  // seconds since last clear, retained across rests
+    float   distance_traveled       = 0.0f;  // total pixels scrolled (for distance bonus)
+    float   passive_score_remainder = 0.0f;  // fractional passive score carried across fixed ticks
 };
 
 /// Score popup entity component. 8 bytes.
