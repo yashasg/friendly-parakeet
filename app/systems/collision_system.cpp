@@ -118,6 +118,24 @@ void collision_system(entt::registry& reg, [[maybe_unused]] float dt) {
         }
     };
 
+    auto resolve_shape_obstacle = [&](entt::entity entity,
+                                      const WorldTransform& wt,
+                                      Shape required_shape,
+                                      bool lane_ok,
+                                      const BeatInfo* timing_info) {
+        if (!lane_ok) {
+            resolve(entity, wt.position.y, false);
+            return;
+        }
+
+        const bool shape_ok =
+            player_matches_required_shape(p_shape, p_window, required_shape, rhythm_mode);
+        if (shape_ok && timing_info && can_grade_shape) {
+            grade_shape_timing(entity, timing_info->arrival_time);
+        }
+        resolve(entity, wt.position.y, shape_ok);
+    };
+
     // Per-kind structural views — each loop touches only entities that actually
     // carry the required components, eliminating per-entity try_get branches.
 
@@ -132,146 +150,60 @@ void collision_system(entt::registry& reg, [[maybe_unused]] float dt) {
     }
 
 
-    if (can_grade_shape) {
-        // ShapeGate: RequiredShape only (no BlockedLanes, no RequiredLane)
-        {
-            auto rhythm_view = reg.view<ObstacleTag, Obstacle, WorldTransform, RequiredShape, BeatInfo>(
-                entt::exclude<ScoredTag, ResolvedObstacleTag, BlockedLanes, RequiredLane>);
-            for (auto [e, obstacle, wt, req, info] : rhythm_view.each()) {
-                (void)obstacle;
-                bool shape_match = player_matches_required_shape(p_shape, p_window, req.shape, rhythm_mode);
-                bool lane_match = shape_gate_lane_match(wt.position.x, player_x);
-                if (!lane_match) {
-                    resolve(e, wt.position.y, false);
-                    continue;
-                }
-                bool cleared = shape_match;
-                if (cleared) grade_shape_timing(e, info.arrival_time);
-                resolve(e, wt.position.y, cleared);
-            }
-
-            auto view = reg.view<ObstacleTag, Obstacle, WorldTransform, RequiredShape>(
-                entt::exclude<ScoredTag, ResolvedObstacleTag, BlockedLanes, RequiredLane, BeatInfo>);
-            for (auto [e, obstacle, wt, req] : view.each()) {
-                (void)obstacle;
-                bool shape_match = player_matches_required_shape(p_shape, p_window, req.shape, rhythm_mode);
-                bool lane_match = shape_gate_lane_match(wt.position.x, player_x);
-                if (!lane_match) {
-                    resolve(e, wt.position.y, false);
-                    continue;
-                }
-                resolve(e, wt.position.y, shape_match);
-            }
+    // ShapeGate: RequiredShape only (no BlockedLanes, no RequiredLane)
+    {
+        auto rhythm_view = reg.view<ObstacleTag, Obstacle, WorldTransform, RequiredShape, BeatInfo>(
+            entt::exclude<ScoredTag, ResolvedObstacleTag, BlockedLanes, RequiredLane>);
+        for (auto [e, obstacle, wt, req, info] : rhythm_view.each()) {
+            (void)obstacle;
+            const bool lane_ok = shape_gate_lane_match(wt.position.x, player_x);
+            resolve_shape_obstacle(e, wt, req.shape, lane_ok, &info);
         }
 
-        // ComboGate: RequiredShape + BlockedLanes (no RequiredLane)
-        {
-            auto rhythm_view = reg.view<ObstacleTag, Obstacle, WorldTransform, RequiredShape, BlockedLanes, BeatInfo>(
-                entt::exclude<ScoredTag, ResolvedObstacleTag, RequiredLane>);
-            for (auto [e, obstacle, wt, req, blocked, info] : rhythm_view.each()) {
-                (void)obstacle;
-                bool lane_ok  = !((blocked.mask >> player_lane) & 1);
-                if (!lane_ok) {
-                    resolve(e, wt.position.y, false);
-                    continue;
-                }
-                bool shape_ok = player_matches_required_shape(p_shape, p_window, req.shape, rhythm_mode);
-                bool cleared = shape_ok;
-                if (cleared) grade_shape_timing(e, info.arrival_time);
-                resolve(e, wt.position.y, cleared);
-            }
+        auto view = reg.view<ObstacleTag, Obstacle, WorldTransform, RequiredShape>(
+            entt::exclude<ScoredTag, ResolvedObstacleTag, BlockedLanes, RequiredLane, BeatInfo>);
+        for (auto [e, obstacle, wt, req] : view.each()) {
+            (void)obstacle;
+            const bool lane_ok = shape_gate_lane_match(wt.position.x, player_x);
+            resolve_shape_obstacle(e, wt, req.shape, lane_ok, nullptr);
+        }
+    }
 
-            auto view = reg.view<ObstacleTag, Obstacle, WorldTransform, RequiredShape, BlockedLanes>(
-                entt::exclude<ScoredTag, ResolvedObstacleTag, RequiredLane, BeatInfo>);
-            for (auto [e, obstacle, wt, req, blocked] : view.each()) {
-                (void)obstacle;
-                bool lane_ok  = !((blocked.mask >> player_lane) & 1);
-                if (!lane_ok) {
-                    resolve(e, wt.position.y, false);
-                    continue;
-                }
-                bool shape_ok = player_matches_required_shape(p_shape, p_window, req.shape, rhythm_mode);
-                resolve(e, wt.position.y, shape_ok);
-            }
+    // ComboGate: RequiredShape + BlockedLanes (no RequiredLane)
+    {
+        auto rhythm_view = reg.view<ObstacleTag, Obstacle, WorldTransform, RequiredShape, BlockedLanes, BeatInfo>(
+            entt::exclude<ScoredTag, ResolvedObstacleTag, RequiredLane>);
+        for (auto [e, obstacle, wt, req, blocked, info] : rhythm_view.each()) {
+            (void)obstacle;
+            const bool lane_ok = !((blocked.mask >> player_lane) & 1);
+            resolve_shape_obstacle(e, wt, req.shape, lane_ok, &info);
         }
 
-        // SplitPath: RequiredShape + RequiredLane
-        {
-            auto rhythm_view = reg.view<ObstacleTag, Obstacle, WorldTransform, RequiredShape, RequiredLane, BeatInfo>(
-                entt::exclude<ScoredTag, ResolvedObstacleTag>);
-            for (auto [e, obstacle, wt, req, rlane, info] : rhythm_view.each()) {
-                (void)obstacle;
-                bool lane_ok  = (player_lane == rlane.lane);
-                if (!lane_ok) {
-                    resolve(e, wt.position.y, false);
-                    continue;
-                }
-                bool shape_ok = player_matches_required_shape(p_shape, p_window, req.shape, rhythm_mode);
-                bool cleared = shape_ok;
-                if (cleared) grade_shape_timing(e, info.arrival_time);
-                resolve(e, wt.position.y, cleared);
-            }
-
-            auto view = reg.view<ObstacleTag, Obstacle, WorldTransform, RequiredShape, RequiredLane>(
-                entt::exclude<ScoredTag, ResolvedObstacleTag, BeatInfo>);
-            for (auto [e, obstacle, wt, req, rlane] : view.each()) {
-                (void)obstacle;
-                bool lane_ok  = (player_lane == rlane.lane);
-                if (!lane_ok) {
-                    resolve(e, wt.position.y, false);
-                    continue;
-                }
-                bool shape_ok = player_matches_required_shape(p_shape, p_window, req.shape, rhythm_mode);
-                resolve(e, wt.position.y, shape_ok);
-            }
+        auto view = reg.view<ObstacleTag, Obstacle, WorldTransform, RequiredShape, BlockedLanes>(
+            entt::exclude<ScoredTag, ResolvedObstacleTag, RequiredLane, BeatInfo>);
+        for (auto [e, obstacle, wt, req, blocked] : view.each()) {
+            (void)obstacle;
+            const bool lane_ok = !((blocked.mask >> player_lane) & 1);
+            resolve_shape_obstacle(e, wt, req.shape, lane_ok, nullptr);
         }
-    } else {
-        // ShapeGate: RequiredShape only (no BlockedLanes, no RequiredLane)
-        {
-            auto view = reg.view<ObstacleTag, Obstacle, WorldTransform, RequiredShape>(
-                entt::exclude<ScoredTag, ResolvedObstacleTag, BlockedLanes, RequiredLane>);
-            for (auto [e, obstacle, wt, req] : view.each()) {
-                (void)obstacle;
-                bool shape_match = player_matches_required_shape(p_shape, p_window, req.shape, rhythm_mode);
-                bool lane_match = shape_gate_lane_match(wt.position.x, player_x);
-                if (!lane_match) {
-                    resolve(e, wt.position.y, false);
-                    continue;
-                }
-                resolve(e, wt.position.y, shape_match);
-            }
+    }
+
+    // SplitPath: RequiredShape + RequiredLane
+    {
+        auto rhythm_view = reg.view<ObstacleTag, Obstacle, WorldTransform, RequiredShape, RequiredLane, BeatInfo>(
+            entt::exclude<ScoredTag, ResolvedObstacleTag>);
+        for (auto [e, obstacle, wt, req, rlane, info] : rhythm_view.each()) {
+            (void)obstacle;
+            const bool lane_ok = player_lane == rlane.lane;
+            resolve_shape_obstacle(e, wt, req.shape, lane_ok, &info);
         }
 
-        // ComboGate: RequiredShape + BlockedLanes (no RequiredLane)
-        {
-            auto view = reg.view<ObstacleTag, Obstacle, WorldTransform, RequiredShape, BlockedLanes>(
-                entt::exclude<ScoredTag, ResolvedObstacleTag, RequiredLane>);
-            for (auto [e, obstacle, wt, req, blocked] : view.each()) {
-                (void)obstacle;
-                bool lane_ok  = !((blocked.mask >> player_lane) & 1);
-                if (!lane_ok) {
-                    resolve(e, wt.position.y, false);
-                    continue;
-                }
-                bool shape_ok = player_matches_required_shape(p_shape, p_window, req.shape, rhythm_mode);
-                resolve(e, wt.position.y, shape_ok);
-            }
-        }
-
-        // SplitPath: RequiredShape + RequiredLane
-        {
-            auto view = reg.view<ObstacleTag, Obstacle, WorldTransform, RequiredShape, RequiredLane>(
-                entt::exclude<ScoredTag, ResolvedObstacleTag>);
-            for (auto [e, obstacle, wt, req, rlane] : view.each()) {
-                (void)obstacle;
-                bool lane_ok  = (player_lane == rlane.lane);
-                if (!lane_ok) {
-                    resolve(e, wt.position.y, false);
-                    continue;
-                }
-                bool shape_ok = player_matches_required_shape(p_shape, p_window, req.shape, rhythm_mode);
-                resolve(e, wt.position.y, shape_ok);
-            }
+        auto view = reg.view<ObstacleTag, Obstacle, WorldTransform, RequiredShape, RequiredLane>(
+            entt::exclude<ScoredTag, ResolvedObstacleTag, BeatInfo>);
+        for (auto [e, obstacle, wt, req, rlane] : view.each()) {
+            (void)obstacle;
+            const bool lane_ok = player_lane == rlane.lane;
+            resolve_shape_obstacle(e, wt, req.shape, lane_ok, nullptr);
         }
     }
 
