@@ -13,12 +13,6 @@
 
 namespace high_score {
 
-std::filesystem::path get_high_scores_dir() {
-    persistence::Paths paths;
-    const auto result = persistence::resolve_paths(paths);
-    return result.ok() ? paths.root_dir : std::filesystem::path{};
-}
-
 persistence::Result get_high_scores_file_path(
     std::filesystem::path& out_path,
     const std::filesystem::path& root_override) {

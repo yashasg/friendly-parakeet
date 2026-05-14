@@ -62,7 +62,6 @@ namespace settings {
 persistence::Result load_settings(SettingsState& state, const std::filesystem::path& path);
 persistence::Result save_settings(const SettingsState& state, const std::filesystem::path& path);
 void mark_dirty_and_save(SettingsPersistence& persistence_state, const SettingsState& state);
-std::filesystem::path get_settings_dir();
 persistence::Result get_settings_file_path(
     std::filesystem::path& out_path,
     const std::filesystem::path& root_override = {});
