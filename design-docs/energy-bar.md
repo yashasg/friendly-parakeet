@@ -176,6 +176,7 @@ switch (timing->tier) {
   popup_feedback_system
   popup_display_system
   energy_system            ← applies queued effects, requests GameOver on depletion, smooths display
+  energy_bar_system        ← drives the on-HUD energy-bar visual
   particle_system
 ```
 
