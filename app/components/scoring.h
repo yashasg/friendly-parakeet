@@ -10,7 +10,6 @@ struct ScoreState {
     int32_t displayed_score   = 0;
     int32_t high_score        = 0;
     int32_t chain_count       = 0;
-    float   distance_traveled       = 0.0f;
     float   passive_score_remainder = 0.0f;
 };
 
