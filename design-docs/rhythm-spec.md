@@ -195,6 +195,8 @@ struct BeatEntry {
     Shape        shape        = Shape::Circle;
     int8_t       lane         = 1;
     uint8_t      blocked_mask = 0;
+    float        time_sec     = 0.0f;        // optional authored timestamp
+    bool         has_time_sec = false;       // true → time_sec wins over beat_index
 };
 
 struct BeatMap {
@@ -206,6 +208,7 @@ struct BeatMap {
     int                      lead_beats = 4;
     float                    duration   = 180.0f;
     std::string              difficulty;
+    std::vector<float>       beat_times;     // optional analysed onset table
     std::vector<BeatEntry>   beats;
 };
 ```
