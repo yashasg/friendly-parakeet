@@ -104,24 +104,44 @@ inputs resolve deterministically.
 
 ```cpp
 // ── Input source identification ──
-enum class InputSource : uint8_t {
-    None, Touch, Keyboard
+enum class InputSource : uint8_t { None, Mouse, Touch };
+
+// ── Per-touch tracking slot (multi-touch support) ──
+struct TouchSlot {
+    static constexpr int InvalidId = -1;
+
+    int   id = InvalidId;
+    bool  active = false;
+    bool  started_in_button_zone = false;
+    float start_x = 0.0f, start_y = 0.0f;
+    float curr_x  = 0.0f, curr_y  = 0.0f;
+    float duration = 0.0f;
 };
 
 // ── Per-frame input state, singleton component ──
+// Tracks touch/mouse hardware state. Downstream systems should read
+// semantic events (InputEvent / GoEvent / ButtonPressEvent), not this
+// struct — except for quit_requested.
 struct InputState {
-    bool  touch_down = false;       // just pressed this frame
-    bool  touch_up   = false;       // just released this frame
-    bool  touching   = false;       // held down
-    bool  quit_requested = false;
+    static constexpr int MaxTrackedTouches = 2;
 
-    float start_x = 0, start_y = 0;     // position on touch_down
-    float curr_x  = 0, curr_y  = 0;     // latest position
-    float end_x   = 0, end_y   = 0;     // position on touch_up
-    float duration = 0;                  // seconds held
+    float start_x  = 0.0f, start_y = 0.0f;  // position on touch_down
+    float curr_x   = 0.0f, curr_y  = 0.0f;  // latest position
+    float end_x    = 0.0f, end_y   = 0.0f;  // position on touch_up
+    float duration = 0.0f;                  // seconds held
 
     InputSource active_source = InputSource::None;
-    bool was_focused = true;
+    bool  touch_down     = false;           // just pressed this frame
+    bool  touch_up       = false;           // just released this frame
+    bool  click          = false;           // tap recognised this frame
+    bool  touching       = false;           // held down
+    bool  quit_requested = false;
+    bool  was_focused = true;
+    bool  gestures_configured    = false;
+    bool  suppress_mouse_release = false;
+    bool  button_touch_up        = false;
+    float button_end_x = 0.0f, button_end_y = 0.0f;
+    TouchSlot touch_slots[MaxTrackedTouches] = {};
 };
 
 // ── Event types: semantic player intentions ──
@@ -293,15 +313,15 @@ the energy bar; energy reaching zero ends the run.
 
 ```cpp
 enum class TimingTier : uint8_t {
-    Perfect,
-    Good,
-    Ok,
     Bad,
+    Ok,
+    Good,
+    Perfect,
 };
 
 struct TimingGrade {
-    TimingTier tier = TimingTier::Ok;
-    float offset_sec = 0.0f;
+    TimingTier tier      = TimingTier::Bad;
+    float      precision = 0.0f;  // 0.0 = edge, 1.0 = dead center
 };
 
 struct ScoreState {
@@ -462,13 +482,28 @@ struct BeatInfo {
     float spawn_time = 0.0f;
 };
 
+// Cold asset singleton. Attached to the BeatMapTag entity created by
+// create_beat_map_entity(); populated in setup_play_session() and
+// read-only during gameplay. Copy operations are deleted so accidental
+// duplication of the heap-allocated beat arrays is a compile-time error;
+// use std::move() to transfer ownership.
 struct BeatMap {
-    std::vector<BeatEntry> beats;
-    std::vector<float> beat_times;
-    float bpm = 120.0f;
-    float offset = 0.0f;
-    int lead_beats = 4;
+    std::string song_id;
+    std::string title;
+    std::string song_path;
+    float       bpm        = 120.0f;
+    float       offset     = 0.0f;
+    int         lead_beats = 4;
+    float       duration   = 180.0f;
     std::string difficulty;
+    std::vector<float>     beat_times;
+    std::vector<BeatEntry> beats;
+
+    BeatMap()                          = default;
+    BeatMap(const BeatMap&)            = delete;
+    BeatMap& operator=(const BeatMap&) = delete;
+    BeatMap(BeatMap&&)                 = default;
+    BeatMap& operator=(BeatMap&&)      = default;
 };
 ```
 
