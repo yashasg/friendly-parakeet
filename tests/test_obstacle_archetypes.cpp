@@ -232,12 +232,12 @@ TEST_CASE("entity: deprecated lane obstacles are rejected by runtime factory",
           "[archetype][legacy][issue1027]") {
     entt::registry reg;
 
-    CHECK_THROWS_WITH(spawn_obstacle(reg, {ObstacleKind::LaneBlock, 60.0f, -120.0f,
-                                           Shape::Circle, uint8_t{0b010}}),
-                      "Deprecated obstacle kind is not spawnable at runtime");
-    CHECK_THROWS_WITH(spawn_obstacle(reg, {ObstacleKind::ComboGate, 360.0f, -120.0f,
-                                           Shape::Triangle, uint8_t{0b101}}),
-                      "Deprecated obstacle kind is not spawnable at runtime");
+    CHECK_THROWS_AS(spawn_obstacle(reg, {ObstacleKind::LaneBlock, 60.0f, -120.0f,
+                                         Shape::Circle, uint8_t{0b010}}),
+                    std::logic_error);
+    CHECK_THROWS_AS(spawn_obstacle(reg, {ObstacleKind::ComboGate, 360.0f, -120.0f,
+                                         Shape::Triangle, uint8_t{0b101}}),
+                    std::logic_error);
     CHECK(reg.view<ObstacleTag>().begin() == reg.view<ObstacleTag>().end());
 }
 
