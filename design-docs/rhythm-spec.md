@@ -130,9 +130,17 @@ constexpr float MIN_MORPH        = 0.060f;
 // morph_duration = max(BASE_MORPH_BEATS * beat_period, MIN_MORPH)
 
 // ── Window scale factors (applied to remaining window on early hit) ──
-constexpr float WINDOW_SCALE_PERFECT = 0.50f;  // PERFECT hit → halve remaining window
-constexpr float WINDOW_SCALE_GOOD    = 0.75f;  // GOOD hit    → cut by 25%
-constexpr float WINDOW_SCALE_OK      = 1.00f;  // OK hit      → no change (default)
+// Exposed only via window_scale_for_tier() in app/util/rhythm_math.h —
+// no named constexpr constants exist; callers pass a TimingTier.
+inline float window_scale_for_tier(TimingTier tier) {
+    switch (tier) {
+        case TimingTier::Perfect: return 0.50f;  // halve remaining window
+        case TimingTier::Good:    return 0.75f;  // cut by 25%
+        case TimingTier::Ok:      return 1.00f;  // no change (default)
+        case TimingTier::Bad:     return 1.00f;  // no window-collapse reward
+    }
+    return 1.00f;
+}
 
 // ── Morph duration (seconds to animate shape change) ────────────────
 constexpr float MORPH_DURATION = 0.12f;
