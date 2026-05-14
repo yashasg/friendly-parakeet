@@ -741,7 +741,6 @@ TEST_CASE("window_scaling: PERFECT grade shortens remaining window", "[rhythm][w
 
     CHECK(sw.graded);
     // Post-#223: Perfect scale = 0.50 (shrinks remaining window by 50%)
-    CHECK(sw.window_scale == 0.50f);
     // window_start moved backward so remaining Active window expires at 50%
     float remaining = song.window_duration - timer_before;
     float expected_shift = remaining * 0.50f;
@@ -773,7 +772,6 @@ TEST_CASE("window_scaling: GOOD grade shortens window slightly", "[rhythm][windo
 
     CHECK(sw.graded);
     // Post-#223: Good scale = 0.75 (shrinks remaining window by 25%)
-    CHECK(sw.window_scale == 0.75f);
     float remaining = song.window_duration - timer_before;
     float expected_shift = remaining * 0.25f;
     CHECK_THAT(sw.window_start, WithinAbs(start_before - expected_shift, 0.001f));
@@ -803,7 +801,6 @@ TEST_CASE("window_scaling: OK grade keeps window unchanged", "[rhythm][window_sc
 
     CHECK(sw.graded);
     // Post-#223: Ok scale = 1.0 → no window adjustment
-    CHECK(sw.window_scale == 1.00f);
     CHECK_THAT(sw.window_start, WithinAbs(start_before, 0.001f));
     // window_timer must NOT be changed by collision_system
     CHECK_THAT(sw.window_timer, WithinAbs(song.window_duration * 0.3f, 0.001f));
@@ -832,7 +829,6 @@ TEST_CASE("window_scaling: BAD grade keeps window unchanged", "[rhythm][window_s
 
     CHECK(sw.graded);
     // Post-#223: Bad scale = 1.0 → no window adjustment
-    CHECK(sw.window_scale == 1.00f);
     CHECK_THAT(sw.window_start, WithinAbs(start_before, 0.001f));
     // window_timer must NOT be changed by collision_system
     CHECK_THAT(sw.window_timer, WithinAbs(song.window_duration * 0.2f, 0.001f));
@@ -872,7 +868,6 @@ TEST_CASE("window_scaling: graded resets on new window", "[rhythm][window_scalin
 
     // Simulate a graded window
     sw.graded = true;
-    sw.window_scale = 0.5f;
 
     // Start a new window via semantic input drain
     auto btn = make_shape_button(reg, Shape::Triangle);
@@ -881,7 +876,6 @@ TEST_CASE("window_scaling: graded resets on new window", "[rhythm][window_scalin
     run_semantic_input_tick(reg, 0.016f);
 
     CHECK_FALSE(sw.graded);
-    CHECK(sw.window_scale == 1.0f);
 }
 
 // Integration: obstacle arrives on-beat

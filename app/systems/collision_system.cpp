@@ -104,7 +104,6 @@ void collision_system(entt::registry& reg, [[maybe_unused]] float dt) {
                 // shape_window_system on the next frame.
                 p_window.window_start -= remaining * (1.0f - scale);
             }
-            p_window.window_scale = scale;
             p_window.graded = true;
         }
     };

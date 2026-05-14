@@ -477,6 +477,5 @@ TEST_CASE("collision: Perfect timing shrinks window via window_start adjustment"
     float remaining = song.window_duration - 0.0f;
     float expected_shift = remaining * 0.50f;
     CHECK_THAT(sw.window_start, Catch::Matchers::WithinAbs(original_window_start - expected_shift, 0.0001f));
-    CHECK(sw.window_scale == 0.50f);
     CHECK(sw.graded);
 }
