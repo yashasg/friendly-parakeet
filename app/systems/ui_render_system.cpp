@@ -21,7 +21,6 @@
 #include "../ui/screen_controllers/gameplay_hud_screen_controller.h"
 #include <raylib.h>
 #include <raymath.h>
-#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <string>
