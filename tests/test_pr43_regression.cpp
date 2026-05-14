@@ -1,8 +1,8 @@
 // PR #43 regression tests — Baer
 // Covers the six unresolved review threads:
 //   1. ScreenTransform stale on first/resize frame before input_system
-//   2. camera_system slab_matrix Y/Z dimension swap
-//   3. camera_system MeshChild slab Y/Z dimension swap
+//   2. game_camera_system slab_matrix Y/Z dimension swap
+//   3. game_camera_system MeshChild slab Y/Z dimension swap
 //   4. title/controller input routing remains outside legacy ECS hitbox plumbing
 //   6. shape_obstacle child destruction must not touch other parents' children
 
@@ -74,10 +74,10 @@ TEST_CASE("screen_transform ordering: stale identity ST mismaps letterbox-offset
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// Theme 2 – camera_system slab_matrix dimension order: MeshChild field
+// Theme 2 – game_camera_system slab_matrix dimension order: MeshChild field
 //           contract.  spawn_obstacle_meshes stores depth = DrawSize.h
 //           (scroll-axis) and height = 3D height constant (Y-axis).
-//           camera_system must pass mc.height as h (Y) and mc.depth as
+//           game_camera_system must pass mc.height as h (Y) and mc.depth as
 //           d (Z) to slab_matrix, not the other way around.
 // ═══════════════════════════════════════════════════════════════════════
 
