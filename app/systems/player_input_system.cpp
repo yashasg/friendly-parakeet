@@ -81,7 +81,6 @@ void player_input_handle_press(entt::registry& reg, const ButtonPressEvent& evt)
         sw.window_timer = 0.0f;
         sw.window_start = song->song_time;
         sw.press_time = song->song_time;
-        sw.peak_time = song->song_time + song->half_window;
         ps.morph_t = 0.0f;
         sw.window_scale = 1.0f;
         sw.graded = false;

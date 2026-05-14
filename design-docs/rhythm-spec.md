@@ -261,7 +261,6 @@ struct ShapeWindow {
     float       window_timer = 0.0f;          // seconds in current phase/window
     float       window_start = 0.0f;          // absolute song_time of window start
     float       press_time   = -1.0f;         // absolute song_time of input
-    float       peak_time    = 0.0f;          // absolute song_time of window peak
     float       window_scale = 1.0f;          // shortening factor from early hit
 };
 ```
@@ -344,7 +343,7 @@ struct SongResults {
   │ collision_system                               [MOD]       │
   │   → checks shape match at obstacle arrival                 │
   │   → computes TimingGrade from BeatInfo.arrival_time        │
-  │     (falls back to ShapeWindow.peak_time if no BeatInfo)   │
+  │     against ShapeWindow.press_time                         │
   │   → on HIT: applies window_scale shortening if !graded     │
   │   → on MISS: drain EnergyState; GameOver only at energy=0  │
   │   → emplaces ScoredTag on both HIT and MISS paths          │

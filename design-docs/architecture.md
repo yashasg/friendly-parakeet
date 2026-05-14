@@ -176,8 +176,9 @@ struct PlayerShape {
 ///   - When `phase == MorphIn` completes, shape_window_activation_system
 ///                        promotes `target_shape` into `PlayerShape.current`
 ///                        and resets the morph animation.
-///   - `press_time`/`peak_time` feed timing-grade computation when an
-///                        obstacle resolves.
+///   - `press_time`       feeds timing-grade computation when an obstacle
+///                        resolves (collision_system compares it against
+///                        BeatInfo.arrival_time).
 ///
 /// `WindowPhase` lives in `components/window_phase.h` so it can be shared by
 /// player.h and rhythm.h without a header cycle.
@@ -195,7 +196,6 @@ struct ShapeWindow {
     float       window_timer;   // seconds into the current phase
     float       window_start;   // song_time when the current window opened
     float       press_time;     // song_time of the latest valid press (-1 = none)
-    float       peak_time;      // song_time at the dead-center of the window
     float       window_scale;   // per-note window width multiplier
 };
 
