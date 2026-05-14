@@ -186,7 +186,7 @@ depending on whether the click target is an existing obstacle or empty space.
 | Import beatmap JSON | Load an existing `*_beatmap.json` via file picker or drag-drop |
 | Import analysis JSON | Overlay beat timestamps and structure sections from `*_analysis.json` |
 | Export beatmap JSON | Download as `{song_id}_beatmap.json` matching the game's schema |
-| Auto-validate | Run validation rules from `beat_map_loader.cpp` before export |
+| Auto-validate | Run validation rules from `app/entities/beat_map.cpp` before export |
 | Validation panel | Show errors/warnings inline (e.g., "different-shape gates < 3 beats apart") |
 
 ### 3.8 Validation Rules (from `validate_beat_map`)
@@ -463,7 +463,7 @@ export function downloadFile(filename, content)        → void  // triggers bro
 
 // ValidationError = { beatIndex: int, message: string, severity: "error"|"warning" }
 //
-// Validation rules (from beat_map_loader.cpp validate_beat_map):
+// Validation rules (from app/entities/beat_map.cpp validate_beat_map):
 //   1. Beat indices monotonically increasing
 //   2. No beat index beyond song duration
 //   3. BPM in [60, 300]
@@ -506,7 +506,7 @@ export const DEFAULT_ZOOM = 40; // pixels per beat
 
 ### 4.5 Export Format
 
-Exactly matches what `beat_map_loader.cpp` expects:
+Exactly matches what `app/entities/beat_map.cpp` expects:
 
 ```json
 {
@@ -605,7 +605,7 @@ Depends on: constants.js
 Depends on: constants.js
 
 - `importBeatmap(json)` — parse JSON, normalize to internal state shape
-- `exportBeatmap(state)` — serialize state to JSON matching `beat_map_loader.cpp` format
+- `exportBeatmap(state)` — serialize state to JSON matching `app/entities/beat_map.cpp` format
 - `importAnalysis(json)` — parse analysis file, extract structure/onsets/beats
 - `validate(state)` — all 8 validation rules, returns error array
 - `downloadFile(name, content)` — Blob + URL.createObjectURL + click trick
