@@ -28,24 +28,9 @@ to nail this one?"
 
 ---
 
-## Replaces
-
-| Before (current)                | After (energy bar)                 |
-|---------------------------------|------------------------------------|
-| `HPState { int current, max }`  | `EnergyState { float energy }`     |
-| Miss → instant GameOver         | Miss → energy drain                |
-| No reward for timing accuracy   | Ok/Good/Perfect → energy recovery  |
-| `hp_system.cpp` (stub)          | `energy_system.cpp` (full)         |
-| `MAX_HP = 5` (unused int)       | `ENERGY_MAX = 1.0f`               |
-
-The existing `HPState` struct, `hp_system.cpp`, and related constants
-(`MAX_HP`, `HP_DRAIN_ON_MISS`, `HP_RECOVER_ON_PERFECT`) are removed.
-
----
-
 ## Data Design
 
-### EnergyState (registry singleton, replaces HPState)
+### EnergyState (registry singleton)
 
 ```cpp
 struct EnergyState {
@@ -298,25 +283,6 @@ The drain/recovery values are designed so that:
 These values are mirrored in `content/constants.json` so tools and docs can
 consume the same tuning table. Runtime C++ currently uses the matching
 `constants.h` constexpr values for zero-overhead access.
-
----
-
-## Files Changed (Implementation Guide for DoD-Architect)
-
-| File | Change |
-|------|--------|
-| `app/components/song_state.h` | Replace `HPState` with `EnergyState` |
-| `app/constants.h` | Replace `MAX_HP`/`HP_*` with `ENERGY_*` constants |
-| `app/systems/hp_system.cpp` | Rename to `energy_system.cpp`, rewrite logic |
-| `app/systems/all_systems.h` | Replace `hp_system` decl with `energy_system` |
-| `app/systems/collision_system.cpp` | Miss → drain energy instead of instant GameOver |
-| `app/systems/scoring_system.cpp` | Add energy recovery/drain on TimingGrade |
-| `app/session/play_session.cpp` | Init `EnergyState` instead of `HPState` |
-| `app/ui/screen_controllers/gameplay_hud_screen_controller.cpp` | Draw energy bar (color ramp, flash, pulse) |
-| `app/main.cpp` | Emplace `EnergyState`, call `energy_system`, update tick order |
-| `CMakeLists.txt` | Rename source file if needed |
-| `content/constants.json` | Add energy tuning values |
-| `tests/*` | Update any test referencing `HPState` |
 
 ---
 
