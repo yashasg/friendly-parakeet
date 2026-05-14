@@ -206,12 +206,33 @@ struct BeatMap {
 
 ```cpp
 struct SongState {
-    float  song_time      = 0.0f;   // seconds elapsed
-    int    current_beat   = 0;      // index of next unspawned obstacle
-    float  scroll_speed   = 600.0f; // px/s, derived from BPM + difficulty
-    float  morph_duration = 0.1f;   // seconds, derived from BPM for MorphIn/MorphOut
-    float  half_window    = 0.150f; // half the OK window in seconds
-    bool   playing        = false;  // true only when beats array is non-empty
+    // ── Session-init fields (set by init_song_state / setup_play_session) ──
+    // Copied from BeatMap; fixed for the lifetime of a session.
+    float bpm             = 120.0f;
+    float offset          = 0.0f;
+    int   lead_beats      = 4;
+    float duration_sec    = 180.0f;
+
+    // ── Derived fields (computed once by util/rhythm_math.h) ────────────────
+    // Recalculated from bpm/lead_beats at session init; read-only during play.
+    float beat_period     = 0.5f;   // seconds per beat
+    float lead_time       = 2.0f;   // total approach window in seconds
+    float scroll_speed    = constants::APPROACH_DIST / lead_time; // pixels per second
+    float window_duration = 0.3f;   // hit-window width in seconds
+    float half_window     = 0.15f;  // window_duration / 2
+    float morph_duration  = 0.1f;   // shape-morph animation length in seconds
+
+    // ── Per-frame mutable fields ─────────────────────────────────────────────
+    float  song_time     = 0.0f;   // mutated every frame by song_playback_system
+    int    current_beat  = -1;     // mutated every frame by song_playback_system
+    bool   playing       = false;  // set true by setup_play_session; cleared by
+                                   //   song_playback_system or terminal GameOver entry
+    bool   finished      = false;  // set true by song_playback_system or terminal GameOver entry
+    bool   restart_music = false;  // set true by setup_play_session; consumed/cleared
+                                   //   on the next tick by song_playback_system
+
+    // ── Beat-schedule cursor (per-frame, reset at session init) ─────────────
+    size_t next_spawn_idx = 0;     // advanced each frame by beat_scheduler_system
 };
 ```
 
