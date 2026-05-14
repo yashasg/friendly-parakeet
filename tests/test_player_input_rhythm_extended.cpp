@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
 
 // ── semantic input pipeline: rhythm mode window management ───────
@@ -56,13 +55,11 @@ TEST_CASE("player_input_rhythm: same shape in Active is no-op", "[player][rhythm
     sw.window_start = song.song_time - 0.5f;
     sw.window_timer = 0.5f;
     sw.press_time = song.song_time - 0.5f;
-    sw.peak_time = song.song_time - 0.25f;
     sw.graded = true;  // was previously graded
 
     const float initial_window_start = sw.window_start;
     const float initial_window_timer = sw.window_timer;
     const float initial_press_time = sw.press_time;
-    const float initial_peak_time = sw.peak_time;
 
     auto btn = make_shape_button(reg, Shape::Circle);
     press_button(reg, btn);
@@ -73,7 +70,6 @@ TEST_CASE("player_input_rhythm: same shape in Active is no-op", "[player][rhythm
     CHECK(sw.window_start == initial_window_start);
     CHECK(sw.window_timer == initial_window_timer);
     CHECK(sw.press_time == initial_press_time);
-    CHECK(sw.peak_time == initial_peak_time);
     CHECK(sw.graded);
 }
 
