@@ -181,7 +181,7 @@ and screen width (W) for portrait mode (9:16 aspect ratio target).
 After tapping "start" on the title screen, the player is taken to the
 **LevelSelect** screen (`GamePhase::LevelSelect`). This screen presents
 a list of available songs and difficulty options. The layout is defined in
-`content/ui/screens/level_select.json`. Confirming a selection transitions
+`content/ui/screens/level_select.rgl`. Confirming a selection transitions
 to `GamePhase::Playing`.
 
 ---
