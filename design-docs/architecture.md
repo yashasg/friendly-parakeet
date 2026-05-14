@@ -1030,7 +1030,8 @@ variable refresh rates mean we cannot assume a stable frame time.
 Cap accumulator to prevent spiral of death after app-resume pauses.
 
 ```cpp
-// main.cpp — complete main loop pseudocode
+// game_loop.cpp — complete main loop pseudocode (entry point lives in main.cpp,
+// which only parses CLI args and delegates into game_loop_run / game_loop_frame)
 
 #include <raylib.h>
 #include <entt/entt.hpp>
@@ -1533,14 +1534,21 @@ collision window — but that day will not come for an endless runner.
 ### 8.6 Render System Organization
 
 The render layer is implemented as three free functions in
-`app/systems/runtime_systems.h`, called in this order each frame from
-`main.cpp`:
+`app/systems/runtime_systems.h`. Only **two** are called directly from the
+per-frame loop in `app/game_loop.cpp` (`game_loop_frame`); the third is
+invoked internally:
 
-- `floor_render_system(const entt::registry&)` — Layer 0 (floor / background grid)
-- `game_render_system(const entt::registry&, float alpha)` — Layers 1–2
-  (obstacles, player, particles, score popups)
-- `ui_render_system(entt::registry&, float alpha)` — Layer 3 + screen overlays
-  (HUD, title, pause, game over, settings, song-complete)
+- `game_render_system(const entt::registry&, float alpha)` — called from the
+  frame loop. Owns the 3D pass: clears the world target, sets up the camera,
+  and internally calls `floor_render_system(reg)` (Layer 0, floor /
+  background grid) before drawing Layers 1–2 (obstacles, player, particles,
+  score popups).
+- `ui_render_system(entt::registry&, float alpha)` — called from the frame
+  loop. Owns Layer 3 + screen overlays (HUD, title, pause, game over,
+  settings, song-complete).
+- `floor_render_system(const entt::registry&)` — **not** called from the
+  frame loop; invoked from inside `game_render_system` so it shares the same
+  3D camera / world render target.
 
 Note that `ui_render_system` takes a non-const registry because UI controllers
 mutate state (e.g., button presses queue phase transitions), while the two
@@ -1638,7 +1646,8 @@ void render_frame_pseudocode(entt::registry& reg, float alpha) {
 ```
 app/
 ├── CMakeLists.txt
-├── main.cpp                     ← main loop (§6)
+├── main.cpp                     ← thin entry stub: parses CLI args, calls game_loop_run
+├── game_loop.cpp                ← main loop (§6): game_loop_frame, game_loop_run
 ├── constants.h                  ← all tuning knobs (§1)
 │
 ├── components/                  ← all component structs
