@@ -1,10 +1,10 @@
 # rgl layout text file (v4.0) - raygui layout file generated using rGuiLayout
 # Gameplay HUD Layout - 720x1280 portrait
-# Reference: gameplay.json design specification
+# Maintained layout source for gameplay HUD slots.
 # Target exports: app/ui/gameplay.h, app/ui/gameplay.c
 #
 # Note: Shape buttons at y_n 0.891 must be rendered as custom raygui-style
-# controls for circular hit testing and shape-specific drawing. The JSON's
+# controls for circular hit testing and shape-specific drawing. Historical
 # approach_ring layout data is stale and should not be carried forward; active
 # proximity-ring timing feedback remains runtime-driven. Energy bar placement
 # is runtime-controlled by EnergyBarLayout; EnergyBarSlot is only a legacy
