@@ -355,7 +355,6 @@ struct ScoreState {
     int32_t displayed_score         = 0;     // for smooth scroll-up animation
     int32_t high_score              = 0;     // persisted across sessions
     int32_t chain_count             = 0;     // consecutive obstacles cleared
-    float   distance_traveled       = 0.0f;  // total pixels scrolled (for distance bonus)
     float   passive_score_remainder = 0.0f;  // fractional passive score carried across fixed ticks
 };
 

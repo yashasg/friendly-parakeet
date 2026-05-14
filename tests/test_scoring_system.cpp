@@ -55,7 +55,6 @@ TEST_CASE("scoring: distance bonus accumulates", "[scoring]") {
 
     auto& score = reg.ctx().get<ScoreState>();
     CHECK(score.score >= constants::PTS_PER_SECOND);
-    CHECK(score.distance_traveled > 0.0f);
 }
 
 TEST_CASE("scoring: distance bonus accumulates across fixed ticks", "[scoring][issue764]") {
@@ -314,18 +313,6 @@ TEST_CASE("scoring: displayed_score does not overshoot score", "[scoring]") {
     CHECK(score.displayed_score <= score.score);
 }
 
-TEST_CASE("scoring: distance_traveled accumulates from scroll speed", "[scoring]") {
-    auto reg = make_registry();
-    auto& song = reg.ctx().get<SongState>();
-    song.scroll_speed = 400.0f;
-
-    scoring_system(reg, 1.0f);
-    popup_feedback_system(reg, 1.0f);
-    energy_system(reg, 1.0f);
-
-    CHECK(reg.ctx().get<ScoreState>().distance_traveled == 400.0f);
-}
-
 // On-beat shape gate scores at base points (timing only, no burnout multiplier).
 TEST_CASE("scoring: no-penalty — on-beat gate scores at base points", "[scoring]") {
     auto reg = make_registry();
@@ -471,12 +458,10 @@ TEST_CASE("scoring: passive accrual stops once song playback has finished", "[sc
 
     auto& score = reg.ctx().get<ScoreState>();
     score.score = 500;
-    score.distance_traveled = 123.0f;
 
     scoring_system(reg, 1.0f);
 
     CHECK(score.score == 500);
-    CHECK(score.distance_traveled == 123.0f);
 }
 
 TEST_CASE("scoring: obstacle/timing points still apply after playback has finished", "[scoring][issue445]") {
