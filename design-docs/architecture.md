@@ -376,6 +376,7 @@ struct SongState {
     float bpm             = 120.0f;
     float offset          = 0.0f;
     int   lead_beats      = 4;
+    float duration_sec    = 180.0f;
     float beat_period     = 0.5f;
     float lead_time       = 2.0f;
     float scroll_speed    = constants::APPROACH_DIST / lead_time;
@@ -386,6 +387,7 @@ struct SongState {
     int   current_beat    = -1;
     bool  playing         = false;
     bool  finished        = false;
+    bool  restart_music   = false;
     size_t next_spawn_idx = 0;
 };
 
