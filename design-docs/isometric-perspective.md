@@ -548,8 +548,9 @@ projection internally.
 | `DrawRectangleLinesEx({x,y,w,h}, t, c)` | `perspective::draw_rect_lines(x, y, w, h, t, c)` |
 | `DrawTriangleLines(v1, v3, v2, c)` | `perspective::draw_tri_lines(v1, v3, v2, c)` |
 
-The old `static draw_shape()` function at the top of game_render_system.cpp is
-replaced entirely by `perspective::draw_shape()`.
+The shape-drawing path in `game_render_system.cpp` (today routed through
+`draw_model_transform()` and the `ModelTransform` view) would be replaced
+entirely by `perspective::draw_shape()`.
 
 ### NOT transformed (viewport-space, lines 590–618)
 

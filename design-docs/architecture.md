@@ -126,8 +126,8 @@ read infrequently or only by one system.
 // components/transform.h
 
 /// Authoritative world-space spatial state for moving/rendered entities.
-/// Iterated by: scroll_system, camera_system, collision_system,
-///              obstacle_despawn_system
+/// Iterated by: scroll_system, game_camera_system, ui_camera_system,
+///              collision_system, obstacle_despawn_system
 struct WorldTransform {
     glm::vec2 position = {0.0f, 0.0f};
     float     rotation = 0.0f;
@@ -159,7 +159,7 @@ enum class Shape : uint8_t {
 struct PlayerTag {};
 
 /// Current shape and morph progress. 8 bytes.
-/// Hot: read by shape_window_system, collision_system, camera_system.
+/// Hot: read by shape_window_system, collision_system, game_camera_system.
 struct PlayerShape {
     Shape    current = Shape::Circle;  // active gameplay shape
     float    morph_t = 1.0f;           // 0.0 = morph just started, 1.0 = settled
@@ -207,7 +207,7 @@ struct Lane {
 };
 
 /// Vertical movement (jump / slide / grounded). 12 bytes.
-/// Hot: read by collision_system, camera_system.
+/// Hot: read by collision_system, game_camera_system.
 enum class VMode : uint8_t {
     Grounded = 0,
     Jumping  = 1,
