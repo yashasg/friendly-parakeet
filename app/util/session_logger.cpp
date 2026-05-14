@@ -1,7 +1,6 @@
 #include "session_logger.h"
 #include "../components/obstacle.h"
 #include "../components/rhythm.h"
-#include "../components/transform.h"
 #include "../components/scoring.h"
 #include "../components/game_state.h"
 #include "../constants.h"

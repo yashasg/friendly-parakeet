@@ -2,7 +2,6 @@
 #include "../components/game_state.h"
 #include "../components/player.h"
 #include "../components/transform.h"
-#include "../components/rendering.h"
 #include "../components/scoring.h"
 #include "../entities/beat_map.h"
 #include "../components/rhythm.h"
