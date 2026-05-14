@@ -228,32 +228,17 @@ TEST_CASE("entity: ShapeGate Triangle - green color", "[archetype]") {
     CHECK(c.r == 100); CHECK(c.g == 255); CHECK(c.b == 100);
 }
 
-TEST_CASE("entity: LaneBlock - blocked lanes and no shape components", "[archetype]") {
+TEST_CASE("entity: deprecated lane obstacles are rejected by runtime factory",
+          "[archetype][legacy][issue1027]") {
     entt::registry reg;
-    auto e = spawn_obstacle(reg, {ObstacleKind::LaneBlock, 60.0f, -120.0f,
-                                   Shape::Circle, uint8_t{0b010}});
 
-    REQUIRE(reg.all_of<ObstacleTag, MotionVelocity, DrawLayer, WorldTransform, Obstacle, BlockedLanes, DrawSize, Color>(e));
-    CHECK(!reg.all_of<RequiredShape>(e));
-    CHECK(!reg.all_of<RequiredLane>(e));
-
-    CHECK(reg.get<Obstacle>(e).base_points == int16_t{constants::PTS_LANE_BLOCK});
-    CHECK(reg.get<BlockedLanes>(e).mask == uint8_t{0b010});
-}
-
-
-
-TEST_CASE("entity: ComboGate - RequiredShape and BlockedLanes", "[archetype]") {
-    entt::registry reg;
-    auto e = spawn_obstacle(reg, {ObstacleKind::ComboGate, 360.0f, -120.0f,
-                                   Shape::Triangle, uint8_t{0b101}});
-
-    REQUIRE(reg.all_of<ObstacleTag, MotionVelocity, DrawLayer, WorldTransform, Obstacle, RequiredShape, BlockedLanes, DrawSize, Color>(e));
-    CHECK(!reg.all_of<RequiredLane>(e));
-
-    CHECK(reg.get<Obstacle>(e).base_points == int16_t{constants::PTS_COMBO_GATE});
-    CHECK(reg.get<RequiredShape>(e).shape == Shape::Triangle);
-    CHECK(reg.get<BlockedLanes>(e).mask == uint8_t{0b101});
+    CHECK_THROWS_AS(spawn_obstacle(reg, {ObstacleKind::LaneBlock, 60.0f, -120.0f,
+                                         Shape::Circle, uint8_t{0b010}}),
+                    std::logic_error);
+    CHECK_THROWS_AS(spawn_obstacle(reg, {ObstacleKind::ComboGate, 360.0f, -120.0f,
+                                         Shape::Triangle, uint8_t{0b101}}),
+                    std::logic_error);
+    CHECK(reg.view<ObstacleTag>().begin() == reg.view<ObstacleTag>().end());
 }
 
 TEST_CASE("entity: SplitPath - RequiredShape and RequiredLane", "[archetype]") {

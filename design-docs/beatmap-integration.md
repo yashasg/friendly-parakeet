@@ -182,8 +182,8 @@ The current obstacle components already match the beatmap schema:
 
 ```
   ObstacleKind::ShapeGate      → "shape_gate"       ✓  required shipped obstacle
-  ObstacleKind::LaneBlock      → "lane_block"       ✗  ECS-only/future; parser rejects
-  ObstacleKind::ComboGate      → "combo_gate"       ✗  ECS-only/future; parser rejects
+  ObstacleKind::LaneBlock      → "lane_block"       ✗  legacy component fixture only; parser/scheduler/factories reject
+  ObstacleKind::ComboGate      → "combo_gate"       ✗  legacy component fixture only; parser/scheduler/factories reject
   ObstacleKind::SplitPath      → "split_path"       ✓  runtime-supported, not generated today
   ObstacleKind::OnsetMarker    → "onset_marker"     ✓  non-blocking shipped metadata
 
@@ -507,8 +507,8 @@ Ordered by dependency chain. Steps marked ✅ are already on `main`.
   STEP 3 — Beat Map Loader                         ✅ DONE
   ─────────────────────────────
   • beat_map_loader.h/.cpp: JSON → BeatMap with validation
-  • Parser supports ComboGate and SplitPath as future content; shipped
-    beatmaps currently use ShapeGate plus onset_marker metadata.
+  • Parser supports ShapeGate, SplitPath, and onset_marker only. LaneBlock
+    and ComboGate are legacy component fixtures rejected by active beatmaps.
   • init_song_state() computes derived fields from BPM
 
   STEP 4 — Song Playback + Beat Scheduler          ✅ DONE

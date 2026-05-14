@@ -139,7 +139,8 @@ void collision_system(entt::registry& reg, [[maybe_unused]] float dt) {
     // Per-kind structural views — each loop touches only entities that actually
     // carry the required components, eliminating per-entity try_get branches.
 
-    // LaneBlock: BlockedLanes only (no RequiredShape)
+    // Legacy LaneBlock fixture: BlockedLanes only (no RequiredShape).
+    // Active beatmaps and obstacle factories reject this kind.
     {
         auto view = reg.view<ObstacleTag, Obstacle, WorldTransform, BlockedLanes>(
             entt::exclude<ScoredTag, ResolvedObstacleTag, RequiredShape>);
@@ -169,7 +170,8 @@ void collision_system(entt::registry& reg, [[maybe_unused]] float dt) {
         }
     }
 
-    // ComboGate: RequiredShape + BlockedLanes (no RequiredLane)
+    // Legacy ComboGate fixture: RequiredShape + BlockedLanes (no RequiredLane).
+    // Active beatmaps and obstacle factories reject this kind.
     {
         auto rhythm_view = reg.view<ObstacleTag, Obstacle, WorldTransform, RequiredShape, BlockedLanes, BeatInfo>(
             entt::exclude<ScoredTag, ResolvedObstacleTag, RequiredLane>);

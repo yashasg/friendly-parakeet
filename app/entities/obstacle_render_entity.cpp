@@ -143,6 +143,8 @@ void spawn_obstacle_meshes(entt::registry& reg, entt::entity logical) {
             break;
         }
         case ObstacleKind::LaneBlock: {
+            // Legacy component fixture path. Active beatmaps and obstacle
+            // factories reject LaneBlock; retained for focused ECS tests.
             auto* blocked = reg.try_get<BlockedLanes>(logical);
             if (blocked)
                 for (int i = 0; i < constants::LANE_COUNT; ++i)
@@ -152,6 +154,8 @@ void spawn_obstacle_meshes(entt::registry& reg, entt::entity logical) {
             break;
         }
         case ObstacleKind::ComboGate: {
+            // Legacy component fixture path. Active beatmaps and obstacle
+            // factories reject ComboGate; retained for focused ECS tests.
             auto* blocked = reg.try_get<BlockedLanes>(logical);
             auto* req = reg.try_get<RequiredShape>(logical);
             uint8_t mesh_index = 0;

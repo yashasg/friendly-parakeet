@@ -34,7 +34,7 @@ void beat_scheduler_system(entt::registry& reg, [[maybe_unused]] float dt) {
             song->next_spawn_idx++;
             continue;
         }
-        if (entry.kind != ObstacleKind::ShapeGate && entry.kind != ObstacleKind::SplitPath) {
+        if (!obstacle_kind_is_active_blocking_beatmap_kind(entry.kind)) {
             TraceLog(LOG_WARNING, "Skipping unsupported active beatmap obstacle kind %d",
                      static_cast<int>(entry.kind));
             song->next_spawn_idx++;

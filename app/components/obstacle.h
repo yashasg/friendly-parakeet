@@ -11,11 +11,25 @@ struct ResolvedObstacleTag {};
 
 enum class ObstacleKind : uint8_t {
     ShapeGate,
-    LaneBlock,
-    ComboGate,
+    LaneBlock,   // Legacy component fixture only; active beatmaps/factories reject it.
+    ComboGate,   // Legacy component fixture only; active beatmaps/factories reject it.
     SplitPath,
     OnsetMarker,
 };
+
+constexpr bool obstacle_kind_is_legacy_lane_fixture(ObstacleKind kind) {
+    return kind == ObstacleKind::LaneBlock || kind == ObstacleKind::ComboGate;
+}
+
+constexpr bool obstacle_kind_is_active_runtime_spawnable(ObstacleKind kind) {
+    return kind == ObstacleKind::ShapeGate ||
+           kind == ObstacleKind::SplitPath ||
+           kind == ObstacleKind::OnsetMarker;
+}
+
+constexpr bool obstacle_kind_is_active_blocking_beatmap_kind(ObstacleKind kind) {
+    return kind == ObstacleKind::ShapeGate || kind == ObstacleKind::SplitPath;
+}
 
 struct Obstacle {
     int16_t      base_points = 200;

@@ -211,7 +211,8 @@ inline entt::entity make_shape_gate(entt::registry& reg, Shape shape, float y) {
     return obs;
 }
 
-// Creates a lane block obstacle blocking specified lanes (bitmask)
+// Creates a legacy lane-block component fixture. Active beatmaps and runtime
+// obstacle factories reject LaneBlock; tests use this to cover old ECS data.
 inline entt::entity make_lane_block(entt::registry& reg, uint8_t mask, float y) {
     const auto& song = reg.ctx().get<SongState>();
     auto obs = reg.create();
@@ -228,7 +229,8 @@ inline entt::entity make_lane_block(entt::registry& reg, uint8_t mask, float y) 
 }
 
 
-// Creates a combo gate requiring shape AND lane not blocked
+// Creates a legacy combo-gate component fixture. Active beatmaps and runtime
+// obstacle factories reject ComboGate; tests use this to cover old ECS data.
 inline entt::entity make_combo_gate(entt::registry& reg, Shape shape, uint8_t blocked_mask, float y) {
     const auto& song = reg.ctx().get<SongState>();
     auto obs = reg.create();

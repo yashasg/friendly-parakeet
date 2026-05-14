@@ -196,8 +196,8 @@ struct ObstacleTag {};
 /// LowBar/HighBar were removed from the runtime obstacle enum and remain archival only.
 enum class ObstacleKind : uint8_t {
     ShapeGate,   // must match shape
-    LaneBlock,   // avoid blocked lane mask
-    ComboGate,   // required shape + blocked lane mask
+    LaneBlock,   // legacy component fixture only; active beatmaps/factories reject
+    ComboGate,   // legacy component fixture only; active beatmaps/factories reject
     SplitPath,   // shape + specific lane
     OnsetMarker, // visual beat/onset marker; no collision/scoring
 };
@@ -237,14 +237,13 @@ struct NonScorableTag {};
 ```cpp
 // components/obstacle_data.h
 
-/// For ShapeGate / ComboGate / SplitPath: which shape is required. 1 byte.
+/// For ShapeGate / SplitPath, plus legacy ComboGate fixtures: which shape is required. 1 byte.
 struct RequiredShape {
     Shape shape;
 };
 
-/// For LaneBlock / ComboGate: bit mask of blocked lanes (bit 0 = left,
-/// bit 1 = center, bit 2 = right). Active runtime data used by collision,
-/// test-player, render mesh generation, and diagnostics.
+/// For legacy LaneBlock / ComboGate fixtures: bit mask of blocked lanes
+/// (bit 0 = left, bit 1 = center, bit 2 = right).
 struct BlockedLanes {
     uint8_t mask = 0;
 };
@@ -264,8 +263,8 @@ truth for runtime obstacle kind:
 | Runtime kind | Required components | Notes |
 | --- | --- | --- |
 | `ShapeGate` | `RequiredShape` only | Also the fallback for no action components; avoid using the helper for visual-only markers. |
-| `LaneBlock` | `BlockedLanes` only | Active runtime data for lane-block collision and ComboGate rendering/tests. |
-| `ComboGate` | `RequiredShape` + `BlockedLanes` | Shape match plus lane-mask avoidance. |
+| `LaneBlock` | `BlockedLanes` only | Legacy component fixture only; parser, scheduler, and runtime factories reject it for active gameplay. |
+| `ComboGate` | `RequiredShape` + `BlockedLanes` | Legacy component fixture only; parser, scheduler, and runtime factories reject it for active gameplay. |
 | `SplitPath` | `RequiredLane` (+ `RequiredShape` on spawned entities) | `RequiredLane` takes precedence in the helper. |
 | `OnsetMarker` | `NonScorableTag`, no `RequiredShape`/`BlockedLanes`/`RequiredLane` | Authored kind only; normal beat scheduling skips these entries, and spawned markers are visual-only/non-scoring. |
 
@@ -790,7 +789,7 @@ Total: ~73 bytes per entity (1 entity)
 Total: ~42 bytes per entity (5–15 active)
 ```
 
-### 5.3 Lane Block Entity
+### 5.3 Legacy Lane Block Fixture
 
 ```
 ┌─ Lane Block ──────────────────────────────────────────────┐
@@ -806,15 +805,15 @@ Total: ~42 bytes per entity (5–15 active)
 Total: ~41 bytes per entity
 ```
 
-`BlockedLanes::mask` is active runtime data: collision fails if the player is
-in a blocked lane when the obstacle resolves. `ComboGate` reuses the same mask
-with `RequiredShape`; `SplitPath` uses `RequiredLane` instead.
+`BlockedLanes::mask` is retained for legacy component-level tests only.
+The parser, scheduler, and obstacle factories reject LaneBlock and ComboGate
+for active gameplay; `SplitPath` uses `RequiredLane` for shipped lane routing.
 
 ### 5.4 Archived Vertical Bar Entity (Low Bar / High Bar)
 
 LowBar/HighBar entity archetypes are historical only. The current runtime enum, components, and beatmap editor do not expose them as authorable obstacle kinds; use archived design docs if this future design space is reconsidered.
 
-### 5.5 Combo Gate Entity (Shape + Lane)
+### 5.5 Legacy Combo Gate Fixture (Shape + Lane)
 
 ```
 ┌─ Combo Gate ──────────────────────────────────────────────┐
@@ -1382,9 +1381,10 @@ bool check_obstacle_cleared(entt::registry& reg, entt::entity e,
             return shape.current == reg.get<RequiredShape>(e).shape;
 
         case ObstacleKind::LaneBlock:
-            return true;   // passive — push is applied automatically
+            return true;   // legacy fixture only; not spawned by active runtime
 
         case ObstacleKind::ComboGate: {
+            // legacy fixture only; not spawned by active runtime
             bool shape_ok = shape.current == reg.get<RequiredShape>(e).shape;
             uint8_t mask  = reg.get<BlockedLanes>(e).mask;
             bool lane_ok  = !((mask >> lane.current) & 1);

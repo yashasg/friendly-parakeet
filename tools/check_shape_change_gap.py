@@ -2,9 +2,9 @@
 """Deterministic check: every shipped beatmap must satisfy the C++ loader's
 min_shape_change_gap rule (issue #134).
 
-Mirrors `validate_beat_map` Rule 6 in app/systems/beat_map_loader.cpp:
-shape-bearing obstacles (shape_gate, split_path, combo_gate) that change
-shape must be at least MIN_GAP beats apart.
+Mirrors `validate_beat_map` Rule 6 in app/entities/beat_map.cpp:
+active shape-bearing obstacles (shape_gate, split_path) that change shape
+must be at least MIN_GAP beats apart.
 
 Exits 0 on success, 1 on failure. Prints a per-difficulty summary.
 
@@ -22,7 +22,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 DEFAULT_DIR = REPO / "content" / "beatmaps"
-SHAPE_KINDS = {"shape_gate", "split_path", "combo_gate"}
+SHAPE_KINDS = {"shape_gate", "split_path"}
 DEFAULT_MIN_GAP = 3
 
 

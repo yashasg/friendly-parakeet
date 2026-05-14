@@ -11,8 +11,8 @@ struct ObstacleSpawnParams {
     ObstacleKind kind;
     float        x        = 0.0f;
     float        y        = 0.0f;
-    Shape        shape    = Shape::Circle;  // ShapeGate, ComboGate, SplitPath
-    uint8_t      mask     = 0;              // LaneBlock, ComboGate
+    Shape        shape    = Shape::Circle;  // ShapeGate, SplitPath; ComboGate legacy tests
+    uint8_t      mask     = 0;              // Legacy LaneBlock/ComboGate tests
     int8_t       req_lane = 0;              // SplitPath
     float        speed    = 0.0f;
 };
