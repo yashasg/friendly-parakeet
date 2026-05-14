@@ -1,5 +1,4 @@
 #pragma once
-#include "player.h"
 
 // Shape proportions — maps Shape enum to scale factors.
 // radius_scale: model scale multiplier (applied in model-to-world transform)

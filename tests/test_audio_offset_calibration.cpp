@@ -8,6 +8,7 @@
 
 #include "test_helpers.h"
 #include "entities/beat_map.h"
+#include "components/player.h"
 #include "components/rhythm.h"
 #include "components/shape_mesh.h"
 #include "rendering/camera_resources.h"

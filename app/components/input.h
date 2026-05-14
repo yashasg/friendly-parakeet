@@ -1,6 +1,5 @@
 #pragma once
 
-#include "player.h"
 #include <cstdint>
 
 // ── Raw input state (internal to input_system) ──────────────────────────────

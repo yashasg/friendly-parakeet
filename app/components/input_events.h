@@ -1,7 +1,6 @@
 #pragma once
 
 #include "input.h"       // Direction
-#include "game_state.h"  // GamePhase
 #include "player.h"      // Shape
 #include <cstdint>
 
