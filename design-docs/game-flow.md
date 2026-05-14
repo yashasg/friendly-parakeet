@@ -287,7 +287,7 @@ Shipped controls (source: `content/ui/screens/settings.rgl`):
 Not shipped (intentionally absent from this wireframe):
 
 - **Sound / Music volume sliders** — no volume controls exist in `settings.rgl`.
-- **Reset Tutorial [ RESET ]** — `ftue_run_count` / `mark_ftue_complete` plumbing exists in `app/util/settings.h` and `app/util/settings_persistence.h`, but no UI surface ships. If this is still desired, file a separate feature issue rather than implying it ships here.
+- **Reset Tutorial [ RESET ]** — `ftue_run_count` / `mark_ftue_complete` plumbing exists in `app/entities/settings.{h,cpp}` (the `settings::` namespace), but no UI surface ships. If this is still desired, file a separate feature issue rather than implying it ships here.
 
 ---
 
