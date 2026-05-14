@@ -548,8 +548,9 @@ projection internally.
 | `DrawRectangleLinesEx({x,y,w,h}, t, c)` | `perspective::draw_rect_lines(x, y, w, h, t, c)` |
 | `DrawTriangleLines(v1, v3, v2, c)` | `perspective::draw_tri_lines(v1, v3, v2, c)` |
 
-The old `static draw_shape()` function at the top of render_system.cpp is
-replaced entirely by `perspective::draw_shape()`.
+The shape-drawing path in `game_render_system.cpp` (today routed through
+`draw_model_transform()` and the `ModelTransform` view) would be replaced
+entirely by `perspective::draw_shape()`.
 
 ### NOT transformed (viewport-space, lines 590–618)
 
@@ -609,7 +610,7 @@ replaced entirely by `perspective::draw_shape()`.
 | `app/shape_vertices.h` | **New** — `constexpr` unit vertex tables for all shapes (zero runtime trig) |
 | `app/perspective.h` | **New** — `project()`, all perspective draw function declarations |
 | `app/perspective.cpp` | **New** — per-vertex draw implementations using cached vertex tables |
-| `app/systems/render_system.cpp` | Replace all world-space draw calls with `perspective::` calls |
+| `app/systems/game_render_system.cpp` | Replace all world-space draw calls with `perspective::` calls |
 | `CMakeLists.txt` | Add `perspective.cpp` to sources |
 
 No changes to: ECS components, game logic systems, input system, collision,

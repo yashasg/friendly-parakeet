@@ -373,7 +373,7 @@ struct SongResults {
   └────────────────────────────────────────────────────────────┘
            ↓
   ┌─ RENDER ───────────────────────────────────────────────────┐
-  │ render_system                                  [MOD]       │
+  │ game_render_system + ui_render_system          [MOD]       │
   │   → renders Hexagon as default (pointy-top, CCW winding)   │
   │   → renders circular shape buttons with proximity rings    │
   │   → renders score + high score in HUD                      │
@@ -527,7 +527,7 @@ constexpr float BUTTON_W        = 140.0f;   // used for spacing calculation
 constexpr float BUTTON_H        = 100.0f;   // unused by circular rendering
 constexpr float BUTTON_SPACING  = 60.0f;
 
-// Derived in render_system
+// Derived in gameplay_hud_screen_controller
 float btn_radius = BUTTON_W / 2.8f;         // ≈ 50px
 float btn_cx = btn_area_x
     + i * (BUTTON_W + BUTTON_SPACING)
