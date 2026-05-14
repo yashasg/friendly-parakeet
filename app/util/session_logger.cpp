@@ -3,7 +3,6 @@
 #include "../components/rhythm.h"
 #include "../components/scoring.h"
 #include "../components/game_state.h"
-#include "../constants.h"
 
 #include <cstdarg>
 #include <cmath>
