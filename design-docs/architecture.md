@@ -505,7 +505,6 @@ struct GameState {
     float      phase_timer;          // seconds in current phase
     bool       transition_pending;   // set to request a phase change
     GamePhase  next_phase;           // destination of pending transition
-    float      transition_alpha;     // 0..1 for fade effects
     EndScreenChoice end_choice;      // pending end-screen menu action
 };
 ```
@@ -1051,7 +1050,7 @@ int main(int argc, char* argv[]) {
         .phase_timer = 0.0f,
         .transition_pending = false,
         .next_phase = GamePhase::Title,
-        .transition_alpha = 0.0f
+        .end_choice = EndScreenChoice::None
     });
     reg.ctx().emplace<AudioQueue>();
 
