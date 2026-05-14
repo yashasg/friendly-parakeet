@@ -140,8 +140,8 @@ TEST_CASE("MeshChild: ShapeGate renders shape-only (no side slabs)",
 // ═══════════════════════════════════════════════════════════════════════
 // Theme 6 – obstacle mesh lifetime must only destroy children whose parent
 //           is the entity being destroyed, not other obstacles' children.
-// The cleanup listener follows ObstacleChildren ownership directly, so it does
-// not depend on ObstacleTag pool insertion order.
+// Explicit cleanup follows ObstacleChildren ownership directly, so it does not
+// depend on ObstacleTag pool insertion order.
 // ═══════════════════════════════════════════════════════════════════════
 
 // Helper: create an obstacle with an ObstacleChildren list.
@@ -157,7 +157,7 @@ static entt::entity make_obstacle(entt::registry& reg,
     return obs;
 }
 
-// Helper: set up the registry with centralized obstacle mesh lifetime wiring.
+// Helper: set up the registry for obstacle mesh lifetime tests.
 static entt::registry make_obs_registry() {
     return make_registry();
 }
@@ -173,8 +173,7 @@ TEST_CASE("obstacle mesh lifetime: only removes the destroyed parent's children"
     auto obsA = make_obstacle(reg, {childA1, childA2});
     make_obstacle(reg, {childB});
 
-    // Destroy obstacle A via the signal path
-    reg.destroy(obsA);
+    destroy_obstacle_with_children(reg, obsA);
 
     CHECK_FALSE(reg.valid(childA1));
     CHECK_FALSE(reg.valid(childA2));
@@ -195,7 +194,7 @@ TEST_CASE("obstacle mesh lifetime: all children of destroyed parent removed",
     auto bystanderChild = reg.create();
     make_obstacle(reg, {bystanderChild});
 
-    reg.destroy(obsA);
+    destroy_obstacle_with_children(reg, obsA);
 
     for (auto c : children)
         CHECK_FALSE(reg.valid(c));

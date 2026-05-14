@@ -66,7 +66,7 @@ struct MeshChild {
     MeshType mesh_type = MeshType::Shape;
 };
 
-// Owned mesh children; on_obstacle_destroy cleans up in O(count).
+// Owned mesh children; destroy_obstacle_with_children cleans up in O(count).
 struct ObstacleChildren {
     static constexpr int MAX = 8;
     entt::entity children[MAX]{};

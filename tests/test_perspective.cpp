@@ -6,6 +6,7 @@
 #include "components/rendering.h"
 #include "components/shape_mesh.h"
 #include "components/transform.h"
+#include "entities/obstacle_entity.h"
 #include "rendering/camera_resources.h"
 #include "systems/runtime_systems.h"
 #include <raylib.h>
@@ -127,6 +128,25 @@ TEST_CASE("game_camera_system drops stale MeshChild parents without crashing", "
 
     reg.destroy(parent);
 
+    REQUIRE_NOTHROW(game_camera_system(reg, 0.0f));
+    CHECK_FALSE(reg.valid(child));
+}
+
+TEST_CASE("game_camera_system drops mesh children for destroyed logical obstacle",
+          "[camera3d][mesh_child][obstacle]") {
+    entt::registry reg;
+    reg.ctx().emplace<ShapeMeshConfig>();
+    reg.ctx().emplace<FloorParams>();
+    auto parent = spawn_obstacle(reg, {ObstacleKind::ShapeGate, 360.0f, -120.0f, Shape::Circle});
+    REQUIRE(reg.all_of<ObstacleChildren>(parent));
+    const auto children = reg.get<ObstacleChildren>(parent);
+    REQUIRE(children.count > 0);
+    const entt::entity child = children.children[0];
+    REQUIRE(reg.valid(child));
+
+    reg.destroy(parent);
+
+    REQUIRE(reg.valid(child));
     REQUIRE_NOTHROW(game_camera_system(reg, 0.0f));
     CHECK_FALSE(reg.valid(child));
 }

@@ -432,19 +432,15 @@ TEST_CASE("collision: SongState ctx singleton identity is stable across collisio
     CHECK(song.scroll_speed == 321.0f);
 }
 
-TEST_CASE("ecs: obstacle mesh lifecycle unwire disconnect is idempotent",
+TEST_CASE("ecs: obstacle mesh lifecycle explicit cleanup is idempotent",
           "[ecs][obstacle][lifecycle]") {
     entt::registry reg;
-    wire_obstacle_mesh_lifetime(reg);
-
-    unwire_obstacle_mesh_lifetime(reg);
-    unwire_obstacle_mesh_lifetime(reg);
-    wire_obstacle_mesh_lifetime(reg);
 
     auto parent = spawn_obstacle(reg, {ObstacleKind::ShapeGate, 360.0f, -120.0f, Shape::Circle});
     REQUIRE(mesh_child_count(reg) > 0);
 
-    reg.destroy(parent);
+    destroy_obstacle_with_children(reg, parent);
+    destroy_obstacle_with_children(reg, parent);
 
     CHECK(mesh_child_count(reg) == 0);
 }

@@ -3,6 +3,7 @@
 #include "../components/system_scratch.h"
 #include "../components/transform.h"
 #include "../constants.h"
+#include "../entities/obstacle_render_entity.h"
 
 namespace {
 
@@ -30,5 +31,5 @@ void obstacle_despawn_system(entt::registry& reg, [[maybe_unused]] float dt) {
         }
     }
 
-    for (auto e : to_destroy) reg.destroy(e);
+    for (auto e : to_destroy) destroy_obstacle_with_children(reg, e);
 }
