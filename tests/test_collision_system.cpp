@@ -33,11 +33,12 @@ TEST_CASE("collision: shape gate drains energy with wrong shape", "[collision]")
     CHECK(energy.flash_timer > 0.0f);
 }
 
-TEST_CASE("collision: shape gate hitbox edge handling", "[collision][edge]") {
+TEST_CASE("collision: shape gate collision uses authored lane, not visual hitbox edge",
+          "[collision][edge][issue1036]") {
     constexpr struct {
         float offset;
         bool missed;
-    } cases[] = {{constants::PLAYER_SIZE, false}, {constants::PLAYER_SIZE + 0.01f, true}};
+    } cases[] = {{constants::PLAYER_SIZE, false}, {constants::PLAYER_SIZE + 0.01f, false}};
 
     for (const auto& tc : cases) {
         auto reg = make_registry();
@@ -60,6 +61,7 @@ TEST_CASE("collision: shape gate does not clear from target lane before strafe a
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
 
     reg.get<WorldTransform>(obs).position.x = constants::LANE_X[0];
+    reg.get<ShapeGateLane>(obs).lane = int8_t{0};
     lane.target = 0;
     lane.lerp_t = 0.0f;
 
@@ -69,7 +71,7 @@ TEST_CASE("collision: shape gate does not clear from target lane before strafe a
     CHECK(reg.all_of<MissTag>(obs));
 }
 
-TEST_CASE("collision: shape gate ignores shape-derived lane without explicit target",
+TEST_CASE("collision: shape gate ignores visual lane drift from authored lane",
           "[collision][issue874]") {
     auto reg = make_registry();
     make_player(reg);
@@ -80,7 +82,7 @@ TEST_CASE("collision: shape gate ignores shape-derived lane without explicit tar
     collision_system(reg, 0.016f);
 
     CHECK(reg.all_of<ScoredTag>(obs));
-    CHECK(reg.all_of<MissTag>(obs));
+    CHECK_FALSE(reg.all_of<MissTag>(obs));
 }
 
 TEST_CASE("collision: shape gate clears when interpolated player hitbox reaches lane",
@@ -91,6 +93,7 @@ TEST_CASE("collision: shape gate clears when interpolated player hitbox reaches 
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
 
     reg.get<WorldTransform>(obs).position.x = constants::LANE_X[0];
+    reg.get<ShapeGateLane>(obs).lane = int8_t{0};
     reg.get<WorldTransform>(player).position.x = constants::LANE_X[0];
     lane.target = 0;
     lane.lerp_t = 1.0f;

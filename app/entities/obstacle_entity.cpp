@@ -4,6 +4,7 @@
 #include "../components/rendering.h"
 #include "obstacle_render_entity.h"
 #include "../constants.h"
+#include "../util/lane_utils.h"
 #include "../util/shape_lane_mapping.h"
 #include <stdexcept>
 
@@ -32,6 +33,8 @@ entt::entity spawn_obstacle_base(entt::registry& reg, const ObstacleSpawnParams&
         case ObstacleKind::ShapeGate: {
             reg.emplace<Obstacle>(e, int16_t{constants::PTS_SHAPE_GATE});
             reg.emplace<RequiredShape>(e, params.shape);
+            reg.emplace<ShapeGateLane>(
+                e, static_cast<int8_t>(lane_utils::nearest_lane_for_x(params.x)));
             reg.emplace<DrawSize>(e, constants::SCREEN_W_F, 80.0f);
             reg.emplace<Color>(e, constants::SHAPE_COLORS[shape_index(params.shape)]);
             break;

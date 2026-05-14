@@ -82,12 +82,13 @@ TEST_CASE("beat_scheduler: spawns ShapeGate when time passes spawn_time", "[beat
     CHECK(count == 1);
 
     // Verify it's a ShapeGate with correct components
-    auto view = reg.view<ObstacleTag, Obstacle, RequiredShape>();
-    for (auto [e, obs, rs] : view.each()) {
+    auto view = reg.view<ObstacleTag, Obstacle, RequiredShape, ShapeGateLane>();
+    for (auto [e, obs, rs, lane] : view.each()) {
         (void)obs;
         CHECK_FALSE(reg.all_of<BlockedLanes>(e));
         CHECK_FALSE(reg.all_of<RequiredLane>(e));
         CHECK(rs.shape == Shape::Circle);
+        CHECK(lane.lane == int8_t{1});
     }
 }
 
@@ -102,11 +103,12 @@ TEST_CASE("beat_scheduler: defaults invalid ShapeGate lane to center lane", "[be
 
     beat_scheduler_system(reg, 0.016f);
 
-    auto view = reg.view<ObstacleTag, WorldTransform>();
+    auto view = reg.view<ObstacleTag, WorldTransform, ShapeGateLane>();
     REQUIRE(view.size_hint() == 1);
-    for (auto [e, wt] : view.each()) {
+    for (auto [e, wt, lane] : view.each()) {
         (void)e;
         CHECK_THAT(wt.position.x, Catch::Matchers::WithinAbs(constants::LANE_X[1], 0.01f));
+        CHECK(lane.lane == int8_t{1});
     }
 }
 
