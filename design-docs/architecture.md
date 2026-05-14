@@ -191,8 +191,8 @@ struct VerticalState {
 /// Empty tag — marks all obstacle entities. 0 bytes.
 struct ObstacleTag {};
 
-/// What action this obstacle demands and its base score.
-/// Read by collision_system, miss_detection_system, scoring_system.
+/// Authored/spawn-time obstacle kind. Runtime entities do not store this in
+/// Obstacle; systems infer it from presence of obstacle-specific components.
 /// LowBar/HighBar were removed from the runtime obstacle enum and remain archival only.
 enum class ObstacleKind : uint8_t {
     ShapeGate,   // must match shape
@@ -204,14 +204,31 @@ enum class ObstacleKind : uint8_t {
 
 struct Obstacle {
     int16_t      base_points = 200;   // PTS_SHAPE_GATE etc.
+
+    constexpr Obstacle() = default;
+    constexpr explicit Obstacle(int16_t points) : base_points(points) {}
 };
-// Runtime kind is derived from optional components (RequiredShape,
-// BlockedLanes, RequiredLane) via obstacle_kind_from_components().
+
+constexpr ObstacleKind obstacle_kind_from_components(bool has_required_shape,
+                                                     bool has_blocked_lanes,
+                                                     bool has_required_lane) {
+    if (has_required_lane) {
+        return ObstacleKind::SplitPath;
+    }
+    if (has_required_shape && has_blocked_lanes) {
+        return ObstacleKind::ComboGate;
+    }
+    if (has_blocked_lanes) {
+        return ObstacleKind::LaneBlock;
+    }
+    return ObstacleKind::ShapeGate;
+}
+
 // Existential tag: presence means the obstacle has been cleared and awaits scoring.
 struct ScoredTag {};
 
-// Existential tag: obstacle does not participate in score popups or chains.
-// OnsetMarker obstacles carry this tag so beat markers remain visual-only.
+// Existential tag: obstacle does not participate in the scoring ladder
+// (no score popup, no chain contribution).
 struct NonScorableTag {};
 ```
 
@@ -240,6 +257,17 @@ struct RequiredLane {
 /// No vertical-bar action component exists in the current runtime.
 /// LowBar/HighBar authoring references are archival/future design notes only.
 ```
+
+`obstacle_kind_from_components()` uses component presence as the source of
+truth for runtime obstacle kind:
+
+| Runtime kind | Required components | Notes |
+| --- | --- | --- |
+| `ShapeGate` | `RequiredShape` only | Also the fallback for no action components; avoid using the helper for visual-only markers. |
+| `LaneBlock` | `BlockedLanes` only | Active runtime data for lane-block collision and ComboGate rendering/tests. |
+| `ComboGate` | `RequiredShape` + `BlockedLanes` | Shape match plus lane-mask avoidance. |
+| `SplitPath` | `RequiredLane` (+ `RequiredShape` on spawned entities) | `RequiredLane` takes precedence in the helper. |
+| `OnsetMarker` | `NonScorableTag`, no `RequiredShape`/`BlockedLanes`/`RequiredLane` | Authored kind only; normal beat scheduling skips these entries, and spawned markers are visual-only/non-scoring. |
 
 ### 2.5 — HOT: Fixed-lifetime FX timers
 
@@ -500,6 +528,7 @@ Obstacle             4     WARM       collision, miss_detection, scoring
 RequiredShape        1     WARM       collision, scoring
 BlockedLanes         1     WARM       collision
 RequiredLane         1     WARM       collision
+NonScorableTag       0     WARM       miss_detection/scoring exclusions, visual-only markers
 Color                4     COLD       render
 DrawSize             8     COLD       render
 DrawLayer            1     COLD       render
@@ -1311,19 +1340,19 @@ void collision_system(entt::registry& reg, float dt) {
     float player_y = p_pos.position.y + p_vstate.y_offset;
 
     // Linear scan of obstacles — 15 entities max
-    auto obs_view = reg.view<ObstacleTag, WorldTransform, Obstacle>();
-    for (auto [entity, o_pos, obs] : obs_view.each()) {
-        if (obs.scored) continue;
+    auto obs_view = reg.view<ObstacleTag, WorldTransform, Obstacle>(
+        entt::exclude<ScoredTag, ResolvedObstacleTag, NonScorableTag>);
+    for (auto entity : obs_view) {
+        const auto& o_pos = obs_view.get<WorldTransform>(entity);
 
         // Broad phase: vertical proximity check
         float dy = o_pos.position.y - player_y;
         if (dy < -40.0f || dy > 40.0f) continue;  // not overlapping vertically
 
         // Narrow phase: per-obstacle-kind match test
-        bool cleared = check_obstacle_cleared(reg, entity, obs,
-                                               p_shape, p_lane);
+        bool cleared = check_obstacle_cleared(reg, entity, p_shape, p_lane);
         if (cleared) {
-            obs.scored = true;
+            reg.emplace<ScoredTag>(entity);
             // scoring_system will pick this up next
         } else if (dy >= 0.0f) {
             // Obstacle has reached player and shape doesn't match → CRASH
@@ -1335,12 +1364,20 @@ void collision_system(entt::registry& reg, float dt) {
     }
 }
 
-// Per-kind match logic — no virtual dispatch, just a switch
+// Per-kind match logic — no virtual dispatch, kind inferred from components
 bool check_obstacle_cleared(entt::registry& reg, entt::entity e,
-                             const Obstacle& obs,
                              const PlayerShape& shape,
                              const Lane& lane) {
-    switch (obs.kind) {
+    if (reg.all_of<NonScorableTag>(e)) {
+        return false;
+    }
+
+    const ObstacleKind kind = obstacle_kind_from_components(
+        reg.all_of<RequiredShape>(e),
+        reg.all_of<BlockedLanes>(e),
+        reg.all_of<RequiredLane>(e));
+
+    switch (kind) {
         case ObstacleKind::ShapeGate:
             return shape.current == reg.get<RequiredShape>(e).shape;
 
@@ -1359,6 +1396,9 @@ bool check_obstacle_cleared(entt::registry& reg, entt::entity e,
             bool lane_ok  = lane.current == reg.get<RequiredLane>(e).lane;
             return shape_ok && lane_ok;
         }
+
+        case ObstacleKind::OnsetMarker:
+            return false;
     }
     return false;
 }
