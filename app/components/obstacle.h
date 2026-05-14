@@ -21,10 +21,6 @@ enum class ObstacleKind : uint8_t {
     OnsetMarker,
 };
 
-constexpr bool obstacle_kind_is_legacy_lane_fixture(ObstacleKind kind) {
-    return kind == ObstacleKind::LaneBlock || kind == ObstacleKind::ComboGate;
-}
-
 constexpr bool obstacle_kind_is_active_runtime_spawnable(ObstacleKind kind) {
     return kind == ObstacleKind::ShapeGate ||
            kind == ObstacleKind::SplitPath ||
