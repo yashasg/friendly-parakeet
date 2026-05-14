@@ -30,11 +30,7 @@ void beat_scheduler_system(entt::registry& reg, [[maybe_unused]] float dt) {
 
     while (song->next_spawn_idx < map->beats.size()) {
         const auto& entry = map->beats[song->next_spawn_idx];
-        if (entry.kind == ObstacleKind::OnsetMarker) {
-            song->next_spawn_idx++;
-            continue;
-        }
-        if (!obstacle_kind_is_active_blocking_beatmap_kind(entry.kind)) {
+        if (!obstacle_kind_is_active_beatmap_spawnable(entry.kind)) {
             TraceLog(LOG_WARNING, "Skipping unsupported active beatmap obstacle kind %d",
                      static_cast<int>(entry.kind));
             song->next_spawn_idx++;

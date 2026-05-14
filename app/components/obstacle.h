@@ -6,6 +6,10 @@
 
 struct ObstacleTag {};
 
+// Runtime cue authored from beatmap onset metadata. It is visible but
+// intentionally non-scorable and non-blocking.
+struct OnsetMarkerTag {};
+
 // Presence means scoring has consumed the obstacle's final hit/miss result.
 struct ResolvedObstacleTag {};
 
@@ -29,6 +33,11 @@ constexpr bool obstacle_kind_is_active_runtime_spawnable(ObstacleKind kind) {
 
 constexpr bool obstacle_kind_is_active_blocking_beatmap_kind(ObstacleKind kind) {
     return kind == ObstacleKind::ShapeGate || kind == ObstacleKind::SplitPath;
+}
+
+constexpr bool obstacle_kind_is_active_beatmap_spawnable(ObstacleKind kind) {
+    return obstacle_kind_is_active_blocking_beatmap_kind(kind) ||
+           kind == ObstacleKind::OnsetMarker;
 }
 
 struct Obstacle {
