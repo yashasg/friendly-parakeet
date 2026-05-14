@@ -38,8 +38,41 @@ export VCPKG_ROOT=/path/to/vcpkg
 ./build.sh           # Release build
 ./run.sh             # Build + run game
 ./run.sh test        # Build + run CTest gates (skips optional Node tests if node/npm is unavailable)
+./run.sh wasm-e2e    # Pre-PR WASM smoke (requires a prior Emscripten build of build-web/, see below)
 cmake --build build --target shapeshifter_benchmarks  # Run benchmarks on demand
 ```
+
+### WebAssembly Pre-PR Smoke Test
+
+`./run.sh wasm-e2e` runs the same Playwright harness CI uses
+(`tests/wasm_runtime_smoke.cjs`) against your local `build-web/` artifact, so
+you can catch browser-only freezes before opening a PR. It boots the build,
+walks Title → LevelSelect → Tutorial → Playing, and verifies the gameplay
+loop stays responsive (phase-marker title transitions, screenshot diffs, and
+swipe-driven lane advances).
+
+Build the WASM artifact once (requires emscripten/emsdk and vcpkg):
+
+```bash
+emcmake cmake -B build-web -S . \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake \
+    -DVCPKG_OVERLAY_PORTS=$(pwd)/vcpkg-overlay \
+    -DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake \
+    -DVCPKG_TARGET_TRIPLET=wasm32-emscripten \
+    -DSHAPESHIFTER_WASM_SMOKE_MARKERS=ON
+cmake --build build-web -- -j$(nproc)
+```
+
+Then run the smoke test:
+
+```bash
+./run.sh wasm-e2e
+```
+
+Requires Node.js 20+, Python 3, and Google Chrome or Chromium. The script
+auto-detects Chrome on macOS/Linux; override with `CHROMIUM_EXECUTABLE_PATH`
+if needed. Installs `playwright-core` into `node_modules/` on first run.
 
 ### iOS TestFlight Archive (owner-driven signing)
 
