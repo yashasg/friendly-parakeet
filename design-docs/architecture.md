@@ -162,7 +162,7 @@ struct PlayerTag {};
 /// Hot: read by shape_window_system, collision_system, render_system.
 struct PlayerShape {
     Shape    current = Shape::Circle;  // active gameplay shape
-    float    morph_t = 1.0f;           // 0.0 = mid-morph, 1.0 = settled
+    float    morph_t = 1.0f;           // 0.0 = morph just started, 1.0 = settled
 };
 
 /// Rhythm-mode timing window state for the player. 24 bytes.
@@ -872,8 +872,8 @@ In code, reusable construction lives in `app/entities/` factory functions
 ┌─ Player ──────────────────────────────────────────────────┐
 │ PlayerTag          (tag, 0 bytes)                         │
 │ WorldTransform     { position: {360.0, 920.0} }          │
-│ PlayerShape        { current: Circle, morph_t: 1.0 }      │
-│ ShapeWindow        { target: Circle, phase: Idle, ... }   │
+│ PlayerShape        { current: Hexagon, morph_t: 1.0 }     │
+│ ShapeWindow        { target: Hexagon, phase: Idle, ... }  │
 │ Lane               { current: 1, target: -1, lerp_t: 1 } │
 │ VerticalState      { mode: Grounded, timer: 0, y_off: 0 }│
 │ Color              { r: 80, g: 180, b: 255, a: 255 }     │
@@ -1277,11 +1277,15 @@ int main(int argc, char* argv[]) {
     ┌────────────────────────────────────────────────────────┐
     │ dispatcher listeners:                                  │
     │                                                        │
-    │   // 1. Process shape button                           │
+    │   // 1. Process shape button (rhythm mode)             │
     │   player_input_handle_press(ButtonPressEvent) {        │
-    │       PlayerShape.current  = event.shape;              │──▶ PlayerShape
-    │       PlayerShape.morph_t  = 1.0f;                     │    { current: Square,
-    │       disp.enqueue(PlaySfxEvent{ShapeShift});          │      morph_t: 1.0 }
+    │       ShapeWindow.target_shape = event.shape;          │──▶ ShapeWindow
+    │       ShapeWindow.phase        = MorphIn;              │    { target: Square,
+    │       PlayerShape.morph_t      = 0.0f;                 │      phase: MorphIn }
+    │       disp.enqueue(PlaySfxEvent{ShapeShift});          │
+    │       // PlayerShape.current is promoted to            │──▶ PlayerShape
+    │       // target_shape once MorphIn completes           │    { current: Square,
+    │       // (shape_window_activation_system).             │      morph_t: 1.0 }
     │   }                                                    │
     │                                                        │
     │   // 2. Process direction                              │
