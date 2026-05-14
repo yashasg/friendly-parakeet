@@ -189,8 +189,6 @@ void test_player_system(entt::registry& reg, float dt) {
     auto* state = reg.ctx().find<TestPlayerState>();
     if (!state || !state->active) return;
 
-    state->frame_count++;
-
     auto& gs    = reg.ctx().get<GameState>();
     auto& disp  = reg.ctx().get<entt::dispatcher>();
     auto* log   = reg.ctx().find<SessionLog>();

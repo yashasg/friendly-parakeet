@@ -54,14 +54,13 @@ struct TestPlayerAction {
 struct TestPlayerPlannedTag {};
 
 // ── Test player state (context singleton) ────────────────────
-// Hot state (accessed every frame): active, frame_count, swipe_cooldown_timer,
+// Hot state (accessed every frame): active, swipe_cooldown_timer,
 //   action_count, actions[].
 // Warm state (accessed during perception): skill, rng.
 struct TestPlayerState {
     // ── Hot ──────────────────────────────────────────────────
     TestPlayerSkill skill   = TestPlayerSkill::Pro;
     bool            active  = false;
-    uint32_t        frame_count = 0;
 
     // Delay between consecutive lane swipes (simulates human re-swipe time)
     static constexpr float SWIPE_COOLDOWN = 0.125f;  // 125ms (midpoint of 100-150ms)

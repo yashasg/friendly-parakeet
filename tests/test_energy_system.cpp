@@ -114,7 +114,7 @@ TEST_CASE("energy: no action when SongState not present", "[energy]") {
     bare_reg.ctx().emplace<InputState>();
     
     bare_reg.ctx().emplace<GameState>(GameState{
-        GamePhase::Playing, GamePhase::Playing, 0.0f, false, GamePhase::Playing, 0.0f
+        GamePhase::Playing, GamePhase::Playing, 0.0f, false, GamePhase::Playing
     });
     bare_reg.ctx().emplace<EnergyState>(EnergyState{0.0f, 0.0f, 0.0f});
     runtime_system_scratch_init(bare_reg);
@@ -144,7 +144,7 @@ TEST_CASE("energy: no action when EnergyState not present", "[energy]") {
     bare_reg.ctx().emplace<InputState>();
     
     bare_reg.ctx().emplace<GameState>(GameState{
-        GamePhase::Playing, GamePhase::Playing, 0.0f, false, GamePhase::Playing, 0.0f
+        GamePhase::Playing, GamePhase::Playing, 0.0f, false, GamePhase::Playing
     });
     auto& song = bare_reg.ctx().emplace<SongState>();
     song.playing = true;

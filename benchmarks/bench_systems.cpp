@@ -27,7 +27,7 @@ static entt::registry make_bench_registry() {
     wire_input_dispatcher(reg);
     wire_audio_haptic_dispatcher(reg);
     reg.ctx().emplace<GameState>(GameState{
-        GamePhase::Playing, GamePhase::Playing, 0.0f, false, GamePhase::Playing, 0.0f
+        GamePhase::Playing, GamePhase::Playing, 0.0f, false, GamePhase::Playing
     });
     reg.ctx().emplace<ScoreState>();
     reg.ctx().emplace<SongState>();

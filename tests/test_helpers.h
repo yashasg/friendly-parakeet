@@ -36,7 +36,7 @@ inline entt::registry make_registry() {
     wire_input_dispatcher(reg);
     wire_audio_haptic_dispatcher(reg);
     reg.ctx().emplace<GameState>(GameState{
-        GamePhase::Playing, GamePhase::Playing, 0.0f, false, GamePhase::Playing, 0.0f
+        GamePhase::Playing, GamePhase::Playing, 0.0f, false, GamePhase::Playing
     });
     reg.ctx().emplace<ScoreState>();
     create_settings_entity(reg);  // defaults: haptics_enabled=true
