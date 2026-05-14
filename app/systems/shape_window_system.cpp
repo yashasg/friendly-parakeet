@@ -4,13 +4,20 @@
 #include "../components/rendering.h"
 #include "../components/rhythm.h"
 #include "../constants.h"
+#include "../util/shape_lane_mapping.h"
 
 namespace {
 
-static void apply_shape_color(entt::registry& reg, entt::entity entity, Shape shape) {
-    auto si = static_cast<int>(shape);
-    auto& sc = constants::SHAPE_COLORS[si];
+static bool apply_shape_color(entt::registry& reg, entt::entity entity, Shape shape) {
+    const int si = shape_index(shape);
+    if (si < 0) {
+        TraceLog(LOG_WARNING, "shape_window_system rejected invalid shape %d",
+                 static_cast<int>(shape));
+        return false;
+    }
+    const auto& sc = constants::SHAPE_COLORS[si];
     reg.replace<Color>(entity, sc);
+    return true;
 }
 
 void update_morph_in(entt::registry& reg,
@@ -27,8 +34,13 @@ void update_morph_in(entt::registry& reg,
         swindow.phase = WindowPhase::Active;
         swindow.window_start = song.song_time;
         swindow.window_timer = 0.0f;
+        if (!apply_shape_color(reg, entity, swindow.target_shape)) {
+            pshape.current = Shape::Hexagon;
+            swindow.target_shape = Shape::Hexagon;
+            swindow.phase = WindowPhase::Idle;
+            return;
+        }
         pshape.current = swindow.target_shape;
-        apply_shape_color(reg, entity, pshape.current);
         return;
     }
 
@@ -38,8 +50,13 @@ void update_morph_in(entt::registry& reg,
         swindow.phase = WindowPhase::Active;
         swindow.window_start = swindow.window_start + song.morph_duration;
         swindow.window_timer = 0.0f;
+        if (!apply_shape_color(reg, entity, swindow.target_shape)) {
+            pshape.current = Shape::Hexagon;
+            swindow.target_shape = Shape::Hexagon;
+            swindow.phase = WindowPhase::Idle;
+            return;
+        }
         pshape.current = swindow.target_shape;
-        apply_shape_color(reg, entity, pshape.current);
     }
 }
 

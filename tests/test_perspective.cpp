@@ -2,6 +2,7 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <entt/entt.hpp>
 #include "constants.h"
+#include "components/player.h"
 #include "components/rendering.h"
 #include "components/shape_mesh.h"
 #include "components/transform.h"
@@ -128,4 +129,39 @@ TEST_CASE("game_camera_system drops stale MeshChild parents without crashing", "
 
     REQUIRE_NOTHROW(game_camera_system(reg, 0.0f));
     CHECK_FALSE(reg.valid(child));
+}
+
+TEST_CASE("game_camera_system rejects invalid MeshChild shape index", "[camera3d][mesh_child][validation]") {
+    entt::registry reg;
+    reg.ctx().emplace<ShapeMeshConfig>();
+    reg.ctx().emplace<FloorParams>();
+    auto parent = reg.create();
+    reg.emplace<WorldTransform>(parent, WorldTransform{{100.0f, 200.0f}});
+    auto child = reg.create();
+    reg.emplace<MeshChild>(
+        child,
+        MeshChild{parent, 10.0f, 0.0f, 20.0f, 30.0f, 40.0f, WHITE, 255, MeshType::Shape}
+    );
+    reg.emplace<ModelTransform>(child, ModelTransform{glm::mat4{1.0f}, WHITE, 255, MeshType::Shape});
+    reg.emplace<TagWorldPass>(child);
+
+    REQUIRE_NOTHROW(game_camera_system(reg, 0.0f));
+    CHECK_FALSE(reg.all_of<ModelTransform>(child));
+}
+
+TEST_CASE("game_camera_system rejects invalid PlayerShape before mesh lookup", "[camera3d][player][validation]") {
+    entt::registry reg;
+    reg.ctx().emplace<ShapeMeshConfig>();
+    reg.ctx().emplace<FloorParams>();
+    auto player = reg.create();
+    reg.emplace<PlayerTag>(player);
+    reg.emplace<WorldTransform>(player, WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y}});
+    reg.emplace<PlayerShape>(player, PlayerShape{static_cast<Shape>(255), Shape::Hexagon, 1.0f});
+    reg.emplace<VerticalState>(player);
+    reg.emplace<Color>(player, WHITE);
+    reg.emplace<ModelTransform>(player, ModelTransform{glm::mat4{1.0f}, WHITE, 255, MeshType::Shape});
+    reg.emplace<TagWorldPass>(player);
+
+    REQUIRE_NOTHROW(game_camera_system(reg, 0.0f));
+    CHECK_FALSE(reg.all_of<ModelTransform>(player));
 }

@@ -13,6 +13,7 @@
 #include "../constants.h"
 #include "../entities/settings.h"
 #include "../platform_display.h"
+#include "../util/shape_lane_mapping.h"
 #include <glm/mat4x4.hpp>
 #include <raylib.h>
 #include <raymath.h>
@@ -272,6 +273,12 @@ void game_camera_system(entt::registry& reg, [[maybe_unused]] float dt) {
                     ModelTransform{slab_matrix(mc.x, z, mc.width, mc.height, mc.depth),
                                     mc.tint, 0, MeshType::Slab};
             } else {
+                if (mc.mesh_index >= kShapeCount) {
+                    TraceLog(LOG_WARNING, "game_camera_system skipped invalid MeshChild shape index %u",
+                             static_cast<unsigned>(mc.mesh_index));
+                    reg.remove<ModelTransform>(entity);
+                    continue;
+                }
                 const auto& props = mesh_config.props[mc.mesh_index];
                 reg.get_or_emplace<ModelTransform>(entity) =
                     ModelTransform{make_shape_matrix(mc.mesh_index, mc.x, 0.0f, z,
@@ -293,12 +300,19 @@ void game_camera_system(entt::registry& reg, [[maybe_unused]] float dt) {
             float y_3d = -vstate.y_offset;
             float sz = constants::PLAYER_SIZE;
             if (vstate.mode == VMode::Sliding) sz *= 0.5f;
-            uint8_t shape_idx = static_cast<uint8_t>(pshape.current);
-                const auto& props = mesh_config.props[shape_idx];
-                reg.get_or_emplace<ModelTransform>(entity) =
-                    ModelTransform{make_shape_matrix(shape_idx, transform.position.x, y_3d,
-                                                     transform.position.y, sz, props.radius_scale),
-                                   col, shape_idx, MeshType::Shape};
+            const int shape_idx = shape_index(pshape.current);
+            if (shape_idx < 0) {
+                TraceLog(LOG_WARNING, "game_camera_system skipped invalid PlayerShape %d",
+                         static_cast<int>(pshape.current));
+                reg.remove<ModelTransform>(entity);
+                continue;
+            }
+            const auto mesh_index = static_cast<uint8_t>(shape_idx);
+            const auto& props = mesh_config.props[shape_idx];
+            reg.get_or_emplace<ModelTransform>(entity) =
+                ModelTransform{make_shape_matrix(mesh_index, transform.position.x, y_3d,
+                                                 transform.position.y, sz, props.radius_scale),
+                               col, mesh_index, MeshType::Shape};
         }
     }
 

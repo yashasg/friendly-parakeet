@@ -10,7 +10,7 @@ struct ShapeProps {
 };
 
 // Registry singleton config for mesh generation and transform scaling.
-// Indexed by Shape enum (Circle, Square, Triangle, Hexagon).
+// Indexed via shape_index() from util/shape_lane_mapping.h.
 struct ShapeMeshConfig {
     ShapeProps props[4] = {
         {0.5f, 0.6f},   // Circle:   cylinder

@@ -63,6 +63,27 @@ TEST_CASE("shape_window: MorphIn completes and transitions to Active", "[shape_w
     CHECK(ps.current == Shape::Triangle);
 }
 
+TEST_CASE("shape_window: invalid MorphIn target resets safely", "[shape_window][validation]") {
+    auto reg = make_rhythm_registry();
+    auto player = make_rhythm_player(reg);
+    auto& ps = reg.get<PlayerShape>(player);
+    auto& sw = reg.get<ShapeWindow>(player);
+    auto& song = reg.ctx().get<SongState>();
+
+    sw.phase = WindowPhase::MorphIn;
+    sw.target_shape = static_cast<Shape>(255);
+    ps.current = Shape::Hexagon;
+    ps.morph_t = 0.0f;
+    sw.window_start = song.song_time;
+
+    song.song_time += song.morph_duration + 0.01f;
+
+    REQUIRE_NOTHROW(shape_window_system(reg, song.morph_duration + 0.01f));
+    CHECK(sw.phase == WindowPhase::Idle);
+    CHECK(ps.current == Shape::Hexagon);
+    CHECK(sw.target_shape == Shape::Hexagon);
+}
+
 TEST_CASE("shape_window: MorphIn morph_t proportional to timer", "[shape_window]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);

@@ -202,6 +202,16 @@ TEST_CASE("entity: mesh factory rejects invalid RequiredLane before children", "
     }
 }
 
+TEST_CASE("entity: spawn_obstacle rejects invalid ShapeGate shape before indexing color",
+          "[archetype][validation]") {
+    entt::registry reg;
+    const Shape invalid_shape = static_cast<Shape>(255);
+
+    CHECK_THROWS_AS(spawn_obstacle(reg, {ObstacleKind::ShapeGate, 360.0f, -120.0f, invalid_shape}),
+                    std::logic_error);
+    CHECK(count_mesh_children(reg) == 0);
+}
+
 TEST_CASE("entity: ShapeGate Square - red color", "[archetype]") {
     entt::registry reg;
     auto e = spawn_obstacle(reg, {ObstacleKind::ShapeGate, 60.0f, -120.0f, Shape::Square});

@@ -3,6 +3,7 @@
 #include "../components/transform.h"
 #include "../components/rendering.h"
 #include "../constants.h"
+#include "../util/shape_lane_mapping.h"
 #include <cstdint>
 #include <stdexcept>
 
@@ -14,18 +15,9 @@ struct ObstacleMeshLifetimeState {
 
 
 uint8_t checked_shape_mesh_index(Shape shape) {
-    switch (shape) {
-        case Shape::Circle:
-            return 0;
-        case Shape::Square:
-            return 1;
-        case Shape::Triangle:
-            return 2;
-        case Shape::Hexagon:
-            return 3;
-    }
-
-    throw std::logic_error("Invalid RequiredShape shape");
+    const int index = shape_index(shape);
+    if (index < 0) throw std::logic_error("Invalid RequiredShape shape");
+    return static_cast<uint8_t>(index);
 }
 
 int checked_lane_index(int8_t lane) {
