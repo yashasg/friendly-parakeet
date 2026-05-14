@@ -48,7 +48,6 @@ TEST_CASE("shape_window: MorphIn completes and transitions to Active", "[shape_w
 
     sw.phase = WindowPhase::MorphIn;
     sw.target_shape = Shape::Triangle;
-    ps.previous = Shape::Hexagon;
     sw.window_timer = 0.0f;
     sw.window_start = reg.ctx().get<SongState>().song_time;
     ps.morph_t = 0.0f;
@@ -142,7 +141,6 @@ TEST_CASE("shape_window: Active transitions to MorphOut when window expires", "[
 
     CHECK(sw.phase == WindowPhase::MorphOut);
     CHECK(sw.window_timer == 0.0f);
-    CHECK(ps.previous == Shape::Square);
     CHECK(ps.morph_t == 0.0f);
 }
 
@@ -154,7 +152,6 @@ TEST_CASE("shape_window: MorphOut increments timer and morph_t", "[shape_window]
     auto& ps = reg.get<PlayerShape>(player);
     auto& sw = reg.get<ShapeWindow>(player);
     sw.phase = WindowPhase::MorphOut;
-    ps.previous = Shape::Circle;
     sw.window_timer = 0.0f;
     sw.window_start = reg.ctx().get<SongState>().song_time;
     ps.morph_t = 0.0f;
@@ -174,7 +171,6 @@ TEST_CASE("shape_window: MorphOut completes and returns to Idle/Hexagon", "[shap
     auto& song = reg.ctx().get<SongState>();
 
     sw.phase = WindowPhase::MorphOut;
-    ps.previous = Shape::Triangle;
     ps.current = Shape::Triangle;
     sw.target_shape = Shape::Triangle;
     sw.window_timer = 0.0f;
@@ -188,7 +184,6 @@ TEST_CASE("shape_window: MorphOut completes and returns to Idle/Hexagon", "[shap
     CHECK(sw.phase == WindowPhase::Idle);
     CHECK(ps.morph_t == 1.0f);
     CHECK(ps.current == Shape::Hexagon);
-    CHECK(ps.previous == Shape::Hexagon);
     CHECK(sw.target_shape == Shape::Hexagon);
     CHECK(sw.window_timer == 0.0f);
 }
@@ -205,7 +200,6 @@ TEST_CASE("shape_window: full cycle MorphIn -> Active -> MorphOut -> Idle", "[sh
     // Start in MorphIn
     sw.phase = WindowPhase::MorphIn;
     sw.target_shape = Shape::Circle;
-    ps.previous = Shape::Hexagon;
     sw.window_timer = 0.0f;
     sw.window_start = reg.ctx().get<SongState>().song_time;
     ps.morph_t = 0.0f;
@@ -318,7 +312,6 @@ TEST_CASE("shape_window: invalid morph_duration completes MorphOut without non-f
     sw.phase = WindowPhase::MorphOut;
     sw.target_shape = Shape::Triangle;
     ps.current = Shape::Triangle;
-    ps.previous = Shape::Triangle;
     sw.window_start = song.song_time;
     ps.morph_t = 0.0f;
     song.morph_duration = -0.1f;
@@ -329,5 +322,4 @@ TEST_CASE("shape_window: invalid morph_duration completes MorphOut without non-f
     CHECK(ps.morph_t == 1.0f);
     CHECK(sw.phase == WindowPhase::Idle);
     CHECK(ps.current == Shape::Hexagon);
-    CHECK(ps.previous == Shape::Hexagon);
 }

@@ -16,7 +16,6 @@ TEST_CASE("player_action: shape change on button press", "[player]") {
     auto view = reg.view<PlayerTag, PlayerShape>();
     for (auto [e, ps] : view.each()) {
         CHECK(ps.current  == Shape::Triangle);
-        CHECK(ps.previous == Shape::Circle);
         CHECK(ps.morph_t  == 1.0f);
     }
     // Should have pushed ShapeShift SFX

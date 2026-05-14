@@ -39,7 +39,6 @@ TEST_CASE("player_entity: initial shape is Hexagon", "[archetype][player]") {
 
     auto& ps = reg.get<PlayerShape>(p);
     CHECK(ps.current  == Shape::Hexagon);
-    CHECK(ps.previous == Shape::Hexagon);
 }
 
 TEST_CASE("player_entity: ShapeWindow starts Idle targeting Hexagon", "[archetype][player]") {
