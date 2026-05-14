@@ -47,9 +47,9 @@ struct EnergyState {
 
 // ── Game Over Cause (singleton) ─────────────────────
 // Tracks the most recent reason the player's run ended.  Set by the
-// system that triggered the end-of-run condition (collision or energy)
-// and read by the Game Over screen to surface a one-line, platform-
-// neutral, colorblind-safe reason.
+// system that triggered the end-of-run condition (currently only
+// energy depletion) and read by the Game Over screen to surface a
+// one-line, platform-neutral, colorblind-safe reason.
 enum class DeathCause : uint8_t {
     None = 0,
     EnergyDepleted = 1,
