@@ -300,15 +300,15 @@
   "same_shape_run_metrics": {
     "easy": {
       "longest_run": 4,
-      "run_steps_ge_3": 34
+      "run_steps_ge_3": 33
     },
     "medium": {
       "longest_run": 5,
-      "run_steps_ge_3": 33
+      "run_steps_ge_3": 28
     },
     "hard": {
       "longest_run": 6,
-      "run_steps_ge_3": 78
+      "run_steps_ge_3": 75
     }
   },
   "experimental_onset_timing": {
@@ -386,13 +386,6 @@
         },
         "event_role_distribution": {
           "easy": 110
-        },
-        "motif_stats": {
-          "motif_ids": [],
-          "motif_count": 0,
-          "rows_with_motif": 0,
-          "max_repeat_count": 0,
-          "max_length_beats": 0.0
         }
       },
       "medium": {
@@ -456,13 +449,6 @@
         "event_role_distribution": {
           "easy": 75,
           "medium": 37
-        },
-        "motif_stats": {
-          "motif_ids": [],
-          "motif_count": 0,
-          "rows_with_motif": 0,
-          "max_repeat_count": 0,
-          "max_length_beats": 0.0
         }
       },
       "hard": {
@@ -527,13 +513,6 @@
           "easy": 102,
           "hard": 11,
           "medium": 21
-        },
-        "motif_stats": {
-          "motif_ids": [],
-          "motif_count": 0,
-          "rows_with_motif": 0,
-          "max_repeat_count": 0,
-          "max_length_beats": 0.0
         }
       }
     },

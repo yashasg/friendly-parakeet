@@ -98,14 +98,14 @@ obstacle later (e.g. easy's 6.8 s drama opener). They exist to prevent a
 readability cliff at song start where the obstacle has spawned before the
 player's first reaction window opens (issue #175).
 
-**Authoring rule:** The active onset-motif path enforces the floor before
+**Authoring rule:** The active onset-based path enforces the floor before
 obstacle materialization by dropping snapped onset candidates whose audio time
 falls inside the per-difficulty floor. Legacy cleanup-enabled generation still
 uses `enforce_first_collision_floor` to postpone or drop an already-authored
 leading obstacle while preserving the rhythm grid for subsequent obstacles.
 
 `tests/test_shipped_beatmap_first_collision.cpp` is not a shipped-content floor
-gate for the onset-motif path. It is a structural integrity guard that ensures
+gate for the onset-based path. It is a structural integrity guard that ensures
 each shipped difficulty has authored beats and a non-negative first beat index.
 
 ---

@@ -82,12 +82,9 @@ LEGACY_PASS_TO_PUBLIC_LAYER = {
     "flux": "full-spectrum",
     "full_spectrum_flux": "full-spectrum",
 }
-ONSET_MOTIF_DIFFICULTY_ROLES = {
-    "easy": {"skeleton"},
-    "medium": {"skeleton", "motif_core"},
-    "hard": {"skeleton", "motif_core", "ornament", "fill"},
-}
-ONSET_MOTIF_DISABLED_LEGACY_RULES = [
+# Diagnostics: legacy beat-grid rules that the active onset-based path
+# intentionally does NOT apply (issue #1073: motif/role-tagging layer removed).
+DISABLED_LEGACY_RULES = [
     "legacy lane balancing",
     "legacy shape balancing",
     "fixed beat snapping selection",
@@ -96,9 +93,6 @@ ONSET_MOTIF_DISABLED_LEGACY_RULES = [
     "shape-gap enforcement",
     "legacy obstacle selection",
 ]
-MOTIF_MIN_TOKEN_LEN = 3
-MOTIF_MAX_TOKEN_LEN = 12
-MOTIF_MIN_REPEAT_COUNT = 2
 
 # Segment-focus selector: fraction of ranked focus-class events included per difficulty.
 SEGMENT_FOCUS_DIFFICULTY_FRACTION = {"easy": 0.40, "medium": 0.65, "hard": 0.90}
@@ -433,165 +427,6 @@ def event_grid_position(event_time, beats):
     return left_idx, left_idx + subdivision_fraction, subdivision_fraction, subdivision
 
 
-def tokenize_onset_events(events, beats, intro_rest):
-    """Create motif tokens over beat/subdivision coordinates."""
-    token_events = []
-    for event_idx, event in enumerate(events):
-        event_time = float(event.get("t", 0.0))
-        beat_idx, beat_pos, subdivision_fraction, subdivision = event_grid_position(event_time, beats)
-        if beat_idx < intro_rest:
-            continue
-        onset_class = classify_onset_class(event)
-        token_events.append({
-            "event_idx": event_idx,
-            "t": round(event_time, 6),
-            "beat_idx": int(min(max(round(beat_idx), 0), len(beats) - 1)),
-            "beat_pos": float(beat_pos),
-            "subdivision_fraction": float(subdivision_fraction),
-            "subdivision": subdivision,
-            "onset_class": onset_class,
-            "token": f"{onset_class}:{subdivision}",
-            "flux": float(event.get("flux", 0.0)),
-            "passes": list(event.get("passes", [])) if isinstance(event.get("passes"), list) else [],
-        })
-    token_events.sort(key=lambda row: (row["t"], row["event_idx"]))
-    return token_events
-
-
-def detect_variable_length_onset_motifs(token_events):
-    """Find repeated onset-token motifs at natural repeated lengths."""
-    motifs = []
-    n = len(token_events)
-    if n < MOTIF_MIN_TOKEN_LEN:
-        return motifs
-
-    fingerprints = {}
-    max_len = min(MOTIF_MAX_TOKEN_LEN, n)
-    for length in range(MOTIF_MIN_TOKEN_LEN, max_len + 1):
-        for start in range(0, n - length + 1):
-            window = token_events[start:start + length]
-            token_seq = tuple(row["token"] for row in window)
-            rel = tuple(round(window[i + 1]["beat_pos"] - window[i]["beat_pos"], 3) for i in range(length - 1))
-            fingerprint = (length, token_seq, rel)
-            fingerprints.setdefault(fingerprint, []).append(start)
-
-    ranked = []
-    for fingerprint, starts in fingerprints.items():
-        if len(starts) < MOTIF_MIN_REPEAT_COUNT:
-            continue
-        length = fingerprint[0]
-        non_overlapping = []
-        for start in sorted(starts):
-            if non_overlapping and start < (non_overlapping[-1] + length):
-                continue
-            non_overlapping.append(start)
-        if len(non_overlapping) < MOTIF_MIN_REPEAT_COUNT:
-            continue
-        ranked.append((len(non_overlapping) * length, len(non_overlapping), length, fingerprint, non_overlapping))
-
-    ranked.sort(reverse=True)
-    used_windows = set()
-    motif_counter = 1
-    for _, repeat_count, length, fingerprint, starts in ranked:
-        fresh_starts = []
-        for start in starts:
-            key = (start, length)
-            if key in used_windows:
-                continue
-            fresh_starts.append(start)
-        if len(fresh_starts) < MOTIF_MIN_REPEAT_COUNT:
-            continue
-
-        token_seq = fingerprint[1]
-        lengths = []
-        for start in fresh_starts:
-            end = start + length - 1
-            span_beats = token_events[end]["beat_pos"] - token_events[start]["beat_pos"]
-            lengths.append(max(0.0, span_beats))
-            used_windows.add((start, length))
-
-        motif_id = f"M{motif_counter:03d}"
-        motif_counter += 1
-        motifs.append({
-            "motif_id": motif_id,
-            "token_length": int(length),
-            "repeat_count": int(len(fresh_starts)),
-            "fingerprint": "|".join(token_seq),
-            "length_beats": round(sum(lengths) / len(lengths), 3) if lengths else 0.0,
-            "starts": fresh_starts,
-        })
-    return motifs
-
-
-def annotate_motif_roles(token_events, motifs):
-    """Attach motif role metadata to tokenized events."""
-    for event in token_events:
-        event["motif_id"] = None
-        event["motif_repeat_count"] = 0
-        event["motif_token_length"] = 0
-        event["motif_length_beats"] = 0.0
-        event["motif_fingerprint"] = ""
-        event["motif_event_role"] = "ornament"
-        event["motif_support_score"] = 0.0
-
-    for motif in motifs:
-        token_length = motif["token_length"]
-        starts = motif["starts"]
-        if not starts:
-            continue
-
-        idx_flux = [0.0] * token_length
-        idx_count = [0] * token_length
-        for start in starts:
-            for local_idx in range(token_length):
-                ev = token_events[start + local_idx]
-                idx_flux[local_idx] += ev.get("flux", 0.0)
-                idx_count[local_idx] += 1
-        avg_flux = [
-            (idx_flux[i] / idx_count[i]) if idx_count[i] > 0 else 0.0
-            for i in range(token_length)
-        ]
-        skeleton_count = max(1, round(token_length * 0.4))
-        ranked_indices = sorted(
-            range(token_length),
-            key=lambda i: (avg_flux[i], -i),
-            reverse=True,
-        )
-        skeleton_indices = set(ranked_indices[:skeleton_count])
-
-        motif_strength = motif["repeat_count"] * token_length
-        for start in starts:
-            for local_idx in range(token_length):
-                event = token_events[start + local_idx]
-                role = "skeleton" if local_idx in skeleton_indices else "motif_core"
-                score = motif_strength + event.get("flux", 0.0)
-                if score >= event["motif_support_score"]:
-                    event["motif_id"] = motif["motif_id"]
-                    event["motif_repeat_count"] = motif["repeat_count"]
-                    event["motif_token_length"] = token_length
-                    event["motif_length_beats"] = motif["length_beats"]
-                    event["motif_fingerprint"] = motif["fingerprint"]
-                    event["motif_event_role"] = role
-                    event["motif_support_score"] = score
-
-    motif_positions = sorted(
-        event["beat_pos"]
-        for event in token_events
-        if event["motif_id"]
-    )
-    if motif_positions:
-        flux_values = sorted(event.get("flux", 0.0) for event in token_events)
-        flux_floor = _percentile(flux_values, 0.5)
-        for event in token_events:
-            if event["motif_id"]:
-                continue
-            nearest = min(abs(event["beat_pos"] - pos) for pos in motif_positions)
-            if nearest <= 0.75 and event.get("flux", 0.0) >= flux_floor:
-                event["motif_event_role"] = "ornament"
-            else:
-                event["motif_event_role"] = "fill"
-
-
 def _percentile(sorted_values, q):
     if not sorted_values:
         return 0.0
@@ -914,12 +749,6 @@ def _build_obstacle_timing_rows(analysis, difficulty, experimental_onset_timing=
             "onset_class": event.get("onset_class") if isinstance(event, dict) else obs.get("onset_class"),
             "segment_idx": (event.get("segment_idx") if isinstance(event, dict) else None) or obs.get("segment_idx"),
             "segment_focus": (event.get("segment_focus") if isinstance(event, dict) else None) or obs.get("segment_focus"),
-            # Keep motif_* fields as None for CSV schema stability.
-            "motif_id": None,
-            "motif_length_beats": None,
-            "motif_token_length": None,
-            "motif_repeat_count": None,
-            "motif_fingerprint": None,
             "event_role": obs.get("difficulty_inclusion") or (event.get("difficulty_inclusion") if isinstance(event, dict) else None),
             "difficulty_inclusion": obs.get("difficulty_inclusion") or (event.get("difficulty_inclusion") if isinstance(event, dict) else None),
         })
@@ -972,11 +801,6 @@ def _build_final_obstacle_timing_rows(analysis, difficulty, beatmap):
             "segment_focus": obs.get("segment_focus") if obs.get("segment_focus") is not None else (
                 event.get("segment_focus") if isinstance(event, dict) else None
             ),
-            "motif_id": None,
-            "motif_length_beats": None,
-            "motif_token_length": None,
-            "motif_repeat_count": None,
-            "motif_fingerprint": None,
             "event_role": obs.get("difficulty_inclusion"),
             "difficulty_inclusion": obs.get("difficulty_inclusion"),
         })
@@ -999,10 +823,6 @@ def _onset_timing_comparison_summary(rows, difficulty):
     source_hist = dict(sorted(Counter(row["timing_source"] for row in rows).items()))
     onset_class_hist = dict(sorted(Counter((row.get("onset_class") or "unknown") for row in rows).items()))
     role_hist = dict(sorted(Counter((row.get("event_role") or "unknown") for row in rows).items()))
-    motif_rows = [row for row in rows if row.get("motif_id")]
-    motif_ids = sorted({row.get("motif_id") for row in motif_rows if row.get("motif_id")})
-    motif_repeat_counts = [int(row.get("motif_repeat_count", 0) or 0) for row in motif_rows]
-    motif_lengths = [float(row.get("motif_length_beats", 0.0) or 0.0) for row in motif_rows]
     threshold_ms = MIN_IOI_MS.get(difficulty, 350.0)
     return {
         "event_counts": {
@@ -1021,13 +841,6 @@ def _onset_timing_comparison_summary(rows, difficulty):
         "subdivision_label_distribution": subdivision_hist,
         "onset_class_distribution": onset_class_hist,
         "event_role_distribution": role_hist,
-        "motif_stats": {
-            "motif_ids": motif_ids,
-            "motif_count": len(motif_ids),
-            "rows_with_motif": len(motif_rows),
-            "max_repeat_count": max(motif_repeat_counts) if motif_repeat_counts else 0,
-            "max_length_beats": round(max(motif_lengths), 3) if motif_lengths else 0.0,
-        },
     }
 
 
@@ -1240,12 +1053,6 @@ def write_snap_diagnostics(
             "onset_class",
             "segment_idx",
             "segment_focus",
-            # Kept for CSV schema stability (null values).
-            "motif_id",
-            "motif_length_beats",
-            "motif_token_length",
-            "motif_repeat_count",
-            "motif_fingerprint",
             "event_role",
             "difficulty_inclusion",
         ]
@@ -1261,7 +1068,7 @@ def write_snap_diagnostics(
             else "final_generated_beatmap",
             "diagnostics_source": final_beatmap_source,
             "legacy_rule_influence_disabled": True,
-            "disabled_legacy_rules": list(ONSET_MOTIF_DISABLED_LEGACY_RULES),
+            "disabled_legacy_rules": list(DISABLED_LEGACY_RULES),
             "comparison_by_difficulty": onset_summary,
             "selection_summary_by_difficulty": selection_rollup,
             "obstacle_counts_by_difficulty": obstacle_counts,
@@ -1478,83 +1285,8 @@ def _event_section_name(event_time, structure):
     return "verse"
 
 
-def _motif_priority_score(event, difficulty):
-    flux_score = event.get("flux", 0.0) * 100.0
-    repeat_score = event.get("motif_repeat_count", 0) * 12.0
-    class_bias = {"full-spectrum": 18.0, "percussive": 12.0, "harmonic": 10.0}.get(
-        event.get("onset_class"),
-        0.0,
-    )
-    role_weights = {
-        "easy": {"skeleton": 400.0, "motif_core": 170.0, "ornament": 60.0, "fill": 20.0},
-        "medium": {"skeleton": 320.0, "motif_core": 250.0, "ornament": 120.0, "fill": 40.0},
-        "hard": {"skeleton": 280.0, "motif_core": 260.0, "ornament": 200.0, "fill": 120.0},
-    }
-    role_score = role_weights[difficulty].get(event.get("motif_event_role", "fill"), 0.0)
-    return role_score + flux_score + repeat_score + class_bias
-
-
-def select_onset_motif_beats(analysis, difficulty):
-    """Experimental selector: pick events from repeated onset motifs first."""
-    beats = analysis["beats"]
-    events = analysis["events"]
-    intro_rest = DIFFICULTY_INTRO_REST[difficulty]
-
-    token_events = tokenize_onset_events(events, beats, intro_rest)
-    motifs = detect_variable_length_onset_motifs(token_events)
-    annotate_motif_roles(token_events, motifs)
-    event_map = {event["event_idx"]: event for event in token_events}
-    allowed_roles = ONSET_MOTIF_DIFFICULTY_ROLES[difficulty]
-    selected_events = {}
-    diagnostics = {
-        "motifs": motifs,
-        "events_total": len(token_events),
-        "events_with_motif": sum(1 for event in token_events if event.get("motif_id")),
-        "difficulty_allowed_roles": sorted(allowed_roles),
-        "legacy_rule_influence_disabled": True,
-        "disabled_legacy_rules": list(ONSET_MOTIF_DISABLED_LEGACY_RULES),
-    }
-
-    primary_candidates = [
-        event
-        for event in token_events
-        if event.get("motif_id") and event.get("motif_event_role", "fill") in allowed_roles
-    ]
-    fallback_candidates = [
-        event for event in token_events
-        if event.get("motif_event_role", "fill") in allowed_roles
-    ]
-    chosen_events = primary_candidates or fallback_candidates
-
-    for event in chosen_events:
-        beat_idx = event["beat_idx"]
-        previous = selected_events.get(beat_idx)
-        if previous is None:
-            selected_events[beat_idx] = event
-            continue
-        previous_key = (
-            _motif_priority_score(previous, difficulty),
-            previous.get("flux", 0.0),
-            -previous.get("event_idx", 0),
-        )
-        candidate_key = (
-            _motif_priority_score(event, difficulty),
-            event.get("flux", 0.0),
-            -event.get("event_idx", 0),
-        )
-        if candidate_key > previous_key:
-            selected_events[beat_idx] = event
-
-    role_hist = Counter(event.get("motif_event_role", "fill") for event in selected_events.values())
-    diagnostics["selected_events"] = len(selected_events)
-    diagnostics["selected_role_distribution"] = dict(sorted(role_hist.items()))
-
-    return selected_events, event_map, diagnostics
-
-
 # ═══════════════════════════════════════════════════════════════
-# SEGMENT-FOCUS ONSET SELECTION
-# Replaces motif n-gram selection as the active experimental path.
+# SEGMENT-FOCUS ONSET SELECTION (active generation path).
 # ═══════════════════════════════════════════════════════════════
 
 def _segment_class_stats(events):
@@ -2728,7 +2460,6 @@ def design_level_segment_focus(analysis, difficulty, cleanup_enabled=False):
     (directive 2026-05-10).  The parameter is accepted for call-site
     compatibility but its value is always ignored — passing True has no effect.
 
-    Motif n-gram detection is NOT used for obstacle selection here.
     Class mapping: percussive→lane 2+triangle, harmonic→lane 0+circle,
                    full-spectrum→lane 1+square.
     Difficulty controls how many onset events per segment are included.
@@ -2845,35 +2576,6 @@ def design_level_segment_focus(analysis, difficulty, cleanup_enabled=False):
     seg_diagnostics["playability_collapsed_pairs"] = collapsed_pairs
     # No cleanup: obstacles come directly from onsets; no post-processing passes.
     return obstacles, selected, seg_diagnostics
-
-
-def design_level_onset_motif(analysis, difficulty, cleanup_enabled=True):
-    """Motif-pipeline (kept for diagnostics). NOT the active generation path."""
-    selected, event_map, motif_diagnostics = select_onset_motif_beats(analysis, difficulty)
-    obstacles = []
-    for beat_idx, event in sorted(selected.items()):
-        mapping = ONSET_CLASS_TO_OBSTACLE.get(
-            event.get("onset_class"),
-            ONSET_CLASS_TO_OBSTACLE["full-spectrum"],
-        )
-        obstacles.append({
-            "beat": int(beat_idx),
-            "kind": "shape_gate",
-            "lane": mapping["lane"],
-            "shape": mapping["shape"],
-            "onset_class": event.get("onset_class", "full-spectrum"),
-            "motif_id": event.get("motif_id"),
-            "motif_length_beats": event.get("motif_length_beats", 0.0),
-            "motif_token_length": event.get("motif_token_length", 0),
-            "motif_repeat_count": event.get("motif_repeat_count", 0),
-            "motif_fingerprint": event.get("motif_fingerprint", ""),
-            "motif_event_role": event.get("motif_event_role", "fill"),
-            "difficulty_inclusion": event.get("motif_event_role", "fill"),
-            "source_event_idx": event.get("event_idx"),
-        })
-
-    del analysis, difficulty, cleanup_enabled
-    return obstacles, selected, motif_diagnostics
 
 
 # ═══════════════════════════════════════════════════════════════

@@ -121,7 +121,6 @@ def validate_artifact_shape(summary: dict, rows: list[dict]) -> list[str]:
         "subdivision_label_distribution",
         "onset_class_distribution",
         "event_role_distribution",
-        "motif_stats",
     }
     required_event_counts = {"obstacles", "timing_source_histogram"}
     required_stats = {"beat_snap", "onset_timing"}
@@ -146,11 +145,6 @@ def validate_artifact_shape(summary: dict, rows: list[dict]) -> list[str]:
         "subdivision",
         "source_event_idx",
         "onset_class",
-        "motif_id",
-        "motif_length_beats",
-        "motif_token_length",
-        "motif_repeat_count",
-        "motif_fingerprint",
         "event_role",
         "difficulty_inclusion",
     }
@@ -220,15 +214,6 @@ def validate_artifact_shape(summary: dict, rows: list[dict]) -> list[str]:
             findings.append(
                 f"[{difficulty}] onset row count mismatch: summary={expected_rows} csv={actual_rows}"
             )
-
-        motif_stats = payload["motif_stats"]
-        if not isinstance(motif_stats, dict):
-            findings.append(f"[{difficulty}] motif_stats must be an object")
-        else:
-            for key in ("motif_ids", "motif_count", "rows_with_motif", "max_repeat_count", "max_length_beats"):
-                if key not in motif_stats:
-                    findings.append(f"[{difficulty}] motif_stats missing key: {key}")
-                    break
 
     findings.extend(_validate_onset_only_timing(summary, rows))
     return findings

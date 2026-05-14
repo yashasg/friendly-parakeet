@@ -202,7 +202,6 @@ class TestExperimentalOnsetTiming(unittest.TestCase):
         self.assertIn("comparison_by_difficulty", spike)
         self.assertTrue((out_dir / "onset_timing_events.csv").exists())
         hard = spike["comparison_by_difficulty"]["hard"]
-        self.assertIn("motif_stats", hard)
         self.assertIn("event_role_distribution", hard)
 
     def test_experimental_mode_applies_class_lane_shape_mapping(self):
@@ -229,9 +228,9 @@ class TestExperimentalOnsetTiming(unittest.TestCase):
                 self.assertEqual(obs["lane"], 1)
                 self.assertEqual(obs["shape"], "square")
 
-        # All obstacles must carry difficulty_inclusion (not motif_id).
+        # All obstacles must carry difficulty_inclusion.
         self.assertTrue(all("difficulty_inclusion" in obs for obs in mapped))
-        # segment_focus must be set (no motif_id required).
+        # segment_focus must be set.
         self.assertTrue(any(obs.get("segment_focus") for obs in mapped))
 
     def test_cluster_thinning_preserves_protected_cross_layer_obstacles(self):
