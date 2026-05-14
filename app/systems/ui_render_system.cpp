@@ -1,8 +1,6 @@
 #include "all_systems.h"
 #include "camera_system.h"
-#include "../components/transform.h"
 #include "../components/player.h"
-#include "../components/obstacle.h"
 #include "../components/rendering.h"
 #include "../components/scoring.h"
 #include "../components/rhythm.h"

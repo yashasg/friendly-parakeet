@@ -4,7 +4,6 @@
 #include "../components/rendering.h"
 #include "../components/transform.h"
 #include "../components/player.h"
-#include "../components/obstacle.h"
 #include "../entities/beat_map.h"
 #include "../components/particle.h"
 #include "../components/scoring.h"
@@ -20,7 +19,6 @@
 #include <rlgl.h>
 #include <algorithm>
 #include <cmath>
-#include <tuple>
 #include <stdexcept>
 
 namespace camera {
