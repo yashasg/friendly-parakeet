@@ -5,18 +5,17 @@
 ## 2026-05-08: Shape Geometry Audit Post-Cleanup
 
 ### Decision
-Keep shape_vertices.h CIRCLE table; schedule HEXAGON/SQUARE/TRIANGLE arrays for removal in future cleanup.
+Remove `app/util/shape_vertices.h` entirely. Floor rings switch from a constexpr CIRCLE table to per-segment `cos`/`sin` generation; the HEXAGON/SQUARE/TRIANGLE arrays had no production callers and go with it.
 
 ### Rationale
-- CIRCLE table actively used by app/systems/game_render_system.cpp draw_floor_rings()
-- Annulus triangles rendered via raylib 2D APIs inside 3D camera path cannot use direct raylib calls
-- HEXAGON/SQUARE/TRIANGLE arrays only referenced in tests/benchmarks; removable without breaking game logic
+- Floor ring annulus triangles are now generated locally in `app/systems/floor_render_system.cpp::draw_floor_rings()` with `std::cos`/`std::sin` per segment inside an `rlBegin(RL_TRIANGLES)` block, so the constexpr CIRCLE table no longer earns its keep.
+- HEXAGON/SQUARE/TRIANGLE arrays had zero non-test references, so they were removable without breaking game logic.
 
 ### Owner
 Architecture Review (Keaton, Keyser)
 
 ### Status
-✅ Approved. No immediate action.
+✅ Implemented. `app/util/shape_vertices.h` deleted; floor rings now generated with trig in `floor_render_system.cpp::draw_floor_rings()`.
 
 ## 2026-05-08: Phase Transition Mechanism — Single Canonical Path (#482)
 
