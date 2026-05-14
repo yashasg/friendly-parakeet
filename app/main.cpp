@@ -29,6 +29,10 @@ void print_level_help() {
     std::fprintf(stderr, "\n");
 }
 
+bool missing_option_value(int argc, char* argv[], int option_index) {
+    return option_index + 1 >= argc || argv[option_index + 1][0] == '-';
+}
+
 }  // namespace
 
 int main(int argc, char* argv[]) {
@@ -39,7 +43,11 @@ int main(int argc, char* argv[]) {
     const char* difficulty = "medium";
     int selected_level = content_config::DEFAULT_LEVEL_INDEX;
     for (int i = 1; i < argc; ++i) {
-        if (std::strcmp(argv[i], "--test-player") == 0 && i + 1 < argc) {
+        if (std::strcmp(argv[i], "--test-player") == 0) {
+            if (missing_option_value(argc, argv, i)) {
+                std::fprintf(stderr, "Missing value for --test-player (use pro|good|bad)\n");
+                return 1;
+            }
             test_player_mode = true;
             ++i;
             if (std::strcmp(argv[i], "pro") == 0)       test_skill = TestPlayerSkill::Pro;
@@ -50,7 +58,11 @@ int main(int argc, char* argv[]) {
                 return 1;
             }
         }
-        else if (std::strcmp(argv[i], "--difficulty") == 0 && i + 1 < argc) {
+        else if (std::strcmp(argv[i], "--difficulty") == 0) {
+            if (missing_option_value(argc, argv, i)) {
+                std::fprintf(stderr, "Missing value for --difficulty (use easy|medium|hard)\n");
+                return 1;
+            }
             ++i;
             if (std::strcmp(argv[i], "easy") == 0 ||
                 std::strcmp(argv[i], "medium") == 0 ||
@@ -61,7 +73,12 @@ int main(int argc, char* argv[]) {
                 return 1;
             }
         }
-        else if (std::strcmp(argv[i], "--level") == 0 && i + 1 < argc) {
+        else if (std::strcmp(argv[i], "--level") == 0) {
+            if (missing_option_value(argc, argv, i)) {
+                std::fprintf(stderr, "Missing value for --level\n");
+                print_level_help();
+                return 1;
+            }
             ++i;
             selected_level = parse_level_arg(argv[i]);
             if (selected_level < 0) {
@@ -69,6 +86,10 @@ int main(int argc, char* argv[]) {
                 print_level_help();
                 return 1;
             }
+        }
+        else {
+            std::fprintf(stderr, "Unknown argument: %s\n", argv[i]);
+            return 1;
         }
     }
 
