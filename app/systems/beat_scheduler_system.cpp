@@ -5,8 +5,6 @@
 #include "../components/rhythm.h"
 #include "../components/song_state.h"
 #include "../components/obstacle.h"
-#include "../components/transform.h"
-#include "../components/rendering.h"
 #include "../constants.h"
 #include "../entities/settings.h"
 #include "../util/lane_utils.h"
