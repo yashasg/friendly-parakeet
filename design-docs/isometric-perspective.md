@@ -1,5 +1,8 @@
 # Isometric Perspective Effect — Technical Spec (Per-Vertex)
 
+> **Status: Future / Unimplemented.**
+> This spec describes a presentation-only rendering effect that is **not** on `main`. As of this writing the game ships in flat 2D mode: there is no `perspective::` namespace, no `app/perspective.{h,cpp}`, and no `PERSPECTIVE_ANGLE_DEG` / `VP_Y` constant in `app/constants.h`. `design-docs/game.md` correctly hedges this with "the playfield **may** use a pseudo-isometric runway effect"; this document elaborates the design intent for when/if the effect is greenlit. Treat the file change lists and signatures below as a proposal, not a backlog of pending work.
+
 ## Goal
 
 Make the flat 2D game look like the player is viewing a track receding
