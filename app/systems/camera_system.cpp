@@ -21,7 +21,6 @@
 #include <algorithm>
 #include <cmath>
 #include <tuple>
-#include <vector>
 #include <stdexcept>
 
 namespace camera {

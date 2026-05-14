@@ -17,23 +17,14 @@ std::size_t gameplay_capacity(std::size_t beat_capacity) {
 }  // namespace
 
 void runtime_system_scratch_init(entt::registry& reg) {
-    reg.ctx().erase<ScoringSystemScratch>();
-    reg.ctx().erase<PendingEnergyEffects>();
-    reg.ctx().erase<ScorePopupRequestQueue>();
-    reg.ctx().erase<ObstacleDespawnScratch>();
-    reg.ctx().erase<PopupDisplayScratch>();
-    reg.ctx().erase<ParticleSystemScratch>();
-    reg.ctx().erase<MeshChildCleanupScratch>();
-    reg.ctx().erase<WasmSmokeLaneMarkerState>();
-
-    reg.ctx().emplace<ScoringSystemScratch>();
-    reg.ctx().emplace<PendingEnergyEffects>();
-    reg.ctx().emplace<ScorePopupRequestQueue>();
-    reg.ctx().emplace<ObstacleDespawnScratch>();
-    reg.ctx().emplace<PopupDisplayScratch>();
-    reg.ctx().emplace<ParticleSystemScratch>();
-    reg.ctx().emplace<MeshChildCleanupScratch>();
-    reg.ctx().emplace<WasmSmokeLaneMarkerState>();
+    reg.ctx().insert_or_assign(ScoringSystemScratch{});
+    reg.ctx().insert_or_assign(PendingEnergyEffects{});
+    reg.ctx().insert_or_assign(ScorePopupRequestQueue{});
+    reg.ctx().insert_or_assign(ObstacleDespawnScratch{});
+    reg.ctx().insert_or_assign(PopupDisplayScratch{});
+    reg.ctx().insert_or_assign(ParticleSystemScratch{});
+    reg.ctx().insert_or_assign(MeshChildCleanupScratch{});
+    reg.ctx().insert_or_assign(WasmSmokeLaneMarkerState{});
 
     runtime_system_scratch_reserve(reg, 0);
 }
