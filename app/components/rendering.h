@@ -73,7 +73,7 @@ struct ObstacleChildren {
     int count = 0;
 };
 
-// Screen-space position computed by camera_system for UI rendering.
+// Screen-space position computed by ui_camera_system for UI rendering.
 struct ScreenPosition {
     float x = 0.0f;
     float y = 0.0f;
