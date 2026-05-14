@@ -2,10 +2,6 @@
 
 #include <raylib.h>
 
-inline bool music_stream_has_unloadable_resources(const Music& music) {
-    return music.ctxData != nullptr || music.stream.buffer != nullptr;
-}
-
 inline bool music_stream_is_playable(const Music& music) {
     return IsMusicValid(music) && music.stream.buffer != nullptr;
 }
@@ -28,10 +24,6 @@ struct MusicContext {
 
     void release();
 };
-
-inline bool music_stream_is_valid(Music stream) {
-    return IsMusicValid(stream);
-}
 
 inline bool music_stream_may_own_resources(const Music& stream) {
     return stream.ctxData != nullptr || stream.stream.buffer != nullptr;

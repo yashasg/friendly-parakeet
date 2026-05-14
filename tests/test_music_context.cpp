@@ -31,12 +31,12 @@ TEST_CASE("music context: playable stream requires raylib validity and an audio 
 
 TEST_CASE("music context: rejected partial streams are recognized for unload", "[audio]") {
     Music music{};
-    CHECK_FALSE(music_stream_has_unloadable_resources(music));
+    CHECK_FALSE(music_stream_may_own_resources(music));
 
     music.ctxData = reinterpret_cast<void*>(static_cast<std::uintptr_t>(0x1));
-    CHECK(music_stream_has_unloadable_resources(music));
+    CHECK(music_stream_may_own_resources(music));
 
     music.ctxData = nullptr;
     music.stream.buffer = reinterpret_cast<decltype(music.stream.buffer)>(static_cast<std::uintptr_t>(0x1));
-    CHECK(music_stream_has_unloadable_resources(music));
+    CHECK(music_stream_may_own_resources(music));
 }

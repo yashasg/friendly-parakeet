@@ -6,17 +6,17 @@
 TEST_CASE("music stream helpers validate and identify unloadable rejected handles",
           "[song_playback][music][issue651]") {
     Music empty{};
-    CHECK_FALSE(music_stream_is_valid(empty));
+    CHECK_FALSE(IsMusicValid(empty));
     CHECK_FALSE(music_stream_may_own_resources(empty));
 
     Music partial_context{};
     partial_context.ctxData = reinterpret_cast<void*>(0x1);
-    CHECK_FALSE(music_stream_is_valid(partial_context));
+    CHECK_FALSE(IsMusicValid(partial_context));
     CHECK(music_stream_may_own_resources(partial_context));
 
     Music partial_buffer{};
     partial_buffer.stream.buffer = reinterpret_cast<rAudioBuffer*>(0x1);
-    CHECK_FALSE(music_stream_is_valid(partial_buffer));
+    CHECK_FALSE(IsMusicValid(partial_buffer));
     CHECK(music_stream_may_own_resources(partial_buffer));
 }
 
