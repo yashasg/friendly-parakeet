@@ -23,6 +23,9 @@ entt::entity spawn_obstacle_base(entt::registry& reg, const ObstacleSpawnParams&
     if (obstacle_kind_requires_shape(params.kind) && !is_valid_shape(params.shape)) {
         throw std::logic_error("Invalid obstacle shape");
     }
+    if (params.kind == ObstacleKind::SplitPath && !lane_utils::is_valid(params.req_lane)) {
+        throw std::logic_error("Invalid obstacle lane");
+    }
 
     auto e = reg.create();
     reg.emplace<WorldTransform>(e, WorldTransform{{params.x, params.y}});

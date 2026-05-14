@@ -9,6 +9,7 @@
 #include "../components/rendering.h"
 #include "../constants.h"
 #include "../entities/settings.h"
+#include "../util/lane_utils.h"
 
 #include <cmath>
 
@@ -74,12 +75,12 @@ void beat_scheduler_system(entt::registry& reg, [[maybe_unused]] float dt) {
                 - (max_start_y - constants::SPAWN_Y) / song->scroll_speed;
         }
 
-        // Lane-bound obstacles use the authored lane directly.
-        float x_pos = constants::LANE_X[1];
+        // Lane-bound obstacles use a normalized lane so visual position and
+        // lane requirements cannot diverge on invalid beatmap data.
+        const int8_t spawn_lane = lane_utils::valid_or_default(entry.lane);
+        float x_pos = constants::LANE_X[static_cast<int>(spawn_lane)];
         const int lane = static_cast<int>(entry.lane);
-        if (lane >= 0 && lane < constants::LANE_COUNT) {
-            x_pos = constants::LANE_X[lane];
-        } else {
+        if (!lane_utils::is_valid(lane)) {
             TraceLog(LOG_WARNING, "Invalid beatmap lane %d; defaulting to center lane", lane);
         }
 
@@ -90,7 +91,7 @@ void beat_scheduler_system(entt::registry& reg, [[maybe_unused]] float dt) {
             start_y,
             entry.shape,
             entry.blocked_mask,
-            entry.lane,
+            spawn_lane,
             song->scroll_speed
         }, bi);
 

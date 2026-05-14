@@ -212,6 +212,18 @@ TEST_CASE("entity: spawn_obstacle rejects invalid ShapeGate shape before indexin
     CHECK(count_mesh_children(reg) == 0);
 }
 
+TEST_CASE("entity: spawn_obstacle rejects invalid SplitPath lane before creating entities",
+          "[archetype][validation][issue1046]") {
+    entt::registry reg;
+
+    CHECK_THROWS_AS(spawn_obstacle(reg, {ObstacleKind::SplitPath, 360.0f, -120.0f,
+                                         Shape::Square, uint8_t{0}, int8_t{3}}),
+                    std::logic_error);
+    CHECK(reg.view<ObstacleTag>().begin() == reg.view<ObstacleTag>().end());
+    CHECK(reg.view<WorldTransform>().begin() == reg.view<WorldTransform>().end());
+    CHECK(count_mesh_children(reg) == 0);
+}
+
 TEST_CASE("entity: ShapeGate Square - red color", "[archetype]") {
     entt::registry reg;
     auto e = spawn_obstacle(reg, {ObstacleKind::ShapeGate, 60.0f, -120.0f, Shape::Square});
