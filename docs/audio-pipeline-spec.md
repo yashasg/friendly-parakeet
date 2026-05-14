@@ -636,15 +636,19 @@ void song_playback_system(entt::registry& reg, float dt) {
                 // First entry into Playing with music loaded
                 PlayMusicStream(music->stream);
                 music->started = true;
-            } else if (gs.previous_phase == GamePhase::Paused) {
+                music->paused = false;
+            } else if (music->paused) {
                 // Resuming from pause
                 ResumeMusicStream(music->stream);
+                music->paused = false;
             }
-        } else if (gs.phase == GamePhase::Paused && music->started) {
+        } else if (gs.phase == GamePhase::Paused && music->started && !music->paused) {
             PauseMusicStream(music->stream);
+            music->paused = true;
         } else if (gs.phase == GamePhase::GameOver && music->started) {
             StopMusicStream(music->stream);
             music->started = false;
+            music->paused = false;
         }
     }
 
