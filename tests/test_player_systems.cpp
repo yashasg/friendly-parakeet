@@ -70,6 +70,43 @@ TEST_CASE("player_action: swipe right changes lane", "[player]") {
     }
 }
 
+TEST_CASE("player_action: repeated lane input during transition does not restart interpolation",
+          "[player][issue1043]") {
+    auto reg = make_registry();
+    auto p = make_player(reg);
+
+    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Right});
+    run_semantic_input_tick(reg, 0.016f);
+
+    auto& lane = reg.get<Lane>(p);
+    lane.lerp_t = 0.4f;
+
+    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Right});
+    run_semantic_input_tick(reg, 0.016f);
+
+    CHECK(lane.current == 1);
+    CHECK(lane.target == 2);
+    CHECK_THAT(lane.lerp_t, Catch::Matchers::WithinAbs(0.4f, 0.0001f));
+}
+
+TEST_CASE("player_action: opposite lane input during transition waits for completion",
+          "[player][issue1043]") {
+    auto reg = make_registry();
+    auto p = make_player(reg);
+
+    auto& lane = reg.get<Lane>(p);
+    lane.current = 1;
+    lane.target = 2;
+    lane.lerp_t = 0.4f;
+
+    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Left});
+    run_semantic_input_tick(reg, 0.016f);
+
+    CHECK(lane.current == 1);
+    CHECK(lane.target == 2);
+    CHECK_THAT(lane.lerp_t, Catch::Matchers::WithinAbs(0.4f, 0.0001f));
+}
+
 TEST_CASE("player_action: swipe left at lane 0 is clamped", "[player]") {
     auto reg = make_registry();
     auto p = make_player(reg);
