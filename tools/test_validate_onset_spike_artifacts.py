@@ -54,14 +54,7 @@ def _summary_fixture(
             },
             "subdivision_label_distribution": labels,
             "onset_class_distribution": {"percussive": count // 3, "harmonic": count // 3, "full-spectrum": count - (2 * (count // 3))},
-            "event_role_distribution": {"skeleton": count // 2, "motif_core": count // 3, "ornament": count - ((count // 2) + (count // 3))},
-            "motif_stats": {
-                "motif_ids": ["M001"],
-                "motif_count": 1,
-                "rows_with_motif": count // 2,
-                "max_repeat_count": 3,
-                "max_length_beats": 2.5,
-            },
+            "event_role_distribution": {diff: count},
         }
 
     return {
@@ -100,13 +93,8 @@ def _rows_fixture() -> list[dict]:
                 "subdivision": "downbeat" if idx % 3 == 0 else ("eighth" if idx % 3 == 1 else "triplet"),
                 "source_event_idx": str(idx),
                 "onset_class": "percussive" if idx % 3 == 0 else ("harmonic" if idx % 3 == 1 else "full-spectrum"),
-                "motif_id": "M001" if idx % 2 == 0 else "",
-                "motif_length_beats": "2.5" if idx % 2 == 0 else "",
-                "motif_token_length": "4" if idx % 2 == 0 else "",
-                "motif_repeat_count": "3" if idx % 2 == 0 else "",
-                "motif_fingerprint": "percussive:downbeat|harmonic:eighth" if idx % 2 == 0 else "",
-                "event_role": "skeleton" if idx % 2 == 0 else "ornament",
-                "difficulty_inclusion": "skeleton" if idx % 2 == 0 else "ornament",
+                "event_role": diff,
+                "difficulty_inclusion": diff,
             })
     return rows
 
@@ -182,11 +170,6 @@ class TestOnsetSpikeCli(unittest.TestCase):
                     "subdivision",
                     "source_event_idx",
                     "onset_class",
-                    "motif_id",
-                    "motif_length_beats",
-                    "motif_token_length",
-                    "motif_repeat_count",
-                    "motif_fingerprint",
                     "event_role",
                     "difficulty_inclusion",
                 ],
