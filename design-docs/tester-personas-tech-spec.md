@@ -206,31 +206,31 @@ separate `need_shape` boolean. Same pattern for `target_lane = -1` and
 // app/components/test_player.h
 
 struct TestPlayerState {
-    TestPlayerSkill skill    = TestPlayerSkill::Pro;
-    bool            active   = false;
-    uint32_t        frame_count = 0;
+    // ── Hot ──────────────────────────────────────────────────
+    TestPlayerSkill skill   = TestPlayerSkill::Pro;
+    bool            active  = false;
+
+    // Delay between consecutive lane swipes (simulates human re-swipe time)
+    static constexpr float SWIPE_COOLDOWN = 0.125f;  // 125ms
+    float swipe_cooldown_timer = 0.0f;
 
     // Action queue — fixed capacity, no heap allocation in hot path.
-    // Max obstacles on screen at 120 BPM / 4 lead beats ≈ 8-12.
-    static constexpr int MAX_ACTIONS = 16;
-    TestPlayerAction actions[MAX_ACTIONS];
+    static constexpr int MAX_ACTIONS = 32;
+    TestPlayerAction actions[MAX_ACTIONS] = {};
     int              action_count = 0;
 
-    // Planned obstacle tracking — linear scan is faster than hash
-    // for N < 50 due to cache locality.
-    static constexpr int MAX_PLANNED = 64;
-    entt::entity     planned[MAX_PLANNED];
-    int              planned_count = 0;
-
-    // RNG (2.5KB — acceptable for singleton)
+    // ── Warm ─────────────────────────────────────────────────
     std::mt19937     rng;
 };
 ```
 
 **DoD note**: `std::vector` replaced with fixed-size arrays. We know
-the upper bound (~12 on-screen obstacles). Fixed arrays avoid heap
-allocation and give deterministic memory layout. Linear scan over 16
-entries fits in a single cache line of indices.
+the upper bound (~12 on-screen obstacles); `MAX_ACTIONS = 32` gives
+generous headroom. Fixed arrays avoid heap allocation and give
+deterministic memory layout. Planned-obstacle tracking no longer uses
+an inline `planned[]` array on the singleton — perception now tags
+each planned obstacle entity with the empty `TestPlayerPlannedTag`
+component, letting EnTT views drive the dedup check.
 
 ## Removed ring-zone component
 
@@ -590,8 +590,8 @@ inside `tick_playing_systems`.
   │ 🟡3 │  Original design used std::vector for action queue     │
   │     │  and planned list. Heap allocation in a per-frame      │
   │     │  system, even if small.                                │
-  │     │  FIX: Fixed-size arrays (MAX_ACTIONS=16, MAX_PLANNED   │
-  │     │  =64). Upper bounds known from BPM analysis.           │
+  │     │  FIX: Fixed-size action queue (MAX_ACTIONS=32) and a   │
+  │     │  per-entity TestPlayerPlannedTag for planning dedup.   │
   ├─────┼────────────────────────────────────────────────────────┤
   │ 🟡4 │  Original design used 7 separate bool fields for      │
   │     │  need_shape, need_lane, need_jump, need_slide,         │
