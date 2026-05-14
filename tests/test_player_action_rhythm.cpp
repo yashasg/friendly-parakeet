@@ -167,7 +167,6 @@ TEST_CASE("player_action: rhythm mode ACCEPTS button press during MorphOut (#209
     song.song_time = 15.0f;
     sw.phase = WindowPhase::MorphOut;
     ps.current = Shape::Circle;
-    ps.previous = Shape::Circle;
     sw.window_timer = 0.05f;
     sw.window_start = 14.9f;
 
@@ -199,7 +198,6 @@ TEST_CASE("player_action: legacy mode instant shape change", "[player_legacy]") 
 
     auto& ps = reg.get<PlayerShape>(player);
     CHECK(ps.current == Shape::Triangle);
-    CHECK(ps.previous == Shape::Circle);
     CHECK(ps.morph_t == 1.0f);
     CHECK(drain_sfx_events(reg).count > 0);
 }

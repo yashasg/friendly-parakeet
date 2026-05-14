@@ -66,7 +66,6 @@ TEST_CASE("components: UIPosition is distinct screen-space placement", "[compone
 TEST_CASE("components: PlayerShape defaults to Circle", "[components]") {
     PlayerShape ps{};
     CHECK(ps.current == Shape::Circle);
-    CHECK(ps.previous == Shape::Circle);
     CHECK(ps.morph_t == 1.0f);
 }
 

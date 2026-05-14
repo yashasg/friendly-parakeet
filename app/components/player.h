@@ -15,7 +15,6 @@ struct PlayerTag {};
 // Hot render data — read by render_system, player_movement_system every frame.
 struct PlayerShape {
     Shape current  = Shape::Circle;
-    Shape previous = Shape::Circle;
     float morph_t  = 1.0f;
 };
 

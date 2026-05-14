@@ -77,9 +77,7 @@ void player_input_handle_press(entt::registry& reg, const ButtonPressEvent& evt)
     }
 
     auto begin_shape_window = [&](PlayerShape& ps, ShapeWindow& sw) {
-        Shape previous_shape = ps.current;
         sw.target_shape = pressed_shape;
-        ps.previous = previous_shape;
         sw.phase = WindowPhase::MorphIn;
         sw.window_timer = 0.0f;
         sw.window_start = song->song_time;
@@ -107,7 +105,6 @@ void player_input_handle_press(entt::registry& reg, const ButtonPressEvent& evt)
             }
         } else {
             if (pressed_shape != pshape.current) {
-                pshape.previous = pshape.current;
                 pshape.current  = pressed_shape;
                 pshape.morph_t  = 1.0f;
                 const auto& sc = constants::SHAPE_COLORS[pressed_shape_index];

@@ -162,7 +162,6 @@ TEST_CASE("player_input: non-rhythm shape press changes immediately", "[player]"
     auto view = reg.view<PlayerTag, PlayerShape>();
     for (auto [e, ps] : view.each()) {
         CHECK(ps.current == Shape::Square);
-        CHECK(ps.previous == Shape::Circle);
         CHECK(ps.morph_t == 1.0f);
     }
 

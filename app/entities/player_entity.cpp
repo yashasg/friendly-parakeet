@@ -17,7 +17,6 @@ entt::entity create_player_entity(entt::registry& reg) {
     {
         PlayerShape ps;
         ps.current  = Shape::Hexagon;
-        ps.previous = Shape::Hexagon;
         reg.emplace<PlayerShape>(player, ps);
     }
     {

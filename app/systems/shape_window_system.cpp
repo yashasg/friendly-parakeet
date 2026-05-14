@@ -102,7 +102,6 @@ void shape_window_system(entt::registry& reg, [[maybe_unused]] float dt) {
                     swindow.phase = WindowPhase::MorphOut;
                     swindow.window_start = swindow.window_start + effective_duration;
                     swindow.window_timer = 0.0f;
-                    pshape.previous = pshape.current;
                     pshape.morph_t = 0.0f;
                 }
                 break;
@@ -116,7 +115,6 @@ void shape_window_system(entt::registry& reg, [[maybe_unused]] float dt) {
                              song->morph_duration);
                     pshape.morph_t = 1.0f;
                     pshape.current = Shape::Hexagon;
-                    pshape.previous = Shape::Hexagon;
                     swindow.target_shape = Shape::Hexagon;
                     swindow.phase = WindowPhase::Idle;
                     swindow.window_timer = 0.0f;
@@ -130,7 +128,6 @@ void shape_window_system(entt::registry& reg, [[maybe_unused]] float dt) {
                 if (pshape.morph_t >= 1.0f) {
                     pshape.morph_t = 1.0f;
                     pshape.current = Shape::Hexagon;
-                    pshape.previous = Shape::Hexagon;
                     swindow.target_shape = Shape::Hexagon;
                     swindow.phase = WindowPhase::Idle;
                     swindow.window_timer = 0.0f;

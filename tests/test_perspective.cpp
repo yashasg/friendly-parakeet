@@ -176,7 +176,7 @@ TEST_CASE("game_camera_system rejects invalid PlayerShape before mesh lookup", "
     auto player = reg.create();
     reg.emplace<PlayerTag>(player);
     reg.emplace<WorldTransform>(player, WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y}});
-    reg.emplace<PlayerShape>(player, PlayerShape{static_cast<Shape>(255), Shape::Hexagon, 1.0f});
+    reg.emplace<PlayerShape>(player, PlayerShape{static_cast<Shape>(255), 1.0f});
     reg.emplace<VerticalState>(player);
     reg.emplace<Color>(player, WHITE);
     reg.emplace<ModelTransform>(player, ModelTransform{glm::mat4{1.0f}, WHITE, 255, MeshType::Shape});
