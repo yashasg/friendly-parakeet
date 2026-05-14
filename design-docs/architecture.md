@@ -290,7 +290,7 @@ struct OnsetMarkerTag {};
 ### 2.4 — WARM: Obstacle Specifics (read by collision/scoring, not by scroll)
 
 ```cpp
-// components/obstacle_data.h
+// components/obstacle.h
 
 /// For ShapeGate / SplitPath, plus legacy ComboGate fixtures: which shape is required. 1 byte.
 struct RequiredShape {
