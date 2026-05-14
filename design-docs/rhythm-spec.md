@@ -174,7 +174,7 @@ constexpr int32_t CHAIN_MULT_BONUS_STEPS_CAP = 20; // caps at 2.0x from chain 21
   ┌──────────────────────────────────────────────────────────────┐
   │  PER-ENTITY COMPONENTS                                       │
   ├──────────────────────────────────────────────────────────────┤
-  │  PlayerShape       8B  ← current/previous shape + morph     │
+  │  PlayerShape       8B  ← current shape + morph progress     │
   │  ShapeWindow      24B  ← rhythm window timing state         │
   │  WorldTransform    20B ← world position/rotation/scale      │
   │  MotionVelocity     8B ← dx, dy                             │
@@ -250,9 +250,8 @@ struct SongState {
 enum class WindowPhase { Idle, MorphIn, Active, MorphOut };
 
 struct PlayerShape {
-    Shape current  = Shape::Circle;  // player_entity initializes this to Hexagon
-    Shape previous = Shape::Circle;
-    float morph_t  = 1.0f;           // [0,1] visual interpolation
+    Shape current = Shape::Circle;  // player_entity initializes this to Hexagon
+    float morph_t = 1.0f;           // [0,1] visual interpolation; 1.0 = settled
 };
 
 struct ShapeWindow {
