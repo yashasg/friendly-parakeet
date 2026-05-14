@@ -6,6 +6,7 @@
 #include "content/level_content_config.h"
 #include "entities/camera_entity.h"
 #include "entities/obstacle_entity.h"
+#include "entities/obstacle_render_entity.h"
 #include "session/play_session.h"
 #include "test_helpers.h"
 #include "util/high_score_persistence.h"
@@ -112,7 +113,7 @@ TEST_CASE("Play session: restart clears obstacle mesh children without stale lis
     auto next_obstacle = spawn_obstacle(reg, {ObstacleKind::ShapeGate, 360.0f, -120.0f, Shape::Square});
     REQUIRE(count_mesh_children(reg) > 0);
 
-    reg.destroy(next_obstacle);
+    destroy_obstacle_with_children(reg, next_obstacle);
 
     CHECK(count_mesh_children(reg) == 0);
 }

@@ -8,11 +8,6 @@
 void spawn_obstacle_meshes(entt::registry& reg, entt::entity logical);
 
 
-// Centralized mesh-child lifetime wiring. Safe to call more than once.
-void wire_obstacle_mesh_lifetime(entt::registry& reg);
-void unwire_obstacle_mesh_lifetime(entt::registry& reg);
-
-
-// EnTT listener: destroys MeshChild entities recorded by ObstacleChildren.
-// Prefer wire_obstacle_mesh_lifetime() over connecting this directly.
-void on_obstacle_destroy(entt::registry& reg, entt::entity parent);
+// Explicit obstacle lifetime helpers. Do not call from EnTT destroy listeners.
+void destroy_obstacle_mesh_children(entt::registry& reg, entt::entity parent);
+void destroy_obstacle_with_children(entt::registry& reg, entt::entity parent);

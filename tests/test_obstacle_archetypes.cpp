@@ -92,7 +92,6 @@ TEST_CASE("entity: obstacle roots and mesh children declare world render pass", 
 
 TEST_CASE("entity: obstacle mesh overflow does not create orphan MeshChild", "[archetype][render][cleanup]") {
     entt::registry reg;
-    wire_obstacle_mesh_lifetime(reg);
 
     auto parent = reg.create();
     reg.emplace<WorldTransform>(parent, WorldTransform{{360.0f, -120.0f}});
@@ -117,18 +116,18 @@ TEST_CASE("entity: obstacle mesh overflow does not create orphan MeshChild", "[a
     CHECK(count_mesh_children(reg) == ObstacleChildren::MAX);
     CHECK(reg.get<ObstacleChildren>(parent).count == ObstacleChildren::MAX);
 
-    reg.destroy(parent);
+    destroy_obstacle_with_children(reg, parent);
 
     CHECK(count_mesh_children(reg) == 0);
 }
 
-TEST_CASE("entity: obstacle mesh lifetime is wired by the factory", "[archetype][render][cleanup]") {
+TEST_CASE("entity: obstacle mesh lifetime helper cleans factory children", "[archetype][render][cleanup]") {
     entt::registry reg;
     auto parent = spawn_obstacle(reg, {ObstacleKind::ShapeGate, 360.0f, -120.0f, Shape::Circle});
 
     REQUIRE(count_mesh_children(reg) > 0);
 
-    reg.destroy(parent);
+    destroy_obstacle_with_children(reg, parent);
 
     CHECK(count_mesh_children(reg) == 0);
 }
@@ -142,7 +141,7 @@ TEST_CASE("entity: direct mesh factory cleanup does not depend on ObstacleTag or
     spawn_obstacle_meshes(reg, parent);
     REQUIRE(count_mesh_children(reg) > 0);
 
-    reg.destroy(parent);
+    destroy_obstacle_with_children(reg, parent);
 
     CHECK(count_mesh_children(reg) == 0);
 }

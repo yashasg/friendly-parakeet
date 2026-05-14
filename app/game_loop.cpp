@@ -23,7 +23,6 @@
 #include "util/session_logger.h"
 #include "systems/camera_system.h"
 #include "entities/beat_map.h"
-#include "entities/obstacle_render_entity.h"
 #include "ui/screen_controllers/gameplay_hud_screen_controller.h"
 #include "platform_display.h"
 #include "util/persistence_policy.h"
@@ -234,9 +233,6 @@ bool game_loop_init(entt::registry& reg,
     // Cameras + render targets + GPU meshes
     camera::init(reg);
 
-    // MeshChild auto-cleanup: destroy children when parent ownership is removed.
-    wire_obstacle_mesh_lifetime(reg);
-
     // UI + beatmap + music
     create_beat_map_entity(reg);
     reset_ctx_singleton<SongState>(reg);
@@ -345,7 +341,6 @@ void game_loop_shutdown(entt::registry& reg) {
     // Disconnect all destroy/construct listeners before clearing entities
     unwire_input_dispatcher(reg);
     unwire_audio_haptic_dispatcher(reg);
-    unwire_obstacle_mesh_lifetime(reg);
     reg.on_construct<ObstacleTag>().disconnect<&session_log_on_obstacle_spawn>();
     reg.on_construct<ScoredTag>().disconnect<&session_log_on_scored>();
 

@@ -8,12 +8,6 @@
 #include <stdexcept>
 
 namespace {
-struct ObstacleMeshLifetimeState {
-    entt::registry* owner = nullptr;
-    entt::scoped_connection connection;
-};
-
-
 uint8_t checked_shape_mesh_index(Shape shape) {
     const int index = shape_index(shape);
     if (index < 0) throw std::logic_error("Invalid RequiredShape shape");
@@ -49,27 +43,6 @@ struct PendingEntity {
         active = false;
     }
 };
-}
-
-void on_obstacle_destroy(entt::registry& reg, entt::entity parent);
-
-void wire_obstacle_mesh_lifetime(entt::registry& reg) {
-    auto* state = reg.ctx().find<ObstacleMeshLifetimeState>();
-    if (!state) {
-        state = &reg.ctx().emplace<ObstacleMeshLifetimeState>();
-    }
-    if (state->owner == &reg) return;
-
-    reg.storage<ObstacleChildren>();
-    state->connection = entt::scoped_connection{
-        reg.on_destroy<ObstacleChildren>().connect<&on_obstacle_destroy>()};
-    state->owner = &reg;
-}
-
-void unwire_obstacle_mesh_lifetime(entt::registry& reg) {
-    if (auto* state = reg.ctx().find<ObstacleMeshLifetimeState>()) {
-        *state = ObstacleMeshLifetimeState{};
-    }
 }
 
 static void append_child(entt::registry& reg, entt::entity parent, entt::entity child) {
@@ -117,8 +90,6 @@ static entt::entity add_shape_child(entt::registry& reg, entt::entity parent,
 }
 
 void spawn_obstacle_meshes(entt::registry& reg, entt::entity logical) {
-    wire_obstacle_mesh_lifetime(reg);
-
     const auto* wt_ptr = reg.try_get<WorldTransform>(logical);
     auto& col = reg.get<Color>(logical);
     auto& dsz = reg.get<DrawSize>(logical);
@@ -204,13 +175,19 @@ void spawn_obstacle_meshes(entt::registry& reg, entt::entity logical) {
 }
 
 
-// on_destroy listener: destroy MeshChild entities owned by this parent.
-// Uses ObstacleChildren for O(N) lookup instead of scanning the full pool.
-void on_obstacle_destroy(entt::registry& reg, entt::entity parent) {
+void destroy_obstacle_mesh_children(entt::registry& reg, entt::entity parent) {
     auto* oc = reg.try_get<ObstacleChildren>(parent);
     if (!oc) return;
     for (int i = 0; i < oc->count; ++i) {
         if (reg.valid(oc->children[i]))
             reg.destroy(oc->children[i]);
+        oc->children[i] = entt::null;
     }
+    oc->count = 0;
+}
+
+void destroy_obstacle_with_children(entt::registry& reg, entt::entity parent) {
+    if (!reg.valid(parent)) return;
+    destroy_obstacle_mesh_children(reg, parent);
+    reg.destroy(parent);
 }
