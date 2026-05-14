@@ -315,7 +315,6 @@ struct SongResults {
   ┌─ RHYTHM ENGINE ────────────────────────────────────────────┐
   │ song_playback_system                          ★ NEW        │
   │   → advances SongState.song_time by dt                     │
-  │   → fires beat_tick event (for hex pulse VFX)              │
   │                                                            │
   │ beat_scheduler_system                         ★ NEW        │
   │   → reads BeatMap.beats[next_spawn_idx]                    │
