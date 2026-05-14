@@ -160,6 +160,40 @@ struct PlayerShape {
     float    morph_t;      // 0.0 = previous, 1.0 = current (animation lerp)
 };
 
+/// Rhythm-mode timing window state for the player. 24 bytes.
+/// Hot: read/written by shape_window_system and input dispatcher callbacks;
+/// read by collision_system. Lives on the player entity alongside PlayerShape.
+///
+/// Relationship to PlayerShape:
+///   - `target_shape`     is the shape the player is morphing toward when a
+///                        ButtonPressEvent or test-player event lands in or
+///                        near the active window.
+///   - When `phase == MorphIn` completes, shape_window_activation_system
+///                        promotes `target_shape` into `PlayerShape.current`
+///                        and resets the morph animation.
+///   - `press_time`/`peak_time` feed timing-grade computation when an
+///                        obstacle resolves.
+///
+/// `WindowPhase` lives in `components/window_phase.h` so it can be shared by
+/// player.h and rhythm.h without a header cycle.
+enum class WindowPhase : uint8_t {
+    Idle     = 0,   // no active window
+    MorphIn  = 1,   // accepting a press that will become the next shape
+    Active   = 2,   // on-beat scoring window open
+    MorphOut = 3,   // window closing; settling animation
+};
+
+struct ShapeWindow {
+    Shape       target_shape;   // shape the player will become at MorphIn end
+    WindowPhase phase;          // current rhythm window phase
+    bool        graded;         // a TimingGrade has already been emitted
+    float       window_timer;   // seconds into the current phase
+    float       window_start;   // song_time when the current window opened
+    float       press_time;     // song_time of the latest valid press (-1 = none)
+    float       peak_time;      // song_time at the dead-center of the window
+    float       window_scale;   // per-note window width multiplier
+};
+
 /// Lane occupancy and transition. 8 bytes.
 /// Hot: read by collision_system, player input handlers, render_system.
 struct Lane {
@@ -230,6 +264,23 @@ struct ScoredTag {};
 // Existential tag: obstacle does not participate in the scoring ladder
 // (no score popup, no chain contribution).
 struct NonScorableTag {};
+
+// Existential tag: scored obstacle was failed/missed and should not award points.
+// Emplaced by miss_detection_system (passed unresolved notes) and by
+// collision_system (graded Bad/early presses). scoring_system removes it once
+// the miss has been banked.
+struct MissTag {};
+
+// Existential tag: scoring_system has consumed this obstacle's final hit/miss
+// result. Excluded from collision and miss-detection views so resolution is
+// idempotent; obstacle_despawn_system still owns destruction.
+struct ResolvedObstacleTag {};
+
+// Existential tag: marker spawned from beatmap onset metadata. Iterated for
+// visual draw only; collision and scoring exclude it via NonScorableTag.
+// Distinct from NonScorableTag so renderers and session_logger can pick out
+// onset cues without scanning the full obstacle data.
+struct OnsetMarkerTag {};
 ```
 
 ### 2.4 — WARM: Obstacle Specifics (read by collision/scoring, not by scroll)
@@ -253,6 +304,13 @@ struct RequiredLane {
     int8_t lane;    // 0, 1, or 2
 };
 
+/// For ShapeGate: which lane the gate occupies, captured at spawn from the
+/// authored x-position. 1 byte. Read by collision_system rhythm/non-rhythm
+/// ShapeGate views so a player must be in the gate's lane to clear it.
+struct ShapeGateLane {
+    int8_t lane;    // 0, 1, or 2
+};
+
 /// No vertical-bar action component exists in the current runtime.
 /// LowBar/HighBar authoring references are archival/future design notes only.
 ```
@@ -262,11 +320,11 @@ truth for runtime obstacle kind:
 
 | Runtime kind | Required components | Notes |
 | --- | --- | --- |
-| `ShapeGate` | `RequiredShape` only | Also the fallback for no action components; avoid using the helper for visual-only markers. |
+| `ShapeGate` | `RequiredShape` + `ShapeGateLane` | Also the fallback for no action components; avoid using the helper for visual-only markers. |
 | `LaneBlock` | `BlockedLanes` only | Legacy component fixture only; parser, scheduler, and runtime factories reject it for active gameplay. |
 | `ComboGate` | `RequiredShape` + `BlockedLanes` | Legacy component fixture only; parser, scheduler, and runtime factories reject it for active gameplay. |
 | `SplitPath` | `RequiredLane` (+ `RequiredShape` on spawned entities) | `RequiredLane` takes precedence in the helper. |
-| `OnsetMarker` | `NonScorableTag`, no `RequiredShape`/`BlockedLanes`/`RequiredLane` | Authored kind only; normal beat scheduling skips these entries, and spawned markers are visual-only/non-scoring. |
+| `OnsetMarker` | `OnsetMarkerTag` + `NonScorableTag`, no `RequiredShape`/`BlockedLanes`/`RequiredLane`/`ShapeGateLane` | Authored kind only; normal beat scheduling skips these entries, and spawned markers are visual-only/non-scoring. |
 
 ### 2.5 — HOT: Fixed-lifetime FX timers
 
@@ -340,36 +398,77 @@ struct EnergyState {
 ```cpp
 // components/input.h
 
-/// Raw touch state — populated by input_system from raylib input. Singleton.
-struct InputState {
-    // Current frame touch data
-    bool     touch_down;       // just pressed this frame
-    bool     touch_up;         // just released this frame
-    bool     touching;         // held down
+/// Raw input state — populated by input_system from raylib touch/mouse input.
+/// Singleton. Internal to input_system; downstream systems read the semantic
+/// events below instead, except for `quit_requested`. Per-frame edge flags
+/// (`touch_down`, `touch_up`, `click`, `button_touch_up`) are recomputed each
+/// pass through `input_system`; there is no separate `clear_events()` step.
+enum class InputSource : uint8_t { None, Mouse, Touch };
 
-    float    start_x,  start_y;    // position on touch_down
-    float    curr_x,   curr_y;     // current finger position
-    float    end_x,    end_y;      // position on touch_up
-    float    duration;             // seconds held so far
-
-    // Cleared each frame
-    void clear_events() {
-        touch_down = false;
-        touch_up   = false;
-    }
+struct TouchSlot {
+    static constexpr int InvalidId = -1;
+    int   id      = InvalidId;
+    bool  active  = false;
+    bool  started_in_button_zone = false;
+    float start_x = 0.0f, start_y = 0.0f;
+    float curr_x  = 0.0f, curr_y  = 0.0f;
+    float duration = 0.0f;
 };
 
-/// Semantic input events — produced by input/UI/test-player systems and
-/// drained by game_state_system through EnTT dispatcher listeners.
-struct GoEvent {
-    Direction dir = Direction::Up;
+struct InputState {
+    static constexpr int MaxTrackedTouches = 2;
+
+    // Primary pointer trace (mouse or first touch).
+    float start_x = 0.0f, start_y = 0.0f;
+    float curr_x  = 0.0f, curr_y  = 0.0f;
+    float end_x   = 0.0f, end_y   = 0.0f;
+    float duration = 0.0f;
+
+    InputSource active_source = InputSource::None;
+    bool  touch_down            = false;  // pressed this frame
+    bool  touch_up              = false;  // released this frame
+    bool  click                 = false;  // tap classification this frame
+    bool  touching              = false;  // held down
+    bool  quit_requested        = false;  // platform quit signal
+    bool  was_focused           = true;
+    bool  gestures_configured   = false;
+    bool  suppress_mouse_release = false;
+    bool  button_touch_up       = false;  // released inside a HUD button zone
+    float button_end_x = 0.0f, button_end_y = 0.0f;
+    TouchSlot touch_slots[MaxTrackedTouches] = {};
+};
+
+/// Directional intent shared by gesture producers and listeners.
+enum class Direction : uint8_t { Left, Right, Up, Down };
+```
+
+```cpp
+// components/input_events.h
+
+/// Semantic input events — produced by input_system, HUD controllers, and
+/// test_player_system; consumed by listeners wired through entt::dispatcher.
+/// Carry concrete values rather than entity handles so consumers stay safe if
+/// the producing UI entity is destroyed between enqueue and dispatch.
+
+enum class ButtonPressKind : uint8_t {
+    Shape,  // shape button pressed — read `.shape`
+    Menu,   // menu button pressed  — read `.menu_action` / `.menu_index`
+};
+
+enum class MenuActionKind : uint8_t {
+    Confirm = 0, Restart, GoLevelSelect, GoMainMenu, Exit,
+    SelectLevel, SelectDiff,
 };
 
 struct ButtonPressEvent {
-    ButtonPressKind kind = ButtonPressKind::Shape;
-    Shape shape = Shape::Circle;  // valid when kind == Shape
-    MenuActionKind menu_action = MenuActionKind::Confirm;  // valid when kind == Menu
-    uint8_t menu_index = 0;  // valid when kind == Menu
+    ButtonPressKind kind        = ButtonPressKind::Shape;
+    Shape           shape       = Shape::Circle;            // valid when kind == Shape
+    MenuActionKind  menu_action = MenuActionKind::Confirm;  // valid when kind == Menu
+    uint8_t         menu_index  = 0;                        // valid when kind == Menu
+};
+
+struct GoEvent {
+    Direction dir = Direction::Up;
 };
 ```
 
@@ -520,6 +619,7 @@ ParticleData        12     HOT        particle expiry/render fade
 ScorePopup          16     HOT        popup expiry/render fade
 PlayerTag            0     HOT        collision/filter
 PlayerShape          4     HOT        shape_window, collision, render, player_action
+ShapeWindow         24     HOT        shape_window, input dispatcher, collision
 Lane                 8     HOT        collision, render, player_action
 VerticalState       12     HOT        collision, render, player_action
 ObstacleTag          0     HOT        scroll, collision, cleanup
@@ -527,7 +627,12 @@ Obstacle             4     WARM       collision, miss_detection, scoring
 RequiredShape        1     WARM       collision, scoring
 BlockedLanes         1     WARM       collision
 RequiredLane         1     WARM       collision
+ShapeGateLane        1     WARM       collision (ShapeGate lane match)
+ScoredTag            0     WARM       scoring (consumes), collision/miss exclusions
+MissTag              0     WARM       scoring (miss branch), collision/miss
+ResolvedObstacleTag  0     WARM       collision/miss exclusions after scoring
 NonScorableTag       0     WARM       miss_detection/scoring exclusions, visual-only markers
+OnsetMarkerTag       0     WARM       obstacle_render_entity, session_logger
 Color                4     COLD       render
 DrawSize             8     COLD       render
 DrawLayer            1     COLD       render
@@ -537,7 +642,7 @@ ParticleTag          0     COLD       render (filter)
 ─────────────────────────────────────────────────────────────
 SINGLETONS (ctx)
 ─────────────────────────────────────────────────────────────
-InputState          36     per-frame  input_system internal touch/mouse state
+InputState          var    per-frame  input_system internal touch/mouse state
 entt::dispatcher    var    per-frame  input/UI/test-player enqueue semantic events, game_state drains
 ButtonPress/Go      var    per-frame  dispatcher payloads handled by game_state/player input listeners
 GameState           12     per-frame  game_state_system
@@ -764,13 +869,14 @@ In code, reusable construction lives in `app/entities/` factory functions
 │ WorldTransform     { position: {360.0, 920.0} }          │
 │ PlayerShape        { current: Circle, prev: Circle,       │
 │                      morph_t: 1.0 }                       │
+│ ShapeWindow        { target: Circle, phase: Idle, ... }   │
 │ Lane               { current: 1, target: -1, lerp_t: 1 } │
 │ VerticalState      { mode: Grounded, timer: 0, y_off: 0 }│
 │ Color              { r: 80, g: 180, b: 255, a: 255 }     │
 │ DrawSize           { w: 64, h: 64 }                       │
 │ DrawLayer          { layer: Game }                         │
 └───────────────────────────────────────────────────────────┘
-Total: ~73 bytes per entity (1 entity)
+Total: ~97 bytes per entity (1 entity)
 ```
 
 ### 5.2 Shape Gate Entity
@@ -782,12 +888,16 @@ Total: ~73 bytes per entity (1 entity)
 │ MotionVelocity     { value: {0.0, 400.0} }               │
 │ Obstacle           { base_points: 200 }                    │
 │ RequiredShape      { shape: Triangle }                     │
+│ ShapeGateLane      { lane: 1 }                             │
 │ Color              { r: 50, g: 205, b: 50, a: 255 }      │
 │ DrawSize           { w: 720, h: 80 }                       │
 │ DrawLayer          { layer: Game }                          │
 └───────────────────────────────────────────────────────────┘
-Total: ~42 bytes per entity (5–15 active)
+Total: ~43 bytes per entity (5–15 active)
 ```
+
+`ShapeGateLane.lane` is captured at spawn from the authored x-position and
+read by `collision_system` so a player must be in the gate's lane to clear it.
 
 ### 5.3 Legacy Lane Block Fixture
 
@@ -855,6 +965,7 @@ Total: ~44 bytes per entity
 │ WorldTransform     { position: {360.0, -120.0} }          │
 │ MotionVelocity     { value: {0.0, 400.0} }                │
 │ Obstacle           { base_points: 0 }                      │
+│ OnsetMarkerTag     (tag, 0 bytes)                         │
 │ NonScorableTag     (tag, 0 bytes)                         │
 │ Color              { r: 255, g: 255, b: 255, a: 80 }      │
 │ DrawSize           { w: 720, h: 80 }                       │
@@ -864,10 +975,13 @@ Total: ~40 bytes per entity
 ```
 
 Onset markers are visual beat/onset aids. They have no `RequiredShape`,
-`BlockedLanes`, or `RequiredLane`, so collision views do not resolve them; the
-`NonScorableTag` excludes them from score, chain, popup, miss, and energy
-effects. The active beat scheduler currently skips `OnsetMarker` entries rather
-than spawning them during normal play.
+`BlockedLanes`, `RequiredLane`, or `ShapeGateLane`, so collision views do
+not resolve them; the `NonScorableTag` excludes them from score, chain,
+popup, miss, and energy effects. `OnsetMarkerTag` is the explicit kind
+marker used by `obstacle_render_entity` and `session_logger` to identify
+onset cues without scanning the rest of the obstacle data. The active beat
+scheduler currently skips `OnsetMarker` entries rather than spawning them
+during normal play.
 
 ### 5.8 Score Popup Entity
 
@@ -1220,12 +1334,12 @@ int main(int argc, char* argv[]) {
 ┌──────────────────┬──────────┬──────────────┬──────────────┐
 │ Entity Type      │ Count    │ Bytes/Entity │ Total Bytes  │
 ├──────────────────┼──────────┼──────────────┼──────────────┤
-│ Player           │ 1        │ ~73          │ 73           │
-│ Obstacles        │ 5–15     │ ~42          │ 210–630      │
+│ Player           │ 1        │ ~97          │ 97           │
+│ Obstacles        │ 5–15     │ ~43          │ 215–645      │
 │ Score Popups     │ 0–5      │ ~33          │ 0–165        │
 │ Particles        │ 0–50     │ ~37          │ 0–1850       │
 ├──────────────────┼──────────┼──────────────┼──────────────┤
-│ TOTAL (peak)     │ ~71      │              │ ~2,718       │
+│ TOTAL (peak)     │ ~71      │              │ ~2,757       │
 │ + Singletons     │          │              │ ~130         │
 │ + EnTT overhead  │          │              │ ~8,000       │
 ├──────────────────┼──────────┼──────────────┼──────────────┤
@@ -1505,11 +1619,16 @@ app/
 │
 ├── components/                  ← all component structs
 │   ├── transform.h              ← WorldTransform, MotionVelocity, UIPosition
-│   ├── player.h                 ← PlayerTag, PlayerShape, Lane, VerticalState
-│   ├── obstacle.h               ← obstacle tags/data and requirements
+│   ├── window_phase.h           ← WindowPhase (shared by player.h and rhythm.h)
+│   ├── player.h                 ← PlayerTag, PlayerShape, ShapeWindow, Lane, VerticalState
+│   ├── obstacle.h               ← obstacle tags (ScoredTag, MissTag,
+│   │                              ResolvedObstacleTag, NonScorableTag,
+│   │                              OnsetMarkerTag) and requirements
+│   │                              (RequiredShape, RequiredLane, ShapeGateLane,
+│   │                              BlockedLanes)
 │   ├── scoring.h                ← ScoreState, ScorePopup
-│   ├── input.h                  ← InputState, Direction
-│   ├── input_events.h           ← ButtonPressEvent, GoEvent, UI button data
+│   ├── input.h                  ← InputState, TouchSlot, Direction
+│   ├── input_events.h           ← ButtonPressEvent, GoEvent, MenuActionKind
 │   ├── game_state.h             ← GameState, GamePhase, LevelSelectState
 │   ├── rendering.h              ← DrawSize, DrawLayer, screen/model transforms
 │   ├── particle.h               ← ParticleData, ParticleTag
