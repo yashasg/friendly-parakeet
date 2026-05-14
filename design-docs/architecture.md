@@ -641,6 +641,9 @@ DrawSize             8     COLD       render
 DrawLayer            1     COLD       render
 PopupDisplay        36     COLD       popup_display (fade), ui_render
 ParticleTag          0     COLD       render (filter)
+EnergyBarTag         0     COLD       energy_bar_system (filter), gameplay_hud (filter)
+EnergyBarLayout     24     COLD       energy_bar_system (read), gameplay_hud (read)
+EnergyBarVisual     24     COLD       energy_bar_system (write), gameplay_hud (read)
 ─────────────────────────────────────────────────────────────
 SINGLETONS (ctx)
 ─────────────────────────────────────────────────────────────
@@ -651,8 +654,11 @@ GameState           12     per-frame  game_state_system
 BeatMap             var    session    setup_play_session (write), beat_scheduler (read)
 SongState           48     per-frame  song_playback/beat_scheduler
 EnergyState         12     per-frame  energy_system (write), ui_render (read)
+PendingEnergyEffects var   per-frame  scoring_system (push), energy_system (drain)
 ScoreState          28     per-frame  scoring_system (write), render (read)
+ScorePopupRequestQueue var per-frame  scoring_system (push), popup_feedback_system (drain)
 PlaySfxEvent        var    per-frame  dispatcher events drained by audio_system
+TestPlayerState     var    session    test_player_system (read/write), test_player_session (init), game_loop (reset)
 ─────────────────────────────────────────────────────────────
 ```
 
