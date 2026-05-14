@@ -6,7 +6,6 @@
 #include "../components/audio_events.h"
 #include "../components/haptics.h"
 #include "../components/rhythm.h"
-#include "../entities/settings.h"
 #include "../constants.h"
 #include "../util/lane_utils.h"
 #include "../util/shape_lane_mapping.h"

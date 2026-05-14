@@ -4,7 +4,6 @@
 #include "../../components/game_state.h"
 #include "../../content/level_content_config.h"
 #include "../../components/input.h"
-#include "../../components/rendering.h"
 #include "../../constants.h"
 #include "screen_controller_base.h"
 #include <entt/entt.hpp>

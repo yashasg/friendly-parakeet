@@ -2,7 +2,6 @@
 
 #include "../../components/game_state.h"
 #include "../../components/input.h"
-#include "../../components/rendering.h"
 #include "screen_controller_base.h"
 #include <raygui.h>
 #include "title_screen_dead_zones.h"
