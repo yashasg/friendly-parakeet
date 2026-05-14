@@ -119,14 +119,12 @@ TEST_CASE("scoring: zero-point passive obstacles do not extend chain", "[scoring
     CHECK(score_shape_gate_with_tier(reg, TimingTier::Good) == 200);
     CHECK(score.chain_count == 1);
 
-    score.chain_timer = 1.0f;
     for (int i = 0; i < 3; ++i) {
         (void)make_zero_point_passive_obstacle(reg);
         scoring_system(reg, 0.1f);
     }
 
     CHECK(score.chain_count == 1);
-    CHECK_THAT(score.chain_timer, Catch::Matchers::WithinAbs(1.3f, 0.0001f));
     const int expected_chain2_points = static_cast<int>(
         std::floor(static_cast<float>(constants::PTS_SHAPE_GATE) * (1.0f + constants::CHAIN_MULT_STEP)));
     CHECK(score_shape_gate_with_tier(reg, TimingTier::Good) == expected_chain2_points);
@@ -211,7 +209,6 @@ TEST_CASE("scoring: miss-tagged obstacles do not award score and reset chain", "
     auto reg = make_registry();
     auto& score = reg.ctx().get<ScoreState>();
     score.chain_count = 3;
-    score.chain_timer = 0.5f;
 
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<ScoredTag>(obs);
@@ -223,7 +220,6 @@ TEST_CASE("scoring: miss-tagged obstacles do not award score and reset chain", "
     energy_system(reg, 0.016f);
 
     CHECK(score.chain_count == 0);
-    CHECK(score.chain_timer == 0.0f);
     CHECK(score.score == score_before + static_cast<int>(0.016f * constants::PTS_PER_SECOND));
     CHECK_FALSE(reg.all_of<Obstacle>(obs));
     CHECK_FALSE(reg.all_of<ScoredTag>(obs));
