@@ -16,6 +16,9 @@ bool obstacle_kind_requires_shape(ObstacleKind kind) {
 }
 
 entt::entity spawn_obstacle_base(entt::registry& reg, const ObstacleSpawnParams& params) {
+    if (!obstacle_kind_is_active_runtime_spawnable(params.kind)) {
+        throw std::logic_error("Deprecated obstacle kind is not spawnable at runtime");
+    }
     if (obstacle_kind_requires_shape(params.kind) && !is_valid_shape(params.shape)) {
         throw std::logic_error("Invalid obstacle shape");
     }
@@ -33,21 +36,9 @@ entt::entity spawn_obstacle_base(entt::registry& reg, const ObstacleSpawnParams&
             reg.emplace<Color>(e, constants::SHAPE_COLORS[shape_index(params.shape)]);
             break;
         }
-        case ObstacleKind::LaneBlock: {
-            reg.emplace<Obstacle>(e, int16_t{constants::PTS_LANE_BLOCK});
-            reg.emplace<BlockedLanes>(e, params.mask);
-            reg.emplace<DrawSize>(e, static_cast<float>(constants::SCREEN_W / 3), 80.0f);
-            reg.emplace<Color>(e, Color{255, 60, 60, 255});
-            break;
-        }
-        case ObstacleKind::ComboGate: {
-            reg.emplace<Obstacle>(e, int16_t{constants::PTS_COMBO_GATE});
-            reg.emplace<RequiredShape>(e, params.shape);
-            reg.emplace<BlockedLanes>(e, params.mask);
-            reg.emplace<DrawSize>(e, constants::SCREEN_W_F, 80.0f);
-            reg.emplace<Color>(e, Color{200, 100, 255, 255});
-            break;
-        }
+        case ObstacleKind::LaneBlock:
+        case ObstacleKind::ComboGate:
+            throw std::logic_error("Deprecated obstacle kind is not spawnable at runtime");
         case ObstacleKind::SplitPath: {
             reg.emplace<Obstacle>(e, int16_t{constants::PTS_SPLIT_PATH});
             reg.emplace<RequiredShape>(e, params.shape);

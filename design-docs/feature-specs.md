@@ -399,7 +399,7 @@ from BPM/lead-time math and stays constant within a song.
   BeatMap.difficulties[difficulty].beats
           │
           ├─ onset_marker → metadata only; scheduler skips spawn
-          └─ shape_gate / lane_block / combo_gate / split_path
+          └─ shape_gate / split_path
                     │
                     ▼
   calibrated_arrival_time = authored_beat_time + audio_offset_sec
@@ -438,8 +438,8 @@ struct Obstacle {
 
 enum class ObstacleKind : uint8_t {
     ShapeGate,
-    LaneBlock,
-    ComboGate,
+    LaneBlock,   // legacy component fixture only; active beatmaps/factories reject
+    ComboGate,   // legacy component fixture only; active beatmaps/factories reject
     SplitPath,
     OnsetMarker,
 };

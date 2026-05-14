@@ -33,9 +33,7 @@ bool kind_requires_lane(const ObstacleKind kind) {
 }
 
 bool is_supported_beatmap_kind(const ObstacleKind kind) {
-    return kind == ObstacleKind::ShapeGate ||
-           kind == ObstacleKind::SplitPath ||
-           kind == ObstacleKind::OnsetMarker;
+    return obstacle_kind_is_active_runtime_spawnable(kind);
 }
 
 std::string type_error_message(const char* field, const char* expected, const json& value) {
