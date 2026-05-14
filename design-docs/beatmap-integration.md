@@ -137,12 +137,28 @@ struct BeatMap {
 };
 
 struct SongState {
-    float bpm, offset, beat_period, lead_time, scroll_speed;
-    float window_duration, half_window, morph_duration;
+    // ── Session-init fields ──
+    float bpm             = 120.0f;
+    float offset          = 0.0f;
+    int   lead_beats      = 4;
+    float duration_sec    = 180.0f;
+
+    // ── Derived fields ──
+    float beat_period     = 0.5f;
+    float lead_time       = 2.0f;
+    float scroll_speed    = constants::APPROACH_DIST / lead_time;
+    float window_duration = 0.3f;
+    float half_window     = 0.15f;
+    float morph_duration  = 0.1f;
+
+    // ── Per-frame mutable fields ──
     float  song_time     = 0.0f;
     int    current_beat  = -1;
     bool   playing       = false;
     bool   finished      = false;
+    bool   restart_music = false;
+
+    // ── Beat-schedule cursor ──
     size_t next_spawn_idx = 0;
 };
 
