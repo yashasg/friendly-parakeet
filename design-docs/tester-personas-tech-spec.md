@@ -241,7 +241,7 @@ runtime beat telemetry comes from `beat_log_system`.
 ## SessionLog (context singleton)
 
 ```cpp
-// app/session_logger.h
+// app/util/session_logger.h
 
 struct SessionLog {
     FILE*    file  = nullptr;
@@ -648,7 +648,7 @@ inside `tick_playing_systems`.
 ```cmake
   # Add to shapeshifter_lib sources:
   app/systems/test_player_system.cpp
-  app/session_logger.cpp
+  app/util/session_logger.cpp
 ```
 
 ## CLI Activation
