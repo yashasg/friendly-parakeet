@@ -196,7 +196,6 @@ struct ShapeWindow {
     float       window_timer;   // seconds into the current phase
     float       window_start;   // song_time when the current window opened
     float       press_time;     // song_time of the latest valid press (-1 = none)
-    float       window_scale;   // per-note window width multiplier
 };
 
 /// Lane occupancy and transition. 8 bytes.

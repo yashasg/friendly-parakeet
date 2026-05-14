@@ -57,7 +57,6 @@ TEST_CASE("shape_window: Active phase expires into MorphOut", "[shape_window][rh
     ps.current = Shape::Circle;
     sw.phase = WindowPhase::Active;
     sw.window_start = song.song_time;
-    sw.window_scale = 1.0f;
 
     // Advance past window_duration
     song.song_time += song.window_duration + 0.01f;
@@ -88,7 +87,6 @@ TEST_CASE("shape_window: MorphOut returns to Idle with Hexagon", "[shape_window]
     CHECK(ps.current == Shape::Hexagon);
     CHECK(sw.target_shape == Shape::Hexagon);
     CHECK(sw.press_time == -1.0f);
-    CHECK(sw.window_scale == 1.0f);
     CHECK_FALSE(sw.graded);
 }
 
@@ -118,10 +116,10 @@ TEST_CASE("shape_window: Active duration is driven by song window duration", "[s
     ps.current = Shape::Circle;
     sw.phase = WindowPhase::Active;
     sw.window_start = song.song_time;
-    sw.window_scale = 1.50f;
 
-    // window_scale is recorded for grading state; collision_system applies
-    // valid shortening by shifting window_start, not by extending duration here.
+    // collision_system shortens the active window by shifting window_start;
+    // shape_window_system itself derives Active duration purely from
+    // song_time vs window_start + window_duration.
     song.song_time += song.window_duration + 0.01f;
     shape_window_system(reg, 0.016f);
 

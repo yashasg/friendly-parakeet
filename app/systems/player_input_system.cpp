@@ -82,7 +82,6 @@ void player_input_handle_press(entt::registry& reg, const ButtonPressEvent& evt)
         sw.window_start = song->song_time;
         sw.press_time = song->song_time;
         ps.morph_t = 0.0f;
-        sw.window_scale = 1.0f;
         sw.graded = false;
         if (auto* disp = reg.ctx().find<entt::dispatcher>()) {
             disp->enqueue<PlaySfxEvent>({SFX::ShapeShift});

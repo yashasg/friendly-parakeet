@@ -264,7 +264,6 @@ struct ShapeWindow {
     float       window_timer = 0.0f;          // seconds in current phase/window
     float       window_start = 0.0f;          // absolute song_time of window start
     float       press_time   = -1.0f;         // absolute song_time of input
-    float       window_scale = 1.0f;          // shortening factor from early hit
 };
 ```
 
@@ -326,7 +325,7 @@ struct SongResults {
   │ player_input_system handlers                  [MOD]       │
   │   → handle ButtonPressEvent shape input                    │
   │   → transition ShapeWindow into MorphIn phase              │
-  │   → reset graded + window_scale on new window start        │
+  │   → reset graded on new window start                       │
   │                                                            │
   │ shape_window_activation_system                ★ NEW        │
   │   → ticks the MorphIn phase before collision so the player │
@@ -737,8 +736,8 @@ if (!song) return;  // no rhythm context — skip
 ## Phase 3 — Shape window (DONE)
 ```
   • shape_window_system: Idle→MorphIn→Active→MorphOut→Idle
-  • player_input_system handlers: trigger window, reset graded/window_scale
-  • ShapeWindow: owns window_scale + graded fields
+  • player_input_system handlers: trigger window, reset graded
+  • ShapeWindow: owns graded field; collision_system applies window_scale_for_tier on hit
   • collision_system: window scaling on GOOD/PERFECT
 ```
 

@@ -23,7 +23,6 @@ TEST_CASE("player_action: rhythm mode starts MorphIn on button press from Idle",
     CHECK(ps.morph_t == 0.0f);
     CHECK(sw.window_start == 5.0f);
     CHECK(sw.graded == false);
-    CHECK(sw.window_scale == 1.0f);
 
     song.song_time += song.morph_duration + 0.01f;
     shape_window_system(reg, song.morph_duration + 0.01f);
