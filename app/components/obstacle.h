@@ -67,6 +67,10 @@ struct RequiredShape {
     Shape shape = Shape::Circle;
 };
 
+struct ShapeGateLane {
+    int8_t lane = 0;
+};
+
 struct BlockedLanes {
     uint8_t mask = 0;
 };

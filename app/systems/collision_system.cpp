@@ -10,16 +10,9 @@
 #include "../components/gameplay_intents.h"
 #include "../constants.h"
 #include "../util/lane_utils.h"
-#include <raylib.h>
 #include <cmath>
 
 namespace {
-
-Rectangle centered_hitbox_rect(float x) {
-    constexpr float kHitboxEdgePadding = 1.0e-4f;
-    const float size = constants::PLAYER_SIZE + kHitboxEdgePadding;
-    return {x - size * 0.5f, 0.0f, size, 1.0f};
-}
 
 bool player_matches_required_shape(const PlayerShape& p_shape,
                                     const ShapeWindow& p_window,
@@ -49,9 +42,8 @@ bool player_matches_required_shape(const PlayerShape& p_shape,
     return p_window.phase != WindowPhase::Idle && p_window.target_shape == required;
 }
 
-bool shape_gate_lane_match(float obstacle_x, float player_x) {
-    return CheckCollisionRecs(centered_hitbox_rect(player_x),
-                              centered_hitbox_rect(obstacle_x));
+bool shape_gate_lane_match(int8_t obstacle_lane, int player_lane) {
+    return static_cast<int>(obstacle_lane) == player_lane;
 }
 
 }  // namespace
@@ -72,8 +64,7 @@ void collision_system(entt::registry& reg, [[maybe_unused]] float dt) {
     // loops since player transform and vertical state don't change mid-frame.
     // Precomputing here avoids redundant addition + Vector2 construction per obstacle.
     const float player_timing_y = p_transform.position.y + p_vstate.y_offset;
-    const float player_x        = p_transform.position.x;
-    const int player_lane       = lane_utils::nearest_lane_for_x(player_x);
+    const int player_lane       = lane_utils::nearest_lane_for_x(p_transform.position.x);
 
     // resolve: tag entity as scored (cleared) or missed.
     // kind is passed by the caller — no try_get needed since each per-kind
@@ -153,19 +144,35 @@ void collision_system(entt::registry& reg, [[maybe_unused]] float dt) {
 
     // ShapeGate: RequiredShape only (no BlockedLanes, no RequiredLane)
     {
-        auto rhythm_view = reg.view<ObstacleTag, Obstacle, WorldTransform, RequiredShape, BeatInfo>(
+        auto rhythm_view = reg.view<ObstacleTag, Obstacle, WorldTransform, RequiredShape, ShapeGateLane, BeatInfo>(
             entt::exclude<ScoredTag, ResolvedObstacleTag, BlockedLanes, RequiredLane>);
-        for (auto [e, obstacle, wt, req, info] : rhythm_view.each()) {
+        for (auto [e, obstacle, wt, req, lane, info] : rhythm_view.each()) {
             (void)obstacle;
-            const bool lane_ok = shape_gate_lane_match(wt.position.x, player_x);
+            const bool lane_ok = shape_gate_lane_match(lane.lane, player_lane);
             resolve_shape_obstacle(e, wt, req.shape, lane_ok, &info);
         }
 
-        auto view = reg.view<ObstacleTag, Obstacle, WorldTransform, RequiredShape>(
+        auto view = reg.view<ObstacleTag, Obstacle, WorldTransform, RequiredShape, ShapeGateLane>(
             entt::exclude<ScoredTag, ResolvedObstacleTag, BlockedLanes, RequiredLane, BeatInfo>);
-        for (auto [e, obstacle, wt, req] : view.each()) {
+        for (auto [e, obstacle, wt, req, lane] : view.each()) {
             (void)obstacle;
-            const bool lane_ok = shape_gate_lane_match(wt.position.x, player_x);
+            const bool lane_ok = shape_gate_lane_match(lane.lane, player_lane);
+            resolve_shape_obstacle(e, wt, req.shape, lane_ok, nullptr);
+        }
+
+        auto fallback_rhythm_view = reg.view<ObstacleTag, Obstacle, WorldTransform, RequiredShape, BeatInfo>(
+            entt::exclude<ScoredTag, ResolvedObstacleTag, BlockedLanes, RequiredLane, ShapeGateLane>);
+        for (auto [e, obstacle, wt, req, info] : fallback_rhythm_view.each()) {
+            (void)obstacle;
+            const bool lane_ok = lane_utils::nearest_lane_for_x(wt.position.x) == player_lane;
+            resolve_shape_obstacle(e, wt, req.shape, lane_ok, &info);
+        }
+
+        auto fallback_view = reg.view<ObstacleTag, Obstacle, WorldTransform, RequiredShape>(
+            entt::exclude<ScoredTag, ResolvedObstacleTag, BlockedLanes, RequiredLane, BeatInfo, ShapeGateLane>);
+        for (auto [e, obstacle, wt, req] : fallback_view.each()) {
+            (void)obstacle;
+            const bool lane_ok = lane_utils::nearest_lane_for_x(wt.position.x) == player_lane;
             resolve_shape_obstacle(e, wt, req.shape, lane_ok, nullptr);
         }
     }

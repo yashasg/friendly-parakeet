@@ -151,6 +151,7 @@ TEST_CASE("collision: on-beat shape press requires player hitbox to reach target
 
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.get<WorldTransform>(obs).position.x = constants::LANE_X[0];
+    reg.get<ShapeGateLane>(obs).lane = int8_t{0};
     reg.emplace<BeatInfo>(obs, 0, song.song_time, song.song_time - song.lead_time);
 
     auto& lane = reg.get<Lane>(player);

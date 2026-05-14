@@ -203,6 +203,7 @@ inline entt::entity make_shape_gate(entt::registry& reg, Shape shape, float y) {
     reg.emplace<MotionVelocity>(obs, MotionVelocity{{0.0f, song.scroll_speed}});
     reg.emplace<Obstacle>(obs, int16_t{constants::PTS_SHAPE_GATE});
     reg.emplace<RequiredShape>(obs, shape);
+    reg.emplace<ShapeGateLane>(obs, int8_t{1});
     reg.emplace<DrawSize>(obs, float(constants::SCREEN_W), 80.0f);
     reg.emplace<DrawLayer>(obs, Layer::Game);
     reg.emplace<TagWorldPass>(obs);

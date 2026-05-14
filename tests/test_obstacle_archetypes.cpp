@@ -51,12 +51,13 @@ TEST_CASE("entity: ShapeGate Circle - correct components and color", "[archetype
     entt::registry reg;
     auto e = spawn_obstacle(reg, {ObstacleKind::ShapeGate, 360.0f, -120.0f, Shape::Circle});
 
-    REQUIRE(reg.all_of<ObstacleTag, MotionVelocity, DrawLayer, WorldTransform, Obstacle, RequiredShape, DrawSize, Color>(e));
+    REQUIRE(reg.all_of<ObstacleTag, MotionVelocity, DrawLayer, WorldTransform, Obstacle, RequiredShape, ShapeGateLane, DrawSize, Color>(e));
     CHECK(!reg.all_of<BlockedLanes>(e));
     CHECK(!reg.all_of<RequiredLane>(e));
 
     CHECK(reg.get<Obstacle>(e).base_points == int16_t{constants::PTS_SHAPE_GATE});
     CHECK(reg.get<RequiredShape>(e).shape == Shape::Circle);
+    CHECK(reg.get<ShapeGateLane>(e).lane == int8_t{1});
     CHECK(reg.get<WorldTransform>(e).position.x == 360.0f);
     CHECK(reg.get<WorldTransform>(e).position.y == -120.0f);
 
