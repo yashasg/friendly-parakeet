@@ -380,6 +380,33 @@ TEST_CASE("beat_scheduler: spawns SplitPath in authored lane", "[beat_scheduler]
     CHECK(song.next_spawn_idx == 1);
 }
 
+TEST_CASE("beat_scheduler: defaults invalid SplitPath lane to center lane", "[beat_scheduler][issue1046]") {
+    auto reg = make_rhythm_registry();
+    auto& song = reg.ctx().get<SongState>();
+    auto& map = beat_map(reg);
+
+    map.beats.push_back({0, ObstacleKind::SplitPath, Shape::Square, 9, 0});
+    song.song_time = 10.0f;
+    song.next_spawn_idx = 0;
+
+    CHECK_NOTHROW(beat_scheduler_system(reg, 0.016f));
+
+    auto view = reg.view<ObstacleTag, WorldTransform, RequiredShape, RequiredLane, ObstacleChildren>();
+    REQUIRE(view.size_hint() == 1);
+    for (auto [e, wt, shape, lane, children] : view.each()) {
+        (void)e;
+        CHECK_THAT(wt.position.x, Catch::Matchers::WithinAbs(constants::LANE_X[1], 0.01f));
+        CHECK(shape.shape == Shape::Square);
+        CHECK(lane.lane == int8_t{1});
+        REQUIRE(children.count == 3);
+        for (int i = 0; i < children.count; ++i) {
+            REQUIRE(reg.valid(children.children[i]));
+            CHECK(reg.all_of<MeshChild>(children.children[i]));
+        }
+    }
+    CHECK(song.next_spawn_idx == 1);
+}
+
 TEST_CASE("beat_scheduler: spawns all queued beats from BeatMap entries", "[beat_scheduler]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();

@@ -6,6 +6,7 @@
 #include <string_view>
 
 #include "components/high_score.h"
+#include "content/level_content_config.h"
 #include "util/high_score_persistence.h"
 
 namespace {
@@ -23,7 +24,7 @@ void remove_path(const std::filesystem::path& path) {
 
 TEST_CASE("High score: keys are stable per song and difficulty", "[high_score]") {
     // make_key_hash() produces a stable FNV-1a hash: same inputs → same hash, different inputs → different hash.
-    // Collision risk across our 9 shipped keys ("1_stomper|easy" … "3_mental|hard") is negligible.
+    // Collision risk across our 9 shipped keys is negligible.
     const auto hash_easy = high_score::make_key_hash("song_001", "easy");
     const auto hash_hard = high_score::make_key_hash("song_001", "hard");
     CHECK(hash_easy == high_score::make_key_hash("song_001", "easy"));
@@ -53,20 +54,19 @@ TEST_CASE("High score: no hash collisions across all 9 shipped song+difficulty k
     // FNV-1a 32-bit collisions across exactly 9 short ASCII keys are negligible —
     // this test confirms the shipped set is collision-free and will catch any future
     // key additions that happen to collide.
-    const char* songs[]       = {"1_stomper", "2_drama", "3_mental"};
-    const char* diffs[]       = {"easy", "medium", "hard"};
+    constexpr int32_t key_count = content_config::LEVEL_COUNT * content_config::DIFFICULTY_COUNT;
 
-    entt::hashed_string::hash_type hashes[9]{};
+    entt::hashed_string::hash_type hashes[key_count]{};
     int32_t idx = 0;
-    for (const char* song : songs) {
-        for (const char* diff : diffs) {
+    for (const char* song : content_config::LEVEL_KEYS) {
+        for (const char* diff : content_config::DIFFICULTY_KEYS) {
             hashes[idx++] = high_score::make_key_hash(song, diff);
         }
     }
+    REQUIRE(idx == key_count);
 
-    // All 9 hashes must be distinct.
-    for (int32_t i = 0; i < 9; ++i) {
-        for (int32_t j = i + 1; j < 9; ++j) {
+    for (int32_t i = 0; i < key_count; ++i) {
+        for (int32_t j = i + 1; j < key_count; ++j) {
             CHECK(hashes[i] != hashes[j]);
         }
     }
