@@ -13,7 +13,6 @@
 #include "../constants.h"
 
 #include <raylib.h>
-#include <magic_enum/magic_enum.hpp>
 #include <cmath>
 #include <random>
 #include <string_view>
@@ -39,12 +38,6 @@ static const char* shape_key_name(Shape s) {
         case Shape::Triangle: return "key_3(Triangle)";
         default:              return "key_?(?)";
     }
-}
-
-template <typename E>
-std::string_view enum_name_or_unknown(E value) {
-    const std::string_view name = magic_enum::enum_name(value);
-    return name.empty() ? std::string_view{"???"} : name;
 }
 
 static bool test_player_shape_done(const TestPlayerAction& action) {

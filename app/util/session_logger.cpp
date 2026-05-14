@@ -11,18 +11,7 @@
 #include <string_view>
 #include <utility>
 
-#include <magic_enum/magic_enum.hpp>
 #include <raylib.h>
-
-namespace {
-
-template <typename E>
-std::string_view session_log_enum_name_or_unknown(E value) {
-    const std::string_view name = magic_enum::enum_name(value);
-    return name.empty() ? std::string_view{"???"} : name;
-}
-
-} // namespace
 
 // ── Core log function ────────────────────────────────────────
 
@@ -135,8 +124,8 @@ void session_log_on_obstacle_spawn(entt::registry& reg, entt::entity entity) {
             reg.all_of<RequiredShape>(entity),
             reg.all_of<BlockedLanes>(entity),
             reg.all_of<RequiredLane>(entity));
-    const std::string_view kind_name = session_log_enum_name_or_unknown(kind);
-    const std::string_view shape_name = req ? session_log_enum_name_or_unknown(req->shape) : std::string_view{"-"};
+    const std::string_view kind_name = enum_name_or_unknown(kind);
+    const std::string_view shape_name = req ? enum_name_or_unknown(req->shape) : std::string_view{"-"};
 
     session_log_write(*log, t, "GAME",
         "OBSTACLE_SPAWN beat=%d arrival=%.3f kind=%.*s shape=%.*s lane=%d",
@@ -168,7 +157,7 @@ void session_log_on_scored(entt::registry& reg, entt::entity entity) {
         reg.all_of<RequiredShape>(entity),
         reg.all_of<BlockedLanes>(entity),
         reg.all_of<RequiredLane>(entity));
-    const std::string_view kind_name = session_log_enum_name_or_unknown(kind);
+    const std::string_view kind_name = enum_name_or_unknown(kind);
 
     if (is_miss) {
         session_log_write(*log, t, "GAME",
@@ -177,7 +166,7 @@ void session_log_on_scored(entt::registry& reg, entt::entity entity) {
             beat_num, expected_t, drift,
             static_cast<int>(kind_name.size()), kind_name.data());
     } else if (grade) {
-        const std::string_view tier_name = session_log_enum_name_or_unknown(grade->tier);
+        const std::string_view tier_name = enum_name_or_unknown(grade->tier);
         session_log_write(*log, t, "GAME",
             "COLLISION obstacle=%u beat=%d expected=%.3f drift=%+.3fs kind=%.*s result=CLEAR timing=%.*s(%.2f)",
             static_cast<unsigned>(entt::to_integral(entity)),
