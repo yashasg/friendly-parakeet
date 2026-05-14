@@ -526,3 +526,28 @@ TEST_CASE("runtime scratch: dense scoring burst stays within reserved capacity",
     CHECK(energy.events.size() == static_cast<std::size_t>(dense_count));
     CHECK(popup_queue.requests.size() == static_cast<std::size_t>(dense_count));
 }
+
+// #1089: miss_capacity_exceeded_count is incremented from scoring_system's
+// miss pass when miss_buf would grow past its reserve. Mirror the hit-burst
+// coverage above so the counter is observed and not just write-only.
+TEST_CASE("runtime scratch: dense miss burst stays within reserved capacity",
+          "[scoring][issue1089]") {
+    auto reg = make_registry();
+    constexpr int dense_count = 6;
+    runtime_system_scratch_reserve(reg, dense_count);
+
+    auto& scratch = reg.ctx().get<ScoringSystemScratch>();
+    const auto miss_capacity = scratch.miss_buf.capacity();
+
+    for (int i = 0; i < dense_count; ++i) {
+        auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y + static_cast<float>(i));
+        reg.emplace<ScoredTag>(obs);
+        reg.emplace<MissTag>(obs);
+        reg.emplace<TimingGrade>(obs, TimingTier::Bad, 0.5f);
+    }
+
+    scoring_system(reg, 0.0f);
+
+    CHECK(scratch.miss_buf.capacity() == miss_capacity);
+    CHECK(scratch.miss_capacity_exceeded_count == 0u);
+}

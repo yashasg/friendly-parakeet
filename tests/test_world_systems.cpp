@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include "components/system_scratch.h"
 #include "test_helpers.h"
 
 // ── motion_system ────────────────────────────────────────────
@@ -476,6 +477,30 @@ TEST_CASE("cleanup: destroys multiple obstacles past DESTROY_Y in one pass", "[c
 
     for (int i = 0; i < N; ++i)
         CHECK_FALSE(reg.valid(obs[i]));
+}
+
+// #1089 — ObstacleDespawnScratch::capacity_exceeded_count must stay at zero
+// when a dense pass fits inside the reserved to_destroy buffer.
+TEST_CASE("cleanup: dense despawn burst stays within reserved capacity",
+          "[cleanup][issue1089]") {
+    auto reg = make_registry();
+    constexpr int dense_count = 6;
+    runtime_system_scratch_reserve(reg, dense_count);
+
+    auto& scratch = reg.ctx().get<ObstacleDespawnScratch>();
+    const auto destroy_capacity = scratch.to_destroy.capacity();
+
+    for (int i = 0; i < dense_count; ++i) {
+        auto obs = reg.create();
+        reg.emplace<ObstacleTag>(obs);
+        reg.emplace<WorldTransform>(obs,
+            WorldTransform{{0.0f, constants::DESTROY_Y + static_cast<float>(i + 1) * 10.0f}});
+    }
+
+    obstacle_despawn_system(reg, 0.016f);
+
+    CHECK(scratch.to_destroy.capacity() == destroy_capacity);
+    CHECK(scratch.capacity_exceeded_count == 0u);
 }
 
 // #242 / #280 — cleanup must not emplace MissTag or ScoredTag; that is miss_detection_system's job.
