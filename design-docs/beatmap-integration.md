@@ -205,30 +205,48 @@ creates the standard runtime obstacle archetypes via `spawn_rhythm_obstacle()`.
 
 ```
   ┌──────────────────────────────────────────────────────────────────┐
-  │  FRAME PIPELINE (on main branch — raylib)                       │
+  │  FRAME PIPELINE (on main branch — raylib + EnTT)                │
   │                                                                  │
-  │  input_system            (polls raylib input → InputState)      │
+  │  PER-FRAME (variable dt — game_loop.cpp):                        │
+  │  ✅ compute_screen_transform   (refresh letterbox + scale)      │
+  │  ✅ input_system               (raylib → InputState + events)   │
+  │  ✅ gameplay_hud_process_button_input (HUD buttons → events)    │
+  │  ✅ test_player_system         (autoplay perception/planning)   │
   │       │                                                          │
-  │  gesture_system          (InputState → GestureResult)           │
-  │  game_state_system       (phase transitions)                    │
-  │  ✅ song_playback_system (advances SongState.song_time)         │
-  │  ✅ beat_scheduler_system (SongState + BeatMap → spawn entities)│
-  │  player_input handlers   (ButtonPressEvent/GoEvent → Player)    │
-  │  shape_window_system     (timing window morphing)               │
-  │  player_movement_system  (animate WorldTransform from Lane/VState)│
-  │  scroll_system           (WorldTransform += MotionVelocity × dt)│
-  │  collision_system        (player vs obstacles → ScoredTag)      │
-  │  scoring_system          (ScoredTag → ScoreState, popups)       │
-  │  energy_system           (miss tracking → drain → game over)    │
-  │  particle_system         (ParticleData timer → gravity/cull)    │
-  │  obstacle_despawn_system (destroy off-camera obstacles)         │
-  │  popup_display_system    (ScorePopup timer → fade/cull)         │
+  │       ▼  while (accumulator >= FIXED_DT) tick_fixed_systems(dt) │
   │       │                                                          │
-  │  render_system           (draw everything)                      │
-  │  ✅ audio_system          (dispatcher-driven SFX playback)      │
+  │  ✅ game_camera_system         (camera follow)                  │
+  │  ✅ ui_camera_system           (HUD camera)                     │
+  │  ✅ game_render_system         (world target)                   │
+  │  ✅ ui_render_system           (UI target)                      │
+  │  ✅ audio_system               (dispatcher → SFX playback)      │
+  │  ✅ haptic_system              (HapticEvent dispatch)           │
+  │                                                                  │
+  │  FIXED TICK (tick_fixed_systems — fixed_tick_runner.cpp):        │
+  │  ✅ game_state_system          (phase + semantic input drain)   │
+  │  ✅ song_playback_system       (advances SongState.song_time)   │
+  │  ✅ tick_playing_systems       (gated on GamePhase::Playing)    │
+  │  ✅ obstacle_despawn_system    (destroy off-camera obstacles)   │
+  │  ✅ popup_feedback_system      (drain ScorePopupRequestQueue)   │
+  │  ✅ popup_display_system       (ScorePopup timer → fade/cull)   │
+  │  ✅ energy_system              (drain PendingEnergyEffects)     │
+  │  ✅ energy_bar_system          (HUD bar visual update)          │
+  │  ✅ particle_system            (ParticleData timer → cull)      │
+  │                                                                  │
+  │  PLAYING TICK (tick_playing_systems — playing_systems_runner):   │
+  │  ✅ beat_log_system            (per-beat diagnostic log)        │
+  │  ✅ beat_scheduler_system      (BeatMap → spawn entities)       │
+  │  ✅ shape_window_activation_system (early MorphIn tick)         │
+  │  ✅ player_movement_system     (animate WorldTransform)         │
+  │  ✅ scroll_system              (WorldTransform += MotionVel·dt) │
+  │  ✅ motion_system              (additional motion components)   │
+  │  ✅ collision_system           (player vs obstacles → ScoredTag)│
+  │  ✅ shape_window_system        (runs AFTER collision — see #871)│
+  │  ✅ miss_detection_system      (window expired → MissTag)       │
+  │  ✅ scoring_system             (ScoredTag → ScoreState + popups)│
   └──────────────────────────────────────────────────────────────────┘
 
-  ✅ = already implemented
+  ✅ = implemented and live in app/
 ```
 
 ## 3.2 beat_map_loader — ✅ ALREADY IMPLEMENTED
