@@ -120,8 +120,8 @@ struct TouchSlot {
 
 // ── Per-frame input state, singleton component ──
 // Tracks touch/mouse hardware state. Downstream systems should read
-// semantic events (InputEvent / GoEvent / ButtonPressEvent), not this
-// struct — except for quit_requested.
+// semantic events (GoEvent / ButtonPressEvent) off the EnTT dispatcher,
+// not this struct — except for quit_requested.
 struct InputState {
     static constexpr int MaxTrackedTouches = 2;
 
@@ -145,60 +145,75 @@ struct InputState {
 };
 
 // ── Event types: semantic player intentions ──
-enum class Direction : uint8_t { Left, Right, Up, Down };
-enum class InputType : uint8_t { Tap, Swipe };
+//
+// ButtonPressEvent carries semantic value data encoded at source (#273).
+// Consumers act on kind/shape/menu_action — never on a live entity handle,
+// which would be a lifetime hazard if the button entity were destroyed
+// between event production and consumption.
 
-struct InputEvent {
-    InputType type   = InputType::Tap;
-    Direction dir    = Direction::Up;   // only meaningful for Swipe
-    float     x      = 0.0f;           // virtual-space coordinates
-    float     y      = 0.0f;
+enum class Direction : uint8_t { Left, Right, Up, Down };  // defined in input.h
+
+enum class MenuActionKind : uint8_t {
+    Confirm       = 0,
+    Restart       = 1,
+    GoLevelSelect = 2,
+    GoMainMenu    = 3,
+    Exit          = 4,
+    SelectLevel   = 5,
+    SelectDiff    = 6,
+};
+
+enum class ButtonPressKind : uint8_t {
+    Shape,  // shape button pressed — use .shape
+    Menu,   // menu button pressed  — use .menu_action / .menu_index
 };
 
 struct ButtonPressEvent {
-    entt::entity entity = entt::null;
+    ButtonPressKind kind        = ButtonPressKind::Shape;
+    Shape           shape       = Shape::Circle;            // valid when kind == Shape
+    MenuActionKind  menu_action = MenuActionKind::Confirm;  // valid when kind == Menu
+    uint8_t         menu_index  = 0;                        // valid when kind == Menu
 };
 
 struct GoEvent {
     Direction dir = Direction::Up;
 };
-
-struct EventQueue {
-    static constexpr int MAX = 8;
-
-    InputEvent       inputs[MAX]  = {};
-    int              input_count  = 0;
-
-    ButtonPressEvent presses[MAX] = {};
-    int              press_count  = 0;
-
-    GoEvent          goes[MAX]    = {};
-    int              go_count     = 0;
-
-    void push_input(InputType t, float px, float py, Direction d = Direction::Up);
-    void push_press(entt::entity e);
-    void push_go(Direction d);
-    void clear();
-};
 ```
+
+Events ride on the registry-scoped `entt::dispatcher` (stored in
+`registry.ctx()`). Producers call `disp.enqueue<EventT>(...)`; the
+fixed-step drain in `game_state_system` calls `disp.update<EventT>()`,
+which fans events out to all connected sinks.
 
 ### Systems (function signatures)
 
 ```cpp
-// Reads raylib input (touch + keyboard), populates InputState singleton
-// and pushes raw InputEvents into EventQueue.
+// Reads raylib input (touch + keyboard), populates InputState singleton,
+// and enqueues semantic events on the registry's entt::dispatcher
+// (GoEvent for swipes/arrow keys, ButtonPressEvent for shape/menu keys).
 // Called once per frame in the input phase.
 void input_system(entt::registry& reg, float raw_dt);
 
-// Input routing handles raw swipe InputEvents and enqueues GoEvent.
-// ButtonPressEvent is emitted by semantic UI/controller paths
-// (raygui screen controllers + HUD controls), not raw input routing.
-// Runs immediately after input_system.
+// Connects sinks for GoEvent and ButtonPressEvent on the registry's
+// dispatcher. Wires game_state, level_select, and player_input handlers.
+// Called once at startup (and on dispatcher swap).
 void wire_input_dispatcher(entt::registry& reg);
 
-// Automated test player: writes EventQueue (push_press, push_go) from
-// scripted patterns. Replaces human input when running in test-player mode.
+// raygui screen controllers (e.g. gameplay_hud_screen_controller) enqueue
+// ButtonPressEvent on UI hits — they are the dominant ButtonPressEvent
+// producer alongside input_system's keyboard fallbacks.
+void gameplay_hud_process_button_input(entt::registry& reg);
+
+// Automated test player: enqueues GoEvent / ButtonPressEvent on the
+// dispatcher from scripted patterns. Replaces human input when running
+// in test-player mode.
 void test_player_system(entt::registry& reg, float dt);
+
+// Drain: inside game_state_system's fixed-step tick, call
+//   disp.update<ButtonPressEvent>();
+//   disp.update<GoEvent>();
+// to fan queued events out to all connected handlers.
+void game_state_system(entt::registry& reg, float dt);
 ```
 
 ### Input → Output Flow
@@ -208,19 +223,25 @@ void test_player_system(entt::registry& reg, float dt);
          │
          ▼
   ┌──────────────────────┐
-  │ input_system          │  → populates InputState + EventQueue (raw InputEvents)
+  │ input_system          │  → populates InputState
+  │                      │  → disp.enqueue<GoEvent>         (swipe / arrows)
+  │                      │  → disp.enqueue<ButtonPressEvent> (shape keys)
   └──────────┬───────────┘
              │
              ▼
   ┌──────────────────────┐
-  │ input routing         │  → routes swipe InputEvents → GoEvent
-  │                      │    (UI/controller paths emit ButtonPressEvent separately)
+  │ HUD / test player     │  → disp.enqueue<ButtonPressEvent>
+  │                      │    (raygui screen controllers,
+  │                      │     test_player_system scripted runs)
   └──────────┬───────────┘
              │
              ▼
   ┌──────────────────────┐
-  │  gameplay systems     │  → consume ButtonPressEvent + GoEvent from EventQueue
-  │  (player_input_sys)  │
+  │ entt::dispatcher      │  → game_state_system drains via
+  │  sinks (fixed step)  │    disp.update<ButtonPressEvent>()
+  │                      │    disp.update<GoEvent>()
+  │                      │  → fans out to game_state, level_select,
+  │                      │    and player_input handlers
   └──────────────────────┘
 ```
 
@@ -630,7 +651,8 @@ shape_window_system -> miss_detection_system -> scoring_system
   input.h                rhythm/scoring.h        beatmap scheduling
   ──────────────         ─────────────────       ───────────────────
   InputState       ────→  player_input_system
-  EventQueue       ────→  player_input_system
+  ButtonPressEvent ────→  player_input_system  (via entt::dispatcher sink)
+  GoEvent          ────→  player_input_system  (via entt::dispatcher sink)
                           TimingGrade      ←────  collision_system
                           ScoreState       ←────  scoring_system
                           BeatInfo         ←────  beat_scheduler_system
@@ -643,7 +665,8 @@ shape_window_system -> miss_detection_system -> scoring_system
   │  COMPONENT              │ SCOPE    │ DEFINED IN              │
   ├─────────────────────────┼──────────┼─────────────────────────┤
   │  InputState             │ singleton│ Spec 1 — Input          │
-  │  EventQueue            │ singleton│ Spec 1 — Input          │
+  │  ButtonPressEvent       │ event    │ Spec 1 — Input          │
+  │  GoEvent                │ event    │ Spec 1 — Input          │
   │  ScoreState             │ singleton│ Spec 2 — Rhythm Scoring │
   │  ScorePopup             │ per-ent  │ Spec 2 — Rhythm Scoring │
   │  TimingGrade            │ per-ent  │ Spec 2 — Rhythm Scoring │
