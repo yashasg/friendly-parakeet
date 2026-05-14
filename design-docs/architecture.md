@@ -158,12 +158,11 @@ enum class Shape : uint8_t {
 /// Empty tag — marks the single player entity. 0 bytes.
 struct PlayerTag {};
 
-/// Current and transitioning shape. 4 bytes.
+/// Current shape and morph progress. 8 bytes.
 /// Hot: read by shape_window_system, collision_system, render_system.
 struct PlayerShape {
-    Shape    current;      // active gameplay shape
-    Shape    previous;     // for morph animation
-    float    morph_t;      // 0.0 = previous, 1.0 = current (animation lerp)
+    Shape    current = Shape::Circle;  // active gameplay shape
+    float    morph_t = 1.0f;           // 0.0 = mid-morph, 1.0 = settled
 };
 
 /// Rhythm-mode timing window state for the player. 24 bytes.
@@ -625,7 +624,7 @@ MotionVelocity       8     HOT        motion, particle effects
 ParticleData        12     HOT        particle expiry/render fade
 ScorePopup          16     HOT        popup expiry/render fade
 PlayerTag            0     HOT        collision/filter
-PlayerShape          4     HOT        shape_window, collision, render, player_action
+PlayerShape          8     HOT        shape_window, collision, render, player_action
 ShapeWindow         24     HOT        shape_window, input dispatcher, collision
 Lane                 8     HOT        collision, render, player_action
 VerticalState       12     HOT        collision, render, player_action
@@ -873,8 +872,7 @@ In code, reusable construction lives in `app/entities/` factory functions
 ┌─ Player ──────────────────────────────────────────────────┐
 │ PlayerTag          (tag, 0 bytes)                         │
 │ WorldTransform     { position: {360.0, 920.0} }          │
-│ PlayerShape        { current: Circle, prev: Circle,       │
-│                      morph_t: 1.0 }                       │
+│ PlayerShape        { current: Circle, morph_t: 1.0 }      │
 │ ShapeWindow        { target: Circle, phase: Idle, ... }   │
 │ Lane               { current: 1, target: -1, lerp_t: 1 } │
 │ VerticalState      { mode: Grounded, timer: 0, y_off: 0 }│
@@ -1281,9 +1279,8 @@ int main(int argc, char* argv[]) {
     │                                                        │
     │   // 1. Process shape button                           │
     │   player_input_handle_press(ButtonPressEvent) {        │
-    │       PlayerShape.previous = PlayerShape.current;      │──▶ PlayerShape
-    │       PlayerShape.current  = event.shape;              │    { current: Square,
-    │       PlayerShape.morph_t  = 1.0f;                     │      previous: Circle,
+    │       PlayerShape.current  = event.shape;              │──▶ PlayerShape
+    │       PlayerShape.morph_t  = 1.0f;                     │    { current: Square,
     │       disp.enqueue(PlaySfxEvent{ShapeShift});          │      morph_t: 1.0 }
     │   }                                                    │
     │                                                        │
