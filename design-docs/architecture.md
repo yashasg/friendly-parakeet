@@ -100,11 +100,17 @@ namespace constants {
 
     // ── Rendering ─────────────────────────────────────
     constexpr float POPUP_DURATION    = 1.2f;     // score popup lifetime
-    constexpr float PARTICLE_LIFE    = 0.6f;
-    constexpr int   MAX_PARTICLES     = 50;
+
+    // ── Particles ─────────────────────────────────────
+    constexpr float PARTICLE_GRAVITY  = 600.0f;   // px/s² applied per frame
 
 } // namespace constants
 ```
+
+> Particle lifetime and burst size are **not** global constants. Each particle
+> stores its own lifetime in `ParticleData::max_time` (see
+> `app/components/particle.h`), and emitters choose per-event lifetimes and
+> counts at the spawn site (e.g. `scoring_system.cpp` for hit feedback bursts).
 
 ---
 
