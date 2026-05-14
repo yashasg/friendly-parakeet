@@ -687,80 +687,37 @@ owns `ScorePopup::remaining`. Obstacle destruction is handled by
      End screens can restart, return to LEVEL_SELECT, or return to TITLE.
 ```
 
-### Transition: menu flow → PLAYING
+`GameState::transition_pending` and `next_phase` are the canonical transition
+queue. UI controllers and input handlers request a phase by setting those
+fields; `game_state_system` drains the request, clears stale pointer state, and
+then enters the requested phase. `enter_phase` updates `previous_phase`,
+`phase`, and `phase_timer`.
 
-```cpp
-void enter_playing(entt::registry& reg) {
-    // 1. Destroy any lingering entities and spawn canonical cameras/player.
-    setup_play_session(reg); // clears registry, loads BeatMap, resets ScoreState,
-                             // SongState, EnergyState, SongResults, and player.
+`Tutorial` is a defined phase with a controller, but current shipped screens do
+not route into it. Its continue action transitions to `Playing`.
 
-    // 2. Update game state. The state system owns this phase transition.
-    auto& gs = reg.ctx().get<GameState>();
-    gs.previous_phase = gs.phase;
-    gs.phase = GamePhase::Playing;
-    gs.phase_timer = 0.0f;
-}
-```
+### Transition Summary
 
-### Transition: PLAYING → GAME_OVER
+| From | To | Trigger / owner | Notes |
+|------|----|-----------------|-------|
+| Title | LevelSelect | Title screen body/start action | Defers through `transition_pending`. |
+| Title | Settings | Title screen gear action | Settings exits back to Title. |
+| LevelSelect | Playing | `LevelSelectState::confirmed` | `setup_play_session` loads the selected level/difficulty. |
+| Playing | Paused | HUD pause, keyboard pause, or app background | Gameplay entities remain intact. |
+| Paused | Playing | Resume action | Resumes without rebuilding the play session. |
+| Paused | Title | Quit action | Leaves the run and returns to menu UI. |
+| Playing | GameOver | Energy reaches zero | `game_state_enter_terminal_phase` captures results/cause. |
+| Playing | SongComplete | Song finished and obstacles cleared | Uses the same terminal result path as GameOver. |
+| GameOver/SongComplete | Playing | Restart action | Starts a fresh play session. |
+| GameOver/SongComplete | LevelSelect | Level-select action | Clears `LevelSelectState::confirmed` on entry. |
+| GameOver/SongComplete | Title | Main-menu action | Returns to the title screen. |
+| Tutorial | Playing | Tutorial continue action | Phase exists, but no shipped controller currently routes into Tutorial. |
 
-```cpp
-void enter_game_over(entt::registry& reg) {
-    // 1. Persist high score
-    auto& score = reg.ctx().get<ScoreState>();
-    if (score.score > score.high_score) {
-        score.high_score = score.score;
-        save_high_score(score.high_score);   // platform-specific write
-    }
+### Terminal Phases
 
-    // 2. Push crash SFX
-    reg.ctx().get<AudioQueue>().push(SFX::Crash);
-
-    // 3. Do NOT destroy obstacles — they freeze in place for dramatic effect
-    //    scroll_system will skip because phase != Playing
-
-    // 4. Transition
-    auto& gs = reg.ctx().get<GameState>();
-    gs.previous_phase = gs.phase;
-    gs.phase = GamePhase::GameOver;
-    gs.phase_timer = 0.0f;
-}
-```
-
-### Transition: GAME_OVER → PLAYING (Retry)
-
-```cpp
-void enter_retry(entt::registry& reg) {
-    // Same as enter_playing — full reset
-    enter_playing(reg);
-}
-```
-
-### Transition: PLAYING → PAUSED
-
-```cpp
-void enter_paused(entt::registry& reg) {
-    // Nothing destroyed or created — just freeze all systems
-    auto& gs = reg.ctx().get<GameState>();
-    gs.previous_phase = gs.phase;
-    gs.phase = GamePhase::Paused;
-    gs.phase_timer = 0.0f;
-    // render_system draws a semi-transparent overlay + "PAUSED" text
-}
-```
-
-### Transition: PAUSED → PLAYING (Resume)
-
-```cpp
-void resume_playing(entt::registry& reg) {
-    auto& gs = reg.ctx().get<GameState>();
-    gs.previous_phase = gs.phase;
-    gs.phase = GamePhase::Playing;
-    gs.phase_timer = 0.0f;
-    // All entities still intact — gameplay resumes seamlessly
-}
-```
+`GameOver` and `SongComplete` are terminal result screens. End-screen UI writes
+`GameState::end_choice`; `game_state_end_screen_system` converts it to the next
+phase (`Playing`, `LevelSelect`, or `Title`) and queues the deferred transition.
 
 ---
 
