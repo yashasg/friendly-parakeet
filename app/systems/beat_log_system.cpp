@@ -6,7 +6,7 @@
 
 // Observes SongState::current_beat and emits BEAT log entries.
 // Keeps last_logged_beat in SessionLog so playback has no logging branch.
-void beat_log_system(entt::registry& reg, float /*dt*/) {
+void beat_log_system(entt::registry& reg, [[maybe_unused]] float dt) {
     auto* log = reg.ctx().find<SessionLog>();
     if (!log || !log->file) return;
 

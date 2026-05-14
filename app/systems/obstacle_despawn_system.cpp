@@ -13,7 +13,7 @@ ObstacleDespawnScratch& despawn_scratch_for(entt::registry& reg) {
 }  // namespace
 
 // Destroys obstacle entities that have scrolled past the despawn boundary.
-void obstacle_despawn_system(entt::registry& reg, float /*dt*/) {
+void obstacle_despawn_system(entt::registry& reg, [[maybe_unused]] float dt) {
     // Per-registry scratch retains capacity across frames without sharing mutable
     // state between registries.
     auto& to_destroy = despawn_scratch_for(reg).to_destroy;

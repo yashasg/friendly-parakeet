@@ -7,7 +7,7 @@
 
 #include <cmath>
 
-void scroll_system(entt::registry& reg, float /*dt*/) {
+void scroll_system(entt::registry& reg, [[maybe_unused]] float dt) {
     auto* song = reg.ctx().find<SongState>();
 
     // Rhythm obstacles: position derived from song_time, not accumulated dt.

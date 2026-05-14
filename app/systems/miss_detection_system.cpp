@@ -7,7 +7,7 @@
 // Pure tagger: marks unscored obstacles that have scrolled past DESTROY_Y.
 // Runs before scoring_system so that the MissTag is processed the same frame.
 // Energy drain and miss_count are handled exclusively by scoring_system's MissTag branch.
-void miss_detection_system(entt::registry& reg, float /*dt*/) {
+void miss_detection_system(entt::registry& reg, [[maybe_unused]] float dt) {
     auto view = reg.view<ObstacleTag, Obstacle, WorldTransform>(
         entt::exclude<ScoredTag, ResolvedObstacleTag, NonScorableTag>);
     for (auto [entity, obstacle, wt] : view.each()) {

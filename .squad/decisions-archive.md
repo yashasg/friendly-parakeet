@@ -244,7 +244,7 @@ The `Position.y` path on line 29 (`pos.y > constants::DESTROY_Y`) is correct and
 
 **Required fix:**
 ```cpp
-void obstacle_despawn_system(entt::registry& reg, float /*dt*/) {
+void obstacle_despawn_system(entt::registry& reg, [[maybe_unused]] float dt) {
     static std::vector<entt::entity> to_destroy;
     to_destroy.clear();
 

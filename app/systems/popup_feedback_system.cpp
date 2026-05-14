@@ -6,7 +6,7 @@
 #include "../entities/popup_entity.h"
 #include <optional>
 
-void popup_feedback_system(entt::registry& reg, float /*dt*/) {
+void popup_feedback_system(entt::registry& reg, [[maybe_unused]] float dt) {
     if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
     auto& queue = reg.ctx().get<ScorePopupRequestQueue>();
     if (queue.requests.empty()) return;

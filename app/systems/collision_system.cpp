@@ -56,7 +56,7 @@ bool shape_gate_lane_match(float obstacle_x, float player_x) {
 
 }  // namespace
 
-void collision_system(entt::registry& reg, float /*dt*/) {
+void collision_system(entt::registry& reg, [[maybe_unused]] float dt) {
     auto player_view = reg.view<PlayerTag, WorldTransform, PlayerShape, ShapeWindow, Lane, VerticalState>();
     if (player_view.begin() == player_view.end()) return;
 
