@@ -104,9 +104,6 @@ void scoring_system(entt::registry& reg, float dt) {
         score.passive_score_remainder = passive_score - static_cast<float>(whole_points);
     }
 
-    // Track rest duration for diagnostics/feedback, but only misses break chain.
-    score.chain_timer += dt;
-
     auto* results = reg.ctx().find<SongResults>();   // #309: hoisted above loop
 
     // Hoist single scratch lookup — miss_buf and hit_buf share the same struct.
@@ -124,7 +121,6 @@ void scoring_system(entt::registry& reg, float dt) {
             enqueue_energy_effect(reg, -constants::ENERGY_DRAIN_MISS, true);
             if (results) results->miss_count++;
             score.chain_count = 0;
-            score.chain_timer = 0.0f;
             if (miss_buf.size() >= miss_buf.capacity()) {
                 ++scratch.miss_capacity_exceeded_count;
             }
@@ -137,7 +133,6 @@ void scoring_system(entt::registry& reg, float dt) {
             enqueue_energy_effect(reg, -constants::ENERGY_DRAIN_MISS, true);
             if (results) results->miss_count++;
             score.chain_count = 0;
-            score.chain_timer = 0.0f;
             if (miss_buf.size() >= miss_buf.capacity()) {
                 ++scratch.miss_capacity_exceeded_count;
             }
@@ -222,7 +217,6 @@ void scoring_system(entt::registry& reg, float dt) {
             const bool contributes_to_chain = r.obs.base_points > 0;
             if (contributes_to_chain) {
                 score.chain_count++;
-                score.chain_timer = 0.0f;
             }
             const float chain_mult = chain_multiplier_for_count(score.chain_count);
             int points = static_cast<int>(
