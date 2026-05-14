@@ -242,8 +242,14 @@ jobs:
           name: ctrf-report-windows-msvc
           path: build-msvc/ctrf-report.json
 
+      # Best-effort: this reporter step has been silently failing on PRs after
+      # the artifact upload finalizes (no error, no exit code), marking the job
+      # red even though build + tests are green. Tracked in #1108. The Linux
+      # and Windows-Clang reporter steps still post comments, so PR test-result
+      # visibility is preserved. Remove continue-on-error once #1108 is rooted.
       - name: Report test results
         if: always() && steps.run-tests.outcome != 'skipped'
+        continue-on-error: true
         uses: ctrf-io/github-test-reporter@v1
         with:
           report-path: 'build-msvc/ctrf-report.json'
