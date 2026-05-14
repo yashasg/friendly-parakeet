@@ -140,9 +140,12 @@ Current shipped behavior:
 MISS: enqueue_energy_effect(reg, -ENERGY_DRAIN_MISS, true)
 ```
 
-The miss no longer kills the player directly.  `game_state_system` owns the
-energy-depleted `GamePhase::GameOver` transition after queued effects have
-been applied by a prior fixed tick.
+The miss no longer kills the player directly. `energy_system` requests the
+`GamePhase::GameOver` transition in the same fixed tick that drains energy
+to ≤ 0 (provided a `SongState` exists), setting
+`GameOverState::cause = DeathCause::EnergyDepleted`. `game_state_system`
+retains a fallback check that catches pre-existing `energy <= 0` while phase
+is `Playing` (defense-in-depth, not the primary path).
 
 Miss still increments `results->miss_count` and still emplaces
 `ScoredTag` (obstacle is consumed, not re-triggered).
