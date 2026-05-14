@@ -719,7 +719,7 @@ if (!song) return;  // no rhythm context — skip
 
 ## Phase 1 — Beat map loading (DONE)
 ```
-  • BeatMap component + beat_map_loader.cpp
+  • BeatMap component + app/entities/beat_map.cpp
   • JSON parser → BeatMap.beats vector
   • Integrated into game_state_system on enter_playing
   • song->playing = true only when beats is non-empty

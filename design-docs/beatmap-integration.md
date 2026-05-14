@@ -16,7 +16,7 @@
   │  ✅ raylib for rendering, input, windowing                      │
   │  ✅ nlohmann-json in vcpkg.json                                 │
   │  ✅ BeatMap, SongState, SongResults in rhythm.h                 │
-  │  ✅ beat_map_loader.h/.cpp — JSON → BeatMap with validation     │
+  │  ✅ app/entities/beat_map.{h,cpp} — JSON → BeatMap with validation │
   │  ✅ song_playback_system — uses GetMusicTimePlayed() when audio │
   │     is loaded, with += dt fallback for silent/test mode         │
   │  ✅ beat_scheduler_system — spawns obstacles from BeatMap       │
@@ -249,11 +249,12 @@ creates the standard runtime obstacle archetypes via `spawn_rhythm_obstacle()`.
   ✅ = implemented and live in app/
 ```
 
-## 3.2 beat_map_loader — ✅ ALREADY IMPLEMENTED
+## 3.2 app/entities/beat_map (loader) — ✅ ALREADY IMPLEMENTED
 
 ```
-  app/beat_map_loader.h / .cpp — on main branch.
+  app/entities/beat_map.h / .cpp — on main branch.
   Loads JSON → BeatMap, validates, inits SongState.
+  Exposes load_beat_map() and load_and_validate_beat_map().
   Uses nlohmann-json. Called once at startup.
 ```
 
@@ -413,7 +414,7 @@ endif()
 
 ```
   ✅ app/components/rhythm.h             — BeatMap, SongState, SongResults, etc.
-  ✅ app/beat_map_loader.h / .cpp        — JSON → BeatMap with validation
+  ✅ app/entities/beat_map.h / .cpp       — JSON → BeatMap with validation
   ✅ app/systems/song_playback_system.cpp — song_time advancement
   ✅ app/systems/beat_scheduler_system.cpp — obstacle spawning from BeatMap
   ✅ app/systems/shape_window_system.cpp  — timing window morphing
@@ -524,7 +525,7 @@ Ordered by dependency chain. Steps marked ✅ are already on `main`.
 
   STEP 3 — Beat Map Loader                         ✅ DONE
   ─────────────────────────────
-  • beat_map_loader.h/.cpp: JSON → BeatMap with validation
+  • app/entities/beat_map.h/.cpp: JSON → BeatMap with validation
   • Parser supports ShapeGate, SplitPath, and onset_marker only. LaneBlock
     and ComboGate are legacy component fixtures rejected by active beatmaps.
   • init_song_state() computes derived fields from BPM
