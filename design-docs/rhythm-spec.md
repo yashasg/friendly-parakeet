@@ -328,9 +328,10 @@ struct SongResults {
   │   → transition ShapeWindow into MorphIn phase              │
   │   → reset graded + window_scale on new window start        │
   │                                                            │
-  │ shape_window_system                           ★ NEW        │
-  │   → advances WindowPhase state machine                     │
-  │     Idle → MorphIn → Active → MorphOut → Idle (Hexagon)   │
+  │ shape_window_activation_system                ★ NEW        │
+  │   → ticks the MorphIn phase before collision so the player │
+  │     finishes morphing (MorphIn → Active) before            │
+  │     collision_system reads ShapeWindow.phase               │
   │   → guarded by SongState existing (not song->playing)      │
   └────────────────────────────────────────────────────────────┘
            ↓
@@ -350,6 +351,18 @@ struct SongResults {
   │   → on HIT: applies window_scale shortening if !graded     │
   │   → on MISS: drain EnergyState; GameOver only at energy=0  │
   │   → emplaces ScoredTag on both HIT and MISS paths          │
+  │                                                            │
+  │ Runs BEFORE shape_window_system so an Active window that   │
+  │ is about to expire still wins the boundary-frame tie.      │
+  └────────────────────────────────────────────────────────────┘
+           ↓
+  ┌─ TIMING WINDOW ────────────────────────────────────────────┐
+  │ shape_window_system                            ★ NEW       │
+  │   → advances WindowPhase state machine                     │
+  │     Active → MorphOut → Idle (Hexagon)                    │
+  │   → guarded by SongState existing (not song->playing)      │
+  │   → MorphIn ticking is owned by                            │
+  │     shape_window_activation_system above                   │
   └────────────────────────────────────────────────────────────┘
            ↓
   ┌─ SCORING ──────────────────────────────────────────────────┐
@@ -649,13 +662,17 @@ if (!song) return;  // no rhythm context — skip
 ## Window expiry same frame as obstacle arrival
 
 ```
-  Execution order: shape_window_system runs BEFORE collision_system.
+  Execution order: collision_system runs BEFORE shape_window_system.
 
   If the window expires on the exact frame the obstacle arrives:
-    → shape_window_system advances the window first
-    → collision resolves against the resulting phase
+    → collision resolves against the still-active window phase first
+    → shape_window_system advances the phase afterwards
 
-  No race condition. The current frame's shape-window phase is authoritative.
+  No race condition. Collision always sees the pre-advance phase, so an
+  Active window that is about to expire still wins the boundary-frame
+  tie. (This is the fix for #871: the previous "window-first" order was
+  the bug, since it could turn the player back to Hexagon and convert
+  on-time hits into false MISSes.)
 ```
 
 ## Same-shape spam
