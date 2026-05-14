@@ -13,9 +13,6 @@ persistence::Result load_high_scores(HighScoreState& state, const std::filesyste
 // Distinguishes path/open/write failures via structured status.
 persistence::Result save_high_scores(const HighScoreState& state, const std::filesystem::path& path);
 
-// Get platform-specific high scores directory (same as settings dir).
-std::filesystem::path get_high_scores_dir();
-
 // Resolve full high scores file path.
 // Returns structured failure and clears out_path when resolution fails.
 persistence::Result get_high_scores_file_path(

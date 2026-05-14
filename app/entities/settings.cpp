@@ -135,12 +135,6 @@ bool json_integer_to_i64(const nlohmann::json& value, std::int64_t& out) {
 
 }  // namespace
 
-std::filesystem::path get_settings_dir() {
-    persistence::Paths paths;
-    const auto result = persistence::resolve_paths(paths);
-    return result.ok() ? paths.root_dir : std::filesystem::path{};
-}
-
 persistence::Result get_settings_file_path(
     std::filesystem::path& out_path,
     const std::filesystem::path& root_override) {
