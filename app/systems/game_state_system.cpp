@@ -1,5 +1,6 @@
 #include "all_systems.h"
 #include "game_phase_transition.h"
+#include "game_state_system.h"
 #include "../session/play_session.h"
 #include "../components/game_state.h"
 #include "../components/input.h"
@@ -7,7 +8,6 @@
 #include "../components/input_events.h"
 #include "../components/player.h"
 #include "../components/rhythm.h"
-#include "../components/system_scratch.h"
 #include "../entities/settings.h"
 #include "../constants.h"
 #if defined(__EMSCRIPTEN__) && defined(SHAPESHIFTER_WASM_SMOKE_MARKERS)

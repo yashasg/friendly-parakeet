@@ -8,7 +8,6 @@
 #include "../components/particle.h"
 #include "../components/scoring.h"
 #include "../components/song_state.h"
-#include "../components/system_scratch.h"
 #include "../constants.h"
 #include "../entities/settings.h"
 #include "../platform_display.h"

@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
-#include "components/system_scratch.h"
+#include "systems/particle_system.h"
 #include "test_helpers.h"
 #include "constants.h"
 

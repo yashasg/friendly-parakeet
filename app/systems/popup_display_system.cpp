@@ -1,7 +1,7 @@
 #include "all_systems.h"
+#include "popup_display_system.h"
 #include "../components/scoring.h"
 #include "../components/rendering.h"
-#include "../components/system_scratch.h"
 #include "../components/transform.h"
 #include "../entities/settings.h"
 

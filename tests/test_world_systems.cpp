@@ -1,5 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
-#include "components/system_scratch.h"
+#include "systems/obstacle_despawn_system.h"
 #include "test_helpers.h"
 
 // ── motion_system ────────────────────────────────────────────
