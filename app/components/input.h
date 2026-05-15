@@ -42,7 +42,5 @@ struct InputState {
     TouchSlot touch_slots[MaxTrackedTouches] = {};
 };
 
-// ── Directions ──────────────────────────────────────────────────────────────
-// Shared by semantic input producers and consumers.
-
-enum class Direction : uint8_t { Left, Right, Up, Down };
+// Note: `Direction` lives in app/systems/input_events.h alongside `GoEvent`,
+// the only event that carries it (issue #1194).

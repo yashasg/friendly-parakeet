@@ -1,8 +1,14 @@
 #pragma once
 
-#include "../components/input.h"   // Direction
 #include "../components/player.h"  // Shape
 #include <cstdint>
+
+// ── Directions ──────────────────────────────────────────────────────────────
+// Directional intent shared by gesture producers (input_system,
+// test_player_system) and listeners (player_input_system, level_select
+// controller). Lives next to `GoEvent` — its only carrier (issue #1194).
+
+enum class Direction : uint8_t { Left, Right, Up, Down };
 
 enum class MenuActionKind : uint8_t {
     Confirm       = 0,

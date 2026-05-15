@@ -442,13 +442,19 @@ struct InputState {
     float button_end_x = 0.0f, button_end_y = 0.0f;
     TouchSlot touch_slots[MaxTrackedTouches] = {};
 };
-
-/// Directional intent shared by gesture producers and listeners.
-enum class Direction : uint8_t { Left, Right, Up, Down };
 ```
 
 ```cpp
 // systems/input_events.h
+
+/// Directional intent shared by gesture producers (input_system,
+/// test_player_system) and listeners (player_input_system, level_select
+/// controller). Lives next to `GoEvent` — its only carrier (issue #1194).
+enum class Direction : uint8_t { Left, Right, Up, Down };
+```
+
+```cpp
+// systems/input_events.h (continued)
 
 /// Semantic input events — produced by input_system, HUD controllers, and
 /// test_player_system; consumed by listeners wired through entt::dispatcher.
@@ -1662,8 +1668,8 @@ app/
 │   │                              (RequiredShape, RequiredLane, ShapeGateLane,
 │   │                              BlockedLanes)
 │   ├── scoring.h                ← ScoreState, ScorePopup
-│   ├── input.h                  ← InputState, TouchSlot, Direction
-│   ├── input_events.h           ← ButtonPressEvent, GoEvent, MenuActionKind
+│   ├── input.h                  ← InputState, TouchSlot, InputSource
+│   ├── input_events.h           ← Direction, ButtonPressEvent, GoEvent, MenuActionKind (in systems/)
 │   ├── game_state.h             ← GameState, GamePhase, LevelSelectState
 │   ├── rendering.h              ← DrawSize, DrawLayer, screen/model transforms
 │   ├── particle.h               ← ParticleData, ParticleTag
