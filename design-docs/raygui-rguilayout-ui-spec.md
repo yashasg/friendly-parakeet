@@ -213,7 +213,7 @@ Generated headers are wired into the build as part of `shapeshifter_lib`:
 - Screen controller `.cpp` files under `app/ui/screen_controllers/` are globbed into `shapeshifter_lib` (`UI_SCREEN_CONTROLLER_SOURCES`) and consume the generated headers.
 - One screen controller TU owns `RAYGUI_IMPLEMENTATION` and is excluded from unity batching to keep the raygui implementation isolated; today this is `app/ui/screen_controllers/title_screen_controller.cpp`.
 
-The native build (`shapeshifter`, `shapeshifter_tests`) and WASM build compile the generated headers transitively through the screen controllers and stay warning-clean under `-Wall -Wextra -Werror` / `/W4 /WX`.
+The native build (`shapeshifter`, `shapeshifter_tests`) and WASM build compile the generated headers transitively through the screen controllers and stay warning-clean under `-Wall -Wextra -Werror`.
 
 ## CI and cache
 
@@ -261,7 +261,7 @@ HUD placement is driven by `app/ui/generated/gameplay_hud_layout.h` and `app/ui/
 
 ## Validation
 
-- `cmake --build build` and `./build/shapeshifter_tests` pass with zero warnings (`-Wall -Wextra -Werror`, `/W4 /WX`).
+- `cmake --build build` and `./build/shapeshifter_tests` pass with zero warnings (`-Wall -Wextra -Werror`).
 - Native unity build still catches ODR hazards in hand-written code; the `RAYGUI_IMPLEMENTATION` TU is excluded from unity batching.
 - WASM build remains warning-free and does not unity-merge raygui implementation or generated C.
 - No runtime path opens `content/ui/screens/*.json` (those files are gone).

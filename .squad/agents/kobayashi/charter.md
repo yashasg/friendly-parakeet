@@ -12,7 +12,7 @@
 ## What I Own
 
 - CI workflow design, build matrices, and release automation
-- Cross-platform build coverage for native desktop, Windows/MSVC, WebAssembly/Emscripten, and additional target platforms
+- Cross-platform build coverage for native desktop (Clang on Linux/macOS/Windows), WebAssembly/Emscripten, and additional target platforms
 - Artifact packaging, cache strategy, dependency setup, and failure diagnostics in automation
 
 ## How I Work

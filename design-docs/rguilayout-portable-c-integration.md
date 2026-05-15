@@ -369,7 +369,7 @@ set_source_files_properties(
 
 ### Compiler Warnings
 
-- Generated headers and raygui implementation must compile **zero warnings** with `-Wall -Wextra -Werror` (Clang, MSVC, Emscripten).
+- Generated headers and raygui implementation must compile **zero warnings** with `-Wall -Wextra -Werror` (Clang on Linux/macOS/Windows, Emscripten).
 - Screen controllers must also be warning-clean.
 - If a generated header produces warnings, regenerate from `.rgl` or adjust the template.
 

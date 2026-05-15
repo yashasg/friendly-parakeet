@@ -13,7 +13,7 @@
 
 - Modern C++ implementation and refactoring
 - Runtime performance, memory layout, cache behavior, and allocation pressure
-- Warning-free, portable C++ changes across native, MSVC, and WebAssembly builds
+- Warning-free, portable C++ changes across native (Clang) and WebAssembly builds
 
 ## How I Work
 

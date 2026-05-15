@@ -56,7 +56,7 @@ app/ui/
 4. Keep `ui_render_system` dispatch aligned with screen controller render entrypoints
 5. Add compile-time flag to switch between JSON UI and rguilayout UI (default OFF)
 6. Generate embeddable headers for remaining 7 screens
-7. Validate zero-warning build (clang, MSVC, emscripten)
+7. Validate zero-warning build (clang on Linux/macOS/Windows, emscripten)
 
 ## Generating Embeddable Layouts
 

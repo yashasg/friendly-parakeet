@@ -15,8 +15,7 @@ endif()
 
 project(shapeshifter VERSION 0.1 LANGUAGES CXX)
 
-# C++20 required: designated initializers are used throughout the codebase
-# (MSVC rejects them in C++17 mode with error C7555)
+# C++20 required: designated initializers are used throughout the codebase.
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -44,7 +43,6 @@ if(SHAPESHIFTER_IOS_BRIDGE_COMPILE_CHECK)
     target_compile_features(shapeshifter_ios_bridge_compile_check PRIVATE cxx_std_20)
     target_compile_options(shapeshifter_ios_bridge_compile_check PRIVATE
         $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wall -Wextra -Werror>
-        $<$<CXX_COMPILER_ID:MSVC>:/W4 /WX>
     )
     add_custom_target(shapeshifter_ios_bridge_compile_check_target
         DEPENDS shapeshifter_ios_bridge_compile_check
@@ -97,8 +95,6 @@ endif()
 add_library(shapeshifter_warnings INTERFACE)
 target_compile_options(shapeshifter_warnings INTERFACE
     $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wall -Wextra -Werror>
-    $<$<CXX_COMPILER_ID:MSVC>:/W4>
-    $<$<CXX_COMPILER_ID:MSVC>:/WX>
 )
 
 # Mark third-party include directories as SYSTEM so warnings from their
@@ -232,7 +228,9 @@ elseif(EMSCRIPTEN)
     target_compile_options(shapeshifter_lib PUBLIC -fexceptions)
 endif()
 
-# Suppress MSVC CRT deprecation warnings for standard C functions (fopen, etc.)
+# Suppress Microsoft CRT deprecation warnings for standard C functions (fopen, etc.)
+# Applies to clang-on-Windows linking against UCRT/MSVCRT just as much as it would
+# to MSVC; MSVC builds themselves are not supported (issue #1206).
 if(WIN32)
     target_compile_definitions(shapeshifter_lib PUBLIC _CRT_SECURE_NO_WARNINGS)
 endif()
