@@ -29,7 +29,6 @@ entt::entity create_player_entity(entt::registry& reg) {
     reg.emplace<VerticalState>(player);
     reg.emplace<Color>(player, Color{80, 180, 255, 255});
     reg.emplace<DrawSize>(player, constants::PLAYER_SIZE, constants::PLAYER_SIZE);
-    reg.emplace<DrawLayer>(player, Layer::Game);
     reg.emplace<TagWorldPass>(player);
     return player;
 }

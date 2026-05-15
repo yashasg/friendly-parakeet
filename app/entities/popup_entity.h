@@ -25,6 +25,6 @@ struct PopupSpawnParams {
 
 // Creates a fully-initialized score popup entity:
 //   WorldTransform at {x, y-40}, Vector2 velocity {0, -80}, ScorePopup,
-//   Color (by timing tier), DrawLayer::Effects, TagHUDPass, PopupDisplay.
+//   Color (by timing tier), TagHUDPass, PopupDisplay.
 // Audio push is the caller's responsibility.
 entt::entity spawn_score_popup(entt::registry& reg, const PopupSpawnParams& params);

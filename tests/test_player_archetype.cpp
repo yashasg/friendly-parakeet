@@ -20,7 +20,6 @@ TEST_CASE("player_entity: canonical component set present", "[archetype][player]
     CHECK(reg.all_of<VerticalState>(p));
     CHECK(reg.all_of<Color>(p));
     CHECK(reg.all_of<DrawSize>(p));
-    CHECK(reg.all_of<DrawLayer>(p));
     CHECK(reg.all_of<TagWorldPass>(p));
 }
 
@@ -48,12 +47,6 @@ TEST_CASE("player_entity: ShapeWindow starts Idle targeting Hexagon", "[archetyp
     auto& sw = reg.get<ShapeWindow>(p);
     CHECK(sw.target_shape == Shape::Hexagon);
     CHECK(sw.phase        == WindowPhase::Idle);
-}
-
-TEST_CASE("player_entity: DrawLayer is Game", "[archetype][player]") {
-    auto reg = make_registry();
-    auto p = create_player_entity(reg);
-    CHECK(reg.get<DrawLayer>(p).layer == Layer::Game);
 }
 
 TEST_CASE("player_entity: DrawSize matches PLAYER_SIZE", "[archetype][player]") {

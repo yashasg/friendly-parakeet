@@ -359,16 +359,12 @@ TEST_CASE("scoring: popup entity has full factory contract", "[scoring][popup_en
         CHECK(reg.all_of<WorldTransform>(e));
         CHECK(reg.all_of<Vector2>(e));
         CHECK(reg.all_of<Color>(e));
-        CHECK(reg.all_of<DrawLayer>(e));
         CHECK(reg.all_of<TagHUDPass>(e));
         CHECK(reg.all_of<PopupDisplay>(e));
 
         const auto& mv = reg.get<Vector2>(e);
         CHECK(mv.x == 0.0f);
         CHECK(mv.y == -80.0f);
-
-        const auto& dl = reg.get<DrawLayer>(e);
-        CHECK(dl.layer == Layer::Effects);
     }
     CHECK(count == 1);
 }

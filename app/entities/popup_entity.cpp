@@ -53,7 +53,6 @@ entt::entity spawn_score_popup(entt::registry& reg, const PopupSpawnParams& para
     }
     Color color{pr, pg, pb, 255};
     reg.emplace<Color>(popup, color);
-    reg.emplace<DrawLayer>(popup, Layer::Effects);
     reg.emplace<TagHUDPass>(popup);
 
     PopupDisplay pd{};

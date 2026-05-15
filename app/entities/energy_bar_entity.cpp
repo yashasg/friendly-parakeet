@@ -15,7 +15,6 @@ entt::entity create_energy_bar_entity(entt::registry& reg) {
     reg.emplace<EnergyBarTag>(energy_bar);
     reg.emplace<EnergyBarLayout>(energy_bar);
     reg.emplace<EnergyBarVisual>(energy_bar);
-    reg.emplace<DrawLayer>(energy_bar, Layer::HUD);
     reg.emplace<TagHUDPass>(energy_bar);
     return energy_bar;
 }

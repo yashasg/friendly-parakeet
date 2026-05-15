@@ -552,18 +552,10 @@ struct DrawSize {
     float h;
 };
 
-/// Draw layer for z-ordering. 1 byte.
-/// Render system iterates layers 0→3.
-enum class Layer : uint8_t {
-    Background = 0,
-    Game       = 1,
-    Effects    = 2,
-    HUD        = 3
-};
-
-struct DrawLayer {
-    Layer layer;
-};
+/// Render-pass membership for an entity is carried by the
+/// TagWorldPass / TagEffectsPass / TagHUDPass tags (see app/tags/tags.h).
+/// DrawLayer + the Layer enum were deleted (issue #1198) — no production
+/// system ever queried them; the pass tags drive all render dispatch.
 ```
 
 ### 2.11 — COLD: Particles
@@ -644,7 +636,6 @@ NonScorableTag       0     WARM       miss_detection/scoring exclusions, visual-
 OnsetMarkerTag       0     WARM       obstacle_render_entity, session_logger
 Color                4     COLD       render
 DrawSize             8     COLD       render
-DrawLayer            1     COLD       render
 PopupDisplay        36     COLD       popup_display (fade), ui_render
 ParticleTag          0     COLD       render (filter)
 EnergyBarTag         0     COLD       energy_bar_system (filter), gameplay_hud (filter)
@@ -887,7 +878,7 @@ In code, reusable construction lives in `app/entities/` factory functions
 │ VerticalState      { mode: Grounded, timer: 0, y_off: 0 }│
 │ Color              { r: 80, g: 180, b: 255, a: 255 }     │
 │ DrawSize           { w: 64, h: 64 }                       │
-│ DrawLayer          { layer: Game }                         │
+│ TagWorldPass       (tag, 0 bytes)                         │
 └───────────────────────────────────────────────────────────┘
 Total: ~97 bytes per entity (1 entity)
 ```
@@ -904,7 +895,7 @@ Total: ~97 bytes per entity (1 entity)
 │ ShapeGateLane      { lane: 1 }                             │
 │ Color              { r: 50, g: 205, b: 50, a: 255 }      │
 │ DrawSize           { w: 720, h: 80 }                       │
-│ DrawLayer          { layer: Game }                          │
+│ TagWorldPass       (tag, 0 bytes)                          │
 └───────────────────────────────────────────────────────────┘
 Total: ~43 bytes per entity (5–15 active)
 ```
@@ -923,7 +914,7 @@ read by `collision_system` so a player must be in the gate's lane to clear it.
 │ BlockedLanes       { mask: 0b010 }                         │
 │ Color              { r: 255, g: 60, b: 60, a: 255 }       │
 │ DrawSize           { w: 240, h: 80 }                       │
-│ DrawLayer          { layer: Game }                         │
+│ TagWorldPass       (tag, 0 bytes)                         │
 └───────────────────────────────────────────────────────────┘
 Total: ~41 bytes per entity
 ```
@@ -948,7 +939,7 @@ LowBar/HighBar entity archetypes are historical only. The current runtime enum, 
 │ BlockedLanes       { mask: 0b110 }                         │
 │ Color              { r: 200, g: 100, b: 255, a: 255 }    │
 │ DrawSize           { w: 720, h: 80 }                       │
-│ DrawLayer          { layer: Game }                          │
+│ TagWorldPass       (tag, 0 bytes)                          │
 └───────────────────────────────────────────────────────────┘
 Total: ~43 bytes per entity
 ```
@@ -965,7 +956,7 @@ Total: ~43 bytes per entity
 │ RequiredLane       { lane: 2 }                             │
 │ Color              { r: 255, g: 215, b: 0, a: 255 }      │
 │ DrawSize           { w: 720, h: 80 }                       │
-│ DrawLayer          { layer: Game }                          │
+│ TagWorldPass       (tag, 0 bytes)                          │
 └───────────────────────────────────────────────────────────┘
 Total: ~44 bytes per entity
 ```
@@ -982,7 +973,7 @@ Total: ~44 bytes per entity
 │ NonScorableTag     (tag, 0 bytes)                         │
 │ Color              { r: 255, g: 255, b: 255, a: 80 }      │
 │ DrawSize           { w: 720, h: 80 }                       │
-│ DrawLayer          { layer: Game }                         │
+│ TagWorldPass       (tag, 0 bytes)                         │
 └───────────────────────────────────────────────────────────┘
 Total: ~40 bytes per entity
 ```
@@ -1004,7 +995,7 @@ during normal play.
 │ MotionVelocity     { value: {0.0, -80.0} } (floats up)   │
 │ ScorePopup         { value: 600, tier: 3, remaining: 1.2 } │
 │ Color              { r: 255, g: 200, b: 50, a: 255 }     │
-│ DrawLayer          { layer: Effects }                      │
+│ TagHUDPass         (tag, 0 bytes)                          │
 └───────────────────────────────────────────────────────────┘
 Total: ~33 bytes per entity (0–5 active)
 ```
@@ -1018,7 +1009,7 @@ Total: ~33 bytes per entity (0–5 active)
 │ MotionVelocity     { value: {rand, rand} } (random burst) │
 │ ParticleData       { size: 4.0, remaining: 0.6, max_time: 0.6 } │
 │ Color              { r: 255, g: 100, b: 50, a: 255 }     │
-│ DrawLayer          { layer: Effects }                      │
+│ TagEffectsPass     (tag, 0 bytes)                          │
 └───────────────────────────────────────────────────────────┘
 Total: ~37 bytes per entity (0–50 active)
 ```
@@ -1670,7 +1661,8 @@ app/
 │   ├── scoring.h                ← ScoreState, ScorePopup
 │   ├── input_events.h           ← Direction, ButtonPressEvent, GoEvent, MenuActionKind (in systems/)
 │   ├── game_state.h             ← GameState, GamePhase, LevelSelectState
-│   ├── rendering.h              ← DrawSize, DrawLayer, screen/model transforms
+│   ├── rendering.h              ← DrawSize, ScreenPosition; back-compat shim
+│   │                              for the camera/mesh splits (issue #1194)
 │   ├── particle.h               ← ParticleData, ParticleTag
 │   ├── rhythm.h                 ← BeatInfo, TimingGrade, TimingTier
 │   └── song_state.h             ← SongState
@@ -1756,7 +1748,7 @@ entt::entity spawn_rhythm_shape_gate(entt::registry& reg, Shape required,
     reg.emplace<RequiredShape>(e, required);
     reg.emplace<Color>(e, shape_color(required));
     reg.emplace<DrawSize>(e, static_cast<float>(constants::SCREEN_W), 80.0f);
-    reg.emplace<DrawLayer>(e, Layer::Game);
+    reg.emplace<TagWorldPass>(e);
     return e;
 }
 ```

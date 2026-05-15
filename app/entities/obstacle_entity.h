@@ -17,13 +17,13 @@ struct ObstacleSpawnParams {
 };
 
 // Creates and fully configures an obstacle entity:
-//   ObstacleTag + DrawLayer + kind-specific components + mesh child entities.
+//   ObstacleTag + TagWorldPass + kind-specific components + mesh child entities.
 //   Non-rhythm obstacles get a Vector2 velocity (raw type, see transform.h).
 // Owns the complete component bundle contract for obstacles.
 entt::entity spawn_obstacle(entt::registry& reg, const ObstacleSpawnParams& params);
 
 // Creates a song-time-authoritative rhythm obstacle:
-//   ObstacleTag + BeatInfo + DrawLayer + kind-specific components + mesh children.
+//   ObstacleTag + BeatInfo + TagWorldPass + kind-specific components + mesh children.
 // Rhythm obstacles intentionally do not get a velocity Vector2.
 entt::entity spawn_rhythm_obstacle(entt::registry& reg, const ObstacleSpawnParams& params,
                                    const BeatInfo& beat_info);
