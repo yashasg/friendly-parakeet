@@ -226,6 +226,7 @@ bool game_loop_init(entt::registry& reg,
         log_persistence_result("high score load", persistence_state.last_load);
         reset_ctx_singleton<HighScoreState>(reg, hs);
         reset_ctx_singleton<HighScorePersistence>(reg, persistence_state);
+        reset_ctx_singleton<HighScoreSession>(reg);
     }
 
     // Cameras + render targets + GPU meshes

@@ -74,22 +74,24 @@ TEST_CASE("High score: no hash collisions across all 9 shipped song+difficulty k
 
 TEST_CASE("High score: current score lookup and update never lowers stored score", "[high_score]") {
     HighScoreState state;
-    CHECK(high_score::get_current_high_score(state) == 0);
+    HighScoreSession session;
+    CHECK(high_score::get_current_high_score(state, session) == 0);
 
-    // ensure_entry + current_key_hash mirrors the production setup_play_session path.
+    // ensure_entry + session.key_hash mirrors the production setup_play_session path.
     REQUIRE(high_score::ensure_entry(state, "song_001|easy"));
-    state.current_key_hash = high_score::make_key_hash("song_001", "easy");
-    CHECK(high_score::get_current_high_score(state) == 0);
+    session.key_hash = high_score::make_key_hash("song_001", "easy");
+    CHECK(high_score::get_current_high_score(state, session) == 0);
 
-    CHECK(high_score::update_if_higher(state, 5000));
-    CHECK(high_score::get_current_high_score(state) == 5000);
+    CHECK(high_score::update_if_higher(state, session, 5000));
+    CHECK(high_score::get_current_high_score(state, session) == 5000);
 
-    CHECK(high_score::update_if_higher(state, 1000));
-    CHECK(high_score::get_current_high_score(state) == 5000);
+    CHECK(high_score::update_if_higher(state, session, 1000));
+    CHECK(high_score::get_current_high_score(state, session) == 5000);
 }
 
 TEST_CASE("High score: saturated table reports insert and hash update failures", "[high_score][issue1004]") {
     HighScoreState state;
+    HighScoreSession session;
     for (int32_t i = 0; i < HighScoreState::MAX_ENTRIES; ++i) {
         const std::string key = "song_" + std::to_string(i) + "|easy";
         REQUIRE(high_score::set_score(state, key.c_str(), i * 100));
@@ -99,29 +101,30 @@ TEST_CASE("High score: saturated table reports insert and hash update failures",
     CHECK_FALSE(high_score::set_score(state, "overflow|easy", 9000));
     CHECK_FALSE(high_score::ensure_entry(state, "overflow|medium"));
 
-    state.current_key_hash = high_score::make_key_hash("overflow", "hard");
-    CHECK_FALSE(high_score::update_if_higher(state, 9000));
+    session.key_hash = high_score::make_key_hash("overflow", "hard");
+    CHECK_FALSE(high_score::update_if_higher(state, session, 9000));
     CHECK(high_score::get_score(state, "overflow|hard") == 0);
 
-    state.current_key_hash = high_score::make_key_hash("song_0", "easy");
-    CHECK(high_score::update_if_higher(state, 9000));
+    session.key_hash = high_score::make_key_hash("song_0", "easy");
+    CHECK(high_score::update_if_higher(state, session, 9000));
     CHECK(high_score::get_score(state, "song_0|easy") == 9000);
 }
 
 TEST_CASE("High score: tracks songs and difficulties independently", "[high_score]") {
     HighScoreState state;
+    HighScoreSession session;
 
     REQUIRE(high_score::ensure_entry(state, "song_001|easy"));
-    state.current_key_hash = high_score::make_key_hash("song_001", "easy");
-    CHECK(high_score::update_if_higher(state, 1000));
+    session.key_hash = high_score::make_key_hash("song_001", "easy");
+    CHECK(high_score::update_if_higher(state, session, 1000));
 
     REQUIRE(high_score::ensure_entry(state, "song_001|hard"));
-    state.current_key_hash = high_score::make_key_hash("song_001", "hard");
-    CHECK(high_score::update_if_higher(state, 2000));
+    session.key_hash = high_score::make_key_hash("song_001", "hard");
+    CHECK(high_score::update_if_higher(state, session, 2000));
 
     REQUIRE(high_score::ensure_entry(state, "song_002|easy"));
-    state.current_key_hash = high_score::make_key_hash("song_002", "easy");
-    CHECK(high_score::update_if_higher(state, 3000));
+    session.key_hash = high_score::make_key_hash("song_002", "easy");
+    CHECK(high_score::update_if_higher(state, session, 3000));
 
     CHECK(high_score::get_score(state, "song_001|easy") == 1000);
     CHECK(high_score::get_score(state, "song_001|hard") == 2000);
@@ -270,7 +273,10 @@ TEST_CASE("High score persistence: clamps negative and oversized scores", "[high
     remove_path(dir);
 }
 
-TEST_CASE("High score persistence: load preserves current active key", "[high_score]") {
+TEST_CASE("High score persistence: load does not touch session key", "[high_score]") {
+    // HighScoreSession is a separate ctx singleton (#1194/#1203) — load_high_scores
+    // takes only HighScoreState&, so it is structurally impossible to clobber the
+    // active session key. This regression test guards the API split.
     const auto dir = temp_high_score_path("shapeshifter_high_score_current_key");
     const auto file = dir / "high_scores.json";
     remove_path(dir);
@@ -280,13 +286,14 @@ TEST_CASE("High score persistence: load preserves current active key", "[high_sc
     REQUIRE(high_score::save_high_scores(original, file).ok());
 
     HighScoreState loaded;
+    HighScoreSession session;
     // Simulate a session already active on song_002|hard before the load.
     const auto pre_load_hash = high_score::make_key_hash("song_002", "hard");
-    loaded.current_key_hash = pre_load_hash;
+    session.key_hash = pre_load_hash;
     REQUIRE(high_score::load_high_scores(loaded, file).ok());
 
     // Load must not clobber the in-progress session key.
-    CHECK(loaded.current_key_hash == pre_load_hash);
+    CHECK(session.key_hash == pre_load_hash);
     CHECK(high_score::get_score(loaded, "song_001|easy") == 1000);
 
     remove_path(dir);

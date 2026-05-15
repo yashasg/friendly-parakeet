@@ -30,9 +30,10 @@ bool update_and_persist_high_score(entt::registry& reg) {
     bool recorded_new_high_score = score_exceeds_high_score;
 
     if (auto* hs = reg.ctx().find<HighScoreState>()) {
-        const bool has_active_high_score_key = (hs->current_key_hash != 0);
+        const auto* session = reg.ctx().find<HighScoreSession>();
+        const bool has_active_high_score_key = session && (session->key_hash != 0);
         if (score_exceeds_high_score && has_active_high_score_key) {
-            recorded_new_high_score = high_score::update_if_higher(*hs, score.score);
+            recorded_new_high_score = high_score::update_if_higher(*hs, *session, score.score);
         }
         if (score_exceeds_high_score && recorded_new_high_score) {
             score.high_score = score.score;
