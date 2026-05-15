@@ -3,7 +3,7 @@
 
 #include "../../components/game_state.h"
 #include "../../content/level_content_config.h"
-#include "../../components/input.h"
+#include "../../systems/input.h"
 #include "../../constants.h"
 #include "screen_controller_base.h"
 #include <entt/entt.hpp>

@@ -401,7 +401,7 @@ struct EnergyState {
 ### 2.7 — COLD: Input (singletons, written once per frame)
 
 ```cpp
-// components/input.h
+// systems/input.h
 
 /// Raw input state — populated by input_system from raylib touch/mouse input.
 /// Singleton. Internal to input_system; downstream systems read the semantic
@@ -1668,7 +1668,6 @@ app/
 │   │                              (RequiredShape, RequiredLane, ShapeGateLane,
 │   │                              BlockedLanes)
 │   ├── scoring.h                ← ScoreState, ScorePopup
-│   ├── input.h                  ← InputState, TouchSlot, InputSource
 │   ├── input_events.h           ← Direction, ButtonPressEvent, GoEvent, MenuActionKind (in systems/)
 │   ├── game_state.h             ← GameState, GamePhase, LevelSelectState
 │   ├── rendering.h              ← DrawSize, DrawLayer, screen/model transforms
@@ -1677,6 +1676,7 @@ app/
 │   └── song_state.h             ← SongState
 │
 ├── systems/                     ← all system free functions
+│   ├── input.h                  ← InputState, TouchSlot, InputSource (singleton hardware-capture state)
 │   ├── all_systems.h            ← convenience #include for all systems
 │   ├── input_system.cpp         ← raylib polling → semantic dispatcher events
 │   ├── game_state_system.cpp    ← phase transitions

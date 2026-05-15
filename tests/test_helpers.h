@@ -4,7 +4,7 @@
 #include "components/transform.h"
 #include "components/player.h"
 #include "components/obstacle.h"
-#include "components/input.h"
+#include "systems/input.h"
 #include "systems/input_events.h"
 #include "components/game_state.h"
 #include "components/scoring.h"

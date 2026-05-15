@@ -1,6 +1,6 @@
 #include "input_routing.h"
 #include "../components/game_state.h"
-#include "../components/input.h"
+#include "input.h"
 #include "input_events.h"
 #include "audio_events.h"
 #include "haptics.h"

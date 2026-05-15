@@ -4,7 +4,9 @@
 
 // System-private state for input_system. Stored in registry context, not
 // emplaced on entities — this is per-system scratch, not component data.
-// Relocated out of app/components/input.h (issue #1196).
+// Extracted out of `InputState` (issue #1196). `InputState` itself was
+// later relocated alongside this header from app/components/ to app/systems/
+// (issue #1194).
 //
 //   * gestures_configured       — one-shot SetGesturesEnabled latch.
 //   * was_focused               — previous-frame window focus, for edge detect.

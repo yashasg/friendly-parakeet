@@ -1,7 +1,7 @@
 // Tutorial screen controller - renders raygui layout and dispatches start action.
 
 #include "../../components/game_state.h"
-#include "../../components/input.h"
+#include "../../systems/input.h"
 #include "../../constants.h"
 #include "../../entities/settings.h"
 #include "../../systems/web_input_policy.h"

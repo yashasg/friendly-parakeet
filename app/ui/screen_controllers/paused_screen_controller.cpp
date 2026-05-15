@@ -1,7 +1,7 @@
 // Paused screen controller - renders raygui layout and dispatches resume/menu actions.
 
 #include "../../components/game_state.h"
-#include "../../components/input.h"
+#include "../../systems/input.h"
 #include "../../constants.h"
 #include "screen_controller_base.h"
 #include <entt/entt.hpp>

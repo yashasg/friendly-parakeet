@@ -1,7 +1,7 @@
 #include "game_loop.h"
 #include "version.h"
 #include "constants.h"
-#include "components/input.h"
+#include "systems/input.h"
 #include "components/game_state.h"
 #include "components/scoring.h"
 #include "components/audio.h"
