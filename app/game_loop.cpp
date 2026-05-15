@@ -17,7 +17,7 @@
 #include "systems/game_phase_transition.h"
 #include "systems/runtime_systems.h"
 #include "session/test_player_session.h"
-#include "input/input_routing.h"
+#include "systems/input_routing.h"
 #include "rendering/text_resources.h"
 #include "systems/session_logger_system.h"
 #include "systems/camera_system.h"

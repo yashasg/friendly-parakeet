@@ -125,7 +125,6 @@ file(GLOB CONTENT_SOURCES CONFIGURE_DEPENDS app/content/*.cpp)
 file(GLOB PLATFORM_SOURCES CONFIGURE_DEPENDS app/platform/*.cpp app/platform/ios/*.cpp)
 file(GLOB UI_SOURCES CONFIGURE_DEPENDS app/ui/*.cpp)
 file(GLOB UI_SCREEN_CONTROLLER_SOURCES CONFIGURE_DEPENDS app/ui/screen_controllers/*.cpp)
-file(GLOB INPUT_SOURCES CONFIGURE_DEPENDS app/input/*.cpp)
 file(GLOB SESSION_SOURCES CONFIGURE_DEPENDS app/session/*.cpp)
 file(GLOB ENTITY_SOURCES CONFIGURE_DEPENDS app/entities/*.cpp)
 # Exclude files requiring a live raylib context from the library. They are
@@ -178,7 +177,7 @@ set(SHAPESHIFTER_MACOS_FRAMEWORKS
     "-framework CoreVideo"
 )
 
-add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES} ${AUDIO_SOURCES} ${UTIL_SOURCES} ${CONTENT_SOURCES} ${PLATFORM_SOURCES} ${UI_SOURCES} ${UI_SCREEN_CONTROLLER_SOURCES} ${INPUT_SOURCES} ${SESSION_SOURCES} ${ENTITY_SOURCES})
+add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES} ${AUDIO_SOURCES} ${UTIL_SOURCES} ${CONTENT_SOURCES} ${PLATFORM_SOURCES} ${UI_SOURCES} ${UI_SCREEN_CONTROLLER_SOURCES} ${SESSION_SOURCES} ${ENTITY_SOURCES})
 target_include_directories(shapeshifter_lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/app
     ${CMAKE_BINARY_DIR}/generated

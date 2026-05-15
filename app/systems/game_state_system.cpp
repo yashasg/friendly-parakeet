@@ -73,7 +73,7 @@ void game_state_system(entt::registry& reg, float dt) {
     // owns the authoritative drain for GoEvent and ButtonPressEvent.
     // Calling update<T>() here fires every registered listener in registration
     // order: game_state → level_select → player_input
-    // (see wire_input_dispatcher in input/input_dispatcher.cpp).
+    // (see wire_input_dispatcher in systems/input_dispatcher.cpp).
     //
     // Events are enqueued earlier in the same frame by input_system and the
     // gameplay HUD input collector before the fixed-step loop. Shape presses
