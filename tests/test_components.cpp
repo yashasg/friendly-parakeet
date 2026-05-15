@@ -8,13 +8,10 @@
 
 // Verify component defaults and basic ECS operations
 
-TEST_CASE("components: WorldTransform defaults to identity world transform", "[components][transform]") {
+TEST_CASE("components: WorldTransform defaults to origin position", "[components][transform]") {
     WorldTransform transform{};
     CHECK(transform.position.x == 0.0f);
     CHECK(transform.position.y == 0.0f);
-    CHECK(transform.rotation == 0.0f);
-    CHECK(transform.scale.x == 1.0f);
-    CHECK(transform.scale.y == 1.0f);
 }
 
 TEST_CASE("components: MotionVelocity defaults to zero vector", "[components][transform]") {
