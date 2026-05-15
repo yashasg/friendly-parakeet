@@ -8,7 +8,7 @@
 #include "systems/camera_system.h"
 #include "components/transform.h"
 #include "entities/obstacle_entity.h"
-#include "rendering/camera_resources.h"
+#include "components/camera_resources.h"
 #include "systems/runtime_systems.h"
 #include "systems/all_systems.h"
 #include <raylib.h>

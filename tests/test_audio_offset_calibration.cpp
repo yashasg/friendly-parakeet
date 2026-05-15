@@ -11,7 +11,7 @@
 #include "components/player.h"
 #include "components/rhythm.h"
 #include "components/shape_mesh.h"
-#include "rendering/camera_resources.h"
+#include "components/camera_resources.h"
 #include "systems/all_systems.h"
 #include "systems/runtime_systems.h"
 #include "util/rhythm_math.h"

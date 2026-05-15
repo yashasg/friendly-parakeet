@@ -16,9 +16,9 @@
 
 #include "components/audio.h"
 #include "components/music.h"
-#include "rendering/camera_resources.h"
+#include "components/camera_resources.h"
 #include "entities/camera_entity.h"  // GameCamera, UICamera
-#include "rendering/text_resources.h"
+#include "components/text_resources.h"
 #include "systems/session_logger_system.h"
 
 // ── ShapeMeshes type traits ──────────────────────────────────────────────────
