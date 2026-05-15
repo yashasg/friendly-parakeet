@@ -91,7 +91,12 @@ TEST_CASE("scroll: invalid scroll_speed preserves finite obstacle position", "[s
     reg.emplace<WorldTransform>(obs, WorldTransform{{0.0f, 123.0f}});
     reg.emplace<BeatInfo>(obs, 0, 4.0f, 0.0f);
 
-    scroll_system(reg, 0.016f);
+    {
+        // Production scroll_system intentionally TraceLog(LOG_WARNING) on invalid
+        // scroll_speed; silence here so the test doesn't pollute stderr.
+        ScopedTraceLogSilencer silence_warning;
+        scroll_system(reg, 0.016f);
+    }
 
     const auto& transform = reg.get<WorldTransform>(obs);
     CHECK(std::isfinite(transform.position.y));
@@ -109,10 +114,15 @@ TEST_CASE("scroll: non-positive scroll_speed skips position updates", "[scroll][
     reg.emplace<WorldTransform>(obs, WorldTransform{{0.0f, 234.0f}});
     reg.emplace<BeatInfo>(obs, 0, 4.0f, 0.0f);
 
-    scroll_system(reg, 0.016f);
-    CHECK_THAT(reg.get<WorldTransform>(obs).position.y, Catch::Matchers::WithinAbs(234.0f, 0.001f));
+    {
+        // Production scroll_system intentionally TraceLog(LOG_WARNING) on invalid
+        // scroll_speed; silence here so the test doesn't pollute stderr.
+        ScopedTraceLogSilencer silence_warning;
+        scroll_system(reg, 0.016f);
+        CHECK_THAT(reg.get<WorldTransform>(obs).position.y, Catch::Matchers::WithinAbs(234.0f, 0.001f));
 
-    song.scroll_speed = -100.0f;
-    scroll_system(reg, 0.016f);
-    CHECK_THAT(reg.get<WorldTransform>(obs).position.y, Catch::Matchers::WithinAbs(234.0f, 0.001f));
+        song.scroll_speed = -100.0f;
+        scroll_system(reg, 0.016f);
+        CHECK_THAT(reg.get<WorldTransform>(obs).position.y, Catch::Matchers::WithinAbs(234.0f, 0.001f));
+    }
 }
