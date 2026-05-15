@@ -2,7 +2,7 @@
 #include "audio_routing.h"
 #include "../components/audio_events.h"
 #include "../components/haptics.h"
-#include "../platform/haptics_backend.h"
+#include "haptics_backend.h"
 #include "../entities/settings.h"
 
 void haptic_handle_play(entt::registry& reg, const PlayHapticEvent& evt) {

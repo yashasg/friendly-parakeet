@@ -35,7 +35,7 @@ if(SHAPESHIFTER_IOS_BRIDGE_COMPILE_CHECK)
     endif()
     enable_language(OBJCXX)
     add_library(shapeshifter_ios_bridge_compile_check OBJECT
-        app/platform/ios/haptics_ios_bridge_ios.mm
+        app/systems/haptics_ios_bridge_ios.mm
     )
     target_include_directories(shapeshifter_ios_bridge_compile_check PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/app
@@ -121,7 +121,6 @@ endforeach()
 file(GLOB SYSTEM_SOURCES CONFIGURE_DEPENDS app/systems/*.cpp)
 file(GLOB UTIL_SOURCES CONFIGURE_DEPENDS app/util/*.cpp)
 file(GLOB CONTENT_SOURCES CONFIGURE_DEPENDS app/content/*.cpp)
-file(GLOB PLATFORM_SOURCES CONFIGURE_DEPENDS app/platform/*.cpp app/platform/ios/*.cpp)
 file(GLOB UI_SOURCES CONFIGURE_DEPENDS app/ui/*.cpp)
 file(GLOB UI_SCREEN_CONTROLLER_SOURCES CONFIGURE_DEPENDS app/ui/screen_controllers/*.cpp)
 file(GLOB ENTITY_SOURCES CONFIGURE_DEPENDS app/entities/*.cpp)
@@ -154,8 +153,8 @@ endif()
 if(SHAPESHIFTER_IOS)
     enable_language(OBJCXX)
     find_package(SDL2 CONFIG REQUIRED)
-    list(FILTER PLATFORM_SOURCES EXCLUDE REGEX "(^|/)haptics_ios_bridge_stub\\.cpp$")
-    list(APPEND PLATFORM_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/app/platform/ios/haptics_ios_bridge_ios.mm")
+    list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "(^|/)haptics_ios_bridge_stub\\.cpp$")
+    list(APPEND SYSTEM_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/app/systems/haptics_ios_bridge_ios.mm")
 endif()
 
 set(SHAPESHIFTER_IOS_FRAMEWORKS
@@ -175,7 +174,7 @@ set(SHAPESHIFTER_MACOS_FRAMEWORKS
     "-framework CoreVideo"
 )
 
-add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES} ${UTIL_SOURCES} ${CONTENT_SOURCES} ${PLATFORM_SOURCES} ${UI_SOURCES} ${UI_SCREEN_CONTROLLER_SOURCES} ${ENTITY_SOURCES})
+add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES} ${UTIL_SOURCES} ${CONTENT_SOURCES} ${UI_SOURCES} ${UI_SCREEN_CONTROLLER_SOURCES} ${ENTITY_SOURCES})
 target_include_directories(shapeshifter_lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/app
     ${CMAKE_BINARY_DIR}/generated

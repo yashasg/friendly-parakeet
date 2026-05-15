@@ -1,7 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "components/haptics.h"
-#include "platform/haptics_backend.h"
+#include "systems/haptics_backend.h"
 
 #include <entt/entt.hpp>
 

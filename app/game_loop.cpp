@@ -27,7 +27,7 @@
 #include "systems/persistence_policy_system.h"
 #include "components/high_score.h"
 #include "systems/high_score_system.h"
-#include "platform/haptics_backend.h"
+#include "systems/haptics_backend.h"
 
 #include <raylib.h>
 #include <algorithm>
