@@ -18,7 +18,7 @@
 #include "systems/runtime_systems.h"
 #include "systems/test_player_session.h"
 #include "systems/input_routing.h"
-#include "rendering/text_resources.h"
+#include "components/text_resources.h"
 #include "systems/session_logger_system.h"
 #include "systems/camera_system.h"
 #include "entities/beat_map.h"

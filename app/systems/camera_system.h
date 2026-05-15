@@ -1,7 +1,7 @@
 #pragma once
 #include "../components/rendering.h"
 #include "../entities/camera_entity.h"
-#include "../rendering/camera_resources.h"
+#include "../components/camera_resources.h"
 #include <cassert>
 #include <cmath>
 #include <cstdint>

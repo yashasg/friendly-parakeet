@@ -6,7 +6,7 @@
 #include "../components/rhythm.h"
 #include "../components/game_state.h"
 #include "../components/song_state.h"
-#include "../rendering/text_resources.h"
+#include "../components/text_resources.h"
 #include "../constants.h"
 
 #include "../ui/screen_controllers/title_screen_controller.h"

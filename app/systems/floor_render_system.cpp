@@ -4,7 +4,7 @@
 #include "../components/song_state.h"
 #include "../constants.h"
 #include "../entities/settings.h"
-#include "../rendering/camera_resources.h"
+#include "../components/camera_resources.h"
 
 #include <raylib.h>
 #include <rlgl.h>

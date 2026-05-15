@@ -8,7 +8,7 @@
 // entity model against the already-landed camera_entity.h factories.
 //
 // New code should include entities/camera_entity.h or
-// rendering/camera_resources.h.
+// components/camera_resources.h.
 
 #include <catch2/catch_test_macros.hpp>
 #include <type_traits>
