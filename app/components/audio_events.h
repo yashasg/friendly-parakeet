@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../audio/audio_types.h"
-#include "../components/haptics.h"
+#include "audio.h"
+#include "haptics.h"
 
 // Dispatcher events for fire-and-forget audio/haptic playback.
 //
@@ -9,7 +9,7 @@
 //   enqueue: disp.enqueue<PlaySfxEvent>({SFX::ShapeShift})
 //   drain:   audio_system calls disp.update<PlaySfxEvent>() → audio_handle_play_sfx()
 //
-// Listeners registered by wire_audio_haptic_dispatcher (app/audio/audio_routing.h).
+// Listeners registered by wire_audio_haptic_dispatcher (app/systems/audio_routing.h).
 
 struct PlaySfxEvent {
     SFX clip;

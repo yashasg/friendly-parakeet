@@ -1,7 +1,7 @@
 #include "all_systems.h"
 #include "../components/game_state.h"
 #include "../components/rhythm.h"
-#include "../audio/music_context.h"
+#include "../components/music.h"
 #include "../entities/beat_map.h"
 #include "../entities/settings.h"
 #include <raylib.h>

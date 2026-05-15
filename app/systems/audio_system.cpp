@@ -1,6 +1,5 @@
 #include "all_systems.h"
-#include "../audio/audio_routing.h"
-#include "../audio/audio_types.h"
+#include "audio_routing.h"
 #include "../components/audio_events.h"
 
 #include <raylib.h>

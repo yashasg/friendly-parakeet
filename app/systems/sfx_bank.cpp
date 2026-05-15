@@ -1,5 +1,5 @@
 #include "sfx_bank.h"
-#include "audio_types.h"
+#include "../components/audio.h"
 
 #include <raylib.h>
 

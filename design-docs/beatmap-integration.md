@@ -186,7 +186,7 @@ struct MusicContext {
 };
 ```
 
-Defined in `app/audio/music_context.h`. It owns the raylib `Music` handle and is
+Defined in `app/components/music.h`. It owns the raylib `Music` handle and is
 emplaced in `reg.ctx()` alongside `SongState`.
 
 ## 2.2 Existing Components — No Changes Needed
@@ -436,7 +436,7 @@ endif()
   ✅ app/systems/shape_window_system.cpp  — timing window morphing
   ✅ app/systems/energy_system.cpp        — miss tracking and terminal failure
   ✅ app/systems/audio_system.cpp         — dispatcher-driven SFX playback
-  ✅ app/audio/music_context.h            — raylib Music handle + state flags
+  ✅ app/components/music.h               — raylib Music handle + state flags
   ✅ app/game_loop.cpp                    — InitAudioDevice + audio lifecycle
   ✅ app/session/play_session.cpp         — LoadMusicStream per play session
 ```

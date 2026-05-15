@@ -2,8 +2,8 @@
 
 #include <raylib.h>
 
-#include "audio/audio_types.h"
-#include "audio/sfx_bank.h"
+#include "components/audio.h"
+#include "systems/sfx_bank.h"
 #include "test_helpers.h"
 
 TEST_CASE("audio_system: drains queued SFX safely without playable sounds", "[audio]") {
