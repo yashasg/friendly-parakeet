@@ -34,7 +34,7 @@ entt::entity spawn_score_popup(entt::registry& reg, const PopupSpawnParams& para
     auto popup = reg.create();
 
     reg.emplace<WorldTransform>(popup, WorldTransform{{params.x, params.y - 40.0f}});
-    reg.emplace<MotionVelocity>(popup, MotionVelocity{{0.0f, -80.0f}});
+    reg.emplace<Vector2>(popup, Vector2{0.0f, -80.0f});
     const bool has_timing_tier = params.timing_tier.has_value();
     const TimingTier timing_tier = has_timing_tier ? *params.timing_tier : TimingTier::Ok;
     reg.emplace<ScorePopup>(popup, params.points, has_timing_tier, timing_tier,

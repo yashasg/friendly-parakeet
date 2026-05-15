@@ -42,14 +42,14 @@ void particle_system(entt::registry& reg, float dt) {
     const auto* settings_ptr = find_settings_state(reg);
     const bool reduce_motion = settings_ptr && settings_ptr->reduce_motion;
 
-    auto vel_view = reg.view<ParticleTag, MotionVelocity>();
+    auto vel_view = reg.view<ParticleTag, Vector2>();
     for (auto [entity, vel] : vel_view.each()) {
         (void)entity;
         if (reduce_motion) {
-            vel.value.x = 0.0f;
-            vel.value.y = 0.0f;
+            vel.x = 0.0f;
+            vel.y = 0.0f;
         } else {
-            vel.value.y += constants::PARTICLE_GRAVITY * dt;
+            vel.y += constants::PARTICLE_GRAVITY * dt;
         }
     }
 }

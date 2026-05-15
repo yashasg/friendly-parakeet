@@ -56,7 +56,7 @@ static void spawn_obstacles(entt::registry& reg, int count) {
         reg.emplace<ObstacleTag>(obs);
         float y = constants::SPAWN_Y + static_cast<float>(i) * 80.0f;
         reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[i % 3], y}});
-        reg.emplace<MotionVelocity>(obs, MotionVelocity{{0.0f, song.scroll_speed}});
+        reg.emplace<Vector2>(obs, Vector2{0.0f, song.scroll_speed});
         auto shape = static_cast<Shape>(i % 3);
         reg.emplace<Obstacle>(obs, int16_t{200});
         reg.emplace<RequiredShape>(obs, shape);
@@ -67,7 +67,7 @@ static void spawn_obstacles(entt::registry& reg, int count) {
 }
 
 // Spawns obstacles with the production scroll_system archetype:
-// WorldTransform + MotionVelocity (freeplay non-beat path, exclude BeatInfo).
+// WorldTransform + Vector2 (freeplay non-beat path, exclude BeatInfo).
 static void spawn_scroll_obstacles(entt::registry& reg, int count) {
     const auto& song = reg.ctx().get<SongState>();
     for (int i = 0; i < count; ++i) {
@@ -75,13 +75,13 @@ static void spawn_scroll_obstacles(entt::registry& reg, int count) {
         reg.emplace<ObstacleTag>(obs);
         float y = constants::SPAWN_Y + static_cast<float>(i) * 80.0f;
         reg.emplace<WorldTransform>(obs, WorldTransform{{0.0f, y}});
-        reg.emplace<MotionVelocity>(obs, MotionVelocity{{0.0f, song.scroll_speed}});
+        reg.emplace<Vector2>(obs, Vector2{0.0f, song.scroll_speed});
         reg.emplace<Obstacle>(obs, int16_t{200});
         reg.emplace<DrawLayer>(obs, Layer::Game);
     }
 }
 
-// Spawns particles using the production archetype: WorldTransform+MotionVelocity.
+// Spawns particles using the production archetype: WorldTransform+Vector2.
 // These are processed by motion_system's motion_view and rendered
 // by camera_system via ParticleTag+WorldTransform.
 static void spawn_particles(entt::registry& reg, int count) {
@@ -89,7 +89,7 @@ static void spawn_particles(entt::registry& reg, int count) {
         auto p = reg.create();
         reg.emplace<ParticleTag>(p);
         reg.emplace<WorldTransform>(p, WorldTransform{{360.0f, 500.0f}});
-        reg.emplace<MotionVelocity>(p, MotionVelocity{{static_cast<float>(i % 50 - 25), -100.0f}});
+        reg.emplace<Vector2>(p, Vector2{static_cast<float>(i % 50 - 25), -100.0f});
         reg.emplace<ParticleData>(p, 4.0f, 0.6f, 0.6f);
         reg.emplace<Color>(p, Color{255, 100, 50, 255});
         reg.emplace<DrawLayer>(p, Layer::Effects);
@@ -125,7 +125,7 @@ TEST_CASE("Bench: collision_system", "[!benchmark][bench]") {
         auto obs = reg.create();
         reg.emplace<ObstacleTag>(obs);
         reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y}});
-        reg.emplace<MotionVelocity>(obs, MotionVelocity{{0.0f, 400.0f}});
+        reg.emplace<Vector2>(obs, Vector2{0.0f, 400.0f});
         reg.emplace<Obstacle>(obs, int16_t{200});
         reg.emplace<RequiredShape>(obs, Shape::Circle);
         meter.measure([&] {
@@ -159,7 +159,7 @@ TEST_CASE("Bench: scoring_system", "[!benchmark][bench]") {
             auto obs = reg.create();
             reg.emplace<ObstacleTag>(obs);
             reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y}});
-            reg.emplace<MotionVelocity>(obs, MotionVelocity{{0.0f, 400.0f}});
+            reg.emplace<Vector2>(obs, Vector2{0.0f, 400.0f});
             reg.emplace<Obstacle>(obs, int16_t{200});
             reg.emplace<ScoredTag>(obs);
             reg.emplace<DrawLayer>(obs, Layer::Game);

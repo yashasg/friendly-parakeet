@@ -28,11 +28,11 @@ void popup_display_system(entt::registry& reg, float dt) {
     const auto* settings_ptr = find_settings_state(reg);
     const bool reduce_motion = settings_ptr && settings_ptr->reduce_motion;
     if (reduce_motion) {
-        auto drift_view = reg.view<ScorePopup, MotionVelocity>();
+        auto drift_view = reg.view<ScorePopup, Vector2>();
         for (auto [entity, popup, vel] : drift_view.each()) {
             (void)entity; (void)popup;
-            vel.value.x = 0.0f;
-            vel.value.y = 0.0f;
+            vel.x = 0.0f;
+            vel.y = 0.0f;
         }
     }
 

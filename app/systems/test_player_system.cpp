@@ -138,10 +138,10 @@ static TestPlayerAction determine_action(
     } else {
         // Estimate from position + velocity
         auto* wt  = reg.try_get<WorldTransform>(entity);
-        auto* vel = reg.try_get<MotionVelocity>(entity);
-        if (wt && vel && vel->value.y > 0.0f) {
+        auto* vel = reg.try_get<Vector2>(entity);
+        if (wt && vel && vel->y > 0.0f) {
             action.arrival_time = song.song_time +
-                (constants::PLAYER_Y - wt->position.y) / vel->value.y;
+                (constants::PLAYER_Y - wt->position.y) / vel->y;
         }
     }
 

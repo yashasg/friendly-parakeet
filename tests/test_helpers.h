@@ -215,7 +215,7 @@ inline entt::entity make_shape_gate(entt::registry& reg, Shape shape, float y) {
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
     reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], y}});
-    reg.emplace<MotionVelocity>(obs, MotionVelocity{{0.0f, song.scroll_speed}});
+    reg.emplace<Vector2>(obs, Vector2{0.0f, song.scroll_speed});
     reg.emplace<Obstacle>(obs, int16_t{constants::PTS_SHAPE_GATE});
     reg.emplace<RequiredShape>(obs, shape);
     reg.emplace<ShapeGateLane>(obs, int8_t{1});
@@ -233,7 +233,7 @@ inline entt::entity make_lane_block(entt::registry& reg, uint8_t mask, float y) 
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
     reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], y}});
-    reg.emplace<MotionVelocity>(obs, MotionVelocity{{0.0f, song.scroll_speed}});
+    reg.emplace<Vector2>(obs, Vector2{0.0f, song.scroll_speed});
     reg.emplace<Obstacle>(obs, int16_t{constants::PTS_LANE_BLOCK});
     reg.emplace<uint8_t>(obs, mask);
     reg.emplace<DrawSize>(obs, float(constants::SCREEN_W / 3), 80.0f);
@@ -251,7 +251,7 @@ inline entt::entity make_combo_gate(entt::registry& reg, Shape shape, uint8_t bl
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
     reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], y}});
-    reg.emplace<MotionVelocity>(obs, MotionVelocity{{0.0f, song.scroll_speed}});
+    reg.emplace<Vector2>(obs, Vector2{0.0f, song.scroll_speed});
     reg.emplace<Obstacle>(obs, int16_t{constants::PTS_COMBO_GATE});
     reg.emplace<RequiredShape>(obs, shape);
     reg.emplace<uint8_t>(obs, blocked_mask);
@@ -268,7 +268,7 @@ inline entt::entity make_split_path(entt::registry& reg, Shape shape, int8_t lan
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
     reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], y}});
-    reg.emplace<MotionVelocity>(obs, MotionVelocity{{0.0f, song.scroll_speed}});
+    reg.emplace<Vector2>(obs, Vector2{0.0f, song.scroll_speed});
     reg.emplace<Obstacle>(obs, int16_t{constants::PTS_SPLIT_PATH});
     reg.emplace<RequiredShape>(obs, shape);
     reg.emplace<RequiredLane>(obs, lane);

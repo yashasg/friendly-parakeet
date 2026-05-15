@@ -27,7 +27,7 @@
 #include "systems/popup_display_system.h"
 #include "components/text.h"      // FontSize
 #include "components/rhythm.h"    // TimingTier
-#include "components/transform.h" // WorldTransform, MotionVelocity
+#include "components/transform.h" // WorldTransform, Vector2
 #include "entities/settings.h"        // SettingsState (reduce_motion)
 #include "systems/all_systems.h"  // popup_display_system declaration
 #include "entities/popup_entity.h"
@@ -225,7 +225,7 @@ TEST_CASE("spawn_score_popup: creates the full popup display archetype",
     entt::registry reg;
     auto e = spawn_score_popup(reg, {100.0f, 200.0f, 50, TimingTier::Good});
 
-    REQUIRE(reg.all_of<ScorePopup, PopupDisplay, Color, MotionVelocity,
+    REQUIRE(reg.all_of<ScorePopup, PopupDisplay, Color, Vector2,
                        WorldTransform, DrawLayer, TagHUDPass>(e));
     CHECK(reg.get<ScorePopup>(e).has_timing_tier);
     CHECK(reg.get<ScorePopup>(e).timing_tier == TimingTier::Good);
@@ -284,15 +284,15 @@ TEST_CASE("spawn_score_popup: entity has WorldTransform at pos - 40",
     CHECK(wt.position.y == 460.0f);  // 500 - 40
 }
 
-TEST_CASE("spawn_score_popup: entity has MotionVelocity {0, -80}",
+TEST_CASE("spawn_score_popup: entity has Vector2 {0, -80}",
           "[popup_entity][issue349]") {
     entt::registry reg;
     auto e = spawn_score_popup(reg, {0.0f, 0.0f, 100, std::nullopt});
 
-    REQUIRE(reg.all_of<MotionVelocity>(e));
-    const auto& mv = reg.get<MotionVelocity>(e);
-    CHECK(mv.value.x == 0.0f);
-    CHECK(mv.value.y == -80.0f);
+    REQUIRE(reg.all_of<Vector2>(e));
+    const auto& mv = reg.get<Vector2>(e);
+    CHECK(mv.x == 0.0f);
+    CHECK(mv.y == -80.0f);
 }
 
 TEST_CASE("spawn_score_popup: ScorePopup has correct points and duration",
@@ -428,14 +428,14 @@ TEST_CASE("popup_display_system: reduce_motion zeroes drift velocity (#534)",
     settings_state(reg).reduce_motion = true;
 
     auto e = spawn_score_popup(reg, {100.0f, 500.0f, 200, TimingTier::Perfect});
-    REQUIRE(reg.all_of<MotionVelocity>(e));
-    REQUIRE(reg.get<MotionVelocity>(e).value.y == -80.0f);
+    REQUIRE(reg.all_of<Vector2>(e));
+    REQUIRE(reg.get<Vector2>(e).y == -80.0f);
 
     popup_display_system(reg, 0.016f);
 
-    const auto& vel = reg.get<MotionVelocity>(e);
-    CHECK(vel.value.x == 0.0f);
-    CHECK(vel.value.y == 0.0f);
+    const auto& vel = reg.get<Vector2>(e);
+    CHECK(vel.x == 0.0f);
+    CHECK(vel.y == 0.0f);
 
     // Informational channel (text/colour/value) is unchanged.
     const auto& pd = reg.get<PopupDisplay>(e);
@@ -456,8 +456,8 @@ TEST_CASE("popup_display_system: reduce_motion=false leaves drift untouched (#53
     auto e = spawn_score_popup(reg, {0.0f, 0.0f, 100, TimingTier::Good});
     popup_display_system(reg, 0.016f);
 
-    const auto& vel = reg.get<MotionVelocity>(e);
-    CHECK(vel.value.y == -80.0f);  // popup_display_system never touches it
+    const auto& vel = reg.get<Vector2>(e);
+    CHECK(vel.y == -80.0f);  // popup_display_system never touches it
 }
 
 // #1089 — PopupDisplayScratch::capacity_exceeded_count must stay at zero when
