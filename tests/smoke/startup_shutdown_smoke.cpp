@@ -1,4 +1,4 @@
-#include "components/test_player.h"
+#include "systems/test_player.h"
 #include "game_loop.h"
 
 #include <raylib.h>
