@@ -158,7 +158,7 @@ bool has_direct_enter_phase_call(const std::string& source) {
 
 const std::set<std::string>& canonical_enter_phase_allowlist() {
     static const std::set<std::string> kAllowlist = {
-        "app/session/play_session.cpp",
+        "app/systems/play_session.cpp",
         "app/systems/game_state_system.cpp",
         "app/systems/game_state_terminal_phase_system.cpp",
     };
@@ -240,7 +240,7 @@ TEST_CASE("phase_transition: app sources enforce canonical enter_phase allow-lis
     const auto offenders = collect_enter_phase_offenders(sources, canonical_enter_phase_allowlist());
 
     INFO("Only canonical callers may invoke enter_phase directly: "
-         "app/systems/game_state_system.cpp, app/session/play_session.cpp, "
+         "app/systems/game_state_system.cpp, app/systems/play_session.cpp, "
          "app/systems/game_state_terminal_phase_system.cpp");
     for (const auto& f : offenders) INFO("offender: " << f);
     REQUIRE(offenders.empty());
