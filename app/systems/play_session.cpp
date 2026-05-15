@@ -162,8 +162,8 @@ void setup_play_session(entt::registry& reg) {
         if (auto* music = reg.ctx().find<MusicContext>()) {
             music->release();
         }
-        if (auto* hs = reg.ctx().find<HighScoreState>()) {
-            hs->current_key_hash = 0;
+        if (auto* session = reg.ctx().find<HighScoreSession>()) {
+            session->key_hash = 0;
         }
         erase_ctx_if_exists<ScoreState>(reg);
         erase_ctx_if_exists<SongState>(reg);
@@ -180,7 +180,7 @@ void setup_play_session(entt::registry& reg) {
 
     assign_or_emplace_ctx(reg, ScoreState{});
 
-    // Wire high score: derive song_id from beatmap filename and set current_key_hash.
+    // Wire high score: derive song_id from beatmap filename and set HighScoreSession::key_hash.
     // The key string is built once in a stack buffer (no heap); ensure_entry pre-registers
     // the entry so update_if_higher can later update by hash without the key string.
     if (auto* hs = reg.ctx().find<HighScoreState>()) {
@@ -193,7 +193,9 @@ void setup_play_session(entt::registry& reg) {
         char key_buf[HighScoreState::KEY_CAP]{};
         high_score::make_key_str(key_buf, HighScoreState::KEY_CAP,
                                  stem.c_str(), beatmap.difficulty.c_str());
-        hs->current_key_hash = entt::hashed_string::value(static_cast<const char*>(key_buf));
+        if (auto* session = reg.ctx().find<HighScoreSession>()) {
+            session->key_hash = entt::hashed_string::value(static_cast<const char*>(key_buf));
+        }
         high_score::ensure_entry(*hs, key_buf);
     }
 
@@ -244,7 +246,8 @@ void setup_play_session(entt::registry& reg) {
     // Load stored high score for this song+difficulty into ScoreState
     if (auto* hs = reg.ctx().find<HighScoreState>()) {
         auto& score = reg.ctx().get<ScoreState>();
-        score.high_score = high_score::get_current_high_score(*hs);
+        const auto* session = reg.ctx().find<HighScoreSession>();
+        score.high_score = session ? high_score::get_current_high_score(*hs, *session) : 0;
     }
 
     spawn_session_player(reg);

@@ -105,9 +105,9 @@ bool ensure_entry(HighScoreState& state, const char* key) {
     return false;
 }
 
-int32_t get_current_high_score(const HighScoreState& state) {
-    if (state.current_key_hash == 0) return 0;
-    return get_score_by_hash(state, state.current_key_hash);
+int32_t get_current_high_score(const HighScoreState& state, const HighScoreSession& session) {
+    if (session.key_hash == 0) return 0;
+    return get_score_by_hash(state, session.key_hash);
 }
 
 namespace {
@@ -130,7 +130,6 @@ bool high_score_state_from_json(const nlohmann::json& obj, HighScoreState& state
     }
 
     HighScoreState next;
-    next.current_key_hash = state.current_key_hash; // preserve session key across load
 
     if (obj.contains("scores")) {
         const auto& scores_obj = obj["scores"];
@@ -234,12 +233,12 @@ persistence::Result save_high_scores(const HighScoreState& state, const std::fil
     return persistence::flush_persistence_writes(path);
 }
 
-bool update_if_higher(HighScoreState& state, int32_t new_score) {
-    if (state.current_key_hash == 0) return false;
+bool update_if_higher(HighScoreState& state, const HighScoreSession& session, int32_t new_score) {
+    if (session.key_hash == 0) return false;
     if (new_score < 0) new_score = 0;
-    int32_t stored = get_score_by_hash(state, state.current_key_hash);
+    int32_t stored = get_score_by_hash(state, session.key_hash);
     if (new_score > stored) {
-        return set_score_by_hash(state, state.current_key_hash, new_score);
+        return set_score_by_hash(state, session.key_hash, new_score);
     }
     return true;
 }

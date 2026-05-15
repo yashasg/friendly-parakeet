@@ -61,11 +61,15 @@ static_assert(HighScoreState::KEY_CAP == 32,
 TEST_CASE("HighScoreState: default-constructed is empty", "[boundary_wave2][high_score]") {
     HighScoreState hs{};
     CHECK(hs.entry_count == 0);
-    CHECK(hs.current_key_hash == 0u);
     // All entry scores must be zero (no stale data)
     for (int i = 0; i < HighScoreState::MAX_ENTRIES; ++i) {
         CHECK(hs.entries[i].score == 0);
     }
+}
+
+TEST_CASE("HighScoreSession: default-constructed has zero key hash", "[boundary_wave2][high_score]") {
+    HighScoreSession session{};
+    CHECK(session.key_hash == 0u);
 }
 
 TEST_CASE("HighScoreState: lives in ctx, not attached to entities", "[boundary_wave2][high_score]") {
