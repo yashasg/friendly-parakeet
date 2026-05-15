@@ -28,12 +28,23 @@ TEST_CASE("haptic_system: drains enqueued PlayHapticEvents without crashing", "[
 
 TEST_CASE("haptic_system: no-op when queue is empty", "[haptic]") {
     auto reg = make_registry();
-    haptic_system(reg);  // must not crash or assert
+    const auto entity_count_before = reg.storage<entt::entity>().size();
+
+    haptic_system(reg);
+
+    CHECK(reg.storage<entt::entity>().size() == entity_count_before);
+    auto cap = drain_haptic_events(reg);
+    CHECK(cap.count == 0);
 }
 
 TEST_CASE("haptic_system: safe when dispatcher absent from context", "[haptic]") {
     entt::registry reg;  // bare registry — no dispatcher
-    haptic_system(reg);  // must not crash
+    REQUIRE_FALSE(reg.ctx().contains<entt::dispatcher>());
+
+    haptic_system(reg);
+
+    CHECK_FALSE(reg.ctx().contains<entt::dispatcher>());
+    SUCCEED("haptic_system handled missing dispatcher without throwing");
 }
 
 // ── game_state_system haptic wiring ──────────────────────────────────────────
