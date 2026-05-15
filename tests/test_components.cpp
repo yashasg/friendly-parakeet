@@ -278,12 +278,12 @@ TEST_CASE("ecs: make_combo_gate creates proper entity", "[ecs]") {
     CHECK(reg.all_of<WorldTransform>(obs));
     CHECK(reg.all_of<Obstacle>(obs));
     CHECK(reg.all_of<RequiredShape>(obs));
-    CHECK(reg.all_of<BlockedLanes>(obs));
+    CHECK(reg.all_of<uint8_t>(obs));
     CHECK(obstacle_kind_from_components(reg.all_of<RequiredShape>(obs),
-                                        reg.all_of<BlockedLanes>(obs),
+                                        reg.all_of<uint8_t>(obs),
                                         reg.all_of<RequiredLane>(obs)) == ObstacleKind::ComboGate);
     CHECK(reg.get<RequiredShape>(obs).shape == Shape::Circle);
-    CHECK(reg.get<BlockedLanes>(obs).mask == 0b101);
+    CHECK(reg.get<uint8_t>(obs) == 0b101);
 }
 
 TEST_CASE("ecs: make_split_path creates proper entity", "[ecs]") {
@@ -295,7 +295,7 @@ TEST_CASE("ecs: make_split_path creates proper entity", "[ecs]") {
     CHECK(reg.all_of<RequiredShape>(obs));
     CHECK(reg.all_of<RequiredLane>(obs));
     CHECK(obstacle_kind_from_components(reg.all_of<RequiredShape>(obs),
-                                        reg.all_of<BlockedLanes>(obs),
+                                        reg.all_of<uint8_t>(obs),
                                         reg.all_of<RequiredLane>(obs)) == ObstacleKind::SplitPath);
     CHECK(reg.get<RequiredShape>(obs).shape == Shape::Triangle);
     CHECK(reg.get<RequiredLane>(obs).lane == 2);

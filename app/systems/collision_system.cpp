@@ -132,11 +132,11 @@ void collision_system(entt::registry& reg, [[maybe_unused]] float dt) {
     // Legacy LaneBlock fixture: BlockedLanes only (no RequiredShape).
     // Active beatmaps and obstacle factories reject this kind.
     {
-        auto view = reg.view<ObstacleTag, Obstacle, WorldTransform, BlockedLanes>(
+        auto view = reg.view<ObstacleTag, Obstacle, WorldTransform, uint8_t>(
             entt::exclude<ScoredTag, ResolvedObstacleTag, RequiredShape>);
         for (auto [e, obstacle, wt, blocked] : view.each()) {
             (void)obstacle;
-            resolve(e, wt.position.y, !((blocked.mask >> player_lane) & 1));
+            resolve(e, wt.position.y, !((blocked >> player_lane) & 1));
         }
     }
 
@@ -144,7 +144,7 @@ void collision_system(entt::registry& reg, [[maybe_unused]] float dt) {
     // ShapeGate: RequiredShape only (no BlockedLanes, no RequiredLane)
     {
         auto rhythm_view = reg.view<ObstacleTag, Obstacle, WorldTransform, RequiredShape, ShapeGateLane, BeatInfo>(
-            entt::exclude<ScoredTag, ResolvedObstacleTag, BlockedLanes, RequiredLane>);
+            entt::exclude<ScoredTag, ResolvedObstacleTag, uint8_t, RequiredLane>);
         for (auto [e, obstacle, wt, req, lane, info] : rhythm_view.each()) {
             (void)obstacle;
             const bool lane_ok = shape_gate_lane_match(lane.lane, player_lane);
@@ -152,7 +152,7 @@ void collision_system(entt::registry& reg, [[maybe_unused]] float dt) {
         }
 
         auto view = reg.view<ObstacleTag, Obstacle, WorldTransform, RequiredShape, ShapeGateLane>(
-            entt::exclude<ScoredTag, ResolvedObstacleTag, BlockedLanes, RequiredLane, BeatInfo>);
+            entt::exclude<ScoredTag, ResolvedObstacleTag, uint8_t, RequiredLane, BeatInfo>);
         for (auto [e, obstacle, wt, req, lane] : view.each()) {
             (void)obstacle;
             const bool lane_ok = shape_gate_lane_match(lane.lane, player_lane);
@@ -160,7 +160,7 @@ void collision_system(entt::registry& reg, [[maybe_unused]] float dt) {
         }
 
         auto fallback_rhythm_view = reg.view<ObstacleTag, Obstacle, WorldTransform, RequiredShape, BeatInfo>(
-            entt::exclude<ScoredTag, ResolvedObstacleTag, BlockedLanes, RequiredLane, ShapeGateLane>);
+            entt::exclude<ScoredTag, ResolvedObstacleTag, uint8_t, RequiredLane, ShapeGateLane>);
         for (auto [e, obstacle, wt, req, info] : fallback_rhythm_view.each()) {
             (void)obstacle;
             const bool lane_ok = lane_utils::nearest_lane_for_x(wt.position.x) == player_lane;
@@ -168,7 +168,7 @@ void collision_system(entt::registry& reg, [[maybe_unused]] float dt) {
         }
 
         auto fallback_view = reg.view<ObstacleTag, Obstacle, WorldTransform, RequiredShape>(
-            entt::exclude<ScoredTag, ResolvedObstacleTag, BlockedLanes, RequiredLane, BeatInfo, ShapeGateLane>);
+            entt::exclude<ScoredTag, ResolvedObstacleTag, uint8_t, RequiredLane, BeatInfo, ShapeGateLane>);
         for (auto [e, obstacle, wt, req] : fallback_view.each()) {
             (void)obstacle;
             const bool lane_ok = lane_utils::nearest_lane_for_x(wt.position.x) == player_lane;
@@ -179,19 +179,19 @@ void collision_system(entt::registry& reg, [[maybe_unused]] float dt) {
     // Legacy ComboGate fixture: RequiredShape + BlockedLanes (no RequiredLane).
     // Active beatmaps and obstacle factories reject this kind.
     {
-        auto rhythm_view = reg.view<ObstacleTag, Obstacle, WorldTransform, RequiredShape, BlockedLanes, BeatInfo>(
+        auto rhythm_view = reg.view<ObstacleTag, Obstacle, WorldTransform, RequiredShape, uint8_t, BeatInfo>(
             entt::exclude<ScoredTag, ResolvedObstacleTag, RequiredLane>);
         for (auto [e, obstacle, wt, req, blocked, info] : rhythm_view.each()) {
             (void)obstacle;
-            const bool lane_ok = !((blocked.mask >> player_lane) & 1);
+            const bool lane_ok = !((blocked >> player_lane) & 1);
             resolve_shape_obstacle(e, wt, req.shape, lane_ok, &info);
         }
 
-        auto view = reg.view<ObstacleTag, Obstacle, WorldTransform, RequiredShape, BlockedLanes>(
+        auto view = reg.view<ObstacleTag, Obstacle, WorldTransform, RequiredShape, uint8_t>(
             entt::exclude<ScoredTag, ResolvedObstacleTag, RequiredLane, BeatInfo>);
         for (auto [e, obstacle, wt, req, blocked] : view.each()) {
             (void)obstacle;
-            const bool lane_ok = !((blocked.mask >> player_lane) & 1);
+            const bool lane_ok = !((blocked >> player_lane) & 1);
             resolve_shape_obstacle(e, wt, req.shape, lane_ok, nullptr);
         }
     }

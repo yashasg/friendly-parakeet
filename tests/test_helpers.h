@@ -235,7 +235,7 @@ inline entt::entity make_lane_block(entt::registry& reg, uint8_t mask, float y) 
     reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], y}});
     reg.emplace<MotionVelocity>(obs, MotionVelocity{{0.0f, song.scroll_speed}});
     reg.emplace<Obstacle>(obs, int16_t{constants::PTS_LANE_BLOCK});
-    reg.emplace<BlockedLanes>(obs, mask);
+    reg.emplace<uint8_t>(obs, mask);
     reg.emplace<DrawSize>(obs, float(constants::SCREEN_W / 3), 80.0f);
     reg.emplace<DrawLayer>(obs, Layer::Game);
     reg.emplace<TagWorldPass>(obs);
@@ -254,7 +254,7 @@ inline entt::entity make_combo_gate(entt::registry& reg, Shape shape, uint8_t bl
     reg.emplace<MotionVelocity>(obs, MotionVelocity{{0.0f, song.scroll_speed}});
     reg.emplace<Obstacle>(obs, int16_t{constants::PTS_COMBO_GATE});
     reg.emplace<RequiredShape>(obs, shape);
-    reg.emplace<BlockedLanes>(obs, blocked_mask);
+    reg.emplace<uint8_t>(obs, blocked_mask);
     reg.emplace<DrawSize>(obs, float(constants::SCREEN_W), 80.0f);
     reg.emplace<DrawLayer>(obs, Layer::Game);
     reg.emplace<TagWorldPass>(obs);

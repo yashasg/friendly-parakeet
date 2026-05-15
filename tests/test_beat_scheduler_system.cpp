@@ -85,7 +85,7 @@ TEST_CASE("beat_scheduler: spawns ShapeGate when time passes spawn_time", "[beat
     auto view = reg.view<ObstacleTag, Obstacle, RequiredShape, ShapeGateLane>();
     for (auto [e, obs, rs, lane] : view.each()) {
         (void)obs;
-        CHECK_FALSE(reg.all_of<BlockedLanes>(e));
+        CHECK_FALSE(reg.all_of<uint8_t>(e));
         CHECK_FALSE(reg.all_of<RequiredLane>(e));
         CHECK(rs.shape == Shape::Circle);
         CHECK(lane.lane == int8_t{1});
@@ -326,7 +326,7 @@ TEST_CASE("beat_scheduler: spawns OnsetMarker as visible non-scorable cue",
         cue = e;
         CHECK(obstacle.base_points == int16_t{0});
         CHECK_FALSE(reg.all_of<RequiredShape>(e));
-        CHECK_FALSE(reg.all_of<BlockedLanes>(e));
+        CHECK_FALSE(reg.all_of<uint8_t>(e));
         CHECK_FALSE(reg.all_of<RequiredLane>(e));
         REQUIRE(children.count == 1);
         const auto child = children.children[0];

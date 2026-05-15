@@ -153,7 +153,7 @@ static TestPlayerAction determine_action(
         // ShapeGate: player must also be in the lane where the shape hole is.
         // The hole is at obs_pos.x — find which lane that corresponds to.
         auto* obs_wt = reg.try_get<WorldTransform>(entity);
-        if (obs_wt && !reg.all_of<BlockedLanes>(entity) && !reg.all_of<RequiredLane>(entity)) {
+        if (obs_wt && !reg.all_of<uint8_t>(entity) && !reg.all_of<RequiredLane>(entity)) {
             for (int i = 0; i < constants::LANE_COUNT; ++i) {
                 if (!lane_centers_overlap(obs_wt->position.x, constants::LANE_X[i])) continue;
                 if (i != player_lane) {
@@ -165,9 +165,9 @@ static TestPlayerAction determine_action(
     }
 
     // Lane requirement (BlockedLanes — find unblocked)
-    auto* blocked = reg.try_get<BlockedLanes>(entity);
+    auto* blocked = reg.try_get<uint8_t>(entity);
     if (blocked) {
-        int8_t safe = nearest_unblocked_lane(blocked->mask, player_lane);
+        int8_t safe = nearest_unblocked_lane(*blocked, player_lane);
         if (safe != player_lane) {
             action.target_lane = safe;
         }
@@ -319,7 +319,7 @@ void test_player_system(entt::registry& reg, float dt) {
             int beat_num = beat_info ? beat_info->beat_index : -1;
             const ObstacleKind kind = obstacle_kind_from_components(
                 reg.all_of<RequiredShape>(entity),
-                reg.all_of<BlockedLanes>(entity),
+                reg.all_of<uint8_t>(entity),
                 reg.all_of<RequiredLane>(entity));
             const std::string_view kind_name = enum_name_or_unknown(kind);
             const std::string_view shape_name = enum_name_or_unknown(action.target_shape);
@@ -473,8 +473,8 @@ void test_player_system(entt::registry& reg, float dt) {
                 }
 
                 // Closer obstacle — check if proposed lane is safe for it
-                auto* oblocked = reg.try_get<BlockedLanes>(oe);
-                if (oblocked && ((oblocked->mask >> next_lane) & 1)) {
+                auto* oblocked = reg.try_get<uint8_t>(oe);
+                if (oblocked && ((*oblocked >> next_lane) & 1)) {
                     move_would_fail_closer = true;
                     break;
                 }
