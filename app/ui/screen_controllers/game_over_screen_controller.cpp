@@ -43,12 +43,13 @@ void draw_game_over_value(Vector2 anchor, float x, float y, float w, float h,
 
 void draw_game_over_scoreboard(entt::registry& reg, const GameOverLayoutState& state) {
     const auto& score = reg.ctx().get<ScoreState>();
+    const auto& current = reg.ctx().get<CurrentSongHighScore>();
 
     char value[32] = {};
     std::snprintf(value, sizeof(value), "%d", score.score);
     draw_game_over_value(state.Anchor01, 210, 540, 300, 46, value, 36);
 
-    std::snprintf(value, sizeof(value), "%d", score.high_score);
+    std::snprintf(value, sizeof(value), "%d", current.value);
     draw_game_over_value(state.Anchor01, 210, 634, 300, 32, value, 24);
 
     if (const auto* result = reg.ctx().find<TerminalResultState>(); result && result->new_best) {

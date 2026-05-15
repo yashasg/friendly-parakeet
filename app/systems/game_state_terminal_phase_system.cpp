@@ -25,8 +25,9 @@ void persist_dirty_high_scores(const HighScoreState& high_scores, HighScorePersi
 
 bool update_and_persist_high_score(entt::registry& reg) {
     auto& score = reg.ctx().get<ScoreState>();
-    const int32_t previous_high_score = score.high_score;
-    const bool score_exceeds_high_score = (score.score > score.high_score);
+    auto& current = reg.ctx().get<CurrentSongHighScore>();
+    const int32_t previous_high_score = current.value;
+    const bool score_exceeds_high_score = (score.score > current.value);
     bool recorded_new_high_score = score_exceeds_high_score;
 
     if (auto* hs = reg.ctx().find<HighScoreState>()) {
@@ -36,7 +37,7 @@ bool update_and_persist_high_score(entt::registry& reg) {
             recorded_new_high_score = high_score::update_if_higher(*hs, *session, score.score);
         }
         if (score_exceeds_high_score && recorded_new_high_score) {
-            score.high_score = score.score;
+            current.value = score.score;
         }
         if (auto* hp = reg.ctx().find<HighScorePersistence>()) {
             if (score_exceeds_high_score && recorded_new_high_score && has_active_high_score_key) {
@@ -45,7 +46,7 @@ bool update_and_persist_high_score(entt::registry& reg) {
             persist_dirty_high_scores(*hs, *hp);
         }
     } else if (score_exceeds_high_score) {
-        score.high_score = score.score;
+        current.value = score.score;
     }
 
     if (auto* result = reg.ctx().find<TerminalResultState>()) {

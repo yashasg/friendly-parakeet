@@ -111,6 +111,8 @@ TEST_CASE("redfoot/#168: collision miss is non-terminal cause context",
     reg.ctx().emplace<GameState>().phase = GamePhase::Playing;
     reg.ctx().emplace<EnergyState>();
     reg.ctx().emplace<ScoreState>();
+    reg.ctx().emplace<ScoreDisplay>();
+    reg.ctx().emplace<CurrentSongHighScore>();
     reg.ctx().emplace<SongResults>();
     reg.ctx().emplace<SongState>();
     reg.ctx().emplace<GameOverState>();

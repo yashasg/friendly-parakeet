@@ -68,8 +68,9 @@ TEST_CASE("game_over: score / high score / cause are visible via registry single
 
     // Simulate a finished run.
     auto& score = reg.ctx().get<ScoreState>();
-    score.score      = 12345;
-    score.high_score = 99999;
+    auto& current = reg.ctx().get<CurrentSongHighScore>();
+    score.score = 12345;
+    current.value = 99999;
 
     auto& gos = reg.ctx().insert_or_assign(GameOverState{});
     gos.cause = DeathCause::EnergyDepleted;
@@ -82,7 +83,7 @@ TEST_CASE("game_over: score / high score / cause are visible via registry single
     // game_over_screen_controller reads to populate the layout slots.
     const auto& s = reg.ctx().get<ScoreState>();
     CHECK(s.score      == 12345);
-    CHECK(s.high_score == 99999);
+    CHECK(reg.ctx().get<CurrentSongHighScore>().value == 99999);
 
     const auto& g = reg.ctx().get<GameOverState>();
     CHECK(g.cause == DeathCause::EnergyDepleted);
@@ -95,8 +96,9 @@ TEST_CASE("game_over: render binds score/high-score/reason into scoreboard draw 
     ScopedGameOverHooks hooks;
 
     auto& score = reg.ctx().get<ScoreState>();
+    auto& current = reg.ctx().get<CurrentSongHighScore>();
     score.score = 31415;
-    score.high_score = 92653;
+    current.value = 92653;
 
     auto& gos = reg.ctx().get<GameOverState>();
     gos.cause = DeathCause::EnergyDepleted;
@@ -117,8 +119,9 @@ TEST_CASE("game_over: render binds new-best badge and previous score", "[game_ov
     ScopedGameOverHooks hooks;
 
     auto& score = reg.ctx().get<ScoreState>();
+    auto& current = reg.ctx().get<CurrentSongHighScore>();
     score.score = 5000;
-    score.high_score = 5000;
+    current.value = 5000;
     reg.ctx().insert_or_assign(TerminalResultState{true, 3000});
 
     auto& gos = reg.ctx().get<GameOverState>();
@@ -139,8 +142,9 @@ TEST_CASE("game_over: render omits empty reason binding for DeathCause::None", "
     ScopedGameOverHooks hooks;
 
     auto& score = reg.ctx().get<ScoreState>();
+    auto& current = reg.ctx().get<CurrentSongHighScore>();
     score.score = 7;
-    score.high_score = 11;
+    current.value = 11;
 
     auto& gos = reg.ctx().get<GameOverState>();
     gos.cause = DeathCause::None;

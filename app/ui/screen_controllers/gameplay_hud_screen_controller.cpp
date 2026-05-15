@@ -412,20 +412,23 @@ void render_gameplay_hud_screen_ui(entt::registry& reg) {
     auto& controller = screen_controller<GameplayHudController>(reg);
     auto& state = controller.state();
     auto* score = reg.ctx().find<ScoreState>();
+    auto* display = reg.ctx().find<ScoreDisplay>();
+    auto* current = reg.ctx().find<CurrentSongHighScore>();
 
     int saved_text_size = GuiGetStyle(DEFAULT, TEXT_SIZE);
 
     // Render score at top-left
-    if (score) {
+    if (score && display) {
         GuiSetStyle(DEFAULT, TEXT_SIZE, 28);
         char score_text[32];
-        std::snprintf(score_text, sizeof(score_text), "%d", score->displayed_score);
+        std::snprintf(score_text, sizeof(score_text), "%d", display->displayed);
         GuiLabel(Rectangle{ 80, 20, 200, 40 }, score_text);
-        
+
         // High score below
         GuiSetStyle(DEFAULT, TEXT_SIZE, 18);
         char high_score_text[32];
-        std::snprintf(high_score_text, sizeof(high_score_text), "BEST: %d", score->high_score);
+        const int32_t high = current ? current->value : 0;
+        std::snprintf(high_score_text, sizeof(high_score_text), "BEST: %d", high);
         GuiSetAlpha(0.7f);
         GuiLabel(Rectangle{ 80, 50, 200, 30 }, high_score_text);
         GuiSetAlpha(1.0f);

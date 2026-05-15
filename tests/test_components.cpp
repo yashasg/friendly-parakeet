@@ -101,8 +101,18 @@ TEST_CASE("components: PlayHapticEvent wraps HapticEvent", "[components]") {
 TEST_CASE("components: ScoreState defaults to zero", "[components]") {
     ScoreState s{};
     CHECK(s.score == 0);
-    CHECK(s.high_score == 0);
     CHECK(s.chain_count == 0);
+    CHECK(s.passive_score_remainder == 0.0f);
+}
+
+TEST_CASE("components: ScoreDisplay defaults to zero", "[components]") {
+    ScoreDisplay d{};
+    CHECK(d.displayed == 0);
+}
+
+TEST_CASE("components: CurrentSongHighScore defaults to zero", "[components]") {
+    CurrentSongHighScore c{};
+    CHECK(c.value == 0);
 }
 
 TEST_CASE("components: GameState defaults to title", "[components]") {
@@ -120,6 +130,8 @@ TEST_CASE("ecs: make_registry creates all singletons", "[ecs]") {
     // Gameplay state
     static_cast<void>(reg.ctx().get<GameState>());
     static_cast<void>(reg.ctx().get<ScoreState>());
+    static_cast<void>(reg.ctx().get<ScoreDisplay>());
+    static_cast<void>(reg.ctx().get<CurrentSongHighScore>());
     // Audio / haptics / settings (queues replaced by dispatcher events)
     static_cast<void>(settings_state(reg));
     // Level / song / rhythm

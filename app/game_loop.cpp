@@ -184,6 +184,8 @@ bool game_loop_init(entt::registry& reg,
         .next_phase = GamePhase::Title
     });
     reset_ctx_singleton<ScoreState>(reg);
+    reset_ctx_singleton<ScoreDisplay>(reg);
+    reset_ctx_singleton<CurrentSongHighScore>(reg);
     reset_ctx_singleton<LevelSelectState>(reg);
     reset_ctx_singleton<EnergyState>(reg);
     reset_ctx_singleton<GameOverState>(reg);
