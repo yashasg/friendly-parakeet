@@ -68,3 +68,12 @@ enum class DeathCause : uint8_t {
 struct GameOverState {
     DeathCause cause = DeathCause::None;
 };
+
+// ── Terminal Result Snapshot (singleton) ─────────────────────
+// Captured by game_state_terminal_phase_system at the moment of song
+// completion / game over.  Read by the Game Over / Song Complete screen
+// controllers (and high-score haptic feedback) to surface "new best" UI.
+struct TerminalResultState {
+    bool    new_best      = false;
+    int32_t previous_best = 0;
+};

@@ -1,9 +1,14 @@
 #pragma once
 
 #include <cstdint>
-#include <entt/entity/entity.hpp>
-#include "../components/text.h"
-#include "../components/rhythm.h"
+
+// TerminalResultState relocated to game_state.h (it pairs with GameOverState /
+// terminal phase). ScorePopup / PopupDisplay relocated to popup.h (popup-entity
+// data, distinct from score-state singletons). Re-included here for source
+// back-compat with consumers that previously got them via scoring.h; new code
+// should include the canonical headers directly.
+#include "game_state.h"
+#include "popup.h"
 
 struct ScoreState {
     int32_t score             = 0;
@@ -11,28 +16,4 @@ struct ScoreState {
     int32_t high_score        = 0;
     int32_t chain_count       = 0;
     float   passive_score_remainder = 0.0f;
-};
-
-struct TerminalResultState {
-    bool    new_best      = false;
-    int32_t previous_best = 0;
-};
-
-struct ScorePopup {
-    int32_t    value           = 0;
-    bool       has_timing_tier = false;
-    TimingTier timing_tier     = TimingTier::Ok;
-    float      remaining       = 0.0f;
-    float      max_time        = 0.0f;
-};
-
-// Pre-computed popup display data. Static text/color are initialized at spawn;
-// ui_render_system lazily caches the text width once the active font is known.
-struct PopupDisplay {
-    char     text[16] = {};
-    FontSize font_size = FontSize::Small;
-    uint8_t  r = 255, g = 255, b = 255, a = 255;
-    float    text_half_width = 0.0f;
-    int      measured_font_base_size = -1;
-    unsigned int measured_font_texture_id = 0;
 };
