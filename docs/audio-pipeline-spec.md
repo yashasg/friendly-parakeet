@@ -4,7 +4,8 @@
 > Historical implementation plan. The current runtime uses `EnergyState`,
 > dispatcher-based `PlaySfxEvent` / `PlayHapticEvent` audio routing, and CMake
 > content copy rules; use `README.md`, `design-docs/beatmap-integration.md`,
-> and the code under `app/audio/` and `app/systems/` as the authoritative
+> and the code under `app/components/audio.h`, `app/components/music.h`, and
+> `app/systems/` as the authoritative
 > implementation reference.
 
 ## Data Flow Diagram
@@ -847,8 +848,7 @@ struct PlayHapticEvent {
 
 ```cpp
 #include "all_systems.h"
-#include "../audio/audio_routing.h"
-#include "../audio/audio_types.h"
+#include "audio_routing.h"
 #include "../components/audio_events.h"
 
 #include <raylib.h>
@@ -904,7 +904,7 @@ cmake --build build
 | 5a | `app/systems/song_playback_system.cpp` | Full rewrite — authoritative clock + music lifecycle | 3, 4 |
 | 5b | `app/systems/game_state_system.cpp` | Add `restart_music = true` in `enter_playing()` | 3b |
 | 6a | `app/components/audio_events.h` | Dispatcher payloads: `PlaySfxEvent`, `PlayHapticEvent` | — |
-| 6b | `app/audio/audio_dispatcher.cpp` | Wire dispatcher sinks for audio/haptics | 6a |
+| 6b | `app/systems/audio_dispatcher.cpp` | Wire dispatcher sinks for audio/haptics | 6a |
 | 6c | `app/systems/audio_system.cpp` | Drain `PlaySfxEvent`, play loaded SFX through `SFXBank` | 6a, 6b |
 | 6d | `app/systems/haptic_system.cpp` | Drain `PlayHapticEvent`, route to platform haptics | 6a, 6b |
 

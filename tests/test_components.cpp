@@ -1,7 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <type_traits>
 #include "test_helpers.h"
-#include "audio/audio_types.h"
+#include "components/audio.h"
 #include "components/audio_events.h"
 #include "entities/obstacle_entity.h"
 #include "entities/obstacle_render_entity.h"

@@ -583,7 +583,7 @@ their effects-pass `ModelTransform` for rendering.
 ### 2.12 — COLD: Audio (singleton)
 
 ```cpp
-// audio/audio_types.h
+// components/audio.h
 
 /// Sound effect identifiers — map to loaded Sound handles in audio init.
 enum class SFX : uint8_t {

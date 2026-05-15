@@ -14,8 +14,8 @@
 #include <entt/entt.hpp>
 #include <type_traits>
 
-#include "audio/audio_types.h"
-#include "audio/music_context.h"
+#include "components/audio.h"
+#include "components/music.h"
 #include "rendering/camera_resources.h"
 #include "entities/camera_entity.h"  // GameCamera, UICamera
 #include "rendering/text_resources.h"

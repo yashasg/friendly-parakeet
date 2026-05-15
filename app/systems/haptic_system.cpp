@@ -1,5 +1,5 @@
 #include "all_systems.h"
-#include "../audio/audio_routing.h"
+#include "audio_routing.h"
 #include "../components/audio_events.h"
 #include "../components/haptics.h"
 #include "../platform/haptics_backend.h"

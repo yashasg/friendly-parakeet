@@ -6,7 +6,7 @@
 #include "../entities/beat_map.h"
 #include "../components/rhythm.h"
 #include "../components/song_state.h"
-#include "../audio/music_context.h"
+#include "../components/music.h"
 #include "../components/high_score.h"
 #include "../systems/high_score_system.h"
 #include "../entities/settings.h"
