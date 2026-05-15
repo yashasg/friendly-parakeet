@@ -106,6 +106,19 @@ inline SfxCapture drain_sfx_events(entt::registry& reg) {
     return cap;
 }
 
+// RAII guard that silences raylib TraceLog output for the duration of a scope
+// and restores the default LOG_INFO threshold on destruction. Use to wrap test
+// calls that deliberately exercise production warnings/errors so they don't
+// pollute the test-runner's stderr (which would mask real future warnings).
+// raylib has no GetTraceLogLevel(); restoring to LOG_INFO matches raylib's
+// default and is the level used by the rest of the test binary.
+struct ScopedTraceLogSilencer {
+    ScopedTraceLogSilencer()  { SetTraceLogLevel(LOG_NONE); }
+    ~ScopedTraceLogSilencer() { SetTraceLogLevel(LOG_INFO); }
+    ScopedTraceLogSilencer(const ScopedTraceLogSilencer&)            = delete;
+    ScopedTraceLogSilencer& operator=(const ScopedTraceLogSilencer&) = delete;
+};
+
 // Peek at (and flush) pending PlayHapticEvent events without invoking hardware.
 // Useful for assertions about what events were enqueued before delivery.
 inline HapticCapture drain_haptic_events(entt::registry& reg) {
