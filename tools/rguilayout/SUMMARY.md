@@ -141,7 +141,7 @@ void render_title_screen_ui(entt::registry& reg);
 
 5. **Generate embeddable headers for remaining 7 screens** (manual process)
 
-6. **Validate zero-warning build:** clang, MSVC, emscripten
+6. **Validate zero-warning build:** clang (Linux/macOS/Windows), emscripten
 
 ---
 

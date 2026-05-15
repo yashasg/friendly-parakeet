@@ -48,7 +48,7 @@ description: "My squad work loop"
 - Delete code files only if unreferenced and verified by search + build/tests.
 - Delete outdated comments/docs when confirmed stale; keep surviving docs concise.
 - Create new files only when absolutely necessary (prefer extending existing files).
-- Zero-warning standard required (`-Wall -Wextra -Werror`, `/W4 /WX`).
+- Zero-warning standard required (`-Wall -Wextra -Werror`). MSVC is not a supported toolchain.
 
 ## Definition of done
 

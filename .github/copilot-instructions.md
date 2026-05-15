@@ -69,9 +69,9 @@ A clangd LSP server is configured in `.github/lsp.json` for C/C++ code intellige
 
 This is a **no-warning shop**. All builds must compile with zero warnings:
 
-- **Clang (native):** `-Wall -Wextra -Werror` — any warning is a build failure
-- **MSVC (Windows):** `/W4 /WX` — same policy
+- **Clang (native, Linux/macOS/Windows):** `-Wall -Wextra -Werror` — any warning is a build failure
 - **Emscripten (WASM):** same Clang flags apply
+- **MSVC:** not a supported toolchain — Windows CI uses Clang only (issue #1206)
 - **CMake:** `-Wno-dev` for configure step (suppresses third-party vcpkg warnings we don't control)
 
 Before submitting code, verify it compiles warning-free on all platforms. Common pitfalls:

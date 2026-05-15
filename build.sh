@@ -68,7 +68,8 @@ fi
 
 # On Windows (MSYS/MinGW shell used by GitHub Actions), use the Ninja
 # generator so that Clang (installed by setup-cpp) is used directly
-# instead of the default Visual Studio generator with MSVC.
+# instead of the default Visual Studio generator. MSVC is not a supported
+# toolchain (issue #1206); Windows CI builds with Clang only.
 case "$(uname -s)" in
     MINGW*|CYGWIN*|MSYS*)
         CMAKE_ARGS+=("-G" "Ninja")
