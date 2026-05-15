@@ -8,6 +8,8 @@
 #include <glm/vec2.hpp>
 #include <raylib.h>
 
+#include "tags/tags.h"
+
 struct DrawSize {
     float w = 64.0f;
     float h = 64.0f;
@@ -80,7 +82,5 @@ struct ScreenPosition {
 };
 
 
-// Render-pass membership tags; one per entity.
-struct TagWorldPass   {};  // drawn in BeginMode3D (3D world geometry)
-struct TagEffectsPass {};  // particles, post-process overlays
-struct TagHUDPass     {};  // screen-space UI elements
+// Render-pass membership tags (TagWorldPass / TagEffectsPass / TagHUDPass)
+// live in app/tags/tags.h; included above for back-compat.

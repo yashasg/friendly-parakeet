@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include "tags/tags.h"
 #include "window_phase.h"
 
 enum class Shape : uint8_t {
@@ -9,8 +10,6 @@ enum class Shape : uint8_t {
     Triangle,
     Hexagon,
 };
-
-struct PlayerTag {};
 
 // Hot render data — read by game_camera_system, player_movement_system every frame.
 struct PlayerShape {

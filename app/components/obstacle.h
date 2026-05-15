@@ -3,15 +3,7 @@
 #include <cstdint>
 
 #include "player.h"
-
-struct ObstacleTag {};
-
-// Runtime cue authored from beatmap onset metadata. It is visible but
-// intentionally non-scorable and non-blocking.
-struct OnsetMarkerTag {};
-
-// Presence means scoring has consumed the obstacle's final hit/miss result.
-struct ResolvedObstacleTag {};
+#include "tags/tags.h"
 
 enum class ObstacleKind : uint8_t {
     ShapeGate,
@@ -57,16 +49,6 @@ constexpr ObstacleKind obstacle_kind_from_components(bool has_required_shape,
     }
     return ObstacleKind::ShapeGate;
 }
-
-// Existential tag: presence means the obstacle has been cleared and awaits scoring.
-struct ScoredTag {};
-
-// Existential tag: obstacle does not participate in the scoring ladder
-// (no score popup, no chain contribution).
-struct NonScorableTag {};
-
-// Existential tag: scored obstacle was failed/missed and should not award points.
-struct MissTag {};
 
 struct RequiredShape {
     Shape shape = Shape::Circle;

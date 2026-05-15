@@ -1,6 +1,7 @@
 #pragma once
 
 #include "player.h"
+#include "tags/tags.h"
 #include <entt/entity/entity.hpp>
 #include <entt/core/enum.hpp>
 #include <cstdint>
@@ -50,8 +51,6 @@ struct TestPlayerAction {
     ActionDoneBit done_flags = ActionDoneBit{};
 
 };
-
-struct TestPlayerPlannedTag {};
 
 // ── Test player state (context singleton) ────────────────────
 // Hot state (accessed every frame): active, swipe_cooldown_timer,
