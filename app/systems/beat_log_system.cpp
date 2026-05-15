@@ -1,5 +1,5 @@
 #include "all_systems.h"
-#include "../util/session_logger.h"
+#include "session_logger_system.h"
 #include "../entities/beat_map.h"
 #include "../components/game_state.h"
 #include "../components/rhythm.h"

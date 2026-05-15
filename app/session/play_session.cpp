@@ -8,7 +8,7 @@
 #include "../components/song_state.h"
 #include "../audio/music_context.h"
 #include "../components/high_score.h"
-#include "../util/high_score_persistence.h"
+#include "../systems/high_score_system.h"
 #include "../components/rng.h"
 #include "../entities/settings.h"
 #include "../util/rhythm_math.h"

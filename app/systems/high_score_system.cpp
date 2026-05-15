@@ -1,5 +1,5 @@
-#include "high_score_persistence.h"
-#include "persistence_policy.h"
+#include "high_score_system.h"
+#include "persistence_policy_system.h"
 #include <nlohmann/json.hpp>
 #include <fstream>
 #include <filesystem>

@@ -5,7 +5,7 @@
 #include <string>
 #include <entt/entt.hpp>
 
-#include "../util/persistence_policy.h"
+#include "../systems/persistence_policy_system.h"
 
 // Compact fixed-size high-score table.
 // Max entries: LEVEL_COUNT x DIFFICULTY_COUNT = 9.

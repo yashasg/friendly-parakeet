@@ -9,7 +9,7 @@
 //
 //   test_helpers.h
 //     └─ components/player.h → components/window_phase.h (WindowPhase)
-//     └─ util/high_score_persistence.h → HighScoreState
+//     └─ systems/high_score_system.h → HighScoreState
 //
 // Static assertions catch silent breakage if constants or ordinals are changed
 // during or after the header reorganisation.
@@ -17,7 +17,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <type_traits>
 
-#include "test_helpers.h"        // WindowPhase (via player.h), HighScoreState (via high_score_persistence.h)
+#include "test_helpers.h"        // WindowPhase (via player.h), HighScoreState (via high_score_system.h)
 
 // ── WindowPhase ordinal contract ─────────────────────────────────────────────
 //
