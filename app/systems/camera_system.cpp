@@ -13,7 +13,6 @@
 #include "../entities/settings.h"
 #include "../platform_display.h"
 #include "../util/shape_lane_mapping.h"
-#include <glm/mat4x4.hpp>
 #include <raylib.h>
 #include <raymath.h>
 #include <rlgl.h>
@@ -202,40 +201,31 @@ RenderTargets& RenderTargets::operator=(RenderTargets&& o) noexcept {
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-static glm::mat4 raylib_to_glm_matrix_camera(const Matrix& m) {
-    return glm::mat4{
-        m.m0, m.m1, m.m2, m.m3,
-        m.m4, m.m5, m.m6, m.m7,
-        m.m8, m.m9, m.m10, m.m11,
-        m.m12, m.m13, m.m14, m.m15
-    };
-}
-
 // GenMeshCube is centered at origin. Translate to position the slab's
 // bottom-left corner at (x, 0) and center depth on z so z is the beat/timing plane.
-static glm::mat4 slab_matrix(float x, float z, float w, float h, float d) {
-    return raylib_to_glm_matrix_camera(MatrixMultiply(MatrixScale(w, h, d),
-                                                      MatrixTranslate(x + w / 2, h / 2, z)));
+static Matrix slab_matrix(float x, float z, float w, float h, float d) {
+    return MatrixMultiply(MatrixScale(w, h, d),
+                          MatrixTranslate(x + w / 2, h / 2, z));
 }
 
-static glm::mat4 shape_matrix(float cx, float y_3d, float cz, float sz, float radius_scale) {
+static Matrix shape_matrix(float cx, float y_3d, float cz, float sz, float radius_scale) {
     float s = sz * radius_scale;
-    return raylib_to_glm_matrix_camera(MatrixMultiply(MatrixScale(s, s, s),
-                                                      MatrixTranslate(cx, y_3d, cz)));
+    return MatrixMultiply(MatrixScale(s, s, s),
+                          MatrixTranslate(cx, y_3d, cz));
 }
 
 // Triangular prism rotated so one vertex of the cross-section points up (△)
-static glm::mat4 prism_matrix(float cx, float y_3d, float cz, float sz, float radius_scale) {
+static Matrix prism_matrix(float cx, float y_3d, float cz, float sz, float radius_scale) {
     float s = sz * radius_scale;
     Matrix scale = MatrixScale(s, s, s);
     Matrix rot = MatrixRotateY(90.0f * DEG2RAD);
     Matrix translate = MatrixTranslate(cx, y_3d, cz);
-    return raylib_to_glm_matrix_camera(MatrixMultiply(MatrixMultiply(scale, rot), translate));
+    return MatrixMultiply(MatrixMultiply(scale, rot), translate);
 }
 
 // Pick the correct matrix for a shape mesh (triangle prism needs rotation)
-static glm::mat4 make_shape_matrix(uint8_t mesh_index, float cx, float y_3d, float cz,
-                                   float sz, float radius_scale) {
+static Matrix make_shape_matrix(uint8_t mesh_index, float cx, float y_3d, float cz,
+                                float sz, float radius_scale) {
     if (mesh_index == static_cast<uint8_t>(Shape::Triangle))
         return prism_matrix(cx, y_3d, cz, sz, radius_scale);
     return shape_matrix(cx, y_3d, cz, sz, radius_scale);
@@ -320,9 +310,9 @@ void game_camera_system(entt::registry& reg, [[maybe_unused]] float dt) {
             float ratio = (pdata.max_time > 0.0f) ? (pdata.remaining / pdata.max_time) : 1.0f;
             float sz = pdata.size * ratio;
             float half = sz / 2.0f;
-            glm::mat4 mat = raylib_to_glm_matrix_camera(MatrixMultiply(
+            Matrix mat = MatrixMultiply(
                 MatrixScale(sz, 1, sz),
-                MatrixTranslate(transform.position.x - half, 0, transform.position.y - half)));
+                MatrixTranslate(transform.position.x - half, 0, transform.position.y - half));
             reg.get_or_emplace<ModelTransform>(entity) =
                 ModelTransform{mat, col, 0, MeshType::Quad};
         }
