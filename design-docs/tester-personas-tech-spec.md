@@ -67,7 +67,7 @@
   │ (per obs)    │     │ RequiredShape│     │ arrival_time   │
   │              │     │ BlockedLanes │     │                │
   └──────┬───────┘     │ RequiredLane │     └───────┬────────┘
-         │             │ RequiredVAct │             │
+         │             │ Obstacle.kind│             │
          │             └──────┬───────┘             │
          ▼                    ▼                     ▼
   ┌──────────────────────────────────────────────────────────┐
