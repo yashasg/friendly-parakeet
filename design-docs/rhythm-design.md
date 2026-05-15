@@ -504,19 +504,19 @@ them ends the run on their own — only `energy <= 0.0f` does.
 # SECTION 8 — OBSTACLE TYPES
 # ═══════════════════════════════════════════════════
 
-> ⚠️ **Shipped scope — only `shape_gate` ships today (issues #420, #446,
-> #328, #479).** Mirroring the caveat in `game.md` "Difficulty
-> Progression": across all 3 shipped beatmaps / 9 difficulty arrays in
-> `content/beatmaps/` (**924 obstacles total** as of the current content audit;
-> see per-difficulty table in §8 "Difficulty Progression" below),
-> `tools/level_designer.py` emits 100% `shape_gate`. The `lane_push`, `low_bar`, and `high_bar` names
-> described below are **not currently produced** by the generator and
-> are not part of any shipped run; `LanePush` is additionally queued
-> for removal/rework (#328), while LowBar/HighBar are removed from the
-> runtime enum. They are retained here only as archival/future design
-> space for if/when committed plans to reintroduce them land. Treat
-> Section 8 (and the "Difficulty Progression" block that follows) as
-> design history, not current authoring guidance.
+> ⚠️ **Shipped scope — only `shape_gate` ships today (historical context:
+> #420, #446, #328, #479, all closed).** Mirroring the caveat in `game.md`
+> "Difficulty Progression": across all 3 shipped beatmaps / 9 difficulty
+> arrays in `content/beatmaps/` (**924 obstacles total** as of the current
+> content audit; see per-difficulty table in §8 "Difficulty Progression"
+> below), `tools/level_designer.py` emits 100% `shape_gate`. The
+> `lane_push`, `low_bar`, and `high_bar` names described below are **not
+> produced** by the generator and are not part of any shipped run;
+> `LanePush` has been removed from the runtime, content, and tools (#328),
+> and LowBar/HighBar are removed from the runtime enum. They are retained
+> here only as archival/future design space for if/when committed plans to
+> reintroduce them land. Treat Section 8 (and the "Difficulty Progression"
+> block that follows) as design history, not current authoring guidance.
 
 ## The Four Types
 
