@@ -1,5 +1,4 @@
 #include "settings.h"
-#include "../util/persistence_policy.h"
 #include <fstream>
 #include <algorithm>
 #include <cstdint>
