@@ -25,11 +25,13 @@
 #include "systems/all_systems.h"
 #include "systems/runtime_systems.h"
 #include "systems/input_routing.h"
+#include "systems/input_system_private.h"
 
 // Sets up a registry with all singletons in their default state
 inline entt::registry make_registry() {
     entt::registry reg;
     reg.ctx().emplace<InputState>();
+    reg.ctx().emplace<InputSystemPrivate>();
     reg.ctx().emplace<ScreenTransform>();
     reg.ctx().emplace<entt::dispatcher>();
     wire_input_dispatcher(reg);
