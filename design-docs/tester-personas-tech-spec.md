@@ -240,17 +240,18 @@ runtime beat telemetry comes from `beat_log_system`.
 
 ## SessionLog (context singleton)
 
-```cpp
-// app/util/session_logger.h
+The runtime struct lives in `app/util/session_logger.h` — see that header for
+the authoritative definition. Beyond `FILE* file` and `uint32_t frame`, it
+also owns a per-frame `std::string buffer` (pre-reserved at
+`kMaxLogBufferBytes = 4096`, so the hot write path never reallocates) and a
+`last_logged_beat` cursor used by `beat_log_system`. The struct is move-only
+with an explicit destructor / `release()` that closes the file handle.
 
-struct SessionLog {
-    FILE*    file  = nullptr;
-    uint32_t frame = 0;
-};
-```
+Helper functions are free functions, not methods. The write entry point is
+`session_log_write`, paired with `session_log_open` / `session_log_close` /
+`session_log_flush` / `session_log_begin_frame`:
 
-Kept minimal — helper functions are free functions, not methods.
-Write function: `void session_log(SessionLog&, float song_time, const char* tag, const char* fmt, ...)`.
+`void session_log_write(SessionLog&, float song_time, const char* tag, const char* fmt, ...);`
 
 
 ---
@@ -638,7 +639,7 @@ inside `tick_playing_systems`.
       test_player_system.cpp   ← AI: perceive, decide, wait, execute
       │                           Guarded: #ifdef PLATFORM_DESKTOP
       all_systems.h            ← System declarations
-    session_logger.h           ← SessionLog struct, session_log() free function
+    session_logger.h           ← SessionLog struct, session_log_write() and friends
     session_logger.cpp         ← File I/O, EnTT signal handlers, formatting
     main.cpp                   ← CLI arg parsing, setup, system insertion
 ```
