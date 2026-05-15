@@ -1,6 +1,6 @@
 #include "test_player_session.h"
 #include "../components/game_state.h"
-#include "../content/level_content_config.h"
+#include "../util/level_content_config.h"
 #include "../components/obstacle.h"
 #include "../components/scoring.h"
 #include "session_logger_system.h"

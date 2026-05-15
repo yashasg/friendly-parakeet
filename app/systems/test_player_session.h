@@ -3,7 +3,7 @@
 #include <entt/entt.hpp>
 #include <cstdint>
 #include "test_player.h"
-#include "../content/level_content_config.h"
+#include "../util/level_content_config.h"
 
 struct TestPlayerSessionState {
     // Deterministic by default; callers may opt into runtime variability.

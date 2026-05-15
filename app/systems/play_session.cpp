@@ -15,7 +15,7 @@
 #include "../entities/camera_entity.h"
 #include "../entities/energy_bar_entity.h"
 #include "../entities/player_entity.h"
-#include "../content/level_content_config.h"
+#include "../util/level_content_config.h"
 #include "all_systems.h"
 #include "game_phase_transition.h"
 #include "../constants.h"

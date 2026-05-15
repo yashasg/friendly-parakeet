@@ -3,7 +3,7 @@
 #include <fstream>
 
 #include "components/high_score.h"
-#include "content/level_content_config.h"
+#include "util/level_content_config.h"
 #include "entities/camera_entity.h"
 #include "entities/obstacle_entity.h"
 #include "entities/obstacle_render_entity.h"

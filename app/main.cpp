@@ -1,6 +1,6 @@
 #include "game_loop.h"
 #include "systems/test_player.h"
-#include "content/level_content_config.h"
+#include "util/level_content_config.h"
 
 #include <cstdio>
 #include <cstring>
