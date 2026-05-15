@@ -7,8 +7,7 @@
 #include <string>
 
 #include "../util/persistence_policy.h"
-
-struct SettingsTag {};
+#include "tags/tags.h"
 
 struct SettingsState {
     static constexpr int16_t MIN_AUDIO_OFFSET_MS = -250;

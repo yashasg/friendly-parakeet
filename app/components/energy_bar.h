@@ -1,10 +1,10 @@
 #pragma once
 
+#include "tags/tags.h"
+
 // Entity-backed HUD state for the survival energy meter.
 // EnergyState remains the gameplay resource; these components hold only the
 // per-frame visual contract consumed by the gameplay HUD renderer.
-
-struct EnergyBarTag {};
 
 struct EnergyBarLayout {
     float x = 16.0f;

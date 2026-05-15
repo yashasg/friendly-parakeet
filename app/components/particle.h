@@ -1,6 +1,6 @@
 #pragma once
 
-struct ParticleTag {};
+#include "tags/tags.h"
 
 struct ParticleData {
     float size      = 4.0f;
