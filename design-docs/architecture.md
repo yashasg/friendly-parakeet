@@ -1659,7 +1659,7 @@ app/
 ├── constants.h                  ← all tuning knobs (§1)
 │
 ├── components/                  ← all component structs
-│   ├── transform.h              ← WorldTransform, MotionVelocity, UIPosition
+│   ├── transform.h              ← WorldTransform, MotionVelocity
 │   ├── window_phase.h           ← WindowPhase (shared by player.h and rhythm.h)
 │   ├── player.h                 ← PlayerTag, PlayerShape, ShapeWindow, Lane, VerticalState
 │   ├── obstacle.h               ← obstacle tags (ScoredTag, MissTag,

@@ -18,9 +18,3 @@ struct WorldTransform {
 struct MotionVelocity {
     Vector2 value = {0.0f, 0.0f};
 };
-
-// Screen-space UI placement. UI entities should use this instead of
-// WorldTransform so they do not enter world movement/collision/camera views.
-struct UIPosition {
-    Vector2 value = {0.0f, 0.0f};
-};
