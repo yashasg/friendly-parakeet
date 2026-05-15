@@ -2,7 +2,7 @@
 
 #include "audio_events.h"
 #include "../components/game_state.h"
-#include "../components/gameplay_intents.h"
+#include "gameplay_intents.h"
 #include "../entities/popup_entity.h"
 #include <optional>
 

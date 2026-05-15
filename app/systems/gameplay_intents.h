@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <vector>
 
-#include "rhythm.h"
+#include "../components/rhythm.h"
 
 struct PendingEnergyEffects {
     struct Event {

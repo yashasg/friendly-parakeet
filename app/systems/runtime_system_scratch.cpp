@@ -5,7 +5,7 @@
 #include "particle_system.h"
 #include "popup_display_system.h"
 #include "scoring_system.h"
-#include "../components/gameplay_intents.h"
+#include "gameplay_intents.h"
 #include "../components/rendering.h"
 
 #include <algorithm>

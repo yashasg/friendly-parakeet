@@ -3,7 +3,7 @@
 #include "../components/game_state.h"
 #include "../components/scoring.h"
 #include "../components/obstacle.h"
-#include "../components/gameplay_intents.h"
+#include "gameplay_intents.h"
 #include "../components/particle.h"
 #include "../components/transform.h"
 #include "../components/rendering.h"

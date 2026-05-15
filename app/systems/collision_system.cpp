@@ -7,7 +7,7 @@
 #include "../components/rhythm.h"
 #include "../util/rhythm_math.h"
 #include "../components/song_state.h"
-#include "../components/gameplay_intents.h"
+#include "gameplay_intents.h"
 #include "../constants.h"
 #include "../util/lane_utils.h"
 #include <cmath>
