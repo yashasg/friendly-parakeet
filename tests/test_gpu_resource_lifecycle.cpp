@@ -19,7 +19,7 @@
 #include "rendering/camera_resources.h"
 #include "entities/camera_entity.h"  // GameCamera, UICamera
 #include "rendering/text_resources.h"
-#include "util/session_logger.h"
+#include "systems/session_logger_system.h"
 
 // ── ShapeMeshes type traits ──────────────────────────────────────────────────
 

@@ -11,7 +11,7 @@ using Catch::Matchers::WithinAbs;
 namespace {
 
 std::filesystem::path persistence_policy_source_path() {
-    return std::filesystem::path{SHAPESHIFTER_SOURCE_DIR} / "app/util/persistence_policy.cpp";
+    return std::filesystem::path{SHAPESHIFTER_SOURCE_DIR} / "app/systems/persistence_policy_system.cpp";
 }
 
 std::string load_persistence_policy_source() {

@@ -7,7 +7,7 @@
 
 #include "components/high_score.h"
 #include "content/level_content_config.h"
-#include "util/high_score_persistence.h"
+#include "systems/high_score_system.h"
 
 namespace {
 

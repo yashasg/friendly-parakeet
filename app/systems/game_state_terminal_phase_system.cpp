@@ -5,7 +5,7 @@
 #include "../components/high_score.h"
 #include "../components/rhythm.h"
 #include "../components/scoring.h"
-#include "../util/high_score_persistence.h"
+#include "high_score_system.h"
 
 namespace {
 

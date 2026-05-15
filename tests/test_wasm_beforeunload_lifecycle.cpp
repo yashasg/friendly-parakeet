@@ -80,9 +80,9 @@ TEST_CASE("wasm smoke phase title markers are compile-gated",
 TEST_CASE("wasm persistence uses explicit IDBFS policy and save flush hooks", "[persistence][architecture]") {
     const fs::path root = find_repo_root();
     const std::string cmake_source = read_file(root / "CMakeLists.txt");
-    const std::string policy_source = read_file(root / "app" / "util" / "persistence_policy.cpp");
+    const std::string policy_source = read_file(root / "app" / "systems" / "persistence_policy_system.cpp");
     const std::string settings_source = read_file(root / "app" / "entities" / "settings.cpp");
-    const std::string high_score_source = read_file(root / "app" / "util" / "high_score_persistence.cpp");
+    const std::string high_score_source = read_file(root / "app" / "systems" / "high_score_system.cpp");
 
     CHECK(cmake_source.find("-sFORCE_FILESYSTEM=1") != std::string::npos);
     CHECK(cmake_source.find("-lidbfs.js") != std::string::npos);
@@ -98,7 +98,7 @@ TEST_CASE("wasm persistence uses explicit IDBFS policy and save flush hooks", "[
 TEST_CASE("wasm persistence readiness retries after initialization failure",
           "[persistence][architecture][issue887]") {
     const fs::path root = find_repo_root();
-    const std::string policy_source = read_file(root / "app" / "util" / "persistence_policy.cpp");
+    const std::string policy_source = read_file(root / "app" / "systems" / "persistence_policy_system.cpp");
 
     const std::size_t mount_failure_return = policy_source.find(
         "return Result{Status::PathUnavailable, std::make_error_code(std::errc::io_error)};");

@@ -20,14 +20,14 @@
 #include "session/test_player_session.h"
 #include "input/input_routing.h"
 #include "rendering/text_resources.h"
-#include "util/session_logger.h"
+#include "systems/session_logger_system.h"
 #include "systems/camera_system.h"
 #include "entities/beat_map.h"
 #include "ui/screen_controllers/gameplay_hud_screen_controller.h"
 #include "platform_display.h"
-#include "util/persistence_policy.h"
+#include "systems/persistence_policy_system.h"
 #include "components/high_score.h"
-#include "util/high_score_persistence.h"
+#include "systems/high_score_system.h"
 #include "platform/haptics_backend.h"
 
 #include <raylib.h>

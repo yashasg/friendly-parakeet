@@ -8,7 +8,7 @@
 #include "../components/obstacle.h"
 #include "../components/rhythm.h"
 #include "../components/scoring.h"
-#include "../util/session_logger.h"
+#include "session_logger_system.h"
 #include "../util/lane_utils.h"
 #include "../constants.h"
 

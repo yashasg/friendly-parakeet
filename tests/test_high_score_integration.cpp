@@ -9,7 +9,7 @@
 #include "entities/obstacle_render_entity.h"
 #include "session/play_session.h"
 #include "test_helpers.h"
-#include "util/high_score_persistence.h"
+#include "systems/high_score_system.h"
 
 namespace {
 

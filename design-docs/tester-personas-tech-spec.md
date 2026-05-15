@@ -240,7 +240,7 @@ runtime beat telemetry comes from `beat_log_system`.
 
 ## SessionLog (context singleton)
 
-The runtime struct lives in `app/util/session_logger.h` — see that header for
+The runtime struct lives in `app/systems/session_logger_system.h` — see that header for
 the authoritative definition. Beyond `FILE* file` and `uint32_t frame`, it
 also owns a per-frame `std::string buffer` (pre-reserved at
 `kMaxLogBufferBytes = 4096`, so the hot write path never reallocates) and a
@@ -626,7 +626,7 @@ inside `tick_playing_systems`.
 ```cmake
   # Add to shapeshifter_lib sources:
   app/systems/test_player_system.cpp
-  app/util/session_logger.cpp
+  app/systems/session_logger_system.cpp
 ```
 
 ## CLI Activation
