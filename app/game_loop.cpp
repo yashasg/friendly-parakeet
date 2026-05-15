@@ -13,7 +13,6 @@
 #include "components/rendering.h"
 #include "components/test_player.h"
 #include "components/obstacle.h"
-#include "components/rng.h"
 #include "systems/all_systems.h"
 #include "systems/game_phase_transition.h"
 #include "systems/runtime_systems.h"
@@ -189,7 +188,6 @@ bool game_loop_init(entt::registry& reg,
     reset_ctx_singleton<EnergyState>(reg);
     reset_ctx_singleton<GameOverState>(reg);
     reset_ctx_singleton<SongResults>(reg);
-    reset_ctx_singleton<RNGState>(reg);
     reset_ctx_singleton<TestPlayerState>(reg);
     reset_ctx_singleton<TestPlayerSessionState>(reg);
     reset_ctx_singleton<SessionLog>(reg);

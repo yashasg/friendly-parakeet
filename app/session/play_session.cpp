@@ -9,7 +9,6 @@
 #include "../audio/music_context.h"
 #include "../components/high_score.h"
 #include "../systems/high_score_system.h"
-#include "../components/rng.h"
 #include "../entities/settings.h"
 #include "../util/rhythm_math.h"
 #include "../entities/camera_entity.h"
@@ -114,9 +113,6 @@ void setup_play_session(entt::registry& reg) {
     if (restore_settings) {
         create_settings_entity(reg, settings, settings_persistence);
     }
-
-    // Reset singletons
-    assign_or_emplace_ctx(reg, RNGState{});
 
     // Load beatmap from level selection. BeatMap is an entity singleton whose
     // cold asset data remains immutable for the duration of the play session.
