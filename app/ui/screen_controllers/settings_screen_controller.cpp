@@ -3,7 +3,7 @@
 
 #include "../../components/game_state.h"
 #include "../../entities/settings.h"
-#include "../../platform/haptics_backend.h"
+#include "../../systems/haptics_backend.h"
 #include "screen_controller_base.h"
 #include <algorithm>
 #include <cstdio>

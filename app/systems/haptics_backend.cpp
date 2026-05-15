@@ -1,6 +1,6 @@
 #include "haptics_backend.h"
 
-#include "ios/haptics_ios_bridge.h"
+#include "haptics_ios_bridge.h"
 
 #include <magic_enum/magic_enum.hpp>
 #include <raylib.h>
