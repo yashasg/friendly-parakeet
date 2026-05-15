@@ -262,94 +262,69 @@ Helper functions are free functions, not methods. The write entry point is
 # 4. INPUT INJECTION
 # ═══════════════════════════════════════════════════
 
-## Injection Target: InputState Keyboard Flags
+## Injection Target: EnTT Dispatcher
+
+`test_player_system` does not poke hardware-facing input state. It enqueues
+the same semantic events (`ButtonPressEvent`, `GoEvent`) that the real
+`input_system` produces from keyboard / touch / mouse, then lets the rest of
+the pipeline run unchanged:
 
 ```
-  test_player writes:         gesture_system reads:
-  ─────────────────          ──────────────────────
-  InputState.key_1  ───────▶  ShapeButtonEvent(Circle)
-  InputState.key_2  ───────▶  ShapeButtonEvent(Triangle)
-  InputState.key_3  ───────▶  ShapeButtonEvent(Square)
-  InputState.key_a  ───────▶  GestureResult(SwipeLeft)
-  InputState.key_d  ───────▶  GestureResult(SwipeRight)
-  InputState.key_w  ───────▶  GestureResult(SwipeUp / Jump)
-  InputState.key_s  ───────▶  GestureResult(SwipeDown / Slide)
+  test_player enqueues:                 consumed by:
+  ─────────────────────────             ───────────────────────────────
+  ButtonPressEvent(Shape, Circle)       player_input_system → ShapeWindow
+  ButtonPressEvent(Shape, Triangle)     player_input_system → ShapeWindow
+  ButtonPressEvent(Shape, Square)       player_input_system → ShapeWindow
+  ButtonPressEvent(Menu, Confirm)       game_state_system  → phase transitions
+  ButtonPressEvent(Menu, Restart)       game_state_system  → phase transitions
+  GoEvent(Left|Right)                   player_movement_system → Lane change
+  GoEvent(Up|Down)                      player_movement_system → Jump / Slide
 ```
 
-## ⚠ CRITICAL: One Key Per Frame Constraint
+Because the injection target is the dispatcher (not a platform-guarded
+`InputState` field), `test_player_system` builds and runs on every platform —
+there is no `#ifdef PLATFORM_DESKTOP` stub required.
 
-`gesture_system` uses **early-return** on the first matching key:
+## One Action Per Frame (test_player choice)
+
+The execute loop in `test_player_system.cpp` injects at most one action per
+frame:
 
 ```cpp
-  // gesture_system.cpp lines 20-26 — ACTUAL CODE:
-  if (input.key_w) { gesture.gesture = SwipeGesture::SwipeUp;    return; }
-  if (input.key_s) { gesture.gesture = SwipeGesture::SwipeDown;  return; }
-  if (input.key_a) { gesture.gesture = SwipeGesture::SwipeLeft;  return; }
-  if (input.key_d) { gesture.gesture = SwipeGesture::SwipeRight; return; }
-  if (input.key_1) { btn_evt.pressed = true; ... return; }
-  if (input.key_2) { btn_evt.pressed = true; ... return; }
-  if (input.key_3) { btn_evt.pressed = true; ... return; }
+  bool key_injected = false;
+  for (int ei = 0; ei < state->action_count && !key_injected; ++ei) {
+      // Priority 1: Shape press → enqueue ButtonPressEvent, set key_injected
+      // Priority 2: Lane change → enqueue GoEvent(Left|Right), set key_injected
+      // Priority 3: Vertical    → enqueue GoEvent(Up|Down),    set key_injected
+  }
 ```
 
-**Consequence**: Setting both `key_a` AND `key_1` in the same frame
-results in ONLY `SwipeLeft` being processed. The shape change is LOST.
-
-**Rule**: Test player must set **exactly ONE key flag per frame**.
-
-```
-  ComboGate (shape=Circle, lane=0):
-  ┌────────────────────────────────────────────────┐
-  │ Frame N:   key_1 = true   → ShapeButtonEvent  │  shape first (slower)
-  │ Frame N+1: key_a = true   → GestureResult     │  lane second (fast)
-  │                                                │
-  │ Shape goes first because morph_duration is     │
-  │ the bottleneck (~0.1s to activate).            │
-  │ Lane switch completes in ~0.083s.              │
-  └────────────────────────────────────────────────┘
-```
-
-## ⚠ CRITICAL: PLATFORM_DESKTOP Compile Guard
-
-`InputState.key_*` fields are behind `#ifdef PLATFORM_DESKTOP`:
-
-```cpp
-  // input.h line 25-36
-  #ifdef PLATFORM_DESKTOP
-      bool key_w = false;
-      // ...
-  #endif
-```
-
-**Requirement**: Test player feature requires `PLATFORM_DESKTOP` to be
-defined at compile time. The test player system file must be wrapped:
-
-```cpp
-  #ifdef PLATFORM_DESKTOP
-  void test_player_system(entt::registry& reg, float dt) { ... }
-  #else
-  void test_player_system(entt::registry&, float) {}  // no-op stub
-  #endif
-```
+Actions are processed in arrival-time order so the closest obstacle wins.
+The shape-first / lane-second / vertical-third priority and the one-action-
+per-frame cap are deliberate human-plausibility choices (one fingertip per
+frame, shape press first because morph is the slower verb), not a workaround
+for any downstream early-return. The dispatcher itself is a queue and accepts
+multiple events per frame; the constraint lives entirely inside test_player.
 
 ## Fixed Timestep Idempotency
 
-test_player runs OUTSIDE the fixed timestep. Key flags persist across
-multiple iterations of gesture_system within one frame. Verified safe:
+test_player runs OUTSIDE the fixed timestep, so a single enqueue may flow
+through two fixed-step iterations within one render frame. Verified safe:
+each `ButtonPressEvent` fires once (the dispatcher drains its queue per
+pump), and `player_input_system` checks the current `ShapeWindow.phase`
+before mutating — re-entry on a window that is already MorphIn / Active is
+a no-op.
 
-```
-  Iteration 1: gesture_system reads key_1 → sets ShapeButtonEvent
-               player_input_handle_press reads ButtonPressEvent → MorphIn
-  Iteration 2: gesture_system reads key_1 again → sets ShapeButtonEvent
-               player_input_handle_press checks phase → now MorphIn, not Idle
-               → Idle branch fails → no-op ✓ (idempotent)
-```
-
-## Auto-Start (Title / GameOver screens)
+## Auto-Start (Title / GameOver / SongComplete screens)
 
 ```cpp
-  if (gs.phase == GamePhase::Title || gs.phase == GamePhase::GameOver) {
-      if (gs.phase_timer > 0.5f) {
-          input.touch_up = true;   // triggers phase transition
+  if (gs.phase == GamePhase::Title || gs.phase == GamePhase::GameOver ||
+      gs.phase == GamePhase::SongComplete) {
+      if (gs.phase_timer > constants::TEST_PLAYER_AUTO_START_DELAY) {
+          // Restart on end screens, Confirm on Title — same dispatcher path
+          // a real menu button press would take.
+          disp.enqueue<ButtonPressEvent>({ButtonPressKind::Menu, Shape::Circle,
+                                          target_action, 0});
       }
   }
 ```
@@ -577,16 +552,17 @@ inside `tick_playing_systems`.
   ┌─────┬────────────────────────────────────────────────────────┐
   │  #  │  Finding                                               │
   ├─────┼────────────────────────────────────────────────────────┤
-  │ 🔴1 │  gesture_system early-returns on first key match.      │
-  │     │  Shape+movement in same frame is IMPOSSIBLE through    │
-  │     │  InputState keys. Test player must inject exactly      │
-  │     │  ONE key per frame.                                    │
-  │     │  FIX: Documented in §4. Priority: shape first.         │
+  │ 🟢1 │  test_player injects at most one action per frame in   │
+  │     │  Shape → Lane → Vertical priority order, enforced by   │
+  │     │  the `key_injected` guard in the execute loop. This is │
+  │     │  a deliberate human-plausibility choice, not a         │
+  │     │  workaround for any downstream early-return — the      │
+  │     │  EnTT dispatcher is a multi-event queue.               │
   ├─────┼────────────────────────────────────────────────────────┤
-  │ 🔴2 │  InputState.key_* fields are #ifdef PLATFORM_DESKTOP.  │
-  │     │  Test player won't compile on web/mobile.              │
-  │     │  FIX: Wrap test_player_system in #ifdef PLATFORM_      │
-  │     │  DESKTOP with a no-op stub for other platforms.        │
+  │ 🟢2 │  test_player_system enqueues semantic events directly  │
+  │     │  on the dispatcher (ButtonPressEvent, GoEvent), so it  │
+  │     │  is platform-portable. No InputState.key_* fields, no  │
+  │     │  PLATFORM_DESKTOP compile guard required.              │
   ├─────┼────────────────────────────────────────────────────────┤
   │ 🟡3 │  Original design used std::vector for action queue     │
   │     │  and planned list. Heap allocation in a per-frame      │
@@ -637,7 +613,8 @@ inside `tick_playing_systems`.
       │                           TestPlayerState (context singleton)
     systems/
       test_player_system.cpp   ← AI: perceive, decide, wait, execute
-      │                           Guarded: #ifdef PLATFORM_DESKTOP
+      │                           Platform-portable: enqueues events
+      │                           directly on the EnTT dispatcher
       all_systems.h            ← System declarations
     session_logger.h           ← SessionLog struct, session_log_write() and friends
     session_logger.cpp         ← File I/O, EnTT signal handlers, formatting
