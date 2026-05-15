@@ -16,7 +16,7 @@
 #include "audio/audio_routing.h"
 #include "constants.h"
 #include "systems/all_systems.h"
-#include "input/input_routing.h"
+#include "systems/input_routing.h"
 
 // ── Helpers ─────────────────────────────────────────────────
 

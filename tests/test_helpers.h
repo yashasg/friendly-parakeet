@@ -24,7 +24,7 @@
 #include "entities/obstacle_render_entity.h"
 #include "systems/all_systems.h"
 #include "systems/runtime_systems.h"
-#include "input/input_routing.h"
+#include "systems/input_routing.h"
 
 // Sets up a registry with all singletons in their default state
 inline entt::registry make_registry() {

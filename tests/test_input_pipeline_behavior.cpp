@@ -21,7 +21,7 @@
 //   - Event replay: second pipeline tick resets lane.lerp_t (symptom: #213 bug)
 
 #include <catch2/catch_test_macros.hpp>
-#include "input/keyboard_shape_mapping.h"
+#include "util/keyboard_shape_mapping.h"
 #include "test_helpers.h"
 #include "ui/screen_controllers/gameplay_hud_screen_controller.h"
 
