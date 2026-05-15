@@ -10,7 +10,7 @@
 #include "entities/beat_map.h"
 #include "components/player.h"
 #include "components/rhythm.h"
-#include "components/shape_mesh.h"
+#include "systems/shape_mesh.h"
 #include "components/camera_resources.h"
 #include "systems/all_systems.h"
 #include "systems/runtime_systems.h"

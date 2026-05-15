@@ -4,7 +4,7 @@
 #include "constants.h"
 #include "components/player.h"
 #include "components/rendering.h"
-#include "components/shape_mesh.h"
+#include "systems/shape_mesh.h"
 #include "systems/camera_system.h"
 #include "components/transform.h"
 #include "entities/obstacle_entity.h"
