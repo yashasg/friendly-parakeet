@@ -32,7 +32,9 @@ TEST_CASE("component headers use raylib types directly (post #1199)", "[componen
 
     CHECK(transform.find("Vector2") != std::string::npos);
     CHECK(rendering.find("Matrix") != std::string::npos);
-    CHECK(rendering.find("Vector2") != std::string::npos);
+    // Vector2 is no longer required in rendering.h: the only consumer
+    // (screen_to_virtual) was moved to app/systems/camera_system.h to keep
+    // the components header data-only (issue #1196).
     CHECK(rendering.find("Color") != std::string::npos);
 
     CHECK(transform.find("glm::") == std::string::npos);

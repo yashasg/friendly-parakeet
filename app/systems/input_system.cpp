@@ -1,4 +1,5 @@
 #include "all_systems.h"
+#include "camera_system.h"
 #include "web_input_policy.h"
 #include "../input/keyboard_shape_mapping.h"
 #include "../components/input.h"
