@@ -6,7 +6,7 @@
 #include "components/player.h"
 #include "components/obstacle.h"
 #include "components/input.h"
-#include "components/input_events.h"
+#include "systems/input_events.h"
 #include "components/game_state.h"
 #include "components/scoring.h"
 #include "components/rendering.h"

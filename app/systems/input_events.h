@@ -1,7 +1,7 @@
 #pragma once
 
-#include "input.h"       // Direction
-#include "player.h"      // Shape
+#include "../components/input.h"   // Direction
+#include "../components/player.h"  // Shape
 #include <cstdint>
 
 enum class MenuActionKind : uint8_t {

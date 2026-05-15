@@ -2,7 +2,7 @@
 #include <type_traits>
 #include "test_helpers.h"
 #include "components/audio.h"
-#include "components/audio_events.h"
+#include "systems/audio_events.h"
 #include "entities/obstacle_entity.h"
 #include "entities/obstacle_render_entity.h"
 

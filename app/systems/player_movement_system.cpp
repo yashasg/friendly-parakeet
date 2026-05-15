@@ -3,8 +3,8 @@
 #include "../components/player.h"
 #include "../components/rhythm.h"
 #include "../components/transform.h"
-#include "../components/audio_events.h"
-#include "../components/haptics.h"
+#include "audio_events.h"
+#include "haptics.h"
 #include "../constants.h"
 #include "../util/lane_utils.h"
 #include <raymath.h>

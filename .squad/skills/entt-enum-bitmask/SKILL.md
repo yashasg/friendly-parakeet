@@ -75,7 +75,7 @@ inline bool phase_active(const ActiveInPhase& aip, GamePhase phase) {
 ## Examples
 
 - `app/components/game_state.h` — `GamePhaseBit` definition + `to_phase_bit`
-- `app/components/input_events.h` — `ActiveInPhase`, `phase_active()`
+- `app/systems/input_events.h` — `ActiveInPhase`, `phase_active()`
 - `app/systems/ui_button_spawner.h` — spawn sites using typed literals
 - `tests/test_components.cpp` — `[phase_mask]` test cases
 

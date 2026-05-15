@@ -1,5 +1,5 @@
 #include "audio_routing.h"
-#include "../components/audio_events.h"
+#include "audio_events.h"
 #include <entt/entt.hpp>
 #include <stdexcept>
 

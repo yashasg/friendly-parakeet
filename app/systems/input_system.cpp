@@ -4,7 +4,7 @@
 #include "web_input_policy.h"
 #include "../util/keyboard_shape_mapping.h"
 #include "../components/input.h"
-#include "../components/input_events.h"
+#include "input_events.h"
 #include "../components/player.h"
 #include "../components/rendering.h"
 #include "../components/game_state.h"

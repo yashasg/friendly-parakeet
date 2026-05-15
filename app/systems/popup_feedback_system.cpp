@@ -1,6 +1,6 @@
 #include "all_systems.h"
 
-#include "../components/audio_events.h"
+#include "audio_events.h"
 #include "../components/game_state.h"
 #include "../components/gameplay_intents.h"
 #include "../entities/popup_entity.h"
