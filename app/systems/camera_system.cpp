@@ -1,6 +1,6 @@
 #include "camera_system.h"
 #include "all_systems.h"
-#include "../components/shape_mesh.h"
+#include "shape_mesh.h"
 #include "../components/rendering.h"
 #include "../components/transform.h"
 #include "../components/player.h"
