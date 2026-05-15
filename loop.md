@@ -25,11 +25,16 @@ description: "My squad work loop"
 - Use docs from `docs/entt/` and `docs/raylib_cheatsheet.md` before implementing.
 - Remove outdated code/comments while fixing issues; keep docs concise and current.
 
-3) **Parallel pass (only if no actionable issues)**
+3) **Fabian drift check** (file `ecs_refactor` issues with file:line + principle #; do NOT fix this cycle)
+- Canon: `.squad/decisions.md` § "DoD source-text grounding (Fabian)" Principles 0–4; cross-refs in #1203 / #1204.
+- Checks: folder layout (only `components/ entities/ systems/ tags/ util/` under `app/`), existential processing (no `switch` on discriminator, no `virtual`/`override`/`dynamic_cast` — P0), components-as-data vs entities-as-factories, no inheritance (`: public ` outside raylib/EnTT wrappers), tags single-header (`app/tags/tags.h` only — P2), enum allowlist (`make check-enum-allowlist` from #1204 — P1), cyclomatic ratchet (`switch`/`if` branches in `app/` trend down only vs `.squad/decisions.md` § "Drift baselines").
+- Cluster file-level hits into one issue. Comment on existing issue instead of duplicating.
+
+4) **Parallel pass (only if no actionable issues)**
 - Run agents to find bugs/tech debt/docs drift.
 - Deduplicate, open focused issues (repro + scope + acceptance criteria), restart triage.
 
-4) **End-of-cycle output**
+5) **End-of-cycle output**
 - `Done:` IDs + PRs
 - `In Progress:` IDs + blockers
 - `Closed as Outdated:` IDs + reason

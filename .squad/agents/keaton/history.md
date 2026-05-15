@@ -1,4 +1,12 @@
 
+## ECS Architecture Canon (2026-05-15)
+
+**Canon location:** `.squad/decisions.md` (appended 2026-05-15T06:15:00Z by Scribe)  
+**Source file:** `.squad/decisions/inbox/keyser-ecs-architecture-canon.md` (merged and deleted)  
+**Context:** Keaton participated in earlier components audit work this session arc (#1194–#1196). Canon codifies six foundational ECS principles grounded in user directives. Reference this canon for all future ECS work, architectures audits, and folder layout decisions.
+
+---
+
 ## 2026-05-08: Input Dead Code Cleanup (Scribe Log)
 
 Team session: dead code elimination in input routing.
@@ -24,6 +32,8 @@ Status: COMPLETE. All validation/build tests passed.
 - `shape_vertices.h` can still be deleted if circle generation is localized in `game_render_system.cpp` (constexpr circle table or `cos/sin` per segment) and test/benchmark references are updated.
 
 ## Learnings
+
+- 2026-05-14T22:27:50.210-07:00: Raw raylib `Vector2` is only a safe direct ECS replacement when a registry/archetype has one semantic `Vector2` slot. In this tree, `DrawSize`, `MotionVelocity`, `UIPosition`, and `ScreenPosition` already create same-type collision pressure, so the practical path is selective substitution (`RNGState -> std::mt19937`, config-only `ShapeProps`) rather than a blanket component collapse.
 
 - 2026-05-11T22:42:23.114-07:00: Runtime frame orchestration is split between variable-rate pre/post stages in `app/game_loop.cpp` (input/test-player, camera, render, audio/haptics) and deterministic fixed-step gameplay in `app/systems/fixed_tick_runner.cpp`; `game_state_system` is the sole semantic input-event drain (`disp.update<GoEvent/ButtonPressEvent>()`).
 
@@ -131,3 +141,4 @@ See `.squad/agents/keaton/history-archive.md` for earlier work:
 - Performance-safe migration roadmap
 
 **Status:** Complete. System design document synthesized and ready for team review.
+- 2026-05-14T22:27:50.210-07:00: Keyser ran the parallel audit lens on `app/components/*.h`; both passes converged that lifecycle ownership, not plain-struct syntax, decides whether a type belongs in `app/components/`.

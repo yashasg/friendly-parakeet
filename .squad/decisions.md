@@ -1,3 +1,25 @@
+### 2026-05-14T22:27:50.210-07:00: app/components parallel audit verdict (consolidated)
+
+**By:** Keyser, Keaton  
+**Scope:** `app/components/*.h` ECS-purity audit + raylib/std substitution scan  
+**Source inbox files:** `keyser-components-raylib-audit.md`, `keaton-components-raylib-substitution.md`
+
+**What:**
+- `app/components/` stays reserved for atomic, queryable entity-owned data. Dispatcher payloads, ctx scratch buffers, session state, persistence helpers, and render-config helpers should move beside their owning systems/modules.
+- Parallel verdicts converged on **KEEP 8, MOVE 8, SPLIT 6, DELETE 1, standalone REPLACE 0**.
+- Safe direct substitutions are selective rather than blanket: `RNGState -> std::mt19937` is approved; config-only `ShapeProps`/`ShapeMeshConfig` are low-risk; blanket raw `Vector2` replacement for `DrawSize`, `MotionVelocity`, `UIPosition`, or `ScreenPosition` is rejected under current archetypes.
+- Recommended order: delete `rng.h`; move dispatcher/event, scratch, input, gameplay-intent, and test-player/session state out of `app/components/`; then split `high_score.h`, `scoring.h`, `song_state.h`, `game_state.h`, `transform.h`, and `rendering.h`.
+
+**Why:**
+- Lifecycle ownership, not plain-struct syntax, is the deciding boundary for the component layer.
+- Raw raylib/std leaf types are only safe when a registry/context has one semantic slot for that exact type; current entities already multiplex multiple `Vector2`-shaped roles and lane/bitmask scalar wrappers.
+- Keeping named component identity preserves readable EnTT views, future same-entity coexistence, and safer backend-boundary refactors.
+
+**Evidence:**
+- Keyser: ECS-purity audit classified 23 headers with no standalone raw-raylib replacement wins.
+- Keaton: substitution scan confirmed `Vector2`/scalar type-collision risk on multiplexed entity archetypes and recommended selective substitution only.
+
+---
 
 ### Constants codified (top of `tools/level_designer.py`)
 
@@ -3037,3 +3059,210 @@ than overloading this one.
 - [ ] No arrow crosses more than 2 others.
 - [ ] Color legend (5 swatches) sits in bottom-left, 200×120u.
 - [ ] Diagram exports cleanly to PNG at 2× without text reflow.
+
+# Kobayashi Decision — PR #704 Review Comment Resolution
+
+- **Date:** 2026-05-11
+- **Context:** Replacing placeholder CI workflows with real build/test steps for C++ + vcpkg projects.
+- **Decision:** Do **not** shallow-clone vcpkg in GitHub Actions when using manifest mode; clone full history (or fetch required baseline commits) so manifest baselines resolve reliably.
+- **Why:** vcpkg manifest baseline resolution may need historical commits not present in shallow clones, causing hard CI failures even when local builds pass.
+- **Applied in:** `.github/workflows/squad-ci.yml` on branch `squad/restore-stashed-squad-state`.
+
+# Kobayashi Decision: PR #704 Conflict Resolution Process
+
+## Context
+PR #704 became dirty after `main` advanced (bundle PR #703 merged), while local checkout had unrelated in-progress edits and untracked runtime control files.
+
+## Decision
+For public squad branches, prefer **merge `origin/main` into the PR branch** over rebase to avoid rewriting published history. Before merge, stash only unrelated tracked local edits that could block/confuse conflict resolution, then reapply after merge commit is complete.
+
+## Applied Steps
+1. Verified branch/status and identified unrelated local changes.
+2. Stashed unrelated tracked edits with pathspec (kept untracked runtime control files out of git).
+3. Merged `origin/main` into `squad/restore-stashed-squad-state`.
+4. Resolved all conflicts favoring already-landed `main` behavior where superseding, while preserving PR intent.
+5. Ran full validation (`VCPKG_ROOT=/Users/yashasgujjar/vcpkg ./build.sh && ./build/shapeshifter_tests`).
+6. Fixed one merge-introduced build break discovered by validation.
+7. Committed merge with trailer and pushed branch.
+
+## Why Reusable
+This pattern preserves user WIP safely, avoids history rewrites on shared branches, and ensures conflict resolutions are verified by the repository’s canonical build/test command before push.
+
+# Redfoot — entt.excalidraw layout spec (2026-05-11)
+
+Second canvas dedicated to ECS internals (entities, components, util, systems,
+ctx singletons, signals). Sibling to `system_design.excalidraw` (frame loop
+overview). Coordinator owns the canvas write.
+
+## Locked decisions
+- 5-column grid (Util · Entities · Registry spine · Components · Singletons/Signals) + bottom Systems swimlane.
+- Palette: sand/lavender/grey/blue/peach/mint/rose, color-blind safe via shape+position.
+- Registry is one tall central rectangle with ctx singletons *inside* it — never as floating boxes.
+- ≤15 arrows total; thick bidirectional only on registry↔components and ctx↔systems edges.
+- Hot/critical nodes darkened in-hue (no new color).
+- Util column lists only files under `app/util/`. Component chips must match `app/components/*.h`.
+
+## Out of scope (do not draw here)
+- Per-component field tables, render pass internals, beatmap tooling, HUD pixel layout, screen flow.
+
+Full layout, coordinates, and acceptance checklist: see Redfoot's reply in the
+spawn message and append to history.
+# ECS Architecture Canon — derived from yashas directives, 2026-05-14
+
+**Date:** 2026-05-15T06:10:56Z  
+**Author:** Keyser (Lead Architect)  
+**Status:** AUTHORITATIVE TEAM STANDARD  
+**Scope:** All ECS work on this project, current and future  
+**Related Issues:** #1193, #1194, #1195, #1196, #1197, #1198, #1199, #1200
+
+---
+
+> This entry is the canonical reference for ECS architecture on this project. All future architectural decisions, audits, and agent work must reference and comply with this standard. It was derived directly from yashas's verbal directives during the 2026-05-14 architecture session. Keyser (Lead Architect) is responsible for enforcement.
+
+---
+
+## 1. Core ECS Definitions
+
+These are the agreed definitions. Agents must be able to recite them without hedging.
+
+| Term | Definition |
+|---|---|
+| **Component** | Pure data struct. No methods beyond constructors. No logic. No behavior. |
+| **Entity** | Just an ID. A bundle of components held together by registry membership. Never store game state outside the registry. Entities are flattened — no class hierarchy, no inheritance. |
+| **System** | Free function over an `entt::registry` view. Operates on component queries. Stateless apart from arguments and ctx. |
+| **Registry** | The single source of truth for all game state. The `entt::registry` instance. |
+
+Any type that does not fit cleanly into one of these four slots requires explicit justification before it enters the codebase.
+
+---
+
+## 2. The Flatten Rule (No Hierarchies, No Class Wrappers)
+
+Traditional OOP bundles data by noun (a `Button` class owns its position, shape, and state). ECS forbids this.
+
+Directive, verbatim:
+
+> User input: "yeah but if you make them components the ecs paradigm breaks, systems work on components not entities, just because something is pure data doesnt make it a component, take a button on a screen for example, the button has a screen position, and a shape and state, in traditional game dev we would create a class called button and define each characteristic, but in ecs we flatten it out, so each ButtonAPosition,ButtonAShape,ButtonAState each of these are components. a screen has many such components, which makes it an entity, does that make sense?"
+
+> User input: "actually is simpler than that, but i am not sure if we can distill it this way, every screen is an entity, and the elements in the screen are just components, ui_update,ui_render,ui_input are the systems, you can technically put them all in ui_system.cpp"
+
+**The rule:**
+
+- Never bundle multiple concerns into a god-struct or class.
+- Flatten into separate components, even when it feels verbose.
+- A component is the smallest unit of data that one system reads or writes.
+- A screen is an entity. Its visual elements (position, shape, state) are separate components on that entity.
+- Systems (`ui_update`, `ui_render`, `ui_input`) operate over those components — they are not methods on a screen class.
+
+This applies to UI, gameplay, audio, and every other domain. There are no exceptions.
+
+---
+
+## 3. The Raylib-First Rule (No Abstraction Layers Over Raylib)
+
+Directive, verbatim:
+
+> User input: "your excuse that something is plumbing is just an excuse, we dont need abstaction from raylib, the only abstaction i can think of is in platform, and even that is for improved readability"
+
+**The rule:**
+
+- Do not wrap raylib types or APIs.
+- The only acceptable abstraction layer is `platform/`, and even that exists solely for cross-platform readability.
+- "Plumbing" is not a valid justification for an abstraction layer.
+
+### 3a. Wrapper-Noise Components (Issue #1198)
+
+Any struct that is just a single field of a raylib or std type adds nothing over the raw type itself. Delete the struct. Use the raw type directly at every `emplace`/`view`/`get` site.
+
+Directive, verbatim:
+
+> User input: "any struct that we have which is just 2 floats, can be replaced with raylib's vector2 and if it is just 3 floats it can be replaced with raylib vector3 ect, color is probably a vector4. but thats my point any of these replacements are free"
+
+> User input: "by swap i dont mean in the context of entt, i mean we remove our own definition of the 2/3 float struct and use vector2 or vector3 in its place"
+
+**Substitution table (canonical):**
+
+| Our type | Replacement |
+|---|---|
+| Any 2-float wrapper | `Vector2` |
+| Any 3-float wrapper | `Vector3` |
+| Any 4-byte/4-float color wrapper | `Color` |
+| Any single-int wrapper | The raw `int` type |
+
+`Color` is already in active use as a raw component on player, obstacle, popup, and particle entities. This proves the pattern is live and safe. The full inventory of structs to swap is tracked in #1198.
+
+---
+
+## 4. The Util Test (Real Util vs. System in Costume)
+
+Not everything in `util/` belongs there. Apply this mechanical test:
+
+| Verdict | Criteria | Examples |
+|---|---|---|
+| ✅ Real util | `.h`-only with `inline` or `constexpr` functions over data. No `.cpp`. No state. No lifetime. No I/O. | `shape_lane_mapping.h`, `rhythm_math.h`, `lane_utils.h` |
+| ❌ System in costume | Has a `.cpp` file. Holds state, manages lifetime, registers signal handlers, or performs filesystem I/O. | `persistence_policy.{h,cpp}`, `session_logger.{h,cpp}`, `high_score_persistence.{h,cpp}` |
+
+Systems in costume belong in `systems/` (or directly beside the system that owns them), **not** in `util/`. Tracked in #1197.
+
+The presence of a `.cpp` file in `util/` is a hard red flag. No exceptions.
+
+---
+
+## 5. Folder Layout Standard
+
+The agreed verdicts on `app/` subfolders (tracked in #1200):
+
+### ✅ Clean — Enforce strictly
+
+| Folder | Contract |
+|---|---|
+| `components/` | Pure data structs only. No system-private state, no scratch buffers, no event dispatch wiring. Component leaks tracked in #1195. |
+| `entities/` | Entity-archetype factory functions only. Not a place for component data + accessors + I/O + serialization. The `settings.{h,cpp}` god-class is the canonical anti-pattern for this folder. Leaks tracked in #1196. |
+| `systems/` | Free functions over registry views. Where lifecycle, dispatch, scratch buffers, and stateful resources live. |
+| `util/` | Header-only inline/constexpr pure functions. See Section 4. |
+
+### ⚠️ Impure — Acknowledged, targeted for cleanup
+
+| Folder | Status |
+|---|---|
+| `rendering/` | Closest to fits; contents are component-shaped resources. More honest placement would be `components/`. |
+| `content/` | Letter-fail, spirit-pass. The `.cpp` only defines static const arrays. Real util in practice. |
+
+### ❌ Systems in Costume — Migration targets
+
+| Folder | Disposition |
+|---|---|
+| `audio/` | System in costume. Migrate to `systems/` + `components/`. Folder disappears. |
+| `input/` | System in costume. Migrate to `systems/` + `components/`. Folder disappears. |
+| `session/` | System in costume. Migrate to `systems/` + `components/`. Folder disappears. |
+| `ui/` | System in costume. Migrate to `systems/` + `components/`. Folder disappears. |
+
+---
+
+## 6. EnTT Type-Collision Is Downstream, Not Blocking
+
+Directive, verbatim:
+
+> User input: "are you telling me that removing ScreenPosition struct work break? are you fucking with me? Vector2 is a 1:1 replacement of ScreenPosition"
+
+**The rule:**
+
+The swap of a single wrapper struct to its raw raylib equivalent is **free**. There is no precedent in this codebase of two raw raylib types of the same shape coexisting on one entity (only `Color` is currently used as a raw component, and it occupies one slot per archetype).
+
+When a second wrapper of the same underlying shape needs to coexist on the same archetype after a swap, the resolution options are:
+
+1. Keep one as a typed wrapper (preserve identity for that archetype).
+2. Split the archetype (separate entity per concern).
+3. Adjust the per-archetype views (query only the one needed).
+
+This is a **per-entity audit problem** that surfaces during migration. It is not a reason to refuse the swap at design time. EnTT type-collision is a downstream concern, evaluated archetype-by-archetype during #1198 work.
+
+---
+
+## Enforcement
+
+- Keyser (Lead Architect) owns this standard.
+- Every PR touching `app/` is measured against these six sections.
+- Issues #1193–#1200 are the active work queue derived from applying this standard to the current codebase.
+- When a new agent or team member asks "how do we do ECS here?", point them at this file first.
+- Deviation from this standard requires an explicit decision entry superseding or extending this one.
