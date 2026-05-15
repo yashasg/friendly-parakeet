@@ -142,15 +142,17 @@ TEST_CASE("RenderTargets: move transfers ownership", "[gpu_resource_lifecycle]")
 TEST_CASE("ShapeMeshes: release is idempotent when not owned", "[gpu_resource_lifecycle]") {
     camera::ShapeMeshes sm{};
     sm.release();  // must be no-op (owned == false), not crash
+    CHECK_FALSE(sm.owned);
     sm.release();  // second call also safe
-    SUCCEED("double release on unowned ShapeMeshes does not crash");
+    CHECK_FALSE(sm.owned);
 }
 
 TEST_CASE("RenderTargets: release is idempotent when not owned", "[gpu_resource_lifecycle]") {
     RenderTargets rt{};
     rt.release();
+    CHECK_FALSE(rt.owned);
     rt.release();
-    SUCCEED("double release on unowned RenderTargets does not crash");
+    CHECK_FALSE(rt.owned);
 }
 
 TEST_CASE("runtime contexts: registry erase releases default resources safely",
@@ -162,12 +164,22 @@ TEST_CASE("runtime contexts: registry erase releases default resources safely",
     reg.ctx().emplace<MusicContext>();
     reg.ctx().emplace<SessionLog>();
 
+    // Sanity: emplace actually installed the contexts before we erase them
+    // (otherwise the erase-then-contains check below would be vacuously true).
+    REQUIRE(reg.ctx().contains<TextContext>());
+    REQUIRE(reg.ctx().contains<SFXBank>());
+    REQUIRE(reg.ctx().contains<MusicContext>());
+    REQUIRE(reg.ctx().contains<SessionLog>());
+
     reg.ctx().erase<TextContext>();
     reg.ctx().erase<SFXBank>();
     reg.ctx().erase<MusicContext>();
     reg.ctx().erase<SessionLog>();
 
-    SUCCEED("default runtime contexts are RAII-safe under registry erase");
+    CHECK_FALSE(reg.ctx().contains<TextContext>());
+    CHECK_FALSE(reg.ctx().contains<SFXBank>());
+    CHECK_FALSE(reg.ctx().contains<MusicContext>());
+    CHECK_FALSE(reg.ctx().contains<SessionLog>());
 }
 
 TEST_CASE("runtime contexts: explicit release is idempotent without live handles",
