@@ -316,9 +316,8 @@ TEST_CASE("shape_window: idle does nothing", "[rhythm][window]") {
     reg.ctx().get<SongState>().song_time += 0.016f;
     shape_window_system(reg, 0.016f);
     auto& ps = reg.get<PlayerShape>(player);
-    auto& sw = reg.get<ShapeWindow>(player);
     CHECK(ps.current == Shape::Hexagon);
-    CHECK(sw.phase == WindowPhase::Idle);
+    CHECK(window_phase_is_idle(reg, player));
 }
 
 TEST_CASE("shape_window: morph_in transitions to active", "[rhythm][window]") {
@@ -327,14 +326,14 @@ TEST_CASE("shape_window: morph_in transitions to active", "[rhythm][window]") {
     auto& ps = reg.get<PlayerShape>(player);
     auto& sw = reg.get<ShapeWindow>(player);
     auto& song = reg.ctx().get<SongState>();
-    sw.phase = WindowPhase::MorphIn;
+    set_window_phase_morph_in(reg, player);
     sw.target_shape = Shape::Triangle;
     sw.window_timer = 0.0f; ps.morph_t = 0.0f;
     sw.window_start = reg.ctx().get<SongState>().song_time;
     reg.ctx().get<SongState>().song_time += song.morph_duration + 0.01f;
     shape_window_system(reg, song.morph_duration + 0.01f);
     CHECK(ps.current == Shape::Triangle);
-    CHECK(sw.phase == WindowPhase::Active);
+    CHECK(window_phase_is_active(reg, player));
 }
 
 TEST_CASE("shape_window: active transitions to morph_out", "[rhythm][window]") {
@@ -343,12 +342,12 @@ TEST_CASE("shape_window: active transitions to morph_out", "[rhythm][window]") {
     auto& ps = reg.get<PlayerShape>(player);
     auto& sw = reg.get<ShapeWindow>(player);
     auto& song = reg.ctx().get<SongState>();
-    sw.phase = WindowPhase::Active;
+    set_window_phase_active(reg, player);
     ps.current = Shape::Triangle; sw.window_timer = 0.0f;
     sw.window_start = reg.ctx().get<SongState>().song_time;
     reg.ctx().get<SongState>().song_time += song.window_duration + 0.01f;
     shape_window_system(reg, song.window_duration + 0.01f);
-    CHECK(sw.phase == WindowPhase::MorphOut);
+    CHECK(window_phase_is_morph_out(reg, player));
 }
 
 TEST_CASE("shape_window: morph_out reverts to hexagon", "[rhythm][window]") {
@@ -357,13 +356,13 @@ TEST_CASE("shape_window: morph_out reverts to hexagon", "[rhythm][window]") {
     auto& ps = reg.get<PlayerShape>(player);
     auto& sw = reg.get<ShapeWindow>(player);
     auto& song = reg.ctx().get<SongState>();
-    sw.phase = WindowPhase::MorphOut;
+    set_window_phase_morph_out(reg, player);
     ps.current = Shape::Triangle; sw.window_timer = 0.0f;
     sw.window_start = reg.ctx().get<SongState>().song_time;
     reg.ctx().get<SongState>().song_time += song.morph_duration + 0.01f;
     shape_window_system(reg, song.morph_duration + 0.01f);
     CHECK(ps.current == Shape::Hexagon);
-    CHECK(sw.phase == WindowPhase::Idle);
+    CHECK(window_phase_is_idle(reg, player));
 }
 
 TEST_CASE("shape_window: full lifecycle", "[rhythm][window]") {
@@ -372,18 +371,18 @@ TEST_CASE("shape_window: full lifecycle", "[rhythm][window]") {
     auto& ps = reg.get<PlayerShape>(player);
     auto& sw = reg.get<ShapeWindow>(player);
     auto& song = reg.ctx().get<SongState>();
-    sw.phase = WindowPhase::MorphIn;
+    set_window_phase_morph_in(reg, player);
     sw.target_shape = Shape::Square;
     float morph_dt = song.morph_duration / 5.0f;
     for (int i = 0; i < 6; ++i) { reg.ctx().get<SongState>().song_time += morph_dt; shape_window_system(reg, morph_dt); }
-    CHECK(sw.phase == WindowPhase::Active);
+    CHECK(window_phase_is_active(reg, player));
     CHECK(ps.current == Shape::Square);
     float active_dt = song.window_duration / 10.0f;
     for (int i = 0; i < 11; ++i) { reg.ctx().get<SongState>().song_time += active_dt; shape_window_system(reg, active_dt); }
-    CHECK(sw.phase == WindowPhase::MorphOut);
+    CHECK(window_phase_is_morph_out(reg, player));
     for (int i = 0; i < 6; ++i) { reg.ctx().get<SongState>().song_time += morph_dt; shape_window_system(reg, morph_dt); }
     CHECK(ps.current == Shape::Hexagon);
-    CHECK(sw.phase == WindowPhase::Idle);
+    CHECK(window_phase_is_idle(reg, player));
 }
 
 // Player Action System (Rhythm Mode)
@@ -395,7 +394,7 @@ TEST_CASE("player_action: button press starts MorphIn window in rhythm mode", "[
     press_button(reg, btn);
     run_semantic_input_tick(reg, 0.016f);
     auto& sw = reg.get<ShapeWindow>(player);
-    CHECK(sw.phase == WindowPhase::MorphIn);
+    CHECK(window_phase_is_morph_in(reg, player));
     CHECK(sw.target_shape == Shape::Triangle);
 }
 
@@ -416,12 +415,12 @@ TEST_CASE("player_action: same shape during active is ignored", "[rhythm][action
     auto player = make_rhythm_player(reg);
     auto& ps = reg.get<PlayerShape>(player);
     auto& sw = reg.get<ShapeWindow>(player);
-    sw.phase = WindowPhase::Active;
+    set_window_phase_active(reg, player);
     ps.current = Shape::Triangle; sw.target_shape = Shape::Triangle;
     auto btn = make_shape_button(reg, Shape::Triangle);
     press_button(reg, btn);
     run_semantic_input_tick(reg, 0.016f);
-    CHECK(sw.phase == WindowPhase::Active);
+    CHECK(window_phase_is_active(reg, player));
 }
 
 TEST_CASE("player_action: different shape mid-window restarts", "[rhythm][action]") {
@@ -429,12 +428,12 @@ TEST_CASE("player_action: different shape mid-window restarts", "[rhythm][action
     auto player = make_rhythm_player(reg);
     auto& ps = reg.get<PlayerShape>(player);
     auto& sw = reg.get<ShapeWindow>(player);
-    sw.phase = WindowPhase::Active;
+    set_window_phase_active(reg, player);
     ps.current = Shape::Triangle; sw.target_shape = Shape::Triangle;
     auto btn = make_shape_button(reg, Shape::Circle);
     press_button(reg, btn);
     run_semantic_input_tick(reg, 0.016f);
-    CHECK(sw.phase == WindowPhase::MorphIn);
+    CHECK(window_phase_is_morph_in(reg, player));
     CHECK(sw.target_shape == Shape::Circle);
 }
 
@@ -442,8 +441,7 @@ TEST_CASE("player_action: no action with empty queue", "[rhythm][action]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
     run_semantic_input_tick(reg, 0.016f);
-    auto& sw = reg.get<ShapeWindow>(player);
-    CHECK(sw.phase == WindowPhase::Idle);
+    CHECK(window_phase_is_idle(reg, player));
 }
 
 TEST_CASE("player_action: legacy mode instant shape change", "[rhythm][action]") {
@@ -453,9 +451,8 @@ TEST_CASE("player_action: legacy mode instant shape change", "[rhythm][action]")
     press_button(reg, btn);
     run_semantic_input_tick(reg, 0.016f);
     auto& ps = reg.get<PlayerShape>(player);
-    auto& sw = reg.get<ShapeWindow>(player);
     CHECK(ps.current == Shape::Triangle);
-    CHECK(sw.phase == WindowPhase::Idle);
+    CHECK(window_phase_is_idle(reg, player));
 }
 
 // Collision System with Timing Grades
@@ -497,7 +494,7 @@ TEST_CASE("collision: timing grade PERFECT on press-at-arrival", "[rhythm][colli
     auto& sw = reg.get<ShapeWindow>(player);
     auto& song = reg.ctx().get<SongState>();
     ps.current = Shape::Circle;
-    sw.phase = WindowPhase::Active;
+    set_window_phase_active(reg, player);
     song.song_time = 5.0f; sw.press_time = 5.0f;
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     // arrival_time == press_time -> Perfect
@@ -524,7 +521,7 @@ TEST_CASE("collision: HUD perfect cue distance maps to PERFECT timing", "[rhythm
                WithinAbs(kTimingOkSeconds, 0.0001f));
 
     ps.current = Shape::Circle;
-    sw.phase = WindowPhase::Active;
+    set_window_phase_active(reg, player);
     sw.press_time = 5.0f;
     song.song_time = sw.press_time + cue_lead_seconds;
 
@@ -545,7 +542,7 @@ TEST_CASE("collision: timing grade GOOD at 50pct", "[rhythm][collision]") {
     auto& sw = reg.get<ShapeWindow>(player);
     auto& song = reg.ctx().get<SongState>();
     ps.current = Shape::Circle;
-    sw.phase = WindowPhase::Active;
+    set_window_phase_active(reg, player);
     song.song_time = 5.0f; sw.press_time = 5.0f;
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     // arrival_time offset by 50% of half_window (~75ms) -> Good
@@ -562,7 +559,7 @@ TEST_CASE("collision: timing grade OK at 80pct", "[rhythm][collision]") {
     auto& sw = reg.get<ShapeWindow>(player);
     auto& song = reg.ctx().get<SongState>();
     ps.current = Shape::Circle;
-    sw.phase = WindowPhase::Active;
+    set_window_phase_active(reg, player);
     song.song_time = 5.0f; sw.press_time = 5.0f;
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     // arrival_time offset by 80% of half_window (~120ms) -> Ok
@@ -579,7 +576,7 @@ TEST_CASE("collision: timing grade BAD beyond window", "[rhythm][collision]") {
     auto& sw = reg.get<ShapeWindow>(player);
     auto& song = reg.ctx().get<SongState>();
     ps.current = Shape::Circle;
-    sw.phase = WindowPhase::Active;
+    set_window_phase_active(reg, player);
     song.song_time = 5.0f; sw.press_time = 5.0f;
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     // arrival_time offset by 120% of half_window (>150ms) -> Bad
@@ -600,7 +597,7 @@ TEST_CASE("collision: stale press from previous beat does not get Perfect", "[rh
 
     // Player pressed Circle at song_time 2.0.
     ps.current = Shape::Circle;
-    sw.phase = WindowPhase::Active;
+    set_window_phase_active(reg, player);
     sw.press_time = 2.0f;
     sw.window_start = 2.0f;
     sw.graded = false;
@@ -626,7 +623,7 @@ TEST_CASE("collision: PERFECT clears obstacle without game over", "[rhythm][coll
     auto& sw = reg.get<ShapeWindow>(player);
     auto& song = reg.ctx().get<SongState>();
     ps.current = Shape::Circle;
-    sw.phase = WindowPhase::Active;
+    set_window_phase_active(reg, player);
     song.song_time = 5.0f; sw.press_time = 5.0f;
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<BeatInfo>(obs, 0, 5.0f, 5.0f - song.lead_time);
@@ -642,7 +639,7 @@ TEST_CASE("collision: SongResults updated", "[rhythm][collision]") {
     auto& sw = reg.get<ShapeWindow>(player);
     auto& song = reg.ctx().get<SongState>();
     ps.current = Shape::Circle;
-    sw.phase = WindowPhase::Active;
+    set_window_phase_active(reg, player);
     song.song_time = 5.0f; sw.press_time = 5.0f;
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<BeatInfo>(obs, 0, 5.0f, 5.0f - song.lead_time);
@@ -727,7 +724,7 @@ TEST_CASE("window_scaling: PERFECT grade shortens remaining window", "[rhythm][w
 
     // Put player in Active phase, midway through window
     ps.current = Shape::Circle;
-    sw.phase = WindowPhase::Active;
+    set_window_phase_active(reg, player);
     sw.window_timer = song.window_duration * 0.5f; // halfway through
     song.song_time = 5.0f;
     sw.press_time = 5.0f; // PERFECT timing
@@ -757,7 +754,7 @@ TEST_CASE("window_scaling: GOOD grade shortens window slightly", "[rhythm][windo
     auto& song = reg.ctx().get<SongState>();
 
     ps.current = Shape::Circle;
-    sw.phase = WindowPhase::Active;
+    set_window_phase_active(reg, player);
     sw.window_timer = song.window_duration * 0.4f;
     song.song_time = 5.0f;
     sw.press_time = 5.0f;
@@ -786,7 +783,7 @@ TEST_CASE("window_scaling: OK grade keeps window unchanged", "[rhythm][window_sc
     auto& song = reg.ctx().get<SongState>();
 
     ps.current = Shape::Circle;
-    sw.phase = WindowPhase::Active;
+    set_window_phase_active(reg, player);
     song.song_time = 5.0f;
     sw.window_timer = song.window_duration * 0.3f;
     // Keep window_start consistent with song_time and window_timer
@@ -814,7 +811,7 @@ TEST_CASE("window_scaling: BAD grade keeps window unchanged", "[rhythm][window_s
     auto& song = reg.ctx().get<SongState>();
 
     ps.current = Shape::Circle;
-    sw.phase = WindowPhase::Active;
+    set_window_phase_active(reg, player);
     song.song_time = 5.0f;
     sw.window_timer = song.window_duration * 0.2f;
     // Keep window_start consistent with song_time and window_timer
@@ -842,7 +839,7 @@ TEST_CASE("window_scaling: second obstacle does not re-scale", "[rhythm][window_
     auto& song = reg.ctx().get<SongState>();
 
     ps.current = Shape::Circle;
-    sw.phase = WindowPhase::Active;
+    set_window_phase_active(reg, player);
     sw.window_timer = song.window_duration * 0.4f;
     song.song_time = 5.0f;
     sw.press_time = 5.0f;
@@ -872,7 +869,7 @@ TEST_CASE("window_scaling: graded resets on new window", "[rhythm][window_scalin
     // Start a new window via semantic input drain
     auto btn = make_shape_button(reg, Shape::Triangle);
     press_button(reg, btn);
-    sw.phase = WindowPhase::Idle;
+    set_window_phase_idle(reg, player);
     run_semantic_input_tick(reg, 0.016f);
 
     CHECK_FALSE(sw.graded);

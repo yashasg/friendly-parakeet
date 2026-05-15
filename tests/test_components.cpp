@@ -163,7 +163,7 @@ TEST_CASE("ecs: make_registry dispatcher is wired — ButtonPressEvent listeners
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
     auto& sw    = reg.get<ShapeWindow>(player);
-    REQUIRE(sw.phase == WindowPhase::Idle);
+    REQUIRE(window_phase_is_idle(reg, player));
 
     auto btn = make_shape_button(reg, Shape::Triangle);
 
@@ -172,7 +172,7 @@ TEST_CASE("ecs: make_registry dispatcher is wired — ButtonPressEvent listeners
     disp.update<ButtonPressEvent>();
 
     // If dispatcher listeners were NOT wired, sw.phase would stay Idle.
-    CHECK(sw.phase        == WindowPhase::MorphIn);  // listener wired: handle_press fired
+    CHECK(window_phase_is_morph_in(reg, player));  // listener wired: handle_press fired
     CHECK(sw.target_shape == Shape::Triangle);
 }
 
@@ -203,7 +203,7 @@ TEST_CASE("ecs: wire_input_dispatcher is idempotent", "[ecs][dispatcher]") {
     press_button(reg, btn);
     reg.ctx().get<entt::dispatcher>().update<ButtonPressEvent>();
 
-    CHECK(reg.get<ShapeWindow>(player).phase == WindowPhase::MorphIn);
+    CHECK(window_phase_is_morph_in(reg, player));
     CHECK(drain_sfx_events(reg).count == 1);
 }
 
@@ -380,12 +380,12 @@ TEST_CASE("ecs: dispatcher rewire-after-unwire does not duplicate semantic deliv
     wire_input_dispatcher(reg);
 
     auto& sw = reg.get<ShapeWindow>(player);
-    REQUIRE(sw.phase == WindowPhase::Idle);
+    REQUIRE(window_phase_is_idle(reg, player));
 
     press_button(reg, button);
     reg.ctx().get<entt::dispatcher>().update<ButtonPressEvent>();
 
-    CHECK(sw.phase == WindowPhase::MorphIn);
+    CHECK(window_phase_is_morph_in(reg, player));
     CHECK(sw.target_shape == Shape::Square);
     CHECK(drain_sfx_events(reg).count == 1);
 }
@@ -401,12 +401,12 @@ TEST_CASE("ecs: repeated unwire_input_dispatcher is idempotent before rewire",
     wire_input_dispatcher(reg);
 
     auto& sw = reg.get<ShapeWindow>(player);
-    REQUIRE(sw.phase == WindowPhase::Idle);
+    REQUIRE(window_phase_is_idle(reg, player));
 
     press_button(reg, button);
     reg.ctx().get<entt::dispatcher>().update<ButtonPressEvent>();
 
-    CHECK(sw.phase == WindowPhase::MorphIn);
+    CHECK(window_phase_is_morph_in(reg, player));
     CHECK(sw.target_shape == Shape::Triangle);
     CHECK(drain_sfx_events(reg).count == 1);
 }

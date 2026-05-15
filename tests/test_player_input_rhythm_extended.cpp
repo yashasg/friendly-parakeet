@@ -9,14 +9,14 @@ TEST_CASE("player_input_rhythm: shape press in Idle begins MorphIn window", "[pl
     auto& sw = reg.get<ShapeWindow>(player);
     auto& song = reg.ctx().get<SongState>();
 
-    CHECK(sw.phase == WindowPhase::Idle);
+    CHECK(window_phase_is_idle(reg, player));
 
     auto btn = make_shape_button(reg, Shape::Circle);
     press_button(reg, btn);
 
     run_semantic_input_tick(reg);
 
-    CHECK(sw.phase == WindowPhase::MorphIn);
+    CHECK(window_phase_is_morph_in(reg, player));
     CHECK(sw.target_shape == Shape::Circle);
     CHECK(sw.window_start == song.song_time);
 }
@@ -30,7 +30,7 @@ TEST_CASE("player_input_rhythm: different shape in Active restarts window", "[pl
 
     // Already Active as Circle
     ps.current = Shape::Circle;
-    sw.phase = WindowPhase::Active;
+    set_window_phase_active(reg, player);
     sw.window_start = song.song_time - 0.5f;
 
     auto btn = make_shape_button(reg, Shape::Square);
@@ -39,7 +39,7 @@ TEST_CASE("player_input_rhythm: different shape in Active restarts window", "[pl
     run_semantic_input_tick(reg);
 
     // Should restart as MorphIn for Square.
-    CHECK(sw.phase == WindowPhase::MorphIn);
+    CHECK(window_phase_is_morph_in(reg, player));
     CHECK(sw.target_shape == Shape::Square);
 }
 
@@ -51,7 +51,7 @@ TEST_CASE("player_input_rhythm: same shape in Active is no-op", "[player][rhythm
     auto& song = reg.ctx().get<SongState>();
 
     ps.current = Shape::Circle;
-    sw.phase = WindowPhase::Active;
+    set_window_phase_active(reg, player);
     sw.window_start = song.song_time - 0.5f;
     sw.window_timer = 0.5f;
     sw.press_time = song.song_time - 0.5f;
@@ -66,7 +66,7 @@ TEST_CASE("player_input_rhythm: same shape in Active is no-op", "[player][rhythm
 
     run_semantic_input_tick(reg);
 
-    CHECK(sw.phase == WindowPhase::Active);
+    CHECK(window_phase_is_active(reg, player));
     CHECK(sw.window_start == initial_window_start);
     CHECK(sw.window_timer == initial_window_timer);
     CHECK(sw.press_time == initial_press_time);

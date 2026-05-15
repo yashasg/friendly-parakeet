@@ -75,14 +75,17 @@ void player_input_handle_press(entt::registry& reg, const ButtonPressEvent& evt)
         return;
     }
 
-    auto begin_shape_window = [&](PlayerShape& ps, ShapeWindow& sw) {
+    auto begin_shape_window = [&](entt::entity entity, PlayerShape& ps, ShapeWindow& sw) {
         sw.target_shape = pressed_shape;
-        sw.phase = WindowPhase::MorphIn;
         sw.window_timer = 0.0f;
         sw.window_start = song->song_time;
         sw.press_time = song->song_time;
         ps.morph_t = 0.0f;
         sw.graded = false;
+        // Phase transition: any previous phase → MorphIn (#1202/#1204).
+        reg.remove<ShapeWindowActiveTag>(entity);
+        reg.remove<ShapeWindowMorphOutTag>(entity);
+        reg.emplace_or_replace<ShapeWindowMorphInTag>(entity);
         if (auto* disp = reg.ctx().find<entt::dispatcher>()) {
             disp->enqueue<PlaySfxEvent>({SFX::ShapeShift});
         }
@@ -92,13 +95,17 @@ void player_input_handle_press(entt::registry& reg, const ButtonPressEvent& evt)
     auto view = reg.view<PlayerTag, PlayerShape, ShapeWindow, Lane>();
     for (auto [entity, pshape, swindow, lane] : view.each()) {
         if (rhythm_mode) {
-            auto phase = swindow.phase;
-            if (phase == WindowPhase::Idle) {
-                begin_shape_window(pshape, swindow);
-            } else if (phase == WindowPhase::Active && pressed_shape != pshape.current) {
-                begin_shape_window(pshape, swindow);
-            } else if (phase == WindowPhase::MorphOut) {
-                begin_shape_window(pshape, swindow);
+            const bool is_idle      = !reg.any_of<ShapeWindowMorphInTag,
+                                                  ShapeWindowActiveTag,
+                                                  ShapeWindowMorphOutTag>(entity);
+            const bool is_active    = reg.all_of<ShapeWindowActiveTag>(entity);
+            const bool is_morph_out = reg.all_of<ShapeWindowMorphOutTag>(entity);
+            if (is_idle) {
+                begin_shape_window(entity, pshape, swindow);
+            } else if (is_active && pressed_shape != pshape.current) {
+                begin_shape_window(entity, pshape, swindow);
+            } else if (is_morph_out) {
+                begin_shape_window(entity, pshape, swindow);
             }
         } else {
             if (pressed_shape != pshape.current) {

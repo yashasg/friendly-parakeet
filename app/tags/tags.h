@@ -13,6 +13,17 @@
 // ── Player ───────────────────────────────────────────────────
 struct PlayerTag {};
 
+// ── Shape Window phase (per-tag table; absence of all three = Idle) ──
+// Replaces the former WindowPhase enum (issue #1202/#1204).
+// The shape-window state machine on the player advances through
+// MorphIn → Active → MorphOut → Idle. Per Fabian's existential processing,
+// each non-Idle phase is its own zero-column table; the Idle state is the
+// absence of all three tags. shape_window_system runs one transform per
+// tag instead of switching on a discriminator.
+struct ShapeWindowMorphInTag  {};
+struct ShapeWindowActiveTag   {};
+struct ShapeWindowMorphOutTag {};
+
 // ── Obstacles ────────────────────────────────────────────────
 struct ObstacleTag {};
 

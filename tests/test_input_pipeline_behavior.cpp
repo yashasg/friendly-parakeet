@@ -151,13 +151,13 @@ TEST_CASE("pipeline: semantic shape press triggers shape change in same pipeline
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
     auto& sw = reg.get<ShapeWindow>(player);
-    REQUIRE(sw.phase == WindowPhase::Idle);
+    REQUIRE(window_phase_is_idle(reg, player));
 
     reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>(
         {ButtonPressKind::Shape, Shape::Square, MenuActionKind::Confirm, 0});
     run_pipeline(reg);
 
-    CHECK(sw.phase        == WindowPhase::MorphIn);
+    CHECK(window_phase_is_morph_in(reg, player));
     CHECK(sw.target_shape == Shape::Square);
 }
 
@@ -189,7 +189,7 @@ TEST_CASE("pipeline: gameplay HUD raygui shape press triggers player shape input
     auto player = make_rhythm_player(reg);
     auto& sw = reg.get<ShapeWindow>(player);
     auto& lane = reg.get<Lane>(player);
-    REQUIRE(sw.phase == WindowPhase::Idle);
+    REQUIRE(window_phase_is_idle(reg, player));
     REQUIRE(lane.current == 1);
     lane.target = lane.current;
     gameplay_hud_apply_button_presses(reg,
@@ -199,7 +199,7 @@ TEST_CASE("pipeline: gameplay HUD raygui shape press triggers player shape input
                                       false);
     run_pipeline(reg);
 
-    CHECK(sw.phase == WindowPhase::MorphIn);
+    CHECK(window_phase_is_morph_in(reg, player));
     CHECK(sw.target_shape == Shape::Square);
     CHECK(lane.target == 1);
 }
@@ -210,7 +210,7 @@ TEST_CASE("pipeline: gameplay HUD pointer release is collected before the fixed 
     auto player = make_rhythm_player(reg);
     auto& input = reg.ctx().get<InputState>();
     auto& sw = reg.get<ShapeWindow>(player);
-    REQUIRE(sw.phase == WindowPhase::Idle);
+    REQUIRE(window_phase_is_idle(reg, player));
 
     const auto square_bounds = gameplay_hud_shape_input_bounds(GameplayHudShapeSlot::Square);
     input.click = true;
@@ -220,7 +220,7 @@ TEST_CASE("pipeline: gameplay HUD pointer release is collected before the fixed 
     gameplay_hud_process_button_input(reg);
     run_pipeline(reg);
 
-    CHECK(sw.phase == WindowPhase::MorphIn);
+    CHECK(window_phase_is_morph_in(reg, player));
     CHECK(sw.target_shape == Shape::Square);
 }
 
@@ -231,7 +231,7 @@ TEST_CASE("pipeline: mobile button-zone touch release is collected independently
     auto& input = reg.ctx().get<InputState>();
     auto& lane = reg.get<Lane>(player);
     auto& sw = reg.get<ShapeWindow>(player);
-    REQUIRE(sw.phase == WindowPhase::Idle);
+    REQUIRE(window_phase_is_idle(reg, player));
     REQUIRE(lane.current == 1);
 
     const auto square_bounds = gameplay_hud_shape_input_bounds(GameplayHudShapeSlot::Square);
@@ -246,7 +246,7 @@ TEST_CASE("pipeline: mobile button-zone touch release is collected independently
     gameplay_hud_process_button_input(reg);
     run_pipeline(reg);
 
-    CHECK(sw.phase == WindowPhase::MorphIn);
+    CHECK(window_phase_is_morph_in(reg, player));
     CHECK(sw.target_shape == Shape::Square);
     CHECK(lane.target == 2);
 }
@@ -257,8 +257,7 @@ TEST_CASE("pipeline: swipe-zone touch release over shape HUD does not press shap
     auto player = make_rhythm_player(reg);
     auto& input = reg.ctx().get<InputState>();
     auto& lane = reg.get<Lane>(player);
-    auto& sw = reg.get<ShapeWindow>(player);
-    REQUIRE(sw.phase == WindowPhase::Idle);
+    REQUIRE(window_phase_is_idle(reg, player));
     REQUIRE(lane.current == 1);
     lane.target = lane.current;
 
@@ -272,7 +271,7 @@ TEST_CASE("pipeline: swipe-zone touch release over shape HUD does not press shap
     gameplay_hud_process_button_input(reg);
     run_pipeline(reg);
 
-    CHECK(sw.phase == WindowPhase::Idle);
+    CHECK(window_phase_is_idle(reg, player));
     CHECK(lane.target == 2);
 }
 
@@ -321,7 +320,7 @@ TEST_CASE("pipeline: pending phase transition blocks queued shape input",
     auto& lane = reg.get<Lane>(player);
 
     REQUIRE(gs.phase == GamePhase::Playing);
-    REQUIRE(sw.phase == WindowPhase::Idle);
+    REQUIRE(window_phase_is_idle(reg, player));
     REQUIRE(lane.current == 1);
     lane.target = lane.current;
     REQUIRE(lane.target == 1);
@@ -335,7 +334,7 @@ TEST_CASE("pipeline: pending phase transition blocks queued shape input",
 
     CHECK(gs.phase == GamePhase::Paused);
     CHECK_FALSE(gs.transition_pending);
-    CHECK(sw.phase == WindowPhase::Idle);
+    CHECK(window_phase_is_idle(reg, player));
     CHECK(sw.target_shape == Shape::Hexagon);
     CHECK(lane.target == 1);
 }
@@ -426,15 +425,14 @@ TEST_CASE("pipeline: gameplay HUD raygui shape presses ignored outside Playing",
     auto reg = make_rhythm_registry();
     reg.ctx().get<GameState>().phase = GamePhase::Paused;
     auto player = make_rhythm_player(reg);
-    auto& sw = reg.get<ShapeWindow>(player);
-    REQUIRE(sw.phase == WindowPhase::Idle);
+    REQUIRE(window_phase_is_idle(reg, player));
     gameplay_hud_apply_button_presses(reg,
                                       false,
                                       false,
                                       true,
                                       false);
 
-    CHECK(sw.phase == WindowPhase::Idle);
+    CHECK(window_phase_is_idle(reg, player));
 }
 
 // ── Mixed swipe + tap in same frame ───────────────────────────────────────
@@ -446,7 +444,7 @@ TEST_CASE("pipeline: mixed swipe and tap both take effect within a single pipeli
     auto& lane = reg.get<Lane>(player);
     auto& sw   = reg.get<ShapeWindow>(player);
     REQUIRE(lane.current == 1);
-    REQUIRE(sw.phase == WindowPhase::Idle);
+    REQUIRE(window_phase_is_idle(reg, player));
 
     push_go(reg, Direction::Right);
     reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>(
@@ -455,7 +453,7 @@ TEST_CASE("pipeline: mixed swipe and tap both take effect within a single pipeli
     run_pipeline(reg);
 
     CHECK(lane.target     == 2);                  // explicit swipe moves lanes
-    CHECK(sw.phase        == WindowPhase::MorphIn); // tap processed
+    CHECK(window_phase_is_morph_in(reg, player)); // tap processed
     CHECK(sw.target_shape == Shape::Triangle);
 }
 
@@ -543,7 +541,7 @@ TEST_CASE("pipeline: tap consumed after first sub-tick — second sub-tick does 
     reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>(
         {ButtonPressKind::Shape, Shape::Circle, MenuActionKind::Confirm, 0});
     run_pipeline(reg);
-    CHECK(sw.phase        == WindowPhase::MorphIn);
+    CHECK(window_phase_is_morph_in(reg, player));
     float start1 = sw.window_start;
 
     // Advance song time so a replayed window would produce a different window_start.

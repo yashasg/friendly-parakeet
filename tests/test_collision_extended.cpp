@@ -18,7 +18,7 @@ ScoredTimingResult score_rhythm_shape_hit_at_offset(float arrival_offset_seconds
 
     song.song_time = 5.0f;
     ps.current = Shape::Circle;
-    sw.phase = WindowPhase::Active;
+    set_window_phase_active(reg, player);
     sw.graded = false;
     sw.press_time = song.song_time;
 
@@ -98,7 +98,7 @@ TEST_CASE("collision: rhythm mode assigns Perfect for on-time hit", "[collision]
     auto& song = reg.ctx().get<SongState>();
 
     ps.current = Shape::Circle;
-    sw.phase = WindowPhase::Active;
+    set_window_phase_active(reg, player);
     sw.graded = false;
     sw.window_start = song.song_time;
     sw.press_time = song.song_time;
@@ -130,7 +130,7 @@ TEST_CASE("collision: on-beat rhythm press clears matching gate during MorphIn",
     reg.ctx().get<entt::dispatcher>().update<ButtonPressEvent>();
 
     REQUIRE(ps.current == Shape::Hexagon);
-    REQUIRE(sw.phase == WindowPhase::MorphIn);
+    REQUIRE(window_phase_is_morph_in(reg, player));
     REQUIRE(sw.target_shape == Shape::Circle);
 
     collision_system(reg, 0.016f);
@@ -183,7 +183,7 @@ TEST_CASE("collision: rhythm mode assigns Bad for far-off hit", "[collision][rhy
     auto& song = reg.ctx().get<SongState>();
 
     ps.current = Shape::Circle;
-    sw.phase = WindowPhase::Active;
+    set_window_phase_active(reg, player);
     sw.graded = false;
     sw.window_start = song.song_time;
     sw.press_time = song.song_time;
@@ -210,7 +210,7 @@ TEST_CASE("collision: rhythm shape gate only matches during Active window",
     active_song.song_time = 5.0f;
     active_shape.current = Shape::Circle;
     active_window.target_shape = Shape::Circle;
-    active_window.phase = WindowPhase::Active;
+    set_window_phase_active(active_reg, active_player);
     active_window.press_time = active_song.song_time;
 
     auto active_obs = make_shape_gate(active_reg, Shape::Circle, constants::PLAYER_Y);
@@ -232,7 +232,7 @@ TEST_CASE("collision: rhythm shape gate only matches during Active window",
     morphout_song.song_time = 5.0f;
     morphout_shape.current = Shape::Circle;
     morphout_window.target_shape = Shape::Circle;
-    morphout_window.phase = WindowPhase::MorphOut;
+    set_window_phase_morph_out(morphout_reg, morphout_player);
     morphout_window.press_time = morphout_song.song_time - morphout_song.window_duration;
 
     auto morphout_obs = make_shape_gate(morphout_reg, Shape::Circle, constants::PLAYER_Y);
@@ -258,7 +258,7 @@ TEST_CASE("collision: finished song still requires active shape window",
     idle_song.finished = true;
     idle_shape.current = Shape::Circle;
     idle_window.target_shape = Shape::Circle;
-    idle_window.phase = WindowPhase::Idle;
+    set_window_phase_idle(idle_reg, idle_player);
 
     auto idle_obs = make_shape_gate(idle_reg, Shape::Circle, constants::PLAYER_Y);
 
@@ -279,7 +279,7 @@ TEST_CASE("collision: finished song still requires active shape window",
     active_song.song_time = 5.0f;
     active_shape.current = Shape::Circle;
     active_window.target_shape = Shape::Circle;
-    active_window.phase = WindowPhase::Active;
+    set_window_phase_active(active_reg, active_player);
     active_window.press_time = active_song.song_time;
 
     auto active_obs = make_shape_gate(active_reg, Shape::Circle, constants::PLAYER_Y);
@@ -315,7 +315,7 @@ TEST_CASE("collision: rhythm perfect increments perfect_count in SongResults", "
     auto& song = reg.ctx().get<SongState>();
 
     ps.current = Shape::Circle;
-    sw.phase = WindowPhase::Active;
+    set_window_phase_active(reg, player);
     sw.graded = false;
     sw.press_time = song.song_time;
 
@@ -507,7 +507,7 @@ TEST_CASE("scoring: collision_system alone does not mutate SongResults counts", 
     auto& song = reg.ctx().get<SongState>();
 
     ps.current = Shape::Circle;
-    sw.phase = WindowPhase::Active;
+    set_window_phase_active(reg, player);
     sw.graded = false;
     sw.press_time = song.song_time;
 

@@ -46,7 +46,7 @@ TEST_CASE("player_entity: ShapeWindow starts Idle targeting Hexagon", "[archetyp
 
     auto& sw = reg.get<ShapeWindow>(p);
     CHECK(sw.target_shape == Shape::Hexagon);
-    CHECK(sw.phase        == WindowPhase::Idle);
+    CHECK(window_phase_is_idle(reg, p));
 }
 
 TEST_CASE("player_entity: DrawSize matches PLAYER_SIZE", "[archetype][player]") {

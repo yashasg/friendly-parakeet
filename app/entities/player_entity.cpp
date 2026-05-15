@@ -22,8 +22,8 @@ entt::entity create_player_entity(entt::registry& reg) {
     {
         ShapeWindow sw;
         sw.target_shape = Shape::Hexagon;
-        sw.phase        = WindowPhase::Idle;
         reg.emplace<ShapeWindow>(player, sw);
+        // Idle phase = absence of all ShapeWindow*Tag (per #1202/#1204).
     }
     reg.emplace<Lane>(player);
     reg.emplace<VerticalState>(player);

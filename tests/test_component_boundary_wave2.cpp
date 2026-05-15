@@ -1,42 +1,21 @@
 // Wave-2 component boundary regression guards.
 //
 // Pins contracts for types that have been or are being relocated out of
-// app/components/ (wave-2 cleanup: window_phase.h, high_score.h,
-// text.h).
+// app/components/ (wave-2 cleanup: high_score.h, text.h).
 //
 // Includes are routed through stable aggregation headers so this file needs no
 // changes when individual moves complete:
 //
 //   test_helpers.h
-//     └─ components/player.h → components/window_phase.h (WindowPhase)
 //     └─ systems/high_score_system.h → HighScoreState
 //
-// Static assertions catch silent breakage if constants or ordinals are changed
-// during or after the header reorganisation.
+// Static assertions catch silent breakage if constants are changed during or
+// after the header reorganisation.
 
 #include <catch2/catch_test_macros.hpp>
 #include <type_traits>
 
-#include "test_helpers.h"        // WindowPhase (via player.h), HighScoreState (via high_score_system.h)
-
-// ── WindowPhase ordinal contract ─────────────────────────────────────────────
-//
-// rhythm_system and shape_window_system rely on the ordering of these values:
-//   Idle → MorphIn → Active → MorphOut (→ Idle)
-// Any reordering would silently break phase-progression logic in those systems
-// because they compare and advance the enum numerically.
-
-static_assert(static_cast<uint8_t>(WindowPhase::Idle)     == 0u,
-    "WindowPhase::Idle must be 0; shape_window_system uses zero-init as the reset sentinel");
-
-static_assert(static_cast<uint8_t>(WindowPhase::MorphIn)  == 1u,
-    "WindowPhase ordinals must be sequential (Idle=0, MorphIn=1, Active=2, MorphOut=3)");
-
-static_assert(static_cast<uint8_t>(WindowPhase::Active)   == 2u,
-    "WindowPhase ordinals must be sequential (Idle=0, MorphIn=1, Active=2, MorphOut=3)");
-
-static_assert(static_cast<uint8_t>(WindowPhase::MorphOut) == 3u,
-    "WindowPhase ordinals must be sequential (Idle=0, MorphIn=1, Active=2, MorphOut=3)");
+#include "test_helpers.h"        // HighScoreState (via high_score_system.h)
 
 // ── HighScoreState table constants ───────────────────────────────────────────
 //

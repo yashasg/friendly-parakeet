@@ -68,7 +68,7 @@ TEST_CASE("tick_playing_systems: collision resolves before active window expiry"
     song.song_time = 10.0f + song.window_duration;
     ps.current = Shape::Circle;
     sw.target_shape = Shape::Circle;
-    sw.phase = WindowPhase::Active;
+    set_window_phase_active(reg, player);
     sw.window_start = 10.0f;
     sw.window_timer = 0.0f;
     sw.press_time = song.song_time;
@@ -80,7 +80,7 @@ TEST_CASE("tick_playing_systems: collision resolves before active window expiry"
     tick_playing_systems(reg, 0.016f);
 
     CHECK(reg.ctx().get<SongResults>().perfect_count == 1);
-    CHECK(sw.phase == WindowPhase::MorphOut);
+    CHECK(window_phase_is_morph_out(reg, player));
     CHECK_THAT(sw.window_start, WithinAbs(10.0f + song.window_duration, 0.0001f));
 }
 
@@ -94,7 +94,7 @@ TEST_CASE("tick_playing_systems: shape window activates before collision", "[pha
     song.song_time = 10.0f;
     ps.current = Shape::Hexagon;
     sw.target_shape = Shape::Circle;
-    sw.phase = WindowPhase::MorphIn;
+    set_window_phase_morph_in(reg, player);
     sw.window_start = song.song_time - song.morph_duration - 0.01f;
     sw.window_timer = 0.0f;
     sw.press_time = song.song_time;
@@ -105,7 +105,7 @@ TEST_CASE("tick_playing_systems: shape window activates before collision", "[pha
 
     tick_playing_systems(reg, 0.016f);
 
-    CHECK(sw.phase == WindowPhase::Active);
+    CHECK(window_phase_is_active(reg, player));
     CHECK(ps.current == Shape::Circle);
     CHECK(reg.ctx().get<SongResults>().perfect_count == 1);
     CHECK(reg.ctx().get<SongResults>().miss_count == 0);

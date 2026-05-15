@@ -204,8 +204,55 @@ inline entt::entity make_rhythm_player(entt::registry& reg) {
     ps.current = Shape::Hexagon;
     auto& sw = reg.get<ShapeWindow>(player);
     sw.target_shape = Shape::Hexagon;
-    sw.phase = WindowPhase::Idle;
+    // Idle = absence of all ShapeWindow*Tag (#1202/#1204).
     return player;
+}
+
+// ── Shape window phase test helpers (#1202/#1204) ──────────────────────────
+// The former WindowPhase enum was eradicated in favour of per-phase tags on
+// the player entity. These helpers preserve the test-readable
+// "set the player into phase X" pattern that old `sw.phase = …` used.
+
+inline void set_window_phase_idle(entt::registry& reg, entt::entity player) {
+    reg.remove<ShapeWindowMorphInTag>(player);
+    reg.remove<ShapeWindowActiveTag>(player);
+    reg.remove<ShapeWindowMorphOutTag>(player);
+}
+
+inline void set_window_phase_morph_in(entt::registry& reg, entt::entity player) {
+    reg.remove<ShapeWindowActiveTag>(player);
+    reg.remove<ShapeWindowMorphOutTag>(player);
+    reg.emplace_or_replace<ShapeWindowMorphInTag>(player);
+}
+
+inline void set_window_phase_active(entt::registry& reg, entt::entity player) {
+    reg.remove<ShapeWindowMorphInTag>(player);
+    reg.remove<ShapeWindowMorphOutTag>(player);
+    reg.emplace_or_replace<ShapeWindowActiveTag>(player);
+}
+
+inline void set_window_phase_morph_out(entt::registry& reg, entt::entity player) {
+    reg.remove<ShapeWindowMorphInTag>(player);
+    reg.remove<ShapeWindowActiveTag>(player);
+    reg.emplace_or_replace<ShapeWindowMorphOutTag>(player);
+}
+
+inline bool window_phase_is_idle(const entt::registry& reg, entt::entity player) {
+    return !reg.any_of<ShapeWindowMorphInTag,
+                       ShapeWindowActiveTag,
+                       ShapeWindowMorphOutTag>(player);
+}
+
+inline bool window_phase_is_morph_in(const entt::registry& reg, entt::entity player) {
+    return reg.all_of<ShapeWindowMorphInTag>(player);
+}
+
+inline bool window_phase_is_active(const entt::registry& reg, entt::entity player) {
+    return reg.all_of<ShapeWindowActiveTag>(player);
+}
+
+inline bool window_phase_is_morph_out(const entt::registry& reg, entt::entity player) {
+    return reg.all_of<ShapeWindowMorphOutTag>(player);
 }
 
 // Creates a shape gate obstacle at given y, requiring given shape
