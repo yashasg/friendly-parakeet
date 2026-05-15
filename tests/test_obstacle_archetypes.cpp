@@ -51,7 +51,7 @@ TEST_CASE("entity: ShapeGate Circle - correct components and color", "[archetype
     entt::registry reg;
     auto e = spawn_obstacle(reg, {ObstacleKind::ShapeGate, 360.0f, -120.0f, Shape::Circle});
 
-    REQUIRE(reg.all_of<ObstacleTag, Vector2, DrawLayer, WorldTransform, Obstacle, RequiredShape, ShapeGateLane, DrawSize, Color>(e));
+    REQUIRE(reg.all_of<ObstacleTag, Vector2, WorldTransform, Obstacle, RequiredShape, ShapeGateLane, DrawSize, Color>(e));
     CHECK(!reg.all_of<uint8_t>(e));
     CHECK(!reg.all_of<RequiredLane>(e));
 
@@ -258,7 +258,7 @@ TEST_CASE("entity: SplitPath - RequiredShape and RequiredLane", "[archetype]") {
     auto e = spawn_obstacle(reg, {ObstacleKind::SplitPath, 360.0f, -120.0f,
                                    Shape::Square, uint8_t{0}, int8_t{2}});
 
-    REQUIRE(reg.all_of<ObstacleTag, Vector2, DrawLayer, WorldTransform, Obstacle, RequiredShape, RequiredLane, DrawSize, Color>(e));
+    REQUIRE(reg.all_of<ObstacleTag, Vector2, WorldTransform, Obstacle, RequiredShape, RequiredLane, DrawSize, Color>(e));
     CHECK(!reg.all_of<uint8_t>(e));
 
     CHECK(reg.get<Obstacle>(e).base_points == int16_t{constants::PTS_SPLIT_PATH});

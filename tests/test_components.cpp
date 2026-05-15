@@ -236,7 +236,6 @@ TEST_CASE("ecs: make_player creates proper entity", "[ecs]") {
     CHECK(reg.all_of<VerticalState>(p));
     CHECK(reg.all_of<Color>(p));
     CHECK(reg.all_of<DrawSize>(p));
-    CHECK(reg.all_of<DrawLayer>(p));
     CHECK(reg.all_of<TagWorldPass>(p));
 }
 

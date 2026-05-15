@@ -29,7 +29,6 @@ entt::entity spawn_obstacle_base(entt::registry& reg, const ObstacleSpawnParams&
 
     auto e = reg.create();
     reg.emplace<WorldTransform>(e, WorldTransform{{params.x, params.y}});
-    reg.emplace<DrawLayer>(e, Layer::Game);
     reg.emplace<TagWorldPass>(e);
 
     switch (params.kind) {

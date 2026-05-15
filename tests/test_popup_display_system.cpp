@@ -226,7 +226,7 @@ TEST_CASE("spawn_score_popup: creates the full popup display archetype",
     auto e = spawn_score_popup(reg, {100.0f, 200.0f, 50, TimingTier::Good});
 
     REQUIRE(reg.all_of<ScorePopup, PopupDisplay, Color, Vector2,
-                       WorldTransform, DrawLayer, TagHUDPass>(e));
+                       WorldTransform, TagHUDPass>(e));
     CHECK(reg.get<ScorePopup>(e).has_timing_tier);
     CHECK(reg.get<ScorePopup>(e).timing_tier == TimingTier::Good);
     CHECK(std::strcmp(reg.get<PopupDisplay>(e).text, "GOOD") == 0);
@@ -388,15 +388,6 @@ TEST_CASE("spawn_score_popup: default color when no timing tier",
     CHECK(c.r == 255);
     CHECK(c.g == 255);
     CHECK(c.b == 50);
-}
-
-TEST_CASE("spawn_score_popup: DrawLayer is Effects",
-          "[popup_entity][issue349]") {
-    entt::registry reg;
-    auto e = spawn_score_popup(reg, {0.0f, 0.0f, 100, std::nullopt});
-
-    REQUIRE(reg.all_of<DrawLayer>(e));
-    CHECK(reg.get<DrawLayer>(e).layer == Layer::Effects);
 }
 
 TEST_CASE("spawn_score_popup: entity carries TagHUDPass",
