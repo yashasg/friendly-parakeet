@@ -6,7 +6,6 @@
 #include "../components/rhythm.h"  // BeatInfo
 
 // Full construction parameters for an obstacle entity.
-// Subsumes ObstacleArchetypeInput + the scroll speed.
 struct ObstacleSpawnParams {
     ObstacleKind kind;
     float        x        = 0.0f;
