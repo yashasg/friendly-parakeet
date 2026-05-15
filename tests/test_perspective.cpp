@@ -124,9 +124,10 @@ TEST_CASE("game_camera_system drops stale MeshChild parents without crashing", "
     auto child = reg.create();
     reg.emplace<MeshChild>(
         child,
-        MeshChild{parent, 10.0f, 0.0f, 20.0f, 30.0f, 40.0f, WHITE, 0, MeshType::Slab}
+        MeshChild{parent, 10.0f, 0.0f, 20.0f, 30.0f, 40.0f, WHITE}
     );
-    reg.emplace<ModelTransform>(child, ModelTransform{MatrixIdentity(), WHITE, 0, MeshType::Slab});
+    reg.emplace<MeshKindSlab>(child);
+    reg.emplace<ModelTransform>(child, ModelTransform{MatrixIdentity(), WHITE});
     reg.emplace<TagWorldPass>(child);
 
     reg.destroy(parent);
@@ -163,9 +164,10 @@ TEST_CASE("game_camera_system rejects invalid MeshChild shape index", "[camera3d
     auto child = reg.create();
     reg.emplace<MeshChild>(
         child,
-        MeshChild{parent, 10.0f, 0.0f, 20.0f, 30.0f, 40.0f, WHITE, 255, MeshType::Shape}
+        MeshChild{parent, 10.0f, 0.0f, 20.0f, 30.0f, 40.0f, WHITE}
     );
-    reg.emplace<ModelTransform>(child, ModelTransform{MatrixIdentity(), WHITE, 255, MeshType::Shape});
+    reg.emplace<MeshKindShape>(child, MeshKindShape{255});
+    reg.emplace<ModelTransform>(child, ModelTransform{MatrixIdentity(), WHITE});
     reg.emplace<TagWorldPass>(child);
 
     REQUIRE_NOTHROW(game_camera_system(reg, 0.0f));
@@ -182,7 +184,8 @@ TEST_CASE("game_camera_system rejects invalid PlayerShape before mesh lookup", "
     reg.emplace<PlayerShape>(player, PlayerShape{static_cast<Shape>(255), 1.0f});
     reg.emplace<VerticalState>(player);
     reg.emplace<Color>(player, WHITE);
-    reg.emplace<ModelTransform>(player, ModelTransform{MatrixIdentity(), WHITE, 255, MeshType::Shape});
+    reg.emplace<ModelTransform>(player, ModelTransform{MatrixIdentity(), WHITE});
+    reg.emplace<MeshKindShape>(player, MeshKindShape{255});
     reg.emplace<TagWorldPass>(player);
 
     REQUIRE_NOTHROW(game_camera_system(reg, 0.0f));
@@ -214,9 +217,10 @@ TEST_CASE("game_camera_system: dense stale-parent cleanup stays within reserved 
         auto child = reg.create();
         reg.emplace<MeshChild>(
             child,
-            MeshChild{parent, static_cast<float>(i), 0.0f, 20.0f, 30.0f, 40.0f, WHITE, 0, MeshType::Slab}
+            MeshChild{parent, static_cast<float>(i), 0.0f, 20.0f, 30.0f, 40.0f, WHITE}
         );
-        reg.emplace<ModelTransform>(child, ModelTransform{MatrixIdentity(), WHITE, 0, MeshType::Slab});
+        reg.emplace<MeshKindSlab>(child);
+        reg.emplace<ModelTransform>(child, ModelTransform{MatrixIdentity(), WHITE});
         reg.emplace<TagWorldPass>(child);
         reg.destroy(parent);  // make MeshChild stale so cleanup path runs
     }

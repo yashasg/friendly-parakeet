@@ -58,6 +58,14 @@ struct TagWorldPass   {};  // drawn in BeginMode3D (3D world geometry)
 struct TagEffectsPass {};  // particles, post-process overlays
 struct TagHUDPass     {};  // screen-space UI elements
 
+// ── Mesh kind (per-tag table; pair with ModelTransform/MeshChild) ──
+// Replaces the former MeshType enum (issue #1202/#1204). Each kind drives
+// its own renderer transform — no `switch` on a discriminator. The Shape
+// kind carries an extra column (mesh_index) so it lives as a real struct
+// in app/components/render_mesh.h; the other two are zero-column tables.
+struct MeshKindSlab {};
+struct MeshKindQuad {};
+
 // ── Singletons ───────────────────────────────────────────────
 struct BeatMapTag {};
 struct SettingsTag {};

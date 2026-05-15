@@ -27,8 +27,9 @@ TEST_CASE("components: rendering components are safely default constructible",
     CHECK(model.tint.g == 255);
     CHECK(model.tint.b == 255);
     CHECK(model.tint.a == 255);
-    CHECK(model.mesh_index == uint8_t{0});
-    CHECK(model.mesh_type == MeshType::Shape);
+
+    MeshKindShape kind{};
+    CHECK(kind.mesh_index == uint8_t{0});
 
     MeshChild child{};
     const bool parent_is_null = child.parent == entt::null;
@@ -42,8 +43,6 @@ TEST_CASE("components: rendering components are safely default constructible",
     CHECK(child.tint.g == 255);
     CHECK(child.tint.b == 255);
     CHECK(child.tint.a == 255);
-    CHECK(child.mesh_index == uint8_t{0});
-    CHECK(child.mesh_type == MeshType::Shape);
 
     ObstacleChildren children{};
     CHECK(children.count == 0);

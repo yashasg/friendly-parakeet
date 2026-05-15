@@ -237,41 +237,55 @@ void game_camera_system(entt::registry& reg, [[maybe_unused]] float dt) {
 
 
     // 1. MeshChild transforms (multi-slab obstacles, ghost shapes)
+    // 1. MeshChild transforms (multi-slab obstacles, ghost shapes)
+    //    Existential processing: one transform per kind tag (issue #1202/#1204).
+    //    Stale children are batched across both tag views and destroyed once.
     {
-        auto view = reg.view<MeshChild>();
         auto* scratch = reg.ctx().find<MeshChildCleanupScratch>();
         if (!scratch) scratch = &reg.ctx().emplace<MeshChildCleanupScratch>();
         auto& stale_children = scratch->stale_children;
         stale_children.clear();
-        for (auto [entity, mc] : view.each()) {
+
+        auto record_stale_or_compute_z = [&](entt::entity entity, const MeshChild& mc,
+                                             float& out_z) -> bool {
             auto* parent_wt = reg.try_get<WorldTransform>(mc.parent);
             if (!parent_wt) {
                 if (stale_children.size() >= stale_children.capacity()) {
                     ++scratch->capacity_exceeded_count;
                 }
                 stale_children.push_back(entity);
+                return false;
+            }
+            out_z = parent_wt->position.y + mc.z_offset;
+            return true;
+        };
+
+        // Slab children: no per-kind columns.
+        for (auto [entity, mc] : reg.view<MeshChild, MeshKindSlab>().each()) {
+            float z = 0.0f;
+            if (!record_stale_or_compute_z(entity, mc, z)) continue;
+            reg.get_or_emplace<ModelTransform>(entity) =
+                ModelTransform{slab_matrix(mc.x, z, mc.width, mc.height, mc.depth),
+                                mc.tint};
+        }
+
+        // Shape children: kind row carries mesh_index column.
+        for (auto [entity, mc, kind] : reg.view<MeshChild, MeshKindShape>().each()) {
+            float z = 0.0f;
+            if (!record_stale_or_compute_z(entity, mc, z)) continue;
+            if (kind.mesh_index >= kShapeCount) {
+                TraceLog(LOG_WARNING, "game_camera_system skipped invalid MeshChild shape index %u",
+                         static_cast<unsigned>(kind.mesh_index));
+                reg.remove<ModelTransform>(entity);
                 continue;
             }
-            float z = parent_wt->position.y + mc.z_offset;
-
-            if (mc.mesh_type == MeshType::Slab) {
-                reg.get_or_emplace<ModelTransform>(entity) =
-                    ModelTransform{slab_matrix(mc.x, z, mc.width, mc.height, mc.depth),
-                                    mc.tint, 0, MeshType::Slab};
-            } else {
-                if (mc.mesh_index >= kShapeCount) {
-                    TraceLog(LOG_WARNING, "game_camera_system skipped invalid MeshChild shape index %u",
-                             static_cast<unsigned>(mc.mesh_index));
-                    reg.remove<ModelTransform>(entity);
-                    continue;
-                }
-                const auto& props = mesh_config.props[mc.mesh_index];
-                reg.get_or_emplace<ModelTransform>(entity) =
-                    ModelTransform{make_shape_matrix(mc.mesh_index, mc.x, 0.0f, z,
-                                                      mc.width, props.radius_scale),
-                                     mc.tint, mc.mesh_index, MeshType::Shape};
-            }
+            const auto& props = mesh_config.props[kind.mesh_index];
+            reg.get_or_emplace<ModelTransform>(entity) =
+                ModelTransform{make_shape_matrix(kind.mesh_index, mc.x, 0.0f, z,
+                                                  mc.width, props.radius_scale),
+                                 mc.tint};
         }
+
         for (auto entity : stale_children) {
             if (reg.valid(entity)) {
                 reg.destroy(entity);
@@ -291,6 +305,7 @@ void game_camera_system(entt::registry& reg, [[maybe_unused]] float dt) {
                 TraceLog(LOG_WARNING, "game_camera_system skipped invalid PlayerShape %d",
                          static_cast<int>(pshape.current));
                 reg.remove<ModelTransform>(entity);
+                reg.remove<MeshKindShape>(entity);
                 continue;
             }
             const auto mesh_index = static_cast<uint8_t>(shape_idx);
@@ -298,7 +313,8 @@ void game_camera_system(entt::registry& reg, [[maybe_unused]] float dt) {
             reg.get_or_emplace<ModelTransform>(entity) =
                 ModelTransform{make_shape_matrix(mesh_index, transform.position.x, y_3d,
                                                  transform.position.y, sz, props.radius_scale),
-                               col, mesh_index, MeshType::Shape};
+                               col};
+            reg.get_or_emplace<MeshKindShape>(entity).mesh_index = mesh_index;
         }
     }
 
@@ -313,7 +329,8 @@ void game_camera_system(entt::registry& reg, [[maybe_unused]] float dt) {
                 MatrixScale(sz, 1, sz),
                 MatrixTranslate(transform.position.x - half, 0, transform.position.y - half));
             reg.get_or_emplace<ModelTransform>(entity) =
-                ModelTransform{mat, col, 0, MeshType::Quad};
+                ModelTransform{mat, col};
+            reg.get_or_emplace<MeshKindQuad>(entity);
         }
     }
 
