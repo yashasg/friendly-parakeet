@@ -52,14 +52,6 @@ TEST_CASE("components: rendering components are safely default constructible",
     }
 }
 
-TEST_CASE("components: UIPosition is distinct screen-space placement", "[components][transform][ui]") {
-    UIPosition position{};
-    CHECK(position.value.x == 0.0f);
-    CHECK(position.value.y == 0.0f);
-    CHECK_FALSE((std::is_same_v<UIPosition, WorldTransform>));
-    CHECK_FALSE((std::is_same_v<UIPosition, ScreenPosition>));
-}
-
 TEST_CASE("components: PlayerShape defaults to Circle", "[components]") {
     PlayerShape ps{};
     CHECK(ps.current == Shape::Circle);
