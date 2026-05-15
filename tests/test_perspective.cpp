@@ -12,6 +12,7 @@
 #include "systems/runtime_systems.h"
 #include "systems/all_systems.h"
 #include <raylib.h>
+#include <raymath.h>
 #include <cmath>
 
 using Catch::Matchers::WithinAbs;
@@ -125,7 +126,7 @@ TEST_CASE("game_camera_system drops stale MeshChild parents without crashing", "
         child,
         MeshChild{parent, 10.0f, 0.0f, 20.0f, 30.0f, 40.0f, WHITE, 0, MeshType::Slab}
     );
-    reg.emplace<ModelTransform>(child, ModelTransform{glm::mat4{1.0f}, WHITE, 0, MeshType::Slab});
+    reg.emplace<ModelTransform>(child, ModelTransform{MatrixIdentity(), WHITE, 0, MeshType::Slab});
     reg.emplace<TagWorldPass>(child);
 
     reg.destroy(parent);
@@ -164,7 +165,7 @@ TEST_CASE("game_camera_system rejects invalid MeshChild shape index", "[camera3d
         child,
         MeshChild{parent, 10.0f, 0.0f, 20.0f, 30.0f, 40.0f, WHITE, 255, MeshType::Shape}
     );
-    reg.emplace<ModelTransform>(child, ModelTransform{glm::mat4{1.0f}, WHITE, 255, MeshType::Shape});
+    reg.emplace<ModelTransform>(child, ModelTransform{MatrixIdentity(), WHITE, 255, MeshType::Shape});
     reg.emplace<TagWorldPass>(child);
 
     REQUIRE_NOTHROW(game_camera_system(reg, 0.0f));
@@ -181,7 +182,7 @@ TEST_CASE("game_camera_system rejects invalid PlayerShape before mesh lookup", "
     reg.emplace<PlayerShape>(player, PlayerShape{static_cast<Shape>(255), 1.0f});
     reg.emplace<VerticalState>(player);
     reg.emplace<Color>(player, WHITE);
-    reg.emplace<ModelTransform>(player, ModelTransform{glm::mat4{1.0f}, WHITE, 255, MeshType::Shape});
+    reg.emplace<ModelTransform>(player, ModelTransform{MatrixIdentity(), WHITE, 255, MeshType::Shape});
     reg.emplace<TagWorldPass>(player);
 
     REQUIRE_NOTHROW(game_camera_system(reg, 0.0f));
@@ -215,7 +216,7 @@ TEST_CASE("game_camera_system: dense stale-parent cleanup stays within reserved 
             child,
             MeshChild{parent, static_cast<float>(i), 0.0f, 20.0f, 30.0f, 40.0f, WHITE, 0, MeshType::Slab}
         );
-        reg.emplace<ModelTransform>(child, ModelTransform{glm::mat4{1.0f}, WHITE, 0, MeshType::Slab});
+        reg.emplace<ModelTransform>(child, ModelTransform{MatrixIdentity(), WHITE, 0, MeshType::Slab});
         reg.emplace<TagWorldPass>(child);
         reg.destroy(parent);  // make MeshChild stale so cleanup path runs
     }

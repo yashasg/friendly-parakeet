@@ -5,7 +5,6 @@
   "description": "Endless runner with shape-shifting and burnout scoring",
   "dependencies": [
     "entt",
-    "glm",
     "magic-enum",
     "raylib",
     "raygui",

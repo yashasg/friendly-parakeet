@@ -129,16 +129,16 @@ read infrequently or only by one system.
 /// Iterated by: scroll_system, game_camera_system, ui_camera_system,
 ///              collision_system, obstacle_despawn_system
 struct WorldTransform {
-    glm::vec2 position = {0.0f, 0.0f};
-    float     rotation = 0.0f;
-    glm::vec2 scale    = {1.0f, 1.0f};
+    Vector2 position = {0.0f, 0.0f};
+    float   rotation = 0.0f;
+    Vector2 scale    = {1.0f, 1.0f};
 };
 
 /// Movement vector in pixels/second for entities that integrate position.
 /// Iterated with WorldTransform by motion_system every frame.
 /// Rhythm obstacles use BeatInfo and are positioned by scroll_system instead.
 struct MotionVelocity {
-    glm::vec2 value = {0.0f, 0.0f};
+    Vector2 value = {0.0f, 0.0f};
 };
 ```
 

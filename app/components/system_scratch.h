@@ -1,7 +1,7 @@
 #pragma once
 
 #include <entt/entt.hpp>
-#include <glm/vec2.hpp>
+#include <raylib.h>
 #include <cstdint>
 #include <vector>
 
@@ -15,7 +15,7 @@ struct MissRecord {
 
 struct HitRecord {
     entt::entity e = entt::null;
-    glm::vec2 popup_xy = {0.0f, 0.0f};
+    Vector2 popup_xy = {0.0f, 0.0f};
     Obstacle obs;
     bool has_timing = false;
     TimingGrade timing{};

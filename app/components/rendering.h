@@ -4,9 +4,8 @@
 #include <cstdint>
 #include <cmath>
 #include <entt/entt.hpp>
-#include <glm/mat4x4.hpp>
-#include <glm/vec2.hpp>
 #include <raylib.h>
+#include <raymath.h>
 
 #include "tags/tags.h"
 
@@ -33,8 +32,8 @@ struct ScreenTransform {
     float scale    = 1.0f;
 };
 
-[[nodiscard]] inline glm::vec2 screen_to_virtual(const glm::vec2& screen_pos,
-                                                  const ScreenTransform& st) noexcept {
+[[nodiscard]] inline Vector2 screen_to_virtual(const Vector2& screen_pos,
+                                                const ScreenTransform& st) noexcept {
     assert(std::isfinite(st.scale));
     assert(st.scale > 0.0f);
     const float inv_scale = 1.0f / st.scale;
@@ -49,10 +48,10 @@ struct ScreenTransform {
 enum class MeshType : uint8_t { Shape, Slab, Quad };
 
 struct ModelTransform {
-    glm::mat4 mat{1.0f};
-    Color     tint{255, 255, 255, 255};
-    uint8_t   mesh_index = 0;  // index into ShapeMeshes.shapes[] for Shape type
-    MeshType  mesh_type = MeshType::Shape;
+    Matrix   mat = MatrixIdentity();
+    Color    tint{255, 255, 255, 255};
+    uint8_t  mesh_index = 0;  // index into ShapeMeshes.shapes[] for Shape type
+    MeshType mesh_type = MeshType::Shape;
 };
 
 // Visual mesh child; game_camera_system resolves parent transform + offsets.

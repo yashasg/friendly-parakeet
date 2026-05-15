@@ -208,7 +208,7 @@ void input_system(entt::registry& reg, float raw_dt) {
         input.active_source = InputSource::None;
         input.suppress_mouse_release = false;
         const Vector2 mouse_pos = GetMousePosition();
-        const glm::vec2 pos = screen_to_virtual({mouse_pos.x, mouse_pos.y}, st);
+        const Vector2 pos = screen_to_virtual({mouse_pos.x, mouse_pos.y}, st);
         input.start_x = input.curr_x = input.end_x = pos.x;
         input.start_y = input.curr_y = input.end_y = pos.y;
         input.duration = 0.0f;
@@ -238,7 +238,7 @@ void input_system(entt::registry& reg, float raw_dt) {
         for (int touch_index = 0; touch_index < points_to_scan; ++touch_index) {
             const int touch_id = GetTouchPointId(touch_index);
             const Vector2 touch_pos = GetTouchPosition(touch_index);
-            const glm::vec2 tp = screen_to_virtual({touch_pos.x, touch_pos.y}, st);
+            const Vector2 tp = screen_to_virtual({touch_pos.x, touch_pos.y}, st);
             int slot_index = find_touch_slot(input, touch_id);
             if (slot_index < 0) {
                 const bool button_zone = tp.y >= zone_y;

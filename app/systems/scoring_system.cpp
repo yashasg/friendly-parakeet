@@ -10,6 +10,8 @@
 #include "../components/rhythm.h"
 #include "../util/rhythm_math.h"
 #include "../constants.h"
+#include <raylib.h>
+#include <raymath.h>
 #include <algorithm>
 #include <cmath>
 
@@ -54,11 +56,11 @@ Color score_particle_color(const HitRecord& record) {
     return Color{220, 220, 255, 220};
 }
 
-void spawn_score_particles(entt::registry& reg, const glm::vec2& position, Color color) {
+void spawn_score_particles(entt::registry& reg, const Vector2& position, Color color) {
     constexpr float kLifetime = 0.35f;
     constexpr float kSize = 10.0f;
     constexpr float kSpeed = 90.0f;
-    constexpr glm::vec2 kDirections[] = {
+    constexpr Vector2 kDirections[] = {
         {1.0f, 0.0f},
         {-1.0f, 0.0f},
         {0.0f, 1.0f},
@@ -72,7 +74,7 @@ void spawn_score_particles(entt::registry& reg, const glm::vec2& position, Color
         reg.emplace<ParticleTag>(particle);
         reg.emplace<ParticleData>(particle, kSize, kLifetime, kLifetime);
         reg.emplace<WorldTransform>(particle, WorldTransform{position});
-        reg.emplace<MotionVelocity>(particle, MotionVelocity{dir * kSpeed});
+        reg.emplace<MotionVelocity>(particle, MotionVelocity{Vector2Scale(dir, kSpeed)});
         reg.emplace<Color>(particle, color);
         reg.emplace<TagEffectsPass>(particle);
     }
