@@ -52,7 +52,7 @@ TEST_CASE("entity: ShapeGate Circle - correct components and color", "[archetype
     auto e = spawn_obstacle(reg, {ObstacleKind::ShapeGate, 360.0f, -120.0f, Shape::Circle});
 
     REQUIRE(reg.all_of<ObstacleTag, MotionVelocity, DrawLayer, WorldTransform, Obstacle, RequiredShape, ShapeGateLane, DrawSize, Color>(e));
-    CHECK(!reg.all_of<BlockedLanes>(e));
+    CHECK(!reg.all_of<uint8_t>(e));
     CHECK(!reg.all_of<RequiredLane>(e));
 
     CHECK(reg.get<Obstacle>(e).base_points == int16_t{constants::PTS_SHAPE_GATE});
@@ -163,7 +163,7 @@ TEST_CASE("entity: mesh factory rejects invalid RequiredShape before children", 
         entt::registry reg;
         auto parent = make_mesh_factory_obstacle(reg);
         reg.emplace<RequiredShape>(parent, invalid_shape);
-        reg.emplace<BlockedLanes>(parent, uint8_t{0b101});
+        reg.emplace<uint8_t>(parent, uint8_t{0b101});
 
         CHECK_THROWS_AS(spawn_obstacle_meshes(reg, parent), std::logic_error);
         check_no_mesh_children(reg, parent);
@@ -259,7 +259,7 @@ TEST_CASE("entity: SplitPath - RequiredShape and RequiredLane", "[archetype]") {
                                    Shape::Square, uint8_t{0}, int8_t{2}});
 
     REQUIRE(reg.all_of<ObstacleTag, MotionVelocity, DrawLayer, WorldTransform, Obstacle, RequiredShape, RequiredLane, DrawSize, Color>(e));
-    CHECK(!reg.all_of<BlockedLanes>(e));
+    CHECK(!reg.all_of<uint8_t>(e));
 
     CHECK(reg.get<Obstacle>(e).base_points == int16_t{constants::PTS_SPLIT_PATH});
     CHECK(reg.get<RequiredShape>(e).shape == Shape::Square);

@@ -59,9 +59,12 @@ struct ShapeGateLane {
     int8_t lane = 0;
 };
 
-struct BlockedLanes {
-    uint8_t mask = 0;
-};
+// Lane block mask: bit i set ⇒ lane i is blocked (0/1/2 are lane indices).
+// Stored as a raw uint8_t component per wrapper-noise removal (issue #1198);
+// the entity's ObstacleTag + archetype shape (presence/absence of
+// RequiredShape / RequiredLane) carries the semantic role. No other
+// uint8_t-typed component is emplaced anywhere in the codebase, so the slot
+// is unambiguous.
 
 struct RequiredLane {
     int8_t lane = 0;

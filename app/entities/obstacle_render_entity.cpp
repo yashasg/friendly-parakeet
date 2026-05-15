@@ -97,7 +97,7 @@ void spawn_obstacle_meshes(entt::registry& reg, entt::entity logical) {
         ? ObstacleKind::OnsetMarker
         : obstacle_kind_from_components(
             reg.all_of<RequiredShape>(logical),
-            reg.all_of<BlockedLanes>(logical),
+            reg.all_of<uint8_t>(logical),
             reg.all_of<RequiredLane>(logical));
 
     switch (kind) {
@@ -118,10 +118,10 @@ void spawn_obstacle_meshes(entt::registry& reg, entt::entity logical) {
         case ObstacleKind::LaneBlock: {
             // Legacy component fixture path. Active beatmaps and obstacle
             // factories reject LaneBlock; retained for focused ECS tests.
-            auto* blocked = reg.try_get<BlockedLanes>(logical);
+            auto* blocked = reg.try_get<uint8_t>(logical);
             if (blocked)
                 for (int i = 0; i < constants::LANE_COUNT; ++i)
-                    if ((blocked->mask >> i) & 1)
+                    if ((*blocked >> i) & 1)
                         add_slab_child(reg, logical, constants::LANE_X[i]-dsz.w/2,
                                        dsz.w, dsz.h, constants::OBSTACLE_3D_HEIGHT, col);
             break;
@@ -129,7 +129,7 @@ void spawn_obstacle_meshes(entt::registry& reg, entt::entity logical) {
         case ObstacleKind::ComboGate: {
             // Legacy component fixture path. Active beatmaps and obstacle
             // factories reject ComboGate; retained for focused ECS tests.
-            auto* blocked = reg.try_get<BlockedLanes>(logical);
+            auto* blocked = reg.try_get<uint8_t>(logical);
             auto* req = reg.try_get<RequiredShape>(logical);
             uint8_t mesh_index = 0;
             if (req) {
@@ -137,14 +137,14 @@ void spawn_obstacle_meshes(entt::registry& reg, entt::entity logical) {
             }
             if (blocked)
                 for (int i = 0; i < constants::LANE_COUNT; ++i)
-                    if ((blocked->mask >> i) & 1)
+                    if ((*blocked >> i) & 1)
                         add_slab_child(reg, logical, constants::LANE_X[i]-120,
                                        240.0f, dsz.h, constants::OBSTACLE_3D_HEIGHT, col);
             if (req) {
                 int open = 1;
                 if (blocked)
                     for (int i = 0; i < constants::LANE_COUNT; ++i)
-                        if (!((blocked->mask >> i) & 1)) { open = i; break; }
+                        if (!((*blocked >> i) & 1)) { open = i; break; }
                 add_shape_child(reg, logical, mesh_index, constants::LANE_X[open],
                                  0.0f, 30, {255, 255, 255, 180});
             }

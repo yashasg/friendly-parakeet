@@ -119,7 +119,7 @@ void session_log_on_obstacle_spawn(entt::registry& reg, entt::entity entity) {
         ? ObstacleKind::OnsetMarker
         : obstacle_kind_from_components(
             reg.all_of<RequiredShape>(entity),
-            reg.all_of<BlockedLanes>(entity),
+            reg.all_of<uint8_t>(entity),
             reg.all_of<RequiredLane>(entity));
     const std::string_view kind_name = enum_name_or_unknown(kind);
     const std::string_view shape_name = req ? enum_name_or_unknown(req->shape) : std::string_view{"-"};
@@ -152,7 +152,7 @@ void session_log_on_scored(entt::registry& reg, entt::entity entity) {
     float drift = beat ? (t - beat->arrival_time) : 0.0f;
     const ObstacleKind kind = obstacle_kind_from_components(
         reg.all_of<RequiredShape>(entity),
-        reg.all_of<BlockedLanes>(entity),
+        reg.all_of<uint8_t>(entity),
         reg.all_of<RequiredLane>(entity));
     const std::string_view kind_name = enum_name_or_unknown(kind);
 
