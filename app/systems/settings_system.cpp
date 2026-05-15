@@ -1,26 +1,13 @@
-#include "settings.h"
-#include <fstream>
+#include "settings_system.h"
+
 #include <algorithm>
 #include <cstdint>
+#include <fstream>
 #include <limits>
 #include <stdexcept>
 #include <system_error>
-#include <utility>
 
-entt::entity create_settings_entity(entt::registry& reg,
-                                    SettingsState state,
-                                    SettingsPersistence persistence) {
-    auto existing = reg.view<SettingsTag>();
-    if (existing.begin() != existing.end()) {
-        throw std::logic_error("SettingsTag entity already exists");
-    }
-
-    auto entity = reg.create();
-    reg.emplace<SettingsTag>(entity);
-    reg.emplace<SettingsState>(entity, state);
-    reg.emplace<SettingsPersistence>(entity, std::move(persistence));
-    return entity;
-}
+#include "tags/tags.h"
 
 SettingsState* find_settings_state(entt::registry& reg) {
     auto view = reg.view<SettingsTag, SettingsState>();
@@ -100,19 +87,6 @@ const SettingsPersistence& settings_persistence(const entt::registry& reg) {
         return *persistence;
     }
     throw std::logic_error("Settings entity is missing; call create_settings_entity() first");
-}
-
-void destroy_settings_entity(entt::registry& reg) {
-    auto view = reg.view<SettingsTag>();
-    auto it = view.begin();
-    if (it == view.end()) {
-        return;
-    }
-    const auto entity = *it;
-    if (++it != view.end()) {
-        throw std::logic_error("multiple Settings entities exist");
-    }
-    reg.destroy(entity);
 }
 
 namespace settings {

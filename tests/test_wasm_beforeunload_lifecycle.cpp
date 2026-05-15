@@ -81,7 +81,7 @@ TEST_CASE("wasm persistence uses explicit IDBFS policy and save flush hooks", "[
     const fs::path root = find_repo_root();
     const std::string cmake_source = read_file(root / "CMakeLists.txt");
     const std::string policy_source = read_file(root / "app" / "systems" / "persistence_policy_system.cpp");
-    const std::string settings_source = read_file(root / "app" / "entities" / "settings.cpp");
+    const std::string settings_source = read_file(root / "app" / "systems" / "settings_system.cpp");
     const std::string high_score_source = read_file(root / "app" / "systems" / "high_score_system.cpp");
 
     CHECK(cmake_source.find("-sFORCE_FILESYSTEM=1") != std::string::npos);
