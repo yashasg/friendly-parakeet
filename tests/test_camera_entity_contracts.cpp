@@ -122,10 +122,16 @@ TEST_CASE("camera entity: accessor game_camera() returns mutable reference",
     entt::registry reg;
     spawn_game_camera(reg);
 
-    // Must not crash; returned reference must be valid.
+    // Mutate through the returned reference, then re-fetch the underlying
+    // component via the registry's entity id and verify the sentinel is
+    // observable.  This proves the accessor returns a reference to the
+    // canonical entity's component, not a copy or a different entity's.
+    constexpr float sentinel = 12345.0f;
     GameCamera& gc = game_camera(reg);
-    (void)gc;
-    SUCCEED("game_camera() accessor did not crash");
+    gc.cam.fovy = sentinel;
+
+    auto entity = reg.view<GameCamera>().front();
+    CHECK(reg.get<GameCamera>(entity).cam.fovy == sentinel);
 }
 
 TEST_CASE("camera entity: accessors throw before camera entities are spawned",
@@ -141,9 +147,16 @@ TEST_CASE("camera entity: accessor ui_camera() returns mutable reference",
     entt::registry reg;
     spawn_ui_camera(reg);
 
+    // Mutate through the returned reference, then re-fetch the underlying
+    // component via the registry's entity id and verify the sentinel is
+    // observable.  This proves the accessor returns a reference to the
+    // canonical entity's component, not a copy or a different entity's.
+    constexpr float sentinel = 12345.0f;
     UICamera& uc = ui_camera(reg);
-    (void)uc;
-    SUCCEED("ui_camera() accessor did not crash");
+    uc.cam.zoom = sentinel;
+
+    auto entity = reg.view<UICamera>().front();
+    CHECK(reg.get<UICamera>(entity).cam.zoom == sentinel);
 }
 
 TEST_CASE("camera entity: destroying game_cam entity does not affect ui_cam",
