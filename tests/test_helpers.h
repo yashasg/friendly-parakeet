@@ -40,6 +40,8 @@ inline entt::registry make_registry() {
         GamePhase::Playing, 0.0f, false, GamePhase::Playing
     });
     reg.ctx().emplace<ScoreState>();
+    reg.ctx().emplace<ScoreDisplay>();
+    reg.ctx().emplace<CurrentSongHighScore>();
     create_settings_entity(reg);  // defaults: haptics_enabled=true
     reg.ctx().emplace<LevelSelectState>();
     create_beat_map_entity(reg);

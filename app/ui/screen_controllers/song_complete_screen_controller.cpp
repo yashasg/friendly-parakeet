@@ -27,12 +27,13 @@ void draw_song_complete_value(Vector2 anchor, float x, float y, float w, float h
 
 void draw_song_complete_scoreboard(entt::registry& reg, const SongCompleteLayoutState& state) {
     const auto& score = reg.ctx().get<ScoreState>();
+    const auto& current = reg.ctx().get<CurrentSongHighScore>();
 
     char value[32] = {};
     std::snprintf(value, sizeof(value), "%d", score.score);
     draw_song_complete_value(state.Anchor01, 160, 463, 400, 50, value, 36);
 
-    std::snprintf(value, sizeof(value), "%d", score.high_score);
+    std::snprintf(value, sizeof(value), "%d", current.value);
     draw_song_complete_value(state.Anchor01, 160, 573, 400, 50, value, 36);
 
     if (const auto* result = reg.ctx().find<TerminalResultState>(); result && result->new_best) {

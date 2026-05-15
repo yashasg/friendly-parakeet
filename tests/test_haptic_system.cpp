@@ -67,8 +67,9 @@ TEST_CASE("game state haptic: DeathCrash enqueued on game over", "[haptic]") {
 TEST_CASE("game state haptic: NewHighScore enqueued when score exceeds high score on game over", "[haptic]") {
     auto reg = make_registry();
     auto& score = reg.ctx().get<ScoreState>();
+    auto& current = reg.ctx().get<CurrentSongHighScore>();
     score.score = 1000;
-    score.high_score = 500;
+    current.value = 500;
     reg.ctx().get<GameState>().transition_pending = true;
     reg.ctx().get<GameState>().next_phase = GamePhase::GameOver;
 
@@ -84,8 +85,9 @@ TEST_CASE("game state haptic: NewHighScore enqueued when score exceeds high scor
 TEST_CASE("game state haptic: NewHighScore NOT enqueued when no new high score on game over", "[haptic]") {
     auto reg = make_registry();
     auto& score = reg.ctx().get<ScoreState>();
+    auto& current = reg.ctx().get<CurrentSongHighScore>();
     score.score = 400;
-    score.high_score = 500;
+    current.value = 500;
     reg.ctx().get<GameState>().transition_pending = true;
     reg.ctx().get<GameState>().next_phase = GamePhase::GameOver;
 

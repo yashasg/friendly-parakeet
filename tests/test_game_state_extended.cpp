@@ -100,8 +100,9 @@ TEST_CASE("game_state: song complete waits for scored obstacle to be destroyed",
 TEST_CASE("game_state: enter_song_complete updates high score", "[gamestate]") {
     auto reg = make_registry();
     auto& score = reg.ctx().get<ScoreState>();
+    auto& current = reg.ctx().get<CurrentSongHighScore>();
     score.score = 8000;
-    score.high_score = 5000;
+    current.value = 5000;
 
     auto& gs = reg.ctx().get<GameState>();
     gs.transition_pending = true;
@@ -109,7 +110,7 @@ TEST_CASE("game_state: enter_song_complete updates high score", "[gamestate]") {
 
     game_state_system(reg, 0.016f);
 
-    CHECK(score.high_score == 8000);
+    CHECK(current.value == 8000);
     CHECK(gs.phase == GamePhase::SongComplete);
     const auto& terminal = reg.ctx().get<TerminalResultState>();
     CHECK(terminal.new_best);
@@ -119,8 +120,9 @@ TEST_CASE("game_state: enter_song_complete updates high score", "[gamestate]") {
 TEST_CASE("game_state: enter_song_complete preserves higher high_score", "[gamestate]") {
     auto reg = make_registry();
     auto& score = reg.ctx().get<ScoreState>();
+    auto& current = reg.ctx().get<CurrentSongHighScore>();
     score.score = 1000;
-    score.high_score = 9000;
+    current.value = 9000;
 
     auto& gs = reg.ctx().get<GameState>();
     gs.transition_pending = true;
@@ -128,7 +130,7 @@ TEST_CASE("game_state: enter_song_complete preserves higher high_score", "[games
 
     game_state_system(reg, 0.016f);
 
-    CHECK(score.high_score == 9000);
+    CHECK(current.value == 9000);
 }
 
 TEST_CASE("game_state: song_complete button choice restart", "[gamestate]") {
@@ -528,8 +530,9 @@ TEST_CASE("song_complete: score.score is retained (not zeroed) after enter_song_
           "[gamestate][song_complete]") {
     auto reg = make_registry();
     auto& score = reg.ctx().get<ScoreState>();
-    score.score      = 12345;
-    score.high_score = 10000;
+    auto& current = reg.ctx().get<CurrentSongHighScore>();
+    score.score = 12345;
+    current.value = 10000;
 
     auto& gs = reg.ctx().get<GameState>();
     gs.transition_pending = true;

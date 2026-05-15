@@ -192,18 +192,19 @@ TEST_CASE("scoring: SFX pushed on score", "[scoring]") {
     CHECK(drain_sfx_events(reg).count > 0);
 }
 
-TEST_CASE("scoring: displayed_score rolls up toward score", "[scoring]") {
+TEST_CASE("scoring: ScoreDisplay rolls up toward score", "[scoring]") {
     auto reg = make_registry();
     auto& score = reg.ctx().get<ScoreState>();
+    auto& display = reg.ctx().get<ScoreDisplay>();
     score.score = 1000;
-    score.displayed_score = 0;
+    display.displayed = 0;
 
     scoring_system(reg, 0.1f);
     popup_feedback_system(reg, 0.1f);
     energy_system(reg, 0.1f);
 
-    CHECK(score.displayed_score > 0);
-    CHECK(score.displayed_score <= score.score);
+    CHECK(display.displayed > 0);
+    CHECK(display.displayed <= score.score);
 }
 
 TEST_CASE("scoring: not in Playing phase skips processing", "[scoring]") {
@@ -297,20 +298,21 @@ TEST_CASE("scoring: obstacle entity cleaned up after scoring", "[scoring]") {
     CHECK(reg.valid(obs));
 }
 
-TEST_CASE("scoring: displayed_score does not overshoot score", "[scoring]") {
+TEST_CASE("scoring: ScoreDisplay does not overshoot score", "[scoring]") {
     auto reg = make_registry();
     auto& score = reg.ctx().get<ScoreState>();
+    auto& display = reg.ctx().get<ScoreDisplay>();
     score.score = 100;
-    score.displayed_score = 99;
+    display.displayed = 99;
 
     // Very large dt that would normally overshoot
     scoring_system(reg, 10.0f);
     popup_feedback_system(reg, 10.0f);
     energy_system(reg, 10.0f);
 
-    // displayed_score should not exceed score (capped)
+    // displayed should not exceed score (capped)
     // Note: score increases by dt * PTS_PER_SECOND too
-    CHECK(score.displayed_score <= score.score);
+    CHECK(display.displayed <= score.score);
 }
 
 // On-beat shape gate scores at base points (timing only, no burnout multiplier).

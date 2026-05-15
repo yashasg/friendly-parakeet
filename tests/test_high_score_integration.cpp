@@ -74,7 +74,7 @@ TEST_CASE("High score integration: setup_play_session loads selected song diffic
 
     CHECK(reg.ctx().get<HighScoreSession>().key_hash
         == high_score::make_key_hash("1_stomper", "easy"));
-    CHECK(reg.ctx().get<ScoreState>().high_score == 1234);
+    CHECK(reg.ctx().get<CurrentSongHighScore>().value == 1234);
     CHECK_FALSE(reg.view<GameCamera>().empty());
     CHECK_FALSE(reg.view<UICamera>().empty());
 }
@@ -184,7 +184,7 @@ TEST_CASE("Play session: high score key uses loaded fallback difficulty",
     CHECK(beat_map(reg).difficulty == "medium");
     CHECK(reg.ctx().get<HighScoreSession>().key_hash
         == high_score::make_key_hash("shapeshifter_issue847", "medium"));
-    CHECK(reg.ctx().get<ScoreState>().high_score == 4321);
+    CHECK(reg.ctx().get<CurrentSongHighScore>().value == 4321);
 }
 
 TEST_CASE("Play session: SongResults total_notes excludes onset marker metadata",
@@ -225,7 +225,8 @@ TEST_CASE("High score integration: new song-complete high score persists",
     high_score::set_score(high_scores, "song_001|easy", 1000);
 
     auto& score = reg.ctx().get<ScoreState>();
-    score.high_score = 1000;
+    auto& current = reg.ctx().get<CurrentSongHighScore>();
+    current.value = 1000;
     score.score = 2500;
 
     auto& gs = reg.ctx().get<GameState>();
@@ -234,7 +235,7 @@ TEST_CASE("High score integration: new song-complete high score persists",
 
     game_state_system(reg, 0.016f);
 
-    CHECK(score.high_score == 2500);
+    CHECK(current.value == 2500);
     CHECK(high_score::get_score(high_scores, "song_001|easy") == 2500);
 
     HighScoreState loaded;
@@ -257,7 +258,8 @@ TEST_CASE("High score integration: lower game-over score does not overwrite pers
     high_score::set_score(high_scores, "song_001|easy", 3000);
 
     auto& score = reg.ctx().get<ScoreState>();
-    score.high_score = 3000;
+    auto& current = reg.ctx().get<CurrentSongHighScore>();
+    current.value = 3000;
     score.score = 1000;
 
     auto& gs = reg.ctx().get<GameState>();
@@ -266,7 +268,7 @@ TEST_CASE("High score integration: lower game-over score does not overwrite pers
 
     game_state_system(reg, 0.016f);
 
-    CHECK(score.high_score == 3000);
+    CHECK(current.value == 3000);
     CHECK(high_score::get_score(high_scores, "song_001|easy") == 3000);
     CHECK_FALSE(std::filesystem::exists(file));
 
@@ -284,7 +286,8 @@ TEST_CASE("High score integration: missing active entry does not report new best
     reg.ctx().get<HighScoreSession>().key_hash = high_score::make_key_hash("overflow", "hard");
 
     auto& score = reg.ctx().get<ScoreState>();
-    score.high_score = 1000;
+    auto& current = reg.ctx().get<CurrentSongHighScore>();
+    current.value = 1000;
     score.score = 2500;
 
     auto& gs = reg.ctx().get<GameState>();
@@ -293,7 +296,7 @@ TEST_CASE("High score integration: missing active entry does not report new best
 
     game_state_system(reg, 0.016f);
 
-    CHECK(score.high_score == 1000);
+    CHECK(current.value == 1000);
     CHECK_FALSE(reg.ctx().get<TerminalResultState>().new_best);
     CHECK_FALSE(reg.ctx().get<HighScorePersistence>().dirty);
     CHECK(high_score::get_score(high_scores, "overflow|hard") == 0);
@@ -320,7 +323,8 @@ TEST_CASE("High score integration: failed save keeps dirty state for retry",
     high_score::set_score(high_scores, "song_001|easy", 1000);
 
     auto& score = reg.ctx().get<ScoreState>();
-    score.high_score = 1000;
+    auto& current = reg.ctx().get<CurrentSongHighScore>();
+    current.value = 1000;
     score.score = 2500;
 
     auto& gs = reg.ctx().get<GameState>();
@@ -371,7 +375,8 @@ TEST_CASE("High score bootstrap: persistence path is populated for save call sit
         GamePhase::Playing, 0.0f, true, GamePhase::SongComplete
     };
     auto& score = reg.ctx().get<ScoreState>();
-    score.high_score = 1000;
+    auto& current = reg.ctx().get<CurrentSongHighScore>();
+    current.value = 1000;
     score.score = 2500;
 
     auto& high_scores = reg.ctx().get<HighScoreState>();

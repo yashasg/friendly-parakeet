@@ -280,10 +280,11 @@ void scoring_system(entt::registry& reg, float dt) {
     }
 
     // Smooth score display
+    auto& display = reg.ctx().get<ScoreDisplay>();
     float display_speed = 5000.0f * dt;
-    if (score.displayed_score < score.score) {
-        score.displayed_score += static_cast<int>(display_speed);
-        if (score.displayed_score > score.score)
-            score.displayed_score = score.score;
+    if (display.displayed < score.score) {
+        display.displayed += static_cast<int>(display_speed);
+        if (display.displayed > score.score)
+            display.displayed = score.score;
     }
 }

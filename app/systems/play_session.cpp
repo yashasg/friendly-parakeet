@@ -167,6 +167,8 @@ void setup_play_session(entt::registry& reg) {
             session->key_hash = 0;
         }
         erase_ctx_if_exists<ScoreState>(reg);
+        erase_ctx_if_exists<ScoreDisplay>(reg);
+        erase_ctx_if_exists<CurrentSongHighScore>(reg);
         erase_ctx_if_exists<SongState>(reg);
         erase_ctx_if_exists<EnergyState>(reg);
         erase_ctx_if_exists<SongResults>(reg);
@@ -180,6 +182,8 @@ void setup_play_session(entt::registry& reg) {
     runtime_system_scratch_reserve(reg, beatmap.beats.size());
 
     assign_or_emplace_ctx(reg, ScoreState{});
+    assign_or_emplace_ctx(reg, ScoreDisplay{});
+    assign_or_emplace_ctx(reg, CurrentSongHighScore{});
 
     // Wire high score: derive song_id from beatmap filename and set HighScoreSession::key_hash.
     // The key string is built once in a stack buffer (no heap); ensure_entry pre-registers
@@ -244,11 +248,11 @@ void setup_play_session(entt::registry& reg) {
     }
     assign_or_emplace_ctx(reg, GameOverState{});
 
-    // Load stored high score for this song+difficulty into ScoreState
+    // Load stored high score for this song+difficulty into CurrentSongHighScore
     if (auto* hs = reg.ctx().find<HighScoreState>()) {
-        auto& score = reg.ctx().get<ScoreState>();
+        auto& current = reg.ctx().get<CurrentSongHighScore>();
         const auto* session = reg.ctx().find<HighScoreSession>();
-        score.high_score = session ? high_score::get_current_high_score(*hs, *session) : 0;
+        current.value = session ? high_score::get_current_high_score(*hs, *session) : 0;
     }
 
     spawn_session_player(reg);
