@@ -308,8 +308,8 @@ struct SongResults {
 
 ```
   ┌─ INPUT ────────────────────────────────────────────────────┐
-  │ gesture_system / keyboard_system              [no change]  │
-  │   → fires ShapeChangeEvent                                 │
+  │ input_system                                  [no change]  │
+  │   → enqueues ButtonPressEvent / GoEvent                    │
   └────────────────────────────────────────────────────────────┘
            ↓
   ┌─ RHYTHM ENGINE ────────────────────────────────────────────┐
