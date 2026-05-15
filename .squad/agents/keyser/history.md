@@ -44,3 +44,10 @@
 - Integration points
 
 **Status:** Complete. Document ready for team review.
+
+## Learnings
+
+- The biggest component leak is directory gravity: once a type becomes a plain struct, event payloads, scratch buffers, and session state all drift into `app/components/` even when no entity owns them.
+- The decisive smell is lifecycle, not syntax. If a type only appears in `ctx().get<>`, `dispatcher.enqueue<>`, or reserve/clear helpers, it belongs beside its owning system.
+- The raylib-first rule makes the leak more obvious: once the god-structs split, many leaf wrappers stop being defensible at all.
+- 2026-05-14T22:27:50.210-07:00: Keaton ran the parallel audit lens on `app/components/*.h`; both passes converged that raw raylib/std substitutions should stay selective wherever EnTT type identity would otherwise collide.

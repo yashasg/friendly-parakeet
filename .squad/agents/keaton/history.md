@@ -25,6 +25,8 @@ Status: COMPLETE. All validation/build tests passed.
 
 ## Learnings
 
+- 2026-05-14T22:27:50.210-07:00: Raw raylib `Vector2` is only a safe direct ECS replacement when a registry/archetype has one semantic `Vector2` slot. In this tree, `DrawSize`, `MotionVelocity`, `UIPosition`, and `ScreenPosition` already create same-type collision pressure, so the practical path is selective substitution (`RNGState -> std::mt19937`, config-only `ShapeProps`) rather than a blanket component collapse.
+
 - 2026-05-11T22:42:23.114-07:00: Runtime frame orchestration is split between variable-rate pre/post stages in `app/game_loop.cpp` (input/test-player, camera, render, audio/haptics) and deterministic fixed-step gameplay in `app/systems/fixed_tick_runner.cpp`; `game_state_system` is the sole semantic input-event drain (`disp.update<GoEvent/ButtonPressEvent>()`).
 
 - 2026-05-11T01:19:23.327-07:00: Desktop shape key routing is produced in `app/systems/input_system.cpp`; keep keyboard slot-to-shape bindings centralized (now `app/input/keyboard_shape_mapping.h`) and regression-check lane alignment via `tests/test_input_pipeline_behavior.cpp` + `lane_for_shape`.
@@ -131,3 +133,4 @@ See `.squad/agents/keaton/history-archive.md` for earlier work:
 - Performance-safe migration roadmap
 
 **Status:** Complete. System design document synthesized and ready for team review.
+- 2026-05-14T22:27:50.210-07:00: Keyser ran the parallel audit lens on `app/components/*.h`; both passes converged that lifecycle ownership, not plain-struct syntax, decides whether a type belongs in `app/components/`.

@@ -1,3 +1,25 @@
+### 2026-05-14T22:27:50.210-07:00: app/components parallel audit verdict (consolidated)
+
+**By:** Keyser, Keaton  
+**Scope:** `app/components/*.h` ECS-purity audit + raylib/std substitution scan  
+**Source inbox files:** `keyser-components-raylib-audit.md`, `keaton-components-raylib-substitution.md`
+
+**What:**
+- `app/components/` stays reserved for atomic, queryable entity-owned data. Dispatcher payloads, ctx scratch buffers, session state, persistence helpers, and render-config helpers should move beside their owning systems/modules.
+- Parallel verdicts converged on **KEEP 8, MOVE 8, SPLIT 6, DELETE 1, standalone REPLACE 0**.
+- Safe direct substitutions are selective rather than blanket: `RNGState -> std::mt19937` is approved; config-only `ShapeProps`/`ShapeMeshConfig` are low-risk; blanket raw `Vector2` replacement for `DrawSize`, `MotionVelocity`, `UIPosition`, or `ScreenPosition` is rejected under current archetypes.
+- Recommended order: delete `rng.h`; move dispatcher/event, scratch, input, gameplay-intent, and test-player/session state out of `app/components/`; then split `high_score.h`, `scoring.h`, `song_state.h`, `game_state.h`, `transform.h`, and `rendering.h`.
+
+**Why:**
+- Lifecycle ownership, not plain-struct syntax, is the deciding boundary for the component layer.
+- Raw raylib/std leaf types are only safe when a registry/context has one semantic slot for that exact type; current entities already multiplex multiple `Vector2`-shaped roles and lane/bitmask scalar wrappers.
+- Keeping named component identity preserves readable EnTT views, future same-entity coexistence, and safer backend-boundary refactors.
+
+**Evidence:**
+- Keyser: ECS-purity audit classified 23 headers with no standalone raw-raylib replacement wins.
+- Keaton: substitution scan confirmed `Vector2`/scalar type-collision risk on multiplexed entity archetypes and recommended selective substitution only.
+
+---
 
 ### Constants codified (top of `tools/level_designer.py`)
 
