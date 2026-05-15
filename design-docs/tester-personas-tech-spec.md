@@ -149,7 +149,7 @@ while (accumulator >= FIXED_DT) {
 ## Skill Config Table (constexpr, not a component)
 
 ```cpp
-// app/components/test_player.h
+// app/systems/test_player.h
 
 enum class TestPlayerSkill : uint8_t { Pro = 0, Good = 1, Bad = 2 };
 
@@ -203,7 +203,7 @@ separate `need_shape` boolean. Same pattern for `target_lane = -1` and
 ## TestPlayerState (context singleton)
 
 ```cpp
-// app/components/test_player.h
+// app/systems/test_player.h
 
 struct TestPlayerState {
     // ── Hot ──────────────────────────────────────────────────
@@ -608,10 +608,9 @@ inside `tick_playing_systems`.
 
 ```
   app/
-    components/
+    systems/
       test_player.h            ← TestPlayerSkill, SkillConfig, TestPlayerAction,
       │                           TestPlayerState (context singleton)
-    systems/
       test_player_system.cpp   ← AI: perceive, decide, wait, execute
       │                           Platform-portable: enqueues events
       │                           directly on the EnTT dispatcher

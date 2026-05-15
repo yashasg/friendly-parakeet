@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include "test_helpers.h"
-#include "components/test_player.h"
+#include "systems/test_player.h"
 #include "content/level_content_config.h"
 #include "systems/test_player_session.h"
 #include "systems/session_logger_system.h"

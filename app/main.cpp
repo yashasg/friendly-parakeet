@@ -1,5 +1,5 @@
 #include "game_loop.h"
-#include "components/test_player.h"
+#include "systems/test_player.h"
 #include "content/level_content_config.h"
 
 #include <cstdio>

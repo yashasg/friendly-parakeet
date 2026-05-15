@@ -1,6 +1,6 @@
 #pragma once
 
-#include "player.h"
+#include "../components/player.h"
 #include "tags/tags.h"
 #include <entt/entity/entity.hpp>
 #include <entt/core/enum.hpp>

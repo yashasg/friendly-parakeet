@@ -2,7 +2,7 @@
 
 #include <entt/entt.hpp>
 #include <cstdint>
-#include "../components/test_player.h"
+#include "test_player.h"
 #include "../content/level_content_config.h"
 
 struct TestPlayerSessionState {

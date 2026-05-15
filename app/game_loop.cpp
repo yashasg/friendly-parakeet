@@ -11,7 +11,7 @@
 #include "components/rhythm.h"
 #include "components/music.h"
 #include "components/rendering.h"
-#include "components/test_player.h"
+#include "systems/test_player.h"
 #include "components/obstacle.h"
 #include "systems/all_systems.h"
 #include "systems/game_phase_transition.h"
