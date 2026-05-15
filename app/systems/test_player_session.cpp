@@ -3,7 +3,7 @@
 #include "../content/level_content_config.h"
 #include "../components/obstacle.h"
 #include "../components/scoring.h"
-#include "../systems/session_logger_system.h"
+#include "session_logger_system.h"
 
 #include <raylib.h>
 #include <ctime>

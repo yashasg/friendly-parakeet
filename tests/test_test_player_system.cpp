@@ -2,7 +2,7 @@
 #include "test_helpers.h"
 #include "components/test_player.h"
 #include "content/level_content_config.h"
-#include "session/test_player_session.h"
+#include "systems/test_player_session.h"
 #include "systems/session_logger_system.h"
 #include <cstdio>
 #include <string>

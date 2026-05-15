@@ -7,7 +7,7 @@
 #include "entities/camera_entity.h"
 #include "entities/obstacle_entity.h"
 #include "entities/obstacle_render_entity.h"
-#include "session/play_session.h"
+#include "systems/play_session.h"
 #include "test_helpers.h"
 #include "systems/high_score_system.h"
 
