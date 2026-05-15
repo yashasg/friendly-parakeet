@@ -1,4 +1,12 @@
 
+## ECS Architecture Canon (2026-05-15)
+
+**Canon location:** `.squad/decisions.md` (appended 2026-05-15T06:15:00Z by Scribe)  
+**Source file:** `.squad/decisions/inbox/keyser-ecs-architecture-canon.md` (merged and deleted)  
+**Context:** Keaton participated in earlier components audit work this session arc (#1194–#1196). Canon codifies six foundational ECS principles grounded in user directives. Reference this canon for all future ECS work, architectures audits, and folder layout decisions.
+
+---
+
 ## 2026-05-08: Input Dead Code Cleanup (Scribe Log)
 
 Team session: dead code elimination in input routing.
