@@ -18,7 +18,6 @@
 #include "components/rhythm.h"
 #include "util/rhythm_math.h"
 #include "components/high_score.h"
-#include "components/rng.h"
 #include "components/gameplay_intents.h"
 #include "constants.h"
 #include "entities/beat_map.h"
@@ -48,7 +47,6 @@ inline entt::registry make_registry() {
     reg.ctx().emplace<HighScoreState>();
     reg.ctx().emplace<HighScorePersistence>();
     reg.ctx().emplace<GameOverState>();
-    reg.ctx().emplace<RNGState>();
     runtime_system_scratch_init(reg);
     return reg;
 }
