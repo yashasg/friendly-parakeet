@@ -6,6 +6,17 @@
 
 #include "../constants.h"
 
+// Letterbox scale/offset: window to virtual space. camera_system ctx singleton,
+// recomputed once per frame by compute_screen_transform() before input_system
+// runs. Coordinate-conversion helper screen_to_virtual() lives in
+// app/systems/camera_system.h. Relocated out of app/components/rendering.h
+// (issue #1194 SPLIT).
+struct ScreenTransform {
+    float offset_x = 0.0f;
+    float offset_y = 0.0f;
+    float scale    = 1.0f;
+};
+
 // Per-frame render parameters computed from SongState beat pulse.
 struct FloorParams {
     float   size  = 0.0f;
