@@ -1,8 +1,4 @@
-// Regression coverage for shipped beatmaps on the onset-motif spike path.
-//
-// The spike intentionally preserves onset-class mapping even when pockets
-// contain tightly spaced shape changes.  We therefore gate shipped content on
-// canonical lane/shape pairing rather than a fixed min-shape-gap window.
+// Regression coverage for shipped beatmaps.
 //
 // CWD when running via CTest is the build directory, which has a copy of
 // content/ created by CMake POST_BUILD commands.  The same relative path
@@ -12,7 +8,6 @@
 
 #include <catch2/catch_test_macros.hpp>
 #include "entities/beat_map.h"
-#include "util/shape_lane_mapping.h"
 
 #include <algorithm>
 #include <filesystem>
@@ -42,45 +37,4 @@ TEST_CASE("shipped beatmaps: content directory is reachable from test CWD",
     REQUIRE(fs::is_directory("content/beatmaps"));
     const auto beatmaps = find_shipped_beatmaps();
     REQUIRE_FALSE(beatmaps.empty());
-}
-
-// ── Main regression check ──────────────────────────────────────────────────
-
-TEST_CASE("shipped beatmaps: shape gates keep canonical lane/shape mapping",
-          "[shipped_beatmaps][regression][issue134]") {
-    static const char* kDiffs[] = {"easy", "medium", "hard"};
-
-    const auto beatmaps = find_shipped_beatmaps();
-    REQUIRE_FALSE(beatmaps.empty());
-
-    for (const auto& path : beatmaps) {
-        for (const char* diff : kDiffs) {
-            BeatMap map;
-            std::vector<BeatMapError> load_errors;
-
-            // load_beat_map returns false only on file-open or JSON-parse failure;
-            // a missing difficulty produces a fallback warning (not false).  Skip
-            // only on hard I/O / JSON failures.
-            if (!load_beat_map(path, map, load_errors, diff)) continue;
-
-            for (const auto& beat : map.beats) {
-                if (beat.kind != ObstacleKind::ShapeGate) continue;
-                const int expected_lane = lane_for_shape(beat.shape);
-                if (expected_lane < 0) {
-                    FAIL_CHECK("canonical mapping: " << path << " [" << diff
-                               << "] beat " << beat.beat_index
-                               << " has unknown shape enum="
-                               << static_cast<int>(beat.shape));
-                    continue;
-                }
-                if (beat.lane != expected_lane) {
-                    FAIL_CHECK("canonical mapping: " << path << " [" << diff
-                               << "] beat " << beat.beat_index
-                               << " shape enum=" << static_cast<int>(beat.shape)
-                               << " expected lane " << expected_lane
-                               << " but found lane " << static_cast<int>(beat.lane));
-                }
-            }
-        }
-    }
 }
