@@ -24,22 +24,27 @@ std::filesystem::path repo_header(const char* rel) {
 TEST_CASE("component headers use raylib types directly (post #1199)", "[components][boundary][issue-1199]") {
     const std::string transform = read_text(repo_header("app/components/transform.h"));
     const std::string rendering = read_text(repo_header("app/components/rendering.h"));
+    const std::string render_mesh = read_text(repo_header("app/components/render_mesh.h"));
     const std::string text = read_text(repo_header("app/components/text.h"));
 
     CHECK(transform.find("#include <raylib.h>") != std::string::npos);
-    CHECK(rendering.find("#include <raylib.h>") != std::string::npos);
+    // Post #1194 SPLIT: rendering.h is a back-compat shim. Matrix/Color now
+    // live in render_mesh.h alongside ModelTransform/MeshChild, which is the
+    // canonical raylib-types contract this test guards.
+    CHECK(render_mesh.find("#include <raylib.h>") != std::string::npos);
     CHECK(text.find("#include <raylib.h>") == std::string::npos);
 
     CHECK(transform.find("Vector2") != std::string::npos);
-    CHECK(rendering.find("Matrix") != std::string::npos);
-    // Vector2 is no longer required in rendering.h: the only consumer
-    // (screen_to_virtual) was moved to app/systems/camera_system.h to keep
-    // the components header data-only (issue #1196).
-    CHECK(rendering.find("Color") != std::string::npos);
+    CHECK(render_mesh.find("Matrix") != std::string::npos);
+    CHECK(render_mesh.find("Color") != std::string::npos);
 
     CHECK(transform.find("glm::") == std::string::npos);
     CHECK(rendering.find("glm::") == std::string::npos);
+    CHECK(render_mesh.find("glm::") == std::string::npos);
     CHECK(rendering.find("Vec2f") == std::string::npos);
     CHECK(rendering.find("Mat4f") == std::string::npos);
     CHECK(rendering.find("TintColor") == std::string::npos);
+    CHECK(render_mesh.find("Vec2f") == std::string::npos);
+    CHECK(render_mesh.find("Mat4f") == std::string::npos);
+    CHECK(render_mesh.find("TintColor") == std::string::npos);
 }

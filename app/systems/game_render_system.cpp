@@ -1,7 +1,7 @@
 #include "all_systems.h"
 #include "runtime_systems.h"
 #include "floor_render_system.h"
-#include "../components/rendering.h"
+#include "../components/render_mesh.h"
 #include "../components/game_state.h"
 #include "../util/shape_lane_mapping.h"
 #include "camera_system.h"
