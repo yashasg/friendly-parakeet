@@ -18,7 +18,7 @@
 #include "components/rhythm.h"
 #include "util/rhythm_math.h"
 #include "components/high_score.h"
-#include "components/gameplay_intents.h"
+#include "systems/gameplay_intents.h"
 #include "constants.h"
 #include "entities/beat_map.h"
 #include "entities/obstacle_render_entity.h"

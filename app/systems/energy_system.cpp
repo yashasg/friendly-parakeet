@@ -1,6 +1,6 @@
 #include "all_systems.h"
 #include "../components/game_state.h"
-#include "../components/gameplay_intents.h"
+#include "gameplay_intents.h"
 #include "../components/rhythm.h"
 #include "../constants.h"
 #include <raymath.h>
