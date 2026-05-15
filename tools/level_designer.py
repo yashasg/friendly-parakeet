@@ -162,7 +162,6 @@ DIFFICULTY_KINDS = {
     "medium": {"shape_gate"},
     "hard":   {"shape_gate"},
 }
-UNREADABLE_KINDS = {"low_bar", "high_bar"}
 MAX_EMPTY_GAP = {"easy": 40, "medium": 33, "hard": 32}
 MAX_BEAT_DIFF = {diff: gap + 1 for diff, gap in MAX_EMPTY_GAP.items()}
 MIN_SHAPE_CHANGE_GAP = 3
@@ -1117,10 +1116,6 @@ def lane_of(obs, fallback=1):
 
 def is_shape_gate(obs):
     return obs.get("kind") == "shape_gate"
-
-
-def is_unreadable_kind(obs):
-    return obs.get("kind") in UNREADABLE_KINDS
 
 
 def clamp_lane(lane):
@@ -2832,15 +2827,6 @@ def is_readable_gap_one_family(left, right):
     )
 
 
-def has_readable_gap_one_neighbors(previous, left, right, following):
-    """No bar obstacle may sit within 2 beats around a gap=1 pair."""
-    if previous and left["beat"] - previous["beat"] <= 2 and is_unreadable_kind(previous):
-        return False
-    if following and following["beat"] - right["beat"] <= 2 and is_unreadable_kind(following):
-        return False
-    return True
-
-
 def clean_gap_one_early(obstacles, difficulty):
     """RULE: gap=1 pairs must obey per-difficulty readability policy."""
     if len(obstacles) < 2:
@@ -2869,9 +2855,6 @@ def clean_gap_one_early(obstacles, difficulty):
                 gap_one_run = 0
                 continue
 
-            previous = result[-2] if len(result) > 1 else None
-            following = obstacles[i + 1] if i + 1 < len(obstacles) else None
-
             violation = False
             if difficulty == "easy":
                 violation = True
@@ -2888,8 +2871,6 @@ def clean_gap_one_early(obstacles, difficulty):
                 )
 
             if not is_readable_gap_one_family(left, right):
-                violation = True
-            if not has_readable_gap_one_neighbors(previous, left, right, following):
                 violation = True
 
             if violation:
