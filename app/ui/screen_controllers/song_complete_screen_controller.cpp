@@ -3,6 +3,7 @@
 #include "../../components/game_state.h"
 #include "../../components/scoring.h"
 #include "../../components/song_state.h"
+#include "../../components/energy_bar.h"
 #include "../../constants.h"
 #include "screen_controller_base.h"
 #include <entt/entt.hpp>

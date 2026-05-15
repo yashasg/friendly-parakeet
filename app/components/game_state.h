@@ -54,3 +54,17 @@ struct LevelSelectState {
     int selected_difficulty  = 1;  // default medium
     bool confirmed          = false;
 };
+
+// ── Game Over Cause (singleton) ─────────────────────
+// Tracks the most recent reason the player's run ended.  Set by the
+// system that triggered the end-of-run condition (currently only
+// energy depletion) and read by the Game Over screen to surface a
+// one-line, platform-neutral, colorblind-safe reason.
+enum class DeathCause : uint8_t {
+    None = 0,
+    EnergyDepleted = 1,
+};
+
+struct GameOverState {
+    DeathCause cause = DeathCause::None;
+};

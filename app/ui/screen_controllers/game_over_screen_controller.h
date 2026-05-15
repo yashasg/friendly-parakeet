@@ -3,7 +3,7 @@
 #include <entt/entt.hpp>
 #include <raylib.h>
 
-#include "../../components/song_state.h"
+#include "../../components/game_state.h"
 
 void init_game_over_screen_ui();
 void render_game_over_screen_ui(entt::registry& reg);
