@@ -1,6 +1,6 @@
 #include "all_systems.h"
+#include "obstacle_despawn_system.h"
 #include "../components/obstacle.h"
-#include "../components/system_scratch.h"
 #include "../components/transform.h"
 #include "../constants.h"
 #include "../entities/obstacle_render_entity.h"

@@ -1,6 +1,6 @@
 #include "all_systems.h"
+#include "particle_system.h"
 #include "../components/particle.h"
-#include "../components/system_scratch.h"
 #include "../components/transform.h"
 #include "../components/rendering.h"
 #include "../constants.h"

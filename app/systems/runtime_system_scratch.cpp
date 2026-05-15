@@ -1,7 +1,12 @@
 #include "all_systems.h"
+#include "camera_system.h"
+#include "game_state_system.h"
+#include "obstacle_despawn_system.h"
+#include "particle_system.h"
+#include "popup_display_system.h"
+#include "scoring_system.h"
 #include "../components/gameplay_intents.h"
 #include "../components/rendering.h"
-#include "../components/system_scratch.h"
 
 #include <algorithm>
 #include <cstddef>

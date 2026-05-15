@@ -4,8 +4,19 @@
 #include "../rendering/camera_resources.h"
 #include <cassert>
 #include <cmath>
+#include <cstdint>
 #include <entt/entt.hpp>
 #include <raylib.h>
+#include <vector>
+
+// System-private state for camera_system's mesh-child reconciliation pass.
+// Stored in registry context, not emplaced on entities — this is per-system
+// scratch, not component data. Relocated out of
+// app/components/system_scratch.h (issue #1196).
+struct MeshChildCleanupScratch {
+    std::vector<entt::entity> stale_children;
+    uint32_t capacity_exceeded_count = 0;
+};
 
 namespace camera {
 
