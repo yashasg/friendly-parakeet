@@ -1,10 +1,20 @@
 #pragma once
 
+#include "../constants.h"
 #include "tags/tags.h"
 
-// Entity-backed HUD state for the survival energy meter.
-// EnergyState remains the gameplay resource; these components hold only the
-// per-frame visual contract consumed by the gameplay HUD renderer.
+// Energy-bar data: the gameplay-resource singleton (EnergyState) and the
+// per-frame visual contract consumed by the gameplay HUD renderer
+// (EnergyBarLayout / EnergyBarVisual).
+
+// ── Energy State (singleton) ────────────────────────
+// Survival energy resource. Mutated by gameplay systems (collision, energy);
+// rendered via the smoothed EnergyBarVisual layer below.
+struct EnergyState {
+    float energy      = constants::ENERGY_START;   // [0.0, 1.0] — current energy
+    float display     = constants::ENERGY_START;   // smoothed for rendering (lerps toward energy)
+    float flash_timer = 0.0f;   // > 0 when bar should flash (drain event)
+};
 
 struct EnergyBarLayout {
     float x = 16.0f;

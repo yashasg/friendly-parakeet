@@ -3,7 +3,11 @@
 #include "../constants.h"
 
 #include <cstddef>
-#include <cstdint>
+
+// EnergyState lives in components/energy_bar.h (gameplay-resource singleton).
+// GameOverState / DeathCause live in components/game_state.h (terminal-phase data).
+// Only song-lifecycle singletons (timing/playback state and song-scope result
+// tallies) remain in this header.
 
 // ── Song State (singleton, lives in registry context) ─
 // Emplaced once in game_loop.cpp; reset and populated by setup_play_session()
@@ -36,27 +40,6 @@ struct SongState {
 
     // ── Beat-schedule cursor (per-frame, reset at session init) ─────────────
     size_t next_spawn_idx = 0;     // advanced each frame by beat_scheduler_system
-};
-
-// ── Energy State (singleton) ────────────────────────
-struct EnergyState {
-    float energy      = constants::ENERGY_START;   // [0.0, 1.0] — current energy
-    float display     = constants::ENERGY_START;   // smoothed for rendering (lerps toward energy)
-    float flash_timer = 0.0f;   // > 0 when bar should flash (drain event)
-};
-
-// ── Game Over Cause (singleton) ─────────────────────
-// Tracks the most recent reason the player's run ended.  Set by the
-// system that triggered the end-of-run condition (currently only
-// energy depletion) and read by the Game Over screen to surface a
-// one-line, platform-neutral, colorblind-safe reason.
-enum class DeathCause : uint8_t {
-    None = 0,
-    EnergyDepleted = 1,
-};
-
-struct GameOverState {
-    DeathCause cause = DeathCause::None;
 };
 
 // ── Song Results (singleton, accumulates during play) ─
