@@ -68,7 +68,8 @@ static entt::entity add_slab_child(entt::registry& reg, entt::entity parent,
     require_child_capacity(reg, parent);
     auto e = reg.create();
     PendingEntity pending{reg, e};
-    reg.emplace<MeshChild>(e, MeshChild{parent, x, 0.0f, w, d, h, tint, 0, MeshType::Slab});
+    reg.emplace<MeshChild>(e, MeshChild{parent, x, 0.0f, w, d, h, tint});
+    reg.emplace<MeshKindSlab>(e);
     reg.emplace<TagWorldPass>(e);
     append_child(reg, parent, e);
     pending.release();
@@ -81,8 +82,8 @@ static entt::entity add_shape_child(entt::registry& reg, entt::entity parent,
     require_child_capacity(reg, parent);
     auto e = reg.create();
     PendingEntity pending{reg, e};
-    reg.emplace<MeshChild>(e, MeshChild{parent, cx, z_offset, size, 0.0f, 0.0f, tint,
-                                        mesh_index, MeshType::Shape});
+    reg.emplace<MeshChild>(e, MeshChild{parent, cx, z_offset, size, 0.0f, 0.0f, tint});
+    reg.emplace<MeshKindShape>(e, MeshKindShape{mesh_index});
     reg.emplace<TagWorldPass>(e);
     append_child(reg, parent, e);
     pending.release();

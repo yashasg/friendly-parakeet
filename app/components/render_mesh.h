@@ -11,17 +11,28 @@
 // obstacles, popups, particles, mesh children) — not obstacle-specific.
 //
 // Relocated out of app/components/rendering.h (issue #1194 SPLIT).
-
-enum class MeshType : uint8_t { Shape, Slab, Quad };
+//
+// Per-mesh dispatch lives on its own per-kind table (existential processing,
+// issue #1202/#1204). A drawable entity carries `ModelTransform` plus one of:
+//   - `MeshKindShape{mesh_index}` (defined here — carries the shape lookup index)
+//   - `MeshKindSlab` (empty tag in app/tags/tags.h)
+//   - `MeshKindQuad` (empty tag in app/tags/tags.h)
+// The renderer iterates one view per kind tag; no `switch` on a discriminator.
 
 struct ModelTransform {
-    Matrix   mat = MatrixIdentity();
-    Color    tint{255, 255, 255, 255};
-    uint8_t  mesh_index = 0;  // index into ShapeMeshes.shapes[] for Shape type
-    MeshType mesh_type = MeshType::Shape;
+    Matrix mat = MatrixIdentity();
+    Color  tint{255, 255, 255, 255};
+};
+
+// Shape-kind row: column is the index into ShapeMeshes.shapes[]. Non-empty
+// (1NF) so it lives here, not in app/tags/tags.h (which is empty tags only).
+struct MeshKindShape {
+    uint8_t mesh_index = 0;
 };
 
 // Visual mesh child; game_camera_system resolves parent transform + offsets.
+// Pair with one of MeshKindShape / MeshKindSlab on the same entity to pick
+// the matrix builder and renderer.
 struct MeshChild {
     entt::entity parent = entt::null;
     float x = 0.0f;             // absolute X position in game coords
@@ -30,6 +41,4 @@ struct MeshChild {
     float depth = 0.0f;         // slab depth (game coords)
     float height = 0.0f;        // slab height (game coords)
     Color tint{255, 255, 255, 255};
-    uint8_t mesh_index = 0;  // index into ShapeMeshes.shapes[] for Shape type
-    MeshType mesh_type = MeshType::Shape;
 };

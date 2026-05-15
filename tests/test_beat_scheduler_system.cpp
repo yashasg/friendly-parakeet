@@ -332,8 +332,8 @@ TEST_CASE("beat_scheduler: spawns OnsetMarker as visible non-scorable cue",
         const auto child = children.children[0];
         REQUIRE(reg.valid(child));
         REQUIRE(reg.all_of<MeshChild>(child));
+        CHECK(reg.all_of<MeshKindSlab>(child));
         const auto& mesh = reg.get<MeshChild>(child);
-        CHECK(mesh.mesh_type == MeshType::Slab);
         CHECK_THAT(mesh.width, Catch::Matchers::WithinAbs(constants::SCREEN_W_F, 0.01f));
 
         wt.position.y = constants::DESTROY_Y + 10.0f;

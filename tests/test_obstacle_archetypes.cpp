@@ -106,8 +106,9 @@ TEST_CASE("entity: obstacle mesh overflow does not create orphan MeshChild", "[a
         auto child = reg.create();
         reg.emplace<MeshChild>(child, MeshChild{
             parent, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f,
-            Color{255, 255, 255, 255}, 0, MeshType::Slab
+            Color{255, 255, 255, 255}
         });
+        reg.emplace<MeshKindSlab>(child);
         children.children[children.count++] = child;
     }
     reg.emplace<ObstacleTag>(parent);

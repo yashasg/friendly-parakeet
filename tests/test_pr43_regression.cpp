@@ -92,10 +92,10 @@ TEST_CASE("MeshChild: depth field stores DrawSize.h (scroll-axis) for LaneBlock"
     const float expected_depth  = reg.get<DrawSize>(obs).h;
     const float expected_height = constants::OBSTACLE_3D_HEIGHT;
 
-    auto view = reg.view<MeshChild>();
+    auto view = reg.view<MeshChild, MeshKindSlab>();
     int count = 0;
     for (auto [e, mc] : view.each()) {
-        if (mc.mesh_type != MeshType::Slab) continue;
+        (void)e;
         // depth must equal the DrawSize.h (scroll-axis thickness)
         CHECK_THAT(mc.depth,  WithinAbs(expected_depth,  1e-3f));
         // height must equal the 3D height constant (vertical Y dimension)
@@ -127,11 +127,13 @@ TEST_CASE("MeshChild: ShapeGate renders shape-only (no side slabs)",
 
     int slab_count = 0;
     int shape_count = 0;
-    auto view = reg.view<MeshChild>();
-    for (auto [e, mc] : view.each()) {
-        (void)e;
-        if (mc.mesh_type == MeshType::Slab) ++slab_count;
-        if (mc.mesh_type == MeshType::Shape) ++shape_count;
+    for (auto [e, mc] : reg.view<MeshChild, MeshKindSlab>().each()) {
+        (void)e; (void)mc;
+        ++slab_count;
+    }
+    for (auto [e, mc, kind] : reg.view<MeshChild, MeshKindShape>().each()) {
+        (void)e; (void)mc; (void)kind;
+        ++shape_count;
     }
     REQUIRE(slab_count == 0);
     REQUIRE(shape_count >= 1);

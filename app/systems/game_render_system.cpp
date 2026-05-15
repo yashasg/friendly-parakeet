@@ -3,46 +3,55 @@
 #include "floor_render_system.h"
 #include "../components/render_mesh.h"
 #include "../components/game_state.h"
+#include "../tags/tags.h"
 #include "../util/shape_lane_mapping.h"
 #include "camera_system.h"
 #include <raylib.h>
 #include <rlgl.h>
 
-static void draw_model_transform(const camera::ShapeMeshes& sm, const ModelTransform& mt) {
-    // Use a per-draw local copy so the shared material is never mutated.
+static void draw_shape(const camera::ShapeMeshes& sm, const ModelTransform& mt,
+                       const MeshKindShape& kind) {
+    if (kind.mesh_index >= kShapeCount) return;
     Material mat = sm.material;
     mat.maps[MATERIAL_MAP_DIFFUSE].color = mt.tint;
-    switch (mt.mesh_type) {
-        case MeshType::Slab:
-            DrawMesh(sm.slab, mat, mt.mat);
-            break;
-        case MeshType::Shape:
-            if (mt.mesh_index >= kShapeCount) return;
-            DrawMesh(sm.shapes[mt.mesh_index], mat, mt.mat);
-            break;
-        case MeshType::Quad:
-            DrawMesh(sm.quad, mat, mt.mat);
-            break;
+    DrawMesh(sm.shapes[kind.mesh_index], mat, mt.mat);
+}
+
+static void draw_slab(const camera::ShapeMeshes& sm, const ModelTransform& mt) {
+    Material mat = sm.material;
+    mat.maps[MATERIAL_MAP_DIFFUSE].color = mt.tint;
+    DrawMesh(sm.slab, mat, mt.mat);
+}
+
+static void draw_quad(const camera::ShapeMeshes& sm, const ModelTransform& mt) {
+    Material mat = sm.material;
+    mat.maps[MATERIAL_MAP_DIFFUSE].color = mt.tint;
+    DrawMesh(sm.quad, mat, mt.mat);
+}
+
+// Per Fabian existential processing (issue #1202/#1204), the former
+// `switch(mesh_type)` is replaced by one transform per mesh-kind tag.
+template <typename PassTag>
+static void draw_pass(const entt::registry& reg, const camera::ShapeMeshes& sm) {
+    for (auto [_, mt, kind] :
+             reg.view<const ModelTransform, const PassTag, const MeshKindShape>().each()) {
+        draw_shape(sm, mt, kind);
+    }
+    for (auto [_, mt] :
+             reg.view<const ModelTransform, const PassTag, const MeshKindSlab>().each()) {
+        draw_slab(sm, mt);
+    }
+    for (auto [_, mt] :
+             reg.view<const ModelTransform, const PassTag, const MeshKindQuad>().each()) {
+        draw_quad(sm, mt);
     }
 }
 
 static void draw_meshes(const entt::registry& reg) {
     const auto* sm = reg.ctx().find<camera::ShapeMeshes>();
     if (!sm) return;
-
-    {
-        auto view = reg.view<const ModelTransform, const TagWorldPass>();
-        for (auto [entity, mt] : view.each()) {
-            draw_model_transform(*sm, mt);
-        }
-    }
-
-    {
-        auto view = reg.view<const ModelTransform, const TagEffectsPass>();
-        for (auto [entity, mt] : view.each()) {
-            draw_model_transform(*sm, mt);
-        }
-    }
+    draw_pass<TagWorldPass>(reg, *sm);
+    draw_pass<TagEffectsPass>(reg, *sm);
 }
 
 
