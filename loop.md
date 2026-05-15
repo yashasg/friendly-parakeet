@@ -25,11 +25,23 @@ description: "My squad work loop"
 - Use docs from `docs/entt/` and `docs/raylib_cheatsheet.md` before implementing.
 - Remove outdated code/comments while fixing issues; keep docs concise and current.
 
-3) **Parallel pass (only if no actionable issues)**
+3) **Fabian drift check** (every cycle, after Execute — produces issues for next cycle, do NOT fix here)
+- Audit `app/` against ECS canon (`.squad/decisions.md` § "DoD source-text grounding (Fabian)" — Principles 0–4) and the cross-references in #1203 / #1204. File one focused `ecs_refactor` issue per violation with file:line evidence and the violated principle number.
+- Checks (run in parallel):
+  - **Folder layout doctrine:** Only `app/components/`, `app/entities/`, `app/systems/`, `app/tags/`, `app/util/` are allowed under `app/`. Any other folder is drift (`audio/`, `rendering/`, `input/`, `content/`, `session/`, `ui/` are scheduled for elimination — anything new added under `app/` is drift).
+  - **Existential processing (Principle 0):** Behavior must be dispatched by table membership, not by reading a discriminator field. Grep for `switch (` over a component field, `if (x.kind ==`, `virtual`, `override`, `dynamic_cast` in game code. Each hit is a candidate violation of Principle 0 (entity's class IS its set of tables).
+  - **Components vs entities distinction:** Files in `app/components/` must be plain data structs — no methods beyond constructors. Files in `app/entities/` are free factory functions that emplace components on a fresh entity, never classes. Grep `app/components/` for member functions; grep `app/entities/` for class definitions.
+  - **No hierarchies:** No inheritance, no virtual dispatch, no class hierarchies in game code. Grep for `: public ` (excluding raylib/EnTT/test framework wrappers).
+  - **Tags single-header rule:** All tag types live in a single header inside `app/tags/`. Per-tag header files are drift (Principle 2 — tags are zero-column tables; a single declaration site keeps the registry honest).
+  - **Enum allowlist (Principle 1 + cyclomatic ratchet):** Run `make check-enum-allowlist` (target installed by #1204). Failure means a new enum was added without an allowlist entry. File the failure verbatim.
+  - **Cyclomatic complexity ratchet:** Count `switch` cases + standalone `if`/`else if` branches in `app/`. Compare against the baseline recorded in `.squad/decisions.md` § "Drift baselines". Number must trend down only — any increase = file an issue and update the baseline only after the increase is reverted.
+- If multiple violations cluster on one file, file ONE issue covering that file (don't spam). If a violation is the same as one already-open issue, comment on the existing issue instead of opening a duplicate.
+
+4) **Parallel pass (only if no actionable issues)**
 - Run agents to find bugs/tech debt/docs drift.
 - Deduplicate, open focused issues (repro + scope + acceptance criteria), restart triage.
 
-4) **End-of-cycle output**
+5) **End-of-cycle output**
 - `Done:` IDs + PRs
 - `In Progress:` IDs + blockers
 - `Closed as Outdated:` IDs + reason
