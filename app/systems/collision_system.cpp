@@ -14,7 +14,9 @@
 
 namespace {
 
-bool player_matches_required_shape(const PlayerShape& p_shape,
+bool player_matches_required_shape(entt::registry& reg,
+                                    entt::entity player_entity,
+                                    const PlayerShape& p_shape,
                                     const ShapeWindow& p_window,
                                     Shape required,
                                     bool rhythm_mode) {
@@ -23,15 +25,14 @@ bool player_matches_required_shape(const PlayerShape& p_shape,
     }
 
     if (rhythm_mode) {
-        switch (p_window.phase) {
-            case WindowPhase::MorphIn:
-                return p_window.press_time >= 0.0f && p_window.target_shape == required;
-            case WindowPhase::Active:
-                return p_shape.current == required || p_window.target_shape == required;
-            case WindowPhase::Idle:
-            case WindowPhase::MorphOut:
-                return false;
+        // Per-tag dispatch (issue #1202/#1204). Idle = no phase tag.
+        if (reg.all_of<ShapeWindowMorphInTag>(player_entity)) {
+            return p_window.press_time >= 0.0f && p_window.target_shape == required;
         }
+        if (reg.all_of<ShapeWindowActiveTag>(player_entity)) {
+            return p_shape.current == required || p_window.target_shape == required;
+        }
+        // ShapeWindowMorphOutTag and Idle both reject.
         return false;
     }
 
@@ -39,7 +40,10 @@ bool player_matches_required_shape(const PlayerShape& p_shape,
         return true;
     }
 
-    return p_window.phase != WindowPhase::Idle && p_window.target_shape == required;
+    const bool window_open = reg.any_of<ShapeWindowMorphInTag,
+                                        ShapeWindowActiveTag,
+                                        ShapeWindowMorphOutTag>(player_entity);
+    return window_open && p_window.target_shape == required;
 }
 
 bool shape_gate_lane_match(int8_t obstacle_lane, int player_lane) {
@@ -119,7 +123,7 @@ void collision_system(entt::registry& reg, [[maybe_unused]] float dt) {
         }
 
         const bool shape_ok =
-            player_matches_required_shape(p_shape, p_window, required_shape, rhythm_mode);
+            player_matches_required_shape(reg, player_entity, p_shape, p_window, required_shape, rhythm_mode);
         if (shape_ok && timing_info && can_grade_shape) {
             grade_shape_timing(entity, timing_info->arrival_time);
         }

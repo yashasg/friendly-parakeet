@@ -422,7 +422,7 @@ TEST_CASE("collision: BAD timing does not adjust window_start", "[collision][rhy
 
     // Put player in Active phase
     ps.current = Shape::Circle;
-    sw.phase = WindowPhase::Active;
+    set_window_phase_active(reg, player);
     sw.graded = false;
     sw.window_timer = 0.0f;
     sw.window_start = song.song_time;
@@ -456,7 +456,7 @@ TEST_CASE("collision: Perfect timing shrinks window via window_start adjustment"
     auto& song = reg.ctx().get<SongState>();
 
     ps.current = Shape::Circle;
-    sw.phase = WindowPhase::Active;
+    set_window_phase_active(reg, player);
     sw.graded = false;
     sw.window_timer = 0.0f;
     sw.window_start = song.song_time;

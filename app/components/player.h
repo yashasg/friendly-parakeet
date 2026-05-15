@@ -2,7 +2,6 @@
 
 #include <cstdint>
 #include "tags/tags.h"
-#include "window_phase.h"
 
 enum class Shape : uint8_t {
     Circle,
@@ -18,10 +17,12 @@ struct PlayerShape {
 };
 
 // Rhythm-mode shape window timing — read by shape_window_system,
-// collision_system, and player input handlers.
+// collision_system, and player input handlers. The window's phase
+// (Idle/MorphIn/Active/MorphOut) lives as a per-phase tag on the player
+// entity (`ShapeWindowMorphInTag` / `ShapeWindowActiveTag` /
+// `ShapeWindowMorphOutTag` in `tags/tags.h`); Idle = absence of all three.
 struct ShapeWindow {
     Shape       target_shape  = Shape::Circle;
-    WindowPhase phase         = WindowPhase::Idle;
     bool        graded        = false;
     float       window_timer  = 0.0f;
     float       window_start  = 0.0f;

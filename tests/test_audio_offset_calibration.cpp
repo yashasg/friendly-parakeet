@@ -238,7 +238,7 @@ OffsetGameplayResult run_calibrated_on_arrival_hit(int16_t audio_offset_ms) {
     auto& ps = reg.get<PlayerShape>(player);
     auto& sw = reg.get<ShapeWindow>(player);
     ps.current = Shape::Circle;
-    sw.phase = WindowPhase::Active;
+    set_window_phase_active(reg, player);
     sw.graded = false;
 
     auto& song = reg.ctx().get<SongState>();
