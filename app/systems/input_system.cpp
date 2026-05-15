@@ -1,5 +1,6 @@
 #include "all_systems.h"
 #include "camera_system.h"
+#include "input_system_private.h"
 #include "web_input_policy.h"
 #include "../util/keyboard_shape_mapping.h"
 #include "../components/input.h"
@@ -149,6 +150,8 @@ void input_system_init(entt::registry& reg) {
 #else
     (void)policy;
 #endif
+    reg.ctx().erase<InputSystemPrivate>();
+    reg.ctx().emplace<InputSystemPrivate>();
 }
 
 bool web_input_touch_capable(const entt::registry& reg) {
@@ -158,13 +161,32 @@ bool web_input_touch_capable(const entt::registry& reg) {
     return false;
 }
 
+void input_system_clear_pointer_state(entt::registry& reg) {
+    if (auto* input = reg.ctx().find<InputState>()) {
+        input->touch_down = false;
+        input->touch_up = false;
+        input->click = false;
+        input->button_touch_up = false;
+        input->touching = false;
+        input->active_source = InputSource::None;
+        input->duration = 0.0f;
+        for (int i = 0; i < InputState::MaxTrackedTouches; ++i) {
+            input->touch_slots[i] = TouchSlot{};
+        }
+    }
+    if (auto* priv = reg.ctx().find<InputSystemPrivate>()) {
+        priv->suppress_mouse_release = false;
+    }
+}
+
 void input_system(entt::registry& reg, float raw_dt) {
     auto& input = reg.ctx().get<InputState>();
+    auto& priv  = reg.ctx().get<InputSystemPrivate>();
     auto& st    = reg.ctx().get<ScreenTransform>();
     auto& disp  = reg.ctx().get<entt::dispatcher>();
-    if (!input.gestures_configured) {
+    if (!priv.gestures_configured) {
         SetGesturesEnabled(kGameplayGestureFlags);
-        input.gestures_configured = true;
+        priv.gestures_configured = true;
     }
     input.touch_down = false;
     input.touch_up   = false;
@@ -185,29 +207,29 @@ void input_system(entt::registry& reg, float raw_dt) {
     const int touch_point_count = GetTouchPointCount();
     const bool mouse_released = allow_mouse_input && IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
     if (allow_mouse_input &&
-        input.suppress_mouse_release &&
+        priv.suppress_mouse_release &&
         touch_point_count == 0 &&
         !mouse_released) {
-        input.suppress_mouse_release = false;
+        priv.suppress_mouse_release = false;
     }
 
     // ── Mouse (desktop) — click-only semantics ─
     if (allow_mouse_input &&
         input.active_source != InputSource::Touch &&
-        !input.suppress_mouse_release &&
+        !priv.suppress_mouse_release &&
         touch_point_count == 0 &&
         IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
         input.active_source = InputSource::Mouse;
-        input.suppress_mouse_release = false;
+        priv.suppress_mouse_release = false;
     }
     if (allow_mouse_input &&
         input.active_source != InputSource::Touch &&
         mouse_released) {
-        const bool suppress_this_release = input.suppress_mouse_release;
+        const bool suppress_this_release = priv.suppress_mouse_release;
         input.click      = !suppress_this_release;
         input.touching   = false;
         input.active_source = InputSource::None;
-        input.suppress_mouse_release = false;
+        priv.suppress_mouse_release = false;
         const Vector2 mouse_pos = GetMousePosition();
         const Vector2 pos = screen_to_virtual({mouse_pos.x, mouse_pos.y}, st);
         input.start_x = input.curr_x = input.end_x = pos.x;
@@ -304,7 +326,7 @@ void input_system(entt::registry& reg, float raw_dt) {
         bool had_swipe_zone_release = false;
         input.touch_up  = true;
         input.touching  = false;
-        input.suppress_mouse_release = true;
+        priv.suppress_mouse_release = true;
         input.active_source = InputSource::None;
         for (int i = 0; i < InputState::MaxTrackedTouches; ++i) {
             auto& slot = input.touch_slots[i];
@@ -365,13 +387,13 @@ void input_system(entt::registry& reg, float raw_dt) {
     // Pause only on the frame focus is *lost*, not every frame while unfocused.
     {
         bool focused = IsWindowFocused();
-        if (input.was_focused && !focused &&
+        if (priv.was_focused && !focused &&
             reg.ctx().get<GameState>().phase == GamePhase::Playing) {
             auto& gs = reg.ctx().get<GameState>();
             gs.transition_pending = true;
             gs.next_phase = GamePhase::Paused;
         }
-        input.was_focused = focused;
+        priv.was_focused = focused;
     }
 
     if (input.active_source != InputSource::Mouse &&

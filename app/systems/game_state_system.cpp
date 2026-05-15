@@ -1,6 +1,7 @@
 #include "all_systems.h"
 #include "game_phase_transition.h"
 #include "game_state_system.h"
+#include "input_system_private.h"
 #include "play_session.h"
 #include "../components/game_state.h"
 #include "../components/input.h"
@@ -94,19 +95,9 @@ void game_state_system(entt::registry& reg, float dt) {
 
         // Clear any in-flight pointer capture when changing screens so
         // down/up state from the previous phase cannot leak into the next UI.
-        if (auto* input = reg.ctx().find<InputState>()) {
-            input->touch_down = false;
-            input->touch_up = false;
-            input->click = false;
-            input->button_touch_up = false;
-            input->touching = false;
-            input->active_source = InputSource::None;
-            input->suppress_mouse_release = false;
-            input->duration = 0.0f;
-            for (int i = 0; i < InputState::MaxTrackedTouches; ++i) {
-                input->touch_slots[i] = TouchSlot{};
-            }
-        }
+        // Owned by input_system because suppress_mouse_release lives in
+        // InputSystemPrivate (issue #1196).
+        input_system_clear_pointer_state(reg);
 
         switch (gs.next_phase) {
             case GamePhase::Playing:

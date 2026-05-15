@@ -5,6 +5,10 @@
 // ── Raw input state (internal to input_system) ──────────────────────────────
 // Tracks touch/mouse hardware state. Downstream systems should read
 // semantic events, not this struct — except for quit_requested.
+//
+// Pure system-private fields (gestures_configured, was_focused,
+// suppress_mouse_release) live in InputSystemPrivate (see
+// app/systems/input_system_private.h) — issue #1196.
 
 enum class InputSource : uint8_t { None, Mouse, Touch };
 
@@ -33,9 +37,6 @@ struct InputState {
     bool  click          = false;
     bool  touching       = false;
     bool  quit_requested = false;
-    bool was_focused = true;
-    bool gestures_configured = false;
-    bool suppress_mouse_release = false;
     bool button_touch_up = false;
     float button_end_x = 0.0f, button_end_y = 0.0f;
     TouchSlot touch_slots[MaxTrackedTouches] = {};
