@@ -1,7 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <entt/entt.hpp>
-#include "content/level_content_config.h"
+#include "util/level_content_config.h"
 
 // Forward-declare to avoid including test_player.h in the header.
 enum class TestPlayerSkill : uint8_t;
