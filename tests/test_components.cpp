@@ -15,9 +15,9 @@ TEST_CASE("components: WorldTransform defaults to origin position", "[components
 }
 
 TEST_CASE("components: MotionVelocity defaults to zero vector", "[components][transform]") {
-    MotionVelocity velocity{};
-    CHECK(velocity.value.x == 0.0f);
-    CHECK(velocity.value.y == 0.0f);
+    Vector2 velocity{0.0f, 0.0f};
+    CHECK(velocity.x == 0.0f);
+    CHECK(velocity.y == 0.0f);
 }
 
 TEST_CASE("components: rendering components are safely default constructible",
@@ -241,9 +241,9 @@ TEST_CASE("ecs: make_player creates proper entity", "[ecs]") {
 }
 
 TEST_CASE("components: MotionVelocity explicit construction", "[components][transform]") {
-    MotionVelocity mv{{5.0f, 10.0f}};
-    CHECK(mv.value.x == 5.0f);
-    CHECK(mv.value.y == 10.0f);
+    Vector2 mv{5.0f, 10.0f};
+    CHECK(mv.x == 5.0f);
+    CHECK(mv.y == 10.0f);
 }
 
 TEST_CASE("components: Color construction", "[components]") {

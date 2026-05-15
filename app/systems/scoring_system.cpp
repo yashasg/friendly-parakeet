@@ -74,7 +74,7 @@ void spawn_score_particles(entt::registry& reg, const Vector2& position, Color c
         reg.emplace<ParticleTag>(particle);
         reg.emplace<ParticleData>(particle, kSize, kLifetime, kLifetime);
         reg.emplace<WorldTransform>(particle, WorldTransform{position});
-        reg.emplace<MotionVelocity>(particle, MotionVelocity{Vector2Scale(dir, kSpeed)});
+        reg.emplace<Vector2>(particle, Vector2Scale(dir, kSpeed));
         reg.emplace<Color>(particle, color);
         reg.emplace<TagEffectsPass>(particle);
     }

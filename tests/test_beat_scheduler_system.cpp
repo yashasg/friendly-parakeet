@@ -473,7 +473,7 @@ TEST_CASE("beat_scheduler: obstacles spawn with overshoot compensation", "[beat_
     }
 }
 
-TEST_CASE("beat_scheduler: rhythm obstacles omit MotionVelocity", "[beat_scheduler]") {
+TEST_CASE("beat_scheduler: rhythm obstacles omit Vector2", "[beat_scheduler]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
     auto& map = beat_map(reg);
@@ -488,9 +488,9 @@ TEST_CASE("beat_scheduler: rhythm obstacles omit MotionVelocity", "[beat_schedul
     REQUIRE(std::distance(view.begin(), view.end()) == 1);
     for (auto [e, info] : view.each()) {
         (void)info;
-        CHECK_FALSE(reg.all_of<MotionVelocity>(e));
+        CHECK_FALSE(reg.all_of<Vector2>(e));
     }
-    auto invalid_view = reg.view<ObstacleTag, BeatInfo, MotionVelocity>();
+    auto invalid_view = reg.view<ObstacleTag, BeatInfo, Vector2>();
     CHECK(std::distance(invalid_view.begin(), invalid_view.end()) == 0);
 }
 

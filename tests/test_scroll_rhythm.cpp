@@ -23,7 +23,7 @@ TEST_CASE("scroll: rhythm obstacles positioned from song_time and BeatInfo", "[s
     CHECK_THAT(reg.get<WorldTransform>(obs).position.y, Catch::Matchers::WithinAbs(expected_y, 0.1f));
 }
 
-TEST_CASE("scroll: rhythm obstacles ignore MotionVelocity component", "[scroll][rhythm]") {
+TEST_CASE("scroll: rhythm obstacles ignore Vector2 component", "[scroll][rhythm]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
     song.song_time = 1.0f;
@@ -31,12 +31,12 @@ TEST_CASE("scroll: rhythm obstacles ignore MotionVelocity component", "[scroll][
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
     reg.emplace<WorldTransform>(obs, WorldTransform{{100.0f, 0.0f}});
-    reg.emplace<MotionVelocity>(obs, MotionVelocity{{999.0f, 999.0f}});
+    reg.emplace<Vector2>(obs, Vector2{999.0f, 999.0f});
     reg.emplace<BeatInfo>(obs, 0, 3.0f, 0.0f);
 
     scroll_system(reg, 1.0f);
 
-    // X should not change (MotionVelocity is irrelevant for BeatInfo entities in rhythm mode)
+    // X should not change (Vector2 is irrelevant for BeatInfo entities in rhythm mode)
     float expected_y = constants::SPAWN_Y + (1.0f - 0.0f) * song.scroll_speed;
     CHECK_THAT(reg.get<WorldTransform>(obs).position.x, Catch::Matchers::WithinAbs(100.0f, 0.01f));
     CHECK_THAT(reg.get<WorldTransform>(obs).position.y, Catch::Matchers::WithinAbs(expected_y, 0.1f));
@@ -47,7 +47,7 @@ TEST_CASE("motion: non-rhythm entities use dt-based movement", "[motion][rhythm]
 
     auto particle = reg.create();
     reg.emplace<WorldTransform>(particle, WorldTransform{{100.0f, 200.0f}});
-    reg.emplace<MotionVelocity>(particle, MotionVelocity{{10.0f, 20.0f}});
+    reg.emplace<Vector2>(particle, Vector2{10.0f, 20.0f});
     // No BeatInfo → dt-based
 
     motion_system(reg, 0.5f);

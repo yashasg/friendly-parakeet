@@ -10,7 +10,7 @@ static entt::entity make_particle(entt::registry& reg, float size, float life_re
     auto e = reg.create();
     reg.emplace<ParticleTag>(e);
     reg.emplace<ParticleData>(e, size, life_remaining, life_max);
-    reg.emplace<MotionVelocity>(e, MotionVelocity{{vx, vy}});
+    reg.emplace<Vector2>(e, Vector2{vx, vy});
     reg.emplace<WorldTransform>(e, WorldTransform{{100.0f, 200.0f}});
     reg.emplace<TagEffectsPass>(e);
     return e;
@@ -78,8 +78,8 @@ TEST_CASE("particle: gravity increases downward velocity", "[particle]") {
 
     particle_system(reg, 0.1f);
 
-    auto& vel = reg.get<MotionVelocity>(e);
-    CHECK_THAT(vel.value.y, Catch::Matchers::WithinAbs(constants::PARTICLE_GRAVITY * 0.1f, 0.01f));
+    auto& vel = reg.get<Vector2>(e);
+    CHECK_THAT(vel.y, Catch::Matchers::WithinAbs(constants::PARTICLE_GRAVITY * 0.1f, 0.01f));
 }
 
 TEST_CASE("particle: gravity accumulates over multiple frames", "[particle]") {
@@ -89,8 +89,8 @@ TEST_CASE("particle: gravity accumulates over multiple frames", "[particle]") {
     particle_system(reg, 0.1f);
     particle_system(reg, 0.1f);
 
-    auto& vel = reg.get<MotionVelocity>(e);
-    CHECK_THAT(vel.value.y, Catch::Matchers::WithinAbs(constants::PARTICLE_GRAVITY * 0.2f, 0.01f));
+    auto& vel = reg.get<Vector2>(e);
+    CHECK_THAT(vel.y, Catch::Matchers::WithinAbs(constants::PARTICLE_GRAVITY * 0.2f, 0.01f));
 }
 
 TEST_CASE("particle: gravity does not affect horizontal velocity", "[particle]") {
@@ -99,7 +99,7 @@ TEST_CASE("particle: gravity does not affect horizontal velocity", "[particle]")
 
     particle_system(reg, 0.1f);
 
-    CHECK(reg.get<MotionVelocity>(e).value.x == 50.0f);
+    CHECK(reg.get<Vector2>(e).x == 50.0f);
 }
 
 TEST_CASE("particle: no particles means no crash", "[particle]") {
@@ -122,9 +122,9 @@ TEST_CASE("particle: reduce_motion zeroes velocity and disables gravity (#534)",
     // Velocity is clamped to zero — no continuous drift, no gravity
     // accumulation. Particle still ages and despawns on its lifetime
     // (functional state preserved).
-    const auto& vel = reg.get<MotionVelocity>(e);
-    CHECK(vel.value.x == 0.0f);
-    CHECK(vel.value.y == 0.0f);
+    const auto& vel = reg.get<Vector2>(e);
+    CHECK(vel.x == 0.0f);
+    CHECK(vel.y == 0.0f);
 
     // Lifetime still ticks down per dt.
     CHECK(reg.get<ParticleData>(e).remaining < 1.0f);
@@ -137,7 +137,7 @@ TEST_CASE("particle: reduce_motion=false preserves gravity behavior (#534)",
 
     auto e = make_particle(reg, 5.0f, 1.0f, 1.0f, 0.0f, 0.0f);
     particle_system(reg, 0.1f);
-    CHECK_THAT(reg.get<MotionVelocity>(e).value.y,
+    CHECK_THAT(reg.get<Vector2>(e).y,
                Catch::Matchers::WithinAbs(constants::PARTICLE_GRAVITY * 0.1f, 0.01f));
 }
 

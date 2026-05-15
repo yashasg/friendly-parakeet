@@ -291,7 +291,7 @@ TEST_CASE("collision: combo gate requires shape AND lane", "[collision]") {
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
     reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y}});
-    reg.emplace<MotionVelocity>(obs, MotionVelocity{{0.0f, song.scroll_speed}});
+    reg.emplace<Vector2>(obs, Vector2{0.0f, song.scroll_speed});
     reg.emplace<Obstacle>(obs, int16_t{200});
     reg.emplace<RequiredShape>(obs, Shape::Circle);
     // Block lanes 0 and 2, leave lane 1 open
@@ -312,7 +312,7 @@ TEST_CASE("collision: combo gate fails with wrong shape", "[collision]") {
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
     reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y}});
-    reg.emplace<MotionVelocity>(obs, MotionVelocity{{0.0f, song.scroll_speed}});
+    reg.emplace<Vector2>(obs, Vector2{0.0f, song.scroll_speed});
     reg.emplace<Obstacle>(obs, int16_t{200});
     reg.emplace<RequiredShape>(obs, Shape::Triangle);  // wrong shape
     reg.emplace<uint8_t>(obs, uint8_t{0b101});    // lane 1 open

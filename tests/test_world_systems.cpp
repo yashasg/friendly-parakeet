@@ -5,14 +5,14 @@
 // ── motion_system ────────────────────────────────────────────
 //
 // Single path after #349 migration:
-//   motion_view — WorldTransform+MotionVelocity (obstacles, popups, particles, player)
+//   motion_view — WorldTransform+Vector2 (obstacles, popups, particles, player)
 //                 also bridges to Position when both components are present.
 
-TEST_CASE("motion: WorldTransform+MotionVelocity moves by velocity * dt", "[motion]") {
+TEST_CASE("motion: WorldTransform+Vector2 moves by velocity * dt", "[motion]") {
     auto reg = make_registry();
     auto e = reg.create();
     reg.emplace<WorldTransform>(e, WorldTransform{{100.0f, 200.0f}});
-    reg.emplace<MotionVelocity>(e, MotionVelocity{{10.0f, 20.0f}});
+    reg.emplace<Vector2>(e, Vector2{10.0f, 20.0f});
 
     motion_system(reg, 1.0f);
 
@@ -20,11 +20,11 @@ TEST_CASE("motion: WorldTransform+MotionVelocity moves by velocity * dt", "[moti
     CHECK(reg.get<WorldTransform>(e).position.y == 220.0f);
 }
 
-TEST_CASE("motion: zero MotionVelocity means no movement", "[motion]") {
+TEST_CASE("motion: zero Vector2 means no movement", "[motion]") {
     auto reg = make_registry();
     auto e = reg.create();
     reg.emplace<WorldTransform>(e, WorldTransform{{100.0f, 200.0f}});
-    reg.emplace<MotionVelocity>(e, MotionVelocity{{0.0f, 0.0f}});
+    reg.emplace<Vector2>(e, Vector2{0.0f, 0.0f});
 
     motion_system(reg, 1.0f);
 
@@ -32,13 +32,13 @@ TEST_CASE("motion: zero MotionVelocity means no movement", "[motion]") {
     CHECK(reg.get<WorldTransform>(e).position.y == 200.0f);
 }
 
-// ── motion_system: WorldTransform+MotionVelocity path (modern, issue #349 target) ──
+// ── motion_system: WorldTransform+Vector2 path (modern, issue #349 target) ──
 
-TEST_CASE("motion: WorldTransform+MotionVelocity entity moves by velocity * dt", "[motion]") {
+TEST_CASE("motion: WorldTransform+Vector2 entity moves by velocity * dt", "[motion]") {
     auto reg = make_registry();
     auto e = reg.create();
     reg.emplace<WorldTransform>(e, WorldTransform{{100.0f, 200.0f}});
-    reg.emplace<MotionVelocity>(e, MotionVelocity{{10.0f, 20.0f}});
+    reg.emplace<Vector2>(e, Vector2{10.0f, 20.0f});
 
     motion_system(reg, 1.0f);
 
@@ -49,7 +49,7 @@ TEST_CASE("motion: WorldTransform+MotionVelocity entity moves by velocity * dt",
 
 TEST_CASE("motion: BeatInfo alone does not make an entity movable", "[motion]") {
     // Rhythm obstacles are song-time authoritative and should not carry
-    // MotionVelocity. BeatInfo by itself is ignored by motion_system.
+    // Vector2. BeatInfo by itself is ignored by motion_system.
     auto reg = make_registry();
     auto e = reg.create();
     reg.emplace<WorldTransform>(e, WorldTransform{{100.0f, 200.0f}});
@@ -429,7 +429,7 @@ TEST_CASE("scroll: no movement when not in Playing phase", "[scroll]") {
     reg.ctx().get<GameState>().phase = GamePhase::Title;
     auto e = reg.create();
     reg.emplace<WorldTransform>(e, WorldTransform{{100.0f, 200.0f}});
-    reg.emplace<MotionVelocity>(e, MotionVelocity{{10.0f, 20.0f}});
+    reg.emplace<Vector2>(e, Vector2{10.0f, 20.0f});
 
     scroll_system(reg, 1.0f);
 
@@ -442,7 +442,7 @@ TEST_CASE("motion: no movement when not in Playing phase", "[motion]") {
     reg.ctx().get<GameState>().phase = GamePhase::Title;
     auto e = reg.create();
     reg.emplace<WorldTransform>(e, WorldTransform{{100.0f, 200.0f}});
-    reg.emplace<MotionVelocity>(e, MotionVelocity{{10.0f, 20.0f}});
+    reg.emplace<Vector2>(e, Vector2{10.0f, 20.0f});
 
     tick_playing_systems(reg, 1.0f);
 

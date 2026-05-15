@@ -148,7 +148,7 @@ TEST_CASE("scoring: popup entity spawned on score", "[scoring]") {
     int popup_count = 0;
     for (auto e : popup_view) {
         CHECK(reg.all_of<WorldTransform>(e));
-        CHECK(reg.all_of<MotionVelocity>(e));
+        CHECK(reg.all_of<Vector2>(e));
         CHECK(reg.all_of<TagHUDPass>(e));
         ++popup_count;
     }
@@ -165,13 +165,13 @@ TEST_CASE("scoring: score feedback spawns effect particles", "[scoring][particle
 
     int particle_count = 0;
     auto particle_view =
-        reg.view<ParticleTag, ParticleData, WorldTransform, MotionVelocity, Color, TagEffectsPass>();
+        reg.view<ParticleTag, ParticleData, WorldTransform, Vector2, Color, TagEffectsPass>();
     for (auto [entity, particle, transform, velocity, color] : particle_view.each()) {
         CHECK(reg.valid(entity));
         CHECK(particle.remaining > 0.0f);
         CHECK(particle.max_time > 0.0f);
         CHECK(transform.position.y == constants::PLAYER_Y);
-        CHECK((velocity.value.x != 0.0f || velocity.value.y != 0.0f));
+        CHECK((velocity.x != 0.0f || velocity.y != 0.0f));
         CHECK(color.a > 0);
         ++particle_count;
     }
@@ -357,15 +357,15 @@ TEST_CASE("scoring: popup entity has full factory contract", "[scoring][popup_en
     for (auto e : popup_view) {
         ++count;
         CHECK(reg.all_of<WorldTransform>(e));
-        CHECK(reg.all_of<MotionVelocity>(e));
+        CHECK(reg.all_of<Vector2>(e));
         CHECK(reg.all_of<Color>(e));
         CHECK(reg.all_of<DrawLayer>(e));
         CHECK(reg.all_of<TagHUDPass>(e));
         CHECK(reg.all_of<PopupDisplay>(e));
 
-        const auto& mv = reg.get<MotionVelocity>(e);
-        CHECK(mv.value.x == 0.0f);
-        CHECK(mv.value.y == -80.0f);
+        const auto& mv = reg.get<Vector2>(e);
+        CHECK(mv.x == 0.0f);
+        CHECK(mv.y == -80.0f);
 
         const auto& dl = reg.get<DrawLayer>(e);
         CHECK(dl.layer == Layer::Effects);

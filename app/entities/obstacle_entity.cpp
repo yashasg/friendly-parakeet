@@ -75,7 +75,7 @@ void finish_obstacle(entt::registry& reg, entt::entity e) {
 
 entt::entity spawn_obstacle(entt::registry& reg, const ObstacleSpawnParams& params) {
     auto e = spawn_obstacle_base(reg, params);
-    reg.emplace<MotionVelocity>(e, MotionVelocity{{0.0f, params.speed}});
+    reg.emplace<Vector2>(e, Vector2{0.0f, params.speed});
     finish_obstacle(reg, e);
     return e;
 }
