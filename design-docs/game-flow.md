@@ -780,17 +780,17 @@ storage, but no shipped controller routes players through Tutorial Run 1-5.
 
 ### TUTORIAL RUN 3 — "Dodge!"
 
-> ⚠️ **NOT SHIPPED — lane_push tutorial content (issues #328, #470).**
-> The "Dodge!" run below teaches a `lane_push` obstacle that automatically
-> shoves the player one lane on beat arrival. **No `lane_push` obstacle
-> ships in the runtime today** — `LanePush` is queued for removal/rework
-> (#328) and no shipped beatmap (`content/beatmaps/`) emits one. The
-> shipped tutorial therefore graduates from Run 2 ("Two Shapes") directly
-> to Run 4 ("Stay on the Beat"); shape_gate is the only obstacle the
-> tutorial currently teaches. The frames below are retained as
-> forward-design context for if/when a committed lane-push (or successor
-> dodge mechanic) plan lands. Do not treat them as a description of
-> current player-facing tutorial content.
+> ⚠️ **NOT SHIPPED — lane_push tutorial content (historical context:
+> #328, #470, both closed).** The "Dodge!" run below teaches a `lane_push`
+> obstacle that automatically shoves the player one lane on beat arrival.
+> **No `lane_push` obstacle ships in the runtime today** — `LanePush` was
+> removed from the runtime, content, and tools (#328) and no shipped
+> beatmap (`content/beatmaps/`) emits one. The shipped tutorial therefore
+> graduates from Run 2 ("Two Shapes") directly to Run 4 ("Stay on the
+> Beat"); shape_gate is the only obstacle the tutorial currently teaches.
+> The frames below are retained as forward-design context for if/when a
+> committed lane-push (or successor dodge mechanic) plan lands. Do not
+> treat them as a description of current player-facing tutorial content.
 
 
 ```
