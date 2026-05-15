@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../components/haptics.h"
+#include "haptics.h"
 
 #include <entt/entt.hpp>
 

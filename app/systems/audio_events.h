@@ -1,6 +1,6 @@
 #pragma once
 
-#include "audio.h"
+#include "../components/audio.h"
 #include "haptics.h"
 
 // Dispatcher events for fire-and-forget audio/haptic playback.

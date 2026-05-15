@@ -6,7 +6,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <entt/entt.hpp>
 #include "components/game_state.h"
-#include "components/input_events.h"
+#include "systems/input_events.h"
 #include "systems/scoring_system.h"
 #include "systems/obstacle_despawn_system.h"
 #include "systems/popup_display_system.h"

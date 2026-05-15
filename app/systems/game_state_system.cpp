@@ -6,7 +6,7 @@
 #include "../components/game_state.h"
 #include "../components/input.h"
 #include "../components/obstacle.h"
-#include "../components/input_events.h"
+#include "input_events.h"
 #include "../components/player.h"
 #include "../components/rhythm.h"
 #include "../entities/settings.h"

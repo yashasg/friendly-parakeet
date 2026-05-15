@@ -1,12 +1,12 @@
 #include <catch2/catch_test_macros.hpp>
 #include "test_helpers.h"
-#include "components/haptics.h"
-#include "components/audio_events.h"
+#include "systems/haptics.h"
+#include "systems/audio_events.h"
 #include "entities/settings.h"
 #include "components/game_state.h"
 #include "components/player.h"
 #include "components/transform.h"
-#include "components/input_events.h"
+#include "systems/input_events.h"
 #include "components/obstacle.h"
 #include "constants.h"
 

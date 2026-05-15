@@ -832,7 +832,7 @@ Haptics use the same dispatcher pattern: producers enqueue `PlayHapticEvent`, `h
 
 ### Event types
 
-`app/components/audio_events.h` defines the dispatcher payloads:
+`app/systems/audio_events.h` defines the dispatcher payloads:
 
 ```cpp
 struct PlaySfxEvent {
@@ -849,7 +849,7 @@ struct PlayHapticEvent {
 ```cpp
 #include "all_systems.h"
 #include "audio_routing.h"
-#include "../components/audio_events.h"
+#include "audio_events.h"
 
 #include <raylib.h>
 
@@ -903,7 +903,7 @@ cmake --build build
 | 4  | `app/main.cpp` | Audio init, beatmap loading, music loading, shutdown | 1, 2, 3 |
 | 5a | `app/systems/song_playback_system.cpp` | Full rewrite — authoritative clock + music lifecycle | 3, 4 |
 | 5b | `app/systems/game_state_system.cpp` | Add `restart_music = true` in `enter_playing()` | 3b |
-| 6a | `app/components/audio_events.h` | Dispatcher payloads: `PlaySfxEvent`, `PlayHapticEvent` | — |
+| 6a | `app/systems/audio_events.h` | Dispatcher payloads: `PlaySfxEvent`, `PlayHapticEvent` | — |
 | 6b | `app/systems/audio_dispatcher.cpp` | Wire dispatcher sinks for audio/haptics | 6a |
 | 6c | `app/systems/audio_system.cpp` | Drain `PlaySfxEvent`, play loaded SFX through `SFXBank` | 6a, 6b |
 | 6d | `app/systems/haptic_system.cpp` | Drain `PlayHapticEvent`, route to platform haptics | 6a, 6b |

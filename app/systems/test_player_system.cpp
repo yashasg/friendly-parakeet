@@ -2,7 +2,7 @@
 #include "../components/test_player.h"
 #include "../components/game_state.h"
 #include "../components/input.h"
-#include "../components/input_events.h"
+#include "input_events.h"
 #include "../components/player.h"
 #include "../components/transform.h"
 #include "../components/obstacle.h"

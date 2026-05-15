@@ -3,7 +3,7 @@
 #include "../../components/game_state.h"
 #include "../../components/energy_bar.h"
 #include "../../components/input.h"
-#include "../../components/input_events.h"
+#include "../../systems/input_events.h"
 #include "../../components/obstacle.h"
 #include "../../components/player.h"
 #include "../../components/scoring.h"

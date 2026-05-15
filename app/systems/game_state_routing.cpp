@@ -1,9 +1,9 @@
 #include "input_routing.h"
 #include "../components/game_state.h"
 #include "../components/input.h"
-#include "../components/input_events.h"
-#include "../components/audio_events.h"
-#include "../components/haptics.h"
+#include "input_events.h"
+#include "audio_events.h"
+#include "haptics.h"
 #include "../entities/settings.h"
 #include "../constants.h"
 

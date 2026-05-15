@@ -1,7 +1,7 @@
 #include "level_select_controller.h"
 #include "../components/game_state.h"
 #include "../content/level_content_config.h"
-#include "../components/input_events.h"
+#include "../systems/input_events.h"
 
 void level_select_handle_go(entt::registry& reg, const GoEvent& evt) {
     auto& gs = reg.ctx().get<GameState>();

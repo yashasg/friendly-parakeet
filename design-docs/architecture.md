@@ -448,7 +448,7 @@ enum class Direction : uint8_t { Left, Right, Up, Down };
 ```
 
 ```cpp
-// components/input_events.h
+// systems/input_events.h
 
 /// Semantic input events — produced by input_system, HUD controllers, and
 /// test_player_system; consumed by listeners wired through entt::dispatcher.

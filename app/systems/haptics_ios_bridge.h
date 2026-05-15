@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../components/haptics.h"
+#include "haptics.h"
 
 namespace platform::ios {
 
