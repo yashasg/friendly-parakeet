@@ -8,7 +8,7 @@
 // the InputState context singleton.
 #include <catch2/catch_test_macros.hpp>
 #include <entt/entt.hpp>
-#include "components/input.h"
+#include "systems/input.h"
 
 static bool game_loop_should_quit_from_input(entt::registry& reg) {
     auto* input = reg.ctx().find<InputState>();

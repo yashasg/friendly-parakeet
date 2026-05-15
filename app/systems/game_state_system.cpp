@@ -4,7 +4,7 @@
 #include "input_system_private.h"
 #include "play_session.h"
 #include "../components/game_state.h"
-#include "../components/input.h"
+#include "input.h"
 #include "../components/obstacle.h"
 #include "input_events.h"
 #include "../components/player.h"

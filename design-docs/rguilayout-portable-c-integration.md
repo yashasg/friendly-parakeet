@@ -71,7 +71,7 @@ A thin C++ screen controller includes the generated header and calls it:
 ```cpp
 // app/ui/screen_controllers/title_screen_controller.cpp
 #include "components/game_state.h"
-#include "components/input.h"
+#include "systems/input.h"
 #include "screen_controllers/screen_controller_base.h"
 #include <raygui.h>
 #include "ui/generated/title_layout.h"

@@ -3,7 +3,7 @@
 #include "input_system_private.h"
 #include "web_input_policy.h"
 #include "../util/keyboard_shape_mapping.h"
-#include "../components/input.h"
+#include "input.h"
 #include "input_events.h"
 #include "../components/player.h"
 #include "../components/rendering.h"

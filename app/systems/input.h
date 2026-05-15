@@ -9,6 +9,10 @@
 // Pure system-private fields (gestures_configured, was_focused,
 // suppress_mouse_release) live in InputSystemPrivate (see
 // app/systems/input_system_private.h) — issue #1196.
+//
+// Relocated out of app/components/ alongside the input system itself
+// (issue #1194) — this is per-frame ctx-singleton hardware-capture state,
+// not entity-owned component data.
 
 enum class InputSource : uint8_t { None, Mouse, Touch };
 
