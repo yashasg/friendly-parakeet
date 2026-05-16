@@ -170,7 +170,7 @@ static TestPlayerAction determine_action(
         // ShapeGate: player must also be in the lane where the shape hole is.
         // The hole is at obs_pos.x — find which lane that corresponds to.
         auto* obs_wt = reg.try_get<WorldTransform>(entity);
-        if (obs_wt && !reg.all_of<RequiredLane>(entity)) {
+        if (obs_wt && !reg.all_of<SplitPathTag>(entity)) {
             for (int i = 0; i < constants::LANE_COUNT; ++i) {
                 if (!lane_centers_overlap(obs_wt->position.x, constants::LANE_X[i])) continue;
                 if (i != player_lane) {
@@ -181,10 +181,13 @@ static TestPlayerAction determine_action(
         }
     }
 
-    // Lane requirement (RequiredLane — exact lane)
-    auto* req_lane = reg.try_get<RequiredLane>(entity);
-    if (req_lane && lane_utils::is_valid(req_lane->lane) && req_lane->lane != player_lane) {
-        action.target_lane = req_lane->lane;
+    // Lane requirement (SplitPath: exact lane stored as raw int8_t per
+    // issue #1198 / the slot-reservation note in app/components/obstacle.h).
+    if (reg.all_of<SplitPathTag>(entity)) {
+        if (auto* req_lane = reg.try_get<int8_t>(entity);
+            req_lane && lane_utils::is_valid(*req_lane) && *req_lane != player_lane) {
+            action.target_lane = *req_lane;
+        }
     }
 
     return action;

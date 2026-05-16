@@ -213,7 +213,7 @@ TEST_CASE("player_input_rhythm: circle press in lane 0 does not force mismatch b
 
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.get<WorldTransform>(obs).position.x = constants::LANE_X[0];
-    reg.get<ShapeGateLane>(obs).lane = int8_t{0};
+    reg.get<int8_t>(obs) = int8_t{0};
 
     auto btn = make_shape_button(reg, Shape::Circle);
     press_button(reg, btn);

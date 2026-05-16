@@ -70,8 +70,11 @@ struct RequiredShapeHexagonTag  {};
 // Replaces the former ObstacleKind enum (issue #1202/#1204). Each
 // former enum value is its own per-kind table:
 //   - ShapeGateTag / SplitPathTag  → zero-column tag; the per-instance
-//     data (`RequiredShape*Tag`, `RequiredLane`, `ShapeGateLane`) lives in
-//     its own component table per the schema-per-kind mechanic in #1204.
+//     data (`RequiredShape*Tag` for shape, raw `int8_t` for lane index)
+//     lives in its own component table per the schema-per-kind mechanic
+//     in #1204. The lane wrappers `ShapeGateLane` / `RequiredLane` were
+//     unwrapped to raw `int8_t` per #1198; see `app/components/obstacle.h`
+//     for the slot-reservation note.
 //   - OnsetMarkerTag → zero-column tag (no per-instance data).
 // Spawn helpers in `entities/obstacle_entity.h` emplace exactly one
 // kind tag; renderer / logger / test-player systems dispatch via

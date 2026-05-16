@@ -279,11 +279,11 @@ TEST_CASE("ecs: make_split_path creates proper entity", "[ecs]") {
     CHECK(reg.all_of<ObstacleTag>(obs));
     CHECK(reg.all_of<Obstacle>(obs));
     CHECK(has_required_shape_tag(reg, obs));
-    CHECK(reg.all_of<RequiredLane>(obs));
+    CHECK(reg.all_of<int8_t>(obs));
     CHECK(reg.all_of<SplitPathTag>(obs));
     CHECK(!reg.all_of<ShapeGateTag>(obs));
     CHECK(current_required_shape(reg, obs) == Shape::Triangle);
-    CHECK(reg.get<RequiredLane>(obs).lane == 2);
+    CHECK(reg.get<int8_t>(obs) == 2);
 }
 
 namespace {

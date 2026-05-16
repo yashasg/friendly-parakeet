@@ -21,13 +21,21 @@ struct Obstacle {
 // emplace it, and `current_required_shape()` / `has_required_shape_tag()`
 // to read it back.
 
-struct ShapeGateLane {
-    int8_t lane = 0;
-};
-
-struct RequiredLane {
-    int8_t lane = 0;
-};
+// The former `ShapeGateLane { int8_t lane }` and `RequiredLane { int8_t lane }`
+// single-field wrappers were deleted per issue #1198 (companion to the
+// `BlockedLanes` → `uint8_t` unwrap in PR #1240 and the `MotionVelocity`
+// → `Vector2` unwrap in PR #1241). The per-entity lane index is now stored
+// as a raw `int8_t` component.
+//
+// Slot reservation: the per-entity `int8_t` component is the *lane index*
+// for an obstacle entity. Its semantics is determined by the obstacle's
+// kind tag (per `app/tags/tags.h`):
+//   - `ShapeGateTag`  → positional lane (where the shape hole is)
+//   - `SplitPathTag`  → required dodge lane (where the player must be)
+// ShapeGate and SplitPath archetypes never coexist on the same entity, so
+// the shared `int8_t` slot has no collision. Onset markers and any other
+// future obstacle archetype must not emplace a raw `int8_t` on the same
+// entity — give them their own per-archetype component table instead.
 
 // Owned mesh children for a logical obstacle entity. destroy_obstacle_with_children
 // in app/entities/obstacle_render_entity.cpp cleans up in O(count). Relocated out

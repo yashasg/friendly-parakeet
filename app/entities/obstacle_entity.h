@@ -10,8 +10,9 @@
 //   - `SplitPathSpawn`: shape + required dodge lane
 //   - `OnsetMarkerSpawn`: position + speed only
 // `req_lane` for ShapeGate is computed at spawn-time from x via
-// `nearest_lane_for_x()` and stored in `ShapeGateLane`. SplitPath uses
-// `req_lane` directly to set `RequiredLane`.
+// `nearest_lane_for_x()` and stored as the entity's raw `int8_t`
+// lane component. SplitPath uses `req_lane` directly. See the slot-
+// reservation note in `app/components/obstacle.h`.
 struct ShapeGateSpawn {
     float  x      = 0.0f;
     float  y      = 0.0f;

@@ -83,13 +83,13 @@ TEST_CASE("beat_scheduler: spawns ShapeGate when time passes spawn_time", "[beat
     CHECK(count == 1);
 
     // Verify it's a ShapeGate with correct components
-    auto view = reg.view<ObstacleTag, Obstacle, ShapeGateLane>();
+    auto view = reg.view<ObstacleTag, Obstacle, ShapeGateTag, int8_t>();
     for (auto [e, obs, lane] : view.each()) {
         (void)obs;
         CHECK_FALSE(reg.all_of<uint8_t>(e));
-        CHECK_FALSE(reg.all_of<RequiredLane>(e));
+        CHECK_FALSE(reg.all_of<SplitPathTag>(e));
         CHECK(current_required_shape(reg, e) == Shape::Circle);
-        CHECK(lane.lane == int8_t{1});
+        CHECK(lane == int8_t{1});
     }
 }
 
@@ -105,12 +105,12 @@ TEST_CASE("beat_scheduler: defaults invalid ShapeGate lane to center lane", "[be
     song.next_onset_marker_idx = 0;
     beat_scheduler_system(reg, 0.016f);
 
-    auto view = reg.view<ObstacleTag, WorldTransform, ShapeGateLane>();
+    auto view = reg.view<ObstacleTag, WorldTransform, ShapeGateTag, int8_t>();
     REQUIRE(view.size_hint() == 1);
     for (auto [e, wt, lane] : view.each()) {
         (void)e;
         CHECK_THAT(wt.position.x, Catch::Matchers::WithinAbs(constants::LANE_X[1], 0.01f));
-        CHECK(lane.lane == int8_t{1});
+        CHECK(lane == int8_t{1});
     }
 }
 
@@ -328,7 +328,7 @@ TEST_CASE("beat_scheduler: spawns OnsetMarker as visible non-scorable cue",
         CHECK(obstacle.base_points == int16_t{0});
         CHECK_FALSE(has_required_shape_tag(reg, e));
         CHECK_FALSE(reg.all_of<uint8_t>(e));
-        CHECK_FALSE(reg.all_of<RequiredLane>(e));
+        CHECK_FALSE(reg.all_of<SplitPathTag>(e));
         REQUIRE(children.count == 1);
         const auto child = children.children[0];
         REQUIRE(reg.valid(child));
@@ -371,12 +371,12 @@ TEST_CASE("beat_scheduler: spawns SplitPath in authored lane", "[beat_scheduler]
     song.next_onset_marker_idx = 0;
     beat_scheduler_system(reg, 0.016f);
 
-    auto view = reg.view<ObstacleTag, WorldTransform, RequiredLane>();
+    auto view = reg.view<ObstacleTag, WorldTransform, SplitPathTag, int8_t>();
     REQUIRE(view.size_hint() == 1);
     for (auto [e, wt, lane] : view.each()) {
         CHECK_THAT(wt.position.x, Catch::Matchers::WithinAbs(constants::LANE_X[2], 0.01f));
         CHECK(current_required_shape(reg, e) == Shape::Triangle);
-        CHECK(lane.lane == 2);
+        CHECK(lane == 2);
     }
     CHECK(song.next_split_path_triangle_idx == 1);
 }
@@ -393,12 +393,12 @@ TEST_CASE("beat_scheduler: defaults invalid SplitPath lane to center lane", "[be
     song.next_onset_marker_idx = 0;
     CHECK_NOTHROW(beat_scheduler_system(reg, 0.016f));
 
-    auto view = reg.view<ObstacleTag, WorldTransform, RequiredLane, ObstacleChildren>();
+    auto view = reg.view<ObstacleTag, WorldTransform, SplitPathTag, int8_t, ObstacleChildren>();
     REQUIRE(view.size_hint() == 1);
     for (auto [e, wt, lane, children] : view.each()) {
         CHECK_THAT(wt.position.x, Catch::Matchers::WithinAbs(constants::LANE_X[1], 0.01f));
         CHECK(current_required_shape(reg, e) == Shape::Square);
-        CHECK(lane.lane == int8_t{1});
+        CHECK(lane == int8_t{1});
         REQUIRE(children.count == 3);
         for (int i = 0; i < children.count; ++i) {
             REQUIRE(reg.valid(children.children[i]));
