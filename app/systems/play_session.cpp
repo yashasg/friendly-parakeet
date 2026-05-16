@@ -174,7 +174,7 @@ void setup_play_session(entt::registry& reg) {
         erase_ctx_if_exists<EndChoiceRestart>(reg);
         erase_ctx_if_exists<EndChoiceLevelSelect>(reg);
         erase_ctx_if_exists<EndChoiceMainMenu>(reg);
-        lss.confirmed = false;
+        erase_ctx_if_exists<LevelSelectConfirmedTag>(reg);
         enter_phase<GamePhaseLevelSelectTag>(reg);
         return;
     }

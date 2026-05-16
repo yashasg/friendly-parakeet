@@ -177,22 +177,20 @@ TEST_CASE("game_state: song_complete ignores choice during delay", "[gamestate]"
 
 TEST_CASE("game_state: transition to LevelSelect resets confirmed", "[gamestate]") {
     auto reg = make_registry();
-    auto& lss = reg.ctx().get<LevelSelectState>();
-    lss.confirmed = true;
+    reg.ctx().insert_or_assign(LevelSelectConfirmedTag{});
 
     request_phase_transition<NextPhaseLevelSelectTag>(reg);
 
     game_state_system(reg, 0.016f);
 
     CHECK(reg.ctx().contains<GamePhaseLevelSelectTag>());
-    CHECK_FALSE(lss.confirmed);
+    CHECK_FALSE(reg.ctx().contains<LevelSelectConfirmedTag>());
 }
 
 TEST_CASE("game_state: terminal to LevelSelect hides stale world renderables",
           "[gamestate][render][regression][issue921]") {
     auto reg = make_registry();
-    auto& lss = reg.ctx().get<LevelSelectState>();
-    lss.confirmed = true;
+    reg.ctx().insert_or_assign(LevelSelectConfirmedTag{});
 
     auto stale = reg.create();
     reg.emplace<ModelTransform>(stale);
@@ -204,7 +202,7 @@ TEST_CASE("game_state: terminal to LevelSelect hides stale world renderables",
     game_state_system(reg, 0.016f);
 
     CHECK(reg.ctx().contains<GamePhaseLevelSelectTag>());
-    CHECK_FALSE(lss.confirmed);
+    CHECK_FALSE(reg.ctx().contains<LevelSelectConfirmedTag>());
     REQUIRE(reg.valid(stale));
     CHECK(reg.all_of<ModelTransform, TagWorldPass>(stale));
     CHECK_FALSE(game_render_should_draw_world_meshes(reg));
@@ -291,14 +289,13 @@ TEST_CASE("game_state: level select confirmed starts tutorial when FTUE is incom
     auto& gs = reg.ctx().get<GameState>();
     set_test_phase<GamePhaseLevelSelectTag>(reg);
     gs.phase_timer = 0.5f;  // past 0.2s guard
-    auto& lss = reg.ctx().get<LevelSelectState>();
-    lss.confirmed = true;
+    reg.ctx().insert_or_assign(LevelSelectConfirmedTag{});
     settings_state(reg).ftue_run_count = 0;
 
     game_state_system(reg, 0.016f);
 
     CHECK(reg.ctx().contains<NextPhaseTutorialTag>());
-    CHECK_FALSE(lss.confirmed);
+    CHECK_FALSE(reg.ctx().contains<LevelSelectConfirmedTag>());
 }
 
 TEST_CASE("game_state: level select confirmed triggers playing when FTUE is complete",
@@ -307,14 +304,13 @@ TEST_CASE("game_state: level select confirmed triggers playing when FTUE is comp
     auto& gs = reg.ctx().get<GameState>();
     set_test_phase<GamePhaseLevelSelectTag>(reg);
     gs.phase_timer = 0.5f;  // past 0.2s guard
-    auto& lss = reg.ctx().get<LevelSelectState>();
-    lss.confirmed = true;
+    reg.ctx().insert_or_assign(LevelSelectConfirmedTag{});
     settings_state(reg).ftue_run_count = 1;
 
     game_state_system(reg, 0.016f);
 
     CHECK(reg.ctx().contains<NextPhasePlayingTag>());
-    CHECK_FALSE(lss.confirmed);
+    CHECK_FALSE(reg.ctx().contains<LevelSelectConfirmedTag>());
 }
 
 TEST_CASE("tutorial: continue marks FTUE complete and requests gameplay",
@@ -367,13 +363,13 @@ TEST_CASE("game_state: level select ignores confirmed during delay", "[gamestate
     auto& gs = reg.ctx().get<GameState>();
     set_test_phase<GamePhaseLevelSelectTag>(reg);
     gs.phase_timer = 0.1f;  // within 0.2s delay
-    auto& lss = reg.ctx().get<LevelSelectState>();
-    lss.confirmed = true;
+    reg.ctx().insert_or_assign(LevelSelectConfirmedTag{});
 
     game_state_system(reg, 0.016f);
 
-    // confirmed still true, no transition yet
+    // confirmed still latched, no transition yet
     CHECK_FALSE(is_phase_transition_pending(reg));
+    CHECK(reg.ctx().contains<LevelSelectConfirmedTag>());
 }
 
 TEST_CASE("game_state: game_over restart button triggers playing", "[gamestate]") {
