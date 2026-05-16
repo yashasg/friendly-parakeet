@@ -61,9 +61,6 @@ struct GameplayHudVisualStyle {
     Color active_icon;
     Color inactive_icon;
     float approach_ring_max_radius_scale;
-    Color ring_perfect;
-    Color ring_near;
-    Color ring_far;
     Color lane_divider_color;
 };
 
@@ -75,27 +72,10 @@ constexpr GameplayHudVisualStyle kGameplayHudVisualStyle{
     {200, 230, 255, 255},
     {100, 100, 120, 200},
     2.0f,
-    {100, 255, 100, 255},
-    {180, 255, 100, 255},
-    {120, 120, 180, 255},
     {40, 40, 60, 200},
 };
 
 constexpr float kLaneDividerOffsetFromShapeRow = 20.0f;
-
-Color ring_color_for_cue(GameplayHudRingCue cue, const GameplayHudVisualStyle& style) {
-    switch (cue) {
-        case GameplayHudRingCue::Perfect:
-            return style.ring_perfect;
-        case GameplayHudRingCue::Near:
-            return style.ring_near;
-        case GameplayHudRingCue::Far:
-            return style.ring_far;
-        case GameplayHudRingCue::Hidden:
-            break;
-    }
-    return style.ring_far;
-}
 
 struct ApproachRingEnvelope {
     float radius = 0.0f;
@@ -203,18 +183,17 @@ void render_shape_buttons(const entt::registry& reg,
                                                perfect_dist,
                                                good_dist,
                                                ring_appear_dist);
-        if (cue == GameplayHudRingCue::Hidden) continue;
+        if (!cue.visible) continue;
         float ratio = gameplay_hud_ring_ratio(nearest_dist[shape_index], perfect_dist, ring_appear_dist);
 
         const auto envelope = approach_ring_envelope(ratio, btn_radius,
                                                      max_ring_radius, reduce_motion);
         if (envelope.alpha_scale <= 0.0f) continue;
 
-        Color base = ring_color_for_cue(cue, style);
-        Color ring_color = Fade(base, (200.0f / 255.0f) * envelope.alpha_scale);
+        Color ring_color = Fade(cue.color, (200.0f / 255.0f) * envelope.alpha_scale);
         DrawCircleLinesV({button.cx, button.cy}, envelope.radius, ring_color);
         DrawCircleLinesV({button.cx, button.cy}, envelope.radius - 1.0f,
-            {base.r, base.g, base.b, static_cast<unsigned char>(ring_color.a / 2)});
+            {cue.color.r, cue.color.g, cue.color.b, static_cast<unsigned char>(ring_color.a / 2)});
     }
 }
 
@@ -330,9 +309,10 @@ GameplayHudRingCue gameplay_hud_ring_cue(float nearest_dist,
                                          float perfect_dist,
                                          float good_dist,
                                          float ring_appear_dist) {
-    if (nearest_dist <= 0.0f || nearest_dist >= ring_appear_dist) return GameplayHudRingCue::Hidden;
-    if (nearest_dist <= perfect_dist) return GameplayHudRingCue::Perfect;
-    return (nearest_dist <= good_dist) ? GameplayHudRingCue::Near : GameplayHudRingCue::Far;
+    if (nearest_dist <= 0.0f || nearest_dist >= ring_appear_dist) return {};
+    if (nearest_dist <= perfect_dist) return {true, kGameplayHudRingPerfectColor};
+    if (nearest_dist <= good_dist)    return {true, kGameplayHudRingNearColor};
+    return {true, kGameplayHudRingFarColor};
 }
 
 void init_gameplay_hud_screen_ui() {

@@ -46,4 +46,3 @@ FontSize           # UI layout label
 Shape                 # #1202: per-shape tags; player identity, 4 cases
 GamePhase             # #1202: per-phase tag/struct mix; blocked on game_state.h split
 GameplayHudShapeSlot  # #1202 re-triage: switch in app/ui/screen_controllers/gameplay_hud_screen_controller.cpp
-GameplayHudRingCue    # #1202 re-triage: switch in app/ui/screen_controllers/gameplay_hud_screen_controller.cpp
