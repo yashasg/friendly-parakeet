@@ -5,10 +5,24 @@
 
 namespace {
 
+// Raw `entt::connection` (not `scoped_connection`) on purpose: see issue #1268.
+// Same rationale as `input_dispatcher.cpp` — `reg.ctx()` is a `dense_map` whose
+// packed `std::vector` destruction order is unspecified across standard
+// libraries (libc++ reverse, libstdc++ forward). A `scoped_connection` whose
+// destructor fires after the dispatcher is freed would dereference a dead
+// `sigh` and SIGSEGV in test teardown. Registry teardown is now a no-op for
+// these handles; explicit release happens through `release_all()` only when
+// the dispatcher is known to still be alive.
 struct AudioHapticDispatcherConnections {
     entt::dispatcher* owner = nullptr;
-    entt::scoped_connection sfx;
-    entt::scoped_connection haptic;
+    entt::connection sfx;
+    entt::connection haptic;
+
+    void release_all() noexcept {
+        haptic.release();
+        sfx.release();
+        owner = nullptr;
+    }
 };
 
 void warm_audio_haptic_dispatcher(entt::dispatcher& disp) {
@@ -36,19 +50,19 @@ void wire_audio_haptic_dispatcher(entt::registry& reg) {
     if (state->owner == disp) {
         return;
     }
-    *state = AudioHapticDispatcherConnections{};
+    state->release_all();
     state->owner = disp;
 
-    state->sfx    = entt::scoped_connection{
-        disp->sink<PlaySfxEvent>().connect<&audio_handle_play_sfx>(reg)};
-    state->haptic = entt::scoped_connection{
-        disp->sink<PlayHapticEvent>().connect<&haptic_handle_play>(reg)};
+    state->sfx =
+        disp->sink<PlaySfxEvent>().connect<&audio_handle_play_sfx>(reg);
+    state->haptic =
+        disp->sink<PlayHapticEvent>().connect<&haptic_handle_play>(reg);
 
     warm_audio_haptic_dispatcher(*disp);
 }
 
 void unwire_audio_haptic_dispatcher(entt::registry& reg) {
     if (auto* state = reg.ctx().find<AudioHapticDispatcherConnections>()) {
-        *state = AudioHapticDispatcherConnections{};
+        state->release_all();
     }
 }
