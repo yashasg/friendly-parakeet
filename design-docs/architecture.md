@@ -499,21 +499,19 @@ enum class GamePhase : uint8_t {
     Tutorial     = 7
 };
 
-enum class EndScreenChoice : uint8_t {
-    None = 0,
-    Restart = 1,
-    LevelSelect = 2,
-    MainMenu = 3
-};
-
 /// Singleton: governs which systems run and screen transitions.
 struct GameState {
     GamePhase  phase;
     float      phase_timer;          // seconds in current phase
     bool       transition_pending;   // set to request a phase change
     GamePhase  next_phase;           // destination of pending transition
-    EndScreenChoice end_choice;      // pending end-screen menu action
 };
+
+// End-screen menu choice — per-choice zero-column tables on registry.ctx().
+// Absence of all three is the "no choice yet" state. See §"Terminal Phases".
+struct EndChoiceRestart {};
+struct EndChoiceLevelSelect {};
+struct EndChoiceMainMenu {};
 ```
 
 Active phase responsibilities:
@@ -853,9 +851,12 @@ not route into it. Its continue action transitions to `Playing`.
 
 ### Terminal Phases
 
-`GameOver` and `SongComplete` are terminal result screens. End-screen UI writes
-`GameState::end_choice`; `game_state_end_screen_system` converts it to the next
-phase (`Playing`, `LevelSelect`, or `Title`) and queues the deferred transition.
+`GameOver` and `SongComplete` are terminal result screens. End-screen UI
+emplaces one of the per-choice ctx tags (`EndChoiceRestart`,
+`EndChoiceLevelSelect`, `EndChoiceMainMenu`); `game_state_end_screen_system`
+runs one transform per tag, converts the choice to the next phase
+(`Playing`, `LevelSelect`, or `Title`), queues the deferred transition, and
+erases the tag. While all three tags are absent, no choice is pending.
 
 ---
 
@@ -1053,8 +1054,7 @@ int main(int argc, char* argv[]) {
         .phase = GamePhase::Title,
         .phase_timer = 0.0f,
         .transition_pending = false,
-        .next_phase = GamePhase::Title,
-        .end_choice = EndScreenChoice::None
+        .next_phase = GamePhase::Title
     });
     reg.ctx().emplace<AudioQueue>();
 

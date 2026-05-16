@@ -32,11 +32,11 @@ bool game_state_handle_end_screen_press(entt::registry& reg, const ButtonPressEv
     }
 
     if (action == MenuActionKind::Restart) {
-        gs.end_choice = EndScreenChoice::Restart;
+        reg.ctx().insert_or_assign(EndChoiceRestart{});
     } else if (action == MenuActionKind::GoLevelSelect) {
-        gs.end_choice = EndScreenChoice::LevelSelect;
+        reg.ctx().insert_or_assign(EndChoiceLevelSelect{});
     } else if (action == MenuActionKind::GoMainMenu) {
-        gs.end_choice = EndScreenChoice::MainMenu;
+        reg.ctx().insert_or_assign(EndChoiceMainMenu{});
     }
     return true;
 }

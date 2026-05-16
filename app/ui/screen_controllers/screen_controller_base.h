@@ -52,14 +52,17 @@ inline Rectangle offset_rect(Vector2 anchor, float x, float y, float w, float h)
 
 // Generic end-screen choice dispatcher. Used by game_over and song_complete controllers.
 // LayoutState must have RestartButtonPressed, LevelSelectButtonPressed, MenuButtonPressed fields.
+// Each branch emplaces the corresponding zero-column ctx table; absence of all three
+// is the "no choice yet" state. game_state_end_screen_system consumes the tag once
+// the per-phase input delay has elapsed.
 template<typename LayoutState>
-inline void dispatch_end_screen_choice(GameState& gs, const LayoutState& state) {
+inline void dispatch_end_screen_choice(entt::registry& reg, const LayoutState& state) {
     if (state.RestartButtonPressed)
-        gs.end_choice = EndScreenChoice::Restart;
+        reg.ctx().insert_or_assign(EndChoiceRestart{});
     else if (state.LevelSelectButtonPressed)
-        gs.end_choice = EndScreenChoice::LevelSelect;
+        reg.ctx().insert_or_assign(EndChoiceLevelSelect{});
     else if (state.MenuButtonPressed)
-        gs.end_choice = EndScreenChoice::MainMenu;
+        reg.ctx().insert_or_assign(EndChoiceMainMenu{});
 }
 
 #endif // SCREEN_CONTROLLER_BASE_H
