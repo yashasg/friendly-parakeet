@@ -73,14 +73,19 @@ TEST_CASE("difficulty ramp: easy contains only shape_gate obstacles or onset mar
 
         // Per #1202/#1204: kind is identified by which per-kind vector the
         // entry lives in. Easy permits only shape_gate and onset_marker; any
-        // entry in split_path_beats is a violation.
-        for (const auto& beat : map.split_path_beats) {
-            FAIL_CHECK("easy shape_gate_only: " << path
-                       << " contains unsupported easy obstacle (split_path) at beat "
-                       << beat.beat_index
-                       << " (easy required obstacles must be shape_gate-only per #125; "
-                          "onset_marker is non-blocking metadata per #642)");
-        }
+        // entry in split_path_* is a violation.
+        auto check_split_path_violations = [&](const std::vector<BeatEntry>& bin, const char* shape_name) {
+            for (const auto& beat : bin) {
+                FAIL_CHECK("easy shape_gate_only: " << path
+                           << " contains unsupported easy obstacle (split_path " << shape_name
+                           << ") at beat " << beat.beat_index
+                           << " (easy required obstacles must be shape_gate-only per #125; "
+                              "onset_marker is non-blocking metadata per #642)");
+            }
+        };
+        check_split_path_violations(map.split_path_circle_beats, "circle");
+        check_split_path_violations(map.split_path_square_beats, "square");
+        check_split_path_violations(map.split_path_triangle_beats, "triangle");
     }
 }
 
@@ -103,7 +108,7 @@ TEST_CASE("difficulty ramp: shape-gate count increases with difficulty",
                            << " difficulty=" << diffs[i]);
                 continue;
             }
-            counts[i] = static_cast<int>(map.shape_gate_beats.size());
+            counts[i] = static_cast<int>(shape_gate_count(map));
         }
 
         if (counts[0] == 0 || counts[1] == 0 || counts[2] == 0) {

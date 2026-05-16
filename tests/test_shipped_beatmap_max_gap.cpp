@@ -73,12 +73,17 @@ TEST_CASE("shipped beatmaps: authored beats are strictly increasing",
             // ordering invariant we merge the three vectors into one flat
             // sorted view (by beat_index, then time_sec).
             std::vector<BeatEntry> merged;
-            merged.reserve(map.shape_gate_beats.size() +
-                           map.split_path_beats.size() +
-                           map.onset_marker_beats.size());
-            merged.insert(merged.end(), map.shape_gate_beats.begin(),   map.shape_gate_beats.end());
-            merged.insert(merged.end(), map.split_path_beats.begin(),   map.split_path_beats.end());
-            merged.insert(merged.end(), map.onset_marker_beats.begin(), map.onset_marker_beats.end());
+            merged.reserve(beat_map_total_count(map));
+            auto append = [&](const std::vector<BeatEntry>& v) {
+                merged.insert(merged.end(), v.begin(), v.end());
+            };
+            append(map.shape_gate_circle_beats);
+            append(map.shape_gate_square_beats);
+            append(map.shape_gate_triangle_beats);
+            append(map.split_path_circle_beats);
+            append(map.split_path_square_beats);
+            append(map.split_path_triangle_beats);
+            append(map.onset_marker_beats);
             std::stable_sort(merged.begin(), merged.end(),
                              [](const BeatEntry& a, const BeatEntry& b) {
                                  if (a.beat_index != b.beat_index) return a.beat_index < b.beat_index;

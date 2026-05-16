@@ -37,8 +37,8 @@ TEST_CASE("parse: unknown kind does not silently become ShapeGate", "[parse][kin
     bool ok = parse_beat_map(json, map, errors);
     CHECK_FALSE(ok);
     // Beat must not have been silently added with a default kind
-    CHECK(map.shape_gate_beats.empty());
-    CHECK(map.split_path_beats.empty());
+    CHECK((shape_gate_count(map) == 0));
+    CHECK((split_path_count(map) == 0));
     CHECK(map.onset_marker_beats.empty());
 }
 
@@ -89,8 +89,8 @@ TEST_CASE("parse: unknown shape does not silently become Circle", "[parse][shape
 
     bool ok = parse_beat_map(json, map, errors);
     CHECK_FALSE(ok);
-    CHECK(map.shape_gate_beats.empty());
-    CHECK(map.split_path_beats.empty());
+    CHECK((shape_gate_count(map) == 0));
+    CHECK((split_path_count(map) == 0));
     CHECK(map.onset_marker_beats.empty());
 }
 
@@ -116,7 +116,7 @@ TEST_CASE("parse: all active kinds parse without errors", "[parse][kind][issue87
         })";
         INFO("Testing kind: " << kind);
         CHECK(parse_beat_map(json, map, errors));
-        CHECK(map.shape_gate_beats.size() + map.split_path_beats.size() + map.onset_marker_beats.size() == 1);
+        CHECK(shape_gate_count(map) + split_path_count(map) + map.onset_marker_beats.size() == 1);
     }
 }
 
@@ -134,7 +134,7 @@ TEST_CASE("parse: all valid shapes parse without errors", "[parse][shape]") {
         })";
         INFO("Testing shape: " << shape);
         CHECK(parse_beat_map(json, map, errors));
-        CHECK(map.shape_gate_beats.size() + map.split_path_beats.size() + map.onset_marker_beats.size() == 1);
+        CHECK(shape_gate_count(map) + split_path_count(map) + map.onset_marker_beats.size() == 1);
     }
 }
 
@@ -243,8 +243,8 @@ TEST_CASE("parse: missing beat is rejected", "[parse][beat][required][issue757]"
     REQUIRE_FALSE(errors.empty());
     CHECK(errors[0].beat_index == -1);
     CHECK(errors[0].message.find("beat") != std::string::npos);
-    CHECK(map.shape_gate_beats.empty());
-    CHECK(map.split_path_beats.empty());
+    CHECK((shape_gate_count(map) == 0));
+    CHECK((split_path_count(map) == 0));
     CHECK(map.onset_marker_beats.empty());
 }
 
@@ -262,8 +262,8 @@ TEST_CASE("parse: missing shape gate lane is rejected", "[parse][lane][required]
     REQUIRE_FALSE(errors.empty());
     CHECK(errors[0].beat_index == 4);
     CHECK(errors[0].message.find("lane") != std::string::npos);
-    CHECK(map.shape_gate_beats.empty());
-    CHECK(map.split_path_beats.empty());
+    CHECK((shape_gate_count(map) == 0));
+    CHECK((split_path_count(map) == 0));
     CHECK(map.onset_marker_beats.empty());
 }
 
@@ -281,8 +281,8 @@ TEST_CASE("parse: unshipped obstacle kinds are rejected", "[parse][kind][issue87
     REQUIRE_FALSE(errors.empty());
     CHECK(errors[0].beat_index == 8);
     CHECK(errors[0].message.find("Unknown obstacle kind") != std::string::npos);
-    CHECK(map.shape_gate_beats.empty());
-    CHECK(map.split_path_beats.empty());
+    CHECK((shape_gate_count(map) == 0));
+    CHECK((split_path_count(map) == 0));
     CHECK(map.onset_marker_beats.empty());
 }
 

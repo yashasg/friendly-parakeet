@@ -62,27 +62,24 @@ TEST_CASE("medium balance: shipped beatmaps keep motif lane mapping",
         std::vector<BeatMapError> errors;
         if (!load_beat_map(path, map, errors, "medium")) continue;
 
-        // Per #1202/#1204: shape-gate entries live in their own per-kind vector.
+        // Per #1202/#1204: shape-gate entries live in their own per-(kind, shape) vectors.
         int total_shape_gates = 0;
-
-        for (const auto& beat : map.shape_gate_beats) {
-            ++total_shape_gates;
-            const int expected_lane = expected_lane_for_shape(beat.shape);
-            if (expected_lane < 0) {
-                FAIL_CHECK("medium balance: " << path
-                           << " beat " << beat.beat_index
-                           << " has unknown shape enum="
-                           << static_cast<int>(beat.shape));
-                continue;
+        auto check_bin = [&](const std::vector<BeatEntry>& bin, Shape shape) {
+            const int expected_lane = expected_lane_for_shape(shape);
+            for (const auto& beat : bin) {
+                ++total_shape_gates;
+                if (beat.lane != expected_lane) {
+                    FAIL_CHECK("medium balance: " << path
+                               << " beat " << beat.beat_index
+                               << " shape enum=" << static_cast<int>(shape)
+                               << " expected lane " << expected_lane
+                               << " but found lane " << static_cast<int>(beat.lane));
+                }
             }
-            if (beat.lane != expected_lane) {
-                FAIL_CHECK("medium balance: " << path
-                           << " beat " << beat.beat_index
-                           << " shape enum=" << static_cast<int>(beat.shape)
-                           << " expected lane " << expected_lane
-                           << " but found lane " << static_cast<int>(beat.lane));
-            }
-        }
+        };
+        check_bin(map.shape_gate_circle_beats,   Shape::Circle);
+        check_bin(map.shape_gate_square_beats,   Shape::Square);
+        check_bin(map.shape_gate_triangle_beats, Shape::Triangle);
         REQUIRE(total_shape_gates > 0);
     }
 }

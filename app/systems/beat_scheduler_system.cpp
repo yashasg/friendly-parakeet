@@ -13,7 +13,7 @@
 
 namespace {
 
-// Per-kind schedule context shared across the 3 spawn transforms.
+// Per-kind schedule context shared across the per-(kind, shape) spawn transforms.
 struct ScheduleContext {
     entt::registry& reg;
     SongState&      song;
@@ -63,12 +63,18 @@ void warn_invalid_lane_once(int lane) {
     }
 }
 
-// Per-kind transforms: one while-loop per kind cursor. Replaces the
-// former single switch-on-discriminator loop (issue #1202/#1204).
+// Per-(kind, shape) transforms: one while-loop per cursor. Replaces the
+// former per-kind loops that switched on `entry.shape` to pick the spawn
+// target (issue #1202/#1204). The shape is now encoded by which vector
+// the cursor walks and the shape literal each transform passes to the
+// spawn function.
 
-void schedule_shape_gates(ScheduleContext& ctx) {
-    while (ctx.song.next_shape_gate_idx < ctx.map.shape_gate_beats.size()) {
-        const auto& entry = ctx.map.shape_gate_beats[ctx.song.next_shape_gate_idx];
+void schedule_shape_gate_bin(ScheduleContext& ctx,
+                             const std::vector<BeatEntry>& bin,
+                             size_t& cursor,
+                             Shape required_shape) {
+    while (cursor < bin.size()) {
+        const auto& entry = bin[cursor];
         float calibrated_arrival_time = 0.0f;
         float effective_spawn_time    = 0.0f;
         float start_y                 = 0.0f;
@@ -80,15 +86,18 @@ void schedule_shape_gates(ScheduleContext& ctx) {
         warn_invalid_lane_once(static_cast<int>(entry.lane));
 
         const BeatInfo bi{entry.beat_index, calibrated_arrival_time, effective_spawn_time};
-        spawn_shape_gate_rhythm(ctx.reg, {x_pos, start_y, entry.shape,
+        spawn_shape_gate_rhythm(ctx.reg, {x_pos, start_y, required_shape,
                                           ctx.song.scroll_speed}, bi);
-        ctx.song.next_shape_gate_idx++;
+        cursor++;
     }
 }
 
-void schedule_split_paths(ScheduleContext& ctx) {
-    while (ctx.song.next_split_path_idx < ctx.map.split_path_beats.size()) {
-        const auto& entry = ctx.map.split_path_beats[ctx.song.next_split_path_idx];
+void schedule_split_path_bin(ScheduleContext& ctx,
+                             const std::vector<BeatEntry>& bin,
+                             size_t& cursor,
+                             Shape required_shape) {
+    while (cursor < bin.size()) {
+        const auto& entry = bin[cursor];
         float calibrated_arrival_time = 0.0f;
         float effective_spawn_time    = 0.0f;
         float start_y                 = 0.0f;
@@ -100,9 +109,9 @@ void schedule_split_paths(ScheduleContext& ctx) {
         warn_invalid_lane_once(static_cast<int>(entry.lane));
 
         const BeatInfo bi{entry.beat_index, calibrated_arrival_time, effective_spawn_time};
-        spawn_split_path_rhythm(ctx.reg, {x_pos, start_y, entry.shape,
+        spawn_split_path_rhythm(ctx.reg, {x_pos, start_y, required_shape,
                                           spawn_lane, ctx.song.scroll_speed}, bi);
-        ctx.song.next_split_path_idx++;
+        cursor++;
     }
 }
 
@@ -144,7 +153,17 @@ void beat_scheduler_system(entt::registry& reg, [[maybe_unused]] float dt) {
     const float audio_offset_sec = settings ? settings::audio_offset_seconds(*settings) : 0.0f;
 
     ScheduleContext ctx{reg, *song, *map, audio_offset_sec};
-    schedule_shape_gates(ctx);
-    schedule_split_paths(ctx);
+    schedule_shape_gate_bin(ctx, ctx.map.shape_gate_circle_beats,
+                            ctx.song.next_shape_gate_circle_idx, Shape::Circle);
+    schedule_shape_gate_bin(ctx, ctx.map.shape_gate_square_beats,
+                            ctx.song.next_shape_gate_square_idx, Shape::Square);
+    schedule_shape_gate_bin(ctx, ctx.map.shape_gate_triangle_beats,
+                            ctx.song.next_shape_gate_triangle_idx, Shape::Triangle);
+    schedule_split_path_bin(ctx, ctx.map.split_path_circle_beats,
+                            ctx.song.next_split_path_circle_idx, Shape::Circle);
+    schedule_split_path_bin(ctx, ctx.map.split_path_square_beats,
+                            ctx.song.next_split_path_square_idx, Shape::Square);
+    schedule_split_path_bin(ctx, ctx.map.split_path_triangle_beats,
+                            ctx.song.next_split_path_triangle_idx, Shape::Triangle);
     schedule_onset_markers(ctx);
 }

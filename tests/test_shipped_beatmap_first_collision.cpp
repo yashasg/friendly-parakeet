@@ -71,8 +71,12 @@ TEST_CASE("first collision: every shipped difficulty has a valid first beat",
                     }
                 }
             };
-            consider(map.shape_gate_beats);
-            consider(map.split_path_beats);
+            consider(map.shape_gate_circle_beats);
+            consider(map.shape_gate_square_beats);
+            consider(map.shape_gate_triangle_beats);
+            consider(map.split_path_circle_beats);
+            consider(map.split_path_square_beats);
+            consider(map.split_path_triangle_beats);
             consider(map.onset_marker_beats);
             if (!any) continue;
 
