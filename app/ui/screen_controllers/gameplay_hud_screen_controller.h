@@ -5,12 +5,6 @@
 
 #include "../../components/song_state.h"
 
-enum class GameplayHudShapeSlot {
-    Circle = 0,
-    Square = 1,
-    Triangle = 2
-};
-
 // Approach-ring proximity readout (issue #1202 / #1204): the former
 // `GameplayHudRingCue` discriminator switched on `Hidden/Far/Near/Perfect`,
 // then re-switched to look up a draw color. Per Fabian's existential
@@ -48,7 +42,14 @@ GameplayHudRingCue gameplay_hud_ring_cue(float nearest_dist,
 void init_gameplay_hud_screen_ui();
 void gameplay_hud_process_button_input(entt::registry& reg);
 void render_gameplay_hud_screen_ui(entt::registry& reg);
-Rectangle gameplay_hud_shape_input_bounds(GameplayHudShapeSlot slot);
+// Per-shape input bounds for the gameplay HUD. The former
+// `gameplay_hud_shape_input_bounds(GameplayHudShapeSlot)` switched on a
+// 3-value discriminator to pick one of these getters; per Fabian's
+// existential processing (issues #1202 / #1204) each shape is its own
+// named accessor — the type IS the choice, no runtime branch.
+Rectangle gameplay_hud_circle_input_bounds();
+Rectangle gameplay_hud_square_input_bounds();
+Rectangle gameplay_hud_triangle_input_bounds();
 void gameplay_hud_apply_button_presses(entt::registry& reg,
                                         bool pause_pressed,
                                         bool circle_pressed,
