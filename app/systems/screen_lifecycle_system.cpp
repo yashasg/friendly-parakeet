@@ -38,14 +38,20 @@ bool entities_alive_probe(entt::registry& reg) noexcept {
     return reg.view<ScreenTag>().size() > 0;
 }
 
-// Pilot (#1287): Paused only. Each per-screen migration sub-issue extends
-// this table by one row.
+// Pilot (#1287): Paused. Tutorial (#1291) added this cycle. Each
+// subsequent per-screen migration sub-issue extends this table by one row.
 constexpr ScreenLifecycleRow kLifecycleRows[] = {
     {
         &phase_active_probe<GamePhasePausedTag>,
         &entities_alive_probe<PausedScreenTag>,
         &spawn_paused_screen,
         &despawn_paused_screen,
+    },
+    {
+        &phase_active_probe<GamePhaseTutorialTag>,
+        &entities_alive_probe<TutorialScreenTag>,
+        &spawn_tutorial_screen,
+        &despawn_tutorial_screen,
     },
 };
 

@@ -13,6 +13,16 @@
 
 #include <raylib.h>  // CheckCollisionPointRec, Rectangle, Vector2
 
+// Tutorial screen continue action (issue #1291).
+//
+// Defined in `app/ui/screen_controllers/tutorial_screen_controller.cpp`.
+// Marks FTUE complete + persists settings + requests Playing phase.
+// Forward-declared at namespace scope so the anonymous-namespace
+// handler below can call it without a header dependency on the legacy
+// controller. The controller file itself stays in tree until OoS-B
+// removes all legacy controllers in one PR.
+void tutorial_screen_continue(entt::registry& reg);
+
 // ── ActionId dispatch table ─────────────────────────────────────────────────
 //
 // Per Fabian Principle 1 (and the explicit Keep-set rationale for
@@ -50,6 +60,13 @@ void menu_button_action(entt::registry& reg, entt::entity /*entity*/) {
     request_phase_transition<NextPhaseTitleTag>(reg);
 }
 
+// Tutorial screen action (issue #1291). Calls the forward-declared
+// `tutorial_screen_continue` (defined in the legacy controller TU, will
+// move out in OoS-B).
+void continue_button_action(entt::registry& reg, entt::entity /*entity*/) {
+    tutorial_screen_continue(reg);
+}
+
 // ── Dispatch table ──────────────────────────────────────────────────
 //
 // Order must match the `ActionId` enumerator order in
@@ -61,7 +78,7 @@ constexpr std::array<ActionHandler, 17> kActionHandlers = {
     /* AudioOffsetMinus     */ &noop_action_handler,
     /* AudioOffsetPlus      */ &noop_action_handler,
     /* CloseButton          */ &noop_action_handler,
-    /* ContinueButton       */ &noop_action_handler,
+    /* ContinueButton       */ &continue_button_action,
     /* DifficultyEasy       */ &noop_action_handler,
     /* DifficultyHard       */ &noop_action_handler,
     /* DifficultyMedium     */ &noop_action_handler,

@@ -20,5 +20,5 @@
 // continue to render via their legacy controller and stay invisible to
 // this system. See #1287 for the per-screen sub-issue ladder.
 //
-// Pilot (this cycle): Paused only.
+// Migrated so far: Paused (#1290 pilot), Tutorial (#1291).
 void screen_lifecycle_system(entt::registry& reg);
