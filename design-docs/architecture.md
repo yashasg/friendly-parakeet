@@ -392,7 +392,14 @@ struct EnergyState {
 /// events below instead, except for `quit_requested`. Per-frame edge flags
 /// (`touch_down`, `touch_up`, `click`, `button_touch_up`) are recomputed each
 /// pass through `input_system`; there is no separate `clear_events()` step.
-enum class InputSource : uint8_t { None, Mouse, Touch };
+
+/// Input-source mutex (issues #1202 / #1204): the former `enum InputSource`
+/// became per-source ctx tables. Presence of `InputSourceMouse` ⇔ Mouse
+/// owns the current gesture; presence of `InputSourceTouch` ⇔ Touch owns
+/// it; absence of both ⇔ None. The mutex (at most one tag present) is
+/// maintained by input_system helpers.
+struct InputSourceMouse {};
+struct InputSourceTouch {};
 
 struct TouchSlot {
     static constexpr int InvalidId = -1;
@@ -413,7 +420,6 @@ struct InputState {
     float end_x   = 0.0f, end_y   = 0.0f;
     float duration = 0.0f;
 
-    InputSource active_source = InputSource::None;
     bool  touch_down            = false;  // pressed this frame
     bool  touch_up              = false;  // released this frame
     bool  click                 = false;  // tap classification this frame
@@ -1608,7 +1614,7 @@ app/
 │   └── song_state.h             ← SongState
 │
 ├── systems/                     ← all system free functions
-│   ├── input.h                  ← InputState, TouchSlot, InputSource (singleton hardware-capture state)
+│   ├── input.h                  ← InputState, TouchSlot, InputSourceMouse, InputSourceTouch (singleton hardware-capture state)
 │   ├── all_systems.h            ← convenience #include for all systems
 │   ├── input_system.cpp         ← raylib polling → semantic dispatcher events
 │   ├── game_state_system.cpp    ← phase transitions

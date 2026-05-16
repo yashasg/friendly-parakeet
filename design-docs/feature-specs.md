@@ -103,8 +103,16 @@ inputs resolve deterministically.
 ### ECS Components (C++ structs)
 
 ```cpp
-// ── Input source identification ──
-enum class InputSource : uint8_t { None, Mouse, Touch };
+// ── Input source ctx-tag mutex (former enum InputSource) ──
+// Per-source ctx tables replace the former 3-state enum on
+// InputState::active_source (issues #1202 / #1204):
+//   • presence of InputSourceMouse ⇔ Mouse owns the gesture
+//   • presence of InputSourceTouch ⇔ Touch owns the gesture
+//   • absence of both              ⇔ None
+// The mutex is maintained by input_system helpers
+// (set_input_source_mouse / _touch, clear_input_source).
+struct InputSourceMouse {};
+struct InputSourceTouch {};
 
 // ── Per-touch tracking slot (multi-touch support) ──
 struct TouchSlot {
@@ -130,7 +138,6 @@ struct InputState {
     float end_x    = 0.0f, end_y   = 0.0f;  // position on touch_up
     float duration = 0.0f;                  // seconds held
 
-    InputSource active_source = InputSource::None;
     bool  touch_down     = false;           // just pressed this frame
     bool  touch_up       = false;           // just released this frame
     bool  click          = false;           // tap recognised this frame

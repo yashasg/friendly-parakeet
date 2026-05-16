@@ -14,8 +14,9 @@
 // We can't drive emscripten's EM_ASM_INT from the native test runner, but we
 // CAN assert on the non-web invariant that input_system_init runs cleanly
 // and that input_system continues to honor both sources concurrently with
-// active_source acting as the per-gesture arbiter (covered by the existing
-// pipeline tests for swipe/keyboard routing).
+// the InputSourceMouse / InputSourceTouch ctx-tag mutex acting as the
+// per-gesture arbiter (covered by the existing pipeline tests for
+// swipe/keyboard routing).
 
 #include <catch2/catch_test_macros.hpp>
 

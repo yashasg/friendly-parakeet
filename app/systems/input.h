@@ -1,7 +1,5 @@
 #pragma once
 
-#include <cstdint>
-
 // ── Raw input state (internal to input_system) ──────────────────────────────
 // Tracks touch/mouse hardware state. Downstream systems should read
 // semantic events, not this struct — except for quit_requested.
@@ -14,7 +12,16 @@
 // (issue #1194) — this is per-frame ctx-singleton hardware-capture state,
 // not entity-owned component data.
 
-enum class InputSource : uint8_t { None, Mouse, Touch };
+// Per-source ctx tags replacing the former `InputSource` enum
+// (issues #1202 / #1204). The former 3-state mutex
+// (`None`/`Mouse`/`Touch`) on `InputState::active_source` becomes:
+//   • presence of `InputSourceMouse` ctx table  ⇔ Mouse owns the gesture
+//   • presence of `InputSourceTouch` ctx table  ⇔ Touch owns the gesture
+//   • absence of both                            ⇔ None
+// The mutex (at most one tag present) is enforced by the input_system
+// helpers `set_input_source_mouse / _touch` and `clear_input_source`.
+struct InputSourceMouse {};
+struct InputSourceTouch {};
 
 struct TouchSlot {
     static constexpr int InvalidId = -1;
@@ -35,7 +42,6 @@ struct InputState {
     float end_x    = 0.0f, end_y   = 0.0f;
     float duration = 0.0f;
 
-    InputSource active_source = InputSource::None;
     bool  touch_down     = false;
     bool  touch_up       = false;
     bool  click          = false;
