@@ -26,6 +26,7 @@
 #include "components/ui.h"
 #include "constants.h"
 #include "entities/settings.h"
+#include "systems/game_over_scoreboard_bind_system.h"
 #include "systems/game_phase_transition.h"
 #include "systems/input.h"
 #include "systems/screen_lifecycle_system.h"
@@ -475,4 +476,207 @@ TEST_CASE("song_complete_scoreboard_bind_system: no-op when Song Complete entiti
     // view-empty short-circuit covers that).
     song_complete_scoreboard_bind_system(reg);
     CHECK(reg.view<SongCompleteScreenTag>().size() == 0);
+}
+
+// ── Game Over migration (issue #1293) ─────────────────────────────────
+
+namespace {
+
+void prime_game_over_entry(entt::registry& reg) {
+    sync_game_phase_tags<GamePhaseGameOverTag>(reg);
+    spawn_game_over_screen(reg);
+    // Step the phase timer past the GameOver input delay so clicks register.
+    reg.ctx().get<GameState>().phase_timer = constants::GAME_OVER_INPUT_DELAY + 0.05f;
+    clear_next_phase_tags(reg);
+    if (reg.ctx().find<EndChoiceRestart>())     reg.ctx().erase<EndChoiceRestart>();
+    if (reg.ctx().find<EndChoiceLevelSelect>()) reg.ctx().erase<EndChoiceLevelSelect>();
+    if (reg.ctx().find<EndChoiceMainMenu>())    reg.ctx().erase<EndChoiceMainMenu>();
+}
+
+std::string resolve_game_over_slot(entt::registry& reg, float x, float y) {
+    auto view = reg.view<GameOverScreenTag, UiLabelTag, UiPosition, UiLabel>();
+    for (auto [e, pos, label] : view.each()) {
+        (void)e;
+        if (pos.x == x && pos.y == y) return std::string(label.text.data());
+    }
+    return {};
+}
+
+}  // namespace
+
+TEST_CASE("screen_lifecycle_system: spawns Game Over entities on phase entry, "
+          "despawns on exit",
+          "[ui][screen_lifecycle_system][issue1293]") {
+    entt::registry reg = make_registry();
+    clear_next_phase_tags(reg);
+
+    sync_game_phase_tags<GamePhaseTitleTag>(reg);
+    screen_lifecycle_system(reg);
+    CHECK(reg.view<GameOverScreenTag>().size() == 0);
+
+    sync_game_phase_tags<GamePhaseGameOverTag>(reg);
+    screen_lifecycle_system(reg);
+    CHECK(reg.view<GameOverScreenTag>().size() > 0);
+
+    const auto first = reg.view<GameOverScreenTag>().size();
+    screen_lifecycle_system(reg);
+    CHECK(reg.view<GameOverScreenTag>().size() == first);
+
+    sync_game_phase_tags<GamePhaseTitleTag>(reg);
+    screen_lifecycle_system(reg);
+    CHECK(reg.view<GameOverScreenTag>().size() == 0);
+}
+
+TEST_CASE("ui_update_system: Game Over restart hit emplaces EndChoiceRestart",
+          "[ui][ui_update_system][issue1293]") {
+    entt::registry reg = make_registry();
+    prime_game_over_entry(reg);
+
+    auto& input = reg.ctx().get<InputState>();
+    // RestartButton bounds from game_over.rgl: (220, 870, 280, 50).
+    click_at(input, 360.0f, 895.0f);
+
+    ui_update_system(reg);
+
+    CHECK(reg.ctx().find<EndChoiceRestart>() != nullptr);
+    CHECK(reg.ctx().find<EndChoiceLevelSelect>() == nullptr);
+    CHECK(reg.ctx().find<EndChoiceMainMenu>() == nullptr);
+    CHECK_FALSE(any_next_phase_pending(reg));
+}
+
+TEST_CASE("ui_update_system: Game Over level-select hit emplaces EndChoiceLevelSelect",
+          "[ui][ui_update_system][issue1293]") {
+    entt::registry reg = make_registry();
+    prime_game_over_entry(reg);
+
+    auto& input = reg.ctx().get<InputState>();
+    // LevelSelectButton bounds from game_over.rgl: (220, 935, 280, 50).
+    click_at(input, 360.0f, 960.0f);
+
+    ui_update_system(reg);
+
+    CHECK(reg.ctx().find<EndChoiceLevelSelect>() != nullptr);
+    CHECK(reg.ctx().find<EndChoiceRestart>() == nullptr);
+    CHECK(reg.ctx().find<EndChoiceMainMenu>() == nullptr);
+}
+
+TEST_CASE("ui_update_system: Game Over menu hit emplaces EndChoiceMainMenu (not direct transition)",
+          "[ui][ui_update_system][issue1293]") {
+    entt::registry reg = make_registry();
+    prime_game_over_entry(reg);
+
+    auto& input = reg.ctx().get<InputState>();
+    // MenuButton bounds from game_over.rgl: (220, 1000, 280, 50).
+    click_at(input, 360.0f, 1025.0f);
+
+    ui_update_system(reg);
+
+    CHECK(reg.ctx().find<EndChoiceMainMenu>() != nullptr);
+    CHECK(reg.ctx().find<EndChoiceRestart>() == nullptr);
+    CHECK(reg.ctx().find<EndChoiceLevelSelect>() == nullptr);
+    // End-screen menu must NOT bypass the input-delay state machine by
+    // requesting NextPhaseTitleTag directly — the legacy controller routes
+    // every end-screen choice through `game_state_end_screen_system`.
+    CHECK_FALSE(reg.ctx().contains<NextPhaseTitleTag>());
+}
+
+TEST_CASE("ui_update_system: Game Over click before GAME_OVER_INPUT_DELAY is ignored",
+          "[ui][ui_update_system][issue1293]") {
+    entt::registry reg = make_registry();
+    sync_game_phase_tags<GamePhaseGameOverTag>(reg);
+    spawn_game_over_screen(reg);
+    clear_next_phase_tags(reg);
+    if (reg.ctx().find<EndChoiceRestart>()) reg.ctx().erase<EndChoiceRestart>();
+
+    // Timer in the [UI_ENTRY_DEBOUNCE, GAME_OVER_INPUT_DELAY) range —
+    // would clear the generic 0.2s debounce but NOT the 0.4s end-screen
+    // delay, pinning that the per-phase debounce table is being consulted.
+    reg.ctx().get<GameState>().phase_timer = constants::UI_ENTRY_DEBOUNCE + 0.05f;
+    REQUIRE(reg.ctx().get<GameState>().phase_timer <
+            constants::GAME_OVER_INPUT_DELAY);
+
+    auto& input = reg.ctx().get<InputState>();
+    click_at(input, 360.0f, 895.0f);  // restart hit
+
+    ui_update_system(reg);
+
+    CHECK(reg.ctx().find<EndChoiceRestart>() == nullptr);
+}
+
+TEST_CASE("game_over_scoreboard_bind_system: writes score / high-score into slots",
+          "[ui][game_over_scoreboard_bind_system][issue1293]") {
+    entt::registry reg = make_registry();
+    prime_game_over_entry(reg);
+
+    auto& score = reg.ctx().get<ScoreState>();
+    score.score = 12345;
+    auto& current = reg.ctx().get<CurrentSongHighScore>();
+    current.value = 9000;
+
+    game_over_scoreboard_bind_system(reg);
+
+    CHECK(resolve_game_over_slot(reg, 210.0f, 540.0f) == "12345");
+    CHECK(resolve_game_over_slot(reg, 210.0f, 634.0f) == "9000");
+    // No TerminalResultState / EnergyDepletedDeath — all dynamic reason /
+    // best slots empty.
+    CHECK(resolve_game_over_slot(reg, 110.0f, 665.0f).empty());
+    CHECK(resolve_game_over_slot(reg, 110.0f, 712.0f).empty());
+    CHECK(resolve_game_over_slot(reg, 110.0f, 685.0f).empty());
+    CHECK(resolve_game_over_slot(reg, 110.0f, 742.0f).empty());
+}
+
+TEST_CASE("game_over_scoreboard_bind_system: ENERGY DEPLETED at y=685 when NOT new_best",
+          "[ui][game_over_scoreboard_bind_system][issue1293]") {
+    entt::registry reg = make_registry();
+    prime_game_over_entry(reg);
+    reg.ctx().insert_or_assign(EnergyDepletedDeath{});
+
+    game_over_scoreboard_bind_system(reg);
+
+    CHECK(resolve_game_over_slot(reg, 110.0f, 685.0f) == "ENERGY DEPLETED");
+    CHECK(resolve_game_over_slot(reg, 110.0f, 742.0f).empty());
+    CHECK(resolve_game_over_slot(reg, 110.0f, 665.0f).empty());
+    CHECK(resolve_game_over_slot(reg, 110.0f, 712.0f).empty());
+}
+
+TEST_CASE("game_over_scoreboard_bind_system: ENERGY DEPLETED shifts to y=742 + NEW BEST/PREV "
+          "lines populated when new_best",
+          "[ui][game_over_scoreboard_bind_system][issue1293]") {
+    entt::registry reg = make_registry();
+    prime_game_over_entry(reg);
+
+    reg.ctx().insert_or_assign(EnergyDepletedDeath{});
+    reg.ctx().insert_or_assign(TerminalResultState{true, 3000});
+
+    game_over_scoreboard_bind_system(reg);
+
+    CHECK(resolve_game_over_slot(reg, 110.0f, 665.0f) == "NEW BEST!");
+    CHECK(resolve_game_over_slot(reg, 110.0f, 712.0f) == "PREV 3000");
+    CHECK(resolve_game_over_slot(reg, 110.0f, 742.0f) == "ENERGY DEPLETED");
+    // Lower-position reason slot must be empty so the legacy positional
+    // semantic (text moves down to clear the NEW BEST! / PREV lines) is
+    // preserved without overlap.
+    CHECK(resolve_game_over_slot(reg, 110.0f, 685.0f).empty());
+}
+
+TEST_CASE("game_over_scoreboard_bind_system: NEW BEST/PREV without death cause leaves reason empty",
+          "[ui][game_over_scoreboard_bind_system][issue1293]") {
+    entt::registry reg = make_registry();
+    prime_game_over_entry(reg);
+    reg.ctx().insert_or_assign(TerminalResultState{true, 4242});
+
+    game_over_scoreboard_bind_system(reg);
+
+    CHECK(resolve_game_over_slot(reg, 110.0f, 665.0f) == "NEW BEST!");
+    CHECK(resolve_game_over_slot(reg, 110.0f, 712.0f) == "PREV 4242");
+    CHECK(resolve_game_over_slot(reg, 110.0f, 685.0f).empty());
+    CHECK(resolve_game_over_slot(reg, 110.0f, 742.0f).empty());
+}
+
+TEST_CASE("game_over_scoreboard_bind_system: no-op when Game Over entities absent",
+          "[ui][game_over_scoreboard_bind_system][issue1293]") {
+    entt::registry reg = make_registry();
+    // No game-over spawn — system must be safe to call.
+    game_over_scoreboard_bind_system(reg);
+    CHECK(reg.view<GameOverScreenTag>().size() == 0);
 }

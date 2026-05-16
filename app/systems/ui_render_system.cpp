@@ -13,7 +13,6 @@
 #include "../tags/tags.h"
 
 #include "../ui/screen_controllers/title_screen_controller.h"
-#include "../ui/screen_controllers/game_over_screen_controller.h"
 #include "../ui/screen_controllers/settings_screen_controller.h"
 #include "../ui/screen_controllers/level_select_screen_controller.h"
 #include "../ui/screen_controllers/gameplay_hud_screen_controller.h"
@@ -179,13 +178,13 @@ void ui_render_system(entt::registry& reg, float /*alpha*/) {
     // dispatch on tag presence rather than on an enum compare.
     //
     // Paused was migrated to the entity-driven path (#1287 pilot);
-    // Tutorial migrated in #1291; Song Complete migrated in #1292. The
-    // remaining five screens migrate in follow-up sub-issues — see #1287.
+    // Tutorial migrated in #1291; Song Complete migrated in #1292; Game
+    // Over migrated in #1293. The remaining four screens migrate in
+    // follow-up sub-issues — see #1287.
     const auto& ctx = reg.ctx();
     if (ctx.contains<GamePhaseTitleTag>())        { render_title_screen_ui(reg); }
     if (ctx.contains<GamePhaseLevelSelectTag>())  { render_level_select_screen_ui(reg); }
     if (ctx.contains<GamePhasePlayingTag>())      { render_gameplay_hud_screen_ui(reg); }
-    if (ctx.contains<GamePhaseGameOverTag>())     { render_game_over_screen_ui(reg); }
     if (ctx.contains<GamePhaseSettingsTag>())     { render_settings_screen_ui(reg); }
 
     // Restore raw mouse transform for non-UI systems in subsequent frames.

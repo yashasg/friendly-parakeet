@@ -75,9 +75,9 @@ void menu_button_action(entt::registry& reg, entt::entity entity) {
     request_phase_transition<NextPhaseTitleTag>(reg);
 }
 
-// End-screen actions (Song Complete migrated in #1292; Game Over follows in
-// #1293). Same per-choice ctx-tag mechanic as `menu_button_action` for the
-// end-screen branch.
+// End-screen actions (Song Complete migrated in #1292, Game Over migrated
+// in #1293). Same per-choice ctx-tag mechanic as `menu_button_action` for
+// the end-screen branch.
 void restart_button_action(entt::registry& reg, entt::entity /*entity*/) {
     reg.ctx().insert_or_assign(EndChoiceRestart{});
 }
