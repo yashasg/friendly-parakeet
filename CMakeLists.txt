@@ -77,7 +77,6 @@ configure_file(
 # nlohmann-json: JSON parsing for beat map loading (vcpkg on all platforms).
 
 find_package(EnTT CONFIG REQUIRED)
-find_package(magic_enum CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(raylib CONFIG REQUIRED)
 find_path(RAYGUI_INCLUDE_DIR raygui.h REQUIRED)
@@ -98,7 +97,7 @@ target_compile_options(shapeshifter_warnings INTERFACE
 
 # Mark third-party include directories as SYSTEM so warnings from their
 # headers are suppressed and cannot be promoted to errors by -Werror.
-set(_system_deps EnTT::EnTT magic_enum::magic_enum raylib nlohmann_json::nlohmann_json)
+set(_system_deps EnTT::EnTT raylib nlohmann_json::nlohmann_json)
 if(BUILD_TESTING)
     list(APPEND _system_deps Catch2::Catch2 Catch2::Catch2WithMain)
 endif()
@@ -183,7 +182,6 @@ target_include_directories(shapeshifter_lib SYSTEM PUBLIC
 )
 target_link_libraries(shapeshifter_lib PUBLIC
     EnTT::EnTT
-    magic_enum::magic_enum
     nlohmann_json::nlohmann_json
 )
 target_link_libraries(shapeshifter_lib PUBLIC raylib)

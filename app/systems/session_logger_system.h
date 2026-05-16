@@ -1,21 +1,11 @@
 #pragma once
 
 #include <entt/entt.hpp>
-#include <magic_enum/magic_enum.hpp>
 #include <cstddef>
 #include <cstdio>
 #include <cstdint>
 #include <string>
 #include <string_view>
-
-// Returns the enum name as a string_view, or "???" when magic_enum cannot
-// resolve the value (out-of-range / non-reflective). Intended for log lines
-// where an enum should print symbolically without aborting on bad data.
-template <typename E>
-std::string_view enum_name_or_unknown(E value) {
-    const std::string_view name = magic_enum::enum_name(value);
-    return name.empty() ? std::string_view{"???"} : name;
-}
 
 // Per-tag obstacle-kind label for log lines. Replaces the former
 // `enum_name(ObstacleKind)` lookup with a tag-presence dispatch

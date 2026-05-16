@@ -126,7 +126,7 @@ void session_log_on_obstacle_spawn(entt::registry& reg, entt::entity entity) {
     float arrival = beat ? beat->arrival_time : 0.0f;
     const std::string_view kind_name = obstacle_kind_label(reg, entity);
     const std::string_view shape_name =
-        has_req ? enum_name_or_unknown(current_required_shape(reg, entity))
+        has_req ? to_string(current_required_shape(reg, entity))
                 : std::string_view{"-"};
 
     session_log_write(*log, t, "GAME",
