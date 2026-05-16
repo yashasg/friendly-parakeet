@@ -307,29 +307,6 @@ TEST_CASE("validate: multiple errors accumulated", "[validate]") {
 
 // ── validate_beat_map: active obstacle kind rules ─────────────
 
-TEST_CASE("validate: unshipped obstacle kinds are rejected from active beatmaps",
-          "[validate][kind][issue873]") {
-    constexpr ObstacleKind kinds[] = {
-        ObstacleKind::LaneBlock,
-        ObstacleKind::ComboGate,
-    };
-
-    for (const auto kind : kinds) {
-        BeatMap map;
-        map.bpm = 120.0f;
-        map.offset = 0.0f;
-        map.lead_beats = 4;
-        map.duration = 60.0f;
-        map.beats.push_back({4, kind, Shape::Circle, 1, 0x01});
-
-        std::vector<BeatMapError> errors;
-        INFO("kind=" << static_cast<int>(kind));
-        CHECK_FALSE(validate_beat_map(map, errors));
-        REQUIRE_FALSE(errors.empty());
-        CHECK(errors[0].message.find("Unsupported active beatmap obstacle kind") != std::string::npos);
-    }
-}
-
 TEST_CASE("validate: split_path is supported in active beatmaps", "[validate][kind][issue932]") {
     BeatMap map;
     map.bpm = 120.0f;
@@ -1070,8 +1047,8 @@ TEST_CASE("validate: authored time_sec beyond duration fails", "[validate][beat_
     map.offset = 0.0f;
     map.lead_beats = 4;
     map.duration = 3.0f;
-    map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0, 0.5f, true});
-    map.beats.push_back({4, ObstacleKind::ShapeGate, Shape::Square, 1, 0, 3.5f, true});
+    map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0.5f, true});
+    map.beats.push_back({4, ObstacleKind::ShapeGate, Shape::Square, 1, 3.5f, true});
 
     std::vector<BeatMapError> errors;
     CHECK_FALSE(validate_beat_map(map, errors));
@@ -1085,8 +1062,8 @@ TEST_CASE("validate: authored time_sec must be non-decreasing", "[validate][beat
     map.offset = 0.0f;
     map.lead_beats = 4;
     map.duration = 60.0f;
-    map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0, 1.2f, true});
-    map.beats.push_back({2, ObstacleKind::ShapeGate, Shape::Circle, 1, 0, 1.1f, true});
+    map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 1.2f, true});
+    map.beats.push_back({2, ObstacleKind::ShapeGate, Shape::Circle, 1, 1.1f, true});
 
     std::vector<BeatMapError> errors;
     CHECK_FALSE(validate_beat_map(map, errors));
@@ -1100,10 +1077,10 @@ TEST_CASE("validate: mixed authored time_sec edge cases are checked", "[validate
     map.offset = 0.0f;
     map.lead_beats = 4;
     map.duration = 10.0f;
-    map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0, 0.0f, true});
-    map.beats.push_back({1, ObstacleKind::ShapeGate, Shape::Circle, 1, 0, 0.0f, false});
-    map.beats.push_back({2, ObstacleKind::ShapeGate, Shape::Circle, 1, 0, 1.0f, true});
-    map.beats.push_back({3, ObstacleKind::ShapeGate, Shape::Circle, 1, 0,
+    map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0.0f, true});
+    map.beats.push_back({1, ObstacleKind::ShapeGate, Shape::Circle, 1, 0.0f, false});
+    map.beats.push_back({2, ObstacleKind::ShapeGate, Shape::Circle, 1, 1.0f, true});
+    map.beats.push_back({3, ObstacleKind::ShapeGate, Shape::Circle, 1,
                          std::numeric_limits<float>::quiet_NaN(), true});
 
     std::vector<BeatMapError> errors;
@@ -1118,8 +1095,8 @@ TEST_CASE("validate: same beat_index requires non-decreasing resolved time", "[v
     map.offset = 0.0f;
     map.lead_beats = 4;
     map.duration = 10.0f;
-    map.beats.push_back({2, ObstacleKind::ShapeGate, Shape::Circle, 1, 0, 1.5f, true});
-    map.beats.push_back({2, ObstacleKind::ShapeGate, Shape::Square, 1, 0, 1.4f, true});
+    map.beats.push_back({2, ObstacleKind::ShapeGate, Shape::Circle, 1, 1.5f, true});
+    map.beats.push_back({2, ObstacleKind::ShapeGate, Shape::Square, 1, 1.4f, true});
 
     std::vector<BeatMapError> errors;
     CHECK_FALSE(validate_beat_map(map, errors));

@@ -81,7 +81,7 @@ what the browser provides natively.
 | Context menu | Right-click an obstacle to open an inline context menu |
 | Obstacle palette | Select active obstacle kind before placing (for new placements) |
 | Shape selector | For authored shape_gate/split_path entries: pick circle/square/triangle |
-| Obstacle glyph display | Uses per-kind glyphs/colors for active editor kinds (ShapeGate, SplitPath) plus OnsetMarker metadata entries. Archived LowBar/HighBar and legacy ComboGate/LaneBlock are not authorable. |
+| Obstacle glyph display | Uses per-kind glyphs/colors for active editor kinds (ShapeGate, SplitPath) plus OnsetMarker metadata entries. Archived LowBar/HighBar are not authorable. |
 | Drag to move | Drag an obstacle to a different beat or lane |
 | Multi-select | Shift-click or box-select, then move/delete as group |
 | Copy/paste | Select a range of beats, copy, paste at a different position |

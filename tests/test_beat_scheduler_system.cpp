@@ -211,7 +211,7 @@ TEST_CASE("beat_scheduler: falls back to beat_times when BeatEntry time_sec is a
     song.bpm = 120.0f;
     song_state_compute_derived(song);
     map.beat_times = {0.3f, 0.85f, 1.47f};
-    map.beats.push_back({2, ObstacleKind::ShapeGate, Shape::Circle, 1, 0, 99.0f, false});
+    map.beats.push_back({2, ObstacleKind::ShapeGate, Shape::Circle, 1, 99.0f, false});
 
     song.song_time = 30.0f;
     song.next_spawn_idx = 0;
@@ -284,22 +284,6 @@ TEST_CASE("beat_scheduler: spawns multiple beats when time is past all", "[beat_
 }
 
 // ── beat_scheduler: obstacle types ───────────────────────────
-
-TEST_CASE("beat_scheduler: skips unsupported active beatmap obstacle kinds", "[beat_scheduler][issue873]") {
-    auto reg = make_rhythm_registry();
-    auto& song = reg.ctx().get<SongState>();
-    auto& map = beat_map(reg);
-
-    map.beats.push_back({0, ObstacleKind::LaneBlock, Shape::Circle, 1, 0b010});
-    song.song_time = 10.0f;
-    song.next_spawn_idx = 0;
-
-    beat_scheduler_system(reg, 0.016f);
-
-    auto view = reg.view<ObstacleTag>();
-    CHECK(view.begin() == view.end());
-    CHECK(song.next_spawn_idx == 1);
-}
 
 TEST_CASE("beat_scheduler: spawns OnsetMarker as visible non-scorable cue",
           "[beat_scheduler][onset_marker][issue1042]") {

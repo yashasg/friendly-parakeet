@@ -192,7 +192,7 @@ TEST_CASE("scoring: multiple obstacles scored in single frame", "[scoring]") {
 
     auto obs1 = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<ScoredTag>(obs1);
-    auto obs2 = make_lane_block(reg, 0b001, constants::PLAYER_Y + 1.0f);
+    auto obs2 = make_split_path(reg, Shape::Square, 0, constants::PLAYER_Y + 1.0f);
     reg.emplace<ScoredTag>(obs2);
 
     scoring_system(reg, 0.016f);

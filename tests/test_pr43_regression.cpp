@@ -10,6 +10,7 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
 #include "entities/obstacle_render_entity.h"
+#include "entities/obstacle_entity.h"
 #include "components/rendering.h"
 #include "constants.h"
 #include <filesystem>
@@ -81,13 +82,13 @@ TEST_CASE("screen_transform ordering: stale identity ST mismaps letterbox-offset
 //           d (Z) to slab_matrix, not the other way around.
 // ═══════════════════════════════════════════════════════════════════════
 
-TEST_CASE("MeshChild: depth field stores DrawSize.h (scroll-axis) for LaneBlock",
+TEST_CASE("MeshChild: depth field stores DrawSize.h (scroll-axis) for OnsetMarker",
           "[camera][slab][pr43]") {
     using Catch::Matchers::WithinAbs;
 
     auto reg = make_registry();
-    auto obs = make_lane_block(reg, 0b001, 500.0f);  // one blocked lane
-    spawn_obstacle_meshes(reg, obs);
+    auto obs = spawn_obstacle(reg, {ObstacleKind::OnsetMarker, constants::LANE_X[1], 500.0f,
+                                    Shape::Circle, int8_t{1}, 100.0f});
 
     const float expected_depth  = reg.get<DrawSize>(obs).h;
     const float expected_height = constants::OBSTACLE_3D_HEIGHT;
@@ -111,11 +112,11 @@ TEST_CASE("MeshChild: depth/height fields are distinct values (non-trivially int
     // constants are different so the slab_matrix arg-swap produces a visible
     // change and our field-contract test is meaningful.
     auto reg = make_registry();
-    auto obs = make_lane_block(reg, 0b001, 500.0f);
-    spawn_obstacle_meshes(reg, obs);
+    auto obs = spawn_obstacle(reg, {ObstacleKind::OnsetMarker, constants::LANE_X[1], 500.0f,
+                                    Shape::Circle, int8_t{1}, 100.0f});
 
     const float dsz_h = reg.get<DrawSize>(obs).h;
-    // DrawSize.h for a lane-block (80) must differ from OBSTACLE_3D_HEIGHT (20).
+    // DrawSize.h for an onset-marker (80) must differ from OBSTACLE_3D_HEIGHT (20).
     CHECK(dsz_h != constants::OBSTACLE_3D_HEIGHT);
 }
 

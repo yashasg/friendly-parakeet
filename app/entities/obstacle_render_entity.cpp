@@ -98,7 +98,6 @@ void spawn_obstacle_meshes(entt::registry& reg, entt::entity logical) {
         ? ObstacleKind::OnsetMarker
         : obstacle_kind_from_components(
             reg.all_of<RequiredShape>(logical),
-            reg.all_of<uint8_t>(logical),
             reg.all_of<RequiredLane>(logical));
 
     switch (kind) {
@@ -114,41 +113,6 @@ void spawn_obstacle_meshes(entt::registry& reg, entt::entity logical) {
             if (req)
                 add_shape_child(reg, logical, mesh_index, wt.position.x, 0.0f,
                                 40, col);
-            break;
-        }
-        case ObstacleKind::LaneBlock: {
-            // Legacy component fixture path. Active beatmaps and obstacle
-            // factories reject LaneBlock; retained for focused ECS tests.
-            auto* blocked = reg.try_get<uint8_t>(logical);
-            if (blocked)
-                for (int i = 0; i < constants::LANE_COUNT; ++i)
-                    if ((*blocked >> i) & 1)
-                        add_slab_child(reg, logical, constants::LANE_X[i]-dsz.w/2,
-                                       dsz.w, dsz.h, constants::OBSTACLE_3D_HEIGHT, col);
-            break;
-        }
-        case ObstacleKind::ComboGate: {
-            // Legacy component fixture path. Active beatmaps and obstacle
-            // factories reject ComboGate; retained for focused ECS tests.
-            auto* blocked = reg.try_get<uint8_t>(logical);
-            auto* req = reg.try_get<RequiredShape>(logical);
-            uint8_t mesh_index = 0;
-            if (req) {
-                mesh_index = checked_shape_mesh_index(req->shape);
-            }
-            if (blocked)
-                for (int i = 0; i < constants::LANE_COUNT; ++i)
-                    if ((*blocked >> i) & 1)
-                        add_slab_child(reg, logical, constants::LANE_X[i]-120,
-                                       240.0f, dsz.h, constants::OBSTACLE_3D_HEIGHT, col);
-            if (req) {
-                int open = 1;
-                if (blocked)
-                    for (int i = 0; i < constants::LANE_COUNT; ++i)
-                        if (!((*blocked >> i) & 1)) { open = i; break; }
-                add_shape_child(reg, logical, mesh_index, constants::LANE_X[open],
-                                 0.0f, 30, {255, 255, 255, 180});
-            }
             break;
         }
         case ObstacleKind::SplitPath: {
@@ -175,8 +139,6 @@ void spawn_obstacle_meshes(entt::registry& reg, entt::entity logical) {
         case ObstacleKind::OnsetMarker:
             add_slab_child(reg, logical, 0.0f, dsz.w, dsz.h,
                            constants::OBSTACLE_3D_HEIGHT, col);
-            break;
-        default:
             break;
     }
 }

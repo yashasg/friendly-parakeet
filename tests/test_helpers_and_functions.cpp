@@ -140,9 +140,8 @@ TEST_CASE("ToString: Shape covers all shapes", "[ToString]") {
 
 TEST_CASE("ToString: ObstacleKind covers all kinds", "[ToString]") {
     CHECK(magic_enum::enum_name(ObstacleKind::ShapeGate) == "ShapeGate");
-    CHECK(magic_enum::enum_name(ObstacleKind::LaneBlock) == "LaneBlock");
-    CHECK(magic_enum::enum_name(ObstacleKind::ComboGate) == "ComboGate");
     CHECK(magic_enum::enum_name(ObstacleKind::SplitPath) == "SplitPath");
+    CHECK(magic_enum::enum_name(ObstacleKind::OnsetMarker) == "OnsetMarker");
 }
 
 TEST_CASE("ToString: TimingTier covers all tiers", "[ToString]") {

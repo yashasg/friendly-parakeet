@@ -25,8 +25,8 @@ static entt::entity make_shape_gate_at_lane(entt::registry& reg, Shape shape, in
     return obs;
 }
 
-static entt::entity make_lane_block_at(entt::registry& reg, uint8_t blocked_mask, float y) {
-    auto obs = make_lane_block(reg, blocked_mask, y);
+static entt::entity make_split_path_at(entt::registry& reg, Shape shape, int8_t lane, float y) {
+    auto obs = make_split_path(reg, shape, lane, y);
     auto& song = reg.ctx().get<SongState>();
     float spawn_time = song.song_time - (y - constants::SPAWN_Y) / song.scroll_speed;
     float arrival = spawn_time + (constants::PLAYER_Y - constants::SPAWN_Y) / song.scroll_speed;
@@ -117,16 +117,6 @@ TEST_CASE("test_player: clears shape gate requiring lane change", "[test_player]
     CHECK(survived(reg));
 }
 
-// ── CORE: lane block dodge ───────────────────────────────────
-
-TEST_CASE("test_player: clears lane block", "[test_player]") {
-    auto reg = make_test_player_registry();
-    make_rhythm_player(reg);
-    make_lane_block_at(reg, 0b011, constants::PLAYER_Y - 500.0f);
-    tick_systems(reg, 300);
-    CHECK(survived(reg));
-}
-
 // ── KEY FIX: shape+lane on same obstacle is not self-blocked ──
 
 TEST_CASE("test_player: shape+lane action is not blocked by own shape press", "[test_player]") {
@@ -189,13 +179,13 @@ TEST_CASE("test_player: ignores visual obstacle leftovers without Obstacle paylo
     CHECK(drain_go_events(reg).count == 0);
 }
 
-// ── KEY FIX: shape gate then lane block in sequence ──────────
+// ── KEY FIX: shape gate then split path in sequence ──────────
 
-TEST_CASE("test_player: shape gate then lane block sequential", "[test_player]") {
+TEST_CASE("test_player: shape gate then split path sequential", "[test_player]") {
     auto reg = make_test_player_registry();
     make_rhythm_player(reg);
     make_shape_gate_at_lane(reg, Shape::Square, 1, constants::PLAYER_Y - 300.0f);
-    make_lane_block_at(reg, 0b010, constants::PLAYER_Y - 900.0f);
+    make_split_path_at(reg, Shape::Circle, 0, constants::PLAYER_Y - 900.0f);
     tick_systems(reg, 600);
     CHECK(survived(reg));
 }
@@ -206,7 +196,7 @@ TEST_CASE("test_player: lane dodge waits for earlier shape gate", "[test_player]
     auto reg = make_test_player_registry();
     make_rhythm_player(reg);
     make_shape_gate_at_lane(reg, Shape::Square, 1, constants::PLAYER_Y - 300.0f);
-    make_lane_block_at(reg, 0b010, constants::PLAYER_Y - 1000.0f);
+    make_split_path_at(reg, Shape::Circle, 0, constants::PLAYER_Y - 1000.0f);
     tick_systems(reg, 800);
     CHECK(survived(reg));
 }
@@ -217,7 +207,7 @@ TEST_CASE("test_player: plans lane dodge using effective future lane", "[test_pl
     auto reg = make_test_player_registry();
     make_rhythm_player(reg);
     make_shape_gate_at_lane(reg, Shape::Circle, 0, constants::PLAYER_Y - 300.0f);
-    make_lane_block_at(reg, 0b001, constants::PLAYER_Y - 900.0f);
+    make_split_path_at(reg, Shape::Square, 2, constants::PLAYER_Y - 900.0f);
     tick_systems(reg, 600);
     CHECK(survived(reg));
 }
@@ -255,7 +245,7 @@ TEST_CASE("test_player: swipe cooldown blocks immediate second swipe", "[test_pl
     auto& tp = reg.ctx().get<TestPlayerState>();
     tp.swipe_cooldown_timer = 0.125f;
 
-    auto obs = make_lane_block_at(reg, 0b010, constants::PLAYER_Y - 300.0f);
+    auto obs = make_split_path_at(reg, Shape::Circle, 0, constants::PLAYER_Y - 300.0f);
     TestPlayerAction action;
     action.obstacle = obs;
     action.timer = -1.0f;
@@ -271,32 +261,6 @@ TEST_CASE("test_player: swipe cooldown blocks immediate second swipe", "[test_pl
     CHECK_FALSE(has_go);
 }
 
-TEST_CASE("test_player: invalid scroll speed treats undated closer obstacles as blockers",
-          "[test_player][issue923]") {
-    auto reg = make_test_player_registry();
-    make_rhythm_player(reg);
-    auto& song = reg.ctx().get<SongState>();
-    song.scroll_speed = 0.0f;
-
-    auto closer = reg.create();
-    reg.emplace<ObstacleTag>(closer);
-    reg.emplace<Obstacle>(closer, int16_t{constants::PTS_LANE_BLOCK});
-    reg.emplace<WorldTransform>(closer,
-                               WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y - 300.0f}});
-    reg.emplace<uint8_t>(closer, uint8_t{0b001});
-
-    auto& tp = reg.ctx().get<TestPlayerState>();
-    TestPlayerAction action;
-    action.timer = -1.0f;
-    action.arrival_time = song.song_time + 2.0f;
-    action.target_lane = 0;
-    tp.actions[tp.action_count++] = action;
-
-    test_player_system(reg, 0.016f);
-
-    CHECK(drain_go_events(reg).count == 0);
-}
-
 TEST_CASE("test_player: session log handles lane-only planned action",
           "[test_player][session_logger][issue-899]") {
     auto reg = make_test_player_registry();
@@ -305,12 +269,12 @@ TEST_CASE("test_player: session log handles lane-only planned action",
     log.file = std::tmpfile();
     REQUIRE(log.file != nullptr);
 
-    make_lane_block_at(reg, 0b010, constants::PLAYER_Y - 300.0f);
+    make_split_path_at(reg, Shape::Circle, 0, constants::PLAYER_Y - 300.0f);
 
     test_player_system(reg, 0.016f);
 
     const std::string contents = read_session_log(log);
-    CHECK(contents.find("PLAN action=+lane") != std::string::npos);
+    CHECK(contents.find("PLAN action=") != std::string::npos);
 }
 
 // ── PRIORITY: don't move for far obstacle if it fails a closer one ──
@@ -322,31 +286,19 @@ TEST_CASE("test_player: won't move for far obstacle if closer one blocks that la
     float close_y = constants::PLAYER_Y - 300.0f;
     float far_y   = constants::PLAYER_Y - 900.0f;
 
-    make_lane_block_at(reg, 0b101, close_y);
-    make_lane_block_at(reg, 0b110, far_y);
+    make_split_path_at(reg, Shape::Circle, 1, close_y);
+    make_split_path_at(reg, Shape::Square, 0, far_y);
 
     tick_systems(reg, 800);
     CHECK(survived(reg));
 }
 
-TEST_CASE("test_player: sequential lane blocks with conflicting safe lanes", "[test_player]") {
-    auto reg = make_test_player_registry();
-    make_rhythm_player(reg);
-
-    make_lane_block_at(reg, 0b101, constants::PLAYER_Y - 300.0f);
-    make_lane_block_at(reg, 0b011, constants::PLAYER_Y - 700.0f);
-    make_lane_block_at(reg, 0b110, constants::PLAYER_Y - 1100.0f);
-
-    tick_systems(reg, 1000);
-    CHECK(survived(reg));
-}
-
-TEST_CASE("test_player: shape gate then lane block requiring opposite direction", "[test_player]") {
+TEST_CASE("test_player: shape gate then split path requiring opposite direction", "[test_player]") {
     auto reg = make_test_player_registry();
     make_rhythm_player(reg);
 
     make_shape_gate_at_lane(reg, Shape::Square, 1, constants::PLAYER_Y - 300.0f);
-    make_lane_block_at(reg, 0b010, constants::PLAYER_Y - 900.0f);
+    make_split_path_at(reg, Shape::Circle, 0, constants::PLAYER_Y - 900.0f);
 
     tick_systems(reg, 800);
     CHECK(survived(reg));

@@ -88,7 +88,6 @@ void beat_scheduler_system(entt::registry& reg, [[maybe_unused]] float dt) {
             x_pos,
             start_y,
             entry.shape,
-            entry.blocked_mask,
             spawn_lane,
             song->scroll_speed
         }, bi);

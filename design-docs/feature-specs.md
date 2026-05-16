@@ -477,8 +477,6 @@ struct Obstacle {
 
 enum class ObstacleKind : uint8_t {
     ShapeGate,
-    LaneBlock,   // legacy component fixture only; active beatmaps/factories reject
-    ComboGate,   // legacy component fixture only; active beatmaps/factories reject
     SplitPath,
     OnsetMarker,
 };
@@ -489,10 +487,6 @@ struct RequiredShape {
 
 struct RequiredLane {
     int8_t lane = 0;
-};
-
-struct BlockedLanes {
-    uint8_t mask = 0;
 };
 
 struct BeatInfo {
@@ -672,7 +666,6 @@ shape_window_system -> miss_detection_system -> scoring_system
   │  BeatInfo               │ per-ent  │ Spec 3 — Scheduling     │
   │  RequiredShape          │ per-ent  │ Spec 3 — Scheduling     │
   │  RequiredLane           │ per-ent  │ Spec 3 — Scheduling     │
-  │  BlockedLanes           │ per-ent  │ Spec 3 — Scheduling     │
   │  ScoredTag              │ tag      │ Spec 2/3 bridge         │
   │  MissTag                │ tag      │ Spec 2/3 bridge         │
   └─────────────────────────┴──────────┴─────────────────────────┘

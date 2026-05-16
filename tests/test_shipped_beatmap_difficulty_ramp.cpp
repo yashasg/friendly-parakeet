@@ -47,10 +47,6 @@ static std::vector<std::string> find_shipped_beatmaps() {
 }
 
 
-static bool is_removed_lane_kind(ObstacleKind k) {
-    return k == ObstacleKind::LaneBlock;
-}
-
 static bool is_easy_allowed_kind(ObstacleKind k) {
     return k == ObstacleKind::ShapeGate || k == ObstacleKind::OnsetMarker;
 }
@@ -134,30 +130,3 @@ TEST_CASE("difficulty ramp: shape-gate count increases with difficulty",
 }
 
 // ── Medium/Hard: low/high bars are disabled ────────────────────────────────
-
-
-TEST_CASE("difficulty ramp: medium and hard contain no removed lane kinds",
-          "[difficulty_ramp][issue135][medium][hard]") {
-    const auto beatmaps = find_shipped_beatmaps();
-    REQUIRE_FALSE(beatmaps.empty());
-
-    for (const auto& path : beatmaps) {
-        for (const auto* difficulty : {"medium", "hard"}) {
-            BeatMap map;
-            std::vector<BeatMapError> errors;
-            if (!load_beat_map(path, map, errors, difficulty)) {
-                FAIL_CHECK("removed lane kinds: failed to load " << path
-                           << " difficulty=" << difficulty);
-                continue;
-            }
-
-            for (const auto& beat : map.beats) {
-                if (!is_removed_lane_kind(beat.kind)) continue;
-                FAIL_CHECK("removed lane kinds: " << path
-                           << " difficulty=" << difficulty
-                           << " contains removed obstacle kind="
-                           << static_cast<int>(beat.kind));
-            }
-        }
-    }
-}
