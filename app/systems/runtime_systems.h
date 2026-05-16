@@ -3,20 +3,17 @@
 #include <entt/entt.hpp>
 #include "components/game_state.h"
 
-[[nodiscard]] constexpr bool game_render_should_draw_world_meshes(GamePhase phase) noexcept {
-    switch (phase) {
-        case GamePhase::Playing:
-        case GamePhase::Paused:
-        case GamePhase::GameOver:
-        case GamePhase::SongComplete:
-            return true;
-        case GamePhase::Title:
-        case GamePhase::LevelSelect:
-        case GamePhase::Settings:
-        case GamePhase::Tutorial:
-            return false;
-    }
-    return false;
+// Per Fabian existential processing (#1202/#1204), this predicate queries
+// the per-phase ctx-tag mirror instead of switching on `GamePhase`. The
+// "world meshes are drawn" set is the union of four phases (Playing,
+// Paused, GameOver, SongComplete); presence of any one of their tags is
+// the answer. No switch, no enum dispatch.
+[[nodiscard]] inline bool game_render_should_draw_world_meshes(const entt::registry& reg) noexcept {
+    const auto& ctx = reg.ctx();
+    return ctx.contains<GamePhasePlayingTag>()
+        || ctx.contains<GamePhasePausedTag>()
+        || ctx.contains<GamePhaseGameOverTag>()
+        || ctx.contains<GamePhaseSongCompleteTag>();
 }
 
 // Runtime-only systems require a live platform/audio/render context and are

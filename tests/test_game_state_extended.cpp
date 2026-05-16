@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
+#include "systems/game_phase_transition.h"
 #include "systems/game_state_system.h"
 #include "test_helpers.h"
 #include "ui/screen_controllers/tutorial_screen_controller.h"
@@ -225,19 +226,28 @@ TEST_CASE("game_state: terminal to LevelSelect hides stale world renderables",
     CHECK_FALSE(lss.confirmed);
     REQUIRE(reg.valid(stale));
     CHECK(reg.all_of<ModelTransform, TagWorldPass>(stale));
-    CHECK_FALSE(game_render_should_draw_world_meshes(gs.phase));
+    CHECK_FALSE(game_render_should_draw_world_meshes(reg));
 }
 
 TEST_CASE("game_state: Settings hides stale world renderables",
           "[gamestate][render][regression][issue966]") {
-    CHECK(game_render_should_draw_world_meshes(GamePhase::Playing));
-    CHECK(game_render_should_draw_world_meshes(GamePhase::Paused));
-    CHECK(game_render_should_draw_world_meshes(GamePhase::GameOver));
-    CHECK(game_render_should_draw_world_meshes(GamePhase::SongComplete));
-    CHECK_FALSE(game_render_should_draw_world_meshes(GamePhase::Title));
-    CHECK_FALSE(game_render_should_draw_world_meshes(GamePhase::LevelSelect));
-    CHECK_FALSE(game_render_should_draw_world_meshes(GamePhase::Settings));
-    CHECK_FALSE(game_render_should_draw_world_meshes(GamePhase::Tutorial));
+    auto reg = make_registry();
+    sync_game_phase_tags(reg, GamePhase::Playing);
+    CHECK(game_render_should_draw_world_meshes(reg));
+    sync_game_phase_tags(reg, GamePhase::Paused);
+    CHECK(game_render_should_draw_world_meshes(reg));
+    sync_game_phase_tags(reg, GamePhase::GameOver);
+    CHECK(game_render_should_draw_world_meshes(reg));
+    sync_game_phase_tags(reg, GamePhase::SongComplete);
+    CHECK(game_render_should_draw_world_meshes(reg));
+    sync_game_phase_tags(reg, GamePhase::Title);
+    CHECK_FALSE(game_render_should_draw_world_meshes(reg));
+    sync_game_phase_tags(reg, GamePhase::LevelSelect);
+    CHECK_FALSE(game_render_should_draw_world_meshes(reg));
+    sync_game_phase_tags(reg, GamePhase::Settings);
+    CHECK_FALSE(game_render_should_draw_world_meshes(reg));
+    sync_game_phase_tags(reg, GamePhase::Tutorial);
+    CHECK_FALSE(game_render_should_draw_world_meshes(reg));
 }
 
 TEST_CASE("wasm smoke lane marker state is registry-owned and reset with runtime scratch",

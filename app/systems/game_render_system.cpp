@@ -56,7 +56,6 @@ static void draw_meshes(const entt::registry& reg) {
 
 
 void game_render_system(const entt::registry& reg, float /*alpha*/) {
-    auto& gs = reg.ctx().get<GameState>();
     auto& camera = game_camera(reg).cam;
 
     ClearBackground({15, 15, 25, 255});
@@ -67,7 +66,7 @@ void game_render_system(const entt::registry& reg, float /*alpha*/) {
     // ── Render passes ──────────────────────────────────────────
     floor_render_system(reg);
 
-    if (game_render_should_draw_world_meshes(gs.phase)) {
+    if (game_render_should_draw_world_meshes(reg)) {
         rlDrawRenderBatchActive();
         rlDisableDepthTest();
         draw_meshes(reg);
