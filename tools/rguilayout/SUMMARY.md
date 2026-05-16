@@ -1,5 +1,10 @@
 # rguilayout Integration Path - Summary Report
 
+> **SUPERSEDED by #1193 (2026-05-16).** The manual-extraction workflow this
+> document describes is gone. See `tools/rguilayout/INTEGRATION.md` for the
+> new Python-codegen-based pipeline. This file is retained for historical
+> context only.
+
 **Date:** 2026-04-28  
 **Agent:** Fenster (Core C++/Implementation Engineer)  
 **Task:** Set up concrete, compile-safe integration path for rguilayout exports

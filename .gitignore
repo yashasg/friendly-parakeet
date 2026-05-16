@@ -8,6 +8,7 @@ ctrf-report.json
 shapeshifter*.log
 session_*.log
 tools/__pycache__/
+tools/**/__pycache__/
 content/audio-web/
 .cache/
 node_modules/

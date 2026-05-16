@@ -222,3 +222,32 @@ struct LevelSelectConfirmedTag {};
 // tag; the Game Over screen controller reads tag presence to surface a
 // one-line, platform-neutral, colorblind-safe reason.
 struct EnergyDepletedDeath {};
+
+// ── UI screens (per-screen tag tables) ───────────────────────
+// Per #1193 (rguilayout codegen → entity-spawner functions). Each `.rgl`
+// layout in `content/ui/screens/` produces a `spawn_<screen>_screen()` that
+// emplaces the matching per-screen tag on every control entity it creates,
+// and a `despawn_<screen>_screen()` that destroys all entities carrying the
+// tag. The UI render system queries `view<UiLabelTag, ScreenTag>()` /
+// `view<UiButtonTag, ScreenTag>()` to render only the active screen.
+// Per Fabian's existential processing, screen-membership is presence of one
+// of these tags — there is no `current_screen` discriminator anywhere.
+struct TitleScreenTag        {};
+struct LevelSelectScreenTag  {};
+struct TutorialScreenTag     {};
+struct GameplayHudTag        {};
+struct PausedScreenTag       {};
+struct GameOverScreenTag     {};
+struct SongCompleteScreenTag {};
+struct SettingsScreenTag     {};
+
+// ── UI control kinds (per-kind tag tables) ───────────────────
+// Per #1193 — `.rgl` control type codes map to existential per-kind tags
+// instead of a `UiKind` enum discriminator. Render and input dispatch use
+// tag-presence views (no `switch` on a discriminator).
+//   * `UiLabelTag`    — type code 4  (static text)
+//   * `UiButtonTag`   — type code 5  (pressable)
+//   * `UiDummyRecTag` — type code 24 (visual placeholder / icon slot)
+struct UiLabelTag    {};
+struct UiButtonTag   {};
+struct UiDummyRecTag {};
