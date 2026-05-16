@@ -120,8 +120,9 @@ void session_log_on_obstacle_spawn(entt::registry& reg, entt::entity entity) {
     const bool has_req = has_required_shape_tag(reg, entity);
 
     int8_t lane = 1;
-    auto* rlane = reg.try_get<RequiredLane>(entity);
-    if (rlane) lane = rlane->lane;
+    if (reg.all_of<SplitPathTag>(entity)) {
+        if (auto* rlane = reg.try_get<int8_t>(entity)) lane = *rlane;
+    }
 
     float arrival = beat ? beat->arrival_time : 0.0f;
     const std::string_view kind_name = obstacle_kind_label(reg, entity);

@@ -153,26 +153,29 @@ void collision_system(entt::registry& reg, [[maybe_unused]] float dt) {
     // so the views below filter on `ShapeGateTag` / `SplitPathTag` and the
     // resolver dispatches per-shape via `player_matches_required_shape`.
 
-    // ShapeGate: ShapeGateTag (carries RequiredShape*Tag, no RequiredLane)
+    // ShapeGate: ShapeGateTag (carries RequiredShape*Tag + raw int8_t lane).
+    // The raw int8_t component is the ShapeGate positional lane per the slot
+    // reservation in `app/components/obstacle.h` (issue #1198). SplitPath
+    // entities are filtered out by absence of `ShapeGateTag`.
     {
-        auto rhythm_view = reg.view<ObstacleTag, Obstacle, WorldTransform, ShapeGateTag, ShapeGateLane, BeatInfo>(
-            entt::exclude<ScoredTag, ResolvedObstacleTag, RequiredLane>);
+        auto rhythm_view = reg.view<ObstacleTag, Obstacle, WorldTransform, ShapeGateTag, int8_t, BeatInfo>(
+            entt::exclude<ScoredTag, ResolvedObstacleTag>);
         for (auto [e, obstacle, wt, lane, info] : rhythm_view.each()) {
             (void)obstacle;
-            const bool lane_ok = shape_gate_lane_match(lane.lane, player_lane);
+            const bool lane_ok = shape_gate_lane_match(lane, player_lane);
             resolve_shape_obstacle(e, wt, lane_ok, &info);
         }
 
-        auto view = reg.view<ObstacleTag, Obstacle, WorldTransform, ShapeGateTag, ShapeGateLane>(
-            entt::exclude<ScoredTag, ResolvedObstacleTag, RequiredLane, BeatInfo>);
+        auto view = reg.view<ObstacleTag, Obstacle, WorldTransform, ShapeGateTag, int8_t>(
+            entt::exclude<ScoredTag, ResolvedObstacleTag, BeatInfo>);
         for (auto [e, obstacle, wt, lane] : view.each()) {
             (void)obstacle;
-            const bool lane_ok = shape_gate_lane_match(lane.lane, player_lane);
+            const bool lane_ok = shape_gate_lane_match(lane, player_lane);
             resolve_shape_obstacle(e, wt, lane_ok, nullptr);
         }
 
         auto fallback_rhythm_view = reg.view<ObstacleTag, Obstacle, WorldTransform, ShapeGateTag, BeatInfo>(
-            entt::exclude<ScoredTag, ResolvedObstacleTag, RequiredLane, ShapeGateLane>);
+            entt::exclude<ScoredTag, ResolvedObstacleTag, int8_t>);
         for (auto [e, obstacle, wt, info] : fallback_rhythm_view.each()) {
             (void)obstacle;
             const bool lane_ok = lane_utils::nearest_lane_for_x(wt.position.x) == player_lane;
@@ -180,7 +183,7 @@ void collision_system(entt::registry& reg, [[maybe_unused]] float dt) {
         }
 
         auto fallback_view = reg.view<ObstacleTag, Obstacle, WorldTransform, ShapeGateTag>(
-            entt::exclude<ScoredTag, ResolvedObstacleTag, RequiredLane, BeatInfo, ShapeGateLane>);
+            entt::exclude<ScoredTag, ResolvedObstacleTag, BeatInfo, int8_t>);
         for (auto [e, obstacle, wt] : fallback_view.each()) {
             (void)obstacle;
             const bool lane_ok = lane_utils::nearest_lane_for_x(wt.position.x) == player_lane;
@@ -188,21 +191,24 @@ void collision_system(entt::registry& reg, [[maybe_unused]] float dt) {
         }
     }
 
-    // SplitPath: SplitPathTag (carries RequiredShape*Tag + RequiredLane)
+    // SplitPath: SplitPathTag (carries RequiredShape*Tag + raw int8_t lane).
+    // The raw int8_t component is the required dodge lane per the slot
+    // reservation in `app/components/obstacle.h` (issue #1198). ShapeGate
+    // entities are filtered out by absence of `SplitPathTag`.
     {
-        auto rhythm_view = reg.view<ObstacleTag, Obstacle, WorldTransform, SplitPathTag, RequiredLane, BeatInfo>(
+        auto rhythm_view = reg.view<ObstacleTag, Obstacle, WorldTransform, SplitPathTag, int8_t, BeatInfo>(
             entt::exclude<ScoredTag, ResolvedObstacleTag>);
         for (auto [e, obstacle, wt, rlane, info] : rhythm_view.each()) {
             (void)obstacle;
-            const bool lane_ok = player_lane == rlane.lane;
+            const bool lane_ok = player_lane == rlane;
             resolve_shape_obstacle(e, wt, lane_ok, &info);
         }
 
-        auto view = reg.view<ObstacleTag, Obstacle, WorldTransform, SplitPathTag, RequiredLane>(
+        auto view = reg.view<ObstacleTag, Obstacle, WorldTransform, SplitPathTag, int8_t>(
             entt::exclude<ScoredTag, ResolvedObstacleTag, BeatInfo>);
         for (auto [e, obstacle, wt, rlane] : view.each()) {
             (void)obstacle;
-            const bool lane_ok = player_lane == rlane.lane;
+            const bool lane_ok = player_lane == rlane;
             resolve_shape_obstacle(e, wt, lane_ok, nullptr);
         }
     }

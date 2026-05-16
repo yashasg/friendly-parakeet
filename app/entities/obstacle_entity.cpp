@@ -26,7 +26,7 @@ entt::entity create_shape_gate(entt::registry& reg, const ShapeGateSpawn& params
     reg.emplace<ShapeGateTag>(e);
     reg.emplace<Obstacle>(e, int16_t{constants::PTS_SHAPE_GATE});
     set_required_shape_tag(reg, e, params.shape);
-    reg.emplace<ShapeGateLane>(
+    reg.emplace<int8_t>(
         e, static_cast<int8_t>(lane_utils::nearest_lane_for_x(params.x)));
     reg.emplace<DrawSize>(e, constants::SCREEN_W_F, 80.0f);
     reg.emplace<Color>(e, constants::SHAPE_COLORS[shape_index(params.shape)]);
@@ -46,7 +46,7 @@ entt::entity create_split_path(entt::registry& reg, const SplitPathSpawn& params
     reg.emplace<SplitPathTag>(e);
     reg.emplace<Obstacle>(e, int16_t{constants::PTS_SPLIT_PATH});
     set_required_shape_tag(reg, e, params.shape);
-    reg.emplace<RequiredLane>(e, params.req_lane);
+    reg.emplace<int8_t>(e, params.req_lane);
     reg.emplace<DrawSize>(e, constants::SCREEN_W_F, 80.0f);
     reg.emplace<Color>(e, Color{255, 215, 0, 255});
     return e;

@@ -323,7 +323,7 @@ inline entt::entity make_shape_gate(entt::registry& reg, Shape shape, float y) {
     reg.emplace<Vector2>(obs, Vector2{0.0f, song.scroll_speed});
     reg.emplace<Obstacle>(obs, int16_t{constants::PTS_SHAPE_GATE});
     set_required_shape_tag(reg, obs, shape);
-    reg.emplace<ShapeGateLane>(obs, int8_t{1});
+    reg.emplace<int8_t>(obs, int8_t{1});
     reg.emplace<DrawSize>(obs, float(constants::SCREEN_W), 80.0f);
     reg.emplace<TagWorldPass>(obs);
     reg.emplace<Color>(obs, Color{255, 255, 255, 255});
@@ -340,7 +340,7 @@ inline entt::entity make_split_path(entt::registry& reg, Shape shape, int8_t lan
     reg.emplace<Vector2>(obs, Vector2{0.0f, song.scroll_speed});
     reg.emplace<Obstacle>(obs, int16_t{constants::PTS_SPLIT_PATH});
     set_required_shape_tag(reg, obs, shape);
-    reg.emplace<RequiredLane>(obs, lane);
+    reg.emplace<int8_t>(obs, lane);
     reg.emplace<DrawSize>(obs, float(constants::SCREEN_W), 80.0f);
     reg.emplace<TagWorldPass>(obs);
     reg.emplace<Color>(obs, Color{255, 215, 0, 255});

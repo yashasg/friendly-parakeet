@@ -60,7 +60,7 @@ TEST_CASE("collision: shape gate does not clear from target lane before strafe a
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
 
     reg.get<WorldTransform>(obs).position.x = constants::LANE_X[0];
-    reg.get<ShapeGateLane>(obs).lane = int8_t{0};
+    reg.get<int8_t>(obs) = int8_t{0};
     lane.target = 0;
     lane.lerp_t = 0.0f;
 
@@ -92,7 +92,7 @@ TEST_CASE("collision: shape gate clears when interpolated player hitbox reaches 
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
 
     reg.get<WorldTransform>(obs).position.x = constants::LANE_X[0];
-    reg.get<ShapeGateLane>(obs).lane = int8_t{0};
+    reg.get<int8_t>(obs) = int8_t{0};
     reg.get<WorldTransform>(player).position.x = constants::LANE_X[0];
     lane.target = 0;
     lane.lerp_t = 1.0f;

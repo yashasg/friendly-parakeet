@@ -18,7 +18,7 @@ uint8_t checked_shape_mesh_index(Shape shape) {
 int checked_lane_index(int8_t lane) {
     const int lane_index = static_cast<int>(lane);
     if (lane_index < 0 || lane_index >= constants::LANE_COUNT) {
-        throw std::logic_error("Invalid RequiredLane lane");
+        throw std::logic_error("Invalid required lane index");
     }
     return lane_index;
 }
@@ -114,10 +114,10 @@ void spawn_obstacle_meshes(entt::registry& reg, entt::entity logical) {
         return;
     }
     if (reg.all_of<SplitPathTag>(logical)) {
-        auto* rlane = reg.try_get<RequiredLane>(logical);
+        auto* rlane = reg.try_get<int8_t>(logical);
         int lane_index = 0;
         if (rlane) {
-            lane_index = checked_lane_index(rlane->lane);
+            lane_index = checked_lane_index(*rlane);
         }
         const bool has_req = has_required_shape_tag(reg, logical);
         uint8_t mesh_index = 0;
